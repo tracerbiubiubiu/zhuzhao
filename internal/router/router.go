@@ -3,10 +3,11 @@ package router
 import (
 	"net/http"
 
+	"log/slog"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
@@ -53,7 +54,6 @@ func New(deps Deps) *gin.Engine {
 		{
 			auth.POST("/login", deps.AuthHandler.Login)
 			auth.POST("/refresh", deps.AuthHandler.Refresh)
-			auth.POST("/logout", deps.AuthHandler.Logout)
 		}
 
 		// 以下路由需要 JWT 认证
@@ -61,6 +61,7 @@ func New(deps Deps) *gin.Engine {
 		authenticated.Use(middleware.JWT(deps.JWTManager, deps.RedisClient))
 		{
 			// 认证模块（需鉴权）
+			authenticated.POST("/auth/logout", deps.AuthHandler.Logout)
 			authenticated.GET("/auth/devices", deps.AuthHandler.ListDevices)
 			authenticated.DELETE("/auth/devices/:deviceId", deps.AuthHandler.KickDevice)
 

@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // Response 统一响应结构
@@ -94,5 +96,5 @@ func Conflict(c *gin.Context, message string) {
 
 // InternalError 内部错误
 func InternalError(c *gin.Context, message string) {
-	Fail(c, http.StatusInternalServerError, 10006, message)
+	Fail(c, http.StatusInternalServerError, errcode.ErrInternal.Code, message)
 }

@@ -987,7 +987,7 @@ INSERT INTO org_permissions (role_id, resource_type, action, scope) VALUES
 version: '3.8'
 services:
   postgres:
-    image: postgres:16
+    image: postgres:15          # 对齐云服务版本
     environment:
       POSTGRES_DB: zhuzhao
       POSTGRES_USER: zhuzhao
@@ -999,7 +999,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # 自动建表
 
   redis:
-    image: redis:7-alpine
+    image: redis:6.2-alpine     # 对齐云服务版本
     ports:
       - "6379:6379"
     volumes:
