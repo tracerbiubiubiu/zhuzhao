@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
 
 // New 创建 slog Logger，同时输出到文件和控制台
-func New(level, logDir string, maxSize, maxBackups, maxAge int) *slog.Logger {
+func New(cfg config.LogConfig) *slog.Logger {
 	var slogLevel slog.Level
-	switch level {
+	switch cfg.Level {
 	case "debug":
 		slogLevel = slog.LevelDebug
 	case "info":
@@ -26,10 +28,10 @@ func New(level, logDir string, maxSize, maxBackups, maxAge int) *slog.Logger {
 	}
 
 	writer := &lumberjack.Logger{
-		Filename:   filepath.Join(logDir, "app.log"),
-		MaxSize:    maxSize,
-		MaxBackups: maxBackups,
-		MaxAge:     maxAge,
+		Filename:   filepath.Join(cfg.Dir, "app.log"),
+		MaxSize:    cfg.MaxSize,
+		MaxBackups: cfg.MaxBackups,
+		MaxAge:     cfg.MaxAge,
 		Compress:   true,
 	}
 

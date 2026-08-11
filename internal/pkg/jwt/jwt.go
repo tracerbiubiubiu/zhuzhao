@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
 
 // AccessClaims accessToken 的 payload
@@ -31,10 +33,10 @@ type Manager struct {
 }
 
 // NewManager 创建 JWT Manager
-func NewManager(secret string, accessTTL time.Duration) *Manager {
+func NewManager(cfg config.JWTConfig) *Manager {
 	return &Manager{
-		secret:    []byte(secret),
-		accessTTL: accessTTL,
+		secret:    []byte(cfg.Secret),
+		accessTTL: cfg.AccessTTL,
 	}
 }
 

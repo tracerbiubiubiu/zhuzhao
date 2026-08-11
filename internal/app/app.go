@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -44,24 +43,31 @@ func (a *App) Run() error {
 		Handler: a.router,
 	}
 
-	// 启动 HTTP 服务
+	// 启动 HTTP 服务（goroutine 中运行，错误通过 channel 传递）
+	serverErr := make(chan error, 1)
 	go func() {
 		a.logger.Info("server starting",
 			slog.Int("port", a.cfg.Server.Port),
 			slog.String("mode", a.cfg.Server.Mode),
 		)
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			a.logger.Error("server failed", slog.Any("error", err))
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
-	// 等待退出信号
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	// 等待退出信号或服务器错误
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	a.logger.Info("server shutting down...")
+	select {
+	case err := <-serverErr:
+		// 服务器异常退出（非 graceful shutdown）
+		a.logger.Error("server failed", slog.Any("error", err))
+		return err
+	case <-ctx.Done():
+		// 收到退出信号
+		a.logger.Info("server shutting down...")
+	}
 
 	// 优雅关闭
 	return a.Shutdown()
@@ -79,9 +85,9 @@ func (a *App) Shutdown() error {
 	}
 
 	// TODO: 2. 刷空审计日志队列
-	// TODO: 3. 关闭 Casbin enforcer
-	// TODO: 4. 关闭 Redis 连接
-	// TODO: 5. 关闭 PostgreSQL 连接池
+	// TODO: 3. 关闭 Casbin enforcer（由 cleanup 函数处理）
+	// TODO: 4. 关闭 Redis 连接（由 cleanup 函数处理）
+	// TODO: 5. 关闭 PostgreSQL 连接池（由 cleanup 函数处理）
 
 	a.logger.Info("server stopped")
 	return nil

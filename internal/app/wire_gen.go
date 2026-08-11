@@ -6,14 +6,13 @@
 package app
 
 import (
-	"github.com/casbin/casbin/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
-
+	appcasbin "github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
+	pgredis "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -23,13 +22,26 @@ import (
 // TODO: 后续安装 wire CLI 后用 `wire` 命令自动生成替换此文件
 func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	// 基础设施
-	log := logger.New(cfg.Log.Level, cfg.Log.Dir, cfg.Log.MaxSize, cfg.Log.MaxBackups, cfg.Log.MaxAge)
-	jwtManager := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.AccessTTL)
+	log := logger.New(cfg.Log)
+	jwtManager := jwt.NewManager(cfg.JWT)
 
-	// DB 和 Redis（待实现真正的连接逻辑）
-	var db *pgxpool.Pool
-	var rdb *redis.Client
-	var enforcer *casbin.SyncedEnforcer
+	db, err := postgres.New(cfg.Database)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rdb, err := pgredis.New(cfg.Redis)
+	if err != nil {
+		db.Close()
+		return nil, nil, err
+	}
+
+	enforcer, err := appcasbin.New(cfg.Casbin)
+	if err != nil {
+		db.Close()
+		rdb.Close()
+		return nil, nil, err
+	}
 
 	// Repository
 	userRepo := repository.NewUserRepo(db)
@@ -42,10 +54,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	authService := service.NewAuthService(userRepo, jwtManager, rdb)
 	userService := service.NewUserService(userRepo)
 	rbacService := service.NewRBACService(roleRepo)
-	_ = service.NewAuthzService(db, rdb)       // 待接入中间件
+	authzService := service.NewAuthzService(db, rdb)
 	orgService := service.NewOrgService(orgRepo)
 	menuService := service.NewMenuService(menuRepo)
-	_ = service.NewAuditService(auditRepo)     // 待接入中间件
+	auditService := service.NewAuditService(auditRepo)
+	_ = authzService
+	_ = auditService
 
 	// Handler
 	authHandler := handler.NewAuthHandler(authService)
@@ -71,8 +85,14 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	// App
 	application := NewApp(cfg, log, engine)
 
+	// cleanup 按初始化的逆序关闭资源
 	cleanup := func() {
-		// TODO: 关闭 DB、Redis、Casbin 等资源
+		// TODO: 刷空审计日志队列
+		enforcer.StopAutoLoadPolicy()
+		_ = enforcer.SavePolicy()
+		rdb.Close()
+		db.Close()
+		log.Info("resources cleaned up")
 	}
 
 	return application, cleanup, nil

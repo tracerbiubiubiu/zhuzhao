@@ -4,22 +4,18 @@
 package app
 
 import (
-	"github.com/casbin/casbin/v2"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
-	"log/slog"
+	"github.com/google/wire"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
 	pgredis "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
-
-	"github.com/google/wire"
 )
 
 // Provider 集合
@@ -27,7 +23,9 @@ import (
 var pkgSet = wire.NewSet(
 	logger.New,
 	jwt.NewManager,
+	postgres.New,
 	pgredis.New,
+	casbin.New,
 )
 
 var repoSet = wire.NewSet(
@@ -65,18 +63,10 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		handlerSet,
 		router.New,
 		NewApp,
-		// 基础设施 Provider
+		// 从 *config.Config 中提取各子配置结构体，供基础设施 Provider 使用
 		wire.FieldsOf(new(*config.Config),
-			"JWT", "Redis", "Log",
+			"Database", "Redis", "JWT", "Casbin", "Log",
 		),
-		wire.FieldsOf(new(config.JWTConfig),
-			"Secret", "AccessTTL",
-		),
-		wire.FieldsOf(new(config.LogConfig),
-			"Level", "Dir", "MaxSize", "MaxBackups", "MaxAge",
-		),
-		// PG 连接池（待实现）
-		// Casbin enforcer（待实现）
 	)
 	return nil, nil, nil
 }
