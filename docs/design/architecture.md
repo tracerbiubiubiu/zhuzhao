@@ -244,7 +244,14 @@ zhuzhao/
 │   └── casbin_model.conf          # Casbin 模型
 │
 ├── docs/                          # 文档
-│   └── architecture.md            # 本文档
+│   ├── README.md                  # 文档索引
+│   ├── design/                    # 设计文档
+│   │   ├── architecture.md        # 系统架构（本文档）
+│   │   ├── design-decisions.md    # 设计决策与细节讨论
+│   │   └── implementation-plan.md # 实施计划
+│   ├── api/                       # API 文档（Swagger 生成）
+│   ├── ops/                       # 运维文档
+│   └── adr/                       # 架构决策记录
 │
 ├── scripts/
 │   └── swagger.sh                 # swag init 脚本
@@ -515,19 +522,21 @@ SELECT EXISTS (
 - 每次刷新废弃旧 RT → 即使 RT 被截获，攻击者只有一次使用机会
 - 轮换可检测 RT 被盗：攻击者和真正用户不能同时使用同一个 RT，先刷新的一方会使另一方的 RT 失效
 
-### 5.2 Token Payload
+### 5.2 Token Payload 设计原则
 
-**accessToken**：
+**核心原则：JWT 保持无状态，只存身份信息，不存权限信息。**
+
+身份信息（user_id）不可变，适合放 JWT。权限信息（role、org_id）可变，放 JWT 会导致管理员修改权限后无法实时生效（必须等 AT 过期）。因此 AT 只携带最小化的身份标识，权限信息由 Redis 缓存提供，变更时主动失效。
+
+**accessToken（极简）**：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| user_id | string | 用户 ID |
-| username | string | 用户名 |
-| role | string | 主角色 key |
-| org_id | string | 主组织 ID |
-| device_id | string | 设备标识 |
+| user_id | string | 用户 ID（身份标识，不可变） |
 | jti | string | Token 唯一标识（用于黑名单） |
 | exp | timestamp | 过期时间 |
+
+> ~~username, role, org_id, device_id~~ 已从 payload 移除。这些信息通过 Redis 权限缓存获取，确保管理员修改后实时生效。
 
 **refreshToken**（精简）：
 
@@ -557,6 +566,12 @@ devices:user_001 → {device_mac, device_iphone}
 # Key:   blacklist:at:{atJti}
 # TTL:   AT 剩余有效期
 blacklist:at:at_xyz789 → 1
+
+# 用户权限缓存（JWT 无状态策略的核心）
+# Key:   perm:user:{userId}
+# Val:   JSON { roles, org_id, permissions }
+# TTL:   30min
+perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["user:read","article:write",...]}
 ```
 
 ### 5.4 核心流程
@@ -565,11 +580,12 @@ blacklist:at:at_xyz789 → 1
 
 ```
 1. 校验用户名密码
-2. 签发 AT（2h，含用户信息）
+2. 签发 AT（2h，仅含 user_id + jti）
 3. 签发 RT（7d，精简 payload）
 4. RT 存 Redis: refresh:{userId}:{deviceId}
 5. 设备 ID 加入 Redis Set: devices:{userId}
-6. 返回 AT + RT
+6. 加载用户权限写入缓存: perm:user:{userId}
+7. 返回 AT + RT
 ```
 
 #### 刷新流程（RT 轮换）
@@ -581,10 +597,12 @@ blacklist:at:at_xyz789 → 1
    └─ 存在 → 比对 jti
        ├─ 不匹配 → 可能重放攻击 → 拒绝
        └─ 匹配 → 继续
-3. 查用户最新信息（角色可能变化）
-4. 签发新 AT + 新 RT
-5. 用新 RT 覆盖 Redis（旧 RT 自动失效）
-6. 返回新 AT + 新 RT
+3. 签发新 AT（仅含 user_id + jti）+ 新 RT
+4. 用新 RT 覆盖 Redis（旧 RT 自动失效）
+5. 返回新 AT + 新 RT
+
+※ 权限缓存（perm:user:{userId}）在 AT 有效期内通过主动失效机制保持最新，
+   刷新 AT 不需要重新加载权限。
 
 ※ 如果攻击者截获 RT 并抢先刷新：
    - 攻击者获得新 AT + 新 RT，旧 RT 失效
@@ -614,11 +632,17 @@ blacklist:at:at_xyz789 → 1
 请求进入
   │
   ├─ 1. 提取 Authorization Header 中的 AT
-  ├─ 2. 解析 JWT，校验签名和过期时间
+  ├─ 2. 解析 JWT，校验签名和过期时间 → 获取 user_id, jti
   ├─ 3. 查 Redis 黑名单: EXISTS blacklist:at:{jti}
   │     └─ 在黑名单中 → 拒绝（token 已失效）
-  ├─ 4. 注入上下文: userID, username, role, orgID, deviceID
-  └─ 5. c.Next()
+  ├─ 4. 查 Redis 权限缓存: GET perm:user:{userId}
+  │     ├─ 命中 → 反序列化 roles, org_id, permissions
+  │     └─ 未命中 → 查 DB → 写入缓存（TTL 30min）→ 反序列化
+  ├─ 5. 注入上下文: userID, roles, orgID, permissions
+  └─ 6. c.Next()
+
+※ Casbin 中间件从 context 取 roles，来源从 JWT payload 改为 Redis 缓存。
+   管理员修改用户角色后，主动删除 perm:user:{userId}，下次请求 cache miss 重新加载。
 ```
 
 ### 5.6 对外接口
@@ -630,6 +654,24 @@ blacklist:at:at_xyz789 → 1
 | `/api/v1/auth/logout` | POST | 登出，吊销 Token |
 | `/api/v1/auth/devices` | GET | 查询当前用户活跃设备列表 |
 | `/api/v1/auth/devices/:deviceId` | DELETE | 踢出指定设备 |
+
+### 5.7 JWT 无状态策略与权限缓存
+
+**核心决策**：JWT 保持纯无状态，仅作为身份凭证（user_id + jti + exp），不携带任何权限信息。权限信息由 Redis 缓存提供，管理员修改后主动失效缓存，下次请求即生效。
+
+**权限缓存结构**：
+
+```
+Key:   perm:user:{userId}
+Val:   { "roles": [...], "org_id": "...", "permissions": [...] }
+TTL:   30min
+```
+
+**权限变更实时生效**：DB 事务提交 → `DEL perm:user:{userId}` →（多实例）Pub/Sub 广播 → 下次请求 cache miss 重新加载。
+
+**实施阶段**：Phase 1 可先用"权限入 JWT"快速跑通，Phase 2 切换为 Redis 缓存方案。
+
+> 方案对比、推理过程、Redis 重启影响、降级策略等细节见 [design-decisions.md](./design-decisions.md)。
 
 ---
 
@@ -746,7 +788,7 @@ blacklist:at:at_xyz789 → 1
 |--------|------|
 | 数据库表 | 所有业务表增加 `tenant_id` 字段（当前默认值） |
 | Casbin 模型 | 预留 tenant 维度：`r = tenant, sub, obj, act` |
-| JWT Token | payload 中预留 `tenant_id` |
+| JWT Token | payload 仅含 `user_id`，`tenant_id` 放 Redis 权限缓存（`perm:user:{userId}`） |
 | 中间件 | 预留租户解析中间件，从 header 或 token 中提取 |
 | repository | 查询自动追加 `WHERE tenant_id = $1` |
 
@@ -1127,7 +1169,7 @@ log:
 |------|---------|-----------|
 | Casbin 策略变更 | `casbin:policy:changed` | 触发 enforcer reload（加分布式锁） |
 | 用户被禁用 | `user:disabled:{userId}` | 清除该用户的权限缓存；其 AT 继续有效到过期或下次刷新被拒 |
-| 权限缓存失效 | `cache:invalidate:{key}` | 删除本地/Redis 缓存 |
+| 权限缓存失效 | `cache:invalidate:{key}` | 删除本地/Redis 缓存（如 `perm:user:{userId}`，详见 §5.7） |
 
 > 单实例阶段不需要 Pub/Sub，多实例部署时启用。
 
@@ -1135,7 +1177,7 @@ log:
 
 | 缓存对象 | Redis Key | TTL | 失效触发 |
 |----------|-----------|-----|----------|
-| 用户权限码列表 | `perm:user:{userId}` | 30min | 角色权限变更、用户角色变更 |
+| 用户权限码列表 | `perm:user:{userId}` | 30min | 角色权限变更、用户角色变更（管理员操作后主动 `DEL`，详见 §5.7） |
 | 用户菜单树 | `menu:user:{userId}` | 30min | 菜单变更、角色菜单关联变更 |
 | 用户组织列表 | `orgs:user:{userId}` | 30min | 用户组织关系变更 |
 | 组织树全量 | `org:tree` | 60min | 组织结构变更 |
@@ -1543,7 +1585,7 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | 多设备管理 | 设备列表 + 踢出设备 | Redis 设备管理 |
 | 登录安全 | 限流 + 账号锁定 | Redis 计数器 |
 | 密码安全 | 复杂度校验 + 修改密码 | bcrypt |
-| 缓存 | 权限缓存 + 菜单缓存 + 组织缓存 | Cache-Aside |
+| 缓存 | 权限缓存 + 菜单缓存 + 组织缓存 | Cache-Aside，JWT 无状态策略落地（详见 §5.7） |
 | 限流中间件 | Redis + 令牌桶/滑动窗口 | API 限流 |
 
 ### 18.3 Phase 3：生产加固（可上线）
