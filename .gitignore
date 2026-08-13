@@ -37,3 +37,5 @@ logs/
 
 # Wire generated (uncomment to ignore, but recommended to commit)
 # internal/app/wire_gen.go
+doc/
+.DS_Store
