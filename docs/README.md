@@ -37,8 +37,8 @@ docs/
 ├── phase1/                          # Phase 1：最小可用（认证鉴权框架）
 │   ├── README.md                    # 大纲 + 边界 + 实施顺序 + 测试策略
 │   ├── 01-infra.md                  # 基础设施
-│   ├── 02-auth.md                   # 认证（含 AK/SK 骨架）
-│   ├── 03-authz.md                  # 鉴权（路由级 + Registry 骨架）
+│   ├── 02-auth.md                   # 认证（登录限流、会话吊销；AK/SK 仅方案保留）
+│   ├── 03-authz.md                  # 鉴权（路由级 + Registry 空接口）
 │   ├── 04-user.md                   # 用户
 │   ├── 05-role.md                   # 角色
 │   ├── 06-organization.md           # 组织
@@ -76,7 +76,7 @@ docs/
 |------|------|------|
 | `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划 | 所有开发者 |
 | `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
-| `implementation-plan.md` | 实施步骤：Phase 1 的逐步搭建计划与验收标准 | 执行开发者 |
+| `implementation-plan.md` | ~~实施步骤~~ **已废弃**，见 phase1/ | 历史快照 |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
 
 ### proposal/ — 综合方案文档
@@ -109,7 +109,7 @@ docs/
 | `middleware.md` | 中间件 | JWT、CORS、限流、安全头 |
 | `ticket.md` | 工单 | 类型配置、状态机、权限模型 |
 
-> `modules/` 描述每个模块的**完整形态**（跨阶段），`phase1/` `phase2/` `phase3/` 描述每阶段**做什么**。
+> `modules/` 描述每个模块的**完整形态**（跨阶段），`phase1/` `phase2/` `phase3/` 描述每阶段**做什么**。编码、主键、分阶段边界以 phase 计划与 roadmap 为准。
 
 ### phase1/ phase2/ phase3/ — 分阶段实现计划
 
@@ -118,7 +118,7 @@ docs/
 | 阶段 | 目标 | 部署形态 |
 |------|------|---------|
 | [phase1/](./phase1/README.md) | 最小可用：认证鉴权框架 | 单实例 Docker Compose |
-| [phase2/](./phase2/README.md) | 业务可用：资源级鉴权 + 安全 + 工单 | 单实例 Docker Compose |
+| [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 | 单实例 Docker Compose |
 | [phase3/](./phase3/README.md) | 生产加固：多实例 + 可观测性 + HA | 多实例 + Nginx + PG Cluster |
 
 ### roadmap.md — 三阶段总览

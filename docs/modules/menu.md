@@ -3,6 +3,8 @@
 > 模块代码：`internal/service/menu_service.go` + `internal/repository/menu_repo.go`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/menu.md` + `dynamic-routing-research.md`
+>
+> 主键以 [phase1/07-menu.md](../phase1/07-menu.md) 为准（`BIGINT` + `code`），下文 UUID schema 过时。
 
 ---
 

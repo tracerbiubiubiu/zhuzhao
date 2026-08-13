@@ -2,6 +2,8 @@
 
 > 本文档记录架构设计中各决策点的推理过程、方案对比和细节讨论。
 > 架构层面的结论见 [architecture.md](./architecture.md)，本文档聚焦"为什么这么选"和"细节怎么处理"。
+>
+> **阶段编号以 [`roadmap.md`](../roadmap.md) 为准。** 下文部分段落仍写「Phase 2 微服务化 / RS256 / gRPC」，语义上对应 **Phase 3（拆服务）**；Phase 2 是单体进程内的工单，不换 RS256、不拆 IAM。
 
 ## 目录
 
@@ -74,7 +76,11 @@ TTL: 30min
 
 ### 1.6 实施阶段
 
-Phase 1 可先用"权限入 JWT"快速跑通（AT TTL 短，延迟可接受），Phase 2 切换为 Redis 缓存方案。架构和代码预留切换点，改动集中在中间件和 Service 层。
+**Phase 1（当前）**：JWT 只存身份（`uid`、`username`、`jti`、`mcp`）；路由级鉴权由 Casbin 中间件 + `RoleFetcher` 查 `user_roles`（直接角色，**无 Redis 权限缓存**）。角色/菜单变更后，用户下次请求即读到 DB 最新数据（或等 AT 过期后 refresh）。
+
+**Phase 2**：扩展 BFS 三源角色合并（组织角色、继承）。
+
+**Phase 3 / 按需**：引入 `perm:user:{userId}` Redis 缓存 + Pub/Sub 失效（多实例、热点优化）。权限仍不入 JWT。
 
 ---
 
@@ -108,7 +114,7 @@ aof-use-rdb-preamble yes
 | 数据 | 丢失影响 | 严重程度 |
 |------|---------|---------|
 | RT 存储 `refresh:{userId}:{deviceId}` | 丢失窗口内的 RT 失效，对应用户刷新失败需重新登录 | 中（极少数用户） |
-| AT 黑名单 `blacklist:at:{jti}` | 已登出的 AT 短暂可用（最多到 AT 过期 2h） | 低（攻击者需提前截获 AT） |
+| AT 黑名单 `blacklist:at:{jti}` | 已登出的 AT 短暂可用（最多到 AT 过期 **30min**） | 低 |
 | 设备列表 `devices:{userId}` | 多设备管理暂时不可用，重新登录后重建 | 低 |
 | 权限缓存 `perm:user:{userId}` | **无影响**，cache miss 自动查 DB 回填 | 无 |
 | 登录限流 `lock:login:{username}` | 被锁定的账号短暂可尝试登录 | 低（最多到自然解锁） |
@@ -120,22 +126,21 @@ aof-use-rdb-preamble yes
 - 持有有效 AT 的用户 → 正常访问（权限缓存 miss，多一次 DB 查询）
 - AT 过期需要刷新的用户 → RT 可能丢失 → 刷新失败 → 需重新登录
 
-**受影响比例估算**：假设 1000 在线用户，AT 有效期 2h，Redis 重启 30 秒：
-- 这 30 秒内 AT 过期需刷新的用户 ≈ 1000 × (30s / 2h) ≈ **4 人**
+**受影响比例估算**：假设 1000 在线用户，AT 有效期 **30min**，Redis 重启 30 秒：
+- 这 30 秒内 AT 过期需刷新的用户 ≈ 1000 × (30s / 30min) ≈ **17 人**
 - 仅这 4 人中 RT 在丢失窗口内的才需要重新登录
 
 ### 2.5 Redis 降级策略
 
-Redis 完全不可用时的处理：
+**鉴权链路（JWT 黑名单、`user:disabled`、登录限流）采用 fail-close**：Redis 查询失败返回 **503**，禁止 fail-open 放行。
 
-| 功能 | 降级行为 | 策略 |
-|------|---------|------|
-| AT 校验 | 正常（不依赖 Redis） | — |
-| 黑名单查询 | 查询失败时跳过检查，记录告警日志 | 可用性优先（内部系统） |
-| 权限缓存 | 自然降级为每次查 DB | 功能正常，性能下降 |
-| RT 刷新 | 失败，返回错误 | 无法降级 |
-
-> 黑名单降级策略可根据安全要求调整：高安全场景可选择拒绝所有请求（503）。
+| 功能 | Redis 不可用时的行为 | 策略 |
+|------|---------------------|------|
+| AT 签名校验 | 正常（不依赖 Redis） | — |
+| 黑名单 / `user:disabled` | **503** | fail-close（Phase 1 已定） |
+| 登录限流 | **503** 或拒绝登录 | fail-close |
+| 权限缓存（Phase 3） | 降级为查 DB | 功能正常，性能下降 |
+| RT 刷新 | 失败，需重新登录 | 无法降级 |
 
 ---
 
@@ -710,7 +715,7 @@ func (r *TicketResource) Authorize(ctx, req) (bool, error) {
 - 实现最简单，配置一个 secret 即可
 - 性能最好（HMAC 微秒级 vs RSA 毫秒级）
 
-**Phase 2（微服务化）：切换 RS256**
+**Phase 3（拆服务时）：切换 RS256**
 
 - Auth 服务持有私钥签发 Token
 - 业务服务通过 JWKS endpoint 获取公钥验签
@@ -723,7 +728,7 @@ JWT Manager 接口设计支持算法切换：
 
 ```go
 type JWTManager struct {
-    method jwt.SigningMethod // Phase 1: HS256; Phase 2: RS256
+    method jwt.SigningMethod // Phase 1: HS256; Phase 3 拆服务: RS256
     key    interface{}       // Phase 1: []byte; Phase 2: *rsa.PrivateKey
 }
 
@@ -735,7 +740,7 @@ func NewHS256Manager(secret string) *JWTManager {
     }
 }
 
-// Phase 2: RS256
+// Phase 3: RS256（拆 IAM 时）
 func NewRS256Manager(privateKey *rsa.PrivateKey) *JWTManager {
     return &JWTManager{
         method: jwt.SigningMethodRS256,
@@ -749,7 +754,7 @@ func NewRS256Manager(privateKey *rsa.PrivateKey) *JWTManager {
 ### 9.5 关键原则
 
 1. **Phase 1 用 HS256**——单体场景最简方案，secret 存环境变量
-2. **Phase 2 切换 RS256**——微服务化时必须切换，公钥通过 JWKS 分发
+2. **Phase 3 切换 RS256**——拆服务时必须切换，公钥通过 JWKS 分发
 3. **显式 pin 算法**——验签时强制校验 `alg` 字段，防 key-confusion
 4. **接口预留**——JWTManager 设计时支持算法切换，切换时只改构造函数
 

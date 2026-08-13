@@ -3,6 +3,8 @@
 > 模块代码：`internal/service/user_service.go` + `internal/repository/user_repo.go`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/user.md`
+>
+> **主键与分阶段以 [phase1/04-user.md](../phase1/04-user.md) 为准**（`BIGINT`/`int64`，JSON `,string`）。
 
 ---
 
@@ -22,13 +24,14 @@
 
 ```sql
 CREATE TABLE users (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id          BIGSERIAL PRIMARY KEY,
     username    VARCHAR(50) UNIQUE NOT NULL,
     password    VARCHAR(100) NOT NULL,       -- bcrypt hash
     real_name   VARCHAR(100),
     email       VARCHAR(100),
     phone       VARCHAR(20),
     status      SMALLINT DEFAULT 1,          -- 1=启用 0=禁用
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     is_system   BOOLEAN DEFAULT FALSE,
     created_by  VARCHAR(50),                 -- 审计字段，不覆盖
     created_at  TIMESTAMPTZ DEFAULT NOW(),   -- 审计字段，不覆盖
@@ -45,18 +48,18 @@ CREATE INDEX idx_users_status ON users(status) WHERE deleted_at IS NULL;
 ```sql
 -- 用户-角色（多对多）
 CREATE TABLE user_roles (
-    user_id     UUID REFERENCES users(id),
-    role_id     UUID REFERENCES roles(id),
+    user_id     BIGINT REFERENCES users(id),
+    role_id     BIGINT REFERENCES roles(id),
     PRIMARY KEY (user_id, role_id)
 );
 
--- 用户-组织（多对多，含角色）
+-- 用户-组织（多对多）。Phase 1 主键不含 role_id（可空列进主键会导致重复入组）
 CREATE TABLE user_orgs (
-    user_id     UUID REFERENCES users(id),
-    org_id      UUID REFERENCES organizations(id),
-    role_id     UUID REFERENCES roles(id),
+    user_id     BIGINT REFERENCES users(id),
+    org_id      BIGINT REFERENCES organizations(id),
     is_primary  BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (user_id, org_id, role_id)
+    joined_at   TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, org_id)
 );
 ```
 
@@ -68,15 +71,15 @@ CREATE TABLE user_orgs (
 type UserService interface {
     // CRUD
     Create(ctx context.Context, req CreateUserRequest) (*model.User, error)
-    GetByID(ctx context.Context, id string) (*model.User, error)
+    GetByID(ctx context.Context, id int64) (*model.User, error)
     GetByUsername(ctx context.Context, username string) (*model.User, error)
-    Update(ctx context.Context, id string, req UpdateUserRequest) error
-    Delete(ctx context.Context, id string) error
+    Update(ctx context.Context, id int64, req UpdateUserRequest) error
+    Delete(ctx context.Context, id int64) error
     List(ctx context.Context, query UserListQuery) ([]*model.User, int64, error)
 
     // 密码
-    UpdatePassword(ctx context.Context, userID, newPassword string) error
-    VerifyPassword(ctx context.Context, userID, password string) (bool, error)
+    UpdatePassword(ctx context.Context, userID int64, newPassword string) error
+    VerifyPassword(ctx context.Context, userID int64, password string) (bool, error)
 
     // 状态
     Enable(ctx context.Context, id string) error
@@ -241,8 +244,9 @@ func (v *PasswordValidator) Validate(password string) error {
 | ListUsers 合并 restrict 数据级过滤 | ✅ 改为 ResourceRegistry.GetFilter | 统一接口 |
 | 13 个依赖注入 | ⚠️ 精简 | 用窄接口（ISP）减少依赖 |
 | 窄接口（UserMenuService 等） | ✅ 采用 | 接口隔离原则 |
-| first_login 标记 | ⏳ Phase 2 | 非首期必须 |
+| first_login 标记 | ✅ Phase 1 | `must_change_password` + JWT `mcp` |
 | 软删除 | ✅ 采用 | 保留审计数据 |
+| 最后一个 superadmin 保护 | ✅ Phase 1 | 不可禁用/删除/降级最后一个超管 |
 
 ---
 
@@ -251,18 +255,21 @@ func (v *PasswordValidator) Validate(password string) error {
 ### Phase 1
 
 - 用户 CRUD（含软删除）
-- 密码管理（校验 + bcrypt + 修改）
+- 密码管理（bcrypt + 修改；复杂度策略可简化）
 - 用户-角色绑定（事务）
+- 用户-组织绑定（`PRIMARY KEY (user_id, org_id)`，无组织内角色）
 - 用户名唯一性检查
-- 系统用户保护（is_system）
+- 系统用户保护（`is_system`）+ 最后一个 superadmin 保护
+- 禁用/删除后吊销会话（`user:disabled` + 删全部 RT）
+- `must_change_password` 强制改密
+- Phase 1 **不做**列表的组织范围数据过滤
 
 ### Phase 2
 
-- 用户-组织绑定
-- 列表查询资源级过滤
-- DeleteUser 级联吊销 JWT
-- first_login 强制改密
+- 组织内角色 / 临时成员有效期
+- 列表查询资源级过滤（GetFilter）
 - 用户导入导出
+- 密码复杂度完整策略
 
 ### Phase 3
 

@@ -198,20 +198,18 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 ### Phase 1
 
-- AccessLog 中间件（同步写入，简单版）
+- AccessLog 中间件（同步写入）
+- 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
 - 基本字段记录（method/path/status/cost/user_id）
-- trace_id 注入
+- trace_id / request_id 注入
 
 ### Phase 2
 
-- 异步写入 + channel + 批量
-- actionRegistry 推导
-- 敏感字段脱敏
-- 审计日志查询接口
-- 日志清理 cron
+- 无必须项（工单模块可复用同步审计）
 
 ### Phase 3
 
-- 分区表（大数据量）
-- 日志导出（CSV/JSON）
-| 日志告警规则 |
+- 异步写入 + channel / Redis List L2
+- actionRegistry 推导、敏感字段脱敏
+- 审计日志查询接口、清理 cron
+- 分区表、导出

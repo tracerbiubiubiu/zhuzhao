@@ -86,6 +86,8 @@ CREATE TABLE menus (
 CREATE INDEX idx_menus_parent ON menus(parent_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_menus_deleted ON menus(deleted_at) WHERE deleted_at IS NOT NULL;
 
+-- 菜单是全局的，Phase 1 不加 tenant_id（用户/角色/组织上的 tenant_id 仅为多租户预留）
+
 -- 菜单-API 绑定表（用于 Casbin 策略生成）
 CREATE TABLE menu_apis (
     menu_id     BIGINT NOT NULL REFERENCES menus(id) ON DELETE CASCADE,

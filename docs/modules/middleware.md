@@ -189,17 +189,16 @@ func CORS() gin.HandlerFunc {
 
 - Recovery + RequestID(gin-contrib) + AccessLogger(gin-contrib/slog)
 - CORS(gin-contrib) + SecurityHeaders + BodyLimit
-- JWT 中间件（验证 + 黑名单 + must_change_password 拦截）
+- JWT 中间件（验证 + 黑名单 + `user:disabled` + must_change_password；Redis 故障 503）
 - Casbin 中间件（路由级 RBAC，g 表消除）
-- Audit 中间件（同步写入）
+- Audit 中间件（同步写入；登录单独审计）
 
 ### Phase 2
 
-- 用户级限流
-- AKSK 中间件（外部系统对接）
+- 无新增必做中间件（登录限流已在 Phase 1 AuthService）
 
 ### Phase 3
 
-- 熔断中间件
-- 请求超时中间件
-- Prometheus metrics 中间件
+- API 级通用限流
+- AKSK 中间件（有 M2M 调用方时）
+- 熔断 / 超时 / Prometheus metrics

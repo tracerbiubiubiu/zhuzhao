@@ -1,8 +1,8 @@
 # 认证鉴权模块架构设计文档
 
-> 文档版本：v0.5  
-> 更新时间：2026-08-10  
-> 状态：方案讨论阶段（边界已定，分阶段实施计划已明确，实现细节待补充）
+> 文档版本：v0.6  
+> 更新时间：2026-08-13  
+> 状态：方案讨论阶段。**分阶段边界、主键类型、安全底线以 [`roadmap.md`](../roadmap.md) 与 [`phase1/`](../phase1/README.md) 为准。** 本文 §10 schema 中的 UUID 已废弃（编码用 `BIGINT`）；§18 已与 roadmap 对齐。
 
 ---
 
@@ -75,8 +75,8 @@
 
 - 业务模块通过 `internal/middleware` 提供的中间件获得鉴权能力
 - 业务模块通过 `internal/service/authz_service` 的接口进行资源级权限判断
-- 业务模块的资源表需包含 `creator_id` 字段以支持属主判断
-- 业务模块的资源需在 `resource_owners` 表中登记组织归属
+- 业务模块的资源表需包含 `creator_id` 字段以支持属主判断（Phase 2）
+- 业务模块的资源需在 `resource_owners` 表中登记组织归属（Phase 2，见 phase2/authz-resource）
 
 ---
 
@@ -89,7 +89,7 @@
 | **Gin** | HTTP 框架 | `github.com/gin-gonic/gin` | 轻量、中间件生态成熟 |
 | **Viper** | 配置管理 | `github.com/spf13/viper` | 支持多格式、热更新、环境变量覆盖 |
 | **PostgreSQL** | 主数据库 | `github.com/jackc/pgx/v5` + `pgxpool` | 原生协议、连接池、性能优于 database/sql |
-| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v2` + `github.com/casbin/casbin-pg-adapter` | 角色继承、路径匹配、PG adapter |
+| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v2` + `pckhoi/casbin-pgx-adapter/v3` | pgx 原生 adapter，SyncedEnforcer |
 | **Redis** | 缓存/Session | `github.com/redis/go-redis/v9` | 官方维护、功能完整、与 go context 集成 |
 | **Swagger** | API 文档 | `github.com/swaggo/swag` + `github.com/swaggo/gin-swagger` | 注解生成，与 Gin 集成 |
 | **slog** | 日志 | Go 1.21+ 标准库 `log/slog` | 标准库，结构化日志，性能足够 |
@@ -194,17 +194,15 @@ zhuzhao/
 │   ├── service/                   # 业务逻辑层
 │   │   ├── auth_service.go        # 登录、Token 签发/刷新/登出
 │   │   ├── user_service.go        # 用户管理
-│   │   ├── rbac_service.go        # 角色-权限业务逻辑
-│   │   ├── authz_service.go       # 资源级鉴权（ltree + 属主判断）
+│   │   ├── role_service.go        # 角色 CRUD、菜单分配、Casbin 策略同步
+│   │   ├── authz_service.go       # 策略管理、ResourceRegistry 协调（资源级在 Service 内联）
 │   │   ├── org_service.go         # 组织架构管理
 │   │   ├── menu_service.go        # 菜单树构建
 │   │   └── audit_service.go       # 审计日志
 │   │
-│   ├── middleware/                # Gin 中间件
-│   │   ├── jwt.go                 # JWT 解析与校验 + 黑名单检查
-│   │   ├── casbin.go              # 路由级鉴权中间件
-│   │   ├── resource_authz.go      # 资源级鉴权中间件
-│   │   ├── ratelimit.go           # 限流
+│   ├── middleware/                # Gin 中间件（仅路由级横切，不含资源级鉴权）
+│   │   ├── jwt.go                 # JWT 解析与校验 + 黑名单 + user:disabled
+│   │   ├── casbin.go              # 路由级 RBAC 中间件
 │   │   ├── audit.go               # 审计日志记录
 │   │   └── recovery.go            # Panic 恢复
 │   │
@@ -227,6 +225,7 @@ zhuzhao/
 │   │
 │   ├── pkg/                       # 项目内通用工具包
 │   │   ├── jwt/                   # JWT 签发与解析
+│   │   ├── resource/              # ResourceRegistry（资源级鉴权，Service 层调用）
 │   │   ├── response/              # 统一响应封装
 │   │   ├── errcode/               # 错误码定义
 │   │   ├── logger/                # slog 日志封装
@@ -363,11 +362,12 @@ Wire Injector (wire.go)
 |------------|----------|------|
 | `Recovery` | 全局 | Panic 恢复 |
 | `Logger` | 全局 | 请求日志 |
-| `JWT` | 需认证路由 | Token 解析 + 黑名单检查 |
-| `Casbin` | 需鉴权路由 | 路由级 RBAC 校验 |
-| `ResourceAuthz` | 需资源鉴权路由 | 资源级权限校验 |
-| `RateLimit` | 全局或按路由 | 限流 |
+| `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled`（Redis 故障 503） |
+| `Casbin` | 需鉴权路由 | 路由级 RBAC（RoleFetcher 查角色） |
 | `Audit` | 需审计路由 | 操作记录 |
+| `RateLimit` | 登录等公开路由 | 登录限流（Phase 1）；API 级限流 Phase 3 |
+
+> **资源级鉴权不在 middleware**。各 Service 通过 `internal/pkg/resource` 的 `ResourceRegistry.Authorize` / `GetFilter` 在 Handler→Service 内联执行（Phase 2 工单等）。详见 [design-decisions.md §5](./design-decisions.md#5-资源级鉴权架构gateway-下放-vs-集中)。
 
 ---
 
@@ -419,11 +419,12 @@ Wire Injector (wire.go)
 **策略示例**：
 
 ```
-p, admin, /api/v1/*, *
-p, editor, /api/v1/articles/*, GET
-p, editor, /api/v1/articles/:id, PUT
-g, user_001, editor
+p, role::admin, /api/v1/*, *
+p, role::editor, /api/v1/articles/*, GET
+p, role::editor, /api/v1/articles/:id, PUT
 ```
+
+> 无 Casbin `g` 段。用户→角色映射在 `user_roles` 表，中间件逐 `role::{code}` enforce。superadmin/admin 在 matcher bypass。
 
 **热更新**：
 
@@ -517,7 +518,7 @@ SELECT EXISTS (
 
 | 维度 | 方案说明 |
 |------|----------|
-| AT 有效期 | 短（2h），无状态 JWT，每次请求携带 |
+| AT 有效期 | **30min**，HS256 无状态 JWT，每次请求携带 |
 | RT 有效期 | 长（7d），有状态存 Redis，仅用于 /refresh |
 | RT 轮换 | 每次刷新时废弃旧 RT、签发新 RT |
 | AT 吊销 | 登出/踢出时加入 Redis 黑名单（TTL = AT 剩余有效期） |
@@ -541,15 +542,17 @@ SELECT EXISTS (
 
 身份信息（user_id）不可变，适合放 JWT。权限信息（role、org_id）可变，放 JWT 会导致管理员修改权限后无法实时生效（必须等 AT 过期）。因此 AT 只携带最小化的身份标识，权限信息由 Redis 缓存提供，变更时主动失效。
 
-**accessToken（极简）**：
+**accessToken（Phase 1）**：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| user_id | string | 用户 ID（身份标识，不可变） |
-| jti | string | Token 唯一标识（用于黑名单） |
+| uid | int64 | 用户 ID（JSON `,string`） |
+| username | string | 用户名 |
+| jti | string | Token 唯一标识（黑名单） |
+| mcp | bool | must_change_password |
 | exp | timestamp | 过期时间 |
 
-> ~~username, role, org_id, device_id~~ 已从 payload 移除。这些信息通过 Redis 权限缓存获取，确保管理员修改后实时生效。
+> 权限信息不入 JWT。Phase 1 路由级鉴权由 Casbin 中间件查 `user_roles`（无 Redis 权限缓存）。Phase 3 可按需加 `perm:user:{userId}` 缓存。
 
 **refreshToken**（精简）：
 
@@ -580,11 +583,14 @@ devices:user_001 → {device_mac, device_iphone}
 # TTL:   AT 剩余有效期
 blacklist:at:at_xyz789 → 1
 
-# 用户权限缓存（JWT 无状态策略的核心）
+# 用户禁用/删除后即时吊销
+# Key:   user:disabled:{userId}
+user:disabled:1 → 1
+
+# 用户权限缓存（Phase 3 / 按需，Phase 1 不使用）
 # Key:   perm:user:{userId}
 # Val:   JSON { roles, org_id, permissions }
 # TTL:   30min
-perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["user:read","article:write",...]}
 ```
 
 ### 5.4 核心流程
@@ -593,13 +599,15 @@ perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["us
 
 ```
 1. 校验用户名密码
-2. 签发 AT（2h，仅含 user_id + jti）
+2. 签发 AT（**30min**，含 uid + username + jti + mcp）
 3. 签发 RT（7d，精简 payload）
 4. RT 存 Redis: refresh:{userId}:{deviceId}
-5. 设备 ID 加入 Redis Set: devices:{userId}
-6. 加载用户权限写入缓存: perm:user:{userId}
+5. 设备 ID 加入 Redis Set: devices:{userId}（Phase 1 可选，Phase 2 设备 UI）
+6. 写登录审计
 7. 返回 AT + RT
 ```
+
+> Phase 1 **不写** `perm:user:{userId}` 缓存。路由级鉴权由后续 Casbin 中间件查 DB。
 
 #### 刷新流程（RT 轮换）
 
@@ -610,16 +618,10 @@ perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["us
    └─ 存在 → 比对 jti
        ├─ 不匹配 → 可能重放攻击 → 拒绝
        └─ 匹配 → 继续
-3. 签发新 AT（仅含 user_id + jti）+ 新 RT
-4. 用新 RT 覆盖 Redis（旧 RT 自动失效）
-5. 返回新 AT + 新 RT
+3. 签发新 AT + 新 RT（`GETDEL` 轮换旧 RT）
+4. 返回新 AT + 新 RT
 
-※ 权限缓存（perm:user:{userId}）在 AT 有效期内通过主动失效机制保持最新，
-   刷新 AT 不需要重新加载权限。
-
-※ 如果攻击者截获 RT 并抢先刷新：
-   - 攻击者获得新 AT + 新 RT，旧 RT 失效
-   - 真正用户再用旧 RT 时 jti 不匹配 → 被拒 → 察觉异常
+※ Phase 1 无权限缓存，刷新 AT 不改变鉴权数据来源。
 ```
 
 #### 登出流程
@@ -639,24 +641,29 @@ perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["us
 3. AT 在过期后自然失效（无法刷新获取新 AT）
 ```
 
-### 5.5 JWT 中间件校验流程
+### 5.5 JWT 中间件校验流程（Phase 1）
 
 ```
 请求进入
   │
   ├─ 1. 提取 Authorization Header 中的 AT
-  ├─ 2. 解析 JWT，校验签名和过期时间 → 获取 user_id, jti
+  ├─ 2. 解析 JWT，校验 HS256 签名和 exp → uid, username, jti, mcp
   ├─ 3. 查 Redis 黑名单: EXISTS blacklist:at:{jti}
-  │     └─ 在黑名单中 → 拒绝（token 已失效）
-  ├─ 4. 查 Redis 权限缓存: GET perm:user:{userId}
-  │     ├─ 命中 → 反序列化 roles, org_id, permissions
-  │     └─ 未命中 → 查 DB → 写入缓存（TTL 30min）→ 反序列化
-  ├─ 5. 注入上下文: userID, roles, orgID, permissions
-  └─ 6. c.Next()
+  │     ├─ Redis 错误 → 503（fail-close）
+  │     └─ 在黑名单中 → 401
+  ├─ 4. 查 user:disabled:{uid}
+  │     ├─ Redis 错误 → 503
+  │     └─ 存在 → 401/403
+  ├─ 5. mcp=true 且非改密路由 → 403 PASSWORD_CHANGE_REQUIRED
+  ├─ 6. 注入 context: userID, username, mustChangePassword
+  └─ 7. c.Next()
 
-※ Casbin 中间件从 context 取 roles，来源从 JWT payload 改为 Redis 缓存。
-   管理员修改用户角色后，主动删除 perm:user:{userId}，下次请求 cache miss 重新加载。
+※ Casbin 中间件（下一层）通过 RoleFetcher 查 user_roles，不读 JWT 权限字段。
 ```
+
+### 5.5.1 JWT 中间件 + 权限缓存（Phase 3 可选增强）
+
+Phase 3 多实例/热点场景可引入 `perm:user:{userId}` 缓存，Casbin 中间件优先读缓存。详见 §5.7 与 [design-decisions.md §1](./design-decisions.md#1-jwt-无状态策略与权限缓存)。
 
 ### 5.6 对外接口
 
@@ -668,11 +675,13 @@ perm:user:user_001 → {"roles":["editor"],"org_id":"org_001","permissions":["us
 | `/api/v1/auth/devices` | GET | 查询当前用户活跃设备列表 |
 | `/api/v1/auth/devices/:deviceId` | DELETE | 踢出指定设备 |
 
-### 5.7 JWT 无状态策略与权限缓存
+### 5.7 JWT 无状态策略与权限缓存（Phase 3 / 按需）
 
-**核心决策**：JWT 保持纯无状态，仅作为身份凭证（user_id + jti + exp），不携带任何权限信息。权限信息由 Redis 缓存提供，管理员修改后主动失效缓存，下次请求即生效。
+**长期方向**：JWT 仅作身份凭证，权限走 Redis 缓存 + 主动失效（多实例 Pub/Sub）。详见 [design-decisions.md §1](./design-decisions.md#1-jwt-无状态策略与权限缓存)。
 
-**权限缓存结构**：
+**Phase 1 实际做法**：JWT 存 `uid/username/jti/mcp`；Casbin 中间件每次通过 `RoleFetcher` 查 `user_roles`（直接角色）。**不使用** `perm:user:{userId}` 缓存。
+
+**Phase 3 引入缓存时的结构**：
 
 ```
 Key:   perm:user:{userId}
@@ -680,11 +689,7 @@ Val:   { "roles": [...], "org_id": "...", "permissions": [...] }
 TTL:   30min
 ```
 
-**权限变更实时生效**：DB 事务提交 → `DEL perm:user:{userId}` →（多实例）Pub/Sub 广播 → 下次请求 cache miss 重新加载。
-
-**实施阶段**：Phase 1 可先用"权限入 JWT"快速跑通，Phase 2 切换为 Redis 缓存方案。
-
-> 方案对比、推理过程、Redis 重启影响、降级策略等细节见 [design-decisions.md](./design-decisions.md)。
+权限变更：DB 事务提交 → `DEL perm:user:{userId}` → Pub/Sub 广播。
 
 ---
 
@@ -832,6 +837,8 @@ m = g(r.tenant, r.sub, p.sub) && \
 ---
 
 ## 10. 数据库 Schema
+
+> **本节 SQL 中的 UUID 主键已废弃。** 编码以 [phase1](../phase1/README.md) 为准：业务表 `BIGSERIAL`/`BIGINT`，JSON `,string`；角色/菜单/组织另有 `code` 业务键。组织 `code` 须匹配 ltree 标签 `[A-Za-z0-9_]`。以下 SQL 仅保留字段语义参考，实现时不要照抄 UUID。
 
 ### 10.1 完整建表 SQL
 
@@ -1159,9 +1166,9 @@ redis:
 
 jwt:
   secret: "${JWT_SECRET}"            # Phase 1: HS256 对称密钥（环境变量）
-  # private_key: "${JWT_PRIVATE_KEY}"  # Phase 2: RS256 RSA 私钥（环境变量/文件）
-  # jwks_url: "/.well-known/jwks.json"  # Phase 2: JWKS 公钥分发
-  access_ttl: 2h
+  # private_key: "${JWT_PRIVATE_KEY}"  # Phase 3 拆服务: RS256 RSA 私钥（环境变量/文件）
+  # jwks_url: "/.well-known/jwks.json"  # Phase 3 拆服务: JWKS 公钥分发
+  access_ttl: 30m
   refresh_ttl: 168h  # 7天
 
 casbin:
@@ -1424,7 +1431,7 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 | 模块/用途 | 推荐 | 备选 | 说明 |
 |-----------|------|------|------|
-| JWT 签发与解析 | `golang-jwt/jwt/v5` | — | 社区标准 JWT 库，维护活跃。Phase 1: HS256；Phase 2: RS256 + JWKS |
+| JWT 签发与解析 | `golang-jwt/jwt/v5` | — | 社区标准 JWT 库。Phase 1: HS256；Phase 3 拆服务: RS256 + JWKS |
 | 密码哈希 | `golang.org/x/crypto/bcrypt` | `x/crypto/argon2`（更安全但更重） | bcrypt 足够，cost ≥ 12 |
 | UUID 生成 | `google/uuid` | `gofrs/uuid` | uuid.New() 生成 UUIDv4 |
 | CORS 中间件 | `gin-contrib/cors` | — | Gin 官方 contrib，配置简单 |
@@ -1717,7 +1724,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 
 ### 18.1 Phase 1：最小可用（跑起来）
 
-**目标**：系统能启动、能登录、能鉴权、能管理基础数据。
+**目标**：认证鉴权框架可运行。含登录限流、会话吊销、fail-close、超管保护。**不做**部门数据隔离、不做 AK/SK。
 
 | 能力 | 范围 | 说明 |
 |------|------|------|
@@ -1727,52 +1734,50 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | 统一响应 | response 包 + errcode 包 | 统一 JSON 输出 |
 | 健康检查 | `/health/live` + `/health/ready` | K8s/Docker 探针 |
 | 种子数据 | 初始化 admin 角色 + 超管用户 + 初始菜单 | 首次启动可用，幂等（`ON CONFLICT DO NOTHING`） |
-| 用户登录 | 账号密码 + 双 Token 签发 | AT + RT |
-| Token 校验 | JWT 中间件 + 黑名单 | 路由级认证 |
-| Token 刷新 | RT 轮换 | 无感刷新 |
-| 登出 | AT 黑名单 + RT 删除 | 会话结束 |
+| 用户登录 | 账号密码 + 双 Token + 登录限流 | AT 30min HS256 + RT 7d |
+| Token 校验 | JWT 中间件 + 黑名单 + `user:disabled` | Redis 故障 503（fail-close） |
+| Token 刷新 | RT `GETDEL` 轮换 | 无感刷新 |
+| 登出 / 会话吊销 | AT 黑名单 + 删全部 RT | 禁用/删除用户即时失效 |
+| 首次改密 | `must_change_password` + JWT `mcp` | 重置后强制改密 |
 | 路由级鉴权 | Casbin RBAC 中间件 | 接口权限控制 |
-| 资源注册表 | ResourceRegistry + Resource 接口 | 资源自注册机制骨架 |
-| 用户管理 | CRUD + 启用禁用 | 基础用户管理 |
-| 角色管理 | CRUD + 菜单分配 | 基础角色管理 |
-| 菜单管理 | CRUD | 基础菜单管理 |
-| 动态路由 | `/user/menus` + `/user/permissions` | 前端权限数据 |
+| 资源注册表 | ResourceRegistry **空接口** | 不当独立大 Step |
+| 用户管理 | CRUD + 启用禁用 + 超管保护 | 最后一个 superadmin 不可移除 |
+| 角色 / 菜单 / 组织 | CRUD + 菜单分配 + ltree 组织树 | 组织关联无 `role_id` 主键 |
+| 审计 | 同步写入 + 登录单独审计 | 登录是公开路由 |
 | 优雅关闭 | signal 处理 + 资源释放 | 不丢请求 |
 
-### 18.2 Phase 2：核心完善（业务可用）
+详见 [phase1/README.md](../phase1/README.md)。
 
-**目标**：组织架构、资源级鉴权、审计日志、安全加固。
+### 18.2 Phase 2：业务可用（工单）
+
+**目标**：资源级鉴权 + 工单。仍为模块化单体，不拆 IAM。
 
 | 能力 | 范围 | 说明 |
 |------|------|------|
-| 组织架构 | 组织 CRUD + 树形展示 + 移动节点 | 实体组织 + 虚拟组 |
-| 用户-组织 | 用户分配到组织 + 组织内角色 | 多对多关系 |
-| 资源级鉴权 | ltree 组织关系查询 + 属主判断 | 第二层 + 第三层权限 |
-| 组织级权限 | org_permissions 管理 | scope 配置 |
-| 审计日志 | 中间件记录 + 异步写入 + 查询 | L1 channel 方案 |
-| 多设备管理 | 设备列表 + 踢出设备 | Redis 设备管理 |
-| 登录安全 | 限流 + 账号锁定 | Redis 计数器 |
-| 密码安全 | 复杂度校验 + 修改密码 | bcrypt |
-| 缓存 | 权限缓存 + 菜单缓存 + 组织缓存 | Cache-Aside，JWT 无状态策略落地（详见 §5.7） |
-| 限流中间件 | Redis + 令牌桶/滑动窗口 | API 限流 |
+| 资源级鉴权 | ltree + 属主判断 + 列表过滤 | 代码内联，不上独立 Enforcer |
+| 组织增强 | 虚拟组、组织角色、scope、临时成员有效期 | |
+| 文件存储 | S3 兼容 + 预签名 URL | |
+| 工单模块 | 类型配置、状态机、三层鉴权 | 第一个业务模块 |
+| 认证增强 | 多设备 UI/踢出、密码复杂度 | 限流与会话吊销已在 Phase 1 |
+
+**明确后移**（Phase 3 或按需）：RS256、AK/SK、缓存平台、审计异步、每资源 Enforcer、IAM 拆分。
+
+详见 [phase2/README.md](../phase2/README.md)、[roadmap.md](../roadmap.md)。
 
 ### 18.3 Phase 3：生产加固（可上线）
 
-**目标**：可观测性、多实例、高可用。
+**目标**：可观测性、多实例、高可用；有需要时拆 IAM。
 
 | 能力 | 范围 | 说明 |
 |------|------|------|
-| Metrics | Prometheus + Grafana | QPS/延迟/错误率 |
-| 分布式追踪 | OpenTelemetry | 调用链 |
-| Casbin Watcher | Redis Pub/Sub 策略同步 | 多实例 |
-| 跨实例事件 | Redis Pub/Sub 广播 | 缓存失效/用户禁用 |
-| 审计日志升级 | Redis List 队列（L2） | 不丢日志 |
-| 分布式锁 | 组织树变更 + 缓存重建 | Redis NX + Lua |
-| 数据库迁移 | golang-migrate CLI + CI 集成 | 版本管理 |
-| Swagger | 注解完善 + CI 生成 | API 文档 |
-| 集成测试 | testcontainers-go | 真实容器测试 |
-| 密码重置 | 邮箱/手机 token | 重置流程 |
-| 异地登录检测 | IP 地理位置比对 | 安全审计 |
+| Metrics / 追踪 | Prometheus + Grafana + OpenTelemetry | |
+| 多实例 | Casbin Watcher、跨实例事件、分布式锁 | |
+| 审计日志升级 | Redis List 队列（L2）/ 异步 | |
+| 事件驱动 | Outbox + Asynq | |
+| 微服务拆分 | IAM 独立、Gateway、gRPC、RS256+JWKS | |
+| 高可用 | PG Cluster、Redis Sentinel、Nginx | |
+| 平台增强 | 缓存体系、AK/SK（有调用方时） | |
+| 安全增强 | 异地登录、验证码、密码过期、API 限流 | |
 
 ### 18.4 预留扩展（按需启用）
 
@@ -1797,9 +1802,9 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | PostgreSQL 环境搭建 | Docker Compose 单机 | §5 |
 | Casbin 策略存储 | PostgreSQL | §7 |
 | 权限模型 | RBAC（路由级）+ 资源级（代码内联 + ltree SQL） | §7、`design-decisions.md` §5 |
-| JWT 签名算法 | Phase 1: HS256 → Phase 2: RS256 + JWKS | `design-decisions.md` §9 |
+| JWT 签名算法 | Phase 1: HS256 → Phase 3 拆服务时: RS256 + JWKS | `design-decisions.md` §9 |
 | 日志库 | slog + Lumberjack | §15 |
-| 双 Token 机制 | AT(2h) + RT(7d) + RT 轮换 + 多设备管理 | §8 |
+| 双 Token 机制 | AT(30min HS256) + RT(7d) + `GETDEL` 轮换 | §8 |
 | 依赖注入 | Google Wire，编译时生成 | §4 |
 | 并发与事务 | 分布式锁 4 场景，跨存储操作失败策略 | §12 |
 | 安全加固 | 密码安全、登录安全、API 安全、配置安全 | §13 |

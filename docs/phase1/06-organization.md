@@ -86,7 +86,7 @@ CREATE INDEX idx_org_code   ON organizations(code) WHERE deleted_at IS NULL;
 CREATE INDEX idx_org_deleted ON organizations(deleted_at) WHERE deleted_at IS NOT NULL;
 ```
 
-> **path 用 code 而非 ID**：code 是业务可读的编码，path = `root.tech_dept.fe_team` 比 `1.5.12` 更可读，且 ltree 标签只允许字母/数字/下划线，code 需遵守此约束（不能用 `-`）。
+> **path 用 code 而非 ID**：code 是业务可读的编码，path = `root.tech_dept.fe_team` 比 `1.5.12` 更可读。ltree 标签只允许 `[A-Za-z0-9_]`，**创建/更新 code 时必须校验**，拒绝 `-` 和 `.`。
 
 ### 路径维护
 
@@ -189,6 +189,7 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 |------|------|------|
 | 创建组织 - 正常 | name + parentID | 返回组织 |
 | 创建组织 - 父组织不存在 | 不存在的 parentID | 返回 ErrOrgNotFound |
+| 创建组织 - code 含 `-` | code=`tech-dept` | 返回 ErrInvalidParam |
 | 移动组织 - 移到自己的子节点下 | orgID = 1, newParentID = 3（3 是 1 的子节点） | 返回 ErrInvalidMove |
 | 删除组织 - 有子组织 | 有子节点的 orgID | 返回 ErrOrgHasChildren |
 

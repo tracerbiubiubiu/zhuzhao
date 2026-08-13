@@ -23,11 +23,11 @@
 
 ```
 migrations/
-├── 000001_init.up.sql          # 建表：users, roles, organizations, menus, menu_apis, user_roles, user_orgs, role_menus, audit_logs, api_credentials
+├── 000001_init.up.sql          # 建表：users, roles, organizations, menus, menu_apis, user_roles, user_orgs, role_menus, audit_logs
 ├── 000001_init.down.sql
-├── 000002_seed.up.sql          # 种子数据：3 角色 + 1 admin 用户 + 3 组织 + 6 菜单 + 菜单-API 绑定 + 角色-菜单绑定
+├── 000002_seed.up.sql          # 种子数据：4 角色 + 1 admin 用户 + 3 组织 + 6 菜单 + 菜单-API 绑定 + 角色-菜单绑定
 ├── 000002_seed.down.sql
-└── 000003_casbin.up.sql        # Casbin 策略表（casbin_rule）+ admin 通配策略
+└── 000003_casbin.up.sql        # Casbin 策略表（casbin_rule）+ superadmin/admin 通配策略
 ```
 
 ### 种子数据内容
@@ -74,7 +74,7 @@ func readyHandler(db *pgxpool.Pool, rdb *redis.Client) gin.HandlerFunc {
 | 种子数据幂等 | 连续执行两次 `migrate-up`，admin 用户不重复 |
 | 健康检查 live | 返回 200 |
 | 健康检查 ready（PG 正常） | 返回 200 |
-| 健康检查 ready（PG 断开） | 返回 503 |
+| 健康检查 ready（PG 断开） | 返回 503，body 不含内部错误原文 |
 | 优雅关闭 | 发送 SIGTERM，确认正在处理的请求完成后退出 |
 
 ## 涉及文件
@@ -95,7 +95,7 @@ internal/router/router.go        # 健康检查路由（需完善 ready）
 > 以下决策已在讨论中确认：
 
 - ✅ **用户 ID 类型**：`BIGINT`/`int64`，JSON 序列化为 string（使用 `json:",string"` tag，前端精度安全）。
-- ✅ **组织编码**：`BIGINT`/`int64`，JSON 序列化为 string。不用 UUID（ltree 路径不兼容）。
+- ✅ **组织 ID / 编码**：ID 为 `BIGINT`；业务编码 `code` 为 `VARCHAR`（ltree 路径用 code）。
 - ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
 - ✅ **组织模块范围**：Phase 1 实现完整 CRUD。
 - ✅ **ID 自增策略**：
@@ -104,7 +104,8 @@ internal/router/router.go        # 健康检查路由（需完善 ready）
   - 菜单：BIGSERIAL 自增（`code` 做业务标识）
   - 审计日志：BIGSERIAL 自增
   - 组织：BIGSERIAL 自增，系统组织种子数据显式指定 ID（1/2/3），`setval` 重置序列避免冲突
-  - api_credentials：BIGSERIAL 自增（AK 做业务标识）
+- ✅ **密钥**：`config.yaml` 只放开发示例；生产用环境变量覆盖 `JWT_SECRET`、`DATABASE_PASSWORD`。仓库不提交真实密钥。
+- ✅ **健康检查**：`/health/ready` 失败时只返回 `unhealthy` + 组件名，不返回 DB/Redis 错误原文。
 - ✅ **org_type 枚举**：1=公司 2=部门 3=小组 4=虚拟组（Phase 1 只用 1-3，虚拟组 Phase 2）
 - ✅ **tenant_id**：`BIGINT NOT NULL DEFAULT 1`，Phase 1 不做过滤，Phase 2 多租户时自增
 - ✅ **数据访问层**：每实体独立 Repository 接口（`UserRepo`、`OrgRepo` 等），Service 层依赖接口，底层可替换存储实现

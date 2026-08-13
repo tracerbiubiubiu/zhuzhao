@@ -1,6 +1,6 @@
 # 03 - 鉴权模块（authz）
 
-> Step 5，依赖 Step 4（middleware）。Phase 1 实现路由级 RBAC + ResourceRegistry 骨架。
+> Step 5，依赖 Step 4（middleware）。Phase 1 实现路由级 RBAC + ResourceRegistry **空接口**。
 
 ---
 
@@ -11,7 +11,7 @@
 | 路由级 RBAC | 用户请求 API，Casbin 校验是否有权限 | 中间件层，基于角色 + 路径 + 方法 |
 | Casbin 策略加载 | 从 PostgreSQL 加载策略到内存 | 启动时全量加载 |
 | admin 角色绕过 | admin 角色拥有所有权限 | Casbin matcher 中 `r.sub == "role::superadmin" \|\| r.sub == "role::admin"` 直接放行 |
-| ResourceRegistry 骨架 | 资源自注册接口 | Phase 1 只定义接口，不实现资源级鉴权逻辑 |
+| ResourceRegistry 空接口 | 资源自注册接口定义 | Phase 1 不注册业务 Resource |
 | 策略管理 API | 管理员查看/添加/删除 Casbin 策略 | 角色管理模块调用 |
 
 ### Phase 1 不做
@@ -27,7 +27,7 @@
 
 ## 核心设计思路
 
-### Casbin 模型（g 表消除 + 中间件 BFS 展开）
+### Casbin 模型（g 表消除；Phase 1 仅直接角色 enforce）
 
 > 借鉴旧系统成熟设计，详见 [modules/authz.md](../modules/authz.md) §2.1。
 
@@ -47,7 +47,7 @@ m = r.sub == "role::superadmin" || \
     (r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*"))
 ```
 
-**无 `[role_definition] g` 段**。角色继承不写 Casbin g 表，在中间件层 BFS 展开后逐角色 enforce。
+**无 `[role_definition] g` 段**。**Phase 1** 只查 `user_roles` 直接角色，逐 `role::{code}` enforce；**Phase 2** 再扩展 BFS 三源合并（直接 + 组织 + 继承）。
 
 - `sub` = `role::{roleCode}`（如 `role::admin`、`role::user_manager`）
 - `obj` = API 路径（如 `/api/v1/users`）
@@ -177,7 +177,7 @@ func (r *registry) Register(res Resource) {
 
 **Wire DI 集成**：`NewRegistry` 作为 singleton provider，各 Service 构造函数接收 `Registry` 并在构造时自注册（`registry.Register(&UserResource{...})`）。
 
-**Phase 1 无资源注册**：启动后 registry 为空，正常运行。Phase 2 各 Service 实现 `Resource` 接口并自注册。
+**Phase 1 无资源注册、无数据范围过滤**：启动后 registry 为空。`GET /users` 等管理列表只做路由级鉴权，有权限即可见全部数据。Phase 2 各 Service 实现 `Resource` 接口并自注册，才做组织范围过滤。
 
 ### Casbin Adapter
 
@@ -242,7 +242,7 @@ internal/service/authz_service.go     # 策略管理 Service
 
 > 以下决策已在讨论中确认：
 
-- ✅ **Casbin 模型**：采用 g 表消除 + 中间件 BFS 展开（借鉴旧系统），不使用 `[role_definition] g` 段。
+- ✅ **Casbin 模型**：g 表消除；Phase 1 仅直接角色，Phase 2 BFS 三源。
 - ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
 - ✅ **策略同步时机**：角色菜单变更后，事务内写 casbin_rule + 事务后 ReloadPolicy（DB 为 source of truth）。
 - ✅ **Phase 1 角色查询**：只查直接角色（user_roles 表），Phase 2 扩展为 BFS 三源合并。

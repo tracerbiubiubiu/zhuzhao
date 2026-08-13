@@ -81,6 +81,8 @@ Phase 1 涉及的 Redis 操作需要保证原子性：
 |------|-----------|---------|
 | RT 刷新 | 旧 RT 删除 + 新 RT 写入必须原子 | Lua 脚本或 `GETDEL` + `SET` 分离（GETDEL 成功后再 SET，失败说明已被刷新） |
 | 登出 | AT 加黑名单 + RT 删除 | 两个独立操作，部分失败可接受（AT 黑名单是关键，RT 删除失败最多残留到 TTL 过期） |
+| 登录限流 | INCR + 首次 EXPIRE | 非 Lua；达阈值 429 |
+| 黑名单 / `user:disabled` 查询 | 读 Redis 决定放行 | **fail-close**：Redis 故障返回 503，禁止查失败仍放行 |
 
 Phase 1 RT 刷新的简化方案（不引入 Lua 脚本）：
 

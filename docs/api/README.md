@@ -2,6 +2,13 @@
 
 接口规格说明，供前后端联调使用。
 
+## 文档
+
+| 文档 | 说明 |
+|------|------|
+| [errcode.md](./errcode.md) | 业务错误码分段、HTTP 映射、Phase 1 验收对照 |
+| [../design/architecture.md](../design/architecture.md) §17 | API 路由总表 |
+
 ## 文档来源
 
 - **RESTful API**：由 `swag` 从代码注解自动生成 OpenAPI/Swagger 文档

@@ -3,6 +3,8 @@
 > 模块代码：`internal/service/org_service.go` + `internal/repository/org_repo.go`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/organization.md`
+>
+> 主键以 [phase1/06-organization.md](../phase1/06-organization.md) 为准（`BIGINT` id + `VARCHAR code`），下文 UUID schema 过时。
 
 ---
 
@@ -250,7 +252,7 @@ SELECT EXISTS(
 | 乐观锁（updated_at） | ✅ 直接采用 | 并发修改保护 |
 | 多父级支持 | ❌ 不支持 | ltree 是树形，大多数企业组织是树形。如需多父级，Phase 3 改用闭包表 |
 | hierarchy 通用工具 | ❌ 不需要 | ltree 原生支持层级查询 |
-| sequencer 生成 code | ❌ 改用 UUID + code | PostgreSQL 原生 UUID |
+| sequencer 生成 code | ❌ 改用人工/规则 `code` + `BIGINT` id | `code` 须匹配 ltree `[A-Za-z0-9_]`，不用 UUID |
 
 ---
 
@@ -259,18 +261,17 @@ SELECT EXISTS(
 ### Phase 1
 
 - 组织 CRUD（含 ltree path 维护）
-- 组织树查询
+- 组织树查询 + 移动节点（事务内更新子树 path）
 - 系统组织保护
 - 基础成员管理（AddMember/RemoveMember/GetMembers）
+- `code` 校验：仅 `[A-Za-z0-9_]`（ltree 标签）
 
 ### Phase 2
 
-- 移动节点（分布式锁 + 子树 path 更新）
 - 组织角色绑定
-| 组织管理员（owner_ids） |
-| 虚拟组 CRUD + 成员管理 |
-| 组织关系查询（IsInSubtree 等，供 authz 调用） |
-| 删除组织级联（子树 + 成员 + 角色） |
+- 组织管理员（owner_ids）
+- 虚拟组 CRUD + 成员管理 + 临时成员有效期
+- 组织关系查询（IsInSubtree 等，供 authz 调用）
 
 ### Phase 3
 

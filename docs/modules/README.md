@@ -4,6 +4,8 @@
 >
 > 与 `design/architecture.md` 的区别：架构文档描述全局结构，本文档集描述每个模块的内部设计。
 >
+> **编码与分阶段边界以 [`phase1/`](../phase1/README.md)、[`roadmap.md`](../roadmap.md) 为准。** 本文档集偏跨阶段完整形态；主键用 `BIGINT`/`int64`（JSON `,string`），不用 UUID。若本节 schema 仍写 UUID，视为过时。
+>
 > 创建日期：2026-08-12
 
 ---

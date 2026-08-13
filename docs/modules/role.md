@@ -3,6 +3,8 @@
 > 模块代码：`internal/service/role_service.go` + `internal/repository/role_repo.go`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/role.md` + `policy.md` + `interaction-casbin-sync.md`
+>
+> 主键以 [phase1/05-role.md](../phase1/05-role.md) 为准（`BIGINT` + `code`），下文 UUID schema 过时。
 
 ---
 

@@ -16,7 +16,7 @@
 |---|------|--------|------|
 | 1 | 数据库选型：MongoDB vs PostgreSQL | 影响 3/6/8/9 | ✅ 已决策（PostgreSQL，详见 design-decisions.md §11） |
 | 3 | 资源级鉴权：Restrict 9 种 ConditionType vs ltree+内联 | 依赖 1（嵌套文档 vs 关系表） | ✅ 已决策（借鉴语义，分阶段实现） |
-| 4 | Casbin 模型：g 表消除 + BFS 展开 vs 基础 RBAC | 依赖 1（Casbin adapter） | ⏳ 待讨论 |
+| 4 | Casbin 模型：g 表消除 + BFS 展开 vs 基础 RBAC | 依赖 1（Casbin adapter） | ✅ Phase 1 直接角色；Phase 2 BFS 三源 |
 | 6 | 事务策略：MongoDB Transact vs PostgreSQL 事务 | 依赖 1（事务机制完全不同） | ⏳ 待讨论 |
 | 8 | 级联删除与一致性 | 依赖 1/6（外键 vs 手动） | ⏳ 待讨论 |
 | 9 | 组织架构设计 | 依赖 1（ltree vs BFS 遍历） | ⏳ 待讨论 |
@@ -25,8 +25,8 @@
 
 | # | 主题 | 关联点 | 状态 |
 |---|------|--------|------|
-| 2 | JWT 策略：RSA 双 token vs 无状态 JWT | 与权限缓存方案相关 | ✅ 已决策（HS256→RS256 + 无状态 + Redis 缓存） |
-| 7 | 登录安全：LoginLocker 设计 | 可直接借鉴 | ✅ 已决策（Redis Lua 限流 + 锁定） |
+| 2 | JWT 策略：RSA 双 token vs 无状态 JWT | 与权限缓存方案相关 | ✅ HS256（Phase 1–2）；RS256（Phase 3b）；权限缓存 Phase 3 按需 |
+| 7 | 登录安全：LoginLocker 设计 | 可直接借鉴 | ✅ Phase 1 INCR+EXPIRE + fail-close（不必 Lua） |
 
 ### C 组：运维与工程化（可独立讨论）
 
@@ -51,7 +51,7 @@
 | 数据库 | MongoDB 7.0+（单节点副本集 rs0） | PostgreSQL 15 |
 | 缓存 | Redis 7.0+ | Redis 6.2 |
 | 鉴权 | Casbin v2.135 + 自研 Restrict | Casbin + ltree 组织关系查询 + 代码内联 |
-| JWT | golang-jwt/v5 + RSA 4096 | golang-jwt/v5 + HS256（Phase 1）→ RS256（Phase 2） |
+| JWT | golang-jwt/v5 + RSA 4096 | golang-jwt/v5 + HS256（Phase 1–2）→ RS256（Phase 3b） |
 | DI | google/wire v0.7 | google/wire（同） |
 | 日志 | zap + MongoWriteSyncer | slog + Lumberjack |
 | 配置 | viper + ${VAR:-default} | viper（同） |

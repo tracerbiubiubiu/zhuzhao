@@ -81,6 +81,14 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
 
 > 注意：`c.Next()` 之后 Gin 已经把响应写给了客户端，但 HTTP 那一层的连接还未关闭（Gin 在中间件链全部执行完后才关闭）。所以同步写审计日志确实会增加一点点连接占用时间，但用户端已经收到了响应。
 
+### 登录审计（公开路由单独写）
+
+`/auth/login`、`/auth/refresh` 不经过 `AuditLog` 中间件。由 AuthService 在登录成功/失败后调用 `auditRepo.Insert`：
+
+- 失败记录必须写（防爆破追溯）
+- 请求体中的 password 脱敏为 `***`
+- username 原样记录（失败时也要能查是谁在撞库）
+
 ### 敏感字段脱敏
 
 ```go

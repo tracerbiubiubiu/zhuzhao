@@ -156,6 +156,13 @@ func (s *roleService) Delete(ctx context.Context, roleCode string) error {
 
 Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"` 直接放行，不需要为超管/管理员分配任何策略。
 
+**业务层仍要分级**（Casbin bypass 不等于业务无约束）：
+
+- 不能删除系统角色（`is_system`）
+- `admin` 不能修改 `superadmin` 角色的菜单
+- 不能删除仍有用户关联的角色
+- 不能删除导致系统失去最后一个 superadmin 绑定的操作（与 user 模块一起校验）
+
 ---
 
 ## 测试用例

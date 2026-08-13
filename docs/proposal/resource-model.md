@@ -4,6 +4,8 @@
 >
 > 结合旧系统 zhuzhao 的 ResourceService 自注册机制和业界 Resource Registry 模式。
 >
+> **用户 ID 为 `int64`。** Phase 1 只留空接口；Phase 2 工单用代码内联 + ltree，**不上独立 Enforcer**（独立 Enforcer 后移，按需）。
+>
 > 创建日期：2026-08-12
 
 ---
@@ -44,15 +46,15 @@ type Resource interface {
     Authorize(ctx context.Context, req AuthorizeRequest) (bool, error)
 
     // 列表过滤（数据级权限）
-    GetFilter(ctx context.Context, userID string, action string) (Filter, error)
+    GetFilter(ctx context.Context, userID int64, action string) (Filter, error)
 }
 
 // AuthorizeRequest 统一鉴权请求
 type AuthorizeRequest struct {
-    UserID     string
+    UserID     int64
     Roles      []string
     Action     string          // "create", "read", "update", "delete"
-    ResourceID string          // 具体资源 ID（create 时为空）
+    ResourceID string          // 具体资源 ID（create 时为空；业务 ID 也可用 int64）
     Context    map[string]any  // 扩展上下文
 }
 
@@ -68,7 +70,7 @@ type Registry interface {
     Get(code string) (Resource, bool)
     List() []Resource
     Authorize(ctx context.Context, resourceCode string, req AuthorizeRequest) (bool, error)
-    GetFilter(ctx context.Context, resourceCode string, userID string, action string) (Filter, error)
+    GetFilter(ctx context.Context, resourceCode string, userID int64, action string) (Filter, error)
 }
 ```
 
@@ -119,7 +121,7 @@ func (r *registry) Authorize(ctx context.Context, code string, req AuthorizeRequ
     return res.Authorize(ctx, req)
 }
 
-func (r *registry) GetFilter(ctx context.Context, code string, userID string, action string) (Filter, error) {
+func (r *registry) GetFilter(ctx context.Context, code string, userID int64, action string) (Filter, error) {
     res, ok := r.Get(code)
     if !ok {
         return Filter{}, fmt.Errorf("resource %s not registered", code)
@@ -179,7 +181,7 @@ func (r *UserResource) Authorize(ctx context.Context, req resource.AuthorizeRequ
     return false, nil
 }
 
-func (r *UserResource) GetFilter(ctx context.Context, userID string, action string) (resource.Filter, error) {
+func (r *UserResource) GetFilter(ctx context.Context, userID int64, action string) (resource.Filter, error) {
     // 超管不过滤（看全部）
     // 属主：creator_id = $1
     // 组织成员：org_id IN (SELECT org_id FROM user_orgs WHERE user_id = $1)
@@ -229,7 +231,7 @@ func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRe
     return r.enforcer.Enforce(req.UserID, req.ResourceID, req.Action)
 }
 
-func (r *TicketResource) GetFilter(ctx context.Context, userID string, action string) (resource.Filter, error) {
+func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action string) (resource.Filter, error) {
     // 复杂过滤：属主 + 分配给我的 + 本部门的
     return resource.Filter{
         Where: `(creator_id = $1 OR assignee_id = $1 OR org_id IN (SELECT org_id FROM user_orgs WHERE user_id = $1))`,

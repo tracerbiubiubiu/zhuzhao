@@ -128,14 +128,34 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
 CREATE TABLE user_orgs (
     user_id     BIGINT NOT NULL REFERENCES users(id),
     org_id      BIGINT NOT NULL REFERENCES organizations(id),
-    role_id     BIGINT REFERENCES roles(id),    -- 组织内角色（Phase 2）
-    is_primary  BOOLEAN DEFAULT FALSE,           -- 是否主组织
+    is_primary  BOOLEAN DEFAULT FALSE,
     joined_at   TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY(user_id, org_id, role_id)
+    PRIMARY KEY(user_id, org_id)
 );
 ```
 
-Phase 1 只实现基础的 `AddMember`/`RemoveMember`/`GetUserOrgs`，不含组织内角色。
+Phase 1 **不含**组织内角色。`role_id` 在 Phase 2 用新迁移添加，不能放进 Phase 1 主键（PostgreSQL 中 `NULL` 互不相等，可空 `role_id` 会导致同一用户重复加入同一组织）。
+
+### 数据范围（Phase 1 明确不做）
+
+`GET /users` 等列表接口只做路由级鉴权，**不过滤组织**。有 list 权限即可见全部未删除用户。部门隔离是 Phase 2 资源级过滤。
+
+### 分页
+
+`page` 从 1 起；`page_size` 默认 20，最大 100。超出截断为 100。
+
+### 角色分级与系统保护（业务校验，非 Casbin）
+
+| 规则 | 说明 |
+|------|------|
+| 不能删除/禁用最后一个 `superadmin` | 避免锁死系统 |
+| 不能删除自己 | — |
+| `is_system` 用户不可删除 | 种子 admin |
+| `admin` 不能改 `is_system` 资源 | 不能删系统角色/菜单/组织，不能改 superadmin 用户 |
+| `admin` 不能给他人分配 `superadmin` | 防提权 |
+| `admin` 不能重置 `admin`/`superadmin` 密码 | 已在 02-auth 定义 |
+
+禁用/删除用户成功后必须写 `user:disabled:{userId}` 并删除该用户全部 RT（见 02-auth）。Phase 1 即实现，不是 Phase 2。
 
 ### 删除用户级联
 
@@ -159,10 +179,9 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
         return err
     }
 
-    // 3. 事务外副作用（Phase 2 完整实现）
-    // - 吊销 JWT：设置 user:disabled:{userId}
-    // - 清除登录限流：DEL lock:login:{username}
-    // - 失效权限缓存：DEL perm:user:{userId}
+    // 3. 会话吊销（Phase 1 必须）
+    s.rdb.Set(ctx, fmt.Sprintf("user:disabled:%d", userID), "1", jwtManager.AccessTTL())
+    // DEL refresh:{userId}:*
     return nil
 }
 ```
@@ -190,9 +209,12 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 创建用户 | 合法参数 | 调用 repo.Create，返回用户 |
 | 创建用户 - 用户名已存在 | 重复 username | 返回 ErrUserAlreadyExists |
 | 创建用户 - 密码为空 | 无 password | 返回 ErrInvalidParam |
-| 禁用用户 | userID | 调用 repo.UpdateStatus |
-| 分配角色 | userID + roleIDs | 调用 repo.AssignRoles |
+| 禁用用户 | userID | 调用 repo.UpdateStatus + 写 user:disabled |
+| 禁用后旧 AT | 已禁用用户的 AT | 401 |
+| 删除最后一个 superadmin | 仅剩一名超管 | 返回 ErrCannotRemoveLastSuperadmin |
+| 分配角色 | userID + roleIDs | 调用 repo.SetRoles |
 | 分配角色 - 角色不存在 | 不存在的 roleID | 返回 ErrRoleNotFound |
+| admin 分配 superadmin | admin 操作 | 返回越权错误 |
 
 ### Handler 层（httptest）
 

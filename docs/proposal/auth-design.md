@@ -2,7 +2,9 @@
 
 > 完整的认证（AuthN）和鉴权（AuthZ）方案设计，结合旧系统经验和业界 PEP/PDP 分层模型。
 >
-> 创建日期：2026-08-12
+> 创建日期：2026-08-12  
+> 修订：2026-08-13  
+> **分阶段边界与编码细节以 [`roadmap.md`](../roadmap.md)、[`phase1/`](../phase1/README.md) 为准。** 下文若与 phase 计划冲突，以 phase 计划为准。
 
 ---
 
@@ -12,25 +14,27 @@
 
 | 维度 | 方案 |
 |------|------|
-| AT（accessToken） | 短期（2h），无状态 JWT，每次请求携带 |
+| AT（accessToken） | 短期（**30min**），HS256 无状态 JWT，每次请求携带 |
 | RT（refreshToken） | 长期（7d），有状态存 Redis，仅用于 /refresh |
-| RT 轮换 | 每次刷新废弃旧 RT、签发新 RT（防重放） |
-| AT 吊销 | 登出/踢出时加入 Redis 黑名单（TTL = AT 剩余有效期） |
-| 多设备 | 每个设备独立 RT，支持查看设备列表和踢出 |
+| RT 轮换 | 每次刷新 `GETDEL` 删旧 RT、签发新 RT（防重放） |
+| AT 吊销 | 登出/禁用用户时黑名单 + `user:disabled:{id}` |
+| 多设备 | 每设备独立 RT；设备列表/踢出 UI 在 Phase 2 |
 
-### 1.2 JWT Payload（极简无状态）
+### 1.2 JWT Payload（Phase 1）
 
 ```json
 {
-  "user_id": "xxx",
-  "jti": "xxx",
+  "uid": 1,
+  "username": "admin",
+  "jti": "a1b2c3d4e5f6",
+  "mcp": false,
   "exp": 1234567890
 }
 ```
 
-权限信息不入 JWT，走 Redis 缓存（`perm:user:{userId}`），管理员修改权限后主动失效缓存，下次请求即生效。
-
-详见 [design-decisions.md §1](../design/design-decisions.md#1-jwt-无状态策略与权限缓存)。
+- `uid`：`int64`，JSON 加 `,string`
+- `mcp`：`must_change_password`，首次改密约束（Phase 1 必做）
+- **权限信息不入 JWT**。Phase 1 路由级鉴权由 Casbin 中间件查 `user_roles`（直接角色，无 Redis 缓存）。Phase 3 平台增强再引入 `perm:user:{userId}` 缓存（见 §1.5）。
 
 ### 1.3 认证流程
 
@@ -61,14 +65,15 @@
 
 | 机制 | 实现 | 说明 |
 |------|------|------|
-| 登录限流 | Redis Lua 原子脚本：5 次失败锁 15 分钟 | INCR + EXPIRE + SET 锁定标记原子完成 |
-| fail-close | Redis 故障返回 503 | 安全优先 |
+| 登录限流 | Redis **INCR + EXPIRE**（15min/5 次） | Phase 1 不必 Lua |
+| fail-close | 鉴权链路 Redis 故障返回 **503** | 黑名单、`user:disabled` 查询失败禁止放行 |
 | 防用户枚举 | 用户不存在和密码错误返回相同响应 | 不泄露用户是否存在 |
-| 密码复杂度 | 4 种字符（大写/小写/数字/特殊）+ 最小 8 位 | 借鉴旧系统 PasswordValidator |
+| 密码复杂度 | 4 种字符 + 最小 8 位 | Phase 2 完整策略；Phase 1 仅 bcrypt |
 | bcrypt 上限 | 72 字节 | bcrypt 算法限制 |
-| first_login 改密 | 首次登录强制改密 | 可选，Phase 2 |
+| first_login 改密 | `must_change_password` + JWT `mcp` | **Phase 1 必做** |
+| 登录审计 | 成功/失败写 audit | 公开路由，不走 AuditLog 中间件 |
 
-### 1.5 权限缓存
+### 1.5 权限缓存（Phase 3 / 按需，Phase 1 不做）
 
 ```
 Redis 缓存:
@@ -104,7 +109,7 @@ TTL: 30min
      │  超管 bypass：admin 角色 × * × *
      │
      → Handler → Service（资源级鉴权，PEP-2）
-        调用 ResourceRegistry.Authorize(ctx, resourceCode, req)
+        调用 ResourceRegistry.Authorize（**Service 层内联，无 resource_authz 中间件**）
         → 具体 Resource 实现判断：
            ├─ 超管 bypass
            ├─ 属主判断（代码内联，O(1)）
@@ -127,13 +132,15 @@ p = sub, obj, act
 e = some(where (p.eft == allow))
 
 [matchers]
-m = r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*")
+m = r.sub == "role::superadmin" || \
+    r.sub == "role::admin" || \
+    (r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*"))
 ```
 
-- 无 `[role_definition] g` 段，角色继承在中间件层 BFS 展开
-- BFS 三源合并：直接角色 + 组织角色 + 继承角色
-- expanded_roles 存 gin context 供 handler 复用
-- BFS 结果缓存到 Redis（`perm:user:{userId}`）
+- 无 `[role_definition] g` 段
+- **Phase 1**：`RoleFetcher` 只查 `user_roles`（直接角色）；superadmin/admin 在 matcher bypass
+- **Phase 2**：BFS 三源合并（直接 + 组织 + 继承）
+- **Phase 3**：可选 Redis `perm:user:{userId}` 缓存
 
 **策略量**：角色数 × API 数 × 方法数 ≈ 1,000 条（可控）
 
@@ -371,36 +378,32 @@ redis:
 
 ## 7. 分阶段实施
 
-### Phase 1：最小可用（跑起来）
+### Phase 1：最小可用
 
 | 能力 | 范围 |
 |------|------|
-| 认证 | 登录 + 双 Token + 登出 + 黑名单 |
-| 路由级鉴权 | Casbin RBAC 中间件 |
-| 资源级鉴权 | ResourceRegistry 骨架 + 代码内联（属主判断） |
-| 用户管理 | CRUD |
-| 角色管理 | CRUD + 菜单分配 |
-| 菜单管理 | CRUD |
-| 动态路由 | /user/menus + /user/permissions |
-| 种子数据 | admin 角色 + admin 用户 + 初始菜单（幂等） |
+| 认证 | 登录 + 双 Token + 限流 + 会话吊销 + 首次改密 |
+| 路由级鉴权 | Casbin + 直接角色 |
+| 资源级鉴权 | ResourceRegistry **空接口** |
+| 用户/角色/菜单/组织 | CRUD（组织含移动节点） |
+| 审计 | 同步写入 + 登录审计 |
 
-### Phase 2：核心完善（业务可用）
+详见 [phase1/README.md](../phase1/README.md)。
 
-| 能力 | 范围 |
-|------|------|
-| 组织架构 | 组织 CRUD + ltree 树形 + 虚拟组 |
-| 资源级鉴权 | 组织关系判断 + 列表过滤 |
-| 审计日志 | 中间件记录 + 异步写入 |
-| 多设备管理 | 设备列表 + 踢出 |
-| 登录安全 | LoginLocker + 密码策略 |
-| 可配置策略 | 按需引入独立 enforcer |
+### Phase 2：业务可用（2a → 2b）
 
-### Phase 3：生产加固
+| 子阶段 | 能力 |
+|--------|------|
+| **2a** | ResourceRegistry + 工单 MVP（**assigned** 范围，无附件） |
+| **2b** | 虚拟组/scope、ltree group 过滤、对象存储、多设备 UI、密码策略 |
 
-| 能力 | 范围 |
-|------|------|
-| 可观测性 | Prometheus + OpenTelemetry |
-| 多租户 | tenant_id 预留启用 |
-| 熔断限流 | 降级策略 |
-| CI/CD | 自动化部署 |
-| 微服务化 | IAM 独立部署 + 业务服务拆分 |
+详见 [phase2/README.md](../phase2/README.md)。
+
+### Phase 3：生产加固（建议 3a → 3b）
+
+| 子阶段 | 范围 |
+|--------|------|
+| **3a** | 可观测性、多实例、审计 L2、HA、安全增强、运维 CI |
+| **3b** | Outbox+Asynq、IAM 拆分、gRPC、RS256、缓存平台、AK/SK（按需） |
+
+详见 [phase3/README.md](../phase3/README.md)。

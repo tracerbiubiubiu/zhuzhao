@@ -102,14 +102,33 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
             return
         }
         
-        // 3. 检查黑名单
-        if exists, _ := rdb.Exists(c, fmt.Sprintf("blacklist:at:%s", claims.JTI)).Result(); exists > 0 {
+        // 3. Redis 故障 → 503（fail-close）
+        exists, err := rdb.Exists(c, fmt.Sprintf("blacklist:at:%s", claims.JTI)).Result()
+        if err != nil {
+            response.ServiceUnavailable(c, errcode.ErrInternal)
+            c.Abort()
+            return
+        }
+        if exists > 0 {
             response.Unauthorized(c, errcode.ErrTokenRevoked)
             c.Abort()
             return
         }
-        
-        // 4. 首次登录改密检查
+
+        // 4. 用户级吊销（禁用/删除）
+        disabled, err := rdb.Exists(c, fmt.Sprintf("user:disabled:%d", claims.UserID)).Result()
+        if err != nil {
+            response.ServiceUnavailable(c, errcode.ErrInternal)
+            c.Abort()
+            return
+        }
+        if disabled > 0 {
+            response.Unauthorized(c, errcode.ErrUserDisabled)
+            c.Abort()
+            return
+        }
+
+        // 5. 首次登录改密检查
         if claims.MustChangePassword {
             // 只允许访问改密接口
             if c.Request.URL.Path != "/api/v1/auth/password/update" {
@@ -131,7 +150,7 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 
 ### Casbin 中间件（g 表消除）
 
-> 详见 [modules/authz.md](../modules/authz.md) §2.2。不使用 Casbin g 表，中间件层 BFS 展开角色后逐个 enforce。
+> 详见 [modules/authz.md](../modules/authz.md) §2.2。Phase 1：无 g 表，`RoleFetcher` 查直接角色后逐 `role::{code}` enforce。
 
 ```go
 func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.HandlerFunc {
@@ -236,6 +255,8 @@ func BodyLimit(limit int64) gin.HandlerFunc {
 | Token 格式错误 | `Bearer 乱字符串` | 401 |
 | Token 过期 | 过期的 AT | 401 |
 | Token 被黑名单 | 登出后的 AT | 401 |
+| 用户已禁用 | user:disabled 存在 | 401 |
+| Redis 不可用 | Exists 失败 | 503 |
 | Token 有效 | 正常 AT | 放行，context 有 userID |
 
 ### Casbin 中间件

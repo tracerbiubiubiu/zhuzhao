@@ -14,7 +14,8 @@
 | 修改密码 | 用户修改自己的密码，旧密码验证后更新 | `POST /api/v1/auth/password/update` |
 | 管理员重置密码 | superadmin 重置任意用户密码，用户首次登录强制改密 | `POST /api/v1/users/:id/password/reset` |
 | 首次登录改密 | 被重置密码的用户登录后强制修改密码 | 登录时检测 `must_change_password` 标记 |
-| 服务间认证（M2M） | 其他系统调用本系统 API 时的认证 | AK/SK 签名验证（Phase 1 预留，Phase 2 实现） |
+| 登录限流 | 同一用户名短时间失败次数超限则 429 | 中间件/AuthService 内 Redis INCR |
+| 会话吊销 | 禁用/删除用户后已签发 AT 立即不可用 | Redis `user:disabled:{userId}` |
 
 ### Phase 1 不做
 
@@ -22,10 +23,10 @@
 |------|------|------|
 | 多设备管理（UI） | 允许用户多设备登录，但 Phase 1 不提供设备管理界面 | Phase 2 |
 | 设备踢出 | 需要 Redis 设备列表管理 | Phase 2 |
-| 登录限流/锁定 | 需要 Redis Lua 脚本 | Phase 2 |
+| 登录锁定（Lua） | Phase 1 用 INCR+EXPIRE 限流，不引入 Lua | Phase 2 |
 | 邮件/短信密码重置 | 需要邮件/短信通道，Phase 1 用管理员重置替代 | Phase 2 |
 | 验证码 | 需要图形验证码生成 | Phase 2 |
-| AK/SK 完整管理 | 管理员创建/禁用/删除 AK/SK | Phase 2 |
+| AK/SK | 无服务间调用方 | 有 M2M 需求时 |
 
 ---
 
@@ -128,9 +129,61 @@ POST /auth/logout (携带 AT)
   ├── 解析 AT，提取 jti + 过期时间
   ├── 将 jti 加入 Redis 黑名单：key = "blacklist:at:{jti}", TTL = AT 剩余有效期
   ├── DEL 该用户当前设备的 RT：refresh:{userId}:{deviceId}
-  ├── SREM devices:{userId} = deviceId（Phase 2，Phase 1 简化为 DEL 所有）
   └── 返回成功
 ```
+
+### 登录限流（Phase 1 必须）
+
+不引入 Lua。同一 `username` 连续失败：
+
+```
+key = lock:login:{username}
+INCR key
+首次 INCR 时 EXPIRE 15min
+count > 5 → 返回 429（文案不区分用户是否存在）
+登录成功 → DEL key
+```
+
+阈值：15 分钟内 5 次失败。Phase 2 再升级为 Lua 原子脚本 + 账号锁定。
+
+### 会话吊销（禁用/删除用户）
+
+JWT 无状态，仅靠 AT 黑名单无法覆盖「该用户所有设备上的未过期 AT」。Phase 1 增加用户级拒绝标记：
+
+```
+禁用或删除用户成功后：
+  SET user:disabled:{userId} 1  EX AT_TTL（30min 足够覆盖已签发 AT）
+  DEL refresh:{userId}:*        （该用户全部 RT）
+
+JWT 中间件在黑名单检查之后：
+  EXISTS user:disabled:{userId} → 401
+```
+
+登录成功时若该 key 仍在（管理员刚解禁），`DEL user:disabled:{userId}`。
+
+### Redis 故障策略：fail-close
+
+鉴权链路上 Redis 不可用时：
+
+| 操作 | 行为 |
+|------|------|
+| 登录（写 RT） | 503，不签发 Token |
+| 刷新（GetDel RT） | 503 |
+| JWT 黑名单 / user:disabled 查询失败 | 503，不放行 |
+| 登出（写黑名单） | 503 |
+
+原则：管理后台宁可暂时不可用，也不能在 Redis 宕机时让已吊销 Token 继续访问。错误日志记录原因，响应体不返回 Redis 内部错误。
+
+### 登录审计
+
+`/auth/login` 不走鉴权组上的 AuditLog 中间件，由 AuthService 显式写入：
+
+- 成功：username、user_id、ip、user_agent
+- 失败：username（原文）、ip、原因码（密码错误/限流），**不记密码**
+
+### 登录成功副作用
+
+登录成功后更新 `users.last_login_at`、`users.last_login_ip`（失败不更新）。
 
 ### JWT Claims 设计（Phase 1 极简）
 
@@ -156,9 +209,10 @@ Phase 1 不在 JWT 中存角色/权限信息（保持无状态，权限走 Casbi
 |-----|------|-----|
 | `refresh:{userId}:{deviceId}` | RT 存储（每设备独立） | 7d |
 | `blacklist:at:{jti}` | AT 黑名单 | AT 剩余有效期 |
-| `devices:{userId}` | 设备列表（SET） | 持久（跟随用户） |
-| `perm:user:{userId}` | 权限缓存（Phase 2） | 30min |
-| `lock:login:{username}` | 登录限流计数（Phase 2） | 15min |
+| `user:disabled:{userId}` | 用户级拒绝（禁用/删除） | 30min（覆盖 AT TTL） |
+| `lock:login:{username}` | 登录失败计数 | 15min |
+| `devices:{userId}` | 设备列表（SET，Phase 2） | 持久（跟随用户） |
+| `perm:user:{userId}` | 权限缓存（工单跑通后按需） | 30min |
 
 ### 管理员重置密码 + 首次登录强制改密
 
@@ -215,7 +269,11 @@ ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false
 - superadmin 重置密码操作全部记入审计日志
 - 临时密码不落库明文，只存 bcrypt hash
 
-### 服务间认证（M2M）：AK/SK 签名机制
+### 服务间认证（M2M）：Phase 1 不做
+
+无第二个系统调用本 API，Phase 1 **不建 `api_credentials` 表、不写 AK/SK 中间件**。签名方案（HMAC 覆盖 method+path+body+timestamp+nonce）见下文，等出现真实调用方再实现。
+
+以下设计保留为后续实现参考，不进入 Phase 1 迁移和代码。
 
 #### `qingtao/aksk` 项目评估
 
@@ -245,7 +303,7 @@ ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false
 1. 请求完整性是 M2M 认证的核心需求——不覆盖 body 和 path 的签名不可接受
 2. 自研签名逻辑不复杂——HMAC-SHA256 + `method\npath\ntimestamp\nnonce\nsha256(body)` 约 50 行代码
 3. `qingtao/aksk` 的 `KeyGetter` 和 nonce 设计思路可借鉴，但不直接引用
-4. Phase 1 仅预留 `api_credentials` 表和中间件骨架，不实现完整管理
+4. Phase 1 **不建表、不写中间件**。签名方案仅作后续参考。
 
 #### 为什么选 AK/SK 而不是 OAuth2 Client Credentials
 
@@ -258,7 +316,7 @@ ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false
 | 业界验证 | AWS、阿里云、腾讯云、华为云 | Auth0、Keycloak |
 | Phase 1 适配 | 可预留表 + 中间件骨架 | 过重 |
 
-**结论**：Phase 1 模块化单体阶段，AK/SK 最合适——不需要额外服务，数据表 + 中间件骨架先搭好，Phase 2 接入微服务调用时直接启用。
+**结论**：有真实 M2M 调用方时再实现 AK/SK（表 + 中间件）。Phase 1 不做；拆服务也不必然在 Phase 2 启用。
 
 #### 认证流程
 
@@ -337,12 +395,9 @@ CREATE INDEX idx_api_credentials_ak ON api_credentials(access_key) WHERE is_acti
 
 #### Phase 1 做什么
 
-| Phase 1 | Phase 2 |
-|---------|---------|
-| 建表 `api_credentials` | AK/SK 管理 API（CRUD） |
-| 种子数据：创建一个默认 AK/SK | 签名验证中间件完整实现 |
-| `AKSKAuth` 中间件骨架（验签逻辑） | nonce 防重放（Redis） |
-| Casbin 模型预留 `service:*` subject | 服务间调用的 Casbin 策略配置 |
+| Phase 1 | 有 M2M 需求时 |
+|---------|----------------|
+| 不建表、不写中间件 | 建表 + 管理 API + 验签中间件 + nonce 防重放 |
 
 
 ---
@@ -357,6 +412,8 @@ CREATE INDEX idx_api_credentials_ak ON api_credentials(access_key) WHERE is_acti
 | 密码错误 | 正确账号 + 错误密码 | 401 + "用户名或密码错误" |
 | 用户不存在 | 不存在的账号 | 401 + "用户名或密码错误"（同密码错误，防枚举） |
 | 用户已禁用 | status=disabled 的用户 | 401 + "账号已禁用" |
+| 连续失败超限 | 同一用户名第 6 次失败 | 429 |
+| Redis 不可用 | Redis 宕机时登录 | 503 |
 | 请求参数缺失 | 无 password | 400 + 参数校验错误 |
 
 ### Token 刷新
@@ -365,6 +422,8 @@ CREATE INDEX idx_api_credentials_ak ON api_credentials(access_key) WHERE is_acti
 |------|------|------|
 | 刷新成功 | 有效 RT | 200 + 新 AT + 新 RT |
 | 旧 RT 失效 | 使用已刷新过的旧 RT | 401 |
+| 并发双刷新 | 同一 RT 同时两次 | 仅一次 200 |
+| Redis 不可用 | Redis 宕机时刷新 | 503 |
 | RT 过期 | 超过 7d 的 RT | 401 |
 | RT 格式错误 | 乱字符串 | 401 |
 
@@ -375,6 +434,7 @@ CREATE INDEX idx_api_credentials_ak ON api_credentials(access_key) WHERE is_acti
 | 登出成功 | 有效 AT | 200 |
 | 登出后 AT 失效 | 登出后用同一 AT 请求 | 401 |
 | 重复登出 | 已登出的 AT | 401 |
+| Redis 不可用 | Redis 宕机时登出 | 503 |
 
 ### 修改密码
 
@@ -420,7 +480,10 @@ internal/repository/user_repo.go     # 用户查询（密码验证依赖）
 - ✅ **密码重置方式**：Phase 1 用管理员重置 + 首次登录强制改密，不引入邮件/短信通道。权限分级：superadmin 可重置所有用户，admin 只能重置普通用户。
 - ✅ **多设备登录**：Phase 1 允许多设备同时登录，不做设备踢出，不提供设备管理 UI。
 - ✅ **用户 ID 类型**：`BIGINT`/`int64`，JSON 加 `,string` tag（前端精度安全）。不用 UUID。
-- ✅ **组织编码**：`BIGINT`/`int64`，JSON 加 `,string` tag（不用 UUID，ltree 不兼容）。
+- ✅ **组织 ID / 编码**：ID 为 `BIGINT`；业务编码 `code` 为 `VARCHAR`（ltree 用 code）。
 - ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
 - ✅ **组织模块范围**：Phase 1 实现完整 CRUD。
-- ✅ **AK/SK 方案**：自研签名逻辑（HMAC-SHA256 覆盖 method+path+body+timestamp+nonce），不引入 `qingtao/aksk`（签名不覆盖请求体，安全性不足）。Phase 1 仅预留表 + 中间件骨架。
+- ✅ **AK/SK**：Phase 1 不做。签名方案保留，有调用方再实现。
+- ✅ **登录限流**：Phase 1 用 INCR+EXPIRE，阈值 15min/5 次。
+- ✅ **Redis 故障**：鉴权链路 fail-close（503）。
+- ✅ **会话吊销**：禁用/删除用户写 `user:disabled:{userId}`。

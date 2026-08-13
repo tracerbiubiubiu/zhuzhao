@@ -30,12 +30,16 @@ TTL: 7d
 blacklist:at:{jti} → 1
 TTL: AT 剩余有效期
 
+# 用户禁用/删除后即时吊销（JWT 中间件检查）
+user:disabled:{userId} → 1
+TTL: 无（或足够长）
+
 # 设备列表
 devices:{userId} → SET {deviceId1, deviceId2, ...}
 
-# 登录限流
-lock:login:{username} → {failCount, lockedUntil}
-TTL: 15min（锁定后）
+# 登录限流（Phase 1：INCR 计数，达 5 次锁定 15min）
+lock:login:{username} → failCount
+TTL: 15min
 
 # 权限缓存
 perm:user:{userId} → {roles, org_id, permissions}
@@ -46,12 +50,16 @@ TTL: 30min
 
 ```json
 {
-  "user_id": "00000000-0000-0000-0000-000000000020",
+  "uid": 1,
+  "username": "admin",
   "jti": "a1b2c3d4e5f6",
+  "mcp": false,
   "exp": 1234567890,
   "iat": 1234560890
 }
 ```
+
+Claims 字段以 [phase1/02-auth.md](../phase1/02-auth.md) 为准：`uid`（int64）、`username`、`jti`、`mcp`（must_change_password）。AT TTL **30 分钟**，不是 2 小时。
 
 ---
 
@@ -69,10 +77,10 @@ type AuthService interface {
     Logout(ctx context.Context, at string) error
 
     // 踢出设备
-    KickDevice(ctx context.Context, userID, deviceID string) error
+    KickDevice(ctx context.Context, userID int64, deviceID string) error
 
     // 查询设备列表
-    ListDevices(ctx context.Context, userID string) ([]DeviceInfo, error)
+    ListDevices(ctx context.Context, userID int64) ([]DeviceInfo, error)
 }
 
 type LoginRequest struct {
@@ -115,8 +123,8 @@ POST /api/v1/auth/login {username, password}
    → user.Status != 1？返回 403
 
 5. 签发 Token
-   → AT: JWT(user_id + jti + exp), TTL=2h
-   → RT: 随机 UUID, TTL=7d
+   → AT: JWT(uid + username + jti + mcp), TTL=30min，HS256
+   → RT: 随机串, TTL=7d
 
 6. 存储
    → Redis SET refresh:{userId}:{deviceId} = rt, TTL=7d
@@ -137,8 +145,8 @@ POST /api/v1/auth/refresh {refreshToken}
    → 查 Redis: refresh:{userId}:{deviceId}
    → 不存在/不匹配？返回 401
 
-2. 原子替换（Lua 脚本）
-   → DEL 旧 RT + SET 新 RT（原子操作，防并发刷新）
+2. 原子替换（`GETDEL`，Redis 6.2+）
+   → 删旧 RT；返回空则已被刷新 → 401
 
 3. 签发新 Token 对
    → 新 AT + 新 RT
@@ -146,7 +154,7 @@ POST /api/v1/auth/refresh {refreshToken}
 4. 返回 {accessToken, refreshToken, expiresIn}
 ```
 
-**并发刷新防护**：用 Redis Lua 脚本保证"删旧 RT + 写新 RT"原子完成。两个并发请求用同一 RT 刷新，只有第一个成功，第二个返回 401 `token_already_refreshed`。
+**并发刷新防护**：Phase 1 用 `GETDEL`（不必 Lua）。两个并发请求用同一 RT 刷新，只有第一个成功，第二个返回 401。
 
 ### 4.3 登出流程
 
@@ -189,22 +197,9 @@ DeleteUser 时：
 | 计数窗口 | 15min | 失败计数 TTL |
 | Redis 故障 | fail-close | 返回 503 |
 
-### 5.2 Lua 原子脚本
+### 5.2 Phase 1 实现：INCR + EXPIRE
 
-```lua
--- KEYS[1] = lock:login:{username}
--- ARGV[1] = max_fails (5)
--- ARGV[2] = lock_ttl (900)
-
-local fails = redis.call('INCR', KEYS[1])
-if fails == 1 then
-    redis.call('EXPIRE', KEYS[1], ARGV[2])
-end
-if fails >= tonumber(ARGV[1]) then
-    redis.call('SET', KEYS[1]..':locked', '1', 'EX', ARGV[2])
-end
-return fails
-```
+不必 Lua。`INCR` 后若计数为 1 则 `EXPIRE` 15min；达到 5 次返回 429。鉴权链路 Redis 故障 **fail-close**（503）。旧系统 Lua 脚本可作 Phase 3 参考，不是 Phase 1 必须。
 
 ---
 
@@ -212,14 +207,14 @@ return fails
 
 | 设计 | 决策 | 理由 |
 |------|------|------|
-| LoginLocker Lua 原子脚本 | ✅ 直接采用 | 经过验证的成熟设计 |
-| fail-close 策略 | ✅ 直接采用 | 安全优先 |
+| LoginLocker Lua 原子脚本 | ⚠️ Phase 1 用 INCR+EXPIRE | 阈值简单，不必 Lua |
+| fail-close 策略 | ✅ 直接采用 | 鉴权链路 Redis 故障返回 503 |
 | 防用户枚举 | ✅ 直接采用 | 不泄露用户是否存在 |
-| RSA 4096 签名 | ❌ Phase 1 用 HS256，Phase 2 切 RS256 | 单体用对称最简，微服务用非对称安全 |
+| RSA 4096 签名 | ❌ Phase 1 HS256；RS256+JWKS 后移 Phase 3 | 单体对称最简，拆服务再用非对称 |
 | RT 存 MongoDB | ❌ 改用 Redis | 减少依赖，Redis + AOF 持久化足够 |
-| AT 5min | ❌ 改用 2h | 权限走缓存不需要频繁刷新 |
-| DeleteUser RemoveByUid no-op | ❌ 修复 | 用 user:disabled:{userId} 标记 |
-| first_login 改密 | ⏳ Phase 2 | 借鉴旧系统，非首期必须 |
+| AT 5min | ❌ 改用 30min | Phase 1 无权限缓存，30min 平衡安全与体验 |
+| DeleteUser RemoveByUid no-op | ❌ Phase 1 修复 | `user:disabled:{userId}` + 删全部 RT |
+| first_login 改密 | ✅ Phase 1 | `must_change_password` + JWT `mcp` |
 
 ---
 
@@ -227,21 +222,22 @@ return fails
 
 ### Phase 1
 
-- 账号密码登录 + 双 Token 签发
-- RT 存 Redis + 轮换
+- 账号密码登录 + 双 Token 签发（AT 30min HS256）
+- RT 存 Redis + `GETDEL` 轮换
 - 登出 + AT 黑名单
-- JWT 中间件（验证 + 黑名单检查）
-- 基础登录限流（INCR + EXPIRE，非 Lua）
+- JWT 中间件（验证 + 黑名单 + `user:disabled`，Redis 故障 503）
+- 登录限流（INCR + EXPIRE，15min/5 次）
+- 登录成功/失败写审计
+- `must_change_password` 强制改密
+- 禁用/删除用户后吊销会话
 
 ### Phase 2
 
-- LoginLocker Lua 原子脚本
-- 多设备管理（设备列表 + 踢出）
-- first_login 强制改密
-- DeleteUser 级联吊销（user:disabled 标记）
+- 多设备管理 UI（设备列表 + 踢出）
+- 密码复杂度策略
 
 ### Phase 3
 
 - 异地登录检测
 - CAPTCHA 验证码
-| RSA 签名（微服务化时） | Phase 2 切 RS256 + JWKS |
+- RS256 + JWKS（拆服务时）

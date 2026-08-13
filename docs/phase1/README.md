@@ -13,35 +13,37 @@
 | 类别 | 模块 | 核心能力 |
 |------|------|---------|
 | 基础设施 | [infra](./01-infra.md) | DB 迁移、配置加载、Wire DI、优雅关闭、健康检查 |
-| 认证 | [auth](./02-auth.md) | 登录、双 Token、RT 轮换、登出、黑名单 |
-| 鉴权 | [authz](./03-authz.md) | 路由级 Casbin RBAC、ResourceRegistry 骨架 |
-| 用户 | [user](./04-user.md) | 用户 CRUD、启用禁用、密码修改 |
+| 认证 | [auth](./02-auth.md) | 登录、双 Token、RT 轮换、登出、黑名单、登录限流、会话吊销 |
+| 鉴权 | [authz](./03-authz.md) | 路由级 Casbin RBAC、ResourceRegistry 空接口 |
+| 用户 | [user](./04-user.md) | 用户 CRUD、启用禁用、密码修改、超管保护 |
 | 角色 | [role](./05-role.md) | 角色 CRUD、菜单分配、Casbin 策略同步 |
 | 组织 | [organization](./06-organization.md) | 组织树 CRUD、ltree 路径、用户-组织关联 |
 | 菜单 | [menu](./07-menu.md) | 菜单 CRUD、菜单树、前端权限数据 |
-| 审计日志 | [audit](./08-audit.md) | 操作日志中间件、同步写入、查询、应用日志规划 |
-| 中间件 | [middleware](./09-middleware.md) | JWT、Casbin、CORS、Recovery、RequestID、安全头 |
+| 审计日志 | [audit](./08-audit.md) | 操作日志中间件、同步写入、登录审计 |
+| 中间件 | [middleware](./09-middleware.md) | JWT（fail-close）、Casbin、CORS、Recovery、RequestID、安全头 |
 | 并发与事务 | [concurrency](./10-concurrency.md) | DB 事务、SyncedEnforcer、Redis 原子操作、乐观锁 |
 
 ### 1.2 不做什么
 
 | 不做 | 原因 | 阶段 |
 |------|------|------|
-| 工单模块 | Phase 1 聚焦框架，工单设计已完成待 Phase 2 | Phase 2 |
-| 事件驱动 | Phase 1 用进程内 channel，不引入 Asynq/Outbox | Phase 2-3 |
-| 多设备管理 | 需要 Redis 设备管理 | Phase 2 |
-| 登录限流/锁定 | 需要 Redis Lua 脚本 | Phase 2 |
-| 密码复杂度策略 | 基础 bcrypt 即可 | Phase 2 |
-| 资源级鉴权完整实现 | Phase 1 只搭 ResourceRegistry 骨架，不实现 ltree 查询 | Phase 2 |
-| AK/SK 完整管理 | Phase 1 只建表 + 中间件骨架 + 种子数据 | Phase 2 |
+| 工单模块 | Phase 1 聚焦框架 | Phase 2 |
+| 数据范围过滤 | 管理接口按「全局管理员」模型，不做组织范围过滤 | Phase 2 |
 | 虚拟组 / 组织级权限 | Phase 1 只做实体组织树 CRUD | Phase 2 |
-| 审计日志异步写入 | Phase 1 同步写入，保证不丢 | Phase 2 |
-| 缓存体系 | Phase 1 无缓存，走 Casbin 内存 | Phase 2 |
-| SLA / 通知 / 审批流 | 业务能力 | Phase 2-3 |
-| 多实例 / 分布式锁 | Phase 1 单实例 | Phase 3 |
-| Casbin Watcher | 多实例才需要 | Phase 3 |
+| 资源级鉴权完整实现 | Phase 1 只搭 ResourceRegistry 空接口，不实现 ltree 查询 | Phase 2 |
+| 多设备管理 UI / 踢出 | 允许多设备登录，不提供设备列表 | Phase 2 |
+| 登录锁定（Lua） | Phase 1 用 INCR+EXPIRE 即可 | 不必 Lua |
+| 密码复杂度策略 | 基础 bcrypt 即可 | Phase 2 |
+| AK/SK | 无服务间调用方，不建表、不写中间件 | 有 M2M 需求时 |
+| 文件存储 | 无附件场景 | Phase 2 |
+| 事件驱动 / Asynq / Outbox | 无异步业务 | Phase 3 |
+| 审计日志异步写入 | Phase 1 同步写入，保证不丢 | Phase 3 |
+| 缓存体系 | Phase 1 无缓存，走 Casbin 内存 | 工单跑通后按需 |
+| JWT RS256 / JWKS | 单体无收益，拆服务时再换 | Phase 3 |
+| 每资源独立 Enforcer | 简单资源用代码内联 | 策略需可配置时 |
+| IAM 独立部署 / gRPC | Phase 1–2 模块化单体 | Phase 3 |
+| 多实例 / 分布式锁 / Watcher | Phase 1 单实例 | Phase 3 |
 | Metrics / 分布式追踪 | 可观测性 | Phase 3 |
-| 微服务拆分 / gRPC | Phase 1 模块化单体 | Phase 3 |
 | 多租户 | 预留 tenant_id 字段，不实现 | 按需 |
 
 ### 1.3 验收标准
@@ -49,17 +51,37 @@
 Phase 1 完成后，以下流程能跑通：
 
 ```
-1. make docker-up          # 启动 PG + Redis
-2. make migrate-up         # 建表 + 种子数据
-3. make dev                # 启动服务
-4. curl POST /auth/login   # 登录，拿到双 Token
-5. curl GET /user/menus    # 用 AT 获取菜单树
-6. curl GET /user/permissions  # 获取权限码
-7. curl GET /users         # 用 AT 获取用户列表（需 user:list 权限）
-8. curl POST /auth/refresh # 刷新 Token
-9. curl POST /auth/logout  # 登出
-10. curl GET /users        # 登出后 AT 被黑名单，返回 401
+主路径
+1. make docker-up / migrate-up / make dev
+2. POST /auth/login              # 拿到双 Token
+3. GET  /user/menus              # 菜单树
+4. GET  /user/permissions        # 权限码
+5. GET  /users                   # 需路由级权限
+6. POST /auth/refresh            # 轮换 Token
+7. POST /auth/logout             # 登出
+8. GET  /users                   # 登出后 401
+
+对抗路径（必须覆盖，不是可选）
+9.  错误密码 / 不存在用户          # 均返回同一文案，防枚举
+10. 连续登录失败                   # 触发限流 429
+11. 禁用用户后带旧 AT 访问         # 401/403（会话吊销）
+12. 删除/禁用最后一个 superadmin   # 拒绝
+13. admin 重置 superadmin 密码     # 403
+14. 首次登录改密期间访问其它 API   # 403 PASSWORD_CHANGE_REQUIRED
+15. 无角色用户访问鉴权路由         # 403
+16. 并发两次 refresh               # 只有一次成功
+17. Redis 不可用时访问鉴权路由     # 503（fail-close）
 ```
+
+### 1.4 已知限制（验收时不要误判为已实现）
+
+| 限制 | 说明 |
+|------|------|
+| 无数据范围过滤 | 拥有 `GET /users` 权限的角色能看到**全部**用户，不做部门隔离 |
+| 无虚拟组 | 只有实体组织树 |
+| AT 存哪 | 前端自行存 AT/RT（建议内存 + 刷新），后端不设 Cookie |
+| AK/SK 不可用 | 没有服务间认证 |
+| 管理接口是全局模型 | `admin`/`superadmin` 路由级 bypass；`operator`/`viewer` 靠菜单策略，仍无行级过滤 |
 
 ---
 
@@ -76,7 +98,7 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
    │             │
    │             └── Step 4: middleware（JWT 中间件 + 黑名单）
    │                    │
-   │                    └── Step 5: authz（Casbin 中间件 + ResourceRegistry 骨架）
+   │                    └── Step 5: authz（Casbin 中间件 + ResourceRegistry 空接口）
    │                           │
    │                           ├── Step 6: user service/handler（用户 CRUD）
    │                           ├── Step 7: role service/handler（角色 + 菜单分配）
@@ -142,7 +164,7 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 | 事项 | 决策 | 状态 |
 |------|------|------|
 | 用户 ID 类型 | `BIGINT`/`int64`，JSON 加 `,string` tag | ✅ 已确认 |
-| 组织编码 | `BIGINT`/`int64`，JSON 加 `,string` tag（不用 UUID，ltree 不兼容） | ✅ 已确认 |
+| 组织 ID / 编码 | ID 为 `BIGINT`/`int64`（JSON `,string`）；业务编码 `code` 为 `VARCHAR`（ltree 路径用 code，只能字母数字下划线） | ✅ 已确认 |
 | Casbin adapter | 直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`） | ✅ 已确认 |
 | 密码策略 | 仅 bcrypt cost=12，不增加复杂度校验 | ✅ 已确认 |
 | 组织模块范围 | Phase 1 实现完整 CRUD | ✅ 已确认 |
@@ -153,7 +175,11 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 | tenant_id | BIGINT DEFAULT 1，Phase 1 不过滤 | ✅ 已确认 |
 | 数据访问层 | 每实体独立 Repository 接口 | ✅ 已确认 |
 | superadmin 角色 | 新增，4 个系统角色 | ✅ 已确认 |
-| AT TTL | 30 分钟（短 AT + 长 RT） | ✅ 已确认 |
+| 登录限流 | Phase 1 用 Redis INCR+EXPIRE，不引入 Lua | ✅ 已确认 |
+| 会话吊销 | 禁用/删除用户写 `user:disabled:{id}`，JWT 中间件检查 | ✅ 已确认 |
+| Redis 故障 | 鉴权链路 fail-close，返回 503 | ✅ 已确认 |
+| AK/SK | Phase 1 不做 | ✅ 已确认 |
+| 数据范围 | Phase 1 不做组织范围过滤 | ✅ 已确认 |
 
 ---
 
