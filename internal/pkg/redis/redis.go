@@ -10,7 +10,7 @@ import (
 )
 
 // New 创建 Redis 客户端
-func New(cfg config.RedisConfig) (*redis.Client, error) {
+func New(cfg config.RedisConfig) (*redis.Client, func(), error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr(),
 		Password: cfg.Password,
@@ -19,8 +19,11 @@ func New(cfg config.RedisConfig) (*redis.Client, error) {
 
 	// 测试连接
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to redis: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
-	return client, nil
+	cleanup := func() {
+		client.Close()
+	}
+	return client, cleanup, nil
 }

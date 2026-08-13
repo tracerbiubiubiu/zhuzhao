@@ -2,9 +2,10 @@ package model
 
 // TokenPair 双 Token 响应
 type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"` // accessToken 有效期（秒）
+	AccessToken       string `json:"access_token"`
+	RefreshToken      string `json:"refresh_token"`
+	ExpiresIn         int    `json:"expires_in"`           // accessToken 有效期（秒）
+	MustChangePassword bool  `json:"must_change_password"` // 首次登录改密标记
 }
 
 // DeviceInfo 设备信息
@@ -18,9 +19,9 @@ type DeviceInfo struct {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Username  string `json:"username" binding:"required"`
-	Password  string `json:"password" binding:"required"`
-	DeviceID  string `json:"device_id" binding:"required"`
+	Username   string `json:"username" binding:"required"`
+	Password   string `json:"password" binding:"required"`
+	DeviceID   string `json:"device_id"` // Phase 1 允许为空，后端生成 UUID
 	DeviceName string `json:"device_name"`
 }
 

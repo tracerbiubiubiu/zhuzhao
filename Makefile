@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-up docker-down swag
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-up docker-down swag test test-unit test-integration test-cover benchmark
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -16,7 +16,7 @@ tidy:
 	go mod tidy
 
 wire:
-	cd internal/app && wire
+	go run github.com/google/wire/cmd/wire ./internal/app/
 
 migrate-up:
 	migrate -path migrations -database "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable" up
@@ -32,3 +32,18 @@ docker-down:
 
 swag:
 	swag init -g cmd/server/main.go -o docs
+
+test: test-unit
+
+test-unit:
+	go test -v -race -count=1 ./internal/...
+
+test-integration:
+	go test -v -race -count=1 -tags=integration ./internal/...
+
+test-cover:
+	go test -race -coverprofile=coverage.out ./internal/...
+	go tool cover -html=coverage.out -o coverage.html
+
+benchmark:
+	go test -bench=. -benchmem ./internal/...

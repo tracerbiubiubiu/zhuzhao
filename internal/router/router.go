@@ -7,6 +7,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
@@ -16,16 +17,20 @@ import (
 
 // Deps 路由依赖
 type Deps struct {
-	AuthHandler *handler.AuthHandler
-	UserHandler *handler.UserHandler
-	RoleHandler *handler.RoleHandler
-	OrgHandler  *handler.OrgHandler
-	MenuHandler *handler.MenuHandler
+	AuthHandler  *handler.AuthHandler
+	UserHandler  *handler.UserHandler
+	RoleHandler  *handler.RoleHandler
+	OrgHandler   *handler.OrgHandler
+	MenuHandler  *handler.MenuHandler
+	AuditHandler *handler.AuditHandler
 
-	JWTManager  *jwt.Manager
-	Enforcer    *casbin.SyncedEnforcer
-	RedisClient *redis.Client
-	Logger      *slog.Logger
+	JWTManager   *jwt.Manager
+	Enforcer     *casbin.SyncedEnforcer
+	RedisClient  *redis.Client
+	DBPool       *pgxpool.Pool
+	Logger       *slog.Logger
+	RoleFetcher   middleware.RoleFetcher
+	AuditService  middleware.AuditLogger
 }
 
 // New 创建 Gin 引擎并注册路由
@@ -33,16 +38,26 @@ func New(deps Deps) *gin.Engine {
 	r := gin.New()
 
 	// 全局中间件
-	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery(deps.Logger))
-	r.Use(middleware.Logger(deps.Logger))
+	r.Use(middleware.RequestID())
+	r.Use(middleware.AccessLogger(deps.Logger))
+	r.Use(middleware.CORS())
+	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.BodyLimit(1 << 20)) // 1MB
 
 	// 健康检查
 	r.GET("/health/live", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	r.GET("/health/ready", func(c *gin.Context) {
-		// TODO: 检查 DB + Redis 连通性
+		if err := deps.DBPool.Ping(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "db": err.Error()})
+			return
+		}
+		if err := deps.RedisClient.Ping(c.Request.Context()).Err(); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "redis": err.Error()})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
@@ -56,61 +71,79 @@ func New(deps Deps) *gin.Engine {
 			auth.POST("/refresh", deps.AuthHandler.Refresh)
 		}
 
-		// 以下路由需要 JWT 认证
-		authenticated := v1.Group("")
-		authenticated.Use(middleware.JWT(deps.JWTManager, deps.RedisClient))
+		// 以下路由需要 JWT 认证 + Casbin 鉴权 + 审计日志
+		authed := v1.Group("")
+		authed.Use(
+			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher),
+			middleware.AuditLog(deps.AuditService),
+		)
 		{
 			// 认证模块（需鉴权）
-			authenticated.POST("/auth/logout", deps.AuthHandler.Logout)
-			authenticated.GET("/auth/devices", deps.AuthHandler.ListDevices)
-			authenticated.DELETE("/auth/devices/:deviceId", deps.AuthHandler.KickDevice)
+			authed.POST("/auth/logout", deps.AuthHandler.Logout)
+			authed.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)
 
 			// 用户模块
-			users := authenticated.Group("/users")
+			users := authed.Group("/users")
 			{
 				users.GET("", deps.UserHandler.List)
 				users.POST("", deps.UserHandler.Create)
 				users.GET("/:id", deps.UserHandler.Get)
-				users.PUT("/:id", deps.UserHandler.Update)
-				users.DELETE("/:id", deps.UserHandler.Delete)
+				users.POST("/:id/update", deps.UserHandler.Update)
+				users.POST("/:id/delete", deps.UserHandler.Delete)
+				users.POST("/:id/status", deps.UserHandler.UpdateStatus)
+				users.POST("/:id/roles", deps.UserHandler.SetRoles)
+				users.POST("/:id/password/reset", deps.UserHandler.ResetPassword)
+				users.GET("/:id/orgs", deps.UserHandler.GetUserOrgs)
 			}
 
 			// 当前用户信息
-			userSelf := authenticated.Group("/user")
+			userSelf := authed.Group("/user")
 			{
+				userSelf.GET("/profile", deps.UserHandler.GetProfile)
+				userSelf.POST("/profile/update", deps.UserHandler.UpdateProfile)
 				userSelf.GET("/menus", deps.UserHandler.GetMenus)
 				userSelf.GET("/permissions", deps.UserHandler.GetPermissions)
 			}
 
 			// 角色模块
-			roles := authenticated.Group("/roles")
+			roles := authed.Group("/roles")
 			{
 				roles.GET("", deps.RoleHandler.List)
 				roles.POST("", deps.RoleHandler.Create)
 				roles.GET("/:id", deps.RoleHandler.Get)
-				roles.PUT("/:id", deps.RoleHandler.Update)
-				roles.DELETE("/:id", deps.RoleHandler.Delete)
+				roles.POST("/:id/update", deps.RoleHandler.Update)
+				roles.POST("/:id/delete", deps.RoleHandler.Delete)
+				roles.POST("/:id/menus", deps.RoleHandler.AssignMenus)
+				roles.GET("/:id/menus", deps.RoleHandler.GetMenus)
+				roles.GET("/:id/permissions", deps.RoleHandler.GetPermissions)
 			}
 
 			// 组织模块
-			orgs := authenticated.Group("/orgs")
+			orgs := authed.Group("/orgs")
 			{
 				orgs.GET("", deps.OrgHandler.GetTree)
 				orgs.POST("", deps.OrgHandler.Create)
 				orgs.GET("/:id", deps.OrgHandler.Get)
-				orgs.PUT("/:id", deps.OrgHandler.Update)
-				orgs.DELETE("/:id", deps.OrgHandler.Delete)
-				orgs.PATCH("/:id/move", deps.OrgHandler.Move)
+				orgs.POST("/:id/update", deps.OrgHandler.Update)
+				orgs.POST("/:id/delete", deps.OrgHandler.Delete)
+				orgs.POST("/:id/move", deps.OrgHandler.Move)
 			}
 
 			// 菜单模块
-			menus := authenticated.Group("/menus")
+			menus := authed.Group("/menus")
 			{
 				menus.GET("", deps.MenuHandler.GetTree)
 				menus.POST("", deps.MenuHandler.Create)
 				menus.GET("/:id", deps.MenuHandler.Get)
-				menus.PUT("/:id", deps.MenuHandler.Update)
-				menus.DELETE("/:id", deps.MenuHandler.Delete)
+				menus.POST("/:id/update", deps.MenuHandler.Update)
+				menus.POST("/:id/delete", deps.MenuHandler.Delete)
+			}
+
+			// 审计日志
+			audit := authed.Group("/audit")
+			{
+				audit.GET("/logs", deps.AuditHandler.ListLogs)
 			}
 		}
 	}

@@ -28,38 +28,48 @@ var (
 
 // 认证模块 20000-20999
 var (
-	ErrInvalidCredentials = New(20001, "用户名或密码错误")
-	ErrTokenExpired       = New(20002, "token 已过期")
-	ErrTokenInvalid       = New(20003, "token 已失效")
-	ErrRefreshTokenInvalid = New(20004, "刷新令牌无效")
-	ErrTokenAlreadyRefreshed = New(20005, "令牌已被刷新")
-	ErrAccountLocked      = New(20006, "账号已锁定")
+	ErrInvalidCredentials     = New(20001, "用户名或密码错误")
+	ErrTokenExpired           = New(20002, "token 已过期")
+	ErrTokenInvalid           = New(20003, "token 已失效")
+	ErrRefreshTokenInvalid    = New(20004, "刷新令牌无效")
+	ErrTokenAlreadyRefreshed  = New(20005, "令牌已被刷新")
+	ErrAccountLocked          = New(20006, "账号已锁定")
+	ErrPasswordChangeRequired = New(20007, "需要修改密码")
 )
 
 // 用户模块 30000-30999
 var (
-	ErrUserAlreadyExists = New(30001, "用户已存在")
-	ErrUserNotFound      = New(30002, "用户不存在")
-	ErrUserDisabled      = New(30003, "用户已禁用")
+	ErrUserAlreadyExists  = New(30001, "用户已存在")
+	ErrUserNotFound       = New(30002, "用户不存在")
+	ErrUserDisabled       = New(30003, "用户已禁用")
+	ErrUserIsSystem       = New(30004, "系统内置用户不可删除")
+	ErrCannotResetHigher  = New(30005, "不能重置同级或更高级用户的密码")
 )
 
 // 角色模块 40000-40999
 var (
 	ErrRoleAlreadyExists = New(40001, "角色已存在")
 	ErrRoleNotFound      = New(40002, "角色不存在")
+	ErrRoleInUse         = New(40003, "该角色仍有用户关联，无法删除")
+	ErrRoleIsSystem      = New(40004, "系统内置角色不可删除")
 )
 
 // 组织模块 50000-50999
 var (
-	ErrOrgAlreadyExists   = New(50001, "组织已存在")
-	ErrOrgNotFound        = New(50002, "组织不存在")
+	ErrOrgAlreadyExists    = New(50001, "组织已存在")
+	ErrOrgNotFound         = New(50002, "组织不存在")
 	ErrOrgCannotMoveToChild = New(50003, "不能移动到子节点下")
+	ErrOrgHasChildren      = New(50004, "该组织下有子组织，无法删除")
+	ErrOrgHasMembers       = New(50005, "该组织下有成员，无法删除")
+	ErrOrgIsSystem         = New(50006, "系统内置组织不可删除")
 )
 
 // 菜单模块 60000-60999
 var (
 	ErrMenuAlreadyExists = New(60001, "菜单已存在")
 	ErrMenuNotFound      = New(60002, "菜单不存在")
+	ErrMenuHasChildren   = New(60003, "该菜单下有子菜单，无法删除")
+	ErrMenuIsSystem      = New(60004, "系统内置菜单不可删除")
 )
 
 // 权限模块 70000-70999

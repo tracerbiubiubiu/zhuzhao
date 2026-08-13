@@ -52,6 +52,8 @@ var handlerSet = wire.NewSet(
 	handler.NewRoleHandler,
 	handler.NewOrgHandler,
 	handler.NewMenuHandler,
+	// 告诉 Wire 如何构造 router.Deps 结构体
+	wire.Struct(new(router.Deps), "*"),
 )
 
 // InitializeApp Wire 注入入口

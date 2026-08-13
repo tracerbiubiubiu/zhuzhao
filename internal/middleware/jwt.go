@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -39,14 +40,26 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 			return
 		}
 
-		// TODO: 检查 Redis 黑名单
+		// 检查 Redis 黑名单
+		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
+		if exists, _ := rdb.Exists(c, blacklistKey).Result(); exists > 0 {
+			response.Unauthorized(c, errcode.ErrTokenInvalid.Message)
+			c.Abort()
+			return
+		}
+
+		// 首次登录改密检查：只允许访问改密接口
+		if claims.MustChangePassword && c.Request.URL.Path != "/api/v1/auth/password/update" {
+			response.Forbidden(c, errcode.ErrPasswordChangeRequired.Message)
+			c.Abort()
+			return
+		}
 
 		// 注入上下文
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
-		c.Set("role", claims.Role)
-		c.Set("orgID", claims.OrgID)
-		c.Set("deviceID", claims.DeviceID)
+		c.Set("jti", claims.JTI)
+		c.Set("must_change_password", claims.MustChangePassword)
 
 		c.Next()
 	}

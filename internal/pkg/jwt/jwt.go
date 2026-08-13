@@ -11,17 +11,16 @@ import (
 
 // AccessClaims accessToken 的 payload
 type AccessClaims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	OrgID    string `json:"org_id"`
-	DeviceID string `json:"device_id"`
+	UserID             int64  `json:"uid,string"`
+	Username           string `json:"username"`
+	JTI                string `json:"jti"`
+	MustChangePassword bool   `json:"mcp,omitempty"` // 首次登录改密标记
 	jwt.RegisteredClaims
 }
 
 // RefreshClaims refreshToken 的 payload
 type RefreshClaims struct {
-	UserID   string `json:"user_id"`
+	UserID   int64  `json:"uid,string"`
 	DeviceID string `json:"device_id"`
 	jwt.RegisteredClaims
 }
@@ -41,27 +40,28 @@ func NewManager(cfg config.JWTConfig) *Manager {
 }
 
 // GenerateAccessToken 签发 accessToken
-func (m *Manager) GenerateAccessToken(userID, username, role, orgID, deviceID string) (string, error) {
+func (m *Manager) GenerateAccessToken(userID int64, username string, mustChangePassword bool) (string, string, error) {
 	now := time.Now()
+	jti := generateJTI()
 	claims := AccessClaims{
-		UserID:   userID,
-		Username: username,
-		Role:     role,
-		OrgID:    orgID,
-		DeviceID: deviceID,
+		UserID:             userID,
+		Username:           username,
+		JTI:                jti,
+		MustChangePassword: mustChangePassword,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(m.accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			ID:        generateJTI(),
+			ID:        jti,
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(m.secret)
+	signed, err := token.SignedString(m.secret)
+	return signed, jti, err
 }
 
 // GenerateRefreshToken 签发 refreshToken
-func (m *Manager) GenerateRefreshToken(userID, deviceID string, ttl time.Duration) (string, string, error) {
+func (m *Manager) GenerateRefreshToken(userID int64, deviceID string, ttl time.Duration) (string, string, error) {
 	now := time.Now()
 	jti := generateJTI()
 	claims := RefreshClaims{
@@ -113,4 +113,9 @@ func (m *Manager) ParseRefreshToken(tokenString string) (*RefreshClaims, error) 
 		return nil, errors.New("invalid token")
 	}
 	return claims, nil
+}
+
+// AccessTTL 返回 AT 的有效期
+func (m *Manager) AccessTTL() time.Duration {
+	return m.accessTTL
 }

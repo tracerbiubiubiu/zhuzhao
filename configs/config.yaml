@@ -18,8 +18,12 @@ redis:
   password: ""
 
 jwt:
+  # Phase 1: HS256 对称签名（单体底座）
   secret: "change-me-in-production"  # 生产环境通过 JWT_SECRET 环境变量覆盖
-  access_ttl: 2h
+  # Phase 2: RS256 非对称签名（微服务化时启用）
+  # private_key: "${JWT_PRIVATE_KEY}"  # RSA 私钥
+  # jwks_url: "/.well-known/jwks.json"  # JWKS 公钥分发 endpoint
+  access_ttl: 30m
   refresh_ttl: 168h  # 7天
 
 casbin:
