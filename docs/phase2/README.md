@@ -21,6 +21,7 @@
 | AK/SK 管理 | [m2m-aksk](./07-m2m-aksk.md) | 服务间认证完整实现、AK/SK 管理 API | 待编写 |
 | JWT 升级 | [jwt-rs256](./08-jwt-rs256.md) | HS256 → RS256 + JWKS 公钥分发 | 待编写 |
 | 工单模块 | [ticket](./09-ticket.md) | 工单类型配置、状态机、权限模型 | 待编写（参考 `docs/modules/ticket.md`） |
+| 文件存储 | [storage](./10-storage.md) | S3 兼容对象存储、预签名 URL 直传、附件管理 | 待编写 |
 
 ### 1.2 不做什么
 
@@ -65,9 +66,11 @@ Phase 1 完成
    │      │
    │      ├── Step 8: jwt-rs256（JWT 升级，独立）
    │      │
-   │      └── Step 9: ticket（工单模块，依赖 authz-resource + org-enhance）
+   │      ├── Step 9: storage（文件存储，工单附件依赖）
+   │      │
+   │      └── Step 10: ticket（工单模块，依赖 authz-resource + org-enhance + storage）
    │
-   └── Step 10: 集成验收
+   └── Step 11: 集成验收
 ```
 
 | Step | 模块 | 依赖 | 文档 |
@@ -80,8 +83,9 @@ Phase 1 完成
 | 6 | audit-enhance | Phase 1 | [05-audit-enhance.md](./05-audit-enhance.md) |
 | 7 | m2m-aksk | Phase 1 | [07-m2m-aksk.md](./07-m2m-aksk.md) |
 | 8 | jwt-rs256 | Phase 1 | [08-jwt-rs256.md](./08-jwt-rs256.md) |
-| 9 | ticket | Step 3+4 | [09-ticket.md](./09-ticket.md) |
-| 10 | 集成验收 | All | 本文档 §1.3 |
+| 9 | storage | Phase 1 | [10-storage.md](./10-storage.md) |
+| 10 | ticket | Step 3+4+9 | [09-ticket.md](./09-ticket.md) |
+| 11 | 集成验收 | All | 本文档 §1.3 |
 
 ---
 
@@ -94,6 +98,8 @@ Phase 1 完成
 | ⚠️ 虚拟组与实体组织的关系 | 统一建表还是分表？ | 架构文档已决策：统一建表 + org_type 区分 |
 | ⚠️ RS256 密钥管理 | 私钥存文件还是 KMS？ | Phase 2 用文件 + 环境变量，Phase 3 评估 KMS |
 | ⚠️ 限流策略 | 全局限流还是按用户/按 IP 限流？ | 建议按 API 分组配置，支持按用户和按 IP |
+| ⚠️ 对象存储方案 | 自建 MinIO 还是云服务（S3/OSS/R2）？ | 建议自建 MinIO 开发，生产按需选云服务 |
+| ⚠️ 前端直传 vs 后端转发 | 文件上传走预签名 URL 直传还是后端转发？ | 建议预签名 URL 直传，省带宽 |
 
 ---
 
@@ -112,3 +118,4 @@ Phase 1 完成
 | [07-m2m-aksk.md](./07-m2m-aksk.md) | AK/SK 管理 | 待编写 |
 | [08-jwt-rs256.md](./08-jwt-rs256.md) | JWT 升级 | 待编写 |
 | [09-ticket.md](./09-ticket.md) | 工单模块 | 待编写（参考 `docs/modules/ticket.md`） |
+| [10-storage.md](./10-storage.md) | 文件存储 | 待编写 |

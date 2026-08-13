@@ -21,7 +21,7 @@ type DeviceInfo struct {
 type LoginRequest struct {
 	Username   string `json:"username" binding:"required"`
 	Password   string `json:"password" binding:"required"`
-	DeviceID   string `json:"device_id"` // Phase 1 允许为空，后端生成 UUID
+	DeviceID   string `json:"device_id"` // 前端生成 UUID 存 localStorage，每次登录带上
 	DeviceName string `json:"device_name"`
 }
 

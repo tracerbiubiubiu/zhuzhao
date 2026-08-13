@@ -21,7 +21,8 @@ Phase 1：最小可用（跑起来）          Phase 2：业务可用（完善�
 │ · AK/SK 骨架             │     │ · AK/SK 完整实现           │     │ · 事件驱动（Outbox+Asynq） │
 │                         │     │ · JWT 升级 RS256           │     │ · 微服务拆分 / gRPC       │
 │                         │     │ · 工单模块                 │     │ · PG Cluster + Redis HA  │
-│                         │     │ · 审计日志异步              │     │ · 异地登录检测            │
+│                         │     │ · 文件存储（S3 兼容）       │     │ · 异地登录检测            │
+│                         │     │ · 审计日志异步              │     │                          │
 └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
    单实例 · Docker Compose          单实例 · Docker Compose          多实例 · Nginx 负载均衡
 ```
@@ -66,6 +67,7 @@ Phase 1：最小可用（跑起来）          Phase 2：业务可用（完善�
 | AK/SK 管理 | 服务间认证完整实现、管理 API | phase2/07-m2m-aksk.md（待编写） |
 | JWT 升级 | HS256 → RS256 + JWKS | phase2/08-jwt-rs256.md（待编写） |
 | 工单模块 | 工单类型配置、状态机、权限模型 | phase2/09-ticket.md（待编写） |
+| 文件存储 | S3 兼容对象存储、预签名 URL 直传 | phase2/10-storage.md（待编写） |
 
 **部署形态**：单实例 Docker Compose
 

@@ -93,13 +93,13 @@ migrate-force:
 
 ```sql
 -- ✅ 正确：幂等，不覆盖
-INSERT INTO roles (id, code, name, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+INSERT INTO roles (code, name, is_system) VALUES
+  ('admin', '管理员', true)
 ON CONFLICT (code) DO NOTHING;
 
 -- ❌ 错误：非幂等，覆盖审计字段
-INSERT INTO roles (id, code, name, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+INSERT INTO roles (code, name, is_system) VALUES
+  ('admin', '管理员', true)
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 -- ❌ 错误：先删后建，重置所有字段
