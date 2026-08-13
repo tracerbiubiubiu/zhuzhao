@@ -24,9 +24,10 @@
 - [14. 运维与可观测性](#14-运维与可观测性)
 - [15. 推荐库与开源参考](#15-推荐库与开源参考)
 - [16. 统一响应与错误处理](#16-统一响应与错误处理)
+  - [16.4 API 设计规范](#164-api-设计规范)
 - [17. API 路由总表](#17-api-路由总表)
 - [18. 分阶段实施计划](#18-分阶段实施计划)
-- [19. 待决策事项](#19-待决策事项)
+- [19. 决策状态总览](#19-决策状态总览)
 
 ---
 
@@ -41,7 +42,7 @@
 | 用户登录 | 账号密码登录，双 Token 签发 |
 | 认证 | Token 校验、无感刷新、登出、多设备管理 |
 | 路由级鉴权 | 基于 RBAC，校验角色对 API 接口的访问权限 |
-| 资源级鉴权 | 基于 ReBAC 关系遍历 + 属主判断，校验对具体资源的操作权限 |
+| 资源级鉴权 | 基于 ltree 组织关系查询 + 属主判断，校验对具体资源的操作权限 |
 | 动态路由 | 接口返回权限树，驱动前端菜单和按钮渲染 |
 | 组织架构 | 实体组织 + 虚拟组（项目组），权限沿组织树继承 |
 | 审计日志 | 记录用户操作行为，支持按用户/组织/操作类型查询 |
@@ -50,7 +51,7 @@
 ### 1.2 设计原则
 
 - **按业务领域纵向切分，按职责横向分层**
-- Casbin 只管路由级 RBAC，资源级权限自研，避免策略爆炸
+- Casbin 只管路由级 RBAC，资源级鉴权用 ltree SQL + 代码内联（Phase 2 按需引入 PDP）
 - 内部包（`internal/`）禁止外部 import
 - 依赖注入，组件可替换
 - 边界优先：先定边界和接口，再填充实现
@@ -124,16 +125,18 @@
 
 > **备注**：如果后期需要 log sampling（高频日志采样降级），可自定义 slog Handler 实现。
 
-#### 2.2.3 资源级权限用 ReBAC 而非纯 ABAC
+#### 2.2.3 资源级鉴权方案
 
-**决策**：路由级用 Casbin RBAC，资源级用 ReBAC（自研关系遍历），属主判断用简单 ABAC（代码内联）。
+**决策**：路由级用 Casbin RBAC，资源级用基于 ltree 的组织关系查询 + 代码内联属主判断。Phase 2 按需评估引入 OpenFGA/SpiceDB 作为独立 PDP。
 
 **理由**：
 
-- 用户场景包含实体组织 + 虚拟组，权限沿组织层级继承，本质是关系图遍历问题。
-- ABAC 基于属性匹配，难以表达组织层级的传递性继承。
-- ReBAC 基于关系遍历，天然支持"用户 → 虚拟组 → 实体组织 → 资源"的权限传递链。
-- Casbin 做 ReBAC 有局限（`g` 角色继承只能表达有限层级），且会导致策略爆炸。
+1. ltree 一条 SQL 做组织树层级判断，不需要 ReBAC 引擎。
+2. 属主判断（`created_by == userID`）是简单 ABAC，代码内联最直接。
+3. Phase 1 资源类型少、关系链浅，引入独立 ReBAC 服务过重。
+4. 接口设计预留迁移路径，Phase 2 可替换为 OpenFGA/SpiceDB client。
+
+> 详见 [design-decisions.md#12 ReBAC 引擎选型](./design-decisions.md#12-rebac-引擎选型自研-vs-openfga-vs-spicedb)
 
 #### 2.2.4 Wire 依赖注入
 
@@ -192,7 +195,7 @@ zhuzhao/
 │   │   ├── auth_service.go        # 登录、Token 签发/刷新/登出
 │   │   ├── user_service.go        # 用户管理
 │   │   ├── rbac_service.go        # 角色-权限业务逻辑
-│   │   ├── authz_service.go       # 资源级鉴权（ReBAC + 属主判断）
+│   │   ├── authz_service.go       # 资源级鉴权（ltree + 属主判断）
 │   │   ├── org_service.go         # 组织架构管理
 │   │   ├── menu_service.go        # 菜单树构建
 │   │   └── audit_service.go       # 审计日志
@@ -346,7 +349,7 @@ Wire Injector (wire.go)
 | | `Logout` | 登出，吊销 AT + 删除 RT |
 | | `KickDevice` | 踢出指定设备 |
 | | `ListDevices` | 查询用户活跃设备列表 |
-| `AuthzService` | `CheckResourcePermission` | 资源级权限校验（属主 → ReBAC） |
+| `AuthzService` | `CheckResourcePermission` | 资源级权限校验（属主 → ltree 组织关系） |
 | `MenuService` | `GetUserMenus` | 获取用户菜单树 |
 | | `GetUserPermissions` | 获取用户按钮权限码列表 |
 | `OrgService` | `GetOrgTree` | 获取组织树 |
@@ -384,7 +387,7 @@ Wire Injector (wire.go)
 │  存储：Casbin + PostgreSQL                                │
 │  问题："editor 角色能访问文章编辑接口吗？"                  │
 │                                                          │
-│  第二层：资源级 ReBAC（关系遍历，自研）                     │
+│  第二层：资源级鉴权（ltree 组织关系查询）                      │
 │  ──────────────────────────────                          │
 │  粒度：资源 × 组织关系 × 操作                              │
 │  策略量：不预生成策略，运行时遍历关系图（零策略存储）         │
@@ -401,7 +404,9 @@ Wire Injector (wire.go)
 └──────────────────────────────────────────────────────────┘
 ```
 
-**执行顺序**：AT 校验 → 第一层 Casbin → 第三层属主（短路） → 第二层 ReBAC
+**执行顺序**：AT 校验 → 第一层 Casbin → 第三层属主（短路） → 第二层 ltree 组织关系
+
+> **架构定位**（2026-08-11 更新）：遵循 OWASP/NIST 分层鉴权标准，第一层（路由级）在中间件层执行（未来微服务化时由 API Gateway 承担），第二层和第三层（资源级）在 Service 层代码内联执行（未来由各业务服务自行承担）。Gateway 不做资源级鉴权，因为它缺少业务数据上下文。详见 [design-decisions.md#5](./design-decisions.md#5-资源级鉴权架构gateway-下放-vs-集中)。
 
 ### 4.2 第一层：路由级 RBAC（Casbin）
 
@@ -427,7 +432,7 @@ g, user_001, editor
 
 > 详细模型定义见 `configs/casbin_model.conf`，实现细节后续补充。
 
-### 4.3 第二层：资源级 ReBAC（自研关系遍历）
+### 4.3 第二层：资源级鉴权（ltree 组织关系查询）
 
 **职责**：校验"用户通过组织关系能否操作该具体资源"。
 
@@ -477,7 +482,13 @@ SELECT EXISTS (
 - 判断方式：资源表中的 `creator_id == userID`
 - 短路优先：在资源级鉴权中最先执行，命中即放行
 
-### 4.5 策略爆炸问题的解决
+### 4.5 资源抽象与自注册机制
+
+第二层和第三层的鉴权逻辑通过统一的资源接口实现。每种资源类型（用户、角色、组织、工单等）实现 `Resource` 接口，在 Service 构造函数中自注册到 `ResourceRegistry`。Handler 通过 `registry.Authorize(ctx, resourceCode, req)` 统一调用。
+
+详见 [design-decisions.md#6 资源抽象与自注册机制](./design-decisions.md#6-资源抽象与自注册机制)。
+
+### 4.6 策略爆炸问题的解决
 
 传统方案（全部塞进 Casbin）的策略量：
 
@@ -489,10 +500,12 @@ SELECT EXISTS (
 
 | 层级 | 策略量 | 说明 |
 |------|--------|------|
-| 第一层 Casbin RBAC | ~1,000 条 | 角色数 × API数 × 方法数 |
-| 第二层 ReBAC | 0 条 | 运行时查询，不预生成 |
-| 第三层 ABAC | 0 条 | 代码逻辑 |
-| **总计** | **~1,000 条** | 内存无压力 |
+| 路由级 Casbin（全局唯一） | ~1,000 条 | 角色数 × API数 × 方法数 |
+| 资源级代码内联 | 0 条 | 属主判断、组织关系（SQL ltree） |
+| 资源级独立 enforcer（按需） | 每资源独立 | 仅策略可配置的复杂资源引入 |
+| **总计** | **~1,000 条 + 按需** | 内存无压力 |
+
+**每资源独立 Enforcer**：对于需要管理员可配置策略的复杂资源，为其创建独立的 Casbin enforcer 实例和独立策略表（`casbin_rule_{resource}`），避免策略互相影响。简单资源用代码内联判断，不引入 Casbin。详见 [design-decisions.md#8 Casbin 策略爆炸](./design-decisions.md#8-casbin-策略爆炸每资源独立-enforcer)。
 
 ---
 
@@ -994,22 +1007,25 @@ UPDATE organizations SET parent_id = '00000000-0000-0000-0000-000000000001'
 UPDATE organizations SET parent_id = '00000000-0000-0000-0000-000000000002'
   WHERE code IN ('fe', 'be');
 
--- 角色
-INSERT INTO roles (id, code, name, description) VALUES
-('00000000-0000-0000-0000-000000000010', 'admin', '管理员', '系统管理员，拥有全部权限'),
-('00000000-0000-0000-0000-000000000011', 'editor', '编辑', '内容编辑，可管理文章'),
-('00000000-0000-0000-0000-000000000012', 'viewer', '访客', '只读访问');
+-- 角色（幂等：已存在则跳过，不覆盖审计字段）
+INSERT INTO roles (id, code, name, description, is_system) VALUES
+('00000000-0000-0000-0000-000000000010', 'admin', '管理员', '系统管理员，拥有全部权限', true),
+('00000000-0000-0000-0000-000000000011', 'editor', '编辑', '内容编辑，可管理文章', true),
+('00000000-0000-0000-0000-000000000012', 'viewer', '访客', '只读访问', true)
+ON CONFLICT (code) DO NOTHING;
 
 -- 超级管理员用户（密码: admin123，bcrypt hash 需实际生成）
-INSERT INTO users (id, username, password, real_name, status) VALUES
-('00000000-0000-0000-0000-000000000020', 'admin', '$2a$12$xxxxx', '系统管理员', 1);
+INSERT INTO users (id, username, password, real_name, status, is_system) VALUES
+('00000000-0000-0000-0000-000000000020', 'admin', '$2a$12$xxxxx', '系统管理员', 1, true)
+ON CONFLICT (username) DO NOTHING;
 
 -- admin 用户关联到集团组织
 INSERT INTO user_orgs (user_id, org_id, role_id, is_primary) VALUES
 ('00000000-0000-0000-0000-000000000020',
  '00000000-0000-0000-0000-000000000001',
  '00000000-0000-0000-0000-000000000010',
- true);
+ true)
+ON CONFLICT (user_id, org_id, role_id) DO NOTHING;
 
 -- 组织级权限模板
 INSERT INTO org_permissions (role_id, resource_type, action, scope) VALUES
@@ -1052,7 +1068,73 @@ volumes:
   redis_data:
 ```
 
-### 11.2 配置文件
+### 11.2 生产环境部署
+
+**反向代理：Nginx**
+
+选型理由：暂时没有域名（Caddy/Traefik 的自动 HTTPS 优势用不上），Nginx 配置成熟、资源占用低、团队熟悉度高。有域名后可评估切换 Caddy。
+
+```
+客户端
+  │ HTTP（Phase 1 无 TLS，Phase 2 加域名后配 HTTPS）
+  ▼
+Nginx（反向代理）
+  │  - 静态文件服务（前端 SPA）
+  │  - API 请求转发到 Go 进程
+  │  - 超时控制、连接数限制
+  │  - Phase 2: TLS 终止 + HTTP/2
+  ▼
+Go 进程（Gin :8080）
+  ├── PostgreSQL 15（云托管 Cluster）
+  └── Redis 6.2
+```
+
+**Nginx 核心配置要点**：
+
+```
+server {
+    listen 80;
+    # server_name zhuzhao.example.com;  # Phase 2 有域名后启用
+
+    # 前端静态文件
+    location / {
+        root /var/www/zhuzhao;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API 转发
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Request-Id $request_id;
+        proxy_read_timeout 30s;
+        proxy_connect_timeout 5s;
+    }
+
+    # 健康检查（不转发，Nginx 直接管）
+    location /health/ {
+        proxy_pass http://127.0.0.1:8080;
+        access_log off;
+    }
+
+    # Swagger 文档
+    location /swagger/ {
+        proxy_pass http://127.0.0.1:8080;
+    }
+}
+```
+
+**各阶段 Nginx 演进**：
+
+| 阶段 | Nginx 职责 | TLS | 说明 |
+|------|-----------|-----|------|
+| Phase 1 | 静态文件 + API 转发 | 无（HTTP） | 单实例，无域名 |
+| Phase 2 | + TLS 终止 + HTTP/2 | 有域名后启用 | 可配合 certbot 自动续期 |
+| Phase 3 | + 多服务路由 + 负载均衡 | 有 | 按路径分发到不同微服务 |
+
+### 11.3 配置文件
 
 ```yaml
 # configs/config.yaml
@@ -1076,7 +1158,9 @@ redis:
   password: ""
 
 jwt:
-  secret: "your-secret-key"
+  secret: "${JWT_SECRET}"            # Phase 1: HS256 对称密钥（环境变量）
+  # private_key: "${JWT_PRIVATE_KEY}"  # Phase 2: RS256 RSA 私钥（环境变量/文件）
+  # jwks_url: "/.well-known/jwks.json"  # Phase 2: JWKS 公钥分发
   access_ttl: 2h
   refresh_ttl: 168h  # 7天
 
@@ -1181,7 +1265,7 @@ log:
 | 用户菜单树 | `menu:user:{userId}` | 30min | 菜单变更、角色菜单关联变更 |
 | 用户组织列表 | `orgs:user:{userId}` | 30min | 用户组织关系变更 |
 | 组织树全量 | `org:tree` | 60min | 组织结构变更 |
-| ReBAC 权限判断结果 | `authz:{userId}:{resType}:{resId}:{action}` | 5min | 权限变更时按 user 粒度清除 |
+| 资源级鉴权结果 | `authz:{userId}:{resType}:{resId}:{action}` | 5min | 权限变更时按 user 粒度清除 |
 
 **缓存模式**：Cache-Aside（先查缓存，miss 查 DB 再回填）
 
@@ -1217,10 +1301,18 @@ log:
 | 措施 | 说明 |
 |------|------|
 | CORS | 白名单域名配置，通过中间件处理 |
-| SQL 注入 | 全部使用参数化查询（pgx 原生支持） |
+| SQL 注入 | 全部使用参数化查询（pgx 原生支持 `$1, $2` 占位符），**禁止字符串拼接 SQL** |
 | 请求体大小限制 | 中间件限制 `max_body_size`（如 1MB） |
 | 安全响应头 | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY` 等 |
 | HTTPS | 生产环境强制 TLS（由反向代理/负载均衡层处理） |
+
+**SQL 注入防护要点**：
+
+1. **pgx 参数化查询**——所有 SQL 必须使用 `$1, $2` 占位符，pgx 会自动做类型转义
+2. **禁止 `fmt.Sprintf` 拼接 SQL**——包括 WHERE 条件、ORDER BY、LIMIT 等
+3. **列表过滤的 WHERE 子句**——资源级列表过滤生成 WHERE 时，字段名用白名单校验，值用参数化传入
+4. **ltree 路径查询**——组织树路径查询也必须参数化，`org_path @> $1`
+5. **动态 SQL 场景**——如必须动态拼接表名/列名，必须用白名单校验，不允许直接拼用户输入
 
 ### 13.4 配置安全
 
@@ -1280,6 +1372,29 @@ migrations/
 └── ...
 ```
 
+**种子数据幂等性原则**：
+
+所有种子数据 migration 必须使用 `ON CONFLICT DO NOTHING`，确保重复执行不覆盖已有数据（特别是 `created_at`、`created_by` 等审计字段）。详见 [design-decisions.md#7 系统重启与数据初始化幂等性](./design-decisions.md#7-系统重启与数据初始化幂等性)。
+
+```sql
+-- 正确：幂等，不覆盖
+INSERT INTO roles (id, code, name, is_system) VALUES
+  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- 错误：非幂等，覆盖审计字段
+INSERT INTO roles (id, code, name, is_system) VALUES
+  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
+```
+
+**运行时 Sync 安全规则**：
+
+应用启动时的数据同步（如 Casbin 策略同步）遵循：
+1. `created_at`/`created_by` 永远不覆盖
+2. 系统资源（`is_system = true`）不被删除
+3. Sync 失败不阻塞启动（仅 Warn 日志）
+
 ---
 
 ## 15. 推荐库与开源参考
@@ -1309,7 +1424,7 @@ migrations/
 
 | 模块/用途 | 推荐 | 备选 | 说明 |
 |-----------|------|------|------|
-| JWT 签发与解析 | `golang-jwt/jwt/v5` | — | 社区标准 JWT 库，维护活跃 |
+| JWT 签发与解析 | `golang-jwt/jwt/v5` | — | 社区标准 JWT 库，维护活跃。Phase 1: HS256；Phase 2: RS256 + JWKS |
 | 密码哈希 | `golang.org/x/crypto/bcrypt` | `x/crypto/argon2`（更安全但更重） | bcrypt 足够，cost ≥ 12 |
 | UUID 生成 | `google/uuid` | `gofrs/uuid` | uuid.New() 生成 UUIDv4 |
 | CORS 中间件 | `gin-contrib/cors` | — | Gin 官方 contrib，配置简单 |
@@ -1319,7 +1434,7 @@ migrations/
 | 模块/用途 | 推荐 | 说明 |
 |-----------|------|------|
 | Casbin 核心 | `casbin/casbin/v2` | 使用 `SyncedEnforcer` 支持并发安全 |
-| PostgreSQL Adapter | `casbin/casbin-pg-adapter` | 注意确认与 Casbin v2 版本兼容 |
+| PostgreSQL Adapter | `pckhoi/casbin-pgx-adapter/v3` | Casbin v2 + pgx v5，支持 FilteredAdapter。详见 `design-decisions.md` §10 |
 | Redis Watcher | `casbin/redis-watcher` | 多实例部署时用于策略同步广播 |
 
 ### 15.5 中间件与安全
@@ -1338,6 +1453,7 @@ migrations/
 | 缓存防击穿 | `golang.org/x/sync/singleflight` | — | 标准库扩展，同 key 只放一个请求回源 |
 | 分布式锁 | 自研（Redis `SET NX PX` + Lua 释放） | `bsm/redislock`、`redsync/redsync` | 简单场景自研足够；复杂场景用 redsync（Redlock 算法） |
 | 优雅关闭 | Go 1.16+ 标准库 `os/signal` + `http.Server.Shutdown` | — | Gin 本身不管理关闭，需在 app 层编排 |
+| 反向代理 | Nginx | Caddy（有域名后可评估） | 无域名阶段最简方案，团队熟悉度高 |
 
 ### 15.7 API 文档与测试
 
@@ -1348,6 +1464,17 @@ migrations/
 | 断言库 | `stretchr/testify` | `smartystreets/goconvey` | testify 是 Go 测试断言事实标准 |
 | Mock | `uber-go/mock`（原 `gomock`） | `matryer/moq` | uber-go/mock 是 gomock 的活跃 fork |
 | 测试容器 | `testcontainers/testcontainers-go` | — | 集成测试启动真实 PG + Redis 容器 |
+
+**测试策略（测试先行）**：
+
+核心原则：先写测试，再写实现。详见 [implementation-plan.md 测试策略](./implementation-plan.md#测试策略)。
+
+| 层级 | 范围 | Mock 策略 |
+|------|------|----------|
+| Service 单元测试 | 业务逻辑 | Mock Repository 接口 |
+| Repository 集成测试 | SQL 正确性 | 不 Mock，testcontainers 真实 PG |
+| Middleware 单元测试 | 认证/鉴权逻辑 | Mock JWT Manager + Redis |
+| Handler 集成测试 | 端到端 API | Mock Service + 真实 Gin 路由 |
 
 ### 15.8 可观测性（后期补充）
 
@@ -1457,6 +1584,46 @@ handler 层 → 识别 errcode，转换为统一响应格式 + HTTP 状态码
 middleware 层 → recovery 中间件兜底未处理的 panic
 ```
 
+### 16.4 API 设计规范
+
+**HTTP 方法**：
+
+本项目仅使用 GET 和 POST 两种方法，不使用 PUT、DELETE、PATCH 等方法。理由：GET 和 POST 覆盖所有场景，简化前端对接和网关配置，避免非常规方法在部分代理/防火墙环境下被拦截的问题。
+
+| 方法 | 用途 | 示例 |
+|------|------|------|
+| GET | 查询（列表、详情） | `GET /api/v1/users`、`GET /api/v1/users/:id` |
+| POST | 创建、更新、删除、操作类接口 | `POST /api/v1/users`（创建）、`POST /api/v1/users/:id/update`（更新）、`POST /api/v1/users/:id/delete`（删除）、`POST /api/v1/auth/login`（登录） |
+
+**URL 设计原则**：
+
+1. **URL 简洁，不承载业务语义**——参数放 request body（POST/PUT）或 query string（GET），不要在 URL 路径中嵌套过多信息
+2. **资源命名用名词复数**——`/api/v1/users`，不用 `/api/v1/getUser`
+3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/:id/disable`
+4. **过滤/排序/分页用 query string**——`GET /api/v1/users?page=1&page_size=20&role=admin&sort=created_at:desc`
+5. **避免深层嵌套**——URL 层级不超过 3 层，如 `/api/v1/orgs/:org_id/members`
+
+**正确示例**：
+
+```
+GET  /api/v1/users/:id                    ✅ 路径只有资源 ID
+GET  /api/v1/users?page=1&role=admin      ✅ 过滤条件用 query string
+POST /api/v1/users                        ✅ 创建数据放 body
+POST /api/v1/users/:id/roles              ✅ 给用户分配角色，body 传 role_ids
+POST /api/v1/users/:id/delete             ✅ 删除操作用 POST + 动词子路径
+```
+
+**错误示例**：
+
+```
+GET  /api/v1/users/role/admin/page/1      ❌ 过滤条件塞进路径
+GET  /api/v1/getUserById?id=123           ❌ URL 含动词
+POST /api/v1/users/create                 ❌ 路径含 create 动词（POST 本身即创建）
+PUT  /api/v1/users/:id                    ❌ 不使用 PUT，用 POST /api/v1/users/:id/update
+DELETE /api/v1/users/:id                  ❌ 不使用 DELETE，用 POST /api/v1/users/:id/delete
+GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过深
+```
+
 ---
 
 ## 17. API 路由总表
@@ -1471,8 +1638,8 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | `/api/v1/auth/refresh` | POST | ❌ | 刷新 Token，RT 轮换 |
 | `/api/v1/auth/logout` | POST | ✅ | 登出 |
 | `/api/v1/auth/devices` | GET | ✅ | 查询活跃设备列表 |
-| `/api/v1/auth/devices/:deviceId` | DELETE | ✅ | 踢出指定设备 |
-| `/api/v1/auth/password` | PUT | ✅ | 修改密码 |
+| `/api/v1/auth/devices/:deviceId/delete` | POST | ✅ | 踢出指定设备 |
+| `/api/v1/auth/password/update` | POST | ✅ | 修改密码 |
 | `/api/v1/auth/password/reset` | POST | ❌ | 密码重置（通过邮箱/手机） |
 
 ### 17.2 用户模块
@@ -1482,15 +1649,15 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | `/api/v1/users` | GET | ✅ | 用户列表（分页+筛选） |
 | `/api/v1/users` | POST | ✅ | 创建用户 |
 | `/api/v1/users/:id` | GET | ✅ | 用户详情 |
-| `/api/v1/users/:id` | PUT | ✅ | 更新用户 |
-| `/api/v1/users/:id` | DELETE | ✅ | 删除用户（软删除） |
-| `/api/v1/users/:id/status` | PATCH | ✅ | 启用/禁用用户 |
+| `/api/v1/users/:id/update` | POST | ✅ | 更新用户 |
+| `/api/v1/users/:id/delete` | POST | ✅ | 删除用户（软删除） |
+| `/api/v1/users/:id/status` | POST | ✅ | 启用/禁用用户 |
 | `/api/v1/users/:id/orgs` | GET | ✅ | 用户所属组织列表 |
-| `/api/v1/users/:id/roles` | PUT | ✅ | 分配用户角色 |
+| `/api/v1/users/:id/roles` | POST | ✅ | 分配用户角色 |
 | `/api/v1/user/menus` | GET | ✅ | 当前用户菜单树 |
 | `/api/v1/user/permissions` | GET | ✅ | 当前用户权限码 |
 | `/api/v1/user/profile` | GET | ✅ | 当前用户信息 |
-| `/api/v1/user/profile` | PUT | ✅ | 更新个人信息 |
+| `/api/v1/user/profile/update` | POST | ✅ | 更新个人信息 |
 
 ### 17.3 角色模块
 
@@ -1499,10 +1666,10 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | `/api/v1/roles` | GET | ✅ | 角色列表 |
 | `/api/v1/roles` | POST | ✅ | 创建角色 |
 | `/api/v1/roles/:id` | GET | ✅ | 角色详情 |
-| `/api/v1/roles/:id` | PUT | ✅ | 更新角色 |
-| `/api/v1/roles/:id` | DELETE | ✅ | 删除角色 |
+| `/api/v1/roles/:id/update` | POST | ✅ | 更新角色 |
+| `/api/v1/roles/:id/delete` | POST | ✅ | 删除角色 |
 | `/api/v1/roles/:id/menus` | GET | ✅ | 角色关联菜单 |
-| `/api/v1/roles/:id/menus` | PUT | ✅ | 分配角色菜单 |
+| `/api/v1/roles/:id/menus` | POST | ✅ | 分配角色菜单 |
 | `/api/v1/roles/:id/permissions` | GET | ✅ | 角色权限策略 |
 
 ### 17.4 组织模块
@@ -1512,9 +1679,9 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | `/api/v1/orgs` | GET | ✅ | 组织树 |
 | `/api/v1/orgs` | POST | ✅ | 创建组织 |
 | `/api/v1/orgs/:id` | GET | ✅ | 组织详情 |
-| `/api/v1/orgs/:id` | PUT | ✅ | 更新组织 |
-| `/api/v1/orgs/:id` | DELETE | ✅ | 删除组织 |
-| `/api/v1/orgs/:id/move` | PATCH | ✅ | 移动组织（变更父节点） |
+| `/api/v1/orgs/:id/update` | POST | ✅ | 更新组织 |
+| `/api/v1/orgs/:id/delete` | POST | ✅ | 删除组织 |
+| `/api/v1/orgs/:id/move` | POST | ✅ | 移动组织（变更父节点） |
 | `/api/v1/orgs/:id/members` | GET | ✅ | 组织成员列表 |
 | `/api/v1/orgs/:id/members` | POST | ✅ | 添加成员到组织 |
 
@@ -1525,8 +1692,8 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | `/api/v1/menus` | GET | ✅ | 菜单树（全量） |
 | `/api/v1/menus` | POST | ✅ | 创建菜单 |
 | `/api/v1/menus/:id` | GET | ✅ | 菜单详情 |
-| `/api/v1/menus/:id` | PUT | ✅ | 更新菜单 |
-| `/api/v1/menus/:id` | DELETE | ✅ | 删除菜单 |
+| `/api/v1/menus/:id/update` | POST | ✅ | 更新菜单 |
+| `/api/v1/menus/:id/delete` | POST | ✅ | 删除菜单 |
 
 ### 17.6 审计模块
 
@@ -1559,12 +1726,13 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | 数据库 | PG + Redis Docker Compose + 迁移脚本 | 一键启动开发环境 |
 | 统一响应 | response 包 + errcode 包 | 统一 JSON 输出 |
 | 健康检查 | `/health/live` + `/health/ready` | K8s/Docker 探针 |
-| 种子数据 | 初始化 admin 角色 + 超管用户 + 初始菜单 | 首次启动可用 |
+| 种子数据 | 初始化 admin 角色 + 超管用户 + 初始菜单 | 首次启动可用，幂等（`ON CONFLICT DO NOTHING`） |
 | 用户登录 | 账号密码 + 双 Token 签发 | AT + RT |
 | Token 校验 | JWT 中间件 + 黑名单 | 路由级认证 |
 | Token 刷新 | RT 轮换 | 无感刷新 |
 | 登出 | AT 黑名单 + RT 删除 | 会话结束 |
 | 路由级鉴权 | Casbin RBAC 中间件 | 接口权限控制 |
+| 资源注册表 | ResourceRegistry + Resource 接口 | 资源自注册机制骨架 |
 | 用户管理 | CRUD + 启用禁用 | 基础用户管理 |
 | 角色管理 | CRUD + 菜单分配 | 基础角色管理 |
 | 菜单管理 | CRUD | 基础菜单管理 |
@@ -1579,7 +1747,7 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 |------|------|------|
 | 组织架构 | 组织 CRUD + 树形展示 + 移动节点 | 实体组织 + 虚拟组 |
 | 用户-组织 | 用户分配到组织 + 组织内角色 | 多对多关系 |
-| 资源级鉴权 | ReBAC 关系遍历 + 属主判断 | 第二层 + 第三层权限 |
+| 资源级鉴权 | ltree 组织关系查询 + 属主判断 | 第二层 + 第三层权限 |
 | 组织级权限 | org_permissions 管理 | scope 配置 |
 | 审计日志 | 中间件记录 + 异步写入 + 查询 | L1 channel 方案 |
 | 多设备管理 | 设备列表 + 踢出设备 | Redis 设备管理 |
@@ -1618,32 +1786,48 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 
 ---
 
-## 19. 待决策事项
+## 19. 决策状态总览
 
-| 事项 | 当前状态 | 备注 |
-|------|----------|------|
-| PostgreSQL 环境搭建 | ✅ 已确定 | Docker Compose 单机 |
-| Casbin 策略存储 | ✅ 已确定 | PostgreSQL |
-| 权限模型 | ✅ 已确定 | RBAC（路由级）+ ReBAC（资源级）+ ABAC（属主） |
-| 日志库 | ✅ 已确定 | slog + Lumberjack |
-| 双 Token 机制 | ✅ 已确定 | AT(2h) + RT(7d) + RT 轮换 + 多设备管理 |
-| 依赖注入 | ✅ 已确定 | Google Wire，编译时生成，无运行时开销 |
-| 并发与事务 | ✅ 已梳理 | 见第 12 章：分布式锁 4 场景，跨存储操作失败策略已定义 |
-| 安全加固 | ✅ 已补充 | 见第 13 章：密码安全、登录安全、API 安全、配置安全 |
-| 运维可观测性 | ✅ 已补充 | 见第 14 章：优雅关闭、健康检查、DB 迁移；Metrics 后期补充 |
-| 审计日志可靠性 | ✅ 改进 | Redis List 轻量队列（L2 方案），不引入重量级 MQ |
-| 缓存策略 | ✅ 已设计 | Cache-Aside + singleflight 防击穿，按 user 粒度失效 |
-| 统一响应与错误码 | ✅ 已补充 | 见第 16 章：统一 JSON 结构 + 分段错误码 + HTTP 映射 |
-| API 路由总表 | ✅ 已补充 | 见第 17 章：7 个模块完整端点清单 |
-| 分阶段实施计划 | ✅ 已制定 | 见第 18 章：Phase 1 跑起来 → Phase 2 业务可用 → Phase 3 生产加固 |
-| Schema 完善 | ✅ 已补充 | 软删除、乐观锁、负责人、第三方登录预留、扩展字段 |
-| 种子数据 | ✅ 已补充 | admin 角色 + 超管用户 + 组织关联 |
-| 消息队列 | ⏳ 暂不需要 | 当前阶段 Redis Pub/Sub + List 足够，后期按需评估 |
-| 多租户 | ⏳ 预留 | 表和模型预留 tenant_id，暂不实现 |
-| API 版本管理 | ✅ 已确定 | `/api/v1` 前缀 |
-| 是否开始搭建代码 | ⏳ 待确认 | 方案基本完整，可开始 Phase 1 骨架搭建 |
-| log sampling | ⏳ 后期评估 | 如需要可自定义 slog Handler |
-| Casbin Watcher | ⏳ Phase 3 | 多实例部署时必须 |
-| 验证码 / 异地登录检测 | ⏳ Phase 3 | 登录安全增强，当前先做限流+锁定 |
-| Metrics + 分布式追踪 | ⏳ Phase 3 | 先实现健康检查，可观测性按需补充 |
+> 本表记录架构设计中所有关键决策的当前状态。`✅` 表示已决策，`⏳` 表示暂缓/后期阶段。
+
+### 19.1 已决策项
+
+| 事项 | 决策 | 参考章节 |
+|------|------|----------|
+| PostgreSQL 环境搭建 | Docker Compose 单机 | §5 |
+| Casbin 策略存储 | PostgreSQL | §7 |
+| 权限模型 | RBAC（路由级）+ 资源级（代码内联 + ltree SQL） | §7、`design-decisions.md` §5 |
+| JWT 签名算法 | Phase 1: HS256 → Phase 2: RS256 + JWKS | `design-decisions.md` §9 |
+| 日志库 | slog + Lumberjack | §15 |
+| 双 Token 机制 | AT(2h) + RT(7d) + RT 轮换 + 多设备管理 | §8 |
+| 依赖注入 | Google Wire，编译时生成 | §4 |
+| 并发与事务 | 分布式锁 4 场景，跨存储操作失败策略 | §12 |
+| 安全加固 | 密码安全、登录安全、API 安全、配置安全 | §13 |
+| 运维可观测性 | 优雅关闭、健康检查、DB 迁移；Metrics 后期补充 | §14 |
+| 审计日志可靠性 | Redis List 轻量队列，不引入重量级 MQ | §9 |
+| 缓存策略 | Cache-Aside + singleflight 防击穿，按 user 粒度失效 | §8 |
+| 统一响应与错误码 | 统一 JSON 结构 + 分段错误码 + HTTP 映射 | §16 |
+| API 路由总表 | 7 个模块完整端点清单 | §17 |
+| 分阶段实施计划 | Phase 1 跑起来 → Phase 2 业务可用 → Phase 3 生产加固 | §18 |
+| Schema 完善 | 软删除、乐观锁、负责人、第三方登录预留、扩展字段 | §11 |
+| 种子数据 | admin 角色 + 超管用户 + 组织关联（`ON CONFLICT DO NOTHING` 幂等） | `proposal/data-init.md` |
+| API 版本管理 | `/api/v1` 前缀 | §17 |
+| 资源级鉴权架构 | 分层 PEP/PDP：Gateway 路由级 + Service 资源级 | `design-decisions.md` §5 |
+| 资源抽象机制 | Resource 接口 + 自注册 | `proposal/resource-model.md` |
+| Casbin 策略爆炸 | 每资源独立 Enforcer | `design-decisions.md` §8 |
+| 数据库高可用 | PG Cluster（2+VIP）云托管；Phase 1 单节点 | `design-decisions.md` §11 |
+| ReBAC 引擎选型 | Phase 1 ltree+内联；Phase 2 按需评估 OpenFGA/SpiceDB | `design-decisions.md` §12 |
+| 微服务通信协议 | gRPC 内部 + REST 外部（gRPC-Gateway） | `design-decisions.md` §13 |
+| 测试策略 | 测试先行：先写测试再写实现 | `implementation-plan.md` 测试策略 |
+
+### 19.2 暂缓项（后期阶段）
+
+| 事项 | 当前状态 | 计划阶段 |
+|------|----------|----------|
+| 消息队列 | 当前 Redis Pub/Sub + List 足够 | Phase 3 按需评估 |
+| 多租户 | 表和模型预留 tenant_id | Phase 3 |
+| Casbin Watcher | 多实例部署时必须 | Phase 3 |
+| 验证码 / 异地登录检测 | 登录安全增强 | Phase 3 |
+| Metrics + 分布式追踪 | 先实现健康检查 | Phase 3 |
+| log sampling | 如需要可自定义 slog Handler | Phase 3 |
 | 各模块实现细节 | ⏳ 待补充 | 边界已定，后续逐模块讨论实现 |

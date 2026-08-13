@@ -1,7 +1,20 @@
 # 实施计划
 
-> 更新时间：2026-08-10  
-> 目标：把框架搭起来，跑通核心链路，不纠结细节
+> 更新时间：2026-08-12  
+> Phase 1 核心目标：**为后续所有服务搭好认证鉴权框架**。工单等业务模块 Phase 2 开始。
+
+---
+
+## Phase 1 定位
+
+Phase 1 不做业务模块（工单、审批等），核心目标是：
+
+1. **认证框架**：双 JWT 登录、RT 轮换、多设备管理、登出黑名单
+2. **鉴权框架**：路由级 Casbin RBAC + 资源级 ResourceRegistry 自注册机制
+3. **基础管理**：用户/角色/组织/菜单的 CRUD + 动态路由（前端菜单树+权限码）
+4. **基础设施**：PG 迁移、Redis 连接、Wire DI、优雅关闭、审计日志
+
+工单模块设计已完成（见 `modules/ticket.md`），Phase 2 开始实现。
 
 ---
 
@@ -36,6 +49,74 @@
 | JWT 中间件黑名单 | ❌ | TODO 标记 |
 | Casbin 策略加载 | ❌ | 内存 enforcer，无策略 |
 | Docker 镜像 | ❌ | 未拉取 |
+
+---
+
+## 测试策略
+
+### 核心原则：测试先行
+
+每个模块的实现必须遵循"先写测试，再写实现"的节奏：
+
+1. **接口定义先行**——先定义 Service/Repository 接口方法签名
+2. **测试用例先行**——根据接口契约编写测试用例（含正常、边界、异常场景）
+3. **实现代码**——编写实现使测试通过
+4. **重构**——测试通过后重构代码，确保测试仍然通过
+
+### 测试分层
+
+| 层级 | 范围 | 工具 | 运行时机 |
+|------|------|------|---------|
+| 单元测试 | Service 层业务逻辑（Mock Repository） | `testing` + `testify` + `uber-go/mock` | 每次 `make test` |
+| 单元测试 | Repository 层 SQL（testcontainers PG） | `testcontainers-go` + `pgx` | 每次 `make test-integration` |
+| 单元测试 | Middleware（Mock JWT Manager + Redis） | `httptest` + `testify` | 每次 `make test` |
+| 集成测试 | 端到端 API（真实 PG + Redis 容器） | `httptest` + `testcontainers-go` | CI 流水线 |
+| 基准测试 | 关键路径性能（JWT 解析、Casbin Enforce） | `testing.B` | 按需 |
+
+### 测试目录结构
+
+```
+internal/
+├── service/
+│   ├── auth_service.go
+│   ├── auth_service_test.go          # 单元测试（Mock Repo）
+│   └── ...
+├── repository/
+│   ├── user_repo.go
+│   ├── user_repo_test.go             # 集成测试（testcontainers PG）
+│   └── ...
+├── middleware/
+│   ├── jwt.go
+│   ├── jwt_test.go                   # 单元测试（Mock JWT + Redis）
+│   └── ...
+├── handler/
+│   ├── auth_handler.go
+│   ├── auth_handler_test.go          # 集成测试（httptest + 真实路由）
+│   └── ...
+└── testutil/
+    ├── testdb.go                     # testcontainers PG helper
+    ├── testredis.go                  # testcontainers Redis helper
+    └── fixture.go                    # 测试数据工厂
+```
+
+### Mock 策略
+
+- **Service 层测试**：Mock Repository 接口（`uber-go/mock` 生成 mock）
+- **Handler 层测试**：Mock Service 接口 + 真实 Gin 路由（`httptest`）
+- **Repository 层测试**：不 Mock，用 testcontainers 启动真实 PG（避免 SQL 行为与 mock 不一致）
+- **Middleware 测试**：Mock JWT Manager + Redis Client
+
+### 每个 Step 的测试要求
+
+| Step | 测试先行要求 |
+|------|------------|
+| Step 1（DB 迁移） | 迁移脚本 up/down 幂等性验证 |
+| Step 2（Repository） | 先写 `*_repo_test.go`：CRUD 正常、软删除、唯一约束冲突 |
+| Step 3（认证核心） | 先写 `auth_service_test.go`：登录成功/密码错误/用户禁用/RT 轮换/RT 过期 |
+| Step 4（JWT 中间件） | 先写 `jwt_test.go`：无 Token/过期 Token/黑名单 Token/有效 Token |
+| Step 5（基础 CRUD） | 每个 Service 先写测试再写实现 |
+| Step 6（动态路由） | 先写菜单树构建测试：空树/多层嵌套/权限码过滤 |
+| Step 7（Casbin） | 先写鉴权测试：admin bypass/有权限/无权限/通配符匹配 |
 
 ---
 
