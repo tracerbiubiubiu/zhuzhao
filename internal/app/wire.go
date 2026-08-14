@@ -9,6 +9,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
@@ -44,6 +45,8 @@ var serviceSet = wire.NewSet(
 	service.NewOrgService,
 	service.NewMenuService,
 	service.NewAuditService,
+	wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)),
+	wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)),
 )
 
 var handlerSet = wire.NewSet(
@@ -52,8 +55,7 @@ var handlerSet = wire.NewSet(
 	handler.NewRoleHandler,
 	handler.NewOrgHandler,
 	handler.NewMenuHandler,
-	// 告诉 Wire 如何构造 router.Deps 结构体
-	wire.Struct(new(router.Deps), "*"),
+	handler.NewAuditHandler,
 )
 
 // InitializeApp Wire 注入入口
@@ -63,6 +65,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		repoSet,
 		serviceSet,
 		handlerSet,
+		wire.Struct(new(router.Deps), "*"),
 		router.New,
 		NewApp,
 		// 从 *config.Config 中提取各子配置结构体，供基础设施 Provider 使用

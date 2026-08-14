@@ -28,7 +28,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 			return
 		}
 		if len(roles) == 0 {
-			response.Forbidden(c, errcode.ErrNoPermission.Message)
+			response.ForbiddenError(c, errcode.ErrNoRoles)
 			c.Abort()
 			return
 		}
@@ -46,7 +46,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 		}
 
 		if !allowed {
-			response.Forbidden(c, errcode.ErrNoPermission.Message)
+			response.ForbiddenError(c, errcode.ErrNoPermission)
 			c.Abort()
 			return
 		}

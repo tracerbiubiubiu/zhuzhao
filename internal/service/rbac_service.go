@@ -31,3 +31,8 @@ func (s *RBACService) UpdateRole(ctx context.Context, id string, req interface{}
 func (s *RBACService) DeleteRole(ctx context.Context, id string) error {
 	return fmt.Errorf("not implemented")
 }
+
+// GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）
+func (s *RBACService) GetRoleCodesByUserID(userID int64) ([]string, error) {
+	return nil, fmt.Errorf("not implemented")
+}

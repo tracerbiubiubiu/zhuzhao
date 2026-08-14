@@ -16,22 +16,27 @@ func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
 	return &MenuHandler{menuService: menuService}
 }
 
+// GetTree GET /api/v1/menus
 func (h *MenuHandler) GetTree(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
+// Create POST /api/v1/menus
 func (h *MenuHandler) Create(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
+// Get GET /api/v1/menus/:id
 func (h *MenuHandler) Get(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
+// Update POST /api/v1/menus/update（id 放 body）
 func (h *MenuHandler) Update(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
+// Delete POST /api/v1/menus/delete（id 放 body）
 func (h *MenuHandler) Delete(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }

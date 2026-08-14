@@ -51,11 +51,11 @@ func New(deps Deps) *gin.Engine {
 	})
 	r.GET("/health/ready", func(c *gin.Context) {
 		if err := deps.DBPool.Ping(c.Request.Context()); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "db": err.Error()})
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "component": "db"})
 			return
 		}
 		if err := deps.RedisClient.Ping(c.Request.Context()).Err(); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "redis": err.Error()})
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "component": "redis"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -89,11 +89,11 @@ func New(deps Deps) *gin.Engine {
 				users.GET("", deps.UserHandler.List)
 				users.POST("", deps.UserHandler.Create)
 				users.GET("/:id", deps.UserHandler.Get)
-				users.POST("/:id/update", deps.UserHandler.Update)
-				users.POST("/:id/delete", deps.UserHandler.Delete)
-				users.POST("/:id/status", deps.UserHandler.UpdateStatus)
-				users.POST("/:id/roles", deps.UserHandler.SetRoles)
-				users.POST("/:id/password/reset", deps.UserHandler.ResetPassword)
+				users.POST("/update", deps.UserHandler.Update)
+				users.POST("/delete", deps.UserHandler.Delete)
+				users.POST("/status", deps.UserHandler.UpdateStatus)
+				users.POST("/roles", deps.UserHandler.SetRoles)
+				users.POST("/password/reset", deps.UserHandler.ResetPassword)
 				users.GET("/:id/orgs", deps.UserHandler.GetUserOrgs)
 			}
 
@@ -112,9 +112,9 @@ func New(deps Deps) *gin.Engine {
 				roles.GET("", deps.RoleHandler.List)
 				roles.POST("", deps.RoleHandler.Create)
 				roles.GET("/:id", deps.RoleHandler.Get)
-				roles.POST("/:id/update", deps.RoleHandler.Update)
-				roles.POST("/:id/delete", deps.RoleHandler.Delete)
-				roles.POST("/:id/menus", deps.RoleHandler.AssignMenus)
+				roles.POST("/update", deps.RoleHandler.Update)
+				roles.POST("/delete", deps.RoleHandler.Delete)
+				roles.POST("/menus", deps.RoleHandler.AssignMenus)
 				roles.GET("/:id/menus", deps.RoleHandler.GetMenus)
 				roles.GET("/:id/permissions", deps.RoleHandler.GetPermissions)
 			}
@@ -125,9 +125,9 @@ func New(deps Deps) *gin.Engine {
 				orgs.GET("", deps.OrgHandler.GetTree)
 				orgs.POST("", deps.OrgHandler.Create)
 				orgs.GET("/:id", deps.OrgHandler.Get)
-				orgs.POST("/:id/update", deps.OrgHandler.Update)
-				orgs.POST("/:id/delete", deps.OrgHandler.Delete)
-				orgs.POST("/:id/move", deps.OrgHandler.Move)
+				orgs.POST("/update", deps.OrgHandler.Update)
+				orgs.POST("/delete", deps.OrgHandler.Delete)
+				orgs.POST("/move", deps.OrgHandler.Move)
 			}
 
 			// 菜单模块
@@ -136,8 +136,8 @@ func New(deps Deps) *gin.Engine {
 				menus.GET("", deps.MenuHandler.GetTree)
 				menus.POST("", deps.MenuHandler.Create)
 				menus.GET("/:id", deps.MenuHandler.Get)
-				menus.POST("/:id/update", deps.MenuHandler.Update)
-				menus.POST("/:id/delete", deps.MenuHandler.Delete)
+				menus.POST("/update", deps.MenuHandler.Update)
+				menus.POST("/delete", deps.MenuHandler.Delete)
 			}
 
 			// 审计日志

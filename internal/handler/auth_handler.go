@@ -34,14 +34,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// ListDevices 查询活跃设备列表
-// GET /api/v1/auth/devices
-func (h *AuthHandler) ListDevices(c *gin.Context) {
-	response.InternalError(c, "not implemented")
-}
-
-// KickDevice 踢出指定设备
-// DELETE /api/v1/auth/devices/:deviceId
-func (h *AuthHandler) KickDevice(c *gin.Context) {
+// UpdatePassword 修改密码
+// POST /api/v1/auth/password/update
+func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }

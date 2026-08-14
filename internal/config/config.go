@@ -23,26 +23,91 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         int    `mapstructure:"port"`
-	User         string `mapstructure:"user"`
-	Password     string `mapstructure:"password"`
-	DBName       string `mapstructure:"dbname"`
-	MaxOpenConns int    `mapstructure:"max_open_conns"`
-	MaxIdleConns int    `mapstructure:"max_idle_conns"`
+	Host             string        `mapstructure:"host"`
+	Port             int           `mapstructure:"port"`
+	User             string        `mapstructure:"user"`
+	Password         string        `mapstructure:"password"`
+	DBName           string        `mapstructure:"dbname"`
+	MaxOpenConns     int           `mapstructure:"max_open_conns"`
+	MaxIdleConns     int           `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime  time.Duration `mapstructure:"conn_max_lifetime"`
+	ConnMaxIdleTime  time.Duration `mapstructure:"conn_max_idle_time"`
+	ConnectTimeout   time.Duration `mapstructure:"connect_timeout"`
+	SSLMode          string        `mapstructure:"sslmode"`
+	StatementTimeout time.Duration `mapstructure:"statement_timeout"` // 0 表示不设置
+	ApplicationName  string        `mapstructure:"application_name"`
+}
+
+func (c *DatabaseConfig) applyDefaults() {
+	if c.MaxOpenConns == 0 {
+		c.MaxOpenConns = 25
+	}
+	if c.MaxIdleConns == 0 {
+		c.MaxIdleConns = 5
+	}
+	if c.ConnMaxLifetime == 0 {
+		c.ConnMaxLifetime = time.Hour
+	}
+	if c.ConnMaxIdleTime == 0 {
+		c.ConnMaxIdleTime = 30 * time.Minute
+	}
+	if c.ConnectTimeout == 0 {
+		c.ConnectTimeout = 5 * time.Second
+	}
+	if c.SSLMode == "" {
+		c.SSLMode = "disable"
+	}
+	if c.ApplicationName == "" {
+		c.ApplicationName = "zhuzhao"
+	}
 }
 
 // DSN 返回 PostgreSQL 连接字符串
 func (c DatabaseConfig) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-		c.User, c.Password, c.Host, c.Port, c.DBName)
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode)
 }
 
 type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	DB       int    `mapstructure:"db"`
-	Password string `mapstructure:"password"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	DB              int           `mapstructure:"db"`
+	Password        string        `mapstructure:"password"`
+	PoolSize        int           `mapstructure:"pool_size"`
+	MinIdleConns    int           `mapstructure:"min_idle_conns"`
+	PoolTimeout     time.Duration `mapstructure:"pool_timeout"`
+	DialTimeout     time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
+	MaxRetries      int           `mapstructure:"max_retries"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
+}
+
+func (c *RedisConfig) applyDefaults() {
+	if c.PoolSize == 0 {
+		c.PoolSize = 20
+	}
+	if c.MinIdleConns == 0 {
+		c.MinIdleConns = 5
+	}
+	if c.PoolTimeout == 0 {
+		c.PoolTimeout = 4 * time.Second
+	}
+	if c.DialTimeout == 0 {
+		c.DialTimeout = 5 * time.Second
+	}
+	if c.ReadTimeout == 0 {
+		c.ReadTimeout = 3 * time.Second
+	}
+	if c.WriteTimeout == 0 {
+		c.WriteTimeout = 3 * time.Second
+	}
+	if c.MaxRetries == 0 {
+		c.MaxRetries = 2
+	}
+	if c.ConnMaxIdleTime == 0 {
+		c.ConnMaxIdleTime = 5 * time.Minute
+	}
 }
 
 // Addr 返回 Redis 地址
@@ -89,6 +154,9 @@ func Load(path string) (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	cfg.Database.applyDefaults()
+	cfg.Redis.applyDefaults()
 
 	return &cfg, nil
 }

@@ -17,9 +17,9 @@ type DeviceInfo struct {
 	CreatedAt     string `json:"created_at"`
 }
 
-// LoginRequest 登录请求
+// LoginRequest 登录请求（账密登录用工号，不用 username）
 type LoginRequest struct {
-	Username   string `json:"username" binding:"required"`
+	EmployeeNo string `json:"employee_no" binding:"required"`
 	Password   string `json:"password" binding:"required"`
 	DeviceID   string `json:"device_id"` // 前端生成 UUID 存 localStorage，每次登录带上
 	DeviceName string `json:"device_name"`

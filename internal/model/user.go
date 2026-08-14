@@ -7,8 +7,11 @@ import (
 // User 用户模型
 type User struct {
 	ID                 int64      `json:"id,string" db:"id"`
-	Username           string     `json:"username" db:"username"`
-	Password           string     `json:"-" db:"password"`
+    Username           string     `json:"username" db:"username"`
+    EmployeeNo         string     `json:"employee_no" db:"employee_no"`
+    DomainAccount      string     `json:"domain_account" db:"domain_account"`
+    UserDomain         string     `json:"user_domain" db:"user_domain"`
+    Password           string     `json:"-" db:"password"`
 	RealName           string     `json:"real_name" db:"real_name"`
 	Email              string     `json:"email" db:"email"`
 	Phone              string     `json:"phone" db:"phone"`

@@ -17,44 +17,67 @@ func NewUserHandler(userService *service.UserService, menuService *service.MenuS
 	return &UserHandler{userService: userService, menuService: menuService}
 }
 
-// List 用户列表
-// GET /api/v1/users
+// List GET /api/v1/users
 func (h *UserHandler) List(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// Create 创建用户
-// POST /api/v1/users
+// Create POST /api/v1/users
 func (h *UserHandler) Create(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// Get 用户详情
-// GET /api/v1/users/:id
+// Get GET /api/v1/users/:id
 func (h *UserHandler) Get(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// Update 更新用户
-// PUT /api/v1/users/:id
+// Update POST /api/v1/users/update（id 放 body）
 func (h *UserHandler) Update(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// Delete 删除用户
-// DELETE /api/v1/users/:id
+// Delete POST /api/v1/users/delete（id 放 body）
 func (h *UserHandler) Delete(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// GetMenus 当前用户菜单树
-// GET /api/v1/user/menus
+// UpdateStatus POST /api/v1/users/status（id 放 body）
+func (h *UserHandler) UpdateStatus(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// SetRoles POST /api/v1/users/roles（id 放 body）
+func (h *UserHandler) SetRoles(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// ResetPassword POST /api/v1/users/password/reset（id 放 body）
+func (h *UserHandler) ResetPassword(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// GetUserOrgs GET /api/v1/users/:id/orgs
+func (h *UserHandler) GetUserOrgs(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// GetProfile GET /api/v1/user/profile
+func (h *UserHandler) GetProfile(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// UpdateProfile POST /api/v1/user/profile/update
+func (h *UserHandler) UpdateProfile(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// GetMenus GET /api/v1/user/menus
 func (h *UserHandler) GetMenus(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
-// GetPermissions 当前用户权限码
-// GET /api/v1/user/permissions
+// GetPermissions GET /api/v1/user/permissions
 func (h *UserHandler) GetPermissions(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }

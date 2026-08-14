@@ -15,7 +15,6 @@ import (
 // JWT JWT 认证中间件
 func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 提取 token
 		auth := c.GetHeader("Authorization")
 		if auth == "" {
 			response.Unauthorized(c, errcode.ErrUnauthorized.Message)
@@ -32,30 +31,45 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		// 解析 token
 		claims, err := jwtManager.ParseAccessToken(tokenString)
 		if err != nil {
-			response.Unauthorized(c, errcode.ErrTokenInvalid.Message)
+			response.UnauthorizedError(c, errcode.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
 
-		// 检查 Redis 黑名单
 		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
-		if exists, _ := rdb.Exists(c, blacklistKey).Result(); exists > 0 {
-			response.Unauthorized(c, errcode.ErrTokenInvalid.Message)
+		exists, err := rdb.Exists(c, blacklistKey).Result()
+		if err != nil {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
+		}
+		if exists > 0 {
+			response.UnauthorizedError(c, errcode.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
 
-		// 首次登录改密检查：只允许访问改密接口
+		disabledKey := fmt.Sprintf("user:disabled:%d", claims.UserID)
+		disabled, err := rdb.Exists(c, disabledKey).Result()
+		if err != nil {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
+		}
+		if disabled > 0 {
+			response.ForbiddenError(c, errcode.ErrUserDisabled)
+			c.Abort()
+			return
+		}
+
 		if claims.MustChangePassword && c.Request.URL.Path != "/api/v1/auth/password/update" {
-			response.Forbidden(c, errcode.ErrPasswordChangeRequired.Message)
+			response.ForbiddenError(c, errcode.ErrPasswordChangeRequired)
 			c.Abort()
 			return
 		}
 
-		// 注入上下文
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("jti", claims.JTI)

@@ -69,19 +69,48 @@ func Fail(c *gin.Context, httpStatus, code int, message string) {
 	})
 }
 
+// Error 按业务错误码响应（HTTP 状态由调用方指定）
+func Error(c *gin.Context, httpStatus int, err *errcode.Error) {
+	Fail(c, httpStatus, err.Code, err.Message)
+}
+
 // BadRequest 参数错误
 func BadRequest(c *gin.Context, message string) {
-	Fail(c, http.StatusBadRequest, 10001, message)
+	if message == "" {
+		message = errcode.ErrInvalidParams.Message
+	}
+	Fail(c, http.StatusBadRequest, errcode.ErrInvalidParams.Code, message)
 }
 
-// Unauthorized 未认证
+// Unauthorized 未认证（默认 10002）
 func Unauthorized(c *gin.Context, message string) {
-	Fail(c, http.StatusUnauthorized, 10002, message)
+	if message == "" {
+		message = errcode.ErrUnauthorized.Message
+	}
+	Fail(c, http.StatusUnauthorized, errcode.ErrUnauthorized.Code, message)
 }
 
-// Forbidden 无权限
+// UnauthorizedError 未认证（指定业务码，如 20003）
+func UnauthorizedError(c *gin.Context, err *errcode.Error) {
+	Error(c, http.StatusUnauthorized, err)
+}
+
+// Forbidden 无权限（默认 10003，兼容旧调用）
 func Forbidden(c *gin.Context, message string) {
-	Fail(c, http.StatusForbidden, 10003, message)
+	if message == "" {
+		message = errcode.ErrForbidden.Message
+	}
+	Fail(c, http.StatusForbidden, errcode.ErrForbidden.Code, message)
+}
+
+// ForbiddenError 无权限（指定业务码，如 70001 / 70003 / 30003）
+func ForbiddenError(c *gin.Context, err *errcode.Error) {
+	Error(c, http.StatusForbidden, err)
+}
+
+// ServiceUnavailable 鉴权链路不可用（503 + 10008）
+func ServiceUnavailable(c *gin.Context) {
+	Error(c, http.StatusServiceUnavailable, errcode.ErrServiceUnavailable)
 }
 
 // NotFound 资源不存在

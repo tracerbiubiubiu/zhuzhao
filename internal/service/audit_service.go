@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -17,9 +17,9 @@ func NewAuditService(auditRepo *repository.AuditLogRepo) *AuditService {
 	return &AuditService{auditRepo: auditRepo}
 }
 
-// Record 异步记录审计日志
-func (s *AuditService) Record(log *model.AuditLog) {
-	// TODO: Phase 2 实现，channel + goroutine 异步写入
+// Insert 同步写入审计日志（实现 middleware.AuditLogger）
+func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntry) error {
+	return fmt.Errorf("not implemented")
 }
 
 // Query 查询审计日志

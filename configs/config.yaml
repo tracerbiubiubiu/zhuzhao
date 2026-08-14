@@ -6,16 +6,30 @@ database:
   host: localhost
   port: 5432
   user: zhuzhao
-  password: zhuzhao_dev
+  password: zhuzhao_dev   # 生产：DB_PASSWORD 环境变量
   dbname: zhuzhao
   max_open_conns: 25
   max_idle_conns: 5
+  conn_max_lifetime: 1h
+  conn_max_idle_time: 30m
+  connect_timeout: 5s
+  sslmode: disable        # 生产改为 require
+  statement_timeout: 30s  # 0 或不填表示不限制
+  application_name: zhuzhao
 
 redis:
   host: localhost
   port: 6379
   db: 0
-  password: ""
+  password: ""            # 生产：REDIS_PASSWORD 环境变量
+  pool_size: 20
+  min_idle_conns: 5
+  pool_timeout: 4s
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  max_retries: 2
+  conn_max_idle_time: 5m
 
 jwt:
   # Phase 1: HS256 对称签名（单体底座）

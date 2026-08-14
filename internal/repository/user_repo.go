@@ -19,13 +19,18 @@ func NewUserRepo(db *pgxpool.Pool) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-// FindByUsername 根据用户名查询用户
+// FindByUsername 管理端/列表：username 精确或模糊查询（非登录）
 func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.User, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
+// FindByEmployeeNo 登录用：工号精确匹配（有值则全局唯一）；0 条视为凭证无效
+func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // FindByID 根据 ID 查询用户
-func (r *UserRepo) FindByID(ctx context.Context, id string) (*model.User, error) {
+func (r *UserRepo) FindByID(ctx context.Context, id int64) (*model.User, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
@@ -45,6 +50,6 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 }
 
 // SoftDelete 软删除用户
-func (r *UserRepo) SoftDelete(ctx context.Context, id string) error {
+func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 	return fmt.Errorf("not implemented")
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
@@ -53,6 +54,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	orgService := service.NewOrgService(orgRepo)
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
+	auditLogRepo := repository.NewAuditLogRepo(pool)
+	auditService := service.NewAuditService(auditLogRepo)
+	auditHandler := handler.NewAuditHandler(auditService)
 	casbinConfig := cfg.Casbin
 	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig)
 	if err != nil {
@@ -61,15 +65,19 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	deps := router.Deps{
-		AuthHandler: authHandler,
-		UserHandler: userHandler,
-		RoleHandler: roleHandler,
-		OrgHandler:  orgHandler,
-		MenuHandler: menuHandler,
-		JWTManager:  manager,
-		Enforcer:    syncedEnforcer,
-		RedisClient: client,
-		Logger:      slogLogger,
+		AuthHandler:  authHandler,
+		UserHandler:  userHandler,
+		RoleHandler:  roleHandler,
+		OrgHandler:   orgHandler,
+		MenuHandler:  menuHandler,
+		AuditHandler: auditHandler,
+		JWTManager:   manager,
+		Enforcer:     syncedEnforcer,
+		RedisClient:  client,
+		DBPool:       pool,
+		Logger:       slogLogger,
+		RoleFetcher:  rbacService,
+		AuditService: auditService,
 	}
 	engine := router.New(deps)
 	app := NewApp(cfg, slogLogger, engine)
@@ -86,6 +94,6 @@ var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, ca
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewAuthzService, service.NewOrgService, service.NewMenuService, service.NewAuditService)
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewAuthzService, service.NewOrgService, service.NewMenuService, service.NewAuditService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, wire.Struct(new(router.Deps), "*"))
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler)
