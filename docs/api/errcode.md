@@ -44,7 +44,7 @@
 | 401 | 未登录、Token 无效/过期/已吊销 |
 | 403 | 已登录但无权限、账号禁用、须改密、无角色 |
 | 404 | 资源不存在（对外可暴露「不存在」时） |
-| 409 | 唯一约束冲突（工号/域账号/编码重复等） |
+| 409 | 唯一约束冲突（工号/域账号/编码重复等）、乐观锁并发冲突 |
 | 429 | 登录限流 |
 | 503 | 鉴权链路 Redis 不可用（fail-close） |
 
@@ -64,9 +64,11 @@
 | 10003 | `ErrForbidden` | 禁止访问 | 403 |
 | 10004 | `ErrNotFound` | 资源不存在 | 404 |
 | 10005 | `ErrConflict` | 资源冲突 | 409 |
+| 10006 | `ErrConcurrentModification` | 数据已被修改，请刷新后重试 | 409 |
 | 10007 | `ErrTooManyReqs` | 请求过于频繁 | 429 |
 | 10008 | `ErrServiceUnavailable` | 服务暂时不可用 | 503 |
 
+> `10006`：乐观锁冲突（`version` 不匹配），见 [10-concurrency §乐观锁](../phase1/10-concurrency.md#乐观锁建议实现)。Phase 1 实现乐观锁时写入 `errcode.go`。
 > `10008`：Phase 1 用于鉴权链路 Redis 不可用（fail-close）。JWT 中间件返回 HTTP 503 + 此 code。
 
 ### 认证 20000–20999

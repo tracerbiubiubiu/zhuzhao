@@ -227,6 +227,16 @@ func SecurityHeaders() gin.HandlerFunc {
 }
 ```
 
+### CSRF 防护
+
+Phase 1 **不需要 CSRF 中间件**。原因：
+
+- API 仅通过 `Authorization: Bearer {AT}` 鉴权，**不使用 Cookie** 传递凭证
+- CSRF 攻击的前提是浏览器自动携带 Cookie；Bearer Token 不会自动发送，攻击者无法伪造
+- 前端需在每次请求 header 中显式设置 `Authorization`，这天然防 CSRF
+
+> 若 Phase 3+ 改用 HttpOnly Cookie 传递 Token（如支持 SSR 场景），则需补 CSRF Token 或 SameSite=Strict 策略。
+
 ### BodyLimit
 
 ```go

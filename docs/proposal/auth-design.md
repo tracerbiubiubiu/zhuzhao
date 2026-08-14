@@ -261,7 +261,7 @@ GET /api/v1/user/permissions → 权限码列表（按钮权限码 + 路由权�
 | 类型 | 存储 | 内容 | 保留期 |
 |------|------|------|--------|
 | 应用日志 | 文件（slog + Lumberjack） | 运行时调试信息 | 按文件轮转 |
-| 审计日志 | PostgreSQL（Phase 1 同步；Phase 2+ 异步） | 用户操作记录 | 180 天（Phase 2+ cron 清理） |
+| 审计日志 | PostgreSQL（Phase 1 同步；Phase 3a 异步） | 用户操作记录 | 180 天（Phase 3a cron 清理） |
 | 访问日志 | PostgreSQL（Phase 3a+，`access_logs` 表） | HTTP 请求记录 | 90 天 |
 
 ### 5.2 审计日志写入流程

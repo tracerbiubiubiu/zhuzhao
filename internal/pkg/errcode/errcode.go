@@ -23,6 +23,7 @@ var (
 	ErrForbidden            = New(10003, "禁止访问")
 	ErrNotFound             = New(10004, "资源不存在")
 	ErrConflict             = New(10005, "资源冲突")
+	ErrConcurrentModification = New(10006, "数据已被修改，请刷新后重试")
 	ErrTooManyReqs          = New(10007, "请求过于频繁")
 	ErrServiceUnavailable   = New(10008, "服务暂时不可用")
 )

@@ -44,24 +44,47 @@ CREATE INDEX idx_access_logs_user ON access_logs(user_id, created_at DESC);
 CREATE INDEX idx_access_logs_created ON access_logs(created_at DESC);
 ```
 
-### 2.2 操作审计日志（业务操作记录）
+### 2.2 操作审计日志（Phase 1 SSOT）
+
+> **Phase 1 DDL 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**。下方旧设计草图保留仅作跨阶段参考，**Phase 1 编码勿用**。
+
+<details>
+<summary>旧版 DDL 草图（已废弃，Phase 3a+ 可能拆 access_logs 时再参考）</summary>
 
 ```sql
-CREATE TABLE audit_logs (
+-- 旧版草图：action/resource/detail 取向
+CREATE TABLE audit_logs_old (
     id          BIGSERIAL PRIMARY KEY,
     trace_id    VARCHAR(50) NOT NULL,
-    user_id     VARCHAR(50) NOT NULL,       -- 操作人
-    action      VARCHAR(100) NOT NULL,      -- 操作类型（如 delete_user）
-    resource    VARCHAR(50),                -- 资源类型（如 user）
-    resource_id VARCHAR(50),                -- 资源 ID
-    detail      JSONB,                      -- 操作详情
+    user_id     VARCHAR(50) NOT NULL,
+    action      VARCHAR(100) NOT NULL,
+    resource    VARCHAR(50),
+    resource_id VARCHAR(50),
+    detail      JSONB,
     ip          VARCHAR(50),
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+```
+</details>
 
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id, created_at DESC);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action, created_at DESC);
-CREATE INDEX idx_audit_logs_resource ON audit_logs(resource, resource_id);
+**Phase 1 实际 DDL**（权威，见 [phase1/08-audit.md](../phase1/08-audit.md)）：
+
+```sql
+CREATE TABLE audit_logs (
+    id           BIGSERIAL PRIMARY KEY,
+    user_id      BIGINT,                     -- 操作人（NULL=未认证）
+    username     VARCHAR(50),                -- 操作人用户名（冗余，便于查询）
+    method       VARCHAR(10) NOT NULL,
+    path         VARCHAR(500) NOT NULL,
+    status_code  INT NOT NULL,
+    duration     BIGINT NOT NULL,            -- 毫秒
+    ip           VARCHAR(50),
+    user_agent   VARCHAR(500),
+    request_body TEXT,                       -- 脱敏后
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_audit_user_time ON audit_logs(user_id, created_at DESC);
+CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 ```
 
 ---
@@ -199,8 +222,8 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 | 设计 | 决策 | 理由 |
 |------|------|------|
-| 异步写入 + channel | Phase 2/3a 采用 | Phase 1 同步写 DB，保证不丢 |
-| channel 满降级 | Phase 2/3a 采用 | 同步写入 + 告警 |
+| 异步写入 + channel | Phase 3a 采用 | Phase 1 同步写 DB，保证不丢；Phase 2 不做审计异步 |
+| channel 满降级 | Phase 3a 采用 | 同步写入 + 告警 |
 | actionRegistry 推导 | ✅ 直接采用 | 比 method:path 更可读 |
 | 敏感字段脱敏 | ✅ 直接采用 | 安全要求 |
 | 请求体截断（4KB） | ✅ 直接采用 | 防止大 body 撑爆日志 |

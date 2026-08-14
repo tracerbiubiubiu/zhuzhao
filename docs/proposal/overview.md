@@ -121,7 +121,7 @@
 | 要点 | 说明 |
 |------|------|
 | API 仅用 GET + POST | 前端所有请求只用这两个方法，更新/删除用 `POST /xxx/update`、`POST /xxx/delete` |
-| 统一响应格式 | `{code, message, data, request_id}`，见 [api/response.md](./api/response.md) |
+| 统一响应格式 | `{code, message, data, request_id}`，见 [api/response.md](../api/response.md) |
 | 菜单树接口 | `GET /user/menus` 返回树形结构，前端直接渲染路由和菜单 |
 | 权限码接口 | `GET /user/permissions` 返回权限码列表，前端 `v-if` 控制按钮显隐 |
 | 分页格式 | `{list, total, page, page_size}`，前端分页组件直接绑定 |

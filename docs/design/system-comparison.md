@@ -241,7 +241,7 @@
 **新框架设计**：
 - slog + Lumberjack（文件轮转）
 - 日志输出到文件 + stdout
-- 审计日志存 DB（Phase 1 **同步写入**；Phase 2+ 异步演进）
+- 审计日志存 DB（Phase 1 **同步写入**；Phase 3a 异步演进）
 
 **需要讨论的点**：
 - zap vs slog：现有系统用 zap（性能更好但 API 复杂），新框架选 slog（标准库更简洁）。现有系统的 MongoWriteSyncer 是 zap 的自定义 Syncer，切 slog 后需要不同的集成方式。

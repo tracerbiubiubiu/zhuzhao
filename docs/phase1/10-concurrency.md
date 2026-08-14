@@ -130,7 +130,7 @@ func (r *roleRepo) Update(ctx context.Context, role *Role) error {
         role.Name, role.Description, role.ID, role.Version,
     )
     if tag.RowsAffected() == 0 {
-        return ErrConcurrentModification
+        return errcode.ErrConcurrentModification // 10006
     }
     return nil
 }
