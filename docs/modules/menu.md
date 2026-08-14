@@ -1,10 +1,10 @@
 # 菜单模块设计
 
-> 模块代码：`internal/service/menu_service.go` + `internal/repository/menu_repo.go`
+> 模块代码（目标路径）：`internal/service/menu/` + `internal/repository/menu/` + `internal/handler/menu/`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/menu.md` + `dynamic-routing-research.md`
 >
-> 主键以 [phase1/07-menu.md](../phase1/07-menu.md) 为准（`BIGINT` + `code`），下文 UUID schema 过时。
+> 主键以 [phase1/07-menu.md](../phase1/07-menu.md) 为准（`BIGINT` + `code`）。
 
 ---
 
@@ -21,36 +21,39 @@
 
 ## 2. 数据模型
 
+> 完整 DDL 见 [phase1/07-menu.md](../phase1/07-menu.md)。
+
 ```sql
 CREATE TABLE menus (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    parent_id   UUID REFERENCES menus(id),
-    code        VARCHAR(50) UNIQUE NOT NULL,  -- 唯一标识
+    id          BIGSERIAL PRIMARY KEY,
+    parent_id   BIGINT REFERENCES menus(id),
+    code        VARCHAR(50) NOT NULL,
     name        VARCHAR(100) NOT NULL,
-    type        SMALLINT NOT NULL,             -- 1=目录 2=菜单 3=按钮
-    path        VARCHAR(200),                  -- 前端路由路径
-    component   VARCHAR(200),                  -- 前端组件路径
-    icon        VARCHAR(50),
-    permission  VARCHAR(100),                  -- 按钮权限码（type=3 时）
-    sort        INT DEFAULT 0,
+    menu_type   SMALLINT NOT NULL,
+    path        VARCHAR(200),
+    component   VARCHAR(200),
+    icon        VARCHAR(100),
+    permission  VARCHAR(100),
+    sort_order  INT DEFAULT 0,
     visible     BOOLEAN DEFAULT TRUE,
-    status      SMALLINT DEFAULT 1,
     is_system   BOOLEAN DEFAULT FALSE,
-    created_by  VARCHAR(50),
+    version     INT DEFAULT 1,
+    deleted_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_menus_parent ON menus(parent_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_menus_code ON menus(code) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_menus_code ON menus(code) WHERE deleted_at IS NULL;
 ```
 
 ### 菜单-API 绑定
 
+操作类 API 路径不含 `:id`（id 放 POST body），须完整写入 `menu_apis` 供 Casbin 策略生成：
+
 ```sql
 CREATE TABLE menu_apis (
-    menu_id     UUID REFERENCES menus(id),
+    menu_id     BIGINT NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
     api_path    VARCHAR(200) NOT NULL,
     api_method  VARCHAR(10) NOT NULL,
     PRIMARY KEY (menu_id, api_path, api_method)
@@ -75,8 +78,8 @@ type MenuService interface {
     GetAPIs(ctx context.Context, menuCode string) ([]APIRef, error)
 
     // 前端权限数据
-    GetUserMenuTree(ctx context.Context, userID string) ([]*MenuNode, error)
-    GetUserPermissions(ctx context.Context, userID string) ([]string, error)
+    GetUserMenuTree(ctx context.Context, userID int64) ([]*MenuNode, error)
+    GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 }
 ```
 
@@ -136,7 +139,7 @@ GET /api/v1/user/permissions
 ### 4.4 删除菜单（级联，借鉴旧系统）
 
 ```
-DELETE /api/v1/menus/:code
+POST /api/v1/menus/delete
 
 1. 系统菜单保护
    → menu.is_system == true？返回 403

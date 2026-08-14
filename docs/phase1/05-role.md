@@ -11,9 +11,9 @@
 | 角色列表 | 管理员查看所有角色 | `GET /api/v1/roles` |
 | 创建角色 | 管理员创建新角色 | `POST /api/v1/roles` |
 | 角色详情 | 查看角色信息 + 关联菜单 | `GET /api/v1/roles/:id` |
-| 更新角色 | 修改角色名称、描述 | `POST /api/v1/roles/:id/update` |
-| 删除角色 | 删除角色（需检查是否有关联用户） | `POST /api/v1/roles/:id/delete` |
-| 分配菜单 | 给角色分配可访问的菜单 | `POST /api/v1/roles/:id/menus` |
+| 更新角色 | 修改角色名称、描述 | `POST /api/v1/roles/update` |
+| 删除角色 | 删除角色（需检查是否有关联用户） | `POST /api/v1/roles/delete` |
+| 分配菜单 | 给角色分配可访问的菜单 | `POST /api/v1/roles/menus` |
 | 查看角色菜单 | 获取角色关联的菜单列表 | `GET /api/v1/roles/:id/menus` |
 | 查看角色权限 | 获取角色的 Casbin 策略 | `GET /api/v1/roles/:id/permissions` |
 
@@ -30,6 +30,7 @@ type Role struct {
     Name        string     `json:"name" db:"name"`
     Description string     `json:"description" db:"description"`
     Status      int        `json:"status" db:"status"`       // 1=启用 0=禁用
+    Priority    int        `json:"priority" db:"priority"`   // 越小权限越高；业务防提权用
     SortOrder   int        `json:"sort_order" db:"sort_order"`
     IsSystem    bool       `json:"is_system" db:"is_system"`  // 系统内置不可删除
     TenantID    int64      `json:"tenant_id,string" db:"tenant_id"`
@@ -49,6 +50,7 @@ CREATE TABLE roles (
     name        VARCHAR(100) NOT NULL,
     description TEXT,
     status      SMALLINT NOT NULL DEFAULT 1,
+    priority    INT NOT NULL,                 -- 越小权限越高；间隔留空便于插自定义角色
     sort_order  INT DEFAULT 0,
     is_system   BOOLEAN DEFAULT FALSE,
     tenant_id   BIGINT NOT NULL DEFAULT 1,
@@ -92,7 +94,7 @@ CREATE TABLE role_menus (
   ├── 更新 role_menus 表（DB 事务内）
   ├── 根据菜单绑定的 API 路径，生成 Casbin 策略
   │   例如：菜单"用户管理"绑定了 GET /api/v1/users 和 POST /api/v1/users
-  │   → 生成策略 p, role::user_manager, /api/v1/users, GET
+  │   → 生成策略 p, role::user_manager, /api/v1/users, GET   （user_manager 为示例自定义角色）
   │   → 生成策略 p, role::user_manager, /api/v1/users, POST
   ├── 写入 casbin_rule 表（同一事务）
   └── 事务提交后 enforcer.ReloadPolicy()
@@ -145,16 +147,102 @@ func (s *roleService) Delete(ctx context.Context, roleCode string) error {
 
 ### 内置角色
 
-种子数据创建 4 个系统角色：
+> **角色 vs 用户**：`superadmin` / `admin` / `operator` / `viewer` 是 **角色**（`roles` 表记录），不是用户类型。用户通过 `user_roles` **多对多**绑定角色，可同时拥有多个；详见 [03-authz §用户多角色](./03-authz.md#用户多角色phase-1)。
 
-| code | name | 说明 | Casbin 行为 |
-|------|------|------|------------|
-| `superadmin` | 超级管理员 | 系统最高权限 | matcher 直接 bypass |
-| `admin` | 管理员 | 系统管理权限 | matcher 直接 bypass |
-| `operator` | 操作员 | 可管理组织成员 | 需配置 Casbin 策略 |
-| `viewer` | 访客 | 只读访问 | 需配置 Casbin 策略 |
+种子数据创建 4 个系统角色（**`priority` 越小权限越高**，与若依/RuoYi 等国内后台一致）：
+
+| code | name | priority | Casbin 行为 |
+|------|------|----------|------------|
+| `superadmin` | 超级管理员 | **1** | matcher bypass |
+| `admin` | 管理员 | **10** | matcher bypass |
+| `operator` | 操作员 | **20** | 需 Casbin 策略 |
+| `viewer` | 访客 | **30** | 需 Casbin 策略 |
+
+自定义角色建议用 15、25… 插在系统角色之间。业务比较见 [§角色 priority 与权限继承模型](#角色-priority-与权限继承模型)。
 
 Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"` 直接放行，不需要为超管/管理员分配任何策略。
+
+#### superadmin 与 admin 的区别
+
+| 维度 | `superadmin` | `admin` |
+|------|--------------|---------|
+| Casbin 路由鉴权 | matcher bypass | matcher bypass（**路由级等价**） |
+| **对其他管理员是否可见** | **对 admin 及以下「不可见」**（见下 §影子超管） | 对外呈现的**最高**管理员档位 |
+| 重置密码 | 可重置任意用户（含 admin） | 只能重置 operator/viewer 等普通用户 |
+| 分配角色 | 可分配任意角色（含 superadmin） | **不能**给他人分配 superadmin |
+| 改系统资源 | 可管理 `is_system` 资源 | **不能**删改系统角色/菜单/组织，**不能**改 superadmin 用户 |
+| 改角色菜单 | 可改任意角色菜单 | **不能**改 superadmin 角色的菜单 |
+| 系统兜底 | 至少保留 **1 名** 用户绑定 superadmin | 无特殊地位 |
+
+#### 影子超管（superadmin 对 admin 不可见）
+
+> 业界常见说法：**break-glass / root 账号**不对日常管理员暴露；业务上 admin 已是「能感知到的最高管理员」，`superadmin` 仅运维/安全留底。
+
+**原则**：非 superadmin 操作者（`EffectivePriority > superadmin.priority`，即非 superadmin 身份）在 **列表/下拉/详情** 中 **看不到** superadmin 这一档及其绑定用户；**不是**删除数据，而是 **读路径过滤 + 写路径 403/404**。
+
+| 场景 | admin / operator / viewer 感知 | superadmin |
+|------|--------------------------------|------------|
+| `GET /roles` 角色列表 | **不含** `code=superadmin` | 含全部角色 |
+| 分配角色下拉 | **无** superadmin 选项 | 有 |
+| `GET /users` 用户列表 | **不含** 绑定 superadmin 的用户 | 含全部用户 |
+| `GET /users/:id` 超管用户 | **404**（与非存在一致，防推断） | 200 |
+| 改/删/禁用 superadmin 用户 | **404 或 403**（实现统一一种） | 允许（受最后一名 superadmin 保护） |
+| 审计日志 | Phase 1 可全体可见；Phase 2 可按 actor 过滤敏感条目 | 全部 |
+
+**与现有规则的关系**：
+
+- Casbin 仍保留 `role::superadmin` matcher bypass（**后端真实权限**不变）。
+- 「不可见」是 **展示层 / 列表 SQL / Handler 过滤**，避免 admin 知道还有更高账号而去社工或撞库。
+- 种子用户 `admin` 绑定的是 **superadmin 角色**——该用户在 admin 视角的用户列表里 **也不出现**；仅 superadmin 会话或数据库运维可见。
+
+**Phase 1 实现要点**（列表查询加条件，不必新表）：
+
+```sql
+-- 角色列表（actor 非 superadmin 时）
+WHERE deleted_at IS NULL AND code <> 'superadmin'
+
+-- 用户列表（actor 非 superadmin 时）
+WHERE deleted_at IS NULL
+  AND id NOT IN (SELECT user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+                 WHERE r.code = 'superadmin' AND r.deleted_at IS NULL)
+```
+
+> 可选 Phase 2：角色表增加 `is_hidden BOOLEAN`，超管档通用化；Phase 1 **硬编码过滤 `superadmin`** 即可。
+
+> 小结：**API 能不能进**看 Casbin（两者一样）；**能不能动更高权限对象**看 `roles.priority`（越小越强）。多角色用户取 **EffectivePriority = min(priority)**，见 [04-user §多角色与有效 priority](./04-user.md#多角色与有效-priority)。
+
+#### 角色 priority 与权限继承模型
+
+> 业界通用：**路由权限（Casbin）**、**组织数据范围（ltree）**、**角色继承（parent / org_roles）** 分开建模，避免「父部门角色自动污染全子树」。  
+> **业界对照与级联矩阵**见 [rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)。
+
+**Phase 1**
+
+| 能力 | 行为 |
+|------|------|
+| 路由鉴权 | `user_roles` 直接角色 → Casbin OR |
+| 业务防提权 | `roles.priority`（越小越强） |
+| 组织 | 树 + 成员；**无** `org_roles`、无按组织过滤 |
+| 角色继承 | **无**（无 `roles.parent_id`） |
+
+**Phase 2b**（见 [03-authz §BFS](./03-authz.md)、[auth-design §3.3](../proposal/auth-design.md#33-组织角色继承phase-2b)）
+
+| 能力 | 行为 |
+|------|------|
+| 有效角色（Casbin） | **BFS 三源并集**：① `user_roles` ② `user_orgs`→`org_roles` ③ `roles.parent_id` 链 |
+| 组织赋角色 | 组织节点绑角色；**用户加入该组织**获得该组织角色 |
+| 子组织不继承父 org_roles | 成员在子部门不自动获得父部门绑定的角色 |
+| 组织树 **数据**范围 | `ticket_scope` + ltree `path <@`：上级可看 **下级数据**，≠ 角色继承 |
+| 角色链继承 | `roles.parent_id`：子角色继承父角色 **菜单/API 策略**（源 3） |
+
+```
+Phase 2b 有效角色 = 直接 ∪ 所在组织的 org_roles ∪ parent 角色链
+Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独立
+```
+
+#### 种子用户
+
+初始账号 **`admin` / `admin123`**（`users.is_system=true`，**登录工号 `E000001`**）绑定 **`superadmin` 角色**；同时绑定 `root` 组织。DDL 见 [data-init.md §4.2](../proposal/data-init.md#42-种子数据内容)。
 
 **业务层仍要分级**（Casbin bypass 不等于业务无约束）：
 
@@ -172,9 +260,12 @@ Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"
 | 用例 | 输入 | 预期 |
 |------|------|------|
 | 创建角色 | name="用户管理员" | 返回角色 |
+| 创建角色 - 指定 priority | priority=15 | 介于 admin(10) 与 operator(20) 之间 |
+| 种子角色 priority | migrate-up 后查 roles | superadmin=1, admin=10, operator=20, viewer=30 |
 | 创建角色 - 名称重复 | 已存在的 name | 返回 ErrRoleAlreadyExists |
 | 删除角色 - 无关联用户 | roleID | 成功 |
 | 删除角色 - 有关联用户 | 有用户的 roleID | 返回 ErrRoleInUse |
+| 角色列表 - admin 不可见 superadmin | admin 调 `GET /roles` | 无 `code=superadmin` 项 |
 | 分配菜单 | roleID + menuIDs | role_menus 更新 + casbin_rule 更新 |
 | 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound |
 | 分配菜单后策略生效 | 分配后用该角色请求 API | Casbin 放行 |
@@ -192,9 +283,11 @@ Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"
 
 ## 涉及文件
 
+> 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。
+
 ```
-internal/repository/role_repo.go      # 角色数据访问
-internal/service/role_service.go      # 角色业务逻辑（含策略同步）
-internal/handler/role_handler.go      # HTTP Handler
-internal/model/role.go                # 角色模型
+internal/repository/role/
+internal/service/role/                # 含 Casbin 策略同步
+internal/handler/role/
+internal/model/role.go
 ```

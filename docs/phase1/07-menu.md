@@ -11,8 +11,8 @@
 | 菜单树 | 管理员查看完整菜单树 | `GET /api/v1/menus` |
 | 创建菜单 | 管理员创建新菜单（目录/菜单/按钮） | `POST /api/v1/menus` |
 | 菜单详情 | 查看单个菜单信息 | `GET /api/v1/menus/:id` |
-| 更新菜单 | 修改菜单名称、路径、图标等 | `POST /api/v1/menus/:id/update` |
-| 删除菜单 | 删除菜单（需检查子菜单） | `POST /api/v1/menus/:id/delete` |
+| 更新菜单 | 修改菜单名称、路径、图标等 | `POST /api/v1/menus/update` |
+| 删除菜单 | 删除菜单（需检查子菜单） | `POST /api/v1/menus/delete` |
 | 当前用户菜单树 | 登录后获取自己的菜单树（按角色过滤） | `GET /api/v1/user/menus` |
 | 当前用户权限码 | 获取自己的按钮权限码列表 | `GET /api/v1/user/permissions` |
 
@@ -103,13 +103,27 @@ CREATE TABLE menu_apis (
 
 ```
 角色分配菜单 → 遍历 menu_apis → 生成 Casbin 策略
-  例如：菜单 "用户管理" 关联了 menu_apis:
-    (/api/v1/users, GET), (/api/v1/users, POST), (/api/v1/users/:id, GET)
-  → 生成策略：
+  例如：菜单 "用户管理" 关联了 menu_apis（操作类 POST 的 id 放 body，路径不含 :id）：
+    (/api/v1/users, GET)
+    (/api/v1/users, POST)                    -- 创建
+    (/api/v1/users/:id, GET)                 -- 详情（GET 保留 :id）
+    (/api/v1/users/update, POST)
+    (/api/v1/users/delete, POST)
+    (/api/v1/users/status, POST)
+    (/api/v1/users/roles, POST)
+    (/api/v1/users/orgs, POST)
+    (/api/v1/users/:id/orgs, GET)
+    (/api/v1/users/password/reset, POST)
+  → 生成策略（路径 + 方法一一对应；`user_manager` 为**示例自定义角色**，非种子四角色）：
     p, role::user_manager, /api/v1/users, GET
     p, role::user_manager, /api/v1/users, POST
     p, role::user_manager, /api/v1/users/:id, GET
+    p, role::user_manager, /api/v1/users/update, POST
+    p, role::user_manager, /api/v1/users/delete, POST
+    ...
 ```
+
+> 角色/组织/菜单模块同理：种子 `menu_apis` 须覆盖该菜单下所有 GET/POST 路由（含 `/update`、`/delete` 等动词子路径），否则 Casbin 会漏鉴权。
 
 ### 当前用户菜单树构建
 
@@ -171,10 +185,12 @@ GET /user/permissions
 
 ## 涉及文件
 
+> 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。
+
 ```
-internal/repository/menu_repo.go      # 菜单数据访问
-internal/service/menu_service.go      # 菜单业务逻辑 + 树构建
-internal/handler/menu_handler.go      # HTTP Handler
-internal/handler/user_handler.go      # GetMenus/GetPermissions 在这里
-internal/model/menu.go                # 菜单模型
+internal/repository/menu/
+internal/service/menu/                # 菜单树 + 权限码
+internal/handler/menu/
+internal/handler/user/                # GetMenus/GetPermissions（或拆 user/profile）
+internal/model/menu.go
 ```

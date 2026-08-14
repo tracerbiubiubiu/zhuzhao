@@ -1,6 +1,6 @@
 # 用户模块设计
 
-> 模块代码：`internal/service/user_service.go` + `internal/repository/user_repo.go`
+> 模块代码（目标路径）：`internal/service/user/` + `internal/repository/user/` + `internal/handler/user/`（[§3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)）
 >
 > 旧系统参考：`doc/module-assessment-2026-08/user.md`
 >
@@ -25,11 +25,15 @@
 ```sql
 CREATE TABLE users (
     id          BIGSERIAL PRIMARY KEY,
-    username    VARCHAR(50) UNIQUE NOT NULL,
+    username    VARCHAR(50) NOT NULL,            -- 资料/显示名；可重复；非账密登录键
+    employee_no VARCHAR(50),                   -- 工号（可空，有值唯一）
+    domain_account VARCHAR(100),               -- 域账号
+    user_domain VARCHAR(255),                  -- 所在域
     password    VARCHAR(100) NOT NULL,       -- bcrypt hash
     real_name   VARCHAR(100),
     email       VARCHAR(100),
     phone       VARCHAR(20),
+    avatar      VARCHAR(500),              -- 头像 URL，非二进制；上传见 phase2/storage
     status      SMALLINT DEFAULT 1,          -- 1=启用 0=禁用
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     is_system   BOOLEAN DEFAULT FALSE,
@@ -46,13 +50,17 @@ CREATE INDEX idx_users_status ON users(status) WHERE deleted_at IS NULL;
 ### 关联表
 
 ```sql
--- 用户-角色（多对多）
+-- 用户-角色（多对多；一用户可绑多个角色，权限并集，业务分级取 EffectivePriority = min(priority)）
 CREATE TABLE user_roles (
     user_id     BIGINT REFERENCES users(id),
     role_id     BIGINT REFERENCES roles(id),
     PRIMARY KEY (user_id, role_id)
 );
+```
 
+> Phase 1 通过 `POST /api/v1/users/roles` 分配，`role_ids` 为数组，事务内先删后插（全量覆盖）。路由鉴权 OR、业务分级用 `roles.priority`（越小越强），见 [phase1/03-authz §用户多角色](../phase1/03-authz.md#用户多角色phase-1)、[phase1/04-user §多角色与有效 priority](../phase1/04-user.md#多角色与有效-priority)。
+
+```sql
 -- 用户-组织（多对多）。Phase 1 主键不含 role_id（可空列进主键会导致重复入组）
 CREATE TABLE user_orgs (
     user_id     BIGINT REFERENCES users(id),
@@ -72,7 +80,8 @@ type UserService interface {
     // CRUD
     Create(ctx context.Context, req CreateUserRequest) (*model.User, error)
     GetByID(ctx context.Context, id int64) (*model.User, error)
-    GetByUsername(ctx context.Context, username string) (*model.User, error)
+    GetByUsername(ctx context.Context, username string) (*model.User, error) // 列表/管理：模糊或精确
+    GetByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确
     Update(ctx context.Context, id int64, req UpdateUserRequest) error
     Delete(ctx context.Context, id int64) error
     List(ctx context.Context, query UserListQuery) ([]*model.User, int64, error)
@@ -82,16 +91,16 @@ type UserService interface {
     VerifyPassword(ctx context.Context, userID int64, password string) (bool, error)
 
     // 状态
-    Enable(ctx context.Context, id string) error
-    Disable(ctx context.Context, id string) error
+    Enable(ctx context.Context, id int64) error
+    Disable(ctx context.Context, id int64) error
 
     // 角色绑定
-    SetRoles(ctx context.Context, userID string, roleIDs []string) error
-    GetRoles(ctx context.Context, userID string) ([]*model.Role, error)
+    SetRoles(ctx context.Context, userID int64, roleIDs []int64) error
+    GetRoles(ctx context.Context, userID int64) ([]*model.Role, error)
 
     // 组织绑定
-    SetOrgs(ctx context.Context, userID string, orgRoles []OrgRole) error
-    GetOrgs(ctx context.Context, userID string) ([]*model.Organization, error)
+    SetOrgs(ctx context.Context, userID int64, orgRoles []OrgRole) error
+    GetOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
 }
 ```
 
@@ -107,8 +116,10 @@ POST /api/v1/users {username, password, real_name, ...}
 1. 密码强度校验（PasswordValidator）
    → 长度 ≥ 8，4 种字符类，bcrypt 72 字节上限
 
-2. 用户名唯一性检查
-   → SELECT * FROM users WHERE username = ? AND deleted_at IS NULL
+2. 工号唯一性检查（若提供 employee_no）
+   → SELECT * FROM users WHERE employee_no = ? AND deleted_at IS NULL
+   → Phase 2b：若已存在 source=hr → 409，提示走重置密码/赋角色，勿重复开户
+   → **不调 HR API**（见 04-user §创建时要不要校验 HR）
 
 3. bcrypt 哈希
    → bcrypt.GenerateFromPassword(password, 12)
@@ -122,7 +133,7 @@ POST /api/v1/users {username, password, real_name, ...}
 ### 4.2 删除用户（级联）
 
 ```
-DELETE /api/v1/users/:id
+POST /api/v1/users/delete
 
 1. 系统用户保护
    → user.is_system == true？返回 403
@@ -142,11 +153,9 @@ DELETE /api/v1/users/:id
 6. 事务提交
    → COMMIT
 
-7. 事务外副作用
-   → 吊销 JWT（auth.KickAllDevices）
-   → 清除登录锁（Redis DEL lock:login:{username}）
-   → 失效权限缓存（Redis DEL perm:user:{userId}）
-   → Casbin 策略清理（如有用户级策略）
+7. 事务外副作用（Phase 1）
+   → SET user:disabled:{userId}，DEL 全部 refresh:{userId}:*
+   → DEL lock:login:{employee_no}
 ```
 
 ### 4.3 设置用户角色
@@ -156,7 +165,7 @@ DELETE /api/v1/users/:id
 **新框架方案**：用 PostgreSQL 事务。
 
 ```go
-func (s *UserService) SetRoles(ctx context.Context, userID string, roleIDs []string) error {
+func (s *UserService) SetRoles(ctx context.Context, userID int64, roleIDs []int64) error {
     return s.db.BeginTxFunc(ctx, func(tx pgx.Tx) error {
         // 事务内删除旧角色
         if _, err := tx.Exec(ctx, "DELETE FROM user_roles WHERE user_id = $1", userID); err != nil {
@@ -172,27 +181,41 @@ func (s *UserService) SetRoles(ctx context.Context, userID string, roleIDs []str
         }
         return nil
     })
-    // 事务外：失效权限缓存
-    // s.redis.DEL(ctx, fmt.Sprintf("perm:user:%s", userID))
 }
 ```
 
-### 4.4 列表查询（含资源级过滤）
+> Phase 3 引入 `perm:user:{userId}` 缓存后，SetRoles 成功再 `DEL` 该 key。
+
+### 4.4 列表查询
+
+**Phase 1**：仅路由级 Casbin，有 `GET /users` 权限即可见全部未删除用户。
+
+**Query 筛选**（见 [phase1/04-user §列表筛选](../phase1/04-user.md#列表筛选)）：
+
+| 参数 | 匹配 | 结果 |
+|------|------|------|
+| `username` | 模糊 | 0~N，不要求唯一 |
+| `employee_no` | 精确 | 0 或 1 |
+
+```go
+type UserListQuery struct {
+    Page       int
+    PageSize   int
+    Username   string // ILIKE 模糊
+    EmployeeNo string // 精确
+    RoleCode   string
+    Status     *int
+}
+```
+
+**Phase 2+**（资源级过滤示例）：
 
 ```
 GET /api/v1/users?page=1&size=20
 
 1. 路由级 Casbin 通过
-
-2. 资源级列表过滤
-   → registry.GetFilter(ctx, "user", userID, "read")
-   → filter.Where = "creator_id = $1 OR org_id IN (...)"
-
-3. 分页查询
-   → SELECT * FROM users WHERE deleted_at IS NULL AND (filter.Where)
-     ORDER BY created_at DESC LIMIT $2 OFFSET $3
-
-4. 返回列表（不含 password）
+2. registry.GetFilter(ctx, "user", userID, "read")
+3. SELECT ... WHERE deleted_at IS NULL AND (filter.Where) ...
 ```
 
 ---
@@ -257,18 +280,21 @@ func (v *PasswordValidator) Validate(password string) error {
 - 用户 CRUD（含软删除）
 - 密码管理（bcrypt + 修改；复杂度策略可简化）
 - 用户-角色绑定（事务）
-- 用户-组织绑定（`PRIMARY KEY (user_id, org_id)`，无组织内角色）
-- 用户名唯一性检查
+- 用户-组织绑定：`OrgService.SetUserOrgs` / `AddMember`；API 为 `POST /users/orgs`（全量）、`POST /orgs/members`（单条增删）、创建用户 `org_ids`；读 `GET /users/:id/orgs`
+- 工号唯一性检查（username 可重复）
 - 系统用户保护（`is_system`）+ 最后一个 superadmin 保护
 - 禁用/删除后吊销会话（`user:disabled` + 删全部 RT）
 - `must_change_password` 强制改密
+- **头像**：`avatar` 字段预留 + API 透传 URL；**不上传**（Phase 2b storage）
 - Phase 1 **不做**列表的组织范围数据过滤
 
 ### Phase 2
 
-- 组织内角色 / 临时成员有效期
+- 组织内角色 / 临时成员有效期（`user_orgs.expires_at`）
+- **HR 用户同步**：仅更新 `source=hr` 用户与 **主部门**（`user_orgs.is_primary=true, source=hr`）；不覆盖虚拟组绑定与 `user_roles`（见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)）
 - 列表查询资源级过滤（GetFilter）
 - 用户导入导出
+- **头像上传**（预签名 + 对象存储，更新 `users.avatar`）
 - 密码复杂度完整策略
 
 ### Phase 3

@@ -2,7 +2,7 @@
 
 > 文档版本：v0.6  
 > 更新时间：2026-08-13  
-> 状态：方案讨论阶段。**分阶段边界、主键类型、安全底线以 [`roadmap.md`](../roadmap.md) 与 [`phase1/`](../phase1/README.md) 为准。** 本文 §10 schema 中的 UUID 已废弃（编码用 `BIGINT`）；§18 已与 roadmap 对齐。
+> 状态：方案讨论阶段。**分阶段边界、主键类型、安全底线以 [`roadmap.md`](../roadmap.md) 与 [`phase1/`](../phase1/README.md) 为准。** 本文 §10 为表索引（DDL 见 phase1）；§18 已与 roadmap 对齐。
 
 ---
 
@@ -76,7 +76,7 @@
 - 业务模块通过 `internal/middleware` 提供的中间件获得鉴权能力
 - 业务模块通过 `internal/service/authz_service` 的接口进行资源级权限判断
 - 业务模块的资源表需包含 `creator_id` 字段以支持属主判断（Phase 2）
-- 业务模块的资源需在 `resource_owners` 表中登记组织归属（Phase 2，见 phase2/authz-resource）
+- 业务模块的资源可在 Phase 2b 通过 `resource_owners` 登记组织归属（可选；工单直接用 `tickets.org_path`，见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）
 
 ---
 
@@ -184,21 +184,21 @@ zhuzhao/
 │   │   ├── audit_log.go
 │   │   └── token.go               # Token 相关结构体
 │   │
-│   ├── repository/                # 数据访问层（PostgreSQL CRUD）
-│   │   ├── user_repo.go
-│   │   ├── role_repo.go
-│   │   ├── org_repo.go
-│   │   ├── menu_repo.go
-│   │   └── audit_log_repo.go
+│   ├── repository/                # 数据访问层（目标：repository/{domain}/）
+│   │   ├── user/
+│   │   ├── role/
+│   │   ├── org/
+│   │   ├── menu/
+│   │   └── audit/
 │   │
-│   ├── service/                   # 业务逻辑层
-│   │   ├── auth_service.go        # 登录、Token 签发/刷新/登出
-│   │   ├── user_service.go        # 用户管理
-│   │   ├── role_service.go        # 角色 CRUD、菜单分配、Casbin 策略同步
-│   │   ├── authz_service.go       # 策略管理、ResourceRegistry 协调（资源级在 Service 内联）
-│   │   ├── org_service.go         # 组织架构管理
-│   │   ├── menu_service.go        # 菜单树构建
-│   │   └── audit_service.go       # 审计日志
+│   ├── service/                   # 业务逻辑层（目标：service/{domain}/，见 §3.5）
+│   │   ├── auth/                  # 或骨架期 auth_service.go
+│   │   ├── user/
+│   │   ├── role/
+│   │   ├── authz/
+│   │   ├── org/
+│   │   ├── menu/
+│   │   └── audit/
 │   │
 │   ├── middleware/                # Gin 中间件（仅路由级横切，不含资源级鉴权）
 │   │   ├── jwt.go                 # JWT 解析与校验 + 黑名单 + user:disabled
@@ -206,13 +206,13 @@ zhuzhao/
 │   │   ├── audit.go               # 审计日志记录
 │   │   └── recovery.go            # Panic 恢复
 │   │
-│   ├── handler/                   # HTTP 处理器（Controller 层）
-│   │   ├── auth_handler.go        # 登录/刷新/登出/设备管理
-│   │   ├── user_handler.go
-│   │   ├── role_handler.go
-│   │   ├── org_handler.go
-│   │   ├── menu_handler.go
-│   │   └── permission_handler.go
+│   ├── handler/                   # HTTP 处理器（目标：handler/{domain}/）
+│   │   ├── auth/
+│   │   ├── user/
+│   │   ├── role/
+│   │   ├── org/
+│   │   ├── menu/
+│   │   └── audit/
 │   │
 │   ├── router/                    # 路由注册
 │   │   ├── router.go              # 路由总入口
@@ -229,7 +229,11 @@ zhuzhao/
 │   │   ├── response/              # 统一响应封装
 │   │   ├── errcode/               # 错误码定义
 │   │   ├── logger/                # slog 日志封装
-│   │   ├── redis/                 # Redis 客户端封装
+│   │   ├── redis/                 # Redis 客户端 + Lua 脚本（LoginLocker）
+│   │   │   ├── redis.go
+│   │   │   ├── scripts.go         # go:embed
+│   │   │   └── scripts/
+│   │   │       └── login_lock.lua
 │   │   └── crypto/                # 密码加密（bcrypt）
 │   │
 │   └── app/                       # 应用依赖注入与生命周期
@@ -250,7 +254,7 @@ zhuzhao/
 │   ├── design/                    # 设计文档
 │   │   ├── architecture.md        # 系统架构（本文档）
 │   │   ├── design-decisions.md    # 设计决策与细节讨论
-│   │   └── implementation-plan.md # 实施计划
+│   │   └── implementation-plan.md # 已废弃（见 phase1/README）
 │   ├── api/                       # API 文档（Swagger 生成）
 │   ├── ops/                       # 运维文档
 │   └── adr/                       # 架构决策记录
@@ -270,6 +274,8 @@ zhuzhao/
 ├── go.sum
 └── Makefile
 ```
+
+> **与 §3.5 的关系**：上图为目标形态 `{layer}/{domain}/`；当前仓库骨架可能仍为扁平 `user_service.go` 等，新代码优先子目录，第二次加文件时整域迁入。
 
 ### 3.2 各模块职责边界
 
@@ -299,6 +305,117 @@ internal/router → internal/handler → internal/service → internal/repositor
 ```
 
 **规则**：依赖只能向下游流动，不允许反向引用。`model` 是最底层，所有人都可以引用它。
+
+### 3.5 领域模块目录约定（单仓可拆分）
+
+> 当前 **一个代码仓、一个进程**（Phase 1–2）；Phase 3 可能拆成 **IAM 底座 + 业务服务**（见 [deployment-evolution.md](../proposal/deployment-evolution.md)）。  
+> **原则**：现在按 **领域（domain）** 划目录，将来按 **目录边界** 切仓库/服务，而不是按「当时谁写的文件」硬拆。
+
+#### 3.5.1 两层结构：横向分层 + 纵向领域
+
+```
+internal/
+├── app/、router/              # 进程编排（未来每个二进制一份）
+├── middleware/、casbin/      # 横切 / 路由级鉴权（未来 → Gateway 或 IAM 边缘）
+├── pkg/                        # 无业务语义的工具（可抽成公共 module）
+├── model/                      # 领域模型（Phase 1 可扁平；领域增多再分子包）
+│
+├── handler/{domain}/             # HTTP 适配
+├── service/{domain}/             # 业务逻辑 + 领域接口
+├── repository/{domain}/          # 持久化
+└── integration/{name}/           # 外部系统（如 hr/，Phase 2b）
+```
+
+| 轴 | 目录 | 拆分后归属 |
+|----|------|------------|
+| **横向** | `middleware`、`router`、`app` | Gateway 或各服务入口 |
+| **横向** | `pkg/*`（response、errcode、logger、postgres、redis） | 公共库 `pkg/zhuzhao/...` 或各服务复制 |
+| **纵向** | `auth`、`user`、`role`、`org`、`menu`、`authz`、`audit` | **IAM 服务** |
+| **纵向** | `ticket`（Phase 2） | **业务服务** |
+| **纵向** | `integration/hr`（Phase 2b） | IAM 内 Job，或独立 sync worker |
+
+**骨架阶段**已有扁平文件（如 `internal/service/user_service.go`）可保留；**新增或改动较大的模块**优先落到 `{layer}/{domain}/` 子目录，避免继续在根上堆 `*_service.go`。
+
+#### 3.5.2 领域与文档 / 未来服务映射
+
+| 领域包 `{domain}` | 文档 | 未来进程 | 说明 |
+|-------------------|------|----------|------|
+| `auth` | [modules/auth.md](../modules/auth.md)、phase1/02-auth | IAM | 登录、Token、限流；依赖 `user` |
+| `user` | modules/user、phase1/04-user | IAM | 用户 CRUD、角色绑定 |
+| `role` | modules/role、phase1/05-role | IAM | 角色、菜单分配、策略同步 |
+| `org` | modules/organization、phase1/06-organization | IAM | 组织树、成员 |
+| `menu` | modules/menu、phase1/07-menu | IAM | 菜单树、menu_apis |
+| `authz` | modules/authz、phase1/03-authz | IAM + Gateway | Casbin 策略、ResourceRegistry |
+| `audit` | modules/audit、phase1/08-audit | IAM（或共享） | 操作审计 |
+| `ticket` | modules/ticket | 业务服务 | Phase 2 起 |
+| `integration/hr` | proposal/hr-directory-sync | IAM Job | HR 同步，勿与用户 CRUD 混包 |
+
+#### 3.5.3 推荐目录示例（新代码目标形态）
+
+```
+internal/service/user/
+    service.go          # UserService + 构造函数
+    ports.go            # 可选：本领域对外需要的接口（如 UserReader）
+    resource.go         # Phase 2：Resource 实现（勿放 handler）
+
+internal/repository/user/
+    repo.go             # UserRepo 实现
+
+internal/handler/user/
+    handler.go          # 只调 UserService，不直连接 Repo
+
+internal/service/auth/
+    service.go
+internal/pkg/jwt/       # 认证专用库；拆 IAM 时随 auth 域迁移
+
+internal/router/
+    router.go           # 注册路由；按领域分组注释块
+
+internal/app/
+    wire.go             # Provider 按领域分段注释；拆分时整段复制到新 cmd
+```
+
+`internal/model/user.go` Phase 1 保持单文件即可；同一领域模型超过 3 个文件时再考虑 `model/user/`。
+
+#### 3.5.4 跨领域调用规则（拆服务前就必须遵守）
+
+| 允许 | 禁止 |
+|------|------|
+| `service/user` 注入 `service/role` 的 **接口** | `service/user` 直接 import `repository/role` |
+| `service/org` 调用 `UserReader` 接口查用户 | `handler/org` 直接调 `UserRepo` |
+| `auth` 调 `user` 验密码 | 领域间 **循环依赖**（应用层用 Wire 单向注入打破） |
+| 事务由 **一个** Service 拥有并调 Repo | 在 handler 里开事务跨多个 Service |
+
+拆分为 gRPC 后：原 `service/role` 接口 → `RoleServiceClient`；**调用方代码只改注入，不改业务方法签名**（见 design-decisions §13）。
+
+#### 3.5.5 `internal/pkg` 边界
+
+| 放入 `pkg/` | 不要放入 `pkg/` |
+|-------------|-----------------|
+| response、errcode、logger、postgres、redis、crypto | 带 `user_id` / 组织语义的 Resource 实现 |
+| jwt（Phase 1 暂放 pkg，**语义属 auth 域**） | Casbin Enforcer 业务策略（应在 `casbin/` 或 `service/authz`） |
+| resource **接口与 Registry 框架**（无具体资源） | 工单状态机、HR 对账逻辑 |
+
+#### 3.5.6 拆分迁移检查清单
+
+从单仓切出 `iam-server` / `ticket-server` 时，按目录打包：
+
+1. `cmd/{service}/main.go` + `internal/app` 子集  
+2. 对应 `handler/{domain}`、`service/{domain}`、`repository/{domain}`、`model/*`  
+3. 该服务私有的 `migrations/` 表（或继续共享 PG schema，文档注明）  
+4. `middleware` 中 JWT/Casbin 是否留在 Gateway — 见 deployment-evolution §4  
+
+**Wire**：每个未来二进制一份 `wire.go`；Phase 1 单 `wire.go` 内用注释分块 `# region IAM` / `# region ticket`，便于复制。
+
+#### 3.5.7 Phase 1 落地节奏
+
+| 时机 | 动作 |
+|------|------|
+| Step 1  infra | 建 `migrations/`、`pkg/redis/scripts/`；**不**为了拆服务提前建多 cmd |
+| Step 2+ 业务模块 | 新文件优先 `service/{domain}/`、`handler/{domain}/` |
+| 仅 1 个文件的域 | 可暂用 `user_service.go`；第二次加文件（如 `resource.go`）时 **整域迁入子目录** |
+| Phase 2 工单 | 新建 `service/ticket/`、`handler/ticket/`，**不**塞进 user/org |
+| Phase 2b HR | 新建 `integration/hr/` + `service/org` 扩展，独立 client |
 
 **Wire 依赖注入链**：
 
@@ -337,6 +454,40 @@ Wire Injector (wire.go)
 最终生成: InitializeApp(cfg) → *App
 ```
 
+### 3.6 组件注册与生命周期（三者分离）
+
+新增业务域或后台能力时，**不要**用一个「万能 Service 接口」同时承担依赖注入、鉴权、进程生命周期。本项目拆成三条独立机制：
+
+| 机制 | 位置 | 职责 | 何时用 |
+|------|------|------|--------|
+| **Wire DI** | `internal/app/wire.go` | 编译期组装 Handler / Service / Repo / 基础设施 | 每个模块必走；新增 provider 即可 |
+| **ResourceRegistry** | `internal/pkg/resource/` | 资源级鉴权：`Authorize` + `GetFilter` | Phase 2+ 需要数据范围时；`NewXxxService` 内 `registry.Register` |
+| **Runner（可选）** | `internal/app/` | 后台 goroutine 的 `Start` / `Stop` | 仅审计 worker、Asynq、Casbin Watcher、定时同步等 |
+
+```
+                    ┌─────────────────────────────────────┐
+                    │           cmd/server / App          │
+                    └─────────────────────────────────────┘
+           Wire 注入 │                    │ 生命周期编排
+                    ▼                    ▼
+    Handler ──▶ XxxService ──▶ Repo          Runners[]（Phase 3+）
+                    │
+                    └──▶ registry.Register(XxxResource)   ← 仅鉴权，无 Start/Stop
+```
+
+**`resource.Resource` 只管鉴权**，不包含 `Init` / `Run` / `Start` / `Stop`。各域 **`XxxService` 按用例定义业务方法**（`Create`、`List`…），不强制实现统一生命周期接口。
+
+**基础设施**（PG、Redis、Casbin）沿用 Wire `New() (T, cleanup, error)`；`cleanup` 在进程退出最后阶段调用，见 [§14.1](#141-优雅关闭)。
+
+**新增业务域 checklist**（与 [resource-model.md](../proposal/resource-model.md) 一致）：
+
+1. `service/{domain}/` + `repository/{domain}/` + `handler/{domain}/` → 加入 Wire  
+2. `router` 注册路由 + seed `menu_apis` + Casbin `p` 策略  
+3. Phase 2+：另建 `{domain}/resource.go` 实现 `Resource`，构造函数自注册  
+4. 仅有后台任务时：实现 `Runner`，由 `App` 编排；**不**改 ResourceRegistry 源码  
+
+**多二进制部署**（[design-decisions §18](./design-decisions.md#18-部署与代码解耦一套代码多种部署)）：`cmd/server` 跑 HTTP；`cmd/worker`（Phase 3）单独 Wire Asynq consumer，共享 `internal/service`，不共用「万能 Service 接口」。
+
 ### 3.4 各模块对外接口边界
 
 #### service 层接口（核心）
@@ -353,7 +504,7 @@ Wire Injector (wire.go)
 | | `GetUserPermissions` | 获取用户按钮权限码列表 |
 | `OrgService` | `GetOrgTree` | 获取组织树 |
 | | `GetUserOrgs` | 获取用户所属组织列表 |
-| `AuditService` | `Record` | 记录审计日志（异步） |
+| `AuditService` | `Record` | 记录审计日志（Phase 1 **同步**写 DB） |
 | | `Query` | 查询审计日志 |
 
 #### middleware 层接口
@@ -365,7 +516,7 @@ Wire Injector (wire.go)
 | `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled`（Redis 故障 503） |
 | `Casbin` | 需鉴权路由 | 路由级 RBAC（RoleFetcher 查角色） |
 | `Audit` | 需审计路由 | 操作记录 |
-| `RateLimit` | 登录等公开路由 | 登录限流（Phase 1）；API 级限流 Phase 3 |
+| `RateLimit` | 登录等公开路由 | 登录限流在 **AuthService**（Lua）；API 级限流 Phase 3 |
 
 > **资源级鉴权不在 middleware**。各 Service 通过 `internal/pkg/resource` 的 `ResourceRegistry.Authorize` / `GetFilter` 在 Handler→Service 内联执行（Phase 2 工单等）。详见 [design-decisions.md §5](./design-decisions.md#5-资源级鉴权架构gateway-下放-vs-集中)。
 
@@ -416,12 +567,12 @@ Wire Injector (wire.go)
 
 **策略量**：角色数 × API 数 × 方法数 ≈ 1,000 条，内存无压力。
 
-**策略示例**：
+**策略示例**（`role::editor` 为业务资源示例角色，非种子四角色）：
 
 ```
 p, role::admin, /api/v1/*, *
 p, role::editor, /api/v1/articles/*, GET
-p, role::editor, /api/v1/articles/:id, PUT
+p, role::editor, /api/v1/articles/update, POST
 ```
 
 > 无 Casbin `g` 段。用户→角色映射在 `user_roles` 表，中间件逐 `role::{code}` enforce。superadmin/admin 在 matcher bypass。
@@ -454,6 +605,8 @@ p, role::editor, /api/v1/articles/:id, PUT
 | 3 | 本组及父级链 | 成员可以向上访问上级组织的共享资源 |
 
 **关键 SQL**（利用 ltree `@>` 祖先判断）：
+
+> **Phase 说明**：本 SQL 依赖 `resource_owners` 与 `org_permissions`，属 **Phase 2b+** 数据 scope 路径。Phase 2a 工单直接用 `tickets.org_id/org_path`，**不建** `resource_owners` 表（见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）。
 
 ```sql
 SELECT EXISTS (
@@ -641,11 +794,26 @@ user:disabled:1 → 1
 3. AT 在过期后自然失效（无法刷新获取新 AT）
 ```
 
+#### 非法与混用凭证（AuthN 拒绝原则）
+
+> **SSOT（分类表、日志、伪代码）**：[phase1/02-auth.md §非法认证请求的处理](../phase1/02-auth.md#非法认证请求的处理实现必读)
+
+| 原则 | 说明 |
+|------|------|
+| **互斥** | 受保护路由：JWT（Bearer）与 AK/SK **二选一**；同时出现 → **400/20008**，不以任一为准 |
+| **早拒** | 混用检测在解析 JWT / 验 AK **之前**；AuthN 任一失败 **`Abort`**，不进 Casbin / Handler |
+| **fail-close** | 鉴权链 Redis 故障 → **503/10008**；禁止 fail-open |
+| **对外模糊** | 失败 `data=null`；AK 验签失败统一 **20009**，不区分「AK 不存在」与「SK 错误」 |
+| **密码仅登录** | 业务 API 忽略 body 中的 password；无 Bearer 则 **401**，不尝试用密码鉴权 |
+
+Phase 1 无 AK/SK；若请求带 `X-AK-*` → **401/20009**。M2M 上线后见 02-auth §M2M。
+
 ### 5.5 JWT 中间件校验流程（Phase 1）
 
 ```
-请求进入
+请求进入（受保护路由）
   │
+  ├─ 0. 【AuthN 前置】Bearer 与 X-AK-* 同时存在？→ 400 + 20008，Abort（见上节）
   ├─ 1. 提取 Authorization Header 中的 AT
   ├─ 2. 解析 JWT，校验 HS256 签名和 exp → uid, username, jti, mcp
   ├─ 3. 查 Redis 黑名单: EXISTS blacklist:at:{jti}
@@ -653,8 +821,8 @@ user:disabled:1 → 1
   │     └─ 在黑名单中 → 401
   ├─ 4. 查 user:disabled:{uid}
   │     ├─ Redis 错误 → 503
-  │     └─ 存在 → 401/403
-  ├─ 5. mcp=true 且非改密路由 → 403 PASSWORD_CHANGE_REQUIRED
+  │     └─ 存在 → 403 + ErrUserDisabled（30003）
+  ├─ 5. mcp=true 且非改密路由 → 403 + 20007（ErrPasswordChangeRequired）
   ├─ 6. 注入 context: userID, username, mustChangePassword
   └─ 7. c.Next()
 
@@ -672,8 +840,9 @@ Phase 3 多实例/热点场景可引入 `perm:user:{userId}` 缓存，Casbin 中
 | `/api/v1/auth/login` | POST | 登录，返回双 Token |
 | `/api/v1/auth/refresh` | POST | 刷新 Token，RT 轮换 |
 | `/api/v1/auth/logout` | POST | 登出，吊销 Token |
-| `/api/v1/auth/devices` | GET | 查询当前用户活跃设备列表 |
-| `/api/v1/auth/devices/:deviceId` | DELETE | 踢出指定设备 |
+| `/api/v1/auth/password/update` | POST | 当前用户修改密码（须已登录） |
+
+> Phase 2：`/api/v1/auth/devices`（设备列表）、`/api/v1/auth/devices/delete`（踢出设备）。Phase 1 允许多设备登录，不提供设备管理 API。
 
 ### 5.7 JWT 无状态策略与权限缓存（Phase 3 / 按需）
 
@@ -729,10 +898,12 @@ TTL:   30min
 
 ### 6.3 组织类型
 
-| 类型 | org_type | 说明 | 示例 |
-|------|----------|------|------|
-| 实体组织 | 1 | 公司真实的组织架构 | 集团、技术中心、产品中心 |
-| 虚拟组 | 2 | 挂在实体组织下的项目组/虚拟团队 | 前端组、后端组、某项目组 |
+| 类型 | org_type | source | 说明 | 示例 |
+|------|----------|--------|------|------|
+| 种子根 / 实体组织 | 1–3 | system / hr / local | 公司真实组织架构；HR 同步见 [hr-directory-sync.md](../proposal/hr-directory-sync.md) | 集团、技术中心、产品中心 |
+| 虚拟组 | 4 | local | 挂在实体组织下的项目组/虚拟团队 | `vg_alpha`、某项目组 |
+
+> Phase 1 仅手工 CRUD 实体组织（`org_type` 1–3）；`source` / HR Sync / 虚拟组在 Phase 2b 落地。
 
 ---
 
@@ -788,7 +959,8 @@ TTL:   30min
 ### 8.2 实现要点
 
 - **记录位置**：middleware 层，在请求完成后记录
-- **写入方式**：异步写入，channel + goroutine 消费，避免阻塞请求
+- **写入方式（Phase 1）**：**同步**写入 PostgreSQL，保证审计不丢（见 [phase1/08-audit.md](../phase1/08-audit.md)）
+- **写入方式（Phase 3a）**：可选 channel + Redis List 异步，降低请求延迟
 - **脱敏处理**：对 password、token 等敏感字段在记录前移除
 - **查询索引**：按用户+时间、组织路径+时间、操作类型+时间、租户+时间
 
@@ -838,212 +1010,67 @@ m = g(r.tenant, r.sub, p.sub) && \
 
 ## 10. 数据库 Schema
 
-> **本节 SQL 中的 UUID 主键已废弃。** 编码以 [phase1](../phase1/README.md) 为准：业务表 `BIGSERIAL`/`BIGINT`，JSON `,string`；角色/菜单/组织另有 `code` 业务键。组织 `code` 须匹配 ltree 标签 `[A-Za-z0-9_]`。以下 SQL 仅保留字段语义参考，实现时不要照抄 UUID。
+> **SSOT：** 完整 DDL、索引与 seed 以 [`phase1/`](../phase1/README.md) 各模块文档及 `migrations/` 为准。本节仅作**表索引与约定摘要**，不在此维护可执行 SQL（原 UUID 大段 DDL 已移除）。
 
-### 10.1 完整建表 SQL
+### 10.1 约定摘要
 
-```sql
--- 启用扩展
-CREATE EXTENSION IF NOT EXISTS ltree;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+| 项 | Phase 1 |
+|----|---------|
+| 主键 | `BIGSERIAL` / `BIGINT`，JSON 序列化 `,string` |
+| 业务键 | 角色 / 菜单 / 组织另有 `code`（Casbin subject 用 `role::{code}`） |
+| 组织路径 | PostgreSQL `ltree`；`organizations.code` 须匹配 ltree 标签 `[A-Za-z0-9_]` |
+| 乐观锁 | `version INT DEFAULT 1`（建表即含，见 [10-concurrency.md](../phase1/10-concurrency.md)） |
+| 软删除 | `users`、`organizations` 等含 `deleted_at` |
+| Casbin | 单表 `casbin_rule`；Phase 1 **直接角色**（`user_roles` → `p` 策略），无 `g` 表 BFS |
 
--- 用户表
-CREATE TABLE users (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username        VARCHAR(50) UNIQUE NOT NULL,
-    password        VARCHAR(255) NOT NULL,          -- bcrypt
-    real_name       VARCHAR(100),                   -- 真实姓名
-    email           VARCHAR(100) UNIQUE,
-    phone           VARCHAR(20),
-    avatar          VARCHAR(500),                   -- 头像 URL
-    status          SMALLINT DEFAULT 1,             -- 1=启用 0=禁用
-    last_login_at   TIMESTAMPTZ,                    -- 最后登录时间
-    last_login_ip   VARCHAR(50),                    -- 最后登录 IP
-    oauth_provider  VARCHAR(50),                    -- 第三方登录预留: google/github/...
-    oauth_id        VARCHAR(200),                   -- 第三方账号 ID
-    tenant_id       UUID DEFAULT gen_random_uuid(), -- 多租户预留
-    version         INT DEFAULT 1,                  -- 乐观锁
-    deleted_at      TIMESTAMPTZ,                    -- 软删除
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_users_deleted ON users(deleted_at) WHERE deleted_at IS NOT NULL;
+### 10.2 Phase 1 业务表
 
--- 组织表（实体组织 + 虚拟组统一建表）
-CREATE TABLE organizations (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    parent_id   UUID REFERENCES organizations(id) ON DELETE SET NULL,
-    name        VARCHAR(100) NOT NULL,
-    org_type    SMALLINT NOT NULL,              -- 1=实体组织 2=虚拟组
-    code        VARCHAR(50) UNIQUE NOT NULL,
-    path        LTREE NOT NULL,                 -- 如 root.tech.fe
-    leader_id   UUID REFERENCES users(id) ON DELETE SET NULL,  -- 组织负责人
-    status      SMALLINT DEFAULT 1,
-    sort_order  INT DEFAULT 0,
-    tenant_id   UUID DEFAULT gen_random_uuid(), -- 多租户预留
-    version     INT DEFAULT 1,                  -- 乐观锁
-    deleted_at  TIMESTAMPTZ,                    -- 软删除
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_org_path ON organizations USING GIST(path);
-CREATE INDEX idx_org_parent ON organizations(parent_id);
-CREATE INDEX idx_org_tenant ON organizations(tenant_id);
-CREATE INDEX idx_org_deleted ON organizations(deleted_at) WHERE deleted_at IS NOT NULL;
+| 表 | 说明 | 权威文档 |
+|----|------|----------|
+| `users` | 用户账号、状态、`must_change_password` | [04-user.md](../phase1/04-user.md) |
+| `user_roles` | 用户 ↔ 角色（Phase 1 权限主路径） | [04-user.md](../phase1/04-user.md)、[05-role.md](../phase1/05-role.md) |
+| `user_orgs` | 用户 ↔ 组织（组织维度，Phase 1 不做数据过滤） | [04-user.md](../phase1/04-user.md)、[06-organization.md](../phase1/06-organization.md) |
+| `organizations` | 实体组织 ltree 树 | [06-organization.md](../phase1/06-organization.md) |
+| `roles` | 角色定义 | [05-role.md](../phase1/05-role.md) |
+| `role_menus` | 角色 ↔ 菜单 | [05-role.md](../phase1/05-role.md) |
+| `menus` | 菜单树（目录 / 菜单 / 按钮） | [07-menu.md](../phase1/07-menu.md) |
+| `menu_apis` | 菜单 ↔ HTTP 路由（Casbin API 策略同步来源） | [07-menu.md](../phase1/07-menu.md) |
+| `audit_logs` | 操作审计 | [08-audit.md](../phase1/08-audit.md) |
+| `casbin_rule` | Casbin 策略存储 | [03-authz.md](../phase1/03-authz.md)、[01-infra.md](../phase1/01-infra.md) §迁移 |
 
--- 角色表
-CREATE TABLE roles (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code        VARCHAR(50) UNIQUE NOT NULL,    -- 角色key: "admin", "editor"
-    name        VARCHAR(100) NOT NULL,
-    description TEXT,
-    status      SMALLINT DEFAULT 1,
-    sort_order  INT DEFAULT 0,
-    tenant_id   UUID DEFAULT gen_random_uuid(), -- 多租户预留
-    version     INT DEFAULT 1,                  -- 乐观锁
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
+迁移文件布局见 [01-infra.md](../phase1/01-infra.md)：`000001_init` 建表、`000002_seed` 种子、`000003_casbin` 策略。
 
--- 用户-组织关系表（多对多，含角色）
-CREATE TABLE user_orgs (
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    role_id     UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    is_primary  BOOLEAN DEFAULT FALSE,
-    joined_at   TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, org_id)
-);
-CREATE INDEX idx_user_orgs_user ON user_orgs(user_id);
-CREATE INDEX idx_user_orgs_org ON user_orgs(org_id);
+### 10.3 Phase 2+ 预留（本文档不展开 DDL）
 
--- 菜单表
-CREATE TABLE menus (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    parent_id   UUID REFERENCES menus(id) ON DELETE CASCADE,
-    name        VARCHAR(100) NOT NULL,
-    path        VARCHAR(200),                   -- 前端路由路径
-    route_name  VARCHAR(100),                   -- 前端命名路由名（如 "user-list"）
-    component   VARCHAR(200),                   -- 前端组件路径
-    redirect    VARCHAR(200),                   -- 重定向路径
-    icon        VARCHAR(50),
-    sort_order  INT DEFAULT 0,
-    type        SMALLINT NOT NULL,              -- 1=目录 2=菜单 3=按钮
-    permission  VARCHAR(100),                   -- 权限标识: "article:create"
-    hidden      BOOLEAN DEFAULT FALSE,
-    version     INT DEFAULT 1,                  -- 乐观锁
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
+| 表 / 能力 | 阶段 | 说明 |
+|-----------|------|------|
+| `resource_owners` | 2b（可选） | 泛化资源归属；**工单 2a 直接用 `tickets.org_id/org_path`** |
+| `org_permissions` | 2b | 组织级权限模板 |
+| 虚拟组 / HR 同步 / scope | 2b | 见 [organization 模块](../modules/organization.md)、[hr-directory-sync.md](../proposal/hr-directory-sync.md) |
+| 组内 owner / `org_member_role` | **2c** | 见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) |
+| `api_credentials` | 2b | AK/SK（Phase 1 不做） |
+| `casbin_rule_{resource}` | 2a+ | 按需独立策略表，见 [resource-model.md](../proposal/resource-model.md) |
+| ResourceRegistry 实现 | 2a | Phase 1 为空接口 |
 
--- 角色-菜单关联表
-CREATE TABLE role_menus (
-    role_id     UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    menu_id     UUID NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, menu_id)
-);
+### 10.4 种子数据
 
--- 资源-组织归属表
-CREATE TABLE resource_owners (
-    resource_type   VARCHAR(50) NOT NULL,
-    resource_id     UUID NOT NULL,
-    org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    extra           JSONB,                      -- 预留扩展维度（如项目、部门）
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (resource_type, resource_id, org_id)
-);
-CREATE INDEX idx_resource_owners ON resource_owners(resource_type, resource_id);
+> 详见 [01-infra.md](../phase1/01-infra.md) 与 [data-init.md](../proposal/data-init.md)。原则：`ON CONFLICT DO NOTHING`，不覆盖 `created_at` / `created_by`。
 
--- 组织级权限模板表
-CREATE TABLE org_permissions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id         UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    resource_type   VARCHAR(50) NOT NULL,
-    action          VARCHAR(20) NOT NULL,       -- read/write/delete
-    scope           SMALLINT NOT NULL,          -- 1=本组 2=本组及子组 3=本组及父级
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(role_id, resource_type, action)
-);
+| 数据 | 内容 |
+|------|------|
+| 系统角色 | `superadmin`、`admin`、`operator`、`viewer`（`is_system=true`） |
+| 组织 | `root`、`root.tech`、`root.product` |
+| 初始用户 | 工号 `E000001` / 密码 `admin123`（`username=admin`），绑定 **superadmin** 与 root 组织 |
+| 系统菜单 | 首页 + 系统管理（用户 / 角色 / 菜单 / 组织）及 `menu_apis` |
+| Casbin | `p, role::superadmin, *, *` 与 `p, role::admin, *, *` |
 
--- 审计日志表
-CREATE TABLE audit_logs (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID,
-    username        VARCHAR(50),                -- 冗余存储，用户删除后仍可查
-    org_id          UUID,
-    org_path        LTREE,                      -- 记录操作时的组织路径
-    method          VARCHAR(10),
-    path            VARCHAR(500),
-    action          VARCHAR(50),                -- 业务操作: "article.create"
-    resource_type   VARCHAR(50),
-    resource_id     UUID,
-    request_body    JSONB,                      -- 请求参数（脱敏后）
-    response_code   INT,
-    ip              VARCHAR(50),
-    user_agent      VARCHAR(500),
-    latency_ms      INT,
-    status          SMALLINT,                   -- 1=成功 0=失败
-    error_msg       TEXT,
-    tenant_id       UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_audit_user_time ON audit_logs(user_id, created_at DESC);
-CREATE INDEX idx_audit_org_time ON audit_logs USING GIST(org_path);
-CREATE INDEX idx_audit_action_time ON audit_logs(action, created_at DESC);
-CREATE INDEX idx_audit_tenant_time ON audit_logs(tenant_id, created_at DESC);
-
--- Casbin 策略表（由 postgres-adapter 自动创建，结构如下）
--- casbin_rule: p_type, v0, v1, v2, v3, v4, v5
-```
-
-### 10.2 示例数据
-
-```sql
--- 组织架构
-INSERT INTO organizations (id, name, org_type, code, path) VALUES
-('00000000-0000-0000-0000-000000000001', '集团', 1, 'root', 'root'),
-('00000000-0000-0000-0000-000000000002', '技术中心', 1, 'tech', 'root.tech'),
-('00000000-0000-0000-0000-000000000003', '产品中心', 1, 'product', 'root.product'),
-('00000000-0000-0000-0000-000000000004', '前端组', 2, 'fe', 'root.tech.fe'),
-('00000000-0000-0000-0000-000000000005', '后端组', 2, 'be', 'root.tech.be');
-
--- 更新 parent_id
-UPDATE organizations SET parent_id = NULL WHERE code = 'root';
-UPDATE organizations SET parent_id = '00000000-0000-0000-0000-000000000001'
-  WHERE code IN ('tech', 'product');
-UPDATE organizations SET parent_id = '00000000-0000-0000-0000-000000000002'
-  WHERE code IN ('fe', 'be');
-
--- 角色（幂等：已存在则跳过，不覆盖审计字段）
-INSERT INTO roles (id, code, name, description, is_system) VALUES
-('00000000-0000-0000-0000-000000000010', 'admin', '管理员', '系统管理员，拥有全部权限', true),
-('00000000-0000-0000-0000-000000000011', 'editor', '编辑', '内容编辑，可管理文章', true),
-('00000000-0000-0000-0000-000000000012', 'viewer', '访客', '只读访问', true)
-ON CONFLICT (code) DO NOTHING;
-
--- 超级管理员用户（密码: admin123，bcrypt hash 需实际生成）
-INSERT INTO users (id, username, password, real_name, status, is_system) VALUES
-('00000000-0000-0000-0000-000000000020', 'admin', '$2a$12$xxxxx', '系统管理员', 1, true)
-ON CONFLICT (username) DO NOTHING;
-
--- admin 用户关联到集团组织
-INSERT INTO user_orgs (user_id, org_id, role_id, is_primary) VALUES
-('00000000-0000-0000-0000-000000000020',
- '00000000-0000-0000-0000-000000000001',
- '00000000-0000-0000-0000-000000000010',
- true)
-ON CONFLICT (user_id, org_id, role_id) DO NOTHING;
-
--- 组织级权限模板
-INSERT INTO org_permissions (role_id, resource_type, action, scope) VALUES
-('editor', 'article', 'read', 2),   -- 编辑可读本组及子组的文章
-('editor', 'article', 'write', 1),  -- 编辑只能写本组文章
-('viewer', 'article', 'read', 1);   -- 访客只能读本组文章
-```
+模块级字段语义与 API 行为见 [`modules/`](../modules/) 目录。
 
 ---
 
 ## 11. 部署架构
+
+> **原则（SSOT）**：[design-decisions.md §18 部署与代码解耦](./design-decisions.md#18-部署与代码解耦一套代码多种部署)——**一套代码、多种部署**，拓扑差异由配置与编排解决，业务 Handler/Service 不因 PG 集群 / Redis Sentinel / App 多副本而改写。
 
 ### 11.1 开发环境
 
@@ -1226,31 +1253,32 @@ log:
 
 | 操作 | 涉及表 | 事务保证 |
 |------|--------|----------|
-| 角色权限变更 | Casbin 策略表 + org_permissions | 同一 PostgreSQL 事务，全成功或全回滚 |
-| 用户-角色分配 | user_orgs + Casbin g 表 | 同一 PostgreSQL 事务 |
-| 组织结构变更 | organizations + user_orgs + resource_owners | 同一 PostgreSQL 事务，含 path 递归更新 |
-| 菜单变更 | menus + role_menus | 同一 PostgreSQL 事务 |
+| 角色-菜单分配（路由策略，Phase 1） | `role_menus` + `casbin_rule` | 同一 PostgreSQL 事务，全成功或全回滚 |
+| 用户-角色分配（Phase 1） | `user_roles` | 同一 PostgreSQL 事务（不写 Casbin g 表；Phase 1 无 g 表） |
+| 组织结构变更（Phase 1） | `organizations` + `user_orgs` | 同一 PostgreSQL 事务，含 path 递归更新 |
+| 组织级权限模板（Phase 2b） | `org_permissions` + `casbin_rule` | 同一 PostgreSQL 事务 |
+| 资源归属（Phase 2b） | `resource_owners` + 业务表 | 同一 PostgreSQL 事务 |
 
 #### DB 事务 + 缓存失效（最终一致性）
 
 | 操作 | 流程 | 失败处理 |
 |------|------|----------|
-| 权限变更 | ① DB 事务提交 → ② Casbin 内存更新 → ③ 清除 Redis 权限缓存 | ② 失败：DB 已提交，通过 Watcher 通知重载；③ 失败：缓存有 TTL，自然过期 |
-| 组织变更 | ① DB 事务提交（含 path 更新） → ② 清除相关缓存 | ② 失败：缓存有 TTL，自然过期；可接受短暂不一致 |
+| 权限变更（Phase 3 权限缓存） | ① DB 事务提交 → ② Casbin 内存更新 → ③ 清除 Redis `perm:user:*` | ② 失败：DB 已提交，通过 Watcher 通知重载；③ 失败：缓存有 TTL，自然过期 |
+| 角色-菜单变更（Phase 1） | ① DB 事务提交（`role_menus` + `casbin_rule`） → ② `enforcer.ReloadPolicy()` | Reload 失败：Watcher 或重启后重载 |
+| 组织变更（Phase 3 组织/菜单缓存） | ① DB 事务提交（含 path 更新） → ② 清除 `orgs:user:*` / `menu:user:*` | ② 失败：缓存有 TTL，自然过期；可接受短暂不一致 |
 
 **原则**：先写 DB（事务保证），再更新内存/缓存。缓存更新失败不影响数据正确性，只影响性能（TTL 过期后自动重建）。
 
 ### 12.4 审计日志可靠性
 
-当前设计用 channel + goroutine 异步写入，存在丢日志风险。改进方案：
+**Phase 1**：请求内**同步**写 DB（见 §8.2、[phase1/08-audit.md](../phase1/08-audit.md)）。以下为 Phase 3a 起的演进方案：
 
 | 级别 | 方案 | 可靠性 | 复杂度 |
 |------|------|--------|--------|
-| L1（当前） | channel + goroutine → DB | 进程崩溃丢 channel 内日志 | 低 |
-| L2（推荐） | channel → Redis List（持久化）→ goroutine 消费 → DB | 进程崩溃不丢，Redis 持久化 | 中 |
+| L0（Phase 1） | 请求内同步 → DB | 最高（同事务路径），略增延迟 | 低 |
+| L1 | channel + goroutine → DB | 进程崩溃丢 channel 内日志 | 低 |
+| L2（Phase 3a 推荐） | channel → Redis List → goroutine → DB | 进程崩溃不丢，Redis 持久化 | 中 |
 | L3（重型） | Kafka/RabbitMQ → 消费者 → DB | 最高可靠性，支持重放 | 高 |
-
-**推荐 L2**：Redis List (`LPUSH` + `BRPOP`) 做轻量队列，兼顾可靠性和简单性。当前阶段不引入重量级 MQ。
 
 ### 12.5 跨实例事件广播
 
@@ -1259,12 +1287,14 @@ log:
 | 事件 | Channel | 订阅者行为 |
 |------|---------|-----------|
 | Casbin 策略变更 | `casbin:policy:changed` | 触发 enforcer reload（加分布式锁） |
-| 用户被禁用 | `user:disabled:{userId}` | 清除该用户的权限缓存；其 AT 继续有效到过期或下次刷新被拒 |
+| 用户被禁用 | `user:disabled:{userId}` + `DEL refresh:{userId}:*` | AT：JWT 中间件 → 403（30003）；RT：`/auth/refresh` → 401（20004） |
 | 权限缓存失效 | `cache:invalidate:{key}` | 删除本地/Redis 缓存（如 `perm:user:{userId}`，详见 §5.7） |
 
 > 单实例阶段不需要 Pub/Sub，多实例部署时启用。
 
-### 12.6 缓存策略
+### 12.6 缓存策略（Phase 3 / 按需，Phase 1 不做）
+
+Phase 1 路由鉴权每次查 `user_roles` + Casbin，**不使用**下列 Redis 缓存。
 
 | 缓存对象 | Redis Key | TTL | 失效触发 |
 |----------|-----------|-----|----------|
@@ -1286,28 +1316,30 @@ log:
 
 ### 13.1 密码安全
 
+> Phase 1：bcrypt 存储 + 管理员重置 + 首次改密（`mcp`）。下列邮箱重置、密码历史等为 Phase 2+ 可选能力。
+
 | 措施 | 说明 |
 |------|------|
 | 密码存储 | bcrypt，cost ≥ 12 |
-| 密码复杂度 | 最少 8 位，含大小写+数字+特殊字符（可配置） |
-| 密码历史 | 记录最近 5 次密码 hash，防止重用（新增 `password_history` 表） |
-| 密码重置 | 通过邮箱/手机发送一次性 token（存 Redis，TTL 15min），验证后重置 |
-| 密码过期 | 可选策略，如 90 天强制修改（企业合规需要时启用） |
+| 密码复杂度 | 最少 8 位，含大小写+数字+特殊字符（可配置，Phase 2 完整策略） |
+| 密码历史 | Phase 2+：记录最近 5 次 hash，防重用 |
+| 密码重置 | Phase 1：管理员 `POST /users/password/reset`；Phase 2+：邮箱/手机一次性 token |
+| 密码过期 | Phase 2+ 可选，如 90 天强制修改 |
 
-### 13.2 登录安全
+### 13.2 登录安全（Phase 1）
 
 | 措施 | 说明 |
 |------|------|
-| 登录限流 | 同 IP 5 次/分钟；同账号 5 次/5 分钟（Redis 计数器） |
-| 账号锁定 | 连续失败 5 次锁定 15 分钟（Redis key `lock:login:{username}`） |
-| 验证码 | 登录失败 3 次后要求图形验证码（可选，后期补充） |
-| 异地登录检测 | 对比本次登录 IP 与上次 IP 的地理归属，异常时记录审计日志或要求二次验证 |
+| 登录限流 | 同一 **employee_no** 15 分钟内失败 **5** 次 → 429（Redis **Lua** LoginLocker，key `lock:login:{employee_no}`） |
+| 防用户枚举 | 用户不存在 / 密码错误 / 登录时账号禁用 → 同一 401 文案 |
+| 验证码 | Phase 2+：失败 3 次后图形验证码（可选） |
+| 异地登录检测 | Phase 2+：IP 归属异常时审计或二次验证 |
 
 ### 13.3 API 安全
 
 | 措施 | 说明 |
 |------|------|
-| CORS | 白名单域名配置，通过中间件处理 |
+| CORS | Phase 1 `AllowAllOrigins`（全放开）；生产改为域名白名单 |
 | SQL 注入 | 全部使用参数化查询（pgx 原生支持 `$1, $2` 占位符），**禁止字符串拼接 SQL** |
 | 请求体大小限制 | 中间件限制 `max_body_size`（如 1MB） |
 | 安全响应头 | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY` 等 |
@@ -1337,17 +1369,40 @@ Viper 支持环境变量覆盖配置文件值，生产环境通过环境变量�
 
 ### 14.1 优雅关闭
 
+> 启动与关闭的**编排**在 `internal/app`；**资源释放**由 Wire `cleanup` +（Phase 3+）`Runner.Stop` 完成。组件分层见 [§3.6](#36-组件注册与生命周期三者分离)。
+
+#### 启动顺序（Phase 3+ 有 Runner 时）
+
+```
+1. Wire InitializeApp → 基础设施 Ping（PG / Redis fail-fast）
+2. Runners.Start（逆依赖：Watcher → Worker → …）
+3. HTTP ListenAndServe（goroutine）
+```
+
+Phase 1 仅步骤 1 + 3；无后台 Runner。
+
+#### 关闭顺序
+
 ```
 收到 SIGTERM/SIGINT
   │
-  ├─ 1. 停止接受新请求（关闭 Gin listener）
-  ├─ 2. 等待 in-flight 请求完成（带超时，如 30s）
-  ├─ 3. 刷空审计日志队列（等待 channel 消费完，带超时）
-  ├─ 4. 关闭 Casbin enforcer
-  ├─ 5. 关闭 Redis 连接
-  ├─ 6. 关闭 PostgreSQL 连接池
-  └─ 7. 退出进程
+  ├─ 1. 停止接受新请求（http.Server.Shutdown，超时如 30s）
+  ├─ 2. 等待 in-flight 请求完成
+  ├─ 3. Runners.Stop（与 Start 逆序；Phase 3+）
+  ├─ 4. 刷空审计日志队列（channel / Redis List，带超时）
+  ├─ 5. Wire cleanup：Casbin → Redis → PostgreSQL
+  └─ 6. 退出进程
 ```
+
+```go
+// internal/app/lifecycle.go — Phase 3 引入；Phase 1 可不定义
+type Runner interface {
+    Start(ctx context.Context) error
+    Stop(ctx context.Context) error
+}
+```
+
+**原则**：被动 Domain Service（UserService、TicketService）**不**实现 `Runner`；只有显式起 goroutine 的组件才需要。
 
 ### 14.2 健康检查
 
@@ -1356,15 +1411,26 @@ Viper 支持环境变量覆盖配置文件值，生产环境通过环境变量�
 | Liveness | `/health/live` | 进程存活（直接返回 200） |
 | Readiness | `/health/ready` | DB 连通性 + Redis 连通性（ping 两者，全通过返回 200） |
 
-### 14.3 可观测性（后期补充）
+### 14.3 可观测性（配置可选、部署可选）
 
-| 维度 | 工具 | 说明 |
-|------|------|------|
-| Metrics | Prometheus + promhttp | 请求 QPS、延迟分布、错误率、DB 连接池状态 |
-| 分布式追踪 | OpenTelemetry | 跨中间件/Service/Repository 的调用链追踪 |
-| 错误追踪 | Sentry（可选） | panic 和 5xx 错误自动上报 |
+> Phase 1–2：仅健康检查 + slog（见 [01-infra §健康检查](../phase1/01-infra.md#健康检查)）。  
+> Phase 3a：应用内 **具备接入能力**，通过 `config.yaml` 开关；**不强制**部署 Prometheus / Grafana / OTel Collector。  
+> 详见 [phase3/01-observability.md](../phase3/01-observability.md)。
 
-> 当前阶段先实现健康检查，Metrics 和追踪后期按需补充。
+| 维度 | 工具 | 应用内 | 外部栈 |
+|------|------|--------|--------|
+| Metrics | `prometheus/client_golang` + Gin 中间件 | `observability.metrics.enabled` → `/metrics` | Prometheus **可选** scrape |
+| 分布式追踪 | OpenTelemetry | `observability.tracing.enabled`；exporter：`noop` / `stdout` / `otlp` | Collector → Jaeger/Tempo **可选** |
+| 性能分析 | `net/http/pprof` | `observability.pprof.enabled` 或 `server.mode=debug` | 内网/admin 端口，不挂公网 8080 |
+| 错误追踪 | Sentry（可选） | 配置 DSN 时启用 | — |
+| 可视化 | Grafana | — | **永远可选**，非 App 依赖 |
+
+**原则**：
+
+1. `enabled: false` 时不注册路由、使用 noop tracer，**零额外运行时开销**。
+2. App 启动 **不依赖** Prometheus/Grafana/Collector 进程存在。
+3. Docker Compose 用 **profile** 拉起观测栈；小环境默认不带 profile。
+4. 多实例或对外 SLA 选 [3a-full](../phase3/README.md#3a-full多实例或需-slo--对外-sla)；单实例内网可选 [3a-min](../phase3/README.md#3a-min单实例内网低-sla)。
 
 ### 14.4 数据库迁移
 
@@ -1374,8 +1440,9 @@ Viper 支持环境变量覆盖配置文件值，生产环境通过环境变量�
 migrations/
 ├── 000001_init.up.sql      # 初始建表
 ├── 000001_init.down.sql
-├── 000002_seed_roles.up.sql # 种子数据
-├── 000002_seed_roles.down.sql
+├── 000002_seed.up.sql      # 种子数据
+├── 000002_seed.down.sql
+├── 000003_casbin.up.sql    # Casbin 策略
 └── ...
 ```
 
@@ -1384,14 +1451,14 @@ migrations/
 所有种子数据 migration 必须使用 `ON CONFLICT DO NOTHING`，确保重复执行不覆盖已有数据（特别是 `created_at`、`created_by` 等审计字段）。详见 [design-decisions.md#7 系统重启与数据初始化幂等性](./design-decisions.md#7-系统重启与数据初始化幂等性)。
 
 ```sql
--- 正确：幂等，不覆盖
-INSERT INTO roles (id, code, name, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+-- 正确：幂等，不覆盖（主键 BIGSERIAL 自增，冲突键用 code）
+INSERT INTO roles (code, name, is_system) VALUES
+  ('admin', '管理员', true)
 ON CONFLICT (code) DO NOTHING;
 
 -- 错误：非幂等，覆盖审计字段
-INSERT INTO roles (id, code, name, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', true)
+INSERT INTO roles (code, name, is_system) VALUES
+  ('admin', '管理员', true)
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 ```
 
@@ -1474,7 +1541,7 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 **测试策略（测试先行）**：
 
-核心原则：先写测试，再写实现。详见 [implementation-plan.md 测试策略](./implementation-plan.md#测试策略)。
+核心原则：先写测试，再写实现。详见 [phase1/README.md §1.3 验收](../phase1/README.md#13-验收标准主路径--对抗路径)。
 
 | 层级 | 范围 | Mock 策略 |
 |------|------|----------|
@@ -1518,7 +1585,10 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 ### 16.1 统一响应格式
 
-所有 API 返回统一 JSON 结构：
+> **SSOT**：[`api/response.md`](../api/response.md)（Envelope 字段、成功/失败/分页、实现约束、例外）。  
+> **错误码**：[`api/errcode.md`](../api/errcode.md)。
+
+所有 JSON API 返回：
 
 ```json
 {
@@ -1531,42 +1601,18 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| code | int | 业务码，0=成功，非 0=失败 |
-| message | string | 描述信息 |
-| data | any | 业务数据，失败时为 null |
-| request_id | string | 请求 ID（来自中间件，串联日志） |
+| code | int | 业务码，**0=成功**，非 0 见 errcode.md |
+| message | string | 描述信息（**不用 `msg`**） |
+| data | any | 业务数据；**失败时为 null** |
+| request_id | string | 请求 ID（中间件注入，串联日志） |
 
-分页响应：
-
-```json
-{
-  "code": 0,
-  "message": "success",
-  "data": {
-    "list": [],
-    "total": 100,
-    "page": 1,
-    "page_size": 20
-  },
-  "request_id": "req_xxx"
-}
-```
+分页 `data` 形状见 response.md §3.2。
 
 ### 16.2 错误码设计
 
-错误码按模块分段：
+> **完整错误码清单以 [`api/errcode.md`](../api/errcode.md) 为准。** 以下仅做概览。
 
-| 范围 | 模块 | 示例 |
-|------|------|------|
-| 0 | 通用成功 | `0 = success` |
-| 10000-10999 | 通用错误 | `10001 = 参数错误`、`10002 = 未授权`、`10003 = 禁止访问` |
-| 20000-20999 | 认证模块 | `20001 = 用户名或密码错误`、`20002 = token 已过期`、`20003 = token 已失效`、`20004 = 刷新令牌无效` |
-| 30000-30999 | 用户模块 | `30001 = 用户已存在`、`30002 = 用户不存在`、`30003 = 用户已禁用` |
-| 40000-40999 | 角色模块 | `40001 = 角色已存在`、`40002 = 角色不存在` |
-| 50000-50999 | 组织模块 | `50001 = 组织已存在`、`50002 = 组织不存在`、`50003 = 不能移动到子节点下` |
-| 60000-60999 | 菜单模块 | `60001 = 菜单已存在`、`60002 = 菜单不存在` |
-| 70000-70999 | 权限模块 | `70001 = 无权限`、`70002 = 策略已存在` |
-| 80000-80999 | 审计模块 | `80001 = 日志查询参数错误` |
+错误码按模块分段（0=成功，10000 通用，20000 认证，30000 用户，40000 角色，50000 组织，60000 菜单，70000 鉴权，80000 审计）。
 
 HTTP 状态码映射：
 
@@ -1574,12 +1620,13 @@ HTTP 状态码映射：
 |-------------|----------|
 | 200 | 成功 |
 | 400 | 参数校验失败 |
-| 401 | 未认证（token 无效/过期） |
-| 403 | 已认证但无权限 |
+| 401 | 未认证（token 无效/过期/已吊销） |
+| 403 | 已认证但无权限、账号禁用、须改密、无角色 |
 | 404 | 资源不存在 |
 | 409 | 冲突（如用户名已存在） |
-| 429 | 限流 |
+| 429 | 登录限流 |
 | 500 | 服务器内部错误 |
+| 503 | 鉴权链路 Redis 不可用（fail-close） |
 
 ### 16.3 错误处理链路
 
@@ -1600,24 +1647,25 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 | 方法 | 用途 | 示例 |
 |------|------|------|
 | GET | 查询（列表、详情） | `GET /api/v1/users`、`GET /api/v1/users/:id` |
-| POST | 创建、更新、删除、操作类接口 | `POST /api/v1/users`（创建）、`POST /api/v1/users/:id/update`（更新）、`POST /api/v1/users/:id/delete`（删除）、`POST /api/v1/auth/login`（登录） |
+| POST | 创建、更新、删除、操作类接口 | `POST /api/v1/users`（创建）、`POST /api/v1/users/update`（更新）、`POST /api/v1/users/delete`（删除）、`POST /api/v1/auth/login`（登录） |
 
 **URL 设计原则**：
 
-1. **URL 简洁，不承载业务语义**——参数放 request body（POST/PUT）或 query string（GET），不要在 URL 路径中嵌套过多信息
+1. **URL 简洁，不承载业务语义**——参数放 request body（POST）或 query string（GET），不要在 URL 路径中嵌套过多信息
 2. **资源命名用名词复数**——`/api/v1/users`，不用 `/api/v1/getUser`
-3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/:id/disable`
-4. **过滤/排序/分页用 query string**——`GET /api/v1/users?page=1&page_size=20&role=admin&sort=created_at:desc`
+3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/disable`，资源 ID 放 body 不放 URL
+4. **过滤/排序/分页用 query string**——`GET /api/v1/users?page=1&page_size=20&username=zhang&employee_no=E20240086&role=admin&sort=created_at:desc`（`username` 模糊可多结果；`employee_no` 精确唯一）
 5. **避免深层嵌套**——URL 层级不超过 3 层，如 `/api/v1/orgs/:org_id/members`
 
 **正确示例**：
 
 ```
-GET  /api/v1/users/:id                    ✅ 路径只有资源 ID
+GET  /api/v1/users/:id                    ✅ 查详情，GET 无 body，id 放路径
 GET  /api/v1/users?page=1&role=admin      ✅ 过滤条件用 query string
 POST /api/v1/users                        ✅ 创建数据放 body
-POST /api/v1/users/:id/roles              ✅ 给用户分配角色，body 传 role_ids
-POST /api/v1/users/:id/delete             ✅ 删除操作用 POST + 动词子路径
+POST /api/v1/users/roles                  ✅ 给用户分配角色，user_id + role_ids 放 body
+POST /api/v1/users/orgs                   ✅ 给用户分配组织，user_id + org_ids 放 body（全量覆盖）
+POST /api/v1/users/delete                 ✅ 删除操作用 POST + 动词子路径，id 放 body
 ```
 
 **错误示例**：
@@ -1626,8 +1674,8 @@ POST /api/v1/users/:id/delete             ✅ 删除操作用 POST + 动词子�
 GET  /api/v1/users/role/admin/page/1      ❌ 过滤条件塞进路径
 GET  /api/v1/getUserById?id=123           ❌ URL 含动词
 POST /api/v1/users/create                 ❌ 路径含 create 动词（POST 本身即创建）
-PUT  /api/v1/users/:id                    ❌ 不使用 PUT，用 POST /api/v1/users/:id/update
-DELETE /api/v1/users/:id                  ❌ 不使用 DELETE，用 POST /api/v1/users/:id/delete
+PUT  /api/v1/users/:id                    ❌ 不使用 PUT，用 POST /api/v1/users/update
+DELETE /api/v1/users/:id                  ❌ 不使用 DELETE，用 POST /api/v1/users/delete
 GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过深
 ```
 
@@ -1637,17 +1685,16 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 
 > 完整的 API 端点清单，按模块分组。
 
-### 17.1 认证模块
+### 17.1 认证模块（Phase 1）
 
 | 路由 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
 | `/api/v1/auth/login` | POST | ❌ | 登录，返回双 Token |
 | `/api/v1/auth/refresh` | POST | ❌ | 刷新 Token，RT 轮换 |
 | `/api/v1/auth/logout` | POST | ✅ | 登出 |
-| `/api/v1/auth/devices` | GET | ✅ | 查询活跃设备列表 |
-| `/api/v1/auth/devices/:deviceId/delete` | POST | ✅ | 踢出指定设备 |
-| `/api/v1/auth/password/update` | POST | ✅ | 修改密码 |
-| `/api/v1/auth/password/reset` | POST | ❌ | 密码重置（通过邮箱/手机） |
+| `/api/v1/auth/password/update` | POST | ✅ | 当前用户修改密码 |
+
+> Phase 2：`/api/v1/auth/devices`、`/api/v1/auth/devices/delete`。管理员重置他人密码见 §17.2 `POST /api/v1/users/password/reset`（非公开邮箱重置）。
 
 ### 17.2 用户模块
 
@@ -1656,11 +1703,13 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `/api/v1/users` | GET | ✅ | 用户列表（分页+筛选） |
 | `/api/v1/users` | POST | ✅ | 创建用户 |
 | `/api/v1/users/:id` | GET | ✅ | 用户详情 |
-| `/api/v1/users/:id/update` | POST | ✅ | 更新用户 |
-| `/api/v1/users/:id/delete` | POST | ✅ | 删除用户（软删除） |
-| `/api/v1/users/:id/status` | POST | ✅ | 启用/禁用用户 |
+| `/api/v1/users/update` | POST | ✅ | 更新用户（id 放 body） |
+| `/api/v1/users/delete` | POST | ✅ | 删除用户（软删除，id 放 body） |
+| `/api/v1/users/status` | POST | ✅ | 启用/禁用用户（id 放 body） |
 | `/api/v1/users/:id/orgs` | GET | ✅ | 用户所属组织列表 |
-| `/api/v1/users/:id/roles` | POST | ✅ | 分配用户角色 |
+| `/api/v1/users/roles` | POST | ✅ | 分配用户角色（id 放 body） |
+| `/api/v1/users/orgs` | POST | ✅ | 分配用户组织（全量覆盖，id 放 body） |
+| `/api/v1/users/password/reset` | POST | ✅ | 管理员重置密码（id 放 body） |
 | `/api/v1/user/menus` | GET | ✅ | 当前用户菜单树 |
 | `/api/v1/user/permissions` | GET | ✅ | 当前用户权限码 |
 | `/api/v1/user/profile` | GET | ✅ | 当前用户信息 |
@@ -1673,10 +1722,10 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `/api/v1/roles` | GET | ✅ | 角色列表 |
 | `/api/v1/roles` | POST | ✅ | 创建角色 |
 | `/api/v1/roles/:id` | GET | ✅ | 角色详情 |
-| `/api/v1/roles/:id/update` | POST | ✅ | 更新角色 |
-| `/api/v1/roles/:id/delete` | POST | ✅ | 删除角色 |
+| `/api/v1/roles/update` | POST | ✅ | 更新角色（id 放 body） |
+| `/api/v1/roles/delete` | POST | ✅ | 删除角色（id 放 body） |
 | `/api/v1/roles/:id/menus` | GET | ✅ | 角色关联菜单 |
-| `/api/v1/roles/:id/menus` | POST | ✅ | 分配角色菜单 |
+| `/api/v1/roles/menus` | POST | ✅ | 分配角色菜单（id 放 body） |
 | `/api/v1/roles/:id/permissions` | GET | ✅ | 角色权限策略 |
 
 ### 17.4 组织模块
@@ -1686,11 +1735,14 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `/api/v1/orgs` | GET | ✅ | 组织树 |
 | `/api/v1/orgs` | POST | ✅ | 创建组织 |
 | `/api/v1/orgs/:id` | GET | ✅ | 组织详情 |
-| `/api/v1/orgs/:id/update` | POST | ✅ | 更新组织 |
-| `/api/v1/orgs/:id/delete` | POST | ✅ | 删除组织 |
-| `/api/v1/orgs/:id/move` | POST | ✅ | 移动组织（变更父节点） |
+| `/api/v1/orgs/update` | POST | ✅ | 更新组织（id 放 body） |
+| `/api/v1/orgs/delete` | POST | ✅ | 删除组织（id 放 body） |
+| `/api/v1/orgs/move` | POST | ✅ | 移动组织（id 放 body） |
 | `/api/v1/orgs/:id/members` | GET | ✅ | 组织成员列表 |
-| `/api/v1/orgs/:id/members` | POST | ✅ | 添加成员到组织 |
+| `/api/v1/orgs/members` | POST | ✅ | 添加成员到组织（org_id、user_id 放 body） |
+| `/api/v1/orgs/members/delete` | POST | ✅ | 从组织移除成员（org_id、user_id 放 body） |
+
+> Phase 1 **用户-组织绑定**：双 HTTP 入口（`POST /users/orgs` + `POST /orgs/members*`），**单写逻辑**在 `OrgService`（`SetUserOrgs` / `AddMember` / `RemoveMember`）。创建用户 body 可含 `org_ids`。
 
 ### 17.5 菜单模块
 
@@ -1699,14 +1751,14 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `/api/v1/menus` | GET | ✅ | 菜单树（全量） |
 | `/api/v1/menus` | POST | ✅ | 创建菜单 |
 | `/api/v1/menus/:id` | GET | ✅ | 菜单详情 |
-| `/api/v1/menus/:id/update` | POST | ✅ | 更新菜单 |
-| `/api/v1/menus/:id/delete` | POST | ✅ | 删除菜单 |
+| `/api/v1/menus/update` | POST | ✅ | 更新菜单（id 放 body） |
+| `/api/v1/menus/delete` | POST | ✅ | 删除菜单（id 放 body） |
 
 ### 17.6 审计模块
 
 | 路由 | 方法 | 鉴权 | 说明 |
 |------|------|------|------|
-| `/api/v1/audit-logs` | GET | ✅ | 审计日志查询（分页+筛选） |
+| `/api/v1/audit/logs` | GET | ✅ | 审计日志查询（分页+筛选） |
 
 ### 17.7 系统模块
 
@@ -1733,11 +1785,11 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | 数据库 | PG + Redis Docker Compose + 迁移脚本 | 一键启动开发环境 |
 | 统一响应 | response 包 + errcode 包 | 统一 JSON 输出 |
 | 健康检查 | `/health/live` + `/health/ready` | K8s/Docker 探针 |
-| 种子数据 | 初始化 admin 角色 + 超管用户 + 初始菜单 | 首次启动可用，幂等（`ON CONFLICT DO NOTHING`） |
-| 用户登录 | 账号密码 + 双 Token + 登录限流 | AT 30min HS256 + RT 7d |
+| 种子数据 | 4 系统角色 + admin 用户（绑定 superadmin）+ 初始菜单 | 首次启动可用，幂等（`ON CONFLICT DO NOTHING`） |
+| 用户登录 | **工号** + 密码 + 双 Token + **Lua LoginLocker** | AT 30min HS256 + RT 7d |
 | Token 校验 | JWT 中间件 + 黑名单 + `user:disabled` | Redis 故障 503（fail-close） |
 | Token 刷新 | RT `GETDEL` 轮换 | 无感刷新 |
-| 登出 / 会话吊销 | AT 黑名单 + 删全部 RT | 禁用/删除用户即时失效 |
+| 登出 / 会话吊销 | AT：`user:disabled` + 黑名单；RT：`DEL refresh:*` + Refresh 兜底检查 | 禁用/删除后 AT→403/30003，RT refresh→401/20004 |
 | 首次改密 | `must_change_password` + JWT `mcp` | 重置后强制改密 |
 | 路由级鉴权 | Casbin RBAC 中间件 | 接口权限控制 |
 | 资源注册表 | ResourceRegistry **空接口** | 不当独立大 Step |
@@ -1750,15 +1802,13 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 
 ### 18.2 Phase 2：业务可用（工单）
 
-**目标**：资源级鉴权 + 工单。仍为模块化单体，不拆 IAM。
+**目标**：资源级鉴权 + 工单。仍为模块化单体，不拆 IAM。子阶段 **2a → 2b → 2c**，详见 [phase2/README.md](../phase2/README.md) §0。
 
-| 能力 | 范围 | 说明 |
-|------|------|------|
-| 资源级鉴权 | ltree + 属主判断 + 列表过滤 | 代码内联，不上独立 Enforcer |
-| 组织增强 | 虚拟组、组织角色、scope、临时成员有效期 | |
-| 文件存储 | S3 兼容 + 预签名 URL | |
-| 工单模块 | 类型配置、状态机、三层鉴权 | 第一个业务模块 |
-| 认证增强 | 多设备 UI/踢出、密码复杂度 | 限流与会话吊销已在 Phase 1 |
+| 子阶段 | 能力 | 说明 |
+|--------|------|------|
+| **2a** | ResourceRegistry + 工单 MVP | **assigned** 范围；无附件 |
+| **2b** | 组织增强 + 存储 + 体验 | 虚拟组/scope/HR、预签名附件、设备 UI、密码复杂度 |
+| **2c** | 组织内委托 | owner、`org_member_role`、工单 Authorize（D1–D11） |
 
 **明确后移**（Phase 3 或按需）：RS256、AK/SK、缓存平台、审计异步、每资源 Enforcer、IAM 拆分。
 
@@ -1770,7 +1820,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 
 | 能力 | 范围 | 说明 |
 |------|------|------|
-| Metrics / 追踪 | Prometheus + Grafana + OpenTelemetry | |
+| Metrics / 追踪 | 应用内可选开关；Prometheus + OTel **部署可选** | 3a-full 或多实例时建议开启；Grafana 永远可选 |
 | 多实例 | Casbin Watcher、跨实例事件、分布式锁 | |
 | 审计日志升级 | Redis List 队列（L2）/ 异步 | |
 | 事件驱动 | Outbox + Asynq | |
@@ -1815,7 +1865,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | API 路由总表 | 7 个模块完整端点清单 | §17 |
 | 分阶段实施计划 | Phase 1 跑起来 → Phase 2 业务可用 → Phase 3 生产加固 | §18 |
 | Schema 完善 | 软删除、乐观锁、负责人、第三方登录预留、扩展字段 | §11 |
-| 种子数据 | admin 角色 + 超管用户 + 组织关联（`ON CONFLICT DO NOTHING` 幂等） | `proposal/data-init.md` |
+| 种子数据 | 4 系统角色 + admin 用户（绑定 superadmin）+ 组织关联（`ON CONFLICT DO NOTHING` 幂等） | `proposal/data-init.md` |
 | API 版本管理 | `/api/v1` 前缀 | §17 |
 | 资源级鉴权架构 | 分层 PEP/PDP：Gateway 路由级 + Service 资源级 | `design-decisions.md` §5 |
 | 资源抽象机制 | Resource 接口 + 自注册 | `proposal/resource-model.md` |
@@ -1823,7 +1873,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | 数据库高可用 | PG Cluster（2+VIP）云托管；Phase 1 单节点 | `design-decisions.md` §11 |
 | ReBAC 引擎选型 | Phase 1 ltree+内联；Phase 2 按需评估 OpenFGA/SpiceDB | `design-decisions.md` §12 |
 | 微服务通信协议 | gRPC 内部 + REST 外部（gRPC-Gateway） | `design-decisions.md` §13 |
-| 测试策略 | 测试先行：先写测试再写实现 | `implementation-plan.md` 测试策略 |
+| 测试策略 | 测试先行：先写测试再写实现 | [phase1/README.md](../phase1/README.md) §1.3 |
 
 ### 19.2 暂缓项（后期阶段）
 

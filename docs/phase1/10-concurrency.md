@@ -35,10 +35,16 @@ func (s *roleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []i
         tx.Exec(ctx, "INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", roleID, menuID)
     }
 
-    // 3. 删除该角色的旧 Casbin 策略
-    tx.Exec(ctx, "DELETE FROM casbin_rule WHERE v0 = $1", fmt.Sprintf("role::%s", roleCode))
+    // 3. 查 role code（Casbin v0 用 role::{code}）
+    role, err := s.roleRepo.GetByID(ctx, roleID)
+    if err != nil {
+        return err
+    }
 
-    // 4. 根据新菜单的 menu_apis 生成新策略
+    // 4. 删除该角色的旧 Casbin 策略
+    tx.Exec(ctx, "DELETE FROM casbin_rule WHERE v0 = $1", fmt.Sprintf("role::%s", role.Code))
+
+    // 5. 根据新菜单的 menu_apis 生成新策略
     menus := s.menuRepo.GetByIDs(ctx, menuIDs)
     for _, m := range menus {
         for _, apiPath := range m.APIPaths {
@@ -47,12 +53,12 @@ func (s *roleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []i
         }
     }
 
-    // 5. 提交事务
+    // 6. 提交事务
     if err := tx.Commit(ctx); err != nil {
         return err
     }
 
-    // 6. 事务提交后，重载 Casbin 内存策略
+    // 7. 事务提交后，ReloadPolicy（从 PG adapter 重载）
     s.enforcer.ReloadPolicy()
     return nil
 }
@@ -81,7 +87,7 @@ Phase 1 涉及的 Redis 操作需要保证原子性：
 |------|-----------|---------|
 | RT 刷新 | 旧 RT 删除 + 新 RT 写入必须原子 | Lua 脚本或 `GETDEL` + `SET` 分离（GETDEL 成功后再 SET，失败说明已被刷新） |
 | 登出 | AT 加黑名单 + RT 删除 | 两个独立操作，部分失败可接受（AT 黑名单是关键，RT 删除失败最多残留到 TTL 过期） |
-| 登录限流 | INCR + 首次 EXPIRE | 非 Lua；达阈值 429 |
+| 登录限流 | Lua LoginLocker（INCR+首次 EXPIRE 原子） | 达阈值 429；Redis 故障 fail-close |
 | 黑名单 / `user:disabled` 查询 | 读 Redis 决定放行 | **fail-close**：Redis 故障返回 503，禁止查失败仍放行 |
 
 Phase 1 RT 刷新的简化方案（不引入 Lua 脚本）：
@@ -96,15 +102,16 @@ func (s *authService) Refresh(ctx context.Context, rt string) (*TokenPair, error
     //    如果返回空，说明 RT 已被其他请求刷新 → 401
     val, err := s.rdb.GetDel(ctx, key).Result()
     if err != nil || val == "" {
-        return nil, ErrTokenInvalid
+        return nil, errcode.ErrRefreshTokenInvalid
     }
 
-    // 3. 签发新 AT + 新 RT
-    newAT := s.jwt.GenerateAccessToken(claims.UserID, claims.Username)
-    newRT := s.jwt.GenerateRefreshToken(claims.UserID)
+    // 3. 签发新 AT + 新 RT（保留 deviceID）
+    newAT := s.jwt.GenerateAccessToken(claims.UserID, claims.Username, claims.MustChangePassword)
+    newRT, newJTI := s.jwt.GenerateRefreshToken(claims.UserID, claims.DeviceID)
 
-    // 4. 存新 RT
-    s.rdb.Set(ctx, newRTKey, deviceInfo, 7*24*time.Hour)
+    // 4. 存新 RT（key 与 deviceID 绑定）
+    newRTKey := fmt.Sprintf("refresh:%d:%s", claims.UserID, claims.DeviceID)
+    s.rdb.Set(ctx, newRTKey, newJTI, s.jwt.RefreshTTL())
 
     return &TokenPair{AT: newAT, RT: newRT}, nil
 }
@@ -114,11 +121,7 @@ func (s *authService) Refresh(ctx context.Context, rt string) (*TokenPair, error
 
 ### 乐观锁（建议实现）
 
-角色和菜单等配置类数据，加 `version` 字段防止并发覆盖：
-
-```sql
-ALTER TABLE roles ADD COLUMN version INT DEFAULT 0;
-```
+`roles`、`menus`、`organizations`、`users` 等在 Phase 1 建表时已含 `version INT DEFAULT 1`（见各 `phase1/0x-*.md` 与 `migrations/000001_init.up.sql`），**无需**再 `ALTER TABLE ... DEFAULT 0`。
 
 ```go
 func (r *roleRepo) Update(ctx context.Context, role *Role) error {
@@ -127,13 +130,13 @@ func (r *roleRepo) Update(ctx context.Context, role *Role) error {
         role.Name, role.Description, role.ID, role.Version,
     )
     if tag.RowsAffected() == 0 {
-        return ErrConcurrentModification  // 版本不匹配，已被其他人修改
+        return ErrConcurrentModification
     }
     return nil
 }
 ```
 
-Phase 1 建议只给 `roles` 和 `menus` 加乐观锁，其他表可不做。
+新插入行 `version` 从 **1** 起；更新时 `WHERE version=$4` 匹配当前值，成功后 `version+1`。
 
 ---
 
@@ -174,7 +177,7 @@ Phase 1 无需 Redis Pub/Sub 广播。权限变更后直接 `ReloadPolicy()` 即
 
 ### 缓存一致性（不实现）
 
-Phase 1 无权限缓存，每次请求走 Casbin 内存 enforcer（启动时从 DB 加载）。Phase 2 引入 Redis 权限缓存后才需要考虑缓存失效。
+Phase 1 无权限缓存，每次请求走 Casbin **SyncedEnforcer + PG adapter**（策略持久化在 `casbin_rule`）。Phase 2 引入 Redis 权限缓存后才需要考虑缓存失效。
 
 ---
 
@@ -194,3 +197,5 @@ Phase 1 无权限缓存，每次请求走 Casbin 内存 enforcer（启动时从 
 | singleflight | ❌ 无缓存 | Phase 2-3 |
 
 **核心原则**：Phase 1 用 DB 事务 + 行锁 + SyncedEnforcer + Redis 原子命令，覆盖单实例下的所有并发场景。多实例相关的能力只预留接口，不引入额外复杂度。
+
+> **与部署解耦**：上文「Phase 1 单实例」指 **验收与默认运行形态为 1 个 App 副本**，不是禁止 PG/Redis HA，也不是第二套代码。换 Cluster/Sentinel/多副本时 **只改配置与编排**；启用 Watcher 等见 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)。

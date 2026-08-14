@@ -21,6 +21,8 @@
 - [12. ReBAC 引擎选型：自研 vs OpenFGA vs SpiceDB](#12-rebac-引擎选型自研-vs-openfga-vs-spicedb)
 - [13. 微服务通信协议：gRPC 内部 + REST 外部](#13-微服务通信协议grpc-内部--rest-外部)
 - [14. 待讨论事项](#14-待讨论事项)
+- [18. 部署与代码解耦：一套代码多种部署](#18-部署与代码解耦一套代码多种部署)
+- [19. RBAC 继承与级联（业界参考）](#19-rbac-继承与级联业界参考)
 
 ---
 
@@ -36,30 +38,34 @@ JWT 签发后不可变，如果把角色、权限信息塞进 payload，管理�
 |------|---------|---------|--------|------|--------|
 | 权限入 JWT | user_id + role + org_id | JWT payload | 最差（等 AT 过期） | 最好（零查询） | 最低 |
 | 每次查 DB | user_id | DB | 最好 | 最差（每请求一次 DB） | 低 |
-| Redis 缓存（采用） | user_id | Redis（miss 时查 DB） | 好（主动失效） | 好（~0.1ms） | 中 |
+| Redis 缓存（Phase 3 目标） | user_id | Redis（miss 时查 DB） | 好（主动失效） | 好（~0.1ms） | 中 |
 
-### 1.3 采用方案
+### 1.3 目标架构（Phase 3 / 按需）
 
-JWT 只存身份标识（user_id + jti + exp），权限信息走 Redis 缓存：
+> **Phase 1 实际做法见 §1.6。** 以下为引入 Redis 权限缓存后的目标形态。
+
+JWT 只存身份标识，权限信息走 Redis 缓存：
 
 ```
-JWT payload（极简）:
+JWT payload（Phase 1 实际字段）:
 {
-  "user_id": "xxx",
+  "uid": 1,
+  "username": "admin",
   "jti": "xxx",
+  "mcp": false,
   "exp": xxx
 }
 
-Redis 缓存:
+Redis 缓存（Phase 3）:
 perm:user:{userId} → {
-  "roles": ["editor"],
-  "org_id": "xxx",
+  "roles": ["admin", "operator"],
+  "org_id": "1",
   "permissions": ["user:create", "article:read", ...]
 }
 TTL: 30min
 ```
 
-### 1.4 权限变更实时生效
+### 1.4 权限变更实时生效（Phase 3 缓存启用后）
 
 管理员修改用户角色时：
 1. DB 事务提交（改 user_roles / role_menus）
@@ -68,10 +74,12 @@ TTL: 30min
 
 该用户下次请求时 cache miss，从 DB 重新加载最新权限。延迟：下一次请求即生效。
 
-### 1.5 额外优势
+**Phase 1**：无 Redis 权限缓存，Casbin 中间件每次查 `user_roles`，角色变更后**下一次请求即生效**。
 
-- **Token 更小**：从 7 个字段缩减为 3 个，HTTP 头更小
-- **Redis 故障自动降级**：缓存 miss 时直接查 DB，功能不受影响，只是性能下降
+### 1.5 Phase 3 缓存方案的额外优势
+
+- **权限不入 JWT**：payload 不含 roles/permissions，变更不必等 AT 过期
+- **权限缓存 miss 时查 DB**：仅适用于 **Phase 3 权限缓存**路径；**鉴权链路**（黑名单、`user:disabled`、登录限流）Redis 故障仍 **fail-close 503**
 - **多角色支持自然**：Redis 存数组，不需要在 JWT 里设计序列化格式
 
 ### 1.6 实施阶段
@@ -117,7 +125,7 @@ aof-use-rdb-preamble yes
 | AT 黑名单 `blacklist:at:{jti}` | 已登出的 AT 短暂可用（最多到 AT 过期 **30min**） | 低 |
 | 设备列表 `devices:{userId}` | 多设备管理暂时不可用，重新登录后重建 | 低 |
 | 权限缓存 `perm:user:{userId}` | **无影响**，cache miss 自动查 DB 回填 | 无 |
-| 登录限流 `lock:login:{username}` | 被锁定的账号短暂可尝试登录 | 低（最多到自然解锁） |
+| 登录限流 `lock:login:{employee_no}` | 被锁定的工号短暂不可登录 | 低（最多到自然解锁） |
 
 ### 2.4 是否所有用户需要重新登录
 
@@ -128,7 +136,7 @@ aof-use-rdb-preamble yes
 
 **受影响比例估算**：假设 1000 在线用户，AT 有效期 **30min**，Redis 重启 30 秒：
 - 这 30 秒内 AT 过期需刷新的用户 ≈ 1000 × (30s / 30min) ≈ **17 人**
-- 仅这 4 人中 RT 在丢失窗口内的才需要重新登录
+- 仅这 17 人中 RT 在丢失窗口内的才需要重新登录
 
 ### 2.5 Redis 降级策略
 
@@ -244,7 +252,7 @@ OWASP 明确指出：
 原因：**Gateway 没有业务数据**。
 
 ```
-DELETE /api/users/U001
+POST /api/v1/users/delete  (body: {id: "U001"})
 
 Gateway 层：
   - 能判断：用户是否有 "user:delete" 权限 → ✅
@@ -497,7 +505,7 @@ Casbin 策略表是独立的数据源（`casbin_rule` 表），不依赖 User/Or
   └─ 幂等性：golang-migrate 自身保证（版本号追踪）
 
 层次 2：种子数据（migration 文件，随 Schema 一起执行）
-  ├─ admin 角色、admin 用户、初始菜单、初始组织
+  ├─ 4 系统角色、admin 用户（绑定 superadmin）、初始菜单、初始组织
   └─ 时机：migration 执行时
   └─ 幂等性：INSERT ... ON CONFLICT DO NOTHING
 
@@ -510,27 +518,28 @@ Casbin 策略表是独立的数据源（`casbin_rule` 表），不依赖 User/Or
 
 ### 7.5 种子数据 migration 设计
 
-种子数据放在独立 migration 文件中，用 `ON CONFLICT DO NOTHING` 保证幂等：
+种子数据放在独立 migration 文件中，用 `ON CONFLICT DO NOTHING` 保证幂等。完整示例见 [data-init.md](../proposal/data-init.md) §4.2。
 
 ```sql
--- migrations/000002_seed.up.sql
+-- migrations/000002_seed.up.sql（节选）
 
--- 角色（已存在则跳过，不覆盖）
-INSERT INTO roles (id, code, name, description, is_system) VALUES
-  ('00000000-0000-0000-0000-000000000010', 'admin', '管理员', '系统管理员', true),
-  ('00000000-0000-0000-0000-000000000011', 'editor', '编辑', '内容编辑', true)
+-- 角色（已存在则跳过，不覆盖；主键 BIGSERIAL 自增）
+INSERT INTO roles (code, name, description, is_system) VALUES
+  ('superadmin', '超级管理员', '系统最高权限', true),
+  ('admin', '管理员', '系统管理员', true)
 ON CONFLICT (code) DO NOTHING;
 
--- admin 用户（已存在则跳过）
-INSERT INTO users (id, username, password, real_name, status, is_system)
-VALUES ('00000000-0000-0000-0000-000000000020', 'admin',
-        '$2a$12$xxxxx', '系统管理员', 1, true)
-ON CONFLICT (username) DO NOTHING;
+-- admin 用户（已存在则跳过；登录用工号 E000001）
+INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id)
+SELECT 'admin', 'E000001', '$2a$12$xxxxx', '系统管理员', 1, true, 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM users WHERE employee_no = 'E000001' AND deleted_at IS NULL
+);
 
--- admin 用户关联 admin 角色
+-- admin 用户关联 superadmin 角色（用 code/username 解析 id，避免硬编码 UUID）
 INSERT INTO user_roles (user_id, role_id)
-VALUES ('00000000-0000-0000-0000-000000000020',
-        '00000000-0000-0000-0000-000000000010')
+SELECT u.id, r.id FROM users u, roles r
+WHERE u.username = 'admin' AND r.code = 'superadmin'
 ON CONFLICT (user_id, role_id) DO NOTHING;
 ```
 
@@ -777,11 +786,11 @@ Phase 1 骨架阶段用内存 Adapter（`memdb`），生产环境必须持久化
 
 ### 10.3 决策
 
-**Phase 1 骨架：内存 Adapter（当前已用）**
-- 不引入 DB 依赖，快速跑通流程
-- 重启后策略丢失，仅用于开发调试
+**Phase 1 目标：`pckhoi/casbin-pgx-adapter/v3`（直接 PG adapter）**
+- SSOT：[phase1/03-authz.md](../phase1/03-authz.md)、[phase1/01-infra.md](../phase1/01-infra.md)
+- 骨架代码过渡期可暂用内存 Adapter 跑通流程；**Phase 1 交付前必须切换 PG adapter**（重启后策略不丢）
 
-**Phase 1 完成（接入 DB）：`pckhoi/casbin-pgx-adapter/v3`**
+**选型：`pckhoi/casbin-pgx-adapter/v3`**
 - 兼容 Casbin v2（项目当前版本）
 - 兼容 pgx v5（项目当前版本）
 - 支持 FilteredAdapter（按过滤器加载部分策略，对"每资源独立 Enforcer"很重要）
@@ -805,7 +814,7 @@ Phase 1 骨架阶段用内存 Adapter（`memdb`），生产环境必须持久化
 ```sql
 -- 所有 Enforcer 共用一张 casbin_rule 表，用 v0 字段区分资源类型
 CREATE TABLE casbin_rule (
-    id    SERIAL PRIMARY KEY,
+    id    BIGSERIAL PRIMARY KEY,
     ptype VARCHAR(100),  -- "p" 或 "g"
     v0    VARCHAR(100),  -- 资源类型标识（如 "user", "ticket"）
     v1    VARCHAR(100),  -- sub（角色）
@@ -887,7 +896,7 @@ CREATE TABLE casbin_rule (
 
 ### 12.2 当前"自研"方案的真实定位
 
-当前方案做的是**一条 SQL 查询**，不是 ReBAC 引擎：
+当前方案做的是**一条 SQL 查询**，不是 ReBAC 引擎。示例使用 **`resource_owners` 泛化表（Phase 2b 可选）**；Phase **2a 工单**直接用 `tickets.org_id/org_path`（见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）。
 
 ```sql
 -- 用户 → 所属组织 → ltree 路径遍历 → 是否到达资源所属组织
@@ -1080,9 +1089,11 @@ type remoteUserQueryService struct {
 | 事项 | 状态 | 说明 |
 |------|------|------|
 | 数据库迁移文件管理 | ✅ 已明确 | `golang-migrate`，`.up.sql` + `.down.sql`，种子数据走迁移 |
-| 应用日志 vs 审计日志 | ✅ 已明确 | 应用日志 → 文件（slog + Lumberjack）；审计日志 → DB（异步写入） |
+| 应用日志 vs 审计日志 | ✅ 已明确 | 应用日志 → 文件（slog + Lumberjack）；审计日志 → DB（**Phase 1 同步写入**；Phase 2+ channel / Phase 3a Redis List） |
 | Casbin 策略存储 | ✅ 已明确 | PostgreSQL adapter，当前阶段内存 adapter 过渡 |
 | Wire 生成 vs 手动 | ✅ 已明确 | Wire CLI 已安装，`make wire` 自动生成 |
+| 部署与代码解耦 | ✅ 已确认 | 一套代码、配置驱动多种部署；业务层不感知拓扑。见 [§18 部署与代码解耦](./design-decisions.md#18-部署与代码解耦一套代码多种部署) |
+| 存量 qingtao/aksk 与自研 M2M 签名 | ✅ 已确认 | **仅 Canonical，强制迁移**；不双栈、不保留 `x-auth-*` 验签。见 [phase1/02-auth.md §已决策：存量 qingtao/aksk 迁移策略](../phase1/02-auth.md#已决策存量-qingtaoaksk-迁移策略) |
 
 ---
 
@@ -1163,3 +1174,76 @@ type remoteUserQueryService struct {
 | 模型驱动设计（Model→Attribute→Resource） | 已采用 | 工单类型设计已借鉴 |
 | 插件化资源动作绑定 | 已采用 | TicketHooks 机制已借鉴 |
 | Wire 模块化 Provider Set | 已采用 | 已实践 |
+
+---
+
+## 18. 部署与代码解耦：一套代码多种部署
+
+### 决策：同一套业务代码，部署拓扑由配置与编排决定，不因换部署方式而改 Handler/Service 逻辑
+
+**目标**：开发环境（单 PG + 单 Redis + 1 App）、生产环境（PG Cluster/VIP、Redis Sentinel、Nginx 后多 App 副本）共用 **同一二进制、同一业务代码**；差异落在 **配置文件、环境变量、进程副本数、可选横切组件开关**。
+
+### 分层原则
+
+| 层 | 职责 | 是否随部署变 |
+|----|------|-------------|
+| **配置**（`config.yaml` / env） | DSN、Redis 地址、副本相关开关（Watcher、审计模式等） | ✅ 仅改配置 |
+| **装配**（`internal/app`、Wire） | 连接池、Redis 客户端（含 Sentinel failover 客户端）、Casbin Enforcer、可选 Watcher | ✅ 按配置选实现，**不改** Domain API |
+| **Domain / Service / Handler** | 业务规则、鉴权语义、CRUD | ❌ **不**写 `if 单实例` / `if 集群` |
+| **编排**（Compose / Nginx / K8s） | 副本数、健康检查、LB | ✅ 运维层，与代码仓库分离 |
+
+### 典型部署差异 → 改什么
+
+| 部署变化 | 业务代码 | 通常只改 |
+|----------|----------|----------|
+| PG 单节点 → Cluster + VIP | 不变 | `database.url` 指向 VIP |
+| Redis 单实例 → Sentinel | 不变 | `redis` 配置或启用 failover 客户端（装配层） |
+| App 1 副本 → N 副本 | 不变 | 编排副本数 + LB；**启用** Casbin Watcher 等（Phase 3） |
+| 审计 sync → Redis List L2 | 不变 | 配置选写入模式（Phase 3a） |
+
+### 已按「共享外部状态」设计的能力（多 App 友好）
+
+以下依赖 **PostgreSQL / Redis**，不依赖「请求必须打到同一进程」：
+
+- RT 存储与 `GetDel` 轮换、AT 黑名单、`user:disabled`、LoginLocker Lua
+- 鉴权读 `user_roles` + Casbin（策略持久化在 `casbin_rule`）
+- Phase 1 审计同步写 DB
+
+### Phase 分期的含义（不是「只能一种部署」）
+
+| 阶段 | 代码心智 | 含义 |
+|------|----------|------|
+| Phase 1–2 | 默认 **单 App 副本** 验收 | **先不实现** Watcher、分布式锁、perm 缓存等；不是禁止 PG/Redis HA |
+| Phase 3 | 打开多副本横切能力 | Watcher、跨实例失效、审计 L2、HA 编排；仍 **同一套代码** |
+
+> **多 App 注意**：Phase 1 未启用 Casbin Watcher 时，各副本内存策略在 `ReloadPolicy` 后可能短暂不一致；生产多副本应在 Phase 3 启用 Watcher，或 Phase 1 仅单副本运行。
+
+### 反模式（避免）
+
+- 在 Service/Handler 里根据部署形态分支业务逻辑
+- 「单实例用内存、多实例用 Redis」两套逻辑散落各处（Phase 1 故意 **不用** perm 缓存，即为此）
+- 为 Cluster/Sentinel 单独维护另一套代码分支
+
+### 实现约束（编码时）
+
+1. PG/Redis 地址、超时、池大小 **只来自配置**，禁止硬编码主机名。
+2. 可选组件（Watcher、审计 async、Sentinel client）在 **`internal/app` / Wire** 按配置注入，Domain 只依赖接口。
+3. 横切能力 **可关闭** 的默认路径须能在单实例下完整跑通 Phase 1 验收。
+
+---
+
+## 19. RBAC 继承与级联（业界参考）
+
+> **Phase 1 不实现**——本节与专文均为**设计备忘**，避免 Phase 1 误做 BFS / org_roles / 数据 scope。
+
+复杂场景（父部门角色是否继承、删组织是否踢人、删角色是否级联删用户）在 AD、Keycloak、AWS IAM、若依等产品中**结论并不相同**，但成熟方案共同点是：
+
+1. **功能权限**、**组织赋角**、**数据范围** 三维分离；
+2. 组织树向下扩的是 **数据可见**，不是默认扩 **API 角色**；
+3. 删角色/删部门多为 **拒绝式**（先解绑），少做「静默级联删用户」。
+
+本项目 Phase 1–2b 的取舍、级联矩阵与 12 条验收用例已单独成文，避免在 phase 文档里重复展开：
+
+→ **[rbac-inheritance-and-cascade.md](./rbac-inheritance-and-cascade.md)**（SSOT，**Phase 2b+ 再实现**）
+
+**相关文档**：[architecture.md §11](./architecture.md#11-部署架构)、[phase1/10-concurrency.md](../phase1/10-concurrency.md)、[proposal/deployment-evolution.md](../proposal/deployment-evolution.md)、[roadmap.md](../roadmap.md)。

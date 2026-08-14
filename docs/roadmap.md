@@ -40,7 +40,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 | 中间件 | JWT（含 fail-close）、Casbin、gin-contrib CORS/RequestID/slog、安全头 | [phase1/09-middleware.md](./phase1/09-middleware.md) |
 | 并发与事务 | DB 事务、SyncedEnforcer、Redis 原子操作、乐观锁 | [phase1/10-concurrency.md](./phase1/10-concurrency.md) |
 
-**部署形态**：单实例 Docker Compose（PG + Redis + App）
+**部署形态**：单实例 Docker Compose（PG + Redis + App）——**默认验收拓扑**；同一套代码可通过配置/编排扩展为多副本、PG Cluster、Redis Sentinel（[design-decisions §18](./design/design-decisions.md#18-部署与代码解耦一套代码多种部署)）。
 
 **验收标准**：主路径 + 对抗路径（限流、会话吊销、最后一个 superadmin、Redis 503），见 [phase1/README.md](./phase1/README.md) §1.3。Phase 1 **不做**部门数据隔离。
 
@@ -50,12 +50,13 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 **核心目标**：资源级鉴权 + 工单。仍为模块化单体，不拆 IAM。
 
-**子阶段**：**2a**（Registry + 工单 MVP，assigned 范围）→ **2b**（组织 scope/虚拟组 + 附件 + 认证增强）。详见 [phase2/README.md](./phase2/README.md) §0。
+**子阶段**：**2a**（Registry + 工单 MVP）→ **2b**（组织 scope/虚拟组/HR + 附件）→ **2c**（组织内委托：owner + 组内 admin/member）。详见 [phase2/README.md](./phase2/README.md) §0。
 
 | 子阶段 | 模块 | 核心能力 | 文档 |
 |--------|------|---------|------|
-| **2a** | 资源级鉴权 + 工单 MVP | Registry、属主、assigned 过滤、工单 CRUD+状态机 | phase2/02、09（待编写） |
-| **2b** | 组织增强 + 存储 + 体验 | 虚拟组/scope、附件、多设备 UI、密码策略 | phase2/03、10、01（待编写） |
+| **2a** | 资源级鉴权 + 工单 MVP | Registry、属主、assigned 过滤、工单 CRUD+状态机 | [phase2/02-authz-resource.md](./phase2/02-authz-resource.md)、[09-ticket.md](./phase2/09-ticket.md) |
+| **2b** | 组织增强 + 存储 + 体验 | 虚拟组/scope、HR 目录同步、附件、多设备 UI、密码策略 | [phase2/03](./phase2/03-org-enhance.md)、[10-storage](./phase2/10-storage.md)、[01-auth-enhance](./phase2/01-auth-enhance.md)、[09-ticket §2b](./phase2/09-ticket.md) |
+| **2c** | 组织内委托 | owner、org_member_role、组内防提权、工单 Authorize | [phase2/04-org-delegation.md](./phase2/04-org-delegation.md) |
 
 **部署形态**：单实例 Docker Compose
 
@@ -69,7 +70,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 | 模块 | 核心能力 | 文档 |
 |------|---------|------|
-| 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | phase3/01-observability.md（待编写） |
+| 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | [phase3/01-observability.md](./phase3/01-observability.md)（**已编写**） |
 | 多实例部署 | Casbin Watcher、跨实例事件广播、分布式锁 | phase3/02-multi-instance.md（待编写） |
 | 审计日志 L2 | Redis List 队列，进程崩溃不丢 | phase3/03-audit-l2.md（待编写） |
 | 事件驱动 | PostgreSQL Outbox + Asynq | phase3/04-event-driven.md（待编写） |
@@ -121,10 +122,10 @@ docs/
 │   ├── 01-infra.md ~ 10-concurrency.md
 ├── phase2/                     # Phase 2 详细实现计划
 │   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   └── (01~09 待编写)
+│   └── 01-auth-enhance ~ 04-org-delegation（Phase 2 全套已编写）
 ├── phase3/                     # Phase 3 详细实现计划
 │   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   └── (01~08 待编写)
+│   └── 01-observability 已编写；02–09 待编写
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档

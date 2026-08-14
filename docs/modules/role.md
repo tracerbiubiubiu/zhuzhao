@@ -1,10 +1,10 @@
 # 角色模块设计
 
-> 模块代码：`internal/service/role_service.go` + `internal/repository/role_repo.go`
+> 模块代码（目标路径）：`internal/service/role/` + `internal/repository/role/` + `internal/handler/role/`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/role.md` + `policy.md` + `interaction-casbin-sync.md`
 >
-> 主键以 [phase1/05-role.md](../phase1/05-role.md) 为准（`BIGINT` + `code`），下文 UUID schema 过时。
+> 主键以 [phase1/05-role.md](../phase1/05-role.md) 为准（`BIGINT` + `code`）。
 
 ---
 
@@ -22,38 +22,46 @@
 
 ## 2. 数据模型
 
+> 完整 DDL 以 [phase1/05-role.md](../phase1/05-role.md) 为准。
+
 ```sql
 CREATE TABLE roles (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code        VARCHAR(50) UNIQUE NOT NULL,  -- "admin", "editor"
+    id          BIGSERIAL PRIMARY KEY,
+    code        VARCHAR(50) NOT NULL,
     name        VARCHAR(100) NOT NULL,
     description TEXT,
-    parent_id   UUID REFERENCES roles(id),    -- 角色继承（可选）
-    status      SMALLINT DEFAULT 1,
+    priority    INT NOT NULL,                 -- 越小权限越高；业务防提权
+    status      SMALLINT NOT NULL DEFAULT 1,
+    sort_order  INT DEFAULT 0,
     is_system   BOOLEAN DEFAULT FALSE,
-    created_by  VARCHAR(50),
+    tenant_id   BIGINT NOT NULL DEFAULT 1,
+    version     INT DEFAULT 1,
+    deleted_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 角色-菜单（多对多）
+CREATE UNIQUE INDEX idx_roles_code ON roles(code) WHERE deleted_at IS NULL;
+
 CREATE TABLE role_menus (
-    role_id     UUID REFERENCES roles(id),
-    menu_id     UUID REFERENCES menus(id),
+    role_id     BIGINT NOT NULL REFERENCES roles(id),
+    menu_id     BIGINT NOT NULL REFERENCES menus(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (role_id, menu_id)
 );
 ```
 
 ### Casbin 策略表
 
+由 `pckhoi/casbin-pgx-adapter/v3` 管理，策略 subject 为 `role::{code}`：
+
 ```sql
--- 路由级策略（全局唯一）
 CREATE TABLE casbin_rule (
-    id    SERIAL PRIMARY KEY,
-    ptype VARCHAR(10) NOT NULL,  -- "p"
-    v0    VARCHAR(255) NOT NULL, -- 角色 code
-    v1    VARCHAR(255) NOT NULL, -- API 路径
-    v2    VARCHAR(255) DEFAULT '', -- HTTP 方法
+    id    BIGSERIAL PRIMARY KEY,
+    ptype VARCHAR(10) NOT NULL,
+    v0    VARCHAR(255) NOT NULL,
+    v1    VARCHAR(255) NOT NULL,
+    v2    VARCHAR(255) DEFAULT '',
     v3    VARCHAR(255) DEFAULT '',
     v4    VARCHAR(255) DEFAULT '',
     v5    VARCHAR(255) DEFAULT ''
@@ -76,7 +84,7 @@ type RoleService interface {
     GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树
 
     // 菜单分配
-    AssignMenus(ctx context.Context, roleCode string, menuIDs []string) error
+    AssignMenus(ctx context.Context, roleCode string, menuIDs []int64) error
     GetMenus(ctx context.Context, roleCode string) ([]*model.Menu, error)
 
     // Casbin 策略同步
@@ -90,6 +98,8 @@ type RoleService interface {
 ## 4. 核心流程
 
 ### 4.1 Casbin 策略生成（借鉴旧系统三分类）
+
+> 下列 `role::editor` 为**业务示例角色**（非系统种子角色），用来说明三分类策略形态。
 
 角色绑定菜单 → 菜单关联 API → 生成 Casbin 策略：
 
@@ -125,7 +135,7 @@ type RoleService interface {
      → 遍历菜单-API 绑定 → 生成 API 策略
      → 增量 diff（非全量清空）
      → Casbin RemovePolicies(toRemove) + AddPolicies(toAdd)
-  3. 失效权限缓存：DEL perm:user:*（该角色下所有用户）
+  3. （Phase 3 按需）失效权限缓存：DEL perm:user:*（该角色下所有用户）
 ```
 
 ### 4.3 增量 diff 重建（借鉴旧系统 cmd/rebuild）
@@ -155,7 +165,7 @@ func (s *RoleService) RebuildAllPolicies(ctx context.Context) error {
 ### 4.4 删除角色（级联）
 
 ```
-DELETE /api/v1/roles/:code
+POST /api/v1/roles/delete
 
 1. 系统角色保护
    → role.is_system == true？返回 403
@@ -185,13 +195,14 @@ DELETE /api/v1/roles/:code
 ### 4.5 超管通配策略
 
 ```sql
--- admin 角色通配策略（种子数据）
+-- superadmin + admin 通配策略（种子数据；subject 为 role::{code}）
 INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES
-  ('p', 'admin', '*', '*')
+  ('p', 'role::superadmin', '*', '*'),
+  ('p', 'role::admin', '*', '*')
 ON CONFLICT DO NOTHING;
 ```
 
-Casbin matcher 中 `p.obj == "*" || keyMatch2(r.obj, p.obj)` 匹配通配。
+Casbin matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"` 直接 bypass；其余角色靠 `keyMatch2` 匹配 `p` 策略。内置角色与 superadmin/admin 业务差异见 [phase1/05-role §superadmin 与 admin](../phase1/05-role.md#superadmin-与-admin-的区别)。
 
 ---
 
@@ -204,7 +215,7 @@ Casbin matcher 中 `p.obj == "*" || keyMatch2(r.obj, p.obj)` 匹配通配。
 ```
 用户的有效角色 = BFS 展开三源合并：
   1. 直接角色：user_roles 表
-  2. 组织角色：user_orgs → org_roles（组织绑定的角色）
+  2. 组织角色：user_orgs → org_roles（**仅该组织**绑定的角色；子组织成员不继承父组织 org_roles）
   3. 继承角色：roles.parent_id（角色继承链）
 ```
 
@@ -216,12 +227,14 @@ Casbin 模型无 `[role_definition] g` 段，角色继承在中间件层 BFS 展
 
 中间件展开后的角色列表逐个 enforce，任一匹配即放行。
 
-### 5.3 Redis 缓存
+### 5.3 Redis 权限缓存（Phase 3 / 按需）
+
+Phase 1–2 **不使用** `perm:user:{userId}`。Phase 3 多实例/热点场景可按需引入：
 
 ```
 perm:user:{userId} → {
-  "roles": ["admin", "editor"],     // BFS 展开后的完整角色列表
-  "permissions": ["user:create", ...] // 权限码列表
+  "roles": ["admin", "editor"],
+  "permissions": ["user:create", ...]
 }
 TTL: 30min
 ```
@@ -234,12 +247,12 @@ TTL: 30min
 |------|------|------|
 | 策略三分类（route/button/api） | ✅ 直接采用 | 比纯 API 策略更精细 |
 | 菜单-API 绑定自动生成策略 | ✅ 直接采用 | 亮点设计 |
-| g 表消除 + BFS 展开 | ✅ 直接采用 | 简化模型 |
-| 增量 diff 重建（非全量清空） | ✅ 直接采用 | 避免鉴权空窗 |
+| g 表消除 + BFS 展开 | ✅ Phase 2 采用 | 简化 Casbin 模型；Phase 1 仅直接角色 |
+| 增量 diff 重建（非全量清空） | ✅ Phase 1 采用 | 角色菜单变更同事务写 casbin_rule |
 | 超管通配策略 | ✅ 直接采用 | 简洁 |
 | expanded_roles 存 context | ✅ 直接采用 | 避免双倍查询 |
-| BFS 三源合并 | ✅ 直接采用 | 成熟设计 |
-| Redis 缓存展开结果 | ✅ 新增 | 旧系统无缓存，每次查 DB |
+| BFS 三源合并 | ⏳ Phase 2 | Phase 1 仅 user_roles 直接角色 |
+| Redis 缓存展开结果 | ⏳ Phase 3 按需 | Phase 1–2 查 DB |
 | SessionAdapter + mutex | ❌ 不采用 | PostgreSQL 不需要 |
 | LoadPolicy 全量重载 | ❌ 改为增量 | 旧系统性能瓶颈 |
 | cmd/rebuild 独立二进制 | ⚠️ 改为运行时 Sync | 简化部署 |
@@ -260,11 +273,11 @@ TTL: 30min
 ### Phase 2
 
 - BFS 三源合并（直接角色 + 组织角色 + 继承角色）
-- Redis 缓存展开结果
-- 增量 diff 重建
-- 策略三分类完整实现
+- 策略三分类完整实现（route/button/api）
 
 ### Phase 3
 
+- Redis 缓存展开结果（`perm:user:{userId}`，按需）
+- 增量 diff 重建优化（大数据量场景）
 - 角色继承可视化
-| 角色预设（RolePresetProvider） | 预设角色自动同步 |
+- 角色预设（RolePresetProvider）

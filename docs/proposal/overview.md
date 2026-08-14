@@ -29,6 +29,7 @@
 | 多组织交叉权限 | 一个用户归属多个虚拟组织，各组织权限独立生效 | 多组织角色合并 + 取并集 |
 | 组织管理层级 | 上级可查看下级部门数据，不可查看平级或上级 | ltree 路径前缀匹配 |
 | 临时授权 | 用户临时加入虚拟组完成特定任务，到期自动退出 | 虚拟组成员有效期 + 过期清理 |
+| HR 目录同步 | 公司 API 每日拉取人员/部门；虚拟组挂实体下 | 分域同步 + Reparent；见 [hr-directory-sync.md](./hr-directory-sync.md) |
 | 工单类型扩展 | 管理员新增工单类型（故障/请求/变更），配置自定义字段 | 配置驱动 + Hook 扩展（见 `modules/ticket.md`） |
 | 事件触发 | 工单创建/状态变更触发通知、SLA 计时 | 事件驱动模块（见 `design-decisions.md` §16） |
 
@@ -120,7 +121,7 @@
 | 要点 | 说明 |
 |------|------|
 | API 仅用 GET + POST | 前端所有请求只用这两个方法，更新/删除用 `POST /xxx/update`、`POST /xxx/delete` |
-| 统一响应格式 | `{code, message, data, request_id}`，前端统一拦截器处理 |
+| 统一响应格式 | `{code, message, data, request_id}`，见 [api/response.md](./api/response.md) |
 | 菜单树接口 | `GET /user/menus` 返回树形结构，前端直接渲染路由和菜单 |
 | 权限码接口 | `GET /user/permissions` 返回权限码列表，前端 `v-if` 控制按钮显隐 |
 | 分页格式 | `{list, total, page, page_size}`，前端分页组件直接绑定 |
@@ -137,6 +138,7 @@
 | [auth-design.md](./auth-design.md) | 认证鉴权完整方案：AuthN + AuthZ + 资源抽象 |
 | [data-init.md](./data-init.md) | 数据初始化与幂等性方案 |
 | [resource-model.md](./resource-model.md) | 资源抽象与自注册机制方案 |
+| [hr-directory-sync.md](./hr-directory-sync.md) | HR 目录同步、虚拟组挂载与 Reparent 策略 |
 | [deployment-evolution.md](./deployment-evolution.md) | 部署演进：单体 → 微服务化路径 |
 
 ---
@@ -156,31 +158,35 @@
 | 资源级鉴权架构（Gateway 下放） | design-decisions.md §5 |
 | 资源抽象与自注册 | design-decisions.md §6, proposal/resource-model.md |
 | 初始化幂等性 | design-decisions.md §7, proposal/data-init.md |
+| HR 目录与虚拟组挂载 | proposal/hr-directory-sync.md |
 | Casbin 策略爆炸（每资源独立 enforcer） | design-decisions.md §8 |
 | 旧系统对比与借鉴 | system-comparison.md |
 
 ### 5.2 已识别但需补充
 
-| 事项 | 说明 | 优先级 |
-|------|------|--------|
-| 密码安全策略 | 旧系统有完整的 PasswordValidator（复杂度+bcrypt上限+first_login改密），新框架需对齐 | Phase 1 |
-| 登录安全 | 旧系统有 LoginLocker（Lua 原子脚本+fail-close），新框架需对齐 | Phase 1 |
-| 审计日志可靠性 | 异步写入 + channel 满降级策略 | Phase 2 |
-| 审计日志过期清理 | PG 分区表或 cron 定期归档 | Phase 2 |
-| 配置热更新 | Viper WatchConfig，哪些配置支持热更新需明确 | Phase 2 |
-| 数据库高可用 | Phase 1 单节点 PG；Phase 2 迁移云托管 PG Cluster（2+VIP） | Phase 2 |
-| ReBAC 引擎选型 | Phase 1 ltree+代码内联；Phase 2 按需评估 OpenFGA/SpiceDB | Phase 2 |
-| 微服务通信协议 | Phase 2 gRPC 内部 + REST 外部（gRPC-Gateway） | Phase 2 |
-| 多租户预留 | 表和模型预留 tenant_id，暂不实现 | Phase 3 |
-| API 版本管理 | `/api/v1` 前缀，未来版本迁移策略 | Phase 2 |
-| 服务间通信 | Phase 2 微服务化时的服务发现、负载均衡、熔断 | Phase 2 |
-| 可观测性 | Prometheus metrics + OpenTelemetry tracing | Phase 3 |
-| CI/CD | GitHub Actions / GitLab CI 配置 | Phase 2 |
-| 灰度发布 | 多版本共存、流量切分 | Phase 3 |
-| 工单模块 | Phase 2 开始，设计已完成（`modules/ticket.md`） | Phase 2 |
-| 事件驱动模块 | Phase 1 进程内事件；Phase 2 Outbox + Asynq（`design-decisions.md` §16） | Phase 2 |
-| 操作日志中间件 | 借鉴 ginfast：异步+脱敏+自动识别模块/类型（`design-decisions.md` §17） | Phase 1 |
-| 授权引擎抽象 | 借鉴 go-wind-admin：Casbin/OPA/Zanzibar 可切换接口 | Phase 2 |
+> **分期以 [`roadmap.md`](../roadmap.md) 为准。** 下表「阶段」列已与 Phase 2a/2b、3a/3b 对齐。
+
+| 事项 | 说明 | 阶段 |
+|------|------|------|
+| 密码安全策略 | bcrypt + 首次改密（Phase 1）；复杂度 4 种字符 Phase 2b | Phase 1 / 2b |
+| 登录安全 | Lua LoginLocker + fail-close（503） | Phase 1 |
+| 操作日志中间件 | 同步写入 + 登录单独审计 + 脱敏 | Phase 1 |
+| 工单模块 | 类型配置、状态机、资源级鉴权 | Phase 2（2a MVP → 2b scope → **2c** 组内委托） |
+| 配置热更新 | Viper WatchConfig，哪些配置支持热更新需明确 | Phase 2b / 按需 |
+| API 版本管理 | `/api/v1` 前缀，未来版本迁移策略 | Phase 2b / 按需 |
+| 审计日志可靠性 | 异步写入 + Redis List L2 | Phase 3a |
+| 审计日志过期清理 | PG 分区表或 cron 定期归档 | Phase 3a |
+| 数据库高可用 | 云托管 PG Cluster（2+VIP） | Phase 3a |
+| 可观测性 | 应用内可选开关；Prometheus + OTel **部署可选**（Grafana 永远可选） | Phase 3a |
+| CI/CD | GitHub Actions / GitLab CI、迁移 CI | Phase 3a |
+| 多租户预留 | 表和模型预留 tenant_id，暂不实现 | 按需 |
+| HR 目录同步 | 公司人员/部门 API 每日拉取；虚拟组 Reparent | Phase 2b（[hr-directory-sync.md](./hr-directory-sync.md)） |
+| 灰度发布 | 多版本共存、流量切分 | 按需 |
+| 事件驱动模块 | Outbox + Asynq | Phase 3b |
+| ReBAC / PDP 评估 | OpenFGA/SpiceDB 等，按需 | Phase 3b / 按需 |
+| 微服务通信协议 | gRPC 内部 + REST 外部 | Phase 3b |
+| 服务间通信 | 服务发现、负载均衡、熔断 | Phase 3b |
+| 授权引擎抽象 | Casbin/OPA/Zanzibar 可切换接口 | Phase 3b / 按需 |
 
 ### 5.3 业界实践参考
 
@@ -192,4 +198,4 @@
 | 文档优先，策略后同步 | 旧系统 zhuzhao | DB 是 source of truth，Casbin 是 derived |
 | desired-state sync | 旧系统 zhuzhao | 启动时同步系统数据，幂等 |
 | 服务启动解耦 | NILUS bootstrap dependencies | 启动不依赖远程服务，本地配置+缓存 |
-| 数据复制替代同步调用 | microservices.io fetch/replicate | Phase 2 IAM 数据复制到业务服务 |
+| 数据复制替代同步调用 | microservices.io fetch/replicate | Phase 3b 拆服务后 IAM 数据复制到业务服务 |

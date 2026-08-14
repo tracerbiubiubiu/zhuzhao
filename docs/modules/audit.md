@@ -1,8 +1,10 @@
 # 审计日志模块设计
 
-> 模块代码：`internal/service/audit_service.go` + `internal/middleware/audit.go`
+> 模块代码（目标路径）：`internal/service/audit/` + `internal/middleware/audit.go` + `internal/handler/audit/`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/accesslog.md`
+>
+> **Phase 1 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**：仅 `audit_logs` 单表 + 同步写入 + `GET /api/v1/audit/logs`。下文 `access_logs` 与异步流程为 **Phase 3a+** 完整形态预留。
 
 ---
 
@@ -18,7 +20,9 @@
 
 ## 2. 数据模型
 
-### 2.1 访问日志（HTTP 请求记录）
+### 2.1 访问日志（HTTP 请求记录，Phase 3a+）
+
+> Phase 1 不建此表；Phase 1 操作审计统一写入 §2.2 `audit_logs`。
 
 ```sql
 CREATE TABLE access_logs (
@@ -82,7 +86,20 @@ type AuditService interface {
 
 ## 4. 核心流程
 
-### 4.1 异步写入流程
+### 4.1 Phase 1 同步写入
+
+> 权威说明见 [phase1/08-audit.md](../phase1/08-audit.md)。Phase 1 仅 `audit_logs` 单表，无 `access_logs`。
+
+```
+请求 → Audit 中间件
+  │  c.Next() 完成后记录：user_id, method, path, status_code, duration, request_body(脱敏)
+  │  → 同步 INSERT audit_logs（失败只记应用日志，不影响业务响应）
+  └── 返回（用户感知延迟不受影响）
+```
+
+查询：`GET /api/v1/audit/logs`（分页 + 筛选）。
+
+### 4.2 异步写入流程（Phase 3a：channel + Redis List L2）
 
 ```
 请求 → Audit 中间件
@@ -96,7 +113,7 @@ type AuditService interface {
      → channel 满时降级：同步写入 + 告警
 ```
 
-### 4.2 action 推导（借鉴旧系统 actionRegistry）
+### 4.3 action 推导（借鉴旧系统 actionRegistry）
 
 旧系统通过 `accesslog.RegisterAction(method, fullPath, action)` 注册路由→动作映射。
 
@@ -104,7 +121,7 @@ type AuditService interface {
 
 ```go
 // 启动时注册
-var actionRegistry = map[string]string{} // "POST:/api/users/:id/delete" → "delete_user"
+var actionRegistry = map[string]string{} // "POST:/api/users/delete" → "delete_user"
 
 func RegisterAction(method, path, action string) {
     actionRegistry[method+":"+path] = action
@@ -122,7 +139,7 @@ func deriveAction(method, path string) string {
 }
 ```
 
-### 4.3 敏感字段脱敏（借鉴旧系统）
+### 4.4 敏感字段脱敏（借鉴旧系统）
 
 ```yaml
 # configs/config.yaml
@@ -182,8 +199,8 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 | 设计 | 决策 | 理由 |
 |------|------|------|
-| 异步写入 + channel | ✅ 直接采用 | 不阻塞请求 |
-| channel 满降级 | ✅ 直接采用 | 同步写入 + 告警 |
+| 异步写入 + channel | Phase 2/3a 采用 | Phase 1 同步写 DB，保证不丢 |
+| channel 满降级 | Phase 2/3a 采用 | 同步写入 + 告警 |
 | actionRegistry 推导 | ✅ 直接采用 | 比 method:path 更可读 |
 | 敏感字段脱敏 | ✅ 直接采用 | 安全要求 |
 | 请求体截断（4KB） | ✅ 直接采用 | 防止大 body 撑爆日志 |
@@ -198,18 +215,16 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 ### Phase 1
 
-- AccessLog 中间件（同步写入）
+- 操作日志中间件（**同步**写入 `audit_logs`）
+- `GET /api/v1/audit/logs` 查询接口
 - 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
-- 基本字段记录（method/path/status/cost/user_id）
-- trace_id / request_id 注入
+- 基本字段 + 敏感字段脱敏 + trace_id / request_id
 
 ### Phase 2
 
-- 无必须项（工单模块可复用同步审计）
+- **不做**审计异步（与 [phase2/README §1.5](../phase2/README.md#15-不做什么整个-phase-2) 一致）
 
-### Phase 3
+### Phase 3a
 
-- 异步写入 + channel / Redis List L2
-- actionRegistry 推导、敏感字段脱敏
-- 审计日志查询接口、清理 cron
-- 分区表、导出
+- channel + Redis List L2 异步（接口不变）
+- `access_logs` 访问日志表（若与操作审计拆分）

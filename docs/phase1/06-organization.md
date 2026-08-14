@@ -11,16 +11,59 @@
 | 组织树 | 查看完整组织树（树形结构） | `GET /api/v1/orgs` |
 | 创建组织 | 在指定父组织下创建子组织 | `POST /api/v1/orgs` |
 | 组织详情 | 查看单个组织信息 | `GET /api/v1/orgs/:id` |
-| 更新组织 | 修改组织名称、描述 | `POST /api/v1/orgs/:id/update` |
-| 删除组织 | 删除组织（需检查是否有子组织和成员） | `POST /api/v1/orgs/:id/delete` |
-| 移动组织 | 将组织移动到新的父组织下 | `POST /api/v1/orgs/:id/move` |
+| 更新组织 | 修改组织名称、描述 | `POST /api/v1/orgs/update` |
+| 删除组织 | 删除组织（需检查是否有子组织和成员） | `POST /api/v1/orgs/delete` |
+| 移动组织 | 将组织移动到新的父组织下 | `POST /api/v1/orgs/move` |
 | 用户-组织关联 | 查看用户所属组织 | `GET /api/v1/users/:id/orgs` |
+| 组织成员列表 | 查看某组织下成员 | `GET /api/v1/orgs/:id/members` |
+| 添加组织成员 | 将用户加入组织 | `POST /api/v1/orgs/members` |
+| 移除组织成员 | 将用户从组织移出 | `POST /api/v1/orgs/members/delete` |
+
+> Phase 1 `user_orgs` 仅 `(user_id, org_id, is_primary)`，**无** `role_id`。  
+> **双 HTTP 入口、单写逻辑**：组织侧 `POST /orgs/members*` 与用户侧 `POST /users/orgs`、创建用户 `org_ids` 均委托 **同一 `OrgService`**，见下文 §成员关系写路径。
+
+### 成员关系写路径（SSOT）
+
+```
+OrgService
+  ├── AddMember(orgID, userID, isPrimary)      ← POST /orgs/members
+  ├── RemoveMember(orgID, userID)              ← POST /orgs/members/delete
+  └── SetUserOrgs(userID, orgIDs, primaryOrgID) ← POST /users/orgs、POST /users（org_ids）
+```
+
+| 入口 | 适用 UI | 语义 |
+|------|---------|------|
+| `POST /orgs/members` | 组织树 · 成员页 | 添加**一名**成员（已存在则幂等） |
+| `POST /orgs/members/delete` | 组织树 · 成员页 | 移除**一名**成员 |
+| `POST /users/orgs` | 用户详情 · 所属组织 | **全量覆盖**该用户的组织列表 |
+| `POST /users` + `org_ids` | 新建用户表单 | 创建成功后同事务 `SetUserOrgs` |
+
+用户模块 `GET /users/:id/orgs` 为只读查询；**禁止**在 UserRepo 内复制 `is_primary` 等规则。
+
+### 成员 API 请求体
+
+```json
+// POST /api/v1/orgs/members — 添加一名成员
+{ "org_id": "2", "user_id": "5", "is_primary": false }
+
+// POST /api/v1/orgs/members/delete
+{ "org_id": "2", "user_id": "5" }
+
+// POST /api/v1/users/orgs — 全量设置用户所属组织（见 04-user.md）
+{ "user_id": "5", "org_ids": ["2", "3"], "primary_org_id": "2" }
+```
+
+**`is_primary` 规则**（Phase 1）：
+
+- 可选，默认 `false`
+- 同一用户最多一条 `is_primary = true`；设新 primary 时，事务内清除该用户其它记录的 primary 标记
+- 用户可不属于任何组织，也可属于多个组织但只有一个 primary
 
 ### Phase 1 不做
 
 | 功能 | 原因 | 阶段 |
 |------|------|------|
-| 虚拟组（org_type=4） | Phase 1 只做实体组织（org_type 1-3） | Phase 2 |
+| 虚拟组（org_type=4） | Phase 1 只做实体组织（org_type 1-3） | Phase 2b |
 | 组织级权限（scope） | 资源级鉴权 Phase 2 | Phase 2 |
 | 组织角色 | Phase 2 | Phase 2 |
 | ltree 路径查询 | 无业务资源需要过滤 | Phase 2 |
@@ -79,10 +122,13 @@ CREATE TABLE organizations (
 );
 
 CREATE UNIQUE INDEX idx_org_code ON organizations(code) WHERE deleted_at IS NULL;
+```
 
+> **种子幂等**：`000002_seed` 使用 `ON CONFLICT (code) WHERE deleted_at IS NULL DO NOTHING`（PG 15+，见 [data-init.md](../proposal/data-init.md)）。
+
+```sql
 CREATE INDEX idx_org_path   ON organizations USING GIST(path);
 CREATE INDEX idx_org_parent ON organizations(parent_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_org_code   ON organizations(code) WHERE deleted_at IS NULL;
 CREATE INDEX idx_org_deleted ON organizations(deleted_at) WHERE deleted_at IS NOT NULL;
 ```
 
@@ -94,6 +140,7 @@ CREATE INDEX idx_org_deleted ON organizations(deleted_at) WHERE deleted_at IS NO
 
 ```go
 func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.Organization, error) {
+    var parentID *int64
     var path ltree.Ltree
 
     if req.ParentCode == "" {
@@ -105,6 +152,7 @@ func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.O
         if err != nil {
             return nil, err
         }
+        parentID = &parent.ID
         path = ltree.Ltree(parent.Path.String() + "." + req.Code)
     }
 
@@ -139,7 +187,7 @@ WHERE path <@ (SELECT path FROM organizations WHERE code = $1);
 
 ### 删除保护
 
-详见 [modules/organization.md](../modules/organization.md) §4.3：
+详见 [modules/organization.md](../modules/organization.md) §4.4：
 
 ```go
 func (s *orgService) Delete(ctx context.Context, code string) error {
@@ -165,6 +213,9 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 }
 ```
 
+> **Phase 2b**：若子节点含 `org_type=4` 虚拟组，HR 撤销走 Reparent（见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)）；管理端 Delete 仍默认拒绝有子节点。HR Sync 不得硬删其下仍有虚拟组的 HR 实体。
+```
+
 ---
 
 ## 测试用例
@@ -182,6 +233,12 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 删除组织 - 有子组织 | 返回 ErrOrgHasChildren |
 | 删除组织 - 有成员 | 返回 ErrOrgHasMembers |
 | 删除组织 - 叶子节点无成员 | 成功（软删除） |
+| 添加成员 | org_id + user_id | user_orgs 插入成功 |
+| 添加成员 - 重复 | 同一 org_id + user_id | ON CONFLICT 幂等或返回已存在 |
+| 移除成员 | org_id + user_id | user_orgs 删除成功 |
+| 设 is_primary | is_primary=true | 该用户其它 primary 被清除 |
+| SetUserOrgs | user_id + org_ids | user_orgs 全量替换 |
+| SetUserOrgs - 清空 | org_ids: [] | 该用户无组织关联 |
 
 ### Service 层
 
@@ -189,17 +246,23 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 |------|------|------|
 | 创建组织 - 正常 | name + parentID | 返回组织 |
 | 创建组织 - 父组织不存在 | 不存在的 parentID | 返回 ErrOrgNotFound |
-| 创建组织 - code 含 `-` | code=`tech-dept` | 返回 ErrInvalidParam |
+| 创建组织 - code 含 `-` | code=`tech-dept` | 返回 ErrInvalidParams |
 | 移动组织 - 移到自己的子节点下 | orgID = 1, newParentID = 3（3 是 1 的子节点） | 返回 ErrInvalidMove |
 | 删除组织 - 有子组织 | 有子节点的 orgID | 返回 ErrOrgHasChildren |
+| 添加成员 - 用户不存在 | 无效 user_id | 返回 ErrUserNotFound |
+| 添加成员 - 组织不存在 | 无效 org_id | 返回 ErrOrgNotFound |
+| SetUserOrgs - primary 不在 org_ids 中 | primary_org_id 无效 | 返回 ErrInvalidParams |
+| 移除成员 - 未加入 | 无对应 user_orgs 行 | 404 + 50007 |
 
 ---
 
 ## 涉及文件
 
+> 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。成员 API 见上文 §预期功能。
+
 ```
-internal/repository/org_repo.go       # 组织数据访问（ltree 操作）
-internal/service/org_service.go       # 组织业务逻辑
-internal/handler/org_handler.go       # HTTP Handler
-internal/model/org.go                 # 组织模型
+internal/repository/org/                # ltree + user_orgs 成员
+internal/service/org/
+internal/handler/org/
+internal/model/org.go                 # 或 model/organization.go
 ```

@@ -17,8 +17,7 @@
 
 | 功能 | 原因 | 阶段 |
 |------|------|------|
-| channel + batch 异步写入 | Phase 1 请求量低，同步够用 | Phase 2 |
-| Redis List 队列 | 高吞吐场景 | Phase 3 |
+| channel + batch / Redis List 异步 | Phase 1 请求量低，同步够用；Phase 2 不堆平台能力 | Phase 3a（L2，见 architecture §12.4） |
 | 日志过期清理 | 分区表或 cron | Phase 2 |
 
 ---
@@ -42,7 +41,7 @@
 1. Phase 1 请求量低（内部办公系统），每请求多一次 INSERT 对延迟影响可忽略（PG 本地 INSERT 约 0.1ms）
 2. 审计日志的核心要求是**不丢**——安全审计场景下，丢失操作记录比慢 0.1ms 严重得多
 3. 异步引入的复杂度（channel 满降级、关闭时刷空、goroutine 泄漏）在 Phase 1 不值得
-4. Phase 2 引入 channel + batch 时，接口不变，只改 `AuditRepo.Insert` 内部实现
+4. Phase 3a 引入异步（channel → Redis List → DB）时，接口不变，只改 `AuditRepo.Insert` 内部实现
 
 **优化措施**：同步写入虽在请求链路内，但放在 `c.Next()` 之后（响应已写完），用户感知延迟不受影响：
 
@@ -87,7 +86,7 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
 
 - 失败记录必须写（防爆破追溯）
 - 请求体中的 password 脱敏为 `***`
-- username 原样记录（失败时也要能查是谁在撞库）
+- employee_no 原样记录（失败时也要能查是谁在撞库）
 
 ### 敏感字段脱敏
 
@@ -131,6 +130,18 @@ CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 
 ---
 
+## 路由鉴权（Phase 1）
+
+| 项 | 约定 |
+|----|------|
+| 路由 | `GET /api/v1/audit/logs`，Casbin 路由级鉴权（见 [architecture §17.6](../design/architecture.md#176-审计模块)） |
+| Phase 1 种子 | **无**「审计管理」菜单与 `menu_apis` 条目（见 [data-init §4.2](../proposal/data-init.md)） |
+| 谁可访问 | 种子中 `role::admin` / `role::superadmin` 的通配 `p` 策略（`*`, `*`） |
+| 其它角色 | `operator` / `viewer` 或未分配菜单的自定义角色 → **403**（与下方测试用例一致） |
+| 后续 | 需要 UI 入口时，新增菜单 + `menu_apis`，走角色-菜单 SyncPolicies（Phase 2+） |
+
+---
+
 ## 测试用例
 
 ### 中间件
@@ -157,19 +168,21 @@ CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 
 ## 涉及文件
 
+> 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。
+
 ```
-internal/middleware/audit.go           # 操作日志中间件
-internal/repository/audit_repo.go      # 审计日志数据访问
-internal/service/audit_service.go      # 审计日志查询
-internal/handler/audit_handler.go      # HTTP Handler
-internal/model/audit.go                # 审计日志模型
+internal/middleware/audit.go
+internal/repository/audit/            # 或 audit_log/
+internal/service/audit/
+internal/handler/audit/
+internal/model/audit_log.go
 ```
 
 ## 待决策点
 
 > 以下决策已在讨论中确认：
 
-- ✅ **同步 vs 异步**：Phase 1 同步写入 DB。理由：审计日志核心要求是不丢，Phase 1 请求量低，同步足够。Phase 2 引入 channel + batch 时接口不变。
+- ✅ **同步 vs 异步**：Phase 1 同步写入 DB。Phase 2 **不做**审计异步；Phase 3a Redis List L2（见 architecture §12.4）。
 - ✅ **日志保留策略**：Phase 1 不做清理，手动管理。Phase 2 用 PG 分区表或 cron 定期清理。
 
 ---
@@ -200,7 +213,7 @@ internal/model/audit.go                # 审计日志模型
 
 ```go
 // Error：影响业务流程的错误，必须排查
-slog.Error("user login failed", "username", username, "err", err)
+slog.Error("user login failed", "employee_no", employeeNo, "err", err)
 
 // Warn：异常但可恢复，需关注
 slog.Warn("casbin reload failed, using stale policy", "err", err)

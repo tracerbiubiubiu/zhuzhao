@@ -281,13 +281,13 @@ var ticketTransitions = map[string][]string{
 | GET | `/api/v1/tickets` | `ticket:list` | 工单列表（按 scope 过滤） |
 | POST | `/api/v1/tickets` | `ticket:create` | 创建工单 |
 | GET | `/api/v1/tickets/:id` | `ticket:read` | 工单详情 |
-| POST | `/api/v1/tickets/:id/update` | `ticket:update` | 更新工单 |
-| POST | `/api/v1/tickets/:id/close` | `ticket:close` | 关闭工单 |
-| POST | `/api/v1/tickets/:id/assign` | `ticket:assign` | 分派工单 |
-| POST | `/api/v1/tickets/:id/delete` | `ticket:delete` | 删除工单 |
+| POST | `/api/v1/tickets/update` | `ticket:update` | 更新工单 |
+| POST | `/api/v1/tickets/close` | `ticket:close` | 关闭工单 |
+| POST | `/api/v1/tickets/assign` | `ticket:assign` | 分派工单 |
+| POST | `/api/v1/tickets/delete` | `ticket:delete` | 删除工单 |
 | GET | `/api/v1/tickets/:id/comments` | `ticket:read` | 回复列表 |
-| POST | `/api/v1/tickets/:id/comments` | `ticket:comment` | 添加回复 |
-| POST | `/api/v1/tickets/:id/notes` | `ticket:note` | 添加内部备注 |
+| POST | `/api/v1/tickets/comments` | `ticket:comment` | 添加回复 |
+| POST | `/api/v1/tickets/notes` | `ticket:note` | 添加内部备注 |
 
 ### 4.2 Service 接口
 
@@ -468,7 +468,7 @@ func NewTicketManager() *TicketManager {
         types: make(map[string]TicketType),
         hooks: make(map[string]TicketHooks),
     }
-    // Phase 1: 所有类型使用默认 Hooks
+    // Phase 2a: 所有类型使用默认 Hooks
     // Phase 3: 注册变更类工单的特殊 Hooks
     // m.Register("change", &ChangeTicketHooks{...})
     return m
@@ -489,7 +489,7 @@ func NewTicketManager() *TicketManager {
 
 ## 6. 事件驱动集成（概要）
 
-工单模块通过事件与其他模块协作。事件驱动作为独立的横切模块设计，详细方案见 `docs/proposal/event-design.md`（待编写）。
+工单模块通过事件与其他模块协作。事件驱动作为独立的横切模块设计，详细方案见 [phase3/04-event-driven.md](../phase3/04-event-driven.md)（Phase 3b）。
 
 ### 工单相关事件
 
@@ -501,15 +501,17 @@ func NewTicketManager() *TicketManager {
 | `ticket.closed` | 工单关闭后 | 满意度调查、SLA 统计 |
 | `ticket.sla_breached` | SLA 超时 | 告警服务、升级处理 |
 
-### Phase 1 的极简事件
+### Phase 2a 的极简事件
 
-Phase 1 不引入消息队列，使用 Go 原生 channel + goroutine 实现进程内事件分发。Phase 2 引入 Outbox + Asynq 实现可靠事件分发和异步任务。
+Phase 2a 不引入消息队列，使用 Go 原生 channel + goroutine 实现进程内事件分发。Phase 3b 引入 Outbox + Asynq 实现可靠事件分发和异步任务。
 
 ---
 
 ## 7. 分阶段实施
 
-### Phase 1：基础工单
+> **Phase 2 实现 SSOT**：[phase2/09-ticket.md](../phase2/09-ticket.md)（2a MVP + 2b scope + 2c Authorize 引用）。
+
+### Phase 2a：工单 MVP
 
 | 能力 | 说明 |
 |------|------|
@@ -517,13 +519,27 @@ Phase 1 不引入消息队列，使用 Go 原生 channel + goroutine 实现进�
 | 工单类型配置 | `ticket_types` + `ticket_type_fields` 表，支持前端动态表单 |
 | 状态机 | 从 `ticket_types.transitions` 加载，默认 open → assigned → in_progress → closed |
 | 路由级 RBAC | Casbin 权限码控制操作 |
-| 资源级 scope | 三档可见性（all/group/assigned） |
+| 资源级 scope | **assigned** 可见性（2b 扩展 group/all） |
+| 组内 admin/owner 资源操作 | **Phase 2c**：见 [04-org-delegation §4](../phase2/04-org-delegation.md#4-authorize-升级step-10) |
 | 回复功能 | 公开回复 + 内部备注 |
 | 事件日志 | 状态变更记录 |
-| Hook 机制 | `TicketHooks` 接口 + `DefaultTicketHooks`，所有类型走默认逻辑 |
-| 进程内事件 | Go channel 分发，触发通知等简单逻辑 |
+| Hook 机制 | `TicketHooks` 接口 + `DefaultTicketHooks` |
+| 进程内事件 | Go channel 分发 |
 
-### Phase 2：SLA + 通知 + 事件驱动
+### Phase 2b：scope + 附件 + 体验
+
+| 能力 | 说明 |
+|------|------|
+| group/all scope | ltree 列表过滤，见 [03-org-enhance](../phase2/03-org-enhance.md) |
+| 工单附件 | [10-storage](../phase2/10-storage.md) 预签名直传 |
+
+### Phase 2c：组内委托
+
+| 能力 | 说明 |
+|------|------|
+| org admin/owner Authorize | [04-org-delegation](../phase2/04-org-delegation.md) |
+
+### Phase 3+：SLA + 通知 + 事件驱动
 
 | 能力 | 说明 |
 |------|------|
@@ -578,9 +594,9 @@ Phase 1 不引入消息队列，使用 Go 原生 channel + goroutine 实现进�
 | 插件化资源动作 | `TicketHooks` 钩子机制，类型特定的业务逻辑通过 Hook 扩展 |
 | Wire 模块化 Provider Set | 工单模块的 Wire 注入遵循相同的分 Set 组织方式 |
 
-### 8.4 为什么 Phase 1 不引入工作流引擎
+### 8.4 为什么 Phase 2a 不引入工作流引擎
 
-Phase 1 的状态机是线性的（6 状态 + 几条转换规则），一个 map 就能表达。引入 Temporal 等工作流引擎属于过度设计。
+Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 map 就能表达。引入 Temporal 等工作流引擎属于过度设计。
 
 Phase 3 如果需要多级审批、会签、条件分支，再评估：
 - Temporal（工业级，需独立 server）
@@ -597,7 +613,7 @@ Phase 3 如果需要多级审批、会签、条件分支，再评估：
 - 定时任务（SLA 检查、报表生成）会触发事件
 - 其他服务（用户管理、组织变更）也会触发事件
 
-因此事件驱动作为独立的横切模块设计，详见 `docs/proposal/event-design.md`（待编写）。初步规划：
-- Phase 1：Go 原生 channel 进程内事件
-- Phase 2：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列
-- Phase 3：评估是否引入 Redis Streams 或 Kafka 做跨服务事件传播
+因此事件驱动作为独立的横切模块设计，详见 [phase3/04-event-driven.md](../phase3/04-event-driven.md)。初步规划：
+- Phase 2a：Go 原生 channel 进程内事件
+- Phase 3b：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列
+- 按需：评估 Redis Streams 或 Kafka 做跨服务事件传播

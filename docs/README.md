@@ -12,7 +12,8 @@ docs/
 ├── design/                          # 框架设计文档（技术架构层面）
 │   ├── architecture.md              # 系统架构（What：系统是什么）
 │   ├── design-decisions.md          # 设计决策（Why：为什么这么选）
-│   ├── implementation-plan.md       # 实施计划（How：怎么搭）
+│   ├── rbac-inheritance-and-cascade.md  # RBAC 继承与级联（Phase 2b+ 备忘 SSOT）
+│   ├── implementation-plan.md       # 已废弃，见 phase1/
 │   └── system-comparison.md         # 现有系统对比分析
 │
 ├── proposal/                        # 综合方案文档（业务+技术整合）
@@ -20,6 +21,7 @@ docs/
 │   ├── auth-design.md               # 认证鉴权方案：AuthN + AuthZ 完整设计
 │   ├── data-init.md                 # 数据初始化与幂等性方案
 │   ├── resource-model.md            # 资源抽象与自注册机制方案
+│   ├── hr-directory-sync.md         # HR 目录同步与虚拟组挂载方案
 │   └── deployment-evolution.md      # 部署演进：单体 → 微服务化路径
 │
 ├── modules/                         # 模块级设计文档（各模块完整设计，跨阶段）
@@ -30,7 +32,7 @@ docs/
 │   ├── organization.md              # 组织模块：ltree树形、成员、虚拟组
 │   ├── menu.md                      # 菜单模块：三类型、API绑定、前端权限
 │   ├── authz.md                     # 鉴权模块：路由级Casbin + 资源级Registry
-│   ├── audit.md                     # 审计模块：访问日志、操作审计、异步写入
+│   ├── audit.md                     # 审计模块：操作审计（Phase 1 同步写 DB）
 │   ├── middleware.md                # 中间件模块：JWT、CORS、限流、安全头
 │   └── ticket.md                    # 工单模块：类型配置、状态机、权限模型
 │
@@ -47,16 +49,23 @@ docs/
 │   ├── 09-middleware.md             # 中间件
 │   └── 10-concurrency.md            # 并发与事务
 │
-├── phase2/                          # Phase 2：业务可用（资源级鉴权 + 安全 + 工单）
-│   ├── README.md                    # 大纲 + 边界 + 实施顺序
-│   └── (01~09 待编写)
+├── phase2/                          # Phase 2：业务可用（工单 + 组织增强 + 委托）
+│   ├── README.md                    # 大纲 + 边界 + 实施顺序（2a/2b/2c）
+│   ├── 01-auth-enhance.md           # 2b：设备管理、密码复杂度
+│   ├── 02-authz-resource.md         # 2a：ResourceRegistry + assigned
+│   ├── 03-org-enhance.md            # 2b：虚拟组、scope、HR 同步
+│   ├── 04-org-delegation.md         # 2c：owner、组内分级、Authorize
+│   ├── 09-ticket.md                 # 2a/2b：工单 MVP + scope 升级
+│   └── 10-storage.md                # 2b：MinIO 预签名、附件
 │
 ├── phase3/                          # Phase 3：生产加固（多实例 + 可观测性 + HA）
 │   ├── README.md                    # 大纲 + 边界 + 实施顺序
-│   └── (01~08 待编写)
+│   ├── 01-observability.md          # 3a：可观测性（已编写）
+│   └── 02–09 待编写
 │
-├── api/                             # API 文档
-│   └── (Swagger 生成)                # Phase 1 后期由 swag 自动生成
+├── api/                             # API 契约（后端 SSOT）
+│   ├── response.md                  # 响应体 Envelope
+│   └── errcode.md                   # 业务错误码
 │
 ├── ops/                             # 运维文档
 │   ├── deployment.md                # 部署指南
@@ -76,6 +85,7 @@ docs/
 |------|------|------|
 | `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划 | 所有开发者 |
 | `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
+| `rbac-inheritance-and-cascade.md` | RBAC 继承、业界对照、删改级联矩阵（**Phase 1 不实现**） | 架构 review |
 | `implementation-plan.md` | ~~实施步骤~~ **已废弃**，见 phase1/ | 历史快照 |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
 
@@ -91,6 +101,7 @@ docs/
 | `auth-design.md` | 认证鉴权方案 | AuthN（双 Token）+ AuthZ（分层鉴权 + 资源抽象）完整设计 |
 | `data-init.md` | 数据初始化方案 | 迁移分层、种子数据幂等、运行时 Sync 安全规则 |
 | `resource-model.md` | 资源模型方案 | 资源接口抽象、自注册机制、每资源独立 Enforcer |
+| `hr-directory-sync.md` | HR 目录同步 | 实体/虚拟组、move 级联、与 owner 边界 |
 | `deployment-evolution.md` | 部署演进方案 | 单体底座 → IAM 独立部署 → 微服务化路径 |
 
 ### modules/ — 模块级设计文档
@@ -105,7 +116,7 @@ docs/
 | `organization.md` | 组织 | ltree 树形、成员管理、组织角色 |
 | `menu.md` | 菜单 | 三类型、API 绑定、前端权限 |
 | `authz.md` | 鉴权 | 路由级 Casbin + 资源级 ResourceRegistry |
-| `audit.md` | 审计 | 访问日志、操作审计、异步写入 |
+| `audit.md` | 审计 | 操作审计、日志查询（Phase 1 同步写入 DB） |
 | `middleware.md` | 中间件 | JWT、CORS、限流、安全头 |
 | `ticket.md` | 工单 | 类型配置、状态机、权限模型 |
 
@@ -118,19 +129,23 @@ docs/
 | 阶段 | 目标 | 部署形态 |
 |------|------|---------|
 | [phase1/](./phase1/README.md) | 最小可用：认证鉴权框架 | 单实例 Docker Compose |
-| [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 | 单实例 Docker Compose |
+| [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 → 2c 组内委托 | 单实例 Docker Compose |
 | [phase3/](./phase3/README.md) | 生产加固：多实例 + 可观测性 + HA | 多实例 + Nginx + PG Cluster |
 
 ### roadmap.md — 三阶段总览
 
 跨阶段的全景视图，一页看清三阶段的核心目标、模块清单和部署形态。详见 [roadmap.md](./roadmap.md)。
 
-### api/ — API 文档
+### api/ — API 契约
 
-接口规格说明，供前后端联调使用。
+后端 JSON API 的权威约定；前端按此对齐。
 
-- Phase 1 后期接入 `swag`，从代码注解自动生成 OpenAPI 文档
-- 如需手写接口文档（如非 RESTful 接口），放在此目录
+| 文档 | 内容 |
+|------|------|
+| [api/response.md](./api/response.md) | 响应体 `{ code, message, data, request_id }` |
+| [api/errcode.md](./api/errcode.md) | 错误码与 HTTP 映射 |
+
+Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 
 ### ops/ — 运维文档
 

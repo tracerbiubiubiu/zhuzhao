@@ -4,6 +4,10 @@
 >
 > 创建日期：2026-08-12
 
+**编码前拍板**：路由 id 位置、无角色错误码等与骨架差异见 [00-pre-coding-decisions.md](./00-pre-coding-decisions.md)。  
+**HTTP 响应体**：后端 SSOT 见 [../api/response.md](../api/response.md)。  
+**部署与代码解耦**：全阶段原则见 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)（一套代码，配置驱动多种部署；Phase 1 仅表示「先不实现 Watcher/多副本横切」，不是写死单节点）。
+
 ---
 
 ## 1. Phase 1 边界
@@ -29,18 +33,17 @@
 |------|------|------|
 | 工单模块 | Phase 1 聚焦框架 | Phase 2 |
 | 数据范围过滤 | 管理接口按「全局管理员」模型，不做组织范围过滤 | Phase 2 |
-| 虚拟组 / 组织级权限 | Phase 1 只做实体组织树 CRUD | Phase 2 |
+| 虚拟组 / 组织级权限 | Phase 1 只做实体组织树 CRUD | Phase 2b |
 | 资源级鉴权完整实现 | Phase 1 只搭 ResourceRegistry 空接口，不实现 ltree 查询 | Phase 2 |
 | 多设备管理 UI / 踢出 | 允许多设备登录，不提供设备列表 | Phase 2 |
-| 登录锁定（Lua） | Phase 1 用 INCR+EXPIRE 即可 | 不必 Lua |
 | 密码复杂度策略 | 基础 bcrypt 即可 | Phase 2 |
 | AK/SK | 无服务间调用方，不建表、不写中间件 | 有 M2M 需求时 |
-| 文件存储 | 无附件场景 | Phase 2 |
+| 文件存储 / 头像上传 | 无附件；`avatar` 仅 DB 存 URL 字符串 | Phase 2b storage |
 | 事件驱动 / Asynq / Outbox | 无异步业务 | Phase 3 |
-| 审计日志异步写入 | Phase 1 同步写入，保证不丢 | Phase 3 |
-| 缓存体系 | Phase 1 无缓存，走 Casbin 内存 | 工单跑通后按需 |
+| 审计日志异步（channel / Redis List） | Phase 1 同步写入，保证不丢 | Phase 3a（Redis List L2；见 architecture §12.4） |
+| 缓存体系 | Phase 1 无缓存，走 Casbin PG adapter | 工单跑通后按需 |
 | JWT RS256 / JWKS | 单体无收益，拆服务时再换 | Phase 3 |
-| 每资源独立 Enforcer | 简单资源用代码内联 | 策略需可配置时 |
+| 每资源独立 Enforcer | Phase 1 仅单全局 Enforcer | Phase 2+ / 策略需可配置时 |
 | IAM 独立部署 / gRPC | Phase 1–2 模块化单体 | Phase 3 |
 | 多实例 / 分布式锁 / Watcher | Phase 1 单实例 | Phase 3 |
 | Metrics / 分布式追踪 | 可观测性 | Phase 3 |
@@ -53,7 +56,7 @@ Phase 1 完成后，以下流程能跑通：
 ```
 主路径
 1. make docker-up / migrate-up / make dev
-2. POST /auth/login              # 拿到双 Token
+2. POST /auth/login              # employee_no + password，拿到双 Token
 3. GET  /user/menus              # 菜单树
 4. GET  /user/permissions        # 权限码
 5. GET  /users                   # 需路由级权限
@@ -64,13 +67,21 @@ Phase 1 完成后，以下流程能跑通：
 对抗路径（必须覆盖，不是可选）
 9.  错误密码 / 不存在用户          # 均返回同一文案，防枚举
 10. 连续登录失败                   # 触发限流 429
-11. 禁用用户后带旧 AT 访问         # 401/403（会话吊销）
+11. 禁用用户后带旧 AT 访问         # 403 + 30003（会话吊销 · AT 路径）
+11b.禁用用户后用旧 RT refresh      # 401 + 20004，不得返回新 AT/RT（会话吊销 · RT 路径）
 12. 删除/禁用最后一个 superadmin   # 拒绝
 13. admin 重置 superadmin 密码     # 403
-14. 首次登录改密期间访问其它 API   # 403 PASSWORD_CHANGE_REQUIRED
-15. 无角色用户访问鉴权路由         # 403
+14. 首次登录改密期间访问其它 API   # 403 + 20007
+15. 无角色用户访问鉴权路由         # 403 + 70003
 16. 并发两次 refresh               # 只有一次成功
-17. Redis 不可用时访问鉴权路由     # 503（fail-close）
+17. Redis 不可用时访问鉴权路由     # 503 + 10008（fail-close）
+18. 添加组织成员                   # POST /orgs/members → 200
+19. 移除未加入组织的成员           # POST /orgs/members/delete → 404 + 50007
+20. 用户侧分配组织                 # POST /users/orgs 全量覆盖 → 200
+21. admin 给用户分配 superadmin 角色 # 403 + 30009（priority 防提权）
+22. Bearer + X-AK 混用（预留）     # 400 + 20008，Abort
+23. 按 username 模糊查用户         # GET /users?username=zhang → total 可 >1
+24. 按 employee_no 精确查用户       # GET /users?employee_no=E… → total 为 0 或 1
 ```
 
 ### 1.4 已知限制（验收时不要误判为已实现）
@@ -82,6 +93,9 @@ Phase 1 完成后，以下流程能跑通：
 | AT 存哪 | 前端自行存 AT/RT（建议内存 + 刷新），后端不设 Cookie |
 | AK/SK 不可用 | 没有服务间认证 |
 | 管理接口是全局模型 | `admin`/`superadmin` 路由级 bypass；`operator`/`viewer` 靠菜单策略，仍无行级过滤 |
+| superadmin 对 admin 不可见 | 角色/用户列表过滤 superadmin；admin 眼中最高档为 **admin** | 见 [05-role §影子超管](./05-role.md#影子超管superadmin-对-admin-不可见) |
+| 复杂继承 / org_roles / BFS / 数据 scope | **Phase 1 不做**；业界对照与级联矩阵已记录在 [rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)，Phase 2b+ 再实现 |
+| 组织负责人 + 组内 admin/member | **Phase 2c**（非 2b）；依赖虚拟组+scope 后交付 | 见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) |
 
 ---
 
@@ -175,11 +189,17 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 | tenant_id | BIGINT DEFAULT 1，Phase 1 不过滤 | ✅ 已确认 |
 | 数据访问层 | 每实体独立 Repository 接口 | ✅ 已确认 |
 | superadmin 角色 | 新增，4 个系统角色 | ✅ 已确认 |
-| 登录限流 | Phase 1 用 Redis INCR+EXPIRE，不引入 Lua | ✅ 已确认 |
+| 登录限流 | Phase 1 用 Redis **Lua**（INCR+EXPIRE 原子，15min/5 次） | ✅ 已确认 |
 | 会话吊销 | 禁用/删除用户写 `user:disabled:{id}`，JWT 中间件检查 | ✅ 已确认 |
 | Redis 故障 | 鉴权链路 fail-close，返回 503 | ✅ 已确认 |
+| AuthN 非法/混用凭证 | 互斥、Abort、400/20008；SSOT [02-auth §非法认证](../phase1/02-auth.md#非法认证请求的处理实现必读) | ✅ 已确认 |
+| 领域目录 | 新代码 `internal/{layer}/{domain}/`；跨域经 Service 接口 | ✅ 已确认（[architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)） |
 | AK/SK | Phase 1 不做 | ✅ 已确认 |
 | 数据范围 | Phase 1 不做组织范围过滤 | ✅ 已确认 |
+| 错误码 `30006`/`70003` | 验收必需；实现 user / Casbin 时写入 `errcode.go`（见 [errcode.md](../api/errcode.md)） | 📋 实现项 |
+| CORS | Phase 1 用 `gin-contrib/cors` **DefaultConfig + AllowAllOrigins**（全 Origin 放开，不做白名单）；生产上线前再改域名白名单 | ✅ 已确认 |
+| 存量 qingtao/aksk | **仅自研 Canonical**（`X-AK-*`）；**不**双栈、不长期并存；存量调用方迁移到新 SDK | ✅ 已确认（[02-auth §存量迁移](./02-auth.md#已决策存量-qingtaoaksk-迁移策略)） |
+| 部署与代码解耦 | 一套代码多种部署；拓扑只改配置/编排，不改业务逻辑；多副本横切 Phase 3 按配置启用 | ✅ 已确认（[design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)） |
 
 ---
 
@@ -187,8 +207,9 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 
 | 文档 | 模块 | 核心内容 |
 |------|------|---------|
-| [01-infra.md](./01-infra.md) | 基础设施 | DB 迁移、配置、Wire、优雅关闭 |
-| [02-auth.md](./02-auth.md) | 认证 | 登录、双 Token、RT 轮换、登出 |
+| [01-infra.md](./01-infra.md) | 基础设施 | DB 迁移、配置、Wire、优雅关闭、**领域目录约定** |
+| [design/rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md) | 横切 | **备忘**（Phase 1 不实现）：继承、业界对照、级联矩阵 |
+| [02-auth.md](./02-auth.md) | 认证 | 登录、双 Token、RT 轮换、登出、**AuthN 拒绝原则** |
 | [03-authz.md](./03-authz.md) | 鉴权 | Casbin RBAC、ResourceRegistry |
 | [04-user.md](./04-user.md) | 用户 | CRUD、密码、角色绑定 |
 | [05-role.md](./05-role.md) | 角色 | CRUD、菜单分配、策略同步 |

@@ -17,23 +17,23 @@
 | 1 | 数据库选型：MongoDB vs PostgreSQL | 影响 3/6/8/9 | ✅ 已决策（PostgreSQL，详见 design-decisions.md §11） |
 | 3 | 资源级鉴权：Restrict 9 种 ConditionType vs ltree+内联 | 依赖 1（嵌套文档 vs 关系表） | ✅ 已决策（借鉴语义，分阶段实现） |
 | 4 | Casbin 模型：g 表消除 + BFS 展开 vs 基础 RBAC | 依赖 1（Casbin adapter） | ✅ Phase 1 直接角色；Phase 2 BFS 三源 |
-| 6 | 事务策略：MongoDB Transact vs PostgreSQL 事务 | 依赖 1（事务机制完全不同） | ⏳ 待讨论 |
-| 8 | 级联删除与一致性 | 依赖 1/6（外键 vs 手动） | ⏳ 待讨论 |
-| 9 | 组织架构设计 | 依赖 1（ltree vs BFS 遍历） | ⏳ 待讨论 |
+| 6 | 事务策略：MongoDB Transact vs PostgreSQL 事务 | 依赖 1（事务机制完全不同） | ✅ PG 原生事务；Casbin 同步事务外 |
+| 8 | 级联删除与一致性 | 依赖 1/6（外键 vs 手动） | ✅ 映射表 CASCADE + 业务实体手动事务 |
+| 9 | 组织架构设计 | 依赖 1（ltree vs BFS 遍历） | ✅ ltree + 同表虚拟组（org_type=4，Phase 2b） |
 
 ### B 组：认证与安全（可独立讨论）
 
 | # | 主题 | 关联点 | 状态 |
 |---|------|--------|------|
 | 2 | JWT 策略：RSA 双 token vs 无状态 JWT | 与权限缓存方案相关 | ✅ HS256（Phase 1–2）；RS256（Phase 3b）；权限缓存 Phase 3 按需 |
-| 7 | 登录安全：LoginLocker 设计 | 可直接借鉴 | ✅ Phase 1 INCR+EXPIRE + fail-close（不必 Lua） |
+| 7 | 登录安全：LoginLocker 设计 | 可直接借鉴 | ✅ Phase 1 **Lua** + fail-close |
 
 ### C 组：运维与工程化（可独立讨论）
 
 | # | 主题 | 关联点 | 状态 |
 |---|------|--------|------|
-| 5 | 日志：zap + MongoWriteSyncer vs slog + Lumberjack | 依赖 1（日志存储） | ⏳ 待讨论 |
-| 10 | 动态路由与菜单权限 | 可直接借鉴 | ⏳ 待讨论 |
+| 5 | 日志：zap + MongoWriteSyncer vs slog + Lumberjack | 依赖 1（日志存储） | ✅ slog + Lumberjack；审计 Phase 1 同步写 DB |
+| 10 | 动态路由与菜单权限 | 可直接借鉴 | ✅ Phase 1 `menu_apis` + Casbin；swagger 同步 Phase 2 |
 | 11 | 多二进制入口设计 | 工程化借鉴 | ⏳ 待讨论 |
 | 12 | 配置管理：viper 环境变量化 | 工程化借鉴 | ⏳ 待讨论 |
 | 13 | 测试体系 | 工程化借鉴 | ⏳ 待讨论 |
@@ -142,18 +142,18 @@
 - DeleteUser：仅删 MongoDB rtoken（Redis `RemoveByUid` 是 no-op），atoken 靠 TTL 自然失效
 - JWT payload 含 uid（仅用户 ID，不含角色/权限——这点和新框架一致）
 
-**新框架设计**：
+**新框架设计**（早期草案；**Phase 1 以 [`roadmap.md`](../roadmap.md) 为准**）：
 - HS256 对称签名（secret 存环境变量）
-- AT 2h + RT 7d
+- AT **30min** + RT 7d（早期草案曾写 2h；Phase 1 无权限缓存，30min 平衡安全与体验）
 - RT 存 Redis（`refresh:{userId}:{deviceId}`）
-- RT 轮换：Redis 原子替换
+- RT 轮换：Redis `GETDEL` 原子替换
 - AT 黑名单存 Redis
-- JWT 仅存 user_id + jti + exp（无状态策略）
-- 权限走 Redis 缓存（`perm:user:{userId}`）
+- JWT 仅存 uid + username + jti + mcp + exp（无状态策略）
+- 权限缓存 `perm:user:{userId}`：**Phase 3**，Phase 1 路由鉴权查 `user_roles` + Casbin
 
 **需要讨论的点**：
-- RSA vs HS256：现有系统用 RSA 4096，密钥管理更重但安全性更高（公钥可分发给其他服务验签）。新框架用 HS256 更简单，但微服务化后其他服务验签需要共享 secret。是否考虑未来微服务化改用 RSA？
-- AT 有效期：现有 5min（极短），新框架 2h。现有 5min 是因为权限不入 JWT 需要频繁刷新；新框架 2h 是因为权限走缓存不需要频繁刷新。但如果 AT 黑名单 TTL = AT 剩余有效期，2h 意味着 Logout 后黑名单要存 2h。
+- RSA vs HS256：现有系统用 RSA 4096，密钥管理更重但安全性更高（公钥可分发给其他服务验签）。新框架 Phase 1 用 HS256；Phase 3b 微服务化可改 RS256。
+- AT 有效期：现有 5min（极短）vs Phase 1 **30min**。Phase 1 权限不入 JWT、无 Redis 权限缓存，30min 为已定方案。
 - rtoken 存储：MongoDB（持久化）vs Redis（内存）。现有系统用 MongoDB 持久化 rtoken，Redis 重启不丢；新框架用 Redis，重启可能丢（需要 AOF 持久化）。
 - DeleteUser 吊销问题：现有系统的已知 bug（`RemoveByUid` no-op），新框架怎么解决？方案：DeleteUser 时遍历该用户所有 AT 加入黑名单，或者用 `user:disabled:{userId}` 标记 + JWT 中间件检查。
 
@@ -241,7 +241,7 @@
 **新框架设计**：
 - slog + Lumberjack（文件轮转）
 - 日志输出到文件 + stdout
-- 审计日志存 DB（异步写入）
+- 审计日志存 DB（Phase 1 **同步写入**；Phase 2+ 异步演进）
 
 **需要讨论的点**：
 - zap vs slog：现有系统用 zap（性能更好但 API 复杂），新框架选 slog（标准库更简洁）。现有系统的 MongoWriteSyncer 是 zap 的自定义 Syncer，切 slog 后需要不同的集成方式。
@@ -287,15 +287,15 @@
 - first_login 标记：首次登录强制改密
 - token 集合无 TTL 索引（已知问题）
 
-**新框架设计**：
-- 架构文档中设计了登录限流 + 账号锁定 + 验证码，但未细化实现
+**新框架设计（Phase 1 已定）**：
 
-**需要讨论的点**：
-- LoginLocker 的 Lua 原子脚本设计非常成熟，可以直接借鉴
-- fail-close 策略值得采纳
-- 防用户枚举值得采纳
-- PasswordValidator 的 4 种复杂度 + bcrypt 72 字节上限值得借鉴
-- first_login 强制改密是否需要？
+- 登录限流：**Lua LoginLocker**（`INCR` + 首次 `EXPIRE` 原子），15min/5 次 → 429，见 [phase1/02-auth.md §登录限流](../phase1/02-auth.md)
+- fail-close：Redis 故障 503
+- 防用户枚举：用户不存在与密码错误同文案（401 + 20001）
+- 密码：Phase 1 仅 bcrypt cost=12；复杂度 Phase 2
+- 首次登录强制改密：`must_change_password` + JWT `mcp`
+
+**决策**：✅ LoginLocker Lua、fail-close、防枚举、first_login 改密均已采纳。
 
 ---
 
@@ -564,13 +564,15 @@ PostgreSQL 原生 ACID 事务不需要 SessionAdapter/mutex/txnMarkerKey。标�
 
 **决策：映射表外键 CASCADE，业务实体手动事务，副作用事务外。is_system 保护。**
 
-#### #9 组织架构：ltree（树形），虚拟组独立表
+完整场景矩阵（用户/角色/组织/菜单 × 增删改移）见 [rbac-inheritance-and-cascade.md §3](./rbac-inheritance-and-cascade.md#3-本项目级联策略矩阵ssot)。
 
-大多数企业组织是树形（一个部门一个上级），ltree 足够。虚拟组用独立表 + 多对多关联，不混入组织树。
+#### #9 组织架构：ltree（树形），虚拟组统一建表
+
+大多数企业组织是树形（一个部门一个上级），ltree 足够。虚拟组与实体组织 **统一** 在 `organizations` 表，用 `org_type=4` + `source=local` 区分，仍作为 ltree 子节点挂载在实体下（见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)）。
 
 如果未来确需多父级，改用闭包表（closure table）。
 
-**决策：ltree 树形组织 + 独立虚拟组表。暂不支持多父级。**
+**决策：ltree 树形组织 + 同表虚拟组（org_type=4）。暂不支持多父级。HR 同步见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)。**
 
 ### A 组对架构文档的影响
 
@@ -584,7 +586,7 @@ PostgreSQL 原生 ACID 事务不需要 SessionAdapter/mutex/txnMarkerKey。标�
 | §4.5 策略爆炸 | 更新为每资源独立 enforcer 方案 |
 | §10 数据库 Schema | 增加 casbin_rule_{resource} 独立策略表（按需） |
 | §12.3 事务分析 | 去掉 SessionAdapter，改为 PostgreSQL 原生事务 |
-| §6 组织架构 | 确认 ltree 树形，虚拟组独立 |
+| §6 组织架构 | 确认 ltree 树形，虚拟组统一建表（org_type=4） |
 | §14.4 数据库迁移 | 补充种子数据幂等性原则（ON CONFLICT DO NOTHING） |
 | §18 Phase 1 | 补充资源自注册机制 + 运行时 Sync 安全规则 |
 

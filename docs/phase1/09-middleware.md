@@ -11,12 +11,14 @@
 | Recovery | panic 兜底，返回 500 | 1 | 自写（包装 `gin.Recovery()` + slog） | 最外层，确保不崩 |
 | RequestID | 生成/传递 trace ID | 2 | `gin-contrib/requestid` | 注入 context + response header，串联 slog |
 | AccessLogger | 请求日志（access log） | 3 | `gin-contrib/slog` | method/path/status/cost，支持按状态码/路径分级 |
-| CORS | 跨域允许 | 4 | `gin-contrib/cors` | 前端开发必需，仅允许 GET/POST/OPTIONS |
+| CORS | 跨域允许 | 4 | `gin-contrib/cors` | Phase 1 **AllowAllOrigins**（全放开，无白名单）；见下方说明 |
 | SecurityHeaders | 安全响应头 | 5 | 自写（5 行代码） | 5 个安全头（借鉴旧系统） |
 | BodyLimit | 请求体大小限制 | 6 | 自写（`http.MaxBytesReader`） | 默认 1MB，防止大请求体 |
-| JWTAuth | AT 解析 + 黑名单 + 用户禁用检查 | 7 | 自写 | 仅鉴权路由，双 token + Redis 黑名单 + must_change_password |
+| JWTAuth | AT 解析 + 黑名单 + 用户禁用检查 | 7 | 自写 | 仅鉴权路由；**AuthN 拒绝原则**见 [02-auth §非法认证请求的处理](./02-auth.md#非法认证请求的处理实现必读) |
 | CasbinAuth | 路由级 RBAC 校验 | 8 | 自写 | 仅鉴权路由，g 表消除模型，逐角色 enforce |
 | AuditLog | 操作日志记录 | 9 | 自写 | 仅需审计的路由 |
+
+> **登录限流**：不在中间件链，由 `AuthService.Login` 调用 Redis **Lua LoginLocker**（见 [02-auth.md](./02-auth.md) §登录限流）。
 
 ### 中间件选型说明
 
@@ -46,13 +48,7 @@ router.Use(
             return l.With("request_id", requestid.Get(c))
         }),
     ),
-    cors.New(cors.Config{               // gin-contrib/cors
-        AllowOrigins:     []string{"http://localhost:*"},
-        AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Request-Id"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }),
+    middleware.CORS(),                   // gin-contrib/cors DefaultConfig + AllowAllOrigins
     middleware.SecurityHeaders(),
     middleware.BodyLimit(1<<20), // 1MB
 )
@@ -89,7 +85,7 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
         // 1. 提取 AT
         token := extractToken(c)  // 从 Authorization: Bearer xxx 提取
         if token == "" {
-            response.Unauthorized(c, errcode.ErrTokenRequired)
+            response.Unauthorized(c, errcode.ErrUnauthorized)
             c.Abort()
             return
         }
@@ -105,12 +101,12 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
         // 3. Redis 故障 → 503（fail-close）
         exists, err := rdb.Exists(c, fmt.Sprintf("blacklist:at:%s", claims.JTI)).Result()
         if err != nil {
-            response.ServiceUnavailable(c, errcode.ErrInternal)
+            response.ServiceUnavailable(c, errcode.ErrServiceUnavailable)
             c.Abort()
             return
         }
         if exists > 0 {
-            response.Unauthorized(c, errcode.ErrTokenRevoked)
+            response.Unauthorized(c, errcode.ErrTokenInvalid)
             c.Abort()
             return
         }
@@ -118,12 +114,12 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
         // 4. 用户级吊销（禁用/删除）
         disabled, err := rdb.Exists(c, fmt.Sprintf("user:disabled:%d", claims.UserID)).Result()
         if err != nil {
-            response.ServiceUnavailable(c, errcode.ErrInternal)
+            response.ServiceUnavailable(c, errcode.ErrServiceUnavailable)
             c.Abort()
             return
         }
         if disabled > 0 {
-            response.Unauthorized(c, errcode.ErrUserDisabled)
+            response.Forbidden(c, errcode.ErrUserDisabled)
             c.Abort()
             return
         }
@@ -138,7 +134,7 @@ func JWTAuth(jwt *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
             }
         }
         
-        // 5. 注入用户信息到 context
+        // 6. 注入用户信息到 context
         c.Set("userID", claims.UserID)
         c.Set("username", claims.Username)
         c.Set("jti", claims.JTI)
@@ -243,6 +239,20 @@ func BodyLimit(limit int64) gin.HandlerFunc {
 // 默认 1MB
 ```
 
+### AuthN 拒绝原则（实现 JWTAuth / 未来 AKSK 时必读）
+
+> **完整 SSOT**：[02-auth.md §非法认证请求的处理](./02-auth.md#非法认证请求的处理实现必读)（分类表、slog 字段、审计、伪代码、测试用例）
+
+实现中间件时须遵守：
+
+1. **受保护路由**：Bearer 与 `X-AK-*` **互斥**；混用 → `response.BadRequest` + **20008**，`c.Abort()`，不解析 JWT。
+2. **链式失败即 Abort**：黑名单 / `user:disabled` / mcp 任一失败 → 不进 Casbin。
+3. **Redis 鉴权查询失败** → **503/10008**（fail-close）。
+4. **业务 body 中的 password 不参与 AuthN**；无 Token → 401。
+5. **日志**：`slog.Warn` + `reason` + `request_id`；禁止记录 token/SK/密码。
+
+Phase 1 仅 JWT；检测到 `X-AK-*` 且未启用 M2M → **401/20009**。
+
 ---
 
 ## 测试用例
@@ -252,20 +262,23 @@ func BodyLimit(limit int64) gin.HandlerFunc {
 | 用例 | 请求 | 预期 |
 |------|------|------|
 | 无 Token | 不带 Authorization header | 401 |
+| Bearer + X-AK 混用（M2M 预留） | 两种头同时存在 | **400 + 20008**，Abort |
 | Token 格式错误 | `Bearer 乱字符串` | 401 |
 | Token 过期 | 过期的 AT | 401 |
 | Token 被黑名单 | 登出后的 AT | 401 |
-| 用户已禁用 | user:disabled 存在 | 401 |
+| 用户已禁用 | user:disabled 存在 | 403 + 30003 |
 | Redis 不可用 | Exists 失败 | 503 |
 | Token 有效 | 正常 AT | 放行，context 有 userID |
 
 ### Casbin 中间件
 
+> `user_manager` 为测试用自建角色（非种子角色）；`viewer` 为种子只读角色。
+
 | 用例 | 角色 | 请求 | 预期 |
 |------|------|------|------|
 | admin 角色 | admin | 任意 | 放行 |
 | 有权限 | user_manager | `GET /users` | 放行 |
-| 无权限 | user_viewer | `POST /users` | 403 |
+| 无权限 | viewer | `POST /users` | 403 |
 | 路径通配符 | user_manager | `GET /users/123` | 放行（keyMatch2） |
 
 ### Recovery
@@ -284,25 +297,26 @@ func BodyLimit(limit int64) gin.HandlerFunc {
 
 ### CORS
 
+> **Phase 1 决策**：`gin-contrib/cors` 的 `DefaultConfig()` + `AllowAllOrigins = true`（等同 `cors.Default()` 思路，**全 Origin 放开**，不做域名白名单）。另追加 `Authorization`、`X-Request-Id` 到 `AllowHeaders`（JWT 浏览器预检必需）。`AllowAllOrigins` 时 **不能** 开 `AllowCredentials`（库限制）；Bearer Token 走 Header，不受影响。生产上线前再改为 `AllowOrigins` 白名单。
+
 | 用例 | 请求 | 预期 |
 |------|------|------|
 | 预检请求 | OPTIONS + Origin | 204 + CORS headers |
-| 正常请求 | GET + Origin | 200 + Access-Control-Allow-Origin |
-| 不允许的方法 | PUT + Origin | 不返回 CORS headers（仅允许 GET/POST/OPTIONS） |
+| 正常请求 | GET + 任意 Origin | 200 + `Access-Control-Allow-Origin: *` |
+| 带 Authorization | POST + Origin + Bearer | 预检通过，业务正常 |
 
 ---
 
 ## 涉及文件
 
+> 横切层保持 `internal/middleware/`；AuthN 拒绝原则见 [02-auth §非法认证](./02-auth.md#非法认证请求的处理实现必读)。
+
 ```
-internal/middleware/jwt.go             # JWT 中间件（已有，需完善黑名单 + must_change_password 拦截）
+internal/middleware/jwt.go             # 含混用检测（20008）+ 黑名单 + mcp
 internal/middleware/casbin.go          # Casbin 中间件（g 表消除，逐角色 enforce，RoleFetcher 接口）
 internal/middleware/recovery.go        # Recovery 中间件（已有，包装 gin.Recovery + slog）
 internal/middleware/security.go        # 安全头中间件（已有，5 个 header）
 internal/middleware/body_limit.go      # 请求体限制中间件（已有）
 internal/middleware/audit.go           # 操作日志中间件（需创建）
-# 以下使用 gin-contrib 库，无需自写文件：
-# - RequestID  → github.com/gin-contrib/requestid
-# - CORS       → github.com/gin-contrib/cors
-# - AccessLogger → github.com/gin-contrib/slog
+internal/middleware/cors.go             # gin-contrib DefaultConfig + AllowAllOrigins
 ```

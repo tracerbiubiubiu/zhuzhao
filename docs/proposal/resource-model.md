@@ -24,6 +24,19 @@
 - 统一的列表过滤能力（数据级权限）
 - 为未来微服务化做准备：资源接口可迁移到独立服务
 
+### 1.3 与 Wire / 生命周期的边界
+
+**ResourceRegistry 只负责鉴权**，与以下机制分开，勿合并为单一 `Service` 接口：
+
+| 机制 | 职责 |
+|------|------|
+| Wire | 依赖注入：组装 Handler / Service / Repo |
+| `resource.Resource` | 数据级 `Authorize` / `GetFilter` |
+| `app.Runner`（Phase 3+） | 后台 goroutine 的 `Start` / `Stop` |
+| Wire `cleanup` | PG / Redis / Casbin 连接释放 |
+
+详见 [architecture §3.6](../design/architecture.md#36-组件注册与生命周期三者分离)。
+
 ---
 
 ## 2. 资源接口设计
@@ -192,18 +205,22 @@ func (r *UserResource) GetFilter(ctx context.Context, userID int64, action strin
 }
 ```
 
-### 3.2 复杂资源：工单资源（独立 Casbin enforcer）
+### 3.2 工单资源（Phase 2：代码内联；独立 enforcer 按需）
+
+**Phase 2 默认**：属主 + 分配人 + ltree 组织范围，**代码内联**，不上 Ticket 专属 Casbin enforcer（与 [phase2/README.md](../phase2/README.md) 一致）。
+
+**Phase 3 / 按需**：若工单策略需可配置化，再引入独立 enforcer（以下为可选参考实现）：
 
 ```go
-// internal/service/ticket/resource.go
+// internal/service/ticket/resource.go — Phase 2 默认无 enforcer 字段
 
 type TicketResource struct {
-    service   *TicketService
-    enforcer  *casbin.SyncedEnforcer  // Ticket 专属 enforcer
+    service *TicketService
+    // enforcer *casbin.SyncedEnforcer  // Phase 3 按需
 }
 
-func NewTicketResource(svc *TicketService, enf *casbin.SyncedEnforcer) *TicketResource {
-    return &TicketResource{service: svc, enforcer: enf}
+func NewTicketResource(svc *TicketService) *TicketResource {
+    return &TicketResource{service: svc}
 }
 
 func (r *TicketResource) Code() string    { return "ticket" }
@@ -223,12 +240,15 @@ func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRe
     if err != nil {
         return false, err
     }
-    if ticket.CreatedBy == req.UserID {
+    if ticket.CreatedBy == req.UserID || ticket.AssigneeID == req.UserID {
         return true, nil
     }
 
-    // 查 Ticket 专属 Casbin 策略（管理员可配置的策略）
-    return r.enforcer.Enforce(req.UserID, req.ResourceID, req.Action)
+    // Phase 2 assigned 范围：无权限返回 false（对外 404）
+    return false, nil
+
+    // Phase 3 按需：可配置策略
+    // return r.enforcer.Enforce(...)
 }
 
 func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action string) (resource.Filter, error) {
@@ -345,7 +365,7 @@ Wire 按依赖图自动确定初始化顺序。资源注册表（`NewRegistry`�
 ```sql
 -- 路由级策略（全局唯一）
 CREATE TABLE casbin_rule (
-    id    SERIAL PRIMARY KEY,
+    id    BIGSERIAL PRIMARY KEY,
     ptype VARCHAR(10) NOT NULL,
     v0    VARCHAR(255) NOT NULL,
     v1    VARCHAR(255) NOT NULL,
@@ -357,7 +377,7 @@ CREATE TABLE casbin_rule (
 
 -- 工单资源级策略（按需创建）
 CREATE TABLE casbin_rule_ticket (
-    id    SERIAL PRIMARY KEY,
+    id    BIGSERIAL PRIMARY KEY,
     ptype VARCHAR(10) NOT NULL,
     v0    VARCHAR(255) NOT NULL,  -- user_id
     v1    VARCHAR(255) NOT NULL,  -- ticket_id
@@ -375,34 +395,28 @@ CREATE TABLE casbin_rule_ticket (
 ### 6.1 完整请求流程
 
 ```
-请求 DELETE /api/v1/tickets/T001
+请求 POST /api/v1/tickets/delete
   │
   ├── JWT 中间件
-  │   验证 token → 提取 user_id = "U001"
+  │   验证 token → 提取 user_id = 1001（int64）
   │
   ├── Casbin 中间件（路由级，PEP-1）
-  │   查 casbin_rule 表
-  │   判断：U001 的角色 × /api/v1/tickets/:id × DELETE
-  │   → 通过（U001 有 ticket:delete 路由级权限）
+  │   判断：角色 × /api/v1/tickets/delete × POST → 通过
   │
   ├── TicketHandler
-  │   解析参数：ticketID = "T001"
+  │   body: { "id": "2001" }  // 工单业务 ID
   │   调用 Service
   │
   └── TicketService
       registry.Authorize(ctx, "ticket", {
-          UserID: "U001",
+          UserID: 1001,
           Roles: ["operator"],
           Action: "delete",
-          ResourceID: "T001",
+          ResourceID: "2001",
       })
       → TicketResource.Authorize
-          ├─ 超管 bypass？否
-          ├─ 属主判断：ticket.CreatedBy == "U001"？是 → 返回 true
-          └─ （如果属主判断不通过）
-              查 casbin_rule_ticket 表
-              enforcer.Enforce("U001", "T001", "delete")
-      → true → 执行删除
+          ├─ 属主/处理人判断 → 通过
+      → 执行删除
 ```
 
 ### 6.2 列表查询流程
@@ -413,9 +427,9 @@ CREATE TABLE casbin_rule_ticket (
   ├── JWT + Casbin 中间件（同上）
   │
   └── TicketHandler → TicketService
-      filter, _ := registry.GetFilter(ctx, "ticket", "U001", "read")
+      filter, _ := registry.GetFilter(ctx, "ticket", 1001, "read")
       // filter.Where = "creator_id = $1 OR assignee_id = $1 OR org_id IN (...)"
-      // filter.Args = ["U001"]
+      // filter.Args = []interface{}{1001}
 
       query := `
         SELECT * FROM tickets
@@ -477,22 +491,22 @@ Phase 1 的管理操作（用户/角色/组织/菜单 CRUD）**只用路由级 C
 | 操作类型 | 鉴权方式 | 理由 |
 |---------|---------|------|
 | 列表查询 `GET /users` | 路由级 | Casbin 策略 `p, role::admin, /api/v1/users, GET` |
-| 新建用户 `POST /users/create` | 路由级 | 有权限的角色都能创建，不区分"创建谁" |
-| 修改用户 `POST /users/:id/update` | 路由级 + 属主/角色范围 | 见下方分析 |
-| 修改用户角色 `POST /users/:id/roles/assign` | 路由级 + 角色范围校验 | 防止越权提权 |
-| 删除用户 `POST /users/:id/delete` | 路由级 + 系统用户保护 | 代码硬编码保护 |
+| 新建用户 `POST /users` | 路由级 | 有权限的角色都能创建，不区分"创建谁" |
+| 修改用户 `POST /users/update` | 路由级 + 属主/角色范围 | 见下方分析 |
+| 修改用户角色 `POST /users/roles` | 路由级 + 角色范围校验 | 防止越权提权 |
+| 删除用户 `POST /users/delete` | 路由级 + 系统用户保护 | 代码硬编码保护 |
 
 #### 典型场景分析
 
 **场景 1：新建用户**
 
 ```
-POST /api/v1/users/create
+POST /api/v1/users
   │
-  ├── Casbin 中间件：检查 role::xxx 是否有 /api/v1/users/create 的 POST 权限
+  ├── Casbin 中间件：检查 role::xxx 是否有 /api/v1/users 的 POST 权限
   │   └── 有 → 放行；无 → 403
   └── Handler → UserService.Create()
-      └── 业务逻辑：校验用户名唯一性、密码策略、bcrypt 加密
+      └── 业务逻辑：校验工号/域账号唯一性、密码策略、bcrypt 加密（**username 可重复**，不作唯一校验）
 ```
 
 不需要资源级鉴权——"创建用户"这个行为本身不涉及"操作某个已有资源"的权限判断。
@@ -500,36 +514,34 @@ POST /api/v1/users/create
 **场景 2：修改用户绑定的角色（关键场景）**
 
 ```
-POST /api/v1/users/:id/roles/assign
+POST /api/v1/users/roles
   │
   ├── Casbin 中间件：检查 role::xxx 是否有该路由的 POST 权限
   │   └── 有 → 放行
   ├── Handler → UserService.SetRoles()
   │   ├── 业务校验 1：目标用户是否存在
   │   ├── 业务校验 2：要分配的角色是否合法
-  │   └── 业务校验 3（防越权）：当前用户的角色等级 ≥ 要分配的角色等级
-  │       ├── admin 不能给用户分配 superadmin 角色（越权提权）
+  │   └── 业务校验 3（防越权）：`EffectivePriority`（越小越强）≤ 目标用户；待分配角色 `priority` ≥ 操作者
+  │       ├── admin 不能给用户分配 superadmin 角色
   │       └── admin 不能修改 superadmin 用户的角色
   └── 写 user_roles 表 + 触发权限缓存失效
 ```
 
-这里"防越权提权"是**业务校验**，不是 Casbin 资源级鉴权。它是代码内联的：
+这里"防越权提权"是**业务校验**，不是 Casbin 资源级鉴权。见 [04-user §多角色与有效 priority](../phase1/04-user.md#多角色与有效-priority)。代码内联示例：
+
 ```go
 func (s *UserService) SetRoles(ctx context.Context, targetUserID int64, roleCodes []string) error {
-    currentUser := ctx.Value("user").(*User)
-    
-    // 防越权：不能操作比自己等级高的用户
-    if targetUser.RoleLevel >= currentUser.RoleLevel {
+    actorP := EffectivePriority(ctx) // min(roles.priority)
+    targetP := s.roleRepo.EffectivePriority(ctx, targetUserID)
+
+    if actorP > targetP { // 数字更大 = 更弱，不能管更强的人
         return ErrPermissionDenied
     }
-    
-    // 防提权：不能分配比自己等级高的角色
     for _, code := range roleCodes {
-        if roleRegistry[code].Level >= currentUser.RoleLevel {
+        if actorP > rolePriority(code) { // 不能分配更强角色（priority 更小）
             return ErrCannotAssignHigherRole
         }
     }
-    
     // 执行分配...
 }
 ```
@@ -537,7 +549,7 @@ func (s *UserService) SetRoles(ctx context.Context, targetUserID int64, roleCode
 **场景 3：删除用户**
 
 ```
-POST /api/v1/users/:id/delete
+POST /api/v1/users/delete
   │
   ├── Casbin 中间件：路由级权限检查
   ├── Handler → UserService.Delete()
@@ -587,7 +599,7 @@ POST /api/v1/users/:id/delete
 |---------|---------------------|-----------|-------|
 | Auth（登录/刷新/登出） | 不需要（公开路由） | 不需要 | Phase 1 |
 | User（用户 CRUD） | 需要 | 属主判断 + 角色范围校验（代码内联） | Phase 1 路由级 / Phase 2 资源级 |
-| Role（角色 CRUD） | 需要 | is_system 保护 + 角色等级校验（代码内联） | Phase 1 路由级 / Phase 2 资源级 |
+| Role（角色 CRUD） | 需要 | is_system 保护 + priority 防提权校验（代码内联） | Phase 1 路由级 / Phase 2 资源级 |
 | Organization（组织 CRUD） | 需要 | 属主判断 + ltree 路径范围（代码内联） | Phase 1 路由级 / Phase 2 资源级 |
 | Menu（菜单 CRUD） | 需要 | 不需要（管理操作，路由级足够） | Phase 1 |
 | Audit（审计日志查询） | 需要 | 不需要（只读，路由级足够） | Phase 1 |

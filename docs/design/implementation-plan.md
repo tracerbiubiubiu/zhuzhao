@@ -1,7 +1,8 @@
 # 实施计划
 
-> **已废弃（DEPRECATED）**：本文档为 2026-08-12 初版实施记录，**不再作为执行依据**。
-> 请以 [`phase1/README.md`](../phase1/README.md)、[`roadmap.md`](../roadmap.md) 为准。
+> **已废弃（DEPRECATED）**：本文档为 2026-08-12 初版实施记录，**不再作为执行依据**。  
+> **请以 [`phase1/README.md`](../phase1/README.md)、[`roadmap.md`](../roadmap.md)、[`architecture.md`](./architecture.md)（含 §3.5 领域目录）为准。**  
+> 下列内容若与 phase1 / api 文档冲突，**以 phase1 为准**：Casbin **PG adapter**（非内存）、POST 写操作 **id 在 body**、组织成员 API、AuthN 拒绝原则（20008 等）、代码路径 `{layer}/{domain}/`。  
 > 下文「当前状态」仅作历史快照，可能已过时。
 >
 > 更新时间：2026-08-12  
@@ -51,7 +52,7 @@ Phase 1 不做业务模块（工单、审批等），核心目标是：
 | Repository 实现 | ❌ | 全部返回 "not implemented" |
 | Service 实现 | ❌ | 全部返回 "not implemented" |
 | JWT 中间件黑名单 | ❌ | TODO 标记 |
-| Casbin 策略加载 | ❌ | 内存 enforcer，无策略 |
+| Casbin 策略加载 | ❌ | 骨架暂用内存 enforcer；Phase 1 目标 PG adapter（见 03-authz） |
 | Docker 镜像 | ❌ | 未拉取 |
 
 ---
@@ -229,7 +230,7 @@ Phase 1 完成后，以下流程能跑通：
 1. make docker-up          # 启动 PG + Redis
 2. make migrate-up         # 建表 + 种子数据
 3. make dev                # 启动服务
-4. curl POST /auth/login   # 登录，拿到双 Token
+4. curl POST /auth/login -d '{"employee_no":"E000001","password":"admin123"}'   # 登录，拿到双 Token
 5. curl GET /user/menus    # 用 AT 获取菜单树
 6. curl GET /users         # 用 AT 获取用户列表
 7. curl POST /auth/refresh # 刷新 Token

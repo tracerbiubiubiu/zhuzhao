@@ -24,7 +24,7 @@
 
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
-| 可观测性 | [observability](./01-observability.md) | Prometheus、Grafana、OpenTelemetry | 待编写 |
+| 可观测性 | [observability](./01-observability.md) | 应用内 **可选开关**（Metrics / OTel / pprof）；Prometheus / Grafana / Collector **部署可选** | 已编写 |
 | 多实例部署 | [multi-instance](./02-multi-instance.md) | Casbin Watcher、跨实例事件、分布式锁 | 待编写 |
 | 审计日志升级 | [audit-l2](./03-audit-l2.md) | Redis List L2，进程崩溃不丢日志 | 待编写 |
 | 高可用 | [ha](./06-ha.md) | PG Cluster、Redis Sentinel、Nginx | 待编写 |
@@ -50,12 +50,27 @@
 
 ### 1.4 前置条件
 
-Phase 3 开始前，**Phase 2b** 必须已完成：
+**Phase 3a** 开始前，**Phase 2b** 必须已完成（**2c 不阻塞 3a**——组织委托可与生产加固并行，但完整 Phase 2 产品能力仍以 2a→2b→2c 为准，见 [phase2/README §0](../phase2/README.md#0-子阶段总览)）：
 
-- [ ] 资源级鉴权可用（代码内联 + ltree，工单列表按组织过滤）
-- [ ] 工单模块可用（含附件）
-- [ ] 虚拟组 / scope 可用
-- [ ] 所有 Phase 2 测试用例通过
+- [ ] 2a 验收：TicketResource + **assigned** 范围
+- [ ] 2b 验收：虚拟组 / scope / HR Sync、工单附件、auth-enhance
+- [ ] 2c 验收：**不**作为 3a 硬前置；建议在对外上线前完成（D1–D11）
+
+### 1.5 可观测性：应用可选、部署可选
+
+> 与 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署) 一致：**App 不因未安装 Prometheus/Grafana/OTel Collector 而无法启动**。
+
+| 层级 | 是否必须 | 说明 |
+|------|----------|------|
+| Phase 1–2 | 不要求 | `/health/*` + slog + `request_id` 即可 |
+| 应用内埋点 | 有能力、**配置开关** | `observability.metrics/tracing/pprof.enabled` |
+| Prometheus | **部署可选** | 采集端；无它 App 正常运行 |
+| Grafana | **部署可选** | 纯展示，永远不是 App 依赖 |
+| OTel Collector | **部署可选** | dev 可用 `noop` / `stdout` |
+
+Docker Compose 建议用 **profile**（如 `observability`）拉起 Prometheus/Grafana/Collector；默认 `docker compose up` 可不包含。
+
+详见 [01-observability.md](./01-observability.md)。
 
 ---
 
@@ -64,7 +79,7 @@ Phase 3 开始前，**Phase 2b** 必须已完成：
 ### 2.1 Phase 3a（先上生产）
 
 ```
-Phase 2 完成
+Phase 2b 验收通过（2c 可并行）
    │
    ├── Step 1: observability
    ├── Step 2: multi-instance → Step 3: audit-l2
@@ -104,16 +119,32 @@ Phase 2 完成
 
 ## 3. 生产验收标准
 
-### 3.1 Phase 3a 验收
+### 3.1 Phase 3a 验收（两档）
+
+按部署场景选档；**不得**把 Grafana/Prometheus 未部署视为 App 启动失败。
+
+#### 3a-min（单实例、内网、低 SLA）
 
 | 维度 | 指标 |
 |------|------|
-| 可用性 | 单实例 99.5%，多实例 99.9% |
-| 可观测性 | Metrics（QPS/延迟/错误率）+ 分布式追踪 + 结构化日志 |
-| 安全性 | 限流 + 锁定 + 密码策略 + 异地登录检测 + HTTPS |
-| 多实例 | Casbin 策略秒级同步、缓存跨实例失效、无脏数据 |
-| 数据安全 | PG 定期备份 + Redis AOF 持久化 |
-| 运维 | 一键部署、DB 迁移 CI 化、Swagger 自动生成 |
+| 可用性 | 单实例可恢复；live/ready 正常 |
+| 可观测性 | 结构化 slog + `request_id`；`observability.*.enabled=false` 时零额外开销 |
+| 安全性 | Phase 1 限流/锁定 + HTTPS（有域名时） |
+| 数据安全 | PG 定期备份 |
+| 运维 | 一键部署、DB 迁移可脚本化 |
+
+#### 3a-full（多实例或需 SLO / 对外 SLA）
+
+在 **3a-min** 基础上：
+
+| 维度 | 指标 |
+|------|------|
+| 可用性 | 多实例 99.9% |
+| 可观测性 | 开启 Metrics（QPS/延迟/错误率）+ 分布式追踪；Grafana 大盘 **可选** |
+| 多实例 | Casbin Watcher、缓存跨实例失效 |
+| 审计 | Redis List L2（进程崩溃不丢） |
+| 安全性 | 密码策略、异地登录、API 限流等（见 security-enhance） |
+| 运维 | Swagger CI、集成测试自动化 |
 
 ### 3.2 Phase 3b 验收（按需）
 
@@ -135,6 +166,7 @@ Phase 2 完成
 | ⚠️ Redis 高可用方案 | Sentinel vs Cluster | 建议 Sentinel（简单），Cluster 按需 |
 | ⚠️ PG 高可用方案 | 自建 vs 云托管 | 已决策：云托管 Cluster（2+VIP） |
 | ⚠️ KMS 密钥管理 | RS256 私钥是否上 KMS | Phase 3b 评估云 KMS |
+| ✅ 可观测性栈 | Prometheus/Grafana/OTel | **应用内可选开关 + 部署可选**；3a-min 不要求全套栈 |
 
 ---
 
@@ -144,7 +176,7 @@ Phase 2 完成
 
 | 文档 | 模块 | 状态 |
 |------|------|------|
-| [01-observability.md](./01-observability.md) | 可观测性 | 待编写 |
+| [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | 待编写 |
 | [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2 | 待编写 |
 | [04-event-driven.md](./04-event-driven.md) | 事件驱动 | 待编写 |

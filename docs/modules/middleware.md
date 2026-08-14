@@ -21,7 +21,7 @@
 | 1 | Recovery | 自写（`recovery.go`） | panic 恢复 + 记录错误日志到 slog |
 | 2 | RequestID | `gin-contrib/requestid` | 生成/传递 request_id + 注入 context |
 | 3 | AccessLogger | `gin-contrib/slog` | 请求日志（method/path/status/cost），按状态码/路径分级 |
-| 4 | CORS | `gin-contrib/cors` | 跨域处理，仅允许 GET/POST/OPTIONS |
+| 4 | CORS | `gin-contrib/cors` | Phase 1 AllowAllOrigins（全放开） |
 | 5 | SecurityHeaders | 自写（`security.go`） | 安全响应头（5 个 header） |
 | 6 | BodyLimit | 自写（`body_limit.go`） | 请求体大小限制（1MB） |
 
@@ -76,7 +76,7 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
         }
 
         // 4. 用户禁用检查
-        if disabled, _ := rdb.Exists(c, "user:disabled:"+claims.UserID).Result(); disabled > 0 {
+        if disabled, _ := rdb.Exists(c, fmt.Sprintf("user:disabled:%d", claims.UserID)).Result(); disabled > 0 {
             response.AbortWithStatus(c, 403, "user disabled")
             return
         }
@@ -127,42 +127,29 @@ func SecurityHeaders() gin.HandlerFunc {
 
 ### 3.5 限流
 
+> **登录限流不在中间件**：Phase 1 由 `AuthService.Login` 内 **Lua LoginLocker** 实现（见 [phase1/02-auth.md](../phase1/02-auth.md) §登录限流、[modules/auth.md](./auth.md) §5）。  
+> 下列示例仅作 **Phase 3 API 级通用限流** 参考；Phase 1 不挂载此中间件。
+
 ```go
-// 基于 Redis 的滑动窗口限流
+// Phase 3 参考：基于 Redis 的固定窗口限流（应用层 INCR+EXPIRE 有竞态，生产应用 Lua 或 ulule/limiter）
 func RateLimit(rdb *redis.Client, limit int, window time.Duration) gin.HandlerFunc {
     return func(c *gin.Context) {
         key := fmt.Sprintf("ratelimit:%s:%s", c.ClientIP(), c.Request.URL.Path)
-
-        // Lua 脚本：INCR + EXPIRE 原子操作
-        count, err := rdb.Incr(c, key).Result()
-        if err != nil {
-            // Redis 故障：放行（可用性优先）或拒绝（安全优先）
-            c.Next()
-            return
-        }
-        if count == 1 {
-            rdb.Expire(c, key, window)
-        }
-        if count > int64(limit) {
-            response.AbortWithStatus(c, 429, "rate limit exceeded")
-            return
-        }
-        c.Next()
+        // ...
     }
 }
 ```
 
 ### 3.6 CORS（gin-contrib/cors）
 
+> Phase 1：**DefaultConfig + AllowAllOrigins**（全 Origin 放开，无白名单）；生产再收紧为 `AllowOrigins`。
+
 ```go
 func CORS() gin.HandlerFunc {
-    return cors.New(cors.Config{
-        AllowOrigins:     []string{"https://example.com", "http://localhost:*"},
-        AllowMethods:     []string{"GET", "POST", "OPTIONS"},  // 仅 GET/POST，不用 PUT/DELETE/PATCH
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Request-Id"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    })
+    config := cors.DefaultConfig()
+    config.AllowAllOrigins = true
+    config.AllowHeaders = append(config.AllowHeaders, "Authorization", "X-Request-Id")
+    return cors.New(config)
 }
 ```
 
@@ -175,7 +162,7 @@ func CORS() gin.HandlerFunc {
 | 5 个安全头 | ✅ 直接采用 | 安全最佳实践 |
 | RequestID 生成 + 四处传播 | ✅ 直接采用 | 链路追踪 |
 | PasswordValidator | ✅ 直接采用（放 internal/pkg） | 密码安全 |
-| CORS 白名单 | ✅ 采用 gin-contrib/cors | 仅允许 GET/POST/OPTIONS，不用 PUT/DELETE |
+| CORS 全放开 | ✅ Phase 1 Default + AllowAllOrigins | 便于联调；生产改白名单 |
 | AKSK 中间件 | ⏳ Phase 3 | 外部系统对接，非首期 |
 | AccessLog 中间件 | ✅ 直接采用 | 详见 audit.md |
 | Recovery panic 恢复 | ✅ 直接采用 | 标准做法 |
@@ -190,12 +177,13 @@ func CORS() gin.HandlerFunc {
 - Recovery + RequestID(gin-contrib) + AccessLogger(gin-contrib/slog)
 - CORS(gin-contrib) + SecurityHeaders + BodyLimit
 - JWT 中间件（验证 + 黑名单 + `user:disabled` + must_change_password；Redis 故障 503）
+- **非法 AuthN 处理**：混用凭证 400/20008、链式失败立即 `Abort`、日志/审计规则见 [phase1/02-auth.md §非法认证请求的处理](../phase1/02-auth.md#非法认证请求的处理实现必读)
 - Casbin 中间件（路由级 RBAC，g 表消除）
 - Audit 中间件（同步写入；登录单独审计）
 
 ### Phase 2
 
-- 无新增必做中间件（登录限流已在 Phase 1 AuthService）
+- 无新增必做中间件（登录限流在 Phase 1 **AuthService + Lua**，非本模块）
 
 ### Phase 3
 

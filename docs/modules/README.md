@@ -4,7 +4,7 @@
 >
 > 与 `design/architecture.md` 的区别：架构文档描述全局结构，本文档集描述每个模块的内部设计。
 >
-> **编码与分阶段边界以 [`phase1/`](../phase1/README.md)、[`roadmap.md`](../roadmap.md) 为准。** 本文档集偏跨阶段完整形态；主键用 `BIGINT`/`int64`（JSON `,string`），不用 UUID。若本节 schema 仍写 UUID，视为过时。
+> **编码与分阶段边界以 [`phase1/`](../phase1/README.md)、[`roadmap.md`](../roadmap.md) 为准。** 本文档集偏跨阶段完整形态；主键用 `BIGINT`/`int64`（JSON `,string`）。完整 DDL 见 phase1 与各模块 §2。
 >
 > 创建日期：2026-08-12
 
@@ -20,7 +20,7 @@
 | 组织 | [organization.md](./organization.md) | 组织树、成员管理、组织角色 | organization.md + hierarchy |
 | 菜单 | [menu.md](./menu.md) | 菜单树、菜单-API 绑定、前端权限 | menu.md + syncSystemMenus |
 | 鉴权 | [authz.md](./authz.md) | 路由级 Casbin + 资源级 ResourceRegistry | authorizor.md + restrict.md + resource.md |
-| 审计日志 | [audit.md](./audit.md) | 访问日志、操作审计、异步写入 | accesslog.md |
+| 审计日志 | [audit.md](./audit.md) | 操作审计、日志查询（Phase 1 同步写 DB） | accesslog.md |
 | 中间件 | [middleware.md](./middleware.md) | JWT、Casbin、CORS、限流、安全头 | middleware.md |
 | 工单 | [ticket.md](./ticket.md) | IT 工单、状态机、三层鉴权、Scope 可见性 | - |
 
@@ -37,7 +37,22 @@
 5. **旧系统借鉴**：哪些设计直接采用，哪些修改，哪些不用
 6. **分阶段实施**：Phase 1/2/3 各实现什么
 
----
+### 代码路径约定
+
+> SSOT：[architecture.md §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)
+
+| 领域 | 目标路径（新代码） | 文档 |
+|------|-------------------|------|
+| auth | `internal/service/auth/`、`handler/auth/`、`pkg/jwt/` | auth.md |
+| user | `internal/service/user/`、`handler/user/`、`repository/user/` | user.md |
+| role | `internal/service/role/`、`handler/role/`、`repository/role/` | role.md |
+| org | `internal/service/org/`、`handler/org/`、`repository/org/` | organization.md |
+| menu | `internal/service/menu/`、`handler/menu/`、`repository/menu/` | menu.md |
+| authz | `internal/service/authz/`、`middleware/casbin.go`、`casbin/` | authz.md |
+| audit | `internal/service/audit/`、`middleware/audit.go`、`handler/audit/` | audit.md |
+| ticket | `internal/service/ticket/`（Phase 2 新建） | ticket.md |
+
+模块文档开头的 `> 模块代码：internal/service/xxx_service.go` 在迁入子目录后改为对应 `{domain}/` 路径；**一个领域一个包**，不在 handler 里写业务 SQL。
 
 ## 模块依赖关系
 

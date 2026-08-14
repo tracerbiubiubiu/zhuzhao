@@ -31,7 +31,7 @@
   └─ 幂等性：golang-migrate 自身保证（版本号追踪）
 
 层次 2：种子数据（migration 文件，随 Schema 一起执行）
-  ├─ admin 角色、admin 用户、初始菜单、初始组织
+  ├─ 4 系统角色、admin 用户（绑定 superadmin）、初始菜单、初始组织
   ├─ 时机：migration 执行时
   └─ 幂等性：INSERT ... ON CONFLICT DO NOTHING
 
@@ -115,11 +115,11 @@ INSERT INTO roles ...;
 -- ============================================
 -- 角色（4 个系统角色）
 -- ============================================
-INSERT INTO roles (code, name, description, is_system) VALUES
-  ('superadmin', '超级管理员', '系统最高权限，可管理管理员', true),
-  ('admin', '管理员', '系统管理员，拥有全部权限', true),
-  ('operator', '操作员', '可管理组织成员/角色/子组织', true),
-  ('viewer', '访客', '只读访问', true)
+INSERT INTO roles (code, name, description, priority, is_system) VALUES
+  ('superadmin', '超级管理员', '系统最高权限，可管理管理员', 1, true),
+  ('admin', '管理员', '系统管理员，拥有全部权限', 10, true),
+  ('operator', '操作员', '可管理组织成员/角色/子组织', 20, true),
+  ('viewer', '访客', '只读访问', 30, true)
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================
@@ -130,17 +130,21 @@ INSERT INTO organizations (id, code, name, parent_id, path, org_type, is_system,
   (1, 'root', '集团总部', NULL, 'root', 1, true, 1),
   (2, 'tech', '技术中心', 1, 'root.tech', 2, true, 1),
   (3, 'product', '产品中心', 1, 'root.product', 2, true, 1)
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) WHERE deleted_at IS NULL DO NOTHING;
+-- ↑ 依赖 phase1/06-organization.md 的部分唯一索引 idx_org_code；PG 15+ 语法
+-- Phase 2b 迁移后：种子组织回填 source='system'（与 HR 域 source='hr' 分离，见 hr-directory-sync.md）
 
 -- 重置序列到 max(id)+1，避免后续自增 ID 与种子数据冲突
 SELECT setval('organizations_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM organizations));
 
 -- ============================================
--- 超级管理员用户（密码: admin123，bcrypt hash 需实际生成）
+-- 超级管理员用户（密码: admin123；登录用工号 E000001，bcrypt hash 需实际生成）
 -- ============================================
-INSERT INTO users (username, password, real_name, status, is_system, tenant_id) VALUES
-  ('admin', '$2a$12$xxxxx', '系统管理员', 1, true, 1)
-ON CONFLICT (username) DO NOTHING;
+INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id)
+SELECT 'admin', 'E000001', '$2a$12$xxxxx', '系统管理员', 1, true, 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM users WHERE employee_no = 'E000001' AND deleted_at IS NULL
+);
 
 -- ============================================
 -- 用户-角色绑定（admin 用户绑定 superadmin 角色）
@@ -175,18 +179,49 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================
 INSERT INTO menu_apis (menu_id, api_path, api_method)
 SELECT m.id, v.api_path, v.api_method FROM menus m, (VALUES
+  -- system_user（须覆盖该菜单下全部 GET/POST 路由，见 phase1/07-menu.md）
   ('system_user', '/api/v1/users', 'GET'),
   ('system_user', '/api/v1/users', 'POST'),
   ('system_user', '/api/v1/users/:id', 'GET'),
+  ('system_user', '/api/v1/users/update', 'POST'),
+  ('system_user', '/api/v1/users/delete', 'POST'),
+  ('system_user', '/api/v1/users/status', 'POST'),
+  ('system_user', '/api/v1/users/roles', 'POST'),
+  ('system_user', '/api/v1/users/orgs', 'POST'),
+  ('system_user', '/api/v1/users/:id/orgs', 'GET'),
+  ('system_user', '/api/v1/users/password/reset', 'POST'),
+  -- system_role
   ('system_role', '/api/v1/roles', 'GET'),
   ('system_role', '/api/v1/roles', 'POST'),
+  ('system_role', '/api/v1/roles/:id', 'GET'),
+  ('system_role', '/api/v1/roles/update', 'POST'),
+  ('system_role', '/api/v1/roles/delete', 'POST'),
+  ('system_role', '/api/v1/roles/:id/menus', 'GET'),
+  ('system_role', '/api/v1/roles/menus', 'POST'),
+  ('system_role', '/api/v1/roles/:id/permissions', 'GET'),
+  -- system_menu
   ('system_menu', '/api/v1/menus', 'GET'),
   ('system_menu', '/api/v1/menus', 'POST'),
+  ('system_menu', '/api/v1/menus/:id', 'GET'),
+  ('system_menu', '/api/v1/menus/update', 'POST'),
+  ('system_menu', '/api/v1/menus/delete', 'POST'),
+  -- system_org
   ('system_org', '/api/v1/orgs', 'GET'),
-  ('system_org', '/api/v1/orgs', 'POST')
+  ('system_org', '/api/v1/orgs', 'POST'),
+  ('system_org', '/api/v1/orgs/:id', 'GET'),
+  ('system_org', '/api/v1/orgs/update', 'POST'),
+  ('system_org', '/api/v1/orgs/delete', 'POST'),
+  ('system_org', '/api/v1/orgs/move', 'POST'),
+  ('system_org', '/api/v1/orgs/:id/members', 'GET'),
+  ('system_org', '/api/v1/orgs/members', 'POST'),
+  ('system_org', '/api/v1/orgs/members/delete', 'POST')
 ) AS v(menu_code, api_path, api_method)
 WHERE m.code = v.menu_code
 ON CONFLICT DO NOTHING;
+
+-- 审计查询：Phase 1 种子不单独建「审计管理」菜单。
+-- GET /api/v1/audit/logs 由下方 admin/superadmin 通配 Casbin 策略放行。
+-- 自定义角色若需查审计，后续再补菜单 + menu_apis（见 phase1/08-audit §路由鉴权）。
 
 -- ============================================
 -- superadmin + admin 角色绑定全部菜单
@@ -318,7 +353,7 @@ make dev
 # 4. 验证
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"employee_no":"E000001","password":"admin123"}'
 # 预期：200 OK，返回 accessToken + refreshToken
 ```
 

@@ -19,6 +19,8 @@ Phase 3：IAM 独立 + 微服务化
   认证鉴权底座独立部署，业务服务拆分，gRPC 内部通信
 ```
 
+> **一套代码多种部署**（全阶段）：同一二进制与业务代码；PG 单节点/Cluster、Redis 单实例/Sentinel、App 单副本/多副本 差异由 **配置 + 编排** 解决，不因换部署改 Handler/Service。详见 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)。Phase 1 仅 **默认单 App 验收**，不实现 Watcher 等，**不是** 另一套代码。
+
 ---
 
 ## 2. Phase 1：单体底座（当前）
@@ -58,18 +60,21 @@ Phase 3：IAM 独立 + 微服务化
 
 ### 2.3 代码分层隔离（为未来拆分准备）
 
+> **领域目录 SSOT**：[architecture.md §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)（横向分层 + 纵向 `{domain}` 子包、跨域调用规则、拆分清单）。
+
 ```
 internal/
 ├── middleware/       # 中间件层（未来 → Gateway）
-├── handler/          # Handler 层（未来 → 各服务的 API 层）
-├── service/          # Service 层（未来 → 各服务的业务层）
-├── repository/       # Repository 层（未来 → 各服务的数据层）
-├── pkg/resource/     # 资源注册表（未来 → 共享库）
-├── casbin/           # Casbin 封装（未来 → Gateway）
-└── app/              # 应用编排（Wire DI）
+├── handler/{domain}/   # Handler 层（未来 → 各服务的 API 层）
+├── service/{domain}/   # Service 层（未来 → 各服务的业务层）
+├── repository/{domain}/# Repository 层（未来 → 各服务的数据层）
+├── integration/      # 外部系统（HR 等，Phase 2b）
+├── pkg/resource/     # 资源注册表框架（未来 → 共享库）
+├── casbin/           # Casbin 封装（未来 → Gateway / IAM）
+└── app/              # 应用编排（Wire DI；拆分时按领域块复制）
 ```
 
-**关键原则**：Service 之间通过接口调用，不直接依赖具体实现。这样未来拆分时，接口可以替换为 gRPC/HTTP client。
+**关键原则**：Service 之间通过 **接口** 调用，不跨域直引 Repository；目录按 **领域** 划分，便于 Phase 3 整包迁移到新 `cmd/`。
 
 ---
 
