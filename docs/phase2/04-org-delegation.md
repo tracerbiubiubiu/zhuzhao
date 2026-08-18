@@ -16,7 +16,7 @@
 | 组内防提权 API | 9 | admin 只能管 member；任命 admin 仅 owner |
 | 成员 API 委托扩展 | 9 | `AddMember` / `RemoveMember` 增加组内级别校验 |
 | 工单 Authorize 升级 | 10 | 负责人 / 组 admin 对绑定 org 的资源 update/delete |
-| 集成验收 | 11 | D1–D11 |
+| 集成验收 | 11 | D1–D12 |
 
 ### 不做（留在 2b 或更晚）
 
@@ -194,8 +194,8 @@ targetPriority = EffectiveOrgPriority(target, org)  // 含 owner_user_ids
 | 轴 | 2c 是否变更 | 说明 |
 |----|------------|------|
 | 路由级 Casbin | 否 | 仍须 `ticket:update` 等 |
-| 列表 scope（GetFilter） | 否 | D11 仍用 `ticket_scope`；admin 的 group/all 在 2b 已具备 |
-| 单资源操作（CheckOwner / Authorize） | **是** | 本 Step 核心 |
+| 列表 scope（GetFilter） | **2b 已定** | **策略 B** 默认：`ReadAnchorPaths` 实体透明读 + scope 并集；2c 不改动 |
+| 单资源操作（CheckOwner / Authorize） | **是** | 本 Step 核心；**2b 已限定 update=创建人**，2c 加 org admin/owner |
 
 ### 4.2 工单操作矩阵（2c 后）
 
@@ -203,8 +203,8 @@ targetPriority = EffectiveOrgPriority(target, org)  // 含 owner_user_ids
 
 | 操作 | 路由级 | scope 可见 | 属主 / 委托条件（2c） |
 |------|--------|-----------|----------------------|
-| update | `ticket:update` | 可见 | 创建人 / 处理人 / **org admin·owner** / **ancestor owner + 子树** |
-| close | `ticket:close` | 可见 | 处理人 / **org admin·owner** / ancestor owner |
+| update | `ticket:update` | 可见 | **2b：创建人**；2c + **org admin·owner** / **ancestor owner + 子树**（不含仅透明读的处理人） |
+| close | `ticket:close` | 可见 | 处理人 / 创建人（2b）；+ **org admin·owner** / ancestor owner |
 | delete | `ticket:delete` | — | 全局 admin / **org admin·owner** / ancestor owner |
 | assign | `ticket:assign` | 可见 | 原「主管」+ **org admin·owner** |
 
@@ -295,7 +295,7 @@ migrations/0000xx_org_delegation.up.sql
    │      ├── ancestor owner SQL
    │      └── 集成测试：D7–D9
    │
-   └── Step 11: 集成验收 D1–D11 + HR 回归 D10
+   └── Step 11: 集成验收 D1–D12 + HR 回归 D10
 ```
 
 | 子任务 | 验收 |
@@ -306,7 +306,7 @@ migrations/0000xx_org_delegation.up.sql
 | 9d RemoveMember 扩展 | D4–D5 |
 | 9e 虚拟组 owner 删除 | D6 |
 | 10 Authorize | D7–D9 |
-| 11 全量 | D1–D11 |
+| 11 全量 | D1–D12 |
 
 ---
 
@@ -324,7 +324,8 @@ migrations/0000xx_org_delegation.up.sql
 | D8 | 组 member 删同工单 | **403** |
 | D9 | 实体部门 owner 对子树 org 下工单 | ancestor owner：**200** |
 | D10 | HR 同步 | **不覆盖** `owner_user_ids`、`org_member_role` |
-| D11 | member scope=assigned vs admin scope=group | member 仅自己工单；admin 见组内全部 |
+| D11 | 策略 B：vg_a member 对 vg_b 工单（**2b 验收，2c 回归**） | **可读**（L2）；**不可 update**（L3，403）；vg_b **admin** 可改本组工单（D7） |
+| D12 | 实体 `project_isolated`（**2b 验收，2c 回归**） | 兄弟虚拟组工单 **404**（L2 强隔离） |
 
 ---
 

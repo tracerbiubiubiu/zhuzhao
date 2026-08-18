@@ -1038,7 +1038,7 @@ m = g(r.tenant, r.sub, p.sub) && \
 | `audit_logs` | 操作审计 | [08-audit.md](../phase1/08-audit.md) |
 | `casbin_rule` | Casbin 策略存储 | [03-authz.md](../phase1/03-authz.md)、[01-infra.md](../phase1/01-infra.md) §迁移 |
 
-迁移文件布局见 [01-infra.md](../phase1/01-infra.md)：`000001_init` 建表、`000002_seed` 种子、`000003_casbin` 策略。
+迁移文件布局见 [01-infra.md](../phase1/01-infra.md)：`000001_init` 建表（含 `casbin_rule`）、`000002_seed` 种子（含 Casbin 初始策略）。
 
 ### 10.3 Phase 2+ 预留（本文档不展开 DDL）
 
@@ -1048,7 +1048,7 @@ m = g(r.tenant, r.sub, p.sub) && \
 | `org_permissions` | 2b | 组织级权限模板 |
 | 虚拟组 / HR 同步 / scope | 2b | 见 [organization 模块](../modules/organization.md)、[hr-directory-sync.md](../proposal/hr-directory-sync.md) |
 | 组内 owner / `org_member_role` | **2c** | 见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) |
-| `api_credentials` | 2b | AK/SK（Phase 1 不做） |
+| `api_credentials` | 3b / 按需 | AK/SK（Phase 1–2 不做；有 M2M 调用方时实现） |
 | `casbin_rule_{resource}` | 2a+ | 按需独立策略表，见 [resource-model.md](../proposal/resource-model.md) |
 | ResourceRegistry 实现 | 2a | Phase 1 为空接口 |
 
@@ -1219,7 +1219,7 @@ log:
 
 | 场景 | 问题描述 | 应对方案 |
 |------|----------|----------|
-| **RT 并发刷新** | 多标签页同时用同一 RT 刷新，轮换后只有第一个成功 | 前端加请求防抖（同一 RT 只发一次刷新）；后端返回明确错误码 `token_already_refreshed`，提示客户端用最新 RT |
+| **RT 并发刷新** | 多标签页同时用同一 RT 刷新，轮换后只有第一个成功 | 前端加请求防抖；后端 `GetDel` 轮换，第二个请求因 key 已删返回 **401 + 20004**（见 [phase1/02-auth §Token 刷新](../phase1/02-auth.md#token-刷新)） |
 | **登录 Redis 非原子** | 存 RT（SET）和加入设备列表（SADD）是两个操作，中间崩溃产生孤儿 | 用 Redis Lua 脚本或 MULTI/EXEC 包裹两步操作，保证原子性 |
 | **Casbin 策略并发修改** | 两个管理员同时修改同一角色策略，互相覆盖 | Casbin `SyncedEnforcer` 内部有写锁；DB 层用乐观锁（version 字段）或行锁 |
 | **审计日志 channel 满** | 高负载下 channel 满直接丢日志 | 增大 channel 缓冲；满时降级为同步写入并告警；详见 12.4 审计日志可靠性 |
@@ -1235,7 +1235,7 @@ log:
 | 组织树结构变更 | ✅ | Redis 锁 `lock:org:tree` | 防止并发修改 org path，持有期间阻塞其他写操作 |
 | Casbin 策略批量重载 | ✅ | Redis 锁 `lock:casbin:reload` | 多实例收到 Watcher 通知后，只有一个实例执行 reload |
 | 缓存重建 | ✅ | Redis NX 或 `singleflight` | 防止缓存击穿，只放一个请求回源重建缓存 |
-| RT 刷新 | ❌ | 不需要 | Redis `GETSET` 原子操作天然防并发 |
+| RT 刷新 | ❌ | 不需要 | Redis `GETDEL` 原子读删天然防并发（见 phase1/02-auth） |
 
 **锁实现方式**：Redis `SET key value NX PX ttl`，释放时用 Lua 脚本验证 owner 后删除，防止误删。
 
@@ -1440,9 +1440,8 @@ type Runner interface {
 migrations/
 ├── 000001_init.up.sql      # 初始建表
 ├── 000001_init.down.sql
-├── 000002_seed.up.sql      # 种子数据
+├── 000002_seed.up.sql      # 种子数据（含 Casbin 初始策略）
 ├── 000002_seed.down.sql
-├── 000003_casbin.up.sql    # Casbin 策略
 └── ...
 ```
 
@@ -1743,6 +1742,17 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `/api/v1/orgs/members/delete` | POST | ✅ | 从组织移除成员（org_id、user_id 放 body） |
 
 > Phase 1 **用户-组织绑定**：双 HTTP 入口（`POST /users/orgs` + `POST /orgs/members*`），**单写逻辑**在 `OrgService`（`SetUserOrgs` / `AddMember` / `RemoveMember`）。创建用户 body 可含 `org_ids`。
+
+**路由骨架对齐**（编码 Step 1/9 检查 `internal/router/router.go`）：
+
+| 路由 | 文档 | 骨架 |
+|------|------|------|
+| `POST /users/orgs` | ✅ §17.2 | ✅ 已注册 |
+| `GET /orgs/:id/members` | ✅ §17.4 | ✅ 已注册 |
+| `POST /orgs/members` | ✅ §17.4 | ✅ 已注册 |
+| `POST /orgs/members/delete` | ✅ §17.4 | ✅ 已注册 |
+
+> 上表路由已在 `internal/router/router.go` 注册（handler 为 stub，Step 9 实现）；以 §17 为准，勿改 API 路径。
 
 ### 17.5 菜单模块
 

@@ -76,6 +76,14 @@ type ScopeResolver interface {
     EffectiveTicketScope(ctx context.Context, userID, orgID int64) (TicketScope, error)
     // VisibleOrgPaths 2b 实现；2a 返回 nil
     VisibleOrgPaths(ctx context.Context, userID int64) ([]string, error)
+
+    // —— 2b 策略 B 增量（见 09-ticket §5.2）——
+    // ReadAnchorPaths：实体透明读锚点 + scope group/all 路径的并集（L2 读）
+    ReadAnchorPaths(ctx context.Context, userID int64) ([]string, error)
+    // nearestEntityOrg：org_id 沿 parent_id 上溯最近的 org_type IN (1,2,3) 实体
+    NearestEntityOrg(ctx context.Context, orgID int64) (*model.Organization, error)
+    // scopePathsForMembership：单条 user_orgs 按 ticket_scope 计算可见 ltree 路径
+    ScopePathsForMembership(ctx context.Context, m model.UserOrg) ([]string, error)
 }
 ```
 
@@ -137,7 +145,25 @@ func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action str
 | assign | 2a 暂不开放主管分派，仅 admin bypass 或后续 2b `ticket_scope=group/all` 扩展 |
 | delete | 仅 admin bypass |
 
-> 2b 升级 assign/close 的「主管」判定见 [09-ticket.md §2b](./09-ticket.md#phase-2b-scope-升级)；2c 组内委托见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)。
+> 2b 升级见 [09-ticket.md §5.2](./09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)（**策略 B**：实体透明读 + update 仅创建人）；2c 组内委托见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)。
+
+**canRead（2b，策略 B 默认）**：
+
+- `created_by == userID || assigned_to == userID`，**或**
+- `ticket.org_path <@ ANY(ReadAnchorPaths(userID))`（实体 `entity_transparent_read` anchor + scope group/all 路径并集）
+- 不可见 → Service 转 **404**
+
+**canOperate（2b）**：
+
+| action | 条件 |
+|--------|------|
+| read / comment | canRead |
+| **update** | **`created_by == userID`**（兄弟组透明读 **不含** 处理人改他人工单） |
+| close | `assigned_to == userID` OR `created_by == userID`；或 scope∈{group,all} 主管（子树内） |
+| assign | admin bypass；或 scope∈{group,all} 且工单在其 scope 子树内 |
+| delete | 仅 admin bypass |
+
+**canOperate（2c 增量）**：在 2b 基础上，对 **`ticket.org_id`** 增加 org admin/owner、ancestor owner（见 04-org-delegation §4）。**不能**凭 vg_a admin 改 vg_b 工单。
 
 ### 2.4 Service 层调用约定
 
@@ -188,6 +214,10 @@ func NewTicketService(..., registry resource.Registry, ...) *TicketService {
 | R6 | A 更新 B 的工单（可见但非属主） | **403** + 70001 |
 | R7 | admin 读任意工单 | 200 |
 | R8 | 无 ticket:list 路由权限 | **403** + 70001 |
+| R9 | 2b 策略 B：vg_a member 读 vg_b | **200** |
+| R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） |
+| R11 | 2b `project_isolated` | vg_a **不可读** vg_b → **404** |
+| R12 | 2b 创建人改自己 vg_a 工单 | **200** |
 
 ---
 

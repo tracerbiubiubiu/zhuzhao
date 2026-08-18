@@ -122,7 +122,7 @@ docs/
 │   ├── 01-infra.md ~ 10-concurrency.md
 ├── phase2/                     # Phase 2 详细实现计划
 │   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   └── 01-auth-enhance ~ 04-org-delegation（Phase 2 全套已编写）
+│   └── 01-auth-enhance ~ 04-org-delegation + 09-ticket + 10-storage（Phase 2 全套已编写）
 ├── phase3/                     # Phase 3 详细实现计划
 │   ├── README.md               # 大纲 + 边界 + 实施顺序
 │   └── 01-observability 已编写；02–09 待编写

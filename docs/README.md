@@ -187,7 +187,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 |------|---------|
 | `design/architecture.md` | 架构变更时（新增模块、调整边界） |
 | `design/design-decisions.md` | 每次有新的设计讨论 |
-| `design/implementation-plan.md` | 每个 Phase 开始时 |
+| `design/implementation-plan.md` | ~~已废弃~~，不再更新；以 `phase1/`/`phase2/`/`phase3/` 为准 |
 | `proposal/*` | 方案级设计变更时 |
 | `api/` | 接口变更时 |
 | `ops/` | 部署配置变更、新增故障案例时 |

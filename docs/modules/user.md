@@ -16,7 +16,7 @@
 - 为 `auth` 提供密码验证
 - 依赖 `role` 管理用户角色
 - 依赖 `organization` 管理用户组织归属
-- 自注册 `UserResource` 到 `authz` 的 ResourceRegistry
+- Phase 2 起自注册 `UserResource` 到 `authz` 的 ResourceRegistry（Phase 1 为空接口）
 
 ---
 
@@ -26,8 +26,8 @@
 CREATE TABLE users (
     id          BIGSERIAL PRIMARY KEY,
     username    VARCHAR(50) NOT NULL,            -- 资料/显示名；可重复；非账密登录键
-    employee_no VARCHAR(50),                   -- 工号（可空，有值唯一）
-    domain_account VARCHAR(100),               -- 域账号
+    employee_no VARCHAR(50),                   -- 工号（可空，有值全局唯一；含软删不可复用）
+    domain_account VARCHAR(100),               -- 域账号（与 user_domain 成对唯一；含软删不可复用）
     user_domain VARCHAR(255),                  -- 所在域
     password    VARCHAR(100) NOT NULL,       -- bcrypt hash
     real_name   VARCHAR(100),
@@ -45,6 +45,11 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 CREATE INDEX idx_users_status ON users(status) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
+    WHERE employee_no IS NOT NULL AND employee_no <> '';
+CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
+    WHERE domain_account IS NOT NULL AND domain_account <> ''
+      AND user_domain IS NOT NULL AND user_domain <> '';
 ```
 
 ### 关联表
@@ -70,6 +75,8 @@ CREATE TABLE user_orgs (
     PRIMARY KEY (user_id, org_id)
 );
 ```
+
+> **Go model 对齐**：Phase 1 `UserOrg` **不得**含 `RoleID` 字段；组织内角色 / `org_member_role` 在 Phase 2c 迁移后另加。骨架若已有 `role_id` tag，Step 1 迁移前删除，避免与 DDL 漂移。
 
 ---
 
@@ -116,8 +123,8 @@ POST /api/v1/users {username, password, real_name, ...}
 1. 密码强度校验（PasswordValidator）
    → 长度 ≥ 8，4 种字符类，bcrypt 72 字节上限
 
-2. 工号唯一性检查（若提供 employee_no）
-   → SELECT * FROM users WHERE employee_no = ? AND deleted_at IS NULL
+2. 工号唯一性检查（若提供 employee_no；**含软删记录，不可复用**）
+   → SELECT * FROM users WHERE employee_no = ? AND employee_no IS NOT NULL AND employee_no <> ''
    → Phase 2b：若已存在 source=hr → 409，提示走重置密码/赋角色，勿重复开户
    → **不调 HR API**（见 04-user §创建时要不要校验 HR）
 
@@ -127,7 +134,7 @@ POST /api/v1/users {username, password, real_name, ...}
 4. 插入
    → INSERT INTO users (username, password, ...) VALUES (...)
 
-5. 返回用户信息（不含 password）
+5. 返回用户信息（不含 password；含 `id` string 与 `employee_no`，见 [phase1/04-user §API 响应字段](../phase1/04-user.md#api-响应字段前端契约)）
 ```
 
 ### 4.2 删除用户（级联）

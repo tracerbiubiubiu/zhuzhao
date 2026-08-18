@@ -86,7 +86,7 @@ TTL: 30min
 
 **Phase 1（当前）**：JWT 只存身份（`uid`、`username`、`jti`、`mcp`）；路由级鉴权由 Casbin 中间件 + `RoleFetcher` 查 `user_roles`（直接角色，**无 Redis 权限缓存**）。角色/菜单变更后，用户下次请求即读到 DB 最新数据（或等 AT 过期后 refresh）。
 
-**Phase 2**：扩展 BFS 三源角色合并（组织角色、继承）。
+**Phase 2b**：扩展 BFS 三源角色合并（组织角色、继承）。
 
 **Phase 3 / 按需**：引入 `perm:user:{userId}` Redis 缓存 + Pub/Sub 失效（多实例、热点优化）。权限仍不入 JWT。
 
@@ -357,16 +357,16 @@ type Resource interface {
     Authorize(ctx context.Context, req AuthorizeRequest) (bool, error)
 
     // 列表过滤（数据级权限）
-    GetFilter(ctx context.Context, userID string, action string) (SQLFilter, error)
+    GetFilter(ctx context.Context, userID int64, action string) (Filter, error)
 }
 
 // AuthorizeRequest 统一鉴权请求
 type AuthorizeRequest struct {
-    UserID   string
-    Roles    []string
-    Action   string         // "create", "read", "update", "delete"
-    ResourceID string       // 具体资源 ID（create 时为空）
-    Context  map[string]any // 扩展上下文
+    UserID     int64
+    Roles      []string
+    Action     string          // "create", "read", "update", "delete"
+    ResourceID string          // 具体资源 ID（create 时为空；业务 ID 也可用 int64）
+    Context    map[string]any  // 扩展上下文
 }
 
 // ResourceRegistry 资源注册表
@@ -533,7 +533,7 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id)
 SELECT 'admin', 'E000001', '$2a$12$xxxxx', '系统管理员', 1, true, 1
 WHERE NOT EXISTS (
-  SELECT 1 FROM users WHERE employee_no = 'E000001' AND deleted_at IS NULL
+  SELECT 1 FROM users WHERE employee_no = 'E000001'
 );
 
 -- admin 用户关联 superadmin 角色（用 code/username 解析 id，避免硬编码 UUID）

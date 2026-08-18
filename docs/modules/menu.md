@@ -12,6 +12,8 @@
 
 **核心底座配套模块**。菜单管理 + 前端权限数据源。菜单是动态路由的核心，连接角色和 API 策略。
 
+> **菜单 ≠ 前端页面**：`menus` 表存路由/按钮**元数据**；Vue 组件在前端仓库。系统内置项由 **migration 种子** 写入；`POST /menus` 供管理员在「菜单管理」页**登记**增补项。见 [phase1/07-menu §菜单从哪里来](../phase1/07-menu.md#菜单从哪里来种子-sql-vs-登记-api)。
+
 与其他模块的关系：
 - 被 `role` 引用（角色-菜单分配）
 - 菜单-API 绑定是 Casbin API 策略的来源
@@ -102,17 +104,17 @@ type MenuService interface {
 ```
 GET /api/v1/user/menus
 
-1. 获取用户角色（BFS 展开后）
+1. 获取用户角色（Phase 1 仅 `user_roles` 直接角色；Phase 2b 起 BFS 三源展开）
    → roles = ["admin", "editor"]
 
 2. 查角色绑定的菜单
    → SELECT menu_id FROM role_menus
      WHERE role_id IN (SELECT id FROM roles WHERE code = ANY($1))
 
-3. 查菜单详情（仅 type=1 和 type=2，不含按钮）
+3. 查菜单详情（仅 menu_type=1 和 menu_type=2，不含按钮）
    → SELECT * FROM menus
-     WHERE id IN (...) AND type IN (1, 2) AND status = 1 AND visible = true
-     ORDER BY sort
+     WHERE id IN (...) AND menu_type IN (1, 2) AND visible = true AND deleted_at IS NULL
+     ORDER BY sort_order
 
 4. 构建树结构（递归或迭代）
    → 根据 parent_id 组装树
@@ -129,7 +131,7 @@ GET /api/v1/user/permissions
 2. 查角色绑定的菜单
 3. 查菜单中的按钮权限码
    → SELECT permission FROM menus
-     WHERE id IN (...) AND type = 3 AND permission != ''
+     WHERE id IN (...) AND menu_type = 3 AND permission <> '' AND deleted_at IS NULL
 4. 合并 route 权限码
    → 菜单 type=1/2 的 path → "route:" + path
 5. 返回权限码列表
@@ -204,8 +206,9 @@ POST /api/v1/menus/delete
 - 菜单树查询
 - 角色-菜单分配
 - 前端菜单树接口（/user/menus）
-| 权限码接口（/user/permissions） |
-| 系统菜单保护 |
+- 权限码接口（/user/permissions）
+- 系统菜单保护
+- **Phase 1 菜单清单（目录 + 页面 + 按钮）** — 见 [07-menu §Phase 1 菜单清单](../phase1/07-menu.md#phase-1-菜单清单前端契约)；种子 SQL 须含按钮行
 
 ### Phase 2
 

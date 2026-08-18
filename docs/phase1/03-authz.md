@@ -1,6 +1,7 @@
 # 03 - 鉴权模块（authz）
 
-> Step 5，依赖 Step 4（middleware）。Phase 1 实现路由级 RBAC + ResourceRegistry **空接口**。
+> **Step 5**，依赖 Step 4（JWT 已挂载）。Casbin 中间件 + PG adapter + 自服务白名单 + ResourceRegistry 空接口。  
+> JWT 部分见 [09-middleware §Step 4 vs Step 5](./09-middleware.md#step-4-vs-step-5-分工)。
 
 ---
 
@@ -47,7 +48,7 @@ m = r.sub == "role::superadmin" || \
     (r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*"))
 ```
 
-**无 `[role_definition] g` 段**。**Phase 1** 只查 `user_roles` 直接角色，逐 `role::{code}` enforce；**Phase 2** 再扩展 BFS 三源合并（直接 + 组织 + 继承）。
+**无 `[role_definition] g` 段**。**Phase 1** 只查 `user_roles` 直接角色，逐 `role::{code}` enforce；**Phase 2b** 再扩展 BFS 三源合并（直接 + 组织 + 继承），见 [phase2/03-org-enhance](../phase2/03-org-enhance.md)。
 
 - `sub` = `role::{roleCode}`（如 `role::admin`、`role::user_manager`）
 - `obj` = API 路径（如 `/api/v1/users`）
@@ -73,6 +74,7 @@ m = r.sub == "role::superadmin" || \
 - **菜单 / 权限码**：合并用户所有角色绑定的菜单与按钮码（并集）。
 - **业务层分级**（重置密码、防提权等）：`roles.priority` **越小越强**；多角色取 **EffectivePriority = min(priority)**。详见 [05-role §priority 与继承](./05-role.md#角色-priority-与权限继承模型)、[04-user §多角色与有效 priority](./04-user.md#多角色与有效-priority)。
 - JWT **不含角色**；每次请求由 `RoleFetcher` 查 `user_roles`，角色变更后下次请求即生效。
+- **自服务路由**（profile/menus/logout 等）走 Casbin 中间件 **白名单**，不进 `menu_apis`；见 [modules/authz §2.2.1](../modules/authz.md#221-自服务路由业界做法--本项目决策)。
 
 ### 中间件流程（借鉴旧系统）
 
@@ -81,7 +83,7 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) 
     return func(c *gin.Context) {
         userID := c.GetInt64("userID")
 
-        // 1. 获取用户角色（Phase 1 只查直接角色，Phase 2 加 BFS 三源合并）
+        // 1. 获取用户角色（Phase 1 只查直接角色，Phase 2b 加 BFS 三源合并）
         roles, err := roleFetcher.FetchRoleCodes(c.Request.Context(), userID)
         if err != nil {
             response.InternalError(c, errcode.ErrInternal)
@@ -94,9 +96,15 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) 
             return
         }
 
-        // 2. 逐角色 enforce（superadmin/admin 在 matcher 中自动 bypass）
         path := c.Request.URL.Path
         method := c.Request.Method
+        if isSelfServiceRoute(method, path) {
+            c.Set("roles", roles)
+            c.Next()
+            return
+        }
+
+        // 2. 逐角色 enforce（superadmin/admin 在 matcher 中自动 bypass）
         allowed := false
         for _, role := range roles {
             if enforcer.Enforce("role::"+role, path, method) {
@@ -123,7 +131,11 @@ type RoleFetcher interface {
 }
 ```
 
-Phase 1 `getRoles` 只查 `user_roles` 表（直接角色）。Phase 2 扩展为 BFS 三源合并：
+Phase 1 `getRoles` 只查 `user_roles` 表（直接角色）。
+
+#### BFS 三源角色（Phase 2b）
+
+Phase 2b 扩展为 BFS 三源合并：
 1. 直接角色：`user_roles` 表
 2. 组织角色：`user_orgs` → `org_roles`
 3. 继承角色：`roles.parent_id` 链
@@ -158,9 +170,9 @@ type Resource interface {
 type AuthorizeRequest struct {
     UserID     int64
     Roles      []string
-    Action     string
-    ResourceID int64
-    Context    context.Context
+    Action     string          // "create", "read", "update", "delete"
+    ResourceID string          // 具体资源 ID（create 时为空；业务 ID 也可用 int64）
+    Context    map[string]any  // 扩展上下文
 }
 
 type Filter struct {
@@ -194,7 +206,9 @@ func (r *registry) Register(res Resource) {
 }
 ```
 
-**Wire DI 集成**：`NewRegistry` 作为 singleton provider，各 Service 构造函数接收 `Registry` 并在构造时自注册（`registry.Register(&UserResource{...})`）。
+**Wire DI 集成**：`NewRegistry` 作为 singleton provider 注入 `wire.go` / `wire_gen.go`；各 Service 构造函数接收 `Registry` 并在构造时自注册（Phase 2）。Phase 1 **仅** `wire` 注入空 Registry，**不**在 User/Role/Org Service 内 `Register`。
+
+> **骨架现状**：`internal/pkg/resource/` 目录 Step 5 创建；未创建前以本文接口为准。
 
 > **勿与生命周期混淆**：`Resource` 不含 `Start`/`Stop`；后台任务用 `app.Runner`（Phase 3+），见 [architecture §3.6](../design/architecture.md#36-组件注册与生命周期三者分离)。
 
@@ -202,7 +216,9 @@ func (r *registry) Register(res Resource) {
 
 ### Casbin Adapter
 
-Phase 1 直接使用 PostgreSQL adapter（`pckhoi/casbin-pgx-adapter/v3`），不走内存 adapter：
+Phase 1 直接使用 PostgreSQL adapter（`pckhoi/casbin-pgx-adapter/v3`），**不走内存 adapter**：
+
+> **骨架现状**：`internal/casbin/enforcer.go` 可能暂用内存 adapter + TODO；**Step 5 必须切换**为 PG adapter 并 `LoadPolicy()`，与 `000002_seed` 的 Casbin 初始策略及 `AssignMenus` 写 `casbin_rule` 联调。单测可继续用内存 adapter，集成测试 / 验收须 PG。
 
 ```go
 func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, func(), error) {
@@ -232,6 +248,8 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 | 路径通配符 | role::user_manager | `GET /api/v1/users/123` | 200（keyMatch2 匹配） |
 | 未认证 | - | 无 AT 的请求 | 401（JWT 中间件拦截） |
 | 无角色 | 新建用户未分配角色 | `GET /api/v1/users` | 403 + 70003 |
+| 自服务白名单 | role::viewer（零 menu） | `GET /api/v1/user/menus` | 200 |
+| 零角色 + 自服务 | 未分配角色 | `GET /api/v1/user/menus` | 403 + 70003 |
 | 多角色 OR | viewer + user_manager | user_manager 有 POST 策略时 `POST /api/v1/users` | 200 |
 
 ### 策略管理
@@ -248,7 +266,7 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 | 用例 | 操作 | 预期 |
 |------|------|------|
 | 注册资源 | Register("ticket", ...) | 注册成功，registry 中存在 |
-| 未注册资源查询 | CheckAccess("unknown", ...) | 返回 false |
+| 未注册资源查询 | Authorize("unknown", ...) | 返回 false |
 | Phase 1 无注册 | 启动后 registry 为空 | 正常运行，无 panic |
 
 ---
@@ -259,16 +277,31 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 
 ```
 internal/casbin/enforcer.go           # PG adapter（pckhoi/casbin-pgx-adapter/v3）
-internal/middleware/casbin.go
+internal/middleware/casbin.go         # Casbin 中间件 + isSelfServiceRoute（Step 5 挂载）
+internal/repository/user/role_fetcher.go   # 或 internal/service/authz/role_fetcher.go — RoleFetcher 实现
 internal/pkg/resource/registry.go     # Resource 接口 + Registry（Phase 1 空）
-internal/service/authz/
 ```
+
+### RoleFetcher 实现（Step 5）
+
+`RoleFetcher` 避免中间件直接依赖 UserRepo，推荐：
+
+```go
+// internal/repository/user/role_fetcher.go（推荐：与 user_roles 查询同域）
+type roleFetcher struct { repo UserRepo }
+
+func (f *roleFetcher) FetchRoleCodes(ctx context.Context, userID int64) ([]string, error) {
+    return f.repo.ListRoleCodesByUserID(ctx, userID)
+}
+```
+
+Wire：`NewRoleFetcher(userRepo UserRepo) middleware.RoleFetcher`。单测可 mock `UserRepo`。
 
 ## 待决策点
 
 > 以下决策已在讨论中确认：
 
-- ✅ **Casbin 模型**：g 表消除；Phase 1 仅直接角色，Phase 2 BFS 三源。
+- ✅ **Casbin 模型**：g 表消除；Phase 1 仅直接角色，Phase 2b BFS 三源。
 - ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
 - ✅ **策略同步时机**：角色菜单变更后，事务内写 casbin_rule + 事务后 ReloadPolicy（DB 为 source of truth）。
-- ✅ **Phase 1 角色查询**：只查直接角色（user_roles 表），Phase 2 扩展为 BFS 三源合并。
+- ✅ **Phase 1 角色查询**：只查直接角色（user_roles 表），Phase 2b 扩展为 BFS 三源合并。

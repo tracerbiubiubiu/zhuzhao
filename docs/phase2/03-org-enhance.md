@@ -23,7 +23,7 @@
 | 实时 HR 同步 | 每日 batch 足够 | 按需 |
 | HR 管理虚拟组 | 虚拟组纯本地 | — |
 | 多父级组织 | ltree 单父 | 按需 |
-| **组内 member/admin 完整验收** | 独立 **Phase 2c**（不并入 2b） | 2c | 见 §组织负责人、测试 D1–D11 |
+| **组内 member/admin 完整验收** | 独立 **Phase 2c**（不并入 2b） | 2c | 见 §组织负责人、测试 D1–D12 |
 
 ---
 
@@ -39,6 +39,14 @@
 
 `source` / `external_id` / `synced_at`（组织与用户）、`user_orgs.is_primary` / `source` / `expires_at` — DDL 见 hr-directory-sync §2。
 
+**Phase 2b 增量**（工单可见性，策略 B）：
+
+```sql
+ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFAULT 'entity_transparent_read';
+-- CHECK (ticket_visibility IN ('entity_transparent_read', 'project_isolated'))
+-- 仅 org_type IN (1,2,3) 实体有效；虚拟组继承最近实体祖先配置
+```
+
 ### HR Sync Job
 
 - 接口：`HRDirectoryClient` + `HRSyncService`（hr-directory-sync §5.1）。
@@ -47,8 +55,9 @@
 
 ### 权限
 
-- 实体部门：`group` / `all` scope 用 ltree `<@`。
-- 虚拟组：成员与 scope 绑在虚拟组 `user_orgs`，**不**随 HR 父部门角色继承。
+- 实体部门：`group` / `all` scope 用 ltree `<@`；**默认** `ticket_visibility=entity_transparent_read`（**策略 B**：兄弟虚拟组 **可读不可改**）。
+- 虚拟组：成员与 scope 绑在虚拟组 `user_orgs`，**不**随 HR 父部门角色继承；L2 读扩大到 **挂载实体** anchor，L3 写仍绑 **工单 `org_id`**。
+- 强隔离项目：实体设 `ticket_visibility=project_isolated`，L2 回退为仅直接 org path + `ticket_scope`（兄弟虚拟组互不可见）。详见 [09-ticket §5.2](./09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)。
 
 ### 组织负责人与组内分级（你描述的场景）
 
@@ -100,6 +109,7 @@
 | 虚拟组（≈ 项目容器） | org-enhance、organization §2.2 | 2b | ✅ 已设计 |
 | 跨部门加人、临时成员 | user_orgs.expires_at | 2b | ✅ 已设计 |
 | 列表数据范围 all/group/assigned | ticket §2.4、user_orgs.ticket_scope | 2a/2b | ✅ 已设计（**可见性**，不是组内 admin） |
+| **部门内策略 B（实体透明读）** | organizations.ticket_visibility、09-ticket §5.2 | 2b | ✅ 已定稿（默认） |
 | 组织负责人 owner | organization §2.3 owner_ids | 2c | 📋 见 [04-org-delegation.md](./04-org-delegation.md) |
 | org_roles（进组获 Casbin 角色） | 05-role、auth-design | 2b | ✅ 已设计 |
 | **组内 member/admin/owner 分级** | — | 2c | 📋 见 [04-org-delegation.md](./04-org-delegation.md) |
@@ -109,7 +119,7 @@
 
 #### 建议 Phase 2c 落地
 
-> **实现 SSOT**：[04-org-delegation.md](./04-org-delegation.md)（API、Authorize 矩阵、错误码、Step 9–11）。本节保留设计背景与 D1–D11 摘要。
+> **实现 SSOT**：[04-org-delegation.md](./04-org-delegation.md)（API、Authorize 矩阵、错误码、Step 9–11）。本节保留设计背景与 D1–D12 摘要。
 
 ```sql
 -- organizations：负责人（可多人）
@@ -149,6 +159,9 @@ ALTER TABLE user_orgs ADD COLUMN org_member_role VARCHAR(20) NOT NULL DEFAULT 'm
 | 用户 HR 主部门变更 | 仅 `is_primary+source=hr` 的 user_orgs 变 |
 | 父部门 org_roles 不继承子部门 | 父绑 role X，子部门成员 | 子部门成员**无** role X（须子部门自身 org_roles 或 user_roles） |
 | scope=group 工单列表 | 含本组织及子组织（含子树虚拟组 path 否：按工单 org_path 设计，见 ticket 模块） |
+| **策略 B**：vg_a member 读 vg_b 工单 | **200**（实体 `entity_transparent_read`） |
+| **策略 B**：vg_a member 改 vg_b 工单 | **403**（非创建人、非 vg_b admin） |
+| 实体 `project_isolated` | vg_a member **不可读** vg_b（404） |
 
 #### 组织负责人与组内分级（Phase 2c — **非** 2b 验收范围）
 
@@ -166,7 +179,8 @@ ALTER TABLE user_orgs ADD COLUMN org_member_role VARCHAR(20) NOT NULL DEFAULT 'm
 | D8 | 组 member 删同工单 | **403** |
 | D9 | 实体部门 owner 对子树 org 下工单 | `org_path <@` + owner 链：**200** |
 | D10 | HR 同步 | **不覆盖** `owner_user_ids`、`org_member_role`（local） |
-| D11 | member 在虚拟组、scope=assigned | 仅自己的工单；admin 可见组内全部（scope=group/all） |
+| D11 | 策略 B：vg_a member vs vg_b 工单（**2b 验收，2c 回归**） | **可读**（L2）；**不可 update**（L3，403）；vg_b admin 可改本组 |
+| D12 | `project_isolated` 实体（**2b 验收，2c 回归**） | 兄弟虚拟组 **互不可读**（404） |
 
 完整验收表见 [hr-directory-sync.md §7](../proposal/hr-directory-sync.md#7-验收用例phase-2b)。
 

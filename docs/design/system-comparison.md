@@ -16,7 +16,7 @@
 |---|------|--------|------|
 | 1 | 数据库选型：MongoDB vs PostgreSQL | 影响 3/6/8/9 | ✅ 已决策（PostgreSQL，详见 design-decisions.md §11） |
 | 3 | 资源级鉴权：Restrict 9 种 ConditionType vs ltree+内联 | 依赖 1（嵌套文档 vs 关系表） | ✅ 已决策（借鉴语义，分阶段实现） |
-| 4 | Casbin 模型：g 表消除 + BFS 展开 vs 基础 RBAC | 依赖 1（Casbin adapter） | ✅ Phase 1 直接角色；Phase 2 BFS 三源 |
+| 4 | Casbin 模型：g 表消除 + BFS 展开 vs 基础 RBAC | 依赖 1（Casbin adapter） | ✅ Phase 1 直接角色；Phase 2b BFS 三源 |
 | 6 | 事务策略：MongoDB Transact vs PostgreSQL 事务 | 依赖 1（事务机制完全不同） | ✅ PG 原生事务；Casbin 同步事务外 |
 | 8 | 级联删除与一致性 | 依赖 1/6（外键 vs 手动） | ✅ 映射表 CASCADE + 业务实体手动事务 |
 | 9 | 组织架构设计 | 依赖 1（ltree vs BFS 遍历） | ✅ ltree + 同表虚拟组（org_type=4，Phase 2b） |

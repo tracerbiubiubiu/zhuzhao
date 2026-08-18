@@ -247,11 +247,11 @@ TTL: 30min
 |------|------|------|
 | 策略三分类（route/button/api） | ✅ 直接采用 | 比纯 API 策略更精细 |
 | 菜单-API 绑定自动生成策略 | ✅ 直接采用 | 亮点设计 |
-| g 表消除 + BFS 展开 | ✅ Phase 2 采用 | 简化 Casbin 模型；Phase 1 仅直接角色 |
+| g 表消除 + BFS 展开 | ✅ Phase 2b 采用 | 简化 Casbin 模型；Phase 1 仅直接角色 |
 | 增量 diff 重建（非全量清空） | ✅ Phase 1 采用 | 角色菜单变更同事务写 casbin_rule |
 | 超管通配策略 | ✅ 直接采用 | 简洁 |
 | expanded_roles 存 context | ✅ 直接采用 | 避免双倍查询 |
-| BFS 三源合并 | ⏳ Phase 2 | Phase 1 仅 user_roles 直接角色 |
+| BFS 三源合并 | ⏳ Phase 2b | Phase 1 仅 user_roles 直接角色 |
 | Redis 缓存展开结果 | ⏳ Phase 3 按需 | Phase 1–2 查 DB |
 | SessionAdapter + mutex | ❌ 不采用 | PostgreSQL 不需要 |
 | LoadPolicy 全量重载 | ❌ 改为增量 | 旧系统性能瓶颈 |

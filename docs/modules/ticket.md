@@ -81,8 +81,8 @@
 | 查看工单列表 | `ticket:list` | 按 scope 过滤 | - |
 | 查看单条工单 | `ticket:read` | scope 可见性 | - |
 | 创建工单 | `ticket:create` | - | - |
-| 更新工单 | `ticket:update` | scope 可见性 | 创建人或处理人 |
-| 关闭工单 | `ticket:close` | scope 可见性 | 处理人或主管 |
+| 更新工单 | `ticket:update` | scope 可见性 | **2b：创建人**；2c + org admin/owner；透明读≠可改 |
+| 关闭工单 | `ticket:close` | scope 可见性 | 处理人或创建人（2b）；+ 主管 / org admin（2c） |
 | 分派工单 | `ticket:assign` | scope 可见性 | 主管以上 |
 | 删除工单 | `ticket:delete` | - | admin |
 | 添加回复 | `ticket:comment` | scope 可见性 | - |
@@ -133,6 +133,18 @@ func (r *TicketRepo) List(ctx context.Context, filter TicketFilter) ([]Ticket, i
     // ...执行查询
 }
 ```
+
+#### 2.4.1 部门内读/写分离（策略 B，Phase 2b 默认）
+
+同一**实体部门**下多个虚拟组（项目组）时，**不要**把「能看见」和「能改」绑在同一 ltree 路径上：
+
+| 轴 | 规则（默认 `ticket_visibility=entity_transparent_read`） |
+|----|--------------------------------------------------------|
+| **L2 读** | 用户在实体子树内任一有 `user_orgs` → 可读该实体子树下全部工单（**含兄弟虚拟组**） |
+| **L3 写** | **update 默认仅创建人**；close 为处理人/创建人；**工单所属虚拟组** admin/owner（2c）可管本组 |
+| **强隔离** | 实体设 `project_isolated` → L2 回退为仅直接 org + `ticket_scope`（旧行为） |
+
+实现 SSOT：[phase2/09-ticket.md §5.2](../phase2/09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)、[03-org-enhance](../phase2/03-org-enhance.md#权限)。
 
 ---
 
@@ -321,59 +333,9 @@ type TicketService interface {
 
 ### 4.3 ResourceRegistry 注册
 
-工单模块通过 `ResourceRegistry` 自注册资源级鉴权策略：
+> **实现 SSOT**：[phase2/02-authz-resource.md §TicketResource](../phase2/02-authz-resource.md) + [phase2/09-ticket.md §5](../phase2/09-ticket.md)。`modules/ticket.md` 不再内联注册代码，以免与 SSOT 接口漂移。
 
-```go
-func (s *ticketService) RegisterResource(registry ResourceRegistry) {
-    registry.Register(ResourceConfig{
-        Name: "ticket",
-        // 资源级鉴权函数
-        CheckAccess: func(ctx context.Context, userID int64, action string, resourceID int64) (bool, error) {
-            ticket, err := s.repo.GetByID(ctx, resourceID)
-            if err != nil {
-                return false, err
-            }
-            
-            // 获取用户对该工单所属组织的 scope
-            scope, err := s.getScope(ctx, userID, ticket.OrgID)
-            if err != nil {
-                return false, err
-            }
-            
-            // 按 scope 判断可见性
-            switch scope {
-            case ScopeAll:
-                return true, nil
-            case ScopeGroup:
-                // 检查工单 org_path 是否在用户可见组织路径下
-                return s.isOrgVisible(ctx, userID, ticket.OrgPath)
-            case ScopeAssigned:
-                return ticket.CreatedBy == userID || ticket.AssignedTo == userID, nil
-            }
-            return false, nil
-        },
-        // 属主判断函数（更细粒度的操作权限）
-        CheckOwner: func(ctx context.Context, userID int64, action string, resourceID int64) (bool, error) {
-            ticket, err := s.repo.GetByID(ctx, resourceID)
-            if err != nil {
-                return false, err
-            }
-            
-            switch action {
-            case "update":
-                return ticket.CreatedBy == userID || ticket.AssignedTo == userID, nil
-            case "close":
-                return ticket.AssignedTo == userID, nil
-            case "assign":
-                // 主管以上才能分派
-                return s.isManager(ctx, userID, ticket.OrgID)
-            default:
-                return false, nil
-            }
-        },
-    })
-}
-```
+工单模块在 Phase 2a 通过实现 `Resource` 接口（`Authorize` / `GetFilter`）自注册到 `ResourceRegistry`，见上述 SSOT。
 
 ---
 
@@ -530,7 +492,7 @@ Phase 2a 不引入消息队列，使用 Go 原生 channel + goroutine 实现进�
 
 | 能力 | 说明 |
 |------|------|
-| group/all scope | ltree 列表过滤，见 [03-org-enhance](../phase2/03-org-enhance.md) |
+| group/all scope | **策略 B** 实体透明读 + scope 并集；`ticket_visibility` 配置，见 [03-org-enhance](../phase2/03-org-enhance.md) |
 | 工单附件 | [10-storage](../phase2/10-storage.md) 预签名直传 |
 
 ### Phase 2c：组内委托

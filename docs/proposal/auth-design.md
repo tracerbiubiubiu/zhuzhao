@@ -139,7 +139,7 @@ m = r.sub == "role::superadmin" || \
 
 - 无 `[role_definition] g` 段
 - **Phase 1**：`RoleFetcher` 只查 `user_roles`（直接角色）；superadmin/admin 在 matcher bypass
-- **Phase 2**：BFS 三源合并（直接 + 组织 + 继承）
+- **Phase 2b**：BFS 三源合并（直接 + 组织 + 继承）
 - **Phase 3**：可选 Redis `perm:user:{userId}` 缓存
 
 **策略量**：角色数 × API 数 × 方法数 ≈ 1,000 条（可控）
@@ -154,7 +154,7 @@ m = r.sub == "role::superadmin" || \
 
 ```go
 // Service 层调用
-filter, err := registry.GetFilter(ctx, userID, "ticket", "read")
+filter, err := registry.GetFilter(ctx, "ticket", userID, "read")
 // filter = SQL WHERE 子句
 // 例如：WHERE org_id IN (SELECT org_id FROM org_members WHERE user_id = ? AND org_id IN subtree(?))
 

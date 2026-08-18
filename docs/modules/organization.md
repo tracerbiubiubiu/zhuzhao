@@ -297,13 +297,14 @@ SELECT EXISTS(
   AND o.path <@ (SELECT path FROM organizations WHERE code = $2)
 );
 
--- 判断用户是否是目标组织祖先链中某组织的管理员
+-- Phase 2c：组内分级（user_orgs.org_member_role），非 Phase 1 role_id
+-- 见 phase2/04-org-delegation.md
 SELECT EXISTS(
   SELECT 1 FROM user_orgs uo
   JOIN organizations o ON uo.org_id = o.id
   WHERE uo.user_id = $1
-  AND $2::ltree @> o.path  -- 目标组织是用户组织的后代
-  AND uo.role_id IN (SELECT id FROM roles WHERE code = 'org_admin')
+  AND $2::ltree @> o.path
+  AND uo.org_member_role IN ('owner', 'admin')  -- Phase 2c 迁移列
 );
 ```
 

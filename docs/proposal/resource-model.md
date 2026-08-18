@@ -521,7 +521,7 @@ POST /api/v1/users/roles
   ├── Handler → UserService.SetRoles()
   │   ├── 业务校验 1：目标用户是否存在
   │   ├── 业务校验 2：要分配的角色是否合法
-  │   └── 业务校验 3（防越权）：`EffectivePriority`（越小越强）≤ 目标用户；待分配角色 `priority` ≥ 操作者
+  │   └── 业务校验 3（防越权）：`actorP < targetP`（严格更强）；待分配角色 `priority >= actorP`
   │       ├── admin 不能给用户分配 superadmin 角色
   │       └── admin 不能修改 superadmin 用户的角色
   └── 写 user_roles 表 + 触发权限缓存失效
@@ -534,7 +534,7 @@ func (s *UserService) SetRoles(ctx context.Context, targetUserID int64, roleCode
     actorP := EffectivePriority(ctx) // min(roles.priority)
     targetP := s.roleRepo.EffectivePriority(ctx, targetUserID)
 
-    if actorP > targetP { // 数字更大 = 更弱，不能管更强的人
+    if actorP >= targetP { // 数字更大或相等 = 不能管同级或更强的人
         return ErrPermissionDenied
     }
     for _, code := range roleCodes {
@@ -636,9 +636,10 @@ POST /api/v1/users/delete
 ### Phase 1
 
 - 定义 `Resource` 接口和 `Registry`
-- 实现 `UserResource`（属主判断）
-- 各 Service 构造函数自注册
+- **仅注入空 Registry，不实现任何 Resource、不自注册**
 - 不引入资源级 enforcer
+
+> Phase 1 不实现 `UserResource`（[phase1/03-authz §ResourceRegistry](../phase1/03-authz.md#resourceregistry-接口骨架)、[phase1/README §1.2](../phase1/README.md#12-不做什么) 为准）。资源注册在 Phase 2 各 Service 实现 `Resource` 接口后进行。
 
 ### Phase 2
 
