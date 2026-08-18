@@ -199,7 +199,7 @@ targetPriority = EffectiveOrgPriority(target, org)  // 含 owner_user_ids
 
 ### 4.2 工单操作矩阵（2c 后）
 
-在 [modules/ticket.md §2.3](../modules/ticket.md#23-三层鉴权在工单中的映射) 基础上，**第 3 层属主**扩展为：
+在 [modules/ticket.md §2.2](../modules/ticket.md#22-三层鉴权在工单中的映射) 基础上，**第 3 层属主**扩展为：
 
 | 操作 | 路由级 | scope 可见 | 属主 / 委托条件（2c） |
 |------|--------|-----------|----------------------|

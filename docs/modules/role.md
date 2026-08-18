@@ -16,7 +16,7 @@
 - 被 `user` 引用（用户-角色绑定）
 - 依赖 `menu`（角色-菜单分配）
 - 依赖 `casbin`（策略同步）
-- 自注册 `RoleResource` 到 `authz` 的 ResourceRegistry
+- Phase 2 起自注册 `RoleResource` 到 `authz` 的 ResourceRegistry
 
 ---
 

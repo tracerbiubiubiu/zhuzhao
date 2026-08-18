@@ -68,7 +68,7 @@ OrgService
 |------|------|------|
 | 虚拟组（org_type=4） | Phase 1 只做实体组织（org_type 1-3） | Phase 2b |
 | 组织级权限（scope） | 资源级鉴权 Phase 2 | Phase 2 |
-| 组织角色 | Phase 2 | Phase 2 |
+| 组织角色 | Phase 2b（见 [03-authz §BFS 三源角色](./03-authz.md#bfs-三源角色phase-2b)） | Phase 2b |
 | ltree 路径查询 | 无业务资源需要过滤 | Phase 2 |
 
 ---
@@ -274,7 +274,7 @@ orgs.POST("/members", deps.OrgHandler.AddMember)
 orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
 ```
 
-> **骨架对齐**：Step 9 实现前，`router.go` 可能缺少上表三路由；验收 #18–19 依赖它们，与 `POST /users/orgs`（验收 #20，用户组）一并补齐。
+> **骨架对齐**：`router.go` 已注册上表三路由 + `POST /users/orgs`（handler 为 stub）；验收 #18–#20 在 **Step 9** 实现 `OrgService` 后可测。
 
 ---
 

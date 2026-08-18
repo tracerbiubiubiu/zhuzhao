@@ -15,7 +15,7 @@
 与其他模块的关系：
 - 为 `role` 提供组织角色（BFS 三源之一）
 - 为 `authz` 提供组织关系判断（ltree 查询）
-- 自注册 `OrgResource` 到 ResourceRegistry
+- Phase 2 起自注册 `OrgResource` 到 ResourceRegistry
 
 ---
 
@@ -137,7 +137,7 @@ type OrgService interface {
     GetMembers(ctx context.Context, orgID int64, query MemberListQuery) ([]*model.User, int64, error)
     GetUserOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
 
-    // 组织角色（Phase 2）
+    // 组织角色（Phase 2b）
     AssignRoles(ctx context.Context, orgCode string, roleIDs []int64) error
     GetRoles(ctx context.Context, orgCode string) ([]*model.Role, error)
 
@@ -264,7 +264,7 @@ GET /api/v1/orgs/:id/members
 ### 4.4 删除组织
 
 > **Phase 1 行为**（与 [phase1/06-organization.md](../phase1/06-organization.md) 一致）：有子组织或有成员则拒绝删除；仅允许删除无子节点、无成员的非系统组织（软删）。  
-> 业界删部门/移成员/Reparent 对照见 [rbac-inheritance-and-cascade.md §2.5–2.6](../design/rbac-inheritance-and-cascade.md#25-场景-5hr-把技术中心整棵子树迁到产品中心下)。
+> 业界删部门/移成员/Reparent 对照见 [rbac-inheritance-and-cascade.md §2.5–2.6](../design/rbac-inheritance-and-cascade.md#25-场景-4hr-把技术中心整棵子树迁到产品中心下)。
 
 ```
 POST /api/v1/orgs/delete

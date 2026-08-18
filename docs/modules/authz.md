@@ -115,7 +115,7 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 
 - **零角色**用户：白名单**不**生效，仍 **403 + 70003**（未分配角色不能进系统）。
 - **不写入** `menu_apis` / 菜单树；权限码列标 `—`（见 [07-menu](../phase1/07-menu.md)）。
-- 实现 SSOT：[phase1/09-middleware §Casbin](./09-middleware.md#casbin-中间件-g-表消除) 伪代码。
+- 实现 SSOT：[phase1/09-middleware §Casbin](../phase1/09-middleware.md#casbin-中间件g-表消除) 伪代码。
 
 ### 2.3 admin 路由 bypass ≠ 业务无约束
 

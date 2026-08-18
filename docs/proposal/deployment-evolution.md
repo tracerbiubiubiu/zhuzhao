@@ -88,7 +88,7 @@ Phase 2 工单、资源级鉴权、对象存储仍与认证底座**同一进程*
 
 > 原文档将本节标为 Phase 2，已与 roadmap 对齐：拆服务属于 Phase 3。
 >
-> **通信协议**：REST 对外，gRPC 对内。详见 [design-decisions.md#13](../design/design-decisions.md#13-微服务通信协议grpc-内部--rest-外部)。
+> **通信协议**：REST 对外，gRPC 对内。详见 [design-decisions.md#13](../design/design-decisions.md#13-微服务通信协议grpc-内部-rest-外部)。
 
 ### 4.1 部署架构
 
@@ -141,7 +141,7 @@ Phase 2 工单、资源级鉴权、对象存储仍与认证底座**同一进程*
   rpc GetUserPermissions(GetUserPermissionsRequest) → PermissionsResponse
 ```
 
-> 详见 [design-decisions.md#13 微服务通信协议](../design/design-decisions.md#13-微服务通信协议grpc-内部--rest-外部)
+> 详见 [design-decisions.md#13 微服务通信协议](../design/design-decisions.md#13-微服务通信协议grpc-内部-rest-外部)
 
 ### 4.5 数据一致性
 

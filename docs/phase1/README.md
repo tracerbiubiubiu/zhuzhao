@@ -102,9 +102,9 @@ Phase 1 完成后，以下流程能跑通：
 | AT 存哪 | 前端自行存 AT/RT（建议内存 + 刷新），后端不设 Cookie |
 | AK/SK 不可用 | 没有服务间认证 |
 | 管理接口是全局模型 | `admin`/`superadmin` 路由级 bypass；`operator`/`viewer` 靠菜单策略，仍无行级过滤 |
-| superadmin 对 admin 不可见 | 角色/用户列表过滤 superadmin；admin 眼中最高档为 **admin** | 见 [05-role §影子超管](./05-role.md#影子超管superadmin-对-admin-不可见) |
+| superadmin 对 admin 不可见 | 角色/用户列表过滤 superadmin；admin 眼中最高档为 **admin**（见 [05-role §影子超管](./05-role.md#影子超管superadmin-对-admin-不可见)） |
 | 复杂继承 / org_roles / BFS / 数据 scope | **Phase 1 不做**；业界对照与级联矩阵已记录在 [rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)，Phase 2b+ 再实现 |
-| 组织负责人 + 组内 admin/member | **Phase 2c**（非 2b）；依赖虚拟组+scope 后交付 | 见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) |
+| 组织负责人 + 组内 admin/member | **Phase 2c**（非 2b）；依赖虚拟组+scope 后交付（见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md)） |
 
 ---
 
@@ -230,7 +230,7 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 
 | # | 决策 |
 |---|------|
-| 1 | **自服务路由**：Casbin 中间件 **白名单**（方案 A），不进 `menu_apis`；见 [authz §2.2.1](../modules/authz.md#221-自服务路由业界做法--本项目决策) |
+| 1 | **自服务路由**：Casbin 中间件 **白名单**（方案 A），不进 `menu_apis`；见 [authz §2.2.1](../modules/authz.md#221-自服务路由业界做法-本项目决策) |
 | 2 | **Create 成功 HTTP**：统一 **200** + `code: 0`（与 [response.md](../api/response.md) 一致） |
 | 3 | **种子 role_menus**：`operator`/`viewer` **空**；`superadmin`/`admin` 绑定全部 IAM 菜单（必含用户/角色/组织；含菜单管理） |
 
@@ -255,7 +255,7 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 | 登录限流 | Phase 1 用 Redis **Lua**（INCR+EXPIRE 原子，15min/5 次） | ✅ 已确认 |
 | 会话吊销 | 禁用/删除用户写 `user:disabled:{id}`，JWT 中间件检查 | ✅ 已确认 |
 | Redis 故障 | 鉴权链路 fail-close，返回 503 | ✅ 已确认 |
-| AuthN 非法/混用凭证 | 互斥、Abort、400/20008；SSOT [02-auth §非法认证](../phase1/02-auth.md#非法认证请求的处理实现必读) | ✅ 已确认 |
+| AuthN 非法/混用凭证 | 互斥、Abort、400/20008；SSOT [02-auth §非法认证](./02-auth.md#非法认证请求的处理实现必读) | ✅ 已确认 |
 | 领域目录 | 新代码 `internal/{layer}/{domain}/`；跨域经 Service 接口 | ✅ 已确认（[architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)） |
 | AK/SK | Phase 1 不做 | ✅ 已确认 |
 | 数据范围 | Phase 1 不做组织范围过滤 | ✅ 已确认 |

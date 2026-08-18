@@ -48,7 +48,7 @@ migrations/
 └── （无 000003；Casbin 表与种子策略分别在 000001 建表、000002 插入）
 ```
 
-> **DDL SSOT**：`roles.priority` / `roles.deleted_at` 见 [05-role §roles 建表](./05-role.md#roles-建表-sql)；`user_orgs` 主键 `(user_id, org_id)`、**无** `role_id` 见 [04-user §用户-组织关联](./04-user.md#用户-组织关联)。菜单种子 25 条见 [07-menu §Phase 1 菜单清单](./07-menu.md#phase-1-菜单清单ssot) 与 [data-init §4.2](../proposal/data-init.md#42-种子数据内容)。
+> **DDL SSOT**：`roles.priority` / `roles.deleted_at` 见 [05-role §roles 建表](./05-role.md#roles-建表-sql)；`user_orgs` 主键 `(user_id, org_id)`、**无** `role_id` 见 [04-user §用户-组织关联](./04-user.md#用户-组织关联)。菜单种子 25 条见 [07-menu §Phase 1 菜单清单](./07-menu.md#phase-1-菜单清单前端契约) 与 [data-init §4.2](../proposal/data-init.md#42-种子数据内容)。
 
 > **仓库现状**：`migrations/` 目录 Step 1 交付物，编码前可能为空；以本文 + `data-init.md` 为准编写 SQL，勿与骨架 `internal/model` 不一致处（如 `UserOrg.role_id`、`Role.priority`）自行假设。
 
@@ -206,7 +206,7 @@ if err := client.Ping(ctx).Err(); err != nil { ... }
 | Redis 池参数 + 超时 | 📋 Step 1 补（当前仅 Addr） |
 | Wire cleanup 顺序：HTTP → Redis → PG | 📋 与优雅关闭一并验证 |
 | `/health/ready` Ping PG + Redis | 📋 已有路由，需对齐 01 语义 |
-| **`router.go` 注册 org 4 条 + `POST /users/orgs`** | 📋 M1；见 [06-organization §路由注册](./06-organization.md#路由注册ssot)、[04-user §路由注册](./04-user.md#路由注册) |
+| **`router.go` 注册 org 4 条 + `POST /users/orgs`** | ✅ 已注册（handler stub，Step 9 实现业务）；见 [06-organization §路由注册](./06-organization.md#路由注册ssot)、[04-user §路由注册](./04-user.md#路由注册) |
 
 ### 健康检查
 

@@ -57,7 +57,7 @@ ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFA
 
 - 实体部门：`group` / `all` scope 用 ltree `<@`；**默认** `ticket_visibility=entity_transparent_read`（**策略 B**：兄弟虚拟组 **可读不可改**）。
 - 虚拟组：成员与 scope 绑在虚拟组 `user_orgs`，**不**随 HR 父部门角色继承；L2 读扩大到 **挂载实体** anchor，L3 写仍绑 **工单 `org_id`**。
-- 强隔离项目：实体设 `ticket_visibility=project_isolated`，L2 回退为仅直接 org path + `ticket_scope`（兄弟虚拟组互不可见）。详见 [09-ticket §5.2](./09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)。
+- 强隔离项目：实体设 `ticket_visibility=project_isolated`，L2 回退为仅直接 org path + `ticket_scope`（兄弟虚拟组互不可见）。详见 [09-ticket §5.2](./09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)。
 
 ### 组织负责人与组内分级（你描述的场景）
 

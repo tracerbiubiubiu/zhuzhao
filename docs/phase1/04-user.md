@@ -175,7 +175,7 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 | **外包 / 顾问 / 临时工** | HR 系统无编制，但需登录本系统 |
 | **集成 / 巡检 / 演示账号** | 非真实员工；生产可禁用或限权 |
 | **HR 接入前的空窗** | 先开本地账号，HR 首次同步后再对账合并（按 `employee_no` / `external_id` 策略，避免重复） |
-| **仅需本地账密** | HR 只同步姓名/工号/部门；**工号与初始密码**由管理员开户或 [重置密码](./02-auth.md#管理员重置密码--首次登录改密) |
+| **仅需本地账密** | HR 只同步姓名/工号/部门；**工号与初始密码**由管理员开户或 [重置密码](./02-auth.md#管理员重置密码-首次登录改密) |
 
 **不适用 `POST /users`（应用 HR 同步 + 管理端维护）**：
 
@@ -266,7 +266,7 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 | `employee_no` | ✅（有则返回） | 创建/管理员 update 可写 | 列表展示、HR 对账；**登录键** |
 | `password` | ❌ | 创建/改密时写入 | 永不出现在响应 |
 | `deleted_at` | ❌ | — | 软删用户不出现在列表/详情 |
-| `version` | ✅ | `POST /users/update` **须回传** | 乐观锁（见 [10-concurrency](../10-concurrency.md)） |
+| `version` | ✅ | `POST /users/update` **须回传** | 乐观锁（见 [10-concurrency](./10-concurrency.md)） |
 
 **各接口 `data` 形状（Phase 1）**：
 

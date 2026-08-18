@@ -144,7 +144,7 @@ func (r *TicketRepo) List(ctx context.Context, filter TicketFilter) ([]Ticket, i
 | **L3 写** | **update 默认仅创建人**；close 为处理人/创建人；**工单所属虚拟组** admin/owner（2c）可管本组 |
 | **强隔离** | 实体设 `project_isolated` → L2 回退为仅直接 org + `ticket_scope`（旧行为） |
 
-实现 SSOT：[phase2/09-ticket.md §5.2](../phase2/09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)、[03-org-enhance](../phase2/03-org-enhance.md#权限)。
+实现 SSOT：[phase2/09-ticket.md §5.2](../phase2/09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)、[03-org-enhance](../phase2/03-org-enhance.md#权限)。
 
 ---
 

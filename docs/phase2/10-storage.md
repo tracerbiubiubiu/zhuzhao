@@ -1,7 +1,7 @@
 # 10 - 文件存储（storage，Phase 2b）
 
 > **Step 6**，依赖 Phase 2a（工单 MVP 可不带附件运行）；与 Step 7（auth-enhance）可并行。  
-> 用户头像、工单附件共用同一 storage 模块，见 [phase1/04-user §头像](../phase1/04-user.md#头像与对象存储phase-1--2b)。
+> 用户头像、工单附件共用同一 storage 模块，见 [phase1/04-user §头像](../phase1/04-user.md#头像avatar)。
 
 ---
 

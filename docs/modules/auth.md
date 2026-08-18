@@ -219,7 +219,7 @@ DeleteUser / 禁用用户 时：
 
 ### 6.2 Phase 1 实现：Lua LoginLocker
 
-`INCR` + 首次 `EXPIRE` 在 **一条 Lua 脚本**中原子完成；达 5 次返回 429。脚本见 [phase1/02-auth.md §登录限流](../phase1/02-auth.md#登录限流redis-lua)。Redis 故障 **fail-close**（503）。
+`INCR` + 首次 `EXPIRE` 在 **一条 Lua 脚本**中原子完成；达 5 次返回 429。脚本见 [phase1/02-auth.md §登录限流](../phase1/02-auth.md#登录限流phase-1-必须)。Redis 故障 **fail-close**（503）。
 
 ```go
 // 失败路径：Eval(loginLockScript, []string{key}, windowSec, maxFail)

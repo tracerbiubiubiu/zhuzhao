@@ -241,7 +241,7 @@ AuthService.Refresh（/auth/refresh，无 JWT）在 GetDel 之前：
 
 ### 登录与工号解析
 
-`POST /auth/login` 使用 **`employee_no` + 密码**（不用 `username`）。工号有值时**全局唯一**（见 [04-user §唯一性](./04-user.md#身份标识字段工号--登录名--域账号)）。登录时：
+`POST /auth/login` 使用 **`employee_no` + 密码**（不用 `username`）。工号有值时**全局唯一**（见 [04-user §唯一性](./04-user.md#身份标识字段工号-登录名-域账号)）。登录时：
 
 ```
 SELECT id, password, ... FROM users

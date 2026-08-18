@@ -1430,7 +1430,7 @@ type Runner interface {
 1. `enabled: false` 时不注册路由、使用 noop tracer，**零额外运行时开销**。
 2. App 启动 **不依赖** Prometheus/Grafana/Collector 进程存在。
 3. Docker Compose 用 **profile** 拉起观测栈；小环境默认不带 profile。
-4. 多实例或对外 SLA 选 [3a-full](../phase3/README.md#3a-full多实例或需-slo--对外-sla)；单实例内网可选 [3a-min](../phase3/README.md#3a-min单实例内网低-sla)。
+4. 多实例或对外 SLA 选 [3a-full](../phase3/README.md#3a-full多实例或需-slo-对外-sla)；单实例内网可选 [3a-min](../phase3/README.md#3a-min单实例内网低-sla)。
 
 ### 14.4 数据库迁移
 
@@ -1540,7 +1540,7 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 **测试策略（测试先行）**：
 
-核心原则：先写测试，再写实现。详见 [phase1/README.md §1.3 验收](../phase1/README.md#13-验收标准主路径--对抗路径)。
+核心原则：先写测试，再写实现。详见 [phase1/README.md §1.3 验收](../phase1/README.md#13-验收标准)。
 
 | 层级 | 范围 | Mock 策略 |
 |------|------|----------|

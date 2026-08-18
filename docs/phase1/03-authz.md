@@ -74,7 +74,7 @@ m = r.sub == "role::superadmin" || \
 - **菜单 / 权限码**：合并用户所有角色绑定的菜单与按钮码（并集）。
 - **业务层分级**（重置密码、防提权等）：`roles.priority` **越小越强**；多角色取 **EffectivePriority = min(priority)**。详见 [05-role §priority 与继承](./05-role.md#角色-priority-与权限继承模型)、[04-user §多角色与有效 priority](./04-user.md#多角色与有效-priority)。
 - JWT **不含角色**；每次请求由 `RoleFetcher` 查 `user_roles`，角色变更后下次请求即生效。
-- **自服务路由**（profile/menus/logout 等）走 Casbin 中间件 **白名单**，不进 `menu_apis`；见 [modules/authz §2.2.1](../modules/authz.md#221-自服务路由业界做法--本项目决策)。
+- **自服务路由**（profile/menus/logout 等）走 Casbin 中间件 **白名单**，不进 `menu_apis`；见 [modules/authz §2.2.1](../modules/authz.md#221-自服务路由业界做法-本项目决策)。
 
 ### 中间件流程（借鉴旧系统）
 
