@@ -110,6 +110,27 @@ Phase 1 完成后，以下流程能跑通：
 
 ## 2. 实施顺序
 
+### Git 分支策略
+
+> **`docs/phase1/` 是文档目录，不是 Git 分支。** 已废弃长期 `phase1` Git 分支；编码按短 feature 分支从 `dev` 切出。
+
+| 角色 | 分支 | 说明 |
+|------|------|------|
+| 集成主线 + 文档 SSOT | **`dev`** | 文档修复与代码最终合入点 |
+| Phase 1 实现 | **`feature/step-N-简短描述`** | 从最新 `dev` 切出；PR base = `dev`；合入后删除 |
+
+**开分支示例**（Step 1）：
+
+```bash
+git checkout dev && git pull origin dev
+git checkout -b feature/step-1-infra
+# ... 实现 Step 1 ...
+git push -u origin feature/step-1-infra
+# gh pr create --base dev
+```
+
+文档有更新时，在 feature 分支上 `git merge origin/dev`（或 `git rebase origin/dev`）后再继续编码。
+
 ### 2.1 主线（Step 1→5，必须串行）
 
 AuthN / AuthZ 基座必须按序完成；**Step 4 与 Step 5 分工**见 [09-middleware](./09-middleware.md#step-4-vs-step-5-分工) 与 [03-authz](./03-authz.md)。
