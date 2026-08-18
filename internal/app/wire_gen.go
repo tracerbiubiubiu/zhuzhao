@@ -16,6 +16,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -49,7 +50,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	menuService := service.NewMenuService(menuRepo)
 	userHandler := handler.NewUserHandler(userService, menuService)
 	roleRepo := repository.NewRoleRepo(pool)
-	rbacService := service.NewRBACService(roleRepo)
+	rbacService := service.NewRBACService(roleRepo, userRepo)
 	roleHandler := handler.NewRoleHandler(rbacService)
 	orgRepo := repository.NewOrgRepo(pool)
 	orgService := service.NewOrgService(orgRepo)
@@ -59,7 +60,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditService := service.NewAuditService(auditLogRepo)
 	auditHandler := handler.NewAuditHandler(auditService)
 	casbinConfig := cfg.Casbin
-	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig)
+	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
 		cleanup2()
 		cleanup()
@@ -91,7 +92,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 // wire.go:
 
-var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, casbin.New)
+var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, resource.NewRegistry, casbin.New)
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
 

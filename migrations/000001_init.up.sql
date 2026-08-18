@@ -146,7 +146,7 @@ CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 
 CREATE TABLE casbin_rule (
     id    BIGSERIAL PRIMARY KEY,
-    ptype VARCHAR(10) NOT NULL,
+    p_type VARCHAR(10) NOT NULL,
     v0    VARCHAR(255) NOT NULL,
     v1    VARCHAR(255) NOT NULL,
     v2    VARCHAR(255) DEFAULT '',
@@ -155,4 +155,4 @@ CREATE TABLE casbin_rule (
     v5    VARCHAR(255) DEFAULT ''
 );
 
-CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (ptype, v0, v1, v2);
+CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (p_type, v0, v1, v2);

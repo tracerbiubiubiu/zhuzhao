@@ -14,6 +14,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
 	pgredis "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -27,6 +28,7 @@ var pkgSet = wire.NewSet(
 	postgres.New,
 	pgredis.New,
 	pgredis.NewScripts,
+	resource.NewRegistry,
 	casbin.New,
 )
 

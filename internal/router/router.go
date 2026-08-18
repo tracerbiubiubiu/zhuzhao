@@ -75,7 +75,7 @@ func New(deps Deps) *gin.Engine {
 		authed := v1.Group("")
 		authed.Use(
 			middleware.JWT(deps.JWTManager, deps.RedisClient),
-			middleware.CasbinPassThrough(),
+			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher),
 			middleware.AuditLog(deps.AuditService),
 		)
 		{

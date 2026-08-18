@@ -15,6 +15,21 @@ type RoleFetcher interface {
 	GetRoleCodesByUserID(userID int64) ([]string, error)
 }
 
+type selfServiceRoute struct {
+	method string
+	path   string
+}
+
+// Phase 1 固定白名单；路径变更须同步 docs/modules/authz.md §2.2.1
+var selfServiceRoutes = []selfServiceRoute{
+	{method: "GET", path: "/api/v1/user/profile"},
+	{method: "POST", path: "/api/v1/user/profile/update"},
+	{method: "GET", path: "/api/v1/user/menus"},
+	{method: "GET", path: "/api/v1/user/permissions"},
+	{method: "POST", path: "/api/v1/auth/logout"},
+	{method: "POST", path: "/api/v1/auth/password/update"},
+}
+
 // CasbinPassThrough Step 4 JWT 联调：跳过 Casbin，Step 5 替换为 CasbinAuth。
 func CasbinPassThrough() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -27,7 +42,6 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 	return func(c *gin.Context) {
 		userID := c.GetInt64("userID")
 
-		// 1. 获取用户角色 codes（Phase 1 只查直接角色）
 		roles, err := roleFetcher.GetRoleCodesByUserID(userID)
 		if err != nil {
 			response.InternalError(c, "获取用户角色失败")
@@ -40,9 +54,14 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 			return
 		}
 
-		// 2. 逐角色 enforce（superadmin/admin 在 matcher 中自动 bypass）
 		path := c.Request.URL.Path
 		method := c.Request.Method
+		if isSelfServiceRoute(method, path) {
+			c.Set("roles", roles)
+			c.Next()
+			return
+		}
+
 		allowed := false
 		for _, role := range roles {
 			subject := fmt.Sprintf("role::%s", role)
@@ -58,8 +77,16 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 			return
 		}
 
-		// 3. 存入 context 供 handler 复用
 		c.Set("roles", roles)
 		c.Next()
 	}
+}
+
+func isSelfServiceRoute(method, path string) bool {
+	for _, r := range selfServiceRoutes {
+		if r.method == method && r.path == path {
+			return true
+		}
+	}
+	return false
 }

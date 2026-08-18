@@ -10,10 +10,11 @@ import (
 // RBACService 角色权限管理服务
 type RBACService struct {
 	roleRepo *repository.RoleRepo
+	userRepo *repository.UserRepo
 }
 
-func NewRBACService(roleRepo *repository.RoleRepo) *RBACService {
-	return &RBACService{roleRepo: roleRepo}
+func NewRBACService(roleRepo *repository.RoleRepo, userRepo *repository.UserRepo) *RBACService {
+	return &RBACService{roleRepo: roleRepo, userRepo: userRepo}
 }
 
 func (s *RBACService) ListRoles(ctx context.Context) (interface{}, error) {
@@ -34,5 +35,5 @@ func (s *RBACService) DeleteRole(ctx context.Context, id string) error {
 
 // GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）
 func (s *RBACService) GetRoleCodesByUserID(userID int64) ([]string, error) {
-	return nil, fmt.Errorf("not implemented")
+	return s.userRepo.GetRoleCodes(context.Background(), userID)
 }

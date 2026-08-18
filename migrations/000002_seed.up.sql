@@ -136,7 +136,7 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 -- ============================================
 -- Casbin 路由级策略：admin + superadmin 通配
 -- ============================================
-INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES
+INSERT INTO casbin_rule (p_type, v0, v1, v2) VALUES
   ('p', 'role::admin', '*', '*'),
   ('p', 'role::superadmin', '*', '*')
 ON CONFLICT DO NOTHING;

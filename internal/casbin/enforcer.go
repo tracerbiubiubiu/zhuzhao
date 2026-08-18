@@ -5,27 +5,34 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
+	"github.com/jackc/pgx/v5/pgxpool"
+	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
 
-// New 创建 Casbin SyncedEnforcer
-// 当前阶段使用内存 adapter，后续切换为 PostgreSQL adapter
-func New(cfg config.CasbinConfig) (*casbin.SyncedEnforcer, func(), error) {
+// New 创建 Casbin SyncedEnforcer（PG adapter，启动时 LoadPolicy）
+func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, func(), error) {
 	m, err := model.NewModelFromFile(cfg.Model)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load casbin model: %w", err)
+		return nil, nil, fmt.Errorf("load casbin model: %w", err)
 	}
 
-	enforcer, err := casbin.NewSyncedEnforcer(m)
+	adapter, err := pgxadapter.NewAdapter("",
+		pgxadapter.WithConnectionPool(pool),
+		pgxadapter.WithSkipTableCreate(),
+	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
+		return nil, nil, fmt.Errorf("create casbin adapter: %w", err)
 	}
 
-	// TODO: 后续切换为 PostgreSQL adapter
-	// adapter, err := pgadapter.NewAdapter(...)
-	// enforcer.SetAdapter(adapter)
-	// if err := enforcer.LoadPolicy(); err != nil { ... }
+	enforcer, err := casbin.NewSyncedEnforcer(m, adapter)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create casbin enforcer: %w", err)
+	}
+	if err := enforcer.LoadPolicy(); err != nil {
+		return nil, nil, fmt.Errorf("load casbin policy: %w", err)
+	}
 
 	cleanup := func() {
 		enforcer.StopAutoLoadPolicy()
