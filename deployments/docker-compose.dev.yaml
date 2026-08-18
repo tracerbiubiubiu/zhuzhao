@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:15          # 对齐云服务版本
+    container_name: zhuzhao-postgres
+    environment:
+      POSTGRES_DB: zhuzhao
+      POSTGRES_USER: zhuzhao
+      POSTGRES_PASSWORD: zhuzhao_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6.2-alpine     # 对齐云服务版本
+    container_name: zhuzhao-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
+  redis_data:
