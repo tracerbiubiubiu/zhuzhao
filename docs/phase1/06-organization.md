@@ -1,23 +1,26 @@
 # 06 - 组织模块（organization）
 
-> Step 9，依赖 Step 5（authz）。Phase 1 实现基础组织树 CRUD。
+> **Step 9**，依赖 Step 5（authz）。与 Step 7/8 **可并行**。  
+> **`OrgService` 写路径应先于 Step 6b**（用户 `org_ids` / `POST /users/orgs`），见 [04-user §Step 6 分期](./04-user.md#step-6-分期交付)。
 
 ---
 
 ## 预期功能
 
-| 功能 | 场景 | API |
-|------|------|-----|
-| 组织树 | 查看完整组织树（树形结构） | `GET /api/v1/orgs` |
-| 创建组织 | 在指定父组织下创建子组织 | `POST /api/v1/orgs` |
-| 组织详情 | 查看单个组织信息 | `GET /api/v1/orgs/:id` |
-| 更新组织 | 修改组织名称、描述 | `POST /api/v1/orgs/update` |
-| 删除组织 | 删除组织（需检查是否有子组织和成员） | `POST /api/v1/orgs/delete` |
-| 移动组织 | 将组织移动到新的父组织下 | `POST /api/v1/orgs/move` |
-| 用户-组织关联 | 查看用户所属组织 | `GET /api/v1/users/:id/orgs` |
-| 组织成员列表 | 查看某组织下成员 | `GET /api/v1/orgs/:id/members` |
-| 添加组织成员 | 将用户加入组织 | `POST /api/v1/orgs/members` |
-| 移除组织成员 | 将用户从组织移出 | `POST /api/v1/orgs/members/delete` |
+> 权限码 SSOT：[07-menu §权限码命名规范](./07-menu.md#权限码命名规范与-api-对齐ssot)。`GET /users/:id/orgs` 属用户模块读权限 `user:read`。
+
+| 功能 | 场景 | API | 权限码 |
+|------|------|-----|--------|
+| 组织树 | 查看完整组织树（树形结构） | `GET /api/v1/orgs` | `org:list` |
+| 创建组织 | 在指定父组织下创建子组织 | `POST /api/v1/orgs` | `org:create` |
+| 组织详情 | 查看单个组织信息 | `GET /api/v1/orgs/:id` | `org:read` |
+| 更新组织 | 修改组织名称、描述 | `POST /api/v1/orgs/update` | `org:update` |
+| 删除组织 | 删除组织（需检查是否有子组织和成员） | `POST /api/v1/orgs/delete` | `org:delete` |
+| 移动组织 | 将组织移动到新的父组织下 | `POST /api/v1/orgs/move` | `org:move` |
+| 用户-组织关联 | 查看用户所属组织 | `GET /api/v1/users/:id/orgs` | `user:read` |
+| 组织成员列表 | 查看某组织下成员 | `GET /api/v1/orgs/:id/members` | `org:read` |
+| 添加组织成员 | 将用户加入组织 | `POST /api/v1/orgs/members` | `org:member` |
+| 移除组织成员 | 将用户从组织移出 | `POST /api/v1/orgs/members/delete` | `org:member` |
 
 > Phase 1 `user_orgs` 仅 `(user_id, org_id, is_primary)`，**无** `role_id`。  
 > **双 HTTP 入口、单写逻辑**：组织侧 `POST /orgs/members*` 与用户侧 `POST /users/orgs`、创建用户 `org_ids` 均委托 **同一 `OrgService`**，见下文 §成员关系写路径。
@@ -254,6 +257,25 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | SetUserOrgs - primary 不在 org_ids 中 | primary_org_id 无效 | 返回 ErrInvalidParams |
 | 移除成员 - 未加入 | 无对应 user_orgs 行 | 404 + 50007 |
 
+### 路由注册（SSOT）
+
+> 完整清单：[architecture §17.4](../design/architecture.md#174-组织模块)。**用户侧** `POST /users/orgs` 在用户路由组注册，见 [04-user §涉及文件](./04-user.md#涉及文件)。
+
+| 路由 | Handler | 说明 |
+|------|---------|------|
+| `GET /api/v1/orgs/:id/members` | `OrgHandler.GetMembers` | 组织成员列表 |
+| `POST /api/v1/orgs/members` | `OrgHandler.AddMember` | 添加一名成员 |
+| `POST /api/v1/orgs/members/delete` | `OrgHandler.RemoveMember` | 移除一名成员 |
+
+```go
+// internal/router/router.go — orgs 组内（与 architecture §17.4 一致）
+orgs.GET("/:id/members", deps.OrgHandler.GetMembers)
+orgs.POST("/members", deps.OrgHandler.AddMember)
+orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
+```
+
+> **骨架对齐**：Step 9 实现前，`router.go` 可能缺少上表三路由；验收 #18–19 依赖它们，与 `POST /users/orgs`（验收 #20，用户组）一并补齐。
+
 ---
 
 ## 涉及文件
@@ -261,8 +283,9 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 > 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。成员 API 见上文 §预期功能。
 
 ```
+internal/router/router.go               # org 成员三路由 + 见 04-user 的 POST /users/orgs
 internal/repository/org/                # ltree + user_orgs 成员
 internal/service/org/
 internal/handler/org/
-internal/model/org.go                 # 或 model/organization.go
+internal/model/organization.go        # UserOrg：Phase 1 无 role_id 字段
 ```

@@ -1,21 +1,24 @@
 # 02 - 认证模块（auth）
 
-> Step 3，依赖 Step 2（user repo）。Phase 1 的核心模块。
+> **Step 3**，依赖 Step 2（user repo）。  
+> `login` / `refresh` 为**公开路由**（M2）；`logout` / `password/update` 的 **AuthService 在本 Step**，Handler 挂在 JWT 组（**Step 4** 后可测）。
 
 ---
 
 ## 预期功能
 
-| 功能 | 场景 | API |
-|------|------|-----|
-| 登录 | 用户输入账号密码，系统验证后签发双 Token | `POST /api/v1/auth/login` |
-| Token 刷新 | AT 过期，前端用 RT 换新 AT + 新 RT（轮换） | `POST /api/v1/auth/refresh` |
-| 登出 | 用户主动登出，AT 加入黑名单，RT 删除 | `POST /api/v1/auth/logout` |
-| 修改密码 | 用户修改自己的密码，旧密码验证后更新 | `POST /api/v1/auth/password/update` |
-| 管理员重置密码 | superadmin 重置任意用户密码，用户首次登录强制改密 | `POST /api/v1/users/password/reset` |
-| 首次登录改密 | 被重置密码的用户登录后强制修改密码 | 登录时检测 `must_change_password` 标记 |
-| 登录限流 | 同一工号短时间失败次数超限则 429 | AuthService 内 Redis **Lua**（LoginLocker） |
-| 会话吊销 | 禁用/删除用户后已签发 AT 立即不可用 | Redis `user:disabled:{userId}` |
+> 认证接口不走菜单权限码。管理员重置密码见 [04-user](./04-user.md)（`user:reset_password`）。
+
+| 功能 | 场景 | API | 权限码 |
+|------|------|-----|--------|
+| 登录 | 用户输入账号密码，系统验证后签发双 Token | `POST /api/v1/auth/login` | `—`（公开） |
+| Token 刷新 | AT 过期，前端用 RT 换新 AT + 新 RT（轮换） | `POST /api/v1/auth/refresh` | `—`（持 RT） |
+| 登出 | 用户主动登出，AT 加入黑名单，RT 删除 | `POST /api/v1/auth/logout` | `—` |
+| 修改密码 | 用户修改自己的密码，旧密码验证后更新 | `POST /api/v1/auth/password/update` | `—` |
+| 管理员重置密码 | superadmin 重置任意用户密码，用户首次登录强制改密 | `POST /api/v1/users/password/reset` | `user:reset_password` |
+| 首次登录改密 | 被重置密码的用户登录后强制修改密码 | 登录时检测 `must_change_password` 标记 | `—` |
+| 登录限流 | 同一工号短时间失败次数超限则 429 | AuthService 内 Redis **Lua**（LoginLocker） | — |
+| 会话吊销 | 禁用/删除用户后已签发 AT 立即不可用 | Redis `user:disabled:{userId}` | — |
 
 ### Phase 1 不做
 
@@ -86,7 +89,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 
 > **与禁用/删除用户的关系**：吊销时 **DEL 全部 `refresh:{userId}:*`** 是主路径，Refresh 第一步即 401；`user:disabled` / DB 状态检查是兜底，防止删 RT 部分失败时仍换出新 AT。
 
-> **RT Reuse Detection（业界对照）**：Auth0 / OWASP ASVS 推荐的完整方案在 RT 被重用时不仅拒绝该 token，还应**吊销整个 token family**（同一次登录产生的所有 RT 链）。Phase 1 用 `GetDel` 原子读删，旧 RT 再用会因 key 不存在而返回 401 + 20004，但**不追踪 family**（同一设备的 RT key 只有一个槽位，旧 RT 自然不可用，但不跨设备链）。这是**可接受的 Phase 1 安全级别**：单设备 RT 不可重用 + `user:disabled` 兜底；Phase 2+ 若需更强 reuse detection，可在 RT value 中嵌入 `family_id`，GetDel 命中后检查已用列表，发现重用则 DEL `refresh:{userId}:*` 全家桶。详见 [architecture §12.2](../design/architecture.md#rt-并发刷新与-reuse-detection)。
+> **RT Reuse Detection（业界对照）**：Auth0 / OWASP ASVS 推荐的完整方案在 RT 被重用时不仅拒绝该 token，还应**吊销整个 token family**（同一次登录产生的所有 RT 链）。Phase 1 用 `GetDel` 原子读删，旧 RT 再用会因 key 不存在而返回 401 + 20004，但**不追踪 family**（同一设备的 RT key 只有一个槽位，旧 RT 自然不可用，但不跨设备链）。这是**可接受的 Phase 1 安全级别**：单设备 RT 不可重用 + `user:disabled` 兜底；Phase 2+ 若需更强 reuse detection，可在 RT value 中嵌入 `family_id`，GetDel 命中后检查已用列表，发现重用则 DEL `refresh:{userId}:*` 全家桶。详见 [architecture §12.1 RT 并发刷新](../design/architecture.md#121-并发问题与应对)。
 
 ### RT 存储位置：Redis vs 数据库
 
@@ -310,7 +313,7 @@ Phase 1 不在 JWT 中存角色/权限信息（保持无状态，权限走 Casbi
 
 ```
 1. superadmin 调用 POST /api/v1/users/password/reset
-2. 后端校验：操作者 EffectivePriority ≤ 目标用户（防止 admin 重置 superadmin）
+2. 后端校验：操作者 EffectivePriority **<** 目标用户（防止 admin 重置 superadmin **或同级 admin**）
 3. 生成临时密码（cryptographically secure random）
 4. bcrypt 加密后写入 users 表，同时设置 must_change_password = true
 5. 返回临时密码给 superadmin（仅此一次，不入库明文）

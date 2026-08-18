@@ -22,7 +22,7 @@
 | 用户 | [user](./04-user.md) | 用户 CRUD、启用禁用、密码修改、超管保护 |
 | 角色 | [role](./05-role.md) | 角色 CRUD、菜单分配、Casbin 策略同步 |
 | 组织 | [organization](./06-organization.md) | 组织树 CRUD、ltree 路径、用户-组织关联 |
-| 菜单 | [menu](./07-menu.md) | 菜单 CRUD、菜单树、前端权限数据 |
+| 菜单 | [menu](./07-menu.md) | 菜单 CRUD、菜单树、前端权限数据、**权限码 SSOT**（各模块 API 表引用） |
 | 审计日志 | [audit](./08-audit.md) | 操作日志中间件、同步写入、登录审计 |
 | 中间件 | [middleware](./09-middleware.md) | JWT（fail-close）、Casbin、CORS、Recovery、RequestID、安全头 |
 | 并发与事务 | [concurrency](./10-concurrency.md) | DB 事务、SyncedEnforcer、Redis 原子操作、乐观锁 |
@@ -37,7 +37,7 @@
 | 资源级鉴权完整实现 | Phase 1 只搭 ResourceRegistry 空接口，不实现 ltree 查询 | Phase 2 |
 | 多设备管理 UI / 踢出 | 允许多设备登录，不提供设备列表 | Phase 2 |
 | 密码复杂度策略 | 基础 bcrypt 即可 | Phase 2 |
-| AK/SK | 无服务间调用方，不建表、不写中间件 | 有 M2M 需求时 |
+| AK/SK | 无服务间调用方，不建表、不写中间件 | Phase 3b / 按需 |
 | 文件存储 / 头像上传 | 无附件；`avatar` 仅 DB 存 URL 字符串 | Phase 2b storage |
 | 事件驱动 / Asynq / Outbox | 无异步业务 | Phase 3 |
 | 审计日志异步（channel / Redis List） | Phase 1 同步写入，保证不丢 | Phase 3a（Redis List L2；见 architecture §12.4） |
@@ -51,14 +51,16 @@
 
 ### 1.3 验收标准
 
+**Step 11 全量验收**以本节为准。分阶段里程碑见 [§2.3](#23-里程碑验收推荐按此推进)。部分用例需到指定里程碑才能测，勿在过早 Step 误判失败。
+
 Phase 1 完成后，以下流程能跑通：
 
 ```
-主路径
+主路径（Step 11 全量）
 1. make docker-up / migrate-up / make dev
 2. POST /auth/login              # employee_no + password，拿到双 Token
-3. GET  /user/menus              # 菜单树
-4. GET  /user/permissions        # 权限码
+3. GET  /user/menus              # 菜单树（M4 起可测，见 §2.3）
+4. GET  /user/permissions        # 权限码（M4 起可测）
 5. GET  /users                   # 需路由级权限
 6. POST /auth/refresh            # 轮换 Token
 7. POST /auth/logout             # 登出
@@ -72,16 +74,23 @@ Phase 1 完成后，以下流程能跑通：
 12. 删除/禁用最后一个 superadmin   # 拒绝
 13. admin 重置 superadmin 密码     # 403
 14. 首次登录改密期间访问其它 API   # 403 + 20007
+14b.mcp 期间 GET /user/menus       # 403 + 20007（JWT 层，非 Casbin）
 15. 无角色用户访问鉴权路由         # 403 + 70003
+15b.无角色用户 GET /user/menus     # 403 + 70003（自服务白名单不豁免零角色）
 16. 并发两次 refresh               # 只有一次成功
 17. Redis 不可用时访问鉴权路由     # 503 + 10008（fail-close）
-18. 添加组织成员                   # POST /orgs/members → 200
-19. 移除未加入组织的成员           # POST /orgs/members/delete → 404 + 50007
-20. 用户侧分配组织                 # POST /users/orgs 全量覆盖 → 200
+18. 添加组织成员                   # POST /orgs/members → 200（M5）
+19. 移除未加入组织的成员           # POST /orgs/members/delete → 404 + 50007（M5）
+20. 用户侧分配组织                 # POST /users/orgs 全量覆盖 → 200（M5）
 21. admin 给用户分配 superadmin 角色 # 403 + 30009（priority 防提权）
 22. Bearer + X-AK 混用（预留）     # 400 + 20008，Abort
 23. 按 username 模糊查用户         # GET /users?username=zhang → total 可 >1
 24. 按 employee_no 精确查用户       # GET /users?employee_no=E… → total 为 0 或 1
+
+自服务与 RBAC 区分（M3 起部分可测，M5 完整）
+25. viewer（零 menu）GET /user/menus     # 200 + menus=[]（自服务白名单）
+26. viewer GET /users                    # 403 + 70001（业务 API，无 p 策略）
+27. admin 给 viewer 勾用户管理 menu 后   # GET /users → 200；未勾 POST → 仍 70001
 ```
 
 ### 1.4 已知限制（验收时不要误判为已实现）
@@ -101,43 +110,87 @@ Phase 1 完成后，以下流程能跑通：
 
 ## 2. 实施顺序
 
-按依赖关系排列，每个 Step 是一个可独立验证的交付物：
+### 2.1 主线（Step 1→5，必须串行）
+
+AuthN / AuthZ 基座必须按序完成；**Step 4 与 Step 5 分工**见 [09-middleware](./09-middleware.md#step-4-vs-step-5-分工) 与 [03-authz](./03-authz.md)。
 
 ```
-Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
+Step 1: infra（DB 迁移 + 种子 + 配置 + Wire + 路由骨架含 org 4 条）
    │
-   ├── Step 2: user repo（用户数据访问）
+   ├── Step 2: user repo（用户数据访问 + RoleFetcher 所需 user_roles 查询）
    │      │
-   │      └── Step 3: auth（登录 + 双 Token + 登出）
+   │      └── Step 3: auth（login / refresh / AuthService；logout 逻辑，Handler 在 Step 4 挂载）
    │             │
-   │             └── Step 4: middleware（JWT 中间件 + 黑名单）
+   │             └── Step 4: middleware · JWT（黑名单 / mcp / 20008 / fail-close）
    │                    │
-   │                    └── Step 5: authz（Casbin 中间件 + ResourceRegistry 空接口）
-   │                           │
-   │                           ├── Step 6: user service/handler（用户 CRUD）
-   │                           ├── Step 7: role service/handler（角色 + 菜单分配）
-   │                           └── Step 8: menu service/handler（菜单树 + 权限码）
-   │                                  │
-   │                                  └── Step 9: organization（组织树 CRUD）
-   │                                         │
-   │                                         └── Step 10: audit（操作日志中间件）
-   │                                                │
-   │                                                └── Step 11: 集成验收
+   │                    └── Step 5: authz（PG Casbin + isSelfServiceRoute + RoleFetcher + Registry 空壳）
 ```
 
-| Step | 模块 | 依赖 | 文档 |
-|------|------|------|------|
-| 1 | infra | 无 | [01-infra.md](./01-infra.md) |
-| 2 | user repo | Step 1 | [04-user.md](./04-user.md) |
-| 3 | auth | Step 2 | [02-auth.md](./02-auth.md) |
-| 4 | middleware | Step 3 | [09-middleware.md](./09-middleware.md) |
-| 5 | authz | Step 4 | [03-authz.md](./03-authz.md) |
-| 6 | user | Step 5 | [04-user.md](./04-user.md) |
-| 7 | role | Step 5 | [05-role.md](./05-role.md) |
-| 8 | menu | Step 7 | [07-menu.md](./07-menu.md) |
-| 9 | organization | Step 5 | [06-organization.md](./06-organization.md) |
-| 10 | audit | Step 4 | [08-audit.md](./08-audit.md) |
-| 11 | 集成验收 | All | 本文档 §1.3 |
+| Step | 模块 | 依赖 | 文档 | 交付要点 |
+|------|------|------|------|----------|
+| 1 | infra | 无 | [01-infra.md](./01-infra.md) | migrations、种子 25 菜单、LoginLocker Lua、**router 注册 org 4 条** |
+| 2 | user repo | 1 | [04-user.md](./04-user.md) | UserRepo；`FetchRoleCodes` 可在此或 Step 5 |
+| 3 | auth | 2 | [02-auth.md](./02-auth.md) | 登录/刷新/登出 **Service**；公开路由可测 |
+| 4 | middleware · JWT | 3 | [09-middleware.md](./09-middleware.md) | **仅 JWT 链**；Casbin 可先 stub 放行 |
+| 5 | authz | 4 | [03-authz.md](./03-authz.md) | PG adapter、Casbin 中间件、自服务白名单、Registry |
+
+**横切**：[10-concurrency.md](./10-concurrency.md) 贯穿 Step 5+（AssignMenus 事务、`ReloadPolicy` 在 commit 后）。
+
+### 2.2 Step 5 之后（可并行）
+
+Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验收推荐按此推进) 推荐组合。依赖关系：
+
+```
+                    Step 5（authz 就绪）
+                           │
+         ┌─────────────────┼─────────────────┬──────────────┐
+         ▼                 ▼                 ▼              ▼
+    Step 7 role       Step 8 menu       Step 9 org     Step 10 audit
+    AssignMenus       CRUD +           OrgService +    （仅需 Step 4）
+                      GetMenus/         user_orgs
+                      GetPermissions
+         │                 │                 │
+         └────────┬────────┘                 │
+                  ▼                          │
+            Step 6 user                      │
+            （见 04-user 分期）◄─────────────┘
+                  │
+                  └── Step 11 集成验收（§1.3 全量）
+```
+
+| Step | 模块 | 硬依赖 | 文档 | 说明 |
+|------|------|--------|------|------|
+| 6 | user service/handler | 5；**组织绑定另需 9** | [04-user.md](./04-user.md) | 6a：CRUD/profile/roles；6b：`org_ids`、`POST /users/orgs` 在 Step 9 后 |
+| 7 | role | 5 | [05-role.md](./05-role.md) | 可与 8、9 **并行**；AssignMenus 依赖种子 menu_apis（Step 1） |
+| 8 | menu | 5；**读侧可与 7 并行** | [07-menu.md](./07-menu.md) | `GET /user/menus` 在 **Step 8** 交付；不阻塞 Step 7 |
+| 9 | organization | 5 | [06-organization.md](./06-organization.md) | 可与 7、8 **并行**；**应先于** Step 6b |
+| 10 | audit | 4 | [08-audit.md](./08-audit.md) | 可与 6–9 **并行**；Step 11 前挂载即可 |
+| 11 | 集成验收 | 6a+6b+7+8+9+10 | 本文 §1.3 | 全量对抗路径 |
+
+> **旧版线性顺序**（6→7→8→9）易误导：验收 #3/#4 在 Step 8 末才可测；#18–#20 需 Step 9。以本节与 §2.3 为准。
+
+### 2.3 里程碑验收（推荐按此推进）
+
+> **关键原则**：每个里程碑只列 **该里程碑新增可测** 的用例。用例编号见 [§1.3](#13-验收标准)。部分用例需手动设置 Redis key / DB flag 才能在早期里程碑测（标注 `*`）。
+
+| 里程碑 | 完成 Step | 新增可验证 | 说明 |
+|--------|-----------|--------|------|
+| **M1** 基座 | 1 | #1 | `migrate-up`、种子 25 菜单、ready 探针、router 含 org 4 条 |
+| **M2** 能登录 | 2–4 | #2、#6–#10、#14\*、#14b\*、#16、#17、#22 | JWT 链可用；#14/#14b 需手动设 `must_change_password=true`（完整 admin 重置流程在 M5）；#14b 在 JWT 层拦截，不依赖 `/user/menus` handler 实现；#7/#8 需临时 stub CasbinAuth 全放行（见 [09-middleware §Step 4 vs Step 5 分工](./09-middleware.md)），仅用于 JWT 联调，M3 起换真实 Enforce |
+| **M3** 能鉴权 | 5 | #15、#15b、#26 | Casbin 链可用；deny 路径（70001/70003）在中间件层返回，**不依赖** handler 实现；admin bypass 可验证「未 403」（handler 仍 stub 可能 500） |
+| **M4** 能进前端 | 7+8 | #3、#4、#25 | `GetMenus`/`GetPermissions` 返回数据；`AssignMenus` + 种子 menu_apis 联调；#25 viewer 零 menu → `menus=[]` |
+| **M5** 业务闭环 | 9+6a+6b | #5、#11、#11b、#12、#13、#14、#18–#21、#23–#24、#27 | 用户 CRUD + 组织 + priority 防提权 + mcp 完整流程；`OrgService` 注入 `UserService` |
+| **M6** 可审计 | 10 | 审计中间件 | 操作日志写入；登录审计（Step 3 已有） |
+| **M7** 全量 | 11 | §1.3 全量回归 | 含跨模块边界、级联、并发等 |
+
+**推荐实施批次**（减少返工）：
+
+1. **批次 A**：Step 1 → 2 → 3 → 4 → 5（→ **M3**）  
+2. **批次 B**（并行）：Step 7 + Step 8 + Step 9（→ **M4** + 组织写路径就绪）  
+3. **批次 C**：Step 6a（用户 CRUD，不含 org）→ Step 6b（接 OrgService）→ Step 10（→ **M5–M6**）  
+4. **批次 D**：Step 11 全量回归（→ **M7**）
+
+> **批次 B 说明**：Step 7/8/9 互相无依赖，可并行开发；Step 9 的 `OrgService` 是 Step 6b 的前置。若人手有限，优先 **9 → 6b**（组织闭环），再 **7+8**（前端菜单）。
 
 ---
 
@@ -173,7 +226,17 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 
 ## 4. 待决策点
 
-> 以下决策已在讨论中确认：
+### 4.1 已确认（2026-08-17）
+
+| # | 决策 |
+|---|------|
+| 1 | **自服务路由**：Casbin 中间件 **白名单**（方案 A），不进 `menu_apis`；见 [authz §2.2.1](../modules/authz.md#221-自服务路由业界做法--本项目决策) |
+| 2 | **Create 成功 HTTP**：统一 **200** + `code: 0`（与 [response.md](../api/response.md) 一致） |
+| 3 | **种子 role_menus**：`operator`/`viewer` **空**；`superadmin`/`admin` 绑定全部 IAM 菜单（必含用户/角色/组织；含菜单管理） |
+
+> 其余骨架/文档不一致项见 [00-pre-coding-decisions §决策 3](./00-pre-coding-decisions.md#决策-3附带与上两项同批对齐的骨架项)。
+
+### 4.2 历史已确认
 
 | 事项 | 决策 | 状态 |
 |------|------|------|
@@ -196,7 +259,7 @@ Step 1: infra（DB 迁移 + 种子数据 + 配置 + Wire）
 | 领域目录 | 新代码 `internal/{layer}/{domain}/`；跨域经 Service 接口 | ✅ 已确认（[architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)） |
 | AK/SK | Phase 1 不做 | ✅ 已确认 |
 | 数据范围 | Phase 1 不做组织范围过滤 | ✅ 已确认 |
-| 错误码 `30006`/`70003` | 验收必需；实现 user / Casbin 时写入 `errcode.go`（见 [errcode.md](../api/errcode.md)） | 📋 实现项 |
+| 错误码 `20008`/`30006`/`70003` | Phase 1 验收必需；Step 4 写入 `errcode.go`（见 [errcode.md](../api/errcode.md)） | 📋 实现项 |
 | CORS | Phase 1 用 `gin-contrib/cors` **DefaultConfig + AllowAllOrigins**（全 Origin 放开，不做白名单）；生产上线前再改域名白名单 | ✅ 已确认 |
 | 存量 qingtao/aksk | **仅自研 Canonical**（`X-AK-*`）；**不**双栈、不长期并存；存量调用方迁移到新 SDK | ✅ 已确认（[02-auth §存量迁移](./02-auth.md#已决策存量-qingtaoaksk-迁移策略)） |
 | 部署与代码解耦 | 一套代码多种部署；拓扑只改配置/编排，不改业务逻辑；多副本横切 Phase 3 按配置启用 | ✅ 已确认（[design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)） |

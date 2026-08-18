@@ -1,21 +1,23 @@
 # 05 - 角色模块（role）
 
-> Step 7，依赖 Step 5（authz）。
+> **Step 7**，依赖 Step 5（authz）。与 Step 8/9 **可并行**（AssignMenus 使用 Step 1 种子 `menu_apis`）。
 
 ---
 
 ## 预期功能
 
-| 功能 | 场景 | API |
-|------|------|-----|
-| 角色列表 | 管理员查看所有角色 | `GET /api/v1/roles` |
-| 创建角色 | 管理员创建新角色 | `POST /api/v1/roles` |
-| 角色详情 | 查看角色信息 + 关联菜单 | `GET /api/v1/roles/:id` |
-| 更新角色 | 修改角色名称、描述 | `POST /api/v1/roles/update` |
-| 删除角色 | 删除角色（需检查是否有关联用户） | `POST /api/v1/roles/delete` |
-| 分配菜单 | 给角色分配可访问的菜单 | `POST /api/v1/roles/menus` |
-| 查看角色菜单 | 获取角色关联的菜单列表 | `GET /api/v1/roles/:id/menus` |
-| 查看角色权限 | 获取角色的 Casbin 策略 | `GET /api/v1/roles/:id/permissions` |
+> 权限码 SSOT：[07-menu §权限码命名规范](./07-menu.md#权限码命名规范与-api-对齐ssot)。
+
+| 功能 | 场景 | API | 权限码 |
+|------|------|-----|--------|
+| 角色列表 | 管理员查看所有角色 | `GET /api/v1/roles` | `role:list` |
+| 创建角色 | 管理员创建新角色 | `POST /api/v1/roles` | `role:create` |
+| 角色详情 | 查看角色信息 + 关联菜单 | `GET /api/v1/roles/:id` | `role:read` |
+| 更新角色 | 修改角色名称、描述 | `POST /api/v1/roles/update` | `role:update` |
+| 删除角色 | 删除角色（需检查是否有关联用户） | `POST /api/v1/roles/delete` | `role:delete` |
+| 分配菜单 | 给角色分配可访问的菜单 | `POST /api/v1/roles/menus` | `role:assign_menu` |
+| 查看角色菜单 | 获取角色关联的菜单列表 | `GET /api/v1/roles/:id/menus` | `role:assign_menu` |
+| 查看角色权限 | 获取角色的 Casbin 策略 | `GET /api/v1/roles/:id/permissions` | `role:read` |
 
 ---
 
@@ -63,6 +65,8 @@ CREATE TABLE roles (
 CREATE UNIQUE INDEX idx_roles_code ON roles(code) WHERE deleted_at IS NULL;
 CREATE INDEX idx_roles_tenant ON roles(tenant_id) WHERE deleted_at IS NULL;
 ```
+
+> **Go model 对齐**：`internal/model/role.go` 须含 `Priority`、`DeletedAt`，与上表一致；缺字段则 Step 1 与 migration 一并补齐。
 
 ### 关联表
 
@@ -209,7 +213,7 @@ WHERE deleted_at IS NULL
 
 > 可选 Phase 2：角色表增加 `is_hidden BOOLEAN`，超管档通用化；Phase 1 **硬编码过滤 `superadmin`** 即可。
 
-> 小结：**API 能不能进**看 Casbin（两者一样）；**能不能动更高权限对象**看 `roles.priority`（越小越强）。多角色用户取 **EffectivePriority = min(priority)**，见 [04-user §多角色与有效 priority](./04-user.md#多角色与有效-priority)。
+> 小结：**API 能不能进**看 Casbin（两者一样）；**能不能动更高或同级权限对象**看 `roles.priority`（越小越强，须 **严格更强** `actorP < targetP`）。多角色用户取 **EffectivePriority = min(priority)**，见 [04-user §多角色与有效 priority](./04-user.md#多角色与有效-priority)。
 
 #### 角色 priority 与权限继承模型
 
@@ -225,7 +229,7 @@ WHERE deleted_at IS NULL
 | 组织 | 树 + 成员；**无** `org_roles`、无按组织过滤 |
 | 角色继承 | **无**（无 `roles.parent_id`） |
 
-**Phase 2b**（见 [03-authz §BFS](./03-authz.md)、[auth-design §3.3](../proposal/auth-design.md#33-组织角色继承phase-2b)）
+**Phase 2b**（见 [03-authz §BFS 三源角色](./03-authz.md#bfs-三源角色phase-2b)、[auth-design §3.3](../proposal/auth-design.md#33-组织角色继承phase-2b)）
 
 | 能力 | 行为 |
 |------|------|

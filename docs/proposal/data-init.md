@@ -50,12 +50,10 @@
 
 ```
 migrations/
-├── 000001_init.up.sql           # 初始建表（所有表 + 索引 + 外键）
+├── 000001_init.up.sql           # 初始建表（所有表 + 索引 + 外键，含 casbin_rule）
 ├── 000001_init.down.sql         # 回滚（DROP TABLE）
-├── 000002_seed.up.sql           # 种子数据（角色 + 用户 + 组织 + 菜单）
+├── 000002_seed.up.sql           # 种子数据（角色 + 用户 + 组织 + 菜单 + Casbin 初始策略）
 ├── 000002_seed.down.sql         # 回滚（DELETE 种子数据）
-├── 000003_casbin.up.sql         # Casbin 策略表 + 初始策略
-├── 000003_casbin.down.sql       # 回滚
 └── ...
 ```
 
@@ -73,7 +71,20 @@ migrate-force:
     migrate -path migrations -database "..." force $(VERSION)
 ```
 
-### 3.3 与旧系统的差异
+### 3.3 000001 建表要点（SSOT 索引）
+
+`000001_init.up.sql` 须与 phase1 模块 DDL 一致，**关键列**：
+
+| 表 | Phase 1 必需列 / 约束 | SSOT |
+|----|----------------------|------|
+| `roles` | `priority INT NOT NULL`、`deleted_at`、部分唯一 `code WHERE deleted_at IS NULL` | [05-role §roles 建表](../phase1/05-role.md#roles-建表-sql) |
+| `user_orgs` | 主键 `(user_id, org_id)`；**无** `role_id` | [04-user §用户-组织](../phase1/04-user.md#用户-组织关联) |
+| `menus` | `menu_type`（1 目录 / 2 页面 / 3 按钮）、`permission` | [07-menu](../phase1/07-menu.md) |
+| `casbin_rule` | Casbin PG adapter 策略表 | [03-authz §Casbin Adapter](../phase1/03-authz.md#casbin-adapter) |
+
+Go `model.Role` 须含 `Priority`、`DeletedAt`；`model.UserOrg` Phase 1 **不含** `RoleID`（见 [modules/user.md §关联表](../modules/user.md#关联表)）。
+
+### 3.4 与旧系统的差异
 
 | 维度 | 旧系统（MongoDB） | 新框架（PostgreSQL） |
 |------|------------------|---------------------|
@@ -143,7 +154,7 @@ SELECT setval('organizations_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM orga
 INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id)
 SELECT 'admin', 'E000001', '$2a$12$xxxxx', '系统管理员', 1, true, 1
 WHERE NOT EXISTS (
-  SELECT 1 FROM users WHERE employee_no = 'E000001' AND deleted_at IS NULL
+  SELECT 1 FROM users WHERE employee_no = 'E000001'
 );
 
 -- ============================================
@@ -172,6 +183,33 @@ INSERT INTO menus (code, name, menu_type, path, component, icon, sort_order, is_
   ('system_role', '角色管理', 2, '/system/role', 'system/role/index', 'role', 2, true),
   ('system_menu', '菜单管理', 2, '/system/menu', 'system/menu/index', 'menu', 3, true),
   ('system_org', '组织管理', 2, '/system/org', 'system/org/index', 'org', 4, true)
+ON CONFLICT (code) DO NOTHING;
+
+-- 按钮（menu_type=3；parent 指向页面菜单；完整清单见 phase1/07-menu §Phase 1 菜单清单）
+INSERT INTO menus (parent_id, code, name, menu_type, permission, sort_order, is_system)
+SELECT p.id, v.code, v.name, 3, v.permission, v.sort_order, true
+FROM (VALUES
+  ('system_user', 'system_user_create', '新建用户', 'user:create', 1),
+  ('system_user', 'system_user_update', '编辑用户', 'user:update', 2),
+  ('system_user', 'system_user_delete', '删除用户', 'user:delete', 3),
+  ('system_user', 'system_user_status', '启用/禁用', 'user:status', 4),
+  ('system_user', 'system_user_reset_pwd', '重置密码', 'user:reset_password', 5),
+  ('system_user', 'system_user_assign_role', '分配角色', 'user:assign_role', 6),
+  ('system_user', 'system_user_assign_org', '分配组织', 'user:assign_org', 7),
+  ('system_role', 'system_role_create', '新建角色', 'role:create', 1),
+  ('system_role', 'system_role_update', '编辑角色', 'role:update', 2),
+  ('system_role', 'system_role_delete', '删除角色', 'role:delete', 3),
+  ('system_role', 'system_role_assign_menu', '分配菜单', 'role:assign_menu', 4),
+  ('system_menu', 'system_menu_create', '登记菜单', 'menu:create', 1),
+  ('system_menu', 'system_menu_update', '编辑菜单', 'menu:update', 2),
+  ('system_menu', 'system_menu_delete', '删除菜单', 'menu:delete', 3),
+  ('system_org', 'system_org_create', '新建组织', 'org:create', 1),
+  ('system_org', 'system_org_update', '编辑组织', 'org:update', 2),
+  ('system_org', 'system_org_delete', '删除组织', 'org:delete', 3),
+  ('system_org', 'system_org_move', '移动组织', 'org:move', 4),
+  ('system_org', 'system_org_member', '成员管理', 'org:member', 5)
+) AS v(parent_code, code, name, permission, sort_order)
+JOIN menus p ON p.code = v.parent_code
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================
@@ -224,7 +262,9 @@ ON CONFLICT DO NOTHING;
 -- 自定义角色若需查审计，后续再补菜单 + menu_apis（见 phase1/08-audit §路由鉴权）。
 
 -- ============================================
--- superadmin + admin 角色绑定全部菜单
+-- 角色-菜单绑定
+-- superadmin + admin：全部 IAM 菜单（用户/角色/组织/菜单管理 + 按钮，共 25 条）
+-- operator + viewer： intentionally 不插入（Phase 1 无正式业务，由 admin 在角色管理里分配）
 -- ============================================
 INSERT INTO role_menus (role_id, menu_id)
 SELECT r.id, m.id FROM roles r, menus m
@@ -392,7 +432,7 @@ SELECT count(*) FROM user_roles ur
   WHERE u.username = 'admin' AND r.code = 'superadmin';  -- 预期：1
 
 -- 系统菜单（应 6 条）
-SELECT count(*) FROM menus WHERE is_system = true;  -- 预期：6
+SELECT count(*) FROM menus WHERE is_system = true;  -- 预期：6 目录/页面 + 19 按钮 = 25（见 07-menu §Phase 1 菜单清单）
 
 -- Casbin 策略（至少 2 条通配）
 SELECT count(*) FROM casbin_rule WHERE v1 = '*' AND v2 = '*';  -- 预期：2

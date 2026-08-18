@@ -147,19 +147,35 @@ ErrCannotRemoveLastSuperadmin = New(30006, "不能移除最后一个超级管理
 | Redis fail-close | 503 + 10008 | JWT/Casbin 已实现 | ✅ |
 | `user:disabled` | 403 + 30003 | JWT 已实现 | ✅ |
 | Casbin adapter | PG | 内存 TODO（Step 5 切换） | 📋 待实现 |
+| `migrations/` | 000001–000002 | 目录可能为空 | 📋 Step 1 |
+| 组织成员 / users/orgs 路由 | architecture §17 | router 可能缺 4 条 | 📋 Step 1/9 |
+| `roles.priority` / `deleted_at` | 05-role DDL | model.Role 可能缺字段 | 📋 Step 1 |
+| `user_orgs` 无 role_id | 04-user DDL | model.UserOrg 可能有 role_id | 📋 Step 1 |
+| `ErrMultipleAuthMethods` 20008 | Phase 1 验收 #22 | errcode.go 可能未定义 | 📋 Step 4 |
+| `internal/pkg/resource/` | Step 5 空 Registry | 目录可能不存在 | 📋 Step 5 |
 | PG 连接池 | pgxpool + Ping + Close | 部分（lifetime 写死） | 📋 Step 1 补可配置项 |
 | Redis 连接池 | PoolSize/超时/Ping/Close | 仅 Addr/Password | 📋 Step 1 补全 |
 | `/health/ready` | 不暴露 DB/Redis 原文 | 只返回 component | ✅ |
 
 ---
 
-## 推荐阅读顺序（拍板后开写）
+## 推荐阅读顺序（开写前）
 
-1. 本文档 — 确认 ☐ 选项  
-2. [README.md](./README.md) §1.3 — 20 条验收  
+1. [00-pre-coding-decisions.md](./00-pre-coding-decisions.md) — 决策 1–4 均已关闭  
+2. [README.md](./README.md) §1.3 + **§2.3 里程碑** — 按 M1→M7 推进，勿死跟旧线性 6→7→8→9  
 3. [../api/errcode.md](../api/errcode.md) — code 清单  
-4. [../proposal/data-init.md](../proposal/data-init.md) — menu_apis（决策 1 选 A 则无需改）  
-5. 按 Step 1→11 打开 `01`~`10` 对应文档  
+4. [../proposal/data-init.md](../proposal/data-init.md) — menu_apis、种子  
+5. 按批次打开 `01`~`10` 对应文档；**10-concurrency** 在 Step 5+ 写 AssignMenus 时必读  
+
+---
+
+## 决策 4：自服务路由 / HTTP 200 / 种子 role_menus（2026-08-17）
+
+| 项 | 决策 | SSOT |
+|----|------|------|
+| 自服务路由 Casbin | **中间件白名单**（业界主流 A 类） | [authz §2.2.1](../modules/authz.md#221-自服务路由业界做法--本项目决策)、[09-middleware §Casbin](./09-middleware.md#casbin-中间件-g-表消除) |
+| Create 成功 HTTP | **200** | [api/response.md](../api/response.md)、[04-user §Handler 测试](./04-user.md#handler-层httptest) |
+| 种子 role_menus | `operator`/`viewer` **空**；`superadmin`/`admin` 全 IAM 菜单（含用户/角色/组织） | [data-init §4.2](../proposal/data-init.md#42-种子数据内容)、[01-infra §种子](./01-infra.md#种子数据内容) |
 
 ---
 
@@ -169,3 +185,6 @@ ErrCannotRemoveLastSuperadmin = New(30006, "不能移除最后一个超级管理
 |------|------|
 | 2026-08-14 | 初版：路由 id 位置 + 70003/70001 对照 |
 | 2026-08-14 | 采纳 A + 70003/70001；skeleton 已对齐（router、errcode、middleware、audit BIGINT） |
+| 2026-08-17 | 补充无需拍板项：migrations DDL、组织路由、model 对齐、20008、ResourceRegistry 目录 |
+| 2026-08-17 | 决策 4：自服务白名单 + Create HTTP 200 + operator/viewer 空菜单 |
+| 2026-08-17 | README §2 里程碑 M1–M7、Step 5+ 并行、验收 #14b–#15b/#25–#27 |

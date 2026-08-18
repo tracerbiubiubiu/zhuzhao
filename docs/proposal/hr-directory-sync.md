@@ -134,7 +134,7 @@ HR 标记部门 D 撤销：
 ### 3.3 幂等与对账键
 
 - 组织：`UNIQUE(source, external_id) WHERE deleted_at IS NULL`（hr 域）
-- 用户：同上；`employee_no` 另设部分唯一索引（Phase 1 表结构）
+- 用户：`external_id` 同上；`employee_no` / `(user_domain, domain_account)` 为**全局唯一**（含软删，不可复用，见 [04-user §软删除](../phase1/04-user.md#软删除)）
 - 不用「全表 DELETE 再 INSERT」；用 upsert + 软删缺失项
 - 本地 `code` 若与 HR 编码一致，**以 `external_id` 为对账主键**，`code` 可随 HR 变更而更新并重算 path（需子树级联）
 

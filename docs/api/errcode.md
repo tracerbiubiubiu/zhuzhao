@@ -68,7 +68,7 @@
 | 10007 | `ErrTooManyReqs` | 请求过于频繁 | 429 |
 | 10008 | `ErrServiceUnavailable` | 服务暂时不可用 | 503 |
 
-> `10006`：乐观锁冲突（`version` 不匹配），见 [10-concurrency §乐观锁](../phase1/10-concurrency.md#乐观锁建议实现)。Phase 1 实现乐观锁时写入 `errcode.go`。
+> `10006`：乐观锁冲突（`version` 不匹配），见 [10-concurrency §乐观锁](../phase1/10-concurrency.md#乐观锁建议实现)。已在 `errcode.go` 定义。
 > `10008`：Phase 1 用于鉴权链路 Redis 不可用（fail-close）。JWT 中间件返回 HTTP 503 + 此 code。
 
 ### 认证 20000–20999
@@ -91,7 +91,7 @@
 | 20012 | `ErrDeviceNotFound` | 设备不存在 | 404 |
 | 20013 | `ErrPasswordTooWeak` | 密码不符合复杂度要求 | 400 |
 
-> 文档中的 `PASSWORD_CHANGE_REQUIRED` 即 `20007`。`20008`–`20011` 为 M2M（AK/SK）上线时使用；**20008** 为 Bearer 与 `X-AK-*` 混用。AK 验签失败对外统一 **20009**，不区分 AK 不存在与 SK 错误（防探测）。`20012`–`20013` 随 Phase **2b** auth-enhance 写入 `errcode.go`。
+> 文档中的 `PASSWORD_CHANGE_REQUIRED` 即 `20007`。**Phase 1 验收必需**：`20008`（Bearer 与 `X-AK-*` 混用，见验收 #22）、`20007`、`30006`、`70003` 等须写入 `errcode.go`；`20009`–`20011` 为 M2M（AK/SK）上线时使用。AK 验签失败对外统一 **20009**，不区分 AK 不存在与 SK 错误（防探测）。`20012`–`20013` 随 Phase **2b** auth-enhance 写入 `errcode.go`。
 
 ### 用户 30000–30999
 
@@ -105,8 +105,8 @@
 | 30004 | `ErrUserIsSystem` | 系统内置用户不可删除 | 403 |
 | 30005 | `ErrCannotResetHigher` | 不能重置同级或更高级用户的密码 | 403 |
 | 30006 | `ErrCannotRemoveLastSuperadmin` | 不能移除最后一个超级管理员 | 403 |
-| 30007 | `ErrEmployeeNoAlreadyExists` | 工号已存在 | 409 |
-| 30008 | `ErrDomainAccountAlreadyExists` | 同域下域账号已存在 | 409 |
+| 30007 | `ErrEmployeeNoAlreadyExists` | 工号已存在（含软删占用，不可复用） | 409 |
+| 30008 | `ErrDomainAccountAlreadyExists` | 同域下域账号已存在（含软删占用，不可复用） | 409 |
 | 30009 | `ErrCannotAssignHigherRole` | 不能分配更高权限的角色 | 403 |
 
 > `30006`、`70003`：Phase 1 **验收必需**；`30007`–`30009`、`50007` 随 user/org 模块实现写入 `errcode.go`（码号预留，勿改号）。
@@ -182,6 +182,8 @@
 
 ## 5. Phase 1 验收路径对照
 
+> 完整清单与里程碑（M1–M7）见 [phase1/README.md §1.3](../phase1/README.md#13-验收标准)。
+
 | 验收场景 | 期望 HTTP | 期望 code（主要） |
 |----------|-----------|-------------------|
 | 错误密码 / 不存在用户 | 401 | 20001（同一文案） |
@@ -194,7 +196,11 @@
 | admin 分配 superadmin 角色 | 403 | 30009 |
 | 工号/域账号重复 | 409 | 30007 / 30008 |
 | 首次改密期间访问其它 API | 403 | 20007 |
+| mcp 期间 GET /user/menus | 403 | 20007 |
 | 无角色访问鉴权路由 | 403 | 70003 |
+| 无角色 GET /user/menus | 403 | 70003 |
+| viewer 零 menu 访问 GET /users | 403 | 70001 |
+| viewer 零 menu GET /user/menus | 200 | 0（menus 可为 []） |
 | Redis 不可用（鉴权路由） | 503 | 10008 |
 | 登出后访问 | 401 | 20003 |
 | 添加组织成员 | 200 | 0 |

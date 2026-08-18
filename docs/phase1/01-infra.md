@@ -39,12 +39,18 @@ internal/repository/{user,role,org,menu,audit}/
 
 ```
 migrations/
-├── 000001_init.up.sql          # 建表：users, roles, organizations, menus, menu_apis, user_roles, user_orgs, role_menus, audit_logs
+├── 000001_init.up.sql          # 建表：users, roles（含 priority/deleted_at）, organizations, menus, menu_apis,
+│                               # user_roles, user_orgs（无 role_id）, role_menus, audit_logs, casbin_rule
 ├── 000001_init.down.sql
-├── 000002_seed.up.sql          # 种子数据：4 角色 + 1 admin 用户 + 3 组织 + 6 菜单 + 菜单-API 绑定 + 角色-菜单绑定
+├── 000002_seed.up.sql          # 种子：4 角色 + 1 admin + 3 组织 + 25 系统菜单（6 页面 + 19 按钮）
+│                               # + menu_apis + superadmin/admin 角色-菜单绑定 + Casbin 初始策略（p, role::superadmin/admin, *, *）
 ├── 000002_seed.down.sql
-└── 000003_casbin.up.sql        # Casbin 策略表（casbin_rule）+ superadmin/admin 通配策略
+└── （无 000003；Casbin 表与种子策略分别在 000001 建表、000002 插入）
 ```
+
+> **DDL SSOT**：`roles.priority` / `roles.deleted_at` 见 [05-role §roles 建表](./05-role.md#roles-建表-sql)；`user_orgs` 主键 `(user_id, org_id)`、**无** `role_id` 见 [04-user §用户-组织关联](./04-user.md#用户-组织关联)。菜单种子 25 条见 [07-menu §Phase 1 菜单清单](./07-menu.md#phase-1-菜单清单ssot) 与 [data-init §4.2](../proposal/data-init.md#42-种子数据内容)。
+
+> **仓库现状**：`migrations/` 目录 Step 1 交付物，编码前可能为空；以本文 + `data-init.md` 为准编写 SQL，勿与骨架 `internal/model` 不一致处（如 `UserOrg.role_id`、`Role.priority`）自行假设。
 
 ### 种子数据内容
 
@@ -55,8 +61,8 @@ migrations/
 | 系统角色 | `superadmin`（超管）、`admin`（管理员）、`operator`（操作员）、`viewer`（只读） | `is_system=true`，不可删除 |
 | 组织 | `root`（集团总部）、`tech`（技术中心）、`product`（产品中心） | ltree path：`root`、`root.tech`、`root.product` |
 | admin 用户 | 工号 `E000001` / 密码 `admin123`（`username=admin`） | `is_system=true`，绑定 **superadmin** 角色 + root 组织（见 [05-role §种子用户](./05-role.md#种子用户)） |
-| 系统菜单 | 首页目录 + 系统管理目录（含用户/角色/菜单/组织管理 4 个子菜单） | `is_system=true`，含 `menu_apis` 绑定 |
-| 角色-菜单 | `superadmin` + `admin` 绑定全部菜单 | 全量绑定 |
+| 系统菜单 | 6 页面/目录 + 19 按钮 = **25** 条（见 07-menu） | `is_system=true`，含 `menu_apis` 绑定 |
+| 角色-菜单 | `superadmin` + `admin` 绑定全部 **25** 条 IAM 菜单（**必含**用户/角色/组织三模块页面+按钮；含菜单管理以便给 operator/viewer 分配权限） | `operator`/`viewer` **零** `role_menus`（无正式业务前由 admin 按需分配） |
 | Casbin 策略 | `p, role::superadmin, *, *` + `p, role::admin, *, *` | 超管+管理员通配策略 |
 
 > **关键原则**：种子数据用 `ON CONFLICT DO NOTHING`，不用 `ON CONFLICT DO UPDATE`（会覆盖 created_at 等审计字段）。系统重启不会更新已有数据。
@@ -200,6 +206,7 @@ if err := client.Ping(ctx).Err(); err != nil { ... }
 | Redis 池参数 + 超时 | 📋 Step 1 补（当前仅 Addr） |
 | Wire cleanup 顺序：HTTP → Redis → PG | 📋 与优雅关闭一并验证 |
 | `/health/ready` Ping PG + Redis | 📋 已有路由，需对齐 01 语义 |
+| **`router.go` 注册 org 4 条 + `POST /users/orgs`** | 📋 M1；见 [06-organization §路由注册](./06-organization.md#路由注册ssot)、[04-user §路由注册](./04-user.md#路由注册) |
 
 ### 健康检查
 
@@ -244,7 +251,6 @@ migrations/
 ├── 000001_init.down.sql
 ├── 000002_seed.up.sql
 ├── 000002_seed.down.sql
-└── 000003_casbin.up.sql
 internal/app/app.go              # 优雅关闭（已有，需验证）
 internal/router/router.go        # 健康检查路由（需完善 ready）
 internal/pkg/redis/

@@ -1,24 +1,38 @@
 # 04 - 用户模块（user）
 
-> Step 2（repo）+ Step 6（service/handler），依赖 Step 1（infra）和 Step 5（authz）。
+> **Step 2**（repo）+ **Step 6**（service/handler）。  
+> 硬依赖 Step 1（infra）、Step 5（authz）。**组织绑定（6b）另需 Step 9**，见 [README §2.2](./README.md#22-step-5-之后可并行)。
+
+---
+
+## Step 6 分期交付
+
+| 分期 | 范围 | 依赖 | 验收 |
+|------|------|------|------|
+| **6a** | 用户 CRUD、profile、`SetRoles`、`ResetPassword`；**不含** `org_ids` / `POST /users/orgs` | Step 5 | M5 多数 user 用例（deny 路径 M3 即可测） |
+| **6b** | `Create` 含 `org_ids`、`POST /users/orgs`、`GET /users/:id/orgs` | Step 9 `OrgService` | M5 #18–#20 |
+
+> `UserService` 注入 `OrgService` 窄接口；6a 阶段 Wire 可注入 stub（`SetUserOrgs` 返回 `ErrNotImplemented`），6b 换真实实现。禁止 UserRepo 直接写 `user_orgs` 业务规则。
 
 ---
 
 ## 预期功能
 
-| 功能 | 场景 | API |
-|------|------|-----|
-| 用户列表 | 管理员查看用户列表，支持分页和筛选 | `GET /api/v1/users` |
-| 创建用户 | **本地账号**开户（见 §用户来源与创建场景）；Phase 1 无 HR 时即唯一入口 | `POST /api/v1/users` |
-| 用户详情 | 查看指定用户信息 | `GET /api/v1/users/:id` |
-| 更新用户 | 修改用户基本信息 | `POST /api/v1/users/update` |
-| 删除用户 | 软删除用户 | `POST /api/v1/users/delete` |
-| 启用/禁用 | 禁用用户后无法登录 | `POST /api/v1/users/status` |
-| 分配角色 | 给用户分配一个或多个角色 | `POST /api/v1/users/roles` |
-| 分配组织 | 给用户绑定一个或多个组织（全量覆盖） | `POST /api/v1/users/orgs` |
-| 管理员重置密码 | superadmin 重置用户密码，触发首次改密 | `POST /api/v1/users/password/reset` |
-| 当前用户信息 | 获取自己的用户信息 | `GET /api/v1/user/profile` |
-| 修改个人信息 | 用户修改自己的基本信息（不可改角色） | `POST /api/v1/user/profile/update` |
+> 权限码 SSOT：[07-menu §权限码命名规范](./07-menu.md#权限码命名规范与-api-对齐ssot)。`—` 表示仅需登录、不绑定菜单权限码。
+
+| 功能 | 场景 | API | 权限码 |
+|------|------|-----|--------|
+| 用户列表 | 管理员查看用户列表，支持分页和筛选 | `GET /api/v1/users` | `user:list` |
+| 创建用户 | **本地账号**开户（见 §用户来源与创建场景）；Phase 1 无 HR 时即唯一入口 | `POST /api/v1/users` | `user:create` |
+| 用户详情 | 查看指定用户信息 | `GET /api/v1/users/:id` | `user:read` |
+| 更新用户 | 修改用户基本信息 | `POST /api/v1/users/update` | `user:update` |
+| 删除用户 | 软删除用户 | `POST /api/v1/users/delete` | `user:delete` |
+| 启用/禁用 | 禁用用户后无法登录 | `POST /api/v1/users/status` | `user:status` |
+| 分配角色 | 给用户分配一个或多个角色 | `POST /api/v1/users/roles` | `user:assign_role` |
+| 分配组织 | 给用户绑定一个或多个组织（全量覆盖） | `POST /api/v1/users/orgs` | `user:assign_org` |
+| 管理员重置密码 | superadmin 重置用户密码，触发首次改密 | `POST /api/v1/users/password/reset` | `user:reset_password` |
+| 当前用户信息 | 获取自己的用户信息 | `GET /api/v1/user/profile` | `—` |
+| 修改个人信息 | 用户修改自己的基本信息（不可改角色） | `POST /api/v1/user/profile/update` | `—` |
 
 ---
 
@@ -77,13 +91,13 @@ CREATE TABLE users (
     updated_at           TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 软删除后 username/工号可复用（工号有值时仍受唯一索引约束）
+-- username 可重复；软删后仍可再建同名 username
+-- 工号、(user_domain, domain_account) 全局唯一（含软删记录，不可复用）
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
-    WHERE deleted_at IS NULL AND employee_no IS NOT NULL AND employee_no <> '';
+    WHERE employee_no IS NOT NULL AND employee_no <> '';
 CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
-    WHERE deleted_at IS NULL
-      AND domain_account IS NOT NULL AND domain_account <> ''
+    WHERE domain_account IS NOT NULL AND domain_account <> ''
       AND user_domain IS NOT NULL AND user_domain <> '';
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 ```
@@ -111,10 +125,10 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 
 | 字段 | 是否唯一 | 说明 |
 |------|----------|------|
-| `employee_no` | ✅ **全局唯一**（有值时） | 登录键；管理端精确查人、HR 对账 |
-| `username` | ❌ **可重复** | 资料字段；列表 `?username=` 模糊查询 |
+| `employee_no` | ✅ **全局唯一**（有值时；**含软删记录，不可复用**） | 登录键；管理端精确查人、HR 对账 |
+| `username` | ❌ **可重复** | 资料字段；列表 `?username=` 模糊查询；软删后可再建同名 |
 | `domain_account` 单独 | ❌ **不**全局唯一 | 不同 AD 域里可以有同名 `sAMAccountName`（如两个域都有 `zhangsan`） |
-| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
+| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时；**含软删记录，不可复用**） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
 
 **域账号为什么不是单列唯一？**
 
@@ -125,7 +139,7 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 **成对约束规则**：
 
 - 只填 `domain_account` 或只填 `user_domain`：**允许**（Phase 1 暂不强制成对；HR/AD 同步时建议成对写入）。
-- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一；冲突 → **409 + 30008**。
+- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一（**含软删记录**）；冲突 → **409 + 30008**。
 - 两者都空：不参与域唯一校验。
 
 > **登录 vs 列表查询**：`POST /auth/login` 用 **`employee_no` + 密码**（见 [02-auth §登录与工号解析](./02-auth.md#登录与工号解析)）。`username` 仅用于列表模糊筛选 `GET /users?username=`。
@@ -203,10 +217,10 @@ POST /users Create
   │     → 允许创建，但 **不能账密登录**（须后续补工号）
   │
   └─ employee_no 有值
-        → SELECT … WHERE employee_no = ? AND deleted_at IS NULL
+        → SELECT … WHERE employee_no = ?（**含软删记录**；不可复用工号）
         → 已存在且 source = 'hr'
               → 409 + 30007（或专用文案：「该工号已由 HR 同步，请重置密码/赋角色，勿重复开户」）
-        → 已存在且 source = 'local'
+        → 已存在且 source = 'local'（含已软删）
               → 409 + 30007（工号冲突）
         → 不存在
               → 允许写入 source = 'local'（仍可能是尚未跑 HR Job 的正式工号 — 见下）
@@ -238,6 +252,67 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 - 创建用户时：明文密码 → bcrypt(cost=12) → 存 DB
 - 更新用户时：不传密码则不修改，传了才更新
 - 查询用户时：永不返回 password 字段
+
+### API 响应字段（前端契约）
+
+> 与 [api/response.md §3.3](../api/response.md#33-主键与-bigint) 一致：**`id` 与写操作 body 中的 `user_id` 均指 `users.id`（JSON string）**；**不是** `employee_no`。  
+> 业界常见 B 端做法：**响应里同时返回 `id`（操作键）与 `employee_no`（展示/HR 键）**。
+
+**标识分工**：
+
+| 字段 | 响应 | 写 API body | 说明 |
+|------|------|-------------|------|
+| `id` | ✅ | `id` / `user_id` | 更新、删除、绑角色/组织 |
+| `employee_no` | ✅（有则返回） | 创建/管理员 update 可写 | 列表展示、HR 对账；**登录键** |
+| `password` | ❌ | 创建/改密时写入 | 永不出现在响应 |
+| `deleted_at` | ❌ | — | 软删用户不出现在列表/详情 |
+| `version` | ✅ | `POST /users/update` **须回传** | 乐观锁（见 [10-concurrency](../10-concurrency.md)） |
+
+**各接口 `data` 形状（Phase 1）**：
+
+| 接口 | 用户字段 |
+|------|----------|
+| `POST /auth/login` | 仅 **token**（`access_token` / `refresh_token` / `expires_in`）；资料走 `GET /user/profile` |
+| `GET /user/profile` | 当前用户：`id`、`employee_no`、`username`、`real_name`、`email`、`phone`、`avatar`、`must_change_password` 等；**不含** password、角色、组织 |
+| `GET /users`（分页） | `data.list[]`：每条含 `id` + 展示字段 + `status`；`employee_no` 有则返回 |
+| `GET /users/:id` | 同结构体，较列表更全（含 `version`、域字段、`is_system` 等管理字段） |
+| `POST /users` / `POST /users/update` 成功 | 返回更新后的用户对象（含 `id`、`version`；无 password） |
+
+**示例（列表项 / 详情）**：
+
+```json
+{
+  "id": "1001",
+  "employee_no": "E20240086",
+  "username": "zhangsan",
+  "real_name": "张三",
+  "email": "zhang@corp.com",
+  "phone": "",
+  "avatar": "",
+  "status": 1,
+  "must_change_password": false,
+  "is_system": false,
+  "version": 1,
+  "created_at": "2026-08-17T10:00:00Z",
+  "updated_at": "2026-08-17T10:00:00Z"
+}
+```
+
+**更新请求须带 `version`**（乐观锁）：
+
+```json
+// POST /api/v1/users/update
+{
+  "id": "1001",
+  "version": 1,
+  "real_name": "张三（新）",
+  "email": "zhang@corp.com"
+}
+```
+
+冲突 → **409 + 10006**（`ErrConcurrentModification`）。
+
+**JWT（Phase 1）**：AT 仅含 `uid`（= `id`）、`username`、`mcp`；**不含** `employee_no`——前端从 profile 或列表取工号展示。
 
 ### 头像（avatar）
 
@@ -278,12 +353,25 @@ Phase 2b 上传流程（规划，见 storage 文档）：
 
 ```sql
 -- users 表有 deleted_at 字段
--- 查询时自动过滤：WHERE deleted_at IS NULL
--- 唯一索引需包含 deleted_at：
+-- 业务查询自动过滤：WHERE deleted_at IS NULL
+-- 工号 / (user_domain, domain_account) 唯一索引不含 deleted_at：软删后仍占用，不可复用
+-- username 无唯一约束，软删后可再建同名
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 ```
 
+**与唯一性的关系**：
+
+| 字段 | 软删后 |
+|------|--------|
+| `employee_no` | **仍占用**；同工号再 Create → **409 + 30007** |
+| `(user_domain, domain_account)` | **仍占用**；同组合再 Create → **409 + 30008** |
+| `username` | **可复用**（非唯一键） |
+
+> 离职/离岗应走 **禁用**（`status=0`），保留工号与 uid；软删仅用于逻辑移除，**不会释放**工号或域账号。
+
 ### 用户-角色关联
+
+> **`user_id` = `users.id`**（非 `employee_no`）；与 [§用户-组织关联](#用户-组织关联) 同一约定。
 
 > 详见 [modules/user.md](../modules/user.md) §2。用户和角色是多对多关系，分配角色时在 DB 事务内先删后插。
 
@@ -328,15 +416,16 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
   | 30 | `viewer` |
 
   - **EffectivePriority** = `min(priority)`（多角色取最强）
-  - **能否管理目标用户**：`操作者 EffectivePriority <= 目标 EffectivePriority`
-  - **能否分配某角色**：`操作者 EffectivePriority <= 该角色 priority`（只能分配同级或更弱角色）
+  - **能否管理目标用户**（改资料、禁用、删除、重置密码、分配角色等敏感写操作）：`操作者 EffectivePriority < 目标 EffectivePriority`（**严格更强**；admin **不能**动同级 admin）
+  - **能否分配某角色**：待分配角色的 `priority >= 操作者 EffectivePriority`（只能分配同级或更弱角色；admin 不能分 superadmin）
 
   `superadmin` vs `admin` 对照见 [05-role §superadmin 与 admin](./05-role.md#superadmin-与-admin-的区别)。
 
 ### 用户-组织关联
 
 > 详见 [modules/user.md](../modules/user.md) §2 + [modules/organization.md](../modules/organization.md) §4.3。  
-> **双 HTTP 入口、单写逻辑**：用户侧与组织侧 API 均委托 `OrgService`（`AddMember` / `RemoveMember` / `SetUserOrgs`），不在 UserService 内重复写 `user_orgs`。
+> **双 HTTP 入口、单写逻辑**：用户侧与组织侧 API 均委托 `OrgService`（`AddMember` / `RemoveMember` / `SetUserOrgs`），不在 UserService 内重复写 `user_orgs`。  
+> **标识约定**：下文及 API body 中的 **`user_id` = `users.id`（BIGINT，JSON `,string`）**；**不是** `employee_no`。工号仅用于登录、`GET /users?employee_no=`、HR 对账。
 
 ```sql
 CREATE TABLE user_orgs (
@@ -359,6 +448,14 @@ Phase 1 **不含**组织内角色。`role_id` 在 Phase 2 用新迁移添加，�
 | 创建用户时顺带绑组织 | `POST /users` body 含 `org_ids` | 创建成功后同事务调 `SetUserOrgs` |
 | 查用户所属组织 | `GET /users/:id/orgs` | `GetUserOrgs` |
 | 查组织成员 | `GET /orgs/:id/members` | `GetMembers` |
+
+#### 路由注册
+
+```go
+// internal/router/router.go
+users.POST("/orgs", deps.UserHandler.SetUserOrgs)   // 全量覆盖，body: user_id + org_ids
+// 组织侧成员 API 见 06-organization §路由注册
+```
 
 #### `POST /users/orgs` 请求体
 
@@ -504,7 +601,9 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | List - employee_no 精确 | `employee_no=E20240086` | **0 或 1** 条 |
 | FindByEmployeeNo | 存在/不存在工号 | 单条或 ErrNotFound |
 | 软删除用户 | deleted_at 不为空，列表查询不包含 |
-| 软删除后用户名可复用 | 创建同名用户成功（唯一索引含 deleted_at 条件） |
+| 软删除后 username 可复用 | 创建同名 username 成功 |
+| 软删除后 employee_no 不可复用 | 同工号 Create → **409 + 30007** |
+| 软删除后域账号不可复用 | 同 `(user_domain, domain_account)` Create → **409 + 30008** |
 | 分配角色 | user_roles 表记录正确 |
 | 查询用户角色 | 返回角色列表 |
 
@@ -541,8 +640,8 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 详情 - admin 查 superadmin 用户 id | admin 调 `GET /users/:id` | **404** |
 | 列表筛选 | `GET /users?role=admin` | 200 + 筛选结果 |
 | 创建 - 参数缺失 | `POST /users` 无 username | 400 |
-| 创建 - 成功 | `POST /users` 合法 body | 201 |
-| 创建含 org_ids | `POST /users` + org_ids | 201 + user_orgs 正确 |
+| 创建 - 成功 | `POST /users` 合法 body | 200 |
+| 创建含 org_ids | `POST /users` + org_ids | 200 + user_orgs 正确 |
 | 分配组织 | `POST /users/orgs` | 200 + user_orgs 全量覆盖 |
 | 详情 - 不存在 | `GET /users/99999` | 404 |
 | 删除 - 成功 | `POST /users/delete` body `{ "id": "1" }` | 200 |
@@ -554,8 +653,10 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 > 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。
 
 ```
+internal/router/router.go               # POST /users/orgs（全量绑组织）；见 06-organization §路由注册
 internal/repository/user/
-internal/service/user/
+internal/service/user/                  # 注入 OrgService（SetUserOrgsTx）
 internal/handler/user/
 internal/model/user.go
+internal/model/organization.go          # UserOrg：Phase 1 仅 user_id/org_id/is_primary/joined_at
 ```

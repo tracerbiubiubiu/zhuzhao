@@ -1,6 +1,23 @@
 # 09 - 中间件模块（middleware）
 
-> Step 4，依赖 Step 3（auth）。所有 HTTP 请求的通用处理层。
+> **Step 4**（JWT 链）+ **Step 5**（Casbin 链，见 [03-authz](./03-authz.md)）共同构成鉴权中间件。  
+> 本文档含 JWT / Casbin **完整伪代码**；实施时分两 Step 交付，见 [README §2.1](./README.md#21-主线step-15必须串行)。
+
+---
+
+## Step 4 vs Step 5 分工
+
+| 项 | Step 4（本文 JWT 节） | Step 5（[03-authz](./03-authz.md)） |
+|----|----------------------|--------------------------------------|
+| JWT 解析 / 黑名单 / mcp | ✅ 实现并挂载 | — |
+| `20008` 混用检测 | ✅ | — |
+| Redis fail-close | ✅ | — |
+| Casbin `Enforce` | 可 **stub 全放行** 或暂不挂载 | ✅ PG adapter + 真实 Enforce |
+| `isSelfServiceRoute` 白名单 | — | ✅ 在 Casbin 中间件内 |
+| `RoleFetcher` | — | ✅ 实现并 Wire |
+| ResourceRegistry 空壳 | — | ✅ |
+
+Step 4 完成后：可测 login / refresh / JWT 401；受保护路由有 Token 但 Casbin 未就绪时，可临时 stub 放行 **仅用于 JWT 联调**，勿用于 M3 验收。
 
 ---
 
@@ -165,10 +182,19 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
             c.Abort()
             return
         }
-        
-        // 2. 逐角色 enforce（superadmin/admin 在 matcher 中自动 bypass）
+
         path := c.Request.URL.Path
         method := c.Request.Method
+
+        // 2. 自服务白名单（已认证 + 有角色；不进 Casbin/menu_apis，见 authz §2.2.1）
+        if isSelfServiceRoute(method, path) {
+            // mcp 期间 logout 仍拒绝（JWT 层已限制仅 password/update）
+            c.Set("roles", roles)
+            c.Next()
+            return
+        }
+        
+        // 3. 逐角色 enforce（superadmin/admin 在 matcher 中自动 bypass）
         allowed := false
         for _, role := range roles {
             if enforcer.Enforce("role::"+role, path, method) {
@@ -183,11 +209,14 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
             return
         }
         
-        // 3. 存入 context 供 handler 复用
+        // 4. 存入 context 供 handler 复用
         c.Set("roles", roles)
         c.Next()
     }
 }
+
+// isSelfServiceRoute Phase 1 固定表；路径变更须同步 authz §2.2.1
+func isSelfServiceRoute(method, path string) bool { ... }
 
 // RoleFetcher 接口，避免中间件直接依赖 UserRepo
 type RoleFetcher interface {
@@ -288,7 +317,9 @@ Phase 1 仅 JWT；检测到 `X-AK-*` 且未启用 M2M → **401/20009**。
 |------|------|------|------|
 | admin 角色 | admin | 任意 | 放行 |
 | 有权限 | user_manager | `GET /users` | 放行 |
-| 无权限 | viewer | `POST /users` | 403 |
+| 无权限 | viewer | `POST /users` | 403 + 70001 |
+| 自服务白名单 | viewer（零 menu） | `GET /user/menus` | 200 |
+| 零角色 | 未分配角色 | `GET /user/menus` | 403 + 70003 |
 | 路径通配符 | user_manager | `GET /users/123` | 放行（keyMatch2） |
 
 ### Recovery
@@ -322,7 +353,7 @@ Phase 1 仅 JWT；检测到 `X-AK-*` 且未启用 M2M → **401/20009**。
 > 横切层保持 `internal/middleware/`；AuthN 拒绝原则见 [02-auth §非法认证](./02-auth.md#非法认证请求的处理实现必读)。
 
 ```
-internal/middleware/jwt.go             # 含混用检测（20008）+ 黑名单 + mcp
+internal/middleware/jwt.go             # 含混用检测（20008，errcode.ErrMultipleAuthMethods）+ 黑名单 + mcp
 internal/middleware/casbin.go          # Casbin 中间件（g 表消除，逐角色 enforce，RoleFetcher 接口）
 internal/middleware/recovery.go        # Recovery 中间件（已有，包装 gin.Recovery + slog）
 internal/middleware/security.go        # 安全头中间件（已有，5 个 header）
