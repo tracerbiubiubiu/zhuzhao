@@ -47,9 +47,13 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditService := service.NewAuditService(auditLogRepo)
 	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
 	authHandler := handler.NewAuthHandler(authService)
-	menuRepo := repository.NewMenuRepo(pool)
 	roleRepo := repository.NewRoleRepo(pool)
 	orgRepo := repository.NewOrgRepo(pool)
+	orgService := service.NewOrgService(orgRepo, userRepo)
+	userService := service.NewUserService(pool, userRepo, roleRepo, orgService, client, manager)
+	menuRepo := repository.NewMenuRepo(pool)
+	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
+	userHandler := handler.NewUserHandler(userService, menuService)
 	casbinConfig := cfg.Casbin
 	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
@@ -57,10 +61,6 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	orgService := service.NewOrgService(orgRepo, userRepo)
-	userService := service.NewUserService(userRepo, roleRepo, orgService, client, manager)
-	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
-	userHandler := handler.NewUserHandler(userService, menuService)
 	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
 	roleHandler := handler.NewRoleHandler(rbacService)
 	orgHandler := handler.NewOrgHandler(orgService)

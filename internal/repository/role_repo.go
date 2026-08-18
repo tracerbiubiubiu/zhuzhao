@@ -88,7 +88,7 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 
 	subject := fmt.Sprintf("role::%s", role.Code)
 	if _, err := tx.Exec(ctx, `
-		DELETE FROM casbin_rule WHERE p_type = 'p' AND v0 = $1`, subject); err != nil {
+		DELETE FROM casbin_rule WHERE ptype = 'p' AND v0 = $1`, subject); err != nil {
 		return fmt.Errorf("delete casbin rules: %w", err)
 	}
 
@@ -100,7 +100,7 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 		}
 		seen[key] = struct{}{}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO casbin_rule (p_type, v0, v1, v2) VALUES ('p', $1, $2, $3)
+			INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES ('p', $1, $2, $3)
 			ON CONFLICT DO NOTHING`, subject, api.APIPath, api.APIMethod); err != nil {
 			return fmt.Errorf("insert casbin rule: %w", err)
 		}
@@ -189,7 +189,7 @@ func (r *RoleRepo) ListCasbinPoliciesByRoleCode(ctx context.Context, roleCode st
 	subject := fmt.Sprintf("role::%s", roleCode)
 	rows, err := r.db.Query(ctx, `
 		SELECT v1, v2 FROM casbin_rule
-		WHERE p_type = 'p' AND v0 = $1 AND v1 <> '*'`, subject)
+		WHERE ptype = 'p' AND v0 = $1 AND v1 <> '*'`, subject)
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,10 @@ package casbin
 import (
 	"fmt"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v3"
+	"github.com/casbin/casbin/v3/model"
 	"github.com/jackc/pgx/v5/pgxpool"
-	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
+	pgxadapter "github.com/noho-digital/casbin-pgx-adapter"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
@@ -18,10 +18,7 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 		return nil, nil, fmt.Errorf("load casbin model: %w", err)
 	}
 
-	adapter, err := pgxadapter.NewAdapter("",
-		pgxadapter.WithConnectionPool(pool),
-		pgxadapter.WithSkipTableCreate(),
-	)
+	adapter, err := pgxadapter.NewAdapterWithPool(pool)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create casbin adapter: %w", err)
 	}
