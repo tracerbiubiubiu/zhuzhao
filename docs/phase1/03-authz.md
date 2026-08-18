@@ -218,6 +218,8 @@ func (r *registry) Register(res Resource) {
 
 Phase 1 直接使用 PostgreSQL adapter（`pckhoi/casbin-pgx-adapter/v3`），**不走内存 adapter**：
 
+> **表结构**：adapter 读取列名 `p_type`（非 `ptype`）。`000001_init` 与 `000003_casbin_column` 已对齐；新环境勿混用旧 `ptype` 脚本。
+
 > **骨架现状**：`internal/casbin/enforcer.go` 可能暂用内存 adapter + TODO；**Step 5 必须切换**为 PG adapter 并 `LoadPolicy()`，与 `000002_seed` 的 Casbin 初始策略及 `AssignMenus` 写 `casbin_rule` 联调。单测可继续用内存 adapter，集成测试 / 验收须 PG。
 
 ```go

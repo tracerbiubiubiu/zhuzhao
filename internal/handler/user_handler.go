@@ -79,10 +79,20 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 // GetMenus GET /api/v1/user/menus
 func (h *UserHandler) GetMenus(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	menus, err := h.menuService.GetUserMenus(c.Request.Context(), c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"menus": menus})
 }
 
 // GetPermissions GET /api/v1/user/permissions
 func (h *UserHandler) GetPermissions(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	perms, err := h.menuService.GetUserPermissions(c.Request.Context(), c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"permissions": perms})
 }

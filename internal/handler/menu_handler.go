@@ -18,7 +18,12 @@ func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
 
 // GetTree GET /api/v1/menus
 func (h *MenuHandler) GetTree(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	tree, err := h.menuService.GetTree(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, tree)
 }
 
 // Create POST /api/v1/menus

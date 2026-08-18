@@ -47,10 +47,17 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	authHandler := handler.NewAuthHandler(authService)
 	userService := service.NewUserService(userRepo)
 	menuRepo := repository.NewMenuRepo(pool)
-	menuService := service.NewMenuService(menuRepo)
-	userHandler := handler.NewUserHandler(userService, menuService)
 	roleRepo := repository.NewRoleRepo(pool)
-	rbacService := service.NewRBACService(roleRepo, userRepo)
+	casbinConfig := cfg.Casbin
+	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
+	userHandler := handler.NewUserHandler(userService, menuService)
+	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
 	roleHandler := handler.NewRoleHandler(rbacService)
 	orgRepo := repository.NewOrgRepo(pool)
 	orgService := service.NewOrgService(orgRepo)
@@ -59,13 +66,6 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditLogRepo := repository.NewAuditLogRepo(pool)
 	auditService := service.NewAuditService(auditLogRepo)
 	auditHandler := handler.NewAuditHandler(auditService)
-	casbinConfig := cfg.Casbin
-	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
-	if err != nil {
-		cleanup2()
-		cleanup()
-		return nil, nil, err
-	}
 	deps := router.Deps{
 		AuthHandler:  authHandler,
 		UserHandler:  userHandler,
