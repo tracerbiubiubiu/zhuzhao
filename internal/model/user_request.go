@@ -74,6 +74,7 @@ type UpdateProfileRequest struct {
 type UpdatePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required"`
+	DeviceID    string `json:"device_id"` // 与登录时一致；空则使用 default
 }
 
 // UserListResponse 用户列表

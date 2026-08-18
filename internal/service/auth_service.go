@@ -178,24 +178,55 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 	return nil
 }
 
-// UpdatePassword 用户修改密码（需旧密码验证）
-func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
+// UpdatePassword 用户修改密码（需旧密码验证），成功后吊销旧会话并重新签发 Token
+func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) {
 	if oldPassword == "" || newPassword == "" {
-		return errcode.ErrInvalidParams
+		return nil, errcode.ErrInvalidParams
 	}
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !crypto.CheckPassword(oldPassword, user.Password) {
-		return errcode.ErrInvalidCredentials
+		return nil, errcode.ErrInvalidCredentials
 	}
 	hash, err := crypto.HashPassword(newPassword)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return nil, fmt.Errorf("hash password: %w", err)
 	}
 	if err := s.userRepo.UpdatePassword(ctx, userID, hash, false); err != nil {
-		return err
+		return nil, err
+	}
+
+	// 吊销旧 AT（拉黑 jti）+ 删除旧 RT，防止旧 mcp Token 继续生效
+	if accessToken != "" {
+		if err := s.revokeAccessToken(ctx, accessToken); err != nil {
+			return nil, err
+		}
+	}
+	rtKey := refreshKey(userID, normalizeDeviceID(deviceID))
+	if err := s.rdb.Del(ctx, rtKey).Err(); err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+
+	// 重新签发不含 mcp 标记的 Token pair
+	user.MustChangePassword = false
+	return s.issueTokenPair(ctx, user, normalizeDeviceID(deviceID))
+}
+
+// revokeAccessToken 将 AT 加入黑名单（剩余 TTL 内失效）
+func (s *AuthService) revokeAccessToken(ctx context.Context, accessToken string) error {
+	claims, err := s.jwtManager.ParseAccessToken(accessToken)
+	if err != nil {
+		// 旧 AT 无效则无需拉黑
+		return nil
+	}
+	ttl := time.Until(claims.ExpiresAt.Time)
+	if ttl > 0 {
+		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
+		if err := s.rdb.Set(ctx, blacklistKey, "1", ttl).Err(); err != nil {
+			return errcode.ErrServiceUnavailable
+		}
 	}
 	return nil
 }

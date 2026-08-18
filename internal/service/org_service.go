@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -66,6 +67,23 @@ func (s *OrgService) SetUserOrgs(ctx context.Context, req *model.SetUserOrgsRequ
 		}
 	}
 	return s.orgRepo.SetUserOrgs(ctx, req.UserID, []int64(req.OrgIDs), req.PrimaryOrgID)
+}
+
+// SetUserOrgsTx 在外部事务内全量覆盖用户组织（供 UserService.Create 等事务编排调用）
+func (s *OrgService) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, req *model.SetUserOrgsRequest) error {
+	if req.PrimaryOrgID != nil {
+		found := false
+		for _, id := range req.OrgIDs {
+			if id == *req.PrimaryOrgID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errcode.ErrInvalidParams
+		}
+	}
+	return s.orgRepo.SetUserOrgsTx(ctx, tx, req.UserID, []int64(req.OrgIDs), req.PrimaryOrgID)
 }
 
 func (s *OrgService) Create(ctx context.Context, req interface{}) error {

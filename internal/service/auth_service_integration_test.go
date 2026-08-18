@@ -45,13 +45,14 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 		AccessTTL:  30 * time.Minute,
 		RefreshTTL: 168 * time.Hour,
 	}
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), jwtCfg)
+	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool))
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{
 		EmployeeNo: "E000001",
 		Password:   "admin123",
 		DeviceID:   "dev-1",
-	}, "127.0.0.1")
+	}, "127.0.0.1", "test-agent")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 
@@ -83,9 +84,10 @@ func TestAuthService_LoginWrongPassword(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, &model.User{Username: "admin", EmployeeNo: "E000001", Password: hash}))
 
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), jwtCfg)
+	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool))
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 
-	_, err = authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: "E000001", Password: "wrong"}, "127.0.0.1")
+	_, err = authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: "E000001", Password: "wrong"}, "127.0.0.1", "test-agent")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)

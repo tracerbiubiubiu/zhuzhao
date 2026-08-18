@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -15,6 +16,7 @@ import (
 
 // UserService 用户管理服务
 type UserService struct {
+	db         *pgxpool.Pool
 	userRepo   *repository.UserRepo
 	roleRepo   *repository.RoleRepo
 	orgService *OrgService
@@ -23,6 +25,7 @@ type UserService struct {
 }
 
 func NewUserService(
+	db *pgxpool.Pool,
 	userRepo *repository.UserRepo,
 	roleRepo *repository.RoleRepo,
 	orgService *OrgService,
@@ -30,6 +33,7 @@ func NewUserService(
 	jwtManager *jwtpkg.Manager,
 ) *UserService {
 	return &UserService{
+		db:         db,
 		userRepo:   userRepo,
 		roleRepo:   roleRepo,
 		orgService: orgService,
@@ -85,30 +89,74 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 	user := &model.User{
-		Username:   req.Username,
-		EmployeeNo: req.EmployeeNo,
+		Username:      req.Username,
+		EmployeeNo:    req.EmployeeNo,
 		DomainAccount: req.DomainAccount,
-		UserDomain: req.UserDomain,
-		Password:   hash,
-		RealName:   req.RealName,
-		Email:      req.Email,
-		Phone:      req.Phone,
-		Avatar:     req.Avatar,
+		UserDomain:    req.UserDomain,
+		Password:      hash,
+		RealName:      req.RealName,
+		Email:         req.Email,
+		Phone:         req.Phone,
+		Avatar:        req.Avatar,
 	}
-	if err := s.userRepo.Create(ctx, user); err != nil {
+
+	// 事务外做防提权校验（查 actor 角色 + 校验待分配角色 priority）
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+	for _, roleID := range req.RoleIDs {
+		role, err := s.roleRepo.FindByID(ctx, roleID)
+		if err != nil {
+			return nil, err
+		}
+		if !canAssignRole(actorRoles, role) {
+			return nil, errcode.ErrCannotAssignHigherRole
+		}
+	}
+	// 校验组织是否存在 + primaryOrgID 在列表内
+	if req.PrimaryOrgID != nil {
+		found := false
+		for _, id := range req.OrgIDs {
+			if id == *req.PrimaryOrgID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errcode.ErrInvalidParams
+		}
+	}
+	for _, orgID := range req.OrgIDs {
+		if _, err := s.orgService.orgRepo.FindByID(ctx, orgID); err != nil {
+			return nil, err
+		}
+	}
+
+	// 同一事务内：创建用户 → 分配角色 → 分配组织，任一步失败整体回滚
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if err := s.userRepo.CreateTx(ctx, tx, user); err != nil {
 		return nil, err
 	}
 	if len(req.RoleIDs) > 0 {
-		if err := s.SetRoles(ctx, &model.SetUserRolesRequest{UserID: user.ID, RoleIDs: req.RoleIDs}, actorUserID); err != nil {
+		if err := s.userRepo.SetRolesTx(ctx, tx, user.ID, []int64(req.RoleIDs)); err != nil {
 			return nil, err
 		}
 	}
 	if len(req.OrgIDs) > 0 {
-		if err := s.orgService.SetUserOrgs(ctx, &model.SetUserOrgsRequest{
+		if err := s.orgService.SetUserOrgsTx(ctx, tx, &model.SetUserOrgsRequest{
 			UserID: user.ID, OrgIDs: req.OrgIDs, PrimaryOrgID: req.PrimaryOrgID,
 		}); err != nil {
 			return nil, err
 		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return user, nil
 }

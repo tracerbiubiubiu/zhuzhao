@@ -70,8 +70,22 @@ func (r *UserRepo) FindByID(ctx context.Context, id int64) (*model.User, error) 
 	return r.queryOne(ctx, q, id)
 }
 
+// rowExec 抽象 pgx.Tx 与 pgxpool.Pool 共同的 QueryRow 能力，供 Tx 版本复用
+type rowExec interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // Create 创建用户（password 须为 bcrypt hash）
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
+	return r.createUser(ctx, r.db, user)
+}
+
+// CreateTx 在外部事务内创建用户
+func (r *UserRepo) CreateTx(ctx context.Context, tx pgx.Tx, user *model.User) error {
+	return r.createUser(ctx, tx, user)
+}
+
+func (r *UserRepo) createUser(ctx context.Context, exec rowExec, user *model.User) error {
 	const q = `
 		INSERT INTO users (
 			username, employee_no, domain_account, user_domain, password,
@@ -93,7 +107,7 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 		status = 1
 	}
 
-	err := r.db.QueryRow(ctx, q,
+	err := exec.QueryRow(ctx, q,
 		user.Username,
 		user.EmployeeNo,
 		user.DomainAccount,
@@ -259,6 +273,14 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
 	}
 	defer tx.Rollback(ctx)
 
+	if err := r.SetRolesTx(ctx, tx, userID, roleIDs); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// SetRolesTx 在外部事务内全量覆盖用户角色
+func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, roleIDs []int64) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("delete user roles: %w", err)
 	}
@@ -269,7 +291,7 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
 			return fmt.Errorf("insert user role: %w", err)
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // GetRoleCodes 查询用户绑定的角色 code（供 RoleFetcher / 业务层）

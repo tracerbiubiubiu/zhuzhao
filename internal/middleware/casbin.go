@@ -3,7 +3,7 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v3"
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
@@ -63,12 +63,24 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 		}
 
 		allowed := false
+		var enforceErr error
 		for _, role := range roles {
 			subject := fmt.Sprintf("role::%s", role)
-			if ok, _ := enforcer.Enforce(subject, path, method); ok {
+			ok, err := enforcer.Enforce(subject, path, method)
+			if err != nil {
+				enforceErr = err
+				continue
+			}
+			if ok {
 				allowed = true
 				break
 			}
+		}
+
+		if enforceErr != nil && !allowed {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
 		}
 
 		if !allowed {

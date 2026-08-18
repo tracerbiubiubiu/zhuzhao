@@ -116,6 +116,14 @@ func (r *OrgRepo) SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64,
 	}
 	defer tx.Rollback(ctx)
 
+	if err := r.SetUserOrgsTx(ctx, tx, userID, orgIDs, primaryOrgID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// SetUserOrgsTx 在外部事务内全量覆盖用户组织
+func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, orgIDs []int64, primaryOrgID *int64) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
@@ -127,7 +135,7 @@ func (r *OrgRepo) SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64,
 			return fmt.Errorf("insert user org: %w", err)
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {

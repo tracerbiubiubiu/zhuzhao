@@ -87,11 +87,13 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		response.BadRequest(c, errcode.ErrInvalidParams.Message)
 		return
 	}
-	if err := h.authService.UpdatePassword(c.Request.Context(), c.GetInt64("userID"), req.OldPassword, req.NewPassword); err != nil {
+	accessToken := extractBearer(c.GetHeader("Authorization"))
+	pair, err := h.authService.UpdatePassword(c.Request.Context(), c.GetInt64("userID"), req.OldPassword, req.NewPassword, accessToken, req.DeviceID)
+	if err != nil {
 		writeAuthError(c, err)
 		return
 	}
-	response.OK(c, nil)
+	response.OK(c, pair)
 }
 
 func writeAuthError(c *gin.Context, err error) {
