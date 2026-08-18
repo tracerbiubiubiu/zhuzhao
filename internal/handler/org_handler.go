@@ -45,3 +45,18 @@ func (h *OrgHandler) Delete(c *gin.Context) {
 func (h *OrgHandler) Move(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
+
+// GetMembers GET /api/v1/orgs/:id/members
+func (h *OrgHandler) GetMembers(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// AddMember POST /api/v1/orgs/members
+func (h *OrgHandler) AddMember(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
+// RemoveMember POST /api/v1/orgs/members/delete
+func (h *OrgHandler) RemoveMember(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}

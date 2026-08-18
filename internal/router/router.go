@@ -94,6 +94,7 @@ func New(deps Deps) *gin.Engine {
 				users.POST("/status", deps.UserHandler.UpdateStatus)
 				users.POST("/roles", deps.UserHandler.SetRoles)
 				users.POST("/password/reset", deps.UserHandler.ResetPassword)
+				users.POST("/orgs", deps.UserHandler.SetUserOrgs)
 				users.GET("/:id/orgs", deps.UserHandler.GetUserOrgs)
 			}
 
@@ -128,6 +129,9 @@ func New(deps Deps) *gin.Engine {
 				orgs.POST("/update", deps.OrgHandler.Update)
 				orgs.POST("/delete", deps.OrgHandler.Delete)
 				orgs.POST("/move", deps.OrgHandler.Move)
+				orgs.GET("/:id/members", deps.OrgHandler.GetMembers)
+				orgs.POST("/members", deps.OrgHandler.AddMember)
+				orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
 			}
 
 			// 菜单模块

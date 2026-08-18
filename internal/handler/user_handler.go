@@ -62,6 +62,11 @@ func (h *UserHandler) GetUserOrgs(c *gin.Context) {
 	response.InternalError(c, "not implemented")
 }
 
+// SetUserOrgs POST /api/v1/users/orgs（全量覆盖用户组织绑定）
+func (h *UserHandler) SetUserOrgs(c *gin.Context) {
+	response.InternalError(c, "not implemented")
+}
+
 // GetProfile GET /api/v1/user/profile
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	response.InternalError(c, "not implemented")
