@@ -18,12 +18,20 @@ func writeServiceError(c *gin.Context, err error) {
 	switch biz.Code {
 	case errcode.ErrInvalidParams.Code:
 		response.BadRequest(c, biz.Message)
+	case errcode.ErrConcurrentModification.Code:
+		response.Error(c, 409, biz)
+	case errcode.ErrEmployeeNoAlreadyExists.Code, errcode.ErrDomainAccountAlreadyExists.Code, errcode.ErrUserAlreadyExists.Code:
+		response.Error(c, 409, biz)
+	case errcode.ErrCannotResetHigher.Code, errcode.ErrCannotAssignHigherRole.Code, errcode.ErrUserIsSystem.Code, errcode.ErrCannotRemoveLastSuperadmin.Code, errcode.ErrUserDisabled.Code:
+		response.ForbiddenError(c, biz)
 	case errcode.ErrUnauthorized.Code, errcode.ErrTokenInvalid.Code:
 		response.UnauthorizedError(c, biz)
 	case errcode.ErrNoPermission.Code, errcode.ErrForbidden.Code, errcode.ErrNoRoles.Code:
 		response.ForbiddenError(c, biz)
-	case errcode.ErrRoleNotFound.Code, errcode.ErrMenuNotFound.Code, errcode.ErrUserNotFound.Code:
-		response.NotFound(c, biz.Message)
+	case errcode.ErrRoleNotFound.Code, errcode.ErrMenuNotFound.Code, errcode.ErrUserNotFound.Code, errcode.ErrOrgNotFound.Code:
+		response.Error(c, 404, biz)
+	case errcode.ErrNotOrgMember.Code:
+		response.Error(c, 404, biz)
 	default:
 		response.InternalError(c, biz.Message)
 	}

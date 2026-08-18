@@ -45,9 +45,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	scripts := redis.NewScripts(client)
 	authService := service.NewAuthService(userRepo, manager, client, scripts, jwtConfig)
 	authHandler := handler.NewAuthHandler(authService)
-	userService := service.NewUserService(userRepo)
 	menuRepo := repository.NewMenuRepo(pool)
 	roleRepo := repository.NewRoleRepo(pool)
+	orgRepo := repository.NewOrgRepo(pool)
 	casbinConfig := cfg.Casbin
 	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
@@ -55,12 +55,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
+	orgService := service.NewOrgService(orgRepo, userRepo)
+	userService := service.NewUserService(userRepo, roleRepo, orgService, client, manager)
 	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
 	userHandler := handler.NewUserHandler(userService, menuService)
 	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
 	roleHandler := handler.NewRoleHandler(rbacService)
-	orgRepo := repository.NewOrgRepo(pool)
-	orgService := service.NewOrgService(orgRepo)
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditLogRepo := repository.NewAuditLogRepo(pool)

@@ -90,6 +90,9 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip str
 	if err := s.scripts.LoginLockClear(ctx, req.EmployeeNo); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
+	if err := clearUserDisabled(ctx, s.rdb, user.ID); err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
 	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, ip); err != nil {
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
@@ -155,6 +158,28 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 	rtKey := refreshKey(claims.UserID, normalizeDeviceID(deviceID))
 	if err := s.rdb.Del(ctx, rtKey).Err(); err != nil {
 		return errcode.ErrServiceUnavailable
+	}
+	return nil
+}
+
+// UpdatePassword 用户修改密码（需旧密码验证）
+func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
+	if oldPassword == "" || newPassword == "" {
+		return errcode.ErrInvalidParams
+	}
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !crypto.CheckPassword(oldPassword, user.Password) {
+		return errcode.ErrInvalidCredentials
+	}
+	hash, err := crypto.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	if err := s.userRepo.UpdatePassword(ctx, userID, hash, false); err != nil {
+		return err
 	}
 	return nil
 }

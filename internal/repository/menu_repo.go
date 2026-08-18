@@ -63,9 +63,12 @@ func (r *MenuRepo) ListMenuAPIsByMenuIDs(ctx context.Context, menuIDs []int64) (
 		return nil, nil
 	}
 	rows, err := r.db.Query(ctx, `
-		SELECT menu_id, api_path, api_method
-		FROM menu_apis WHERE menu_id = ANY($1)
-		ORDER BY menu_id, api_path, api_method`, menuIDs)
+		SELECT ma.menu_id, ma.api_path, ma.api_method
+		FROM menu_apis ma
+		JOIN menus m ON m.id = ma.menu_id
+		WHERE ma.menu_id = ANY($1)
+		  AND (m.menu_type = 3 OR ma.api_method = 'GET')
+		ORDER BY ma.menu_id, ma.api_path, ma.api_method`, menuIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list menu apis: %w", err)
 	}

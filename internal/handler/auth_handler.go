@@ -82,7 +82,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // UpdatePassword 修改密码
 // POST /api/v1/auth/password/update
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.UpdatePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcode.ErrInvalidParams.Message)
+		return
+	}
+	if err := h.authService.UpdatePassword(c.Request.Context(), c.GetInt64("userID"), req.OldPassword, req.NewPassword); err != nil {
+		writeAuthError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 func writeAuthError(c *gin.Context, err error) {

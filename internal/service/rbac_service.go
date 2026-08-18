@@ -60,20 +60,21 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		if err != nil {
 			return err
 		}
-		if !hasRoleCode(actorRoles, "superadmin") {
+		if !isSuperadmin(actorRoles) {
 			return errcode.ErrNoPermission
 		}
 	}
 
 	var apis []*model.MenuAPI
-	if role.Code != "admin" && role.Code != "superadmin" && len(req.MenuIDs) > 0 {
-		apis, err = s.menuRepo.ListMenuAPIsByMenuIDs(ctx, req.MenuIDs)
+	menuIDs := []int64(req.MenuIDs)
+	if role.Code != "admin" && role.Code != "superadmin" && len(menuIDs) > 0 {
+		apis, err = s.menuRepo.ListMenuAPIsByMenuIDs(ctx, menuIDs)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := s.roleRepo.AssignMenus(ctx, role, req.MenuIDs, apis); err != nil {
+	if err := s.roleRepo.AssignMenus(ctx, role, menuIDs, apis); err != nil {
 		return fmt.Errorf("assign menus: %w", err)
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
@@ -109,13 +110,4 @@ func (s *RBACService) GetRolePermissions(ctx context.Context, roleID int64) ([][
 // GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）
 func (s *RBACService) GetRoleCodesByUserID(userID int64) ([]string, error) {
 	return s.userRepo.GetRoleCodes(context.Background(), userID)
-}
-
-func hasRoleCode(roles []*model.Role, code string) bool {
-	for _, r := range roles {
-		if r.Code == code {
-			return true
-		}
-	}
-	return false
 }

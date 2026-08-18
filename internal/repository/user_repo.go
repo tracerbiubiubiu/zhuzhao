@@ -30,12 +30,13 @@ const userSelectColumns = `
 
 // UserListQuery 用户列表筛选
 type UserListQuery struct {
-	Page       int
-	PageSize   int
-	Username   string // 模糊匹配
-	EmployeeNo string // 精确匹配
-	RoleCode   string
-	Status     *int
+	Page                   int
+	PageSize               int
+	Username               string // 模糊匹配
+	EmployeeNo             string // 精确匹配
+	RoleCode               string
+	Status                 *int
+	ExcludeSuperadminUsers bool
 }
 
 // UserRepo 用户数据访问
@@ -317,6 +318,29 @@ func (r *UserRepo) GetRoles(ctx context.Context, userID int64) ([]*model.Role, e
 	return roles, nil
 }
 
+// IsSuperadminUser 用户是否绑定 superadmin 角色
+func (r *UserRepo) IsSuperadminUser(ctx context.Context, userID int64) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM user_roles ur
+			INNER JOIN roles r ON r.id = ur.role_id
+			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL
+		)`, userID).Scan(&exists)
+	return exists, err
+}
+
+// CountActiveSuperadminUsers 统计启用中的 superadmin 用户数
+func (r *UserRepo) CountActiveSuperadminUsers(ctx context.Context) (int64, error) {
+	var n int64
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT u.id) FROM users u
+		INNER JOIN user_roles ur ON ur.user_id = u.id
+		INNER JOIN roles r ON r.id = ur.role_id
+		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1`).Scan(&n)
+	return n, err
+}
+
 func (r *UserRepo) queryOne(ctx context.Context, q string, args ...any) (*model.User, error) {
 	row := r.db.QueryRow(ctx, q, args...)
 	user, err := scanUserRow(row)
@@ -394,6 +418,13 @@ func buildUserListWhere(q UserListQuery) (string, []any) {
 			INNER JOIN roles r ON r.id = ur.role_id
 			WHERE ur.user_id = u.id AND r.code = $%d AND r.deleted_at IS NULL
 		)`, len(args)))
+	}
+	if q.ExcludeSuperadminUsers {
+		conds = append(conds, `u.id NOT IN (
+			SELECT ur.user_id FROM user_roles ur
+			INNER JOIN roles r ON r.id = ur.role_id
+			WHERE r.code = 'superadmin' AND r.deleted_at IS NULL
+		)`)
 	}
 	return " WHERE " + strings.Join(conds, " AND "), args
 }
