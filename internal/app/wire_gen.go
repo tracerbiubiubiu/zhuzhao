@@ -41,7 +41,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	authService := service.NewAuthService(userRepo, manager, client)
+	scripts := redis.NewScripts(client)
+	authService := service.NewAuthService(userRepo, manager, client, scripts, jwtConfig)
 	authHandler := handler.NewAuthHandler(authService)
 	userService := service.NewUserService(userRepo)
 	menuRepo := repository.NewMenuRepo(pool)
@@ -90,7 +91,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 // wire.go:
 
-var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, casbin.New)
+var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, casbin.New)
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
 

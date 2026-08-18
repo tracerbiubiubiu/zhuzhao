@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,12 @@ import (
 // JWT JWT 认证中间件
 func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if hasMixedAuth(c) {
+			response.Error(c, http.StatusBadRequest, errcode.ErrMultipleAuthMethods)
+			c.Abort()
+			return
+		}
+
 		auth := c.GetHeader("Authorization")
 		if auth == "" {
 			response.Unauthorized(c, errcode.ErrUnauthorized.Message)
@@ -77,4 +84,12 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func hasMixedAuth(c *gin.Context) bool {
+	auth := c.GetHeader("Authorization")
+	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+		return false
+	}
+	return c.GetHeader("X-AK-Access-Key") != ""
 }

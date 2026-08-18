@@ -26,6 +26,7 @@ var pkgSet = wire.NewSet(
 	jwt.NewManager,
 	postgres.New,
 	pgredis.New,
+	pgredis.NewScripts,
 	casbin.New,
 )
 

@@ -15,6 +15,13 @@ type RoleFetcher interface {
 	GetRoleCodesByUserID(userID int64) ([]string, error)
 }
 
+// CasbinPassThrough Step 4 JWT 联调：跳过 Casbin，Step 5 替换为 CasbinAuth。
+func CasbinPassThrough() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+	}
+}
+
 // CasbinAuth 路由级 RBAC 鉴权中间件（g 表消除 + 逐角色 enforce）
 func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.HandlerFunc {
 	return func(c *gin.Context) {

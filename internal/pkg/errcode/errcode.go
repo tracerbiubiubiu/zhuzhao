@@ -37,6 +37,7 @@ var (
 	ErrTokenAlreadyRefreshed  = New(20005, "令牌已被刷新")
 	ErrAccountLocked          = New(20006, "账号已锁定")
 	ErrPasswordChangeRequired = New(20007, "需要修改密码")
+	ErrMultipleAuthMethods    = New(20008, "不能同时使用多种认证方式")
 )
 
 // 用户模块 30000-30999

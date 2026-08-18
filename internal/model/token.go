@@ -29,3 +29,8 @@ type LoginRequest struct {
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
+
+// LogoutRequest 登出请求
+type LogoutRequest struct {
+	DeviceID string `json:"device_id"` // 与登录时一致；空则使用 default
+}
