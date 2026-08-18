@@ -50,7 +50,7 @@
 | HTTP | Gin v1.12 | Gin（同） |
 | 数据库 | MongoDB 7.0+（单节点副本集 rs0） | PostgreSQL 15 |
 | 缓存 | Redis 7.0+ | Redis 6.2 |
-| 鉴权 | Casbin v2.135 + 自研 Restrict | Casbin + ltree 组织关系查询 + 代码内联 |
+| 鉴权 | Casbin v3.10 + 自研 Restrict | Casbin + ltree 组织关系查询 + 代码内联 |
 | JWT | golang-jwt/v5 + RSA 4096 | golang-jwt/v5 + HS256（Phase 1–2）→ RS256（Phase 3b） |
 | DI | google/wire v0.7 | google/wire（同） |
 | 日志 | zap + MongoWriteSyncer | slog + Lumberjack |

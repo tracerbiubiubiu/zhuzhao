@@ -819,7 +819,7 @@ internal/repository/user/           # 密码验证依赖
 - ✅ **多设备登录**：Phase 1 允许多设备同时登录，不做设备踢出，不提供设备管理 UI。
 - ✅ **用户 ID 类型**：`BIGINT`/`int64`，JSON 加 `,string` tag（前端精度安全）。不用 UUID。
 - ✅ **组织 ID / 编码**：ID 为 `BIGINT`；业务编码 `code` 为 `VARCHAR`（ltree 用 code）。
-- ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
+- ✅ **Casbin adapter**：直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3）。
 - ✅ **组织模块范围**：Phase 1 实现完整 CRUD。
 - ✅ **AK/SK**：Phase 1 不做。签名方案保留，有调用方再实现。
 - ✅ **登录限流**：Phase 1 用 Redis Lua（INCR+EXPIRE 原子），阈值 15min/5 次。

@@ -53,7 +53,7 @@ CREATE TABLE role_menus (
 
 ### Casbin 策略表
 
-由 `pckhoi/casbin-pgx-adapter/v3` 管理，策略 subject 为 `role::{code}`：
+由 `noho-digital/casbin-pgx-adapter`（Casbin v3）管理，策略 subject 为 `role::{code}`：
 
 ```sql
 CREATE TABLE casbin_rule (

@@ -263,7 +263,7 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 |------|------|------|
 | 用户 ID 类型 | `BIGINT`/`int64`，JSON 加 `,string` tag | ✅ 已确认 |
 | 组织 ID / 编码 | ID 为 `BIGINT`/`int64`（JSON `,string`）；业务编码 `code` 为 `VARCHAR`（ltree 路径用 code，只能字母数字下划线） | ✅ 已确认 |
-| Casbin adapter | 直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`） | ✅ 已确认 |
+| Casbin adapter | 直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3） | ✅ 已确认 |
 | 密码策略 | 仅 bcrypt cost=12，不增加复杂度校验 | ✅ 已确认 |
 | 组织模块范围 | Phase 1 实现完整 CRUD | ✅ 已确认 |
 | 审计日志写入方式 | Phase 1 同步写入（见下方分析） | ✅ 已确认 |

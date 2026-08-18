@@ -391,7 +391,7 @@ make migrate-up
 make dev
 
 # 4. 验证
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:33333/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"employee_no":"E000001","password":"admin123"}'
 # 预期：200 OK，返回 accessToken + refreshToken

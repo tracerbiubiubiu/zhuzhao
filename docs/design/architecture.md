@@ -89,7 +89,7 @@
 | **Gin** | HTTP 框架 | `github.com/gin-gonic/gin` | 轻量、中间件生态成熟 |
 | **Viper** | 配置管理 | `github.com/spf13/viper` | 支持多格式、热更新、环境变量覆盖 |
 | **PostgreSQL** | 主数据库 | `github.com/jackc/pgx/v5` + `pgxpool` | 原生协议、连接池、性能优于 database/sql |
-| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v2` + `pckhoi/casbin-pgx-adapter/v3` | pgx 原生 adapter，SyncedEnforcer |
+| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v3` + `noho-digital/casbin-pgx-adapter` | pgx 原生 adapter，SyncedEnforcer |
 | **Redis** | 缓存/Session | `github.com/redis/go-redis/v9` | 官方维护、功能完整、与 go context 集成 |
 | **Swagger** | API 文档 | `github.com/swaggo/swag` + `github.com/swaggo/gin-swagger` | 注解生成，与 Gin 集成 |
 | **slog** | 日志 | Go 1.21+ 标准库 `log/slog` | 标准库，结构化日志，性能足够 |
@@ -1118,7 +1118,7 @@ Nginx（反向代理）
   │  - 超时控制、连接数限制
   │  - Phase 2: TLS 终止 + HTTP/2
   ▼
-Go 进程（Gin :8080）
+Go 进程（Gin :33333）
   ├── PostgreSQL 15（云托管 Cluster）
   └── Redis 6.2
 ```
@@ -1138,7 +1138,7 @@ server {
 
     # API 转发
     location /api/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -1149,13 +1149,13 @@ server {
 
     # 健康检查（不转发，Nginx 直接管）
     location /health/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
         access_log off;
     }
 
     # Swagger 文档
     location /swagger/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
     }
 }
 ```
@@ -1173,7 +1173,7 @@ server {
 ```yaml
 # configs/config.yaml
 server:
-  port: 8080
+  port: 33333
   mode: debug  # debug / release
 
 database:
@@ -1421,7 +1421,7 @@ type Runner interface {
 |------|------|--------|--------|
 | Metrics | `prometheus/client_golang` + Gin 中间件 | `observability.metrics.enabled` → `/metrics` | Prometheus **可选** scrape |
 | 分布式追踪 | OpenTelemetry | `observability.tracing.enabled`；exporter：`noop` / `stdout` / `otlp` | Collector → Jaeger/Tempo **可选** |
-| 性能分析 | `net/http/pprof` | `observability.pprof.enabled` 或 `server.mode=debug` | 内网/admin 端口，不挂公网 8080 |
+| 性能分析 | `net/http/pprof` | `observability.pprof.enabled` 或 `server.mode=debug` | 内网/admin 端口，不挂公网 33333 |
 | 错误追踪 | Sentry（可选） | 配置 DSN 时启用 | — |
 | 可视化 | Grafana | — | **永远可选**，非 App 依赖 |
 
@@ -1506,8 +1506,8 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 | 模块/用途 | 推荐 | 说明 |
 |-----------|------|------|
-| Casbin 核心 | `casbin/casbin/v2` | 使用 `SyncedEnforcer` 支持并发安全 |
-| PostgreSQL Adapter | `pckhoi/casbin-pgx-adapter/v3` | Casbin v2 + pgx v5，支持 FilteredAdapter。详见 `design-decisions.md` §10 |
+| Casbin 核心 | `casbin/casbin/v3` | 使用 `SyncedEnforcer` 支持并发安全 |
+| PostgreSQL Adapter | `noho-digital/casbin-pgx-adapter` | Casbin v3 + pgx v5，支持 Filtered/Batch/Updatable adapter。详见 `design-decisions.md` §10 |
 | Redis Watcher | `casbin/redis-watcher` | 多实例部署时用于策略同步广播 |
 
 ### 15.5 中间件与安全
@@ -1652,7 +1652,7 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 
 1. **URL 简洁，不承载业务语义**——参数放 request body（POST）或 query string（GET），不要在 URL 路径中嵌套过多信息
 2. **资源命名用名词复数**——`/api/v1/users`，不用 `/api/v1/getUser`
-3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/disable`，资源 ID 放 body 不放 URL
+3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/status`，资源 ID 放 body 不放 URL
 4. **过滤/排序/分页用 query string**——`GET /api/v1/users?page=1&page_size=20&username=zhang&employee_no=E20240086&role=admin&sort=created_at:desc`（`username` 模糊可多结果；`employee_no` 精确唯一）
 5. **避免深层嵌套**——URL 层级不超过 3 层，如 `/api/v1/orgs/:org_id/members`
 

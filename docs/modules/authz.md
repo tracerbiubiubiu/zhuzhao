@@ -221,7 +221,7 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 - g 表消除模型 + matcher superadmin/admin bypass
 - `RoleFetcher` 查 `user_roles`（直接角色）；**多角色 OR 鉴权、业务分级用 priority（min）**，见 [phase1/03-authz §用户多角色](../phase1/03-authz.md#用户多角色phase-1)
 - ResourceRegistry **空接口**
-- Adapter：`pckhoi/casbin-pgx-adapter/v3`
+- Adapter：`noho-digital/casbin-pgx-adapter`（Casbin v3）
 - **不做**组织范围数据过滤
 
 ### Phase 2

@@ -99,7 +99,7 @@
 | HTTP | Gin | 中间件生态成熟 |
 | 数据库 | PostgreSQL 15 | 原生 ACID + ltree + JSONB，云托管 Cluster 高可用 |
 | 缓存 | Redis 6.2 | 缓存/会话/限流/分布式锁 |
-| 路由级鉴权 | Casbin v2（SyncedEnforcer） | 成熟的 RBAC 策略引擎 |
+| 路由级鉴权 | Casbin v3（SyncedEnforcer） | 成熟的 RBAC 策略引擎 |
 | 资源级鉴权 | 代码内联 + ltree SQL（Phase 1–2）→ 独立 Enforcer / OpenFGA（按需） | Phase 1–2 零额外 PDP，拆服务后再评估 |
 | 内部通信（Phase 3） | gRPC + Protobuf | East-West；Phase 1–2 同进程，不引入 |
 | JWT | golang-jwt/v5 | 标准库级 JWT 实现 |
