@@ -28,7 +28,6 @@ type Organization struct {
 type UserOrg struct {
 	UserID    int64     `json:"user_id,string" db:"user_id"`
 	OrgID     int64     `json:"org_id,string" db:"org_id"`
-	RoleID    *int64    `json:"role_id,string,omitempty" db:"role_id"` // 组织内角色（Phase 2）
 	IsPrimary bool      `json:"is_primary" db:"is_primary"`
 	JoinedAt  time.Time `json:"joined_at" db:"joined_at"`
 }
