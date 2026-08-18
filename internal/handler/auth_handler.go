@@ -29,7 +29,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	pair, err := h.authService.Login(c.Request.Context(), &req, c.ClientIP())
+	pair, err := h.authService.Login(c.Request.Context(), &req, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		writeAuthError(c, err)
 		return

@@ -43,7 +43,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	scripts := redis.NewScripts(client)
-	authService := service.NewAuthService(userRepo, manager, client, scripts, jwtConfig)
+	auditLogRepo := repository.NewAuditLogRepo(pool)
+	auditService := service.NewAuditService(auditLogRepo)
+	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
 	authHandler := handler.NewAuthHandler(authService)
 	menuRepo := repository.NewMenuRepo(pool)
 	roleRepo := repository.NewRoleRepo(pool)
@@ -63,8 +65,6 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	roleHandler := handler.NewRoleHandler(rbacService)
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
-	auditLogRepo := repository.NewAuditLogRepo(pool)
-	auditService := service.NewAuditService(auditLogRepo)
 	auditHandler := handler.NewAuditHandler(auditService)
 	deps := router.Deps{
 		AuthHandler:  authHandler,

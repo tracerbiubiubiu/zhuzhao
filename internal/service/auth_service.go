@@ -24,11 +24,12 @@ const defaultDeviceID = "default"
 
 // AuthService 认证服务
 type AuthService struct {
-	userRepo   *repository.UserRepo
-	jwtManager *jwtpkg.Manager
-	rdb        *goredis.Client
-	scripts    *redispkg.Scripts
-	refreshTTL time.Duration
+	userRepo     *repository.UserRepo
+	jwtManager   *jwtpkg.Manager
+	rdb          *goredis.Client
+	scripts      *redispkg.Scripts
+	auditService *AuditService
+	refreshTTL   time.Duration
 }
 
 // NewAuthService 创建 AuthService
@@ -37,20 +38,23 @@ func NewAuthService(
 	jwtManager *jwtpkg.Manager,
 	rdb *goredis.Client,
 	scripts *redispkg.Scripts,
+	auditService *AuditService,
 	jwtCfg config.JWTConfig,
 ) *AuthService {
 	return &AuthService{
-		userRepo:   userRepo,
-		jwtManager: jwtManager,
-		rdb:        rdb,
-		scripts:    scripts,
-		refreshTTL: jwtCfg.RefreshTTL,
+		userRepo:     userRepo,
+		jwtManager:   jwtManager,
+		rdb:          rdb,
+		scripts:      scripts,
+		auditService: auditService,
+		refreshTTL:   jwtCfg.RefreshTTL,
 	}
 }
 
 // Login 登录，签发双 Token
-func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip string) (*model.TokenPair, error) {
+func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, userAgent string) (*model.TokenPair, error) {
 	if req.EmployeeNo == "" || req.Password == "" {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 400)
 		return nil, errcode.ErrInvalidParams
 	}
 
@@ -59,15 +63,18 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip str
 		return nil, errcode.ErrServiceUnavailable
 	}
 	if blocked {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 		return nil, errcode.ErrAccountLocked
 	}
 
 	user, err := s.userRepo.FindByEmployeeNo(ctx, req.EmployeeNo)
 	if err != nil {
 		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
 		if errors.Is(err, errcode.ErrUserNotFound) {
+			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 401)
 			return nil, errcode.ErrInvalidCredentials
 		}
 		return nil, err
@@ -75,15 +82,19 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip str
 
 	if user.Status != 1 {
 		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 401)
 		return nil, errcode.ErrInvalidCredentials
 	}
 
 	if !crypto.CheckPassword(req.Password, user.Password) {
 		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 401)
 		return nil, errcode.ErrInvalidCredentials
 	}
 
@@ -97,7 +108,12 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip str
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 
-	return s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID))
+	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID))
+	if err != nil {
+		return nil, err
+	}
+	s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 200)
+	return pair, nil
 }
 
 // Refresh 刷新 Token，RT 轮换
