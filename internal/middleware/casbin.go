@@ -15,19 +15,15 @@ type RoleFetcher interface {
 	GetRoleCodesByUserID(userID int64) ([]string, error)
 }
 
-type selfServiceRoute struct {
-	method string
-	path   string
-}
+const selfServiceContextKey = "self_service"
 
-// Phase 1 固定白名单；路径变更须同步 docs/modules/authz.md §2.2.1
-var selfServiceRoutes = []selfServiceRoute{
-	{method: "GET", path: "/api/v1/user/profile"},
-	{method: "POST", path: "/api/v1/user/profile/update"},
-	{method: "GET", path: "/api/v1/user/menus"},
-	{method: "GET", path: "/api/v1/user/permissions"},
-	{method: "POST", path: "/api/v1/auth/logout"},
-	{method: "POST", path: "/api/v1/auth/password/update"},
+// SelfService 标记路由为自服务（不需 Casbin 策略，任何已认证有角色用户可访问）。
+// 在路由注册时挂载到对应 RouterGroup，替代硬编码路径白名单。
+func SelfService() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set(selfServiceContextKey, true)
+		c.Next()
+	}
 }
 
 // CasbinPassThrough Step 4 JWT 联调：跳过 Casbin，Step 5 替换为 CasbinAuth。
@@ -54,14 +50,15 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 			return
 		}
 
-		path := c.Request.URL.Path
-		method := c.Request.Method
-		if isSelfServiceRoute(method, path) {
+		// 自服务路由（由 SelfService 中间件标记）跳过 Casbin enforce
+		if _, ok := c.Get(selfServiceContextKey); ok {
 			c.Set("roles", roles)
 			c.Next()
 			return
 		}
 
+		path := c.Request.URL.Path
+		method := c.Request.Method
 		allowed := false
 		var enforceErr error
 		for _, role := range roles {
@@ -92,13 +89,4 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) gin.Ha
 		c.Set("roles", roles)
 		c.Next()
 	}
-}
-
-func isSelfServiceRoute(method, path string) bool {
-	for _, r := range selfServiceRoutes {
-		if r.method == method && r.path == path {
-			return true
-		}
-	}
-	return false
 }

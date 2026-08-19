@@ -71,6 +71,7 @@ func TestCasbinAuth_ZeroRolesSelfServiceDenied(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/menus", nil)
 	c.Set("userID", int64(1))
+	c.Set("self_service", true) // 模拟 SelfService 中间件已打标签
 
 	middleware.CasbinAuth(enforcer, &stubRoleFetcher{roles: map[int64][]string{}})(c)
 	assert.True(t, c.IsAborted())
@@ -85,6 +86,7 @@ func TestCasbinAuth_ViewerSelfServiceAllowed(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/menus", nil)
 	c.Set("userID", int64(1))
+	c.Set("self_service", true) // 模拟 SelfService 中间件已打标签
 
 	middleware.CasbinAuth(enforcer, &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}})(c)
 	assert.False(t, c.IsAborted())
