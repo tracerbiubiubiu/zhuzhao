@@ -266,9 +266,22 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, id int64, passwordHash st
 	return nil
 }
 
-// SoftDelete 软删除用户
+// SoftDelete 软删除用户（事务内清理 user_roles/user_orgs 关联）
 func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
-	tag, err := r.db.Exec(ctx, `
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, id); err != nil {
+		return fmt.Errorf("delete user_roles: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id = $1`, id); err != nil {
+		return fmt.Errorf("delete user_orgs: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, `
 		UPDATE users SET deleted_at = NOW(), updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
@@ -276,6 +289,10 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 	}
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrUserNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
 }
