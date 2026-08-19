@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: zhuzhao
       POSTGRES_USER: zhuzhao
       POSTGRES_PASSWORD: zhuzhao_dev
+      TZ: Asia/Shanghai
     ports:
       - "5432:5432"
     volumes:

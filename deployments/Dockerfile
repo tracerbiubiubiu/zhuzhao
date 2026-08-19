@@ -26,7 +26,7 @@ FROM alpine:3.20
 
 RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories && \
     apk add --no-cache ca-certificates tzdata && \
-    adduser -D -u 10001 appuser
+    adduser -D -u 33333 appuser
 
 WORKDIR /app
 

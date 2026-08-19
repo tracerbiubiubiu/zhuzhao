@@ -15,6 +15,7 @@ services:
       POSTGRES_DB: zhuzhao
       POSTGRES_USER: zhuzhao
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      TZ: Asia/Shanghai
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -59,6 +60,7 @@ services:
       APP_REDIS_PORT: "6379"
       APP_SERVER_PORT: "33333"
       APP_SERVER_MODE: release
+      TZ: Asia/Shanghai
       # JWT 密钥必须通过环境变量注入，勿使用默认值
       APP_JWT_SECRET: ${JWT_SECRET}
       APP_JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30m}
