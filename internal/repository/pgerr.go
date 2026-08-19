@@ -22,7 +22,7 @@ func mapUniqueViolation(err error) *errcode.Error {
 		return errcode.ErrOrgAlreadyExists
 	case "idx_roles_code":
 		return errcode.ErrRoleAlreadyExists
-	case "menus_code_key":
+	case "idx_menus_code", "menus_code_key": // 000006 迁移前旧约束名兼容
 		return errcode.ErrMenuAlreadyExists
 	default:
 		return errcode.ErrConflict

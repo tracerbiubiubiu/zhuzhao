@@ -273,7 +273,14 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	if err := r.SoftDeleteTx(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
 
+// SoftDeleteTx 在外部事务内软删除用户（含关联清理）
+func (r *UserRepo) SoftDeleteTx(ctx context.Context, tx pgx.Tx, id int64) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, id); err != nil {
 		return fmt.Errorf("delete user_roles: %w", err)
 	}
@@ -290,9 +297,66 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrUserNotFound
 	}
+	return nil
+}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
+// RunInTx 在事务内执行 fn（失败整体回滚）。
+// TOCTOU 修复基础设施：superadmin 保护检查与写入须在同一事务 + advisory lock 下串行化
+func (r *UserRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// AcquireSuperadminGuard 事务内获取最后 superadmin 保护锁。
+// 相同 lock key 的并发事务在此串行化，消除"检查与写入之间"的时间窗（TOCTOU）
+func AcquireSuperadminGuard(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('last_superadmin_guard'))`)
+	if err != nil {
+		return fmt.Errorf("acquire superadmin guard lock: %w", err)
+	}
+	return nil
+}
+
+// IsSuperadminUserTx 事务内版本（TOCTOU 修复：与写操作同快照）
+func (r *UserRepo) IsSuperadminUserTx(ctx context.Context, tx pgx.Tx, userID int64) (bool, error) {
+	var exists bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM user_roles ur
+			INNER JOIN roles r ON r.id = ur.role_id
+			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL
+		)`, userID).Scan(&exists)
+	return exists, err
+}
+
+// CountActiveSuperadminUsersTx 事务内版本（TOCTOU 修复：与写操作同快照）
+func (r *UserRepo) CountActiveSuperadminUsersTx(ctx context.Context, tx pgx.Tx) (int64, error) {
+	var n int64
+	err := tx.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT u.id) FROM users u
+		INNER JOIN user_roles ur ON ur.user_id = u.id
+		INNER JOIN roles r ON r.id = ur.role_id
+		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1`).Scan(&n)
+	return n, err
+}
+
+// UpdateStatusTx 在外部事务内更新启用/禁用状态
+func (r *UserRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status int) error {
+	tag, err := tx.Exec(ctx, `
+		UPDATE users SET status = $2, updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`, id, status)
+	if err != nil {
+		return fmt.Errorf("update status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrUserNotFound
 	}
 	return nil
 }

@@ -56,10 +56,14 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			sharedErr = err
 			return
 		}
-		if err := runInitMigration(ctx, pool); err != nil {
-			sharedErr = err
-			pool.Close()
-			return
+		// 000001 建表 + 000006 唯一索引软删过滤（F-6），
+		// 保证测试 schema 与生产迁移后的语义一致（软删工号/域账号可复用）
+		for _, name := range []string{"000001_init.up.sql", "000006_partial_unique_indexes.up.sql"} {
+			if err := runMigration(ctx, pool, name); err != nil {
+				sharedErr = err
+				pool.Close()
+				return
+			}
 		}
 
 		sharedPool = pool
@@ -88,9 +92,8 @@ type testingTB interface {
 	Cleanup(func())
 }
 
-func runInitMigration(ctx context.Context, pool *pgxpool.Pool) error {
-	path := initMigrationPath()
-	sql, err := os.ReadFile(path)
+func runMigration(ctx context.Context, pool *pgxpool.Pool, name string) error {
+	sql, err := os.ReadFile(migrationPath(name))
 	if err != nil {
 		return err
 	}
@@ -98,10 +101,10 @@ func runInitMigration(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
-func initMigrationPath() string {
+func migrationPath(name string) string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "migrations/000001_init.up.sql"
+		return "migrations/" + name
 	}
-	return filepath.Join(filepath.Dir(file), "..", "..", "migrations", "000001_init.up.sql")
+	return filepath.Join(filepath.Dir(file), "..", "..", "migrations", name)
 }

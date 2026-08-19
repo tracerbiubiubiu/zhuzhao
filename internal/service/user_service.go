@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
@@ -200,16 +201,27 @@ func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) err
 	if user.IsSystem {
 		return errcode.ErrUserIsSystem
 	}
+	// TOCTOU 修复：最后 superadmin 检查与软删除放同一事务，
+	// advisory lock 串行化并发删除，杜绝两个请求同时通过 n<=1 检查
 	if ok, err := s.userRepo.IsSuperadminUser(ctx, userID); err != nil {
 		return err
 	} else if ok {
-		n, err := s.userRepo.CountActiveSuperadminUsers(ctx)
-		if err != nil {
+		if err := s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+			if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+				return err
+			}
+			n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
+			if err != nil {
+				return err
+			}
+			if n <= 1 {
+				return errcode.ErrCannotRemoveLastSuperadmin
+			}
+			return s.userRepo.SoftDeleteTx(ctx, tx, userID)
+		}); err != nil {
 			return err
 		}
-		if n <= 1 {
-			return errcode.ErrCannotRemoveLastSuperadmin
-		}
+		return revokeUserSessions(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
 	}
 	if err := s.userRepo.SoftDelete(ctx, userID); err != nil {
 		return err
@@ -222,16 +234,28 @@ func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserSta
 		return err
 	}
 	if req.Status == 0 {
+		// TOCTOU 修复：禁用 superadmin 的最后一人检查与状态更新同事务
 		if ok, err := s.userRepo.IsSuperadminUser(ctx, req.UserID); err != nil {
 			return err
 		} else if ok {
-			n, err := s.userRepo.CountActiveSuperadminUsers(ctx)
-			if err != nil {
+			if err := s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+				if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+					return err
+				}
+				n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
+				if err != nil {
+					return err
+				}
+				if n <= 1 {
+					return errcode.ErrCannotRemoveLastSuperadmin
+				}
+				return s.userRepo.UpdateStatusTx(ctx, tx, req.UserID, req.Status)
+			}); err != nil {
 				return err
 			}
-			if n <= 1 {
-				return errcode.ErrCannotRemoveLastSuperadmin
-			}
+			// 与非超管禁用路径一致：禁用成功后吊销全部会话
+			// （JWT 中间件不查 DB status，须靠 disabled 键拦截存量 AT）
+			return revokeUserSessions(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
 		}
 	}
 	if err := s.userRepo.UpdateStatus(ctx, req.UserID, req.Status); err != nil {
@@ -275,14 +299,21 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 			break
 		}
 	}
+	// TOCTOU 修复：摘除最后一个 superadmin 角色的检查与写入同事务
 	if wasSuper && !willHaveSuper {
-		n, err := s.userRepo.CountActiveSuperadminUsers(ctx)
-		if err != nil {
-			return err
-		}
-		if n <= 1 {
-			return errcode.ErrCannotRemoveLastSuperadmin
-		}
+		return s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+			if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+				return err
+			}
+			n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
+			if err != nil {
+				return err
+			}
+			if n <= 1 {
+				return errcode.ErrCannotRemoveLastSuperadmin
+			}
+			return s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs))
+		})
 	}
 	if err := s.userRepo.SetRoles(ctx, req.UserID, []int64(req.RoleIDs)); err != nil {
 		return err
