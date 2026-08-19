@@ -15,6 +15,13 @@ func main() {
 		fmt.Printf("failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+	if cfg.UsesWeakJWTSecret() && cfg.Server.Mode != "release" {
+		fmt.Fprintf(os.Stderr, "WARN: jwt.secret is default or weak; set JWT_SECRET before production\n")
+	}
+	if err := cfg.Validate(); err != nil {
+		fmt.Printf("invalid config: %v\n", err)
+		os.Exit(1)
+	}
 
 	// 初始化应用（Wire 注入）
 	application, cleanup, err := app.InitializeApp(cfg)
