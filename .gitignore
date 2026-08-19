@@ -39,3 +39,7 @@ logs/
 # internal/app/wire_gen.go
 doc/
 .DS_Store
+
+# ai
+.opencode
+.codebuddy

@@ -9,10 +9,10 @@ const minJWTSecretLenRelease = 32
 
 var weakJWTSecrets = map[string]struct{}{
 	"change-me-in-production": {},
-	"changeme":                  {},
-	"secret":                    {},
-	"test-secret":               {},
-	"your-secret-key":           {},
+	"changeme":                {},
+	"secret":                  {},
+	"test-secret":             {},
+	"your-secret-key":         {},
 }
 
 // Validate 校验配置；release 模式下 JWT 密钥必须足够强。
