@@ -23,9 +23,10 @@ SELECT setval('organizations_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM orga
 
 -- ============================================
 -- 超级管理员用户（密码: admin123；工号 E000001）
+-- F-10 修复：must_change_password=true，首登强制改密（弱初始凭证不得长期有效）
 -- ============================================
-INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id)
-SELECT 'admin', 'E000001', '$2a$12$YbDKBpLbLGzQEWHzlEFF2.6mhXP5urRNYBIw2WlN25jWSUBwPFXUa', '系统管理员', 1, true, 1
+INSERT INTO users (username, employee_no, password, real_name, status, is_system, tenant_id, must_change_password)
+SELECT 'admin', 'E000001', '$2a$12$YbDKBpLbLGzQEWHzlEFF2.6mhXP5urRNYBIw2WlN25jWSUBwPFXUa', '系统管理员', 1, true, 1, true
 WHERE NOT EXISTS (
   SELECT 1 FROM users WHERE employee_no = 'E000001'
 );

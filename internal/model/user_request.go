@@ -4,18 +4,18 @@ import "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
 
 // CreateUserRequest 创建用户
 type CreateUserRequest struct {
-	Username      string  `json:"username" binding:"required"`
-	Password      string  `json:"password" binding:"required"`
-	EmployeeNo    string  `json:"employee_no"`
-	DomainAccount string  `json:"domain_account"`
-	UserDomain    string  `json:"user_domain"`
-	RealName      string  `json:"real_name"`
-	Email         string  `json:"email"`
-	Phone         string  `json:"phone"`
-	Avatar        string  `json:"avatar"`
+	Username      string              `json:"username" binding:"required"`
+	Password      string              `json:"password" binding:"required,min=8"` // F-9：最小长度（完整复杂度策略 Phase 2）
+	EmployeeNo    string              `json:"employee_no"`
+	DomainAccount string              `json:"domain_account"`
+	UserDomain    string              `json:"user_domain"`
+	RealName      string              `json:"real_name"`
+	Email         string              `json:"email"`
+	Phone         string              `json:"phone"`
+	Avatar        string              `json:"avatar"`
 	RoleIDs       jsonutil.Int64Slice `json:"role_ids"`
 	OrgIDs        jsonutil.Int64Slice `json:"org_ids"`
-	PrimaryOrgID  *int64  `json:"primary_org_id,string"`
+	PrimaryOrgID  *int64              `json:"primary_org_id,string"`
 }
 
 // UpdateUserRequest 更新用户
@@ -45,21 +45,21 @@ type UpdateUserStatusRequest struct {
 
 // SetUserRolesRequest 分配角色
 type SetUserRolesRequest struct {
-	UserID  int64   `json:"user_id,string" binding:"required"`
+	UserID  int64               `json:"user_id,string" binding:"required"`
 	RoleIDs jsonutil.Int64Slice `json:"role_ids"`
 }
 
 // ResetPasswordRequest 管理员重置密码
 type ResetPasswordRequest struct {
 	UserID   int64  `json:"user_id,string" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"password" binding:"required,min=8"`
 }
 
 // SetUserOrgsRequest 全量设置用户组织
 type SetUserOrgsRequest struct {
-	UserID       int64   `json:"user_id,string" binding:"required"`
+	UserID       int64               `json:"user_id,string" binding:"required"`
 	OrgIDs       jsonutil.Int64Slice `json:"org_ids"`
-	PrimaryOrgID *int64  `json:"primary_org_id,string"`
+	PrimaryOrgID *int64              `json:"primary_org_id,string"`
 }
 
 // UpdateProfileRequest 更新个人资料
@@ -73,7 +73,7 @@ type UpdateProfileRequest struct {
 // UpdatePasswordRequest 用户修改密码
 type UpdatePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
 	DeviceID    string `json:"device_id"` // 与登录时一致；空则使用 default
 }
 

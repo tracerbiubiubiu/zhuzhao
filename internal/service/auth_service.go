@@ -210,14 +210,19 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 		return nil, err
 	}
 
-	// 吊销旧 AT（拉黑 jti）+ 删除旧 RT，防止旧 mcp Token 继续生效
+	// F-4 修复：改密后吊销**全部设备**会话（此前只删当前 deviceID 的 RT，
+	// 其他设备可在 168h 内继续刷新）；当前 AT 单独拉黑 jti。
 	if accessToken != "" {
 		if err := s.revokeAccessToken(ctx, accessToken); err != nil {
 			return nil, err
 		}
 	}
-	rtKey := refreshKey(userID, normalizeDeviceID(deviceID))
-	if err := s.rdb.Del(ctx, rtKey).Err(); err != nil {
+	if err := revokeUserSessions(ctx, s.rdb, userID, s.jwtManager.AccessTTL()); err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	// disabled 键会拦截刚签发的新 AT，须在重新签发前清除
+	// （密码已验证通过，旧 RT 已全部删除，其他设备旧 AT 最长 30 分钟自然过期）
+	if err := clearUserDisabled(ctx, s.rdb, userID); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
 
