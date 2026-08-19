@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-up docker-down swag test test-unit test-integration test-cover benchmark
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag test test-unit test-integration test-cover benchmark
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -30,6 +30,14 @@ docker-dev-up:
 
 docker-dev-down:
 	cd deployments && docker-compose -f docker-compose.dev.yaml down
+
+# 清空 PG/Redis 数据卷并重建（会删除所有本地 dev 数据，随后自动 migrate-up）
+docker-dev-reset:
+	cd deployments && docker-compose -f docker-compose.dev.yaml down -v
+	cd deployments && docker-compose -f docker-compose.dev.yaml up -d
+	@echo "Waiting for postgres..."
+	@sleep 5
+	$(MAKE) migrate-up
 
 # 完整部署：应用 + PG + Redis
 docker-up:
