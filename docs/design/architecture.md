@@ -1752,7 +1752,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `POST /orgs/members` | ✅ §17.4 | ✅ 已注册 |
 | `POST /orgs/members/delete` | ✅ §17.4 | ✅ 已注册 |
 
-> 上表路由已在 `internal/router/router.go` 注册（handler 为 stub，Step 9 实现）；以 §17 为准，勿改 API 路径。
+> 上表路由已在 `internal/router/router.go` 注册；Step 7–9 写 API 见 [phase1/README §2.4](../phase1/README.md#24-step-79-crud-补全计划)。
 
 ### 17.5 菜单模块
 

@@ -117,6 +117,10 @@ Phase 2 各子阶段 SSOT 见 [§4 文档索引](#4-文档索引)。
 - [ ] 工单 MVP + assigned 范围验收通过
 - [ ] TicketResource 已注册且测试覆盖主路径
 
+**Phase 2b 额外要求**（Phase 1 收尾）：
+
+- [ ] Step 9 组织 CRUD 已实现（见 [phase1/README §2.4](../phase1/README.md#24-step-79-crud-补全计划)）
+
 **Phase 2c** 开始前，**Phase 2b** 必须已完成：
 
 - [ ] 虚拟组 + `ticket_scope` + HR Sync 验收通过

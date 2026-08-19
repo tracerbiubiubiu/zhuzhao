@@ -44,6 +44,8 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 **验收标准**：主路径 + 对抗路径（限流、会话吊销、最后一个 superadmin、Redis 503），见 [phase1/README.md](./phase1/README.md) §1.3。Phase 1 **不做**部门数据隔离。
 
+**Step 7–9 CRUD 补全**：角色/菜单/组织写 API 属于 Phase 1 交付（见 [phase1/README §2.4](./phase1/README.md#24-step-79-crud-补全计划)）。组织 CRUD 是 Phase 2b 的前置依赖；角色/菜单 CRUD 主路径可依赖种子数据，但管理端完整能力需在 Phase 1 收尾完成。
+
 ---
 
 ## Phase 2：业务可用

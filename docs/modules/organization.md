@@ -331,11 +331,13 @@ SELECT EXISTS(
 
 ### Phase 1
 
-- 组织 CRUD（含 ltree path 维护）
+- 组织 CRUD（含 ltree path 维护）— **Phase 1 收尾必完成**（进 Phase 2b 前）
 - 组织树查询 + 移动节点（事务内更新子树 path）
 - 系统组织保护
 - 基础成员管理（AddMember/RemoveMember/GetMembers；API：`POST /orgs/members`、`POST /orgs/members/delete`、`GET /orgs/:id/members`）
 - `code` 校验：仅 `[A-Za-z0-9_]`（ltree 标签）
+
+> 排期详见 [phase1/README §2.4](../phase1/README.md#24-step-79-crud-补全计划)。
 
 ### Phase 2b
 

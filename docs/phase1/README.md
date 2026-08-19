@@ -213,6 +213,18 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 
 > **批次 B 说明**：Step 7/8/9 互相无依赖，可并行开发；Step 9 的 `OrgService` 是 Step 6b 的前置。若人手有限，优先 **9 → 6b**（组织闭环），再 **7+8**（前端菜单）。
 
+### 2.4 Step 7–9 CRUD 补全计划
+
+> 路由与 handler 骨架在 Step 1 已注册；下列为 **写 API 实现** 的排期（与 M4/M5 读路径、成员写路径分离）。
+
+| 优先级 | 时机 | Step | 范围 | 原因 |
+|--------|------|------|------|------|
+| **P0** | Phase 1 收尾 / 进 Phase 2a 前 | 9 | 组织 Create/Get/Update/Delete/Move/GetMembers | Phase 2b 虚拟组/HR 依赖可写组织树 |
+| **P1** | Phase 1 收尾（与 P0 同批完成） | 7 | 角色 CRUD | 管理端自定义角色；AssignMenus 已就绪 |
+| **P2** | Phase 1 收尾（与 P0 同批完成） | 8 | 菜单 CRUD | 管理端登记菜单；主路径仍用 seed + AssignMenus |
+
+**状态**：P0–P2 均属于 Phase 1 交付范围；完成后 Step 7–9 写 API 全部落地，验收脚本 `POST /orgs` 由 500 改为 200。
+
 ---
 
 ## 3. 测试策略

@@ -274,7 +274,7 @@ orgs.POST("/members", deps.OrgHandler.AddMember)
 orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
 ```
 
-> **骨架对齐**：`router.go` 已注册上表三路由 + `POST /users/orgs`（handler 为 stub）；验收 #18–#20 在 **Step 9** 实现 `OrgService` 后可测。
+> **实现状态**：Step 9 组织 CRUD + Move + GetMembers 与成员写路径均已实现；验收 #18–#20 与 `POST /orgs` 创建用例可测。
 
 ---
 
