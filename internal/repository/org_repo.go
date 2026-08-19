@@ -138,16 +138,133 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 	return nil
 }
 
+func (r *OrgRepo) CountChildren(ctx context.Context, orgID int64) (int64, error) {
+	var n int64
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM organizations
+		WHERE parent_id = $1 AND deleted_at IS NULL`, orgID).Scan(&n)
+	return n, err
+}
+
+func (r *OrgRepo) CountMembers(ctx context.Context, orgID int64) (int64, error) {
+	var n int64
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM user_orgs uo
+		INNER JOIN organizations o ON o.id = uo.org_id
+		INNER JOIN users u ON u.id = uo.user_id
+		WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL`, orgID).Scan(&n)
+	return n, err
+}
+
 func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
-	return fmt.Errorf("not implemented")
+	tenantID := org.TenantID
+	if tenantID == 0 {
+		tenantID = 1
+	}
+	status := org.Status
+	if status == 0 {
+		status = 1
+	}
+	const q = `
+		INSERT INTO organizations (
+			code, name, description, parent_id, path, org_type, status, is_system,
+			sort_order, created_by, tenant_id
+		) VALUES (
+			$1, $2, NULLIF($3, ''), $4, $5::ltree, $6, $7, false,
+			$8, $9, $10
+		)
+		RETURNING id, version, created_at, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		org.Code, org.Name, org.Description, org.ParentID, org.Path,
+		org.OrgType, status, org.SortOrder, org.CreatedBy, tenantID,
+	).Scan(&org.ID, &org.Version, &org.CreatedAt, &org.UpdatedAt)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("create org: %w", err)
+	}
+	org.Status = status
+	org.TenantID = tenantID
+	return nil
 }
 
 func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
-	return fmt.Errorf("not implemented")
+	const q = `
+		UPDATE organizations SET
+			name = $2,
+			description = NULLIF($3, ''),
+			status = $4,
+			sort_order = $5,
+			version = version + 1,
+			updated_at = NOW()
+		WHERE id = $1 AND version = $6 AND deleted_at IS NULL
+		RETURNING version, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		org.ID, org.Name, org.Description, org.Status, org.SortOrder, org.Version,
+	).Scan(&org.Version, &org.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrConcurrentModification
+		}
+		return fmt.Errorf("update org: %w", err)
+	}
+	return nil
 }
 
 func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+	tag, err := r.db.Exec(ctx, `
+		UPDATE organizations SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return fmt.Errorf("delete org: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrOrgNotFound
+	}
+	return nil
+}
+
+func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64, newRootPath, oldPath string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		SELECT id FROM organizations WHERE path <@ $1::ltree FOR UPDATE`, oldPath); err != nil {
+		return fmt.Errorf("lock org subtree: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE organizations
+		SET path = CASE
+			WHEN nlevel(path) = nlevel(text2ltree($2)) THEN text2ltree($1)
+			ELSE text2ltree($1) || subpath(path, nlevel(text2ltree($2)))
+		END,
+		    parent_id = CASE WHEN id = $3 THEN $4 ELSE parent_id END,
+		    updated_at = NOW(),
+		    version = version + 1
+		WHERE path <@ text2ltree($2)`,
+		newRootPath, oldPath, id, newParentID,
+	); err != nil {
+		return fmt.Errorf("move org subtree: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *OrgRepo) IsDescendant(ctx context.Context, ancestorID, descendantID int64) (bool, error) {
+	var ok bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM organizations child
+			INNER JOIN organizations ancestor ON ancestor.id = $1
+			WHERE child.id = $2 AND child.deleted_at IS NULL
+			  AND child.path <@ ancestor.path
+		)`, ancestorID, descendantID).Scan(&ok)
+	return ok, err
 }
 
 func (r *OrgRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Organization, error) {

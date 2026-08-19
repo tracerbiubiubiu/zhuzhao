@@ -116,15 +116,81 @@ func (r *RoleRepo) CountUsersByRoleID(ctx context.Context, roleID int64) (int64,
 }
 
 func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
-	return fmt.Errorf("not implemented")
+	tenantID := role.TenantID
+	if tenantID == 0 {
+		tenantID = 1
+	}
+	status := role.Status
+	if status == 0 {
+		status = 1
+	}
+	const q = `
+		INSERT INTO roles (
+			code, name, description, status, priority, sort_order, is_system, tenant_id
+		) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, false, $7)
+		RETURNING id, version, created_at, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		role.Code, role.Name, role.Description, status, role.Priority, role.SortOrder, tenantID,
+	).Scan(&role.ID, &role.Version, &role.CreatedAt, &role.UpdatedAt)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("create role: %w", err)
+	}
+	role.Status = status
+	role.TenantID = tenantID
+	return nil
 }
 
 func (r *RoleRepo) Update(ctx context.Context, role *model.Role) error {
-	return fmt.Errorf("not implemented")
+	const q = `
+		UPDATE roles SET
+			name = $2,
+			description = NULLIF($3, ''),
+			status = $4,
+			priority = $5,
+			sort_order = $6,
+			version = version + 1,
+			updated_at = NOW()
+		WHERE id = $1 AND version = $7 AND deleted_at IS NULL
+		RETURNING version, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		role.ID, role.Name, role.Description, role.Status, role.Priority, role.SortOrder, role.Version,
+	).Scan(&role.Version, &role.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrConcurrentModification
+		}
+		return fmt.Errorf("update role: %w", err)
+	}
+	return nil
 }
 
-func (r *RoleRepo) Delete(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, id); err != nil {
+		return fmt.Errorf("delete role_menus: %w", err)
+	}
+	subject := fmt.Sprintf("role::%s", roleCode)
+	if _, err := tx.Exec(ctx, `DELETE FROM casbin_rule WHERE ptype = 'p' AND v0 = $1`, subject); err != nil {
+		return fmt.Errorf("delete casbin rules: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `
+		UPDATE roles SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return fmt.Errorf("delete role: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrRoleNotFound
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *RoleRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Role, error) {

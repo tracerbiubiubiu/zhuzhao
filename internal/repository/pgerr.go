@@ -18,6 +18,12 @@ func mapUniqueViolation(err error) *errcode.Error {
 		return errcode.ErrEmployeeNoAlreadyExists
 	case "idx_users_domain_account":
 		return errcode.ErrDomainAccountAlreadyExists
+	case "idx_org_code":
+		return errcode.ErrOrgAlreadyExists
+	case "idx_roles_code":
+		return errcode.ErrRoleAlreadyExists
+	case "menus_code_key":
+		return errcode.ErrMenuAlreadyExists
 	default:
 		return errcode.ErrConflict
 	}

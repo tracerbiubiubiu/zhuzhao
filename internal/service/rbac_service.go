@@ -8,6 +8,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -37,16 +38,76 @@ func (s *RBACService) ListRoles(ctx context.Context, hideSuperadmin bool) ([]*mo
 	return s.roleRepo.List(ctx, hideSuperadmin)
 }
 
-func (s *RBACService) CreateRole(ctx context.Context, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *RBACService) GetRole(ctx context.Context, roleID int64) (*model.Role, error) {
+	return s.roleRepo.FindByID(ctx, roleID)
 }
 
-func (s *RBACService) UpdateRole(ctx context.Context, id int64, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleRequest) (*model.Role, error) {
+	if !validate.Identifier(req.Code) {
+		return nil, errcode.ErrInvalidParams
+	}
+	status := req.Status
+	if status == 0 {
+		status = 1
+	}
+	role := &model.Role{
+		Code:        req.Code,
+		Name:        req.Name,
+		Description: req.Description,
+		Priority:    req.Priority,
+		SortOrder:   req.SortOrder,
+		Status:      status,
+	}
+	if err := s.roleRepo.Create(ctx, role); err != nil {
+		return nil, err
+	}
+	return role, nil
 }
 
-func (s *RBACService) DeleteRole(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleRequest) (*model.Role, error) {
+	role, err := s.roleRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if role.IsSystem {
+		return nil, errcode.ErrRoleIsSystem
+	}
+	role.Name = req.Name
+	role.Description = req.Description
+	role.Priority = req.Priority
+	role.SortOrder = req.SortOrder
+	role.Status = req.Status
+	role.Version = req.Version
+	if err := s.roleRepo.Update(ctx, role); err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+func (s *RBACService) DeleteRole(ctx context.Context, roleID int64) error {
+	role, err := s.roleRepo.FindByID(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	if role.IsSystem {
+		return errcode.ErrRoleIsSystem
+	}
+	n, err := s.roleRepo.CountUsersByRoleID(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return errcode.ErrRoleInUse
+	}
+	if err := s.roleRepo.Delete(ctx, roleID, role.Code); err != nil {
+		return err
+	}
+	if role.Code != "admin" && role.Code != "superadmin" {
+		if err := s.enforcer.LoadPolicy(); err != nil {
+			return fmt.Errorf("reload casbin policy: %w", err)
+		}
+	}
+	return nil
 }
 
 // AssignMenus 全量覆盖角色菜单并同步 Casbin 策略

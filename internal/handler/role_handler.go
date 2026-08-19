@@ -23,7 +23,7 @@ func NewRoleHandler(rbacService *service.RBACService) *RoleHandler {
 func (h *RoleHandler) List(c *gin.Context) {
 	roles, err := h.rbacService.ListRoles(c.Request.Context(), !isSuperadminActor(c))
 	if err != nil {
-		response.InternalError(c, err.Error())
+		writeServiceError(c, err)
 		return
 	}
 	response.OK(c, roles)
@@ -31,25 +31,64 @@ func (h *RoleHandler) List(c *gin.Context) {
 
 // Create POST /api/v1/roles
 func (h *RoleHandler) Create(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.CreateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	role, err := h.rbacService.CreateRole(c.Request.Context(), &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, role)
 }
 
 // Get GET /api/v1/roles/:id
 func (h *RoleHandler) Get(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	roleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的角色 ID")
+		return
+	}
+	role, err := h.rbacService.GetRole(c.Request.Context(), roleID)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, role)
 }
 
-// Update POST /api/v1/roles/update（id 放 body）
+// Update POST /api/v1/roles/update
 func (h *RoleHandler) Update(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.UpdateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	role, err := h.rbacService.UpdateRole(c.Request.Context(), &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, role)
 }
 
-// Delete POST /api/v1/roles/delete（id 放 body）
+// Delete POST /api/v1/roles/delete
 func (h *RoleHandler) Delete(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.RoleIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	if err := h.rbacService.DeleteRole(c.Request.Context(), req.RoleID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
-// AssignMenus POST /api/v1/roles/menus（id 放 body）
+// AssignMenus POST /api/v1/roles/menus
 func (h *RoleHandler) AssignMenus(c *gin.Context) {
 	var req model.AssignMenusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -20,10 +20,16 @@ func writeServiceError(c *gin.Context, err error) {
 		response.BadRequest(c, biz.Message)
 	case errcode.ErrConcurrentModification.Code:
 		response.Error(c, 409, biz)
-	case errcode.ErrEmployeeNoAlreadyExists.Code, errcode.ErrDomainAccountAlreadyExists.Code, errcode.ErrUserAlreadyExists.Code:
+	case errcode.ErrEmployeeNoAlreadyExists.Code, errcode.ErrDomainAccountAlreadyExists.Code, errcode.ErrUserAlreadyExists.Code,
+		errcode.ErrOrgAlreadyExists.Code, errcode.ErrRoleAlreadyExists.Code, errcode.ErrMenuAlreadyExists.Code, errcode.ErrConflict.Code:
 		response.Error(c, 409, biz)
-	case errcode.ErrCannotResetHigher.Code, errcode.ErrCannotAssignHigherRole.Code, errcode.ErrUserIsSystem.Code, errcode.ErrCannotRemoveLastSuperadmin.Code, errcode.ErrUserDisabled.Code:
+	case errcode.ErrCannotResetHigher.Code, errcode.ErrCannotAssignHigherRole.Code, errcode.ErrUserIsSystem.Code, errcode.ErrCannotRemoveLastSuperadmin.Code, errcode.ErrUserDisabled.Code,
+		errcode.ErrOrgHasChildren.Code, errcode.ErrOrgHasMembers.Code, errcode.ErrOrgIsSystem.Code,
+		errcode.ErrRoleInUse.Code, errcode.ErrRoleIsSystem.Code,
+		errcode.ErrMenuHasChildren.Code, errcode.ErrMenuIsSystem.Code:
 		response.ForbiddenError(c, biz)
+	case errcode.ErrOrgCannotMoveToChild.Code:
+		response.Error(c, 400, biz)
 	case errcode.ErrUnauthorized.Code, errcode.ErrTokenInvalid.Code:
 		response.UnauthorizedError(c, biz)
 	case errcode.ErrNoPermission.Code, errcode.ErrForbidden.Code, errcode.ErrNoRoles.Code:

@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -86,18 +87,133 @@ func (s *OrgService) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, req *model.Se
 	return s.orgRepo.SetUserOrgsTx(ctx, tx, req.UserID, []int64(req.OrgIDs), req.PrimaryOrgID)
 }
 
-func (s *OrgService) Create(ctx context.Context, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *OrgService) GetByID(ctx context.Context, id int64) (*model.Organization, error) {
+	return s.orgRepo.FindByID(ctx, id)
 }
 
-func (s *OrgService) Update(ctx context.Context, id int64, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *OrgService) GetMembers(ctx context.Context, orgID int64) (*model.OrgMemberListResponse, error) {
+	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
+		return nil, err
+	}
+	users, err := s.userRepo.ListByOrgID(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.OrgMemberListResponse{
+		List:  users,
+		Total: int64(len(users)),
+	}, nil
+}
+
+func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, actorUserID int64) (*model.Organization, error) {
+	if !validate.LtreeLabel(req.Code) {
+		return nil, errcode.ErrInvalidParams
+	}
+	if req.OrgType == 4 {
+		return nil, errcode.ErrInvalidParams
+	}
+
+	var parentID *int64
+	path := req.Code
+	if req.ParentID != nil {
+		parent, err := s.orgRepo.FindByID(ctx, *req.ParentID)
+		if err != nil {
+			return nil, err
+		}
+		parentID = &parent.ID
+		path = parent.Path + "." + req.Code
+	}
+
+	org := &model.Organization{
+		Code:        req.Code,
+		Name:        req.Name,
+		Description: req.Description,
+		ParentID:    parentID,
+		Path:        path,
+		OrgType:     req.OrgType,
+		Status:      1,
+		SortOrder:   req.SortOrder,
+		CreatedBy:   &actorUserID,
+	}
+	if err := s.orgRepo.Create(ctx, org); err != nil {
+		return nil, err
+	}
+	return org, nil
+}
+
+func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*model.Organization, error) {
+	org, err := s.orgRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if org.IsSystem {
+		return nil, errcode.ErrOrgIsSystem
+	}
+	org.Name = req.Name
+	org.Description = req.Description
+	org.Status = req.Status
+	org.SortOrder = req.SortOrder
+	org.Version = req.Version
+	if err := s.orgRepo.Update(ctx, org); err != nil {
+		return nil, err
+	}
+	return org, nil
 }
 
 func (s *OrgService) Delete(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+	org, err := s.orgRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if org.IsSystem {
+		return errcode.ErrOrgIsSystem
+	}
+	n, err := s.orgRepo.CountChildren(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return errcode.ErrOrgHasChildren
+	}
+	n, err = s.orgRepo.CountMembers(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return errcode.ErrOrgHasMembers
+	}
+	return s.orgRepo.Delete(ctx, id)
 }
 
-func (s *OrgService) Move(ctx context.Context, id, parentID int64) error {
-	return fmt.Errorf("not implemented")
+func (s *OrgService) Move(ctx context.Context, req *model.MoveOrgRequest) error {
+	org, err := s.orgRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	if org.IsSystem {
+		return errcode.ErrOrgIsSystem
+	}
+
+	var newParentID *int64
+	newRootPath := org.Code
+	if req.NewParentID != nil {
+		if *req.NewParentID == req.ID {
+			return errcode.ErrOrgCannotMoveToChild
+		}
+		parent, err := s.orgRepo.FindByID(ctx, *req.NewParentID)
+		if err != nil {
+			return err
+		}
+		ok, err := s.orgRepo.IsDescendant(ctx, req.ID, parent.ID)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return errcode.ErrOrgCannotMoveToChild
+		}
+		newParentID = &parent.ID
+		newRootPath = parent.Path + "." + org.Code
+	}
+
+	return s.orgRepo.Move(ctx, req.ID, newParentID, newRootPath, org.Path)
 }

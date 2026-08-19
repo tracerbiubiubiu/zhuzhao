@@ -20,7 +20,8 @@ func NewAuditService(auditRepo *repository.AuditLogRepo) *AuditService {
 	return &AuditService{auditRepo: auditRepo}
 }
 
-// Insert 同步写入审计日志（实现 middleware.AuditLogger）
+// Insert 同步写入审计日志（实现 middleware.AuditLogger）。
+// 除登录外，所有需鉴权路由由 middleware.AuditLog 在请求结束后调用本方法写入。
 func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntry) error {
 	log := entryToModel(entry)
 	if err := s.auditRepo.Create(ctx, log); err != nil {
@@ -29,7 +30,7 @@ func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntr
 	return nil
 }
 
-// LogLogin 登录审计（公开路由，由 AuthService 调用）
+// LogLogin 登录审计（公开路由不走 AuditLog 中间件，由 AuthService 显式调用）
 func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent string, userID *int64, username string, statusCode int) {
 	entry := middleware.AuditLogEntry{
 		Method:      "POST",

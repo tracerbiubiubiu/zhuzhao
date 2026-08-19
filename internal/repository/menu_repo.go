@@ -94,16 +94,77 @@ func (r *MenuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*model.Menu, e
 	return r.queryMany(ctx, q, ids)
 }
 
+func (r *MenuRepo) CountChildren(ctx context.Context, menuID int64) (int64, error) {
+	var n int64
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM menus
+		WHERE parent_id = $1 AND deleted_at IS NULL`, menuID).Scan(&n)
+	return n, err
+}
+
 func (r *MenuRepo) Create(ctx context.Context, menu *model.Menu) error {
-	return fmt.Errorf("not implemented")
+	visible := menu.Visible
+	const q = `
+		INSERT INTO menus (
+			parent_id, code, name, menu_type, path, component, icon, permission,
+			sort_order, visible, is_system, version
+		) VALUES (
+			$1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''),
+			$9, $10, false, 1
+		)
+		RETURNING id, version, created_at, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		menu.ParentID, menu.Code, menu.Name, menu.MenuType,
+		menu.Path, menu.Component, menu.Icon, menu.Permission,
+		menu.SortOrder, visible,
+	).Scan(&menu.ID, &menu.Version, &menu.CreatedAt, &menu.UpdatedAt)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("create menu: %w", err)
+	}
+	return nil
 }
 
 func (r *MenuRepo) Update(ctx context.Context, menu *model.Menu) error {
-	return fmt.Errorf("not implemented")
+	const q = `
+		UPDATE menus SET
+			name = $2,
+			path = NULLIF($3, ''),
+			component = NULLIF($4, ''),
+			icon = NULLIF($5, ''),
+			permission = NULLIF($6, ''),
+			sort_order = $7,
+			visible = $8,
+			version = version + 1,
+			updated_at = NOW()
+		WHERE id = $1 AND version = $9 AND deleted_at IS NULL
+		RETURNING version, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		menu.ID, menu.Name, menu.Path, menu.Component, menu.Icon, menu.Permission,
+		menu.SortOrder, menu.Visible, menu.Version,
+	).Scan(&menu.Version, &menu.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrConcurrentModification
+		}
+		return fmt.Errorf("update menu: %w", err)
+	}
+	return nil
 }
 
 func (r *MenuRepo) Delete(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+	tag, err := r.db.Exec(ctx, `
+		UPDATE menus SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return fmt.Errorf("delete menu: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrMenuNotFound
+	}
+	return nil
 }
 
 func (r *MenuRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Menu, error) {

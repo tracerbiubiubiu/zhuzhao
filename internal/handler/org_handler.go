@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -29,32 +31,90 @@ func (h *OrgHandler) GetTree(c *gin.Context) {
 
 // Create POST /api/v1/orgs
 func (h *OrgHandler) Create(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.CreateOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	org, err := h.orgService.Create(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
 // Get GET /api/v1/orgs/:id
 func (h *OrgHandler) Get(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	org, err := h.orgService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
 // Update POST /api/v1/orgs/update
 func (h *OrgHandler) Update(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.UpdateOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	org, err := h.orgService.Update(c.Request.Context(), &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
 // Delete POST /api/v1/orgs/delete
 func (h *OrgHandler) Delete(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.OrgIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	if err := h.orgService.Delete(c.Request.Context(), req.OrgID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // Move POST /api/v1/orgs/move
 func (h *OrgHandler) Move(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.MoveOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	if err := h.orgService.Move(c.Request.Context(), &req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // GetMembers GET /api/v1/orgs/:id/members
 func (h *OrgHandler) GetMembers(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	resp, err := h.orgService.GetMembers(c.Request.Context(), id)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, resp)
 }
 
 // AddMember POST /api/v1/orgs/members

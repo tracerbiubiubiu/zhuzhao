@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -103,16 +104,120 @@ func (s *MenuService) GetTree(ctx context.Context) ([]model.Menu, error) {
 	return buildMenuTree(menus), nil
 }
 
-func (s *MenuService) Create(ctx context.Context, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *MenuService) GetByID(ctx context.Context, id int64) (*model.Menu, error) {
+	return s.menuRepo.FindByID(ctx, id)
 }
 
-func (s *MenuService) Update(ctx context.Context, id int64, req interface{}) error {
-	return fmt.Errorf("not implemented")
+func (s *MenuService) Create(ctx context.Context, req *model.CreateMenuRequest) (*model.Menu, error) {
+	if !validate.Identifier(req.Code) {
+		return nil, errcode.ErrInvalidParams
+	}
+	if err := s.validateMenuParent(ctx, req.MenuType, req.ParentID); err != nil {
+		return nil, err
+	}
+	visible := true
+	if req.Visible != nil {
+		visible = *req.Visible
+	}
+	menu := &model.Menu{
+		ParentID:   req.ParentID,
+		Code:       req.Code,
+		Name:       req.Name,
+		MenuType:   req.MenuType,
+		Path:       req.Path,
+		Component:  req.Component,
+		Icon:       req.Icon,
+		Permission: req.Permission,
+		SortOrder:  req.SortOrder,
+		Visible:    visible,
+	}
+	if err := s.menuRepo.Create(ctx, menu); err != nil {
+		return nil, err
+	}
+	return menu, nil
+}
+
+func (s *MenuService) Update(ctx context.Context, req *model.UpdateMenuRequest) (*model.Menu, error) {
+	menu, err := s.menuRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if menu.IsSystem {
+		return nil, errcode.ErrMenuIsSystem
+	}
+	menu.Name = req.Name
+	menu.Path = req.Path
+	menu.Component = req.Component
+	menu.Icon = req.Icon
+	menu.Permission = req.Permission
+	menu.SortOrder = req.SortOrder
+	if req.Visible != nil {
+		menu.Visible = *req.Visible
+	}
+	menu.Version = req.Version
+	if err := s.menuRepo.Update(ctx, menu); err != nil {
+		return nil, err
+	}
+	return menu, nil
 }
 
 func (s *MenuService) Delete(ctx context.Context, id int64) error {
-	return fmt.Errorf("not implemented")
+	menu, err := s.menuRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if menu.IsSystem {
+		return errcode.ErrMenuIsSystem
+	}
+	n, err := s.menuRepo.CountChildren(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return errcode.ErrMenuHasChildren
+	}
+	return s.menuRepo.Delete(ctx, id)
+}
+
+func (s *MenuService) validateMenuParent(ctx context.Context, menuType int, parentID *int64) error {
+	switch menuType {
+	case menuTypeDirectory:
+		if parentID == nil {
+			return nil
+		}
+		parent, err := s.menuRepo.FindByID(ctx, *parentID)
+		if err != nil {
+			return err
+		}
+		if parent.MenuType != menuTypeDirectory {
+			return errcode.ErrInvalidParams
+		}
+	case menuTypePage:
+		if parentID == nil {
+			return errcode.ErrInvalidParams
+		}
+		parent, err := s.menuRepo.FindByID(ctx, *parentID)
+		if err != nil {
+			return err
+		}
+		if parent.MenuType != menuTypeDirectory {
+			return errcode.ErrInvalidParams
+		}
+	case menuTypeButton:
+		if parentID == nil {
+			return errcode.ErrInvalidParams
+		}
+		parent, err := s.menuRepo.FindByID(ctx, *parentID)
+		if err != nil {
+			return err
+		}
+		if parent.MenuType != menuTypePage {
+			return errcode.ErrInvalidParams
+		}
+	default:
+		return errcode.ErrInvalidParams
+	}
+	return nil
 }
 
 func filterMenusForTree(menus []*model.Menu) []*model.Menu {

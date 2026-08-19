@@ -220,9 +220,10 @@ check "M6 audit list" "0" "$(curl -s "$BASE/audit/logs?page_size=5" -H "Authoriz
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/audit/logs" -H "Authorization: Bearer $VAT")
 check "M6 viewer audit 403" "403" "$HC"
 
-# --- stub negative (expected not implemented) ---
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"name":"x","code":"x","parent_id":"1"}')
-check "stub POST /orgs" "500" "$HC"
+# --- stub negative (org create) ---
+ORGCODE="org_$RANDOM"
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"org_type\":2}")
+check "org create" "200" "$HC"
 
 # --- #17 redis down (last: restores redis via trap) ---
 AT_FOR_17=$SAT

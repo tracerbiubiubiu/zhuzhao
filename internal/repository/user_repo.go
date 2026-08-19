@@ -56,6 +56,21 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.
 	return r.queryOne(ctx, q, username)
 }
 
+// ListByOrgID 查询组织成员
+func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64) ([]*model.User, error) {
+	const q = `SELECT` + userSelectColumns + `
+		FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
+		ORDER BY u.id ASC`
+	rows, err := r.db.Query(ctx, q, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list users by org: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, scanUserCollectableRow)
+}
+
 // FindByEmployeeNo 登录用：工号精确匹配；未删除用户
 func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
 	const q = `SELECT` + userSelectColumns + `
