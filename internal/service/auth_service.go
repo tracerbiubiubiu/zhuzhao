@@ -69,7 +69,11 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 
 	user, err := s.userRepo.FindByEmployeeNo(ctx, req.EmployeeNo)
 	if err != nil {
-		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
+		if lockErr != nil {
+			return nil, errcode.ErrServiceUnavailable
+		}
+		if blocked {
 			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
@@ -81,7 +85,11 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	}
 
 	if user.Status != 1 {
-		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
+		if lockErr != nil {
+			return nil, errcode.ErrServiceUnavailable
+		}
+		if blocked {
 			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
@@ -90,7 +98,11 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	}
 
 	if !crypto.CheckPassword(req.Password, user.Password) {
-		if failLogin(ctx, s.scripts, req.EmployeeNo) {
+		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
+		if lockErr != nil {
+			return nil, errcode.ErrServiceUnavailable
+		}
+		if blocked {
 			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
@@ -262,9 +274,8 @@ func (s *AuthService) isUserDisabled(ctx context.Context, userID int64) (bool, e
 	return n > 0, nil
 }
 
-func failLogin(ctx context.Context, scripts *redispkg.Scripts, employeeNo string) bool {
-	blocked, err := scripts.LoginLockIncr(ctx, employeeNo)
-	return err == nil && blocked
+func failLogin(ctx context.Context, scripts *redispkg.Scripts, employeeNo string) (blocked bool, err error) {
+	return scripts.LoginLockIncr(ctx, employeeNo)
 }
 
 func refreshKey(userID int64, deviceID string) string {
