@@ -90,7 +90,7 @@ Phase 1 完成后，以下流程能跑通：
 自服务与 RBAC 区分（M3 起部分可测，M5 完整）
 25. viewer（零 menu）GET /user/menus     # 200 + menus=[]（自服务白名单）
 26. viewer GET /users                    # 403 + 70001（业务 API，无 p 策略）
-27. admin 给 viewer 勾用户管理 menu 后   # GET /users → 200；未勾 POST → 仍 70001
+27. admin 给 viewer 勾用户管理 menu 后   # GET /users → 200；POST /users → 200（页面菜单含全部 API）
 ```
 
 ### 1.4 已知限制（验收时不要误判为已实现）
@@ -314,3 +314,5 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 | [08-audit.md](./08-audit.md) | 审计日志 | 操作日志中间件、同步写入、应用日志规划 |
 | [09-middleware.md](./09-middleware.md) | 中间件 | JWT、Casbin、CORS、安全头 |
 | [10-concurrency.md](./10-concurrency.md) | 并发与事务 | DB 事务、SyncedEnforcer、Redis 原子操作 |
+| [11-code-review.md](./11-code-review.md) | 代码审查 | 2026-08-19 定向审查（本地 3 提交）：P0/P1/P2 清单、两处误报勘误 |
+| [11-code-review-findings.md](./11-code-review-findings.md) | 代码审查 | 2026-08-19 全分支深度审查：F-1 令牌混淆（P0 安全）等 10 项发现 |

@@ -96,7 +96,7 @@ menu_type:
 CREATE TABLE menus (
     id          BIGSERIAL PRIMARY KEY,
     parent_id   BIGINT REFERENCES menus(id),
-    code        VARCHAR(50) UNIQUE NOT NULL,    -- 业务编码
+    code        VARCHAR(50) NOT NULL,             -- 业务编码（唯一性由下方部分唯一索引保证）
     name        VARCHAR(100) NOT NULL,          -- 显示名称
     menu_type   SMALLINT NOT NULL,             -- 1=目录 2=菜单 3=按钮
     path        VARCHAR(200),                   -- 前端路由路径（如 /system/user）
@@ -114,6 +114,8 @@ CREATE TABLE menus (
 
 CREATE INDEX idx_menus_parent ON menus(parent_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_menus_deleted ON menus(deleted_at) WHERE deleted_at IS NOT NULL;
+-- code 唯一性仅约束活跃记录（部分唯一索引）：软删菜单后同 code 可重建
+CREATE UNIQUE INDEX idx_menus_code ON menus(code) WHERE deleted_at IS NULL;
 
 -- 菜单是全局的，Phase 1 不加 tenant_id（用户/角色/组织上的 tenant_id 仅为多租户预留）
 

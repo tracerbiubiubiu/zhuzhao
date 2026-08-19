@@ -92,13 +92,14 @@ CREATE TABLE users (
 );
 
 -- username 可重复；软删后仍可再建同名 username
--- 工号、(user_domain, domain_account) 全局唯一（含软删记录，不可复用）
+-- 工号、(user_domain, domain_account) 仅在活跃记录间唯一（部分唯一索引过滤软删行，软删后可复用）
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
-    WHERE employee_no IS NOT NULL AND employee_no <> '';
+    WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
     WHERE domain_account IS NOT NULL AND domain_account <> ''
-      AND user_domain IS NOT NULL AND user_domain <> '';
+      AND user_domain IS NOT NULL AND user_domain <> ''
+      AND deleted_at IS NULL;
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 ```
 
@@ -125,10 +126,10 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 
 | 字段 | 是否唯一 | 说明 |
 |------|----------|------|
-| `employee_no` | ✅ **全局唯一**（有值时；**含软删记录，不可复用**） | 登录键；管理端精确查人、HR 对账 |
+| `employee_no` | ✅ **全局唯一**（有值时；**仅活跃记录，软删后可复用**） | 登录键；管理端精确查人、HR 对账 |
 | `username` | ❌ **可重复** | 资料字段；列表 `?username=` 模糊查询；软删后可再建同名 |
 | `domain_account` 单独 | ❌ **不**全局唯一 | 不同 AD 域里可以有同名 `sAMAccountName`（如两个域都有 `zhangsan`） |
-| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时；**含软删记录，不可复用**） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
+| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时；**仅活跃记录，软删后可复用**） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
 
 **域账号为什么不是单列唯一？**
 
@@ -139,7 +140,7 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 **成对约束规则**：
 
 - 只填 `domain_account` 或只填 `user_domain`：**允许**（Phase 1 暂不强制成对；HR/AD 同步时建议成对写入）。
-- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一（**含软删记录**）；冲突 → **409 + 30008**。
+- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一（仅活跃记录，软删后可复用）；冲突 → **409 + 30008**。
 - 两者都空：不参与域唯一校验。
 
 > **登录 vs 列表查询**：`POST /auth/login` 用 **`employee_no` + 密码**（见 [02-auth §登录与工号解析](./02-auth.md#登录与工号解析)）。`username` 仅用于列表模糊筛选 `GET /users?username=`。
@@ -217,10 +218,10 @@ POST /users Create
   │     → 允许创建，但 **不能账密登录**（须后续补工号）
   │
   └─ employee_no 有值
-        → SELECT … WHERE employee_no = ?（**含软删记录**；不可复用工号）
+        → SELECT … WHERE employee_no = ?（仅活跃记录；软删工号可复用）
         → 已存在且 source = 'hr'
               → 409 + 30007（或专用文案：「该工号已由 HR 同步，请重置密码/赋角色，勿重复开户」）
-        → 已存在且 source = 'local'（含已软删）
+        → 已存在且 source = 'local'
               → 409 + 30007（工号冲突）
         → 不存在
               → 允许写入 source = 'local'（仍可能是尚未跑 HR Job 的正式工号 — 见下）
@@ -354,7 +355,7 @@ Phase 2b 上传流程（规划，见 storage 文档）：
 ```sql
 -- users 表有 deleted_at 字段
 -- 业务查询自动过滤：WHERE deleted_at IS NULL
--- 工号 / (user_domain, domain_account) 唯一索引不含 deleted_at：软删后仍占用，不可复用
+-- 工号 / (user_domain, domain_account) 唯一索引过滤软删行：软删即释放，可复用
 -- username 无唯一约束，软删后可再建同名
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 ```
@@ -363,11 +364,11 @@ CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 
 | 字段 | 软删后 |
 |------|--------|
-| `employee_no` | **仍占用**；同工号再 Create → **409 + 30007** |
-| `(user_domain, domain_account)` | **仍占用**；同组合再 Create → **409 + 30008** |
+| `employee_no` | **释放**；同工号再 Create 可成功 |
+| `(user_domain, domain_account)` | **释放**；同组合再 Create 可成功 |
 | `username` | **可复用**（非唯一键） |
 
-> 离职/离岗应走 **禁用**（`status=0`），保留工号与 uid；软删仅用于逻辑移除，**不会释放**工号或域账号。
+> 离职/离岗应走 **禁用**（`status=0`），保留工号与 uid 及全部关联；软删会 **释放** 工号与域账号（同号新用户可再建，且软删同时清理 `user_roles` / `user_orgs` 关联）。迁移 000006 已将历史软删行的工号/域账号加 `#del#` 后缀清理占用。
 
 ### 用户-角色关联
 
@@ -601,9 +602,11 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | List - employee_no 精确 | `employee_no=E20240086` | **0 或 1** 条 |
 | FindByEmployeeNo | 存在/不存在工号 | 单条或 ErrNotFound |
 | 软删除用户 | deleted_at 不为空，列表查询不包含 |
-| 软删除后 username 可复用 | 创建同名 username 成功 |
-| 软删除后 employee_no 不可复用 | 同工号 Create → **409 + 30007** |
-| 软删除后域账号不可复用 | 同 `(user_domain, domain_account)` Create → **409 + 30008** |
+| 软删除后 username / employee_no 可复用 | 同名同工号 Create 成功（部分唯一索引过滤软删行） |
+| 软删除后域账号可复用 | 同 `(user_domain, domain_account)` Create 成功 |
+| 活跃用户间唯一性 | 同工号 Create → **409 + 30007**；同域域账号 → **409 + 30008** |
+| 软删除级联 | `user_roles` / `user_orgs` 关联被清理；软删 0 行时报 ErrUserNotFound 且事务回滚 |
+| 超管守护 | 最后一名 superadmin 不可软删/禁用（guard + count + 写同事务）；advisory lock 阻塞竞争事务 |
 | 分配角色 | user_roles 表记录正确 |
 | 查询用户角色 | 返回角色列表 |
 
