@@ -42,9 +42,13 @@ func (s *RBACService) GetRole(ctx context.Context, roleID int64) (*model.Role, e
 	return s.roleRepo.FindByID(ctx, roleID)
 }
 
-func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleRequest) (*model.Role, error) {
+func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleRequest, actorUserID int64) (*model.Role, error) {
 	if !validate.Identifier(req.Code) {
 		return nil, errcode.ErrInvalidParams
+	}
+	// F-2：priority 提权防护——不得创建高于自身权限档位或越过 superadmin 底线的角色
+	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
+		return nil, err
 	}
 	status := req.Status
 	if status == 0 {
@@ -64,13 +68,17 @@ func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleReque
 	return role, nil
 }
 
-func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleRequest) (*model.Role, error) {
+func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleRequest, actorUserID int64) (*model.Role, error) {
 	role, err := s.roleRepo.FindByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
 	if role.IsSystem {
 		return nil, errcode.ErrRoleIsSystem
+	}
+	// F-2：priority 提权防护——不得把角色改为高于自身权限档位或越过 superadmin 底线
+	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
+		return nil, err
 	}
 	role.Name = req.Name
 	role.Description = req.Description
@@ -82,6 +90,18 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 		return nil, err
 	}
 	return role, nil
+}
+
+// ensureRolePriorityAllowed 校验操作者可设置的 priority 上限（F-2）
+func (s *RBACService) ensureRolePriorityAllowed(ctx context.Context, actorUserID int64, priority int) error {
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
+	if err != nil {
+		return err
+	}
+	if !canSetRolePriority(actorRoles, priority) {
+		return errcode.ErrCannotAssignHigherRole
+	}
+	return nil
 }
 
 func (s *RBACService) DeleteRole(ctx context.Context, roleID int64) error {
@@ -168,7 +188,8 @@ func (s *RBACService) GetRolePermissions(ctx context.Context, roleID int64) ([][
 	return policies, nil
 }
 
-// GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）
-func (s *RBACService) GetRoleCodesByUserID(userID int64) ([]string, error) {
-	return s.userRepo.GetRoleCodes(context.Background(), userID)
+// GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）。
+// F-7：接收请求 ctx，使取消/超时可传播（此前 context.Background() 会挂满 statement_timeout）
+func (s *RBACService) GetRoleCodesByUserID(ctx context.Context, userID int64) ([]string, error) {
+	return s.userRepo.GetRoleCodes(ctx, userID)
 }

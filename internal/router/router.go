@@ -29,8 +29,8 @@ type Deps struct {
 	RedisClient  *redis.Client
 	DBPool       *pgxpool.Pool
 	Logger       *slog.Logger
-	RoleFetcher   middleware.RoleFetcher
-	AuditService  middleware.AuditLogger
+	RoleFetcher  middleware.RoleFetcher
+	AuditService middleware.AuditLogger
 }
 
 // New 创建 Gin 引擎并注册路由
@@ -79,8 +79,9 @@ func New(deps Deps) *gin.Engine {
 		)
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
+			// 注意：SelfService 必须先于 CasbinAuth 注册（router_test.go 行为测试守护此顺序）
 			selfService := authed.Group("")
-			selfService.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher))
+			selfService.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
 			{
 				// 认证模块（需鉴权）
 				selfService.POST("/auth/logout", deps.AuthHandler.Logout)
@@ -98,7 +99,7 @@ func New(deps Deps) *gin.Engine {
 
 			// 业务路由（需 Casbin 策略）
 			biz := authed.Group("")
-			biz.Use(middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher))
+			biz.Use(middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
 			{
 				// 用户模块
 				users := biz.Group("/users")

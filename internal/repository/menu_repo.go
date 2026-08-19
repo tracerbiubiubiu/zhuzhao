@@ -57,7 +57,11 @@ func (r *MenuRepo) ListByRoleIDs(ctx context.Context, roleIDs []int64) ([]*model
 	return r.queryMany(ctx, q, roleIDs)
 }
 
-// ListMenuAPIsByMenuIDs 查询菜单绑定的 API（Casbin 策略生成）
+// ListMenuAPIsByMenuIDs 查询菜单绑定的 API（Casbin 策略生成）。
+// F-3 修复：去掉 (menu_type = 3 OR api_method = 'GET') 过滤——该条件丢弃页面菜单
+// (menu_type=2) 绑定的写 API，而种子数据把全部 POST 路由绑在页面菜单上（按钮菜单
+// 零 menu_apis 行），导致自定义角色勾选页面+全部按钮后仍拿不到任何写权限，
+// 与 07-menu.md「角色绑定页面菜单即获得该页全部 menu_apis」的设计矛盾。
 func (r *MenuRepo) ListMenuAPIsByMenuIDs(ctx context.Context, menuIDs []int64) ([]*model.MenuAPI, error) {
 	if len(menuIDs) == 0 {
 		return nil, nil
@@ -67,7 +71,7 @@ func (r *MenuRepo) ListMenuAPIsByMenuIDs(ctx context.Context, menuIDs []int64) (
 		FROM menu_apis ma
 		JOIN menus m ON m.id = ma.menu_id
 		WHERE ma.menu_id = ANY($1)
-		  AND (m.menu_type = 3 OR ma.api_method = 'GET')
+		  AND m.deleted_at IS NULL
 		ORDER BY ma.menu_id, ma.api_path, ma.api_method`, menuIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list menu apis: %w", err)

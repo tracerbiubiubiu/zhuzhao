@@ -36,7 +36,7 @@ func (h *RoleHandler) Create(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	role, err := h.rbacService.CreateRole(c.Request.Context(), &req)
+	role, err := h.rbacService.CreateRole(c.Request.Context(), &req, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -66,7 +66,7 @@ func (h *RoleHandler) Update(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	role, err := h.rbacService.UpdateRole(c.Request.Context(), &req)
+	role, err := h.rbacService.UpdateRole(c.Request.Context(), &req, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return
