@@ -60,12 +60,19 @@ func AuditLog(auditLogger AuditLogger) gin.HandlerFunc {
 			CreatedAt:   time.Now(),
 		}
 
-		// 同步写入 DB，失败只记应用日志，不影响业务
-		if err := auditLogger.Insert(c.Request.Context(), entry); err != nil {
+		// F-5 修复：请求 context 随客户端断连而取消，直接用它写库会丢审计
+		// （恰恰是"执行删除后立刻断连规避审计"的攻击场景）。改用
+		// WithoutCancel + 独立超时，保证审计写入不随请求终止。
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), auditWriteTimeout)
+		defer cancel()
+		if err := auditLogger.Insert(ctx, entry); err != nil {
 			slog.Error("audit log write failed", "err", err, "path", entry.Path)
 		}
 	}
 }
+
+// auditWriteTimeout 审计写入的独立超时（与请求生命周期解耦）
+const auditWriteTimeout = 3 * time.Second
 
 // maskSensitive 敏感字段脱敏
 func maskSensitive(body []byte) string {

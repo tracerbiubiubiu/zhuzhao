@@ -36,6 +36,11 @@ func (a *App) Run() error {
 	a.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", a.cfg.Server.Port),
 		Handler: a.router,
+		// F-8：补齐超时，防 slowloris 慢连接耗尽资源
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// 启动 HTTP 服务（goroutine 中运行，错误通过 channel 传递）
