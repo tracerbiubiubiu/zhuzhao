@@ -39,6 +39,7 @@ func AuditLog(auditLogger AuditLogger) gin.HandlerFunc {
 		var bodyBytes []byte
 		if c.Request.Body != nil {
 			bodyBytes, _ = io.ReadAll(c.Request.Body)
+			// ReadAll 会耗尽原 Body；用内存副本替换，供后续 handler 再次 BindJSON
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 

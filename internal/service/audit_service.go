@@ -14,10 +14,11 @@ import (
 // AuditService 审计日志服务
 type AuditService struct {
 	auditRepo *repository.AuditLogRepo
+	userRepo  *repository.UserRepo
 }
 
-func NewAuditService(auditRepo *repository.AuditLogRepo) *AuditService {
-	return &AuditService{auditRepo: auditRepo}
+func NewAuditService(auditRepo *repository.AuditLogRepo, userRepo *repository.UserRepo) *AuditService {
+	return &AuditService{auditRepo: auditRepo, userRepo: userRepo}
 }
 
 // Insert 同步写入审计日志（实现 middleware.AuditLogger）。
@@ -50,8 +51,16 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 	}
 }
 
-// List 查询审计日志
-func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery) (*model.AuditLogListResponse, error) {
+// List 查询审计日志；employeeNo 非空时按工号解析为 user_id（优先于 q.UserID）
+func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery, employeeNo string) (*model.AuditLogListResponse, error) {
+	if employeeNo != "" {
+		user, err := s.userRepo.FindByEmployeeNo(ctx, employeeNo)
+		if err != nil {
+			return nil, err
+		}
+		q.UserID = &user.ID
+	}
+
 	page, pageSize := normalizeAuditPage(q.Page, q.PageSize)
 	q.Page = page
 	q.PageSize = pageSize

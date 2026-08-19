@@ -52,7 +52,7 @@ func (h *AuditHandler) ListLogs(c *gin.Context) {
 		q.End = &t
 	}
 
-	resp, err := h.auditService.List(c.Request.Context(), q)
+	resp, err := h.auditService.List(c.Request.Context(), q, c.Query("employee_no"))
 	if err != nil {
 		writeServiceError(c, err)
 		return

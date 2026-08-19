@@ -44,7 +44,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	}
 	scripts := redis.NewScripts(client)
 	auditLogRepo := repository.NewAuditLogRepo(pool)
-	auditService := service.NewAuditService(auditLogRepo)
+	auditService := service.NewAuditService(auditLogRepo, userRepo)
 	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
 	authHandler := handler.NewAuthHandler(authService)
 	roleRepo := repository.NewRoleRepo(pool)

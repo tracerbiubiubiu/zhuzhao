@@ -161,6 +161,7 @@ CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 | 用例 | 参数 | 预期 |
 |------|------|------|
 | 按用户筛选 | `?user_id=1` | 只返回该用户的日志 |
+| 按工号筛选 | `?employee_no=E000001` | 解析工号后按 user_id 筛选（管理端常用） |
 | 按时间范围 | `?start=2026-08-01&end=2026-08-12` | 只返回时间范围内 |
 | 按路径筛选 | `?path=/api/v1/users` | 只返回该路径的日志 |
 | 分页 | `?page=1&page_size=20` | 返回分页结果 |
