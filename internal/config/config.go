@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -139,9 +140,11 @@ func Load(path string) (*Config, error) {
 
 	// 环境变量覆盖（敏感配置通过环境变量注入）
 	viper.SetEnvPrefix("APP")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	// 环境变量绑定
+	// 环境变量绑定（AutomaticEnv 对 nested key 不自动映射，需显式 BindEnv）
+	viper.BindEnv("server.mode", "APP_SERVER_MODE")
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")

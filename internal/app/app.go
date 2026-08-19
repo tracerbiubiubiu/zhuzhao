@@ -33,11 +33,6 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine) *App {
 
 // Run 启动应用
 func (a *App) Run() error {
-	// 设置 Gin 模式
-	if a.cfg.Server.Mode == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
 	a.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", a.cfg.Server.Port),
 		Handler: a.router,

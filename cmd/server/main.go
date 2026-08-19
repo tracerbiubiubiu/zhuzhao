@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/app"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
@@ -21,6 +23,11 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		fmt.Printf("invalid config: %v\n", err)
 		os.Exit(1)
+	}
+
+	// 在 router 创建前设置 Gin 模式，避免 release 下输出 debug 路由日志
+	if cfg.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// 初始化应用（Wire 注入）
