@@ -314,5 +314,5 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 | [08-audit.md](./08-audit.md) | 审计日志 | 操作日志中间件、同步写入、应用日志规划 |
 | [09-middleware.md](./09-middleware.md) | 中间件 | JWT、Casbin、CORS、安全头 |
 | [10-concurrency.md](./10-concurrency.md) | 并发与事务 | DB 事务、SyncedEnforcer、Redis 原子操作 |
-| [11-code-review.md](./11-code-review.md) | 代码审查 | 2026-08-19 定向审查（本地 3 提交）：P0/P1/P2 清单、两处误报勘误 |
-| [11-code-review-findings.md](./11-code-review-findings.md) | 代码审查 | 2026-08-19 全分支深度审查：F-1 令牌混淆（P0 安全）等 10 项发现 |
+| [11-code-review.md](./11-code-review.md) | 代码审查 | 2026-08-19 两轮审查合并版：全分支深度审查 F-1~F-10（F-1 令牌混淆 P0 安全）+ 本地 3 提交定向审查 P1/P2 + 两处误报勘误；全部修复状态与验证记录 |
+| [12-phase1-acceptance-report.md](./12-phase1-acceptance-report.md) | 验收报告 | 2026-08-19 实现核验：27 用例逐项比对、模块级核验、缺口 G-1~G-4、Phase 2 文档缺口 A/B/C 清单（已同步补入 phase2） |
