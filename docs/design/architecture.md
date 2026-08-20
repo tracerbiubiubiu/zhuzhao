@@ -74,7 +74,7 @@
 **与业务模块的交互契约**：
 
 - 业务模块通过 `internal/middleware` 提供的中间件获得鉴权能力
-- 业务模块通过 `internal/service/authz_service` 的接口进行资源级权限判断
+- 业务模块通过 `internal/pkg/resource` 的 Registry 进行资源级权限判断（Resource 自注册模式，见 [proposal/resource-model.md](../proposal/resource-model.md)：各业务 Service 构造时 `registry.Register(NewXxxResource(...))`，鉴权经 `Registry.Authorize` / `GetFilter`）
 - 业务模块的资源表需包含 `creator_id` 字段以支持属主判断（Phase 2）
 - 业务模块的资源可在 Phase 2b 通过 `resource_owners` 登记组织归属（可选；工单直接用 `tickets.org_path`，见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）
 
@@ -437,7 +437,7 @@ Wire Injector (wire.go)
     │
     ├── Service Provider（依赖 Repository + 基础设施）
     │   ├── NewAuthService()   → *service.AuthService
-    │   ├── NewAuthzService()  → *service.AuthzService
+    │   ├── NewRegistry()      → resource.Registry（业务 Service 构造时自注册 Resource）
     │   └── ...
     │
     ├── Handler Provider（依赖 Service）
@@ -499,7 +499,7 @@ Wire Injector (wire.go)
 | | `Logout` | 登出，吊销 AT + 删除 RT |
 | | `KickDevice` | 踢出指定设备 |
 | | `ListDevices` | 查询用户活跃设备列表 |
-| `AuthzService` | `CheckResourcePermission` | 资源级权限校验（属主 → ltree 组织关系） |
+| `resource.Registry` | `Authorize` / `GetFilter` / `Register` / `List` | 资源级权限校验（属主 → ltree 组织关系）与列表过滤；业务 Resource 自注册 |
 | `MenuService` | `GetUserMenus` | 获取用户菜单树 |
 | | `GetUserPermissions` | 获取用户按钮权限码列表 |
 | `OrgService` | `GetOrgTree` | 获取组织树 |

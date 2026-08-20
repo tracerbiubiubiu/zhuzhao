@@ -126,7 +126,7 @@ POST /api/v1/auth/login {employee_no, password}
    → 已锁定？返回 429
 
 2. 查询用户
-   → user.GetByEmployeeNo(employee_no)
+   → userRepo.FindByEmployeeNo(employee_no)
    → 不存在或无工号？返回 401（与密码错误相同响应，防枚举）
 
 3. 验证密码
