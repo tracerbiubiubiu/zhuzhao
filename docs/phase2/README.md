@@ -112,6 +112,18 @@ Phase 2 各子阶段 SSOT 见 [§4 文档索引](#4-文档索引)。
 - [ ] 所有 Phase 1 测试用例通过
 - [ ] DB 迁移可重复执行（幂等）
 
+**Phase 1 验收门禁证据链**（2026-08-19 核验，见 [phase1/12 号报告](../phase1/12-phase1-acceptance-report.md)）：
+
+| 证据 | 运行入口 | 要求 |
+|------|---------|------|
+| 27 个验收用例（含限流/并发 refresh/Redis 停机/混合凭证等对抗路径） | `bash scripts/acceptance-phase1.sh`（需 Docker Compose 环境：`make docker-dev-up && make migrate-up && make dev`） | 27/27 通过 |
+| 单元测试（jwt / middleware / config / jsonutil / priority / resource 等 6 包） | `go test -race -count=1 ./internal/...` | 全绿 |
+| 集成测试（repository / service / router 等 7 包，testcontainers PG） | `make test-integration` | 全绿 |
+| Phase 1 审查修复（F-1~F-10 + TOCTOU 等，提交 8be8205..d54bda6） | `git log --oneline` | 已合入当前分支 |
+| 遗留缺口 G-1（Registry 注入边）/ G-2（authz_service stub 处置） | 见 [02-authz-resource.md §1 Step 0](./02-authz-resource.md) | 作为 2a 第一动作处理，不阻塞切分支 |
+
+> 遗留缺口 G-3（Makefile 无 lint 目标）、G-4（文档索引滞后）不阻塞 2a，择机处理。
+
 **Phase 2b** 开始前，**Phase 2a** 必须已完成：
 
 - [ ] 工单 MVP + assigned 范围验收通过
@@ -191,6 +203,24 @@ Phase 1 完成
 | 10 | 2c | ticket Authorize | Step 9 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-10) |
 | 11 | 2c | 集成验收 | Step 9–10 | [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot) |
 
+### 2.4 迁移编号规划（自 000008 起）
+
+Phase 1 已用至 000007。Phase 2 各 PRD 中迁移文件占位 `0000xx` 统一按下表分配（按 Step 顺序预分配；**实际执行顺序编号、不跳号**——若某模块最终无表结构变更，其后编号依次前移并在对应 PRD 标注）：
+
+| 编号 | 子阶段 | 内容 | PRD |
+|------|--------|------|-----|
+| 000008 | 2a | 工单表组：`ticket_types` / `tickets` / `ticket_comments`（含 org_path 冗余） | [09-ticket.md §2a](./09-ticket.md) |
+| 000009 | 2b | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / `ticket_visibility` / 临时成员 | [03-org-enhance.md](./03-org-enhance.md) |
+| 000010 | 2b | 认证增强：密码策略配置项（若需表结构；纯 config 则无迁移） | [01-auth-enhance.md](./01-auth-enhance.md) |
+| 000011 | 2b | 附件：`ticket_attachments` | [10-storage.md](./10-storage.md) |
+| 000012 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role` | [04-org-delegation.md](./04-org-delegation.md) |
+
+**迁移编写规范**（对齐 Phase 1 经验）：
+
+1. **幂等**：种子数据一律 `INSERT ... WHERE NOT EXISTS`（见 000002 模式）；DDL 用 `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`；
+2. **down 迁移必须可逆且先让位**：回滚前先处理会阻塞还原的数据（如部分唯一索引还原前，冲突软删行加 `#del#` 后缀让位——见 000006 down 加固经验）；仅回滚无意义的数据修复（如弱口令标记）可为空操作但须注释说明；
+3. **唯一索引过滤软删除**：新表唯一索引一律带 `WHERE deleted_at IS NULL` 的部分索引写法（Phase 1 F-6 教训）。
+
 ---
 
 ## 3. 待决策点
@@ -210,6 +240,7 @@ Phase 1 完成
 
 | 文档 | 子阶段 | 状态 |
 |------|--------|------|
+| [00-implementation-plan.md](./00-implementation-plan.md) | 全程 | **执行总计划**：编码前拍板（P2-D1~D5）、里程碑门禁（M2a-0~M2c-3）、任务分解、批次/分支/流程、节奏估算、风险登记 |
 | [02-authz-resource.md](./02-authz-resource.md) | 2a | **已编写** |
 | [09-ticket.md](./09-ticket.md) | 2a + 2b + 2c 引用 | **已编写** |
 | [03-org-enhance.md](./03-org-enhance.md) | 2b | 已编写（HR 同步见 proposal） |

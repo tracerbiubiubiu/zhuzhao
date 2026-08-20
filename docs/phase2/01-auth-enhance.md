@@ -7,6 +7,20 @@
 
 ## 0. 边界
 
+### 与 Phase 1 会话吊销机制的衔接（B3）
+
+Phase 1 已定型**双轨吊销机制**（SSOT：[phase1/02-auth.md §会话吊销](../phase1/02-auth.md)）：
+
+| 轨道 | 键 | 语义 |
+|------|-----|------|
+| 拒绝标记 | `user:disabled`（TTL = AT 剩余有效期） | 拦截存量 AT（JWT 中间件 403+30003） |
+| 会话清除 | SCAN 删全部 `refresh:{uid}:*` | 使全部设备无法刷新（Refresh 401+20004） |
+
+已接入场景：**禁用 / 删除 / 重置密码 / 修改密码**（后两者吊销后 `clearUserDisabled` 再为当前设备签发新 Token 对）。本模块设备管理在此基础上扩展，**不另建第三套语义**：
+
+- **踢设备 = 单轨道**：仅 `DEL refresh:{userId}:{deviceId}` + `SREM`，**不得触碰 `user:disabled` 键**（那会把用户全部设备的存量 AT 全拦掉，语义从"踢一台"变成"全局封禁"）；
+- **管理员全平台封禁**：继续走 Phase 1 `revokeUserSessions`（见 §2.4），不经过设备管理 API。
+
 ### 做什么
 
 | 能力 | API | 说明 |
@@ -138,10 +152,11 @@ func ValidatePasswordPolicy(pwd string, cfg config.PasswordPolicy) error {
 
 > 写入 `errcode.go` 时勿改号；同步 [api/errcode.md](../api/errcode.md)。
 
-### 3.4 与 Phase 1 关系
+### 3.4 与 Phase 1 关系（基线更新 2026-08-19）
 
-- Phase 1 **不校验**复杂度（02-auth 待决策已确认）
-- 2b 上线后，**新密码**必须符合策略；旧密码登录后改密时强制满足
+- Phase 1 **已实现** `min=8` 最小长度校验（F-9 修复，三处密码字段 `binding:"required,min=8"`，返回 gin 参数绑定错误）——原文档"Phase 1 不校验复杂度"的表述已过时，当前基线为「仅最小长度，无字符类别要求」；
+- 2b 上线后，`ValidatePasswordPolicy` **接管完整策略**（min_length + 四类字符，可配置）；**策略校验归一**：binding 保留 `required`（非空 + 结构完整性），长度与复杂度统一由 `ValidatePasswordPolicy` 校验并返回 **20013**——避免「binding 的 min=8 报参数错误、策略的 min_length>8 报 20013」两套错误码并存；
+- **新密码**必须符合策略；旧密码登录后改密时强制满足（与原文一致）。
 
 ---
 
@@ -155,6 +170,8 @@ func ValidatePasswordPolicy(pwd string, cfg config.PasswordPolicy) error {
 | A4 | 改密 `abc123` | 400 + 20013 |
 | A5 | 改密 `Abcdefg1!` | 200 |
 | A6 | 管理员重置弱密码 | 400 + 20013 |
+
+**测试落点约定**（B4）：A1–A3 单测（miniredis）→ `internal/service/auth_service_test.go` 扩展；A4–A6 密码策略单测 → `internal/pkg/crypto` 或 `internal/config` 校验函数所在包；设备管理路由行为 → `internal/router/router_test.go` 扩展。
 
 ---
 
