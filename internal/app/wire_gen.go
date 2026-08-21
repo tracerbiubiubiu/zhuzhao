@@ -80,6 +80,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		Logger:       slogLogger,
 		RoleFetcher:  rbacService,
 		AuditService: auditService,
+
+		// B1-4：信任代理网段（空 = 不信任任何代理）
+		TrustedProxies: cfg.Server.TrustedProxies,
 	}
 	engine := router.New(deps)
 	app := NewApp(cfg, slogLogger, engine)

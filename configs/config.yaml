@@ -1,6 +1,10 @@
 server:
   port: 33333
   mode: debug  # debug / release
+  # 信任的反向代理网段（CIDR/IP）。留空 = 不信任任何代理（X-Forwarded-For
+  # 不参与 ClientIP 解析，防伪造审计 IP）；Nginx 前置时填其内网网段，如：
+  # trusted_proxies: ["10.0.0.0/8"]
+  trusted_proxies: []
 
 database:
   host: localhost

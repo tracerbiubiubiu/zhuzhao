@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 
 	"log/slog"
@@ -31,11 +32,21 @@ type Deps struct {
 	Logger       *slog.Logger
 	RoleFetcher  middleware.RoleFetcher
 	AuditService middleware.AuditLogger
+
+	// TrustedProxies 信任的反向代理网段（B1-4）；空切片 = 不信任任何代理
+	TrustedProxies []string
 }
 
 // New 创建 Gin 引擎并注册路由
 func New(deps Deps) *gin.Engine {
 	r := gin.New()
+
+	// B1-4：ClientIP 信任链——不配置则不信任任何代理（X-Forwarded-For 不参与
+	// 解析），防伪造审计 IP / last_login_ip；Nginx 前置时按内网网段配置
+	if err := r.SetTrustedProxies(deps.TrustedProxies); err != nil {
+		// 网段格式非法属部署配置错误：fail-fast 比带病运行更安全
+		panic(fmt.Sprintf("invalid trusted_proxies config: %v", err))
+	}
 
 	// 全局中间件
 	r.Use(middleware.Recovery(deps.Logger))

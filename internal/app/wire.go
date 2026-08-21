@@ -68,6 +68,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		repoSet,
 		serviceSet,
 		handlerSet,
+		// B1-4：从配置提取信任代理网段，供 router.Deps.TrustedProxies 消费
+		provideTrustedProxies,
 		wire.Struct(new(router.Deps), "*"),
 		router.New,
 		NewApp,
@@ -77,4 +79,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		),
 	)
 	return nil, nil, nil
+}
+
+// provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
+func provideTrustedProxies(cfg *config.Config) []string {
+	return cfg.Server.TrustedProxies
 }
