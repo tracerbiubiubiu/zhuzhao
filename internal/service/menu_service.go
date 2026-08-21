@@ -95,12 +95,13 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID int64) ([]s
 	return perms, nil
 }
 
+// GetTree 管理端完整菜单树（含按钮节点：角色分配菜单时需勾选按钮，与 phase1/07 §预期功能一致）。
+// 用户侧菜单树不含按钮，见 GetUserMenus。
 func (s *MenuService) GetTree(ctx context.Context) ([]model.Menu, error) {
 	menus, err := s.menuRepo.ListAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	menus = filterMenusForTree(menus)
 	return buildMenuTree(menus), nil
 }
 
@@ -254,24 +255,26 @@ func includeMenuAncestors(assigned []*model.Menu, all []*model.Menu) []*model.Me
 	return out
 }
 
+// buildMenuTree 平铺列表 → 树。采用递归自底向上组装：节点值拷贝发生在其子树组装完成之后，
+// 与 map 遍历顺序无关（若在遍历中直接向父节点 Children 追加值拷贝，父节点先于孙节点处理时
+// 会嵌入过期拷贝，丢失孙子节点——管理端菜单树含 3 层「目录→页面→按钮」时曾随机触发）。
 func buildMenuTree(menus []*model.Menu) []model.Menu {
 	if len(menus) == 0 {
 		return []model.Menu{}
 	}
 	byID := make(map[int64]*model.Menu, len(menus))
 	for _, m := range menus {
-		copy := *m
-		copy.Children = nil
-		byID[m.ID] = &copy
+		byID[m.ID] = m
 	}
+	childrenOf := make(map[int64][]*model.Menu, len(menus))
 	var roots []*model.Menu
-	for _, m := range byID {
+	for _, m := range menus {
 		if m.ParentID == nil {
 			roots = append(roots, m)
 			continue
 		}
-		if parent, ok := byID[*m.ParentID]; ok {
-			parent.Children = append(parent.Children, *m)
+		if _, ok := byID[*m.ParentID]; ok {
+			childrenOf[*m.ParentID] = append(childrenOf[*m.ParentID], m)
 		} else {
 			roots = append(roots, m)
 		}
@@ -279,10 +282,22 @@ func buildMenuTree(menus []*model.Menu) []model.Menu {
 	sortMenus(roots)
 	out := make([]model.Menu, 0, len(roots))
 	for _, r := range roots {
-		sortMenuChildren(r)
-		out = append(out, *r)
+		out = append(out, *emitMenuTree(r, childrenOf))
 	}
 	return out
+}
+
+// emitMenuTree 递归组装节点及其完整子树（含排序）
+func emitMenuTree(m *model.Menu, childrenOf map[int64][]*model.Menu) *model.Menu {
+	kids := append([]*model.Menu(nil), childrenOf[m.ID]...)
+	sortMenus(kids)
+	node := new(model.Menu)
+	*node = *m
+	node.Children = make([]model.Menu, 0, len(kids))
+	for _, k := range kids {
+		node.Children = append(node.Children, *emitMenuTree(k, childrenOf))
+	}
+	return node
 }
 
 func sortMenus(menus []*model.Menu) {
@@ -292,19 +307,4 @@ func sortMenus(menus []*model.Menu) {
 		}
 		return menus[i].ID < menus[j].ID
 	})
-}
-
-func sortMenuChildren(m *model.Menu) {
-	if len(m.Children) == 0 {
-		return
-	}
-	sort.Slice(m.Children, func(i, j int) bool {
-		if m.Children[i].SortOrder != m.Children[j].SortOrder {
-			return m.Children[i].SortOrder < m.Children[j].SortOrder
-		}
-		return m.Children[i].ID < m.Children[j].ID
-	})
-	for i := range m.Children {
-		sortMenuChildren(&m.Children[i])
-	}
 }

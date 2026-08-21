@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 
@@ -21,8 +22,67 @@ func NewOrgService(orgRepo *repository.OrgRepo, userRepo *repository.UserRepo) *
 	return &OrgService{orgRepo: orgRepo, userRepo: userRepo}
 }
 
+// GetTree 返回完整组织树（树形结构，按 sort_order、id 排序）
 func (s *OrgService) GetTree(ctx context.Context) ([]*model.Organization, error) {
-	return s.orgRepo.GetTree(ctx)
+	orgs, err := s.orgRepo.GetTree(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return buildOrgTree(orgs), nil
+}
+
+// buildOrgTree 平铺列表 → 树（parent_id 归并；父节点不存在时按根节点处理，避免数据异常导致丢节点）。
+// 采用递归自底向上组装：节点值拷贝发生在其子树组装完成之后，与 map 遍历顺序无关
+// （若在遍历中直接向父节点 Children 追加值拷贝，父节点先于孙节点处理时会嵌入过期拷贝，丢失孙子节点）。
+func buildOrgTree(orgs []*model.Organization) []*model.Organization {
+	if len(orgs) == 0 {
+		return []*model.Organization{}
+	}
+	byID := make(map[int64]*model.Organization, len(orgs))
+	for _, o := range orgs {
+		byID[o.ID] = o
+	}
+	childrenOf := make(map[int64][]*model.Organization, len(orgs))
+	var roots []*model.Organization
+	for _, o := range orgs {
+		if o.ParentID == nil {
+			roots = append(roots, o)
+			continue
+		}
+		if _, ok := byID[*o.ParentID]; ok {
+			childrenOf[*o.ParentID] = append(childrenOf[*o.ParentID], o)
+		} else {
+			roots = append(roots, o)
+		}
+	}
+	sortOrgs(roots)
+	out := make([]*model.Organization, 0, len(roots))
+	for _, r := range roots {
+		out = append(out, emitOrgTree(r, childrenOf))
+	}
+	return out
+}
+
+// emitOrgTree 递归组装节点及其完整子树（含排序）
+func emitOrgTree(o *model.Organization, childrenOf map[int64][]*model.Organization) *model.Organization {
+	kids := append([]*model.Organization(nil), childrenOf[o.ID]...)
+	sortOrgs(kids)
+	node := new(model.Organization)
+	*node = *o
+	node.Children = make([]model.Organization, 0, len(kids))
+	for _, k := range kids {
+		node.Children = append(node.Children, *emitOrgTree(k, childrenOf))
+	}
+	return node
+}
+
+func sortOrgs(orgs []*model.Organization) {
+	sort.Slice(orgs, func(i, j int) bool {
+		if orgs[i].SortOrder != orgs[j].SortOrder {
+			return orgs[i].SortOrder < orgs[j].SortOrder
+		}
+		return orgs[i].ID < orgs[j].ID
+	})
 }
 
 func (s *OrgService) GetUserOrgs(ctx context.Context, userID int64) ([]*model.UserOrg, error) {
