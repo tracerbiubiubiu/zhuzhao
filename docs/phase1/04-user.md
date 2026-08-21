@@ -629,6 +629,7 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 创建用户含 org_ids | Create + org_ids | 同事务创建用户并 SetUserOrgs |
 | admin 分配 superadmin | admin 操作 | 返回越权错误（403 + 30009） |
 | admin 重置同级 admin | 两用户均为 admin 角色 | 403 + 30005 |
+| admin 禁用/删除/改同级 | 非重置密码的写路径 | 403 + 30010（通用防提权码；重置密码保留 30005 专用文案） |
 | 多角色 EffectivePriority | 用户绑 viewer(30)+operator(20) | EffectivePriority=20；operator 不能重置该用户 |
 | 多角色 OR 鉴权 | 用户绑 viewer+user_manager | viewer 无 POST 权限但 user_manager 有 → 200 |
 

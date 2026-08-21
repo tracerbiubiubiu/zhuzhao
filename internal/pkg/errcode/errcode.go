@@ -51,6 +51,7 @@ var (
 	ErrEmployeeNoAlreadyExists    = New(30007, "工号已存在")
 	ErrDomainAccountAlreadyExists = New(30008, "同域下域账号已存在")
 	ErrCannotAssignHigherRole     = New(30009, "不能分配更高权限的角色")
+	ErrCannotManageHigher         = New(30010, "不能操作同级或更高级权限对象")
 )
 
 // 角色模块 40000-40999

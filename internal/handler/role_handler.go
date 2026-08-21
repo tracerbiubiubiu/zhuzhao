@@ -81,7 +81,7 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.rbacService.DeleteRole(c.Request.Context(), req.RoleID); err != nil {
+	if err := h.rbacService.DeleteRole(c.Request.Context(), req.RoleID, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}

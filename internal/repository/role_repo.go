@@ -231,12 +231,12 @@ func scanRoleCollectableRowDirect(row pgx.CollectableRow) (*model.Role, error) {
 	return scanRoleRowDirect(row)
 }
 
-// ListRoleIDsByUserID 查询用户绑定的角色 ID
+// ListRoleIDsByUserID 查询用户绑定的角色 ID（仅启用中，B1-1：禁用角色的菜单不下发）
 func (r *RoleRepo) ListRoleIDsByUserID(ctx context.Context, userID int64) ([]int64, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT r.id FROM roles r
 		INNER JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1 AND r.deleted_at IS NULL`, userID)
+		WHERE ur.user_id = $1 AND r.deleted_at IS NULL AND r.status = 1`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list role ids: %w", err)
 	}

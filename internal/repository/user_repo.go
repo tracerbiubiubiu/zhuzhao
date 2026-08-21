@@ -325,25 +325,27 @@ func AcquireSuperadminGuard(ctx context.Context, tx pgx.Tx) error {
 }
 
 // IsSuperadminUserTx 事务内版本（TOCTOU 修复：与写操作同快照）
+// 角色禁用语义（B1-1）：仅启用中的角色参与鉴权/保护判断
 func (r *UserRepo) IsSuperadminUserTx(ctx context.Context, tx pgx.Tx, userID int64) (bool, error) {
 	var exists bool
 	err := tx.QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM user_roles ur
 			INNER JOIN roles r ON r.id = ur.role_id
-			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL
+			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL AND r.status = 1
 		)`, userID).Scan(&exists)
 	return exists, err
 }
 
 // CountActiveSuperadminUsersTx 事务内版本（TOCTOU 修复：与写操作同快照）
+// 角色禁用语义（B1-1）：活跃 superadmin = 用户启用 ∧ 角色启用
 func (r *UserRepo) CountActiveSuperadminUsersTx(ctx context.Context, tx pgx.Tx) (int64, error) {
 	var n int64
 	err := tx.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT u.id) FROM users u
 		INNER JOIN user_roles ur ON ur.user_id = u.id
 		INNER JOIN roles r ON r.id = ur.role_id
-		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1`).Scan(&n)
+		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1 AND r.status = 1`).Scan(&n)
 	return n, err
 }
 
@@ -390,12 +392,14 @@ func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, role
 	return nil
 }
 
-// GetRoleCodes 查询用户绑定的角色 code（供 RoleFetcher / 业务层）
+// GetRoleCodes 查询用户绑定的角色 code（供 RoleFetcher / 业务层）。
+// 角色禁用语义（B1-1）：禁用角色（status=0）不参与鉴权——Casbin enforce、
+// 菜单下发、priority 档位均不将其计入，禁用自下次请求起生效。
 func (r *UserRepo) GetRoleCodes(ctx context.Context, userID int64) ([]string, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT r.code FROM roles r
 		INNER JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1 AND r.deleted_at IS NULL
+		WHERE ur.user_id = $1 AND r.deleted_at IS NULL AND r.status = 1
 		ORDER BY r.priority ASC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get role codes: %w", err)
@@ -415,14 +419,14 @@ func (r *UserRepo) GetRoleCodes(ctx context.Context, userID int64) ([]string, er
 	return codes, nil
 }
 
-// GetRoles 查询用户绑定的角色实体
+// GetRoles 查询用户绑定的角色实体（仅启用中，B1-1：禁用角色不计入 priority 档位与 superadmin 判断）
 func (r *UserRepo) GetRoles(ctx context.Context, userID int64) ([]*model.Role, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT r.id, r.code, r.name, COALESCE(r.description, ''), r.status, r.priority,
 			r.sort_order, r.is_system, r.tenant_id, r.version, r.deleted_at, r.created_at, r.updated_at
 		FROM roles r
 		INNER JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1 AND r.deleted_at IS NULL
+		WHERE ur.user_id = $1 AND r.deleted_at IS NULL AND r.status = 1
 		ORDER BY r.priority ASC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get roles: %w", err)
@@ -436,26 +440,26 @@ func (r *UserRepo) GetRoles(ctx context.Context, userID int64) ([]*model.Role, e
 	return roles, nil
 }
 
-// IsSuperadminUser 用户是否绑定 superadmin 角色
+// IsSuperadminUser 用户是否绑定 superadmin 角色（仅角色启用时，B1-1）
 func (r *UserRepo) IsSuperadminUser(ctx context.Context, userID int64) (bool, error) {
 	var exists bool
 	err := r.db.QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM user_roles ur
 			INNER JOIN roles r ON r.id = ur.role_id
-			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL
+			WHERE ur.user_id = $1 AND r.code = 'superadmin' AND r.deleted_at IS NULL AND r.status = 1
 		)`, userID).Scan(&exists)
 	return exists, err
 }
 
-// CountActiveSuperadminUsers 统计启用中的 superadmin 用户数
+// CountActiveSuperadminUsers 统计启用中的 superadmin 用户数（含角色启用条件，B1-1）
 func (r *UserRepo) CountActiveSuperadminUsers(ctx context.Context) (int64, error) {
 	var n int64
 	err := r.db.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT u.id) FROM users u
 		INNER JOIN user_roles ur ON ur.user_id = u.id
 		INNER JOIN roles r ON r.id = ur.role_id
-		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1`).Scan(&n)
+		WHERE r.code = 'superadmin' AND u.deleted_at IS NULL AND u.status = 1 AND r.status = 1`).Scan(&n)
 	return n, err
 }
 

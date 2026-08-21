@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -323,6 +324,10 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 
 func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswordRequest, actorUserID int64) error {
 	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
+		// 重置密码场景保留 30005 专用文案（04-user.md 契约）
+		if errors.Is(err, errcode.ErrCannotManageHigher) {
+			return errcode.ErrCannotResetHigher
+		}
 		return err
 	}
 	hash, err := crypto.HashPassword(req.Password)
@@ -368,6 +373,9 @@ func (s *UserService) GetUserOrgs(ctx context.Context, userID, actorUserID int64
 	return s.orgService.GetUserOrgs(ctx, userID)
 }
 
+// ensureCanManage 通用目标校验（B1-2：错误码通用化）：
+// 覆盖 Update/Delete/UpdateStatus/SetRoles/SetUserOrgs 等全部写路径；
+// ResetPassword 场景在调用处转换为 30005 专用文案。
 func (s *UserService) ensureCanManage(ctx context.Context, actorID, targetID int64) error {
 	if actorID == targetID {
 		return nil
@@ -381,7 +389,7 @@ func (s *UserService) ensureCanManage(ctx context.Context, actorID, targetID int
 		return err
 	}
 	if !canManageTarget(actorRoles, targetRoles) {
-		return errcode.ErrCannotResetHigher
+		return errcode.ErrCannotManageHigher
 	}
 	return nil
 }

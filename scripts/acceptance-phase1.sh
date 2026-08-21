@@ -135,6 +135,17 @@ HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/roles" -H "A
 check "#21 http" "403" "$HC"
 check "#21 code" "30009" "$(cat /tmp/p1.json | json_code)"
 
+# --- B1-2 目标校验：admin（非 superadmin）改系统角色菜单 → 403 + 40004 ---
+VIEWER_ROLE_ID=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[]}")
+check "B1-2 sys-menu http" "403" "$HC"
+check "B1-2 sys-menu code" "40004" "$(cat /tmp/p1.json | json_code)"
+# --- B1-2 目标校验：admin 删同级 admin 用户 → 403 + 30010（通用防提权码） ---
+PEER_ID=$(psql_q "SELECT id FROM users WHERE employee_no='$AEN' AND deleted_at IS NULL")
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/delete" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$PEER_ID\"}")
+check "B1-2 peer-del http" "403" "$HC"
+check "B1-2 peer-del code" "30010" "$(cat /tmp/p1.json | json_code)"
+
 # --- #14 mcp ---
 curl -s -X POST "$BASE/users/password/reset" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$TUID\",\"password\":\"mcp123456\"}" >/dev/null
@@ -244,6 +255,16 @@ check "M6 GET audited" "1" "$([ "$AFTER" -gt "$BEFORE" ] && echo 1 || echo 0)"
 check "M6 audit list" "0" "$(curl -s "$BASE/audit/logs?page_size=5" -H "Authorization: Bearer $SAT" | json_code)"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/audit/logs" -H "Authorization: Bearer $VAT")
 check "M6 viewer audit 403" "403" "$HC"
+
+# --- B1-1 角色禁用生效链：禁用 viewer → 成员同 Token 即时 403（Casbin 每请求查 DB） ---
+docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -c "UPDATE roles SET status=0 WHERE code='viewer';" >/dev/null
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+check "B1-1 disabled http" "403" "$HC"
+check "B1-1 disabled code" "70003" "$(cat /tmp/p1.json | json_code)"
+# 重新启用 → 同一 Token 立即恢复访问（casbin_rule 未清除，策略保留）
+docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -c "UPDATE roles SET status=1 WHERE code='viewer';" >/dev/null
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+check "B1-1 re-enable http" "200" "$HC"
 
 # --- stub negative (org create) ---
 ORGCODE="org_$RANDOM"

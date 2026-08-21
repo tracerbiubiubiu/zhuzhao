@@ -76,6 +76,11 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 	if role.IsSystem {
 		return nil, errcode.ErrRoleIsSystem
 	}
+	// B1-2：目标角色校验——操作者须严格强于目标角色当前档位，
+	// 防止低权角色把更强角色降权后接管其用户（与 ensureRolePriorityAllowed 的新值校验互补）
+	if err := s.ensureCanManageRole(ctx, actorUserID, role); err != nil {
+		return nil, err
+	}
 	// F-2：priority 提权防护——不得把角色改为高于自身权限档位或越过 superadmin 底线
 	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
 		return nil, err
@@ -104,13 +109,17 @@ func (s *RBACService) ensureRolePriorityAllowed(ctx context.Context, actorUserID
 	return nil
 }
 
-func (s *RBACService) DeleteRole(ctx context.Context, roleID int64) error {
+func (s *RBACService) DeleteRole(ctx context.Context, roleID, actorUserID int64) error {
 	role, err := s.roleRepo.FindByID(ctx, roleID)
 	if err != nil {
 		return err
 	}
 	if role.IsSystem {
 		return errcode.ErrRoleIsSystem
+	}
+	// B1-2：目标角色校验——低权角色不得删除更强角色
+	if err := s.ensureCanManageRole(ctx, actorUserID, role); err != nil {
+		return err
 	}
 	n, err := s.roleRepo.CountUsersByRoleID(ctx, roleID)
 	if err != nil {
@@ -130,20 +139,38 @@ func (s *RBACService) DeleteRole(ctx context.Context, roleID int64) error {
 	return nil
 }
 
+// ensureCanManageRole 角色写操作的目标校验（B1-2）：
+// 复用用户模块的 canManageTarget 语义——操作者须严格更强（actorP < targetP），
+// superadmin 直通。防止持有 role:write 类策略的低权自定义角色破坏更强角色。
+func (s *RBACService) ensureCanManageRole(ctx context.Context, actorUserID int64, target *model.Role) error {
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
+	if err != nil {
+		return err
+	}
+	if !canManageTarget(actorRoles, []*model.Role{target}) {
+		return errcode.ErrCannotManageHigher
+	}
+	return nil
+}
+
 // AssignMenus 全量覆盖角色菜单并同步 Casbin 策略
 func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusRequest, actorUserID int64) error {
 	role, err := s.roleRepo.FindByID(ctx, req.RoleID)
 	if err != nil {
 		return err
 	}
-	if role.Code == "superadmin" {
-		actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
-		if err != nil {
-			return err
-		}
-		if !isSuperadmin(actorRoles) {
-			return errcode.ErrNoPermission
-		}
+	// B1-2：目标角色校验——系统角色（superadmin/admin/operator/viewer）仅 superadmin
+	// 可改菜单；自定义角色须操作者严格更强。替换原「仅挡 superadmin」的局部特判，
+	// 与 UpdateRole/DeleteRole 的目标校验语义对齐。
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
+	if err != nil {
+		return err
+	}
+	if role.IsSystem && !isSuperadmin(actorRoles) {
+		return errcode.ErrRoleIsSystem
+	}
+	if !canManageTarget(actorRoles, []*model.Role{role}) {
+		return errcode.ErrCannotManageHigher
 	}
 
 	var apis []*model.MenuAPI

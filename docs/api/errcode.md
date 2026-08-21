@@ -108,8 +108,10 @@
 | 30007 | `ErrEmployeeNoAlreadyExists` | 工号已存在（含软删占用，不可复用） | 409 |
 | 30008 | `ErrDomainAccountAlreadyExists` | 同域下域账号已存在（含软删占用，不可复用） | 409 |
 | 30009 | `ErrCannotAssignHigherRole` | 不能分配更高权限的角色 | 403 |
+| 30010 | `ErrCannotManageHigher` | 不能操作同级或更高级权限对象 | 403 |
 
-> `30006`、`70003`：Phase 1 **验收必需**；`30007`–`30009`、`50007` 随 user/org 模块实现写入 `errcode.go`（码号预留，勿改号）。
+> `30006`、`70003`：Phase 1 **验收必需**；`30007`–`30010`、`50007` 随 user/org 模块实现写入 `errcode.go`（码号预留，勿改号）。
+> `30010` 为通用防提权码（update/delete/status/roles/orgs 等写路径）；重置密码场景仍返回 `30005` 专用文案。
 
 ### 角色 40000–40999
 

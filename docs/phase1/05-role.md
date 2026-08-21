@@ -255,6 +255,37 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 - 不能删除仍有用户关联的角色
 - 不能删除导致系统失去最后一个 superadmin 绑定的操作（与 user 模块一起校验）
 
+#### 角色禁用语义（status=0）
+
+> B1-1 修复（源自 [review/01 §R1-AUTHZ-01](../review/01-phase1-systematic-review-findings.md)）：禁用角色此前全链路不生效。
+
+`UpdateRoleRequest.status` 允许 0（禁用）。禁用后**下次请求起**生效（与「角色变更下次请求生效」一致）：
+
+| 生效点 | 行为 |
+|--------|------|
+| Casbin L1 鉴权 | `GetRoleCodes` 不返回禁用角色 → 逐角色 enforce 不含它 → 其策略全部失效 |
+| 用户菜单/权限码 | `ListRoleIDsByUserID` 不含禁用角色 → 菜单与按钮权限码不下发 |
+| priority 档位 | `GetRoles` 不含禁用角色 → 不计入 `effectivePriority`（防提权比较） |
+| superadmin 保护 | `IsSuperadminUser*` / `CountActiveSuperadminUsers*` 均要求角色启用 |
+| casbin_rule | **不清除**（策略保留在 DB）——重新启用即恢复，无需重配菜单 |
+
+> 系统角色（superadmin/admin 等 `is_system=true`）不可禁用：`UpdateRole` 返回 `ErrRoleIsSystem`。
+> 用户列表按角色筛选（`role_code` 查询参数）**不过滤**禁用角色——筛选是数据查询语义，管理员仍可按禁用角色查找历史绑定用户。
+
+#### 角色写操作的目标校验
+
+> B1-2 修复（源自 [review/01 §R2-RM-01](../review/01-phase1-systematic-review-findings.md)）：此前仅校验新 priority 值，未校验操作者与目标角色的强弱关系。
+
+角色模块三个写操作统一接入 `canManageTarget`（与用户模块同语义：**操作者须严格更强** `actorP < targetP`，superadmin 直通）：
+
+| 操作 | 校验链 |
+|------|--------|
+| `UpdateRole` | `is_system` → **目标档位**（ensureCanManageRole）→ **新 priority 值**（ensureRolePriorityAllowed） |
+| `DeleteRole` | `is_system` → **目标档位** → 用户绑定 → 最后超管保护 |
+| `AssignMenus` | **系统角色仅 superadmin 可改**（ErrRoleIsSystem）→ **目标档位** → 菜单校验 |
+
+失败返回 `403 + 30010`（`ErrCannotManageHigher`，通用防提权码）。
+
 ---
 
 ## 测试用例
@@ -274,6 +305,13 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 | 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound |
 | 分配菜单后策略生效 | 分配后用该角色请求 API | Casbin 放行 |
 | 取消菜单后策略失效 | 取消后用该角色请求 API | Casbin 拒绝 |
+| 禁用角色 - 权限收回 | 禁用某角色后其成员请求原 API | 403（下次请求生效） |
+| 禁用角色 - 菜单不下发 | 禁用后成员调 `GET /user/menus` | 不含该角色菜单 |
+| 禁用角色 - 重新启用 | 再次启用后成员请求原 API | 恢复放行（策略未清除） |
+| 禁用系统角色 | status=0 且 is_system=true | 返回 ErrRoleIsSystem |
+| 删除更强角色 | 低权自定义角色（priority=25）删更强角色（priority=15） | 403 + 30010 |
+| 降权更强角色 | 低权角色 Update 更强角色的 priority | 403 + 30010 |
+| admin 改系统角色菜单 | 非 superadmin 对 is_system 角色分配菜单 | 403 + 40004 |
 
 ### 集成测试
 
