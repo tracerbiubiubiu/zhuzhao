@@ -37,3 +37,39 @@ func TestBuildOrgTree(t *testing.T) {
 func TestBuildOrgTreeEmpty(t *testing.T) {
 	assert.Equal(t, []*model.Organization{}, buildOrgTree(nil))
 }
+
+// TestBuildOrgTreeNoSideEffect 验证：buildOrgTree 不会修改原始输入的 Children，
+// 且每个节点都是独立副本（原对象保持"光杆"平铺态）。
+func TestBuildOrgTreeNoSideEffect(t *testing.T) {
+	root := &model.Organization{ID: 1, SortOrder: 1}
+	child := &model.Organization{ID: 2, ParentID: &root.ID, SortOrder: 1}
+
+	// 记录原始状态，便于事后对照
+	require.Nil(t, root.Children, "前置：root 原本没有 Children")
+	require.Nil(t, child.Children, "前置：child 原本没有 Children")
+
+	tree := buildOrgTree([]*model.Organization{root, child})
+	require.Len(t, tree, 1)
+	require.Len(t, tree[0].Children, 1, "树里 child 已挂到 root 下")
+
+	// 原始输入必须保持原样（隔离性：先 new 再拷贝，不原地挂载）
+	assert.Nil(t, root.Children, "原始 root 不应被写入 Children")
+	assert.Nil(t, child.Children, "原始 child 不应被写入 Children")
+	// 返回的节点与原始对象是不同地址（独立副本）
+	assert.NotSame(t, root, tree[0], "返回的节点应是新建的独立副本，而非原对象")
+}
+
+// TestBuildOrgTreeSameSortOrderByID 验证：同层 sort_order 相同时按 ID 升序。
+func TestBuildOrgTreeSameSortOrderByID(t *testing.T) {
+	root := &model.Organization{ID: 1, SortOrder: 1}
+	// 两个孩子 sort_order 都是 5，应严格按 ID：3 在 7 前
+	c1 := &model.Organization{ID: 7, ParentID: &root.ID, SortOrder: 5}
+	c2 := &model.Organization{ID: 3, ParentID: &root.ID, SortOrder: 5}
+
+	// 故意打乱传入顺序
+	tree := buildOrgTree([]*model.Organization{root, c1, c2})
+	require.Len(t, tree, 1)
+	require.Len(t, tree[0].Children, 2)
+	assert.Equal(t, int64(3), tree[0].Children[0].ID, "相同 sort_order 时 ID 小的在前")
+	assert.Equal(t, int64(7), tree[0].Children[1].ID, "相同 sort_order 时 ID 大的在后")
+}
