@@ -305,45 +305,47 @@ GET /user/permissions
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "1",
-      "code": "home",
-      "name": "首页",
-      "menu_type": 1,
-      "path": "/home",
-      "component": "home",
-      "icon": "home",
-      "sort_order": 0,
-      "visible": true,
-      "children": []
-    },
-    {
-      "id": "2",
-      "code": "system",
-      "name": "系统管理",
-      "menu_type": 1,
-      "path": "/system",
-      "component": "",
-      "icon": "settings",
-      "sort_order": 1,
-      "visible": true,
-      "children": [
-        {
-          "id": "3",
-          "code": "system_user",
-          "name": "用户管理",
-          "menu_type": 2,
-          "path": "/system/user",
-          "component": "system/user/index",
-          "icon": "user",
-          "sort_order": 1,
-          "visible": true,
-          "children": []
-        }
-      ]
-    }
-  ]
+  "data": {
+    "menus": [
+      {
+        "id": "1",
+        "code": "home",
+        "name": "首页",
+        "menu_type": 1,
+        "path": "/home",
+        "component": "home",
+        "icon": "home",
+        "sort_order": 0,
+        "visible": true,
+        "children": []
+      },
+      {
+        "id": "2",
+        "code": "system",
+        "name": "系统管理",
+        "menu_type": 1,
+        "path": "/system",
+        "component": "",
+        "icon": "settings",
+        "sort_order": 1,
+        "visible": true,
+        "children": [
+          {
+            "id": "3",
+            "code": "system_user",
+            "name": "用户管理",
+            "menu_type": 2,
+            "path": "/system/user",
+            "component": "system/user/index",
+            "icon": "user",
+            "sort_order": 1,
+            "visible": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -358,14 +360,16 @@ GET /user/permissions
 ```json
 {
   "code": 0,
-  "data": [
-    "route:/system/user",
-    "route:/system/role",
-    "button:user:create",
-    "button:user:status",
-    "button:user:delete",
-    "button:role:assign_menu"
-  ]
+  "data": {
+    "permissions": [
+      "route:/system/user",
+      "route:/system/role",
+      "button:user:create",
+      "button:user:status",
+      "button:user:delete",
+      "button:role:assign_menu"
+    ]
+  }
 }
 ```
 
@@ -384,8 +388,9 @@ GET /user/permissions
 | 登记菜单 - 按钮 | type=3, name="删除用户", permission="user:delete" | 返回菜单 |
 | 删除菜单 - 有子菜单 | 有子节点的菜单 | 返回 ErrMenuHasChildren |
 | 删除菜单 - 系统内置 | is_system=true | 返回 ErrMenuIsSystem |
-| 用户菜单树 - admin | admin 角色 | 返回所有菜单 |
-| 用户菜单树 - 普通用户 | 只有部分菜单的角色 | 只返回已分配的菜单（含父级目录） |
+| 管理端菜单树 | 含按钮的种子数据 | 返回树形，**含按钮节点**（menu_type=3 出现在页面 children 中，供角色分配勾选） |
+| 用户菜单树 - admin | admin 角色 | 返回所有菜单（不含按钮） |
+| 用户菜单树 - 普通用户 | 只有部分菜单的角色 | 只返回已分配的菜单（含父级目录，不含按钮） |
 | 权限码 - admin | admin 角色 | 返回所有按钮权限码 |
 | 权限码 - 普通用户 | 部分菜单的角色 | 只返回已分配按钮的权限码 |
 

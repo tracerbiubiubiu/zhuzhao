@@ -148,6 +148,25 @@ check "#14b code" "20007" "$(cat /tmp/p1.json | json_code)"
 check "#14 update" "0" "$(curl -s -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $MAT" -H 'Content-Type: application/json' -d '{"old_password":"mcp123456","new_password":"finalpass1234"}' | json_code)"
 
 # --- #18-20 org ---
+# #6b 组织树形态断言：GET /orgs 返回树形结构（顶层含 children 嵌套）
+ORG_TREE_OK=$(curl -s "$BASE/orgs" -H "Authorization: Bearer $SAT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)['data']
+roots=[o for o in d if o.get('parent_id') is None]
+nested=[o for o in d if 'children' in o and o['children']]
+print(1 if roots and nested else 0)")
+check "#6b org-tree" "1" "$ORG_TREE_OK"
+# #6c 管理端菜单树形态断言：GET /menus 树形且含按钮节点（menu_type=3，供角色分配勾选）
+MENU_TREE_OK=$(curl -s "$BASE/menus" -H "Authorization: Bearer $SAT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)['data']
+def walk(nodes):
+    for n in nodes:
+        if n.get('menu_type')==3: return True
+        if walk(n.get('children') or []): return True
+    return False
+print(1 if walk(d) else 0)")
+check "#6c menu-tree-buttons" "1" "$MENU_TREE_OK"
 BODY18=$(json_body "{\"org_id\":\"2\",\"user_id\":\"$TARGET_USER_ID\"}")
 check "#18" "0" "$(curl -s -X POST "$BASE/orgs/members" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY18" | json_code)"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"org_id":"2","user_id":"99999"}')

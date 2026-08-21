@@ -81,7 +81,7 @@ type RoleService interface {
     Update(ctx context.Context, code string, req UpdateRoleRequest) error
     Delete(ctx context.Context, code string) error
     List(ctx context.Context) ([]*model.Role, error)
-    GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树
+    GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树（Phase 2b：roles.parent_id 落地后实现，Phase 1 角色为平铺无继承）
 
     // 菜单分配
     AssignMenus(ctx context.Context, roleCode string, menuIDs []int64) error

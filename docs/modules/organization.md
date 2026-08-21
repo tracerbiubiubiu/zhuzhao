@@ -126,7 +126,10 @@ type OrgService interface {
     List(ctx context.Context, query OrgListQuery) ([]*model.Organization, int64, error)
 
     // 树操作
-    GetTree(ctx context.Context) ([]*OrgNode, error)
+    // GetTree 返回树形结构：model.Organization 递归嵌套 Children（db:"-"，平铺数据由 OrgRepo 提供，
+    // OrgService 按 parent_id 归并组装；与 MenuService.GetTree 同构）。Phase 1 实现：
+    // internal/service/org_service.go buildOrgTree。
+    GetTree(ctx context.Context) ([]*model.Organization, error)
     MoveNode(ctx context.Context, code string, newParentCode string) error
 
     // 成员管理（Phase 1：无 role_id；写逻辑 SSOT 在此）

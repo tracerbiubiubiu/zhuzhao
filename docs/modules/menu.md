@@ -73,14 +73,17 @@ type MenuService interface {
     Update(ctx context.Context, code string, req UpdateMenuRequest) error
     Delete(ctx context.Context, code string) error
     GetByCode(ctx context.Context, code string) (*model.Menu, error)
-    GetTree(ctx context.Context) ([]*MenuNode, error)
+    // GetTree 管理端完整菜单树：model.Menu 递归嵌套 Children（db:"-"），含按钮节点
+    // （角色分配菜单需勾选按钮）。Phase 1 实现：internal/service/menu_service.go buildMenuTree。
+    GetTree(ctx context.Context) ([]model.Menu, error)
 
     // API 绑定
     BindAPIs(ctx context.Context, menuCode string, apis []APIRef) error
     GetAPIs(ctx context.Context, menuCode string) ([]APIRef, error)
 
     // 前端权限数据
-    GetUserMenuTree(ctx context.Context, userID int64) ([]*MenuNode, error)
+    // 用户侧菜单树（不含按钮）。Phase 1 实际方法名为 GetUserMenus（internal/service/menu_service.go）。
+    GetUserMenuTree(ctx context.Context, userID int64) ([]model.Menu, error)
     GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 }
 ```

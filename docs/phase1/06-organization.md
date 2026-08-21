@@ -22,6 +22,8 @@
 | 添加组织成员 | 将用户加入组织 | `POST /api/v1/orgs/members` | `org:member` |
 | 移除组织成员 | 将用户从组织移出 | `POST /api/v1/orgs/members/delete` | `org:member` |
 
+> **组织树返回形态**：`GET /api/v1/orgs` 返回**树形结构**（`Organization.Children` 嵌套，`db:"-"` 不入库），与菜单 `GET /menus` 同构。组装在 `OrgService.GetTree`（Repo 返回平铺列表 → Service 按 `parent_id` 归并 → 递归按 `sort_order, id` 排序）；父节点不存在时按根节点处理，避免数据异常导致丢节点。
+
 > Phase 1 `user_orgs` 仅 `(user_id, org_id, is_primary)`，**无** `role_id`。  
 > **双 HTTP 入口、单写逻辑**：组织侧 `POST /orgs/members*` 与用户侧 `POST /users/orgs`、创建用户 `org_ids` 均委托 **同一 `OrgService`**，见下文 §成员关系写路径。
 
@@ -230,7 +232,7 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 创建根组织 | path = '{code}'，如 'tech_dept' |
 | 创建子组织 | path = 'parent_code.code'，如 'root.tech_dept' |
 | 创建三级组织 | path = 'root.tech_dept.fe_team' |
-| 查询组织树 | 返回树形结构，层级正确 |
+| 查询组织树（Repo） | 返回未软删全量平铺列表（按 sort_order, id 排序） |
 | 移动组织 | 自身及子组织 path 全部更新 |
 | 删除组织 - 系统组织 | 返回 ErrOrgIsSystem |
 | 删除组织 - 有子组织 | 返回 ErrOrgHasChildren |
@@ -256,6 +258,10 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 添加成员 - 组织不存在 | 无效 org_id | 返回 ErrOrgNotFound |
 | SetUserOrgs - primary 不在 org_ids 中 | primary_org_id 无效 | 返回 ErrInvalidParams |
 | 移除成员 - 未加入 | 无对应 user_orgs 行 | 404 + 50007 |
+| 组织树组装 - 嵌套 | 平铺列表（root + 子 + 孙） | Service 返回树形：Children 嵌套、层级正确 |
+| 组织树组装 - 排序 | 同级 sort_order 不同 | Children 按 sort_order 升序（相同则按 id） |
+| 组织树组装 - 孤儿节点 | parent_id 指向不存在的组织 | 按根节点返回，不丢节点 |
+| 组织树组装 - 空表 | 无组织 | 返回空数组（非 nil） |
 
 ### 路由注册（SSOT）
 
@@ -285,7 +291,8 @@ orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
 ```
 internal/router/router.go               # org 成员三路由 + 见 04-user 的 POST /users/orgs
 internal/repository/org/                # ltree + user_orgs 成员
-internal/service/org/
+internal/service/org/                   # GetTree 平铺→树形组装（buildOrgTree）
 internal/handler/org/
-internal/model/organization.go        # UserOrg：Phase 1 无 role_id 字段
+internal/model/organization.go        # UserOrg：Phase 1 无 role_id 字段；Organization.Children（db:"-"）
+internal/service/org_service_test.go   # buildOrgTree 单测（嵌套/排序/孤儿/空表）
 ```
