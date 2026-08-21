@@ -214,3 +214,48 @@ func handleStubRedisConn(conn net.Conn) {
 		}
 	}
 }
+
+// B1-4 守护：TrustedProxies 信任链。
+// 默认（nil）：不信任任何代理——伪造 X-Forwarded-For 不影响 ClientIP，
+// 防审计 IP / last_login_ip 污染；显式信任网段后 XFF 才生效。
+func newTrustedProxiesEngine(t *testing.T, proxies []string) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	jwtManager := jwtpkg.NewManager(config.JWTConfig{
+		Secret:    "router-test-secret-0123456789",
+		AccessTTL: 30 * time.Minute,
+	})
+	deps := router.Deps{
+		JWTManager:     jwtManager,
+		Enforcer:       newRouterTestEnforcer(t),
+		RedisClient:    startStubRedis(t),
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher:    &stubRoleFetcher{roles: map[int64][]string{}},
+		TrustedProxies: proxies,
+	}
+	r := router.New(deps)
+	// 临时路由读 ClientIP（gin 允许在构建后追加注册）
+	r.GET("/test/client-ip", func(c *gin.Context) { c.String(http.StatusOK, c.ClientIP()) })
+	return r
+}
+
+func clientIPWithXFF(r *gin.Engine, xff string) string {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test/client-ip", nil)
+	req.Header.Set("X-Forwarded-For", xff)
+	r.ServeHTTP(w, req)
+	return w.Body.String()
+}
+
+func TestTrustedProxies_DefaultIgnoresXFF(t *testing.T) {
+	r := newTrustedProxiesEngine(t, nil)
+	// httptest 默认 RemoteAddr = 192.0.2.1:1234；伪造 XFF 应被忽略
+	assert.Equal(t, "192.0.2.1", clientIPWithXFF(r, "1.2.3.4"),
+		"未配置 trusted_proxies 时 X-Forwarded-For 不应参与 ClientIP 解析")
+}
+
+func TestTrustedProxies_TrustedUsesXFF(t *testing.T) {
+	r := newTrustedProxiesEngine(t, []string{"0.0.0.0/0"})
+	assert.Equal(t, "1.2.3.4", clientIPWithXFF(r, "1.2.3.4"),
+		"信任网段内直连（0.0.0.0/0）时 XFF 最左侧应为客户端 IP")
+}
