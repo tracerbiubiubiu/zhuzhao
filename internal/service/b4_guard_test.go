@@ -10,10 +10,10 @@ import (
 
 // B4-4 守护：菜单类型必要字段——页面(2)必有 path、按钮(3)必有 permission
 func TestValidateMenuRequiredFields(t *testing.T) {
-	assert.NoError(t, validateMenuRequiredFields(1, "", ""))    // 目录：无要求
-	assert.NoError(t, validateMenuRequiredFields(2, "/sys", "")) // 页面：有 path
+	assert.NoError(t, validateMenuRequiredFields(1, "", ""))                           // 目录：无要求
+	assert.NoError(t, validateMenuRequiredFields(2, "/sys", ""))                       // 页面：有 path
 	assert.ErrorIs(t, validateMenuRequiredFields(2, "", ""), errcode.ErrInvalidParams) // 页面无 path
-	assert.NoError(t, validateMenuRequiredFields(3, "", "user:delete")) // 按钮：有 permission
+	assert.NoError(t, validateMenuRequiredFields(3, "", "user:delete"))                // 按钮：有 permission
 	assert.ErrorIs(t, validateMenuRequiredFields(3, "", ""), errcode.ErrInvalidParams) // 按钮无 permission
 }
 

@@ -136,7 +136,7 @@ func TestJWT_MissingHeader_Rejected(t *testing.T) {
 }
 
 // B4-1：仅带 X-AK-* 无 Bearer → 401 +「暂不支持该认证方式」
-//（M2M 未上线，明确告知而非笼统「未授权」；20009 待 Phase 3 落地）
+// （M2M 未上线，明确告知而非笼统「未授权」；20009 待 Phase 3 落地）
 func TestJWT_AKOnlyHeader_ExplicitMessage(t *testing.T) {
 	c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
 	c.Request.Header.Set("X-AK-Access-Key", "some-ak")

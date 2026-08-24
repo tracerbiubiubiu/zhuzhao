@@ -302,6 +302,38 @@ ORGCODE="org_$RANDOM"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"org_type\":2}")
 check "org create" "200" "$HC"
 
+# --- D2 断言组（review 03 号报告修复验收） ---
+# D2-45：种子完整性——operator/viewer 零 role_menus 绑定（预留角色），
+# 描述已修正（000002/000009，不再暗示不存在的权限）
+OPV_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.role_id WHERE r.code IN ('operator','viewer')")
+check "D2 seed operator/viewer unbound" "0" "$OPV_BIND"
+OPV_DESC=$(psql_q "SELECT COUNT(*) FROM roles WHERE code IN ('operator','viewer') AND description LIKE '系统预留角色%'")
+check "D2 seed desc fixed" "2" "$OPV_DESC"
+
+# D2-01：登录输入上限——employee_no 51 字符 → 400（防超大键灌爆 Redis）
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000000000000000000000000000000000000000000000000001","password":"x"}')
+check "D2-01 emp_no>50 http" "400" "$HC"
+
+# D2-45：密码 7 字符创建用户 → 400 + 10001（binding min=8）
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"username":"pw7","password":"1234567","employee_no":"EPW7'"$RANDOM"'"}')
+check "D2 pwd 7 chars http" "400" "$HC"
+check "D2 pwd 7 chars code" "10001" "$(cat /tmp/p1.json | json_code)"
+
+# D2-03：角色 Update patch 语义——只改名不带 status → status 保持 1（原零值穿透静默禁用）
+D2ROLE=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"code":"d2_patch'"$RANDOM"'","name":"补丁角色","priority":20}')
+D2RID=$(echo "$D2ROLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+R=$(curl -s -X POST "$BASE/roles/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"id\":\"$D2RID\",\"version\":1,\"name\":\"改名后\",\"priority\":20}")
+check "D2-03 role patch status kept" "1" "$(echo "$R" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")"
+
+# D2-06：系统组织 Update → 403 + 50012（原 500+10000 断链）
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"id":"1","version":1,"name":"root"}')
+check "D2-06 org sys protect http" "403" "$HC"
+check "D2-06 org sys protect code" "50012" "$(cat /tmp/p1.json | json_code)"
+
+# D2-45/D2-19：改密审计脱敏——password/update 的 request_body 中新旧密码均为 ***
+CPW=$(psql_q "SELECT request_body FROM audit_logs WHERE path='/api/v1/auth/password/update' ORDER BY id DESC LIMIT 1")
+check "D2 change-pwd audit masked" "1" "$(echo "$CPW" | python3 -c "import sys,json; b=json.loads(sys.stdin.read()); print(1 if b.get('old_password')=='***' and b.get('new_password')=='***' else 0)")"
+
 # --- #17 redis down (last: restores redis via trap) ---
 AT_FOR_17=$SAT
 REDIS_C="${REDIS_CONTAINER:-zhuzhao-redis}"

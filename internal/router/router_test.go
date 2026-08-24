@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
-	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 )
 
@@ -281,11 +281,11 @@ func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
 	})
 	auditCapture := &captureAuditLogger{}
 	deps := router.Deps{
-		JWTManager:  jwtManager,
-		Enforcer:    newRouterTestEnforcer(t),
-		RedisClient: startStubRedis(t),
-		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
-		RoleFetcher: &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}},
+		JWTManager:   jwtManager,
+		Enforcer:     newRouterTestEnforcer(t),
+		RedisClient:  startStubRedis(t),
+		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher:  &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}},
 		AuditService: auditCapture,
 	}
 	r := router.New(deps)
