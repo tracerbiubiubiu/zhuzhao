@@ -249,7 +249,9 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 移除成员 | org_id + user_id | user_orgs 删除成功 |
 | 设 is_primary | is_primary=true | 该用户其它 primary 被清除 |
 | SetUserOrgs | user_id + org_ids | user_orgs 全量替换 |
+| SetUserOrgs - 软删组织（D2-16） | org_ids 含已软删组织 | 404 + ErrOrgNotFound，事务回滚不留部分绑定 |
 | SetUserOrgs - 清空 | org_ids: [] | 该用户无组织关联 |
+| 创建组织 - 层级超限（D2-44④） | 父 path 深度 ≥20 段 | 400（组织层级超过上限 20 层），原 ltree 报 500 |
 | 成员列表 - 分页（B4-5） | `GET /orgs/:id/members?page=1&page_size=2` | `{list, total, page, page_size}`——total 为全量数，list 为当前页；page=0 规范化为 1 |
 | 成员列表 - 超范围页（B4-5） | page=99 | 空列表，total 不变 |
 

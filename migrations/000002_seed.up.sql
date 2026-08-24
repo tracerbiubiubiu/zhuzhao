@@ -2,12 +2,14 @@
 
 -- ============================================
 -- 角色（4 个系统角色）
+-- D2-37①：operator/viewer 描述修正——种子中两者均无 role_menus/casbin 绑定
+-- （仅 superadmin/admin 通配），原描述暗示的权限并不存在，按实际「未绑定」表述
 -- ============================================
 INSERT INTO roles (code, name, description, priority, is_system) VALUES
   ('superadmin', '超级管理员', '系统最高权限，可管理管理员', 1, true),
   ('admin', '管理员', '系统管理员，拥有全部权限', 10, true),
-  ('operator', '操作员', '可管理组织成员/角色/子组织', 20, true),
-  ('viewer', '访客', '只读访问', 30, true)
+  ('operator', '操作员', '系统预留角色：默认未绑定权限，需管理员显式分配后生效', 20, true),
+  ('viewer', '访客', '系统预留角色：默认未绑定权限，需管理员显式分配只读菜单后生效', 30, true)
 ON CONFLICT (code) WHERE deleted_at IS NULL DO NOTHING;
 
 -- ============================================

@@ -94,6 +94,11 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 			SET is_primary = true
 			WHERE EXCLUDED.is_primary`, userID, orgID, isPrimary)
 	if err != nil {
+		// D2-15：并发双 primary 触发 000008 部分唯一索引 → 409 业务码
+		//（B3-3 只接了 SetUserOrgsTx，此处同型遗漏 → 500）
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
 		return fmt.Errorf("add member: %w", err)
 	}
 	return tx.Commit(ctx)
@@ -143,14 +148,21 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 	}
 	for _, orgID := range deduped {
 		isPrimary := primaryOrgID != nil && *primaryOrgID == orgID
-		if _, err := tx.Exec(ctx, `
+		// D2-16：INSERT...SELECT 过滤软删组织（B4-3 只给 SetRolesTx 做了同型
+		// 防御）——裸 INSERT 遇软删 org_id 触发 FK 23503 → 500，且静默丢绑定
+		tag, err := tx.Exec(ctx, `
 			INSERT INTO user_orgs (user_id, org_id, is_primary)
-			VALUES ($1, $2, $3)`, userID, orgID, isPrimary); err != nil {
+			SELECT $1, id, $3 FROM organizations
+			WHERE id = $2 AND deleted_at IS NULL`, userID, orgID, isPrimary)
+		if err != nil {
 			// B3-3：并发双 primary 触发部分唯一索引 → 409 业务码（非 500）
 			if ec := mapUniqueViolation(err); ec != nil {
 				return ec
 			}
 			return fmt.Errorf("insert user org: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return errcode.ErrOrgNotFound
 		}
 	}
 	return nil

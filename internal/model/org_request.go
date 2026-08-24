@@ -18,14 +18,16 @@ type CreateOrgRequest struct {
 	SortOrder   int    `json:"sort_order"`
 }
 
-// UpdateOrgRequest 更新组织
+// UpdateOrgRequest 更新组织。
+// D2-03/D2-17：Status/Description/SortOrder 指针化 patch 语义——
+// 未传（nil）保持现值，原零值穿透静默清空/禁用
 type UpdateOrgRequest struct {
-	ID          int64  `json:"id,string" binding:"required"`
-	Version     int    `json:"version" binding:"required"`
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	Status      int    `json:"status" binding:"oneof=0 1"`
-	SortOrder   int    `json:"sort_order"`
+	ID          int64   `json:"id,string" binding:"required"`
+	Version     int     `json:"version" binding:"required"`
+	Name        string  `json:"name" binding:"required,max=100"`
+	Description *string `json:"description"`
+	Status      *int    `json:"status" binding:"omitempty,oneof=0 1"`
+	SortOrder   *int    `json:"sort_order"`
 }
 
 // OrgIDRequest 带 org_id 的请求

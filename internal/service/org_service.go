@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -160,8 +162,12 @@ func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize
 	if err != nil {
 		return nil, err
 	}
+	// 回显规范化与 repo normalizePage 对齐（D2-13：含 page 上限，防溢出回绕负 OFFSET）
 	if page < 1 {
 		page = 1
+	}
+	if page > 10000 {
+		page = 10000
 	}
 	if pageSize < 1 {
 		pageSize = 20
@@ -177,6 +183,10 @@ func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize
 	}, nil
 }
 
+// maxOrgPathDepth 组织树层级上限（D2-44④）——超深子树拼 path 时 ltree
+// 报错为 500，前置校验转 400（20 层远超「集团→公司→部门→中心→组」实际需求）
+const maxOrgPathDepth = 20
+
 func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, actorUserID int64) (*model.Organization, error) {
 	if !validate.LtreeLabel(req.Code) {
 		return nil, errcode.ErrInvalidParams
@@ -191,6 +201,13 @@ func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, ac
 		parent, err := s.orgRepo.FindByID(ctx, *req.ParentID)
 		if err != nil {
 			return nil, err
+		}
+		// D2-44④：层级前置校验（ltree path 以 '.' 分隔，段数即层级）
+		if depth := strings.Count(parent.Path, ".") + 2; depth > maxOrgPathDepth {
+			return nil, &errcode.Error{
+				Code:    errcode.ErrInvalidParams.Code,
+				Message: fmt.Sprintf("组织层级超过上限 %d 层", maxOrgPathDepth),
+			}
 		}
 		parentID = &parent.ID
 		path = parent.Path + "." + req.Code
@@ -223,9 +240,16 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 		return nil, errcode.ErrOrgSystemProtected
 	}
 	org.Name = req.Name
-	org.Description = req.Description
-	org.Status = req.Status
-	org.SortOrder = req.SortOrder
+	// D2-03/D2-17：nil = 未传 → 保持现值（patch 语义）
+	if req.Description != nil {
+		org.Description = *req.Description
+	}
+	if req.Status != nil {
+		org.Status = *req.Status
+	}
+	if req.SortOrder != nil {
+		org.SortOrder = *req.SortOrder
+	}
 	org.Version = req.Version
 	if err := s.orgRepo.Update(ctx, org); err != nil {
 		return nil, err
