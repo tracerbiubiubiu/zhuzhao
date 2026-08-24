@@ -191,6 +191,13 @@ func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.O
 
 ### 4.2 移动节点（更新子树 path）
 
+> **Phase 1 实现状态（B3-2）**：`internal/repository/org_repo.go` Move 已事务化——
+> `pg_advisory_xact_lock(hashtext('org:move'))` 全局串行化并发移动（替换下述步骤 3 的
+> Redis 分布式锁，Phase 3 多实例时再切换）→ 事务内 `FOR UPDATE` 重读节点与新父行 →
+> 事务内环检测（`parentPath <@ oldPath` 前缀判断）→ 锁旧子树（谓词含 deleted_at）→
+> 级联 UPDATE 带 **RowsAffected 校验**（0 行 = 节点被并发移动，409 而非静默成功）。
+> 并发交叉移动由集成测试 `TestOrgRepo_MoveConcurrentCrossMove` 守护。
+
 ```
 POST /api/v1/orgs/move {id, newParentId}
 
@@ -227,13 +234,20 @@ OrgService（SSOT）
 
 #### AddMember / RemoveMember
 
+> **实现（B3-1，`internal/repository/org_repo.go`）**：幂等不降级——重复添加已存在
+> 成员且未传 is_primary（零值 false）时 primary 保持原状；仅显式 primary=true 才提升
+> （同事务先清该用户其它 primary）。并发双 primary 由 000008 部分唯一索引兜底
+>（`idx_user_orgs_single_primary`，触发时 409 + 50011）。
+
 ```
 POST /api/v1/orgs/members
 Body: { org_id, user_id, is_primary? }
 
 1. 校验 org、user 存在且未软删
-2. INSERT INTO user_orgs (user_id, org_id, is_primary) ON CONFLICT DO NOTHING
-3. 若 is_primary=true → 同事务 UPDATE user_orgs SET is_primary=false WHERE user_id=? AND org_id<>?
+2. 若 is_primary=true → 同事务 UPDATE user_orgs SET is_primary=false WHERE user_id=?
+3. INSERT ... ON CONFLICT (user_id, org_id) DO UPDATE
+   SET is_primary = true WHERE EXCLUDED.is_primary
+   （false 不回写——幂等不降级；true 提升）
 ```
 
 ```
@@ -253,7 +267,8 @@ Body: { user_id, org_ids[], primary_org_id? }
 1. 校验 user、各 org 存在
 2. primary_org_id 须在 org_ids 内（若提供）
 3. 事务：DELETE FROM user_orgs WHERE user_id=?
-4. INSERT 各 (user_id, org_id, is_primary)
+4. org_ids 去重（B3-4：保序去重，重复 ID 不再触发主键冲突 500）
+5. INSERT 各 (user_id, org_id, is_primary)
 ```
 
 创建用户时 `org_ids` 由 `UserService.Create` 在同一事务内调用 `SetUserOrgsTx`，见 [phase1/04-user.md](../phase1/04-user.md)。

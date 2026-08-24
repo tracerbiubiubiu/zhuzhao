@@ -205,6 +205,20 @@ HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Au
 check "#20 http" "200" "$HC"
 check "#20 code" "0" "$(cat /tmp/p1.json | json_code)"
 
+# --- B3 断言组 ---
+# B3-1 AddMember 幂等不降级：先设 primary（org 2），再重复添加同 org 不带 is_primary → 200 且 primary 保持
+BODY31=$(json_body "{\"org_id\":\"2\",\"user_id\":\"$TARGET_USER_ID\",\"is_primary\":true}")
+check "B3-1 set-primary" "0" "$(curl -s -X POST "$BASE/orgs/members" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY31" | json_code)"
+check "B3-1 idempotent" "0" "$(curl -s -X POST "$BASE/orgs/members" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY18" | json_code)"
+B31_PRIMARY=$(psql_q "SELECT COUNT(*) FROM user_orgs WHERE user_id=$TARGET_USER_ID AND is_primary")
+check "B3-1 primary-kept" "1" "$B31_PRIMARY"
+# B3-4 SetUserOrgs 重复 org_id → 去重成功（修复前主键冲突 500）
+BODY34=$(json_body "{\"user_id\":\"$TARGET_USER_ID\",\"org_ids\":[\"2\",\"2\"],\"primary_org_id\":\"2\"}")
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY34")
+check "B3-4 dup-orgids http" "200" "$HC"
+B34_ROWS=$(psql_q "SELECT COUNT(*) FROM user_orgs WHERE user_id=$TARGET_USER_ID AND org_id=2")
+check "B3-4 no-dup-rows" "1" "$B34_ROWS"
+
 # --- #23 #24 ---
 check "#23" "1" "$(curl -s "$BASE/users?username=admin" -H "Authorization: Bearer $SAT" | python3 -c "import sys,json; t=json.load(sys.stdin)['data']['total']; print(1 if t>=1 else 0)")"
 check "#24" "1" "$(curl -s "$BASE/users?employee_no=E000001" -H "Authorization: Bearer $SAT" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['total'])")"
