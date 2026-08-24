@@ -53,14 +53,14 @@
 |--------|-----------|-----------|---------|------|
 | **M2a-0** 接线收尾 | 0 | 无业务用例；装配断言：`grep NewRegistry wire_gen.go` 命中 2 处、启动日志无输出（空表） | Phase 1 全量测试回归 | G-1 Registry 接线 + G-2 删 authz_service.go stub（[02 §1 Step 0](./02-authz-resource.md)） |
 | **M2a-1** 资源级鉴权可用 | 1 | R1–R2（Registry 单测）+ TicketResource **契约测试**（fake repo） | `go test ./internal/pkg/resource/... ./internal/service/ticket/...` | R3–R8 需工单真表，落 M2a-2 验证 |
-| **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000008；assigned 过滤；404 语义；P2-D1 级联（若采纳） |
+| **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000010；assigned 过滤；404 语义；P2-D1 级联（若采纳） |
 | **M2a-3** 2a 全量 | 3 | Phase 1 27 用例回归 + T/R 全量 | 同上（含回归段） | 对抗路径：不可见 404、无权限 403、状态机 90002 |
-| **M2b-1** 组织增强 | 4 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000009；虚拟组/临时成员/BFS/HR Job（fake client） |
+| **M2b-1** 组织增强 | 4 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000011；虚拟组/临时成员/BFS/HR Job（fake client） |
 | **M2b-2** scope 升级 | 5 | R9–R12 + **D11/D12 首次验收** | ticket 集成测试扩展 | 策略 B 透明读 + project_isolated；P2-D1 回归 |
-| **M2b-3** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000011；预签名 + confirm |
+| **M2b-3** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000013；预签名 + confirm |
 | **M2b-4** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 M2b-3 并行 |
 | **M2b-5** 2b 全量 | 8 | [README §1.2](./README.md) 5 条验收 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 策略 B 全景 + HR 同步链路 |
-| **M2c-1** 委托 API | 9 | D1–D6 | `make test-integration` | 迁移 000012；组内防提权（50008–50010） |
+| **M2c-1** 委托 API | 9 | D1–D6 | `make test-integration` | 迁移 000014；组内防提权（50008–50010） |
 | **M2c-2** Authorize 升级 | 10 | D7–D9 | 同上（扩展） | org admin/owner + ancestor owner |
 | **M2c-3** 2c 全量 | 11 | D1–D12 + D10 HR 隔离回归 + 2a/2b 回归 | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
 
@@ -86,7 +86,7 @@
 
 ### Step 2（M2a-2）— ticket MVP
 
-- [ ] 迁移 **000008**：`ticket_types` / `tickets` / `ticket_comments`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范）
+- [ ] 迁移 **000010**：`ticket_types` / `tickets` / `ticket_comments`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范）
 - [ ] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
 - [ ] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
 - [ ] **P2-D1（已采纳 A）**：`OrgService.Move` 扩展级联改写 `tickets.org_path` + 集成测试
@@ -99,7 +99,7 @@
 
 ### Step 4（M2b-1）— org-enhance
 
-- [ ] 迁移 **000009**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`、`ticket_visibility`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL）
+- [ ] 迁移 **000011**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`、`ticket_visibility`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL）
 - [ ] 虚拟组 CRUD（org_type=4、code 前缀 `vg_`）+ Reparent（HR 撤销部门上挂最近实体祖先）
 - [ ] 临时成员：`expires_at` 读取时过滤（或惰性清理 Job，随 PRD）
 - [ ] BFS 三源 RoleFetcher 扩展（直接 + 组织角色 + 继承）
@@ -115,15 +115,16 @@
 ### Step 6（M2b-3）— storage
 
 - [ ] compose 加 MinIO；`config.storage` 段（[10 §2](./10-storage.md)）
-- [ ] 迁移 **000011**：`file_objects` / `ticket_attachments`
+- [ ] 迁移 **000013**：`file_objects` / `ticket_attachments`
 - [ ] `internal/pkg/storage/s3_client.go` + 预签名 upload/download + confirm（HEAD 校验）+ 附件列表/删除 API
 - [ ] 91001–91004 错误码；S1–S6 测试
 
 ### Step 7（M2b-4）— auth-enhance（可与 Step 6 并行）
 
+- [ ] **首任务（D2-49②）**：devices 集合初始化（SADD/SREM 接入登录/登出/吊销链路）+ RT value 结构升级（hash 与设备元数据并存，Refresh 比较逻辑与守护测试同 Step 改造——[01 §2.1](./01-auth-enhance.md)）
 - [ ] 设备列表/踢出 API（沿用 `devices:{uid}` 集合；**单轨道**：仅删单设备 RT，不触碰 `user:disabled`，[01 §0 B3](./01-auth-enhance.md)）
 - [ ] `ValidatePasswordPolicy` + 20013（策略归一：binding 保留 required，长度/复杂度统一走策略校验，[01 §3.4](./01-auth-enhance.md)）
-- [ ] 迁移 **000010** 视需要（纯 config 则无迁移，编号顺延规则见 [README §2.4](./README.md)）
+- [ ] 迁移 **000012** 视需要（纯 config 则无迁移，编号顺延规则见 [README §2.4](./README.md)）
 - [ ] A1–A6 测试（miniredis）
 
 ### Step 8（M2b-5）— 2b 集成验收
@@ -132,7 +133,7 @@
 
 ### Step 9（M2c-1）— org-delegation
 
-- [ ] 迁移 **000012**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)）
+- [ ] 迁移 **000014**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)）
 - [ ] `OrgDelegationService`：EffectiveOrgPriority / IsOrgAdminOrOwner / IsAncestorOwner
 - [ ] SetOwners / SetMemberRole / AddMember / RemoveMember / 虚拟组删除扩展（防提权矩阵 [04 §3](./04-org-delegation.md)）
 - [ ] 50008–50010 错误码；D1–D6 集成测试
@@ -195,7 +196,7 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 3. down 可逆且先让位（000006 模式）；
 4. 唯一索引带 `WHERE deleted_at IS NULL`（F-6 教训）;
 5. `testutil/testdb_integration.go` 迁移列表同步 + 新表级联测试；
-6. 大子树 DDL（000009 含回填）在真实 PG 演练 up→down→up。
+6. 大子树 DDL（000011 含回填）在真实 PG 演练 up→down→up。
 
 ### 5.4 提交与文档纪律
 
@@ -239,7 +240,7 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | RK-3 | HR 同步半成功 / 外部 API 不稳定 | 2b | 高 | 中 | fake client 契约测试 + `hr_sync_runs` 对账 + 幂等 upsert；真实对接部署期另排 | 每日同步失败 |
 | RK-4 | move 大子树事务膨胀（组织 path + 工单 org_path 双级联） | 2b | 低 | 中 | 内部量级评估；超阈值分批改写（先 org 后异步补工单，标记一致性 Job） | move 请求超时 |
 | RK-5 | 预签名安全（object_key 伪造 / confirm 绕过 / 越权下载） | 2b | 中 | 高 | UUID key 服务端生成 + confirm HEAD 校验 + 下载预签名走工单可见性检查 | 安全自查 |
-| RK-6 | 000009 迁移含数据回填，down 不可逆 | 2b | 中 | 中 | §5.3 检查单第 6 条：真实 PG 演练 up→down→up | down 演练失败 |
+| RK-6 | 000011 迁移含数据回填，down 不可逆 | 2b | 中 | 中 | §5.3 检查单第 6 条：真实 PG 演练 up→down→up | down 演练失败 |
 | RK-7 | BFS 三源角色查询每请求放大 | 2b | 中 | 中 | 单 SQL 取三源；声明量级边界（对齐 [02 §2.6](./02-authz-resource.md) 模式）；缓存后移 Phase 3 | 角色查询耗时上升 |
 | RK-8 | 设备管理与 Phase 1 会话键冲突（误伤其他设备） | 2b | 低 | 中 | 单轨道约束（不触碰 `user:disabled`）写进 A 用例 | 踢单设备致其他设备 403 |
 | RK-9 | Casbin LoadPolicy 规模增长 | 2a+ | 低 | 低 | 边界已声明（[02 §2.6](./02-authz-resource.md)）；Watcher 后移 Phase 3 | LoadPolicy 耗时上升 |
@@ -253,13 +254,13 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 |------|--------|------------------|---------|------|
 | 0 | M2a-0 | [02 §1 Step 0](./02-authz-resource.md) | 装配断言 | — |
 | 1 | M2a-1 | [02 全文](./02-authz-resource.md) | R1–R2 + 契约 | — |
-| 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000008 |
+| 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000010 |
 | 3 | M2a-3 | README §1.1 | 全量 + 回归 | — |
-| 4 | M2b-1 | [03](./03-org-enhance.md) + [hr-directory-sync](../proposal/hr-directory-sync.md) | 两表用例 | 000009 |
+| 4 | M2b-1 | [03](./03-org-enhance.md) + [hr-directory-sync](../proposal/hr-directory-sync.md) | 两表用例 | 000011 |
 | 5 | M2b-2 | [09 §5.2](./09-ticket.md) | R9–R12、D11/D12 | — |
-| 6 | M2b-3 | [10](./10-storage.md) | S1–S6 | 000011 |
-| 7 | M2b-4 | [01](./01-auth-enhance.md) | A1–A6 | 000010（视需要） |
+| 6 | M2b-3 | [10](./10-storage.md) | S1–S6 | 000013 |
+| 7 | M2b-4 | [01](./01-auth-enhance.md) | A1–A6 | 000012（视需要） |
 | 8 | M2b-5 | README §1.2 | 全量 + 回归 | — |
-| 9 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000012 |
+| 9 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
 | 10 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
 | 11 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |

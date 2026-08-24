@@ -52,6 +52,8 @@
 | audit | `internal/service/audit/`、`middleware/audit.go`、`handler/audit/` | audit.md |
 | ticket | `internal/service/ticket/`（Phase 2 新建） | ticket.md |
 
+> **D2-43 现状澄清**：Phase 1 实际代码为**扁平结构**（`internal/service/org_service.go`、`internal/repository/org_repo.go` 等），上表为 Phase 2 迁移目标而非现状；各模块文档头部的「目标路径」同理。迁入子目录时同步更新对应文档头。
+
 模块文档开头的 `> 模块代码：internal/service/xxx_service.go` 在迁入子目录后改为对应 `{domain}/` 路径；**一个领域一个包**，不在 handler 里写业务 SQL。
 
 ## 模块依赖关系

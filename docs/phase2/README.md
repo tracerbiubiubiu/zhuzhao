@@ -203,17 +203,17 @@ Phase 1 完成
 | 10 | 2c | ticket Authorize | Step 9 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-10) |
 | 11 | 2c | 集成验收 | Step 9–10 | [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot) |
 
-### 2.4 迁移编号规划（自 000008 起）
+### 2.4 迁移编号规划（自 000010 起）
 
-Phase 1 已用至 000007。Phase 2 各 PRD 中迁移文件占位 `0000xx` 统一按下表分配（按 Step 顺序预分配；**实际执行顺序编号、不跳号**——若某模块最终无表结构变更，其后编号依次前移并在对应 PRD 标注）：
+Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Phase 1 加固索引与角色描述修正，均 review 03 号报告修复批次落地——D2-48）。Phase 2 各 PRD 中迁移文件占位 `0000xx` 统一按下表分配（按 Step 顺序预分配；**实际执行顺序编号、不跳号**——若某模块最终无表结构变更，其后编号依次前移并在对应 PRD 标注）：
 
 | 编号 | 子阶段 | 内容 | PRD |
 |------|--------|------|-----|
-| 000008 | 2a | 工单表组：`ticket_types` / `tickets` / `ticket_comments`（含 org_path 冗余） | [09-ticket.md §2a](./09-ticket.md) |
-| 000009 | 2b | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / `ticket_visibility` / 临时成员 | [03-org-enhance.md](./03-org-enhance.md) |
-| 000010 | 2b | 认证增强：密码策略配置项（若需表结构；纯 config 则无迁移） | [01-auth-enhance.md](./01-auth-enhance.md) |
-| 000011 | 2b | 附件：`ticket_attachments` | [10-storage.md](./10-storage.md) |
-| 000012 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role` | [04-org-delegation.md](./04-org-delegation.md) |
+| 000010 | 2a | 工单表组：`ticket_types` / `tickets` / `ticket_comments`（含 org_path 冗余） | [09-ticket.md §2a](./09-ticket.md) |
+| 000011 | 2b | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / `ticket_visibility` / 临时成员 | [03-org-enhance.md](./03-org-enhance.md) |
+| 000012 | 2b | 认证增强：密码策略配置项（若需表结构；纯 config 则无迁移） | [01-auth-enhance.md](./01-auth-enhance.md) |
+| 000013 | 2b | 附件：`ticket_attachments` | [10-storage.md](./10-storage.md) |
+| 000014 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role` | [04-org-delegation.md](./04-org-delegation.md) |
 
 **迁移编写规范**（对齐 Phase 1 经验）：
 
