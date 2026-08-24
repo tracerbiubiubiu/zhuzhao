@@ -70,6 +70,8 @@ CREATE TABLE menu_apis (
 type MenuService interface {
     // CRUD
     Create(ctx context.Context, req CreateMenuRequest) (*model.Menu, error)
+    // Update 为 patch 语义（D2-17）：path/component/icon/permission/sort_order 指针化——
+    // 未传（nil）保持现值（原全量覆盖零值穿透：未传 component/icon 即被清空）
     Update(ctx context.Context, code string, req UpdateMenuRequest) error
     Delete(ctx context.Context, code string) error
     GetByCode(ctx context.Context, code string) (*model.Menu, error)

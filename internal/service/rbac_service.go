@@ -113,10 +113,17 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 		return nil, err
 	}
 	role.Name = req.Name
-	role.Description = req.Description
+	// D2-03/D2-17：nil = 未传 → 保持现值（patch 语义）
+	if req.Description != nil {
+		role.Description = *req.Description
+	}
 	role.Priority = req.Priority
-	role.SortOrder = req.SortOrder
-	role.Status = req.Status
+	if req.SortOrder != nil {
+		role.SortOrder = *req.SortOrder
+	}
+	if req.Status != nil {
+		role.Status = *req.Status
+	}
 	role.Version = req.Version
 	if err := s.roleRepo.Update(ctx, role); err != nil {
 		return nil, err
@@ -159,7 +166,7 @@ func (s *RBACService) DeleteRole(ctx context.Context, roleID, actorUserID int64)
 		return err
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
-		if err := s.reloadPolicy(role.Code); err != nil {
+		if err := s.reloadPolicy(ctx, role.Code); err != nil {
 			return err
 		}
 	}
@@ -202,6 +209,18 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 
 	var apis []*model.MenuAPI
 	menuIDs := []int64(req.MenuIDs)
+	// D2-14：入参去重（保序）——重复 menu_id 使 ListByIDs 去重行数 ≠ len，
+	// 误报 ErrMenuNotFound（B3-4 只给 SetUserOrgsTx 做了同型去重）
+	seen := make(map[int64]struct{}, len(menuIDs))
+	deduped := make([]int64, 0, len(menuIDs))
+	for _, id := range menuIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		deduped = append(deduped, id)
+	}
+	menuIDs = deduped
 	if len(menuIDs) > 0 {
 		// B2-5：菜单存在性/活跃性预检——不存在或已软删的 ID 返回 ErrMenuNotFound
 		// （05-role.md 测试用例承诺；此前 FK 错误冒充 500、软删菜单产生脏绑定）
@@ -224,7 +243,7 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		return fmt.Errorf("assign menus: %w", err)
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
-		if err := s.reloadPolicy(role.Code); err != nil {
+		if err := s.reloadPolicy(ctx, role.Code); err != nil {
 			return err
 		}
 	}
@@ -235,11 +254,18 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 // 失败后果：DB 已生效而内存策略陈旧——权限回收场景被撤销的 API 继续放行，
 // 直到下一次成功 LoadPolicy。故：Error 日志（含 subject 便于对账）+ 重试 1 次
 // + 明确错误码（调用方感知「已提交但策略刷新失败」）。
-func (s *RBACService) reloadPolicy(roleCode string) error {
+// D2-44②：重试等待尊重 ctx 取消（原裸 time.Sleep 阻塞请求 goroutine）
+func (s *RBACService) reloadPolicy(ctx context.Context, roleCode string) error {
 	const retryDelay = 100 * time.Millisecond
 	if err := s.enforcer.LoadPolicy(); err != nil {
 		slog.Error("casbin policy reload failed, retrying", "role", roleCode, "err", err)
-		time.Sleep(retryDelay)
+		select {
+		case <-time.After(retryDelay):
+		case <-ctx.Done():
+			slog.Error("casbin policy reload retry aborted by ctx; DB committed but in-memory policy stale",
+				"role", roleCode, "tag", "reconcile", "err", ctx.Err())
+			return errcode.ErrPolicyReloadFailed
+		}
 		if err := s.enforcer.LoadPolicy(); err != nil {
 			slog.Error("casbin policy reload failed after retry; DB committed but in-memory policy stale",
 				"role", roleCode, "err", err)

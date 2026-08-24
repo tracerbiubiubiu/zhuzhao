@@ -56,12 +56,20 @@ func (s *UserService) List(ctx context.Context, q repository.UserListQuery, acto
 	if err != nil {
 		return nil, err
 	}
+	// D2-18：回显与 repo normalizePage 实际执行的 clamp 对齐——
+	// 原只 clamp 下限，请求 page_size=200 时实查 100 却回显 200（两视图矛盾）
 	page, pageSize := q.Page, q.PageSize
 	if page < 1 {
 		page = 1
 	}
+	if page > 10000 {
+		page = 10000
+	}
 	if pageSize < 1 {
 		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
 	}
 	return &model.UserListResponse{
 		List:     users,
@@ -235,12 +243,12 @@ func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) err
 		}); err != nil {
 			return err
 		}
-		return revokeUserSessions(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
+		return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
 	}
 	if err := s.userRepo.SoftDelete(ctx, userID); err != nil {
 		return err
 	}
-	return revokeUserSessions(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
+	return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
 }
 
 func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserStatusRequest, actorUserID int64) error {
@@ -282,14 +290,14 @@ func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserSta
 			}
 			// 与非超管禁用路径一致：禁用成功后吊销全部会话
 			// （JWT 中间件不查 DB status，须靠 disabled 键拦截存量 AT）
-			return revokeUserSessions(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+			return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
 		}
 	}
 	if err := s.userRepo.UpdateStatus(ctx, req.UserID, req.Status); err != nil {
 		return err
 	}
 	if req.Status == 0 {
-		return revokeUserSessions(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+		return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
 	}
 	return clearUserDisabled(ctx, s.rdb, req.UserID)
 }
@@ -357,7 +365,7 @@ func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswor
 	if err := s.userRepo.UpdatePassword(ctx, req.UserID, hash, true); err != nil {
 		return err
 	}
-	return revokeUserSessions(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+	return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (*model.User, error) {

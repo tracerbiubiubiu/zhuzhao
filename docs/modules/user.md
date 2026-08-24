@@ -90,6 +90,9 @@ type UserService interface {
     GetByID(ctx context.Context, id int64) (*model.User, error)
     GetByUsername(ctx context.Context, username string) (*model.User, error) // 列表/管理：模糊或精确
     FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确（repo 层，未删除用户）
+    // D2-27：含软删用户的工号查询——审计按工号筛选须覆盖历史
+    //（软删用户的历史审计可查，原 404）；使用侧见 modules/audit.md
+    FindByEmployeeNoIncludeDeleted(ctx context.Context, employeeNo string) (*model.User, error)
     // Update patch 语义（B2-3）：请求字段指针化——未传不动、空串显式清空；
     // username 不可改（Phase 2 再定改名流程）。实际签名带 actorUserID（防提权校验）
     Update(ctx context.Context, req *UpdateUserRequest, actorUserID int64) (*model.User, error)
@@ -112,6 +115,8 @@ type UserService interface {
     GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error)
 }
 ```
+
+> **GetUserOrgs 可见性设计确认（D2-44⑤）**：任意持 `user:read` 类权限的管理端用户可查询**任意用户**的组织归属（`ensureVisible` 仅拦截以 superadmin 用户为目标的查询）。管理端（IAM 控制台）语境下组织归属非个人隐私字段，属运营必需信息，Phase 1 有意不做按组织范围的收窄；若未来对外开放 API（非管理端前端），须先引入 L2 组织关系校验。
 
 > **注**：本节为设计骨架；接口签名以 [`phase1/04-user.md`](../phase1/04-user.md)（SSOT）与 `internal/service/user_service.go` 实现为准。B2-3 起 Update/UpdateProfile 均为 patch 语义。
 

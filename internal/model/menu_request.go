@@ -14,17 +14,19 @@ type CreateMenuRequest struct {
 	Visible    *bool  `json:"visible"`
 }
 
-// UpdateMenuRequest 更新菜单
+// UpdateMenuRequest 更新菜单。
+// D2-17：可空字段指针化 patch 语义（B2-3 只改了用户模块）——原非指针零值
+// 穿透，未传 component/icon → 清空、未传 sort_order → 归零
 type UpdateMenuRequest struct {
-	ID         int64  `json:"id,string" binding:"required"`
-	Version    int    `json:"version" binding:"required"`
-	Name       string `json:"name" binding:"required"`
-	Path       string `json:"path"`
-	Component  string `json:"component"`
-	Icon       string `json:"icon"`
-	Permission string `json:"permission"`
-	SortOrder  int    `json:"sort_order"`
-	Visible    *bool  `json:"visible"`
+	ID         int64   `json:"id,string" binding:"required"`
+	Version    int     `json:"version" binding:"required"`
+	Name       string  `json:"name" binding:"required"`
+	Path       *string `json:"path"`
+	Component  *string `json:"component"`
+	Icon       *string `json:"icon"`
+	Permission *string `json:"permission"`
+	SortOrder  *int    `json:"sort_order"`
+	Visible    *bool   `json:"visible"`
 }
 
 // MenuIDRequest 带 menu_id 的请求

@@ -63,7 +63,7 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID int64) ([]s
 	// B4-4：admin/superadmin 有 Casbin matcher bypass（真实权限是全部 API），
 	// 权限码按全量菜单展开——修复前仅按 role_menus 勾选下发，超管角色被清空
 	// 菜单时 permissions=[] 与真实权限背离（对照 GetRolePermissions 的 *,* 特判）
-	roleCodes, err := s.roleRepo.ListRoleCodesByUserIDs(ctx, roleIDs)
+	roleCodes, err := s.roleRepo.ListRoleCodesByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -198,16 +198,27 @@ func (s *MenuService) Update(ctx context.Context, req *model.UpdateMenuRequest) 
 	if menu.IsSystem {
 		return nil, errcode.ErrMenuIsSystem
 	}
-	// B4-4：类型必要字段（同 Create）
-	if err := validateMenuRequiredFields(menu.MenuType, req.Path, req.Permission); err != nil {
+	// D2-17：patch 语义——未传字段保持现值；类型必要字段校验用合并后的值
+	if req.Path != nil {
+		menu.Path = *req.Path
+	}
+	if req.Component != nil {
+		menu.Component = *req.Component
+	}
+	if req.Icon != nil {
+		menu.Icon = *req.Icon
+	}
+	if req.Permission != nil {
+		menu.Permission = *req.Permission
+	}
+	if req.SortOrder != nil {
+		menu.SortOrder = *req.SortOrder
+	}
+	// B4-4：类型必要字段（同 Create，校验合并后的实际值）
+	if err := validateMenuRequiredFields(menu.MenuType, menu.Path, menu.Permission); err != nil {
 		return nil, err
 	}
 	menu.Name = req.Name
-	menu.Path = req.Path
-	menu.Component = req.Component
-	menu.Icon = req.Icon
-	menu.Permission = req.Permission
-	menu.SortOrder = req.SortOrder
 	if req.Visible != nil {
 		menu.Visible = *req.Visible
 	}
@@ -318,7 +329,14 @@ func includeMenuAncestors(assigned []*model.Menu, all []*model.Menu) []*model.Me
 	result := make(map[int64]*model.Menu)
 	for _, m := range assigned {
 		cur := m
+		// D2-25：环检测——DB 脏数据成环（A→B→A）时原链式上溯死循环；
+		// 与 buildMenuTree 的孤儿提升策略一致性要求（同文件行为对齐）
+		visited := make(map[int64]struct{}, 8)
 		for cur != nil {
+			if _, seen := visited[cur.ID]; seen {
+				break
+			}
+			visited[cur.ID] = struct{}{}
 			result[cur.ID] = cur
 			if cur.ParentID == nil {
 				break

@@ -25,13 +25,15 @@ type CreateRoleRequest struct {
 	Status *int `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
-// UpdateRoleRequest 更新角色
+// UpdateRoleRequest 更新角色。
+// D2-03/D2-17：Status/Description/SortOrder 指针化 patch 语义——
+// 未传（nil）保持现值（原零值穿透：改名即静默禁用/清描述/归零排序）
 type UpdateRoleRequest struct {
-	ID          int64  `json:"id,string" binding:"required"`
-	Version     int    `json:"version" binding:"required"`
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	Priority    int    `json:"priority" binding:"required"`
-	SortOrder   int    `json:"sort_order"`
-	Status      int    `json:"status" binding:"oneof=0 1"`
+	ID          int64   `json:"id,string" binding:"required"`
+	Version     int     `json:"version" binding:"required"`
+	Name        string  `json:"name" binding:"required"`
+	Description *string `json:"description"`
+	Priority    int     `json:"priority" binding:"required"`
+	SortOrder   *int    `json:"sort_order"`
+	Status      *int    `json:"status" binding:"omitempty,oneof=0 1"`
 }

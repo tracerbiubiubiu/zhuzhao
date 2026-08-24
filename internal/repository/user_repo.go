@@ -87,10 +87,18 @@ func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize 
 // FindByEmployeeNo 登录用：工号精确匹配；未删除用户
 func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
 	// B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
-// 当前入口已保证非空，防御未来新增调用方）
-const q = `SELECT` + userSelectColumns + `
+	// 当前入口已保证非空，防御未来新增调用方）
+	const q = `SELECT` + userSelectColumns + `
     FROM users WHERE employee_no = $1 AND deleted_at IS NULL
     AND employee_no <> '' AND employee_no IS NOT NULL LIMIT 1`
+	return r.queryOne(ctx, q, employeeNo)
+}
+
+// FindByEmployeeNoIncludeDeleted 含软删用户的工号查询（D2-27）——
+// 审计按工号筛选须覆盖历史（软删用户的历史审计可查，原 404）
+func (r *UserRepo) FindByEmployeeNoIncludeDeleted(ctx context.Context, employeeNo string) (*model.User, error) {
+	const q = `SELECT` + userSelectColumns + `
+    FROM users WHERE employee_no = $1 LIMIT 1`
 	return r.queryOne(ctx, q, employeeNo)
 }
 
@@ -393,23 +401,41 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
 	return tx.Commit(ctx)
 }
 
-// SetRolesTx 在外部事务内全量覆盖用户角色
+// SetRolesTx 在外部事务内全量覆盖用户角色。
+// D2-26：去重 + 行数核对——原 INSERT...SELECT 静默跳过软删角色（TOCTOU 窗口
+// 内角色被删 → 创建成功但角色未绑、无提示）；重复 roleID 也会与行数核对冲突，先去重
 func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, roleIDs []int64) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("delete user roles: %w", err)
 	}
-	for _, roleID := range roleIDs {
+	// 去重（保序）
+	seen := make(map[int64]struct{}, len(roleIDs))
+	deduped := make([]int64, 0, len(roleIDs))
+	for _, id := range roleIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		deduped = append(deduped, id)
+	}
+	for _, roleID := range deduped {
 		// B4-3：INSERT...SELECT 带活跃性条件——消灭「service 预检通过后、
 		// 写入前」角色被软删的 TOCTOU 残余窗口（软删行 FK 仍通过，原会写入幽灵绑定）
-		if _, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			INSERT INTO user_roles (user_id, role_id)
 			SELECT $1, id FROM roles
 			WHERE id = $2 AND deleted_at IS NULL
-			ON CONFLICT DO NOTHING`, userID, roleID); err != nil {
+			ON CONFLICT DO NOTHING`, userID, roleID)
+		if err != nil {
 			if ec := MapForeignKeyViolation(err); ec != nil {
 				return ec
 			}
 			return fmt.Errorf("insert user role: %w", err)
+		}
+		// D2-26：0 行 = 角色 TOCTOU 窗口内被软删 → 显式 404 回滚整个事务
+		//（Create 场景此前会静默丢角色创建成功）
+		if tag.RowsAffected() == 0 {
+			return errcode.ErrRoleNotFound
 		}
 	}
 	return nil
@@ -545,8 +571,10 @@ func buildUserListWhere(q UserListQuery) (string, []any) {
 	conds = append(conds, "u.deleted_at IS NULL")
 
 	if q.Username != "" {
-		args = append(args, "%"+q.Username+"%")
-		conds = append(conds, fmt.Sprintf("u.username ILIKE $%d", len(args)))
+		// D2-21：转义 ILIKE 通配符（%/_/\）——未转义时用户名含 % 即全表匹配，
+		// 含 _ 单字符通配（语义不符 + 可探测）；ESCAPE '\' 为 PG 默认，显式声明
+		args = append(args, "%"+escapeLike(q.Username)+"%")
+		conds = append(conds, fmt.Sprintf("u.username ILIKE $%d ESCAPE '\\'", len(args)))
 	}
 	if q.EmployeeNo != "" {
 		args = append(args, q.EmployeeNo)
@@ -574,9 +602,23 @@ func buildUserListWhere(q UserListQuery) (string, []any) {
 	return " WHERE " + strings.Join(conds, " AND "), args
 }
 
+// escapeLike 转义 ILIKE 模式元字符（D2-21），配合 ESCAPE '\' 使用
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
+}
+
+// normalizePage 用户/组织成员分页规范化。
+// D2-13：page 上限 10000——对齐 B4-6 审计分页；原无上限时超大 page 经
+// (page-1)*pageSize 溢出回绕为负 OFFSET → SQL 500（且巨量 OFFSET 扫描放大 DB 压力）
 func normalizePage(page, pageSize int) (int, int) {
 	if page < 1 {
 		page = 1
+	}
+	if page > 10000 {
+		page = 10000
 	}
 	if pageSize < 1 {
 		pageSize = 20

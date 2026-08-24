@@ -263,7 +263,7 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 
 > B1-1 修复（源自 [review/01 §R1-AUTHZ-01](../review/01-phase1-systematic-review-findings.md)）：禁用角色此前全链路不生效。
 
-`UpdateRoleRequest.status` 允许 0（禁用）。禁用后**下次请求起**生效（与「角色变更下次请求生效」一致）：
+`UpdateRoleRequest.status` 为指针字段（D2-03 patch 语义）——未传（nil）保持现值；显式传 `0` 禁用，**下次请求起**生效（与「角色变更下次请求生效」一致）。文档典型用法「只改名的请求」不再零值穿透静默禁用角色。
 
 > **创建即禁用（B4-4）**：`CreateRoleRequest.status` 为指针字段——nil 默认启用；显式传 `0` 可创建禁用角色（原零值合并导致不可能）。
 

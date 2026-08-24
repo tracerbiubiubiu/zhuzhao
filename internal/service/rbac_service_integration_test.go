@@ -106,7 +106,7 @@ func TestRBACService_EnsureCanManageRoleMatrix(t *testing.T) {
 
 	// 更新（降权）更强角色 → 30010
 	_, err = svc.UpdateRole(ctx, &model.UpdateRoleRequest{
-		ID: highRole.ID, Version: 1, Name: "x", Priority: 25, Status: 1,
+		ID: highRole.ID, Version: 1, Name: "x", Priority: 25,
 	}, actorID)
 	requireErrCode(t, err, errcode.ErrCannotManageHigher)
 
@@ -161,7 +161,7 @@ func TestRBACService_SystemRoleDeleteAndUpdateRejected(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrRoleIsSystem)
 
 	_, err = svc.UpdateRole(ctx, &model.UpdateRoleRequest{
-		ID: adminRole.ID, Version: 1, Name: "x", Priority: 10, Status: 1,
+		ID: adminRole.ID, Version: 1, Name: "x", Priority: 10,
 	}, saActorID)
 	requireErrCode(t, err, errcode.ErrRoleIsSystem)
 }

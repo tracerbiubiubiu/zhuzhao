@@ -256,9 +256,10 @@ func (r *RoleRepo) ListRoleIDsByUserID(ctx context.Context, userID int64) ([]int
 	})
 }
 
-// ListRoleCodesByUserIDs 按角色 ID 集合查询角色 code（B4-4：用户权限码的
-// admin/superadmin 通配判断）
-func (r *RoleRepo) ListRoleCodesByUserIDs(ctx context.Context, roleIDs []int64) ([]string, error) {
+// ListRoleCodesByRoleIDs 按角色 ID 集合查询角色 code（B4-4：用户权限码的
+// admin/superadmin 通配判断）。D2-46：原名 ListRoleCodesByUserIDs 与入参
+// 语义不符（实为 roleIDs，WHERE id = ANY($1)），按名传 userIDs 会查错
+func (r *RoleRepo) ListRoleCodesByRoleIDs(ctx context.Context, roleIDs []int64) ([]string, error) {
 	if len(roleIDs) == 0 {
 		return nil, nil
 	}
