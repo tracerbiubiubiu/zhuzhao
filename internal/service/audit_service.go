@@ -104,9 +104,16 @@ func loginAuditBody(employeeNo string) string {
 	return string(b)
 }
 
+// normalizeAuditPage 审计分页规范化。
+// B4-6：page 上限 10000——原无上限，超大 page 产生巨量 OFFSET 扫描
+//（audit_logs 只增表，恶意/误操作可造成 DB CPU/IO 放大）。
+// Phase 2 统一各模块分页上限为通用 normalizePage。
 func normalizeAuditPage(page, pageSize int) (int, int) {
 	if page < 1 {
 		page = 1
+	}
+	if page > 10000 {
+		page = 10000
 	}
 	if pageSize < 1 {
 		pageSize = 20

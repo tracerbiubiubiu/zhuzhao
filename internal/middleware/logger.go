@@ -28,9 +28,19 @@ func generateRequestID() string {
 	return "req-" + hex.EncodeToString(b)
 }
 
-// AccessLogger 请求日志中间件（access log）
+// AccessLogger 请求日志中间件（access log）。
+// B4-6：跳过健康检查路径——K8s 探针数秒一次，避免日志噪音稀释有效请求
+//（09-middleware.md 伪代码的 WithSkipPath 语义）
 func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
+	skipPaths := map[string]struct{}{
+		"/health/live":  {},
+		"/health/ready": {},
+	}
 	return func(c *gin.Context) {
+		if _, skip := skipPaths[c.Request.URL.Path]; skip {
+			c.Next()
+			return
+		}
 		start := time.Now()
 		c.Next()
 

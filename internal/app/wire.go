@@ -28,6 +28,8 @@ var pkgSet = wire.NewSet(
 	postgres.New,
 	pgredis.New,
 	pgredis.NewScripts,
+	// B4-6：Phase 2 接线预留（G-1，见 docs/phase2/02-authz-resource.md Step 0）——
+	// 当前注入链路无消费者，Phase 2a 资源级鉴权时接线
 	resource.NewRegistry,
 	casbin.New,
 )
@@ -44,6 +46,8 @@ var serviceSet = wire.NewSet(
 	service.NewAuthService,
 	service.NewUserService,
 	service.NewRBACService,
+	// B4-6：Phase 2a 预留（CheckResourcePermission 为 stub）——
+	// 当前无消费者，勿在 Phase 1 调用；见 docs/phase2/02-authz-resource.md
 	service.NewAuthzService,
 	service.NewOrgService,
 	service.NewMenuService,

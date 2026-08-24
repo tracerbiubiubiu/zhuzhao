@@ -46,8 +46,8 @@ Step 4 完成后：可测 login / refresh / JWT 401；受保护路由有 Token �
 
 经过对 `gin-contrib`、`gin-gonic/contrib`、`appleboy/gin-jwt`、`gin-contrib/authz`、`eddycjy/go-gin-example` 的详细评估：
 
-- **采用 gin-contrib 的**：RequestID、CORS、AccessLogger（slog）——成熟库，不重复造轮子
-- **自写的**：Recovery（需适配 slog）、SecurityHeaders（库过重，5 行代码）、BodyLimit（1 行代码）、JWTAuth（双 token + Redis 黑名单 + must_change_password 拦截，无库满足）、CasbinAuth（g 表消除 + RoleFetcher + 逐角色 enforce，无库满足）、AuditLog（业务逻辑强相关）
+- **采用 gin-contrib 的**：CORS——成熟库，不重复造轮子
+- **自写的**：RequestID 与 AccessLogger（**B4-6 修订**：原选型 gin-contrib/requestid + gin-contrib/slog，实施时改为自写——双 token 体系下需与 slog JSON 输出及自定义 request_id 格式 `req-`+32hex 紧密配合，自写各约 25 行；行为等价：透传/生成/响应头注入/串联日志）、Recovery（需适配 slog）、SecurityHeaders（库过重，5 行代码）、BodyLimit（1 行代码）、JWTAuth（双 token + Redis 黑名单 + must_change_password 拦截，无库满足）、CasbinAuth（g 表消除 + RoleFetcher + 逐角色 enforce，无库满足）、AuditLog（业务逻辑强相关）
 - **不采用的库及原因**：
   - `appleboy/gin-jwt`：v3 虽支持双 token，但 RT 是 opaque token（非 JWT）、无 AT 黑名单、Redis 库用 `rueidis` 不是 `go-redis`
   - `gin-contrib/authz`：56 行代码，硬编码 BasicAuth，不支持 g 表消除和 SyncedEnforcer

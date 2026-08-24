@@ -241,7 +241,9 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 - 操作日志中间件（**同步**写入 `audit_logs`）
 - `GET /api/v1/audit/logs` 查询接口
 - 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
-- 基本字段 + 敏感字段脱敏 + trace_id / request_id
+- 基本字段 + 敏感字段脱敏（trace_id / request_id 于 Phase 3a 观测性落地——
+  B4-6 修订：Phase 1 的 audit_logs DDL 无此两列，request_id 记录于应用日志；
+  本行原描述与 phase1/08-audit.md SSOT 矛盾）
 
 ### Phase 2
 

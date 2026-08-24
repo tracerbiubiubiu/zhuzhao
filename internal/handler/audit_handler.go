@@ -51,6 +51,11 @@ func (h *AuditHandler) ListLogs(c *gin.Context) {
 		}
 		q.End = &t
 	}
+	// B4-6：start > end 校验（原恒假条件静默返回空列表，用户无法区分「写反」与「无数据」）
+	if q.Start != nil && q.End != nil && q.Start.After(*q.End) {
+		response.BadRequest(c, "开始日期不能晚于结束日期")
+		return
+	}
 
 	resp, err := h.auditService.List(c.Request.Context(), q, c.Query("employee_no"))
 	if err != nil {

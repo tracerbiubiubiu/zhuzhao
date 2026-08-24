@@ -84,10 +84,8 @@ func (a *App) Shutdown() error {
 		return err
 	}
 
-	// TODO: 2. 刷空审计日志队列
-	// TODO: 3. 关闭 Casbin enforcer（由 cleanup 函数处理）
-	// TODO: 4. 关闭 Redis 连接（由 cleanup 函数处理）
-	// TODO: 5. 关闭 PostgreSQL 连接池（由 cleanup 函数处理）
+	// B4-6：审计为同步写入（08-audit.md Phase 1 决策：无队列，优雅关闭无需 drain）；
+	// Casbin/Redis/PG 连接关闭由 main.go defer cleanup() 依 casbin→redis→pg 逆序执行
 
 	a.logger.Info("server stopped")
 	return nil
