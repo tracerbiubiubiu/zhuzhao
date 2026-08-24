@@ -190,6 +190,7 @@ Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"
 | 分配角色下拉 | **无** superadmin 选项 | 有 |
 | `GET /users` 用户列表 | **不含** 绑定 superadmin 的用户 | 含全部用户 |
 | `GET /users/:id` 超管用户 | **404**（与非存在一致，防推断） | 200 |
+| `GET /roles/:id` superadmin 角色 | **404**（B2-6：详情/菜单/策略读接口同样防推断） | 200 |
 | 改/删/禁用 superadmin 用户 | **404 或 403**（实现统一一种） | 允许（受最后一名 superadmin 保护） |
 | 审计日志 | Phase 1 可全体可见；Phase 2 可按 actor 过滤敏感条目 | 全部 |
 
@@ -302,7 +303,7 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 | 删除角色 - 有关联用户 | 有用户的 roleID | 返回 ErrRoleInUse |
 | 角色列表 - admin 不可见 superadmin | admin 调 `GET /roles` | 无 `code=superadmin` 项 |
 | 分配菜单 | roleID + menuIDs | role_menus 更新 + casbin_rule 更新 |
-| 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound |
+| 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound（B2-5：含已软删菜单） |
 | 分配菜单后策略生效 | 分配后用该角色请求 API | Casbin 放行 |
 | 取消菜单后策略失效 | 取消后用该角色请求 API | Casbin 拒绝 |
 | 禁用角色 - 权限收回 | 禁用某角色后其成员请求原 API | 403（下次请求生效） |

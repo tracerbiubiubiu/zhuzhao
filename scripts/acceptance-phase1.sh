@@ -146,6 +146,23 @@ HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/delete" -H "
 check "B1-2 peer-del http" "403" "$HC"
 check "B1-2 peer-del code" "30010" "$(cat /tmp/p1.json | json_code)"
 
+# --- B2 断言组 ---
+# B2-2 改密新旧相同 → 400 + 10001
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d '{"old_password":"pass1234","new_password":"pass1234"}')
+check "B2-2 same-pwd http" "400" "$HC"
+check "B2-2 same-pwd code" "10001" "$(cat /tmp/p1.json | json_code)"
+# B2-6 影子超管：admin 读 superadmin 角色详情/菜单/策略 → 404（防推断）
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE" -H "Authorization: Bearer $AAT")
+check "B2-6 sa-role http" "404" "$HC"
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/menus" -H "Authorization: Bearer $AAT")
+check "B2-6 sa-menus http" "404" "$HC"
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/permissions" -H "Authorization: Bearer $AAT")
+check "B2-6 sa-perms http" "404" "$HC"
+# B2-5 AssignMenus 不存在菜单 → 404 + 60002
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[\"999999\"]}")
+check "B2-5 bad-menu http" "404" "$HC"
+check "B2-5 bad-menu code" "60002" "$(cat /tmp/p1.json | json_code)"
+
 # --- #14 mcp ---
 curl -s -X POST "$BASE/users/password/reset" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$TUID\",\"password\":\"mcp123456\"}" >/dev/null

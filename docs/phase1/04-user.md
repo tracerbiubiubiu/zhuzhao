@@ -275,8 +275,8 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 |------|----------|
 | `POST /auth/login` | 仅 **token**（`access_token` / `refresh_token` / `expires_in`）；资料走 `GET /user/profile` |
 | `GET /user/profile` | 当前用户：`id`、`employee_no`、`username`、`real_name`、`email`、`phone`、`avatar`、`must_change_password` 等；**不含** password、角色、组织 |
-| `GET /users`（分页） | `data.list[]`：每条含 `id` + 展示字段 + `status`；`employee_no` 有则返回 |
-| `GET /users/:id` | 同结构体，较列表更全（含 `version`、域字段、`is_system` 等管理字段） |
+| `GET /users`（分页） | `data.list[]`：与详情**同构**（完整 User 结构，含 `version`、域字段、`is_system` 等；`password` 永不返回；软删用户不出现）——B2-9 修订：实现即完整结构，列表/详情共用 |
+| `GET /users/:id` | 同上（完整 User 结构） |
 | `POST /users` / `POST /users/update` 成功 | 返回更新后的用户对象（含 `id`、`version`；无 password） |
 
 **示例（列表项 / 详情）**：
@@ -301,8 +301,10 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 
 **更新请求须带 `version`**（乐观锁）：
 
+> **patch 语义（B2-3）**：仅更新**显式传入**的字段——未传字段保持不变，传空串显式清空（置 NULL）。`username` 不可更新（Phase 2 再定改名流程）。
+
 ```json
-// POST /api/v1/users/update
+// POST /api/v1/users/update（只改 real_name 与 email；其余字段保持原值）
 {
   "id": "1001",
   "version": 1,
@@ -648,7 +650,7 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 创建含 org_ids | `POST /users` + org_ids | 200 + user_orgs 正确 |
 | 分配组织 | `POST /users/orgs` | 200 + user_orgs 全量覆盖 |
 | 详情 - 不存在 | `GET /users/99999` | 404 |
-| 删除 - 成功 | `POST /users/delete` body `{ "id": "1" }` | 200 |
+| 删除 - 成功 | `POST /users/delete` body `{ "user_id": "1" }` | 200 |
 
 ---
 

@@ -153,7 +153,8 @@ CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
 | 记录 GET 请求 | `GET /api/v1/users` | audit_logs 表有记录，method=GET |
 | 记录 POST 请求 | `POST /api/v1/users` | request_body 有内容 |
 | 密码脱敏 | body 含 `{"password":"123456"}` | request_body 中 password 为 `***` |
-| 未认证请求 | 无 AT 的请求 | user_id 为 NULL |
+| 未认证请求 | 无 AT 的请求 | 被 JWT Abort 短路，**不产生审计记录**；认证失败由 LogLogin 显式记录（B2-7 修订：原「user_id 为 NULL」用例在任何中间件顺序下均不可满足） |
+| Casbin 拒绝请求 | 有 AT 但角色无权限（403） | **产生审计记录**（Audit 前置于 Casbin，越权尝试留痕） |
 | 响应时间记录 | 任意请求 | duration > 0 |
 
 ### 查询
