@@ -101,7 +101,10 @@ CREATE TABLE role_menus (
   │   → 生成策略 p, role::user_manager, /api/v1/users, GET   （user_manager 为示例自定义角色）
   │   → 生成策略 p, role::user_manager, /api/v1/users, POST
   ├── 写入 casbin_rule 表（同一事务）
-  └── 事务提交后 enforcer.ReloadPolicy()
+  └── 事务提交后 enforcer.LoadPolicy()
+      失败处理（B3-5）：Error 日志（含 role 便于对账）+ 重试 1 次（100ms）
+      → 仍失败返回 500 + 70004（ErrPolicyReloadFailed）——DB 已生效、内存策略
+      陈旧，权限回收延迟生效直至下一次成功 LoadPolicy；调用方与运维可感知
 ```
 
 ### 菜单-API 绑定

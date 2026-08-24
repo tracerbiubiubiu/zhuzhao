@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/casbin/casbin/v3"
 
@@ -156,8 +158,8 @@ func (s *RBACService) DeleteRole(ctx context.Context, roleID, actorUserID int64)
 		return err
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
-		if err := s.enforcer.LoadPolicy(); err != nil {
-			return fmt.Errorf("reload casbin policy: %w", err)
+		if err := s.reloadPolicy(role.Code); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -221,8 +223,26 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		return fmt.Errorf("assign menus: %w", err)
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
+		if err := s.reloadPolicy(role.Code); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reloadPolicy 事务提交后刷新 Casbin 内存策略（B3-5）。
+// 失败后果：DB 已生效而内存策略陈旧——权限回收场景被撤销的 API 继续放行，
+// 直到下一次成功 LoadPolicy。故：Error 日志（含 subject 便于对账）+ 重试 1 次
+// + 明确错误码（调用方感知「已提交但策略刷新失败」）。
+func (s *RBACService) reloadPolicy(roleCode string) error {
+	const retryDelay = 100 * time.Millisecond
+	if err := s.enforcer.LoadPolicy(); err != nil {
+		slog.Error("casbin policy reload failed, retrying", "role", roleCode, "err", err)
+		time.Sleep(retryDelay)
 		if err := s.enforcer.LoadPolicy(); err != nil {
-			return fmt.Errorf("reload casbin policy: %w", err)
+			slog.Error("casbin policy reload failed after retry; DB committed but in-memory policy stale",
+				"role", roleCode, "err", err)
+			return errcode.ErrPolicyReloadFailed
 		}
 	}
 	return nil

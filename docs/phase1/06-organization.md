@@ -176,6 +176,8 @@ func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.O
 
 Phase 1 用 DB 事务 + 行锁，Phase 3 加分布式锁。
 
+> **B3-2 事务化实现**（`internal/repository/org_repo.go` Move）：advisory lock（`pg_advisory_xact_lock(hashtext('org:move'))`）全局串行化并发移动 → 事务内重读被移动节点 path（`FOR UPDATE`）→ 事务内读新父行 + 环检测（`parentPath <@ oldPath` 前缀判断，消灭并发交叉移动竞态）→ 锁旧子树 → 级联 UPDATE 带 **RowsAffected 校验**（0 行 = 节点被并发移动，返回 409 而非静默成功）。所有谓词含 `deleted_at IS NULL`。并发交叉移动（A↔B）由集成测试 `TestOrgRepo_MoveConcurrentCrossMove` 守护（一成一败、树不变量保持）。
+
 ```sql
 -- 移动组织到新父节点下（事务内）
 -- 1. 行锁锁定当前组织及其所有子节点
@@ -234,6 +236,10 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 创建三级组织 | path = 'root.tech_dept.fe_team' |
 | 查询组织树（Repo） | 返回未软删全量平铺列表（按 sort_order, id 排序） |
 | 移动组织 | 自身及子组织 path 全部更新 |
+| 移动组织 - 并发交叉移动（B3-2） | A 移入 B 子树同时 B 移入 A 子树 | 一成一败（advisory lock 串行化 + 事务内环检测），树不变量保持 |
+| 重复添加成员（B3-1） | 已是 primary 成员，再次添加未传 is_primary | 幂等成功，primary 保持（不降级） |
+| 设置用户组织 - 重复 org_id（B3-4） | org_ids 含重复 | 入参去重，200，user_orgs 无重复行 |
+| 并发双 primary（B3-3） | 绕过应用层并发插双 primary | 部分唯一索引拦截，409 + 50011 |
 | 删除组织 - 系统组织 | 返回 ErrOrgIsSystem |
 | 删除组织 - 有子组织 | 返回 ErrOrgHasChildren |
 | 删除组织 - 有成员 | 返回 ErrOrgHasMembers |

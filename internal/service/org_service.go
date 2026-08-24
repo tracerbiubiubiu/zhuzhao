@@ -245,35 +245,11 @@ func (s *OrgService) Delete(ctx context.Context, id int64) error {
 	return s.orgRepo.Delete(ctx, id)
 }
 
+// Move 移动组织子树（B3-2：环检测/父读取/锁定已全部移入 repo 单事务，
+// 消灭并发交叉移动破坏树不变量与静默失效两个窗口）
 func (s *OrgService) Move(ctx context.Context, req *model.MoveOrgRequest) error {
-	org, err := s.orgRepo.FindByID(ctx, req.ID)
-	if err != nil {
-		return err
+	if req.NewParentID != nil && *req.NewParentID == req.ID {
+		return errcode.ErrOrgCannotMoveToChild
 	}
-	if org.IsSystem {
-		return errcode.ErrOrgIsSystem
-	}
-
-	var newParentID *int64
-	newRootPath := org.Code
-	if req.NewParentID != nil {
-		if *req.NewParentID == req.ID {
-			return errcode.ErrOrgCannotMoveToChild
-		}
-		parent, err := s.orgRepo.FindByID(ctx, *req.NewParentID)
-		if err != nil {
-			return err
-		}
-		ok, err := s.orgRepo.IsDescendant(ctx, req.ID, parent.ID)
-		if err != nil {
-			return err
-		}
-		if ok {
-			return errcode.ErrOrgCannotMoveToChild
-		}
-		newParentID = &parent.ID
-		newRootPath = parent.Path + "." + org.Code
-	}
-
-	return s.orgRepo.Move(ctx, req.ID, newParentID, newRootPath, org.Path)
+	return s.orgRepo.Move(ctx, req.ID, req.NewParentID)
 }

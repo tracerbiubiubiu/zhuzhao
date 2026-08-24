@@ -88,7 +88,11 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_orgs (user_id, org_id, is_primary)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, org_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`, userID, orgID, isPrimary)
+		ON CONFLICT (user_id, org_id) DO UPDATE
+			-- B3-1：仅 primary=true 时提升；false 不回写（幂等不降级）。
+			-- 修复前重复添加未传 is_primary（零值 false）会静默清除已有 primary
+			SET is_primary = true
+			WHERE EXCLUDED.is_primary`, userID, orgID, isPrimary)
 	if err != nil {
 		return fmt.Errorf("add member: %w", err)
 	}
@@ -127,11 +131,25 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
+	// B3-4：入参去重（保序）——修复前重复 org_id 触发 user_orgs 主键冲突 → 500
+	seen := make(map[int64]struct{}, len(orgIDs))
+	deduped := make([]int64, 0, len(orgIDs))
 	for _, orgID := range orgIDs {
+		if _, ok := seen[orgID]; ok {
+			continue
+		}
+		seen[orgID] = struct{}{}
+		deduped = append(deduped, orgID)
+	}
+	for _, orgID := range deduped {
 		isPrimary := primaryOrgID != nil && *primaryOrgID == orgID
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO user_orgs (user_id, org_id, is_primary)
 			VALUES ($1, $2, $3)`, userID, orgID, isPrimary); err != nil {
+			// B3-3：并发双 primary 触发部分唯一索引 → 409 业务码（非 500）
+			if ec := mapUniqueViolation(err); ec != nil {
+				return ec
+			}
 			return fmt.Errorf("insert user org: %w", err)
 		}
 	}
@@ -225,19 +243,78 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64, newRootPath, oldPath string) error {
+// Move 移动组织子树（B3-2 事务化重构）。
+// 全流程单事务：advisory lock 串行化并发移动 → 事务内重读 path + 环检测 →
+// 锁旧子树 → 级联 UPDATE（带行数校验）。
+// 修复前环检测/父 path 读取在事务外：并发交叉移动可破坏 ltree 树形不变量，
+// 且过期 oldPath 匹配 0 行仍返回成功（静默失效）。
+func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
+	// 1. 全局串行化并发 move（管理端低频操作，粗粒度锁可接受；
+	//    与 AcquireSuperadminGuard 同款 advisory lock 先例）
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('org:move'))`); err != nil {
+		return fmt.Errorf("acquire org move lock: %w", err)
+	}
+
+	// 2. 事务内重读被移动节点（锁定后快照，消灭 TOCTOU）
+	var oldPath, orgCode string
+	var isSystem bool
+	err = tx.QueryRow(ctx, `
+		SELECT path::text, code, is_system FROM organizations
+		WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&oldPath, &orgCode, &isSystem)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrOrgNotFound
+		}
+		return fmt.Errorf("load moving org: %w", err)
+	}
+	if isSystem {
+		return errcode.ErrOrgIsSystem
+	}
+
+	// 3. 新父处理：事务内读父行 + 环检测（ancestor 侧补 deleted_at 过滤）
+	newRootPath := orgCode
+	var resolvedParentID *int64
+	if newParentID != nil {
+		if *newParentID == id {
+			return errcode.ErrOrgCannotMoveToChild
+		}
+		var parentPath string
+		err := tx.QueryRow(ctx, `
+			SELECT id, path::text FROM organizations
+			WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, *newParentID).Scan(newParentID, &parentPath)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return errcode.ErrOrgNotFound
+			}
+			return fmt.Errorf("load new parent: %w", err)
+		}
+		// 环检测：新父不得是被移动节点的后代（path 前缀判断）
+		var isDescendant bool
+		if err := tx.QueryRow(ctx, `
+			SELECT $1::ltree <@ $2::ltree`, parentPath, oldPath).Scan(&isDescendant); err != nil {
+			return fmt.Errorf("check descendant: %w", err)
+		}
+		if isDescendant {
+			return errcode.ErrOrgCannotMoveToChild
+		}
+		resolvedParentID = newParentID
+		newRootPath = parentPath + "." + orgCode
+	}
+
+	// 4. 锁旧子树（谓词补 deleted_at，B3-2 顺带修 R2-ORG-07）
 	if _, err := tx.Exec(ctx, `
-		SELECT id FROM organizations WHERE path <@ $1::ltree FOR UPDATE`, oldPath); err != nil {
+		SELECT id FROM organizations WHERE path <@ $1::ltree AND deleted_at IS NULL FOR UPDATE`, oldPath); err != nil {
 		return fmt.Errorf("lock org subtree: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, `
+	// 5. 级联 UPDATE + 行数校验（0 行 = 节点被并发移动，冲突而非静默成功）
+	tag, err := tx.Exec(ctx, `
 		UPDATE organizations
 		SET path = CASE
 			WHEN nlevel(path) = nlevel(text2ltree($2)) THEN text2ltree($1)
@@ -246,25 +323,17 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64, newRoo
 		    parent_id = CASE WHEN id = $3 THEN $4 ELSE parent_id END,
 		    updated_at = NOW(),
 		    version = version + 1
-		WHERE path <@ text2ltree($2)`,
-		newRootPath, oldPath, id, newParentID,
-	); err != nil {
+		WHERE path <@ text2ltree($2) AND deleted_at IS NULL`,
+		newRootPath, oldPath, id, resolvedParentID,
+	)
+	if err != nil {
 		return fmt.Errorf("move org subtree: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrConcurrentModification
 	}
 
 	return tx.Commit(ctx)
-}
-
-func (r *OrgRepo) IsDescendant(ctx context.Context, ancestorID, descendantID int64) (bool, error) {
-	var ok bool
-	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM organizations child
-			INNER JOIN organizations ancestor ON ancestor.id = $1
-			WHERE child.id = $2 AND child.deleted_at IS NULL
-			  AND child.path <@ ancestor.path
-		)`, ancestorID, descendantID).Scan(&ok)
-	return ok, err
 }
 
 func (r *OrgRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Organization, error) {

@@ -136,6 +136,7 @@
 | 50008 | `ErrCannotAssignHigherOrgMemberRole` | 不能分配更高的组内角色 | 403 |
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 |
+| 50011 | `ErrDuplicatePrimaryOrg` | 该用户已有主组织，并发设置主组织冲突，请重试（B3-3） | 409 |
 
 > `50008`–`50010`：Phase **2c** org-delegation 实现时写入 `errcode.go`（码号预留，勿改号）。
 
@@ -155,6 +156,7 @@
 | 70001 | `ErrNoPermission` | 无权限 | 403 |
 | 70002 | `ErrPolicyExists` | 策略已存在 | 409 |
 | 70003 | `ErrNoRoles` | 未分配角色 | 403 |
+| 70004 | `ErrPolicyReloadFailed` | 策略已保存但内存刷新失败，权限可能延迟生效，请稍后重试或联系运维（B3-5） | 500 |
 
 > 见上文通用说明：`30006` 与 `70003` 为 Phase 1 验收必需错误码。
 
