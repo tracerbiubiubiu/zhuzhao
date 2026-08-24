@@ -60,6 +60,19 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID int64) ([]s
 		return []string{}, nil
 	}
 
+	// B4-4：admin/superadmin 有 Casbin matcher bypass（真实权限是全部 API），
+	// 权限码按全量菜单展开——修复前仅按 role_menus 勾选下发，超管角色被清空
+	// 菜单时 permissions=[] 与真实权限背离（对照 GetRolePermissions 的 *,* 特判）
+	roleCodes, err := s.roleRepo.ListRoleCodesByUserIDs(ctx, roleIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, code := range roleCodes {
+		if code == "admin" || code == "superadmin" {
+			return s.allPermissions(ctx)
+		}
+	}
+
 	menus, err := s.menuRepo.ListByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, err
@@ -95,6 +108,40 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID int64) ([]s
 	return perms, nil
 }
 
+// allPermissions 全量权限码（admin/superadmin 通配展开）
+func (s *MenuService) allPermissions(ctx context.Context) ([]string, error) {
+	menus, err := s.menuRepo.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]struct{})
+	var perms []string
+	for _, m := range menus {
+		switch m.MenuType {
+		case menuTypeButton:
+			if m.Permission == "" {
+				continue
+			}
+			code := "button:" + m.Permission
+			if _, ok := seen[code]; !ok {
+				seen[code] = struct{}{}
+				perms = append(perms, code)
+			}
+		case menuTypeDirectory, menuTypePage:
+			if m.Path == "" {
+				continue
+			}
+			code := "route:" + m.Path
+			if _, ok := seen[code]; !ok {
+				seen[code] = struct{}{}
+				perms = append(perms, code)
+			}
+		}
+	}
+	sort.Strings(perms)
+	return perms, nil
+}
+
 // GetTree 管理端完整菜单树（含按钮节点：角色分配菜单时需勾选按钮，与 phase1/07 §预期功能一致）。
 // 用户侧菜单树不含按钮，见 GetUserMenus。
 func (s *MenuService) GetTree(ctx context.Context) ([]model.Menu, error) {
@@ -114,6 +161,11 @@ func (s *MenuService) Create(ctx context.Context, req *model.CreateMenuRequest) 
 		return nil, errcode.ErrInvalidParams
 	}
 	if err := s.validateMenuParent(ctx, req.MenuType, req.ParentID); err != nil {
+		return nil, err
+	}
+	// B4-4：类型必要字段——页面(2)必有 path（动态路由注册）、按钮(3)必有
+	// permission（权限码下发）；缺失将出现「树里有节点、权限码里无路由」的矛盾数据
+	if err := validateMenuRequiredFields(req.MenuType, req.Path, req.Permission); err != nil {
 		return nil, err
 	}
 	visible := true
@@ -145,6 +197,10 @@ func (s *MenuService) Update(ctx context.Context, req *model.UpdateMenuRequest) 
 	}
 	if menu.IsSystem {
 		return nil, errcode.ErrMenuIsSystem
+	}
+	// B4-4：类型必要字段（同 Create）
+	if err := validateMenuRequiredFields(menu.MenuType, req.Path, req.Permission); err != nil {
+		return nil, err
 	}
 	menu.Name = req.Name
 	menu.Path = req.Path
@@ -178,6 +234,22 @@ func (s *MenuService) Delete(ctx context.Context, id int64) error {
 		return errcode.ErrMenuHasChildren
 	}
 	return s.menuRepo.Delete(ctx, id)
+}
+
+// validateMenuRequiredFields 菜单类型必要字段校验（B4-4）：
+// 页面(2)必有 path、按钮(3)必有 permission——防止「树里有节点、权限码里无路由」
+func validateMenuRequiredFields(menuType int, path, permission string) error {
+	switch menuType {
+	case menuTypePage:
+		if path == "" {
+			return errcode.ErrInvalidParams
+		}
+	case menuTypeButton:
+		if permission == "" {
+			return errcode.ErrInvalidParams
+		}
+	}
+	return nil
 }
 
 func (s *MenuService) validateMenuParent(ctx context.Context, menuType int, parentID *int64) error {

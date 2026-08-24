@@ -76,9 +76,10 @@ func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleReque
 	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
 		return nil, err
 	}
-	status := req.Status
-	if status == 0 {
-		status = 1
+	// B4-4：Status 指针化——nil 默认启用；显式传 0 创建即禁用
+	status := 1
+	if req.Status != nil {
+		status = *req.Status
 	}
 	role := &model.Role{
 		Code:        req.Code,

@@ -124,8 +124,10 @@ func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
 	if tenantID == 0 {
 		tenantID = 1
 	}
+	// B4-4：status 语义修正——service 层已区分「未传」（默认 1）与「显式 0」
+	//（创建即禁用），repo 不再做零值合并（原逻辑使显式禁用角色无法落库）
 	status := role.Status
-	if status == 0 {
+	if status != 0 && status != 1 {
 		status = 1
 	}
 	const q = `
@@ -251,6 +253,27 @@ func (r *RoleRepo) ListRoleIDsByUserID(ctx context.Context, userID int64) ([]int
 			return 0, err
 		}
 		return id, nil
+	})
+}
+
+// ListRoleCodesByUserIDs 按角色 ID 集合查询角色 code（B4-4：用户权限码的
+// admin/superadmin 通配判断）
+func (r *RoleRepo) ListRoleCodesByUserIDs(ctx context.Context, roleIDs []int64) ([]string, error) {
+	if len(roleIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT code FROM roles WHERE id = ANY($1) AND deleted_at IS NULL`, roleIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list role codes: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		var code string
+		if err := row.Scan(&code); err != nil {
+			return "", err
+		}
+		return code, nil
 	})
 }
 

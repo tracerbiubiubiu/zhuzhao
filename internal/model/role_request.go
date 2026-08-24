@@ -20,7 +20,9 @@ type CreateRoleRequest struct {
 	Description string `json:"description"`
 	Priority    int    `json:"priority" binding:"required"`
 	SortOrder   int    `json:"sort_order"`
-	Status      int    `json:"status" binding:"omitempty,oneof=0 1"`
+	// B4-4：指针区分「未传」（nil → 默认启用）与「显式传 0」（创建即禁用）——
+	// 原零值合并导致无法创建禁用角色，与 Update 的 oneof=0 1 行为不一致
+	Status *int `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
 // UpdateRoleRequest 更新角色

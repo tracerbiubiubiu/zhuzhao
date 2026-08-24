@@ -92,6 +92,31 @@ func TestUserService_UpdateProfilePatchSemantics(t *testing.T) {
 	assert.Equal(t, "李四", updated.RealName, "其他未传字段仍保持原值")
 }
 
+// B4-5 守护：SetUserOrgs 重复 org_id 去重后 SetRolesTx 的活跃性防御——
+// 绑定已软删角色不产生幽灵绑定（见 repository 层测试）。
+// 此处覆盖 service 层 UpdateStatus 自我保护与 is_system 保护（B4-3）。
+func TestUserService_UpdateStatusGuards(t *testing.T) {
+	resetRBACTables(t)
+	ctx := context.Background()
+	userRepo := repository.NewUserRepo(testPool)
+	svc := service.NewUserService(testPool, userRepo, nil, nil, nil, nil)
+
+	hash, err := crypto.HashPassword("p")
+	require.NoError(t, err)
+	me := &model.User{Username: "me", EmployeeNo: "E640001", Password: hash, Status: 1}
+	require.NoError(t, userRepo.Create(ctx, me))
+
+	// 禁用自己 → 403（ErrForbidden）
+	err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: me.ID, Status: 0}, me.ID)
+	requireErrCode(t, err, errcode.ErrForbidden)
+
+	// is_system 用户禁用 → 403（ErrUserIsSystem）
+	sysUser := &model.User{Username: "sys", EmployeeNo: "E640002", Password: hash, Status: 1, IsSystem: true}
+	require.NoError(t, userRepo.Create(ctx, sysUser))
+	err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: sysUser.ID, Status: 0}, me.ID)
+	requireErrCode(t, err, errcode.ErrUserIsSystem)
+}
+
 // B2-5 守护：AssignMenus 菜单存在性/活跃性校验——不存在或已软删的 ID → 404。
 func TestRBACService_AssignMenusMenuValidation(t *testing.T) {
 	resetRBACTables(t)

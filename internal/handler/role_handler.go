@@ -92,7 +92,8 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 func (h *RoleHandler) AssignMenus(c *gin.Context) {
 	var req model.AssignMenusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
+		// B4-4：字段级校验详情（原固定文案「参数错误」，无法定位是 role_id 还是 menu_ids 格式问题）
+		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
 	if err := h.rbacService.AssignMenus(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {

@@ -244,6 +244,19 @@ func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) err
 }
 
 func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserStatusRequest, actorUserID int64) error {
+	// B4-3：不能禁用自己（自禁用后需他人恢复，易产生工单；与 Delete 的自我保护对齐）
+	if req.Status == 0 && req.UserID == actorUserID {
+		return errcode.ErrForbidden
+	}
+	// B4-3：is_system 种子用户不可禁用（与 Delete 的 ErrUserIsSystem 保护对齐；
+	// 种子 admin 被禁用将失去兜底管理入口）
+	target, err := s.userRepo.FindByID(ctx, req.UserID)
+	if err != nil {
+		return err
+	}
+	if req.Status == 0 && target.IsSystem {
+		return errcode.ErrUserIsSystem
+	}
 	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
 		return err
 	}
@@ -289,6 +302,8 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 	if err != nil {
 		return err
 	}
+	// B4-3：单循环完成校验与 superadmin 探测（原两轮各查一次 FindByID，2N 次查询）
+	willHaveSuper := false
 	for _, roleID := range req.RoleIDs {
 		role, err := s.roleRepo.FindByID(ctx, roleID)
 		if err != nil {
@@ -297,21 +312,13 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 		if !canAssignRole(actorRoles, role) {
 			return errcode.ErrCannotAssignHigherRole
 		}
+		if role.Code == "superadmin" {
+			willHaveSuper = true
+		}
 	}
 	wasSuper, err := s.userRepo.IsSuperadminUser(ctx, req.UserID)
 	if err != nil {
 		return err
-	}
-	willHaveSuper := false
-	for _, roleID := range req.RoleIDs {
-		role, err := s.roleRepo.FindByID(ctx, roleID)
-		if err != nil {
-			return err
-		}
-		if role.Code == "superadmin" {
-			willHaveSuper = true
-			break
-		}
 	}
 	// TOCTOU 修复：摘除最后一个 superadmin 角色的检查与写入同事务
 	if wasSuper && !willHaveSuper {

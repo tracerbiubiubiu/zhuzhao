@@ -159,7 +159,16 @@ func (r *MenuRepo) Update(ctx context.Context, menu *model.Menu) error {
 }
 
 func (r *MenuRepo) Delete(ctx context.Context, id int64) error {
-	tag, err := r.db.Exec(ctx, `
+	// B4-4：软删 + 同事务清理 role_menus（原仅软删 menus 行——
+	// GetRoleMenuIDs 无 JOIN 过滤会向前端回显已删菜单的幽灵勾选；
+	// casbin 策略级联重建仍按文档留在 Phase 2）
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
 		UPDATE menus SET deleted_at = NOW(), updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
@@ -168,7 +177,10 @@ func (r *MenuRepo) Delete(ctx context.Context, id int64) error {
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrMenuNotFound
 	}
-	return nil
+	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE menu_id = $1`, id); err != nil {
+		return fmt.Errorf("delete role_menus: %w", err)
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *MenuRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Menu, error) {

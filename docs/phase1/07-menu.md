@@ -386,12 +386,15 @@ GET /user/permissions
 | 创建菜单 - 目录 | type=1, name="系统管理" | 返回菜单 |
 | 登记菜单 - 页面 | type=2, name="用户管理", path="/system/user" | 返回菜单 |
 | 登记菜单 - 按钮 | type=3, name="删除用户", permission="user:delete" | 返回菜单 |
+| 登记菜单 - 页面缺 path（B4-4） | type=2, 无 path | 400（动态路由注册必需） |
+| 登记菜单 - 按钮缺 permission（B4-4） | type=3, 无 permission | 400（权限码下发必需） |
 | 删除菜单 - 有子菜单 | 有子节点的菜单 | 返回 ErrMenuHasChildren |
 | 删除菜单 - 系统内置 | is_system=true | 返回 ErrMenuIsSystem |
+| 删除菜单 - 清理角色绑定（B4-4） | 已分配给角色的菜单删除 | role_menus 同事务清理，GetRoleMenuIDs 不回显幽灵勾选 |
 | 管理端菜单树 | 含按钮的种子数据 | 返回树形，**含按钮节点**（menu_type=3 出现在页面 children 中，供角色分配勾选） |
 | 用户菜单树 - admin | admin 角色 | 返回所有菜单（不含按钮） |
 | 用户菜单树 - 普通用户 | 只有部分菜单的角色 | 只返回已分配的菜单（含父级目录，不含按钮） |
-| 权限码 - admin | admin 角色 | 返回所有按钮权限码 |
+| 权限码 - admin | admin 角色 | 返回**全部**按钮权限码（B4-4：通配展开——即使 admin 角色的菜单勾选被清空，权限码仍按全量菜单展开，与 Casbin matcher bypass 对齐） |
 | 权限码 - 普通用户 | 部分菜单的角色 | 只返回已分配按钮的权限码 |
 
 ### 树构建边界

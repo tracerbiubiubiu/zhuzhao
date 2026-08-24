@@ -30,3 +30,14 @@ func mapUniqueViolation(err error) *errcode.Error {
 		return errcode.ErrConflict
 	}
 }
+
+// MapForeignKeyViolation 外键违规（23503）→ 参数错误。
+// B4-3：竞态窗口内（service 预检通过后、INSERT 前）目标角色/组织/用户被物理删除时，
+// 关联表写入收到 23503——语义是「关联对象不存在」，400 而非 500。
+func MapForeignKeyViolation(err error) *errcode.Error {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23503" {
+		return nil
+	}
+	return errcode.ErrInvalidParams
+}

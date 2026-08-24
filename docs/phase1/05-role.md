@@ -265,6 +265,8 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 
 `UpdateRoleRequest.status` 允许 0（禁用）。禁用后**下次请求起**生效（与「角色变更下次请求生效」一致）：
 
+> **创建即禁用（B4-4）**：`CreateRoleRequest.status` 为指针字段——nil 默认启用；显式传 `0` 可创建禁用角色（原零值合并导致不可能）。
+
 | 生效点 | 行为 |
 |--------|------|
 | Casbin L1 鉴权 | `GetRoleCodes` 不返回禁用角色 → 逐角色 enforce 不含它 → 其策略全部失效 |
@@ -300,6 +302,7 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 |------|------|------|
 | 创建角色 | name="用户管理员" | 返回角色 |
 | 创建角色 - 指定 priority | priority=15 | 介于 admin(10) 与 operator(20) 之间 |
+| 创建角色 - 显式禁用（B4-4） | status=0 | 创建即禁用（权限链路即时生效语义） |
 | 种子角色 priority | migrate-up 后查 roles | superadmin=1, admin=10, operator=20, viewer=30 |
 | 创建角色 - 名称重复 | 已存在的 name | 返回 ErrRoleAlreadyExists |
 | 删除角色 - 无关联用户 | roleID | 成功 |

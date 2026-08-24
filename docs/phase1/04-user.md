@@ -555,7 +555,9 @@ Repository：`List(ctx, query)` 动态拼 WHERE；另提供 `FindByEmployeeNo(ct
 |------|------|
 | 不能删除/禁用最后一个 `superadmin` | 避免锁死系统 |
 | 不能删除自己 | — |
+| 不能禁用自己（B4-3） | 自禁用后需他人恢复，易产生工单；与「不能删除自己」对齐 |
 | `is_system` 用户不可删除 | 种子 admin |
+| `is_system` 用户不可禁用（B4-3） | 与删除保护对齐——种子 admin 被禁用将失去兜底管理入口 |
 | `admin` 不能改 `is_system` 资源 | 不能删系统角色/菜单/组织，不能改 superadmin 用户 |
 | `admin` 不能给他人分配 `superadmin` | 防提权 |
 | `admin` 不能重置 `admin`/`superadmin` 密码 | 已在 02-auth 定义 |
