@@ -102,14 +102,16 @@ func (h *OrgHandler) Move(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-// GetMembers GET /api/v1/orgs/:id/members
+// GetMembers GET /api/v1/orgs/:id/members（B4-5：支持 page/page_size 查询参数）
 func (h *OrgHandler) GetMembers(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "无效的组织 ID")
 		return
 	}
-	resp, err := h.orgService.GetMembers(c.Request.Context(), id)
+	page := queryInt(c, "page", 1)
+	pageSize := queryInt(c, "page_size", 20)
+	resp, err := h.orgService.GetMembers(c.Request.Context(), id, page, pageSize)
 	if err != nil {
 		writeServiceError(c, err)
 		return

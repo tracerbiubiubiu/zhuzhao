@@ -138,7 +138,10 @@ type OrgService interface {
     SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64, primaryOrgID *int64) error
     SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, orgIDs []int64, primaryOrgID *int64) error
     GetMembers(ctx context.Context, orgID int64, query MemberListQuery) ([]*model.User, int64, error)
-    GetUserOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
+    // GetUserOrgs 返回用户组织关系（含 is_primary/joined_at）——B4-5 修订：
+    // 实际返回 []*model.UserOrg（is_primary 是该接口核心信息），原设计签名
+    // []*model.Organization 有误；handler 包装为 {"orgs": [...]}
+    GetUserOrgs(ctx context.Context, userID int64) ([]*model.UserOrg, error)
 
     // 组织角色（Phase 2b）
     AssignRoles(ctx context.Context, orgCode string, roleIDs []int64) error

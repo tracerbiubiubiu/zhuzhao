@@ -137,6 +137,7 @@
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 |
 | 50011 | `ErrDuplicatePrimaryOrg` | 该用户已有主组织，并发设置主组织冲突，请重试（B3-3） | 409 |
+| 50012 | `ErrOrgSystemProtected` | 系统内置组织受保护，禁止此操作（B4-5：Update 场景，与删除的 50006 区分） | 403 |
 
 > `50008`–`50010`：Phase **2c** org-delegation 实现时写入 `errcode.go`（码号预留，勿改号）。
 

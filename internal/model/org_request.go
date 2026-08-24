@@ -9,8 +9,9 @@ type OrgMemberRequest struct {
 
 // CreateOrgRequest 创建组织
 type CreateOrgRequest struct {
-	Code        string `json:"code" binding:"required"`
-	Name        string `json:"name" binding:"required"`
+	// B4-5：max 对齐 DB varchar（code(50)/name(100)）——原超长触发 22001 → 500
+	Code        string `json:"code" binding:"required,max=50"`
+	Name        string `json:"name" binding:"required,max=100"`
 	Description string `json:"description"`
 	ParentID    *int64 `json:"parent_id,string"`
 	OrgType     int    `json:"org_type" binding:"required,oneof=1 2 3"`
@@ -38,8 +39,10 @@ type MoveOrgRequest struct {
 	NewParentID *int64 `json:"new_parent_id,string"`
 }
 
-// OrgMemberListResponse 组织成员列表
+// OrgMemberListResponse 组织成员列表（B4-5：分页）
 type OrgMemberListResponse struct {
-	List  []*User `json:"list"`
-	Total int64   `json:"total"`
+	List     []*User `json:"list"`
+	Total    int64   `json:"total"`
+	Page     int     `json:"page"`
+	PageSize int     `json:"page_size"`
 }

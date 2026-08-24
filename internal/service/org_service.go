@@ -151,17 +151,29 @@ func (s *OrgService) GetByID(ctx context.Context, id int64) (*model.Organization
 	return s.orgRepo.FindByID(ctx, id)
 }
 
-func (s *OrgService) GetMembers(ctx context.Context, orgID int64) (*model.OrgMemberListResponse, error) {
+func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize int) (*model.OrgMemberListResponse, error) {
 	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
 		return nil, err
 	}
-	users, err := s.userRepo.ListByOrgID(ctx, orgID)
+	// B4-5：分页（原全量返回，与 modules/organization.md §4.3 承诺不符）
+	users, total, err := s.userRepo.ListByOrgID(ctx, orgID, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
 	return &model.OrgMemberListResponse{
-		List:  users,
-		Total: int64(len(users)),
+		List:     users,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
 	}, nil
 }
 
@@ -207,7 +219,8 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 		return nil, err
 	}
 	if org.IsSystem {
-		return nil, errcode.ErrOrgIsSystem
+		// B4-5：与删除场景的 ErrOrgIsSystem（「不可删除」）区分文案
+		return nil, errcode.ErrOrgSystemProtected
 	}
 	org.Name = req.Name
 	org.Description = req.Description
@@ -228,20 +241,7 @@ func (s *OrgService) Delete(ctx context.Context, id int64) error {
 	if org.IsSystem {
 		return errcode.ErrOrgIsSystem
 	}
-	n, err := s.orgRepo.CountChildren(ctx, id)
-	if err != nil {
-		return err
-	}
-	if n > 0 {
-		return errcode.ErrOrgHasChildren
-	}
-	n, err = s.orgRepo.CountMembers(ctx, id)
-	if err != nil {
-		return err
-	}
-	if n > 0 {
-		return errcode.ErrOrgHasMembers
-	}
+	// B4-5：children/members 检查已移入 repo.Delete 同事务（消灭 check-then-act 窗口）
 	return s.orgRepo.Delete(ctx, id)
 }
 

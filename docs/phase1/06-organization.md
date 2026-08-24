@@ -250,6 +250,8 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 | 设 is_primary | is_primary=true | 该用户其它 primary 被清除 |
 | SetUserOrgs | user_id + org_ids | user_orgs 全量替换 |
 | SetUserOrgs - 清空 | org_ids: [] | 该用户无组织关联 |
+| 成员列表 - 分页（B4-5） | `GET /orgs/:id/members?page=1&page_size=2` | `{list, total, page, page_size}`——total 为全量数，list 为当前页；page=0 规范化为 1 |
+| 成员列表 - 超范围页（B4-5） | page=99 | 空列表，total 不变 |
 
 ### Service 层
 

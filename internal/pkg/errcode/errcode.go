@@ -72,6 +72,7 @@ var (
 	ErrOrgIsSystem         = New(50006, "系统内置组织不可删除")
 	ErrNotOrgMember        = New(50007, "用户不是该组织成员")
 	ErrDuplicatePrimaryOrg = New(50011, "该用户已有主组织，并发设置主组织冲突，请重试")
+	ErrOrgSystemProtected  = New(50012, "系统内置组织受保护，禁止此操作")
 )
 
 // 菜单模块 60000-60999

@@ -231,7 +231,34 @@ func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
 }
 
 func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
-	tag, err := r.db.Exec(ctx, `
+	// B4-5：保护检查与软删同事务——原 check-then-act 窗口内加入的成员
+	// 不会被拦截，产生「软删组织仍挂成员」的残留行
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 事务内检查（FOR UPDATE 锁行，与写入同快照）
+	var children, members int64
+	if err := tx.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM organizations WHERE parent_id = $1 AND deleted_at IS NULL),
+			(SELECT COUNT(*) FROM user_orgs uo
+				INNER JOIN organizations o ON o.id = uo.org_id
+				INNER JOIN users u ON u.id = uo.user_id
+				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL)`,
+		id).Scan(&children, &members); err != nil {
+		return fmt.Errorf("check org delete guards: %w", err)
+	}
+	if children > 0 {
+		return errcode.ErrOrgHasChildren
+	}
+	if members > 0 {
+		return errcode.ErrOrgHasMembers
+	}
+
+	tag, err := tx.Exec(ctx, `
 		UPDATE organizations SET deleted_at = NOW(), updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
@@ -240,7 +267,7 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrOrgNotFound
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // Move 移动组织子树（B3-2 事务化重构）。
