@@ -56,9 +56,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			sharedErr = err
 			return
 		}
-		// 000001 建表 + 000006 唯一索引软删过滤（F-6），
-		// 保证测试 schema 与生产迁移后的语义一致（软删工号/域账号可复用）
-		for _, name := range []string{"000001_init.up.sql", "000006_partial_unique_indexes.up.sql"} {
+		// 000001 建表 + 000006 唯一索引软删过滤（F-6）+ 000008 primary 互斥（B3-3），
+		// 保证测试 schema 与生产迁移后的语义一致（软删工号/域账号可复用、单 primary 兜底）
+		for _, name := range []string{"000001_init.up.sql", "000006_partial_unique_indexes.up.sql", "000008_user_orgs_single_primary.up.sql"} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err
 				pool.Close()

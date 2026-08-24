@@ -21,7 +21,7 @@ func writeServiceError(c *gin.Context, err error) {
 	case errcode.ErrConcurrentModification.Code:
 		response.Error(c, 409, biz)
 	case errcode.ErrEmployeeNoAlreadyExists.Code, errcode.ErrDomainAccountAlreadyExists.Code, errcode.ErrUserAlreadyExists.Code,
-		errcode.ErrOrgAlreadyExists.Code, errcode.ErrRoleAlreadyExists.Code, errcode.ErrMenuAlreadyExists.Code, errcode.ErrConflict.Code:
+		errcode.ErrOrgAlreadyExists.Code, errcode.ErrRoleAlreadyExists.Code, errcode.ErrMenuAlreadyExists.Code, errcode.ErrDuplicatePrimaryOrg.Code, errcode.ErrConflict.Code:
 		response.Error(c, 409, biz)
 	case errcode.ErrCannotResetHigher.Code, errcode.ErrCannotAssignHigherRole.Code, errcode.ErrCannotManageHigher.Code, errcode.ErrUserIsSystem.Code, errcode.ErrCannotRemoveLastSuperadmin.Code, errcode.ErrUserDisabled.Code,
 		errcode.ErrOrgHasChildren.Code, errcode.ErrOrgHasMembers.Code, errcode.ErrOrgIsSystem.Code,

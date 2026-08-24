@@ -24,6 +24,8 @@ func mapUniqueViolation(err error) *errcode.Error {
 		return errcode.ErrRoleAlreadyExists
 	case "idx_menus_code", "menus_code_key": // 000006 迁移前旧约束名兼容
 		return errcode.ErrMenuAlreadyExists
+	case "idx_user_orgs_single_primary": // B3-3：primary 互斥并发兜底
+		return errcode.ErrDuplicatePrimaryOrg
 	default:
 		return errcode.ErrConflict
 	}

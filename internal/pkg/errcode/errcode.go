@@ -71,6 +71,7 @@ var (
 	ErrOrgHasMembers       = New(50005, "该组织下有成员，无法删除")
 	ErrOrgIsSystem         = New(50006, "系统内置组织不可删除")
 	ErrNotOrgMember        = New(50007, "用户不是该组织成员")
+	ErrDuplicatePrimaryOrg = New(50011, "该用户已有主组织，并发设置主组织冲突，请重试")
 )
 
 // 菜单模块 60000-60999
@@ -83,7 +84,8 @@ var (
 
 // 权限模块 70000-70999
 var (
-	ErrNoPermission   = New(70001, "无权限")
-	ErrPolicyExists   = New(70002, "策略已存在")
-	ErrNoRoles        = New(70003, "未分配角色")
+	ErrNoPermission       = New(70001, "无权限")
+	ErrPolicyExists       = New(70002, "策略已存在")
+	ErrNoRoles            = New(70003, "未分配角色")
+	ErrPolicyReloadFailed = New(70004, "策略已保存但内存刷新失败，权限可能延迟生效，请稍后重试或联系运维")
 )
