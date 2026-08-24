@@ -58,6 +58,40 @@ func TestUserService_UpdatePatchSemantics(t *testing.T) {
 	assert.Equal(t, "E610001", updated.EmployeeNo, "其他未传字段仍保持原值")
 }
 
+// B2-3 守护：UpdateProfile patch 语义（自服务接口，仅本人可改）
+func TestUserService_UpdateProfilePatchSemantics(t *testing.T) {
+	resetRBACTables(t)
+	ctx := context.Background()
+	userRepo := repository.NewUserRepo(testPool)
+	svc := service.NewUserService(testPool, userRepo, nil, nil, nil, nil)
+
+	hash, err := crypto.HashPassword("p")
+	require.NoError(t, err)
+	user := &model.User{
+		Username: "profile_user", EmployeeNo: "E610002", Password: hash,
+		RealName: "李四", Email: "lisi@corp.com", Phone: "13900000000", Status: 1,
+	}
+	require.NoError(t, userRepo.Create(ctx, user))
+
+	// 只传 avatar——其余字段保持原值
+	updated, err := svc.UpdateProfile(ctx, user.ID, &model.UpdateProfileRequest{
+		Avatar: strPtr("https://cdn.example/a.png"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "https://cdn.example/a.png", updated.Avatar)
+	assert.Equal(t, "李四", updated.RealName, "未传字段保持原值")
+	assert.Equal(t, "lisi@corp.com", updated.Email, "未传字段保持原值")
+	assert.Equal(t, "13900000000", updated.Phone, "未传字段保持原值")
+
+	// 空串显式清空 email
+	updated, err = svc.UpdateProfile(ctx, user.ID, &model.UpdateProfileRequest{
+		Email: strPtr(""),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "", updated.Email, "空串应显式清空")
+	assert.Equal(t, "李四", updated.RealName, "其他未传字段仍保持原值")
+}
+
 // B2-5 守护：AssignMenus 菜单存在性/活跃性校验——不存在或已软删的 ID → 404。
 func TestRBACService_AssignMenusMenuValidation(t *testing.T) {
 	resetRBACTables(t)

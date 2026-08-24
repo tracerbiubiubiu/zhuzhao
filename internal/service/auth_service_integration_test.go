@@ -99,3 +99,43 @@ func resetAuthTables(t *testing.T) {
 	_, err := testPool.Exec(context.Background(), `TRUNCATE user_roles, users RESTART IDENTITY CASCADE`)
 	require.NoError(t, err)
 }
+
+// newAuthServiceForTest 构造带 miniredis 的 AuthService
+func newAuthServiceForTest(t *testing.T) *service.AuthService {
+	t.Helper()
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr.Close)
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
+	repo := repository.NewUserRepo(testPool)
+	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
+	return service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+}
+
+// B2-2 守护：新密码与旧密码相同 → 400（ErrInvalidParams），
+// 不吊销会话、不重签 Token（修复前会「成功」改密并吊销全部设备）。
+func TestAuthService_UpdatePasswordSameRejected(t *testing.T) {
+	resetAuthTables(t)
+	ctx := context.Background()
+	repo := repository.NewUserRepo(testPool)
+	authSvc := newAuthServiceForTest(t)
+
+	hash, err := crypto.HashPassword("oldpass123")
+	require.NoError(t, err)
+	user := &model.User{Username: "pwd_user", EmployeeNo: "E620001", Password: hash, Status: 1}
+	require.NoError(t, repo.Create(ctx, user))
+
+	_, err = authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "oldpass123", "", "dev-1")
+	require.Error(t, err)
+	var biz *errcode.Error
+	require.ErrorAs(t, err, &biz)
+	assert.Equal(t, errcode.ErrInvalidParams.Code, biz.Code, "新旧密码相同应返回 400 参数错误")
+
+	// 密码未变更：旧密码仍可验证通过
+	got, err := repo.FindByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.True(t, crypto.CheckPassword("oldpass123", got.Password), "相同密码不应触发实际改密")
+}

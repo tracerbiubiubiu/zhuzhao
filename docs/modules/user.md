@@ -90,27 +90,30 @@ type UserService interface {
     GetByID(ctx context.Context, id int64) (*model.User, error)
     GetByUsername(ctx context.Context, username string) (*model.User, error) // 列表/管理：模糊或精确
     FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确（repo 层，未删除用户）
-    Update(ctx context.Context, id int64, req UpdateUserRequest) error
-    Delete(ctx context.Context, id int64) error
+    // Update patch 语义（B2-3）：请求字段指针化——未传不动、空串显式清空；
+    // username 不可改（Phase 2 再定改名流程）。实际签名带 actorUserID（防提权校验）
+    Update(ctx context.Context, req *UpdateUserRequest, actorUserID int64) (*model.User, error)
+    Delete(ctx context.Context, id int64, actorUserID int64) error
     List(ctx context.Context, query UserListQuery) ([]*model.User, int64, error)
 
     // 密码
-    UpdatePassword(ctx context.Context, userID int64, newPassword string) error
-    VerifyPassword(ctx context.Context, userID int64, password string) (bool, error)
+    UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) // 验旧密码 + 新旧不同校验（B2-2）+ 吊销全部会话
+    ResetPassword(ctx context.Context, req ResetPasswordRequest, actorUserID int64) error // 管理员重置
 
     // 状态
-    Enable(ctx context.Context, id int64) error
-    Disable(ctx context.Context, id int64) error
+    UpdateStatus(ctx context.Context, req UpdateUserStatusRequest, actorUserID int64) error
 
     // 角色绑定
-    SetRoles(ctx context.Context, userID int64, roleIDs []int64) error
+    SetRoles(ctx context.Context, req SetUserRolesRequest, actorUserID int64) error
     GetRoles(ctx context.Context, userID int64) ([]*model.Role, error)
 
-    // 组织绑定
-    SetOrgs(ctx context.Context, userID int64, orgRoles []OrgRole) error
-    GetOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
+    // 组织绑定（写逻辑 SSOT 在 OrgService，见 modules/organization.md）
+    SetUserOrgs(ctx context.Context, req SetUserOrgsRequest, actorUserID int64) error
+    GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error)
 }
 ```
+
+> **注**：本节为设计骨架；接口签名以 [`phase1/04-user.md`](../phase1/04-user.md)（SSOT）与 `internal/service/user_service.go` 实现为准。B2-3 起 Update/UpdateProfile 均为 patch 语义。
 
 ---
 

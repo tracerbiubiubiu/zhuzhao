@@ -43,3 +43,20 @@ func TestBuildMenuTree(t *testing.T) {
 func TestBuildMenuTreeEmpty(t *testing.T) {
 	assert.Equal(t, []model.Menu{}, buildMenuTree(nil))
 }
+
+// B2-4 守护：filterMenusForTree 滤除按钮与 visible=false 节点（用户侧菜单树契约）。
+func TestFilterMenusForTree(t *testing.T) {
+	dir := &model.Menu{ID: 1, MenuType: 1, Visible: true}
+	pageVisible := &model.Menu{ID: 2, MenuType: 2, Visible: true}
+	pageHidden := &model.Menu{ID: 3, MenuType: 2, Visible: false}
+	btn := &model.Menu{ID: 4, MenuType: 3, Visible: true}
+	hiddenBtn := &model.Menu{ID: 5, MenuType: 3, Visible: false}
+
+	out := filterMenusForTree([]*model.Menu{dir, pageVisible, pageHidden, btn, hiddenBtn})
+
+	ids := make([]int64, 0, len(out))
+	for _, m := range out {
+		ids = append(ids, m.ID)
+	}
+	assert.Equal(t, []int64{1, 2}, ids, "按钮与 visible=false 节点都应被滤除")
+}
