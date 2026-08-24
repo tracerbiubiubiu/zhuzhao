@@ -143,7 +143,7 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 见 [02-authz-resource](./02-authz-resource.md)：
 
 - **List/GetFilter**：`(created_by = $uid OR assigned_to = $uid)`
-- **Get 不可见**：404 + `ErrNotFound`（10004 或工单专用 90001）
+- **Get 不可见**：404 + `ErrTicketNotFound`（**90001**——决策收口，便于客户端区分模块；**90001 / `ErrTicketNotFound` 尚未在 `errcode.go` 定义，Phase 2a 工单模块实现时写入**）
 - **Update**：创建人或处理人；否则 403 + 70001
 
 ### 5.2 Phase 2b — scope 升级 + 部门内「读/写分离」（策略 B，默认）
@@ -248,7 +248,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 | 场景 | HTTP | 错误码 |
 |------|------|--------|
 | 无路由权限 | 403 | 70001 |
-| 工单不可见 | 404 | 90001（推荐）或 10004 |
+| 工单不可见 | 404 | 90001（待 Phase 2a 在 errcode.go 定义 `ErrTicketNotFound`） |
 | 可见但无权操作 | 403 | 70001 |
 | 非法状态转换 | 400 | 90002 |
 | 工单已关闭再操作 | 409 | 90004 |
@@ -328,8 +328,7 @@ POST /api/v1/tickets
 | 90003 | `ErrTicketTypeNotFound` | 工单类型不存在 | 404 |
 | 90004 | `ErrTicketAlreadyClosed` | 工单已关闭 | 409 |
 
-> 不可见工单对外统一 **90001 / 10004**（实现二选一，文档推荐 **90001** 便于客户端区分模块）。  
-> 写入 `errcode.go` 时勿改号。
+> 不可见工单对外统一 **90001**（决策收口：不再与 10004 二选一，10004 保留给通用资源不存在场景；**90001 / `ErrTicketNotFound` 尚未在 `errcode.go` 定义，Phase 2a 工单模块实现时写入，勿改号**）。
 
 ---
 
@@ -346,6 +345,8 @@ POST /api/v1/tickets
 | T5 | assign 给 B | admin 或 2b 主管路径 |
 | T6 | 非法 transition open→closed（若类型不允许） | 400 + 90002 |
 | T7 | 无 ticket:list | 403 |
+
+**测试落点约定**（B4）：状态机转换单测 → `internal/service/ticket/`；T1–T7 集成测试（testcontainers PG，复用 phase1 `testutil` 模式）→ `internal/service/ticket/`；路由/权限码 → `internal/router/router_test.go` 扩展。
 
 ### 2b（Step 5 + 8 验收）
 

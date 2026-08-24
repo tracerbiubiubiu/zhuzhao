@@ -16,6 +16,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -41,29 +42,30 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	authService := service.NewAuthService(userRepo, manager, client)
-	authHandler := handler.NewAuthHandler(authService)
-	userService := service.NewUserService(userRepo)
-	menuRepo := repository.NewMenuRepo(pool)
-	menuService := service.NewMenuService(menuRepo)
-	userHandler := handler.NewUserHandler(userService, menuService)
-	roleRepo := repository.NewRoleRepo(pool)
-	rbacService := service.NewRBACService(roleRepo)
-	roleHandler := handler.NewRoleHandler(rbacService)
-	orgRepo := repository.NewOrgRepo(pool)
-	orgService := service.NewOrgService(orgRepo)
-	orgHandler := handler.NewOrgHandler(orgService)
-	menuHandler := handler.NewMenuHandler(menuService)
+	scripts := redis.NewScripts(client)
 	auditLogRepo := repository.NewAuditLogRepo(pool)
-	auditService := service.NewAuditService(auditLogRepo)
-	auditHandler := handler.NewAuditHandler(auditService)
+	auditService := service.NewAuditService(auditLogRepo, userRepo)
+	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
+	authHandler := handler.NewAuthHandler(authService)
+	roleRepo := repository.NewRoleRepo(pool)
+	orgRepo := repository.NewOrgRepo(pool)
+	orgService := service.NewOrgService(orgRepo, userRepo)
+	userService := service.NewUserService(pool, userRepo, roleRepo, orgService, client, manager)
+	menuRepo := repository.NewMenuRepo(pool)
+	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
+	userHandler := handler.NewUserHandler(userService, menuService)
 	casbinConfig := cfg.Casbin
-	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig)
+	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
+	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
+	roleHandler := handler.NewRoleHandler(rbacService)
+	orgHandler := handler.NewOrgHandler(orgService)
+	menuHandler := handler.NewMenuHandler(menuService)
+	auditHandler := handler.NewAuditHandler(auditService)
 	deps := router.Deps{
 		AuthHandler:  authHandler,
 		UserHandler:  userHandler,
@@ -78,6 +80,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		Logger:       slogLogger,
 		RoleFetcher:  rbacService,
 		AuditService: auditService,
+
+		// B1-4：信任代理网段（空 = 不信任任何代理）
+		TrustedProxies: cfg.Server.TrustedProxies,
 	}
 	engine := router.New(deps)
 	app := NewApp(cfg, slogLogger, engine)
@@ -90,7 +95,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 // wire.go:
 
-var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, casbin.New)
+var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, resource.NewRegistry, casbin.New)
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
 

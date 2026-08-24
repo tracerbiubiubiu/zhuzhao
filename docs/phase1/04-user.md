@@ -92,13 +92,14 @@ CREATE TABLE users (
 );
 
 -- username 可重复；软删后仍可再建同名 username
--- 工号、(user_domain, domain_account) 全局唯一（含软删记录，不可复用）
+-- 工号、(user_domain, domain_account) 仅在活跃记录间唯一（部分唯一索引过滤软删行，软删后可复用）
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
-    WHERE employee_no IS NOT NULL AND employee_no <> '';
+    WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
     WHERE domain_account IS NOT NULL AND domain_account <> ''
-      AND user_domain IS NOT NULL AND user_domain <> '';
+      AND user_domain IS NOT NULL AND user_domain <> ''
+      AND deleted_at IS NULL;
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 ```
 
@@ -125,10 +126,10 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 
 | 字段 | 是否唯一 | 说明 |
 |------|----------|------|
-| `employee_no` | ✅ **全局唯一**（有值时；**含软删记录，不可复用**） | 登录键；管理端精确查人、HR 对账 |
+| `employee_no` | ✅ **全局唯一**（有值时；**仅活跃记录，软删后可复用**） | 登录键；管理端精确查人、HR 对账 |
 | `username` | ❌ **可重复** | 资料字段；列表 `?username=` 模糊查询；软删后可再建同名 |
 | `domain_account` 单独 | ❌ **不**全局唯一 | 不同 AD 域里可以有同名 `sAMAccountName`（如两个域都有 `zhangsan`） |
-| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时；**含软删记录，不可复用**） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
+| `(user_domain, domain_account)` | ✅ **组合唯一**（两者均有值时；**仅活跃记录，软删后可复用**） | 与 AD 一致：**同一域内**域账号不重复；跨域可重复 |
 
 **域账号为什么不是单列唯一？**
 
@@ -139,7 +140,7 @@ CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 **成对约束规则**：
 
 - 只填 `domain_account` 或只填 `user_domain`：**允许**（Phase 1 暂不强制成对；HR/AD 同步时建议成对写入）。
-- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一（**含软删记录**）；冲突 → **409 + 30008**。
+- 两者**同时有值**：必须满足 `(user_domain, domain_account)` 组合唯一（仅活跃记录，软删后可复用）；冲突 → **409 + 30008**。
 - 两者都空：不参与域唯一校验。
 
 > **登录 vs 列表查询**：`POST /auth/login` 用 **`employee_no` + 密码**（见 [02-auth §登录与工号解析](./02-auth.md#登录与工号解析)）。`username` 仅用于列表模糊筛选 `GET /users?username=`。
@@ -217,10 +218,10 @@ POST /users Create
   │     → 允许创建，但 **不能账密登录**（须后续补工号）
   │
   └─ employee_no 有值
-        → SELECT … WHERE employee_no = ?（**含软删记录**；不可复用工号）
+        → SELECT … WHERE employee_no = ?（仅活跃记录；软删工号可复用）
         → 已存在且 source = 'hr'
               → 409 + 30007（或专用文案：「该工号已由 HR 同步，请重置密码/赋角色，勿重复开户」）
-        → 已存在且 source = 'local'（含已软删）
+        → 已存在且 source = 'local'
               → 409 + 30007（工号冲突）
         → 不存在
               → 允许写入 source = 'local'（仍可能是尚未跑 HR Job 的正式工号 — 见下）
@@ -274,8 +275,8 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 |------|----------|
 | `POST /auth/login` | 仅 **token**（`access_token` / `refresh_token` / `expires_in`）；资料走 `GET /user/profile` |
 | `GET /user/profile` | 当前用户：`id`、`employee_no`、`username`、`real_name`、`email`、`phone`、`avatar`、`must_change_password` 等；**不含** password、角色、组织 |
-| `GET /users`（分页） | `data.list[]`：每条含 `id` + 展示字段 + `status`；`employee_no` 有则返回 |
-| `GET /users/:id` | 同结构体，较列表更全（含 `version`、域字段、`is_system` 等管理字段） |
+| `GET /users`（分页） | `data.list[]`：与详情**同构**（完整 User 结构，含 `version`、域字段、`is_system` 等；`password` 永不返回；软删用户不出现）——B2-9 修订：实现即完整结构，列表/详情共用 |
+| `GET /users/:id` | 同上（完整 User 结构） |
 | `POST /users` / `POST /users/update` 成功 | 返回更新后的用户对象（含 `id`、`version`；无 password） |
 
 **示例（列表项 / 详情）**：
@@ -300,8 +301,10 @@ Phase 1 无 `source` 字段时：仅 **`employee_no` 唯一索引** 一条规则
 
 **更新请求须带 `version`**（乐观锁）：
 
+> **patch 语义（B2-3）**：仅更新**显式传入**的字段——未传字段保持不变，传空串显式清空（置 NULL）。`username` 不可更新（Phase 2 再定改名流程）。
+
 ```json
-// POST /api/v1/users/update
+// POST /api/v1/users/update（只改 real_name 与 email；其余字段保持原值）
 {
   "id": "1001",
   "version": 1,
@@ -354,7 +357,7 @@ Phase 2b 上传流程（规划，见 storage 文档）：
 ```sql
 -- users 表有 deleted_at 字段
 -- 业务查询自动过滤：WHERE deleted_at IS NULL
--- 工号 / (user_domain, domain_account) 唯一索引不含 deleted_at：软删后仍占用，不可复用
+-- 工号 / (user_domain, domain_account) 唯一索引过滤软删行：软删即释放，可复用
 -- username 无唯一约束，软删后可再建同名
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 ```
@@ -363,11 +366,11 @@ CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 
 | 字段 | 软删后 |
 |------|--------|
-| `employee_no` | **仍占用**；同工号再 Create → **409 + 30007** |
-| `(user_domain, domain_account)` | **仍占用**；同组合再 Create → **409 + 30008** |
+| `employee_no` | **释放**；同工号再 Create 可成功 |
+| `(user_domain, domain_account)` | **释放**；同组合再 Create 可成功 |
 | `username` | **可复用**（非唯一键） |
 
-> 离职/离岗应走 **禁用**（`status=0`），保留工号与 uid；软删仅用于逻辑移除，**不会释放**工号或域账号。
+> 离职/离岗应走 **禁用**（`status=0`），保留工号与 uid 及全部关联；软删会 **释放** 工号与域账号（同号新用户可再建，且软删同时清理 `user_roles` / `user_orgs` 关联）。迁移 000006 已将历史软删行的工号/域账号加 `#del#` 后缀清理占用。
 
 ### 用户-角色关联
 
@@ -552,7 +555,9 @@ Repository：`List(ctx, query)` 动态拼 WHERE；另提供 `FindByEmployeeNo(ct
 |------|------|
 | 不能删除/禁用最后一个 `superadmin` | 避免锁死系统 |
 | 不能删除自己 | — |
+| 不能禁用自己（B4-3） | 自禁用后需他人恢复，易产生工单；与「不能删除自己」对齐 |
 | `is_system` 用户不可删除 | 种子 admin |
+| `is_system` 用户不可禁用（B4-3） | 与删除保护对齐——种子 admin 被禁用将失去兜底管理入口 |
 | `admin` 不能改 `is_system` 资源 | 不能删系统角色/菜单/组织，不能改 superadmin 用户 |
 | `admin` 不能给他人分配 `superadmin` | 防提权 |
 | `admin` 不能重置 `admin`/`superadmin` 密码 | 已在 02-auth 定义 |
@@ -601,9 +606,11 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | List - employee_no 精确 | `employee_no=E20240086` | **0 或 1** 条 |
 | FindByEmployeeNo | 存在/不存在工号 | 单条或 ErrNotFound |
 | 软删除用户 | deleted_at 不为空，列表查询不包含 |
-| 软删除后 username 可复用 | 创建同名 username 成功 |
-| 软删除后 employee_no 不可复用 | 同工号 Create → **409 + 30007** |
-| 软删除后域账号不可复用 | 同 `(user_domain, domain_account)` Create → **409 + 30008** |
+| 软删除后 username / employee_no 可复用 | 同名同工号 Create 成功（部分唯一索引过滤软删行） |
+| 软删除后域账号可复用 | 同 `(user_domain, domain_account)` Create 成功 |
+| 活跃用户间唯一性 | 同工号 Create → **409 + 30007**；同域域账号 → **409 + 30008** |
+| 软删除级联 | `user_roles` / `user_orgs` 关联被清理；软删 0 行时报 ErrUserNotFound 且事务回滚 |
+| 超管守护 | 最后一名 superadmin 不可软删/禁用（guard + count + 写同事务）；advisory lock 阻塞竞争事务 |
 | 分配角色 | user_roles 表记录正确 |
 | 查询用户角色 | 返回角色列表 |
 
@@ -626,6 +633,7 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 创建用户含 org_ids | Create + org_ids | 同事务创建用户并 SetUserOrgs |
 | admin 分配 superadmin | admin 操作 | 返回越权错误（403 + 30009） |
 | admin 重置同级 admin | 两用户均为 admin 角色 | 403 + 30005 |
+| admin 禁用/删除/改同级 | 非重置密码的写路径 | 403 + 30010（通用防提权码；重置密码保留 30005 专用文案） |
 | 多角色 EffectivePriority | 用户绑 viewer(30)+operator(20) | EffectivePriority=20；operator 不能重置该用户 |
 | 多角色 OR 鉴权 | 用户绑 viewer+user_manager | viewer 无 POST 权限但 user_manager 有 → 200 |
 
@@ -644,7 +652,7 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 | 创建含 org_ids | `POST /users` + org_ids | 200 + user_orgs 正确 |
 | 分配组织 | `POST /users/orgs` | 200 + user_orgs 全量覆盖 |
 | 详情 - 不存在 | `GET /users/99999` | 404 |
-| 删除 - 成功 | `POST /users/delete` body `{ "id": "1" }` | 200 |
+| 删除 - 成功 | `POST /users/delete` body `{ "user_id": "1" }` | 200 |
 
 ---
 

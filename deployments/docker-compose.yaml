@@ -1,13 +1,30 @@
+# 完整部署用 compose：包含应用 + 数据库 + 缓存
+# D2-33：显式项目名（默认取目录名，与 dev compose 同目录会共享网络/卷前缀）
+name: zhuzhao
+# 使用方法：
+#   1. 先构建镜像：docker build -t zhuzhao:latest -f deployments/Dockerfile .
+#   2. 启动：docker compose -f deployments/docker-compose.yaml up -d
+#   3. 执行迁移（D2-33：app 镜像不含 migrate 二进制，用官方镜像跑一次性容器；
+#      PG 默认不暴露宿主机端口，走 compose 内网 zhuzhao_default）：
+#      docker run --rm --network zhuzhao_default \
+#        -v "$PWD/migrations:/migrations" \
+#        migrate/migrate:v4.17.0 \
+#        -path=/migrations \
+#        -database "postgres://zhuzhao:${POSTGRES_PASSWORD:-zhuzhao_dev}@postgres:5432/zhuzhao?sslmode=disable" up
+#      （或临时打开 postgres 的 ports 映射后走宿主机 make migrate-up）
+#
+# 密码/密钥等敏感配置请通过 .env 文件注入，不要直接写在这里
+
 services:
   postgres:
-    image: postgres:15          # 对齐云服务版本
+    image: postgres:15
     container_name: zhuzhao-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: zhuzhao
       POSTGRES_USER: zhuzhao
-      POSTGRES_PASSWORD: zhuzhao_dev
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      TZ: Asia/Shanghai
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,12 +32,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    # 部署时默认不暴露端口到宿主机，应用通过 docker 网络访问
+    # 如需从宿主机连接调试，取消注释下面两行
+    # ports:
+    #   - "5432:5432"
 
   redis:
-    image: redis:6.2-alpine     # 对齐云服务版本
+    image: redis:6.2-alpine
     container_name: zhuzhao-redis
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     volumes:
       - redis_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf:ro
@@ -30,6 +50,40 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  app:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    image: zhuzhao:latest
+    container_name: zhuzhao-app
+    restart: unless-stopped
+    environment:
+      # 通过环境变量覆盖配置，优先级高于 config.yaml
+      # D2-02：变量名必须是 APP_DATABASE_*（viper AutomaticEnv 对 database.* 键的
+      # 自动映射名）——原 APP_DB_* 五个变量全部不被读取，app 会回退 config.yaml
+      # 连 localhost 导致启动失败（phase1/11 号报告实测 APP_DATABASE_* 生效）
+      APP_DATABASE_HOST: postgres
+      APP_DATABASE_PORT: "5432"
+      APP_DATABASE_USER: zhuzhao
+      APP_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      APP_DATABASE_DBNAME: zhuzhao
+      APP_REDIS_HOST: redis
+      APP_REDIS_PORT: "6379"
+      APP_SERVER_PORT: "33333"
+      APP_SERVER_MODE: release
+      TZ: Asia/Shanghai
+      # JWT 密钥必须通过环境变量注入，勿使用默认值
+      APP_JWT_SECRET: ${JWT_SECRET}
+      APP_JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30m}
+      APP_JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
+    ports:
+      - "${APP_PORT:-33333}:33333"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pg_data:

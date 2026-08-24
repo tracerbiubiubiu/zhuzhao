@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
@@ -22,6 +24,10 @@ func New(cfg config.DatabaseConfig) (*pgxpool.Pool, func(), error) {
 	poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime
 	poolConfig.MaxConnIdleTime = cfg.ConnMaxIdleTime
 	poolConfig.ConnConfig.ConnectTimeout = cfg.ConnectTimeout
+	// D2-39：describe 结果按 SQL 文本缓存（按连接隔离）——全仓无显式 Prepare，
+	// 默认模式每查询重复 parse/describe/plan；一行切换全部 repository 受益。
+	// 无在线 DDL、无 PREPARE 重名场景，无缓存失效风险
+	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
 
 	if poolConfig.ConnConfig.RuntimeParams == nil {
 		poolConfig.ConnConfig.RuntimeParams = make(map[string]string)
@@ -39,7 +45,11 @@ func New(cfg config.DatabaseConfig) (*pgxpool.Pool, func(), error) {
 		return nil, nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
+	// D2-47：Ping 独立超时——原与 New 共用 ConnectTimeout ctx，DNS+TLS 慢时
+	// 建池已耗尽预算，Ping 必超时导致初始化误判（池本身可能可用）
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer pingCancel()
+	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
 		return nil, nil, fmt.Errorf("failed to ping database: %w", err)
 	}

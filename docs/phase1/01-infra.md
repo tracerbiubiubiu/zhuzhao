@@ -265,7 +265,7 @@ internal/pkg/redis/
 
 - ✅ **用户 ID 类型**：`BIGINT`/`int64`，JSON 序列化为 string（使用 `json:",string"` tag，前端精度安全）。
 - ✅ **组织 ID / 编码**：ID 为 `BIGINT`；业务编码 `code` 为 `VARCHAR`（ltree 路径用 code）。
-- ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
+- ✅ **Casbin adapter**：直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3）。
 - ✅ **组织模块范围**：Phase 1 实现完整 CRUD。
 - ✅ **ID 自增策略**：
   - 用户：BIGSERIAL 自增

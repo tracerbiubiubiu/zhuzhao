@@ -1,6 +1,7 @@
 # 组织模块设计
 
-> 模块代码（目标路径）：`internal/service/org/` + `internal/repository/org/` + `internal/handler/org/`
+> 模块代码（目标路径，Phase 2 迁入）：`internal/service/org/` + `internal/repository/org/` + `internal/handler/org/`
+> **Phase 1 现状（D2-43）**：扁平结构——`internal/service/org_service.go` / `internal/repository/org_repo.go` / `internal/handler/org_handler.go`
 >
 > 旧系统参考：`doc/module-assessment-2026-08/organization.md`
 >
@@ -16,6 +17,21 @@
 - 为 `role` 提供组织角色（BFS 三源之一）
 - 为 `authz` 提供组织关系判断（ltree 查询）
 - Phase 2 起自注册 `OrgResource` 到 ResourceRegistry
+
+### 1.1 Phase 1 设计决策：组织为共享资源（D2-37①）
+
+> 决策日期：2026-08-24（[review 03 号报告 D2-37](../review/03-second-deep-review-findings.md) 上线前决策点裁决，选方案①文档化）
+
+Phase 1 组织写路径（AddMember / RemoveMember / Move / Update / Delete）**仅做存在性校验 + 路由级 RBAC（L1）防护，不做资源级属主/组织关系校验（L3）**——与用户侧 `SetUserOrgs` 的 `ensureCanManage` 不对称，属有意取舍而非疏漏：
+
+| 项 | 说明 |
+|----|------|
+| 暴露面 | 任何持有 org 写路由权限的主体可操作**全部**组织。种子默认态仅 superadmin/admin 持有；但菜单管理页正常使用即可给自定义角色勾选 org 写按钮——第一个自定义角色形成即暴露面形成 |
+| 为什么可接受 | Phase 1 组织无权限语义（org_roles 未引入），组织写操作不构成提权通道，属数据完整性缺口而非提权（review 03 D2-37 复核结论） |
+| 终局保护 | Phase 2c Step 9 防提权矩阵：AddMember/RemoveMember 扩展目标校验 + org_roles 语义 + 组内级别校验（[phase2/04-org-delegation](../phase2/04-org-delegation.md)） |
+| 配套修正 | operator/viewer 种子角色描述修正（原描述暗示的权限绑定并不存在，见迁移 000002/000009） |
+
+**Phase 1 部署约束**：在 2c Step 9 落地前，org 写权限（`org:create/update/delete/move/member` 菜单）只应授予等同管理员的受信角色，不应下放给业务自定义角色。
 
 ---
 
@@ -126,7 +142,10 @@ type OrgService interface {
     List(ctx context.Context, query OrgListQuery) ([]*model.Organization, int64, error)
 
     // 树操作
-    GetTree(ctx context.Context) ([]*OrgNode, error)
+    // GetTree 返回树形结构：model.Organization 递归嵌套 Children（db:"-"，平铺数据由 OrgRepo 提供，
+    // OrgService 按 parent_id 归并组装；与 MenuService.GetTree 同构）。Phase 1 实现：
+    // internal/service/org_service.go buildOrgTree。
+    GetTree(ctx context.Context) ([]*model.Organization, error)
     MoveNode(ctx context.Context, code string, newParentCode string) error
 
     // 成员管理（Phase 1：无 role_id；写逻辑 SSOT 在此）
@@ -135,7 +154,10 @@ type OrgService interface {
     SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64, primaryOrgID *int64) error
     SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, orgIDs []int64, primaryOrgID *int64) error
     GetMembers(ctx context.Context, orgID int64, query MemberListQuery) ([]*model.User, int64, error)
-    GetUserOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
+    // GetUserOrgs 返回用户组织关系（含 is_primary/joined_at）——B4-5 修订：
+    // 实际返回 []*model.UserOrg（is_primary 是该接口核心信息），原设计签名
+    // []*model.Organization 有误；handler 包装为 {"orgs": [...]}
+    GetUserOrgs(ctx context.Context, userID int64) ([]*model.UserOrg, error)
 
     // 组织角色（Phase 2b）
     AssignRoles(ctx context.Context, orgCode string, roleIDs []int64) error
@@ -159,6 +181,9 @@ type OrgService interface {
 
 ### 4.1 创建组织（ltree path 维护）
 
+> **D2-44④ 层级上限**：父节点 path 段数 + 1 > 20 时前置拒绝（400）——
+> 超深子树拼 path 时 ltree 报错为 500，前置校验转业务参数错误。
+
 ```go
 func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.Organization, error) {
     var path ltree.Ltree
@@ -172,6 +197,7 @@ func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.O
         if err != nil {
             return nil, err
         }
+        // D2-44④：strings.Count(parent.Path, ".") + 2 > maxOrgPathDepth(20) → 400
         path = ltree.Ltree(parent.Path.String() + "." + req.Code)
     }
 
@@ -187,6 +213,13 @@ func (s *OrgService) Create(ctx context.Context, req CreateOrgRequest) (*model.O
 ```
 
 ### 4.2 移动节点（更新子树 path）
+
+> **Phase 1 实现状态（B3-2）**：`internal/repository/org_repo.go` Move 已事务化——
+> `pg_advisory_xact_lock(hashtext('org:move'))` 全局串行化并发移动（替换下述步骤 3 的
+> Redis 分布式锁，Phase 3 多实例时再切换）→ 事务内 `FOR UPDATE` 重读节点与新父行 →
+> 事务内环检测（`parentPath <@ oldPath` 前缀判断）→ 锁旧子树（谓词含 deleted_at）→
+> 级联 UPDATE 带 **RowsAffected 校验**（0 行 = 节点被并发移动，409 而非静默成功）。
+> 并发交叉移动由集成测试 `TestOrgRepo_MoveConcurrentCrossMove` 守护。
 
 ```
 POST /api/v1/orgs/move {id, newParentId}
@@ -224,13 +257,21 @@ OrgService（SSOT）
 
 #### AddMember / RemoveMember
 
+> **实现（B3-1，`internal/repository/org_repo.go`）**：幂等不降级——重复添加已存在
+> 成员且未传 is_primary（零值 false）时 primary 保持原状；仅显式 primary=true 才提升
+> （同事务先清该用户其它 primary）。并发双 primary 由 000008 部分唯一索引兜底
+>（`idx_user_orgs_single_primary`，触发时 409 + 50011——D2-15：AddMember 路径
+> 已同型映射，原仅 SetUserOrgsTx 覆盖）。
+
 ```
 POST /api/v1/orgs/members
 Body: { org_id, user_id, is_primary? }
 
 1. 校验 org、user 存在且未软删
-2. INSERT INTO user_orgs (user_id, org_id, is_primary) ON CONFLICT DO NOTHING
-3. 若 is_primary=true → 同事务 UPDATE user_orgs SET is_primary=false WHERE user_id=? AND org_id<>?
+2. 若 is_primary=true → 同事务 UPDATE user_orgs SET is_primary=false WHERE user_id=?
+3. INSERT ... ON CONFLICT (user_id, org_id) DO UPDATE
+   SET is_primary = true WHERE EXCLUDED.is_primary
+   （false 不回写——幂等不降级；true 提升）
 ```
 
 ```
@@ -250,7 +291,10 @@ Body: { user_id, org_ids[], primary_org_id? }
 1. 校验 user、各 org 存在
 2. primary_org_id 须在 org_ids 内（若提供）
 3. 事务：DELETE FROM user_orgs WHERE user_id=?
-4. INSERT 各 (user_id, org_id, is_primary)
+4. org_ids 去重（B3-4：保序去重，重复 ID 不再触发主键冲突 500）
+5. INSERT 各 (user_id, org_id, is_primary)
+   —— D2-16：INSERT...SELECT 过滤软删组织，命中软删 org_id → 404 + `ErrOrgNotFound`
+   （原裸 INSERT 触发 FK 23503 → 500 且静默丢绑定；与 SetRolesTx B4-3 对齐）
 ```
 
 创建用户时 `org_ids` 由 `UserService.Create` 在同一事务内调用 `SetUserOrgsTx`，见 [phase1/04-user.md](../phase1/04-user.md)。
@@ -331,11 +375,13 @@ SELECT EXISTS(
 
 ### Phase 1
 
-- 组织 CRUD（含 ltree path 维护）
+- 组织 CRUD（含 ltree path 维护）— **Phase 1 收尾必完成**（进 Phase 2b 前）
 - 组织树查询 + 移动节点（事务内更新子树 path）
 - 系统组织保护
 - 基础成员管理（AddMember/RemoveMember/GetMembers；API：`POST /orgs/members`、`POST /orgs/members/delete`、`GET /orgs/:id/members`）
 - `code` 校验：仅 `[A-Za-z0-9_]`（ltree 标签）
+
+> 排期详见 [phase1/README §2.4](../phase1/README.md#24-step-79-crud-补全计划)。
 
 ### Phase 2b
 

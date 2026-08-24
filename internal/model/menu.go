@@ -8,7 +8,7 @@ import (
 type Menu struct {
 	ID         int64      `json:"id,string" db:"id"`
 	ParentID   *int64     `json:"parent_id,string" db:"parent_id"`
-	Code       string     `json:"code" db:"code"`           // 业务编码
+	Code       string     `json:"code" db:"code"` // 业务编码
 	Name       string     `json:"name" db:"name"`
 	MenuType   int        `json:"menu_type" db:"menu_type"` // 1=目录 2=菜单 3=按钮
 	Path       string     `json:"path" db:"path"`           // 前端路由

@@ -773,34 +773,26 @@ func NewRS256Manager(privateKey *rsa.PrivateKey) *JWTManager {
 
 ### 10.1 问题背景
 
-Phase 1 骨架阶段用内存 Adapter（`memdb`），生产环境必须持久化到 PostgreSQL。需要选定一个社区维护、兼容 Casbin v2 + pgx v5 的 Adapter。
+Phase 1 骨架阶段用内存 Adapter（`memdb`），生产环境必须持久化到 PostgreSQL。需要选定一个社区维护、兼容 Casbin v3 + pgx v5 的 Adapter。
 
 ### 10.2 候选方案对比（2026-08 调研）
 
 | Adapter | Casbin 版本 | pgx 版本 | pgxpool | Batch | Filtered | Updatable | Stars | 维护状态 |
 |---------|------------|---------|---------|-------|----------|-----------|-------|---------|
-| `pckhoi/casbin-pgx-adapter/v3` | **v2** | **v5** | ❌（单 Conn） | ❌ | ✅ | ❌ | ~150 | 活跃（v3.2.0 2024-08） |
-| `noho-digital/casbin-pgx-adapter` | v3 | v5 | ❌ | ✅ | ✅ | ✅ | 新 | 活跃（v1.2.1 2026-04） |
+| `pckhoi/casbin-pgx-adapter/v3` | v2 | v5 | ❌（单 Conn） | ❌ | ✅ | ❌ | ~150 | 停滞（v3.2.0 2024-08） |
+| `noho-digital/casbin-pgx-adapter` | **v3** | **v5** | ✅ | ✅ | ✅ | ✅ | 新 | 活跃（v1.2.2 2026-07） |
 | `onlyin32bit/casbin-pgx-pgxpool-adapter` | v3 | v5 | ✅ | ✅ | ❌ | ✅ | 3 | 新（2026-02） |
 | 官方 `casbin/gorm-adapter` | v2 | GORM（非 pgx 原生） | ✅ | ✅ | ✅ | ✅ | ~600 | 活跃 |
 
 ### 10.3 决策
 
-**Phase 1 目标：`pckhoi/casbin-pgx-adapter/v3`（直接 PG adapter）**
+**选型：`noho-digital/casbin-pgx-adapter`（Casbin v3 + pgx v5）**
 - SSOT：[phase1/03-authz.md](../phase1/03-authz.md)、[phase1/01-infra.md](../phase1/01-infra.md)
-- 骨架代码过渡期可暂用内存 Adapter 跑通流程；**Phase 1 交付前必须切换 PG adapter**（重启后策略不丢）
-
-**选型：`pckhoi/casbin-pgx-adapter/v3`**
-- 兼容 Casbin v2（项目当前版本）
+- 兼容 Casbin v3（API 与 v2 基本一致，迁移成本低）
 - 兼容 pgx v5（项目当前版本）
-- 支持 FilteredAdapter（按过滤器加载部分策略，对"每资源独立 Enforcer"很重要）
-- 不支持 Batch/Updatable，但 Phase 1 不需要批量操作
-
-**Phase 2 评估：迁移到 Casbin v3 + `noho-digital/casbin-pgx-adapter`**
-- Casbin v3 性能更好、API 更现代
-- `noho-digital` adapter 支持 Batch + Filtered + Updatable，功能最全
-- 但需要整个项目从 Casbin v2 迁移到 v3，有 breaking changes
-- 评估时机：微服务化时，或 Phase 1 遇到性能瓶颈时
+- 支持 pgxpool（通过 `NewAdapterWithPool` 传入现有连接池）
+- 支持 Batch + Filtered + Updatable，功能最全
+- 活跃维护（v1.2.2 2026-07）
 
 **为什么不选 GORM Adapter**：
 - 项目 DB 层用 pgx 原生，引入 GORM 会多一层 ORM 抽象
@@ -829,7 +821,7 @@ CREATE TABLE casbin_rule (
 
 ### 10.5 SyncedEnforcer 兼容性
 
-`pckhoi/casbin-pgx-adapter/v3` 实现了标准 `Adapter` 接口，可直接传入 `casbin.NewSyncedEnforcer(model, adapter)`。`SyncedEnforcer` 内部加锁保证并发安全，与 Adapter 无冲突。
+`noho-digital/casbin-pgx-adapter` 实现了标准 `Adapter` 接口（含 Context/Batch/Filtered/Updatable），可直接传入 `casbin.NewSyncedEnforcer(model, adapter)`。`SyncedEnforcer` 内部加锁保证并发安全，与 Adapter 无冲突。
 
 ---
 
@@ -861,7 +853,7 @@ CREATE TABLE casbin_rule (
 2. **强 ACID 事务**——user、user_roles、user_orgs 多表关联更新需原子性。MongoDB 4.0+ 支持多文档事务但有性能开销和 16MB 限制。
 3. **资源级列表过滤**——"查出当前用户能看到的所有工单"用 PG 直接 `WHERE org_path @> user_org_path`；MongoDB 需先查路径再 `$in` 查询，多一轮交互。
 4. **数据完整性**——外键、唯一约束、CHECK 约束由 DB 保证；MongoDB 依赖应用层。
-5. **Casbin Adapter 兼容**——`pckhoi/casbin-pgx-adapter/v3` 兼容 Casbin v2 + pgx v5（详见 §10）。
+5. **Casbin Adapter 兼容**——`noho-digital/casbin-pgx-adapter` 兼容 Casbin v3 + pgx v5（详见 §10）。
 6. **当前投入已基于 PG**——所有设计文档、Schema、代码骨架均基于 PG，切换成本极高。
 
 ### 11.5 MongoDB 的优势及应对

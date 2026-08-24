@@ -70,17 +70,22 @@ CREATE TABLE menu_apis (
 type MenuService interface {
     // CRUD
     Create(ctx context.Context, req CreateMenuRequest) (*model.Menu, error)
+    // Update 为 patch 语义（D2-17）：path/component/icon/permission/sort_order 指针化——
+    // 未传（nil）保持现值（原全量覆盖零值穿透：未传 component/icon 即被清空）
     Update(ctx context.Context, code string, req UpdateMenuRequest) error
     Delete(ctx context.Context, code string) error
     GetByCode(ctx context.Context, code string) (*model.Menu, error)
-    GetTree(ctx context.Context) ([]*MenuNode, error)
+    // GetTree 管理端完整菜单树：model.Menu 递归嵌套 Children（db:"-"），含按钮节点
+    // （角色分配菜单需勾选按钮）。Phase 1 实现：internal/service/menu_service.go buildMenuTree。
+    GetTree(ctx context.Context) ([]model.Menu, error)
 
     // API 绑定
     BindAPIs(ctx context.Context, menuCode string, apis []APIRef) error
     GetAPIs(ctx context.Context, menuCode string) ([]APIRef, error)
 
     // 前端权限数据
-    GetUserMenuTree(ctx context.Context, userID int64) ([]*MenuNode, error)
+    // 用户侧菜单树（不含按钮）。Phase 1 实际方法名为 GetUserMenus（internal/service/menu_service.go）。
+    GetUserMenuTree(ctx context.Context, userID int64) ([]model.Menu, error)
     GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 }
 ```
@@ -98,6 +103,8 @@ type MenuService interface {
 ```
 
 创建/更新菜单时校验类型层级。
+
+**类型必要字段（B4-4）**：页面(type=2)必有 `path`（动态路由注册）、按钮(type=3)必有 `permission`（权限码下发）——缺失返回 400，防止「树里有节点、权限码里无路由」的矛盾数据。
 
 ### 4.2 前端菜单树构建
 

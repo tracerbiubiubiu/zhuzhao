@@ -53,7 +53,7 @@ CREATE TABLE role_menus (
 
 ### Casbin 策略表
 
-由 `pckhoi/casbin-pgx-adapter/v3` 管理，策略 subject 为 `role::{code}`：
+由 `noho-digital/casbin-pgx-adapter`（Casbin v3）管理，策略 subject 为 `role::{code}`：
 
 ```sql
 CREATE TABLE casbin_rule (
@@ -78,10 +78,12 @@ type RoleService interface {
     // CRUD
     Create(ctx context.Context, req CreateRoleRequest) (*model.Role, error)
     GetByCode(ctx context.Context, code string) (*model.Role, error)
+    // Update 为 patch 语义（D2-03/D2-17）：status/description/sort_order 指针化——
+    // 未传（nil）保持现值，显式传 0/1 才更新状态（与用户模块 B2-3 对齐）
     Update(ctx context.Context, code string, req UpdateRoleRequest) error
     Delete(ctx context.Context, code string) error
     List(ctx context.Context) ([]*model.Role, error)
-    GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树
+    GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树（Phase 2b：roles.parent_id 落地后实现，Phase 1 角色为平铺无继承）
 
     // 菜单分配
     AssignMenus(ctx context.Context, roleCode string, menuIDs []int64) error

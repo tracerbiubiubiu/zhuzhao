@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,19 +10,33 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
 
+// 令牌类型声明（F-1 修复：防止 RT 冒充 AT 的令牌类型混淆）
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
+// ErrTokenTypeMismatch 令牌类型不符（如用 RefreshToken 访问需 AccessToken 的接口）
+var ErrTokenTypeMismatch = errors.New("token type mismatch")
+
+// ErrTokenExpired 令牌已过期（B2-1：供中间件映射 20002，与「token 失效」区分）
+var ErrTokenExpired = errors.New("token expired")
+
 // AccessClaims accessToken 的 payload
 type AccessClaims struct {
 	UserID             int64  `json:"uid,string"`
 	Username           string `json:"username"`
 	JTI                string `json:"jti"`
 	MustChangePassword bool   `json:"mcp,omitempty"` // 首次登录改密标记
+	TokenType          string `json:"typ"`           // 必须为 TokenTypeAccess
 	jwt.RegisteredClaims
 }
 
 // RefreshClaims refreshToken 的 payload
 type RefreshClaims struct {
-	UserID   int64  `json:"uid,string"`
-	DeviceID string `json:"device_id"`
+	UserID    int64  `json:"uid,string"`
+	DeviceID  string `json:"device_id"`
+	TokenType string `json:"typ"` // 必须为 TokenTypeRefresh
 	jwt.RegisteredClaims
 }
 
@@ -48,6 +63,7 @@ func (m *Manager) GenerateAccessToken(userID int64, username string, mustChangeP
 		Username:           username,
 		JTI:                jti,
 		MustChangePassword: mustChangePassword,
+		TokenType:          TokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(m.accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -65,8 +81,9 @@ func (m *Manager) GenerateRefreshToken(userID int64, deviceID string, ttl time.D
 	now := time.Now()
 	jti := generateJTI()
 	claims := RefreshClaims{
-		UserID:   userID,
-		DeviceID: deviceID,
+		UserID:    userID,
+		DeviceID:  deviceID,
+		TokenType: TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -79,7 +96,7 @@ func (m *Manager) GenerateRefreshToken(userID int64, deviceID string, ttl time.D
 	return signed, jti, err
 }
 
-// ParseAccessToken 解析 accessToken
+// ParseAccessToken 解析 accessToken；严格校验 typ 声明，拒绝 refreshToken 冒用
 func (m *Manager) ParseAccessToken(tokenString string) (*AccessClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &AccessClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -88,16 +105,24 @@ func (m *Manager) ParseAccessToken(tokenString string) (*AccessClaims, error) {
 		return m.secret, nil
 	})
 	if err != nil {
+		// B2-1：过期错误包装为本包哨兵（errors.Is 可判），上层据此返回 20002
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("%w: %w", ErrTokenExpired, err)
+		}
 		return nil, err
 	}
 	claims, ok := token.Claims.(*AccessClaims)
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid token")
 	}
+	// F-1：无 typ 或 typ 非 access 的一律拒绝（旧 token 需重新登录换取）
+	if claims.TokenType != TokenTypeAccess {
+		return nil, ErrTokenTypeMismatch
+	}
 	return claims, nil
 }
 
-// ParseRefreshToken 解析 refreshToken
+// ParseRefreshToken 解析 refreshToken；严格校验 typ 声明，拒绝 accessToken 冒用
 func (m *Manager) ParseRefreshToken(tokenString string) (*RefreshClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &RefreshClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -111,6 +136,9 @@ func (m *Manager) ParseRefreshToken(tokenString string) (*RefreshClaims, error) 
 	claims, ok := token.Claims.(*RefreshClaims)
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+	if claims.TokenType != TokenTypeRefresh {
+		return nil, ErrTokenTypeMismatch
 	}
 	return claims, nil
 }

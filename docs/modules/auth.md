@@ -119,37 +119,46 @@ type TokenPair struct {
 ### 5.1 登录流程
 
 ```
-POST /api/v1/auth/login {employee_no, password}
+POST /api/v1/auth/login {employee_no, password, device_id?}
+
+0. 入参约束（D2-01/D2-22）
+   → employee_no ≤50、device_id ≤64 且字符白名单 [a-zA-Z0-9_-]
+     （防超大键灌爆 Redis maxmemory / 键不可读）
 
 1. 登录限流检查
    → Redis: lock:login:{employee_no}
    → 已锁定？返回 429
 
 2. 查询用户
-   → user.GetByEmployeeNo(employee_no)
-   → 不存在或无工号？返回 401（与密码错误相同响应，防枚举）
+   → userRepo.FindByEmployeeNo(employee_no)
+   → 不存在或无工号？dummy bcrypt 比对（B4-1：拉平时延防定时侧信道枚举）+ 计入失败计数，
+     返回 401（与密码错误相同响应，防枚举）
 
-3. 验证密码
+3. 检查用户状态（实现顺序：状态检查先于密码验证，比原设计更严格——
+   禁用账号无法通过密码探测，且禁用也计入失败计数）
+   → user.Status != 1？dummy bcrypt 比对（D2-20：与不存在分支对齐，
+     防禁用工号枚举）+ 返回 401（与密码错误相同文案，防枚举；见 phase1/02-auth）
+
+4. 验证密码
    → bcrypt.Compare(password, user.PasswordHash)
    → 失败？Eval LoginLocker Lua（INCR+EXPIRE 原子）；达阈值 → 429
    → count > 5？返回 429
 
-4. 检查用户状态
-   → user.Status != 1？返回 401（与密码错误相同文案，防枚举；见 phase1/02-auth）
-
 5. 签发 Token
    → AT: JWT(uid + username + jti + mcp), TTL=30min，HS256
-   → RT: 随机串, TTL=7d
+   → RT: JWT(uid + deviceId), TTL=7d
 
-6. 存储
-   → Redis SET refresh:{userId}:{deviceId} = rt, TTL=7d
-   → Redis SADD devices:{userId} = deviceId
+6. 存储（Phase 1 现状——D2-49①：无 devices 集合、RT value 为裸 hash，
+   devices:{userId} 集合与设备元数据随 Phase 2b Step 7 首任务落地）
+   → Redis SET refresh:{userId}:{deviceId} = sha256(rt), TTL=7d
 
 7. 清除登录限流
    → Redis DEL lock:login:{employee_no}
 
 8. 返回 {accessToken, refreshToken, expiresIn}
 ```
+
+> **B4-1 注**：上述流程已按实现修订（原 5.1 写「3 验证密码 → 4 检查状态」，实际实现为状态检查在前）；以 `internal/service/auth_service.go` Login 为准。
 
 ### 5.2 RT 轮换流程
 

@@ -85,6 +85,9 @@
 | 20006 | `ErrAccountLocked` | 账号已锁定 | 429 |
 | 20007 | `ErrPasswordChangeRequired` | 需要修改密码 | 403 |
 | 20008 | `ErrMultipleAuthMethods` | 不能同时使用多种认证方式 | 400 |
+
+<!-- D2-44①：以下为未实现预留段（errcode.go 尚未定义，勿据此对接） -->
+
 | 20009 | `ErrAKInvalid` | 访问密钥无效 | 401 |
 | 20010 | `ErrAKTimestampExpired` | 请求已过期 | 401 |
 | 20011 | `ErrAKReplay` | 重复请求 | 401 |
@@ -108,8 +111,10 @@
 | 30007 | `ErrEmployeeNoAlreadyExists` | 工号已存在（含软删占用，不可复用） | 409 |
 | 30008 | `ErrDomainAccountAlreadyExists` | 同域下域账号已存在（含软删占用，不可复用） | 409 |
 | 30009 | `ErrCannotAssignHigherRole` | 不能分配更高权限的角色 | 403 |
+| 30010 | `ErrCannotManageHigher` | 不能操作同级或更高级权限对象 | 403 |
 
-> `30006`、`70003`：Phase 1 **验收必需**；`30007`–`30009`、`50007` 随 user/org 模块实现写入 `errcode.go`（码号预留，勿改号）。
+> `30006`、`70003`：Phase 1 **验收必需**；`30007`–`30010`、`50007` 随 user/org 模块实现写入 `errcode.go`（码号预留，勿改号）。
+> `30010` 为通用防提权码（update/delete/status/roles/orgs 等写路径）；重置密码场景仍返回 `30005` 专用文案。
 
 ### 角色 40000–40999
 
@@ -131,6 +136,13 @@
 | 50005 | `ErrOrgHasMembers` | 该组织下有成员，无法删除 | 409 |
 | 50006 | `ErrOrgIsSystem` | 系统内置组织不可删除 | 403 |
 | 50007 | `ErrNotOrgMember` | 用户不是该组织成员 | 404 |
+| 50011 | `ErrDuplicatePrimaryOrg` | 该用户已有主组织，并发设置主组织冲突，请重试 | 409 |
+| 50012 | `ErrOrgSystemProtected` | 系统内置组织受保护，禁止此操作 | 403 |
+
+> `50011`（B3-3）：000008 部分唯一索引并发兜底；`50012`（B4-5）：Update 场景，与删除的 50006 区分文案。
+
+<!-- D2-44①：以下为未实现预留段（errcode.go 尚未定义，勿据此对接） -->
+
 | 50008 | `ErrCannotAssignHigherOrgMemberRole` | 不能分配更高的组内角色 | 403 |
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 |
@@ -153,10 +165,13 @@
 | 70001 | `ErrNoPermission` | 无权限 | 403 |
 | 70002 | `ErrPolicyExists` | 策略已存在 | 409 |
 | 70003 | `ErrNoRoles` | 未分配角色 | 403 |
+| 70004 | `ErrPolicyReloadFailed` | 策略已保存但内存刷新失败，权限可能延迟生效，请稍后重试或联系运维 | 500 |
 
-> 见上文通用说明：`30006` 与 `70003` 为 Phase 1 验收必需错误码。
+> `70004`（B3-5）：AssignMenus/DeleteRole 提交 DB 后 LoadPolicy 重试失败时返回——DB 已生效、内存策略陈旧，客户端可感知「部分成功」语义。见上文通用说明：`30006` 与 `70003` 为 Phase 1 验收必需错误码。
 
 ### 工单 90000–90999
+
+<!-- D2-44①：整段为未实现预留（errcode.go 尚未定义，勿据此对接） -->
 
 | code | 常量 | message | HTTP |
 |------|------|---------|------|
@@ -165,9 +180,11 @@
 | 90003 | `ErrTicketTypeNotFound` | 工单类型不存在 | 404 |
 | 90004 | `ErrTicketAlreadyClosed` | 工单已关闭 | 409 |
 
-> Phase **2a** ticket 模块实现时写入 `errcode.go`（码号预留，勿改号）。不可见工单对外可用 **90001**（与 10004 二选一，推荐 90001）。
+> Phase **2a** ticket 模块实现时写入 `errcode.go`（码号预留，勿改号；**当前代码尚未定义 90000–90999 段**）。不可见工单对外统一 **90001**（决策已收口 2026-08-19，不再与 10004 二选一；10004 保留给通用资源不存在场景，见 [phase2/09-ticket §7](../phase2/09-ticket.md)）。
 
 ### 文件存储 91000–91999
+
+<!-- D2-44①：整段为未实现预留（errcode.go 尚未定义，勿据此对接） -->
 
 | code | 常量 | message | HTTP |
 |------|------|---------|------|

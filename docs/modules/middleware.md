@@ -19,8 +19,8 @@
 | 顺序 | 中间件 | 实现方式 | 职责 |
 |------|--------|---------|------|
 | 1 | Recovery | 自写（`recovery.go`） | panic 恢复 + 记录错误日志到 slog |
-| 2 | RequestID | `gin-contrib/requestid` | 生成/传递 request_id + 注入 context |
-| 3 | AccessLogger | `gin-contrib/slog` | 请求日志（method/path/status/cost），按状态码/路径分级 |
+| 2 | RequestID | 自写（`logger.go`） | 生成/传递 request_id + 注入 context；格式 `req-` + 32 hex |
+| 3 | AccessLogger | 自写（`logger.go`） | 请求日志（method/path/status/cost），按状态码/路径分级 |
 | 4 | CORS | `gin-contrib/cors` | Phase 1 AllowAllOrigins（全放开） |
 | 5 | SecurityHeaders | 自写（`security.go`） | 安全响应头（5 个 header） |
 | 6 | BodyLimit | 自写（`body_limit.go`） | 请求体大小限制（1MB） |
@@ -29,7 +29,7 @@
 
 | 路由组 | 中间件 | 说明 |
 |--------|--------|------|
-| `/api/v1/*` | JWT + Casbin + Audit | 需认证+鉴权+审计 |
+| `/api/v1/*` | JWT + Audit + Casbin | 需认证+审计+鉴权（B2-7：Audit 前置于 Casbin，被拒请求同样落审计） |
 | `/api/v1/auth/*` | — | 登录/刷新/登出，仅认证不鉴权 |
 | `/health/*` | — | 健康检查，无中间件 |
 | `/swagger/*` | — | 文档，无中间件 |
@@ -37,13 +37,16 @@
 ### 2.3 中间件执行顺序
 
 ```
-请求 → Recovery → RequestID(gin-contrib) → AccessLogger(gin-contrib/slog)
+请求 → Recovery → RequestID(自写) → AccessLogger(自写)
      → CORS(gin-contrib) → SecurityHeaders → BodyLimit
      │
      ├── /health/* → 直接返回
      ├── /swagger/* → 直接返回
      ├── /api/v1/auth/login → JWT 不检查（公开路由）→ Handler
-     └── /api/v1/* → JWT → Casbin → Audit → Handler
+     └── /api/v1/* → JWT → Audit → Casbin → Handler
+                      （B2-7：Audit 前置——Casbin 403 拒绝同样落审计，
+                        越权尝试留痕；JWT 401 拒绝不产生审计记录，
+                        认证失败由 LogLogin 显式记录）
 ```
 
 ---

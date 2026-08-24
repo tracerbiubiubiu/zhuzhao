@@ -1,0 +1,42 @@
+# 本地开发 compose：仅起 PG + Redis 依赖，应用在宿主机 make run/dev
+# D2-29：项目名/容器名/卷名与完整部署 compose（docker-compose.yaml）隔离——
+# 原两者共享 container_name 与卷，同时/交替使用时数据互污、端口互占
+name: zhuzhao-dev
+
+services:
+  postgres:
+    image: postgres:15          # 对齐云服务版本
+    container_name: zhuzhao-dev-postgres
+    environment:
+      POSTGRES_DB: zhuzhao
+      POSTGRES_USER: zhuzhao
+      POSTGRES_PASSWORD: zhuzhao_dev
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6.2-alpine     # 对齐云服务版本
+    container_name: zhuzhao-dev-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_redis_data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  dev_pg_data:
+  dev_redis_data:

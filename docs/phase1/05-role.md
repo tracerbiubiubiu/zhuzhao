@@ -101,7 +101,10 @@ CREATE TABLE role_menus (
   │   → 生成策略 p, role::user_manager, /api/v1/users, GET   （user_manager 为示例自定义角色）
   │   → 生成策略 p, role::user_manager, /api/v1/users, POST
   ├── 写入 casbin_rule 表（同一事务）
-  └── 事务提交后 enforcer.ReloadPolicy()
+  └── 事务提交后 enforcer.LoadPolicy()
+      失败处理（B3-5）：Error 日志（含 role 便于对账）+ 重试 1 次（100ms）
+      → 仍失败返回 500 + 70004（ErrPolicyReloadFailed）——DB 已生效、内存策略
+      陈旧，权限回收延迟生效直至下一次成功 LoadPolicy；调用方与运维可感知
 ```
 
 ### 菜单-API 绑定
@@ -190,6 +193,7 @@ Casbin 模型 matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"
 | 分配角色下拉 | **无** superadmin 选项 | 有 |
 | `GET /users` 用户列表 | **不含** 绑定 superadmin 的用户 | 含全部用户 |
 | `GET /users/:id` 超管用户 | **404**（与非存在一致，防推断） | 200 |
+| `GET /roles/:id` superadmin 角色 | **404**（B2-6：详情/菜单/策略读接口同样防推断） | 200 |
 | 改/删/禁用 superadmin 用户 | **404 或 403**（实现统一一种） | 允许（受最后一名 superadmin 保护） |
 | 审计日志 | Phase 1 可全体可见；Phase 2 可按 actor 过滤敏感条目 | 全部 |
 
@@ -255,6 +259,39 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 - 不能删除仍有用户关联的角色
 - 不能删除导致系统失去最后一个 superadmin 绑定的操作（与 user 模块一起校验）
 
+#### 角色禁用语义（status=0）
+
+> B1-1 修复（源自 [review/01 §R1-AUTHZ-01](../review/01-phase1-systematic-review-findings.md)）：禁用角色此前全链路不生效。
+
+`UpdateRoleRequest.status` 为指针字段（D2-03 patch 语义）——未传（nil）保持现值；显式传 `0` 禁用，**下次请求起**生效（与「角色变更下次请求生效」一致）。文档典型用法「只改名的请求」不再零值穿透静默禁用角色。
+
+> **创建即禁用（B4-4）**：`CreateRoleRequest.status` 为指针字段——nil 默认启用；显式传 `0` 可创建禁用角色（原零值合并导致不可能）。
+
+| 生效点 | 行为 |
+|--------|------|
+| Casbin L1 鉴权 | `GetRoleCodes` 不返回禁用角色 → 逐角色 enforce 不含它 → 其策略全部失效 |
+| 用户菜单/权限码 | `ListRoleIDsByUserID` 不含禁用角色 → 菜单与按钮权限码不下发 |
+| priority 档位 | `GetRoles` 不含禁用角色 → 不计入 `effectivePriority`（防提权比较） |
+| superadmin 保护 | `IsSuperadminUser*` / `CountActiveSuperadminUsers*` 均要求角色启用 |
+| casbin_rule | **不清除**（策略保留在 DB）——重新启用即恢复，无需重配菜单 |
+
+> 系统角色（superadmin/admin 等 `is_system=true`）不可禁用：`UpdateRole` 返回 `ErrRoleIsSystem`。
+> 用户列表按角色筛选（`role_code` 查询参数）**不过滤**禁用角色——筛选是数据查询语义，管理员仍可按禁用角色查找历史绑定用户。
+
+#### 角色写操作的目标校验
+
+> B1-2 修复（源自 [review/01 §R2-RM-01](../review/01-phase1-systematic-review-findings.md)）：此前仅校验新 priority 值，未校验操作者与目标角色的强弱关系。
+
+角色模块三个写操作统一接入 `canManageTarget`（与用户模块同语义：**操作者须严格更强** `actorP < targetP`，superadmin 直通）：
+
+| 操作 | 校验链 |
+|------|--------|
+| `UpdateRole` | `is_system` → **目标档位**（ensureCanManageRole）→ **新 priority 值**（ensureRolePriorityAllowed） |
+| `DeleteRole` | `is_system` → **目标档位** → 用户绑定 → 最后超管保护 |
+| `AssignMenus` | **系统角色仅 superadmin 可改**（ErrRoleIsSystem）→ **目标档位** → 菜单校验 |
+
+失败返回 `403 + 30010`（`ErrCannotManageHigher`，通用防提权码）。
+
 ---
 
 ## 测试用例
@@ -265,15 +302,23 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 |------|------|------|
 | 创建角色 | name="用户管理员" | 返回角色 |
 | 创建角色 - 指定 priority | priority=15 | 介于 admin(10) 与 operator(20) 之间 |
+| 创建角色 - 显式禁用（B4-4） | status=0 | 创建即禁用（权限链路即时生效语义） |
 | 种子角色 priority | migrate-up 后查 roles | superadmin=1, admin=10, operator=20, viewer=30 |
 | 创建角色 - 名称重复 | 已存在的 name | 返回 ErrRoleAlreadyExists |
 | 删除角色 - 无关联用户 | roleID | 成功 |
 | 删除角色 - 有关联用户 | 有用户的 roleID | 返回 ErrRoleInUse |
 | 角色列表 - admin 不可见 superadmin | admin 调 `GET /roles` | 无 `code=superadmin` 项 |
 | 分配菜单 | roleID + menuIDs | role_menus 更新 + casbin_rule 更新 |
-| 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound |
+| 分配菜单 - 菜单不存在 | 不存在的 menuID | 返回 ErrMenuNotFound（B2-5：含已软删菜单） |
 | 分配菜单后策略生效 | 分配后用该角色请求 API | Casbin 放行 |
 | 取消菜单后策略失效 | 取消后用该角色请求 API | Casbin 拒绝 |
+| 禁用角色 - 权限收回 | 禁用某角色后其成员请求原 API | 403（下次请求生效） |
+| 禁用角色 - 菜单不下发 | 禁用后成员调 `GET /user/menus` | 不含该角色菜单 |
+| 禁用角色 - 重新启用 | 再次启用后成员请求原 API | 恢复放行（策略未清除） |
+| 禁用系统角色 | status=0 且 is_system=true | 返回 ErrRoleIsSystem |
+| 删除更强角色 | 低权自定义角色（priority=25）删更强角色（priority=15） | 403 + 30010 |
+| 降权更强角色 | 低权角色 Update 更强角色的 priority | 403 + 30010 |
+| admin 改系统角色菜单 | 非 superadmin 对 is_system 角色分配菜单 | 403 + 40004 |
 
 ### 集成测试
 

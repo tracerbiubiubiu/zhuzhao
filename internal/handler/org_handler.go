@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -18,45 +21,128 @@ func NewOrgHandler(orgService *service.OrgService) *OrgHandler {
 
 // GetTree GET /api/v1/orgs
 func (h *OrgHandler) GetTree(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	tree, err := h.orgService.GetTree(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, tree)
 }
 
 // Create POST /api/v1/orgs
 func (h *OrgHandler) Create(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.CreateOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	org, err := h.orgService.Create(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
 // Get GET /api/v1/orgs/:id
 func (h *OrgHandler) Get(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	org, err := h.orgService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
-// Update POST /api/v1/orgs/update（id 放 body）
+// Update POST /api/v1/orgs/update
 func (h *OrgHandler) Update(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.UpdateOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	org, err := h.orgService.Update(c.Request.Context(), &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
 }
 
-// Delete POST /api/v1/orgs/delete（id 放 body）
+// Delete POST /api/v1/orgs/delete
 func (h *OrgHandler) Delete(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.OrgIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	if err := h.orgService.Delete(c.Request.Context(), req.OrgID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
-// Move POST /api/v1/orgs/move（id 放 body）
+// Move POST /api/v1/orgs/move
 func (h *OrgHandler) Move(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.MoveOrgRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	if err := h.orgService.Move(c.Request.Context(), &req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
-// GetMembers GET /api/v1/orgs/:id/members
+// GetMembers GET /api/v1/orgs/:id/members（B4-5：支持 page/page_size 查询参数）
 func (h *OrgHandler) GetMembers(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	page := queryInt(c, "page", 1)
+	pageSize := queryInt(c, "page_size", 20)
+	resp, err := h.orgService.GetMembers(c.Request.Context(), id, page, pageSize)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, resp)
 }
 
 // AddMember POST /api/v1/orgs/members
 func (h *OrgHandler) AddMember(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.OrgMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.AddMember(c.Request.Context(), &req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // RemoveMember POST /api/v1/orgs/members/delete
 func (h *OrgHandler) RemoveMember(c *gin.Context) {
-	response.InternalError(c, "not implemented")
+	var req model.OrgMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.RemoveMember(c.Request.Context(), &req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }

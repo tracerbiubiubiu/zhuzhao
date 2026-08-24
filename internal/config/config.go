@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -20,6 +22,10 @@ type Config struct {
 type ServerConfig struct {
 	Port int    `mapstructure:"port"`
 	Mode string `mapstructure:"mode"` // debug / release
+	// TrustedProxies 信任的反向代理网段（CIDR/IP，如 Nginx 内网段）。
+	// 留空 = 不信任任何代理：ClientIP 取直连地址，X-Forwarded-For 不参与
+	// 解析（安全默认，防伪造审计 IP / last_login_ip）。
+	TrustedProxies []string `mapstructure:"trusted_proxies"`
 }
 
 type DatabaseConfig struct {
@@ -62,10 +68,18 @@ func (c *DatabaseConfig) applyDefaults() {
 	}
 }
 
-// DSN 返回 PostgreSQL 连接字符串
+// DSN 返回 PostgreSQL 连接字符串。
+// B1-3：用 net/url 构造，UserPassword 对密码中的保留字符（@ : / ? # % 等）
+// 自动转义——密码经 DB_PASSWORD 环境变量注入，字符不受控。
 func (c DatabaseConfig) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode)
+	u := &url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(c.User, c.Password),
+		Host:     fmt.Sprintf("%s:%d", c.Host, c.Port),
+		Path:     c.DBName,
+		RawQuery: "sslmode=" + url.QueryEscape(c.SSLMode),
+	}
+	return u.String()
 }
 
 type RedisConfig struct {
@@ -139,9 +153,11 @@ func Load(path string) (*Config, error) {
 
 	// 环境变量覆盖（敏感配置通过环境变量注入）
 	viper.SetEnvPrefix("APP")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	// 环境变量绑定
+	// 环境变量绑定（AutomaticEnv 对 nested key 不自动映射，需显式 BindEnv）
+	viper.BindEnv("server.mode", "APP_SERVER_MODE")
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")

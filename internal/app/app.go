@@ -33,14 +33,14 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine) *App {
 
 // Run 启动应用
 func (a *App) Run() error {
-	// 设置 Gin 模式
-	if a.cfg.Server.Mode == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
 	a.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", a.cfg.Server.Port),
 		Handler: a.router,
+		// F-8：补齐超时，防 slowloris 慢连接耗尽资源
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// 启动 HTTP 服务（goroutine 中运行，错误通过 channel 传递）
@@ -84,10 +84,8 @@ func (a *App) Shutdown() error {
 		return err
 	}
 
-	// TODO: 2. 刷空审计日志队列
-	// TODO: 3. 关闭 Casbin enforcer（由 cleanup 函数处理）
-	// TODO: 4. 关闭 Redis 连接（由 cleanup 函数处理）
-	// TODO: 5. 关闭 PostgreSQL 连接池（由 cleanup 函数处理）
+	// B4-6：审计为同步写入（08-audit.md Phase 1 决策：无队列，优雅关闭无需 drain）；
+	// Casbin/Redis/PG 连接关闭由 main.go defer cleanup() 依 casbin→redis→pg 逆序执行
 
 	a.logger.Info("server stopped")
 	return nil

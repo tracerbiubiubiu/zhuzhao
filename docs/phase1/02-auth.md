@@ -14,7 +14,7 @@
 | 登录 | 用户输入账号密码，系统验证后签发双 Token | `POST /api/v1/auth/login` | `—`（公开） |
 | Token 刷新 | AT 过期，前端用 RT 换新 AT + 新 RT（轮换） | `POST /api/v1/auth/refresh` | `—`（持 RT） |
 | 登出 | 用户主动登出，AT 加入黑名单，RT 删除 | `POST /api/v1/auth/logout` | `—` |
-| 修改密码 | 用户修改自己的密码，旧密码验证后更新 | `POST /api/v1/auth/password/update` | `—` |
+| 修改密码 | 用户修改自己的密码，旧密码验证后更新并吊销全部设备会话（见 §会话吊销） | `POST /api/v1/auth/password/update` | `—` |
 | 管理员重置密码 | superadmin 重置任意用户密码，用户首次登录强制改密 | `POST /api/v1/users/password/reset` | `user:reset_password` |
 | 首次登录改密 | 被重置密码的用户登录后强制修改密码 | 登录时检测 `must_change_password` 标记 | `—` |
 | 登录限流 | 同一工号短时间失败次数超限则 429 | AuthService 内 Redis **Lua**（LoginLocker） | — |
@@ -185,9 +185,11 @@ return 0     -- 未超限，继续校验密码；若最终失败无需再 INCR�
 
 > RT 刷新仍用 `GetDel`（不必 Lua）；登录限流与 RT 轮换是不同场景。
 
-### 会话吊销（禁用/删除用户）
+### 会话吊销（禁用/删除用户；改密/重置密码复用同机制）
 
 JWT 无状态，仅靠 AT 黑名单无法覆盖「该用户所有设备上的未过期 AT」。Phase 1 用 **AT 拒绝标记 + 删除全部 RT** 双轨吊销：
+
+> 触发场景：**禁用/删除用户**（全部路径，含最后 superadmin 守护分支）、**用户修改密码**（F-4：吊销全部设备后为当前设备重新签发）、**管理员重置密码**。注意改密场景签发新 Token 前须 `DEL user:disabled:{userId}`，否则新 AT 会被自己刚设的拒绝标记拦截。
 
 | 路径 | 机制 | 客户端表现 |
 |------|------|------------|
@@ -337,7 +339,7 @@ Phase 1 不在 JWT 中存角色/权限信息（保持无状态，权限走 Casbi
 #### 安全要点
 
 - 临时密码使用 `crypto/rand` 生成，最少 16 位，包含大小写+数字+符号
-- 重置后不自动失效已有 session（Phase 2 可扩展：重置后踢出所有设备）
+- 重置后吊销目标用户全部会话（`revokeUserSessions`：删全部 RT + `user:disabled` 拦截旧 AT）
 - superadmin 重置密码操作全部记入审计日志
 - 临时密码不落库明文，只存 bcrypt hash
 
@@ -734,6 +736,7 @@ func AuthN() gin.HandlerFunc {
 | 登录 - 工号不存在 | 错误 employee_no | 401 + 20001 |
 | 密码错误 | 正确工号 + 错误密码 | 401 + "工号或密码错误" |
 | 用户不存在 | 不存在的工号 | 401 + "工号或密码错误"（同密码错误，防枚举） |
+| 时延侧信道（B4-1） | 工号不存在 vs 密码错误 | 两分支响应时间一致——不存在分支执行 dummy bcrypt 比对（固定 cost=12 哈希），防定时枚举有效工号 |
 | 用户已禁用 | status=disabled 的用户 | 401 + "工号或密码错误"（登录时与密码错误同文案） |
 | 连续失败超限 | 同一工号第 6 次失败 | 429 |
 | Redis 不可用 | Redis 宕机时登录 | 503 |
@@ -819,7 +822,7 @@ internal/repository/user/           # 密码验证依赖
 - ✅ **多设备登录**：Phase 1 允许多设备同时登录，不做设备踢出，不提供设备管理 UI。
 - ✅ **用户 ID 类型**：`BIGINT`/`int64`，JSON 加 `,string` tag（前端精度安全）。不用 UUID。
 - ✅ **组织 ID / 编码**：ID 为 `BIGINT`；业务编码 `code` 为 `VARCHAR`（ltree 用 code）。
-- ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
+- ✅ **Casbin adapter**：直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3）。
 - ✅ **组织模块范围**：Phase 1 实现完整 CRUD。
 - ✅ **AK/SK**：Phase 1 不做。签名方案保留，有调用方再实现。
 - ✅ **登录限流**：Phase 1 用 Redis Lua（INCR+EXPIRE 原子），阈值 15min/5 次。

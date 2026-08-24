@@ -26,8 +26,8 @@
 CREATE TABLE users (
     id          BIGSERIAL PRIMARY KEY,
     username    VARCHAR(50) NOT NULL,            -- 资料/显示名；可重复；非账密登录键
-    employee_no VARCHAR(50),                   -- 工号（可空，有值全局唯一；含软删不可复用）
-    domain_account VARCHAR(100),               -- 域账号（与 user_domain 成对唯一；含软删不可复用）
+    employee_no VARCHAR(50),                   -- 工号（可空，有值全局唯一；软删即释放、可复用）
+    domain_account VARCHAR(100),               -- 域账号（与 user_domain 成对唯一；软删即释放、可复用）
     user_domain VARCHAR(255),                  -- 所在域
     password    VARCHAR(100) NOT NULL,       -- bcrypt hash
     real_name   VARCHAR(100),
@@ -46,9 +46,10 @@ CREATE TABLE users (
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
 CREATE INDEX idx_users_status ON users(status) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
-    WHERE employee_no IS NOT NULL AND employee_no <> '';
+    WHERE deleted_at IS NULL AND employee_no IS NOT NULL AND employee_no <> '';
 CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
-    WHERE domain_account IS NOT NULL AND domain_account <> ''
+    WHERE deleted_at IS NULL
+      AND domain_account IS NOT NULL AND domain_account <> ''
       AND user_domain IS NOT NULL AND user_domain <> '';
 ```
 
@@ -88,28 +89,36 @@ type UserService interface {
     Create(ctx context.Context, req CreateUserRequest) (*model.User, error)
     GetByID(ctx context.Context, id int64) (*model.User, error)
     GetByUsername(ctx context.Context, username string) (*model.User, error) // 列表/管理：模糊或精确
-    GetByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确
-    Update(ctx context.Context, id int64, req UpdateUserRequest) error
-    Delete(ctx context.Context, id int64) error
+    FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确（repo 层，未删除用户）
+    // D2-27：含软删用户的工号查询——审计按工号筛选须覆盖历史
+    //（软删用户的历史审计可查，原 404）；使用侧见 modules/audit.md
+    FindByEmployeeNoIncludeDeleted(ctx context.Context, employeeNo string) (*model.User, error)
+    // Update patch 语义（B2-3）：请求字段指针化——未传不动、空串显式清空；
+    // username 不可改（Phase 2 再定改名流程）。实际签名带 actorUserID（防提权校验）
+    Update(ctx context.Context, req *UpdateUserRequest, actorUserID int64) (*model.User, error)
+    Delete(ctx context.Context, id int64, actorUserID int64) error
     List(ctx context.Context, query UserListQuery) ([]*model.User, int64, error)
 
     // 密码
-    UpdatePassword(ctx context.Context, userID int64, newPassword string) error
-    VerifyPassword(ctx context.Context, userID int64, password string) (bool, error)
+    UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) // 验旧密码 + 新旧不同校验（B2-2）+ 吊销全部会话
+    ResetPassword(ctx context.Context, req ResetPasswordRequest, actorUserID int64) error // 管理员重置
 
     // 状态
-    Enable(ctx context.Context, id int64) error
-    Disable(ctx context.Context, id int64) error
+    UpdateStatus(ctx context.Context, req UpdateUserStatusRequest, actorUserID int64) error
 
     // 角色绑定
-    SetRoles(ctx context.Context, userID int64, roleIDs []int64) error
+    SetRoles(ctx context.Context, req SetUserRolesRequest, actorUserID int64) error
     GetRoles(ctx context.Context, userID int64) ([]*model.Role, error)
 
-    // 组织绑定
-    SetOrgs(ctx context.Context, userID int64, orgRoles []OrgRole) error
-    GetOrgs(ctx context.Context, userID int64) ([]*model.Organization, error)
+    // 组织绑定（写逻辑 SSOT 在 OrgService，见 modules/organization.md）
+    SetUserOrgs(ctx context.Context, req SetUserOrgsRequest, actorUserID int64) error
+    GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error)
 }
 ```
+
+> **GetUserOrgs 可见性设计确认（D2-44⑤）**：任意持 `user:read` 类权限的管理端用户可查询**任意用户**的组织归属（`ensureVisible` 仅拦截以 superadmin 用户为目标的查询）。管理端（IAM 控制台）语境下组织归属非个人隐私字段，属运营必需信息，Phase 1 有意不做按组织范围的收窄；若未来对外开放 API（非管理端前端），须先引入 L2 组织关系校验。
+
+> **注**：本节为设计骨架；接口签名以 [`phase1/04-user.md`](../phase1/04-user.md)（SSOT）与 `internal/service/user_service.go` 实现为准。B2-3 起 Update/UpdateProfile 均为 patch 语义。
 
 ---
 
@@ -123,8 +132,8 @@ POST /api/v1/users {username, password, real_name, ...}
 1. 密码强度校验（PasswordValidator）
    → 长度 ≥ 8，4 种字符类，bcrypt 72 字节上限
 
-2. 工号唯一性检查（若提供 employee_no；**含软删记录，不可复用**）
-   → SELECT * FROM users WHERE employee_no = ? AND employee_no IS NOT NULL AND employee_no <> ''
+2. 工号唯一性检查（若提供 employee_no；**仅活跃记录**，软删工号即释放、可复用——见 phase1/04-user §唯一性与软删除）
+   → SELECT * FROM users WHERE employee_no = ? AND deleted_at IS NULL AND employee_no IS NOT NULL AND employee_no <> ''
    → Phase 2b：若已存在 source=hr → 409，提示走重置密码/赋角色，勿重复开户
    → **不调 HR API**（见 04-user §创建时要不要校验 HR）
 

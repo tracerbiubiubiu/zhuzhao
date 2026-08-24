@@ -34,8 +34,23 @@
 ## 1. 前置条件
 
 - [ ] Phase 1 Casbin 中间件 + `RoleFetcher`（直接角色）可用
-- [ ] `internal/pkg/resource/registry.go` 空 Registry 已 Wire 注入
+- [x] `internal/pkg/resource/registry.go` 接口已定义 — ⚠️ **但 Wire 注入未接通**（Phase 1 遗留 G-1：`wire.go` 已声明 `resource.NewRegistry` provider，但依赖图上无消费者，`wire_gen.go` 未生成实例化代码），由下方 Step 0 第一动作完成
 - [ ] 组织 ltree 已存在（Phase 1），但 **2a 鉴权不使用 ltree 过滤**
+
+### Step 0：Registry 接线（Phase 1 遗留收尾）
+
+> 来源：[phase1/12 号报告](../phase1/12-phase1-acceptance-report.md) G-1。phase1/03-authz.md 计划「Phase 1 仅 wire 注入空 Registry」未落地——provider 声明 ≠ 注入生效（Wire 是编译期按需生成，无消费者的 provider 不会出现在 `wire_gen.go`）。
+
+**任务**（进入 Step 1 前完成，改动量约 5 行）：
+
+1. `internal/router/router.go` 的 `Deps` 结构体增加字段 `Registry resource.Registry`（依赖 `wire.Struct(new(router.Deps), "*")` 自动接线）；
+2. `router.New()` 中遍历 `deps.Registry.List()` 输出启动期资源清单日志（`resource registered`：code/name/actions）——Phase 1 空表零输出，Phase 2a TicketResource 自注册后自动可见，作为装配自检手段；
+3. `router/router_test.go` 手工构造 `Deps` 处补 `Registry: resource.NewRegistry()` 字段（fail-fast：漏传启动即 panic，暴露装配错误）；
+4. `make wire` 重新生成 `wire_gen.go`（预期出现 `registry := resource.NewRegistry()` 实例化 + `Deps` 赋值两处）。
+
+**验证**：`grep NewRegistry internal/app/wire_gen.go` 出现 2 处；`go build ./... && go test -race ./internal/router/...` 通过。
+
+**同批处理 G-2**（见 §5 涉及文件）：删除 `internal/service/authz_service.go` 旧 stub 并修正 `architecture.md` 三处旧描述。
 
 ---
 
@@ -57,6 +72,18 @@
 | 操作权 | 创建人 / 处理人（+ 路由级 admin bypass 可选） |
 
 **不可见单条资源 → 404**（非 403），见 [modules/ticket.md §8.5](../modules/ticket.md#85-404-vs-403-的安全语义)。
+
+**鉴权分层决策声明**（何时走 Casbin、何时走 Registry）：
+
+| 判断维度 | 走 Casbin（路由级） | 走 Registry（资源级） |
+|----------|--------------------|--------------------|
+| 回答的问题 | 「这个用户能不能调这个接口」 | 「这个用户能不能碰这条数据」「列表该给他看哪些行」 |
+| 依据 | 角色绑定的菜单 → `menu_apis` → 路由策略（p 表） | 工单属主 / ticket_scope / org_path |
+| 形态 | 中间件统一拦截（声明式，策略可热加载） | Service 层显式调用 `Authorize` / `GetFilter`（代码内联） |
+
+1. **列表过滤不进 Casbin**：Casbin 表达不了「`created_by = $user OR assigned_to = $user`」这类行级谓词（KeyMatch2 只做路径匹配）；每资源独立 Enforcer 已明确后移 Phase 3（见 [README §1.5](./README.md#15-不做什么整个-phase-2)）。因此路由级只做「有没有 ticket:list」，行级过滤必须由 `GetFilter` 在 Repository 查询中拼接 WHERE 完成。
+2. **单条操作两层都要过**：路由级（`ticket:update`）挡住无权限码者；资源级 `Authorize` 再做属主判断。中间件不可见数据细节，Service 不可见路由策略——职责正交，不重复不缺口。
+3. **admin bypass 双机制锚点一致**：路由级靠种子 g/p 策略（`role::admin` 通配）；资源级在 `TicketResource.Authorize` 硬编码 `HasRole(admin/superadmin)`。两处机制实现不同，但均以角色码为锚——新增全局管理角色时需两处同步，此为已知 tradeoff。
 
 ### 2.2 ScopeResolver（2a 桩）
 
@@ -191,6 +218,20 @@ func NewTicketService(..., registry resource.Registry, ...) *TicketService {
 }
 ```
 
+> Wire 语义保证：同一 provider（`NewRegistry`）单例；生成代码按依赖拓扑序执行，`TicketService` 构造（自注册）必然先于 `router.New`（消费 `Deps.Registry`），启动期日志可见完整资源清单。前提是 Step 0 接线完成。
+
+### 2.6 Casbin 策略规模边界（Phase 2 现状声明）
+
+Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` / `DeleteRole` 事务提交后调用），无 Watcher。Phase 2 该方式的边界：
+
+| 量级 | 说明 | 结论 |
+|------|------|------|
+| 角色数 × 绑定菜单 API 数 | 全量加载行数 ≈ Σ(每角色绑定的 menu_apis 行)。Phase 2 内部系统典型量级（<100 角色 × <500 API）为万行以内 | 全量 `LoadPolicy()` 单次 <100ms，**可接受** |
+| 多实例部署 | 实例 A 改策略，实例 B 感知不到（无 Watcher） | Phase 2 单实例 Compose 拓扑无此问题；**多实例是引入 Watcher 的触发条件** |
+| 触发时机 | 直接改 `casbin_rule` 表（DBA 手工）需重启进程或触发一次 AssignMenus | 运维须知（Phase 1 审查 P2-3，记录在 [phase1/11 §3.4](../phase1/11-code-review.md)） |
+
+**决策**：Watcher 后移 Phase 3（对齐 [phase3/README](../phase3/README.md)）；Phase 2 内不引入。若 2b/2c 期间角色菜单绑定操作频次显著上升（如 HR 同步批量改组），再评估增量加载。
+
 ---
 
 ## 3. 数据模型（2a）
@@ -219,6 +260,8 @@ func NewTicketService(..., registry resource.Registry, ...) *TicketService {
 | R11 | 2b `project_isolated` | vg_a **不可读** vg_b → **404** |
 | R12 | 2b 创建人改自己 vg_a 工单 | **200** |
 
+**测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/`（testcontainers PG，复用 phase1 `testutil` 模式）；中间件顺序回归 → `internal/router/router_test.go` 扩展 ticket 路由。
+
 ---
 
 ## 5. 涉及文件
@@ -229,6 +272,11 @@ internal/service/authz/scope_resolver.go
 internal/service/ticket/resource.go
 internal/service/ticket/service.go      # 调用 registry
 ```
+
+**Step 0 一并处置（Phase 1 遗留 G-2）**：
+
+1. **删除 `internal/service/authz_service.go`**：其中 `CheckResourcePermission` 为骨架时代按旧设计预埋的 stub（"not implemented"），已被 [proposal/resource-model.md](../proposal/resource-model.md) 确立的 ResourceRegistry 模式取代——签名（单 roleKey、无 GetFilter）无法满足 2a 需求，保留会形成双轨误导。同批从 `wire.go` 的 provider set 移除 `NewAuthzService`，`make wire` 再生成；
+2. **修正 `docs/design/architecture.md` 三处旧描述**（L77 交互契约、L440 Wire DI 图、L502 接口表）为 ResourceRegistry 模式——✅ 已于 2026-08-19 提前完成（全文档一致性核查），Step 0 时仅需核对；
 
 ---
 

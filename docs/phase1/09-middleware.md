@@ -26,14 +26,19 @@ Step 4 完成后：可测 login / refresh / JWT 401；受保护路由有 Token �
 | 中间件 | 功能 | 顺序 | 实现方式 | 说明 |
 |--------|------|------|---------|------|
 | Recovery | panic 兜底，返回 500 | 1 | 自写（包装 `gin.Recovery()` + slog） | 最外层，确保不崩 |
-| RequestID | 生成/传递 trace ID | 2 | `gin-contrib/requestid` | 注入 context + response header，串联 slog |
-| AccessLogger | 请求日志（access log） | 3 | `gin-contrib/slog` | method/path/status/cost，支持按状态码/路径分级 |
+| RequestID | 生成/传递 trace ID | 2 | 自写 | 注入 context + response header，串联 slog；格式 `req-` + 32 hex |
+| AccessLogger | 请求日志（access log） | 3 | 自写 | method/path/status/cost，支持按状态码/路径分级 |
 | CORS | 跨域允许 | 4 | `gin-contrib/cors` | Phase 1 **AllowAllOrigins**（全放开，无白名单）；见下方说明 |
 | SecurityHeaders | 安全响应头 | 5 | 自写（5 行代码） | 5 个安全头（借鉴旧系统） |
 | BodyLimit | 请求体大小限制 | 6 | 自写（`http.MaxBytesReader`） | 默认 1MB，防止大请求体 |
 | JWTAuth | AT 解析 + 黑名单 + 用户禁用检查 | 7 | 自写 | 仅鉴权路由；**AuthN 拒绝原则**见 [02-auth §非法认证请求的处理](./02-auth.md#非法认证请求的处理实现必读) |
-| CasbinAuth | 路由级 RBAC 校验 | 8 | 自写 | 仅鉴权路由，g 表消除模型，逐角色 enforce |
-| AuditLog | 操作日志记录 | 9 | 自写 | 仅需审计的路由 |
+| **AuditLog** | 操作日志记录 | **8** | 自写 | 仅需审计的路由；**前置于 CasbinAuth**（B2-7 修订，见下注） |
+| CasbinAuth | 路由级 RBAC 校验 | **9** | 自写 | 仅鉴权路由，g 表消除模型，逐角色 enforce |
+
+> **中间件顺序修订（B2-7）**：实际链为 **JWT → AuditLog → CasbinAuth**（Audit 前置于 Casbin）。
+> 原因：被 Casbin 拒绝的 403 请求同样落审计——越权尝试留痕是安全审计的核心价值
+> （403 攻击探测在审计表中可查）。被 JWT 拒绝（401）的请求不产生审计记录，
+> 认证失败由 `LogLogin` 显式记录（login 是公开路由）。顺序由 router_test.go 行为测试守护。
 
 > **登录限流**：不在中间件链，由 `AuthService.Login` 调用 Redis **Lua LoginLocker**（见 [02-auth.md](./02-auth.md) §登录限流）。
 
@@ -41,8 +46,8 @@ Step 4 完成后：可测 login / refresh / JWT 401；受保护路由有 Token �
 
 经过对 `gin-contrib`、`gin-gonic/contrib`、`appleboy/gin-jwt`、`gin-contrib/authz`、`eddycjy/go-gin-example` 的详细评估：
 
-- **采用 gin-contrib 的**：RequestID、CORS、AccessLogger（slog）——成熟库，不重复造轮子
-- **自写的**：Recovery（需适配 slog）、SecurityHeaders（库过重，5 行代码）、BodyLimit（1 行代码）、JWTAuth（双 token + Redis 黑名单 + must_change_password 拦截，无库满足）、CasbinAuth（g 表消除 + RoleFetcher + 逐角色 enforce，无库满足）、AuditLog（业务逻辑强相关）
+- **采用 gin-contrib 的**：CORS——成熟库，不重复造轮子
+- **自写的**：RequestID 与 AccessLogger（**B4-6 修订**：原选型 gin-contrib/requestid + gin-contrib/slog，实施时改为自写——双 token 体系下需与 slog JSON 输出及自定义 request_id 格式 `req-`+32hex 紧密配合，自写各约 25 行；行为等价：透传/生成/响应头注入/串联日志）、Recovery（需适配 slog）、SecurityHeaders（库过重，5 行代码）、BodyLimit（1 行代码）、JWTAuth（双 token + Redis 黑名单 + must_change_password 拦截，无库满足）、CasbinAuth（g 表消除 + RoleFetcher + 逐角色 enforce，无库满足）、AuditLog（业务逻辑强相关）
 - **不采用的库及原因**：
   - `appleboy/gin-jwt`：v3 虽支持双 token，但 RT 是 opaque token（非 JWT）、无 AT 黑名单、Redis 库用 `rueidis` 不是 `go-redis`
   - `gin-contrib/authz`：56 行代码，硬编码 BasicAuth，不支持 g 表消除和 SyncedEnforcer
@@ -82,9 +87,10 @@ public := router.Group("/api/v1")
 authed := router.Group("/api/v1")
 authed.Use(
     middleware.JWTAuth(jwtManager, rdb),
-    middleware.CasbinAuth(enforcer, roleFetcher),
-    middleware.AuditLog(auditRepo),
+    middleware.AuditLog(auditRepo), // B2-7：Audit 前置于 Casbin——403 被拒请求同样落审计
 )
+biz := authed.Group("")
+biz.Use(middleware.CasbinAuth(enforcer, roleFetcher))
 {
     authed.POST("/auth/logout", authHandler.Logout)
     authed.GET("/users", userHandler.List)

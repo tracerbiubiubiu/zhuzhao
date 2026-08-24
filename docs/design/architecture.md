@@ -74,7 +74,7 @@
 **与业务模块的交互契约**：
 
 - 业务模块通过 `internal/middleware` 提供的中间件获得鉴权能力
-- 业务模块通过 `internal/service/authz_service` 的接口进行资源级权限判断
+- 业务模块通过 `internal/pkg/resource` 的 Registry 进行资源级权限判断（Resource 自注册模式，见 [proposal/resource-model.md](../proposal/resource-model.md)：各业务 Service 构造时 `registry.Register(NewXxxResource(...))`，鉴权经 `Registry.Authorize` / `GetFilter`）
 - 业务模块的资源表需包含 `creator_id` 字段以支持属主判断（Phase 2）
 - 业务模块的资源可在 Phase 2b 通过 `resource_owners` 登记组织归属（可选；工单直接用 `tickets.org_path`，见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）
 
@@ -89,7 +89,7 @@
 | **Gin** | HTTP 框架 | `github.com/gin-gonic/gin` | 轻量、中间件生态成熟 |
 | **Viper** | 配置管理 | `github.com/spf13/viper` | 支持多格式、热更新、环境变量覆盖 |
 | **PostgreSQL** | 主数据库 | `github.com/jackc/pgx/v5` + `pgxpool` | 原生协议、连接池、性能优于 database/sql |
-| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v2` + `pckhoi/casbin-pgx-adapter/v3` | pgx 原生 adapter，SyncedEnforcer |
+| **Casbin** | 路由级 RBAC | `github.com/casbin/casbin/v3` + `noho-digital/casbin-pgx-adapter` | pgx 原生 adapter，SyncedEnforcer |
 | **Redis** | 缓存/Session | `github.com/redis/go-redis/v9` | 官方维护、功能完整、与 go context 集成 |
 | **Swagger** | API 文档 | `github.com/swaggo/swag` + `github.com/swaggo/gin-swagger` | 注解生成，与 Gin 集成 |
 | **slog** | 日志 | Go 1.21+ 标准库 `log/slog` | 标准库，结构化日志，性能足够 |
@@ -437,7 +437,7 @@ Wire Injector (wire.go)
     │
     ├── Service Provider（依赖 Repository + 基础设施）
     │   ├── NewAuthService()   → *service.AuthService
-    │   ├── NewAuthzService()  → *service.AuthzService
+    │   ├── NewRegistry()      → resource.Registry（业务 Service 构造时自注册 Resource）
     │   └── ...
     │
     ├── Handler Provider（依赖 Service）
@@ -499,7 +499,7 @@ Wire Injector (wire.go)
 | | `Logout` | 登出，吊销 AT + 删除 RT |
 | | `KickDevice` | 踢出指定设备 |
 | | `ListDevices` | 查询用户活跃设备列表 |
-| `AuthzService` | `CheckResourcePermission` | 资源级权限校验（属主 → ltree 组织关系） |
+| `resource.Registry` | `Authorize` / `GetFilter` / `Register` / `List` | 资源级权限校验（属主 → ltree 组织关系）与列表过滤；业务 Resource 自注册 |
 | `MenuService` | `GetUserMenus` | 获取用户菜单树 |
 | | `GetUserPermissions` | 获取用户按钮权限码列表 |
 | `OrgService` | `GetOrgTree` | 获取组织树 |
@@ -1118,7 +1118,7 @@ Nginx（反向代理）
   │  - 超时控制、连接数限制
   │  - Phase 2: TLS 终止 + HTTP/2
   ▼
-Go 进程（Gin :8080）
+Go 进程（Gin :33333）
   ├── PostgreSQL 15（云托管 Cluster）
   └── Redis 6.2
 ```
@@ -1138,7 +1138,7 @@ server {
 
     # API 转发
     location /api/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -1149,13 +1149,13 @@ server {
 
     # 健康检查（不转发，Nginx 直接管）
     location /health/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
         access_log off;
     }
 
     # Swagger 文档
     location /swagger/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:33333;
     }
 }
 ```
@@ -1173,7 +1173,7 @@ server {
 ```yaml
 # configs/config.yaml
 server:
-  port: 8080
+  port: 33333
   mode: debug  # debug / release
 
 database:
@@ -1421,7 +1421,7 @@ type Runner interface {
 |------|------|--------|--------|
 | Metrics | `prometheus/client_golang` + Gin 中间件 | `observability.metrics.enabled` → `/metrics` | Prometheus **可选** scrape |
 | 分布式追踪 | OpenTelemetry | `observability.tracing.enabled`；exporter：`noop` / `stdout` / `otlp` | Collector → Jaeger/Tempo **可选** |
-| 性能分析 | `net/http/pprof` | `observability.pprof.enabled` 或 `server.mode=debug` | 内网/admin 端口，不挂公网 8080 |
+| 性能分析 | `net/http/pprof` | `observability.pprof.enabled` 或 `server.mode=debug` | 内网/admin 端口，不挂公网 33333 |
 | 错误追踪 | Sentry（可选） | 配置 DSN 时启用 | — |
 | 可视化 | Grafana | — | **永远可选**，非 App 依赖 |
 
@@ -1506,8 +1506,8 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 | 模块/用途 | 推荐 | 说明 |
 |-----------|------|------|
-| Casbin 核心 | `casbin/casbin/v2` | 使用 `SyncedEnforcer` 支持并发安全 |
-| PostgreSQL Adapter | `pckhoi/casbin-pgx-adapter/v3` | Casbin v2 + pgx v5，支持 FilteredAdapter。详见 `design-decisions.md` §10 |
+| Casbin 核心 | `casbin/casbin/v3` | 使用 `SyncedEnforcer` 支持并发安全 |
+| PostgreSQL Adapter | `noho-digital/casbin-pgx-adapter` | Casbin v3 + pgx v5，支持 Filtered/Batch/Updatable adapter。详见 `design-decisions.md` §10 |
 | Redis Watcher | `casbin/redis-watcher` | 多实例部署时用于策略同步广播 |
 
 ### 15.5 中间件与安全
@@ -1652,7 +1652,7 @@ middleware 层 → recovery 中间件兜底未处理的 panic
 
 1. **URL 简洁，不承载业务语义**——参数放 request body（POST）或 query string（GET），不要在 URL 路径中嵌套过多信息
 2. **资源命名用名词复数**——`/api/v1/users`，不用 `/api/v1/getUser`
-3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/disable`，资源 ID 放 body 不放 URL
+3. **操作类接口用动词子路径**——`POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`POST /api/v1/users/status`，资源 ID 放 body 不放 URL
 4. **过滤/排序/分页用 query string**——`GET /api/v1/users?page=1&page_size=20&username=zhang&employee_no=E20240086&role=admin&sort=created_at:desc`（`username` 模糊可多结果；`employee_no` 精确唯一）
 5. **避免深层嵌套**——URL 层级不超过 3 层，如 `/api/v1/orgs/:org_id/members`
 
@@ -1752,7 +1752,7 @@ GET  /api/v1/orgs/:org_id/depts/:dept_id/teams/:team_id/members  ❌ 层级过�
 | `POST /orgs/members` | ✅ §17.4 | ✅ 已注册 |
 | `POST /orgs/members/delete` | ✅ §17.4 | ✅ 已注册 |
 
-> 上表路由已在 `internal/router/router.go` 注册（handler 为 stub，Step 9 实现）；以 §17 为准，勿改 API 路径。
+> 上表路由已在 `internal/router/router.go` 注册；Step 7–9 写 API 见 [phase1/README §2.4](../phase1/README.md#24-step-79-crud-补全计划)。
 
 ### 17.5 菜单模块
 

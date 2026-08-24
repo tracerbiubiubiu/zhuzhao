@@ -90,7 +90,7 @@ Phase 1 完成后，以下流程能跑通：
 自服务与 RBAC 区分（M3 起部分可测，M5 完整）
 25. viewer（零 menu）GET /user/menus     # 200 + menus=[]（自服务白名单）
 26. viewer GET /users                    # 403 + 70001（业务 API，无 p 策略）
-27. admin 给 viewer 勾用户管理 menu 后   # GET /users → 200；未勾 POST → 仍 70001
+27. admin 给 viewer 勾用户管理 menu 后   # GET /users → 200；POST /users → 200（页面菜单含全部 API）
 ```
 
 ### 1.4 已知限制（验收时不要误判为已实现）
@@ -213,6 +213,18 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 
 > **批次 B 说明**：Step 7/8/9 互相无依赖，可并行开发；Step 9 的 `OrgService` 是 Step 6b 的前置。若人手有限，优先 **9 → 6b**（组织闭环），再 **7+8**（前端菜单）。
 
+### 2.4 Step 7–9 CRUD 补全计划
+
+> 路由与 handler 骨架在 Step 1 已注册；下列为 **写 API 实现** 的排期（与 M4/M5 读路径、成员写路径分离）。
+
+| 优先级 | 时机 | Step | 范围 | 原因 |
+|--------|------|------|------|------|
+| **P0** | Phase 1 收尾 / 进 Phase 2a 前 | 9 | 组织 Create/Get/Update/Delete/Move/GetMembers | Phase 2b 虚拟组/HR 依赖可写组织树 |
+| **P1** | Phase 1 收尾（与 P0 同批完成） | 7 | 角色 CRUD | 管理端自定义角色；AssignMenus 已就绪 |
+| **P2** | Phase 1 收尾（与 P0 同批完成） | 8 | 菜单 CRUD | 管理端登记菜单；主路径仍用 seed + AssignMenus |
+
+**状态**：✅ P0–P2 全部完成；Step 7–9 写 API 已落地，验收脚本 `POST /orgs` 返回 200。
+
 ---
 
 ## 3. 测试策略
@@ -263,7 +275,7 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 |------|------|------|
 | 用户 ID 类型 | `BIGINT`/`int64`，JSON 加 `,string` tag | ✅ 已确认 |
 | 组织 ID / 编码 | ID 为 `BIGINT`/`int64`（JSON `,string`）；业务编码 `code` 为 `VARCHAR`（ltree 路径用 code，只能字母数字下划线） | ✅ 已确认 |
-| Casbin adapter | 直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`） | ✅ 已确认 |
+| Casbin adapter | 直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3） | ✅ 已确认 |
 | 密码策略 | 仅 bcrypt cost=12，不增加复杂度校验 | ✅ 已确认 |
 | 组织模块范围 | Phase 1 实现完整 CRUD | ✅ 已确认 |
 | 审计日志写入方式 | Phase 1 同步写入（见下方分析） | ✅ 已确认 |
@@ -302,3 +314,5 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 | [08-audit.md](./08-audit.md) | 审计日志 | 操作日志中间件、同步写入、应用日志规划 |
 | [09-middleware.md](./09-middleware.md) | 中间件 | JWT、Casbin、CORS、安全头 |
 | [10-concurrency.md](./10-concurrency.md) | 并发与事务 | DB 事务、SyncedEnforcer、Redis 原子操作 |
+| [11-code-review.md](./11-code-review.md) | 代码审查 | 2026-08-19 两轮审查合并版：全分支深度审查 F-1~F-10（F-1 令牌混淆 P0 安全）+ 本地 3 提交定向审查 P1/P2 + 两处误报勘误；全部修复状态与验证记录 |
+| [12-phase1-acceptance-report.md](./12-phase1-acceptance-report.md) | 验收报告 | 2026-08-19 实现核验：27 用例逐项比对、模块级核验、缺口 G-1~G-4、Phase 2 文档缺口 A/B/C 清单（已同步补入 phase2） |

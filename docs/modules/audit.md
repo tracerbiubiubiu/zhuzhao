@@ -115,12 +115,18 @@ type AuditService interface {
 
 ```
 请求 → Audit 中间件
-  │  c.Next() 完成后记录：user_id, method, path, status_code, duration, request_body(脱敏)
-  │  → 同步 INSERT audit_logs（失败只记应用日志，不影响业务响应）
-  └── 返回（用户感知延迟不受影响）
+  │  c.Next() 完成后：
+  │  ① c.Writer.Flush() 先把响应送达客户端（D2-12——net/http 在整个中间件链
+  │     返回后才 flush，不主动 Flush 时 DB 抖动会拖慢响应尾延迟）
+  │  ② 记录：user_id, method, path, status_code, duration, request_body(脱敏)
+  │     - 脱敏：递归（嵌套对象/数组）+ 大小写不敏感 + 非法 JSON 落 <binary len=N> 占位（D2-19）
+  │     - 截断：入库上限 2KB + `<truncated>` 标记（D2-08，防未认证路径灌大行）
+  │  ③ 同步 INSERT audit_logs（WithoutCancel + 3s 独立超时，客户端断连不丢审计；
+  │     失败只记应用日志，不影响业务响应；登录路径 LogLogin 同语义，D2-04）
+  └── 返回
 ```
 
-查询：`GET /api/v1/audit/logs`（分页 + 筛选）。
+查询：`GET /api/v1/audit/logs`（分页 + 筛选；按工号筛选走含软删用户解析——软删用户的历史审计可查，D2-27）。
 
 ### 4.2 异步写入流程（Phase 3a：channel + Redis List L2）
 
@@ -241,7 +247,9 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 - 操作日志中间件（**同步**写入 `audit_logs`）
 - `GET /api/v1/audit/logs` 查询接口
 - 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
-- 基本字段 + 敏感字段脱敏 + trace_id / request_id
+- 基本字段 + 敏感字段脱敏（trace_id / request_id 于 Phase 3a 观测性落地——
+  B4-6 修订：Phase 1 的 audit_logs DDL 无此两列，request_id 记录于应用日志；
+  本行原描述与 phase1/08-audit.md SSOT 矛盾）
 
 ### Phase 2
 

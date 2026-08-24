@@ -62,7 +62,7 @@ m = r.sub == "role::superadmin" || \
 |----|---------|
 | 实例数量 | **全局唯一**一个 `SyncedEnforcer`（Wire 单例，注入 Casbin 中间件） |
 | 职责 | **路由级** RBAC（`role::{code}` × path × method） |
-| 策略存储 | 单表 `casbin_rule` + PG adapter（`pckhoi/casbin-pgx-adapter/v3`） |
+| 策略存储 | 单表 `casbin_rule` + PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3） |
 | 不做 | **每资源独立 Enforcer**、FilteredAdapter 多实例、资源级 Casbin PDP |
 
 > **`SyncedEnforcer` ≠ 多个 Enforcer**：它是 Casbin 自带的**并发读安全**包装（内部读写锁），Phase 1 仍只有这一份实例。每资源独立 Enforcer 见上方「Phase 1 不做」及 [design-decisions §8](../design/design-decisions.md#8-casbin-策略爆炸每资源独立-enforcer)（Phase 2+ / 按需）。
@@ -98,7 +98,12 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) 
 
         path := c.Request.URL.Path
         method := c.Request.Method
-        if isSelfServiceRoute(method, path) {
+        // 自服务白名单：路由组标签方案（B4-2 回写）——SelfService() 中间件在
+        // 路由注册期打 context 标记，CasbinAuth 检测标记放行。原设计的
+        // isSelfServiceRoute(method, path) 路径匹配方案已废弃：
+        // 路径匹配可被路径构造绕过且与注册解耦，标签方案可测、不可伪造
+        // （router_test.go 行为测试守护注册顺序）。
+        if isSelfServiceRoute(c) { // 实现：c.Get(middleware.SelfServiceContextKey)
             c.Set("roles", roles)
             c.Next()
             return
@@ -216,7 +221,9 @@ func (r *registry) Register(res Resource) {
 
 ### Casbin Adapter
 
-Phase 1 直接使用 PostgreSQL adapter（`pckhoi/casbin-pgx-adapter/v3`），**不走内存 adapter**：
+Phase 1 直接使用 PostgreSQL adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3），**不走内存 adapter**：
+
+> **表结构**：adapter 列名为 `ptype`。`000001_init` 创建 `p_type`，`000004_casbin_column_ptype` 将列名改为 `ptype` 以对齐 noho-digital adapter。
 
 > **骨架现状**：`internal/casbin/enforcer.go` 可能暂用内存 adapter + TODO；**Step 5 必须切换**为 PG adapter 并 `LoadPolicy()`，与 `000002_seed` 的 Casbin 初始策略及 `AssignMenus` 写 `casbin_rule` 联调。单测可继续用内存 adapter，集成测试 / 验收须 PG。
 
@@ -276,8 +283,8 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 > 目标目录见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)。
 
 ```
-internal/casbin/enforcer.go           # PG adapter（pckhoi/casbin-pgx-adapter/v3）
-internal/middleware/casbin.go         # Casbin 中间件 + isSelfServiceRoute（Step 5 挂载）
+internal/casbin/enforcer.go           # PG adapter（noho-digital/casbin-pgx-adapter）
+internal/middleware/casbin.go         # Casbin 中间件 + SelfService 标签检测（Step 5 挂载；原 isSelfServiceRoute 路径匹配方案已废弃，B4-2 回写）
 internal/repository/user/role_fetcher.go   # 或 internal/service/authz/role_fetcher.go — RoleFetcher 实现
 internal/pkg/resource/registry.go     # Resource 接口 + Registry（Phase 1 空）
 ```
@@ -302,6 +309,6 @@ Wire：`NewRoleFetcher(userRepo UserRepo) middleware.RoleFetcher`。单测可 mo
 > 以下决策已在讨论中确认：
 
 - ✅ **Casbin 模型**：g 表消除；Phase 1 仅直接角色，Phase 2b BFS 三源。
-- ✅ **Casbin adapter**：直接上 PG adapter（`pckhoi/casbin-pgx-adapter/v3`）。
+- ✅ **Casbin adapter**：直接上 PG adapter（`noho-digital/casbin-pgx-adapter`，Casbin v3）。
 - ✅ **策略同步时机**：角色菜单变更后，事务内写 casbin_rule + 事务后 ReloadPolicy（DB 为 source of truth）。
 - ✅ **Phase 1 角色查询**：只查直接角色（user_roles 表），Phase 2b 扩展为 BFS 三源合并。

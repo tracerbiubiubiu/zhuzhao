@@ -113,6 +113,11 @@ func ServiceUnavailable(c *gin.Context) {
 	Error(c, http.StatusServiceUnavailable, errcode.ErrServiceUnavailable)
 }
 
+// TooManyRequests 请求过于频繁（429）
+func TooManyRequests(c *gin.Context, err *errcode.Error) {
+	Error(c, http.StatusTooManyRequests, err)
+}
+
 // NotFound 资源不存在
 func NotFound(c *gin.Context, message string) {
 	Fail(c, http.StatusNotFound, 10004, message)
