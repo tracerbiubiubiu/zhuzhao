@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -40,7 +41,13 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 
 		claims, err := jwtManager.ParseAccessToken(tokenString)
 		if err != nil {
-			response.UnauthorizedError(c, errcode.ErrTokenInvalid)
+			// B2-1：过期与无效区分——过期 → 20002（客户端可静默 refresh），
+			// 签名错/typ 混淆/黑名单等 → 20003（需跳登录页）
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				response.UnauthorizedError(c, errcode.ErrTokenExpired)
+			} else {
+				response.UnauthorizedError(c, errcode.ErrTokenInvalid)
+			}
 			c.Abort()
 			return
 		}

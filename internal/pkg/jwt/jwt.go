@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,6 +18,9 @@ const (
 
 // ErrTokenTypeMismatch 令牌类型不符（如用 RefreshToken 访问需 AccessToken 的接口）
 var ErrTokenTypeMismatch = errors.New("token type mismatch")
+
+// ErrTokenExpired 令牌已过期（B2-1：供中间件映射 20002，与「token 失效」区分）
+var ErrTokenExpired = errors.New("token expired")
 
 // AccessClaims accessToken 的 payload
 type AccessClaims struct {
@@ -101,6 +105,10 @@ func (m *Manager) ParseAccessToken(tokenString string) (*AccessClaims, error) {
 		return m.secret, nil
 	})
 	if err != nil {
+		// B2-1：过期错误包装为本包哨兵（errors.Is 可判），上层据此返回 20002
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("%w: %w", ErrTokenExpired, err)
+		}
 		return nil, err
 	}
 	claims, ok := token.Claims.(*AccessClaims)

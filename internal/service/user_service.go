@@ -171,16 +171,29 @@ func (s *UserService) Update(ctx context.Context, req *model.UpdateUserRequest, 
 	if err := s.ensureCanManage(ctx, actorUserID, user.ID); err != nil {
 		return nil, err
 	}
-	if req.Username != "" {
-		user.Username = req.Username
+	// B2-3 patch 语义：仅覆盖显式传入的字段（nil 跳过；空串 = 显式清空）。
+	// SQL 不变（合并进 user 对象后仍全量写，未传字段保持 FindByID 原值）
+	if req.EmployeeNo != nil {
+		user.EmployeeNo = *req.EmployeeNo
 	}
-	user.EmployeeNo = req.EmployeeNo
-	user.DomainAccount = req.DomainAccount
-	user.UserDomain = req.UserDomain
-	user.RealName = req.RealName
-	user.Email = req.Email
-	user.Phone = req.Phone
-	user.Avatar = req.Avatar
+	if req.DomainAccount != nil {
+		user.DomainAccount = *req.DomainAccount
+	}
+	if req.UserDomain != nil {
+		user.UserDomain = *req.UserDomain
+	}
+	if req.RealName != nil {
+		user.RealName = *req.RealName
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+	if req.Phone != nil {
+		user.Phone = *req.Phone
+	}
+	if req.Avatar != nil {
+		user.Avatar = *req.Avatar
+	}
 	user.Version = req.Version
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
@@ -349,10 +362,19 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req *mode
 	if err != nil {
 		return nil, err
 	}
-	user.RealName = req.RealName
-	user.Email = req.Email
-	user.Phone = req.Phone
-	user.Avatar = req.Avatar
+	// B2-3 patch 语义：同 Update，仅覆盖显式传入字段
+	if req.RealName != nil {
+		user.RealName = *req.RealName
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+	if req.Phone != nil {
+		user.Phone = *req.Phone
+	}
+	if req.Avatar != nil {
+		user.Avatar = *req.Avatar
+	}
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}

@@ -227,6 +227,12 @@ func filterMenusForTree(menus []*model.Menu) []*model.Menu {
 		if m.MenuType == menuTypeButton {
 			continue
 		}
+		// B2-4：用户菜单树只含 visible=true 节点（07-menu.md/modules-menu.md 承诺）。
+		// 在 includeMenuAncestors 补链之后执行：父不可见而子可见时，子提升为根。
+		// 管理端 GetTree 不走此过滤（含隐藏节点，供角色分配与运维）
+		if !m.Visible {
+			continue
+		}
 		out = append(out, m)
 	}
 	return out

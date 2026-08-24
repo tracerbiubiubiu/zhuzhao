@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
@@ -202,6 +201,11 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 	if !crypto.CheckPassword(oldPassword, user.Password) {
 		return nil, errcode.ErrInvalidCredentials
 	}
+	// B2-2：新密码与旧密码相同 → 400（02-auth.md 测试用例承诺）；
+	// 防止「以为改了密码」实际凭证未变却吊销了全部会话
+	if oldPassword == newPassword {
+		return nil, errcode.ErrInvalidParams
+	}
 	hash, err := crypto.HashPassword(newPassword)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
@@ -297,9 +301,4 @@ func normalizeDeviceID(deviceID string) string {
 		return defaultDeviceID
 	}
 	return deviceID
-}
-
-// ParseTokenExpired 判断 JWT 是否过期（供 handler 映射错误码）
-func ParseTokenExpired(err error) bool {
-	return errors.Is(err, jwt.ErrTokenExpired)
 }

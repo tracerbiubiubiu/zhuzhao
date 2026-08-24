@@ -21,7 +21,8 @@ import (
 func resetRBACTables(t *testing.T) {
 	t.Helper()
 	_, err := testPool.Exec(context.Background(), `
-		TRUNCATE user_roles, users RESTART IDENTITY CASCADE;
+		TRUNCATE user_roles, users, role_menus RESTART IDENTITY CASCADE;
+		DELETE FROM menus WHERE is_system = false;
 		DELETE FROM roles`)
 	require.NoError(t, err)
 }

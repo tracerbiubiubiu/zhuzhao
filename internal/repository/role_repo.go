@@ -75,8 +75,12 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 		return fmt.Errorf("delete role_menus: %w", err)
 	}
 	for _, menuID := range menuIDs {
+		// B2-5：INSERT...SELECT 带活跃性条件——与 service 预检双保险，
+		// 消灭「预检通过后、事务 INSERT 前」菜单被软删的 TOCTOU 残余窗口
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)
+			INSERT INTO role_menus (role_id, menu_id)
+			SELECT $1, id FROM menus
+			WHERE id = $2 AND deleted_at IS NULL
 			ON CONFLICT (role_id, menu_id) DO NOTHING`, role.ID, menuID); err != nil {
 			return fmt.Errorf("insert role_menus: %w", err)
 		}

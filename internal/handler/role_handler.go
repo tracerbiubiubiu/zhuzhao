@@ -51,7 +51,7 @@ func (h *RoleHandler) Get(c *gin.Context) {
 		response.BadRequest(c, "无效的角色 ID")
 		return
 	}
-	role, err := h.rbacService.GetRole(c.Request.Context(), roleID)
+	role, err := h.rbacService.GetRole(c.Request.Context(), roleID, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -109,7 +109,7 @@ func (h *RoleHandler) GetMenus(c *gin.Context) {
 		response.BadRequest(c, "无效的角色 ID")
 		return
 	}
-	menuIDs, err := h.rbacService.GetRoleMenuIDs(c.Request.Context(), roleID)
+	menuIDs, err := h.rbacService.GetRoleMenuIDs(c.Request.Context(), roleID, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -124,7 +124,7 @@ func (h *RoleHandler) GetPermissions(c *gin.Context) {
 		response.BadRequest(c, "无效的角色 ID")
 		return
 	}
-	policies, err := h.rbacService.GetRolePermissions(c.Request.Context(), roleID)
+	policies, err := h.rbacService.GetRolePermissions(c.Request.Context(), roleID, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return

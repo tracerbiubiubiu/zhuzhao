@@ -18,18 +18,19 @@ type CreateUserRequest struct {
 	PrimaryOrgID  *int64              `json:"primary_org_id,string"`
 }
 
-// UpdateUserRequest 更新用户
+// UpdateUserRequest 更新用户（B2-3 patch 语义：未传字段保持不变，传空串显式清空；
+// username 不可改——文档「Phase 2 再定改名流程」）
 type UpdateUserRequest struct {
-	ID            int64  `json:"id,string" binding:"required"`
-	Version       int    `json:"version" binding:"required"`
-	Username      string `json:"username"`
-	EmployeeNo    string `json:"employee_no"`
-	DomainAccount string `json:"domain_account"`
-	UserDomain    string `json:"user_domain"`
-	RealName      string `json:"real_name"`
-	Email         string `json:"email"`
-	Phone         string `json:"phone"`
-	Avatar        string `json:"avatar"`
+	ID      int64 `json:"id,string" binding:"required"`
+	Version int   `json:"version" binding:"required"`
+	// 指针字段：nil = 未传（保持原值），非 nil 空串 = 显式清空
+	EmployeeNo    *string `json:"employee_no"`
+	DomainAccount *string `json:"domain_account"`
+	UserDomain    *string `json:"user_domain"`
+	RealName      *string `json:"real_name"`
+	Email         *string `json:"email"`
+	Phone         *string `json:"phone"`
+	Avatar        *string `json:"avatar"`
 }
 
 // UserIDRequest 带 user_id 的请求
@@ -62,12 +63,12 @@ type SetUserOrgsRequest struct {
 	PrimaryOrgID *int64              `json:"primary_org_id,string"`
 }
 
-// UpdateProfileRequest 更新个人资料
+// UpdateProfileRequest 更新个人资料（patch 语义同 UpdateUserRequest）
 type UpdateProfileRequest struct {
-	RealName string `json:"real_name"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-	Avatar   string `json:"avatar"`
+	RealName *string `json:"real_name"`
+	Email    *string `json:"email"`
+	Phone    *string `json:"phone"`
+	Avatar   *string `json:"avatar"`
 }
 
 // UpdatePasswordRequest 用户修改密码

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 )
 
@@ -258,4 +259,41 @@ func TestTrustedProxies_TrustedUsesXFF(t *testing.T) {
 	r := newTrustedProxiesEngine(t, []string{"0.0.0.0/0"})
 	assert.Equal(t, "1.2.3.4", clientIPWithXFF(r, "1.2.3.4"),
 		"信任网段内直连（0.0.0.0/0）时 XFF 最左侧应为客户端 IP")
+}
+
+// captureAuditLogger 捕获 AuditLog 中间件收到的条目（验证顺序行为用）
+type captureAuditLogger struct {
+	entries []middleware.AuditLogEntry
+}
+
+func (c *captureAuditLogger) Insert(ctx context.Context, log middleware.AuditLogEntry) error {
+	c.entries = append(c.entries, log)
+	return nil
+}
+
+// B2-7 守护：Audit 前置于 Casbin——被 Casbin 拒绝的 403 请求同样落审计
+// （越权尝试留痕）。若有人把 AuditLog 移到 CasbinAuth 之后，此测试失败。
+func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	jwtManager := jwtpkg.NewManager(config.JWTConfig{
+		Secret:    "router-test-secret-0123456789",
+		AccessTTL: 30 * time.Minute,
+	})
+	auditCapture := &captureAuditLogger{}
+	deps := router.Deps{
+		JWTManager:  jwtManager,
+		Enforcer:    newRouterTestEnforcer(t),
+		RedisClient: startStubRedis(t),
+		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher: &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}},
+		AuditService: auditCapture,
+	}
+	r := router.New(deps)
+
+	// viewer 访问业务路由 → Casbin 403 拒绝；断言该 403 仍产生审计条目
+	w := do(r, jwtManager, 1, http.MethodGet, "/api/v1/users")
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.NotEmpty(t, auditCapture.entries, "Casbin 拒绝的 403 请求必须落审计（Audit 前置于 Casbin）")
+	assert.Equal(t, "/api/v1/users", auditCapture.entries[0].Path)
+	assert.Equal(t, http.StatusForbidden, auditCapture.entries[0].StatusCode)
 }

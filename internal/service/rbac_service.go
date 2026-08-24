@@ -38,8 +38,32 @@ func (s *RBACService) ListRoles(ctx context.Context, hideSuperadmin bool) ([]*mo
 	return s.roleRepo.List(ctx, hideSuperadmin)
 }
 
-func (s *RBACService) GetRole(ctx context.Context, roleID int64) (*model.Role, error) {
-	return s.roleRepo.FindByID(ctx, roleID)
+// ensureRoleVisible 影子超管读路径（B2-6）：非 superadmin 读 superadmin 角色
+// 一律 404（与非存在一致，防推断）——List 已过滤，此处覆盖详情/菜单/策略三个读接口
+func (s *RBACService) ensureRoleVisible(ctx context.Context, actorUserID int64, role *model.Role) error {
+	if role.Code != "superadmin" {
+		return nil
+	}
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
+	if err != nil {
+		return err
+	}
+	if !isSuperadmin(actorRoles) {
+		return errcode.ErrRoleNotFound
+	}
+	return nil
+}
+
+// GetRole 角色：非 superadmin 读 superadmin 角色 → 404（B2-6）
+func (s *RBACService) GetRole(ctx context.Context, roleID, actorUserID int64) (*model.Role, error) {
+	role, err := s.roleRepo.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureRoleVisible(ctx, actorUserID, role); err != nil {
+		return nil, err
+	}
+	return role, nil
 }
 
 func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleRequest, actorUserID int64) (*model.Role, error) {
@@ -175,10 +199,21 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 
 	var apis []*model.MenuAPI
 	menuIDs := []int64(req.MenuIDs)
-	if role.Code != "admin" && role.Code != "superadmin" && len(menuIDs) > 0 {
-		apis, err = s.menuRepo.ListMenuAPIsByMenuIDs(ctx, menuIDs)
+	if len(menuIDs) > 0 {
+		// B2-5：菜单存在性/活跃性预检——不存在或已软删的 ID 返回 ErrMenuNotFound
+		// （05-role.md 测试用例承诺；此前 FK 错误冒充 500、软删菜单产生脏绑定）
+		active, err := s.menuRepo.ListByIDs(ctx, menuIDs)
 		if err != nil {
 			return err
+		}
+		if len(active) != len(menuIDs) {
+			return errcode.ErrMenuNotFound
+		}
+		if role.Code != "admin" && role.Code != "superadmin" {
+			apis, err = s.menuRepo.ListMenuAPIsByMenuIDs(ctx, menuIDs)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -193,16 +228,23 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 	return nil
 }
 
-func (s *RBACService) GetRoleMenuIDs(ctx context.Context, roleID int64) ([]int64, error) {
-	if _, err := s.roleRepo.FindByID(ctx, roleID); err != nil {
+func (s *RBACService) GetRoleMenuIDs(ctx context.Context, roleID, actorUserID int64) ([]int64, error) {
+	role, err := s.roleRepo.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureRoleVisible(ctx, actorUserID, role); err != nil {
 		return nil, err
 	}
 	return s.roleRepo.ListMenuIDsByRoleID(ctx, roleID)
 }
 
-func (s *RBACService) GetRolePermissions(ctx context.Context, roleID int64) ([][3]string, error) {
+func (s *RBACService) GetRolePermissions(ctx context.Context, roleID, actorUserID int64) ([][3]string, error) {
 	role, err := s.roleRepo.FindByID(ctx, roleID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureRoleVisible(ctx, actorUserID, role); err != nil {
 		return nil, err
 	}
 	if role.Code == "admin" || role.Code == "superadmin" {
