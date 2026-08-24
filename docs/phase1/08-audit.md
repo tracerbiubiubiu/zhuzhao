@@ -45,7 +45,7 @@
 3. 异步引入的复杂度（channel 满降级、关闭时刷空、goroutine 泄漏）在 Phase 1 不值得
 4. Phase 3a 引入异步（channel → Redis List → DB）时，接口不变，只改 `AuditRepo.Insert` 内部实现
 
-**优化措施**：同步写入虽在请求链路内，但放在 `c.Next()` 之后（响应已写完），用户感知延迟不受影响：
+**优化措施**：同步写入虽在请求链路内，但放在 `c.Next()` 之后，且**先 `c.Writer.Flush()` 把响应送达客户端再写审计**（D2-12——net/http 在整个中间件链返回后才真正 flush，不主动 Flush 时 DB 抖动会拖慢响应送达）：
 
 ```go
 func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
@@ -59,7 +59,11 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
         // 执行请求（响应在此期间已写完）
         c.Next()
 
-        // 同步记录（响应已返回给客户端，此处延迟用户无感知）
+        // D2-12：响应先送达客户端，再做同步审计写
+        c.Writer.Flush()
+
+        // 同步记录（脱敏：递归 + 大小写不敏感 + 非法 JSON 占位 <binary len=N>；
+        // 截断：入库上限 2KB——D2-19/D2-08）
         log := AuditLog{
             UserID:      c.GetInt64("userID"),
             Username:    c.GetString("username"),
@@ -72,15 +76,18 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
             RequestBody: maskSensitive(bodyBytes),
             CreatedAt:   time.Now(),
         }
-        // 同步写入 DB，失败只记应用日志，不影响业务
-        if err := auditRepo.Insert(c.Request.Context(), log); err != nil {
+        // 同步写入 DB；WithoutCancel + 3s 独立超时（F-5）——客户端断连不丢审计；
+        // 失败只记应用日志，不影响业务
+        ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), 3*time.Second)
+        defer cancel()
+        if err := auditRepo.Insert(ctx, log); err != nil {
             slog.Error("audit log write failed", "err", err, "path", log.Path)
         }
     }
 }
 ```
 
-> 注意：`c.Next()` 之后 Gin 已经把响应写给了客户端，但 HTTP 那一层的连接还未关闭（Gin 在中间件链全部执行完后才关闭）。所以同步写审计日志确实会增加一点点连接占用时间，但用户端已经收到了响应。
+> 注意：若不主动 `Flush()`，HTTP 层实际在**整个中间件链返回后**才把响应发给客户端——同步审计写会叠加在响应送达之前（DB 抖动时每请求尾延迟最多 +3s），这正是 D2-12 加 `c.Writer.Flush()` 的原因；Flush 后连接仍保持到中间件链结束，审计写入不阻塞客户端收包。
 
 ### 登录审计（公开路由单独写）
 
@@ -92,20 +99,17 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
 
 ### 敏感字段脱敏
 
+> D2-19：递归（嵌套对象/数组）+ 大小写不敏感（`strings.EqualFold`）+ 非法 JSON 落 `<binary len=N>` 占位（原顶层精确匹配三重绕过：嵌套 password 裸入库 / `Password` 大小写绕过 / form-encoded 原文整段落库）。D2-08：入库前截断至 2KB（`<truncated, total=N>` 标记）。
+
 ```go
 func maskSensitive(body []byte) string {
     var m map[string]any
     if json.Unmarshal(body, &m) != nil {
-        return string(body)
+        return fmt.Sprintf("<binary len=%d>", len(body)) // 不原文入库
     }
-    sensitiveKeys := []string{"password", "old_password", "new_password", "secret", "token"}
-    for _, key := range sensitiveKeys {
-        if _, ok := m[key]; ok {
-            m[key] = "***"
-        }
-    }
+    maskSensitiveMap(m) // 递归：map/slice 深度遍历 + EqualFold 匹配 sensitiveKeys
     result, _ := json.Marshal(m)
-    return string(result)
+    return truncateAuditBody(string(result)) // 2KB 上限
 }
 ```
 

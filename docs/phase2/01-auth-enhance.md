@@ -1,6 +1,6 @@
 # 01 - 认证增强（auth-enhance，Phase 2b）
 
-> **Step 7**，可与 Step 6（storage）并行；依赖 Phase 1 认证链路（双 Token、Redis RT、`devices:{userId}` 已写入）。  
+> **Step 7**，可与 Step 6（storage）并行；依赖 Phase 1 认证链路（双 Token、Redis RT——**设备元数据未落地，见 §1 前置条件**）。  
 > 模块背景见 [modules/auth.md](../modules/auth.md)、[phase1/02-auth.md](../phase1/02-auth.md)。
 
 ---
@@ -43,19 +43,29 @@ Phase 1 已定型**双轨吊销机制**（SSOT：[phase1/02-auth.md §会话吊�
 ## 1. 前置条件
 
 - [ ] Phase 1 登录/刷新/登出可用
-- [ ] 登录时已 `SADD devices:{userId}`、`SET refresh:{userId}:{deviceId}`（见 02-auth）
 - [ ] `POST /api/v1/auth/password/update` 已实现
+- [ ] **（D2-49①，本 Step 首任务负责落地，非 Phase 1 已有）** `SADD devices:{userId}` 集合初始化 + RT value 结构升级——Phase 1 实际只写 `SET refresh:{userId}:{deviceId} = hashToken(rt)`（SHA-256 hex，[auth_service.go issueTokenPair](../../internal/service/auth_service.go)），**无 devices 集合、无设备元数据**（review 03 §10.1 D2-49 实证）。升级内容见 §2.1
+
+> **为何不在 Phase 1 顺带改**：改 RT value 结构牵动 Refresh 的 hash 比较逻辑与 B1-B4 守护测试，违背「Phase 1 收口不再扩面」原则；设备会话本就是本 Step 引入的能力，前置改造属本职范围。
+
+- [ ] **（D2-23，条件触发）收紧 CORS**：Phase 1 `AllowAllOrigins` 全放开（[cors.go](../../internal/middleware/cors.go)，Bearer 认证下低危可接受）。**本模块或后续任何 Step 引入 cookie 会话（凭据型）前必须先收紧**为 Origin 白名单 + `AllowCredentials` 显式约束——`AllowAllOrigins + credentials` 组合会被浏览器拒绝，且全放开凭据构成 CSRF 直接暴露面。本 Step 设备管理仍走 Bearer（不触发）；登记于此防 cookie 方案落地时漏检（[review 03 §10.2](../review/03-second-deep-review-findings.md)）
 
 ---
 
 ## 2. 设备管理
 
-### 2.1 Redis 结构（Phase 1 已预留）
+### 2.1 Redis 结构（**本 Step 首任务落地**，Phase 1 现状为裸 hash——D2-49①）
 
 ```
-refresh:{userId}:{deviceId}  → JSON { jti, device_name, ip, user_agent, created_at, last_refresh_at }
+refresh:{userId}:{deviceId}  → JSON { "hash": "<sha256(rt)>", "meta": { jti, device_name, ip, user_agent, created_at, last_refresh_at } }
 devices:{userId}             → SET of deviceId
 ```
+
+**首任务**（工单 A1 之前）：
+
+1. `issueTokenPair` 改为写结构化 value（hash 与元数据并存——Refresh 校验改读 `meta` 同级的 `hash` 字段，兼容逻辑同 Step 重构）；
+2. 登录/登出/吊销链路补 `SADD`/`SREM devices:{userId}`（Logout 单设备、`revokeUserSessions` 全量——顺带消解其全 keyspace SCAN）；
+3. 既有 Refresh/Logout 守护测试同步改造。
 
 登录 / 刷新时更新 `last_refresh_at`；`device_name` 可由前端传 `device_info.name`，缺省用 User-Agent 截断。
 

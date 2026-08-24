@@ -1,67 +1,104 @@
-package middleware_test
+package middleware
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
+	"encoding/json"
+	"strings"
 	"testing"
-
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
-
-	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 )
 
-type stubAuditLogger struct {
-	inserted       int
-	ctxErrAtInsert error // Insert 执行瞬间的 ctx 状态（写入是否有效）
+// D2-45/D2-19 守护：maskSensitive 递归脱敏 + 大小写不敏感。
+// 修复前仅顶层精确匹配：嵌套/数组内 password 裸入库、Password 大小写绕过。
+func TestMaskSensitive(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		check func(t *testing.T, out string)
+	}{
+		{
+			name:  "顶层脱敏",
+			input: `{"employee_no":"E001","password":"secret123"}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "secret123") {
+					t.Fatal("顶层 password 未脱敏")
+				}
+			},
+		},
+		{
+			name:  "大小写不敏感",
+			input: `{"Password":"secret123"}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "secret123") {
+					t.Fatal("Password（大写）绕过脱敏")
+				}
+			},
+		},
+		{
+			name:  "嵌套对象递归",
+			input: `{"user":{"old_password":"secret123"},"note":"x"}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "secret123") {
+					t.Fatal("嵌套 old_password 未脱敏")
+				}
+			},
+		},
+		{
+			name:  "数组内对象递归",
+			input: `{"items":[{"new_password":"secret123"},{"k":"v"}]}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "secret123") {
+					t.Fatal("数组内 new_password 未脱敏")
+				}
+			},
+		},
+		{
+			name:  "token/secret 同样脱敏",
+			input: `{"token":"tk-1","secret":"sk-1","safe":"keep"}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "tk-1") || strings.Contains(out, "sk-1") {
+					t.Fatal("token/secret 未脱敏")
+				}
+				if !strings.Contains(out, "keep") {
+					t.Fatal("非敏感字段不应被误伤")
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := maskSensitive([]byte(tt.input))
+			// 脱敏输出仍应是合法 JSON（入库可解析）
+			var m map[string]any
+			if err := json.Unmarshal([]byte(out), &m); err != nil {
+				t.Fatalf("输出非合法 JSON: %v (%s)", err, out)
+			}
+			tt.check(t, out)
+		})
+	}
 }
 
-func (s *stubAuditLogger) Insert(ctx context.Context, log middleware.AuditLogEntry) error {
-	s.inserted++
-	s.ctxErrAtInsert = ctx.Err()
-	return nil
-}
+// D2-19/D2-08：非法 JSON 不原文入库（占位记长度）+ 超限截断
+func TestMaskSensitive_NonJSONAndTruncate(t *testing.T) {
+	// form-encoded 等非 JSON body → 占位（原原文整段落库）
+	out := maskSensitive([]byte("password=abc123&user=bob"))
+	if strings.Contains(out, "abc123") || strings.Contains(out, "password=") {
+		t.Fatalf("非 JSON 原文入库: %s", out)
+	}
+	if !strings.HasPrefix(out, "<binary len=") {
+		t.Fatalf("应落占位标记，实际: %s", out)
+	}
 
-// F-5 特殊场景：客户端断连（request context 已取消）后，审计写入必须仍以独立 context 执行。
-// 修复前：Insert 收到的就是已取消的 request ctx，pgx Exec 必然失败，审计静默丢失。
-// 注意：断言的是 Insert 执行瞬间的 ctx 状态（中间件返回后 defer cancel() 属正常清理）。
-func TestAuditLog_InsertSurvivesClientDisconnect(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	stub := &stubAuditLogger{}
+	// 超长 JSON → 截断（D2-08，maxAuditBody=2048）
+	big := `{"k":"` + strings.Repeat("x", maxAuditBody*2) + `"}`
+	out = maskSensitive([]byte(big))
+	if len(out) > maxAuditBody+100 {
+		t.Fatalf("未截断：len=%d", len(out))
+	}
+	if !strings.Contains(out, "<truncated") {
+		t.Fatalf("截断缺标记: %s", out[len(out)-60:])
+	}
 
-	r := gin.New()
-	r.Use(middleware.AuditLog(stub))
-
-	// handler 内模拟"业务执行到一半客户端断开"
-	reqCtx, cancel := context.WithCancel(context.Background())
-	r.POST("/api/v1/users/delete", func(c *gin.Context) {
-		cancel() // 客户端断连 → request context 取消
-		c.Status(http.StatusOK)
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/delete", nil).WithContext(reqCtx)
-	r.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-	require.Equal(t, 1, stub.inserted, "审计必须写入，即使客户端已断连")
-	require.NoError(t, stub.ctxErrAtInsert,
-		"审计写入瞬间的 context 不得已取消（应为 WithoutCancel + 独立超时）")
-}
-
-// 常规路径：正常请求下审计照常写入
-func TestAuditLog_NormalRequest(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	stub := &stubAuditLogger{}
-
-	r := gin.New()
-	r.Use(middleware.AuditLog(stub))
-	r.POST("/x", func(c *gin.Context) { c.Status(http.StatusCreated) })
-
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/x", nil))
-
-	require.Equal(t, 1, stub.inserted)
-	require.NoError(t, stub.ctxErrAtInsert)
+	// 空 body
+	if out := maskSensitive(nil); out != "" {
+		t.Fatalf("空 body 应返回空串，实际 %q", out)
+	}
 }

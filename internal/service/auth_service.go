@@ -56,6 +56,11 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 400)
 		return nil, errcode.ErrInvalidParams
 	}
+	// D2-22：device_id 字符白名单——直接进 Redis 键与 JWT claims，
+	// 任意字符可致键不可读/膨胀（长度上限已在 binding max=64）
+	if req.DeviceID != "" && !validDeviceID(req.DeviceID) {
+		return nil, errcode.ErrInvalidParams
+	}
 
 	blocked, err := s.scripts.LoginLockIsBlocked(ctx, req.EmployeeNo)
 	if err != nil {
@@ -95,6 +100,9 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 429)
 			return nil, errcode.ErrAccountLocked
 		}
+		// D2-20：与「工号不存在」分支（B4-1）对齐——禁用分支不比对密码，
+		// 响应时延差可枚举被禁用工号
+		crypto.CheckDummyPassword(req.Password)
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 401)
 		return nil, errcode.ErrInvalidCredentials
 	}
@@ -158,6 +166,11 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 	}
 
 	deviceID := normalizeDeviceID(claims.DeviceID)
+	if !validDeviceID(deviceID) {
+		// D2-22：防御——claims 来自服务端签名令牌，正常不可达；
+		// 伪造/历史脏 claims 拒绝刷新
+		return nil, errcode.ErrRefreshTokenInvalid
+	}
 	key := refreshKey(claims.UserID, deviceID)
 	storedHash, err := s.rdb.GetDel(ctx, key).Result()
 	if err == goredis.Nil {
@@ -179,8 +192,17 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 	if err != nil {
 		return errcode.ErrTokenInvalid
 	}
+	// D2-22：device_id 白名单（与 Login 对齐）
+	if deviceID != "" && !validDeviceID(deviceID) {
+		return errcode.ErrInvalidParams
+	}
 
-	ttl := time.Until(claims.ExpiresAt.Time)
+	// D2-44⑥：ExpiresAt 理论 nil 防御——本服务签发的 AT 恒带 exp，
+	// 仅持有密钥伪造无 exp 令牌可触达（纵深项，nil 时跳过拉黑仅删 RT）
+	var ttl time.Duration
+	if claims.ExpiresAt != nil {
+		ttl = time.Until(claims.ExpiresAt.Time)
+	}
 	if ttl > 0 {
 		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
 		if err := s.rdb.Set(ctx, blacklistKey, "1", ttl).Err(); err != nil {
@@ -198,6 +220,10 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 // UpdatePassword 用户修改密码（需旧密码验证），成功后吊销旧会话并重新签发 Token
 func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) {
 	if oldPassword == "" || newPassword == "" {
+		return nil, errcode.ErrInvalidParams
+	}
+	// D2-22：device_id 白名单（与 Login/Logout 对齐——重签 Token 写 Redis 键）
+	if deviceID != "" && !validDeviceID(deviceID) {
 		return nil, errcode.ErrInvalidParams
 	}
 	user, err := s.userRepo.FindByID(ctx, userID)
@@ -227,7 +253,8 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 			return nil, err
 		}
 	}
-	if err := revokeUserSessions(ctx, s.rdb, userID, s.jwtManager.AccessTTL()); err != nil {
+	// D2-05：改密吊销同样走重试补偿（DB 已提交、Redis 闪断时防旧会话存活）
+	if err := revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
 	// disabled 键会拦截刚签发的新 AT，须在重新签发前清除
@@ -248,7 +275,10 @@ func (s *AuthService) revokeAccessToken(ctx context.Context, accessToken string)
 		// 旧 AT 无效则无需拉黑
 		return nil
 	}
-	ttl := time.Until(claims.ExpiresAt.Time)
+	var ttl time.Duration
+	if claims.ExpiresAt != nil {
+		ttl = time.Until(claims.ExpiresAt.Time)
+	}
 	if ttl > 0 {
 		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
 		if err := s.rdb.Set(ctx, blacklistKey, "1", ttl).Err(); err != nil {
@@ -307,4 +337,18 @@ func normalizeDeviceID(deviceID string) string {
 		return defaultDeviceID
 	}
 	return deviceID
+}
+
+// validDeviceID D2-22：device_id 字符白名单 [a-zA-Z0-9_-]{1,64}——
+// 前端 UUID/自定义标识均落在该集合内；拒绝任意字符进 Redis 键/JWT claims
+func validDeviceID(deviceID string) bool {
+	if len(deviceID) == 0 || len(deviceID) > 64 {
+		return false
+	}
+	for _, ch := range deviceID {
+		if !(ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch == '-' || ch == '_') {
+			return false
+		}
+	}
+	return true
 }

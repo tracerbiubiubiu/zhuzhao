@@ -17,7 +17,7 @@
   "code": 0,
   "message": "success",
   "data": {},
-  "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  "request_id": "req-550e8400e29b41d4a716446655440000"
 }
 ```
 
@@ -26,7 +26,7 @@
 | `code` | int | 是 | 业务码。**`0` = 成功**；非 0 = 失败（见 errcode.md） |
 | `message` | string | 是 | 面向用户的简短中文说明；成功默认 `"success"` |
 | `data` | any | 是 | 成功时为业务载荷；**失败时固定 `null`** |
-| `request_id` | string | 否 | 请求追踪 ID（中间件注入；无则省略 JSON 字段） |
+| `request_id` | string | 否 | 请求追踪 ID（中间件注入；无则省略 JSON 字段）。格式 `req-{32 位小写 hex}`；客户端透传的 `X-Request-ID` 须符合该格式，否则服务端重新生成（D2-24） |
 
 ### 1.1 命名约定（后端已定，不改）
 
@@ -131,13 +131,15 @@ HTTP 状态按场景选取（见 errcode.md §3），body 形如：
 ## 5. 后端实现约束
 
 ```
-请求 → Middleware（JWT / Casbin / Recovery）
+请求 → Middleware（RequestID / Logger / Recovery / JWT / Casbin / AuditLog）
          ↓ 失败：response.* 直接写 Envelope + Abort
        Handler
          ↓ 调用 Service
        Service → 返回 error（*errcode.Error 或 wrap）
          ↓
        Handler → errors.As → response.Error(c, httpStatus, err)
+         ↓
+       AuditLog 中间件：先 Flush 响应（D2-12）再同步写审计（WithoutCancel）
 ```
 
 | 包 | 职责 |

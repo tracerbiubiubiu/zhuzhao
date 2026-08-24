@@ -18,9 +18,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-	if cfg.UsesWeakJWTSecret() && cfg.Server.Mode != "release" {
-		fmt.Fprintf(os.Stderr, "WARN: jwt.secret is default or weak; set JWT_SECRET before production\n")
-	}
+	// D2-09：弱/仓库默认密钥已在 Validate 中无条件拒绝（原 debug 放行 + 启动期告警）
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid config: %w", err)
 	}

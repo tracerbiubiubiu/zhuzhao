@@ -37,7 +37,8 @@ redis:
 
 jwt:
   # Phase 1: HS256 对称签名（单体底座）
-  secret: "change-me-in-production"  # 生产环境通过 JWT_SECRET 环境变量覆盖
+  # D2-09：仓库公开值非秘密——debug 可零配置启动，release 拒绝（须 JWT_SECRET 覆盖）
+  secret: "dev-only-0123456789abcdef0123456789abcdef0123456789abcdef"
   # Phase 2: RS256 非对称签名（微服务化时启用）
   # private_key: "${JWT_PRIVATE_KEY}"  # RSA 私钥
   # jwks_url: "/.well-known/jwks.json"  # JWKS 公钥分发 endpoint

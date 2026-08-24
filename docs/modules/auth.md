@@ -119,7 +119,11 @@ type TokenPair struct {
 ### 5.1 登录流程
 
 ```
-POST /api/v1/auth/login {employee_no, password}
+POST /api/v1/auth/login {employee_no, password, device_id?}
+
+0. 入参约束（D2-01/D2-22）
+   → employee_no ≤50、device_id ≤64 且字符白名单 [a-zA-Z0-9_-]
+     （防超大键灌爆 Redis maxmemory / 键不可读）
 
 1. 登录限流检查
    → Redis: lock:login:{employee_no}
@@ -132,7 +136,8 @@ POST /api/v1/auth/login {employee_no, password}
 
 3. 检查用户状态（实现顺序：状态检查先于密码验证，比原设计更严格——
    禁用账号无法通过密码探测，且禁用也计入失败计数）
-   → user.Status != 1？返回 401（与密码错误相同文案，防枚举；见 phase1/02-auth）
+   → user.Status != 1？dummy bcrypt 比对（D2-20：与不存在分支对齐，
+     防禁用工号枚举）+ 返回 401（与密码错误相同文案，防枚举；见 phase1/02-auth）
 
 4. 验证密码
    → bcrypt.Compare(password, user.PasswordHash)
@@ -141,11 +146,11 @@ POST /api/v1/auth/login {employee_no, password}
 
 5. 签发 Token
    → AT: JWT(uid + username + jti + mcp), TTL=30min，HS256
-   → RT: 随机串, TTL=7d
+   → RT: JWT(uid + deviceId), TTL=7d
 
-6. 存储
-   → Redis SET refresh:{userId}:{deviceId} = rt, TTL=7d
-   → Redis SADD devices:{userId} = deviceId
+6. 存储（Phase 1 现状——D2-49①：无 devices 集合、RT value 为裸 hash，
+   devices:{userId} 集合与设备元数据随 Phase 2b Step 7 首任务落地）
+   → Redis SET refresh:{userId}:{deviceId} = sha256(rt), TTL=7d
 
 7. 清除登录限流
    → Redis DEL lock:login:{employee_no}

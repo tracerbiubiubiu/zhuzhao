@@ -31,7 +31,10 @@ func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntr
 	return nil
 }
 
-// LogLogin 登录审计（公开路由不走 AuditLog 中间件，由 AuthService 显式调用）
+// LogLogin 登录审计（公开路由不走 AuditLog 中间件，由 AuthService 显式调用）。
+// D2-04：与中间件路径（F-5）对齐——登录请求的 ctx 随客户端断连取消，
+// 直接透传会丢登录成功/失败审计（撞库攻击无 DB 证据）；改用
+// WithoutCancel + 独立超时，覆盖 auth_service 全部 11 处 LogLogin 调用
 func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent string, userID *int64, username string, statusCode int) {
 	entry := middleware.AuditLogEntry{
 		Method:      "POST",
@@ -46,15 +49,21 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 		entry.UserID = *userID
 		entry.Username = username
 	}
-	if err := s.Insert(ctx, entry); err != nil {
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loginAuditWriteTimeout)
+	defer cancel()
+	if err := s.Insert(writeCtx, entry); err != nil {
 		slog.Error("audit log write failed", "err", err, "path", entry.Path)
 	}
 }
 
-// List 查询审计日志；employeeNo 非空时按工号解析为 user_id（优先于 q.UserID）
+// loginAuditWriteTimeout 登录审计写入独立超时（与 middleware.auditWriteTimeout 对齐）
+const loginAuditWriteTimeout = 3 * time.Second
+
+// List 查询审计日志；employeeNo 非空时按工号解析为 user_id（优先于 q.UserID）。
+// D2-27：按工号解析走含软删查询——用户软删后其历史审计仍应可查（原 404）
 func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery, employeeNo string) (*model.AuditLogListResponse, error) {
 	if employeeNo != "" {
-		user, err := s.userRepo.FindByEmployeeNo(ctx, employeeNo)
+		user, err := s.userRepo.FindByEmployeeNoIncludeDeleted(ctx, employeeNo)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +115,7 @@ func loginAuditBody(employeeNo string) string {
 
 // normalizeAuditPage 审计分页规范化。
 // B4-6：page 上限 10000——原无上限，超大 page 产生巨量 OFFSET 扫描
-//（audit_logs 只增表，恶意/误操作可造成 DB CPU/IO 放大）。
+// （audit_logs 只增表，恶意/误操作可造成 DB CPU/IO 放大）。
 // Phase 2 统一各模块分页上限为通用 normalizePage。
 func normalizeAuditPage(page, pageSize int) (int, int) {
 	if page < 1 {

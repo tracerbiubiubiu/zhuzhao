@@ -15,6 +15,12 @@ var weakJWTSecrets = map[string]struct{}{
 	"your-secret-key":         {},
 }
 
+// repoKnownSecrets 仓库内公开的默认值——release 模式拒绝（HS256 下密钥即一切，
+// 仓库公开值不构成任何秘密性；debug 允许以便本地零配置启动）
+var repoKnownSecrets = map[string]struct{}{
+	"dev-only-0123456789abcdef0123456789abcdef0123456789abcdef": {},
+}
+
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
 // 原仅校验 secret，TTL 漏配为 0 时 token 签发即过期且无启动期报错，排障成本高）
 func (c *Config) Validate() error {
@@ -58,24 +64,23 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// UsesWeakJWTSecret 是否使用了已知弱密钥（debug 下允许但应告警）。
-func (c *Config) UsesWeakJWTSecret() bool {
-	return isWeakJWTSecret(c.JWT.Secret)
-}
-
 func (c *JWTConfig) validate(mode string) error {
 	secret := strings.TrimSpace(c.Secret)
 	if secret == "" {
 		return fmt.Errorf("jwt.secret is required")
 	}
+	// D2-09：已知弱密钥无条件拒绝（所有 mode）——原仅 release 拒绝，
+	// debug（默认 mode）+ 公开弱密钥即可启动，裸机部署防线不对称
 	if isWeakJWTSecret(secret) {
-		if mode == "release" {
-			return fmt.Errorf("jwt.secret must not use default or weak value in release mode")
-		}
-		return nil
+		return fmt.Errorf("jwt.secret must not use default or weak value (rejected in all modes)")
 	}
-	if mode == "release" && len(secret) < minJWTSecretLenRelease {
-		return fmt.Errorf("jwt.secret must be at least %d characters in release mode", minJWTSecretLenRelease)
+	if mode == "release" {
+		if _, known := repoKnownSecrets[secret]; known {
+			return fmt.Errorf("jwt.secret must be overridden via JWT_SECRET in release mode (repo-known value rejected)")
+		}
+		if len(secret) < minJWTSecretLenRelease {
+			return fmt.Errorf("jwt.secret must be at least %d characters in release mode", minJWTSecretLenRelease)
+		}
 	}
 	return nil
 }
