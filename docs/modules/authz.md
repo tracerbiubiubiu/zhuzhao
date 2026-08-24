@@ -102,7 +102,8 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 
 **主流倾向 A**：自服务（当前用户 profile、会话 logout、动态 menus/permissions）属于 **AuthN 之后的基础能力**，不应与「用户管理」「工单列表」等业务权限同一套菜单策略；否则 `operator`/`viewer` 零菜单时连登录后拉菜单都会 403。
 
-**本项目 Phase 1 已采纳 A**：Casbin 中间件在 `len(roles)>0` 之后、逐角色 `Enforce` 之前，对固定 **method + path** 白名单直接放行（仍要求 JWT 已通过、且非 `mcp` 拦截场景下的非法路径）。
+**本项目 Phase 1 已采纳 A**：Casbin 中间件在 `len(roles)>0` 之后、逐角色 `Enforce` 之前，对**自服务路由**直接放行（仍要求 JWT 已通过、且非 `mcp` 拦截场景下的非法路径）。
+**实现方案（B4-2 回写）**：`SelfService()` 中间件在**路由注册期**打 context 标记（`SelfServiceContextKey`），`CasbinAuth` 检测标记放行——**非** method+path 路径匹配（原设计已废弃：路径匹配可被路径构造绕过且与路由注册解耦；标签方案注册期生效、请求侧不可伪造，router_test.go 行为测试守护注册顺序）。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|

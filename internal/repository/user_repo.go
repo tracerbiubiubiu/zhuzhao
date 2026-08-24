@@ -56,25 +56,41 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.
 	return r.queryOne(ctx, q, username)
 }
 
-// ListByOrgID 查询组织成员
-func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64) ([]*model.User, error) {
+// ListByOrgID 组织成员列表（B4-5：分页——modules/organization.md §4.3 承诺）
+func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize int) ([]*model.User, int64, error) {
+	page, pageSize = normalizePage(page, pageSize)
+	var total int64
+	if err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL`, orgID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count users by org: %w", err)
+	}
 	const q = `SELECT` + userSelectColumns + `
 		FROM users u
 		INNER JOIN user_orgs uo ON uo.user_id = u.id
 		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
-		ORDER BY u.id ASC`
-	rows, err := r.db.Query(ctx, q, orgID)
+		ORDER BY u.id ASC
+		LIMIT $2 OFFSET $3`
+	rows, err := r.db.Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("list users by org: %w", err)
+		return nil, 0, fmt.Errorf("list users by org: %w", err)
 	}
 	defer rows.Close()
-	return pgx.CollectRows(rows, scanUserCollectableRow)
+	users, err := pgx.CollectRows(rows, scanUserCollectableRow)
+	if err != nil {
+		return nil, 0, err
+	}
+	return users, total, nil
 }
 
 // FindByEmployeeNo 登录用：工号精确匹配；未删除用户
 func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
-	const q = `SELECT` + userSelectColumns + `
-		FROM users WHERE employee_no = $1 AND deleted_at IS NULL LIMIT 1`
+	// B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
+// 当前入口已保证非空，防御未来新增调用方）
+const q = `SELECT` + userSelectColumns + `
+    FROM users WHERE employee_no = $1 AND deleted_at IS NULL
+    AND employee_no <> '' AND employee_no IS NOT NULL LIMIT 1`
 	return r.queryOne(ctx, q, employeeNo)
 }
 
@@ -383,9 +399,16 @@ func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, role
 		return fmt.Errorf("delete user roles: %w", err)
 	}
 	for _, roleID := range roleIDs {
+		// B4-3：INSERT...SELECT 带活跃性条件——消灭「service 预检通过后、
+		// 写入前」角色被软删的 TOCTOU 残余窗口（软删行 FK 仍通过，原会写入幽灵绑定）
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)
+			INSERT INTO user_roles (user_id, role_id)
+			SELECT $1, id FROM roles
+			WHERE id = $2 AND deleted_at IS NULL
 			ON CONFLICT DO NOTHING`, userID, roleID); err != nil {
+			if ec := MapForeignKeyViolation(err); ec != nil {
+				return ec
+			}
 			return fmt.Errorf("insert user role: %w", err)
 		}
 	}

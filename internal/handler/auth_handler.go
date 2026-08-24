@@ -64,7 +64,11 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	var req model.LogoutRequest
-	_ = c.ShouldBindJSON(&req)
+	// B4-1：body 非法 JSON 显式 400（原忽略错误 → DeviceID 缺省删 default 设备的 RT）
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, errcode.ErrInvalidParams.Message)
+		return
+	}
 
 	token := extractBearer(auth)
 	if token == "" {
@@ -111,6 +115,9 @@ func writeAuthError(c *gin.Context, err error) {
 		response.TooManyRequests(c, biz)
 	case errcode.ErrServiceUnavailable.Code:
 		response.ServiceUnavailable(c)
+	case errcode.ErrUserNotFound.Code:
+		// B4-1：用户在 AT 签发后被删（可达性低）——404 而非 500
+		response.NotFound(c, biz.Message)
 	default:
 		response.InternalError(c, biz.Message)
 	}

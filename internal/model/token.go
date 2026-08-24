@@ -8,7 +8,8 @@ type TokenPair struct {
 	MustChangePassword bool  `json:"must_change_password"` // 首次登录改密标记
 }
 
-// DeviceInfo 设备信息
+// DeviceInfo 设备信息（Phase 2 设备管理预留——Phase 1 未使用；
+// 随设备会话列表功能落地时启用）
 type DeviceInfo struct {
 	DeviceID      string `json:"device_id"`
 	DeviceName    string `json:"device_name"`

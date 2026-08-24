@@ -32,13 +32,6 @@ func SelfService() gin.HandlerFunc {
 	}
 }
 
-// CasbinPassThrough Step 4 JWT 联调：跳过 Casbin，Step 5 替换为 CasbinAuth。
-func CasbinPassThrough() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
-	}
-}
-
 // CasbinAuth 路由级 RBAC 鉴权中间件（g 表消除 + 逐角色 enforce）。
 // logger 为 nil 时使用 slog.Default()；enforce 错误记 Error、最终拒绝记 Warn（§2.1 修复）
 func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger *slog.Logger) gin.HandlerFunc {

@@ -77,6 +77,9 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 			return nil, errcode.ErrAccountLocked
 		}
 		if errors.Is(err, errcode.ErrUserNotFound) {
+			// B4-1：dummy bcrypt 拉平时延——工号存在分支会执行 cost=12 比对（数百 ms），
+			// 此分支不比对则可通过响应时间差枚举有效工号
+			crypto.CheckDummyPassword(req.Password)
 			s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 401)
 			return nil, errcode.ErrInvalidCredentials
 		}
@@ -116,11 +119,14 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, errcode.ErrServiceUnavailable
 	}
 	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, ip); err != nil {
+		// B4-1：认证已通过但后续失败同样落审计（此前该分支无登录记录）
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 
 	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID))
 	if err != nil {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, err
 	}
 	s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 200)

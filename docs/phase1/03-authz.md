@@ -98,7 +98,12 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher) 
 
         path := c.Request.URL.Path
         method := c.Request.Method
-        if isSelfServiceRoute(method, path) {
+        // 自服务白名单：路由组标签方案（B4-2 回写）——SelfService() 中间件在
+        // 路由注册期打 context 标记，CasbinAuth 检测标记放行。原设计的
+        // isSelfServiceRoute(method, path) 路径匹配方案已废弃：
+        // 路径匹配可被路径构造绕过且与注册解耦，标签方案可测、不可伪造
+        // （router_test.go 行为测试守护注册顺序）。
+        if isSelfServiceRoute(c) { // 实现：c.Get(middleware.SelfServiceContextKey)
             c.Set("roles", roles)
             c.Next()
             return
@@ -279,7 +284,7 @@ func New(cfg config.CasbinConfig, pool *pgxpool.Pool) (*casbin.SyncedEnforcer, f
 
 ```
 internal/casbin/enforcer.go           # PG adapter（noho-digital/casbin-pgx-adapter）
-internal/middleware/casbin.go         # Casbin 中间件 + isSelfServiceRoute（Step 5 挂载）
+internal/middleware/casbin.go         # Casbin 中间件 + SelfService 标签检测（Step 5 挂载；原 isSelfServiceRoute 路径匹配方案已废弃，B4-2 回写）
 internal/repository/user/role_fetcher.go   # 或 internal/service/authz/role_fetcher.go — RoleFetcher 实现
 internal/pkg/resource/registry.go     # Resource 接口 + Registry（Phase 1 空）
 ```

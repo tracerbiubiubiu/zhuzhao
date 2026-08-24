@@ -25,6 +25,12 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 
 		auth := c.GetHeader("Authorization")
 		if auth == "" {
+			// B4-1：仅带 X-AK-* 无 Bearer——M2M 未上线，明确告知（20009 待 Phase 3 落地）
+			if hasAKHeaders(c) {
+				response.Unauthorized(c, "暂不支持该认证方式")
+				c.Abort()
+				return
+			}
 			response.Unauthorized(c, errcode.ErrUnauthorized.Message)
 			c.Abort()
 			return
@@ -52,33 +58,39 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 			return
 		}
 
+		// B4-1：黑名单 + disabled 两键 pipeline 一次往返（原两次串行 EXISTS）
 		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
-		exists, err := rdb.Exists(c, blacklistKey).Result()
-		if err != nil {
+		disabledKey := fmt.Sprintf("user:disabled:%d", claims.UserID)
+		pipe := rdb.Pipeline()
+		blacklistCmd := pipe.Exists(c, blacklistKey)
+		disabledCmd := pipe.Exists(c, disabledKey)
+		if _, err := pipe.Exec(c); err != nil {
 			response.ServiceUnavailable(c)
 			c.Abort()
 			return
 		}
-		if exists > 0 {
+		if exists, err := blacklistCmd.Result(); err != nil {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
+		} else if exists > 0 {
 			response.UnauthorizedError(c, errcode.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
-
-		disabledKey := fmt.Sprintf("user:disabled:%d", claims.UserID)
-		disabled, err := rdb.Exists(c, disabledKey).Result()
-		if err != nil {
+		if disabled, err := disabledCmd.Result(); err != nil {
 			response.ServiceUnavailable(c)
 			c.Abort()
 			return
-		}
-		if disabled > 0 {
+		} else if disabled > 0 {
 			response.ForbiddenError(c, errcode.ErrUserDisabled)
 			c.Abort()
 			return
 		}
 
-		if claims.MustChangePassword && c.Request.URL.Path != "/api/v1/auth/password/update" {
+		// B4-1：FullPath 用路由模板比对（原硬编码 URL 字符串与注册解耦，
+		// 前缀调整/trailing slash 时静默失效）
+		if claims.MustChangePassword && c.FullPath() != "/api/v1/auth/password/update" {
 			response.ForbiddenError(c, errcode.ErrPasswordChangeRequired)
 			c.Abort()
 			return
@@ -98,5 +110,10 @@ func hasMixedAuth(c *gin.Context) bool {
 	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
 		return false
 	}
+	return hasAKHeaders(c)
+}
+
+// hasAKHeaders 是否携带 AK/SK 请求头（M2M 认证，Phase 3 上线）
+func hasAKHeaders(c *gin.Context) bool {
 	return c.GetHeader("X-AK-Access-Key") != ""
 }
