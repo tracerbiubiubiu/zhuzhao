@@ -2,6 +2,8 @@
 
 > 本项目所有文档的组织入口。按文档类型分目录存放。
 
+> **📌 先读 [VISION.md](./VISION.md)**：产品定义、MVP 边界铁律、阶段归属裁决依据与文档修改纪律。任何"某能力放哪个阶段"的争论以此为准。
+
 ## Git 分支策略
 
 | 分支 | 用途 |
@@ -16,6 +18,7 @@
 ```
 docs/
 ├── README.md                        # 本文件，文档索引
+├── VISION.md                        # 产品定义与 MVP 边界（范围裁决锚点，必读）
 ├── roadmap.md                       # 三阶段实施路线图总览
 │
 ├── design/                          # 框架设计文档（技术架构层面）
@@ -67,10 +70,11 @@ docs/
 │   ├── 09-ticket.md                 # 2a/2b：工单 MVP + scope 升级
 │   └── 10-storage.md                # 2b：MinIO 预签名、附件
 │
-├── phase3/                          # Phase 3：生产加固（多实例 + 可观测性 + HA）
+├── phase3/                          # Phase 3：生产加固（多实例 + 可观测性 + HA + 工单业务能力闭环）
 │   ├── README.md                    # 大纲 + 边界 + 实施顺序
 │   ├── 01-observability.md          # Phase 3：可观测性（已编写）
-│   └── 02–09 待编写
+│   ├── 10-ticket-business.md        # Phase 3：工单业务能力（SLA/通知/审批流/分派/报表，已编写）
+│   └── 11-deployment-split.md       # Phase 3：部署级分离（已编写）
 │
 ├── api/                             # API 契约（后端 SSOT）
 │   ├── response.md                  # 响应体 Envelope
