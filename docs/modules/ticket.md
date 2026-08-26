@@ -592,7 +592,7 @@ type StateController interface {
 
 ## 7. 分阶段实施
 
-> **口径说明**（2026-08-25 修订）：Phase 3 整体暂缓（见 [roadmap.md](../roadmap.md)），不拆 3a/3b 子阶段执行。工单**主链路**（CRUD / 状态机 / 模板 / 关联）已在 Phase 2a/2b 实现；**SLA 计时/违约、通知、审批流、分派、报表仍属 Phase 3（暂缓，设计就绪）**，事件机制用 L1（长期稳态，ADR-001）+ Asynq（ADR-002）。以下按"Phase 2 已实现 / Phase 3 暂缓"两段式描述，能力细节见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（Phase 3 启动时取用）。
+> **口径说明**（2026-08-25 修订）：Phase 3 整体暂缓（见 [roadmap.md](../roadmap.md)），不拆 3a/3b 子阶段执行。工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现；**工单模板、工单关联、SLA 计时/违约、通知、审批流、分派、报表仍属 Phase 3（暂缓，设计就绪）**，事件机制用 L1（长期稳态，ADR-001）+ Asynq（ADR-002）。以下按"Phase 2 已实现 / Phase 3 暂缓"两段式描述，能力细节见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（Phase 3 启动时取用）。
 >
 > **Phase 2 实现 SSOT**：[phase2/09-ticket.md](../phase2/09-ticket.md)（2a MVP + 2b scope + 2c Authorize）。  
 > **工单业务能力细节 SSOT**：[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（SLA/通知/审批流/分派/报表/L1 升级，Phase 3 启动时取用）。
@@ -611,8 +611,6 @@ type StateController interface {
 | 事件日志 | 状态变更记录 |
 | Hook 机制 | `TicketHooks` 接口 + `DefaultTicketHooks` |
 | 进程内事件 | Go channel 分发（L0，2a 过渡；L1 随后接入，见 §6） |
-| **工单模板**（前移） | `ticket_templates` 表，支持 `template_code` 预填字段快速创建；`default_sla_minutes` 仅存储，SLA 启用计时器后生效（迁移 000015） |
-| **工单关联**（前移） | `ticket_relations` 表，支持 parent_child/duplicate/blocked_by/related 四种关系；建立关联时对 target 走 L2/L3 鉴权（迁移 000016） |
 
 ### Phase 2b：scope + 附件 + 体验
 
@@ -645,7 +643,7 @@ type StateController interface {
 | 事件机制 L1 | `ticket_events` 持久化 + 轮询补偿 + 分布式锁（长期稳态，ADR-001） | 见 §6 + [10-ticket-business §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级) |
 | Asynq 异步任务 | 审批触发事件 + 预置定时任务（ADR-002） | L1 事件源 + Asynq 执行器，职责互补 |
 
-> **已前移到 Phase 2a**（2026-08-25）：工单模板（`ticket_templates`，迁移 000015）、工单关联（`ticket_relations`，迁移 000016）。两者均为纯 DB 表，零事件依赖，前移后 Phase 3 聚焦 SLA/通知/审批流/分派/报表/L1+Asynq。
+> **工单模板与工单关联**属 Phase 3（暂缓，设计就绪），见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)。
 
 ### L2 升级（暂缓，按需）
 

@@ -107,7 +107,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 - **zhuzhao 侧待办 E13**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body。
 - **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权并被工单/其他模块订阅事件时。
 
-**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机 / 模板 / 关联）已在 Phase 2a/2b 实现，**SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
+**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现，**工单模板、工单关联、SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
 
 ---
 
