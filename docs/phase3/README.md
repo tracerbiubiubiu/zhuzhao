@@ -31,12 +31,12 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 单体性能瓶颈（QPS/延迟超阈值） | observability + multi-instance | 需要可观测性定位 + 多实例分流 |
 | 真实多团队开发需求 | microservice（推迟项重启评估） | 多团队并行开发，单体协作成本高 |
 | 多消费者/异步邮件需求 | event-driven L2 升级 | L1 单消费者瓶颈，需 Outbox + Asynq worker 多消费者 |
-| 会签/网关/分支审批需求 | ticket-business §4 BranchedStateEngine | 线性状态机表达不下（见 [ticket.md §8.6](../modules/ticket.md#86-工作流引擎升级触发信号量化表)） |
+| 会签/网关/分支审批需求 | ticket-business §4 BranchedStateEngine | 线性状态机表达不下（见 [ticket.md §8.6](../modules/ticket.md#86-工作流引擎升级触发信号量化表)）。**注：引擎本体为 Phase 3 硬交付（[10-ticket-business.md §4.4](./10-ticket-business.md)），触发信号只决定何时加更多流程定义，不决定引擎是否实现** |
 | SLA 合规要求 | ticket-business §2 SLA 计时 | 业务方要求响应/解决时限 + 违约告警 |
 | 高可用要求（99.9%+） | ha（PG Cluster + Redis Sentinel） | 单实例不满足 SLO |
 | 外部系统 M2M 调用 | platform AK/SK | 有机器到机器调用方 |
 
-> **原则**：暂缓期间不提前实现；触发条件出现时按需启动对应子能力，不要求一次性全做 Phase 3。
+> **原则**：暂缓期间不提前实现；触发条件出现时按需启动对应子能力，不要求一次性全做 Phase 3。**例外**：BranchedStateEngine 引擎本体为 Phase 3 硬交付（见 [10-ticket-business.md §4.4](./10-ticket-business.md)），触发信号仅决定「何时加更多流程定义」，不决定「引擎是否实现」。
 
 > **工单业务能力为何属 Phase 3**：工单是 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 列举的 5 类事件源，下游消费者（通知、SLA、满意度、告警）全部卡在事件机制。若 Phase 3 只交付基础设施、工单业务能力延后，则工单作为"入口"是空心的。入口必须在 Phase 3 闭合，下游才能挂上去。详见 [10-ticket-business.md](./10-ticket-business.md)。
 
@@ -134,7 +134,7 @@ Phase 2b 验收通过（2c 建议并行或前置完成）
 > **工单模板/关联已前移到 Phase 2a**（2026-08-25）：`ticket_templates`（迁移 000015）和 `ticket_relations`（迁移 000016）因纯 DB 无事件依赖前移到 2a Step 2，见 [phase2/09-ticket.md §2](../phase2/09-ticket.md)。Step 7 子任务相应精简。
 ```
 
-> **Step 7 与基础设施 Step 1–6 可并行**：工单业务能力的事件机制用 L1（DB 持久化 + 轮询），不依赖 multi-instance 的分布式锁；但**多实例部署后**，SLA 定时扫描需复用 Step 2 的分布式锁避免重复扫描。建议 Step 7 在 Step 2 之后启动，或接受单实例先跑通。
+> **Step 7 与基础设施 Step 1–6 可并行**：工单业务能力的事件机制用 L1（DB 持久化 + 轮询）；**L1 事件消费**在多实例部署后需复用 Step 2 的分布式锁防重，但 **SLA 定时扫描由 Asynq Scheduler 单点调度，无需自写锁**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）。建议 Step 7 在 Step 2 之后启动，或接受单实例先跑通。
 
 ### 2.2 Phase 3（事件基础设施升级 + 平台增强）— 暂缓参考
 
@@ -193,7 +193,7 @@ Phase 3 主能力稳定运行
 |------|------|
 | 可用性 | 多实例 99.9% |
 | 可观测性 | 开启 Metrics（QPS/延迟/错误率）+ 分布式追踪；Grafana 大盘 **可选** |
-| 多实例 | Casbin Watcher、缓存跨实例失效、SLA 扫描分布式锁防重 |
+| 多实例 | Casbin Watcher、缓存跨实例失效、L1 事件消费分布式锁防重（SLA 扫描由 Asynq 单点调度，无需自写锁） |
 | 审计 | Redis List L2（进程崩溃不丢） |
 | 安全性 | 密码策略、异地登录、API 限流等（见 security-enhance） |
 | 运维 | Swagger CI、集成测试自动化 |

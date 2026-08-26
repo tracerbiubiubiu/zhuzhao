@@ -129,7 +129,7 @@ R4 汇总报告（主会话执行）──去重合并 │ 与历史发现对照
 
 ## 9. 鉴权不变量（D3 检查基准，源自 phase2/11 号评审文档）
 
-- deny-by-default：`Allow ⟺ L1 通过 ∧ (L3 属主命中 ∨ L2 组织命中)`，任何一层无法判定（DB 错误）= 拒绝（fail-closed，503）
+- deny-by-default：`Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过`（路径 A，L2 在前；Phase 2 11 号文档 §2 已拍板修正，对齐 Freshdesk/Jira 主流——属主不豁免可见性），任何一层无法判定（DB 错误）= 拒绝（fail-closed，503）
 - L2/L3 资源级鉴权**不得缓存**；未注册资源 = 500
 - 优先级防提权：低优先级操作者不得变更高优先级目标（比较 actor 与 target 的最高角色优先级）
 

@@ -14,7 +14,7 @@
 - [ ] Phase 2a 验收：TicketResource + assigned + 状态机 + `ticket_events` 表
 - [ ] Phase 2b 验收：scope group/all + 附件 + 实体透明读
 - [ ] **Phase 2c 验收**：org admin/owner + ancestor owner Authorize（审批流/分派规则的属主依赖项）
-- [ ] Phase 3 Step 2 multi-instance（SLA 扫描复用分布式锁）
+- [ ] Phase 3 Step 2 multi-instance（L1 事件消费复用分布式锁防重；SLA 扫描由 Asynq Scheduler 单点调度，无需自写锁，见 §2.3 / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）
 
 > 2c 是工单业务能力的硬前置：自动分派规则判断"分派给哪个组的 admin"、审批流的审批人候选都依赖 2c 的 Authorize 升级。
 
@@ -332,7 +332,7 @@ type CanApproveNodeResult struct {
 // === 依赖（Phase 1 现状） ===
 //   L1 资源级：casbin.SyncedEnforcer.Enforce(sub, obj, act)  —— 已实现（internal/casbin + rbac_service 封装）
 //   L2 组织级：organizations.path (ltree "a.b.c")            —— 已实现（OrgRepo，祖先查询用 PG <@ / nlevel / ancestors）
-//   L3 已办级：workflow_records 表（迁移 000017）            —— ⚠️ 未实现，Phase 3 需新建 WorkflowRecordRepo + TicketWorkflowRepo
+//   L3 已办级：workflow_records 表（迁移 000019）            —— ⚠️ 未实现，Phase 3 需新建 WorkflowRecordRepo + TicketWorkflowRepo
 func (s *TicketService) CanApproveNode(ctx context.Context, in CanApproveNodeInput) (CanApproveNodeResult, error) {
     // 步骤1 L1：资源级——当前用户对该工单有 approve 动作权（Casbin sub=roleCodes, obj="ticket:<id>", act="approve"）
     if allow, _ := s.enforcer.Enforce(actorRoleCodes, fmt.Sprintf("ticket:%d", in.TicketID), "approve"); !allow {
@@ -361,7 +361,7 @@ func (s *TicketService) CanApproveNode(ctx context.Context, in CanApproveNodeInp
 ```
 
 - **调用顺序铁律**：L1（资源级 Casbin）→ 解析 Req → L2（角色/组织祖先比对）→ L3（已办去重，Phase 3 接入 `workflow_records` 后追加：若 ActorUserID 已在该节点 `action=approve` 记录中则拒，防重复审批）。
-- **L3 缺口说明**：`workflow_records` 表（迁移 000017）与 `WorkflowRecordRepo` 属于 Phase 3 范围，CanApproveNode 的 L3 分支需在 Phase 3 与审批流同批落地；当前只钉接口，不引未实现依赖。
+- **L3 缺口说明**：`workflow_records` 表（迁移 000019）与 `WorkflowRecordRepo` 属于 Phase 3 范围，CanApproveNode 的 L3 分支需在 Phase 3 与审批流同批落地；当前只钉接口，不引未实现依赖。
 
 **（2）驳回/回退语义（对应确认 #3）**
 - `reject` 动作携带 `target` 参数：
@@ -543,13 +543,13 @@ CREATE TABLE assignment_rules (
 - Go channel + goroutine
 - 进程崩溃丢事件
 
-### 7.2 L1（长期稳态，Phase 2a 起，见 ADR-001）
+### 7.2 L1（长期稳态，Phase 3 启动时实现，见 ADR-001）
 
 **前置迁移**（迁移 000021）：2a 建的 `ticket_events` 表缺 L1 所需的两列，Phase 3 启动时需 ALTER 补列（L1 长期稳态，见 ADR-001）：
 
 ```sql
 -- 迁移 000021
-ALTER TABLE ticket_events ADD COLUMN event_type VARCHAR(20) NOT NULL DEFAULT 'audit';
+ALTER TABLE ticket_events ADD COLUMN event_type VARCHAR(16) NOT NULL DEFAULT 'audit';
 -- audit（审计日志，工单详情页展示）/ signal（事件队列，供消费者拉取）
 ALTER TABLE ticket_events ADD COLUMN processed BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX idx_ticket_events_signal_unprocessed ON ticket_events(event_type, processed) WHERE event_type = 'signal' AND processed = FALSE;

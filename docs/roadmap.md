@@ -16,7 +16,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 │ · 登录限流 / 会话吊销    │     │ · 虚拟组 / scope         │     │ · 安全增强（按需）       │
 │ · 路由级 RBAC            │     │ · 对象存储 + 工单        │     │ · 运维工具（按需）       │
 │ · 用户/角色/菜单/组织    │     │ · 多设备 UI / 密码策略   │     │ · 单体多副本（按需升档） │
-│ · 同步审计               │     │ · 工单业务能力闭环（设计就绪，暂缓） │     │ ⛔ 微服务拆分（无需求）  │
+│ · 同步审计               │     │ · 工单业务能力（设计就绪，Phase 3 实现） │     │ ⛔ 微服务拆分（无需求）  │
 └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
    单实例 Docker Compose            单实例 Docker Compose            单实例 / 单体多副本（按需）
 ```
@@ -79,8 +79,8 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 | 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | 暂缓（[phase3/01-observability.md](./phase3/01-observability.md) 已编写，按需取用） |
 | 多实例部署 | Casbin Watcher、跨实例事件广播、分布式锁 | 暂缓（单体多副本按需，非必须） |
 | 审计日志 L2 | Redis List 队列，进程崩溃不丢 | 暂缓 |
-| 事件驱动（L1 事件源） | PostgreSQL `ticket_events` 轮询（长期稳态） | 已实现（Phase 2a 起，见 ADR-001） |
-| 异步任务执行器 | Asynq（复用现有 Redis，覆盖审批触发事件 + 预置定时任务） | 已引入（Phase 2a 起，见 ADR-002） |
+| 事件驱动（L1 事件源） | PostgreSQL `ticket_events` 轮询（长期稳态） | 设计就绪（[ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md)）；`ticket_events` 表 Phase 2a 已建（审计用），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）Phase 3 启动时实现 |
+| 异步任务执行器 | Asynq（复用现有 Redis，覆盖审批触发事件 + 预置定时任务） | 设计就绪（[ADR-002](./adr/ADR-002-asynq-async-task-executor.md)）；Phase 3 启动时引入（Phase 2a 无异步业务） |
 | 消息通知中心 | 站内通知 + 邮件 SMTP，由 Asynq worker 异步发送（订阅 `ticket_events` 各事件；也是审批/SLA 违约的下游副作用） | 设计就绪（[ADR-002 场景 D](../adr/ADR-002-asynq-async-task-executor.md) + [10-ticket-business §3](../phase3/10-ticket-business.md#3-通知服务站内--邮件)；用户明确后续基于 Asynq 集成，实现时机待定） |
 | 事件驱动（L2 升级） | PostgreSQL Outbox + Asynq worker 多消费者 | 暂缓 |
 | 微服务拆分 | gRPC、IAM 独立、API Gateway、RS256+JWKS | **不做**（无需求，推迟到未来按需） |
@@ -103,11 +103,11 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 - **代码/部署形态（C2'）**：代码同仓库（`internal/activelist/` 独立包，复用 zhuzhao 的 pgx/JSONB/Outbox/日志基础设施），但**独立二进制 + 独立容器部署**，zhuzhao 仅经反代 HTTP 调用，不 import 进请求路径；将来可机械拆为独立仓库。
 - **审计分工（两层，已确认）**：zhuzhao 网关层记 API 访问元信息（跳过 body）；activelist 业务层记数据操作（自行按 Schema 脱敏）。日志基础设施同源（`pkg/log`），进程写各自目的地。
 - **与"微服务拆分"决策的关系**：activelist 是**外部引入的能力模块**（已有独立设计），不是把 zhuzhao 内部拆出去；与"无微服务拆分需求"不冲突，单列本条。
-- **建议阶段**：**Phase 2b**（外部数据源接入，与 HR 目录同步同批）。前置：Phase 2a 的 L1 事件机制 + Asynq 执行器 + E13 反代模块。Mongo→PG（G1）与方案 F 可并行设计。
+- **建议阶段**：**Phase 3 启动后**（L1 事件机制 + Asynq 就绪后；原拟 Phase 2b，因前置依赖 L1/Asynq 实际于 Phase 3 启动时落地，已决策顺延——见 [ADR-003](./adr/ADR-003-activelist-integration-form.md)）。**HR 目录同步不依赖 L1，仍属 Phase 2b**（desired-state reconciliation 直接写 organizations/users 表，非事件消费者）。前置：L1 事件机制 + Asynq 执行器（Phase 3 启动时实现，见 [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](./adr/ADR-002-asynq-async-task-executor.md)）+ E13 反代模块。Mongo→PG（G1）与方案 F 可并行设计，不阻塞 Phase 3 主链路。
 - **zhuzhao 侧待办 E13**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body。
 - **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权并被工单/其他模块订阅事件时。
 
-**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现，**工单模板、工单关联、SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
+**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现，**工单模板、工单关联已前移 Phase 2a（迁移 000015/000016）；SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
 
 ---
 
