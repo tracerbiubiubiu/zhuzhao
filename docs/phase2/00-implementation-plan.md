@@ -32,7 +32,7 @@
 
 | 码段 | 写入时机 | PRD |
 |------|---------|-----|
-| 90001 `ErrTicketNotFound`（+状态机 90002 等） | Step 2 | [09-ticket §7](./09-ticket.md) |
+| 90001 `ErrTicketNotFound` / 90002 `ErrInvalidStateTransition`（状态机）/ 90003 `ErrTicketTypeNotFound` / 90004 `ErrTicketAlreadyClosed` | Step 2 | [09-ticket §7](./09-ticket.md) |
 | 91001–91004 | Step 6 | [10-storage §6](./10-storage.md) |
 | 20012（`ErrDeviceNotFound`）+ 20013（密码策略） | Step 7 | [01-auth-enhance](./01-auth-enhance.md) |
 | 50008–50010 | Step 9 | [04-org-delegation §5](./04-org-delegation.md) |

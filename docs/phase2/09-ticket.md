@@ -127,6 +127,52 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 
 菜单 / Casbin：新增「工单管理」目录 + `ticket:list/create/read/update/...` 按钮 → `menu_apis` → 角色绑定（seed 或迁移脚本）。
 
+### 1.1 `000010_menu` 种子明细（迁移脚本，对齐 [data-init §4](../proposal/data-init.md) 写法）
+
+> **原则（见 phase1/07-menu.md）**：操作类 POST 路径**不含 `:id`**（id 放 body），如 `/api/v1/tickets/update`；角色绑定**页面菜单**即获得该页全部 `menu_apis`。`menu_apis` 必须覆盖 API 表（§3）全部路由，否则 Casbin 漏鉴权、T7「无 ticket:list → 403」挂。
+> **前端未写**：`menus` 树仅占位（一个「工单管理」目录 + 一个页面菜单），前端接入时再细化结构；但 `menu_apis` + 角色绑定**必须完整种**（后端 Casbin L1 拦截依赖，与前端无关）。
+
+```sql
+-- ① 工单管理菜单树（占位，前端后续细化）
+INSERT INTO menus (code, name, parent_code, menu_type, path, permission, sort_order, is_system)
+VALUES
+  ('ticket_manage', '工单管理', NULL,          'catalog', '/tickets',            NULL,          1, true),
+  ('ticket_list',   '工单列表', 'ticket_manage','page',   '/tickets',            'ticket:list', 1, true)
+ON CONFLICT (code) DO NOTHING;
+
+-- ② menu_apis：覆盖 §3 API 表全部路由（POST 动词子路径不含 :id）
+INSERT INTO menu_apis (menu_id, api_path, api_method)
+SELECT m.id, v.api_path, v.api_method FROM menus m, (VALUES
+  -- 工单 CRUD + 协作
+  ('ticket_list', '/api/v1/tickets',               'GET'),
+  ('ticket_list', '/api/v1/tickets',               'POST'),
+  ('ticket_list', '/api/v1/tickets/:id',           'GET'),
+  ('ticket_list', '/api/v1/tickets/update',        'POST'),
+  ('ticket_list', '/api/v1/tickets/close',         'POST'),
+  ('ticket_list', '/api/v1/tickets/assign',        'POST'),
+  ('ticket_list', '/api/v1/tickets/delete',        'POST'),
+  ('ticket_list', '/api/v1/tickets/:id/comments',  'GET'),
+  ('ticket_list', '/api/v1/tickets/comments',      'POST'),
+  ('ticket_list', '/api/v1/tickets/notes',         'POST'),
+  ('ticket_list', '/api/v1/tickets/:id/relations', 'GET'),
+  ('ticket_list', '/api/v1/tickets/relations',     'POST'),   -- 复用 ticket:update 权限码
+  -- 元数据（2a）
+  ('ticket_list', '/api/v1/ticket-types',                 'GET'),
+  ('ticket_list', '/api/v1/ticket-types/:code/fields',    'GET'),
+  -- 模板 / 关联（2a 前移）
+  ('ticket_list', '/api/v1/ticket-templates',             'GET'),
+  ('ticket_list', '/api/v1/ticket-templates/:code',       'GET')
+) AS v(menu_code, api_path, api_method)
+WHERE m.code = v.menu_code
+ON CONFLICT DO NOTHING;
+
+-- ③ 角色绑定：admin/superadmin 获得工单管理全部权限（其余角色按业务 2b/2c 再细化）
+INSERT INTO role_menus (role_id, menu_id)
+SELECT r.id, m.id FROM roles r, menus m
+WHERE r.code IN ('role::admin','role::superadmin') AND m.code = 'ticket_list'
+ON CONFLICT DO NOTHING;
+```
+
 ---
 
 ## 3. API 一览
