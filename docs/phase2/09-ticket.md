@@ -1,6 +1,6 @@
 # 09 - 工单模块（ticket，Phase 2a + 2b）
 
-> **Step 2（2a MVP）** + **Step 5（2b scope 升级）** + **Step 10（2c Authorize，见 [04-org-delegation](./04-org-delegation.md)）**。  
+> **Step 2（2a MVP）** + **Step 4（2b-core scope 升级）** + **Step 9（2c Authorize，见 [04-org-delegation](./04-org-delegation.md)）**。  
 > 模块完整设计见 [modules/ticket.md](../modules/ticket.md)；**本文档为 phase2 实现 SSOT**。
 
 ---
@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 
 **创建工单时**：从 `organizations` 读 `path` 写入 `org_path`（与 org_id 同事务）。`POST /tickets` 支持可选 `template_code`：命中则用 `ticket_templates.default_fields` 预填、`default_priority` 覆盖。
 
-**组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 5 回归测试（move 后 scope 过滤仍正确）。
+**组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 4（2b-core）回归测试（move 后 scope 过滤仍正确）。
 
 ### Phase 2b 增量
 
@@ -246,7 +246,7 @@ ON CONFLICT DO NOTHING;
 ### 5.2 Phase 2b — scope 升级 + 部门内「读/写分离」（策略 B，默认）
 
 > **部门内默认（策略 B）**：同一**实体部门**子树下，虚拟组 **兄弟节点之间可读不可改**——读扩大到实体锚点，写仍绑工单所属虚拟组。  
-> **强隔离（策略 A）**：实体设 `ticket_visibility=project_isolated`，读仍仅本 virtual group（旧行为）。见 §5.2.1。
+> **强隔离（策略 A，future）**：实体设 `ticket_visibility=project_isolated`，读仍仅本 virtual group（旧行为）。**标 future（2026-08-26，宽松优先）**：极少见，2b-core 只交付默认 `entity_transparent_read`，强隔离留待真实需求出现再加字段+GetFilter 分支，不进当前范围。见 §5.2.1。
 
 **读 / 写分离（不要混为一轴）**：
 
@@ -259,17 +259,19 @@ ON CONFLICT DO NOTHING;
 
 #### 5.2.1 实体 `ticket_visibility`
 
+> **2026-08-26 调整（宽松优先）**：`project_isolated` 标 **future**，2b-core 仅落地默认 `entity_transparent_read`（单字段 + 默认约束即可，CHECK 暂不含 `project_isolated`，避免 GetFilter 提前分支）。强隔离字段与逻辑待真实需求再加。
+
 ```sql
--- Phase 2b 迁移（organizations 表）
+-- Phase 2b-core 迁移（organizations 表，仅默认策略）
 ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFAULT 'entity_transparent_read';
--- CHECK (ticket_visibility IN ('entity_transparent_read', 'project_isolated'))
+-- CHECK (ticket_visibility IN ('entity_transparent_read'))   -- future 扩展时再加 project_isolated
 -- 仅 org_type IN (1,2,3) 实体有效；虚拟组继承最近实体祖先的配置
 ```
 
 | 值 | 含义 |
 |----|------|
-| **`entity_transparent_read`**（**默认**） | 子树内任一 `user_orgs`（含虚拟组）成员 → L2 可读该实体子树下 **全部** 工单（含兄弟虚拟组） |
-| **`project_isolated`** | L2 回退为仅 `ticket_scope` + 用户 **直接** 所属 org 的 ltree 路径（兄弟虚拟组互不可见） |
+| **`entity_transparent_read`**（**默认，2b-core 交付**） | 子树内任一 `user_orgs`（含虚拟组）成员 → L2 可读该实体子树下 **全部** 工单（含兄弟虚拟组） |
+| **`project_isolated`**（**future**） | L2 回退为仅 `ticket_scope` + 用户 **直接** 所属 org 的 ltree 路径（兄弟虚拟组互不可见）；待需求出现再加 |
 
 **EntityAnchorPath**：对用户的每个 `user_orgs.org_id`，取最近 `org_type IN (1,2,3)` 且 `source IN ('hr','system','local')` 的祖先（含自身）的 `path`；虚拟组成员的 anchor 为挂载实体，**不是**虚拟组 path。
 
@@ -354,7 +356,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 
 | 动作 | API | L1 | L2 | L3 | 2a | 2b 增量 | 2c 增量 |
 |------|-----|----|----|-----|-----|---------|---------|
-| 列表 | `GET /tickets` | `ticket:list` | GetFilter | — | `created_by OR assigned_to` | **策略 B**：实体子树透明读 OR 本人；`project_isolated` 时按 scope | GetFilter 不变 |
+| 列表 | `GET /tickets` | `ticket:list` | GetFilter | — | `created_by OR assigned_to` | **策略 B**：实体子树透明读 OR 本人（`project_isolated` 强隔离标 future，见 §5.2.1） | GetFilter 不变 |
 | 详情 | `GET /tickets/:id` | `ticket:read` | canRead | read = canRead | 仅本人创建/被分派 | **兄弟虚拟组可读不可改**（策略 B） | 同 2b |
 | 创建 | `POST /tickets` | `ticket:create` | — | create 恒 true | 校验 org 存在，写 org_path | 同 2a | 同 2a |
 | 更新 | `POST /tickets/update` | `ticket:update` | canRead | **创建人**（2b）；+ vg admin/owner（2c） | 创建人或处理人 | **2b：仅创建人**（透明读≠可改） | + 工单 org 的 admin/owner；+ ancestor owner |
@@ -362,7 +364,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 | 分派 | `POST /tickets/assign` | `ticket:assign` | canRead | 2a 仅 admin | admin bypass | scope=group/all + 子树内 | + org admin/owner |
 | 删除 | `POST /tickets/delete` | `ticket:delete` | — | admin | admin only | admin only | + org admin/owner；+ ancestor owner |
 | 回复 | `POST /tickets/comments` | `ticket:comment` | canRead | comment = canRead | 可见即可评 | 同 2a | 同 2a |
-| 内部备注 | `POST /tickets/notes` | `ticket:note` | canRead | 处理团队成员 | 见 modules/ticket §2.3 | 待实现对齐 modules | 待实现对齐 modules |
+| 内部备注 | `POST /tickets/notes` | `ticket:note` | canRead | **2a：创建人或处理人(assigned_to)，与 assigned scope 对齐**；2b 起随 scope 透明读扩大；2c 含 org admin/owner（对齐 modules「处理团队成员」= 进入该容器者） | 见 modules/ticket §2.3 | 待实现对齐 modules | 待实现对齐 modules |
 | 回复列表 | `GET /tickets/:id/comments` | `ticket:read` | canRead | read = canRead | 同详情 | 同详情 | 同详情 |
 
 #### 元数据（2a）
@@ -386,7 +388,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 | 阶段 | 可见性（L2） | L3 写 |
 |------|-------------|--------|
 | **2a** | 仅 `created_by OR assigned_to` | assign/delete 仅 admin；close 处理人；update 创建人/处理人 |
-| **2b** | **策略 B 默认**：实体子树透明读 + 本人；可选 `project_isolated` | **update 仅创建人**；close 处理人/创建人；主管 assign/close（scope） |
+| **2b** | **策略 B 默认**：实体子树透明读 + 本人（**`project_isolated` 标 future，不进当前范围**） | **update 仅创建人**；close 处理人/创建人；主管 assign/close（scope） |
 | **2c** | 不变（D11） | 工单 **org_id** 的 admin/owner、ancestor owner 可 update/close/assign/delete |
 
 #### 待产品确认（边界）
@@ -394,9 +396,9 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 1. **不可见一律 404**（list 查不到、get 单条）— 已定稿。  
 2. **2a assign 仅 admin** — 创建人分派需单独决策。  
 3. **delete 不要求先可见** — org admin/ancestor owner 可删委托范围内工单。  
-4. **`ticket:note` L3** — modules 要求「处理团队成员」，实现前需在 `02-authz-resource` 补 canOperate 规则。  
+4. **`ticket:note` L3（2026-08-26 澄清）** — 2a 口径与 `assigned` scope 对齐：创建人或处理人(assigned_to) 可见/可写；2b 起随策略 B 透明读扩大到同实体子树成员；2c 含 org admin/owner（对齐 modules「处理团队成员」= 进入该容器者）。实现前在 `02-authz-resource` 按此口径补 canOperate 规则。
 5. **多 org scope 合并取 max** — 与实体透明读 **OR** 合并（读取并集）。  
-6. **策略 B 为部门内默认** — `ticket_visibility=entity_transparent_read`；敏感项目改 `project_isolated`。✅ 已定稿  
+6. **策略 B 为部门内默认** — `ticket_visibility=entity_transparent_read`；**`project_isolated` 强隔离标 future（见 §5.2.1），2b-core 只交付默认 `entity_transparent_read`，不阻塞主线**。
 7. **透明读不可改** — 兄弟虚拟组工单仅 read/comment；update 需创建人或 **该工单 org** 的 admin/owner。✅ 已定稿
 
 ---
@@ -445,7 +447,7 @@ POST /api/v1/tickets
 
 **测试落点约定**（B4）：状态机转换单测 → `internal/service/ticket/`；T1–T7 集成测试（testcontainers PG，复用 phase1 `testutil` 模式）→ `internal/service/ticket/`；路由/权限码 → `internal/router/router_test.go` 扩展。
 
-### 2b（Step 5 + 8 验收）
+### 2b（Step 4 2b-core + Step 8 验收）
 
 | # | 用例 | 预期 |
 |---|------|------|
@@ -453,7 +455,7 @@ POST /api/v1/tickets
 | T9 | vg_a member、策略 B | **可读** vg_b 工单；**不可 update** vg_b（403） |
 | T10 | expires_at 过期成员 | 失去该 org 透明读与 scope 路径 |
 | T11 | 附件 confirm | 见 storage S1–S2 |
-| T12 | 实体 `project_isolated` | vg_a member **不可读** vg_b（404） |
+| T12 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | vg_a member **不可读** vg_b（404） |
 | T13 | vg_a admin 改 vg_a 内他人工单 | 2c：**200**；2b：403（非创建人） |
 | T14 | vg_a member 改自己创建的 vg_a 工单 | 200 |
 

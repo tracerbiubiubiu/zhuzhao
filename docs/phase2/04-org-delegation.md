@@ -1,6 +1,6 @@
 # 04 - 组织内委托（org-delegation，Phase 2c）
 
-> **Step 9–11**，依赖 Phase **2b** 验收（虚拟组、`ticket_scope`、HR Sync、TicketResource group/all 过滤）。  
+> **Step 8–10**，依赖 Phase **2b-core + 2b-org** 验收（虚拟组、`ticket_scope`、TicketResource group/all 过滤；HR Sync 属 2b-ext 延后，非前置）。  
 > 设计背景见 [03-org-enhance §组织负责人](./03-org-enhance.md#组织负责人与组内分级你描述的场景)；**本文档为 2c 实现 SSOT**。
 
 ---
@@ -29,17 +29,17 @@
 
 ### 为何不继续拆 2d
 
-Step 9（成员分级）与 Step 10（Authorize）**强耦合**：D7–D9 同时需要 `org_member_role` 与资源 Authorize；拆成两个 phase 会出现「能任命 admin 但不能管工单」的半交付状态。2c 仅 3 个 Step，体量可控，**保持 2c 单节点**。
+Step 8（成员分级）与 Step 9（Authorize）**强耦合**：D7–D9 同时需要 `org_member_role` 与资源 Authorize；拆成两个 phase 会出现「能任命 admin 但不能管工单」的半交付状态。2c 仅 3 个 Step，体量可控，**保持 2c 单节点**。
 
 ---
 
-## 1. 前置条件（2b 必须已验收）
+## 1. 前置条件（2b-core + 2b-org 必须已验收）
 
-- [ ] 虚拟组 `org_type=4` CRUD + 成员 + `expires_at`
-- [ ] `user_orgs.ticket_scope`：`all` / `group` / `assigned`
-- [ ] TicketResource `GetFilter` 支持 group/all（ltree `<@`）
-- [ ] HR Sync Job 可运行；`source=hr` / `source=local` 分离
+- [ ] 虚拟组 `org_type=4` CRUD + 成员 + `expires_at`（2b-org）
+- [ ] `user_orgs.ticket_scope`：`all` / `group` / `assigned`（2b-core）
+- [ ] TicketResource `GetFilter` 支持 group/all（ltree `<@`）（2b-core）
 - [ ] 工单带 `org_id` + `org_path` 字段
+- [ ] HR Sync Job（**2b-ext 延后**，非 2c 前置；Phase 2 组织数据可种子/手工维护）
 
 ---
 
@@ -187,7 +187,7 @@ targetPriority = EffectiveOrgPriority(target, org)  // 含 owner_user_ids
 
 ---
 
-## 4. Authorize 升级（Step 10）
+## 4. Authorize 升级（Step 9）
 
 ### 4.1 三轴不混
 
@@ -278,35 +278,35 @@ migrations/0000xx_org_delegation.up.sql
 
 ---
 
-## 6. 实施顺序（与 phase2/README Step 9–11 对齐）
+## 6. 实施顺序（与 phase2/README Step 8–10 对齐）
 
 ```
-2b 验收通过
+2b-core + 2b-org 验收通过
    │
-   ├── Step 9: org-delegation
+   ├── Step 8: org-delegation
    │      ├── migration + model
    │      ├── OrgDelegationService（priority 计算）
    │      ├── SetOwners / SetMemberRole API
    │      ├── AddMember / RemoveMember / Delete 扩展
    │      └── 单元测试：priority + 防提权
    │
-   ├── Step 10: ticket Authorize
+   ├── Step 9: ticket Authorize
    │      ├── TicketResource CheckOwner 扩展
    │      ├── ancestor owner SQL
    │      └── 集成测试：D7–D9
    │
-   └── Step 11: 集成验收 D1–D12 + HR 回归 D10
+   └── Step 10: 集成验收 D1–D12 + HR 回归 D10（HR 回归待 2b-ext 落地后补）
 ```
 
 | 子任务 | 验收 |
 |--------|------|
-| 9a migration | 幂等迁移可重复执行 |
-| 9b SetOwners | D1 |
-| 9c SetMemberRole + 防提权 | D2–D3 |
-| 9d RemoveMember 扩展 | D4–D5 |
-| 9e 虚拟组 owner 删除 | D6 |
-| 10 Authorize | D7–D9 |
-| 11 全量 | D1–D12 |
+| 8a migration | 幂等迁移可重复执行 |
+| 8b SetOwners | D1 |
+| 8c SetMemberRole + 防提权 | D2–D3 |
+| 8d RemoveMember 扩展 | D4–D5 |
+| 8e 虚拟组 owner 删除 | D6 |
+| 9 Authorize | D7–D9 |
+| 10 全量 | D1–D12 |
 
 ---
 
@@ -324,8 +324,8 @@ migrations/0000xx_org_delegation.up.sql
 | D8 | 组 member 删同工单 | **403** |
 | D9 | 实体部门 owner 对子树 org 下工单 | ancestor owner：**200** |
 | D10 | HR 同步 | **不覆盖** `owner_user_ids`、`org_member_role` |
-| D11 | 策略 B：vg_a member 对 vg_b 工单（**2b 验收，2c 回归**） | **可读**（L2）；**不可 update**（L3，403）；vg_b **admin** 可改本组工单（D7） |
-| D12 | 实体 `project_isolated`（**2b 验收，2c 回归**） | 兄弟虚拟组工单 **404**（L2 强隔离） |
+| D11 | 策略 B：vg_a member 对 vg_b 工单（**2b-core 验收，2c 回归**） | **可读**（L2）；**不可 update**（L3，403）；vg_b **admin** 可改本组工单（D7） |
+| D12 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | 兄弟虚拟组工单 **404**（L2 强隔离） |
 
 ---
 
@@ -346,7 +346,7 @@ migrations/0000xx_org_delegation.up.sql
 | 文档 | 关系 |
 |------|------|
 | [03-org-enhance.md](./03-org-enhance.md) | 2b 范围 + 设计背景 |
-| [phase2/README.md](./README.md) §1.3、§2.3 | 子阶段总览与 Step 9–11 |
+| [phase2/README.md](./README.md) §1.3、§2.3 | 子阶段总览与 Step 8–10 |
 | [modules/organization.md](../modules/organization.md) | 组织模块完整形态 |
 | [modules/ticket.md](../modules/ticket.md) | 三层鉴权与 scope |
 | [hr-directory-sync.md](../proposal/hr-directory-sync.md) | D10 HR 隔离 |

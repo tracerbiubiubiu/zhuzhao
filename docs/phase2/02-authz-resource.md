@@ -258,7 +258,7 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 | R8 | 无 ticket:list 路由权限 | **403** + 70001 |
 | R9 | 2b 策略 B：vg_a member 读 vg_b | **200** |
 | R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） |
-| R11 | 2b `project_isolated` | vg_a **不可读** vg_b → **404** |
+| R11 | `project_isolated`（**future，2b-core 不交付**） | vg_a **不可读** vg_b → **404** |
 | R12 | 2b 创建人改自己 vg_a 工单 | **200** |
 
 **测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/`（testcontainers PG，复用 phase1 `testutil` 模式）；中间件顺序回归 → `internal/router/router_test.go` 扩展 ticket 路由。

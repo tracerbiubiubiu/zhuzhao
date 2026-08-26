@@ -66,6 +66,23 @@
 
 **不在当前范围（确认为 future，非缺陷）**：V4 / V5 / V6 三者。若真实需求出现，均为局部中等改动（加字段 + `GetFilter` OR 分支），不伤 L1/L2/L3 三层架构。
 
+### P2-D7：Phase 2b 拆为 core / org / ext 三轨（2026-08-26，宽松优先、基础为先）
+
+> 背景：原 2b 把"工单可见性（核心）"与"虚拟组/HR同步/附件/密码策略（增强）"塞进同一阶段，关键路径被拖长。按用户"Phase 2 主要打基础、不过度设计"取向，将 2b 拆分。
+
+| 子阶段 | 内容 | 关键路径 | 落点 |
+|--------|------|----------|------|
+| **2b-core** | 工单可见性本体：策略 B（`entity_transparent_read`）+ `ticket_scope`(all/group/assigned) + `ticket_visibility` 字段 + GetFilter `<@` | ✅ 关键路径（2a 直接后继） | Step 4 |
+| **2b-org** | 虚拟组 CRUD + 成员 + `org_roles` + BFS 三源角色 | 并行（依赖 2a） | Step 5 |
+| **2b-ext** | storage 附件、auth-enhance、HR 目录同步、`project_isolated` 强隔离 | **延后/按需，不阻塞 2c** | Step 6/7/HR |
+
+**决策要点**：
+- 关键路径最短化：2a → 2b-core → 2c；2b-org 与 core 并行；2b-ext 延后。
+- **HR 目录同步**从 2b 降为 2b-ext 延后：Phase 2 组织数据可用种子/手工维护，不阻塞主线。
+- **`project_isolated` 强隔离**从 2b-core 标 future：极少见，2b-core 只交付默认 `entity_transparent_read`（CHECK 暂不含 `project_isolated`，避免 GetFilter 提前分支）。
+- **`ticket:note` 2a 口径**对齐 `assigned`：创建人或处理人(assigned_to) 可见/可写，与 2a scope 一致（"处理团队成员"是 2b-org 虚拟组后的扩展）。
+- 2c 前置条件改为"2b-core + 2b-org 验收通过"；Step 编号重排为 2c: Step 8–10（原 9–11）。
+
 ---
 
 ## 2. 里程碑门禁（对齐 phase1 M1–M7 模式）
@@ -78,14 +95,15 @@
 | **M2a-1** 资源级鉴权可用 | 1 | R1–R2（Registry 单测）+ TicketResource **契约测试**（fake repo） | `go test ./internal/pkg/resource/... ./internal/service/ticket/...` | R3–R8 需工单真表，落 M2a-2 验证 |
 | **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000010/000015/000016；assigned 过滤；404 语义；P2-D1 级联（若采纳）；模板预填 + 关联鉴权 |
 | **M2a-3** 2a 全量 | 3 | Phase 1 27 用例回归 + T/R 全量 | 同上（含回归段） | 对抗路径：不可见 404、无权限 403、状态机 90002 |
-| **M2b-1** 组织增强 | 4 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000011；虚拟组/临时成员/BFS/HR Job（fake client） |
-| **M2b-2** scope 升级 | 5 | R9–R12 + **D11/D12 首次验收** | ticket 集成测试扩展 | 策略 B 透明读 + project_isolated；P2-D1 回归 |
-| **M2b-3** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000013；预签名 + confirm |
-| **M2b-4** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 M2b-3 并行 |
-| **M2b-5** 2b 全量 | 8 | [README §1.2](./README.md) 5 条验收 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 策略 B 全景 + HR 同步链路 |
+| **M2b-core** 工单可见性 | 4 | R9–R12 + D11（策略 B） | ticket 集成测试扩展 | 策略 B 透明读 + `ticket_visibility` 默认；P2-D1 回归 |
+| **M2b-org** 组织增强 | 5 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000011；虚拟组/临时成员/BFS |
+| **M2b-ext** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000013；预签名 + confirm |
+| **M2b-ext** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 Step 6 并行 |
+| **M2b-ext** HR 同步 | 7b | HR 对账（fake client） | `make test-integration` | HR Job；**延后，不阻塞 2c** |
+| **M2b 验收** | 8 | 2b-core + 2b-org 全量 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 工单可见性 + 虚拟组全景 |
 | **M2c-1** 委托 API | 9 | D1–D6 | `make test-integration` | 迁移 000014；组内防提权（50008–50010） |
 | **M2c-2** Authorize 升级 | 10 | D7–D9 | 同上（扩展） | org admin/owner + ancestor owner |
-| **M2c-3** 2c 全量 | 11 | D1–D12 + D10 HR 隔离回归 + 2a/2b 回归 | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
+| **M2c-3** 2c 全量 | 11 | D1–D12 + 2a/2b-core/2b-org 回归（D10 HR 隔离待 2b-ext 落地后补） | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
 
 ---
 
@@ -126,29 +144,28 @@
 
 - [ ] 全量脚本通过；PRD 用例表标注状态；12 号报告模式出 2a 验收记录（可选）
 
-### Step 4（M2b-1）— org-enhance
+### Step 4（M2b-core）— ticket scope 升级（2b 关键路径）
+
+- [ ] `ReadAnchorPaths`（挂载实体 anchor 透明读）+ GetFilter 升级 `org_path <@ ANY($2::ltree[])`（[09 §5.2](./09-ticket.md)）
+- [ ] `ticket_visibility` 字段默认 `entity_transparent_read`（**不含 `project_isolated`，标 future**，[09 §5.2.1](./09-ticket.md)）
+- [ ] R9–R12 + D11 集成测试；**P2-D1 回归**（move 后 scope 过滤仍正确）
+
+### Step 5（M2b-org）— org-enhance（与 Step 4 并行）
 
 - [ ] 迁移 **000011**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`、`ticket_visibility`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL）
 - [ ] 虚拟组 CRUD（org_type=4、code 前缀 `vg_`）+ Reparent（HR 撤销部门上挂最近实体祖先）
 - [ ] 临时成员：`expires_at` 读取时过滤（或惰性清理 Job，随 PRD）
 - [ ] BFS 三源 RoleFetcher 扩展（直接 + 组织角色 + 继承）
-- [ ] `HRDirectoryClient` 接口 + `HRSyncService`（fake client 契约测试，P2-D3）+ `hr_sync_runs` 对账表 + 分布式锁 Cron
 - [ ] 实体 move 子树 path 级联**含虚拟组**（Phase 1 Move 扩展）
 
-### Step 5（M2b-2）— ticket scope 升级
-
-- [ ] `ReadAnchorPaths`（挂载实体 anchor 透明读）+ GetFilter 升级 `org_path <@ ANY($2::ltree[])`（[09 §5.2](./09-ticket.md)）
-- [ ] `project_isolated` 回退分支（仅直接 org path + scope）
-- [ ] R9–R12 + D11/D12 集成测试；**P2-D1 回归**（move 后 scope 过滤仍正确）
-
-### Step 6（M2b-3）— storage
+### Step 6（M2b-ext）— storage（延后/按需）
 
 - [ ] compose 加 MinIO；`config.storage` 段（[10 §2](./10-storage.md)）
 - [ ] 迁移 **000013**：`file_objects` / `ticket_attachments`
 - [ ] `internal/pkg/storage/s3_client.go` + 预签名 upload/download + confirm（HEAD 校验）+ 附件列表/删除 API
 - [ ] 91001–91004 错误码；S1–S6 测试
 
-### Step 7（M2b-4）— auth-enhance（可与 Step 6 并行）
+### Step 7（M2b-ext）— auth-enhance（可与 Step 6 并行，延后/按需）
 
 - [ ] **首任务（D2-49②）**：devices 集合初始化（SADD/SREM 接入登录/登出/吊销链路）+ RT value 结构升级（hash 与设备元数据并存，Refresh 比较逻辑与守护测试同 Step 改造——[01 §2.1](./01-auth-enhance.md)）
 - [ ] 设备列表/踢出 API（沿用 `devices:{uid}` 集合；**单轨道**：仅删单设备 RT，不触碰 `user:disabled`，[01 §0 B3](./01-auth-enhance.md)）
@@ -156,9 +173,14 @@
 - [ ] 迁移 **000012** 视需要（纯 config 则无迁移，编号顺延规则见 [README §2.4](./README.md)）
 - [ ] A1–A6 测试（miniredis）
 
-### Step 8（M2b-5）— 2b 集成验收
+### Step 7b（M2b-ext）— HR 目录同步（延后，独立 Job）
 
-- [ ] `acceptance-phase2b.sh`（头段跑 2a 回归）；2b 验收 5 条全过
+- [ ] `HRDirectoryClient` 接口 + `HRSyncService`（fake client 契约测试，P2-D3）+ `hr_sync_runs` 对账表 + 分布式锁 Cron（[03-org-enhance](./03-org-enhance.md)）
+- [ ] Phase 2 组织数据可种子/手工维护，HR 同步不阻塞主线
+
+### Step 8（M2b-core 集成验收）— 2b-core + 2b-org 验收
+
+- [ ] `acceptance-phase2b.sh`（头段跑 2a 回归）；2b-core 可见性验收 + 2b-org 虚拟组验收全过
 
 ### Step 9（M2c-1）— org-delegation
 
@@ -173,7 +195,7 @@
 
 ### Step 11（M2c-3）— 2c 集成验收
 
-- [ ] `acceptance-phase2c.sh`：D1–D12 全量 + D10 HR 隔离 + 2a/2b 回归
+- [ ] `acceptance-phase2c.sh`：D1–D12 全量 + 2a/2b-core/2b-org 回归
 
 ---
 
@@ -182,14 +204,15 @@
 > Phase 1 即单人开发模式，Phase 2 沿用。并行仅指「接口契约先定、实现交替推进」。
 
 ```
-批次 α（串行关键路径）        批次 β（组织主线）           批次 γ（独立能力）        批次 δ（委托收口）
-Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ Step 7     →   Step 8 → 9 → 10 → 11
-   (2a)                      (2b 核心复杂度)            (无相互依赖)              (2b 验收 + 2c)
+批次 α（关键路径）             批次 β（组织增强，与α并行）    批次 γ（外延，延后/按需）      批次 δ（委托收口）
+Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ Step 7 ∥ HR →   Step 8 → 9 → 10
+   (2a)          (2b-core)       (2b-org)                  (2b-ext)                  (2c)
 ```
 
-- **批次 β 说明**：策略 B（透明读/isolated/anchor 计算）是 Phase 2 最大语义复杂度，独占注意力不与 storage/auth-enhance 交叉。
-- **批次 γ 说明**：Step 6 与 7 零依赖；单人时建议先 6 后 7（附件影响 2b 验收演示面更大），但两步的 API 契约可在批次 β 期间先定。
-- **每批次收口**：合入 dev + 打 tag（如 `phase2a`）+ 全量回归，再进下一批次。
+- **批次 α 关键路径**：2a（Step 0–3）→ 2b-core（Step 4，工单可见性本体）后即可形成"能跑的工单模块"，是 Phase 2 最短交付链。
+- **批次 β（2b-org）**：虚拟组/scope/角色，与 2b-core 可并行；2c 委托需 α+β 都就绪。
+- **批次 γ（2b-ext）**：storage(6)/auth-enhance(7)/HR 同步 **延后，不阻塞 2c**；按宽松优先原则排期。
+- **每批次收口**：合入 dev + 打 tag（如 `phase2a`/`phase2b-core`）+ 全量回归，再进下一批次。
 
 ---
 
@@ -203,9 +226,10 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 |------|------|
 | `feature/step-2a-authz-resource` | Step 0 + 1 |
 | `feature/step-2a-ticket` | Step 2 + 3 |
-| `feature/step-2b-org-enhance` | Step 4 + 5 |
-| `feature/step-2b-storage` / `feature/step-2b-auth-enhance` | Step 6 / 7 |
-| `feature/step-2c-org-delegation` | Step 9 + 10 + 11 |
+| `feature/step-2b-core-ticket-scope` | Step 4（2b-core：工单可见性本体） |
+| `feature/step-2b-org-enhance` | Step 5（2b-org：虚拟组/scope/角色） |
+| `feature/step-2b-storage` / `feature/step-2b-auth-enhance` / `feature/step-2b-hr-sync` | Step 6 / 7 / HR（2b-ext，延后） |
+| `feature/step-2c-org-delegation` | Step 8 + 9 + 10 |
 
 > Step 0 与 1 同分支原因：接线（Deps 字段）与第一个消费者（TicketResource 自注册）互为验证，拆开则接线无回归面。
 
@@ -252,12 +276,12 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | M2a-2 | 4–5 | 3 表迁移 + 状态机 + ~11 条 API + 验收脚本 + P2-D1 |
 | M2a-3 | 1 | 脚本调通 + 全量回归 |
 | **2a 小计** | **~8** | |
-| M2b-1 | 5–6 | HR Sync（fake client + 对账）是最大不确定块 |
-| M2b-2 | 3 | 策略 B 语义 + 回归 |
-| M2b-3 | 3 | MinIO + 预签名 + confirm |
-| M2b-4 | 2 | 设备 API + 密码策略 |
-| M2b-5 | 1 | 验收脚本 |
-| **2b 小计** | **~14** | |
+| M2b-core | 3 | 策略 B 语义 + 回归 |
+| M2b-org | 4–5 | 虚拟组/BFS/迁移（HR 已延后） |
+| M2b-ext（storage+auth） | 5 | MinIO + 设备 API + 密码策略 |
+| M2b-ext（HR 同步） | 3–4 | **延后，不计入关键路径** |
+| M2b 验收 | 1 | 验收脚本 |
+| **2b 关键路径小计** | **~13** | 不含延后 HR 同步 |
 | M2c-1 | 3 | 委托 API + 防提权 |
 | M2c-2 | 2 | Authorize 扩展 |
 | M2c-3 | 1 | 全量验收 |
@@ -293,11 +317,12 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | 1 | M2a-1 | [02 全文](./02-authz-resource.md) | R1–R2 + 契约 | — |
 | 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000010/000015/000016 |
 | 3 | M2a-3 | README §1.1 | 全量 + 回归 | — |
-| 4 | M2b-1 | [03](./03-org-enhance.md) + [hr-directory-sync](../proposal/hr-directory-sync.md) | 两表用例 | 000011 |
-| 5 | M2b-2 | [09 §5.2](./09-ticket.md) | R9–R12、D11/D12 | — |
-| 6 | M2b-3 | [10](./10-storage.md) | S1–S6 | 000013 |
-| 7 | M2b-4 | [01](./01-auth-enhance.md) | A1–A6 | 000012（视需要） |
-| 8 | M2b-5 | README §1.2 | 全量 + 回归 | — |
+| 4 | M2b-core | [09 §5.2](./09-ticket.md) | R9–R12、D11 | — |
+| 5 | M2b-org | [03](./03-org-enhance.md) | 两表用例 | 000011 |
+| 6 | M2b-ext | [10](./10-storage.md) | S1–S6 | 000013 |
+| 7 | M2b-ext | [01](./01-auth-enhance.md) | A1–A6 | 000012（视需要） |
+| 7b | M2b-ext | [03-org-enhance HR 同步](./03-org-enhance.md) | HR 对账 | — |
+| 8 | M2b 验收 | README §1.2 | 2b-core + 2b-org 全量 + 回归 | — |
 | 9 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
 | 10 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
 | 11 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
@@ -310,3 +335,4 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 |------|------|
 | 2026-08-19 | 初版：P2-D1~D5 编码前拍板 |
 | 2026-08-26 | P2-D6：工单可见性设计边界（V1~V8 + V0 宽松优先总则 + V9 模块耦合边界：2a 最简 assigned / 2b 策略B / 跨部门宽松三机制 / per-ticket 隔离·跨多组织·类型差异为 future / 跟人走+组织快照 / 组织重构不联动 / 工单只借 org_path 不订阅组织事件）+ 组织建模决策点（独立多根用 assigned_to 兜底，不强建虚拟总根）+ RK-12 |
+| 2026-08-26 | P2-D7：Phase 2b 拆 core/org/ext 三轨（关键路径 2a→2b-core→2c；2b-org 并行；2b-ext 延后）；HR 同步降 2b-ext 延后、project_isolated 标 future（2b-core 仅交付 entity_transparent_read）、ticket:note 2a 口径对齐 assigned；Step 重排 2c:8–10；批次/分支策略同步更新 |

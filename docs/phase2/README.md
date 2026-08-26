@@ -9,20 +9,23 @@
 
 ## 0. 子阶段总览
 
-| 子阶段 | 目标 | 典型交付 | 验收焦点 |
-|--------|------|----------|----------|
-| **2a** | 资源级鉴权 + 工单 MVP | Registry 实现、TicketResource、工单 CRUD+状态机 | **assigned** 范围：仅本人创建/被分派的工单 |
-| **2b** | 组织范围 + 附件 + 体验 | 虚拟组/scope、HR 同步、对象存储、多设备 UI、密码策略 | **group/all** 可见性、附件、临时成员 |
-| **2c** | 组织内委托 | owner、`org_member_role`、组内防提权、资源 Authorize | 负责人/组 admin 管成员与绑定 org 的资源（D1–D11） |
+| 子阶段 | 目标 | 典型交付 | 验收焦点 | 关键路径 |
+|--------|------|----------|----------|---------|
+| **2a** | 资源级鉴权 + 工单 MVP | Registry 实现、TicketResource、工单 CRUD+状态机 | **assigned** 范围：仅本人创建/被分派的工单 | ✅ 必做 |
+| **2b-core** | 工单可见性本体 | 策略 B（`entity_transparent_read`）+ `ticket_scope`(all/group/assigned) + `ticket_visibility` 字段 + GetFilter `<@` | **group/all** 可见性（部门内默认全可见） | ✅ 关键路径 |
+| **2b-org** | 组织增强 | 虚拟组 CRUD + 成员 + `org_roles` + BFS 三源角色 | 跨部门加人、`expires_at` 临时成员 | 并行（依赖 2a） |
+| **2b-ext** | 外延增强（可延后/按需） | storage 附件、auth-enhance、HR 目录同步、`project_isolated` 强隔离 | 附件上传、密码策略、组织数据同步 | 延后（不阻塞主线） |
+| **2c** | 组织内委托 | owner、`org_member_role`、组内防提权、资源 Authorize | 负责人/组 admin 管成员与绑定 org 的资源（D1–D11） | 依赖 2b-core + 2b-org |
 
-**为什么拆**：
+**为什么拆（2026-08-26 调整，宽松优先、基础为先）**：
 
-1. **org-enhance**（虚拟组、组织角色、scope、临时成员）与 **storage** 都是独立大块，和工单 CRUD 叠在一起难 review、难回滚。
-2. 工单三层鉴权可以先在 **assigned** 范围跑通（属主 + 处理人），已能验证 ResourceRegistry 设计；ltree **group** 过滤放到 2b 不阻塞主线。
-3. **auth-enhance**（设备 UI、密码复杂度）与工单无硬依赖，自然归入 2b。
-4. **组织负责人 + 组内 admin/member** 依赖 2b 的虚拟组与 scope，但逻辑独立（Authorize + 成员分级 API）；并入 2b 会使 Step 4–8 过重 → **单独 2c**（见 §1.3）。
+1. **原 2b 过重**：把"工单可见性（核心）"与"虚拟组/HR同步/附件/密码策略（增强）"塞进同一阶段，关键路径被拖长。
+2. **2b-core 是关键路径最短交付**：2a（工单 CRUD）→ 2b-core（工单能按组织可见）即可形成"能跑的工单模块"，符合 Phase 2「打基础」目标；其余增强并行或延后。
+3. **2b-org（虚拟组/scope/角色）** 与 2b-core 可同时开工，但 2c 委托需两者都就绪。
+4. **2b-ext（HR 同步 / storage / auth-enhance / project_isolated）** 按宽松优先原则**延后**：HR 同步 Phase 2 可用种子/手工维护组织数据，不阻塞主线；`project_isolated` 强隔离极少见，标 future；附件/密码策略与工单鉴权正交，独立可延后。
+5. **2c 不拆 2d**：owner/admin 委托强耦合（D7–D9 同时需 `org_member_role` 与 Authorize），单节点交付（见 §1.3）。
 
-**建议顺序**：Phase 1 验收 → **2a** → **2b** → **2c**。
+**建议顺序（关键路径）**：Phase 1 验收 → **2a** → **2b-core** → **2c**；**2b-org** 与 2b-core 并行，**2b-ext** 按需延后。
 
 ---
 
@@ -46,24 +49,46 @@
 4. ResourceRegistry.Authorize / GetFilter 有单元测试 + 工单集成测试
 ```
 
-### 1.2 Phase 2b — 做什么
+### 1.2 Phase 2b — 拆为 core / org / ext 三轨（2026-08-26 调整）
+
+> 关键路径：**2b-core**（工单可见性本体）；**2b-org**（组织增强）与 core 并行；**2b-ext**（外延）延后/按需，不阻塞主线。
+
+#### 1.2.1 2b-core — 工单可见性本体（关键路径）
 
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
-| 组织增强 | [org-enhance](./03-org-enhance.md) | 虚拟组、组织角色、scope（all/group/assigned）、临时成员有效期、BFS 三源角色、**HR 目录同步** | 已编写 |
-| 文件存储 | [storage](./10-storage.md) | S3 兼容、预签名 URL、工单附件 | **已编写** |
-| 工单增强 | [ticket](./09-ticket.md) §2b | 列表过滤升级为 group/all；附件关联 | **已编写** |
-| 认证增强 | [auth-enhance](./01-auth-enhance.md) | 多设备列表/踢出、密码复杂度 | **已编写** |
+| 工单可见性 | [ticket](./09-ticket.md) §2b | 列表过滤升级为 group/all（策略 B `entity_transparent_read`）；`ticket_scope`(all/group/assigned)；`organizations.ticket_visibility` 字段；GetFilter `<@` | **已编写** |
 
-**2b 验收**：
+**2b-core 验收**：
 
 ```
-1. 主管（scope=group）可见本组织及子组织工单
-2. 虚拟组成员按 expires_at 自动失效
-3. HR 目录同步：实体 move 级联 path；撤销部门时虚拟组 Reparent；用户主部门不覆盖虚拟组绑定
-4. 工单附件预签名上传 + 下载
-5. 设备列表/踢出、密码复杂度策略生效
+1. 主管（scope=group）可见本组织及子组织工单（策略 B 默认全可见）
+2. assigned / all / group 三档 scope 生效
+3. 同一实体子树内虚拟组兄弟节点「可读不可改」
 ```
+
+#### 1.2.2 2b-org — 组织增强（与 core 并行）
+
+| 类别 | 模块 | 核心能力 | 文档 |
+|------|------|---------|------|
+| 组织增强 | [org-enhance](./03-org-enhance.md) | 虚拟组、组织角色、scope（all/group/assigned）、临时成员有效期、BFS 三源角色 | 已编写 |
+
+**2b-org 验收**：
+
+```
+1. 虚拟组（org_type=4）CRUD + 挂载实体下
+2. 跨部门加人、expires_at 临时成员自动失效
+3. org_roles + BFS 三源角色展开
+```
+
+#### 1.2.3 2b-ext — 外延增强（可延后 / 按需）
+
+| 类别 | 模块 | 核心能力 | 文档 | 状态 |
+|------|------|---------|------|------|
+| 文件存储 | [storage](./10-storage.md) | S3 兼容、预签名 URL、工单附件 | **已编写** | 延后（与鉴权正交） |
+| 认证增强 | [auth-enhance](./01-auth-enhance.md) | 多设备列表/踢出、密码复杂度 | **已编写** | 延后 |
+| HR 目录同步 | [org-enhance](./03-org-enhance.md) | 每日拉取公司人员/部门 API | 已编写 | **延后**：Phase 2 组织数据可用种子/手工维护，不阻塞主线 |
+| 强隔离 `project_isolated` | [ticket](./09-ticket.md) §5.2.1 | 实体设 `ticket_isolated` 兄弟虚拟组互不可见 | 已编写 | **future**：极少见，2b-core 只交付默认 `entity_transparent_read` |
 
 ### 1.3 Phase 2c — 组织内委托（新增节点，**不**并入 2b）
 
@@ -72,7 +97,7 @@
 | 组织委托 | [04-org-delegation](./04-org-delegation.md) | `owner_user_ids`、`user_orgs.org_member_role`、组内防提权 API | **已编写** |
 | 资源 Authorize | [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10) + ticket | 负责人/组 admin 对绑定 org 的资源 CRUD | [modules/ticket.md](../modules/ticket.md) |
 
-**为何不加进 2b**：2b 已含 HR Job + 虚拟组 + scope + 存储 + 认证增强；委托层是 **「容器建好之后的组内治理」**，验收面不同（D1–D11），独立节点便于 review 与回滚。
+**为何不加进 2b**：委托层是 **「容器建好之后的组内治理」**，验收面不同（D1–D11），独立节点便于 review 与回滚；且依赖 2b-core + 2b-org 两者就绪。
 
 **2c 验收**（见 [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot)）：
 
@@ -84,7 +109,7 @@
 5. HR 不覆盖 owner 与 org_member_role
 ```
 
-**前置**：Phase **2b** 验收通过（虚拟组、scope、TicketResource group 过滤已存在）。清单见 [04-org-delegation §1](./04-org-delegation.md#1-前置条件2b-必须已验收)。
+**前置**：Phase **2b-core + 2b-org** 验收通过（虚拟组、scope、TicketResource group 过滤已存在）。清单见 [04-org-delegation §1](./04-org-delegation.md#1-前置条件2b-必须已验收)。
 
 **分期决策**：2c **不再拆** 2d；Step 9（成员分级）与 Step 10（Authorize）同批交付，理由见 [04-org-delegation §0](./04-org-delegation.md#0-边界与分期决策)。
 
@@ -161,47 +186,49 @@ Phase 1 完成
 | 2 | 2a | ticket | Step 1 | [09-ticket.md](./09-ticket.md) |
 | 3 | 2a | 集成验收 | Step 1–2 | 本文档 §1.1 |
 
-### 2.2 Phase 2b
+### 2.2 Phase 2b（拆 core / org / ext）
 
 ```
 2a 验收通过
    │
-   ├── Step 4: org-enhance（虚拟组 / scope / BFS / 临时成员）
-   │      │
-   │      └── Step 5: ticket 升级（group/all 过滤 + 404 语义不变）
+   ├── 2b-core（关键路径）
+   │      └── Step 4: ticket 升级（group/all 过滤 + ticket_visibility 字段 + 404 语义不变）
    │
-   ├── Step 6: storage（MinIO + 预签名 + 工单附件）
+   ├── 2b-org（并行）
+   │      └── Step 5: org-enhance（虚拟组 / scope / BFS / 临时成员 / org_roles）
    │
-   ├── Step 7: auth-enhance（可与 Step 6 并行）
-   │
-   └── Step 8: 2b 集成验收
+   └── 2b-ext（延后/按需，不阻塞 2c）
+          ├── Step 6: storage（MinIO + 预签名 + 工单附件）
+          ├── Step 7: auth-enhance（可与 Step 6 并行）
+          └── HR 目录同步（延后，独立 Job）
 ```
 
 | Step | 子阶段 | 模块 | 依赖 | 文档 |
 |------|--------|------|------|------|
-| 4 | 2b | org-enhance | 2a | [03-org-enhance.md](./03-org-enhance.md) |
-| 5 | 2b | ticket（scope 升级） | Step 4 | [09-ticket.md](./09-ticket.md) |
-| 6 | 2b | storage | 2a | [10-storage.md](./10-storage.md) |
-| 7 | 2b | auth-enhance | Phase 1 | [01-auth-enhance.md](./01-auth-enhance.md) |
-| 8 | 2b | 集成验收 | Step 4–7 | 本文档 §1.2 |
+| 4 | 2b-core | ticket（scope 升级） | 2a | [09-ticket.md](./09-ticket.md) |
+| 5 | 2b-org | org-enhance | 2a | [03-org-enhance.md](./03-org-enhance.md) |
+| 6 | 2b-ext | storage | 2a | [10-storage.md](./10-storage.md) |
+| 7 | 2b-ext | auth-enhance | Phase 1 | [01-auth-enhance.md](./01-auth-enhance.md) |
+
+> 2b-core 与 2b-org 可并行；2b-ext（Step 6–7 + HR 同步）**不阻塞 2c**，按需排期。
 
 ### 2.3 Phase 2c
 
 ```
-2b 验收通过
+2b-core + 2b-org 验收通过
    │
-   ├── Step 9: org-delegation（owner + org_member_role + 成员分级 API）
+   ├── Step 8: org-delegation（owner + org_member_role + 成员分级 API）
    │      │
-   │      └── Step 10: ticket Authorize 升级（组 admin/owner 资源操作）
+   │      └── Step 9: ticket Authorize 升级（组 admin/owner 资源操作）
    │
-   └── Step 11: 2c 集成验收（D1–D11）
+   └── Step 10: 2c 集成验收（D1–D12）
 ```
 
 | Step | 子阶段 | 模块 | 依赖 | 文档 |
 |------|--------|------|------|------|
-| 9 | 2c | org-delegation | 2b | [04-org-delegation.md](./04-org-delegation.md) |
-| 10 | 2c | ticket Authorize | Step 9 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-10) |
-| 11 | 2c | 集成验收 | Step 9–10 | [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot) |
+| 8 | 2c | org-delegation | 2b-core + 2b-org | [04-org-delegation.md](./04-org-delegation.md) |
+| 9 | 2c | ticket Authorize | Step 8 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-10) |
+| 10 | 2c | 集成验收 | Step 8–9 | [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot) |
 
 ### 2.4 迁移编号规划（自 000010 起）
 
