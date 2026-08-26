@@ -1,6 +1,6 @@
 # 01 - 可观测性（observability）
 
-> Phase 3a Step 1。**应用内可选开关 + 外部栈部署可选**，与 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署) 一致。
+> Phase 3 Step 1。**应用内可选开关 + 外部栈部署可选**，与 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署) 一致。
 
 ---
 
@@ -12,16 +12,16 @@
 | **配置驱动** | `observability.*.enabled` 控制是否注册 endpoint / exporter |
 | **关闭即零开销** | `enabled: false` 时用 noop tracer，不挂 `/metrics` |
 | **Grafana 永远可选** | 仅可视化；缺 Grafana 不影响 App 与 Prometheus |
-| **分档验收** | 3a-min 不要求 Metrics/追踪；3a-full 或多实例建议开启 |
+| **分档验收** | Phase 3-min 不要求 Metrics/追踪；Phase 3-full 或多实例建议开启 |
 
-验收档位见 [phase3/README §3.1](./README.md#31-phase-3a-验收两档)。
+验收档位见 [phase3/README §3.1](./README.md#31-phase-3-验收两档)。
 
 ---
 
 ## 2. 配置约定（SSOT）
 
 ```yaml
-# configs/config.yaml（Phase 3a 扩展）
+# configs/config.yaml（Phase 3 扩展）
 observability:
   metrics:
     enabled: false
@@ -66,7 +66,7 @@ App（config 开关）
 
 ---
 
-## 4. 实现要点（Phase 3a）
+## 4. 实现要点（Phase 3）
 
 ### 4.1 Wire 集成
 
@@ -77,7 +77,7 @@ App（config 开关）
 ### 4.2 Metrics（开启时）
 
 - 库：`prometheus/client_golang`、`gin-contrib/prometheus`（或自写轻量 counter/histogram）
-- 建议指标：HTTP 请求数/延迟/状态码、Go runtime、pgxpool 状态（Phase 3a 后期）
+- 建议指标：HTTP 请求数/延迟/状态码、Go runtime、pgxpool 状态（Phase 3 后期）
 - `/metrics` 不对公网暴露；Nginx deny 或仅内网 scrape
 
 ### 4.3 Tracing（开启时）
@@ -89,7 +89,7 @@ App（config 开关）
 ### 4.4 pprof
 
 - Phase 1–2 开发：本地 `go test -bench` / debug 端口即可
-- Phase 3a 生产：仅 3a-full 或排障时开；必须网络隔离
+- Phase 3 生产：仅 Phase 3-full 或排障时开；必须网络隔离
 
 ---
 
@@ -129,7 +129,7 @@ docker compose --profile observability up -d   # 附带观测栈
 | `metrics.enabled: true` | `GET /metrics` 200；Prometheus 未部署时 App 仍正常 |
 | `tracing.exporter=stdout` | 有 span 输出；无 Collector |
 | `tracing.exporter=otlp` 且 Collector  down | 默认 Warn 降级，不 crash（或 strict 模式失败，文档注明） |
-| 3a-min 部署 | 无 Prometheus/Grafana 容器，验收通过 |
+| Phase 3-min 部署 | 无 Prometheus/Grafana 容器，验收通过 |
 
 ---
 
@@ -151,4 +151,4 @@ deploy/prometheus.yml               # scrape 配置（可选）
 - ✅ **栈是否必须**：否；应用可选 + 部署可选
 - ✅ **Grafana**：永远可选
 - 📋 **OTLP 不可达**：默认 Warn 降级 vs 启动失败（建议默认 Warn）
-- 📋 **Sentry**：有 DSN 才启用，Phase 3a 可选
+- 📋 **Sentry**：有 DSN 才启用，Phase 3 可选
