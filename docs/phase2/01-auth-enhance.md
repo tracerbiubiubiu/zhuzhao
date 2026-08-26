@@ -34,7 +34,7 @@ Phase 1 已定型**双轨吊销机制**（SSOT：[phase1/02-auth.md §会话吊�
 | 不做 | 阶段 |
 |------|------|
 | 登录限流 / 会话吊销 | Phase 1 已完成 |
-| RS256 / JWKS | Phase 3（暂缓） |
+| RS256 / JWKS | Phase 3b |
 | 异地登录 / CAPTCHA | Phase 3 |
 | 密码过期天数 | 按需 |
 

@@ -1048,7 +1048,7 @@ m = g(r.tenant, r.sub, p.sub) && \
 | `org_permissions` | 2b | 组织级权限模板 |
 | 虚拟组 / HR 同步 / scope | 2b | 见 [organization 模块](../modules/organization.md)、[hr-directory-sync.md](../proposal/hr-directory-sync.md) |
 | 组内 owner / `org_member_role` | **2c** | 见 [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) |
-| `api_credentials` | Phase 3+ / 按需 | AK/SK（Phase 1–2 不做；有 M2M 调用方时实现） |
+| `api_credentials` | 3b / 按需 | AK/SK（Phase 1–2 不做；有 M2M 调用方时实现） |
 | `casbin_rule_{resource}` | 2a+ | 按需独立策略表，见 [resource-model.md](../proposal/resource-model.md) |
 | ResourceRegistry 实现 | 2a | Phase 1 为空接口 |
 
@@ -1271,13 +1271,13 @@ log:
 
 ### 12.4 审计日志可靠性
 
-**Phase 1**：请求内**同步**写 DB（见 §8.2、[phase1/08-audit.md](../phase1/08-audit.md)）。以下为 Phase 3 起的演进方案：
+**Phase 1**：请求内**同步**写 DB（见 §8.2、[phase1/08-audit.md](../phase1/08-audit.md)）。以下为 Phase 3a 起的演进方案：
 
 | 级别 | 方案 | 可靠性 | 复杂度 |
 |------|------|--------|--------|
 | L0（Phase 1） | 请求内同步 → DB | 最高（同事务路径），略增延迟 | 低 |
 | L1 | channel + goroutine → DB | 进程崩溃丢 channel 内日志 | 低 |
-| L2（Phase 3 推荐） | channel → Redis List → goroutine → DB | 进程崩溃不丢，Redis 持久化 | 中 |
+| L2（Phase 3a 推荐） | channel → Redis List → goroutine → DB | 进程崩溃不丢，Redis 持久化 | 中 |
 | L3（重型） | Kafka/RabbitMQ → 消费者 → DB | 最高可靠性，支持重放 | 高 |
 
 ### 12.5 跨实例事件广播

@@ -559,7 +559,7 @@ CREATE INDEX idx_api_credentials_ak ON api_credentials(access_key) WHERE is_acti
 
 **4. 服务代用户操作（常见真实需求，Phase 1 / 首版 AK/SK 不做）**
 
-若工单系统等 **用 AK/SK 证明自己是可信服务**，又要 **代表某个用户** 操作，不能在同一请求里混 Bearer + AK/SK。推荐后续（Phase 3+ / 有 M2M 时）单独设计，例如：
+若工单系统等 **用 AK/SK 证明自己是可信服务**，又要 **代表某个用户** 操作，不能在同一请求里混 Bearer + AK/SK。推荐后续（Phase 3b / 有 M2M 时）单独设计，例如：
 
 | 模式 | 做法 |
 |------|------|

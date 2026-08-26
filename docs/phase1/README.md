@@ -37,10 +37,10 @@
 | 资源级鉴权完整实现 | Phase 1 只搭 ResourceRegistry 空接口，不实现 ltree 查询 | Phase 2 |
 | 多设备管理 UI / 踢出 | 允许多设备登录，不提供设备列表 | Phase 2 |
 | 密码复杂度策略 | 基础 bcrypt 即可 | Phase 2 |
-| AK/SK | 无服务间调用方，不建表、不写中间件 | Phase 3 / 按需 |
+| AK/SK | 无服务间调用方，不建表、不写中间件 | Phase 3b / 按需 |
 | 文件存储 / 头像上传 | 无附件；`avatar` 仅 DB 存 URL 字符串 | Phase 2b storage |
 | 事件驱动 / Asynq / Outbox | 无异步业务 | Phase 3 |
-| 审计日志异步（channel / Redis List） | Phase 1 同步写入，保证不丢 | Phase 3（Redis List L2；见 architecture §12.4） |
+| 审计日志异步（channel / Redis List） | Phase 1 同步写入，保证不丢 | Phase 3a（Redis List L2；见 architecture §12.4） |
 | 缓存体系 | Phase 1 无缓存，走 Casbin PG adapter | 工单跑通后按需 |
 | JWT RS256 / JWKS | 单体无收益，拆服务时再换 | Phase 3 |
 | 每资源独立 Enforcer | Phase 1 仅单全局 Enforcer | Phase 2+ / 策略需可配置时 |

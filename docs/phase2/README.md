@@ -97,12 +97,12 @@ Phase 2 各子阶段 SSOT 见 [§4 文档索引](#4-文档索引)。
 | 不做 | 原因 | 阶段 |
 |------|------|------|
 | 每资源独立 Casbin Enforcer | 代码内联 + ltree 足够 | 策略需可配置时 |
-| JWT RS256 / JWKS | 仍是单体 | Phase 3（暂缓） |
-| AK/SK | 无 M2M 调用方 | Phase 3（暂缓）/ 按需 |
-| IAM 独立 / gRPC | 同进程 | Phase 3（暂缓） |
-| 缓存平台 | 工单跑通后再说 | Phase 3（暂缓） |
-| 审计异步 / Redis List | Phase 1 同步够用 | Phase 3（暂缓） |
-| API 级通用限流 | 登录限流在 Phase 1 | Phase 3（暂缓） |
+| JWT RS256 / JWKS | 仍是单体 | Phase 3b |
+| AK/SK | 无 M2M 调用方 | Phase 3b / 按需 |
+| IAM 独立 / gRPC | 同进程 | Phase 3b |
+| 缓存平台 | 工单跑通后再说 | Phase 3b |
+| 审计异步 / Redis List | Phase 1 同步够用 | Phase 3a |
+| API 级通用限流 | 登录限流在 Phase 1 | Phase 3a |
 
 ### 1.6 前置条件
 

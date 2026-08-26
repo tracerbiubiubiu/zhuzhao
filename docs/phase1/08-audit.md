@@ -19,7 +19,7 @@
 
 | 功能 | 原因 | 阶段 |
 |------|------|------|
-| channel + batch / Redis List 异步 | Phase 1 请求量低，同步够用；Phase 2 不堆平台能力 | Phase 3（L2，见 architecture §12.4） |
+| channel + batch / Redis List 异步 | Phase 1 请求量低，同步够用；Phase 2 不堆平台能力 | Phase 3a（L2，见 architecture §12.4） |
 | 日志过期清理 | 分区表或 cron | Phase 2 |
 
 ---
@@ -43,7 +43,7 @@
 1. Phase 1 请求量低（内部办公系统），每请求多一次 INSERT 对延迟影响可忽略（PG 本地 INSERT 约 0.1ms）
 2. 审计日志的核心要求是**不丢**——安全审计场景下，丢失操作记录比慢 0.1ms 严重得多
 3. 异步引入的复杂度（channel 满降级、关闭时刷空、goroutine 泄漏）在 Phase 1 不值得
-4. Phase 3 引入异步（channel → Redis List → DB）时，接口不变，只改 `AuditRepo.Insert` 内部实现
+4. Phase 3a 引入异步（channel → Redis List → DB）时，接口不变，只改 `AuditRepo.Insert` 内部实现
 
 **优化措施**：同步写入虽在请求链路内，但放在 `c.Next()` 之后，且**先 `c.Writer.Flush()` 把响应送达客户端再写审计**（D2-12——net/http 在整个中间件链返回后才真正 flush，不主动 Flush 时 DB 抖动会拖慢响应送达）：
 
@@ -192,7 +192,7 @@ internal/model/audit_log.go
 
 > 以下决策已在讨论中确认：
 
-- ✅ **同步 vs 异步**：Phase 1 同步写入 DB。Phase 2 **不做**审计异步；Phase 3 Redis List L2（见 architecture §12.4）。
+- ✅ **同步 vs 异步**：Phase 1 同步写入 DB。Phase 2 **不做**审计异步；Phase 3a Redis List L2（见 architecture §12.4）。
 - ✅ **日志保留策略**：Phase 1 不做清理，手动管理。Phase 2 用 PG 分区表或 cron 定期清理。
 
 ---
