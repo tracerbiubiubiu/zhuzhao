@@ -34,7 +34,7 @@
 |------|---------|-----|
 | 90001 `ErrTicketNotFound`（+状态机 90002 等） | Step 2 | [09-ticket §7](./09-ticket.md) |
 | 91001–91004 | Step 6 | [10-storage §6](./10-storage.md) |
-| 20013（密码策略） | Step 7 | [01-auth-enhance](./01-auth-enhance.md) |
+| 20012（`ErrDeviceNotFound`）+ 20013（密码策略） | Step 7 | [01-auth-enhance](./01-auth-enhance.md) |
 | 50008–50010 | Step 9 | [04-org-delegation §5](./04-org-delegation.md) |
 
 均同步写入 `errcode.go` + [api/errcode.md](../api/errcode.md)，勿改号。
@@ -86,7 +86,7 @@
 
 ### Step 2（M2a-2）— ticket MVP
 
-- [ ] 迁移 **000010**：`ticket_types` / `tickets` / `ticket_comments`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范）
+- [ ] 迁移 **000010**：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范；`ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列）
 - [ ] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
 - [ ] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
 - [ ] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
@@ -249,6 +249,7 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | RK-8 | 设备管理与 Phase 1 会话键冲突（误伤其他设备） | 2b | 低 | 中 | 单轨道约束（不触碰 `user:disabled`）写进 A 用例 | 踢单设备致其他设备 403 |
 | RK-9 | Casbin LoadPolicy 规模增长 | 2a+ | 低 | 低 | 边界已声明（[02 §2.6](./02-authz-resource.md)）；Watcher 后移 Phase 3 | LoadPolicy 耗时上升 |
 | RK-10 | Phase 1 回归破坏（新路由/中间件改动） | 全程 | 低 | 高 | 每里程碑含 27 用例回归段（P2-D5）；批次收口打 tag | 回归段红 |
+| RK-11 | `update` 权限 2a→2b 收窄：2a 处理人（`assigned_to`）可 update，2b 收为仅创建人可 update（[02 §2.3](./02-authz-resource.md#23-ticketresource) canOperate 2a/2b 对照；[09 §5.1/§5.2](./09-ticket.md)） | 2b | 中 | 中 | 2b 升级时显式回归「处理人 update 应 403」；处理人需改单走 `assign` 重分派或 scope 主管权限，不回退 canOperate | 处理人 2a 能 update、2b 报 403 |
 
 ---
 

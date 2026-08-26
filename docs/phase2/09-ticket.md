@@ -60,7 +60,54 @@ CREATE INDEX idx_tickets_org_path ON tickets USING GIST (org_path);
 -- ticket_comments, ticket_events 同上 modules/ticket.md
 ```
 
-**创建工单时**：从 `organizations` 读 `path` 写入 `org_path`（与 org_id 同事务）。
+### 工单模板（2a 前移，迁移 000015）
+
+> 2026-08-25 从 Phase 3 前移到 2a（纯 DB，无事件依赖）。`default_sla_minutes` 仅存储，Phase 3 SLA 启用时取用。
+
+```sql
+-- 迁移 000015：工单模板（2a 前移，纯 DB）
+CREATE TABLE IF NOT EXISTS ticket_templates (
+    id                  BIGSERIAL PRIMARY KEY,
+    code                VARCHAR(50) NOT NULL,
+    name                VARCHAR(200) NOT NULL,
+    type_code           VARCHAR(50) NOT NULL REFERENCES ticket_types(code),
+    default_priority    SMALLINT DEFAULT 3,
+    default_fields      JSONB DEFAULT '{}',       -- 预填字段（title/description/custom_data 片段）
+    default_sla_minutes INT,                      -- 仅存储，Phase 3 SLA 启用时取用
+    org_id              BIGINT NOT NULL REFERENCES organizations(id),
+    org_path            ltree NOT NULL,
+    created_by          BIGINT NOT NULL,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at          TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_templates_code ON ticket_templates(code) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_org_path ON ticket_templates USING GIST (org_path);
+```
+
+### 工单关联（2a 前移，迁移 000016）
+
+> 2026-08-25 从 Phase 3 前移到 2a（纯 DB）。建立关联时对 `target_ticket_id` 走 L2/L3 鉴权，防止越权关联他人工单。
+
+```sql
+-- 迁移 000016：工单关联（2a 前移，纯 DB）
+CREATE TABLE IF NOT EXISTS ticket_relations (
+    id                BIGSERIAL PRIMARY KEY,
+    source_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
+    target_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
+    relation_type     VARCHAR(30) NOT NULL DEFAULT 'related',  -- related/blocks/duplicates/split
+    created_by        BIGINT NOT NULL,
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at        TIMESTAMPTZ,
+    CHECK (source_ticket_id <> target_ticket_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_relations_pair ON ticket_relations(source_ticket_id, target_ticket_id, relation_type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(target_ticket_id) WHERE deleted_at IS NULL;
+```
+
+**创建工单时**：从 `organizations` 读 `path` 写入 `org_path`（与 org_id 同事务）。`POST /tickets` 支持可选 `template_code`：命中则用 `ticket_templates.default_fields` 预填、`default_priority` 覆盖。
+
+**组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 5 回归测试（move 后 scope 过滤仍正确）。
 
 ### Phase 2b 增量
 
@@ -98,6 +145,10 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 | POST | `/api/v1/tickets/notes` | `ticket:note` | ✅ | |
 | GET | `/api/v1/ticket-types` | `ticket:list` | ✅ | |
 | GET | `/api/v1/ticket-types/:code/fields` | `ticket:list` | ✅ | |
+| GET | `/api/v1/ticket-templates` | `ticket:list` | ✅ | |
+| GET | `/api/v1/ticket-templates/:code` | `ticket:list` | ✅ | |
+| GET | `/api/v1/tickets/:id/relations` | `ticket:read` | ✅ | |
+| POST | `/api/v1/tickets/relations` | `ticket:relation` | ✅ | 建 `target_id` 走 L2/L3 鉴权 |
 | POST | `/api/v1/tickets/attachments/*` | — | ❌ | 2b storage |
 
 **请求体规范**（POST 更新类）：
