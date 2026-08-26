@@ -148,7 +148,7 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 | GET | `/api/v1/ticket-templates` | `ticket:list` | ✅ | |
 | GET | `/api/v1/ticket-templates/:code` | `ticket:list` | ✅ | |
 | GET | `/api/v1/tickets/:id/relations` | `ticket:read` | ✅ | |
-| POST | `/api/v1/tickets/relations` | `ticket:relation` | ✅ | 建 `target_id` 走 L2/L3 鉴权 |
+| POST | `/api/v1/tickets/relations` | `ticket:update` | ✅ | 关联视为工单修改操作，复用 `update` 权限码（建立关联走 L2/L3 鉴权） |
 | POST | `/api/v1/tickets/attachments/*` | — | ❌ | 2b storage |
 
 **请求体规范**（POST 更新类）：

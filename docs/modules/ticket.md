@@ -646,6 +646,8 @@ type StateController interface {
 | 状态机 | 从 `ticket_types.transitions` 加载，默认 open → assigned → in_progress → closed |
 | 路由级 RBAC | Casbin 权限码控制操作 |
 | 资源级 scope | **assigned** 可见性（2b 扩展 group/all） |
+| 工单模板 | 迁移 000015；模板预填字段/优先级/SLA（仅存储，SLA 计时 Phase 3 启用） |
+| 工单关联 | 迁移 000016；related/blocks/duplicates/split（前移 2a，纯 DB 无事件依赖） |
 | 组内 admin/owner 资源操作 | **Phase 2c**：见 [04-org-delegation §4](../phase2/04-org-delegation.md#4-authorize-升级step-10) |
 | 回复功能 | 公开回复 + 内部备注 |
 | 事件日志 | 状态变更记录 |

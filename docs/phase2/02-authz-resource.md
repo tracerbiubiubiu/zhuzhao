@@ -129,6 +129,7 @@ type TicketResource struct {
 func (r *TicketResource) Code() string { return "ticket" }
 func (r *TicketResource) Actions() []string {
     return []string{"create", "read", "update", "delete", "assign", "close", "comment", "note"}
+    // 关联操作（建立工单关联）复用 update 权限码，不单独注册 relation（见 09-ticket §API）
 }
 
 func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRequest) (bool, error) {
