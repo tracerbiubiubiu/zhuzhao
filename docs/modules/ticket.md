@@ -53,10 +53,10 @@
 
 ### 2.2 三层鉴权在工单中的映射
 
-> **执行顺序**（[11-authz-architecture-review §2](../phase2/11-authz-architecture-review.md#2-q1l2l3-执行顺序方向已确认待正式拍板落档) 修正后）：L1 → **L3 属主短路** → L2 → canOperate。属主命中即跳过 L2 组织关系，但**仍需通过 canOperate**（属主不等于能做所有动作）。
+> **执行顺序**（[11-authz-architecture-review §2](../phase2/11-authz-architecture-review.md#2-q1l2l3-执行顺序已拍板l2-可见性在前) 已拍板，对齐 Freshdesk/Jira 主流）：L1 → **L2 可见性** → L3 属主 → canOperate。**L2 可见性是数据访问边界门，先于属主**——属主不豁免组织校验，属主是 scope 集合内的一个特例（scope=assigned 即仅属主可见），不是独立短路层。可见性通过后，canOperate 内部用 L3 属主判断决定哪些动作可放行。
 
 ```
-Allow ⟺ L1 通过 ∧ ( L3 属主命中 ∨ L2 组织关系命中 ) ∧ canOperate 通过
+Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过
 ```
 
 ```
@@ -66,26 +66,25 @@ Allow ⟺ L1 通过 ∧ ( L3 属主命中 ∨ L2 组织关系命中 ) ∧ canOpe
   │   用户是否拥有 "ticket:update" 权限码？
   │   └─ 无 → 403
   │
-  ├─ L3 属主短路（资源行上的列比较，不查组织关系）
-  │   created_by == uid || assigned_to == uid？
-  │   ├─ 命中 → 跳过 L2，仍需过 canOperate（见下）
-  │   └─ 未命中 → 进入 L2
-  │
-  ├─ L2 资源级可见性（仅 L3 未命中时执行）
+  ├─ L2 资源级可见性（先于属主，数据访问边界门）
   │   检查 ticket scope:
   │   ├─ all:     全部工单可见
   │   ├─ group:   工单 org_path 在用户可见组织路径下
-  │   └─ assigned: 退化为仅属主（L3 已判过，这里必 fail）
+  │   └─ assigned: 仅 created_by/assigned_to == uid 可见（属主 = scope 子集）
   │   └─ 不可见 → 404（不是 403，防信息泄露）
   │
-  └─ canOperate（L3 命中或 L2 命中后都要过）
+  └─ L3 属主 + canOperate（可见性通过后，判属主 + 动作权）
       用户能执行 "update" 操作吗？
-      ├─ L3 命中：创建人可 update（2b）；处理人可 close
-      ├─ L2 命中：scope 主管（2c org admin/owner）可管本组
+      ├─ L3 属主命中（created_by/assigned_to == uid）：read/comment/update/close 可放行
+      ├─ L2 命中非属主（scope 主管 / 2c org admin/owner）：可管本组
+      ├─ assign/delete：属主也不放行，需 admin/scope 主管
       └─ 无权 → 403
 ```
 
-> **关键澄清**：L3 属主命中 = 跳过 L2（不需要组织关系也能碰自己的工单），**不等于**能做所有动作。比如创建人是属主（L3 命中），但 `assign` 动作只有 admin/scope 主管能做——属主命中后仍被 `canOperate` 拦截返回 403。属主解决"转部门后还能看旧工单"，canOperate 解决"能碰不等于能改"。
+> **关键澄清**（路径 A，对齐 Freshdesk/Jira 主流）：
+> - **属主不短路豁免 L2**：转部门后，若 scope=group 且工单 `org_path` 不在新组织路径下，L2 直接 fail（404），属主身份不豁免。转部门改旧工单的需求通过 scope 配置或重分派解决，不是属主自动豁免——避免属主豁免弱化数据隔离。
+> - **属主是 scope 的子集**：scope=assigned 的可见集就是属主（对齐 Freshdesk 的 assigned scope）。属主身份在 canOperate 内部用于决定 `read/comment/update/close` 是否放行。
+> - **能碰 ≠ 能改**：属主命中（L3）只是 canOperate 的输入之一，`assign/delete` 仍需 admin/scope 主管，属主也不放行。
 
 ### 2.3 权限矩阵
 
@@ -176,7 +175,7 @@ CREATE TABLE ticket_types (
     description     TEXT,
     states          JSONB NOT NULL DEFAULT '["open","assigned","in_progress","pending_verify","closed","rejected"]',
     transitions     JSONB NOT NULL DEFAULT '{"open":["assigned","closed"],...}',
-    default_sla_hours INT DEFAULT 24,
+    default_sla_hours INT DEFAULT 24,               -- 小时（类型级默认）；Phase 2a 仅配置存储，SLA 计时 Phase 3 启用。单位口径见 §3.2.1
     has_custom_fields BOOLEAN DEFAULT FALSE,
     is_active       BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMPTZ DEFAULT NOW()
@@ -251,6 +250,47 @@ CREATE TABLE ticket_events (
 );
 
 CREATE INDEX idx_events_ticket ON ticket_events (ticket_id, created_at);
+```
+
+### 3.2.1 工单模板与关联表（Phase 2a 前移）
+
+> **阶段归属（2026-08-25 锁定）**：工单模板、工单关联**无事件依赖、纯 DB**，已从 Phase 3 前移至 **Phase 2a**（迁移 `000015` / `000016`）。SSOT DDL 见 [phase2/09-ticket §2](../phase2/09-ticket.md#工单模板2a-前移迁移-000015)；此处为模块完整形态补录，两者必须一致。
+>
+> **SLA 单位口径**：`ticket_types.default_sla_hours` 以**小时**计（类型级默认）；`ticket_templates.default_sla_minutes` 以**分钟**计（模板级预填）。两者独立存储、Phase 2a 均不计算，Phase 3 SLA 启用时分别取用并注意单位换算。
+
+```sql
+-- 迁移 000015：工单模板（2a 前移，纯 DB）
+CREATE TABLE IF NOT EXISTS ticket_templates (
+    id                  BIGSERIAL PRIMARY KEY,
+    code                VARCHAR(50) NOT NULL,
+    name                VARCHAR(200) NOT NULL,
+    type_code           VARCHAR(50) NOT NULL REFERENCES ticket_types(code),
+    default_priority    SMALLINT DEFAULT 3,
+    default_fields      JSONB DEFAULT '{}',
+    default_sla_minutes INT,                      -- 分钟；仅存储，Phase 3 SLA 启用时取用
+    org_id              BIGINT NOT NULL REFERENCES organizations(id),
+    org_path            ltree NOT NULL,
+    created_by          BIGINT NOT NULL,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at          TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_templates_code ON ticket_templates(code) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_org_path ON ticket_templates USING GIST (org_path);
+
+-- 迁移 000016：工单关联（2a 前移，纯 DB）
+CREATE TABLE IF NOT EXISTS ticket_relations (
+    id                BIGSERIAL PRIMARY KEY,
+    source_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
+    target_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
+    relation_type     VARCHAR(30) NOT NULL DEFAULT 'related',  -- related/blocks/duplicates/split
+    created_by        BIGINT NOT NULL,
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at        TIMESTAMPTZ,
+    CHECK (source_ticket_id <> target_ticket_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_relations_pair ON ticket_relations(source_ticket_id, target_ticket_id, relation_type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(target_ticket_id) WHERE deleted_at IS NULL;
 ```
 
 ### 3.3 状态机
@@ -574,16 +614,16 @@ type StateController interface {
 | 档 | 阶段 | 实现 | 可靠性 | 适用 |
 |---|---|---|---|---|
 | **L0** | Phase 2a | Go channel + goroutine | 进程崩溃丢 | MVP（2a 过渡） |
-| **L1** | **Phase 2a 起（长期稳态，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）** | **进程内事件 + DB 持久化（`ticket_events` 表 + 轮询补偿）+ 分布式锁** | **进程崩溃不丢，多实例靠分布式锁防重** | **生产单/多实例** |
+| **L1** | **Phase 3 启动时实现（长期稳态，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）**；`ticket_events` 表 Phase 2a 已建（仅审计），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）随迁移 000021 补列落地 | **进程内事件 + DB 持久化（`ticket_events` 表 + 轮询补偿）+ 分布式锁** | **进程崩溃不丢，多实例靠分布式锁防重** | **生产单/多实例** |
 | L2 | **暂缓（按需，见 ADR-001）** | Outbox + Asynq worker 多消费者 | 跨服务可靠 | 多消费者/微服务 |
 
-> **Asynq 已引入**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）：作为"异步任务执行器"与 L1 并存，职责互补——L1 管事件事实持久化，Asynq 管异步任务执行（审批触发事件 + 预置定时任务）。Asynq 不替代 L1 事件源。
+> **Asynq 设计就绪**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)，Phase 3 启动时引入；Phase 2a 无异步业务）：作为"异步任务执行器"与 L1 并存，职责互补——L1 管事件事实持久化，Asynq 管异步任务执行（审批触发事件 + 预置定时任务）。Asynq 不替代 L1 事件源。
 
 **L1 设计要点**（见 [phase3/10-ticket-business.md §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级)）：
 
 - 事件先写 `ticket_events` 表（2a 已建，事务内保证不丢）
 - 消费者在事务后立即拉取 `ticket_events` 处理；多实例下用 [multi-instance](../phase3/02-multi-instance.md) 的分布式锁保证同一事件不被重复消费
-- SLA 定时扫描复用分布式锁，避免多实例重复扫描；**Asynq 已引入（ADR-002），Phase 3 起由 Asynq PeriodicTask 接管定时调度**
+- SLA 定时扫描由 Asynq PeriodicTask 单点调度，**无需自写分布式锁**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）；L1 **事件消费**仍用分布式锁防重（多实例拉取 `ticket_events` 不重复）
 - L1 比 channel 可靠（崩溃不丢），比 Outbox 简单（无额外表/worker）——长期稳态
 - L1 是**长期稳态机制，非临时过渡**（ADR-001）：`processed` 标记、分布式锁防重、双重职责（audit/signal）分离均按产线级实现，不因"以为 L1 是过渡"而偷工减料
 - L2 升级时业务逻辑不变，只把"轮询拉取"换成"Asynq worker 消费 Outbox"——L2 是按需升级，不是必经路径
@@ -592,7 +632,7 @@ type StateController interface {
 
 ## 7. 分阶段实施
 
-> **口径说明**（2026-08-25 修订）：Phase 3 整体暂缓（见 [roadmap.md](../roadmap.md)），不拆 3a/3b 子阶段执行。工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现；**工单模板、工单关联、SLA 计时/违约、通知、审批流、分派、报表仍属 Phase 3（暂缓，设计就绪）**，事件机制用 L1（长期稳态，ADR-001）+ Asynq（ADR-002）。以下按"Phase 2 已实现 / Phase 3 暂缓"两段式描述，能力细节见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（Phase 3 启动时取用）。
+> **口径说明**（2026-08-25 修订）：Phase 3 整体暂缓（见 [roadmap.md](../roadmap.md)），不拆 3a/3b 子阶段执行。工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现；**工单模板、工单关联已前移 Phase 2a（迁移 000015/000016，见 [09-ticket §2](../phase2/09-ticket.md)）；SLA 计时/违约、通知、审批流、分派、报表仍属 Phase 3（暂缓，设计就绪）**，事件机制用 L1（长期稳态，ADR-001）+ Asynq（ADR-002）。以下按"Phase 2 已实现 / Phase 3 暂缓"两段式描述，能力细节见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（Phase 3 启动时取用）。
 >
 > **Phase 2 实现 SSOT**：[phase2/09-ticket.md](../phase2/09-ticket.md)（2a MVP + 2b scope + 2c Authorize）。  
 > **工单业务能力细节 SSOT**：[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（SLA/通知/审批流/分派/报表/L1 升级，Phase 3 启动时取用）。
@@ -634,7 +674,7 @@ type StateController interface {
 | 能力 | 说明 | 实现方式 |
 |------|------|---------|
 | SLA 计时 | 按优先级设定响应/解决时限 | `ticket_sla` 表 + Asynq PeriodicTask 扫描（替代进程内定时器，见 ADR-002） |
-| SLA 违约告警 | 超时触发告警/升级 | Asynq 定时扫描 + 分布式锁（多实例防重） |
+| SLA 违约告警 | 超时触发告警/升级 | Asynq 定时扫描（单点调度，无需自写锁）；告警事件走 L1 |
 | 站内通知 | 工单分派、状态变更通知 | L1 事件（`ticket_events` 轮询） + `notifications` 表 |
 | 邮件通知 | 关键状态变更邮件提醒 | L1 事件 + SMTP（可走 Asynq 异步发送） |
 | 多级审批流 | 变更类工单走审批流（会签/分支） | **`BranchedStateEngine`**（手写两层分离：状态机内核 + ApprovalTaskLayer，借鉴 aifei-go flow + easy-workflow，注册到 `TicketEngine` Port） |
@@ -643,7 +683,7 @@ type StateController interface {
 | 事件机制 L1 | `ticket_events` 持久化 + 轮询补偿 + 分布式锁（长期稳态，ADR-001） | 见 §6 + [10-ticket-business §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级) |
 | Asynq 异步任务 | 审批触发事件 + 预置定时任务（ADR-002） | L1 事件源 + Asynq 执行器，职责互补 |
 
-> **工单模板与工单关联**属 Phase 3（暂缓，设计就绪），见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)。
+> **工单模板与工单关联**已前移 Phase 2a（迁移 000015/000016，见 [phase2/09-ticket §2](../phase2/09-ticket.md#工单模板2a-前移迁移-000015)）；原 Phase 3 设计章节已迁移，DDL 与 API 以 09-ticket 为 SSOT。
 
 ### L2 升级（暂缓，按需）
 
@@ -782,8 +822,8 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 - 其他服务（用户管理、组织变更）也会触发事件
 
 因此事件驱动作为独立的横切模块设计，L1→L2 升级方案详见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) 与 [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)。三档演进（见 §6 + [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）：
-- **Phase 2a（L0→L1）**：Go 原生 channel（L0，过渡）→ `ticket_events` 持久化 + 轮询补偿 + 分布式锁（L1，**长期稳态**）
-- **Asynq 已引入**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）：与 L1 并存，作为异步任务执行器（审批触发事件 + 预置定时任务），不替代 L1 事件源
+- **Phase 2a（L0）→ Phase 3 启动时（L1）**：Phase 2a 用 Go 原生 channel（L0，过渡，进程崩溃丢事件）；Phase 3 启动时升级为 `ticket_events` 持久化 + 轮询补偿 + 分布式锁（L1，**长期稳态**，迁移 000021 补 event_type/processed 列）
+- **Asynq 与 L1 一同于 Phase 3 启动时引入**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）：与 L1 并存，作为异步任务执行器（审批触发事件 + 预置定时任务），不替代 L1 事件源
 - **L2 暂缓（按需）**：PostgreSQL Outbox + Asynq worker 多消费者——多消费者需求出现时升级，业务逻辑不变只换调度器
 
 > 跨服务事件传播（Redis Streams / Kafka）随微服务拆分推迟，不在近期范围。
