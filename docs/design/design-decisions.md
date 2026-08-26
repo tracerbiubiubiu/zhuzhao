@@ -179,11 +179,13 @@ aof-use-rdb-preamble yes
 
 ```
 请求 → 第一层 RBAC（路由级，Casbin 快速过滤）
-     → 第二层 ReBAC（资源级，关系遍历）
-     → 第三层 ABAC（属主判断，加载资源后 O(1) 比较）
+     → 第二层 可见性（资源级，ltree 组织关系 / assigned scope）
+     → 第三层 canOperate（动作权，属主判断作为输入而非短路层）
 ```
 
-三层是**短路**关系：前一层拒绝则直接返回 403，不需要进入下一层。大多数请求在第一层就被拦截，只有需要细粒度控制的才进入第二、三层。
+三层是**合取**关系（Allow ⟺ L1 ∧ L2 ∧ canOperate）：前一层拒绝则直接返回，不进入下一层。大多数请求在第一层就被拦截。
+
+> **决策（路径 A，2026-08-26 拍板）**：L2 可见性在前，属主判断不短路 L2。属主是可见性集合的一个特例（assigned scope = 仅属主可见），不是独立短路层。详见 [phase2/11-authz-architecture-review §2](../phase2/11-authz-architecture-review.md#2-q1l2l3-执行顺序已拍板l2-可见性在前路径-a)。
 
 ---
 

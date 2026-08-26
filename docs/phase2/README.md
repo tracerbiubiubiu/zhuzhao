@@ -111,7 +111,7 @@
 
 **前置**：Phase **2b-core + 2b-org** 验收通过（虚拟组、scope、TicketResource group 过滤已存在）。清单见 [04-org-delegation §1](./04-org-delegation.md#1-前置条件2b-必须已验收)。
 
-**分期决策**：2c **不再拆** 2d；Step 9（成员分级）与 Step 10（Authorize）同批交付，理由见 [04-org-delegation §0](./04-org-delegation.md#0-边界与分期决策)。
+**分期决策**：2c **不再拆** 2d；Step 8（成员分级）与 Step 9（Authorize）同批交付，理由见 [04-org-delegation §0](./04-org-delegation.md#0-边界与分期决策)。
 
 ### 1.4 文档索引
 
@@ -160,7 +160,7 @@ Phase 2 各子阶段 SSOT 见 [§4 文档索引](#4-文档索引)。
 
 **Phase 2c** 开始前，**Phase 2b** 必须已完成：
 
-- [ ] 虚拟组 + `ticket_scope` + HR Sync 验收通过
+- [ ] 虚拟组 + `ticket_scope` 验收通过
 - [ ] TicketResource group/all 过滤可用
 - [ ] 详见 [04-org-delegation §1](./04-org-delegation.md#1-前置条件2b-必须已验收)
 

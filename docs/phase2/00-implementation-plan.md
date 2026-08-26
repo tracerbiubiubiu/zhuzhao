@@ -18,7 +18,7 @@
 | B. 查询时 JOIN 实时取 path | 不冗余 | GIST 索引失效、SQL 复杂化，与两份 PRD 冲突 |
 | C. 接受 stale | 不处理 | scope=group 静默漏单——不可接受 |
 
-**✅ 已采纳方案 A（2026-08-19 用户拍板）**：move 事务内级联改写。落地动作在 **Step 2**（建表同批扩展 OrgService.Move）+ **Step 5** 回归测试（move 后 scope 过滤仍正确）。
+**✅ 已采纳方案 A（2026-08-19 用户拍板）**：move 事务内级联改写。落地动作在 **Step 2**（建表同批扩展 OrgService.Move）+ **Step 4** 回归测试（move 后 scope 过滤仍正确）。
 
 ### P2-D2：2a 即建 org_id/org_path 列
 

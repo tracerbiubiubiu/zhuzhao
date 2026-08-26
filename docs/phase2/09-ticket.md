@@ -10,8 +10,8 @@
 | 子阶段 | Step | 交付 |
 |--------|------|------|
 | **2a** | 2 | 表结构、类型种子、CRUD、状态机、评论、TicketResource **assigned** |
-| **2b** | 5 | `ticket_scope` group/all、ltree 列表过滤、附件（见 [10-storage](./10-storage.md)） |
-| **2c** | 10 | 组 admin/owner + ancestor owner Authorize（[04 §4](./04-org-delegation.md#4-authorize-升级step-10)） |
+| **2b** | 4 | `ticket_scope` group/all、ltree 列表过滤、`ticket_visibility` 字段（见 [00 §3 Step 4](./00-implementation-plan.md)） |
+| **2c** | 9 | 组 admin/owner + ancestor owner Authorize（[04 §4](./04-org-delegation.md#4-authorize-升级step-9)） |
 
 **2a 不做**：附件、虚拟组绑定、group/all 过滤、SLA、Outbox。
 
