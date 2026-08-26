@@ -166,7 +166,7 @@ func CORS() gin.HandlerFunc {
 | RequestID 生成 + 四处传播 | ✅ 直接采用 | 链路追踪 |
 | PasswordValidator | ✅ 直接采用（放 internal/pkg） | 密码安全 |
 | CORS 全放开 | ✅ Phase 1 Default + AllowAllOrigins | 便于联调；生产改白名单 |
-| AKSK 中间件 | ⏳ Phase 3b / 按需 | 外部系统对接，非首期 |
+| AKSK 中间件 | ⏳ Phase 3 / 按需 | 外部系统对接，非首期 |
 | AccessLog 中间件 | ✅ 直接采用 | 详见 audit.md |
 | Recovery panic 恢复 | ✅ 直接采用 | 标准做法 |
 | BodyLimit | ✅ 新增 | 防止大请求体 |

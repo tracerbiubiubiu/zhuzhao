@@ -9,11 +9,13 @@
 
 | 子阶段 | Step | 交付 |
 |--------|------|------|
-| **2a** | 2 | 表结构、类型种子、CRUD、状态机、评论、TicketResource **assigned** |
+| **2a** | 2 | 表结构、类型种子、CRUD、状态机、评论、TicketResource **assigned**、**工单模板、工单关联** |
 | **2b** | 5 | `ticket_scope` group/all、ltree 列表过滤、附件（见 [10-storage](./10-storage.md)） |
 | **2c** | 10 | 组 admin/owner + ancestor owner Authorize（[04 §4](./04-org-delegation.md#4-authorize-升级step-10)） |
 
 **2a 不做**：附件、虚拟组绑定、group/all 过滤、SLA、Outbox。
+
+> **能力前移说明**（2026-08-25 调整）：工单模板和工单关联从 Phase 3 前移到 2a。理由：两者均为纯 DB 表 + 配置驱动，零事件基础设施依赖，不增加 Phase 2 复杂度，但显著提升 2a 工单实用度（模板快速创建 + 父子/重复/阻塞关联）。SLA/通知/审批流等依赖事件机制的能力仍留 Phase 3（暂缓，设计就绪见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)），避免 L0→L1 二次重写。详见 [modules/ticket.md §7](../modules/ticket.md#7-分阶段交付边界)。
 
 ---
 
@@ -58,9 +60,41 @@ CREATE TABLE tickets (
 );
 CREATE INDEX idx_tickets_org_path ON tickets USING GIST (org_path);
 -- ticket_comments, ticket_events 同上 modules/ticket.md
+
+-- 工单模板（2a 前移，迁移 000015）
+CREATE TABLE ticket_templates (
+    id              BIGSERIAL PRIMARY KEY,
+    code            VARCHAR(50) NOT NULL UNIQUE,
+    name            VARCHAR(100) NOT NULL,
+    type_code       VARCHAR(50) NOT NULL REFERENCES ticket_types(code),
+    title_template  VARCHAR(200),          -- 支持 {{var}} 占位
+    description     TEXT,
+    default_priority SMALLINT DEFAULT 3,
+    default_custom_data JSONB DEFAULT '{}', -- 预填 custom_data
+    default_sla_minutes INT,                -- 模板可指定 SLA（Phase 3 启用计时器后生效）
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 工单关联（2a 前移，迁移 000016）
+CREATE TABLE ticket_relations (
+    id            BIGSERIAL PRIMARY KEY,
+    source_id     BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    target_id     BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    relation_type VARCHAR(20) NOT NULL,  -- parent_child | duplicate | blocked_by | related
+    created_by    BIGINT NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(source_id, target_id, relation_type),
+    CHECK (source_id <> target_id)
+);
+CREATE INDEX idx_ticket_relations_source ON ticket_relations(source_id);
+CREATE INDEX idx_ticket_relations_target ON ticket_relations(target_id);
 ```
 
 **创建工单时**：从 `organizations` 读 `path` 写入 `org_path`（与 org_id 同事务）。
+
+**模板创建工单**：`POST /api/v1/tickets` 支持可选 `template_code`，Service 层从 `ticket_templates` 加载预填字段（type_code/title/priority/custom_data），用户传参覆盖模板默认值。`default_sla_minutes` 字段在 Phase 3 SLA 计时器启用后生效，2a 仅存储不消费。
 
 ### Phase 2b 增量
 
@@ -98,6 +132,10 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 | POST | `/api/v1/tickets/notes` | `ticket:note` | ✅ | |
 | GET | `/api/v1/ticket-types` | `ticket:list` | ✅ | |
 | GET | `/api/v1/ticket-types/:code/fields` | `ticket:list` | ✅ | |
+| GET | `/api/v1/ticket-templates` | `ticket:list` | ✅ | 列表 |
+| GET | `/api/v1/ticket-templates/:code` | `ticket:list` | ✅ | 详情 |
+| POST | `/api/v1/tickets/:id/relations` | `ticket:update` | ✅ | 建立关联（需 L2/L3 校验） |
+| GET | `/api/v1/tickets/:id/relations` | `ticket:read` | ✅ | 查关联（只读可见工单的关联） |
 | POST | `/api/v1/tickets/attachments/*` | — | ❌ | 2b storage |
 
 **请求体规范**（POST 更新类）：

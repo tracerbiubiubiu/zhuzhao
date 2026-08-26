@@ -69,7 +69,7 @@ docs/
 │
 ├── phase3/                          # Phase 3：生产加固（多实例 + 可观测性 + HA）
 │   ├── README.md                    # 大纲 + 边界 + 实施顺序
-│   ├── 01-observability.md          # 3a：可观测性（已编写）
+│   ├── 01-observability.md          # Phase 3：可观测性（已编写）
 │   └── 02–09 待编写
 │
 ├── api/                             # API 契约（后端 SSOT）
@@ -81,7 +81,10 @@ docs/
 │   └── runbook.md                   # 故障处理手册
 │
 └── adr/                             # 架构决策记录（ADR）
-    └── README.md                    # ADR 索引与模板说明
+    ├── README.md                    # ADR 索引与模板说明
+    ├── ADR-001-event-mechanism-l1-steady-state.md  # L1 长期稳态
+    ├── ADR-002-asynq-async-task-executor.md        # Asynq 异步任务执行器
+    └── ADR-003-activelist-integration-form.md      # activelist 集成形态
 ```
 
 ## 文档分类说明
@@ -173,7 +176,13 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 - `design-decisions.md`：讨论过程的完整记录（含方案对比、推理细节）
 - `adr/`：决策的最终结论摘要，编号管理，便于追溯
 
-> ADR 格式适合在项目稳定后，从 `design-decisions.md` 中提取关键决策形成独立记录。Phase 1 暂不需要，目录预埋。
+已采纳的 ADR：
+
+| ADR | 决策 | 状态 |
+|-----|------|------|
+| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳 |
+| [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳 |
+| [ADR-003](./adr/ADR-003-activelist-integration-form.md) | activelist 作为独立服务集成形态 | 已采纳 |
 
 ## 文档规范
 

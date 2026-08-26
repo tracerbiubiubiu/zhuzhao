@@ -53,7 +53,7 @@
 |--------|-----------|-----------|---------|------|
 | **M2a-0** 接线收尾 | 0 | 无业务用例；装配断言：`grep NewRegistry wire_gen.go` 命中 2 处、启动日志无输出（空表） | Phase 1 全量测试回归 | G-1 Registry 接线 + G-2 删 authz_service.go stub（[02 §1 Step 0](./02-authz-resource.md)） |
 | **M2a-1** 资源级鉴权可用 | 1 | R1–R2（Registry 单测）+ TicketResource **契约测试**（fake repo） | `go test ./internal/pkg/resource/... ./internal/service/ticket/...` | R3–R8 需工单真表，落 M2a-2 验证 |
-| **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000010；assigned 过滤；404 语义；P2-D1 级联（若采纳） |
+| **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000010/000015/000016；assigned 过滤；404 语义；P2-D1 级联（若采纳）；模板预填 + 关联鉴权 |
 | **M2a-3** 2a 全量 | 3 | Phase 1 27 用例回归 + T/R 全量 | 同上（含回归段） | 对抗路径：不可见 404、无权限 403、状态机 90002 |
 | **M2b-1** 组织增强 | 4 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000011；虚拟组/临时成员/BFS/HR Job（fake client） |
 | **M2b-2** scope 升级 | 5 | R9–R12 + **D11/D12 首次验收** | ticket 集成测试扩展 | 策略 B 透明读 + project_isolated；P2-D1 回归 |
@@ -87,8 +87,12 @@
 ### Step 2（M2a-2）— ticket MVP
 
 - [ ] 迁移 **000010**：`ticket_types` / `tickets` / `ticket_comments`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范）
+- [ ] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
+- [ ] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
 - [ ] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
 - [ ] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
+- [ ] 工单模板：列表/详情 API + `POST /tickets` 支持可选 `template_code` 预填字段（`default_sla_minutes` 仅存储，Phase 3 启用）
+- [ ] 工单关联：建立/查询关联 API；建立关联时对 target_id 走 L2/L3 鉴权（防止越权关联他人工单）
 - [ ] **P2-D1（已采纳 A）**：`OrgService.Move` 扩展级联改写 `tickets.org_path` + 集成测试
 - [ ] `scripts/acceptance-phase2a.sh`（含 Phase 1 27 用例回归段）
 - [ ] R3–R8 真表集成测试落位（[02 §3 R 表](./02-authz-resource.md)）
@@ -254,7 +258,7 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 |------|--------|------------------|---------|------|
 | 0 | M2a-0 | [02 §1 Step 0](./02-authz-resource.md) | 装配断言 | — |
 | 1 | M2a-1 | [02 全文](./02-authz-resource.md) | R1–R2 + 契约 | — |
-| 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000010 |
+| 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000010/000015/000016 |
 | 3 | M2a-3 | README §1.1 | 全量 + 回归 | — |
 | 4 | M2b-1 | [03](./03-org-enhance.md) + [hr-directory-sync](../proposal/hr-directory-sync.md) | 两表用例 | 000011 |
 | 5 | M2b-2 | [09 §5.2](./09-ticket.md) | R9–R12、D11/D12 | — |
