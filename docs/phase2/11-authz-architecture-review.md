@@ -35,41 +35,41 @@
 
 ---
 
-## 2. Q1：L2/L3 执行顺序（方向已确认，待正式拍板落档）
+## 2. Q1：L2/L3 执行顺序（已拍板：L2 可见性在前，路径 A）
 
-### 2.1 文档矛盾现状
+### 2.1 文档矛盾现状与决策
 
-- [architecture.md §4（L558 附近）]：L1 → **L3 属主短路** → L2
-- [design-decisions.md §3.4]：L1 → L2 → L3
+- [architecture.md §4（L558 附近）]原写：L1 → **L3 属主短路** → L2
+- [design-decisions.md §3.4]原写：L1 → L2 → L3
 
 两序语义不同：属主在前 = 属主豁免组织校验（转部门后仍能改旧工单）；组织在前 = 属主也必须在关系链上。
 
-### 2.2 已确认的语义（负责人表态）
+**决策（路径 A，对齐 Freshdesk/Jira 主流）**：取 **L2 可见性在前**。理由：项目引用的两个业界参考（[Freshdesk scope 模型](https://support.freshdesk.com/support/solutions/articles/97079-understanding-ticket-scope-and-agent-role)、[Jira SM permission + issue security](https://support.atlassian.com/jira-service-management-cloud/docs/manage-permissions-in-jira-cloud/)）**均无「属主短路」设计**——属主是可见性集合的一个特例（Freshdesk 的 assigned scope = 仅属主可见），不是独立短路层。属主豁免组织校验会弱化数据隔离，且「转部门改旧工单」可通过 scope 配置或重分派解决，不需以弱化隔离为代价。[02-authz-resource §2.3](./02-authz-resource.md#23-ticketresource) 的 `Authorize` 代码现状（`canRead` → `canOperate`）已符合此顺序，无需改动。
 
-**工单场景取「L3 属主短路在前」**——即使用户转部门，也应该可以看自己的工单。统一后的形式化语义：
+### 2.2 形式化语义
 
 ```
-Allow ⟺ L1 通过 ∧ ( L3 属主命中 ∨ L2 组织关系命中 )
+Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过
 ```
 
 - **L1 是必经门（合取项）**：角色无该 API 路由权限 → 直接 403，不进入资源级。属主不能绕过路由级——viewer 角色即使「拥有」某工单，调不了 update API 就是调不了
-- **资源级内部是析取**：属主命中即放行（短路，跳过 L2）；未命中才做 ltree 判定
-- **属主是短路放行而非必经链**——这句必须写进文档，否则实现者会把「未命中属主」当拒绝处理
-- **属主命中 ≠ 能做所有动作**：L3 命中只是跳过 L2 可见性判断，**仍需过 `canOperate`**（动作级权限）。比如创建人是属主（L3 命中），但 `assign` 动作只有 admin/scope 主管能做——属主命中后仍被 `canOperate` 拦截返回 403。实现见 [02-authz-resource §2.3](./02-authz-resource.md#23-ticketresource) `Authorize` 的 `ownerHit` 参数
-- **拒绝点只有三个**：① L1 拒绝（路由级 403）；② L3 未命中且 L2 未命中（资源级 404）；③ L3/L2 命中但 `canOperate` 未通过（动作级 403）。任何一层「无法判定」（DB 错误）也归入拒绝（见 §3 Q3）
+- **L2 可见性是数据访问边界门（合取项，先于属主）**：scope=all/group/assigned 判定。scope=assigned 的可见集即属主（对齐 Freshdesk）。不可见 → 404
+- **属主不豁免 L2**：转部门后若 scope=group 且工单 `org_path` 不在新组织路径下，L2 fail，属主身份不短路。属主仅在 canOperate 内部用于决定动作权限
+- **L3 属主降为 canOperate 的输入**：属主命中（`created_by`/`assigned_to` == uid）→ `read/comment/update/close` 可放行；`assign/delete` 属主也不放行，需 admin/scope 主管
+- **拒绝点只有三个**：① L1 拒绝（路由级 403）；② L2 未命中（资源级 404）；③ L2 命中但 `canOperate` 未通过（动作级 403）。任何一层「无法判定」（DB 错误）也归入拒绝（见 §3 Q3）
 
 ### 2.3 转部门设计（实体部门 / 虚拟部门通用）
 
-核心原则：**属主判断与组织关系数据源完全隔离**——
+核心原则：**可见性以当前组织关系为准，属主不兜底**——
 
-- L3 只做资源行上的列比较（`creator_id` / `assignee_id`），不 join `user_orgs`、不看 `path`
-- 因此实体部门转移（path 变）、移出虚拟组（`user_orgs` 删行）、组织 Move（P2-D1 改 `org_path`）**都不影响属主判断**，转出后靠 L3 兜底访问旧工单
-- L2 只用当前组织关系判断「非属主资源」的可见性
+- L2 用当前组织关系（`org_path` ltree + `user_orgs`）判定可见性，转部门/组织 Move 后 `org_path` 变更即影响可见性
+- **不设「属主豁免」兜底**：转出后若工单不在新组织路径下，L2 fail（404）。需保留访问的场景通过 scope 配置（如 scope=all）或重分派解决
+- L3 属主判断只做资源行上的列比较（`created_by`/`assigned_to`），用于 canOperate 内部决定动作权限，不作为可见性豁免
 
 两个注意点：
 
 1. 工单的「属主」定义（仅创建人，还是创建人+处理人）以 09 PRD 为准，但 **Authorize 与 GetFilter 必须用同一个属主定义**，否则出现「单点能看、列表不可见」的反向不一致
-2. 属主放行只解决「能不能碰这行」；工单关闭后能不能再改由状态机管（鉴权与状态机分层叠加，不混在一个判断里）
+2. 属主放行只解决「能做哪些动作」；工单关闭后能不能再改由状态机管（鉴权与状态机分层叠加，不混在一个判断里）
 
 ---
 
@@ -89,7 +89,7 @@ NIST / OWASP 要求鉴权失败必须 fail-closed。文档未明确「三层是 
 
 | 情形 | 行为 |
 |------|------|
-| 确定性拒绝（L3/L2 均未命中） | 403 |
+| 确定性拒绝（L2 未命中） | 403 |
 | DB 错误、无法判定 | **503** + Error 日志（对齐项目既有 Redis fail-close 503 模式） |
 | 未注册资源码 | **500** + Error 日志（编程错误，用 403 会掩盖代码缺陷） |
 
@@ -156,7 +156,7 @@ scope=3（向上访问）在工单模型中无对应值，两套枚举缺映射�
 | # | 内容 | 落点 |
 |---|------|------|
 | 1 | 鉴权不变量块（Q1 公式 + Q2 默认拒绝 + Q3 错误映射 + Q5 缓存禁令） | architecture.md §4.1 |
-| 2 | L2/L3 顺序统一为「L1 → L3 短路 → L2」+ 顺带修 §12.7 已声明要改的「ReBAC」旧称 | design-decisions.md §3.4 |
+| 2 | L2/L3 顺序统一为「L1 → L2 可见性 → L3 属主」（路径 A，对齐 Freshdesk/Jira，见 §2 已拍板）+ 顺带修 §12.7 已声明要改的「ReBAC」旧称 | design-decisions.md §3.4 |
 | 3 | ReBAC 业务侧触发表（替换/扩充现有四条技术信号） | design-decisions.md §12.5 |
 | 4 | SoD 延后决策一句话（延后 + 届时优先动态 SoD） | design-decisions.md §14 或本计划 P2-D6 |
 | 5 | scope 枚举映射表（§6） | architecture.md §4.3 |

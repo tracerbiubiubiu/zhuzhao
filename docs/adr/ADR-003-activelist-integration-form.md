@@ -63,7 +63,7 @@
 - **G4（审计层，已确认）**：两层审计落地——zhuzhao 网关层（E13 跳过 body）+ activelist 业务层（自脱敏 accesslog）。
 
 ## 建议阶段
-- **Phase 2b**（外部数据源接入，与 HR 目录同步同批）。前置依赖：Phase 2a 的 L1 事件机制 + Asynq 执行器就绪、网关反代模块（E13）。
+- **Phase 3 启动后**（L1 事件机制 + Asynq 就绪后）。原拟 Phase 2b，因前置依赖 L1/Asynq 实际于 Phase 3 启动时落地，已决策顺延至 Phase 3 启动后——避免为 activelist 单独写一套临时事件分发再迁移回 L1（违反 ADR-001「不偷工减料」原则）。**HR 目录同步不依赖 L1，仍属 Phase 2b**（desired-state reconciliation 直接写表，非事件消费者）。前置依赖：L1 事件机制 + Asynq 执行器就绪（Phase 3 启动时实现，见 [ADR-001](./ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](./ADR-002-asynq-async-task-executor.md)）、网关反代模块（E13）。
 - Mongo→PG 迁移（G1）与方案 F 可并行设计，不阻塞 zhuzhao 主链路；若 2b 排期紧张，标为 Phase 2 按需增强。
 
 ## 关联文档

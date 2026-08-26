@@ -39,7 +39,7 @@
 | **场景 A：审批通过触发事件** | 事件触发 | L1 消费者收到 `ticket.approved` → `asynq.Enqueue` | 异步任务 | 数据同步 / 外部回调 / 启动另一工作流实例；不在审批事务内同步执行耗时动作 |
 | **场景 B：预置定时任务** | 定时触发 | `asynq.PeriodicTask` / Scheduler | 周期任务 | 每日过期扫描、每周报表等；替代进程内 ticker，多实例天然单点调度 |
 | **场景 C：SLA 违约告警+升级** | **A + B 组合态** | Scheduler 周期入队 `sla:scan` → 命中违约 → `Enqueue("sla:breach")` | 定时扫描 + 事件触发 | `sla:scan` 只探测标记 `breached_*`，worker 落 L1 事件 `ticket.sla_breached` 后驱动通知/升级（改派/升优先级/加签）。详见 [10-ticket-business.md §2.5](../phase3/10-ticket-business.md#25-违约处理链sla-扫描--asynq-sla_breach--通知升级) |
-| **场景 D：消息通知异步发送** | 异步触发（A 延伸） | L1 事件消费 / `sla:breach` worker → `Enqueue("notify:send")` | 异步任务 | 站内通知写 `notifications` 表 + 邮件 SMTP 发送丢 Asynq worker 异步发，失败自动重试不阻塞主链路。通知既可作为**独立能力**（订阅 `ticket_events` 各类事件：分派/状态变更/SLA 违约），也是场景 A/C 的下游副作用。详见 [10-ticket-business.md §3.4](../phase3/10-ticket-business.md#34-3b-升级)（3b 迁 Asynq worker） |
+| **场景 D：消息通知异步发送** | 异步触发（A 延伸） | L1 事件消费 / `sla:breach` worker → `Enqueue("notify:send")` | 异步任务 | 站内通知写 `notifications` 表 + 邮件 SMTP 发送丢 Asynq worker 异步发，失败自动重试不阻塞主链路。通知既可作为**独立能力**（订阅 `ticket_events` 各类事件：分派/状态变更/SLA 违约），也是场景 A/C 的下游副作用。详见 [10-ticket-business.md §3.4](../phase3/10-ticket-business.md#34-l2-升级暂缓按需)（Phase 3 L2 升级时迁 Asynq worker） |
 
 > **场景 C / D 的本质**：C 同时用 B+A；**D 是 A 的延伸——把"发通知"这个耗时/易失败（SMTP 网络 IO）动作异步化**，正是 Asynq 的主场能力，用户明确后续会集成该能力。二者都不引入新机制，统一守"铁律"：L1 先落事实，消费者事务提交后再 Enqueue，handler 按业务键（`ticket_id + event_id` 或 `notification_id`）幂等。
 

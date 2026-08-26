@@ -9,7 +9,7 @@
 > 5. `docs/phase2/13-plan-remediation-actions.md`（修订行动清单步骤 1-6）
 >
 > **三份验证报告对应说明**：上文第 2/3/4 份即本文 Part 3 所称「三份独立验证报告」：review/05-plan-validation.md（验证 v1）+ review/07-project-plan-verification.md（验证 v2）+ phase2/13-project-plan-multi-round-verification.md（验证 v3）。
-> **⚠️ 编号冲突提示**：当前 `docs/phase2/` 目录下存在两个完全独立文档均使用 13 号编号：(i) `13-project-plan-multi-round-verification.md`（验证报告 v3，作为三份验证之一）；(ii) `13-plan-remediation-actions.md`（修订行动清单，作为本文 Part 4 的来源）。二者为完全独立的文档（编号为 Phase 2 规划期间的冲突），本文统一通过全名或简称（13-验证 / 13-行动）区分，旧编号冲突随 5 份源文件一并标记废弃后自然消除。
+> **⚠️ 编号冲突提示**：当前 `docs/phase2/` 目录下存在两个完全独立文档均使用 13 号编号：(i) `13-project-plan-multi-round-verification.md`（验证报告 v3，作为三份验证之一）；(ii) `13-plan-remediation-actions.md`（修订行动清单，作为本文 Part 4 的来源）。二者为完全独立的文档（编号为 Phase 2 规划期间的冲突），本文统一通过全名或简称（13-验证 / 13-行动）区分，旧编号冲突随 5 份源文件一并删除后自然消除。
 >
 > **文档定位**：Phase 2 开工前唯一的「审查发现 + 遗留项处置 + 行动清单」SSOT 文档。所有发现统一编号为：
 > - **A/B/C/D/E/F-X**（Phase 2 PRD 跨文档一致性问题，来自二审）
@@ -48,7 +48,7 @@
 
 ```
 □ Step 1（20min）拍板并落档 11-authz-architecture-review 两项真前置（2a Step 2 TicketResource.Authorize 编码前必须收口）
-                 → #1-a 鉴权不变量公式（Q1：Allow ⟺ L1 通过 ∧ (L3 属主命中 ∨ L2 组织关系命中)，含 Q2 默认拒绝/合取析取语义）→ architecture.md §4.1
+                 → #1-a 鉴权不变量公式（Q1：Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过，路径 A L2 在前，含 Q2 默认拒绝语义）→ architecture.md §4.1
                  → #1-b Authorize 错误映射（Q3：确定性拒绝=403 / DB 错误=503 / 未注册资源=500，对齐 Redis fail-close 503 既有模式）→ architecture.md §4.1 同节
                  → 可选 1 行带过：Q5 缓存禁令（L2/L3 资源级判断不缓存，每请求实时查询；Phase 3 perm 缓存仅覆盖 L1 角色列表输入）
                  → P2-D6 挂入 00-implementation-plan.md §1 编码前拍板（5 分钟登记）
@@ -68,7 +68,7 @@
 □（可选但强烈建议）补 T-新-1~3 三块 service 测试盲区 + F-缺口-1 菜单深度约束
 ```
 
-**合计：纯文档修订 + 设计决策 ≈ 2 小时 10 分钟（20+15+10+30+30+20），零代码改动**。完成即可进入 2a Step 0（G-1/G-2 接线）。
+**合计：纯文档修订 + 设计决策 ≈ 2 小时 5 分钟（20+15+10+30+30+20=125min），零代码改动**。完成即可进入 2a Step 0（G-1/G-2 接线）。
 
 ---
 
@@ -139,10 +139,10 @@
 | 编号 | 名称 | 来源 | 严重度 | 描述 | 处置建议 | 阶段归属 |
 |------|------|------|--------|------|----------|----------|
 | **V-03** | AccessLogger 缺 userID/username 字段 | `04 报告` §3.3 | P3（Phase 3 阻碍） | `middleware/logger.go` access log 不含 userID/username。Phase 3 排障时无法关联用户。 | Phase 3 可观测性前补 `slog.Int64("user_id", ...)`。 | Phase 3 可观测性 |
-| **R-1 / D2-38** | Casbin 无 AutoLoadPolicy（多副本陈旧） | `04 报告` §3.2；`03 报告` §10.2 | P3（Phase 3a） | 单实例无影响；多副本下策略陈旧。回收方向 LoadPolicy 失败 = fail-open（安全风险）。 | Phase 3a multi-instance 引入 `StartAutoLoadPolicy(30s)` 或 Watcher。 | Phase 3a |
-| **D2-36（缓存）** | 菜单/组织树缓存、权限缓存 | `03 报告` §10.2 | P3（已排期 3b） | 高频读路径零缓存。Phase 2 数据规模不需要。 | Phase 3b platform 落地。 | Phase 3b |
+| **R-1 / D2-38** | Casbin 无 AutoLoadPolicy（多副本陈旧） | `04 报告` §3.2；`03 报告` §10.2 | P3（Phase 3） | 单实例无影响；多副本下策略陈旧。回收方向 LoadPolicy 失败 = fail-open（安全风险）。 | Phase 3 multi-instance 引入 `StartAutoLoadPolicy(30s)` 或 Watcher。 | Phase 3 |
+| **D2-36（缓存）** | 菜单/组织树缓存、权限缓存 | `03 报告` §10.2 | P3（Phase 3） | 高频读路径零缓存。Phase 2 数据规模不需要。 | Phase 3 platform 落地。 | Phase 3 |
 | **D2-40** | RT 轮换 Lua 原子化 | `03 报告` §10.2 | P3（暂无里程碑） | `GetDel→校验→Set` 崩溃窗口内用户被迫重登。**非安全问题、低优先级**。 | 暂无里程碑绑定。若 D2-49② RT value 重构落地则顺带评估。 | 暂无里程碑 |
-| **D2-01（限流）** | IP 级登录限流 | `03 报告` §10.2 | P3（已排期 3a） | Phase 1 已修 noeviction + 输入长度上限（治本），限流属治标。 | Phase 3a security-enhance 落地。 | Phase 3a |
+| **D2-01（限流）** | IP 级登录限流 | `03 报告` §10.2 | P3（Phase 3） | Phase 1 已修 noeviction + 输入长度上限（治本），限流属治标。 | Phase 3 security-enhance 落地。 | Phase 3 |
 
 ### 1.7 汇总统计
 
@@ -286,7 +286,7 @@ docs/
 |------|--------|------|------|
 | **P3-1** | P3 | roadmap.md Phase 2 第一行括号写「资源级鉴权（ltree）」，但 ltree `<@` 过滤实际在 2b Step 5，2a 仅 assigned。表述漂移让读者误解 2a 已含 ltree | roadmap.md Phase 2 括号改为「资源级鉴权：assigned（2a）+ ltree group/all（2b）」 |
 | **P3-2** | P3 | 缺「Phase 1 交付能力 → Phase 2 各子阶段消费时点」交叉矩阵（如 ltree 路径被 2a 冗余 / 2b 过滤 / 2c 祖先链三个时点消费） | 在 phase2/README §1.6 补一张 Phase 1 能力 × 2a/2b/2c 消费矩阵 |
-| **P3-3** | P3 | phase2/README §0 标题写「Phase 2b：组织增强 + 工单升级 + **auth-enhance**」，但 §1.2 2b 子阶段明细**完全没列 01-auth-enhance**，00 §6/§8 把 01 当 Step 7（M2b-4）。读者只看 README 会漏 auth-enhance 属于 2b 的事实 | README §1.2 2b 小节补一行「01-auth-enhance（Step 7）」 |
+| **P3-3** | P3 | ~~phase2/README §0 标题写「Phase 2b：组织增强 + 工单升级 + **auth-enhance**」，但 §1.2 2b 子阶段明细**完全没列 01-auth-enhance**~~ **【误判，已核实】**：README §1.2 2b 子阶段表 L55 **已列** auth-enhance（「认证增强 \| 01-auth-enhance \| 多设备/密码复杂度 \| 已编写」），00 §6/§8 把 01 当 Step 7（M2b-4）亦一致。读者不会漏 auth-enhance 属 2b。 | ~~README §1.2 2b 小节补一行~~ **无需修改** |
 | **P3-4** | P3 | 文档编号体系（00-implementation-plan / 01-12 PRD）与 Step 序号（0-11）两套编号混用，新人易混淆「Step 6 = 文档 06 还是步骤 6」 | 引用时显式区分「文档 03 / Step 5」（建议在 00 §1 开头加一条编号说明） |
 
 ---
@@ -320,7 +320,7 @@ docs/
 | Phase 1 → 2a | ✅ 顺畅 | G-1/G-2 明确为 Step 0 首动作（见 Part 1 类别 1）；6 项 Phase 1 前置 checkbox 列于 README §1.6 |
 | 2a → 2b | ✅ 顺畅 | 2b §1 前置明确：2a 全部交付物（工单+Registry+Move 级联）。P2-D1 决策提前拍板（组织 move 级联改写 tickets.org_path，**放在 2a Step 2 就做**，避免 2b 才做影响 scope 验证数据） |
 | 2b → 2c | ✅ 顺畅 | 04 §1 前置 5 项 checkbox 全部绑定 2b 交付物（虚拟组/scope/BFS/HR/owner 前置）；2c Authorize 只加新条件不改 L2（最小化变动原则） |
-| 2c → Phase 3a | ✅ 顺畅 | phase3/README §1.4 明确「2c 不阻塞 3a，但建议上线前完成」——关键路径正确（生产加固优先于组内委托治理） |
+| 2c → Phase 3 | ✅ 顺畅 | phase3/README §1.4 明确「2c 不阻塞 Phase 3，但建议上线前完成」——关键路径正确（生产加固优先于组内委托治理） |
 | 关键路径依赖图 | ✅ 可追踪 | 00 §4 α(2a)→β(2b 组织)→γ(Step6+7 并行)→δ(2b 验收+2c) 批次拓扑清晰，可并行节点明确 |
 
 #### 反面发现（1 条 P2 + 5 条 P3）
@@ -349,7 +349,7 @@ docs/
 | **3. 阻塞 2b（2 项）** D2-49②/D2-48 | 2 | D2-49② 明确为 Step 7 首任务且写入 00 §3 Step 7 首行；D2-48 已修仅需复核 | ✅ 已落实 |
 | **4. 上线前决策（1 项）** D2-37 | 1 | 归属合理——Phase 2 内部不涉及 Phase 1 是否独立对外 | ✅ 归属合理 |
 | **5. Phase 2 顺带（22 项）** | 22 | 00 §3 各 Step 内显式关联的：D2-42→Step 7、D2-34→Step 4（HR Sync 批量）、V-06→Step 7、D2-36 SCAN→Step 7 消解；其余 17 项为「顺带」级别（P3 代码质量项，不阻塞里程碑，由 PR 检查单把控） | ✅ 落实合理 |
-| **6. 延后 Phase 3（6 项）** V-03/R-1/D2-38/缓存/D2-40/限流 | 6 | 全部在 phase3/README 对应模块有正确映射：V-03→3a、R-1→3a、缓存→3b、D2-40→暂无里程碑、限流→3a | ✅ 全部落实 |
+| **6. 延后 Phase 3（6 项）** V-03/R-1/D2-38/缓存/D2-40/限流 | 6 | 全部在 phase3/README 对应模块有正确映射：V-03→Phase 3、R-1→Phase 3、缓存→Phase 3、D2-40→暂无里程碑、限流→Phase 3 | ✅ 全部落实 |
 
 #### 反面发现（1 条 P2 + 1 条 P3）
 | 编号 | 严重度 | 描述 | 建议 |
@@ -432,9 +432,9 @@ docs/
 ### 执行总览
 
 ```
-步骤 1（1h）   11 号 §7 设计文档落档 ──────────────┐
+步骤 1（20min）11 号 §7 设计文档落档 ──────────────┐
 步骤 2（15min） 工单表软删决策 ───────────────────┤
-步骤 3（10min） update 规则收窄决策 ──────────────┤── 合计 ~3h
+步骤 3（10min） update 规则收窄决策 ──────────────┤── 合计 ~2h5min
 步骤 4（30min） 00 计划任务清单补全 ──────────────┤
 步骤 5（30min） 04/03 PRD 补章节 ────────────────┤
 步骤 6（20min） 补回滚策略节 ────────────────────┘
@@ -453,8 +453,8 @@ docs/
 
 | # | 内容 | 落点 | 为什么真前置 |
 |---|------|------|-------------|
-| 1-a | 鉴权不变量公式：`Allow ⟺ L1 通过 ∧ (L3 属主命中 ∨ L2 组织关系命中)`，含 Q2「默认拒绝 + 三层合取/析取语义 + 拒绝点只有两个（L1 拒绝 / L3∧L2 都拒绝）」 | `architecture.md §4.1` | 合取/析取结构写错（如把 ∧ 写成 ∨）= 越权；属主短路顺序是 Authorize 代码核心分支逻辑 |
-| 1-b | Authorize fail-closed 错误映射：① 确定性拒绝（L3/L2 均未命中）→ 403 + 70001；② DB 错误/无法判定 → **503** + Error 日志（对齐 Redis fail-close 既有模式）；③ 未注册资源码 → **500** + Error 日志（编程错误，不伪装 403） | `architecture.md §4.1` 同节 | `Registry.Authorize` 错误分支要写死返回码，不能靠实现者猜测；与 02 §5.4 全生命周期错误码对齐 |
+| 1-a | 鉴权不变量公式：`Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过`（路径 A，L2 在前，对齐 Freshdesk/Jira），含 Q2「默认拒绝 + 合取语义 + 拒绝点只有两个（L1 拒绝 / L2 未命中）」 | `architecture.md §4.1` | 合取结构写错（如把 ∧ 写成 ∨）= 越权；L2 可见性是数据访问边界门，先于属主 |
+| 1-b | Authorize fail-closed 错误映射：① 确定性拒绝（L2 未命中）→ 403 + 70001；② DB 错误/无法判定 → **503** + Error 日志（对齐 Redis fail-close 既有模式）；③ 未注册资源码 → **500** + Error 日志（编程错误，不伪装 403） | `architecture.md §4.1` 同节 | `Registry.Authorize` 错误分支要写死返回码，不能靠实现者猜测；与 02 §5.4 全生命周期错误码对齐 |
 
 - **可选 1 行带过（与 1-a 同节，边际成本≈0）**：
   Q5 缓存禁令声明「L2/L3 资源级判断**不缓存**，每请求实时查询；Phase 3 perm 缓存仅覆盖 L1 角色列表输入；任何资源级缓存提案必须连同失效级联方案评审（org move→子树全员、成员变更→单人、scope变更→该角色全员）」
@@ -466,7 +466,7 @@ docs/
 
 | 原 # | 内容 | 消费时点 | 执行位置 | 为什么不阻塞 2a |
 |------|------|---------|---------|----------------|
-| 2 | L2/L3 顺序统一为「L1 → L3 短路 → L2」+ 顺带修 §12.7 「ReBAC」旧称 | **2b Step 5 前**（group/all scope ltree 落地时） | `design-decisions.md §3.4` | 2a 仅 assigned scope，L2 条件与 L3 属主定义等价，顺序差异**语义不显性化**；2b 引入 ltree 后顺序才影响实际行为 |
+| 2 | L2/L3 顺序统一为「L1 → L2 可见性 → L3 属主」（路径 A，见 11 号 §2 已拍板）+ 顺带修 §12.7 「ReBAC」旧称 | **2b Step 5 前**（group/all scope ltree 落地时） | `design-decisions.md §3.4` | 2a 仅 assigned scope，L2 条件与 L3 属主定义等价，顺序差异**语义不显性化**；2b 引入 ltree 后顺序才影响实际行为 |
 | 3 | ReBAC 业务侧触发表（替换/扩充现有四条技术信号） | **Phase 3 启动前评估** | `design-decisions.md §12.5` | ReBAC 是重型跨资源关系图引擎替换信号，2a/2b/2c 全 PRD 无任何 ReBAC 实现要求 |
 | 4 | SoD 延后决策一句话（延后 + 届时优先动态 SoD）+ P2-D7 挂入 | **Phase 3 启动前登记** | `design-decisions.md §14` + `00-implementation-plan.md §1` | 审批流 Phase 3 才来（届时才是动态 SoD「不能审批自己发起的申请」而非静态互斥）；2a/2b/2c 全无 SoD 需求 |
 | 5 | scope 枚举映射表（architecture §4.3 泛化模型 vs Phase 2 落地模型双轨统一） | **2b Step 5 前**（group/all 枚举生效时） | `architecture.md §4.3` | 2a 只有 assigned 枚举值，双文档枚举**一致**；2b 引入 group/all 落地时枚举不一致才会出实际 bug |
@@ -651,7 +651,7 @@ docs/
 5. **遗留项管理**：37 项遗留项六类分类，逐项标注阶段归属和处置建议，36/37 落实到位
 6. **业界对齐**：MVP 分层、里程碑 DoD、编码前拍板、风险登记、验收分段、迁移治理、分支策略、Docs-as-Code 八项达到业界典范；与 NIST RBAC / OWASP PEP 分层一致
 
-**无 P0/P1 阻塞项，6 项 P2 在开工前闭合（步骤 1-6，合计约 3 小时纯文档）即可进入 2a。**
+**无 P0/P1 阻塞项，6 项 P2 在开工前闭合（步骤 1-6，合计约 2 小时 5 分钟纯文档）即可进入 2a。**
 
 ### 5.2 旧文档归档与删除记录
 

@@ -143,11 +143,11 @@ func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRe
     if err != nil {
         return false, err
     }
-    // 第 2 层：可见性
+    // L2 可见性（数据访问边界门，先于属主；scope=assigned 即仅属主可见）
     if !r.canRead(ctx, req.UserID, req.Roles, ticket) {
         return false, nil // Service 层转 404
     }
-    // 第 3 层：操作权
+    // L3 属主 + canOperate（动作权；内部用属主判断决定 read/comment/update/close 放行，assign/delete 属主也不放行）
     return r.canOperate(ctx, req.UserID, req.Roles, req.Action, ticket)
 }
 
