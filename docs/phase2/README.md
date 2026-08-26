@@ -214,13 +214,6 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 | 000012 | 2b | 认证增强：密码策略配置项（若需表结构；纯 config 则无迁移） | [01-auth-enhance.md](./01-auth-enhance.md) |
 | 000013 | 2b | 附件：`ticket_attachments` | [10-storage.md](./10-storage.md) |
 | 000014 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role` | [04-org-delegation.md](./04-org-delegation.md) |
-| 000015 | **2a**（前移） | 工单模板：`ticket_templates`（2026-08-25 从 Phase 3 前移，纯 DB 无事件依赖） | [09-ticket.md §2a](./09-ticket.md) |
-| 000016 | **2a**（前移） | 工单关联：`ticket_relations`（2026-08-25 从 Phase 3 前移，纯 DB 关系表） | [09-ticket.md §2a](./09-ticket.md) |
-| 000017+ | **Phase 3** | 工单业务能力：`ticket_sla`/`sla_policies`/`notifications`/`workflow_definitions`/`assignment_rules` | [phase3/10-ticket-business.md §9](../phase3/10-ticket-business.md#9-迁移编号汇总) |
-
-> **前移说明**（2026-08-25）：`ticket_templates`（000015）和 `ticket_relations`（000016）从 Phase 3 前移到 Phase 2a。两者均为纯 DB 表，零事件基础设施依赖，前移后 Phase 3 编号段从 000017 起。
->
-> **Phase 3 迁移编号**自 000017 起（Phase 2 用至 000016）。具体分配见 [phase3/10-ticket-business.md §9 迁移编号汇总](../phase3/10-ticket-business.md#9-迁移编号汇总)。Phase 3 属暂缓阶段，迁移编号段不占用 Phase 2 配额，但此处标注以示衔接。
 
 **迁移编写规范**（对齐 Phase 1 经验）：
 
