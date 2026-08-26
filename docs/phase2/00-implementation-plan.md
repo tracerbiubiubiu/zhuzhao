@@ -76,6 +76,7 @@
 - [ ] 删 `internal/service/authz_service.go` + `wire.go` provider 调整 + `make wire`
 - [ ] `router_test.go` 手工构造补 `Registry: resource.NewRegistry()`
 - [ ] 验证：grep 双 `NewRegistry`；`go build` + Phase 1 单测/集成全量回归
+- [ ] swag 集成（[modules/menu.md §5](../modules/menu.md) swagger ⏳ Phase 2 遗留）：`make swag` 目标 + handler 加 `@Summary/@Router/@Tags` 注解，生成 `docs/swagger.json`（API 文档自动同步）
 
 ### Step 1（M2a-1）— authz-resource
 

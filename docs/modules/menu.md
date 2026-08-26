@@ -201,7 +201,7 @@ POST /api/v1/menus/delete
 | syncSystemMenus desired-state | ✅ 改为 migration 种子数据 | 更简单 |
 | IsSystem 保护 | ✅ 直接采用 | 系统菜单不可删 |
 | 前端字段（component/icon/sort/visible） | ✅ 直接采用 | 前端渲染需要 |
-| swagger 驱动 API 同步 | ⏳ Phase 2 | 需要 swag 集成 |
+| swagger 驱动 API 同步 | ✅ Phase 2a Step 0 | 需要 swag 集成（[00 §3 Step 0](../phase2/00-implementation-plan.md) 承接：`make swag` + handler 注解） |
 
 ---
 
