@@ -208,7 +208,7 @@ CREATE INDEX idx_hr_sync_runs_started ON hr_sync_runs(started_at DESC);
 | 项 | 建议 |
 |----|------|
 | **调度** | Cron **每日 1 次**（如 `0 2 * * *` 凌晨 2 点，可配置 `hr.cron`） |
-| **执行体** | Phase 2b：`cmd/sync-hr` + 系统 Cron / K8s CronJob；Phase 3b 可迁 **Asynq periodic**（与 [event-driven](../phase3/04-event-driven.md) 统一） |
+| **执行体** | Phase 2b：`cmd/sync-hr` + 系统 Cron / K8s CronJob；Phase 3+ 可迁 **Asynq periodic**（与 [ADR-002 Asynq 执行器](../adr/ADR-002-asynq-async-task-executor.md) 统一） |
 | **手动触发** | 管理端 `POST /api/v1/admin/hr/sync`（superadmin，Phase 2b）或运维 CLI |
 | **互斥** | 同一时刻只允许 **一个** Sync Run（Redis 分布式锁 `lock:hr_sync` 或 PG advisory lock）；Cron 触发时若已在跑则 **跳过并 Warn** |
 | **超时** | 整 Job `context` 上限（如 2h）；单页 HR 请求 timeout（如 30s） |
@@ -253,12 +253,12 @@ Cron 02:00
 |------|------|
 | **HTTP 单页** | Client 内立即重试 3 次 |
 | **整 Job** | **不自动连续重试**；等 **下一次 Cron** 或 **人工触发**（避免 HR 故障时打满网关） |
-| **Phase 3b 可选** | Asynq 任务：`hr:sync:all`，`MaxRetry=2`，间隔 1h（与 periodic 二选一，勿双调度） |
+| **Phase 3+ 可选** | Asynq 任务：`hr:sync:all`，`MaxRetry=2`，间隔 1h（与 periodic 二选一，勿双调度） |
 
 #### 3.5.5 可观测与告警
 
 - 每次 Run 写 `hr_sync_runs` + 应用日志（`slog`：`run_id`、页码、耗时）。
-- `status in (failed, partial)` → 审计事件 `hr.sync.failed` + 运维告警（邮件/ webhook，Phase 3a 可观测栈）。
+- `status in (failed, partial)` → 审计事件 `hr.sync.failed` + 运维告警（邮件/ webhook，Phase 3 可观测栈）。
 - 管理端可查最近 N 次 Sync 状态（Phase 2b 可选 API）。
 
 ---

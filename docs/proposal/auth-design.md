@@ -254,15 +254,15 @@ GET /api/v1/user/permissions → 权限码列表（按钮权限码 + 路由权�
 ## 5. 审计日志
 
 > **Phase 1**：同步写入 PostgreSQL（见 [phase1/08-audit.md](../phase1/08-audit.md)）。  
-> **Phase 3a**：Redis List L2 异步方案（Phase 2 不做审计异步，见 [phase2/README §1.5](../phase2/README.md)）。
+> **Phase 3**：Redis List L2 异步方案（Phase 2 不做审计异步，见 [phase2/README §1.5](../phase2/README.md)）。
 
 ### 5.1 日志分类
 
 | 类型 | 存储 | 内容 | 保留期 |
 |------|------|------|--------|
 | 应用日志 | 文件（slog + Lumberjack） | 运行时调试信息 | 按文件轮转 |
-| 审计日志 | PostgreSQL（Phase 1 同步；Phase 3a 异步） | 用户操作记录 | 180 天（Phase 3a cron 清理） |
-| 访问日志 | PostgreSQL（Phase 3a+，`access_logs` 表） | HTTP 请求记录 | 90 天 |
+| 审计日志 | PostgreSQL（Phase 1 同步；Phase 3 异步） | 用户操作记录 | 180 天（Phase 3 cron 清理） |
+| 访问日志 | PostgreSQL（Phase 3+，`access_logs` 表） | HTTP 请求记录 | 90 天 |
 
 ### 5.2 审计日志写入流程
 
@@ -277,12 +277,12 @@ GET /api/v1/user/permissions → 权限码列表（按钮权限码 + 路由权�
 
 查询：`GET /api/v1/audit/logs`。
 
-**Phase 2 / Phase 3a（异步演进，非 Phase 1）**：
+**Phase 2 / Phase 3（异步演进，非 Phase 1）**：
 
 ```
 请求 → Audit 中间件
      │  记录：user_id, action, method, path, status_code, cost, request_body(截断4KB+脱敏)
-     │  → channel（缓冲 1024）或 Redis List（Phase 3a L2）
+     │  → channel（缓冲 1024）或 Redis List（Phase 3 L2）
      │
      → 异步 worker goroutine
         → 批量写入 PostgreSQL（每 100 条或每 5 秒）
@@ -364,11 +364,11 @@ redis:
 
 详见 [phase2/README.md](../phase2/README.md)、[04-org-delegation.md](../phase2/04-org-delegation.md)。
 
-### Phase 3：生产加固（建议 3a → 3b）
+### Phase 3：生产加固（暂缓，按需取用）
 
-| 子阶段 | 范围 |
+| 能力域 | 范围 |
 |--------|------|
-| **3a** | 可观测性、多实例、审计 L2、HA、安全增强、运维 CI |
-| **3b** | Outbox+Asynq、IAM 拆分、gRPC、RS256、缓存平台、AK/SK（按需） |
+| **生产加固类** | 可观测性、多实例、审计 L2、HA、安全增强、运维 CI |
+| **事件/平台类** | Outbox+Asynq、IAM 拆分、gRPC、RS256、缓存平台、AK/SK（按需） |
 
-详见 [phase3/README.md](../phase3/README.md)。
+> Phase 3 整体暂缓、不拆子阶段执行。详细边界见 [phase3/README.md](../phase3/README.md)。

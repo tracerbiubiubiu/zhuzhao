@@ -4,7 +4,7 @@
 >
 > 旧系统参考：`doc/module-assessment-2026-08/accesslog.md`
 >
-> **Phase 1 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**：仅 `audit_logs` 单表 + 同步写入 + `GET /api/v1/audit/logs`。下文 `access_logs` 与异步流程为 **Phase 3a+** 完整形态预留。
+> **Phase 1 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**：仅 `audit_logs` 单表 + 同步写入 + `GET /api/v1/audit/logs`。下文 `access_logs` 与异步流程为 **Phase 3+** 完整形态预留（暂缓，按需取用）。
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## 2. 数据模型
 
-### 2.1 访问日志（HTTP 请求记录，Phase 3a+）
+### 2.1 访问日志（HTTP 请求记录，Phase 3+）
 
 > Phase 1 不建此表；Phase 1 操作审计统一写入 §2.2 `audit_logs`。
 
@@ -49,7 +49,7 @@ CREATE INDEX idx_access_logs_created ON access_logs(created_at DESC);
 > **Phase 1 DDL 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**。下方旧设计草图保留仅作跨阶段参考，**Phase 1 编码勿用**。
 
 <details>
-<summary>旧版 DDL 草图（已废弃，Phase 3a+ 可能拆 access_logs 时再参考）</summary>
+<summary>旧版 DDL 草图（已废弃，Phase 3+ 可能拆 access_logs 时再参考）</summary>
 
 ```sql
 -- 旧版草图：action/resource/detail 取向
@@ -128,7 +128,7 @@ type AuditService interface {
 
 查询：`GET /api/v1/audit/logs`（分页 + 筛选；按工号筛选走含软删用户解析——软删用户的历史审计可查，D2-27）。
 
-### 4.2 异步写入流程（Phase 3a：channel + Redis List L2）
+### 4.2 异步写入流程（Phase 3：channel + Redis List L2）
 
 ```
 请求 → Audit 中间件
@@ -228,8 +228,8 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 | 设计 | 决策 | 理由 |
 |------|------|------|
-| 异步写入 + channel | Phase 3a 采用 | Phase 1 同步写 DB，保证不丢；Phase 2 不做审计异步 |
-| channel 满降级 | Phase 3a 采用 | 同步写入 + 告警 |
+| 异步写入 + channel | Phase 3 采用 | Phase 1 同步写 DB，保证不丢；Phase 2 不做审计异步 |
+| channel 满降级 | Phase 3 采用 | 同步写入 + 告警 |
 | actionRegistry 推导 | ✅ 直接采用 | 比 method:path 更可读 |
 | 敏感字段脱敏 | ✅ 直接采用 | 安全要求 |
 | 请求体截断（4KB） | ✅ 直接采用 | 防止大 body 撑爆日志 |
@@ -247,7 +247,7 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 - 操作日志中间件（**同步**写入 `audit_logs`）
 - `GET /api/v1/audit/logs` 查询接口
 - 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
-- 基本字段 + 敏感字段脱敏（trace_id / request_id 于 Phase 3a 观测性落地——
+- 基本字段 + 敏感字段脱敏（trace_id / request_id 于 Phase 3 观测性落地——
   B4-6 修订：Phase 1 的 audit_logs DDL 无此两列，request_id 记录于应用日志；
   本行原描述与 phase1/08-audit.md SSOT 矛盾）
 
@@ -255,7 +255,7 @@ DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
 
 - **不做**审计异步（与 [phase2/README §1.5](../phase2/README.md#15-不做什么整个-phase-2) 一致）
 
-### Phase 3a
+### Phase 3
 
 - channel + Redis List L2 异步（接口不变）
 - `access_logs` 访问日志表（若与操作审计拆分）

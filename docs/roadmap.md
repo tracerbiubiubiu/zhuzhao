@@ -9,16 +9,16 @@
 ## 总览
 
 ```
-Phase 1：最小可用                    Phase 2：业务可用（工单）           Phase 3：生产加固
+Phase 1：最小可用                    Phase 2：业务可用（工单）           单体服务优先（Phase 3 暂缓）
 ┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
-│ 认证鉴权框架             │     │ 资源级鉴权 + 工单        │     │ 多实例 + 可观测 + HA     │
-│ · 登录 / 双 Token        │────▶│ · 资源级鉴权（ltree）    │────▶│ · Watcher / 分布式锁     │
-│ · 登录限流 / 会话吊销    │     │ · 虚拟组 / scope         │     │ · Metrics / 追踪         │
-│ · 路由级 RBAC            │     │ · 对象存储 + 工单        │     │ · Outbox + Asynq         │
-│ · 用户/角色/菜单/组织    │     │ · 多设备 UI / 密码策略   │     │ · 拆服务 / gRPC / RS256  │
-│ · 同步审计               │     │                         │     │ · PG Cluster / Redis HA  │
+│ 认证鉴权框架             │     │ 资源级鉴权 + 工单        │     │ 生产加固类能力按需取用    │
+│ · 登录 / 双 Token        │────▶│ · 资源级鉴权（ltree）    │────▶│ · 可观测性（Metrics 等） │
+│ · 登录限流 / 会话吊销    │     │ · 虚拟组 / scope         │     │ · 安全增强（按需）       │
+│ · 路由级 RBAC            │     │ · 对象存储 + 工单        │     │ · 运维工具（按需）       │
+│ · 用户/角色/菜单/组织    │     │ · 多设备 UI / 密码策略   │     │ · 单体多副本（按需升档） │
+│ · 同步审计               │     │ · 工单业务能力闭环（设计就绪，暂缓） │     │ ⛔ 微服务拆分（无需求）  │
 └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
-   单实例 Docker Compose            单实例 Docker Compose            多实例 + Nginx
+   单实例 Docker Compose            单实例 Docker Compose            单实例 / 单体多副本（按需）
 ```
 
 ---
@@ -62,29 +62,52 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 **部署形态**：单实例 Docker Compose
 
-**明确后移**：RS256、AK/SK、缓存平台、审计异步、每资源 Enforcer、IAM 拆分 → Phase 3 或按需。
+**明确后移（暂缓，无近期计划）**：RS256、AK/SK、缓存平台、审计异步、每资源 Enforcer、微服务拆分（gRPC/IAM 独立/CQRS）→ 未来有真实需求时再评估，当前聚焦单体服务。
 
 ---
 
-## Phase 3：生产加固
+## Phase 3：生产加固（暂缓，先做好单体）
 
-**核心目标**：可观测性、多实例部署、高可用。
+> **决策（2026-08-25）**：当前没有微服务需求，**Phase 3 整体暂缓**，暂不排期。
+> 优先把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实、跑稳，再视真实需求决定是否启动 Phase 3。
+> 微服务拆分（gRPC / IAM 独立 / CQRS 等）不在近期计划内，详见 [phase3/11-deployment-split.md](./phase3/11-deployment-split.md) 档位 1（单体多副本）为默认形态。
 
-| 模块 | 核心能力 | 文档 |
+**核心目标（暂缓期间的方向，非执行项）**：单体服务上的可观测性、可运维性、数据安全。
+
+| 模块 | 核心能力 | 状态 |
 |------|---------|------|
-| 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | [phase3/01-observability.md](./phase3/01-observability.md)（**已编写**） |
-| 多实例部署 | Casbin Watcher、跨实例事件广播、分布式锁 | phase3/02-multi-instance.md（待编写） |
-| 审计日志 L2 | Redis List 队列，进程崩溃不丢 | phase3/03-audit-l2.md（待编写） |
-| 事件驱动 | PostgreSQL Outbox + Asynq | phase3/04-event-driven.md（待编写） |
-| 微服务拆分 | gRPC、IAM 独立、API Gateway、RS256+JWKS | phase3/05-microservice.md（待编写） |
-| 高可用 | PG Cluster、Redis Sentinel、Nginx 负载均衡 | phase3/06-ha.md（待编写） |
-| 安全增强 | 异地登录检测、验证码、密码过期、API 限流 | phase3/07-security-enhance.md（待编写） |
-| 平台增强 | 缓存体系、AK/SK（有调用方时） | phase3/09-platform.md（待编写） |
-| 运维工具 | Swagger CI、DB 迁移 CI、集成测试自动化 | phase3/08-ops.md（待编写） |
+| 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | 暂缓（[phase3/01-observability.md](./phase3/01-observability.md) 已编写，按需取用） |
+| 多实例部署 | Casbin Watcher、跨实例事件广播、分布式锁 | 暂缓（单体多副本按需，非必须） |
+| 审计日志 L2 | Redis List 队列，进程崩溃不丢 | 暂缓 |
+| 事件驱动（L1 事件源） | PostgreSQL `ticket_events` 轮询（长期稳态） | 已实现（Phase 2a 起，见 ADR-001） |
+| 异步任务执行器 | Asynq（复用现有 Redis，覆盖审批触发事件 + 预置定时任务） | 已引入（Phase 2a 起，见 ADR-002） |
+| 消息通知中心 | 站内通知 + 邮件 SMTP，由 Asynq worker 异步发送（订阅 `ticket_events` 各事件；也是审批/SLA 违约的下游副作用） | 设计就绪（[ADR-002 场景 D](../adr/ADR-002-asynq-async-task-executor.md) + [10-ticket-business §3](../phase3/10-ticket-business.md#3-通知服务站内--邮件)；用户明确后续基于 Asynq 集成，实现时机待定） |
+| 事件驱动（L2 升级） | PostgreSQL Outbox + Asynq worker 多消费者 | 暂缓 |
+| 微服务拆分 | gRPC、IAM 独立、API Gateway、RS256+JWKS | **不做**（无需求，推迟到未来按需） |
+| 高可用 | PG Cluster、Redis Sentinel、Nginx 负载均衡 | 暂缓（单实例 Docker Compose 先用） |
+| 安全增强 | 异地登录检测、验证码、密码过期、API 限流 | 暂缓（部分可在 Phase 2 顺带做） |
+| 平台增强 | 缓存体系、AK/SK（有调用方时） | 暂缓（无 M2M 调用方） |
+| 运维工具 | Swagger CI、DB 迁移 CI、集成测试自动化 | 部分可在 Phase 2 顺带做 |
 
-**部署形态**：多实例 + Nginx 负载均衡 + PG Cluster + Redis Sentinel
+**部署形态（当前默认）**：单实例 Docker Compose（PG + Redis + App）。有高可用需求时直接升档位 1（单体多副本 + Nginx），不引入服务拆分。
 
-**子阶段**：建议 **3a**（可观测 + 多实例 + HA）先上线，**3b**（拆服务 + RS256 + 平台）按需。详见 [phase3/README.md](./phase3/README.md) §0。
+---
+
+## 外部能力集成：activelist（独立服务，已定 ADR-003）
+
+> 详见 `doc/soar/activelist.md` 与 `docs/adr/ADR-003-activelist-integration-form.md`。
+
+- **形态**：activelist 作为独立服务（非 zhuzhao 单体一部分），通过 zhuzhao 网关反向代理调用；仅内网可达。
+- **数据库**：Mongo → **PostgreSQL**（统一技术栈，复用 zhuzhao 的 JSONB/ltree/Outbox/Casbin-pgx；PG 事务能力优于 Mongo）。建议与 `activelist.md` §23 方案 F（同步事务写 + 主数据/历史同事务）一并落地。
+- **耦合**：事件总线对接（非事务耦合）——activelist 变更事件落 zhuzhao 的 **L1 `ticket_events`（事件源，ADR-001）**，由 L1 消费者/Asynq worker 分发，工单/其他模块订阅；Asynq 仅执行器，不当总线。
+- **代码/部署形态（C2'）**：代码同仓库（`internal/activelist/` 独立包，复用 zhuzhao 的 pgx/JSONB/Outbox/日志基础设施），但**独立二进制 + 独立容器部署**，zhuzhao 仅经反代 HTTP 调用，不 import 进请求路径；将来可机械拆为独立仓库。
+- **审计分工（两层，已确认）**：zhuzhao 网关层记 API 访问元信息（跳过 body）；activelist 业务层记数据操作（自行按 Schema 脱敏）。日志基础设施同源（`pkg/log`），进程写各自目的地。
+- **与"微服务拆分"决策的关系**：activelist 是**外部引入的能力模块**（已有独立设计），不是把 zhuzhao 内部拆出去；与"无微服务拆分需求"不冲突，单列本条。
+- **建议阶段**：**Phase 2b**（外部数据源接入，与 HR 目录同步同批）。前置：Phase 2a 的 L1 事件机制 + Asynq 执行器 + E13 反代模块。Mongo→PG（G1）与方案 F 可并行设计。
+- **zhuzhao 侧待办 E13**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body。
+- **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权并被工单/其他模块订阅事件时。
+
+**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机 / 模板 / 关联）已在 Phase 2a/2b 实现，**SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
 
 ---
 
@@ -125,9 +148,12 @@ docs/
 ├── phase2/                     # Phase 2 详细实现计划
 │   ├── README.md               # 大纲 + 边界 + 实施顺序
 │   └── 01-auth-enhance ~ 04-org-delegation + 09-ticket + 10-storage（Phase 2 全套已编写）
-├── phase3/                     # Phase 3 详细实现计划
-│   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   └── 01-observability 已编写；02–09 待编写
+├── phase3/                     # 生产加固能力（暂缓，按需取用）
+│   ├── README.md               # 大纲 + 边界 + 实施顺序（暂缓说明）
+│   ├── 01-observability.md     # 已编写
+│   ├── 10-ticket-business.md   # 已编写（工单业务能力闭环 SSOT）
+│   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
+│   └── 02–09 待编写（按需启用，未排期）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档

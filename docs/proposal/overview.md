@@ -164,7 +164,7 @@
 
 ### 5.2 已识别但需补充
 
-> **分期以 [`roadmap.md`](../roadmap.md) 为准。** 下表「阶段」列已与 Phase 2a/2b、3a/3b 对齐。
+> **分期以 [`roadmap.md`](../roadmap.md) 为准。** 下表「阶段」列已与 Phase 2a/2b、Phase 3 对齐。
 
 | 事项 | 说明 | 阶段 |
 |------|------|------|
@@ -174,19 +174,19 @@
 | 工单模块 | 类型配置、状态机、资源级鉴权 | Phase 2（2a MVP → 2b scope → **2c** 组内委托） |
 | 配置热更新 | Viper WatchConfig，哪些配置支持热更新需明确 | Phase 2b / 按需 |
 | API 版本管理 | `/api/v1` 前缀，未来版本迁移策略 | Phase 2b / 按需 |
-| 审计日志可靠性 | 异步写入 + Redis List L2 | Phase 3a |
-| 审计日志过期清理 | PG 分区表或 cron 定期归档 | Phase 3a |
-| 数据库高可用 | 云托管 PG Cluster（2+VIP） | Phase 3a |
-| 可观测性 | 应用内可选开关；Prometheus + OTel **部署可选**（Grafana 永远可选） | Phase 3a |
-| CI/CD | GitHub Actions / GitLab CI、迁移 CI | Phase 3a |
+| 审计日志可靠性 | 异步写入 + Redis List L2 | Phase 3 |
+| 审计日志过期清理 | PG 分区表或 cron 定期归档 | Phase 3 |
+| 数据库高可用 | 云托管 PG Cluster（2+VIP） | Phase 3 |
+| 可观测性 | 应用内可选开关；Prometheus + OTel **部署可选**（Grafana 永远可选） | Phase 3 |
+| CI/CD | GitHub Actions / GitLab CI、迁移 CI | Phase 3 |
 | 多租户预留 | 表和模型预留 tenant_id，暂不实现 | 按需 |
 | HR 目录同步 | 公司人员/部门 API 每日拉取；虚拟组 Reparent | Phase 2b（[hr-directory-sync.md](./hr-directory-sync.md)） |
 | 灰度发布 | 多版本共存、流量切分 | 按需 |
-| 事件驱动模块 | Outbox + Asynq | Phase 3b |
-| ReBAC / PDP 评估 | OpenFGA/SpiceDB 等，按需 | Phase 3b / 按需 |
-| 微服务通信协议 | gRPC 内部 + REST 外部 | Phase 3b |
-| 服务间通信 | 服务发现、负载均衡、熔断 | Phase 3b |
-| 授权引擎抽象 | Casbin/OPA/Zanzibar 可切换接口 | Phase 3b / 按需 |
+| 事件驱动模块 | Outbox + Asynq | Phase 3 |
+| ReBAC / PDP 评估 | OpenFGA/SpiceDB 等，按需 | Phase 3 / 按需 |
+| 微服务通信协议 | gRPC 内部 + REST 外部 | Phase 3 |
+| 服务间通信 | 服务发现、负载均衡、熔断 | Phase 3 |
+| 授权引擎抽象 | Casbin/OPA/Zanzibar 可切换接口 | Phase 3 / 按需 |
 
 ### 5.3 业界实践参考
 
@@ -198,4 +198,4 @@
 | 文档优先，策略后同步 | 旧系统 zhuzhao | DB 是 source of truth，Casbin 是 derived |
 | desired-state sync | 旧系统 zhuzhao | 启动时同步系统数据，幂等 |
 | 服务启动解耦 | NILUS bootstrap dependencies | 启动不依赖远程服务，本地配置+缓存 |
-| 数据复制替代同步调用 | microservices.io fetch/replicate | Phase 3b 拆服务后 IAM 数据复制到业务服务 |
+| 数据复制替代同步调用 | microservices.io fetch/replicate | Phase 3+ 拆服务后 IAM 数据复制到业务服务 |
