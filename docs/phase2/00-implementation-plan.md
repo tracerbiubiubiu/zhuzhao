@@ -90,6 +90,7 @@
 - [ ] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
 - [ ] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
 - [ ] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
+- [ ] 迁移 **000010_menu**（或并入 000010）：插入 `ticket:list/create/read/update/close/assign/delete/comment/note` 的 menu + menu_apis 行 + 角色绑定种子（D2；缺则 R8/T7「无 ticket:list → 403」验收直接挂）
 - [ ] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
 - [ ] 工单模板：列表/详情 API + `POST /tickets` 支持可选 `template_code` 预填字段（`default_sla_minutes` 仅存储，Phase 3 启用）
 - [ ] 工单关联：建立/查询关联 API；建立关联时对 target_id 走 L2/L3 鉴权（防止越权关联他人工单）
@@ -207,6 +208,12 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 - 提交按问题域分组中文提交（Phase 1 六提交模式：`feat(authz)` / `feat(ticket)` / `fix(...)` / `docs(phase2)`），每提交可独立构建；
 - **PRD 是 SSOT**：实现与 PRD 偏差必须同 PR 修文档；验收用例状态在 PRD 测试表回标；
 - Phase 1 文档原则不动：发现 Phase 1 缺陷 → 修代码 + 记录到 [phase1/11-code-review.md](../phase1/11-code-review.md) 模式的新条目，不静默改。
+
+### 5.5 本地验收纪律（个人项目无 CI 平台，不强行套 CI 门禁）
+
+- 开工前、以及每次改完 2a 相关代码后，手动跑 `make acceptance`（=scripts/acceptance-phase1.sh，27 用例回归）+ `make test -race` 全绿，再继续；MR 合入前自觉跑。
+- 目的：锁定 Phase 1 行为不被 Phase 2 改动悄悄破坏（替代企业级 CI 强制门禁，成本极低、无需任何平台）。
+- Phase 1 验收门禁完整证据链见 [README §1.6](./README.md)；Phase 2 各里程碑验收脚本分段（P2-D5）头段即跑上一段回归。
 
 ---
 
