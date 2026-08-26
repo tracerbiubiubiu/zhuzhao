@@ -1081,7 +1081,7 @@ type remoteUserQueryService struct {
 | 事项 | 状态 | 说明 |
 |------|------|------|
 | 数据库迁移文件管理 | ✅ 已明确 | `golang-migrate`，`.up.sql` + `.down.sql`，种子数据走迁移 |
-| 应用日志 vs 审计日志 | ✅ 已明确 | 应用日志 → 文件（slog + Lumberjack）；审计日志 → DB（**Phase 1 同步写入**；Phase 2+ channel / Phase 3a Redis List） |
+| 应用日志 vs 审计日志 | ✅ 已明确 | 应用日志 → 文件（slog + Lumberjack）；审计日志 → DB（**Phase 1 同步写入**；Phase 2+ channel / Phase 3 Redis List） |
 | Casbin 策略存储 | ✅ 已明确 | PostgreSQL adapter，当前阶段内存 adapter 过渡 |
 | Wire 生成 vs 手动 | ✅ 已明确 | Wire CLI 已安装，`make wire` 自动生成 |
 | 部署与代码解耦 | ✅ 已确认 | 一套代码、配置驱动多种部署；业务层不感知拓扑。见 [§18 部署与代码解耦](./design-decisions.md#18-部署与代码解耦一套代码多种部署) |

@@ -25,7 +25,7 @@
 
 | # | 主题 | 关联点 | 状态 |
 |---|------|--------|------|
-| 2 | JWT 策略：RSA 双 token vs 无状态 JWT | 与权限缓存方案相关 | ✅ HS256（Phase 1–2）；RS256（Phase 3b）；权限缓存 Phase 3 按需 |
+| 2 | JWT 策略：RSA 双 token vs 无状态 JWT | 与权限缓存方案相关 | ✅ HS256（Phase 1–2）；RS256（Phase 3+）；权限缓存 Phase 3 按需 |
 | 7 | 登录安全：LoginLocker 设计 | 可直接借鉴 | ✅ Phase 1 **Lua** + fail-close |
 
 ### C 组：运维与工程化（可独立讨论）
@@ -51,7 +51,7 @@
 | 数据库 | MongoDB 7.0+（单节点副本集 rs0） | PostgreSQL 15 |
 | 缓存 | Redis 7.0+ | Redis 6.2 |
 | 鉴权 | Casbin v3.10 + 自研 Restrict | Casbin + ltree 组织关系查询 + 代码内联 |
-| JWT | golang-jwt/v5 + RSA 4096 | golang-jwt/v5 + HS256（Phase 1–2）→ RS256（Phase 3b） |
+| JWT | golang-jwt/v5 + RSA 4096 | golang-jwt/v5 + HS256（Phase 1–2）→ RS256（Phase 3+） |
 | DI | google/wire v0.7 | google/wire（同） |
 | 日志 | zap + MongoWriteSyncer | slog + Lumberjack |
 | 配置 | viper + ${VAR:-default} | viper（同） |
@@ -152,7 +152,7 @@
 - 权限缓存 `perm:user:{userId}`：**Phase 3**，Phase 1 路由鉴权查 `user_roles` + Casbin
 
 **需要讨论的点**：
-- RSA vs HS256：现有系统用 RSA 4096，密钥管理更重但安全性更高（公钥可分发给其他服务验签）。新框架 Phase 1 用 HS256；Phase 3b 微服务化可改 RS256。
+- RSA vs HS256：现有系统用 RSA 4096，密钥管理更重但安全性更高（公钥可分发给其他服务验签）。新框架 Phase 1 用 HS256；Phase 3+ 微服务化可改 RS256。
 - AT 有效期：现有 5min（极短）vs Phase 1 **30min**。Phase 1 权限不入 JWT、无 Redis 权限缓存，30min 为已定方案。
 - rtoken 存储：MongoDB（持久化）vs Redis（内存）。现有系统用 MongoDB 持久化 rtoken，Redis 重启不丢；新框架用 Redis，重启可能丢（需要 AOF 持久化）。
 - DeleteUser 吊销问题：现有系统的已知 bug（`RemoveByUid` no-op），新框架怎么解决？方案：DeleteUser 时遍历该用户所有 AT 加入黑名单，或者用 `user:disabled:{userId}` 标记 + JWT 中间件检查。
@@ -241,7 +241,7 @@
 **新框架设计**：
 - slog + Lumberjack（文件轮转）
 - 日志输出到文件 + stdout
-- 审计日志存 DB（Phase 1 **同步写入**；Phase 3a 异步演进）
+- 审计日志存 DB（Phase 1 **同步写入**；Phase 3 异步演进）
 
 **需要讨论的点**：
 - zap vs slog：现有系统用 zap（性能更好但 API 复杂），新框架选 slog（标准库更简洁）。现有系统的 MongoWriteSyncer 是 zap 的自定义 Syncer，切 slog 后需要不同的集成方式。
