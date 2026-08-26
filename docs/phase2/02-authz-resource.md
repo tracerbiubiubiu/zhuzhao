@@ -143,22 +143,12 @@ func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRe
     if err != nil {
         return false, err
     }
-    // L3 属主短路：属主命中则跳过 L2（转部门后仍能看旧工单）
-    // 注意：属主命中 ≠ 能做所有动作，仍需过 canOperate
-    ownerHit := r.isOwner(ctx, req.UserID, ticket)
-    if !ownerHit {
-        // L2 可见性：非属主走组织关系判定
-        if !r.canRead(ctx, req.UserID, req.Roles, ticket) {
-            return false, nil // Service 层转 404
-        }
+    // 第 2 层：可见性
+    if !r.canRead(ctx, req.UserID, req.Roles, ticket) {
+        return false, nil // Service 层转 404
     }
-    // canOperate：无论 L3 命中还是 L2 命中都要过（属主不等于能改）
-    return r.canOperate(ctx, req.UserID, req.Roles, req.Action, ticket, ownerHit)
-}
-
-// isOwner L3 属主判断：资源行上的列比较，不查组织关系
-func (r *TicketResource) isOwner(ctx context.Context, userID int64, ticket *Ticket) bool {
-    return ticket.CreatedBy == userID || ticket.AssignedTo == userID
+    // 第 3 层：操作权
+    return r.canOperate(ctx, req.UserID, req.Roles, req.Action, ticket)
 }
 
 func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action string) (resource.Filter, error) {
@@ -172,19 +162,15 @@ func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action str
 
 **canRead（2a）**：`created_by == userID || assigned_to == userID`。
 
-> **L3 属主短路 + canOperate 关系**（对齐 [11-authz §2.2](./11-authz-architecture-review.md#22-已确认的语义负责人表态)）：`Authorize` 先判 `isOwner`（L3），命中则跳过 `canRead`（L2）；但无论 L3/L2 谁命中，都要过 `canOperate`。`canOperate` 的 `ownerHit` 参数让实现知道属主是否命中——属主对 `read/comment` 必放行，对 `update` 需区分创建人 vs 处理人，对 `assign/close` 属主不一定有权（需 scope 主管）。
+**canOperate（2a）**：
 
-**canOperate（2a）**（`ownerHit` = L3 属主是否命中）：
-
-> **逐动作 ownerHit 规则**（P2-5 修复）：属主命中（`ownerHit=true`）不等于能做所有动作。下表逐动作定义属主命中时的放行规则：
-
-| action | ownerHit=true（属主） | ownerHit=false（非属主，走 L2） | 说明 |
-|--------|------|------|------|
-| read / comment | ✅ 放行 | 需 L2 canRead 通过 | 属主必能读/评论自己的工单 |
-| update | ✅ 放行（创建人改自己的） | 需 L2 + scope 主管 | 属主可改标题/字段；处理人也可改（视为协作者） |
-| close | ✅ 放行（创建人或处理人） | 需 L2 + scope 主管 | 属主可关闭自己的工单 |
-| assign | ❌ **不放行** | 仅 admin bypass（2b 扩展 scope 主管） | **属主不能分派**——分派是管理动作，需 admin/scope 主管权限 |
-| delete | ❌ **不放行** | 仅 admin bypass | 属主不能删自己的工单（防误删） |
+| action | 条件 |
+|--------|------|
+| read / comment | canRead |
+| update | 创建人或处理人 |
+| close | 处理人 |
+| assign | 2a 暂不开放主管分派，仅 admin bypass 或后续 2b `ticket_scope=group/all` 扩展 |
+| delete | 仅 admin bypass |
 
 > 2b 升级见 [09-ticket.md §5.2](./09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)（**策略 B**：实体透明读 + update 仅创建人）；2c 组内委托见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)。
 
