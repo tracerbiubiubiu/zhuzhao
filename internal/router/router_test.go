@@ -24,6 +24,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 )
 
@@ -54,6 +55,7 @@ func newRouterEngine(t *testing.T, roles map[int64][]string) (*gin.Engine, *jwtp
 		RedisClient: startStubRedis(t),
 		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		RoleFetcher: &stubRoleFetcher{roles: roles},
+		Registry:    resource.NewRegistry(),
 	}
 	return router.New(deps), jwtManager
 }

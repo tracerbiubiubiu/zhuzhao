@@ -66,23 +66,24 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	registry := resource.NewRegistry()
+	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
-		AuthHandler:  authHandler,
-		UserHandler:  userHandler,
-		RoleHandler:  roleHandler,
-		OrgHandler:   orgHandler,
-		MenuHandler:  menuHandler,
-		AuditHandler: auditHandler,
-		JWTManager:   manager,
-		Enforcer:     syncedEnforcer,
-		RedisClient:  client,
-		DBPool:       pool,
-		Logger:       slogLogger,
-		RoleFetcher:  rbacService,
-		AuditService: auditService,
-
-		// B1-4：信任代理网段（空 = 不信任任何代理）
-		TrustedProxies: cfg.Server.TrustedProxies,
+		AuthHandler:    authHandler,
+		UserHandler:    userHandler,
+		RoleHandler:    roleHandler,
+		OrgHandler:     orgHandler,
+		MenuHandler:    menuHandler,
+		AuditHandler:   auditHandler,
+		JWTManager:     manager,
+		Enforcer:       syncedEnforcer,
+		RedisClient:    client,
+		DBPool:         pool,
+		Logger:         slogLogger,
+		RoleFetcher:    rbacService,
+		AuditService:   auditService,
+		Registry:       registry,
+		TrustedProxies: v,
 	}
 	engine := router.New(deps)
 	app := NewApp(cfg, slogLogger, engine)
@@ -99,6 +100,11 @@ var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, re
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewAuthzService, service.NewOrgService, service.NewMenuService, service.NewAuditService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgService, service.NewMenuService, service.NewAuditService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
 
 var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler)
+
+// provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
+func provideTrustedProxies(cfg *config.Config) []string {
+	return cfg.Server.TrustedProxies
+}

@@ -21,7 +21,14 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 // Login 登录
-// POST /api/v1/auth/login
+//
+//	@Summary	用户登录
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.LoginRequest	true	"登录请求"
+//	@Success	200		{object}	response.Response	"登录成功，返回 Token 对"
+//	@Router		/api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -38,7 +45,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // Refresh 刷新 Token
-// POST /api/v1/auth/refresh
+//
+//	@Summary	刷新 Token
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RefreshRequest	true	"刷新请求"
+//	@Success	200		{object}	response.Response	"刷新成功"
+//	@Router		/api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req model.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -55,7 +69,14 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 // Logout 登出
-// POST /api/v1/auth/logout
+//
+//	@Summary	用户登出
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.LogoutRequest	true	"登出请求"
+//	@Success	200		{object}	response.Response	"登出成功"
+//	@Router		/api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	auth := c.GetHeader("Authorization")
 	if auth == "" {
@@ -84,7 +105,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 // UpdatePassword 修改密码
-// POST /api/v1/auth/password/update
+//
+//	@Summary	修改密码
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.UpdatePasswordRequest	true	"修改密码请求"
+//	@Success	200		{object}	response.Response			"修改成功"
+//	@Router		/api/v1/auth/password/update [post]
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 	var req model.UpdatePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -46,9 +46,6 @@ var serviceSet = wire.NewSet(
 	service.NewAuthService,
 	service.NewUserService,
 	service.NewRBACService,
-	// B4-6：Phase 2a 预留（CheckResourcePermission 为 stub）——
-	// 当前无消费者，勿在 Phase 1 调用；见 docs/phase2/02-authz-resource.md
-	service.NewAuthzService,
 	service.NewOrgService,
 	service.NewMenuService,
 	service.NewAuditService,

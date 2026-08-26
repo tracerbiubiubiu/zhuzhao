@@ -14,6 +14,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 )
 
 // Deps 路由依赖
@@ -32,6 +33,7 @@ type Deps struct {
 	Logger       *slog.Logger
 	RoleFetcher  middleware.RoleFetcher
 	AuditService middleware.AuditLogger
+	Registry     resource.Registry
 
 	// TrustedProxies 信任的反向代理网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string

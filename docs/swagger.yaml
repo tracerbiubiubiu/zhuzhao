@@ -1,0 +1,147 @@
+definitions:
+  model.LoginRequest:
+    properties:
+      device_id:
+        description: D2-01：max=64——device_id 进 RT JWT claims 与 Redis 键（refresh:{uid}:{device}）
+        maxLength: 64
+        type: string
+      device_name:
+        maxLength: 64
+        type: string
+      employee_no:
+        description: |-
+          D2-01：max 对齐 DB varchar(50)——employee_no 直接进 Redis 锁定键
+          （lock:login:{employee_no}），无上限时可灌入超大键撑爆 maxmemory 驱逐安全键
+        maxLength: 50
+        type: string
+      password:
+        type: string
+    required:
+    - employee_no
+    - password
+    type: object
+  model.LogoutRequest:
+    properties:
+      device_id:
+        description: 与登录时一致；空则使用 default
+        type: string
+    type: object
+  model.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  model.UpdatePasswordRequest:
+    properties:
+      device_id:
+        description: 与登录时一致；空则使用 default
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      request_id:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功，返回 Token 对
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户登录
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登出请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登出成功
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户登出
+      tags:
+      - auth
+  /api/v1/auth/password/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 修改密码请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 修改成功
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 修改密码
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 刷新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 刷新成功
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 刷新 Token
+      tags:
+      - auth
+swagger: "2.0"
