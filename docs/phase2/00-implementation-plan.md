@@ -43,6 +43,25 @@
 
 对齐 `scripts/acceptance-phase1.sh` 模式，新增 `acceptance-phase2a.sh` / `2b` / `2c` 三段，各自独立可运行；2b/2c 脚本头部先跑上一段用例做回归（防框架级回归，Phase 1 的 27 用例作为常驻回归段并入 2a 脚本）。
 
+### P2-D6：工单可见性设计边界（跨部门 / 分子公司 / 组织刷新）✅ 2026-08-26 用户拍板
+
+> 背景：Phase 2 可见性引入策略 B（`entity_transparent_read`）+ `assigned` scope。以下把"跨部门、分子公司多树、组织刷新"等边界场景拍板为简化原则，防止后续实现横跳。依据：tickets 单 `org_path` 快照（`09-ticket §2a`）+ L2 `assigned`/`canOperate` + L1 实体子树透明读（`02 §2` 策略 B）。业界范式：Jira/ServiceNow「工单跟人（reporter/assignee）走 + 组织路径快照，组织重构不自动联动」。
+
+| # | 原则 | 说明 | 落点 |
+|---|------|------|------|
+| **V1** | 2a 最简 `assigned` | Phase 2a 仅内置 `assigned`（created_by OR assigned_to 可见）为唯一 scope，先开工 | 2a Step 1–2 |
+| **V2** | 2b 统一策略 B | 单实体子树内（含分子公司同集团分支）部门级全可见：`org_path <@ ANY(anchor_paths)` | 2b Step 5 |
+| **V3** | 跨部门三机制 | ① 同根透明读（V2）；② 把对方部门的人设为 `assigned_to`（L2 命中）；③ 对方主管 `user_orgs.ticket_scope=group/all` 且工单在其 scope 子树 | 2b |
+| **V4** | per-ticket 隔离 = future | 工单限某虚拟组/子集可见（如保密工单）未建模，列为 future（不进 2a/2b） | Phase 3+ |
+| **V5** | per-ticket 跨多组织 = future | 工单原生对多个组织可见（独立根分子公司跨部门）未建模，列为 future | Phase 3+ |
+| **V6** | 类型差异化 = future | 不同工单类型走不同可见性策略（咨询 vs 故障）未建模，2b 统一策略 B | Phase 3+ |
+| **V7** | 工单跟人走、组织快照化 | `created_by`/`assigned_to` 是稳定锚（跟人，组织刷新不影响）；`org_path` 是创建时快照，组织刷新不自动改写历史工单；部门透明读基于快照路径 | 全局 |
+| **V8** | 组织重构不自动联动 | 合并/拆分/虚拟根调整时，已存在工单 `org_path` 不变；如需 re-parent，由显式迁移脚本处理（非触发器）；与 P2-D1 的 move 级联不同——D1 是**同一子树内 path 重写**，本原则是**跨结构重构不联动** | 全局 |
+
+**组织建模决策点（P2-D6 附）**：分子公司须有共同总集团根（单树）才能让策略 B（V2）全覆盖跨部门；若为独立多根（无共同母公司），跨部门靠 V3 的 assigned/scope 绕过，或**建虚拟总根（`virtual-holding`）把子公司挂进去归一成单树**——此手法是组织层改动、工单层零改，但虚拟根本身需在 scope 判定中治理（避免"虚拟根下全员透明读"过大）。
+
+**不在当前范围（确认为 future，非缺陷）**：V4 / V5 / V6 三者。若真实需求出现，均为局部中等改动（加字段 + `GetFilter` OR 分支），不伤 L1/L2/L3 三层架构。
+
 ---
 
 ## 2. 里程碑门禁（对齐 phase1 M1–M7 模式）
@@ -258,6 +277,7 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | RK-9 | Casbin LoadPolicy 规模增长 | 2a+ | 低 | 低 | 边界已声明（[02 §2.6](./02-authz-resource.md)）；Watcher 后移 Phase 3 | LoadPolicy 耗时上升 |
 | RK-10 | Phase 1 回归破坏（新路由/中间件改动） | 全程 | 低 | 高 | 每里程碑含 27 用例回归段（P2-D5）；批次收口打 tag | 回归段红 |
 | RK-11 | `update` 权限 2a→2b 收窄：2a 处理人（`assigned_to`）可 update，2b 收为仅创建人可 update（[02 §2.3](./02-authz-resource.md#23-ticketresource) canOperate 2a/2b 对照；[09 §5.1/§5.2](./09-ticket.md)） | 2b | 中 | 中 | 2b 升级时显式回归「处理人 update 应 403」；处理人需改单走 `assign` 重分派或 scope 主管权限，不回退 canOperate | 处理人 2a 能 update、2b 报 403 |
+| RK-12 | 组织重构后「同部门透明读」基于快照 `org_path`，新部门同事看不到旧工单（V7/V8 预期行为，但易被误判为 bug） | 2b | 中 | 低 | P2-D6 已声明快照语义；文档/验收明确「跨部门靠 assigned_to（V3②）而非靠部门透明读」；必要时提供 org_path re-parent 迁移脚本 | 用户反馈"部门合并后旧工单同事看不到了" |
 
 ---
 
@@ -277,3 +297,12 @@ Step 0 → 1 → 2 → 3     →    Step 4 → 5            →    Step 6 ∥ St
 | 9 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
 | 10 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
 | 11 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
+
+---
+
+## 9. 变更记录
+
+| 日期 | 说明 |
+|------|------|
+| 2026-08-19 | 初版：P2-D1~D5 编码前拍板 |
+| 2026-08-26 | P2-D6：工单可见性设计边界（V1~V8：2a 最简 assigned / 2b 策略B / 跨部门三机制 / per-ticket 隔离·跨多组织·类型差异为 future / 跟人走+组织快照 / 组织重构不联动）+ 组织建模决策点（虚拟总根归一）+ RK-12 |
