@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag test test-unit test-integration test-cover benchmark
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -17,6 +17,9 @@ tidy:
 
 wire:
 	go run github.com/google/wire/cmd/wire ./internal/app/
+
+lint:
+	go vet ./...
 
 migrate-up:
 	migrate -path migrations -database "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable" up
