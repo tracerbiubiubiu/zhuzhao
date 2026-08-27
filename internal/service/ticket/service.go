@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -85,14 +86,19 @@ func (s *Service) authorizeCheck(ctx context.Context, userID int64, action, reso
 
 // --- CRUD ---
 
+// defaultTicketPriority 类型级缺省优先级（与 000010 tickets.priority DEFAULT 3 对齐）
+const defaultTicketPriority = 3
+
 // Create 创建工单
 func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, actorUserID int64) (*model.Ticket, error) {
-	// 1. 校验 type_code
+	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
 	ttype, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode)
 	if err != nil {
 		return nil, err
 	}
-	_ = ttype // Phase 3 可用 ttype 做字段校验
+	if !ttype.IsActive {
+		return nil, errcode.ErrTicketTypeNotFound
+	}
 
 	// 2. 校验 org_id 存在 + 读 org.path
 	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
@@ -100,33 +106,59 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		return nil, err
 	}
 
-	// 3. 模板预填（可选）
+	// 3. 模板预填（可选，09-ticket §2：default_fields 预填空缺字段、default_priority 作缺省）。
+	// 取舍：请求显式值 > 模板默认 > 类型缺省 3；模板只填请求未提供的字段，不覆盖显式输入。
+	// title 不预填——请求 binding:"required" 保证非空，模板 title 永远不会被用到。
 	priority := req.Priority
 	if priority == 0 {
-		priority = 3
+		priority = defaultTicketPriority
 	}
+	description := req.Description
+	customData := req.CustomData
 	if req.TemplateCode != "" {
 		tmpl, err := s.ticketRepo.GetTicketTemplate(ctx, req.TemplateCode)
-		if err == nil && tmpl != nil {
-			if tmpl.DefaultPriority > 0 {
+		switch {
+		case errors.Is(err, errcode.ErrNotFound):
+			// 模板不存在：可选参数，静默跳过（「命中则预填」语义）
+		case err != nil:
+			return nil, fmt.Errorf("get ticket template: %w", err) // DB 错误不得吞掉
+		default:
+			if tmpl.TypeCode != req.TypeCode {
+				return nil, errcode.ErrInvalidParams // 模板属于其它工单类型
+			}
+			var defaults struct {
+				Description *string          `json:"description,omitempty"`
+				CustomData  *json.RawMessage `json:"custom_data,omitempty"`
+			}
+			if len(tmpl.DefaultFields) > 0 {
+				if err := json.Unmarshal(tmpl.DefaultFields, &defaults); err != nil {
+					return nil, fmt.Errorf("parse template default_fields: %w", err)
+				}
+			}
+			if description == "" && defaults.Description != nil {
+				description = *defaults.Description
+			}
+			if len(customData) == 0 && defaults.CustomData != nil {
+				customData = *defaults.CustomData
+			}
+			if req.Priority == 0 && tmpl.DefaultPriority > 0 {
 				priority = tmpl.DefaultPriority
 			}
 		}
-		// 模板不存在不报错（可选参数）
 	}
 
 	// 4. 事务内创建工单 + 写事件
 	ticket := &model.Ticket{
 		TypeCode:    req.TypeCode,
 		Title:       req.Title,
-		Description: req.Description,
+		Description: description,
 		Priority:    priority,
 		Status:      "open",
 		CreatedBy:   actorUserID,
 		AssignedTo:  req.AssignedTo,
 		OrgID:       req.OrgID,
 		OrgPath:     org.Path,
-		CustomData:  req.CustomData,
+		CustomData:  customData,
 	}
 
 	tx, err := s.db.Begin(ctx)
