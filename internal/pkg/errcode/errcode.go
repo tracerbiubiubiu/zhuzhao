@@ -95,8 +95,8 @@ var (
 
 // 工单模块 90000-90999
 var (
-	ErrTicketNotFound         = New(90001, "工单不存在")
+	ErrTicketNotFound          = New(90001, "工单不存在")
 	ErrTicketInvalidTransition = New(90002, "非法状态转换")
-	ErrTicketTypeNotFound     = New(90003, "工单类型不存在")
-	ErrTicketAlreadyClosed    = New(90004, "工单已关闭")
+	ErrTicketTypeNotFound      = New(90003, "工单类型不存在")
+	ErrTicketAlreadyClosed     = New(90004, "工单已关闭")
 )

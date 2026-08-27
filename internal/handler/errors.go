@@ -44,7 +44,7 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNoRoles.Code:            403,
 
 	// 404 不存在
-	errcode.ErrNotFound.Code:          404,
+	errcode.ErrNotFound.Code:           404,
 	errcode.ErrUserNotFound.Code:       404,
 	errcode.ErrRoleNotFound.Code:       404,
 	errcode.ErrOrgNotFound.Code:        404,

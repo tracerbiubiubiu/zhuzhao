@@ -15,6 +15,11 @@ type ticketRepo interface {
 	GetByID(ctx context.Context, id int64) (*model.Ticket, error)
 }
 
+// errDenied 哨兵错误：L3 canOperate 拒绝（工单可见但不允许该动作）。
+// 与 (false, nil) 区分：后者 = 不可见/不存在 → Service 层转 404；
+// errDenied = 可见但无权限 → Service 层转 403。
+var errDenied = errors.New("ticket: operation denied")
+
 // Resource 工单资源，实现 resource.Resource 接口。
 // 替换 Step 1 骨架（internal/resource/ticket_resource.go）的真实现。
 // 2a 范围：assigned scope（L2 = created_by OR assigned_to）+ 属主判断（L3）。
@@ -70,11 +75,14 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 
 	// L2 可见性（scope=assigned 即仅属主可见）
 	if !r.canRead(req.UserID, ticket) {
-		return false, nil // Service 层转 404
+		return false, nil // 不可见 → Service 层转 404
 	}
 
 	// L3 属主 + canOperate（动作权）
-	return r.canOperate(req.UserID, req.Action, ticket), nil
+	if !r.canOperate(req.UserID, req.Action, ticket) {
+		return false, errDenied // 可见但无权限 → Service 层转 403
+	}
+	return true, nil
 }
 
 // GetFilter 列表行级过滤（2a：assigned scope）

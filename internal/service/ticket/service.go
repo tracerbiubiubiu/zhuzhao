@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -62,6 +63,25 @@ func (s *Service) authorize(ctx context.Context, userID int64, action, resourceI
 		Action:     action,
 		ResourceID: resourceID,
 	})
+}
+
+// authorizeCheck 统一处理 authorize 返回值，区分 404/403/500：
+//   - err == errDenied → 可见但无权限 → ErrNoPermission(403)
+//   - err != nil（其他） → DB 错误 → 原样上抛（handler 转 500）
+//   - err == nil && !ok → 不存在/不可见 → ErrTicketNotFound(404)
+//   - err == nil && ok → nil（放行）
+func (s *Service) authorizeCheck(ctx context.Context, userID int64, action, resourceID string) error {
+	ok, err := s.authorize(ctx, userID, action, resourceID)
+	if err != nil {
+		if errors.Is(err, errDenied) {
+			return errcode.ErrNoPermission // 可见但无权限 → 403
+		}
+		return err // DB 错误 → 原样上抛 → 500
+	}
+	if !ok {
+		return errcode.ErrTicketNotFound // 不存在/不可见 → 404
+	}
+	return nil
 }
 
 // --- CRUD ---
@@ -134,12 +154,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 
 // Get 获取工单详情（含 L2 可见性校验）
 func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.Ticket, error) {
-	ok, err := s.authorize(ctx, actorUserID, "read", strconv.FormatInt(id, 10))
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrTicketNotFound // 不可见 → 404
+	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(id, 10)); err != nil {
+		return nil, err
 	}
 	return s.ticketRepo.GetByID(ctx, id)
 }
@@ -174,13 +190,8 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 
 // Update 更新工单（patch 语义）
 func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, actorUserID int64) (*model.Ticket, error) {
-	idStr := strconv.FormatInt(req.ID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "update", idStr)
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrNoPermission
+	if err := s.authorizeCheck(ctx, actorUserID, "update", strconv.FormatInt(req.ID, 10)); err != nil {
+		return nil, err
 	}
 
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
@@ -208,13 +219,8 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 
 // Close 关闭工单（状态机校验 + 事件）
 func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, actorUserID int64) error {
-	idStr := strconv.FormatInt(req.ID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "close", idStr)
-	if err != nil {
-		return errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return errcode.ErrNoPermission
+	if err := s.authorizeCheck(ctx, actorUserID, "close", strconv.FormatInt(req.ID, 10)); err != nil {
+		return err
 	}
 
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
@@ -273,13 +279,8 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 
 // Assign 分派工单（2a：仅 admin bypass；2b 扩展主管 scope）
 func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64) error {
-	idStr := strconv.FormatInt(req.ID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "assign", idStr)
-	if err != nil {
-		return errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return errcode.ErrNoPermission
+	if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
+		return err
 	}
 
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
@@ -332,13 +333,8 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 
 // Delete 删除工单（2a：仅 admin）
 func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error {
-	idStr := strconv.FormatInt(id, 10)
-	ok, err := s.authorize(ctx, actorUserID, "delete", idStr)
-	if err != nil {
-		return errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return errcode.ErrNoPermission
+	if err := s.authorizeCheck(ctx, actorUserID, "delete", strconv.FormatInt(id, 10)); err != nil {
+		return err
 	}
 	return s.ticketRepo.Delete(ctx, id)
 }
@@ -347,13 +343,8 @@ func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error
 
 // CreateComment 创建公开回复
 func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentRequest, actorUserID int64) (*model.TicketComment, error) {
-	idStr := strconv.FormatInt(req.TicketID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "comment", idStr)
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrTicketNotFound
+	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
+		return nil, err
 	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
@@ -369,13 +360,8 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 
 // CreateNote 创建内部备注（2a：创建人或处理人可写）
 func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, actorUserID int64) (*model.TicketComment, error) {
-	idStr := strconv.FormatInt(req.TicketID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "note", idStr)
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrTicketNotFound
+	if err := s.authorizeCheck(ctx, actorUserID, "note", strconv.FormatInt(req.TicketID, 10)); err != nil {
+		return nil, err
 	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
@@ -391,13 +377,8 @@ func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, 
 
 // ListComments 查询工单回复列表
 func (s *Service) ListComments(ctx context.Context, ticketID, actorUserID int64) ([]*model.TicketComment, error) {
-	idStr := strconv.FormatInt(ticketID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "read", idStr)
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrTicketNotFound
+	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(ticketID, 10)); err != nil {
+		return nil, err
 	}
 	return s.ticketRepo.ListComments(ctx, ticketID)
 }
@@ -411,15 +392,9 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 		return nil, errcode.ErrInvalidParams
 	}
 	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
-	sourceStr := strconv.FormatInt(req.SourceTicketID, 10)
-	targetStr := strconv.FormatInt(req.TargetTicketID, 10)
-	for _, idStr := range []string{sourceStr, targetStr} {
-		ok, err := s.authorize(ctx, actorUserID, "update", idStr)
-		if err != nil {
-			return nil, errcode.ErrTicketNotFound
-		}
-		if !ok {
-			return nil, errcode.ErrTicketNotFound
+	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
+		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
+			return nil, err
 		}
 	}
 	rel := &model.TicketRelation{
@@ -436,13 +411,8 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 
 // ListRelations 查询工单关联列表
 func (s *Service) ListRelations(ctx context.Context, ticketID, actorUserID int64) ([]*model.TicketRelation, error) {
-	idStr := strconv.FormatInt(ticketID, 10)
-	ok, err := s.authorize(ctx, actorUserID, "read", idStr)
-	if err != nil {
-		return nil, errcode.ErrTicketNotFound
-	}
-	if !ok {
-		return nil, errcode.ErrTicketNotFound
+	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(ticketID, 10)); err != nil {
+		return nil, err
 	}
 	return s.ticketRepo.ListRelations(ctx, ticketID)
 }

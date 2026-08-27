@@ -1,4 +1,74 @@
 definitions:
+  model.AssignTicketRequest:
+    properties:
+      assigned_to:
+        description: nil = 取消分派
+        example: "0"
+        type: string
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
+  model.CloseTicketRequest:
+    properties:
+      comment:
+        description: 可选关闭说明
+        type: string
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
+  model.CreateCommentRequest:
+    properties:
+      content:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - content
+    - ticket_id
+    type: object
+  model.CreateNoteRequest:
+    properties:
+      content:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - content
+    - ticket_id
+    type: object
+  model.CreateRelationRequest:
+    properties:
+      relation_type:
+        description: 默认 related
+        type: string
+      source_ticket_id:
+        example: "0"
+        type: string
+      target_ticket_id:
+        example: "0"
+        type: string
+    required:
+    - source_ticket_id
+    - target_ticket_id
+    type: object
+  model.CreateTicketRequest:
+    type: object
+  model.DeleteTicketRequest:
+    properties:
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
   model.LoginRequest:
     properties:
       device_id:
@@ -46,6 +116,20 @@ definitions:
     required:
     - new_password
     - old_password
+    type: object
+  model.UpdateTicketRequest:
+    properties:
+      description:
+        type: string
+      id:
+        example: "0"
+        type: string
+      priority:
+        type: integer
+      title:
+        type: string
+    required:
+    - id
     type: object
   response.Response:
     properties:
@@ -144,4 +228,316 @@ paths:
       summary: 刷新 Token
       tags:
       - auth
+  /api/v1/ticket-templates:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单模板列表
+      tags:
+      - ticket
+  /api/v1/ticket-templates/{code}:
+    get:
+      parameters:
+      - description: 模板编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单模板详情
+      tags:
+      - ticket
+  /api/v1/ticket-types:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单类型列表
+      tags:
+      - ticket
+  /api/v1/ticket-types/{code}/fields:
+    get:
+      parameters:
+      - description: 工单类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单类型字段定义
+      tags:
+      - ticket
+  /api/v1/tickets:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: page_size
+        type: integer
+      - description: 工单类型
+        in: query
+        name: type_code
+        type: string
+      - description: 工单状态
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单列表
+      tags:
+      - ticket
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建工单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 创建工单
+      tags:
+      - ticket
+  /api/v1/tickets/{id}:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单详情
+      tags:
+      - ticket
+  /api/v1/tickets/{id}/comments:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单回复列表
+      tags:
+      - ticket
+  /api/v1/tickets/{id}/relations:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单关联列表
+      tags:
+      - ticket
+  /api/v1/tickets/assign:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 分派工单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 分派工单
+      tags:
+      - ticket
+  /api/v1/tickets/close:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 关闭工单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CloseTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 关闭工单
+      tags:
+      - ticket
+  /api/v1/tickets/comments:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建回复请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 创建工单回复
+      tags:
+      - ticket
+  /api/v1/tickets/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 删除工单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单
+      tags:
+      - ticket
+  /api/v1/tickets/notes:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建备注请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 创建内部备注
+      tags:
+      - ticket
+  /api/v1/tickets/relations:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 建立关联请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRelationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 建立工单关联
+      tags:
+      - ticket
+  /api/v1/tickets/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新工单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新工单
+      tags:
+      - ticket
 swagger: "2.0"

@@ -10,16 +10,16 @@ import (
 
 // stubResource 实现 Resource 接口的最小 stub，用于测试 Registry
 type stubResource struct {
-	code     string
-	actions  []string
-	authzRes bool
-	authzErr error
-	filter   Filter
+	code      string
+	actions   []string
+	authzRes  bool
+	authzErr  error
+	filter    Filter
 	filterErr error
 }
 
-func (s *stubResource) Code() string { return s.code }
-func (s *stubResource) Name() string { return s.code + "-name" }
+func (s *stubResource) Code() string      { return s.code }
+func (s *stubResource) Name() string      { return s.code + "-name" }
 func (s *stubResource) Actions() []string { return s.actions }
 func (s *stubResource) Authorize(_ context.Context, _ AuthorizeRequest) (bool, error) {
 	return s.authzRes, s.authzErr

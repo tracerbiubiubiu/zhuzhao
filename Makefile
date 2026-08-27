@@ -20,6 +20,7 @@ wire:
 
 lint:
 	go vet ./...
+	@test -z "$$(gofmt -l . 2>&1 | grep -v '^vendor/' | tee /dev/stderr)" || (echo "ERROR: gofmt drift detected, run 'gofmt -w .'" && exit 1)
 
 migrate-up:
 	migrate -path migrations -database "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable" up

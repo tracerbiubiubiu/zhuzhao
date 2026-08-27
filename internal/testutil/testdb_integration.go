@@ -69,9 +69,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000006_partial_unique_indexes.up.sql",
 			"000008_user_orgs_single_primary.up.sql",
 			"000009_phase1_hardening.up.sql",
-			// 2a Step 2：工单表（D1）+ 工单菜单种子（D2）
+			// 2a Step 2：工单表（D1）+ 工单菜单种子（D2，已并入 000010_ticket）
 			"000010_ticket.up.sql",
-			"000010_ticket_menu.up.sql",
 			// 2a Step 3：工单模板 + 工单关联（2a 前移）
 			"000015_ticket_templates.up.sql",
 			"000016_ticket_relations.up.sql",
