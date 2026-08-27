@@ -118,9 +118,11 @@ curl -s -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content
   -d "{\"user_id\":\"$TUID\",\"status\":1}" >/dev/null
 
 # --- #12 ---
+# B4-3：SAT 即 user_id=1，自禁用守卫（10003）先于 last-superadmin 守卫（30006）；
+# 30006 的 TOCTOU 事务守卫由 Go 集成测试覆盖，脚本层验证可达的最高优先守卫
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"user_id":"1","status":0}')
 check "#12 http" "403" "$HC"
-check "#12 code" "30006" "$(cat /tmp/p1.json | json_code)"
+check "#12 code（B4-3 自禁用守卫）" "10003" "$(cat /tmp/p1.json | json_code)"
 
 # --- #13 #21 admin user ---
 AEN="E8$SUF"
@@ -141,7 +143,11 @@ HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/roles/menus" -H "A
 check "B1-2 sys-menu http" "403" "$HC"
 check "B1-2 sys-menu code" "40004" "$(cat /tmp/p1.json | json_code)"
 # --- B1-2 目标校验：admin 删同级 admin 用户 → 403 + 30010（通用防提权码） ---
-PEER_ID=$(psql_q "SELECT id FROM users WHERE employee_no='$AEN' AND deleted_at IS NULL")
+# 创建真正的同级 peer（原脚本误查 AAT 自身工号 → 命中自删守卫 10003 而非 30010）
+PEN="EA$SUF"
+curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"username\":\"peer$SUF\",\"password\":\"pass1234\",\"employee_no\":\"$PEN\",\"role_ids\":[\"2\"]}" >/dev/null
+PEER_ID=$(psql_q "SELECT id FROM users WHERE employee_no='$PEN' AND deleted_at IS NULL")
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/delete" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$PEER_ID\"}")
 check "B1-2 peer-del http" "403" "$HC"
 check "B1-2 peer-del code" "30010" "$(cat /tmp/p1.json | json_code)"
@@ -249,6 +255,14 @@ HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: 
 check "#26 http" "403" "$HC"
 check "#26 code" "70001" "$(cat /tmp/p1.json | json_code)"
 
+# --- D2 种子断言（须在 #27 等 role_menus 变更用例之前执行：#27 会给 viewer 绑菜单） ---
+# D2-45：种子完整性——operator/viewer 零 role_menus 绑定（预留角色），
+# 描述已修正（000002/000009，不再暗示不存在的权限）
+OPV_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.role_id WHERE r.code IN ('operator','viewer')")
+check "D2 seed operator/viewer unbound" "0" "$OPV_BIND"
+OPV_DESC=$(psql_q "SELECT COUNT(*) FROM roles WHERE code IN ('operator','viewer') AND description LIKE '系统预留角色%'")
+check "D2 seed desc fixed" "2" "$OPV_DESC"
+
 # --- #27 ---
 USER_MENU=$(psql_q "SELECT id FROM menus WHERE code='system_user'")
 BODY27=$(json_body "{\"role_id\":\"$VIEWER_ROLE\",\"menu_ids\":[\"$USER_MENU\"]}")
@@ -302,13 +316,7 @@ ORGCODE="org_$RANDOM"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"org_type\":2}")
 check "org create" "200" "$HC"
 
-# --- D2 断言组（review 03 号报告修复验收） ---
-# D2-45：种子完整性——operator/viewer 零 role_menus 绑定（预留角色），
-# 描述已修正（000002/000009，不再暗示不存在的权限）
-OPV_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.role_id WHERE r.code IN ('operator','viewer')")
-check "D2 seed operator/viewer unbound" "0" "$OPV_BIND"
-OPV_DESC=$(psql_q "SELECT COUNT(*) FROM roles WHERE code IN ('operator','viewer') AND description LIKE '系统预留角色%'")
-check "D2 seed desc fixed" "2" "$OPV_DESC"
+# --- D2 断言组（review 03 号报告修复验收；种子断言已前移至 #27 之前，避免被测试自身的绑定污染） ---
 
 # D2-01：登录输入上限——employee_no 51 字符 → 400（防超大键灌爆 Redis）
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000000000000000000000000000000000000000000000000001","password":"x"}')
