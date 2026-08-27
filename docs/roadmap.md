@@ -95,7 +95,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ## 外部能力集成：activelist（独立服务，已定 ADR-003）
 
-> 详见 `doc/soar/activelist.md` 与 `docs/adr/ADR-003-activelist-integration-form.md`。
+> 详见 [ADR-003-activelist-integration-form](./adr/ADR-003-activelist-integration-form.md)。
 
 - **形态**：activelist 作为独立服务（非 zhuzhao 单体一部分），通过 zhuzhao 网关反向代理调用；仅内网可达。
 - **数据库**：Mongo → **PostgreSQL**（统一技术栈，复用 zhuzhao 的 JSONB/ltree/Outbox/Casbin-pgx；PG 事务能力优于 Mongo）。建议与 `activelist.md` §23 方案 F（同步事务写 + 主数据/历史同事务）一并落地。

@@ -555,7 +555,7 @@ Wire Injector (wire.go)
 └──────────────────────────────────────────────────────────┘
 ```
 
-**执行顺序**：AT 校验 → 第一层 Casbin → 第三层属主（短路） → 第二层 ltree 组织关系
+**执行顺序**（2026-08-26 路径 A 拍板，[11-authz §2](../phase2/11-authz-architecture-review.md)）：AT 校验 → 第一层 Casbin（路由级） → 第二层可见性（ltree 组织关系 / assigned scope） → 第三层 canOperate（属主判断，**不短路 L2**）
 
 > **架构定位**（2026-08-11 更新）：遵循 OWASP/NIST 分层鉴权标准，第一层（路由级）在中间件层执行（未来微服务化时由 API Gateway 承担），第二层和第三层（资源级）在 Service 层代码内联执行（未来由各业务服务自行承担）。Gateway 不做资源级鉴权，因为它缺少业务数据上下文。详见 [design-decisions.md#5](./design-decisions.md#5-资源级鉴权架构gateway-下放-vs-集中)。
 

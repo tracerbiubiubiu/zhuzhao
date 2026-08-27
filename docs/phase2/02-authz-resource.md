@@ -213,9 +213,10 @@ rows, _ := s.repo.List(ctx, filter, page, size)
 ### 2.5 Wire 自注册
 
 ```go
-func NewTicketService(..., registry resource.Registry, ...) *TicketService {
-    s := &TicketService{...}
-    registry.Register(NewTicketResource(s.repo, s.scope))
+func NewTicketService(..., registry resource.Registry, ...) *Service {
+    s := &Service{db: db, ticketRepo: ticketRepo, ...}
+    // 自注册（2a 实际签名：NewResource 包内构造，无 scope 参数——assigned 语义内联在 resource.go）
+    registry.Register(NewResource(s.ticketRepo))
     return s
 }
 ```
