@@ -133,17 +133,44 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 > **前端未写**：`menus` 树仅占位（一个「工单管理」目录 + 一个页面菜单），前端接入时再细化结构；但 `menu_apis` + 角色绑定**必须完整种**（后端 Casbin L1 拦截依赖，与前端无关）。
 
 ```sql
--- ① 工单管理菜单树（占位，前端后续细化）
-INSERT INTO menus (code, name, parent_code, menu_type, path, permission, sort_order, is_system)
-VALUES
-  ('ticket_manage', '工单管理', NULL,          'catalog', '/tickets',            NULL,          1, true),
-  ('ticket_list',   '工单列表', 'ticket_manage','page',   '/tickets',            'ticket:list', 1, true)
-ON CONFLICT (code) DO NOTHING;
+-- ⚠️ 2026-08-27 修正（3 项原始伪代码 bug 曾被误拷入迁移文件）：
+--   ① menus.parent_id 是 INT FK 列；原文「parent_code」为伪代码列名（不存在，FK 漏建
+--     会导致 org_move 级联和前端 tree 渲染断链）；
+--   ② menus.menu_type 是 SMALLINT（1=目录 2=页面 3=按钮）；原文「'catalog'/'page'」
+--     是伪代码语义值，直接执行会报列类型错；
+--   ③ roles.code 列存的是 'admin'/'superadmin'（无 role:: 前缀）；role:: 前缀仅用于
+--     casbin_rule.ptype=g 行（不同表不同列）。
+--   补漏：新增 9 个 level-3 按钮菜单（含 9 个 permission 码）；role_menus 通配 admin/
+--   superadmin 全部 11 个菜单（不绑定按钮前端权限配置漏出；绑定后 AssignMenus 生成
+--   细粒度 Casbin 行对非通配角色完整生效）。
+-- 最终实现文件：migrations/000010_ticket_menu.up.sql / .down.sql
 
--- ② menu_apis：覆盖 §3 API 表全部路由（POST 动词子路径不含 :id）
+-- ① level-1 目录 + level-2 页面：parent_id 后补（INSERT 时 NULL，防止自引用 FK 顺序依赖）
+INSERT INTO menus (code, name, parent_id, menu_type, path, component, icon, permission, sort_order, visible, is_system)
+VALUES
+  ('ticket_manage', '工单管理', NULL, 1, '/tickets',            '',                    'ticket',       NULL,            2, 1, true),
+  ('ticket_list',   '工单列表', NULL, 2, '/tickets',            'ticket/list/index',   'ticket-list',  'ticket:list',   1, 1, true)
+ON CONFLICT DO NOTHING;
+UPDATE menus SET parent_id = (SELECT m2.id FROM menus m2 WHERE m2.code = 'ticket_manage')
+WHERE code = 'ticket_list' AND parent_id IS NULL;
+
+-- ② level-3 9 个按钮菜单（menu_type=3）；permission 码对应 §3 API 表权限列
+INSERT INTO menus (code, name, parent_id, menu_type, path, component, icon, permission, sort_order, visible, is_system)
+SELECT p.code||'_list_btn',   '列表', p.id, 3, '', '', '', 'ticket:list',   10, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_create_btn', '创建', p.id, 3, '', '', '', 'ticket:create', 11, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_read_btn',   '详情', p.id, 3, '', '', '', 'ticket:read',   12, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_update_btn', '编辑', p.id, 3, '', '', '', 'ticket:update', 13, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_close_btn',  '关闭', p.id, 3, '', '', '', 'ticket:close',  14, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_assign_btn', '分派', p.id, 3, '', '', '', 'ticket:assign', 15, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_delete_btn', '删除', p.id, 3, '', '', '', 'ticket:delete', 16, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_comment_btn','评论', p.id, 3, '', '', '', 'ticket:comment',17, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT p.code||'_note_btn',   '备注', p.id, 3, '', '', '', 'ticket:note',   18, 1, true FROM menus p WHERE p.code='ticket_list';
+-- 注：实际迁移文件通过 INSERT … VALUES + JOIN menus parent 实现，等价于上面 UNION ALL。
+
+-- ③ menu_apis 页面级绑定（仅绑定到页面菜单，按钮菜单不参与 L1 API 鉴权；按钮 permission 码
+--    只用于前端按钮显隐 + 未来 AssignMenus 细粒度角色）。覆盖 §3 16 条路由。
 INSERT INTO menu_apis (menu_id, api_path, api_method)
 SELECT m.id, v.api_path, v.api_method FROM menus m, (VALUES
-  -- 工单 CRUD + 协作
   ('ticket_list', '/api/v1/tickets',               'GET'),
   ('ticket_list', '/api/v1/tickets',               'POST'),
   ('ticket_list', '/api/v1/tickets/:id',           'GET'),
@@ -155,21 +182,25 @@ SELECT m.id, v.api_path, v.api_method FROM menus m, (VALUES
   ('ticket_list', '/api/v1/tickets/comments',      'POST'),
   ('ticket_list', '/api/v1/tickets/notes',         'POST'),
   ('ticket_list', '/api/v1/tickets/:id/relations', 'GET'),
-  ('ticket_list', '/api/v1/tickets/relations',     'POST'),   -- 复用 ticket:update 权限码
-  -- 元数据（2a）
+  ('ticket_list', '/api/v1/tickets/relations',     'POST'),
   ('ticket_list', '/api/v1/ticket-types',                 'GET'),
   ('ticket_list', '/api/v1/ticket-types/:code/fields',    'GET'),
-  -- 模板 / 关联（2a 前移）
   ('ticket_list', '/api/v1/ticket-templates',             'GET'),
   ('ticket_list', '/api/v1/ticket-templates/:code',       'GET')
 ) AS v(menu_code, api_path, api_method)
 WHERE m.code = v.menu_code
 ON CONFLICT DO NOTHING;
 
--- ③ 角色绑定：admin/superadmin 获得工单管理全部权限（其余角色按业务 2b/2c 再细化）
+-- ④ role_menus 通配绑定 admin / superadmin：获得 11 个菜单（目录 + 页面 + 9 按钮）全部权限。
 INSERT INTO role_menus (role_id, menu_id)
 SELECT r.id, m.id FROM roles r, menus m
-WHERE r.code IN ('role::admin','role::superadmin') AND m.code = 'ticket_list'
+WHERE r.code IN ('superadmin', 'admin')
+  AND m.code IN (
+    'ticket_manage','ticket_list',
+    'ticket_list_list_btn','ticket_list_create_btn','ticket_list_read_btn',
+    'ticket_list_update_btn','ticket_list_close_btn','ticket_list_assign_btn',
+    'ticket_list_delete_btn','ticket_list_comment_btn','ticket_list_note_btn'
+  )
 ON CONFLICT DO NOTHING;
 ```
 
@@ -435,17 +466,17 @@ POST /api/v1/tickets
 
 ### 2a（Step 3 验收）
 
-| # | 用例 | 预期 |
-|---|------|------|
-| T1 | 创建工单 | 200；org_path 正确 |
-| T2 | A 列表 | 仅 A 相关工单 |
-| T3 | A 读 B 工单 | 404 |
-| T4 | A 更新自己的 open 工单 | 200 |
-| T5 | assign 给 B | admin 或 2b 主管路径 |
-| T6 | 非法 transition open→closed（若类型不允许） | 400 + 90002 |
-| T7 | 无 ticket:list | 403 |
+| # | 用例 | 预期 | 2a 状态 & 落点 |
+|---|------|------|----------------|
+| T1 | 创建工单 | 200；org_path 正确 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T1；种子=`migrations/000010_ticket.up.sql` §ticket_events.created |
+| T2 | A 列表 | 仅 A 相关工单 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T2；服务真表=`internal/service/ticket/authz_resource_integration_test.go` TestTicket_R3_AssignedScopeList |
+| T3 | A 读 B 工单 | 404 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T3；服务真表=TestTicket_R4_InvisibleReturns404 (errcode=90001) |
+| T4 | A 更新自己的 open 工单 | 200 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T4；服务真表=TestTicket_R5_UpdateOwn |
+| T5 | assign 给 B | admin 或 2b 主管路径 | ✅ PASS (2a 仅 admin 口径); HTTP=`scripts/acceptance-phase2a.sh` §T5 (admin bypass + ticket_events.assigned); 2b主管 scope 延期 Step 8 |
+| T6 | 非法 transition（默认种子口径 assigned→closed） | 400 + 90002 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T6 (assigned→closed NOT in incident/request JSON); 服务真表=TestTicket_T6_InvalidTransitionReturns90002；**T6 表中原 open→closed 在种子里是允许的，改用 assigned→closed 命中非法转换** |
+| T7 | 无 ticket:list | 403 + 70001 | ✅ PASS; HTTP=`scripts/acceptance-phase2a.sh` §T7 (viewer 角色 Casbin L1 GET/POST tickets 都 403)；service 层对齐 R8 |
 
-**测试落点约定**（B4）：状态机转换单测 → `internal/service/ticket/`；T1–T7 集成测试（testcontainers PG，复用 phase1 `testutil` 模式）→ `internal/service/ticket/`；路由/权限码 → `internal/router/router_test.go` 扩展。
+**测试落点约定**（B4）：状态机转换单测 → `internal/service/ticket/state_machine_test.go`（9 用例已 PASS）；T1–T7 真表集成测试 → `internal/service/ticket/authz_resource_integration_test.go`；HTTP/路由级/权限码 → `scripts/acceptance-phase2a.sh` §B + 头段 Section A 跑 Phase 1 27 例回归（P2-D5）。
 
 ### 2b（Step 4 2b-core + Step 8 验收）
 

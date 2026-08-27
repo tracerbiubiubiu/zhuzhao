@@ -92,3 +92,11 @@ var (
 	ErrNoRoles            = New(70003, "未分配角色")
 	ErrPolicyReloadFailed = New(70004, "策略已保存但内存刷新失败，权限可能延迟生效，请稍后重试或联系运维")
 )
+
+// 工单模块 90000-90999
+var (
+	ErrTicketNotFound         = New(90001, "工单不存在")
+	ErrTicketInvalidTransition = New(90002, "非法状态转换")
+	ErrTicketTypeNotFound     = New(90003, "工单类型不存在")
+	ErrTicketAlreadyClosed    = New(90004, "工单已关闭")
+)

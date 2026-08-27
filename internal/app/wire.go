@@ -18,6 +18,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
+	ticketsvc "github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
 // Provider 集合
@@ -40,6 +41,7 @@ var repoSet = wire.NewSet(
 	repository.NewOrgRepo,
 	repository.NewMenuRepo,
 	repository.NewAuditLogRepo,
+	repository.NewTicketRepo,
 )
 
 var serviceSet = wire.NewSet(
@@ -49,6 +51,9 @@ var serviceSet = wire.NewSet(
 	service.NewOrgService,
 	service.NewMenuService,
 	service.NewAuditService,
+	// Phase 2a：工单服务构造时自注册 TicketResource 到 Registry（§2.5）。
+	// Wire 单例保证 registry.Register 先于 router.New，资源级鉴权可路由。
+	ticketsvc.NewTicketService,
 	wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)),
 	wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)),
 )
@@ -60,6 +65,7 @@ var handlerSet = wire.NewSet(
 	handler.NewOrgHandler,
 	handler.NewMenuHandler,
 	handler.NewAuditHandler,
+	handler.NewTicketHandler,
 )
 
 // InitializeApp Wire 注入入口

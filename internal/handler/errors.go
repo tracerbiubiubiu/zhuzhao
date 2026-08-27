@@ -44,12 +44,14 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNoRoles.Code:            403,
 
 	// 404 不存在
-	errcode.ErrNotFound.Code:     404,
-	errcode.ErrUserNotFound.Code: 404,
-	errcode.ErrRoleNotFound.Code: 404,
-	errcode.ErrOrgNotFound.Code:  404,
-	errcode.ErrMenuNotFound.Code: 404,
-	errcode.ErrNotOrgMember.Code: 404,
+	errcode.ErrNotFound.Code:          404,
+	errcode.ErrUserNotFound.Code:       404,
+	errcode.ErrRoleNotFound.Code:       404,
+	errcode.ErrOrgNotFound.Code:        404,
+	errcode.ErrMenuNotFound.Code:       404,
+	errcode.ErrNotOrgMember.Code:       404,
+	errcode.ErrTicketNotFound.Code:     404,
+	errcode.ErrTicketTypeNotFound.Code: 404,
 
 	// 409 冲突
 	errcode.ErrConflict.Code:                   409,
@@ -61,6 +63,10 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrOrgAlreadyExists.Code:           409,
 	errcode.ErrMenuAlreadyExists.Code:          409,
 	errcode.ErrDuplicatePrimaryOrg.Code:        409,
+	errcode.ErrTicketAlreadyClosed.Code:        409,
+
+	// 400 业务规则
+	errcode.ErrTicketInvalidTransition.Code: 400,
 
 	// 500 已提交但策略刷新失败（D2-07：原漏映射 → 500+10000，承诺 500+70004）
 	errcode.ErrPolicyReloadFailed.Code: 500,

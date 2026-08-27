@@ -69,6 +69,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000006_partial_unique_indexes.up.sql",
 			"000008_user_orgs_single_primary.up.sql",
 			"000009_phase1_hardening.up.sql",
+			// 2a Step 2：工单表（D1）+ 工单菜单种子（D2）
+			"000010_ticket.up.sql",
+			"000010_ticket_menu.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

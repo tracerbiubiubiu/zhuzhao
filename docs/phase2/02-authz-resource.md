@@ -246,22 +246,22 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 
 ## 4. 测试用例
 
-| # | 用例 | 预期 |
-|---|------|------|
-| R1 | Registry 注册 ticket | `List()` 含 ticket |
-| R2 | GetFilter assigned | WHERE 含 created_by / assigned_to |
-| R3 | 用户 A 列表 | 仅 A 创建或被分派的工单 |
-| R4 | A 读 B 的工单详情 | **404** |
-| R5 | A 更新自己的工单 | 200 |
-| R6 | A 更新 B 的工单（可见但非属主） | **403** + 70001 |
-| R7 | admin 读任意工单 | 200 |
-| R8 | 无 ticket:list 路由权限 | **403** + 70001 |
-| R9 | 2b 策略 B：vg_a member 读 vg_b | **200** |
-| R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） |
-| R11 | `project_isolated`（**future，2b-core 不交付**） | vg_a **不可读** vg_b → **404** |
-| R12 | 2b 创建人改自己 vg_a 工单 | **200** |
+| # | 用例 | 预期 | 2a 状态 & 落点 |
+|---|------|------|----------------|
+| R1 | Registry 注册 ticket | `List()` 含 ticket | ✅ PASS; NewTicketService 内 `registry.Register(NewResource(...))`，wire 注入顺序校验于 `internal/app/wire_gen.go:71-73` |
+| R2 | GetFilter assigned | WHERE 含 created_by / assigned_to | ✅ PASS; 见 `internal/service/ticket/resource.go` ScopeAssigned→sql=`(created_by=$1 OR assigned_to=$2)` |
+| R3 | 用户 A 列表 | 仅 A 创建或被分派的工单 | ✅ PASS; 服务真表=`TestTicket_R3_AssignedScopeList`; HTTP=`acceptance-phase2a.sh` §T2 |
+| R4 | A 读 B 的工单详情 | **404** | ✅ PASS; 服务真表=`TestTicket_R4_InvisibleReturns404` (code=90001); HTTP=`acceptance-phase2a.sh` §T3 |
+| R5 | A 更新自己的工单 | 200 | ✅ PASS; 服务真表=`TestTicket_R5_UpdateOwn`; HTTP=`acceptance-phase2a.sh` §T4 |
+| R6 | A 更新 B 的工单（可见但非属主） | **403** + 70001 | ✅ PASS; 服务真表=`TestTicket_R6_VisibleNotOwner_403` (assign/delete → ErrNoPermission 70001); HTTP=`acceptance-phase2a.sh` §R6 |
+| R7 | admin 读任意工单 | 200 | ✅ PASS; 服务真表=`TestTicket_R7_AdminBypass`; HTTP=`acceptance-phase2a.sh` §R7 admin 列表 & 详情 |
+| R8 | 无 ticket:list 路由权限 | **403** + 70001 | ✅ PASS; service 层 assigned scope 行为见 `TestTicket_R8_ViewerServiceLayerAssigned`；**真正 L1 Casbin 拦截** 由 HTTP `acceptance-phase2a.sh` §T7（viewer GET/POST → 403 Casbin 中间件）覆盖 |
+| R9 | 2b 策略 B：vg_a member 读 vg_b | **200** | ⏳ 延期 Step 8（2b-core scope=group + 策略 B entity_transparent_read） |
+| R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） | ⏳ 延期 Step 8 |
+| R11 | `project_isolated`（**future，2b-core 不交付**） | vg_a **不可读** vg_b → **404** | ⏳ 延期 Phase 3 |
+| R12 | 2b 创建人改自己 vg_a 工单 | **200** | ⏳ 延期 Step 8 |
 
-**测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/`（testcontainers PG，复用 phase1 `testutil` 模式）；中间件顺序回归 → `internal/router/router_test.go` 扩展 ticket 路由。
+**测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/authz_resource_integration_test.go`（真表 testcontainers PG，复用 phase1 `testutil` 模式；`internal/testutil/testdb_integration.go` 已追加 `000010_ticket.up.sql` / `000010_ticket_menu.up.sql` 迁移列表）；中间件顺序回归 + Casbin L1 → `scripts/acceptance-phase2a.sh` Section A（Phase1 27 例回归 P2-D5）+ §T7（R8 viewer 403）。
 
 ---
 

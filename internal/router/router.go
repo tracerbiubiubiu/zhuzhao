@@ -19,12 +19,13 @@ import (
 
 // Deps 路由依赖
 type Deps struct {
-	AuthHandler  *handler.AuthHandler
-	UserHandler  *handler.UserHandler
-	RoleHandler  *handler.RoleHandler
-	OrgHandler   *handler.OrgHandler
-	MenuHandler  *handler.MenuHandler
-	AuditHandler *handler.AuditHandler
+	AuthHandler   *handler.AuthHandler
+	UserHandler   *handler.UserHandler
+	RoleHandler   *handler.RoleHandler
+	OrgHandler    *handler.OrgHandler
+	MenuHandler   *handler.MenuHandler
+	AuditHandler  *handler.AuditHandler
+	TicketHandler *handler.TicketHandler
 
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
@@ -170,6 +171,32 @@ func New(deps Deps) *gin.Engine {
 				audit := biz.Group("/audit")
 				{
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
+				}
+
+				// 工单模块（Phase 2a）
+				tickets := biz.Group("/tickets")
+				{
+					tickets.GET("", deps.TicketHandler.List)
+					tickets.POST("", deps.TicketHandler.Create)
+					tickets.GET("/:id", deps.TicketHandler.Get)
+					tickets.POST("/update", deps.TicketHandler.Update)
+					tickets.POST("/close", deps.TicketHandler.Close)
+					tickets.POST("/assign", deps.TicketHandler.Assign)
+					tickets.POST("/delete", deps.TicketHandler.Delete)
+					tickets.GET("/:id/comments", deps.TicketHandler.ListComments)
+					tickets.POST("/comments", deps.TicketHandler.CreateComment)
+					tickets.POST("/notes", deps.TicketHandler.CreateNote)
+					tickets.GET("/:id/relations", deps.TicketHandler.ListRelations)
+					tickets.POST("/relations", deps.TicketHandler.CreateRelation)
+				}
+
+				// 工单元数据（类型/模板）
+				ticketMeta := biz.Group("")
+				{
+					ticketMeta.GET("/ticket-types", deps.TicketHandler.ListTicketTypes)
+					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.ListTicketTypeFields)
+					ticketMeta.GET("/ticket-templates", deps.TicketHandler.ListTicketTemplates)
+					ticketMeta.GET("/ticket-templates/:code", deps.TicketHandler.GetTicketTemplate)
 				}
 			}
 		}

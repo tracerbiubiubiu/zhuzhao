@@ -20,6 +20,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
 // Injectors from wire.go:
@@ -66,7 +67,10 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	ticketRepo := repository.NewTicketRepo(pool)
 	registry := resource.NewRegistry()
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService)
+	ticketHandler := handler.NewTicketHandler(ticketService)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
 		AuthHandler:    authHandler,
@@ -75,6 +79,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		OrgHandler:     orgHandler,
 		MenuHandler:    menuHandler,
 		AuditHandler:   auditHandler,
+		TicketHandler:  ticketHandler,
 		JWTManager:     manager,
 		Enforcer:       syncedEnforcer,
 		RedisClient:    client,
@@ -98,11 +103,11 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, resource.NewRegistry, casbin.New)
 
-var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo)
+var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgService, service.NewMenuService, service.NewAuditService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgService, service.NewMenuService, service.NewAuditService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler)
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler)
 
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {

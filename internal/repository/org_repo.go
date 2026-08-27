@@ -372,6 +372,28 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		return errcode.ErrConcurrentModification
 	}
 
+	// 6. P2-D1：级联更新 tickets.org_path（冗余路径同步）。
+	// tickets.org_path 是工单创建时从 organizations.path 快照的冗余列，2b scope=group
+	// 的 ltree 可见性过滤依赖它。组织子树移动后必须同步重映射，否则存量工单在
+	// 新组织树下「静默失踪」（被 2b 的 ltree 过滤漏掉）。
+	// 转换逻辑与 step 5 的 organizations 完全一致：
+	//   - 恰为移动节点本身（nlevel 相等）→ 直接替换为 newRootPath
+	//   - 为其后代 → newRootPath || subpath(原 oldPath 之后的部分)
+	// tickets 无 deleted_at（SoftDelete 走物理 DELETE + CASCADE），不加该谓词；
+	// 0 行命中合法（子树下可能无工单），不视为并发冲突。
+	if _, err := tx.Exec(ctx, `
+		UPDATE tickets
+		SET org_path = CASE
+			WHEN nlevel(org_path) = nlevel(text2ltree($2)) THEN text2ltree($1)
+			ELSE text2ltree($1) || subpath(org_path, nlevel(text2ltree($2)))
+		END,
+		    updated_at = NOW()
+		WHERE org_path <@ text2ltree($2)`,
+		newRootPath, oldPath,
+	); err != nil {
+		return fmt.Errorf("cascade ticket org_path: %w", err)
+	}
+
 	return tx.Commit(ctx)
 }
 
