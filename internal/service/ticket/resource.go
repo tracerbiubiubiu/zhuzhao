@@ -24,13 +24,12 @@ var errDenied = errors.New("ticket: operation denied")
 // 替换 Step 1 骨架（internal/resource/ticket_resource.go）的真实现。
 // 2a 范围：assigned scope（L2 = created_by OR assigned_to）+ 属主判断（L3）。
 type Resource struct {
-	repo  ticketRepo
-	scope ScopeResolver
+	repo ticketRepo
 }
 
 // NewResource 创建工单资源实例（由 NewTicketService 调用，注册到 Registry）
-func NewResource(repo ticketRepo, scope ScopeResolver) *Resource {
-	return &Resource{repo: repo, scope: scope}
+func NewResource(repo ticketRepo) *Resource {
+	return &Resource{repo: repo}
 }
 
 // Code 返回资源编码

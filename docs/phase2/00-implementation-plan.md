@@ -122,20 +122,22 @@
 ### Step 1（M2a-1）— authz-resource
 
 - [ ] `registry_test.go` 补 Authorize/GetFilter 单测（R1/R2）
-- [ ] `internal/service/authz/scope_resolver.go`：assigned 语义（ReadAnchorPaths 空 + `created_by OR assigned_to` 谓词）
+- [ ] `internal/service/ticket/scope_resolver.go（2a：HasRole 辅助函数；assigned 语义已直接实现在 resource.go 的 canRead/GetFilter 中）`：assigned 语义（ReadAnchorPaths 空 + `created_by OR assigned_to` 谓词）
 - [ ] `internal/service/ticket/resource.go`：TicketResource 骨架 + 契约测试（fake repo，不依赖真表）
 - [ ] wire：NewTicketService 接收 Registry 自注册（依赖 Step 0 接线；拓扑序保证注册先于 router.New）
 
 ### Step 2（M2a-2）— ticket MVP
 
-- [ ] 迁移 **000010**：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events`（含 org_path GIST；幂等 + down + 软删部分唯一索引三规范；`ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列）
-- [ ] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
-- [ ] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
-- [ ] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
-- [ ] 迁移 **000010_menu**（或并入 000010）：插入 `ticket:list/create/read/update/close/assign/delete/comment/note` 的 menu + menu_apis 行 + 角色绑定种子（D2；缺则 R8/T7「无 ticket:list → 403」验收直接挂）
-- [ ] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
-- [ ] 工单模板：列表/详情 API + `POST /tickets` 支持可选 `template_code` 预填字段（`default_sla_minutes` 仅存储，Phase 3 启用）
-- [ ] 工单关联：建立/查询关联 API；建立关联时对 target_id 走 L2/L3 鉴权（防止越权关联他人工单）
+- [x] 迁移 **000010**：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events` + 工单管理菜单（catalog/page/button 三层）+ menu_apis + 角色绑定（D2 已并入 000010，不再单独 _menu 文件）
+  - **硬删例外**：`tickets` / `ticket_comments` / `ticket_events` 表无 `deleted_at` 列，走物理 DELETE + ON DELETE CASCADE（P2-D1 设计；审计链由 `ticket_events` 外置保留）；`ticket_templates` / `ticket_relations` 走软删 + 部分唯一索引
+  - `ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列
+- [x] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
+- [x] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
+- [x] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）
+- [x] ~~迁移 **000010_menu**（或并入 000010）~~：已并入 000010（ticket_types 建表后追加菜单 INSERT）
+- [x] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
+- [x] 工单模板：列表/详情 API + `POST /tickets` 支持可选 `template_code` 预填字段（`default_sla_minutes` 仅存储，Phase 3 启用）
+- [x] 工单关联：建立/查询关联 API；建立关联时对 source/target 均走 update 鉴权（严于 PRD target-only，防止越权关联他人工单）
 - [ ] **P2-D1（已采纳 A）**：`OrgService.Move` 扩展级联改写 `tickets.org_path` + 集成测试
 - [ ] `scripts/acceptance-phase2a.sh`（含 Phase 1 27 用例回归段）
 - [ ] R3–R8 真表集成测试落位（[02 §3 R 表](./02-authz-resource.md)）

@@ -88,7 +88,7 @@
 ### 2.2 ScopeResolver（2a 桩）
 
 ```go
-// internal/service/authz/scope_resolver.go
+// internal/service/ticket/scope_resolver.go（2a：HasRole 辅助函数；assigned 语义已直接实现在 resource.go 的 canRead/GetFilter 中）
 
 type TicketScope string
 
@@ -262,7 +262,7 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 | R11 | `project_isolated`（**future，2b-core 不交付**） | vg_a **不可读** vg_b → **404** | ⏳ 延期 Phase 3 |
 | R12 | 2b 创建人改自己 vg_a 工单 | **200** | ⏳ 延期 Step 8 |
 
-**测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/authz_resource_integration_test.go`（真表 testcontainers PG，复用 phase1 `testutil` 模式；`internal/testutil/testdb_integration.go` 已追加 `000010_ticket.up.sql` / `000010_ticket_menu.up.sql` 迁移列表）；中间件顺序回归 + Casbin L1 → `scripts/acceptance-phase2a.sh` Section A（Phase1 27 例回归 P2-D5）+ §T7（R8 viewer 403）。
+**测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/authz_resource_integration_test.go`（真表 testcontainers PG，复用 phase1 `testutil` 模式；`internal/testutil/testdb_integration.go` 已追加 `000010_ticket.up.sql` 迁移列表）；中间件顺序回归 + Casbin L1 → `scripts/acceptance-phase2a.sh` Section A（Phase1 27 例回归 P2-D5）+ §T7（R8 viewer 403）。
 
 ---
 
@@ -270,7 +270,7 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 
 ```
 internal/pkg/resource/registry.go       # 已有；补全 Authorize/GetFilter 测试
-internal/service/authz/scope_resolver.go
+internal/service/ticket/scope_resolver.go（2a：HasRole 辅助函数；assigned 语义已直接实现在 resource.go 的 canRead/GetFilter 中）
 internal/service/ticket/resource.go
 internal/service/ticket/service.go      # 调用 registry
 ```

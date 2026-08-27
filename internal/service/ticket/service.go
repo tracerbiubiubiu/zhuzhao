@@ -33,7 +33,6 @@ func NewTicketService(
 	registry resource.Registry,
 	roleFetcher middleware.RoleFetcher,
 ) *Service {
-	scope := NewStubScopeResolver()
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
@@ -42,7 +41,7 @@ func NewTicketService(
 		roleFetcher: roleFetcher,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）
-	registry.Register(NewResource(s.ticketRepo, scope))
+	registry.Register(NewResource(s.ticketRepo))
 	return s
 }
 
