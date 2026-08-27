@@ -174,7 +174,7 @@ func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action str
 | assign | 2a 暂不开放主管分派，仅 admin bypass 或后续 2b `ticket_scope=group/all` 扩展 |
 | delete | 仅 admin bypass |
 
-> 2b 升级见 [09-ticket.md §5.2](./09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)（**策略 B**：实体透明读 + update 仅创建人）；2c 组内委托见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)。
+> 2b 升级见 [09-ticket.md §5.2](./09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)（**策略 B**：实体透明读 + update 仅创建人）；2c 组内委托见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9)。
 
 **canRead（2b，策略 B 默认）**：
 

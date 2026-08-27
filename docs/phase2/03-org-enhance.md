@@ -127,7 +127,7 @@ ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFA
 | **组内 member/admin/owner 分级** | — | 2c | 📋 见 [04-org-delegation.md](./04-org-delegation.md) |
 | **admin 只能管 member** | — | 2c | 📋 见 [04-org-delegation.md](./04-org-delegation.md) |
 | **资源绑定 org（项目工单）** | ticket.org_id / org_path | 2a | ✅ 工单 MVP；**泛化「项目」资源**未单独建模 |
-| 负责人对子树资源 CRUD | system-comparison org_admin | 2c | 📋 见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10) |
+| 负责人对子树资源 CRUD | system-comparison org_admin | 2c | 📋 见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9) |
 
 #### 建议 Phase 2c 落地
 

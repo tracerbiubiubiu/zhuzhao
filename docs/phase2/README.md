@@ -95,7 +95,7 @@
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
 | 组织委托 | [04-org-delegation](./04-org-delegation.md) | `owner_user_ids`、`user_orgs.org_member_role`、组内防提权 API | **已编写** |
-| 资源 Authorize | [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10) + ticket | 负责人/组 admin 对绑定 org 的资源 CRUD | [modules/ticket.md](../modules/ticket.md) |
+| 资源 Authorize | [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9) + ticket | 负责人/组 admin 对绑定 org 的资源 CRUD | [modules/ticket.md](../modules/ticket.md) |
 
 **为何不加进 2b**：委托层是 **「容器建好之后的组内治理」**，验收面不同（D1–D11），独立节点便于 review 与回滚；且依赖 2b-core + 2b-org 两者就绪。
 
@@ -227,7 +227,7 @@ Phase 1 完成
 | Step | 子阶段 | 模块 | 依赖 | 文档 |
 |------|--------|------|------|------|
 | 8 | 2c | org-delegation | 2b-core + 2b-org | [04-org-delegation.md](./04-org-delegation.md) |
-| 9 | 2c | ticket Authorize | Step 8 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-10) |
+| 9 | 2c | ticket Authorize | Step 8 | [04-org-delegation.md §4](./04-org-delegation.md#4-authorize-升级step-9) |
 | 10 | 2c | 集成验收 | Step 8–9 | [04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot) |
 
 ### 2.4 迁移编号规划（自 000010 起）
@@ -269,7 +269,7 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 
 | 文档 | 子阶段 | 状态 |
 |------|--------|------|
-| [00-implementation-plan.md](./00-implementation-plan.md) | 全程 | **执行总计划**：编码前拍板（P2-D1~D5）、里程碑门禁（M2a-0~M2c-3）、任务分解、批次/分支/流程、节奏估算、风险登记 |
+| [00-implementation-plan.md](./00-implementation-plan.md) | 全程 | **执行总计划**：编码前拍板（P2-D1~D7）、里程碑门禁（M2a-0~M2c-3）、任务分解、批次/分支/流程、节奏估算、风险登记、2a 收口遗留清单（§9 backlog） |
 | [02-authz-resource.md](./02-authz-resource.md) | 2a | **已编写** |
 | [09-ticket.md](./09-ticket.md) | 2a + 2b + 2c 引用 | **已编写** |
 | [03-org-enhance.md](./03-org-enhance.md) | 2b | 已编写（HR 同步见 proposal） |

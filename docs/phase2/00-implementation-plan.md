@@ -35,7 +35,7 @@
 | 90001 `ErrTicketNotFound` / 90002 `ErrInvalidStateTransition`（状态机）/ 90003 `ErrTicketTypeNotFound` / 90004 `ErrTicketAlreadyClosed` | Step 2 | [09-ticket §7](./09-ticket.md) |
 | 91001–91004 | Step 6 | [10-storage §6](./10-storage.md) |
 | 20012（`ErrDeviceNotFound`）+ 20013（密码策略） | Step 7 | [01-auth-enhance](./01-auth-enhance.md) |
-| 50008–50010 | Step 9 | [04-org-delegation §5](./04-org-delegation.md) |
+| 50008–50010 | Step 8 | [04-org-delegation §5](./04-org-delegation.md) |
 
 均同步写入 `errcode.go` + [api/errcode.md](../api/errcode.md)，勿改号。
 
@@ -100,10 +100,10 @@
 | **M2b-ext** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000013；预签名 + confirm |
 | **M2b-ext** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 Step 6 并行 |
 | **M2b-ext** HR 同步 | 7b | HR 对账（fake client） | `make test-integration` | HR Job；**延后，不阻塞 2c** |
-| **M2b 验收** | 8 | 2b-core + 2b-org 全量 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 工单可见性 + 虚拟组全景 |
-| **M2c-1** 委托 API | 9 | D1–D6 | `make test-integration` | 迁移 000014；组内防提权（50008–50010） |
-| **M2c-2** Authorize 升级 | 10 | D7–D9 | 同上（扩展） | org admin/owner + ancestor owner |
-| **M2c-3** 2c 全量 | 11 | D1–D12 + 2a/2b-core/2b-org 回归（D10 HR 隔离待 2b-ext 落地后补） | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
+| **M2b 验收**（非编号 Step，收口动作） | 4–7 | 2b-core + 2b-org 全量 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 工单可见性 + 虚拟组全景 |
+| **M2c-1** 委托 API | 8 | D1–D6 | `make test-integration` | 迁移 000014；组内防提权（50008–50010） |
+| **M2c-2** Authorize 升级 | 9 | D7–D9 | 同上（扩展） | org admin/owner + ancestor owner |
+| **M2c-3** 2c 全量 | 10 | D1–D12 + 2a/2b-core/2b-org 回归（D10 HR 隔离待 2b-ext 落地后补） | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
 
 ---
 
@@ -180,22 +180,22 @@
 - [ ] `HRDirectoryClient` 接口 + `HRSyncService`（fake client 契约测试，P2-D3）+ `hr_sync_runs` 对账表 + 分布式锁 Cron（[03-org-enhance](./03-org-enhance.md)）
 - [ ] Phase 2 组织数据可种子/手工维护，HR 同步不阻塞主线
 
-### Step 8（M2b-core 集成验收）— 2b-core + 2b-org 验收
+### 2b 收口验收（M2b，非编号 Step）— 2b-core + 2b-org 验收
 
 - [ ] `acceptance-phase2b.sh`（头段跑 2a 回归）；2b-core 可见性验收 + 2b-org 虚拟组验收全过
 
-### Step 9（M2c-1）— org-delegation
+### Step 8（M2c-1）— org-delegation
 
 - [ ] 迁移 **000014**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)）
 - [ ] `OrgDelegationService`：EffectiveOrgPriority / IsOrgAdminOrOwner / IsAncestorOwner
 - [ ] SetOwners / SetMemberRole / AddMember / RemoveMember / 虚拟组删除扩展（防提权矩阵 [04 §3](./04-org-delegation.md)）
 - [ ] 50008–50010 错误码；D1–D6 集成测试
 
-### Step 10（M2c-2）— ticket Authorize 升级
+### Step 9（M2c-2）— ticket Authorize 升级
 
 - [ ] `canOperate` 扩展（org admin/owner + ancestor owner，[04 §4](./04-org-delegation.md)）；D7–D9 集成测试
 
-### Step 11（M2c-3）— 2c 集成验收
+### Step 10（M2c-3）— 2c 集成验收
 
 - [ ] `acceptance-phase2c.sh`：D1–D12 全量 + 2a/2b-core/2b-org 回归
 
@@ -324,17 +324,37 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 6 | M2b-ext | [10](./10-storage.md) | S1–S6 | 000013 |
 | 7 | M2b-ext | [01](./01-auth-enhance.md) | A1–A6 | 000012（视需要） |
 | 7b | M2b-ext | [03-org-enhance HR 同步](./03-org-enhance.md) | HR 对账 | — |
-| 8 | M2b 验收 | README §1.2 | 2b-core + 2b-org 全量 + 回归 | — |
-| 9 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
-| 10 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
-| 11 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
+| — | M2b 验收 | README §1.2 | 2b-core + 2b-org 全量 + 回归 | — |
+| 8 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
+| 9 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
+| 10 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
 
 ---
 
-## 9. 变更记录
+## 9. 2a 收口遗留清单（backlog）
+
+> 2026-08-27 Step 0–3 全量审查（P0×1 / P1×6 / P2 批量）后登记：P0 与 P1 已全部修复（迁移合并、authorize 404/403/500 三路语义、swagger 重生成、gofmt 门禁、模板预填、软删例外回标）；以下为**有意延后**的 P2 级事项，按消费时点归位，防止只存在于对话记忆。修复时同 PR 回标本表。
+
+| # | 事项 | 说明 | 消费时点 |
+|---|------|------|---------|
+| BK-1 | ListComments 不过滤 `is_internal` | 2a 读者集合（creator/assignee/admin）⊆ 备注可见集合，无泄露；**2b 策略 B 扩大读者后必须**对非 creator/assignee/admin 过滤内部备注，否则同部门旁观者可读 | **Step 4 前置检查项** |
+| BK-2 | Assign 状态转换绕过状态机 | newStatus 手工推算 open↔assigned（恰在种子 transitions 内合法）；类型配置改 transitions 即静默失控。改走 `FromTicketType + AssertTransition` | Step 4 顺手 |
+| BK-3 | Update patch 不写 ticket_events；closed 检查读后写（TOCTOU） | 审计断档：created/status_changed/assigned 留痕而 patch 无事件；并发 close 后仍可能 patch 成功（改 `UPDATE ... WHERE status <> 'closed'`） | Step 4 |
+| BK-4 | `ticket_events.action` 与 status 字面量未常量化 | "created"/"status_changed"/"assigned"/"open"/"closed" 散落 service.go；包内常量化防拼写漂移 | 任意 Step 顺手 |
+| BK-5 | CreateRelation 反向判重缺失 | DB 唯一索引只挡同向；A→B 与 B→A 可共存（逻辑重复）。应用层加 `(s=$1 AND t=$2) OR (s=$2 AND t=$1)` 存在性检查 | 按需（2b 后） |
+| BK-6 | P2-D1 级联后代分支无 Go 测试 | 验收脚本仅测叶子节点 move（THEN 分支）；后代工单 subpath 重映射（ELSE 分支，最易错）全仓零覆盖。Go 集成测试补「子树带孙代组织 + 工单重映射」 | Step 5 前 |
+| BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
+| BK-8 | scope_resolver.go 文件名与内容不符 | 接口/stub 已删（M-5），仅剩 HasRole；2b 引入真 ScopeResolver 时改名 role.go 或恢复接口落位 | Step 4/5 |
+| BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
+| BK-10 | 2a 无状态推进端点 | DEFAULT 状态机含 in_progress/pending_verify 但 API 无推进路径；assigned 工单须先取消分派回 open 才能关闭（T6 已固化该行为）。是否补「开始处理/待验证」端点属产品决策 | Step 4 时拍板 |
+
+---
+
+## 10. 变更记录
 
 | 日期 | 说明 |
 |------|------|
 | 2026-08-19 | 初版：P2-D1~D5 编码前拍板 |
 | 2026-08-26 | P2-D6：工单可见性设计边界（V1~V8 + V0 宽松优先总则 + V9 模块耦合边界：2a 最简 assigned / 2b 策略B / 跨部门宽松三机制 / per-ticket 隔离·跨多组织·类型差异为 future / 跟人走+组织快照 / 组织重构不联动 / 工单只借 org_path 不订阅组织事件）+ 组织建模决策点（独立多根用 assigned_to 兜底，不强建虚拟总根）+ RK-12 |
+| 2026-08-27 | 2a Step 0–3 收口：全量审查修复（P0 迁移合并 + P1×6：authorize 语义/swagger/gofmt 门禁/模板预填/软删例外/文档回标）；验收脚本首次端到端跑通（2a 脚本 ,string 字段补引号 + operator 绑菜单前置 + move 字段名修正 + None 安全解析；phase1 脚本 D2 断言前移 + B1-2 真同级 peer + #12 对齐 B4-3）；2c Step 编号统一为 8–10（对齐 P2-D7 与 README/04）；§9 登记遗留 BK-1~BK-10；**验收 88+65=153 用例全绿（M2a-3 达成）** |
 | 2026-08-26 | P2-D7：Phase 2b 拆 core/org/ext 三轨（关键路径 2a→2b-core→2c；2b-org 并行；2b-ext 延后）；HR 同步降 2b-ext 延后、project_isolated 标 future（2b-core 仅交付 entity_transparent_read）、ticket:note 2a 口径对齐 assigned；Step 重排 2c:8–10；批次/分支策略同步更新 |

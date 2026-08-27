@@ -379,7 +379,7 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 	// 转换逻辑与 step 5 的 organizations 完全一致：
 	//   - 恰为移动节点本身（nlevel 相等）→ 直接替换为 newRootPath
 	//   - 为其后代 → newRootPath || subpath(原 oldPath 之后的部分)
-	// tickets 无 deleted_at（SoftDelete 走物理 DELETE + CASCADE），不加该谓词；
+	// tickets 无 deleted_at（Delete 走物理 DELETE + CASCADE），不加该谓词；
 	// 0 行命中合法（子树下可能无工单），不视为并发冲突。
 	if _, err := tx.Exec(ctx, `
 		UPDATE tickets

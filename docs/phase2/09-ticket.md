@@ -87,7 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_templates_org_path ON ticket_templates USI
 
 ### 工单关联（2a 前移，迁移 000016）
 
-> 2026-08-25 从 Phase 3 前移到 2a（纯 DB）。建立关联时对 `target_ticket_id` 走 L2/L3 鉴权，防止越权关联他人工单。
+> 2026-08-25 从 Phase 3 前移到 2a（纯 DB）。建立关联时对 `target_ticket_id` 走 L2/L3 鉴权，防止越权关联他人工单。**实现取严（2a 回标）**：对 `source` 与 `target` 双端均要求 `update` 级鉴权（service.go CreateRelation）——关联是双向可见关系，单端可写即可挂接对方工单；注意 2b 把 update 收窄为仅创建人后（RK-11），建关联权限随之收紧，属预期联动。
 
 ```sql
 -- 迁移 000016：工单关联（2a 前移，纯 DB）
@@ -349,7 +349,7 @@ return Filter{
 | assign | `ticket_scope∈{group,all}` 且工单在其 scope 子树内（主管）；2a 仍仅 admin |
 | delete | 仅 admin bypass |
 
-**canOperate — 写（2c 增量）**：在 2b 基础上，对 **`ticket.org_id` 所属 org** 增加 `org_member_role ∈ {admin,owner}` 或 `owner_user_ids` / ancestor owner（见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)）。**仍不能**凭 vg_a admin 身份改 vg_b 工单。
+**canOperate — 写（2c 增量）**：在 2b 基础上，对 **`ticket.org_id` 所属 org** 增加 `org_member_role ∈ {admin,owner}` 或 `owner_user_ids` / ancestor owner（见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9)）。**仍不能**凭 vg_a admin 身份改 vg_b 工单。
 
 **兄弟虚拟组示例**（`tech` 下 `vg_a` / `vg_b`，策略 B）：
 
@@ -364,7 +364,7 @@ return Filter{
 
 ### 5.3 Phase 2c
 
-CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-10)。**GetFilter 不变**（L2 已在 2b 策略 B 定稿；D11 验收读/写分离）。
+CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9)。**GetFilter 不变**（L2 已在 2b 策略 B 定稿；D11 验收读/写分离）。
 
 ### 5.4 全生命周期 × 三层鉴权对照表
 
