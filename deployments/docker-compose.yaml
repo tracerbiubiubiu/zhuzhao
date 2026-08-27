@@ -41,12 +41,15 @@ services:
     image: redis:6.2-alpine
     container_name: zhuzhao-redis
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-zhuzhao_dev}   # 生产务必经 .env 覆盖为强密码
     volumes:
       - redis_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf:ro
-    command: redis-server /etc/redis/redis.conf
+    # F-18：requirepass 经命令行注入（redis.conf 不支持环境变量插值）
+    command: ["sh", "-c", "redis-server /etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -70,11 +73,14 @@ services:
       APP_DATABASE_DBNAME: zhuzhao
       APP_REDIS_HOST: redis
       APP_REDIS_PORT: "6379"
+      APP_REDIS_PASSWORD: ${REDIS_PASSWORD:-zhuzhao_dev}
       APP_SERVER_PORT: "33333"
       APP_SERVER_MODE: release
       TZ: Asia/Shanghai
       # JWT 密钥必须通过环境变量注入，勿使用默认值
-      APP_JWT_SECRET: ${JWT_SECRET}
+      # F-19：jwt.secret 走 BindEnv 显式短名 JWT_SECRET（无 APP_ 前缀）；
+      # access/refresh TTL 走 AutomaticEnv 的 APP_ 前缀映射，保持 APP_JWT_*
+      JWT_SECRET: ${JWT_SECRET}
       APP_JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30m}
       APP_JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
     ports:

@@ -27,12 +27,15 @@ services:
     container_name: zhuzhao-dev-redis
     ports:
       - "6379:6379"
+    environment:
+      REDIS_PASSWORD: zhuzhao_dev   # 与 configs/config.yaml redis.password 对齐
     volumes:
       - dev_redis_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf:ro
-    command: redis-server /etc/redis/redis.conf
+    # F-18：requirepass 经命令行注入（redis.conf 不支持环境变量插值）
+    command: ["sh", "-c", "redis-server /etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
