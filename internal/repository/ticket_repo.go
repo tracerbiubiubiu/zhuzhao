@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -129,7 +130,12 @@ func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
 
 // UpdateStatus 更新工单状态（状态机转换）
 func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, status string) error {
-	tag, err := r.db.Exec(ctx, `UPDATE tickets SET status = $2, updated_at = NOW() WHERE id = $1`, id, status)
+	return r.UpdateStatusTx(ctx, r.db, id, status)
+}
+
+// UpdateStatusTx 事务内更新工单状态
+func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64, status string) error {
+	tag, err := exec.Exec(ctx, `UPDATE tickets SET status = $2, updated_at = NOW() WHERE id = $1`, id, status)
 	if err != nil {
 		return fmt.Errorf("update ticket status: %w", err)
 	}
@@ -141,7 +147,12 @@ func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, status string) 
 
 // UpdateAssignedTo 更新处理人（分派/取消分派）
 func (r *TicketRepo) UpdateAssignedTo(ctx context.Context, id int64, assignedTo *int64) error {
-	tag, err := r.db.Exec(ctx, `UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1`, id, assignedTo)
+	return r.UpdateAssignedToTx(ctx, r.db, id, assignedTo)
+}
+
+// UpdateAssignedToTx 事务内更新处理人
+func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id int64, assignedTo *int64) error {
+	tag, err := exec.Exec(ctx, `UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1`, id, assignedTo)
 	if err != nil {
 		return fmt.Errorf("update assigned_to: %w", err)
 	}
@@ -151,8 +162,8 @@ func (r *TicketRepo) UpdateAssignedTo(ctx context.Context, id int64, assignedTo 
 	return nil
 }
 
-// SoftDelete 软删除工单（Phase 2a：admin only，物理删除由 DB CASCADE 处理关联表）
-func (r *TicketRepo) SoftDelete(ctx context.Context, id int64) error {
+// Delete 物理删除工单（Phase 2a：admin only，关联表由 DB CASCADE 处理）
+func (r *TicketRepo) Delete(ctx context.Context, id int64) error {
 	tag, err := r.db.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("delete ticket: %w", err)
@@ -167,8 +178,13 @@ func (r *TicketRepo) SoftDelete(ctx context.Context, id int64) error {
 
 // CreateComment 创建工单回复/备注
 func (r *TicketRepo) CreateComment(ctx context.Context, c *model.TicketComment) error {
+	return r.CreateCommentTx(ctx, r.db, c)
+}
+
+// CreateCommentTx 事务内创建工单回复/备注
+func (r *TicketRepo) CreateCommentTx(ctx context.Context, exec rowExec, c *model.TicketComment) error {
 	const q = `INSERT INTO ticket_comments (ticket_id, user_id, content, is_internal) VALUES ($1, $2, $3, $4) RETURNING id, created_at`
-	err := r.db.QueryRow(ctx, q, c.TicketID, c.UserID, c.Content, c.IsInternal).Scan(&c.ID, &c.CreatedAt)
+	err := exec.QueryRow(ctx, q, c.TicketID, c.UserID, c.Content, c.IsInternal).Scan(&c.ID, &c.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create comment: %w", err)
 	}
@@ -421,14 +437,5 @@ func joinConds(conds []string) string {
 }
 
 func containsOr(s string) bool {
-	return len(s) > 0 && (s[0] == '(' || containsSubstring(s, " OR ") || containsSubstring(s, " or "))
-}
-
-func containsSubstring(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
+	return strings.HasPrefix(s, "(") || strings.Contains(s, " OR ") || strings.Contains(s, " or ")
 }

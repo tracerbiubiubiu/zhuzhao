@@ -4,22 +4,22 @@ import "encoding/json"
 
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
-	TypeCode    string          `json:"type_code" binding:"required"`
-	Title       string          `json:"title" binding:"required"`
-	Description string          `json:"description"`
-	Priority    int             `json:"priority"`
-	AssignedTo  *int64          `json:"assigned_to,string,omitempty"`
-	OrgID       int64           `json:"org_id,string" binding:"required"`
-	TemplateCode string         `json:"template_code,omitempty"` // 可选：命中模板则预填
+	TypeCode     string          `json:"type_code" binding:"required"`
+	Title        string          `json:"title" binding:"required"`
+	Description  string          `json:"description"`
+	Priority     int             `json:"priority"`
+	AssignedTo   *int64          `json:"assigned_to,string,omitempty"`
+	OrgID        int64           `json:"org_id,string" binding:"required"`
+	TemplateCode string          `json:"template_code,omitempty"` // 可选：命中模板则预填
 	CustomData   json.RawMessage `json:"custom_data,omitempty"`
 }
 
 // UpdateTicketRequest 更新工单（POST /tickets/update，id 放 body）
 type UpdateTicketRequest struct {
-	ID          int64  `json:"id,string" binding:"required"`
+	ID          int64   `json:"id,string" binding:"required"`
 	Title       *string `json:"title,omitempty"`
 	Description *string `json:"description,omitempty"`
-	Priority    *int   `json:"priority,omitempty"`
+	Priority    *int    `json:"priority,omitempty"`
 }
 
 // AssignTicketRequest 分派工单（POST /tickets/assign）

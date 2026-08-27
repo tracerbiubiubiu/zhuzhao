@@ -4,8 +4,8 @@
 
 CREATE TABLE IF NOT EXISTS ticket_relations (
     id                BIGSERIAL PRIMARY KEY,
-    source_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
-    target_ticket_id  BIGINT NOT NULL REFERENCES tickets(id),
+    source_ticket_id  BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    target_ticket_id  BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
     relation_type     VARCHAR(30) NOT NULL DEFAULT 'related',  -- related/blocks/duplicates/split
     created_by        BIGINT NOT NULL,
     created_at        TIMESTAMPTZ DEFAULT NOW(),

@@ -51,7 +51,7 @@ type TicketTypeField struct {
 
 // TicketComment 工单回复/备注
 type TicketComment struct {
-	ID          int64     `json:"id,string" db:"id"`
+	ID         int64     `json:"id,string" db:"id"`
 	TicketID   int64     `json:"ticket_id,string" db:"ticket_id"`
 	UserID     int64     `json:"user_id,string" db:"user_id"`
 	Content    string    `json:"content" db:"content"`
@@ -73,9 +73,9 @@ type TicketEvent struct {
 // TicketTemplate 工单模板（2a 前移）
 type TicketTemplate struct {
 	ID                int64           `json:"id,string" db:"id"`
-	Code              string           `json:"code" db:"code"`
-	Name              string           `json:"name" db:"name"`
-	TypeCode          string           `json:"type_code" db:"type_code"`
+	Code              string          `json:"code" db:"code"`
+	Name              string          `json:"name" db:"name"`
+	TypeCode          string          `json:"type_code" db:"type_code"`
 	DefaultPriority   int             `json:"default_priority" db:"default_priority"`
 	DefaultFields     json.RawMessage `json:"default_fields,omitempty" db:"default_fields"`
 	DefaultSLAMinutes *int            `json:"default_sla_minutes,omitempty" db:"default_sla_minutes"`
@@ -89,11 +89,11 @@ type TicketTemplate struct {
 
 // TicketRelation 工单关联（2a 前移）
 type TicketRelation struct {
-	ID             int64     `json:"id,string" db:"id"`
-	SourceTicketID int64     `json:"source_ticket_id,string" db:"source_ticket_id"`
-	TargetTicketID int64     `json:"target_ticket_id,string" db:"target_ticket_id"`
-	RelationType   string    `json:"relation_type" db:"relation_type"`
-	CreatedBy      int64     `json:"created_by,string" db:"created_by"`
-	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	ID             int64      `json:"id,string" db:"id"`
+	SourceTicketID int64      `json:"source_ticket_id,string" db:"source_ticket_id"`
+	TargetTicketID int64      `json:"target_ticket_id,string" db:"target_ticket_id"`
+	RelationType   string     `json:"relation_type" db:"relation_type"`
+	CreatedBy      int64      `json:"created_by,string" db:"created_by"`
+	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }

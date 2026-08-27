@@ -21,7 +21,6 @@ type Service struct {
 	orgRepo     *repository.OrgRepo
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
-	scope       ScopeResolver
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -40,10 +39,9 @@ func NewTicketService(
 		orgRepo:     orgRepo,
 		registry:    registry,
 		roleFetcher: roleFetcher,
-		scope:       scope,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）
-	registry.Register(NewResource(s.ticketRepo, s.scope))
+	registry.Register(NewResource(s.ticketRepo, scope))
 	return s
 }
 
@@ -123,8 +121,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID: ticket.ID,
-		UserID:  actorUserID,
-		Action:  "created",
+		UserID:   actorUserID,
+		Action:   "created",
 	}); err != nil {
 		return nil, err
 	}
@@ -146,28 +144,31 @@ func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.
 	return s.ticketRepo.GetByID(ctx, id)
 }
 
-// List 工单列表（L2 行级过滤）
+// List 工单列表（L2 行级过滤；admin bypass L2）
 func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID int64) (*model.TicketListResponse, error) {
-	filter, err := s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
+	var filter resource.Filter
+	roles, err := s.getRoles(ctx, actorUserID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch roles: %w", err)
+	}
+	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
+		// admin bypass L2：空 Filter = 无过滤条件
+		filter = resource.Filter{}
+	} else {
+		filter, err = s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
+		if err != nil {
+			return nil, err
+		}
 	}
 	tickets, total, err := s.ticketRepo.List(ctx, filter, q)
 	if err != nil {
 		return nil, err
 	}
-	page, pageSize := q.Page, q.PageSize
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 20
-	}
 	return &model.TicketListResponse{
 		List:     tickets,
 		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
+		Page:     q.Page,
+		PageSize: q.PageSize,
 	}, nil
 }
 
@@ -185,6 +186,9 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
+	}
+	if ticket.Status == "closed" {
+		return nil, errcode.ErrTicketAlreadyClosed
 	}
 	// patch 语义
 	if req.Title != nil {
@@ -241,7 +245,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
-	if err := s.ticketRepo.UpdateStatus(ctx, req.ID, "closed"); err != nil {
+	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, "closed"); err != nil {
 		return err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -255,7 +259,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	// 可选关闭说明 → 写评论
 	if req.Comment != "" {
-		if err := s.ticketRepo.CreateComment(ctx, &model.TicketComment{
+		if err := s.ticketRepo.CreateCommentTx(ctx, tx, &model.TicketComment{
 			TicketID:   req.ID,
 			UserID:     actorUserID,
 			Content:    req.Comment,
@@ -291,10 +295,13 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 		toAssignee = strconv.FormatInt(*req.AssignedTo, 10)
 	}
 
-	// 分派 → assigned 状态（若当前为 open）
+	// 分派 → assigned 状态（若当前为 open）；取消分派 → open（若当前为 assigned）
 	newStatus := ticket.Status
 	if ticket.Status == "open" && req.AssignedTo != nil {
 		newStatus = "assigned"
+	}
+	if ticket.Status == "assigned" && req.AssignedTo == nil {
+		newStatus = "open"
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -303,11 +310,11 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}
 	defer tx.Rollback(ctx)
 
-	if err := s.ticketRepo.UpdateAssignedTo(ctx, req.ID, req.AssignedTo); err != nil {
+	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 		return err
 	}
 	if newStatus != ticket.Status {
-		if err := s.ticketRepo.UpdateStatus(ctx, req.ID, newStatus); err != nil {
+		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, newStatus); err != nil {
 			return err
 		}
 	}
@@ -333,7 +340,7 @@ func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error
 	if !ok {
 		return errcode.ErrNoPermission
 	}
-	return s.ticketRepo.SoftDelete(ctx, id)
+	return s.ticketRepo.Delete(ctx, id)
 }
 
 // --- 评论 / 备注 ---
@@ -368,7 +375,7 @@ func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, 
 		return nil, errcode.ErrTicketNotFound
 	}
 	if !ok {
-		return nil, errcode.ErrNoPermission
+		return nil, errcode.ErrTicketNotFound
 	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
@@ -399,11 +406,15 @@ func (s *Service) ListComments(ctx context.Context, ticketID, actorUserID int64)
 
 // CreateRelation 建立工单关联（对 target 走 L2/L3 鉴权）
 func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationRequest, actorUserID int64) (*model.TicketRelation, error) {
-	// 对 source 和 target 都做 read 鉴权（防越权关联他人工单）
+	// 自关联校验（DB 有 CHECK 约束，提前拦截返回 400 而非 409）
+	if req.SourceTicketID == req.TargetTicketID {
+		return nil, errcode.ErrInvalidParams
+	}
+	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
 	sourceStr := strconv.FormatInt(req.SourceTicketID, 10)
 	targetStr := strconv.FormatInt(req.TargetTicketID, 10)
 	for _, idStr := range []string{sourceStr, targetStr} {
-		ok, err := s.authorize(ctx, actorUserID, "read", idStr)
+		ok, err := s.authorize(ctx, actorUserID, "update", idStr)
 		if err != nil {
 			return nil, errcode.ErrTicketNotFound
 		}

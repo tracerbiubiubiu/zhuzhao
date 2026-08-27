@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
 	ticketsvc "github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
@@ -375,6 +374,3 @@ func (h *TicketHandler) GetTicketTemplate(c *gin.Context) {
 	}
 	response.OK(c, tmpl)
 }
-
-// 引用 errcode 防止 unused import（Phase 2a 中错误码由 writeServiceError 间接使用）
-var _ = errcode.ErrTicketNotFound

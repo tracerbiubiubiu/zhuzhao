@@ -155,17 +155,17 @@ UPDATE menus SET parent_id = (SELECT m2.id FROM menus m2 WHERE m2.code = 'ticket
 WHERE code = 'ticket_list' AND parent_id IS NULL;
 
 -- ② level-3 9 个按钮菜单（menu_type=3）；permission 码对应 §3 API 表权限列
+-- 注：实际迁移文件通过 INSERT … VALUES + JOIN menus parent 实现，code 为 ticket_*_btn（非 p.code||'_*_btn'）
 INSERT INTO menus (code, name, parent_id, menu_type, path, component, icon, permission, sort_order, visible, is_system)
-SELECT p.code||'_list_btn',   '列表', p.id, 3, '', '', '', 'ticket:list',   10, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_create_btn', '创建', p.id, 3, '', '', '', 'ticket:create', 11, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_read_btn',   '详情', p.id, 3, '', '', '', 'ticket:read',   12, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_update_btn', '编辑', p.id, 3, '', '', '', 'ticket:update', 13, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_close_btn',  '关闭', p.id, 3, '', '', '', 'ticket:close',  14, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_assign_btn', '分派', p.id, 3, '', '', '', 'ticket:assign', 15, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_delete_btn', '删除', p.id, 3, '', '', '', 'ticket:delete', 16, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_comment_btn','评论', p.id, 3, '', '', '', 'ticket:comment',17, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
-SELECT p.code||'_note_btn',   '备注', p.id, 3, '', '', '', 'ticket:note',   18, 1, true FROM menus p WHERE p.code='ticket_list';
--- 注：实际迁移文件通过 INSERT … VALUES + JOIN menus parent 实现，等价于上面 UNION ALL。
+SELECT 'ticket_list_btn',   '列表', p.id, 3, '', '', '', 'ticket:list',   10, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_create_btn', '创建', p.id, 3, '', '', '', 'ticket:create', 11, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_read_btn',   '详情', p.id, 3, '', '', '', 'ticket:read',   12, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_update_btn', '编辑', p.id, 3, '', '', '', 'ticket:update', 13, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_close_btn',  '关闭', p.id, 3, '', '', '', 'ticket:close',  14, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_assign_btn', '分派', p.id, 3, '', '', '', 'ticket:assign', 15, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_delete_btn', '删除', p.id, 3, '', '', '', 'ticket:delete', 16, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_comment_btn','评论', p.id, 3, '', '', '', 'ticket:comment',17, 1, true FROM menus p WHERE p.code='ticket_list' UNION ALL
+SELECT 'ticket_note_btn',   '备注', p.id, 3, '', '', '', 'ticket:note',   18, 1, true FROM menus p WHERE p.code='ticket_list';
 
 -- ③ menu_apis 页面级绑定（仅绑定到页面菜单，按钮菜单不参与 L1 API 鉴权；按钮 permission 码
 --    只用于前端按钮显隐 + 未来 AssignMenus 细粒度角色）。覆盖 §3 16 条路由。
@@ -197,9 +197,9 @@ SELECT r.id, m.id FROM roles r, menus m
 WHERE r.code IN ('superadmin', 'admin')
   AND m.code IN (
     'ticket_manage','ticket_list',
-    'ticket_list_list_btn','ticket_list_create_btn','ticket_list_read_btn',
-    'ticket_list_update_btn','ticket_list_close_btn','ticket_list_assign_btn',
-    'ticket_list_delete_btn','ticket_list_comment_btn','ticket_list_note_btn'
+    'ticket_list_btn','ticket_create_btn','ticket_read_btn',
+    'ticket_update_btn','ticket_close_btn','ticket_assign_btn',
+    'ticket_delete_btn','ticket_comment_btn','ticket_note_btn'
   )
 ON CONFLICT DO NOTHING;
 ```

@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -59,7 +60,11 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 
 	ticket, err := r.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		// 工单不存在 → false（Service 层转 404）
+		// 工单不存在 → (false, nil)，Service 层转 404
+		if errors.Is(err, errcode.ErrTicketNotFound) {
+			return false, nil
+		}
+		// 其他 DB 错误 → 原样上抛，Service 层转 500
 		return false, err
 	}
 
@@ -92,10 +97,11 @@ func (r *Resource) canRead(userID int64, ticket *model.Ticket) bool {
 }
 
 // canOperate 2a 动作级权限：
-//   read/comment = canRead；update = 创建人或处理人；close = 处理人；
-//   assign = 仅 admin bypass（2a 暂不开放主管分派）；
-//   delete = 仅 admin bypass。
-//   属主命中≠能做所有动作（assign/delete 属主也不放行）。
+//
+//	read/comment = canRead；update = 创建人或处理人；close = 处理人；
+//	assign = 仅 admin bypass（2a 暂不开放主管分派）；
+//	delete = 仅 admin bypass。
+//	属主命中≠能做所有动作（assign/delete 属主也不放行）。
 func (r *Resource) canOperate(userID int64, action string, ticket *model.Ticket) bool {
 	isCreator := ticket.CreatedBy == userID
 	isAssignee := ticket.AssignedTo != nil && *ticket.AssignedTo == userID

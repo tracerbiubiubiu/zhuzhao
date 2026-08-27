@@ -2,8 +2,6 @@ package ticket
 
 import (
 	"context"
-
-	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 )
 
 // TicketScope 工单可见性范围
@@ -58,6 +56,3 @@ func HasRole(roles []string, target string) bool {
 	}
 	return false
 }
-
-// model.Organization 占位引用（2b ScopeResolver 实现需要）
-var _ = model.Organization{}

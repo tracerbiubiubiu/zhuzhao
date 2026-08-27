@@ -187,15 +187,10 @@ func TestTicket_R6_VisibleNotOwner_403(t *testing.T) {
 	ctx := context.Background()
 
 	b1 := newTicketHelper(t, svc, bid, oid, "B-R6-b1")
-	// 用 aid 的 roles 临时加 superadmin 一次完成分派（再还原）
-	oldRoles := roles[aid]
-	// 直接用 bid as superadmin 更干净——把 bid 升级为 admin
+	// 把 bid 升级为 admin 完成分派，再还原为 operator
 	roles[bid] = append(roles[bid], "admin")
 	err := svc.Assign(ctx, &model.AssignTicketRequest{ID: b1.ID, AssignedTo: &aid}, bid)
 	require.NoError(t, err, "admin 分派应该成功")
-	roles[bid] = oldRoles // 还原（如果 admin 是追加的旧值其实已经是 ["operator"]，这里把 bid 回退成 operator）
-	// 直接通过 roles[bid] = oldRoles 但 oldRoles 是 ["operator"], 而上面 append 改了 roles[bid]
-	// 所以还原为 operator-only：
 	roles[bid] = []string{"operator"}
 
 	// -- A 分派（自己非 admin，不能分派，哪怕工单可见）--

@@ -43,3 +43,5 @@ doc/
 # ai
 .opencode
 .codebuddy
+
+.VSCodeCounter

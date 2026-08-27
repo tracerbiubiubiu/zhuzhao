@@ -72,6 +72,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// 2a Step 2：工单表（D1）+ 工单菜单种子（D2）
 			"000010_ticket.up.sql",
 			"000010_ticket_menu.up.sql",
+			// 2a Step 3：工单模板 + 工单关联（2a 前移）
+			"000015_ticket_templates.up.sql",
+			"000016_ticket_relations.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

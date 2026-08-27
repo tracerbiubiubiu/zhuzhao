@@ -128,7 +128,7 @@ type TicketResource struct {
 
 func (r *TicketResource) Code() string { return "ticket" }
 func (r *TicketResource) Actions() []string {
-    return []string{"create", "read", "update", "delete", "assign", "close", "comment", "note"}
+    return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note"}
     // 关联操作（建立工单关联）复用 update 权限码，不单独注册 relation（见 09-ticket §API）
 }
 
@@ -136,7 +136,7 @@ func (r *TicketResource) Authorize(ctx context.Context, req resource.AuthorizeRe
     if util.HasRole(req.Roles, "admin") || util.HasRole(req.Roles, "superadmin") {
         return true, nil
     }
-    if req.Action == "create" {
+    if req.Action == "create" || req.Action == "list" {
         return true, nil // 路由级已校验 ticket:create
     }
     ticketID, _ := strconv.ParseInt(req.ResourceID, 10, 64)
@@ -168,8 +168,9 @@ func (r *TicketResource) GetFilter(ctx context.Context, userID int64, action str
 | action | 条件 |
 |--------|------|
 | read / comment | canRead |
+| note | 创建人或处理人 |
 | update | 创建人或处理人 |
-| close | 处理人 |
+| close | 处理人或创建人 |
 | assign | 2a 暂不开放主管分派，仅 admin bypass 或后续 2b `ticket_scope=group/all` 扩展 |
 | delete | 仅 admin bypass |
 

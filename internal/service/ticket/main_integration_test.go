@@ -60,13 +60,10 @@ func seedMinimal(ctx context.Context, pool *pgxpool.Pool) {
 	_ = rootID
 
 	// 3. ticket_types 基础行（Create() 依赖 type_code 存在，GetTicketType NOT NULL 检查）
-	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description, transitions, is_system, sort_order) VALUES
-	('incident', '事件工单', '故障/事件处理',
-	 '{"open":["assigned","closed"],"assigned":["in_progress","open"],"in_progress":["pending_verify","rejected","closed"],"pending_verify":["closed","reassigned"],"reassigned":["assigned","open"],"rejected":["open","in_progress"]}'::jsonb,
-	 true, 1),
-	('request',  '请求工单', '服务请求/咨询',
-	 '{"open":["assigned","closed"],"assigned":["in_progress","open"],"in_progress":["pending_verify","closed"],"pending_verify":["closed","reassigned"],"reassigned":["assigned"]}'::jsonb,
-	 true, 2)
+	// transitions 使用 migration 000010 DEFAULT 值，与 state_machine_test.go seedTransitions 保持一致
+	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description) VALUES
+	('incident', '事件工单', '故障/事件处理'),
+	('request',  '请求工单', '服务请求/咨询')
 	ON CONFLICT DO NOTHING`)
 	if err != nil {
 		panic(err)

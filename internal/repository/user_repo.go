@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -109,9 +110,10 @@ func (r *UserRepo) FindByID(ctx context.Context, id int64) (*model.User, error) 
 	return r.queryOne(ctx, q, id)
 }
 
-// rowExec 抽象 pgx.Tx 与 pgxpool.Pool 共同的 QueryRow 能力，供 Tx 版本复用
+// rowExec 抽象 pgx.Tx 与 pgxpool.Pool 共同的 QueryRow/Exec 能力，供 Tx 版本复用
 type rowExec interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
 // Create 创建用户（password 须为 bcrypt hash）
