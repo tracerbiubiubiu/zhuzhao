@@ -6,10 +6,23 @@ set -euo pipefail
 
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
-PG="${PG_CONTAINER:-zhuzhao-postgres}"
+
+# F-25：容器名自动探测（与 acceptance-phase1.sh 一致）——dev compose 为
+# zhuzhao-dev-*，完整部署为 zhuzhao-*；显式导出 PG_CONTAINER/REDIS_CONTAINER 时优先
+detect_container() {
+  local candidate
+  for candidate in "$@"; do
+    if docker ps --format '{{.Names}}' | grep -qx "$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+PG="${PG_CONTAINER:-$(detect_container zhuzhao-dev-postgres zhuzhao-postgres || echo zhuzhao-postgres)}"
 PG_USER="${PG_USER:-zhuzhao}"
 PG_DB="${PG_DB:-zhuzhao}"
-REDIS="${REDIS_CONTAINER:-zhuzhao-redis}"
+REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 pass=0

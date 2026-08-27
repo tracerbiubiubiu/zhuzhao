@@ -4,16 +4,30 @@ set -euo pipefail
 
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
-PG="${PG_CONTAINER:-zhuzhao-postgres}"
+
+# F-25：容器名自动探测——dev compose 为 zhuzhao-dev-*，完整部署为 zhuzhao-*；
+# 显式导出 PG_CONTAINER/REDIS_CONTAINER 时优先
+detect_container() {
+  local candidate
+  for candidate in "$@"; do
+    if docker ps --format '{{.Names}}' | grep -qx "$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+PG="${PG_CONTAINER:-$(detect_container zhuzhao-dev-postgres zhuzhao-postgres || echo zhuzhao-postgres)}"
 PG_USER="${PG_USER:-zhuzhao}"
 PG_DB="${PG_DB:-zhuzhao}"
+REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
 
 pass=0
 fail=0
 skip=0
 
 cleanup_redis() {
-  docker start "${REDIS_CONTAINER:-zhuzhao-redis}" >/dev/null 2>&1 || true
+  docker start "$REDIS" >/dev/null 2>&1 || true
 }
 trap cleanup_redis EXIT
 
@@ -344,7 +358,7 @@ check "D2 change-pwd audit masked" "1" "$(echo "$CPW" | python3 -c "import sys,j
 
 # --- #17 redis down (last: restores redis via trap) ---
 AT_FOR_17=$SAT
-REDIS_C="${REDIS_CONTAINER:-zhuzhao-redis}"
+REDIS_C="${REDIS_CONTAINER:-$REDIS}"
 docker stop "$REDIS_C" >/dev/null 2>&1 || true
 sleep 1
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $AT_FOR_17")

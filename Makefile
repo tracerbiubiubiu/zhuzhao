@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -67,3 +67,10 @@ test-cover:
 
 benchmark:
 	go test -bench=. -benchmem ./internal/...
+
+# 验收脚本（F-24/F-25：00 §5.5 本地回归纪律入口；容器名由脚本自动探测）
+acceptance:
+	bash scripts/acceptance-phase1.sh
+
+acceptance-2a:
+	bash scripts/acceptance-phase2a.sh
