@@ -48,11 +48,11 @@ func seedMinimal(ctx context.Context, pool *pgxpool.Pool) {
 		panic(err)
 	}
 
-	// 2. organizations 根行
+	// 2. organizations 根行（code 为部分唯一索引 WHERE deleted_at IS NULL，不指定列让 PG 自动推断）
 	var rootID int64
 	err = pool.QueryRow(ctx, `INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ('root', '根组织', NULL, 'root'::ltree, 1, 1, 1, true)
-		ON CONFLICT (code) DO UPDATE SET code=EXCLUDED.code
+		ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET code=EXCLUDED.code
 		RETURNING id`).Scan(&rootID)
 	if err != nil {
 		panic(err)
@@ -60,11 +60,14 @@ func seedMinimal(ctx context.Context, pool *pgxpool.Pool) {
 	_ = rootID
 
 	// 3. ticket_types 基础行（Create() 依赖 type_code 存在，GetTicketType NOT NULL 检查）
-	// transitions 使用 migration 000010 DEFAULT 值，与 state_machine_test.go seedTransitions 保持一致
-	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description) VALUES
-	('incident', '事件工单', '故障/事件处理'),
-	('request',  '请求工单', '服务请求/咨询')
-	ON CONFLICT DO NOTHING`)
+	// incident 用 DDL DEFAULT transitions（含 rejected→open，无 reassigned）
+	// request 显式写不同 transitions（无 rejected，有 reassigned→assigned）——体现流程差异化
+	// 两个类型的 transitions 不同是 TestTypeDiversity_DBTransitionsDiffer 的前提
+	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description, transitions) VALUES
+		('incident', '事件工单', '故障/事件处理', DEFAULT),
+		('request',  '请求工单', '服务请求/咨询',
+		 '{"open":["assigned","closed"],"assigned":["in_progress","open","reassigned"],"in_progress":["pending_verify","closed"],"pending_verify":["closed","reassigned"],"closed":["open"],"reassigned":["assigned"]}'::jsonb)
+		ON CONFLICT (code) DO UPDATE SET transitions = EXCLUDED.transitions`)
 	if err != nil {
 		panic(err)
 	}

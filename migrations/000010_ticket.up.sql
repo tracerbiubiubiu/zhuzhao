@@ -100,7 +100,7 @@ VALUES
     ('ticket_manage', '工单管理', NULL, 1, '/tickets',  '',      'ticket',  NULL,          2, true),
     -- level 2：工单列表页面（permission = ticket:list 对应 R8/L1 Casbin 资源码）
     ('ticket_list',   '工单列表', NULL, 2, '/tickets',  'ticket/list/index', 'ticket-list', 'ticket:list', 1, true)
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- 回填页面菜单 parent_id（catalog → page 关联；两步 INSERT 避免序列 ID 硬编码）
 UPDATE menus SET parent_id = (SELECT id FROM menus WHERE code = 'ticket_manage')
@@ -121,7 +121,7 @@ FROM (VALUES
     ('ticket_list', 'ticket_note_btn',    '内部备注', 'ticket:note',    9)
 ) AS v(parent_code, code, name, permission, sort_order)
 JOIN menus p ON p.code = v.parent_code
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ⑦-c menu_apis：仅绑定 ticket_list（level 2 页面），覆盖 §3 API 表全部 16 条路由
 INSERT INTO menu_apis (menu_id, api_path, api_method)

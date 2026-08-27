@@ -186,30 +186,38 @@ func TestTypeDiversity_DBTransitionsDiffer(t *testing.T) {
 	smR, err := FromTicketType(request)
 	require.NoError(t, err)
 
-	// —— A. rejected→in_progress：incident 合法 / request 非法（request 无 rejected 态）——
-	assert.NoError(t, smI.AssertTransition("rejected", "in_progress"),
-		"incident.rejected → in_progress 在 seed 中声明为合法")
-	requireErrCodeInline(t, smR.AssertTransition("rejected", "in_progress"), errcode.ErrTicketInvalidTransition.Code,
-		"request 没有 rejected 态，rejected→in_progress 应非法")
+	// incident transitions (DDL DEFAULT):
+	//   open→[assigned,closed] assigned→[in_progress,open] in_progress→[pending_verify,rejected,closed]
+	//   pending_verify→[closed,in_progress] closed→[open] rejected→[open]
+	// request transitions (seedMinimal 显式):
+	//   open→[assigned,closed] assigned→[in_progress,open,reassigned] in_progress→[pending_verify,closed]
+	//   pending_verify→[closed,reassigned] closed→[open] reassigned→[assigned]
+	// 差异：incident 有 rejected 无 reassigned；request 有 reassigned 无 rejected。
 
-	// —— B. reassigned→open：incident 合法 / request 非法（request 的 reassigned 仅能回 assigned）——
-	assert.NoError(t, smI.AssertTransition("reassigned", "open"),
-		"incident.reassigned → open 合法")
-	requireErrCodeInline(t, smR.AssertTransition("reassigned", "open"), errcode.ErrTicketInvalidTransition.Code,
-		"request.reassigned→open 非法，只能回 assigned")
+	// —— A. rejected→open：incident 合法 / request 非法（request 无 rejected 态）——
+	assert.NoError(t, smI.AssertTransition("rejected", "open"),
+		"incident.rejected → open 合法（rejected→[open]）")
+	requireErrCodeInline(t, smR.AssertTransition("rejected", "open"), errcode.ErrTicketInvalidTransition.Code,
+		"request 无 rejected，rejected→open 应非法")
 
-	// —— C. in_progress→rejected：incident 合法 / request 非法 ——
+	// —— B. reassigned→assigned：request 合法 / incident 非法（incident 无 reassigned 态）——
+	requireErrCodeInline(t, smI.AssertTransition("reassigned", "assigned"), errcode.ErrTicketInvalidTransition.Code,
+		"incident 无 reassigned，reassigned→assigned 应非法")
+	assert.NoError(t, smR.AssertTransition("reassigned", "assigned"),
+		"request.reassigned → assigned 合法（reassigned→[assigned]）")
+
+	// —— C. in_progress→rejected：incident 合法 / request 非法（request 的 in_progress 无 rejected 目标）——
 	assert.NoError(t, smI.AssertTransition("in_progress", "rejected"),
 		"incident.in_progress → rejected 合法")
 	requireErrCodeInline(t, smR.AssertTransition("in_progress", "rejected"), errcode.ErrTicketInvalidTransition.Code,
-		"request 无 rejected，in_progress→rejected 非法")
+		"request.in_progress→rejected 非法（in_progress→[pending_verify,closed]）")
 
 	// —— D. 两边都合法的 common 路径 ——
 	for _, pair := range [][2]string{
 		{"open", "assigned"}, {"open", "closed"},
 		{"assigned", "in_progress"}, {"assigned", "open"},
 		{"in_progress", "pending_verify"}, {"pending_verify", "closed"},
-		{"pending_verify", "reassigned"}, {"reassigned", "assigned"},
+		{"closed", "open"},
 	} {
 		from, to := pair[0], pair[1]
 		assert.NoErrorf(t, smI.AssertTransition(from, to), "incident 通用 %s→%s 应合法", from, to)

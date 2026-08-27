@@ -40,7 +40,7 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	ticketRepo := repository.NewTicketRepo(testPool)
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
-	reg.Register(NewResource(ticketRepo, NewStubScopeResolver()))
+	reg.Register(NewResource(ticketRepo))
 
 	roles := stubRoleFetcher{}
 	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles)
@@ -54,26 +54,37 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ('p2a_it_'+to_char(clock_timestamp(),'MS'), '2a Integration', $1,
+		VALUES ('p2a_it_'||to_char(clock_timestamp(),'MS'), '2a Integration', $1,
 		        (SELECT path::text||'.p2a_it'::text FROM organizations WHERE id=$1)::ltree,
 		        3, 1, 90, false)
-		RETURNING id`).Scan(&orgID))
+		RETURNING id`, rootID).Scan(&orgID))
 	// 若 ltree 绑定失败（字符串拼接），退化：直接取 tech 最后 id
 	if orgID == 0 {
 		require.NoError(t, testPool.QueryRow(ctx, `
 			INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 			VALUES ('p2a_it_sub','2a IT Sub',$1,'root.p2a_it_sub'::ltree,3,1,90,false)
-			ON CONFLICT DO NOTHING RETURNING id`).Scan(&orgID))
+			ON CONFLICT DO NOTHING RETURNING id`, rootID).Scan(&orgID))
 	}
 
 	// 建用户：A(operator 创建者) / B(operator 处理人) / V(viewer)
+	// employee_no 的部分唯一索引条件：employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+	// ON CONFLICT 的 WHERE 必须与索引定义完全匹配
 	var aid, bid, vid int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_a','hash','E2A001',1) RETURNING id`).Scan(&aid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_a','hash','E2A001',1)
+		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+			DO UPDATE SET password = EXCLUDED.password
+		RETURNING id`).Scan(&aid))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_b','hash','E2A002',1) RETURNING id`).Scan(&bid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_b','hash','E2A002',1)
+		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+			DO UPDATE SET password = EXCLUDED.password
+		RETURNING id`).Scan(&bid))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_v','hash','E2A003',1) RETURNING id`).Scan(&vid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_v','hash','E2A003',1)
+		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+			DO UPDATE SET password = EXCLUDED.password
+		RETURNING id`).Scan(&vid))
 
 	// 绑定角色（由 stubRoleFetcher 控制，无需 user_roles 行；R3-R8 不依赖 DB 角色关系，由 stub 注入）
 	roles[aid] = []string{"operator"}
@@ -118,8 +129,9 @@ func childOrgID(t *testing.T, suffix string) int64 {
 	var id int64
 	require.NoError(t, testPool.QueryRow(context.Background(), `
 		INSERT INTO organizations (code,name,parent_id,path,org_type,status,sort_order,is_system)
-		VALUES ($1,$2,$3,'root.'||$1::text,3,1,50,false)
-		ON CONFLICT DO NOTHING RETURNING id`, "p2a_"+suffix, "2a Child "+suffix, rid).Scan(&id))
+		VALUES ($1,$2,$3,('root.' || $4)::ltree,3,1,50,false)
+		ON CONFLICT DO NOTHING RETURNING id`,
+		"p2a_"+suffix, "2a Child "+suffix, rid, "p2a_"+suffix).Scan(&id))
 	return id
 }
 
