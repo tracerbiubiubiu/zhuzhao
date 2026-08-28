@@ -8,6 +8,22 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
+// 工单状态与事件动作常量（BK-4：消除字面量散落；值与 000010 DDL/ticket_types 种子一致）
+const (
+	StatusOpen          = "open"
+	StatusAssigned      = "assigned"
+	StatusInProgress    = "in_progress"
+	StatusPendingVerify = "pending_verify"
+	StatusClosed        = "closed"
+	StatusRejected      = "rejected"
+
+	EventCreated       = "created"
+	EventUpdated       = "updated"
+	EventStatusChanged = "status_changed"
+	EventAssigned      = "assigned"
+	EventDeleted       = "deleted"
+)
+
 // StateMachine 工单状态机，基于 ticket_types.transitions JSONB 校验状态转换合法性。
 // transitions 格式：{"open":["assigned","closed"], "assigned":["in_progress","open"], ...}
 type StateMachine struct {

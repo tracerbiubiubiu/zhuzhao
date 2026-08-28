@@ -9,7 +9,9 @@ build:
 run: build
 	./$(BUILD_DIR)/$(APP_NAME)
 
+# 防孤儿进程占用端口（历史坑：旧二进制残留导致验收跑在过期代码上）
 dev:
+	@lsof -ti:33333 | xargs kill -9 2>/dev/null || true
 	go run ./cmd/server
 
 tidy:
@@ -22,11 +24,14 @@ lint:
 	go vet ./...
 	@test -z "$$(gofmt -l . 2>&1 | grep -v '^vendor/' | tee /dev/stderr)" || (echo "ERROR: gofmt drift detected, run 'gofmt -w .'" && exit 1)
 
+# EC2：DSN 外置（可用环境变量或命令行覆盖：make migrate-up MIGRATE_DSN=...）
+MIGRATE_DSN ?= postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable
+
 migrate-up:
-	migrate -path migrations -database "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable" up
+	migrate -path migrations -database "$(MIGRATE_DSN)" up
 
 migrate-down:
-	migrate -path migrations -database "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable" down
+	migrate -path migrations -database "$(MIGRATE_DSN)" down
 
 # 本地开发：只起 PG + Redis
 docker-dev-up:

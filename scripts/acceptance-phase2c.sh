@@ -22,6 +22,8 @@ PG="${PG_CONTAINER:-$(detect_container zhuzhao-dev-postgres zhuzhao-postgres || 
 PG_USER="${PG_USER:-zhuzhao}"
 PG_DB="${PG_DB:-zhuzhao}"
 REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
+# 清除登录限流锁（验收链对 E000001 反复登录，15min/5 次会触发 20006 锁定）
+docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:E000001" >/dev/null 2>&1 || true
 
 pass=0
 fail=0
@@ -210,6 +212,17 @@ curl -s -X POST "$BASE/orgs/move" -H "Authorization: Bearer $SAT" -H 'Content-Ty
 D9M_RAW=$(curl -s -X POST "$BASE/tickets/update" -H "Authorization: Bearer $PTOK" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID2\",\"title\":\"ancestor owner after move\"}")
 check "D9 ancestor owner updates vg ticket after move (0)" "0" "$(echo "$D9M_RAW" | json_code)"
+
+# --- TC1：ticket delete 成功路径（admin 建单→删→GET 404）---
+TKDEL=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"type_code\":\"incident\",\"title\":\"TC1 删除工单\",\"org_id\":\"$P_ID\"}")
+TKDEL_ID=$(echo "$TKDEL" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+TC1_DEL=$(curl -s -X POST "$BASE/tickets/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"id\":\"$TKDEL_ID\"}")
+echo "DEBUG TC1 del=[$TC1_DEL] id=[$TKDEL_ID]" >&2
+TC1_DEL_CODE=$(echo "$TC1_DEL" | json_code)
+TC1_GET=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/tickets/$TKDEL_ID" -H "Authorization: Bearer $SAT")
+check "TC1 admin delete ticket (0)" "0" "$TC1_DEL_CODE"
+check "TC1 deleted ticket GET (404)" "404" "$TC1_GET"
 # 负向：P 的 owner 只能管 P 子树内工单——TGT 直下新建工单（P 的兄弟子树），PTOK 应 403
 TGTM=$(mkuser "p2c_tgtm_$SUF" "C2TM$SUF" "$ROLE_O" "$TGT")
 TGTTOK=$(mklogin "C2TM$SUF")

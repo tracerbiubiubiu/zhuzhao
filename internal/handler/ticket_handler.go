@@ -33,16 +33,26 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
 func (h *TicketHandler) List(c *gin.Context) {
+	// BK-7：分页归一前置到 handler（响应回显与 SQL 实际执行一致，page=0/负数不再回显原值）
 	q := model.TicketListQuery{
 		Page:     queryInt(c, "page", 1),
 		PageSize: queryInt(c, "page_size", 20),
 		TypeCode: c.Query("type_code"),
 		Status:   c.Query("status"),
 	}
+	if q.Page < 1 {
+		q.Page = 1
+	}
+	if q.PageSize < 1 || q.PageSize > 100 {
+		q.PageSize = 20
+	}
 	if p := c.Query("priority"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			q.Priority = &v
+		v, err := strconv.Atoi(p)
+		if err != nil {
+			response.BadRequest(c, "priority 须为整数")
+			return
 		}
+		q.Priority = &v
 	}
 	resp, err := h.ticketService.List(c.Request.Context(), q, c.GetInt64("userID"))
 	if err != nil {

@@ -23,6 +23,8 @@ PG="${PG_CONTAINER:-$(detect_container zhuzhao-dev-postgres zhuzhao-postgres || 
 PG_USER="${PG_USER:-zhuzhao}"
 PG_DB="${PG_DB:-zhuzhao}"
 REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
+# 清除登录限流锁（验收链对 E000001 反复登录，15min/5 次会触发 20006 锁定）
+docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:E000001" >/dev/null 2>&1 || true
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 pass=0

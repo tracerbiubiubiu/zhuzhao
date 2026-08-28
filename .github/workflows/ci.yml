@@ -1,0 +1,27 @@
+# 最小质量网（09 合集批次三）：lint + 单测。验收脚本需 Docker/Compose，
+# 仍按本地验收纪律（make acceptance-2a/2b/2c）人工执行。
+name: ci
+on:
+  push:
+    branches: [dev, main, "feature/**"]
+  pull_request:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - name: gofmt 漂移检查
+        run: test -z "$(gofmt -l . | grep -v vendor)"
+      - run: go build ./...
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race -count=1 ./internal/...

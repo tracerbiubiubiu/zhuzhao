@@ -274,3 +274,35 @@ func TestD9_ConcurrentDoubleClose(t *testing.T) {
 		assert.Equal(t, 1, evCount, "closed 事件不得重复写入（iter=%d）", iter)
 	}
 }
+
+// TC2/MC1 回归：工单关联 Go 层用例——正向建联、同向唯一（409）、
+// 目标被物理删除后建联 → 400（23503 映射，非 500）
+func TestD9_CreateRelation(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	tkA := newTicketHelper(t, env.svc, env.member, env.vgID, "关联源工单")
+	tkB := newTicketHelper(t, env.svc, env.member, env.vgID, "关联目标工单")
+
+	// 正向：双端同属创建人 → 200
+	rel, err := env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, env.member)
+	require.NoError(t, err)
+	assert.Equal(t, tkA.ID, rel.SourceTicketID)
+
+	// 同向重复 → 409（部分唯一索引）
+	_, err = env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, env.member)
+	requireErrCode(t, err, errcode.ErrConflict.Code)
+
+	// MC1：目标被物理删除后建联 → 统一 404+90001（不可见语义，防枚举；
+	// 23503 → MapForeignKeyViolation 为纵深防御，正常流被鉴权先行拦截）
+	tkG := newTicketHelper(t, env.svc, env.member, env.vgID, "将被删除的工单")
+	require.NoError(t, env.svc.Delete(ctx, tkG.ID, env.admin)) // vg admin 有 delete 权（04 §4.2）
+	_, err = env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkG.ID,
+	}, env.member)
+	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
+}

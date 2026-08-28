@@ -154,7 +154,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		Title:       req.Title,
 		Description: description,
 		Priority:    priority,
-		Status:      "open",
+		Status:      StatusOpen,
 		CreatedBy:   actorUserID,
 		AssignedTo:  req.AssignedTo,
 		OrgID:       req.OrgID,
@@ -174,7 +174,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID: ticket.ID,
 		UserID:   actorUserID,
-		Action:   "created",
+		Action:   EventCreated,
 	}); err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if err != nil {
 		return nil, err
 	}
-	if ticket.Status == "closed" {
+	if ticket.Status == StatusClosed {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
 	// patch 语义
@@ -256,7 +256,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID: ticket.ID,
 		UserID:   actorUserID,
-		Action:   "updated",
+		Action:   EventUpdated,
 	}); err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err != nil {
 		return err
 	}
-	if ticket.Status == "closed" {
+	if ticket.Status == StatusClosed {
 		return errcode.ErrTicketAlreadyClosed
 	}
 
@@ -289,7 +289,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err != nil {
 		return fmt.Errorf("build state machine: %w", err)
 	}
-	if err := sm.AssertTransition(ticket.Status, "closed"); err != nil {
+	if err := sm.AssertTransition(ticket.Status, StatusClosed); err != nil {
 		return err
 	}
 
@@ -300,15 +300,15 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
-	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, "closed"); err != nil {
+	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 		return err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID:  req.ID,
 		UserID:    actorUserID,
-		Action:    "status_changed",
+		Action:    EventStatusChanged,
 		FromValue: ticket.Status,
-		ToValue:   "closed",
+		ToValue:   StatusClosed,
 	}); err != nil {
 		return err
 	}
@@ -337,7 +337,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 		return err
 	}
 	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
-	if ticket.Status == "closed" {
+	if ticket.Status == StatusClosed {
 		return errcode.ErrTicketAlreadyClosed
 	}
 	fromAssignee := ""
@@ -351,11 +351,11 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 
 	// 分派 → assigned 状态（若当前为 open）；取消分派 → open（若当前为 assigned）
 	newStatus := ticket.Status
-	if ticket.Status == "open" && req.AssignedTo != nil {
-		newStatus = "assigned"
+	if ticket.Status == StatusOpen && req.AssignedTo != nil {
+		newStatus = StatusAssigned
 	}
-	if ticket.Status == "assigned" && req.AssignedTo == nil {
-		newStatus = "open"
+	if ticket.Status == StatusAssigned && req.AssignedTo == nil {
+		newStatus = StatusOpen
 	}
 
 	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
@@ -391,7 +391,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID:  req.ID,
 		UserID:    actorUserID,
-		Action:    "assigned",
+		Action:    EventAssigned,
 		FromValue: fromAssignee,
 		ToValue:   toAssignee,
 	}); err != nil {
