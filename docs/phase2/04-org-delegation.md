@@ -253,19 +253,34 @@ EXISTS (
 ### 4.3 `CheckOwner` 伪代码
 
 ```go
+// 实际实现（2026-08-28 对齐）：per-action 判定，勿用「属主短路」旧稿——
+// 处理人可 close 但不可 update（RK-11），委托者按 §4.2 矩阵逐动作放行
 func (s *ticketService) canOperate(ctx context.Context, userID int64, action string, t *Ticket) (bool, error) {
-    if t.CreatedBy == userID || t.AssignedTo == userID {
-        return true, nil
+    isCreator := t.CreatedBy == userID
+    isAssignee := t.AssignedTo != nil && *t.AssignedTo == userID
+
+    switch action {
+    case "read", "comment":
+        return true, nil // L2 可见性已通过（策略 B）
+    case "note":
+        return isCreator || isAssignee, nil // 读写集合一致（BK-1）
+    case "update":
+        if isCreator { return true, nil }        // 2b：仅创建人（RK-11）
+    case "close":
+        if isAssignee || isCreator { return true, nil }
+    case "assign":
+        if scope.AllScope || pathInAnchors(t.OrgPath, scope.ScopePaths) { return true, nil } // 2b 主管
+    case "delete":
+        // 2b：仅 admin bypass（org admin/owner 走 2c 委托，见下）
     }
-    if s.orgDelegation.IsOrgAdminOrOwner(ctx, userID, t.OrgID) {
-        return true, nil
-    }
-    if s.orgDelegation.IsAncestorOwner(ctx, userID, t.OrgID, t.OrgPath) {
-        return true, nil
-    }
-    return false, nil
+    // 2c 组织委托（admin·owner 精确匹配本 org；ancestor owner 管子树）
+    if s.orgDelegation.IsOrgAdminOrOwner(ctx, userID, t.OrgID) { return true, nil }
+    if s.orgDelegation.IsAncestorOwner(ctx, userID, t.OrgID, t.OrgPath) { return true, nil }
+    return false, nil // 可见但无权 → 403+70001；不可见 → 404（上游 L2）
 }
 ```
+
+> **与旧稿的差异**：旧伪代码 `CreatedBy||AssignedTo → true` 对所有动作短路，暗示处理人可 update——与 §4.2 矩阵（update=创建人）矛盾。本版按动作分派，与实现（`ticket/resource.go canOperate`）逐行对齐。
 
 **不可见工单**仍返回 **404**（非 403）；可见但无权操作返回 **403 + 70001**。
 

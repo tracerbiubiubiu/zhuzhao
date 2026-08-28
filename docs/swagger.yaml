@@ -103,6 +103,38 @@ definitions:
     required:
     - refresh_token
     type: object
+  model.SetOrgMemberRoleRequest:
+    properties:
+      org_id:
+        example: "0"
+        type: string
+      org_member_role:
+        enum:
+        - member
+        - admin
+        type: string
+      user_id:
+        example: "0"
+        type: string
+    required:
+    - org_id
+    - org_member_role
+    - user_id
+    type: object
+  model.SetOrgOwnersRequest:
+    properties:
+      org_id:
+        example: "0"
+        type: string
+      owner_user_ids:
+        description: 元素为字符串 ID（项目惯例）；空数组=清空（仅全局）
+        items:
+          type: integer
+        type: array
+    required:
+    - org_id
+    - owner_user_ids
+    type: object
   model.UpdatePasswordRequest:
     properties:
       device_id:
@@ -228,6 +260,48 @@ paths:
       summary: 刷新 Token
       tags:
       - auth
+  /api/v1/orgs/members/role:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 变更组内角色请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetOrgMemberRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 任命/变更组内角色
+      tags:
+      - org
+  /api/v1/orgs/owners:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 设置负责人请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetOrgOwnersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 设置组织负责人
+      tags:
+      - org
   /api/v1/ticket-templates:
     get:
       produces:

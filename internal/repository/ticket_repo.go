@@ -47,6 +47,9 @@ func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
 		}
+		if ec := MapForeignKeyViolation(err); ec != nil {
+			return ec // 并发删类型/组织（23503）→ 400，非 500
+		}
 		return fmt.Errorf("create ticket: %w", err)
 	}
 	return nil
@@ -134,36 +137,62 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, t *model.Ticket
 	return nil
 }
 
-// UpdateStatus 更新工单状态（状态机转换）
-func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, status string) error {
-	return r.UpdateStatusTx(ctx, r.db, id, status)
+// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004
+func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, id int64) error {
+	var status string
+	err := r.db.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.ErrTicketNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("resolve ticket state: %w", err)
+	}
+	if status == "closed" {
+		return errcode.ErrTicketAlreadyClosed
+	}
+	// 状态被并发迁移为其他值：以冲突语义拒绝（调用方重读后重试）
+	return errcode.ErrConcurrentModification
+}
+
+// UpdateStatus 更新工单状态（状态机转换；fromStatus 乐观锁防并发漂移）
+func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, fromStatus, toStatus string) error {
+	return r.UpdateStatusTx(ctx, r.db, id, fromStatus, toStatus)
 }
 
 // UpdateStatusTx 事务内更新工单状态
-func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64, status string) error {
-	tag, err := exec.Exec(ctx, `UPDATE tickets SET status = $2, updated_at = NOW() WHERE id = $1`, id, status)
+// UpdateStatusTx 事务内状态迁移（CC1/CC2：WHERE status=$2 乐观锁锁定「期望旧状态」——
+// 并发 Close 双写不再产生 closed→closed 脏事件；Close+Assign 竞态不再把 closed
+// 工单复活为 assigned）。0 行 = 状态已漂移或工单不存在，由 resolveClosedOrMissing 定性。
+func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64, fromStatus, toStatus string) error {
+	tag, err := exec.Exec(ctx,
+		`UPDATE tickets SET status = $3, updated_at = NOW() WHERE id = $1 AND status = $2`,
+		id, fromStatus, toStatus)
 	if err != nil {
 		return fmt.Errorf("update ticket status: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return errcode.ErrTicketNotFound
+		return r.resolveClosedOrMissing(ctx, id)
 	}
 	return nil
 }
 
 // UpdateAssignedTo 更新处理人（分派/取消分派）
-func (r *TicketRepo) UpdateAssignedTo(ctx context.Context, id int64, assignedTo *int64) error {
+func (r *TicketRepo) UpdateAssignedTo(ctx context.Context, id int64, currentStatus string, assignedTo *int64) error {
 	return r.UpdateAssignedToTx(ctx, r.db, id, assignedTo)
 }
 
 // UpdateAssignedToTx 事务内更新处理人
+// UpdateAssignedToTx 事务内更新处理人（CC2：status<>'closed' 守卫——closed 工单
+// 不可被分派/改派，消除并发 Close 后换处理人的窗口）
 func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id int64, assignedTo *int64) error {
-	tag, err := exec.Exec(ctx, `UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1`, id, assignedTo)
+	tag, err := exec.Exec(ctx,
+		`UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1 AND status <> 'closed'`,
+		id, assignedTo)
 	if err != nil {
 		return fmt.Errorf("update assigned_to: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return errcode.ErrTicketNotFound
+		return r.resolveClosedOrMissing(ctx, id)
 	}
 	return nil
 }
@@ -369,6 +398,9 @@ func (r *TicketRepo) CreateRelation(ctx context.Context, rel *model.TicketRelati
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
+		}
+		if ec := MapForeignKeyViolation(err); ec != nil {
+			return ec // 并发删关联工单（23503）→ 400，非 500
 		}
 		return fmt.Errorf("create relation: %w", err)
 	}

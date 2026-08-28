@@ -147,6 +147,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orgs/members/role": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "任命/变更组内角色",
+                "parameters": [
+                    {
+                        "description": "变更组内角色请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SetOrgMemberRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orgs/owners": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "设置组织负责人",
+                "parameters": [
+                    {
+                        "description": "设置负责人请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SetOrgOwnersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ticket-templates": {
             "get": {
                 "produces": [
@@ -781,6 +847,51 @@ const docTemplate = `{
             "properties": {
                 "refresh_token": {
                     "type": "string"
+                }
+            }
+        },
+        "model.SetOrgMemberRoleRequest": {
+            "type": "object",
+            "required": [
+                "org_id",
+                "org_member_role",
+                "user_id"
+            ],
+            "properties": {
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "org_member_role": {
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "admin"
+                    ]
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "model.SetOrgOwnersRequest": {
+            "type": "object",
+            "required": [
+                "org_id",
+                "owner_user_ids"
+            ],
+            "properties": {
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "owner_user_ids": {
+                    "description": "元素为字符串 ID（项目惯例）；空数组=清空（仅全局）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

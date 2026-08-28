@@ -300,7 +300,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
-	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, "closed"); err != nil {
+	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, "closed"); err != nil {
 		return err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -384,7 +384,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 		return err
 	}
 	if newStatus != ticket.Status {
-		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, newStatus); err != nil {
+		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {
 			return err
 		}
 	}

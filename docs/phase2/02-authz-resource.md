@@ -114,7 +114,7 @@ type ScopeResolver interface {
 }
 ```
 
-2a 实现：`EffectiveTicketScope` 恒返回 `assigned`（或读 `user_orgs.ticket_scope` 列若 migration 已提前加，但 **GetFilter 仍只实现 assigned 分支**）。
+**现状（2026-08-28，Step 4/5 落地后）**：接口已重构为 `ReadAnchorPaths` + `ResolveScope`（透明锚点 ∪ group 作用域 ∪ all 开关，`ticket/scope_resolver.go`）；`user_orgs.ticket_scope` 已随 000012 落地。下方伪代码为 2b-org 设定稿的演进起点，实际形状以代码为准。
 
 ### 2.3 TicketResource
 
@@ -213,10 +213,11 @@ rows, _ := s.repo.List(ctx, filter, page, size)
 ### 2.5 Wire 自注册
 
 ```go
-func NewTicketService(..., registry resource.Registry, ...) *Service {
+// 现行签名（2c 起新增第三参 OrgDelegationChecker——工单委托判定，wire 绑定 OrgDelegationService）
+func NewTicketService(..., registry resource.Registry, ...,
+    delegation ticket.OrgDelegationChecker) *Service {
     s := &Service{db: db, ticketRepo: ticketRepo, ...}
-    // 自注册（2a 实际签名：NewResource 包内构造，无 scope 参数——assigned 语义内联在 resource.go）
-    registry.Register(NewResource(s.ticketRepo))
+    registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
     return s
 }
 ```

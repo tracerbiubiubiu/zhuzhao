@@ -433,22 +433,10 @@ func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUser
 			return errcode.ErrNoPermission
 		}
 	}
-	// D6 语义：虚拟组的 owner 成员行是 SetOwners 的派生数据（04 §2.2 双轨），
-	// 组消亡即失效——不视作「成员占位」。仍有非 owner 成员 → 50005（不动状态）；
-	// 仅剩 owner 行 → 预清后删除（PRD D6「有成员 → 409」）
-	if org.OrgType == 4 {
-		n, err := s.orgRepo.CountNonOwnerMembers(ctx, id)
-		if err != nil {
-			return err
-		}
-		if n > 0 {
-			return errcode.ErrOrgHasMembers
-		}
-		if err := s.orgRepo.ClearOwnerMemberships(ctx, id); err != nil {
-			return err
-		}
-	}
-	return s.orgRepo.Delete(ctx, id)
+	// D6 语义（CC3 原子化）：虚拟组的 owner 成员行是 SetOwners 派生数据，
+	// 组消亡即失效——同一事务内预清 owner 行 + 守卫 + 软删；仍有非 owner
+	// 成员 → 409+50005（不动任何状态）
+	return s.orgRepo.DeleteVgWithOwnerCleanup(ctx, id)
 }
 
 // Move 移动组织子树（B3-2：环检测/父读取/锁定已全部移入 repo 单事务，

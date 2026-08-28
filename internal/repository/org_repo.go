@@ -557,23 +557,44 @@ func (r *OrgRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 	return tx.Commit(ctx)
 }
 
-// CountNonOwnerMembers 统计组织的非 owner 成员数（2c D6：owner 派生行不占位）
-func (r *OrgRepo) CountNonOwnerMembers(ctx context.Context, orgID int64) (int64, error) {
-	var n int64
-	if err := r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM user_orgs WHERE org_id = $1 AND org_member_role <> 'owner'`, orgID).Scan(&n); err != nil {
-		return 0, fmt.Errorf("count non-owner members: %w", err)
-	}
-	return n, nil
-}
-
-// ClearOwnerMemberships 清除组织的 owner 派生成员行（2c D6：虚拟组删除前置——
-// owner 行由 SetOwners 双轨生成，组消亡即失效，不构成 50005 的成员占位）
-func (r *OrgRepo) ClearOwnerMemberships(ctx context.Context, orgID int64) error {
-	_, err := r.db.Exec(ctx,
-		`DELETE FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, orgID)
+// DeleteVgWithOwnerCleanup 虚拟组委托删除（2c D6，CC3 原子化）：
+// 同一事务内先清 owner 派生成员行（SetOwners 双轨生成，组消亡即失效、不占
+// 50005 成员位），再执行与 Delete 一致的守卫（子组织/非 owner 成员 → 409/50005）
+// 与软删。清行后失败则整体回滚，不会产生「无 owner 活跃虚拟组」。
+func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, id); err != nil {
 		return fmt.Errorf("clear owner memberships: %w", err)
 	}
-	return nil
+
+	var children, members int64
+	if err := tx.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM organizations WHERE parent_id = $1 AND deleted_at IS NULL),
+			(SELECT COUNT(*) FROM user_orgs uo
+				INNER JOIN organizations o ON o.id = uo.org_id
+				INNER JOIN users u ON u.id = uo.user_id
+				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL)`,
+		id).Scan(&children, &members); err != nil {
+		return fmt.Errorf("check org delete guards: %w", err)
+	}
+	if children > 0 {
+		return errcode.ErrOrgHasChildren
+	}
+	if members > 0 {
+		return errcode.ErrOrgHasMembers
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE organizations SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`, id); err != nil {
+		return fmt.Errorf("delete vg: %w", err)
+	}
+	return tx.Commit(ctx)
 }

@@ -8,6 +8,7 @@ package ticket
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -191,4 +192,79 @@ func TestD9_AncestorOwnerAfterMove(t *testing.T) {
 	// vg admin 对本组工单有委托权（D7），不受 move 影响仍可改
 	_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: strPtr("vg admin 改名")}, env.admin)
 	require.NoError(t, err, "vg admin 本组委托不受 move 影响")
+}
+
+// CC1/CC2 回归：并发 Close+Assign —— 两者竞争同一 open 工单，
+// 最终态必须 ∈ {closed, assigned} 且禁止「closed 复活为 assigned」；
+// 双并发 Close 只允许一次成功（无 closed→closed 脏事件）
+func TestD9_ConcurrentCloseAssignRace(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	for iter := 0; iter < 10; iter++ {
+		tk := newTicketHelper(t, env.svc, env.member, env.vgID, fmt.Sprintf("竞态-%d", iter))
+
+		var closeErr, assignErr error
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			closeErr = env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, env.member)
+		}()
+		go func() {
+			defer wg.Done()
+			assignErr = env.svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &env.owner}, env.member)
+		}()
+		wg.Wait()
+
+		got, err := env.svc.Get(ctx, tk.ID, env.member)
+		require.NoError(t, err)
+		switch got.Status {
+		case "closed":
+			// Close 赢：Assign 必须失败（90004）且不产生 assigned_to 变更
+			assert.Error(t, assignErr, "close 赢时 assign 必须被拒")
+			assert.Nil(t, got.AssignedTo, "closed 态不得残留新处理人")
+			assert.Nil(t, closeErr)
+		case "assigned":
+			// Assign 赢：Close 必须失败（SM 断言基于旧状态 → 90002/90004/10006 之一均可，关键是不落 closed）
+			assert.Error(t, closeErr, "assign 赢时 close 必须被拒")
+		default:
+			t.Fatalf("竞态后出现非法终态 %q（iter=%d）", got.Status, iter)
+		}
+	}
+}
+
+// CC1 回归：双并发 Close —— 恰一次成功，另一次 90004/409，且 status_changed 事件仅一条
+func TestD9_ConcurrentDoubleClose(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	for iter := 0; iter < 10; iter++ {
+		tk := newTicketHelper(t, env.svc, env.member, env.vgID, fmt.Sprintf("双关-%d", iter))
+
+		var errs [2]error
+		var wg sync.WaitGroup
+		wg.Add(2)
+		for i := range errs {
+			go func(i int) {
+				defer wg.Done()
+				errs[i] = env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, env.member)
+			}(i)
+		}
+		wg.Wait()
+
+		var okCnt int
+		for _, e := range errs {
+			if e == nil {
+				okCnt++
+			}
+		}
+		assert.Equal(t, 1, okCnt, "双并发 Close 恰一次成功（iter=%d）", iter)
+
+		var evCount int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM ticket_events WHERE ticket_id=$1 AND action='status_changed' AND to_value='closed'`,
+			tk.ID).Scan(&evCount))
+		assert.Equal(t, 1, evCount, "closed 事件不得重复写入（iter=%d）", iter)
+	}
 }
