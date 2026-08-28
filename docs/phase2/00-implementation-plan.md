@@ -95,8 +95,8 @@
 | **M2a-1** 资源级鉴权可用 | 1 | R1–R2（Registry 单测）+ TicketResource **契约测试**（fake repo） | `go test ./internal/pkg/resource/... ./internal/service/ticket/...` | R3–R8 需工单真表，落 M2a-2 验证 |
 | **M2a-2** 工单 MVP | 2 | T1–T7 + R3–R8（真表集成）+ [README §1.1](./README.md) 4 条验收 | `bash scripts/acceptance-phase2a.sh` | 迁移 000010/000015/000016；assigned 过滤；404 语义；P2-D1 级联（若采纳）；模板预填 + 关联鉴权 |
 | **M2a-3** 2a 全量 | 3 | Phase 1 27 用例回归 + T/R 全量 | 同上（含回归段） | 对抗路径：不可见 404、无权限 403、状态机 90002 |
-| **M2b-core** 工单可见性 | 4 | R9–R12 + D11（策略 B） | ticket 集成测试扩展 | 策略 B 透明读 + `ticket_visibility` 默认；P2-D1 回归 |
-| **M2b-org** 组织增强 | 5 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000011；虚拟组/临时成员/BFS |
+| **M2b-core** 工单可见性 | 4 | R9–R12 + D11（策略 B） | ticket 集成测试扩展 | 迁移 000011；策略 B 透明读 + `ticket_visibility` 默认；RK-11 收窄；BK-1 备注；P2-D1 回归 |
+| **M2b-org** 组织增强 | 5 | [03 测试表](./03-org-enhance.md) + [hr-directory-sync §7](../proposal/hr-directory-sync.md) 用例 | `make test-integration` | 迁移 000012；虚拟组/临时成员/BFS |
 | **M2b-ext** 附件 | 6 | S1–S6 | `go test` + compose MinIO 冒烟 | 迁移 000013；预签名 + confirm |
 | **M2b-ext** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 Step 6 并行 |
 | **M2b-ext** HR 同步 | 7b | HR 对账（fake client） | `make test-integration` | HR Job；**延后，不阻塞 2c** |
@@ -148,13 +148,15 @@
 
 ### Step 4（M2b-core）— ticket scope 升级（2b 关键路径）
 
-- [ ] `ReadAnchorPaths`（挂载实体 anchor 透明读）+ GetFilter 升级 `org_path <@ ANY($2::ltree[])`（[09 §5.2](./09-ticket.md)）
-- [ ] `ticket_visibility` 字段默认 `entity_transparent_read`（**不含 `project_isolated`，标 future**，[09 §5.2.1](./09-ticket.md)）
-- [ ] R9–R12 + D11 集成测试；**P2-D1 回归**（move 后 scope 过滤仍正确）
+- [x] `ReadAnchorPaths`（挂载实体 anchor 透明读）+ GetFilter 升级 `org_path <@ ANY($2::ltree[])`（[09 §5.2](./09-ticket.md)）——2026-08-28 落地
+- [x] 迁移 **000011**：`organizations.ticket_visibility` 默认 `entity_transparent_read`（**不含 `project_isolated`，标 future**，[09 §5.2.1](./09-ticket.md)；原规划 Step 5，按 PRD SSOT 前移至 Step 4，其余 DDL 顺延 000012）
+- [x] BK-1 内部备注过滤（透明读旁观者仅公开回复，读写集合一致）
+- [x] RK-11 收窄回归（处理人 update → 403）
+- [ ] R9–R12 + D11 集成测试（✅ 机制形态已验：`b2_core_integration_test.go` 同事透明读/跨子树隔离/读写分离；R9/R10 虚拟组完整形态待 Step 5）；**P2-D1 回归**（move 后 scope 过滤仍正确，BK-6）
 
 ### Step 5（M2b-org）— org-enhance（与 Step 4 并行）
 
-- [ ] 迁移 **000011**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`、`ticket_visibility`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL）
+- [ ] 迁移 **000012**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL；`ticket_visibility` 已前移至 Step 4/000011）
 - [ ] 虚拟组 CRUD（org_type=4、code 前缀 `vg_`）+ Reparent（HR 撤销部门上挂最近实体祖先）
 - [ ] 临时成员：`expires_at` 读取时过滤（或惰性清理 Job，随 PRD）
 - [ ] BFS 三源 RoleFetcher 扩展（直接 + 组织角色 + 继承）
@@ -172,7 +174,7 @@
 - [ ] **首任务（D2-49②）**：devices 集合初始化（SADD/SREM 接入登录/登出/吊销链路）+ RT value 结构升级（hash 与设备元数据并存，Refresh 比较逻辑与守护测试同 Step 改造——[01 §2.1](./01-auth-enhance.md)）
 - [ ] 设备列表/踢出 API（沿用 `devices:{uid}` 集合；**单轨道**：仅删单设备 RT，不触碰 `user:disabled`，[01 §0 B3](./01-auth-enhance.md)）
 - [ ] `ValidatePasswordPolicy` + 20013（策略归一：binding 保留 required，长度/复杂度统一走策略校验，[01 §3.4](./01-auth-enhance.md)）
-- [ ] 迁移 **000012** 视需要（纯 config 则无迁移，编号顺延规则见 [README §2.4](./README.md)）
+- [ ] 迁移**视需要**（纯 config 则无迁移；若需表结构取执行期下一可用编号，见 [README §2.4](./README.md) 注）
 - [ ] A1–A6 测试（miniredis）
 
 ### Step 7b（M2b-ext）— HR 目录同步（延后，独立 Job）
@@ -301,7 +303,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | RK-3 | HR 同步半成功 / 外部 API 不稳定 | 2b | 高 | 中 | fake client 契约测试 + `hr_sync_runs` 对账 + 幂等 upsert；真实对接部署期另排 | 每日同步失败 |
 | RK-4 | move 大子树事务膨胀（组织 path + 工单 org_path 双级联） | 2b | 低 | 中 | 内部量级评估；超阈值分批改写（先 org 后异步补工单，标记一致性 Job） | move 请求超时 |
 | RK-5 | 预签名安全（object_key 伪造 / confirm 绕过 / 越权下载） | 2b | 中 | 高 | UUID key 服务端生成 + confirm HEAD 校验 + 下载预签名走工单可见性检查 | 安全自查 |
-| RK-6 | 000011 迁移含数据回填，down 不可逆 | 2b | 中 | 中 | §5.3 检查单第 6 条：真实 PG 演练 up→down→up | down 演练失败 |
+| RK-6 | 000012 迁移含数据回填，down 不可逆 | 2b | 中 | 中 | §5.3 检查单第 6 条：真实 PG 演练 up→down→up | down 演练失败 |
 | RK-7 | BFS 三源角色查询每请求放大 | 2b | 中 | 中 | 单 SQL 取三源；声明量级边界（对齐 [02 §2.6](./02-authz-resource.md) 模式）；缓存后移 Phase 3 | 角色查询耗时上升 |
 | RK-8 | 设备管理与 Phase 1 会话键冲突（误伤其他设备） | 2b | 低 | 中 | 单轨道约束（不触碰 `user:disabled`）写进 A 用例 | 踢单设备致其他设备 403 |
 | RK-9 | Casbin LoadPolicy 规模增长 | 2a+ | 低 | 低 | 边界已声明（[02 §2.6](./02-authz-resource.md)）；Watcher 后移 Phase 3 | LoadPolicy 耗时上升 |
@@ -319,13 +321,13 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 1 | M2a-1 | [02 全文](./02-authz-resource.md) | R1–R2 + 契约 | — |
 | 2 | M2a-2 | [09 §2a/§4/§5.1](./09-ticket.md) | T1–T7、R3–R8 | 000010/000015/000016 |
 | 3 | M2a-3 | README §1.1 | 全量 + 回归 | — |
-| 4 | M2b-core | [09 §5.2](./09-ticket.md) | R9–R12、D11 | — |
-| 5 | M2b-org | [03](./03-org-enhance.md) | 两表用例 | 000011 |
+| 4 | M2b-core | [09 §5.2](./09-ticket.md) | R9–R12、D11 | 000011 |
+| 5 | M2b-org | [03](./03-org-enhance.md) | 两表用例 | 000012 |
 | 6 | M2b-ext | [10](./10-storage.md) | S1–S6 | 000013 |
-| 7 | M2b-ext | [01](./01-auth-enhance.md) | A1–A6 | 000012（视需要） |
+| 7 | M2b-ext | [01](./01-auth-enhance.md) | A1–A6 | 视需要（执行期取下一可用编号） |
 | 7b | M2b-ext | [03-org-enhance HR 同步](./03-org-enhance.md) | HR 对账 | — |
 | — | M2b 验收 | README §1.2 | 2b-core + 2b-org 全量 + 回归 | — |
-| 8 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014 |
+| 8 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014（若 Step 7 启用表结构则顺延 000017） |
 | 9 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
 | 10 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
 
@@ -337,14 +339,14 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 
 | # | 事项 | 说明 | 消费时点 |
 |---|------|------|---------|
-| BK-1 | ListComments 不过滤 `is_internal` | 2a 读者集合（creator/assignee/admin）⊆ 备注可见集合，无泄露；**2b 策略 B 扩大读者后必须**对非 creator/assignee/admin 过滤内部备注，否则同部门旁观者可读 | **Step 4 前置检查项** |
+| BK-1 | ~~ListComments 不过滤 `is_internal`~~ | **✅ 已落地（Step 4，2026-08-28）**：透明读旁观者仅公开回复；读写集合一致（写者 ⊆ 可见内部备注集合）；测试 `TestB2_InternalNoteVisibility` | 已关闭 |
 | BK-2 | Assign 状态转换绕过状态机 | newStatus 手工推算 open↔assigned（恰在种子 transitions 内合法）；类型配置改 transitions 即静默失控。改走 `FromTicketType + AssertTransition` | Step 4 顺手 |
 | BK-3 | Update patch 不写 ticket_events；closed 检查读后写（TOCTOU） | 审计断档：created/status_changed/assigned 留痕而 patch 无事件；并发 close 后仍可能 patch 成功（改 `UPDATE ... WHERE status <> 'closed'`） | Step 4 |
 | BK-4 | `ticket_events.action` 与 status 字面量未常量化 | "created"/"status_changed"/"assigned"/"open"/"closed" 散落 service.go；包内常量化防拼写漂移 | 任意 Step 顺手 |
 | BK-5 | CreateRelation 反向判重缺失 | DB 唯一索引只挡同向；A→B 与 B→A 可共存（逻辑重复）。应用层加 `(s=$1 AND t=$2) OR (s=$2 AND t=$1)` 存在性检查 | 按需（2b 后） |
 | BK-6 | P2-D1 级联后代分支无 Go 测试 | 验收脚本仅测叶子节点 move（THEN 分支）；后代工单 subpath 重映射（ELSE 分支，最易错）全仓零覆盖。Go 集成测试补「子树带孙代组织 + 工单重映射」 | Step 5 前 |
 | BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
-| BK-8 | scope_resolver.go 文件名与内容不符 | 接口/stub 已删（M-5），仅剩 HasRole；2b 引入真 ScopeResolver 时改名 role.go 或恢复接口落位 | Step 4/5 |
+| BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
 | BK-10 | 2a 无状态推进端点 | DEFAULT 状态机含 in_progress/pending_verify 但 API 无推进路径；assigned 工单须先取消分派回 open 才能关闭（T6 已固化该行为）。是否补「开始处理/待验证」端点属产品决策 | Step 4 时拍板 |
 

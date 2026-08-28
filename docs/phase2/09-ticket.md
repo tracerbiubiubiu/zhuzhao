@@ -271,7 +271,7 @@ ON CONFLICT DO NOTHING;
 见 [02-authz-resource](./02-authz-resource.md)：
 
 - **List/GetFilter**：`(created_by = $uid OR assigned_to = $uid)`
-- **Get 不可见**：404 + `ErrTicketNotFound`（**90001**——决策收口，便于客户端区分模块；**90001 / `ErrTicketNotFound` 尚未在 `errcode.go` 定义，Phase 2a 工单模块实现时写入**）
+- **Get 不可见**：404 + `ErrTicketNotFound`（**90001**——决策收口，便于客户端区分模块；**已于 2a Step 2 写入 `errcode.go`（L98），勿改号**）
 - **Update**：创建人或处理人；否则 403 + 70001
 
 ### 5.2 Phase 2b — scope 升级 + 部门内「读/写分离」（策略 B，默认）
@@ -293,7 +293,8 @@ ON CONFLICT DO NOTHING;
 > **2026-08-26 调整（宽松优先）**：`project_isolated` 标 **future**，2b-core 仅落地默认 `entity_transparent_read`（单字段 + 默认约束即可，CHECK 暂不含 `project_isolated`，避免 GetFilter 提前分支）。强隔离字段与逻辑待真实需求再加。
 
 ```sql
--- Phase 2b-core 迁移（organizations 表，仅默认策略）
+-- Phase 2b-core 迁移（organizations 表，仅默认策略）——实际编号 000011，执行于 Step 4；
+-- 原 000011（组织增强其余 DDL）按不跳号规则顺延为 000012
 ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFAULT 'entity_transparent_read';
 -- CHECK (ticket_visibility IN ('entity_transparent_read'))   -- future 扩展时再加 project_isolated
 -- 仅 org_type IN (1,2,3) 实体有效；虚拟组继承最近实体祖先的配置
@@ -344,7 +345,8 @@ return Filter{
 | action | L3（2b） |
 |--------|----------|
 | read / comment | canRead |
-| **update** | **`created_by == 我`**（**不含**仅因透明读看到兄弟组工单的处理人） |
+| note | 创建人/处理人（**BK-1 读写一致**：内部备注可见集合 = 创建人/处理人/admin，透明读旁观者不可见亦不可写；Step 4 已落地 `TestB2_InternalNoteVisibility`；2c 扩 org admin/owner） |
+| **update** | **`created_by == 我`**（**不含**仅因透明读看到兄弟组工单的处理人；**RK-11 收窄已于 Step 4 落地并回归**） |
 | **close** | **`assigned_to == 我` OR `created_by == 我`** |
 | assign | `ticket_scope∈{group,all}` 且工单在其 scope 子树内（主管）；2a 仍仅 admin |
 | delete | 仅 admin bypass |
@@ -378,7 +380,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 | 场景 | HTTP | 错误码 |
 |------|------|--------|
 | 无路由权限 | 403 | 70001 |
-| 工单不可见 | 404 | 90001（待 Phase 2a 在 errcode.go 定义 `ErrTicketNotFound`） |
+| 工单不可见 | 404 | 90001（`ErrTicketNotFound`，已于 2a Step 2 写入 errcode.go） |
 | 可见但无权操作 | 403 | 70001 |
 | 非法状态转换 | 400 | 90002 |
 | 工单已关闭再操作 | 409 | 90004 |
@@ -458,7 +460,7 @@ POST /api/v1/tickets
 | 90003 | `ErrTicketTypeNotFound` | 工单类型不存在 | 404 |
 | 90004 | `ErrTicketAlreadyClosed` | 工单已关闭 | 409 |
 
-> 不可见工单对外统一 **90001**（决策收口：不再与 10004 二选一，10004 保留给通用资源不存在场景；**90001 / `ErrTicketNotFound` 尚未在 `errcode.go` 定义，Phase 2a 工单模块实现时写入，勿改号**）。
+> 不可见工单对外统一 **90001**（决策收口：不再与 10004 二选一，10004 保留给通用资源不存在场景；**已于 2a Step 2 写入 `errcode.go`，勿改号**）。
 
 ---
 
