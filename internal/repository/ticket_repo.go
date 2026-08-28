@@ -198,15 +198,28 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 }
 
 // Delete 物理删除工单（Phase 2a：admin only，关联表由 DB CASCADE 处理）
-func (r *TicketRepo) Delete(ctx context.Context, id int64) error {
-	tag, err := r.db.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)
+// Delete 物理删除工单（HC2：同事务先写 action='deleted' 事件——
+// FK ON DELETE SET NULL 使事件行存活且 ticket_id 悬空，审计链完整可追溯操作者）
+func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO ticket_events (ticket_id, user_id, action) VALUES ($1, $2, 'deleted')`,
+		id, actorUserID); err != nil {
+		return fmt.Errorf("write deleted event: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("delete ticket: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrTicketNotFound
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // --- 评论 / 备注 ---

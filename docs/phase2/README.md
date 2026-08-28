@@ -240,7 +240,8 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 | 000011 | 2b-core | 工单可见性：`organizations.ticket_visibility`（**Step 4 已执行**，[09 §5.2.1](./09-ticket.md)） | [09-ticket.md](./09-ticket.md) |
 | 000012 | 2b-org | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / 临时成员 / org `source` 列（原 000011 其余内容按不跳号规则顺延） | [03-org-enhance.md](./03-org-enhance.md) |
 | 000013 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role`（**2c 先行执行**，不跳号） | [04-org-delegation.md](./04-org-delegation.md) |
-| 000014 | 2b-ext | 附件：`file_objects` / `ticket_attachments`（延后顺延） | [10-storage.md](./10-storage.md) |
+| 000014 | 2c | 审计完整性：`ticket_events` FK 去 CASCADE（HC2，2026-08-28 已执行） | [09-ticket.md](./09-ticket.md) |
+| 000017 | 2b-ext | 附件：`file_objects` / `ticket_attachments`（延后；000015/000016 已被 2a 占用，顺延至此） | [10-storage.md](./10-storage.md) |
 | 000015 | 2a | 工单模板：`ticket_templates`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单模板2a-前移迁移-000015) |
 | 000016 | 2a | 工单关联：`ticket_relations`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单关联2a-前移迁移-000016) |
 

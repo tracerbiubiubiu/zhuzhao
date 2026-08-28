@@ -405,7 +405,7 @@ func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error
 	if err := s.authorizeCheck(ctx, actorUserID, "delete", strconv.FormatInt(id, 10)); err != nil {
 		return err
 	}
-	return s.ticketRepo.Delete(ctx, id)
+	return s.ticketRepo.Delete(ctx, id, actorUserID)
 }
 
 // --- 评论 / 备注 ---

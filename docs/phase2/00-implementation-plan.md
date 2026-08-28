@@ -101,7 +101,7 @@
 | **M2b-ext** 认证增强 | 7 | A1–A6 | `go test ./internal/service/...` | 设备列表/踢出（单轨道）+ 密码策略；可与 Step 6 并行 |
 | **M2b-ext** HR 同步 | 7b | HR 对账（fake client） | `make test-integration` | HR Job；**延后，不阻塞 2c** |
 | **M2b 验收**（非编号 Step，收口动作） | 4–7 | 2b-core + 2b-org 全量 + 2a 回归 | `bash scripts/acceptance-phase2b.sh` | 工单可见性 + 虚拟组全景 |
-| **M2c-1** 委托 API | 8 | D1–D6 | `make test-integration` | 迁移 000014；组内防提权（50008–50010） |
+| **M2c-1** 委托 API | 8 | D1–D6 | `make test-integration` | 迁移 000013（已随 Step 8 落地）；组内防提权（50008–50010） |
 | **M2c-2** Authorize 升级 | 9 | D7–D9 | 同上（扩展） | org admin/owner + ancestor owner |
 | **M2c-3** 2c 全量 | 10 | D1–D12 + 2a/2b-core/2b-org 回归（D10 HR 隔离待 2b-ext 落地后补） | `bash scripts/acceptance-phase2c.sh` | 全量收口 |
 
@@ -129,7 +129,7 @@
 ### Step 2（M2a-2）— ticket MVP
 
 - [x] 迁移 **000010**：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events` + 工单管理菜单（catalog/page/button 三层）+ menu_apis + 角色绑定（D2 已并入 000010，不再单独 _menu 文件）
-  - **硬删例外**：`tickets` / `ticket_comments` / `ticket_events` 表无 `deleted_at` 列，走物理 DELETE + ON DELETE CASCADE（P2-D1 设计；审计链由 `ticket_events` 外置保留）；`ticket_templates` / `ticket_relations` 走软删 + 部分唯一索引
+  - **硬删例外**：`tickets` / `ticket_comments` 表无 `deleted_at` 列，走物理 DELETE + ON DELETE CASCADE（`ticket_comments` 用户内容随单销毁）；`ticket_events` **已去 CASCADE**（迁移 000014，2026-08-28 HC2：事件行随库存活，ticket_id 悬空 = 审计语义，删单不再摧毁业务时间线）；`ticket_templates` / `ticket_relations` 走软删 + 部分唯一索引
   - `ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列
 - [x] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
 - [x] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
@@ -167,7 +167,7 @@
 ### Step 6（M2b-ext）— storage（延后/按需）
 
 - [ ] compose 加 MinIO；`config.storage` 段（[10 §2](./10-storage.md)）
-- [ ] 迁移**顺延为 000014**：`file_objects` / `ticket_attachments`（2c 委托先行执行取 000013，README §2.4）
+- [ ] 迁移**顺延为 000017**：`file_objects` / `ticket_attachments`（000013=2c 委托已执行、000014=审计修复已执行、000015/000016=2a 模板/关联已执行；README §2.4）
 - [ ] `internal/pkg/storage/s3_client.go` + 预签名 upload/download + confirm（HEAD 校验）+ 附件列表/删除 API
 - [ ] 91001–91004 错误码；S1–S6 测试
 

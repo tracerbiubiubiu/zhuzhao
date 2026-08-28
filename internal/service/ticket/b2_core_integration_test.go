@@ -237,6 +237,32 @@ func TestB2_MoveCascadeRemapsDescendantTicketPath(t *testing.T) {
 	require.NoError(t, err, "move 后透明读应基于重映射后的路径继续生效")
 	_, err = env.svc.Get(ctx, tk.ID, env.u2)
 	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
+
+	// MC2：move 级联同样覆盖 ticket_templates.org_path（子树内模板随迁，
+	// 防未来模板 scope 启用时静默错配）
+	var tplID int64
+	tplCode := "tpl_move_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO ticket_templates (code, name, type_code, org_id, org_path, created_by)
+		VALUES ($1, 'move 模板', 'incident', $2,
+		        (SELECT path::text FROM organizations WHERE id = $2)::ltree, 1)
+		RETURNING id`, tplCode, env.d1).Scan(&tplID))
+	var tplPathBefore string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT org_path::text FROM ticket_templates WHERE id=$1`, tplID).Scan(&tplPathBefore))
+
+	tplTarget := createB2Org(t, rootID, "p2btpl_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "模板移动目标")
+	require.NoError(t, orgRepo.Move(ctx, env.d1, &tplTarget))
+
+	var tplPathAfter string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT org_path::text FROM ticket_templates WHERE id=$1`, tplID).Scan(&tplPathAfter))
+	assert.Contains(t, tplPathAfter, "root.p2btpl_", "move 后模板 org_path 应随 D1 级联到目标子树")
+	assert.NotEqual(t, tplPathBefore, tplPathAfter)
+
+	// 清理：共享库跨用例存续，残留模板会污染 TestMeta_Templates_Empty 的空断言
+	_, err = testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE id=$1`, tplID)
+	require.NoError(t, err)
 }
 
 // lastLabel 取 ltree 路径最后一段标签

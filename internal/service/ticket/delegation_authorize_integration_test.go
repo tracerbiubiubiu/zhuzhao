@@ -126,7 +126,13 @@ func TestD9_D9_AncestorOwnerSubtree(t *testing.T) {
 	require.NoError(t, err, "实体 owner 凭 ancestor owner 应可管子树工单（D9）")
 	assert.Equal(t, "实体 owner 委托改名", updated.Title)
 
+	// HC2：deleted 事件随库存活（FK ON DELETE SET NULL → ticket_id 悬空）
 	require.NoError(t, env.svc.Delete(ctx, tk.ID, env.pOwner))
+	var delEvents int
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM ticket_events WHERE action='deleted' AND user_id=$1 AND ticket_id IS NULL`,
+		env.pOwner).Scan(&delEvents))
+	assert.GreaterOrEqual(t, delEvents, 1, "删除应写 deleted 事件（SET NULL 后随库存活）")
 }
 
 // 边界（04 §4.2 注/D11）：vg admin 不能改兄弟虚拟组工单——委托以 org 精确匹配为界

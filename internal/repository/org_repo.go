@@ -452,6 +452,21 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		return fmt.Errorf("cascade ticket org_path: %w", err)
 	}
 
+	// MC2：模板 org_path 同步级联（000015 列；当前无查询消费，
+	// 防未来模板 scope 启用时静默错配——重映射逻辑与 tickets 完全一致）
+	if _, err := tx.Exec(ctx, `
+		UPDATE ticket_templates
+		SET org_path = CASE
+			WHEN nlevel(org_path) = nlevel(text2ltree($2)) THEN text2ltree($1)
+			ELSE text2ltree($1) || subpath(org_path, nlevel(text2ltree($2)))
+		END,
+		    updated_at = NOW()
+		WHERE org_path <@ text2ltree($2)`,
+		newRootPath, oldPath,
+	); err != nil {
+		return fmt.Errorf("cascade ticket_templates org_path: %w", err)
+	}
+
 	return tx.Commit(ctx)
 }
 
