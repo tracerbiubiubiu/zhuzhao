@@ -152,7 +152,8 @@
 - [x] 迁移 **000011**：`organizations.ticket_visibility` 默认 `entity_transparent_read`（**不含 `project_isolated`，标 future**，[09 §5.2.1](./09-ticket.md)；原规划 Step 5，按 PRD SSOT 前移至 Step 4，其余 DDL 顺延 000012）
 - [x] BK-1 内部备注过滤（透明读旁观者仅公开回复，读写集合一致）
 - [x] RK-11 收窄回归（处理人 update → 403）
-- [ ] R9–R12 + D11 集成测试（✅ 机制形态已验：`b2_core_integration_test.go` 同事透明读/跨子树隔离/读写分离；R9/R10 虚拟组完整形态待 Step 5）；**P2-D1 回归**（move 后 scope 过滤仍正确，BK-6）
+- [x] R9–R12 + D11 集成测试（✅ 机制形态：同事透明读/跨子树隔离/读写分离/备注可见性/ticket_visibility 列；R9/R10 虚拟组完整形态待 Step 5）
+- [x] **P2-D1 回归**：`TestB2_MoveCascadeRemapsDescendantTicketPath`（move 后后代工单 org_path 按 newRoot||subpath 重映射 + 透明读在新路径继续生效、跨子树仍隔离）——**BK-6 关闭**（2026-08-28）
 
 ### Step 5（M2b-org）— org-enhance（与 Step 4 并行）
 
@@ -344,7 +345,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | BK-3 | Update patch 不写 ticket_events；closed 检查读后写（TOCTOU） | 审计断档：created/status_changed/assigned 留痕而 patch 无事件；并发 close 后仍可能 patch 成功（改 `UPDATE ... WHERE status <> 'closed'`） | Step 4 |
 | BK-4 | `ticket_events.action` 与 status 字面量未常量化 | "created"/"status_changed"/"assigned"/"open"/"closed" 散落 service.go；包内常量化防拼写漂移 | 任意 Step 顺手 |
 | BK-5 | CreateRelation 反向判重缺失 | DB 唯一索引只挡同向；A→B 与 B→A 可共存（逻辑重复）。应用层加 `(s=$1 AND t=$2) OR (s=$2 AND t=$1)` 存在性检查 | 按需（2b 后） |
-| BK-6 | P2-D1 级联后代分支无 Go 测试 | 验收脚本仅测叶子节点 move（THEN 分支）；后代工单 subpath 重映射（ELSE 分支，最易错）全仓零覆盖。Go 集成测试补「子树带孙代组织 + 工单重映射」 | Step 5 前 |
+| BK-6 | ~~P2-D1 级联后代分支无 Go 测试~~ | **✅ 已关闭（Step 4，2026-08-28）**：`TestB2_MoveCascadeRemapsDescendantTicketPath` 覆盖孙代组织 + 工单 subpath 重映射 + move 后透明读仍正确 | 已关闭 |
 | BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
 | BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |

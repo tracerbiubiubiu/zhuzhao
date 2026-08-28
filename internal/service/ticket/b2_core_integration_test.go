@@ -19,6 +19,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // b2Env 2b-core 测试环境：P 下两个兄弟实体部门 D1/D2，U1∈D1、U2∈D2、U3∈D1（同事）
@@ -194,6 +195,55 @@ func TestB2_TicketVisibilityColumn(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
 	_, err = env.svc.Get(ctx, tk.ID, env.u1)
 	require.NoError(t, err, "属主可见性不受 ticket_visibility 影响")
+}
+
+// T-2b-5（BK-6 / P2-D1 回归）：组织 move 后工单 org_path 级联重映射，
+// 且透明读过滤在**新路径**下仍正确——覆盖级联后代分支（subpath ELSE 分支，
+// 此前全仓零覆盖：脚本层仅测叶子节点 move 的 THEN 分支）。
+func TestB2_MoveCascadeRemapsDescendantTicketPath(t *testing.T) {
+	env := setupB2(t)
+	ctx := context.Background()
+
+	// D1 下建子部门 D1C，U1 在 D1C 建单（org_path 含三代：P.D1.D1C）
+	d1c := createB2Org(t, env.d1, "p2bd1c_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "2b 部门一子级")
+	tk := newTicketHelper(t, env.svc, env.u1, d1c, "级联重映射工单")
+
+	oldTicketPath := tk.OrgPath
+	// 同事（D1 成员）透明可读（旧路径）
+	_, err := env.svc.Get(ctx, tk.ID, env.colleague)
+	require.NoError(t, err)
+
+	// move：把 D1 从 P 下挪到 root 直下（后代 D1C 与工单随之重映射）
+	orgRepo := repository.NewOrgRepo(testPool)
+	rootID := rootOrgID(t)
+	require.NoError(t, orgRepo.Move(ctx, env.d1, &rootID))
+
+	// 断言 ELSE 分支：工单 org_path = newRoot(D1 新路径) || subpath(旧路径去掉旧 D1 前缀)
+	var d1NewPath, ticketPath string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT path::text FROM organizations WHERE id = $1`, env.d1).Scan(&d1NewPath))
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT org_path::text FROM tickets WHERE id = $1`, tk.ID).Scan(&ticketPath))
+	oldD1Path := oldTicketPath[:len(oldTicketPath)-len("."+lastLabel(oldTicketPath))]
+	assert.NotEqual(t, oldD1Path, d1NewPath, "D1 应已换位")
+	want := d1NewPath + oldTicketPath[len(oldD1Path):]
+	assert.Equal(t, want, ticketPath, "后代工单 org_path 应按 newRoot||subpath 重映射")
+
+	// move 后 scope 过滤仍正确：同事经新锚点仍透明可读；跨子树 U2 仍不可见
+	_, err = env.svc.Get(ctx, tk.ID, env.colleague)
+	require.NoError(t, err, "move 后透明读应基于重映射后的路径继续生效")
+	_, err = env.svc.Get(ctx, tk.ID, env.u2)
+	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
+}
+
+// lastLabel 取 ltree 路径最后一段标签
+func lastLabel(path string) string {
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '.' {
+			return path[i+1:]
+		}
+	}
+	return path
 }
 
 // --- 辅助 ---
