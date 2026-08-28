@@ -157,11 +157,12 @@
 
 ### Step 5（M2b-org）— org-enhance（与 Step 4 并行）
 
-- [ ] 迁移 **000012**：`source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`is_primary`/`source`/`expires_at`（[hr-directory-sync §2](../proposal/hr-directory-sync.md) DDL；`ticket_visibility` 已前移至 Step 4/000011）
-- [ ] 虚拟组 CRUD（org_type=4、code 前缀 `vg_`）+ Reparent（HR 撤销部门上挂最近实体祖先）
-- [ ] 临时成员：`expires_at` 读取时过滤（或惰性清理 Job，随 PRD）
-- [ ] BFS 三源 RoleFetcher 扩展（直接 + 组织角色 + 继承）
-- [ ] 实体 move 子树 path 级联**含虚拟组**（Phase 1 Move 扩展）
+- [x] 迁移 **000012**：organizations/users `source`/`external_id`/`synced_at`、`user_orgs.ticket_scope`/`source`/`expires_at`、`org_roles` 表、`roles.parent_id`（2026-08-28 落地；`ticket_visibility` 已前移至 Step 4/000011）
+- [x] 虚拟组 CRUD 约束（org_type=4、code 前缀 `vg_`、父级必须实体）；Reparent 自动化属 HR Sync（2b-ext），手工移动经既有 Move API 天然支持（级联已含虚拟组）
+- [x] 临时成员：`expires_at` 读取侧过滤（resolver 锚点 + BFS 组织角色，无清理 Job）
+- [x] BFS 三源 RoleFetcher：`RoleRepo.GetEffectiveRoleCodes`（直接 ∪ org_roles 直接所属节点 ∪ parent_id 继承链），RBACService 已切换
+- [x] 实体 move 子树 path 级联**含虚拟组**（`TestB2Org_VgCreateAndMoveCascade`；Phase 1 Move 基于organizations 全行级联，虚拟组天然覆盖并有测试固化）
+- [x] scope 激活：group 主管分派（`TestB2Org_ScopeSupervisorAndAll`）、all 全量、R9/R10 完整形态（`TestB2Org_R9R10_VgSiblingReadWrite`）
 
 ### Step 6（M2b-ext）— storage（延后/按需）
 

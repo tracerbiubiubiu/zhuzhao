@@ -175,6 +175,7 @@ ALTER TABLE user_orgs ADD COLUMN org_member_role VARCHAR(20) NOT NULL DEFAULT 'm
 | **策略 B**：vg_a member 改 vg_b 工单 | **403**（非创建人、非 vg_b admin） |
 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | vg_a member **不可读** vg_b（404） |
 
+> **Step 5 落地状态（2026-08-28）**：上表前 6 行已由 `b2_org_integration_test.go` 覆盖（vg 创建约束/move 级联含 vg/BFS 三源与「父部门不继承子部门」/临时成员过期/策略 B 读写分离/scope 主管与全量）；HR 移动/撤销两行的自动化为 move 级联含 vg 用例，撤销 reparent 自动化属 2b-ext HR Sync。
 #### 组织负责人与组内分级（Phase 2c — **非** 2b 验收范围）
 
 > 与 §组织负责人与组内分级 设计对应；**验收 SSOT**：[04-org-delegation §7](./04-org-delegation.md#7-测试用例验收-ssot)。

@@ -258,8 +258,8 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 | R6 | A 更新 B 的工单（可见但非属主） | **403** + 70001 | ✅ PASS; 服务真表=`TestTicket_R6_VisibleNotOwner_403` (assign/delete → ErrNoPermission 70001); HTTP=`acceptance-phase2a.sh` §R6 |
 | R7 | admin 读任意工单 | 200 | ✅ PASS; 服务真表=`TestTicket_R7_AdminBypass`; HTTP=`acceptance-phase2a.sh` §R7 admin 列表 & 详情 |
 | R8 | 无 ticket:list 路由权限 | **403** + 70001 | ✅ PASS; service 层 assigned scope 行为见 `TestTicket_R8_ViewerServiceLayerAssigned`；**真正 L1 Casbin 拦截** 由 HTTP `acceptance-phase2a.sh` §T7（viewer GET/POST → 403 Casbin 中间件）覆盖 |
-| R9 | 2b 策略 B：vg_a member 读 vg_b | **200** | ⏳ 虚拟组形态待 Step 5（000012）；**机制已于 Step 4 以实体同事形态验证**（`TestB2_ColleagueTransparentRead`） |
-| R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） | ⏳ 虚拟组形态待 Step 5；**不可改半边已于 Step 4 验证**（`TestB2_WriteSeparation` 旁观者/处理人 update → 403） |
+| R9 | 2b 策略 B：vg_a member 读 vg_b | **200** | ✅ PASS（Step 5）；`TestB2Org_R9R10_VgSiblingReadWrite` |
+| R10 | 2b 策略 B：vg_a member 改 vg_b | **403**（非创建人） | ✅ PASS（Step 5）；`TestB2Org_R9R10_VgSiblingReadWrite`（update/note 均 403，comment 放行） |
 | R11 | `project_isolated`（**future，2b-core 不交付**） | vg_a **不可读** vg_b → **404** | ⏳ 延期 Phase 3 |
 | R12 | 2b 创建人改自己 vg_a 工单 | **200** | ✅ 创建人半边 Step 4 已验（`TestB2_WriteSeparation` R12 段）；vg 形态待 Step 5 |
 
