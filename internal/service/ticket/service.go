@@ -242,8 +242,25 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if req.Priority != nil {
 		ticket.Priority = *req.Priority
 	}
-	if err := s.ticketRepo.Update(ctx, ticket); err != nil {
+	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
+	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := s.ticketRepo.UpdateTx(ctx, tx, ticket); err != nil {
 		return nil, err
+	}
+	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+		TicketID: ticket.ID,
+		UserID:   actorUserID,
+		Action:   "updated",
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return ticket, nil
 }
@@ -334,6 +351,22 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}
 	if ticket.Status == "assigned" && req.AssignedTo == nil {
 		newStatus = "open"
+	}
+
+	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
+	// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
+	if newStatus != ticket.Status {
+		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
+		if err != nil {
+			return err
+		}
+		sm, err := FromTicketType(ttype)
+		if err != nil {
+			return fmt.Errorf("build state machine: %w", err)
+		}
+		if err := sm.AssertTransition(ticket.Status, newStatus); err != nil {
+			return err
+		}
 	}
 
 	tx, err := s.db.Begin(ctx)

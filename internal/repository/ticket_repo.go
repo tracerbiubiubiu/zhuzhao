@@ -110,18 +110,24 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 
 // Update 更新工单标题/描述/优先级（patch 语义）
 func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
+	return r.UpdateTx(ctx, r.db, t)
+}
+
+// UpdateTx 事务内更新工单（BK-3：WHERE status<>'closed' 条件更新——
+// 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004）
+func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
 		UPDATE tickets SET
 			title = $2,
 			description = $3,
 			priority = $4,
 			updated_at = NOW()
-		WHERE id = $1
+		WHERE id = $1 AND status <> 'closed'
 		RETURNING updated_at`
-	err := r.db.QueryRow(ctx, q, t.ID, t.Title, t.Description, t.Priority).Scan(&t.UpdatedAt)
+	err := exec.QueryRow(ctx, q, t.ID, t.Title, t.Description, t.Priority).Scan(&t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return errcode.ErrTicketNotFound
+			return errcode.ErrTicketAlreadyClosed
 		}
 		return fmt.Errorf("update ticket: %w", err)
 	}

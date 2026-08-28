@@ -239,10 +239,33 @@ func scanRoleCollectableRowDirect(row pgx.CollectableRow) (*model.Role, error) {
 
 // ListRoleIDsByUserID 查询用户绑定的角色 ID（仅启用中，B1-1：禁用角色的菜单不下发）
 func (r *RoleRepo) ListRoleIDsByUserID(ctx context.Context, userID int64) ([]int64, error) {
+	// 2b-org：与 GetEffectiveRoleCodes 同源三源展开（直接 ∪ org_roles ∪ 继承链）——
+	// 否则 Casbin L1 放行而 /user/menus 不显示，前后端权限视图脱节
 	rows, err := r.db.Query(ctx, `
-		SELECT r.id FROM roles r
-		INNER JOIN user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1 AND r.deleted_at IS NULL AND r.status = 1`, userID)
+	WITH RECURSIVE seeds AS (
+		SELECT ur.role_id AS id
+		FROM user_roles ur
+		JOIN roles r ON r.id = ur.role_id AND r.deleted_at IS NULL AND r.status = 1
+		WHERE ur.user_id = $1
+		UNION
+		SELECT orgr.role_id
+		FROM org_roles orgr
+		JOIN user_orgs m ON m.org_id = orgr.org_id
+			AND (m.expires_at IS NULL OR m.expires_at > NOW())
+		JOIN roles r ON r.id = orgr.role_id AND r.deleted_at IS NULL AND r.status = 1
+		WHERE m.user_id = $1
+	),
+	expanded AS (
+		SELECT id FROM seeds
+		UNION
+		SELECT r.parent_id
+		FROM expanded e
+		JOIN roles r ON r.id = e.id AND r.deleted_at IS NULL AND r.status = 1
+		WHERE r.parent_id IS NOT NULL
+	)
+	SELECT DISTINCT r.id FROM expanded x
+	JOIN roles r ON r.id = x.id
+	ORDER BY r.id`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list role ids: %w", err)
 	}

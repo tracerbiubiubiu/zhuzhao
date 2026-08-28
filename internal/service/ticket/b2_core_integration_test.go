@@ -249,6 +249,69 @@ func lastLabel(path string) string {
 	return path
 }
 
+// T-2b-6（BK-2/BK-3 回归）：Assign 走状态机 + Update 条件更新/事件留痕
+func TestB2_AssignStateMachineAndUpdateGuard(t *testing.T) {
+	env := setupB2(t)
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+
+	// BK-2：自定义类型 transitions 无 open→assigned → Assign 应 90002（而非静默成功）
+	smType := "p2bsm_" + suffix
+	_, err := testPool.Exec(ctx, `
+		INSERT INTO ticket_types (code, name, transitions) VALUES ($1, '状态机测试', '{"open":["closed"]}'::jsonb)
+		ON CONFLICT (code) DO NOTHING`, smType)
+	require.NoError(t, err)
+	tk := newTicketWithType(t, env.svc, env.u1, env.d1, smType, "状态机工单")
+
+	env.roles[env.u1] = []string{"admin"} // assign 动作仅 admin bypass
+	err = env.svc.Assign(ctx, &model.AssignTicketRequest{
+		ID: tk.ID, AssignedTo: &env.colleague,
+	}, env.u1)
+	requireErrCode(t, err, errcode.ErrTicketInvalidTransition.Code)
+
+	// 放开 open→assigned 后同请求成功（证明拦截来自状态机而非其它路径）
+	_, err = testPool.Exec(ctx,
+		`UPDATE ticket_types SET transitions = '{"open":["assigned"]}'::jsonb WHERE code = $1`, smType)
+	require.NoError(t, err)
+	require.NoError(t, env.svc.Assign(ctx, &model.AssignTicketRequest{
+		ID: tk.ID, AssignedTo: &env.colleague,
+	}, env.u1))
+	got, err := env.svc.Get(ctx, tk.ID, env.u1)
+	require.NoError(t, err)
+	assert.Equal(t, "assigned", got.Status)
+
+	// BK-3a：patch 写 ticket_events（action=updated）
+	env.roles[env.u1] = []string{"operator"}
+	env.roles[env.colleague] = []string{"operator"}
+	plain := newTicketHelper(t, env.svc, env.u1, env.d1, "事件留痕工单")
+	_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{
+		ID: plain.ID, Title: strPtr("改一次"),
+	}, env.u1)
+	require.NoError(t, err)
+	var evCount int
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM ticket_events WHERE ticket_id = $1 AND action = 'updated'`,
+		plain.ID).Scan(&evCount))
+	assert.Equal(t, 1, evCount, "patch 应写 updated 事件（BK-3 审计断档修复）")
+
+	// BK-3b：close 后 update → 90004（条件更新消除 TOCTOU；90004 复活）
+	require.NoError(t, env.svc.Close(ctx, &model.CloseTicketRequest{ID: plain.ID}, env.u1))
+	_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{
+		ID: plain.ID, Title: strPtr("关闭后再改"),
+	}, env.u1)
+	requireErrCode(t, err, errcode.ErrTicketAlreadyClosed.Code)
+}
+
+// newTicketWithType 以指定类型创建工单
+func newTicketWithType(t *testing.T, svc *Service, actorID, orgID int64, typeCode, title string) *model.Ticket {
+	t.Helper()
+	tk, err := svc.Create(context.Background(), &model.CreateTicketRequest{
+		TypeCode: typeCode, Title: title, OrgID: orgID,
+	}, actorID)
+	require.NoError(t, err, "创建工单失败：type=%s title=%s", typeCode, title)
+	return tk
+}
+
 // --- 辅助 ---
 
 func createB2Org(t *testing.T, parentID int64, code, name string) int64 {
