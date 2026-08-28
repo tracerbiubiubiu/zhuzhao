@@ -239,8 +239,8 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 | 000010 | 2a | 工单表组：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events`（含 org_path 冗余；`ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列） | [09-ticket.md §2](./09-ticket.md) |
 | 000011 | 2b-core | 工单可见性：`organizations.ticket_visibility`（**Step 4 已执行**，[09 §5.2.1](./09-ticket.md)） | [09-ticket.md](./09-ticket.md) |
 | 000012 | 2b-org | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / 临时成员 / org `source` 列（原 000011 其余内容按不跳号规则顺延） | [03-org-enhance.md](./03-org-enhance.md) |
-| 000013 | 2b-ext | 附件：`file_objects` / `ticket_attachments` | [10-storage.md](./10-storage.md) |
-| 000014 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role`（若 Step 7 认证增强届时启用表结构则占用 000014，本项顺延 000017） | [04-org-delegation.md](./04-org-delegation.md) |
+| 000013 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role`（**2c 先行执行**，不跳号） | [04-org-delegation.md](./04-org-delegation.md) |
+| 000014 | 2b-ext | 附件：`file_objects` / `ticket_attachments`（延后顺延） | [10-storage.md](./10-storage.md) |
 | 000015 | 2a | 工单模板：`ticket_templates`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单模板2a-前移迁移-000015) |
 | 000016 | 2a | 工单关联：`ticket_relations`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单关联2a-前移迁移-000016) |
 

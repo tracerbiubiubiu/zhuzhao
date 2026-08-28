@@ -143,7 +143,7 @@ ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) NOT NULL DEFAULT 'assi
 --   补漏：新增 9 个 level-3 按钮菜单（含 9 个 permission 码）；role_menus 通配 admin/
 --   superadmin 全部 11 个菜单（不绑定按钮前端权限配置漏出；绑定后 AssignMenus 生成
 --   细粒度 Casbin 行对非通配角色完整生效）。
--- 最终实现文件：migrations/000010_ticket_menu.up.sql / .down.sql
+-- 最终实现文件：菜单 INSERT 并入 migrations/000010_ticket.up.sql（无独立 _menu 文件）
 
 -- ① level-1 目录 + level-2 页面：parent_id 后补（INSERT 时 NULL，防止自引用 FK 顺序依赖）
 INSERT INTO menus (code, name, parent_id, menu_type, path, component, icon, permission, sort_order, visible, is_system)
@@ -484,13 +484,13 @@ POST /api/v1/tickets
 
 | # | 用例 | 预期 |
 |---|------|------|
-| T8 | scope=group 用户列表 | 含子 org 工单 |
+| T8 | scope=group 用户列表 | 含子 org 工单。✅ 已覆盖（Step 5）：`TestB2Org_ScopeSupervisorAndAll`（Get/List）+ phase2b 脚本主管分派 |
 | T9 | vg_a member、策略 B | **可读** vg_b 工单；**不可 update** vg_b（403） |
-| T10 | expires_at 过期成员 | 失去该 org 透明读与 scope 路径 |
+| T10 | expires_at 过期成员 | 失去该 org 透明读与 scope 路径。✅ 已覆盖（Step 5）：`TestB2Org_ExpiredMemberLosesAnchor` + BFS 过期隔离 |
 | T11 | 附件 confirm | 见 storage S1–S2 |
 | T12 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | vg_a member **不可读** vg_b（404） |
 | T13 | vg_a admin 改 vg_a 内他人工单 | 2c：**200**；2b：403（非创建人） |
-| T14 | vg_a member 改自己创建的 vg_a 工单 | 200 |
+| T14 | vg_a member 改自己创建的 vg_a 工单 | 200。✅ 创建人半边已验（`TestB2_WriteSeparation` R12 段）|
 
 ### 2c
 

@@ -622,7 +622,7 @@ type StateController interface {
 **L1 设计要点**（见 [phase3/10-ticket-business.md §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级)）：
 
 - 事件先写 `ticket_events` 表（2a 已建，事务内保证不丢）
-- 消费者在事务后立即拉取 `ticket_events` 处理；多实例下用 [multi-instance](../phase3/02-multi-instance.md) 的分布式锁保证同一事件不被重复消费
+- 消费者在事务后立即拉取 `ticket_events` 处理；多实例下的重复消费防护采用分布式锁方案（Phase 3 事件机制启动时落地，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) L1 稳态）
 - SLA 定时扫描由 Asynq PeriodicTask 单点调度，**无需自写分布式锁**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）；L1 **事件消费**仍用分布式锁防重（多实例拉取 `ticket_events` 不重复）
 - L1 比 channel 可靠（崩溃不丢），比 Outbox 简单（无额外表/worker）——长期稳态
 - L1 是**长期稳态机制，非临时过渡**（ADR-001）：`processed` 标记、分布式锁防重、双重职责（audit/signal）分离均按产线级实现，不因"以为 L1 是过渡"而偷工减料
@@ -726,7 +726,7 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 | **变量系统** | `$` 前缀变量 + `InstanceVariablesSave` + 表达式求值下放 DB | ⚠️ JSONB 存变量，Go 侧求值（`govaluate` 库或自写，**不交给 DB**——避免 SQL 注入且可单测） |
 | **TaskAction 自描述** | `WhatCanIDo` 返回可执行操作集合 | ✅ 保留，前端按钮直接驱动 |
 | **双表设计** | 5 运行表 + 5 历史表，冗余字段便于查询 | ✅ 运行表（`workflow_instances`/`workflow_tasks`）+ 历史归档，冗余 `ticket_id` 便于关联查询 |
-| **计划任务** | `ScheduleTask` + 进程内 `ScheduledTaskPool` | ⚠️ Phase 3 用 Asynq PeriodicTask 替代（更可靠，复用 [multi-instance](../phase3/02-multi-instance.md) 分布式锁） |
+| **计划任务** | `ScheduleTask` + 进程内 `ScheduledTaskPool` | ⚠️ Phase 3 用 Asynq PeriodicTask 替代（更可靠，复用 ADR-001 L1 稳态的分布式锁方案） |
 
 **自写时必须避开的三个 easy-workflow 局限**：
 

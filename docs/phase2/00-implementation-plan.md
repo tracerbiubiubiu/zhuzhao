@@ -138,13 +138,13 @@
 - [x] TicketService/Handler/Router：CRUD + 状态机（transitions JSONB 校验）+ ticket_events；创建时同事务读 org.path 写 org_path
 - [x] 工单模板：列表/详情 API + `POST /tickets` 支持可选 `template_code` 预填字段（`default_sla_minutes` 仅存储，Phase 3 启用）
 - [x] 工单关联：建立/查询关联 API；建立关联时对 source/target 均走 update 鉴权（严于 PRD target-only，防止越权关联他人工单）
-- [ ] **P2-D1（已采纳 A）**：`OrgService.Move` 扩展级联改写 `tickets.org_path` + 集成测试
-- [ ] `scripts/acceptance-phase2a.sh`（含 Phase 1 27 用例回归段）
-- [ ] R3–R8 真表集成测试落位（[02 §3 R 表](./02-authz-resource.md)）
+- [x] **P2-D1（已采纳 A）**：`OrgRepo.Move` 事务内级联改写 `tickets.org_path`（含虚拟组）+ 集成测试（`TestB2_MoveCascadeRemapsDescendantTicketPath`，BK-6）
+- [x] `scripts/acceptance-phase2a.sh`（含 Phase 1 27 用例回归段；155 断言全绿）
+- [x] R3–R8 真表集成测试落位（[02 §3 R 表](./02-authz-resource.md)；`authz_resource_integration_test.go`）
 
 ### Step 3（M2a-3）— 2a 集成验收
 
-- [ ] 全量脚本通过；PRD 用例表标注状态；12 号报告模式出 2a 验收记录（可选）
+- [x] 全量脚本通过（155 断言）；PRD 用例表已标注状态
 
 ### Step 4（M2b-core）— ticket scope 升级（2b 关键路径）
 
@@ -167,7 +167,7 @@
 ### Step 6（M2b-ext）— storage（延后/按需）
 
 - [ ] compose 加 MinIO；`config.storage` 段（[10 §2](./10-storage.md)）
-- [ ] 迁移 **000013**：`file_objects` / `ticket_attachments`
+- [ ] 迁移**顺延为 000014**：`file_objects` / `ticket_attachments`（2c 委托先行执行取 000013，README §2.4）
 - [ ] `internal/pkg/storage/s3_client.go` + 预签名 upload/download + confirm（HEAD 校验）+ 附件列表/删除 API
 - [ ] 91001–91004 错误码；S1–S6 测试
 
@@ -190,7 +190,7 @@
 
 ### Step 8（M2c-1）— org-delegation
 
-- [ ] 迁移 **000014**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)）
+- [ ] 迁移 **000013**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)；不跳号规则下取最小空闲号）
 - [ ] `OrgDelegationService`：EffectiveOrgPriority / IsOrgAdminOrOwner / IsAncestorOwner
 - [ ] SetOwners / SetMemberRole / AddMember / RemoveMember / 虚拟组删除扩展（防提权矩阵 [04 §3](./04-org-delegation.md)）
 - [ ] 50008–50010 错误码；D1–D6 集成测试
@@ -325,11 +325,11 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 3 | M2a-3 | README §1.1 | 全量 + 回归 | — |
 | 4 | M2b-core | [09 §5.2](./09-ticket.md) | R9–R12、D11 | 000011 |
 | 5 | M2b-org | [03](./03-org-enhance.md) | 两表用例 | 000012 |
-| 6 | M2b-ext | [10](./10-storage.md) | S1–S6 | 000013 |
+| 6 | M2b-ext | [10](./10-storage.md) | S1–S6 | 000014（延后顺延） |
 | 7 | M2b-ext | [01](./01-auth-enhance.md) | A1–A6 | 视需要（执行期取下一可用编号） |
 | 7b | M2b-ext | [03-org-enhance HR 同步](./03-org-enhance.md) | HR 对账 | — |
 | — | M2b 验收 | README §1.2 | 2b-core + 2b-org 全量 + 回归 | — |
-| 8 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000014（若 Step 7 启用表结构则顺延 000017） |
+| 8 | M2c-1 | [04 §2–§3](./04-org-delegation.md) | D1–D6 | 000013 |
 | 9 | M2c-2 | [04 §4](./04-org-delegation.md) | D7–D9 | — |
 | 10 | M2c-3 | [04 §7](./04-org-delegation.md) | D1–D12 | — |
 
@@ -342,15 +342,15 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | # | 事项 | 说明 | 消费时点 |
 |---|------|------|---------|
 | BK-1 | ~~ListComments 不过滤 `is_internal`~~ | **✅ 已落地（Step 4，2026-08-28）**：透明读旁观者仅公开回复；读写集合一致（写者 ⊆ 可见内部备注集合）；测试 `TestB2_InternalNoteVisibility` | 已关闭 |
-| BK-2 | Assign 状态转换绕过状态机 | newStatus 手工推算 open↔assigned（恰在种子 transitions 内合法）；类型配置改 transitions 即静默失控。改走 `FromTicketType + AssertTransition` | Step 4 顺手 |
-| BK-3 | Update patch 不写 ticket_events；closed 检查读后写（TOCTOU） | 审计断档：created/status_changed/assigned 留痕而 patch 无事件；并发 close 后仍可能 patch 成功（改 `UPDATE ... WHERE status <> 'closed'`） | Step 4 |
+| BK-2 | ~~Assign 状态转换绕过状态机~~ | **✅ 已关闭（2026-08-28）**：Assign 走 `FromTicketType + AssertTransition`；回归 `TestB2_AssignStateMachineAndUpdateGuard`（自定义类型双向验证） | 已关闭 |
+| BK-3 | ~~Update patch 不写 ticket_events；closed 检查读后写（TOCTOU）~~ | **✅ 已关闭（2026-08-28）**：Update 改事务内 `UpdateTx`（`WHERE status<>'closed'` 条件更新）+ `CreateEventTx(action=updated)`；close 后 update → 90004（90004 复活） | 已关闭 |
 | BK-4 | `ticket_events.action` 与 status 字面量未常量化 | "created"/"status_changed"/"assigned"/"open"/"closed" 散落 service.go；包内常量化防拼写漂移 | 任意 Step 顺手 |
 | BK-5 | CreateRelation 反向判重缺失 | DB 唯一索引只挡同向；A→B 与 B→A 可共存（逻辑重复）。应用层加 `(s=$1 AND t=$2) OR (s=$2 AND t=$1)` 存在性检查 | 按需（2b 后） |
 | BK-6 | ~~P2-D1 级联后代分支无 Go 测试~~ | **✅ 已关闭（Step 4，2026-08-28）**：`TestB2_MoveCascadeRemapsDescendantTicketPath` 覆盖孙代组织 + 工单 subpath 重映射 + move 后透明读仍正确 | 已关闭 |
 | BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
 | BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
-| BK-10 | 2a 无状态推进端点 | DEFAULT 状态机含 in_progress/pending_verify 但 API 无推进路径；assigned 工单须先取消分派回 open 才能关闭（T6 已固化该行为）。是否补「开始处理/待验证」端点属产品决策 | Step 4 时拍板 |
+| BK-10 | 2a 无状态推进端点 | DEFAULT 状态机含 in_progress/pending_verify 但 API 无推进路径；assigned 工单须先取消分派回 open 才能关闭（T6 已固化该行为）。**建议拍板（2026-08-28，待确认）**：2b/2c 不补推进端点（无真实诉求），保留 Phase 3 随工单业务深化（10-ticket-business）一并设计 | 2c 开工前拍板 |
 
 ---
 

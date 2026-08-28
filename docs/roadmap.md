@@ -57,7 +57,9 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 | 子阶段 | 模块 | 核心能力 | 文档 |
 |--------|------|---------|------|
 | **2a** | 资源级鉴权 + 工单 MVP | Registry、属主、assigned 过滤、工单 CRUD+状态机 | [phase2/02-authz-resource.md](./phase2/02-authz-resource.md)、[09-ticket.md](./phase2/09-ticket.md) |
-| **2b** | 组织增强 + 存储 + 体验 | 虚拟组/scope、HR 目录同步、附件、多设备 UI、密码策略 | [phase2/03](./phase2/03-org-enhance.md)、[10-storage](./phase2/10-storage.md)、[01-auth-enhance](./phase2/01-auth-enhance.md)、[09-ticket §2b](./phase2/09-ticket.md) |
+| **2b-core** | 工单可见性本体 | 策略 B 透明读 + `ticket_visibility`（✅ Step 4 已交付） | [09-ticket §2b](./phase2/09-ticket.md) |
+| **2b-org** | 组织增强 | 虚拟组/scope、BFS 三源、临时成员（✅ Step 5 已交付）；HR 目录同步延后 | [phase2/03](./phase2/03-org-enhance.md)、[09-ticket §2b](./phase2/09-ticket.md) |
+| **2b-ext** | 外延（延后/按需） | 附件、多设备 UI、密码策略、HR 目录同步 | [10-storage](./phase2/10-storage.md)、[01-auth-enhance](./phase2/01-auth-enhance.md) |
 | **2c** | 组织内委托 | owner、org_member_role、组内防提权、工单 Authorize | [phase2/04-org-delegation.md](./phase2/04-org-delegation.md) |
 
 **部署形态**：单实例 Docker Compose

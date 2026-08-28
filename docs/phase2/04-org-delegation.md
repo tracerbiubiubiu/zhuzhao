@@ -99,6 +99,17 @@ HR Job **不得**写入或覆盖：
 | 组织详情（扩展） | `GET /api/v1/orgs/:id` | 9 | 返回 `owner_user_ids` |
 | 删除虚拟组（委托） | `POST /api/v1/orgs/delete` | 9 | 虚拟组 owner 可删（D6） |
 
+### 3.1.1 路由级权限实现策略（P2-2/B1，2c 开工前置已决策）
+
+上表「路由级权限」列的落地方式（**L1 与 L3 分层，不混一轴**）：
+
+1. **L1（Casbin 路由级）**：本节全部新路由**复用既有权限码**，不新增权限码——
+   - 写路由（owners / members/role / members / members/delete / delete）→ 挂在既有组织管理菜单（`org:update` 系 menu_apis）；
+   - 读路由（members 列表 / 组织详情）→ `org:read` 系（`org:read` 菜单）。
+   - 效果：持组织管理菜单的角色（admin/operator+ 等）L1 放行；owner/admin **不是** Casbin 角色，L1 对其天然放行与否取决于其全局角色——因此 effective owner/admin 的**细粒度校验全部下沉 L3（service 层）**。
+2. **L3（service 层 effective 校验）**：`OrgDelegationService.IsOrgAdminOrOwner / IsAncestorOwner` 在 service 内校验；校验失败 → 403 + 50008–50010（防提权矩阵见 §4）。
+3. **安全性**：L1 只负责「能不能调这个 API」，细粒度（谁能动哪个 org）由 L3 保证——与工单三层鉴权（09 §5）同构；L2 对组织资源不适用（组织本身即容器）。
+
 ### 3.2 `POST /api/v1/orgs/owners`
 
 ```json

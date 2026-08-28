@@ -273,7 +273,7 @@ internal/pkg/redis/
   - 菜单：BIGSERIAL 自增（`code` 做业务标识）
   - 审计日志：BIGSERIAL 自增
   - 组织：BIGSERIAL 自增，系统组织种子数据显式指定 ID（1/2/3），`setval` 重置序列避免冲突
-- ✅ **密钥**：`config.yaml` 只放开发示例；生产用环境变量覆盖 `JWT_SECRET`、`DATABASE_PASSWORD`。仓库不提交真实密钥。
+- ✅ **密钥**：`config.yaml` 只放开发示例；生产用环境变量覆盖 `JWT_SECRET`、`DB_PASSWORD`。仓库不提交真实密钥。
 - ✅ **健康检查**：`/health/ready` 失败时只返回 `unhealthy` + 组件名，不返回 DB/Redis 错误原文。
 - ✅ **org_type 枚举**：1=公司 2=部门 3=小组 4=虚拟组（Phase 1 只用 1-3，虚拟组 Phase 2b）
 - ✅ **tenant_id**：`BIGINT NOT NULL DEFAULT 1`，Phase 1 不做过滤，Phase 2 多租户时自增
