@@ -41,8 +41,8 @@ func NewTicketService(
 		registry:    registry,
 		roleFetcher: roleFetcher,
 	}
-	// 自注册 TicketResource（§2.5 Wire 自注册）
-	registry.Register(NewResource(s.ticketRepo))
+	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 注入实体透明读解析器
+	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db)))
 	return s
 }
 
@@ -411,7 +411,17 @@ func (s *Service) ListComments(ctx context.Context, ticketID, actorUserID int64)
 	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(ticketID, 10)); err != nil {
 		return nil, err
 	}
-	return s.ticketRepo.ListComments(ctx, ticketID)
+	// BK-1（2b Step 4 门禁）：内部备注仅 创建人/处理人/admin 可见，
+	// 透明读旁观者只返回公开回复。note 动作的放行集合恰为该集合，直接复用判定：
+	// errDenied（可见但非内部可见集合）→ 降级为仅公开；DB 错误上抛（Q3）。
+	ok, err := s.authorize(ctx, actorUserID, "note", strconv.FormatInt(ticketID, 10))
+	if err != nil {
+		if errors.Is(err, errDenied) {
+			return s.ticketRepo.ListComments(ctx, ticketID, false)
+		}
+		return nil, err
+	}
+	return s.ticketRepo.ListComments(ctx, ticketID, ok)
 }
 
 // --- 工单关联 ---

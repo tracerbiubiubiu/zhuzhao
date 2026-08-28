@@ -152,6 +152,15 @@ TECH_JSON=$(curl -s -X POST "$BASE/orgs" \
 TECH_ID=$(echo "$TECH_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 check "create tech org" "1" "$([ "$TECH_ID" != "0" ] && echo 1 || echo 0)"
 
+# 2b 语义适配（策略 B 透明读，09-ticket §5.2）：A/B 同属 tech 后互为透明读，
+# T2/T3 的隔离断言需 B 工单位于 A 锚点之外的独立子树，故建 tech2 承载 B 的工单
+TECH2_CODE="p2a_tech2_$$"
+TECH2_JSON=$(curl -s -X POST "$BASE/orgs" \
+  -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"$TECH2_CODE\",\"name\":\"Phase2a Tech2\",\"parent_id\":\"$ROOT_ID\",\"org_type\":3,\"sort_order\":98}")
+TECH2_ID=$(echo "$TECH2_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+check "create tech2 org" "1" "$([ "$TECH2_ID" != "0" ] && echo 1 || echo 0)"
+
 # 创建用户 A（创建者）+ B（处理人）+ viewer 用户
 make_user() {
   local suf="$1" role_id="$2"
@@ -230,11 +239,12 @@ check "template default_fields description prefill" "SLA 4h 模板" "$TPL_DESC"
 
 # ========================================================================
 # T2 / R3 / README §1.1-1: assigned scope 列表仅返回 created_by 或 assigned_to
+# （2b 起策略 B 同子树透明读，本组隔离断言依赖 B 工单位于 tech2 独立子树）
 # ========================================================================
 # 先让 B 也创建一张工单（确认 A 的列表不含 B 创建的工单）
 T_B=$(curl -s -X POST "$BASE/tickets" \
   -H "Authorization: Bearer $BAT" -H 'Content-Type: application/json' \
-  -d "{\"type_code\":\"request\",\"title\":\"B 申请电脑\",\"priority\":3,\"org_id\":\"$TECH_ID\"}")
+  -d "{\"type_code\":\"request\",\"title\":\"B 申请电脑\",\"priority\":3,\"org_id\":\"$TECH2_ID\"}")  # 2b：独立子树，保持 A 不可见
 TID_B=$(echo "$T_B" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 check "user B create ticket" "1" "$([ "$TID_B" != "0" ] && echo 1 || echo 0)"
 
@@ -395,10 +405,11 @@ TID_A2_JSON=$(curl -s -X POST "$BASE/tickets" \
   -d "{\"type_code\":\"incident\",\"title\":\"关联用工单 A2\",\"priority\":3,\"org_id\":\"$TECH_ID\"}")
 TID_A2=$(echo "$TID_A2_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 
-# A 建立 A2 → B 工单的关联（A2 为 A 创建；TID_B 为 B 创建但已分派 A——A 以处理人身份通过双端 update 鉴权）
+# A 建立 A2 → TID_A 的关联（2b RK-11：update 收窄为仅创建人，A 对 TID_B 已无
+# update 权——双端正例改用 A 自己的两张工单；跨可见性负例由集成测试覆盖）
 REL=$(curl -s -X POST "$BASE/tickets/relations" \
   -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' \
-  -d "{\"source_ticket_id\":\"$TID_A2\",\"target_ticket_id\":\"$TID_B\",\"relation_type\":\"related\"}")
+  -d "{\"source_ticket_id\":\"$TID_A2\",\"target_ticket_id\":\"$TID_A\",\"relation_type\":\"related\"}")
 check "create relation code=0" "0" "$(echo "$REL" | json_code)"
 
 # ========================================================================

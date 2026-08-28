@@ -191,11 +191,16 @@ func (r *TicketRepo) CreateCommentTx(ctx context.Context, exec rowExec, c *model
 	return nil
 }
 
-// ListComments 查询工单回复列表
-func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64) ([]*model.TicketComment, error) {
+// ListComments 查询工单回复列表。
+// includeInternal=false 时过滤内部备注（BK-1：透明读旁观者仅见公开回复）。
+func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64, includeInternal bool) ([]*model.TicketComment, error) {
+	where := "WHERE ticket_id = $1"
+	if !includeInternal {
+		where += " AND is_internal = false"
+	}
 	rows, err := r.db.Query(ctx, `
 		SELECT id, ticket_id, user_id, content, is_internal, created_at
-		FROM ticket_comments WHERE ticket_id = $1 ORDER BY created_at ASC`, ticketID)
+		FROM ticket_comments `+where+` ORDER BY created_at ASC`, ticketID)
 	if err != nil {
 		return nil, fmt.Errorf("list comments: %w", err)
 	}
