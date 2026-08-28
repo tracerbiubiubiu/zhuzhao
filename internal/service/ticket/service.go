@@ -33,6 +33,7 @@ func NewTicketService(
 	orgRepo *repository.OrgRepo,
 	registry resource.Registry,
 	roleFetcher middleware.RoleFetcher,
+	delegation OrgDelegationChecker,
 ) *Service {
 	s := &Service{
 		db:          db,
@@ -41,8 +42,8 @@ func NewTicketService(
 		registry:    registry,
 		roleFetcher: roleFetcher,
 	}
-	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 注入实体透明读解析器
-	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db)))
+	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
+	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
 	return s
 }
 

@@ -21,17 +21,27 @@ type ticketRepo interface {
 // errDenied = 可见但无权限 → Service 层转 403。
 var errDenied = errors.New("ticket: operation denied")
 
+// OrgDelegationChecker 2c 组织委托判定（04 §4；实现于 service.OrgDelegationService）。
+// 接口注入避免 ticket 包对 service 具体类型的依赖。
+type OrgDelegationChecker interface {
+	// IsOrgAdminOrOwner 工单所属 org 的组内 admin/owner（含 owner_user_ids 双轨）
+	IsOrgAdminOrOwner(ctx context.Context, userID, orgID int64) (bool, error)
+	// IsAncestorOwner 实体部门 owner 对子树的委托（D9）
+	IsAncestorOwner(ctx context.Context, userID int64, ticketOrgID int64, ticketOrgPath string) (bool, error)
+}
+
 // Resource 工单资源，实现 resource.Resource 接口。
-// 2b 范围（09-ticket §5.2）：策略 B——L2 读 = 属主 ∨ 实体锚点透明读（org_path <@ ANY）；
-// L3 写：update 仅创建人（RK-11 收窄）、close 创建人/处理人、assign/delete 仅 admin。
+// 2b（09-ticket §5.2）：策略 B——L2 读 = 属主 ∨ 实体锚点透明读；
+// 2c（04 §4.2）：L3 写加组织委托（org admin/owner + ancestor owner）。
 type Resource struct {
-	repo     ticketRepo
-	resolver ScopeResolver
+	repo       ticketRepo
+	resolver   ScopeResolver
+	delegation OrgDelegationChecker
 }
 
 // NewResource 创建工单资源实例（由 NewTicketService 调用，注册到 Registry）
-func NewResource(repo ticketRepo, resolver ScopeResolver) *Resource {
-	return &Resource{repo: repo, resolver: resolver}
+func NewResource(repo ticketRepo, resolver ScopeResolver, delegation OrgDelegationChecker) *Resource {
+	return &Resource{repo: repo, resolver: resolver, delegation: delegation}
 }
 
 // Code 返回资源编码
@@ -87,8 +97,12 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return false, nil // 不可见 → Service 层转 404
 	}
 
-	// L3 canOperate（动作权，读写分离）
-	if !r.canOperate(ctx, scope, req.UserID, req.Action, ticket) {
+	// L3 canOperate（动作权，读写分离；2c 含组织委托）
+	allowed, err := r.canOperate(ctx, scope, req.UserID, req.Action, ticket)
+	if err != nil {
+		return false, err // 委托判定 DB 错误 → 500（Q3）
+	}
+	if !allowed {
 		return false, errDenied // 可见但无权限 → Service 层转 403
 	}
 	return true, nil
@@ -140,29 +154,61 @@ func pathInAnchors(orgPath string, anchors []string) bool {
 //	close = 处理人或创建人；
 //	assign = ticket_scope group/all 主管（2b-org 000012 后激活；此前仅 admin bypass）；
 //	delete = 仅 admin bypass。
-func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID int64, action string, ticket *model.Ticket) bool {
+func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID int64, action string, ticket *model.Ticket) (bool, error) {
 	isCreator := ticket.CreatedBy == userID
 	isAssignee := ticket.AssignedTo != nil && *ticket.AssignedTo == userID
 
+	// 2c 组织委托（04 §4.2）：工单所属 org 的 admin/owner 或 ancestor owner。
+	// 语义边界：委托管「本 org（含子树，ancestor owner）绑定的工单」——
+	// 凭 vg_a 的 admin 身份不能改 vg_b 工单（org 不匹配），D11/R10 不受影响。
+	delegated := false
+
+	needDelegation := false
 	switch action {
 	case "read", "comment":
-		return true // L2 可见性已通过
+		return true, nil // L2 可见性已通过
 	case "note":
-		// 2b：与内部备注读可见集合一致（BK-1），透明读旁观者不可写
-		return isCreator || isAssignee
+		// 2b：读写集合一致（BK-1）；2c 扩 org admin/owner（09 §5.4 回标）
+		if isCreator || isAssignee {
+			return true, nil
+		}
+		needDelegation = true
 	case "update":
-		// 2b 收窄为仅创建人（RK-11：显式回归「处理人 update 应 403」）
-		return isCreator
+		// 2b 仅创建人（RK-11）；2c + org admin·owner / ancestor owner
+		if isCreator {
+			return true, nil
+		}
+		needDelegation = true
 	case "close":
-		// 处理人可关闭（创建人也可，对齐 09-ticket §5.4）
-		return isAssignee || isCreator
+		if isAssignee || isCreator {
+			return true, nil
+		}
+		needDelegation = true
 	case "assign":
-		// 2b-org 主管激活（09 §5.2）：ticket_scope∈{group,all} 且工单在其 scope 子树内
-		return scope.AllScope || pathInAnchors(ticket.OrgPath, scope.ScopePaths)
+		// 2b 主管（scope group/all 且工单在其子树）；2c + org admin·owner
+		if scope.AllScope || pathInAnchors(ticket.OrgPath, scope.ScopePaths) {
+			return true, nil
+		}
+		needDelegation = true
 	case "delete":
-		// 仅 admin bypass
-		return false
+		// 2b 仅 admin bypass；2c + org admin·owner / ancestor owner
+		needDelegation = true
 	default:
-		return false
+		return false, nil
 	}
+
+	if needDelegation {
+		var err error
+		delegated, err = r.delegation.IsOrgAdminOrOwner(ctx, userID, ticket.OrgID)
+		if err != nil {
+			return false, err
+		}
+		if !delegated {
+			delegated, err = r.delegation.IsAncestorOwner(ctx, userID, ticket.OrgID, ticket.OrgPath)
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+	return delegated, nil
 }

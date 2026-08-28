@@ -82,7 +82,7 @@ func TestB2Org_R9R10_VgSiblingReadWrite(t *testing.T) {
 // T-2b-org-2：虚拟组创建约束（vg_ 前缀 / 必须挂实体下）+ move 级联含虚拟组
 func TestB2Org_VgCreateAndMoveCascade(t *testing.T) {
 	env := setupB2(t)
-	orgService := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool))
+	orgService := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), rbacStubForOrgTest{})
 	ctx := context.Background()
 
 	// 无 vg_ 前缀 → 400
@@ -383,4 +383,12 @@ func containsID(tickets []*model.Ticket, id int64) bool {
 		}
 	}
 	return false
+}
+
+// rbacStubForOrgTest OrgService 的 RoleFetcher 桩（b2 组织测试仅用 Create/Move，
+// 无全局 admin 判定需求；AddMember 委托校验用 superadmin actor 时由本桩放行）
+type rbacStubForOrgTest struct{}
+
+func (rbacStubForOrgTest) GetRoleCodesByUserID(_ context.Context, _ int64) ([]string, error) {
+	return []string{"superadmin"}, nil
 }

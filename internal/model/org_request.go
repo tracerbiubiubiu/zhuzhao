@@ -1,10 +1,28 @@
 package model
 
+import "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
+
 // OrgMemberRequest 组织成员操作
 type OrgMemberRequest struct {
 	OrgID     int64 `json:"org_id,string" binding:"required"`
 	UserID    int64 `json:"user_id,string" binding:"required"`
 	IsPrimary bool  `json:"is_primary"`
+	// 2c（04 §3.4）：可选组内级别；仅 owner 可指定 admin（service 层校验）
+	OrgMemberRole string `json:"org_member_role" binding:"omitempty,oneof=member admin"`
+}
+
+// SetOrgOwnersRequest 设置组织负责人（2c，04 §3.2）
+type SetOrgOwnersRequest struct {
+	OrgID        int64               `json:"org_id,string" binding:"required"`
+	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" binding:"required"` // 元素为字符串 ID（项目惯例）；空数组=清空（仅全局）
+}
+
+// SetOrgMemberRoleRequest 任命/变更组内角色（2c，04 §3.3）
+type SetOrgMemberRoleRequest struct {
+	OrgID         int64  `json:"org_id,string" binding:"required"`
+	UserID        int64  `json:"user_id,string" binding:"required"`
+	OrgMemberRole string `json:"org_member_role" binding:"required,oneof=member admin"`
+	// owner 仅经 SetOwners；请求 owner → 400（service 层校验）
 }
 
 // CreateOrgRequest 创建组织

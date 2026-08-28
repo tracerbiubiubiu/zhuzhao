@@ -63,7 +63,7 @@ func TestRBACService_UpdateRole_StatusPatchSemantics(t *testing.T) {
 func TestOrgService_Update_StatusPatchSemantics(t *testing.T) {
 	resetOrgTables(t)
 	ctx := context.Background()
-	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool))
+	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
@@ -206,7 +206,7 @@ func newUserServiceForD2(t *testing.T) (*service.UserService, *repository.UserRe
 	t.Cleanup(func() { _ = rdb.Close() })
 	userRepo := repository.NewUserRepo(testPool)
 	roleRepo := repository.NewRoleRepo(testPool)
-	orgSvc := service.NewOrgService(repository.NewOrgRepo(testPool), userRepo)
+	orgSvc := service.NewOrgService(repository.NewOrgRepo(testPool), userRepo, service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 	jwtCfg := config.JWTConfig{Secret: "d2-test-secret-0123456789abcdef", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	return service.NewUserService(testPool, userRepo, roleRepo, orgSvc, rdb, jwt.NewManager(jwtCfg)), userRepo, roleRepo
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	orgdeleg "github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 // stubRoleFetcher 直接按 userID→[]string 返回角色码（摆脱 Casbin/RBAC 全链路）。
@@ -40,10 +41,10 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	ticketRepo := repository.NewTicketRepo(testPool)
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
-	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool)))
+	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
 
 	roles := stubRoleFetcher{}
-	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles)
+	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool))
 
 	// 预取 root org id（seedMinimal 已建）
 	var rootID int64

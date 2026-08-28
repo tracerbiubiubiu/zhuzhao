@@ -81,7 +81,7 @@ func (h *OrgHandler) Delete(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.orgService.Delete(c.Request.Context(), req.OrgID); err != nil {
+	if err := h.orgService.DeleteOrgDelegated(c.Request.Context(), req.OrgID, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -126,7 +126,7 @@ func (h *OrgHandler) AddMember(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.orgService.AddMember(c.Request.Context(), &req); err != nil {
+	if err := h.orgService.AddMember(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -140,7 +140,52 @@ func (h *OrgHandler) RemoveMember(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.orgService.RemoveMember(c.Request.Context(), &req); err != nil {
+	if err := h.orgService.RemoveMember(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// SetOwners POST /api/v1/orgs/owners（2c，04 §3.2）
+//
+//	@Summary	设置组织负责人
+//	@Tags		org
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.SetOrgOwnersRequest	true	"设置负责人请求"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/orgs/owners [post]
+func (h *OrgHandler) SetOwners(c *gin.Context) {
+	var req model.SetOrgOwnersRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	org, err := h.orgService.SetOwners(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, org)
+}
+
+// SetMemberRole POST /api/v1/orgs/members/role（2c，04 §3.3）
+//
+//	@Summary	任命/变更组内角色
+//	@Tags		org
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.SetOrgMemberRoleRequest	true	"变更组内角色请求"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/orgs/members/role [post]
+func (h *OrgHandler) SetMemberRole(c *gin.Context) {
+	var req model.SetOrgMemberRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.SetMemberRole(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}

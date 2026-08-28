@@ -21,7 +21,7 @@ func TestOrgService_GetMembersPagination(t *testing.T) {
 	ctx := context.Background()
 	orgRepo := repository.NewOrgRepo(testPool)
 	userRepo := repository.NewUserRepo(testPool)
-	svc := service.NewOrgService(orgRepo, userRepo)
+	svc := service.NewOrgService(orgRepo, userRepo, service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 
 	var rootID int64
 	require.NoError(t, testPool.QueryRow(ctx, `

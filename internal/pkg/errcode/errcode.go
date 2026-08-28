@@ -73,8 +73,13 @@ var (
 	ErrOrgHasMembers        = New(50005, "该组织下有成员，无法删除")
 	ErrOrgIsSystem          = New(50006, "系统内置组织不可删除")
 	ErrNotOrgMember         = New(50007, "用户不是该组织成员")
-	ErrDuplicatePrimaryOrg  = New(50011, "该用户已有主组织，并发设置主组织冲突，请重试")
-	ErrOrgSystemProtected   = New(50012, "系统内置组织受保护，禁止此操作")
+
+	// 2c 组织委托（04-org-delegation §5）
+	ErrCannotAssignHigherOrgMemberRole = New(50008, "不能分配更高的组内角色")
+	ErrCannotManageOrgMember           = New(50009, "无权管理该组织成员")
+	ErrNotOrgOwner                     = New(50010, "需要组织负责人权限")
+	ErrDuplicatePrimaryOrg             = New(50011, "该用户已有主组织，并发设置主组织冲突，请重试")
+	ErrOrgSystemProtected              = New(50012, "系统内置组织受保护，禁止此操作")
 )
 
 // 菜单模块 60000-60999

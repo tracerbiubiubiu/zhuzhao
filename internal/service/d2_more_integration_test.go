@@ -197,7 +197,7 @@ func TestOrgRepo_ConcurrentDualPrimary(t *testing.T) {
 func TestOrgService_CreateDepthLimit(t *testing.T) {
 	resetOrgTables(t)
 	ctx := context.Background()
-	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool))
+	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 
 	// 直插 20 段 path 的父组织（绕过 service 限制构造深层基线）
 	deepPath := strings.Repeat("l.", 19) + "l20" // 20 段 label

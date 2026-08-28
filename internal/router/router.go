@@ -111,6 +111,22 @@ func New(deps Deps) *gin.Engine {
 				}
 			}
 
+			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
+			// L1 仅要求认证（SelfService 标记跳过 Casbin enforce——owner/admin 不是
+			// Casbin 角色，纯菜单 L1 会把无全局菜单的委托者挡在 L3 之前）；
+			// 全局权（org 管理权限码）与组内委托矩阵统一在 OrgService L3 判定。
+			// 注意：必须挂 authed 级且标记先于 CasbinAuth（与上 selfService 同模式），
+			// 挂 biz 子组时组级 Casbin 先于子组标记执行
+			orgDelegated := authed.Group("/orgs")
+			orgDelegated.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			{
+				orgDelegated.POST("/delete", deps.OrgHandler.Delete)
+				orgDelegated.POST("/members", deps.OrgHandler.AddMember)
+				orgDelegated.POST("/members/role", deps.OrgHandler.SetMemberRole)
+				orgDelegated.POST("/owners", deps.OrgHandler.SetOwners)
+				orgDelegated.POST("/members/delete", deps.OrgHandler.RemoveMember)
+			}
+
 			// 业务路由（需 Casbin 策略）
 			biz := authed.Group("")
 			biz.Use(middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
@@ -150,11 +166,9 @@ func New(deps Deps) *gin.Engine {
 					orgs.POST("", deps.OrgHandler.Create)
 					orgs.GET("/:id", deps.OrgHandler.Get)
 					orgs.POST("/update", deps.OrgHandler.Update)
-					orgs.POST("/delete", deps.OrgHandler.Delete)
 					orgs.POST("/move", deps.OrgHandler.Move)
 					orgs.GET("/:id/members", deps.OrgHandler.GetMembers)
-					orgs.POST("/members", deps.OrgHandler.AddMember)
-					orgs.POST("/members/delete", deps.OrgHandler.RemoveMember)
+
 				}
 
 				// 菜单模块

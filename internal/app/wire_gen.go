@@ -50,11 +50,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	authHandler := handler.NewAuthHandler(authService)
 	roleRepo := repository.NewRoleRepo(pool)
 	orgRepo := repository.NewOrgRepo(pool)
-	orgService := service.NewOrgService(orgRepo, userRepo)
-	userService := service.NewUserService(pool, userRepo, roleRepo, orgService, client, manager)
+	orgDelegationService := service.NewOrgDelegationService(pool)
 	menuRepo := repository.NewMenuRepo(pool)
-	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
-	userHandler := handler.NewUserHandler(userService, menuService)
 	casbinConfig := cfg.Casbin
 	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
@@ -63,13 +60,17 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
+	orgService := service.NewOrgService(orgRepo, userRepo, orgDelegationService, rbacService)
+	userService := service.NewUserService(pool, userRepo, roleRepo, orgService, client, manager)
+	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
+	userHandler := handler.NewUserHandler(userService, menuService)
 	roleHandler := handler.NewRoleHandler(rbacService)
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
 	ticketRepo := repository.NewTicketRepo(pool)
 	registry := resource.NewRegistry()
-	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService)
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
@@ -105,7 +106,7 @@ var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, re
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgService, service.NewMenuService, service.NewAuditService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
 
 var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler)
 

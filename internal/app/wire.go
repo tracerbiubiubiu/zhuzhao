@@ -48,6 +48,7 @@ var serviceSet = wire.NewSet(
 	service.NewAuthService,
 	service.NewUserService,
 	service.NewRBACService,
+	service.NewOrgDelegationService,
 	service.NewOrgService,
 	service.NewMenuService,
 	service.NewAuditService,
@@ -56,6 +57,8 @@ var serviceSet = wire.NewSet(
 	ticketsvc.NewTicketService,
 	wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)),
 	wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)),
+	// 2c：工单委托判定接口绑定 OrgDelegationService（ticket 包不依赖 service 具体类型）
+	wire.Bind(new(ticketsvc.OrgDelegationChecker), new(*service.OrgDelegationService)),
 )
 
 var handlerSet = wire.NewSet(

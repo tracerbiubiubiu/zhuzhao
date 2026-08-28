@@ -30,9 +30,10 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrCannotRemoveLastSuperadmin.Code: 403,
 	errcode.ErrCannotAssignHigherRole.Code:     403,
 	errcode.ErrCannotManageHigher.Code:         403,
-	errcode.ErrOrgHasChildren.Code:             403,
-	errcode.ErrOrgHasMembers.Code:              403,
-	errcode.ErrOrgIsSystem.Code:                403,
+	// 50004/50005 契约为 409（errcode.md/D2-06·07）——原误映射 403，PRD D6 验收暴露
+	errcode.ErrOrgHasChildren.Code: 409,
+	errcode.ErrOrgHasMembers.Code:  409,
+	errcode.ErrOrgIsSystem.Code:    403,
 	// D2-06：50012 原漏映射 → 500+10000，errcode.md 承诺 403+50012
 	errcode.ErrOrgSystemProtected.Code: 403,
 	errcode.ErrRoleInUse.Code:          403,
@@ -44,14 +45,19 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNoRoles.Code:            403,
 
 	// 404 不存在
-	errcode.ErrNotFound.Code:           404,
-	errcode.ErrUserNotFound.Code:       404,
-	errcode.ErrRoleNotFound.Code:       404,
-	errcode.ErrOrgNotFound.Code:        404,
-	errcode.ErrMenuNotFound.Code:       404,
-	errcode.ErrNotOrgMember.Code:       404,
-	errcode.ErrTicketNotFound.Code:     404,
-	errcode.ErrTicketTypeNotFound.Code: 404,
+	errcode.ErrNotFound.Code:     404,
+	errcode.ErrUserNotFound.Code: 404,
+	errcode.ErrRoleNotFound.Code: 404,
+	errcode.ErrOrgNotFound.Code:  404,
+	errcode.ErrMenuNotFound.Code: 404,
+	errcode.ErrNotOrgMember.Code: 404,
+
+	// 2c 组织委托（04-org-delegation §5）
+	errcode.ErrCannotAssignHigherOrgMemberRole.Code: 403,
+	errcode.ErrCannotManageOrgMember.Code:           403,
+	errcode.ErrNotOrgOwner.Code:                     403,
+	errcode.ErrTicketNotFound.Code:                  404,
+	errcode.ErrTicketTypeNotFound.Code:              404,
 
 	// 409 冲突
 	errcode.ErrConflict.Code:                   409,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/validate"
@@ -16,12 +17,37 @@ import (
 
 // OrgService 组织架构管理服务
 type OrgService struct {
-	orgRepo  *repository.OrgRepo
-	userRepo *repository.UserRepo
+	orgRepo    *repository.OrgRepo
+	userRepo   *repository.UserRepo
+	delegation *OrgDelegationService
+	roles      middleware.RoleFetcher
 }
 
-func NewOrgService(orgRepo *repository.OrgRepo, userRepo *repository.UserRepo) *OrgService {
-	return &OrgService{orgRepo: orgRepo, userRepo: userRepo}
+// NewOrgService 创建组织服务。
+// 2c：注入委托服务（组内级别校验）与角色获取器（全局 admin 判定）。
+func NewOrgService(orgRepo *repository.OrgRepo, userRepo *repository.UserRepo,
+	delegation *OrgDelegationService, roles middleware.RoleFetcher) *OrgService {
+	return &OrgService{orgRepo: orgRepo, userRepo: userRepo, delegation: delegation, roles: roles}
+}
+
+// isGlobalOrgAdmin 全局组织管理判定（04 §3.1 L3 全局侧）：
+// admin/superadmin 角色码快路径 + org:* 权限码精确判定（BFS 有效角色 → role_menus）。
+// fail-closed：任一查询失败视为无全局权。
+func (s *OrgService) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
+	roleCodes, err := s.roles.GetRoleCodesByUserID(ctx, userID)
+	if err != nil {
+		return false
+	}
+	for _, r := range roleCodes {
+		if r == "admin" || r == "superadmin" || r == "role::admin" || r == "role::superadmin" {
+			return true
+		}
+	}
+	ok, err := s.delegation.HasOrgManagePermission(ctx, userID)
+	if err != nil {
+		return false
+	}
+	return ok
 }
 
 // GetTree 返回完整组织树（树形结构，按 sort_order、id 排序）
@@ -94,17 +120,44 @@ func (s *OrgService) GetUserOrgs(ctx context.Context, userID int64) ([]*model.Us
 	return s.orgRepo.GetUserOrgs(ctx, userID)
 }
 
-func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest) error {
+func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
 	}
 	if _, err := s.userRepo.FindByID(ctx, req.UserID); err != nil {
 		return err
 	}
-	return s.orgRepo.AddMember(ctx, req.OrgID, req.UserID, req.IsPrimary)
+	// 2c（04 §3.4）：组内级别校验——admin/owner 可加 member；仅 owner 可指定 admin
+	role := req.OrgMemberRole
+	if role == "" {
+		role = "member"
+	}
+	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID,
+		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		return err
+	}
+	if role == "admin" {
+		// 指定 admin 需 owner 档（admin 调用 → 50008，04 §3.4）
+		p, err := s.delegation.EffectiveOrgPriority(ctx, actorUserID, req.OrgID)
+		if err != nil {
+			return err
+		}
+		if !s.isGlobalOrgAdmin(ctx, actorUserID) && p > OrgRoleOwnerPriority {
+			return errcode.ErrCannotAssignHigherOrgMemberRole
+		}
+	}
+	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role)
 }
 
-func (s *OrgService) RemoveMember(ctx context.Context, req *model.OrgMemberRequest) error {
+func (s *OrgService) RemoveMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
+	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
+		return err
+	}
+	// 2c（04 §3.5）：组内防提权——admin 仅可移除 member；owner 任意；全局绕过
+	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID,
+		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		return err
+	}
 	return s.orgRepo.RemoveMember(ctx, req.OrgID, req.UserID)
 }
 
@@ -276,6 +329,124 @@ func (s *OrgService) Delete(ctx context.Context, id int64) error {
 		return errcode.ErrOrgIsSystem
 	}
 	// B4-5：children/members 检查已移入 repo.Delete 同事务（消灭 check-then-act 窗口）
+	return s.orgRepo.Delete(ctx, id)
+}
+
+// SetOwners 设置组织负责人（2c，04 §3.2；D1）。
+// 全局 org 管理员或该 org effective owner 可调用；非 owner 调用方不可移除现有 owner（防自我降权踢人）。
+// 双轨对齐：SetOwnersTx 同步 user_orgs.org_member_role='owner'。
+func (s *OrgService) SetOwners(ctx context.Context, req *model.SetOrgOwnersRequest, actorUserID int64) (*model.Organization, error) {
+	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	globalAdmin := s.isGlobalOrgAdmin(ctx, actorUserID)
+	if !globalAdmin {
+		p, err := s.delegation.EffectiveOrgPriority(ctx, actorUserID, req.OrgID)
+		if err != nil {
+			return nil, err
+		}
+		if p > OrgRoleOwnerPriority {
+			return nil, errcode.ErrNotOrgOwner // 50010
+		}
+		// 非 owner 调用方（即 effective owner 自身）不可移除仍在列表中的现有 owner——
+		// 仅全局管理员可清空/剔除 owner（04 §3.2.3）
+		for _, existing := range org.OwnerUserIDs {
+			kept := false
+			for _, id := range req.OwnerUserIDs {
+				if id == existing {
+					kept = true
+					break
+				}
+			}
+			if !kept && existing != actorUserID {
+				// owner 移除其他 owner 不允许（自保）；移除自己允许（让位）
+				return nil, errcode.ErrNotOrgOwner
+			}
+		}
+	}
+	// 校验各 user 存在且未软删（04 §3.2.1）
+	for _, uid := range req.OwnerUserIDs {
+		if _, err := s.userRepo.FindByID(ctx, uid); err != nil {
+			return nil, err
+		}
+	}
+	if err := s.orgRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+		return s.orgRepo.SetOwnersTx(ctx, tx, req.OrgID, req.OwnerUserIDs)
+	}); err != nil {
+		return nil, err
+	}
+	return s.orgRepo.FindByID(ctx, req.OrgID)
+}
+
+// SetMemberRole 任命/变更组内角色（2c，04 §3.3；D2/D3）。
+// 仅 effective owner（或全局管理员）可调用；不可设 owner（→400）；不可改 owner_user_ids 用户的角色（→50009）。
+func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberRoleRequest, actorUserID int64) error {
+	if req.OrgMemberRole == "owner" {
+		return &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "owner 仅通过 SetOwners 设置"}
+	}
+	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
+		return err
+	}
+	// 调用方档位：admin → 50010（D3）；member → 70001
+	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, 0,
+		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		return err
+	}
+	// 目标须为成员（50007）且非 owner_user_ids 派生 owner（50009，04 §3.3.4）
+	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
+	if err != nil {
+		return err
+	}
+	for _, id := range org.OwnerUserIDs {
+		if id == req.UserID {
+			return errcode.ErrCannotManageOrgMember
+		}
+	}
+	return s.orgRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+		return s.orgRepo.SetMemberRoleTx(ctx, tx, req.OrgID, req.UserID, req.OrgMemberRole)
+	})
+}
+
+// DeleteOrgDelegated 委托删除入口（2c，04 §3.6；D6）：
+// org_type=4 且调用方为 effective owner（或全局）→ 允许删除（仍有成员 → 50005，与 Phase 1 一致）。
+// 实体组织删除规则不变。
+func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUserID int64) error {
+	org, err := s.orgRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if org.IsSystem {
+		return errcode.ErrOrgIsSystem
+	}
+	// 全局管理员走既有 Delete；虚拟组 effective owner 亦可
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		if org.OrgType != 4 {
+			return errcode.ErrNoPermission // 实体删除仅全局（Phase 1 语义）
+		}
+		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errcode.ErrNoPermission
+		}
+	}
+	// D6 语义：虚拟组的 owner 成员行是 SetOwners 的派生数据（04 §2.2 双轨），
+	// 组消亡即失效——不视作「成员占位」。仍有非 owner 成员 → 50005（不动状态）；
+	// 仅剩 owner 行 → 预清后删除（PRD D6「有成员 → 409」）
+	if org.OrgType == 4 {
+		n, err := s.orgRepo.CountNonOwnerMembers(ctx, id)
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return errcode.ErrOrgHasMembers
+		}
+		if err := s.orgRepo.ClearOwnerMemberships(ctx, id); err != nil {
+			return err
+		}
+	}
 	return s.orgRepo.Delete(ctx, id)
 }
 

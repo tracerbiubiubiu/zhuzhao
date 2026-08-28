@@ -15,7 +15,7 @@ import (
 const orgSelectColumns = `
 	id, code, name, COALESCE(description, '') AS description,
 	parent_id, path::text AS path, org_type, status, is_system,
-	sort_order, created_by, tenant_id, version, deleted_at, created_at, updated_at`
+	sort_order, owner_user_ids, created_by, tenant_id, version, deleted_at, created_at, updated_at`
 
 // OrgRepo 组织数据访问
 type OrgRepo struct {
@@ -100,6 +100,41 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 			return ec
 		}
 		return fmt.Errorf("add member: %w", err)
+	}
+	return tx.Commit(ctx)
+}
+
+// AddMemberWithRole 添加组织成员并指定组内级别（2c，04 §3.4）。
+// 幂等语义与 AddMember 一致（B3-1 primary）；role 由 service 层完成防提权校验。
+func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, isPrimary bool, role string) error {
+	if role == "" {
+		role = "member"
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if isPrimary {
+		if _, err := tx.Exec(ctx, `
+			UPDATE user_orgs SET is_primary = false WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_id, org_id) DO UPDATE
+			SET is_primary = true
+			WHERE EXCLUDED.is_primary`,
+		userID, orgID, isPrimary, role)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("add member with role: %w", err)
 	}
 	return tx.Commit(ctx)
 }
@@ -422,7 +457,7 @@ func scanOrgRow(row pgx.Row) (*model.Organization, error) {
 	var o model.Organization
 	err := row.Scan(
 		&o.ID, &o.Code, &o.Name, &o.Description, &o.ParentID, &o.Path,
-		&o.OrgType, &o.Status, &o.IsSystem, &o.SortOrder, &o.CreatedBy,
+		&o.OrgType, &o.Status, &o.IsSystem, &o.SortOrder, &o.OwnerUserIDs, &o.CreatedBy,
 		&o.TenantID, &o.Version, &o.DeletedAt, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
@@ -433,4 +468,89 @@ func scanOrgRow(row pgx.Row) (*model.Organization, error) {
 
 func scanOrgCollectableRow(row pgx.CollectableRow) (*model.Organization, error) {
 	return scanOrgRow(row)
+}
+
+// --- 2c 组织委托（04-org-delegation §3.2/§3.3） ---
+
+// SetOwnersTx 事务内设置负责人（双轨对齐）：
+//  1. UPDATE organizations.owner_user_ids；
+//  2. 每个新 owner：确保 user_orgs 行存在且 org_member_role='owner'（无行 INSERT，有行 UPDATE）；
+//  3. 被移出列表的用户：若其 org_member_role 因 owner 身份（非 owner_user_ids 独立来源不存在——
+//     owner 角色仅经 SetOwners 授予），降为 member（保留成员关系）。
+func (r *OrgRepo) SetOwnersTx(ctx context.Context, tx pgx.Tx, orgID int64, ownerUserIDs []int64) error {
+	if ownerUserIDs == nil {
+		ownerUserIDs = []int64{}
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE organizations SET owner_user_ids = $2, updated_at = NOW() WHERE id = $1`,
+		orgID, ownerUserIDs); err != nil {
+		return fmt.Errorf("set owners: %w", err)
+	}
+	// 双轨对齐：确保每个 owner 有成员行且角色为 owner（04 §2.2）
+	for _, uid := range ownerUserIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role)
+			VALUES ($1, $2, false, 'owner')
+			ON CONFLICT (user_id, org_id) DO UPDATE SET org_member_role = 'owner'`,
+			uid, orgID); err != nil {
+			return fmt.Errorf("ensure owner membership: %w", err)
+		}
+	}
+	// 移出列表者降级为 member（仍保留成员关系；owner 角色仅经 SetOwners 授予）
+	if _, err := tx.Exec(ctx, `
+		UPDATE user_orgs SET org_member_role = 'member'
+		WHERE org_id = $1 AND org_member_role = 'owner'
+		  AND user_id <> ALL($2)`,
+		orgID, ownerUserIDs); err != nil {
+		return fmt.Errorf("demote removed owners: %w", err)
+	}
+	return nil
+}
+
+// SetMemberRoleTx 事务内变更组内角色（调用方校验在 service 层完成）
+func (r *OrgRepo) SetMemberRoleTx(ctx context.Context, tx pgx.Tx, orgID, userID int64, role string) error {
+	tag, err := tx.Exec(ctx,
+		`UPDATE user_orgs SET org_member_role = $3 WHERE org_id = $1 AND user_id = $2`,
+		orgID, userID, role)
+	if err != nil {
+		return fmt.Errorf("set member role: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrNotOrgMember // 50007：目标须为成员（04 §3.3.1）
+	}
+	return nil
+}
+
+// RunInTx 供 service 层组合事务（SetOwners 双轨对齐等）
+func (r *OrgRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// CountNonOwnerMembers 统计组织的非 owner 成员数（2c D6：owner 派生行不占位）
+func (r *OrgRepo) CountNonOwnerMembers(ctx context.Context, orgID int64) (int64, error) {
+	var n int64
+	if err := r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM user_orgs WHERE org_id = $1 AND org_member_role <> 'owner'`, orgID).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count non-owner members: %w", err)
+	}
+	return n, nil
+}
+
+// ClearOwnerMemberships 清除组织的 owner 派生成员行（2c D6：虚拟组删除前置——
+// owner 行由 SetOwners 双轨生成，组消亡即失效，不构成 50005 的成员占位）
+func (r *OrgRepo) ClearOwnerMemberships(ctx context.Context, orgID int64) error {
+	_, err := r.db.Exec(ctx,
+		`DELETE FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, orgID)
+	if err != nil {
+		return fmt.Errorf("clear owner memberships: %w", err)
+	}
+	return nil
 }
