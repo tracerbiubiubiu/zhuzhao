@@ -350,7 +350,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
 | BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
-| BK-10 | 2a 无状态推进端点 | DEFAULT 状态机含 in_progress/pending_verify 但 API 无推进路径；assigned 工单须先取消分派回 open 才能关闭（T6 已固化该行为）。**建议拍板（2026-08-28，待确认）**：2b/2c 不补推进端点（无真实诉求），保留 Phase 3 随工单业务深化（10-ticket-business）一并设计 | 2c 开工前拍板 |
+| BK-10 | ~~2a 无状态推进端点~~ | **✅ 已拍板（2026-08-28 用户确认）**：2b/2c 不补「开始处理/待验证」推进端点（无真实诉求）；in_progress/pending_verify 状态与推进 API 归 Phase 3 工单业务深化（10-ticket-business）一并设计。当前行为（assigned 工单先取消分派回 open 再 close，T6 固化）为预期语义 | 已关闭 |
 
 ---
 
