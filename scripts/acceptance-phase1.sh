@@ -63,15 +63,18 @@ check "#1 menus>=25" "1" "$([ "$MENUS" -ge 25 ] && echo 1 || echo 0)"
 CASBIN=$(psql_q "SELECT COUNT(*) FROM casbin_rule WHERE v0 IN ('role::admin','role::superadmin')")
 check "#1 casbin seed" "1" "$([ "$CASBIN" -ge 2 ] && echo 1 || echo 0)"
 
-# --- login ---
-SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin123"}')
-check "#2 login" "0" "$(echo "$SA" | json_code)"
-SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-SRT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refresh_token'])")
-
-# F-10：种子 admin 首登强制改密（mcp=true），需先改密再拿无 mcp 的 AT
-check "mcp change" "0" "$(curl -s -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"old_password":"admin123","new_password":"admin12345","device_id":"acceptance"}' | json_code)"
+# --- login（幂等：admin 密码可能已被上一轮验收改为 admin12345，两种状态都可继续）---
 SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
+if [ "$(echo "$SA" | json_code)" = "0" ]; then
+  check "#2 login(已是 admin12345)" "0" "$(echo "$SA" | json_code)"
+else
+  SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin123"}')
+  check "#2 login" "0" "$(echo "$SA" | json_code)"
+  # F-10：种子 admin 首登强制改密（mcp=true），需先改密再拿无 mcp 的 AT
+  SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+  check "mcp change" "0" "$(curl -s -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"old_password":"admin123","new_password":"admin12345","device_id":"acceptance"}' | json_code)"
+  SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
+fi
 SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 SRT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refresh_token'])")
 
@@ -270,10 +273,10 @@ check "#26 http" "403" "$HC"
 check "#26 code" "70001" "$(cat /tmp/p1.json | json_code)"
 
 # --- D2 种子断言（须在 #27 等 role_menus 变更用例之前执行：#27 会给 viewer 绑菜单） ---
-# D2-45：种子完整性——operator/viewer 零 role_menus 绑定（预留角色），
-# 描述已修正（000002/000009，不再暗示不存在的权限）
-OPV_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.role_id WHERE r.code IN ('operator','viewer')")
-check "D2 seed operator/viewer unbound" "0" "$OPV_BIND"
+# D2-45：种子完整性——operator 无「非工单」菜单绑定（工单绑定来自 2a 验收的
+# 合法授权，可重复运行；viewer 不在此断言：#27 会给 viewer 绑 system_user）
+OP_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.role_id JOIN menus m ON m.id=rm.menu_id WHERE r.code = 'operator' AND m.code NOT LIKE 'ticket%'")
+check "D2 seed operator unbound(非工单)" "0" "$OP_BIND"
 OPV_DESC=$(psql_q "SELECT COUNT(*) FROM roles WHERE code IN ('operator','viewer') AND description LIKE '系统预留角色%'")
 check "D2 seed desc fixed" "2" "$OPV_DESC"
 
@@ -364,6 +367,13 @@ sleep 1
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $AT_FOR_17")
 CODE=$(cat /tmp/p1.json | json_code)
 check "#17 http" "503" "$HC"
+# 等 Redis 就绪（trap 恢复存在竞态，防止后续用例 503 误报）
+# 显式重启（不再依赖 trap）并等待就绪——后续脚本段在此环境上继续跑
+docker start "$REDIS_C" >/dev/null 2>&1 || true
+for _i in 1 2 3 4 5 6 7 8 9 10; do
+  [ "$(docker exec "$REDIS_C" redis-cli -a zhuzhao_dev --no-auth-warning ping 2>/dev/null | tr -d '\n')" = "PONG" ] && break
+  sleep 1
+done
 check "#17 code" "10008" "$CODE"
 
 echo ""

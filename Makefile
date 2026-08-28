@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -74,3 +74,6 @@ acceptance:
 
 acceptance-2a:
 	bash scripts/acceptance-phase2a.sh
+
+acceptance-2b:
+	bash scripts/acceptance-phase2b.sh
