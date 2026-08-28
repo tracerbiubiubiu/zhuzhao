@@ -374,6 +374,7 @@ for _i in 1 2 3 4 5 6 7 8 9 10; do
   [ "$(docker exec "$REDIS_C" redis-cli -a zhuzhao_dev --no-auth-warning ping 2>/dev/null | tr -d '\n')" = "PONG" ] && break
   sleep 1
 done
+sleep 2  # 服务端 redis 连接池重连缓冲（ready/登录在恢复瞬间会 fail-close 10008）
 check "#17 code" "10008" "$CODE"
 
 echo ""
