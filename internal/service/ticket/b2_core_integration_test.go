@@ -30,6 +30,9 @@ type b2Env struct {
 	u1, u2    int64 // 部门成员
 	colleague int64 // D1 的另一成员（透明读旁观者）
 	roles     stubRoleFetcher
+	// 2b-org 扩展（setupB2Org）：P 下虚拟组兄弟对及其成员
+	vgA, vgB int64
+	uVa, uVb int64
 }
 
 func setupB2(t *testing.T) *b2Env {

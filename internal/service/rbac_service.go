@@ -304,8 +304,9 @@ func (s *RBACService) GetRolePermissions(ctx context.Context, roleID, actorUserI
 	return policies, nil
 }
 
-// GetRoleCodesByUserID 供 Casbin 中间件查询用户直接角色（Phase 1）。
-// F-7：接收请求 ctx，使取消/超时可传播（此前 context.Background() 会挂满 statement_timeout）
+// GetRoleCodesByUserID 用户有效功能角色码（Casbin 中间件 / 工单 Resource 消费）。
+// Phase 2b-org：BFS 三源展开（直接角色 ∪ 组织角色 org_roles ∪ roles.parent_id 继承链），
+// 临时成员过期不参与组织角色；见 rbac-inheritance-and-cascade §4 与 role_repo.GetEffectiveRoleCodes。
 func (s *RBACService) GetRoleCodesByUserID(ctx context.Context, userID int64) ([]string, error) {
-	return s.userRepo.GetRoleCodes(ctx, userID)
+	return s.roleRepo.GetEffectiveRoleCodes(ctx, userID)
 }

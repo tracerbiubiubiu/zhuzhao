@@ -298,3 +298,52 @@ func (r *RoleRepo) ListCasbinPoliciesByRoleCode(ctx context.Context, roleCode st
 	}
 	return out, rows.Err()
 }
+
+// GetEffectiveRoleCodes 用户有效功能角色码（BFS 三源展开，rbac-inheritance-and-cascade §4）：
+//
+//	源 1 直接角色（user_roles）
+//	源 2 组织角色（org_roles × user_orgs 直接所属节点——不沿部门 ltree 继承），
+//	     临时成员（expires_at 已过）不参与展开
+//	源 3 角色继承链（roles.parent_id 沿 child→parent 向上取并集）
+//
+// 全部角色限 status=1 且未软删。消费方：Casbin 中间件（逐角色码 enforce）、
+// 工单 Resource（admin/supervisor 判定）。
+func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]string, error) {
+	const q = `
+	WITH RECURSIVE seeds AS (
+		SELECT ur.role_id AS id
+		FROM user_roles ur
+		JOIN roles r ON r.id = ur.role_id AND r.deleted_at IS NULL AND r.status = 1
+		WHERE ur.user_id = $1
+		UNION
+		SELECT orgr.role_id
+		FROM org_roles orgr
+		JOIN user_orgs m ON m.org_id = orgr.org_id
+			AND (m.expires_at IS NULL OR m.expires_at > NOW())
+		JOIN roles r ON r.id = orgr.role_id AND r.deleted_at IS NULL AND r.status = 1
+		WHERE m.user_id = $1
+	),
+	expanded AS (
+		SELECT id FROM seeds
+		UNION
+		SELECT parent.id
+		FROM expanded e
+		JOIN roles r ON r.id = e.id AND r.deleted_at IS NULL AND r.status = 1
+		JOIN roles parent ON parent.id = r.parent_id AND parent.deleted_at IS NULL AND parent.status = 1
+		WHERE r.parent_id IS NOT NULL
+	)
+	SELECT DISTINCT r.code
+	FROM expanded x
+	JOIN roles r ON r.id = x.id AND r.deleted_at IS NULL AND r.status = 1
+	ORDER BY r.code`
+	rows, err := r.db.Query(ctx, q, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get effective role codes: %w", err)
+	}
+	defer rows.Close()
+	codes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("collect effective role codes: %w", err)
+	}
+	return codes, nil
+}

@@ -73,6 +73,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000010_ticket.up.sql",
 			// 2b-core Step 4：organizations.ticket_visibility（09 §5.2.1）
 			"000011_ticket_visibility.up.sql",
+			// 2b-org Step 5：来源列 + user_orgs.ticket_scope/expires_at + org_roles + roles.parent_id
+			"000012_org_enhance.up.sql",
 			// 2a Step 3：工单模板 + 工单关联（2a 前移）
 			"000015_ticket_templates.up.sql",
 			"000016_ticket_relations.up.sql",

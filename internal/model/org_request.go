@@ -14,7 +14,7 @@ type CreateOrgRequest struct {
 	Name        string `json:"name" binding:"required,max=100"`
 	Description string `json:"description"`
 	ParentID    *int64 `json:"parent_id,string"`
-	OrgType     int    `json:"org_type" binding:"required,oneof=1 2 3"`
+	OrgType     int    `json:"org_type" binding:"required,oneof=1 2 3 4"` // 4=虚拟组（2b-org，03-org-enhance §2）
 	SortOrder   int    `json:"sort_order"`
 }
 

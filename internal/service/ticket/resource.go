@@ -74,54 +74,51 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return false, err
 	}
 
-	// L2 可见性（策略 B：属主 ∨ 实体锚点透明读）
-	visible, err := r.canRead(ctx, req.UserID, ticket)
+	// 一次解析用户 scope（透明锚点 / scope 子树 / 全量），L2 与 L3 共用
+	scope, err := r.resolver.ResolveScope(ctx, req.UserID)
 	if err != nil {
 		// 解析器 DB 错误上抛（Q3：→ 500/503），不与 404 混淆
 		return false, err
 	}
-	if !visible {
+
+	// L2 可见性（策略 B ∪ scope 扩展）：属主 ∨ 全量 ∨ 路径命中
+	if !isOwner(req.UserID, ticket) && !scope.AllScope &&
+		!pathInAnchors(ticket.OrgPath, scope.ReadPaths()) {
 		return false, nil // 不可见 → Service 层转 404
 	}
 
-	// L3 属主 + canOperate（动作权）
-	if !r.canOperate(req.UserID, req.Action, ticket) {
+	// L3 canOperate（动作权，读写分离）
+	if !r.canOperate(ctx, scope, req.UserID, req.Action, ticket) {
 		return false, errDenied // 可见但无权限 → Service 层转 403
 	}
 	return true, nil
+}
+
+// isOwner 属主判定：创建人或处理人
+func isOwner(userID int64, ticket *model.Ticket) bool {
+	if ticket.CreatedBy == userID {
+		return true
+	}
+	return ticket.AssignedTo != nil && *ticket.AssignedTo == userID
 }
 
 // GetFilter 列表行级过滤（2b 策略 B，09-ticket §5.2）：
 // 属主（created_by/assigned_to）∨ 实体锚点透明读（org_path <@ ANY 锚点）。
 // 锚点为空（用户无组织归属）时第三支恒假，退化为 2a assigned 语义。
 func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resource.Filter, error) {
-	paths, err := r.resolver.ReadAnchorPaths(ctx, userID)
+	scope, err := r.resolver.ResolveScope(ctx, userID)
 	if err != nil {
 		return resource.Filter{}, err
 	}
-	if paths == nil {
-		paths = []string{}
+	// ticket_scope=all：列表全量（rbac-inheritance §4），仍受 L1 路由级 Casbin 约束
+	if scope.AllScope {
+		return resource.Filter{}, nil
 	}
+	paths := scope.ReadPaths()
 	return resource.Filter{
 		Where: `(created_by = $1 OR assigned_to = $1 OR org_path <@ ANY($2::ltree[]))`,
 		Args:  []interface{}{userID, paths},
 	}, nil
-}
-
-// canRead 2b 可见性判断：属主（创建人/处理人）∨ org_path 落在任一实体锚点子树内。
-// 解析器错误原样上抛（Authorize 转 500，不静默当不可见——Q3 fail-closed）。
-func (r *Resource) canRead(ctx context.Context, userID int64, ticket *model.Ticket) (bool, error) {
-	if ticket.CreatedBy == userID {
-		return true, nil
-	}
-	if ticket.AssignedTo != nil && *ticket.AssignedTo == userID {
-		return true, nil
-	}
-	paths, err := r.resolver.ReadAnchorPaths(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	return pathInAnchors(ticket.OrgPath, paths), nil
 }
 
 // pathInAnchors ltree 标签级前缀匹配：org_path 落在任一锚点子树内
@@ -143,13 +140,13 @@ func pathInAnchors(orgPath string, anchors []string) bool {
 //	close = 处理人或创建人；
 //	assign = ticket_scope group/all 主管（2b-org 000012 后激活；此前仅 admin bypass）；
 //	delete = 仅 admin bypass。
-func (r *Resource) canOperate(userID int64, action string, ticket *model.Ticket) bool {
+func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID int64, action string, ticket *model.Ticket) bool {
 	isCreator := ticket.CreatedBy == userID
 	isAssignee := ticket.AssignedTo != nil && *ticket.AssignedTo == userID
 
 	switch action {
 	case "read", "comment":
-		return true // canRead 已通过
+		return true // L2 可见性已通过
 	case "note":
 		// 2b：与内部备注读可见集合一致（BK-1），透明读旁观者不可写
 		return isCreator || isAssignee
@@ -159,8 +156,11 @@ func (r *Resource) canOperate(userID int64, action string, ticket *model.Ticket)
 	case "close":
 		// 处理人可关闭（创建人也可，对齐 09-ticket §5.4）
 		return isAssignee || isCreator
-	case "assign", "delete":
-		// 仅 admin bypass（主管分派待 2b-org ticket_scope 列激活）
+	case "assign":
+		// 2b-org 主管激活（09 §5.2）：ticket_scope∈{group,all} 且工单在其 scope 子树内
+		return scope.AllScope || pathInAnchors(ticket.OrgPath, scope.ScopePaths)
+	case "delete":
+		// 仅 admin bypass
 		return false
 	default:
 		return false
