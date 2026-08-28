@@ -394,7 +394,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 | 创建 | `POST /tickets` | `ticket:create` | — | create 恒 true | 校验 org 存在，写 org_path | 同 2a | 同 2a |
 | 更新 | `POST /tickets/update` | `ticket:update` | canRead | **创建人**（2b）；+ vg admin/owner（2c） | 创建人或处理人 | **2b：仅创建人**（透明读≠可改） | + 工单 org 的 admin/owner；+ ancestor owner |
 | 关闭 | `POST /tickets/close` | `ticket:close` | canRead | 处理人或创建人；+ vg admin（2c） | 仅处理人 | + scope 主管 | + org admin/owner |
-| 分派 | `POST /tickets/assign` | `ticket:assign` | canRead | 2a 仅 admin | admin bypass | scope=group/all + 子树内 | + org admin/owner |
+| 分派 | `POST /tickets/assign` | `ticket:assign` | canRead | 2a 仅 admin | admin bypass | scope=group/all + 子树内 | + org admin/owner / ancestor owner + 子树 |
 | 删除 | `POST /tickets/delete` | `ticket:delete` | — | admin | admin only | admin only | + org admin/owner；+ ancestor owner |
 | 回复 | `POST /tickets/comments` | `ticket:comment` | canRead | comment = canRead | 可见即可评 | 同 2a | 同 2a |
 | 内部备注 | `POST /tickets/notes` | `ticket:note` | canRead | **2a：创建人或处理人(assigned_to)，与 assigned scope 对齐**；2b 起随 scope 透明读扩大；2c 含 org admin/owner（对齐 modules「处理团队成员」= 进入该容器者） | 见 modules/ticket §2.3 | 待实现对齐 modules | 待实现对齐 modules |

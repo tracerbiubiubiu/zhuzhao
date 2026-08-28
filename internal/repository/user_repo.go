@@ -313,6 +313,13 @@ func (r *UserRepo) SoftDeleteTx(ctx context.Context, tx pgx.Tx, id int64) error 
 	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id = $1`, id); err != nil {
 		return fmt.Errorf("delete user_orgs: %w", err)
 	}
+	// P0 同源（2c 双轨）：删除用户时同步从所有组织的 owner_user_ids 移除，
+	// 否则残留无效 owner 引用（污染 owner 列表与 IsAncestorOwner/EffectiveOrgPriority 判定）。
+	if _, err := tx.Exec(ctx, `
+		UPDATE organizations SET owner_user_ids = array_remove(owner_user_ids, $1), updated_at = NOW()
+		WHERE $1 = ANY(owner_user_ids)`, id); err != nil {
+		return fmt.Errorf("remove user from owner_user_ids: %w", err)
+	}
 
 	tag, err := tx.Exec(ctx, `
 		UPDATE users SET deleted_at = NOW(), updated_at = NOW()

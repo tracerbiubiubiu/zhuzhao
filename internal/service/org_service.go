@@ -393,7 +393,8 @@ func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberR
 		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
 		return err
 	}
-	// 目标须为成员（50007）且非 owner_user_ids 派生 owner（50009，04 §3.3.4）
+	// 目标非 owner_user_ids 派生 owner（50009，04 §3.3.4）；成员存在性检查（50007）
+	// 由 repo 层 SetMemberRoleTx 事务内完成（UPDATE 0 行 → ErrNotOrgMember）
 	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
 	if err != nil {
 		return err

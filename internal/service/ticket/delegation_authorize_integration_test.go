@@ -16,6 +16,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // setupD9 环境：P(实体, owner=pOwner) > vg(虚拟组, owner/admin/member) [+ 可选 vg2 兄弟]
@@ -158,4 +159,36 @@ func TestD9_VgAdminCannotCrossVg(t *testing.T) {
 	require.NoError(t, err, "L2 透明读不受委托边界影响")
 	_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: strPtr("跨组越权")}, env.admin)
 	requireErrCode(t, err, errcode.ErrNoPermission.Code)
+}
+
+// Assign closed 回归：closed 工单不可分派（90004，与 Update 对齐）
+func TestD9_AssignClosedTicket90004(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+	tk := newTicketHelper(t, env.svc, env.member, env.vgID, "closed assign 工单")
+	require.NoError(t, env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, env.member))
+
+	// vg owner 有 assign 委托权（IsOrgAdminOrOwner）→ 命中 closed 守卫 → 90004
+	err := env.svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &env.owner}, env.owner)
+	requireErrCode(t, err, errcode.ErrTicketAlreadyClosed.Code)
+}
+
+// D9 move 回归：实体 owner 所在部门被 move 后，子树委托随之迁移（新 path 下仍有效）
+func TestD9_AncestorOwnerAfterMove(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+	tk := newTicketHelper(t, env.svc, env.member, env.vgID, "move 后委托工单")
+
+	// move P 到 root 直下（path 级联，owner_user_ids 随 org 行保留）
+	orgRepo := repository.NewOrgRepo(testPool)
+	rootID := int64(1)
+	require.NoError(t, orgRepo.Move(ctx, env.pID, &rootID))
+
+	// ancestor owner（P.owner）对新 path 下子树工单仍可 update（D9 语义经 move 存续）
+	_, err := env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: strPtr("move 后 owner 改名")}, env.pOwner)
+	require.NoError(t, err, "P2-D1 级联后 ancestor owner 委托应随新 path 继续")
+
+	// vg admin 对本组工单有委托权（D7），不受 move 影响仍可改
+	_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: strPtr("vg admin 改名")}, env.admin)
+	require.NoError(t, err, "vg admin 本组委托不受 move 影响")
 }

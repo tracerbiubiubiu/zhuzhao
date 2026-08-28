@@ -222,7 +222,7 @@ targetPriority = EffectiveOrgPriority(target, org)  // 含 owner_user_ids
 | update | `ticket:update` | 可见 | **2b：创建人**；2c + **org admin·owner** / **ancestor owner + 子树**（不含仅透明读的处理人） |
 | close | `ticket:close` | 可见 | 处理人 / 创建人（2b）；+ **org admin·owner** / ancestor owner |
 | delete | `ticket:delete` | — | 全局 admin / **org admin·owner** / ancestor owner |
-| assign | `ticket:assign` | 可见 | 原「主管」+ **org admin·owner** |
+| assign | `ticket:assign` | 可见 | 原「主管」+ **org admin·owner** / **ancestor owner + 子树** |
 
 **ancestor owner（D9）**：
 

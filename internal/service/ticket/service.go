@@ -336,6 +336,10 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	if err != nil {
 		return err
 	}
+	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
+	if ticket.Status == "closed" {
+		return errcode.ErrTicketAlreadyClosed
+	}
 	fromAssignee := ""
 	if ticket.AssignedTo != nil {
 		fromAssignee = strconv.FormatInt(*ticket.AssignedTo, 10)

@@ -201,6 +201,25 @@ check "D11 vg admin reads sibling vg (200)" "200" "$D11R_HTTP"
 D11U_HTTP=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' -d "{\"id\":\"$TID3\",\"title\":\"cross vg update\"}")
 check "D11 vg admin updates sibling vg (403)" "403" "$D11U_HTTP"
 
+# --- D9 补强：org move 后 ancestor owner 委托随新 path 存续（P2-D1 级联 + IsAncestorOwner 快照约束）---
+# 建目标组织 TGT，把 P（含 vg 与工单）移到 TGT 下：工单 org_path 与组织 path 同事务
+# 级联重写，P 的 owner（PTOK）对 vg 工单的 ancestor 委托应在新 path 下继续成立（否则漏单）。
+TGT=$(mkorg "p2c_tgt_$SUF" "2c TGT" "$ROOT_ID" 3)
+curl -s -X POST "$BASE/orgs/move" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$P_ID\",\"parent_id\":\"$TGT\"}" >/dev/null
+D9M_RAW=$(curl -s -X POST "$BASE/tickets/update" -H "Authorization: Bearer $PTOK" -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$TID2\",\"title\":\"ancestor owner after move\"}")
+check "D9 ancestor owner updates vg ticket after move (0)" "0" "$(echo "$D9M_RAW" | json_code)"
+# 负向：P 的 owner 只能管 P 子树内工单——TGT 直下新建工单（P 的兄弟子树），PTOK 应 403
+TGTM=$(mkuser "p2c_tgtm_$SUF" "C2TM$SUF" "$ROLE_O" "$TGT")
+TGTTOK=$(mklogin "C2TM$SUF")
+TKT=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $TGTTOK" -H 'Content-Type: application/json' \
+  -d "{\"type_code\":\"incident\",\"title\":\"TGT 工单\",\"org_id\":\"$TGT\"}")
+TIDT=$(echo "$TKT" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+D9N_HTTP=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $PTOK" -H 'Content-Type: application/json' -d "{\"id\":\"$TIDT\",\"title\":\"cross subtree\"}")
+# 负向边界：P 的 owner 对 P 子树之外的工单在 L2 可见性即被拦截 → 404（不越容器；不可见一律 404）
+check "D9 P owner cannot see sibling-subtree ticket (404)" "404" "$D9N_HTTP"
+
 # --- D10 静态断言：owner_user_ids / org_member_role 为 IAM 本地字段（HR Job 延后，
 #     迁移与字段无 HR 写入路径；此处断言 user_orgs.source≠hr 的行才可能携带 org_member_role≠member?）
 #     简化为：确认两列存在且默认值行为正确（HR 对账路径 2b-ext 落地后补动态回归）

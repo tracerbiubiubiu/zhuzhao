@@ -139,9 +139,16 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 	return tx.Commit(ctx)
 }
 
-// RemoveMember 移除组织成员
+// RemoveMember 移除组织成员（2c 双轨：若目标在 owner_user_ids 中则同步移除——
+// 否则残留 effective owner 权限，被移除者仍可 SetOwners/SetMemberRole/删组）
 func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
-	tag, err := r.db.Exec(ctx, `
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
 		DELETE FROM user_orgs WHERE org_id = $1 AND user_id = $2`, orgID, userID)
 	if err != nil {
 		return fmt.Errorf("remove member: %w", err)
@@ -149,7 +156,13 @@ func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrNotOrgMember
 	}
-	return nil
+	// 双轨对齐：从 owner_user_ids 移除（04 §2.2；与 SetOwners 的 owner 同步互逆）
+	if _, err := tx.Exec(ctx,
+		`UPDATE organizations SET owner_user_ids = array_remove(owner_user_ids, $2), updated_at = NOW() WHERE id = $1`,
+		orgID, userID); err != nil {
+		return fmt.Errorf("sync owner_user_ids on remove: %w", err)
+	}
+	return tx.Commit(ctx)
 }
 
 // SetUserOrgs 全量覆盖用户组织
@@ -180,6 +193,16 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 		}
 		seen[orgID] = struct{}{}
 		deduped = append(deduped, orgID)
+	}
+	// P0 同源（2c 双轨）：全量覆盖把用户移出某 org 成员身份后，若其在该 org
+	// owner_user_ids 中——同步移除（否则残留 effective owner 权限，仍可
+	// SetOwners/SetMemberRole/删组/工单委托）。用户仍是成员的 org 保留 owner。
+	// orgIDs 为空（清空全部组织）时 NOT(ANY('{}'))=true → 清理全部 owner 引用。
+	if _, err := tx.Exec(ctx, `
+		UPDATE organizations SET owner_user_ids = array_remove(owner_user_ids, $1), updated_at = NOW()
+		WHERE $1 = ANY(owner_user_ids) AND NOT (id = ANY($2::bigint[]))`,
+		userID, deduped); err != nil {
+		return fmt.Errorf("sync owner_user_ids on set user orgs: %w", err)
 	}
 	for _, orgID := range deduped {
 		isPrimary := primaryOrgID != nil && *primaryOrgID == orgID

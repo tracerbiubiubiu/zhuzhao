@@ -82,9 +82,10 @@ func (s *OrgDelegationService) IsAncestorOwner(ctx context.Context, userID int64
 		JOIN organizations o ON ancestor.path @> o.path
 		WHERE o.id = $2
 		  AND $1 = ANY(ancestor.owner_user_ids)
+		  AND $3::ltree <@ ancestor.path
 	)`
 	var ok bool
-	if err := s.db.QueryRow(ctx, q, userID, ticketOrgID).Scan(&ok); err != nil {
+	if err := s.db.QueryRow(ctx, q, userID, ticketOrgID, ticketOrgPath).Scan(&ok); err != nil {
 		return false, fmt.Errorf("is ancestor owner: %w", err)
 	}
 	return ok, nil

@@ -260,3 +260,63 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 	err = env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: outsider3}, env.mem1)
 	requireErrCode(t, err, errcode.ErrNoPermission)
 }
+
+// P0 回归：RemoveMember 移除 owner 后，owner_user_ids 同步清理且残留权限失效
+func TestDelegation_RemoveOwnerCleansOwnerUserIDs(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	// 全局管理员直删 owner 成员行（模拟「移除 owner」管理操作）
+	require.NoError(t, env.orgSvc.RemoveMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: env.owner}, env.super))
+
+	// 双轨另一侧必须同步清理
+	var ids string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT owner_user_ids::text FROM organizations WHERE id=$1`, env.vgID).Scan(&ids))
+	assert.NotContains(t, ids, fmt.Sprint(env.owner), "owner_user_ids 应同步移除被删 owner")
+
+	// 残留权限失效：被移除者调 SetMemberRole → 非 owner → 70001（若 50010 则说明仍是 admin 档残留）
+	err = env.orgSvc.SetMemberRole(ctx, &model.SetOrgMemberRoleRequest{OrgID: env.vgID, UserID: env.mem1, OrgMemberRole: "admin"}, env.owner)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+}
+
+// P0 同源回归：SetUserOrgs 全量覆盖把用户移出某 org 后，owner_user_ids 同步清理
+func TestDelegation_SetUserOrgsCleansOwnerUserIDs(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	// 用户侧全量覆盖：把 owner 的组织清空（移出 vg 成员身份）
+	require.NoError(t, env.orgSvc.SetUserOrgs(ctx, &model.SetUserOrgsRequest{
+		UserID: env.owner, OrgIDs: []int64{}, PrimaryOrgID: nil,
+	}))
+
+	// owner_user_ids 必须同步清理（否则残留 effective owner）
+	var ids string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT owner_user_ids::text FROM organizations WHERE id=$1`, env.vgID).Scan(&ids))
+	assert.NotContains(t, ids, fmt.Sprint(env.owner), "SetUserOrgs 移出成员后应同步清理 owner_user_ids")
+
+	// 残留权限失效：被移出者调 SetMemberRole → 非 owner/admin → 70001
+	err = env.orgSvc.SetMemberRole(ctx, &model.SetOrgMemberRoleRequest{OrgID: env.vgID, UserID: env.mem1, OrgMemberRole: "admin"}, env.owner)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+}
+
+// P0 同源回归：删除用户后，其 owner_user_ids 引用在所有组织被清理
+func TestDelegation_SoftDeleteCleansOwnerUserIDs(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	// 删除 owner 用户（repo 层，验证 SoftDeleteTx 的 owner 引用清理）
+	require.NoError(t, repository.NewUserRepo(testPool).SoftDelete(ctx, env.owner))
+
+	var ids string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT owner_user_ids::text FROM organizations WHERE id=$1`, env.vgID).Scan(&ids))
+	assert.NotContains(t, ids, fmt.Sprint(env.owner), "SoftDelete 后 owner_user_ids 应清理被删用户引用")
+}
