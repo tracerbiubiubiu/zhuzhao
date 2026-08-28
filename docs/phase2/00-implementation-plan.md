@@ -190,18 +190,18 @@
 
 ### Step 8（M2c-1）— org-delegation
 
-- [ ] 迁移 **000013**：`organizations.owner_user_ids` / `user_orgs.org_member_role`（[04 §2.1](./04-org-delegation.md)；不跳号规则下取最小空闲号）
-- [ ] `OrgDelegationService`：EffectiveOrgPriority / IsOrgAdminOrOwner / IsAncestorOwner
-- [ ] SetOwners / SetMemberRole / AddMember / RemoveMember / 虚拟组删除扩展（防提权矩阵 [04 §3](./04-org-delegation.md)）
-- [ ] 50008–50010 错误码；D1–D6 集成测试
+- [x] 迁移 **000013**：`organizations.owner_user_ids` / `user_orgs.org_member_role` + 委托路由 menu_apis（2026-08-28 落地）
+- [x] `OrgDelegationService`：EffectiveOrgPriority / IsOrgAdminOrOwner / IsAncestorOwner / HasOrgManagePermission / ensureCanManageMember 防提权矩阵
+- [x] SetOwners（双轨对齐+移出降级）/ SetMemberRole / AddMember·RemoveMember 委托扩展 / DeleteOrgDelegated（owner 派生行不占位语义）
+- [x] 50008–50010 错误码；D1–D6 集成测试全绿（org_delegation_integration_test.go）
 
 ### Step 9（M2c-2）— ticket Authorize 升级
 
-- [ ] `canOperate` 扩展（org admin/owner + ancestor owner，[04 §4](./04-org-delegation.md)）；D7–D9 集成测试
+- [x] `canOperate` 委托扩展（note/update/close/assign/delete + org admin·owner / ancestor owner；跨 vg 不越容器）；D7–D9 + 边界集成测试全绿
 
 ### Step 10（M2c-3）— 2c 集成验收
 
-- [ ] `acceptance-phase2c.sh`：D1–D12 全量 + 2a/2b-core/2b-org 回归
+- [x] `acceptance-phase2c.sh`：D1–D9 + D11 HTTP 全量（D10 为列存在静态断言，HR 动态回归待 2b-ext）+ 链式回归；211 断言全绿
 
 ---
 

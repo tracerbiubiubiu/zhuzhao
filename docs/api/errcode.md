@@ -147,7 +147,7 @@
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 |
 
-> `50008`–`50010`：Phase **2c** org-delegation 实现时写入 `errcode.go`（码号预留，勿改号）。
+> `50008`–`50010`：已于 **2c Step 8** 写入 `errcode.go`（勿改号）。
 
 ### 菜单 60000–60999
 

@@ -110,6 +110,11 @@ HR Job **不得**写入或覆盖：
 2. **L3（service 层 effective 校验）**：`OrgDelegationService.IsOrgAdminOrOwner / IsAncestorOwner` 在 service 内校验；校验失败 → 403 + 50008–50010（防提权矩阵见 §4）。
 3. **安全性**：L1 只负责「能不能调这个 API」，细粒度（谁能动哪个 org）由 L3 保证——与工单三层鉴权（09 §5）同构；L2 对组织资源不适用（组织本身即容器）。
 
+> **落地注记（2026-08-28，Step 8 实施回标）**：
+> 1. 五条委托路由（owners / members/role / members / members/delete / delete）挂 **authed 级 SelfService 标记组**（L1=认证，跳过 Casbin enforce）——纯菜单 L1 会把无全局菜单的 owner/admin 挡在 L3 之前；「org:update」全局侧由 `OrgDelegationService.HasOrgManagePermission`（org:* 权限码，BFS 有效角色）在 L3 等价判定。
+> 2. **D6 语义细化**：虚拟组的 owner 成员行是 SetOwners 双轨派生数据，不构成 50005 成员占位——仍有非 owner 成员 → 409+50005；仅剩 owner 行 → 预清派生行后删除。
+> 3. **D9 L2 前提**：ancestor owner 须经双轨成员行获得实体锚点（透明读）方可见子树工单——生产 SetOwners 天然满足；裸写 owner_user_ids 不建成员行将不可见（测试实证）。
+
 ### 3.2 `POST /api/v1/orgs/owners`
 
 ```json
