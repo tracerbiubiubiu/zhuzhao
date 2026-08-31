@@ -165,7 +165,7 @@ docs/
 
 | # | 事项 | 说明 | 量级 |
 |---|------|------|------|
-| A1 | **phase3 文档修正包** | ① README §1.4 前置清单矛盾：仍把 2b-ext 延后项（HR Sync/附件/auth-enhance）列为「2b 验收」前置；② README §5 状态行过时：10-ticket-business、11-deployment-split 已编写仍标「待编写」，实际待编写为 6 份（02/03/06/07/08/09）；③ Phase 3 计划评估中的 C-1~C-4 断链/索引小修落档（原记录只在对话中） | 半天 |
+| A1 | **文档修正包** | ① phase3 README §1.4 前置矛盾（2b-ext 延后项列为「2b 验收」前置）、§5 状态行（10/11 已编写仍标待编写）；② **review/10 C1–C4 处置**（2026-08-31 逐条核验）：C1「Step 9 应为 8-10」三次裁定驳回维持（wontfix，注记防再犯）、C2 `NewResource` 三参签名已修（注记闭环）、**C4 §2.2 ScopeResolver 接口段与现行实现不符（真开放）**——按 `ReadAnchorPaths`/`ResolveScope` 重写、C3 `docs/ops/deployment.md` 缺 → 归 B10；③ 09 合集抽查回注：F-01/02（VISION 措辞/迁移现状）、F-03（activelist 链）、F-18（Redis requirepass 经 compose 注入）经核实**均已修**（09 行未回标属历史文档常态，此处记录防重复排查） | 半天 |
 | A2 | **迁移编号 000017 归属拍板** | 2b-ext 附件（phase2/00 §Step 6）与 Phase 3 SLA（10-ticket-business §2，占用 000017–000021）都规划 000017。规则建议：**谁先启动谁占用，后者启动时整体重排**——任一方启动前必须先定 | 决策 |
 | A3 | **BK-11 ② 数据结构拍板** | `tickets.org_path` 保留镜像列（FOR SHARE 已兜底）vs 去列改运行时 JOIN + write-once `created_org_id`；已登记 [phase3/README §4](../phase3/README.md)，**Step 7 SLA/报表设计前必须定** | 决策 |
 | A4 | **HC1：comment/note 补 ticket_events** | 事件流是 Step 7 SLA/通知/报表的统一输入，补全属地基（唯一遗留的 §6 未修项）；service 层两处 + 事件常量 + 测试 | ~半天 |
@@ -188,6 +188,7 @@ docs/
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
 | B8 | BK-7：List 参数校验 / page 回显归一 | 不构成门禁，随手或随最近相关改动 |
 | B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动的子能力编写；注意 Step 7 软依赖 02-multi-instance（若先启动则接受单实例先跑通，phase3/README §2.1） |
+| B10 | `docs/ops/deployment.md` 补编写（ops 骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 
 ### 独立窗口（已触发，Phase 2 范畴，不属于 Phase 3 前置或随行）
 
@@ -196,4 +197,4 @@ docs/
 | W1 | **多虚拟组可见性场景闭环：BK-13 + BK-14** | 用户场景触发（2026-08-31）：aa 看全子树 / bb 默认只看自己组 / scope 可配置放宽。aa 看全部、个人级放宽已可用；**BK-13** 交付「默认收紧」开关（CHECK 约束 + org update 配置 API + D12 测试，~0.5–1 天）；**BK-14** 交付成员 scope 配置面（AddMember 扩展 + scope 变更端点 + scope=all 仅全局管理员可授，~0.5 天）——bb「看自己组全部」依赖 BK-14 配 scope=group，**两者同批实施、同一场景验收**（合计 1–1.5 天）。详见 00 §9 |
 | W2 | **2b-ext 三件**（附件 / auth-enhance / HR 同步） | 按需独立启动；附件若先于 Phase 3 启动 → 触发 A2 拍板；HR 同步启动 → 触发 BK-12（B6） |
 
-> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）。
+> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）、09 F-31④（relation 越权负向用例——现有 `TestD9_CreateRelation` 只覆盖正向/同向 409/删后 404）、09 F-32（audit/user service 分支级单测，低优——集成已兜底核心分支）。
