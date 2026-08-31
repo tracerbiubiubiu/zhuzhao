@@ -52,9 +52,12 @@ make swag              # 重新生成 Swagger
 
 ## 已知遗留问题（修改时优先关注）
 
-- **HC1**：Comment/Note 不写 `ticket_events`（审计缺口）
-- **TC1/TC2**：缺 Delete-admin 单测、缺 relation 集成测试
-- **HC2**：Delete 无 "deleted" 事件（000014 已去 CASCADE，仍缺删除留痕）
-- Phase 3 启动前待决策：迁移编号 000017 冲突（附件 vs SLA）、SLA 暂停态引用不存在的状态、多实例文档缺失
+> 权威清单：`docs/review/11-project-control.md` §6（健康状态）+ §8（Phase 3 前置/随行分类）+ phase2/00 §9（代码级 backlog）。2026-08-31 校准：
+
+- **HC1**：Comment/Note 不写 `ticket_events`（审计缺口，§6 唯一未修项）
+- **TC1**：Go 层缺「全局 admin 删单成功」集成测试（脚本层已覆盖：2c 脚本 SAT 建删删；待补见 11 §8 A7）
+- ~~TC2 / HC2~~：已修复（`TestD9_CreateRelation`；000014 SET NULL + Delete 同事务写 deleted 事件）
+- **BK-13 / BK-14**（已触发、待实施）：project_isolated 默认收紧开关 + 成员 scope 配置面（多虚拟组可见性场景闭环，见 00 §9）
+- Phase 3 启动前待决策：迁移编号 000017 冲突（附件 vs SLA）；完整 A/B 档清单见 11 §8（SLA 暂停态等设计歧义归 B1 随 Step 7 拍板）
 
 > 最新验证结果以 `docs/review/` 为准；修复后回填状态。

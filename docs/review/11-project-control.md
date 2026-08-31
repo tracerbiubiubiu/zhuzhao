@@ -128,11 +128,14 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | MC3 | IsAncestorOwner 未用 ticketOrgPath | ✅ **已修复** |
 | P0 | RemoveMember 不清理 owner_user_ids | ✅ **已修复**（owner 三处同步清理） |
 | **HC1** | Comment/Note 不写 ticket_events（无审计事件） | ❌ **未修** |
-| **TC1** | delete 成功路径断言 | ✅ **已补**（2c 脚本 TC1 建删删 404 + `TestD9` owner/pOwner 删单 200） |
+| **TC1** | delete 成功路径断言 | 🟡 **脚本层已覆盖**（2c 脚本 SAT 建单→删→GET 404）+ 委托删有 Go 测试（vg owner/vg admin/ancestor owner）；**Go 层全局 admin 删单成功测试仍缺** → 11 §8 A7 |
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
 | **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。②「快照 vs 运行时 JOIN」数据结构仍待 Phase 3 拍板（phase3/README §4） |
+| **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ⏳ **触发条件驱动**（① 真实进组赋角色诉求；② 2b-ext HR 同步启动 = 硬触发器）；机制符合业界实践，当前 fail-inert；详见 00 §9 |
+| **BK-13** | 工单可见性默认方向：兄弟虚拟组透明可读 vs 业务要求「默认只看自己 + 可配置」（`project_isolated`） | 🔶 **已触发（2026-08-31 用户多虚拟组场景），待批准实施**（~0.5–1 天：约束 + 配置 API + D12 测试）；机制骨架已埋、默认值不动；详见 00 §9 |
+| **BK-14** | 成员 scope（`ticket_scope`）无配置面（AddMember 仅收 org_member_role，无任何 API 写 scope） | 🔶 **已批准登记（2026-08-31）**：关系派拍板（scope 挂成员关系非角色）+ scope=all 仅全局管理员可授；与 BK-13 同批实施（~0.5 天）；详见 00 §9 |
 
 ---
 
@@ -153,9 +156,43 @@ docs/
 
 ---
 
-## 8. 下一步（规划中的 Phase 3，暂缓）
+## 8. 遗留问题分类：Phase 3 前置 vs 随行（2026-08-31 整理）
 
-- **依赖空洞**：工单业务依赖多实例文档（02-multi-instance），未编写
-- **迁移编号冲突**：附件（000017）vs SLA（000017）
-- **权限码 seed**：ticket:approve / notification:* / workflow:manage 均未设计
-- 完整评估见对话记录（Phase 3 计划评估：P1-P5 阻塞项 + S1-S10 缺口 + C1-C4 一致性）
+> 本节取代原「下一步」清单，把全部已知未决项归入两档：**A 档 = Phase 3 启动前/启动时完成**（门禁与拍板，不做会让启动本身踩坑）；**B 档 = 随 Phase 3 对应子能力一起**（提前做无收益）。代码级 backlog 详情见 [phase2/00 §9](../phase2/00-implementation-plan.md)。**Phase 3 启动时从 [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) 进入检查流程**（本节 + §6 是其数据源）。
+
+### A 档：Phase 3 启动前/启动时完成
+
+| # | 事项 | 说明 | 量级 |
+|---|------|------|------|
+| A1 | **phase3 文档修正包** | ① README §1.4 前置清单矛盾：仍把 2b-ext 延后项（HR Sync/附件/auth-enhance）列为「2b 验收」前置；② README §5 状态行过时：10-ticket-business、11-deployment-split 已编写仍标「待编写」，实际待编写为 6 份（02/03/06/07/08/09）；③ Phase 3 计划评估中的 C-1~C-4 断链/索引小修落档（原记录只在对话中） | 半天 |
+| A2 | **迁移编号 000017 归属拍板** | 2b-ext 附件（phase2/00 §Step 6）与 Phase 3 SLA（10-ticket-business §2，占用 000017–000021）都规划 000017。规则建议：**谁先启动谁占用，后者启动时整体重排**——任一方启动前必须先定 | 决策 |
+| A3 | **BK-11 ② 数据结构拍板** | `tickets.org_path` 保留镜像列（FOR SHARE 已兜底）vs 去列改运行时 JOIN + write-once `created_org_id`；已登记 [phase3/README §4](../phase3/README.md)，**Step 7 SLA/报表设计前必须定** | 决策 |
+| A4 | **HC1：comment/note 补 ticket_events** | 事件流是 Step 7 SLA/通知/报表的统一输入，补全属地基（唯一遗留的 §6 未修项）；service 层两处 + 事件常量 + 测试 | ~半天 |
+| A5 | **BK-5：relation 反向判重** | DB 唯一索引只挡同向，A→B 与 B→A 可共存；报表/SLA 引用关联数据前收口数据质量（应用层 EXISTS 检查） | ~1–2h |
+| A6 | **散落决策落档与断链收口**（2026-08-31 全量扫描 phase1/2/3 新发现） | ① **SoD 延后决策未落档**：11-authz-architecture-review §4 已给结论（「延后 + 届时优先动态 SoD」）但从未写入 design-decisions；且其建议编号 P2-D7 已被 00 计划的三轨拆分复用——落档时用新编号并注明别名；② **phase2/12·13 号断链**：14 号文档 5 处引用 `12-phase1-backlog-and-phase2-review.md`、`13-project-plan-multi-round-verification.md`、`13-plan-remediation-actions.md`，文件从未入库（git 历史无删除记录）——修正引用为实际归宿（review/09 等）或加「已并入」注记；③ review §7 item6「DB 错误注入 → 拒绝」测试用例未落（顺手项） | ~1h |
+| A7 | **TC1-Go：补全局 admin 删单成功集成测试** | 现有 Go 覆盖为委托删（vg owner/vg admin/ancestor owner）；全局 admin bypass 删单成功仅 2c 脚本覆盖（SAT 建删删）——补 Go 层测试进 `make test-integration` 基线（CI 可跑）。AGENTS.md 遗留节已同步校准（TC2/HC2 标已修） | ~15min |
+
+> 其余待决策点（K8s vs Compose、Redis/PG HA、部署级分离时机、审批流引擎选型）已在 [phase3/README §4](../phase3/README.md) 维护，启动时逐项过表，此处不重复。
+
+### B 档：随 Phase 3 对应子能力一起
+
+| # | 事项 | 随哪个子能力 |
+|---|------|-------------|
+| B1 | SLA 暂停态语义、通知「主管」收件人定义、邮件通知矩阵（原评估 B1/B3/B6，仅对话记录） | Step 7a/7b 设计期拍板 |
+| B2 | 权限码 seed：ticket:approve / notification:* / workflow:manage 均未设计 | Step 7（与 7c/7d 同步设计 + seed 迁移） |
+| B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 工单业务深化 |
+| B4 | BranchedStateEngine 引擎本体 | Step 7c（**硬交付**；触发信号只决定流程定义数量，见 phase3/README §0）。设计期消费 A6 的 SoD 延后决策（审批流互斥优先**动态 SoD**） |
+| B5 | BK-11 ② 实施（去列 JOIN 或保留快照的落地） | 随 A3 拍板结果，在 Step 7 动工前实施 |
+| B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求（见 00 §9） |
+| B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
+| B8 | BK-7：List 参数校验 / page 回显归一 | 不构成门禁，随手或随最近相关改动 |
+| B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动的子能力编写；注意 Step 7 软依赖 02-multi-instance（若先启动则接受单实例先跑通，phase3/README §2.1） |
+
+### 独立窗口（已触发，Phase 2 范畴，不属于 Phase 3 前置或随行）
+
+| # | 事项 | 说明 |
+|---|------|------|
+| W1 | **多虚拟组可见性场景闭环：BK-13 + BK-14** | 用户场景触发（2026-08-31）：aa 看全子树 / bb 默认只看自己组 / scope 可配置放宽。aa 看全部、个人级放宽已可用；**BK-13** 交付「默认收紧」开关（CHECK 约束 + org update 配置 API + D12 测试，~0.5–1 天）；**BK-14** 交付成员 scope 配置面（AddMember 扩展 + scope 变更端点 + scope=all 仅全局管理员可授，~0.5 天）——bb「看自己组全部」依赖 BK-14 配 scope=group，**两者同批实施、同一场景验收**（合计 1–1.5 天）。详见 00 §9 |
+| W2 | **2b-ext 三件**（附件 / auth-enhance / HR 同步） | 按需独立启动；附件若先于 Phase 3 启动 → 触发 A2 拍板；HR 同步启动 → 触发 BK-12（B6） |
+
+> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）。

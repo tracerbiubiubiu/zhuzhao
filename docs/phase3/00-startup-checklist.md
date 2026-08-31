@@ -1,0 +1,92 @@
+# Phase 3 启动检查单（Startup Checklist）
+
+> **用途**：Phase 3 启动时的**唯一检查入口**。本文件是**快照 + 索引**，不是第二 SSOT——每行都注明权威登记处，启动时先按 §1 顺序逐项核对并刷新状态，防止与各 SSOT 漂移。
+>
+> **基线**：2026-08-31 ｜ 提交 `c389156` ｜ 分支 `feature/phase-2`
+> **前提（2026-08-31 所有者确认）**：**不拆微服务**，以增强各模块能力为主——与 [roadmap](../roadmap.md) / [README §0](./README.md)「微服务整体推迟、Phase 3 按需启动子能力」既有决策一致，无需改决策文档。
+
+---
+
+## 0. 快速结论
+
+| 结论 | 内容 |
+|------|------|
+| 启动前必须清空 | **A 档 7 项**（约 2 天人工 + 2 个拍板），见 §2.1 |
+| 已触发待实施（不属 Phase 3，建议先做） | **W1：BK-13 + BK-14 多虚拟组可见性场景闭环**（1–1.5 天），见 §2.3 |
+| 随行项 | **B 档**按启动的子能力对号入座，见 §2.2 |
+| 启动时拍板 | §3 决策清单逐项过 |
+
+## 1. 启动检查顺序（操作流程）
+
+1. **刷新本表**：对照各登记处（00 §9 / 11 §6 / 11 §8 / phase3 README §4 / 09 合集）核对状态，更新本文件（~10 分钟）。
+2. **清空 A 档**：§2.1 七项全部完成或显式豁免（含 A2/A3 两个拍板）。
+3. **检查 W1**：多虚拟组场景闭环是否已实施？未做则决定「先行独立完成」或「并入启动批次」。
+4. **选定启动子能力**（Step 1–7 任选，触发条件见 [README §0](./README.md)），映射 §2.2 B 档随行项；补编写对应文档（B9）。
+5. **过 §3 决策清单**剩余项。
+6. **迁移号核对**：按 A2 规则（谁先启动谁占用，后者重排）确认新迁移编号。
+7. **回填 [11-project-control](../review/11-project-control.md)** 能力矩阵，Phase 3 状态「暂缓」→「进行」。
+
+## 2. 全量清单
+
+### 2.1 A 档：Phase 3 启动前/时完成（门禁与拍板）
+
+| # | 事项 | 权威出处 | 量级 |
+|---|------|---------|------|
+| A1 | phase3 文档修正包：README §1.4 前置矛盾、§5 状态行、C-1~C-4 断链落档 | 11 §8 A1 | 半天 |
+| A2 | 迁移编号 000017 归属拍板（附件 vs SLA） | 11 §8 A2 | 决策 |
+| A3 | BK-11② `org_path` 数据结构拍板（快照列 vs 运行时 JOIN + `created_org_id`） | [phase3 README §4](./README.md) | 决策 |
+| A4 | HC1：comment/note 补 `ticket_events`（Step 7 事件流地基） | 11 §6 | ~半天 |
+| A5 | BK-5：relation 反向判重（报表数据质量） | [00 §9](../phase2/00-implementation-plan.md) | ~1–2h |
+| A6 | SoD 延后决策落档（动态 SoD 优先）+ phase2/12·13 断链修正 + 错误注入测试③ | 11 §8 A6 | ~1h |
+| A7 | TC1-Go：全局 admin 删单成功集成测试（回归基线进 CI） | 11 §8 A7 | ~15min |
+
+### 2.2 B 档：随 Phase 3 子能力一起（提前做无收益）
+
+| # | 事项 | 随行位置 |
+|---|------|---------|
+| B1 | SLA 暂停态语义 / 通知「主管」定义 / 邮件通知矩阵（原对话评估 B1/B3/B6） | Step 7a/7b 设计期 |
+| B2 | 权限码 seed：ticket:approve / notification:* / workflow:manage | Step 7 |
+| B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 |
+| B4 | BranchedStateEngine 引擎本体（**硬交付**；消费 A6 的 SoD 决策：互斥优先动态 SoD） | Step 7c |
+| B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
+| B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求 |
+| B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
+| B8 | BK-7：List 参数校验 / page 回显归一 | 不构成门禁，随手 |
+| B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动子能力编写；Step 7 软依赖 02-multi-instance（先启动则接受单实例跑通） |
+
+### 2.3 独立窗口（已触发 / 按需，Phase 2 范畴）
+
+| # | 事项 | 状态 |
+|---|------|------|
+| W1 | **BK-13 + BK-14 多虚拟组可见性场景闭环**：project_isolated 默认收紧（CHECK + org update 配置 API + D12 测试）+ 成员 scope 配置面（AddMember 扩展 / scope 变更端点 / scope=all 仅全局管理员可授） | **已触发待实施**（1–1.5 天）；建议 Phase 3 启动前完成 |
+| W2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
+
+> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）。
+
+### 2.4 已闭环基线（启动时可假定已完成）
+
+Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make acceptance` 四档链式 215 断言全绿、13 包集成测试 `-race` 全绿；BK-11①（org_path 快照竞态 FOR SHARE）、CC1–3/HC2/HC3/MC2/MC3/P0/EC1/OP1 等历史发现均已修复并有回归（详见 [11 §6](../review/11-project-control.md)）。
+
+## 3. 决策清单（启动时逐项过，维护于 [phase3 README §4](./README.md)）
+
+| 事项 | 建议 | 状态 |
+|------|------|------|
+| A2 迁移号 000017 归属 | 谁先启动谁占用，后者重排 | 待拍板 |
+| A3 `org_path` 快照列 vs 运行时 JOIN | Step 7 SLA/报表设计前定 | 待拍板 |
+| K8s vs Docker Compose | Compose + Nginx 足够 | 待拍板（建议沿用） |
+| Redis / PG 高可用 | Sentinel / 云托管 Cluster | 待拍板（建议沿用） |
+| 部署级分离时机 | Phase 3 末按需验证 | 待拍板 |
+| 审批流引擎选型 | 手写 BranchedStateEngine | 待拍板（建议沿用） |
+| 可观测性栈 / 工单事件机制 | 已决策（应用内开关 / L1） | ✅ |
+
+## 4. 对话记录依赖项（仅存在于历史对话、未落档——A1 落档时一并收口）
+
+- Phase 3 计划评估：P1-P5 阻塞项 + S1-S10 缺口（大部分已由 A/B 档吸收，落档时核对剩余）
+- 文档一致性：C-1~C-4 断链/索引（→ A1）
+- ticket-business 设计歧义：B1 SLA 暂停态 / B3 通知主管 / B6 邮件矩阵（→ §2.2 B1）
+
+## 5. 变更记录
+
+| 日期 | 说明 |
+|------|------|
+| 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |

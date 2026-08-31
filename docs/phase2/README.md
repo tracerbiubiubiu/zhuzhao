@@ -22,7 +22,7 @@
 1. **原 2b 过重**：把"工单可见性（核心）"与"虚拟组/HR同步/附件/密码策略（增强）"塞进同一阶段，关键路径被拖长。
 2. **2b-core 是关键路径最短交付**：2a（工单 CRUD）→ 2b-core（工单能按组织可见）即可形成"能跑的工单模块"，符合 Phase 2「打基础」目标；其余增强并行或延后。
 3. **2b-org（虚拟组/scope/角色）** 与 2b-core 可同时开工，但 2c 委托需两者都就绪。
-4. **2b-ext（HR 同步 / storage / auth-enhance / project_isolated）** 按宽松优先原则**延后**：HR 同步 Phase 2 可用种子/手工维护组织数据，不阻塞主线；`project_isolated` 强隔离极少见，标 future；附件/密码策略与工单鉴权正交，独立可延后。
+4. **2b-ext（HR 同步 / storage / auth-enhance / project_isolated）** 按宽松优先原则**延后**：HR 同步 Phase 2 可用种子/手工维护组织数据，不阻塞主线；`project_isolated` 强隔离已由用户多虚拟组场景**触发**（2026-08-31，登记 BK-13 待实施）；附件/密码策略与工单鉴权正交，独立可延后。
 5. **2c 不拆 2d**：owner/admin 委托强耦合（D7–D9 同时需 `org_member_role` 与 Authorize），单节点交付（见 §1.3）。
 
 **建议顺序（关键路径）**：Phase 1 验收 → **2a** → **2b-core** → **2c**；**2b-org** 与 2b-core 并行，**2b-ext** 按需延后。
@@ -88,7 +88,7 @@
 | 文件存储 | [storage](./10-storage.md) | S3 兼容、预签名 URL、工单附件 | **已编写** | 延后（与鉴权正交） |
 | 认证增强 | [auth-enhance](./01-auth-enhance.md) | 多设备列表/踢出、密码复杂度 | **已编写** | 延后 |
 | HR 目录同步 | [org-enhance](./03-org-enhance.md) | 每日拉取公司人员/部门 API | 已编写 | **延后**：Phase 2 组织数据可用种子/手工维护，不阻塞主线 |
-| 强隔离 `project_isolated` | [ticket](./09-ticket.md) §5.2.1 | 实体设 `ticket_isolated` 兄弟虚拟组互不可见 | 已编写 | **future**：极少见，2b-core 只交付默认 `entity_transparent_read` |
+| 强隔离 `project_isolated` | [ticket](./09-ticket.md) §5.2.1 | 实体设 `ticket_visibility='project_isolated'`：兄弟虚拟组互不可见（默认只看自己组），可切回透明读 | 已编写 | **已触发（2026-08-31 用户多虚拟组场景确认），待实施**——登记 **BK-13**（[00 §9](./00-implementation-plan.md)）：CHECK 约束放开 + org update 配置 API + D12 测试激活，~0.5–1 天 |
 
 ### 1.3 Phase 2c — 组织内委托（新增节点，**不**并入 2b）
 
