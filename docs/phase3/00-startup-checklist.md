@@ -61,7 +61,7 @@
 | W1 | **BK-13 + BK-14 多虚拟组可见性场景闭环**：project_isolated 默认收紧（CHECK + org update 配置 API + D12 测试）+ 成员 scope 配置面（AddMember 扩展 / scope 变更端点 / scope=all 仅全局管理员可授） | **已触发待实施**（1–1.5 天）；建议 Phase 3 启动前完成 |
 | W2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
 
-> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）。
+> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、**BK-16**（Delete RowsAffected + 并发双删测试，随 W1 批次修复）。
 
 ### 2.4 已闭环基线（启动时可假定已完成）
 
@@ -86,6 +86,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 - ticket-business 设计歧义（**对话评估编号**，非本表 B 档编号）：评估-B1 SLA 暂停态 / 评估-B3 通知主管 / 评估-B6 邮件矩阵（已并入 §2.2 B1）
 - **09 合集抽查结论**：F-01/02（VISION）、F-03（activelist 链）、F-18（Redis requirepass）核实已修（历史行未回标）；F-21 → B7；F-31④/F-32 → 随手项；其余条目按批次闭环记录未逐条重验
 - **代码级复审（2026-08-31 第二轮，以代码为准）**：BK-7 两半项已在代码落地（priority→400、page 钳制回显，ticket_handler.go:43-52）→ 关闭、删 B8；testutil 迁移清单仅缺 000002/000007 纯数据 seed（刻意排除，DDL 全齐非缺口）；非测试代码零 TODO/FIXME、无请求路径 panic、关键错误码与 api/errcode.md 一致；「已修复」声明（CC1/2/3、P0、MC2/3、BK-1/2/3、BK-15、OP1）逐项代码复核属实
+- **并发/多实例审计（2026-08-31）**：工单模块无进程内可变状态、共享层全在 Redis/DB（Lua 限流、advisory lock、乐观锁、DB 时间戳）→ 可水平扩展；唯一多实例缺口 = Casbin 策略传播无 Watcher（跨模块，Phase 3 Step 2，已在 B9）；并发防护（CC1/2、BK-3/11/15、竞态双测试）逐项验证在位
 - **00 §9 BK 全量复核**：BK-1/2/3/4/6/8/10/15 已关闭（BK-4 行漏关本次修正）；开放项 BK-5/7/9/11②/12/13/14 全部已归纳于 A/B/W 档
 
 ## 5. 变更记录
