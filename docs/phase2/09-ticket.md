@@ -373,6 +373,8 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 > **SSOT**：产品/实现对齐用。L1 = Casbin 路由；L2 = GetFilter / canRead；L3 = Authorize / canOperate。  
 > `admin` / `superadmin` 在 `Authorize` 入口 bypass L2/L3；L1 仍走 Casbin matcher。
 
+> **转部门/组织调整场景（2026-08-31 澄清，防重复误报）**：属主（创建人/处理人）经 **Get 与 List 双路径豁免 L2**——`Authorize` 的属主短路 + `GetFilter` 的 `created_by/assigned_to` OR 分支（resource.go），转部门后**历史工单始终可见**，对齐 Freshdesk/Jira 主流行为。转部门后失去可见性的仅为非属主旁观者与被改派的原处理人（组织边界正常语义，业界一致）。**勿再将「转部门后旧工单 404」作为缺陷提出**；若产品需要「历史参与过的工单」入口或 watcher 订阅，属 Phase 3 通知服务（Step 7b）的功能候选，非可见性修复。
+
 **统一链路**：JWT → L1 → L2 → L3 → 状态机等业务规则。
 
 **失败语义**：
