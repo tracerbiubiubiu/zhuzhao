@@ -12,7 +12,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模**：70 个非测试 Go 源文件 ｜ 46 个测试文件 ｜ 188 个测试函数 ｜ 32 个迁移文件（16 对）｜ 13 份 review 文档（含本文件；统计时点 2026-08-31，随代码漂移）。
+**规模**：70 个非测试 Go 源文件 ｜ 47 个测试文件 ｜ 190 个测试函数 ｜ 32 个迁移文件（16 对）｜ 13 份 review 文档（含本文件；统计时点 2026-08-31，随代码漂移）。
 
 ---
 
@@ -132,7 +132,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
-| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | 🟡 已确认、修复方案已定待实施（**已登记 BK-11**，见 00 §9）；Create 事务内 `FOR SHARE` 锁 org 行后读 path（与 Move 写锁串行化）；影响为 fail-safe 降级，无越权无损坏 |
+| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。②「快照 vs 运行时 JOIN」数据结构仍待 Phase 3 拍板（phase3/README §4） |
 
 ---
 

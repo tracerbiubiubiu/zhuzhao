@@ -221,7 +221,7 @@ Phase 3 主能力稳定运行
 | ⚠️ 工单审批流引擎选型 | Phase 3 手写 BranchedStateEngine；未来是否引第三方引擎？ | 见 [ticket.md §8.4/§8.5](../modules/ticket.md#84-为什么-phase-2a-不引入工作流引擎)；Phase 3 首选手写 |
 | ✅ 可观测性栈 | Prometheus/Grafana/OTel | **应用内可选开关 + 部署可选**；Phase 3-min 不要求全套栈 |
 | ✅ 工单事件机制 | Phase 3 用 L1（DB 持久化+轮询+分布式锁），Phase 3+ 升级 L2（Outbox+Asynq） | 已决策：见 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) |
-| ⚠️ 工单组织可见性数据结构 | 现状：`tickets.org_path` 为 move 级联维护的镜像列，存在 Create×Move 并发写旧快照竞态（BK-11，fail-safe）与 P2-D1/MC2 级联维护负担 | **Phase 3 启动时拍板**：保留镜像列（+FOR SHARE）或去列改运行时 JOIN（organizations 单一真相源）；若拍板去列，「按创建时归属」的报表诉求改用 write-once `created_org_id` 承载。过渡期 FOR SHARE 修复已兜底（BK-11 ①） |
+| ⚠️ 工单组织可见性数据结构 | 现状：`tickets.org_path` 为 move 级联维护的镜像列；Create×Move 并发写旧快照竞态已由 BK-11 ① 修复（2026-08-31：Create 事务内 FOR SHARE，见 phase2/00 §9），遗留 P2-D1/MC2 级联维护负担 | **Phase 3 启动时拍板**：保留镜像列（FOR SHARE 已兜底）或去列改运行时 JOIN（organizations 单一真相源）；若拍板去列，「按创建时归属」的报表诉求改用 write-once `created_org_id` 承载 |
 
 ---
 

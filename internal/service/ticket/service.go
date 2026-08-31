@@ -101,13 +101,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		return nil, errcode.ErrTicketTypeNotFound
 	}
 
-	// 2. 校验 org_id 存在 + 读 org.path
-	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. 模板预填（可选，09-ticket §2：default_fields 预填空缺字段、default_priority 作缺省）。
+	// 2. 模板预填（可选，09-ticket §2：default_fields 预填空缺字段、default_priority 作缺省）。
 	// 取舍：请求显式值 > 模板默认 > 类型缺省 3；模板只填请求未提供的字段，不覆盖显式输入。
 	// title 不预填——请求 binding:"required" 保证非空，模板 title 永远不会被用到。
 	priority := req.Priority
@@ -148,7 +142,10 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		}
 	}
 
-	// 4. 事务内创建工单 + 写事件
+	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
+	// org_path 是 2b scope=group 可见性过滤的依赖列（P2-D1 move 级联维护镜像），
+	// 快照必须在事务内与 Move 的 FOR UPDATE 写锁串行化后读取（BK-11 ①）：
+	// 事务外裸读会命中「读旧 path → move 级联提交 → 写入过期 org_path」竞态。
 	ticket := &model.Ticket{
 		TypeCode:    req.TypeCode,
 		Title:       req.Title,
@@ -158,7 +155,6 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		CreatedBy:   actorUserID,
 		AssignedTo:  req.AssignedTo,
 		OrgID:       req.OrgID,
-		OrgPath:     org.Path,
 		CustomData:  customData,
 	}
 
@@ -167,6 +163,12 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+
+	org, err := s.orgRepo.FindByIDForShareTx(ctx, tx, req.OrgID)
+	if err != nil {
+		return nil, err
+	}
+	ticket.OrgPath = org.Path
 
 	if err := s.ticketRepo.CreateTx(ctx, tx, ticket); err != nil {
 		return nil, err

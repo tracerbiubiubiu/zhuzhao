@@ -32,6 +32,24 @@ func (r *OrgRepo) FindByID(ctx context.Context, id int64) (*model.Organization, 
 	return r.queryOne(ctx, q, id)
 }
 
+// FindByIDForShareTx 在外部事务内以 FOR SHARE 锁组织行后读取。
+// FOR SHARE 与 Move 的 FOR UPDATE（子树写锁）互斥：工单创建在事务内先取锁
+// 再快照 org_path，可保证读到的 path 不早于任何并发 move 的提交（BK-11 ①），
+// 杜绝「读旧 path → move 级联提交 → 写入过期 org_path」。org 不存在 → ErrOrgNotFound。
+func (r *OrgRepo) FindByIDForShareTx(ctx context.Context, tx pgx.Tx, id int64) (*model.Organization, error) {
+	const q = `SELECT` + orgSelectColumns + `
+		FROM organizations WHERE id = $1 AND deleted_at IS NULL FOR SHARE`
+	row := tx.QueryRow(ctx, q, id)
+	org, err := scanOrgRow(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errcode.ErrOrgNotFound
+		}
+		return nil, err
+	}
+	return org, nil
+}
+
 func (r *OrgRepo) GetTree(ctx context.Context) ([]*model.Organization, error) {
 	const q = `SELECT` + orgSelectColumns + `
 		FROM organizations WHERE deleted_at IS NULL
