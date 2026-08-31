@@ -11,9 +11,9 @@
 
 ## 0. 前置条件
 
-- [ ] Phase 2a 验收：TicketResource + assigned + 状态机 + `ticket_events` 表
-- [ ] Phase 2b 验收：scope group/all + 附件 + 实体透明读
-- [ ] **Phase 2c 验收**：org admin/owner + ancestor owner Authorize（审批流/分派规则的属主依赖项）
+- [x] Phase 2a 验收：TicketResource + assigned + 状态机 + `ticket_events` 表（已交付 2026-08-28）
+- [x] Phase 2b 验收：scope group/all + 实体透明读（已交付；附件属 2b-ext 未交付，不在本能力关键路径）
+- [x] **Phase 2c 验收**：org admin/owner + ancestor owner Authorize（审批流/分派规则的属主依赖项）（已交付 2026-08-28）
 - [ ] Phase 3 Step 2 multi-instance（L1 事件消费复用分布式锁防重；SLA 扫描由 Asynq Scheduler 单点调度，无需自写锁，见 §2.3 / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）
 
 > 2c 是工单业务能力的硬前置：自动分派规则判断"分派给哪个组的 admin"、审批流的审批人候选都依赖 2c 的 Authorize 升级。
@@ -130,7 +130,7 @@ enqueue("sla:breach", {ticket_id, sla_id, breach_type})  ──► Asynq Redis
 - 通知失败：Asynq 自带 retry + backoff，不丢违约；批量违约时排队削峰，不炸邮件网关。
 - 与 §4.6 场景 A 同构：`ticket.approved` → Enqueue 触发任务；此处 `ticket.sla_breached` → Enqueue 升级任务。两者都是"L1 落事实 → 消费者 Enqueue → worker 执行副作用"。
 
-**三处必坑（实现 checklist）**：
+**四处必坑（实现 checklist，TB 负向用例须覆盖，见 §8）**：
 
 1. **状态暂停排除**：工单处于 `suspended` / `waiting_customer` 等暂停态时 `ticket_sla` 计时须 pause（不计 `breached_at`），扫描逻辑须排除这些状态，否则误违约。
 2. **提前解决须 cancel**：工单在 deadline 前 `responded` / `resolved` 时，应在 `OnAfterUpdate` Hook 内 `scheduler.Enqueue` 取消该 `sla:breach` 待处理任务（或 worker 执行前二次校验 `status` 是否仍违约），否则已解决单仍会被判违约通知。

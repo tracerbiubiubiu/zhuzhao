@@ -179,7 +179,7 @@ docs/
 
 | # | 事项 | 随哪个子能力 |
 |---|------|-------------|
-| B1 | SLA 暂停态语义、通知「主管」收件人定义、邮件通知矩阵（原评估 B1/B3/B6，仅对话记录） | Step 7a/7b 设计期拍板 |
+| B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义、通知「主管」定义、邮件通知矩阵（原评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外评证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心）、§7.2 signal 双写二选一、responded_at 是否含内部备注、`min_level` 职级数据源（users 无 level 列，悬空）、§5 分派深度（keyword 算法/同优先级/target 从属/无命中兜底/Hook 事务边界）、§6 报表深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例（§2.5 四必坑 0 覆盖） | Step 7 设计期逐项拍板 |
 | B2 | 权限码 seed：ticket:approve / notification:* / workflow:manage 均未设计 | Step 7（与 7c/7d 同步设计 + seed 迁移） |
 | B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 工单业务深化 |
 | B4 | BranchedStateEngine 引擎本体 | Step 7c（**硬交付**；触发信号只决定流程定义数量，见 phase3/README §0）。设计期消费 A6 的 SoD 延后决策（审批流互斥优先**动态 SoD**） |
