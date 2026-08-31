@@ -176,12 +176,6 @@ func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64,
 	return nil
 }
 
-// UpdateAssignedTo 更新处理人（分派/取消分派）
-func (r *TicketRepo) UpdateAssignedTo(ctx context.Context, id int64, currentStatus string, assignedTo *int64) error {
-	return r.UpdateAssignedToTx(ctx, r.db, id, assignedTo)
-}
-
-// UpdateAssignedToTx 事务内更新处理人
 // UpdateAssignedToTx 事务内更新处理人（CC2：status<>'closed' 守卫——closed 工单
 // 不可被分派/改派，消除并发 Close 后换处理人的窗口）
 func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id int64, assignedTo *int64) error {
@@ -197,9 +191,10 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 	return nil
 }
 
-// Delete 物理删除工单（Phase 2a：admin only，关联表由 DB CASCADE 处理）
-// Delete 物理删除工单（HC2：同事务先写 action='deleted' 事件——
-// FK ON DELETE SET NULL 使事件行存活且 ticket_id 悬空，审计链完整可追溯操作者）
+// Delete 物理删除工单。删除权限：全局 admin bypass + 2c 组织委托（org owner/admin、
+// ancestor owner，见 04 §4.2）。关联表处理：ticket_comments / ticket_relations 由
+// DB ON DELETE CASCADE 清理；ticket_events 为 SET NULL（000014）——事件行存活、
+// ticket_id 悬空，同事务先写 action='deleted' 事件，审计链完整可追溯操作者（HC2）。
 func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {

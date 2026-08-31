@@ -136,6 +136,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ⏳ **触发条件驱动**（① 真实进组赋角色诉求；② 2b-ext HR 同步启动 = 硬触发器）；机制符合业界实践，当前 fail-inert；详见 00 §9 |
 | **BK-13** | 工单可见性默认方向：兄弟虚拟组透明可读 vs 业务要求「默认只看自己 + 可配置」（`project_isolated`） | 🔶 **已触发（2026-08-31 用户多虚拟组场景），待批准实施**（~0.5–1 天：约束 + 配置 API + D12 测试）；机制骨架已埋、默认值不动；详见 00 §9 |
 | **BK-14** | 成员 scope（`ticket_scope`）无配置面（AddMember 仅收 org_member_role，无任何 API 写 scope） | 🔶 **已批准登记（2026-08-31）**：关系派拍板（scope 挂成员关系非角色）+ scope=all 仅全局管理员可授；与 BK-13 同批实施（~0.5 天）；详见 00 §9 |
+| **BK-15** | 代码卫生：UpdateAssignedTo 死包装 + Delete/UpdateAssignedToTx 叠注释（旧「admin only」过时） | ✅ **已修复（2026-08-31）**：删死代码 + 注释合并更正 |
 
 ---
 
