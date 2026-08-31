@@ -186,7 +186,6 @@ docs/
 | B5 | BK-11 ② 实施（去列 JOIN 或保留快照的落地） | 随 A3 拍板结果，在 Step 7 动工前实施 |
 | B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求（见 00 §9） |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B8 | BK-7：List 参数校验 / page 回显归一 | 不构成门禁，随手或随最近相关改动 |
 | B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动的子能力编写；注意 Step 7 软依赖 02-multi-instance（若先启动则接受单实例先跑通，phase3/README §2.1） |
 | B10 | `docs/ops/deployment.md` 补编写（ops 骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 

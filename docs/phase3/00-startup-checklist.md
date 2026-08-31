@@ -51,7 +51,6 @@
 | B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
 | B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求 |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B8 | BK-7：List 参数校验 / page 回显归一 | 不构成门禁，随手 |
 | B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动子能力编写；Step 7 软依赖 02-multi-instance（先启动则接受单实例跑通） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 
@@ -86,6 +85,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 - 文档一致性：~~C-1~C-4 断链/索引~~ 已明确化为 **review/10 C1–C4**（处置见 A1②：C1 驳回维持、C2 已修、C3 → B10、C4 真开放）
 - ticket-business 设计歧义（**对话评估编号**，非本表 B 档编号）：评估-B1 SLA 暂停态 / 评估-B3 通知主管 / 评估-B6 邮件矩阵（已并入 §2.2 B1）
 - **09 合集抽查结论**：F-01/02（VISION）、F-03（activelist 链）、F-18（Redis requirepass）核实已修（历史行未回标）；F-21 → B7；F-31④/F-32 → 随手项；其余条目按批次闭环记录未逐条重验
+- **代码级复审（2026-08-31 第二轮，以代码为准）**：BK-7 两半项已在代码落地（priority→400、page 钳制回显，ticket_handler.go:43-52）→ 关闭、删 B8；testutil 迁移清单仅缺 000002/000007 纯数据 seed（刻意排除，DDL 全齐非缺口）；非测试代码零 TODO/FIXME、无请求路径 panic、关键错误码与 api/errcode.md 一致；「已修复」声明（CC1/2/3、P0、MC2/3、BK-1/2/3、BK-15、OP1）逐项代码复核属实
 - **00 §9 BK 全量复核**：BK-1/2/3/4/6/8/10/15 已关闭（BK-4 行漏关本次修正）；开放项 BK-5/7/9/11②/12/13/14 全部已归纳于 A/B/W 档
 
 ## 5. 变更记录

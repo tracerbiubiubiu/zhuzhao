@@ -347,7 +347,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | BK-4 | ~~`ticket_events.action` 与 status 字面量未常量化~~ | **✅ 已关闭（Step 4，2026-08-28；2026-08-31 审计复核确认，行漏关）**：state_machine.go 常量块（StatusOpen/StatusClosed/EventCreated/EventUpdated/EventStatusChanged/EventAssigned）落地，service.go 字面量清零 | 已关闭 |
 | BK-5 | CreateRelation 反向判重缺失 | DB 唯一索引只挡同向；A→B 与 B→A 可共存（逻辑重复）。应用层加 `(s=$1 AND t=$2) OR (s=$2 AND t=$1)` 存在性检查 | 按需（2b 后） |
 | BK-6 | ~~P2-D1 级联后代分支无 Go 测试~~ | **✅ 已关闭（Step 4，2026-08-28）**：`TestB2_MoveCascadeRemapsDescendantTicketPath` 覆盖孙代组织 + 工单 subpath 重映射 + move 后透明读仍正确 | 已关闭 |
-| BK-7 | handler List 非法 priority 静默忽略；page/page_size 回显未归一 | `?priority=abc` 被丢弃而非 400；page=0 时 SQL 钳 1 但响应回显 0 | 低优 |
+| BK-7 | ~~handler List 非法 priority 静默忽略；page/page_size 回显未归一~~ | **✅ 已关闭（2026-08-31 代码级复核）**：handler 已实现 priority 非法→400（ticket_handler.go:49-52）、page/page_size 在回显前钳制（:43-47），两半项均落地，登记行过时 | 已关闭 |
 | BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
 | BK-10 | ~~2a 无状态推进端点~~ | **✅ 已拍板（2026-08-28 用户确认）**：2b/2c 不补「开始处理/待验证」推进端点（无真实诉求）；in_progress/pending_verify 状态与推进 API 归 Phase 3 工单业务深化（10-ticket-business）一并设计。当前行为（assigned 工单先取消分派回 open 再 close，T6 固化）为预期语义 | 已关闭 |
@@ -370,5 +370,6 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 2026-08-31 | BK-11 ① 实施收口：Create 事务内 FOR SHARE 锁 org 行（FindByIDForShareTx）+ 锁窗口阻塞/Move×Create 锤击两回归 + 变异验证；§9 登记 **BK-12**（org_roles/parent_id 写侧缺口，触发条件驱动，HR 同步启动为硬触发器）；11-project-control §8 重写为「Phase 3 前置 vs 随行」遗留问题分类 |
 | 2026-08-31（晚） | BK-12 必要性/业界评估补录（Entra/Google Groups/Keycloak 组驱动对照）；§9 登记 **BK-13**（project_isolated 强隔离激活：用户多虚拟组场景触发，业界默认隔离对照 + 机制骨架盘点，待批准实施）；phase2/README §1.2.3 project_isolated 状态翻转 future→已触发（顺修 `ticket_isolated` 值名笔误）；全量扫 phase1/2/3 文档归拢散落项：SoD 延后决策未落档（11-authz-review §4，P2-D7 编号已被三轨拆分复用）、phase2/12·13 号断链（14 号 5 处引用、文件从未入库）、review §7 item6 错误注入测试未落——三项并入 11 §8 A6 |
 | 2026-08-31（夜） | §9 登记 **BK-14**（成员 scope 配置面：关系派拍板、scope=all 仅全局管理员可授、防提权复用 ensureCanManageMember，与 BK-13 同批实施）；外部 review 验证收口：**AGENTS.md 遗留节校准**（TC2/HC2 标已修、TC1 改「脚本已覆盖/Go 层缺」）、11 §6 TC1 口径修正、11 §8 增 **A7**（TC1-Go 测试）+ W1 升级为「BK-13+BK-14 场景闭环」；建 **docs/phase3/00-startup-checklist.md**（Phase 3 启动检查单：A/B/W 三档 + 决策清单 + 七步流程） |
+| 2026-08-31（代码级审计） | **以代码为准的第二轮审计**：BK-7 两半项均已在代码落地（priority 400 + page 钳制回显）→ 关闭并同步 11 §8/检查单（删 B8）；testutil 迁移清单缺 000002/000007 系刻意排除纯数据 seed（DDL 16 个全齐，非缺口）；非测试代码 TODO/FIXME 零命中、无请求路径 panic、关键错误码与 api/errcode.md 一致、swagger 含 2c 端点；CC1/CC2/CC3/P0/MC2/MC3/BK-1/BK-2/BK-3/BK-15 修复声明逐一代码复核属实 |
 | 2026-08-31（审计） | 完整性审计：BK-1..15 全量复核，**BK-4 行漏关修正**（常量化已落地）；review/10 C1–C4 逐条核验（C1 驳回维持/C2 已修/C4 真开放→11 §8 A1②、C3→B10）；09 合集抽查回注（F-01/02/03/18 已修、F-31④/F-32 入随手项） |
 | 2026-08-31（夜二） | §9 登记 **BK-15** 并即时修复：删除 `UpdateAssignedTo` 死包装（currentStatus 参数零使用、全仓零调用方）；合并 Delete / UpdateAssignedToTx 新旧叠注释，更正删单权限（2c 委托可删，非 admin only）与 FK 行为（comments/relations CASCADE、events SET NULL）描述 |
