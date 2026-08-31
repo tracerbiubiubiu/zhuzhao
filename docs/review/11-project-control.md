@@ -132,7 +132,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
-| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | 🟡 **已确认、修复方案已定待实施**：Create 事务内 `FOR SHARE` 锁 org 行后读 path（与 Move 的 FOR UPDATE 串行化）；影响为 fail-safe 降级（scope 视角暂不可见/ancestor owner 失效），creator/assignee/admin bypass 不受影响，无越权无损坏 |
+| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | 🟡 已确认、修复方案已定待实施（**已登记 BK-11**，见 00 §9）；Create 事务内 `FOR SHARE` 锁 org 行后读 path（与 Move 写锁串行化）；影响为 fail-safe 降级，无越权无损坏 |
 
 ---
 

@@ -351,6 +351,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | BK-8 | ~~scope_resolver.go 文件名与内容不符~~ | **✅ 已解决（Step 4，2026-08-28）**：真 ScopeResolver（ReadAnchorPaths 策略 B）落地于该文件，文件名恢复名副其实 | 已关闭 |
 | BK-9 | setupTicket2a 死代码回退分支 | `if orgID == 0` 不可达（前置 require.NoError 已拦），且其 ON CONFLICT DO NOTHING RETURNING 在冲突时返回空行会 Scan 报错 | 顺手 |
 | BK-10 | ~~2a 无状态推进端点~~ | **✅ 已拍板（2026-08-28 用户确认）**：2b/2c 不补「开始处理/待验证」推进端点（无真实诉求）；in_progress/pending_verify 状态与推进 API 归 Phase 3 工单业务深化（10-ticket-business）一并设计。当前行为（assigned 工单先取消分派回 open 再 close，T6 固化）为预期语义 | 已关闭 |
+| **BK-11** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照残留） | Create 在事务外 FindByID 读 org.path、事务内写入——与 Move 并发时写入过期快照（P2-D1 级联追不上窗口内新建行）。**fail-safe 降级**：scope 视角列表暂不可见、ancestor owner（$3 防御）失效；creator/assignee/admin bypass 不受影响，无越权无损坏。**修复方案已定**：Create 事务内 `FOR SHARE` 锁 org 行后读 path（与 Move 写锁串行化，~15 行） | 批次三或 2c 收尾顺手修 |
 
 ---
 
