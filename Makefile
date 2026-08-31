@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -74,8 +74,9 @@ benchmark:
 	go test -bench=. -benchmem ./internal/...
 
 # 验收脚本（F-24/F-25：00 §5.5 本地回归纪律入口；容器名由脚本自动探测）
+# 四档链式全量门禁（经 2c 脚本链式：phase1 → 2a → 2b → 2c，对齐 AGENTS.md 门禁定义）
 acceptance:
-	bash scripts/acceptance-phase1.sh
+	bash scripts/acceptance-phase2c.sh
 
 acceptance-2a:
 	bash scripts/acceptance-phase2a.sh
@@ -85,3 +86,15 @@ acceptance-2b:
 
 acceptance-2c:
 	bash scripts/acceptance-phase2c.sh
+
+# 项目现状快照：一条命令看清全貌（规模/分层/表/路由/权限/测试/技术债/文档一致性）
+snapshot:
+	bash scripts/snapshot.sh
+
+# 只显示与上次快照的差异（AI 迭代后先看这个，30 秒掌握“改了什么”）
+snapshot-diff:
+	bash scripts/snapshot.sh --diff
+
+# 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
+guard:
+	go test -count=1 -run 'TestArchitecture|TestGuard' ./internal/...
