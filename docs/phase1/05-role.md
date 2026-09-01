@@ -246,6 +246,14 @@ WHERE deleted_at IS NULL
 ```
 Phase 2b 有效角色 = 直接 ∪ 所在组织的 org_roles ∪ parent 角色链
 
+> ⚠️ **角色来源双轨语义（P1-1，2026-08-31 确认并锁定，TestBK12_DirectVsExpanded）**：
+> **能力面（L1/菜单可见性）= 展开集**（直接 ∪ 组织绑定 ∪ 继承链，`GetEffectiveRoleCodes`）；
+> **管理守卫（user 模块防提权）= 仅直接角色**（`GetRoles`，`INNER JOIN user_roles`）。
+> 二者分叉是**设计选择而非缺陷**：守卫若改用展开集，组织绑定的强档角色会抬升全部成员的
+> 管理档位（组织绑定 = user 模块提权旁路）。代价是"能进不能做"的体验分裂——org 模块视
+> 展开角色持有者为全局组织管理员、user 模块视其为无角色局外人，属最小权限语义。
+> 角色继承（parent_id）默认不启用（写侧随 BK-12 已备，触发条件：角色能力打包诉求）。
+>
 > ⚠️ **继承 × 等级规则（2026-08-31 拍板；同日方向修正，随 BK-12 角色管理写侧落地）**：BFS 为**绑子得父**（子权限 ⊇ 父权限），设置 `roles.parent_id` 时校验 **`child.priority ≤ parent.priority`（子不弱于父）**——只允许强子继承弱父（增益、无提权）；放行弱子继承强父即纯提权旁路（admin 可经 `child.parent = 高级角色` 绕过 `ensureRolePriorityAllowed` 的赋角防线）。此前 parent_id 无写侧入口（BK-12 同族缺口），规则为潜伏态；实现时另需校验环（A→B→A）与软删/禁用父角色。
 Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独立
 ```
