@@ -49,7 +49,7 @@
 | B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 |
 | B4 | BranchedStateEngine 引擎本体（**硬交付**；消费 A6 的 SoD 决策：互斥优先动态 SoD） | Step 7c |
 | B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
-| B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求 |
+| B6 | ~~BK-12：org_roles / parent_id 写侧~~ | ✅ 已实施（2026-08-31，IW3 附带）：绑定/解绑/列表端点 + parent_id 单调规则；HR 同步启动时无需再补写侧 |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
 | B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订 | 随启动的子能力/Wave 编写；W2 以 W1 为硬前置（已确认，README §2.1.0）；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
@@ -103,6 +103,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成：HC1 事件补全（TestHC1）、BK-5 反向判重（TestBK5）、TC1-Go（TestTicket_Delete_AdminSucceeds）、SoD 落 design-decisions §20、review/10 C1–C4 处置、14 号断链注记；验证：集成 13 包 `-race` 全绿、acceptance 211/0。**A 档清零 = Phase 2 收官** |
 | 2026-08-31（IW3 实施） | BK-18 管理闭环后端落地（迁移 000018 + 7 端点 + G2 校验 + 测试）；211/0 全链绿；前端照 12-frontend 另排期 |
 | 2026-08-31（外评核验二） | 6 条核验：04 表格 Step 编号 +1 偏移修正（8/9/10 对齐正文）；README §2.4 迁移表刷新；**BK-19 登记**（TC-1 handler 测试）；TC-2/3/4 入随手项；ARCH-1/2/3 确认为 W1/W2 既定 |
+| 2026-08-31（BK-12 实施） | BK-12 落地：org_roles 绑定/解绑/列表三端点（仅全局管理员、系统角色禁绑）+ parent_id 写侧（单调校验 child ≤ parent + 环检测 + ClearParent）；TestBK12 双测试；B6 关闭 |
 | 2026-08-31（编号治理） | 消除 W 编号撞车：README Wave（W0–W4）独占「W」；独立窗口改 **IW1–IW3**；activelist 从本表移出归位 Wave W4（此前误挂 Phase 2 范畴表，且与 IW 序号冲突）；BK-16/17/18 的"随 W1 批次"改指 IW1 |
 | 2026-08-31（activelist 收录） | 用户核出遗漏：activelist（ADR-003 已决策 Phase 3 启动后）未进计划文档——README §1.1/Wave 表补 W4 条目（入口=W2 完成+启用条件，含 E13 前置），检查单 §1/§2.3 同步；SSOT 维持 roadmap/ADR-003，仅指针 |
 | 2026-08-31（Phase 3 补版） | README 增 §2.1.0 Wave 结构提案（W0-W3 + 7-0 设计期 + 四项待确认：Wave 采纳/W2 硬前置/12-frontend 新文档/7-0 三项设计建议）；§1.1 与文档索引补 12-frontend；检查单 B9 同步（6→7 份 + 10 号修订提示） |
