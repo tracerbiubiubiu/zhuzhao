@@ -409,10 +409,12 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		if *newParentID == id {
 			return errcode.ErrOrgCannotMoveToChild
 		}
+		// 只取 path：id 与 *newParentID 恒等，无需 Scan 回写调用者指针——
+		// 消除并发交叉移动（测试传共享变量）时的 data race（B3-2 flaky 修复）
 		var parentPath string
 		err := tx.QueryRow(ctx, `
-			SELECT id, path::text FROM organizations
-			WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, *newParentID).Scan(newParentID, &parentPath)
+			SELECT path::text FROM organizations
+			WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, *newParentID).Scan(&parentPath)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return errcode.ErrOrgNotFound

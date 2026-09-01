@@ -105,6 +105,7 @@ func (s *SLAChecker) Handle(ctx context.Context, t *asynq.Task) error {
 - SLA 违约扫描的定时触发在 Phase 3 交由 **Asynq Scheduler**（替代原"进程内 60s ticker"），多实例下 Asynq 天然单点调度，无需自写分布式锁（见 §4.6 ADR-002）。
 - 扫描逻辑（读 `ticket_sla`、判违约、写通知）业务逻辑不变，仅触发方式从进程内定时器改为 Asynq PeriodicTask。
 - 告警通知的"发送"动作仍由 L1 消费者驱动（或丢 Asynq worker 异步发）。
+- **每任务阻塞/去重策略须显式拍板（2026-09-01 ginfast 调研吸收）**：扫描慢于间隔时旧任务未清会并发重叠——`sla:scan` 应配 Asynq `Unique`（同参任务未完成不入队，语义=跳过本轮，宁可漏拍不可并发重扫）；后续每个新增 PeriodicTask（归档/备份/租户扫描）落地时逐个拍板「漏跑可容忍 vs 并发可容忍」，不设全局默认。ginfast（BlockingPolicy Discard/Parallel）的运维语义维度可作对照，管理界面/执行记录由 asynqmon 原生覆盖、无需自建。
 
 ### 2.5 违约处理链（SLA 扫描 → Asynq `sla_breach` → 通知/升级）
 

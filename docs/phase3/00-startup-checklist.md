@@ -51,8 +51,9 @@
 | B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
 | B6 | ~~BK-12：org_roles / parent_id 写侧~~ | ✅ 已实施（2026-08-31，IW3 附带）：绑定/解绑/列表端点 + parent_id 单调规则；HR 同步启动时无需再补写侧 |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订 | 随启动的子能力/Wave 编写；W2 以 W1 为硬前置（已确认，README §2.1.0）；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
+| B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订；03-audit-l2 编写时纳入 B11①②（占位已建 2026-09-01） | 随启动的子能力/Wave 编写；W2 以 W1 为硬前置（已确认，README §2.1.0）；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
+| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **W1**（03-audit-l2 文档范围，B9；写入管道「同步落库 vs Redis List 缓冲、失败容忍」随该文档拍板）；②随 **W2**（Asynq 随 W2 落地——SLA 扫描先用，归档做成 periodic task 顺带；W2 硬前置 W1，顺序天然成立） |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
@@ -61,8 +62,9 @@
 | IW1 | ~~BK-13 + BK-14 多虚拟组可见性场景闭环~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴/矩阵测试；验证 211/0 全链 + 13 包 `-race` |
 | IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端管理页/动态表单照 12-frontend 施工（另排期） |
+| IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter` 增 `Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（调用点锁定 ticket 包）+ 测试 4 个（哨兵拒绝 / AllScope 豁免 / 常规谓词不误伤 / 集成双侧 `TestTicketRepoList_Iw4Guard`）；验证 = lint + 13 包单测/集成 `-race` 全绿 + acceptance 四档 FAIL=0（27+66+26+32） |
 
-> **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言、P2-3（BFS CTE 双处一致性测试或抽共享 SQL）、**测试隔离债**（`-count=2` 下 R 系列二跑撞首跑遗留数据即失败；063f5c9 复现证实为既有债务，单跑门禁不受影响；根因=authz 测试的 org/user 未做每跑唯一化）。
+> **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）、P2-3（BFS CTE 双处一致性测试或抽共享 SQL）、**测试隔离债**（`-count=2` 下 R 系列二跑撞首跑遗留数据即失败；063f5c9 复现证实为既有债务，单跑门禁不受影响；根因=authz 测试的 org/user 未做每跑唯一化）。**部分清偿（2026-09-01）**：`-count=1` 全包顺序跑的污染源已修——`TestBK12_DirectVsExpanded` 补解绑清理 + `resetRBACTables` TRUNCATE 链加入 `org_roles`（此前 org_roles 残留挡 `DELETE FROM roles` → 8 个 RBAC/UserService 测试连带失败）；`-count=2` 二跑失败仍在（organizations 首跑残留撞 code，根因不变），彻底清偿需 authz 测试 fixture 唯一化，仍为随手项。
 > 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 
@@ -110,3 +112,5 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-08-31（生态调研） | Duke1616 生态调研：新增 W3/BK-18（管理闭环，W1 后批次）；B1 吸收三结论（撤回/快照/审批人策略模型）；B9 补 eiam/etask 参考指针 |
 | 2026-08-31（外评核验） | 断言数修正为实跑值 **211 PASS / 0 FAIL**（87+66+26+32，标注实测日期；原 215 不准确，静态统计 213 亦非运行值）；§4 编号重名标注「对话评估编号」；A5 补反向判重测试要求；10 号文档 §0 前置勾选 + 必坑计数勘误 + 设计深度缺口并入 B1 |
 | 2026-08-31（审计） | 完整性审计：BK-1..15 全量状态复核（BK-4 漏关修正）；review/10 C1–C4 逐条核验落 A1②（C4 真开放、C1 驳回维持、C2 已修、C3→B10 新增）；09 合集抽查（F-01/02/03/18 核实已修、F-31④/F-32 入随手项）；确认无其他遗漏 |
+| 2026-09-01（go-wind-admin 调研吸收） | 登记 **IW4**（行级过滤护栏 fail-closed，建议与 BK-19 同批）+ **B11**（审计治理：① L2/L3 判定日志随 W1/03-audit-l2、② 归档随 W2/Asynq）；03-audit-l2 建范围占位；11 §8 独立窗口表同步编号治理（W1/W2→IW1/IW2、补 IW3）；11 §8 B6 回填关闭；随手项补可选 Q5 组织赋角注记。调研结论：Provider 抽象不排期（接缝=自有 ResourceAuthorizer，挂 ReBAC 触发器）；「快照 vs 实时」无需新记录（Q5 已覆盖） |
+| 2026-09-01（IW4 实施） | IW4 当日落地：`resource.Filter.Unscoped` 显式豁免 + `ticket_repo.List` fail-closed 哨兵 + admin/scope=all 两处显式化 + AST 调用点守护（`TestGuard_TicketRepoListCallSites`）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0）。改动未提交，随批准批次落 |

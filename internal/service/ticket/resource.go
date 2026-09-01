@@ -143,9 +143,10 @@ func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resou
 	if err != nil {
 		return resource.Filter{}, err
 	}
-	// ticket_scope=all：列表全量（rbac-inheritance §4），仍受 L1 路由级 Casbin 约束
+	// ticket_scope=all：列表全量（rbac-inheritance §4），仍受 L1 路由级 Casbin 约束；
+	// 显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝）
 	if scope.AllScope {
-		return resource.Filter{}, nil
+		return resource.Filter{Unscoped: true}, nil
 	}
 	paths := scope.ReadPaths()
 	return resource.Filter{

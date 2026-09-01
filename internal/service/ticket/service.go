@@ -215,8 +215,8 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 		return nil, fmt.Errorf("fetch roles: %w", err)
 	}
 	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
-		// admin bypass L2：空 Filter = 无过滤条件
-		filter = resource.Filter{}
+		// admin bypass L2：显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝，防漏接静默全量）
+		filter = resource.Filter{Unscoped: true}
 	} else {
 		filter, err = s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
 		if err != nil {

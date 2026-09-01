@@ -274,6 +274,47 @@ func TestGuard_NoHardcodedSecret(t *testing.T) {
 	}
 }
 
+// TestGuard_TicketRepoListCallSites 工单 repo.List 调用点锁定（IW4 第二层防线）：
+// 工单列表的唯一入口是 ticket.Service.List（admin 分流 + registry.GetFilter 取 scope 谓词），
+// repo.List 不允许在 ticket service 包之外被直调——否则大概率绕过 L2 行级过滤。
+// 第一层防线是 repo.List 入口的 fail-closed 哨兵（运行期，2026-09-01 IW4）；
+// 本断言是静态期补充，按接收者标识启发（含 "ticketrepo"），跨包直调点在门禁即红。
+func TestGuard_TicketRepoListCallSites(t *testing.T) {
+	files := scanDir(t, filepath.Join("..", "internal"))
+	for path, f := range files {
+		if strings.Contains(filepath.ToSlash(path), "/service/ticket/") {
+			continue // 唯一合法入口：ticket service 包内（Service.List）
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "List" {
+				return true
+			}
+			if strings.Contains(strings.ToLower(exprString(sel.X)), "ticketrepo") {
+				t.Errorf("❌ ticketRepo.List 调用点越界：%s (行 %d)\n    工单列表必须经 ticket.Service.List（L2 scope 过滤唯一入口，IW4）。\n    修复：下沉到 service；若确属新的合法入口，需同步修订 repo 哨兵与本断言并登记。",
+					path, fsetLine(f, call.Pos()))
+			}
+			return true
+		})
+	}
+}
+
+// exprString 还原表达式的源码文本（仅覆盖 Ident / Selector 链，够接收者判定用）。
+func exprString(e ast.Expr) string {
+	switch v := e.(type) {
+	case *ast.Ident:
+		return v.Name
+	case *ast.SelectorExpr:
+		return exprString(v.X) + "." + v.Sel.Name
+	default:
+		return ""
+	}
+}
+
 // fsetLine 返回节点所在行号（用于报错定位）。
 // 依赖 scanDir 使用的共享 FileSet 做标准 Position 换算。
 func fsetLine(f *ast.File, pos token.Pos) int {

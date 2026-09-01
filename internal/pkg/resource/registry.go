@@ -28,6 +28,10 @@ type AuthorizeRequest struct {
 type Filter struct {
 	Where string
 	Args  []any
+	// Unscoped 显式声明本次查询不做行级 scope 过滤（admin bypass / ticket_scope=all /
+	// 系统任务）。零值 Filter{} 不是合法的「全量」：无谓词且未豁免会被 repo 入口的
+	// fail-closed 哨兵拒绝（IW4，2026-09-01——防漏接 L2 过滤导致静默全量）。
+	Unscoped bool
 }
 
 // Registry 资源注册中心

@@ -260,7 +260,7 @@ Phase 3 主能力稳定运行
 |------|------|------|
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
-| [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2 | 待编写 |
+| [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（占位已建：含 B11 判定日志+归档范围锚定） | 待编写（W1 前） |
 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
 | [05-microservice.md](./05-microservice.md) | 微服务拆分 | **推迟**（Phase 3+ 以后按需；当前作为参考文档） |
 | [06-ha.md](./06-ha.md) | 高可用 | 待编写 |

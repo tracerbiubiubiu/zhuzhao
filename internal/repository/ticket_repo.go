@@ -64,6 +64,12 @@ func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, erro
 
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
 func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.TicketListQuery) ([]*model.Ticket, int64, error) {
+	// IW4 fail-closed 哨兵：无谓词且未显式豁免 = 漏接 L2 scope 过滤，拒绝而非静默全量。
+	// 合法「全量」仅两种——Service.List 的 admin bypass / GetFilter 的 ticket_scope=all，
+	// 二者都必须显式携带 Unscoped（见 00 检查单 §2.3 IW4）。
+	if filter.Where == "" && !filter.Unscoped {
+		return nil, 0, fmt.Errorf("ticket list: missing scope filter (obtain via registry.GetFilter, or set resource.Filter.Unscoped explicitly)")
+	}
 	page, pageSize := normalizePage(q.Page, q.PageSize)
 
 	// 拼接 WHERE：scope filter + 业务筛选

@@ -420,6 +420,12 @@ func TestBK12_DirectVsExpanded(t *testing.T) {
 	direct, err := userRepo.GetRoles(ctx, pureUser)
 	require.NoError(t, err)
 	assert.Empty(t, direct, "GetRoles 只认直接角色：组织绑定不经 user_roles")
+
+	// 测试隔离：解绑残留——org_roles 行会挡住 resetRBACTables 的 DELETE FROM roles
+	//（FK 23503，8151a15 登记的隔离债源头之一），并用例自清不依赖执行顺序
+	_, err = testPool.Exec(ctx,
+		`DELETE FROM org_roles WHERE org_id = $1 AND role_id = $2`, env.vgID, orgRole.ID)
+	require.NoError(t, err)
 }
 
 // ---------- BK-12 收尾：org 存在性守卫（预检 → 404；FK 23503 兜底 → 400） ----------
