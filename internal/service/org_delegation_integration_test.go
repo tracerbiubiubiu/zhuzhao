@@ -380,3 +380,39 @@ func TestBK12_OrgRoleBinding(t *testing.T) {
 		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super)
 	requireErrCode(t, err, errcode.ErrNotFound)
 }
+
+// ---------- P1-1 语义锁定：管理守卫只认直接角色（能力面 = 展开集，设计语义固化） ----------
+
+func TestBK12_DirectVsExpanded(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	rbac := rbacForBK12(t)
+	userRepo := repository.NewUserRepo(testPool)
+	orgRole, err := rbac.CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12fork_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "组织绑定角色", Priority: 30}, env.super)
+	require.NoError(t, err)
+
+	// 纯组织绑定用户（有 user_orgs 成员行、无任何 user_roles 直赋）
+	var pureUser int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('bk12fork_%s', 'hash', 'EBK12FORK', 1)
+		RETURNING id`, fmt.Sprintf("%d", time.Now().UnixNano()%1e9))).Scan(&pureUser))
+	_, err = testPool.Exec(ctx, `
+		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role, ticket_scope)
+		VALUES ($1, $2, false, 'member', 'assigned')`, pureUser, env.vgID)
+	require.NoError(t, err)
+	// 仅组织绑定（BFS 源 2），无任何直赋角色
+	require.NoError(t, env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super))
+
+	// 展开集（L1/能力面）：含绑定角色
+	codes, err := rbac.GetRoleCodesByUserID(ctx, pureUser)
+	require.NoError(t, err)
+	assert.Contains(t, codes, orgRole.Code, "展开集应含组织绑定角色")
+
+	// 直接角色（L3 管理守卫的数据源）：不含组织绑定角色——语义分叉为设计选择，
+	// 由本测试锁定（防提权守卫不因组织绑定抬升档位）
+	direct, err := userRepo.GetRoles(ctx, pureUser)
+	require.NoError(t, err)
+	assert.Empty(t, direct, "GetRoles 只认直接角色：组织绑定不经 user_roles")
+}

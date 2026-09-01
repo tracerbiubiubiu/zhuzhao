@@ -136,6 +136,9 @@ func (s *OrgDelegationService) HasOrgManagePermission(ctx context.Context, userI
 		FROM menus m
 		JOIN role_menus rm ON rm.menu_id = m.id
 		JOIN roles r ON r.id = rm.role_id AND r.deleted_at IS NULL AND r.status = 1
+		-- 约束（P2-2，2026-08-31 记录）：org:% LIKE 把全部 org:* 菜单都视为管理权——
+		-- 当前种子仅 org:create/update/delete/move/member（全写操作）无过授权；
+		-- 将来新增只读类 org:read 等菜单时，须改为显式写操作码清单
 		WHERE m.permission LIKE 'org:%' AND m.deleted_at IS NULL
 		  AND r.id IN (
 			WITH RECURSIVE seeds AS (

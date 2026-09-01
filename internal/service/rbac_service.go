@@ -120,6 +120,10 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
 		return nil, err
 	}
+	// P1-2：降级守卫——新 priority 不得低于任一子角色（继承单调性 child ≤ parent）
+	if err := s.roleRepo.EnsureChildrenPriorityAllowed(ctx, role.ID, req.Priority); err != nil {
+		return nil, err
+	}
 	// BK-12：parent_id 变更（nil=保持现值；ClearParent=true 清除继承）
 	newParent := role.ParentID
 	if req.ClearParent {

@@ -253,3 +253,47 @@ func TestBK12_ParentIDRules(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, codes, "bk12_base_"+suffix, "ClearParent 后 BFS 应失去 base")
 }
+
+// ---------- P1-2：priority 降级的子角色守卫 ----------
+
+func TestBK12_PriorityDemotionGuard(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	roleRepo := repository.NewRoleRepo(testPool)
+	rbac := service.NewRBACService(
+		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
+		repository.NewMenuRepo(testPool), rbacTestEnforcer(t))
+	var superRole int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM roles WHERE code='superadmin'`).Scan(&superRole))
+	var superID int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p12dem_%s', 'hash', 'EP12DEM', 1)
+		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+			DO UPDATE SET password = EXCLUDED.password RETURNING id`, suffix)).Scan(&superID))
+	_, err := testPool.Exec(ctx, `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, superID, superRole)
+	require.NoError(t, err)
+
+	create2 := func(code string, pri int, parent *int64) *model.Role {
+		r, err := rbac.CreateRole(ctx, &model.CreateRoleRequest{
+			Code: code, Name: code, Priority: pri, ParentID: parent}, superID)
+		require.NoError(t, err)
+		return r
+	}
+
+	p := create2("p12p_"+suffix, 20, nil)
+	create2("p12c_"+suffix, 10, &p.ID) // C(10) ≤ P(20) ✓
+
+	// super 把 P 降到 5（比子角色 10 更强的档位）→ 破坏 child ≤ parent → 拒绝
+	pRef, err := roleRepo.FindByID(ctx, p.ID)
+	require.NoError(t, err)
+	_, err = rbac.UpdateRole(ctx, &model.UpdateRoleRequest{
+		ID: p.ID, Version: pRef.Version, Name: p.Name, Priority: 5}, superID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// 反向：升到 40（弱化）→ 安全放行
+	pRef2, err := roleRepo.FindByID(ctx, p.ID)
+	require.NoError(t, err)
+	_, err = rbac.UpdateRole(ctx, &model.UpdateRoleRequest{
+		ID: p.ID, Version: pRef2.Version, Name: p.Name, Priority: 40}, superID)
+	require.NoError(t, err)
+}

@@ -372,6 +372,27 @@ func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]s
 	return codes, nil
 }
 
+// EnsureChildrenPriorityAllowed P1-2：角色 priority 变更的子角色守卫。
+// 继承不变量 child.priority ≤ parent.priority：把角色改到比任一子角色更弱的
+// 档位（数值更小）会破坏单调性——子角色持有者经 BFS 获得变更后更强的父角色，
+// 绕过赋角防线。存在 priority > 新值的子角色 → ErrInvalidParams。
+// （反向——新值大于全部子角色——是安全弱化，放行。）
+func (r *RoleRepo) EnsureChildrenPriorityAllowed(ctx context.Context, roleID int64, newPriority int) error {
+	var cnt int
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM roles
+		WHERE parent_id = $1 AND priority > $2 AND deleted_at IS NULL`,
+		roleID, newPriority).Scan(&cnt)
+	if err != nil {
+		return fmt.Errorf("check children priority: %w", err)
+	}
+	if cnt > 0 {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			"存在 priority 高于新值的子角色，该变更将破坏继承单调性（child ≤ parent）")
+	}
+	return nil
+}
+
 // RoleRef 继承边校验用的角色引用（BK-12）
 type RoleRef struct {
 	Priority int

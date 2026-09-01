@@ -62,7 +62,7 @@
 | IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端管理页/动态表单照 12-frontend 施工（另排期） |
 
-> **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言。
+> **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言、P2-3（BFS CTE 双处一致性测试或抽共享 SQL）。
 > 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 
