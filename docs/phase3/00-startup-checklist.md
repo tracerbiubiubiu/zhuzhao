@@ -21,7 +21,7 @@
 1. **刷新本表**：对照各登记处（00 §9 / 11 §6 / 11 §8 / phase3 README §4 / 09 合集）核对状态，更新本文件（~10 分钟）。
 2. **清空 A 档**：§2.1 七项全部完成或显式豁免（含 A2/A3 两个拍板）。
 3. **检查 W1**：多虚拟组场景闭环是否已实施？未做则决定「先行独立完成」或「并入启动批次」。
-4. **选定启动子能力**（Step 1–7 任选，触发条件见 [README §0](./README.md)），映射 §2.2 B 档随行项；补编写对应文档（B9）。
+4. **选定启动子能力**（Step 1–7 任选，触发条件见 [README §0](./README.md)），映射 §2.2 B 档随行项；补编写对应文档（B9）。外部能力集成（activelist，ADR-003）按 README §2.1.0 W4 条目评估启动。
 5. **过 §3 决策清单**剩余项。
 6. **迁移号核对**：按 A2 规则（谁先启动谁占用，后者重排）确认新迁移编号。
 7. **回填 [11-project-control](../review/11-project-control.md)** 能力矩阵，Phase 3 状态「暂缓」→「进行」。
@@ -33,8 +33,8 @@
 | # | 事项 | 权威出处 | 量级 |
 |---|------|---------|------|
 | A1 | 文档修正包：① phase3 README §1.4 前置矛盾、§5 状态行；② review/10 C1–C4 处置（C1 驳回维持 / C2 已修注记 / **C4 ScopeResolver 接口段重写（真开放）** / C3 → B10）；③ 09 合集抽查回注（F-01/02/03/18 核实已修） | 11 §8 A1 | 半天 |
-| A2 | 迁移编号 000017 归属拍板（附件 vs SLA） | 11 §8 A2 | 决策 |
-| A3 | BK-11② `org_path` 数据结构拍板（快照列 vs 运行时 JOIN + `created_org_id`） | [phase3 README §4](./README.md) | 决策 |
+| A2 | ~~迁移编号 000017 归属拍板~~ | ✅ 已拍板（2026-08-31）：谁先启动谁占用，后者整体重排 | 已关闭 |
+| A3 | ~~BK-11② `org_path` 数据结构拍板~~ | ✅ 已拍板（2026-08-31）：保留镜像列（FOR SHARE 兜底）；created_org_id 留 Step 7e 按需 | 已关闭 |
 | A4 | HC1：comment/note 补 `ticket_events`（Step 7 事件流地基） | 11 §6 | ~半天 |
 | A5 | BK-5：relation 反向判重（报表数据质量） | [00 §9](../phase2/00-implementation-plan.md) | ~1–2h |
 | A6 | SoD 延后决策落档（动态 SoD 优先）+ phase2/12·13 断链修正 + 错误注入测试③ | 11 §8 A6 | ~1h |
@@ -44,24 +44,28 @@
 
 | # | 事项 | 随行位置 |
 |---|------|---------|
-| B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义 / 通知「主管」定义 / 邮件通知矩阵（对话评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外部评审证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心，文档给主方案未拍板）、§7.2 signal 双写二选一（两条记录 vs 单条双标）、`responded_at` 是否含内部备注 note、`min_level` 职级数据源（**users 表无 level 列，决策悬空**）、§5 分派设计深度（keyword 匹配算法/同优先级冲突/target 从属校验/无命中兜底/分派 Hook 事务边界）、§6 报表设计深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例补齐（§2.5 四必坑 0 覆盖） | Step 7 设计期逐项拍板 |
+| B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义 / 通知「主管」定义 / 邮件通知矩阵（对话评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外部评审证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心，文档给主方案未拍板）、§7.2 signal 双写二选一（两条记录 vs 单条双标）、`responded_at` 是否含内部备注 note、`min_level` 职级数据源（**users 表无 level 列，决策悬空**）、§5 分派设计深度（keyword 匹配算法/同优先级冲突/target 从属校验/无命中兜底/分派 Hook 事务边界）、§6 报表设计深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例补齐（§2.5 四必坑 0 覆盖）；③ 调研吸收（2026-08-31 eflow 对照）：发起人撤回（Revoke，eflow WITHDRAWING 栅栏模式）/workflow_definitions 版本发布快照/审批人 Assignee{rule,values} 策略模型（解 min_level 悬空） | **方向已认可（2026-08-31）**，细节归 7-0 设计期 |
 | B2 | 权限码 seed：ticket:approve / notification:* / workflow:manage | Step 7 |
 | B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 |
 | B4 | BranchedStateEngine 引擎本体（**硬交付**；消费 A6 的 SoD 决策：互斥优先动态 SoD） | Step 7c |
 | B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
 | B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求 |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动子能力编写；Step 7 软依赖 02-multi-instance（先启动则接受单实例跑通） |
+| B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订 | 随启动的子能力/Wave 编写；W2 以 W1 为硬前置（已确认，README §2.1.0）；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 
-### 2.3 独立窗口（已触发 / 按需，Phase 2 范畴）
+### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
 | # | 事项 | 状态 |
 |---|------|------|
-| W1 | **BK-13 + BK-14 多虚拟组可见性场景闭环**：project_isolated 默认收紧（CHECK + org update 配置 API + D12 测试）+ 成员 scope 配置面（AddMember 扩展 / scope 变更端点 / scope=all 仅全局管理员可授） | **已触发待实施**（1–1.5 天）；建议 Phase 3 启动前完成 |
-| W2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
+| IW1 | **BK-13 + BK-14 多虚拟组可见性场景闭环**：project_isolated 默认收紧（CHECK + org update 配置 API + D12 测试）+ 成员 scope 配置面（AddMember 扩展 / scope 变更端点 / scope=all 仅全局管理员可授） | **已触发待实施**（1–1.5 天）；建议 Phase 3 启动前完成 |
+| IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
+| IW3 | **BK-18：类型/字段/模板管理闭环**（用户确认需求：前端建类型/表单，消除手动 SQL） | 待实施（IW1 之后；后端 2-3 天 + 前端 4-6 天，与 Phase 3 引擎零耦合）；方案见 00 §9 ；**前端规格 = phase3/12-frontend**（管理页 §3.2 + 动态表单 §3.1） |
 
-> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、**BK-16**（Delete RowsAffected + 并发双删测试，随 W1 批次修复）。
+> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、（BK-16 已复核关闭——校验本就存在，误报；可选补双删 404 回归断言）、**BK-17**（角色展开双查 → request context 缓存，随 IW1 批次修复）。
+
+> **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
+> activelist（ADR-003）**不属独立窗口**——它是 Phase 3 范畴，即 README §2.1.0 的 Wave **W4**（入口 = Wave W2 完成 + 启用条件命中），勿在此表挂靠。
 
 ### 2.4 已闭环基线（启动时可假定已完成）
 
@@ -71,8 +75,8 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 | 事项 | 建议 | 状态 |
 |------|------|------|
-| A2 迁移号 000017 归属 | 谁先启动谁占用，后者重排 | 待拍板 |
-| A3 `org_path` 快照列 vs 运行时 JOIN | Step 7 SLA/报表设计前定 | 待拍板 |
+| A2 迁移号 000017 归属 | 谁先启动谁占用，后者重排 | ✅ 已拍板（2026-08-31） |
+| A3 `org_path` 快照列 vs 运行时 JOIN | 保留镜像列（FOR SHARE 兜底） | ✅ 已拍板（2026-08-31） |
 | K8s vs Docker Compose | Compose + Nginx 足够 | 待拍板（建议沿用） |
 | Redis / PG 高可用 | Sentinel / 云托管 Cluster | 待拍板（建议沿用） |
 | 部署级分离时机 | Phase 3 末按需验证 | 待拍板 |
@@ -94,5 +98,9 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 日期 | 说明 |
 |------|------|
 | 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |
+| 2026-08-31（编号治理） | 消除 W 编号撞车：README Wave（W0–W4）独占「W」；独立窗口改 **IW1–IW3**；activelist 从本表移出归位 Wave W4（此前误挂 Phase 2 范畴表，且与 IW 序号冲突）；BK-16/17/18 的"随 W1 批次"改指 IW1 |
+| 2026-08-31（activelist 收录） | 用户核出遗漏：activelist（ADR-003 已决策 Phase 3 启动后）未进计划文档——README §1.1/Wave 表补 W4 条目（入口=W2 完成+启用条件，含 E13 前置），检查单 §1/§2.3 同步；SSOT 维持 roadmap/ADR-003，仅指针 |
+| 2026-08-31（Phase 3 补版） | README 增 §2.1.0 Wave 结构提案（W0-W3 + 7-0 设计期 + 四项待确认：Wave 采纳/W2 硬前置/12-frontend 新文档/7-0 三项设计建议）；§1.1 与文档索引补 12-frontend；检查单 B9 同步（6→7 份 + 10 号修订提示） |
+| 2026-08-31（生态调研） | Duke1616 生态调研：新增 W3/BK-18（管理闭环，W1 后批次）；B1 吸收三结论（撤回/快照/审批人策略模型）；B9 补 eiam/etask 参考指针 |
 | 2026-08-31（外评核验） | 断言数修正为实跑值 **211 PASS / 0 FAIL**（87+66+26+32，标注实测日期；原 215 不准确，静态统计 213 亦非运行值）；§4 编号重名标注「对话评估编号」；A5 补反向判重测试要求；10 号文档 §0 前置勾选 + 必坑计数勘误 + 设计深度缺口并入 B1 |
 | 2026-08-31（审计） | 完整性审计：BK-1..15 全量状态复核（BK-4 漏关修正）；review/10 C1–C4 逐条核验落 A1②（C4 真开放、C1 驳回维持、C2 已修、C3→B10 新增）；09 合集抽查（F-01/02/03/18 核实已修、F-31④/F-32 入随手项）；确认无其他遗漏 |

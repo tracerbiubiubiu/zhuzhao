@@ -33,8 +33,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
 
 ### 未实现 / 延后（明确不做）
-- **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号规划 000017（**与 Phase 3 SLA 编号冲突，待决策**，见下）
-- **Phase 3 全部**：可观测性 / 多实例 / 审计 L2 / 高可用 / 安全增强 / 平台增强 — 暂缓，设计就绪（见 `docs/phase3/`）
+- **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号规划 000017（归属已拍板：谁先启动谁占用、后者重排，见 §8 A2）
+- **Phase 3 全部**：可观测性 / 多实例 / 审计 L2 / 高可用 / 安全增强 / ops / **前端工程** / 工单业务（SLA/通知/审批流/分派/报表）/ activelist 集成 — 暂缓；执行结构 = **Wave W0–W4**（README §2.1.0，2026-08-31 确认：W0 门禁 → W1 基座 → W2 工单业务 → W3 加固 → W4 activelist）。文档就绪：已编写 01 / 02-multi-instance / 10（含 7-0 决议）/ 11 / 12-frontend，待编写 5 份（03/06/07/08/09，见 §8 B9）
 - **微服务拆分 / gRPC / CQRS / RS256 / AK-SK** — 明确不做（无需求）
 
 ---
@@ -132,12 +132,14 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
-| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。②「快照 vs 运行时 JOIN」数据结构仍待 Phase 3 拍板（phase3/README §4） |
+| **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。② 已拍板（2026-08-31）保留镜像列，JOIN 备选弃用 |
 | **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ⏳ **触发条件驱动**（① 真实进组赋角色诉求；② 2b-ext HR 同步启动 = 硬触发器）；机制符合业界实践，当前 fail-inert；详见 00 §9 |
 | **BK-13** | 工单可见性默认方向：兄弟虚拟组透明可读 vs 业务要求「默认只看自己 + 可配置」（`project_isolated`） | 🔶 **已触发（2026-08-31 用户多虚拟组场景），待批准实施**（~0.5–1 天：约束 + 配置 API + D12 测试）；机制骨架已埋、默认值不动；详见 00 §9 |
 | **BK-14** | 成员 scope（`ticket_scope`）无配置面（AddMember 仅收 org_member_role，无任何 API 写 scope） | 🔶 **已批准登记（2026-08-31）**：关系派拍板（scope 挂成员关系非角色）+ scope=all 仅全局管理员可授；与 BK-13 同批实施（~0.5 天）；详见 00 §9 |
 | **BK-15** | 代码卫生：UpdateAssignedTo 死包装 + Delete/UpdateAssignedToTx 叠注释（旧「admin only」过时） | ✅ **已修复（2026-08-31）**：删死代码 + 注释合并更正 |
-| **BK-16** | Delete 不校验 RowsAffected（重复/并发删除 → 多一条 deleted 事件） | 🔶 **已登记（2026-08-31），随 W1 批次修复**；详见 00 §9 |
+| **BK-16** | ~~Delete 不校验 RowsAffected~~ | ⚪ **误报关闭（2026-08-31）**：校验自 Phase 2a 即存在（66e2c39），审计读码截断所致；详见 00 §9 |
+| **BK-17** | 角色展开每请求双查（中间件 + service 各一次 BFS SQL） | 🔶 **已登记（2026-08-31），随 IW1 批次修复**（request context 透传缓存）；详见 00 §9 |
+| **BK-18** | 类型/字段/模板管理闭环（只读 API，增删改仅 SQL；custom_data 无 schema 校验） | 🔶 **已登记（2026-08-31，用户确认需求），IW1 后批次实施**（后端 2-3 天 + 前端 4-6 天，eflow 范式）；详见 00 §9 |
 
 ---
 
@@ -161,14 +163,16 @@ docs/
 ## 8. 遗留问题分类：Phase 3 前置 vs 随行（2026-08-31 整理）
 
 > 本节取代原「下一步」清单，把全部已知未决项归入两档：**A 档 = Phase 3 启动前/启动时完成**（门禁与拍板，不做会让启动本身踩坑）；**B 档 = 随 Phase 3 对应子能力一起**（提前做无收益）。代码级 backlog 详情见 [phase2/00 §9](../phase2/00-implementation-plan.md)。**Phase 3 启动时从 [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) 进入检查流程**（本节 + §6 是其数据源）。
+>
+> **Phase 3 执行结构（2026-08-31 确认）= Wave W0–W4**（详见 [phase3/README §2.1.0](../phase3/README.md)）：**W0** 启动门禁（本节 A 档 + 检查单 IW1/IW3）→ **W1** 可运维基座（Step 1/2/3；[02-multi-instance](../phase3/02-multi-instance.md) 已编写，含 Casbin Watcher 移植方案）→ **W2** 工单业务（Step 7；[10-ticket-business](../phase3/10-ticket-business.md) 已含 7-0 决议，前端规格见 [12-frontend](../phase3/12-frontend.md)；本节 B 档为其随行项）→ **W3** 加固收尾 → **W4** activelist 集成。
 
 ### A 档：Phase 3 启动前/启动时完成
 
 | # | 事项 | 说明 | 量级 |
 |---|------|------|------|
 | A1 | **文档修正包** | ① phase3 README §1.4 前置矛盾（2b-ext 延后项列为「2b 验收」前置）、§5 状态行（10/11 已编写仍标待编写）；② **review/10 C1–C4 处置**（2026-08-31 逐条核验）：C1「Step 9 应为 8-10」三次裁定驳回维持（wontfix，注记防再犯）、C2 `NewResource` 三参签名已修（注记闭环）、**C4 §2.2 ScopeResolver 接口段与现行实现不符（真开放）**——按 `ReadAnchorPaths`/`ResolveScope` 重写、C3 `docs/ops/deployment.md` 缺 → 归 B10；③ 09 合集抽查回注：F-01/02（VISION 措辞/迁移现状）、F-03（activelist 链）、F-18（Redis requirepass 经 compose 注入）经核实**均已修**（09 行未回标属历史文档常态，此处记录防重复排查） | 半天 |
-| A2 | **迁移编号 000017 归属拍板** | 2b-ext 附件（phase2/00 §Step 6）与 Phase 3 SLA（10-ticket-business §2，占用 000017–000021）都规划 000017。规则建议：**谁先启动谁占用，后者启动时整体重排**——任一方启动前必须先定 | 决策 |
-| A3 | **BK-11 ② 数据结构拍板** | `tickets.org_path` 保留镜像列（FOR SHARE 已兜底）vs 去列改运行时 JOIN + write-once `created_org_id`；已登记 [phase3/README §4](../phase3/README.md)，**Step 7 SLA/报表设计前必须定** | 决策 |
+| A2 | **迁移编号 000017 归属拍板** | 2b-ext 附件（phase2/00 §Step 6）与 Phase 3 SLA（10-ticket-business §2，占用 000017–000021）都规划 000017。规则建议：**谁先启动谁占用，后者启动时整体重排**——✅ **已拍板（2026-08-31）**：谁先启动谁占用，后者整体重排 | 已关闭 | 决策 |
+| A3 | **BK-11 ② 数据结构拍板** | `tickets.org_path` 保留镜像列（FOR SHARE 已兜底）vs 去列改运行时 JOIN + write-once `created_org_id`；已登记 [phase3/README §4](../phase3/README.md)，✅ **已拍板（2026-08-31）**：保留镜像列；`created_org_id` 留 Step 7e 按需 | 已关闭 | 决策 |
 | A4 | **HC1：comment/note 补 ticket_events** | 事件流是 Step 7 SLA/通知/报表的统一输入，补全属地基（唯一遗留的 §6 未修项）；service 层两处 + 事件常量 + 测试 | ~半天 |
 | A5 | **BK-5：relation 反向判重** | DB 唯一索引只挡同向，A→B 与 B→A 可共存；报表/SLA 引用关联数据前收口数据质量（应用层 EXISTS 检查） | ~1–2h |
 | A6 | **散落决策落档与断链收口**（2026-08-31 全量扫描 phase1/2/3 新发现） | ① **SoD 延后决策未落档**：11-authz-architecture-review §4 已给结论（「延后 + 届时优先动态 SoD」）但从未写入 design-decisions；且其建议编号 P2-D7 已被 00 计划的三轨拆分复用——落档时用新编号并注明别名；② **phase2/12·13 号断链**：14 号文档 5 处引用 `12-phase1-backlog-and-phase2-review.md`、`13-project-plan-multi-round-verification.md`、`13-plan-remediation-actions.md`，文件从未入库（git 历史无删除记录）——修正引用为实际归宿（review/09 等）或加「已并入」注记；③ review §7 item6「DB 错误注入 → 拒绝」测试用例未落（顺手项） | ~1h |
@@ -180,14 +184,14 @@ docs/
 
 | # | 事项 | 随哪个子能力 |
 |---|------|-------------|
-| B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义、通知「主管」定义、邮件通知矩阵（原评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外评证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心）、§7.2 signal 双写二选一、responded_at 是否含内部备注、`min_level` 职级数据源（users 无 level 列，悬空）、§5 分派深度（keyword 算法/同优先级/target 从属/无命中兜底/Hook 事务边界）、§6 报表深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例（§2.5 四必坑 0 覆盖） | Step 7 设计期逐项拍板 |
+| B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义、通知「主管」定义、邮件通知矩阵（原评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外评证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心）、§7.2 signal 双写二选一、responded_at 是否含内部备注、`min_level` 职级数据源（users 无 level 列，悬空）、§5 分派深度（keyword 算法/同优先级/target 从属/无命中兜底/Hook 事务边界）、§6 报表深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例（§2.5 四必坑 0 覆盖）；③ **2026-08-31 生态调研吸收**：发起人撤回（Revoke）业务设计缺失（eflow WITHDRAWING 栅栏模式可对标）、`workflow_definitions` 版本/发布快照（编辑版/发布版分离）、审批人策略模型 `Assignee{rule,values}`（部门领导/分管规则替代职级，解 min_level 悬空） | Step 7 设计期逐项拍板 |
 | B2 | 权限码 seed：ticket:approve / notification:* / workflow:manage 均未设计 | Step 7（与 7c/7d 同步设计 + seed 迁移） |
 | B3 | in_progress / pending_verify 状态推进端点（BK-10 已拍板归 Phase 3） | Step 7 工单业务深化 |
 | B4 | BranchedStateEngine 引擎本体 | Step 7c（**硬交付**；触发信号只决定流程定义数量，见 phase3/README §0）。设计期消费 A6 的 SoD 延后决策（审批流互斥优先**动态 SoD**） |
 | B5 | BK-11 ② 实施（去列 JOIN 或保留快照的落地） | 随 A3 拍板结果，在 Step 7 动工前实施 |
 | B6 | BK-12：org_roles / parent_id 写侧 | **不自动随 Phase 3**：触发器 = 2b-ext HR 同步启动或真实诉求（见 00 §9） |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B9 | 6 份待编写 phase3 文档（02-multi-instance / 03-audit-l2 / 06-ha / 07-security-enhance / 08-ops / 09-platform） | 随启动的子能力编写；注意 Step 7 软依赖 02-multi-instance（若先启动则接受单实例先跑通，phase3/README §2.1） |
+| B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订 | 随启动的子能力/Wave 编写；**W2 以 W1 为硬前置**（2026-08-31 已确认，README §2.1.0）；**参考实现**：02 的 Casbin Watcher 直接移植 eiam `ioc/casbin.go`（redis-watcher + StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器/job 化 Wire 注册） |
 | B10 | `docs/ops/deployment.md` 补编写（ops 骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 
 ### 独立窗口（已触发，Phase 2 范畴，不属于 Phase 3 前置或随行）
