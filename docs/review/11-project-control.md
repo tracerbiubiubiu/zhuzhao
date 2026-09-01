@@ -139,7 +139,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-15** | 代码卫生：UpdateAssignedTo 死包装 + Delete/UpdateAssignedToTx 叠注释（旧「admin only」过时） | ✅ **已修复（2026-08-31）**：删死代码 + 注释合并更正 |
 | **BK-16** | ~~Delete 不校验 RowsAffected~~ | ⚪ **误报关闭（2026-08-31）**：校验自 Phase 2a 即存在（66e2c39），审计读码截断所致；详见 00 §9 |
 | **BK-17** | 角色展开每请求双查（中间件 + service 各一次 BFS SQL） | ✅ **已实施（IW1，2026-08-31）**：request context 透传缓存（RolesFromContext + GetRoleCodesByUserID 命中即返回）；详见 00 §9 |
-| **BK-18** | 类型/字段/模板管理闭环（只读 API，增删改仅 SQL；custom_data 无 schema 校验） | 🔶 **已登记（2026-08-31，用户确认需求），IW1 后批次实施**（后端 2-3 天 + 前端 4-6 天，eflow 范式）；详见 00 §9 |
+| **BK-18** | 类型/字段/模板管理闭环（只读 API，增删改仅 SQL；custom_data 无 schema 校验） | ✅ **已实施（IW3，2026-08-31）**：迁移 000018 + 7 管理端点 + G2 schema 校验 + TestBK18×2；前端照 12-frontend 施工（另排期）；详见 00 §9 |
 
 ---
 
