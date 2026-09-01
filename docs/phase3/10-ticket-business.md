@@ -87,7 +87,7 @@ CREATE TABLE sla_policies (
 ### 2.3 实现方式
 
 - **创建工单**：`OnAfterCreate` Hook 查 `sla_policies`（按优先级匹配，无匹配回退 `ticket_types.default_sla_hours`），写 `ticket_sla` 计算两个 deadline
-- **响应**：首次 `assigned` 或 `comment` 触发 `responded_at` 写入
+- **响应**：首次 `assigned` 或 `comment` 触发 `responded_at` 写入（**2026-08-31 拍板：不含内部备注 note**——note 是对内动作，响应计时只认对客口径）
 - **解决**：工单 `closed` 触发 `resolved_at` 写入
 - **违约扫描**：由 **Asynq Scheduler**（PeriodicTask，60s 间隔）触发，多实例下 Asynq 天然单点调度，无需自写分布式锁（见 §4.6 / ADR-002）。扫描逻辑读 `ticket_sla`、判违约、写 `ticket_events`(signal) 由 L1 消费者驱动通知。
 
@@ -125,17 +125,17 @@ enqueue("sla:breach", {ticket_id, sla_id, breach_type})  ──► Asynq Redis
 
 **职责切分（与 ADR-002 一致）**：
 
-- `sla:scan` 仅做"探测 + 标记"：命中即把 `ticket_sla.status` 置 `breached_response` / `breached_resolve`、写 `breached_at`，**并 `Enqueue("sla:breach")`**。"标记 breached" 与 "Enqueue" **须在同一数据库事务内提交**（或改为"扫描只 Enqueue、breached 状态由 worker 落地"），**Enqueue 失败则整体回滚重试**——禁止"标记成功但 Enqueue 丢失"的半成功态：否则违约已记入库却无通知/升级，且下次扫描因状态已 `breached` 不再命中。不在此处同步发通知/升级，避免扫描任务过重且不可重试。
+- `sla:scan` 仅做"探测 + 标记"：命中即把 `ticket_sla.status` 置 `breached_response` / `breached_resolve`、写 `breached_at`，**并 `Enqueue("sla:breach")`**。"标记 breached" 与 "Enqueue" **须在同一数据库事务内提交**（**2026-08-31 拍板：定死同事务方案**，"只 Enqueue"备选弃用），**Enqueue 失败则整体回滚重试**——禁止"标记成功但 Enqueue 丢失"的半成功态：否则违约已记入库却无通知/升级，且下次扫描因状态已 `breached` 不再命中。不在此处同步发通知/升级，避免扫描任务过重且不可重试。
 - `sla:breach` worker 负责"副作用"：先落 L1 事件 `ticket.sla_breached`（事实源），再由 L1 消费者（或 worker 内）驱动通知与升级。L1 事件保证崩溃不丢、可重放；Asynq 保证异步执行可重试。
 - 通知失败：Asynq 自带 retry + backoff，不丢违约；批量违约时排队削峰，不炸邮件网关。
 - 与 §4.6 场景 A 同构：`ticket.approved` → Enqueue 触发任务；此处 `ticket.sla_breached` → Enqueue 升级任务。两者都是"L1 落事实 → 消费者 Enqueue → worker 执行副作用"。
 
 **四处必坑（实现 checklist，TB 负向用例须覆盖，见 §8）**：
 
-1. **状态暂停排除**：工单处于 `suspended` / `waiting_customer` 等暂停态时 `ticket_sla` 计时须 pause（不计 `breached_at`），扫描逻辑须排除这些状态，否则误违约。
+1. **状态暂停排除**：工单处于 `suspended` / `waiting_customer` 等暂停态时 `ticket_sla` 计时须 pause（不计 `breached_at`），扫描逻辑须排除这些状态，否则误违约。暂停态清单（默认 `suspended`/`waiting_customer`）进类型元数据可配置（2026-08-31 拍板）。
 2. **提前解决须 cancel**：工单在 deadline 前 `responded` / `resolved` 时，应在 `OnAfterUpdate` Hook 内 `scheduler.Enqueue` 取消该 `sla:breach` 待处理任务（或 worker 执行前二次校验 `status` 是否仍违约），否则已解决单仍会被判违约通知。
 3. **幂等**：`sla:breach` handler 按 `ticket_id + sla_id + breach_type` 幂等（同一 SLA 阶段只违约一次，防 Asynq retry 重复升级/重复通知）。
-4. **Enqueue 原子性（防静默丢失）**：见职责切分——"标记 + Enqueue" 同事务提交；若采用"先标记后 Enqueue"且 Enqueue 失败，必须事务回滚重跑（下次扫描重新命中）；或改为"扫描只 Enqueue、breached 状态由 worker 落地"，让 worker 天然幂等重投。二者择一，核心是杜绝半成功态。
+4. **Enqueue 原子性（防静默丢失）**：见职责切分——"标记 + Enqueue" 同事务提交；若采用"先标记后 Enqueue"且 Enqueue 失败，必须事务回滚重跑（下次扫描重新命中）；"只 Enqueue"备选已于 2026-08-31 拍板弃用；核心是杜绝半成功态。
 
 > 违约通知的 API 与权限码见 §3.3（`notification:list` / `notification:read`）；邮件发送异步化见 §3.4（Phase 3 L2 升级时迁 Asynq worker）。
 
@@ -168,6 +168,8 @@ CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE read_
 - **站内通知**：写 `notifications` 表，前端轮询或 WebSocket（Phase 3 先轮询）
 - **邮件通知**：SMTP 同步发送（关键状态变更：分派、SLA 违约、关闭）
 - **事件路由**：`ticket.assigned` → 通知处理人；`ticket.status_changed` → 通知创建人；`ticket.sla_breached` → 通知主管
+- **「主管」定义（2026-08-31 拍板）**：工单所属组织的 `owner_user_ids`（实体负责人）；无 owner 时降级为上级组织 owner，链上无则仅通知处理人
+- **邮件矩阵初稿（2026-08-31 拍板）**：SLA 违约（主管+处理人）、工单分派（处理人）、审批待办（当前节点审批人）三类事件发邮件；站内通知覆盖全部事件；矩阵表随 7b 细化
 
 ### 3.3 通知 API（P3-2 修复）
 
@@ -225,6 +227,8 @@ CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE read_
 4. （新增）引擎内嵌用户身份 → 用 `ApprovalRequirement` + `StateController` 委托 L2/L3，引擎不持有用户/组织概念
 
 ### 4.3 数据模型
+
+> **2026-08-31 注（与 §4.10 决议的衔接）**：① 本节 000019 DDL **尚未含发布快照表**——按决议 4（版本/发布快照），快照表 DDL（`(workflow_id, version)` 唯一）随 7-0 修订补充，届时 Deploy 动作一并落地；② 节点 meta 示例中的 `min_level` 已被决议 1 **弃用**（改 `Assignee{rule,values}` 策略模型），示例待 7-0 更新，以决议为准。
 
 ```sql
 -- 迁移 000019
@@ -435,6 +439,7 @@ func (s *TicketService) CanApproveNode(ctx context.Context, in CanApproveNodeInp
   4. **节点级事件钩子**：easy-workflow 的 `NodeStartEvents/NodeEndEvents/TaskFinishEvents` 是"流程与业务解耦"的成熟手法——zhuzhao 已用 L1 `ticket_events` 做同理的事，可在 Node `meta` 预留 `events` 字段（如 `on_enter` 触发改派），与 ADR-001 对齐。
 - **可选的结构简化（远期）**：easy-workflow 用**一个 `HybridGateway`**（Conditions + InevitableNodes + WaitForAllPrevNode）替代排他/并行/包含三种网关。zhuzhao 当前用 4 种显式 `NodeType`（Exclusive/Inclusive/Parallel/Loop），可读性更好、契合简单域；若未来网关变复杂，可平滑切换为混合网关，不必现在改。
 - **实例变量（网关条件）**：easy-workflow 的 `ProcInstVariable`（key/value，如 `$days>=3`）供网关条件表达式求值。zhuzhao 网关当前是 `SimpleExpression`（priority/role），若未来要"按工单字段分流"，可加 `workflow_instances.vars`（已预留 JSONB）+ 轻量表达式求值，与 easy-workflow 同构。
+- **2026-08-31 实地调研修正（eflow + easy-workflow 落地代码核验）**：①「同构」需补精度——**驳回回退是引擎最难的 10%**（eflow 靠系统事件 SystemPass/Reject/Skipped + 代理节点修正 prev_node_id 实现），§4.5 自由驳回按硬骨头排期；② `workflow_definitions` **必须补版本/发布快照**（eflow：编辑版/发布版分离，Deploy 锁快照表 `(workflow_id, process_id, version)` 唯一，运行时按实例版本取快照——原地改 definition 会污染在途实例）；③ **发起人撤回（Revoke）业务设计缺失**（eflow WITHDRAWING 栅栏状态机 + EventRevoke 校验 + 补偿任务），已并入 B1 设计期清单；④ 网关条件维持 SimpleExpression（eflow 裸 SQL 表达式靠 `1=1` 兜底，反面教材）。
 - **多租户 `Source` 隔离**：引擎用 `Source` 字段区分"哪个系统创建的流程"，便于同一引擎服务多业务。zhuzhao 当前单租户，可暂不引入；若未来 IAM 多业务共用引擎，记为扩展点。
 - **与 §4.7 的关系**：上述要点均作用于"定义内容/任务交互/审计"层，**不要求流程结构可拖拽**。§4.7 的"骨架写死、审批人可配"仍是当前决策；一旦未来要开放完整自定义，本 §4.8 证明后端 `definition` 模型已兼容，只需新增前端画布 + `PUT /workflows/:code` 全量保存（对齐 easy-workflow `POST /def/save`）。
 
@@ -504,6 +509,17 @@ policies:
 
 ---
 
+### 4.10 7-0 设计期决议（2026-08-31 拍板，细节随 7-0 修订展开）
+
+| # | 决议 | 内容 |
+|---|------|------|
+| 1 | 审批人策略模型 | 采纳 `Assignee {rule, values}`（指定人/发起人/模板字段/部门领导/分管领导/团队/部门 7 种，eflow 对标）；**弃 `min_level` 职级语义**（users 无 level 列，数据源悬空），组织计算运行期解析 |
+| 2 | 模板-流程绑定 | **类型 1:1 默认**（`workflow_id` 挂 `ticket_types`）+ 模板 nullable 覆盖（`ticket_templates.workflow_id` 空则用类型默认）——Jira 模式为主、钉钉模式为辅 |
+| 3 | 发起人撤回 | WITHDRAWING 栅栏模式（eflow 对标）：`WITHDRAWING` 态拦截其他流转 → 校验（仅发起人/审批中）→ `EventRevoke` 回收任务 → 补偿；引擎钩子接口已有（§4.2），业务态与校验按此补设计 |
+| 4 | 版本/发布快照 | `workflow_definitions` 增 `version` + 发布快照表（`(workflow_id, version)` 唯一）：编辑版/发布版分离，Deploy 锁快照，运行时（Pass 校验/历史图）一律按实例版本取快照——原地改 definition 禁止 |
+| 5 | signal 双写 | **定死两条记录分离**（audit/signal 各一条），弃单条双标（§7.2 回标） |
+| 6 | 权限码 seed | `ticket:approve`、`notification:list`、`notification:read`、`workflow:manage`、`report:read`，随 seed 迁移挂对应菜单（管理角色） |
+
 ## 5. 自动分派规则
 
 > **编号说明**：原 §5 工单模板、§6 工单关联已于 2026-08-25 前移到 Phase 2a（迁移 000015/000016，DDL 见 [phase2/09-ticket.md §2](../phase2/09-ticket.md)）。本节原 §7 自动分派顺延为 §5。
@@ -525,6 +541,7 @@ CREATE TABLE assignment_rules (
 
 - **规则匹配引擎**：工单 `OnAfterCreate` Hook 按优先级遍历 `assignment_rules`，首个匹配的规则执行分派
 - 分派操作走 `TicketService.Assign`（走三层鉴权，不绕过）
+- **规则引擎五项决议（2026-08-31 拍板）**：① keyword 匹配 = LIKE 包含（不引入分词）；② 同优先级按 `id` 升序 tie-break；③ `target_user_id` 必须属于 `target_org_id`（写入校验）；④ 无命中兜底 = 工单保持 open（写 `dispatch_missed` 事件供报表统计）；⑤ **分派失败不回滚创建**（Hook 内捕获失败 → 写事件 + 异步补偿），创建主链路永不被分派拖垮
 
 ---
 
@@ -533,6 +550,7 @@ CREATE TABLE assignment_rules (
 - **Phase 3 实现**：SQL 聚合查询 + 进程内缓存（TTL 5min）
 - API：`GET /api/v1/tickets/reports/by-org`、`by-assignee`、`by-type`、`sla-stats`
 - **L2 升级（暂缓，按需）**：物化视图 + 定时刷新任务（Asynq PeriodicTask，Asynq 已引入见 ADR-002，定时触发机制复用）
+- **四缺口收口（2026-08-31 拍板）**：① 权限码新增 `report:read`（挂报表菜单，仅管理角色）；② 缓存 = 进程内 TTL 5min + 管理端手动刷新端点；③ 指标口径：SLA 达成率 = 未违约工单/总数，响应/解决时长 = P50/P95 分布；④ 全部接口支持时间范围（默认近 30 天）+ 分页
 
 ---
 
@@ -590,6 +608,11 @@ CREATE INDEX idx_ticket_events_signal_unprocessed ON ticket_events(event_type, p
 | TB9 | 关键词匹配 → 自动分派 | `assignment_rules` 命中，工单分派到正确组 |
 | TB10 | 报表查询 | 按组织/处理人/类型统计正确 |
 | TB11 | 事件 L1 不丢 | 进程重启后未处理事件继续消费 |
+| TB12 | 暂停态不误违约 | suspended/waiting_customer 工单到 deadline 不判违约（§2.5 必坑 1） |
+| TB13 | 提前解决取消任务 | deadline 前 resolved → sla:breach 待处理任务被取消/二次校验拦截（必坑 2） |
+| TB14 | 违约通知幂等 | Asynq 重试下同一 (ticket_id+sla_id+breach_type) 仅通知一次（必坑 3） |
+| TB15 | Enqueue 原子性 | Enqueue 失败 → breached 标记回滚，下轮扫描重新命中（必坑 4，§4.10 决议） |
+| TB16 | 发起人撤回 | 审批中撤回 → WITHDRAWING 栅栏 → 任务回收 → 工单终态正确（§4.10 决议 3） |
 
 ---
 

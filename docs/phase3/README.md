@@ -63,6 +63,8 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 安全增强 | [security-enhance](./07-security-enhance.md) | 异地登录、验证码、密码过期、API 限流 | 待编写 |
 | 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 | 待编写 |
 | **工单业务能力** | [ticket-business](./10-ticket-business.md) | **SLA 计时/违约告警、站内通知、邮件通知、多级审批流（手写 BranchedStateEngine）、自动分派规则、工单报表**（进程内实现，事件用 L1 机制） | 本修订新增 |
+| **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 待编写 |
+| **外部能力集成** | [ADR-003](../adr/ADR-003-activelist-integration-form.md)（SSOT：[roadmap §activelist](../roadmap.md)） | **activelist**（动态多类型数据平台，独立服务+反代接入，变更事件走 L1）；zhuzhao 侧前置 = E13 反代模块 | 已决策（Phase 3 启动后，L1+Asynq 就绪） |
 
 > **工单业务能力实现方式**：Phase 3 不依赖 L2 Outbox，采用 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 定义的三档事件机制中的 **L1**（DB 持久化 + 轮询补偿 + 分布式锁，长期稳态见 ADR-001）+ Asynq（ADR-002），保证进程崩溃不丢、多实例不重复消费。L2 升级时业务逻辑不变，只换调度器。
 
@@ -116,6 +118,29 @@ Docker Compose 建议用 **profile**（如 `observability`）拉起 Prometheus/G
 > 以下顺序仅作能力归类参考，Phase 3 整体未排期。工单**主链路**（CRUD / 状态机 / 模板 / 关联，Step 7 主体）已在 Phase 2a/2b 实现；**SLA/通知/审批流/分派/报表（Step 7 子任务 7a–7e）仍属 Phase 3（暂缓，设计就绪）**；其余步骤按需取用。
 
 ### 2.1 Phase 3（先上生产 + 工单业务能力闭环）— 暂缓参考
+
+#### 2.1.0 波次结构（2026-08-31 **已确认**，作为执行结构；下方线性 Step 列表保留作能力对照）
+
+> 原则不变：暂缓不排期、触发条件驱动、按需启动。Wave 只是「触发后的执行结构」，W1/W2 可相隔任意久。
+
+| Wave | 内容（对应 Step） | 入口 | 退出标准 |
+|------|------------------|------|---------|
+| **W0 启动门禁** | 检查单 A 档 7 项 + 检查单 IW1/IW3 独立窗口（BK-13/14、BK-18） | 触发条件出现 | A 档清零；工单管理闭环可用 |
+| **W1 可运维基座**（Step 1/2/3） | observability + multi-instance（Casbin Watcher 移植 eiam `ioc/casbin.go`）+ audit-l2 | W0 清零 | 多实例部署演练通过；**策略变更跨实例生效**；审计进程崩溃不丢 |
+| **W2 工单业务闭环**（Step 7 重排） | **7-0 设计期（新增）** → 7a SLA → 7b 通知 → 7c 审批流引擎 → 7d 分派 → 7e 报表；前端随各子能力 | W1 完成 | TB 用例（含负向）全覆盖 |
+| **W3 加固收尾**（Step 4/5/6/8） | ha / security-enhance / ops / 生产验收 | 按部署形态需要 | Phase 3-min / 3-full 验收过 |
+| **W4 外部能力集成**（ADR-003） | activelist 接入：E13 反代模块 + Mongo→PG + 事件对接 L1 | **W2 完成**（L1+Asynq 就绪）**且启用条件命中**（对接数据需统一鉴权+事件订阅） | activelist 独立容器运行、经反代可达、变更事件入 L1 分发（SSOT：roadmap §activelist / ADR-003） |
+
+> W4 为外部能力集成条目，与 W3 无先后耦合（只要 L1+Asynq 就绪且启用条件命中即可启动）。
+
+**7-0 设计期（Step 7 开工前置，产出 = 10 号文档修订版）**：拍板 B1 全部设计项——SLA 暂停态/通知主管/邮件矩阵、§2.5 事务二选一、§7.2 signal 双写、responded_at 口径、分派/报表深度、权限码 seed（B2），外加 2026-08-31 调研吸收三项：**发起人撤回**（eflow WITHDRAWING 栅栏）、**workflow_definitions 版本/发布快照**、**审批人策略模型 `Assignee{rule,values}`**、**模板-流程绑定**。7 子项顺序依赖：7a→7b（SLA 依赖事件+通知）→ 7c 可并行 → 7d → 7e（聚合全部）。
+
+**待所有者确认（2026-08-31 提案）**：
+- [x] ① 采纳 Wave 结构（W0→W1→W2→W3） ✅
+- [x] ② **W2 以 W1 为硬前置**（原「软依赖、可单实例先跑通」收紧——SLA 扫描/通知多实例需分布式锁，且 Casbin Watcher 关乎鉴权正确性） ✅
+- [x] ③ 新增 [12-frontend](./12-frontend.md) 前端工程文档（动态表单/管理页/审批页范式）✅ **已编写**（2026-08-31）
+- [x] ④ 7-0 三项调研吸收设计提前认可（与检查单 B1③ 同组）：`min_level` → `Assignee{rule,values}` 策略模型；发起人撤回 WITHDRAWING 栅栏；`workflow_definitions` 版本/发布快照 ✅（已入 10 号 §4.10 决议 1/3/4；模板-流程绑定另拍为决议 2：类型 1:1 + 模板 nullable 覆盖）
+- [x] ⑤ Wave 结构收录 **activelist（ADR-003，W4 条目）**——阶段归属已决策（Phase 3 启动后），此前计划文档未收录，已补入 ✅
 
 ```
 Phase 2b 验收通过（2c 建议并行或前置完成）
@@ -244,3 +269,4 @@ Phase 3 主能力稳定运行
 | [09-platform.md](./09-platform.md) | 平台增强（Phase 3+） | 待编写 |
 | [10-ticket-business.md](./10-ticket-business.md) | **工单业务能力（Phase 3）** | **本修订新增，待编写** |
 | [11-deployment-split.md](./11-deployment-split.md) | **部署级分离方案** | **本修订新增，待编写** |
+| [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |
