@@ -237,6 +237,12 @@
 |------|------|----------------|
 | `user_roles` 直接角色 + Casbin OR | Phase 1 | ✅ 要做 |
 | `roles.priority` 防提权 | Phase 1 | ✅ 要做 |
+| `org_roles`、组织赋角 | Phase 2b | 📋 本文记录，**暂不实现** |
+| `roles.parent_id`、BFS 源 3 | Phase 2b | 📋 暂不实现 |
+
+> **2026-08-31 落地更新（BK-12，现状以此为准）**：上表 `org_roles` 写侧与 `roles.parent_id` 写侧**已实现**（绑定/解绑/列表端点仅全局管理员；CreateRole/UpdateRole 支持 ParentID/ClearParent）。**继承单调规则（拍板）**：`child.priority ≤ parent.priority`（子不弱于父——BFS 为绑子得父，只允许强子继承弱父，放行弱子继承强父即绕过 `ensureRolePriorityAllowed` 赋角防线的纯提权），另校验父启用/非系统/非自身/环（深度上限 32）；角色继承默认不启用（触发条件：角色能力打包诉求）。
+>
+> **P1-1 双轨语义（2026-08-31 确认并锁定，TestBK12_DirectVsExpanded）**：**能力面（L1/菜单）= 展开集**（三源 BFS 并集）；**user 模块管理守卫 = 仅直接角色**（`GetRoles`）——组织派生的权力限定组织域，全局权力须显式直赋（对齐 K8s `escalate`/Auth0 action scope 的"授权显式分离"原则；AD 嵌套组展开守卫为反面教材）。
 | 用户/组织/角色 **基础 CRUD 级联**（§3.1–3.4 中标注 Phase 1 的行） | Phase 1 | ✅ 要做 |
 | `org_roles`、组织赋角 | Phase 2b | 📋 本文记录，**暂不实现** |
 | `roles.parent_id`、BFS 源 3 | Phase 2b | 📋 暂不实现 |

@@ -151,8 +151,12 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role, req.TicketScope)
 }
 
-// ListOrgRoles 组织已绑定的角色（IW3/BK-12）：org admin/owner 或全局管理员可读
+// ListOrgRoles 组织已绑定的角色（IW3/BK-12）：org admin/owner 或全局管理员可读。
+// org 预检（对齐 AddMember）：不存在/软删 → ErrOrgNotFound，而非空列表冒充 200
 func (s *OrgService) ListOrgRoles(ctx context.Context, orgID, actorUserID int64) ([]*model.Role, error) {
+	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
+		return nil, err
+	}
 	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
 		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
 		if err != nil {
@@ -169,6 +173,11 @@ func (s *OrgService) ListOrgRoles(ctx context.Context, orgID, actorUserID int64)
 // 全局 Casbin 角色（BFS 源 2 → L1 全局能力），影响面 = 全组织成员，授权面对齐
 // BK-14 的 scope=all 决议。系统角色不可绑定（repo 层守卫）。
 func (s *OrgService) BindOrgRole(ctx context.Context, req *model.BindOrgRoleRequest, actorUserID int64) error {
+	// org 预检（对齐 AddMember）：不存在/软删 → ErrOrgNotFound；否则落到 repo 层
+	// FK 23503 → 400/500，且软删 org 可静默绑成脏数据
+	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
+		return err
+	}
 	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
 		return errcode.ErrNoPermission
 	}

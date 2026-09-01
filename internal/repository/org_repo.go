@@ -699,6 +699,10 @@ func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
 	if _, err := r.db.Exec(ctx, `
 		INSERT INTO org_roles (org_id, role_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, orgID, roleID); err != nil {
+		// 预检与写入的并发窗口内 org/role 被删 → 23503 → 400（非 500）
+		if ec := MapForeignKeyViolation(err); ec != nil {
+			return ec
+		}
 		return fmt.Errorf("bind org role: %w", err)
 	}
 	return nil

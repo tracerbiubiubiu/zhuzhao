@@ -368,6 +368,11 @@ func TestBK12_OrgRoleBinding(t *testing.T) {
 		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: sysRole}, env.super)
 	requireErrCode(t, err, errcode.ErrInvalidParams)
 
+	// org 预检：不存在的组织 → ErrOrgNotFound（绑定与列表一致）
+	err = env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: 999999999, RoleID: orgRole.ID}, env.super)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+
 	// 解绑 → 列表空 → BFS 失去组织角色
 	require.NoError(t, env.orgSvc.UnbindOrgRole(ctx,
 		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super))
@@ -415,4 +420,43 @@ func TestBK12_DirectVsExpanded(t *testing.T) {
 	direct, err := userRepo.GetRoles(ctx, pureUser)
 	require.NoError(t, err)
 	assert.Empty(t, direct, "GetRoles 只认直接角色：组织绑定不经 user_roles")
+}
+
+// ---------- BK-12 收尾：org 存在性守卫（预检 → 404；FK 23503 兜底 → 400） ----------
+
+func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+
+	orgRole, err := rbacForBK12(t).CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12guard_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "守卫角色", Priority: 40}, env.super)
+	require.NoError(t, err)
+
+	// 不存在 org：Bind/List → 404 ErrOrgNotFound（原先 Bind 落 FK 23503 → 500、List 返回空列表）
+	err = env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: 999999999, RoleID: orgRole.ID}, env.super)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+	_, err = env.orgSvc.ListOrgRoles(ctx, 999999999, env.super)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+
+	// 软删 org：Bind → 404（预检 deleted_at 过滤；原先 FK 不看软删可静默绑成脏数据）
+	var softID int64
+	softCode := "vg_soft_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
+		VALUES ($1, '软删守卫', 1, $2::ltree, 3, 1, 80, false)
+		RETURNING id`, softCode, "root."+softCode).Scan(&softID))
+	_, err = testPool.Exec(ctx,
+		`UPDATE organizations SET deleted_at = NOW() WHERE id = $1`, softID)
+	require.NoError(t, err)
+
+	err = env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: softID, RoleID: orgRole.ID}, env.super)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+	_, err = env.orgSvc.ListOrgRoles(ctx, softID, env.super)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+
+	// repo 层 FK 兜底：绕过 service 预检直调（模拟并发窗口），23503 应映射 400 而非裸 500
+	err = repository.NewOrgRepo(testPool).BindOrgRole(ctx, 999999999, orgRole.ID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
 }

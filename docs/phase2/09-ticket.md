@@ -107,6 +107,8 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 
 **创建工单时**：从 `organizations` 读 `path` 写入 `org_path`（与 org_id 同事务）。`POST /tickets` 支持可选 `template_code`：命中则用 `ticket_templates.default_fields` 预填、`default_priority` 覆盖。
 
+**priority 刻度（2026-08-31 收敛，IW1 后随 BK-18）**：`1紧急 / 2高 / 3中 / 4低`（`0` = 未传，归一为 3）。Create/Update 与模板 `default_priority` 三路径统一强制校验，越界 → 400；沿用 SMALLINT 列型，扩刻度不改表。
+
 **组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 4（2b-core）回归测试（move 后 scope 过滤仍正确）。
 
 ### Phase 2b 增量
