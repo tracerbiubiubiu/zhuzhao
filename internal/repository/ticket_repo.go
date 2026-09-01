@@ -206,6 +206,10 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO ticket_events (ticket_id, user_id, action) VALUES ($1, $2, 'deleted')`,
 		id, actorUserID); err != nil {
+		// 23503 = 工单已不存在（重复/并发删除）→ 404，且无事件残留（BK-16 修正）
+		if ec := MapForeignKeyViolation(err); ec != nil {
+			return errcode.ErrTicketNotFound
+		}
 		return fmt.Errorf("write deleted event: %w", err)
 	}
 	tag, err := tx.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)

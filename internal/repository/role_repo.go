@@ -332,6 +332,11 @@ func (r *RoleRepo) ListCasbinPoliciesByRoleCode(ctx context.Context, roleCode st
 //
 // 全部角色限 status=1 且未软删。消费方：Casbin 中间件（逐角色码 enforce）、
 // 工单 Resource（admin/supervisor 判定）。
+//
+// 终止性（P2-1，2026-08-31 记录）：expanded 的 UNION 为集合语义去重——
+// 有限角色集上沿 parent 链迭代必然收敛，无深度上限亦安全；脏环数据（绕过
+// 写侧 BK-12 环检测直改 DB）只会使展开集收敛为环上角色，不会报错、不构成
+// 权限绕过面。
 func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]string, error) {
 	const q = `
 	WITH RECURSIVE seeds AS (
