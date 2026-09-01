@@ -62,7 +62,9 @@
 | IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端管理页/动态表单照 12-frontend 施工（另排期） |
 
-> **随手项（任意时点）**：BK-9（测试死代码）、A6③（错误注入测试用例）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、（BK-16 已复核关闭——校验本就存在，误报；可选补双删 404 回归断言）。（BK-17 角色缓存已随 IW1 落地；BK-16 已复核关闭）
+> **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言。
+> 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
+> **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
 > activelist（ADR-003）**不属独立窗口**——它是 Phase 3 范畴，即 README §2.1.0 的 Wave **W4**（入口 = Wave W2 完成 + 启用条件命中），勿在此表挂靠。
@@ -100,6 +102,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成：HC1 事件补全（TestHC1）、BK-5 反向判重（TestBK5）、TC1-Go（TestTicket_Delete_AdminSucceeds）、SoD 落 design-decisions §20、review/10 C1–C4 处置、14 号断链注记；验证：集成 13 包 `-race` 全绿、acceptance 211/0。**A 档清零 = Phase 2 收官** |
 | 2026-08-31（IW3 实施） | BK-18 管理闭环后端落地（迁移 000018 + 7 端点 + G2 校验 + 测试）；211/0 全链绿；前端照 12-frontend 另排期 |
+| 2026-08-31（外评核验二） | 6 条核验：04 表格 Step 编号 +1 偏移修正（8/9/10 对齐正文）；README §2.4 迁移表刷新；**BK-19 登记**（TC-1 handler 测试）；TC-2/3/4 入随手项；ARCH-1/2/3 确认为 W1/W2 既定 |
 | 2026-08-31（编号治理） | 消除 W 编号撞车：README Wave（W0–W4）独占「W」；独立窗口改 **IW1–IW3**；activelist 从本表移出归位 Wave W4（此前误挂 Phase 2 范畴表，且与 IW 序号冲突）；BK-16/17/18 的"随 W1 批次"改指 IW1 |
 | 2026-08-31（activelist 收录） | 用户核出遗漏：activelist（ADR-003 已决策 Phase 3 启动后）未进计划文档——README §1.1/Wave 表补 W4 条目（入口=W2 完成+启用条件，含 E13 前置），检查单 §1/§2.3 同步；SSOT 维持 roadmap/ADR-003，仅指针 |
 | 2026-08-31（Phase 3 补版） | README 增 §2.1.0 Wave 结构提案（W0-W3 + 7-0 设计期 + 四项待确认：Wave 采纳/W2 硬前置/12-frontend 新文档/7-0 三项设计建议）；§1.1 与文档索引补 12-frontend；检查单 B9 同步（6→7 份 + 10 号修订提示） |
