@@ -1,6 +1,6 @@
 # 04 - 组织内委托（org-delegation，Phase 2c）
 
-> **Step 8–10**，依赖 Phase **2b-core + 2b-org** 验收（虚拟组、`ticket_scope`、TicketResource group/all 过滤；HR Sync 属 2b-ext 延后，非前置）。  
+> **Step 8–10**（正文 §6 编号：8=org-delegation 成员分级、9=Authorize、10=集成验收；09-ticket §0 引用的"Step 9"即此处 Step 9），依赖 Phase **2b-core + 2b-org** 验收（虚拟组、`ticket_scope`、TicketResource group/all 过滤；HR Sync 属 2b-ext 延后，非前置）。  
 > 设计背景见 [03-org-enhance §组织负责人](./03-org-enhance.md#组织负责人与组内分级你描述的场景)；**本文档为 2c 实现 SSOT**。
 
 ---
@@ -11,12 +11,12 @@
 
 | 能力 | Step | 说明 |
 |------|------|------|
-| `owner_user_ids` | 9 | 实体部门 / 虚拟组均可指定负责人（可多人） |
-| `user_orgs.org_member_role` | 9 | 组内 `owner` / `admin` / `member`，与全局 `user_roles` 分离 |
-| 组内防提权 API | 9 | admin 只能管 member；任命 admin 仅 owner |
-| 成员 API 委托扩展 | 9 | `AddMember` / `RemoveMember` 增加组内级别校验 |
-| 工单 Authorize 升级 | 10 | 负责人 / 组 admin 对绑定 org 的资源 update/delete |
-| 集成验收 | 11 | D1–D12 |
+| `owner_user_ids` | 8 | 实体部门 / 虚拟组均可指定负责人（可多人） |
+| `user_orgs.org_member_role` | 8 | 组内 `owner` / `admin` / `member`，与全局 `user_roles` 分离 |
+| 组内防提权 API | 8 | admin 只能管 member；任命 admin 仅 owner |
+| 成员 API 委托扩展 | 8 | `AddMember` / `RemoveMember` 增加组内级别校验 |
+| 工单 Authorize 升级 | 9 | 负责人 / 组 admin 对绑定 org 的资源 update/delete |
+| 集成验收 | 10 | D1–D12 |
 
 ### 不做（留在 2b 或更晚）
 
@@ -91,13 +91,13 @@ HR Job **不得**写入或覆盖：
 
 | 功能 | API | Step | 路由级权限 |
 |------|-----|------|-----------|
-| 设置负责人 | `POST /api/v1/orgs/owners` | 9 | `org:update` **或** 该 org 的 effective owner |
-| 任命/变更组内角色 | `POST /api/v1/orgs/members/role` | 9 | 该 org 的 effective owner |
-| 添加成员（扩展） | `POST /api/v1/orgs/members` | 9 | `org:update` **或** org admin/owner |
-| 移除成员（扩展） | `POST /api/v1/orgs/members/delete` | 9 | 同上 + 组内防提权 |
-| 成员列表（扩展） | `GET /api/v1/orgs/:id/members` | 9 | `org:read` |
-| 组织详情（扩展） | `GET /api/v1/orgs/:id` | 9 | 返回 `owner_user_ids` |
-| 删除虚拟组（委托） | `POST /api/v1/orgs/delete` | 9 | 虚拟组 owner 可删（D6） |
+| 设置负责人 | `POST /api/v1/orgs/owners` | 8 | `org:update` **或** 该 org 的 effective owner |
+| 任命/变更组内角色 | `POST /api/v1/orgs/members/role` | 8 | 该 org 的 effective owner |
+| 添加成员（扩展） | `POST /api/v1/orgs/members` | 8 | `org:update` **或** org admin/owner |
+| 移除成员（扩展） | `POST /api/v1/orgs/members/delete` | 8 | 同上 + 组内防提权 |
+| 成员列表（扩展） | `GET /api/v1/orgs/:id/members` | 8 | `org:read` |
+| 组织详情（扩展） | `GET /api/v1/orgs/:id` | 8 | 返回 `owner_user_ids` |
+| 删除虚拟组（委托） | `POST /api/v1/orgs/delete` | 8 | 虚拟组 owner 可删（D6） |
 
 ### 3.1.1 路由级权限实现策略（P2-2/B1，2c 开工前置已决策）
 

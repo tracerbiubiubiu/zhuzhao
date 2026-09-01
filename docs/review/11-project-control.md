@@ -2,7 +2,7 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> 更新日期：2026-08-31 ｜ 分支：`feature/phase-2` ｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：2026-09-01（全量复验：lint/unit/integration/acceptance 四门禁全绿）｜ 分支：`feature/phase-2` ｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 
 ---
 
@@ -12,7 +12,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模**：70 个非测试 Go 源文件 ｜ 47 个测试文件 ｜ 190 个测试函数 ｜ 32 个迁移文件（16 对）｜ 13 份 review 文档（含本文件；统计时点 2026-08-31，随代码漂移）。
+**规模**：70 个非测试 Go 源文件 ｜ 51 个测试文件 ｜ 201 个测试函数 ｜ 36 个迁移文件（18 对）｜ 13 份 review 文档（含本文件；统计时点 2026-09-01，随代码漂移）。
 
 ---
 
@@ -76,7 +76,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ---
 
-## 4. 数据库迁移地图（16 对）
+## 4. 数据库迁移地图（18 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -94,8 +94,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000014 | 审计事件 FK 去 CASCADE | 2c |
 | 000015 | ticket_templates | 2a |
 | 000016 | ticket_relations | 2a |
+| 000017 | ticket_visibility CHECK 放开 `project_isolated`（BK-13，IW1） | 2b |
+| 000018 | ticket_type_admin：validate_regex + 类型配置页菜单/menu_apis（BK-18，IW3） | 2a-ext |
 
-> **编号冲突提示**：附件规划占 `000017`（phase2/README §2.4），但 Phase 3 SLA 文档（10-ticket-business §9）也用 `000017`——**启动 Phase 3 前需决策**（见 `docs/review/11` 与 Phase 3 评估）。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 `000017/000018` 已被 IW1/IW3 占用；Phase 3 SLA（10-ticket-business §2 原占用 000017–000021）启动时按此规则重排。
 
 ---
 
@@ -103,7 +105,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 门禁 | 命令 | 覆盖 |
 |------|------|------|
-| 单元测试 | `make test-unit` | 182 个测试函数 |
+| 单元测试 | `make test-unit` | 201 个测试函数 |
 | 集成测试 | `make test-integration` | 需 PG/Redis |
 | 覆盖率 | `make test-cover` | 覆盖率报告 |
 | **全量验收** | `make acceptance` | **四档链式门禁**（经 2c 脚本）：phase1（27 用例）→ 2a（R3-R8+T1-T7）→ 2b（R9-R10 虚拟组/scope/BFS）→ 2c（D1-D9 委托） |
@@ -140,6 +142,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-16** | ~~Delete 不校验 RowsAffected~~ | ⚪ **误报关闭（2026-08-31）**：校验自 Phase 2a 即存在（66e2c39），审计读码截断所致；详见 00 §9 |
 | **BK-17** | 角色展开每请求双查（中间件 + service 各一次 BFS SQL） | ✅ **已实施（IW1，2026-08-31）**：request context 透传缓存（RolesFromContext + GetRoleCodesByUserID 命中即返回）；详见 00 §9 |
 | **BK-18** | 类型/字段/模板管理闭环（只读 API，增删改仅 SQL；custom_data 无 schema 校验） | ✅ **已实施（IW3，2026-08-31）**：迁移 000018 + 7 管理端点 + G2 schema 校验 + TestBK18×2；前端照 12-frontend 施工（另排期）；详见 00 §9 |
+| **BK-19** | 工单 handler 层零 Go 测试（TC-1，中） | 🔶 **已登记（2026-08-31），待实施**（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）；详见 00 §9 |
 
 ---
 

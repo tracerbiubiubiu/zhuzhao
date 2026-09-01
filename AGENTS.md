@@ -52,12 +52,15 @@ make swag              # 重新生成 Swagger
 
 ## 已知遗留问题（修改时优先关注）
 
-> 权威清单：`docs/review/11-project-control.md` §6（健康状态）+ §8（Phase 3 前置/随行分类）+ phase2/00 §9（代码级 backlog）。2026-08-31 校准：
+> 权威清单：`docs/review/11-project-control.md` §6（健康状态）+ §8（Phase 3 前置/随行分类）+ phase2/00 §9（代码级 backlog）。2026-09-01 校准（A 档已清零，Phase 2 收官）：
 
-- **HC1**：Comment/Note 不写 `ticket_events`（审计缺口，§6 唯一未修项）
-- **TC1**：Go 层缺「全局 admin 删单成功」集成测试（脚本层已覆盖：2c 脚本 SAT 建删删；待补见 11 §8 A7）
+- ~~HC1~~：已修复（2026-08-31，A4）：CreateComment/CreateNote 事务化并同事务写 comment/note 事件
+- ~~TC1~~：已补（2026-08-31，A7）：`TestTicket_Delete_AdminSucceeds` 已入 Go 集成基线
 - ~~TC2 / HC2~~：已修复（`TestD9_CreateRelation`；000014 SET NULL + Delete 同事务写 deleted 事件）
-- **BK-13 / BK-14**（已触发、待实施）：project_isolated 默认收紧开关 + 成员 scope 配置面（多虚拟组可见性场景闭环，见 00 §9）
-- Phase 3 启动前待决策：迁移编号 000017 冲突（附件 vs SLA）；完整 A/B 档清单见 11 §8（SLA 暂停态等设计歧义归 B1 随 Step 7 拍板）
+- ~~BK-13 / BK-14~~：已实施（2026-08-31，IW1）：迁移 000017 + org update 透出 ticket_visibility + L2 委托轴 + D12 测试；scope 配置面 + scope=all 仅全局管理员
+- ~~BK-15/16/17~~：已修复/关闭（IW1 批次）；~~BK-18~~：已实施（IW3）：迁移 000018 + 7 管理端点 + G2 schema 校验
+- ~~迁移编号 000017 冲突~~：已拍板（A2：谁先启动谁占用，后者整体重排）
+- **BK-12**（触发条件驱动，暂不需动）：org_roles/parent_id 写侧——真实进组赋角诉求或 2b-ext HR 同步启动 = 硬触发器
+- 剩余开放项均为 B 档随行（随 Phase 3 对应子能力）或独立窗口（附件 / auth-enhance / HR 同步按需启动），见 11 §8
 
 > 最新验证结果以 `docs/review/` 为准；修复后回填状态。

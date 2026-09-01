@@ -167,7 +167,7 @@
 ### Step 6（M2b-ext）— storage（延后/按需）
 
 - [ ] compose 加 MinIO；`config.storage` 段（[10 §2](./10-storage.md)）
-- [ ] 迁移**顺延为 000017**：`file_objects` / `ticket_attachments`（000013=2c 委托已执行、000014=审计修复已执行、000015/000016=2a 模板/关联已执行；README §2.4）
+- [ ] 迁移**顺延**（原拟 000017，已被 IW1 ticket_visibility_check 占用；启动时取下一可用号并重排，A2 规则）：`file_objects` / `ticket_attachments`（README §2.4）
 - [ ] `internal/pkg/storage/s3_client.go` + 预签名 upload/download + confirm（HEAD 校验）+ 附件列表/删除 API
 - [ ] 91001–91004 错误码；S1–S6 测试
 
@@ -359,6 +359,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | **BK-16** | ~~`TicketRepo.Delete` 不校验 RowsAffected~~ | **✅ 复核关闭（2026-08-31，误报）**：校验自 Phase 2a（66e2c39）即存在——`DELETE` 0 行 → `ErrTicketNotFound` → defer 回滚事件插入，重复/并发删除返回 404 且无重复事件。误报根因：并发审计时读码截断于 L215（校验在其后 5 行），未读全函数。可选防回归：双删 404 断言（随手项） | 已关闭（误报） |
 | **BK-17** | 角色展开每请求双查：CasbinAuth 中间件（casbin.go:46）与 service 层（ticket service.go:52、org_service.go:37）各跑一次 BFS WITH RECURSIVE；中间件放入 gin ctx 的 roles 无任何 service 消费方 | 2026-08-31 外评核实属实；非正确性问题，纯性能优化（热路径列表每次白付一次 BFS）；受影响面 = 全部工单 API + 组织委托 API | **✅ 已实施（IW1）**：CasbinAuth 将 roles 挂 request context（`middleware.RolesFromContext`），`RBACService.GetRoleCodesByUserID` 按 userID 命中即返回；TestRolesFromContext 单测：方案 A——中间件 fetch 后把 roles 同时挂到 `c.Request` 的 request context，`RBACService.GetRoleCodesByUserID` 先查 ctx（按 userID 匹配）命中即返回；签名零改动、集成测试零改动。**不做**：签名透传（侵入大）、Redis/TTL 缓存（权限撤销延迟生效） |
 | **BK-18** | 工单类型/字段/模板**管理闭环**：仅 4 个只读 API，增删改只能写 SQL（用户确认痛点：不可能手动数据库建类型）；Create 的 custom_data 不按 `ticket_type_fields` schema 校验 | 2026-08-31 需求确认 + Duke1616/eflow 范式调研支撑。**数据骨架已就绪**（types.states/transitions 数据驱动状态机 + ticket_type_fields schema 表 + 读 API），缺管理面与校验闭环。**方案（eflow 范式）**：① 类型/字段/模板 CRUD + **发布/停用两态**（有工单的类型禁删只可停用、code 不可改）；② Create 按 schema 校验（required + regex；字段类型 7 种：input/textarea/number/date/select/multi_select/tips）；③ 前端管理页（列表+三步向导+字段右抽屉）+ 动态表单渲染器（消费既有读 API；**前端规格见 phase3/12-frontend §2/§3.1–3.2**，2026-08-31 已编写） | **✅ 已实施（IW3，2026-08-31）**：迁移 000018（validate_regex 列 + 类型配置页菜单/menu_apis，权限码 `ticket:type:manage`）+ 7 个管理端点（类型 CRUD/字段全量替换/模板 CRUD，含防呆：有工单禁删只可停用、code 不可改、select 必填选项、正则可编译）+ **G2 创建时 schema 校验**（required/类型/选项/regex）+ 集成测试 TestBK18×2；前端管理页/动态表单照 12-frontend 施工（另排期）。与 Phase 3 引擎零耦合如前述 |
+| **BK-19** | 工单 handler 层零 Go 测试（L1 Casbin 断言依赖 acceptance 脚本） | 2026-08-31 外评 TC-1（中风险）：`internal/handler` 仅 audit/errors 测试；工单路由的参数绑定/错误映射/L1 拒绝仅脚本覆盖 | **待实施（中优，~0.5–1 天）**：补 handler 层测试（httptest：绑定失败 400、L1 拒绝 403、正常 200 路径各一） |
 
 ---
 
@@ -374,6 +375,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 2026-08-31（晚） | BK-12 必要性/业界评估补录（Entra/Google Groups/Keycloak 组驱动对照）；§9 登记 **BK-13**（project_isolated 强隔离激活：用户多虚拟组场景触发，业界默认隔离对照 + 机制骨架盘点，待批准实施）；phase2/README §1.2.3 project_isolated 状态翻转 future→已触发（顺修 `ticket_isolated` 值名笔误）；全量扫 phase1/2/3 文档归拢散落项：SoD 延后决策未落档（11-authz-review §4，P2-D7 编号已被三轨拆分复用）、phase2/12·13 号断链（14 号 5 处引用、文件从未入库）、review §7 item6 错误注入测试未落——三项并入 11 §8 A6 |
 | 2026-08-31（夜） | §9 登记 **BK-14**（成员 scope 配置面：关系派拍板、scope=all 仅全局管理员可授、防提权复用 ensureCanManageMember，与 BK-13 同批实施）；外部 review 验证收口：**AGENTS.md 遗留节校准**（TC2/HC2 标已修、TC1 改「脚本已覆盖/Go 层缺」）、11 §6 TC1 口径修正、11 §8 增 **A7**（TC1-Go 测试）+ W1 升级为「BK-13+BK-14 场景闭环」；建 **docs/phase3/00-startup-checklist.md**（Phase 3 启动检查单：A/B/W 三档 + 决策清单 + 七步流程） |
 | 2026-08-31（IW1 实施） | **IW1 批次代码落地**：BK-13（迁移 000017 + ticket_visibility 全链 + **L2 委托轴** + D12/委托轴测试）、BK-14（scope 配置面全链 + scope=all 管理员限定 + 审计）、BK-17（角色缓存消重）；验证：新测试 7 个全绿、集成 13 包 `-race` 全绿、acceptance 全链 **211 PASS / 0 FAIL**（000017 已应用）、`make swag`（新增 /orgs/members/scope） |
+| 2026-08-31（外评核验二） | 6 条外评核验：04 §0/§3.1 表格 Step 编号 +1 偏移修正（统一为正文 8/9/10；09 §0 的 Step 9 与正文一致、此前驳回维持不变）；phase2/README §2.4 迁移表刷新（000017/000018 已占用、附件顺延）；**BK-19 登记**（工单 handler 测试，TC-1）；TC-2/3/4 入随手项；ARCH-1/2/3 确认为 Wave W1/W2 既定内容 |
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成（HC1 事件、BK-5 反向判重、TC1-Go、SoD 落档、review/10 处置、README 修正）；BK-5 关闭；**Phase 2 收官**——开放项仅剩触发条件驱动的 IW2/B6 与 Phase 3（暂缓） |
 | 2026-08-31（IW3 实施） | **IW3/BK-18 管理闭环后端落地**：迁移 000018（validate_regex + 类型配置页菜单/menu_apis，`ticket:type:manage`）+ 7 管理端点（类型 CRUD/字段全量替换/模板 CRUD，防呆守卫）+ **G2 创建时 schema 校验**（required/类型/选项/regex，含模板预填合并后校验）+ TestBK18×2；验证：集成 13 包 `-race` 全绿、acceptance 全链 **211 PASS / 0 FAIL**（000017+000018 已应用）、swag/lint 干净。管理闭环后端收官，前端照 12-frontend 施工 |
 | 2026-08-31（BK-16 复核关闭） | 外部核验指出 BK-16 疑似已落地 → git 考古（66e2c39，Phase 2a）证实 RowsAffected 校验**一直存在**：BK-16 系并发审计读码截断导致的误报，登记关闭；描述的"重复 200 + 重复事件"不存在（0 行守卫回滚）。教训：读函数必须读到函数尾。双删 404 回归断言列入随手项（可选） |
