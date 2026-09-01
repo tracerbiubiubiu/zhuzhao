@@ -320,3 +320,63 @@ func TestDelegation_SoftDeleteCleansOwnerUserIDs(t *testing.T) {
 		`SELECT owner_user_ids::text FROM organizations WHERE id=$1`, env.vgID).Scan(&ids))
 	assert.NotContains(t, ids, fmt.Sprint(env.owner), "SoftDelete 后 owner_user_ids 应清理被删用户引用")
 }
+
+// ---------- IW3/BK-12：组织 ↔ 角色绑定（org_roles 写侧） ----------
+
+func rbacForBK12(t *testing.T) *service.RBACService {
+	t.Helper()
+	return service.NewRBACService(
+		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
+		repository.NewMenuRepo(testPool), rbacTestEnforcer(t))
+}
+
+var _ = fmt.Sprintf
+
+func TestBK12_OrgRoleBinding(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+
+	// 角色码基线：mem1 绑定 vg 前 viewer，无其他
+	before, err := env.orgSvc.ListOrgRoles(ctx, env.vgID, env.super)
+	require.NoError(t, err)
+	assert.Empty(t, before, "初始无绑定")
+
+	// 专用组织角色（避免与 setupDelegation 直赋的 viewer 混淆 BFS 源 1/2）
+	orgRole, err := rbacForBK12(t).CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12_org_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "组织角色", Priority: 40}, env.super)
+	require.NoError(t, err)
+
+	// org admin 绑定 → 403（仅全局管理员：org_roles 赋出全局 Casbin 角色）
+	err = env.orgSvc.BindOrgRole(ctx, &model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.admin)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+
+	// 全局管理员绑定 ✓ → 列表含该角色 → BFS 源 2 生效：vg 成员有效角色包含
+	require.NoError(t, env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super))
+	list, err := env.orgSvc.ListOrgRoles(ctx, env.vgID, env.admin)
+	require.NoError(t, err)
+	assert.Len(t, list, 1)
+	rbac := rbacForBK12(t)
+	codes, err := rbac.GetRoleCodesByUserID(ctx, env.mem1)
+	require.NoError(t, err)
+	assert.Contains(t, codes, orgRole.Code, "BFS 源 2：组织绑定角色后成员有效角色应包含")
+
+	// 绑定系统角色 → 400
+	var sysRole int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM roles WHERE code='superadmin'`).Scan(&sysRole))
+	err = env.orgSvc.BindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: sysRole}, env.super)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// 解绑 → 列表空 → BFS 失去组织角色
+	require.NoError(t, env.orgSvc.UnbindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super))
+	codes, err = rbac.GetRoleCodesByUserID(ctx, env.mem1)
+	require.NoError(t, err)
+	assert.NotContains(t, codes, orgRole.Code, "解绑后 BFS 源 2 应失效")
+
+	// 再解绑 → 未绑定 404 语义
+	err = env.orgSvc.UnbindOrgRole(ctx,
+		&model.BindOrgRoleRequest{OrgID: env.vgID, RoleID: orgRole.ID}, env.super)
+	requireErrCode(t, err, errcode.ErrNotFound)
+}

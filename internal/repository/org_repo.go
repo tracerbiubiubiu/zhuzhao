@@ -655,3 +655,64 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 	}
 	return tx.Commit(ctx)
 }
+
+// ===== IW3/BK-12：组织 ↔ 角色绑定（org_roles 写侧；读侧 BFS 源 2 已有） =====
+
+// ListOrgRoles 组织已绑定的角色（join roles 取元数据）
+func (r *OrgRepo) ListOrgRoles(ctx context.Context, orgID int64) ([]*model.Role, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT r.id, r.code, r.name, COALESCE(r.description, '') AS description,
+			r.status, r.priority, r.parent_id, r.sort_order, r.is_system, r.tenant_id, r.version,
+			r.deleted_at, r.created_at, r.updated_at
+		FROM org_roles orgr
+		JOIN roles r ON r.id = orgr.role_id
+		WHERE orgr.org_id = $1 AND r.deleted_at IS NULL
+		ORDER BY r.priority ASC, r.id ASC`, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list org roles: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, scanRoleCollectableRowDirect)
+}
+
+// BindOrgRole 绑定角色到组织（幂等，ON CONFLICT DO NOTHING）。
+// 守卫（内联同库校验，BK-12）：角色须存在、启用、**非系统角色**——
+// 系统角色绑定组织 = 全组织成员获得管理员，绝对禁止。
+func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
+	var isSystem bool
+	var status int
+	err := r.db.QueryRow(ctx, `
+		SELECT is_system, status FROM roles
+		WHERE id = $1 AND deleted_at IS NULL`, roleID).Scan(&isSystem, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrNotFound
+		}
+		return fmt.Errorf("check role for bind: %w", err)
+	}
+	if isSystem {
+		return errcode.New(errcode.ErrInvalidParams.Code, "系统角色不可绑定组织")
+	}
+	if status != 1 {
+		return errcode.New(errcode.ErrInvalidParams.Code, "角色已禁用，不可绑定组织")
+	}
+	if _, err := r.db.Exec(ctx, `
+		INSERT INTO org_roles (org_id, role_id) VALUES ($1, $2)
+		ON CONFLICT DO NOTHING`, orgID, roleID); err != nil {
+		return fmt.Errorf("bind org role: %w", err)
+	}
+	return nil
+}
+
+// UnbindOrgRole 解绑（未绑定 → ErrNotFound）
+func (r *OrgRepo) UnbindOrgRole(ctx context.Context, orgID, roleID int64) error {
+	tag, err := r.db.Exec(ctx,
+		`DELETE FROM org_roles WHERE org_id = $1 AND role_id = $2`, orgID, roleID)
+	if err != nil {
+		return fmt.Errorf("unbind org role: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrNotFound
+	}
+	return nil
+}

@@ -151,6 +151,38 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role, req.TicketScope)
 }
 
+// ListOrgRoles 组织已绑定的角色（IW3/BK-12）：org admin/owner 或全局管理员可读
+func (s *OrgService) ListOrgRoles(ctx context.Context, orgID, actorUserID int64) ([]*model.Role, error) {
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+	return s.orgRepo.ListOrgRoles(ctx, orgID)
+}
+
+// BindOrgRole 绑定角色到组织（IW3/BK-12）：**仅全局管理员**——org_roles 赋出的是
+// 全局 Casbin 角色（BFS 源 2 → L1 全局能力），影响面 = 全组织成员，授权面对齐
+// BK-14 的 scope=all 决议。系统角色不可绑定（repo 层守卫）。
+func (s *OrgService) BindOrgRole(ctx context.Context, req *model.BindOrgRoleRequest, actorUserID int64) error {
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		return errcode.ErrNoPermission
+	}
+	return s.orgRepo.BindOrgRole(ctx, req.OrgID, req.RoleID)
+}
+
+// UnbindOrgRole 解绑组织角色（IW3/BK-12）：仅全局管理员
+func (s *OrgService) UnbindOrgRole(ctx context.Context, req *model.BindOrgRoleRequest, actorUserID int64) error {
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		return errcode.ErrNoPermission
+	}
+	return s.orgRepo.UnbindOrgRole(ctx, req.OrgID, req.RoleID)
+}
+
 // SetMemberScope 变更成员数据范围（IW1/BK-14，09 §5.2）：org admin/owner 或全局管理员；
 // scope=all 旁路整个 L2（全局可见），仅全局管理员可授（BK-14 决议）并留审计日志
 func (s *OrgService) SetMemberScope(ctx context.Context, req *model.SetMemberScopeRequest, actorUserID int64) error {

@@ -14,7 +14,7 @@ import (
 
 const roleSelectColumns = `
 	id, code, name, COALESCE(description, '') AS description,
-	status, priority, sort_order, is_system, tenant_id, version,
+	status, priority, parent_id, sort_order, is_system, tenant_id, version,
 	deleted_at, created_at, updated_at`
 
 // RoleRepo 角色数据访问
@@ -132,11 +132,11 @@ func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
 	}
 	const q = `
 		INSERT INTO roles (
-			code, name, description, status, priority, sort_order, is_system, tenant_id
-		) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, false, $7)
+			code, name, description, status, priority, parent_id, sort_order, is_system, tenant_id
+		) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, false, $8)
 		RETURNING id, version, created_at, updated_at`
 	err := r.db.QueryRow(ctx, q,
-		role.Code, role.Name, role.Description, status, role.Priority, role.SortOrder, tenantID,
+		role.Code, role.Name, role.Description, status, role.Priority, role.ParentID, role.SortOrder, tenantID,
 	).Scan(&role.ID, &role.Version, &role.CreatedAt, &role.UpdatedAt)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
@@ -156,13 +156,14 @@ func (r *RoleRepo) Update(ctx context.Context, role *model.Role) error {
 			description = NULLIF($3, ''),
 			status = $4,
 			priority = $5,
+			parent_id = $8,
 			sort_order = $6,
 			version = version + 1,
 			updated_at = NOW()
 		WHERE id = $1 AND version = $7 AND deleted_at IS NULL
 		RETURNING version, updated_at`
 	err := r.db.QueryRow(ctx, q,
-		role.ID, role.Name, role.Description, role.Status, role.Priority, role.SortOrder, role.Version,
+		role.ID, role.Name, role.Description, role.Status, role.Priority, role.SortOrder, role.Version, role.ParentID,
 	).Scan(&role.Version, &role.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -224,7 +225,7 @@ func scanRoleRowDirect(row pgx.Row) (*model.Role, error) {
 	var role model.Role
 	err := row.Scan(
 		&role.ID, &role.Code, &role.Name, &role.Description, &role.Status, &role.Priority,
-		&role.SortOrder, &role.IsSystem, &role.TenantID, &role.Version, &role.DeletedAt,
+		&role.ParentID, &role.SortOrder, &role.IsSystem, &role.TenantID, &role.Version, &role.DeletedAt,
 		&role.CreatedAt, &role.UpdatedAt,
 	)
 	if err != nil {
@@ -369,4 +370,28 @@ func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]s
 		return nil, fmt.Errorf("collect effective role codes: %w", err)
 	}
 	return codes, nil
+}
+
+// RoleRef 继承边校验用的角色引用（BK-12）
+type RoleRef struct {
+	Priority int
+	ParentID *int64
+	IsSystem bool
+	Status   int
+}
+
+// GetRoleRef 读取角色的 priority/parent_id/is_system/status（未删）
+func (r *RoleRepo) GetRoleRef(ctx context.Context, id int64) (*RoleRef, error) {
+	var ref RoleRef
+	err := r.db.QueryRow(ctx, `
+		SELECT priority, parent_id, is_system, status
+		FROM roles WHERE id = $1 AND deleted_at IS NULL`, id).Scan(
+		&ref.Priority, &ref.ParentID, &ref.IsSystem, &ref.Status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errcode.ErrRoleNotFound
+		}
+		return nil, fmt.Errorf("get role ref: %w", err)
+	}
+	return &ref, nil
 }

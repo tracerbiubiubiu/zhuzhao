@@ -13,6 +13,12 @@ type OrgMemberRequest struct {
 	TicketScope string `json:"ticket_scope" binding:"omitempty,oneof=assigned group all"`
 }
 
+// BindOrgRoleRequest 组织绑定/解绑角色（IW3/BK-12）
+type BindOrgRoleRequest struct {
+	OrgID  int64 `json:"org_id,string" binding:"required"`
+	RoleID int64 `json:"role_id,string" binding:"required"`
+}
+
 // SetMemberScopeRequest 变更成员数据范围（IW1/BK-14）
 type SetMemberScopeRequest struct {
 	OrgID       int64  `json:"org_id,string" binding:"required"`

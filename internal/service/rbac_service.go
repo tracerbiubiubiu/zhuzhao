@@ -77,6 +77,12 @@ func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleReque
 	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
 		return nil, err
 	}
+	// BK-12：继承边校验（单调 child ≤ parent + 父启用非系统 + 非自身）
+	if req.ParentID != nil {
+		if err := s.validateParentLink(ctx, nil, req.Priority, *req.ParentID); err != nil {
+			return nil, err
+		}
+	}
 	// B4-4：Status 指针化——nil 默认启用；显式传 0 创建即禁用
 	status := 1
 	if req.Status != nil {
@@ -87,6 +93,7 @@ func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleReque
 		Name:        req.Name,
 		Description: req.Description,
 		Priority:    req.Priority,
+		ParentID:    req.ParentID,
 		SortOrder:   req.SortOrder,
 		Status:      status,
 	}
@@ -113,6 +120,19 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 	if err := s.ensureRolePriorityAllowed(ctx, actorUserID, req.Priority); err != nil {
 		return nil, err
 	}
+	// BK-12：parent_id 变更（nil=保持现值；ClearParent=true 清除继承）
+	newParent := role.ParentID
+	if req.ClearParent {
+		newParent = nil
+	} else if req.ParentID != nil {
+		newParent = req.ParentID
+	}
+	if newParent != nil {
+		if err := s.validateParentLink(ctx, &role.ID, req.Priority, *newParent); err != nil {
+			return nil, err
+		}
+	}
+	role.ParentID = newParent
 	role.Name = req.Name
 	// D2-03/D2-17：nil = 未传 → 保持现值（patch 语义）
 	if req.Description != nil {
@@ -133,6 +153,54 @@ func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleReque
 }
 
 // ensureRolePriorityAllowed 校验操作者可设置的 priority 上限（F-2）
+// validateParentLink BK-12：继承边校验。规则（2026-08-31 拍板）：
+// child.priority ≤ parent.priority（子不弱于父）——BFS 为「绑子得父」，
+// 只允许强子继承弱父（增益无提权）；放行弱子继承强父即绕过
+// ensureRolePriorityAllowed 的赋角防线（纯提权）。另校验：父存在、启用、
+// 非系统角色（继承系统角色 = 全员管理员）、非自身、沿链无环。
+// 提权推论：actor 档位 ≥ child.pri 且 child.pri ≤ parent.pri ⇒ parent.pri
+// ≥ actor 档位（父弱于 actor 档位）→ actor 本可直接赋 parent，无绕过。
+func (s *RBACService) validateParentLink(ctx context.Context, selfID *int64, childPriority int, parentID int64) error {
+	parent, err := s.roleRepo.GetRoleRef(ctx, parentID)
+	if err != nil {
+		return err
+	}
+	if parent.IsSystem {
+		return errcode.New(errcode.ErrInvalidParams.Code, "系统角色不可作为继承父角色")
+	}
+	if parent.Status != 1 {
+		return errcode.New(errcode.ErrInvalidParams.Code, "父角色须为启用状态")
+	}
+	if selfID != nil && *selfID == parentID {
+		return errcode.New(errcode.ErrInvalidParams.Code, "parent 不能是角色自身")
+	}
+	if childPriority > parent.Priority {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("继承须满足 child.priority(%d) ≤ parent.priority(%d)（子不弱于父）", childPriority, parent.Priority))
+	}
+	// 环检测：沿 parent 链向上（深度上限 32 防御）
+	visited := map[int64]bool{}
+	if selfID != nil {
+		visited[*selfID] = true
+	}
+	cur := parentID
+	for depth := 0; depth < 32; depth++ {
+		if visited[cur] {
+			return errcode.New(errcode.ErrInvalidParams.Code, "parent_id 形成继承环")
+		}
+		visited[cur] = true
+		ref, err := s.roleRepo.GetRoleRef(ctx, cur)
+		if err != nil {
+			return err
+		}
+		if ref.ParentID == nil {
+			return nil
+		}
+		cur = *ref.ParentID
+	}
+	return errcode.New(errcode.ErrInvalidParams.Code, "parent 链过深（>32）")
+}
+
 func (s *RBACService) ensureRolePriorityAllowed(ctx context.Context, actorUserID int64, priority int) error {
 	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
 	if err != nil {

@@ -4,7 +4,9 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/casbin/casbin/v3"
 	casbinmodel "github.com/casbin/casbin/v3/model"
@@ -164,4 +166,90 @@ func TestRBACService_SystemRoleDeleteAndUpdateRejected(t *testing.T) {
 		ID: adminRole.ID, Version: 1, Name: "x", Priority: 10,
 	}, saActorID)
 	requireErrCode(t, err, errcode.ErrRoleIsSystem)
+}
+
+// ---------- IW3/BK-12：角色继承（parent_id）写侧 + 单调规则 ----------
+
+func TestBK12_ParentIDRules(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	rbac := service.NewRBACService(
+		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
+		repository.NewMenuRepo(testPool), rbacTestEnforcer(t))
+
+	var superRole int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM roles WHERE code='superadmin'`).Scan(&superRole))
+	var superID int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('bk12sup_%s', 'hash', 'EBK12SUP', 1)
+		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
+			DO UPDATE SET password = EXCLUDED.password RETURNING id`, suffix)).Scan(&superID))
+	_, err := testPool.Exec(ctx, `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, superID, superRole)
+	require.NoError(t, err)
+
+	create := func(code string, pri int, parent *int64) *model.Role {
+		r, err := rbac.CreateRole(ctx, &model.CreateRoleRequest{
+			Code: code, Name: code, Priority: pri, ParentID: parent}, superID)
+		require.NoError(t, err, "code=%s", code)
+		return r
+	}
+	// ① 合法：强子继承弱父（lead(10).parent = base(40)）
+	base := create("bk12_base_"+suffix, 40, nil)
+	lead := create("bk12_lead_"+suffix, 10, &base.ID)
+	require.NotNil(t, lead.ParentID)
+	assert.EqualValues(t, base.ID, *lead.ParentID)
+
+	// ② 弱子继承强父 → 400（单调 child ≤ parent）
+	_, err = rbac.CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12_weak_" + suffix, Name: "弱子", Priority: 40, ParentID: &lead.ID}, superID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// ③ 自引用 → 400
+	_, err = rbac.UpdateRole(ctx, &model.UpdateRoleRequest{
+		ID: lead.ID, Version: lead.Version, Name: lead.Name, Priority: 10, ParentID: &lead.ID}, superID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// ④ 环（同档 10/10 可过单调，须被环检测拦截）：q(10).parent=lead ✓ → lead.parent=q → 环
+	q := create("bk12_q_"+suffix, 10, &lead.ID)
+	roleRepo := repository.NewRoleRepo(testPool)
+	leadFull, err := roleRepo.FindByID(ctx, lead.ID)
+	require.NoError(t, err)
+	leadID := leadFull.ID
+	leadVersion := leadFull.Version
+	_, err = rbac.UpdateRole(ctx, &model.UpdateRoleRequest{
+		ID: leadID, Version: leadVersion, Name: "bk12_lead", Priority: 10, ParentID: &q.ID}, superID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// ⑤ 系统角色不可作父
+	_, err = rbac.CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12_sys_" + suffix, Name: "系统父", Priority: 10, ParentID: &superRole}, superID)
+	requireErrCode(t, err, errcode.ErrInvalidParams)
+
+	// ⑥ 不存在的父 → 400/404
+	bad := int64(999999999)
+	_, err = rbac.CreateRole(ctx, &model.CreateRoleRequest{
+		Code: "bk12_bad_" + suffix, Name: "坏父", Priority: 10, ParentID: &bad}, superID)
+	require.Error(t, err)
+
+	// ⑦ 链式 BFS：绑 lead 的用户有效角色 ⊇ {lead, base}
+	var uid int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('bk12u_%s', 'hash', 'EBK12U', 1)
+		RETURNING id`, suffix)).Scan(&uid))
+	_, err = testPool.Exec(ctx, `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, uid, lead.ID)
+	require.NoError(t, err)
+	codes, err := rbac.GetRoleCodesByUserID(ctx, uid)
+	require.NoError(t, err)
+	assert.Contains(t, codes, "bk12_lead_"+suffix)
+	assert.Contains(t, codes, "bk12_base_"+suffix, "BFS 沿 parent 链展开应含 base")
+
+	// ⑧ ClearParent 清除继承 → base 失效
+	leadNow2, err := roleRepo.FindByID(ctx, lead.ID)
+	require.NoError(t, err)
+	_, err = rbac.UpdateRole(ctx, &model.UpdateRoleRequest{
+		ID: leadNow2.ID, Version: leadNow2.Version, Name: leadNow2.Name, Priority: 10, ClearParent: true}, superID)
+	require.NoError(t, err)
+	codes, err = rbac.GetRoleCodesByUserID(ctx, uid)
+	require.NoError(t, err)
+	assert.NotContains(t, codes, "bk12_base_"+suffix, "ClearParent 后 BFS 应失去 base")
 }

@@ -133,6 +133,72 @@ func (h *OrgHandler) AddMember(c *gin.Context) {
 	response.OK(c, nil)
 }
 
+// ListOrgRoles GET /api/v1/orgs/roles/list?org_id=（IW3/BK-12）
+//
+//	@Summary	组织已绑定角色列表
+//	@Tags		org
+//	@Produce	json
+//	@Param		org_id	query	string	true	"组织 ID"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/orgs/roles/list [get]
+func (h *OrgHandler) ListOrgRoles(c *gin.Context) {
+	orgID, err := strconv.ParseInt(c.Query("org_id"), 10, 64)
+	if err != nil || orgID <= 0 {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	roles, err := h.orgService.ListOrgRoles(c.Request.Context(), orgID, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, roles)
+}
+
+// BindOrgRole POST /api/v1/orgs/roles/bind（IW3/BK-12：仅全局管理员）
+//
+//	@Summary	组织绑定角色
+//	@Tags		org
+//	@Accept		json
+//	@Produce	json
+//	@Param		req	body	model.BindOrgRoleRequest	true	"组织与角色"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/orgs/roles/bind [post]
+func (h *OrgHandler) BindOrgRole(c *gin.Context) {
+	var req model.BindOrgRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.BindOrgRole(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// UnbindOrgRole POST /api/v1/orgs/roles/delete（IW3/BK-12：仅全局管理员）
+//
+//	@Summary	组织解绑角色
+//	@Tags		org
+//	@Accept		json
+//	@Produce	json
+//	@Param		req	body	model.BindOrgRoleRequest	true	"组织与角色"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/orgs/roles/delete [post]
+func (h *OrgHandler) UnbindOrgRole(c *gin.Context) {
+	var req model.BindOrgRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.UnbindOrgRole(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
 // SetMemberScope POST /api/v1/orgs/members/scope（IW1/BK-14：成员数据范围变更）
 func (h *OrgHandler) SetMemberScope(c *gin.Context) {
 	var req model.SetMemberScopeRequest
