@@ -15,7 +15,8 @@ import (
 const orgSelectColumns = `
 	id, code, name, COALESCE(description, '') AS description,
 	parent_id, path::text AS path, org_type, status, is_system,
-	sort_order, owner_user_ids, created_by, tenant_id, version, deleted_at, created_at, updated_at`
+	sort_order, owner_user_ids, created_by, tenant_id, version, deleted_at, created_at, updated_at,
+	ticket_visibility`
 
 // OrgRepo 组织数据访问
 type OrgRepo struct {
@@ -124,9 +125,13 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 
 // AddMemberWithRole 添加组织成员并指定组内级别（2c，04 §3.4）。
 // 幂等语义与 AddMember 一致（B3-1 primary）；role 由 service 层完成防提权校验。
-func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, isPrimary bool, role string) error {
+func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, isPrimary bool, role, ticketScope string) error {
 	if role == "" {
 		role = "member"
+	}
+	reqScope := ticketScope
+	if ticketScope == "" {
+		ticketScope = "assigned" // DB 默认（000012），显式化以便 ON CONFLICT 分支判断
 	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -141,13 +146,17 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 		}
 	}
 
+	// BK-14：ticket_scope 仅在显式传入时覆盖（重复添加不重置已配置范围）
+	onConflict := "is_primary = user_orgs.is_primary OR EXCLUDED.is_primary"
+	if reqScope != "" {
+		onConflict += ", ticket_scope = EXCLUDED.ticket_scope"
+	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role, ticket_scope)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (user_id, org_id) DO UPDATE
-			SET is_primary = true
-			WHERE EXCLUDED.is_primary`,
-		userID, orgID, isPrimary, role)
+			SET `+onConflict,
+		userID, orgID, isPrimary, role, ticketScope)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
@@ -302,12 +311,13 @@ func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
 			description = NULLIF($3, ''),
 			status = $4,
 			sort_order = $5,
+			ticket_visibility = $7,
 			version = version + 1,
 			updated_at = NOW()
 		WHERE id = $1 AND version = $6 AND deleted_at IS NULL
 		RETURNING version, updated_at`
 	err := r.db.QueryRow(ctx, q,
-		org.ID, org.Name, org.Description, org.Status, org.SortOrder, org.Version,
+		org.ID, org.Name, org.Description, org.Status, org.SortOrder, org.Version, org.TicketVisibility,
 	).Scan(&org.Version, &org.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -514,7 +524,7 @@ func scanOrgRow(row pgx.Row) (*model.Organization, error) {
 	err := row.Scan(
 		&o.ID, &o.Code, &o.Name, &o.Description, &o.ParentID, &o.Path,
 		&o.OrgType, &o.Status, &o.IsSystem, &o.SortOrder, &o.OwnerUserIDs, &o.CreatedBy,
-		&o.TenantID, &o.Version, &o.DeletedAt, &o.CreatedAt, &o.UpdatedAt,
+		&o.TenantID, &o.Version, &o.DeletedAt, &o.CreatedAt, &o.UpdatedAt, &o.TicketVisibility,
 	)
 	if err != nil {
 		return nil, err
@@ -564,6 +574,20 @@ func (r *OrgRepo) SetOwnersTx(ctx context.Context, tx pgx.Tx, orgID int64, owner
 }
 
 // SetMemberRoleTx 事务内变更组内角色（调用方校验在 service 层完成）
+// SetMemberScope 变更成员数据范围（IW1/BK-14，09 §5.2）：非成员 → ErrNotOrgMember
+func (r *OrgRepo) SetMemberScope(ctx context.Context, orgID, userID int64, scope string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE user_orgs SET ticket_scope = $3 WHERE org_id = $1 AND user_id = $2`,
+		orgID, userID, scope)
+	if err != nil {
+		return fmt.Errorf("set member scope: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrNotOrgMember // 50007：目标须为成员（对齐 §3.3.1）
+	}
+	return nil
+}
+
 func (r *OrgRepo) SetMemberRoleTx(ctx context.Context, tx pgx.Tx, orgID, userID int64, role string) error {
 	tag, err := tx.Exec(ctx,
 		`UPDATE user_orgs SET org_member_role = $3 WHERE org_id = $1 AND user_id = $2`,

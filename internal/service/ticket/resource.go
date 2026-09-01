@@ -91,9 +91,27 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return false, err
 	}
 
-	// L2 可见性（策略 B ∪ scope 扩展）：属主 ∨ 全量 ∨ 路径命中
-	if !isOwner(req.UserID, ticket) && !scope.AllScope &&
-		!pathInAnchors(ticket.OrgPath, scope.ReadPaths()) {
+	// L2 可见性（策略 B ∪ scope 扩展）：属主 ∨ 全量 ∨ 路径命中 ∨ 组织委托。
+	// 委托轴（BK-13）：project_isolated 强隔离下锚点消失，org admin/owner 与
+	// ancestor owner 若不在 L2 放行，则 L3 委托永远走不到（Authorize 先 L2 后 L3），
+	// D7–D9 语义失效——故委托命中同样视为可见；透明读下该分支为冗余超集，仅多两次
+	// 索引查询且只发生在 404 路径上。
+	visible := isOwner(req.UserID, ticket) || scope.AllScope ||
+		pathInAnchors(ticket.OrgPath, scope.ReadPaths())
+	if !visible {
+		del, err := r.delegation.IsOrgAdminOrOwner(ctx, req.UserID, ticket.OrgID)
+		if err != nil {
+			return false, err
+		}
+		if !del {
+			del, err = r.delegation.IsAncestorOwner(ctx, req.UserID, ticket.OrgID, ticket.OrgPath)
+			if err != nil {
+				return false, err
+			}
+		}
+		visible = del
+	}
+	if !visible {
 		return false, nil // 不可见 → Service 层转 404
 	}
 
@@ -117,8 +135,9 @@ func isOwner(userID int64, ticket *model.Ticket) bool {
 }
 
 // GetFilter 列表行级过滤（2b 策略 B，09-ticket §5.2）：
-// 属主（created_by/assigned_to）∨ 实体锚点透明读（org_path <@ ANY 锚点）。
-// 锚点为空（用户无组织归属）时第三支恒假，退化为 2a assigned 语义。
+// 属主（created_by/assigned_to）∨ 实体锚点透明读（org_path <@ ANY 锚点）
+// ∨ 组织委托（BK-13 委托轴，与 org_delegation 判定同语义）。
+// 锚点为空（用户无组织归属）时锚点支恒假，退化为属主 ∪ 委托语义。
 func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resource.Filter, error) {
 	scope, err := r.resolver.ResolveScope(ctx, userID)
 	if err != nil {
@@ -130,10 +149,27 @@ func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resou
 	}
 	paths := scope.ReadPaths()
 	return resource.Filter{
-		Where: `(created_by = $1 OR assigned_to = $1 OR org_path <@ ANY($2::ltree[]))`,
-		Args:  []interface{}{userID, paths},
+		Where: `(created_by = $1 OR assigned_to = $1 OR org_path <@ ANY($2::ltree[]) OR ` +
+			delegatedVisibilitySQL + `)`,
+		Args: []interface{}{userID, paths},
 	}, nil
 }
+
+// delegatedVisibilitySQL L2 委托轴（BK-13）：工单所属 org 的 owner（owner_user_ids）
+// / org admin·owner / ancestor owner——与 org_delegation.IsOrgAdminOrOwner/
+// IsAncestorOwner 同语义；org_id 为外层 tickets.org_id 关联列。
+// 命中索引：organizations PK、user_orgs PK (user_id, org_id)、organizations.path GIN。
+const delegatedVisibilitySQL = `EXISTS (
+	SELECT 1 FROM organizations o
+	WHERE o.id = org_id
+	  AND (
+	       $1 = ANY(o.owner_user_ids)
+	    OR EXISTS (SELECT 1 FROM user_orgs du
+	               WHERE du.org_id = o.id AND du.user_id = $1
+	                 AND du.org_member_role IN ('admin', 'owner'))
+	    OR EXISTS (SELECT 1 FROM organizations anc
+	               WHERE anc.path @> o.path AND $1 = ANY(anc.owner_user_ids))
+	  ))`
 
 // pathInAnchors ltree 标签级前缀匹配：org_path 落在任一锚点子树内
 func pathInAnchors(orgPath string, anchors []string) bool {

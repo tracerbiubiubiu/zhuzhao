@@ -123,6 +123,7 @@ func New(deps Deps) *gin.Engine {
 				orgDelegated.POST("/delete", deps.OrgHandler.Delete)
 				orgDelegated.POST("/members", deps.OrgHandler.AddMember)
 				orgDelegated.POST("/members/role", deps.OrgHandler.SetMemberRole)
+				orgDelegated.POST("/members/scope", deps.OrgHandler.SetMemberScope)
 				orgDelegated.POST("/owners", deps.OrgHandler.SetOwners)
 				orgDelegated.POST("/members/delete", deps.OrgHandler.RemoveMember)
 			}

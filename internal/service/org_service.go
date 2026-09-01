@@ -1,6 +1,8 @@
 package service
 
 import (
+	"log/slog"
+
 	"context"
 	"fmt"
 	"sort"
@@ -146,7 +148,28 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 			return errcode.ErrCannotAssignHigherOrgMemberRole
 		}
 	}
-	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role)
+	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role, req.TicketScope)
+}
+
+// SetMemberScope 变更成员数据范围（IW1/BK-14，09 §5.2）：org admin/owner 或全局管理员；
+// scope=all 旁路整个 L2（全局可见），仅全局管理员可授（BK-14 决议）并留审计日志
+func (s *OrgService) SetMemberScope(ctx context.Context, req *model.SetMemberScopeRequest, actorUserID int64) error {
+	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
+		return err
+	}
+	global := s.isGlobalOrgAdmin(ctx, actorUserID)
+	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID, global); err != nil {
+		return err
+	}
+	if req.TicketScope == "all" && !global {
+		return errcode.ErrNoPermission
+	}
+	if err := s.orgRepo.SetMemberScope(ctx, req.OrgID, req.UserID, req.TicketScope); err != nil {
+		return err
+	}
+	slog.Info("member ticket_scope changed", "actor", actorUserID, "org", req.OrgID,
+		"target", req.UserID, "scope", req.TicketScope)
+	return nil
 }
 
 func (s *OrgService) RemoveMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
@@ -303,6 +326,13 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 		return nil, errcode.ErrOrgSystemProtected
 	}
 	org.Name = req.Name
+	// BK-13（09 §5.2.1）：ticket_visibility 仅实体可配；虚拟组继承最近实体祖先，传入即 400
+	if req.TicketVisibility != nil {
+		if org.OrgType == 4 {
+			return nil, errcode.ErrInvalidParams
+		}
+		org.TicketVisibility = *req.TicketVisibility
+	}
 	// D2-03/D2-17：nil = 未传 → 保持现值（patch 语义）
 	if req.Description != nil {
 		org.Description = *req.Description

@@ -9,6 +9,15 @@ type OrgMemberRequest struct {
 	IsPrimary bool  `json:"is_primary"`
 	// 2c（04 §3.4）：可选组内级别；仅 owner 可指定 admin（service 层校验）
 	OrgMemberRole string `json:"org_member_role" binding:"omitempty,oneof=member admin"`
+	// IW1/BK-14（09 §5.2）：可选数据范围；缺省 assigned；scope=all 仅全局管理员可授（service 层校验）
+	TicketScope string `json:"ticket_scope" binding:"omitempty,oneof=assigned group all"`
+}
+
+// SetMemberScopeRequest 变更成员数据范围（IW1/BK-14）
+type SetMemberScopeRequest struct {
+	OrgID       int64  `json:"org_id,string" binding:"required"`
+	UserID      int64  `json:"user_id,string" binding:"required"`
+	TicketScope string `json:"ticket_scope" binding:"required,oneof=assigned group all"`
 }
 
 // SetOrgOwnersRequest 设置组织负责人（2c，04 §3.2）
@@ -46,6 +55,8 @@ type UpdateOrgRequest struct {
 	Description *string `json:"description"`
 	Status      *int    `json:"status" binding:"omitempty,oneof=0 1"`
 	SortOrder   *int    `json:"sort_order"`
+	// BK-13（09 §5.2.1）：仅实体（org_type 1–3）可配置；虚拟组继承最近实体祖先，传入即 400
+	TicketVisibility *string `json:"ticket_visibility" binding:"omitempty,oneof=entity_transparent_read project_isolated"`
 }
 
 // OrgIDRequest 带 org_id 的请求

@@ -22,6 +22,25 @@ type RoleFetcher interface {
 // 防止字符串字面量与实现脱钩后测试依然全绿）
 const SelfServiceContextKey = "self_service"
 
+// rolesCtxKey 角色缓存的 request context key（BK-17：非导出类型防外部伪造）
+type rolesCtxKey struct{}
+
+type cachedRoles struct {
+	userID int64
+	roles  []string
+}
+
+// RolesFromContext 返回 CasbinAuth 已解析的角色缓存（BK-17：同请求免二次
+// 角色展开 SQL）。未经过 CasbinAuth 的调用方（如直调 service 的测试）返回 false，
+// 调用方自然回退到 SQL 查询。
+func RolesFromContext(ctx context.Context) (userID int64, roles []string, ok bool) {
+	c, ok := ctx.Value(rolesCtxKey{}).(*cachedRoles)
+	if !ok {
+		return 0, nil, false
+	}
+	return c.userID, c.roles, true
+}
+
 // SelfService 标记路由为自服务（不需 Casbin 策略，任何已认证有角色用户可访问）。
 // 在路由注册时挂载到对应 RouterGroup，替代硬编码路径白名单。
 // 注意：必须注册在 CasbinAuth 之前（router_test.go 静态断言此顺序）。
@@ -57,6 +76,11 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			c.Abort()
 			return
 		}
+
+		// BK-17：角色随 request context 透传（service 层 GetRoleCodesByUserID
+		// 命中即返回），消除同请求「中间件 + service」两次角色展开 SQL
+		c.Request = c.Request.WithContext(context.WithValue(
+			c.Request.Context(), rolesCtxKey{}, &cachedRoles{userID: userID, roles: roles}))
 
 		// 自服务路由（由 SelfService 中间件标记）跳过 Casbin enforce
 		if _, ok := c.Get(SelfServiceContextKey); ok {

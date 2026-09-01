@@ -26,6 +26,8 @@ type Organization struct {
 	DeletedAt    *time.Time          `json:"deleted_at,omitempty" db:"deleted_at"`
 	CreatedAt    time.Time           `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time           `json:"updated_at" db:"updated_at"`
+	// 2b 策略 B（BK-13）：实体工单可见性；虚拟组继承最近实体祖先，自身不可配置
+	TicketVisibility string `json:"ticket_visibility" db:"ticket_visibility"`
 }
 
 // UserOrg 用户-组织关系

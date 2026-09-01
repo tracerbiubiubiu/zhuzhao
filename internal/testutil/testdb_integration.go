@@ -82,6 +82,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// 2a Step 3：工单模板 + 工单关联（2a 前移）
 			"000015_ticket_templates.up.sql",
 			"000016_ticket_relations.up.sql",
+			// IW1/BK-13：project_isolated CHECK 放开（09 §5.2.1 强隔离开关）
+			"000017_ticket_visibility_check.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

@@ -133,6 +133,20 @@ func (h *OrgHandler) AddMember(c *gin.Context) {
 	response.OK(c, nil)
 }
 
+// SetMemberScope POST /api/v1/orgs/members/scope（IW1/BK-14：成员数据范围变更）
+func (h *OrgHandler) SetMemberScope(c *gin.Context) {
+	var req model.SetMemberScopeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.orgService.SetMemberScope(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
 // RemoveMember POST /api/v1/orgs/members/delete
 func (h *OrgHandler) RemoveMember(c *gin.Context) {
 	var req model.OrgMemberRequest
