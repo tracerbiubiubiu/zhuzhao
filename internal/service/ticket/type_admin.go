@@ -120,6 +120,9 @@ func (s *Service) CreateTicketTemplate(ctx context.Context, req *model.CreateTic
 	if _, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode); err != nil {
 		return nil, err
 	}
+	if req.DefaultPriority != 0 && (req.DefaultPriority < 1 || req.DefaultPriority > 4) {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "default_priority 须为 1–4")
+	}
 	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
 	if err != nil {
 		return nil, err
@@ -138,6 +141,9 @@ func (s *Service) CreateTicketTemplate(ctx context.Context, req *model.CreateTic
 
 // UpdateTicketTemplate 更新模板（patch；code/type/org 不可改）
 func (s *Service) UpdateTicketTemplate(ctx context.Context, code string, req *model.UpdateTicketTemplateRequest) (*model.TicketTemplate, error) {
+	if req.DefaultPriority != nil && (*req.DefaultPriority < 1 || *req.DefaultPriority > 4) {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "default_priority 须为 1–4")
+	}
 	return s.ticketRepo.UpdateTicketTemplate(ctx, code, req.Name, req.DefaultPriority, req.DefaultFields, req.DefaultSLAMinutes)
 }
 

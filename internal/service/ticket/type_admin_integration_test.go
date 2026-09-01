@@ -163,3 +163,33 @@ func TestBK18_TemplateCRUD(t *testing.T) {
 	_, err = svc.GetTicketTemplate(ctx, code)
 	require.Error(t, err)
 }
+
+// ---------- IW1 补：priority 刻度收敛（自由填 → 1–4 枚举） ----------
+
+func TestPriorityScaleValidation(t *testing.T) {
+	svc, admin, envOrgID := setupTicketAdmin(t)
+	ctx := context.Background()
+
+	// 越界：0 之外任意非 1–4 → 400
+	_, err := svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: "incident", Title: "越界 9", OrgID: envOrgID(), Priority: 9}, admin)
+	require.Error(t, err, "priority=9 应 400")
+	_, err = svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: "incident", Title: "越界 -3", OrgID: envOrgID(), Priority: -3}, admin)
+	require.Error(t, err, "priority=-3 应 400")
+
+	// 0 = 缺省 → 归一为 3
+	tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: "incident", Title: "缺省优先级", OrgID: envOrgID()}, admin)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, tk.Priority)
+
+	// 更新越界 → 400；合法 → 生效
+	_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Priority: intPtr2(7)}, admin)
+	require.Error(t, err, "更新 priority=7 应 400")
+	up, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Priority: intPtr2(1)}, admin)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, up.Priority)
+}
+
+func intPtr2(i int) *int { return &i }

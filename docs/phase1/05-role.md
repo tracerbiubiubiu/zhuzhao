@@ -245,6 +245,8 @@ WHERE deleted_at IS NULL
 
 ```
 Phase 2b 有效角色 = 直接 ∪ 所在组织的 org_roles ∪ parent 角色链
+
+> ⚠️ **继承 × 等级规则（2026-08-31 拍板，随 BK-12 角色管理写侧落地）**：设置 `roles.parent_id` 时校验 `parent.priority ≤ child.priority`——继承只允许向下兼容，保证 priority 单调性；否则低 priority 角色经 BFS 继承高 priority 角色即绕过 `ensureRolePriorityAllowed` 防提权防线。此前 parent_id 无写侧入口（BK-12 同族缺口），规则为潜伏态。
 Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独立
 ```
 

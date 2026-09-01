@@ -108,6 +108,10 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if priority == 0 {
 		priority = defaultTicketPriority
 	}
+	// IW1 后随 BK-18 收敛：刻度 1–4（1紧急 2高 3中 4低），越界拒绝（业界枚举口径）
+	if priority < 1 || priority > 4 {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
+	}
 	description := req.Description
 	customData := req.CustomData
 	if req.TemplateCode != "" {
@@ -140,6 +144,10 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 				priority = tmpl.DefaultPriority
 			}
 		}
+	}
+	// 模板默认优先级路径统一收敛（显式路径已在上方校验）
+	if priority < 1 || priority > 4 {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
 
 	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
@@ -248,6 +256,9 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		ticket.Description = *req.Description
 	}
 	if req.Priority != nil {
+		if *req.Priority < 1 || *req.Priority > 4 {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
+		}
 		ticket.Priority = *req.Priority
 	}
 	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
