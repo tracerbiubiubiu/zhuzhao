@@ -150,6 +150,12 @@ func TestBK18_TemplateCRUD(t *testing.T) {
 	}, admin)
 	requireErrCode(t, err, errcode.ErrConflict.Code)
 
+	// 模板默认优先级同样受 1–4 刻度约束
+	_, err = svc.CreateTicketTemplate(ctx, &model.CreateTicketTemplateRequest{
+		Code: code + "_bad", Name: "越界模板", TypeCode: "incident", DefaultPriority: 9, OrgID: 1,
+	}, admin)
+	require.Error(t, err, "模板 default_priority=9 应 400")
+
 	// 更新（patch）
 	updated, err := svc.UpdateTicketTemplate(ctx, code, &model.UpdateTicketTemplateRequest{
 		Name: strPtr("BK18 模板 v2"), DefaultPriority: intPtr(1),
