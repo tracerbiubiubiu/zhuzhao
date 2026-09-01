@@ -142,6 +142,11 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		}
 	}
 
+	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
+	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
+		return nil, err
+	}
+
 	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
 	// org_path 是 2b scope=group 可见性过滤的依赖列（P2-D1 move 级联维护镜像），
 	// 快照必须在事务内与 Move 的 FOR UPDATE 写锁串行化后读取（BK-11 ①）：

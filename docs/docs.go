@@ -230,6 +230,37 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "新建工单模板",
+                "parameters": [
+                    {
+                        "description": "模板定义",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateTicketTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/ticket-templates/{code}": {
@@ -241,6 +272,70 @@ const docTemplate = `{
                     "ticket"
                 ],
                 "summary": "工单模板详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "模板编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "更新工单模板（patch；code/type/org 不可改）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "模板编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新内容",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateTicketTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "删除工单模板",
                 "parameters": [
                     {
                         "type": "string",
@@ -277,6 +372,122 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "新建工单类型",
+                "parameters": [
+                    {
+                        "description": "类型定义",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateTicketTypeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/admin": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "工单类型全量列表（含停用，管理端）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/{code}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "更新工单类型（patch；code 不可改）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新内容",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateTicketTypeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "删除工单类型（有工单禁删 → 409）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/ticket-types/{code}/fields": {
@@ -292,6 +503,72 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "工单类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "全量替换类型字段集",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "字段集",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReplaceTypeFieldsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/{code}/fields/admin": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "类型字段读取（含 validate_regex，管理端）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
                         "name": "code",
                         "in": "path",
                         "required": true
@@ -792,6 +1069,12 @@ const docTemplate = `{
         "model.CreateTicketRequest": {
             "type": "object"
         },
+        "model.CreateTicketTemplateRequest": {
+            "type": "object"
+        },
+        "model.CreateTicketTypeRequest": {
+            "type": "object"
+        },
         "model.DeleteTicketRequest": {
             "type": "object",
             "required": [
@@ -849,6 +1132,9 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.ReplaceTypeFieldsRequest": {
+            "type": "object"
         },
         "model.SetOrgMemberRoleRequest": {
             "type": "object",
@@ -935,6 +1221,12 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.UpdateTicketTemplateRequest": {
+            "type": "object"
+        },
+        "model.UpdateTicketTypeRequest": {
+            "type": "object"
         },
         "response.Response": {
             "type": "object",

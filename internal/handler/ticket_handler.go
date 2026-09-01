@@ -384,3 +384,222 @@ func (h *TicketHandler) GetTicketTemplate(c *gin.Context) {
 	}
 	response.OK(c, tmpl)
 }
+
+// ===== IW3/BK-18：类型/字段/模板管理（管理端，permission = ticket:type:manage） =====
+
+// CreateTicketType POST /api/v1/ticket-types
+//
+//	@Summary	新建工单类型
+//	@Tags		ticket-admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		req	body	model.CreateTicketTypeRequest	true	"类型定义"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/ticket-types [post]
+func (h *TicketHandler) CreateTicketType(c *gin.Context) {
+	var req model.CreateTicketTypeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	t, err := h.ticketService.CreateTicketType(c.Request.Context(), &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, t)
+}
+
+// UpdateTicketType PUT /api/v1/ticket-types/:code
+//
+//	@Summary	更新工单类型（patch；code 不可改）
+//	@Tags		ticket-admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		code	path	string							true	"类型编码"
+//	@Param		req		body	model.UpdateTicketTypeRequest	true	"更新内容"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-types/{code} [put]
+func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的类型编码")
+		return
+	}
+	var req model.UpdateTicketTypeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	t, err := h.ticketService.UpdateTicketType(c.Request.Context(), code, &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, t)
+}
+
+// DeleteTicketType DELETE /api/v1/ticket-types/:code
+//
+//	@Summary	删除工单类型（有工单禁删 → 409）
+//	@Tags		ticket-admin
+//	@Produce	json
+//	@Param		code	path	string	true	"类型编码"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-types/{code} [delete]
+func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的类型编码")
+		return
+	}
+	if err := h.ticketService.DeleteTicketType(c.Request.Context(), code); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// ListTicketTypesAdmin GET /api/v1/ticket-types/admin
+//
+//	@Summary	工单类型全量列表（含停用，管理端）
+//	@Tags		ticket-admin
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/ticket-types/admin [get]
+func (h *TicketHandler) ListTicketTypesAdmin(c *gin.Context) {
+	types, err := h.ticketService.ListTicketTypesAdmin(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, types)
+}
+
+// ReplaceTicketTypeFields PUT /api/v1/ticket-types/:code/fields
+//
+//	@Summary	全量替换类型字段集
+//	@Tags		ticket-admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		code	path	string							true	"类型编码"
+//	@Param		req		body	model.ReplaceTypeFieldsRequest	true	"字段集"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-types/{code}/fields [put]
+func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的类型编码")
+		return
+	}
+	var req model.ReplaceTypeFieldsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), code, &req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), code)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, fields)
+}
+
+// ListTicketTypeFieldsAdmin GET /api/v1/ticket-types/:code/fields/admin
+//
+//	@Summary	类型字段读取（含 validate_regex，管理端）
+//	@Tags		ticket-admin
+//	@Produce	json
+//	@Param		code	path	string	true	"类型编码"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-types/{code}/fields/admin [get]
+func (h *TicketHandler) ListTicketTypeFieldsAdmin(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的类型编码")
+		return
+	}
+	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), code)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, fields)
+}
+
+// CreateTicketTemplate POST /api/v1/ticket-templates
+//
+//	@Summary	新建工单模板
+//	@Tags		ticket-admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		req	body	model.CreateTicketTemplateRequest	true	"模板定义"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/ticket-templates [post]
+func (h *TicketHandler) CreateTicketTemplate(c *gin.Context) {
+	var req model.CreateTicketTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	t, err := h.ticketService.CreateTicketTemplate(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, t)
+}
+
+// UpdateTicketTemplate PUT /api/v1/ticket-templates/:code
+//
+//	@Summary	更新工单模板（patch；code/type/org 不可改）
+//	@Tags		ticket-admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		code	path	string							true	"模板编码"
+//	@Param		req		body	model.UpdateTicketTemplateRequest	true	"更新内容"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-templates/{code} [put]
+func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的模板编码")
+		return
+	}
+	var req model.UpdateTicketTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	t, err := h.ticketService.UpdateTicketTemplate(c.Request.Context(), code, &req)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, t)
+}
+
+// DeleteTicketTemplate DELETE /api/v1/ticket-templates/:code
+//
+//	@Summary	删除工单模板
+//	@Tags		ticket-admin
+//	@Produce	json
+//	@Param		code	path	string	true	"模板编码"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-templates/{code} [delete]
+func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		response.BadRequest(c, "无效的模板编码")
+		return
+	}
+	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), code); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}

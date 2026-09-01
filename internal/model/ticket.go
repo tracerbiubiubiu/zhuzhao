@@ -39,14 +39,15 @@ type TicketType struct {
 
 // TicketTypeField 工单类型字段定义（动态表单）
 type TicketTypeField struct {
-	ID           int64           `json:"id,string" db:"id"`
-	TypeCode     string          `json:"type_code" db:"type_code"`
-	FieldKey     string          `json:"field_key" db:"field_key"`
-	FieldLabel   string          `json:"field_label" db:"field_label"`
-	FieldType    string          `json:"field_type" db:"field_type"`
-	FieldOptions json.RawMessage `json:"field_options,omitempty" db:"field_options"`
-	Required     bool            `json:"required" db:"required"`
-	SortOrder    int             `json:"sort_order" db:"sort_order"`
+	ID            int64           `json:"id,string" db:"id"`
+	TypeCode      string          `json:"type_code" db:"type_code"`
+	FieldKey      string          `json:"field_key" db:"field_key"`
+	FieldLabel    string          `json:"field_label" db:"field_label"`
+	FieldType     string          `json:"field_type" db:"field_type"`
+	FieldOptions  json.RawMessage `json:"field_options,omitempty" db:"field_options"`
+	Required      bool            `json:"required" db:"required"`
+	ValidateRegex string          `json:"validate_regex,omitempty" db:"validate_regex"`
+	SortOrder     int             `json:"sort_order" db:"sort_order"`
 }
 
 // TicketComment 工单回复/备注

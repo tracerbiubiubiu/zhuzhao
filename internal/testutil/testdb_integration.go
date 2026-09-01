@@ -84,6 +84,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000016_ticket_relations.up.sql",
 			// IW1/BK-13：project_isolated CHECK 放开（09 §5.2.1 强隔离开关）
 			"000017_ticket_visibility_check.up.sql",
+			// IW3/BK-18：类型管理闭环（validate_regex 列 + 管理页菜单/menu_apis）
+			"000018_ticket_type_admin.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

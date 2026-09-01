@@ -61,6 +61,10 @@ definitions:
     type: object
   model.CreateTicketRequest:
     type: object
+  model.CreateTicketTemplateRequest:
+    type: object
+  model.CreateTicketTypeRequest:
+    type: object
   model.DeleteTicketRequest:
     properties:
       id:
@@ -102,6 +106,8 @@ definitions:
         type: string
     required:
     - refresh_token
+    type: object
+  model.ReplaceTypeFieldsRequest:
     type: object
   model.SetOrgMemberRoleRequest:
     properties:
@@ -162,6 +168,10 @@ definitions:
         type: string
     required:
     - id
+    type: object
+  model.UpdateTicketTemplateRequest:
+    type: object
+  model.UpdateTicketTypeRequest:
     type: object
   response.Response:
     properties:
@@ -314,7 +324,44 @@ paths:
       summary: 工单模板列表
       tags:
       - ticket
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模板定义
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTicketTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 新建工单模板
+      tags:
+      - ticket-admin
   /api/v1/ticket-templates/{code}:
+    delete:
+      parameters:
+      - description: 模板编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单模板
+      tags:
+      - ticket-admin
     get:
       parameters:
       - description: 模板编码
@@ -332,6 +379,31 @@ paths:
       summary: 工单模板详情
       tags:
       - ticket
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模板编码
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: 更新内容
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTicketTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新工单模板（patch；code/type/org 不可改）
+      tags:
+      - ticket-admin
   /api/v1/ticket-types:
     get:
       produces:
@@ -344,6 +416,69 @@ paths:
       summary: 工单类型列表
       tags:
       - ticket
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 类型定义
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTicketTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 新建工单类型
+      tags:
+      - ticket-admin
+  /api/v1/ticket-types/{code}:
+    delete:
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单类型（有工单禁删 → 409）
+      tags:
+      - ticket-admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: 更新内容
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTicketTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新工单类型（patch；code 不可改）
+      tags:
+      - ticket-admin
   /api/v1/ticket-types/{code}/fields:
     get:
       parameters:
@@ -362,6 +497,61 @@ paths:
       summary: 工单类型字段定义
       tags:
       - ticket
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: 字段集
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReplaceTypeFieldsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 全量替换类型字段集
+      tags:
+      - ticket-admin
+  /api/v1/ticket-types/{code}/fields/admin:
+    get:
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 类型字段读取（含 validate_regex，管理端）
+      tags:
+      - ticket-admin
+  /api/v1/ticket-types/admin:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单类型全量列表（含停用，管理端）
+      tags:
+      - ticket-admin
   /api/v1/tickets:
     get:
       consumes:

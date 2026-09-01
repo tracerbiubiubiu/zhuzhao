@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -326,7 +327,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 // ListTicketTypeFields 查询工单类型字段定义
 func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, required, sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket type fields: %w", err)
@@ -334,7 +335,7 @@ func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) 
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -489,4 +490,202 @@ func joinConds(conds []string) string {
 
 func containsOr(s string) bool {
 	return strings.HasPrefix(s, "(") || strings.Contains(s, " OR ") || strings.Contains(s, " or ")
+}
+
+// ===== IW3/BK-18：类型/字段/模板管理（写侧） =====
+
+// CreateTicketType 新建工单类型（states/transitions 由 service 层给默认值或已校验 JSON）
+func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) error {
+	const q = `
+		INSERT INTO ticket_types (code, name, description, states, transitions, default_sla_hours, is_active)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7)
+		RETURNING id, created_at`
+	err := r.db.QueryRow(ctx, q,
+		t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive,
+	).Scan(&t.ID, &t.CreatedAt)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("create ticket type: %w", err)
+	}
+	return nil
+}
+
+// UpdateTicketType 更新类型（patch：COALESCE 保持；code 不可改）
+func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions json.RawMessage, isActive *bool) (*model.TicketType, error) {
+	const q = `
+		UPDATE ticket_types SET
+			name = COALESCE($2, name),
+			description = COALESCE($3, description),
+			states = COALESCE($4, states),
+			transitions = COALESCE($5, transitions),
+			is_active = COALESCE($6, is_active)
+		WHERE code = $1
+		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
+			default_sla_hours, has_custom_fields, is_active, created_at`
+	var t model.TicketType
+	err := r.db.QueryRow(ctx, q, code, name, description, states, transitions, isActive).Scan(
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errcode.ErrTicketTypeNotFound
+		}
+		return nil, fmt.Errorf("update ticket type: %w", err)
+	}
+	return &t, nil
+}
+
+// DeleteTicketType 删除类型（有工单禁删；字段随类型一并删除）
+func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var cnt int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM tickets WHERE type_code = $1`, code).Scan(&cnt); err != nil {
+		return fmt.Errorf("count tickets by type: %w", err)
+	}
+	if cnt > 0 {
+		return errcode.ErrConflict // 有工单禁删，走停用
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
+		return fmt.Errorf("delete type fields: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM ticket_types WHERE code = $1`, code)
+	if err != nil {
+		return fmt.Errorf("delete ticket type: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrTicketTypeNotFound
+	}
+	return tx.Commit(ctx)
+}
+
+// ReplaceTypeFields 全量替换类型字段集（事务内先清后插）+ has_custom_fields 同步
+func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
+		return fmt.Errorf("clear type fields: %w", err)
+	}
+	for i := range fields {
+		f := &fields[i]
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ticket_type_fields
+				(type_code, field_key, field_label, field_type, field_options, required, validate_regex, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8)`,
+			code, f.FieldKey, f.FieldLabel, f.FieldType, f.FieldOptions, f.Required, f.ValidateRegex, f.SortOrder); err != nil {
+			return fmt.Errorf("insert type field %s: %w", f.FieldKey, err)
+		}
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE ticket_types SET has_custom_fields = $2 WHERE code = $1`, code, len(fields) > 0); err != nil {
+		return fmt.Errorf("sync has_custom_fields: %w", err)
+	}
+	return tx.Commit(ctx)
+}
+
+// ListTicketTypeFieldsAll 管理端全量读取（与只读版同列，含 validate_regex）
+func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
+		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
+	if err != nil {
+		return nil, fmt.Errorf("list type fields: %w", err)
+	}
+	defer rows.Close()
+	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
+		var f model.TicketTypeField
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+			return nil, err
+		}
+		return &f, nil
+	})
+	return fields, err
+}
+
+// ListTicketTypesAdmin 管理端全量（含停用）
+func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, code, name, COALESCE(description, ''), states, transitions,
+			default_sla_hours, has_custom_fields, is_active, created_at
+		FROM ticket_types ORDER BY id ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("list ticket types admin: %w", err)
+	}
+	defer rows.Close()
+	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
+		var t model.TicketType
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		return &t, nil
+	})
+	return types, err
+}
+
+// CreateTicketTemplate 新建模模板（org_path 由 service 层解析后传入）
+func (r *TicketRepo) CreateTicketTemplate(ctx context.Context, t *model.TicketTemplate) error {
+	const q = `
+		INSERT INTO ticket_templates
+			(code, name, type_code, default_priority, default_fields, default_sla_minutes, org_id, org_path, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::ltree, $9)
+		RETURNING id, created_at, updated_at`
+	err := r.db.QueryRow(ctx, q,
+		t.Code, t.Name, t.TypeCode, t.DefaultPriority, t.DefaultFields, t.DefaultSLAMinutes,
+		t.OrgID, t.OrgPath, t.CreatedBy,
+	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		if ec := mapUniqueViolation(err); ec != nil {
+			return ec
+		}
+		return fmt.Errorf("create ticket template: %w", err)
+	}
+	return nil
+}
+
+// UpdateTicketTemplate 更新模板（patch：COALESCE 保持；code/type_code/org 不可改）
+func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name *string, defaultPriority *int, defaultFields json.RawMessage, defaultSLAMinutes *int) (*model.TicketTemplate, error) {
+	const q = `
+		UPDATE ticket_templates SET
+			name = COALESCE($2, name),
+			default_priority = COALESCE($3, default_priority),
+			default_fields = COALESCE($4, default_fields),
+			default_sla_minutes = COALESCE($5, default_sla_minutes),
+			updated_at = NOW()
+		WHERE code = $1 AND deleted_at IS NULL
+		RETURNING id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
+			org_id, org_path::text, created_by, created_at, updated_at`
+	var t model.TicketTemplate
+	err := r.db.QueryRow(ctx, q, code, name, defaultPriority, defaultFields, defaultSLAMinutes).Scan(
+		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes,
+		&t.OrgID, &t.OrgPath, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errcode.ErrNotFound
+		}
+		return nil, fmt.Errorf("update ticket template: %w", err)
+	}
+	return &t, nil
+}
+
+// DeleteTicketTemplate 物理删除模板（无引用方）
+func (r *TicketRepo) DeleteTicketTemplate(ctx context.Context, code string) error {
+	tag, err := r.db.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, code)
+	if err != nil {
+		return fmt.Errorf("delete ticket template: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrNotFound
+	}
+	return nil
 }

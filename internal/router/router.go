@@ -212,6 +212,15 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.ListTicketTypeFields)
 					ticketMeta.GET("/ticket-templates", deps.TicketHandler.ListTicketTemplates)
 					ticketMeta.GET("/ticket-templates/:code", deps.TicketHandler.GetTicketTemplate)
+					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，
+					// L1 admin/superadmin matcher 通配；operator 经类型配置页 AssignMenus 放行）
+					ticketMeta.POST("/ticket-types", deps.TicketHandler.CreateTicketType)
+					ticketMeta.PUT("/ticket-types/:code", deps.TicketHandler.UpdateTicketType)
+					ticketMeta.DELETE("/ticket-types/:code", deps.TicketHandler.DeleteTicketType)
+					ticketMeta.PUT("/ticket-types/:code/fields", deps.TicketHandler.ReplaceTicketTypeFields)
+					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
+					ticketMeta.PUT("/ticket-templates/:code", deps.TicketHandler.UpdateTicketTemplate)
+					ticketMeta.DELETE("/ticket-templates/:code", deps.TicketHandler.DeleteTicketTemplate)
 				}
 			}
 		}
