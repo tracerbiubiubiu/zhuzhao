@@ -372,3 +372,28 @@ func bindOrgMember(t *testing.T, userID, orgID int64) {
 }
 
 func strPtr(s string) *string { return &s }
+
+// ---------- A4/HC1：评论/备注事件补全 ----------
+
+func TestHC1_CommentNoteWriteEvents(t *testing.T) {
+	env := setupB2(t)
+	ctx := context.Background()
+
+	tk := newTicketHelper(t, env.svc, env.u1, env.d1, "HC1 事件工单")
+
+	// 同事公开评论 → comment 事件
+	_, err := env.svc.CreateComment(ctx, &model.CreateCommentRequest{
+		TicketID: tk.ID, Content: "HC1 公开回复"}, env.colleague)
+	require.NoError(t, err)
+	// 处理人/创建人内部备注 → note 事件
+	_, err = env.svc.CreateNote(ctx, &model.CreateNoteRequest{
+		TicketID: tk.ID, Content: "HC1 内部备注"}, env.u1)
+	require.NoError(t, err)
+
+	var commentEvents, noteEvents int
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT COUNT(*) FILTER (WHERE action='comment'), COUNT(*) FILTER (WHERE action='note')
+		 FROM ticket_events WHERE ticket_id = $1`, tk.ID).Scan(&commentEvents, &noteEvents))
+	assert.EqualValues(t, 1, commentEvents, "评论应写 comment 事件（HC1）")
+	assert.EqualValues(t, 1, noteEvents, "内部备注应写 note 事件（HC1）")
+}

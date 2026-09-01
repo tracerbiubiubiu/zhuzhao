@@ -428,8 +428,22 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 		Content:    req.Content,
 		IsInternal: false,
 	}
-	if err := s.ticketRepo.CreateComment(ctx, comment); err != nil {
+	// HC1（A4）：评论与事件同事务落库（事件流供 Phase 3 SLA/通知消费）
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
 		return nil, err
+	}
+	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+		TicketID: req.TicketID, UserID: actorUserID, Action: EventComment,
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return comment, nil
 }
@@ -445,8 +459,22 @@ func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, 
 		Content:    req.Content,
 		IsInternal: true,
 	}
-	if err := s.ticketRepo.CreateComment(ctx, comment); err != nil {
+	// HC1（A4）：内部备注与事件同事务（读写集合一致：能写 note 者必能见其事件流）
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
 		return nil, err
+	}
+	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+		TicketID: req.TicketID, UserID: actorUserID, Action: EventNote,
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return comment, nil
 }
@@ -476,6 +504,18 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	// 自关联校验（DB 有 CHECK 约束，提前拦截返回 400 而非 409）
 	if req.SourceTicketID == req.TargetTicketID {
 		return nil, errcode.ErrInvalidParams
+	}
+	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）
+	relType := req.RelationType
+	if relType == "" {
+		relType = "related"
+	}
+	dup, err := s.ticketRepo.ExistsRelationBetween(ctx, req.SourceTicketID, req.TargetTicketID, relType)
+	if err != nil {
+		return nil, err
+	}
+	if dup {
+		return nil, errcode.ErrConflict
 	}
 	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
 	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {

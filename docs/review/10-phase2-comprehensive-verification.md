@@ -92,10 +92,10 @@
 
 | 前序编号 | 问题 | 当前状态 |
 |----------|------|----------|
-| C1 | `09-ticket §0 L3` "Step 9" 应为 "Step 8-10" | ❌ **未修复** |
-| C2 | `02-authz §2.5` NewResource 签名不匹配 | ❌ **部分修复后再次过时**——文档写 `NewResource(s.ticketRepo)`，实际为 `NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation)` |
-| C3 | `docs/ops/` 缺 deployment.md | ❌ 未修复（Phase 2 外） |
-| C4 | `02-authz §2.2` ScopeResolver 接口不匹配 | ❌ **更严重**——文档画 `EffectiveTicketScope`/`VisibleOrgPaths`/`NearestEntityOrg`/`ScopePathsForMembership`，实际代码为 `ReadAnchorPaths`/`ResolveScope` |
+| C1 | `09-ticket §0 L3` "Step 9" 应为 "Step 8-10" | ⚪ **2026-08-31 复核：驳回维持**（"Step 9" 系 2c Authorize = Step 8–10 中的第 9 步，原文正确；三轮裁定不修） |
+| C2 | `02-authz §2.5` NewResource 签名不匹配 | ✅ **2026-08-31 复核已修**：文档现为三参调用（与代码一致） |
+| C3 | `docs/ops/` 缺 deployment.md | ⏳ 随 08-ops 编写落地（检查单 B10，Phase 3 W3 前） |
+| C4 | `02-authz §2.2` ScopeResolver 接口不匹配 | ✅ **2026-08-31 已修**：§2.2 接口段按现行实现（`ReadAnchorPaths`/`ResolveScope` + `ResolvedScope` 三轴）重写；委托轴分支见 BK-13（IW1） |
 | N4 | README §2.4 000013 缺 `file_objects` | ✅ **已修复**（000014 正确列出两张表） |
 | N5 | VISION §4 migrations 现状 | ✅ **已修复** |
 

@@ -1241,3 +1241,18 @@ type remoteUserQueryService struct {
 → **[rbac-inheritance-and-cascade.md](./rbac-inheritance-and-cascade.md)**（SSOT，**Phase 2b+ 再实现**）
 
 **相关文档**：[architecture.md §11](./architecture.md#11-部署架构)、[phase1/10-concurrency.md](../phase1/10-concurrency.md)、[proposal/deployment-evolution.md](../proposal/deployment-evolution.md)、[roadmap.md](../roadmap.md)。
+
+## 20. 职责分离（SoD）延后决策
+
+> **日期**：2026-08-31 落档 ｜ **来源**：[phase2/11-authz-architecture-review §4](../phase2/11-authz-architecture-review.md)（结论在该评审中已给出，本次补正式落档）
+>
+> **编号说明**：该评审原建议编号 P2-D7，后被 [phase2/00 §10 变更记录](../phase2/00-implementation-plan.md) 的「P2-D7 = Phase 2b 三轨拆分」复用——本条改挂本节编号，避免歧义。
+
+**决策**：现在不建模 SoD（职责分离），落「延后 + 届时优先动态 SoD」记录：
+
+- NIST RBAC 分 flat / hierarchical / constrained（含 SoD 静态/动态互斥）。当前实现为 flat RBAC（角色→接口），无互斥约束。
+- 审批流属 Phase 3（[10-ticket-business §4](../phase3/10-ticket-business.md)，BranchedStateEngine）。届时真实需求形态是**动态 SoD**（「不能审批自己发起的申请」——工作流规则），而非静态角色互斥（「不能同时持有审批人与申请人角色」——过粗且难配置）。
+- 现在建互斥表属过度设计；schema 无需预留。
+- 设计期注意：审批流的节点审批人解析已按 [`Assignee {rule, values}` 策略模型](../phase3/10-ticket-business.md) 设计（2026-08-31，eflow 对标），动态 SoD（如"审批人 ≠ 发起人"）在该模型上以运行时规则表达。
+
+**关联**：[10-ticket-business §4](../phase3/10-ticket-business.md)（BranchedStateEngine）、[11-authz-architecture-review §4](../phase2/11-authz-architecture-review.md)

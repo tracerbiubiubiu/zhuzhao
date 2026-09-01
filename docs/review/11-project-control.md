@@ -127,7 +127,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | MC2 | Org Move 未级联 ticket_templates.org_path | ✅ **已修复**（Move 含 templates 级联） |
 | MC3 | IsAncestorOwner 未用 ticketOrgPath | ✅ **已修复** |
 | P0 | RemoveMember 不清理 owner_user_ids | ✅ **已修复**（owner 三处同步清理） |
-| **HC1** | Comment/Note 不写 ticket_events（无审计事件） | ❌ **未修** |
+| **HC1** | Comment/Note 不写 ticket_events（无审计事件） | ✅ **已修复（2026-08-31，A4）**：CreateComment/CreateNote 事务化并同事务写 comment/note 事件；TestHC1_CommentNoteWriteEvents |
 | **TC1** | delete 成功路径断言 | 🟡 **脚本层已覆盖**（2c 脚本 SAT 建单→删→GET 404）+ 委托删有 Go 测试（vg owner/vg admin/ancestor owner）；**Go 层全局 admin 删单成功测试仍缺** → 11 §8 A7 |
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
@@ -170,13 +170,13 @@ docs/
 
 | # | 事项 | 说明 | 量级 |
 |---|------|------|------|
-| A1 | **文档修正包** | ① phase3 README §1.4 前置矛盾（2b-ext 延后项列为「2b 验收」前置）、§5 状态行（10/11 已编写仍标待编写）；② **review/10 C1–C4 处置**（2026-08-31 逐条核验）：C1「Step 9 应为 8-10」三次裁定驳回维持（wontfix，注记防再犯）、C2 `NewResource` 三参签名已修（注记闭环）、**C4 §2.2 ScopeResolver 接口段与现行实现不符（真开放）**——按 `ReadAnchorPaths`/`ResolveScope` 重写、C3 `docs/ops/deployment.md` 缺 → 归 B10；③ 09 合集抽查回注：F-01/02（VISION 措辞/迁移现状）、F-03（activelist 链）、F-18（Redis requirepass 经 compose 注入）经核实**均已修**（09 行未回标属历史文档常态，此处记录防重复排查） | 半天 |
+| A1 | **文档修正包** | ① phase3 README §1.4 前置矛盾（2b-ext 延后项列为「2b 验收」前置）、§5 状态行（10/11 已编写仍标待编写）；② **review/10 C1–C4 处置**（2026-08-31 逐条核验）：C1「Step 9 应为 8-10」三次裁定驳回维持（wontfix，注记防再犯）、C2 `NewResource` 三参签名已修（注记闭环）、**C4 §2.2 ScopeResolver 接口段与现行实现不符（真开放）**——按 `ReadAnchorPaths`/`ResolveScope` 重写、C3 `docs/ops/deployment.md` 缺 → 归 B10；③ 09 合集抽查回注：F-01/02（VISION 措辞/迁移现状）、F-03（activelist 链）、F-18（Redis requirepass 经 compose 注入）经核实**均已修**（09 行未回标属历史文档常态，此处记录防重复排查） | 半天 | → ✅ **已完成（2026-08-31）**：README §1.4/§5 已修正、review/10 C1–C4 处置注记全落
 | A2 | **迁移编号 000017 归属拍板** | 2b-ext 附件（phase2/00 §Step 6）与 Phase 3 SLA（10-ticket-business §2，占用 000017–000021）都规划 000017。规则建议：**谁先启动谁占用，后者启动时整体重排**——✅ **已拍板（2026-08-31）**：谁先启动谁占用，后者整体重排 | 已关闭 | 决策 |
 | A3 | **BK-11 ② 数据结构拍板** | `tickets.org_path` 保留镜像列（FOR SHARE 已兜底）vs 去列改运行时 JOIN + write-once `created_org_id`；已登记 [phase3/README §4](../phase3/README.md)，✅ **已拍板（2026-08-31）**：保留镜像列；`created_org_id` 留 Step 7e 按需 | 已关闭 | 决策 |
-| A4 | **HC1：comment/note 补 ticket_events** | 事件流是 Step 7 SLA/通知/报表的统一输入，补全属地基（唯一遗留的 §6 未修项）；service 层两处 + 事件常量 + 测试 | ~半天 |
-| A5 | **BK-5：relation 反向判重** | DB 唯一索引只挡同向，A→B 与 B→A 可共存；报表/SLA 引用关联数据前收口数据质量（应用层 EXISTS 检查） | ~1–2h |
-| A6 | **散落决策落档与断链收口**（2026-08-31 全量扫描 phase1/2/3 新发现） | ① **SoD 延后决策未落档**：11-authz-architecture-review §4 已给结论（「延后 + 届时优先动态 SoD」）但从未写入 design-decisions；且其建议编号 P2-D7 已被 00 计划的三轨拆分复用——落档时用新编号并注明别名；② **phase2/12·13 号断链**：14 号文档 5 处引用 `12-phase1-backlog-and-phase2-review.md`、`13-project-plan-multi-round-verification.md`、`13-plan-remediation-actions.md`，文件从未入库（git 历史无删除记录）——修正引用为实际归宿（review/09 等）或加「已并入」注记；③ review §7 item6「DB 错误注入 → 拒绝」测试用例未落（顺手项） | ~1h |
-| A7 | **TC1-Go：补全局 admin 删单成功集成测试** | 现有 Go 覆盖为委托删（vg owner/vg admin/ancestor owner）；全局 admin bypass 删单成功仅 2c 脚本覆盖（SAT 建删删）——补 Go 层测试进 `make test-integration` 基线（CI 可跑）。AGENTS.md 遗留节已同步校准（TC2/HC2 标已修） | ~15min |
+| A4 | **HC1：comment/note 补 ticket_events** | 事件流是 Step 7 SLA/通知/报表的统一输入，补全属地基（唯一遗留的 §6 未修项）；service 层两处 + 事件常量 + 测试 | ~半天 | → ✅ **已完成（2026-08-31）**：comment/note 事件已补（TestHC1_CommentNoteWriteEvents）
+| A5 | **BK-5：relation 反向判重** | DB 唯一索引只挡同向，A→B 与 B→A 可共存；报表/SLA 引用关联数据前收口数据质量（应用层 EXISTS 检查） | ~1–2h | → ✅ **已完成（2026-08-31）**：ExistsRelationBetween 双向判重 + TestBK5_RelationReverseDedup
+| A6 | **散落决策落档与断链收口**（2026-08-31 全量扫描 phase1/2/3 新发现） | ① **SoD 延后决策未落档**：11-authz-architecture-review §4 已给结论（「延后 + 届时优先动态 SoD」）但从未写入 design-decisions；且其建议编号 P2-D7 已被 00 计划的三轨拆分复用——落档时用新编号并注明别名；② **phase2/12·13 号断链**：14 号文档 5 处引用 `12-phase1-backlog-and-phase2-review.md`、`13-project-plan-multi-round-verification.md`、`13-plan-remediation-actions.md`，文件从未入库（git 历史无删除记录）——修正引用为实际归宿（review/09 等）或加「已并入」注记；③ review §7 item6「DB 错误注入 → 拒绝」测试用例未落（顺手项） | ~1h | → ✅ **已完成（2026-08-31）**：SoD 落 design-decisions §20、14 号断链注记、错误注入用例落 02-authz §4
+| A7 | **TC1-Go：补全局 admin 删单成功集成测试** | 现有 Go 覆盖为委托删（vg owner/vg admin/ancestor owner）；全局 admin bypass 删单成功仅 2c 脚本覆盖（SAT 建删删）——补 Go 层测试进 `make test-integration` 基线（CI 可跑）。AGENTS.md 遗留节已同步校准（TC2/HC2 标已修） | ~15min | → ✅ **已完成（2026-08-31）**：TestTicket_Delete_AdminSucceeds 已入集成基线
 
 > 其余待决策点（K8s vs Compose、Redis/PG HA、部署级分离时机、审批流引擎选型）已在 [phase3/README §4](../phase3/README.md) 维护，启动时逐项过表，此处不重复。
 

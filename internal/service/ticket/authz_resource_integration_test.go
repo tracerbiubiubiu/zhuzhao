@@ -299,3 +299,35 @@ func TestTicket_T6_InvalidTransitionReturns90002(t *testing.T) {
 	err = svc.Close(ctx, &model.CloseTicketRequest{ID: a1.ID, Comment: "合法关闭"}, aid)
 	require.NoError(t, err, "open→closed 种子 transitions 允许")
 }
+
+// ---------- A7/TC1：全局 admin 删单成功（Delete 的 admin bypass 正向回归） ----------
+
+func TestTicket_Delete_AdminSucceeds(t *testing.T) {
+	svc, aid, bid, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"}
+	oid := childOrgID(t, "tc1adm")
+
+	b1 := newTicketHelper(t, svc, bid, oid, "TC1-admin 删单")
+	require.NoError(t, svc.Delete(context.Background(), b1.ID, aid),
+		"全局 admin 应可删除任意工单（admin bypass L3 委托轴）")
+}
+
+// ---------- A5/BK-5：relation 反向判重 ----------
+
+func TestBK5_RelationReverseDedup(t *testing.T) {
+	svc, aid, _, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"operator"}
+
+	oid := childOrgID(t, "bk5")
+	a1 := newTicketHelper(t, svc, aid, oid, "BK5 源单")
+	b1 := newTicketHelper(t, svc, aid, oid, "BK5 目标单")
+	// 正向 A→B（同创建人满足两端 update 鉴权）
+	_, err := svc.CreateRelation(context.Background(), &model.CreateRelationRequest{
+		SourceTicketID: a1.ID, TargetTicketID: b1.ID, RelationType: "related"}, aid)
+	require.NoError(t, err, "正向 A→B 应成功")
+
+	// 反向 B→A（同 type）→ 409：BK-5 反向判重（DB 唯一索引只防同向）
+	_, err = svc.CreateRelation(context.Background(), &model.CreateRelationRequest{
+		SourceTicketID: b1.ID, TargetTicketID: a1.ID, RelationType: "related"}, aid)
+	requireErrCode(t, err, errcode.ErrConflict.Code)
+}

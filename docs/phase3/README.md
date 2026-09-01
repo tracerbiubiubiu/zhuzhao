@@ -91,9 +91,9 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 
 **Phase 3** 启动前，**Phase 2b** 必须已完成（**2c 不阻塞 Phase 3 的基础设施部分**——组织委托可与生产加固并行；但**工单业务能力（[10-ticket-business.md](./10-ticket-business.md)）依赖 2c 的 Authorize 升级**，建议 2c 与 Phase 3 并行推进或前置完成）：
 
-- [ ] 2a 验收：TicketResource + **assigned** 范围
-- [ ] 2b 验收：虚拟组 / scope / HR Sync、工单附件、auth-enhance
-- [ ] 2c 验收：**工单业务能力硬前置**（D7–D9 的 org admin/owner + ancestor owner Authorize 是审批流/分派规则依赖项）；建议在 Phase 3 工单业务能力启动前完成
+- [x] 2a 验收：TicketResource + assigned 范围（已交付）
+- [x] 2b 验收：scope group/all + 实体透明读 + 虚拟组（已交付；~~HR Sync、工单附件、auth-enhance~~ 属 2b-ext，不在关键路径——2026-08-31 修正 A1①）
+- [x] 2c 验收：**工单业务能力硬前置**（D7–D9 的 org admin/owner + ancestor owner Authorize 是审批流/分派规则依赖项；已交付）
 
 ### 1.5 可观测性：应用可选、部署可选
 
@@ -259,7 +259,7 @@ Phase 3 主能力稳定运行
 | 文档 | 模块 | 状态 |
 |------|------|------|
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
-| [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | 待编写 |
+| [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
 | [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2 | 待编写 |
 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
 | [05-microservice.md](./05-microservice.md) | 微服务拆分 | **推迟**（Phase 3+ 以后按需；当前作为参考文档） |
@@ -267,6 +267,6 @@ Phase 3 主能力稳定运行
 | [07-security-enhance.md](./07-security-enhance.md) | 安全增强 | 待编写 |
 | [08-ops.md](./08-ops.md) | 运维工具 | 待编写 |
 | [09-platform.md](./09-platform.md) | 平台增强（Phase 3+） | 待编写 |
-| [10-ticket-business.md](./10-ticket-business.md) | **工单业务能力（Phase 3）** | **本修订新增，待编写** |
-| [11-deployment-split.md](./11-deployment-split.md) | **部署级分离方案** | **本修订新增，待编写** |
+| [10-ticket-business.md](./10-ticket-business.md) | **工单业务能力（Phase 3）** | **已编写并修订（2026-08-31，7-0 决议 §4.10 + TB12–16）** |
+| [11-deployment-split.md](./11-deployment-split.md) | **部署级分离方案** | **已编写** |
 | [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |

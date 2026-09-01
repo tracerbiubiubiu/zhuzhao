@@ -220,7 +220,7 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 
 // --- 评论 / 备注 ---
 
-// CreateComment 创建工单回复/备注
+// CreateComment 创建工单回复/备注（薄封装；HC1：service 层走事务版 + 评论事件）
 func (r *TicketRepo) CreateComment(ctx context.Context, c *model.TicketComment) error {
 	return r.CreateCommentTx(ctx, r.db, c)
 }
@@ -392,6 +392,20 @@ func (r *TicketRepo) ListTicketTemplates(ctx context.Context) ([]*model.TicketTe
 }
 
 // --- 工单关联（2a 前移）---
+
+// ExistsRelationBetween BK-5：双向判重——A→B 与 B→A 视为同一关联
+// （DB 唯一索引 (source,target,relation_type) 仅防同向，反向在此前置拦截）
+func (r *TicketRepo) ExistsRelationBetween(ctx context.Context, source, target int64, relType string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM ticket_relations
+			WHERE relation_type = $3
+			  AND ((source_ticket_id = $1 AND target_ticket_id = $2)
+			    OR (source_ticket_id = $2 AND target_ticket_id = $1))
+		)`, source, target, relType).Scan(&exists)
+	return exists, err
+}
 
 // CreateRelation 建立工单关联
 func (r *TicketRepo) CreateRelation(ctx context.Context, rel *model.TicketRelation) error {

@@ -3,6 +3,7 @@
 > **合并来源声明**：
 > 本文档合并了下列 5 份独立文档，解决多份验证报告的发现重复、描述不一致、SSOT 散落问题：
 > 1. `docs/phase2/12-phase1-backlog-and-phase2-review.md`（Phase 1 遗留项 37 项 6 类分类 + Phase 2 六维度二审）
+>   ⚠️ **2026-08-31 断链注记**：本文件与下述 12/13 号三份文件**从未入库**（git 历史无删除记录，疑为本地工作稿）。其有效内容已并入本文档（Part 1 分类清单 / Part 3 检查点）与 [review/09-consolidated-findings.md](../review/09-consolidated-findings.md)；引用仅作历史溯源，勿按路径查找。
 > 2. `docs/review/05-plan-validation.md`（多轮验证报告，版本 1：编号 P-1~P-13）
 > 3. `docs/review/07-project-plan-verification.md`（多轮验证报告，版本 2：编号 P2-1~P2-6 / P3-1~P3-7）
 > 4. `docs/phase2/13-project-plan-multi-round-verification.md`（多轮验证报告，版本 3：按用户 5 检查点组织）

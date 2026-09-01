@@ -98,19 +98,24 @@ const (
     ScopeAll      TicketScope = "all"    // 2b
 )
 
+// —— 2026-08-31（C4 处置）：按现行实现重写（原 2a/2b 渐进式接口已收敛为下述两个方法，
+//    内部单 SQL 三轴归并；委托轴分支在 resource.go 的 Authorize/GetFilter，经 org_delegation 判定）——
 type ScopeResolver interface {
-    // EffectiveTicketScope 2a：无 user_orgs.ticket_scope 时默认 assigned
-    EffectiveTicketScope(ctx context.Context, userID, orgID int64) (TicketScope, error)
-    // VisibleOrgPaths 2b 实现；2a 返回 nil
-    VisibleOrgPaths(ctx context.Context, userID int64) ([]string, error)
-
-    // —— 2b 策略 B 增量（见 09-ticket §5.2）——
-    // ReadAnchorPaths：实体透明读锚点 + scope group/all 路径的并集（L2 读）
+    // ReadAnchorPaths L2 可见路径集（透明锚点 ∪ scope group/all 路径的并集）
     ReadAnchorPaths(ctx context.Context, userID int64) ([]string, error)
-    // nearestEntityOrg：org_id 沿 parent_id 上溯最近的 org_type IN (1,2,3) 实体
-    NearestEntityOrg(ctx context.Context, orgID int64) (*model.Organization, error)
-    // scopePathsForMembership：单条 user_orgs 按 ticket_scope 计算可见 ltree 路径
-    ScopePathsForMembership(ctx context.Context, m model.UserOrg) ([]string, error)
+    // ResolveScope 完整解析结果（assign 主管判定 / 全量开关消费）
+    ResolveScope(ctx context.Context, userID int64) (*ResolvedScope, error)
+}
+
+// ResolvedScope 三轴 OR 合并、不互相替代（09-ticket §5.2）：
+//   - AnchorPaths：透明读锚点（最近实体祖先 org_type IN 1,2,3，受 ticket_visibility 门控；
+//     project_isolated 时锚点消失，由委托轴兜底可见性）
+//   - ScopePaths：ticket_scope=group 的成员组织子树路径（不受 visibility 门控）
+//   - AllScope：任一成员 ticket_scope=all → 全量
+type ResolvedScope struct {
+    AnchorPaths []string
+    ScopePaths  []string
+    AllScope    bool
 }
 ```
 
@@ -267,6 +272,14 @@ Phase 1 的策略同步方式为**写后全量 `LoadPolicy()`**（`AssignMenus` 
 **测试落点约定**（B4）：R1/R2 单测 → `internal/pkg/resource/registry_test.go`；R3–R8 集成测试 → `internal/service/ticket/authz_resource_integration_test.go`（真表 testcontainers PG，复用 phase1 `testutil` 模式；`internal/testutil/testdb_integration.go` 已追加 `000010_ticket.up.sql` 迁移列表）；中间件顺序回归 + Casbin L1 → `scripts/acceptance-phase2a.sh` Section A（Phase1 27 例回归 P2-D5）+ §T7（R8 viewer 403）。
 
 ---
+
+**故障注入（IW1/A6③ 落档，2026-08-31）**：
+
+| 用例 | 注入点 | 预期 |
+|------|--------|------|
+| R-E1 | scope resolver 查询失败（DB 不可达/超时） | Authorize 返回错误 → 500，**不得**降级为 404（Q3：错误 ≠ 不可见） |
+| R-E2 | Casbin enforce 内部错误 | 其余角色继续 enforce；全部失败 → 503（casbin.go 既有行为） |
+| R-E3 | 委托判定查询失败（IsOrgAdminOrOwner / IsAncestorOwner） | 返回错误 → 500，不得静默视为"无委托"放行或拒绝 |
 
 ## 5. 涉及文件
 

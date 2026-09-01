@@ -18,6 +18,8 @@ const (
 	StatusRejected      = "rejected"
 
 	EventCreated       = "created"
+	EventComment       = "comment"
+	EventNote          = "note"
 	EventUpdated       = "updated"
 	EventStatusChanged = "status_changed"
 	EventAssigned      = "assigned"
