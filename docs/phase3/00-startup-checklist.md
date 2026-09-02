@@ -51,22 +51,23 @@
 | B5 | BK-11② 实施 | 随 A3 拍板，Step 7 动工前 |
 | B6 | ~~BK-12：org_roles / parent_id 写侧~~ | ✅ 已实施（2026-08-31，IW3 附带）：绑定/解绑/列表端点 + parent_id 单调规则；HR 同步启动时无需再补写侧 |
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
-| B9 | 待编写 **5 份**：03-audit-l2（W1 前）/ 06-ha、07-security-enhance、08-ops+deployment.md（W3 前）/ 09-platform（L2 时）；**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；另 10 号待 7-0 细节修订；03-audit-l2 编写时纳入 B11①②（占位已建 2026-09-01） | 随启动的子能力/Wave 编写；W2 以 W1 为硬前置（已确认，README §2.1.0）；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
+| B9 | 文档补齐状态：**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；**已编写（2026-09-02，原 5 份待编写全部补齐）**：03-audit-l2（替换占位，含 B11①②）/ 06-ha / 07-security-enhance / 08-ops + **ops/deployment.md**（B10）/ 09-platform；另 13-implementation-plan（执行计划）与 docs/ops/deployment.md 同日补齐 | 全部文档就绪，启动时按 Wave 取用；**M2 硬依赖 = Asynq 底座（2026-09-02 §22.1 修订，M1 降 🚦）**；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
-| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **W1**（03-audit-l2 文档范围，B9；写入管道「同步落库 vs Redis List 缓冲、失败容忍」随该文档拍板）；②随 **W2**（Asynq 随 W2 落地——SLA 扫描先用，归档做成 periodic task 顺带；W2 硬前置 W1，顺序天然成立） |
+| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **W1/M1**（03-audit-l2 文档范围，B9；写入管道「同步落库 vs Redis List 缓冲、失败容忍」随该文档拍板）；②随 **M-E**（Asynq 任务平台首个预置任务；~~SLA 扫描先用~~ 随工单暂缓，2026-09-02 §23） |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
 | # | 事项 | 状态 |
 |---|------|------|
 | IW1 | ~~BK-13 + BK-14 多虚拟组可见性场景闭环~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴/矩阵测试；验证 211/0 全链 + 13 包 `-race` |
-| IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / HR 同步（触发 B6） | 按需独立启动 |
+| IW2 | 2b-ext 三件：附件（触发 A2）/ auth-enhance / ~~HR 同步~~（**已升 Phase 3 主链 2026-09-02**：M-HR（原 M2.5）预留接口版 HRFetcher+引擎+mock adapter，design-decisions §22.2/§23.2 / 13 号 §1 M-HR） | 附件 / auth-enhance 按需独立启动；HR 同步随 Phase 3 主链 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端管理页/动态表单照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter` 增 `Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（调用点锁定 ticket 包）+ 测试 4 个（哨兵拒绝 / AllScope 豁免 / 常规谓词不误伤 / 集成双侧 `TestTicketRepoList_Iw4Guard`）；验证 = lint + 13 包单测/集成 `-race` 全绿 + acceptance 四档 FAIL=0（87+66+26+32 = 211，2026-09-01 实测） |
 
 > **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）、P2-3（BFS CTE 双处一致性测试或抽共享 SQL）、**~~测试隔离债~~**（原口径仅「`-count=2` 下 R 系列二跑撞首跑」，8151a15 登记；063f5c9 复现证实为既有债务）。**根因定稿（2026-09-01 二批，口径改宽）**：两类随机红——① `idx_org_code` 23505：`setupTicket2a` 的 code 用 `to_char(clock_timestamp(),'MS')`（秒内毫秒位 000-999，周期 1s）+ 共享容器残留不清理 → 同 run 高负载下 setup 间隔漂移进整秒碰撞窗口、跨 run 对残留以 ~1/1000/行 累积撞车，flaky 单调恶化；**非并行竞争**（全仓零 `t.Parallel()` 实证）。② 跨包 TRUNCATE 踩踏：`org_repo:22` TRUNCATE organizations、`b4/rbac/auth` TRUNCATE users CASCADE，`./internal/...` 多二进制并发时端掉 ticket 包脚下的表（no-rows/FK 类随机红）。**全量清偿（2026-09-01 二批）**：`uniqueSuffix()`（完整 UnixNano）统一替换全仓 40 处截断点（ticket 28 + service 12；%1e9 属同模式隐患，10⁻⁹ 量级非碰撞源，统一化=一致性加固）；7 个建 org 函数全部 `t.Cleanup` 软删（`softDeleteOrg`，部分唯一索引软删即释放 code、FK 不看 deleted_at 无需清工单）；`2a_it_*` 用户改每 run 全新 + `createB2User` eno 唯一化（fixture 唯一化，R3/R8 计数与 `idx_user_orgs_single_primary` 随之修复）；`childOrgID` DO NOTHING→DO UPDATE RETURNING（消 no-rows 雷）+ 删 `p2a_it_sub` 死退化分支（不可达）；模板创建点补清理（保 `TestMeta_Templates_Empty`）；`make test-integration` 加 `-p 1`（跨包串行）。**验证**：ticket 包 `-count=2` 全绿（原必挂）+ 全量集成 `-p 1` 二连跑全绿 + lint/单测/acceptance 27+66+26+32 FAIL=0。user_orgs 孤儿行（软删 org 后残留）不清理：FK 不看 deleted_at、读侧按新 user_id 查询无串扰，彻底清偿可选。
 > 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
+> **BK-20（软删组织委托残留处置，2026-09-02 登记）**：禁删有未结工单的组织（两删除函数加计数守卫 + ErrOrgHasOpenTickets 409 + acceptance 删组织用例适配）；已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21，详见 00 §9。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
 > activelist（ADR-003）**不属独立窗口**——它是 Phase 3 范畴，即 README §2.1.0 的 Wave **W4**（入口 = Wave W2 完成 + 启用条件命中），勿在此表挂靠。
@@ -77,6 +78,8 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 ## 3. 决策清单（启动时逐项过，维护于 [phase3 README §4](./README.md)）
 
+> **⚠ 执行结构已修订（2026-09-02，design-decisions §22 + §23）**：六项所有者拍板落 §22——M1 降 🚦、HR 同步升主链（预留接口版）、activelist 拆两半、签发模型=指派给人、7c 完整引擎维持硬交付、引擎可替换约束；**随后 §23 重定位（2026-09-02）**：工单自研暂缓（内部引擎优先），§22 中 7c 引擎硬交付相关拍板被推翻，主链改为 M-E/M-A/M-HR/M-Mig（详见 [13-implementation-plan](./13-implementation-plan.md) §1）。执行细节以 13 号为准。
+
 | 事项 | 建议 | 状态 |
 |------|------|------|
 | A2 迁移号 000017 归属 | 谁先启动谁占用，后者重排 | ✅ 已拍板（2026-08-31） |
@@ -84,7 +87,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | K8s vs Docker Compose | Compose + Nginx 足够 | 待拍板（建议沿用） |
 | Redis / PG 高可用 | Sentinel / 云托管 Cluster | 待拍板（建议沿用） |
 | 部署级分离时机 | Phase 3 末按需验证 | 待拍板 |
-| 审批流引擎选型 | 手写 BranchedStateEngine | 待拍板（建议沿用） |
+| 审批流引擎选型 | 手写 BranchedStateEngine | ~~待拍板（建议沿用）~~ **随 §23 暂缓**（对接内部平台，自研不做；翻案恢复） |
 | 可观测性栈 / 工单事件机制 | 已决策（应用内开关 / L1） | ✅ |
 
 ## 4. 对话记录依赖项与历史登记复核（2026-08-31 审计结论）
@@ -115,3 +118,9 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-09-01（go-wind-admin 调研吸收） | 登记 **IW4**（行级过滤护栏 fail-closed，建议与 BK-19 同批）+ **B11**（审计治理：① L2/L3 判定日志随 W1/03-audit-l2、② 归档随 W2/Asynq）；03-audit-l2 建范围占位；11 §8 独立窗口表同步编号治理（W1/W2→IW1/IW2、补 IW3）；11 §8 B6 回填关闭；随手项补可选 Q5 组织赋角注记。调研结论：Provider 抽象不排期（接缝=自有 ResourceAuthorizer，挂 ReBAC 触发器）；「快照 vs 实时」无需新记录（Q5 已覆盖） |
 | 2026-09-01（IW4 实施） | IW4 当日落地：`resource.Filter.Unscoped` 显式豁免 + `ticket_repo.List` fail-closed 哨兵 + admin/scope=all 两处显式化 + AST 调用点守护（`TestGuard_TicketRepoListCallSites`）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 87+66+26+32 FAIL=0）。改动未提交，随批准批次落 |
 | 2026-09-01（org_type 收敛 000019） | **org_is_virtual**：`org_type` 四值枚举（1/2/3 实体细分 + 4 虚拟）收敛为 `is_virtual` 布尔（0/1 讨论后定 bool——类型级杜绝"无消费细分复发"；未传=false=实体为安全缺省）；API 契约 `org_type` → `is_virtual`（前端暂缓期无消费方，12-frontend 零引用实证）；层级不设 tier（path/nlevel 已三份表达，HR 多维归属需求出现时另议标签字段）。改动：迁移 000019（含 CHECK 缺席说明——bool 天生两值）+ model/binding（去 required，bool 零值即合法）+ org_service 5 处 + scope_resolver 锚点 + 测试字面量全量 sweep + acceptance 四脚本适配 + 03-org-enhance/architecture 定义更新 + 11 迁移地图 + swag。全门禁绿，未提交 |
+| 2026-09-02（软删委托残留处置登记） | 外评实证「软删 org 历史工单对原 owner/祖先 owner 保留委托读写」（三处委托 SQL 无 `deleted_at` + 删守卫不查工单/owner；普通 Delete 因双轨同步常规不可达，vg 删除路径系统性产生）。拍板两步划界：① **BK-20 登记**（禁删有未结工单的组织，待实施 ~半天，acceptance 删组织用例需核对适配）；② 已结工单委托残留=档案连续性**登记不修**（显式断开=删除前 SetOwners 清空；翻案条件见 §21）。语义 SSOT 落 design-decisions **§21**；11 §6 加 BK-20 行 |
+| 2026-09-02（Phase 3 执行结构修订） | 排期评审六项拍板落 **design-decisions §22**（SSOT）+ [13 号](./13-implementation-plan.md)全量同步 + README §2.1.0 修订注记：① M1 降 🚦（修订决议②，M2 硬依赖=Asynq 底座，防重按 02 号约定写码）；② HR 同步升主链 M2.5（HRFetcher 预留接口版，IW2 行同步）；③ M4 activelist 拆两半（writer 管道随 W2 / E13·G1·G3 蓝图 🚦 随其独立项目；独立数据库拍板认可）；④ 签发模型=指派给人（转派端点不做，viewer 能力=AssignMenus 运营配置）；⑤ 7c 完整引擎维持硬交付；⑥ 引擎可替换约束（WorkflowEngine 接口 + 实例状态通用/私有分层）。7-0 新增拍板项三项（writer 契约/通知跟人 vs 跟单/引擎接口契约）；README §4 A3 漂移同步修掉 |
+| 2026-09-02（**Phase 3 重定位：工单自研暂缓（内部引擎优先，自研兜底）**） | 所有者拍板落 **design-decisions §23**（推翻 §22.5）：项目将迁移公司内部、**对接内部工单平台/引擎**——工单 Phase 2 现状封版（仅保 BK-20 数据安全修复），7a–7e/引擎/前端暂缓自研，10/12 号转对接参考。Phase 3 主线重排（13 号 §1 修订表）：M0 收窄 → M-E 事件基建（Asynq + 审计归档首任务）→ M-A activelist 独立实现（外部事件契约由 activelist 侧定义）→ M-HR HR 同步（内网迁移前置）→ M-Mig 迁移准备；B11① 可并入 M-E；工单对接形态与 Phase 2 资产处置 = 迁移时拍板 🚦。BK-19/随手项随封版后置；README/10/12/13 均已加重定位注记 |
+| 2026-09-02（M-E 扩展为任务平台） | 自定义任务需求（预置 + 用户 Python/Shell 脚本）并入 M-E：Asynq 底座 + 预置任务（审计归档）+ 自定义脚本任务（安全边界 = 仅全局管理员可配，design-decisions §23 补充拍板）；参照 ginfast scheduler / xxl-job GLUE；人日 3–4 → 6–8 |
+| 2026-09-02（M-SSO 新增） | 公司 SSO 对接拍板 OAuth2.0（design-decisions §24）：SSOProvider 接口预留版 + callback 签发自有 JWT（鉴权三层零改动）；JIT 默认关；与 M-HR 对账键一致、分工明确（SSO 管认证/HR 管账号数据）；13 号 §1 M-SSO 行，2–3 人日 |
+| 2026-09-02（M-SSO 降 🚦） | SSO 设计定稿（§24）但实施后置：现在零代码预留，进内网拿到公司 OAuth2.0 接入信息后按蓝图实施（13 号 §1 M-SSO 行标 🚦） |

@@ -1,20 +1,169 @@
 # Phase 3 · 审计日志 L2（audit-l2）
 
-> **状态：待编写（W1 前，检查单 B9）。** 本文件当前为**范围占位**，锚定 2026-09-01 登记的范围（检查单 B11 / 11 §8），防止正式编写时漂移。W1 启动时以本文档正式编写为准。
+> **定位**：审计管道从 Phase 1 的「中间件同步写 audit_logs」升级为 **L2（Redis List 缓冲，进程崩溃不丢）**，并补齐两块治理缺口：**B11① L2/L3 策略评估日志**（补 L2 拒绝无留痕盲区）、**B11② 审计归档**（大表治理，先建表必先有归档）。
+> **Wave 归属**：W1（Step 3，03 文档；B11① 随 W1/M1 落地，且价值独立于多实例——**可与 M-E 合并实施**）；B11② 实施随 **M-E**（Asynq 任务平台首个预置任务；2026-09-02 §23，原「随 W2」随工单暂缓调整）。
+> **状态**：**已编写（2026-09-02，替换原占位）**。写入管道等决策点保留为 ⚠️ 待拍板。
+> **权威出处**：检查单 B11 / 11-project-control §8 B9·B11 / go-wind-admin 调研（2026-09-01）。
+> **标记约定**：`🚦` = 触发条件驱动，由所有者决定；`⚠️` = 待拍板/不确定性。
 
-## 范围（2026-09-01 登记）
+---
 
-1. **审计管道 L2**（原定范围）：Redis List 缓冲审计写入，进程崩溃不丢日志。
-2. **B11① L2/L3 策略评估日志**（随 W1）：
-   - 判定日志表（迁移编号启动时按 A2 规则核对，当前已占用至 000018）；
-   - 埋点于 `resource.Authorize` / `scope_resolver.resolve`（字段：actor / 资源 / 动作 / scope 轴 / 结果 / 原因 / trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；
-   - **写入管道随本文档拍板**：同步落库 vs 复用本模块 Redis List 缓冲、失败容忍度（fail-open 吞错不阻断业务 vs fail-close）。
-3. **B11② 审计归档**（范围登记于此，实施随 W2 Asynq）：
-   - audit_logs + 判定日志表超期导出 JSONL、**导出成功后才删行**；
-   - Asynq periodic task（每日低峰）；保留期默认 180 天（等保 ≥6 个月口径）、配置可调；
-   - 与 W1 的顺序天然成立（W2 硬前置 W1）：先建表埋点、Asynq 到位后接归档。
+## 1. 现状与问题
 
-## 参考实现（go-wind-admin，2026-09-01 调研）
+| 现状 | 问题 |
+|---|---|
+| Phase 1：操作日志中间件**同步写** `audit_logs`（含脱敏 + action 注册） | 请求路径同步写 DB，高并发下增加延迟；进程崩溃在写库前不丢（事务内），但无缓冲 |
+| L3 路由拒绝：有 slog Warn + 审计行带 403/404 | ✅ 有留痕 |
+| **L2 scope 拒绝：完全静默** | ❌ **盲区**：`resource.Authorize` / `scope_resolver.resolve` 拒绝无任何日志，无法审计「谁在资源级被拒」 |
+| `audit_logs` 持续增长 | ❌ 无归档/清理机制，长期膨胀；判定日志是**天然大表**，先建无归档 = 重蹈覆辙 |
 
-- **判定日志**：`sys_policy_evaluation_logs`——装饰器引擎包装 `IsAuthorized`，每次判定同步落一行（写失败吞错不阻断鉴权），字段含 result / effect_details（拒绝原因）/ evaluation_context（决策上下文 JSON 快照）/ trace_id / 命中 permission+policy。**注意其只盖 API 级鉴权（数据级 `scope_sql` 是预留空字段）**——zhuzhao 的痛点在资源级 L2，须埋在 `resource.Authorize`，不能照抄中间件装饰器模式。
-- **归档**：asynq `audit_log_archive` 每日 03:30、保留 180 天（环境变量可调）、导出本地 JSONL（单批 5000 行、单表失败跳过）、导出成功才按同批 id 删行。**其归档仅落本地文件不上对象存储——zhuzhao 实施时需补上传一环**（对接 §oss 或 PG 备份体系）。
+---
+
+## 2. 审计管道 L2（Redis List 缓冲）
+
+### 2.1 目标
+
+审计写入改为：**中间件/Service → 内存 channel → Redis List → 异步 goroutine 落库**，进程崩溃不丢日志（Redis 持久化 + 未落库前 List 内保留）。
+
+### 2.2 数据流
+
+```
+业务请求
+  ├─ 审计中间件  ──写入──▶  L2 writer（channel 缓冲）
+  ├─ 判定日志埋点 ──写入──▶   │
+  │                          ▼
+  │                  Redis List（audit:logs / audit:policy_eval）
+  │                          ▼
+  │              后台 goroutine 批量落库（audit_logs / policy_evaluation_logs）
+  ▼
+响应返回（不阻塞）
+```
+
+- 写入动作**不阻塞业务**；Redis 不可用时按 ⚠️ 失败容忍策略处理（见 §7）。
+- 落库失败重试 + 保留原始记录，防止静默丢审计。
+
+### 2.3 配置段（草案）
+
+```yaml
+audit:
+  pipeline: l2            # l1（同步写 DB，现状）| l2（Redis List 缓冲，Phase 3）
+  buffer_size: 1024       # 内存 channel 容量
+  redis_list: audit:logs  # Redis List key
+  batch_size: 200         # 批量落库条数
+  flush_interval: 1s      # 落库周期
+  fail_policy: open       # ⚠️ open（吞错不阻断业务）| close（阻断/降级）—— 待拍板
+```
+
+---
+
+## 3. B11① L2/L3 策略评估日志（判定日志）
+
+### 3.1 目的
+
+补 **L2 scope 拒绝无留痕盲区**：每次资源级鉴权判定（允许/拒绝）落一行，可审计、可排障、可复盘越权尝试。
+
+### 3.2 判定日志表（DDL 草案，迁移编号启动时按 A2 核对）
+
+```sql
+-- 迁移编号：⚠️ 启动时核对（当前占用至 000019；判定日志表为 Phase 3 新增）
+CREATE TABLE policy_evaluation_logs (
+    id               BIGSERIAL PRIMARY KEY,
+    actor_id         BIGINT NOT NULL,             -- 操作人
+    actor_role_codes TEXT[],                       -- 角色码（L1 展开结果）
+    resource_type    VARCHAR(50) NOT NULL,         -- ticket / org / ...
+    resource_id      VARCHAR(100) NOT NULL,        -- 资源标识（如 ticket:123）
+    action           VARCHAR(50) NOT NULL,         -- approve / update / close / ...
+    scope_axis       VARCHAR(20),                  -- L1 | L2 | L3（判定层）
+    scope_detail     JSONB,                        -- 解析轴细节（锚点/scope 快照，可选）
+    result           BOOLEAN NOT NULL,             -- 允许 / 拒绝
+    reason           VARCHAR(200),                 -- 拒绝原因（如 scope mismatch / 非属主）
+    trace_id         VARCHAR(64),                  -- 请求 trace 串联
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pel_created ON policy_evaluation_logs(created_at);
+-- ⚠️ 大表：必须先落 B11② 归档（保留期默认 180 天）再启用，否则无限膨胀
+```
+
+> **参考（go-wind-admin `sys_policy_evaluation_logs`，2026-09-01 调研）**：装饰器引擎包装 `IsAuthorized` 每次判定同步落一行（写失败吞错不阻断鉴权），字段含 result / effect_details / evaluation_context / trace_id。**注意其只盖 API 级鉴权（数据级 scope_sql 为预留空字段）**——zhuzhao 的痛点在**资源级 L2**，必须埋在 `resource.Authorize` / `scope_resolver.resolve`，**不能照抄中间件装饰器模式**。
+
+### 3.3 埋点位置
+
+| 位置 | 覆盖 | 埋点方式 |
+|---|---|---|
+| `resource.Authorize` | 资源级 L2（scope/虚拟组/BFS 三源/委托） | 判定入口统一埋（含结果+原因） |
+| `scope_resolver.resolve` | scope 解析轴 | 解析细节入 scope_detail（可选，量可控时开） |
+| 中间件层 | L1 路由拒绝（已有 slog Warn + 审计 403/404） | 维持现状，不重复落 |
+
+- 埋点写入随 §2 管道（L2 writer），与业务同事务解耦、不阻塞。
+- ⚠️ **失败容忍**：写失败默认 fail-open 吞错不阻断鉴权（参考 go-wind-admin），与 §7 拍板一致。
+
+---
+
+## 4. B11② 审计归档（随 M-E Asynq）
+
+### 4.1 目标
+
+`audit_logs` + `policy_evaluation_logs` 超期数据**导出 JSONL 后删行**，控制大表膨胀。
+
+### 4.2 机制（参考 go-wind-admin）
+
+| 项 | 建议 |
+|---|---|
+| 触发 | Asynq periodic task，每日低峰（建议 03:30，**每任务阻塞/去重策略逐个拍板**——归档漏跑可容忍 > 并发） |
+| 保留期 | 默认 **180 天**（等保 ≥6 个月口径），配置可调 |
+| 导出 | JSONL，单批 5000 行，单表失败跳过（不阻塞另一表） |
+| 删除 | **导出成功后才按同批 id 删行**（防「删了没导出」） |
+| 存储 | ⚠️ go-wind-admin 只落本地文件——**zhuzhao 需补上传一环**（对象存储 / PG 备份体系），存储位置待拍板 |
+
+### 4.3 顺序
+
+先建表埋点（随 M1/M-E，B11①）→ Asynq 到位（随 **M-E**）→ 接归档 periodic task（B11②，M-E 首个预置任务）。归档只需 Asynq 落地（M-E），**不依赖多实例 M1**（2026-09-02 §22.1/§23 修订：M2 硬依赖 = Asynq 底座；M2 工单业务随 §23 暂缓，Asynq 基建归 M-E）。
+
+---
+
+## 5. 涉及文件（规划）
+
+```
+internal/middleware/audit.go        # 审计中间件接入 L2 writer（pipeline 开关）
+internal/service/audit_service.go   # 落库 goroutine + 批量写
+internal/service/ticket/resource.go # resource.Authorize 判定日志埋点
+internal/service/ticket/scope_resolver.go # resolve 埋点（可选）
+internal/pkg/audit/                 # L2 writer（channel + Redis List）
+configs/config.yaml                 # audit 段
+migrations/                         # policy_evaluation_logs（编号启动时核对）
+internal/task/audit_archive.go      # Asynq 归档 periodic task（M-E）
+```
+
+---
+
+## 6. 验收用例
+
+| # | 用例 | 通过标准 |
+|---|---|---|
+| AL1 | L2 拒绝留痕 | scope 拒绝请求 → `policy_evaluation_logs` 落一行（actor/资源/动作/scope 轴/结果/原因/trace_id） |
+| AL2 | L2 允许留痕 | 正常授权请求 → 允许行（result=true） |
+| AL3 | 写失败不阻断 | 判定日志写入失败（mock Redis down）→ 鉴权仍正常（fail-open） |
+| AL4 | 崩溃不丢 | L2 writer 缓冲未落库 → 进程重启后 List 内记录仍落库 |
+| AL5 | 归档导出后删 | 超期行导出 JSONL 成功 → 原行删除；导出失败 → 不删（M-E） |
+| AL6 | 保留期可配 | 修改保留期配置 → 归档边界随之变化（M-E） |
+
+---
+
+## 7. 待决策点（⚠️）
+
+| # | 事项 | 建议 | 状态 |
+|---|---|---|---|
+| D1 | 写入管道：同步落库 vs Redis List 缓冲 | **Redis List 缓冲（L2）**；单实例小规模可先保持 l1 | 待拍板 |
+| D2 | 失败容忍：fail-open vs fail-close | **fail-open**（吞错不阻断鉴权/业务，参考 go-wind-admin） | 待拍板 |
+| D3 | 归档存储位置：对象存储 vs PG 备份 vs 本地 | 需补上传一环；按运维体系选 | 待拍板 |
+| D4 | 判定日志是否默认全开 | 量可控时开；超量可降采样/仅记录拒绝 | 待拍板 |
+| D5 | 保留期默认值 | 180 天（等保口径），可配 | 建议沿用 |
+
+---
+
+## 8. 变更记录
+
+| 日期 | 说明 |
+|---|---|
+| 2026-09-01 | 建范围占位（B11 登记） |
+| 2026-09-02 | 正式编写：管道 L2 + B11① 判定日志 + B11② 归档 + 埋点/DDL 草案 + 验收用例 + 待决策点 |

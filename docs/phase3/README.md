@@ -2,6 +2,8 @@
 
 > **🚦 启动入口**：启动 Phase 3 前先过 [00-startup-checklist.md](./00-startup-checklist.md)——A/B/W 全量清单 + 决策清单 + 检查顺序（2026-08-31 建档，启动时先刷新状态）。
 
+> **⚠ 重定位（2026-09-02，SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单**自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复）。本文「工单业务能力闭环」（W2/Step 7、§2.1.0 决议②⑤相关表述）**暂缓自研**，10/12 号转对接参考；Phase 3 主线改为 **Asynq 事件基建 + activelist 独立实现 + HR 同步 + 内网迁移准备**（现行主链与排期见 [13-implementation-plan](./13-implementation-plan.md) §1 修订表）。本文其余内容（多实例/HA/安全/运维/平台增强）仍为 🚦 参考设计。
+
 > ⚠️ **暂缓声明（2026-08-25）**：当前没有微服务需求，**Phase 3 整体暂缓、不排期**。本文件保留为参考，与 [../roadmap.md](../roadmap.md) 主视图一致——优先级是把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实跑稳。生产加固类能力按需取用，不拆 3a/3b 子阶段执行。
 >
 > **核心目标（参考方向，非执行项）**：① 单体服务上的生产加固（可观测性、可运维性、数据安全）；② **工单业务能力闭环**——工单模板/关联已前移 Phase 2a（纯 DB，见 [phase2/09-ticket §0](../phase2/09-ticket.md)），**SLA 计时/违约告警、站内/邮件通知、多级审批流、自动分派、报表仍属 Phase 3 范围（暂缓）**（依赖 2c Authorize + 事件机制），不阻塞 Phase 2 主线。
@@ -57,13 +59,13 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
 | 可观测性 | [observability](./01-observability.md) | 应用内 **可选开关**（Metrics / OTel / pprof）；Prometheus / Grafana / Collector **部署可选** | 已编写 |
-| 多实例部署 | [multi-instance](./02-multi-instance.md) | Casbin Watcher、跨实例事件、分布式锁 | 待编写 |
-| 审计日志升级 | [audit-l2](./03-audit-l2.md) | Redis List L2，进程崩溃不丢日志 | 待编写 |
-| 高可用 | [ha](./06-ha.md) | PG Cluster、Redis Sentinel、Nginx | 待编写 |
-| 安全增强 | [security-enhance](./07-security-enhance.md) | 异地登录、验证码、密码过期、API 限流 | 待编写 |
-| 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 | 待编写 |
+| 多实例部署 | [multi-instance](./02-multi-instance.md) | Casbin Watcher、跨实例事件、分布式锁 | 已编写（2026-08-31） |
+| 审计日志升级 | [audit-l2](./03-audit-l2.md) | Redis List L2，进程崩溃不丢日志；B11① 判定日志 + B11② 归档 | 已编写（2026-09-02，替换占位） |
+| 高可用 | [ha](./06-ha.md) | PG Cluster、Redis Sentinel、Nginx（🚦 触发条件驱动） | 已编写（2026-09-02） |
+| 安全增强 | [security-enhance](./07-security-enhance.md) | 异地登录、验证码、密码过期、API 限流、CORS 收紧 | 已编写（2026-09-02） |
+| 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 + [ops/deployment](../ops/deployment.md) | 已编写（2026-09-02） |
 | **工单业务能力** | [ticket-business](./10-ticket-business.md) | **SLA 计时/违约告警、站内通知、邮件通知、多级审批流（手写 BranchedStateEngine）、自动分派规则、工单报表**（进程内实现，事件用 L1 机制） | 本修订新增 |
-| **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 待编写 |
+| **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 已编写（2026-08-31） |
 | **外部能力集成** | [ADR-003](../adr/ADR-003-activelist-integration-form.md)（SSOT：[roadmap §activelist](../roadmap.md)） | **activelist**（动态多类型数据平台，独立服务+反代接入，变更事件走 L1）；zhuzhao 侧前置 = E13 反代模块 | 已决策（Phase 3 启动后，L1+Asynq 就绪） |
 
 > **工单业务能力实现方式**：Phase 3 不依赖 L2 Outbox，采用 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 定义的三档事件机制中的 **L1**（DB 持久化 + 轮询补偿 + 分布式锁，长期稳态见 ADR-001）+ Asynq（ADR-002），保证进程崩溃不丢、多实例不重复消费。L2 升级时业务逻辑不变，只换调度器。
@@ -73,7 +75,7 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
 | 事件驱动升级 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | L1 → L2 升级：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列（方案见 ADR-001/002，原 04-event-driven.md 未单独成篇） | 已决策（ADR） |
-| 平台增强 | [platform](./09-platform.md) | 权限/菜单缓存跨实例失效、AK/SK（有调用方时） | 待编写 |
+| 平台增强 | [platform](./09-platform.md) | 权限/菜单缓存跨实例失效、AK/SK（有调用方时）（🚦 触发条件驱动） | 已编写（2026-09-02） |
 
 > **微服务拆分（microservice）当前不做**：[05-microservice.md](./05-microservice.md) 保留为参考文档。按 2026-08-25 决策，当前没有微服务需求，**整体推迟到未来有真实多团队/M2M 需求时再评估**，不排入 Phase 3。部署级分离（同二进制不同配置启动）作为后续验证手段，见 [11-deployment-split.md](./11-deployment-split.md)。
 
@@ -129,9 +131,14 @@ Docker Compose 建议用 **profile**（如 `observability`）拉起 Prometheus/G
 | **W1 可运维基座**（Step 1/2/3） | observability + multi-instance（Casbin Watcher 移植 eiam `ioc/casbin.go`）+ audit-l2 | W0 清零 | 多实例部署演练通过；**策略变更跨实例生效**；审计进程崩溃不丢 |
 | **W2 工单业务闭环**（Step 7 重排） | **7-0 设计期（新增）** → 7a SLA → 7b 通知 → 7c 审批流引擎 → 7d 分派 → 7e 报表；前端随各子能力 | W1 完成 | TB 用例（含负向）全覆盖 |
 | **W3 加固收尾**（Step 4/5/6/8） | ha / security-enhance / ops / 生产验收 | 按部署形态需要 | Phase 3-min / 3-full 验收过 |
-| **W4 外部能力集成**（ADR-003） | activelist 接入：E13 反代模块 + Mongo→PG + 事件对接 L1 | **W2 完成**（L1+Asynq 就绪）**且启用条件命中**（对接数据需统一鉴权+事件订阅） | activelist 独立容器运行、经反代可达、变更事件入 L1 分发（SSOT：roadmap §activelist / ADR-003） |
+| **W4 外部能力集成**（ADR-003） | activelist 接入：E13 反代模块 + Mongo→PG + 事件对接 L1（~~W2 完成~~ **2026-09-02 §23.2：被 M-A 独立实现取代**——activelist 独立库 + 独立数据库，外部事件接入契约由 activelist 侧定义；本行 E13 反代方向保留作蓝图 🚦） | ~~W2 完成~~ **随 M-A / activelist 独立项目** | activelist 独立容器运行、经反代可达、变更事件入 L1 分发（SSOT：roadmap §activelist / ADR-003） |
 
 > W4 为外部能力集成条目，与 W3 无先后耦合（只要 L1+Asynq 就绪且启用条件命中即可启动）。
+
+> **⚠ 执行修订（2026-09-02，SSOT = [design-decisions §22](../design/design-decisions.md) + [13-implementation-plan](./13-implementation-plan.md)）**：
+> ① **决议②「W2 硬前置 W1」修订**——M2 硬依赖收窄为 Asynq 底座（在 W2 内）+ 2c Authorize；防重按 [02-multi-instance](./02-multi-instance.md) 约定写码（sla:scan Unique + L1 advisory lock）；**W1 整体降 🚦「部署形态升级为多实例时启动」**，上表 W1→W2 顺序仅保留为多实例场景推荐序；HR 同步以 **M2.5 预留接口版**（HRFetcher + 引擎 + mock adapter）纳入主链。
+> ② **W4 拆两半**——「审批通过 → L1 → Asynq → ActivelistWriter 接口」写侧管道随 W2 执行（数据契约 7-0 拍板）；E13 反代 / G1 独立库（activelist 用独立数据库已拍板）/ G3 ingress 蓝图 🚦 由 activelist 独立项目成型触发。
+> ③ 签发模型拍板：建单不选部门、指派给人（属主豁免覆盖跨部门可见性）；转派部门端点不做；7-0 补拍板项 = ActivelistWriter 契约 + 审批通过事件触发点、通知/SLA「跟人 vs 跟单」、WorkflowEngine 接口契约（引擎可替换，实例状态通用/私有分层）。
 
 **7-0 设计期（Step 7 开工前置，产出 = 10 号文档修订版）**：拍板 B1 全部设计项——SLA 暂停态/通知主管/邮件矩阵、§2.5 事务二选一、§7.2 signal 双写、responded_at 口径、分派/报表深度、权限码 seed（B2），外加 2026-08-31 调研吸收三项：**发起人撤回**（eflow WITHDRAWING 栅栏）、**workflow_definitions 版本/发布快照**、**审批人策略模型 `Assignee{rule,values}`**、**模板-流程绑定**。7 子项顺序依赖：7a→7b（SLA 依赖事件+通知）→ 7c 可并行 → 7d → 7e（聚合全部）。
 
@@ -245,28 +252,29 @@ Phase 3 主能力稳定运行
 | ⚠️ Redis 高可用方案 | Sentinel vs Cluster | 建议 Sentinel（简单），Cluster 按需 |
 | ⚠️ PG 高可用方案 | 自建 vs 云托管 | 已决策：云托管 Cluster（2+VIP） |
 | ⚠️ 部署级分离时机 | Phase 3 末是否验证部署级分离（同二进制不同配置）？ | 见 [11-deployment-split.md](./11-deployment-split.md)；有独立扩缩需求时验证 |
-| ⚠️ 工单审批流引擎选型 | Phase 3 手写 BranchedStateEngine；未来是否引第三方引擎？ | 见 [ticket.md §8.4/§8.5](../modules/ticket.md#84-为什么-phase-2a-不引入工作流引擎)；Phase 3 首选手写 |
+| ⚠️ 工单审批流引擎选型 | Phase 3 手写 BranchedStateEngine；未来是否引第三方引擎？（~~待拍板~~ **2026-09-02 §23：随工单自研暂缓**——对接内部平台，自研不做；翻案恢复） | 见 [ticket.md §8.4/§8.5](../modules/ticket.md#84-为什么-phase-2a-不引入工作流引擎)；~~Phase 3 首选手写~~ |
 | ✅ 可观测性栈 | Prometheus/Grafana/OTel | **应用内可选开关 + 部署可选**；Phase 3-min 不要求全套栈 |
 | ✅ 工单事件机制 | Phase 3 用 L1（DB 持久化+轮询+分布式锁），Phase 3+ 升级 L2（Outbox+Asynq） | 已决策：见 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) |
-| ⚠️ 工单组织可见性数据结构 | 现状：`tickets.org_path` 为 move 级联维护的镜像列；Create×Move 并发写旧快照竞态已由 BK-11 ① 修复（2026-08-31：Create 事务内 FOR SHARE，见 phase2/00 §9），遗留 P2-D1/MC2 级联维护负担 | **Phase 3 启动时拍板**：保留镜像列（FOR SHARE 已兜底）或去列改运行时 JOIN（organizations 单一真相源）；若拍板去列，「按创建时归属」的报表诉求改用 write-once `created_org_id` 承载 |
+| ⚠️ 工单组织可见性数据结构 | 现状：`tickets.org_path` 为 move 级联维护的镜像列；Create×Move 并发写旧快照竞态已由 BK-11 ① 修复（2026-08-31：Create 事务内 FOR SHARE，见 phase2/00 §9），遗留 P2-D1/MC2 级联维护负担 | ✅ **已拍板（2026-08-31，A3）：保留镜像列**（FOR SHARE 兜底；去列 JOIN 备选弃用）；「按创建时归属」报表诉求用 write-once `created_org_id` 承载（留 7e 报表按需评估） |
 
 ---
 
 ## 5. 文档索引
 
-> 标注"待编写"的文档尚需创建，当前先占位。
+> 文档已全量就绪（2026-09-02）：除 05-microservice（推迟，无文件）外，其余均已编写；13-implementation-plan 为执行计划（排期规划稿）。
 
 | 文档 | 模块 | 状态 |
 |------|------|------|
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
-| [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（占位已建：含 B11 判定日志+归档范围锚定） | 待编写（W1 前） |
+| [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（含 B11① 判定日志 + B11② 归档；写入管道待拍板） | **已编写（2026-09-02）** |
 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
 | [05-microservice.md](./05-microservice.md) | 微服务拆分 | **推迟**（Phase 3+ 以后按需；当前作为参考文档） |
-| [06-ha.md](./06-ha.md) | 高可用 | 待编写 |
-| [07-security-enhance.md](./07-security-enhance.md) | 安全增强 | 待编写 |
-| [08-ops.md](./08-ops.md) | 运维工具 | 待编写 |
-| [09-platform.md](./09-platform.md) | 平台增强（Phase 3+） | 待编写 |
+| [06-ha.md](./06-ha.md) | 高可用 | **已编写（2026-09-02）** |
+| [07-security-enhance.md](./07-security-enhance.md) | 安全增强 | **已编写（2026-09-02）** |
+| [08-ops.md](./08-ops.md) | 运维工具 | **已编写（2026-09-02）** |
+| [09-platform.md](./09-platform.md) | 平台增强（Phase 3+，🚦 触发条件驱动） | **已编写（2026-09-02）** |
 | [10-ticket-business.md](./10-ticket-business.md) | **工单业务能力（Phase 3）** | **已编写并修订（2026-08-31，7-0 决议 §4.10 + TB12–16）** |
 | [11-deployment-split.md](./11-deployment-split.md) | **部署级分离方案** | **已编写** |
 | [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |
+| [13-implementation-plan.md](./13-implementation-plan.md) | **执行计划（排期规划稿：里程碑/人日估算/依赖/🚦 触发项/⚠️ 不确定项）** | **已编写（2026-09-02）** |

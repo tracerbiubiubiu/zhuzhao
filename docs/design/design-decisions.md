@@ -1256,3 +1256,64 @@ type remoteUserQueryService struct {
 - 设计期注意：审批流的节点审批人解析已按 [`Assignee {rule, values}` 策略模型](../phase3/10-ticket-business.md) 设计（2026-08-31，eflow 对标），动态 SoD（如"审批人 ≠ 发起人"）在该模型上以运行时规则表达。
 
 **关联**：[10-ticket-business §4](../phase3/10-ticket-business.md)（BranchedStateEngine）、[11-authz-architecture-review §4](../phase2/11-authz-architecture-review.md)
+
+## 21. 软删组织与遗留工单的委托语义
+
+**背景**（2026-09-02 外评实证）：工单委托可见性三处 SQL——`delegatedVisibilitySQL`（列表，ticket/resource.go）、`IsOrgAdminOrOwner` / `IsAncestorOwner`（单条 + L3 canOperate，org_delegation.go）——对 `organizations` 均无 `deleted_at IS NULL` 过滤，且组织删除守卫（org_repo.Delete / DeleteVgWithOwnerCleanup）只查 children/members，**不查工单、不查 `owner_user_ids`**。组合效果：软删组织的历史工单对该组织原 owner / admin·owner / 祖先 owner 保留**读 + 写**（委托是挂在活组织上的管理授权，组织删除后本应消亡）。
+
+**触发面（实测收敛，比表象窄）**：
+- 普通 `Delete` 路径**常规不可达**——`owner_user_ids` 双轨强同步（SetOwners 建 owner 成员行、RemoveMember/SetUserOrgs/删用户均 `array_remove`），带 owner 的组织必然带成员行被守卫拦住，逐个移除即同步清空数组；
+- vg 删除路径（`DeleteVgWithOwnerCleanup`）**系统性产生**——它清 owner 成员行以过守卫，但保留 `owner_user_ids` 数组，删除后 ghost 委托即成形。
+- 三处 SQL 行为一致（列表/单条/操作无错位），残留者仅为删除前的原责任人群，无越权扩大。
+
+**决策**（两步划界，2026-09-02 拍板）：
+1. **活工单 → 禁删守卫**（待实施，BK-20，见 00 §9）：`Delete` / `DeleteVgWithOwnerCleanup` 加 `status <> 'closed'` 工单计数，非零即 409（新错误码，语义「先结单或转派」）。与既有 children/members 门槛同构，与 BK-18「类型有单禁删」先例一致；子组织禁删已保证计数范围=自体。
+2. **已结工单 → 委托残留 = 档案连续性，不修**：三处 SQL 不加 `deleted_at` 过滤。已结工单可操作余量极小（update 被 `ErrTicketAlreadyClosed` 拒），残留属档案连续而非危害；创建人/处理人腿与活祖先实体锚点腿不受影响，工单不会变黑洞。**显式断开杠杆**：删除前 `SetOwners` 清空（支持空列表，立即生效）。
+
+**翻案条件**：出现「删组织必须收回遗留工单管辖」的真实运维诉求；或证明 `owner_user_ids` 双轨不变量有洞（普通 Delete 路径也能带 owner 软删）；或合规要求「删除即权限终止」。届时修法 = 三处 SQL 各加一行 `AND o.deleted_at IS NULL`（vg 路径的 ghost 随之消亡），无需动守卫。
+
+**关联**：[09-ticket §5.2](../phase2/09-ticket.md)（策略 B 可见性）、[04-org-delegation §4.2](../phase2/04-org-delegation.md)（D7/D8）、00 §9 BK-20（禁删守卫待实施）、[phase2/11-authz-architecture-review](../phase2/11-authz-architecture-review.md)（Q5 不变量——本决策不涉缓存，与「每请求实时判定」兼容）
+
+## 22. Phase 3 执行结构修订（2026-09-02 所有者拍板）
+
+**背景**：Phase 3 排期规划稿（[phase3/13](../phase3/13-implementation-plan.md)）评审对话中，所有者对执行结构做出六项拍板，修订 2026-08-31 的部分决议。逐项：
+
+1. **「W2 硬前置 W1」修订为「M2 硬依赖 = Asynq 底座」**：单实例起步时 multi-instance/Watcher 无验收手段（MI1–5 需 2 实例环境）；防重不依赖多实例里程碑——asynq Redis 集中调度天然防任务重跑，`sla:scan` 配 Unique、L1 消费配 advisory lock（[02-multi-instance](../phase3/02-multi-instance.md) 既有约定，W2 写码时遵守）。M1（observability/multi-instance/audit-l2）整体降 🚦「部署形态升级为多实例时启动」；**翻案条件**：启动时即确定多实例部署 → 恢复原前置。风险对冲：M2 交付后起多实例前，按 02 号文档复核消费代码（约定已在档，成本低）。
+2. **HR 同步从「2b-ext 按需」升为主链正式任务**：组织架构来自公司接口定时更新为已确认的真实运行方式。本次实施「预留接口版」：`HRFetcher` 接口 + sync 引擎 + 本地 mock adapter，公司内网 adapter 后续实现接口即接入（零改引擎）。启动设计须拍板：离职在途工单处置、部门撤销 × tickets.org_path 级联（[hr-directory-sync §3.2/§4.3](../proposal/hr-directory-sync.md) 待设计块）+ **跨部门权限分配规则**（新加，见第 4 条）。
+3. **activelist 集成拆两半**：zhuzhao 定位 = 工单系统单向上游——**本次 Phase 3 执行「审批通过 → L1 事件 → Asynq 任务 → ActivelistWriter 接口」管道**（数据契约进 7-0 拍板）；E13 反代 / G1 Mongo→PG / G3 多源 ingress 作为架构蓝图保留（ADR-003），🚦 由 activelist 独立项目成型触发。**activelist 使用独立数据库**（与工单库故障隔离）拍板认可。审批通过事件 = 写入触发点。
+4. **跨部门签发模型拍板：建单不选部门、只指派给人**（assigned_to 可为外部门成员）。可见性/读写由属主豁免（`created_by OR assigned_to`）覆盖，与部门无关；跨部门处理人的 API 能力（update/推进/评论）由 viewer 等角色的 AssignMenus 运营配置补齐（L1 授权 + L2 属主边界，零开发）。**转派部门端点不做**（签发在创建时由指派完成）。衍生拍板项进 7-0：通知/SLA 的「跟人（处理人所属组织 owner）vs 跟单（工单归属组织）」语义、账号初始化依赖 HR 同步全量覆盖。
+5. **7c 完整工单引擎照做（硬交付维持）**：Phase 3 原设想 = 完整工单能力，含完整引擎，参考 easy-workflow（[10 §4.8](../phase3/10-ticket-business.md) 复核结论）。
+6. **工单引擎须可替换（新增约束）**：以 `WorkflowEngine` 接口抽象引擎（Start/Advance/CanAct/OnEvent 类契约），service 构造注入 + 配置选择实现（先例：ResourceAuthorizer 接缝）；**实例状态存储分通用层（状态/当前节点/参与者，通用表字段）与引擎私有层（JSONB）**——接口可换而存量实例可结转或按旧引擎跑完，杜绝「接口换了数据迁不动」。接口契约与分层细节 7-0 拍板后落 10 号 §4。
+
+## 23. Phase 3 重定位：工单自研暂缓（内部引擎优先，自研兜底），通用能力 + 内网迁移主线（2026-09-02 所有者拍板）
+
+**背景**：继 §22 排期讨论后，所有者明确战略方向——项目将**迁移到公司内部**，届时**对接公司内部的工单平台/工单引擎**；自研工单业务能力（SLA/通知/审批引擎/分派/报表）不再实施。§22.5「7c 完整引擎照做」**被本决策推翻**（§22 其余各项效力不受影响，除本文明确修订者）。
+
+**决策**：
+1. **工单模块 Phase 2 现状封版**：已交付能力（CRUD/状态机/三层鉴权/类型字段模板管理）冻结，仅保留数据安全类修复（如 BK-20 守卫）；7a–7e、BranchedStateEngine、B3 推进端点、12-frontend 施工全部**暂缓自研**。10 号（工单业务设计）/ 12-frontend 保留作**对接参考与历史设计**，不再驱动开发。
+2. **Phase 3 主线 = 通用能力 + 迁移准备**：① Asynq 事件基建（首任务 = 审计归档 B11②，非工单闭环独立验收）；② activelist 独立实现（独立库 + 独立数据库已拍板；**外部事件接入契约由 activelist 侧定义**——取代 §22.3 的 ActivelistWriter 方向，工单不再作为首数据源）；③ HR 同步预留接口版（内网迁移前置，组织/人员来自公司接口）；④ 内网部署准备（security/ops 中与生产相关项随迁移形态重估）。
+3. **内部工单平台对接 = 迁移后集成项（🚦）**：对接形态（zhuzhao 作为 IAM/鉴权提供方？数据同步？单点跳转？）待迁移时依公司平台契约拍板；届时 Phase 2 工单资产的处置（保留兜底 / 适配为对接层 / 逐步下线）一并拍板。
+4. **zhuzhao 价值重定位**：IAM 内核 + 通用能力底座（事件/审计/组织/HR 同步）+ activelist；工单从「自研产品线」转为「公司平台的对接方」。
+
+**翻案条件**：公司内部平台无法承接工单诉求（功能/流程/集成成本），或迁移计划取消 → 恢复 §22.5 自研路线（10 号设计 SSOT 完整保留，随时可重启）。
+
+**§23 补充拍板（2026-09-02）：任务平台扩展 M-E**：M-E 从「Asynq 底座 + 审计归档」扩展为**任务平台**——① Asynq 基建；② 预置任务（审计归档 B11② 等，Go 编译内置 handler）；③ **自定义脚本任务**（用户经平台配置 Python/Shell：任务配置表 job_configs + `os/exec` 执行器 + 执行记录表 job_runs + 管理 CRUD/启停/手动触发/历史端点）。**安全边界（拍板）**：自定义脚本仅全局管理员可配（L1 收敛）、超时强杀进程组、执行留痕、脚本与凭据分离；容器/专用用户隔离为可选进阶。**参照**：执行器模式照 ginfast scheduler（已核验：执行记录/重试/BlockingPolicy/管理端点真实可用）、管理面范式对齐 xxl-job GLUE、运维视角先用 asynqmon。**运行时依赖**：部署镜像需带 python/shell 解释器——记入 M-Mig 内网迁移准备清单。
+
+## 24. 公司 SSO 对接：OAuth2.0 授权码模式，预留接口版（2026-09-02 所有者拍板）
+
+**决策**：登录对接公司单点登录，协议 **OAuth2.0（授权码模式）**。按 §22.2 HR 同步同款「预留接口」模式实施：
+
+1. **架构红线：SSO 只替换认证，不动鉴权**——callback 换身份后**签发 zhuzhao 自有 JWT/RT**，L1 Casbin / L2 资源 / L3 状态机零改动；权限仍全量走 zhuzhao RBAC（不透传公司 token/权限）。
+2. **`SSOProvider` 接口**：`LoginURL(state)` / `ExchangeCallback(code) (Identity, error)`——本次实现接口 + OAuth2.0 标准实现（authorize + code 换 token + userinfo，含 state 防 CSRF）；公司侧 endpoint/client_id/secret 走 config，拿到接入信息填配置即用。
+3. **身份映射**：对账键沿用 HR 同步定义（`external_id` 优先、`employee_no`/`domain_account` 次之，schema 已预埋）；登录服务按 `domain_account`/`source` 路由——SSO 域用户走 SSO，本地账号（superadmin 等）保留密码登录兜底。
+4. **JIT 默认关**：首次 SSO 登录仅限 HR 已同步账号；自动建号做成 config 开关（默认 false）——HR 同步先行的顺序天然对齐，放开只需改配置。
+5. **登出**：zhuzhao 侧 revoke 照旧；与公司平台的单点登出（SLO）联动 = 可选项，迁移时按平台能力拍板。
+6. **审计**：登录事件加 `method`（sso/local）。
+
+**影响面**：新增 2 端点（`/auth/sso/login`、`/auth/sso/callback`）+ SSOProvider 接口 + config SSO 段 + 登录审计字段；JWT 中间件/RT/三层鉴权/会话管理零改动。前端仅登录页加企业账号入口（前端后置策略下的最小例外）。
+
+**与 HR 同步分工**：SSO 管「认证」（你是谁、凭证有效性——离职后公司侧自动拒登）；HR 同步管「账号数据」（建号/组织/禁用与会话吊销）。对账键一致，互为校验。排位 **M-SSO**（13 号），与 M-HR 相邻。
+
+**§24 补充（2026-09-02 所有者确认）：字段适配层**——公司 IdP 的流程虽为标准授权码模式，但**消息字段不保证与标准 userinfo 一致**（命名/嵌套/自定义字段）。故 `Identity` 结构由 zhuzhao 侧定义为稳定最小契约（external_id / employee_no / domain_account / display_name / email），「公司报文 → Identity」的翻译收敛在 OAuth2.0 adapter 内部实现（差异大时支持字段映射配置），登录服务与身份映射只消费 `Identity`、不感知公司字段差异——adapter 是唯一的字段差异吸收点，公司接入信息到位后只改这一个文件。
+
+**§24 补充（2026-09-02）：账密通道保留范围**——传统账密登录**保留**，但按账号来源分域：`superadmin` 与 `source=local` 用户保留账密（应急通道：SSO 故障/网络隔离时管理员仍可进入；服务/外部协作者类本地账号）；**`source=hr` 用户 SSO 上线后默认禁用账密**（HR 同步的密码为占位值，放行即绕过公司 MFA/密码策略形成安全旁路）——config 开关 `auth.local_password_for_hr`（默认 false）。SSO 未上线的过渡期不受影响（现状全账密）。
