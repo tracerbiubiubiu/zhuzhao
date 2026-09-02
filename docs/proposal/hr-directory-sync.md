@@ -132,6 +132,8 @@ HR 标记部门 D 撤销：
 
 登录时账号禁用仍返回 **401 + 与密码错误相同文案**（防枚举）；已登录会话用 **403 + 30003**。
 
+> **⚠ 待设计（2026-09-01 场景登记，策略启动时讨论）——离职人员的在途工单**：§3.2 离职处置止于身份侧（禁用+踢会话），**未覆盖 `assigned_to` 指向离职者且状态为 assigned/in_progress 的在途工单**——将永久滞留已分派态，无人处理亦无转派入口（assigned_to 为裸 BIGINT 无 FK，系统不会提示悬挂分派）。业界三模式：阻断式（Zendesk：有在途单不许停用——仅适用人工操作，**不适合自动同步**）、回池重路由（Jira SM/Freshdesk：取消分派退回 open 重新路由，可复用 BK-10「取消分派回 open」原语）、批量转移（ServiceNow：指定继任者 reassign + 审计）。候选策略（回池 / 继任者转移 / 组合）**待 HR 同步启动时拍板**，届时须列为硬验收项。
+
 ### 3.3 幂等与对账键
 
 - 组织：`UNIQUE(source, external_id) WHERE deleted_at IS NULL`（hr 域）
@@ -316,6 +318,8 @@ func (s *OrgSyncService) onHRDeptRemoved(ctx context.Context, dept *Organization
 ```
 
 `ReparentLocalVirtualGroup` 复用手工 Move 的子树 path 更新逻辑。
+
+> **⚠ 待设计（2026-09-01 场景登记，策略启动时讨论）——部门撤销 × 存量工单级联完整性**：本节 Reparent/软删须**完整复用** `OrgRepo.Move` 全逻辑（含 P2-D1 `tickets.org_path` 级联重映射，org_repo.go:461-481）——若只更新 organizations 而不走工单级联，部门撤销后存量工单将在新组织树中「失踪」（被 ltree 可见性过滤漏掉，同 BK-11 病灶）。另两点启动时一并拍板：① 软删部门下存量工单的报表/统计归属展示（业界惯例：按快照显示为「已撤销部门」历史分组，不入新统计）；② 「部门撤销 × 存量工单可见性」验收用例（可扩展 D9 move 回归）。
 
 ---
 
