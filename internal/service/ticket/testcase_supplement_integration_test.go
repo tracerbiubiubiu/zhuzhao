@@ -7,9 +7,7 @@ package ticket
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +21,7 @@ import (
 func TestBK18_UpdateTicketTypePatch(t *testing.T) {
 	svc, _, _ := setupTicketAdmin(t) // TC-4
 	ctx := context.Background()
-	code := fmt.Sprintf("bk18pt_%d", time.Now().UnixNano()%1e9)
+	code := "bk18pt_" + uniqueSuffix()
 
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{
 		Code: code, Name: "patch 原", Description: "原描述"})
@@ -59,9 +57,14 @@ func TestTC2_MetaDirectReads(t *testing.T) {
 	ctx := context.Background()
 
 	tpl, err := svc.CreateTicketTemplate(ctx, &model.CreateTicketTemplateRequest{
-		Code: fmt.Sprintf("tc2tpl_%d", time.Now().UnixNano()%1e9),
+		Code: "tc2tpl_" + uniqueSuffix(),
 		Name: "TC2 模板", TypeCode: "incident", OrgID: envOrgID()}, admin)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, tpl.Code); err != nil {
+			t.Logf("cleanup: delete template %s: %v", tpl.Code, err)
+		}
+	})
 	got, err := svc.GetTicketTemplate(ctx, tpl.Code)
 	require.NoError(t, err)
 	assert.Equal(t, tpl.ID, got.ID)

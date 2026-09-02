@@ -29,17 +29,19 @@ func setupBK11(t *testing.T) (svc *Service, orgRepo *repository.OrgRepo, aID, bI
 	svc, _, _, _, _ = setupTicket2a(t)
 	orgRepo = repository.NewOrgRepo(testPool)
 	ctx := context.Background()
-	suffix := fmt.Sprintf("bk11_%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	bCode = "vgbk11_" + suffix
 
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, 'A', 1, $2::ltree, 3, 1, 75, false) RETURNING id`,
 		"a_"+suffix, "root.a_"+suffix).Scan(&aID))
+	softDeleteOrg(t, aID)
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, 'B', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, 3, 1, 75, false)
 		RETURNING id`, bCode, aID, bCode).Scan(&bID))
+	softDeleteOrg(t, bID)
 
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
 		INSERT INTO users (username, password, employee_no, status) VALUES ('u%s', 'hash', 'E%s', 1)

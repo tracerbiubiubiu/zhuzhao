@@ -7,7 +7,6 @@ package ticket
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -24,7 +23,7 @@ import (
 func setupB2Org(t *testing.T) *b2Env {
 	t.Helper()
 	env := setupB2(t)
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	env.vgA = createB2Vg(t, env.pID, "vg_a_"+suffix)
 	env.vgB = createB2Vg(t, env.pID, "vg_b_"+suffix)
 
@@ -87,32 +86,32 @@ func TestB2Org_VgCreateAndMoveCascade(t *testing.T) {
 
 	// 无 vg_ 前缀 → 400
 	_, err := orgService.Create(ctx, &model.CreateOrgRequest{
-		Code: "bad_vg_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "坏前缀",
+		Code: "bad_vg_" + uniqueSuffix(), Name: "坏前缀",
 		ParentID: &env.pID, OrgType: 4,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
 	// 根级虚拟组（无 ParentID）→ 400（必须挂载实体下）
 	_, err = orgService.Create(ctx, &model.CreateOrgRequest{
-		Code: "vg_root_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "根级虚拟组",
+		Code: "vg_root_" + uniqueSuffix(), Name: "根级虚拟组",
 		OrgType: 4,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
 	// 先造一个合法虚拟组，再尝试挂虚拟组下 → 400（父级必须实体）
 	vgFirst, err := orgService.Create(ctx, &model.CreateOrgRequest{
-		Code: "vg_first_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "首层虚拟组",
+		Code: "vg_first_" + uniqueSuffix(), Name: "首层虚拟组",
 		ParentID: &env.pID, OrgType: 4,
 	}, env.u1)
 	require.NoError(t, err)
 	_, err = orgService.Create(ctx, &model.CreateOrgRequest{
-		Code: "vg_nested_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "嵌套虚拟组",
+		Code: "vg_nested_" + uniqueSuffix(), Name: "嵌套虚拟组",
 		ParentID: &vgFirst.ID, OrgType: 4,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
 	// 合法创建：tech 实体下 vg_x → org_type=4、source=local、路径含 vg_ 段
-	vgCode := "vg_x_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	vgCode := "vg_x_" + uniqueSuffix()
 	vg, err := orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: vgCode, Name: "合法虚拟组", ParentID: &env.pID, OrgType: 4,
 	}, env.u1)
@@ -127,7 +126,7 @@ func TestB2Org_VgCreateAndMoveCascade(t *testing.T) {
 	// move 级联含虚拟组（03 用例「HR 移动 tech 部门」）：P 移到新建目标组织下，
 	// vg 路径随之从 root.P.vg_x 级联为 root.moveTarget.P.vg_x
 	orgRepo := repository.NewOrgRepo(testPool)
-	moveTarget := createB2Org(t, rootOrgID(t), "p2bmt_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "移动目标")
+	moveTarget := createB2Org(t, rootOrgID(t), "p2bmt_"+uniqueSuffix(), "移动目标")
 	oldVgPath := vg.Path
 	require.NoError(t, orgRepo.Move(ctx, env.pID, &moveTarget))
 	var vgPathNew string
@@ -148,9 +147,9 @@ func TestB2Org_ScopeSupervisorAndAll(t *testing.T) {
 	tkD2 := newTicketHelper(t, env.svc, env.u2, env.d2, "D2 工单")
 
 	// supervisor：P 上 scope=group（主管）；allUser：D1 上 scope=all
-	supervisor := createB2User(t, "p2bsup_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "B2SP1")
+	supervisor := createB2User(t, "p2bsup_"+uniqueSuffix(), "B2SP1")
 	bindOrgMemberScope(t, supervisor, env.pID, ScopeGroup, nil)
-	allUser := createB2User(t, "p2ball_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "B2AL1")
+	allUser := createB2User(t, "p2ball_"+uniqueSuffix(), "B2AL1")
 	bindOrgMemberScope(t, allUser, env.d1, ScopeAll, nil)
 	env.roles[supervisor] = []string{"operator"}
 	env.roles[allUser] = []string{"operator"}
@@ -200,7 +199,7 @@ func TestB2Org_ScopeSupervisorAndAll(t *testing.T) {
 
 	// P1-2：主管分派不在 scope 子树内的工单 → 404（不可见→反枚举）
 	otherOrg := createB2Org(t, rootOrgID(t),
-		"p2bother_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "其他子树")
+		"p2bother_"+uniqueSuffix(), "其他子树")
 	tkOther := newTicketHelper(t, env.svc, env.u1, otherOrg, "其他子树工单")
 	err = env.svc.Assign(ctx, &model.AssignTicketRequest{
 		ID: tkOther.ID, AssignedTo: &env.u1,
@@ -215,7 +214,7 @@ func TestB2Org_BFSRoleExpansion(t *testing.T) {
 	env := setupB2(t)
 	roleRepo := repository.NewRoleRepo(testPool)
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	// 造角色：child（parent=parent），均为非系统角色
 	var parentRoleID, childRoleID int64
@@ -282,7 +281,7 @@ func TestB2Org_ExpiredMemberLosesAnchor(t *testing.T) {
 	tk := newTicketHelper(t, env.svc, env.u1, env.d1, "临时成员工单")
 
 	// 未过期临时成员：D1 透明可读
-	uTmp := createB2User(t, "p2btmp_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "B2TM")
+	uTmp := createB2User(t, "p2btmp_"+uniqueSuffix(), "B2TM")
 	future := time.Now().Add(time.Hour)
 	bindOrgMemberScope(t, uTmp, env.d1, ScopeAssigned, &future)
 	_, err := env.svc.Get(ctx, tk.ID, uTmp)
@@ -305,7 +304,7 @@ func TestB2Org_ParentIdEdgeCases(t *testing.T) {
 	setupB2(t) // 初始化 DB 上下文（组织/用户种子），本用例不直接用 env 字段
 	roleRepo := repository.NewRoleRepo(testPool)
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	// 自引用环：parent_id = 自身 ID（PG CTE UNION 去重阻止死循环）
 	var cyclicID int64
@@ -365,6 +364,7 @@ func createB2Vg(t *testing.T, parentID int64, code string) int64 {
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system, source)
 		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, 4, 1, 70, false, 'local')
 		RETURNING id`, code, "虚拟组 "+code, parentID, code).Scan(&id))
+	softDeleteOrg(t, id)
 	return id
 }
 

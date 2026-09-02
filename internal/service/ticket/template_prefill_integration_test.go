@@ -28,6 +28,11 @@ func seedTemplate(t *testing.T, oid, uid int64) {
 			DO UPDATE SET default_fields = EXCLUDED.default_fields, default_priority = EXCLUDED.default_priority`,
 		oid, uid)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(context.Background(), `DELETE FROM ticket_templates WHERE code = 'tpl_prefill'`); err != nil {
+			t.Logf("cleanup: delete tpl_prefill: %v", err)
+		}
+	})
 }
 
 // TestCreate_TemplatePrefill 命中模板时空缺字段被预填：description/custom_data 来自

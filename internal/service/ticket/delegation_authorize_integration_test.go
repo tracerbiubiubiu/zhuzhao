@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ type d9Env struct {
 
 func setupD9(t *testing.T) *d9Env {
 	t.Helper()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	svc, _, _, _, roles := setupTicket2a(t)
 	ctx := context.Background()
 
@@ -50,6 +49,8 @@ func setupD9(t *testing.T) *d9Env {
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, 'VG', $2, $3::ltree, 4, 1, 75, false) RETURNING id`,
 		vgCode, pID, "root."+pCode+"."+vgCode).Scan(&vgID))
+	softDeleteOrg(t, pID)
+	softDeleteOrg(t, vgID)
 
 	mkuser := func(name string) int64 {
 		var id int64
@@ -138,7 +139,7 @@ func TestD9_D9_AncestorOwnerSubtree(t *testing.T) {
 // 边界（04 §4.2 注/D11）：vg admin 不能改兄弟虚拟组工单——委托以 org 精确匹配为界
 func TestD9_VgAdminCannotCrossVg(t *testing.T) {
 	env := setupD9(t)
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	ctx := context.Background()
 
 	vg2Code := "vg_2c9b_" + suffix
@@ -147,6 +148,7 @@ func TestD9_VgAdminCannotCrossVg(t *testing.T) {
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, 'VG2', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, 4, 1, 75, false)
 		RETURNING id`, vg2Code, env.pID, vg2Code).Scan(&vg2ID))
+	softDeleteOrg(t, vg2ID)
 
 	// member（vg1）在 vg2 建单?不行——成员关系在 vg1。直接用 vg2 成员建单：
 	var vg2Member int64

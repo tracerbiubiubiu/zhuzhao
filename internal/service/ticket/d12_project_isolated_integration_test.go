@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,7 @@ func setupD12(t *testing.T) (svc *Service, eID, vgA, vgB, ma, aa, mb, pOwner int
 	t.Helper()
 	svc, _, _, _, roles := setupTicket2a(t)
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	var err error
 	mkorg := func(code, name string, parent int64, path string, orgType int) int64 {
@@ -36,6 +35,7 @@ func setupD12(t *testing.T) (svc *Service, eID, vgA, vgB, ma, aa, mb, pOwner int
 			INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 			VALUES ($1, $2, $3, $4::ltree, $5, 1, 75, false) RETURNING id`,
 			code, name, parent, path, orgType).Scan(&id))
+		softDeleteOrg(t, id)
 		return id
 	}
 	eID = mkorg("e_d12_"+suffix, "D12 实体", 1, "root.e_d12_"+suffix, 3)

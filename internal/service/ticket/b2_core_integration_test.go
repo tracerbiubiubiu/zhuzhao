@@ -12,7 +12,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ type b2Env struct {
 func setupB2(t *testing.T) *b2Env {
 	t.Helper()
 	svc, _, _, _, roles := setupTicket2a(t)
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	// 父部门 P（root 下）+ 兄弟实体部门 D1/D2（P 下）
 	pID := createB2Org(t, rootOrgID(t), "p2bp_"+suffix, "2b 父部门")
@@ -208,7 +207,7 @@ func TestB2_MoveCascadeRemapsDescendantTicketPath(t *testing.T) {
 	ctx := context.Background()
 
 	// D1 下建子部门 D1C，U1 在 D1C 建单（org_path 含三代：P.D1.D1C）
-	d1c := createB2Org(t, env.d1, "p2bd1c_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "2b 部门一子级")
+	d1c := createB2Org(t, env.d1, "p2bd1c_"+uniqueSuffix(), "2b 部门一子级")
 	tk := newTicketHelper(t, env.svc, env.u1, d1c, "级联重映射工单")
 
 	oldTicketPath := tk.OrgPath
@@ -241,17 +240,22 @@ func TestB2_MoveCascadeRemapsDescendantTicketPath(t *testing.T) {
 	// MC2：move 级联同样覆盖 ticket_templates.org_path（子树内模板随迁，
 	// 防未来模板 scope 启用时静默错配）
 	var tplID int64
-	tplCode := "tpl_move_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	tplCode := "tpl_move_" + uniqueSuffix()
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO ticket_templates (code, name, type_code, org_id, org_path, created_by)
 		VALUES ($1, 'move 模板', 'incident', $2,
 		        (SELECT path::text FROM organizations WHERE id = $2)::ltree, 1)
 		RETURNING id`, tplCode, env.d1).Scan(&tplID))
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, tplCode); err != nil {
+			t.Logf("cleanup: delete template %s: %v", tplCode, err)
+		}
+	})
 	var tplPathBefore string
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT org_path::text FROM ticket_templates WHERE id=$1`, tplID).Scan(&tplPathBefore))
 
-	tplTarget := createB2Org(t, rootID, "p2btpl_"+fmt.Sprintf("%d", time.Now().UnixNano()%1e9), "模板移动目标")
+	tplTarget := createB2Org(t, rootID, "p2btpl_"+uniqueSuffix(), "模板移动目标")
 	require.NoError(t, orgRepo.Move(ctx, env.d1, &tplTarget))
 
 	var tplPathAfter string
@@ -279,7 +283,7 @@ func lastLabel(path string) string {
 func TestB2_AssignStateMachineAndUpdateGuard(t *testing.T) {
 	env := setupB2(t)
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	// BK-2：自定义类型 transitions 无 open→assigned → Assign 应 90002（而非静默成功）
 	smType := "p2bsm_" + suffix
@@ -347,11 +351,15 @@ func createB2Org(t *testing.T, parentID int64, code, name string) int64 {
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, 3, 1, 60, false)
 		RETURNING id`, code, name, parentID, code).Scan(&id))
+	softDeleteOrg(t, id)
 	return id
 }
 
 func createB2User(t *testing.T, username, eno string) int64 {
 	t.Helper()
+	// employee_no 追加唯一后缀（隔离债治理）：固定 eno 的 upsert 会跨 run 复用同一
+	// 用户行，bindOrgMemberScope 再插 primary 行即撞 idx_user_orgs_single_primary
+	eno = eno + "_" + uniqueSuffix()
 	// 注意：参数化 $ + ON CONFLICT 部分索引谓词在 pgx 扩展协议下报 42P02，
 	// 与 setupTicket2a 一致改用字面量（值均为测试内部生成，无注入面）
 	var id int64

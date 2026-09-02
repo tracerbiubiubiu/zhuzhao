@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ type dEnv struct {
 func setupDelegation(t *testing.T) *dEnv {
 	t.Helper()
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 
 	deleg := service.NewOrgDelegationService(testPool)
 	rbac := service.NewRBACService(
@@ -231,8 +230,8 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 
 	var outsider int64
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
-		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout_%d', 'hash', 'E2COUT%d', 1)
-		RETURNING id`, time.Now().UnixNano()%1e9, time.Now().UnixNano()%1e9)).Scan(&outsider))
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout_%s', 'hash', 'E2COUT%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider))
 
 	// owner 直接以 admin 身份拉人入组
 	require.NoError(t, env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: outsider, OrgMemberRole: "admin"}, env.owner))
@@ -244,8 +243,8 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 	// admin 拉人指定 admin → 50008
 	var outsider2 int64
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
-		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout2_%d', 'hash', 'E2COUT2%d', 1)
-		RETURNING id`, time.Now().UnixNano()%1e9, time.Now().UnixNano()%1e9)).Scan(&outsider2))
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout2_%s', 'hash', 'E2COUT2%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider2))
 	err = env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: outsider2, OrgMemberRole: "admin"}, env.admin)
 	requireErrCode(t, err, errcode.ErrCannotAssignHigherOrgMemberRole)
 
@@ -255,8 +254,8 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 	// member 拉人 → 70001
 	var outsider3 int64
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
-		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout3_%d', 'hash', 'E2COUT3%d', 1)
-		RETURNING id`, time.Now().UnixNano()%1e9, time.Now().UnixNano()%1e9)).Scan(&outsider3))
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2cout3_%s', 'hash', 'E2COUT3%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider3))
 	err = env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: outsider3}, env.mem1)
 	requireErrCode(t, err, errcode.ErrNoPermission)
 }
@@ -343,7 +342,7 @@ func TestBK12_OrgRoleBinding(t *testing.T) {
 
 	// 专用组织角色（避免与 setupDelegation 直赋的 viewer 混淆 BFS 源 1/2）
 	orgRole, err := rbacForBK12(t).CreateRole(ctx, &model.CreateRoleRequest{
-		Code: "bk12_org_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "组织角色", Priority: 40}, env.super)
+		Code: "bk12_org_" + uniqueSuffix(), Name: "组织角色", Priority: 40}, env.super)
 	require.NoError(t, err)
 
 	// org admin 绑定 → 403（仅全局管理员：org_roles 赋出全局 Casbin 角色）
@@ -394,14 +393,14 @@ func TestBK12_DirectVsExpanded(t *testing.T) {
 	rbac := rbacForBK12(t)
 	userRepo := repository.NewUserRepo(testPool)
 	orgRole, err := rbac.CreateRole(ctx, &model.CreateRoleRequest{
-		Code: "bk12fork_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "组织绑定角色", Priority: 30}, env.super)
+		Code: "bk12fork_" + uniqueSuffix(), Name: "组织绑定角色", Priority: 30}, env.super)
 	require.NoError(t, err)
 
 	// 纯组织绑定用户（有 user_orgs 成员行、无任何 user_roles 直赋）
 	var pureUser int64
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
 		INSERT INTO users (username, password, employee_no, status) VALUES ('bk12fork_%s', 'hash', 'EBK12FORK', 1)
-		RETURNING id`, fmt.Sprintf("%d", time.Now().UnixNano()%1e9))).Scan(&pureUser))
+		RETURNING id`, uniqueSuffix())).Scan(&pureUser))
 	_, err = testPool.Exec(ctx, `
 		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role, ticket_scope)
 		VALUES ($1, $2, false, 'member', 'assigned')`, pureUser, env.vgID)
@@ -435,7 +434,7 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 	ctx := context.Background()
 
 	orgRole, err := rbacForBK12(t).CreateRole(ctx, &model.CreateRoleRequest{
-		Code: "bk12guard_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9), Name: "守卫角色", Priority: 40}, env.super)
+		Code: "bk12guard_" + uniqueSuffix(), Name: "守卫角色", Priority: 40}, env.super)
 	require.NoError(t, err)
 
 	// 不存在 org：Bind/List → 404 ErrOrgNotFound（原先 Bind 落 FK 23503 → 500、List 返回空列表）
@@ -447,7 +446,7 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 
 	// 软删 org：Bind → 404（预检 deleted_at 过滤；原先 FK 不看软删可静默绑成脏数据）
 	var softID int64
-	softCode := "vg_soft_" + fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	softCode := "vg_soft_" + uniqueSuffix()
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
 		VALUES ($1, '软删守卫', 1, $2::ltree, 3, 1, 80, false)

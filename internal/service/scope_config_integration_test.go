@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,8 +48,8 @@ func TestBK14_SetMemberScope(t *testing.T) {
 	// 目标非成员 → 50007
 	var outsider int64
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
-		INSERT INTO users (username, password, employee_no, status) VALUES ('bk14out_%d', 'hash', 'EBK14OUT', 1)
-		RETURNING id`, time.Now().UnixNano()%1e9)).Scan(&outsider))
+		INSERT INTO users (username, password, employee_no, status) VALUES ('bk14out_%s', 'hash', 'EBK14OUT', 1)
+		RETURNING id`, uniqueSuffix())).Scan(&outsider))
 	err = env.orgSvc.SetMemberScope(ctx,
 		&model.SetMemberScopeRequest{OrgID: env.vgID, UserID: outsider, TicketScope: "group"}, env.admin)
 	requireErrCode(t, err, errcode.ErrNotOrgMember)

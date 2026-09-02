@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/casbin/casbin/v3"
 	casbinmodel "github.com/casbin/casbin/v3/model"
@@ -172,7 +171,7 @@ func TestRBACService_SystemRoleDeleteAndUpdateRejected(t *testing.T) {
 
 func TestBK12_ParentIDRules(t *testing.T) {
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	rbac := service.NewRBACService(
 		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
 		repository.NewMenuRepo(testPool), rbacTestEnforcer(t))
@@ -258,7 +257,7 @@ func TestBK12_ParentIDRules(t *testing.T) {
 
 func TestBK12_PriorityDemotionGuard(t *testing.T) {
 	ctx := context.Background()
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano()%1e9)
+	suffix := uniqueSuffix()
 	roleRepo := repository.NewRoleRepo(testPool)
 	rbac := service.NewRBACService(
 		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),

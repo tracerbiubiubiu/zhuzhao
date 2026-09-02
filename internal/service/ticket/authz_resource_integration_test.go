@@ -51,41 +51,31 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT id FROM organizations WHERE code='root' LIMIT 1`).Scan(&rootID))
 
-	// 建子 org "p2a_it"
+	// 建子 org "p2a_it"（code 用 uniqueSuffix：历史 MS 截断的周期性回绕是 23505 flaky 根因）
+	orgCode := "p2a_it_" + uniqueSuffix()
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
 		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ('p2a_it_'||to_char(clock_timestamp(),'MS'), '2a Integration', $1,
+		VALUES ($2, '2a Integration', $1,
 		        (SELECT path::text||'.p2a_it'::text FROM organizations WHERE id=$1)::ltree,
 		        3, 1, 90, false)
-		RETURNING id`, rootID).Scan(&orgID))
-	// 若 ltree 绑定失败（字符串拼接），退化：直接取 tech 最后 id
-	if orgID == 0 {
-		require.NoError(t, testPool.QueryRow(ctx, `
-			INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-			VALUES ('p2a_it_sub','2a IT Sub',$1,'root.p2a_it_sub'::ltree,3,1,90,false)
-			ON CONFLICT DO NOTHING RETURNING id`, rootID).Scan(&orgID))
-	}
+		RETURNING id`, rootID, orgCode).Scan(&orgID))
+	softDeleteOrg(t, orgID)
 
 	// 建用户：A(operator 创建者) / B(operator 处理人) / V(viewer)
-	// employee_no 的部分唯一索引条件：employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
-	// ON CONFLICT 的 WHERE 必须与索引定义完全匹配
+	// 每 run 全新用户（隔离债治理）：固定 employee_no 的幂等 upsert 会让历届 run 的
+	// 工单归属到同一用户行，破坏 R3/R8 的精确计数断言
+	userSuffix := uniqueSuffix()
 	var aid, bid, vid int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_a','hash','E2A001',1)
-		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
-			DO UPDATE SET password = EXCLUDED.password
-		RETURNING id`).Scan(&aid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ($1,'hash',$2,1)
+		RETURNING id`, "2a_it_a_"+userSuffix, "E2A001_"+userSuffix).Scan(&aid))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_b','hash','E2A002',1)
-		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
-			DO UPDATE SET password = EXCLUDED.password
-		RETURNING id`).Scan(&bid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ($1,'hash',$2,1)
+		RETURNING id`, "2a_it_b_"+userSuffix, "E2A002_"+userSuffix).Scan(&bid))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO users (username,password,employee_no,status) VALUES ('2a_it_v','hash','E2A003',1)
-		ON CONFLICT (employee_no) WHERE employee_no IS NOT NULL AND employee_no <> '' AND deleted_at IS NULL
-			DO UPDATE SET password = EXCLUDED.password
-		RETURNING id`).Scan(&vid))
+		INSERT INTO users (username,password,employee_no,status) VALUES ($1,'hash',$2,1)
+		RETURNING id`, "2a_it_v_"+userSuffix, "E2A003_"+userSuffix).Scan(&vid))
 
 	// 绑定角色（由 stubRoleFetcher 控制，无需 user_roles 行；R3-R8 不依赖 DB 角色关系，由 stub 注入）
 	roles[aid] = []string{"operator"}
@@ -128,11 +118,15 @@ func childOrgID(t *testing.T, suffix string) int64 {
 	t.Helper()
 	rid := rootOrgID(t)
 	var id int64
+	// DO UPDATE 保证冲突时仍返回行（DO NOTHING + RETURNING 得到 no-rows，
+	// 会在 require.Scan 处炸——固定 code 撞历史残留即此症状）
 	require.NoError(t, testPool.QueryRow(context.Background(), `
 		INSERT INTO organizations (code,name,parent_id,path,org_type,status,sort_order,is_system)
 		VALUES ($1,$2,$3,('root.' || $4)::ltree,3,1,50,false)
-		ON CONFLICT DO NOTHING RETURNING id`,
+		ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET name = EXCLUDED.name
+		RETURNING id`,
 		"p2a_"+suffix, "2a Child "+suffix, rid, "p2a_"+suffix).Scan(&id))
+	softDeleteOrg(t, id)
 	return id
 }
 

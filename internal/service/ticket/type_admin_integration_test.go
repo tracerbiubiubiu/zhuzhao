@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,7 +46,7 @@ func codesOf(list []*model.TicketType) []string {
 func TestBK18_TypeCRUDAndValidation(t *testing.T) {
 	svc, admin, envOrgID := setupTicketAdmin(t)
 	ctx := context.Background()
-	code := "bk18_t_" + fmtInt(time.Now().UnixNano()%1e9)
+	code := "bk18_t_" + uniqueSuffix()
 
 	// ① 创建（缺省状态图）
 	t1, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "BK18 类型"})
@@ -134,7 +133,7 @@ func TestBK18_TypeCRUDAndValidation(t *testing.T) {
 func TestBK18_TemplateCRUD(t *testing.T) {
 	svc, admin, _ := setupTicketAdmin(t)
 	ctx := context.Background()
-	code := "bk18_tpl_" + fmtInt(time.Now().UnixNano()%1e9)
+	code := "bk18_tpl_" + uniqueSuffix()
 
 	// 创建（org=root:1，org_path 服务端解析）
 	tpl, err := svc.CreateTicketTemplate(ctx, &model.CreateTicketTemplateRequest{
@@ -142,6 +141,12 @@ func TestBK18_TemplateCRUD(t *testing.T) {
 		OrgID: 1,
 	}, admin)
 	require.NoError(t, err)
+	// 隔离债治理：模板残留会破坏 TestMeta_Templates_Empty 的空列表断言（-count=2 / 跨 run）
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, code); err != nil {
+			t.Logf("cleanup: delete template %s: %v", code, err)
+		}
+	})
 	assert.Equal(t, "root", tpl.OrgPath, "root 模板 org_path 应为 root")
 
 	// 重复 code → 409

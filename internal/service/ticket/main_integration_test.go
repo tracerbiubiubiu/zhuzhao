@@ -4,8 +4,10 @@ package ticket
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -33,6 +35,24 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	cleanup()
 	os.Exit(code)
+}
+
+// uniqueSuffix 测试数据唯一后缀（测试隔离债治理，2026-09-01）：
+// 完整 UnixNano，无周期回绕。禁止再引入 %1e9 / to_char(...,'MS') 等截断形式——
+// 截断值的周期性回绕是 idx_org_code 23505 flaky 的根因（见 00 检查单随手项「测试隔离债」）。
+func uniqueSuffix() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// softDeleteOrg 测试结束软删 setup 建的 org：idx_org_code 是 WHERE deleted_at IS NULL
+// 的部分唯一索引，软删即释放 code；FK 不看 deleted_at，无需先清理引用表。
+func softDeleteOrg(t *testing.T, orgID int64) {
+	t.Helper()
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(context.Background(), `UPDATE organizations SET deleted_at = NOW() WHERE id = $1`, orgID); err != nil {
+			t.Logf("cleanup: soft-delete org %d: %v", orgID, err)
+		}
+	})
 }
 
 // seedMinimal 补最小集合（与 000002_seed 同语义但精简，以保证测试稳定、无幻影行）
