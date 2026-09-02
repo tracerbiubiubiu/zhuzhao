@@ -70,8 +70,8 @@ func seedMinimal(ctx context.Context, pool *pgxpool.Pool) {
 
 	// 2. organizations 根行（code 为部分唯一索引 WHERE deleted_at IS NULL，不指定列让 PG 自动推断）
 	var rootID int64
-	err = pool.QueryRow(ctx, `INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ('root', '根组织', NULL, 'root'::ltree, 1, 1, 1, true)
+	err = pool.QueryRow(ctx, `INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ('root', '根组织', NULL, 'root'::ltree, false, 1, 1, true)
 		ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET code=EXCLUDED.code
 		RETURNING id`).Scan(&rootID)
 	if err != nil {

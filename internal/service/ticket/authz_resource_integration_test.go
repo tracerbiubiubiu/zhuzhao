@@ -55,10 +55,10 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	orgCode := "p2a_it_" + uniqueSuffix()
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
 		VALUES ($2, '2a Integration', $1,
 		        (SELECT path::text||'.p2a_it'::text FROM organizations WHERE id=$1)::ltree,
-		        3, 1, 90, false)
+		        false, 1, 90, false)
 		RETURNING id`, rootID, orgCode).Scan(&orgID))
 	softDeleteOrg(t, orgID)
 
@@ -121,8 +121,8 @@ func childOrgID(t *testing.T, suffix string) int64 {
 	// DO UPDATE 保证冲突时仍返回行（DO NOTHING + RETURNING 得到 no-rows，
 	// 会在 require.Scan 处炸——固定 code 撞历史残留即此症状）
 	require.NoError(t, testPool.QueryRow(context.Background(), `
-		INSERT INTO organizations (code,name,parent_id,path,org_type,status,sort_order,is_system)
-		VALUES ($1,$2,$3,('root.' || $4)::ltree,3,1,50,false)
+		INSERT INTO organizations (code,name,parent_id,path,is_virtual,status,sort_order,is_system)
+		VALUES ($1,$2,$3,('root.' || $4)::ltree,false,1,50,false)
 		ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET name = EXCLUDED.name
 		RETURNING id`,
 		"p2a_"+suffix, "2a Child "+suffix, rid, "p2a_"+suffix).Scan(&id))

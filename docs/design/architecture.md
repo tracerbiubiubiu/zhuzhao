@@ -890,7 +890,7 @@ TTL:   30min
 
 | 要点 | 说明 |
 |------|------|
-| 实体组织 + 虚拟组统一建表 | 用 `org_type` 区分，避免双表 JOIN |
+| 实体组织 + 虚拟组统一建表 | 用 `is_virtual` 布尔区分（000019，原 `org_type` 四值收敛——行为仅区分实体/虚拟），避免双表 JOIN |
 | ltree 路径枚举 | 存储 `root.tech.fe`，支持 `@>`（祖先）和 `<@`（后代）高效查询 |
 | 用户-组织多对多 | 一个用户可属于多个组织/组，在组织中有角色 |
 | 权限继承 | 通过 ltree 路径关系，scope 控制继承方向 |
@@ -898,12 +898,12 @@ TTL:   30min
 
 ### 6.3 组织类型
 
-| 类型 | org_type | source | 说明 | 示例 |
+| 类型 | is_virtual | source | 说明 | 示例 |
 |------|----------|--------|------|------|
-| 种子根 / 实体组织 | 1–3 | system / hr / local | 公司真实组织架构；HR 同步见 [hr-directory-sync.md](../proposal/hr-directory-sync.md) | 集团、技术中心、产品中心 |
-| 虚拟组 | 4 | local | 挂在实体组织下的项目组/虚拟团队 | `vg_alpha`、某项目组 |
+| 种子根 / 实体组织 | false | system / hr / local | 公司真实组织架构；HR 同步见 [hr-directory-sync.md](../proposal/hr-directory-sync.md) | 集团、技术中心、产品中心 |
+| 虚拟组 | true | local | 挂在实体组织下的项目组/虚拟团队 | `vg_alpha`、某项目组 |
 
-> Phase 1 仅手工 CRUD 实体组织（`org_type` 1–3）；`source` / HR Sync / 虚拟组在 Phase 2b 落地。
+> 000019 起 `org_type` 四值枚举（1=公司 2=部门 3=小组 4=虚拟组）收敛为 `is_virtual` 布尔——行为消费点仅区分实体/虚拟，1/2/3 的层级细分零代码消费（层级由 path/nlevel 表达，展示关注点留展示层）。Phase 1 仅手工 CRUD 实体组织；`source` / HR Sync / 虚拟组在 Phase 2b 落地。
 
 ---
 

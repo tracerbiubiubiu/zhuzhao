@@ -82,25 +82,25 @@ SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data
 SUF=$$
 ROOT_ID=$(psql_q "SELECT id FROM organizations WHERE parent_id IS NULL ORDER BY id LIMIT 1")
 [ -z "$ROOT_ID" ] && echo "WARN: no root org" >&2 && ROOT_ID=1
-mkorg() { # code name parent_id org_type → id
+mkorg() { # code name parent_id is_virtual → id
   curl -s -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-    -d "{\"code\":\"$1\",\"name\":\"$2\",\"parent_id\":\"$3\",\"org_type\":$4,\"sort_order\":50}" \
+    -d "{\"code\":\"$1\",\"name\":\"$2\",\"parent_id\":\"$3\",\"is_virtual\":$4,\"sort_order\":50}" \
     | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))"
 }
-P_ID=$(mkorg "p2b_p_$SUF" "2b 父部门" "$ROOT_ID" 3)
+P_ID=$(mkorg "p2b_p_$SUF" "2b 父部门" "$ROOT_ID" false)
 check "create P org" "1" "$([ "$P_ID" != "0" ] && echo 1 || echo 0)"
-VGA_ID=$(mkorg "vg_a_$SUF" "虚拟组A" "$P_ID" 4)
-VGB_ID=$(mkorg "vg_b_$SUF" "虚拟组B" "$P_ID" 4)
-check "create vg_a (org_type=4)" "1" "$([ "$VGA_ID" != "0" ] && echo 1 || echo 0)"
-check "create vg_b (org_type=4)" "1" "$([ "$VGB_ID" != "0" ] && echo 1 || echo 0)"
-VG_TYPE=$(psql_q "SELECT org_type FROM organizations WHERE id=$VGA_ID")
-check "vg org_type=4" "4" "$VG_TYPE"
+VGA_ID=$(mkorg "vg_a_$SUF" "虚拟组A" "$P_ID" true)
+VGB_ID=$(mkorg "vg_b_$SUF" "虚拟组B" "$P_ID" true)
+check "create vg_a (is_virtual=true)" "1" "$([ "$VGA_ID" != "0" ] && echo 1 || echo 0)"
+check "create vg_b (is_virtual=true)" "1" "$([ "$VGB_ID" != "0" ] && echo 1 || echo 0)"
+VG_TYPE=$(psql_q "SELECT is_virtual FROM organizations WHERE id=$VGA_ID")
+check "vg is_virtual=t" "t" "$VG_TYPE"
 VG_SRC=$(psql_q "SELECT source FROM organizations WHERE id=$VGA_ID")
 check "vg source=local" "local" "$VG_SRC"
 
 # 根级虚拟组负例：无 parent → 400
 check "root-level vg rejected (400)" "400" \
-  "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"vg_root_$SUF\",\"name\":\"根级虚拟组\",\"org_type\":4}")"
+  "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"vg_root_$SUF\",\"name\":\"根级虚拟组\",\"is_virtual\":true}")"
 
 # --- 成员用户：va ∈ vg_a、vb ∈ vg_b（operator）---
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")

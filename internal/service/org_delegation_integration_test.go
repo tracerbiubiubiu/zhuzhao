@@ -51,12 +51,12 @@ func setupDelegation(t *testing.T) *dEnv {
 	pCode := "p2c_p_" + suffix
 	vgCode := "vg_2c_" + suffix
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, '2c P', 1, $2::ltree, 3, 1, 80, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, '2c P', 1, $2::ltree, false, 1, 80, false)
 		RETURNING id`, pCode, "root."+pCode).Scan(&pID))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, '2c VG', $2, $3::ltree, 4, 1, 80, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, '2c VG', $2, $3::ltree, true, 1, 80, false)
 		RETURNING id`, vgCode, pID, "root."+pCode+"."+vgCode).Scan(&vgID))
 
 	// 角色：本测试容器无 000002 种子，自建 superadmin/viewer（幂等；code 精确匹配
@@ -448,8 +448,8 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 	var softID int64
 	softCode := "vg_soft_" + uniqueSuffix()
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, '软删守卫', 1, $2::ltree, 3, 1, 80, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, '软删守卫', 1, $2::ltree, false, 1, 80, false)
 		RETURNING id`, softCode, "root."+softCode).Scan(&softID))
 	_, err = testPool.Exec(ctx,
 		`UPDATE organizations SET deleted_at = NOW() WHERE id = $1`, softID)

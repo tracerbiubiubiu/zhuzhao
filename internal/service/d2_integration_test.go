@@ -67,8 +67,8 @@ func TestOrgService_Update_StatusPatchSemantics(t *testing.T) {
 
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system, sort_order)
-		VALUES ('d2_patch', '补丁语义', 'd2_patch', 2, 1, false, 1) RETURNING id`).Scan(&orgID))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system, sort_order)
+		VALUES ('d2_patch', '补丁语义', 'd2_patch', false, 1, false, 1) RETURNING id`).Scan(&orgID))
 
 	// ① 未传 status → 保持启用
 	updated, err := svc.Update(ctx, &model.UpdateOrgRequest{

@@ -87,36 +87,36 @@ func TestB2Org_VgCreateAndMoveCascade(t *testing.T) {
 	// 无 vg_ 前缀 → 400
 	_, err := orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: "bad_vg_" + uniqueSuffix(), Name: "坏前缀",
-		ParentID: &env.pID, OrgType: 4,
+		ParentID: &env.pID, IsVirtual: true,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
 	// 根级虚拟组（无 ParentID）→ 400（必须挂载实体下）
 	_, err = orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: "vg_root_" + uniqueSuffix(), Name: "根级虚拟组",
-		OrgType: 4,
+		IsVirtual: true,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
 	// 先造一个合法虚拟组，再尝试挂虚拟组下 → 400（父级必须实体）
 	vgFirst, err := orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: "vg_first_" + uniqueSuffix(), Name: "首层虚拟组",
-		ParentID: &env.pID, OrgType: 4,
+		ParentID: &env.pID, IsVirtual: true,
 	}, env.u1)
 	require.NoError(t, err)
 	_, err = orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: "vg_nested_" + uniqueSuffix(), Name: "嵌套虚拟组",
-		ParentID: &vgFirst.ID, OrgType: 4,
+		ParentID: &vgFirst.ID, IsVirtual: true,
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 
-	// 合法创建：tech 实体下 vg_x → org_type=4、source=local、路径含 vg_ 段
+	// 合法创建：tech 实体下 vg_x → is_virtual=4、source=local、路径含 vg_ 段
 	vgCode := "vg_x_" + uniqueSuffix()
 	vg, err := orgService.Create(ctx, &model.CreateOrgRequest{
-		Code: vgCode, Name: "合法虚拟组", ParentID: &env.pID, OrgType: 4,
+		Code: vgCode, Name: "合法虚拟组", ParentID: &env.pID, IsVirtual: true,
 	}, env.u1)
 	require.NoError(t, err)
-	assert.Equal(t, 4, vg.OrgType)
+	assert.True(t, vg.IsVirtual)
 	var src string
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT source FROM organizations WHERE id = $1`, vg.ID).Scan(&src))
@@ -361,8 +361,8 @@ func createB2Vg(t *testing.T, parentID int64, code string) int64 {
 	t.Helper()
 	var id int64
 	require.NoError(t, testPool.QueryRow(context.Background(), `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system, source)
-		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, 4, 1, 70, false, 'local')
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system, source)
+		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, true, 1, 70, false, 'local')
 		RETURNING id`, code, "虚拟组 "+code, parentID, code).Scan(&id))
 	softDeleteOrg(t, id)
 	return id

@@ -96,6 +96,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000016 | ticket_relations | 2a |
 | 000017 | ticket_visibility CHECK 放开 `project_isolated`（BK-13，IW1） | 2b |
 | 000018 | ticket_type_admin：validate_regex + 类型配置页菜单/menu_apis（BK-18，IW3） | 2a-ext |
+| 000019 | org_is_virtual：org_type 四值枚举（1/2/3 实体细分 + 4 虚拟）收敛为 `is_virtual` 布尔——行为消费点仅区分实体/虚拟，1/2/3 细分零代码消费（层级由 path/nlevel 表达）；API 契约 `org_type` → `is_virtual`（前端暂缓期无消费方） | 模型收敛 |
 
 > **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 `000017/000018` 已被 IW1/IW3 占用；Phase 3 SLA（10-ticket-business §2 原占用 000017–000021）启动时按此规则重排。
 

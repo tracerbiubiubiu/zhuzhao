@@ -37,8 +37,8 @@ func insertOrg(t *testing.T, code, path string, parentID *int64) int64 {
 	t.Helper()
 	var id int64
 	err := testPool.QueryRow(context.Background(), `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, is_system, sort_order)
-		VALUES ($1, $1, $2, $3::ltree, 2, 1, false, 1) RETURNING id`, code, parentID, path).Scan(&id)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, is_system, sort_order)
+		VALUES ($1, $1, $2, $3::ltree, false, 1, false, 1) RETURNING id`, code, parentID, path).Scan(&id)
 	require.NoError(t, err)
 	return id
 }

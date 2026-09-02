@@ -50,7 +50,7 @@ func NewPgxScopeResolver(db *pgxpool.Pool) ScopeResolver {
 
 // resolve 单 SQL 完成三轴归并：
 //   - 成员资格：expires_at 未过期（临时成员过期即失效，读取侧过滤——03-org-enhance）
-//   - 透明锚点：最近实体祖先（org_type IN 1,2,3）且 ticket_visibility=entity_transparent_read；
+//   - 透明锚点：最近实体祖先（NOT is_virtual）且 ticket_visibility=entity_transparent_read；
 //     虚拟组成员的锚点为挂载实体而非虚拟组自身（09 §5.2 EntityAnchorPath）
 //   - scope：group → 成员组织子树路径并入；all → AllScope；assigned → 不扩展（仅属主）
 //
@@ -65,7 +65,7 @@ func (r *pgxScopeResolver) resolve(ctx context.Context, userID int64) (*Resolved
 	JOIN LATERAL (
 		SELECT a.path, a.ticket_visibility
 		FROM organizations a
-		WHERE a.path @> m_org.path AND a.org_type IN (1, 2, 3)
+		WHERE a.path @> m_org.path AND NOT a.is_virtual
 		ORDER BY nlevel(a.path) DESC
 		LIMIT 1
 	) o_anchor ON true

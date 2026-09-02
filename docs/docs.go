@@ -213,6 +213,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orgs/roles/bind": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "组织绑定角色",
+                "parameters": [
+                    {
+                        "description": "组织与角色",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.BindOrgRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orgs/roles/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "组织解绑角色",
+                "parameters": [
+                    {
+                        "description": "组织与角色",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.BindOrgRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orgs/roles/list": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "组织已绑定角色列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "组织 ID",
+                        "name": "org_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ticket-templates": {
             "get": {
                 "produces": [
@@ -992,6 +1086,23 @@ const docTemplate = `{
                     "example": "0"
                 },
                 "id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "model.BindOrgRoleRequest": {
+            "type": "object",
+            "required": [
+                "org_id",
+                "role_id"
+            ],
+            "properties": {
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "role_id": {
                     "type": "string",
                     "example": "0"
                 }

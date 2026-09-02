@@ -348,8 +348,8 @@ func createB2Org(t *testing.T, parentID int64, code, name string) int64 {
 	t.Helper()
 	var id int64
 	require.NoError(t, testPool.QueryRow(context.Background(), `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, 3, 1, 60, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, $2, $3, (SELECT path::text || '.' || $4 FROM organizations WHERE id = $3)::ltree, false, 1, 60, false)
 		RETURNING id`, code, name, parentID, code).Scan(&id))
 	softDeleteOrg(t, id)
 	return id

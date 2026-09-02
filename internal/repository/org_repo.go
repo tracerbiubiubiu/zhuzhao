@@ -14,7 +14,7 @@ import (
 
 const orgSelectColumns = `
 	id, code, name, COALESCE(description, '') AS description,
-	parent_id, path::text AS path, org_type, status, is_system,
+	parent_id, path::text AS path, is_virtual, status, is_system,
 	sort_order, owner_user_ids, created_by, tenant_id, version, deleted_at, created_at, updated_at,
 	ticket_visibility`
 
@@ -282,7 +282,7 @@ func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
 	}
 	const q = `
 		INSERT INTO organizations (
-			code, name, description, parent_id, path, org_type, status, is_system,
+			code, name, description, parent_id, path, is_virtual, status, is_system,
 			sort_order, created_by, tenant_id
 		) VALUES (
 			$1, $2, NULLIF($3, ''), $4, $5::ltree, $6, $7, false,
@@ -291,7 +291,7 @@ func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
 		RETURNING id, version, created_at, updated_at`
 	err := r.db.QueryRow(ctx, q,
 		org.Code, org.Name, org.Description, org.ParentID, org.Path,
-		org.OrgType, status, org.SortOrder, org.CreatedBy, tenantID,
+		org.IsVirtual, status, org.SortOrder, org.CreatedBy, tenantID,
 	).Scan(&org.ID, &org.Version, &org.CreatedAt, &org.UpdatedAt)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
@@ -525,7 +525,7 @@ func scanOrgRow(row pgx.Row) (*model.Organization, error) {
 	var o model.Organization
 	err := row.Scan(
 		&o.ID, &o.Code, &o.Name, &o.Description, &o.ParentID, &o.Path,
-		&o.OrgType, &o.Status, &o.IsSystem, &o.SortOrder, &o.OwnerUserIDs, &o.CreatedBy,
+		&o.IsVirtual, &o.Status, &o.IsSystem, &o.SortOrder, &o.OwnerUserIDs, &o.CreatedBy,
 		&o.TenantID, &o.Version, &o.DeletedAt, &o.CreatedAt, &o.UpdatedAt, &o.TicketVisibility,
 	)
 	if err != nil {

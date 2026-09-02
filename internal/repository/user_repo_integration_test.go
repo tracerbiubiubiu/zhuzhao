@@ -198,8 +198,8 @@ func TestUserRepo_SoftDeleteCascades(t *testing.T) {
 
 	var orgID int64
 	err = testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type)
-		VALUES ('cascade_org', '级联测试组织', 'cascade_org', 2) RETURNING id`).Scan(&orgID)
+		INSERT INTO organizations (code, name, path, is_virtual)
+		VALUES ('cascade_org', '级联测试组织', 'cascade_org', false) RETURNING id`).Scan(&orgID)
 	require.NoError(t, err)
 
 	hash, err := crypto.HashPassword("p")

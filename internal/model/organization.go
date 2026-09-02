@@ -13,10 +13,10 @@ type Organization struct {
 	Name         string              `json:"name" db:"name"`
 	Description  string              `json:"description" db:"description"`
 	ParentID     *int64              `json:"parent_id,string" db:"parent_id"`
-	Path         string              `json:"path" db:"path"`            // ltree 路径: root.tech.fe
-	Children     []Organization      `json:"children,omitempty" db:"-"` // 前端树形结构，不入库
-	OrgType      int                 `json:"org_type" db:"org_type"`    // 1=公司 2=部门 3=小组 4=虚拟组
-	Status       int                 `json:"status" db:"status"`        // 1=启用 0=禁用
+	Path         string              `json:"path" db:"path"`             // ltree 路径: root.tech.fe
+	Children     []Organization      `json:"children,omitempty" db:"-"`  // 前端树形结构，不入库
+	IsVirtual    bool                `json:"is_virtual" db:"is_virtual"` // true=虚拟组；false=实体组织（原 org_type 1/2/3/4，000019 收敛——行为仅区分实体/虚拟，层级由 path/nlevel 表达）
+	Status       int                 `json:"status" db:"status"`         // 1=启用 0=禁用
 	IsSystem     bool                `json:"is_system" db:"is_system"`
 	SortOrder    int                 `json:"sort_order" db:"sort_order"`
 	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" db:"owner_user_ids"` // 2c 负责人（可多人；元素字符串 ID）

@@ -86,6 +86,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000017_ticket_visibility_check.up.sql",
 			// IW3/BK-18：类型管理闭环（validate_regex 列 + 管理页菜单/menu_apis）
 			"000018_ticket_type_admin.up.sql",
+			// org_type 四值枚举收敛为 is_virtual 布尔（000019，层级由 path/nlevel 表达）
+			"000019_org_is_virtual.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

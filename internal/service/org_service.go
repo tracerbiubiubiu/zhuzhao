@@ -309,8 +309,8 @@ func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, ac
 		return nil, errcode.ErrInvalidParams
 	}
 	// 2b-org 虚拟组（03-org-enhance §2 / hr-directory-sync §2.1）：
-	// code 须以 vg_ 前缀区分 HR 部门编码，且必须挂载在实体组织（org_type IN 1,2,3）下
-	if req.OrgType == 4 && !strings.HasPrefix(req.Code, "vg_") {
+	// code 须以 vg_ 前缀区分 HR 部门编码，且必须挂载在实体组织（is_virtual=false）下
+	if req.IsVirtual && !strings.HasPrefix(req.Code, "vg_") {
 		return nil, &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "虚拟组 code 须以 vg_ 前缀"}
 	}
 
@@ -328,15 +328,15 @@ func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, ac
 				Message: fmt.Sprintf("组织层级超过上限 %d 层", maxOrgPathDepth),
 			}
 		}
-		// 虚拟组父级必须为实体组织（1=公司 2=部门 3=小组；system 根为 1）；
+		// 虚拟组父级必须为实体组织（system 根亦为实体）；
 		// 虚拟组下不再挂虚拟组（兄弟可读语义以「同实体锚点」为前提）
-		if req.OrgType == 4 && (parent.OrgType == 4) {
+		if req.IsVirtual && parent.IsVirtual {
 			return nil, &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "虚拟组必须挂载在实体组织下"}
 		}
 		parentID = &parent.ID
 		path = parent.Path + "." + req.Code
 	}
-	if req.ParentID == nil && req.OrgType == 4 {
+	if req.ParentID == nil && req.IsVirtual {
 		return nil, &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "虚拟组必须挂载在实体组织下"}
 	}
 
@@ -346,7 +346,7 @@ func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, ac
 		Description: req.Description,
 		ParentID:    parentID,
 		Path:        path,
-		OrgType:     req.OrgType,
+		IsVirtual:   req.IsVirtual,
 		Status:      1,
 		SortOrder:   req.SortOrder,
 		CreatedBy:   &actorUserID,
@@ -369,7 +369,7 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 	org.Name = req.Name
 	// BK-13（09 §5.2.1）：ticket_visibility 仅实体可配；虚拟组继承最近实体祖先，传入即 400
 	if req.TicketVisibility != nil {
-		if org.OrgType == 4 {
+		if org.IsVirtual {
 			return nil, errcode.ErrInvalidParams
 		}
 		org.TicketVisibility = *req.TicketVisibility
@@ -481,7 +481,7 @@ func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberR
 }
 
 // DeleteOrgDelegated 委托删除入口（2c，04 §3.6；D6）：
-// org_type=4 且调用方为 effective owner（或全局）→ 允许删除（仍有成员 → 50005，与 Phase 1 一致）。
+// 虚拟组（is_virtual=true）且调用方为 effective owner（或全局）→ 允许删除（仍有成员 → 50005，与 Phase 1 一致）。
 // 实体组织删除规则不变。
 func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUserID int64) error {
 	org, err := s.orgRepo.FindByID(ctx, id)
@@ -493,7 +493,7 @@ func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUser
 	}
 	// 全局管理员走既有 Delete；虚拟组 effective owner 亦可
 	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
-		if org.OrgType != 4 {
+		if !org.IsVirtual {
 			return errcode.ErrNoPermission // 实体删除仅全局（Phase 1 语义）
 		}
 		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, id)

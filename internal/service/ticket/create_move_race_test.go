@@ -33,13 +33,13 @@ func setupBK11(t *testing.T) (svc *Service, orgRepo *repository.OrgRepo, aID, bI
 	bCode = "vgbk11_" + suffix
 
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, 'A', 1, $2::ltree, 3, 1, 75, false) RETURNING id`,
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, 'A', 1, $2::ltree, false, 1, 75, false) RETURNING id`,
 		"a_"+suffix, "root.a_"+suffix).Scan(&aID))
 	softDeleteOrg(t, aID)
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, 'B', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, 3, 1, 75, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, 'B', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, false, 1, 75, false)
 		RETURNING id`, bCode, aID, bCode).Scan(&bID))
 	softDeleteOrg(t, bID)
 

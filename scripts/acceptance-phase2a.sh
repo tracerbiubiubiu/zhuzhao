@@ -150,7 +150,7 @@ ROOT_ID=$(psql_q "SELECT id FROM organizations WHERE parent_id IS NULL ORDER BY 
 TECH_CODE="p2a_tech_$$"
 TECH_JSON=$(curl -s -X POST "$BASE/orgs" \
   -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-  -d "{\"code\":\"$TECH_CODE\",\"name\":\"Phase2a Tech\",\"parent_id\":\"$ROOT_ID\",\"org_type\":3,\"sort_order\":99}")
+  -d "{\"code\":\"$TECH_CODE\",\"name\":\"Phase2a Tech\",\"parent_id\":\"$ROOT_ID\",\"is_virtual\":false,\"sort_order\":99}")
 TECH_ID=$(echo "$TECH_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 check "create tech org" "1" "$([ "$TECH_ID" != "0" ] && echo 1 || echo 0)"
 
@@ -159,7 +159,7 @@ check "create tech org" "1" "$([ "$TECH_ID" != "0" ] && echo 1 || echo 0)"
 TECH2_CODE="p2a_tech2_$$"
 TECH2_JSON=$(curl -s -X POST "$BASE/orgs" \
   -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-  -d "{\"code\":\"$TECH2_CODE\",\"name\":\"Phase2a Tech2\",\"parent_id\":\"$ROOT_ID\",\"org_type\":3,\"sort_order\":98}")
+  -d "{\"code\":\"$TECH2_CODE\",\"name\":\"Phase2a Tech2\",\"parent_id\":\"$ROOT_ID\",\"is_virtual\":false,\"sort_order\":98}")
 TECH2_ID=$(echo "$TECH2_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 check "create tech2 org" "1" "$([ "$TECH2_ID" != "0" ] && echo 1 || echo 0)"
 
@@ -422,7 +422,7 @@ check "create relation code=0" "0" "$(echo "$REL" | json_code)"
 FE_CODE="p2a_fe_$$"
 FE_JSON=$(curl -s -X POST "$BASE/orgs" \
   -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-  -d "{\"code\":\"$FE_CODE\",\"name\":\"Phase2a Frontend\",\"parent_id\":\"$TECH_ID\",\"org_type\":3,\"sort_order\":1}")
+  -d "{\"code\":\"$FE_CODE\",\"name\":\"Phase2a Frontend\",\"parent_id\":\"$TECH_ID\",\"is_virtual\":false,\"sort_order\":1}")
 FE_ID=$(echo "$FE_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
 check "create org fe (child of tech)" "1" "$([ "$FE_ID" != "0" ] && echo 1 || echo 0)"
 FE_OLD_PATH=$(psql_q "SELECT path::text FROM organizations WHERE id=$FE_ID")

@@ -11,6 +11,18 @@ definitions:
     required:
     - id
     type: object
+  model.BindOrgRoleRequest:
+    properties:
+      org_id:
+        example: "0"
+        type: string
+      role_id:
+        example: "0"
+        type: string
+    required:
+    - org_id
+    - role_id
+    type: object
   model.CloseTicketRequest:
     properties:
       comment:
@@ -310,6 +322,66 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 设置组织负责人
+      tags:
+      - org
+  /api/v1/orgs/roles/bind:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 组织与角色
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.BindOrgRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 组织绑定角色
+      tags:
+      - org
+  /api/v1/orgs/roles/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 组织与角色
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/model.BindOrgRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 组织解绑角色
+      tags:
+      - org
+  /api/v1/orgs/roles/list:
+    get:
+      parameters:
+      - description: 组织 ID
+        in: query
+        name: org_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 组织已绑定角色列表
       tags:
       - org
   /api/v1/ticket-templates:

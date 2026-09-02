@@ -94,11 +94,11 @@ func TestOrgRepo_SetUserOrgsTxSoftDeletedOrg(t *testing.T) {
 
 	var aliveID, deadID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system)
-		VALUES ('d2_alive', '存活', 'd2_alive', 2, 1, false) RETURNING id`).Scan(&aliveID))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system)
+		VALUES ('d2_alive', '存活', 'd2_alive', false, 1, false) RETURNING id`).Scan(&aliveID))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system, deleted_at)
-		VALUES ('d2_dead', '已软删', 'd2_dead', 2, 1, false, NOW()) RETURNING id`).Scan(&deadID))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system, deleted_at)
+		VALUES ('d2_dead', '已软删', 'd2_dead', false, 1, false, NOW()) RETURNING id`).Scan(&deadID))
 
 	user := &model.User{Username: "d2_suo", EmployeeNo: "E632002", Password: "$2a$12$dummydummydummydummydummydummydummydummydummydu", Status: 1}
 	require.NoError(t, userRepo.Create(ctx, user))
@@ -154,11 +154,11 @@ func TestOrgRepo_ConcurrentDualPrimary(t *testing.T) {
 
 	var orgA, orgB int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system)
-		VALUES ('d2_ca', '甲', 'd2_ca', 2, 1, false) RETURNING id`).Scan(&orgA))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system)
+		VALUES ('d2_ca', '甲', 'd2_ca', false, 1, false) RETURNING id`).Scan(&orgA))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system)
-		VALUES ('d2_cb', '乙', 'd2_cb', 2, 1, false) RETURNING id`).Scan(&orgB))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system)
+		VALUES ('d2_cb', '乙', 'd2_cb', false, 1, false) RETURNING id`).Scan(&orgB))
 
 	// 无任何绑定的用户：两事务并发置 primary
 	user := &model.User{Username: "d2_race", EmployeeNo: "E632004", Password: "$2a$12$dummydummydummydummydummydummydummydummydummydu", Status: 1}
@@ -203,11 +203,11 @@ func TestOrgService_CreateDepthLimit(t *testing.T) {
 	deepPath := strings.Repeat("l.", 19) + "l20" // 20 段 label
 	var parentID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system)
-		VALUES ('d2_deep', '深层', $1, 2, 1, false) RETURNING id`, deepPath).Scan(&parentID))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system)
+		VALUES ('d2_deep', '深层', $1, false, 1, false) RETURNING id`, deepPath).Scan(&parentID))
 
 	_, err := svc.Create(ctx, &model.CreateOrgRequest{
-		Code: "d2_too_deep", Name: "超限", ParentID: &parentID, OrgType: 2,
+		Code: "d2_too_deep", Name: "超限", ParentID: &parentID, IsVirtual: false,
 	}, 1)
 	requireErrCode(t, err, errcode.ErrInvalidParams)
 }

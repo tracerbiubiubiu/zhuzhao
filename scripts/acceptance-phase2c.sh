@@ -75,7 +75,7 @@ SUF=$$
 ROOT_ID=$(psql_q "SELECT id FROM organizations WHERE parent_id IS NULL ORDER BY id LIMIT 1")
 mkorg() {
   curl -s -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-    -d "{\"code\":\"$1\",\"name\":\"$2\",\"parent_id\":\"$3\",\"org_type\":$4,\"sort_order\":60}" \
+    -d "{\"code\":\"$1\",\"name\":\"$2\",\"parent_id\":\"$3\",\"is_virtual\":$4,\"sort_order\":60}" \
     | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))"
 }
 mkuser() {
@@ -94,8 +94,8 @@ code_of() { cat /tmp/p2c.json | json_code; }
 # --- 环境：P(实体) > VG(虚拟组)；owner/admin/m1/m2/admin2 五用户 ---
 ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
-P_ID=$(mkorg "p2c_p_$SUF" "2c P" "$ROOT_ID" 3)
-VG_ID=$(mkorg "vg_2c_$SUF" "2c VG" "$P_ID" 4)
+P_ID=$(mkorg "p2c_p_$SUF" "2c P" "$ROOT_ID" false)
+VG_ID=$(mkorg "vg_2c_$SUF" "2c VG" "$P_ID" true)
 check "create P/VG" "1" "$([ "$P_ID" != "0" ] && [ "$VG_ID" != "0" ] && echo 1 || echo 0)"
 
 # operator 角色：Section A（phase2a）已授予 operator 工单菜单并持久——L1 放行后，
@@ -179,7 +179,7 @@ D9_RAW=$(curl -s -X POST "$BASE/tickets/update" -H "Authorization: Bearer $PTOK"
 check "D9 ancestor owner updates vg ticket (0)" "0" "$(echo "$D9_RAW" | json_code)"
 
 # --- D6 owner 删空虚拟组：先清成员（SAT 全局），owner 删 → 200；有成员时 → 409 ---
-VG2=$(mkorg "vg_2c6_$SUF" "2c VG6" "$P_ID" 4)
+VG2=$(mkorg "vg_2c6_$SUF" "2c VG6" "$P_ID" true)
 G6M=$(mkuser "p2c_g6_$SUF" "C2G6$SUF" "$ROLE_V" "$VG2")
 D6_HTTP=$(curl -s -o /tmp/p2c_d6.json -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
 check "D6 vg with member → 409" "409" "$D6_HTTP"
@@ -192,7 +192,7 @@ D6B_RAW=$(curl -s -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $OWNTOK"
 check "D6 owner deletes empty vg (0)" "0" "$(echo "$D6B_RAW" | json_code)"
 
 # --- D11 回归：vg member 对兄弟 vg 工单可读不可改（策略 B；2c 下委托者也不能跨 vg）---
-VG3=$(mkorg "vg_2c11_$SUF" "2c VG11" "$P_ID" 4)
+VG3=$(mkorg "vg_2c11_$SUF" "2c VG11" "$P_ID" true)
 V3M=$(mkuser "p2c_v3_$SUF" "C2V3$SUF" "$ROLE_O" "$VG3")
 V3TOK=$(mklogin "C2V3$SUF")
 TK3=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $V3TOK" -H 'Content-Type: application/json' \
@@ -206,7 +206,7 @@ check "D11 vg admin updates sibling vg (403)" "403" "$D11U_HTTP"
 # --- D9 补强：org move 后 ancestor owner 委托随新 path 存续（P2-D1 级联 + IsAncestorOwner 快照约束）---
 # 建目标组织 TGT，把 P（含 vg 与工单）移到 TGT 下：工单 org_path 与组织 path 同事务
 # 级联重写，P 的 owner（PTOK）对 vg 工单的 ancestor 委托应在新 path 下继续成立（否则漏单）。
-TGT=$(mkorg "p2c_tgt_$SUF" "2c TGT" "$ROOT_ID" 3)
+TGT=$(mkorg "p2c_tgt_$SUF" "2c TGT" "$ROOT_ID" false)
 curl -s -X POST "$BASE/orgs/move" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$P_ID\",\"parent_id\":\"$TGT\"}" >/dev/null
 D9M_RAW=$(curl -s -X POST "$BASE/tickets/update" -H "Authorization: Bearer $PTOK" -H 'Content-Type: application/json' \

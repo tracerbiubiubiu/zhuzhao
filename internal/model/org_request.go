@@ -47,8 +47,11 @@ type CreateOrgRequest struct {
 	Name        string `json:"name" binding:"required,max=100"`
 	Description string `json:"description"`
 	ParentID    *int64 `json:"parent_id,string"`
-	OrgType     int    `json:"org_type" binding:"required,oneof=1 2 3 4"` // 4=虚拟组（2b-org，03-org-enhance §2）
-	SortOrder   int    `json:"sort_order"`
+	// IsVirtual true=虚拟组（2b-org，03-org-enhance §2：须 vg_ 前缀 + 挂载实体下）；
+	// false=实体（缺省，安全侧）。000019 收敛原 org_type 1/2/3/4；
+	// 不设 binding required（bool 零值 false 即实体，required 反会拒绝合法 false）
+	IsVirtual bool `json:"is_virtual"`
+	SortOrder int  `json:"sort_order"`
 }
 
 // UpdateOrgRequest 更新组织。
@@ -61,7 +64,7 @@ type UpdateOrgRequest struct {
 	Description *string `json:"description"`
 	Status      *int    `json:"status" binding:"omitempty,oneof=0 1"`
 	SortOrder   *int    `json:"sort_order"`
-	// BK-13（09 §5.2.1）：仅实体（org_type 1–3）可配置；虚拟组继承最近实体祖先，传入即 400
+	// BK-13（09 §5.2.1）：仅实体（is_virtual=false）可配置；虚拟组继承最近实体祖先，传入即 400
 	TicketVisibility *string `json:"ticket_visibility" binding:"omitempty,oneof=entity_transparent_read project_isolated"`
 }
 

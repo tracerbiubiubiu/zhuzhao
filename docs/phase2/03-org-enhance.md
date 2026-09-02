@@ -43,7 +43,7 @@
 
 ### 虚拟组与实体组织
 
-- **统一** `organizations` 表，`org_type` 区分：`1–3` 实体，`4` 虚拟组。
+- **统一** `organizations` 表，`is_virtual` 布尔区分：`false` 实体，`true` 虚拟组（000019 收敛原 `org_type` 1–3 实体 / 4 虚拟组——行为消费点仅区分实体/虚拟，1/2/3 层级细分零代码消费，层级由 path/nlevel 表达）。
 - 虚拟组 **必须** 挂在实体（或 system 根）下；path 为 ltree 子节点。
 - 完整挂载、HR 同步、撤销 reparent 规则见 **[hr-directory-sync.md](../proposal/hr-directory-sync.md)**（必读）。
 
@@ -56,7 +56,7 @@
 ```sql
 ALTER TABLE organizations ADD COLUMN ticket_visibility VARCHAR(30) NOT NULL DEFAULT 'entity_transparent_read';
 -- CHECK (ticket_visibility IN ('entity_transparent_read'))   -- future 扩展时再加 project_isolated（与 09 §5.2.1 一致）
--- 仅 org_type IN (1,2,3) 实体有效；虚拟组继承最近实体祖先配置
+-- 仅实体（is_virtual=false，000019 起布尔化）有效；虚拟组继承最近实体祖先配置
 ```
 
 ### HR Sync Job

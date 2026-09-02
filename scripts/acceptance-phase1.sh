@@ -332,7 +332,7 @@ check "B1-1 re-enable http" "200" "$HC"
 
 # --- stub negative (org create) ---
 ORGCODE="org_$RANDOM"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"org_type\":2}")
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"is_virtual\":false}")
 check "org create" "200" "$HC"
 
 # --- D2 断言组（review 03 号报告修复验收；种子断言已前移至 #27 之前，避免被测试自身的绑定污染） ---

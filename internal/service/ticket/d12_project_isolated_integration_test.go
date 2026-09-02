@@ -29,18 +29,18 @@ func setupD12(t *testing.T) (svc *Service, eID, vgA, vgB, ma, aa, mb, pOwner int
 	suffix := uniqueSuffix()
 
 	var err error
-	mkorg := func(code, name string, parent int64, path string, orgType int) int64 {
+	mkorg := func(code, name string, parent int64, path string, isVirtual bool) int64 {
 		var id int64
 		require.NoError(t, testPool.QueryRow(ctx, `
-			INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
+			INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
 			VALUES ($1, $2, $3, $4::ltree, $5, 1, 75, false) RETURNING id`,
-			code, name, parent, path, orgType).Scan(&id))
+			code, name, parent, path, isVirtual).Scan(&id))
 		softDeleteOrg(t, id)
 		return id
 	}
-	eID = mkorg("e_d12_"+suffix, "D12 实体", 1, "root.e_d12_"+suffix, 3)
-	vgA = mkorg("vga_d12_"+suffix, "D12 vgA", eID, "root.e_d12_"+suffix+".vga_d12_"+suffix, 4)
-	vgB = mkorg("vgb_d12_"+suffix, "D12 vgB", eID, "root.e_d12_"+suffix+".vgb_d12_"+suffix, 4)
+	eID = mkorg("e_d12_"+suffix, "D12 实体", 1, "root.e_d12_"+suffix, false)
+	vgA = mkorg("vga_d12_"+suffix, "D12 vgA", eID, "root.e_d12_"+suffix+".vga_d12_"+suffix, true)
+	vgB = mkorg("vgb_d12_"+suffix, "D12 vgB", eID, "root.e_d12_"+suffix+".vgb_d12_"+suffix, true)
 
 	mkuser := func(name string) int64 {
 		var id int64

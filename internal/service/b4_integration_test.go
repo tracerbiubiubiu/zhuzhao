@@ -25,8 +25,8 @@ func TestOrgService_GetMembersPagination(t *testing.T) {
 
 	var rootID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, path, org_type, status, is_system, sort_order)
-		VALUES ('gm_root', '根', 'gm_root', 2, 1, false, 1) RETURNING id`).Scan(&rootID))
+		INSERT INTO organizations (code, name, path, is_virtual, status, is_system, sort_order)
+		VALUES ('gm_root', '根', 'gm_root', false, 1, false, 1) RETURNING id`).Scan(&rootID))
 
 	// 3 名成员
 	hash, err := crypto.HashPassword("p")

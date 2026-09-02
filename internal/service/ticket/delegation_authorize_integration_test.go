@@ -42,12 +42,12 @@ func setupD9(t *testing.T) *d9Env {
 	pCode := "p2c9p_" + suffix
 	vgCode := "vg_2c9_" + suffix
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, 'P', 1, $2::ltree, 3, 1, 75, false) RETURNING id`,
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, 'P', 1, $2::ltree, false, 1, 75, false) RETURNING id`,
 		pCode, "root."+pCode).Scan(&pID))
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, 'VG', $2, $3::ltree, 4, 1, 75, false) RETURNING id`,
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, 'VG', $2, $3::ltree, true, 1, 75, false) RETURNING id`,
 		vgCode, pID, "root."+pCode+"."+vgCode).Scan(&vgID))
 	softDeleteOrg(t, pID)
 	softDeleteOrg(t, vgID)
@@ -145,8 +145,8 @@ func TestD9_VgAdminCannotCrossVg(t *testing.T) {
 	vg2Code := "vg_2c9b_" + suffix
 	var vg2ID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO organizations (code, name, parent_id, path, org_type, status, sort_order, is_system)
-		VALUES ($1, 'VG2', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, 4, 1, 75, false)
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, sort_order, is_system)
+		VALUES ($1, 'VG2', $2, (SELECT path::text || '.' || $3 FROM organizations WHERE id = $2)::ltree, true, 1, 75, false)
 		RETURNING id`, vg2Code, env.pID, vg2Code).Scan(&vg2ID))
 	softDeleteOrg(t, vg2ID)
 
