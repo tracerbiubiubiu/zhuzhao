@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 )
 
 // newJWTTestEnv 构造 JWT 中间件测试环境（miniredis：黑名单/disabled 检查全放行）
@@ -29,7 +28,7 @@ func newJWTTestEnv(t *testing.T, accessTTL time.Duration) (*gin.Context, *httpte
 	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 
-	manager := jwtpkg.NewManager(config.JWTConfig{
+	manager := jwtpkg.NewManager(jwtpkg.Config{
 		Secret:    "jwt-middleware-test-secret-0123456789",
 		AccessTTL: accessTTL,
 	})
@@ -68,7 +67,7 @@ func TestJWT_InvalidSignature_Returns20003(t *testing.T) {
 	bearerRequest(c, at)
 
 	// 用另一密钥的 manager 解析（等效签名篡改）
-	forgedManager := jwtpkg.NewManager(config.JWTConfig{
+	forgedManager := jwtpkg.NewManager(jwtpkg.Config{
 		Secret:    "another-secret-key-0123456789abcdef",
 		AccessTTL: 30 * time.Minute,
 	})

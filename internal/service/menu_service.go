@@ -6,7 +6,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/validate"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 

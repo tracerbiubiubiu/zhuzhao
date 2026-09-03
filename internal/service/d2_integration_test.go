@@ -15,10 +15,10 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/crypto"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	redispkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	redispkg "github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -104,7 +104,7 @@ func d2LoginUser(t *testing.T, employeeNo, password string) (*service.AuthServic
 	t.Cleanup(func() { _ = rdb.Close() })
 	jwtCfg := config.JWTConfig{Secret: "d2-test-secret-0123456789abcdef", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 	return authSvc, user, mr
 }
 
@@ -208,7 +208,7 @@ func newUserServiceForD2(t *testing.T) (*service.UserService, *repository.UserRe
 	roleRepo := repository.NewRoleRepo(testPool)
 	orgSvc := service.NewOrgService(repository.NewOrgRepo(testPool), userRepo, service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 	jwtCfg := config.JWTConfig{Secret: "d2-test-secret-0123456789abcdef", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
-	return service.NewUserService(testPool, userRepo, roleRepo, orgSvc, rdb, jwt.NewManager(jwtCfg)), userRepo, roleRepo
+	return service.NewUserService(testPool, userRepo, roleRepo, orgSvc, rdb, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL})), userRepo, roleRepo
 }
 
 // D2-45：Create 重复工号 → 30007（含软删占用语义由 000006 部分索引保证）

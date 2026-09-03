@@ -14,10 +14,10 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/crypto"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	redispkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	redispkg "github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -46,7 +46,7 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 		RefreshTTL: 168 * time.Hour,
 	}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{
 		EmployeeNo: "E000001",
@@ -85,7 +85,7 @@ func TestAuthService_LoginWrongPassword(t *testing.T) {
 
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 
 	_, err = authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: "E000001", Password: "wrong"}, "127.0.0.1", "test-agent")
 	require.Error(t, err)
@@ -112,7 +112,7 @@ func newAuthServiceForTest(t *testing.T) *service.AuthService {
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	repo := repository.NewUserRepo(testPool)
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	return service.NewAuthService(repo, jwt.NewManager(jwtCfg), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	return service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
 }
 
 // B2-2 守护：新密码与旧密码相同 → 400（ErrInvalidParams），

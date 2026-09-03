@@ -12,10 +12,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
@@ -28,22 +24,22 @@ import (
 // InitializeApp Wire 注入入口
 func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	logConfig := cfg.Log
-	slogLogger := logger.New(logConfig)
+	logger := provideLogger(logConfig)
 	databaseConfig := cfg.Database
-	pool, cleanup, err := postgres.New(databaseConfig)
+	pool, cleanup, err := providePostgres(databaseConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 	userRepo := repository.NewUserRepo(pool)
 	jwtConfig := cfg.JWT
-	manager := jwt.NewManager(jwtConfig)
+	manager := provideJWTManager(jwtConfig)
 	redisConfig := cfg.Redis
-	client, cleanup2, err := redis.New(redisConfig)
+	client, cleanup2, err := provideRedis(redisConfig)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	scripts := redis.NewScripts(client)
+	scripts := provideRedisScripts(client)
 	auditLogRepo := repository.NewAuditLogRepo(pool)
 	auditService := service.NewAuditService(auditLogRepo, userRepo)
 	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
@@ -85,14 +81,14 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		Enforcer:       syncedEnforcer,
 		RedisClient:    client,
 		DBPool:         pool,
-		Logger:         slogLogger,
+		Logger:         logger,
 		RoleFetcher:    rbacService,
 		AuditService:   auditService,
 		Registry:       registry,
 		TrustedProxies: v,
 	}
 	engine := router.New(deps)
-	app := NewApp(cfg, slogLogger, engine)
+	app := NewApp(cfg, logger, engine)
 	return app, func() {
 		cleanup3()
 		cleanup2()
@@ -102,7 +98,13 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 // wire.go:
 
-var pkgSet = wire.NewSet(logger.New, jwt.NewManager, postgres.New, redis.New, redis.NewScripts, resource.NewRegistry, casbin.New)
+var pkgSet = wire.NewSet(
+	provideLogger,
+	provideJWTManager,
+	providePostgres,
+	provideRedis,
+	provideRedisScripts, resource.NewRegistry, casbin.New,
+)
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo)
 

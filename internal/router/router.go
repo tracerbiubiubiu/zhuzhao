@@ -13,7 +13,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 )
 

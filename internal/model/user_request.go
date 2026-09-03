@@ -1,6 +1,6 @@
 package model
 
-import "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
+import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 
 // CreateUserRequest 创建用户
 type CreateUserRequest struct {

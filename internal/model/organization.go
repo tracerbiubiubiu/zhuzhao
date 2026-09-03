@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 )
 
 // Organization 组织模型（实体组织 + 虚拟组统一）

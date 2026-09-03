@@ -1,6 +1,6 @@
 package model
 
-import "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
+import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 
 // OrgMemberRequest 组织成员操作
 type OrgMemberRequest struct {

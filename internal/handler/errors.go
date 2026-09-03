@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 )
 
 // httpStatusByCode 业务错误码 → HTTP 状态码映射表（D2-06/07/D2-32 重构：

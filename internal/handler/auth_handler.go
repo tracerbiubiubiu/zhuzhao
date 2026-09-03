@@ -7,7 +7,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 

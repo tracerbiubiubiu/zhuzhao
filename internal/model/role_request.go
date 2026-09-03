@@ -1,6 +1,6 @@
 package model
 
-import "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jsonutil"
+import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 
 // AssignMenusRequest 角色分配菜单
 type AssignMenusRequest struct {

@@ -10,8 +10,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 )
 
 // JWT JWT 认证中间件

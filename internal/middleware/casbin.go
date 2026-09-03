@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 )
 
 // RoleFetcher 获取用户角色（避免直接依赖 repository 包）。

@@ -10,10 +10,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/logger"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/postgres"
-	pgredis "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
@@ -24,11 +20,11 @@ import (
 // Provider 集合
 
 var pkgSet = wire.NewSet(
-	logger.New,
-	jwt.NewManager,
-	postgres.New,
-	pgredis.New,
-	pgredis.NewScripts,
+	provideLogger,
+	provideJWTManager,
+	providePostgres,
+	provideRedis,
+	provideRedisScripts,
 	// B4-6：Phase 2 接线预留（G-1，见 docs/phase2/02-authz-resource.md Step 0）——
 	// 当前注入链路无消费者，Phase 2a 资源级鉴权时接线
 	resource.NewRegistry,

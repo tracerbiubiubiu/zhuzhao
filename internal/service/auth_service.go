@@ -12,10 +12,10 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/crypto"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
-	redispkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/redis"
+	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	redispkg "github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 

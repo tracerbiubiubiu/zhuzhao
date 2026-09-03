@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/response"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 )
 
 // Recovery Panic 恢复中间件

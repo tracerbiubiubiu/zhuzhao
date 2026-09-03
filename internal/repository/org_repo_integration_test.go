@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/crypto"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )

@@ -21,9 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	jwtpkg "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jwt"
+	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 )
@@ -44,7 +43,7 @@ func newRouterEngine(t *testing.T, roles map[int64][]string) (*gin.Engine, *jwtp
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	jwtManager := jwtpkg.NewManager(config.JWTConfig{
+	jwtManager := jwtpkg.NewManager(jwtpkg.Config{
 		Secret:    "router-test-secret-0123456789",
 		AccessTTL: 30 * time.Minute,
 	})
@@ -224,7 +223,7 @@ func handleStubRedisConn(conn net.Conn) {
 func newTrustedProxiesEngine(t *testing.T, proxies []string) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	jwtManager := jwtpkg.NewManager(config.JWTConfig{
+	jwtManager := jwtpkg.NewManager(jwtpkg.Config{
 		Secret:    "router-test-secret-0123456789",
 		AccessTTL: 30 * time.Minute,
 	})
@@ -277,7 +276,7 @@ func (c *captureAuditLogger) Insert(ctx context.Context, log middleware.AuditLog
 // （越权尝试留痕）。若有人把 AuditLog 移到 CasbinAuth 之后，此测试失败。
 func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	jwtManager := jwtpkg.NewManager(config.JWTConfig{
+	jwtManager := jwtpkg.NewManager(jwtpkg.Config{
 		Secret:    "router-test-secret-0123456789",
 		AccessTTL: 30 * time.Minute,
 	})
