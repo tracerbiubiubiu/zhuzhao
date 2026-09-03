@@ -28,17 +28,19 @@
 | 里程碑 | 内容（对应 Wave/Step） | 估算人日 | 退出标准 |
 |---|---|---|---|
 | **M0 启动准备**（收窄） | 迁移号核对 + 决策过表 + BK-20（工单封版前最后的数据安全修复） | 1–2 | 决策清单过完；BK-20 落地 |
-| **M-E 事件与任务平台** | ① Asynq 底座（Scheduler/PeriodicTask/worker/重试/阻塞策略按任务拍板）；② 预置任务（审计归档 B11② 首个，非工单闭环独立验收）；③ **自定义脚本任务**（job_configs 配置表 + `os/exec` Python/Shell 执行器 + job_runs 执行记录 + 管理 CRUD/启停/手动触发/历史端点；**仅全局管理员可配**——参照 ginfast scheduler / xxl-job GLUE，design-decisions §23 补充拍板） | 6–8 | 归档任务按周期跑通；脚本任务可配置/执行/查历史（管理员侧）；全门禁绿 |
-| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛**（ADR-003 修订）：收窄为**动态数据模型平台**（类型注册 / Schema 演进 / 动态校验 / CRUD / 存储），**事件与审计移交 zhuzhao**（事件 = zhuzhao Asynq 业务操作点显式发布；审计 = zhuzhao 侧记录），进程 3→1（仅 apiserver）；独立部署保留；**前置：共享 utils 抽取**（zhuzhao `internal/pkg` → 独立共享项目，activelist 复用，🚦） | 约 2–4（收窄后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
+| **M-E 事件与任务总线** | ① Asynq 底座（Scheduler/PeriodicTask/worker/重试/超时/阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（上传 python/shell 暂不需要；Dagu/自研调研见 [15](./15-script-platform-dagu-vs-inhouse.md)，按需再启）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板，形态见 §1 注记） | 3–4（⚠️ 待校准；原 6–8） | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
+| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、零认证、查询=仅 id 分页+时间倒序、PG **每类型表 + `data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（幂等/并发）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1；独立部署保留；**前置：共享 utils 抽取**（🚦） | 约 1.5–3（澄清后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
 | **M-HR HR 同步（预留接口版）** | `HRFetcher` 接口 + sync 引擎 + 本地 mock adapter（内网 adapter 即插）；拍板：离职处置/部门撤销级联/跨部门权限分配规则 | 3–5 | 组织同步三规则对 mock 源跑通；对账幂等；三拍板项落档 |
 | **M-SSO 单点登录（OAuth2.0）**（🚦 进内网后实施——设计已定稿 §24，拿到公司接入信息即开工） | `SSOProvider` 接口 + OAuth2.0 授权码实现（authorize + code 换 token + userinfo，state 防 CSRF）+ `/auth/sso/login`·`/auth/sso/callback` 两端点 + 身份映射（对账键同 HR：external_id 优先）+ 登录审计 method 字段 + 登录页 SSO 入口；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（config 开关，仅限已同步账号）；本地密码登录兜底并存；公司接入信息填 config 即用（design-decisions §24） | 🚦 2–3 | mock/测试 IdP 走通完整回调链 → 自有 JWT 签发 → 三层鉴权行为不变 |
-| **M-Mig 迁移准备** | 公司内网部署对接（网络/凭据/07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧/限流/审计保留期） + 部署镜像带 python/shell 解释器（任务平台运行时依赖，§23） | 🚦 随迁移时点 | 内网环境部署演练通过 |
+| **M-Mig 迁移准备** | 公司内网部署对接（网络/凭据/07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧/限流/审计保留期） + ~~部署镜像带 python/shell 解释器~~（脚本任务运行时依赖，**2026-09-03 随脚本任务降级 🚦**） | 🚦 随迁移时点 | 内网环境部署演练通过 |
 | ~~M2 工单业务闭环~~ | **暂缓自研（§23.1）**——§4 保留作对接参考；工单对接 = 迁移后集成项 🚦（design-decisions §23.3） | — | — |
 | ~~M1 可运维基座~~（🚦） | 多实例/Watcher/audit-l2——随部署形态升级触发（§22.1）；audit-l2 的 B11① 判定日志**可与 M-E 合并实施**（价值独立于多实例） | 6–10（🚦） | MI1–5 通过（多实例时） |
 | ~~M4 activelist 集成~~ | 被 **M-A** 取代（§23.2：独立实现而非反代集成；E13/G1/G3 蓝图保留于 ADR-003 🚦） | — | — |
 | ~~M5 3b 按需~~ | 事件 L2 / platform / 分离档位 2——随迁移后形态评估 | 🚦 | — |
 
-> **合计（现行主链，不含 🚦/单估）**：约 **10–15 人日** = M0 1–2 + M-E 6–8 + M-HR 3–5（M-A 收窄后约 2–4 ⚠️ 仍单列、M-Mig 🚦、M1 6–10 🚦 均未计入）。量级参考：审计归档/脚本任务参照 ginfast scheduler 执行器（design-decisions §23 补充拍板已核验可用）。
+> **合计（现行主链，不含 🚦/单估）**：约 **7–11 人日** = M0 1–2 + M-E 3–4 + M-HR 3–5（M-A 澄清后约 1.5–3 ⚠️ 仍单列、M-Mig 🚦、M1 6–10 🚦 均未计入）。量级参考：审计归档参照 ginfast scheduler 执行器（design-decisions §23 补充拍板已核验可用）；脚本任务已降级 🚦。
+
+> **M-E 部署形态（2026-09-03 拍板定稿，设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`）**：zhuzhao 作**网关**（鉴权/编排/业务审计），taskrunner 事件/任务服务 = **独立仓库 + 独立部署 + 独立 Redis**。已定：① **独立仓库**（activelist 式，可独立部署，zhuzhao 经其 API 提交任务）；② **Redis 队列独立**；③ **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao，taskrunner 只做通用调度/触发/重试，HTTP 回调执行）。**日志边界（2026-09-03 确认）**：zhuzhao Enqueue 时记「任务提交日志」（action + task_id + request_id；业务审计在 `audit_logs`）；taskrunner 执行时**自维护** `job_runs`（执行细节/重试/耗时），**不传回 zhuzhao**；两边以 `request_id` 关联，需要时跨查。新增预置动作 = zhuzhao 加内网端点 + taskrunner 加配置，**无需重新部署 taskrunner**。任务提交方式落地时细化 ⚠️：zhuzhao 直连 taskrunner Redis Enqueue vs 调 taskrunner API 提交（倾向 API，符合「网关调用能力」）。
 
 ---
 
@@ -54,7 +56,7 @@
 | 顺手项（可选） | ~~0.5~~ **随封版后置** | BK-9 / F-31④ / F-32 / TC-2/3/4 / Q5 注记（工单相关随手项随 §23 后置） |
 | 待编写文档 | 0 | **已补齐（2026-09-02）**：03 / 06 / 07 / 08 / 09 / ops-deployment + 13 本计划 |
 
-> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 收窄后核心功能人日**约 2–4（⚠️ 待校准）**，另**共享 utils 抽取**（zhuzhao `internal/pkg` → 独立项目）为其前置 🚦；③ 迁移号是否需为附件让位。
+> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 澄清后核心功能人日**约 1.5–3（⚠️ 待校准）**，另**共享 utils 抽取**（zhuzhao `internal/pkg` → 独立项目）为其前置 🚦；③ 迁移号是否需为附件让位。
 
 ---
 
@@ -177,7 +179,7 @@
 | U7 | 迁移号最终占用（与 2b-ext 附件竞争） | A2 规则已定，启动时核对 | 迁移规划 |
 | U8 | 启动是否翻转 roadmap「暂缓」状态 | 由所有者启动时确认 | 文档状态 |
 | U9 | 日历排期（人日→日期） | 待给启动日 + 人力 | 本计划展开 |
-| U-A | M-A activelist 收窄后核心功能人日（动态数据模型平台薄层，独立库 + 独立数据库） | 约 2–4（⚠️ 待校准，原单估） | M-A 工期 |
+| U-A | M-A activelist 澄清后核心功能人日（动态数据模型薄层：任意类型 int/string/列表、id 分页、PG 每类型表+JSONB、导入导出 JSON） | 约 1.5–3（⚠️ 待校准，原单估） | M-A 工期 |
 | U-B | **共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目（命名/范围/config 解耦/zhuzhao 全仓 import 变更） | 🚦 待所有者启动；候选名与范围见 ADR-003 修订节 | M-A 前置（activelist 复用）+ zhuzhao 全仓重构 |
 
 ---
@@ -195,7 +197,7 @@
 
 | 风险 | 缓解 |
 |---|---|
-| **M-E 自定义脚本任务安全（os/exec 执行任意脚本）** | **仅全局管理员可配**（§23 补充拍板）；超时强杀进程组、执行留痕、脚本与凭据分离（job_configs 不存明文凭据）；按 07-security-enhance 纳入限流/审计 |
+| ~~**M-E 自定义脚本任务安全（os/exec 执行任意脚本）**~~ **2026-09-03 随脚本任务降级 🚦**（启用时再评估：仅全局管理员可配、超时强杀进程组、执行留痕、脚本与凭据分离；按 07-security-enhance 纳入限流/审计） |
 | 审计归档正确性（导出删行一致性） | B11② 按「导出 JSONL 成功后删行」原子语义；归档漏跑可容忍（非并发敏感），周期性任务加阻塞/去重策略 |
 | 多实例一致性（Watcher 失效窗口） | redis-watcher 推送 + StartAutoLoadPolicy 1min 兜底（双保险，MI2 验证；仅 M1 🚦 触发时） |
 | 迁移号竞争（附件/HR） | A2 规则；启动时一次性核对占用 |
@@ -214,4 +216,7 @@
 | 2026-09-02（M-E 扩展为任务平台） | 用户新增需求：平台支持自定义任务（预置能力 + 用户自定义 Python/Shell）——M-E 扩展：Asynq 底座 + 预置任务（审计归档首个）+ 自定义脚本任务（job_configs/job_runs 两表 + os/exec 执行器 + 管理端点；安全边界 = 仅全局管理员可配/超时强杀/执行留痕/凭据分离，design-decisions §23 补充拍板）。参照：执行器模式照 ginfast scheduler（已核验可用）、管理面范式对齐 xxl-job GLUE、运维视角先用 asynqmon。运行时依赖（镜像带 python/shell 解释器）记入 M-Mig |
 | 2026-09-02（M-SSO 新增） | 登录对接公司 SSO，协议拍板 **OAuth2.0 授权码模式**（design-decisions §24）：SSOProvider 接口 + 两端点 + 身份映射（对账键同 HR）+ 登录审计 method；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（config 开关）；本地密码兜底并存；单点登出联动 = 可选项迁移时拍板。插位 = M-HR 之后，2–3 人日；前端仅登录页 SSO 入口（后置策略下最小例外） |
 | 2026-09-03（activelist 职责收敛，ADR-003 修订） | **M-A 收窄为动态数据模型平台**：事件与审计移交 zhuzhao（事件 = zhuzhao Asynq 业务操作点显式发布；审计 = zhuzhao 侧记录），进程 3→1，独立部署保留；业界对标确认同类开源（NocoBase/Teable/Twenty 等）均连带事件/审计/UI，自研薄层合理；**新增共享 utils 决策**：zhuzhao `internal/pkg` 抽独立共享项目（activelist 复用，M-A 前置 🚦）；M-A 人日由单估下调为约 2–4（⚠️ 待校准） |
+| 2026-09-03（M-E 收敛为事件/任务总线 + 独立部署拍板） | **M-E 从「任务平台」收敛为「事件/任务总线」**：脚本任务（上传 python/shell）**暂不需要、降级 🚦**（Dagu 调研落 [15](./15-script-platform-dagu-vs-inhouse.md)，结论 = 轻量场景不需要那么全面，按需再启）；核心 = Asynq 事件/任务总线**异步触发预置动作**（预置 handler 代码注册：审计归档/通知/SLA/外部回调按需）；**部署拍板 = 独立部署**——zhuzhao 仅作网关（鉴权/编排/审计），调用各能力、拉起各任务；事件/任务 worker 服务独立部署，**不与 zhuzhao 布一块**（形态细节 ⚠️ 待定，见 §1 注记） |
+| 2026-09-03（M-E 形态定稿） | **独立仓库 + 独立部署 + 独立 Redis**；**预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao，taskrunner 只做通用调度/触发/重试）；**日志边界**：zhuzhao Enqueue 记「任务提交日志」（action + task_id + request_id，业务审计在 audit_logs），taskrunner 自维护 `job_runs` 执行细节、**不传回 zhuzhao**，request_id 关联跨查；新增预置动作 = zhuzhao 加内网端点 + taskrunner 加配置（无需重部署 taskrunner） |
+| 2026-09-03（需求澄清 · 最终画像） | 逐条澄清收窄：任意自定义类型（字段=`int`/`string`/列表）、activelist 零认证、查询=仅 id 分页+时间倒序、百万行内、**敏感高危数据→可靠**（存储加密暂不需要 ⚠️）、低频 Schema 演进、软删保留、导入导出 JSON（幂等/并发）、id 自增；**存储引擎评审：PG 仍为最优**（技术栈统一/自增/事务 vs Mongo Change Stream 已失效），模型=**每类型表+`data` JSONB**（零 DDL）；M-A 人日再下调为约 1.5–3（⚠️ 待校准） |
 | 2026-09-02（M-SSO 降 🚦） | 所有者拍板：SSO 现在**只预留设计、进公司内网后实施**——§24 蓝图定稿（接口/端点/映射/JIT 开关/兜底策略全在设计内），实施触发 = 拿到公司 OAuth2.0 接入信息；主链执行序中 M-SSO 移出，与 M-Mig 汇合 |

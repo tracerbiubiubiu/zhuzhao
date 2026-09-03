@@ -279,3 +279,4 @@ Phase 3 主能力稳定运行
 | [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |
 | [13-implementation-plan.md](./13-implementation-plan.md) | **执行计划（排期规划稿：里程碑/人日估算/依赖/🚦 触发项/⚠️ 不确定项）** | **已编写（2026-09-02）** |
 | [14-planning-overview.md](./14-planning-overview.md) | **规划整理视图（现行主链/暂缓/🚦/⚠️/文档/迁移/验收/决策清单，索引非 SSOT）** | **已编写（2026-09-02）** |
+| [15-script-platform-dagu-vs-inhouse.md](./15-script-platform-dagu-vs-inhouse.md) | **脚本任务平台选型调研（Dagu vs 自研 Asynq，M-E 脚本任务决策支撑）** | **已编写（2026-09-03，调研稿）** |
