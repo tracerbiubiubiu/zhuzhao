@@ -71,6 +71,7 @@ var (
 	ErrOrgCannotMoveToChild = New(50003, "不能移动到子节点下")
 	ErrOrgHasChildren       = New(50004, "该组织下有子组织，无法删除")
 	ErrOrgHasMembers        = New(50005, "该组织下有成员，无法删除")
+	ErrOrgHasOpenTickets    = New(50013, "该组织下有未结工单，无法删除")
 	ErrOrgIsSystem          = New(50006, "系统内置组织不可删除")
 	ErrNotOrgMember         = New(50007, "用户不是该组织成员")
 

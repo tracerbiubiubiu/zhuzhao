@@ -4,7 +4,7 @@
 2026-08-25
 
 ## 状态
-已采纳
+已采纳（**2026-09-03 部分条款经职责收敛修订，见「2026-09-03 职责收敛修订」节**）
 
 ## 背景
 `doc/soar/activelist.md` 设计了一个基于 MongoDB + Go 的动态多类型数据全生命周期管理平台（高可靠/高可用要求）。需要决策：它与 zhuzhao 的关系（独立 vs 内化）、数据库选型（Mongo vs PG）、以及是否需要跨事务一致。
@@ -54,6 +54,35 @@
   - **网关层（zhuzhao accesslog）**：记录谁/何时/访问了什么 API（method/path/actor/status/cost），proxy 路由**跳过 body**（防动态字段明文泄露到 zhuzhao 日志库）。
   - **业务层（activelist accesslog）**：记录谁对什么数据做了什么（含请求体 + 变更前后快照），由 activelist 按 Schema 标记**自行精确脱敏**（zhuzhao 不认识动态字段语义，黑名单命中不了手机号/身份证/薪酬）。
 - 日志**基础设施复用 zhuzhao 的 `pkg/log/zap/logger`、`pkg/trace`、accesslog 核心**（C2' 同仓库直接 import/拷贝），但两进程写**各自日志目的地**（zhuzhao 审计库 / activelist 自身 log 集合）。
+
+## 2026-09-03 职责收敛修订（覆盖本节上文部分条款）
+
+> 上文为 2026-08-25 原始决策。2026-09-03 经「activelist 需求检查 + 业界对标」讨论（结论：动态数据模型平台是成熟类别，业界有 NocoBase/Teable/Twenty/NocoDB 等大量同类，但均连带事件/审计/UI/组织集成，复用=引入整套独立系统），所有者拍板**职责收敛**，覆盖上文以下条款。
+
+### 收敛后 activelist 定位
+- **activelist = 动态数据模型平台**（唯一职责）：类型注册 / Schema 演进 / 动态字段校验 / 数据 CRUD / 存储（乐观锁、软删除保留）。
+- **事件驱动移交 zhuzhao**：activelist 数据变更 → 事件由 **zhuzhao Asynq** 承担（zhuzhao 在业务操作点显式发布，L1 事件源不变，ADR-001/002 红线不变）；activelist **不再实现 Change Stream 事件捕获**（原 `doc/soar/activelist.md` §7/§8 watcher 高可用、Resume Token、Redis fallback 全部移除）。进程 **3→1**（仅 apiserver）。
+- **审计（历史快照）移交 zhuzhao**：activelist 不写历史快照、不记业务语义日志；审计由 zhuzhao 侧记录（⚠️ 落点机制待定：建议 activelist 写接口返回变更后完整文档含 version/schemaVersion，zhuzhao 编排层写审计）。
+- **独立部署保留**：独立服务 + 独立库 + 独立数据库（故障隔离不变）；**zhuzhao 作对外网关**（网关尚未实现）调用 activelist。
+
+### 覆盖上文条款对照
+| 上文条款 | 收敛后 |
+|---|---|
+| 「审计日志分工（两层）」：网关层跳过 body + **activelist 业务层自脱敏 accesslog**（§52–56） | **修订**：审计/业务日志归 **zhuzhao**；activelist 只记**技术/运行日志**（请求级 + 错误级，不记业务语义、可脱敏）；`X-Request-ID` 贯穿两层关联排查 |
+| 待办 **G4 两层审计** | **修订**：改为「zhuzhao 侧审计记录」（activelist 写接口返回变更后文档供审计，⚠️ 口径待定） |
+| 待办 **G1/G2**（Change Stream→Outbox/逻辑复制改造；activelist 变更事件桥接汇入 L1） | **简化**：activelist 侧不再有事件捕获职责；事件 = zhuzhao 调 activelist 成功后**业务操作点显式发布**（G2 含义从「activelist 变更事件汇入」改为「zhuzhao 调用后发布事件」） |
+| 建议阶段「Phase 3 启动后（L1+Asynq 就绪后）」 | 不变（L1/Asynq 就绪后，事件侧已由 zhuzhao 承担） |
+| 转 PG 收益「写主数据 + 写历史快照 + 落事件 可用 PG 事务原子」 | **减弱**：历史快照/事件外置后，activelist 内部只剩主数据写，事务需求大幅简化 |
+
+### 日志与共享 utils（2026-09-03 新增拍板）
+- **共享 utils 项目**：`zhuzhao/internal/pkg/` 通用代码抽取为**独立共享项目**（候选名 ⚠️ 待定：`zhuzhao-common` / `zhuzhao-utils` / `tracerbiubiubiu/libs` 等），**zhuzhao 与 activelist 均引用**。
+- **抽取范围（2026-09-03 已核实依赖面）**：
+  - 零内部依赖可直接抽：`crypto` / `errcode` / `jsonutil` / `resource` / `validate`；`response` 依赖 `errcode`，随包抽取。
+  - 需 **config 解耦**后抽：`jwt` / `logger` / `postgres` / `redis`（当前依赖 `zhuzhao/internal/config` 的 LogConfig/DBConfig 等，抽取时结构体参数化或随包自带）。
+  - `resource` 是否绑定 zhuzhao 权限领域，抽取前复核 ⚠️。
+- **关键约束**：新项目必须**移出 `internal/` 目录**（否则仍受 Go internal 约束，无法被独立 module 引用）；zhuzhao 全仓库 import 改新 module path；**一次性完成避免双份维护**；完成后跑全量门禁（`make lint` / `make test-unit` / `make test-integration` / `make acceptance`）。
+- **触发时机** 🚦：activelist 启动前（M-A 前置，activelist 复用依赖它）；zhuzhao 侧重构影响面大（handler/service/repository 大量 import 变更），排期纳入。
+- **业界对标结论（为何自研薄层）**：收敛后 activelist 为薄层动态数据模型平台；同类开源（NocoBase / Teable / Twenty / NocoDB / Baserow 等）均连带事件/审计/UI/组织集成，复用=引入整套独立系统（多为 Node/TS 栈、独立运维）；自研薄层 + 共享 utils 复用 zhuzhao 积木（PG/JSONB/Asynq/errcode）更符合技术栈统一与运维最小化。
 
 ## 待办
 - **E13（zhuzhao 侧）**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` 中间件 + Restrict 资源 `activelist` + accesslog 对 `/api/v1/data/*` 跳过 body（仅记 HTTP 元信息）。

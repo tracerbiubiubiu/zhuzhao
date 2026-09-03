@@ -185,6 +185,16 @@ D6_HTTP=$(curl -s -o /tmp/p2c_d6.json -w '%{http_code}' -X POST "$BASE/orgs/dele
 check "D6 vg with member → 409" "409" "$D6_HTTP"
 curl -s -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"org_id\":\"$VG2\",\"user_id\":\"$G6M\"}" >/dev/null
+# BK20：有未结工单（成员已清，工单守卫独立生效）→ 409；结单后可删
+TK20=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"type_code\":\"incident\",\"title\":\"BK20 工单\",\"org_id\":\"$VG2\"}")
+TID20=$(echo "$TK20" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+D6T_HTTP=$(curl -s -o /tmp/p2c_d6t.json -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
+check "D6 vg with open ticket → 409" "409" "$D6T_HTTP"
+D6T_CODE=$(cat /tmp/p2c_d6t.json | json_code)
+check "D6 vg with open ticket code=50013" "50013" "$D6T_CODE"
+curl -s -X POST "$BASE/tickets/close" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$TID20\",\"comment\":\"BK20 结单\"}" >/dev/null
 # SAT 设置 VG2 的 owner 为 OWNER 用户，owner 删空组
 curl -s -X POST "$BASE/orgs/owners" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"org_id\":\"$VG2\",\"owner_user_ids\":[\"$OWNER\"]}" >/dev/null

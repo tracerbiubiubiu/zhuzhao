@@ -465,3 +465,33 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 	err = repository.NewOrgRepo(testPool).BindOrgRole(ctx, 999999999, orgRole.ID)
 	requireErrCode(t, err, errcode.ErrInvalidParams)
 }
+
+// ---------- BK-20：禁删有未结工单的组织（design-decisions §21 ghost 委托守卫） ----------
+
+func TestBK20_DeleteOrgWithOpenTickets(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+
+	// vg 下建一张未结工单（SQL 直插；org_path 快照取 vg 实时 path）
+	var tid int64
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO tickets (type_code, title, org_id, org_path, created_by, status)
+		VALUES ('incident', 'BK20 未结单', $1, (SELECT path FROM organizations WHERE id = $1), $2, 'open')
+		RETURNING id`, env.vgID, env.mem1).Scan(&tid))
+
+	// 清全部成员（members 守卫 50005 先于本守卫命中；本测试未设 owner_user_ids，
+	// owner 行仍为 member 角色须显式清除——D6 场景中 owner 行经 SetOwners 双轨转
+	// 'owner' 角色后由删除路径自清）
+	for _, uid := range []int64{env.owner, env.admin, env.mem1, env.mem2, env.admin2} {
+		require.NoError(t, env.orgSvc.RemoveMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: uid}, env.super))
+	}
+
+	// 有未结工单 → 50013 ErrOrgHasOpenTickets（vg 删除路径是 ghost 委托系统性来源）
+	err := env.orgSvc.DeleteOrgDelegated(ctx, env.vgID, env.super)
+	requireErrCode(t, err, errcode.ErrOrgHasOpenTickets)
+
+	// 结单后 → 可删
+	_, err = testPool.Exec(ctx, `UPDATE tickets SET status = 'closed' WHERE id = $1`, tid)
+	require.NoError(t, err)
+	require.NoError(t, env.orgSvc.DeleteOrgDelegated(ctx, env.vgID, env.super))
+}

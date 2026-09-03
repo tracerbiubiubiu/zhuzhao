@@ -33,7 +33,9 @@ var httpStatusByCode = map[int]int{
 	// 50004/50005 契约为 409（errcode.md/D2-06·07）——原误映射 403，PRD D6 验收暴露
 	errcode.ErrOrgHasChildren.Code: 409,
 	errcode.ErrOrgHasMembers.Code:  409,
-	errcode.ErrOrgIsSystem.Code:    403,
+	// BK-20：50013 与 50004/50005 同族（删组织守卫）→ 409
+	errcode.ErrOrgHasOpenTickets.Code: 409,
+	errcode.ErrOrgIsSystem.Code:       403,
 	// D2-06：50012 原漏映射 → 500+10000，errcode.md 承诺 403+50012
 	errcode.ErrOrgSystemProtected.Code: 403,
 	errcode.ErrRoleInUse.Code:          403,

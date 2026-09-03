@@ -146,8 +146,9 @@
 | 50008 | `ErrCannotAssignHigherOrgMemberRole` | 不能分配更高的组内角色 | 403 |
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 |
+| 50013 | `ErrOrgHasOpenTickets` | 该组织下有未结工单，无法删除 | 409 |
 
-> `50008`–`50010`：已于 **2c Step 8** 写入 `errcode.go`（勿改号）。
+> `50008`–`50010`：已于 **2c Step 8** 写入 `errcode.go`（勿改号）。`50013`：**BK-20**（2026-09-03，禁删有未结工单的组织，design-decisions §21）写入 `errcode.go`。
 
 ### 菜单 60000–60999
 

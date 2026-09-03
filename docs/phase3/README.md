@@ -261,7 +261,7 @@ Phase 3 主能力稳定运行
 
 ## 5. 文档索引
 
-> 文档已全量就绪（2026-09-02）：除 05-microservice（推迟，无文件）外，其余均已编写；13-implementation-plan 为执行计划（排期规划稿）。
+> 文档已全量就绪（2026-09-02）：除 05-microservice（推迟，无文件）外，其余均已编写；13-implementation-plan 为执行计划（排期规划稿）；14-planning-overview 为规划整理视图（索引，非第二 SSOT）。
 
 | 文档 | 模块 | 状态 |
 |------|------|------|
@@ -278,3 +278,4 @@ Phase 3 主能力稳定运行
 | [11-deployment-split.md](./11-deployment-split.md) | **部署级分离方案** | **已编写** |
 | [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |
 | [13-implementation-plan.md](./13-implementation-plan.md) | **执行计划（排期规划稿：里程碑/人日估算/依赖/🚦 触发项/⚠️ 不确定项）** | **已编写（2026-09-02）** |
+| [14-planning-overview.md](./14-planning-overview.md) | **规划整理视图（现行主链/暂缓/🚦/⚠️/文档/迁移/验收/决策清单，索引非 SSOT）** | **已编写（2026-09-02）** |

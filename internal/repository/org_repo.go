@@ -338,15 +338,16 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	defer tx.Rollback(ctx)
 
 	// 事务内检查（FOR UPDATE 锁行，与写入同快照）
-	var children, members int64
+	var children, members, openTickets int64
 	if err := tx.QueryRow(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM organizations WHERE parent_id = $1 AND deleted_at IS NULL),
 			(SELECT COUNT(*) FROM user_orgs uo
 				INNER JOIN organizations o ON o.id = uo.org_id
 				INNER JOIN users u ON u.id = uo.user_id
-				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL)`,
-		id).Scan(&children, &members); err != nil {
+				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL),
+			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status <> 'closed')`,
+		id).Scan(&children, &members, &openTickets); err != nil {
 		return fmt.Errorf("check org delete guards: %w", err)
 	}
 	if children > 0 {
@@ -354,6 +355,11 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	}
 	if members > 0 {
 		return errcode.ErrOrgHasMembers
+	}
+	// BK-20：禁删有未结工单的组织——防 ghost 委托（委托 SQL 挂 owner_user_ids 无
+	// deleted_at 过滤，删组织后原 owner 对历史单保留读写；design-decisions §21）
+	if openTickets > 0 {
+		return errcode.ErrOrgHasOpenTickets
 	}
 
 	tag, err := tx.Exec(ctx, `
@@ -632,15 +638,16 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 		return fmt.Errorf("clear owner memberships: %w", err)
 	}
 
-	var children, members int64
+	var children, members, openTickets int64
 	if err := tx.QueryRow(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM organizations WHERE parent_id = $1 AND deleted_at IS NULL),
 			(SELECT COUNT(*) FROM user_orgs uo
 				INNER JOIN organizations o ON o.id = uo.org_id
 				INNER JOIN users u ON u.id = uo.user_id
-				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL)`,
-		id).Scan(&children, &members); err != nil {
+				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL),
+			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status <> 'closed')`,
+		id).Scan(&children, &members, &openTickets); err != nil {
 		return fmt.Errorf("check org delete guards: %w", err)
 	}
 	if children > 0 {
@@ -648,6 +655,11 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 	}
 	if members > 0 {
 		return errcode.ErrOrgHasMembers
+	}
+	// BK-20：同 Delete——vg 删除清 owner 成员行以过守卫但保留 owner_user_ids，
+	// 是 ghost 委托的系统性来源，未结工单守卫必须在此兜住
+	if openTickets > 0 {
+		return errcode.ErrOrgHasOpenTickets
 	}
 
 	if _, err := tx.Exec(ctx, `
