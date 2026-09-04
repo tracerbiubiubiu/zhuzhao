@@ -43,6 +43,9 @@ type Deps struct {
 	JobsHandler  *handler.JobsHandler
 	InternalJobs config.InternalJobsConfig
 
+	// E-④：任务管理代理端点（biz 组，三层校验后出站 taskrunner）
+	TaskrunnerHandler *handler.TaskrunnerHandler
+
 	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
 }
@@ -209,6 +212,24 @@ func New(deps Deps) *gin.Engine {
 				}
 
 				// 工单模块（Phase 2a）
+				// 任务管理（E-④，task:submit/read/manage；代理 taskrunner API）
+				tasks := biz.Group("/tasks")
+				{
+					tasks.POST("", deps.TaskrunnerHandler.Submit)
+					tasks.GET("/:id", deps.TaskrunnerHandler.GetTask)
+					tasks.POST("/cancel", deps.TaskrunnerHandler.Cancel)
+					tasks.POST("/retry", deps.TaskrunnerHandler.Retry)
+				}
+				biz.GET("/runs", deps.TaskrunnerHandler.ListRuns)
+				biz.GET("/dead-letters", deps.TaskrunnerHandler.DeadLetters)
+				jobs := biz.Group("/jobs")
+				{
+					jobs.GET("", deps.TaskrunnerHandler.ListJobs)
+					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
+					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
+					jobs.POST("/trigger", deps.TaskrunnerHandler.Trigger)
+				}
+
 				tickets := biz.Group("/tickets")
 				{
 					tickets.GET("", deps.TicketHandler.List)

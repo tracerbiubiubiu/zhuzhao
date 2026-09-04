@@ -20,6 +20,16 @@ type Config struct {
 	Audit    AuditConfig    `mapstructure:"audit"`
 
 	InternalJobs InternalJobsConfig `mapstructure:"internal_jobs"`
+	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
+}
+
+// TaskrunnerConfig zhuzhao → taskrunner API 出站 client（E-④）。
+// BaseURL 未配置时任务管理端点返回服务不可用（不阻断应用启动——taskrunner 可后部署）。
+type TaskrunnerConfig struct {
+	BaseURL string        `mapstructure:"base_url"`
+	AK      string        `mapstructure:"ak"` // 默认 zhuzhao
+	SK      string        `mapstructure:"sk"` // env：TASKRUNNER_SK
+	Timeout time.Duration `mapstructure:"timeout"`
 }
 
 // InternalJobsConfig 内网回调端点（E-②，16 号 §3）：/internal/jobs/<action_id>
@@ -196,6 +206,8 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
+	viper.BindEnv("taskrunner.base_url", "TASKRUNNER_BASE_URL")
+	viper.BindEnv("taskrunner.sk", "TASKRUNNER_SK")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

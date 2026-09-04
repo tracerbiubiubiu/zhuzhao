@@ -92,6 +92,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000020_policy_eval_request_id.up.sql",
 			// E-② 任务提交日志 + 回调幂等一表两用（000021）
 			"000021_job_submissions.up.sql",
+			// E-④ 任务管理菜单 + 权限码（000022）
+			"000022_task_admin_menus.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

@@ -15,6 +15,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -116,4 +117,15 @@ func provideJobsRegistry(repo *repository.AuditLogRepo, cfg config.AuditConfig, 
 	reg.Register("audit_archive", service.NewAuditArchiveJob(repo,
 		cfg.Archive.RetentionDays, cfg.Archive.BatchRows, cfg.Archive.OutDir, logger))
 	return reg
+}
+
+// provideTaskrunnerClient zhuzhao → taskrunner 出站 client（E-④；aksk 签名）。
+// BaseURL 未配置时返回 nil client（服务层方法将返回不可达错误，应用其余功能不受影响）。
+func provideTaskrunnerClient(cfg config.TaskrunnerConfig) *taskrunner.Client {
+	if cfg.BaseURL == "" {
+		return nil
+	}
+	return taskrunner.New(taskrunner.Config{
+		BaseURL: cfg.BaseURL, AK: cfg.AK, SK: []byte(cfg.SK), Timeout: cfg.Timeout,
+	})
 }

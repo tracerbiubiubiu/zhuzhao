@@ -65,6 +65,10 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditHandler := handler.NewAuditHandler(auditService)
 	ticketRepo := repository.NewTicketRepo(pool)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
+	taskrunnerConfig := cfg.Taskrunner
+	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
+	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
+	taskrunnerHandler := handler.NewTaskrunnerHandler(taskrunnerService, "")
 	policyEvalWriter := providePolicyEvalWriter(cfg.Audit, client, auditLogRepo, logger)
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
@@ -73,24 +77,25 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	jobsHandler := handler.NewJobsHandler(jobsRegistry, jobSubmissionRepo)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
-		AuthHandler:    authHandler,
-		UserHandler:    userHandler,
-		RoleHandler:    roleHandler,
-		OrgHandler:     orgHandler,
-		MenuHandler:    menuHandler,
-		AuditHandler:   auditHandler,
-		TicketHandler:  ticketHandler,
-		JobsHandler:    jobsHandler,
-		InternalJobs:   cfg.InternalJobs,
-		JWTManager:     manager,
-		Enforcer:       syncedEnforcer,
-		RedisClient:    client,
-		DBPool:         pool,
-		Logger:         logger,
-		RoleFetcher:    rbacService,
-		AuditService:   auditService,
-		Registry:       registry,
-		TrustedProxies: v,
+		AuthHandler:       authHandler,
+		UserHandler:       userHandler,
+		RoleHandler:       roleHandler,
+		OrgHandler:        orgHandler,
+		MenuHandler:       menuHandler,
+		AuditHandler:      auditHandler,
+		TicketHandler:     ticketHandler,
+		JobsHandler:       jobsHandler,
+		TaskrunnerHandler: taskrunnerHandler,
+		InternalJobs:      cfg.InternalJobs,
+		JWTManager:        manager,
+		Enforcer:          syncedEnforcer,
+		RedisClient:       client,
+		DBPool:            pool,
+		Logger:            logger,
+		RoleFetcher:       rbacService,
+		AuditService:      auditService,
+		Registry:          registry,
+		TrustedProxies:    v,
 	}
 	engine := router.New(deps)
 	app := NewApp(cfg, logger, engine, policyEvalWriter)
@@ -108,7 +113,7 @@ var pkgSet = wire.NewSet(
 	provideJWTManager,
 	providePostgres,
 	provideRedis,
-	provideRedisScripts, providePolicyEvalWriter, provideRegistry, provideJobsRegistry, casbin.New,
+	provideRedisScripts, providePolicyEvalWriter, provideRegistry, provideJobsRegistry, provideTaskrunnerClient, casbin.New,
 )
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo)

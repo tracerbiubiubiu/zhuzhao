@@ -76,7 +76,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **E-①** | ✅ **已实施（2026-09-04）**：迁移 000020（判定日志表 + 两表加列）+ reqid ctx 注入 + Casbin 打点补 rid + registry EvalHook 埋点 + L2 writer（P3 管道）——[03 §3](./03-audit-l2.md)；B11② 归档前提已就绪 | 已完成 |
 | **E-②** | ✅ **已实施（2026-09-04）**：`/internal/jobs/:action_id`（AK/SK 验签 utils `aksk` + config `internal_jobs`（默认关，SK 缺失拒启））+ `internal/pkg/jobs` 注册表 + `job_submissions` 一表两用（000021：提交凭证 + 回调幂等栅栏——succeeded 拦重复、failed 容重试）+ P6/P7 契约落地（未知动作 404 / ErrAbort→409 / 其他→500）；utils 暂以 go.mod 本地 replace 引用（发 v0.2.0 后删除） | 已完成（audit_archive 注册随 E-③） |
 | **E-③** | ✅ **已实施（2026-09-04）**：`audit_archive` 注册进 jobs Registry——JSONL 导出（fsync）→ 同批删行（崩溃窗口仅重复不丢）；保留期 180 天默认/config/params 三级；单表失败跳过、失败→5xx 可重试；[03 §4](./03-audit-l2.md)；**E2E 已预演**（签名回调全链，M3 联调仅剩部署侧） | 已完成 |
-| **E-④** | taskrunner client + 任务管理端点（E3）：提交/建改定义/触发/查询全过三层校验后代理；**request_id 从 ctx 取入站 rid 透传（含 body 与 `X-Request-ID` 头，03 §3.4 全链路关联）**；写接口透传 actor+source_ip；任务管理权限码/菜单 seed | taskrunner M2 API 就绪；E4 | 1–2 天 |
+| **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022） | 已完成（E-⑤ 部门可见性收尾后 M-E 全齐） |
 | **E-⑤** | 部门可见性策略（E4）：策略表（000022，按 P1 拍板定形态）+ 管理端点 + 消费逻辑 | P1 | 1–2 天 |
 | E-⑥ | 终败通知端点（E6） | 🚦 后置 | — |
 

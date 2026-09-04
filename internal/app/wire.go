@@ -32,6 +32,10 @@ var pkgSet = wire.NewSet(
 	provideRegistry,
 	// E-② 预置动作注册表（audit_archive 等在服务构造期 Register）
 	provideJobsRegistry,
+	// E-④ 任务管理代理（taskrunner client + service + handler）
+	provideTaskrunnerClient,
+	service.NewTaskrunnerService,
+	handler.NewTaskrunnerHandler,
 	casbin.New,
 )
 
