@@ -55,7 +55,7 @@
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
 | B9 | 文档补齐状态：**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；**已编写（2026-09-02，原 5 份待编写全部补齐）**：03-audit-l2（替换占位，含 B11①②）/ 06-ha / 07-security-enhance / 08-ops + **ops/deployment.md**（B10）/ 09-platform；另 13-implementation-plan（执行计划）与 docs/ops/deployment.md 同日补齐 | 全部文档就绪，启动时按 Wave 取用；**M2 硬依赖 = Asynq 底座（2026-09-02 §22.1 修订，M1 降 🚦）**；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
-| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **M-E 可合并**（03-audit-l2 文档范围；写入管道✅ 已拍板 2026-09-03：异步 channel → Redis List → 批量落库，03 §7 D1）；②随 **M-E**（事件/任务总线 taskrunner 首个预置动作=回调 zhuzhao，16 号 E-③；~~SLA 扫描先用~~ 随工单暂缓，2026-09-02 §23） |
+| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②随 **M-E**（taskrunner 首个预置动作=回调 zhuzhao，16 号 E-③） |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 

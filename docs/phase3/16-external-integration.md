@@ -73,7 +73,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 项 | 内容 | 依赖 / 挂靠 | 量级 |
 |---|---|---|---|
 | **前置 · 批次 A** | 平台策略库（`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册 + schema 约定 fail-fast + 正负向测试）——承载任务提交/回调端点判定 | §25.5 / [authz.md §3.1](../modules/authz.md)；与 taskrunner 侧开发并行 | 2–3 天 |
-| **E-①** | B11① 判定日志：`policy_evaluation_logs` 迁移（000020）+ `resource.Authorize`/`scope_resolver.resolve` 埋点 + L2 管道（P3 拍板） | [03 §3](./03-audit-l2.md)；**是 B11② 归档的前提**（先建表必先有归档） | 随 03 号 |
+| **E-①** | ✅ **已实施（2026-09-04）**：迁移 000020（判定日志表 + 两表加列）+ reqid ctx 注入 + Casbin 打点补 rid + registry EvalHook 埋点 + L2 writer（P3 管道）——[03 §3](./03-audit-l2.md)；B11② 归档前提已就绪 | 已完成 |
 | **E-②** | 内网回调基础设施：独立 `/internal/*` 路由组（不走用户 JWT；**AK/SK 验签中间件**——utils `aksk` 验 taskrunner 回调签名，2026-09-03 基线修订，覆盖当日早前「不做服务级鉴权」拍板）+ `JobHandler` 接口 + `action_id` 注册表（建议 `internal/jobs/`）+ 幂等/提交日志表（000021，一表两用） | E1/E5 | 1–1.5 天 |
 | **E-③** | 首个预置动作 `audit_archive`（B11②）：JSONL 导出 → 成功后按批删行；保留期默认 180 天可配；每任务阻塞/去重 | E-②；存储位置 P4；[03 §4](./03-audit-l2.md) | 0.5–1 天 |
 | **E-④** | taskrunner client + 任务管理端点（E3）：提交/建改定义/触发/查询全过三层校验后代理；**request_id 从 ctx 取入站 rid 透传（含 body 与 `X-Request-ID` 头，03 §3.4 全链路关联）**；写接口透传 actor+source_ip；任务管理权限码/菜单 seed | taskrunner M2 API 就绪；E4 | 1–2 天 |

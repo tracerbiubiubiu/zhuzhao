@@ -195,3 +195,4 @@ internal/task/audit_archive.go      # Asynq 归档 periodic task（M-E）
 | 2026-09-01 | 建范围占位（B11 登记） |
 | 2026-09-02 | 正式编写：管道 L2 + B11① 判定日志 + B11② 归档 + 埋点/DDL 草案 + 验收用例 + 待决策点 |
 | 2026-09-03 | 拍板同步：D1 写入管道 ✅ **异步**（channel → Redis List → 批量落库，所有者拍板）+ D3 归档存储 ✅ 本地卷；新增 §3.4 **全链路 request_id 关联矩阵**（request_id 注入 ctx / audit_logs·ticket_events 加列 / Casbin 打点补 rid / taskrunner 回调带 X-Request-ID / activelist client 透传入站 rid，随 000020 迁移合并）；§4 B11② 改 taskrunner 回调形态（导出失败返 5xx + 幂等，P7 定案） |
+| 2026-09-04 | **B11① 落地（E-①）**：迁移 000020（policy_evaluation_logs + audit_logs/ticket_events 加 request_id 列）+ reqid 包（ctx 注入）+ Casbin 拒绝打点补 rid + registry.Authorize 统一埋点（EvalHook）+ L2 writer（channel→Redis List→processing→批量落库：fail-open / 优雅停止 drain / 毒丸跳过 / 落库失败重试）+ config audit 段 + wire/app 接线；单测（writer×5 + hook×3）+ 集成（端到端管道 + 三列贯通）；全门禁绿。验收口径：AL1–AL4 由集成测试承载，AL5/AL6 随 M-E（B11②） |
