@@ -32,6 +32,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性 | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
+| **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | ✅ 2026-09-04（authz.md §3.1；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号规划 000017（归属已拍板：谁先启动谁占用、后者重排，见 §8 A2）
@@ -39,7 +40,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 - **⚠ 2026-09-02 重定位（design-decisions §23）**：**工单自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复，如 BK-20）；工单业务（SLA/通知/审批流/分派/报表）、BranchedStateEngine、7a–7e、B3 推进端点、审批/报表前端**全部暂缓自研**（10/12 号转对接参考）。**Phase 3 主线 = M-E 事件与任务平台（Asynq + 审计归档首任务 + 自定义脚本任务）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO 单点登录（🚦，§24）→ M-Mig 迁移准备**（排期见 13 §1）；M1/M5 随部署形态 🚦。工单对接形态与 Phase 2 资产处置 = 迁移时拍板（🚦）；翻案条件见 §23
 - **⚠ 2026-09-02 SSO（design-decisions §24）**：登录对接公司 SSO，**OAuth2.0 授权码模式**预留接口版（`SSOProvider` 接口 + `/auth/sso/login`·`/auth/sso/callback` + 身份映射对账键同 HR + 登录审计 method）；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（仅限已同步账号）、本地密码兜底并存。排位 **M-SSO**（13 §1，🚦 2–3 人日，进内网拿到公司接入信息后实施）
 - **⚠ 2026-09-03 activelist 职责收敛（ADR-003 修订）**：activelist 收窄为**动态数据模型平台**（类型注册/Schema 演进/动态校验/CRUD/存储），**事件与审计移交 zhuzhao**（事件 = zhuzhao Asynq 业务操作点显式发布；审计 = zhuzhao 侧记录），进程 3→1，**独立部署保留**；业界对标确认同类开源（NocoBase/Teable/Twenty 等）均连带事件/审计/UI，自研薄层合理；**共享 utils**：zhuzhao `internal/pkg` 抽独立共享项目（`crypto/errcode/jsonutil/resource/validate/response` 零依赖直抽；`jwt/logger/postgres/redis` 需 config 解耦），zhuzhao 与 activelist 共用，M-A 前置 🚦（详见 ADR-003 修订节 + 13 §9 U-B）
-- **微服务拆分 / gRPC / CQRS / RS256 / AK-SK** — 明确不做（无需求）
+- **微服务拆分 / gRPC / CQRS / RS256** — 明确不做（无需求）；~~AK-SK~~ ✅ **服务间 AK/SK HMAC 签名已拍板并实现**（2026-09-03/04：utils `aksk` 包 v0.2 候选，内部服务通信用；外部 M2M AK/SK 管理面仍 🚦，见 09 号分层注记）
 
 ---
 

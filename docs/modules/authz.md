@@ -199,7 +199,7 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 详见 [proposal/resource-model.md](../proposal/resource-model.md)。
 
-### 3.1 平台内置策略库（声明式接入，M-E 前置；design-decisions §25.3）
+### 3.1 平台内置策略库（声明式接入，M-E 前置；design-decisions §25.3）——✅ 已实现（2026-09-04，`internal/pkg/resource/builtin.go`：`Builtin(code, OrgMember(table)|OwnerOnly(table)|RoleGated())`；单条/端点判定经 `Context` 行属性 + 注入 `Membership` 闭包；schema fail-fast = `RequireSchema`；单测 + 真 PG 集成测试正负向齐）
 
 > 2026-09-03 定稿。目标：普通模块接入 L2 从「手写 Resource 实现」降为「一行声明」；工单类复杂策略（三轴+委托）保持手写，两条路并存、永不合流（工单策略随数据属主走，冻结期原地封存，详见 design-decisions §25.3 补充拍板）。
 
