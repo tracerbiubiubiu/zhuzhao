@@ -90,6 +90,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000019_org_is_virtual.up.sql",
 			// B11① 判定日志表 + audit_logs/ticket_events 补 request_id（000020）
 			"000020_policy_eval_request_id.up.sql",
+			// E-② 任务提交日志 + 回调幂等一表两用（000021）
+			"000021_job_submissions.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

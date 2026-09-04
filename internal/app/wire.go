@@ -10,6 +10,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
@@ -29,6 +30,8 @@ var pkgSet = wire.NewSet(
 	// （替换裸 NewRegistry——Authorize 每次判定回调 writer.Write，fail-open）
 	providePolicyEvalWriter,
 	provideRegistry,
+	// E-② 预置动作注册表（audit_archive 等在服务构造期 Register）
+	jobs.NewRegistry,
 	casbin.New,
 )
 
@@ -39,6 +42,7 @@ var repoSet = wire.NewSet(
 	repository.NewMenuRepo,
 	repository.NewAuditLogRepo,
 	repository.NewTicketRepo,
+	repository.NewJobSubmissionRepo,
 )
 
 var serviceSet = wire.NewSet(
@@ -66,6 +70,7 @@ var handlerSet = wire.NewSet(
 	handler.NewMenuHandler,
 	handler.NewAuditHandler,
 	handler.NewTicketHandler,
+	handler.NewJobsHandler,
 )
 
 // InitializeApp Wire 注入入口

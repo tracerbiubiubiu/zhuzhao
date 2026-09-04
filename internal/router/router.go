@@ -11,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -36,7 +38,12 @@ type Deps struct {
 	AuditService middleware.AuditLogger
 	Registry     resource.Registry
 
-	// TrustedProxies 信任的反向代理网段（B1-4）；空切片 = 不信任任何代理
+	// E-②：内网回调端点（/internal/jobs/<action_id>，AK/SK 验签 + 专用网络拓扑）。
+	// Enabled=false（默认）不挂路由；SK 缺失已在 config.Load 拒绝启动（fail-closed）。
+	JobsHandler  *handler.JobsHandler
+	InternalJobs config.InternalJobsConfig
+
+	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
 }
 
@@ -76,6 +83,16 @@ func New(deps Deps) *gin.Engine {
 	})
 
 	// API v1
+	// E-② 内网回调组：不走用户 JWT/Casbin——AK/SK 验签（utils aksk，验 taskrunner
+	// 调用方签名；基线 §9 双防线之密码学层）+ 部署侧专用 network 拓扑。默认关闭。
+	if deps.InternalJobs.Enabled {
+		verifier := &aksk.Verifier{Keys: map[string][]byte{
+			deps.InternalJobs.AK: []byte(deps.InternalJobs.SK),
+		}}
+		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, nil))
+		internalGroup.POST("/jobs/:action_id", deps.JobsHandler.Callback)
+	}
+
 	v1 := r.Group("/api/v1")
 	{
 		// 认证模块（无需鉴权）

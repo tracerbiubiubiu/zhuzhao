@@ -74,7 +74,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|---|---|
 | **前置 · 批次 A** | 平台策略库（`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册 + schema 约定 fail-fast + 正负向测试）——承载任务提交/回调端点判定 | §25.5 / [authz.md §3.1](../modules/authz.md)；与 taskrunner 侧开发并行 | 2–3 天 |
 | **E-①** | ✅ **已实施（2026-09-04）**：迁移 000020（判定日志表 + 两表加列）+ reqid ctx 注入 + Casbin 打点补 rid + registry EvalHook 埋点 + L2 writer（P3 管道）——[03 §3](./03-audit-l2.md)；B11② 归档前提已就绪 | 已完成 |
-| **E-②** | 内网回调基础设施：独立 `/internal/*` 路由组（不走用户 JWT；**AK/SK 验签中间件**——utils `aksk` 验 taskrunner 回调签名，2026-09-03 基线修订，覆盖当日早前「不做服务级鉴权」拍板）+ `JobHandler` 接口 + `action_id` 注册表（建议 `internal/jobs/`）+ 幂等/提交日志表（000021，一表两用） | E1/E5 | 1–1.5 天 |
+| **E-②** | ✅ **已实施（2026-09-04）**：`/internal/jobs/:action_id`（AK/SK 验签 utils `aksk` + config `internal_jobs`（默认关，SK 缺失拒启））+ `internal/pkg/jobs` 注册表 + `job_submissions` 一表两用（000021：提交凭证 + 回调幂等栅栏——succeeded 拦重复、failed 容重试）+ P6/P7 契约落地（未知动作 404 / ErrAbort→409 / 其他→500）；utils 暂以 go.mod 本地 replace 引用（发 v0.2.0 后删除） | 已完成（audit_archive 注册随 E-③） |
 | **E-③** | 首个预置动作 `audit_archive`（B11②）：JSONL 导出 → 成功后按批删行；保留期默认 180 天可配；每任务阻塞/去重 | E-②；存储位置 P4；[03 §4](./03-audit-l2.md) | 0.5–1 天 |
 | **E-④** | taskrunner client + 任务管理端点（E3）：提交/建改定义/触发/查询全过三层校验后代理；**request_id 从 ctx 取入站 rid 透传（含 body 与 `X-Request-ID` 头，03 §3.4 全链路关联）**；写接口透传 actor+source_ip；任务管理权限码/菜单 seed | taskrunner M2 API 就绪；E4 | 1–2 天 |
 | **E-⑤** | 部门可见性策略（E4）：策略表（000022，按 P1 拍板定形态）+ 管理端点 + 消费逻辑 | P1 | 1–2 天 |

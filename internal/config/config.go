@@ -18,6 +18,17 @@ type Config struct {
 	Casbin   CasbinConfig   `mapstructure:"casbin"`
 	Log      LogConfig      `mapstructure:"log"`
 	Audit    AuditConfig    `mapstructure:"audit"`
+
+	InternalJobs InternalJobsConfig `mapstructure:"internal_jobs"`
+}
+
+// InternalJobsConfig 内网回调端点（E-②，16 号 §3）：/internal/jobs/<action_id>
+// 走 AK/SK 验签（utils aksk，验 taskrunner 签名，基线 §9）+ 专用网络拓扑。
+// Enabled 默认 false——未配置不挂路由（不破坏存量启动；验签密钥未配置而启用则拒绝启动）。
+type InternalJobsConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	AK      string `mapstructure:"taskrunner_ak"` // 默认 "taskrunner"
+	SK      string `mapstructure:"taskrunner_sk"` // env：INTERNAL_JOBS_SK
 }
 
 // AuditConfig 审计管道（B11① 判定日志 L2，03-audit-l2 §2.3；P3 拍板 2026-09-03：
@@ -176,6 +187,7 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
+	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -188,6 +200,15 @@ func Load(path string) (*Config, error) {
 
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
+
+	if cfg.InternalJobs.Enabled {
+		if cfg.InternalJobs.SK == "" {
+			return nil, fmt.Errorf("internal_jobs.enabled=true 但 taskrunner_sk 未配置（env INTERNAL_JOBS_SK）——验签端点不允许裸奔")
+		}
+		if cfg.InternalJobs.AK == "" {
+			cfg.InternalJobs.AK = "taskrunner"
+		}
+	}
 
 	return &cfg, nil
 }
