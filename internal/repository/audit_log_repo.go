@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -170,3 +171,69 @@ func (r *AuditLogRepo) InsertPolicyEvals(ctx context.Context, rows []audit.Polic
 }
 
 var _ audit.PolicyEvalStore = (*AuditLogRepo)(nil)
+
+// archiveTables 归档目标表白名单（B11②；表名来自代码常量而非外部输入，防注入）。
+var archiveTables = map[string]bool{
+	"audit_logs":             true,
+	"policy_evaluation_logs": true,
+}
+
+// ArchiveRow 归档行（id 用于删除；line 为 JSONL 序列化结果）。
+type ArchiveRow struct {
+	ID   int64
+	Line []byte
+}
+
+// ArchiveFetchBatch 取一批超期行（created_at < cutoff），按 id 升序；line 按行 JSON 编码。
+// 单表单批——调用方「导出成功后按同批 id 删行」（03 §4.2 原子语义）。
+func (r *AuditLogRepo) ArchiveFetchBatch(ctx context.Context, table string, cutoff time.Time, limit int) ([]ArchiveRow, error) {
+	if !archiveTables[table] {
+		return nil, fmt.Errorf("archive: table %q not allowlisted", table)
+	}
+	q := fmt.Sprintf(`SELECT * FROM %s WHERE created_at < $1 ORDER BY id LIMIT $2`, table)
+	rows, err := r.db.Query(ctx, q, cutoff, limit)
+	if err != nil {
+		return nil, fmt.Errorf("archive fetch %s: %w", table, err)
+	}
+	defer rows.Close()
+	out := make([]ArchiveRow, 0, limit)
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("archive scan %s: %w", table, err)
+		}
+		desc := rows.FieldDescriptions()
+		obj := make(map[string]interface{}, len(desc))
+		var id int64
+		for i, d := range desc {
+			name := string(d.Name)
+			obj[name] = values[i]
+			if name == "id" {
+				if v, ok := values[i].(int64); ok {
+					id = v
+				}
+			}
+		}
+		line, err := json.Marshal(obj)
+		if err != nil {
+			return nil, fmt.Errorf("archive marshal %s: %w", table, err)
+		}
+		out = append(out, ArchiveRow{ID: id, Line: line})
+	}
+	return out, rows.Err()
+}
+
+// ArchiveDeleteBatch 删除已导出的同批行（id 列表精确匹配）。
+func (r *AuditLogRepo) ArchiveDeleteBatch(ctx context.Context, table string, ids []int64) error {
+	if !archiveTables[table] {
+		return fmt.Errorf("archive: table %q not allowlisted", table)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	q := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1)`, table)
+	if _, err := r.db.Exec(ctx, q, ids); err != nil {
+		return fmt.Errorf("archive delete %s: %w", table, err)
+	}
+	return nil
+}

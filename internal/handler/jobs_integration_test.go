@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,6 +27,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 const (
@@ -162,4 +165,42 @@ func TestJobsCallbackContract(t *testing.T) {
 		require.Equal(t, "succeeded", status)
 		require.Equal(t, "req-idem", requestID, "回调 request_id 应落档（taskrunner job_runs 跨查键）")
 	})
+}
+
+// TestJobsCallbackAuditArchiveE2E M3 联调预演：真实 audit_archive 动作经签名回调
+// 全链触发（验签 → 幂等栅栏 → Job.Handle → job_submissions 终态 + JSONL 落盘）。
+func TestJobsCallbackAuditArchiveE2E(t *testing.T) {
+	registry := jobs.NewRegistry()
+	repo := repository.NewAuditLogRepo(testPool)
+	dir := t.TempDir()
+	registry.Register("audit_archive", service.NewAuditArchiveJob(repo, 5, 5000, dir, nil))
+	r := newCallbackRouter(t, registry)
+
+	// 种子：6 天前的行（保留期 5 天 → 归档对象）
+	_, err := testPool.Exec(context.Background(),
+		`INSERT INTO audit_logs (username, method, path, status_code, duration, created_at)
+		 VALUES ('e2e_arch', 'GET', '/api/v1/jobs/e2e', 200, 1, NOW() - interval '6 days')`)
+	require.NoError(t, err)
+
+	taskID := fmt.Sprintf("t-e2e-arch-%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		cleanupSubmission(t, taskID)
+		testPool.Exec(context.Background(), `DELETE FROM audit_logs WHERE username='e2e_arch'`)
+	})
+
+	w := signedPost(t, r, "audit_archive", taskID, "req-arch-e2e", nil, testSK)
+	require.Equal(t, 200, w.Code)
+
+	// 归档产物 + 终态
+	matches, err := filepath.Glob(filepath.Join(dir, "audit_logs-*.jsonl"))
+	require.NoError(t, err)
+	require.NotEmpty(t, matches, "应产出 JSONL 归档文件")
+	b, err := os.ReadFile(matches[0])
+	require.NoError(t, err)
+	require.Contains(t, string(b), "e2e_arch")
+
+	var status string
+	require.NoError(t, testPool.QueryRow(context.Background(),
+		`SELECT status FROM job_submissions WHERE task_id=$1`, taskID).Scan(&status))
+	require.Equal(t, "succeeded", status)
 }

@@ -13,8 +13,10 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 // 适配层：zhuzhao-utils 的基建包自带 Config 类型（与 internal/config 解耦），
@@ -105,5 +107,13 @@ func provideRegistry(w *audit.PolicyEvalWriter) resource.Registry {
 			TraceID:      e.TraceID,
 		})
 	})
+	return reg
+}
+
+// provideJobsRegistry 预置动作注册表 + 装配期注册内置动作（E-③：audit_archive / B11②）。
+func provideJobsRegistry(repo *repository.AuditLogRepo, cfg config.AuditConfig, logger *slog.Logger) *jobs.Registry {
+	reg := jobs.NewRegistry()
+	reg.Register("audit_archive", service.NewAuditArchiveJob(repo,
+		cfg.Archive.RetentionDays, cfg.Archive.BatchRows, cfg.Archive.OutDir, logger))
 	return reg
 }

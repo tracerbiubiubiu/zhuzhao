@@ -31,7 +31,7 @@ var pkgSet = wire.NewSet(
 	providePolicyEvalWriter,
 	provideRegistry,
 	// E-② 预置动作注册表（audit_archive 等在服务构造期 Register）
-	jobs.NewRegistry,
+	provideJobsRegistry,
 	casbin.New,
 )
 

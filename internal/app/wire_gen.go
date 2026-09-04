@@ -12,7 +12,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -70,7 +69,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
-	jobsRegistry := jobs.NewRegistry()
+	jobsRegistry := provideJobsRegistry(auditLogRepo, cfg.Audit, logger)
 	jobsHandler := handler.NewJobsHandler(jobsRegistry, jobSubmissionRepo)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
@@ -109,7 +108,7 @@ var pkgSet = wire.NewSet(
 	provideJWTManager,
 	providePostgres,
 	provideRedis,
-	provideRedisScripts, providePolicyEvalWriter, provideRegistry, jobs.NewRegistry, casbin.New,
+	provideRedisScripts, providePolicyEvalWriter, provideRegistry, provideJobsRegistry, casbin.New,
 )
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo)

@@ -35,6 +35,14 @@ type InternalJobsConfig struct {
 // 判定日志异步写。audit_logs 主审计仍为中间件同步写，不在此段管辖）。
 type AuditConfig struct {
 	PolicyEval PolicyEvalConfig `mapstructure:"policy_eval"`
+	Archive    ArchiveConfig    `mapstructure:"archive"`
+}
+
+// ArchiveConfig 审计归档（B11②，03-audit-l2 §4；P4 拍板 2026-09-03：本地 JSONL + 卷备份）。
+type ArchiveConfig struct {
+	RetentionDays int    `mapstructure:"retention_days"` // 默认 180（等保 ≥6 个月口径）
+	BatchRows     int    `mapstructure:"batch_rows"`     // 默认 5000（单批导出后删行）
+	OutDir        string `mapstructure:"out_dir"`        // JSONL 落盘目录，默认 data/archive
 }
 
 // PolicyEvalConfig 判定日志管道参数（零值取默认，见 audit.PolicyEvalConfig.withDefaults）。
@@ -200,6 +208,16 @@ func Load(path string) (*Config, error) {
 
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
+
+	if cfg.Audit.Archive.RetentionDays <= 0 {
+		cfg.Audit.Archive.RetentionDays = 180
+	}
+	if cfg.Audit.Archive.BatchRows <= 0 {
+		cfg.Audit.Archive.BatchRows = 5000
+	}
+	if cfg.Audit.Archive.OutDir == "" {
+		cfg.Audit.Archive.OutDir = "data/archive"
+	}
 
 	if cfg.InternalJobs.Enabled {
 		if cfg.InternalJobs.SK == "" {
