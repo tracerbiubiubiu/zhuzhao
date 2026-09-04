@@ -40,7 +40,7 @@
 
 > **合计（现行主链，不含 🚦/单估）**：约 **7–11 人日** = M0 1–2 + M-E 3–4 + M-HR 3–5（M-A 澄清后约 1.5–3 ⚠️ 仍单列、M-Mig 🚦、M1 6–10 🚦 均未计入）。量级参考：审计归档参照 ginfast scheduler 执行器（design-decisions §23 补充拍板已核验可用）；脚本任务已降级 🚦。
 
-> **M-E 部署形态（2026-09-03 拍板定稿，设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`）**：zhuzhao 作**网关**（鉴权/编排/业务审计），taskrunner 事件/任务服务 = **独立仓库 + 独立部署 + 独立 Redis**。已定：① **独立仓库**（activelist 式，可独立部署，zhuzhao 经其 API 提交任务）；② **Redis 队列独立**；③ **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao，taskrunner 只做通用调度/触发/重试，HTTP 回调执行）。**日志边界（2026-09-03 确认）**：zhuzhao Enqueue 时记「任务提交日志」（action + task_id + request_id；业务审计在 `audit_logs`）；taskrunner 执行时**自维护** `job_runs`（执行细节/重试/耗时），**不传回 zhuzhao**；两边以 `request_id` 关联，需要时跨查。新增预置动作 = zhuzhao 加内网端点 + taskrunner 加配置，**无需重新部署 taskrunner**。任务提交方式落地时细化 ⚠️：zhuzhao 直连 taskrunner Redis Enqueue vs 调 taskrunner API 提交（倾向 API，符合「网关调用能力」）。
+> **M-E 部署形态（2026-09-03 拍板定稿，设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`）**：zhuzhao 作**网关**（鉴权/编排/业务审计），taskrunner 事件/任务服务 = **独立仓库 + 独立部署 + 独立 Redis**。已定：① **独立仓库**（activelist 式，可独立部署，zhuzhao 经其 API 提交任务）；② **Redis 队列独立**；③ **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao，taskrunner 只做通用调度/触发/重试，HTTP 回调执行）。**日志边界（2026-09-03 确认）**：zhuzhao Enqueue 时记「任务提交日志」（action + task_id + request_id；业务审计在 `audit_logs`）；taskrunner 执行时**自维护** `job_runs`（执行细节/重试/耗时），**不传回 zhuzhao**；两边以 `request_id` 关联，需要时跨查。新增预置动作 = zhuzhao 加内网端点 + taskrunner 加配置，**无需重新部署 taskrunner**。任务提交方式 ✅ **已定稿（2026-09-03）：调 taskrunner API 提交**（直连 Redis 不作为对外契约；~~落地时细化 ⚠️~~ 已关闭）。部署形态另补：**独立 DB**（taskrunner `job_runs` 归自有，SQLite 起步 → 统一 PG，2026-09-03 B3 拍板；详见 taskrunner 仓库 `docs/taskrunner.md` §6/§8）。
 
 ---
 
