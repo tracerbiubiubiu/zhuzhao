@@ -161,6 +161,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 健康检查 | `/healthz` + `/readyz`（检各自硬依赖：Redis / PG） |
 | 时区 | 容器固定 `TZ=Asia/Shanghai`（cron/时间语义一致） |
 | 迁移 | 各自独立编号，与 zhuzhao 迁移号无关 |
+| **工程结构（2026-09-04 所有者补充拍板）** | **以正式微服务标准建设，内部与 zhuzhao 同规格**：Wire DI（google/wire，装配收敛于 `internal/app`）、分层 handler → service → repository、中间件约定（accesslog/request_id/验签）、yaml + `${VAR}` 配置、优雅启停、统一 Makefile 门禁（lint=vet+gofmt / test / build）、集成测试基建；工具依赖 zhuzhao-utils（logger/errcode/response/postgres/aksk） |
 | 配置 | yaml + `${VAR}` 环境变量展开（对齐 zhuzhao 模式；敏感值注入 env） |
 
 **允许差异**（职责/量级决定，非策略分歧）：~~存储选型~~ ✅ **已拍板统一 PG（2026-09-03）**——taskrunner job_runs 迁 PG（各自独立数据库实例/库不变，复用 utils `postgres`，schema 不变；SQLite 保留为 M1/M2 已交付实现，C7 切换）；Redis·Asynq（taskrunner 需要 / activelist 无）；副本数（PG 后均可多副本，按运维需要）。
@@ -194,3 +195,4 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 2026-09-03（B1/B4 拍板） | **通信协议定稿：HTTP + JSON**（内部服务间全部；gRPC 不引入，覆盖旧「gRPC 内部+REST 外部」预留——phase3 README §4 同步关闭）；**配置形态统一 yaml + `${VAR}`**（C6 升为统一项，随 M3/M4）；基线表补通信协议行。待拍：B2 身份断言（建议简化为明文 X-Operator+拓扑，撤销方案 A 验签）、B3 存储（建议终态统一 PG、taskrunner SQLite 起步） |
 | 2026-09-03（B3 拍板） | **存储统一 PG**（所有者拍板）：taskrunner job_runs 迁 PG（C7，独立数据库 + utils `postgres`，schema 不变，约半天；SQLite 保留为 M1/M2 已交付实现）；C4 readyz 改检 PG；允许差异收窄为 Redis·Asynq 与副本数。待拍仅剩 B2 身份断言（建议：明文 X-Operator + 拓扑，方案 A 降为触发条件驱动——场景展开已呈所有者） |
 | 2026-09-03（AK/SK 基线修订） | 所有者拍板：**服务间通信统一 AK/SK HMAC 签名**（utils `aksk` 通用包 C8 先行 + 各服务接线 C2/C9/批次 B/M-A6）——**覆盖当日早前三条拍板**（C2 拆 Bearer→换验签、P5 回调无鉴权→带签名、activelist 零认证→验签），**关闭 B2**（明文 X-Operator 入签名覆盖，方案 A 降为触发条件）；专用 network 保留为第二道防线；C2 不再依赖 C3 时序；09 号外部 M2M AK/SK 加分层注记（算法复用、管理面仍 🚦） |
+| 2026-09-04（工程结构补充拍板） | 所有者明确：taskrunner/activelist **以正式微服务标准建设，内部与 zhuzhao 同规格**——基线 §9 新增「工程结构」行（Wire DI / handler→service→repository 分层 / yaml 配置 / 优雅启停 / 统一 Makefile 门禁）；taskrunner 当日执行结构重构（含 C1/C2/C5/C6/C9 收口），activelist 未开工直接按新标准实施 |
