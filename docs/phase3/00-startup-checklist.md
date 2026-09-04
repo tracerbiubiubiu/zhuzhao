@@ -11,7 +11,7 @@
 
 | 结论 | 内容 |
 |------|------|
-| 启动前必须清空 | **A 档 7 项** ~~（约 2 天人工 + 2 个拍板）~~ ✅ **已清零（2026-08-31，Phase 2 收官）**；现行仅剩 **BK-20**（M0 内，工单封版前最后数据安全修复），见 §2.3 末 |
+| 启动前必须清空 | **A 档 7 项** ✅ 已清零（2026-08-31，Phase 2 收官）；**BK-20** ✅ **已实施（2026-09-03，d4f5c17：双删除函数守卫 + 50013 + TestBK20 + acceptance 2c 断言）——M0 就此收口** |
 | ~~已触发待实施（不属 Phase 3，建议先做）~~ | ~~W1：BK-13 + BK-14~~ ✅ **IW1–IW4 全部已实施**（详见 §2.3 各行），无在途独立窗口 |
 | 随行项 | **B 档**按启动的子能力对号入座（Step 7 相关 B1–B5 已随 §23 工单暂缓后置），见 §2.2 |
 | 启动时拍板 | §3 决策清单逐项过 + [16 号 P1–P7](./16-external-integration.md)（M-E/M-A 实现前） |
@@ -69,7 +69,7 @@
 > **随手项（任意时点）**：BK-9（测试死代码）、09 F-31④（relation 越权负向用例）、09 F-32（audit/user service 分支级单测，低优）、TC-2（ListRelations/字段/模板 service 直测）、TC-3（非叶子节点 Move 并发）、TC-4（UpdateTicketType name/description patch 测试）、可选双删 404 回归断言、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）、P2-3（BFS CTE 双处一致性测试或抽共享 SQL）、**~~测试隔离债~~**（原口径仅「`-count=2` 下 R 系列二跑撞首跑」，8151a15 登记；063f5c9 复现证实为既有债务）。**根因定稿（2026-09-01 二批，口径改宽）**：两类随机红——① `idx_org_code` 23505：`setupTicket2a` 的 code 用 `to_char(clock_timestamp(),'MS')`（秒内毫秒位 000-999，周期 1s）+ 共享容器残留不清理 → 同 run 高负载下 setup 间隔漂移进整秒碰撞窗口、跨 run 对残留以 ~1/1000/行 累积撞车，flaky 单调恶化；**非并行竞争**（全仓零 `t.Parallel()` 实证）。② 跨包 TRUNCATE 踩踏：`org_repo:22` TRUNCATE organizations、`b4/rbac/auth` TRUNCATE users CASCADE，`./internal/...` 多二进制并发时端掉 ticket 包脚下的表（no-rows/FK 类随机红）。**全量清偿（2026-09-01 二批）**：`uniqueSuffix()`（完整 UnixNano）统一替换全仓 40 处截断点（ticket 28 + service 12；%1e9 属同模式隐患，10⁻⁹ 量级非碰撞源，统一化=一致性加固）；7 个建 org 函数全部 `t.Cleanup` 软删（`softDeleteOrg`，部分唯一索引软删即释放 code、FK 不看 deleted_at 无需清工单）；`2a_it_*` 用户改每 run 全新 + `createB2User` eno 唯一化（fixture 唯一化，R3/R8 计数与 `idx_user_orgs_single_primary` 随之修复）；`childOrgID` DO NOTHING→DO UPDATE RETURNING（消 no-rows 雷）+ 删 `p2a_it_sub` 死退化分支（不可达）；模板创建点补清理（保 `TestMeta_Templates_Empty`）；`make test-integration` 加 `-p 1`（跨包串行）。**验证**：ticket 包 `-count=2` 全绿（原必挂）+ 全量集成 `-p 1` 二连跑全绿 + lint/单测/acceptance 27+66+26+32 FAIL=0。user_orgs 孤儿行（软删 org 后残留）不清理：FK 不看 deleted_at、读侧按新 user_id 查询无串扰，彻底清偿可选。
 > 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
-> **BK-20（软删组织委托残留处置，2026-09-02 登记）**：禁删有未结工单的组织（两删除函数加计数守卫 + ErrOrgHasOpenTickets 409 + acceptance 删组织用例适配）；已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21，详见 00 §9。
+> **BK-20** ✅ **已实施（2026-09-03，commit d4f5c17）**：OrgRepo.Delete / DeleteVgWithOwnerCleanup 同事务加 `status<>'closed'` 计数守卫；ErrOrgHasOpenTickets（50013→409）；TestBK20 集成测试 + acceptance 2c D6 补 3 断言；全门禁绿。已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
 > activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.1.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。
@@ -129,3 +129,4 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-09-03（权限架构定版落档） | 统一网关/策略库/ReBAC 三题定稿，落 **design-decisions §25**（SSOT）：① **PDP/PEP 分工**——身份集中 zhuzhao/行级归属主（行级 PEP 进网关是逻辑不可能，Zanzibar/K8s/AWS/OPA 均如此）；② **网关边界**——认证+路由授权+审计+限流在网关，行级走身份断言透传（方案 A=AT 透传+共享公钥验签）；M-SSO 降级为非网关路径可选项；③ **平台策略库**（authz.md §3.1 新增）——org-member/owner-only/role-gated 三内置策略 + `Builtin()` 一行注册，策略语义进代码不进 DB（事实进 DB/语义进代码）；④ **ReBAC/PBAC 不演进**——三新场景无一构成触发（11-authz §5 反触发补评估记录）。前置清单 §25.5：批次 A 策略库（M-E 前置 2–3 天）/ 批次 B 网关化（M-A 前置 ~1 周）/ 批次 C 密码复杂度（半天）；13 号 M-E/M-A 行已挂前置引用。**不做**：PDP 回调、策略配置进 DB、跨库判定、提前多实例 |
 | 2026-09-03（策略库归属 + 仓库名 + 工单策略属主原则） | 三项补充拍板落 §25.3 / 13 号 / README：① **策略库归 zhuzhao 本仓不进共享 utils**（消费者分析：taskrunner 不做业务判定、activelist 零权限，唯一消费者=zhuzhao 自身；谓词绑定 zhuzhao 库 schema——共享 utils 边界定为「无数据依赖的纯工具」）；② **仓库名/module path 正式命名挂 M-Mig**（与进内网换 Git 平台合并执行一次，README 已注定位）；③ **工单策略与 builtin 双路永不合流**（策略的家=数据属主的家；对接内部平台后行级随数据转移，翻案重启则解冻原位；内部平台权限表达力评估列入 M-Mig）。工单冻结基调不变，仅落原则文字 |
 | 2026-09-03（外部集成 16 号建档 + 全目录同步） | 新增 [16-external-integration](./16-external-integration.md)（taskrunner/activelist 契约的 zhuzhao 侧能力清单 E1–E6/D1–D5 + 实施细排 + P1–P7 拍板项）；同步本表：§0 快速结论刷新（A 档清零/IW1–IW4 已实施/BK-20 仅剩）、§1 步骤 4 改指 13 号现行主链、§2.2 B 档随行口径注记（B1–B5 随工单后置）、§2.3 activelist 归位 M-A、§3 决策注记补 §25；同步 13/14/README（详见各文档变更记录） |
+| 2026-09-04（M0 收口） | 核实 BK-20 已于 2026-09-03 由所有者实施并提交（d4f5c17，全门禁绿）——00 号状态行刷新，**M0 启动准备就此收口**（迁移号 000020 起 + 决策过表已于 09-03 拍板收口） |
