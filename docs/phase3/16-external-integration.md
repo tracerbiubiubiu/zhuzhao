@@ -88,7 +88,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|---|---|
 | **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | ~1 周 |
 | **D-②** | D3 业务审计：**P2 已拍板**（SSOT = activelist ADR-003「审计落点机制」专节）——client 封装层同请求路径同步写 `activelist_audit_log` 表 + 失败落本地重投队列；`X-Request-ID` 优先透传入站 rid（03 §3.4）；脱敏/水位对账风险接受（钩子已预留） | 批次 B | 1–2 天 |
-| D-④ | D4 事件发布：zhuzhao 网关上对 activelist 的写操作成功后显式发布（M-E 就绪后接） | M-E | 随用 |
+| D-④ | D4 事件发布：zhuzhao **业务操作点**（client 封装层——反代路径之外的内部直调同样覆盖）对 activelist 的写操作成功后显式发布（M-E 就绪后接） | M-E | 随用 |
 | D-⑤ | D5 网络隔离：docker-compose 双 network | 部署期（activelist M-A6） | 部署项 |
 
 > D1 已完成收尾：ADR-003（activelist SSOT）D1 状态行与 zhuzhao 侧镜像已于 2026-09-03 同步为「已完成」。
@@ -112,7 +112,8 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|---|
 | 000020 | `policy_evaluation_logs`（B11① 判定日志，03 §3.2 DDL 草案）+ **`audit_logs` / `ticket_events` 各加 `request_id` 列**（03 §3.4 全链路关联，一次迁移合并） | M-E / M1 |
 | 000021 | 任务提交日志 + 幂等表（`{action, task_id, request_id, ...}`，E1/E5 一表两用） | M-E |
-| 000022 | 部门可见性策略表（按 P1 拍板定形态） | M-E |
+| 000022 | ✅ 任务管理菜单 + 权限码 seed（task:submit/read/manage + menu_apis，**E-④ 实施时占用**） | M-E（已落） |
+| 000023 | 部门可见性策略表（P1 已拍板 org code 复用；E-⑤ 实施时占用） | M-E |
 | seed | 任务管理权限码（如 `task:submit` / `task:manage` / `task:read`，命名随实现定）+ 菜单 | M-E |
 | — | activelist 侧表全部在 activelist 自有数据库（zhuzhao 零迁移） | M-A |
 
