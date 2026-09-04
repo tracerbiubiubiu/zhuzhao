@@ -4,7 +4,7 @@
 2026-08-25
 
 ## 状态
-已采纳（**2026-09-03 部分条款经职责收敛修订，见「2026-09-03 职责收敛修订」节**）
+已采纳（**2026-09-03 部分条款经职责收敛修订，见「2026-09-03 职责收敛修订」节**）。**2026-09-03 起集成契约 SSOT = activelist 仓库 `docs/ADR-003-integration-contract.md`，本文件为镜像**（反向同步债已于 2026-09-03 清理：方案 D 定稿 / 导入幂等=全量替换 / 排期口径 / D1–D5 需求表均已对齐；D1 状态按实际代码核验更新为已完成）。
 
 ## 背景
 activelist 仓库 `docs/activelist.md` 设计了一个基于 MongoDB + Go 的动态多类型数据全生命周期管理平台（高可靠/高可用要求）。需要决策：它与 zhuzhao 的关系（独立 vs 内化）、数据库选型（Mongo vs PG）、以及是否需要跨事务一致。
@@ -19,7 +19,7 @@ activelist 仓库 `docs/activelist.md` 设计了一个基于 MongoDB + Go 的动
 - **集成形态：activelist 作为独立服务**（不内化进 zhuzhao 单体，不做 C3 进程内合并）。保留部署边界 = 保留故障隔离；其高 SLA 负担（watcher HA、oplog/Resume Token 续传、节假日预案）不抬高 zhuzhao 单体关键性。
 - **数据库：Mongo 迁移到 PostgreSQL（统一技术栈）**。理由见下"PG 优于 Mongo 的额外收益"。
 - **耦合方式：事件总线对接，非事务耦合**。activelist 的变更事件**经 zhuzhao 网关 HTTP 事件摄入端点（带 `X-Operator` 鉴权）写入 zhuzhao 的 L1 `ticket_events`（事件事实源，ADR-001 既定）**，由 zhuzhao 侧消费者/Asynq worker 处理分发、**工单模块及其他模块订阅**；不要求跨服务/跨库事务，**事件表的数据库所有权始终在 zhuzhao 侧（activelist 不直接写 zhuzhao 库，符合 C2' 隔离）**。此处"事件总线"指 zhuzhao 的 **L1 事件源 + Asynq 执行器**组合，与 ADR-001/ADR-002 完全一致：**L1 是事件源（持久化/可重放），Asynq 是异步任务执行器，Asynq 不当事件总线**。
-- **鉴权边界不变**：zhuzhao 网关统一 JWT/Casbin/Restrict 鉴权，内网信任透传 `X-Operator`；activelist 自身不做权限检查（见 activelist 仓库 `docs/activelist.md` §19.2）。
+- **鉴权边界不变**：zhuzhao 网关统一 JWT/Casbin/Restrict 鉴权，内网信任透传 `X-Operator`；activelist 自身不做权限检查（见 activelist 仓库 `docs/activelist.md` §19.2）。**2026-09-03 基线修订**：服务级通信改 **AK/SK HMAC 签名**（utils `aksk`，activelist 验签；X-Operator 入签名覆盖——「内网信任透传」升级为「签名保护透传」；用户侧零权限不变）。
 - **网络隔离不变**：apiserver 跨 `activelist_internal` + `zhuzhao_to_activelist` 双 network，仅 zhuzhao 容器可达（§18.2）。
 
 ### PG 优于 Mongo 的额外收益（转 PG 的加分项）
@@ -105,7 +105,6 @@ activelist 仓库 `docs/activelist.md` 设计了一个基于 MongoDB + Go 的动
 col_<type>(
   id            BIGSERIAL PRIMARY KEY,  -- 自增 id
   data          JSONB,                  -- 动态字段（int/string/列表）
-  schema_version INT,                   -- 数据对应 Schema 版本（§5.4 方案 B）
   version       INT,                    -- 乐观锁
   status        TEXT,                   -- active / deleted（软删保留）
   created_at / updated_at TIMESTAMPTZ,
@@ -114,15 +113,40 @@ col_<type>(
 ```
 建类型时 CREATE TABLE（低频）；字段演进只改 schema 定义 + 应用层校验，**零 DDL**（字段全在 JSONB）。原 Mongo 方案 `col_<type>` 独立集合语义等价迁移。
 
+> **2026-09-03 定稿补充（方案 D，已同步自 SSOT）**：① Schema 采用**方案 D**——单一当前版本，数据行**不带 `schema_version`**（§5.4 方案 B 关闭，F4 采纳；破坏性变更允许提交、懒执行，旧数据下次更新 422 提示迁移）；② 导入幂等 = **全量替换**（单事务清表——含软删行——按文件插入、保留源 id、version 重置 1、setval 序列；非 upsert，**不需要每类型业务唯一键**；导出格式必须含 id / created_at）。详见 activelist 仓库 `docs/activelist.md` 头部「2026-09-03 设计定稿补充」。
+
+## 排期与集成拆分同步（2026-09-02/03 拍板，源自 zhuzhao design-decisions §22.3/§23.2、phase3/13 M-A）
+
+- **里程碑重排**：zhuzhao Phase 3 现行主链 = M0 启动准备 → M-E（事件与任务平台）→ **M-A（activelist 独立实现）** → M-HR（HR 同步）→ M-SSO（🚦）→ M-Mig（迁移准备）；原「M4 activelist 集成」被 M-A 取代。**M-A 与其他里程碑无链式依赖**；M-A 前置 = ~~共享 utils 抽取（🚦）~~ **✅ 已完成（zhuzhao-utils v0.1.0，2026-09-03）** + 网关化批次 B（design-decisions §25.5）；验收 = 按 activelist 项目自身验收；人日估算约 1.5–3（⚠️ 待校准）。
+- **集成拆两半（§22.3，部分被 §23.2 修订）**：E13 反代 / G1 Mongo→PG / G3 多源 ingress **降为架构蓝图保留（🚦）**，由 activelist 独立项目成型触发；**activelist 使用独立数据库（与工单库故障隔离）拍板认可**。
+- **工单非首数据源（§23.2）**：**外部事件接入契约由 activelist 侧定义**，取代 §22.3 的 ActivelistWriter 方向；工单 Phase 2 封版、自研暂缓，转为公司内部工单平台的对接方（迁移后集成项 🚦）。
+- **zhuzhao 侧事件/审计执行形态**：zhuzhao 事件基建 = M-E taskrunner（独立仓库 + 独立部署 + 独立 Redis；预置动作 = 回调 zhuzhao 内网端点执行，业务 handler 在 zhuzhao；业务审计落 zhuzhao `audit_logs`）——「事件与审计移交 zhuzhao」的接收方即此形态；**zhuzhao 侧配套细排见 phase3/16-external-integration.md**。
+
+## activelist 对 zhuzhao 的能力需求（汇总，2026-09-03 整理；细排见 zhuzhao `docs/phase3/16-external-integration.md`）
+
+| # | 能力需求 | zhuzhao 侧载体 | 状态 | 对 activelist 的阻塞关系 |
+|---|---------|---------------|------|------------------------|
+| D1 | 共享 utils：`logger` / `postgres`（硬依赖），`errcode` / `response` / `jsonutil` / `validate` / `crypto`（按需） | zhuzhao-utils 独立项目 | ✅ **已完成（2026-09-03 核验）**：v0.1.0 已发布并 pin（无 replace），9 包齐；resource 按 design-decisions §25.3 拍板留 zhuzhao 不抽 | 无（M-A 可直接引包） |
+| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body） | zhuzhao 批次 B 网关化（§25.5） | 蓝图 🚦（未开始） | **不阻塞开发；阻塞联调与上线**（activelist 零认证，无网关不能对外暴露） |
+| D3 | 业务审计记录（activelist 写接口返回变更后完整文档；zhuzhao 侧落审计；导入按批次） | zhuzhao client 封装层 + `activelist_audit_log` 表 | ✅ **已拍板（2026-09-03）**，机制见 activelist SSOT「审计落点机制」专节：client 层同请求路径同步写 + 本地重投队列；X-Request-ID 由 client 层生成透传（优先透传入站 rid）；脱敏/水位对账风险接受（钩子预留）；导入/导出按批次行 | **已解除阻塞**（zhuzhao 侧实现项：client 层 + 审计表；activelist 侧义务已定稿） |
+| D4 | 事件发布（zhuzhao 业务操作点显式发布；工单非首数据源，接入契约由 activelist 侧定义） | zhuzhao M-E taskrunner | 蓝图 🚦 | **无依赖**（activelist 不感知事件） |
+| D5 | 网络隔离（双 network，仅 zhuzhao 容器可达 apiserver 8080） | 双方部署约定 | activelist 自理 docker-compose | 部署期事项（M-A6） |
+
 ## 待办
+
+> 现行效力注（2026-09-02/03，SSOT 同步）：**E13 / G1 / G3 为架构蓝图保留 🚦**（§22.3/§23.2，由 activelist 独立项目成型触发；E13 已并入 zhuzhao 批次 B 网关化，§25.5）；**G4 两层审计已被上方收敛修订覆盖**（审计归 zhuzhao，落点机制待定）；G2 事件桥接由「zhuzhao 业务操作点显式发布」取代。
+
 - **E13（zhuzhao 侧）**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` 中间件 + Restrict 资源 `activelist` + accesslog 对 `/api/v1/data/*` 跳过 body（仅记 HTTP 元信息）。
 - **G1（activelist 侧，转 PG）**：Mongo → PG 迁移设计（动态集合→分区表/每类型表；Change Stream→Outbox/逻辑复制；历史快照落 PG 表）。**含日志 writer 迁移**：§19.7.1 的 `mongo_writer.go` / `NewMongoWriteSyncer` 需改为 PG writer，否则转 PG 后日志仍依赖 Mongo。
-- **G2（集成缺口）**：activelist 变更事件 → zhuzhao 统一事件目录（L1 事件源）的桥接设计：明确为 **activelist → zhuzhao 网关 HTTP 事件摄入端点（`X-Operator` 鉴权）→ zhuzhao 自写 `ticket_events`**，数据库所有权留在 zhuzhao；activelist 与 zhuzhao 各自独立 Asynq/Redis，不共享执行器后端。
+- **G2（集成缺口）**：~~activelist 变更事件 → zhuzhao 统一事件目录的桥接~~（已被「zhuzhao 业务操作点显式发布」取代，见收敛修订对照表）。
 - **G3（zhuzhao 工单侧）**：多源 ingress 适配器设计（手动 + activelist + 其他模块）。
-- **G4（审计层，已确认）**：两层审计落地——zhuzhao 网关层（E13 跳过 body）+ activelist 业务层（自脱敏 accesslog）。
+- **G4（审计层，已确认）**：~~两层审计落地~~（已被收敛修订覆盖：审计归 zhuzhao、activelist 只记技术/运行日志，落点机制待拍板）。
 
 ## 建议阶段
-- **Phase 3 启动后**（L1 事件机制 + Asynq 就绪后）。原拟 Phase 2b，因前置依赖 L1/Asynq 实际于 Phase 3 启动时落地，已决策顺延至 Phase 3 启动后——避免为 activelist 单独写一套临时事件分发再迁移回 L1（违反 ADR-001「不偷工减料」原则）。**HR 目录同步不依赖 L1，仍属 Phase 2b**（desired-state reconciliation 直接写表，非事件消费者）。前置依赖：L1 事件机制 + Asynq 执行器就绪（Phase 3 启动时实现，见 [ADR-001](./ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](./ADR-002-asynq-async-task-executor.md)）、网关反代模块（E13）。
+
+> ⚠️ **2026-09-02 修订（design-decisions §23.2）**：现行排期 = Phase 3 主线 **M-A（activelist 独立实现）**，与其他里程碑无链式依赖；前置 = ~~共享 utils 抽取（🚦）~~ ✅ 已完成（zhuzhao-utils v0.1.0）+ 批次 B 网关化（§25.5）。下文为 2026-08-25 原表述，保留作历史。
+
+- **Phase 3 启动后**（L1 事件机制 + Asynq 就绪后）。原拟 Phase 2b，因前置依赖 L1/Asynq 实际于 Phase 3 启动时落地，已决策顺延至 Phase 3 启动后——避免为 activelist 单独写一套临时事件分发再迁移回 L1（违反 ADR-001「不偷工减料」原则）。~~HR 目录同步不依赖 L1，仍属 Phase 2b~~（**已升 Phase 3 主链 M-HR**，2026-09-02）。前置依赖：L1 事件机制 + Asynq 执行器就绪、网关反代模块（E13）。
 - Mongo→PG 迁移（G1）与方案 F 可并行设计，不阻塞 zhuzhao 主链路；若 2b 排期紧张，标为 Phase 2 按需增强。
 
 ## 关联文档
@@ -130,3 +154,9 @@ col_<type>(
 - `adr/ADR-001-event-mechanism-l1-steady-state.md`（L1 事件源长期稳态）
 - `adr/ADR-002-asynq-async-task-executor.md`（Asynq 作为异步任务执行器，可共用 Redis 实例；注意 Asynq 不当事件总线，事件源仍是 L1）
 - `docs/roadmap.md`（外部能力集成：activelist 小节）
+
+## 变更记录（镜像侧）
+
+| 日期 | 变更 |
+|---|---|
+| 2026-09-03 | AK/SK 基线修订同步：activelist 服务级通信由零认证改验签（SSOT 侧已同步） |

@@ -13,6 +13,8 @@
 |---|---|---|---|
 | **权限/菜单缓存跨实例失效** | 多实例 + 热点（QPS 瓶颈） | 🚦 | design-decisions §1 / 本文 §2 |
 | **AK/SK 平台凭据** | 有 M2M（机器对机器）调用方 | 🚦 | 本文 §3 |
+
+> **分层注记（2026-09-03 拍板）**：**内部服务间**通信已拍板统一 **AK/SK HMAC 签名**（utils `aksk` 包，静态 env 密钥、按调用方发 SK——zhuzhao 16 号 §9 基线）；本节 AK/SK 指**外部 M2M 调用方**的平台凭据（api_keys 表/哈希存储/签发吊销管理面），仍 🚦 随外部调用方出现——届时**签名算法层直接复用 utils `aksk`**，只新建密钥管理面，不重复造轮子。
 | **事件 L2 升级**（Outbox + Asynq worker 多消费者） | 多消费者 / 异步邮件需求（L1 单消费者瓶颈） | 🚦 | ADR-001/002 + 本文 §4 |
 
 > 微服务拆分**不做**（无多团队/M2M 需求）——AK/SK 是 M2M 的最小前置，微服务是更大动作，二者区分对待。
@@ -47,14 +49,14 @@
 
 ### 3.1 触发
 
-- 出现机器到机器（M2M）调用方（如 activelist 对 zhuzhao 的调用、外部系统对接），需要非人类凭据。
+- 出现机器到机器（M2M）调用方（~~如 activelist 对 zhuzhao 的调用~~ **2026-09-03 收敛后 activelist 零认证经网关被调，不再主动调 zhuzhao**；场景 = 外部系统对接、非内网调用），需要非人类凭据。
 
 ### 3.2 设计（草案）
 
 - `api_keys` 表：`(key_id, secret_hash, owner, scope, expires_at, enabled)`；KeyId 明文 + Secret 哈希存储（不落明文）。
 - 鉴权：`X-Api-Key: <key_id>.<secret>` → 校验哈希 + 有效期 + scope 限制。
 - 管理面：管理员签发/吊销/轮换（权限码 `api_key:manage`，⚠️ seed 待定）。
-- ⚠️ 与 activelist 的 `X-Operator` 内网透传（ADR-003）区分：AK/SK 用于非内网或需要独立凭据的场景。
+- ⚠️ 与 activelist 的身份断言区分（ADR-003 + design-decisions §25.2）：activelist 经网关访问走**方案 A（AT 原样透传 + 属主共享公钥验签）**——~~X-Operator 明文透传~~ 为被取代的方案 B 类（明文断言头，有伪造面）；AK/SK 用于非内网或需要独立凭据的场景。
 
 ### 3.3 验收
 
@@ -75,7 +77,7 @@
 
 - L1 → L2：`ticket_events` 信号消费从「单消费者轮询」换为 **PostgreSQL Outbox + Asynq worker 多消费者**。
 - **业务逻辑不变，只换调度器**（通知内容、SLA 规则不动）。
-- 依赖：Asynq 已引入（W2）；Outbox 表 + worker 注册。
+- 依赖：Asynq 已引入（~~W2~~ **M-E**，2026-09-02 §23）；Outbox 表 + worker 注册。
 
 ### 4.3 验收
 

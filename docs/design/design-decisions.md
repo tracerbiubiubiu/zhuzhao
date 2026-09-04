@@ -1310,6 +1310,48 @@ type remoteUserQueryService struct {
 5. **登出**：zhuzhao 侧 revoke 照旧；与公司平台的单点登出（SLO）联动 = 可选项，迁移时按平台能力拍板。
 6. **审计**：登录事件加 `method`（sso/local）。
 
+## 25. 权限架构定版：PDP/PEP 分工、统一网关边界与平台策略库（2026-09-03 讨论定稿）
+
+**背景**：§23 重定位后主链为 M-E（taskrunner，独立仓库+独立部署）+ M-A（activelist，零认证薄层）；zhuzhao 定位为**统一对外网关**（§13 M-E 拍板已含「zhuzhao 作网关：鉴权/编排/业务审计」）。本节定版权限侧结论，作为 M-E/M-A 权限前置的 SSOT。
+
+### 25.1 PDP/PEP 分工（NIST 框架）
+
+- **PDP（规则定义）**：身份/角色/组织关系**集中一份**（zhuzhao：users/roles/user_orgs/org_roles + Casbin policy）；行级策略**按领域分布**（资源属主管自己数据的行规则；activelist 零认证薄层可零权限代码——网关权限码挡住+数据组内全可见）。
+- **PEP（判定执行）**：API 级在**网关**（CasbinAuth 中间件，对反代路由同样生效）；**行级必然在数据处**——行级判定等价于给属主查询加 WHERE，网关看不到属主库的行，**逻辑上不可能集中**。业界铁律：Google Zanzibar 的 Docs/Drive 内嵌 stub 自行发起 Check、K8s RBAC 在各 API server 执行、AWS IAM 策略集中但各服务是自己的 PEP、OPA bundle 集中分发 enforcement 分布执行——**没有任何系统把行级 PEP 放进网关**（Kong/Envoy+ext_authz 也只做认证+路由级）。
+- **落地分工**：身份集中（外部服务不建 users/roles 表）＋ 行级归属主 + 网关用集中身份库管 API 级。「每个服务一套角色库」是把行级策略误当全套。
+
+### 25.2 统一网关边界（zhuzhao）
+
+网关吃下：**认证（JWT）+ 路由级授权（Casbin policy，path+method）+ 审计（请求级，proxy 路由跳 body——ADR-003 G4）+ API 级限流（待补）**。行级权限不进网关（25.1）；网关对行级的正确姿势 = **身份断言透传**。
+
+**身份断言契约**（M-A 前置；M-E 经「回调 zhuzhao 内网端点」不经断言链）。**2026-09-03 基线修订（覆盖下述 A/B 之争）**：服务间通信统一 **AK/SK HMAC 签名**后，身份断言 = **明文 `X-Operator` 头 + 纳入签名覆盖**——明文断言不可伪造，方案 A（AT 验签）无消费方、降为触发条件驱动（服务可达面扩大 / 服务自行行级判定 / 合规要求）；基线 SSOT = phase3/16 号 §9。原始两方案保留作背景：
+- **方案 A（推荐）：AT 原样透传 + 属主服务共享公钥验签**——无伪造面，属主不依赖网关实现细节；
+- 方案 B：明文断言头（X-User-ID 等）+ 网络隔离防直连——有伪造面，仅限完全内网隔离场景。
+
+**M-SSO 定位变化**：纯网关模型下 activelist 经网关访问，M-SSO（§24）降级为「非网关路径的独立 UI」场景可选项，按需再全量开工。
+
+### 25.3 平台策略库（声明式接入，设计详见 authz.md §3.1）
+
+- **形态**：三个内置 Resource 实现（`org-member`/`owner-only`/`role-gated`）+ `Builtin(code, policy)` 一行注册；schema 约定（org_id/created_by 列）。
+- **策略逻辑与策略数据分离**：**事实进 DB**（谁绑什么角色/权限——已在做：casbin_rule/menu_apis/user_orgs），**语义进代码**（模块用哪个行级策略——与模块代码同生命周期，进 DB 只制造漂移面且无「不发版换策略」的变更场景）。K8s 内置 ClusterRole / AWS managed policy 同款取舍。
+- 消费方：M-E 的 zhuzhao 侧任务提交/回调端点（org-member）。
+- **归属 zhuzhao 本仓，不进共享 utils**（2026-09-03 补充拍板）：消费者分析锁死——taskrunner 不做业务判定（通用调度）、activelist 零权限（网关 L1 挡住+数据全可见），**唯一消费者是 zhuzhao 自身**；且策略谓词绑定 zhuzhao 库 schema（user_orgs）——抽进共享 utils 等于让独立服务拿到「查 zhuzhao 库」的构件，违反 25.1 属主原则。共享 utils 抽取边界就此明确：**只抽无数据依赖的纯工具**（jsonutil/logger/response 类）。独立服务将来需要组员判定 → 走身份断言（25.2），不共享策略库。
+- **工单策略与策略库双路并存、永不合流**（2026-09-03 补充）：工单三轴+委托轴是工单特有语义，保持手写 Resource（`internal/service/ticket/`，冻结期原地封存，§23.1）；builtin 只服务普通模块。**策略的家=数据属主的家**：工单属主现为 zhuzhao 故在 zhuzhao；§23 主路径对接内部平台后行级判定随数据转移（zhuzhao 侧 645 行转对接参考资产）；翻案重启（§23 翻案条件命中）则解冻原位继续——Registry 双路设计即为此预留。内部平台行级表达力 vs zhuzhao 三轴的评估列入 M-Mig（13 号 §1）。
+
+### 25.4 ReBAC/PBAC 不演进（触发器见 11-authz §5）
+
+2026-09-03 评估：网关化/taskrunner/activelist 三场景**无一构成演进触发**——网关=路由级 RBAC（Casbin 已满足）；taskrunner=成员 EXISTS；activelist=行级自治（Zanzibar 系恰要求关系集中注册，与独立库决策正面冲突）。授权关系是树形（ltree），PG+SQL 判定有一致性/索引/可测试优势。命中 11-authz §5 触发器时演进 =「换 L2/L3 判定后端」（ResourceAuthorizer 接缝），L1 Casbin 不动；届时 OpenFGA（API 友好）与 SpiceDB（一致性选项多）二选一。
+
+### 25.5 前置功能清单（M-E / M-A 动工前）
+
+| 批次 | 项 | 量级 | 挂靠 |
+|---|---|---|---|
+| A（M-E 前置） | 平台策略库：三策略实现 + Builtin 注册 + schema 约定 fail-fast + 正负向测试（AST 护栏泛化可选） | 2–3 天 | authz.md §3.1 |
+| B（M-A 前置） | 网关化：反代核心（前缀→上游注册表/ReverseProxy/错误映射）+ 身份断言（25.2 方案 A）+ API 级限流 + activelist API 入 menu_apis + proxy 审计跳 body（ADR-003 已设计） | ~1 周 | E13 泛化（ADR-003 蓝图保留） |
+| C（随手） | 密码复杂度（网关化后=门户责任）+ 本节落档 | 半天 | IW2 auth-enhance |
+
+**不做**：PDP 回调接口、策略配置进 DB/管理面（无消费方）、跨库判定、提前多实例（随 M1 触发条件）。
+
 **影响面**：新增 2 端点（`/auth/sso/login`、`/auth/sso/callback`）+ SSOProvider 接口 + config SSO 段 + 登录审计字段；JWT 中间件/RT/三层鉴权/会话管理零改动。前端仅登录页加企业账号入口（前端后置策略下的最小例外）。
 
 **与 HR 同步分工**：SSO 管「认证」（你是谁、凭证有效性——离职后公司侧自动拒登）；HR 同步管「账号数据」（建号/组织/禁用与会话吊销）。对账键一致，互为校验。排位 **M-SSO**（13 号），与 M-HR 相邻。

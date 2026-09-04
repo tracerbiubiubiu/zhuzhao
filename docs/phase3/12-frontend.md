@@ -27,6 +27,7 @@ Vue 3 + TypeScript + Vite ｜ Element Plus ｜ Pinia + Vue Router ｜ UnoCSS（�
 | 审批人配置页 | `PUT /workflows/:code`（7-0 设计产出，权限码 `workflow:manage`） | W2（7c） |
 | 审批操作页 | `workflow-tasks` API（通过/驳回/转签，WhatCanIDo 驱动按钮） | W2（7c） |
 | SLA/通知/报表 | 7a/7b/7e API（`report:read`） | W2 |
+| **任务管理页**（M-E，2026-09-03 登记） | zhuzhao 任务管理端点（代理 taskrunner API：提交/建改定义/立即执行/执行记录；[16 号 E-④](./16-external-integration.md)） | M-E（前端后置策略下随联调需要排期） |
 
 ## 3. 关键范式（ecmdb-web 参照，落到 zhuzhao）
 

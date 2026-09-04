@@ -1,7 +1,7 @@
 # 14 - Phase 3 规划整理（现行主链版）
 
-> **定位**：§21–§24 全部拍板后的 **Phase 3 规划现状整理稿**——把散落在 design-decisions（§21/§22/§23/§24）、13-implementation-plan、00-startup-checklist、phase3/README 里的规划信息归拢成一份可读的现状视图。**本文档是索引/视图，不是第二 SSOT**；每节的权威出处均已标注。
-> **状态**：规划整理（2026-09-02）。**SSOT** = [design-decisions §21–§24](../design/design-decisions.md)（决策）+ [13-implementation-plan](./13-implementation-plan.md) §1（排期）。
+> **定位**：§21–§25 全部拍板后的 **Phase 3 规划现状整理稿**——把散落在 design-decisions（§21–§25）、13-implementation-plan、00-startup-checklist、phase3/README 里的规划信息归拢成一份可读的现状视图。**本文档是索引/视图，不是第二 SSOT**；每节的权威出处均已标注。
+> **状态**：规划整理（2026-09-02；2026-09-03 同步 §25 + 外部集成 16 号）。**SSOT** = [design-decisions §21–§25](../design/design-decisions.md)（决策）+ [13-implementation-plan](./13-implementation-plan.md) §1（排期）。
 > **标记约定**：`🚦` = 触发条件驱动，是否纳入本次排期由所有者决定；`⚠️` = 存在不确定性/待拍板；`~~划线~~` = 暂缓 / 被取代（历史保留）。
 
 ---
@@ -22,11 +22,11 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 
 | 项 | 值 |
 |---|---|
-| 主链合计 | **7–11 人日** = M0 1–2 + M-E 3–4 + M-HR 3–5（不含 🚦；M-A 澄清后约 1.5–3 ⚠️ 仍单列） |
+| 主链合计 | **7–11 人日** = M0 1–2 + M-E 3–4 + M-HR 3–5（不含 🚦；M-A 约 1.5–3 ⚠️ 仍单列；**另计：M-E zhuzhao 侧配套 5–7（16 号）+ 批次 A 2–3 天 + 批次 B ~1 周（§25.5）**） |
 | 主链段数 | 6 段（M0 → M-E → M-A → M-HR → M-SSO → M-Mig） |
 | 🚦 段 | M-SSO / M-Mig / M1（随触发条件推进） |
 | 暂缓项 | M2 工单业务闭环（自研暂缓）、M1 可运维基座（🚦）、M4、M5 |
-| 文档就绪 | Phase 3 文档全量就绪（00–14 + ops/deployment） |
+| 文档就绪 | Phase 3 文档全量就绪（00–16 + ops/deployment；05 无文件=推迟） |
 | 迁移 | 启动时按 A2 规则重排，Phase 3 起 000020（当前 000001–000019 已占用） |
 
 ---
@@ -36,11 +36,11 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 | 里程碑 | 内容 | 人日 | 退出标准 |
 |---|---|---|---|
 | **M0 启动准备**（收窄） | 迁移号核对重排 + 决策清单过表 + **BK-20**（禁删有未结工单组织守卫——工单封版前最后的数据安全修复）；BK-19 / 顺手项随封版后置 | 1–2 | 决策清单过完；BK-20 落地（ErrOrgHasOpenTickets 409 + acceptance 适配） |
-| **M-E 事件与任务总线**（taskrunner） | ① **Asynq 底座**（Scheduler / PeriodicTask / worker / 重试 / 超时 / 阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（见 [15](./15-script-platform-dagu-vs-inhouse.md)）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板；设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`）；日志：zhuzhao 记任务提交凭证 + 业务审计，taskrunner 自维护 job_runs（request_id 关联，不传回） | 3–4（⚠️ 待校准；原 6–8） | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
-| **M-A activelist 独立实现** | 独立库 + **独立数据库**（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2——取代 ActivelistWriter 方向）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、零认证、查询=仅 id 分页+时间倒序、PG **每类型表+`data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（幂等/并发）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1，独立部署保留；**前置：共享 utils 抽取**（🚦） | 约 1.5–3（⚠️ 待校准；原单估） | 按其项目自身验收 |
+| **M-E 事件与任务总线**（taskrunner） | ① **Asynq 底座**（Scheduler / PeriodicTask / worker / 重试 / 超时 / 阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（见 [15](./15-script-platform-dagu-vs-inhouse.md)）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板；设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`）；日志：zhuzhao 记任务提交凭证 + 业务审计，taskrunner 自维护 job_runs（request_id 关联，不传回）；**权限前置**：平台策略库批次 A（§25.5，2–3 天）；**zhuzhao 侧配套细排见 [16 号](./16-external-integration.md)** | 3–4（⚠️ 待校准；原 6–8）+ zhuzhao 配套 5–7 | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
+| **M-A activelist 独立实现** | 独立库 + **独立数据库**（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2——取代 ActivelistWriter 方向）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、零认证、查询=仅 id 分页+时间倒序、PG **每类型表+`data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（**幂等=全量替换**，方案 D 定稿）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1，独立部署保留；~~前置：共享 utils 抽取~~ ✅ **已完成（zhuzhao-utils v0.1.0，2026-09-03）**；**权限前置**：网关化批次 B（§25.5，~1 周——反代/身份断言方案 A/限流/menu_apis/审计跳 body）；**zhuzhao 侧配套细排见 [16 号](./16-external-integration.md)** | 约 1.5–3（⚠️ 待校准；原单估） | 按其项目自身验收 |
 | **M-HR HR 同步**（预留接口版） | `HRFetcher` 接口 + sync 引擎 + 本地 mock adapter（内网 adapter 即插）；拍板：离职在途工单处置 / 部门撤销×tickets.org_path 级联 / 跨部门权限分配规则 | 3–5 | 组织同步三规则对 mock 源跑通；对账幂等；三拍板项落档 |
 | **M-SSO 单点登录**（🚦 进内网后实施） | `SSOProvider` 接口 + OAuth2.0 授权码实现（authorize + code 换 token + userinfo，state 防 CSRF）+ `/auth/sso/login`·`/auth/sso/callback` 两端点 + 身份映射（对账键同 HR：external_id 优先）+ 登录审计 method 字段；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（config 开关，仅限已同步账号）；本地密码兜底并存（§24） | 🚦 2–3 | mock/测试 IdP 走通完整回调链 → 自有 JWT 签发 → 三层鉴权行为不变 |
-| **M-Mig 迁移准备**（🚦） | 公司内网部署对接（网络/凭据；07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧 / 限流 / 审计保留期）+ **~~部署镜像带 python/shell 解释器~~**（脚本任务运行时依赖，**2026-09-03 随脚本任务降级 🚦**）+ 与 M-SSO 汇合（拿到公司 OAuth2.0 接入信息后实施） | 🚦 随迁移时点 | 内网环境部署演练通过 |
+| **M-Mig 迁移准备**（🚦） | 公司内网部署对接（网络/凭据；07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧 / 限流 / 审计保留期）+ **正式命名 + module path 迁移**（2026-09-03 拍板：与进内网换 Git 平台合并执行一次）+ **内部工单平台权限表达力评估**（对照三轴模型列对接缺口，§23.3）+ **~~部署镜像带 python/shell 解释器~~**（随脚本任务降级 🚦）+ 与 M-SSO 汇合（拿到公司 OAuth2.0 接入信息后实施） | 🚦 随迁移时点 | 内网环境部署演练通过 |
 
 ---
 
@@ -58,7 +58,7 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 | 项 | 触发条件 | 状态 |
 |---|---|---|
 | M1 可运维基座（observability / multi-instance / audit-l2） | 部署形态升级为多实例 / 策略跨实例生效 | ☐ 默认后置 |
-| M-SSO 单点登录（OAuth2.0，§24） | 进公司内网、拿到 OAuth2.0 接入信息 | ☐ 设计已定稿 |
+| M-SSO 单点登录（OAuth2.0，§24） | 进公司内网、拿到 OAuth2.0 接入信息；**§25.2 补充：纯网关模型下降级为「非网关路径的独立 UI」场景可选项** | ☐ 设计已定稿 |
 | M-Mig 迁移准备 | 迁移时点确定 | ☐ 随迁移 |
 | 工单对接形态 + Phase 2 资产处置（§23.3） | 迁移时依公司平台契约 | ☐ 迁移时拍板 |
 | ha（PG Cluster / Redis Sentinel） | 99.9%+ SLO / 对外 SLA | ☐ |
@@ -74,9 +74,9 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 
 | # | 事项 | 当前状态 |
 |---|---|---|
-| U1 | 03-audit-l2 写入管道：同步落库 vs Redis List 缓冲、fail-open vs fail-close | 待拍板（03 §7） |
+| U1 | ~~03-audit-l2 写入管道：同步落库 vs Redis List 缓冲、fail-open vs fail-close~~ | ✅ **已拍板（2026-09-03）：异步写**（channel → Redis List → 批量落库；03 §7 D1） |
 | U-A | M-A activelist 澄清后核心功能人日（动态数据模型薄层：任意类型 int/string/列表、id 分页、PG 每类型表+JSONB、导入导出 JSON） | 约 1.5–3（⚠️ 待校准，原单估） |
-| U-B | **共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目（命名/范围/config 解耦/zhuzhao 全仓 import 变更） | 🚦 待所有者启动；见 ADR-003 修订节 |
+| U-B | ~~**共享 utils 抽取**~~ | ✅ **已完成（2026-09-03）**：zhuzhao-utils v0.1.0 已发布并 pin（9 包含 logger/postgres）；resource 按 §25.3 留 zhuzhao 不抽 | 已关闭 |
 | U-HR | HR 同步三拍板：离职在途工单处置 / 部门撤销级联 / 跨部门权限分配规则 | 随 M-HR 启动拍板 |
 | U-SSO | 公司 OAuth2.0 接入信息（endpoint / client_id / secret）与 userinfo 字段差异（§24 字段适配层） | 进内网后获取 |
 | U6 | 多实例验收环境（MI1–5 需 2 实例 + Nginx） | 随 M1 🚦 触发 |
@@ -98,6 +98,8 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 | 11-deployment-split | 部署级分离三档 | 已编写 | 可选 |
 | 12-frontend | 前端工程：BK-18 管理页/动态表单仍有效；审批/报表前端**随 M2 暂缓** | 参考规格 | IW3 + M2 |
 | 13-implementation-plan | **执行计划 SSOT**：现行主链 + 🚦/⚠️ + 变更记录（§22/§23/M-E/M-SSO） | 已编写 09-02 | 主链排期 |
+| 15-script-platform-dagu-vs-inhouse | 脚本任务选型调研（Dagu vs 自研；M-E 收敛后为按需再启参考） | 已编写 09-03 | 🚦 参考 |
+| 16-external-integration | **外部服务集成配套**（taskrunner/activelist 契约的 zhuzhao 侧能力清单 E1–E6/D1–D5 + 细排 + P1–P7 拍板项） | 已编写 09-03 | M-E / M-A |
 | ops/deployment.md | 部署文档（B10） | 已编写 09-02 | M-Mig |
 
 ---
@@ -127,6 +129,8 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 | §22 执行结构六项：M1 降 🚦 / HR 升主链 / activelist 拆两半（后被 §23.2 取代）/ 签发模型=指派给人 / 引擎可替换约束；其中「7c 引擎硬交付」**被 §23 推翻** | 已拍板（部分被覆盖） |
 | §23 重定位：工单自研暂缓、内部引擎优先、Phase 2 封版、主线改通用能力 + 内网迁移 | 已拍板 |
 | §24 SSO：OAuth2.0 授权码预留接口版、鉴权三层零改动、JIT 关、本地兜底 | 已拍板（🚦 实施） |
+| §25 权限架构定版：PDP/PEP 分工、统一网关边界（身份断言方案 A）、平台策略库（三内置策略 + 语义进代码）、ReBAC 不演进；前置批次 A（M-E）/B（M-A）/C（随手） | 已拍板（2026-09-03） |
+| 外部集成待拍板：~~dept 归属标签语义 / D3 审计落点 / 回调鉴权 / 动作清单校验等（16 号 P1–P7）~~ | ✅ **P1–P7 已全部拍板关闭（2026-09-03）**：P1 org code 复用 / P2 client 层+审计表（SSOT=activelist ADR-003）/ P3 异步管道 / P4 本地卷 / P5 无回调鉴权 / P6 不做前置校验 / P7 无状态字段 |
 | A2 迁移号归属 / A3 org_path 快照 | 已拍板 |
 | K8s vs Compose / Redis·PG HA / 部署级分离时机 / 03 写入管道 | 待拍板 |
 | 工单对接形态 + Phase 2 资产处置（§23.3） | 迁移时拍板 |
@@ -153,7 +157,9 @@ zhuzhao 价值重定位 = **IAM 内核 + 通用能力底座（事件/审计/组�
 | 2026-09-02 | 建档：§21–§24 全部拍板后，归拢 design-decisions / 13 / 00 / README 中的 Phase 3 规划为现状整理稿（现行主链 / 暂缓 / 🚦 / ⚠️ / 文档 / 迁移 / 验收 / 决策清单）；替代此前 `phase3-inventory.html` 规划素材，转 md 纳入 docs/phase3 体系 |
 | 2026-09-03 | 同步 M-E 收敛：任务平台 → **事件/任务总线**（脚本任务 🚦 降级、预置动作、独立部署拍板）；主链合计 10–15 → **7–11**；job_configs/job_runs 迁移表降级 🚦；Phase 3-min 验收去脚本任务 |
 | 2026-09-03 | **M-E 形态定稿**：独立仓库 + 独立部署 + 独立 Redis；预置动作 = 回调 zhuzhao 内网端点（handler 在 zhuzhao）；日志边界 = zhuzhao 记任务提交凭证 + 业务审计，taskrunner 自维护 job_runs（request_id 关联，不传回） |
+| 2026-09-03 | 同步 §25 权限架构定版（SSOT 引用 §21–§24 → §21–§25；M-E/M-A 行挂批次 A/B；M-SSO 补 §25.2 降级注记；决策清单补 §25 行）+ 16 号建档同步（M-A 行幂等口径改全量替换 / U-B 共享 utils 关闭 ✅ v0.1.0 / 文档矩阵补 15·16 / 主链合计另计配套与批次人日） |
+| 2026-09-03（P1–P7 拍板收口） | 16 号 P1–P7 全部关闭（dept=org code / activelist 审计=client 层+`activelist_audit_log` / 管道=异步 Redis List / 归档=本地卷 / 无回调鉴权 / 不做前置校验 / 无状态字段）；U1 关闭；登记 request_id 全链路关联缺口（03 §3.4：ctx 注入 + audit_logs/ticket_events 加列 + taskrunner 回调带 X-Request-ID）；taskrunner M1+M2 已完成（含 A1/A2 修复），M-A/批次 B 前置不变 |
 
 ---
 
-**配套索引**：启动入口 [00-startup-checklist](./00-startup-checklist.md)；排期 [13-implementation-plan](./13-implementation-plan.md)；决策 SSOT [design-decisions §21–§24](../design/design-decisions.md)。
+**配套索引**：启动入口 [00-startup-checklist](./00-startup-checklist.md)；排期 [13-implementation-plan](./13-implementation-plan.md)；决策 SSOT [design-decisions §21–§25](../design/design-decisions.md)。

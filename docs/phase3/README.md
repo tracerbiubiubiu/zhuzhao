@@ -1,8 +1,8 @@
-# Phase 3 实现计划：生产加固 + 工单业务能力闭环
+# Phase 3 实现计划（重定位后：通用能力底座 + 内网迁移）
 
 > **🚦 启动入口**：启动 Phase 3 前先过 [00-startup-checklist.md](./00-startup-checklist.md)——A/B/W 全量清单 + 决策清单 + 检查顺序（2026-08-31 建档，启动时先刷新状态）。
 
-> **⚠ 重定位（2026-09-02，SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单**自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复）。本文「工单业务能力闭环」（W2/Step 7、§2.1.0 决议②⑤相关表述）**暂缓自研**，10/12 号转对接参考；Phase 3 主线改为 **Asynq 事件基建 + activelist 独立实现 + HR 同步 + 内网迁移准备**（现行主链与排期见 [13-implementation-plan](./13-implementation-plan.md) §1 修订表）。本文其余内容（多实例/HA/安全/运维/平台增强）仍为 🚦 参考设计。
+> **⚠ 重定位（2026-09-02，SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单**自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复）。本文「工单业务能力闭环」（W2/Step 7、§2.1.0 决议②⑤相关表述）**暂缓自研**，10/12 号转对接参考；Phase 3 主线改为 **M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO（🚦）→ M-Mig 迁移准备**（现行主链与排期见 [13-implementation-plan](./13-implementation-plan.md) §1 修订表；外部集成 zhuzhao 侧配套见 [16-external-integration](./16-external-integration.md)）。本文其余内容（多实例/HA/安全/运维/平台增强）仍为 🚦 参考设计。
 
 > ⚠️ **暂缓声明（2026-08-25）**：当前没有微服务需求，**Phase 3 整体暂缓、不排期**。本文件保留为参考，与 [../roadmap.md](../roadmap.md) 主视图一致——优先级是把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实跑稳。生产加固类能力按需取用，不拆 3a/3b 子阶段执行。
 >
@@ -35,14 +35,14 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 单体性能瓶颈（QPS/延迟超阈值） | observability + multi-instance | 需要可观测性定位 + 多实例分流 |
 | 真实多团队开发需求 | microservice（推迟项重启评估） | 多团队并行开发，单体协作成本高 |
 | 多消费者/异步邮件需求 | event-driven L2 升级 | L1 单消费者瓶颈，需 Outbox + Asynq worker 多消费者 |
-| 会签/网关/分支审批需求 | ticket-business §4 BranchedStateEngine | 线性状态机表达不下（见 [ticket.md §8.6](../modules/ticket.md#86-工作流引擎升级触发信号量化表)）。**注：引擎本体为 Phase 3 硬交付（[10-ticket-business.md §4.4](./10-ticket-business.md)），触发信号只决定何时加更多流程定义，不决定引擎是否实现** |
-| SLA 合规要求 | ticket-business §2 SLA 计时 | 业务方要求响应/解决时限 + 违约告警 |
+| 会签/网关/分支审批需求 | ticket-business §4 BranchedStateEngine | 线性状态机表达不下（见 [ticket.md §8.6](../modules/ticket.md#86-工作流引擎升级触发信号量化表)）。~~注：引擎本体为 Phase 3 硬交付~~ **已被 §23 推翻（2026-09-02）**：工单自研暂缓，引擎不再实施；触发信号只决定「翻案后是否恢复自研」 |
+| SLA 合规要求 | ticket-business §2 SLA 计时 | 业务方要求响应/解决时限 + 违约告警（随 §23 暂缓，对接参考） |
 | 高可用要求（99.9%+） | ha（PG Cluster + Redis Sentinel） | 单实例不满足 SLO |
 | 外部系统 M2M 调用 | platform AK/SK | 有机器到机器调用方 |
 
-> **原则**：暂缓期间不提前实现；触发条件出现时按需启动对应子能力，不要求一次性全做 Phase 3。**例外**：BranchedStateEngine 引擎本体为 Phase 3 硬交付（见 [10-ticket-business.md §4.4](./10-ticket-business.md)），触发信号仅决定「何时加更多流程定义」，不决定「引擎是否实现」。
+> **原则**：暂缓期间不提前实现；触发条件出现时按需启动对应子能力，不要求一次性全做 Phase 3。~~**例外**：BranchedStateEngine 引擎本体为 Phase 3 硬交付~~ **已被 §23 推翻（2026-09-02）**：工单自研暂缓，触发信号只决定「翻案后是否恢复自研路线」，不决定「当前是否写引擎」。
 
-> **工单业务能力为何属 Phase 3**：工单是 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 列举的 5 类事件源，下游消费者（通知、SLA、满意度、告警）全部卡在事件机制。若 Phase 3 只交付基础设施、工单业务能力延后，则工单作为"入口"是空心的。入口必须在 Phase 3 闭合，下游才能挂上去。详见 [10-ticket-business.md](./10-ticket-business.md)。
+> ~~**工单业务能力为何属 Phase 3**~~（历史推理，随 §23 暂缓保留）：工单是 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 列举的 5 类事件源，下游消费者（通知、SLA、满意度、告警）全部卡在事件机制——该论证属自研路线；对接公司内部平台后此入口由内部平台承接。详见 [10-ticket-business.md](./10-ticket-business.md)（对接参考）。
 
 > **微服务化为何推迟**：[deployment-evolution.md §4-§5](../proposal/deployment-evolution.md) 的微服务拆分依赖 event-driven 做 IAM 数据 CQRS 复制，Phase 3+ 完成事件基础设施前拆服务会引入同步调用风险。当前代码已按 [§2.3](../proposal/deployment-evolution.md#23-代码分层隔离为未来拆分准备) 领域目录隔离，部署级分离（同二进制不同配置）可在 Phase 3 末按需验证边界，真微服务化留待 Phase 3+ 以后。详见 [11-deployment-split.md](./11-deployment-split.md)。
 
@@ -66,7 +66,7 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 + [ops/deployment](../ops/deployment.md) | 已编写（2026-09-02） |
 | **工单业务能力** | [ticket-business](./10-ticket-business.md) | **SLA 计时/违约告警、站内通知、邮件通知、多级审批流（手写 BranchedStateEngine）、自动分派规则、工单报表**（进程内实现，事件用 L1 机制） | 本修订新增 |
 | **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 已编写（2026-08-31） |
-| **外部能力集成** | [ADR-003](../adr/ADR-003-activelist-integration-form.md)（SSOT：[roadmap §activelist](../roadmap.md)） | **activelist**（动态多类型数据平台，独立服务+反代接入，变更事件走 L1）；zhuzhao 侧前置 = E13 反代模块 | 已决策（Phase 3 启动后，L1+Asynq 就绪） |
+| **外部能力集成** | [16-external-integration](./16-external-integration.md)（契约 SSOT：taskrunner / activelist 两仓库文档；[ADR-003](../adr/ADR-003-activelist-integration-form.md) 为镜像） | **taskrunner**（事件/任务总线，M-E，独立仓库+独立部署）+ **activelist**（动态数据模型薄层，M-A，独立实现：独立库+独立数据库+零认证）；zhuzhao 侧前置 = 批次 A 策略库 / 批次 B 网关化（design-decisions §25.5） | **已决策（2026-09-03 定稿）**；zhuzhao 侧配套见 16 号 |
 
 > **工单业务能力实现方式**：Phase 3 不依赖 L2 Outbox，采用 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 定义的三档事件机制中的 **L1**（DB 持久化 + 轮询补偿 + 分布式锁，长期稳态见 ADR-001）+ Asynq（ADR-002），保证进程崩溃不丢、多实例不重复消费。L2 升级时业务逻辑不变，只换调度器。
 
@@ -217,7 +217,7 @@ Phase 3 主能力稳定运行
 | 安全性 | Phase 1 限流/锁定 + HTTPS（有域名时） |
 | 数据安全 | PG 定期备份 |
 | 运维 | 一键部署、DB 迁移可脚本化 |
-| **工单业务** | SLA 计时/告警、站内通知、邮件通知、多级审批流、模板/关联/分派/报表全部可用（[10-ticket-business.md](./10-ticket-business.md) 验收用例全过） |
+| **~~工单业务~~** | ~~SLA/通知/审批流/报表全部可用~~ **随 §23 暂缓，不纳入验收回归**；主链验收 = M-E 归档闭环 + M-HR 对账幂等（见 [14 §八](./14-planning-overview.md)） |
 
 #### Phase 3-full（多实例或需 SLO / 对外 SLA）
 
@@ -248,7 +248,7 @@ Phase 3 主能力稳定运行
 |------|------|------|
 | ⚠️ K8s vs Docker Compose | Phase 3 是否上 K8s？ | 建议 Docker Compose + Nginx 足够，K8s 按需 |
 | ~~⚠️ 微服务拆分粒度~~ | ~~先拆哪个服务？~~ | **推迟**：microservice 整体移出 Phase 3+，待 Phase 3 后按需评估 |
-| ⚠️ gRPC vs HTTP | 内部通信协议 | 架构文档已决策：gRPC 内部 + REST 外部（推迟启用） |
+| ~~⚠️ gRPC vs HTTP~~ | 内部通信协议 | ✅ **已拍板（2026-09-03）**：内部服务间通信统一 **HTTP + JSON**（taskrunner API / 回调 / activelist 反代），**gRPC 不引入**（覆盖旧「gRPC 内部 + REST 外部（推迟启用）」表述；基线 SSOT = [16 号 §9](./16-external-integration.md)） |
 | ⚠️ Redis 高可用方案 | Sentinel vs Cluster | 建议 Sentinel（简单），Cluster 按需 |
 | ⚠️ PG 高可用方案 | 自建 vs 云托管 | 已决策：云托管 Cluster（2+VIP） |
 | ⚠️ 部署级分离时机 | Phase 3 末是否验证部署级分离（同二进制不同配置）？ | 见 [11-deployment-split.md](./11-deployment-split.md)；有独立扩缩需求时验证 |
@@ -261,10 +261,11 @@ Phase 3 主能力稳定运行
 
 ## 5. 文档索引
 
-> 文档已全量就绪（2026-09-02）：除 05-microservice（推迟，无文件）外，其余均已编写；13-implementation-plan 为执行计划（排期规划稿）；14-planning-overview 为规划整理视图（索引，非第二 SSOT）。
+> 文档已全量就绪：除 05-microservice（推迟，**无文件**）外，其余均已编写；13-implementation-plan 为执行计划（排期规划稿）；14-planning-overview 为规划整理视图（索引，非第二 SSOT）；16-external-integration 为外部集成（taskrunner/activelist）zhuzhao 侧配套。
 
 | 文档 | 模块 | 状态 |
 |------|------|------|
+| [00-startup-checklist.md](./00-startup-checklist.md) | **启动检查单（唯一检查入口：A/B/IW 档 + 决策清单 + 检查顺序）** | **已编写（2026-08-31，A 档已清零）** |
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
 | [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（含 B11① 判定日志 + B11② 归档；写入管道待拍板） | **已编写（2026-09-02）** |
@@ -279,4 +280,5 @@ Phase 3 主能力稳定运行
 | [12-frontend.md](./12-frontend.md) | **前端工程方案（动态表单/管理页/审批页）** | **已确认，已编写（2026-08-31）** |
 | [13-implementation-plan.md](./13-implementation-plan.md) | **执行计划（排期规划稿：里程碑/人日估算/依赖/🚦 触发项/⚠️ 不确定项）** | **已编写（2026-09-02）** |
 | [14-planning-overview.md](./14-planning-overview.md) | **规划整理视图（现行主链/暂缓/🚦/⚠️/文档/迁移/验收/决策清单，索引非 SSOT）** | **已编写（2026-09-02）** |
-| [15-script-platform-dagu-vs-inhouse.md](./15-script-platform-dagu-vs-inhouse.md) | **脚本任务平台选型调研（Dagu vs 自研 Asynq，M-E 脚本任务决策支撑）** | **已编写（2026-09-03，调研稿）** |
+| [15-script-platform-dagu-vs-inhouse.md](./15-script-platform-dagu-vs-inhouse.md) | **脚本任务平台选型调研（Dagu vs 自研 Asynq，M-E 脚本任务决策支撑）** | **已编写（2026-09-03，调研稿；随脚本任务降级转按需再启参考）** |
+| [16-external-integration.md](./16-external-integration.md) | **外部服务集成配套（taskrunner/activelist 契约的 zhuzhao 侧能力清单 + 实施细排 + P1–P7 拍板项）** | **已编写（2026-09-03）** |

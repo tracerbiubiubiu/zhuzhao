@@ -199,6 +199,32 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 详见 [proposal/resource-model.md](../proposal/resource-model.md)。
 
+### 3.1 平台内置策略库（声明式接入，M-E 前置；design-decisions §25.3）
+
+> 2026-09-03 定稿。目标：普通模块接入 L2 从「手写 Resource 实现」降为「一行声明」；工单类复杂策略（三轴+委托）保持手写，两条路并存、永不合流（工单策略随数据属主走，冻结期原地封存，详见 design-decisions §25.3 补充拍板）。
+
+**内置策略**（`internal/pkg/resource/builtin.go`，判定构件全部复用现有：BFS 展开 / user_orgs 成员查询 / IW4 Unscoped 语义）：
+
+| 策略 | 行级语义（GetFilter 谓词） | 单条语义（Authorize） | schema 约定 | 适用 |
+|---|---|---|---|---|
+| `org-member` | `org_id IN (SELECT org_id FROM user_orgs WHERE user_id=$1 AND (expires_at IS NULL OR expires_at > NOW()))` | 同款 EXISTS | 资源表必有 `org_id` | taskrunner 任务提交/回调端点（M-E 首个消费者） |
+| `owner-only` | `created_by = $1` | 同款等值 | 资源表必有 `created_by` | 个人数据类 |
+| `role-gated` | `Filter{Unscoped: true}`（无行级概念，IW4 显式豁免） | 恒 true（L1 权限码已挡） | 无 | 粗粒度模块 |
+
+**接入形态**：
+
+```go
+// 模块 wire/启动处——模块的全部权限代码
+reg.Register(resource.Builtin("task", resource.PolicyOrgMember))
+```
+
+**设计与边界**：
+
+- **策略逻辑（代码）与策略数据（DB）分离**：事实（谁绑什么角色/权限）进 DB 由管理面运营——现状已如此；语义（模块用哪个行级策略）写死在模块注册处，**不进 DB/管理面**——它与模块代码同生命周期，「不发版换行级策略」无真实变更场景，进 DB 只制造代码与配置漂移面（K8s 内置 ClusterRole / AWS managed policy 同款取舍）。
+- **fail-fast**：注册时校验资源表满足 schema 约定（缺 org_id/created_by 列即启动报错），不留到运行时 SQL 报错。
+- **护栏**：每策略正/负向集成测试（成员可见非成员 404 / 属主可见他人 403 / role-gated 无码 403）+ IW4 哨兵对 Unscoped 路径的兼容验证；第二个带 L2 的资源出现时，`TestGuard_TicketRepoListCallSites` 泛化为「凡 Filter 参数的 repo.List 必经 Service」。
+- **PEP 归属不变**：策略库是 PDP 复用构件，判定执行仍在各模块 Service 内（design-decisions §25.1——行级 PEP 必然在数据处）。
+
 ---
 
 ## 4. 旧系统借鉴

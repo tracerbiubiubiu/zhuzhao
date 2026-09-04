@@ -11,17 +11,17 @@
 
 | 结论 | 内容 |
 |------|------|
-| 启动前必须清空 | **A 档 7 项**（约 2 天人工 + 2 个拍板），见 §2.1 |
-| 已触发待实施（不属 Phase 3，建议先做） | **W1：BK-13 + BK-14 多虚拟组可见性场景闭环**（1–1.5 天），见 §2.3 |
-| 随行项 | **B 档**按启动的子能力对号入座，见 §2.2 |
-| 启动时拍板 | §3 决策清单逐项过 |
+| 启动前必须清空 | **A 档 7 项** ~~（约 2 天人工 + 2 个拍板）~~ ✅ **已清零（2026-08-31，Phase 2 收官）**；现行仅剩 **BK-20**（M0 内，工单封版前最后数据安全修复），见 §2.3 末 |
+| ~~已触发待实施（不属 Phase 3，建议先做）~~ | ~~W1：BK-13 + BK-14~~ ✅ **IW1–IW4 全部已实施**（详见 §2.3 各行），无在途独立窗口 |
+| 随行项 | **B 档**按启动的子能力对号入座（Step 7 相关 B1–B5 已随 §23 工单暂缓后置），见 §2.2 |
+| 启动时拍板 | §3 决策清单逐项过 + [16 号 P1–P7](./16-external-integration.md)（M-E/M-A 实现前） |
 
 ## 1. 启动检查顺序（操作流程）
 
 1. **刷新本表**：对照各登记处（00 §9 / 11 §6 / 11 §8 / phase3 README §4 / 09 合集）核对状态，更新本文件（~10 分钟）。
 2. **清空 A 档**：§2.1 七项全部完成或显式豁免（含 A2/A3 两个拍板）。
 3. **检查 W1**：多虚拟组场景闭环是否已实施？未做则决定「先行独立完成」或「并入启动批次」。
-4. **选定启动子能力**（Step 1–7 任选，触发条件见 [README §0](./README.md)），映射 §2.2 B 档随行项；补编写对应文档（B9）。外部能力集成（activelist，ADR-003）按 README §2.1.0 W4 条目评估启动。
+4. **选定启动子能力**：按 [13 号 §1 现行主链](./13-implementation-plan.md)（M0 → M-E → M-A → M-HR → M-SSO🚦 → M-Mig；~~Step 1–7 触发条件~~ 见 [README §0](./README.md) 能力归类参考），映射 §2.2 B 档随行项；外部能力（taskrunner/activelist）按 [16 号](./16-external-integration.md) 评估 zhuzhao 侧配套。
 5. **过 §3 决策清单**剩余项。
 6. **迁移号核对**：按 A2 规则（谁先启动谁占用，后者重排）确认新迁移编号。
 7. **回填 [11-project-control](../review/11-project-control.md)** 能力矩阵，Phase 3 状态「暂缓」→「进行」。
@@ -42,6 +42,8 @@
 
 ### 2.2 B 档：随 Phase 3 子能力一起（提前做无收益）
 
+> ⚠️ **随行口径修订（2026-09-02 §23）**：下表 B1–B5 挂靠的 Step 7（工单业务）已随工单自研暂缓**整体后置**（翻案/对接时再评估）；B7/B9/B10/B11 仍按现行主链（B11① 随 M-E 可合并、B11② 随 M-E 首个预置动作，见 [03](./03-audit-l2.md)/[16 号](./16-external-integration.md)）。
+
 | # | 事项 | 随行位置 |
 |---|------|---------|
 | B1 | **Step 7 设计期拍板清单**：① SLA 暂停态语义 / 通知「主管」定义 / 邮件通知矩阵（对话评估 B1/B3/B6）；② **10 号文档设计深度缺口（2026-08-31 外部评审证实）**：§2.5「标记+Enqueue 同事务 vs 只 Enqueue」二选一（SLA 正确性核心，文档给主方案未拍板）、§7.2 signal 双写二选一（两条记录 vs 单条双标）、`responded_at` 是否含内部备注 note、`min_level` 职级数据源（**users 表无 level 列，决策悬空**）、§5 分派设计深度（keyword 匹配算法/同优先级冲突/target 从属校验/无命中兜底/分派 Hook 事务边界）、§6 报表设计深度（权限码/缓存失效/指标口径/分页）、§8 TB 负向用例补齐（§2.5 四必坑 0 覆盖）；③ 调研吸收（2026-08-31 eflow 对照）：发起人撤回（Revoke，eflow WITHDRAWING 栅栏模式）/workflow_definitions 版本发布快照/审批人 Assignee{rule,values} 策略模型（解 min_level 悬空） | **方向已认可（2026-08-31）**，细节归 7-0 设计期 |
@@ -53,7 +55,7 @@
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
 | B9 | 文档补齐状态：**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；**已编写（2026-09-02，原 5 份待编写全部补齐）**：03-audit-l2（替换占位，含 B11①②）/ 06-ha / 07-security-enhance / 08-ops + **ops/deployment.md**（B10）/ 09-platform；另 13-implementation-plan（执行计划）与 docs/ops/deployment.md 同日补齐 | 全部文档就绪，启动时按 Wave 取用；**M2 硬依赖 = Asynq 底座（2026-09-02 §22.1 修订，M1 降 🚦）**；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
-| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **W1/M1**（03-audit-l2 文档范围，B9；写入管道「同步落库 vs Redis List 缓冲、失败容忍」随该文档拍板）；②随 **M-E**（Asynq 任务平台首个预置任务；~~SLA 扫描先用~~ 随工单暂缓，2026-09-02 §23） |
+| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **M-E 可合并**（03-audit-l2 文档范围；写入管道✅ 已拍板 2026-09-03：异步 channel → Redis List → 批量落库，03 §7 D1）；②随 **M-E**（事件/任务总线 taskrunner 首个预置动作=回调 zhuzhao，16 号 E-③；~~SLA 扫描先用~~ 随工单暂缓，2026-09-02 §23） |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
@@ -70,7 +72,7 @@
 > **BK-20（软删组织委托残留处置，2026-09-02 登记）**：禁删有未结工单的组织（两删除函数加计数守卫 + ErrOrgHasOpenTickets 409 + acceptance 删组织用例适配）；已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21，详见 00 §9。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
-> activelist（ADR-003）**不属独立窗口**——它是 Phase 3 范畴，即 README §2.1.0 的 Wave **W4**（入口 = Wave W2 完成 + 启用条件命中），勿在此表挂靠。
+> activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.1.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。
 
 ### 2.4 已闭环基线（启动时可假定已完成）
 
@@ -78,7 +80,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 ## 3. 决策清单（启动时逐项过，维护于 [phase3 README §4](./README.md)）
 
-> **⚠ 执行结构已修订（2026-09-02，design-decisions §22 + §23）**：六项所有者拍板落 §22——M1 降 🚦、HR 同步升主链（预留接口版）、activelist 拆两半、签发模型=指派给人、7c 完整引擎维持硬交付、引擎可替换约束；**随后 §23 重定位（2026-09-02）**：工单自研暂缓（内部引擎优先），§22 中 7c 引擎硬交付相关拍板被推翻，主链改为 M-E/M-A/M-HR/M-Mig（详见 [13-implementation-plan](./13-implementation-plan.md) §1）。执行细节以 13 号为准。
+> **⚠ 执行结构已修订（2026-09-02，design-decisions §22 + §23；权限侧定版 §25）**：六项所有者拍板落 §22——M1 降 🚦、HR 同步升主链（预留接口版）、activelist 拆两半、签发模型=指派给人、7c 完整引擎维持硬交付、引擎可替换约束；**随后 §23 重定位（2026-09-02）**：工单自研暂缓（内部引擎优先），§22 中 7c 引擎硬交付相关拍板被推翻，主链改为 M-E/M-A/M-HR/M-Mig（详见 [13-implementation-plan](./13-implementation-plan.md) §1）。**§25（2026-09-03）**：M-E/M-A 权限前置批次 A/B 落档（平台策略库/网关化）。执行细节以 13 号为准。
 
 | 事项 | 建议 | 状态 |
 |------|------|------|
@@ -124,3 +126,6 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-09-02（M-E 扩展为任务平台） | 自定义任务需求（预置 + 用户 Python/Shell 脚本）并入 M-E：Asynq 底座 + 预置任务（审计归档）+ 自定义脚本任务（安全边界 = 仅全局管理员可配，design-decisions §23 补充拍板）；参照 ginfast scheduler / xxl-job GLUE；人日 3–4 → 6–8 |
 | 2026-09-02（M-SSO 新增） | 公司 SSO 对接拍板 OAuth2.0（design-decisions §24）：SSOProvider 接口预留版 + callback 签发自有 JWT（鉴权三层零改动）；JIT 默认关；与 M-HR 对账键一致、分工明确（SSO 管认证/HR 管账号数据）；13 号 §1 M-SSO 行，2–3 人日 |
 | 2026-09-02（M-SSO 降 🚦） | SSO 设计定稿（§24）但实施后置：现在零代码预留，进内网拿到公司 OAuth2.0 接入信息后按蓝图实施（13 号 §1 M-SSO 行标 🚦） |
+| 2026-09-03（权限架构定版落档） | 统一网关/策略库/ReBAC 三题定稿，落 **design-decisions §25**（SSOT）：① **PDP/PEP 分工**——身份集中 zhuzhao/行级归属主（行级 PEP 进网关是逻辑不可能，Zanzibar/K8s/AWS/OPA 均如此）；② **网关边界**——认证+路由授权+审计+限流在网关，行级走身份断言透传（方案 A=AT 透传+共享公钥验签）；M-SSO 降级为非网关路径可选项；③ **平台策略库**（authz.md §3.1 新增）——org-member/owner-only/role-gated 三内置策略 + `Builtin()` 一行注册，策略语义进代码不进 DB（事实进 DB/语义进代码）；④ **ReBAC/PBAC 不演进**——三新场景无一构成触发（11-authz §5 反触发补评估记录）。前置清单 §25.5：批次 A 策略库（M-E 前置 2–3 天）/ 批次 B 网关化（M-A 前置 ~1 周）/ 批次 C 密码复杂度（半天）；13 号 M-E/M-A 行已挂前置引用。**不做**：PDP 回调、策略配置进 DB、跨库判定、提前多实例 |
+| 2026-09-03（策略库归属 + 仓库名 + 工单策略属主原则） | 三项补充拍板落 §25.3 / 13 号 / README：① **策略库归 zhuzhao 本仓不进共享 utils**（消费者分析：taskrunner 不做业务判定、activelist 零权限，唯一消费者=zhuzhao 自身；谓词绑定 zhuzhao 库 schema——共享 utils 边界定为「无数据依赖的纯工具」）；② **仓库名/module path 正式命名挂 M-Mig**（与进内网换 Git 平台合并执行一次，README 已注定位）；③ **工单策略与 builtin 双路永不合流**（策略的家=数据属主的家；对接内部平台后行级随数据转移，翻案重启则解冻原位；内部平台权限表达力评估列入 M-Mig）。工单冻结基调不变，仅落原则文字 |
+| 2026-09-03（外部集成 16 号建档 + 全目录同步） | 新增 [16-external-integration](./16-external-integration.md)（taskrunner/activelist 契约的 zhuzhao 侧能力清单 E1–E6/D1–D5 + 实施细排 + P1–P7 拍板项）；同步本表：§0 快速结论刷新（A 档清零/IW1–IW4 已实施/BK-20 仅剩）、§1 步骤 4 改指 13 号现行主链、§2.2 B 档随行口径注记（B1–B5 随工单后置）、§2.3 activelist 归位 M-A、§3 决策注记补 §25；同步 13/14/README（详见各文档变更记录） |

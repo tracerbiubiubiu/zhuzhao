@@ -95,19 +95,19 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ---
 
-## 外部能力集成：activelist（独立服务，已定 ADR-003）
+## 外部能力集成：activelist（独立服务，已定 ADR-003）+ taskrunner（M-E）
 
-> 详见 [ADR-003-activelist-integration-form](./adr/ADR-003-activelist-integration-form.md)。
+> 详见 [ADR-003-activelist-integration-form](./adr/ADR-003-activelist-integration-form.md)（镜像；**SSOT = activelist 仓库 `docs/ADR-003-integration-contract.md`**）；taskrunner 设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`。**zhuzhao 侧配套细排见 [phase3/16-external-integration](./phase3/16-external-integration.md)**。
 
-- **形态**：activelist 作为独立服务（非 zhuzhao 单体一部分），通过 zhuzhao 网关反向代理调用；仅内网可达。
-- **数据库**：Mongo → **PostgreSQL**（统一技术栈，复用 zhuzhao 的 JSONB/ltree/Outbox/Casbin-pgx；PG 事务能力优于 Mongo）。建议与 `activelist.md` §23 方案 F（同步事务写 + 主数据/历史同事务）一并落地。
-- **耦合**：事件总线对接（非事务耦合）——activelist 变更事件落 zhuzhao 的 **L1 `ticket_events`（事件源，ADR-001）**，由 L1 消费者/Asynq worker 分发，工单/其他模块订阅；Asynq 仅执行器，不当总线。
-- **代码/部署形态（C2'）**：代码同仓库（`internal/activelist/` 独立包，复用 zhuzhao 的 pgx/JSONB/Outbox/日志基础设施），但**独立二进制 + 独立容器部署**，zhuzhao 仅经反代 HTTP 调用，不 import 进请求路径；将来可机械拆为独立仓库。
-- **审计分工（两层，已确认）**：zhuzhao 网关层记 API 访问元信息（跳过 body）；activelist 业务层记数据操作（自行按 Schema 脱敏）。日志基础设施同源（`pkg/log`），进程写各自目的地。
-- **与"微服务拆分"决策的关系**：activelist 是**外部引入的能力模块**（已有独立设计），不是把 zhuzhao 内部拆出去；与"无微服务拆分需求"不冲突，单列本条。
-- **建议阶段**：**Phase 3 启动后**（L1 事件机制 + Asynq 就绪后；原拟 Phase 2b，因前置依赖 L1/Asynq 实际于 Phase 3 启动时落地，已决策顺延——见 [ADR-003](./adr/ADR-003-activelist-integration-form.md)）。**HR 目录同步不依赖 L1，仍属 Phase 2b**（desired-state reconciliation 直接写 organizations/users 表，非事件消费者）。前置：L1 事件机制 + Asynq 执行器（Phase 3 启动时实现，见 [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](./adr/ADR-002-asynq-async-task-executor.md)）+ E13 反代模块。Mongo→PG（G1）与方案 F 可并行设计，不阻塞 Phase 3 主链路。
-- **zhuzhao 侧待办 E13**：反向代理模块 `app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body。
-- **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权并被工单/其他模块订阅事件时。
+- **activelist 形态（2026-09-03 收敛 + M-A 重定位）**：activelist = **独立仓库独立实现的动态数据模型薄层**（`github.com/tracerbiubiubiu/activelist`；~~C2' 同仓库 `internal/activelist/` 包~~ 已被取代）——类型注册 / Schema 演进（方案 D：单一当前版本）/ 动态字段校验 / 数据 CRUD / 存储（PG **独立数据库**、每类型表 + `data` JSONB、id 自增、乐观锁、软删保留、导入幂等=**全量替换**）；**零认证**，仅经 zhuzhao 网关对外（反代 + 身份断言 = **明文 X-Operator 入 AK/SK 签名覆盖**，2026-09-03 拍板；design-decisions §25.2 修订注）；进程 3→1（仅 apiserver）；与其他里程碑**无链式依赖**。
+- **taskrunner 形态（2026-09-03 定稿，M-E）**：事件/任务总线——独立仓库 + 独立部署 + 独立 Redis + 独立 DB；zhuzhao 作网关（发起/下发/按需查），预置动作 = 回调 zhuzhao 内网端点（业务 handler 在 zhuzhao）；taskrunner 自维护 `job_runs`，`request_id` 关联跨查。
+- **事件（2026-09-03 收敛）**：~~activelist 变更事件落 L1 `ticket_events`~~ **事件归 zhuzhao**——zhuzhao 调 activelist 成功后在业务操作点**显式发布**（M-E taskrunner 形态承接）；activelist 不感知事件、不再实现 Change Stream。
+- **审计（2026-09-03 收敛）**：~~两层审计（activelist 业务层自脱敏 accesslog）~~ **审计归 zhuzhao**——activelist 写接口返回变更后完整文档，zhuzhao 侧记录（落点机制 ⚠️ 待拍板）；activelist 只记技术/运行日志；`X-Request-ID` 贯穿两层。
+- **共享 utils**：✅ **已完成（zhuzhao-utils v0.1.0，2026-09-03）**——9 包（logger/postgres/errcode 等）已抽取并 pin；resource 按 §25.3 拍板留 zhuzhao 不抽；**新增规划：`aksk` 包**（服务间 HMAC 签名，2026-09-03 拍板，16 号 §9 基线）。
+- **排期（2026-09-02 §23.2）**：**M-A（activelist 独立实现）**为 Phase 3 现行主链一段（M0 → M-E → **M-A** → M-HR → M-SSO🚦 → M-Mig，见 [phase3/13](./phase3/13-implementation-plan.md)）；~~「Phase 3 启动后 L1+Asynq 就绪」依赖口径已废~~——M-A 无链式依赖，前置 = ~~共享 utils~~ ✅ + **批次 B 网关化**（§25.5：反代核心/身份断言/限流/menu_apis/审计跳 body，~1 周）。**HR 目录同步已升主链 M-HR**（~~属 Phase 2b~~，2026-09-02）。
+- **与"微服务拆分"决策的关系**：activelist / taskrunner 均为**外部引入的独立能力模块**（独立仓库/库/数据库），不是把 zhuzhao 内部拆出去；与"无微服务拆分需求"不冲突，单列本条。
+- **zhuzhao 侧待办**：批次 B 网关化（= 原 E13 泛化：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body）+ D3 审计实现（✅ 落点已拍板，SSOT=ADR-003「审计落点机制」专节：client 封装层 + `activelist_audit_log` 表；D1–D5 对照见 [16 号](./phase3/16-external-integration.md)）。
+- **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权对外暴露时（事件订阅已移交 zhuzhao 侧显式发布）。
 
 **子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现，**工单模板、工单关联已前移 Phase 2a（迁移 000015/000016）；SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
 

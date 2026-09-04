@@ -1,7 +1,7 @@
 # Phase 3 · 审计日志 L2（audit-l2）
 
 > **定位**：审计管道从 Phase 1 的「中间件同步写 audit_logs」升级为 **L2（Redis List 缓冲，进程崩溃不丢）**，并补齐两块治理缺口：**B11① L2/L3 策略评估日志**（补 L2 拒绝无留痕盲区）、**B11② 审计归档**（大表治理，先建表必先有归档）。
-> **Wave 归属**：W1（Step 3，03 文档；B11① 随 W1/M1 落地，且价值独立于多实例——**可与 M-E 合并实施**）；B11② 实施随 **M-E**（Asynq 任务平台首个预置任务；2026-09-02 §23，原「随 W2」随工单暂缓调整）。
+> **Wave 归属**：~~W1（Step 3）~~ **B11① 可与 M-E 合并实施（价值独立于多实例）；B11② 实施随 M-E 事件/任务总线（taskrunner）首个预置动作**（~~Asynq 任务平台~~ 2026-09-03 M-E 收敛为事件/任务总线；zhuzhao 侧配套落位见 [16 号 §3 E-③](./16-external-integration.md)，对齐 taskrunner M3）。
 > **状态**：**已编写（2026-09-02，替换原占位）**。写入管道等决策点保留为 ⚠️ 待拍板。
 > **权威出处**：检查单 B11 / 11-project-control §8 B9·B11 / go-wind-admin 调研（2026-09-01）。
 > **标记约定**：`🚦` = 触发条件驱动，由所有者决定；`⚠️` = 待拍板/不确定性。
@@ -97,9 +97,36 @@ CREATE INDEX idx_pel_created ON policy_evaluation_logs(created_at);
 - 埋点写入随 §2 管道（L2 writer），与业务同事务解耦、不阻塞。
 - ⚠️ **失败容忍**：写失败默认 fail-open 吞错不阻断鉴权（参考 go-wind-admin），与 §7 拍板一致。
 
+### 3.4 全链路 request_id 关联（2026-09-03 核查登记；目标 = 日志全链路可追溯）
+
+**现状矩阵**（✓ 已关联 / ✗ 断链）：
+
+| 环节 | request_id 现状 |
+|---|---|
+| HTTP 入站（RequestID 中间件：生成/接受入站 `req-`+32hex） | ✓ gin context + 响应头 |
+| AccessLogger（slog，每请求一行，含 401/403） | ✓ |
+| `audit_logs` 表 | ✗ **无该列**（user+path+时间窗只能近似） |
+| Casbin L1 拒绝 slog Warn（`middleware/casbin.go`） | ✗ 打 userID/path/method/roles，无 rid（AccessLogger 另有一行含 rid，靠近似） |
+| service 层（`resource.Authorize` / `scope_resolver` / 业务 slog） | ✗ **request_id 未注入 `c.Request.Context()`**（仅 gin ctx），service 拿不到 |
+| `ticket_events`（L1 事件表） | ✗ 无该列 |
+| `policy_evaluation_logs`（B11①，DDL 草案） | 草案有 `trace_id` 列，来源定为 request_id |
+| 出站 → taskrunner（提交/触发） | ✓ 契约有 body `request_id`（taskrunner 落 `job_runs.request_id`）；zhuzhao client（E-④）实施时取 ctx rid 透传 |
+| taskrunner 回调 → zhuzhao `/internal` | ⚠️ body 带 request_id，**但 HTTP 头不带 → zhuzhao 入站中间件会生成新 rid，回调链路（access log/审计/handler 日志）与 job_runs 断链** |
+| 出站 → activelist（client 封装层） | ✓ 已拍板生成并透传 `X-Request-ID`（ADR-003 审计落点专节）；对齐增强：**优先透传入站 rid、无则生成** |
+
+**E-① 实施清单**（一次迁移 000020 合并 DB 侧三处）：
+
+1. **RequestID 中间件**：rid `context.WithValue` 进 request context（打通 service/判定点/事件写入）；
+2. **`audit_logs` 加 `request_id` 列** + **`ticket_events` 加 `request_id` 列**（事务内写事件的 repo 从 ctx 取，G1 后天然可得；L1 事件 → 触发动作的追溯依赖它）；
+3. **Casbin L1 拒绝打点补 rid**（gin ctx 现成，`c.GetString("request_id")`）；
+4. **`policy_evaluation_logs.trace_id` = request_id**（原 §3.4 内容）；
+5. **跨服务两刀**：taskrunner callback client 回调时带 `X-Request-ID` 头（= payload request_id，有则带；zhuzhao 入站中间件「接受入站」逻辑直接复用同一 rid——cron 触发 request_id 为空则不带，zhuzhao 生成新 rid，靠 task_id 关联）；activelist client 封装层 `X-Request-ID` 优先透传入站 rid。
+
+打通后全链路一键贯通：**slog = `audit_logs` = `policy_evaluation_logs` = `ticket_events` = taskrunner `job_runs` = activelist 访问日志/`activelist_audit_log`**，同一个 `req-` 键。
+
 ---
 
-## 4. B11② 审计归档（随 M-E Asynq）
+## 4. B11② 审计归档（随 M-E taskrunner 首个预置动作，回调 zhuzhao 执行，16 号 E-③）
 
 ### 4.1 目标
 
@@ -109,11 +136,11 @@ CREATE INDEX idx_pel_created ON policy_evaluation_logs(created_at);
 
 | 项 | 建议 |
 |---|---|
-| 触发 | Asynq periodic task，每日低峰（建议 03:30，**每任务阻塞/去重策略逐个拍板**——归档漏跑可容忍 > 并发） |
+| 触发 | taskrunner cron job（如每日 03:30）回调 zhuzhao `audit_archive` handler；归档漏跑可容忍 > 并发（阻塞/去重随 job 策略） |
 | 保留期 | 默认 **180 天**（等保 ≥6 个月口径），配置可调 |
 | 导出 | JSONL，单批 5000 行，单表失败跳过（不阻塞另一表） |
-| 删除 | **导出成功后才按同批 id 删行**（防「删了没导出」） |
-| 存储 | ⚠️ go-wind-admin 只落本地文件——**zhuzhao 需补上传一环**（对象存储 / PG 备份体系），存储位置待拍板 |
+| 删除 | **导出成功后才按同批 id 删行**（防「删了没导出」）；导出失败 → handler 返 5xx（P7：业务失败映射状态码）→ taskrunner 重试 + task_id 幂等兜住重复执行 |
+| 存储 | ✅ **已拍板（2026-09-03）**：本地 JSONL（Docker 卷）+ 纳入宿主卷备份，对象存储后置；卷备份覆盖 180 天口径入 M-Mig 部署清单（见 §7 D3） |
 
 ### 4.3 顺序
 
@@ -153,9 +180,9 @@ internal/task/audit_archive.go      # Asynq 归档 periodic task（M-E）
 
 | # | 事项 | 建议 | 状态 |
 |---|---|---|---|
-| D1 | 写入管道：同步落库 vs Redis List 缓冲 | **Redis List 缓冲（L2）**；单实例小规模可先保持 l1 | 待拍板 |
-| D2 | 失败容忍：fail-open vs fail-close | **fail-open**（吞错不阻断鉴权/业务，参考 go-wind-admin） | 待拍板 |
-| D3 | 归档存储位置：对象存储 vs PG 备份 vs 本地 | 需补上传一环；按运维体系选 | 待拍板 |
+| D1 | 写入管道：同步落库 vs Redis List 缓冲 | ✅ **已拍板（2026-09-03）：异步写**——判定日志每次鉴权都触发，同步写在请求路径上代价不可接受（所有者拍板）。形态 = **内存 channel → Redis List（AOF）→ 批量落库 goroutine**（本文 §2 原设计）；选 Redis 而非纯协程管道的关键论据：**鉴权链对 Redis 本就 fail-close**（黑名单/user:disabled，design-decisions §1.5）——Redis 挂时请求到不了 Authorize，writer 依赖 Redis **零新增可用性风险**，持久化等于免费；崩溃不丢（AL4），多实例直接复用 |
+| D2 | 失败容忍：fail-open vs fail-close | **fail-open**（吞错不阻断鉴权/业务，参考 go-wind-admin）——D1 拍板异步后此项基本只剩「channel 满丢弃」一个语义，随 E-① 实现确认 | 待最终确认 |
+| D3 | 归档存储位置：对象存储 vs PG 备份 vs 本地 | ✅ **已拍板（2026-09-03）**：本地 JSONL（Docker 卷）+ 纳入宿主卷备份，对象存储后置；注意点：删库重建场景归档不随 PG dump 回来，180 天等保口径靠**卷备份**覆盖——入 M-Mig 部署清单 |
 | D4 | 判定日志是否默认全开 | 量可控时开；超量可降采样/仅记录拒绝 | 待拍板 |
 | D5 | 保留期默认值 | 180 天（等保口径），可配 | 建议沿用 |
 
@@ -167,3 +194,4 @@ internal/task/audit_archive.go      # Asynq 归档 periodic task（M-E）
 |---|---|
 | 2026-09-01 | 建范围占位（B11 登记） |
 | 2026-09-02 | 正式编写：管道 L2 + B11① 判定日志 + B11② 归档 + 埋点/DDL 草案 + 验收用例 + 待决策点 |
+| 2026-09-03 | 拍板同步：D1 写入管道 ✅ **异步**（channel → Redis List → 批量落库，所有者拍板）+ D3 归档存储 ✅ 本地卷；新增 §3.4 **全链路 request_id 关联矩阵**（request_id 注入 ctx / audit_logs·ticket_events 加列 / Casbin 打点补 rid / taskrunner 回调带 X-Request-ID / activelist client 透传入站 rid，随 000020 迁移合并）；§4 B11② 改 taskrunner 回调形态（导出失败返 5xx + 幂等，P7 定案） |

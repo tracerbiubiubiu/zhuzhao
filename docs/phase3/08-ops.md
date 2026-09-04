@@ -42,7 +42,7 @@
 ## 4. 集成测试自动化
 
 - `make test-integration`：13 包集成测试，`-p 1` 跨包串行（2026-09-01 已定，防 TRUNCATE 踩踏）。
-- `make acceptance`：四档链式（phase1 → 2a → 2b → 2c），Phase 3 启动后追加 **3a/3b 脚本**（SLA/通知/审批流/分派/报表验收用例，见 [10-ticket-business §8](./10-ticket-business.md)）。
+- `make acceptance`：四档链式（phase1 → 2a → 2b → 2c）；~~Phase 3 启动后追加 **3a/3b 脚本**（SLA/通知/审批流/分派/报表验收用例）~~ **随 §23 工单暂缓不再追加**——Phase 3 验收 = 主链（M-E 归档闭环 + M-HR 对账幂等）+ Phase 3-min/full 档（[14 §八](./14-planning-overview.md)）。
 - 覆盖率：`make test-cover` 跟踪趋势。
 
 ---
@@ -82,7 +82,7 @@ docs/ops/deployment.md          # 部署文档（已补齐）
 | OP1 | Swagger CI | 未重新生成时 CI 失败；生成后通过 |
 | OP2 | 迁移 CI | 缺 down 文件 / 编号冲突 → CI 失败 |
 | OP3 | 一键部署 | 空环境单命令拉起 + 迁移应用 + 健康检查通过 |
-| OP4 | 集成回归 | `make acceptance` 四档全绿（Phase 3 追加后含 3 档） |
+| OP4 | 集成回归 | `make acceptance` 四档全绿（~~Phase 3 追加后含 3 档~~ 随 §23 工单暂缓不追加，见 §4） |
 
 ---
 

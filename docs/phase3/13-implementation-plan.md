@@ -28,11 +28,11 @@
 | 里程碑 | 内容（对应 Wave/Step） | 估算人日 | 退出标准 |
 |---|---|---|---|
 | **M0 启动准备**（收窄） | 迁移号核对 + 决策过表 + BK-20（工单封版前最后的数据安全修复） | 1–2 | 决策清单过完；BK-20 落地 |
-| **M-E 事件与任务总线** | ① Asynq 底座（Scheduler/PeriodicTask/worker/重试/超时/阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（上传 python/shell 暂不需要；Dagu/自研调研见 [15](./15-script-platform-dagu-vs-inhouse.md)，按需再启）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板，形态见 §1 注记） | 3–4（⚠️ 待校准；原 6–8） | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
-| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、零认证、查询=仅 id 分页+时间倒序、PG **每类型表 + `data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（幂等/并发）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1；独立部署保留；**前置：共享 utils 抽取**（🚦） | 约 1.5–3（澄清后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
+| **M-E 事件与任务总线** | ① Asynq 底座（Scheduler/PeriodicTask/worker/重试/超时/阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（上传 python/shell 暂不需要；Dagu/自研调研见 [15](./15-script-platform-dagu-vs-inhouse.md)，按需再启）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板，形态见 §1 注记）；**权限前置（2026-09-03 落档）**：平台策略库（[authz.md §3.1](../modules/authz.md)——`org-member` 策略承载任务提交/回调端点判定；design-decisions §25.5 批次 A，2–3 天）；**zhuzhao 侧配套细排（内网回调端点体系 / 任务管理代理 / 部门可见性 / 提交日志，E1–E6）见 [16-external-integration](./16-external-integration.md)，约 5–7 人日与 taskrunner 侧并行**；**服务间 AK/SK HMAC 签名**（utils `aksk` 包 C8 先行，zhuzhao 回调端点验签 / client 签名，16 号 §9 基线，2026-09-03 拍板） | 3–4（⚠️ 待校准；原 6–8） | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
+| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、零认证、查询=仅 id 分页+时间倒序、PG **每类型表 + `data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（**幂等=全量替换**：单事务清表重插、保留源 id、不需要业务唯一键——方案 D 定稿同步，2026-09-03）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1；独立部署保留；**前置：~~共享 utils 抽取~~ ✅ 已完成（zhuzhao-utils v0.1.0 已发布并 pin，9 包含 logger/postgres，2026-09-03）**；**权限前置（2026-09-03 落档）**：网关化批次（design-decisions §25.5 批次 B，~1 周）——反代核心/身份断言（明文 X-Operator 入 AK/SK 签名覆盖，B2 已关）/API 级限流/API 入 menu_apis/审计跳 body（ADR-003 G4 蓝图保留）；**zhuzhao 侧配套细排（D1–D5 对照 + D3 审计落点）见 [16-external-integration](./16-external-integration.md)** | 约 1.5–3（澄清后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
 | **M-HR HR 同步（预留接口版）** | `HRFetcher` 接口 + sync 引擎 + 本地 mock adapter（内网 adapter 即插）；拍板：离职处置/部门撤销级联/跨部门权限分配规则 | 3–5 | 组织同步三规则对 mock 源跑通；对账幂等；三拍板项落档 |
 | **M-SSO 单点登录（OAuth2.0）**（🚦 进内网后实施——设计已定稿 §24，拿到公司接入信息即开工） | `SSOProvider` 接口 + OAuth2.0 授权码实现（authorize + code 换 token + userinfo，state 防 CSRF）+ `/auth/sso/login`·`/auth/sso/callback` 两端点 + 身份映射（对账键同 HR：external_id 优先）+ 登录审计 method 字段 + 登录页 SSO 入口；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（config 开关，仅限已同步账号）；本地密码登录兜底并存；公司接入信息填 config 即用（design-decisions §24） | 🚦 2–3 | mock/测试 IdP 走通完整回调链 → 自有 JWT 签发 → 三层鉴权行为不变 |
-| **M-Mig 迁移准备** | 公司内网部署对接（网络/凭据/07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧/限流/审计保留期） + ~~部署镜像带 python/shell 解释器~~（脚本任务运行时依赖，**2026-09-03 随脚本任务降级 🚦**） | 🚦 随迁移时点 | 内网环境部署演练通过 |
+| **M-Mig 迁移准备** | 公司内网部署对接（网络/凭据/07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧/限流/审计保留期）+ **正式命名 + module path 迁移**（2026-09-03 拍板：改名成本=全仓 import 重写，与进内网换 Git 平台的 module path 变更**合并执行一次**，README 现只注定位不改库）+ **内部工单平台权限表达力评估**（2026-09-03 登记：对照 zhuzhao 三轴模型——project_isolated 外包隔离/虚拟组兄弟隔离/委托轴 D7-D9——内部平台表达不了的项列为对接缺口，供「工单对接形态」拍板输入，§23.3） + ~~部署镜像带 python/shell 解释器~~（脚本任务运行时依赖，**2026-09-03 随脚本任务降级 🚦**） | 🚦 随迁移时点 | 内网环境部署演练通过 |
 | ~~M2 工单业务闭环~~ | **暂缓自研（§23.1）**——§4 保留作对接参考；工单对接 = 迁移后集成项 🚦（design-decisions §23.3） | — | — |
 | ~~M1 可运维基座~~（🚦） | 多实例/Watcher/audit-l2——随部署形态升级触发（§22.1）；audit-l2 的 B11① 判定日志**可与 M-E 合并实施**（价值独立于多实例） | 6–10（🚦） | MI1–5 通过（多实例时） |
 | ~~M4 activelist 集成~~ | 被 **M-A** 取代（§23.2：独立实现而非反代集成；E13/G1/G3 蓝图保留于 ADR-003 🚦） | — | — |
@@ -56,7 +56,7 @@
 | 顺手项（可选） | ~~0.5~~ **随封版后置** | BK-9 / F-31④ / F-32 / TC-2/3/4 / Q5 注记（工单相关随手项随 §23 后置） |
 | 待编写文档 | 0 | **已补齐（2026-09-02）**：03 / 06 / 07 / 08 / 09 / ops-deployment + 13 本计划 |
 
-> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 澄清后核心功能人日**约 1.5–3（⚠️ 待校准）**，另**共享 utils 抽取**（zhuzhao `internal/pkg` → 独立项目）为其前置 🚦；③ 迁移号是否需为附件让位。
+> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 澄清后核心功能人日**约 1.5–3（⚠️ 待校准）**，~~共享 utils 抽取为其前置 🚦~~ **已完成（zhuzhao-utils v0.1.0，2026-09-03）**；③ 迁移号是否需为附件让位。
 
 ---
 
@@ -68,7 +68,7 @@
 |---|---|---|---|
 | **Step 1 observability**（[01](./01-observability.md)） | 2–3 | Phase 2 基线 | 全 `enabled:false` 零开销可启动；开启时 `/metrics` 200；OTLP 不可达默认 Warn 降级 |
 | **Step 2 multi-instance**（[02](./02-multi-instance.md)） | 2–4 | Step 1 | Casbin Watcher（移植 eiam `ioc/casbin.go`，redis-watcher + StartAutoLoadPolicy 双保险）；L1 消费 `pg_try_advisory_xact_lock`；**MI1–5** 通过 |
-| **Step 3 audit-l2**（[03](./03-audit-l2.md)） | 2–3 | Step 2 | Redis List L2 缓冲 + **B11① 判定日志表** + 埋点 `resource.Authorize` / `scope_resolver.resolve`；⚠️ **写入管道拍板**（同步 vs 缓冲、fail-open/close） |
+| **Step 3 audit-l2**（[03](./03-audit-l2.md)） | 2–3 | Step 2 | Redis List L2 缓冲 + **B11① 判定日志表** + 埋点 `resource.Authorize` / `scope_resolver.resolve`；写入管道 ✅ **已拍板（2026-09-03）：异步**（channel → Redis List → 批量落库；request_id 全链路关联见 03 §3.4） |
 | **B11② 审计归档**（03 §4） | 0.5–1 | 随 **M-E**（首个预置任务） | 判定日志 + audit_logs 超期导出 JSONL、成功后删行；保留 180 天可配置 |
 
 > ⚠️ 03 文档已含 B11① 范围；写入管道决策点保留待实现前拍板（见 [03 §7](./03-audit-l2.md)）。
@@ -170,7 +170,7 @@
 
 | # | 事项 | 当前状态 | 影响 |
 |---|---|---|---|
-| U1 | 03-audit-l2 写入管道：同步落库 vs Redis List 缓冲、fail-open vs fail-close | 待拍板（03 §7） | 判定日志性能/语义 |
+| U1 | ~~03-audit-l2 写入管道：同步落库 vs Redis List 缓冲、fail-open vs fail-close~~ | ✅ **已拍板（2026-09-03）：异步写**（channel → Redis List → 批量落库；03 §7 D1 已同步）；fail-open 随 E-① 实现确认 | 已关闭 |
 | U2 | SLA 暂停态清单、邮件矩阵最终细节 | ~~7-0 决议已定方向，细节待 7-0 修订~~ **随 §23 暂缓**（7a/7b 不再实施） | ~~7a/7b 实现~~ |
 | U3 | 7e 报表指标口径（P50/P95 分桶、时间窗） | ~~四缺口已收口，口径待细化~~ **随 §23 暂缓**（7e 不再实施） | ~~7e 实现~~ |
 | U4 | 7c 审批流引擎人日（8–12 为估算，1500–2500 行） | ~~按 4.5(2) 优先级分步~~ **随 §23 暂缓**（引擎不再实施） | ~~M2 工期~~ |
@@ -180,7 +180,7 @@
 | U8 | 启动是否翻转 roadmap「暂缓」状态 | 由所有者启动时确认 | 文档状态 |
 | U9 | 日历排期（人日→日期） | 待给启动日 + 人力 | 本计划展开 |
 | U-A | M-A activelist 澄清后核心功能人日（动态数据模型薄层：任意类型 int/string/列表、id 分页、PG 每类型表+JSONB、导入导出 JSON） | 约 1.5–3（⚠️ 待校准，原单估） | M-A 工期 |
-| U-B | **共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目（命名/范围/config 解耦/zhuzhao 全仓 import 变更） | 🚦 待所有者启动；候选名与范围见 ADR-003 修订节 | M-A 前置（activelist 复用）+ zhuzhao 全仓重构 |
+| U-B | ~~**共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目~~ | ✅ **已完成（2026-09-03）**：zhuzhao-utils v0.1.0 已发布并 pin（无 replace）；9 包齐（crypto/errcode/jsonutil/jwt/logger/postgres/redis/response/validate）；resource 按 §25.3 拍板留 zhuzhao 不抽 | 已关闭 |
 
 ---
 
@@ -220,3 +220,5 @@
 | 2026-09-03（M-E 形态定稿） | **独立仓库 + 独立部署 + 独立 Redis**；**预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao，taskrunner 只做通用调度/触发/重试）；**日志边界**：zhuzhao Enqueue 记「任务提交日志」（action + task_id + request_id，业务审计在 audit_logs），taskrunner 自维护 `job_runs` 执行细节、**不传回 zhuzhao**，request_id 关联跨查；新增预置动作 = zhuzhao 加内网端点 + taskrunner 加配置（无需重部署 taskrunner） |
 | 2026-09-03（需求澄清 · 最终画像） | 逐条澄清收窄：任意自定义类型（字段=`int`/`string`/列表）、activelist 零认证、查询=仅 id 分页+时间倒序、百万行内、**敏感高危数据→可靠**（存储加密暂不需要 ⚠️）、低频 Schema 演进、软删保留、导入导出 JSON（幂等/并发）、id 自增；**存储引擎评审：PG 仍为最优**（技术栈统一/自增/事务 vs Mongo Change Stream 已失效），模型=**每类型表+`data` JSONB**（零 DDL）；M-A 人日再下调为约 1.5–3（⚠️ 待校准） |
 | 2026-09-02（M-SSO 降 🚦） | 所有者拍板：SSO 现在**只预留设计、进公司内网后实施**——§24 蓝图定稿（接口/端点/映射/JIT 开关/兜底策略全在设计内），实施触发 = 拿到公司 OAuth2.0 接入信息；主链执行序中 M-SSO 移出，与 M-Mig 汇合 |
+| 2026-09-03（外部集成配套 16 号建档 + 目录同步） | 新增 [16-external-integration](./16-external-integration.md)：taskrunner/activelist 两仓库契约的 zhuzhao 侧能力清单（E1–E6 / D1–D5）+ 实施细排 + 迁移规划 + 待拍板项 P1–P7，M-E/M-A 行挂引用；同步本计划：M-A 行导入幂等口径改「全量替换」（方案 D 定稿）、共享 utils 前置标 ✅ 已完成（v0.1.0）、U-B 关闭 |
+| 2026-09-03（AK/SK 基线修订） | 所有者拍板：服务间通信统一 **AK/SK HMAC 签名**（utils `aksk` C8 先行；覆盖当日「零认证+拓扑」基线与 P5/C2/activelist 零认证三条；关闭 B2 身份断言——明文 X-Operator 入签名覆盖；M-E 行挂 C8/E-②/E-④，M-A 行批次 B 挂验签） |

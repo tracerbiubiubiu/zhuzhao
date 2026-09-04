@@ -134,7 +134,7 @@ NIST / OWASP 要求鉴权失败必须 fail-closed。文档未明确「三层是 
 | **微服务拆分后的统一 PDP**：N 个服务各自手写资源鉴权，语义漂移 | OpenFGA / SpiceDB 天然是中心化 PDP |
 | **跨资源类型的「可见对象列表」成为核心功能** | ReBAC 有 ListObjects；手写多表 UNION + ltree 条件很快失控 |
 
-**反触发**（现状，维持延后正确）：单一组织树、资源类型 ≤5、无共享需求、策略随代码走、单人团队。
+**反触发**（现状，维持延后正确）：单一组织树、资源类型 ≤5、无共享需求、策略随代码走、单人团队。**补充评估（2026-09-03，design-decisions §25.4）**：§23 重定位后的新场景（统一网关 / taskrunner / activelist）逐一评估，**无一构成演进触发**——网关=路由级 RBAC（Casbin 已满足）、taskrunner=成员 EXISTS（策略库 `org-member`）、activelist=行级自治（Zanzibar 系要求关系集中注册，与独立库决策正面冲突）。授权关系是树形（ltree），PG+SQL 判定有一致性/索引/可测试优势。
 
 **隐藏成本提醒**：上 ReBAC 不只是加一个服务——org move、成员变更、角色变更全都要双写到关系 tuple，这条同步管道才是长期负担，这正是现在不上的理由。迁移路径已预留（`ResourceAuthorizer` 接口换实现），无沉没成本。
 
