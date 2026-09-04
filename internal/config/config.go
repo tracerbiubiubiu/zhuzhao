@@ -17,6 +17,21 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Casbin   CasbinConfig   `mapstructure:"casbin"`
 	Log      LogConfig      `mapstructure:"log"`
+	Audit    AuditConfig    `mapstructure:"audit"`
+}
+
+// AuditConfig 审计管道（B11① 判定日志 L2，03-audit-l2 §2.3；P3 拍板 2026-09-03：
+// 判定日志异步写。audit_logs 主审计仍为中间件同步写，不在此段管辖）。
+type AuditConfig struct {
+	PolicyEval PolicyEvalConfig `mapstructure:"policy_eval"`
+}
+
+// PolicyEvalConfig 判定日志管道参数（零值取默认，见 audit.PolicyEvalConfig.withDefaults）。
+type PolicyEvalConfig struct {
+	BufferSize    int           `mapstructure:"buffer_size"`
+	BatchSize     int           `mapstructure:"batch_size"`
+	FlushInterval time.Duration `mapstructure:"flush_interval"`
+	RedisKey      string        `mapstructure:"redis_key"`
 }
 
 type ServerConfig struct {

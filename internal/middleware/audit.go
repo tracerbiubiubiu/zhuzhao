@@ -29,6 +29,7 @@ type AuditLogEntry struct {
 	IP          string
 	UserAgent   string
 	RequestBody string
+	RequestID   string // 03 §3.4：与 slog/判定日志/事件/taskrunner 同键关联
 	CreatedAt   time.Time
 }
 
@@ -64,6 +65,7 @@ func AuditLog(auditLogger AuditLogger) gin.HandlerFunc {
 			IP:          c.ClientIP(),
 			UserAgent:   c.Request.UserAgent(),
 			RequestBody: maskSensitive(bodyBytes),
+			RequestID:   c.GetString("request_id"),
 			CreatedAt:   time.Now(),
 		}
 

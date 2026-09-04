@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,6 +12,9 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // 适配层：zhuzhao-utils 的基建包自带 Config 类型（与 internal/config 解耦），
@@ -72,4 +76,34 @@ func provideRedis(cfg config.RedisConfig) (*goredis.Client, func(), error) {
 // variadic 形参 wire 无法注入，故固定为无参调用。
 func provideRedisScripts(client *goredis.Client) *redis.Scripts {
 	return redis.NewScripts(client)
+}
+
+// providePolicyEvalWriter 判定日志 L2 writer（B11①，03-audit-l2 §2；参数零值走默认）。
+func providePolicyEvalWriter(cfg config.AuditConfig, rdb *goredis.Client,
+	repo *repository.AuditLogRepo, logger *slog.Logger) *audit.PolicyEvalWriter {
+	return audit.NewPolicyEvalWriter(audit.PolicyEvalConfig{
+		BufferSize:    cfg.PolicyEval.BufferSize,
+		BatchSize:     cfg.PolicyEval.BatchSize,
+		FlushInterval: cfg.PolicyEval.FlushInterval,
+		RedisKey:      cfg.PolicyEval.RedisKey,
+	}, rdb, repo, logger)
+}
+
+// provideRegistry 建 Registry 并挂判定埋点（B11①：registry.Authorize 每次判定 →
+// writer.Write 非阻塞入队；SetEvalHook 后注册的资源自动纳入）。
+func provideRegistry(w *audit.PolicyEvalWriter) resource.Registry {
+	reg := resource.NewRegistry()
+	reg.SetEvalHook(func(ctx context.Context, e resource.EvalEntry) {
+		w.Write(audit.PolicyEvalEntry{
+			ActorID:      e.ActorID,
+			ActorRoles:   e.ActorRoles,
+			ResourceType: e.ResourceType,
+			ResourceID:   e.ResourceID,
+			Action:       e.Action,
+			Result:       e.Result,
+			Reason:       e.Reason,
+			TraceID:      e.TraceID,
+		})
+	})
+	return reg
 }

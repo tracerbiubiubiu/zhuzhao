@@ -12,22 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 )
 
 // App 应用实例
 type App struct {
-	cfg    *config.Config
-	logger *slog.Logger
-	router *gin.Engine
-	server *http.Server
+	cfg        *config.Config
+	logger     *slog.Logger
+	router     *gin.Engine
+	server     *http.Server
+	policyEval *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
 }
 
 // NewApp 创建应用实例
-func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine) *App {
+func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter) *App {
 	return &App{
-		cfg:    cfg,
-		logger: logger,
-		router: router,
+		cfg:        cfg,
+		logger:     logger,
+		router:     router,
+		policyEval: policyEval,
 	}
 }
 
@@ -43,6 +46,10 @@ func (a *App) Run() error {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	// 退出信号源先行创建：server / 判定日志管道共用同一取消
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	// 启动 HTTP 服务（goroutine 中运行，错误通过 channel 传递）
 	serverErr := make(chan error, 1)
 	go func() {
@@ -55,9 +62,9 @@ func (a *App) Run() error {
 		}
 	}()
 
-	// 等待退出信号或服务器错误
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	// B11① 判定日志 L2 管道随进程生命周期启停：收到信号 → pump 限时排空 channel
+	// 入 Redis + flusher 收尾落库（AfterShutdown 内 drain 的行留 Redis，重启续消不丢）
+	a.policyEval.Start(ctx)
 
 	select {
 	case err := <-serverErr:

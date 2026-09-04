@@ -14,6 +14,7 @@ type AuditLog struct {
 	IP          string    `json:"ip" db:"ip"`
 	UserAgent   string    `json:"user_agent" db:"user_agent"`
 	RequestBody string    `json:"request_body,omitempty" db:"request_body"`
+	RequestID   string    `json:"request_id,omitempty" db:"request_id"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 

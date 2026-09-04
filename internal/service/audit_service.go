@@ -96,6 +96,7 @@ func entryToModel(entry middleware.AuditLogEntry) *model.AuditLog {
 		IP:          entry.IP,
 		UserAgent:   entry.UserAgent,
 		RequestBody: entry.RequestBody,
+		RequestID:   entry.RequestID,
 		CreatedAt:   entry.CreatedAt,
 	}
 	if entry.UserID != 0 {

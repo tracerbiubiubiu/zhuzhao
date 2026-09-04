@@ -12,7 +12,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -65,7 +64,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
 	ticketRepo := repository.NewTicketRepo(pool)
-	registry := resource.NewRegistry()
+	policyEvalWriter := providePolicyEvalWriter(cfg.Audit, client, auditLogRepo, logger)
+	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	v := provideTrustedProxies(cfg)
@@ -88,7 +88,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		TrustedProxies: v,
 	}
 	engine := router.New(deps)
-	app := NewApp(cfg, logger, engine)
+	app := NewApp(cfg, logger, engine, policyEvalWriter)
 	return app, func() {
 		cleanup3()
 		cleanup2()
@@ -103,7 +103,7 @@ var pkgSet = wire.NewSet(
 	provideJWTManager,
 	providePostgres,
 	provideRedis,
-	provideRedisScripts, resource.NewRegistry, casbin.New,
+	provideRedisScripts, providePolicyEvalWriter, provideRegistry, casbin.New,
 )
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo)

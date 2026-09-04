@@ -88,6 +88,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000018_ticket_type_admin.up.sql",
 			// org_type 四值枚举收敛为 is_virtual 布尔（000019，层级由 path/nlevel 表达）
 			"000019_org_is_virtual.up.sql",
+			// B11① 判定日志表 + audit_logs/ticket_events 补 request_id（000020）
+			"000020_policy_eval_request_id.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

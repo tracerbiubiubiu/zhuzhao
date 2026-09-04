@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 )
 
 // Resource 资源接口，每个业务模块实现并自注册（Phase 2+）
@@ -34,6 +36,21 @@ type Filter struct {
 	Unscoped bool
 }
 
+// EvalEntry 判定日志行（B11①，03-audit-l2 §3.2）——registry.Authorize 统一埋点产出。
+type EvalEntry struct {
+	ActorID      int64
+	ActorRoles   []string
+	ResourceType string // 资源 code（ticket / builtin:task / ...）
+	ResourceID   string
+	Action       string
+	Result       bool
+	Reason       string // 拒绝原因（denied / error:...，已截断 200）
+	TraceID      string // = request_id（reqid.From(ctx)）
+}
+
+// EvalHook 判定埋点钩子。实现必须非阻塞（fail-open：判定日志绝不阻断鉴权）。
+type EvalHook func(ctx context.Context, e EvalEntry)
+
 // Registry 资源注册中心
 type Registry interface {
 	Register(res Resource)
@@ -41,11 +58,14 @@ type Registry interface {
 	List() []Resource
 	Authorize(ctx context.Context, resourceCode string, req AuthorizeRequest) (bool, error)
 	GetFilter(ctx context.Context, resourceCode string, userID int64, action string) (Filter, error)
+	// SetEvalHook 挂判定埋点（app 装配时调用一次；之后 Authorize 每次判定回调）
+	SetEvalHook(h EvalHook)
 }
 
 type registry struct {
 	mu        sync.RWMutex
 	resources map[string]Resource
+	evalHook  EvalHook
 }
 
 // NewRegistry 创建空 Registry（Phase 1 不注册业务 Resource）
@@ -76,12 +96,55 @@ func (r *registry) List() []Resource {
 	return out
 }
 
+func (r *registry) SetEvalHook(h EvalHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.evalHook = h
+}
+
+// evalReason 组装拒绝/错误原因（截断 200，对齐 DDL reason 列宽）。
+func evalReason(allowed bool, err error) string {
+	switch {
+	case err != nil:
+		return truncate("error: "+err.Error(), 200)
+	case !allowed:
+		return "denied"
+	default:
+		return ""
+	}
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
 func (r *registry) Authorize(ctx context.Context, code string, req AuthorizeRequest) (bool, error) {
 	res, ok := r.Get(code)
 	if !ok {
 		return false, fmt.Errorf("resource %s not registered", code)
 	}
-	return res.Authorize(ctx, req)
+	allowed, err := res.Authorize(ctx, req)
+	// B11① 判定埋点：允许/拒绝/错误一律一行（允许行也是审计面——"谁被授权了什么"）。
+	// hook 非阻塞义务由实现方保证（PolicyEvalWriter.Write 为非阻塞 channel 发送）。
+	r.mu.RLock()
+	hook := r.evalHook
+	r.mu.RUnlock()
+	if hook != nil {
+		hook(ctx, EvalEntry{
+			ActorID:      req.UserID,
+			ActorRoles:   req.Roles,
+			ResourceType: code,
+			ResourceID:   req.ResourceID,
+			Action:       req.Action,
+			Result:       allowed && err == nil,
+			Reason:       evalReason(allowed, err),
+			TraceID:      reqid.From(ctx),
+		})
+	}
+	return allowed, err
 }
 
 func (r *registry) GetFilter(ctx context.Context, code string, userID int64, action string) (Filter, error) {

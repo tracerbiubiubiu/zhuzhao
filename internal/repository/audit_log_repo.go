@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 )
 
 // AuditListQuery 审计日志筛选
@@ -39,8 +40,8 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO audit_logs (
 			user_id, username, method, path, status_code, duration,
-			ip, user_agent, request_body, created_at
-		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), $10)`,
+			ip, user_agent, request_body, request_id, created_at
+		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), $11)`,
 		log.UserID,
 		log.Username,
 		log.Method,
@@ -50,6 +51,7 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 		log.IP,
 		log.UserAgent,
 		log.RequestBody,
+		log.RequestID,
 		createdAt,
 	)
 	if err != nil {
@@ -140,3 +142,31 @@ func scanAuditLogRow(row pgx.CollectableRow) (*model.AuditLog, error) {
 	}
 	return &log, nil
 }
+
+// InsertPolicyEvals 批量写判定日志（B11① policy_evaluation_logs；audit.PolicyEvalStore 实现）。
+// 多行单语句插入；空批次直接返回（flusher 保证非空调用，防御分支）。
+func (r *AuditLogRepo) InsertPolicyEvals(ctx context.Context, rows []audit.PolicyEvalEntry) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	values := make([]string, 0, len(rows))
+	args := make([]interface{}, 0, len(rows)*9)
+	for i, e := range rows {
+		base := i * 9
+		values = append(values, fmt.Sprintf(
+			"($%d, $%d::text[], $%d, NULLIF($%d,''), $%d, $%d, NULLIF($%d,''), NULLIF($%d,''), $%d::timestamptz)",
+			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9))
+		args = append(args,
+			e.ActorID, e.ActorRoles, e.ResourceType, e.ResourceID, e.Action,
+			e.Result, e.Reason, e.TraceID, e.CreatedAt)
+	}
+	q := `INSERT INTO policy_evaluation_logs
+		(actor_id, actor_role_codes, resource_type, resource_id, action, result, reason, trace_id, created_at)
+		VALUES ` + strings.Join(values, ",")
+	if _, err := r.db.Exec(ctx, q, args...); err != nil {
+		return fmt.Errorf("insert policy evals (%d rows): %w", len(rows), err)
+	}
+	return nil
+}
+
+var _ audit.PolicyEvalStore = (*AuditLogRepo)(nil)

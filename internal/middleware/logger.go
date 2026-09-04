@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 )
 
 // RequestID 生成或传递 trace ID，串联 slog 日志。
@@ -20,6 +22,9 @@ func RequestID() gin.HandlerFunc {
 		}
 		c.Set("request_id", rid)
 		c.Header("X-Request-ID", rid)
+		// 注入 request context：service/repo 层（handler 只传 c.Request.Context()）
+		// 即可读取（reqid.From），全链路（判定日志/事件/审计）同键
+		c.Request = c.Request.WithContext(reqid.With(c.Request.Context(), rid))
 		c.Next()
 	}
 }

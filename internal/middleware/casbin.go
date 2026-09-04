@@ -117,11 +117,13 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 		}
 
 		if !allowed {
-			// 被拒请求留痕：谁在何时被拒绝了什么（安全审计刚需）
+			// 被拒请求留痕：谁在何时被拒绝了什么（安全审计刚需）；
+			// 03 §3.4：补 request_id（与 AccessLogger/审计行/判定日志同键关联）
 			logger.Warn("casbin denied",
 				slog.Int64("userID", userID),
 				slog.String("username", c.GetString("username")),
 				slog.String("path", path), slog.String("method", method),
+				slog.String("request_id", c.GetString("request_id")),
 				slog.Any("roles", roles))
 			response.ForbiddenError(c, errcode.ErrNoPermission)
 			c.Abort()

@@ -25,9 +25,10 @@ var pkgSet = wire.NewSet(
 	providePostgres,
 	provideRedis,
 	provideRedisScripts,
-	// B4-6：Phase 2 接线预留（G-1，见 docs/phase2/02-authz-resource.md Step 0）——
-	// 当前注入链路无消费者，Phase 2a 资源级鉴权时接线
-	resource.NewRegistry,
+	// B11① 判定日志：writer（channel→Redis List→批量落库）+ registry 埋点接线
+	// （替换裸 NewRegistry——Authorize 每次判定回调 writer.Write，fail-open）
+	providePolicyEvalWriter,
+	provideRegistry,
 	casbin.New,
 )
 

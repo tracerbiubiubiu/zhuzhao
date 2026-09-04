@@ -12,6 +12,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 )
 
@@ -210,8 +211,8 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO ticket_events (ticket_id, user_id, action) VALUES ($1, $2, 'deleted')`,
-		id, actorUserID); err != nil {
+		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, 'deleted', NULLIF($3, ''))`,
+		id, actorUserID, reqid.From(ctx)); err != nil {
 		// 23503 = 工单已不存在（重复/并发删除）→ 404，且无事件残留（BK-16 修正）
 		if ec := MapForeignKeyViolation(err); ec != nil {
 			return errcode.ErrTicketNotFound
@@ -279,10 +280,11 @@ func (r *TicketRepo) CreateEvent(ctx context.Context, e *model.TicketEvent) erro
 	return r.CreateEventTx(ctx, r.db, e)
 }
 
-// CreateEventTx 事务内记录事件
+// CreateEventTx 事务内记录事件（request_id 从 ctx 取——03 §3.4 事件↔slog↔审计同键）
 func (r *TicketRepo) CreateEventTx(ctx context.Context, exec rowExec, e *model.TicketEvent) error {
-	const q = `INSERT INTO ticket_events (ticket_id, user_id, action, from_value, to_value) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, '')) RETURNING id, created_at`
-	err := exec.QueryRow(ctx, q, e.TicketID, e.UserID, e.Action, e.FromValue, e.ToValue).Scan(&e.ID, &e.CreatedAt)
+	const q = `INSERT INTO ticket_events (ticket_id, user_id, action, from_value, to_value, request_id)
+		VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, '')) RETURNING id, created_at`
+	err := exec.QueryRow(ctx, q, e.TicketID, e.UserID, e.Action, e.FromValue, e.ToValue, reqid.From(ctx)).Scan(&e.ID, &e.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create event: %w", err)
 	}
