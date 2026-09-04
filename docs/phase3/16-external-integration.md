@@ -176,7 +176,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | C5 | Dockerfile `TZ=Asia/Shanghai` | 下次提交 |
 | C6 | 配置迁 yaml + `${VAR}` 展开 | ✅ 已拍板统一（2026-09-03），随 M3/M4 顺手落地 |
 | C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束） | M3/M4（约半天） |
-| C8 | **utils `aksk` 包实现**（signer/verifier/gin 中间件工厂 + 常量时间比较 + 时间窗防重放 ±5min + 测试，~0.5 天；canonical = METHOD\nPATH\nsha256(body)\nTS\nX-Operator）——全部服务间签名的公共底座，**先行** | M3 前置 |
+| C8 | **utils `aksk` 包实现**（signer/verifier/gin 中间件工厂 + 常量时间比较 + 时间窗防重放 ±5min + 测试，~0.5 天；canonical = METHOD\nPATH\nsha256(body)\nTS\nX-Request-ID\nX-Operator（C9 的「覆盖 X-Request-ID」由此落在 canonical 里））——全部服务间签名的公共底座，**先行** | M3 前置 |
 | C9 | callback client 请求签名（taskrunner → zhuzhao 回调带自身 SK 签名，覆盖 X-Request-ID/X-Operator 头） | 随 C8，M3 |
 
 > 时序要点：**先拓扑、后拆 token**——网络隔离没落地前 Bearer 是实际防线（taskrunner 现部署在普通内网可达面），不裸奔切换。
