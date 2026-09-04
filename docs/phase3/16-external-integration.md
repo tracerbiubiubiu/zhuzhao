@@ -170,15 +170,15 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | # | 改动 | 时序 |
 |---|---|---|
-| C1 | 统一访问日志中间件（含 `X-Request-ID` 读头/回显 + `X-Operator` 兜底 `"system"`）——顺带关闭 B2（logOp 归因缺口） | M3 随手 |
-| C2 | API 鉴权换 **AK/SK 验签**（静态 Bearer → HMAC 签名验签；utils `aksk`，覆盖 M2 credential 定案；**不再依赖 C3 时序**——签名即密码学防线，拓扑降为第二道防线） | 随 C8，M3 |
+| C1 | ✅ **已实施（2026-09-04，taskrunner 结构重构 ca1a283）**：统一访问日志中间件（rid 读头/回显 + operator 兜底）——B2 一并关闭 | 完成 |
+| C2 | ✅ **已实施（2026-09-04）**：API 验签换 AK/SK HMAC（Bearer 移除；密钥环空拒绝启动 fail-closed） | 完成 |
 | C3 | 部署网络隔离：compose 双 network（服务端口仅挂 zhuzhao 专用网络，对齐 activelist D5 模式） | M3 联调 / M4 部署 |
-| C4 | `/readyz`（检 Redis + PG 可写） | M4 |
-| C5 | Dockerfile `TZ=Asia/Shanghai` | 下次提交 |
-| C6 | 配置迁 yaml + `${VAR}` 展开 | ✅ 已拍板统一（2026-09-03），随 M3/M4 顺手落地 |
+| C4 | ✅ **已实施（2026-09-04）**：`/readyz`（Redis ping + SQLite 探针；迁 PG 后改检 PG） | 完成 |
+| C5 | ✅ **已实施（2026-09-04）**：Dockerfile `TZ=Asia/Shanghai` | 完成 |
+| C6 | ✅ **已实施（2026-09-04）**：viper yaml + env（TASKRUNNER_* 全量兼容） | 完成 |
 | C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束） | M3/M4（约半天） |
 | C8 | **utils `aksk` 包实现**（signer/verifier/gin 中间件工厂 + 常量时间比较 + 时间窗防重放 ±5min + 测试，~0.5 天；canonical = METHOD\nPATH\nsha256(body)\nTS\nX-Request-ID\nX-Operator（C9 的「覆盖 X-Request-ID」由此落在 canonical 里））——全部服务间签名的公共底座，**先行** | M3 前置 |
-| C9 | callback client 请求签名（taskrunner → zhuzhao 回调带自身 SK 签名，覆盖 X-Request-ID/X-Operator 头） | 随 C8，M3 |
+| C9 | ✅ **已实施（2026-09-04）**：回调以自身 SK 签名 + rid 透传——实测暴露并修复 utils aksk 根路径 canonical 缺陷（017832d） | 完成 |
 
 > 时序要点：**先拓扑、后拆 token**——网络隔离没落地前 Bearer 是实际防线（taskrunner 现部署在普通内网可达面），不裸奔切换。
 
@@ -196,3 +196,4 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 2026-09-03（B3 拍板） | **存储统一 PG**（所有者拍板）：taskrunner job_runs 迁 PG（C7，独立数据库 + utils `postgres`，schema 不变，约半天；SQLite 保留为 M1/M2 已交付实现）；C4 readyz 改检 PG；允许差异收窄为 Redis·Asynq 与副本数。待拍仅剩 B2 身份断言（建议：明文 X-Operator + 拓扑，方案 A 降为触发条件驱动——场景展开已呈所有者） |
 | 2026-09-03（AK/SK 基线修订） | 所有者拍板：**服务间通信统一 AK/SK HMAC 签名**（utils `aksk` 通用包 C8 先行 + 各服务接线 C2/C9/批次 B/M-A6）——**覆盖当日早前三条拍板**（C2 拆 Bearer→换验签、P5 回调无鉴权→带签名、activelist 零认证→验签），**关闭 B2**（明文 X-Operator 入签名覆盖，方案 A 降为触发条件）；专用 network 保留为第二道防线；C2 不再依赖 C3 时序；09 号外部 M2M AK/SK 加分层注记（算法复用、管理面仍 🚦） |
 | 2026-09-04（工程结构补充拍板） | 所有者明确：taskrunner/activelist **以正式微服务标准建设，内部与 zhuzhao 同规格**——基线 §9 新增「工程结构」行（Wire DI / handler→service→repository 分层 / yaml 配置 / 优雅启停 / 统一 Makefile 门禁）；taskrunner 当日执行结构重构（含 C1/C2/C5/C6/C9 收口），activelist 未开工直接按新标准实施 |
+| 2026-09-04（微服务结构重构落地） | taskrunner 按「工程结构」基线完成重构（ca1a283）：Wire DI / handler→service→repository / yaml 配置 / 统一门禁；**C1/C2/C4/C5/C6/C9 同批收口**（C 表更新）；C9 联调实测暴露 utils aksk 根路径 canonical 缺陷并当日修复（utils 017832d + 回归测试）；剩余 C3（专用 network，随部署）/C7（SQLite→PG，随部署）；activelist 实施计划同步对齐（其 eff2b78/022e0a2） |
