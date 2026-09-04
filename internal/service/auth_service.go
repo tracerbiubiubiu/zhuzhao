@@ -10,12 +10,12 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	redispkg "github.com/tracerbiubiubiu/zhuzhao-utils/redis"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 

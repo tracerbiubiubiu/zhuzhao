@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 )
 
 // newJWTTestEnv 构造 JWT 中间件测试环境（miniredis：黑名单/disabled 检查全放行）

@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // JWT JWT 认证中间件

@@ -10,10 +10,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/tracerbiubiubiu/zhuzhao-utils/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao-utils/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 

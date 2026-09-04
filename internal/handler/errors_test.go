@@ -13,8 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // allErrCodes errcode.go 全量业务码清单（D2-32）。
