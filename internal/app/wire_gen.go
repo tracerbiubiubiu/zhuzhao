@@ -68,13 +68,14 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	taskrunnerConfig := cfg.Taskrunner
 	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
 	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
-	taskrunnerHandler := handler.NewTaskrunnerHandler(taskrunnerService, "")
+	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, cfg.Taskrunner)
 	policyEvalWriter := providePolicyEvalWriter(cfg.Audit, client, auditLogRepo, logger)
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, cfg.Audit, logger)
-	jobsHandler := handler.NewJobsHandler(jobsRegistry, jobSubmissionRepo)
+	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
+	jobsHandler := handler.NewJobsHandler(jobsCallbackService)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
 		AuthHandler:       authHandler,

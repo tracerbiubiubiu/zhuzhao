@@ -56,7 +56,7 @@ docker-down:
 	cd deployments && docker-compose -f docker-compose.yaml down
 
 swag:
-	swag init -g cmd/server/main.go -o docs
+	swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal
 
 test: test-unit
 

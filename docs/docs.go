@@ -34,7 +34,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.LoginRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest"
                         }
                     }
                 ],
@@ -67,7 +67,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.LogoutRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.LogoutRequest"
                         }
                     }
                 ],
@@ -100,7 +100,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdatePasswordRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest"
                         }
                     }
                 ],
@@ -133,13 +133,152 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.RefreshRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "刷新成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dead-letters": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "死信列表（运维向，配合 retry 端点闭环）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/jobs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "任务定义列表（dept/action_id/enabled 过滤透传）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "新建任务定义（action_id + trigger_type + cron_spec + params）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "cron_spec 非法等",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/jobs/trigger": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "手动执行一次任务定义（「立即执行」按钮）",
+                "responses": {
+                    "200": {
+                        "description": "task_id + accepted",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "定义已停用",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/jobs/update": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "修改任务定义（cron/params/启停；生效 ≤ 下个 cron tick）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -166,7 +305,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.SetOrgMemberRoleRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SetOrgMemberRoleRequest"
                         }
                     }
                 ],
@@ -199,7 +338,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.SetOrgOwnersRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SetOrgOwnersRequest"
                         }
                     }
                 ],
@@ -232,7 +371,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.BindOrgRoleRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.BindOrgRoleRequest"
                         }
                     }
                 ],
@@ -265,7 +404,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.BindOrgRoleRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.BindOrgRoleRequest"
                         }
                     }
                 ],
@@ -300,6 +439,187 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/runs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "query 透传：request_id / action / status / job_id / from / to（RFC3339）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "查执行记录（request_id 跨查即此）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "提交一次性任务（受理 ≠ 执行成功，结果经查询接口获取）",
+                "parameters": [
+                    {
+                        "description": "提交参数（action 必填；callback_url 可缺省自动拼）",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service.TaskSubmitInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "task_id + accepted",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "502": {
+                        "description": "taskrunner 未配置/不可达",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "取消未开始的任务（执行中 409）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/retry": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "重试失败/死信任务",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "执行结果的唯一出口；taskrunner 不主动推送",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "查任务状态（job_runs 全景 + live_state 实时态）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "task_id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -343,7 +663,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateTicketTemplateRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketTemplateRequest"
                         }
                     }
                 ],
@@ -409,7 +729,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateTicketTemplateRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTemplateRequest"
                         }
                     }
                 ],
@@ -485,7 +805,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateTicketTypeRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketTypeRequest"
                         }
                     }
                 ],
@@ -544,7 +864,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateTicketTypeRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTypeRequest"
                         }
                     }
                 ],
@@ -636,7 +956,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ReplaceTypeFieldsRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest"
                         }
                     }
                 ],
@@ -743,7 +1063,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateTicketRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketRequest"
                         }
                     }
                 ],
@@ -776,7 +1096,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AssignTicketRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignTicketRequest"
                         }
                     }
                 ],
@@ -809,7 +1129,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CloseTicketRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CloseTicketRequest"
                         }
                     }
                 ],
@@ -842,7 +1162,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateCommentRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateCommentRequest"
                         }
                     }
                 ],
@@ -875,7 +1195,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.DeleteTicketRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteTicketRequest"
                         }
                     }
                 ],
@@ -908,7 +1228,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateNoteRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateNoteRequest"
                         }
                     }
                 ],
@@ -941,7 +1261,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateRelationRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateRelationRequest"
                         }
                     }
                 ],
@@ -974,7 +1294,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.UpdateTicketRequest"
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketRequest"
                         }
                     }
                 ],
@@ -1071,10 +1391,42 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/internal/jobs/{action_id}": {
+            "post": {
+                "description": "结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal-jobs"
+                ],
+                "summary": "预置动作回调（taskrunner → zhuzhao，AK/SK 验签内网端点）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "action_id",
+                        "name": "action_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "model.AssignTicketRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignTicketRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -1091,7 +1443,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.BindOrgRoleRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.BindOrgRoleRequest": {
             "type": "object",
             "required": [
                 "org_id",
@@ -1108,7 +1460,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CloseTicketRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CloseTicketRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -1124,7 +1476,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateCommentRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateCommentRequest": {
             "type": "object",
             "required": [
                 "content",
@@ -1140,7 +1492,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateNoteRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateNoteRequest": {
             "type": "object",
             "required": [
                 "content",
@@ -1156,7 +1508,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateRelationRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateRelationRequest": {
             "type": "object",
             "required": [
                 "source_ticket_id",
@@ -1177,16 +1529,121 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateTicketRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketRequest": {
+            "type": "object",
+            "required": [
+                "org_id",
+                "title",
+                "type_code"
+            ],
+            "properties": {
+                "assigned_to": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "custom_data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "template_code": {
+                    "description": "可选：命中模板则预填",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type_code": {
+                    "type": "string"
+                }
+            }
         },
-        "model.CreateTicketTemplateRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketTemplateRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "name",
+                "org_id",
+                "type_code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "default_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "default_priority": {
+                    "type": "integer"
+                },
+                "default_sla_minutes": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "type_code": {
+                    "type": "string",
+                    "maxLength": 50
+                }
+            }
         },
-        "model.CreateTicketTypeRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateTicketTypeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "name"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "states": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
         },
-        "model.DeleteTicketRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteTicketRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -1198,7 +1655,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LoginRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest": {
             "type": "object",
             "required": [
                 "employee_no",
@@ -1224,7 +1681,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LogoutRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.LogoutRequest": {
             "type": "object",
             "properties": {
                 "device_id": {
@@ -1233,7 +1690,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RefreshRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -1244,10 +1701,18 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ReplaceTypeFieldsRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput"
+                    }
+                }
+            }
         },
-        "model.SetOrgMemberRoleRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.SetOrgMemberRoleRequest": {
             "type": "object",
             "required": [
                 "org_id",
@@ -1272,7 +1737,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.SetOrgOwnersRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.SetOrgOwnersRequest": {
             "type": "object",
             "required": [
                 "org_id",
@@ -1292,7 +1757,53 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdatePasswordRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput": {
+            "type": "object",
+            "required": [
+                "field_key",
+                "field_label",
+                "field_type"
+            ],
+            "properties": {
+                "field_key": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "field_label": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "field_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "field_type": {
+                    "type": "string",
+                    "enum": [
+                        "input",
+                        "textarea",
+                        "number",
+                        "date",
+                        "select",
+                        "multi_select",
+                        "tips"
+                    ]
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "validate_regex": {
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest": {
             "type": "object",
             "required": [
                 "new_password",
@@ -1312,7 +1823,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateTicketRequest": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -1333,11 +1844,80 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateTicketTemplateRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTemplateRequest": {
+            "type": "object",
+            "properties": {
+                "default_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "default_priority": {
+                    "type": "integer"
+                },
+                "default_sla_minutes": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
         },
-        "model.UpdateTicketTypeRequest": {
-            "type": "object"
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTypeRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "states": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service.TaskSubmitInput": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "callback_url": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "task_id": {
+                    "description": "可选：调用方幂等键",
+                    "type": "string"
+                },
+                "timeout_secs": {
+                    "type": "integer"
+                }
+            }
         },
         "response.Response": {
             "type": "object",

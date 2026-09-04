@@ -17,8 +17,17 @@ import (
 // 出站一律经 pkg/taskrunner client（AK/SK 签名 + request_id/actor 透传）；
 // 提交/触发同步落 job_submissions 提交凭证（E5，薄——执行细节不回传，request_id 跨查）。
 type TaskrunnerService struct {
-	client *taskrunner.Client
+	client *taskrunner.Client // 可为 nil（base_url 未配置）——经 ensure 拦截
 	subs   *repository.JobSubmissionRepo
+}
+
+// ensure 出站前置检查：taskrunner 未配置（base_url 空 → wire 注入 nil client）时
+// 返回普通 error——handler 映射 502（上游不可达），而非 nil 指针 panic。
+func (s *TaskrunnerService) ensure() error {
+	if s.client == nil {
+		return fmt.Errorf("taskrunner 服务未配置（config taskrunner.base_url）")
+	}
+	return nil
 }
 
 func NewTaskrunnerService(client *taskrunner.Client, subs *repository.JobSubmissionRepo) *TaskrunnerService {
@@ -37,6 +46,9 @@ type TaskSubmitInput struct {
 // Submit 提交一次性任务：request_id 取入站 ctx（唯一关联键）；task_id 缺省生成。
 // CallbackURL 缺省按 action 拼本服务内网端点（部署同网可达）。
 func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, actor, sourceIP, selfBaseURL string) (*taskrunner.SubmitResponse, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	taskID := in.TaskID
 	if taskID == "" {
 		taskID = uuid.NewString()
@@ -72,6 +84,9 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 
 // Trigger 手动执行一次任务定义（前端「立即执行」）。
 func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP string) (*taskrunner.SubmitResponse, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	resp, err := s.client.TriggerJob(ctx, jobID, actor, sourceIP)
 	if err != nil {
 		return nil, err
@@ -85,33 +100,57 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 // ---- 透传查询/管理（无本地状态；权限码在路由层） ----
 
 func (s *TaskrunnerService) GetTask(ctx context.Context, taskID string) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.GetTask(ctx, taskID)
 }
 
 func (s *TaskrunnerService) ListRuns(ctx context.Context, query url.Values) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.ListRuns(ctx, query)
 }
 
 func (s *TaskrunnerService) ListJobs(ctx context.Context, query url.Values) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.ListJobs(ctx, query)
 }
 
 func (s *TaskrunnerService) CreateJob(ctx context.Context, body json.RawMessage, actor string) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.CreateJob(ctx, body, actor)
 }
 
 func (s *TaskrunnerService) UpdateJob(ctx context.Context, jobID string, body json.RawMessage, actor string) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.UpdateJob(ctx, jobID, body, actor)
 }
 
 func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.CancelTask(ctx, taskID, actor)
 }
 
 func (s *TaskrunnerService) RetryTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.RetryTask(ctx, taskID, actor)
 }
 
 func (s *TaskrunnerService) ListDeadLetters(ctx context.Context, query url.Values) (json.RawMessage, error) {
+	if err := s.ensure(); err != nil {
+		return nil, err
+	}
 	return s.client.ListDeadLetters(ctx, query)
 }

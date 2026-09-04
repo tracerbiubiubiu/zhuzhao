@@ -82,9 +82,14 @@ func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse
 	if req.Action == "" || req.CallbackURL == "" {
 		return nil, errcode.ErrInvalidParams
 	}
+	requestID := req.RequestID
+	if requestID == "" {
+		requestID = reqid.From(ctx)
+	}
 	body := map[string]interface{}{
 		"action":       req.Action,
 		"callback_url": req.CallbackURL,
+		"request_id":   requestID,
 		"submitted_by": req.SubmittedBy,
 		"source_ip":    req.SourceIP,
 	}
@@ -133,7 +138,7 @@ func (c *Client) UpdateJob(ctx context.Context, jobID string, body json.RawMessa
 
 // TriggerJob POST /v1/jobs/{id}/trigger（手动执行一次，前端「立即执行」）。
 func (c *Client) TriggerJob(ctx context.Context, jobID, actor, sourceIP string) (*SubmitResponse, error) {
-	body := map[string]interface{}{"actor": actor, "source_ip": sourceIP}
+	body := map[string]interface{}{"actor": actor, "source_ip": sourceIP, "request_id": reqid.From(ctx)}
 	var out SubmitResponse
 	return &out, c.do(ctx, http.MethodPost, "/v1/jobs/"+url.PathEscape(jobID)+"/trigger", nil, body, actor, &out)
 }
@@ -184,7 +189,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	aksk.Sign(req, payload, aksk.SignOptions{
 		AK: c.ak, SK: c.sk,
-		RequestID: reqid.From(ctx),
+		RequestID: reqid.From(ctx), // 头通道（taskrunner 中间件读；body 通道由各方法自带）
 		Operator:  actor,
 	})
 

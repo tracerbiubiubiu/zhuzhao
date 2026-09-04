@@ -2,8 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,21 +9,19 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
-// JobsHandler /internal/jobs 回调端点（E-②，16 号 §3；taskrunner 仓库
-// zhuzhao-integration.md §2.1 契约）：不走用户 JWT——路由组挂 AK/SK 验签
-// （utils aksk，验 taskrunner 签名）+ 专用网络拓扑（基线 §9）。
+// JobsHandler /internal/jobs 回调端点 HTTP 层（E-②）：不做用户 JWT——路由组挂
+// AK/SK 验签（utils aksk，验 taskrunner 签名）+ 专用网络拓扑（基线 §9）。
+// 编排逻辑在 service.JobsCallbackService（分层：handler 不直接触达 repository）。
 type JobsHandler struct {
-	registry *jobs.Registry
-	repo     *repository.JobSubmissionRepo
+	svc *service.JobsCallbackService
 }
 
-func NewJobsHandler(registry *jobs.Registry, repo *repository.JobSubmissionRepo) *JobsHandler {
-	return &JobsHandler{registry: registry, repo: repo}
+func NewJobsHandler(svc *service.JobsCallbackService) *JobsHandler {
+	return &JobsHandler{svc: svc}
 }
 
 // jobCallbackBody 回调请求体（taskrunner callback client 契约字段）。
@@ -37,16 +33,19 @@ type jobCallbackBody struct {
 	SourceIP  string          `json:"source_ip"`
 }
 
-// Callback POST /internal/jobs/:action_id。
+// Callback
 //
-// 契约（P6/P7 定案）：
-//   - 未知 action_id → 404（不做前置校验，快速失败不重试）；
-//   - 已 succeeded 的 task_id 再次回调 → 2xx 幂等受理（at-least-once 防副作用重复）；
-//   - Handle 返回 nil → 2xx（执行完全成功）；
-//   - ErrAbort → 409（不可重试业务失败）；其他错误 → 500（可重试，taskrunner 退避重试）。
+//	@Summary		预置动作回调（taskrunner → zhuzhao，AK/SK 验签内网端点）
+//	@Description	结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试
+//	@Tags			internal-jobs
+//	@Accept			json
+//	@Produce		json
+//	@Param			action_id path string true "action_id"
+//	@Success		200 {object} response.Response
+//	@Router			/internal/jobs/{action_id} [post]
+//
+// Executed/Idempotent→2xx；UnknownAction→404；NonRetryable→409；Retryable→500。
 func (h *JobsHandler) Callback(c *gin.Context) {
-	action := c.Param("action_id")
-
 	var body jobCallbackBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		response.BadRequest(c, "task_id 必填")
@@ -58,41 +57,22 @@ func (h *JobsHandler) Callback(c *gin.Context) {
 	if body.RequestID != "" {
 		c.Request = c.Request.WithContext(reqid.With(c.Request.Context(), body.RequestID))
 	}
-	ctx := c.Request.Context()
 
-	handler, ok := h.registry.Get(action)
-	if !ok {
-		// P6：无前置校验的兜底——未知动作 4xx 快速失败（taskrunner 判 failed 终态）
-		response.NotFound(c, "未注册的动作: "+action)
-		return
-	}
+	outcome, msg := h.svc.Execute(c.Request.Context(), service.CallbackInput{
+		TaskID: body.TaskID, RequestID: body.RequestID, Action: c.Param("action_id"),
+		Params: body.Params, Actor: body.Actor, SourceIP: body.SourceIP,
+	})
 
-	row, alreadyDone, err := h.repo.EnsureCallbackRow(ctx, body.TaskID, action, body.Actor, body.SourceIP)
-	if err != nil {
-		response.InternalError(c, "回调受理失败")
-		return
+	switch outcome {
+	case service.CallbackExecuted:
+		response.OKWithMessage(c, "已执行", gin.H{"task_id": body.TaskID, "status": "succeeded"})
+	case service.CallbackIdempotent:
+		response.OKWithMessage(c, "已执行（幂等受理）", gin.H{"task_id": body.TaskID, "status": msg})
+	case service.CallbackUnknownAction:
+		response.NotFound(c, msg)
+	case service.CallbackNonRetryable:
+		response.Fail(c, http.StatusConflict, errcode.ErrConflict.Code, msg)
+	default:
+		response.InternalError(c, msg)
 	}
-	if alreadyDone {
-		// 幂等拦截：该 task_id 已执行完全成功，重复回调直接 2xx（不重复执行副作用）
-		response.OKWithMessage(c, "已执行（幂等受理）", gin.H{"task_id": body.TaskID, "status": row.Status})
-		return
-	}
-
-	if err := handler.Handle(ctx, body.Params); err != nil {
-		_ = h.repo.MarkFailed(ctx, body.TaskID, err.Error())
-		if errors.Is(err, jobs.ErrAbort) {
-			response.Fail(c, http.StatusConflict, errcode.ErrConflict.Code, "动作执行失败（不可重试）: "+err.Error())
-			return
-		}
-		response.InternalError(c, "动作执行失败（可重试）")
-		return
-	}
-	if err := h.repo.MarkSucceeded(ctx, body.TaskID); err != nil {
-		// 执行已成功、记账 UPDATE 失败（极低概率）：业务事实已发生，必须返回 2xx；
-		// 若 taskrunner 因超时等重试，会再次进入 Handle——Handler 可重入契约兜底
-		// （registry.go Handler 注释，B11② 语义），此处仅留痕
-		slog.Warn("jobs: mark succeeded failed after execution",
-			slog.String("task_id", body.TaskID), slog.String("action", action), slog.Any("err", err))
-	}
-	response.OKWithMessage(c, "已执行", gin.H{"task_id": body.TaskID, "status": "succeeded"})
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -128,4 +129,14 @@ func provideTaskrunnerClient(cfg config.TaskrunnerConfig) *taskrunner.Client {
 	return taskrunner.New(taskrunner.Config{
 		BaseURL: cfg.BaseURL, AK: cfg.AK, SK: []byte(cfg.SK), Timeout: cfg.Timeout,
 	})
+}
+
+// provideTaskrunnerHandler 任务管理端点（E-④；selfBaseURL 供缺省 callback 拼接）。
+func provideTaskrunnerHandler(svc *service.TaskrunnerService, cfg config.TaskrunnerConfig) *handler.TaskrunnerHandler {
+	return handler.NewTaskrunnerHandler(svc, cfg.SelfBaseURL)
+}
+
+// provideJobsCallbackService 回调编排服务（E-②；jobs_handler 薄化的分层修复）。
+func provideJobsCallbackService(reg *jobs.Registry, repo *repository.JobSubmissionRepo, logger *slog.Logger) *service.JobsCallbackService {
+	return service.NewJobsCallbackService(reg, repo, logger)
 }

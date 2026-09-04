@@ -27,7 +27,18 @@ func NewTaskrunnerHandler(svc *service.TaskrunnerService, selfBaseURL string) *T
 // actor 从 gin ctx 取工号（JWT 中间件注入；system 场景为空串）。
 func actorOf(c *gin.Context) string { return c.GetString("username") }
 
-// Submit POST /api/v1/tasks（task:submit）
+// Submit
+//
+//	@Summary		提交一次性任务（受理 ≠ 执行成功，结果经查询接口获取）
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			req body service.TaskSubmitInput true "提交参数（action 必填；callback_url 可缺省自动拼）"
+//	@Success		200 {object} response.Response "task_id + accepted"
+//	@Failure		400 {object} response.Response
+//	@Failure		502 {object} response.Response "taskrunner 未配置/不可达"
+//	@Security		BearerAuth
+//	@Router			/api/v1/tasks [post]
 func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 	var req service.TaskSubmitInput
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -42,7 +53,17 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 	response.OK(c, resp)
 }
 
-// GetTask GET /api/v1/tasks/:id（task:read）——执行结果唯一出口（受理≠成功）
+// GetTask
+//
+//	@Summary		查任务状态（job_runs 全景 + live_state 实时态）
+//	@Description	执行结果的唯一出口；taskrunner 不主动推送
+//	@Tags			tasks
+//	@Produce		json
+//	@Param			id path string true "task_id"
+//	@Success		200 {object} response.Response
+//	@Failure		404 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/tasks/{id} [get]
 func (h *TaskrunnerHandler) GetTask(c *gin.Context) {
 	data, err := h.svc.GetTask(c.Request.Context(), c.Param("id"))
 	if err != nil {
@@ -52,7 +73,15 @@ func (h *TaskrunnerHandler) GetTask(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// ListRuns GET /api/v1/runs（task:read）——query 透传（request_id/action/status/from/to）
+// ListRuns
+//
+//	@Summary		查执行记录（request_id 跨查即此）
+//	@Description	query 透传：request_id / action / status / job_id / from / to（RFC3339）
+//	@Tags			tasks
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/runs [get]
 func (h *TaskrunnerHandler) ListRuns(c *gin.Context) {
 	data, err := h.svc.ListRuns(c.Request.Context(), c.Request.URL.Query())
 	if err != nil {
@@ -62,7 +91,14 @@ func (h *TaskrunnerHandler) ListRuns(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// ListJobs GET /api/v1/jobs（task:read）——dept 过滤参数由 E-⑤ 策略层决定
+// ListJobs
+//
+//	@Summary		任务定义列表（dept/action_id/enabled 过滤透传）
+//	@Tags			jobs
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/jobs [get]
 func (h *TaskrunnerHandler) ListJobs(c *gin.Context) {
 	data, err := h.svc.ListJobs(c.Request.Context(), c.Request.URL.Query())
 	if err != nil {
@@ -72,7 +108,16 @@ func (h *TaskrunnerHandler) ListJobs(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// CreateJob POST /api/v1/jobs（task:manage）
+// CreateJob
+//
+//	@Summary		新建任务定义（action_id + trigger_type + cron_spec + params）
+//	@Tags			jobs
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Failure		400 {object} response.Response "cron_spec 非法等"
+//	@Security		BearerAuth
+//	@Router			/api/v1/jobs [post]
 func (h *TaskrunnerHandler) CreateJob(c *gin.Context) {
 	body, err := c.GetRawData()
 	if err != nil {
@@ -91,7 +136,15 @@ type jobIDReq struct {
 	JobID string `json:"job_id" binding:"required"`
 }
 
-// UpdateJob POST /api/v1/jobs/update（task:manage；id 放 body，仓库惯例）
+// UpdateJob
+//
+//	@Summary		修改任务定义（cron/params/启停；生效 ≤ 下个 cron tick）
+//	@Tags			jobs
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/jobs/update [post]
 func (h *TaskrunnerHandler) UpdateJob(c *gin.Context) {
 	var req jobIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -111,7 +164,16 @@ func (h *TaskrunnerHandler) UpdateJob(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// Trigger POST /api/v1/jobs/trigger（task:manage；「立即执行」）
+// Trigger
+//
+//	@Summary		手动执行一次任务定义（「立即执行」按钮）
+//	@Tags			jobs
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response "task_id + accepted"
+//	@Failure		409 {object} response.Response "定义已停用"
+//	@Security		BearerAuth
+//	@Router			/api/v1/jobs/trigger [post]
 func (h *TaskrunnerHandler) Trigger(c *gin.Context) {
 	var req jobIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -130,7 +192,16 @@ type taskIDReq struct {
 	TaskID string `json:"task_id" binding:"required"`
 }
 
-// Cancel POST /api/v1/tasks/cancel（task:manage；仅未开始）
+// Cancel
+//
+//	@Summary		取消未开始的任务（执行中 409）
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Failure		409 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/tasks/cancel [post]
 func (h *TaskrunnerHandler) Cancel(c *gin.Context) {
 	var req taskIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -145,7 +216,16 @@ func (h *TaskrunnerHandler) Cancel(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// Retry POST /api/v1/tasks/retry（task:manage；失败/死信重试）
+// Retry
+//
+//	@Summary		重试失败/死信任务
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Failure		409 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/tasks/retry [post]
 func (h *TaskrunnerHandler) Retry(c *gin.Context) {
 	var req taskIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -160,7 +240,14 @@ func (h *TaskrunnerHandler) Retry(c *gin.Context) {
 	response.OK(c, data)
 }
 
-// DeadLetters GET /api/v1/dead-letters（task:manage；运维向）
+// DeadLetters
+//
+//	@Summary		死信列表（运维向，配合 retry 端点闭环）
+//	@Tags			tasks
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/dead-letters [get]
 func (h *TaskrunnerHandler) DeadLetters(c *gin.Context) {
 	data, err := h.svc.ListDeadLetters(c.Request.Context(), c.Request.URL.Query())
 	if err != nil {

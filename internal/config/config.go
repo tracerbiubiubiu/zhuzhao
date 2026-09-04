@@ -26,10 +26,13 @@ type Config struct {
 // TaskrunnerConfig zhuzhao → taskrunner API 出站 client（E-④）。
 // BaseURL 未配置时任务管理端点返回服务不可用（不阻断应用启动——taskrunner 可后部署）。
 type TaskrunnerConfig struct {
-	BaseURL string        `mapstructure:"base_url"`
-	AK      string        `mapstructure:"ak"` // 默认 zhuzhao
-	SK      string        `mapstructure:"sk"` // env：TASKRUNNER_SK
-	Timeout time.Duration `mapstructure:"timeout"`
+	BaseURL string `mapstructure:"base_url"`
+	// SelfBaseURL 本服务对外可达地址（缺省 callback 拼接用：<self>/internal/jobs/<action>）。
+	// 例 http://zhuzhao:33333（容器网络名）；空 = 提交任务必须显式传 callback_url。
+	SelfBaseURL string        `mapstructure:"self_base_url"`
+	AK          string        `mapstructure:"ak"` // 默认 zhuzhao
+	SK          string        `mapstructure:"sk"` // env：TASKRUNNER_SK
+	Timeout     time.Duration `mapstructure:"timeout"`
 }
 
 // InternalJobsConfig 内网回调端点（E-②，16 号 §3）：/internal/jobs/<action_id>

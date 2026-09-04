@@ -67,7 +67,8 @@ log:
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
-  base_url: ""              # taskrunner 服务地址（如 http://taskrunner:8080；env TASKRUNNER_BASE_URL）
+  base_url: ""              # taskrunner 服务地址（env TASKRUNNER_BASE_URL）；空 = 任务端点 502
+  self_base_url: ""         # 本服务可达地址（缺省 callback 拼接，如 http://zhuzhao:33333）
   ak: zhuzhao
   # sk: 从环境变量 TASKRUNNER_SK 注入
   timeout: 10s

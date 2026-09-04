@@ -40,7 +40,8 @@ func newCallbackRouter(t *testing.T, registry *jobs.Registry) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	repo := repository.NewJobSubmissionRepo(testPool)
-	h := handler.NewJobsHandler(registry, repo)
+	svc := service.NewJobsCallbackService(registry, repo, nil)
+	h := handler.NewJobsHandler(svc)
 	r := gin.New()
 	verifier := &aksk.Verifier{Keys: map[string][]byte{testAK: []byte(testSK)}}
 	g := r.Group("/internal", aksk.GinMiddleware(verifier, nil))

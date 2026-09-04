@@ -35,7 +35,7 @@ var pkgSet = wire.NewSet(
 	// E-④ 任务管理代理（taskrunner client + service + handler）
 	provideTaskrunnerClient,
 	service.NewTaskrunnerService,
-	handler.NewTaskrunnerHandler,
+	provideTaskrunnerHandler,
 	casbin.New,
 )
 
