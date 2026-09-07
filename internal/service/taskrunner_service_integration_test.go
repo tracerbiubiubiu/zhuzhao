@@ -52,6 +52,8 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 	require.Equal(t, "t-e4-1", resp.TaskID)
 	require.Contains(t, gotBody, `"action":"audit_archive"`)
 	require.Contains(t, gotBody, `"submitted_by":"10001"`)
+	// P0 回归：缺省 callback 必须指向 C10 后的统一回调路径（旧 :action_id 路由已删，404=任务必 failed）
+	require.Contains(t, gotBody, `"callback_url":"http://self:33333/internal/jobs/callback"`)
 
 	var action, requestID, origin, status string
 	require.NoError(t, testPool.QueryRow(context.Background(),

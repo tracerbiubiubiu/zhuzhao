@@ -65,7 +65,8 @@ type SubmitRequest struct {
 	TaskID      string // 调用方生成（幂等键）；空则 client 生成
 	RequestID   string // 空 = reqid.From(ctx)
 	Action      string // action_id（必填）
-	CallbackURL string // zhuzhao 内网端点（必填，如 http://zhuzhao:33333/internal/jobs/<action>）
+	Dept        string // 一次性任务归属标签（zhuzhao E-⑤ 携带，taskrunner 落快照列）
+	CallbackURL string // zhuzhao 内网端点（必填，如 http://zhuzhao:33333/internal/jobs/callback）
 	Params      json.RawMessage
 	SubmittedBy string // actor 工号（审计归因）
 	SourceIP    string
@@ -101,6 +102,9 @@ func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse
 	}
 	if req.TimeoutSecs > 0 {
 		body["timeout_secs"] = req.TimeoutSecs
+	}
+	if req.Dept != "" {
+		body["dept"] = req.Dept
 	}
 	var out SubmitResponse
 	return &out, c.do(ctx, http.MethodPost, "/v1/tasks", nil, body, req.SubmittedBy, &out)

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -267,6 +268,7 @@ func mapTaskrunnerErr(c *gin.Context, err error) {
 		writeServiceError(c, err)
 		return
 	}
+	slog.Error("taskrunner unreachable", "err", err, "request_id", c.GetString("request_id"))
 	response.Fail(c, http.StatusBadGateway, errcode.ErrServiceUnavailable.Code,
 		"任务服务不可达") // 细节（不可达原因）仅记服务端日志，防内网拓扑泄漏
 }

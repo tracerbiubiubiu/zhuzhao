@@ -65,6 +65,16 @@ func signedPost(t *testing.T, r *gin.Engine, action, taskID, requestID string, p
 	return w
 }
 
+// TestJobsCallback_MissingAction E-② 负向：body 缺 action → 400（C10 后 action 为必填 body 字段）。
+func TestJobsCallback_MissingAction(t *testing.T) {
+	r := newCallbackRouter(t, jobs.NewRegistry())
+	// 验签必须过（AK/SK 在绑定之前），action 空串 = 缺失（required 拒零值）
+	w := signedPost(t, r, "", "t-no-action", "rq", nil, testSK)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("缺 action want 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func cleanupSubmission(t *testing.T, taskID string) {
 	t.Helper()
 	testPool.Exec(context.Background(), `DELETE FROM job_submissions WHERE task_id=$1`, taskID)

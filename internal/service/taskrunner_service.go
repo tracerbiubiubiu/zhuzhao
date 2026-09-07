@@ -37,6 +37,7 @@ func NewTaskrunnerService(client *taskrunner.Client, subs *repository.JobSubmiss
 // TaskSubmitInput 用户侧提交任务（经网关；action_id 对应已注册预置动作）。
 type TaskSubmitInput struct {
 	Action      string          `json:"action" binding:"required"`
+	Dept        string          `json:"dept"` // 一次性任务归属标签（E-⑤ 组装用户可见标签；C11 快照列）
 	CallbackURL string          `json:"callback_url"`
 	Params      json.RawMessage `json:"params"`
 	TaskID      string          `json:"task_id"` // 可选：调用方幂等键
@@ -58,12 +59,15 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 		if selfBaseURL == "" {
 			return nil, fmt.Errorf("callback_url 未提供且服务自身地址未配置")
 		}
-		callback = fmt.Sprintf("%s/internal/jobs/%s", selfBaseURL, in.Action)
+		// C10 后回调端点统一 /internal/jobs/callback（action_id 在 body）——
+		// 路由只注册了这一个路径，拼接旧格式会导致回调 404 → 任务被判 non-retryable
+		callback = selfBaseURL + "/internal/jobs/callback"
 	}
 	resp, err := s.client.Submit(ctx, taskrunner.SubmitRequest{
 		TaskID:      taskID,
 		RequestID:   reqid.From(ctx),
 		Action:      in.Action,
+		Dept:        in.Dept,
 		CallbackURL: callback,
 		Params:      in.Params,
 		SubmittedBy: actor,
