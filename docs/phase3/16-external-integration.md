@@ -22,6 +22,8 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 - **回调契约**：taskrunner 按 job 定义回调 `POST /internal/jobs/<action_id>`（task_id + request_id + params，HTTP 头带 `X-Request-ID`）；**at-least-once——幂等是 zhuzhao 侧义务**（按 task_id+request_id 先查重）；5xx/超时自动重试、4xx 不重试、**2xx = 执行完全成功（P7 定案：无状态字段，业务失败映射 4xx/5xx）**；执行结果**只经查询接口获取，不推送**；**回调带 AK/SK 签名（2026-09-03 基线修订，覆盖 P5 原拍板——见 §9）**。
 - **日志边界**：zhuzhao 记「任务提交日志」（`{action, task_id, request_id}`，薄）+ 业务审计（`audit_logs`）；taskrunner 自维护 `job_runs`（细节不回传）；两边以 `request_id` 关联跨查。
 - **不做**：用户上传脚本（🚦 按需再启，选型见 [15](./15-script-platform-dagu-vs-inhouse.md)）；业务 handler；事件源（事件事实源仍是 zhuzhao L1）。
+- **目标架构注记（2026-09-07，taskrunner.md §2/§4 已入档，zhuzhao 侧镜像）**：zhuzhao 演进方向 = **API 网关 + IAM**（薄网关：鉴权、代理任务提交/查询，不持业务能力），业务数据与能力下沉各服务；**动作归属泛化为「能力属主服务」**——各服务挂自己的 `/internal/jobs/<action_id>` 端点，taskrunner 统一调度（xxl-job「一调度中心 + N 执行器」形态，模型零改动只认 `action_id + callback_url`）；多服务时代启用已预留的 `owner_service` 与多调用方 credential。「能力目录」（端点自注册）方案与之互为表里。**当前预置动作 handler 仍在 zhuzhao（=zhuzhao 自己的能力），薄化随业务迁移演进**。
+- **执行模型与后置项（2026-09-07，taskrunner.md §5/§8/§10 已入档，zhuzhao 侧知悉）**：worker 固定协程池、重试=asynq 延迟重投递非自循环、租约崩溃恢复（at-least-once 来源）；多副本部署配套 = cronloop 先加分布式锁。**后置项三则（🚦 场景触发）**：优先级队列（加权防饥饿，最多三档）、一次性延迟任务（asynq ProcessAt 原生，提交路径加可选参数）、编排（**红线：taskrunner 不做通用流程引擎**；首选外部 DAG 引擎逐节点调 API，最小替代 = job 定义 `on_success` 钩子 + `job_runs.result` 摘要列）。
 
 ### 1.2 activelist（M-A，动态数据模型平台）
 
@@ -79,6 +81,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022） | 已完成（E-⑤ 部门可见性收尾后 M-E 全齐） |
 | **E-⑤** | 部门可见性策略（E4）：策略表（**000023**，按 P1 拍板定形态：org code 即标签值、org/角色 → 可见标签集映射、多组织并集、平坦无树继承、空集 fail-closed、superadmin 全量）+ 管理端点 + 消费逻辑（ListJobs/CreateJob/UpdateJob 组装 dept 参数 + 写权限校验：目标 dept ∈ 本人标签集——**UpdateJob 改 dept = 转派，同规则**）。**范围含执行记录层（2026-09-04 补）**：`GET /runs` 组装 dept 过滤（剥用户自带参数）+ GetTask 校验 dept 后 404——**依赖 C11 taskrunner 契约变更**（runs dept 过滤参数 + task 响应补 dept 字段）；org code 不可变（Update 无 code 列）为标签稳定性前提；软删 org 的策略行清理随 BK-20 守卫批登记 | P1 + C11 | 2–3 天（含 runs 层与联调） |
 | E-⑥ | 终败通知端点（E6） | 🚦 后置 | — |
+| **E-⑦** | **E-⑤ 契约前置（2026-09-04 登记，2026-09-07 确认未实施）**：taskrunner 侧 `GET /v1/runs` 加 `dept` 多值过滤参数 + task 查询响应补 `dept` 字段（C11）；taskrunner client 侧 `PATCH /v1/jobs/{id}` → `POST /v1/jobs/update`、cancel/retry/trigger 三处 path 参数改 body（C10）——**M3 契约冻结前向 taskrunner 提出** | E-⑤ 前置 | taskrunner ~1 天 |
 
 > zhuzhao 侧 M-E 配套合计约 **5–7 人日**（不含批次 A 与 taskrunner 仓库自身 M1–M4）；13 号 M-E 行的 3–4 人日指 taskrunner 侧核心运行时，两侧并行。
 
@@ -87,6 +90,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 项 | 内容 | 依赖 / 挂靠 | 量级 |
 |---|---|---|---|
 | **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | ~1 周 |
+| **前置 · 契约整改（2026-09-07 审计确认未整改）** | activelist 契约未吸收 API 设计约定：① `PUT/DELETE /data/:type/:id` → `POST .../update` / `.../delete`（body 带 id+version）；② `POST .../:typeName/schema`、`/deprecate`、`/:id/restore` 动作进 URL → 收敛为 body 传参或经所有者确认豁免登记；③ id 传输未约定字符串序列化（BIGSERIAL → JS 精度）；④ 15 个设计提交未合入 main（契约 SSOT 在未合入分支）；⑤ 测试三档/迁移 up-down 成对未写入计划。**activelist 未开工=零成本窗口，契约冻结后改即成本** | activelist 仓库整改 + zhuzhao 16 号镜像同步 | 文档 ~1h |
 | **D-②** | D3 业务审计：**P2 已拍板**（SSOT = activelist ADR-003「审计落点机制」专节）——client 封装层同请求路径同步写 `activelist_audit_log` 表 + 失败落本地重投队列；`X-Request-ID` 优先透传入站 rid（03 §3.4）；脱敏/水位对账风险接受（钩子已预留） | 批次 B | 1–2 天 |
 | D-④ | D4 事件发布：zhuzhao **业务操作点**（client 封装层——反代路径之外的内部直调同样覆盖）对 activelist 的写操作成功后显式发布（M-E 就绪后接） | M-E | 随用 |
 | D-⑤ | D5 网络隔离：docker-compose 双 network | 部署期（activelist M-A6） | 部署项 |
@@ -208,3 +212,4 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 2026-09-04（批次 A 降级校准） | 文档对照检查发现策略库预设消费方已清零（E-④=L1 权限码 / E-②=AK/SK 验签 / E-⑤=参数级过滤——数据在独立库，L2 谓词前提不成立）：本文 §3 前置行 + design-decisions §25.3/§25.5 + authz.md §3.1 同步降级为**触发条件驱动**（zhuzhao 自有新资源需要 L2 时实施），E-⑤ 定位为手写路（§25.3 双路）不依赖策略库；批次 B 断言口径同步（明文 X-Operator 入 AK/SK 签名） |
 | 2026-09-04（API 设计约定 + E-⑤ 范围补全） | 所有者拍板 **API 设计约定**（基线新行：方法仅 GET/POST、POST URL 不携带业务信息；存量豁免=工单管理面 5 处 PUT/DELETE）。对照审计：taskrunner 4 处偏差 → **C10**（PATCH /jobs/:id → POST /jobs/update、cancel/retry/trigger 三处 path 参数改 body；client 同步）；zhuzhao E-② 回调 `/internal/jobs/:action_id` → `/internal/jobs/callback` + body.action_id（待改 ~2h，callback_url 由 zhuzhao 下发故 taskrunner 零改动）；activelist 未开工直接按约定写契约。**E-⑤ 行修正 + 范围补全**：策略表编号勘误 000022→000023；范围补执行记录层（runs dept 过滤 / GetTask dept 校验，修复「job 定义隔离但执行记录全公司可见」旁路）；org code 不可变（Update 无 code 列）升为显式前提；**新增 C11 契约变更**（/v1/runs 加 dept 多值过滤 + task 响应补 dept——M3 契约冻结前向 taskrunner 提出）；E-⑤ 量级修正 1–2 → 2–3 天（含 runs 层） |
 | 2026-09-04（密钥管理与完整性/防重放口径） | 所有者确认三项落基线：① **密钥管理**——容器挂载起步、单密钥可接受（代价已知：归因靠 actor 入签/撤销全局/无按方差异），DB 动态密钥 🚦（KeyGetter 接口已留）；② **body 完整性**——验签端自算哈希入签（generateBodyHash 模式），skipbody 联调稳定后关闭启用；③ **nonce 后置**——时间戳窗口为基线（调用以幂等提交+查询为主），非幂等敏感写出现时启用 Redis NonceStore。qingtao/aksk（第三方）定位 = 仅存量项目对接的兼容验签参考，生态内部格式以 utils `aksk` 为准 |
+| 2026-09-07（taskrunner 口径镜像 + activelist 整改登记） | 对照 taskrunner/activelist 仓库当日文档变更同步：① **目标架构注记镜像**（taskrunner.md §2/§4：zhuzhao 薄化为 API 网关+IAM、动作归属泛化「能力属主服务」、能力目录/owner_service 预留）→ §1.1/13 号 M-E 行已镜像；② **执行模型与后置项知悉**（协程池/租约/多副本+cronloop 分布式锁配套；后置=优先级队列/一次性延迟任务/编排红线不做通用引擎）→ §3 注记；③ **activelist 契约整改前置登记**（§4 新行：PUT/DELETE+动作进 URL 未整改、id 序列化未约定、15 提交未合入 main、测试/迁移纪律缺口——未开工零成本窗口）；**E-⑦ 登记**（E-⑤ 契约前置：taskrunner C10/C11，M3 冻结前） |
