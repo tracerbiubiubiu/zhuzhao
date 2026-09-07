@@ -1334,7 +1334,7 @@ type remoteUserQueryService struct {
 
 - **形态**：三个内置 Resource 实现（`org-member`/`owner-only`/`role-gated`）+ `Builtin(code, policy)` 一行注册；schema 约定（org_id/created_by 列）。
 - **策略逻辑与策略数据分离**：**事实进 DB**（谁绑什么角色/权限——已在做：casbin_rule/menu_apis/user_orgs），**语义进代码**（模块用哪个行级策略——与模块代码同生命周期，进 DB 只制造漂移面且无「不发版换策略」的变更场景）。K8s 内置 ClusterRole / AWS managed policy 同款取舍。
-- 消费方：M-E 的 zhuzhao 侧任务提交/回调端点（org-member）。
+- ~~消费方：M-E 的 zhuzhao 侧任务提交/回调端点（org-member）~~ **已清零（2026-09-04 校准）**：E-④ 落地为 L1 权限码（task:submit/read/manage）、E-② 为 AK/SK 验签、E-⑤ 为参数级过滤（数据在 taskrunner 独立库）——均不适用 L2 谓词。**内置策略适用前提：资源表在 zhuzhao 库（带 org_id/created_by 列）；跨库资源的过滤走参数级组装（E-⑤ 模式，属手写路）**。策略库降为触发驱动（25.5）。
 - **归属 zhuzhao 本仓，不进共享 utils**（2026-09-03 补充拍板）：消费者分析锁死——taskrunner 不做业务判定（通用调度）、activelist 零权限（网关 L1 挡住+数据全可见），**唯一消费者是 zhuzhao 自身**；且策略谓词绑定 zhuzhao 库 schema（user_orgs）——抽进共享 utils 等于让独立服务拿到「查 zhuzhao 库」的构件，违反 25.1 属主原则。共享 utils 抽取边界就此明确：**只抽无数据依赖的纯工具**（jsonutil/logger/response 类）。独立服务将来需要组员判定 → 走身份断言（25.2），不共享策略库。
 - **工单策略与策略库双路并存、永不合流**（2026-09-03 补充）：工单三轴+委托轴是工单特有语义，保持手写 Resource（`internal/service/ticket/`，冻结期原地封存，§23.1）；builtin 只服务普通模块。**策略的家=数据属主的家**：工单属主现为 zhuzhao 故在 zhuzhao；§23 主路径对接内部平台后行级判定随数据转移（zhuzhao 侧 645 行转对接参考资产）；翻案重启（§23 翻案条件命中）则解冻原位继续——Registry 双路设计即为此预留。内部平台行级表达力 vs zhuzhao 三轴的评估列入 M-Mig（13 号 §1）。
 
@@ -1342,12 +1342,12 @@ type remoteUserQueryService struct {
 
 2026-09-03 评估：网关化/taskrunner/activelist 三场景**无一构成演进触发**——网关=路由级 RBAC（Casbin 已满足）；taskrunner=成员 EXISTS；activelist=行级自治（Zanzibar 系恰要求关系集中注册，与独立库决策正面冲突）。授权关系是树形（ltree），PG+SQL 判定有一致性/索引/可测试优势。命中 11-authz §5 触发器时演进 =「换 L2/L3 判定后端」（ResourceAuthorizer 接缝），L1 Casbin 不动；届时 OpenFGA（API 友好）与 SpiceDB（一致性选项多）二选一。
 
-### 25.5 前置功能清单（M-E / M-A 动工前）
+### 25.5 前置功能清单（2026-09-04 校准：批次 A 降级触发驱动）
 
 | 批次 | 项 | 量级 | 挂靠 |
 |---|---|---|---|
-| A（M-E 前置） | 平台策略库：三策略实现 + Builtin 注册 + schema 约定 fail-fast + 正负向测试（AST 护栏泛化可选） | 2–3 天 | authz.md §3.1 |
-| B（M-A 前置） | 网关化：反代核心（前缀→上游注册表/ReverseProxy/错误映射）+ 身份断言（25.2 方案 A）+ API 级限流 + activelist API 入 menu_apis + proxy 审计跳 body（ADR-003 已设计） | ~1 周 | E13 泛化（ADR-003 蓝图保留） |
+| ~~A（M-E 前置）~~ → **触发驱动** | 平台策略库：三策略实现 + Builtin 注册 + schema 约定 fail-fast + 正负向测试（AST 护栏泛化可选）。**降级（2026-09-04）**：预设消费方随 M-E 实际落地清零——E-④ 走 L1 权限码（代理端点无行级）、E-② 走 AK/SK 验签（非用户请求）、E-⑤ 走参数级过滤（数据在 taskrunner 独立库，org-member 的 L2 谓词形态不适用——策略库前提「资源表在 zhuzhao 库」被「独立仓库+独立库」拍板推翻）。**触发条件 = zhuzhao 自有新资源（表在本库）需要 L2 行级过滤时实施** | 2–3 天（触发时） | authz.md §3.1（含前提注记） |
+| B（M-A 前置） | 网关化：反代核心（前缀→上游注册表/ReverseProxy/错误映射）+ 身份断言（**明文 X-Operator 入 AK/SK 签名覆盖**，25.2 基线修订；~~方案 A AT 验签~~ 降触发条件）+ API 级限流 + activelist API 入 menu_apis + proxy 审计跳 body（ADR-003 已设计） | ~1 周 | E13 泛化（ADR-003 蓝图保留；16 号 §4 细排） |
 | C（随手） | 密码复杂度（网关化后=门户责任）+ 本节落档 | 半天 | IW2 auth-enhance |
 
 **不做**：PDP 回调接口、策略配置进 DB/管理面（无消费方）、跨库判定、提前多实例（随 M1 触发条件）。

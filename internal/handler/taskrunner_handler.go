@@ -146,17 +146,18 @@ type jobIDReq struct {
 //	@Security		BearerAuth
 //	@Router			/api/v1/jobs/update [post]
 func (h *TaskrunnerHandler) UpdateJob(c *gin.Context) {
-	var req jobIDReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "job_id 必填")
-		return
-	}
-	body, err := c.GetRawData()
+	// 单次读 raw 再解字段：ShouldBindJSON 会耗尽 body，二次 GetRawData 拿到空
+	raw, err := c.GetRawData()
 	if err != nil {
 		response.BadRequest(c, "读取请求体失败")
 		return
 	}
-	data, err := h.svc.UpdateJob(c.Request.Context(), req.JobID, json.RawMessage(body), actorOf(c))
+	var req jobIDReq
+	if err := json.Unmarshal(raw, &req); err != nil || req.JobID == "" {
+		response.BadRequest(c, "job_id 必填")
+		return
+	}
+	data, err := h.svc.UpdateJob(c.Request.Context(), req.JobID, json.RawMessage(raw), actorOf(c))
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return

@@ -94,7 +94,7 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 
 // archiveTable 单表分批归档：写文件（含 flush）→ 删同批行，循环至无超期行。
 func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff time.Time) (exported, deleted int64, err error) {
-	runStamp := time.Now().Format("20060102-150405")
+	runStamp := time.Now().Format("20060102-150405.000000000") // 纳秒：同秒重叠运行不共用文件
 	path := filepath.Join(j.outDir, fmt.Sprintf("%s-%s.jsonl", table, runStamp))
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {

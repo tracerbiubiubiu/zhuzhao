@@ -164,7 +164,9 @@ func (w *PolicyEvalWriter) flusher(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			w.flushOnce(context.WithoutCancel(ctx))
+			fctx, fcancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer fcancel()
+			w.flushOnce(fctx) // 有界收尾：防 Redis 挂起阻塞退出（残留行重启续消）
 			return
 		case <-t.C:
 			w.flushOnce(ctx)

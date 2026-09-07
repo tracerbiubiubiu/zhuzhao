@@ -91,7 +91,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		NewApp,
 		// 从 *config.Config 中提取各子配置结构体，供基础设施 Provider 使用
 		wire.FieldsOf(new(*config.Config),
-			"Database", "Redis", "JWT", "Casbin", "Log",
+			"Database", "Redis", "JWT", "Casbin", "Log", "Audit", "InternalJobs", "Taskrunner",
 		),
 	)
 	return nil, nil, nil

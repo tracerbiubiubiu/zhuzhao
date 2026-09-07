@@ -205,9 +205,11 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 **内置策略**（`internal/pkg/resource/builtin.go`，判定构件全部复用现有：BFS 展开 / user_orgs 成员查询 / IW4 Unscoped 语义）：
 
+> **适用前提与状态（2026-09-04 校准）**：内置策略要求**资源表在 zhuzhao 库**（谓词在库内下推）——跨库资源（数据在 taskrunner/activelist 等独立库）不适用，其过滤走**参数级组装**（E-⑤ 部门可见性模式，属手写路）。预设消费方已随 M-E 实际落地清零（E-④=L1 权限码 / E-②=AK/SK 验签 / E-⑤=参数级），**策略库整体降为触发条件驱动**（design-decisions §25.5）：zhuzhao 自有新资源需要 L2 时实施，设计保留有效。
+
 | 策略 | 行级语义（GetFilter 谓词） | 单条语义（Authorize） | schema 约定 | 适用 |
 |---|---|---|---|---|
-| `org-member` | `org_id IN (SELECT org_id FROM user_orgs WHERE user_id=$1 AND (expires_at IS NULL OR expires_at > NOW()))` | 同款 EXISTS | 资源表必有 `org_id` | taskrunner 任务提交/回调端点（M-E 首个消费者） |
+| `org-member` | `org_id IN (SELECT org_id FROM user_orgs WHERE user_id=$1 AND (expires_at IS NULL OR expires_at > NOW()))` | 同款 EXISTS | 资源表必有 `org_id`（且在 zhuzhao 库） | zhuzhao 自有资源（触发驱动，暂无消费者） |
 | `owner-only` | `created_by = $1` | 同款等值 | 资源表必有 `created_by` | 个人数据类 |
 | `role-gated` | `Filter{Unscoped: true}`（无行级概念，IW4 显式豁免） | 恒 true（L1 权限码已挡） | 无 | 粗粒度模块 |
 

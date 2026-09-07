@@ -207,7 +207,12 @@ func (r *AuditLogRepo) ArchiveFetchBatch(ctx context.Context, table string, cuto
 		var id int64
 		for i, d := range desc {
 			name := string(d.Name)
-			obj[name] = values[i]
+			// JSONB/JSON 列（pgx 返回 []byte）原样嵌入，避免 json.Marshal base64 化
+			if b, ok := values[i].([]byte); ok && (d.DataTypeOID == 3802 || d.DataTypeOID == 114) {
+				obj[name] = json.RawMessage(b)
+			} else {
+				obj[name] = values[i]
+			}
 			if name == "id" {
 				if v, ok := values[i].(int64); ok {
 					id = v
