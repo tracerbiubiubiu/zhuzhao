@@ -55,6 +55,15 @@ log:
   max_backups: 7
   max_age: 30        # days
 
+# 审计归档（B11②/E-③）：库表 180 天热数据 → JSONL 归档（本地卷）；
+# 归档 JSONL 文件保留 395 天后周期清理（>180 等保口径留余量）
+audit:
+  archive:
+    retention_days: 180
+    batch_rows: 5000
+    out_dir: "data/archive"
+    file_retention_days: 395
+
 # 文件存储（Phase 2 启用）
 # storage:
 #   endpoint: "localhost:9000"     # MinIO / S3 兼容

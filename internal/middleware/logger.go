@@ -30,6 +30,22 @@ func RequestID() gin.HandlerFunc {
 }
 
 // isValidRequestID 本服务生成的 request_id 格式（req-{32 hex}）
+// operatorOf 取操作者（JWT 中间件注入 username；公开路由匿名）。
+func operatorOf(c *gin.Context) string {
+	if u := c.GetString("username"); u != "" {
+		return u
+	}
+	return "anonymous"
+}
+
+// truncStr 截断超长字符串（对齐基线"参数 4KB 截断"口径）。
+func truncStr(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
 func isValidRequestID(rid string) bool {
 	if len(rid) != 4+32 || rid[:4] != "req-" {
 		return false
@@ -67,6 +83,8 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		logger.Info("request",
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
+			slog.String("query", truncStr(c.Request.URL.RawQuery, 4096)),
+			slog.String("operator", operatorOf(c)),
 			slog.Int("status", c.Writer.Status()),
 			slog.Int("size", c.Writer.Size()),
 			slog.Duration("latency", time.Since(start)),

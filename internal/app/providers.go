@@ -116,7 +116,8 @@ func provideRegistry(w *audit.PolicyEvalWriter) resource.Registry {
 func provideJobsRegistry(repo *repository.AuditLogRepo, cfg config.AuditConfig, logger *slog.Logger) *jobs.Registry {
 	reg := jobs.NewRegistry()
 	reg.Register("audit_archive", service.NewAuditArchiveJob(repo,
-		cfg.Archive.RetentionDays, cfg.Archive.BatchRows, cfg.Archive.OutDir, logger))
+		cfg.Archive.RetentionDays, cfg.Archive.BatchRows, cfg.Archive.OutDir,
+		cfg.Archive.FileRetentionDays, logger))
 	return reg
 }
 

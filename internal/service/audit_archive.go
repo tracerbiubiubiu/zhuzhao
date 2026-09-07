@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
@@ -24,19 +25,23 @@ import (
 //     重试；重入安全：已归档行已删，重跑自然幂等）；
 //   - params 可选 {"retention_days": n} 覆盖保留期（排障/回填用）；非法值 → ErrAbort。
 type AuditArchiveJob struct {
-	repo          *repository.AuditLogRepo
-	retentionDays int
-	batchRows     int
-	outDir        string
-	logger        *slog.Logger
+	repo              *repository.AuditLogRepo
+	retentionDays     int
+	batchRows         int
+	outDir            string
+	fileRetentionDays int
+	logger            *slog.Logger
 }
 
-func NewAuditArchiveJob(repo *repository.AuditLogRepo, retentionDays, batchRows int, outDir string, logger *slog.Logger) *AuditArchiveJob {
+func NewAuditArchiveJob(repo *repository.AuditLogRepo, retentionDays, batchRows int, outDir string, fileRetentionDays int, logger *slog.Logger) *AuditArchiveJob {
 	if retentionDays <= 0 {
 		retentionDays = 180
 	}
 	if batchRows <= 0 {
 		batchRows = 5000
+	}
+	if fileRetentionDays <= 0 {
+		fileRetentionDays = 395 // >180 天库内归档口径，留余量
 	}
 	if outDir == "" {
 		outDir = "data/archive"
@@ -44,7 +49,38 @@ func NewAuditArchiveJob(repo *repository.AuditLogRepo, retentionDays, batchRows 
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &AuditArchiveJob{repo: repo, retentionDays: retentionDays, batchRows: batchRows, outDir: outDir, logger: logger}
+	return &AuditArchiveJob{repo: repo, retentionDays: retentionDays, batchRows: batchRows, outDir: outDir, fileRetentionDays: fileRetentionDays, logger: logger}
+}
+
+// cleanExpiredArchiveFiles 清理超过保留期的归档 JSONL 文件（磁盘有界）。
+// 失败仅告警不阻塞；文件含审计个人信息，保留口径 > 180 天库内归档（2026-09-07 拍板）。
+func (j *AuditArchiveJob) cleanExpiredArchiveFiles() {
+	entries, err := os.ReadDir(j.outDir)
+	if err != nil {
+		j.logger.Warn("audit_archive: 扫描归档目录失败", slog.String("dir", j.outDir), slog.Any("err", err))
+		return
+	}
+	cutoff := time.Now().AddDate(0, 0, -j.fileRetentionDays)
+	removed := 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			if rmErr := os.Remove(filepath.Join(j.outDir, e.Name())); rmErr != nil {
+				j.logger.Warn("audit_archive: 清理过期归档文件失败", slog.String("file", e.Name()), slog.Any("err", rmErr))
+			} else {
+				removed++
+			}
+		}
+	}
+	if removed > 0 {
+		j.logger.Info("audit_archive: 清理过期归档文件", slog.Int("removed", removed))
+	}
 }
 
 type archiveParams struct {
@@ -89,6 +125,7 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 				slog.Int64("deleted", deleted), slog.Int("retention_days", retention))
 		}
 	}
+	j.cleanExpiredArchiveFiles()
 	return firstErr
 }
 

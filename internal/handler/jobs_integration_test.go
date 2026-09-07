@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -40,7 +41,7 @@ func newCallbackRouter(t *testing.T, registry *jobs.Registry) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	repo := repository.NewJobSubmissionRepo(testPool)
-	svc := service.NewJobsCallbackService(registry, repo, nil)
+	svc := service.NewJobsCallbackService(registry, repo, slog.Default())
 	h := handler.NewJobsHandler(svc)
 	r := gin.New()
 	verifier := &aksk.Verifier{Keys: map[string][]byte{testAK: []byte(testSK)}}
@@ -102,6 +103,7 @@ func TestJobsCallbackAKSKVerify(t *testing.T) {
 	t.Run("signed 200", func(t *testing.T) {
 		t.Cleanup(func() { cleanupSubmission(t, "t-signed") })
 		w := signedPost(t, r, "it_echo", "t-signed", "req-signed", map[string]any{"k": 1}, testSK)
+		t.Logf("DEBUG signed_200 body: %s", w.Body.String())
 		require.Equal(t, 200, w.Code)
 		require.EqualValues(t, 1, n.Load())
 	})
@@ -184,7 +186,7 @@ func TestJobsCallbackAuditArchiveE2E(t *testing.T) {
 	registry := jobs.NewRegistry()
 	repo := repository.NewAuditLogRepo(testPool)
 	dir := t.TempDir()
-	registry.Register("audit_archive", service.NewAuditArchiveJob(repo, 5, 5000, dir, nil))
+	registry.Register("audit_archive", service.NewAuditArchiveJob(repo, 5, 5000, dir, 0, nil))
 	r := newCallbackRouter(t, registry)
 
 	// 种子：6 天前的行（保留期 5 天 → 归档对象）

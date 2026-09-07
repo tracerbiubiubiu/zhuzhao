@@ -53,7 +53,7 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 		return CallbackUnknownAction, "未注册的动作: " + in.Action
 	}
 
-	row, alreadyDone, err := s.repo.EnsureCallbackRow(ctx, in.TaskID, in.Action, in.Actor, in.SourceIP)
+	row, alreadyDone, err := s.repo.EnsureCallbackRow(ctx, in.TaskID, in.Action, in.Actor, in.SourceIP, string(in.Params))
 	if err != nil {
 		return CallbackRetryable, "回调受理失败"
 	}

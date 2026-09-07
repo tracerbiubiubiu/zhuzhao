@@ -78,7 +78,7 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 		return nil, err
 	}
 	// E5 提交凭证（薄）：{action, task_id, request_id}——request_id 由 repo 从 ctx 取
-	if _, err := s.subs.RecordSubmit(ctx, in.Action, resp.TaskID, actor, sourceIP); err != nil {
+	if _, err := s.subs.RecordSubmit(ctx, in.Action, resp.TaskID, actor, sourceIP, string(in.Params)); err != nil {
 		// 受理已成立，凭证记账失败不回滚用户侧结果（对账兜底：task_id 在 taskrunner 侧）
 		// ——与回调侧 MarkSucceeded 失败同款取舍
 		_ = err
@@ -97,7 +97,7 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 	}
 	// 提交凭证：trigger 的真实 action_id 在 taskrunner job 定义内（zhuzhao 不感知），
 	// 凭证记 action="trigger:<job_id>"，跨查锚点为 task_id + request_id
-	_, _ = s.subs.RecordSubmit(ctx, "trigger:"+jobID, resp.TaskID, actor, sourceIP)
+	_, _ = s.subs.RecordSubmit(ctx, "trigger:"+jobID, resp.TaskID, actor, sourceIP, "{}")
 	return resp, nil
 }
 

@@ -18,6 +18,7 @@ type JobSubmission struct {
 	TaskID      string
 	RequestID   string
 	Action      string
+	Params      string
 	Origin      string // api（zhuzhao 提交）/ callback（到达时补录，含 cron 触发）
 	Status      string // submitted / succeeded / failed
 	Error       string
@@ -45,17 +46,17 @@ func NewJobSubmissionRepo(db *pgxpool.Pool) *JobSubmissionRepo {
 	return &JobSubmissionRepo{db: db}
 }
 
-// RecordSubmit zhuzhao 侧提交凭证（E-④ 调用）：action + task_id + request_id 落档（薄）。
+// RecordSubmit zhuzhao 侧提交凭证（E-④ 调用）：action + task_id + request_id + params 快照落档。
 // task_id 冲突（调用方幂等重提）返回 nil 已存在行，不算错误。
-func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, submittedBy, sourceIP string) (*JobSubmission, error) {
+func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, submittedBy, sourceIP, params string) (*JobSubmission, error) {
 	row := &JobSubmission{}
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO job_submissions (task_id, request_id, action, origin, status, submitted_by, source_ip)
-		VALUES ($1, NULLIF($2, ''), $3, 'api', $4, NULLIF($5, ''), NULLIF($6, ''))
+		INSERT INTO job_submissions (task_id, request_id, action, params, origin, status, submitted_by, source_ip)
+		VALUES ($1, NULLIF($2, ''), $3, COALESCE(NULLIF($4, ''), '{}'), 'api', $5, NULLIF($6, ''), NULLIF($7, ''))
 		ON CONFLICT (task_id) DO NOTHING
 		RETURNING id, task_id, COALESCE(request_id, ''), action, origin, status,
 		          COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at`,
-		taskID, reqid.From(ctx), action, JobStatusSubmitted, submittedBy, sourceIP).Scan(
+		taskID, reqid.From(ctx), action, params, JobStatusSubmitted, submittedBy, sourceIP).Scan(
 		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Origin, &row.Status,
 		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
 	if err != nil {
@@ -68,10 +69,10 @@ func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, su
 func (r *JobSubmissionRepo) GetByTaskID(ctx context.Context, taskID string) (*JobSubmission, error) {
 	row := &JobSubmission{}
 	err := r.db.QueryRow(ctx, `
-		SELECT id, task_id, COALESCE(request_id, ''), action, origin, status,
+		SELECT id, task_id, COALESCE(request_id, ''), action, params, origin, status,
 		       COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at
 		FROM job_submissions WHERE task_id = $1`, taskID).Scan(
-		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Origin, &row.Status,
+		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Params, &row.Origin, &row.Status,
 		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrJobSubmissionNotFound
@@ -86,12 +87,12 @@ func (r *JobSubmissionRepo) GetByTaskID(ctx context.Context, taskID string) (*Jo
 //   - 无行（cron 触发/未落凭证）→ 补录 origin='callback' 行，返回 (row, false, nil)；
 //   - 已有行且 status=succeeded → 返回 (row, true, nil)——**调用方不得再执行**（幂等拦截）；
 //   - 已有行且 submitted/failed → 返回 (row, false, nil)，允许（重）执行。
-func (r *JobSubmissionRepo) EnsureCallbackRow(ctx context.Context, taskID, action, actor, sourceIP string) (*JobSubmission, bool, error) {
+func (r *JobSubmissionRepo) EnsureCallbackRow(ctx context.Context, taskID, action, actor, sourceIP, params string) (*JobSubmission, bool, error) {
 	if _, err := r.db.Exec(ctx, `
-		INSERT INTO job_submissions (task_id, request_id, action, origin, status, submitted_by, source_ip)
-		VALUES ($1, NULLIF($2, ''), $3, 'callback', $4, NULLIF($5, ''), NULLIF($6, ''))
+		INSERT INTO job_submissions (task_id, request_id, action, params, origin, status, submitted_by, source_ip)
+		VALUES ($1, NULLIF($2, ''), $3, COALESCE(NULLIF($4, ''), '{}'), 'callback', $5, NULLIF($6, ''), NULLIF($7, ''))
 		ON CONFLICT (task_id) DO NOTHING`,
-		taskID, reqid.From(ctx), action, JobStatusSubmitted, actor, sourceIP); err != nil {
+		taskID, reqid.From(ctx), action, params, JobStatusSubmitted, actor, sourceIP); err != nil {
 		return nil, false, fmt.Errorf("ensure callback row: %w", err)
 	}
 	row, err := r.GetByTaskID(ctx, taskID)
