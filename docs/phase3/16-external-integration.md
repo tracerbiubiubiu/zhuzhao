@@ -61,7 +61,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | # | 能力需求 | 现状 | 阻塞关系 |
 |---|---|---|---|
 | D1 | 共享 utils（logger/postgres 硬依赖；errcode/response/jsonutil/validate/crypto 按需） | **✅ 已完成**（v0.1.0 已 pin；`internal/pkg` 仅剩 errcode 别名 + resource——resource 按 §25.3 拍板留 zhuzhao 不抽） | 无 |
-| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳 body） | **零起步**（全仓无 ReverseProxy/SetForwardHeaders；Restrict 中间件不存在） | 不阻塞开发；**阻塞联调与上线**（activelist 零认证） |
+| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳 body） | **零起步**（全仓无 ReverseProxy/SetForwardHeaders；Restrict 中间件不存在） | 不阻塞开发；**阻塞联调与上线**（activelist 用户侧零权限） |
 | D3 | 业务审计记录（activelist 写接口返回变更后文档；zhuzhao 侧落审计；导入按批次） | 无 | 不阻塞开发；阻塞审计闭环验收（落点机制 ⚠️ P2） |
 | D4 | 事件发布（zhuzhao 业务操作点显式发布） | 依赖 M-E 就绪 | 无硬依赖（activelist 不感知事件） |
 | D5 | 网络隔离（双 network，仅 zhuzhao 容器可达 apiserver） | 部署层 | 部署期事项（activelist M-A6） |

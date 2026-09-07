@@ -1316,7 +1316,7 @@ type remoteUserQueryService struct {
 
 ### 25.1 PDP/PEP 分工（NIST 框架）
 
-- **PDP（规则定义）**：身份/角色/组织关系**集中一份**（zhuzhao：users/roles/user_orgs/org_roles + Casbin policy）；行级策略**按领域分布**（资源属主管自己数据的行规则；activelist 零认证薄层可零权限代码——网关权限码挡住+数据组内全可见）。
+- **PDP（规则定义）**：身份/角色/组织关系**集中一份**（zhuzhao：users/roles/user_orgs/org_roles + Casbin policy）；行级策略**按领域分布**（资源属主管自己数据的行规则；activelist 用户侧零权限薄层可零权限代码——网关权限码挡住+数据组内全可见）。
 - **PEP（判定执行）**：API 级在**网关**（CasbinAuth 中间件，对反代路由同样生效）；**行级必然在数据处**——行级判定等价于给属主查询加 WHERE，网关看不到属主库的行，**逻辑上不可能集中**。业界铁律：Google Zanzibar 的 Docs/Drive 内嵌 stub 自行发起 Check、K8s RBAC 在各 API server 执行、AWS IAM 策略集中但各服务是自己的 PEP、OPA bundle 集中分发 enforcement 分布执行——**没有任何系统把行级 PEP 放进网关**（Kong/Envoy+ext_authz 也只做认证+路由级）。
 - **落地分工**：身份集中（外部服务不建 users/roles 表）＋ 行级归属主 + 网关用集中身份库管 API 级。「每个服务一套角色库」是把行级策略误当全套。
 

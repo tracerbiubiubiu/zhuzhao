@@ -86,7 +86,7 @@ activelist 仓库 `docs/activelist.md` 设计了一个基于 MongoDB + Go 的动
 
 ### 需求澄清 · 最终画像与存储引擎（2026-09-03 追加）
 
-经需求逐条澄清，收敛后真实需求画像（完整表见 activelist 仓库 `docs/activelist.md` 收敛声明·最终画像）：任意自定义类型、字段= `int`/`string`/二者列表（无嵌套/关系）；activelist 零认证；查询=仅 id 分页 + 时间倒序；量级百万行内；**敏感高危数据 → 可靠**（存储加密暂不需要 ⚠️、日志脱敏仍需）；低频 Schema 演进；软删保留；导入导出 JSON + 幂等 + 并发；id 自增。
+经需求逐条澄清，收敛后真实需求画像（完整表见 activelist 仓库 `docs/activelist.md` 收敛声明·最终画像）：任意自定义类型、字段= `int`/`string`/二者列表（无嵌套/关系）；用户侧零权限（zhuzhao 网关统一）+ 服务间 AK/SK 验签（2026-09-03 基线修订）；查询=仅 id 分页 + 时间倒序；量级百万行内；**敏感高危数据 → 可靠**（存储加密已拍板不做——内网 + 审计一期不落字段值；日志脱敏暂不做——钩子预留）；低频 Schema 演进；软删保留；导入导出 JSON + 幂等 + 并发；id 自增。
 
 **存储引擎评审（PG 仍为最优，收敛后更无悬念）**：
 
@@ -127,9 +127,9 @@ col_<type>(
 | # | 能力需求 | zhuzhao 侧载体 | 状态 | 对 activelist 的阻塞关系 |
 |---|---------|---------------|------|------------------------|
 | D1 | 共享 utils：`logger` / `postgres`（硬依赖），`errcode` / `response` / `jsonutil` / `validate` / `crypto`（按需） | zhuzhao-utils 独立项目 | ✅ **已完成（2026-09-03 核验）**：v0.1.0 已发布并 pin（无 replace），9 包齐；resource 按 design-decisions §25.3 拍板留 zhuzhao 不抽 | 无（M-A 可直接引包） |
-| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body） | zhuzhao 批次 B 网关化（§25.5） | 蓝图 🚦（未开始） | **不阻塞开发；阻塞联调与上线**（activelist 零认证，无网关不能对外暴露） |
+| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body） | zhuzhao 批次 B 网关化（§25.5） | 蓝图 🚦（未开始） | **不阻塞开发；阻塞联调与上线**（activelist 用户侧零权限，无网关不能对外暴露） |
 | D3 | 业务审计记录（activelist 写接口返回变更后完整文档；zhuzhao 侧落审计；导入按批次） | zhuzhao client 封装层 + `activelist_audit_log` 表 | ✅ **已拍板（2026-09-03）**，机制见 activelist SSOT「审计落点机制」专节：client 层同请求路径同步写 + 本地重投队列；X-Request-ID 由 client 层生成透传（优先透传入站 rid）；脱敏/水位对账风险接受（钩子预留）；导入/导出按批次行 | **已解除阻塞**（zhuzhao 侧实现项：client 层 + 审计表；activelist 侧义务已定稿） |
-| D4 | 事件发布（zhuzhao 业务操作点显式发布；工单非首数据源，接入契约由 activelist 侧定义） | zhuzhao M-E taskrunner | 蓝图 🚦 | **无依赖**（activelist 不感知事件） |
+| D4 | 事件发布（zhuzhao 业务操作点显式发布；工单非首数据源，接入契约由 activelist 侧定义） | zhuzhao M-E taskrunner（平台已就绪：M1/M2 完成 2026-09-03，见 taskrunner 仓库） | ⏳ 平台就绪；activelist 事件接入待其成型 | **无依赖**（activelist 不感知事件） |
 | D5 | 网络隔离（双 network，仅 zhuzhao 容器可达 apiserver 8080） | 双方部署约定 | activelist 自理 docker-compose | 部署期事项（M-A6） |
 
 ## 待办
