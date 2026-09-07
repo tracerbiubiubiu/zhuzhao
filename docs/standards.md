@@ -56,7 +56,7 @@
 
 ## 5. 公共包（zhuzhao-utils）
 
-- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk（v0.1.0 已 pin）；
+- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk（**10 包；aksk 已实现未发版——随 v0.2.0 发版后各仓去 replace**，2026-09-04 审计校准）；
 - **抽取边界：只抽无数据依赖的纯工具**——绑定 zhuzhao 库 schema 的构件（如策略谓词）不进 utils（design-decisions §25.3）；
 - 版本策略：语义化版本，发版后各仓 pin（去 replace）；临时 replace 仅限联调窗口；
 - **新增第三方依赖必须说明理由与替代方案**（go.mod 铁律）；公共能力优先沉淀进 zhuzhao-utils 而非各仓自引。
