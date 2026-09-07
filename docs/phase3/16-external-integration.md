@@ -78,10 +78,10 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **E-①** | ✅ **已实施（2026-09-04）**：迁移 000020（判定日志表 + 两表加列）+ reqid ctx 注入 + Casbin 打点补 rid + registry EvalHook 埋点 + L2 writer（P3 管道）——[03 §3](./03-audit-l2.md)；B11② 归档前提已就绪 | 已完成 |
 | **E-②** | ✅ **已实施（2026-09-04）**：`/internal/jobs/:action_id`（AK/SK 验签 utils `aksk` + config `internal_jobs`（默认关，SK 缺失拒启））+ `internal/pkg/jobs` 注册表 + `job_submissions` 一表两用（000021：提交凭证 + 回调幂等栅栏——succeeded 拦重复、failed 容重试）+ P6/P7 契约落地（未知动作 404 / ErrAbort→409 / 其他→500）；utils 暂以 go.mod 本地 replace 引用（发 v0.2.0 后删除）。**路径演进 ✅ 已实施（2026-09-07，随 C10 批）**：`POST /internal/jobs/callback` + body.action（见 §9 API 约定行）；缺省 callback_url 拼接同步（P0 复审修复）+ action 缺失 400 负向 | 已完成（audit_archive 注册随 E-③） |
 | **E-③** | ✅ **已实施（2026-09-04）**：`audit_archive` 注册进 jobs Registry——JSONL 导出（fsync）→ 同批删行（崩溃窗口仅重复不丢）；保留期 180 天默认/config/params 三级；单表失败跳过、失败→5xx 可重试；[03 §4](./03-audit-l2.md)；**E2E 已预演**（签名回调全链，M3 联调仅剩部署侧） | 已完成 |
-| **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022） | 已完成（E-⑤ 部门可见性收尾后 M-E 全齐） |
-| **E-⑤** | 部门可见性策略（E4）：策略表（**000023**，按 P1 拍板定形态：org code 即标签值、org/角色 → 可见标签集映射、多组织并集、平坦无树继承、空集 fail-closed、superadmin 全量）+ 管理端点 + 消费逻辑（ListJobs/CreateJob/UpdateJob 组装 dept 参数 + 写权限校验：目标 dept ∈ 本人标签集——**UpdateJob 改 dept = 转派，同规则**）。**范围含执行记录层（2026-09-04 补）**：`GET /runs` 组装 dept 过滤（剥用户自带参数）+ GetTask 校验 dept 后 404——**依赖 C11 taskrunner 契约变更**（runs dept 过滤参数 + task 响应补 dept 字段）；org code 不可变（Update 无 code 列）为标签稳定性前提；软删 org 的策略行清理随 BK-20 守卫批登记 | P1 + C11 | 2–3 天（含 runs 层与联调） |
+| **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022） | 已完成（~~E-⑤ 部门可见性收尾后 M-E 全齐~~ **E-⑤ 口径简化后 M-E 已全齐**：dept 仅筛选标签，全员可见） |
+| **E-⑤** | ~~部门可见性策略~~ **口径简化（2026-09-07 所有者拍板）：全员可见，dept 仅作筛选标签**——任务定义带归属标签、列表/查询按 dept 过滤（C11 链路已就绪：runs dept 多值过滤 + task 响应回显 + Submit/Jobs 透传），zhuzhao 侧零新增。~~000023 策略表与可见性组装~~ 降 🚦 触发驱动（触发条件 = 出现跨部门隔离管控需求或任务参数敏感化；启用时 dept 快照列/过滤链路零迁移，仅增量策略表+组装）；软删 org 策略行清理随触发时一并考虑 | ~~P1 + C11~~ C11 已就绪 | 触发时 |
 | E-⑥ | 终败通知端点（E6） | 🚦 后置 | — |
-| **E-⑦** | **E-⑤ 契约前置（2026-09-04 登记，2026-09-07 确认未实施）**：taskrunner 侧 `GET /v1/runs` 加 `dept` 多值过滤参数 + task 查询响应补 `dept` 字段（C11）；taskrunner client 侧 `PATCH /v1/jobs/{id}` → `POST /v1/jobs/update`、cancel/retry/trigger 三处 path 参数改 body（C10）——**M3 契约冻结前向 taskrunner 提出** | E-⑤ 前置 | taskrunner ~1 天 |
+| **E-⑦** | ~~E-⑤ 契约前置~~ ✅ **已实施（2026-09-07，taskrunner 99003bd + zhuzhao 9161a5b/c9ab2a8）**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试（缺标识 400/旧路由 404/不存在 dept 空列表） | 已完成 |
 
 > zhuzhao 侧 M-E 配套合计约 **5–7 人日**（不含批次 A 与 taskrunner 仓库自身 M1–M4）；13 号 M-E 行的 3–4 人日指 taskrunner 侧核心运行时，两侧并行。
 
@@ -117,7 +117,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 000020 | `policy_evaluation_logs`（B11① 判定日志，03 §3.2 DDL 草案）+ **`audit_logs` / `ticket_events` 各加 `request_id` 列**（03 §3.4 全链路关联，一次迁移合并） | M-E / M1 |
 | 000021 | 任务提交日志 + 幂等表（`{action, task_id, request_id, ...}`，E1/E5 一表两用） | M-E |
 | 000022 | ✅ 任务管理菜单 + 权限码 seed（task:submit/read/manage + menu_apis，**E-④ 实施时占用**） | M-E（已落） |
-| 000023 | 部门可见性策略表（P1 已拍板 org code 复用；E-⑤ 实施时占用） | M-E |
+| ~~000023~~ | 部门可见性策略表 **🚦 后置**（2026-09-07 E-⑤ 口径简化：全员可见+dept 筛选已就绪，可见性组装无消费方；**编号暂不占用**，触发=跨部门隔离管控需求，启用时按 A2 核对） | M-E 后置 |
 | seed | 任务管理权限码（如 `task:submit` / `task:manage` / `task:read`，命名随实现定）+ 菜单 | M-E |
 | — | activelist 侧表全部在 activelist 自有数据库（zhuzhao 零迁移） | M-A |
 
@@ -125,7 +125,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | # | 决策项 | 建议 |
 |---|---|---|
-| P1 | ~~dept 归属标签语义~~ | ✅ **已拍板（2026-09-03）：复用 org 树**——org code 即标签值，新建策略表存「org/角色 → 可见标签集」映射，用户多组织按并集；不新造部门维度；org code 变更即标签变更（低频、可追溯、随 M-HR 对齐） |
+| P1 | ~~dept 归属标签语义~~ | ✅ **已拍板（2026-09-03）：复用 org 树**——org code 即标签值，新建策略表存「org/角色 → 可见标签集」映射，用户多组织按并集；不新造部门维度；org code 变更即标签变更（低频、可追溯、随 M-HR 对齐）。**演进（2026-09-07 所有者拍板）：先简化为「全员可见 + dept 筛选标签」**——策略表/可见性组装 🚦 后置（触发=跨部门隔离管控需求或任务参数敏感化）；dept 快照列/过滤链路已就绪，升级零迁移 |
 | P2 | ~~D3 activelist 审计落点~~ | ✅ **已拍板（SSOT = activelist ADR-003「审计落点机制」专节）**：client 封装层同请求路径同步写 `activelist_audit_log` 表 + 失败落本地重投队列；X-Request-ID 由 client 层生成透传；导入/导出按批次行；脱敏暂不做（风险接受，E13 accesslog 跳 body 使敏感值只落审计表一处）；~~水位对账~~ 暂缓风险接受（version 单调递增，将来补对账成本低） |
 | P3 | ~~03 号 U1/D2 审计管道~~ | ✅ **已拍板（2026-09-03）：异步写**——channel → Redis List（AOF）→ 批量落库 goroutine（03 号 §2/§7 D1 已同步；选 Redis 而非纯协程管道：鉴权链对 Redis 本就 fail-close，writer 依赖零新增风险、持久化免费）；fail-open 随 E-① 实现确认。**附带登记关联键缺口（03 号 §3.4）**：request_id 现未注入 request context、audit_logs 无该列——E-① 需补（trace_id = request_id），打通 taskrunner job_runs 跨查链 |
 | P4 | ~~03 号 D3 归档存储位置~~ | ✅ **已拍板（2026-09-03）：本地 JSONL（Docker 卷）+ 纳入宿主卷备份**，对象存储后置；注意点已登记：删库重建场景归档不随 PG dump 回来，180 天等保口径靠卷备份覆盖——入 M-Mig 部署清单 |
@@ -212,4 +212,5 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 2026-09-04（批次 A 降级校准） | 文档对照检查发现策略库预设消费方已清零（E-④=L1 权限码 / E-②=AK/SK 验签 / E-⑤=参数级过滤——数据在独立库，L2 谓词前提不成立）：本文 §3 前置行 + design-decisions §25.3/§25.5 + authz.md §3.1 同步降级为**触发条件驱动**（zhuzhao 自有新资源需要 L2 时实施），E-⑤ 定位为手写路（§25.3 双路）不依赖策略库；批次 B 断言口径同步（明文 X-Operator 入 AK/SK 签名） |
 | 2026-09-04（API 设计约定 + E-⑤ 范围补全） | 所有者拍板 **API 设计约定**（基线新行：方法仅 GET/POST、POST URL 不携带业务信息；存量豁免=工单管理面 5 处 PUT/DELETE）。对照审计：taskrunner 4 处偏差 → **C10**（PATCH /jobs/:id → POST /jobs/update、cancel/retry/trigger 三处 path 参数改 body；client 同步）；zhuzhao E-② 回调 `/internal/jobs/:action_id` → `/internal/jobs/callback` + body.action（~~待改 ~2h~~ ✅ **2026-09-07 拍板**，callback_url 由 zhuzhao 下发故 taskrunner 零改动）；activelist 未开工直接按约定写契约。**E-⑤ 行修正 + 范围补全**：策略表编号勘误 000022→000023；范围补执行记录层（runs dept 过滤 / GetTask dept 校验，修复「job 定义隔离但执行记录全公司可见」旁路）；org code 不可变（Update 无 code 列）升为显式前提；**新增 C11 契约变更**（/v1/runs 加 dept 多值过滤 + task 响应补 dept——M3 契约冻结前向 taskrunner 提出）；E-⑤ 量级修正 1–2 → 2–3 天（含 runs 层） |
 | 2026-09-04（密钥管理与完整性/防重放口径） | 所有者确认三项落基线：① **密钥管理**——容器挂载起步、单密钥可接受（代价已知：归因靠 actor 入签/撤销全局/无按方差异），DB 动态密钥 🚦（KeyGetter 接口已留）；② **body 完整性**——验签端自算哈希入签（generateBodyHash 模式），skipbody 联调稳定后关闭启用；③ **nonce 后置**——时间戳窗口为基线（调用以幂等提交+查询为主），非幂等敏感写出现时启用 Redis NonceStore。qingtao/aksk（第三方）定位 = 仅存量项目对接的兼容验签参考，生态内部格式以 utils `aksk` 为准 |
+| 2026-09-07（E-⑤ 口径简化） | 所有者拍板：**全员可见，dept 仅作筛选标签**（暂不做部门级可见性隔离）——E-⑤ 主体（000023 策略表/可见性组装/写校验）全部取消，**C11 链路即最终形态**（runs dept 多值过滤/task 响应回显 dept/Submit·Jobs 透传均已就绪）；000023 策略表 🚦 后置（编号暂不占用），可见性组装触发条件 = 跨部门隔离管控需求或任务参数敏感化；E-⑦ 契约前置随 C10/C11 已实施关闭；E-④ 行状态修正（M-E 全齐） |
 | 2026-09-07（taskrunner 口径镜像 + activelist 整改登记） | 对照 taskrunner/activelist 仓库当日文档变更同步：① **目标架构注记镜像**（taskrunner.md §2/§4：zhuzhao 薄化为 API 网关+IAM、动作归属泛化「能力属主服务」、能力目录/owner_service 预留）→ §1.1/13 号 M-E 行已镜像；② **执行模型与后置项知悉**（协程池/租约/多副本+cronloop 分布式锁配套；后置=优先级队列/一次性延迟任务/编排红线不做通用引擎）→ §3 注记；③ **activelist 契约整改前置登记**（§4 新行：PUT/DELETE+动作进 URL 未整改、id 序列化未约定、15 提交未合入 main、测试/迁移纪律缺口——未开工零成本窗口）；**E-⑦ 登记**（E-⑤ 契约前置：taskrunner C10/C11，M3 冻结前） |
