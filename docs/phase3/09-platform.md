@@ -56,7 +56,7 @@
 - `api_keys` 表：`(key_id, secret_hash, owner, scope, expires_at, enabled)`；KeyId 明文 + Secret 哈希存储（不落明文）。
 - 鉴权：`X-Api-Key: <key_id>.<secret>` → 校验哈希 + 有效期 + scope 限制。
 - 管理面：管理员签发/吊销/轮换（权限码 `api_key:manage`，⚠️ seed 待定）。
-- ⚠️ 与 activelist 的身份断言区分（ADR-003 + design-decisions §25.2）：activelist 经网关访问走**方案 A（AT 原样透传 + 属主共享公钥验签）**——~~X-Operator 明文透传~~ 为被取代的方案 B 类（明文断言头，有伪造面）；AK/SK 用于非内网或需要独立凭据的场景。
+- ⚠️ 与内部服务间鉴权区分（ADR-003 + design-decisions §25.2 + 16 号 §9 基线修订）：**内部服务间**已拍板 AK/SK HMAC 签名（明文 `X-Operator` 入签名覆盖）；本节 AK/SK 指**外部 M2M 调用方**的平台凭据，签名算法复用 utils `aksk`、仅新建管理面。历史注记：~~「activelist 走方案 A（AT 验签）、X-Operator 明文为被取代方案」~~ 已被 2026-09-03 AK/SK 基线修订覆盖——现状为**明文 X-Operator 入签名覆盖，方案 A（AT 验签）降为触发条件驱动**。
 
 ### 3.3 验收
 

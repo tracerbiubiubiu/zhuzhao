@@ -38,9 +38,10 @@ make swag              # 重新生成 Swagger
 
 ## 代码约定
 
+- **工程公约 SSOT = [docs/standards.md](docs/standards.md)**（适用 zhuzhao/taskrunner/activelist 全生态）：API 设计（仅 GET/POST、POST URL 不携带业务信息）、服务间 AK/SK HMAC、Wire 分层、公共包边界、可观测性、权限架构、迁移规范、安全基线——**新端点/新服务/新迁移先对表，不在对话里逐次重申**。
 - 遵循现有分层：`handler → service → repository`，工单在 `internal/service/ticket/`（领域隔离，为未来拆分准备）。
 - 权限判定统一走三层鉴权，不在业务层手写绕过。
-- 错误处理用 `internal/pkg/errcode`，DB 错误经 `pgerr.go` 映射，禁止 raw 500 泄漏内部细节。
+- 错误处理用 `internal/pkg/errcode`（已升格 zhuzhao-utils），DB 错误经 `pgerr.go` 映射，禁止 raw 500 泄漏内部细节。
 - 新增依赖（go.mod）必须说明理由与替代方案。
 
 ## 文档同步
