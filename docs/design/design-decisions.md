@@ -1312,7 +1312,7 @@ type remoteUserQueryService struct {
 
 ## 25. 权限架构定版：PDP/PEP 分工、统一网关边界与平台策略库（2026-09-03 讨论定稿）
 
-**背景**：§23 重定位后主链为 M-E（taskrunner，独立仓库+独立部署）+ M-A（activelist，零认证薄层）；zhuzhao 定位为**统一对外网关**（§13 M-E 拍板已含「zhuzhao 作网关：鉴权/编排/业务审计」）。本节定版权限侧结论，作为 M-E/M-A 权限前置的 SSOT。
+**背景**：§23 重定位后主链为 M-E（taskrunner，独立仓库+独立部署）+ M-A（activelist，用户侧零权限薄层——服务间 AK/SK 验签，§9 基线）；zhuzhao 定位为**统一对外网关**（§13 M-E 拍板已含「zhuzhao 作网关：鉴权/编排/业务审计」）。本节定版权限侧结论，作为 M-E/M-A 权限前置的 SSOT。
 
 ### 25.1 PDP/PEP 分工（NIST 框架）
 

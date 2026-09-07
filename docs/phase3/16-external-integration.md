@@ -27,7 +27,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 ### 1.2 activelist（M-A，动态数据模型平台）
 
-- **形态**：独立服务 + 独立库 + **独立数据库**（与工单库故障隔离）；**零认证薄层**（无网关不能对外暴露）；进程 3→1（仅 apiserver）。
+- **形态**：独立服务 + 独立库 + **独立数据库**（与工单库故障隔离）；**无用户认证薄层**（用户侧收敛 zhuzhao 网关；服务间 AK/SK 验签随批次 B，§9）；进程 3→1（仅 apiserver）。
 - **职责收敛后唯一职责**：类型注册 / Schema 演进（方案 D：单一当前版本、数据行不带 `schema_version`、破坏性变更懒执行）/ 动态字段校验 / 数据 CRUD / 存储（PG 每类型表 + `data` JSONB、id 自增、乐观锁、软删保留）；导入幂等 = **全量替换**（单事务清表重插、保留源 id、不需要业务唯一键）；查询 = 仅 id 分页 + 时间倒序。
 - **移交 zhuzhao**：事件（zhuzhao 业务操作点显式发布，activelist 不感知）与审计（activelist 写接口返回变更后完整文档，zhuzhao 侧记录，落点机制 ⚠️ 待拍板）。
 
@@ -78,7 +78,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **E-①** | ✅ **已实施（2026-09-04）**：迁移 000020（判定日志表 + 两表加列）+ reqid ctx 注入 + Casbin 打点补 rid + registry EvalHook 埋点 + L2 writer（P3 管道）——[03 §3](./03-audit-l2.md)；B11② 归档前提已就绪 | 已完成 |
 | **E-②** | ✅ **已实施（2026-09-04）**：`/internal/jobs/:action_id`（AK/SK 验签 utils `aksk` + config `internal_jobs`（默认关，SK 缺失拒启））+ `internal/pkg/jobs` 注册表 + `job_submissions` 一表两用（000021：提交凭证 + 回调幂等栅栏——succeeded 拦重复、failed 容重试）+ P6/P7 契约落地（未知动作 404 / ErrAbort→409 / 其他→500）；utils 暂以 go.mod 本地 replace 引用（发 v0.2.0 后删除）。**路径演进 ✅ 已实施（2026-09-07，随 C10 批）**：`POST /internal/jobs/callback` + body.action（见 §9 API 约定行）；缺省 callback_url 拼接同步（P0 复审修复）+ action 缺失 400 负向 | 已完成（audit_archive 注册随 E-③） |
 | **E-③** | ✅ **已实施（2026-09-04）**：`audit_archive` 注册进 jobs Registry——JSONL 导出（fsync）→ 同批删行（崩溃窗口仅重复不丢）；保留期 180 天默认/config/params 三级；单表失败跳过、失败→5xx 可重试；[03 §4](./03-audit-l2.md)；**E2E 已预演**（签名回调全链，M3 联调仅剩部署侧） | 已完成 |
-| **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022） | 已完成（~~E-⑤ 部门可见性收尾后 M-E 全齐~~ **E-⑤ 口径简化后 M-E 已全齐**：dept 仅筛选标签，全员可见） |
+| **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5）+ 权限码 task:submit/read/manage + 菜单 seed（000022）；**前端任务管理页**（[12 号能力地图](./12-frontend.md)已登记）按前端后置策略随 M3 联调排期 | 已完成（~~E-⑤ 部门可见性收尾后 M-E 全齐~~ **E-⑤ 口径简化后 M-E 已全齐**：dept 仅筛选标签，全员可见） |
 | **E-⑤** | ~~部门可见性策略~~ **口径简化（2026-09-07 所有者拍板）：全员可见，dept 仅作筛选标签**——任务定义带归属标签、列表/查询按 dept 过滤（C11 链路已就绪：runs dept 多值过滤 + task 响应回显 + Submit/Jobs 透传），zhuzhao 侧零新增。~~000023 策略表与可见性组装~~ 降 🚦 触发驱动（触发条件 = 出现跨部门隔离管控需求或任务参数敏感化；启用时 dept 快照列/过滤链路零迁移，仅增量策略表+组装）；软删 org 策略行清理随触发时一并考虑 | ~~P1 + C11~~ C11 已就绪 | 触发时 |
 | E-⑥ | 终败通知端点（E6） | 🚦 后置 | — |
 | **E-⑦** | ~~E-⑤ 契约前置~~ ✅ **已实施（2026-09-07，taskrunner 99003bd + zhuzhao 9161a5b/c9ab2a8）**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试（缺标识 400/旧路由 404/不存在 dept 空列表） | 已完成 |

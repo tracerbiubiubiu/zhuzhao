@@ -66,7 +66,7 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 + [ops/deployment](../ops/deployment.md) | 已编写（2026-09-02） |
 | **工单业务能力** | [ticket-business](./10-ticket-business.md) | **SLA 计时/违约告警、站内通知、邮件通知、多级审批流（手写 BranchedStateEngine）、自动分派规则、工单报表**（进程内实现，事件用 L1 机制） | 本修订新增 |
 | **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 已编写（2026-08-31） |
-| **外部能力集成** | [16-external-integration](./16-external-integration.md)（契约 SSOT：taskrunner / activelist 两仓库文档；[ADR-003](../adr/ADR-003-activelist-integration-form.md) 为镜像） | **taskrunner**（事件/任务总线，M-E，独立仓库+独立部署）+ **activelist**（动态数据模型薄层，M-A，独立实现：独立库+独立数据库+零认证）；zhuzhao 侧前置 = 批次 A 策略库 / 批次 B 网关化（design-decisions §25.5） | **已决策（2026-09-03 定稿）**；zhuzhao 侧配套见 16 号 |
+| **外部能力集成** | [16-external-integration](./16-external-integration.md)（契约 SSOT：taskrunner / activelist 两仓库文档；[ADR-003](../adr/ADR-003-activelist-integration-form.md) 为镜像） | **taskrunner**（事件/任务总线，M-E，独立仓库+独立部署）+ **activelist**（动态数据模型薄层，M-A，独立实现：独立库+独立数据库+无用户认证/服务间 AK/SK 验签）；zhuzhao 侧前置 = ~~批次 A 策略库~~ **降级触发驱动（校准）** / 批次 B 网关化（design-decisions §25.5） | **已决策（2026-09-03 定稿）**；zhuzhao 侧配套见 16 号 |
 
 > **工单业务能力实现方式**：Phase 3 不依赖 L2 Outbox，采用 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 定义的三档事件机制中的 **L1**（DB 持久化 + 轮询补偿 + 分布式锁，长期稳态见 ADR-001）+ Asynq（ADR-002），保证进程崩溃不丢、多实例不重复消费。L2 升级时业务逻辑不变，只换调度器。
 
