@@ -29,7 +29,7 @@ func NewJobsCallbackService(registry *jobs.Registry, repo *repository.JobSubmiss
 type CallbackInput struct {
 	TaskID    string
 	RequestID string
-	Action    string // 来自路径 action_id
+	Action    string // 来自回调 body.action_id（C10：标识在 body）
 	Params    json.RawMessage
 	Actor     string
 	SourceIP  string

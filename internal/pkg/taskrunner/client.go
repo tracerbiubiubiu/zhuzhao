@@ -130,29 +130,31 @@ func (c *Client) CreateJob(ctx context.Context, body json.RawMessage, actor stri
 	return out, c.do(ctx, http.MethodPost, "/v1/jobs", nil, body, actor, &out)
 }
 
-// UpdateJob PATCH /v1/jobs/{id}（cron/params/启停；生效 ≤ 下个 cronloop tick）。
+// UpdateJob POST /v1/jobs/update（C10：标识在 body；body 由 service 层构造、含 job_id）。
 func (c *Client) UpdateJob(ctx context.Context, jobID string, body json.RawMessage, actor string) (json.RawMessage, error) {
 	var out json.RawMessage
-	return out, c.do(ctx, http.MethodPatch, "/v1/jobs/"+url.PathEscape(jobID), nil, body, actor, &out)
+	return out, c.do(ctx, http.MethodPost, "/v1/jobs/update", nil, body, actor, &out)
 }
 
-// TriggerJob POST /v1/jobs/{id}/trigger（手动执行一次，前端「立即执行」）。
+// TriggerJob POST /v1/jobs/trigger（手动执行一次，前端「立即执行」；body 带 job_id）。
 func (c *Client) TriggerJob(ctx context.Context, jobID, actor, sourceIP string) (*SubmitResponse, error) {
-	body := map[string]interface{}{"actor": actor, "source_ip": sourceIP, "request_id": reqid.From(ctx)}
+	body := map[string]interface{}{"job_id": jobID, "actor": actor, "source_ip": sourceIP, "request_id": reqid.From(ctx)}
 	var out SubmitResponse
-	return &out, c.do(ctx, http.MethodPost, "/v1/jobs/"+url.PathEscape(jobID)+"/trigger", nil, body, actor, &out)
+	return &out, c.do(ctx, http.MethodPost, "/v1/jobs/trigger", nil, body, actor, &out)
 }
 
-// CancelTask POST /v1/tasks/{id}/cancel（仅未开始；执行中 409）。
+// CancelTask POST /v1/tasks/cancel（仅未开始；执行中 409；body 带 task_id）。
 func (c *Client) CancelTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	body := map[string]interface{}{"task_id": taskID}
 	var out json.RawMessage
-	return out, c.do(ctx, http.MethodPost, "/v1/tasks/"+url.PathEscape(taskID)+"/cancel", nil, map[string]interface{}{}, actor, &out)
+	return out, c.do(ctx, http.MethodPost, "/v1/tasks/cancel", nil, body, actor, &out)
 }
 
-// RetryTask POST /v1/tasks/{id}/retry（失败/死信重试）。
+// RetryTask POST /v1/tasks/retry（失败/死信重试；body 带 task_id）。
 func (c *Client) RetryTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	body := map[string]interface{}{"task_id": taskID}
 	var out json.RawMessage
-	return out, c.do(ctx, http.MethodPost, "/v1/tasks/"+url.PathEscape(taskID)+"/retry", nil, map[string]interface{}{}, actor, &out)
+	return out, c.do(ctx, http.MethodPost, "/v1/tasks/retry", nil, body, actor, &out)
 }
 
 // ListDeadLetters GET /v1/dead-letters（运维向）。

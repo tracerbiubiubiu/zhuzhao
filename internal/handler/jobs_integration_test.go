@@ -45,7 +45,7 @@ func newCallbackRouter(t *testing.T, registry *jobs.Registry) *gin.Engine {
 	r := gin.New()
 	verifier := &aksk.Verifier{Keys: map[string][]byte{testAK: []byte(testSK)}}
 	g := r.Group("/internal", aksk.GinMiddleware(verifier, nil))
-	g.POST("/jobs/:action_id", h.Callback)
+	g.POST("/jobs/callback", h.Callback)
 	return r
 }
 
@@ -53,9 +53,9 @@ func newCallbackRouter(t *testing.T, registry *jobs.Registry) *gin.Engine {
 func signedPost(t *testing.T, r *gin.Engine, action, taskID, requestID string, params map[string]any, sk string) *httptest.ResponseRecorder {
 	t.Helper()
 	body, _ := json.Marshal(map[string]any{
-		"task_id": taskID, "request_id": requestID, "params": params, "actor": "10001",
+		"task_id": taskID, "action": action, "request_id": requestID, "params": params, "actor": "10001",
 	})
-	req := httptest.NewRequest(http.MethodPost, "/internal/jobs/"+action, bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/internal/jobs/callback", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if sk != "" {
 		aksk.Sign(req, body, aksk.SignOptions{AK: testAK, SK: []byte(sk), RequestID: requestID, Operator: "10001"})

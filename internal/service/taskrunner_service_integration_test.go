@@ -28,7 +28,7 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 		gotBody = string(buf)
 		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"task_id": "t-e4-1", "accepted": true}})
 	})
-	fake.POST("/v1/jobs/:id/trigger", func(c *gin.Context) {
+	fake.POST("/v1/jobs/trigger", func(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"task_id": "t-e4-2", "accepted": true}})
 	})
 	srv := httptest.NewServer(fake)

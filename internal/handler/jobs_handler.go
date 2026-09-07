@@ -27,7 +27,8 @@ func NewJobsHandler(svc *service.JobsCallbackService) *JobsHandler {
 // jobCallbackBody 回调请求体（taskrunner callback client 契约字段）。
 type jobCallbackBody struct {
 	TaskID    string          `json:"task_id" binding:"required"`
-	RequestID string          `json:"request_id"` // taskrunner 侧关联键（cron 触发为空）
+	Action    string          `json:"action" binding:"required"` // C10：标识在 body，URL 统一 /internal/jobs/callback
+	RequestID string          `json:"request_id"`                // taskrunner 侧关联键（cron 触发为空）
 	Params    json.RawMessage `json:"params"`
 	Actor     string          `json:"actor"` // 原始提交人工号（审计归因回传）
 	SourceIP  string          `json:"source_ip"`
@@ -40,9 +41,8 @@ type jobCallbackBody struct {
 //	@Tags			internal-jobs
 //	@Accept			json
 //	@Produce		json
-//	@Param			action_id path string true "action_id"
 //	@Success		200 {object} response.Response
-//	@Router			/internal/jobs/{action_id} [post]
+//	@Router			/internal/jobs/callback [post]
 //
 // Executed/Idempotent→2xx；UnknownAction→404；NonRetryable→409；Retryable→500。
 func (h *JobsHandler) Callback(c *gin.Context) {
@@ -59,7 +59,7 @@ func (h *JobsHandler) Callback(c *gin.Context) {
 	}
 
 	outcome, msg := h.svc.Execute(c.Request.Context(), service.CallbackInput{
-		TaskID: body.TaskID, RequestID: body.RequestID, Action: c.Param("action_id"),
+		TaskID: body.TaskID, RequestID: body.RequestID, Action: body.Action,
 		Params: body.Params, Actor: body.Actor, SourceIP: body.SourceIP,
 	})
 

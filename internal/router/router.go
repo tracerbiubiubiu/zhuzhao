@@ -38,7 +38,7 @@ type Deps struct {
 	AuditService middleware.AuditLogger
 	Registry     resource.Registry
 
-	// E-②：内网回调端点（/internal/jobs/<action_id>，AK/SK 验签 + 专用网络拓扑）。
+	// E-②：内网回调端点（/internal/jobs/callback，AK/SK 验签 + 专用网络拓扑；C10：action_id 在 body）。
 	// Enabled=false（默认）不挂路由；SK 缺失已在 config.Load 拒绝启动（fail-closed）。
 	JobsHandler  *handler.JobsHandler
 	InternalJobs config.InternalJobsConfig
@@ -93,7 +93,7 @@ func New(deps Deps) *gin.Engine {
 			deps.InternalJobs.AK: []byte(deps.InternalJobs.SK),
 		}}
 		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, nil))
-		internalGroup.POST("/jobs/:action_id", deps.JobsHandler.Callback)
+		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
 	}
 
 	v1 := r.Group("/api/v1")

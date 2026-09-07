@@ -268,5 +268,5 @@ func mapTaskrunnerErr(c *gin.Context, err error) {
 		return
 	}
 	response.Fail(c, http.StatusBadGateway, errcode.ErrServiceUnavailable.Code,
-		"任务服务不可达: "+err.Error())
+		"任务服务不可达") // 细节（不可达原因）仅记服务端日志，防内网拓扑泄漏
 }
