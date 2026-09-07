@@ -79,13 +79,14 @@ docs/
 │   ├── 13-implementation-plan.md    # 执行计划（排期 SSOT：现行主链里程碑/人日/依赖）
 │   └── 16-external-integration.md   # 外部服务集成配套（taskrunner/activelist 的 zhuzhao 侧能力清单）
 │
+├── review/                          # 审查记录（00–10 = Phase 1/2 历史快照；11 = 活文档·项目控制台）
 ├── api/                             # API 契约（后端 SSOT）
 │   ├── response.md                  # 响应体 Envelope
 │   └── errcode.md                   # 业务错误码
 │
 ├── ops/                             # 运维文档
 │   ├── deployment.md                # 部署指南
-│   └── runbook.md                   # 故障处理手册
+│   └── runbook.md                   # 故障处理手册（未建，Phase 3 与部署联调同批）
 │
 └── adr/                             # 架构决策记录（ADR）
     ├── README.md                    # ADR 索引与模板说明
@@ -108,7 +109,9 @@ docs/
 | `implementation-plan.md` | ~~实施步骤~~ **已废弃**，见 phase1/ | 历史快照 |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
 
-### proposal/ — 综合方案文档
+### proposal/ — 综合方案文档（2026-08 方案期产物，状态见各文件头横幅）
+
+> 状态口径：**已实现**（被 phase1/2 交付取代，留作设计溯源）/ **活跃**（仍是现行设计的 SSOT 或被 phase3 引用）/ **参考**（演进/对照素材）。
 
 结合业务场景和旧系统经验整理的完整方案设计。与 `design/` 的区别：
 - `design/` 关注"框架怎么搭"（技术视角）
@@ -174,6 +177,15 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 |------|------|---------|
 | `deployment.md` | 环境要求、配置项说明、部署步骤、Docker/K8s 配置 | Phase 1 |
 | `runbook.md` | 常见故障现象、排查步骤、应急操作 | Phase 3 |
+
+### review/ — 审查记录（00–10 历史快照 / 11 活文档）
+
+| 文件 | 定位 | 状态 |
+|------|------|------|
+| `00–04` | Phase 1 系统性审查：计划/发现/修复/复核 | 历史快照（发现已闭环，详见 11 §6） |
+| `05–09` | 文档体系审查 / Phase 2 文档架构审查 / 综合审查 / 终复核 / 合并发现 | 历史快照（处置见 11 §8） |
+| `10` | Phase 2 综合验收（C1–C4 处置、门禁基线） | 历史快照 |
+| `11` | **项目控制台**：能力矩阵 / 健康状态（遗留问题 SSOT §6）/ Phase 3 前置随行分类（§8）/ 迁移地图——**每次改动后回填** | **活文档** |
 
 ### adr/ — 架构决策记录
 

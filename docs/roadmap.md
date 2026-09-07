@@ -64,13 +64,15 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 **部署形态**：单实例 Docker Compose
 
-**明确后移（暂缓，无近期计划）**：RS256、AK/SK、缓存平台、审计异步、每资源 Enforcer、微服务拆分（gRPC/IAM 独立/CQRS）→ 未来有真实需求时再评估，当前聚焦单体服务。
+**明确后移（暂缓，无近期计划）**：RS256、~~AK/SK~~（**2026-09-03 已部分实现**：内部服务间 AK/SK HMAC 签名——utils `aksk`；外部 M2M 凭据管理面仍 🚦，见 phase3/09）、缓存平台、审计异步、每资源 Enforcer、微服务拆分（gRPC/IAM 独立/CQRS）→ 未来有真实需求时再评估。
 
 ---
 
-## Phase 3：生产加固（暂缓，先做好单体）
+## Phase 3：通用能力底座 + 内网迁移（重定位后主线）
 
-> **决策（2026-08-25）**：当前没有微服务需求，**Phase 3 整体暂缓**，暂不排期。
+> **⚠ 重定位（2026-09-02，design-decisions §23；本节下文为 2026-08-25 暂缓期原文，保留作参考）**：工单自研暂缓（对接内部平台）、Phase 2 封版；**Phase 3 现行主链 = M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist → M-HR → M-SSO🚦 → M-Mig**，排期与里程碑见 [phase3/13](./phase3/13-implementation-plan.md) / [14](./phase3/14-planning-overview.md)；生产加固类（可观测/多实例/HA）降 🚦 随部署形态。
+>
+> **决策（2026-08-25，历史）**：当前没有微服务需求，Phase 3 整体暂缓，暂不排期。
 > 优先把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实、跑稳，再视真实需求决定是否启动 Phase 3。
 > 微服务拆分（gRPC / IAM 独立 / CQRS 等）不在近期计划内，详见 [phase3/11-deployment-split.md](./phase3/11-deployment-split.md) 档位 1（单体多副本）为默认形态。
 

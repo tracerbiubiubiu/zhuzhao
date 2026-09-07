@@ -281,3 +281,7 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 | [01-auth-enhance.md](./01-auth-enhance.md) | 2b | **已编写** |
 
 > cache / audit-async / RS256 / AK/SK 等已后移至 Phase 3，见 [phase3/README.md](../phase3/README.md)。
+
+---
+
+> **补充索引（未入上表的后置文档）**：[11-authz-architecture-review.md](./11-authz-architecture-review.md)（三层鉴权架构评审——ReBAC 反触发基线，phase3//authz 引用）；[14-phase2-plan-review-and-remediation.md](./14-phase2-plan-review-and-remediation.md)（Phase 2 计划评审与整改）。

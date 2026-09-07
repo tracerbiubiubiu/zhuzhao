@@ -1,4 +1,6 @@
 # 认证鉴权方案
+>
+> **状态：已实现（Phase 1 交付：phase1/02-auth + modules/auth 为现行 SSOT；本文件留作设计溯源）**
 
 > 完整的认证（AuthN）和鉴权（AuthZ）方案设计，结合旧系统经验和业界 PEP/PDP 分层模型。
 >
