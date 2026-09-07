@@ -6,6 +6,7 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"testing"
 
@@ -47,6 +48,7 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 	// 提交：凭证落档（action + task_id + request_id）
 	resp, err := svc.Submit(ctx, &service.TaskSubmitInput{
 		Action: "audit_archive",
+		Params: json.RawMessage(`{"retention_days":90}`),
 	}, "10001", "10.0.0.9", "http://self:33333")
 	require.NoError(t, err)
 	require.Equal(t, "t-e4-1", resp.TaskID)
@@ -63,6 +65,12 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 	require.Equal(t, "req-e4-voucher", requestID, "提交凭证的 request_id 取入站 ctx（跨查锚点）")
 	require.Equal(t, "api", origin)
 	require.Equal(t, "submitted", status)
+
+	// C11/可观测：job_submissions.params 快照（提交入参定格——audit_archive 的调用参数）
+	var params string
+	require.NoError(t, testPool.QueryRow(context.Background(),
+		`SELECT params FROM job_submissions WHERE task_id='t-e4-1'`).Scan(&params))
+	require.Contains(t, params, "retention_days")
 
 	// 触发：凭证落档（action=trigger:<job_id>）
 	resp2, err := svc.Trigger(ctx, "job-42", "10001", "10.0.0.9")

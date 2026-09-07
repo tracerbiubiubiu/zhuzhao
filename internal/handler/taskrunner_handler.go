@@ -46,6 +46,11 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 		response.BadRequest(c, "action 必填")
 		return
 	}
+	// 提交入口 params 上限（防大参数滥用；taskrunner job_runs 全量快照存 params）
+	if len(req.Params) > 64<<10 {
+		response.BadRequest(c, "params 超过上限（64KB）")
+		return
+	}
 	resp, err := h.svc.Submit(c.Request.Context(), &req, actorOf(c), c.ClientIP(), h.selfBaseURL)
 	if err != nil {
 		mapTaskrunnerErr(c, err)

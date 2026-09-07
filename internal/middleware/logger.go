@@ -29,8 +29,7 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// isValidRequestID 本服务生成的 request_id 格式（req-{32 hex}）
-// operatorOf 取操作者（JWT 中间件注入 username；公开路由匿名）。
+// operatorOf 取操作者（JWT 中间件注入 username；公开路由/内网回调匿名）。
 func operatorOf(c *gin.Context) string {
 	if u := c.GetString("username"); u != "" {
 		return u
@@ -46,6 +45,7 @@ func truncStr(s string, n int) string {
 	return s[:n]
 }
 
+// isValidRequestID 本服务生成的 request_id 格式（req-{32 hex}）
 func isValidRequestID(rid string) bool {
 	if len(rid) != 4+32 || rid[:4] != "req-" {
 		return false

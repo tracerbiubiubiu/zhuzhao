@@ -103,9 +103,16 @@ func TestJobsCallbackAKSKVerify(t *testing.T) {
 	t.Run("signed 200", func(t *testing.T) {
 		t.Cleanup(func() { cleanupSubmission(t, "t-signed") })
 		w := signedPost(t, r, "it_echo", "t-signed", "req-signed", map[string]any{"k": 1}, testSK)
-		t.Logf("DEBUG signed_200 body: %s", w.Body.String())
 		require.Equal(t, 200, w.Code)
 		require.EqualValues(t, 1, n.Load())
+		// P0 参数错位回归锚点：回调补录行四列各就各位（params 落 params 列而非串列）
+		var dbParams, dbStatus, dbBy, dbIP string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT params, status, submitted_by, COALESCE(source_ip,'') FROM job_submissions WHERE task_id='t-signed'`).
+			Scan(&dbParams, &dbStatus, &dbBy, &dbIP))
+		require.Contains(t, dbParams, `"k":1`)
+		require.Equal(t, "succeeded", dbStatus) // 回调已执行完成（MarkSucceeded 终态）
+		require.Equal(t, "10001", dbBy)         // source_ip 在 httptest 下可为空（RemoteAddr 解析），列位正确即可
 	})
 }
 

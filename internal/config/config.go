@@ -56,7 +56,7 @@ type ArchiveConfig struct {
 	RetentionDays     int    `mapstructure:"retention_days"`      // 默认 180（等保 ≥6 个月口径）
 	BatchRows         int    `mapstructure:"batch_rows"`          // 默认 5000（单批导出后删行）
 	OutDir            string `mapstructure:"out_dir"`             // JSONL 落盘目录，默认 data/archive
-	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（默认 395，>180 等保口径留余量；0=不清理）
+	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（默认 395，>180 等保口径留余量；<=0 取默认）
 }
 
 // PolicyEvalConfig 判定日志管道参数（零值取默认，见 audit.PolicyEvalConfig.withDefaults）。

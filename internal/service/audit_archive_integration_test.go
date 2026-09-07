@@ -61,7 +61,7 @@ func TestAuditArchiveJob(t *testing.T) {
 
 		dir := t.TempDir()
 		repo := repository.NewAuditLogRepo(testPool)
-		job := service.NewAuditArchiveJob(repo, 180, 2, dir, nil) // batch=2 → 分批路径也被覆盖
+		job := service.NewAuditArchiveJob(repo, 180, 2, dir, 0, nil) // batch=2 → 分批路径也被覆盖；0=构造器默认 395
 
 		require.NoError(t, job.Handle(ctx, nil))
 
@@ -91,7 +91,7 @@ func TestAuditArchiveJob(t *testing.T) {
 	t.Run("retention override via params, invalid params abort", func(t *testing.T) {
 		dir := t.TempDir()
 		repo := repository.NewAuditLogRepo(testPool)
-		job := service.NewAuditArchiveJob(repo, 180, 5000, dir, nil)
+		job := service.NewAuditArchiveJob(repo, 180, 5000, dir, 0, nil)
 
 		// 10 天前的行：默认 180 不动；params retention_days=5 → 归档
 		marker := "arch-short-" + time.Now().Format("150405.000000000")
