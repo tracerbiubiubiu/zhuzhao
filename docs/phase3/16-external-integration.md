@@ -81,7 +81,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **E-④** | ✅ **已实施（2026-09-04）**：`pkg/taskrunner` client（aksk 签名 + rid/actor/source_ip 透传 + 信封错误映射）+ `/api/v1/tasks|runs|jobs|dead-letters` 代理端点（biz 组三层校验）+ 提交/触发落 job_submissions 凭证（E5；**含 params 快照列**——000023，提交入参定格）+ 权限码 task:submit/read/manage + 菜单 seed（000022）；**handler 层单测补齐（2026-09-07）**：taskrunner_handler_test.go 22 子用例（绑定 400 / 502 不可达映射 / 信封错误映射 / 8 透传端点出站契约；Submit/Trigger 凭证链仍由 service 集成测试盖）；**前端任务管理页**（[12 号能力地图](./12-frontend.md)已登记）按前端后置策略随 M3 联调排期 | 已完成（~~E-⑤ 部门可见性收尾后 M-E 全齐~~ **E-⑤ 口径简化后 M-E 已全齐**：dept 仅筛选标签，全员可见） |
 | **E-⑤** | ~~部门可见性策略~~ **口径简化（2026-09-07 所有者拍板）：全员可见，dept 仅作筛选标签**——任务定义带归属标签、列表/查询按 dept 过滤（C11 链路已就绪：runs dept 多值过滤 + task 响应回显 + Submit/Jobs 透传），zhuzhao 侧零新增。~~000023 策略表与可见性组装~~ 降 🚦 触发驱动（触发条件 = 出现跨部门隔离管控需求或任务参数敏感化；启用时 dept 快照列/过滤链路零迁移，仅增量策略表+组装）；软删 org 策略行清理随触发时一并考虑 | ~~P1 + C11~~ C11 已就绪 | 触发时 |
 | E-⑥ | 终败通知端点（E6） | 🚦 后置 | — |
-| **E-⑦** | ~~E-⑤ 契约前置~~ ✅ **已实施（2026-09-07，taskrunner 99003bd + zhuzhao 9161a5b/c9ab2a8）**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试（缺标识 400/旧路由 404/不存在 dept 空列表） | 已完成 |
+| **E-⑦** | ~~E-⑤ 契约前置~~ ✅ **已实施（2026-09-07，taskrunner 99003bd + zhuzhao 5151e86/c20b73b）**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试（缺标识 400/旧路由 404/不存在 dept 空列表） | 已完成 |
 
 > zhuzhao 侧 M-E 配套合计约 **5–7 人日**（不含批次 A 与 taskrunner 仓库自身 M1–M4）；13 号 M-E 行的 3–4 人日指 taskrunner 侧核心运行时，两侧并行。
 
