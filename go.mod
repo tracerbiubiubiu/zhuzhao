@@ -109,7 +109,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/tracerbiubiubiu/zhuzhao-utils v0.1.0
+	github.com/tracerbiubiubiu/zhuzhao-utils v0.2.0
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
@@ -132,7 +132,3 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-// 过渡（E-②）：本地引用未发版的 aksk 包（2026-09-04 实现，taskrunner C2/C9、
-// zhuzhao /internal 验签、activelist M-A6 共用）——utils 发 v0.2.0 后删除本 replace。
-replace github.com/tracerbiubiubiu/zhuzhao-utils => ../zhuzhao-utils
