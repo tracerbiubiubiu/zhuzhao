@@ -1359,3 +1359,51 @@ type remoteUserQueryService struct {
 **§24 补充（2026-09-02 所有者确认）：字段适配层**——公司 IdP 的流程虽为标准授权码模式，但**消息字段不保证与标准 userinfo 一致**（命名/嵌套/自定义字段）。故 `Identity` 结构由 zhuzhao 侧定义为稳定最小契约（external_id / employee_no / domain_account / display_name / email），「公司报文 → Identity」的翻译收敛在 OAuth2.0 adapter 内部实现（差异大时支持字段映射配置），登录服务与身份映射只消费 `Identity`、不感知公司字段差异——adapter 是唯一的字段差异吸收点，公司接入信息到位后只改这一个文件。
 
 **§24 补充（2026-09-02）：账密通道保留范围**——传统账密登录**保留**，但按账号来源分域：`superadmin` 与 `source=local` 用户保留账密（应急通道：SSO 故障/网络隔离时管理员仍可进入；服务/外部协作者类本地账号）；**`source=hr` 用户 SSO 上线后默认禁用账密**（HR 同步的密码为占位值，放行即绕过公司 MFA/密码策略形成安全旁路）——config 开关 `auth.local_password_for_hr`（默认 false）。SSO 未上线的过渡期不受影响（现状全账密）。
+
+---
+
+## 26. IAM 演进路径、注册原则与支撑边界（2026-09-08 评估；三步走与四墙为助手建议，待所有者确认）
+
+> 背景：Phase 3 新增 taskrunner/activelist 两个独立部署模块后，所有者提问「IAM 是否独立成模块、对其他模块开放注册接口」「现设计能支撑微服务演进到什么阶段」。终态参照 = 16 号目标架构注记（zhuzhao → API 网关 + IAM，能力属主服务下沉）；本节补「何时动部署、注册协议形态、支撑极限」三个缺口。
+
+### 26.1 部署形态：不拆独立 IAM 服务，三步走
+
+- **Q5 推论（硬约束）**：L2/L3 每请求实时查询禁缓存——身份库若拆成远程服务，行级判定变热路径 RPC 或被迫缓存（违反 Q5），且 IAM 可用性耦合全站。**可拆的是认证/签发/策略管理平面，身份关系数据与行级判定永远跟数据同进程**（业界同构：K8s RBAC 在各 API server 执行、AWS 策略集中但各服务是自己的 PEP）。
+- **三步走（触发驱动，无专项工期）**：
+  ① **现在**：单体内画清 IAM 平面边界（身份平面 users/roles/orgs/rbac/resource registry vs 资源平面），包结构可辨识即可，doc/包注释级 ~半天；
+  ② **M-SSO/M-HR 启动时**：认证平面独立（token 签发/验签 + JWKS 公钥分发）——§24 红线「SSO 只换认证不动鉴权」天然支持此切分；HR 同步使身份库成为同步枢纽，身份写路径收口到统一入口（为抽取做的最重要预整理）；
+  ③ **M-Mig 窗口**：进内网 + 工单迁走 + 仓库改名（已定版合并执行）时，部署级拆分一次到位——届时 zhuzhao ≈ 网关+IAM+HR，「拆 IAM」≈改名换部署形态，手术最廉。
+- **不引 Keycloak/Ory 替换自研**：角色全链（AssignMenus/BFS 三源/org_roles/ticket_scope）与 L2 深耦合，换 = 重写 + 迁移；M-SSO 已选「适配公司 SSO + 自有 JWT」中间路线。重评触发 = M-SSO 范围膨胀出 MFA/设备管理硬需求（IW2 auth-enhance 在册）。
+
+### 26.2 注册原则：声明式，不做运行时自注册
+
+- **声明式注册**：服务以 seed 迁移/manifest 申报「API 清单 + 权限码」进 menu_apis，管理员在菜单管理 UI 确认绑定生效——注册走 review 管线（版本化/可回滚/评审可见）。业界同构：K8s RBAC / AWS IAM / 网关路由全为声明式配置。
+- **运行时自注册不做**：注册权 = 权限模型写入口 = 治理洞（被攻陷服务可给自己加路由；UDDI 教训）。gin-vue-admin 等运行时编辑 API 绑定的形态为反面参照。
+- **menu_apis 刻意无运行时 CRUD**（与 menus/roles 的运行时 CRUD 不对称，设计内）：API 路由是代码产物，绑定必须与代码同版本发布；运行时可改 = 任意码可接任意路由 = 混权面。
+- **多服务时代的注册表增量**：menu_apis 加 `owner_service` 元数据列（taskrunner 契约已预留概念）+ 定期对账；触发 = 第 3 个申报服务的出现。
+
+### 26.3 L2/L3 谓词归属与身份供给（两态接口的结构必然性）
+
+- **两态接口**：单对象判定 = `Resource.Authorize`（任意 Go 函数，领域逻辑不受限）；列表判定 = `GetFilter`（SQL 谓词）。列表**必须**谓词是结构必然：分页/计数须下推 DB（回调即全表进内存）、谓词可与业务条件组合、ltree GiST 索引依赖谓词形态。业界印证：PG RLS 即谓词；Oso data filtering（策略→SQL）是其官方承认的最难特性；SpiceDB/OpenFGA 只能返回 ID 集合（LookupResources）为公认规模短板。
+- **固定策略 = Builtin 库**（org-member/owner-only/role-gated，语义进代码）：换 DSL/YAML 策略文件的收益仅「运行时可配」（触发表 #3 未命中），代价 = 引擎依赖 + ltree 谓词表达不了 + 失编译期检查。
+- **谓词不下沉 IAM 三理由**：①依赖方向——谓词读业务数据，IAM 写业务策略 = 平台依赖业务倒置；②策略的家=数据的家（§25.3）——表迁走策略随行，模块为干净抽取单元；③领域知识局部性——集中则 IAM 反向 import 全部业务。
+- **模块不接用户数据**：身份经两条路到达判定——ctx 透传（userID + `RolesFromContext`）+ 窄接口注入（`ScopeResolver`/`OrgDelegationChecker`/Membership 闭包，Wire 装配）；全仓唯身份域模块读 users/roles/orgs 表。业界同构：Spring Security/Pundit 均注入 Principal + 窄查询。
+
+### 26.4 支撑边界：四墙与触发信号（星型 + 单信任域 + ~10 服务内无缝接断层）
+
+| 墙 | 触发信号 | 预制解法（渐进） |
+|---|---|---|
+| 服务间网状互调 | 出现第一条非星型服务间调用 | per-key 权限集（GitHub PAT 蓝本）→ IAM 签短时服务 token → mesh mTLS |
+| 跨服务统一可见性 | 一列表页聚合多属主数据按同一套可见性过滤；再升跨资源关系链 | 编排层逐服务取回合并 → 触发表 #5 命中 → ReBAC 评估（ResourceAuthorizer 接缝） |
+| 属主服务远程查身份关系 | E-⑤ 参数级组装撑不住行级需求 | IAM 只读关系查询 API（§25.5 现刻意不做，防过早开口） |
+| 多租户 | 多客户需求 | roadmap 预留 tenant_id + Casbin 模型（三层加 tenant 轴，模型级升级） |
+
+**结论**：到「星型拓扑 + 单信任域 + ≤10 服务 + 每服务行级自治」整段，现设计**就是终态形态本身**（权限平面分工/注册协议/服务基线自 §25 定版起按终态规格施工），不存在中途推翻断层；四墙各有信号与预制件，无提前拆墙项。
+
+### 26.5 配套登记（2026-09-08）
+
+- 权限码命名公约（verb-on-resource）+ menu_apis 声明式申报原则 → standards §7 第 7 条；
+- BK-21 实施蓝本注记（Ruby Pundit `Policy::Scope` 结构惯例）→ phase2/00 §9；
+- AK/SK 外部凭据 per-key 权限集设计输入（GitHub fine-grained PAT 蓝本）→ 09 号 §3.2；
+- PG RLS 兜底预案（BK-21 后仍现漏调事故再评估，业界蓝本 Supabase；代价 = 谓词进 SQL 双维护）→ 11-authz §9.3 附注；
+- 权限覆盖矩阵审计（提议待拍板）→ review/11 §8 B13。

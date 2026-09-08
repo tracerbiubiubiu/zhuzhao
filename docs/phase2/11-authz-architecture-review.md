@@ -173,3 +173,34 @@ scope=3（向上访问）在工单模型中无对应值，两套枚举缺映射�
 - **P2-D7**：SoD 延后决策 —— 状态：建议已给出（本文档 §4），待确认
 
 > 截至本文档创建时，00-implementation-plan.md §1 仍为 P2-D1~D5，未写入 D6/D7（等确认）。
+
+---
+
+## 9. 2026-09-08 复核：OPA / ReBAC 迁移再评估（结论：维持不迁移）
+
+**背景**：项目所有者提问「当前实现是否需要迁移至 OPA 或 ReBAC」。经文档（§5 触发表、design-decisions §12 / §25.4）与代码（`internal/` 三层鉴权实现）双线独立复核，**维持 §5 结论：不迁移、守触发表**。本节为对既有决策的再核验记录，非新决策。
+
+### 9.1 复核理由摘要
+
+- **OPA 不对口（形态层面）**：本项目核心判定是「在 SQL 里生成行级 WHERE」（ltree 锚点 + ticket_scope 三轴 + 委托子查询拼入查询），OPA 是布尔决策引擎、不生成 SQL——引入后 L2 过滤逻辑仍须留在 Go/PG 侧，等于策略写两份（Rego 一份、SQL 一份）。行级 PEP 必须在数据处（design-decisions §5 已论证，Zanzibar/K8s/AWS/OPA 无一例外）；OPA 的典型场景（admission control、无状态条件判定）本项目不存在。proposal 层对照表结论不变：「OPA | 关系遍历不擅长」。
+- **ReBAC 不经济**：当前授权关系 = 单棵组织树（ltree）、资源类型 ≤5（挂 L2 仅 ticket）、关系链深度 2–3，§5 触发表六条**零命中**（含 2026-09-03 §25.4 补评估）。迁移真实成本不在跑一个服务，而在 **org move / 成员变更 / 角色变更的 tuple 双写同步管道** + 与业务事务失去同库一致性 + 与 activelist「行级跟数据走、关系不集中注册」的设计正面冲突（§25.4 原话）。
+- **退路已铺**：`ResourceAuthorizer`（Check + ListFilter）接口 + Builtin 一行注册自 Phase 1 即在；命中触发表时换判定后端、L1 不动、无沉没成本。届时选型 OpenFGA（API 友好）优先，需 Zanzibar 级一致性再评估 SpiceDB（design-decisions §12.5 / §25.4）。
+
+### 9.2 本次复核认为最现实的两条触发器
+
+1. **跨资源关系链**：「处理人 A 可见申请人 B 所在部门的全部工单」类穿图判定（工单→人→部门→工单 的边，ltree 单树表达不了）；
+2. **per-resource 临时共享 / ACL**：GDrive 式「把这张工单共享给某人一周」——手工加 ACL 表 ≈ 手写 relationship tuple，不如直接上引擎。
+
+多维组织（第二棵树参与可见性）次之；「微服务拆分后统一 PDP」可不盯（微服务不拆已定，design-decisions §23 生态基调）。
+
+### 9.3 代码侧清点出的三件权限债（均不需要外置引擎，迁移不解决它们）
+
+| # | 债 | 代码证据 | 归口 |
+|---|----|---------|------|
+| 1 | **Casbin 无自动重载**：多实例下 AssignMenus 后其他实例策略陈旧依赖手动触发（失败窗口 = DB 已生效、内存陈旧） | `internal/casbin/enforcer.go` 仅启动期 LoadPolicy、未调 `StartAutoLoadPolicy`；cleanup 中 `StopAutoLoadPolicy()`（enforcer.go:35）为死代码 | 既有归口 **W1 多实例基座**（phase3/02-multi-instance.md，redis-watcher + StartAutoLoadPolicy 移植 eiam `ioc/casbin.go`）；实施时顺带清死代码 |
+| 2 | **L1 权限缓存缺失**：每请求至少一次角色 BFS 递归 CTE + 工单每请求 ResolveScope，当前最实在的性能债（现仅请求级缓存，BK-17） | `casbin.go` 每请求 GetEffectiveRoleCodes | 既有归口 **phase3/09-platform.md**（`perm:user:{userId}` + Pub/Sub 失效）；实施须守 Q5 禁令——只许盖 L1 输入，L2/L3 保持实时 |
+| 3 | **IW4 护栏未泛化**：fail-closed 哨兵 + AST 守护仅覆盖 ticket_repo 一处，「漏接 GetFilter 静默全量」对未来新资源/导出功能仍开放 | `ticket_repo.go` 入口哨兵 + `TestGuard_TicketRepoListCallSites` 只锁 ticket 包 | 新登记 **BK-21**（触发驱动，随首个新资源接 L2 / 导出功能实施；详见 phase2/00 §9、review/11 §6/§8 B12） |
+
+> 附注（非债，设计内取舍）：Builtin 策略库零生产消费者 = §25.5 触发驱动降级的预期状态；task/jobs 走 L1 + 参数级组装（E-⑤）同理。`HasOrgManagePermission` 的 `LIKE 'org:%'` 过授权约束已落代码注释（P2-2），维持现口径。
+>
+> 护栏兜底预案（2026-09-08 注记）：若 BK-21 泛化后仍出现漏调事故，再评估 PG RLS 作 DB 层兜底（业界蓝本 Supabase；代价 = 谓词进 SQL 双维护 + Go 侧可测性降级）——定位触发驱动，现在不做。

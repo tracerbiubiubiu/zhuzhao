@@ -2,6 +2,8 @@
 
 > **用途**：Phase 3 启动时的**唯一检查入口**。本文件是**快照 + 索引**，不是第二 SSOT——每行都注明权威登记处，启动时先按 §1 顺序逐项核对并刷新状态，防止与各 SSOT 漂移。
 >
+> **✅ 已执行完毕（2026-09-04）**：M0 启动准备收口（A 档清零 + BK-20 已实施 + 决策面清零 + 迁移号已定）。本文件保留作历史检查入口与状态快照；现行进度见 [13-implementation-plan](./13-implementation-plan.md) §1。
+>
 > **基线**：2026-08-31 ｜ 提交 `c389156` ｜ 分支 `feature/phase-2`
 > **前提（2026-08-31 所有者确认）**：**不拆微服务**，以增强各模块能力为主——与 [roadmap](../roadmap.md) / [README §0](./README.md)「微服务整体推迟、Phase 3 按需启动子能力」既有决策一致，无需改决策文档。
 
@@ -56,6 +58,8 @@
 | B9 | 文档补齐状态：**已编写（2026-08-31）**：01 / 02-multi-instance / 10（7-0 决议已入）/ 11 / 12-frontend；**已编写（2026-09-02，原 5 份待编写全部补齐）**：03-audit-l2（替换占位，含 B11①②）/ 06-ha / 07-security-enhance / 08-ops + **ops/deployment.md**（B10）/ 09-platform；另 13-implementation-plan（执行计划）与 docs/ops/deployment.md 同日补齐 | 全部文档就绪，启动时按 Wave 取用；**M2 硬依赖 = Asynq 底座（2026-09-02 §22.1 修订，M1 降 🚦）**；**参考**：Watcher 移植 eiam `ioc/casbin.go`（redis-watcher+StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器） |
 | B10 | `docs/ops/deployment.md` 补编写（骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
 | B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②✅ **zhuzhao 侧已实施（2026-09-04，E-②/E-③：端点+注册表+幂等表+audit_archive 动作）**；「按周期跑通」待 taskrunner M3 部署联调 |
+| B12 | **BK-21 IW4 护栏泛化**：fail-closed 哨兵 + AST 守护从 ticket_repo 泛化（registry 层通用机制或 AST 扩展全部 repo.List 调用点）；导出功能必须接 L2（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 随首个新资源接 L2 / 导出功能 |
+| B13 | **权限覆盖矩阵审计（提议待拍板）**：全端点×三层对账 + IAM 平面边界清单 + 文档路径引用核对（design-decisions §26.5） | 半天–1 天，doc-only；拍板后排期 |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
@@ -70,9 +74,10 @@
 > 已清：A6③（已落 02-authz §4 用例表）、BK-16（复核误报关闭）、BK-17（已随 IW1 落地）。
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 > **BK-20** ✅ **已实施（2026-09-03，commit d4f5c17）**：OrgRepo.Delete / DeleteVgWithOwnerCleanup 同事务加 `status<>'closed'` 计数守卫；ErrOrgHasOpenTickets（50013→409）；TestBK20 集成测试 + acceptance 2c D6 补 3 断言；全门禁绿。已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21。
+> **BK-21（已登记 2026-09-08，触发驱动）**：IW4 护栏泛化——哨兵 + AST 守护仅覆盖 ticket_repo，新资源接 L2 时漏接 GetFilter 仍=静默全量；随首个新资源接 L2 / 导出功能实施（来源 = OPA/ReBAC 迁移复核，11-authz §9；详见 00 §9 / 11 §6+§8 B12）。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
-> activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.1.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。
+> activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.2.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。
 
 ### 2.4 已闭环基线（启动时可假定已完成）
 
@@ -130,3 +135,5 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-09-03（策略库归属 + 仓库名 + 工单策略属主原则） | 三项补充拍板落 §25.3 / 13 号 / README：① **策略库归 zhuzhao 本仓不进共享 utils**（消费者分析：taskrunner 不做业务判定、activelist 零权限，唯一消费者=zhuzhao 自身；谓词绑定 zhuzhao 库 schema——共享 utils 边界定为「无数据依赖的纯工具」）；② **仓库名/module path 正式命名挂 M-Mig**（与进内网换 Git 平台合并执行一次，README 已注定位）；③ **工单策略与 builtin 双路永不合流**（策略的家=数据属主的家；对接内部平台后行级随数据转移，翻案重启则解冻原位；内部平台权限表达力评估列入 M-Mig）。工单冻结基调不变，仅落原则文字 |
 | 2026-09-03（外部集成 16 号建档 + 全目录同步） | 新增 [16-external-integration](./16-external-integration.md)（taskrunner/activelist 契约的 zhuzhao 侧能力清单 E1–E6/D1–D5 + 实施细排 + P1–P7 拍板项）；同步本表：§0 快速结论刷新（A 档清零/IW1–IW4 已实施/BK-20 仅剩）、§1 步骤 4 改指 13 号现行主链、§2.2 B 档随行口径注记（B1–B5 随工单后置）、§2.3 activelist 归位 M-A、§3 决策注记补 §25；同步 13/14/README（详见各文档变更记录） |
 | 2026-09-04（M0 收口） | 核实 BK-20 已于 2026-09-03 由所有者实施并提交（d4f5c17，全门禁绿）——00 号状态行刷新，**M0 启动准备就此收口**（迁移号 000020 起 + 决策过表已于 09-03 拍板收口） |
+| 2026-09-08（OPA/ReBAC 复核） | 项目所有者提问「当前实现是否迁移 OPA/ReBAC」→ 复核**维持不迁移**（11-authz §9 新增复核记录：触发表零命中 / OPA 不对口 SQL 行级判定 / ReBAC 双写管道成本 + 与 activelist 冲突）；清点三件权限债——Casbin Watcher（W1 既有归口，含 enforcer.go 死代码注记）、L1 缓存（09 号既有归口）、**IW4 泛化 → 新登记 BK-21**（本表 §2.2 B12 + 备注 + 00 §9 + 11 §6/§8 同步） |
+| 2026-09-08（权限讨论落档） | design-decisions 新增 **§26**（IAM 演进三步走/声明式注册原则/L2 两态接口论证/支撑边界四墙——助手建议待所有者确认）；standards §7 补第 7 条（权限码 verb 命名 + menu_apis 声明式注册公约）；BK-21 补 Pundit `Policy::Scope` 蓝本注记；09 号 §3.2 补 GitHub PAT per-key 权限集设计输入；11-authz §9.3 附注补 PG RLS 兜底预案；**B13 权限覆盖矩阵审计登记（提议待拍板）**；F-1 路径腐烂修复见 phase1/11-code-review 文首注记 |

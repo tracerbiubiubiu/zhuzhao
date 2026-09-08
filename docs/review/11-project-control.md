@@ -36,12 +36,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
 | **内网回调端点（E-②）** | `/internal/jobs/<action_id>`（AK/SK 验签 utils aksk + 专用拓扑，默认关）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3） | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
 | **审计归档（B11②，E-③）** | `audit_archive` 首个预置动作：audit_logs + policy_evaluation_logs 超期导出 JSONL→**单批导出成功后按同批 id 删行**（fsync 后删，崩溃窗口仅重复不丢）；保留期默认 180 天可配/params 可覆盖；单表失败跳过、任一失败→5xx 可重试可重入 | ✅ 2026-09-04（03 §4；本地卷 P4；注册进 jobs Registry） | `internal/service/audit_archive.go` |
-| **任务管理代理（E-④）** | 三层校验后代理 taskrunner API（提交/状态/执行记录/任务定义 CRUD/触发/取消/重试/死信）；出站 aksk 签名 + request_id/actor/source_ip 透传；提交/触发同步落 job_submissions 凭证（E5）；权限码 task:submit/read/manage + 菜单（000022） | ✅ 2026-09-04（16 号 §3；taskrunner 未部署时 502 透出） | `internal/pkg/taskrunner/` `internal/service/taskrunner_service.go` `internal/handler/taskrunner_handler.go` |
+| **任务管理代理（E-④）** + **契约改造（E-⑦）** | 三层校验后代理 taskrunner API（提交/状态/执行记录/任务定义 CRUD/触发/取消/重试/死信）；出站 aksk 签名 + request_id/actor/source_ip 透传；提交/触发同步落 job_submissions 凭证（E5）；权限码 task:submit/read/manage + 菜单（000022）；**E-⑦**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试 | ✅ E-④ 2026-09-04 / E-⑦ 2026-09-07（16 号 §3；taskrunner 未部署时 502 透出） | `internal/pkg/taskrunner/` `internal/service/taskrunner_service.go` `internal/handler/taskrunner_handler.go` |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号规划 000017（归属已拍板：谁先启动谁占用、后者重排，见 §8 A2）
 - **Phase 3 全部**：可观测性 / 多实例 / 审计 L2 / 高可用 / 安全增强 / ops / **前端工程** / activelist 集成 — 暂缓；执行结构 = **Wave W0–W4**（README §2.1.0，2026-08-31 确认）。**文档已全量就绪（2026-09-02）**：01 / 02 / 03 / 06 / 07 / 08 / 09 / 10（含 7-0 决议）/ 11 / 12 / 13-implementation-plan（执行计划）已编写；ops/deployment.md（B10）已补齐（见 §8 B9）
-- **⚠ 2026-09-02 重定位（design-decisions §23）**：**工单自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复，如 BK-20）；工单业务（SLA/通知/审批流/分派/报表）、BranchedStateEngine、7a–7e、B3 推进端点、审批/报表前端**全部暂缓自研**（10/12 号转对接参考）。**Phase 3 主线 = M-E 事件与任务平台（Asynq + 审计归档首任务 + 自定义脚本任务）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO 单点登录（🚦，§24）→ M-Mig 迁移准备**（排期见 13 §1）；M1/M5 随部署形态 🚦。工单对接形态与 Phase 2 资产处置 = 迁移时拍板（🚦）；翻案条件见 §23
+- **⚠ 2026-09-02 重定位（design-decisions §23）**：**工单自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复，如 BK-20）；工单业务（SLA/通知/审批流/分派/报表）、BranchedStateEngine、7a–7e、B3 推进端点、审批/报表前端**全部暂缓自研**（10/12 号转对接参考）。**Phase 3 主线 = M-E 事件/任务总线（taskrunner，Asynq + 审计归档首预置动作）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO 单点登录（🚦，§24）→ M-Mig 迁移准备**（排期见 13 §1）；M1/M5 随部署形态 🚦。工单对接形态与 Phase 2 资产处置 = 迁移时拍板（🚦）；翻案条件见 §23
 - **⚠ 2026-09-02 SSO（design-decisions §24）**：登录对接公司 SSO，**OAuth2.0 授权码模式**预留接口版（`SSOProvider` 接口 + `/auth/sso/login`·`/auth/sso/callback` + 身份映射对账键同 HR + 登录审计 method）；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（仅限已同步账号）、本地密码兜底并存。排位 **M-SSO**（13 §1，🚦 2–3 人日，进内网拿到公司接入信息后实施）
 - **⚠ 2026-09-03 activelist 职责收敛（ADR-003 修订）**：activelist 收窄为**动态数据模型平台**（类型注册/Schema 演进/动态校验/CRUD/存储），**事件与审计移交 zhuzhao**（事件 = zhuzhao Asynq 业务操作点显式发布；审计 = zhuzhao 侧记录），进程 3→1，**独立部署保留**；业界对标确认同类开源（NocoBase/Teable/Twenty 等）均连带事件/审计/UI，自研薄层合理；**共享 utils**：zhuzhao `internal/pkg` 抽独立共享项目（`crypto/errcode/jsonutil/resource/validate/response` 零依赖直抽；`jwt/logger/postgres/redis` 需 config 解耦），zhuzhao 与 activelist 共用，M-A 前置 🚦（详见 ADR-003 修订节 + 13 §9 U-B）
 - **微服务拆分 / gRPC / CQRS / RS256** — 明确不做（无需求）；~~AK-SK~~ ✅ **服务间 AK/SK HMAC 签名已拍板并实现**（2026-09-03/04：utils `aksk` 包 v0.2 候选，内部服务通信用；外部 M2M AK/SK 管理面仍 🚦，见 09 号分层注记）
@@ -158,6 +158,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-18** | 类型/字段/模板管理闭环（只读 API，增删改仅 SQL；custom_data 无 schema 校验） | ✅ **已实施（IW3，2026-08-31）**：迁移 000018 + 7 管理端点 + G2 schema 校验 + TestBK18×2；前端照 12-frontend 施工（另排期）；详见 00 §9。随手项：类型/字段/模板三表无 version 乐观锁（并发编辑可互相覆盖，2026-09-01 登记，可与 BK-19 同批）；字段级加密评估不做（触发条件驱动） |
 | **BK-19** | 工单 handler 层零 Go 测试（TC-1，中） | 🔶 **已登记（2026-08-31），随工单封版后置（2026-09-02 §23）**——工单现状封版，handler 测试不再作为主链前置；翻案/对接时再评估（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）；详见 00 §9 |
 | **BK-20** | 禁删有未结工单的组织（守卫）+ 软删组织委托残留处置（2026-09-02 登记） | ✅ 守卫**已实施（2026-09-03）**（ErrOrgHasOpenTickets 50013→409 + 集成 TestBK20 + acceptance D6 三断言；全门禁绿）；残留部分**登记不修**——已结工单的委托可见性=档案连续性（三处委托 SQL 无 `deleted_at` 属设计内，显式断开杠杆=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21；详见 00 §9 |
+| **BK-21** | IW4 护栏未泛化：fail-closed 哨兵 + AST 守护仅覆盖 ticket_repo 一处，新资源接 L2 时漏接 GetFilter 仍=静默全量（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 🔶 **已登记（2026-09-08），触发驱动**——随首个新资源接 L2 / 导出功能一起实施（哨兵泛化 registry 层或 AST 守护扩展至全部 repo.List 调用点）；详见 00 §9 |
 
 ---
 
@@ -183,7 +184,7 @@ docs/
 > 本节取代原「下一步」清单，把全部已知未决项归入两档：**A 档 = Phase 3 启动前/启动时完成**（门禁与拍板，不做会让启动本身踩坑）；**B 档 = 随 Phase 3 对应子能力一起**（提前做无收益）。代码级 backlog 详情见 [phase2/00 §9](../phase2/00-implementation-plan.md)。**Phase 3 启动时从 [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) 进入检查流程**（本节 + §6 是其数据源）。
 >
 > **Phase 3 执行结构（2026-08-31 确认）= Wave W0–W4**（详见 [phase3/README §2.1.0](../phase3/README.md)）：**W0** 启动门禁（本节 A 档 + 检查单 IW1/IW3）→ **W1** 可运维基座（Step 1/2/3；[02-multi-instance](../phase3/02-multi-instance.md) 已编写，含 Casbin Watcher 移植方案）→ **W2** 工单业务（Step 7；[10-ticket-business](../phase3/10-ticket-business.md) 已含 7-0 决议，前端规格见 [12-frontend](../phase3/12-frontend.md)；本节 B 档为其随行项）→ **W3** 加固收尾 → **W4** activelist 集成。
-> **⚠ 2026-09-02 重定位（design-decisions §23，推翻 §22.5）**：工单自研暂缓（内部引擎优先），Wave W2 工单业务闭环暂缓自研（10/12 号转对接参考）；现行主链 = **M-E 任务平台 → M-A activelist 独立实现 → M-HR HR 同步 → M-Mig 迁移准备**（W1 随部署形态 🚦；排期见 [13-implementation-plan](../phase3/13-implementation-plan.md) §1）。B 档中工单随行项（B1/B3/B4 等）随 §23 后置/暂缓，审计归档（B11②）改随 **M-E** 首个预置任务。
+> **⚠ 2026-09-02 重定位（design-decisions §23，推翻 §22.5）**：工单自研暂缓（内部引擎优先），Wave W2 工单业务闭环暂缓自研（10/12 号转对接参考）；现行主链 = **M-E 事件/任务总线 → M-A activelist 独立实现 → M-HR HR 同步 → M-Mig 迁移准备**（W1 随部署形态 🚦；排期见 [13-implementation-plan](../phase3/13-implementation-plan.md) §1）。B 档中工单随行项（B1/B3/B4 等）随 §23 后置/暂缓，审计归档（B11②）改随 **M-E** 首个预置任务。
 
 ### A 档：Phase 3 启动前/启动时完成
 
@@ -212,7 +213,9 @@ docs/
 | B7 | CORS AllowAll 转轨收紧（09 合集 F-21） | Step 5 security-enhance + 上线检查单 |
 | B9 | 文档补齐状态：**已编写（2026-08-31）**：01 / 02-multi-instance / 10（含 7-0 决议）/ 11 / 12-frontend；**已编写（2026-09-02，原 5 份待编写全部补齐）**：03-audit-l2（含 B11①②）/ 06-ha / 07-security-enhance / 08-ops + **ops/deployment.md**（B10）/ 09-platform；另 13-implementation-plan（执行计划，里程碑/人日估算/🚦 触发项/⚠️ 不确定项）同日建档 | 全部文档就绪，启动时按 Wave 取用；**M2 硬依赖 = Asynq 底座（2026-09-02 §22.1 修订，M1 降 🚦）**；**参考实现**：02 的 Casbin Watcher 直接移植 eiam `ioc/casbin.go`（redis-watcher + StartAutoLoadPolicy 双保险）、Asynq 任务建模仿 etask（RetryConfig 指数退避/补偿器/job 化 Wire 注册） |
 | B10 | `docs/ops/deployment.md` 补编写（ops 骨架 README 已在，review/10 C3） | 随 Step 6 ops / 部署文档批 |
-| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①随 **W1/M1**（03-audit-l2 文档范围，B9；写入管道「同步落库 vs Redis List 缓冲、失败容忍」随该文档拍板）；②随 **M-E**（Asynq 任务平台首个预置任务；SLA 扫描随工单暂缓不再作为归档前置，2026-09-02 §23） |
+| B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置） | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②✅ **已实施（2026-09-04，E-②/E-③：端点+注册表+幂等表+audit_archive 动作）**；「按周期跑通」待 taskrunner M3 部署联调 |
+| B12 | **BK-21 IW4 护栏泛化**：fail-closed 哨兵 + AST 守护从 ticket_repo 泛化到 registry 层通用机制（或 AST 扩展覆盖全部 repo.List 调用点）；导出功能为高危场景（绕过分页全量拉取）必须接 L2（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 随首个新资源接 L2 / 导出功能（新资源经 Builtin/手写 Resource 接入时一并落） |
+| B13 | **权限覆盖矩阵审计（提议待拍板，2026-09-08）**：全端点 × 三层 × 「设计内豁免 vs 遗漏」逐行对账，产出覆盖矩阵 review 文档；顺带产出 ① IAM 平面边界清单（design-decisions §26.1 三步走①的输入）② 全文档 `internal/*` 路径引用对现状核对（F-1 路径腐烂教训推广） | 半天–1 天，doc-only；拍板后排期 |
 
 ### 独立窗口（已触发，Phase 2 范畴，不属于 Phase 3 前置或随行）
 

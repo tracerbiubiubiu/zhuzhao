@@ -1,7 +1,7 @@
 # 13 - Phase 3 执行计划（排期规划稿）
 
-> **定位**：在 [phase3/README](./README.md) 已确认的 **Wave W0–W4** 执行结构之上，补充可执行的排期计划——里程碑、人日估算、依赖顺序、退出标准、不确定项与触发条件驱动项。
-> **状态**：**规划稿（2026-09-02 建档）**。Phase 3 的正式启动仍以所有者确认触发条件为准（roadmap 维持「暂缓」直到启动）；本文档回答「启动后怎么做」。
+> **定位**：在 [phase3/README](./README.md) 已确认的执行结构之上，补充可执行的排期计划——里程碑、人日估算、依赖顺序、退出标准、不确定项与触发条件驱动项。**现行主链（2026-09-02 §23）= M0 → M-E → M-A → M-HR → M-SSO🚦 → M-Mig**（原 Wave W0–W4 结构随 §23 重定位不再驱动排期，保留作历史参考）。
+> **状态**：**规划稿（2026-09-02 建档）**。Phase 3 已启动执行（M0 ✅ 收口、M-E zhuzhao 侧 ✅ 全齐）；本文档回答「怎么做」与现行进度。
 > **⚠ 2026-09-02 重定位（SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单自研暂缓（内部引擎优先，自研兜底）（Phase 2 现状封版），项目将迁移公司内部并对接内部工单平台/引擎；§4 工单业务闭环（含 7c 引擎）**全部暂缓自研**，Phase 3 主线改为「Asynq 事件基建 + activelist 独立实现 + HR 同步 + 迁移准备」。§4 及工单相关段落保留作历史设计与对接参考，**不再驱动排期**；现行主链见 §1 修订表。
 > **配套**：启动检查单 [00-startup-checklist](./00-startup-checklist.md)；工单业务设计 [10-ticket-business](./10-ticket-business.md)（已转对接参考）；前端规格 [12-frontend](./12-frontend.md)（已转参考）。
 > **标记约定**：`🚦` = 触发条件驱动，**是否纳入本次排期由所有者决定**；`⚠️` = 存在不确定性 / 待拍板，实现前需确认。
@@ -14,7 +14,7 @@
 |---|---|
 | 人力假设 | **1 人全栈串行**（后端为主，前端单列可并行） |
 | 估算性质 | 人日数为**工程估算**（有文档量级参考的标注出处），非承诺；实现前按实际校准 |
-| 里程碑 | ~~M0→M1→M2→M3→M4→M5~~ **现行主链（2026-09-02 §23）**：M0 启动准备（收窄）→ **M-E 事件与任务平台** → **M-A activelist 独立实现** → **M-HR HR 同步** → **M-Mig 迁移准备**；~~M1 可运维基座~~ / ~~M2 工单业务~~ / ~~M3 加固~~ / ~~M4 activelist 集成~~ / ~~M5 3b~~ 均降 🚦 或暂缓（见 §1 修订表） |
+| 里程碑 | ~~M0→M1→M2→M3→M4→M5~~ **现行主链（2026-09-02 §23）**：M0 启动准备（收窄）→ **M-E 事件/任务总线** → **M-A activelist 独立实现** → **M-HR HR 同步** → **M-Mig 迁移准备**；~~M1 可运维基座~~ / ~~M2 工单业务~~ / ~~M3 加固~~ / ~~M4 activelist 集成~~ / ~~M5 3b~~ 均降 🚦 或暂缓（见 §1 修订表） |
 | 硬前置 | ~~W2 以 W1 为硬前置~~ **修订（2026-09-02，design-decisions §22.1/§23）**：现行主链无硬前置链式依赖——**M-E 依赖 Asynq（ADR-002）引入 + 2c Authorize（已交付）**；M-A/M-HR/M-Mig 相互独立、按各自触发条件推进；防重约定（sla:scan Unique + L1 advisory lock）仅对事件基建适用，写码时按 [02-multi-instance](./02-multi-instance.md) 遵守 |
 | 门禁 | 每 Wave 退出标准 + `make acceptance` 四档 + 13 包 `-race` + Phase 3-min/full 验收 |
 | 迁移 | Phase 3 迁移编号启动时按 A2 规则重排（当前 000001–000023 已占用，下一编号 **000024**；000020–000023 = 判定日志/job_submissions/任务菜单/params 快照列） |
@@ -29,7 +29,7 @@
 |---|---|---|---|
 | **M0 启动准备**（收窄） | 迁移号核对 + 决策过表 + ~~BK-20~~ ✅ **已实施（2026-09-03，d4f5c17：守卫+测试+acceptance，全门禁绿）** | ~~1–2~~ 已收口 | ✅ M0 完成（2026-09-04 核实：决策面 09-03 清零、迁移号 000020 起已定） |
 | **M-E 事件与任务总线** | ① Asynq 底座（Scheduler/PeriodicTask/worker/重试/超时/阻塞策略按任务拍板）；② **预置动作 = 回调 zhuzhao 内网端点**（业务 handler 在 zhuzhao：审计归档 B11② 首个、通知、SLA 扫描、外部回调等按需）；③ 业务点**显式发布**（zhuzhao Enqueue/API 提交 → taskrunner 异步触发回调）；~~自定义脚本任务~~ **2026-09-03 降级 🚦**（上传 python/shell 暂不需要；Dagu/自研调研见 [15](./15-script-platform-dagu-vs-inhouse.md)，按需再启）；**独立仓库 + 独立部署 + 独立 Redis**（2026-09-03 拍板，形态见 §1 注记）；**权限前置（2026-09-04 校准降级触发驱动）**：~~平台策略库批次 A 2–3 天~~ 预设消费方随落地清零（E-④ 走 L1 权限码 / E-② 走 AK/SK 验签 / E-⑤ 参数级过滤），触发条件 = zhuzhao 自有新资源需要 L2（16 号 §3 批次 A 行）；**zhuzhao 侧配套细排（内网回调端点体系 / 任务管理代理 / 部门可见性 / 提交日志，E1–E6）见 [16-external-integration](./16-external-integration.md)，约 5–7 人日与 taskrunner 侧并行**；**服务间 AK/SK HMAC 签名**（utils `aksk` 包 C8 先行，zhuzhao 回调端点验签 / client 签名，16 号 §9 基线，2026-09-03 拍板）；**zhuzhao 侧配套完成态（2026-09-07 回填）**：批次 A 降触发驱动、C8 ✅、E-① 判定日志 ✅（000020）、E-② 回调基建 ✅（000021）、E-③ audit_archive ✅、E-④ 任务管理代理 ✅（000022）、E-⑤ 简化全员可见（策略表 🚦 编号暂不占用）、E-⑦ 契约改造 ✅——**zhuzhao 侧 M-E 全齐，仅剩 taskrunner M3 部署联调**；**目标架构注记镜像（2026-09-07，taskrunner.md §2/§4 已入档）**：zhuzhao 演进方向 = **API 网关 + IAM**（薄网关，不持业务能力），动作归属泛化「能力属主服务」——各服务挂自己的动作端点、taskrunner 统一调度（当前预置 handler 仍在 zhuzhao = zhuzhao 自己的能力，薄化随业务迁移演进；owner_service/多 credential 已预留）；**E-⑦ 契约前置**（taskrunner C10 API 约定改造 + C11 runs dept 过滤/task 响应补 dept，M3 契约冻结前） | 3–4（⚠️ 待校准；原 6–8） | 归档任务按周期跑通；预置动作 触发→回调执行→失败重试 闭环；全门禁绿 |
-| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、无用户认证（用户侧收敛 zhuzhao 网关；**服务间 AK/SK 验签**见批次 B）、查询=仅 id 分页+时间倒序、PG **每类型表 + `data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（**幂等=全量替换**：单事务清表重插、保留源 id、不需要业务唯一键——方案 D 定稿同步，2026-09-03）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1；独立部署保留；**前置：~~共享 utils 抽取~~ ✅ 已完成（zhuzhao-utils v0.1.0 已发布并 pin，9 包含 logger/postgres，2026-09-03）**；**权限前置（2026-09-03 落档）**：网关化批次（design-decisions §25.5 批次 B，~1 周）——反代核心/身份断言（明文 X-Operator 入 AK/SK 签名覆盖，B2 已关）/API 级限流/API 入 menu_apis/审计跳 body（ADR-003 G4 蓝图保留）；**zhuzhao 侧配套细排（D1–D5 对照 + D3 审计落点）见 [16-external-integration](./16-external-integration.md)** | 约 1.5–3（澄清后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
+| **M-A activelist 独立实现** | 独立库 + 独立数据库（§22.3/§23）；**外部事件接入契约由 activelist 侧定义**（工单非首数据源，§23.2）；**2026-09-03 职责收敛 + 需求澄清**（ADR-003 修订）：收窄为**动态数据模型薄层**——任意自定义类型（字段=`int`/`string`/列表）、无用户认证（用户侧收敛 zhuzhao 网关；**服务间 AK/SK 验签**见批次 B）、查询=仅 id 分页+时间倒序、PG **每类型表 + `data` JSONB**（id 自增/乐观锁/软删保留）、导入导出 JSON（**幂等=全量替换**：单事务清表重插、保留源 id、不需要业务唯一键——方案 D 定稿同步，2026-09-03）；事件与审计移交 zhuzhao（Asynq 显式发布 / zhuzhao 侧记录），进程 3→1；独立部署保留；**前置：~~共享 utils 抽取~~ ✅ 已完成（zhuzhao-utils v0.2.0 已发布并 pin，9 包含 logger/postgres，2026-09-03 发布 / 09-08 去 replace 升级）**；**权限前置（2026-09-03 落档）**：网关化批次（design-decisions §25.5 批次 B，~1 周）——反代核心/身份断言（明文 X-Operator 入 AK/SK 签名覆盖，B2 已关）/API 级限流/API 入 menu_apis/审计跳 body（ADR-003 G4 蓝图保留）；**zhuzhao 侧配套细排（D1–D5 对照 + D3 审计落点）见 [16-external-integration](./16-external-integration.md)** | 约 1.5–3（澄清后估算 ⚠️ 待校准；原单估） | 按其项目自身验收 |
 | **M-HR HR 同步（预留接口版）** | `HRFetcher` 接口 + sync 引擎 + 本地 mock adapter（内网 adapter 即插）；拍板：离职处置/部门撤销级联/跨部门权限分配规则 | 3–5 | 组织同步三规则对 mock 源跑通；对账幂等；三拍板项落档 |
 | **M-SSO 单点登录（OAuth2.0）**（🚦 进内网后实施——设计已定稿 §24，拿到公司接入信息即开工） | `SSOProvider` 接口 + OAuth2.0 授权码实现（authorize + code 换 token + userinfo，state 防 CSRF）+ `/auth/sso/login`·`/auth/sso/callback` 两端点 + 身份映射（对账键同 HR：external_id 优先）+ 登录审计 method 字段 + 登录页 SSO 入口；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（config 开关，仅限已同步账号）；本地密码登录兜底并存；公司接入信息填 config 即用（design-decisions §24） | 🚦 2–3 | mock/测试 IdP 走通完整回调链 → 自有 JWT 签发 → 三层鉴权行为不变 |
 | **M-Mig 迁移准备** | 公司内网部署对接（网络/凭据/07 security 与 08 ops 中生产相关项按内网形态重估：CORS 收紧/限流/审计保留期）+ **正式命名 + module path 迁移**（2026-09-03 拍板：改名成本=全仓 import 重写，与进内网换 Git 平台的 module path 变更**合并执行一次**，README 现只注定位不改库）+ **内部工单平台权限表达力评估**（2026-09-03 登记：对照 zhuzhao 三轴模型——project_isolated 外包隔离/虚拟组兄弟隔离/委托轴 D7-D9——内部平台表达不了的项列为对接缺口，供「工单对接形态」拍板输入，§23.3） + ~~部署镜像带 python/shell 解释器~~（脚本任务运行时依赖，**2026-09-03 随脚本任务降级 🚦**） | 🚦 随迁移时点 | 内网环境部署演练通过 |
@@ -56,7 +56,7 @@
 | 顺手项（可选） | ~~0.5~~ **随封版后置** | BK-9 / F-31④ / F-32 / TC-2/3/4 / Q5 注记（工单相关随手项随 §23 后置） |
 | 待编写文档 | 0 | **已补齐（2026-09-02）**：03 / 06 / 07 / 08 / 09 / ops-deployment + 13 本计划 |
 
-> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 澄清后核心功能人日**约 1.5–3（⚠️ 待校准）**，~~共享 utils 抽取为其前置 🚦~~ **已完成（zhuzhao-utils v0.1.0，2026-09-03）**；③ 迁移号是否需为附件让位。
+> ⚠️ **不确定项**：① 工单审批/报表前端已随 §23 暂缓（仅 BK-18 管理页/动态表单仍为 IW3 独立窗口，见 [12-frontend](./12-frontend.md)）；② M-A activelist 澄清后核心功能人日**约 1.5–3（⚠️ 待校准）**，~~共享 utils 抽取为其前置 🚦~~ **已完成（zhuzhao-utils v0.2.0，2026-09-03 发布 / 09-08 去 replace 升级）**；③ 迁移号是否需为附件让位。
 
 ---
 
@@ -177,10 +177,10 @@
 | U5 | 前端工程量与是否并行 | **随 §23 暂缓**：审批/报表前端不再实施；仅 BK-18 管理页/动态表单仍为 IW3 独立窗口 | ~~M2 交付范围~~ → IW3 |
 | U6 | ~~多实例验收环境~~ 随 M1 后置，触发时再备 | 需 2 实例 + Nginx | M1（🚦）触发时 |
 | U7 | 迁移号最终占用（与 2b-ext 附件竞争） | A2 规则已定，启动时核对 | 迁移规划 |
-| U8 | 启动是否翻转 roadmap「暂缓」状态 | 由所有者启动时确认 | 文档状态 |
+| U8 | ~~启动是否翻转 roadmap「暂缓」状态~~ | ✅ **已翻转（2026-09-08）**：roadmap 标「Phase 3：通用能力底座（执行中）」 | 已关闭 |
 | U9 | 日历排期（人日→日期） | 待给启动日 + 人力 | 本计划展开 |
 | U-A | M-A activelist 澄清后核心功能人日（动态数据模型薄层：任意类型 int/string/列表、id 分页、PG 每类型表+JSONB、导入导出 JSON） | 约 1.5–3（⚠️ 待校准，原单估） | M-A 工期 |
-| U-B | ~~**共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目~~ | ✅ **已完成（2026-09-03）**：zhuzhao-utils v0.1.0 已发布并 pin（无 replace）；9 包齐（crypto/errcode/jsonutil/jwt/logger/postgres/redis/response/validate）；resource 按 §25.3 拍板留 zhuzhao 不抽 | 已关闭 |
+| U-B | ~~**共享 utils 抽取**：zhuzhao `internal/pkg` → 独立共享项目~~ | ✅ **已完成（2026-09-03）**：zhuzhao-utils v0.2.0 已发布并 pin（09-08 去 replace 升级）；9 包齐（crypto/errcode/jsonutil/jwt/logger/postgres/redis/response/validate）；resource 按 §25.3 拍板留 zhuzhao 不抽 | 已关闭 |
 
 ---
 

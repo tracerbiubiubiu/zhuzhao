@@ -1,6 +1,6 @@
 # 认证模块设计
 
-> 模块代码（目标路径，见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)）：`internal/service/auth/`、`internal/handler/auth/`、`internal/pkg/jwt/`
+> 模块代码（目标路径，见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)）：`internal/service/auth/`、`internal/handler/auth/`；JWT 公共件已抽 **zhuzhao-utils/jwt**（2026-09 公共包抽取，原 `internal/pkg/jwt` 已删除）
 >
 > 旧系统参考：`doc/module-assessment-2026-08/authenticator.md`
 

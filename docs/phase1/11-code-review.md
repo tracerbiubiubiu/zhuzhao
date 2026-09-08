@@ -4,6 +4,7 @@
 > **方法**：核心链路人工逐行审查 + 独立子代理交叉验证（F-1~F-10 全部 2/2 确认，无误报）；定向审查部分经实测复核（两处初版误报已勘误，见 §6）。  
 > **结论**：`go build` / `go vet` / 单测 / 集成测试（testcontainers PG）全部通过。发现 1 严重 + 6 重要 + 3 次要（F 系列）+ 3 P1（定向）+ 6 P2（定向）。  
 > **修复状态（2026-08-19）**：F-1~F-10 与定向 §2.1/§2.2/§2.3 已全部修复（提交 8be8205..d54bda6）；P2 系列记录在案。  
+> **⚠ 路径时点注记（2026-09-08）**：本文「位置」字段为审查时点路径。`internal/pkg/jwt` 已随公共包抽取**整体迁至 zhuzhao-utils/jwt（原路径已删除、无转发壳）**；`internal/pkg/errcode` 原地保留为转发壳（框架码 10000-10999 已抽 utils）。按图索骥找不到文件 ≠ 修复丢失——2026-09-08 曾因旧路径腐烂致外部评审把 F-1 误判为「P0 待补」，现状以下文各 F 项的复核注记为准。  
 > 本文由原两份审查文档（全分支 findings + 定向 review）合并而成；F-5 与定向 §1.1 为同一问题，已归并。
 
 ---
@@ -29,13 +30,13 @@
 
 #### F-1 RefreshToken 可直接当作 AccessToken 使用（令牌类型混淆）
 
-- **位置**：`internal/pkg/jwt/jwt.go`（`GenerateAccessToken` / `GenerateRefreshToken` / `ParseAccessToken`）、`internal/middleware/jwt.go`
+- **位置**：`internal/pkg/jwt/jwt.go`（**2026-09 已迁 zhuzhao-utils/jwt，原路径删除——见文首路径时点注记**；现含 `GenerateAccessToken` / `GenerateRefreshToken` / `ParseAccessToken` / `ParseRefreshToken`）、`internal/middleware/jwt.go`
 - **问题**：AT 与 RT 用同一密钥、同为 HS256 签发，claims 无 `typ` 等类型标识。`RefreshClaims` 字段与 `AccessClaims` 完全兼容，`ParseAccessToken` 可成功解析 RT 并通过签名校验。
 - **影响**：
   - RT 有效期 168h，冒充 AT 使用即绕过 30 分钟短时效设计；
   - 登出只拉黑 AT 的 jti、删除 RT 的 Redis key，**RT 字符串本身在 7 天内仍可作为 Bearer 凭证访问任意 API**，`Logout` / `revokeUserSessions` 均无法阻止；
   - RT 无 `mcp` 字段，冒充 AT 时顺带绕过强制改密拦截。
-- **状态**：✅ 已修复 — `jwt.go` 新增 `TokenTypeAccess/Refresh` 常量，两类 claims 均写入 `typ` 并在 Parse 时严格校验（`ErrTokenTypeMismatch`）；`jwt_test.go` 覆盖双向冒充被拒。
+- **状态**：✅ 已修复 — `jwt.go` 新增 `TokenTypeAccess/Refresh` 常量，两类 claims 均写入 `typ` 并在 Parse 时严格校验（`ErrTokenTypeMismatch`）；`jwt_test.go` 覆盖双向冒充被拒。**2026-09-08 代码级复核（utils 迁移后）**：双向校验现役于 zhuzhao-utils/jwt/jwt.go:123/144，zhuzhao 侧 middleware 将混淆统一映射 20003，`TestJWT_RefreshTokenAsAccess_Returns20003` 在位——防护完整，勿再列为待办。
 
 ### 🟠 重要
 

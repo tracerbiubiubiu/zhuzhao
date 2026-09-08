@@ -366,7 +366,8 @@ internal/handler/user/
 
 internal/service/auth/
     service.go
-internal/pkg/jwt/       # 认证专用库；拆 IAM 时随 auth 域迁移
+                        # （internal/pkg/jwt/ 已抽至 zhuzhao-utils/jwt，2026-09 公共包抽取；
+                        #   认证平面拆 IAM 时仍随 auth 域演进）
 
 internal/router/
     router.go           # 注册路由；按领域分组注释块
