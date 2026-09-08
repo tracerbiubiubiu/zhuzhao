@@ -130,7 +130,7 @@
 
 - [x] 迁移 **000010**：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events` + 工单管理菜单（catalog/page/button 三层）+ menu_apis + 角色绑定（D2 已并入 000010，不再单独 _menu 文件）
   - **硬删例外**：`tickets` / `ticket_comments` 表无 `deleted_at` 列，走物理 DELETE + ON DELETE CASCADE（`ticket_comments` 用户内容随单销毁）；`ticket_events` **已去 CASCADE**（迁移 000014，2026-08-28 HC2：事件行随库存活，ticket_id 悬空 = 审计语义，删单不再摧毁业务时间线）；`ticket_templates` / `ticket_relations` 走软删 + 部分唯一索引
-  - `ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列
+  - `ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时补列（原规划编号 000021 已被 job_submissions 占用，启动时按 A2 分配）
 - [x] 迁移 **000015**：`ticket_templates`（模板表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单模板2a-前移迁移-000015)）
 - [x] 迁移 **000016**：`ticket_relations`（关联表，2a 前移，DDL 见 [09 §2](./09-ticket.md#工单关联2a-前移迁移-000016)）
 - [x] 90001/90002 写入 `errcode.go` + `errcode.md`（P2-D4）

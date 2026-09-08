@@ -616,7 +616,7 @@ type StateController interface {
 | 档 | 阶段 | 实现 | 可靠性 | 适用 |
 |---|---|---|---|---|
 | **L0** | Phase 2a | Go channel + goroutine | 进程崩溃丢 | MVP（2a 过渡） |
-| **L1** | **Phase 3 启动时实现（长期稳态，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）**；`ticket_events` 表 Phase 2a 已建（仅审计），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）随迁移 000021 补列落地 | **进程内事件 + DB 持久化（`ticket_events` 表 + 轮询补偿）+ 分布式锁** | **进程崩溃不丢，多实例靠分布式锁防重** | **生产单/多实例** |
+| **L1** | **Phase 3 启动时实现（长期稳态，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）**；`ticket_events` 表 Phase 2a 已建（仅审计），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）Phase 3 启动时补列落地（原规划编号 000021 已被 job_submissions 占用，按 A2 启动时分配） | **进程内事件 + DB 持久化（`ticket_events` 表 + 轮询补偿）+ 分布式锁** | **进程崩溃不丢，多实例靠分布式锁防重** | **生产单/多实例** |
 | L2 | **暂缓（按需，见 ADR-001）** | Outbox + Asynq worker 多消费者 | 跨服务可靠 | 多消费者/微服务 |
 
 > **Asynq 设计就绪**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)，Phase 3 启动时引入；Phase 2a 无异步业务）：作为"异步任务执行器"与 L1 并存，职责互补——L1 管事件事实持久化，Asynq 管异步任务执行（审批触发事件 + 预置定时任务）。Asynq 不替代 L1 事件源。

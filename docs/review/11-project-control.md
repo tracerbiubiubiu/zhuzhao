@@ -106,8 +106,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000017 | ticket_visibility CHECK 放开 `project_isolated`（BK-13，IW1） | 2b |
 | 000018 | ticket_type_admin：validate_regex + 类型配置页菜单/menu_apis（BK-18，IW3） | 2a-ext |
 | 000019 | org_is_virtual：org_type 四值枚举（1/2/3 实体细分 + 4 虚拟）收敛为 `is_virtual` 布尔——行为消费点仅区分实体/虚拟，1/2/3 细分零代码消费（层级由 path/nlevel 表达）；API 契约 `org_type` → `is_virtual`（前端暂缓期无消费方） | 模型收敛 |
+| 000020 | policy_eval_request_id：判定日志表 `policy_evaluation_logs`（B11①/E-①）+ `audit_logs`/`ticket_events` 补 `request_id`（03 §3.4 全链路关联） | M-E |
+| 000021 | job_submissions：一表两用（E-④ 提交凭证 + E-② 回调幂等栅栏） | M-E |
+| 000022 | task_admin_menus：任务管理菜单 + 权限码 task:submit/read/manage（E-④） | M-E |
+| 000023 | job_submissions_params：提交入参快照列（E-④；zhuzhao 权威全量 × taskrunner 排障快照双侧记） | M-E |
 
-> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 `000017/000018` 已被 IW1/IW3 占用；Phase 3 SLA（10-ticket-business §2 原占用 000017–000021）启动时按此规则重排。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000023 已占用**（000017/000018 = IW1/IW3，000019–000023 见上表，下一编号 000024）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
 ---
 

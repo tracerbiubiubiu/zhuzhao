@@ -236,14 +236,19 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 
 | 编号 | 子阶段 | 内容 | PRD |
 |------|--------|------|-----|
-| 000010 | 2a | 工单表组：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events`（含 org_path 冗余；`ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时迁移 000021 补列） | [09-ticket.md §2](./09-ticket.md) |
+| 000010 | 2a | 工单表组：`ticket_types` / `ticket_type_fields` / `tickets` / `ticket_comments` / `ticket_events`（含 org_path 冗余；`ticket_events` 2a 建表仅审计用，L1 机制 Phase 3 启动时补列——编号待分配按 A2 占用，`request_id` 列已随 000020 落地） | [09-ticket.md §2](./09-ticket.md) |
 | 000011 | 2b-core | 工单可见性：`organizations.ticket_visibility`（**Step 4 已执行**，[09 §5.2.1](./09-ticket.md)） | [09-ticket.md](./09-ticket.md) |
 | 000012 | 2b-org | 组织增强：虚拟组（org_type=4）/ `user_orgs.ticket_scope` / 临时成员 / org `source` 列（原 000011 其余内容按不跳号规则顺延） | [03-org-enhance.md](./03-org-enhance.md) |
 | 000013 | 2c | 组织委托：`organizations.owner_user_ids` / `user_orgs.org_member_role`（**2c 先行执行**，不跳号） | [04-org-delegation.md](./04-org-delegation.md) |
 | 000014 | 2c | 审计完整性：`ticket_events` FK 去 CASCADE（HC2，2026-08-28 已执行） | [09-ticket.md](./09-ticket.md) |
 | 000017 | IW1/BK-13 | 工单可见性开关：`project_isolated` CHECK 放开（2026-08-31 已执行；A2 规则占用 000017） | [09-ticket.md §5.2.1](./09-ticket.md) |
 | 000018 | IW3/BK-18 | 类型管理闭环：`validate_regex` 列 + 类型配置页菜单/menu_apis（2026-08-31 已执行） | [00 §9 BK-18](./00-implementation-plan.md) |
-| 000019+ | 2b-ext / Phase 3 | 附件与 SLA 段启动时按占用重排（A2 规则：谁先启动谁占用） | [10-storage.md](./10-storage.md) / [phase3/10 §9](../phase3/10-ticket-business.md) |
+| 000019 | Phase 3 | org_is_virtual：`org_type` 四值收敛为 `is_virtual` 布尔（2026-09-02 已执行） | [03-org-enhance.md](./03-org-enhance.md) |
+| 000020 | Phase 3 / M-E | 判定日志：`policy_evaluation_logs` 表 + `audit_logs`/`ticket_events` 补 `request_id`（2026-09-04 已执行） | [phase3/03-audit-l2.md](../phase3/03-audit-l2.md) |
+| 000021 | Phase 3 / M-E | `job_submissions` 一表两用：提交凭证 + 回调幂等栅栏（2026-09-04 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
+| 000022 | Phase 3 / M-E | 任务管理菜单 + 权限码 task:submit/read/manage（2026-09-04 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
+| 000023 | Phase 3 / M-E | `job_submissions.params` 快照列：提交入参定格（2026-09-07 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
+| 000024+ | 2b-ext / Phase 3 | 附件与 SLA 段启动时按占用重排（A2 规则：谁先启动谁占用；当前 000001–000023 已占用，下一编号 000024） | [10-storage.md](./10-storage.md) / [phase3/10 §9](../phase3/10-ticket-business.md) |
 | 000015 | 2a | 工单模板：`ticket_templates`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单模板2a-前移迁移-000015) |
 | 000016 | 2a | 工单关联：`ticket_relations`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单关联2a-前移迁移-000016) |
 
