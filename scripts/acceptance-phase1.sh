@@ -23,6 +23,9 @@ PG_DB="${PG_DB:-zhuzhao}"
 REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
 # 清除登录限流锁（验收链对 E000001 反复登录，15min/5 次会触发 20006 锁定）
 docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:E000001" >/dev/null 2>&1 || true
+# #9 防枚举对 NOPE999（不存在账号）也发错误密码——跨 run 累计 5 次同样触发锁定，
+# 使 B2 返回「账号已锁定」与 B1 失配（2026-09-08 验证暴露，状态污染类）
+docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:NOPE999" >/dev/null 2>&1 || true
 
 pass=0
 fail=0
