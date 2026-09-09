@@ -33,14 +33,23 @@ type AuditLogEntry struct {
 	CreatedAt   time.Time
 }
 
-// AuditLog 操作日志中间件（同步写入 DB）
-func AuditLog(auditLogger AuditLogger) gin.HandlerFunc {
+// AuditLog 操作日志中间件（同步写入 DB）。
+// skipBodyPrefixes：命中前缀的路径跳过 body 捕获（审计行仍写、RequestBody 为空）——
+// 批次 B 反代路由（大文件/流式 body，如 /al 导入）与二进制载荷场景使用。
+func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// 读取请求体（用于记录操作参数）
+		// 读取请求体（用于记录操作参数）；反代前缀跳过（流式/大 body 不入审计）
+		skipBody := false
+		for _, p := range skipBodyPrefixes {
+			if p != "" && strings.HasPrefix(c.Request.URL.Path, p+"/") {
+				skipBody = true
+				break
+			}
+		}
 		var bodyBytes []byte
-		if c.Request.Body != nil {
+		if !skipBody && c.Request.Body != nil {
 			bodyBytes, _ = io.ReadAll(c.Request.Body)
 			// ReadAll 会耗尽原 Body；用内存副本替换，供后续 handler 再次 BindJSON
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))

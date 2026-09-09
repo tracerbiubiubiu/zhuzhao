@@ -27,12 +27,14 @@ type Upstream struct {
 	Prefix      string `mapstructure:"prefix"`       // 网关暴露前缀（如 /al）：全注册表唯一、以 / 开头、非根
 	Target      string `mapstructure:"target"`       // 上游基址（如 http://activelist:8080）
 	StripPrefix bool   `mapstructure:"strip_prefix"` // true：转发时剥离 Prefix（/al/api/v1/x → 上游 /api/v1/x）
+	Disabled    bool   `mapstructure:"disabled"`     // Restrict 资源开关（首版语义：config 总开关；用户级授权由 Casbin 承担——升级路径 per-user 授权表）
 }
 
 // proxyMount 构建完成的挂载项（prefix + 就绪的代理 handler）。
 type proxyMount struct {
-	prefix  string
-	handler gin.HandlerFunc
+	prefix   string
+	disabled bool
+	handler  gin.HandlerFunc
 }
 
 // Registry 上游注册表（New 后不可变；Mount 可重复调用）。
@@ -105,7 +107,7 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 	handler := func(c *gin.Context) {
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
-	return proxyMount{prefix: u.Prefix, handler: handler}, nil
+	return proxyMount{prefix: u.Prefix, disabled: u.Disabled, handler: handler}, nil
 }
 
 // Mount 在已认证路由组（JWT + 审计）下挂载全部上游的通配反代路由。
@@ -115,6 +117,14 @@ func (r *Registry) Mount(authed *gin.RouterGroup, authzMiddlewares ...gin.Handle
 	for _, m := range r.mounts {
 		g := authed.Group(m.prefix)
 		g.Use(authzMiddlewares...)
+		if m.disabled {
+			// Restrict 资源开关（首版）：停用 = 503（位于 Casbin 之后——未授权者
+			// 仍 403，不向未授权者泄露停用状态；升级路径 = per-user 授权表）
+			g.Use(func(c *gin.Context) {
+				response.Fail(c, http.StatusServiceUnavailable, 10008, "上游资源维护中，暂停访问")
+				c.Abort()
+			})
+		}
 		g.Use(SetForwardHeaders())
 		g.Any("/*rest", m.handler)
 	}

@@ -22,6 +22,22 @@ type Config struct {
 	InternalJobs InternalJobsConfig `mapstructure:"internal_jobs"`
 	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
 	Gateway      GatewayConfig      `mapstructure:"gateway"`
+	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+}
+
+// RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
+type RateLimitConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// Default 全局默认规则；RPS≤0 时 Load 兜底 20/40（enabled 才生效）。
+	Default RateLimitRule `mapstructure:"default"`
+	// Routes 精确 path 覆盖（如 /api/v1/auth/login 更严）。
+	Routes map[string]RateLimitRule `mapstructure:"routes"`
+}
+
+// RateLimitRule 单规则：每秒补充 RPS、桶容量 Burst。
+type RateLimitRule struct {
+	RPS   int `mapstructure:"rps"`
+	Burst int `mapstructure:"burst"`
 }
 
 // GatewayConfig 网关反代（批次 B / E13）：前缀→上游注册表 + 出站签名密钥。
@@ -37,6 +53,7 @@ type GatewayUpstreamConfig struct {
 	Prefix      string `mapstructure:"prefix"`       // 网关暴露前缀（如 /al）
 	Target      string `mapstructure:"target"`       // 上游基址（如 http://activelist:8080）
 	StripPrefix bool   `mapstructure:"strip_prefix"` // 转发时剥离前缀
+	Disabled    bool   `mapstructure:"disabled"`     // Restrict 资源开关：true = 该上游 503 停服（用户级授权由 Casbin 承担）
 }
 
 // TaskrunnerConfig zhuzhao → taskrunner API 出站 client（E-④）。
@@ -251,6 +268,12 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Audit.Archive.OutDir == "" {
 		cfg.Audit.Archive.OutDir = "data/archive"
+	}
+
+	// API 限流默认规则（07 §2：default rps 20 / burst 40）
+	if cfg.RateLimit.Enabled && cfg.RateLimit.Default.RPS <= 0 {
+		cfg.RateLimit.Default.RPS = 20
+		cfg.RateLimit.Default.Burst = 40
 	}
 
 	if cfg.InternalJobs.Enabled {

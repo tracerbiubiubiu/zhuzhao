@@ -51,8 +51,23 @@ type Deps struct {
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
 
+	// 反代上游前缀（= gateway.upstreams[].prefix）：AuditLog 对其跳 body
+	//（大文件/流式载荷不入审计参数）
+	GatewayPrefixes []string
+
+	// API 限流（07 §2）：nil = 不启用
+	RateLimit *config.RateLimitConfig
+
 	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
+}
+
+// RateLimitOrDisabled 限流未配置时返回零值配置（中间件内直通）。
+func (d Deps) RateLimitOrDisabled() config.RateLimitConfig {
+	if d.RateLimit != nil {
+		return *d.RateLimit
+	}
+	return config.RateLimitConfig{}
 }
 
 // New 创建 Gin 引擎并注册路由
@@ -114,7 +129,8 @@ func New(deps Deps) *gin.Engine {
 		authed := v1.Group("")
 		authed.Use(
 			middleware.JWT(deps.JWTManager, deps.RedisClient),
-			middleware.AuditLog(deps.AuditService),
+			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
 		)
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）

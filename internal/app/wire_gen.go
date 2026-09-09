@@ -83,10 +83,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	v := provideTrustedProxies(cfg)
 	// 批次 B/E13：网关反代注册表（gateway.upstreams 未配置时为 nil，不挂载）
 	var gwRegistry *gateway.Registry
+	gwPrefixes := []string{}
 	if ups := cfg.Gateway.Upstreams; len(ups) > 0 {
 		gwUps := make([]gateway.Upstream, len(ups))
 		for i, u := range ups {
-			gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix}
+			gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix, Disabled: u.Disabled}
+			gwPrefixes = append(gwPrefixes, u.Prefix)
 		}
 		gw, gwErr := gateway.New(gwUps, cfg.Gateway.AK, cfg.Gateway.SK)
 		if gwErr != nil {
@@ -94,6 +96,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		}
 		gwRegistry = gw
 	}
+	rlCfg := cfg.RateLimit
 	deps := router.Deps{
 		AuthHandler:       authHandler,
 		UserHandler:       userHandler,
@@ -106,6 +109,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		TaskrunnerHandler: taskrunnerHandler,
 		InternalJobs:      cfg.InternalJobs,
 		Gateway:           gwRegistry,
+		GatewayPrefixes:   gwPrefixes,
+		RateLimit:         &rlCfg,
 		JWTManager:        manager,
 		Enforcer:          syncedEnforcer,
 		RedisClient:       client,

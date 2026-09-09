@@ -124,6 +124,24 @@ func TestMount_NoStripKeepsFullPath(t *testing.T) {
 	require.Equal(t, []string{"/al/api/v1/x|op2|req-2"}, *seen)
 }
 
+func TestMount_DisabledUpstreamReturns503(t *testing.T) {
+	up, seen := newUpstream(t, "sk-gw")
+	upURL := strings.TrimPrefix(up.URL, "http://")
+	r, err := New([]Upstream{{Prefix: "/al", Target: "http://" + upURL, StripPrefix: true, Disabled: true}}, "zhuzhao", "sk-gw")
+	require.NoError(t, err)
+	gin.SetMode(gin.ReleaseMode)
+	e := gin.New()
+	r.Mount(e.Group(""))
+
+	req := httptest.NewRequest(http.MethodGet, "/al/api/v1/x", nil)
+	req.Header.Set("X-Request-ID", "req-503")
+	w := serve(e, req)
+	require.Equal(t, http.StatusServiceUnavailable, w.Code)
+	require.Contains(t, w.Body.String(), `"code":10008`)
+	require.Empty(t, *seen, "停用上游不应收到任何转发")
+	_ = up
+}
+
 func TestMount_UpstreamDownMapsTo502Envelope(t *testing.T) {
 	dead := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	deadURL := strings.TrimPrefix(dead.URL, "http://")
