@@ -50,12 +50,6 @@ return {allowed, retry}
 // （测试构造）；Redis 错误 fail-close → 503 + 10008（对齐 Phase 1 登录限流）。
 func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc {
 	script := goredis.NewScript(tokenBucketLua)
-	rule := func(path string) config.RateLimitRule {
-		if rule, ok := cfg.Routes[path]; ok && rule.RPS > 0 {
-			return rule
-		}
-		return cfg.Default
-	}
 	return func(c *gin.Context) {
 		if !cfg.Enabled || rdb == nil {
 			c.Next()

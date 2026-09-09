@@ -10,11 +10,11 @@ package gateway
 import (
 	"encoding/json"
 	"fmt"
-	"path"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/gin-gonic/gin"

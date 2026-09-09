@@ -111,14 +111,17 @@ func TestMount_NoStripKeepsFullPath(t *testing.T) {
 
 	gin.SetMode(gin.ReleaseMode)
 	e := gin.New()
+	e.Use(func(c *gin.Context) { // 模拟网关身份链：ctx 身份存在 → 转发头得以注入
+		c.Set("username", "op2")
+		c.Set("request_id", "req-2")
+		c.Next()
+	})
 	r.Mount(e.Group(""))
 
 	req := httptest.NewRequest(http.MethodGet, "/al/api/v1/x", nil)
-	req.Header.Set("X-Request-ID", "req-2")
 	aksk.Sign(req, nil, aksk.SignOptions{AK: "zhuzhao", SK: []byte("sk-gw"),
 		RequestID: "req-2", Operator: "op2"})
 	// 直接以网关形态重放（含签名）到无剥离链路
-	req.Header.Set("X-Request-ID", "req-2")
 	w := serve(e, req)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, []string{"/al/api/v1/x|op2|req-2"}, *seen)
@@ -151,6 +154,7 @@ func TestMount_UpstreamDownMapsTo502Envelope(t *testing.T) {
 	require.NoError(t, err)
 	gin.SetMode(gin.ReleaseMode)
 	e := gin.New()
+	e.Use(func(c *gin.Context) { c.Set("request_id", "req-502"); c.Next() })
 	r.Mount(e.Group(""))
 
 	req := httptest.NewRequest(http.MethodGet, "/al/api/v1/x", nil)
