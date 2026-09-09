@@ -96,6 +96,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000022_task_admin_menus.up.sql",
 			// 执行可观测：job_submissions.params 快照列（000023）
 			"000023_job_submissions_params.up.sql",
+			// 批次 B/E13：activelist 网关路由权限面（000024）
+			"000024_activelist_menus.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err
