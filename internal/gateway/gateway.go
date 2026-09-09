@@ -10,6 +10,7 @@ package gateway
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -82,7 +83,9 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 			pr.SetXForwarded()
 			if u.StripPrefix {
 				pr.Out.URL.Path = strings.TrimPrefix(pr.Out.URL.Path, u.Prefix)
-				pr.Out.URL.RawPath = strings.TrimPrefix(pr.Out.URL.RawPath, u.Prefix)
+				// Path 已拒绝点段（见 handler 层校验），强制按 Path 重转义，
+				// 防止 RawPath 残留产生无前导斜杠的出站请求行
+				pr.Out.URL.RawPath = ""
 			}
 		},
 		Transport: &aksk.Transport{
@@ -105,6 +108,13 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 		},
 	}
 	handler := func(c *gin.Context) {
+		// 网关不变量：拒绝点段路径（/.././%2e%2e）。规范化差异会让 Casbin 判定的
+		// 路径 ≠ 上游实际执行的路径；menu_apis 一旦出现前缀通配模式即成提权面。
+		rest := c.Param("rest")
+		if rest == "" || rest != path.Clean(rest) {
+			response.Fail(c, http.StatusBadRequest, 10001, "非法路径")
+			return
+		}
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 	return proxyMount{prefix: u.Prefix, disabled: u.Disabled, handler: handler}, nil
@@ -135,11 +145,17 @@ func (r *Registry) Mount(router gin.IRouter, authzMiddlewares ...gin.HandlerFunc
 // activelist M-A6 验签后用作操作者归因与跨查关联键。
 func SetForwardHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 无条件覆盖/删除：客户端预埋的身份头不得穿透网关获得签名背书
+		//（空身份在 JWT 强制链上属异常，直连开发态上游侧回退 system）
 		if u := c.GetString("username"); u != "" {
 			c.Request.Header.Set("X-Operator", u)
+		} else {
+			c.Request.Header.Del("X-Operator")
 		}
 		if rid := c.GetString("request_id"); rid != "" {
 			c.Request.Header.Set("X-Request-ID", rid)
+		} else {
+			c.Request.Header.Del("X-Request-ID")
 		}
 		c.Next()
 	}

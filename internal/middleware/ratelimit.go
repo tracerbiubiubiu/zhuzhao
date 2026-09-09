@@ -61,18 +61,26 @@ func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc 
 			c.Next()
 			return
 		}
-		dim := c.GetString("userID")
-		if dim == "" {
-			dim = "ip:" + c.ClientIP()
+		// 维度：登录后按 user_id（ctx 为 int64，须 GetInt64——GetString 类型断言
+		// 恒失败会退化成全员按 IP 共享桶），匿名按 ClientIP
+		var dim string
+		if uid := c.GetInt64("userID"); uid > 0 {
+			dim = "u:" + strconv.FormatInt(uid, 10)
 		} else {
-			dim = "u:" + dim
+			dim = "ip:" + c.ClientIP()
 		}
-		r := rule(c.Request.URL.Path)
+		// 桶按「维度 × 桶类别」隔离：严格路由规则不得被默认路由流量稀释注水
+		path := c.Request.URL.Path
+		r, ok := cfg.Routes[path]
+		bucket := "default"
+		if !ok || r.RPS <= 0 || r.Burst <= 0 {
+			r, bucket = cfg.Default, "default"
+		}
 		if r.RPS <= 0 || r.Burst <= 0 {
 			c.Next()
 			return
 		}
-		key := "rl:" + dim
+		key := "rl:" + bucket + ":" + dim
 		res, err := script.Run(c.Request.Context(), rdb, []string{key},
 			r.RPS, r.Burst, time.Now().Unix()).Result()
 		if err != nil {

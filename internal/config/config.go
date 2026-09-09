@@ -270,10 +270,13 @@ func Load(path string) (*Config, error) {
 		cfg.Audit.Archive.OutDir = "data/archive"
 	}
 
-	// API 限流默认规则（07 §2：default rps 20 / burst 40）
-	if cfg.RateLimit.Enabled && cfg.RateLimit.Default.RPS <= 0 {
-		cfg.RateLimit.Default.RPS = 20
-		cfg.RateLimit.Default.Burst = 40
+	// API 限流（07 §2）：enabled 时规则必须显式且为正——静默兜底会让漏配 burst
+	// 变成「限流整体失效」的 fail-open（审计 M4），故 fail-fast 拒启
+	if cfg.RateLimit.Enabled {
+		if cfg.RateLimit.Default.RPS <= 0 || cfg.RateLimit.Default.Burst <= 0 {
+			return nil, fmt.Errorf("rate_limit.enabled=true 但 default.rps/burst 须为正数（当前 %d/%d）——缺省将导致限流整体失效",
+				cfg.RateLimit.Default.RPS, cfg.RateLimit.Default.Burst)
+		}
 	}
 
 	if cfg.InternalJobs.Enabled {
