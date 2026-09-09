@@ -21,6 +21,22 @@ type Config struct {
 
 	InternalJobs InternalJobsConfig `mapstructure:"internal_jobs"`
 	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
+	Gateway      GatewayConfig      `mapstructure:"gateway"`
+}
+
+// GatewayConfig 网关反代（批次 B / E13）：前缀→上游注册表 + 出站签名密钥。
+// Upstreams 为空 = 不挂载反代路由（默认关闭）；配置后 AK/SK 必填（Load fail-fast）。
+type GatewayConfig struct {
+	Upstreams []GatewayUpstreamConfig `mapstructure:"upstreams"`
+	AK        string                  `mapstructure:"ak"`
+	SK        string                  `mapstructure:"sk"`
+}
+
+// GatewayUpstreamConfig 单个反代上游。
+type GatewayUpstreamConfig struct {
+	Prefix      string `mapstructure:"prefix"`       // 网关暴露前缀（如 /al）
+	Target      string `mapstructure:"target"`       // 上游基址（如 http://activelist:8080）
+	StripPrefix bool   `mapstructure:"strip_prefix"` // 转发时剥离前缀
 }
 
 // TaskrunnerConfig zhuzhao → taskrunner API 出站 client（E-④）。
@@ -212,6 +228,8 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
 	viper.BindEnv("taskrunner.base_url", "TASKRUNNER_BASE_URL")
 	viper.BindEnv("taskrunner.sk", "TASKRUNNER_SK")
+	viper.BindEnv("gateway.ak", "GATEWAY_AK")
+	viper.BindEnv("gateway.sk", "GATEWAY_SK")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -242,6 +260,11 @@ func Load(path string) (*Config, error) {
 		if cfg.InternalJobs.AK == "" {
 			cfg.InternalJobs.AK = "taskrunner"
 		}
+	}
+
+	// 网关反代（批次 B/E13）：配置了上游即必须配出站签名密钥（fail-fast 对齐 internal_jobs）
+	if len(cfg.Gateway.Upstreams) > 0 && (cfg.Gateway.AK == "" || cfg.Gateway.SK == "") {
+		return nil, fmt.Errorf("gateway.upstreams 已配置但 ak/sk 缺失（env GATEWAY_AK / GATEWAY_SK）——出站签名必需")
 	}
 
 	return &cfg, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -45,6 +46,10 @@ type Deps struct {
 
 	// E-④：任务管理代理端点（biz 组，三层校验后出站 taskrunner）
 	TaskrunnerHandler *handler.TaskrunnerHandler
+
+	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
+	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
+	Gateway *gateway.Registry
 
 	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
@@ -263,6 +268,13 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.PUT("/ticket-templates/:code", deps.TicketHandler.UpdateTicketTemplate)
 					ticketMeta.DELETE("/ticket-templates/:code", deps.TicketHandler.DeleteTicketTemplate)
 				}
+			}
+
+			// 网关反代（批次 B/E13）：反代路由同样过 CasbinAuth（§25.1，menu_apis
+			// keyMatch2 匹配 :param 模式）+ SetForwardHeaders 身份断言 + AK/SK 出站
+			// 签名；未配置上游时不挂载（gateway 默认关闭）。限流/Restrict 随后续切片。
+			if deps.Gateway != nil {
+				deps.Gateway.Mount(authed, middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
 			}
 		}
 	}

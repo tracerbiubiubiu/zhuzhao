@@ -7,9 +7,12 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/google/wire"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -77,6 +80,19 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
 	jobsHandler := handler.NewJobsHandler(jobsCallbackService)
 	v := provideTrustedProxies(cfg)
+	// 批次 B/E13：网关反代注册表（gateway.upstreams 未配置时为 nil，不挂载）
+	var gwRegistry *gateway.Registry
+	if ups := cfg.Gateway.Upstreams; len(ups) > 0 {
+		gwUps := make([]gateway.Upstream, len(ups))
+		for i, u := range ups {
+			gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix}
+		}
+		gw, gwErr := gateway.New(gwUps, cfg.Gateway.AK, cfg.Gateway.SK)
+		if gwErr != nil {
+			return nil, nil, fmt.Errorf("gateway init: %w", gwErr)
+		}
+		gwRegistry = gw
+	}
 	deps := router.Deps{
 		AuthHandler:       authHandler,
 		UserHandler:       userHandler,
@@ -88,6 +104,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		JobsHandler:       jobsHandler,
 		TaskrunnerHandler: taskrunnerHandler,
 		InternalJobs:      cfg.InternalJobs,
+		Gateway:           gwRegistry,
 		JWTManager:        manager,
 		Enforcer:          syncedEnforcer,
 		RedisClient:       client,
