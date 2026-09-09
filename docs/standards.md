@@ -80,6 +80,7 @@
 5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经 ResourceAuthorizer 接缝换判定后端，L1 不动）；
 6. 角色自定义全链（角色 CRUD / AssignMenus / org_roles 组织赋角 / BFS 三源展开）为平台本职，所有服务共用。
 7. **权限码命名与注册**：码 = `resource:verb`（K8s verb 规范同款，禁复合码）；服务 API 的码↔路由绑定一律迁移申报（声明式，与代码同版本，design-decisions §26.2），运行时只开放菜单/角色绑定管理，**不开放 API 绑定编辑**。
+   - 存量例外注记（2026-09-09 对码盘点）：`ticket:type:manage`（000018，早于本公约）为 `resource:subresource:verb` 三段形——层级子资源而非复合动词，保留不改（改码 = 破坏既有角色绑定）；`role::superadmin` / `role::admin` 为 Casbin 角色名命名空间，非权限码，不在本公约范围。
 
 ## 8. 数据与迁移
 

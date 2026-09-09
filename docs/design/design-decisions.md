@@ -1402,7 +1402,7 @@ type remoteUserQueryService struct {
 
 ### 26.5 配套登记（2026-09-08）
 
-- 权限码命名公约（verb-on-resource）+ menu_apis 声明式申报原则 → standards §7 第 7 条；
+- 权限码命名公约（resource:verb，资源:动词；原文「verb-on-resource」顺序笔误，2026-09-09 勘误——现行约定以种子数据与 standards §7 为准）+ menu_apis 声明式申报原则 → standards §7 第 7 条；
 - BK-21 实施蓝本注记（Ruby Pundit `Policy::Scope` 结构惯例）→ phase2/00 §9；
 - AK/SK 外部凭据 per-key 权限集设计输入（GitHub fine-grained PAT 蓝本）→ 09 号 §3.2；
 - PG RLS 兜底预案（BK-21 后仍现漏调事故再评估，业界蓝本 Supabase；代价 = 谓词进 SQL 双维护）→ 11-authz §9.3 附注；
