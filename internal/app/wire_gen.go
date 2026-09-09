@@ -7,6 +7,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/wire"
@@ -116,6 +117,20 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		TrustedProxies:    v,
 	}
 	engine := router.New(deps)
+	// BK-22 fail-fast：路由↔menu_apis 双向对账（缺口 = 拒绝启动，清单见错误信息；
+	// 豁免集与网关前缀边界见 internal/router/catalog.go）
+	prefixes := make([]string, 0, len(cfg.Gateway.Upstreams))
+	for _, u := range cfg.Gateway.Upstreams {
+		prefixes = append(prefixes, u.Prefix)
+	}
+	bound, boundErr := router.LoadBoundAPIs(context.Background(), pool)
+	if boundErr != nil {
+		return nil, nil, boundErr
+	}
+	if gaps := router.AuditRouteCatalog(engine.Routes(), bound, prefixes); len(gaps) > 0 {
+		return nil, nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
+			len(gaps), router.FormatGaps(gaps))
+	}
 	app := NewApp(cfg, logger, engine, policyEvalWriter)
 	return app, func() {
 		cleanup3()

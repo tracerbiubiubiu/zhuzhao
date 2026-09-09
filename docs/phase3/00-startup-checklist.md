@@ -60,7 +60,7 @@
 | B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②✅ **zhuzhao 侧已实施（2026-09-04，E-②/E-③：端点+注册表+幂等表+audit_archive 动作）**；「按周期跑通」待 taskrunner M3 部署联调 |
 | B12 | **BK-21 IW4 护栏泛化**：fail-closed 哨兵 + AST 守护从 ticket_repo 泛化（registry 层通用机制或 AST 扩展全部 repo.List 调用点）；导出功能必须接 L2（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 随首个新资源接 L2 / 导出功能 |
 | B13 | **权限覆盖矩阵审计（提议待拍板）**：全端点×三层对账 + IAM 平面边界清单 + 文档路径引用核对（design-decisions §26.5） | 半天–1 天，doc-only；拍板后排期 |
-| B14 | **BK-22 路由↔menu_apis 一致性对账**（双向 fail-fast；RuoYi-Go 双项目核验提出，design-decisions §26.2） | 随批次 B，~半天 |
+| B14 | ~~BK-22 路由↔menu_apis 一致性对账~~ | ✅ **已实施（2026-09-09）**：internal/router/catalog.go 双向审计 + wire 启动 fail-fast + 集成发现跑（抓出 audit/logs 缺失 → 000025 补注册）；RuoYi-Go 双项目核验提出，design-decisions §26.2 |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 

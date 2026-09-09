@@ -159,7 +159,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-19** | 工单 handler 层零 Go 测试（TC-1，中） | 🔶 **已登记（2026-08-31），随工单封版后置（2026-09-02 §23）**——工单现状封版，handler 测试不再作为主链前置；翻案/对接时再评估（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）；详见 00 §9 |
 | **BK-20** | 禁删有未结工单的组织（守卫）+ 软删组织委托残留处置（2026-09-02 登记） | ✅ 守卫**已实施（2026-09-03）**（ErrOrgHasOpenTickets 50013→409 + 集成 TestBK20 + acceptance D6 三断言；全门禁绿）；残留部分**登记不修**——已结工单的委托可见性=档案连续性（三处委托 SQL 无 `deleted_at` 属设计内，显式断开杠杆=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21；详见 00 §9 |
 | **BK-21** | IW4 护栏未泛化：fail-closed 哨兵 + AST 守护仅覆盖 ticket_repo 一处，新资源接 L2 时漏接 GetFilter 仍=静默全量（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 🔶 **已登记（2026-09-08），触发驱动**——随首个新资源接 L2 / 导出功能一起实施（哨兵泛化 registry 层或 AST 守护扩展至全部 repo.List 调用点）；详见 00 §9 |
-| **BK-22** | 路由↔menu_apis 一致性对账：menu_apis 迁移行与 router.go 实际路由靠人工对齐，接错=混权（有路由无码=裸奔、有码无路由=死策略）；RuoYi-Go 双项目核验实锤同款痛点（Kun 版 120 条路由权限串硬编码与 sys_menu 种子人肉同步） | 🔶 **已登记（2026-09-08），随批次 B，~半天**——启动期/架构测试用 gin 自注册路由清单 vs menu_apis 双向 fail-fast；Form B 能力目录时转上报报文校验器（design-decisions §26.2）；详见 00 §9 |
+| **BK-22** | 路由↔menu_apis 一致性对账：menu_apis 迁移行与 router.go 实际路由靠人工对齐，接错=混权（有路由无码=裸奔、有码无路由=死策略）；RuoYi-Go 双项目核验实锤同款痛点（Kun 版 120 条路由权限串硬编码与 sys_menu 种子人肉同步） | ✅ **已实施（2026-09-09）**：internal/router/catalog.go 双向审计（豁免集+网关前缀跨仓边界）+ wire 层启动 fail-fast（缺口拒启）+ 集成发现跑（真抓出 audit/logs 权限面缺失 → 000025 补菜单/audit:read/绑定）；Form B 时转上报校验器（design-decisions §26.2）；详见 00 §9 |
 
 ---
 
