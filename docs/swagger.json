@@ -1381,7 +1381,7 @@
                 }
             }
         },
-        "/internal/jobs/{action_id}": {
+        "/internal/jobs/callback": {
             "post": {
                 "description": "结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试",
                 "consumes": [
@@ -1394,15 +1394,6 @@
                     "internal-jobs"
                 ],
                 "summary": "预置动作回调（taskrunner → zhuzhao，AK/SK 验签内网端点）",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "action_id",
-                        "name": "action_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1891,6 +1882,10 @@
                     "type": "string"
                 },
                 "callback_url": {
+                    "type": "string"
+                },
+                "dept": {
+                    "description": "一次性任务归属标签（E-⑤ 组装用户可见标签；C11 快照列）",
                     "type": "string"
                 },
                 "params": {

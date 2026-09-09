@@ -13,7 +13,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模**：70 个非测试 Go 源文件 ｜ 51 个测试文件 ｜ 201 个测试函数 ｜ 36 个迁移文件（18 对）｜ 13 份 review 文档（含本文件；统计时点 2026-09-01，随代码漂移）。
+**规模**：70 个非测试 Go 源文件 ｜ 51 个测试文件 ｜ 201 个测试函数 ｜ 50 个迁移文件（25 对）｜ 13 份 review 文档（含本文件；统计时点 2026-09-01，随代码漂移）。
 
 ---
 
@@ -37,6 +37,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **内网回调端点（E-②）** | `/internal/jobs/<action_id>`（AK/SK 验签 utils aksk + 专用拓扑，默认关）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3） | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
 | **审计归档（B11②，E-③）** | `audit_archive` 首个预置动作：audit_logs + policy_evaluation_logs 超期导出 JSONL→**单批导出成功后按同批 id 删行**（fsync 后删，崩溃窗口仅重复不丢）；保留期默认 180 天可配/params 可覆盖；单表失败跳过、任一失败→5xx 可重试可重入 | ✅ 2026-09-04（03 §4；本地卷 P4；注册进 jobs Registry） | `internal/service/audit_archive.go` |
 | **任务管理代理（E-④）** + **契约改造（E-⑦）** | 三层校验后代理 taskrunner API（提交/状态/执行记录/任务定义 CRUD/触发/取消/重试/死信）；出站 aksk 签名 + request_id/actor/source_ip 透传；提交/触发同步落 job_submissions 凭证（E5）；权限码 task:submit/read/manage + 菜单（000022）；**E-⑦**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试 | ✅ E-④ 2026-09-04 / E-⑦ 2026-09-07（16 号 §3；taskrunner 未部署时 502 透出） | `internal/pkg/taskrunner/` `internal/service/taskrunner_service.go` `internal/handler/taskrunner_handler.go` |
+| **网关反代（批次 B/E13）** | 前缀→上游注册表 / ReverseProxy / StripPrefix / AK/SK 出站签名 / 身份断言（X-Operator/X-Request-ID）/ 点段路径拒绝 / 502+10008 错误映射；根级挂载全链 JWT→限流→审计跳body→CasbinAuth | ✅ 2026-09-09（16 号批次 B） | `internal/gateway/` `internal/router/router.go` |
+| **API 限流（07 §2）** | Redis Lua 令牌桶：user_id/ClientIP 双键 + 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503 | ✅ 2026-09-09 | `internal/middleware/ratelimit.go` |
+| **BK-22 路由↔menu_apis 对账** | 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀）+ wire 启动 fail-fast；发现跑抓出 audit/logs 权限面缺失 → 000025 | ✅ 2026-09-09 | `internal/router/catalog.go` |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号规划 000017（归属已拍板：谁先启动谁占用、后者重排，见 §8 A2）
@@ -80,12 +83,15 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | `/audit/logs` | 审计日志查询 | 管理端 |
 | `/tickets` | CRUD + close + assign + comments + notes + relations | 工单 |
 | `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板） | 只读 |
+| `/v1/tasks` `/v1/runs` `/v1/jobs` `/v1/dead-letters` | 任务管理代理（E-④，三层校验后出站 taskrunner） | task:submit/read/manage |
+| `/internal/jobs/callback` | 内网回调（AK/SK 验签，action 在 body；C10） | taskrunner 内网，默认关 |
+| `/al/*`（网关反代） | activelist 透传（JWT→限流→审计跳body→Casbin→身份断言→AK/SK 出站签名；menu_apis 000024 权限面） | 批次 B/E13 |
 
 健康检查：`/health/live` `/health/ready`（Phase 1 起）。
 
 ---
 
-## 4. 数据库迁移地图（18 对）
+## 4. 数据库迁移地图（25 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -110,8 +116,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000021 | job_submissions：一表两用（E-④ 提交凭证 + E-② 回调幂等栅栏） | M-E |
 | 000022 | task_admin_menus：任务管理菜单 + 权限码 task:submit/read/manage（E-④） | M-E |
 | 000023 | job_submissions_params：提交入参快照列（E-④；zhuzhao 权威全量 × taskrunner 排障快照双侧记） | M-E |
+| 000024 | activelist_menus：名单管理权限面（目录/菜单/按钮 5 + menu_apis 14 路由，/al 前缀网关侧路径，keyMatch2 :param；批次 B 权限面） | 批次 B |
+| 000025 | audit_menu：审计日志菜单 + audit:read 码 + menu_apis 绑定（BK-22 对账发现 GET /api/v1/audit/logs 无权限面注册，补齐） | 批次 B |
 
-> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000023 已占用**（000017/000018 = IW1/IW3，000019–000023 见上表，下一编号 000024）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000025 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，下一编号 000026）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
 ---
 

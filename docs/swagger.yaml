@@ -332,6 +332,9 @@ definitions:
         type: string
       callback_url:
         type: string
+      dept:
+        description: 一次性任务归属标签（E-⑤ 组装用户可见标签；C11 快照列）
+        type: string
       params:
         items:
           type: integer
@@ -1229,17 +1232,11 @@ paths:
       summary: 更新工单
       tags:
       - ticket
-  /internal/jobs/{action_id}:
+  /internal/jobs/callback:
     post:
       consumes:
       - application/json
       description: 结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试
-      parameters:
-      - description: action_id
-        in: path
-        name: action_id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
