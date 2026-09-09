@@ -159,6 +159,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **BK-19** | 工单 handler 层零 Go 测试（TC-1，中） | 🔶 **已登记（2026-08-31），随工单封版后置（2026-09-02 §23）**——工单现状封版，handler 测试不再作为主链前置；翻案/对接时再评估（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）；详见 00 §9 |
 | **BK-20** | 禁删有未结工单的组织（守卫）+ 软删组织委托残留处置（2026-09-02 登记） | ✅ 守卫**已实施（2026-09-03）**（ErrOrgHasOpenTickets 50013→409 + 集成 TestBK20 + acceptance D6 三断言；全门禁绿）；残留部分**登记不修**——已结工单的委托可见性=档案连续性（三处委托 SQL 无 `deleted_at` 属设计内，显式断开杠杆=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21；详见 00 §9 |
 | **BK-21** | IW4 护栏未泛化：fail-closed 哨兵 + AST 守护仅覆盖 ticket_repo 一处，新资源接 L2 时漏接 GetFilter 仍=静默全量（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 🔶 **已登记（2026-09-08），触发驱动**——随首个新资源接 L2 / 导出功能一起实施（哨兵泛化 registry 层或 AST 守护扩展至全部 repo.List 调用点）；详见 00 §9 |
+| **BK-22** | 路由↔menu_apis 一致性对账：menu_apis 迁移行与 router.go 实际路由靠人工对齐，接错=混权（有路由无码=裸奔、有码无路由=死策略）；RuoYi-Go 双项目核验实锤同款痛点（Kun 版 120 条路由权限串硬编码与 sys_menu 种子人肉同步） | 🔶 **已登记（2026-09-08），随批次 B，~半天**——启动期/架构测试用 gin 自注册路由清单 vs menu_apis 双向 fail-fast；Form B 能力目录时转上报报文校验器（design-decisions §26.2）；详见 00 §9 |
 
 ---
 
@@ -216,6 +217,7 @@ docs/
 | B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置） | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②✅ **已实施（2026-09-04，E-②/E-③：端点+注册表+幂等表+audit_archive 动作）**；「按周期跑通」待 taskrunner M3 部署联调 |
 | B12 | **BK-21 IW4 护栏泛化**：fail-closed 哨兵 + AST 守护从 ticket_repo 泛化到 registry 层通用机制（或 AST 扩展覆盖全部 repo.List 调用点）；导出功能为高危场景（绕过分页全量拉取）必须接 L2（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 随首个新资源接 L2 / 导出功能（新资源经 Builtin/手写 Resource 接入时一并落） |
 | B13 | **权限覆盖矩阵审计（提议待拍板，2026-09-08）**：全端点 × 三层 × 「设计内豁免 vs 遗漏」逐行对账，产出覆盖矩阵 review 文档；顺带产出 ① IAM 平面边界清单（design-decisions §26.1 三步走①的输入）② 全文档 `internal/*` 路径引用对现状核对（F-1 路径腐烂教训推广） | 半天–1 天，doc-only；拍板后排期 |
+| B14 | **BK-22 路由↔menu_apis 一致性对账**（启动期/架构测试双向 fail-fast；Form B 能力目录时转上报校验器，design-decisions §26.2） | 随批次 B（activelist API 入 menu_apis 同批落地），~半天 |
 
 ### 独立窗口（已触发，Phase 2 范畴，不属于 Phase 3 前置或随行）
 
@@ -226,4 +228,4 @@ docs/
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 
-> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）、09 F-31④（relation 越权负向用例——现有 `TestD9_CreateRelation` 只覆盖正向/同向 409/删后 404）、09 F-32（audit/user service 分支级单测，低优——集成已兜底核心分支）、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）。
+> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）、09 F-31④（relation 越权负向用例——现有 `TestD9_CreateRelation` 只覆盖正向/同向 409/删后 404）、09 F-32（audit/user service 分支级单测，低优——集成已兜底核心分支）、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）。**新增（2026-09-08）：在线用户管理面（触发驱动；触发条件 = 出现强制下线/会话审计运维诉求——安全事件响应或账号共享治理，或 M-SSO 上线引入多端会话管理；两条件均未出现前不动，2026-09-09 补写触发条件对齐「暂缓 ≠ 搁置」纪律）**——会话吊销原语全现成（`user:disabled` + SCAN `refresh:<uid>:*` + `blacklist:at:<jti>`，session_revoke.go / auth_service.go:326），缺的仅管理端点：基础版 GET/DELETE `/monitor/online-users` + 权限码 seed，0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）。

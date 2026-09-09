@@ -60,6 +60,7 @@
 | B11 | **审计治理两件（2026-09-01 go-wind-admin 调研吸收）**：① **L2/L3 策略评估日志**——判定日志表 + `resource.Authorize`/`scope_resolver.resolve` 埋点（actor/资源/动作/scope 轴/结果/原因/trace_id），补 L2 拒绝无留痕盲区（现状：L3 路由拒绝有 slog Warn、审计行带 403/404；L2 scope 拒绝完全静默）；② **审计归档**——audit_logs + 判定日志表超期导出 JSONL、导出成功后删行（保留期默认 180 天等保口径、可配置）。暂缓期不提前建表：判定日志是天然大表，先建无归档=重蹈 audit_logs 覆辙 | ①✅ **已实施（2026-09-04，E-①）**：迁移 000020 + EvalHook 埋点 + L2 writer（管道拍板 2026-09-03 异步）+ request_id 三列贯通；②✅ **zhuzhao 侧已实施（2026-09-04，E-②/E-③：端点+注册表+幂等表+audit_archive 动作）**；「按周期跑通」待 taskrunner M3 部署联调 |
 | B12 | **BK-21 IW4 护栏泛化**：fail-closed 哨兵 + AST 守护从 ticket_repo 泛化（registry 层通用机制或 AST 扩展全部 repo.List 调用点）；导出功能必须接 L2（2026-09-08 OPA/ReBAC 复核清点，11-authz §9.3） | 随首个新资源接 L2 / 导出功能 |
 | B13 | **权限覆盖矩阵审计（提议待拍板）**：全端点×三层对账 + IAM 平面边界清单 + 文档路径引用核对（design-decisions §26.5） | 半天–1 天，doc-only；拍板后排期 |
+| B14 | **BK-22 路由↔menu_apis 一致性对账**（双向 fail-fast；RuoYi-Go 双项目核验提出，design-decisions §26.2） | 随批次 B，~半天 |
 
 ### 2.3 独立窗口 IW1–IW3（已触发 / 按需，Phase 2 范畴；「W」编号独占给 README Wave，本表用 IW 前缀）
 
@@ -75,6 +76,7 @@
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 > **BK-20** ✅ **已实施（2026-09-03，commit d4f5c17）**：OrgRepo.Delete / DeleteVgWithOwnerCleanup 同事务加 `status<>'closed'` 计数守卫；ErrOrgHasOpenTickets（50013→409）；TestBK20 集成测试 + acceptance 2c D6 补 3 断言；全门禁绿。已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21。
 > **BK-21（已登记 2026-09-08，触发驱动）**：IW4 护栏泛化——哨兵 + AST 守护仅覆盖 ticket_repo，新资源接 L2 时漏接 GetFilter 仍=静默全量；随首个新资源接 L2 / 导出功能实施（来源 = OPA/ReBAC 迁移复核，11-authz §9；详见 00 §9 / 11 §6+§8 B12）。
+> **在线用户管理面（触发驱动随手项，2026-09-08 登记；触发条件 = 强制下线/会话审计诉求或 M-SSO 多端会话管理，SSOT 见 review/11 §8 随手项）**：会话吊销原语全现成（`user:disabled` / SCAN `refresh:<uid>:*` / `blacklist:at:<jti>`），缺的仅管理端点——基础版 0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）；RuoYi-Go 双项目均有此面（反面参照：Kun 版用 KEYS 扫描）。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
 > activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.2.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。
@@ -137,3 +139,4 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 | 2026-09-04（M0 收口） | 核实 BK-20 已于 2026-09-03 由所有者实施并提交（d4f5c17，全门禁绿）——00 号状态行刷新，**M0 启动准备就此收口**（迁移号 000020 起 + 决策过表已于 09-03 拍板收口） |
 | 2026-09-08（OPA/ReBAC 复核） | 项目所有者提问「当前实现是否迁移 OPA/ReBAC」→ 复核**维持不迁移**（11-authz §9 新增复核记录：触发表零命中 / OPA 不对口 SQL 行级判定 / ReBAC 双写管道成本 + 与 activelist 冲突）；清点三件权限债——Casbin Watcher（W1 既有归口，含 enforcer.go 死代码注记）、L1 缓存（09 号既有归口）、**IW4 泛化 → 新登记 BK-21**（本表 §2.2 B12 + 备注 + 00 §9 + 11 §6/§8 同步） |
 | 2026-09-08（权限讨论落档） | design-decisions 新增 **§26**（IAM 演进三步走/声明式注册原则/L2 两态接口论证/支撑边界四墙——助手建议待所有者确认）；standards §7 补第 7 条（权限码 verb 命名 + menu_apis 声明式注册公约）；BK-21 补 Pundit `Policy::Scope` 蓝本注记；09 号 §3.2 补 GitHub PAT per-key 权限集设计输入；11-authz §9.3 附注补 PG RLS 兜底预案；**B13 权限覆盖矩阵审计登记（提议待拍板）**；F-1 路径腐烂修复见 phase1/11-code-review 文首注记 |
+| 2026-09-08（RuoYi-Go 双项目借鉴核验） | Kun-GitHub 与 lostvip 两版 RuoYi-Go 代码级核验（并行子代理）：两项目 L2 数据权限一为 fail-open 半成品、一为纯 UI 摆设，反向印证 zhuzhao L2 服务端强制/fail-closed/护栏路线；借鉴登记——**BK-22 路由↔menu_apis 对账**（本表 §2.2 B14，随批次 B）、在线用户管理面（随手项，触发驱动）、11-authz §1.2 补自定义部门集实现形态注记（仅借形态勿抄角色派）；design-decisions §26.2 补 Form A/B 落地节奏、§26.5 补登记索引 |

@@ -8,6 +8,39 @@
 
 ---
 
+## 0. 权限文档地图（全域入口，2026-09-08 建）
+
+> 权限相关文档分散在 design/modules/phase2/phase3/review 五处——**刻意不合并目录**（文件编号即索引、跨文档相对引用数百处，搬迁=断链；历史教训：曾因引用错文档版本引发误判）。以本节为唯一入口地图，按需取用。
+
+### 0.1 按层分类
+
+| 层 | 文档 | 内容 |
+|---|------|------|
+| **公约 SSOT**（跨生态约束） | [standards.md §7](../standards.md) | PDP/PEP 分工、三层定义、Q5 禁令、ReBAC 不演进、角色全链平台本职、权限码命名与声明式注册 |
+| **决策 SSOT**（为什么这样定） | [design-decisions.md](../design/design-decisions.md) §12/§20/§25/§26 | §12 ReBAC 选型史、§20 SoD 延后、§25 权限架构定版（25.1 PDP/PEP、25.2 网关边界、25.3 策略库归属、25.4 ReBAC 不演进、25.5 前置清单）、§26 IAM 演进三步走/注册原则/支撑边界四墙 |
+| **架构评审**（对照与触发表） | [phase2/11-authz-architecture-review.md](../phase2/11-authz-architecture-review.md) | §1.2 业界对照、§2 L2/L3 顺序拍板、§3 不变量（默认拒绝/fail-closed/Q5）、§5 ReBAC 转向触发表（六条）、§9 OPA/ReBAC 迁移复核（2026-09-08） |
+| **模块详设**（怎么实现） | 本文 + [phase2/02-authz-resource.md](../phase2/02-authz-resource.md) + [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) + [phase2/03-org-enhance.md](../phase2/03-org-enhance.md) | L1/L2/L3 详设、ScopeResolver/TicketResource、组织委托轴、组织可见性开关 |
+| **执行与在册**（做到哪/欠什么） | [review/11-project-control.md](../review/11-project-control.md) §2/§6/§8 + [phase2/00 §9](../phase2/00-implementation-plan.md) + [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) | 权限模型速查、健康状态（BK-19~22）、遗留分类、backlog 详情、启动检查单 |
+| **Phase 3 权限配套** | [phase3/16-external-integration.md](../phase3/16-external-integration.md) §9 + [phase3/09-platform.md](../phase3/09-platform.md) + [phase3/02-multi-instance.md](../phase3/02-multi-instance.md) + [phase3/03-audit-l2.md](../phase3/03-audit-l2.md) + [phase3/13 §1](../phase3/13-implementation-plan.md) | 外部服务统一基线（AK/SK+断言）、批次 A/B 前置、L1 缓存、AK/SK 平台凭据、Casbin Watcher、判定日志/归档、主链排期 |
+| **专项散节** | [ADR-003](../adr/ADR-003-activelist-integration-form.md)（activelist 零权限边界）、[phase1/05-role.md](../phase1/05-role.md)（角色 priority 与权限继承模型，§角色 priority 与权限继承模型）＋ [design/rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)（parent_id 继承与级联）、[phase1/02-auth.md](../phase1/02-auth.md)（认证详设）、[design/architecture.md §4](../design/architecture.md)（总体架构中的权限位） | 按需 |
+
+### 0.2 按目的取用
+
+| 你要做什么 | 读这里（顺序） |
+|-----------|---------------|
+| 5 分钟了解权限现状 | review/11 §2 权限模型速查 → standards §7 |
+| 理解为什么这样设计 | design-decisions §25 → §26 → 11-authz §2/§3 |
+| 改权限相关代码 | 本文 → phase2/02 → review/11 §6（先看在册债务避免重复踩） |
+| 新服务接入（taskrunner/activelist 式） | 16 号 §9 基线 → ADR-003 → design-decisions §26.2（注册协议） |
+| 判断「要不要引入 X / 能力该不该做」 | 11-authz §5 触发表 → §25.4 反触发评估 → §26.4 四墙 |
+| 排查权限问题 | review/11 §2 速查 → §6 健康状态 → 11-authz §3 不变量（403/404/503 语义） |
+
+### 0.3 引用口径警示
+
+权限演进路径的引用 SSOT = **standards §7 + 11-authz §5 + design-decisions §12/§25/§26**。勿引：standards §11（是开发工作流）、ADR-001（是工单事件源）、review/11（是能力总览非设计源）。
+
+---
+
 ## 1. 模块定位
 
 **核心底座模块**。鉴权分为两层：

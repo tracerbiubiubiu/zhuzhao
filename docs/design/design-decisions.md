@@ -1381,6 +1381,7 @@ type remoteUserQueryService struct {
 - **运行时自注册不做**：注册权 = 权限模型写入口 = 治理洞（被攻陷服务可给自己加路由；UDDI 教训）。gin-vue-admin 等运行时编辑 API 绑定的形态为反面参照。
 - **menu_apis 刻意无运行时 CRUD**（与 menus/roles 的运行时 CRUD 不对称，设计内）：API 路由是代码产物，绑定必须与代码同版本发布；运行时可改 = 任意码可接任意路由 = 混权面。
 - **多服务时代的注册表增量**：menu_apis 加 `owner_service` 元数据列（taskrunner 契约已预留概念）+ 定期对账；触发 = 第 3 个申报服务的出现。
+- **落地节奏（2026-09-08 补充，RuoYi-Go 双项目核验后细化）**：近期 Form A=集中申报——批次 B 的 activelist 路由走 menu_apis 迁移申报 + **BK-22 启动期对账**（gin 自注册路由清单 vs menu_apis 双向 fail-fast：多路由无码=裸奔、有码无路由=死策略）；Form B=上报式（AK/SK manifest 上报 → draft → 管理员确认生效，BK-22 逻辑转上报报文校验器），第 3 个申报服务出现时建。读取侧两形态零差别（menu_apis/casbin_rule DB 一份、enforcer 统一加载）。
 
 ### 26.3 L2/L3 谓词归属与身份供给（两态接口的结构必然性）
 
@@ -1409,3 +1410,5 @@ type remoteUserQueryService struct {
 - AK/SK 外部凭据 per-key 权限集设计输入（GitHub fine-grained PAT 蓝本）→ 09 号 §3.2；
 - PG RLS 兜底预案（BK-21 后仍现漏调事故再评估，业界蓝本 Supabase；代价 = 谓词进 SQL 双维护）→ 11-authz §9.3 附注；
 - 权限覆盖矩阵审计（提议待拍板）→ review/11 §8 B13。
+- 路由↔menu_apis 一致性对账 = **BK-22**（随批次 B）＋ 在线用户管理面（触发驱动随手项；触发条件 = 强制下线/会话审计诉求或 M-SSO 多端会话管理）→ review/11 §8 B14/随手项。
+- RuoYi-Go 双项目借鉴核验（Kun-GitHub / lostvip-com，2026-09-08，代码级）：两项目 L2 数据权限一为 fail-open 半成品、一为纯 UI 摆设——反向印证 L2 服务端强制 + fail-closed 路线；data_scope 仅借「自定义部门集」需求形态（实现走锚点授予表，勿抄角色派——与 BK-14 冲突）。

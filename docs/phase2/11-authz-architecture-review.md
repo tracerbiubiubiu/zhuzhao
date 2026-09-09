@@ -27,7 +27,7 @@
 | NIST RBAC | 高 | 角色继承不进 Casbin、应用层 BFS 展开，比 Keycloak composite 更可控 |
 | XACML / NIST ABAC | 特例 | L3 仅单属性比对（creator_id），文档诚实自称「简单 ABAC」；PDP 演进有触发信号（§6） |
 | Zanzibar ReBAC | 弱化实现 | design-decisions §12.2 主动承认「不是 ReBAC 引擎，是一条 SQL」——ltree 只覆盖组织树单种关系图 |
-| 若依 data_scope | 子集 | 缺「自定义部门集合」级，Phase 2b 可按需补 |
+| 若依 data_scope | 子集 | 缺「自定义部门集合」级，Phase 2b 可按需补。**实现形态注记（2026-09-08 RuoYi-Go 双项目核验）**：仅借需求形态（RuoYi=sys_role_dept 先删后插+五档枚举），勿抄角色派模型（与 BK-14 关系派拍板冲突）——zhuzhao 版走「锚点授予表」UNION 进 scope_resolver 锚点集（ltree `ANY(anchors)` 天然集合语义，~1–2 天）；应急零开发替代 = user_orgs 多成员 + scope=group + expires_at |
 | 混合模型（业界实态） | **高** | 纯模型不存在于大型系统，分层本质是按判断成本分流（AWS / GDrive 均为混合） |
 
 **核心优势**：策略爆炸量化论证；对自身局限诚实并给出演进触发信号；三维分离有业界对照支撑。
