@@ -89,7 +89,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | 项 | 内容 | 依赖 / 挂靠 | 量级 |
 |---|---|---|---|
-| **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | ~1 周 |
+| **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body。**进度（2026-09-09）**：**反代核心 ✅ 已实施（zhuzhao 068207e）**——`internal/gateway`（Upstream 注册表 fail-fast / ReverseProxy + StripPrefix / aksk.Transport 出站签名闭环 activelist M-A6 验签 / 上游不可达 502+10008 信封 / `SetForwardHeaders`）+ `gateway.upstreams` 配置段（默认关闭，config.yaml 附示例）+ router 挂载（反代路由过 CasbinAuth，§25.1）+ 单测 6 项全绿；**剩余切片**：menu_apis seed 000024 / Restrict / BK-22 对账 / 限流 / 审计跳 body | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | 剩余 ~3–4 天 |
 | **前置 · 契约整改（2026-09-07 审计确认未整改）** | activelist 契约未吸收 API 设计约定：① `PUT/DELETE /data/:type/:id` → `POST .../update` / `.../delete`（body 带 id+version）；② `POST .../:typeName/schema`、`/deprecate`、`/:id/restore` 动作进 URL → 收敛为 body 传参或经所有者确认豁免登记；③ id 传输未约定字符串序列化（BIGSERIAL → JS 精度）；④ 15 个设计提交未合入 main（契约 SSOT 在未合入分支）；⑤ 测试三档/迁移 up-down 成对未写入计划。**activelist 未开工=零成本窗口，契约冻结后改即成本** | activelist 仓库整改 + zhuzhao 16 号镜像同步 | 文档 ~1h |
 | **D-②** | D3 业务审计：**P2 已拍板**（SSOT = activelist ADR-003「审计落点机制」专节）——client 封装层同请求路径同步写 `activelist_audit_log` 表 + 失败落本地重投队列；`X-Request-ID` 优先透传入站 rid（03 §3.4）；脱敏/水位对账风险接受（钩子已预留） | 批次 B | 1–2 天 |
 | D-④ | D4 事件发布：zhuzhao **业务操作点**（client 封装层——反代路径之外的内部直调同样覆盖）对 activelist 的写操作成功后显式发布（M-E 就绪后接） | M-E | 随用 |
@@ -154,7 +154,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | 能力 | 统一策略 |
 |---|---|
-| 服务鉴权 | ✅ **AK/SK HMAC 签名 + 专用 network 双防线**（2026-09-03 拍板，覆盖当日早前「零认证+拓扑」口径）：服务间通信一律签名/验签（utils `aksk`，按调用方发 SK：zhuzhao/taskrunner/activelist 各一把，env 注入）；专用 network 仍保留（攻击面收敛 + 第二道防线）；用户鉴权全部在 zhuzhao 网关 |
+| 服务鉴权 | ✅ **AK/SK HMAC 签名 + 专用 network 双防线**（2026-09-03 拍板，覆盖当日早前「零认证+拓扑」口径）：服务间通信一律签名/验签（utils `aksk`，按调用方发 SK：zhuzhao/taskrunner/activelist 各一把，env 注入）；专用 network 仍保留（攻击面收敛 + 第二道防线）；用户鉴权全部在 zhuzhao 网关。**activelist 验签已接线（M-A6，2026-09-09）**：AKSKAuth（utils `aksk.GinMiddleware`，签名覆盖 X-Request-ID/X-Operator，读体上限=ImportMaxBytes 防 8MB 默认拦大导入）+ Operator 透传（X-Operator→ctx，缺省 system）+ 空密钥环拒启（fail-closed，对齐 taskrunner C2）——至此三仓服务间鉴权链全部闭环 |
 | 身份断言 | ✅ **明文 `X-Operator` 头 + 纳入签名覆盖**（B2 关闭）：明文断言经 HMAC 覆盖后不可伪造；§25.2 方案 A（AT 验签）不需要、降为触发条件驱动（服务可达面扩大 / 服务自行做行级判定 / 合规要求） |
 | 密钥管理 | ✅ **容器挂载起步、单密钥可接受**（2026-09-04 拍板）：读侧 env/密钥环文件（多把时挂密钥环文件而非逐条 env）；单密钥代价已知（归因靠 actor 头入签 / 撤销粒度全局 / 无按调用方差异），升级=密钥环加条目纯配置；DB 动态密钥/管理面 🚦（09 号外部 M2M 场景，KeyGetter 接口已留，切换零改动） |
 | body 完整性 | ✅ **验签端自算 body 哈希入签名**（generateBodyHash 模式，不信任客户端头值——诚实调用方互通不变、中间人篡改必拒）；**skipbody 联调稳定后关闭**启用之；中间件读 body 必须还原 `r.Body`（utils gin.go 先例） |
