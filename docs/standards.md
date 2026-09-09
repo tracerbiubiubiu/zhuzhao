@@ -31,13 +31,13 @@
 
 1. **方法仅 GET / POST**——PUT / DELETE / PATCH 不引入；
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
-3. 响应结构统一 utils `errcode` + `response`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；
-4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；
+3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
+4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 api/errcode.md 对账）；
 5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE（ticket-types/templates，封版不改）；新端点一律按本约定；
-6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；
+6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**；
 7. **int64 ID 一律字符串序列化**（`json:",string"`）——规避 JS Number 精度丢失；
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
-9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段。
+9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。
 
 ## 4. 工程结构与代码组织（所有服务同规格）
 

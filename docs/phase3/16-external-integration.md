@@ -165,7 +165,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 日志框架 | zhuzhao-utils `logger`（slog + lumberjack，JSON Lines，字段稳定命名供 ES 演进） |
 | 请求级访问日志 | **统一中间件出口**，每请求一行（method / path / operator / trace_id / 请求参数 4KB 截断 / 结果状态）+ 响应回显 `X-Request-ID`；`X-Operator` 缺失兜底 `"system"`；脱敏钩子预留（启用只改一处） |
 | request_id 协议 | `X-Request-ID` 头进出全程透传（与业务 body 的 request_id 并存：taskrunner job_runs / activelist trace_id 同键） |
-| 响应结构 | utils `errcode` + `response` |
+| 响应结构 | utils `errcode` + `response`（信封 `{code,message,data,request_id}`，code=业务码 0=成功，standards §3.3）。**对账注记（2026-09-08）**：taskrunner ✅ 已接 utils/response（探针豁免）；**activelist ⚠ 为本地信封且异构**（internal/handler/response.go：code=HTTP 状态码、字段名 `msg`、无 request_id 字段、多 detail{error_code}）——网关反代透传后前端拦截器按 code==0 判成功会把 activelist 的 200 判失败。**收敛动作（activelist 侧）**：✅ **已实施（2026-09-08，feat/ma1-skeleton，lint+单测+集成全绿）**——信封切 utils/response（code=业务码 0=成功/message/request_id）+ apperr 数值映射（100000 段，码表见 errcode.md §4）+ Created 取消→200 + Detail 折叠进 message + PUT/DELETE→POST + `Document.ID` 字符串序列化（导入 fixture 同步）。**四拍板终态（2026-09-08 所有者确认）**：① apperr 数值码入跨服务段 100000–100999（errcode.md §2 已登记；INTERNAL/DEPENDENCY 复用 10000 段）② Created 201 取消→OK 200（生态零 201 消费者）③ detail 字段不保留（WithDetail 零调用；结构化上下文走信封扩字段评审通道）④ **列表游标分页现状保留**（M-A3 已建成+测试绿；offset/PageData 决策推迟到前端阶段按真实 UX 定，keyset 留给 M-A5 机器链路）。**全面验证追加两发现（同批修）**：⑤ `data.PUT /:typeName/:id` 违反 §3.1 → 改 `POST /data/:typeName/:id/update`（对齐 taskrunner /jobs/update 模式）⑥ `Document.ID int64 json:"id"` 数字直出违反 §3.7 → `json:"id,string"`。改动总量 ~1 天（response.go/apperr/errcode.md 登记/路由 1 处/tag 1 处/测试断言） |
 | 业务审计 | 零业务语义日志；审计正本全在 zhuzhao（任务提交日志 / `activelist_audit_log`） |
 | 事件 | 服务自身不发不订；事件事实源 = zhuzhao L1，异步执行 = taskrunner 总线 |
 | 健康检查 | `/healthz` + `/readyz`（检各自硬依赖：Redis / PG） |
@@ -186,7 +186,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | C4 | ✅ **已实施（2026-09-04）**：`/readyz`（Redis ping + SQLite 探针；迁 PG 后改检 PG） | 完成 |
 | C5 | ✅ **已实施（2026-09-04）**：Dockerfile `TZ=Asia/Shanghai` | 完成 |
 | C6 | ✅ **已实施（2026-09-04）**：viper yaml + env（TASKRUNNER_* 全量兼容） | 完成 |
-| C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束） | M3/M4（约半天） |
+| C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束）→ ✅ **已实施（2026-09-09，aa106ee+102fcab）**：database/sql 双驱动（SQLite/PG 无感切换）+ CLI enqueue 复用 OpenStore 修 PG 错库 + NullTime 空值往返测试；日志轮转批次在途（M4 保留期预埋，config/cron/task/jobs/worker 5 文件） | M3/M4（约半天） |
 | C8 | **utils `aksk` 包实现**（signer/verifier/gin 中间件工厂 + 常量时间比较 + 时间窗防重放 ±5min + 测试，~0.5 天；canonical = METHOD\nPATH\nsha256(body)\nTS\nX-Request-ID\nX-Operator（C9 的「覆盖 X-Request-ID」由此落在 canonical 里））——全部服务间签名的公共底座，**先行** | M3 前置 |
 | C9 | ✅ **已实施（2026-09-04）**：回调以自身 SK 签名 + rid 透传——实测暴露并修复 utils aksk 根路径 canonical 缺陷（017832d） | 完成 |
 | C10 | **API 设计约定改造（2026-09-04 约定，见基线「API 设计约定」行）**：`PATCH /jobs/:id` → `POST /jobs/update`（body 带 job_id）；`POST /tasks/:id/cancel` → `POST /tasks/cancel`（body 带 task_id）；`POST /tasks/:id/retry` → `POST /tasks/retry`；`POST /jobs/:id/trigger` → `POST /jobs/trigger`；client（zhuzhao `pkg/taskrunner`）同步。`GET /tasks/:id` 的 path 参数合规保留（约定仅限 POST） | M3 联调前（与 C11 同批） |

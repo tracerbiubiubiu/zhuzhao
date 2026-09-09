@@ -32,6 +32,7 @@
 | 80000–80999 | 审计（Phase 2+） |
 | 90000–90999 | 工单 |
 | 91000–91999 | 文件存储 |
+| 100000–109999 | 跨服务（6 位段，与域内 5 位码数值可区分）：100000–100999 = activelist、101000–101999 = taskrunner（预留）；通用语义错误复用 10000 段现有码（2026-09-08 三仓信封收敛拍板，standards §3.9） |
 
 ---
 
@@ -195,6 +196,24 @@
 | 91004 | `ErrFileAlreadyBound` | 文件已关联其它资源 | 409 |
 
 > Phase **2b** storage 模块实现时写入 `errcode.go`（码号预留，勿改号）。
+
+### 跨服务 · activelist 100000–100999
+
+<!-- 2026-09-08 三仓信封收敛批次登记；常量与映射实现在 activelist 仓 internal/apperr（numByCode） -->
+
+| code | error_code（内部标识） | message | HTTP |
+|------|----------------------|---------|------|
+| 100000 | `VALIDATION_ERROR` | Schema 校验失败 | 422 |
+| 100001 | `RESERVED_FIELD` | 字段名与保留字段冲突 | 422 |
+| 100002 | `TYPE_NOT_FOUND` | 类型不存在 | 404 |
+| 100003 | `TYPE_ALREADY_EXISTS` | 类型已存在 | 409 |
+| 100004 | `TYPE_DEPRECATED` | 类型已废弃不可写入 | 409 |
+| 100005 | `DATA_NOT_FOUND` | 数据行不存在 | 404 |
+| 100006 | `FIELD_DEPRECATED` | 旧数据携带已移除字段（懒迁移提示） | 422 |
+| 100007 | `NEW_REQUIRED_FIELD` | 旧数据缺演进新增必填字段（懒迁移提示） | 422 |
+| 100008 | `CONFLICT` | 并发冲突/版本不匹配 | 409 |
+
+> 通用语义错误复用 10000 段：`INTERNAL_ERROR`→10000、`DEPENDENCY_UNAVAILABLE`→10008；参数绑定失败→10001。100009–100999 余量预留（勿改号）；taskrunner 自有码预留 101000–101999。信封 = standards §3.3（`{code, message, data, request_id}`，创建统一 200）。
 
 ---
 
