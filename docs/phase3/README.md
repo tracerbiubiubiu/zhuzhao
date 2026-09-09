@@ -74,10 +74,10 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
-| 事件驱动升级 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | L1 → L2 升级：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列（方案见 ADR-001/002，原 04-event-driven.md 未单独成篇） | 已决策（ADR） |
+| 事件驱动升级 | [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) | L1 → L2 升级：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列（方案见 ADR-001/002，原 04-event-driven.md 未单独成篇） | 已决策（ADR） |
 | 平台增强 | [platform](./09-platform.md) | 权限/菜单缓存跨实例失效、AK/SK（有调用方时）（🚦 触发条件驱动） | 已编写（2026-09-02） |
 
-> **微服务拆分（microservice）当前不做**：[05-microservice.md](./05-microservice.md) 保留为参考文档。按 2026-08-25 决策，当前没有微服务需求，**整体推迟到未来有真实多团队/M2M 需求时再评估**，不排入 Phase 3。部署级分离（同二进制不同配置启动）作为后续验证手段，见 [11-deployment-split.md](./11-deployment-split.md)。
+> **微服务拆分（microservice）当前不做**：05-microservice（参考文档**无文件未入库**，2026-09-09 断链盘点去链）。按 2026-08-25 决策，当前没有微服务需求，**整体推迟到未来有真实多团队/M2M 需求时再评估**，不排入 Phase 3。部署级分离（同二进制不同配置启动）作为后续验证手段，见 [11-deployment-split.md](./11-deployment-split.md)。
 
 ### 1.3 不做什么
 
@@ -180,7 +180,7 @@ Phase 3 主能力稳定运行
    └── Step 11: 验收
 ```
 
-> **微服务拆分不在本阶段（且不排入 Phase 3）**：[05-microservice.md](./05-microservice.md) 标注推迟。当前无微服务需求，整体推迟到未来有真实多团队/M2M 需求时再评估。
+> **微服务拆分不在本阶段（且不排入 Phase 3）**：05-microservice（无文件未入库，2026-09-09 去链）标注推迟。当前无微服务需求，整体推迟到未来有真实多团队/M2M 需求时再评估。
 
 ### 2.3 步骤对照表
 
@@ -194,10 +194,10 @@ Phase 3 主能力稳定运行
 | 6 | 原 3a | ops | Phase 2 | [08-ops.md](./08-ops.md) |
 | 7 | 原 3a | **ticket-business** | Phase 2c + Step 2 | [10-ticket-business.md](./10-ticket-business.md) |
 | 8 | 原 3a | 生产验收 | Step 1–7 | 本文档 §3.1 |
-| 9 | 原 3b | event-driven | Phase 3 稳定 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) |
+| 9 | 原 3b | event-driven | Phase 3 稳定 | [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) |
 | 10 | 原 3b | platform | 按需 | [09-platform.md](./09-platform.md) |
 | 11 | 原 3b | 验收 | Step 9–10 | 本文档 §3.2 |
-| — | 推迟 | ~~microservice~~ | Phase 3 以后按需 | [05-microservice.md](./05-microservice.md)（参考文档，标注推迟） |
+| — | 推迟 | ~~microservice~~ | Phase 3 以后按需 | 05-microservice（无文件未入库，2026-09-09 去链；推迟） |
 | — | 推迟 | ~~deployment-split~~（部署级分离） | Phase 3 末可选验证 | [11-deployment-split.md](./11-deployment-split.md) |
 
 ---
@@ -269,8 +269,8 @@ Phase 3 主能力稳定运行
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
 | [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（含 B11① 判定日志 + B11② 归档；写入管道待拍板） | **已编写（2026-09-02）** |
-| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
-| [05-microservice.md](./05-microservice.md) | 微服务拆分 | **推迟**（Phase 3+ 以后按需；当前作为参考文档） |
+| [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
+| 05-microservice（无文件未入库，2026-09-09 去链） | 微服务拆分 | **推迟**（Phase 3+ 以后按需） |
 | [06-ha.md](./06-ha.md) | 高可用 | **已编写（2026-09-02）** |
 | [07-security-enhance.md](./07-security-enhance.md) | 安全增强 | **已编写（2026-09-02）** |
 | [08-ops.md](./08-ops.md) | 运维工具 | **已编写（2026-09-02）** |

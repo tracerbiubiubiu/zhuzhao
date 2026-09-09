@@ -87,7 +87,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 | 审计日志 L2 | Redis List 队列，进程崩溃不丢 | 暂缓 |
 | 事件驱动（L1 事件源） | PostgreSQL `ticket_events` 轮询（长期稳态） | 设计就绪（[ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md)）；`ticket_events` 表 Phase 2a 已建（审计用），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）Phase 3 启动时实现 |
 | 异步任务执行器 | Asynq（复用现有 Redis，覆盖审批触发事件 + 预置定时任务） | 设计就绪（[ADR-002](./adr/ADR-002-asynq-async-task-executor.md)）；Phase 3 启动时引入（Phase 2a 无异步业务） |
-| 消息通知中心 | 站内通知 + 邮件 SMTP，由 Asynq worker 异步发送（订阅 `ticket_events` 各事件；也是审批/SLA 违约的下游副作用） | 设计就绪（[ADR-002 场景 D](../adr/ADR-002-asynq-async-task-executor.md) + [10-ticket-business §3](../phase3/10-ticket-business.md#3-通知服务站内--邮件)；用户明确后续基于 Asynq 集成，实现时机待定） |
+| 消息通知中心 | 站内通知 + 邮件 SMTP，由 Asynq worker 异步发送（订阅 `ticket_events` 各事件；也是审批/SLA 违约的下游副作用） | 设计就绪（[ADR-002 场景 D](./adr/ADR-002-asynq-async-task-executor.md) + [10-ticket-business §3](./phase3/10-ticket-business.md#3-通知服务站内--邮件)；用户明确后续基于 Asynq 集成，实现时机待定） |
 | 事件驱动（L2 升级） | PostgreSQL Outbox + Asynq worker 多消费者 | 暂缓 |
 | 微服务拆分 | gRPC、IAM 独立、API Gateway、RS256+JWKS | **不做**（无需求，推迟到未来按需） |
 | 高可用 | PG Cluster、Redis Sentinel、Nginx 负载均衡 | 暂缓（单实例 Docker Compose 先用） |

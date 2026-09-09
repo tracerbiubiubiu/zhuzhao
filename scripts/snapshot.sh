@@ -157,7 +157,7 @@ out "  文档断链（引用了但文件不存在）——文档腐化信号："
 find docs -name '*.md' -print0 2>/dev/null | while IFS= read -r -d '' src; do
   srcdir=$(dirname "$src")
   # 提取该文件中的 md 链接（跳过 http(s) 与页内锚点）
-  grep -oE '\]\([^)]+\.md[^)]*\)' "$src" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//' | while IFS= read -r link; do
+  awk '/^```/{f=!f; next} !f' "$src" 2>/dev/null | grep -oE '\]\([^)]+\.md[^)]*\)' | sed -E 's/^\]\(//; s/\)$//' | while IFS= read -r link; do
     case "$link" in
       http://*|https://*|'#'*) continue ;;
     esac
