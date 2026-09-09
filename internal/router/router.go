@@ -286,13 +286,28 @@ func New(deps Deps) *gin.Engine {
 				}
 			}
 
-			// 网关反代（批次 B/E13）：反代路由同样过 CasbinAuth（§25.1，menu_apis
-			// keyMatch2 匹配 :param 模式）+ SetForwardHeaders 身份断言 + AK/SK 出站
-			// 签名；未配置上游时不挂载（gateway 默认关闭）。限流/Restrict 随后续切片。
-			if deps.Gateway != nil {
-				deps.Gateway.Mount(authed, middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
-			}
+			// 网关反代（批次 B/E13）：上游路由对账属跨仓边界（BK-22 v1，见 catalog.go）
 		}
+	}
+
+	// 网关反代（批次 B/E13）——根级挂载：前端路径 = /al/api/v1/...（与 menu_apis
+	// 种子/activelist 上游路径口径一致；authed 内挂载产生 /api/v1/al/api/v1 双重前缀
+	// 错位——BK-22 启动对账发现并修正）。全链 = JWT → 限流 → 审计(跳网关 body) →
+	// CasbinAuth(menu_apis) → 身份断言 → AK/SK 出站签名透传（§25.1）。
+	// 未配置上游不挂载（gateway 默认关闭）。
+
+	// 网关反代（批次 B/E13）——根级挂载：前端路径 = /al/api/v1/...（与 menu_apis
+	// 种子/activelist 上游路径口径一致；authed 内挂载产生 /api/v1/al/api/v1 双重前缀
+	// 错位——BK-22 启动对账发现并修正）。全链 = JWT → 限流 → 审计(跳网关 body) →
+	// CasbinAuth(menu_apis) → 身份断言 → AK/SK 出站签名透传（§25.1）。
+	// 未配置上游不挂载（gateway 默认关闭）。
+	if deps.Gateway != nil {
+		deps.Gateway.Mount(r,
+			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
+			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
+		)
 	}
 
 	return r

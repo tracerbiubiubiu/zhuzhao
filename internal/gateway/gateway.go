@@ -110,12 +110,12 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 	return proxyMount{prefix: u.Prefix, disabled: u.Disabled, handler: handler}, nil
 }
 
-// Mount 在已认证路由组（JWT + 审计）下挂载全部上游的通配反代路由。
+// Mount 在给定路由组/引擎下挂载全部上游的通配反代路由（根级挂载传 *gin.Engine）。
 // authzMiddlewares（如 CasbinAuth）先于 SetForwardHeaders/代理执行——
 // 未授权请求在出站前即被拦截。
-func (r *Registry) Mount(authed *gin.RouterGroup, authzMiddlewares ...gin.HandlerFunc) {
+func (r *Registry) Mount(router gin.IRouter, authzMiddlewares ...gin.HandlerFunc) {
 	for _, m := range r.mounts {
-		g := authed.Group(m.prefix)
+		g := router.Group(m.prefix)
 		g.Use(authzMiddlewares...)
 		if m.disabled {
 			// Restrict 资源开关（首版）：停用 = 503（位于 Casbin 之后——未授权者
