@@ -8,7 +8,7 @@
 
 ## 0. 结论一句话
 
-zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils v0.1.0 已发布并 pin**），**两大块零起步**：① M-E 线的**内网回调端点体系**（`/internal/*` 路由组 + `action_id` 注册表 + 幂等）与**任务管理代理**；② M-A 线的**网关化**（反代 + 身份断言 + 限流 + Restrict，即 §25.5 批次 B）。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）。
+zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils v0.2.0 已发布并 pin**）。**当前态（2026-09-10 校准）**：① M-E 线 zhuzhao 侧配套（内网回调端点体系 + 任务管理代理，E-①–E-④/E-⑦）✅ 全部实施，仅剩 taskrunner M3 部署联调；② M-A 线网关化（反代 + 身份断言 + 限流 + Restrict + BK-22 对账 + menu_apis，即 §25.5 批次 B）✅ 代码件全部收尾（2026-09-09，2b29b6e），余 compose 部署批与联调。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）。
 
 ---
 
@@ -35,6 +35,8 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 ## 2. zhuzhao 代码现状对照（2026-09-03 盘点）
 
+> **快照注记（2026-09-10）**：本节「现状」列保留 2026-09-03 盘点原貌，其中 E1/E3/E5（§2.2）与 D2（§2.3）已随后续批次实施（标 ✅）；最新态一律以 §3/§4 能力清单与 [11 号矩阵](../review/11-project-control.md)为准。
+
 ### 2.1 已有积木（可直接复用）
 
 | 积木 | 位置 | 复用点 |
@@ -44,18 +46,18 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 审计中间件（同步写 `audit_logs`，action 注册） | `internal/middleware/audit.go` | 任务提交/建改定义的业务审计；网关层请求级审计（proxy 跳 body 为新增开关） |
 | L1 事件（`ticket_events`，与业务同事务写） | `internal/repository/ticket_repo.go` | 回调 handler 产生的业务事件照常落 L1（契约 §4） |
 | resource 注册表 + IW4 行级护栏（Filter 哨兵 + Unscoped + AST 守护） | `internal/pkg/resource/` / `internal/service/ticket/resource.go` | 平台策略库（批次 A）的承载底座；`Builtin()` 注册即接入 |
-| zhuzhao-utils v0.1.0（9 包：crypto/errcode/jsonutil/jwt/logger/postgres/redis/response/validate，已 pin 无 replace） | `go.mod` + 独立仓库 | **D1 已完成**；taskrunner/activelist 引用同源（taskrunner 用 logger/errcode/response；activelist 用 logger/postgres） |
+| zhuzhao-utils v0.2.0（10 包：crypto/errcode/jsonutil/jwt/logger/postgres/redis/response/validate/**aksk**，2026-09-08 发布，已 pin 无 replace） | `go.mod` + 独立仓库 | **D1 已完成**；taskrunner/activelist 引用同源（taskrunner 用 logger/errcode/response；activelist 用 logger/postgres） |
 | 权限码 / 菜单 / `menu_apis` 体系 | `internal/service/menu*` / 迁移 seed | 任务管理端点、activelist API 的权限码与菜单登记 |
 
 ### 2.2 taskrunner 六项配套 vs 现状
 
 | # | 契约要求（zhuzhao-integration §2） | 现状 | 缺口性质 |
 |---|---|---|---|
-| E1 | 动作 handler 注册表 + `POST /internal/jobs/callback` 回调端点（body.action 分发，幂等：task_id+request_id 查重；C10 约定化 2026-09-07）【M3 前必做】 | 路由仅 `/health/*` + `/api/v1/*`；中间件链全为用户 JWT 体系 | **全新**：内网路由组（**AK/SK 验签**——utils `aksk` 验 taskrunner 签名，2026-09-03 基线修订）+ 注册表 + 幂等表 |
+| E1 | 动作 handler 注册表 + `POST /internal/jobs/callback` 回调端点（body.action 分发，幂等：task_id+request_id 查重；C10 约定化 2026-09-07）【M3 前必做】 | ~~路由仅 /health/* + /api/v1/*~~ ✅ **已实施（2026-09-04，E-②，见 §3）** | **全新**：内网路由组（**AK/SK 验签**——utils `aksk` 验 taskrunner 签名，2026-09-03 基线修订）+ 注册表 + 幂等表 |
 | E2 | ~~动作清单端点 `GET /internal/jobs`~~ | 无 | ✅ **已定案不做前置校验**（taskrunner M2 定案：不存在/未注册的 action 经回调 4xx 快速失败；清单端点降为可选增强，无消费方不建） |
-| E3 | 任务管理功能：提交/建改定义/手动触发/查记录的 API + 页面（代理 taskrunner API；request_id 在此生成透传；写接口带 actor 工号 + source_ip） | 无 taskrunner client、无任务管理端点 | **全新**（鉴权/审计/RequestID 积木可复用） |
+| E3 | 任务管理功能：提交/建改定义/手动触发/查记录的 API + 页面（代理 taskrunner API；request_id 在此生成透传；写接口带 actor 工号 + source_ip） | ~~无 taskrunner client、无任务管理端点~~ ✅ **已实施（2026-09-04/07，E-④/E-⑦，见 §3）** | **全新**（鉴权/审计/RequestID 积木可复用） |
 | E4 | 部门可见性策略：策略模型 + zhuzhao 自有表 + 管理功能；三层校验消费；决定传给 taskrunner 的 `dept` 过滤参数与写权限 | **无 dept 概念**（可见性是工单专属三轴，§25.3 双路不合流） | **全新，最大语义 gap**（P1） |
-| E5 | 任务提交日志 `{action, task_id, request_id}` 落 zhuzhao（薄） | 无 | 新表（可与 E1 幂等查重合并一张） |
+| E5 | 任务提交日志 `{action, task_id, request_id}` 落 zhuzhao（薄） | ✅ **已实施**（job_submissions 凭证随 E-④，000021/000023） | 新表（可与 E1 幂等查重合并一张） |
 | E6 | 终败通知端点 `/internal/notifications/task-dead` | 无 | **后置不做**（契约明确：仅当启用终败通知时需要） |
 
 ### 2.3 activelist 能力需求（D1–D5，ADR-003 SSOT）vs 现状
@@ -63,7 +65,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | # | 能力需求 | 现状 | 阻塞关系 |
 |---|---|---|---|
 | D1 | 共享 utils（logger/postgres 硬依赖；errcode/response/jsonutil/validate/crypto 按需） | **✅ 已完成**（v0.1.0 已 pin；`internal/pkg` 仅剩 errcode 别名 + resource——resource 按 §25.3 拍板留 zhuzhao 不抽） | 无 |
-| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳 body） | **零起步**（全仓无 ReverseProxy/SetForwardHeaders；Restrict 中间件不存在） | 不阻塞开发；**阻塞联调与上线**（activelist 用户侧零权限） |
+| D2 | 反向代理 + header 透传（E13：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳 body） | ~~零起步~~ ✅ **已实施（2026-09-09 批次 B，见 §4）**：`internal/gateway` 反代 + `SetForwardHeaders` + Restrict 资源开关 | 不阻塞开发；**阻塞联调与上线**（activelist 用户侧零权限） |
 | D3 | 业务审计记录（activelist 写接口返回变更后文档；zhuzhao 侧落审计；导入按批次） | 无 | 不阻塞开发；阻塞审计闭环验收（✅ 落点已拍板，P2 关闭——见 §4 D-②） |
 | D4 | 事件发布（zhuzhao 业务操作点显式发布） | 依赖 M-E 就绪 | 无硬依赖（activelist 不感知事件） |
 | D5 | 网络隔离（双 network，仅 zhuzhao 容器可达 apiserver） | 部署层 | 部署期事项（activelist M-A6） |
@@ -89,11 +91,11 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | 项 | 内容 | 依赖 / 挂靠 | 量级 |
 |---|---|---|---|
-| **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body。**进度（2026-09-09）**：**反代核心 ✅ 已实施（zhuzhao 068207e）**——`internal/gateway`（Upstream 注册表 fail-fast / ReverseProxy + StripPrefix / aksk.Transport 出站签名闭环 activelist M-A6 验签 / 上游不可达 502+10008 信封 / `SetForwardHeaders`）+ `gateway.upstreams` 配置段（默认关闭，config.yaml 附示例）+ router 挂载（反代路由过 CasbinAuth，§25.1）+ 单测 6 项全绿；**剩余切片**：~~menu_apis seed 000024~~ ✅（2026-09-09，`000024_activelist_menus`：目录/菜单/按钮 5 + menu_apis 14 路由（/al 前缀网关侧路径，keyMatch2 :param 模式），testutil 清单同步，down/up 幂等验证）/ **BK-22 对账 ✅ 已实施（2026-09-09）**：internal/router/catalog.go 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀跨仓边界）+ wire 层启动 fail-fast（缺口拒启列全清单）+ 集成发现跑（抓出并修复 audit/logs 权限面缺失 → 000025）/ Restrict（首版语义待拍板）/ 限流 / 审计跳 body。**收尾三件 ✅ 已实施（2026-09-09，2b29b6e）**：**Restrict（首版）**= upstream.disabled → 503+10008（Casbin 后，不向未授权者泄露状态；用户级授权由 Casbin 承担——升级路径 per-user 授权表 §26.2）；**限流（07 §2）**= internal/middleware/ratelimit.go Redis Lua 令牌桶（user_id/ClientIP 双键 + 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503+10008）+ config.rate_limit（default 20/40 兜底）；**审计跳 body**= AuditLog 增 skipBodyPrefixes（网关前缀大文件/流式 body 不入审计参数，审计行仍写）。测试：限流 5 项（miniredis）+ gateway 停用 503 + 全门禁（lint/13 包单测/集成 -race）全绿。**批次 B 代码件全部完成**；余 = compose 双 network/多副本/备份/README（部署批） | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | 剩余 ~3–4 天 |
-| **前置 · 契约整改（2026-09-07 审计确认未整改）** | activelist 契约未吸收 API 设计约定：① `PUT/DELETE /data/:type/:id` → `POST .../update` / `.../delete`（body 带 id+version）；② `POST .../:typeName/schema`、`/deprecate`、`/:id/restore` 动作进 URL → 收敛为 body 传参或经所有者确认豁免登记；③ id 传输未约定字符串序列化（BIGSERIAL → JS 精度）；④ 15 个设计提交未合入 main（契约 SSOT 在未合入分支）；⑤ 测试三档/迁移 up-down 成对未写入计划。**activelist 未开工=零成本窗口，契约冻结后改即成本** | activelist 仓库整改 + zhuzhao 16 号镜像同步 | 文档 ~1h |
+| **前置 · 批次 B** | 网关化：反代核心（前缀→上游注册表 / ReverseProxy / 错误映射）+ 身份断言（**明文 X-Operator 纳入 AK/SK 签名覆盖**，§9 身份断言行 / B2 已关；~~方案 A（AT 验签）~~ 降为触发条件驱动）+ `SetForwardHeaders` + **Restrict 中间件（新建）** + 资源 `activelist` + API 级限流（复用 [07 §2](./07-security-enhance.md) 设计）+ activelist API 入 `menu_apis` + proxy 审计跳 body。**进度（2026-09-09）**：**反代核心 ✅ 已实施（zhuzhao 068207e）**——`internal/gateway`（Upstream 注册表 fail-fast / ReverseProxy + StripPrefix / aksk.Transport 出站签名闭环 activelist M-A6 验签 / 上游不可达 502+10008 信封 / `SetForwardHeaders`）+ `gateway.upstreams` 配置段（默认关闭，config.yaml 附示例）+ router 挂载（反代路由过 CasbinAuth，§25.1）+ 单测 6 项全绿；**剩余切片**：~~menu_apis seed 000024~~ ✅（2026-09-09，`000024_activelist_menus`：目录/菜单/按钮 5 + menu_apis 14 路由（/al 前缀网关侧路径，keyMatch2 :param 模式），testutil 清单同步，down/up 幂等验证）/ **BK-22 对账 ✅ 已实施（2026-09-09）**：internal/router/catalog.go 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀跨仓边界）+ wire 层启动 fail-fast（缺口拒启列全清单）+ 集成发现跑（抓出并修复 audit/logs 权限面缺失 → 000025）/ Restrict（首版语义待拍板）/ 限流 / 审计跳 body。**收尾三件 ✅ 已实施（2026-09-09，2b29b6e）**：**Restrict（首版）**= upstream.disabled → 503+10008（Casbin 后，不向未授权者泄露状态；用户级授权由 Casbin 承担——升级路径 per-user 授权表 §26.2）；**限流（07 §2）**= internal/middleware/ratelimit.go Redis Lua 令牌桶（键取 user_id/ClientIP——登录后/匿名二选一 + 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503+10008）+ config.rate_limit（enabled 时 default.rps/burst 必填，缺失 fail-fast 拒启——无静默兜底，2026-09-10 勘误）；**审计跳 body**= AuditLog 增 skipBodyPrefixes（网关前缀大文件/流式 body 不入审计参数，审计行仍写）。测试：限流 5 项（miniredis）+ gateway 停用 503 + 全门禁（lint/13 包单测/集成 -race）全绿。**批次 B 代码件全部完成**；余 = compose 双 network/多副本/备份/README（部署批） | §25.5 / ADR-003 D2；与 activelist 侧开发并行 | 代码件完成；余=compose 部署批+联调 |
+| **契约整改（2026-09-07 审计登记）** | activelist 契约未吸收 API 设计约定：① `PUT/DELETE /data/:type/:id` → `POST .../update` / `.../delete`（body 带 id+version）；② `POST .../:typeName/schema`、`/deprecate`、`/:id/restore` 动作进 URL → 收敛为 body 传参或经所有者确认豁免登记；③ id 传输未约定字符串序列化（BIGSERIAL → JS 精度）；④ 设计提交未合入 main（契约 SSOT 在未合入分支）；⑤ 测试三档/迁移 up-down 成对未写入计划。**状态刷新（2026-09-10）**：①③ ✅ 已整改（2026-09-08：POST update/delete/restore 子路径 + `Document.ID` 字符串序列化，见 §9 响应结构行）；② 待豁免登记或整改；④⑤ 随 M-A 收口清点——「未开工零成本窗口」已关闭 | activelist 仓库整改 + zhuzhao 16 号镜像同步 | 文档 ~1h |
 | **D-②** | D3 业务审计：**P2 已拍板**（SSOT = activelist ADR-003「审计落点机制」专节）——client 封装层同请求路径同步写 `activelist_audit_log` 表 + 失败落本地重投队列；`X-Request-ID` 优先透传入站 rid（03 §3.4）；脱敏/水位对账风险接受（钩子已预留） | 批次 B | 1–2 天 |
 | D-④ | D4 事件发布：zhuzhao **业务操作点**（client 封装层——反代路径之外的内部直调同样覆盖）对 activelist 的写操作成功后显式发布（M-E 就绪后接） | M-E | 随用 |
-| D-⑤ | D5 网络隔离：docker-compose 双 network | 部署期（activelist M-A6） | 部署项 |
+| D-⑤ | D5 网络隔离：docker-compose 双 network | 部署期（activelist M-A6） | 部署项——两侧 compose 均已落（activelist 部署态双 network 多副本+备份；zhuzhao 侧 external 网 `zhuzhao_to_activelist` 接入，ebc2183），待联调验证 |
 
 > D1 已完成收尾：ADR-003（activelist SSOT）D1 状态行与 zhuzhao 侧镜像已于 2026-09-03 同步为「已完成」。
 
@@ -156,9 +158,9 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|
 | 服务鉴权 | ✅ **AK/SK HMAC 签名 + 专用 network 双防线**（2026-09-03 拍板，覆盖当日早前「零认证+拓扑」口径）：服务间通信一律签名/验签（utils `aksk`，按调用方发 SK：zhuzhao/taskrunner/activelist 各一把，env 注入）；专用 network 仍保留（攻击面收敛 + 第二道防线）；用户鉴权全部在 zhuzhao 网关。**activelist 验签已接线（M-A6，2026-09-09）**：AKSKAuth（utils `aksk.GinMiddleware`，签名覆盖 X-Request-ID/X-Operator，读体上限=ImportMaxBytes 防 8MB 默认拦大导入）+ Operator 透传（X-Operator→ctx，缺省 system）+ 空密钥环拒启（fail-closed，对齐 taskrunner C2）——至此三仓服务间鉴权链全部闭环 |
 | 身份断言 | ✅ **明文 `X-Operator` 头 + 纳入签名覆盖**（B2 关闭）：明文断言经 HMAC 覆盖后不可伪造；§25.2 方案 A（AT 验签）不需要、降为触发条件驱动（服务可达面扩大 / 服务自行做行级判定 / 合规要求） |
-| 密钥管理 | ✅ **容器挂载起步、单密钥可接受**（2026-09-04 拍板）：读侧 env/密钥环文件（多把时挂密钥环文件而非逐条 env）；单密钥代价已知（归因靠 actor 头入签 / 撤销粒度全局 / 无按调用方差异），升级=密钥环加条目纯配置；DB 动态密钥/管理面 🚦（09 号外部 M2M 场景，KeyGetter 接口已留，切换零改动） |
+| 密钥管理 | ✅ **容器挂载起步、单密钥可接受**（2026-09-04 拍板）：读侧 env/密钥环文件（多把时挂密钥环文件而非逐条 env）；单密钥代价已知（归因靠 actor 头入签 / 撤销粒度全局 / 无按调用方差异），升级=密钥环加条目纯配置；DB 动态密钥/管理面 🚦（09 号外部 M2M 场景；utils aksk 现为静态密钥环 + ±5min 时间窗，KeyGetter/NonceStore 接口**未预置**，启用时在 aksk 增设——2026-09-10 勘误，原「接口已留」失实） |
 | body 完整性 | ✅ **验签端自算 body 哈希入签名**（generateBodyHash 模式，不信任客户端头值——诚实调用方互通不变、中间人篡改必拒）；**skipbody 联调稳定后关闭**启用之；中间件读 body 必须还原 `r.Body`（utils gin.go 先例） |
-| 防重放 | 时间戳窗口（±5min）为基线；**nonce 单次校验后置**（NonceStore 接口已留；调用以幂等提交+查询为主、内网+专用网络，窗口内重放实害有限；非幂等敏感写场景出现时启用 Redis store） |
+| 防重放 | 时间戳窗口（±5min）为基线；**nonce 单次校验后置**（utils aksk 现仅时间戳窗口，NonceStore 接口未预置、启用时增设；调用以幂等提交+查询为主、内网+专用网络，窗口内重放实害有限；非幂等敏感写场景出现时启用 Redis store） |
 | **通信协议** | ✅ **已拍板（2026-09-03）：HTTP + JSON**（zhuzhao→taskrunner API、taskrunner→zhuzhao 回调、zhuzhao→activelist 反代/编排层）；**gRPC 不引入**（覆盖旧「gRPC 内部 + REST 外部」预留表述） |
 | **API 设计约定（2026-09-04 所有者拍板）** | ✅ **方法仅 GET/POST**（PUT/DELETE/PATCH 不引入）；**POST URL 不携带业务信息**（资源标识/动作参数全部在请求体；GET 的 path/query 参数不受限）。存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE（ticket-types/templates，已封版不改）；新端点（含 C10/C11、activelist 契约）一律按本约定。E-② 回调端点 ~~`/internal/jobs/:action_id`~~ ✅ **2026-09-07 拍板：改 `POST /internal/jobs/callback` + body.action**（zhuzhao 侧 ~2h，callback_url 由 zhuzhao 下发故 taskrunner 零改动，M-E 未上线无存量） |
 | 用户权限 | 零（不建角色/权限模型，不引用策略库——§25.3 消费者分析） |
@@ -186,8 +188,8 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | C4 | ✅ **已实施（2026-09-04）**：`/readyz`（Redis ping + SQLite 探针；迁 PG 后改检 PG） | 完成 |
 | C5 | ✅ **已实施（2026-09-04）**：Dockerfile `TZ=Asia/Shanghai` | 完成 |
 | C6 | ✅ **已实施（2026-09-04）**：viper yaml + env（TASKRUNNER_* 全量兼容） | 完成 |
-| C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束）→ ✅ **已实施（2026-09-09，aa106ee+102fcab）**：database/sql 双驱动（SQLite/PG 无感切换）+ CLI enqueue 复用 OpenStore 修 PG 错库 + NullTime 空值往返测试；日志轮转批次在途（M4 保留期预埋，config/cron/task/jobs/worker 5 文件） | M3/M4（约半天） |
-| C8 | **utils `aksk` 包实现**（signer/verifier/gin 中间件工厂 + 常量时间比较 + 时间窗防重放 ±5min + 测试，~0.5 天；canonical = METHOD\nPATH\nsha256(body)\nTS\nX-Request-ID\nX-Operator（C9 的「覆盖 X-Request-ID」由此落在 canonical 里））——全部服务间签名的公共底座，**先行** | M3 前置 |
+| C7 | **job_runs 迁 PG**（✅ 已拍板统一存储 2026-09-03：独立 PG 数据库 + utils `postgres`，schema 不变；解除 SQLite 单写者单副本约束）→ ✅ **已实施（2026-09-09，aa106ee+102fcab）**：database/sql 双驱动（SQLite/PG 无感切换）+ CLI enqueue 复用 OpenStore 修 PG 错库 + NullTime 空值往返测试；日志轮转 ✅ 已落（b11ef0a：`log.max_size_mb/max_backups/max_age_days` + env）；后续二次审计修复（5e03606：预鉴权读体上限/worker 终态 off-by-one/任务级 deadline ≤86400s）已入档其仓库 docs | ✅ 代码完成（PG 实例随 M3 部署） |
+| C8 | ✅ **已实施（2026-09-04，utils 12444fd；v0.2.0 已发布）**：`aksk` 包 Sign/Verifier/GinMiddleware/Transport + 常量时间比较 + 时间窗防重放 ±5min + 测试；联调追加三修复（根路径 canonical 归一化 017832d / 空 SK 视同未知凭据 23bb239 / 中间件读体上限 + Transport 不改调用方请求 bf5a4d4）；canonical = METHOD\nPATH(空路径归一化为 /)\nsha256(body)\nTS\nX-Request-ID\nX-Operator（C9 的「覆盖 X-Request-ID」由此落在 canonical 里）——全部服务间签名的公共底座 | 完成 |
 | C9 | ✅ **已实施（2026-09-04）**：回调以自身 SK 签名 + rid 透传——实测暴露并修复 utils aksk 根路径 canonical 缺陷（017832d） | 完成 |
 | C10 | **API 设计约定改造（2026-09-04 约定，见基线「API 设计约定」行）**：`PATCH /jobs/:id` → `POST /jobs/update`（body 带 job_id）；`POST /tasks/:id/cancel` → `POST /tasks/cancel`（body 带 task_id）；`POST /tasks/:id/retry` → `POST /tasks/retry`；`POST /jobs/:id/trigger` → `POST /jobs/trigger`；client（zhuzhao `pkg/taskrunner`）同步。`GET /tasks/:id` 的 path 参数合规保留（约定仅限 POST） | M3 联调前（与 C11 同批） |
 | C11 | **E-⑤ 契约变更（zhuzhao 侧发起，taskrunner 实施；2026-09-07 快照语义定案）**：`GET /v1/runs` 加 `dept` 过滤参数（多值，**按 `runs.dept` 快照列**——提交时从 job 定义/请求带入、一次性任务由 zhuzhao 携带，不 JOIN jobs）；task 查询响应补 `dept` 字段（E-⑤ GetTask 校验与 runs 过滤的前提）。**M3 联调/契约冻结前提出** | E-⑤ 前置 |
@@ -215,3 +217,4 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 2026-09-07（E-⑤ 口径简化） | 所有者拍板：**全员可见，dept 仅作筛选标签**（暂不做部门级可见性隔离）——E-⑤ 主体（000023 策略表/可见性组装/写校验）全部取消，**C11 链路即最终形态**（runs dept 多值过滤/task 响应回显 dept/Submit·Jobs 透传均已就绪）；000023 策略表 🚦 后置（编号暂不占用），可见性组装触发条件 = 跨部门隔离管控需求或任务参数敏感化；E-⑦ 契约前置随 C10/C11 已实施关闭；E-④ 行状态修正（M-E 全齐） |
 | 2026-09-07（taskrunner 口径镜像 + activelist 整改登记） | 对照 taskrunner/activelist 仓库当日文档变更同步：① **目标架构注记镜像**（taskrunner.md §2/§4：zhuzhao 薄化为 API 网关+IAM、动作归属泛化「能力属主服务」、能力目录/owner_service 预留）→ §1.1/13 号 M-E 行已镜像；② **执行模型与后置项知悉**（协程池/租约/多副本+cronloop 分布式锁配套；后置=优先级队列/一次性延迟任务/编排红线不做通用引擎）→ §3 注记；③ **activelist 契约整改前置登记**（§4 新行：PUT/DELETE+动作进 URL 未整改、id 序列化未约定、15 提交未合入 main、测试/迁移纪律缺口——未开工零成本窗口）；**E-⑦ 登记**（E-⑤ 契约前置：taskrunner C10/C11，M3 冻结前） |
 | 2026-09-10（跨仓 body 上限拍板：先不放宽） | 所有者确认：**网关 1MB 保持不变，大导入定性为「初始化/运维操作」走内网直连/运维通道（不经网关）**——AK/SK 签名需全量缓冲 body，网关放宽伴随两端内存峰值且破坏性全量替换不宜浏览器化；**触发条件 = 浏览器端大文件导入需求出现** → 届时 zhuzhao 侧实施 per-前缀 body 上限（/al 放宽至 activelist 同值，~30 行含测试，activelist 零改动）；落地注记已入 router.go BodyLimit 挂载点。关联：activelist 侧 import_max_bytes=1GiB 不变；幂等并发窗口/敏感字段脱敏钩子维持登记观察 |
+| 2026-09-10（四仓文档对账同步批） | 跨仓（zhuzhao/taskrunner/utils/activelist）文档对账后的状态刷新：§0 结论句改「M-E 配套全齐/批次 B 代码件收尾」；§2 头加快照注记，E1/E3/E5 与 D2 现状列标 ✅；§4 契约整改行改「部分已整改（①③ ✅）」；D-⑤ 补两侧 compose 已落；C7 删「在途」补二次审计口径；C8 标 ✅（v0.2.0）；密钥管理/防重放行勘误（KeyGetter/NonceStore 接口未预置，原「接口已留」失实）；限流「兜底 20/40」勘误（实为 fail-fast 拒启）；utils 表述统一 v0.2.0（10 包含 aksk） |

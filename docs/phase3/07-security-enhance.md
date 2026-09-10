@@ -43,9 +43,9 @@ rate_limit:
     /api/v1/notifications: { rps: 30, burst: 60 } # 轮询可放宽
 ```
 
-- 维度：`user_id`（登录后）+ `ip`（匿名/登录）双键。
+- 维度：登录后按 `user_id`、匿名按 ClientIP（**二选一**，同一请求只落一个键）。
 - 存储：Redis Lua（与 Phase 1 同款，跨实例共享，W1 后天然多实例一致）。
-- 超限返回 429 + `Retry-After`；⚠️ 全局阈值 vs 每用户阈值待拍板。
+- 超限返回 429 + `Retry-After`；Redis 异常 fail-close 503。✅ **已实施（2026-09-09，批次 B）**：`internal/middleware/ratelimit.go`（令牌桶 + 路由精确覆盖）；`config.rate_limit` enabled 时 `default.rps/burst` 必填、缺失 fail-fast 拒启（无静默兜底）；维度拍板 = 每用户/每 IP（无全局阈值），D2 关闭。
 
 ---
 
@@ -116,7 +116,7 @@ internal/service/auth_service.go    # 异地登录检测（🚦）
 | # | 事项 | 建议 | 状态 |
 |---|---|---|---|
 | D1 | 异地登录 / 密码过期 / 验证码是否纳入 | 仅 API 限流 + CORS 为必做 | 🚦 由你决定 |
-| D2 | API 限流维度与阈值 | user_id + ip 双键；全局 vs 每用户 | 待拍板 |
+| D2 | API 限流维度与阈值 | 每用户/每 IP（二选一）+ 路由精确覆盖 | ✅ 已拍板并实施（2026-09-09，见 §2） |
 | D3 | 异地登录 geo 数据源 | 第三方库（⚠️ 选型） | 待拍板 |
 | D4 | 密码过期默认值 | 90 天（可配），默认关闭 | 待拍板 |
 | D5 | 验证码方案 | 外部服务 vs 自研 | 待拍板 |
@@ -128,3 +128,4 @@ internal/service/auth_service.go    # 异地登录检测（🚦）
 | 日期 | 说明 |
 |---|---|
 | 2026-09-02 | 已编写：API 限流 + CORS 收紧（必做）+ 密码过期/异地登录/验证码（🚦 触发驱动）+ 验收 + 待决策点 |
+| 2026-09-09 | **API 限流已实施**（批次 B，2b29b6e）：Redis Lua 令牌桶；维度=登录后 user_id、匿名 ClientIP（二选一）+ 路由精确覆盖；429+Retry-After / Redis fail-close 503；config.rate_limit enabled 时缺参拒启；D2 关闭；同时服务网关反代路由（16 号批次 B） |

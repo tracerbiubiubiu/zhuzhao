@@ -61,7 +61,7 @@ make swag              # 重新生成 Swagger
 - ~~BK-13 / BK-14~~：已实施（2026-08-31，IW1）：迁移 000017 + org update 透出 ticket_visibility + L2 委托轴 + D12 测试；scope 配置面 + scope=all 仅全局管理员
 - ~~BK-15/16/17~~：已修复/关闭（IW1 批次）；~~BK-18~~：已实施（IW3）：迁移 000018 + 7 管理端点 + G2 schema 校验
 - ~~迁移编号 000017 冲突~~：已拍板（A2：谁先启动谁占用，后者整体重排）
-- **BK-12**（触发条件驱动，暂不需动）：org_roles/parent_id 写侧——真实进组赋角诉求或 2b-ext HR 同步启动 = 硬触发器
+- ~~BK-12~~：已实施（2026-08-31，IW3 附带）：org_roles 绑定/解绑/列表（仅全局管理员）+ parent_id 写侧（单调 child ≤ parent + 环检测）+ org 预检/FK 兜底；HR 同步启动时无需再补写侧（残留登记：org 删除守卫不查 org_roles，读侧已挡）
 - 剩余开放项均为 B 档随行（随 Phase 3 对应子能力）或独立窗口（附件 / auth-enhance / HR 同步按需启动），见 11 §8
 
 > 最新验证结果以 `docs/review/` 为准；修复后回填状态。

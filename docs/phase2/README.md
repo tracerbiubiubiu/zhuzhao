@@ -248,7 +248,9 @@ Phase 1 已用至 **000009**（000008 双 primary 部分唯一索引、000009 Ph
 | 000021 | Phase 3 / M-E | `job_submissions` 一表两用：提交凭证 + 回调幂等栅栏（2026-09-04 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
 | 000022 | Phase 3 / M-E | 任务管理菜单 + 权限码 task:submit/read/manage（2026-09-04 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
 | 000023 | Phase 3 / M-E | `job_submissions.params` 快照列：提交入参定格（2026-09-07 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
-| 000024+ | 2b-ext / Phase 3 | 附件与 SLA 段启动时按占用重排（A2 规则：谁先启动谁占用；当前 000001–000023 已占用，下一编号 000024） | [10-storage.md](./10-storage.md) / [phase3/10 §9](../phase3/10-ticket-business.md) |
+| 000024 | 批次 B / M-A | activelist 权限面：名单管理菜单（目录/菜单/按钮 5）+ menu_apis 14 路由（/al 前缀网关侧路径；2026-09-09 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
+| 000025 | 批次 B / M-A | audit_menu：审计日志菜单 + audit:read 码 + menu_apis 绑定（BK-22 对账发现补齐；2026-09-09 已执行） | [phase3/16-external-integration.md](../phase3/16-external-integration.md) |
+| 000026+ | 2b-ext / Phase 3 | 附件与 SLA 段启动时按占用重排（A2 规则：谁先启动谁占用；当前 000001–000025 已占用，下一编号 **000026**） | [10-storage.md](./10-storage.md) / [phase3/10 §9](../phase3/10-ticket-business.md) |
 | 000015 | 2a | 工单模板：`ticket_templates`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单模板2a-前移迁移-000015) |
 | 000016 | 2a | 工单关联：`ticket_relations`（2a 前移，纯 DB） | [09-ticket.md §2](./09-ticket.md#工单关联2a-前移迁移-000016) |
 

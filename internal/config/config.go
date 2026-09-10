@@ -28,7 +28,7 @@ type Config struct {
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
 type RateLimitConfig struct {
 	Enabled bool `mapstructure:"enabled"`
-	// Default 全局默认规则；RPS≤0 时 Load 兜底 20/40（enabled 才生效）。
+	// Default 全局默认规则；enabled 时 RPS/Burst 必填，缺失由 Load fail-fast 拒启（无静默兜底）。
 	Default RateLimitRule `mapstructure:"default"`
 	// Routes 精确 path 覆盖（如 /api/v1/auth/login 更严）。
 	Routes map[string]RateLimitRule `mapstructure:"routes"`

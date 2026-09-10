@@ -1347,7 +1347,7 @@ type remoteUserQueryService struct {
 | 批次 | 项 | 量级 | 挂靠 |
 |---|---|---|---|
 | ~~A（M-E 前置）~~ → **触发驱动** | 平台策略库：三策略实现 + Builtin 注册 + schema 约定 fail-fast + 正负向测试（AST 护栏泛化可选）。**降级（2026-09-04）**：预设消费方随 M-E 实际落地清零——E-④ 走 L1 权限码（代理端点无行级）、E-② 走 AK/SK 验签（非用户请求）、E-⑤ 走参数级过滤（数据在 taskrunner 独立库，org-member 的 L2 谓词形态不适用——策略库前提「资源表在 zhuzhao 库」被「独立仓库+独立库」拍板推翻）。**触发条件 = zhuzhao 自有新资源（表在本库）需要 L2 行级过滤时实施** | 2–3 天（触发时） | authz.md §3.1（含前提注记） |
-| B（M-A 前置） | 网关化：反代核心（前缀→上游注册表/ReverseProxy/错误映射）+ 身份断言（**明文 X-Operator 入 AK/SK 签名覆盖**，25.2 基线修订；~~方案 A AT 验签~~ 降触发条件）+ API 级限流 + activelist API 入 menu_apis + proxy 审计跳 body（ADR-003 已设计） | ~1 周 | E13 泛化（ADR-003 蓝图保留；16 号 §4 细排） |
+| B（M-A 前置） | ✅ **已实施（2026-09-09，2b29b6e 收尾；余=compose 部署批+联调）**——网关化：反代核心（前缀→上游注册表/ReverseProxy/错误映射）+ 身份断言（**明文 X-Operator 入 AK/SK 签名覆盖**，25.2 基线修订；~~方案 A AT 验签~~ 降触发条件）+ **Restrict 资源开关**（upstream.disabled→503+10008）+ API 级限流 + activelist API 入 menu_apis（000024）+ BK-22 路由↔menu_apis 启动期对账（000025 随行）+ proxy 审计跳 body（ADR-003 已设计） | ~~~1 周~~ 完成 | E13 泛化（ADR-003 蓝图保留；16 号 §4 细排） |
 | C（随手） | 密码复杂度（网关化后=门户责任）+ 本节落档 | 半天 | IW2 auth-enhance |
 
 **不做**：PDP 回调接口、策略配置进 DB/管理面（无消费方）、跨库判定、提前多实例（随 M1 触发条件）。
