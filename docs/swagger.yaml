@@ -950,36 +950,6 @@ paths:
       summary: 全量替换类型字段集
       tags:
       - ticket-admin
-  /api/v1/ticket-types/{code}/fields/admin:
-    get:
-      parameters:
-      - description: 类型编码
-        in: path
-        name: code
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 类型字段读取（含 validate_regex，管理端）
-      tags:
-      - ticket-admin
-  /api/v1/ticket-types/admin:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 工单类型全量列表（含停用，管理端）
-      tags:
-      - ticket-admin
   /api/v1/tickets:
     get:
       consumes:

@@ -460,22 +460,6 @@ func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-// ListTicketTypesAdmin GET /api/v1/ticket-types/admin
-//
-//	@Summary	工单类型全量列表（含停用，管理端）
-//	@Tags		ticket-admin
-//	@Produce	json
-//	@Success	200	{object}	response.Response
-//	@Router		/api/v1/ticket-types/admin [get]
-func (h *TicketHandler) ListTicketTypesAdmin(c *gin.Context) {
-	types, err := h.ticketService.ListTicketTypesAdmin(c.Request.Context())
-	if err != nil {
-		writeServiceError(c, err)
-		return
-	}
-	response.OK(c, types)
-}
-
 // ReplaceTicketTypeFields PUT /api/v1/ticket-types/:code/fields
 //
 //	@Summary	全量替换类型字段集
@@ -499,28 +483,6 @@ func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 	}
 	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), code, &req); err != nil {
 		writeServiceError(c, err)
-		return
-	}
-	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), code)
-	if err != nil {
-		writeServiceError(c, err)
-		return
-	}
-	response.OK(c, fields)
-}
-
-// ListTicketTypeFieldsAdmin GET /api/v1/ticket-types/:code/fields/admin
-//
-//	@Summary	类型字段读取（含 validate_regex，管理端）
-//	@Tags		ticket-admin
-//	@Produce	json
-//	@Param		code	path	string	true	"类型编码"
-//	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code}/fields/admin [get]
-func (h *TicketHandler) ListTicketTypeFieldsAdmin(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的类型编码")
 		return
 	}
 	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), code)

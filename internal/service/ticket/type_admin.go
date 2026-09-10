@@ -75,11 +75,6 @@ func (s *Service) DeleteTicketType(ctx context.Context, code string) error {
 	return s.ticketRepo.DeleteTicketType(ctx, code)
 }
 
-// ListTicketTypesAdmin 管理端全量（含停用）
-func (s *Service) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
-	return s.ticketRepo.ListTicketTypesAdmin(ctx)
-}
-
 // ListTicketTypesFor 列表入口：includeInactive 仅 admin/superadmin 生效（否则忽略该参数）
 func (s *Service) ListTicketTypesFor(ctx context.Context, actorUserID int64, includeInactive bool) ([]*model.TicketType, error) {
 	if !includeInactive {

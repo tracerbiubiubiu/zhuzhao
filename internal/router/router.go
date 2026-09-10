@@ -297,12 +297,6 @@ func New(deps Deps) *gin.Engine {
 	// 错位——BK-22 启动对账发现并修正）。全链 = JWT → 限流 → 审计(跳网关 body) →
 	// CasbinAuth(menu_apis) → 身份断言 → AK/SK 出站签名透传（§25.1）。
 	// 未配置上游不挂载（gateway 默认关闭）。
-
-	// 网关反代（批次 B/E13）——根级挂载：前端路径 = /al/api/v1/...（与 menu_apis
-	// 种子/activelist 上游路径口径一致；authed 内挂载产生 /api/v1/al/api/v1 双重前缀
-	// 错位——BK-22 启动对账发现并修正）。全链 = JWT → 限流 → 审计(跳网关 body) →
-	// CasbinAuth(menu_apis) → 身份断言 → AK/SK 出站签名透传（§25.1）。
-	// 未配置上游不挂载（gateway 默认关闭）。
 	if deps.Gateway != nil {
 		deps.Gateway.Mount(r,
 			middleware.JWT(deps.JWTManager, deps.RedisClient),

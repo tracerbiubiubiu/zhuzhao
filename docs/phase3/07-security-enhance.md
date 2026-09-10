@@ -43,6 +43,7 @@ rate_limit:
     /api/v1/notifications: { rps: 30, burst: 60 } # 轮询可放宽
 ```
 
+- 默认关闭（`rate_limit.enabled=false`，示例为开启态）；enabled 时 `default.rps/burst` 必填、缺失拒绝启动（无静默兜底）。
 - 维度：登录后按 `user_id`、匿名按 ClientIP（**二选一**，同一请求只落一个键）。
 - 存储：Redis Lua（与 Phase 1 同款，跨实例共享，W1 后天然多实例一致）。
 - 超限返回 429 + `Retry-After`；Redis 异常 fail-close 503。✅ **已实施（2026-09-09，批次 B）**：`internal/middleware/ratelimit.go`（令牌桶 + 路由精确覆盖）；`config.rate_limit` enabled 时 `default.rps/burst` 必填、缺失 fail-fast 拒启（无静默兜底）；维度拍板 = 每用户/每 IP（无全局阈值），D2 关闭。

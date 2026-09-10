@@ -808,25 +808,6 @@
                 }
             }
         },
-        "/api/v1/ticket-types/admin": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ticket-admin"
-                ],
-                "summary": "工单类型全量列表（含停用，管理端）",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/ticket-types/{code}": {
             "put": {
                 "consumes": [
@@ -947,34 +928,6 @@
                         "schema": {
                             "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest"
                         }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/ticket-types/{code}/fields/admin": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ticket-admin"
-                ],
-                "summary": "类型字段读取（含 validate_regex，管理端）",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {

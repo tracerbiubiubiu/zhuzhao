@@ -92,3 +92,14 @@ gateway:
     - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
       target: http://activelist:8080
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
+      disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
+
+# API 限流（07 §2）：默认关闭。enabled: true 时 default.rps/burst 必填，
+# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按精确 path 覆盖默认值。
+# rate_limit:
+#   enabled: true
+#   default:
+#     rps: 20              # 每用户/每 IP（登录后按 user_id，匿名按 ClientIP，二选一）
+#     burst: 40
+#   routes:
+#     /api/v1/auth/login: { rps: 3, burst: 5 }
