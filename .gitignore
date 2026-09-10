@@ -48,3 +48,4 @@ doc/
 
 # 防复发：vendor 快照曾误入历史（ab6e2f5，GitHub Push Protection 拦截）；构建走 goproxy.cn 无需 vendor
 vendor/
+deployments/.env

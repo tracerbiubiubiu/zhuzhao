@@ -82,13 +82,13 @@ taskrunner:
   # sk: 从环境变量 TASKRUNNER_SK 注入
   timeout: 10s
 
-# 网关反代（批次 B/E13）：前缀→上游注册表 + AK/SK 出站签名。默认关闭
-# （upstreams 为空不挂载）；开启后反代路由照常过 JWT + CasbinAuth（menu_apis）
-# 并以本密钥对上游（activelist，其 M-A6 验签）签名透传。
-#gateway:
-#  ak: zhuzhao
-#  sk: ${GATEWAY_SK}          # 经 env 注入，不入库不入 git
-#  upstreams:
-#    - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
-#      target: http://activelist:8080
-#      strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
+# 网关反代（批次 B/E13）：前缀→上游注册表 + AK/SK 出站签名。upstreams 为空不挂载；
+# 开启后反代路由照常过 JWT + 限流 + CasbinAuth（menu_apis）并以本密钥对上游
+#（activelist，其 M-A6 验签）签名透传。生产 SK 经 GATEWAY_SK env 覆盖。
+gateway:
+  ak: zhuzhao
+  sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
+  upstreams:
+    - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
+      target: http://activelist:8080
+      strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x

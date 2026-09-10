@@ -83,6 +83,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       APP_JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30m}
       APP_JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
+      # 网关反代（批次 B/E13）：SK 须与 activelist 侧 ACTIVELIST_CALLER_ZHUZHAO_SK 同值
+      GATEWAY_AK: zhuzhao
+      GATEWAY_SK: ${GATEWAY_SK:-dev-gateway-sk}
     ports:
       - "${APP_PORT:-33333}:33333"
     depends_on:
@@ -90,6 +93,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - zhuzhao_to_activelist
+
+# activelist 部署栈（deploy/compose.yaml）经 external 网络「zhuzhao_to_activelist」
+# 与本栈互通：网关 upstream = http://activelist:8080（其 compose 已注册别名）
+networks:
+  zhuzhao_to_activelist:
+    external: true
 
 volumes:
   pg_data:

@@ -87,6 +87,8 @@ func New(deps Deps) *gin.Engine {
 	r.Use(middleware.AccessLogger(deps.Logger))
 	r.Use(middleware.CORS())
 	r.Use(middleware.SecurityHeaders())
+	// 1MB = zhuzhao 自有 API 上限；网关反代大文件导入不放宽（定性运维通道，
+	// 2026-09-10 拍板）——浏览器端大文件导入需求出现时按 per-前缀放宽（16 号）
 	r.Use(middleware.BodyLimit(1 << 20)) // 1MB
 
 	// 健康检查
