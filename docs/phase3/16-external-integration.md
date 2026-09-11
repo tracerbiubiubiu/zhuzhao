@@ -19,7 +19,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 - **形态**：独立仓库 / 独立部署 / 独立 Redis / 独立 DB（SQLite 起步）；zhuzhao 作网关（鉴权/编排/业务审计），**只经 HTTP API 对接**（不 import 代码、不直连 Redis）。
 - **一句话分工**：zhuzhao 负责「决定要做什么」（发起、下发、按需查），taskrunner 负责「可靠地去做」（调度、重试、死信、记录、看板）。
 - **三层模型**：动作（`action_id` + handler，**在 zhuzhao 代码**）→ 任务定义（job，存 taskrunner DB，API 管理）→ 执行实例（run，`job_runs`，taskrunner 自有）。
-- **回调契约**：taskrunner 按 job 定义回调 `POST /internal/jobs/callback`（body：task_id + request_id + action_id + params——C10 约定化，2026-09-07 拍板；~~路径 /internal/jobs/<action_id>~~ 废弃；HTTP 头带 `X-Request-ID`）；**at-least-once——幂等是 zhuzhao 侧义务**（按 task_id+request_id 先查重）；5xx/超时自动重试、4xx 不重试、**2xx = 执行完全成功（P7 定案：无状态字段，业务失败映射 4xx/5xx）**；执行结果**只经查询接口获取，不推送**；**回调带 AK/SK 签名（2026-09-03 基线修订，覆盖 P5 原拍板——见 §9）**。
+- **回调契约**：taskrunner 按 job 定义回调 `POST /internal/jobs/callback`（body：task_id + request_id + **action** + params——C10 约定化，2026-09-07 拍板；~~路径 /internal/jobs/<action_id>~~ 废弃；HTTP 头带 `X-Request-ID`）；**at-least-once——幂等是 zhuzhao 侧义务**（按 task_id+request_id 先查重）；5xx/超时自动重试、4xx 不重试、**2xx = 执行完全成功（P7 定案：无状态字段，业务失败映射 4xx/5xx）**；执行结果**只经查询接口获取，不推送**；**回调带 AK/SK 签名（2026-09-03 基线修订，覆盖 P5 原拍板——见 §9）**。
 - **日志边界**：zhuzhao 记「任务提交日志」（`{action, task_id, request_id}`，薄）+ 业务审计（`audit_logs`）；taskrunner 自维护 `job_runs`（细节不回传）；两边以 `request_id` 关联跨查。
 - **不做**：用户上传脚本（🚦 按需再启，选型见 [15](./15-script-platform-dagu-vs-inhouse.md)）；业务 handler；事件源（事件事实源仍是 zhuzhao L1）。
 - **目标架构注记（2026-09-07，taskrunner.md §2/§4 已入档，zhuzhao 侧镜像）**：zhuzhao 演进方向 = **API 网关 + IAM**（薄网关：鉴权、代理任务提交/查询，不持业务能力），业务数据与能力下沉各服务；**动作归属泛化为「能力属主服务」**——各服务挂统一回调入口 `POST /internal/jobs/callback`（body.action 分发，2026-09-07 拍板），taskrunner 统一调度（xxl-job「一调度中心 + N 执行器」形态，模型零改动只认 `action_id + callback_url`）；多服务时代启用已预留的 `owner_service` 与多调用方 credential。「能力目录」（端点自注册）方案与之互为表里。**当前预置动作 handler 仍在 zhuzhao（=zhuzhao 自己的能力），薄化随业务迁移演进**。
@@ -119,7 +119,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | 000020 | `policy_evaluation_logs`（B11① 判定日志，03 §3.2 DDL 草案）+ **`audit_logs` / `ticket_events` 各加 `request_id` 列**（03 §3.4 全链路关联，一次迁移合并） | M-E / M1 |
 | 000021 | 任务提交日志 + 幂等表（`{action, task_id, request_id, ...}`，E1/E5 一表两用） | M-E |
 | 000022 | ✅ 任务管理菜单 + 权限码 seed（task:submit/read/manage + menu_apis，**E-④ 实施时占用**） | M-E（已落） |
-| ~~000023~~ | 部门可见性策略表 **🚦 后置**（2026-09-07 E-⑤ 口径简化：全员可见+dept 筛选已就绪，可见性组装无消费方；**编号暂不占用**，触发=跨部门隔离管控需求，启用时按 A2 核对） | M-E 后置 |
+| （编号待定）| 部门可见性策略表 **🚦 后置**（2026-09-07 E-⑤ 口径简化：全员可见+dept 筛选已就绪，可见性组装无消费方；~~000023~~ 已被 params 快照列占用——**启用时按 A2 重新取号**，触发=跨部门隔离管控需求） | M-E 后置 |
 | seed | 任务管理权限码（如 `task:submit` / `task:manage` / `task:read`，命名随实现定）+ 菜单 | M-E |
 | — | activelist 侧表全部在 activelist 自有数据库（zhuzhao 零迁移） | M-A |
 

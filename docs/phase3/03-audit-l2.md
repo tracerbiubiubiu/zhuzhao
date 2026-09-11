@@ -25,11 +25,13 @@
 
 审计写入改为：**中间件/Service → 内存 channel → Redis List → 异步 goroutine 落库**，进程崩溃不丢日志（Redis 持久化 + 未落库前 List 内保留）。
 
+> **范围注记（2026-09-11 实施校准）**：本节异步管道 **P3 已落地的部分 = 判定日志（policy_evaluation_logs）**；`audit_logs` 主审计维持**中间件同步写**（响应前已落库，D2-12 先 Flush + F-5 WithoutCancel 独立超时，config 注释同口径）——下图「审计中间件→L2 writer」分支未启用，`pipeline` 开关未实现。主审计切异步 🚦 触发驱动（若启用需补停机 drain 等待，参考批次 5a policyeval Stop 模式）。
+
 ### 2.2 数据流
 
 ```
 业务请求
-  ├─ 审计中间件  ──写入──▶  L2 writer（channel 缓冲）
+  ├─ 审计中间件  ──写入──▶  L2 writer（channel 缓冲）※未启用（见上范围注记）
   ├─ 判定日志埋点 ──写入──▶   │
   │                          ▼
   │                  Redis List（audit:logs / audit:policy_eval）
@@ -151,7 +153,7 @@ CREATE INDEX idx_pel_created ON policy_evaluation_logs(created_at);
 ## 5. 涉及文件（规划）
 
 ```
-internal/middleware/audit.go        # 审计中间件接入 L2 writer（pipeline 开关）
+internal/middleware/audit.go        # 审计中间件（现为同步写；接入 L2 writer 的 pipeline 开关 🚦 未实现）
 internal/service/audit_service.go   # 落库 goroutine + 批量写
 internal/service/ticket/resource.go # resource.Authorize 判定日志埋点
 internal/service/ticket/scope_resolver.go # resolve 埋点（可选）
@@ -197,3 +199,4 @@ internal/service/audit_archive.go  # 审计归档动作（首个预置 action，
 | 2026-09-03 | 拍板同步：D1 写入管道 ✅ **异步**（channel → Redis List → 批量落库，所有者拍板）+ D3 归档存储 ✅ 本地卷；新增 §3.4 **全链路 request_id 关联矩阵**（request_id 注入 ctx / audit_logs·ticket_events 加列 / Casbin 打点补 rid / taskrunner 回调带 X-Request-ID / activelist client 透传入站 rid，随 000020 迁移合并）；§4 B11② 改 taskrunner 回调形态（导出失败返 5xx + 幂等，P7 定案） |
 | 2026-09-04 | **B11① 落地（E-①）**：迁移 000020（policy_evaluation_logs + audit_logs/ticket_events 加 request_id 列）+ reqid 包（ctx 注入）+ Casbin 拒绝打点补 rid + registry.Authorize 统一埋点（EvalHook）+ L2 writer（channel→Redis List→processing→批量落库：fail-open / 优雅停止 drain / 毒丸跳过 / 落库失败重试）+ config audit 段 + wire/app 接线；单测（writer×5 + hook×3）+ 集成（端到端管道 + 三列贯通）；全门禁绿。验收口径：AL1–AL4 由集成测试承载，AL5/AL6 随 M-E（B11②） |
 | 2026-09-04 | **B11② 落地（E-③）**：`audit_archive` 预置动作（pkg/jobs 注册表）——单批导出 JSONL（fsync）→ 同批 id 删行；保留期 config/params 双级（默认 180）；单表失败跳过、任一失败 5xx 可重试可重入；config audit.archive 段。**AL5/AL6 由集成测试承载**（导出后删行、保留期边界）；E2E 预演：签名回调 → 幂等栅栏 → 归档落盘 + job_submissions 终态（handler 集成测试）。「按周期跑通」验收项待 taskrunner M3 建 cron 定义 + 部署联调 |
+| 2026-09-11 | **范围校准（四仓对账审计）**：§2 异步管道已落地部分 = 判定日志管道（policyeval）；`audit_logs` 主审计维持同步写（D2-12/F-5 优化在位），§2.2 数据流图「审计中间件→L2 writer」分支与 §5 pipeline 开关标注未启用，主审计切异步 🚦（启用时须补停机 drain 等待，参考批次 5a 模式） |

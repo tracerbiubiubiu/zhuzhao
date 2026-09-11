@@ -63,7 +63,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 设备 A 刷新 → 只删 RT_A，不影响 RT_B
 ```
 
-**deviceId 的生成**：前端生成 UUID 存 localStorage，每次登录带上。Phase 1 不校验 deviceId 的合法性，仅作为 Redis Key 的隔离维度。
+**deviceId 的生成**：前端生成 UUID 存 localStorage，每次登录带上。Phase 1 不校验 deviceId 的合法性，仅作为 Redis Key 的隔离维度。**D2-22 后置加固（已实施）**：deviceId 实际经白名单校验（`[a-zA-Z0-9_-]{1,64}`，auth_service `validDeviceID`；Login/Refresh/Logout/改密四路径），非法 400——前端 UUID 命名空间天然兼容。
 
 **登出策略**：Phase 1 登出只删当前设备的 RT。Phase 2 提供设备列表查询和踢出功能。
 
