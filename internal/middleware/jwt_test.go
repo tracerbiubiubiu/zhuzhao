@@ -81,7 +81,7 @@ func TestJWT_InvalidSignature_Returns20003(t *testing.T) {
 // B2-1 守护：RT 冒充 AT → 401 + 20003（typ 校验失败属「无效」而非「过期」）
 func TestJWT_RefreshTokenAsAccess_Returns20003(t *testing.T) {
 	c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
-	_, rt, err := manager.GenerateRefreshToken(1, "dev-1", 168*time.Hour)
+	_, rt, err := manager.GenerateRefreshToken(1, "dev-1", 168*time.Hour, 0)
 	require.NoError(t, err)
 	bearerRequest(c, rt)
 

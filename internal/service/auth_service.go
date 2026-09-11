@@ -164,6 +164,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 	if user.Status != 1 {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
+	// C3：密码纪元比对——改密/重置的吊销三步（SET disabled/SCAN/DEL）非原子，
+	// 并发 Refresh 可能在 DEL 前取走旧 RT、DEL 后才 Set 幸存；纪元比对使任何
+	// 幸存的旧纪元 RT 在下一次 Refresh 必败（TOCTOU 封口）
+	if cur := currentUserPwEpoch(ctx, s.rdb, claims.UserID); cur != claims.Pwe {
+		return nil, errcode.ErrRefreshTokenInvalid
+	}
 
 	deviceID := normalizeDeviceID(claims.DeviceID)
 	if !validDeviceID(deviceID) {
@@ -293,7 +299,9 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, devi
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
-	rt, _, err := s.jwtManager.GenerateRefreshToken(user.ID, deviceID, s.refreshTTL)
+	// C3：签发时注入当前密码纪元（改密/重置 INCR 后，旧纪元 RT 全部失效）
+	rt, _, err := s.jwtManager.GenerateRefreshToken(user.ID, deviceID, s.refreshTTL,
+		currentUserPwEpoch(ctx, s.rdb, user.ID))
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
