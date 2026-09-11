@@ -16,7 +16,7 @@
 - 成功：`code === 0`；失败：`data === null`，`code !== 0`
 - 字段名用 **`message`**，不是 `msg`
 - 业务分支看 **body.code**，HTTP 状态仅辅助
-- 实现出口：`internal/pkg/response`（禁止 Handler 裸 `c.JSON` 业务结构）
+- 实现出口：`zhuzhao-utils/response`（2026-09 公共包抽取：原 `internal/pkg/response` 已迁出并删除；禁止 Handler 裸 `c.JSON` 业务结构）
 
 ## 文档来源
 

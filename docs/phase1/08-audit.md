@@ -272,6 +272,6 @@ func (s *userService) Create(ctx context.Context, user *User) error {
 ### 涉及文件
 
 ```
-internal/pkg/logger/logger.go          # slog + Lumberjack（已有，需补 context 传递）
+zhuzhao-utils/logger                   # slog + Lumberjack（2026-09 公共包抽取：internal/pkg/logger → zhuzhao-utils/logger）
 # AccessLogger 使用 gin-contrib/slog，无需自写 access_log.go
 ```

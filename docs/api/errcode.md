@@ -2,7 +2,7 @@
 
 > 业务错误码（`code`）分段、HTTP 映射与 Phase 1 验收对照。  
 > **响应体外层结构**（`code` / `message` / `data` / `request_id`）以 [`response.md`](./response.md) 为 SSOT。  
-> 实现：`internal/pkg/errcode/errcode.go` + `internal/pkg/response/response.go`
+> 实现：`internal/pkg/errcode/errcode.go` + `zhuzhao-utils/response`（2026-09 公共包抽取：`internal/pkg/response` → `zhuzhao-utils/response`，原路径删除）
 
 ---
 
@@ -199,7 +199,7 @@
 
 ### 跨服务 · activelist 100000–100999
 
-<!-- 2026-09-08 三仓信封收敛批次登记；常量与映射实现在 activelist 仓 internal/apperr（numByCode） -->
+<!-- 2026-09-08 三仓信封收敛批次登记；常量与映射实现在 activelist 仓库 internal/apperr（numByCode） -->
 
 | code | error_code（内部标识） | message | HTTP |
 |------|----------------------|---------|------|

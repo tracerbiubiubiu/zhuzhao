@@ -289,7 +289,7 @@ func (s *ticketService) canOperate(ctx context.Context, userID int64, action str
 ```
 internal/service/org_delegation.go      # EffectiveOrgPriority、IsOrgAdminOrOwner、IsAncestorOwner
 internal/service/org_service.go       # SetOwners、SetMemberRole；扩展 Add/RemoveMember
-internal/service/ticket_service.go    # CheckOwner 调用 org_delegation
+internal/service/ticket/service.go    # CheckOwner 调用 org_delegation（工单域已隔离为 ticket/ 包）
 internal/handler/org_handler.go       # 新路由
 internal/repository/org_repo.go       # owner_user_ids、org_member_role CRUD
 migrations/0000xx_org_delegation.up.sql

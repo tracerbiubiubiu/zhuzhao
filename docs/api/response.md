@@ -1,8 +1,8 @@
 # HTTP 响应体约定（后端 SSOT）
 
-> **后端权威契约**。所有 JSON API（Phase 1 管理端）必须经 `internal/pkg/response` 输出；前端按本文对齐，字段名以本文为准（使用 `message`，不是 `msg`）。
+> **后端权威契约**。所有 JSON API（Phase 1 管理端）必须经 `zhuzhao-utils/response` 输出；前端按本文对齐，字段名以本文为准（使用 `message`，不是 `msg`）。
 >
-> 实现：`internal/pkg/response/response.go`  
+> 实现：`zhuzhao-utils/response`（2026-09 公共包抽取：`internal/pkg/response` → `zhuzhao-utils/response`，原路径删除）  
 > 错误码分段与 HTTP 映射：[`errcode.md`](./errcode.md)  
 > 路由清单：[`architecture.md`](../design/architecture.md) §17
 

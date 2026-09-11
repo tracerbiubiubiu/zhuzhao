@@ -158,7 +158,7 @@ internal/service/ticket/scope_resolver.go # resolve 埋点（可选）
 internal/pkg/audit/                 # L2 writer（channel + Redis List）
 configs/config.yaml                 # audit 段
 migrations/                         # policy_evaluation_logs（编号启动时核对）
-internal/task/audit_archive.go      # Asynq 归档 periodic task（M-E）
+internal/service/audit_archive.go  # 审计归档动作（首个预置 action，经 taskrunner 调度）
 ```
 
 ---

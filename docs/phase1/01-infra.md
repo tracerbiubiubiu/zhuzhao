@@ -72,8 +72,8 @@ migrations/
 登录限流由 Step 3 `AuthService` 使用，脚本在 Step 1 一并落盘（`//go:embed`，无运行时读文件路径问题）：
 
 ```
-internal/pkg/redis/
-├── redis.go                       # 客户端连接（已有）
+zhuzhao-utils/redis/               # ← 2026-09 公共包抽取（原 internal/pkg/redis/ 已迁出并删除）
+├── redis.go                       # 客户端连接
 ├── scripts.go                     # go:embed 加载脚本 + Eval 封装（Step 1/3）
 └── scripts/
     └── login_lock.lua             # LoginLocker：INCR + 首次 EXPIRE 原子，15min/5 次
@@ -88,7 +88,7 @@ internal/pkg/redis/
 
 ### 连接与连接池
 
-> 实现位置：`internal/pkg/postgres/postgres.go`、`internal/pkg/redis/redis.go`；配置 `configs/config.yaml`。拓扑差异（Cluster/Sentinel/VIP）只改 **地址与装配**，见 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)。
+> 实现位置：`zhuzhao-utils/postgres`、`zhuzhao-utils/redis`（2026-09 公共包抽取：`internal/pkg/{postgres,redis}` → `zhuzhao-utils/{postgres,redis}`，原路径删除）；配置 `configs/config.yaml`。拓扑差异（Cluster/Sentinel/VIP）只改 **地址与装配**，见 [design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)。
 
 #### 通用原则（PG + Redis 共用）
 
@@ -135,7 +135,7 @@ database:
 ```
 
 ```go
-// internal/pkg/postgres/postgres.go — 要点（与现有骨架一致，补全配置项）
+// zhuzhao-utils/postgres — 要点（2026-09 公共包抽取：internal/pkg/postgres → zhuzhao-utils/postgres）
 poolConfig.MaxConns = int32(cfg.MaxOpenConns)
 poolConfig.MinConns = int32(cfg.MaxIdleConns)
 poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime   // 或 time.Hour
@@ -253,7 +253,7 @@ migrations/
 ├── 000002_seed.down.sql
 internal/app/app.go              # 优雅关闭（已有，需验证）
 internal/router/router.go        # 健康检查路由（需完善 ready）
-internal/pkg/redis/
+zhuzhao-utils/redis/             # ← 2026-09 公共包抽取（原 internal/pkg/redis/ 已迁出并删除）
 ├── redis.go
 ├── scripts.go                   # embed + Eval 封装（LoginLocker）
 └── scripts/login_lock.lua       # 登录限流 Lua（见 02-auth §登录限流）

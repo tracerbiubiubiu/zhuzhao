@@ -1,7 +1,7 @@
 // Package jobs 预置动作注册表（E-②，16 号 §3；taskrunner 三层模型的「动作」层）。
 //
 // action_id 即跨仓库契约（taskrunner 仓库 docs/taskrunner.md §4）：taskrunner 按
-// job 定义回调 zhuzhao POST /internal/jobs/<action_id>，本包查表分发执行。
+// job 定义回调 zhuzhao POST /internal/jobs/callback（action_id 在 body，C10），本包查表分发执行。
 // 新增动作 = 实现 Handler + Register（发版一次），任务定义在 taskrunner 侧运行时配置。
 package jobs
 

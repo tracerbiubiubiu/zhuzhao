@@ -49,7 +49,7 @@
 | 配置 | yaml + `${VAR}` 环境变量展开；敏感值（SK/密码）env 注入不入库不入 git |
 | 优雅启停 | 信号处理 + 依赖关闭顺序；**防孤儿进程**（重启先杀端口占用） |
 | 门禁 | 统一 Makefile：`lint`（vet + gofmt）/ `test` / `build`；zhuzhao 另有 `test-integration`（-race -p 1）与 `acceptance` 四档链 |
-| 健康检查 | `/healthz`（存活）+ `/readyz`（检各自硬依赖：Redis/PG） |
+| 健康检查 | **zhuzhao**：`/health/live`（存活）+ `/health/ready`（检 PG/Redis 硬依赖）；**子服务（taskrunner / activelist）**：`/healthz` + `/readyz`（检各自硬依赖：Redis/PG） |
 | 时区 | 容器固定 `TZ=Asia/Shanghai` |
 | **代码注释** | **关键函数必须注释**：导出符号有 doc comment（说什么）；复杂逻辑/安全相关/非直观分支注释写**为什么**（不复述代码）；对外 API 带 swagger 注记。惯例：中文注释 |
 | **文件规模** | 单文件 **超过 200 行即评估拆分**（按职责/子域切，不机械按行数硬切）；新增文件尽量低于该阈值。存量豁免：已冻结模块（ticket）与历史大文件不做突击拆分，触碰时顺手拆 |

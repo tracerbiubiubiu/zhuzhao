@@ -2,7 +2,8 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> 更新日期：2026-09-10（四仓文档对账同步批，doc-only）｜ 分支：`feature/phase-3`（最近一次全量门禁复验 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：**2026-09-11**（**审查修正批，doc-only**：① 3 条确认不一致已修——§1 回调路径改 `/internal/jobs/callback`、§3 去掉 ticket 元数据「只读」标注、`standards.md §4` 健康检查按主/子服务区分；② 失效代码路径与死链治理（utils 抽取遗留路径回改等）；③ 规模数字校准 + builtin 状态改「库就绪待接线」）｜ 分支：`feature/phase-3`（最近一次全量门禁复验 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 2026-09-10 文档批次：四仓文档对账同步批（doc-only）。
 > 2026-09-02 文档批次：Phase 3 待编写文档（03/06/07/08/09）全部补齐 + 13-implementation-plan 建档 + ops/deployment.md（B10）补齐（doc-only，未动代码/门禁）。
 
 ---
@@ -13,7 +14,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模**：70 个非测试 Go 源文件 ｜ 51 个测试文件 ｜ 201 个测试函数 ｜ 50 个迁移文件（25 对）｜ 13 份 review 文档（含本文件；统计时点 2026-09-01，随代码漂移）。
+**规模**：75 个非测试 Go 源文件（`internal/`+`cmd/`）｜ 67 个测试文件 ｜ 254 个测试函数 ｜ 50 个迁移文件（25 对）｜ 13 份 review 文档（含本文件；**统计时点 2026-09-11**，随代码漂移——改动后请重算或更新时点）。
 
 ---
 
@@ -32,9 +33,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性 | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
-| **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | ✅ 2026-09-04（authz.md §3.1；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
+| **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | 🟡 **库就绪待接线**（2026-09-04；**生产装配零消费者**，仅测试引用；首个消费者 = M-E；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
-| **内网回调端点（E-②）** | `/internal/jobs/<action_id>`（AK/SK 验签 utils aksk + 专用拓扑，默认关）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3） | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
+| **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 utils aksk + 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3） | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
 | **审计归档（B11②，E-③）** | `audit_archive` 首个预置动作：audit_logs + policy_evaluation_logs 超期导出 JSONL→**单批导出成功后按同批 id 删行**（fsync 后删，崩溃窗口仅重复不丢）；保留期默认 180 天可配/params 可覆盖；单表失败跳过、任一失败→5xx 可重试可重入 | ✅ 2026-09-04（03 §4；本地卷 P4；注册进 jobs Registry） | `internal/service/audit_archive.go` |
 | **任务管理代理（E-④）** + **契约改造（E-⑦）** | 三层校验后代理 taskrunner API（提交/状态/执行记录/任务定义 CRUD/触发/取消/重试/死信）；出站 aksk 签名 + request_id/actor/source_ip 透传；提交/触发同步落 job_submissions 凭证（E5）；权限码 task:submit/read/manage + 菜单（000022）；**E-⑦**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试 | ✅ E-④ 2026-09-04 / E-⑦ 2026-09-07（16 号 §3；taskrunner 未部署时 502 透出） | `internal/pkg/taskrunner/` `internal/service/taskrunner_service.go` `internal/handler/taskrunner_handler.go` |
 | **网关反代（批次 B/E13）** | 前缀→上游注册表 / ReverseProxy / StripPrefix / AK/SK 出站签名 / 身份断言（X-Operator/X-Request-ID）/ 点段路径拒绝 / 502+10008 错误映射；根级挂载全链 JWT→限流→审计跳body→CasbinAuth | ✅ 2026-09-09（16 号批次 B） | `internal/gateway/` `internal/router/router.go` |
@@ -82,7 +83,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | `/menus` | CRUD | 管理端 |
 | `/audit/logs` | 审计日志查询 | 管理端 |
 | `/tickets` | CRUD + close + assign + comments + notes + relations | 工单 |
-| `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板） | 只读 |
+| `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板）：**读 + 管理**（BK-18 已补 7 写端点：2 POST + 5 PUT/DELETE，后者属 standards §3.5 存量公约豁免；`router.go:275-287`） | 读：无专属码；管理：`ticket:type:manage`（L1 通配 admin/superadmin，operator 经类型配置页 AssignMenus 放行） |
 | `/v1/tasks` `/v1/runs` `/v1/jobs` `/v1/dead-letters` | 任务管理代理（E-④，三层校验后出站 taskrunner） | task:submit/read/manage |
 | `/internal/jobs/callback` | 内网回调（AK/SK 验签，action 在 body；C10） | taskrunner 内网，默认关 |
 | `/al/*`（网关反代） | activelist 透传（JWT→限流→审计跳body→Casbin→身份断言→AK/SK 出站签名；menu_apis 000024 权限面） | 批次 B/E13 |
@@ -236,4 +237,4 @@ docs/
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 
-> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）、09 F-31④（relation 越权负向用例——现有 `TestD9_CreateRelation` 只覆盖正向/同向 409/删后 404）、09 F-32（audit/user service 分支级单测，低优——集成已兜底核心分支）、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）。**新增（2026-09-08）：在线用户管理面（触发驱动；触发条件 = 出现强制下线/会话审计运维诉求——安全事件响应或账号共享治理，或 M-SSO 上线引入多端会话管理；两条件均未出现前不动，2026-09-09 补写触发条件对齐「暂缓 ≠ 搁置」纪律）**——会话吊销原语全现成（`user:disabled` + SCAN `refresh:<uid>:*` + `blacklist:at:<jti>`，session_revoke.go / auth_service.go:326），缺的仅管理端点：基础版 GET/DELETE `/monitor/online-users` + 权限码 seed，0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）。
+> **随手项（任意时点）**：BK-9（测试死代码清理）、A6 ③（错误注入测试用例）、09 F-31④（relation 越权负向用例——现有 `TestD9_CreateRelation` 只覆盖正向/同向 409/删后 404）、09 F-32（audit/user service 分支级单测，低优——集成已兜底核心分支）、可选 Q5 组织赋角注记（11-authz §5 Q5 不变量补一句「组织赋角（org_roles/parent_id）使 token 快照原理上不可行」，doc-only，2026-09-01 登记）。**新增（2026-09-08）：在线用户管理面（触发驱动；触发条件 = 出现强制下线/会话审计运维诉求——安全事件响应或账号共享治理，或 M-SSO 上线引入多端会话管理；两条件均未出现前不动，2026-09-09 补写触发条件对齐「暂缓 ≠ 搁置」纪律）**——会话吊销原语全现成（`user:disabled` + SCAN `refresh:<uid>:*` + `blacklist:at:<jti>`，session_revoke.go / auth_service.go:326），缺的仅管理端点：基础版 GET/DELETE `/monitor/online-users` + 权限码 seed，0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）。**新增（2026-09-11 审查修正批，文档体系低优治理）**：① **ADR 覆盖不足**——现仅 3 篇（事件机制/Asynq/activelist 集成），建议补 5–8 篇重大不可逆决策（三层鉴权、ltree 选型、双 Token + 黑名单、迁移编号治理、ticket_visibility、虚拟组）；② **体量偏重**——`docs/` 约 2.6 万行 > 代码 2.3 万行，`design/architecture.md`（1,899 行）/ `design-decisions.md`（1,414 行）建议按职责拆分（对齐 standards §4「单文件 >200 行评估拆分」精神）。

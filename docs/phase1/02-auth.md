@@ -151,7 +151,7 @@ POST /auth/logout (携带 AT)
 
 **Key**：`lock:login:{employee_no}`
 
-**Lua 脚本（示意，实现时放 `internal/pkg/redis/scripts/login_lock.lua`，由 `scripts.go` go:embed）**：
+**Lua 脚本（示意，实现时放 `zhuzhao-utils/redis/scripts/login_lock.lua`——2026-09 公共包抽取，原 `internal/pkg/redis/` 已迁出并删除；由 `scripts.go` go:embed）**：
 
 ```lua
 -- KEYS[1] = lock:login:{employee_no}
@@ -807,7 +807,7 @@ internal/service/auth/              # Login/Refresh/Logout/UpdatePassword
 internal/service/user/              # ResetPassword（管理员重置）
 internal/handler/auth/
 internal/handler/user/              # 管理员重置密码
-internal/pkg/jwt/
+zhuzhao-utils/jwt/                  # JWT 公共件（2026-09 公共包抽取，原 internal/pkg/jwt/ 已迁出并删除）
 internal/repository/user/           # 密码验证依赖
 ```
 

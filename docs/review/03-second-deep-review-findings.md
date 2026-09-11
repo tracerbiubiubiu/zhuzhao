@@ -286,7 +286,7 @@ go.mod 依赖无已知高危 CVE；migrations up/down 全对称（000008 down �
 
 - **证据**（grep + 读码实证）：
   1. [01-auth-enhance](../phase2/01-auth-enhance.md) §1 前置条件声称「登录时已 `SADD devices:{userId}`、`SET refresh:{userId}:{deviceId}`（见 02-auth）」——**实际全仓 grep `SAdd|devices:` 零命中**，Phase 1 从未写过 devices 集合；
-  2. 同文档 §2.1 承诺 RT value 为设备元数据 JSON（`{jti, device_name, ip, user_agent, created_at, last_refresh_at}`）——**实际 [auth_service.go:272](file:///../../internal/service/auth_service.go) 存储的是 `hashToken(rt)`（SHA-256 hex）**，无任何设备元数据。
+  2. 同文档 §2.1 承诺 RT value 为设备元数据 JSON（`{jti, device_name, ip, user_agent, created_at, last_refresh_at}`）——**实际 `internal/service/auth_service.go:272` 存储的是 `hashToken(rt)`（SHA-256 hex）**，无任何设备元数据。
 - **影响**：2b Step 7（M2b-4）设备列表/踢出 API 的两个前置全缺——`GET /auth/devices` 无数据源（devices 集合不存在 + RT 无元数据可展示）。前置条件落空会在 2b 中期才暴露，届时需要回改 Phase 1 的 issueTokenPair/Logout/revoke 链路（改 RT value 结构还会牵动 Refresh 的 hash 比较逻辑与既有测试）。
 - **修复选项**（推荐 a，零代码扰动）：
   - a. **修订 PRD 前置条件章节**：将「SADD devices 集合 + RT value 结构化（hash 与元数据并存，如 `{"hash": "...", "meta": {...}}`）」列为 2b Step 7 的首个任务项（属 Step 7 本职范围——设备管理本来就是它引入的能力）；

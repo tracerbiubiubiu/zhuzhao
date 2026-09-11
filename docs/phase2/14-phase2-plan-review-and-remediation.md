@@ -661,7 +661,7 @@ docs/
 （注：原计划给以下 5 份源文档顶部加「已废弃声明」模板；实际按用户指令 **2026-08-25 已直接删除这 5 份源文档**，模板保留作为历史记录，不再需要手动给旧文件加声明。）
 
 ```markdown
-> ⚠️ **已废弃声明**：本文档内容已合并至 [14-phase2-plan-review-and-remediation.md](./phase2/14-phase2-plan-review-and-remediation.md)（若位于 review 目录则路径为 `../phase2/14-phase2-plan-review-and-remediation.md`）。
+> ⚠️ **已废弃声明**：本文档内容已合并至 **14 号文档**（`14-phase2-plan-review-and-remediation.md`）——同目录引用写 `./14-...`，review 目录引用写 `../phase2/14-...`。
 > 自 2026-08-25 起，以 14 号文档为 Phase 2 计划审查类内容的唯一 SSOT，本文档仅保留供历史参考，不再更新。
 ```
 
