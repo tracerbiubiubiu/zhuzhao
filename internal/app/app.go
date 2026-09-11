@@ -91,6 +91,15 @@ func (a *App) Shutdown() error {
 		return err
 	}
 
+	// 2. B11①：等判定日志管道收尾（pump drain + flusher 收尾 flush）。必须在
+	// main.go defer cleanup() 关闭 Redis 之前完成；超时放弃等待（残留行留 Redis
+	// 重启续消不丢，但会有 Warn 留痕）
+	if a.policyEval != nil {
+		if !a.policyEval.Stop(5 * time.Second) {
+			a.logger.Warn("policy_eval writer shutdown timeout, residual rows stay in redis")
+		}
+	}
+
 	// B4-6：审计为同步写入（08-audit.md Phase 1 决策：无队列，优雅关闭无需 drain）；
 	// Casbin/Redis/PG 连接关闭由 main.go defer cleanup() 依 casbin→redis→pg 逆序执行
 

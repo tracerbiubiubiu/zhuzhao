@@ -6,7 +6,6 @@ package middleware
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	goredis "github.com/redis/go-redis/v9"
@@ -16,14 +15,20 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
-// tokenBucketLua 令牌桶：KEYS[1] = 桶键；ARGV = [rps, burst, now_unix_sec]。
-// 时间源用应用侧 now（内网 NTP 环境；升级路径 = redis TIME）。
+// tokenBucketLua 令牌桶：KEYS[1] = 桶键；ARGV = [rps, burst]。
+// 时间源取 Redis 服务端 TIME（免疫多实例时钟偏移）。Redis 6.2 中 TIME 属随机命令，
+// 其后的写命令须先显式切换 effects 复制（7+ 默认且该调用为 no-op）；miniredis 的
+// Lua 环境无此函数，守卫跳过（其 TIME 直接可用）。
 // 返回 [allowed(0/1), retry_after_sec]。
 const tokenBucketLua = `
+if redis.replicate_commands then
+  redis.replicate_commands()
+end
 local key = KEYS[1]
 local rps = tonumber(ARGV[1])
 local burst = tonumber(ARGV[2])
-local now = tonumber(ARGV[3])
+local t = redis.call('TIME')
+local now = tonumber(t[1])
 local b = redis.call('HMGET', key, 'tokens', 'ts')
 local tokens = tonumber(b[1])
 local ts = tonumber(b[2])
@@ -45,9 +50,10 @@ redis.call('EXPIRE', key, math.max(1, math.ceil(burst / rps)) + 5)
 return {allowed, retry}
 `
 
-// RateLimit 全 API 限流（挂 v1 组：登录后按 user_id、匿名按 ClientIP）。
-// routes 精确匹配 path 覆盖 default 规则；Enabled=false 或 rdb 为 nil 直接放行
-// （测试构造）；Redis 错误 fail-close → 503 + 10008（对齐 Phase 1 登录限流）。
+// RateLimit 全 API 限流（挂 auth 公开组与 authed 组：登录后按 user_id、匿名按
+// ClientIP）。routes 按 gin 路由模式（FullPath，含 :param 段）匹配覆盖 default
+// 规则；Enabled=false 或 rdb 为 nil 直接放行（测试构造）；Redis 错误 fail-close
+// → 503 + 10008（对齐 Phase 1 登录限流）。
 func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc {
 	script := goredis.NewScript(tokenBucketLua)
 	return func(c *gin.Context) {
@@ -63,10 +69,13 @@ func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc 
 		} else {
 			dim = "ip:" + c.ClientIP()
 		}
-		// 桶按「维度 × 桶类别」隔离：严格路由规则不得被默认路由流量稀释注水
-		path := c.Request.URL.Path
-		r, ok := cfg.Routes[path]
-		bucket := "default"
+		// 桶按「维度 × 路由模式」隔离：路由覆盖规则独立计费，不被默认流量稀释注水
+		// （122b9c6 曾修此处但 bucket 两分支恒 default 等效 no-op——本修为真隔离）。
+		// FullPath = gin 路由模式（含 :param 段，按模式而非资源实例计桶）；网关挂载
+		// 下通配路由（/al/*rest）整体一桶。
+		route := c.FullPath()
+		r, ok := cfg.Routes[route]
+		bucket := "route:" + route
 		if !ok || r.RPS <= 0 || r.Burst <= 0 {
 			r, bucket = cfg.Default, "default"
 		}
@@ -76,7 +85,7 @@ func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc 
 		}
 		key := "rl:" + bucket + ":" + dim
 		res, err := script.Run(c.Request.Context(), rdb, []string{key},
-			r.RPS, r.Burst, time.Now().Unix()).Result()
+			r.RPS, r.Burst).Result()
 		if err != nil {
 			response.Fail(c, http.StatusServiceUnavailable,
 				errcode.ErrServiceUnavailable.Code, "限流器暂不可用，请稍后重试")

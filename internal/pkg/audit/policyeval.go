@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -76,6 +77,7 @@ type PolicyEvalWriter struct {
 	logger  *slog.Logger
 	ch      chan PolicyEvalEntry
 	dropped atomic.Int64
+	wg      sync.WaitGroup // pump/flusher 退出等待（Stop 用；防先关 Redis 静默丢行）
 }
 
 func NewPolicyEvalWriter(cfg PolicyEvalConfig, rdb *goredis.Client, store PolicyEvalStore, logger *slog.Logger) *PolicyEvalWriter {
@@ -105,9 +107,34 @@ func (w *PolicyEvalWriter) Write(e PolicyEvalEntry) {
 }
 
 // Start 启动 pump 与 flusher；ctx 取消后尽力排空 channel 再退出（优雅停止）。
+// 退出收尾须由 Stop 等待——否则调用方先关 Redis 时 drain/收尾 flush 静默失败。
 func (w *PolicyEvalWriter) Start(ctx context.Context) {
-	go w.pump(ctx)
-	go w.flusher(ctx)
+	w.wg.Add(2)
+	go func() {
+		defer w.wg.Done()
+		w.pump(ctx)
+	}()
+	go func() {
+		defer w.wg.Done()
+		w.flusher(ctx)
+	}()
+}
+
+// Stop 等待 pump/flusher 完成退出前收尾（drain + 收尾 flush）。必须在 ctx 取消
+// 之后、Redis 连接关闭之前调用（App.Shutdown 内、server.Shutdown 后）。超时返回
+// false：残留行持久在 Redis（AOF），重启后 flusher 续消不丢。
+func (w *PolicyEvalWriter) Stop(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		w.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // pump channel → Redis List。推送失败丢弃该行（fail-open）。
@@ -149,7 +176,11 @@ func (w *PolicyEvalWriter) drain() {
 		case e := <-w.ch:
 			b, _ := json.Marshal(e)
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), time.Second)
-			_ = w.rdb.RPush(ctx, w.cfg.RedisKey, b).Err()
+			if err := w.rdb.RPush(ctx, w.cfg.RedisKey, b).Err(); err != nil {
+				// 停机排空失败必须留痕：此处静默丢行 = 优雅停机路径上的无痕丢失
+				w.logger.Warn("policy_eval: shutdown drain push failed, entry lost",
+					slog.Any("err", err), slog.String("resource", e.ResourceType))
+			}
 			cancel()
 		default:
 			return

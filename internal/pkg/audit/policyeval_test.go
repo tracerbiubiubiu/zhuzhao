@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeStore struct {
@@ -153,4 +154,24 @@ func TestPolicyEvalShutdownDrain(t *testing.T) {
 		inProc, _ := rdb.LLen(ctxBg, "audit:policy_eval:processing").Result()
 		return int(inList)+int(inProc)+store.total() == 2
 	})
+}
+
+// C2 回归：Stop 必须等待 pump/flusher 收尾完成——调用方（App.Shutdown）据此在
+// 关闭 Redis 之前拿到「排空已完成」信号，防止 drain/收尾 flush 打在已关闭连接上
+// 静默丢行（122b9c6 时代 Start 无等待机制的历史缺陷）。
+func TestPolicyEval_StopWaitsForGoroutines(t *testing.T) {
+	store := &fakeStore{}
+	w, rdb, _ := newTestWriter(t, PolicyEvalConfig{BatchSize: 10, FlushInterval: time.Hour}, store)
+	ctx, cancel := context.WithCancel(context.Background())
+	w.Start(ctx)
+	// FlushInterval 1h：flusher 的收尾 flush 必须走 5s 有界路径，Stop 须等它完成
+	w.Write(PolicyEvalEntry{ActorID: 1, ResourceType: "t", Action: "read", Result: true})
+	cancel()
+	require.Eventually(t, func() bool {
+		ctxBg := context.Background()
+		inList, _ := rdb.LLen(ctxBg, "audit:policy_eval").Result()
+		inProc, _ := rdb.LLen(ctxBg, "audit:policy_eval:processing").Result()
+		return int(inList)+int(inProc)+store.total() >= 1
+	}, 3*time.Second, 10*time.Millisecond, "cancel 后条目应已离开 channel（入 List/processing/store）")
+	require.True(t, w.Stop(5*time.Second), "Stop 应在超时内等到两个 goroutine 收尾退出")
 }

@@ -112,3 +112,38 @@ func TestRateLimit_RedisDownFailsClosed(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
 	require.Equal(t, http.StatusServiceUnavailable, w.Code, "fail-close 503（对齐 Phase 1 登录限流口径）")
 }
+
+// C1 回归：路由覆盖桶与默认桶必须隔离——默认流量耗尽不得影响路由覆盖规则的预算
+// （122b9c6 的「桶隔离」修复实为 no-op：bucket 两分支恒 default，路由桶被默认流量稀释）。
+func TestRateLimit_RouteBucketIsolation(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(RequestID(), RateLimit(rdb, config.RateLimitConfig{
+		Enabled: true,
+		Default: config.RateLimitRule{RPS: 100, Burst: 2},
+		Routes: map[string]config.RateLimitRule{
+			"/ping": {RPS: 1, Burst: 2},
+		},
+	}))
+	r.GET("/ping", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+	r.GET("/other", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+
+	// 先打满默认桶（burst=2，经 /other）
+	for i := 0; i < 2; i++ {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/other", nil))
+		require.Equal(t, http.StatusOK, w.Code)
+	}
+	// 路由桶独立计费：/ping 的预算不受默认桶影响
+	for i := 0; i < 2; i++ {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+		require.Equal(t, http.StatusOK, w.Code, "第 %d 次应放行（路由桶独立于默认桶）", i+1)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+	require.Equal(t, http.StatusTooManyRequests, w.Code, "第 3 次按路由覆盖规则 429")
+}

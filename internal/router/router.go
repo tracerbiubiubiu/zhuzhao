@@ -120,8 +120,11 @@ func New(deps Deps) *gin.Engine {
 
 	v1 := r.Group("/api/v1")
 	{
-		// 认证模块（无需鉴权）
+		// 认证模块（无需鉴权）：匿名暴露面同样受限流保护（default 20rps/IP；
+		// 可按路由模式配更严阈值——如 /api/v1/auth/login，与 LoginLocker 互补：
+		// 前者限请求速率、后者限失败次数）
 		auth := v1.Group("/auth")
+		auth.Use(middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()))
 		{
 			auth.POST("/login", deps.AuthHandler.Login)
 			auth.POST("/refresh", deps.AuthHandler.Refresh)
