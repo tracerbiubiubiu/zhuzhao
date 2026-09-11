@@ -94,6 +94,9 @@ type UpdateTicketTypeRequest struct {
 	States      json.RawMessage `json:"states"`
 	Transitions json.RawMessage `json:"transitions"`
 	IsActive    *bool           `json:"is_active"`
+	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
+	// ticket_types.version 才写，否则 409。须 > 0，否则 400。
+	Version *int `json:"version,omitempty"`
 }
 
 // TicketTypeFieldInput 字段定义输入（ReplaceTypeFields 全量替换）
@@ -110,6 +113,9 @@ type TicketTypeFieldInput struct {
 // ReplaceTypeFieldsRequest 全量替换类型字段集
 type ReplaceTypeFieldsRequest struct {
 	Fields []TicketTypeFieldInput `json:"fields"`
+	// Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
+	// 须 > 0，否则 400。
+	Version *int `json:"version,omitempty"`
 }
 
 // CreateTicketTemplateRequest 新建模模板（org 决定可见范围，org_path 由服务端解析）
@@ -129,4 +135,7 @@ type UpdateTicketTemplateRequest struct {
 	DefaultPriority   *int            `json:"default_priority"`
 	DefaultFields     json.RawMessage `json:"default_fields"`
 	DefaultSLAMinutes *int            `json:"default_sla_minutes"`
+	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
+	// ticket_templates.version 才写，否则 409。须 > 0，否则 400。
+	Version *int `json:"version,omitempty"`
 }

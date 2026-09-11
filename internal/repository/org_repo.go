@@ -104,6 +104,11 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 		}
 	}
 
+	// P2-1 写入侧：插入成员行前对 org 取 FOR SHARE 并复核存活（与 Delete 的 FOR UPDATE 互斥）
+	if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_orgs (user_id, org_id, is_primary)
 		VALUES ($1, $2, $3)
@@ -150,6 +155,10 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 	onConflict := "is_primary = user_orgs.is_primary OR EXCLUDED.is_primary"
 	if reqScope != "" {
 		onConflict += ", ticket_scope = EXCLUDED.ticket_scope"
+	}
+	// P2-1 写入侧：插入成员行前对 org 取 FOR SHARE 并复核存活（与 Delete 的 FOR UPDATE 互斥）
+	if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
+		return err
 	}
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role, ticket_scope)
@@ -233,6 +242,11 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 	}
 	for _, orgID := range deduped {
 		isPrimary := primaryOrgID != nil && *primaryOrgID == orgID
+		// P2-1 写入侧：插入成员行前对 org 取 FOR SHARE 并复核存活（与 Delete 的 FOR UPDATE
+		// 互斥）。此处原有的 deleted_at 过滤仅防 FK 23503；FOR SHARE 认领才封并发软删窗口。
+		if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
+			return err
+		}
 		// D2-16：INSERT...SELECT 过滤软删组织（B4-3 只给 SetRolesTx 做了同型
 		// 防御）——裸 INSERT 遇软删 org_id 触发 FK 23503 → 500，且静默丢绑定
 		tag, err := tx.Exec(ctx, `
@@ -337,7 +351,21 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	}
 	defer tx.Rollback(ctx)
 
-	// 事务内检查（FOR UPDATE 锁行，与写入同快照）
+	// P2-1 两侧锁协议（Delete 侧）：先对 org 行取 FOR UPDATE 认领，与成员写入侧的
+	// FOR SHARE 守卫（lockAliveOrgForShareTx）互斥。原守卫 SQL 为纯子查询、无 FROM
+	// 子句无法直接加锁（注释自称锁行实无锁），并发 AddMember 可在守卫计数与软删
+	// UPDATE 之间的窗口插入成员行 → 「软删组织仍挂成员行」。独立 SELECT 认领后再做
+	// 三 COUNT 守卫即可将该窗口闭合。org 不存在或已软删 → ErrOrgNotFound。
+	var lockedID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM organizations WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&lockedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrOrgNotFound
+		}
+		return fmt.Errorf("lock org for delete: %w", err)
+	}
+
+	// 事务内检查（已持 FOR UPDATE 行锁，与成员写入的 FOR SHARE 互斥，同快照）
 	var children, members, openTickets int64
 	if err := tx.QueryRow(ctx, `
 		SELECT
@@ -372,6 +400,31 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 		return errcode.ErrOrgNotFound
 	}
 	return tx.Commit(ctx)
+}
+
+// lockAliveOrgForShareTx 成员写入前的组织存活守卫（P2-1 两侧锁协议，写入侧）。
+// 对本事务内即将写入 user_orgs 的 org 行取 FOR SHARE 读锁，并复核 deleted_at IS NULL。
+//
+// 互斥依据：FOR SHARE ⊥ Delete/DeleteVgWithOwnerCleanup 软删认领的 FOR UPDATE。
+//   - 若本守卫先取锁 → Delete 的 FOR UPDATE 阻塞至本事务提交，随后 Delete 的成员
+//     COUNT 看到新增行 → ErrOrgHasMembers（软删被拒，组织保持存活）；
+//   - 若 Delete 先认领并在之后提交 → 本守卫阻塞至其提交，deleted_at 已非空 →
+//     pgx.ErrNoRows → ErrOrgNotFound（成员行不落库）。
+//
+// 从而杜绝「软删组织仍挂成员行」的残留。org 不存在或已软删 → errcode.ErrOrgNotFound。
+//
+// ⚠️ 严禁改用 FOR KEY SHARE：实测它与软删 UPDATE 所持的行锁档不冲突，守卫将失效。
+func lockAliveOrgForShareTx(ctx context.Context, tx pgx.Tx, orgID int64) error {
+	var one int
+	err := tx.QueryRow(ctx, `
+		SELECT 1 FROM organizations WHERE id = $1 AND deleted_at IS NULL FOR SHARE`, orgID).Scan(&one)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.ErrOrgNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("lock org for share: %w", err)
+	}
+	return nil
 }
 
 // Move 移动组织子树（B3-2 事务化重构）。
@@ -562,6 +615,12 @@ func (r *OrgRepo) SetOwnersTx(ctx context.Context, tx pgx.Tx, orgID int64, owner
 	}
 	// 双轨对齐：确保每个 owner 有成员行且角色为 owner（04 §2.2）
 	for _, uid := range ownerUserIDs {
+		// P2-1 写入侧：插入成员行前对 org 取 FOR SHARE 并复核存活。注意上方
+		// organizations UPDATE（无 deleted_at 过滤）虽已持行锁，但不会在软删提交后
+		// 复核存活——本守卫补齐「认领后重读到已软删 → ErrOrgNotFound 回滚」。
+		if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role)
 			VALUES ($1, $2, false, 'owner')
@@ -632,6 +691,18 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 		return err
 	}
 	defer tx.Rollback(ctx)
+
+	// P2-1 两侧锁协议（Delete 侧，同型）：先对 org 行取 FOR UPDATE 认领，与成员写入侧
+	// 的 FOR SHARE 守卫互斥，闭合「守卫计数 ↔ 软删」窗口内的成员插入。org 不存在/已软删
+	// → ErrOrgNotFound（调用方 service 已前置 FindByID，正常路径不会触达）。
+	var lockedID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM organizations WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&lockedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrOrgNotFound
+		}
+		return fmt.Errorf("lock vg for delete: %w", err)
+	}
 
 	if _, err := tx.Exec(ctx,
 		`DELETE FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, id); err != nil {

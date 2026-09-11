@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS ticket_relations (
     CHECK (source_ticket_id <> target_ticket_id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_relations_pair ON ticket_relations(source_ticket_id, target_ticket_id, relation_type) WHERE deleted_at IS NULL;
+-- 2026-09-11 并发批次：上索引已被迁移 000028 的规范化对唯一索引 uq_ticket_relations_normalized(LEAST,GREATEST,relation_type) WHERE deleted_at IS NULL 取代（反向判重由 DB 兜底）。
 CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(target_ticket_id) WHERE deleted_at IS NULL;
 ```
 

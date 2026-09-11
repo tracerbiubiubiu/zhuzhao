@@ -89,7 +89,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 
 > **与禁用/删除用户的关系**：吊销时 **DEL 全部 `refresh:{userId}:*`** 是主路径，Refresh 第一步即 401；`user:disabled` / DB 状态检查是兜底，防止删 RT 部分失败时仍换出新 AT。
 
-> **RT Reuse Detection（业界对照）**：Auth0 / OWASP ASVS 推荐的完整方案在 RT 被重用时不仅拒绝该 token，还应**吊销整个 token family**（同一次登录产生的所有 RT 链）。Phase 1 用 `GetDel` 原子读删，旧 RT 再用会因 key 不存在而返回 401 + 20004，但**不追踪 family**（同一设备的 RT key 只有一个槽位，旧 RT 自然不可用，但不跨设备链）。这是**可接受的 Phase 1 安全级别**：单设备 RT 不可重用 + `user:disabled` 兜底；Phase 2+ 若需更强 reuse detection，可在 RT value 中嵌入 `family_id`，GetDel 命中后检查已用列表，发现重用则 DEL `refresh:{userId}:*` 全家桶。详见 [architecture §12.1 RT 并发刷新](../design/architecture.md#121-并发问题与应对)。
+> **RT Reuse Detection（业界对照）**：Auth0 / OWASP ASVS 推荐的完整方案在 RT 被重用时不仅拒绝该 token，还应**吊销整个 token family**（同一次登录产生的所有 RT 链）。Phase 1 用 `GetDel` 原子读删：提交**非当前槽位**的签名有效 RT（含已轮换的旧 RT）→ `GetDel` 先原子删除该键（**连带使当前有效 RT 失效**）→ 再 hash 比对不匹配 → 返回 401 + 20004，但**不追踪 family**（同一设备的 RT key 只有一个槽位，旧 RT 自然不可用，但不跨设备链）。这是**有意设计**：旧 RT 被重放本身即盗用信号，正统做法就是拒绝并使当前槽位失效、强制重登；作用域为**单设备（用户 + deviceId 单槽位）**、**不跨设备**、**不涉数据正确性**，代价可接受（属**可接受的 Phase 1 安全级别**：单设备 RT 不可重用 + `user:disabled` 兜底）。**已知代价（2026-09-11 补登）**：多标签/迟到提交误伤——A 标签刷新成功后，B 标签携带已轮换旧 RT **迟到**提交（落在签发新 RT 与 `Set` 之间的极短窗口内）→ 当前有效键被删 → A、B 双双被迫重登；属**并发时序、非确定性**，业界已知。**演进选项**：Phase 2+ 若多标签体验问题真实发生，再行评估 ① **宽限窗口**（同一旧 RT 在短窗口内并发刷新放行一次；或改「先 GET 比对、命中才 DEL」——但**会削弱盗用检测**，须权衡）② 在 RT value 中嵌入 `family_id`，GetDel 命中后检查已用列表，发现重用则 DEL `refresh:{userId}:*` 全家桶。详见 [architecture §12.1 RT 并发刷新](../design/architecture.md#121-并发问题与应对)。
 
 ### RT 存储位置：Redis vs 数据库
 
@@ -749,7 +749,8 @@ func AuthN() gin.HandlerFunc {
 | 刷新成功 | 有效 RT | 200 + 新 AT + 新 RT |
 | 旧 RT 失效 | 使用已刷新过的旧 RT | 401 + 20004 |
 | **用户被禁用后 refresh** | 管理员禁用后，客户端仍用禁用前持有的 RT | **401 + 20004**，无新 AT/RT（RT 已 DEL；兜底查 user:disabled/DB） |
-| 并发双刷新 | 同一 RT 同时两次 | 仅一次 200 |
+| 并发双刷新（同时） | 同一 RT 同时两次 | 仅一次 200（另一次 401 + 20004；`GetDel` 原子读删保证互斥） |
+| 迟到提交（多标签，已知代价） | A 刷新成功拿到新 RT 后，B 携带已轮换旧 RT 迟到提交 | B 401 + 20004；当前有效键被一并删除 → A、B 双双需重登（时序相关、非确定性，见 §RT 轮换流程） |
 | Redis 不可用 | Redis 宕机时刷新 | 503 |
 | RT 过期 | 超过 7d 的 RT | 401 |
 | RT 格式错误 | 乱字符串 | 401 |

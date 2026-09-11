@@ -100,6 +100,12 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000024_activelist_menus.up.sql",
 			// BK-22 发现：审计日志菜单 + menu_apis 补注册（000025）
 			"000025_audit_menu.up.sql",
+			// P1-1：job_submissions.claimed_at（回调幂等栅栏原子抢占，000026）
+			"000026_job_submissions_claimed_at.up.sql",
+			// P1-3：类型/字段/模板三表乐观锁列（000027）
+			"000027_ticket_config_version.up.sql",
+			// P1-2：工单关联规范化对唯一索引（000028）
+			"000028_ticket_relations_normalized.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

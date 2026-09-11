@@ -20,9 +20,39 @@
 
 ## 关键文件
 
-- **本报告（终稿）**：`deliverables/software-company/zhuzhao-audit-2026-09-11.md`
+- **审计终稿**：`deliverables/software-company/zhuzhao-audit-2026-09-11.md`
 - 架构审查原始报告：`.workbuddy/review-audit/architect-report.md`
 - 业界对标原始报告：`.workbuddy/review-audit/pm-benchmark-report.md`
+
+---
+
+# 第二轮：全面代码检查（2026-09-11）
+
+> 应「对代码进行全面检查：使用场景/测试用例/设计是否完善 → 细节实现是否符合要求 → 是否考虑并发等常见状况」要求，组建软件开发团队三线并行 + 主理人独立复核。
+
+## 结论（TL;DR）
+
+**设计站得住、实现整体忠实；核心并发机制质量高；无 P0。** 问题分布：**P1 × 5**（真实并发/安全缺陷）+ **P2 × 18** + **文档口径不一致 × 6**。根因不在"做错"，而在**低频配置写路径**、**handler/并发重复提交的 CI 测试盲区**、**文档漂移**。
+
+## P1 清单（建议优先修）— 经二次确认为 4 条、三轮复议后收敛为 3 条，**均已真机复现**
+
+1. **回调幂等栅栏非原子** → 同 `task_id` 并发回调可重复执行副作用（`job_submission_repo.go:86-103`）。**实证：8 并发 → 执行 8 次**。
+2. **工单关联反向判重 TOCTOU** → 并发 A→B/B→A 双向重复关联（`ticket/service.go:514-547`）。**实证：59/60 轮产生 2 行**。
+3. **类型/字段/模板三表无乐观锁** → 并发编辑静默覆盖（`ticket_repo.go:542/595/683`；已登记 BK-18）。**实证：lost update**。
+
+> 二次确认**下调**：原 P1-5（JWT/AK-SK 互斥护栏键错头）**不可利用**（路由组不相交）→ 降为 P2。
+> 二次确认**修正误报**：分页回显仅在 `page` 上限成立，`page_size` 侧不成立。
+> 主理人补充：文档称「tickets 有 version」失实（`tickets` 实走 status-CAS、无 version 列）→ 建议更正 `docs/phase2/00-implementation-plan.md:361`。
+> ⚖️ **三轮复议撤销一条 P1**：原 **P1-4（RT 轮换重用即删键）撤销定性**——属 **OAuth BCP 式的 RT 重用检测有意设计**（旧 RT 重放即盗用信号 → 会话失效强制重登），且 **`docs/phase1/02-auth.md` 早已登记**；残留仅为**多标签迟到提交误伤**（已知代价）。**登记不修**，触发驱动再评估宽限窗口。
+
+## 关键文件（本轮）
+
+- **代码检查终稿**：`deliverables/software-company/zhuzhao-code-review-2026-09-11.md`
+- **二次确认报告**：`deliverables/software-company/zhuzhao-code-review-verification-2026-09-11.md`
+- 分报告：`.workbuddy/codereview/{qa-test-coverage,architect-design-impl,engineer-concurrency-details}.md`
+- 主理人独立复核笔记：`.workbuddy/codereview/lead-independent-notes.md`
+
+> 首轮为只读审查；二次确认轮用 testcontainers 真 PG + miniredis 做复现，**临时脚本跑完即删**（工作树无残留）。
 
 ## 后续建议与落实情况（2026-09-11 · 三轮收尾）
 
@@ -36,6 +66,32 @@
 > **原 N-1 关闭**：`doc/` 被 `.gitignore` 忽略经确认为**有意为之**，非缺陷。
 
 > 详细修复清单（分三轮）与"有意不改"清单见终稿报告 **§8 修复实施记录**（含 §8.4 三轮回退与一致性复核）。
+
+## 第三轮：P1-4 重新定性并登记入档（2026-09-11）
+
+> 所有者对 P1-4 定性提出异议：**「RT 重用 → 会话失效」是安全特性，不是 bug**。
+
+- **复议结论：同意**。该行为是 **OAuth BCP / Auth0 / Google 的 RT 重用检测**正统做法（重放 = 盗用信号 → 吊销会话强制重登）；**且 `docs/phase1/02-auth.md` §RT 轮换流程「RT Reuse Detection（业界对照）」早已将其登记为有意设计**。
+- **撤销 P1 定性**：P1 由 4 条 → **3 条**；RT 一项改判为「有意设计 + 已知代价（多标签误伤）」。
+- **另撤销一条修法**：原建议「先 GET 比对、命中才 DEL」**不可取**——会让 replay 退化为 no-op，**削弱盗用检测**。
+- **登记入档（doc-only，未改任何代码）**：
+  - `docs/phase1/02-auth.md`：修订原「key 不存在」的表述（实际是 `GetDel` 删键 + hash 不匹配），补登**多标签迟到提交误伤**（并发时序、非确定性）与 **Phase 2+ 演进选项**（宽限窗口 / family_id，注明宽限窗口的取舍）；测试用例表补「迟到提交（已知代价）」行。
+  - `docs/review/11-project-control.md`：§6 健康状态新增 **`RT-1`（✅ 设计内）**；§8 随手项追加**触发驱动**条目（触发条件 = 出现多标签体验问题的真实反馈）。
+- **自纠**：更正前文一处事实误判——「docs 未提及 RT 轮换/重用」有误，系 **macOS BSD `grep` 不支持 BRE `\|` 交替**导致漏检；文档本就覆盖。
+
+---
+
+## 第四轮：P2-1 修法更正（2026-09-11）
+
+> 所有者指出：报告隐含的 P2-1 修法（「给守卫补 `FOR UPDATE`」）**关不了窗**。
+
+- **锁矩阵实测**（本机 PG 15.18）：软删 `UPDATE` 取 `FOR NO KEY UPDATE`，外键插入检查取 `FOR KEY SHARE`，**二者不冲突** → 加锁挡不住迟到插入；守卫改 `FOR UPDATE` 虽确会使插入阻塞，但**软删不使外键目标失效**（行仍在），阻塞解除后插入仍成功；既有 `FOR SHARE` 模式**也不挡**。
+- **端到端复现**（testcontainers 真 PG + 真迁移）：基线残留 `members=1`；**「仅守卫加 FOR UPDATE」仍 `members=1`（证伪）**；**「仅改 AddMember 侧」仍 `members=1`（证伪）**；两侧协议双向 **25×2 轮零残留**。另证 PG **允许** `INSERT … SELECT … FOR SHARE`（最小单语句修法可行）。
+- **真修法 = 两侧锁协议（无需迁移）**：Delete 侧对 org 行取 **`FOR UPDATE`** 作**事务性认领**（随提交/回滚释放，**不必新增 `deleting` 状态列**、也勿复用 `status`）；AddMember 侧在 **4 处 `INSERT INTO user_orgs` 的同事务内**取 **`FOR SHARE`** 复核 `deleted_at IS NULL`（`org_repo.go:107/154/238/564`），同型守卫 `DeleteVgWithOwnerCleanup` 亦需认领。**⚠️ `FOR KEY SHARE` 无效**（易踩坑）。
+- **触发器方案**：`BEFORE INSERT` 在 FK 检查前执行，普通读同样漏看未提交软删 → 必须**自身取冲突锁**，并非免锁捷径。
+- **未改任何代码、未加迁移**；报告 P2-1 行 + 表后更正块、§五 路线图、二次确认报告 §八 已同步。
+
+---
 
 ## 未覆盖 / 限制
 

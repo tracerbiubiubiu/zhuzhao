@@ -405,8 +405,11 @@ func (r *TicketRepo) ListTicketTemplates(ctx context.Context) ([]*model.TicketTe
 
 // --- 工单关联（2a 前移）---
 
-// ExistsRelationBetween BK-5：双向判重——A→B 与 B→A 视为同一关联
-// （DB 唯一索引 (source,target,relation_type) 仅防同向，反向在此前置拦截）
+// ExistsRelationBetween BK-5：双向判重——A→B 与 B→A 视为同一关联。
+// 【P1-2 更新】并发唯一性现由迁移 000028 的「规范化对」部分唯一索引
+// uq_ticket_relations_normalized(LEAST(src,tgt), GREATEST(src,tgt), relation_type)
+// 兜底；本前置检查仅用于「顺序重复」的良好 UX（早返回 409），
+// 不再承担唯一的并发正确性保证（其读取在事务外，与 INSERT 之间存在竞态窗口）。
 func (r *TicketRepo) ExistsRelationBetween(ctx context.Context, source, target int64, relType string) (bool, error) {
 	var exists bool
 	err := r.db.QueryRow(ctx, `
@@ -431,6 +434,9 @@ func (r *TicketRepo) CreateRelation(ctx context.Context, rel *model.TicketRelati
 		rel.SourceTicketID, rel.TargetTicketID, relType, rel.CreatedBy,
 	).Scan(&rel.ID, &rel.CreatedAt)
 	if err != nil {
+		// 23505：并发/顺序重复关联（uq_ticket_relations_normalized 规范化对唯一索引，
+		// 迁移 000028）→ mapUniqueViolation 默认映射 errcode.ErrConflict（409），
+		// 与 service 层预检的 ErrConflict 语义一致。
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
 		}
@@ -538,29 +544,57 @@ func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) 
 	return nil
 }
 
-// UpdateTicketType 更新类型（patch：COALESCE 保持；code 不可改）
-func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions json.RawMessage, isActive *bool) (*model.TicketType, error) {
-	const q = `
+// UpdateTicketType 更新类型（patch：COALESCE 保持；code 不可改）。
+// P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
+// 谓词 AND version = $7，命中才写，且恒有 SET version = version + 1。
+// 0 行（ErrNoRows）再定性：类型不存在 → 90003；存在但 version 不匹配 → 409 冲突。
+func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
+	q := `
 		UPDATE ticket_types SET
 			name = COALESCE($2, name),
 			description = COALESCE($3, description),
 			states = COALESCE($4, states),
 			transitions = COALESCE($5, transitions),
-			is_active = COALESCE($6, is_active)
-		WHERE code = $1
+			is_active = COALESCE($6, is_active),
+			version = version + 1
+		WHERE code = $1`
+	args := []any{code, name, description, states, transitions, isActive}
+	if version != nil {
+		q += ` AND version = $7`
+		args = append(args, *version)
+	}
+	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
 			default_sla_hours, has_custom_fields, is_active, created_at`
 	var t model.TicketType
-	err := r.db.QueryRow(ctx, q, code, name, description, states, transitions, isActive).Scan(
+	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
 		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errcode.ErrTicketTypeNotFound
+			// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
+			return nil, r.resolveTypeVersionMiss(ctx, code, version)
 		}
 		return nil, fmt.Errorf("update ticket type: %w", err)
 	}
 	return &t, nil
+}
+
+// resolveTypeVersionMiss 类型更新命中 0 行时的定性：
+// 类型不存在 → 90003；存在但并发更新（version 漂移）→ 409。
+func (r *TicketRepo) resolveTypeVersionMiss(ctx context.Context, code string, version *int) error {
+	var exists bool
+	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ticket_types WHERE code = $1)`, code).Scan(&exists); err != nil {
+		return fmt.Errorf("resolve ticket type existence: %w", err)
+	}
+	if !exists {
+		return errcode.ErrTicketTypeNotFound
+	}
+	if version != nil {
+		return errcode.ErrConcurrentModification
+	}
+	// 理论上不可达（无 CAS 时存在即命中）；保守返回冲突而非静默。
+	return errcode.ErrConcurrentModification
 }
 
 // DeleteTicketType 删除类型（有工单禁删；字段随类型一并删除）
@@ -591,14 +625,46 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 	return tx.Commit(ctx)
 }
 
-// ReplaceTypeFields 全量替换类型字段集（事务内先清后插）+ has_custom_fields 同步
-func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField) error {
+// ReplaceTypeFields 全量替换类型字段集（事务内先清后插）+ has_custom_fields 同步。
+//
+// P1-3 乐观锁决策：以「父类型 ticket_types.version」作为唯一 CAS 谓词（同一个事务内
+// 先 UPDATE ticket_types SET version = version + 1 WHERE code = $1 [AND version = $n]，
+// 0 行 → 409）。理由：字段集是类型配置的一部分，父类型版本是唯一权威；字段行在
+// Replace 语义下每次整体清空重插，无自然单行版本语义，故 ticket_type_fields.version
+// 列（迁移 000027 添加）在本方法中不作为并发谓词，仅保持三表结构一致。
+// version == nil → 不做 CAS（保持旧行为），但仍递增父版本（使后续携版本的调用
+// 能观测到本次修改）。
+func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField, version *int) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
+	// 1. 父类型版本 CAS（先于任何字段写入，锁父行）
+	casQ := `UPDATE ticket_types SET version = version + 1 WHERE code = $1`
+	casArgs := []any{code}
+	if version != nil {
+		casQ += ` AND version = $2`
+		casArgs = append(casArgs, *version)
+	}
+	tag, err := tx.Exec(ctx, casQ, casArgs...)
+	if err != nil {
+		return fmt.Errorf("bump ticket type version: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ticket_types WHERE code = $1)`, code).Scan(&exists); err != nil {
+			return fmt.Errorf("resolve ticket type existence: %w", err)
+		}
+		if !exists {
+			return errcode.ErrTicketTypeNotFound
+		}
+		return errcode.ErrConcurrentModification
+	}
+
+	// 2. 清空后整体重插字段集
 	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
 		return fmt.Errorf("clear type fields: %w", err)
 	}
@@ -679,29 +745,56 @@ func (r *TicketRepo) CreateTicketTemplate(ctx context.Context, t *model.TicketTe
 	return nil
 }
 
-// UpdateTicketTemplate 更新模板（patch：COALESCE 保持；code/type_code/org 不可改）
-func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name *string, defaultPriority *int, defaultFields json.RawMessage, defaultSLAMinutes *int) (*model.TicketTemplate, error) {
-	const q = `
+// UpdateTicketTemplate 更新模板（patch：COALESCE 保持；code/type_code/org 不可改）。
+// P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
+// 谓词 AND version = $6，命中才写，且恒有 SET version = version + 1。
+// 0 行（ErrNoRows）再定性：模板不存在/已软删 → 404；存在但 version 不匹配 → 409 冲突。
+func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name *string, defaultPriority *int, defaultFields json.RawMessage, defaultSLAMinutes *int, version *int) (*model.TicketTemplate, error) {
+	q := `
 		UPDATE ticket_templates SET
 			name = COALESCE($2, name),
 			default_priority = COALESCE($3, default_priority),
 			default_fields = COALESCE($4, default_fields),
 			default_sla_minutes = COALESCE($5, default_sla_minutes),
+			version = version + 1,
 			updated_at = NOW()
-		WHERE code = $1 AND deleted_at IS NULL
+		WHERE code = $1 AND deleted_at IS NULL`
+	args := []any{code, name, defaultPriority, defaultFields, defaultSLAMinutes}
+	if version != nil {
+		q += ` AND version = $6`
+		args = append(args, *version)
+	}
+	q += `
 		RETURNING id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
 			org_id, org_path::text, created_by, created_at, updated_at`
 	var t model.TicketTemplate
-	err := r.db.QueryRow(ctx, q, code, name, defaultPriority, defaultFields, defaultSLAMinutes).Scan(
+	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes,
 		&t.OrgID, &t.OrgPath, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errcode.ErrNotFound
+			return nil, r.resolveTemplateVersionMiss(ctx, code, version)
 		}
 		return nil, fmt.Errorf("update ticket template: %w", err)
 	}
 	return &t, nil
+}
+
+// resolveTemplateVersionMiss 模板更新命中 0 行时的定性：
+// 模板不存在/已软删 → 404；存在但并发更新（version 漂移）→ 409。
+func (r *TicketRepo) resolveTemplateVersionMiss(ctx context.Context, code string, version *int) error {
+	var exists bool
+	if err := r.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM ticket_templates WHERE code = $1 AND deleted_at IS NULL)`, code).Scan(&exists); err != nil {
+		return fmt.Errorf("resolve ticket template existence: %w", err)
+	}
+	if !exists {
+		return errcode.ErrNotFound
+	}
+	if version != nil {
+		return errcode.ErrConcurrentModification
+	}
+	return errcode.ErrConcurrentModification
 }
 
 // DeleteTicketTemplate 物理删除模板（无引用方）

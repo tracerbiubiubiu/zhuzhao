@@ -53,8 +53,12 @@ func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketT
 	return t, nil
 }
 
-// UpdateTicketType 更新类型（patch；code 不可改）
+// UpdateTicketType 更新类型（patch；code 不可改）。
+// P1-3：req.Version 可选乐观锁——传了才校验（nil = 旧行为）。
 func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.UpdateTicketTypeRequest) (*model.TicketType, error) {
+	if req.Version != nil && *req.Version <= 0 {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
+	}
 	if len(req.States) > 0 || len(req.Transitions) > 0 {
 		states, transitions := req.States, req.Transitions
 		if len(states) == 0 {
@@ -67,7 +71,7 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 			return nil, err
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.IsActive)
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.IsActive, req.Version)
 }
 
 // DeleteTicketType 删除类型（有工单禁删 → ErrConflict，走停用）
@@ -98,8 +102,12 @@ func (s *Service) ListTicketTypeFieldsAdmin(ctx context.Context, typeCode string
 	return s.ticketRepo.ListTicketTypeFieldsAll(ctx, typeCode)
 }
 
-// ReplaceTicketTypeFields 全量替换字段集（校验：key 唯一/类型枚举/select 选项/正则可编译）
+// ReplaceTicketTypeFields 全量替换字段集（校验：key 唯一/类型枚举/select 选项/正则可编译）。
+// P1-3：req.Version 可选乐观锁，以父类型 ticket_types.version 做 CAS；nil = 旧行为。
 func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req *model.ReplaceTypeFieldsRequest) error {
+	if req.Version != nil && *req.Version <= 0 {
+		return errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
+	}
 	if _, err := s.ticketRepo.GetTicketType(ctx, code); err != nil {
 		return err
 	}
@@ -107,7 +115,7 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 	if err != nil {
 		return err
 	}
-	return s.ticketRepo.ReplaceTypeFields(ctx, code, fields)
+	return s.ticketRepo.ReplaceTypeFields(ctx, code, fields, req.Version)
 }
 
 // CreateTicketTemplate 新建模模板（type 须存在；org 须存在，org_path 服务端解析）
@@ -134,12 +142,16 @@ func (s *Service) CreateTicketTemplate(ctx context.Context, req *model.CreateTic
 	return t, nil
 }
 
-// UpdateTicketTemplate 更新模板（patch；code/type/org 不可改）
+// UpdateTicketTemplate 更新模板（patch；code/type/org 不可改）。
+// P1-3：req.Version 可选乐观锁——传了才校验（nil = 旧行为）。
 func (s *Service) UpdateTicketTemplate(ctx context.Context, code string, req *model.UpdateTicketTemplateRequest) (*model.TicketTemplate, error) {
+	if req.Version != nil && *req.Version <= 0 {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
+	}
 	if req.DefaultPriority != nil && (*req.DefaultPriority < 1 || *req.DefaultPriority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "default_priority 须为 1–4")
 	}
-	return s.ticketRepo.UpdateTicketTemplate(ctx, code, req.Name, req.DefaultPriority, req.DefaultFields, req.DefaultSLAMinutes)
+	return s.ticketRepo.UpdateTicketTemplate(ctx, code, req.Name, req.DefaultPriority, req.DefaultFields, req.DefaultSLAMinutes, req.Version)
 }
 
 // DeleteTicketTemplate 删除模板

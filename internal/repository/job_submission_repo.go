@@ -20,7 +20,7 @@ type JobSubmission struct {
 	Action      string
 	Params      string
 	Origin      string // api（zhuzhao 提交）/ callback（到达时补录，含 cron 触发）
-	Status      string // submitted / succeeded / failed
+	Status      string // submitted / running / succeeded / failed
 	Error       string
 	SubmittedBy string
 	SourceIP    string
@@ -31,6 +31,7 @@ type JobSubmission struct {
 // 回调幂等状态。
 const (
 	JobStatusSubmitted = "submitted"
+	JobStatusRunning   = "running" // 在途抢占：已取得执行权、副作用执行中（未终态）
 	JobStatusSucceeded = "succeeded"
 	JobStatusFailed    = "failed"
 )
@@ -83,23 +84,49 @@ func (r *JobSubmissionRepo) GetByTaskID(ctx context.Context, taskID string) (*Jo
 	return row, nil
 }
 
-// EnsureCallbackRow 回调到达时的幂等栅栏：
-//   - 无行（cron 触发/未落凭证）→ 补录 origin='callback' 行，返回 (row, false, nil)；
-//   - 已有行且 status=succeeded → 返回 (row, true, nil)——**调用方不得再执行**（幂等拦截）；
-//   - 已有行且 submitted/failed → 返回 (row, false, nil)，允许（重）执行。
-func (r *JobSubmissionRepo) EnsureCallbackRow(ctx context.Context, taskID, action, actor, sourceIP, params string) (*JobSubmission, bool, error) {
-	if _, err := r.db.Exec(ctx, `
-		INSERT INTO job_submissions (task_id, request_id, action, params, origin, status, submitted_by, source_ip)
-		VALUES ($1, NULLIF($2, ''), $3, COALESCE(NULLIF($4, ''), '{}'), 'callback', $5, NULLIF($6, ''), NULLIF($7, ''))
-		ON CONFLICT (task_id) DO NOTHING`,
-		taskID, reqid.From(ctx), action, params, JobStatusSubmitted, actor, sourceIP); err != nil {
-		return nil, false, fmt.Errorf("ensure callback row: %w", err)
-	}
-	row, err := r.GetByTaskID(ctx, taskID)
+// ClaimCallbackRow 回调到达时的幂等栅栏——单语句**原子抢占**（P1-1）。
+//
+// 契约（第二个返回值 claimed = 本次是否抢到执行权）：
+//   - claimed=true：无行（cron 触发/未落凭证）经 INSERT 补录，或已有行处于
+//     submitted / failed（可重试），或 running 但 claimed_at 早于 10 分钟
+//     （陈旧——进程崩溃自愈，允许重认领）。抢占成功后本行 status='running'、
+//     claimed_at=NOW()；**调用方取得执行权、须自行执行副作用并 Mark* 终态**。
+//   - claimed=false：已有行且 status=succeeded（幂等拦截，终态），或 running
+//     且 claimed_at 未超 10 分钟（他人正在途执行）。此时本方法**再查回该行**
+//     一并返回（供调用方映射响应消息）；调用方**不得执行任何副作用**。
+//
+// 原子性保证：INSERT ... ON CONFLICT DO UPDATE ... WHERE + RETURNING 在单条语句内
+// 完成「判可抢占 + 抢占」，并发同 task_id 恰好 1 个语句返回行——修复前两段式
+// （INSERT DO NOTHING + 独立 SELECT）在并发下全部读到 submitted、handler 重复执行。
+func (r *JobSubmissionRepo) ClaimCallbackRow(ctx context.Context, taskID, action, actor, sourceIP, params string) (*JobSubmission, bool, error) {
+	row := &JobSubmission{}
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO job_submissions (task_id, request_id, action, params, origin, status, submitted_by, source_ip, claimed_at)
+		VALUES ($1, NULLIF($2, ''), $3, COALESCE(NULLIF($4, ''), '{}'), 'callback', 'running', NULLIF($5, ''), NULLIF($6, ''), NOW())
+		ON CONFLICT (task_id) DO UPDATE
+			SET status = 'running', claimed_at = NOW(), error = ''
+			WHERE job_submissions.status IN ('submitted', 'failed')
+			   OR (job_submissions.status = 'running'
+			       AND job_submissions.claimed_at IS NOT NULL
+			       AND job_submissions.claimed_at < NOW() - INTERVAL '10 minutes')
+		RETURNING id, task_id, COALESCE(request_id, ''), action, params, origin, status,
+		          COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at`,
+		taskID, reqid.From(ctx), action, params, actor, sourceIP).Scan(
+		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Params, &row.Origin, &row.Status,
+		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
 	if err != nil {
-		return nil, false, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			// 未抢到执行权：他人已 succeeded（终态），或他人正在途 running（未超 10 分钟）。
+			// 查回该行供调用方映射响应；行必然存在（本次 ON CONFLICT 命中）。
+			existing, getErr := r.GetByTaskID(ctx, taskID)
+			if getErr != nil {
+				return nil, false, getErr
+			}
+			return existing, false, nil
+		}
+		return nil, false, fmt.Errorf("claim callback row: %w", err)
 	}
-	return row, row.Status == JobStatusSucceeded, nil
+	return row, true, nil
 }
 
 // MarkSucceeded 执行成功（终态；此后同 task_id 回调被幂等拦截）。

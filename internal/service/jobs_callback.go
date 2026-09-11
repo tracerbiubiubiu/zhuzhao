@@ -53,12 +53,13 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 		return CallbackUnknownAction, "未注册的动作: " + in.Action
 	}
 
-	row, alreadyDone, err := s.repo.EnsureCallbackRow(ctx, in.TaskID, in.Action, in.Actor, in.SourceIP, string(in.Params))
+	row, claimed, err := s.repo.ClaimCallbackRow(ctx, in.TaskID, in.Action, in.Actor, in.SourceIP, string(in.Params))
 	if err != nil {
 		return CallbackRetryable, "回调受理失败"
 	}
-	if alreadyDone {
-		// 幂等拦截：该 task_id 已执行完全成功，重复回调直接受理（不重复执行副作用）
+	if !claimed {
+		// 未取得执行权：他人已执行完全成功（succeeded，终态幂等拦截），或他人正在途
+		// 执行（running，10 分钟抢占窗口内）——两种情形本回调都不再执行副作用，直接受理。
 		return CallbackIdempotent, row.Status
 	}
 
