@@ -55,7 +55,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|---|---|
 | E1 | 动作 handler 注册表 + `POST /internal/jobs/callback` 回调端点（body.action 分发，幂等：task_id+request_id 查重；C10 约定化 2026-09-07）【M3 前必做】 | ~~路由仅 /health/* + /api/v1/*~~ ✅ **已实施（2026-09-04，E-②，见 §3）** | **全新**：内网路由组（**AK/SK 验签**——utils `aksk` 验 taskrunner 签名，2026-09-03 基线修订）+ 注册表 + 幂等表 |
 | E2 | ~~动作清单端点 `GET /internal/jobs`~~ | 无 | ✅ **已定案不做前置校验**（taskrunner M2 定案：不存在/未注册的 action 经回调 4xx 快速失败；清单端点降为可选增强，无消费方不建） |
-| E3 | 任务管理功能：提交/建改定义/手动触发/查记录的 API + 页面（代理 taskrunner API；request_id 在此生成透传；写接口带 actor 工号 + source_ip） | ~~无 taskrunner client、无任务管理端点~~ ✅ **已实施（2026-09-04/07，E-④/E-⑦，见 §3）** | **全新**（鉴权/审计/RequestID 积木可复用） |
+| E3 | 任务管理功能：提交/建改定义/手动触发/查记录的 API + 页面（代理 taskrunner API；request_id 在此生成透传；写接口带 actor 工号 + source_ip——**归因口径修订（2026-09-11）**：身份通道统一为验签头 `X-Operator`；持久化=提交/触发 `submitted_by/source_ip` + 定义 `created_by`（taskrunner 服务端兜底）；取消/重试/更新=访问日志归因，详见 taskrunner.md 归因口径行） | ~~无 taskrunner client、无任务管理端点~~ ✅ **已实施（2026-09-04/07，E-④/E-⑦，见 §3）** | **全新**（鉴权/审计/RequestID 积木可复用） |
 | E4 | 部门可见性策略：策略模型 + zhuzhao 自有表 + 管理功能；三层校验消费；决定传给 taskrunner 的 `dept` 过滤参数与写权限 | **无 dept 概念**（可见性是工单专属三轴，§25.3 双路不合流） | **全新，最大语义 gap**（P1） |
 | E5 | 任务提交日志 `{action, task_id, request_id}` 落 zhuzhao（薄） | ✅ **已实施**（job_submissions 凭证随 E-④，000021/000023） | 新表（可与 E1 幂等查重合并一张） |
 | E6 | 终败通知端点 `/internal/notifications/task-dead` | 无 | **后置不做**（契约明确：仅当启用终败通知时需要） |
