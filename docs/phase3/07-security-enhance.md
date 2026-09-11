@@ -44,6 +44,7 @@ rate_limit:
 ```
 
 - 默认关闭（`rate_limit.enabled=false`，示例为开启态）；enabled 时 `default.rps/burst` 必填、缺失拒绝启动（无静默兜底）。
+- 挂载面：auth 公开组（login/refresh）+ authed 组 + 网关反代组；`routes` 按 **gin 路由模式**（FullPath，含 `:param` 段）匹配并独立计桶（2026-09-11 修正：122b9c6 的桶隔离实为 no-op，批次 5a 真隔离 + auth 组挂载 + Lua 时间源改 Redis 服务端 TIME）。
 - 维度：登录后按 `user_id`、匿名按 ClientIP（**二选一**，同一请求只落一个键）。
 - 存储：Redis Lua（与 Phase 1 同款，跨实例共享，W1 后天然多实例一致）。
 - 超限返回 429 + `Retry-After`；Redis 异常 fail-close 503。✅ **已实施（2026-09-09，批次 B）**：`internal/middleware/ratelimit.go`（令牌桶 + 路由精确覆盖）；`config.rate_limit` enabled 时 `default.rps/burst` 必填、缺失 fail-fast 拒启（无静默兜底）；维度拍板 = 每用户/每 IP（无全局阈值），D2 关闭。
@@ -130,3 +131,4 @@ internal/service/auth_service.go    # 异地登录检测（🚦）
 |---|---|
 | 2026-09-02 | 已编写：API 限流 + CORS 收紧（必做）+ 密码过期/异地登录/验证码（🚦 触发驱动）+ 验收 + 待决策点 |
 | 2026-09-09 | **API 限流已实施**（批次 B，2b29b6e）：Redis Lua 令牌桶；维度=登录后 user_id、匿名 ClientIP（二选一）+ 路由精确覆盖；429+Retry-After / Redis fail-close 503；config.rate_limit enabled 时缺参拒启；D2 关闭；同时服务网关反代路由（16 号批次 B） |
+| 2026-09-11 | **限流桶隔离修复 + auth 组挂载 + 服务端时间**（批次 5a）：122b9c6 的桶隔离实为 no-op（bucket 两分支恒 default）——桶类别改按 gin 路由模式（FullPath）独立计桶；auth 公开组纳入限流（与 LoginLocker 互补：速率 vs 失败次数）；Lua 时间源改 Redis 服务端 TIME（6.2 需显式 replicate_commands，多实例时钟偏移免疫） |

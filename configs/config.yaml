@@ -95,7 +95,7 @@ gateway:
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 
 # API 限流（07 §2）：默认关闭。enabled: true 时 default.rps/burst 必填，
-# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按精确 path 覆盖默认值。
+# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按 gin 路由模式（FullPath，含\n# :param 段）匹配并独立计桶（2026-09-11 批次 5a：桶隔离真生效）。
 # rate_limit:
 #   enabled: true
 #   default:
