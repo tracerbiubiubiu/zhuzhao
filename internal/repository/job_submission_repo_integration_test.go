@@ -100,10 +100,10 @@ func TestJobSubmissionRepo_ClaimCallbackRowSequentialSemantics(t *testing.T) {
 	assert.Equal(t, repository.JobStatusSucceeded, row.Status)
 
 	// 5) failed（非终态）→ 允许重试
-	_, claimed, err = repo.ClaimCallbackRow(ctx, "task-seq-2", "sync_users", "E100002", "10.0.0.2", "{}")
+	row, claimed, err = repo.ClaimCallbackRow(ctx, "task-seq-2", "sync_users", "E100002", "10.0.0.2", "{}")
 	require.NoError(t, err)
 	require.True(t, claimed)
-	// row.ClaimedAt 在重认领 RETURNING 中已刷新为本次认领时间
+	// row.ClaimedAt 在重认领 RETURNING 中已刷新为本次认领时间（fence 令牌）
 	mUpdated, merr := repo.MarkFailed(ctx, "task-seq-2", "boom", *row.ClaimedAt)
 	require.NoError(t, merr)
 	require.True(t, mUpdated)
