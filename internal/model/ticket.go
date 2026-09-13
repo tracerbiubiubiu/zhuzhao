@@ -34,7 +34,9 @@ type TicketType struct {
 	DefaultSLAHours int             `json:"default_sla_hours" db:"default_sla_hours"`
 	HasCustomFields bool            `json:"has_custom_fields" db:"has_custom_fields"`
 	IsActive        bool            `json:"is_active" db:"is_active"`
-	CreatedAt       time.Time       `json:"created_at" db:"created_at"`
+	// Version 乐观锁版本（P1-3）：每次更新 +1，客户端凭 GET 返回值做 CAS 提交
+	Version   int64     `json:"version" db:"version"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 // TicketTypeField 工单类型字段定义（动态表单）
@@ -80,12 +82,14 @@ type TicketTemplate struct {
 	DefaultPriority   int             `json:"default_priority" db:"default_priority"`
 	DefaultFields     json.RawMessage `json:"default_fields,omitempty" db:"default_fields"`
 	DefaultSLAMinutes *int            `json:"default_sla_minutes,omitempty" db:"default_sla_minutes"`
-	OrgID             int64           `json:"org_id,string" db:"org_id"`
-	OrgPath           string          `json:"org_path" db:"org_path"`
-	CreatedBy         int64           `json:"created_by,string" db:"created_by"`
-	CreatedAt         time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at" db:"updated_at"`
-	DeletedAt         *time.Time      `json:"deleted_at,omitempty" db:"deleted_at"`
+	// Version 乐观锁版本（P1-3）：每次更新 +1
+	Version   int64      `json:"version" db:"version"`
+	OrgID     int64      `json:"org_id,string" db:"org_id"`
+	OrgPath   string     `json:"org_path" db:"org_path"`
+	CreatedBy int64      `json:"created_by,string" db:"created_by"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }
 
 // TicketRelation 工单关联（2a 前移）

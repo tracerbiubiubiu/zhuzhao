@@ -85,10 +85,11 @@ func (a *App) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// 1. 停止接受新请求
-	if err := a.server.Shutdown(ctx); err != nil {
-		a.logger.Error("server forced to shutdown", slog.Any("error", err))
-		return err
+	// 1. 停止接受新请求（即使排空失败也继续后续收尾——提前 return 会跳过
+	// policyEval.Stop，drain 打在已关闭 Redis 上静默丢行）
+	serverErr := a.server.Shutdown(ctx)
+	if serverErr != nil {
+		a.logger.Error("server forced to shutdown", slog.Any("error", serverErr))
 	}
 
 	// 2. B11①：等判定日志管道收尾（pump drain + flusher 收尾 flush）。必须在
@@ -104,5 +105,5 @@ func (a *App) Shutdown() error {
 	// Casbin/Redis/PG 连接关闭由 main.go defer cleanup() 依 casbin→redis→pg 逆序执行
 
 	a.logger.Info("server stopped")
-	return nil
+	return serverErr
 }

@@ -298,10 +298,10 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, created_at
+			default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE code = $1`, code).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt,
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -316,7 +316,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, created_at
+			default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -325,7 +325,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
 		return &t, nil
@@ -365,9 +365,9 @@ func (r *TicketRepo) GetTicketTemplate(ctx context.Context, code string) (*model
 	var t model.TicketTemplate
 	err := r.db.QueryRow(ctx, `
 		SELECT id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
-			org_id, org_path::text, created_by, created_at, updated_at
+			version, org_id, org_path::text, created_by, created_at, updated_at
 		FROM ticket_templates WHERE code = $1 AND deleted_at IS NULL`, code).Scan(
-		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes,
+		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes, &t.Version,
 		&t.OrgID, &t.OrgPath, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
@@ -383,7 +383,7 @@ func (r *TicketRepo) GetTicketTemplate(ctx context.Context, code string) (*model
 func (r *TicketRepo) ListTicketTemplates(ctx context.Context) ([]*model.TicketTemplate, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
-			org_id, org_path::text, created_by, created_at, updated_at
+			version, org_id, org_path::text, created_by, created_at, updated_at
 		FROM ticket_templates WHERE deleted_at IS NULL ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket templates: %w", err)
@@ -391,7 +391,7 @@ func (r *TicketRepo) ListTicketTemplates(ctx context.Context) ([]*model.TicketTe
 	defer rows.Close()
 	templates, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTemplate, error) {
 		var t model.TicketTemplate
-		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes,
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes, &t.Version,
 			&t.OrgID, &t.OrgPath, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -565,11 +565,11 @@ func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *st
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, created_at`
+			default_sla_hours, has_custom_fields, is_active, version, created_at`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt)
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
@@ -708,7 +708,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, created_at
+			default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -717,7 +717,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.CreatedAt); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
 		return &t, nil
@@ -766,10 +766,10 @@ func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name
 	}
 	q += `
 		RETURNING id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
-			org_id, org_path::text, created_by, created_at, updated_at`
+			version, org_id, org_path::text, created_by, created_at, updated_at`
 	var t model.TicketTemplate
 	err := r.db.QueryRow(ctx, q, args...).Scan(
-		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes,
+		&t.ID, &t.Code, &t.Name, &t.TypeCode, &t.DefaultPriority, &t.DefaultFields, &t.DefaultSLAMinutes, &t.Version,
 		&t.OrgID, &t.OrgPath, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

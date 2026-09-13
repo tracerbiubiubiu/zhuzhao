@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -132,7 +133,7 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 
-	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID))
+	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID), currentUserPwEpoch(ctx, s.rdb, user.ID))
 	if err != nil {
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, err
@@ -140,6 +141,19 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 200)
 	return pair, nil
 }
+
+// consumeRefreshLua 刷新线性化消费（R1/C3）：GETDEL 旧 RT 与 GET 密码纪元在
+// 单脚本内原子执行——吊销（SET disabled/INCR/DEL）与本刷新的任何交错，其判定
+// 一律以「消费时刻」的纪元为准：INCR 发生在消费前 → 纪元不匹配拒；发生在消费
+// 后 → 新签 RT 绑定消费时刻纪元，下一次刷新必败。两条路都封死永久幸存。
+// GETDEL 需 Redis 6.2+（生态基线版本）；键缺失时 v 为 false，Lua 侧归一为空串。
+const consumeRefreshLua = `
+local v = redis.call('GETDEL', KEYS[1])
+if not v then v = '' end
+local e = redis.call('GET', KEYS[2])
+if not e then e = '0' end
+return {v, e}
+`
 
 // Refresh 刷新 Token，RT 轮换
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
@@ -164,13 +178,6 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 	if user.Status != 1 {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
-	// C3：密码纪元比对——改密/重置的吊销三步（SET disabled/SCAN/DEL）非原子，
-	// 并发 Refresh 可能在 DEL 前取走旧 RT、DEL 后才 Set 幸存；纪元比对使任何
-	// 幸存的旧纪元 RT 在下一次 Refresh 必败（TOCTOU 封口）
-	if cur := currentUserPwEpoch(ctx, s.rdb, claims.UserID); cur != claims.Pwe {
-		return nil, errcode.ErrRefreshTokenInvalid
-	}
-
 	deviceID := normalizeDeviceID(claims.DeviceID)
 	if !validDeviceID(deviceID) {
 		// D2-22：防御——claims 来自服务端签名令牌，正常不可达；
@@ -178,18 +185,28 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 	key := refreshKey(claims.UserID, deviceID)
-	storedHash, err := s.rdb.GetDel(ctx, key).Result()
-	if err == goredis.Nil {
-		return nil, errcode.ErrRefreshTokenInvalid
-	}
+	res, err := s.rdb.Eval(ctx, consumeRefreshLua, []string{key, pwEpochKey(claims.UserID)}).Result()
 	if err != nil {
 		return nil, errcode.ErrServiceUnavailable
+	}
+	vals, _ := res.([]any)
+	storedHash, _ := vals[0].(string)
+	epochStr, _ := vals[1].(string)
+	epoch, perr := strconv.ParseInt(epochStr, 10, 64)
+	if perr != nil || epoch < 0 {
+		epoch = 0
+	}
+	// 消费时刻的权威校验：键不存在（已被消费/吊销删除）或纪元不匹配（吊销 INCR
+	// 已发生在本消费之前）→ 拒。签发绑定消费时刻纪元：若 INCR 发生在消费之后，
+	// 新 RT 纪元已旧，下一次刷新必败（fail-closed，AT 由 30min TTL 兜底）
+	if storedHash == "" || epoch != claims.Pwe {
+		return nil, errcode.ErrRefreshTokenInvalid
 	}
 	if storedHash != hashToken(refreshToken) {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 
-	return s.issueTokenPair(ctx, user, deviceID)
+	return s.issueTokenPair(ctx, user, deviceID, epoch)
 }
 
 // Logout 登出，吊销 AT + 删除 RT
@@ -271,7 +288,8 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 
 	// 重新签发不含 mcp 标记的 Token pair
 	user.MustChangePassword = false
-	return s.issueTokenPair(ctx, user, normalizeDeviceID(deviceID))
+	// 改密流程此处的纪元读取发生在吊销 INCR 之后（revoke 已完成）——取到新值
+	return s.issueTokenPair(ctx, user, normalizeDeviceID(deviceID), currentUserPwEpoch(ctx, s.rdb, userID))
 }
 
 // revokeAccessToken 将 AT 加入黑名单（剩余 TTL 内失效）
@@ -294,14 +312,12 @@ func (s *AuthService) revokeAccessToken(ctx context.Context, accessToken string)
 	return nil
 }
 
-func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, deviceID string) (*model.TokenPair, error) {
+func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, deviceID string, pwe int64) (*model.TokenPair, error) {
 	at, _, err := s.jwtManager.GenerateAccessToken(user.ID, user.Username, user.MustChangePassword)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
-	// C3：签发时注入当前密码纪元（改密/重置 INCR 后，旧纪元 RT 全部失效）
-	rt, _, err := s.jwtManager.GenerateRefreshToken(user.ID, deviceID, s.refreshTTL,
-		currentUserPwEpoch(ctx, s.rdb, user.ID))
+	rt, _, err := s.jwtManager.GenerateRefreshToken(user.ID, deviceID, s.refreshTTL, pwe)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}

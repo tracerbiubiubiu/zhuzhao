@@ -17,8 +17,8 @@ import (
 
 // tokenBucketLua 令牌桶：KEYS[1] = 桶键；ARGV = [rps, burst]。
 // 时间源取 Redis 服务端 TIME（免疫多实例时钟偏移）。Redis 6.2 中 TIME 属随机命令，
-// 其后的写命令须先显式切换 effects 复制（7+ 默认且该调用为 no-op）；miniredis 的
-// Lua 环境无此函数，守卫跳过（其 TIME 直接可用）。
+// 其后的写命令须先显式切换 effects 复制（7+ 默认且该调用为 no-op）；守卫式
+// 调用仅为兼容无此函数的 Lua 环境（miniredis v2.39 已注册同名 no-op，直接可用）。
 // 返回 [allowed(0/1), retry_after_sec]。
 const tokenBucketLua = `
 if redis.replicate_commands then
