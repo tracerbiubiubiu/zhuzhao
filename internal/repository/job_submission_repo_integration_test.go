@@ -90,8 +90,10 @@ func TestJobSubmissionRepo_ClaimCallbackRowSequentialSemantics(t *testing.T) {
 	assert.True(t, claimed, "running 超 10 分钟视为陈旧，允许重认领（崩溃自愈）")
 	assert.Equal(t, repository.JobStatusRunning, row.Status)
 
-	// 4) 已 succeeded（终态）→ 幂等拦截
-	require.NoError(t, repo.MarkSucceeded(ctx, "task-seq-1"))
+	// 4) 已 succeeded（终态）→ 幂等拦截（fence = 本次认领的 claimed_at）
+	updated, err := repo.MarkSucceeded(ctx, "task-seq-1", *row.ClaimedAt)
+	require.NoError(t, err)
+	require.True(t, updated, "fence 命中：本次认领的终态写入应生效")
 	row, claimed, err = repo.ClaimCallbackRow(ctx, "task-seq-1", "sync_users", "E100002", "10.0.0.2", "{}")
 	require.NoError(t, err)
 	assert.False(t, claimed, "succeeded 终态必须幂等拦截")
@@ -101,10 +103,38 @@ func TestJobSubmissionRepo_ClaimCallbackRowSequentialSemantics(t *testing.T) {
 	_, claimed, err = repo.ClaimCallbackRow(ctx, "task-seq-2", "sync_users", "E100002", "10.0.0.2", "{}")
 	require.NoError(t, err)
 	require.True(t, claimed)
-	require.NoError(t, repo.MarkFailed(ctx, "task-seq-2", "boom"))
+	// row.ClaimedAt 在重认领 RETURNING 中已刷新为本次认领时间
+	mUpdated, merr := repo.MarkFailed(ctx, "task-seq-2", "boom", *row.ClaimedAt)
+	require.NoError(t, merr)
+	require.True(t, mUpdated)
 	row, claimed, err = repo.ClaimCallbackRow(ctx, "task-seq-2", "sync_users", "E100002", "10.0.0.2", "{}")
 	require.NoError(t, err)
 	assert.True(t, claimed, "failed 非终态，允许重试")
 	assert.Equal(t, repository.JobStatusRunning, row.Status)
 	assert.Empty(t, row.Error, "重认领应清空上次 error")
+}
+
+// 批次8 R2 回归：认领令牌 fence——claimed_at 被推进（陈旧重认领）后，过期执行的
+// 终态写入等值谓词失配被拒（updated=false），不覆盖新执行状态。
+func TestPGMarkRejectsStaleClaimToken(t *testing.T) {
+	if testPool == nil {
+		t.Skip("integration: testPool 未初始化")
+	}
+	ctx := context.Background()
+	repo := repository.NewJobSubmissionRepo(testPool)
+
+	row, claimed, err := repo.ClaimCallbackRow(ctx, "task-fence-1", "sync_users", "E100002", "10.0.0.2", "{}")
+	require.NoError(t, err)
+	require.True(t, claimed)
+	require.NotNil(t, row.ClaimedAt)
+
+	// 模拟陈旧重认领推进 claimed_at（新执行接管，认领时 RETURNING 刷新为 NOW()）
+	_, err = testPool.Exec(ctx,
+		`UPDATE job_submissions SET claimed_at = NOW() WHERE task_id = $1`,
+		"task-fence-1")
+	require.NoError(t, err)
+
+	updated, err := repo.MarkFailed(ctx, "task-fence-1", "stale writer", *row.ClaimedAt)
+	require.NoError(t, err)
+	require.False(t, updated, "过期写者的终态写入应被 fence 拒绝")
 }

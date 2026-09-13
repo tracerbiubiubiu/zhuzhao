@@ -26,6 +26,7 @@ type JobSubmission struct {
 	SourceIP    string
 	CreatedAt   time.Time
 	ExecutedAt  *time.Time
+	ClaimedAt   *time.Time
 }
 
 // 回调幂等状态。
@@ -110,10 +111,10 @@ func (r *JobSubmissionRepo) ClaimCallbackRow(ctx context.Context, taskID, action
 			       AND job_submissions.claimed_at IS NOT NULL
 			       AND job_submissions.claimed_at < NOW() - INTERVAL '10 minutes')
 		RETURNING id, task_id, COALESCE(request_id, ''), action, params, origin, status,
-		          COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at`,
+		          COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at, claimed_at`,
 		taskID, reqid.From(ctx), action, params, actor, sourceIP).Scan(
 		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Params, &row.Origin, &row.Status,
-		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
+		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt, &row.ClaimedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 未抢到执行权：他人已 succeeded（终态），或他人正在途 running（未超 10 分钟）。
@@ -130,23 +131,28 @@ func (r *JobSubmissionRepo) ClaimCallbackRow(ctx context.Context, taskID, action
 }
 
 // MarkSucceeded 执行成功（终态；此后同 task_id 回调被幂等拦截）。
-func (r *JobSubmissionRepo) MarkSucceeded(ctx context.Context, taskID string) error {
-	_, err := r.db.Exec(ctx,
-		`UPDATE job_submissions SET status=$2, error='', executed_at=NOW() WHERE task_id=$1`,
-		taskID, JobStatusSucceeded)
+// claimedAt 认领令牌（fence）：谓词等值匹配本执行认领时的 claimed_at——
+// 10 分钟陈旧重认领后，过期执行的终态写入被拒（updated=false），不覆盖新执行。
+func (r *JobSubmissionRepo) MarkSucceeded(ctx context.Context, taskID string, claimedAt time.Time) (bool, error) {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE job_submissions SET status=$2, error='', executed_at=NOW()
+		 WHERE task_id=$1 AND status='running' AND claimed_at=$3`,
+		taskID, JobStatusSucceeded, claimedAt)
 	if err != nil {
-		return fmt.Errorf("mark job succeeded: %w", err)
+		return false, fmt.Errorf("mark job succeeded: %w", err)
 	}
-	return nil
+	return tag.RowsAffected() > 0, nil
 }
 
 // MarkFailed 执行失败（非终态：留 executed_at NULL 允许重试；error 供排障）。
-func (r *JobSubmissionRepo) MarkFailed(ctx context.Context, taskID, errMsg string) error {
-	_, err := r.db.Exec(ctx,
-		`UPDATE job_submissions SET status=$2, error=$3 WHERE task_id=$1`,
-		taskID, JobStatusFailed, errMsg)
+// fence 语义同 MarkSucceeded。
+func (r *JobSubmissionRepo) MarkFailed(ctx context.Context, taskID, errMsg string, claimedAt time.Time) (bool, error) {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE job_submissions SET status=$2, error=$3
+		 WHERE task_id=$1 AND status='running' AND claimed_at=$4`,
+		taskID, JobStatusFailed, errMsg, claimedAt)
 	if err != nil {
-		return fmt.Errorf("mark job failed: %w", err)
+		return false, fmt.Errorf("mark job failed: %w", err)
 	}
-	return nil
+	return tag.RowsAffected() > 0, nil
 }

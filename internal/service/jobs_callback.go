@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -64,18 +65,37 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 	}
 
 	handler, _ := s.registry.Get(in.Action)
+	claimTs := time.Time{}
+	if row.ClaimedAt != nil {
+		claimTs = *row.ClaimedAt
+	}
 	if err := handler.Handle(ctx, in.Params); err != nil {
-		_ = s.repo.MarkFailed(ctx, in.TaskID, err.Error())
+		updated, merr := s.repo.MarkFailed(ctx, in.TaskID, err.Error(), claimTs)
+		if merr != nil {
+			return CallbackRetryable, "回调受理失败"
+		}
+		if !updated {
+			// 过期写者：fence 失配（10 分钟陈旧重认领后新执行已在途/已终态）——
+			// 本执行的副作用已被新执行接管，静默受理 2xx，不再触发重投
+			s.logger.Warn("jobs: stale writer mark failed skipped (fence miss)",
+				"task_id", in.TaskID, "action", in.Action)
+			return CallbackIdempotent, row.Status
+		}
 		if errors.Is(err, jobs.ErrAbort) {
 			return CallbackNonRetryable, "动作执行失败（不可重试）: " + err.Error()
 		}
 		return CallbackRetryable, "动作执行失败（可重试）"
 	}
-	if err := s.repo.MarkSucceeded(ctx, in.TaskID); err != nil {
+	updated, err := s.repo.MarkSucceeded(ctx, in.TaskID, claimTs)
+	if err != nil {
 		// 执行已成功、记账 UPDATE 失败（极低概率）：业务事实已发生，必须 2xx；
 		// 若 taskrunner 因超时等重试会再次进入 Handle——Handler 可重入契约兜底
 		s.logger.Warn("jobs: mark succeeded failed after execution",
 			"task_id", in.TaskID, "action", in.Action, "err", err)
+	} else if !updated {
+		// 过期写者（fence 失配）：副作用已被新执行接管，静默受理
+		s.logger.Warn("jobs: stale writer mark succeeded skipped (fence miss)",
+			"task_id", in.TaskID, "action", in.Action)
 	}
 	return CallbackExecuted, "succeeded"
 }
