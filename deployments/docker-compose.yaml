@@ -86,6 +86,13 @@ services:
       # 网关反代（批次 B/E13）：SK 须与 activelist 侧 ACTIVELIST_CALLER_ZHUZHAO_SK 同值
       GATEWAY_AK: zhuzhao
       GATEWAY_SK: ${GATEWAY_SK:-dev-gateway-sk}
+      # 任务代理 + 内网回调（E-④/E-②，2026-09-14 阶段 B+C 接线）：
+      #   TASKRUNNER_SK     须与 taskrunner 侧 TASKRUNNER_CALLER_ZHUZHAO_SK 同值
+      #   INTERNAL_JOBS_SK  须与 taskrunner 侧 TASKRUNNER_SELF_SK 同值
+      #   B+C 态 taskrunner 为宿主进程（host.docker.internal）；D 容器化后改服务名寻址
+      TASKRUNNER_BASE_URL: ${TASKRUNNER_BASE_URL:-http://host.docker.internal:8080}
+      TASKRUNNER_SK: ${TASKRUNNER_SK:-dev-taskrunner-sk}
+      INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:-dev-callback-sk}
     ports:
       - "${APP_PORT:-33333}:33333"
     depends_on:

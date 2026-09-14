@@ -76,11 +76,17 @@ audit:
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
-  base_url: ""              # taskrunner 服务地址（env TASKRUNNER_BASE_URL）；空 = 任务端点 502
-  self_base_url: ""         # 本服务可达地址（缺省 callback 拼接，如 http://zhuzhao:33333）
+  base_url: ""              # env TASKRUNNER_BASE_URL；空 = 任务端点 502
+  self_base_url: "http://localhost:33333"  # 回调拼接基址（消费者=taskrunner；B+C 宿主进程态经宿主端口，D 容器化后改 http://zhuzhao:33333）
   ak: zhuzhao
   # sk: 从环境变量 TASKRUNNER_SK 注入
   timeout: 10s
+
+# 内网回调端点（E-②）：/internal/jobs/callback 验 taskrunner 签名；enabled 且 sk 缺失拒启
+internal_jobs:
+  enabled: true
+  taskrunner_ak: taskrunner
+  # taskrunner_sk: 从环境变量 INTERNAL_JOBS_SK 注入
 
 # 网关反代（批次 B/E13）：前缀→上游注册表 + AK/SK 出站签名。upstreams 为空不挂载；
 # 开启后反代路由照常过 JWT + 限流 + CasbinAuth（menu_apis）并以本密钥对上游
