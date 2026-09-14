@@ -8,7 +8,7 @@
 
 ## 0. 结论一句话
 
-zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils 已发布并 pin**）。**当前态（2026-09-14 校准）**：① M-E 线 zhuzhao 侧配套（内网回调端点体系 + 任务管理代理，E-①–E-④/E-⑦）✅ 全部实施，仅剩 taskrunner M3 部署联调；② M-A 线网关化（反代 + 身份断言 + 限流 + Restrict + BK-22 对账 + menu_apis，即 §25.5 批次 B）✅ 代码件全部收尾（2026-09-09，2b29b6e），✅ 部署批与联调亦已闭环（2026-09-14 联调前预检：activelist 栈重建到 HEAD——compose 双网络隔离 / 双副本 / pgbackup 每日备份 + WAL 归档 / 恢复 README 齐备；经网关 `/al` 签名透传 E2E 贯通）。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）——「按周期跑通」随 M3。
+zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils 已发布并 pin**）。**当前态（2026-09-14 校准）**：① M-E 线 zhuzhao 侧配套（内网回调端点体系 + 任务管理代理，E-①–E-④/E-⑦）✅ 全部实施，**回调链回环已实机贯通（2026-09-14，B+C：PG 形态全链 succeeded + dead 复验，见 00 §5）**，剩 D 阶段 compose 化与 E 阶段周期化；② M-A 线网关化（反代 + 身份断言 + 限流 + Restrict + BK-22 对账 + menu_apis，即 §25.5 批次 B）✅ 代码件全部收尾（2026-09-09，2b29b6e），✅ 部署批与联调亦已闭环（2026-09-14 阶段 A：compose 双网络隔离 / 双副本 / pgbackup 每日备份 + WAL 归档 / 恢复 README 齐备；经网关 `/al` 签名透传 E2E 贯通）。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）——手动链已通，「按周期跑通」随 E 阶段。
 
 ---
 
