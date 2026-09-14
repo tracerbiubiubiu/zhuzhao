@@ -25,8 +25,19 @@ services:
       POSTGRES_USER: zhuzhao
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
       TZ: Asia/Shanghai
+    # WAL 归档（2026-09-14 运维补强，对齐 activelist）：pgbackup 侧车只读共享
+    # wal_archive 卷作 PITR 原料；archive_timeout=300s 空闲也切段
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /wal_archive/%f && cp %p /wal_archive/%f
+      - -c
+      - archive_timeout=300s
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - wal_archive:/wal_archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
       interval: 5s
@@ -36,6 +47,52 @@ services:
     # 如需从宿主机连接调试，取消注释下面两行
     # ports:
     #   - "5432:5432"
+
+  # 每日备份侧车（2026-09-14 运维补强，照抄 activelist pgbackup 模式）：
+  # 每日 02:00 pg_dump 全量（zh-*.dump，保留 14 份）+ 失败 10 分钟重试；
+  # 借 postgres 镜像的 pg_dump 客户端（与库同版本），不跑数据库。恢复步骤见
+  # backup/README.md。
+  pgbackup:
+    image: postgres:15
+    container_name: zhuzhao-pgbackup
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: zhuzhao
+      PGPASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      PGDATABASE: zhuzhao
+      BACKUP_DIR: /backups
+      RETAIN_COUNT: "14"
+      TZ: Asia/Shanghai
+    volumes:
+      - backups:/backups
+      - ./backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - wal_archive:/wal_archive:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh"]
+    networks:
+      - default
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 迁移一次性服务（2026-09-14 固化，治「演示库静默漂移」）：
+  #   docker compose -f deployments/docker-compose.yaml --profile migrate up migrate
+  # 首次需拉取 migrate/migrate 镜像（离线环境预 docker pull）。
+  migrate:
+    image: migrate/migrate:v4.17.0
+    profiles: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+    volumes:
+      - ../migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database
+      - postgres://zhuzhao:${POSTGRES_PASSWORD:-zhuzhao_dev}@postgres:5432/zhuzhao?sslmode=disable
+      - up
 
   redis:
     image: redis:6.2-alpine
@@ -118,3 +175,5 @@ networks:
 volumes:
   pg_data:
   redis_data:
+  wal_archive:
+  backups:
