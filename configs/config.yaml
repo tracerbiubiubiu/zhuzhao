@@ -94,12 +94,14 @@ gateway:
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 
-# API 限流（07 §2）：默认关闭。enabled: true 时 default.rps/burst 必填，
-# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按 gin 路由模式（FullPath，含\n# :param 段）匹配并独立计桶（2026-09-11 批次 5a：桶隔离真生效）。
-# rate_limit:
-#   enabled: true
-#   default:
-#     rps: 20              # 每用户/每 IP（登录后按 user_id，匿名按 ClientIP，二选一）
-#     burst: 40
-#   routes:
-#     /api/v1/auth/login: { rps: 3, burst: 5 }
+# API 限流（07 §2）：enabled: true 时 default.rps/burst 必填，
+# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按 gin 路由模式（FullPath，含
+# :param 段）匹配并独立计桶（2026-09-11 批次 5a：桶隔离真生效）。
+# 2026-09-14 阶段 A 限流真机：演示栈启用默认规则（20 rps / burst 40，演示用法无感）。
+rate_limit:
+  enabled: true
+  default:
+    rps: 20              # 每用户/每 IP（登录后按 user_id，匿名按 ClientIP，二选一）
+    burst: 40
+  # routes 按需启用更严规则（示例）：
+  #   /api/v1/auth/login: { rps: 3, burst: 5 }
