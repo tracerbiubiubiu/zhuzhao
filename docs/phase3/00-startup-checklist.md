@@ -115,7 +115,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 | 阶段 | 内容 | 验收口径 | 状态 |
 |------|------|----------|------|
-| **A · activelist 收尾** | CRUD 矩阵走查 / 限流真机 / pgbackup 首验 + 恢复演练 / 多副本验证 | 各项实机证据留痕 | ⬜ **未开始（入口）** |
+| **A · activelist 收尾** | CRUD 矩阵走查 / 限流真机 / pgbackup 首验 + 恢复演练 / 多副本验证 | 各项实机证据留痕 | ✅ 完成（2026-09-14）：①恢复演练=毁库前 pg_restore -l 预检→停写→清库→pg_restore 退出码 0→6 表行数逐一与基线一致→E2E code=0；②多副本=单副本 GET×10 零失败+POST 写路径到达上游+scale 3→2→2；③CRUD 矩阵=30/30 PASS（类型/数据/演进/导入导出/废弃全语义，[走查记录](../../deliverables/software-company/activelist-stage-a-walkthrough-2026-09-14.md)）；④限流真机=演示栈启用默认规则（20/40）后 50 并发锤 /al：40×200+10×429（Retry-After:1+code=10007）、1.5s 补桶恢复、跨路由桶隔离成立；附 pgbackup 事故修复（activelist 54cec15：postgres 补 restart 策略+0 字节残留重做） |
 | **B+C 合并 · PG 回调链回环** | taskrunner 以**直接 PG 形态**跑通回调链回环；zhuzhao↔taskrunner 全链：提交（AK/SK 出站签名 + X-Operator 归因）→ 执行 → 回调（`/internal/jobs/callback` 幂等栅栏 + job_submissions 凭证）→ 终态落库 | 全链 E2E（提交→执行→回调→终态）；悬挂回调终态 dead 复验 | ⬜ 未开始 |
 | **D · 三服务 compose 拓扑** | taskrunner 部署 compose 作为**新交付物** + 三服务网络隔离验证（内部端口不对宿主暴露、仅专用网络互通）+ R5 启动可写探针负向实测 + 非 root × bind mount 预授权闭环 | 拓扑核验留痕；11 号能力矩阵刷新 | ⬜ 未开始 |
 | **E · 周期归档 + 故障演练** | audit_archive 按周期（cron 定义）自动跑通——AL5/AL6 周期口径 = B11②「按周期跑通」最后闭环 + 故障演练（拍板列四项，细目启动 E 时回填本行） | AL5/AL6；演练记录回填本表 | ⬜ 未开始 |
