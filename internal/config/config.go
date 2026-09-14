@@ -245,6 +245,9 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
 	viper.BindEnv("taskrunner.base_url", "TASKRUNNER_BASE_URL")
 	viper.BindEnv("taskrunner.sk", "TASKRUNNER_SK")
+	// 回调拼接基址（消费者=taskrunner）：宿主进程态 localhost / 容器态服务名，
+	// 随部署形态切换（2026-09-14 D 阶段接线）
+	viper.BindEnv("taskrunner.self_base_url", "TASKRUNNER_SELF_BASE_URL")
 	viper.BindEnv("gateway.ak", "GATEWAY_AK")
 	viper.BindEnv("gateway.sk", "GATEWAY_SK")
 
