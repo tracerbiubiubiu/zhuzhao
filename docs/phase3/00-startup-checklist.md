@@ -111,20 +111,20 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 ## 5. 本地联调五阶段计划（2026-09-14 联调前预检拍板落档）
 
-> **拍板背景**：四仓（zhuzhao / zhuzhao-utils / taskrunner / activelist）对账审计批 1–8 全部闭环、全门禁绿、双栈重建到 HEAD、zhuzhao+activelist E2E 贯通后，本地联调按五阶段推进。**存储拍板：联调只用 PG**（SQLite 退为开发默认，不进联调口径）。阶段划分 = 预检时拍板（A 收尾 / B+C 合并为 PG 回调链 / D 拓扑 / E 周期+演练）；下表清单条目自 [16 号](./16-external-integration.md)（外部集成 SSOT）与 [03 §4](./03-audit-l2.md) 归集，执行细节以 16 号为准。
+> **拍板背景**：四仓（zhuzhao / zhuzhao-utils / taskrunner / activelist）对账审计批 1–8 全部闭环、全门禁绿、双栈重建到 HEAD、zhuzhao+activelist E2E 贯通后，本地联调按五阶段推进。**存储拍板：联调只用 PG**（SQLite 退为开发默认 + 测试对照，不再出现在联调阶段）。阶段划分与内容 = 2026-09-14 预检拍板原文；落地时的前置收尾（utils 推送 / 16 号 M-A 勘误 / 本计划落档）**不属于阶段 A**。执行细节以 [16 号](./16-external-integration.md)为 SSOT。
 
 | 阶段 | 内容 | 验收口径 | 状态 |
 |------|------|----------|------|
-| **A 收尾** | utils Pwe 修复推送（b54bbab）+ .gitignore 收尾（3f16ccf）；16 号 M-A 行勘误（部署批 2026-09-14 实机确认闭环）；本计划落档 | 四仓与远端齐平 | ✅ 完成（2026-09-14） |
-| **B+C 合并 · PG 回调链**（= taskrunner M3 部署联调） | ① taskrunner 独立 PG 实例（C7 已拍板 job_runs 迁 PG，实例随 M3 部署）② taskrunner 容器化入演示栈（Dockerfile 非 root + 日志/数据目录启动可写探测已就绪）③ compose 双 network 隔离（C3：taskrunner 端口仅挂 zhuzhao 专用网络，照抄 activelist D5 模式）④ zhuzhao↔taskrunner 全链贯通：提交（AK/SK 出站签名 + X-Operator 归因）→ 执行 → 回调（`/internal/jobs/callback` 幂等栅栏 + job_submissions 凭证）⑤ audit_archive 首个预置动作手动触发跑通 | 全链 E2E（提交→执行→回调→终态落库）；悬挂回调终态 dead 复验 | ⬜ 未开始（**当前下一步**） |
-| **D 拓扑** | 三栈部署拓扑核验：zhuzhao 栈 + activelist 栈 + taskrunner 栈的网络面（内部服务端口不对宿主暴露、仅专用网络互通）；网关反代（`/al`）与内网回调（`/internal/jobs/callback`）路由走向复核；taskrunner PG 备份口径拍板（activelist 已有 pgbackup，taskrunner 侧是否对齐） | 拓扑核验记录留痕；11 号能力矩阵刷新 | ⬜ 未开始 |
-| **E 周期 + 演练** | ① audit_archive 按周期（cron 定义）自动跑通——B11②「按周期跑通」最后闭环（AL5/AL6 周期口径）② 演练：停机排空（SIGTERM 干净退出复验）、备份恢复（pgbackup 恢复步骤实跑） | AL5/AL6；演练记录回填本表状态列 | ⬜ 未开始 |
+| **A · activelist 收尾** | CRUD 矩阵走查 / 限流真机 / pgbackup 首验 + 恢复演练 / 多副本验证 | 各项实机证据留痕 | ⬜ **未开始（入口）** |
+| **B+C 合并 · PG 回调链回环** | taskrunner 以**直接 PG 形态**跑通回调链回环；zhuzhao↔taskrunner 全链：提交（AK/SK 出站签名 + X-Operator 归因）→ 执行 → 回调（`/internal/jobs/callback` 幂等栅栏 + job_submissions 凭证）→ 终态落库 | 全链 E2E（提交→执行→回调→终态）；悬挂回调终态 dead 复验 | ⬜ 未开始 |
+| **D · 三服务 compose 拓扑** | taskrunner 部署 compose 作为**新交付物** + 三服务网络隔离验证（内部端口不对宿主暴露、仅专用网络互通）+ R5 启动可写探针负向实测 + 非 root × bind mount 预授权闭环 | 拓扑核验留痕；11 号能力矩阵刷新 | ⬜ 未开始 |
+| **E · 周期归档 + 故障演练** | audit_archive 按周期（cron 定义）自动跑通——AL5/AL6 周期口径 = B11②「按周期跑通」最后闭环 + 故障演练（拍板列四项，细目启动 E 时回填本行） | AL5/AL6；演练记录回填本表 | ⬜ 未开始 |
 
 ## 6. 变更记录
 
 | 日期 | 说明 |
 |------|------|
-| 2026-09-14（联调收尾批） | 新增 §5 本地联调五阶段计划（预检拍板落档：A 收尾/B+C 合并 PG 回调链/D 拓扑/E 周期+演练；联调只用 PG）；A 阶段完成（utils b54bbab+3f16ccf 推送、16 号 M-A 行勘误）；原 §5 变更记录顺延为 §6 |
+| 2026-09-14（联调收尾批） | 新增 §5 本地联调五阶段计划（09-14 预检拍板落档：A activelist 收尾 / B+C 合并 PG 回调链回环 / D 三服务 compose 拓扑 / E 周期归档+故障演练；联调只用 PG 拍板随档）；落档前置收尾 = utils b54bbab+3f16ccf 推送、16 号 M-A 行勘误；原 §5 变更记录顺延为 §6 |
 | 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成：HC1 事件补全（TestHC1）、BK-5 反向判重（TestBK5）、TC1-Go（TestTicket_Delete_AdminSucceeds）、SoD 落 design-decisions §20、review/10 C1–C4 处置、14 号断链注记；验证：集成 13 包 `-race` 全绿、acceptance 211/0。**A 档清零 = Phase 2 收官** |
 | 2026-08-31（IW3 实施） | BK-18 管理闭环后端落地（迁移 000018 + 7 端点 + G2 校验 + 测试）；211/0 全链绿；前端照 12-frontend 另排期 |
