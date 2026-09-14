@@ -8,7 +8,7 @@
 
 ## 0. 结论一句话
 
-zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils 已发布并 pin**）。**当前态（2026-09-14 校准）**：① M-E 线 zhuzhao 侧配套（内网回调端点体系 + 任务管理代理，E-①–E-④/E-⑦）✅ 全部实施，**回调链回环已实机贯通（2026-09-14，B+C：PG 形态全链 succeeded + dead 复验，见 00 §5）**，剩 D 阶段 compose 化与 E 阶段周期化；② M-A 线网关化（反代 + 身份断言 + 限流 + Restrict + BK-22 对账 + menu_apis，即 §25.5 批次 B）✅ 代码件全部收尾（2026-09-09，2b29b6e），✅ 部署批与联调亦已闭环（2026-09-14 阶段 A：compose 双网络隔离 / 双副本 / pgbackup 每日备份 + WAL 归档 / 恢复 README 齐备；经网关 `/al` 签名透传 E2E 贯通）。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）——手动链已通，「按周期跑通」随 E 阶段。
+zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ticket_events` / resource 注册表含 IW4 护栏 / **zhuzhao-utils 已发布并 pin**）。**当前态（2026-09-14 校准）**：① M-E 线 zhuzhao 侧配套（内网回调端点体系 + 任务管理代理，E-①–E-④/E-⑦）✅ 全部实施，**回调链回环已实机贯通（2026-09-14，B+C：PG 形态全链 succeeded + dead 复验，见 00 §5）**，✅ compose 化亦已落地（同日 D 阶段：deploy/compose.yaml 三服务双 network、零宿主端口、容器态全链 E2E 过），剩 E 阶段周期化；② M-A 线网关化（反代 + 身份断言 + 限流 + Restrict + BK-22 对账 + menu_apis，即 §25.5 批次 B）✅ 代码件全部收尾（2026-09-09，2b29b6e），✅ 部署批与联调亦已闭环（2026-09-14 阶段 A：compose 双网络隔离 / 双副本 / pgbackup 每日备份 + WAL 归档 / 恢复 README 齐备；经网关 `/al` 签名透传 E2E 贯通）。首个预置动作 = 审计归档（B11②，[03](./03-audit-l2.md) §4）——手动链已通，「按周期跑通」随 E 阶段。
 
 ---
 
@@ -184,7 +184,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 |---|---|---|
 | C1 | ✅ **已实施（2026-09-04，taskrunner 结构重构 ca1a283）**：统一访问日志中间件（rid 读头/回显 + operator 兜底）——B2 一并关闭 | 完成 |
 | C2 | ✅ **已实施（2026-09-04）**：API 验签换 AK/SK HMAC（Bearer 移除；密钥环空拒绝启动 fail-closed） | 完成 |
-| C3 | 部署网络隔离：compose 双 network（服务端口仅挂 zhuzhao 专用网络，对齐 activelist D5 模式） | M3 联调 / M4 部署 |
+| C3 | 部署网络隔离：compose 双 network（服务端口仅挂 zhuzhao 专用网络，对齐 activelist D5 模式） | ✅ **已实施（2026-09-14，D 阶段）**：taskrunner deploy/compose.yaml——三容器零宿主端口发布，PG/Redis 仅 taskrunner_internal，zhuzhao↔taskrunner 经 zhuzhao_to_taskrunner 共享网服务名互寻；R5 探针负向实测过 |
 | C4 | ✅ **已实施（2026-09-04）**：`/readyz`（Redis ping + SQLite 探针；迁 PG 后改检 PG） | 完成 |
 | C5 | ✅ **已实施（2026-09-04）**：Dockerfile `TZ=Asia/Shanghai` | 完成 |
 | C6 | ✅ **已实施（2026-09-04）**：viper yaml + env（TASKRUNNER_* 全量兼容） | 完成 |
