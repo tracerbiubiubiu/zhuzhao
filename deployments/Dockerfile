@@ -30,6 +30,11 @@ RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/
 
 WORKDIR /app
 
+# 预建可写目录并归属 appuser（非 root）：data/archive=审计归档 JSONL（B11②/E-③，
+# 缺失=audit_archive 回调 500「mkdir data: permission denied」）；logs=文件日志目录
+# （缺失=MultiWriter 文件先行把 stdout 一并短路，容器日志全静默——2026-09-14 B+C 实锤）
+RUN mkdir -p /app/data/archive /app/logs && chown -R appuser:appuser /app/data /app/logs
+
 COPY --from=builder /zhuzhao /app/zhuzhao
 COPY configs/ /app/configs/
 COPY migrations/ /app/migrations/
