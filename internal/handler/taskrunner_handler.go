@@ -51,6 +51,12 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 		response.BadRequest(c, "params 超过上限（64KB）")
 		return
 	}
+	// timeout_secs 上界预检（批次8 P1）：与 taskrunner validTimeoutSecs 同口径
+	//（0 = 默认 30s），免一次注定 400 的跨服务往返
+	if req.TimeoutSecs < 0 || req.TimeoutSecs > 86400 {
+		response.BadRequest(c, "timeout_secs 须为 0 或 1–86400")
+		return
+	}
 	resp, err := h.svc.Submit(c.Request.Context(), &req, actorOf(c), c.ClientIP(), h.selfBaseURL)
 	if err != nil {
 		mapTaskrunnerErr(c, err)

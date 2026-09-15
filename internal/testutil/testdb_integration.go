@@ -107,7 +107,7 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// P1-2：工单关联规范化对唯一索引（000028）
 			"000028_ticket_relations_normalized.up.sql",
 			// R4：关联表 source 前导索引回补（000028 规范化后 OR 谓词退化顺序扫描）
-			"0029_ticket_relations_source_index.up.sql",
+			"000029_ticket_relations_source_index.up.sql",
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err
