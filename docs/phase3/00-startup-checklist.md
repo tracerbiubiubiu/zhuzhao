@@ -93,9 +93,9 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 |------|------|------|
 | A2 迁移号 000017 归属 | 谁先启动谁占用，后者重排 | ✅ 已拍板（2026-08-31） |
 | A3 `org_path` 快照列 vs 运行时 JOIN | 保留镜像列（FOR SHARE 兜底） | ✅ 已拍板（2026-08-31） |
-| K8s vs Docker Compose | Compose + Nginx 足够 | 待拍板（建议沿用） |
-| Redis / PG 高可用 | Sentinel / 云托管 Cluster | 待拍板（建议沿用） |
-| 部署级分离时机 | Phase 3 末按需验证 | 待拍板 |
+| K8s vs Docker Compose | Compose + Nginx 足够 | 待拍板（**2026-09-15 Phase 3 收口后=随真实部署拍板**；演示/部门态沿用 Compose） |
+| Redis / PG 高可用 | Sentinel / 云托管 Cluster | 待拍板（随真实部署；HA 形态决定备份策略——自管主从=备份侧车挂备库+WAL 出机，托管=平台备份，见 [06-ha](./06-ha.md) §HA×备份） |
+| 部署级分离时机 | Phase 3 末按需验证 | 待拍板（随真实部署） |
 | 审批流引擎选型 | 手写 BranchedStateEngine | ~~待拍板（建议沿用）~~ **随 §23 暂缓**（对接内部平台，自研不做；翻案恢复） |
 | 可观测性栈 / 工单事件机制 | 已决策（应用内开关 / L1） | ✅ |
 
@@ -124,6 +124,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-15（**Phase 3 收口**） | **口径 A（所有者拍板）：项目内工程收口**——M-E/M-A 全收官、M-HR 预留即可、M-SSO/M-Mig 挂外部前置；CORS B7 所有者拍板暂不动（随上线）。终验=标准环境四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；[收官报告](../../deliverables/software-company/phase3-closure-report-2026-09-15.md)。决策清单三项改「随真实部署拍板」；E 阶段（周期归档+演练四项）✅ 见 §5 |
 | 2026-09-14（联调收尾批） | 新增 §5 本地联调五阶段计划（09-14 预检拍板落档：A activelist 收尾 / B+C 合并 PG 回调链回环 / D 三服务 compose 拓扑 / E 周期归档+故障演练；联调只用 PG 拍板随档）；落档前置收尾 = utils b54bbab+3f16ccf 推送、16 号 M-A 行勘误；原 §5 变更记录顺延为 §6 |
 | 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成：HC1 事件补全（TestHC1）、BK-5 反向判重（TestBK5）、TC1-Go（TestTicket_Delete_AdminSucceeds）、SoD 落 design-decisions §20、review/10 C1–C4 处置、14 号断链注记；验证：集成 13 包 `-race` 全绿、acceptance 211/0。**A 档清零 = Phase 2 收官** |

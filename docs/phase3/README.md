@@ -1,5 +1,7 @@
 # Phase 3 实现计划（重定位后：通用能力底座 + 内网迁移）
 
+> **✅ 收口（2026-09-15，口径 A）**：Phase 3 **项目内工程已收口**——M-E（taskrunner）✅ 全收官、M-A（activelist）✅ 全收官、M-HR 按拍板=预留接口即可；M-SSO / M-Mig 🚦 **外部前置待触发**（进内网/迁移窗口），非工程项。终验：四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；证据索引见 [收官报告](../../deliverables/software-company/phase3-closure-report-2026-09-15.md)。本文件其余内容转为 🚦 参考设计。
+>
 > **🚦 启动入口**：启动 Phase 3 前先过 [00-startup-checklist.md](./00-startup-checklist.md)——A/B/W 全量清单 + 决策清单 + 检查顺序（2026-08-31 建档，启动时先刷新状态）。
 
 > **⚠ 重定位（2026-09-02，SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单**自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复）。本文「工单业务能力闭环」（W2/Step 7、§2.1.0 决议②⑤相关表述）**暂缓自研**，10/12 号转对接参考；Phase 3 主线改为 **M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO（🚦）→ M-Mig 迁移准备**（现行主链与排期见 [13-implementation-plan](./13-implementation-plan.md) §1 修订表；外部集成 zhuzhao 侧配套见 [16-external-integration](./16-external-integration.md)）。本文其余内容（多实例/HA/安全/运维/平台增强）仍为 🚦 参考设计。
