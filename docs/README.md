@@ -20,6 +20,8 @@ docs/
 ├── README.md                        # 本文件，文档索引
 ├── VISION.md                        # 产品定义与 MVP 边界（范围裁决锚点，必读）
 ├── roadmap.md                       # 三阶段实施路线图总览
+├── standards.md                     # 工程公约 SSOT（代码/API/迁移/安全公约；AGENTS.md 引用，zhuzhao/taskrunner/activelist 全生态适用）
+├── docs.go / swagger.json / swagger.yaml  # ⚙️ swag 生成物（make swag 输出，勿手改）
 │
 ├── design/                          # 框架设计文档（技术架构层面）
 │   ├── architecture.md              # 系统架构（What：系统是什么）
