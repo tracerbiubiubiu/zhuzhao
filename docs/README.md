@@ -87,7 +87,7 @@ docs/
 │
 ├── ops/                             # 运维文档
 │   ├── deployment.md                # 部署指南
-│   └── runbook.md                   # 故障处理手册（未建，Phase 3 与部署联调同批）
+│   └── runbook.md                   # 故障处置与运维手册（真实事故+演练四项沉淀）
 │
 └── adr/                             # 架构决策记录（ADR）
     ├── README.md                    # ADR 索引与模板说明
