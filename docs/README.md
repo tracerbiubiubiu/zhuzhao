@@ -25,7 +25,6 @@ docs/
 │   ├── architecture.md              # 系统架构（What：系统是什么）
 │   ├── design-decisions.md          # 设计决策（Why：为什么这么选）
 │   ├── rbac-inheritance-and-cascade.md  # RBAC 继承与级联（Phase 2b+ 备忘 SSOT）
-│   ├── implementation-plan.md       # 已废弃，见 phase1/
 │   └── system-comparison.md         # 现有系统对比分析
 │
 ├── proposal/                        # 综合方案文档（业务+技术整合）
@@ -106,7 +105,6 @@ docs/
 | `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划 | 所有开发者 |
 | `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
 | `rbac-inheritance-and-cascade.md` | RBAC 继承、业界对照、删改级联矩阵（**Phase 1 不实现**） | 架构 review |
-| `implementation-plan.md` | ~~实施步骤~~ **已废弃**，见 phase1/ | 历史快照 |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
 
 ### proposal/ — 综合方案文档（2026-08 方案期产物，状态见各文件头横幅）
@@ -182,7 +180,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 
 | 文件 | 定位 | 状态 |
 |------|------|------|
-| `00–04` | Phase 1 系统性审查：计划/发现/修复/复核 | 历史快照（发现已闭环，详见 11 §6） |
+| `00–04` | Phase 1 系统性审查：计划/发现/修复/复核（注：`04` 两篇——ecmdb 跨项目学习与 phase1 综合验收——同期各自成文，编号重号为历史现状，维持不重排） | 历史快照（发现已闭环，详见 11 §6） |
 | `05–09` | 文档体系审查 / Phase 2 文档架构审查 / 综合审查 / 终复核 / 合并发现 | 历史快照（处置见 11 §8） |
 | `10` | Phase 2 综合验收（C1–C4 处置、门禁基线） | 历史快照 |
 | `11` | **项目控制台**：能力矩阵 / 健康状态（遗留问题 SSOT §6）/ Phase 3 前置随行分类（§8）/ 迁移地图——**每次改动后回填** | **活文档** |
@@ -224,7 +222,6 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 |------|---------|
 | `design/architecture.md` | 架构变更时（新增模块、调整边界） |
 | `design/design-decisions.md` | 每次有新的设计讨论 |
-| `design/implementation-plan.md` | ~~已废弃~~，不再更新；以 `phase1/`/`phase2/`/`phase3/` 为准 |
 | `proposal/*` | 方案级设计变更时 |
 | `api/` | 接口变更时 |
 | `ops/` | 部署配置变更、新增故障案例时 |
