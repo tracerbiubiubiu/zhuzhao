@@ -37,7 +37,9 @@
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**；
 7. **int64 ID 一律字符串序列化**（`json:",string"`）——规避 JS Number 精度丢失；
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
-9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。
+9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
+10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
+11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；utils `aksk` 中间件默认失败响应携带 `detail` 字段（超出四字段信封）为**已登记豁免**（零依赖设计 + 保留排障现场；需完全同构时调用方自传 `onFail`）。
 
 ## 4. 工程结构与代码组织（所有服务同规格）
 
@@ -46,7 +48,8 @@
 | 分层 | handler → service → repository（handler 禁 DB、service 禁 HTTP、repository 禁外层依赖） |
 | 目录结构 | 各服务同构骨架：`cmd/<server>/` 入口、`internal/app/`（wire 装配）、`internal/handler|service|repository|model|middleware/`、`internal/pkg/`（服务内公共构件，**升格 zhuzhao-utils 的候选区**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致 |
 | 依赖注入 | google/wire（装配收敛于 `internal/app`） |
-| 配置 | yaml + `${VAR}` 环境变量展开；敏感值（SK/密码）env 注入不入库不入 git |
+| 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
+| **命名约定** | 文件名 snake_case（repository=`<域>_repo.go`、handler=`<域>_handler.go`）；package 名小写单词与目录同名；构造函数 `NewXxx`（包内单主类型可裸 `New`），wire provider `provideXxx`；接口定义放**消费方**（最小接口）+ `var _ Interface = (*Impl)(nil)` 断言；sentinel error 命名 `ErrXxx`、消息带包名前缀小写英文（`"store: job_run not found"`）；常量就近定义于使用包（不设集中 consts 文件），导出 CamelCase / 非导出 camelCase，禁 SCREAMING_SNAKE（2026-09-15 四仓审计将事实惯例升格成文） |
 | 优雅启停 | 信号处理 + 依赖关闭顺序；**防孤儿进程**（重启先杀端口占用） |
 | 门禁 | 统一 Makefile：`lint`（vet + gofmt）/ `test` / `build`；zhuzhao 另有 `test-integration`（-race -p 1）与 `acceptance` 四档链 |
 | 健康检查 | **zhuzhao**：`/health/live`（存活）+ `/health/ready`（检 PG/Redis 硬依赖）；**子服务（taskrunner / activelist）**：`/healthz` + `/readyz`（检各自硬依赖：Redis/PG） |
@@ -66,7 +69,7 @@
 | 项 | 约定 |
 |---|---|
 | request_id | `X-Request-ID` 头进出全程透传；zhuzhao 生成（`req-`+32hex）→ 透传下游 → 回调带回；与业务 body 内 request_id 同键关联（job_runs / trace_id） |
-| 访问日志 | 统一中间件出口，每请求一行（method/path/operator/trace_id/参数截断/状态）；网关对 proxy 路由**跳 body** |
+| 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/caller（仅服务间验签场景）/ip；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
 | 审计 | **审计正本全在 zhuzhao**：请求级（audit_logs，脱敏+截断）+ 登录显式审计 + 业务操作点显式发布；服务自身零业务语义日志 |
 | 判定日志 | L2/L3 判定落 `policy_evaluation_logs`（B11①，E-① 已实施）；归档超期导出 JSONL 后删行（B11②/E-③，保留期 180 天可配置） |
 | 日志框架 | utils `logger`（slog + lumberjack，JSON Lines，字段稳定命名供 ES 演进） |
@@ -101,6 +104,7 @@
 | 数据隔离 | fixture **每跑唯一化**（uniqueSuffix）；清理用 `t.Cleanup`（软删释放唯一索引/删行）；跨测试残留数据 = 隔离债，修 bug **必带回归测试** |
 | 负向用例 | 权限类功能**强制三断言**：可见 / 不可见→404 / 越权→403；错误注入（DB 错误→拒绝不留部分写） |
 | 隔离复验 | `-count=1` 为门禁基线；`-count=2` 作数据隔离的复验手段（隔离债的探测探针） |
+| 测试包选择 | 默认**同包**（可测非导出符号）；对外契约/集成行为验证用 `_test` 外部包；同仓允许两种并存、单文件二选一（2026-09-15 成文，四仓现状即混用） |
 | 测试即验收 | 测试 = 可执行的验收标准：写不出测试说明设计未想清（回 §11 设计阶段） |
 
 ## 10. 安全基线
@@ -156,3 +160,12 @@
 | 事件机制 / Asynq | ADR-001 / ADR-002 |
 | 工单（封版历史设计与对接参考） | phase2/09、phase3/10 |
 | AI/协作者流程协议（zhuzhao 仓） | AGENTS.md |
+
+---
+
+## 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 2026-09-04 | 建档（由 16 号 §9 基线升格扩编而来） |
+| 2026-09-15 | 四仓一致性审计批：§3 补错误定义三形态（10）与码值引用纪律（11）+ taskrunner 段预留注记（9）；§4 补命名约定行 + 配置口径修正（yaml+BindEnv 为实况，${VAR} 为可选增强）；§6 补访问日志标准字段（duration_ms 统一）；§9 补测试包选择约定 |

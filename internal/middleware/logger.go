@@ -80,14 +80,16 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 
-		logger.Info("request",
+		// 行名/字段名对齐 standards §6 访问日志标准字段（duration_ms 统一口径，
+		// 对齐 activelist/taskrunner）
+		logger.Info("access",
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
 			slog.String("query", truncStr(c.Request.URL.RawQuery, 4096)),
 			slog.String("operator", operatorOf(c)),
 			slog.Int("status", c.Writer.Status()),
 			slog.Int("size", c.Writer.Size()),
-			slog.Duration("latency", time.Since(start)),
+			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 			slog.String("ip", c.ClientIP()),
 			slog.String("request_id", c.GetString("request_id")),
 		)

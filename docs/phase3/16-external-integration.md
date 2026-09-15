@@ -176,7 +176,7 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 | **工程结构（2026-09-04 所有者补充拍板）** | **以正式微服务标准建设，内部与 zhuzhao 同规格**：Wire DI（google/wire，装配收敛于 `internal/app`）、分层 handler → service → repository、中间件约定（accesslog/request_id/验签）、yaml + `${VAR}` 配置、优雅启停、统一 Makefile 门禁（lint=vet+gofmt / test / build）、集成测试基建；工具依赖 zhuzhao-utils（logger/errcode/response/postgres/aksk） |
 | 配置 | yaml + `${VAR}` 环境变量展开（对齐 zhuzhao 模式；敏感值注入 env） |
 
-**允许差异**（职责/量级决定，非策略分歧）：~~存储选型~~ ✅ **已拍板统一 PG（2026-09-03）**——taskrunner job_runs 迁 PG（各自独立数据库实例/库不变，复用 utils `postgres`，schema 不变；SQLite 保留为 M1/M2 已交付实现，C7 切换）；Redis·Asynq（taskrunner 需要 / activelist 无）；副本数（PG 后均可多副本，按运维需要）。
+**允许差异**（职责/量级决定，非策略分歧）：~~存储选型~~ ✅ **已拍板统一 PG（2026-09-03）**——taskrunner job_runs 迁 PG（各自独立数据库实例/库不变，复用 utils `postgres`，schema 不变；SQLite 保留为 M1/M2 已交付实现，C7 切换）；Redis·Asynq（taskrunner 需要 / activelist 无）；副本数（PG 后均可多副本，按运维需要）。**结构差异注记（2026-09-15 四仓一致性审计）**：taskrunner 无 `migrations/` 目录（建表/加列内嵌启动期 `extraSchemas` 幂等执行，schema 极简豁免迁移体系）；activelist / taskrunner 无独立 `internal/model/` 目录（模型就近定义于 repository/service）；错误码段 taskrunner=101000–101999 预留未启用（standards §3.9）。
 
 **taskrunner 对齐改动清单**（activelist 已符合基线，taskrunner 侧待实施）：
 
