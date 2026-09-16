@@ -39,7 +39,7 @@
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
 9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
 10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
-11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）。
+11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）。
 
 ## 4. 工程结构与代码组织（所有服务同规格）
 
@@ -59,7 +59,7 @@
 
 ## 5. 公共包（zhuzhao-utils）
 
-- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk（**10 包；v0.2.0 已发布（含 aksk），各仓 pin 去 replace**，2026-09-10 校准）；
+- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk（**10 包**）；**版本：v0.4.1（2026-09-16 校准）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
 - **抽取边界：只抽无数据依赖的纯工具**——绑定 zhuzhao 库 schema 的构件（如策略谓词）不进 utils（design-decisions §25.3）；
 - 版本策略：语义化版本，发版后各仓 pin（去 replace）；临时 replace 仅限联调窗口；
 - **新增第三方依赖必须说明理由与替代方案**（go.mod 铁律）；公共能力优先沉淀进 zhuzhao-utils 而非各仓自引。
@@ -170,3 +170,4 @@
 | 2026-09-04 | 建档（由 16 号 §9 基线升格扩编而来） |
 | 2026-09-15 | 四仓一致性审计批：§3 补错误定义三形态（10）与码值引用纪律（11）+ taskrunner 段预留注记（9）；§4 补命名约定行 + 配置口径修正（yaml+BindEnv 为实况，${VAR} 为可选增强）；§6 补访问日志标准字段（duration_ms 统一）；§9 补测试包选择约定 |
 | 2026-09-16 | 服务间验签统一批：§3.11 升格「服务端验签中间件不得各仓自研」——一律 aksk.GinMiddleware + response.AKSKFail()（统一信封+分档中文文案，caller/operator 归因键收编进 GinMiddleware，失败现场落 Verifier.Logger），aksk detail 豁免撤销；utils v0.4.0 发布 |
+| 2026-09-16 | 归因口径拍板（选项 4）：§6 访问日志新增 `auth` 身份平面字段（jwt/aksk/none）与适用范围（仅多平面服务）、caller 三仓恒出（空串占位）——zhuzhao operatorOf 扩链/新增 authOf；同日 §3.11 补归因键常量纪律（ContextKey*，v0.4.1），三仓消费方完成常量化 |

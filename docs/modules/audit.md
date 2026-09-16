@@ -32,7 +32,7 @@ CREATE TABLE access_logs (
     method      VARCHAR(10) NOT NULL,       -- HTTP 方法
     path        VARCHAR(500) NOT NULL,      -- 请求路径
     status_code INT NOT NULL,               -- 响应状态码
-    cost_ms     INT NOT NULL,               -- 耗时（毫秒）
+    duration_ms INT NOT NULL,               -- 耗时（毫秒；2026-09-16 对齐 standards §6 统一命名，原 cost_ms）
     request_body TEXT,                      -- 请求体（截断 + 脱敏，4KB）
     ip          VARCHAR(50),                -- 客户端 IP
     user_agent  VARCHAR(200),               -- User-Agent
