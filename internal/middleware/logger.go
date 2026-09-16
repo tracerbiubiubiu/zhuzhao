@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 )
 
@@ -36,7 +38,7 @@ func operatorOf(c *gin.Context) string {
 	if u := c.GetString("username"); u != "" {
 		return u
 	}
-	if op := c.GetString("operator"); op != "" {
+	if op := c.GetString(aksk.ContextKeyOperator); op != "" {
 		return op
 	}
 	return "anonymous"
@@ -49,7 +51,7 @@ func authOf(c *gin.Context) string {
 	if c.GetString("username") != "" {
 		return "jwt"
 	}
-	if c.GetString("caller") != "" {
+	if c.GetString(aksk.ContextKeyCaller) != "" {
 		return "aksk"
 	}
 	return "none"
@@ -113,7 +115,7 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 			slog.String("ip", c.ClientIP()),
 			slog.String("request_id", c.GetString("request_id")),
-			slog.String("caller", c.GetString("caller")),
+			slog.String("caller", c.GetString(aksk.ContextKeyCaller)),
 		}
 		logger.LogAttrs(c.Request.Context(), slog.LevelInfo, "access", attrs...)
 	}

@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 )
 
 // D2-24 守护：客户端透传 X-Request-ID 的格式校验（req-{32 位小写 hex}）——
@@ -65,12 +67,12 @@ func TestAccessLogAttribution(t *testing.T) {
 	}{
 		{"jwt 用户路由", func(c *gin.Context) { c.Set("username", "E000001") }, "E000001", "jwt"},
 		{"aksk 回调带 X-Operator", func(c *gin.Context) {
-			c.Set("caller", "taskrunner")
-			c.Set("operator", "admin")
+			c.Set(aksk.ContextKeyCaller, "taskrunner")
+			c.Set(aksk.ContextKeyOperator, "admin")
 		}, "admin", "aksk"},
 		{"aksk 回调缺 X-Operator", func(c *gin.Context) {
-			c.Set("caller", "taskrunner")
-			c.Set("operator", "system") // utils GinMiddleware 写入的兜底值
+			c.Set(aksk.ContextKeyCaller, "taskrunner")
+			c.Set(aksk.ContextKeyOperator, "system") // utils GinMiddleware 写入的兜底值
 		}, "system", "aksk"},
 		{"匿名", nil, "anonymous", "none"},
 	}
