@@ -13,6 +13,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
@@ -110,11 +111,13 @@ func New(deps Deps) *gin.Engine {
 	// API v1
 	// E-② 内网回调组：不走用户 JWT/Casbin——AK/SK 验签（utils aksk，验 taskrunner
 	// 调用方签名；基线 §9 双防线之密码学层）+ 部署侧专用 network 拓扑。默认关闭。
+	// onFail 用 response.AKSKFail()（2026-09-16 服务间验签统一批：信封+分档中文文案，
+	// 替代 aksk 零依赖默认形态；验签通过后 caller/operator 归因键由中间件写入）。
 	if deps.InternalJobs.Enabled {
 		verifier := &aksk.Verifier{Keys: map[string][]byte{
 			deps.InternalJobs.AK: []byte(deps.InternalJobs.SK),
 		}}
-		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, nil))
+		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
 	}
 
