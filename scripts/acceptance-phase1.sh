@@ -306,8 +306,9 @@ wait
 C1=$(cat /tmp/r1.json | json_code)
 C2=$(cat /tmp/r2.json | json_code)
 OK=0
-[ "$C1" = "0" ] && [ "$C2" = "20004" ] && OK=1
-[ "$C2" = "0" ] && [ "$C1" = "20004" ] && OK=1
+# 两码均须合法（0=成功 / 20004 空槽 / 20015 重放信号），且恰好一次成功
+refresh_code_ok() { [ "$1" = "0" ] || [ "$1" = "20004" ] || [ "$1" = "20015" ]; }
+refresh_code_ok "$C1" && refresh_code_ok "$C2" && { [ "$C1" = "0" ] || [ "$C2" = "0" ]; } && [ "$C1" != "$C2" ] && OK=1
 check "#16 refresh race" "1" "$OK"
 
 # --- M6 audit ---

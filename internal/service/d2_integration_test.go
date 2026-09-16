@@ -176,7 +176,14 @@ func TestAuthService_ConcurrentRefresh(t *testing.T) {
 		if err := <-results; err == nil {
 			success++
 		} else {
-			requireErrCode(t, err, errcode.ErrRefreshTokenInvalid)
+			// 落败码随时序而定：GETDEL 先于成功者 SET → 空槽 20004；
+			// 晚于成功者 SET → 槽位已是新 RT，hash 不符 = 20015（重放语义）
+			var biz *errcode.Error
+			require.ErrorAs(t, err, &biz)
+			require.Contains(t, []int{
+				errcode.ErrRefreshTokenInvalid.Code,
+				errcode.ErrRefreshTokenReplayed.Code,
+			}, biz.Code)
 		}
 	}
 	assert.Equal(t, 1, success, "同一 RT 并发刷新应恰好一次成功（GetDel 原子）")

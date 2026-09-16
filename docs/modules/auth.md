@@ -165,24 +165,26 @@ POST /api/v1/auth/login {employee_no, password, device_id?}
 ```
 POST /api/v1/auth/refresh {refreshToken}
 
-1. 验证 RT
-   → 查 Redis: refresh:{userId}:{deviceId}
-   → 不存在/不匹配？返回 401 + 20004
+1. 验证 RT（解析/签名/过期）
+   → 失败？返回 401 + 20004（登录已过期，请重新登录）
 
 2. 会话仍有效（禁用/删除兜底，见 §5.4）
    → EXISTS user:disabled:{userId} 或 users.status=禁用
-   → 401 + 20004，不签发新 Token（与 RT 失效同一对外语义）
+   → 401 + 20004，不签发新 Token（防枚举，与 RT 失效同一对外语义）
 
-3. 原子替换（`GETDEL`，Redis 6.2+）
-   → 删旧 RT；返回空则已被刷新 → 401 + 20004
+3. 原子消费（Lua consumeRefreshLua：GETDEL 槽位 + GET pw_epoch 双取）
+   → 消费时刻三态校验：
+     · 纪元 != claims.pwe（改密/重置，C3）→ 401 + 20014（密码已修改）
+     · 槽位为空（登出/吊销/并发落败先于成功者 SET）→ 401 + 20004
+     · 槽位非空但 hash 不符（旧 RT 重放，RT-1）→ 401 + 20015
 
-4. 签发新 Token 对
+4. 签发新 Token 对（新 RT 绑定消费时刻纪元）
    → 新 AT + 新 RT
 
 5. 返回 {accessToken, refreshToken, expiresIn}
 ```
 
-**并发刷新防护**：Phase 1 用 `GETDEL`（不必 Lua）。两个并发请求用同一 RT 刷新，只有第一个成功，第二个返回 401。
+**并发刷新防护**：Lua 原子 GETDEL。两个并发请求用同一 RT 刷新，只有第一个成功，落败者返回 401 + 20004 或 20015（时序决定，见 [phase1/02-auth.md §RT 轮换流程](../phase1/02-auth.md#rt-轮换流程)）。
 
 ### 5.3 登出流程
 

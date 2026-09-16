@@ -29,6 +29,7 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrInvalidCredentials, errcode.ErrTokenExpired, errcode.ErrTokenInvalid,
 	errcode.ErrRefreshTokenInvalid, errcode.ErrTokenAlreadyRefreshed, errcode.ErrAccountLocked,
 	errcode.ErrPasswordChangeRequired, errcode.ErrMultipleAuthMethods,
+	errcode.ErrPasswordChanged, errcode.ErrRefreshTokenReplayed,
 	// 用户
 	errcode.ErrUserAlreadyExists, errcode.ErrUserNotFound, errcode.ErrUserDisabled,
 	errcode.ErrUserIsSystem, errcode.ErrCannotResetHigher, errcode.ErrCannotRemoveLastSuperadmin,
@@ -40,10 +41,15 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrOrgAlreadyExists, errcode.ErrOrgNotFound, errcode.ErrOrgCannotMoveToChild,
 	errcode.ErrOrgHasChildren, errcode.ErrOrgHasMembers, errcode.ErrOrgIsSystem,
 	errcode.ErrNotOrgMember, errcode.ErrDuplicatePrimaryOrg, errcode.ErrOrgSystemProtected,
+	errcode.ErrCannotAssignHigherOrgMemberRole, errcode.ErrCannotManageOrgMember,
+	errcode.ErrNotOrgOwner, errcode.ErrOrgHasOpenTickets,
 	// 菜单
 	errcode.ErrMenuAlreadyExists, errcode.ErrMenuNotFound, errcode.ErrMenuHasChildren, errcode.ErrMenuIsSystem,
 	// 权限
 	errcode.ErrNoPermission, errcode.ErrPolicyExists, errcode.ErrNoRoles, errcode.ErrPolicyReloadFailed,
+	// 工单
+	errcode.ErrTicketNotFound, errcode.ErrTicketInvalidTransition,
+	errcode.ErrTicketTypeNotFound, errcode.ErrTicketAlreadyClosed,
 }
 
 // unmappedAllowlist 有意不进 httpStatusByCode 的码（writeServiceError 落 default 500+10000）：
@@ -59,6 +65,8 @@ var unmappedAllowlist = map[int]string{
 	errcode.ErrAccountLocked.Code:          "auth handler 直写",
 	errcode.ErrPasswordChangeRequired.Code: "auth handler 直写",
 	errcode.ErrMultipleAuthMethods.Code:    "auth handler 直写",
+	errcode.ErrPasswordChanged.Code:        "auth handler 直写",
+	errcode.ErrRefreshTokenReplayed.Code:   "auth handler 直写",
 	errcode.ErrPolicyExists.Code:           "本义 500",
 }
 
@@ -71,7 +79,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 48; got != want {
+	if got, want := len(allErrCodes), 58; got != want {
 		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
 	}
 

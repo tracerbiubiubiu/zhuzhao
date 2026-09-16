@@ -80,10 +80,10 @@
 |------|------|---------|------|
 | 20001 | `ErrInvalidCredentials` | 工号或密码错误 | 401 |
 | 20002 | `ErrTokenExpired` | token 已过期 | 401 |
-| 20003 | `ErrTokenInvalid` | token 已失效 | 401 |
-| 20004 | `ErrRefreshTokenInvalid` | 刷新令牌无效 | 401 |
+| 20003 | `ErrTokenInvalid` | 登录状态已失效，请重新登录 | 401 |
+| 20004 | `ErrRefreshTokenInvalid` | 登录已过期，请重新登录 | 401 |
 | 20005 | `ErrTokenAlreadyRefreshed` | 令牌已被刷新 | 401 |
-| 20006 | `ErrAccountLocked` | 账号已锁定 | 429 |
+| 20006 | `ErrAccountLocked` | 账号已锁定：连续登录失败次数过多，请稍后再试或联系管理员重置 | 429 |
 | 20007 | `ErrPasswordChangeRequired` | 需要修改密码 | 403 |
 | 20008 | `ErrMultipleAuthMethods` | 不能同时使用多种认证方式 | 400 |
 
@@ -95,7 +95,12 @@
 | 20012 | `ErrDeviceNotFound` | 设备不存在 | 404 |
 | 20013 | `ErrPasswordTooWeak` | 密码不符合复杂度要求 | 400 |
 
+| 20014 | `ErrPasswordChanged` | 密码已修改，请重新登录 | 401 |
+| 20015 | `ErrRefreshTokenReplayed` | 登录态异常：刷新令牌已被使用，请重新登录 | 401 |
+
 > 文档中的 `PASSWORD_CHANGE_REQUIRED` 即 `20007`。**Phase 1 验收必需**：`20008`（Bearer 与 `X-AK-*` 混用，见验收 #22）、`20007`、`30006`、`70003` 等须写入 `errcode.go`；`20009`–`20011` 为 M2M（AK/SK）上线时使用。AK 验签失败对外统一 **20009**，不区分 AK 不存在与 SK 错误（防探测）。`20012`–`20013` 随 Phase **2b** auth-enhance 写入 `errcode.go`。
+>
+> **20014 / 20015（2026-09-15 错误消息状态区分批）**：Refresh 失败原统一 20004，按失败态拆分——**20014** = 密码纪元（`user:pw_epoch:{uid}`，C3）不匹配，即用户改密/管理员重置后的旧 RT；**20015** = 槽位已是更新 RT 而旧 RT 重现（盗用重放/迟到提交，RT-1 安全告警）。维持 20004 的态：RT 解析失败（过期/篡改）、槽位为空（登出/吊销/并发落败）、账号禁用/删除/status 异常（**防枚举，不外露账号状态**）。
 
 ### 用户 30000–30999
 
@@ -227,7 +232,10 @@
 | 登录时账号已禁用 | 401 | 20001（与密码错误同一文案，防枚举） |
 | 连续登录失败 | 429 | 20006（`ErrAccountLocked`） |
 | 禁用用户带旧 AT（已登录后吊销） | 403 | 30003 |
-| 禁用用户用旧 RT refresh | 401 | 20004（不得返回新 AT/RT） |
+| 禁用用户用旧 RT refresh | 401 | 20004（不得返回新 AT/RT，防枚举） |
+| 改密/重置密码后用旧 RT refresh（C3 纪元不匹配） | 401 | 20014（`ErrPasswordChanged`） |
+| 旧 RT 重放（槽位已推进，RT-1） | 401 | 20015（`ErrRefreshTokenReplayed`） |
+| 并发刷新落败者 | 401 | 20004（空槽）或 20015（新槽已写），时序决定 |
 | 最后一个 superadmin 操作 | 403 | 30006 |
 | admin 重置 superadmin 密码 | 403 | 30005 |
 | admin 分配 superadmin 角色 | 403 | 30009 |

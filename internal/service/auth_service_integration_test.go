@@ -65,7 +65,8 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
-	assert.Equal(t, errcode.ErrRefreshTokenInvalid.Code, biz.Code)
+	// 槽位已推进到新 RT，旧 RT 重现 = 重放信号（RT-1）→ 20015
+	assert.Equal(t, errcode.ErrRefreshTokenReplayed.Code, biz.Code)
 
 	require.NoError(t, authSvc.Logout(ctx, refreshed.AccessToken, "dev-1"))
 }
@@ -122,13 +123,13 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
-	// 旧 RT（pwe=0）刷新 → 纪元比对不一致 → 401 + 20004
+	// 旧 RT（pwe=0）刷新 → 纪元比对不一致 → 401 + 20014（密码已修改）
 	// （单槽语义副作用：该次消费同时清掉 dev-1 槽位，属 02-auth 既定盗用信号设计）
 	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
-	assert.Equal(t, errcode.ErrRefreshTokenInvalid.Code, biz.Code)
+	assert.Equal(t, errcode.ErrPasswordChanged.Code, biz.Code)
 
 	// 新口令在另一设备登录 → 新纪元 RT 不受 dev-1 槽位影响
 	relogin, err := authSvc.Login(ctx, &model.LoginRequest{

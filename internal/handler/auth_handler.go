@@ -137,7 +137,8 @@ func writeAuthError(c *gin.Context, err error) {
 	switch biz.Code {
 	case errcode.ErrInvalidParams.Code:
 		response.BadRequest(c, biz.Message)
-	case errcode.ErrInvalidCredentials.Code, errcode.ErrRefreshTokenInvalid.Code, errcode.ErrTokenInvalid.Code:
+	case errcode.ErrInvalidCredentials.Code, errcode.ErrRefreshTokenInvalid.Code, errcode.ErrTokenInvalid.Code,
+		errcode.ErrPasswordChanged.Code, errcode.ErrRefreshTokenReplayed.Code:
 		response.UnauthorizedError(c, biz)
 	case errcode.ErrAccountLocked.Code:
 		response.TooManyRequests(c, biz)

@@ -27,12 +27,20 @@ var (
 var (
 	ErrInvalidCredentials     = util.New(20001, "工号或密码错误")
 	ErrTokenExpired           = util.New(20002, "token 已过期")
-	ErrTokenInvalid           = util.New(20003, "token 已失效")
-	ErrRefreshTokenInvalid    = util.New(20004, "刷新令牌无效")
+	ErrTokenInvalid           = util.New(20003, "登录状态已失效，请重新登录")
+	ErrRefreshTokenInvalid    = util.New(20004, "登录已过期，请重新登录")
 	ErrTokenAlreadyRefreshed  = util.New(20005, "令牌已被刷新")
-	ErrAccountLocked          = util.New(20006, "账号已锁定")
+	ErrAccountLocked          = util.New(20006, "账号已锁定：连续登录失败次数过多，请稍后再试或联系管理员重置")
 	ErrPasswordChangeRequired = util.New(20007, "需要修改密码")
 	ErrMultipleAuthMethods    = util.New(20008, "不能同时使用多种认证方式")
+	// ErrPasswordChanged 密码纪元不匹配（C3）：用户改密/管理员重置密码后，旧 RT
+	// 携带旧纪元刷新即拒。与 20004 区分——这是正常安全动作导致的会话失效，
+	// 用户应明确知道「需要重新登录」而非误以为系统故障。
+	ErrPasswordChanged = util.New(20014, "密码已修改，请重新登录")
+	// ErrRefreshTokenReplayed 重放检测命中（RT-1）：Refresh 槽位中已是更新的 RT，
+	// 提交的旧 RT 重现 = 盗用重放或迟到提交（当前会话已被强制踢下线）。
+	// 与 20004 的「自然过期/空槽」区分——这是安全告警语义。
+	ErrRefreshTokenReplayed = util.New(20015, "登录态异常：刷新令牌已被使用，请重新登录")
 )
 
 // 用户模块 30000-30999

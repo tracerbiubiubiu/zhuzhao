@@ -196,14 +196,20 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 	if perr != nil || epoch < 0 {
 		epoch = 0
 	}
-	// 消费时刻的权威校验：键不存在（已被消费/吊销删除）或纪元不匹配（吊销 INCR
-	// 已发生在本消费之前）→ 拒。签发绑定消费时刻纪元：若 INCR 发生在消费之后，
-	// 新 RT 纪元已旧，下一次刷新必败（fail-closed，AT 由 30min TTL 兜底）
-	if storedHash == "" || epoch != claims.Pwe {
+	// 消费时刻的权威校验，三种失败态分别透出（签发绑定消费时刻纪元：若 INCR
+	// 发生在消费之后，新 RT 纪元已旧，下一次刷新必败——fail-closed，AT 由 30min TTL 兜底）：
+	// ① 纪元不匹配 = 改密/重置密码后的旧 RT（正常安全动作，20014 明确告知重登）；
+	// ② 槽位为空 = 已登出/吊销/并发刷新落败（20004，自然过期语义）；
+	// ③ 槽位非空但 hash 不符 = 槽位已推进到更新的 RT，旧 RT 重现（盗用重放/
+	// 迟到提交，RT-1 安全告警，20015）。
+	if epoch != claims.Pwe {
+		return nil, errcode.ErrPasswordChanged
+	}
+	if storedHash == "" {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 	if storedHash != hashToken(refreshToken) {
-		return nil, errcode.ErrRefreshTokenInvalid
+		return nil, errcode.ErrRefreshTokenReplayed
 	}
 
 	return s.issueTokenPair(ctx, user, deviceID, epoch)
