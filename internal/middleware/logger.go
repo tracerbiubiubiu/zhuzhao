@@ -29,12 +29,30 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// operatorOf 取操作者（JWT 中间件注入 username；公开路由/内网回调匿名）。
+// operatorOf 取操作者：JWT 用户（ctx username）优先，服务间验签请求取 utils
+// GinMiddleware 透传的 X-Operator（2026-09-16 验签统一批写入），匿名兜底。
+// fallback 保持 anonymous（=「无身份的人类请求」），不与生态 system（服务动作）混义。
 func operatorOf(c *gin.Context) string {
 	if u := c.GetString("username"); u != "" {
 		return u
 	}
+	if op := c.GetString("operator"); op != "" {
+		return op
+	}
 	return "anonymous"
+}
+
+// authOf 身份平面：jwt（用户路由）/ aksk（内网回调验签）/ none（匿名）。
+// 与 operator 分列——「谁在操作」与「以什么形式接入」是两个维度，合并必有损；
+// M-SSO 上线后可平滑细分为 jwt:local/jwt:sso（2026-09-16 归因口径拍板，选项 4）。
+func authOf(c *gin.Context) string {
+	if c.GetString("username") != "" {
+		return "jwt"
+	}
+	if c.GetString("caller") != "" {
+		return "aksk"
+	}
+	return "none"
 }
 
 // truncStr 截断超长字符串（对齐基线"参数 4KB 截断"口径）。
@@ -81,17 +99,23 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		c.Next()
 
 		// 行名/字段名对齐 standards §6 访问日志标准字段（duration_ms 统一口径，
-		// 对齐 activelist/taskrunner）
-		logger.Info("access",
+		// 对齐 activelist/taskrunner；auth/caller 见 operatorOf/authOf 注释）
+		attrs := []slog.Attr{
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
 			slog.String("query", truncStr(c.Request.URL.RawQuery, 4096)),
 			slog.String("operator", operatorOf(c)),
+			slog.String("auth", authOf(c)),
 			slog.Int("status", c.Writer.Status()),
 			slog.Int("size", c.Writer.Size()),
 			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 			slog.String("ip", c.ClientIP()),
 			slog.String("request_id", c.GetString("request_id")),
-		)
+		}
+		if caller := c.GetString("caller"); caller != "" {
+			// caller 仅服务间验签场景出字段（standards §6）
+			attrs = append(attrs, slog.String("caller", caller))
+		}
+		logger.LogAttrs(c.Request.Context(), slog.LevelInfo, "access", attrs...)
 	}
 }
