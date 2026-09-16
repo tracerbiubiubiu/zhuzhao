@@ -86,7 +86,7 @@ func TestAccessLogAttribution(t *testing.T) {
 		})
 	}
 
-	// 端到端：jwt 行无 caller 字段，aksk 行有
+	// 端到端：jwt 行 auth/operator 归因正确，caller 空串占位
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buf, nil))
 	gin.SetMode(gin.TestMode)
@@ -102,7 +102,8 @@ func TestAccessLogAttribution(t *testing.T) {
 	if line["auth"] != "jwt" || line["operator"] != "u1" {
 		t.Fatalf("fields: %v", line)
 	}
-	if _, ok := line["caller"]; ok {
-		t.Fatalf("jwt 行不应出现 caller 字段: %v", line)
+	// caller 恒出（三仓统一惯例）：非验签场景为空串而非缺键（ES 稳定 schema）
+	if v, ok := line["caller"]; !ok || v != "" {
+		t.Fatalf("jwt 行 caller 应为空串, got %v (present=%v)", v, ok)
 	}
 }

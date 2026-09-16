@@ -69,7 +69,7 @@
 | 项 | 约定 |
 |---|---|
 | request_id | `X-Request-ID` 头进出全程透传；zhuzhao 生成（`req-`+32hex）→ 透传下游 → 回调带回；与业务 body 内 request_id 同键关联（job_runs / trace_id） |
-| 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/auth/caller（仅服务间验签场景）/ip；**`auth` 身份平面**（jwt/aksk/none，2026-09-16 归因口径拍板）：operator=谁在操作（username→签名透传 X-Operator→anonymous），auth=以什么形式接入——两维分列避免「未登录人类」与「服务动作」语义混叠，M-SSO 后 auth 可细分为 jwt:local/jwt:sso；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
+| 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/auth/caller（仅服务间验签场景）/ip；**`auth` 身份平面**（jwt/aksk/none，2026-09-16 归因口径拍板）：operator=谁在操作（username→签名透传 X-Operator→anonymous），auth=以什么形式接入——两维分列避免「未登录人类」与「服务动作」语义混叠，M-SSO 后 auth 可细分为 jwt:local/jwt:sso；**适用范围：仅多身份平面服务（zhuzhao 网关/IAM）需要 `auth`，单平面子服务（taskrunner/activelist 纯 AK/SK）可省略**；`caller` 三仓恒出（无验签场景空串占位，行结构稳定供 ES 索引）；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
 | 审计 | **审计正本全在 zhuzhao**：请求级（audit_logs，脱敏+截断）+ 登录显式审计 + 业务操作点显式发布；服务自身零业务语义日志 |
 | 判定日志 | L2/L3 判定落 `policy_evaluation_logs`（B11①，E-① 已实施）；归档超期导出 JSONL 后删行（B11②/E-③，保留期 180 天可配置） |
 | 日志框架 | utils `logger`（slog + lumberjack，JSON Lines，字段稳定命名供 ES 演进） |

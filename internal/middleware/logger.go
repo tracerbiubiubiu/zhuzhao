@@ -99,7 +99,9 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		c.Next()
 
 		// 行名/字段名对齐 standards §6 访问日志标准字段（duration_ms 统一口径，
-		// 对齐 activelist/taskrunner；auth/caller 见 operatorOf/authOf 注释）
+		// 对齐 activelist/taskrunner；auth/caller 见 operatorOf/authOf 注释）。
+		// caller 恒出（无验签场景为空串）——三仓行结构稳定，ES 索引友好
+		// （2026-09-16 与 taskrunner/activelist 对齐后的统一惯例）
 		attrs := []slog.Attr{
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
@@ -111,10 +113,7 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 			slog.String("ip", c.ClientIP()),
 			slog.String("request_id", c.GetString("request_id")),
-		}
-		if caller := c.GetString("caller"); caller != "" {
-			// caller 仅服务间验签场景出字段（standards §6）
-			attrs = append(attrs, slog.String("caller", caller))
+			slog.String("caller", c.GetString("caller")),
 		}
 		logger.LogAttrs(c.Request.Context(), slog.LevelInfo, "access", attrs...)
 	}
