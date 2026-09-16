@@ -169,3 +169,4 @@
 |---|---|
 | 2026-09-04 | 建档（由 16 号 §9 基线升格扩编而来） |
 | 2026-09-15 | 四仓一致性审计批：§3 补错误定义三形态（10）与码值引用纪律（11）+ taskrunner 段预留注记（9）；§4 补命名约定行 + 配置口径修正（yaml+BindEnv 为实况，${VAR} 为可选增强）；§6 补访问日志标准字段（duration_ms 统一）；§9 补测试包选择约定 |
+| 2026-09-16 | 服务间验签统一批：§3.11 升格「服务端验签中间件不得各仓自研」——一律 aksk.GinMiddleware + response.AKSKFail()（统一信封+分档中文文案，caller/operator 归因键收编进 GinMiddleware，失败现场落 Verifier.Logger），aksk detail 豁免撤销；utils v0.4.0 发布 |

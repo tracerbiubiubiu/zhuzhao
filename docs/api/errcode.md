@@ -87,7 +87,8 @@
 | 20007 | `ErrPasswordChangeRequired` | 需要修改密码 | 403 |
 | 20008 | `ErrMultipleAuthMethods` | 不能同时使用多种认证方式 | 400 |
 
-<!-- D2-44①：以下为未实现预留段（errcode.go 尚未定义，勿据此对接） -->
+<!-- D2-44①：以下 20009–20013 为未实现预留段（errcode.go 尚未定义，勿据此对接）；
+     20014/20015 已实现（2026-09-16 错误码三态批 a4b87ef），不属预留 -->
 
 | 20009 | `ErrAKInvalid` | 访问密钥无效 | 401 |
 | 20010 | `ErrAKTimestampExpired` | 请求已过期 | 401 |

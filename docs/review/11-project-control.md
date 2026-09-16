@@ -35,7 +35,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | 🟡 **库就绪待接线**（2026-09-04；**生产装配零消费者**，仅测试引用；首个消费者 = M-E；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
-| **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 utils aksk + 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3） | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
+| **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 **utils aksk.GinMiddleware + response.AKSKFail() 统一形态**【2026-09-16 验签统一批：信封+分档中文文案，替代原零依赖默认响应】+ 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3）；2026-09-16 接入生态统一中间件形态 | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
 | **审计归档（B11②，E-③）** | `audit_archive` 首个预置动作：audit_logs + policy_evaluation_logs 超期导出 JSONL→**单批导出成功后按同批 id 删行**（fsync 后删，崩溃窗口仅重复不丢）；保留期默认 180 天可配/params 可覆盖；单表失败跳过、任一失败→5xx 可重试可重入 | ✅ 2026-09-04（03 §4；本地卷 P4；注册进 jobs Registry） | `internal/service/audit_archive.go` |
 | **任务管理代理（E-④）** + **契约改造（E-⑦）** | 三层校验后代理 taskrunner API（提交/状态/执行记录/任务定义 CRUD/触发/取消/重试/死信）；出站 aksk 签名 + request_id/actor/source_ip 透传；提交/触发同步落 job_submissions 凭证（E5）；权限码 task:submit/read/manage + 菜单（000022）；**E-⑦**：C10 四路由改造 + C11 runs dept 多值过滤/task 响应补 dept + 负向测试 | ✅ E-④ 2026-09-04 / E-⑦ 2026-09-07；**全链实机贯通 + taskrunner 容器化部署（2026-09-14，B+C/D 阶段：共享网服务名寻址，不可达时 502 透出）** | `internal/pkg/taskrunner/` `internal/service/taskrunner_service.go` `internal/handler/taskrunner_handler.go` |
 | **网关反代（批次 B/E13）** | 前缀→上游注册表 / ReverseProxy / StripPrefix / AK/SK 出站签名 / 身份断言（X-Operator/X-Request-ID）/ 点段路径拒绝 / 502+10008 错误映射；根级挂载全链 JWT→限流→审计跳body→CasbinAuth | ✅ 2026-09-09（16 号批次 B）；**部署批与 E2E 联调 2026-09-14 闭环**（activelist 栈 compose 双网络/双副本/pgbackup+WAL，`/al` 签名透传贯通） | `internal/gateway/` `internal/router/router.go` |
@@ -85,7 +85,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | `/tickets` | CRUD + close + assign + comments + notes + relations | 工单 |
 | `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板）：**读 + 管理**（BK-18 已补 7 写端点：2 POST + 5 PUT/DELETE，后者属 standards §3.5 存量公约豁免；`router.go:275-287`） | 读：无专属码；管理：`ticket:type:manage`（L1 通配 admin/superadmin，operator 经类型配置页 AssignMenus 放行） |
 | `/v1/tasks` `/v1/runs` `/v1/jobs` `/v1/dead-letters` | 任务管理代理（E-④，三层校验后出站 taskrunner） | task:submit/read/manage |
-| `/internal/jobs/callback` | 内网回调（AK/SK 验签，action 在 body；C10） | taskrunner 内网，默认关 |
+| `/internal/jobs/callback` | 内网回调（AK/SK 验签 GinMiddleware+AKSKFail 统一形态，action 在 body；C10） | taskrunner 内网，默认关 |
 | `/al/*`（网关反代） | activelist 透传（JWT→限流→审计跳body→Casbin→身份断言→AK/SK 出站签名；menu_apis 000024 权限面） | 批次 B/E13 |
 
 健康检查：`/health/live` `/health/ready`（Phase 1 起）。
