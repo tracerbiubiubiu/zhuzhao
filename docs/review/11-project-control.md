@@ -4,6 +4,7 @@
 >
 > 更新日期：**2026-09-11**（**审查修正批，doc-only**：① 3 条确认不一致已修——§1 回调路径改 `/internal/jobs/callback`、§3 去掉 ticket 元数据「只读」标注、`standards.md §4` 健康检查按主/子服务区分；② 失效代码路径与死链治理（utils 抽取遗留路径回改等）；③ 规模数字校准 + builtin 状态改「库就绪待接线」）｜ 分支：`feature/phase-3`（最近一次全量门禁复验 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-09-10 文档批次：四仓文档对账同步批（doc-only）。
+> 2026-09-20 文档批次（doc-only）：① 工单类型级可见性策略设计输入落档（10 号新增 §10 = S1 设计+四铁律+演进阶梯 T0–T7；11-authz §5 触发表补行 #7 + 中间档位说明；12-frontend 补 §3.6 配置页规格——均随 §23 翻案批取用，不驱动当前开发）；② Phase 4 规划素材盘点起步（新建 `phase4/00-planning-inventory.md`：85 登记点归五主轴+触发信号雷达表+能力对标检查补录 §8），本文件 §7 导航树补 phase4 行。
 > 2026-09-02 文档批次：Phase 3 待编写文档（03/06/07/08/09）全部补齐 + 13-implementation-plan 建档 + ops/deployment.md（B10）补齐（doc-only，未动代码/门禁）。
 
 ---
@@ -188,7 +189,7 @@ docs/
 ├── design/        # 为什么这样设计（决策与权衡）
 ├── proposal/      # 具体方案是什么
 ├── modules/       # 模块完整设计（跨阶段）
-├── phase1/2/3/    # 每阶段实施计划（phase3 暂缓，设计就绪）
+├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；phase4 = 规划素材盘点起步，见 phase4/00）
 ├── roadmap.md     # 三阶段总览
 ├── adr/           # 架构决策（001 L1 事件 / 002 Asynq / 003 activelist）
 └── review/        # 验证报告（本文件 = 能力总览，01-10 = 历史 review）
