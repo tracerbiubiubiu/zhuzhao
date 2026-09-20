@@ -634,3 +634,48 @@ CREATE INDEX idx_ticket_events_signal_unprocessed ON ticket_events(event_type, p
 > 迁移规范遵循 [phase2/00-implementation-plan §5.3](../phase2/00-implementation-plan.md#53-迁移-pr-检查单每迁移必过) 检查单。
 >
 > **已前移到 Phase 2a**（2026-08-25）：`ticket_templates`（000015）和 `ticket_relations`（000016）因纯 DB 无事件依赖前移到 Phase 2a，见 [phase2/09-ticket.md §2](../phase2/09-ticket.md)。
+
+---
+
+## 10. 类型级可见性策略（2026-09-20 登记——翻案重启点新增设计输入）
+
+> **状态**：设计输入，随 §23 翻案批落地（不驱动当前开发）。2026-09-20 类型级可见性讨论产出；触发判断点与 [11-authz §5](../phase2/11-authz-architecture-review.md) 联动（本批补行 #7 + 中间档位说明）；前端配置页规格见 [12-frontend §3.6](./12-frontend.md)。
+>
+> **需求形态**：按工单类型配置不同可见性——默认策略 = 发起人 ∪ 参与人 ∪ 抄送人可见（A 类）；某类型 = 指定部门全员可看（B 类）。业界同构：Salesforce OWD+sharing rules / Jira issue security scheme / JSM Request Participants。
+
+### 10.1 设计：三件东西放三个既有位置（工单业务代码零 if-else）
+
+| 层 | 位置 | 内容 |
+|---|---|---|
+| **事实（数据）** | `ticket_participants(ticket_id, user_id, role∈{participant,cc})` m2m 表（独立表而非 JSONB 列——索引/反向查询"我参与的"/通知扇出共用）+ `ticket_types.visibility_policy`（策略名+params，经 BK-18 管理面配置）+ `tickets.visibility_override` 可空列（**留缝不启用**，Jira per-issue level 同构） | 参与人/抄送人事实；类型策略选择；单票例外缝 |
+| **语义（代码）** | 工单域策略库（手写 Resource 路，形态参照 `resource/builtin.go` 命名策略+schema 约定 fail-fast） | 四命名策略：`participant-only`（**默认值**）/ `org-anchored`（params=部门 ltree 锚点）/ `hybrid`（participant ∪ 组内委托，显式配才放）/ `inherit`（沿用既有三轴，存量类型）；**授予输出带级别 `(可见, read|comment|full)`**——设计期定死，接 §4 审批流时免返工 |
+| **求值（L2）** | `ticket/resource.go` 双路径 | List = 按策略类分组 OR 分支（类型 JOIN + participants EXISTS + ltree `<@`）；Get/Update/Delete = 同一分派的 Authorize；`scope_resolver` 不动（用户侧锚点与行侧类型策略正交） |
+
+participants 维护点 = Create（发起人）/ assignee 变更 / 评论 @ / 抄送字段写入——与 ticket_events 同事务。
+
+### 10.2 四条铁律 + 随行件
+
+1. **默认 fail-closed**：未配类型 = participant-only；未知策略名 = 读时拒绝 + 管理面写时校验拒收（BK-18"正则可编译"同款防呆）。
+2. **委托轴不旁路类型策略**（类型策略 = 天花板；放宽只能显式 hybrid——Salesforce 角色层级穿不透 OWD Private 同款；不拍此条，三处委托 SQL 会把 A 类默认悄悄打穿）。
+3. **回溯生效 + 护栏**：改策略 = 审计事件 + 影响预览（"影响 N 张存量单"）；回溯（改配置立即全量生效，建议）vs 建单时快照（历史稳定但需 backfill）= 翻案时拍板。
+4. **BK-21 护栏泛化同批**（谓词分派路径纳入 fail-closed 哨兵 + AST 守护——"新策略维度接 L2"典型场景）。
+5. 随行运维件：**"why not visible" 调试端点**（选 user×ticket 返回逐分支评估解释，EvalHook/B11① 只差一个只读端点，半天）；**双路径一致性测试**（同 user×ticket，Authorize 判定与 List 谓词结论必须一致，逐策略类用例）；D 类场景验收（A 类参与人可见/非参与人 404/B 类部门成员可见/外部门 404/委托 owner 看 A 类被拒）。
+
+### 10.3 演进阶梯与触发判断点（T0–T7）
+
+两轴：**表达语义**（命名策略 → CEL 表达式 → 关系图）× **策略位置**（代码 → 数据 → 外置 PDP），互相独立、每步都是加法（新 OR 分支/新表/新引擎调用），任何两站之间不需要重写。PBAC 注：L1 Casbin 本就是嵌入式策略引擎（zhuzhao 已在"进程内 PBAC、策略即代码"形态中）；外置 PDP 是独立纵跳，与语义横跳无关。
+
+| # | 触发信号 | 跳到 | 业界锚点 |
+|---|---|---|---|
+| T0 | §23 工单翻案条件命中 | 本节 S1 落地（含 10.2 四铁律拍板） | Jira security scheme / Salesforce OWD+sharing rules |
+| T1 | 管理员要命名策略表达不了的条件（"P2 以上且部门=X 可见"） | **CEL 表达式档**（引擎仍进程内；写时编译校验+沙箱禁 I/O 限时+重叠语义属性测试） | K8s ValidatingAdmissionPolicy / GCP IAM conditions |
+| T2 | 单票例外共享诉求（**不可转授**的二部图直配） | `ticket_shares` 表 + override 列激活（谓词新增 EXISTS 分支，来源标记 admin/auto）；**出现转授即升 T3** | Salesforce manual share（多来源同表）/ GitHub collaborator |
+| T3 | 图语义：共享转授链 / 跨资源链 / 组合语义（并∩差）超 CEL | ReBAC 评估（= 11-authz §5 #1/#3 绊线；先过 tuple 双写一致性、activelist 行级自治冲突、List 适配三关） | Drive→Zanzibar（驱动=folder 级联+跨产品统一，非单资源直配不够用） |
+| T4 | List 谓词求值实测成瓶颈（QPS/延迟） | 物化评估（shares auto 来源+重算作业；**org-anchored 成员变动重算 = 最贵失效面**，Salesforce 重算之贵为鉴） | Salesforce 异步重算（反面教材）/ Zanzibar Zookie |
+| T5 | 第三个服务复用同一套策略（activelist 行级自治不算）或合规强制集中审计——**不以微服务拆分为前提** | PDP 外置评估（首选 Cerbos=PBAC 家族唯一带 Query Planner；必算 List 缺口适配价+事实属性税——锚点/成员在 PG 深查） | 11-authz §5 #7 |
+| T6 | BK-21 泛化后仍出漏调事故 | PG RLS 兜底（既有登记，防御纵深不替代应用层） | Supabase 蓝本 |
+| T7 | 多维组织（矩阵双汇报线等） | ReBAC 评估（= §5 #4） | — |
+
+### 10.4 不做清单
+
+任意策略 DSL 进 DB（CEL 档之上，T3/T7 命中前）｜当前规模外置 PDP（事实在 PG 深查 + List 谓词需求结构性否决，OPA 09-08 复核同因）｜读压未证实前物化 ｜微服务拆分（既定不做）。

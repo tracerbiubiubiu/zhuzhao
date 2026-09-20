@@ -62,6 +62,16 @@ interface DynamicFormField {
 - `usePermission(ANY/ALL)` composable + `<AuthButton :capability>` / `v-permission` 指令（无权限销毁或置灰）；
 - 路由/菜单级沿用后端菜单下发（既有机制），按钮级用三件套——与 ecmdb-web 同构，且后端零新增。
 
+### 3.6 类型可见性策略配置页（2026-09-20 登记，随翻案批）
+
+设计源 = [phase3/10 §10](./10-ticket-business.md)（类型级可见性策略）。挂在 §3.2 类型管理页的类型编辑抽屉内：
+
+- 策略下拉：源 = 后端代码策略注册表（`participant-only` / `org-anchored` / `hybrid` / `inherit`）；默认 participant-only；未知策略名保存 400；
+- `org-anchored` 参数：部门锚点选择器（组织树单选，ltree path）；
+- 影响预览：保存前调只读端点，展示「该改动影响 N 张存量单」（回溯生效护栏，见 10 §10.2-3）；
+- 变更审计：保存写审计事件（旧/新策略+参数）；
+- 单票例外入口（`visibility_override`）：T2 前仅后端留缝，不做 UI。
+
 ## 4. 工程结构（建议）
 
 ```
