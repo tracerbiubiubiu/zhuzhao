@@ -130,7 +130,7 @@ zhuzhao-ui/
 
 ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-table + 分页拼装**，一律经封装（封装内统一处理 `PageData` 解包、排序参数、列权限、操作列宽度）。自建封装的参考实现 = Geeker-Admin 的 ProTable（MIT，组件 + useTable 约 1100 行，自治低耦合）——**只借鉴设计，代码按 `PageData` 契约自写**，不引依赖。工单域动态表单走 form-create 渲染器（12-frontend §3.1），不进 ProTable 范畴。
 
-**双分页模式（02 §5.3 处置 #2）**：封装必须同时支持两种分页——**offset 模式**（`page/page_size`，zhuzhao 全部端点）与 **cursor 模式**（keyset 游标，activelist `/al/api/v1` 端点：请求 `after_created_at`(RFC3339)+`after_id` 成对+`page_size`，响应 `{list, page_size, next_cursor}`，**无 total**——历史实锤坑：cursor 含时区 `+` 过网关必须 urlencode，须在 al 适配层内统一解决，不外溢到页面层）。⚠ 封装接口预留时勿只预留参数形状：cursor 模式分页器是**上一页/下一页形态**（无页码跳转、无总数），UI 形态一并预留。页面层经数据源抽象无感切换，避免 W5 现场返工。
+**双分页模式（02 §5.3 处置 #2）**：封装必须同时支持两种分页——**offset 模式**（`page/page_size`，zhuzhao 全部端点）与 **cursor 模式**（keyset 游标，activelist `/al/api/v1` 端点：请求 `after_created_at`(RFC3339)+`after_id` 成对+`page_size`，响应 `{list, page_size, next_cursor}`，**无 total**——历史实锤坑：cursor 含时区 `+` 过网关必须 urlencode，须在 al 适配层内统一解决，不外溢到页面层）。⚠ 封装接口预留时勿只预留参数形状：cursor 模式分页器是**上一页/下一页形态**（无页码跳转、无总数），UI 形态一并预留；**无 total 形态适用面=al 域（cursor）+ taskrunner 死信（page 翻页但 {list,page_size} 无总数，十三批扩面）**。页面层经数据源抽象无感切换，避免 W5 现场返工。
 
 ## 6. 会话与安全
 
@@ -201,6 +201,7 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 | phase3/12-frontend | 工单域功能规格 SSOT；其 §4 工程结构 `src/pages/` 与本文冲突，**启动批改 §4 为 views 并以本文 §2 为准**；§3.5 权限三件套由本文 §3.4 实现化 |
 | phase4/00 §2.1 | 五拍板=本文的上位决策；前端条目量级（季度级）不变，本文 §8 是其切分 |
 | phase2/01（D2-23/B7） | cookie 会话演进方向，本文 TokenStorage 抽象为其预留 |
+| phase4/03（场景矩阵） | 用户场景走查与测试覆盖的 SSOT——本文页面的交互约束（禁用态/无 total/危险确认等）以 [03 号](./03-scenarios-and-tests.md) 场景表为准 |
 
 ## 11. 复审落档（2026-09-21，四批评审收敛）
 
