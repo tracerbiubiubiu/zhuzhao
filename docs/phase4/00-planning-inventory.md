@@ -6,6 +6,8 @@
 >
 > **同日补录（2026-09-18 能力对标业界检查）**：另发现三项**登记链断裂真空项**（§8.1，不在正文任何清单/雷达表内，建议进启动批）+ 两项校准（MFA/SCIM 非盲点，§8.2）。
 >
+> **2026-09-21 补录**：菜单词表只读化批（菜单 CRUD 业界对标核验产出，方案已定 B·只读）——登记 §2.4 主轴④，管理面重建触发登记 §3 信号组 C；前端工程架构五拍板（仓格局/底座模板/范例页制/views 对齐/部署解耦）——登记 §2.1 主轴①，初版设计文档 [01-frontend-design](./01-frontend-design.md) 已立。
+>
 > **状态基准**：2026-09-18。迁移号现状 = 000001–000029 已占用，**下一编号 000030**（11 号 §4 口径）。编号 namespace 已占用：W/IW/BK/AB/F/C/U/RT/CC/HC/MC/EC/OP/TC/P0/并发-Px——Phase 4 新立项**须启用新 namespace 防撞号**。
 >
 > **Phase 3 收口状态**：Phase 3 Wave W0–W4 全部收口（11 号 §8 A 档清零、B 档随行项完成），收官报告 2026-09-15 已交付。Phase 4 起点为 Phase 3 完整收口后的干净基线，无 Phase 3 未完成 Wave 需要带入。Phase 3 的 B 档随行项中仍开放的部分（附件/HR 同步/auth-enhance 独立窗口）已归入本盘点 §2 对应主轴。
@@ -29,6 +31,8 @@
 | `deliverables/software-company/phase3-closure-report-2026-09-15.md` §五 | 收官口径遗留（含 **taskrunner PG 备份口径随 M4——仅此一处登记**） | 收官权威 |
 | `deliverables/software-company/zhuzhao-code-review-2026-09-11.md` | P2-2/P2-14 等代码级建议（**无 BK 编号，最易丢失**） | 待核实采纳状态 |
 | 2026-09-18 gin-vue-admin 借鉴核验 | 产品完整线新增批（§2.1 主轴①） | 本轮新产 |
+| 2026-09-21 菜单 CRUD 业界对标核验 | 菜单词表只读化批（§2.4 主轴④）+ 管理面重建触发（§3 信号组 C） | 本轮新产 |
+| 2026-09-21 前端工程架构咨询（仓格局/模板/部署形态） | 前端工程架构五拍板（§2.1 主轴①） | 本轮新产 |
 
 ---
 
@@ -45,6 +49,7 @@
 | 附件/文件上传 | = IW2 storage = phase2/10。工单系统无附件属功能残缺 | 启动先拍 phase2/10 三决策点（MinIO 选型/删附件仅删关联+GC/权限码复用 ticket:update 与否）；**占迁移号，与主链竞争按 A2 规则让位重排**；errcode 91000–91999 段待规划（代码中无预留声明） | 独立窗口 |
 | 通知通道 | webhook 优先于 email（**待拍板**；企业场景主流+实现成本低）+ 抽象渠道接口配置化。场景 = 工单状态流转/待办 + taskrunner 死信告警（死信告警不依赖工单解封） | 新立项 | 2–4 天 |
 | 前端 zhuzhao-ui | = 12-frontend（BK-18 类型/字段/模板管理页 + 动态表单渲染器，**后端 IW3 已就绪、规格已写好，仅前端未做**）。裸 API 的 IAM 是运营硬伤；gva 页面清单（superAdmin 七页 + systemTools 四页）可作需求蓝本；form-create（@form-create/designer）为字段设计器现成选型；gva 量级标定 120 .vue ≈ 季度级（1人专注假设；前端验收口径待定，非 make acceptance 覆盖范围） | 唯一登记点：closure report「前端 zhuzhao-ui 等既有触发驱动登记」 | 季度级 |
+| **前端工程架构五拍板（2026-09-21，前端批设计输入）** | **① 仓格局=单仓单 SPA**：zhuzhao-ui 为全部页面唯一家（含 al/task 域——000022/000024 种子 component 值即此约定），模块=仓内目录域（`src/api/<域>/`、`src/views/<域>/`，共享壳层 `src/common/`）；**不分仓、不微前端**（壳层多份复制 / Go 门禁被 Node 工具链污染 / 一个控制台被 API 来源撕开，三重否决）；activelist 独立 UI 诉求出现再触发驱动立仓。**② 底座=裁剪模板**：以维护中的 vue3 admin 模板（vue-pure-admin/soybean-admin 量级）起底省重件（layout/构建链/表格封装），但**壳层四件必须按 zhuzhao 契约自写替换**（路由守卫/请求封装/权限指令/菜单渲染 = `/user/menus` addRoute + `/user/permissions` 三件套），模板自带 mock/假权限路由全弃；gva 生成器/热更新/引导初始化/库存代码勿抄在册。**③ 页面级=范例页制**：不做代码生成器——ProTable 列表封装（对齐后端分页形态）+ form-create 动态表单（12-frontend §3.1 已定，勿重复造）+ 2–3 范例页（列表/表单/树管理）作活文档约定载体，保「所有会话写出的页面长一个样」。**④ 命名对齐**：07-menu.md 契约 `src/views/{component}.vue` vs 12-frontend §4 `src/pages/` 冲突——**取 views**（25+ 菜单种子 component 值均按此约定，动态路由字符串直映射），前端启动批改 12-frontend §4。**⑤ 部署解耦**：源码组织与交付打包分离——nginx 静态容器（CI 构建 dist + 反代 API，衔接三栈 compose，**推荐**）vs go:embed 单二进制（前端构建步骤进 Go CI，不取）；源码只住 zhuzhao-ui，产物交付方式是另一层自由 | ① 为仓格局既定约束（立即生效）；②③④⑤ 随前端启动批实施，12-frontend §4 对齐随批落档；**初版设计文档=[01-frontend-design](./01-frontend-design.md)**（2026-09-21 同日立：选型基线补齐/壳层四件实现规格/状态分界/范例页/门禁口径/里程碑切分）；底座模板定案（四候选代码级评估：首选 vue-element-plus-admin v3/备胎 pure-admin-thin/Geeker ProTable 作参考，见 01 §9.1） | 拍板零成本；工程量并入上行前端条目（季度级） |
 | MCP server（读侧） | 把 zhuzhao 管理/查询 API 暴露给 AI agent（AI 代运营：查审计/查工单/看死信/核对权限）。zhuzhao 全量 swag 注解+统一信封+request_id 比 gva 更适合；鉴权模式移植 gva（MCP 层透传凭据、判定回落主服务）——映射为一个 service 身份走 AK/SK。读侧先行，写侧后置 | 新立项；维护态系统压运营成本的杠杆 | 3–5 天 |
 | 个人 API token（PAT） | 用户侧非交互凭据（脚本/CI 调用）。现状缺口：用户想脚本化只能硬编码密码。**与 09 号「AK/SK 外部 M2M api_keys 管理面」合并规划**（同一凭据面）；GitHub PAT 蓝本已在 design-decisions §26.5 挂名 09 §3.2 | **勿抄 gva 同 signing key 方案**；走独立 secret + sha256 落库 + scope 限定 + 可吊销；KeyGetter/NonceStore 接口未预置，启用时在 utils aksk 增设 | 2–3 天 |
 | 字典/系统参数 | 业务枚举运行时化（工单自定义字段选项无处可挂是具体场景）；gva 形态（层级/启停/type 拉取）合适 | **边界：只做业务枚举/运维参数，不碰权限策略面**（平台策略=逻辑在代码，勿提议配置管理面） | 2–3 天 |
@@ -84,6 +89,7 @@
 | **code-review 一颗雷（建议无论主轴先修）** | ~~P2-2 优雅关停未 join 判定日志管道~~ ✅ **已修**（policyeval.go WaitGroup + app.go Shutdown join，2026-09-18 代码核实）/ P2-14 `InsertPolicyEvals` batch_size > ~7281 行触发 PG 65535 参数上限（当前 BatchSize=200 常量，风险低；配置侧设上限仍建议）。**无 BK 编号，最易丢** | P2-14 半天 |
 | B13 权限覆盖矩阵审计 | 全端点×三层×「设计内豁免 vs 遗漏」逐行对账产出矩阵文档；顺带产出 IAM 平面边界清单（§26.1 输入）+ 全文档 `internal/*` 路径核对（F-1 路径腐烂教训推广） | 0.5–1 天 doc-only，**待拍板** |
 | BK-21 护栏泛化 | fail-closed 哨兵泛化 registry 层（List 查询构造强制经 Filter）或 AST 守护扩展覆盖全部 repo.List 调用点；蓝本=Ruby Pundit `Policy::Scope` | 触发=首个新资源接 L2/导出功能；1–2 天 |
+| **菜单词表只读化（2026-09-21 对标拍板）** | 现三写接口（`POST /menus`、`/menus/update`、`/menus/delete`）**零真实消费**：真实菜单全 `is_system=true`（000002/22/24/25 四批）改删即拒（`ErrMenuIsSystem`），07-menu.md「登记 API=热修入口」定位名存实亡；zhuzhao-ui 空壳无页面消费方。**拍板 B（只读）**：删三写接口，菜单行全走种子迁移；GET 树/详情保留（角色分配 UI 数据源），AssignMenus 绑定面不动。**弃 A（窄写面）依据**：① visible 仅显示层隐藏（route: 码照发、Casbin 照旧），弱于现有 AssignMenus 解绑（导航+权限码+Casbin 策略同事务收）——应急隐藏正确姿势=角色解绑，runbook 落档；② rename/icon/sort 低频化妆不值得换环境漂移（热修后 DB 偏离种子，新建环境 migrate-up 不一致）；③ 业界共识「词表进代码/绑定进数据」（Keycloak 无菜单管理、Grafana/Backstage 导航=代码、Casbin model/policy 同构分界），menus 表每列都是前端代码耦合物=词表非绑定。**改动清单**：删 3 路由 + handler/service 各 3 方法 + model 2 结构体（CreateMenuRequest/UpdateMenuRequest）；迁移 000030（menu_apis 三行 + system_menu_create/update/delete 三按钮行 + admin/superadmin role_menus 绑定行，up/down 成对；phase1 断言 `>=25` 下界不破已核）；ErrMenuHasChildren 随迁清理（ErrMenuNotFound 留——AssignMenus 在用）；repo Create/Update 转 test-fixture-only 注记；swag 重生成；文档四处=07-menu.md（登记 API 定位改写+应急隐藏 runbook）/ design-decisions §26.2（词表随代码+重建触发注记）/ 11 号能力矩阵 / 迁移地图 | ~1 天（含文档）；迁移 000030 **与附件批同争一号，按 A2 规则谁先启动谁占用**；批启动取新 namespace（现有全占用） |
 | 随手项打包 | BK-9 测试死代码 / F-31④ relation 越权负向用例 / F-32 audit·user service 分支单测（低优）/ TC-2 ListRelations·字段·模板 service 直测 / TC-3 非叶子节点 Move 并发 / TC-4 UpdateTicketType patch 测试 / 双删 404 回归断言（可选）/ Q5 组织赋角注记（doc-only）/ user_orgs 孤儿行清理（可选，已论证不清理亦可）/ P2-3 BFS CTE 双处一致性 / 角色复制（gva CopyAuthority 蓝本，克隆角色含菜单绑定；~2h） | 各 0.5–2h，合计 1 天内 |
 | 03 号两拍板+一触发 | D2 判定日志 fail-open 最终确认（基本只剩「channel 满丢弃」语义）/ D4 判定日志是否默认全开（超量降采样 or 仅记拒绝）/ 主审计切异步（pipeline 开关未实现；启用须补停机 drain 等待） | 拍板零成本；异步=触发驱动 |
 | activelist 契约整改② | 「动作进 URL」（POST .../schema、/deprecate、/:id/restore）待豁免登记或整改——M-A 收官后仍悬挂 | 半天 |
@@ -138,6 +144,7 @@
 | 合规/安全要求 | 密码过期/异地登录检测 + MFA（standards.md:118「未立项（触发驱动）」在册，2026-09-18 对标检查补入本行） | 07 号🚦 / standards §安全基线 |
 | 真实敏感字段诉求 | 工单字段级加密（AES-GCM） | BK-18 随手项 |
 | RuoYi data_scope 需求形态 | 自定义部门集（~1–2 天） | 11-authz §1.2 |
+| 多租户/租户自定义菜单诉求 | 菜单管理面按「组件池白名单 + manifest 下发」形态重建，**勿恢复自由 CRUD**（07-menu.md 未来钩子；design-decisions §26.2 注记随只读化批落档） | 菜单只读化批（§2.4） |
 
 ### 信号组 D：故障/运维/体验
 
