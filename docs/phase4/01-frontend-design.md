@@ -13,7 +13,7 @@
 | 层 | 选型 | 状态 | 说明 |
 |----|------|------|------|
 | 框架 | Vue 3 + `<script setup>` + TypeScript strict | ✅ 拍板（12-frontend §1） | 全程 Composition API，不混用 Options API |
-| 构建 | Vite | ✅ 拍板 | dev 经 proxy 转发 `/api` **与 `/al`** 到本地后端（`/al/api/v1/*` 是网关反代根级挂载，经 zhuzhao 转发 activelist——漏配则 W5 名单页 dev 期 404）；生产同源，无运行时配置需求。dev 环境依赖：三栈 compose 含 activelist 容器在跑（`configs/config.yaml` 已配 `/al` 上游，无额外配置；上游不可达=502+10008） |
+| 构建 | Vite | ✅ 拍板 | dev 经 proxy 转发 `/api` **与 `/al`** 到本地后端（`/al/api/v1/*` 是网关反代根级挂载，经 zhuzhao 转发 activelist——漏配则 W5 名单页 dev 期 404）；生产同源，无运行时配置需求。dev 环境依赖：**activelist 容器在线（本仓 compose 不含它，跨三仓编排脚本见 02 §2-W2 首日项——十批 P1-4 修正口径）**；`configs/config.yaml` 已配 `/al` 上游无额外配置；上游不可达=502+10008 |
 | 组件库 | Element Plus（+ `@element-plus/icons-vue`） | ✅ 拍板 | 菜单表 `icon` 列的种子值（`home`/`settings`/`user`/`role`/`menu`/`org`/`ticket`/`task`/`al`/`audit-log`…）建集中映射表解析；⚠ 种子中 `settings`（system 目录）与 `setting`（ticket_type_manage）**近似键并存**，键值照抄种子勿「纠正」拼写 |
 | 底座模板 | **vue-element-plus-admin v3.1.0** 种子拷入（备胎 pure-admin-thin） | ✅ 定案（2026-09-21） | 四候选代码级评估，见 §9.1 |
 | 路由 | vue-router 4 | ✅ 拍板 | 动态注册模式见 §3.2 |
@@ -76,11 +76,11 @@ zhuzhao-ui/
 - **注册范围**：只取 `menu_type IN (1,2)` 且 `visible=true` 的节点（后端 `GET /user/menus` 已过滤，前端不重复判）；目录（type 1）作为父级布局路由，页面（type 2）挂 `component`。
 - **404 时序红线**：catch-all `{path: '/:pathMatch(.*)*'}` **只能在动态路由全部 addRoute 完成后注册**——先注册会导致刷新/直达 URL 误跳 404（RuoYi 系最高频死链坑，见 00 号业界核验）。
 - **契约纪律**：新页面前端组件、菜单种子迁移、后端路由**同一 PR**（07-menu 推荐流程）；前端不得运行时要求后端加菜单行（菜单词表已拍板只读化，00 §2.4）。
-- **种子实况四个特例（routerHelper 必须覆盖，解析单测用真实种子值）**：
+- **种子实况四特例 + 路由三层（routerHelper 必须覆盖，解析单测用真实种子值；①–④ 为种子形态特例、⑤ 为配套机制——十一批计数勘误）**：
   ① **父子同 path**：`/tickets` 目录（ticket_manage）与 ticket_list 页面同 path，`/tasks` 同理——naive 嵌套注册得 `/tickets/tickets`，须父 redirect/子绝对路径规则（RuoYi 系标准坑）；
   ② **无父顶层页面**：audit_log 为 type=2 且 parent=null（000025），需顶层页面注册分支；
-  ③ **目录带非空 component**：home 为 type=1 且 component='home'（000002）——约定「type=1 且 component 非空按页面渲染」，形态定死 `views/home/index.vue`（与全局 `*/index` 形态统一，glob 只留一种解析规则）；W2 配工作台页，登录后 redirect 第一个可见菜单=/home 顺理成章；
-  ④ **菜单外静态补充路由**：工单发起/详情等重布局页不在菜单词表（只读化后不能加行），前端静态注册隐藏路由（挂父布局下），入口按钮由 `button:ticket:create/read` 码控制；静态路由无 `route:` 码，守卫放行（真实边界在后端，§6）。**W5「页面清单与菜单种子对账」须豁免静态路由清单**，防对账误报；
+  ③ **目录带非空 component**：home 为 type=1 且 component='home'（000002）——约定「type=1 且 component 非空按页面渲染」，形态定死 **`views/home.vue`**（对齐 07-menu 契约 `src/views/{component}.vue`：单段 component=文件，多段如 `system/user/index` 才走目录/index；glob 两种键形态天然并存，按 component 字符串精确查表）；W2 配工作台页，登录后 redirect 第一个可见菜单=/home 顺理成章；
+  ④ **菜单外静态补充路由**：工单发起/详情（W4）、**「我的组织」自服务页（W3——委托入口对非 admin 委托者唯一可达，02 §2-W3 拍板）**等页不在菜单词表（只读化后不能加行），前端静态注册隐藏路由（挂父布局下），入口按钮由 `button:ticket:create/read` 码控制；静态路由无 `route:` 码，守卫放行（真实边界在后端，§6）。**W5「页面清单与菜单种子对账」须豁免静态路由清单**，防对账误报；
   ⑤ **常量路由组（constantRoutes）**：/login、403、404、强制改密页、redirect 中转——应用启动即注册、不依赖菜单树（菜单种子无这些节点），与菜单动态路由、④ 静态补充路由三层并存。
 
 ### 3.3 请求层（axios 实例 + 拦截器链）
@@ -96,14 +96,14 @@ zhuzhao-ui/
 
 **流式旁路（al 导出/导入）**：activelist `GET /al/api/v1/data/:typeName/export` 文件本体是**裸 JSON 数组、不走统一信封**（activelist 实现拍板：信封包文件体破坏流式与导出/导入对称性；流中途错误响应头已发、只能截断 body）。经 al 适配层走 `responseType:'blob'` 直下分支，不经信封拦截器；导入 body=同构 JSON 数组同理。
 
-**Token 存储抽象**：`common/request/tokenStorage.ts` 定义 get/set/clear 接口，现态实现 = 内存 + localStorage（AT/RT + **`device_id`**——浏览器级 UUID，后端白名单 `[a-zA-Z0-9_-]{1,64}`（D2-22，UUID 天然合规），登录/刷新/登出三处同源；后端注释明确要求前端生成并每次登录携带，缺省归 "default" 单槽会多浏览器互踢 20004/20015，登出漏传则吊销 "default" 空槽而真实 RT 槽残留）；同浏览器多标签共享同一 device_id（配合单飞刷新），不同浏览器各自独立槽位。B7 cookie 会话演进（phase2 D2-23 方向）时**只换实现**，调用面零改动。localStorage 方案运行期须配合 XSS 基线（§6）。
+**Token 存储抽象**：`common/request/tokenStorage.ts` 定义 get/set/clear 接口，现态实现 = 内存 + localStorage（AT/RT + **`device_id`**——浏览器级 UUID，后端白名单 `[a-zA-Z0-9_-]{1,64}`（D2-22，UUID 天然合规），**登录/登出/改密三处同源（刷新不需要——设备身份在 RT claims 内，RefreshRequest 无此字段）**；后端注释明确要求前端生成并每次登录携带，缺省归 "default" 单槽会多浏览器互踢 20004/20015，登出漏传则吊销 "default" 空槽而真实 RT 槽残留，**改密轮换 RT 时漏传会把新 RT 写进 "default" 错槽 → 互踢**）；同浏览器多标签共享同一 device_id（配合单飞刷新），不同浏览器各自独立槽位。B7 cookie 会话演进（phase2 D2-23 方向）时**只换实现**，调用面零改动。localStorage 方案运行期须配合 XSS 基线（§6）。
 
 **API 类型生成链（02 §5.3 处置 #3，P4-W2 壳层件）**：前端类型不手写——后端 `make swag` 产出 OpenAPI 后经 openapi-typescript（或 orval）生成 TS 类型进 `src/api/__generated__/`，链路 = `make swag && pnpm codegen`。⚠ swag 产物为 Swagger 2.0——**2026-09-21 拍板：目标格式 OpenAPI 3.0**，链路中加转换步（swagger2openapi 类工具做 2.0→3.0 机械转换），具体工具随 P4-W2 首日锁版本一并定。契约漂移（后端改字段形状）在**前端编译期报错**，不靠人记（对症「OKPage 形状变化断言要改」类历史教训）。纪律：生成物不手改、随后端契约批同批再生成。
 
 ### 3.4 权限三件套（12-frontend §3.5 的实现规格）
 
 - `route:{path}` 码：路由级兜底——守卫在 addRoute 后对目标页校验 `route:` 码集合（菜单树本身已过滤，此层防御 URL 手输）；
-- `button:{code}` 码：`v-permission` 指令（无权限**移除 DOM**，非 `display:none`——防 DevTools 放显）+ `<AuthButton :capability>` 组件（置灰态，用于「能看不能点」场景）；
+- `button:{permission}` 码（**= menus.permission 字段值拼接，如 `button:ticket:create`——非 menus.code（如 ticket_create_btn），照 code 拼会全部不渲染且酷似「正常无权限」，十一批高危勘误**；menu_service.go「button:"+m.Permission」）：`v-permission` 指令（无权限**移除 DOM**，非 `display:none`——防 DevTools 放显）+ `<AuthButton :capability>` 组件（置灰态，用于「能看不能点」场景）；
 - `usePermission(ANY/ALL)` composable：复杂显隐逻辑（多码组合）走函数式，模板里只留指令；
 - 码来源：`GET /user/permissions`（admin/superadmin 由后端全量展开，B4-4 语义前端无感知）。
 
@@ -120,13 +120,13 @@ zhuzhao-ui/
 
 ## 5. 页面范式与范例页（约定的活文档）
 
-前端启动批**先产三个范例页再批量铺页面**（建议挂在 system 域，页面最典型）：
+前端启动批**先产三个范例页再批量铺页面**（建议挂在 system 域，页面最典型；**边界：范例页=约定载体（精简版），W3 铺全量功能面时以 W3 范围为准扩充——十批边界注记**）：
 
 | 范例 | 承载约定 | 规格 |
 |------|----------|------|
-| 列表页（用户管理） | ProTable 封装 | 搜索区（el-form 内联）+ 表格 + 分页 + 操作列权限槽位（`v-permission`）；加载/空/错误三态由 vue-query 统一供给（loading=skeleton、error=重试卡片）；写操作（新建/编辑/删改确认）走页面内弹窗 |
+| 列表页（用户管理） | ProTable 封装 | 搜索区（el-form 内联；**以各端点实际过滤参数为准——部分列表暂无 keyword 模糊搜索，有则接、无则显式留空，不得假搜索**）+ 表格 + 分页 + 操作列权限槽位（`v-permission`）；加载/空/错误三态由 vue-query 统一供给（loading=skeleton、error=重试卡片）；写操作（新建/编辑/删改确认）走页面内弹窗 |
 | 表单页（角色编辑） | el-form + rules | async-validator 规则集中定义；服务端字段错误回填到对应表单项；提交防重（按钮 loading） |
-| 树管理页（组织，承载 CRUD 范例语义） | el-tree + 表单联动 | 左树右表布局；节点 CRUD/move/占用预检提示（子节点/成员占用）。**菜单页为只读树**（P4-W1 只读化后无写接口，ErrMenuHasChildren 随 000030 清理），CRUD 范例语义由组织树承载 |
+| 树管理页（组织，承载 CRUD 范例语义） | el-tree + 表单联动 | 左树右表布局；节点 CRUD/move/占用预检提示（子节点/成员占用）。**菜单页为只读树**（P4-W1 只读化后无写接口，ErrMenuHasChildren 随 **000031** 清理——十二批勘误，死码源于词表只读化非 BK-18），CRUD 范例语义由组织树承载 |
 
 ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-table + 分页拼装**，一律经封装（封装内统一处理 `PageData` 解包、排序参数、列权限、操作列宽度）。自建封装的参考实现 = Geeker-Admin 的 ProTable（MIT，组件 + useTable 约 1100 行，自治低耦合）——**只借鉴设计，代码按 `PageData` 契约自写**，不引依赖。工单域动态表单走 form-create 渲染器（12-frontend §3.1），不进 ProTable 范畴。
 
@@ -134,9 +134,9 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 
 ## 6. 会话与安全
 
-- **登录**：`POST /auth/login`（`employee_no`+`password`+**`device_id`**——浏览器级 UUID 必传，语义见 §3.3 TokenStorage）；响应含 `must_change_password`（首登强制改密，守卫分支见 §3.1；**改密成功响应即新 TokenPair——改密即轮换**，须整体替换本地 token，旧 AT 已进黑名单）；TokenPair 存 TokenStorage（§3.3）；**登录表单预留验证码插槽**（P4-7 在穿插池后位，届时只接插槽不返工表单布局）；
+- **登录**：`POST /auth/login`（`employee_no`+`password`+**`device_id`**——浏览器级 UUID 必传，语义见 §3.3 TokenStorage）；响应含 `must_change_password`（首登强制改密，守卫分支见 §3.1；**改密成功响应即新 TokenPair——改密即轮换**，须整体替换本地 token，旧 AT 已进黑名单；改密请求须带同一 `device_id`——UpdatePassword 轮换 RT 落槽用，漏传落 "default" 错槽互踢）；TokenPair 存 TokenStorage（§3.3）；**登录表单预留验证码插槽**（P4-7 在穿插池后位，届时只接插槽不返工表单布局）；
 - **登出**：`POST /auth/logout` **携带与登录相同的 `device_id`**（漏传=吊销 "default" 空槽，真实 RT 槽残留）→ 清 Pinia + TokenStorage + vue-query 缓存（`queryClient.clear()`）→ /login；
-- **请求方法例外**：BK-18 类型/模板管理七个写端点用 **PUT/DELETE**（全仓唯一非 GET/POST mutation 的存量特例）——请求封装勿写死方法白名单；
+- **请求方法**：全仓仅 GET/POST（standards §3-1）。BK-18 五端点的历史 PUT/DELETE **已拍板整改（2026-09-21：单仓涉及直接改，不豁免）**——随 P4-W1 改 POST zhuzhao 风格并删 standards §3-5 豁免条；整改合入后前端按 GET/POST 消费即可，请求封装仍勿写死方法白名单（防御性）；
 - **XSS 基线**：全站禁 `v-html`（例外须评审并 sanitize）；AT/RT 存 localStorage 的风险与 B7 cookie 演进绑定，TokenStorage 抽象保证一步迁移；
 - **错误边界**：`app.config.errorHandler` 全局兜底（上报 console + 友好页）；路由级 403/404 独立页面；**错误上报服务（Sentry/GlitchTip 类）触发驱动**（02 §5.3 处置 #10：对外可访问或用户成规模再接，errorHandler 是接入门槛最低的挂点）；
 - **接口粒度不设防前端**：前端显隐只是体验层，真实鉴权在后端三层（L1 Casbin 为准）——前端权限码仅用于渲染决策，不得视为安全边界（与「按钮码不走 Casbin」的既有口径一致，07-menu）。
@@ -148,8 +148,8 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 | 静态检查 | `vue-tsc --noEmit` + ESLint + Prettier | 等价 Go 侧 `make lint`，CI 必跑 |
 | 供应链 | `pnpm audit --prod` | 对称 Go 侧 govulncheck 决策（02 §5.3 处置 #5）——npm 供应链是前端最大风险面，随 lint 同批跑；renovate 可选（仓多再上） |
 | 单元测试 | Vitest | 盖 composables（usePermission/request 单飞刷新/tokenStorage）与纯函数（动态路由解析/菜单树转换）；组件测试只盖 AuthButton 等关键件 |
-| E2E | Playwright | 冒烟集：登录→菜单渲染→列表页翻页→按钮权限（对应 12-frontend §5 FE3）；**✅ 拍板（2026-09-21）：打标准三栈 compose，不用 stub**——菜单可见性/权限码必须打真后端，stub 抓不到契约类 bug（role_menus 缺口活例）；测试账号基座三档（superadmin/普通/viewer，种子随 P4-W1 000030 交付）——种子 admin（E000001）首登 `must_change_password=true`，E2E 用随批种子的 flag=false 账号 |
-| 验收基线 | 12-frontend §5 FE1–FE3（FE4 审批链路随主轴⑤翻案批复活时验收，02 §5.1 已同步修订） | FE1 动态表单 / FE2 管理页无 SQL 全流程 / FE3 viewer 双级不可见 |
+| E2E | Playwright | 冒烟集：登录→菜单渲染→列表页翻页→按钮权限（对应 12-frontend §5 FE3）；**✅ 拍板（2026-09-21）：打标准三栈 compose，不用 stub**——菜单可见性/权限码必须打真后端，stub 抓不到契约类 bug（role_menus 缺口活例）；测试账号基座三档（admin=既有 E000001——**凭据幂等闭环：首跑经强制改密流程改到固定测试密码（存 E2E env），后续跑复用该密码，否则改密即轮换会破坏二次运行**；operator/viewer=E2E setup 幂等建号（H1：不进迁移）+ 运行时 POST /roles/menus 分配） |
+| 验收基线 | 12-frontend §5 FE1–FE3（FE4 审批链路随主轴⑤翻案批复活时验收，02 §5.1 已同步修订） | FE1 动态表单 / **FE2 管理全流程无 SQL（口径=02 §5.1：用户/角色/菜单/组织/工单类型配置）** / **FE3 viewer 业务只读可见/管理面+审计不可见**（B 案后口径，替换原「双级不可见」） |
 | 构建 | `pnpm build` → dist | 产物交付=nginx 静态容器 + 反代 API（00 §2.1 五拍板⑤推荐形态）；CI 分仓：zhuzhao-ui 自己的流水线跑前端门禁，Go 四仓门禁不掺和 |
 
 **仓引导（02 §5.3 处置 #4，P4-W2 首日）**：zhuzhao-ui 落 AGENTS.md（前端版协作协议：门禁四件 + 提交规范 + 变更评审三节的前端适配——摘要/影响面/验证证据）、README（定位 + 设计文档指回本仓 docs/phase4/01）、LICENSE 已在、node/pnpm 版本锁定文件（`.nvmrc`/`package.json` engines）——四个 Go 仓都有协作协议，新仓不裸奔。**分支纪律（所有者 2026-09-21 指示）**：不直接在 main 开发——main 只收合入；建设期每 Wave 开短命分支（`p4-w2-shell`…），全量前端门禁绿后合入即删（对齐 standards §12.7 单主干精神，前端无 CI 故门禁本地跑、合入前必绿）；种子拷入也在首个 wave 分支上进行。
@@ -158,10 +158,10 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 
 | Wave | 内容 | 出口标准 |
 |------|------|----------|
-| P4-W2 壳层 | 底座模板裁剪 + 壳层四件自写 + 登录/登出 + **首登强制改密流（20007 gate + profile/改密页，§3.1/§6）** + 菜单树渲染 + 动态路由 + 三范例页 + **首页工作台（简单仪表盘——2026-09-21 拍板：待办/已办等卡片。首版=可见工单状态统计+最近工单列表，零后端改动；「处理人=我」维度需后端补 `assignee=me` 查询参数，随 P4-W4 工单域批交付后点亮待办/已办卡）** | 范例页过 FE3（viewer 双级不可见）；强制改密流过 E2E；E2E 冒烟绿 |
-| P4-W3 system 域 | 用户/角色（含 AssignMenus 勾选树，int64 string 公约）/菜单（**只读树**+角色分配入口）/组织（**含委托面九端点 UI 承接**：成员/角色绑定/owners/scope；⚠ `ticket_visibility` 仅 update 透出、create 表单不含）四组页面 | 管理全流程无 SQL（FE2 同口径）；**API 权限即时生效（写后刷内存语义，rbac reloadPolicy）+ 侧边栏/动态路由下次登录刷新**（原「每请求读库/无需重登」措辞不准，已修订） |
-| P4-W4 ticket 域 | 工单发起（form-create 动态表单，**菜单外静态路由** §3.2④）/列表/详情（静态路由）/评论/备注/关联 + 处理动作=close/assign/update（**后端无 approve 端点**，审批随翻案批）+ 类型/字段/模板管理三件套（PUT/DELETE 例外） | FE1 + FE2；新增路由的菜单种子同 PR 对账（07-menu 流程） |
-| P4-W5 al/task/audit 域 | 名单页（`/al/api/v1` 反代：types/data 两页，cursor 分页）/任务中心（tasks/runs/死信/jobs **页内 Tab**；死信只读列表，重试走 `POST /tasks/retry`，无独立重投端点）/审计日志查询 | 各域页面经对应权限码可见性验证；页面清单与菜单种子对账一致（**豁免静态路由清单** §3.2④） |
+| P4-W2 壳层 | 底座模板裁剪 + 壳层四件自写 + 登录/登出 + **首登强制改密流（20007 gate + profile/改密页，§3.1/§6）** + **个人中心页（profile 自服务：资料展示/编辑 + 自愿改密入口——与强制改密页共用表单组件，十一批显式化）** + 菜单树渲染 + 动态路由 + 三范例页 + **首页工作台（简单仪表盘——2026-09-21 拍板：待办/已办等卡片。首版=可见工单状态统计+最近工单列表，零后端改动；「处理人=我」维度需后端补 `assignee=me` 查询参数，随 P4-W4 工单域批交付后点亮待办/已办卡）** | 范例页过 FE3（viewer：业务只读可见/管理面+审计不可见——**viewer 账号由 E2E setup 幂等创建（H1：不进迁移）+ 运行时分配绑定**）；强制改密流过 E2E；E2E 冒烟绿 |
+| P4-W3 system 域 | 用户/角色（含 AssignMenus 勾选树——**el-tree 必须 `check-strictly=true`：级联勾选会让「只勾页面、不勾按钮」的只读授权选不出来，B 案词表拆分的 UI 前提**；int64 string 公约）/菜单（**只读树**+角色分配入口）/组织两面（02 §2-W3 拍板）：管理面（admin 专属）+「我的组织」自服务静态页（§3.2④；owner/admin 见委托控件；⚠ `ticket_visibility` 仅 update 表单） | 管理全流程无 SQL（FE2 同口径）；**API 权限即时生效（写后刷内存语义，rbac reloadPolicy）+ 侧边栏/动态路由下次登录刷新**（原「每请求读库/无需重登」措辞不准，已修订） |
+| P4-W4 ticket 域 | 工单发起（form-create 动态表单，**菜单外静态路由** §3.2④）/列表/详情（静态路由）/评论/备注/关联（写操作挂对应按钮码——`ticket:relation` 随 B 案补种）+ 处理动作=close/assign/update/delete（**后端无 approve 端点**，审批随翻案批）+ 类型/字段/模板管理三件套（历史 PUT/DELETE 已随 W1 整改为 POST） | FE1 + FE2；新增路由的菜单种子同 PR 对账（07-menu 流程） |
+| P4-W5 al/task/audit 域 | 名单页（`/al/api/v1` 反代：types/data 两页，cursor 分页；**含导出（blob 流式旁路）/导入入口**）/任务中心（tasks/runs/死信/jobs **页内 Tab**；死信只读列表，重试走 `POST /tasks/retry`，无独立重投端点——取消/重试按钮挂 `task:operate` 码，B 案补种）/审计日志查询 | 各域页面经对应权限码可见性验证；页面清单与菜单种子对账一致（**豁免静态路由清单** §3.2④） |
 
 ## 9. 开放问题（启动批拍板）
 
@@ -212,6 +212,7 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 | A 会话 | device_id 三件同源：缺省归 "default" 单槽多浏览器互踢（auth_service.go:23）、登出漏传吊空槽（token.go:39） | §3.3/§6 |
 | B 契约 | 刷新失败码族实为 20004/20014/20015 + Redis 抖动 503+10008 不清会话（auth_service.go Refresh）；X-Request-ID 格式 `req-`+32hex（D2-24）；int64 全仓 string 序列化公约；`/user/menus`·`/user/permissions` 包装对象 + User 无角色字段；20006 锁定=429 | §3.3/§2/§4/§6 |
 | C 矛盾 | FE4 无 Wave 认领（本 doc §7 + 02 §5.1 同修）；§5 树管理 CRUD 与菜单只读化冲突（02 §2 P4-W1/00 §2.4）；「变更无需重登生效」半成立（rbac reloadPolicy 写后刷内存，导航仍每会话一次） | §7/§5/§8-W3 + 02 §5.1 |
-| D 路由 | 父子同 path（/tickets·/tasks）、顶层页 audit_log、目录带组件 home、菜单外静态路由机制；icon 种子实际值（settings/setting 并存）；code≠0 恒非 2xx 按 HTTP 状态分流；dev 依赖三栈 activelist 容器 | §3.2/§1/§3.3 |
+| D 路由 | 父子同 path（/tickets·/tasks）、顶层页 audit_log、目录带组件 home、菜单外静态路由机制；icon 种子实际值（settings/setting 并存）；code≠0 恒非 2xx 按 HTTP 状态分流；dev 依赖 activelist 容器在线（**表述已随 P1-4 修正：本仓栈不含它，跨三仓编排见 02 §2-W2 首日项**） | §3.2/§1/§3.3 |
 | 计划层 | 前端部署件（nginx+trusted_proxies+/al location）、穿插池前端联动面、00 §2.4 漏排四行——归 02 号处置（其 §5.5） | 02 号 §2/§3/§5.5 |
 | 五批复审 | **role_menus 绑定缺口（后端 P0）**：000018/22/24/25 五页面菜单零绑定 + GetUserMenus INNER JOIN 无 admin 旁路（GetUserPermissions 有 B4-4=不对称，admin「有码无路」）→ 修复归 02 §2 P4-W1（000030 同批）；401 分码 20002（过期可刷新）/20003（无效跳登录，B2-1）；al 导出裸 JSON 数组流旁路（activelist data.go 实现拍板）；device_id 白名单 `[a-zA-Z0-9_-]{1,64}`（D2-22）；constantRoutes 常量路由组 | §3.2⑤/§3.3 + 02 §2 P4-W1 |
+| 六~十一批 | 计划层为主（B 案六点定案/组织两面拆分/BK-18 整改/catalogExempt/assignee=me 后端承载/compose 口径修正/缓冲算术/部署原子性/死码两引用点/迁移拆分两连号）——处置留痕统一见 **02 §5.5 #10–14**；契约级修正（device_id 三处/home.vue/3PUT+2DELETE 拆分/自服务端点形状/搜索区注记/**button:{permission} 口径勘误**）已就地落 §3/§5/§6 | 02 §5.5 #10–14 + 正文 |

@@ -38,7 +38,7 @@
 
 ## 2. 五条候选主轴（Phase 4 主动线待拍板）
 
-> 外部集成线（③）是被动等信号的；真正要拍的是主动线选谁。建议组合：**①为主动线 + ④穿插批 + ②③按真实信号插入**，⑤维持挂起（2026-09-18 建议，待拍板）。
+> 外部集成线（③）是被动等信号的；真正要拍的是主动线选谁。建议组合：**①为主动线 + ④穿插批 + ②③按真实信号插入**，⑤维持挂起（2026-09-18 建议；~~待拍板~~ **已拍：主动线=前端，2026-09-21 终确——见 [02 号 §1](./02-implementation-plan.md)**）。
 
 ### 2.1 主轴① 产品完整线（2026-09-18 gin-vue-admin 借鉴核验产出）
 
@@ -47,7 +47,7 @@
 | 项 | 内容 | 前置/边界 | 量级 |
 |----|------|-----------|------|
 | 附件/文件上传 | = IW2 storage = phase2/10。工单系统无附件属功能残缺 | 启动先拍 phase2/10 三决策点（MinIO 选型/删附件仅删关联+GC/权限码复用 ticket:update 与否）；**占迁移号，与主链竞争按 A2 规则让位重排**；errcode 91000–91999 段待规划（代码中无预留声明） | 独立窗口 |
-| 通知通道 | webhook 优先于 email（**待拍板**；企业场景主流+实现成本低）+ 抽象渠道接口配置化。场景 = 工单状态流转/待办 + taskrunner 死信告警（死信告警不依赖工单解封） | 新立项 | 2–4 天 |
+| 通知通道 | webhook 优先于 email（~~待拍板~~ **已拍（2026-09-21）：webhook 优先，配置能力=P4-2 本体含持久化+管理 API，配置页触发驱动后补**；企业场景主流+实现成本低）+ 抽象渠道接口配置化。场景 = 工单状态流转/待办 + taskrunner 死信告警（死信告警不依赖工单解封） | 新立项 | 2–4 天 |
 | 前端 zhuzhao-ui | = 12-frontend（BK-18 类型/字段/模板管理页 + 动态表单渲染器，**后端 IW3 已就绪、规格已写好，仅前端未做**）。裸 API 的 IAM 是运营硬伤；gva 页面清单（superAdmin 七页 + systemTools 四页）可作需求蓝本；form-create（@form-create/designer）为字段设计器现成选型；gva 量级标定 120 .vue ≈ 季度级（1人专注假设；前端验收口径待定，非 make acceptance 覆盖范围） | 唯一登记点：closure report「前端 zhuzhao-ui 等既有触发驱动登记」 | 季度级 |
 | **前端工程架构五拍板（2026-09-21，前端批设计输入）** | **① 仓格局=单仓单 SPA**：zhuzhao-ui 为全部页面唯一家（含 al/task 域——000022/000024 种子 component 值即此约定），模块=仓内目录域（`src/api/<域>/`、`src/views/<域>/`，共享壳层 `src/common/`）；**不分仓、不微前端**（壳层多份复制 / Go 门禁被 Node 工具链污染 / 一个控制台被 API 来源撕开，三重否决）；activelist 独立 UI 诉求出现再触发驱动立仓。**② 底座=裁剪模板**：以维护中的 vue3 admin 模板（vue-pure-admin/soybean-admin 量级）起底省重件（layout/构建链/表格封装），但**壳层四件必须按 zhuzhao 契约自写替换**（路由守卫/请求封装/权限指令/菜单渲染 = `/user/menus` addRoute + `/user/permissions` 三件套），模板自带 mock/假权限路由全弃；gva 生成器/热更新/引导初始化/库存代码勿抄在册。**③ 页面级=范例页制**：不做代码生成器——ProTable 列表封装（对齐后端分页形态）+ form-create 动态表单（12-frontend §3.1 已定，勿重复造）+ 2–3 范例页（列表/表单/树管理）作活文档约定载体，保「所有会话写出的页面长一个样」。**④ 命名对齐**：07-menu.md 契约 `src/views/{component}.vue` vs 12-frontend §4 `src/pages/` 冲突——**取 views**（25+ 菜单种子 component 值均按此约定，动态路由字符串直映射），前端启动批改 12-frontend §4。**⑤ 部署解耦**：源码组织与交付打包分离——nginx 静态容器（CI 构建 dist + 反代 API，衔接三栈 compose，**推荐**）vs go:embed 单二进制（前端构建步骤进 Go CI，不取）；源码只住 zhuzhao-ui，产物交付方式是另一层自由 | ① 为仓格局既定约束（立即生效）；②③④⑤ 随前端启动批实施，12-frontend §4 对齐随批落档；**初版设计文档=[01-frontend-design](./01-frontend-design.md)**（2026-09-21 同日立：选型基线补齐/壳层四件实现规格/状态分界/范例页/门禁口径/里程碑切分）；底座模板定案（四候选代码级评估：首选 vue-element-plus-admin v3/备胎 pure-admin-thin/Geeker ProTable 作参考，见 01 §9.1） | 拍板零成本；工程量并入上行前端条目（季度级） |
 | MCP server（读侧） | 把 zhuzhao 管理/查询 API 暴露给 AI agent（AI 代运营：查审计/查工单/看死信/核对权限）。zhuzhao 全量 swag 注解+统一信封+request_id 比 gva 更适合；鉴权模式移植 gva（MCP 层透传凭据、判定回落主服务）——映射为一个 service 身份走 AK/SK。读侧先行，写侧后置 | 新立项；维护态系统压运营成本的杠杆 | 3–5 天 |
@@ -87,14 +87,14 @@
 | 项 | 内容 | 量级 |
 |----|------|------|
 | **code-review 一颗雷（建议无论主轴先修）** | ~~P2-2 优雅关停未 join 判定日志管道~~ ✅ **已修**（policyeval.go WaitGroup + app.go Shutdown join，2026-09-18 代码核实）/ P2-14 `InsertPolicyEvals` batch_size > ~7281 行触发 PG 65535 参数上限（当前 BatchSize=200 常量，风险低；配置侧设上限仍建议）。**无 BK 编号，最易丢** | P2-14 半天 |
-| B13 权限覆盖矩阵审计 | 全端点×三层×「设计内豁免 vs 遗漏」逐行对账产出矩阵文档；顺带产出 IAM 平面边界清单（§26.1 输入）+ 全文档 `internal/*` 路径核对（F-1 路径腐烂教训推广） | 0.5–1 天 doc-only，**待拍板** |
+| B13 权限覆盖矩阵审计 | 全端点×三层×「设计内豁免 vs 遗漏」逐行对账产出矩阵文档；顺带产出 IAM 平面边界清单（§26.1 输入）+ 全文档 `internal/*` 路径核对（F-1 路径腐烂教训推广） | 0.5–1 天 doc-only，~~待拍板~~ **已拍（2026-09-21）：做——W1 收口后立即执行，W2 启动前必须完成**（02 §6 #3） |
 | BK-21 护栏泛化 | fail-closed 哨兵泛化 registry 层（List 查询构造强制经 Filter）或 AST 守护扩展覆盖全部 repo.List 调用点；蓝本=Ruby Pundit `Policy::Scope` | 触发=首个新资源接 L2/导出功能；1–2 天 |
-| **菜单词表只读化（2026-09-21 对标拍板）** | 现三写接口（`POST /menus`、`/menus/update`、`/menus/delete`）**零真实消费**：真实菜单全 `is_system=true`（000002/22/24/25 四批）改删即拒（`ErrMenuIsSystem`），07-menu.md「登记 API=热修入口」定位名存实亡；zhuzhao-ui 空壳无页面消费方。**拍板 B（只读）**：删三写接口，菜单行全走种子迁移；GET 树/详情保留（角色分配 UI 数据源），AssignMenus 绑定面不动。**弃 A（窄写面）依据**：① visible 仅显示层隐藏（route: 码照发、Casbin 照旧），弱于现有 AssignMenus 解绑（导航+权限码+Casbin 策略同事务收）——应急隐藏正确姿势=角色解绑，runbook 落档；② rename/icon/sort 低频化妆不值得换环境漂移（热修后 DB 偏离种子，新建环境 migrate-up 不一致）；③ 业界共识「词表进代码/绑定进数据」（Keycloak 无菜单管理、Grafana/Backstage 导航=代码、Casbin model/policy 同构分界），menus 表每列都是前端代码耦合物=词表非绑定。**改动清单**：删 3 路由 + handler/service 各 3 方法 + model 2 结构体（CreateMenuRequest/UpdateMenuRequest）；迁移 000030（menu_apis 三行 + system_menu_create/update/delete 三按钮行 + admin/superadmin role_menus 绑定行，up/down 成对；phase1 断言 `>=25` 下界不破已核）；ErrMenuHasChildren 随迁清理（ErrMenuNotFound 留——AssignMenus 在用）；repo Create/Update 转 test-fixture-only 注记；swag 重生成；文档四处=07-menu.md（登记 API 定位改写+应急隐藏 runbook）/ design-decisions §26.2（词表随代码+重建触发注记）/ 11 号能力矩阵 / 迁移地图 | ~1 天（含文档）；迁移 000030 **与附件批同争一号，按 A2 规则谁先启动谁占用**；批启动取新 namespace（现有全占用） |
+| **菜单词表只读化（2026-09-21 对标拍板）** | 现三写接口（`POST /menus`、`/menus/update`、`/menus/delete`）**零真实消费**：真实菜单全 `is_system=true`（000002/22/24/25 四批）改删即拒（`ErrMenuIsSystem`），07-menu.md「登记 API=热修入口」定位名存实亡；zhuzhao-ui 空壳无页面消费方。**拍板 B（只读）**：删三写接口，菜单行全走种子迁移；GET 树/详情保留（角色分配 UI 数据源），AssignMenus 绑定面不动。**弃 A（窄写面）依据**：① visible 仅显示层隐藏（route: 码照发、Casbin 照旧），弱于现有 AssignMenus 解绑（导航+权限码+Casbin 策略同事务收）——应急隐藏正确姿势=角色解绑，runbook 落档；② rename/icon/sort 低频化妆不值得换环境漂移（热修后 DB 偏离种子，新建环境 migrate-up 不一致）；③ 业界共识「词表进代码/绑定进数据」（Keycloak 无菜单管理、Grafana/Backstage 导航=代码、Casbin model/policy 同构分界），menus 表每列都是前端代码耦合物=词表非绑定。**改动清单**：删 3 路由 + handler/service 各 3 方法 + model 2 结构体（CreateMenuRequest/UpdateMenuRequest）；迁移（~~000030 单号~~ **拆 30/31 两连号——十一批：本清单属 000031 词表重排，BK-18 整改在 000030**；menu_apis 三行 + system_menu_create/update/delete 三按钮行 + admin/superadmin role_menus 绑定行，up/down 成对；phase1 断言 `>=25` 下界不破已核）；ErrMenuHasChildren 随迁清理（ErrMenuNotFound 留——AssignMenus 在用）；repo Create/Update 转 test-fixture-only 注记；swag 重生成；文档四处=07-menu.md（登记 API 定位改写+应急隐藏 runbook）/ design-decisions §26.2（词表随代码+重建触发注记）/ 11 号能力矩阵 / 迁移地图 | **初版估 ~1 天；终版范围已扩（B 案词表拆分+补三新按钮行（ticket_relation/task_operate/ticket_type_write）+验收账号基座+BK-18 方法整改+死码扩容+errcode.md 同步——2026-09-21 十一批定稿，**迁移拆 000030/000031 两连号**）→ 以 [02 号 §2 P4-W1](./02-implementation-plan.md) 为准，4–5 天**；~~迁移 000030 与附件批同争一号~~（**已失效——十二批：W1 占 30/31，IW2 让位 000032**）；批启动取新 namespace（现有全占用） | 
 | 随手项打包 | BK-9 测试死代码 / F-31④ relation 越权负向用例 / F-32 audit·user service 分支单测（低优）/ TC-2 ListRelations·字段·模板 service 直测 / TC-3 非叶子节点 Move 并发 / TC-4 UpdateTicketType patch 测试 / 双删 404 回归断言（可选）/ Q5 组织赋角注记（doc-only）/ user_orgs 孤儿行清理（可选，已论证不清理亦可）/ P2-3 BFS CTE 双处一致性 / 角色复制（gva CopyAuthority 蓝本，克隆角色含菜单绑定；~2h） | 各 0.5–2h，合计 1 天内 |
 | 03 号两拍板+一触发 | D2 判定日志 fail-open 最终确认（基本只剩「channel 满丢弃」语义）/ D4 判定日志是否默认全开（超量降采样 or 仅记拒绝）/ 主审计切异步（pipeline 开关未实现；启用须补停机 drain 等待） | 拍板零成本；异步=触发驱动 |
 | activelist 契约整改② | 「动作进 URL」（POST .../schema、/deprecate、/:id/restore）待豁免登记或整改——M-A 收官后仍悬挂 | 半天 |
 | 文档治理 | ADR 补 5–8 篇（三层鉴权/ltree 选型/双 Token+黑名单/迁移编号治理/ticket_visibility/虚拟组）/ architecture.md（1,899 行）+ design-decisions.md（1,414 行）拆分 / S-5 docs 中 15 处失效 `internal/*` 旧路径 / S-2 策略库「🟡 库就绪待接线」标注 / S-6 ADR-003 版本号滞后 / phase2/00:361 文档失实更正（tickets 无 version 列实走 status-CAS） | 纯文档约 1 天 |
-| cron 调度依赖 | zhuzhao 自身无 cron 引擎（无 robfig/cron）；审计归档 cron 由 taskrunner 侧定义并回调（audit_archive.go 注释）。**风险：taskrunner 不可用时审计归档无自动周期触发**。评估是否引入轻量 cron 或接受外部依赖 | 评估 0.5 天 |
+| cron 调度依赖 | zhuzhao 自身无 cron 引擎（无 robfig/cron）；审计归档 cron 由 taskrunner 侧定义并回调（audit_archive.go 注释）。**风险：taskrunner 不可用时审计归档无自动周期触发**。评估是否引入轻量 cron 或接受外部依赖 | 初版估 0.5 天；**终版=收归实施批 1.5–2 天（含 taskrunner 退役），以 02 号穿插池为准（2026-09-21 拍板）** |
 
 ### 2.5 主轴⑤ 工单翻案线（全部挂起，等 §23 翻案条件）
 
@@ -200,7 +200,7 @@
 | `deliverables/.../activelist-stage-a-walkthrough` §遗留 | 「activelist 54cec15 与 zhuzhao 配置/文档均未 push」 | 09-15/09-16 已推送，四仓齐平 |
 | `docs/phase2/README.md` §93 | BK-13 仍标「待实施」 | IW1 已实施（2026-08-31，迁移 000017） |
 | `docs/modules/middleware.md:169` | AKSK 中间件标「⏳ Phase 3b/按需」 | 内部 aksk 已全面落地（utils v0.4.0 四仓齐平） |
-| `docs/review/11-project-control.md` §4 迁移地图 | 附件迁移号标「现 **000026**」 | 000026 已被 `job_submissions_claimed_at` 占用，附件实际下一号 000030 |
+| `docs/review/11-project-control.md` §4 迁移地图 | 附件迁移号标「现 **000026**」 | 000026 已被 `job_submissions_claimed_at` 占用，附件实际下一号 ~~000030~~ **000032（十二批勘误：W1 已占 000030/31 两连号）** |
 
 > 顺手修正建议：上述四行可在 Phase 4 首个文档批一并回标（归 §2.4 文档治理）。
 
@@ -209,7 +209,7 @@
 ## 7. 规划口径建议（定计划时使用）
 
 1. **主轴拍板**：五选一主动线（建议①）+ 穿插线（建议④）+ 信号线（②③被动插入）+ 挂起线（⑤不动）。
-2. **三态标注**：雷达表逐项标「主动做/持续监听/明确不做」，杜绝「暂缓≠搁置」歧义（11 §8 在线用户管理面先例）。
+2. **三态标注**：雷达表逐项标「主动做/持续监听/明确不做」（**三态落位见 [02 号 §3](./02-implementation-plan.md)——本表信号组 A–E 是信号→动作索引不带三态列，十一批措辞勘误**），杜绝「暂缓≠搁置」歧义（11 §8 在线用户管理面先例）。
 3. **编号分配**：Phase 4 新立项启用新 namespace（现有 W/IW/BK/AB/F/C/U/RT 已占用）；迁移从 **000030** 起取号，附件若先启动按 A2 规则（谁先启动谁占用，后者整体重排）。
 4. **启动批建议**：§4 四个一次性拍板项 + code-review P2-14 一颗雷（P2-2 已修）+ §8.1 登记链断裂三项定性，合计 ≤2 天，可作为 Phase 4 W0。
 5. **门禁纪律不变**：每批次跑全四档 acceptance + 全门禁绿后提交（AGENTS.md 口径）。
