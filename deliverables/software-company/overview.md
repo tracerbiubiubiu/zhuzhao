@@ -101,7 +101,7 @@
 - **执行披露**：派出 4 名并行审查员，**3 名因网络中断失败**（502 ECONNRESET：可观测性/安全/契约）→ 失败维度由主理人自行补做，**报告不使用任何失败审查员产出**。检索一律用专用工具（本机 BSD `grep` 静默失配本轮又踩 3 次）。
 - **结论**：主面（安全内核/并发/契约门禁）实测**均已在位**；新发现 **7 项未登记真空 + 1 项过程性风险**。
   - **P1 × 1**：回调幂等栅栏无租约续期/无执行时长上限 → **长任务（`audit_archive` 会循环至积压清空）超 10 分钟后可被并发重认领并双执行**；服务端 `WriteTimeout=60s` 使长任务回调重试成为必然。fence 只保状态不保副作用，"Handler 可重入"是未文档化的隐式契约。
-  - **P2 × 6**：在线迁移（DDL 锁）维度整体缺失（49 个 `CREATE INDEX` 全非 `CONCURRENTLY`，docs 零处提及）；`policy_evaluation_logs` 零索引；CI 只跑单测且活跃分支 `phase4` 不在触发列表；覆盖率口径失真（18.7%，不含 integration）且无阈值；审计写入失败仅 `slog.Error`（无重试/指标/告警，"告警"与"审计可用性"未登记）；`golangci-lint` 增强项仅存于 review/08（登记链断裂第 4 例）。
+  - **P2 × 6**：在线迁移（DDL 锁）维度整体缺失（49 个 `CREATE INDEX` 全非 `CONCURRENTLY`，docs 零处提及）；~~`policy_evaluation_logs` 零索引~~（**经核验为误报**：000020 实有 created_at/actor/trace 三索引，处置见 phase4/02 §5.5 行 25⑥）；CI 只跑单测且活跃分支 `phase4` 不在触发列表；覆盖率口径失真（18.7%，不含 integration）且无阈值；审计写入失败仅 `slog.Error`（无重试/指标/告警，"告警"与"审计可用性"未登记）；`golangci-lint` 增强项仅存于 review/08（登记链断裂第 4 例）。
   - **过程性风险**：`25bda2e` **静默回退了 `eab4535` 的虚标勘误**（`design-decisions` §9.4/§12/§13.6 + `phase2/09-ticket.md:515` 的幻影 `hooks.go`），提交信息未披露 → 同一类声明跨文件自相矛盾（standards/11-authz 仍有勘误）。**需所有者定性"有意/误覆盖"**。
 - **关键文件**：`deliverables/software-company/zhuzhao-blind-spots-2026-09-22.md`（含逐条 `file:line` 证据、复核在位表、处置顺序）。
 - **只读**：未修改任何代码或文档。

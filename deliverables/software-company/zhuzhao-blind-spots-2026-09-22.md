@@ -63,9 +63,11 @@
 - 另有数据治理细节：000028 的**去重软删不可逆**（down 不复活），且迁移本身不产出"将影响多少行"的预检报告。
 - 建议：① 迁移规范补一条"大表索引改 `CONCURRENTLY`（并注意其不可在事务内执行的约束）"；② 加"迁移前预检行数/锁时间"的运行手册条目；③ 明确迁移执行窗口（停机 vs 在线）。
 
-### B-3【P2】`policy_evaluation_logs` 零索引
+### B-3【~~P2~~ 误报】`policy_evaluation_logs` ~~零索引~~
 
-- 事实：该表定义（`migrations/000020_policy_eval_request_id.up.sql`）**除主键外无任何索引**——没有 `created_at`、`trace_id`、`actor_id`、`resource_type` 索引（对照：`audit_logs` 有 `idx_audit_logs_created`（000009:26），`ticket_events` 有 `(ticket_id, created_at)`（000010:81）——**唯独这张表没有**）。
+> ⚠ 2026-09-22 核验勘误：**误报**——000020:20-22 实有三个索引（idx_pel_created(created_at)/idx_pel_actor_created(actor_id,created_at DESC)/idx_pel_trace(trace_id) 部分索引），「零索引」与文件内容相反（检索工具失真）；处置见 phase4/02 §5.5 行 25⑥
+
+- ~~事实：该表定义（`migrations/000020_policy_eval_request_id.up.sql`）**除主键外无任何索引**~~（⚠ 2026-09-22 核验勘误：**误报**——000020:20-22 实有三个索引（idx_pel_created(created_at)/idx_pel_actor_created(actor_id,created_at DESC)/idx_pel_trace(trace_id) 部分索引），「零索引」与文件内容相反（检索工具失真）；处置见 phase4/02 §5.5 行 25⑥——对照项 audit_logs/ticket_events 的索引结论不受影响）（对照：`audit_logs` 有 `idx_audit_logs_created`（000009:26），`ticket_events` 有 `(ticket_id, created_at)`（000010:81）——**唯独这张表没有**）。
 - 写入量级：该表是 L2 判定日志，**每次 L2 判定一行**（`audit_log_repo.go:147` `InsertPolicyEvals`，批量 200/次），是增长最快的一张表之一；且已配 180 天归档任务在扫它（`audit_archive.go:91`）。
 - 影响：按 `request_id`（`trace_id`）反查——**这正是 request_id 全链贯通的设计意图**（`internal/pkg/reqid/reqid.go:3` 明确"同键"）——以及任何时间范围查询都退化为**全表扫描**；归档批查询 `WHERE created_at < ?` 同样无索引支撑。
 - 建议：至少补 `(created_at)`（归档/时间查询）与 `(trace_id)`（跨表按 request_id 反查）；如需按人审计再加 `(actor_id, created_at)`。
@@ -142,7 +144,7 @@
 1. **B-1**（P1）：先补一条"长任务 + 并发重试"集成测试复现窗口，再按 a/c 任一闭合（1 天级）。
 2. **B-6 + B-7**：两项都是"登记一笔 + 小幅实施"，可与 phase4/00 §4 一次性拍板项同批（半天级）。
 3. **B-4 + B-5**：CI 触发分支与 integration 作业、覆盖率双档（半天级，收益面广）。
-4. **B-3**：补 2 个索引迁移（下次迁移取号 000030 之后，注意 B-2 的 `CONCURRENTLY` 规范同批定）。
+4. ~~**B-3**~~（误报，无索引可补——见节首勘误）；B-2 的 `CONCURRENTLY` 规范仍成立。
 5. **B-2**：规范级（迁移编写规范 + 运行手册），文档改动为主。
 6. **§3 过程性风险**：需所有者先定性"有意/误覆盖"，再决定恢复或改形态。
 
