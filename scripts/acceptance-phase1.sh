@@ -92,7 +92,8 @@ check "#6 refresh" "0" "$(echo "$NR" | json_code)"
 SAT2=$(echo "$NR" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 SRT2=$(echo "$NR" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refresh_token'])")
 
-check "#7 logout" "0" "$(curl -s -X POST "$BASE/auth/logout" -H "Authorization: Bearer $SAT2" -H 'Content-Type: application/json' -d '{}' | json_code)"
+# W0b：logout device_id 必填（空值曾误删 default 槽）——SAT2 登录未带 device（=default 槽），显式传 default 对齐
+check "#7 logout" "0" "$(curl -s -X POST "$BASE/auth/logout" -H "Authorization: Bearer $SAT2" -H 'Content-Type: application/json' -d '{"device_id":"default"}' | json_code)"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $SAT2")
 check "#8 post-logout http" "401" "$HC"
 

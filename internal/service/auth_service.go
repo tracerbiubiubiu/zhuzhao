@@ -221,8 +221,15 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 	if err != nil {
 		return errcode.ErrTokenInvalid
 	}
+	// W0b（二十四批登出槽）：device_id 必填——空值曾静默归一 "default" 槽，
+	// 误删 default 会话而真实设备 RT 残留（最长 168h）。AT claims 无 DeviceID
+	// 可用（AccessClaims 仅 uid/username/jti/mcp/typ），故从请求体收紧；
+	// 前端契约（01 §6）已承诺登录/登出/改密三处同源，零前端改动。
+	if deviceID == "" {
+		return errcode.ErrInvalidParams
+	}
 	// D2-22：device_id 白名单（与 Login 对齐）
-	if deviceID != "" && !validDeviceID(deviceID) {
+	if !validDeviceID(deviceID) {
 		return errcode.ErrInvalidParams
 	}
 

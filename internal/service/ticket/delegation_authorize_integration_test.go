@@ -279,7 +279,7 @@ func TestD9_ConcurrentDoubleClose(t *testing.T) {
 
 // W0b（二十四批 P0-②侧信道）：不可见工单不得经 409 泄露存在性——
 // actor 对目标无 update 可见性时，即使两单间已存在关联也须先走鉴权返回 404+90001
-//（防枚举语义），而非命中查重 409。修复前顺序=先 ExistsRelationBetween 后鉴权。
+// （防枚举语义），而非命中查重 409。修复前顺序=先 ExistsRelationBetween 后鉴权。
 func TestD9_CreateRelationSideChannel(t *testing.T) {
 	env := setupD9(t)
 	ctx := context.Background()
