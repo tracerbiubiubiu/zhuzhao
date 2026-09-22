@@ -138,6 +138,12 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
 		return err
 	}
+	// W0a-P0-3：scope=all 仅全局管理员可授——与 SetMemberScope 同一纪律（04 §4.2）。
+	// 缺此守卫时 owner 可经 AddMember 的 ON CONFLICT 覆盖分支把成员抬成 all
+	//（AllScope 旁路整个 L2），绕过 BK-14 的全局档限制。
+	if req.TicketScope == "all" && !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		return errcode.ErrNoPermission
+	}
 	if role == "admin" {
 		// 指定 admin 需 owner 档（admin 调用 → 50008，04 §3.4）
 		p, err := s.delegation.EffectiveOrgPriority(ctx, actorUserID, req.OrgID)

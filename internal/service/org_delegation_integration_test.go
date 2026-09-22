@@ -260,6 +260,34 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrNoPermission)
 }
 
+// W0a-P0-3 守护：AddMember 的 ticket_scope=all 仅全局管理员可授——与 SetMemberScope
+// 同一纪律（04 §4.2）。修复前 owner 可经 ON CONFLICT 覆盖分支把任意成员（含自己）
+// 抬成 all（AllScope 旁路整个 L2）。
+func TestDelegation_AddMemberScopeAllGuard(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	var u1, u2 int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2csa_%s', 'hash', 'E2CSA%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&u1))
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2csb_%s', 'hash', 'E2CSB%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&u2))
+
+	// owner 加人并授 scope=all → 70001（越权：all 仅全局管理员）
+	err = env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u1, TicketScope: "all"}, env.owner)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+
+	// owner 授常规档（group）→ 200
+	require.NoError(t, env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u1, TicketScope: "group"}, env.owner))
+
+	// 全局管理员授 all → 200
+	require.NoError(t, env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u2, TicketScope: "all"}, env.super))
+}
+
 // P0 回归：RemoveMember 移除 owner 后，owner_user_ids 同步清理且残留权限失效
 func TestDelegation_RemoveOwnerCleansOwnerUserIDs(t *testing.T) {
 	env := setupDelegation(t)
