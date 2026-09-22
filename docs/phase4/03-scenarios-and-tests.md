@@ -37,7 +37,7 @@
 
 | # | 场景 | 走查要点 | 约束/坑 |
 |---|------|----------|---------|
-| S13 | 任务中心（页内 Tab） | 提交（callback_url 必填、params ≤64KB、timeout 0/1–86400）；**取消仅 pending 可用（否则 409）、重试仅 failed/dead 可用**——按钮禁用态按 status 渲染（task_service.go:290-379）；runs 筛选=request_id/action/status/job_id/dept[]/from/to(RFC3339) | **⚠ 新发现：死信列表 `{list,page_size}` 无 total（asynq 游标拿不到总数）**——死信 Tab 也是无 total 形态（01 §5 cursor UI 形态适用面扩大到 taskrunner 死信）；死信行不带 request_id/job_id，详情需按 task_id 二次查；**jobs 无 DELETE**（任务定义页无删除按钮）；trigger 对 enabled=false 报 409 |
+| S13 | 任务中心（页内 Tab） | 提交（params ≤64KB、timeout 0/1–86400；**callback_url 随 W0 拒收——前端一律不传，传非空 400，十八批对齐**）；**取消仅 pending 可用（否则 409）、重试仅 failed/dead 可用**——按钮禁用态按 status 渲染（task_service.go:290-379）；runs 筛选=request_id/action/status/job_id/dept[]/from/to(RFC3339) | **⚠ 新发现：死信列表 `{list,page_size}` 无 total（asynq 游标拿不到总数）**——死信 Tab 也是无 total 形态（01 §5 cursor UI 形态适用面扩大到 taskrunner 死信）；死信行不带 request_id/job_id，详情需按 task_id 二次查；**jobs 无 DELETE**（任务定义页无删除按钮）；trigger 对 enabled=false 报 409 |
 | S14 | 名单页 | types/data 两页；data 行=schema-less JSONB（列渲染按 Definition.fields：name/type/required/sensitive）；**软删=status 两态（无 deleted_at），列表默认排除软删行**；restore 幂等；**deprecate 不可逆**（UI 须危险确认：废弃后名称永久保留、拒演进/插入、存量可查可导出） | cursor 分页（无 total 上一页/下一页）；**导入硬上限双约束：1GiB 字节 + 30s ReadTimeout**（前端大文件须提示分批/联系管理员调参）；导出=裸 JSON 数组 blob 旁路 |
 | S15 | 审计查询 | 过滤=path/user_id/employee_no/start/end（日期 `2006-01-02`，start>end 400）；**无 method/status_code/keyword 过滤** | 审计列=id/username/method/path/status_code/duration_ms/ip/user_agent/request_body/request_id/created_at |
 

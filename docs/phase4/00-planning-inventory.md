@@ -137,7 +137,7 @@
 | 强制下线/会话审计诉求 或 M-SSO 多端会话 | 在线用户管理面（原语全现成；基础版 0.5–1 天，按设备精确强退 +1 天） | 11 §8 |
 | 浏览器端大文件导入 | per-前缀 body 上限 | 16 号 |
 | 外部 M2M 调用方出现 | 密钥管理面（与 PAT 合并规划） | 09/16 号 |
-| 第三方系统需接任务回调（外部 callback 诉求） | **决策树（2026-09-22 业界对照+十七批补第 0 档）**：**⓪内部新服务（最先命中）=taskrunner 配置 action→base URL 映射，调用方只传 action——不是 code，注册表只给管理员登记外部 HTTPS 用**；①**拉模式首选倾向**——外部持 PAT（P4-6）轮询 GET /tasks/:id 或事件查询，零新增出站面、复用三层鉴权（Stripe/GitHub webhook+polling 双通道惯例）；②必须实时+消费方可控 → 预注册 code 模式（代号→注册表映射 URL）；③消费方自带任意 URL → egress proxy 沙箱（Stripe Smokescreen 形态：DNS 解析后校验 IP 非链路本地/私有/metadata 段，防 rebinding）；④网络层出站控制（K8s NetworkPolicy/egress gateway，随部署决策清单）——W0 SSRF 修复后 callback 一律服务端定（用户级 URL 已拒），外部需求出现才开此面 | 02 §2-W0/十六批 |
+| 第三方系统需接任务回调（外部 callback 诉求） | **决策树（2026-09-22 业界对照+十七批补第 0 档）**：**⓪内部新服务（最先命中）=taskrunner 配置 action→base URL 映射，调用方只传 action——不是 code，注册表只给管理员登记外部 HTTPS 用**；①**拉模式首选倾向**——外部持 PAT（P4-6）轮询 GET /tasks/:id 或事件查询，零新增出站面、复用三层鉴权（Stripe/GitHub webhook+polling 双通道惯例）；②必须实时+消费方可控 → 预注册 code 模式（代号→注册表映射 URL）；③消费方自带任意 URL → egress proxy 沙箱（Stripe Smokescreen 形态：DNS 解析后校验 IP 非链路本地/私有/metadata 段，防 rebinding）；④网络层出站控制（K8s NetworkPolicy/egress gateway，随部署决策清单）——W0 SSRF 修复后 callback 一律服务端定（用户级 URL 已拒），外部需求出现才开此面；**两条设计约束（2026-09-22 十八批补）：不做 push+pull 双执行引擎（拉模式=读 API 消费方式，非第二套执行器——防「zhuzhao 再轮询 taskrunner 做 handler」误解）；将来外部 webhook payload=通知型（task_id/status/run_id），业务细节以 GET 详情为准、webhook 不当 RPC（SaaS 事件模型惯例）** | 02 §2-W0/十六批 |
 | 非幂等敏感写场景 | nonce 单次校验 | 16 号 |
 | 跨部门隔离管控/任务参数敏感化 | E-⑤ 部门可见性策略表 | 16 号 |
 | 启用终败通知 | E-⑥ 端点 | 16 号 |
