@@ -2,7 +2,7 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> 更新日期：**2026-09-11**（**审查修正批，doc-only**：① 3 条确认不一致已修——§1 回调路径改 `/internal/jobs/callback`、§3 去掉 ticket 元数据「只读」标注、`standards.md §4` 健康检查按主/子服务区分；② 失效代码路径与死链治理（utils 抽取遗留路径回改等）；③ 规模数字校准 + builtin 状态改「库就绪待接线」）｜ 分支：`feature/phase-3`（最近一次全量门禁复验 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：**2026-09-22**（**Phase 4 规划批最小回填（doc-only，十九批治理）**：① Phase 4 规划定稿——[phase4/01 前端设计](../phase4/01-frontend-design.md)/[02 实施计划](../phase4/02-implementation-plan.md)/[03 场景与测试矩阵](../phase4/03-scenarios-and-tests.md)（主轴①前端+④穿插，P4-W0..W5+P4-9+穿插池，十九轮校验收敛）；② 十六批安全审计登记（SSRF/CreateRelation 侧信道/登出槽/gateway 弱 SK→W0 安全小批；工单并发→W4；FireDue 互斥挂多实例线）；③ 虚标勘误四处（M-HR HRFetcher/TicketHooks/ResourceAuthorizer/workflow 工件——见 phase4/00 §6 与各文件就地勘误）；④ 迁移号谱系更新（§4 迁移地图：W1 占 000030/31，000032/33=P4-2/IW2 待占位）；⑤ 本文件 §6 TC1 行回标（A7 已完成）｜ 分支：`phase4`（Phase 4 规划期，未动代码——最近全量门禁复验仍为 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-09-10 文档批次：四仓文档对账同步批（doc-only）。
 > 2026-09-20 文档批次（doc-only）：① 工单类型级可见性策略设计输入落档（10 号新增 §10 = S1 设计+四铁律+演进阶梯 T0–T7；11-authz §5 触发表补行 #7 + 中间档位说明；12-frontend 补 §3.6 配置页规格——均随 §23 翻案批取用，不驱动当前开发）；② Phase 4 规划素材盘点起步（新建 `phase4/00-planning-inventory.md`：85 登记点归五主轴+触发信号雷达表+能力对标检查补录 §8），本文件 §7 导航树补 phase4 行。
 > 2026-09-02 文档批次：Phase 3 待编写文档（03/06/07/08/09）全部补齐 + 13-implementation-plan 建档 + ops/deployment.md（B10）补齐（doc-only，未动代码/门禁）。
@@ -125,7 +125,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000028 | ticket_relations_normalized：规范化对部分唯一索引（P1-2，并发审查批次；先软删历史双向重复行再建唯一索引，DB 兜底反向判重） | 并发批次 |
 | 000029 | ticket_relations_source_index：补 source 前导部分索引（R4，第二轮审查——000028 规范化删除方向索引后，OR 谓词与 ListRelations source 臂退化顺序扫描） | 批次 8 |
 
-> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000029 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，000026–000028 = 并发审查批次，000029 = 批次 8 R4 索引回补，下一编号 **000030**）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000029 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，000026–000028 = 并发审查批次，000029 = 批次 8 R4 索引回补，~~下一编号 000030~~ **Phase 4 占用谱系（2026-09-22 更新）：P4-W1 占 000030（BK-18 整改）+000031（词表重排）两连号，000032/000033=P4-2 通知与 IW2 附件待占位（A2 裁定），下一空闲 000034**）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
 ---
 
@@ -158,7 +158,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | MC3 | IsAncestorOwner 未用 ticketOrgPath | ✅ **已修复** |
 | P0 | RemoveMember 不清理 owner_user_ids | ✅ **已修复**（owner 三处同步清理） |
 | **HC1** | Comment/Note 不写 ticket_events（无审计事件） | ✅ **已修复（2026-08-31，A4）**：CreateComment/CreateNote 事务化并同事务写 comment/note 事件；TestHC1_CommentNoteWriteEvents |
-| **TC1** | delete 成功路径断言 | 🟡 **脚本层已覆盖**（2c 脚本 SAT 建单→删→GET 404）+ 委托删有 Go 测试（vg owner/vg admin/ancestor owner）；**Go 层全局 admin 删单成功测试仍缺** → 11 §8 A7 |
+| **TC1** | delete 成功路径断言 | ✅ **已闭环（2026-08-31 A7，本行 2026-09-22 回标）**：`TestTicket_Delete_AdminSucceeds` 已入集成基线（此前「Go 层仍缺」表述与 §8 A7 已完成状态同文件矛盾——十九批治理修正） |
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
@@ -189,7 +189,7 @@ docs/
 ├── design/        # 为什么这样设计（决策与权衡）
 ├── proposal/      # 具体方案是什么
 ├── modules/       # 模块完整设计（跨阶段）
-├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；phase4 = 规划素材盘点起步，见 phase4/00）
+├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；**phase4 = 规划定稿待开工**：00 盘点/01 前端设计/02 实施计划/03 场景与测试矩阵，2026-09-22 十九轮校验收敛）
 ├── roadmap.md     # 三阶段总览
 ├── adr/           # 架构决策（001 L1 事件 / 002 Asynq / 003 activelist）
 └── review/        # 验证报告（本文件 = 能力总览，01-10 = 历史 review）

@@ -735,8 +735,6 @@ func (r *TicketResource) Authorize(ctx, req) (bool, error) {
 
 ### 9.4 代码预留
 
-> ⚠ 2026-09-22 虚标审计勘误：算法切换构造器（NewHS256Manager/NewRS256Manager/method 字段）未落码——实况=utils jwt.Manager 仅 HS256 硬编码；**pin 算法防 key-confusion 属实**（验签强制 HMAC）。RS256/JWKS 维持 roadmap 预留条件触发。
-
 JWT Manager 接口设计支持算法切换：
 
 ```go
@@ -769,7 +767,7 @@ func NewRS256Manager(privateKey *rsa.PrivateKey) *JWTManager {
 1. **Phase 1 用 HS256**——单体场景最简方案，secret 存环境变量
 2. **Phase 3 切换 RS256**——拆服务时必须切换，公钥通过 JWKS 分发
 3. **显式 pin 算法**——验签时强制校验 `alg` 字段，防 key-confusion
-4. ~~**接口预留**——JWTManager 设计时支持算法切换，切换时只改构造函数~~（⚠ 2026-09-22 虚标审计勘误：未落码，见节首勘误）
+4. **接口预留**——JWTManager 设计时支持算法切换，切换时只改构造函数
 
 ---
 
@@ -971,8 +969,7 @@ group:engineering —member—→ user:bob
 Phase 1 的代码设计为未来迁移预留：
 
 ```go
-// ⚠ 2026-09-22 虚标审计勘误：本接口未落码——全仓无 ResourceAuthorizer；实际接缝 = internal/pkg/resource/registry.go 的 Resource(Authorize/GetFilter)+Registry（Phase 2+）
-// ~~Phase 1：接口定义~~（示意稿）
+// Phase 1：接口定义
 type ResourceAuthorizer interface {
     Check(ctx context.Context, userID, resType, resID, action string) (bool, error)
     ListFilter(ctx context.Context, userID, resType, action string) (sql.Filter, error)
@@ -1047,8 +1044,6 @@ API Gateway（Gin + gRPC-Gateway）
 | 数据复制 | 事件驱动 CQRS | IAM 发布 `user.role.changed`，业务服务订阅维护本地副本 |
 
 ### 13.6 Phase 1 代码预留
-
-> ⚠ 2026-09-22 虚标审计勘误：`UserQueryService` 接口未落码（全仓零命中）；且本节 gRPC 方向已被 2026-09-03 拍板（HTTP+JSON，gRPC 不引入，standards §2）覆盖——以下为历史设计稿。
 
 ```go
 // Phase 1：接口定义（未来可替换为 gRPC client）
@@ -1407,6 +1402,15 @@ type remoteUserQueryService struct {
 > 引用注记（2026-09-09）：11-authz §5 触发表源表无编号列，本文 #N 均为行序引用；本墙信号横跨 #1（跨资源关系链）与 #5（统一 PDP/语义漂移）两条——原仅标 #5 系引用不完整，已补 #1 并改为名称引用。若后续对触发表增删行，须同步核对 §26.3（#3）与本表引用。
 
 **结论**：到「星型拓扑 + 单信任域 + ≤10 服务 + 每服务行级自治」整段，现设计**就是终态形态本身**（权限平面分工/注册协议/服务基线自 §25 定版起按终态规格施工），不存在中途推翻断层；四墙各有信号与预制件，无提前拆墙项。
+
+### 26.6 任务回调与外部集成口径（2026-09-22 所有者拍板，Phase 4 十七/十八批）
+
+**一句话**：内部仅服务端定址 push（W0 拒用户级 callback_url）；外部集成 poll-first（读 API+PAT）；登记式 code webhook 与 egress 按触发；不实现 push+pull 双执行引擎。
+
+- **内部执行单路径**：taskrunner 完成后 POST 服务端配置的固定回调（zhuzhao self_base_url+/internal/jobs/callback，action 分发）；两仓四口（zhuzhao Submit / taskrunner POST tasks·POST jobs·PATCH jobs）不再接受 callback_url，传非空即 400（fail-fast——忽略会让调用方以为地址生效）；jobs 列保留、运行时读侧覆盖为配置地址。与 K8s Job/Airflow 同构：编排器与执行器同信任域，不靠提交参数 URL 收尾。
+- **外部五档决策树**（00 号雷达 ⓪–④）：⓪内部新服务=配置 action→base URL 映射（非 code）；①拉模式首选（PAT+GET task/runs——读 API 即消费方式，零新增出站）；②code 预注册（必须实时+URL 可登记才做，payload=通知型 task_id/status/run_id、业务细节走 GET，webhook 不当 RPC）；③egress proxy 沙箱（Smokescreen 形态）；④网络层出站控制。
+- **与 §16 号 E 线关系**：「执行结果只经查询接口获取，不对外推送」=不对业务方随意 POST，不取消内部 callback；回调 at-least-once+幂等在 zhuzhao（单路径更易保证）。
+- **任务读范围**：共享作业队列（task:read=全量，viewer 保留）；「只看我提交的」=UI 筛选（仅 ListRuns 加 submitted_by）非权限裁剪。
 
 ### 26.5 配套登记（2026-09-08）
 
