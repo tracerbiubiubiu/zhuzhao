@@ -21,31 +21,31 @@
 | S4 | 角色管理+AssignMenus | 勾选树 **el-tree check-strictly=true**（B 案前提）；「viewer 只读/operator 读写」推荐预设写进页面文档 | AssignMenus 替换语义——重存会按当前勾选全量重算 casbin（intent-preserving 已防旧角色降权） |
 | S5 | 菜单管理（只读树） | W1 后无写接口，纯展示+角色分配入口 | — |
 | S6 | 组织管理（admin 面） | 树 CRUD/move/`ticket_visibility`（**仅 update 表单、仅实体组可配**，虚拟组 400）；子节点/成员占用预检 | org 删除守卫不查 org_roles（已知残留，读侧已挡） |
-| S7 | 我的组织（owner 面，静态路由） | **⚠ 本轮新发现：现成员列表响应是裸 `model.User`，不含组内角色（owner/admin/member）与 ticket_scope 字段**（org_request.go:82-88）——「我的组织」页要展示「组内角色」列拿不到数据 | **W3 新增的名册端点必须返回 org_member_role+ticket_scope**（已回写 02 §2-W3） |
+| S7 | 我的组织（owner 面，静态路由）——**⚠ W3 阻塞项：SelfService 名册端点尚未实现（路由不存在，W3 前端依赖 0.5d 后端先交付，02 §2-W3 已挂）** | **⚠ 本轮新发现：现成员列表响应是裸 `model.User`，不含组内角色（owner/admin/member）与 ticket_scope 字段**（org_request.go:82-88）——「我的组织」页要展示「组内角色」列拿不到数据 | **W3 新增的名册端点必须返回 org_member_role+ticket_scope**（已回写 02 §2-W3） |
 
 ## 3. 工单场景（S8–S12，operator 为主）
 
 | # | 场景 | 走查要点 | 约束/坑 |
 |---|------|----------|---------|
-| S8 | 工单发起 | form-create 渲染 `GET /ticket-types/:code/fields` schema（**4 元数据 GET 双页绑定保 operator 可拉**——十二批红线）；priority 1–4 越界 400 | 模板卡片消费 `GET /ticket-templates` |
+| S8 | 工单发起 | form-create 渲染 `GET /ticket-types/:code/fields` schema（**4 元数据 GET 双页绑定保 operator 可拉**——十二批红线）；priority 1–4 越界 400；**G2 服务端校验（regex/必填）的 400 message 回填挂到对应表单项+设计器 validate_regex 与 form-create rules 对齐客户端预检（二十三批）** | 模板卡片消费 `GET /ticket-templates` |
 | S9 | 工单列表 | 过滤仅 `type_code/status/priority`（**无 keyword/日期/org**）；**⚠ 新发现：`assigned_to/created_by` 是裸用户 ID 且无批量用户名反查端点**——「处理人」列需 N+1 `GET /users/:id` | **W4 后端随批件：工单列表响应回填处理人/创建人姓名（或加批量反查端点，二选一）**（已回写 02 §2-W4） |
-| S10 | 工单详情 | 评论公开/备注内部（**内部备注仅创建人/处理人/admin 可见**，service.go:493-509 服务端过滤，前端同权限分层渲染）；关联正反向判重 409/自关联 400 | Close/Assign 成功**返回 OK(c,nil) 无 body**——前端靠 query invalidation 刷新，勿依赖响应体 |
+| S10 | 工单详情 | 评论公开/备注内部（**内部备注仅创建人/处理人/admin 可见**，service.go:493-509 服务端过滤，前端同权限分层渲染）；关联正反向判重 409/自关联 400；**评论作者=裸 user_id——展示策略随 W4 姓名回填批扩展到 comments 或接受单次批量查询（勿 N+1 逐条）；勿规划「完整事件轴」——ticket_events 无读 API（P4-2 消费面未建），详情=评论/备注+状态字段（二十三批）** | Close/Assign 成功**返回 OK(c,nil) 无 body**——前端靠 query invalidation 刷新，勿依赖响应体 |
 | S11 | 工单处理 | 动作=assign（open→assigned/取消分派→open）/close（过状态机，非法转换 400+90002；已关 409+90004）/update（closed 拒 409）；**in_progress/pending_verify/rejected 三态经 API 不可达**（B3 端点在翻案线）——状态筛选下拉可列 6 态，流转按钮只有分派/取消/关闭 | 状态机从 ticket_types.transitions JSONB 构建，**前端勿写死转换图**（类型可配） |
-| S12 | 类型配置三件套 | W1 整改后全 POST（update/delete/fields/replace 五路径对照在 02 §2-W1）；写端点挂 `ticket_type_write_btn` | ticket_type_manage 页 B 后=4 共享 GET（绑页=导航+元数据读，写须绑按钮） |
+| S12 | 类型配置三件套 |（**fields 替换端点为全量替换语义——保存前危险确认弹窗，二十三批**） W1 整改后全 POST（update/delete/fields/replace 五路径对照在 02 §2-W1）；写端点挂 `ticket_type_write_btn` | ticket_type_manage 页 B 后=4 共享 GET（绑页=导航+元数据读，写须绑按钮） |
 
 ## 4. 任务/名单/审计场景（S13–S15）
 
 | # | 场景 | 走查要点 | 约束/坑 |
 |---|------|----------|---------|
-| S13 | 任务中心（页内 Tab） | 提交（params ≤64KB、timeout 0/1–86400；**callback_url 随 W0 拒收——前端一律不传，传非空 400，十八批对齐**）；**取消仅 pending 可用（否则 409）、重试仅 failed/dead 可用**——按钮禁用态按 status 渲染（task_service.go:290-379）；runs 筛选=request_id/action/status/job_id/dept[]/from/to(RFC3339) | **⚠ 新发现：死信列表 `{list,page_size}` 无 total（asynq 游标拿不到总数）**——死信 Tab 也是无 total 形态（01 §5 cursor UI 形态适用面扩大到 taskrunner 死信）；死信行不带 request_id/job_id，详情需按 task_id 二次查；**jobs 无 DELETE**（任务定义页无删除按钮）；trigger 对 enabled=false 报 409 |
-| S14 | 名单页 | types/data 两页；data 行=schema-less JSONB（列渲染按 Definition.fields：name/type/required/sensitive）；**软删=status 两态（无 deleted_at），列表默认排除软删行**；restore 幂等；**deprecate 不可逆**（UI 须危险确认：废弃后名称永久保留、拒演进/插入、存量可查可导出） | cursor 分页（无 total 上一页/下一页）；**导入硬上限双约束：1GiB 字节 + 30s ReadTimeout**（前端大文件须提示分批/联系管理员调参）；导出=裸 JSON 数组 blob 旁路 |
-| S15 | 审计查询 | 过滤=path/user_id/employee_no/start/end（日期 `2006-01-02`，start>end 400）；**无 method/status_code/keyword 过滤** | 审计列=id/username/method/path/status_code/duration_ms/ip/user_agent/request_body/request_id/created_at |
+| S13 | 任务中心（页内 Tab） | 提交（params ≤64KB、timeout 0/1–86400；**callback_url 随 W0 拒收——前端一律不传，传非空 400，十八批对齐**；**optional dept（组织 code 标签）：首版不传、列表不按部门筛——写死，待真实诉求再开下拉（二十三批）**；**jobs 定义 Tab 按 `task:manage` 显隐——operator（无 manage）不见该 Tab，勿打开满屏 403**）；**取消仅 pending 可用（否则 409）、重试仅 failed/dead 可用**——按钮禁用态按 status 渲染（task_service.go:290-379）；runs 筛选=request_id/action/status/job_id/dept[]/from/to(RFC3339) | **⚠ 新发现：死信列表 `{list,page_size}` 无 total（asynq 游标拿不到总数）**——死信 Tab 也是无 total 形态（01 §5 cursor UI 形态适用面扩大到 taskrunner 死信）；死信行不带 request_id/job_id，详情需按 task_id 二次查；**jobs 无 DELETE**（任务定义页无删除按钮）；trigger 对 enabled=false 报 409 |
+| S14 | 名单页 | types/data 两页；data 行=schema-less JSONB（列渲染按 Definition.fields：name/type/required/sensitive——**sensitive=true 列脱敏展示（掩码），二十三批**）；**软删=status 两态（无 deleted_at），列表默认排除软删行**；restore 幂等；**deprecate 不可逆**（UI 须危险确认：废弃后名称永久保留、拒演进/插入、存量可查可导出） | cursor 分页（无 total 上一页/下一页）；**导入硬上限双约束：1GiB 字节 + 30s ReadTimeout**（前端大文件须提示分批/联系管理员调参）；导出=裸 JSON 数组 blob 旁路 |
+| S15 | 审计查询 | 过滤=path/user_id/employee_no/start/end（日期 `2006-01-02`，start>end 400）；**无 method/status_code/keyword 过滤**；**request_body 列默认折叠/截断展开（可能含敏感输入，合规观感，二十三批）** | 审计列=id/username/method/path/status_code/duration_ms/ip/user_agent/request_body/request_id/created_at |
 
 ## 5. 会话边界场景（S16–S18）
 
 | # | 场景 | 走查要点 |
 |---|------|----------|
-| S16 | 会话边界 | 401 分码（20002 过期→静默刷新 / 20003 无效→跳登录）；5xx（503+10008）**不清会话**拒绝挂起提示重试；账号锁定=**429**（勿入 401 分支）；多标签登出 BroadcastChannel 主动同步；刷新失败码族 20004/20014/20015 |
+| S16 | 会话边界 | 401 分码（20002 过期→静默刷新 / 20003 无效→跳登录）；5xx（503+10008）**不清会话**拒绝挂起提示重试；429 双语义（二十三批）：**20006=账号锁定**（登录页文案）/ **10007=全局限流**（通用「请求过于频繁」+可选读 Retry-After 倒计时）——拦截器按 body.code 分流，勿都当账号锁定；多标签登出 BroadcastChannel 主动同步；刷新失败码族 20004/20014/20015 |
 
 > **十六批安全审计补充（2026-09-22）**：S13 口径已拍（2026-09-22）：共享队列全可见+「只看我提交的」筛选（W5 随批 submitted_by 过滤）；S1 登出链路修复后补负向断言（空 device_id 登出=400）；SSRF 修复后 Submit 恶意 callback_url=400 负向测试归 W0。
 | S17 | viewer 只读（FE3） | 运行时绑 ticket_list 页 **+ticket_read_btn 读按钮（十四批：详情静态路由入口按 `button:ticket:read` 放行，只勾页面进不了详情）** → GET /tickets=200 且 POST=403（T7 反转断言）；管理面+审计菜单不可见 |
