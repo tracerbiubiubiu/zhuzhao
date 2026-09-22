@@ -8,7 +8,7 @@
 |---|---|---|
 | **M-E 事件/任务总线（taskrunner）** | ✅ 全收官 | zhuzhao 侧 E-①–E-⑦ 全实施；taskrunner 独立仓交付（PG 形态/容器化/AK-SK 验签/cronloop）；回调链全环实机贯通（提交→验签→执行→幂等栅栏→audit_archive→双库 succeeded）；audit_archive 每日 02:30 周期跑通（AL5 真数据闭环）；故障演练四项全过（队列续跑/PG 自愈/dead 重驱/SIGTERM 排空） |
 | **M-A activelist** | ✅ 全收官 | 独立仓交付（动态数据模型平台，M-A1–A6）；网关化批次 B（反代/X-Operator/限流/Restrict/menu_apis/BK-22 对账）；compose 双网络隔离、双副本、pgbackup；`/al` 签名透传 E2E + CRUD 矩阵 30/30 + 限流真机 40×200+10×429 |
-| **M-HR HR 同步** | ✅ 按拍板口径完成 | 预留接口版 `HRFetcher` 在位；真实对接时启动（三项启动拍板：离职在途工单/部门撤销级联/跨部门权限分配，登记于 hr-directory-sync §3.2/§4.3） |
+| **M-HR HR 同步** | ⚠ ~~✅ 按拍板口径完成~~（2026-09-22 勘误：接口未落码，全仓无 HRFetcher——「完成」系虚标，真实对接时一并开工） | ~~预留接口版 `HRFetcher` 在位~~（未落码）；真实对接时启动（三项启动拍板：离职在途工单/部门撤销级联/跨部门权限分配，登记于 hr-directory-sync §3.2/§4.3） |
 | **M-SSO** | 🚦 外部前置 | 设计定稿（design-decisions §24，OAuth2 授权码预留接口版）；进内网拿到公司接入信息后 2–3 人日落地 |
 | **M-Mig 迁移准备** | 🚦 外部前置 | 网络对接/凭据/命名与 module path 合并变更/工单平台表达力评估，随迁移窗口 |
 
