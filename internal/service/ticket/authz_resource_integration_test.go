@@ -77,6 +77,31 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 		INSERT INTO users (username,password,employee_no,status) VALUES ($1,'hash',$2,1)
 		RETURNING id`, "2a_it_v_"+userSuffix, "E2A003_"+userSuffix).Scan(&vid))
 
+	// W0b（P0-5 归属校验）：三用户授 org 管理角色（绑 org:member 按钮菜单 →
+	// HasOrgManagePermission 豁免）——保持「非目标 org 成员」前提（assigned 语义
+	// 依赖无锚点），同时满足 Create 的归属校验。
+	orgMgrCode := "t_orgmgr_" + userSuffix
+	var roleID int64
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO roles (code, name, priority, is_system)
+		VALUES ($1, '测试组织管理', 50, false) RETURNING id`, orgMgrCode).Scan(&roleID))
+	// seedMinimal 不建 menus——自建一条 org:% 按钮菜单行（HasOrgManagePermission
+	// 按 permission LIKE 判定，menu_type/可见性不参与）并绑给该角色
+	var menuID int64
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO menus (code, name, menu_type, path, component, icon, permission, sort_order, is_system)
+		VALUES ($1, '测试组织管理按钮', 3, '', '', '', 'org:member', 99, false)
+		ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET permission = EXCLUDED.permission
+		RETURNING id`, "t_orgmgr_btn_"+userSuffix).Scan(&menuID))
+	_, err := testPool.Exec(ctx,
+		`INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)`, roleID, menuID)
+	require.NoError(t, err)
+	for _, uid := range []int64{aid, bid, vid} {
+		_, err := testPool.Exec(ctx,
+			`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, uid, roleID)
+		require.NoError(t, err)
+	}
+
 	// 绑定角色（由 stubRoleFetcher 控制，无需 user_roles 行；R3-R8 不依赖 DB 角色关系，由 stub 注入）
 	roles[aid] = []string{"operator"}
 	roles[bid] = []string{"operator"}

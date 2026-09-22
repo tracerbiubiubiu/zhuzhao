@@ -23,6 +23,7 @@ type Service struct {
 	orgRepo     *repository.OrgRepo
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
+	delegation  OrgDelegationChecker
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -41,6 +42,7 @@ func NewTicketService(
 		orgRepo:     orgRepo,
 		registry:    registry,
 		roleFetcher: roleFetcher,
+		delegation:  delegation,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
 	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
@@ -92,6 +94,28 @@ const defaultTicketPriority = 3
 
 // Create 创建工单
 func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, actorUserID int64) (*model.Ticket, error) {
+	// W0b（二十四批 P0-5）：assigned_to 在创建请求中拒收——分派须走 Assign 端点
+	// 过状态机（open→assigned 事件+指派人校验）；此处直传会落库 open 态带处理人。
+	if req.AssignedTo != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "assigned_to 不允许在创建时指定，请使用分派接口")
+	}
+	// W0b（二十四批 P0-5）：组织归属校验——创建者须与目标 org 同分支（任一
+	// 成员 org 是目标的祖先或后代，含自身）或持全局 org 管理权；否则任何持
+	// POST /tickets 者可向任意 org 注入工单（污染 scope=group 可见性与组织
+	// 统计）。resource.go 的 create 恒 true 仅指「已过 L1 的创建动作无需行级
+	// 判定」，不豁免归属约束。
+	if member, err := s.orgRepo.IsInOrgBranch(ctx, req.OrgID, actorUserID); err != nil {
+		return nil, err
+	} else if !member {
+		global, gerr := s.delegation.HasOrgManagePermission(ctx, actorUserID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		if !global {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+
 	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
 	ttype, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode)
 	if err != nil {

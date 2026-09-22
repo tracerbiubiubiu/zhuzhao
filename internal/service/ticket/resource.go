@@ -28,6 +28,8 @@ type OrgDelegationChecker interface {
 	IsOrgAdminOrOwner(ctx context.Context, userID, orgID int64) (bool, error)
 	// IsAncestorOwner 实体部门 owner 对子树的委托（D9）
 	IsAncestorOwner(ctx context.Context, userID int64, ticketOrgID int64, ticketOrgPath string) (bool, error)
+	// HasOrgManagePermission 全局组织管理权（org:% 闸门；W0b：Create 归属校验的全局豁免）
+	HasOrgManagePermission(ctx context.Context, userID int64) (bool, error)
 }
 
 // Resource 工单资源，实现 resource.Resource 接口。

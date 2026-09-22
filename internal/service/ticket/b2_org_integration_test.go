@@ -200,7 +200,14 @@ func TestB2Org_ScopeSupervisorAndAll(t *testing.T) {
 	// P1-2：主管分派不在 scope 子树内的工单 → 404（不可见→反枚举）
 	otherOrg := createB2Org(t, rootOrgID(t),
 		"p2bother_"+uniqueSuffix(), "其他子树")
-	tkOther := newTicketHelper(t, env.svc, env.u1, otherOrg, "其他子树工单")
+	// W0b：跨树建单被归属校验拒（语义正确）——本用例测读侧 scope，单据改直插
+	var tkOtherID int64
+	require.NoError(t, testPool.QueryRow(context.Background(), `
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path)
+		VALUES ('incident', '其他子树工单', 'x', 3, 'open', $1, $2,
+			(SELECT path FROM organizations WHERE id = $2))
+		RETURNING id`, env.u1, otherOrg).Scan(&tkOtherID))
+	tkOther := &model.Ticket{ID: tkOtherID}
 	err = env.svc.Assign(ctx, &model.AssignTicketRequest{
 		ID: tkOther.ID, AssignedTo: &env.u1,
 	}, supervisor)
