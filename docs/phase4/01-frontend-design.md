@@ -92,7 +92,7 @@ zhuzhao-ui/
 | 请求 | 附 `Authorization: Bearer <AT>`；透传/生成 `X-Request-ID`——格式 **`req-`+32 位小写 hex**（D2-24，不符后端静默丢弃重生成，UUID 直生成无效） |
 | 响应-成功 | 后端 `code≠0` **恒伴非 2xx HTTP**（`response.go` 的 `Fail` 恒显式状态码；`code=0` 恒 200）——axios 成功回调只会收到 `code=0`，直接返回 `data`（调用方拿到的就是业务数据）；分流按 HTTP 状态做，不按信封 code |
 | 响应-401 | **先分码（B2-1）**：`20002`=AT 过期→可静默刷新；`20003`=签名错/typ 混淆/黑名单→**不刷新**，直接清 session 跳 /login。**单飞刷新**（仅 20002 触发）：并发 401 只发一次 `POST /auth/refresh`，其余请求挂起等待后用新 AT 重放；刷新失败（实测码族 **20004/20014/20015**——RT 无效/改密纪元/重放）→ 清 session → 重定向 /login。**HTTP 5xx（Redis 抖动 503+10008，fail-closed 可重试）不清会话**——拒绝挂起请求并提示重试，防一次抖动把全员登出。防刷新风暴是 RT 轮换机制的前端配合面 |
-| 响应-错误 | toast 展示后端 `message`（后端已做文案人性化，**前端不维护码→文案映射**）；`request_id` 一并展示供报障对日志；仅「需特殊行为的码」进白名单表（`common/constants/errorBehavior.ts`）：`20007`（403 强制改密——跳改密页**不清会话**）、`20006`（账号锁定，HTTP 429——勿入 401 刷新/跳转分支）、强制登出类 |
+| 响应-错误 | toast 展示后端 `message`（后端已做文案人性化，**前端不维护码→文案映射**）；`request_id` 一并展示供报障对日志；仅「需特殊行为的码」进白名单表（`common/constants/errorBehavior.ts`）：`20007`（403 强制改密——跳改密页**不清会话**）、`20006`（账号锁定，HTTP 429——勿入 401 刷新/跳转分支）、`10006`（乐观锁并发冲突——表单场景重拉详情重填，非 toast）、强制登出类 |
 
 **流式旁路（al 导出/导入）**：activelist `GET /al/api/v1/data/:typeName/export` 文件本体是**裸 JSON 数组、不走统一信封**（activelist 实现拍板：信封包文件体破坏流式与导出/导入对称性；流中途错误响应头已发、只能截断 body）。经 al 适配层走 `responseType:'blob'` 直下分支，不经信封拦截器；导入 body=同构 JSON 数组同理。
 
@@ -125,7 +125,7 @@ zhuzhao-ui/
 | 范例 | 承载约定 | 规格 |
 |------|----------|------|
 | 列表页（用户管理） | ProTable 封装 | 搜索区（el-form 内联；**以各端点实际过滤参数为准——部分列表暂无 keyword 模糊搜索，有则接、无则显式留空，不得假搜索**）+ 表格 + 分页 + 操作列权限槽位（`v-permission`）；加载/空/错误三态由 vue-query 统一供给（loading=skeleton、error=重试卡片）；写操作（新建/编辑/删改确认）走页面内弹窗 |
-| 表单页（角色编辑） | el-form + rules | async-validator 规则集中定义；服务端字段错误回填到对应表单项；提交防重（按钮 loading） |
+| 表单页（角色编辑） | el-form + rules | async-validator 规则集中定义；服务端字段错误回填到对应表单项；提交防重（按钮 loading）；**乐观锁回传（二十二批）：用户/组织更新 version 必填——详情响应的 `version` 原样随表单提交；工单类型/模板 version 可选（nil=不 CAS）但管理页应带上；收到 10006（ErrConcurrentModification「数据已被修改，请刷新后重试」）→ 重新拉详情让用户重填，不是纯 toast** |
 | 树管理页（组织，承载 CRUD 范例语义） | el-tree + 表单联动 | 左树右表布局；节点 CRUD/move/占用预检提示（子节点/成员占用）。**菜单页为只读树**（P4-W1 只读化后无写接口，ErrMenuHasChildren 随 **000031** 清理——十二批勘误，死码源于词表只读化非 BK-18），CRUD 范例语义由组织树承载 |
 
 ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-table + 分页拼装**，一律经封装（封装内统一处理 `PageData` 解包、排序参数、列权限、操作列宽度）。自建封装的参考实现 = Geeker-Admin 的 ProTable（MIT，组件 + useTable 约 1100 行，自治低耦合）——**只借鉴设计，代码按 `PageData` 契约自写**，不引依赖。工单域动态表单走 form-create 渲染器（12-frontend §3.1），不进 ProTable 范畴。
@@ -161,8 +161,8 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 |------|------|----------|
 | P4-W2 壳层 | 底座模板裁剪 + 壳层四件自写 + 登录/登出 + **首登强制改密流（20007 gate + profile/改密页，§3.1/§6）** + **个人中心页（profile 自服务：资料展示/编辑 + 自愿改密入口——与强制改密页共用表单组件，十一批显式化）** + 菜单树渲染 + 动态路由 + 三范例页 + **首页工作台（简单仪表盘——2026-09-21 拍板：待办/已办等卡片。首版=可见工单状态统计+最近工单列表，零后端改动；「处理人=我」维度需后端补 `assignee=me` 查询参数，随 P4-W4 工单域批交付后点亮待办/已办卡）** | 范例页过 FE3（viewer：业务只读可见/管理面+审计不可见——**viewer 账号由 E2E setup 幂等创建（H1：不进迁移）+ 运行时分配绑定**）；强制改密流过 E2E；E2E 冒烟绿 |
 | P4-W3 system 域 | 用户/角色（含 AssignMenus 勾选树——**el-tree 必须 `check-strictly=true`：级联勾选会让「只勾页面、不勾按钮」的只读授权选不出来，B 案词表拆分的 UI 前提**；int64 string 公约）/菜单（**只读树**+角色分配入口）/组织两面（02 §2-W3 拍板）：管理面（admin 专属）+「我的组织」自服务静态页（§3.2④；owner/admin 见委托控件；⚠ `ticket_visibility` 仅 update 表单） | 管理全流程无 SQL（FE2 同口径）；**API 权限即时生效（写后刷内存语义，rbac reloadPolicy）+ 侧边栏/动态路由下次登录刷新**（原「每请求读库/无需重登」措辞不准，已修订） |
-| P4-W4 ticket 域 | 工单发起（form-create 动态表单，**菜单外静态路由** §3.2④）/列表/详情（静态路由）/评论/备注/关联（写操作挂对应按钮码——`ticket:relation` 随 B 案补种）+ 处理动作=close/assign/update/delete（**后端无 approve 端点**，审批随翻案批）+ 类型/字段/模板管理三件套（历史 PUT/DELETE 已随 W1 整改为 POST） | FE1 + FE2；新增路由的菜单种子同 PR 对账（07-menu 流程） |
-| P4-W5 al/task/audit 域 | 名单页（`/al/api/v1` 反代：types/data 两页，cursor 分页；**含导出（blob 流式旁路）/导入入口**）/任务中心（tasks/runs/死信/jobs **页内 Tab**；死信只读列表，重试走 `POST /tasks/retry`，无独立重投端点——取消/重试按钮挂 `task:operate` 码，B 案补种）/审计日志查询 | 各域页面经对应权限码可见性验证；页面清单与菜单种子对账一致（**豁免静态路由清单** §3.2④） |
+| P4-W4 ticket 域 | 工单发起（form-create 动态表单，**菜单外静态路由** §3.2④）/列表/详情（静态路由）/评论/备注/关联（写操作挂对应按钮码——`ticket:relation` 随 B 案补种；**评论列表无分页（后端随手项未修）——详情页按「全部展示+条数上限提示」做，勿假设 page/total**）+ 处理动作=close/assign/update/delete（**后端无 approve 端点**，审批随翻案批）+ 类型/字段/模板管理三件套（历史 PUT/DELETE 已随 W1 整改为 POST；**设计器页面须注明：状态图可配（含 in_progress 等），但用户实际可点的动作仅 分派/取消/关闭/更新/删除——三态经 API 不可达（03 号 S11），防管理员以为画了就能点**） | FE1 + FE2；新增路由的菜单种子同 PR 对账（07-menu 流程） |
+| P4-W5 al/task/audit 域 | 名单页（`/al/api/v1` 反代：types/data 两页，cursor 分页；**含导出（blob 流式旁路）/导入入口**）/任务中心（tasks/runs/死信/jobs **页内 Tab**；死信只读列表，重试走 `POST /tasks/retry`，无独立重投端点——取消/重试按钮挂 `task:operate` 码，B 案补种；**提交表单不传 callback_url（W0 后非空 400）+params 旁提示「勿填口令/密钥/PII」（共享队列全可见，E-⑤ 约定的前端配合面）；「只看我提交的」仅运行记录列表（submitted_by），详情按 task_id 直查；导入提示经网关实际上限 1MB（非 activelist 自身 1GiB）——二十二批四点，详约束以 03 号为准**）/审计日志查询 | 各域页面经对应权限码可见性验证；页面清单与菜单种子对账一致（**豁免静态路由清单** §3.2④） |
 
 ## 9. 开放问题（启动批拍板）
 
