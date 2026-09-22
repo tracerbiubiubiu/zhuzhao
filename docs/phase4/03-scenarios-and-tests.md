@@ -46,8 +46,8 @@
 | # | 场景 | 走查要点 |
 |---|------|----------|
 | S16 | 会话边界 | 401 分码（20002 过期→静默刷新 / 20003 无效→跳登录）；5xx（503+10008）**不清会话**拒绝挂起提示重试；账号锁定=**429**（勿入 401 分支）；多标签登出 BroadcastChannel 主动同步；刷新失败码族 20004/20014/20015 |
-| S17 | viewer 只读（FE3） | 运行时绑 ticket_list 页 → GET /tickets=200 且 POST=403（T7 反转断言）；管理面+审计菜单不可见 |
-| S18 | operator 正向 | 持 `ticket:relation`/`task:operate` 码且经其端点 200；/jobs\* 仍 403（十二批新增断言） |
+| S17 | viewer 只读（FE3） | 运行时绑 ticket_list 页 **+ticket_read_btn 读按钮（十四批：详情静态路由入口按 `button:ticket:read` 放行，只勾页面进不了详情）** → GET /tickets=200 且 POST=403（T7 反转断言）；管理面+审计菜单不可见 |
+| S18 | operator 正向 | 持 `ticket:relation`/`task:operate` 码且经其端点 200；/jobs\* 仍 403（十二批新增断言；**夹具前置：setup 先 submit 一任务使处 pending、建两张工单再断言——十四批**） |
 
 ---
 
