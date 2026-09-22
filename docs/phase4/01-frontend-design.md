@@ -58,7 +58,7 @@ zhuzhao-ui/
 应用启动
  └─ router.beforeEach 守卫（每次导航）：
     1. 白名单页（/login、改密页）→ 直接放行
-    2. 无 AT → 重定向 /login（带 redirect 回跳参数）
+    2. 无 AT → 重定向 /login（带 redirect 回跳参数——**须校验为站内相对路径（以 / 开头且非 //），防开放重定向**）
     3. session 未加载（首跳/刷新）→ 并行拉 GET /user/profile + GET /user/menus + GET /user/permissions
        → 存 Pinia → 按菜单树 addRoute（§3.2）
     4. must_change_password=true（登录响应与 /user/profile 均回带该标记）→ 强制重定向改密页。
@@ -137,6 +137,7 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 - **登录**：`POST /auth/login`（`employee_no`+`password`+**`device_id`**——浏览器级 UUID 必传，语义见 §3.3 TokenStorage）；响应含 `must_change_password`（首登强制改密，守卫分支见 §3.1；**改密成功响应即新 TokenPair——改密即轮换**，须整体替换本地 token，旧 AT 已进黑名单；改密请求须带同一 `device_id`——UpdatePassword 轮换 RT 落槽用，漏传落 "default" 错槽互踢）；TokenPair 存 TokenStorage（§3.3）；**登录表单预留验证码插槽**（P4-7 在穿插池后位，届时只接插槽不返工表单布局）；
 - **登出**：`POST /auth/logout` **携带与登录相同的 `device_id`**（漏传=吊销 "default" 空槽，真实 RT 槽残留）→ 清 Pinia + TokenStorage + vue-query 缓存（`queryClient.clear()`）→ /login；
 - **请求方法**：全仓仅 GET/POST（standards §3-1）。BK-18 五端点的历史 PUT/DELETE **已拍板整改（2026-09-21：单仓涉及直接改，不豁免）**——随 P4-W1 改 POST zhuzhao 风格并删 standards §3-5 豁免条；整改合入后前端按 GET/POST 消费即可，请求封装仍勿写死方法白名单（防御性）；
+- **CSRF 面**：现态纯 Bearer 头（浏览器不自动附带）**无 CSRF 面**——B7 cookie 会话演进时才需评估（SameSite/CSRF token 随 B7 拍板）；
 - **XSS 基线**：全站禁 `v-html`（例外须评审并 sanitize）；AT/RT 存 localStorage 的风险与 B7 cookie 演进绑定，TokenStorage 抽象保证一步迁移；
 - **错误边界**：`app.config.errorHandler` 全局兜底（上报 console + 友好页）；路由级 403/404 独立页面；**错误上报服务（Sentry/GlitchTip 类）触发驱动**（02 §5.3 处置 #10：对外可访问或用户成规模再接，errorHandler 是接入门槛最低的挂点）；
 - **接口粒度不设防前端**：前端显隐只是体验层，真实鉴权在后端三层（L1 Casbin 为准）——前端权限码仅用于渲染决策，不得视为安全边界（与「按钮码不走 Casbin」的既有口径一致，07-menu）。
@@ -169,7 +170,8 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 2. UnoCSS 启用与否（建议默认不启用，见 §1）；
 3. 多标签页登出/改权同步：BroadcastChannel 监听登出事件强制各标签失效（低成本，建议 P4-W2 顺带）；401 被动失效已由请求层覆盖；
 4. ~~暗色主题~~ **✅ 拍板（2026-09-21 所有者要求支持明暗切换）**：Element Plus 原生 dark CSS vars（`html.dark`）+ 顶栏切换开关 + localStorage 持久化偏好，P4-W2 壳层顺带；
-5. ~~Playwright 冒烟环境口径~~ **✅ 拍板（2026-09-21）：复用标准三栈 compose，不用 stub**——stub 的 mock 数据抓不到后端契约类 bug（role_menus 绑定缺口即活例）。
+6. 模板自带 tab 页签系统（多标签工作区）去留：保留=多页状态/去留=单页+面包屑更简——W2 拿到种子实看后定（二十二批登记，倾向去留皆可、与 B 案按钮授权无耦合）；
+7. ~~Playwright 冒烟环境口径~~ **✅ 拍板（2026-09-21）：复用标准三栈 compose，不用 stub**——stub 的 mock 数据抓不到后端契约类 bug（role_menus 绑定缺口即活例）。
 
 ### 9.1 底座模板选型定案（2026-09-21，四候选代码级评估）
 
