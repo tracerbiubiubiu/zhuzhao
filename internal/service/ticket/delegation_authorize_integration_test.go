@@ -277,6 +277,34 @@ func TestD9_ConcurrentDoubleClose(t *testing.T) {
 	}
 }
 
+// W0b（二十四批 P0-②侧信道）：不可见工单不得经 409 泄露存在性——
+// actor 对目标无 update 可见性时，即使两单间已存在关联也须先走鉴权返回 404+90001
+//（防枚举语义），而非命中查重 409。修复前顺序=先 ExistsRelationBetween 后鉴权。
+func TestD9_CreateRelationSideChannel(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	// 组织外用户（无任何 user_orgs 行）——对 vg 内工单不可见
+	var outsider int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2c9out_%s', 'hash', 'E9OUT%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider))
+
+	tkA := newTicketHelper(t, env.svc, env.member, env.vgID, "侧信道源")
+	tkB := newTicketHelper(t, env.svc, env.member, env.vgID, "侧信道目标")
+	// member 先建立关联（使查重必然命中）
+	_, err := env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, env.member)
+	require.NoError(t, err)
+
+	// outsider 对两单均不可见且关联已存在 → 须 90001（鉴权先行），不得 409 泄露存在性
+	_, err = env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, outsider)
+	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
+}
+
 // TC2/MC1 回归：工单关联 Go 层用例——正向建联、同向唯一（409）、
 // 目标被物理删除后建联 → 400（23503 映射，非 500）
 func TestD9_CreateRelation(t *testing.T) {

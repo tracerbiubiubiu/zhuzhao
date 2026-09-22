@@ -516,7 +516,17 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	if req.SourceTicketID == req.TargetTicketID {
 		return nil, errcode.ErrInvalidParams
 	}
-	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）
+	// W0b（二十四批侧信道）：鉴权先行——不可见工单不得经查重 409 泄露存在性，
+	// 须先走 authorizeCheck 返回 404+90001（防枚举语义与 Get/Update 同型）。
+	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
+	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
+		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
+			return nil, err
+		}
+	}
+	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）；
+	// 预检后移为友好路径，并发/顺序重复由 uq_ticket_relations_normalized
+	//（000028）兜底 → repo 层 23505 映射 ErrConflict（409），语义不变
 	relType := req.RelationType
 	if relType == "" {
 		relType = "related"
@@ -527,12 +537,6 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	}
 	if dup {
 		return nil, errcode.ErrConflict
-	}
-	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
-	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
-		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
-			return nil, err
-		}
 	}
 	rel := &model.TicketRelation{
 		SourceTicketID: req.SourceTicketID,
