@@ -80,7 +80,7 @@
 2. **三层**：L1 路由级（Casbin，policy=角色×path×method）→ L2 数据范围（策略库 builtin 或手写 Resource，Registry 统一接缝）→ L3 动作矩阵；
 3. **平台策略库**（触发驱动）：`org-member`/`owner-only`/`role-gated` 三内置 + `Builtin()` 一行注册；**适用前提 = 资源表在 zhuzhao 库**；跨库资源走参数级组装（E-⑤ 模式）；
 4. **Q5 禁令**：L2/L3 判定每请求实时查询，**不缓存**；任何缓存提案必须连同失效级联方案评审；
-5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经 ResourceAuthorizer 接缝换判定后端，L1 不动）；
+5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经~~ResourceAuthorizer~~ **resource.Resource/Registry 接缝**（`internal/pkg/resource/registry.go`，Authorize/GetFilter——⚠ 2026-09-22 虚标审计勘误：全仓无 ResourceAuthorizer 类型，实际接缝为此，L1 不动）；
 6. 角色自定义全链（角色 CRUD / AssignMenus / org_roles 组织赋角 / BFS 三源展开）为平台本职，所有服务共用。
 7. **权限码命名与注册**：码 = `resource:verb`（K8s verb 规范同款，禁复合码）；服务 API 的码↔路由绑定一律迁移申报（声明式，与代码同版本，design-decisions §26.2），运行时只开放菜单/角色绑定管理，**不开放 API 绑定编辑**。
    - 存量例外注记（2026-09-09 对码盘点；2026-09-11 泛化）：**层级子资源三段形（`resource:subresource:verb`）按同口径允许**——适用 `ticket:type:manage`（000018，早于本公约）及 activelist 权限面四码 `activelist:type:read|manage`、`activelist:data:write|read`（000024）——语义为层级子资源而非复合动词，保留不改（改码 = 破坏既有角色绑定）；`role::superadmin` / `role::admin` 为 Casbin 角色名命名空间，非权限码，不在本公约范围。

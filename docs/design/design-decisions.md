@@ -735,6 +735,8 @@ func (r *TicketResource) Authorize(ctx, req) (bool, error) {
 
 ### 9.4 代码预留
 
+> ⚠ 2026-09-22 虚标审计勘误：算法切换构造器（NewHS256Manager/NewRS256Manager/method 字段）未落码——实况=utils jwt.Manager 仅 HS256 硬编码；**pin 算法防 key-confusion 属实**（验签强制 HMAC）。RS256/JWKS 维持 roadmap 预留条件触发。
+
 JWT Manager 接口设计支持算法切换：
 
 ```go
@@ -767,7 +769,7 @@ func NewRS256Manager(privateKey *rsa.PrivateKey) *JWTManager {
 1. **Phase 1 用 HS256**——单体场景最简方案，secret 存环境变量
 2. **Phase 3 切换 RS256**——拆服务时必须切换，公钥通过 JWKS 分发
 3. **显式 pin 算法**——验签时强制校验 `alg` 字段，防 key-confusion
-4. **接口预留**——JWTManager 设计时支持算法切换，切换时只改构造函数
+4. ~~**接口预留**——JWTManager 设计时支持算法切换，切换时只改构造函数~~（⚠ 2026-09-22 虚标审计勘误：未落码，见节首勘误）
 
 ---
 
@@ -969,7 +971,8 @@ group:engineering —member—→ user:bob
 Phase 1 的代码设计为未来迁移预留：
 
 ```go
-// Phase 1：接口定义
+// ⚠ 2026-09-22 虚标审计勘误：本接口未落码——全仓无 ResourceAuthorizer；实际接缝 = internal/pkg/resource/registry.go 的 Resource(Authorize/GetFilter)+Registry（Phase 2+）
+// ~~Phase 1：接口定义~~（示意稿）
 type ResourceAuthorizer interface {
     Check(ctx context.Context, userID, resType, resID, action string) (bool, error)
     ListFilter(ctx context.Context, userID, resType, action string) (sql.Filter, error)
@@ -1044,6 +1047,8 @@ API Gateway（Gin + gRPC-Gateway）
 | 数据复制 | 事件驱动 CQRS | IAM 发布 `user.role.changed`，业务服务订阅维护本地副本 |
 
 ### 13.6 Phase 1 代码预留
+
+> ⚠ 2026-09-22 虚标审计勘误：`UserQueryService` 接口未落码（全仓零命中）；且本节 gRPC 方向已被 2026-09-03 拍板（HTTP+JSON，gRPC 不引入，standards §2）覆盖——以下为历史设计稿。
 
 ```go
 // Phase 1：接口定义（未来可替换为 gRPC client）

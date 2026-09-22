@@ -164,7 +164,7 @@ func CORS() gin.HandlerFunc {
 |------|------|------|
 | 5 个安全头 | ✅ 直接采用 | 安全最佳实践 |
 | RequestID 生成 + 四处传播 | ✅ 直接采用 | 链路追踪 |
-| PasswordValidator | ✅ 直接采用（放 internal/pkg） | 密码安全 |
+| PasswordValidator | ~~✅ 直接采用（放 internal/pkg）~~（⚠ 2026-09-22 虚标审计勘误：未落码；实况=三处 binding min=8 + utils bcrypt） | 密码安全 |
 | CORS 全放开 | ✅ Phase 1 Default + AllowAllOrigins | 便于联调；生产改白名单 |
 | AKSK 中间件 | ⏳ Phase 3b / 按需 | 外部系统对接，非首期 |
 | AccessLog 中间件 | ✅ 直接采用 | 详见 audit.md |

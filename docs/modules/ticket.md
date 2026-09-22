@@ -655,8 +655,8 @@ type StateController interface {
 | 组内 admin/owner 资源操作 | **Phase 2c**：见 [04-org-delegation §4](../phase2/04-org-delegation.md#4-authorize-升级step-10) |
 | 回复功能 | 公开回复 + 内部备注 |
 | 事件日志 | 状态变更记录 |
-| Hook 机制 | `TicketHooks` 接口 + `DefaultTicketHooks` |
-| 进程内事件 | Go channel 分发（L0，2a 过渡；L1 随后接入，见 §6） |
+| Hook 机制 | ~~`TicketHooks` 接口 + `DefaultTicketHooks`~~（⚠ 2026-09-22 虚标审计勘误：未落码，全仓零命中；实况=ticket_events 表直写） |
+| 进程内事件 | ~~Go channel 分发（L0，2a 过渡）~~（⚠ 2026-09-22 虚标审计勘误：未落码，无任何 channel 分发代码；L0/L1 均未实施，见 §6 设计） |
 
 ### Phase 2b：scope + 附件 + 体验
 
@@ -738,7 +738,7 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 2. **表达式求值下放 DB**（`ExpressionEvaluator` 拼 SQL 让 MySQL 算）→ Go 侧求值，避免 SQL 注入且可单元测试
 3. **反射事件注册**（`RegisterEvents` 无编译期检查）→ 显式 `TicketHooks` 接口，编译期保证方法签名正确
 
-> **Phase 2a 借鉴**（已落地）：流程定义 JSONB 存储、事件系统对应 `TicketHooks`、运行表+历史表双表设计。见 §3 `ticket_types.transitions`、§5 `TicketHooks`。
+> **Phase 2a 借鉴**（已落地）：流程定义 JSONB 存储、~~事件系统对应 `TicketHooks`~~（⚠ 2026-09-22 虚标审计勘误：TicketHooks 未落码，事件实况=ticket_events 表直写）、运行表+历史表双表设计。见 §3 `ticket_types.transitions`、§5 `TicketHooks`。
 >
 > **Phase 3 借鉴**（待落地）：混合网关三字段模型、会签+BatchCode、自由驳回（BFS 替代 CTE）、TaskAction 自描述。见 [phase3/10-ticket-business.md §4](../phase3/10-ticket-business.md#4-多级审批流branchedstateengine)。
 

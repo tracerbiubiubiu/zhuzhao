@@ -512,7 +512,7 @@ internal/service/ticket/
   service.go
   resource.go
   state_machine.go
-  hooks.go
+  ~~hooks.go~~  (⚠ 2026-09-22 虚标审计勘误：该文件从未存在)
 internal/repository/ticket/
 internal/handler/ticket_handler.go
 internal/router/router.go              # 注册路由 + menu_apis 对齐
