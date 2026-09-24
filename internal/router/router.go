@@ -52,15 +52,22 @@ type Deps struct {
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
 
-	// 反代上游前缀（= gateway.upstreams[].prefix）：AuditLog 对其跳 body
-	//（大文件/流式载荷不入审计参数）
-	GatewayPrefixes []string
+	//（W0b wire 转正：前缀列表改经 Gateway.Prefixes 派生——见 GatewayPrefixList）
 
 	// API 限流（07 §2）：nil = 不启用
 	RateLimit *config.RateLimitConfig
 
 	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
+}
+
+// GatewayPrefixList 反代上游前缀派生（原独立 GatewayPrefixes 字段与
+// TrustedProxies 同为 []string 冲突 wire 注入，W0b 改由 Registry.Prefixes 派生）。
+func (d Deps) GatewayPrefixList() []string {
+	if d.Gateway == nil {
+		return nil
+	}
+	return d.Gateway.Prefixes
 }
 
 // RateLimitOrDisabled 限流未配置时返回零值配置（中间件内直通）。
@@ -138,7 +145,7 @@ func New(deps Deps) *gin.Engine {
 		authed.Use(
 			middleware.JWT(deps.JWTManager, deps.RedisClient),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
-			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
@@ -307,7 +314,7 @@ func New(deps Deps) *gin.Engine {
 		deps.Gateway.Mount(r,
 			middleware.JWT(deps.JWTManager, deps.RedisClient),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
-			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
 		)
 	}

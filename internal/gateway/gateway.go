@@ -41,6 +41,10 @@ type proxyMount struct {
 // Registry 上游注册表（New 后不可变；Mount 可重复调用）。
 type Registry struct {
 	mounts []proxyMount
+	// Prefixes 全部上游前缀（导出，W0b wire 转正：消费方（audit skip-body /
+	// catalog 对账）从注册表派生，router.Deps 不再单列 []string 字段——
+	// 该字段与 TrustedProxies 同型导致 wire 无法区分注入）。
+	Prefixes []string
 }
 
 // New 构建注册表。fail-fast 校验：前缀格式/唯一性、上游 http(s)、AK/SK 非空。
@@ -52,8 +56,9 @@ func New(ups []Upstream, ak, sk string) (*Registry, error) {
 		return nil, fmt.Errorf("gateway: ak/sk 未配置——出站签名必需（env GATEWAY_AK / GATEWAY_SK）")
 	}
 	seen := make(map[string]bool, len(ups))
-	r := &Registry{}
+	r := &Registry{Prefixes: make([]string, 0, len(ups))}
 	for i, u := range ups {
+		r.Prefixes = append(r.Prefixes, u.Prefix)
 		if !strings.HasPrefix(u.Prefix, "/") || u.Prefix == "/" || strings.HasSuffix(u.Prefix, "/") {
 			return nil, fmt.Errorf("gateway: upstreams[%d].prefix 须以单个 / 开头且非根：%q", i, u.Prefix)
 		}

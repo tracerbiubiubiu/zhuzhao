@@ -17,10 +17,8 @@ dev:
 tidy:
 	go mod tidy
 
-# ⚠ W0a-P1-9（2026-09-22 验证）：make wire 当前确定性失败（wire.go 两 unused import）——
-# 这是意外防呆：wire_gen.go 含手改装配（gateway Registry/router.Deps 拼装/BK-22 对账），
-# 直接修 import 重生成会覆盖丢失。转正三步方案登记 phase4/02 §5.5 行 28（W0b 第一件）：
-# ①provideGateway provider 化（registry+prefixes）②RouterDeps 拼装转 provider③BK-22 对账移 NewApp。
+# W0b（2026-09-25）wire 已转正：手码装配升 provider（provideGateway/provideRateLimitConfig/
+# provideJobsCallbackService）+BK-22 对账移 NewApp——make wire 可安全再生。
 wire:
 	go run github.com/google/wire/cmd/wire ./internal/app/
 

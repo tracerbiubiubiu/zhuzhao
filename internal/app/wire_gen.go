@@ -7,13 +7,9 @@
 package app
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/google/wire"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -68,35 +64,29 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
 	ticketRepo := repository.NewTicketRepo(pool)
-	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
-	taskrunnerConfig := cfg.Taskrunner
-	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
-	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
-	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, cfg.Taskrunner)
-	policyEvalWriter := providePolicyEvalWriter(cfg.Audit, client, auditLogRepo, logger)
+	auditConfig := cfg.Audit
+	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
-	jobsRegistry := provideJobsRegistry(auditLogRepo, cfg.Audit, logger)
+	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
+	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
 	jobsHandler := handler.NewJobsHandler(jobsCallbackService)
-	v := provideTrustedProxies(cfg)
-	// 批次 B/E13：网关反代注册表（gateway.upstreams 未配置时为 nil，不挂载）
-	var gwRegistry *gateway.Registry
-	gwPrefixes := []string{}
-	if ups := cfg.Gateway.Upstreams; len(ups) > 0 {
-		gwUps := make([]gateway.Upstream, len(ups))
-		for i, u := range ups {
-			gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix, Disabled: u.Disabled}
-			gwPrefixes = append(gwPrefixes, u.Prefix)
-		}
-		gw, gwErr := gateway.New(gwUps, cfg.Gateway.AK, cfg.Gateway.SK)
-		if gwErr != nil {
-			return nil, nil, fmt.Errorf("gateway init: %w", gwErr)
-		}
-		gwRegistry = gw
+	internalJobsConfig := cfg.InternalJobs
+	taskrunnerConfig := cfg.Taskrunner
+	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
+	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
+	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig)
+	gatewayRegistry, err := provideGateway(cfg)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
 	}
-	rlCfg := cfg.RateLimit
+	rateLimitConfig := provideRateLimitConfig(cfg)
+	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
 		AuthHandler:       authHandler,
 		UserHandler:       userHandler,
@@ -105,12 +95,6 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		MenuHandler:       menuHandler,
 		AuditHandler:      auditHandler,
 		TicketHandler:     ticketHandler,
-		JobsHandler:       jobsHandler,
-		TaskrunnerHandler: taskrunnerHandler,
-		InternalJobs:      cfg.InternalJobs,
-		Gateway:           gwRegistry,
-		GatewayPrefixes:   gwPrefixes,
-		RateLimit:         &rlCfg,
 		JWTManager:        manager,
 		Enforcer:          syncedEnforcer,
 		RedisClient:       client,
@@ -119,24 +103,21 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		RoleFetcher:       rbacService,
 		AuditService:      auditService,
 		Registry:          registry,
+		JobsHandler:       jobsHandler,
+		InternalJobs:      internalJobsConfig,
+		TaskrunnerHandler: taskrunnerHandler,
+		Gateway:           gatewayRegistry,
+		RateLimit:         rateLimitConfig,
 		TrustedProxies:    v,
 	}
 	engine := router.New(deps)
-	// BK-22 fail-fast：路由↔menu_apis 双向对账（缺口 = 拒绝启动，清单见错误信息；
-	// 豁免集与网关前缀边界见 internal/router/catalog.go）
-	prefixes := make([]string, 0, len(cfg.Gateway.Upstreams))
-	for _, u := range cfg.Gateway.Upstreams {
-		prefixes = append(prefixes, u.Prefix)
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
 	}
-	bound, boundErr := router.LoadBoundAPIs(context.Background(), pool)
-	if boundErr != nil {
-		return nil, nil, boundErr
-	}
-	if gaps := router.AuditRouteCatalog(engine.Routes(), bound, prefixes); len(gaps) > 0 {
-		return nil, nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
-			len(gaps), router.FormatGaps(gaps))
-	}
-	app := NewApp(cfg, logger, engine, policyEvalWriter)
 	return app, func() {
 		cleanup3()
 		cleanup2()
@@ -151,7 +132,16 @@ var pkgSet = wire.NewSet(
 	provideJWTManager,
 	providePostgres,
 	provideRedis,
-	provideRedisScripts, providePolicyEvalWriter, provideRegistry, provideJobsRegistry, provideTaskrunnerClient, casbin.New,
+	provideRedisScripts,
+
+	providePolicyEvalWriter,
+	provideRegistry,
+
+	provideJobsRegistry,
+
+	provideTaskrunnerClient, service.NewTaskrunnerService, provideTaskrunnerHandler, casbin.New, provideGateway,
+	provideRateLimitConfig,
+	provideJobsCallbackService,
 )
 
 var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo)
