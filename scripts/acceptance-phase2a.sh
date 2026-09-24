@@ -244,6 +244,10 @@ check "template default_fields description prefill" "SLA 4h 模板" "$TPL_DESC"
 # （2b 起策略 B 同子树透明读，本组隔离断言依赖 B 工单位于 tech2 独立子树）
 # ========================================================================
 # 先让 B 也创建一张工单（确认 A 的列表不含 B 创建的工单）
+# W0b（P0-5 归属校验）：Create 现要求创建者与目标 org 同分支——B 挂 tech2 成员
+#（跨子树隔离语义不变：A∈tech1 锚点不含 tech2，B 单仍对 A 不可见）
+psql_q "INSERT INTO user_orgs (user_id, org_id, is_primary, org_member_role)
+VALUES ($BID, $TECH2_ID, false, 'member')" >/dev/null
 T_B=$(curl -s -X POST "$BASE/tickets" \
   -H "Authorization: Bearer $BAT" -H 'Content-Type: application/json' \
   -d "{\"type_code\":\"request\",\"title\":\"B 申请电脑\",\"priority\":3,\"org_id\":\"$TECH2_ID\"}")  # 2b：独立子树，保持 A 不可见
