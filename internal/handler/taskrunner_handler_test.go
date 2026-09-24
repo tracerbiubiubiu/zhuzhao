@@ -80,6 +80,10 @@ func TestTaskrunnerHandler_BadRequest(t *testing.T) {
 			`{"action":"audit_archive","timeout_secs":99999999}`, "timeout_secs 须为 0 或 1–86400"},
 		{"Submit timeout_secs 负值", "/api/v1/tasks",
 			`{"action":"audit_archive","timeout_secs":-5}`, "timeout_secs 须为 0 或 1–86400"},
+		// W0b（十七批 SSRF 根治）：callback_url 一律服务端定（self+/internal/jobs/callback），
+		// 用户级 URL 无正当用途——传非空即 400（fail-fast，非忽略：忽略会让调用方以为地址生效）
+		{"Submit 带 callback_url（SSRF 拒收）", "/api/v1/tasks",
+			`{"action":"audit_archive","callback_url":"http://evil.example.com/hook"}`, "callback_url 不再接受"},
 		{"Trigger 缺 job_id", "/api/v1/jobs/trigger", `{}`, "job_id 必填"},
 		{"Cancel 缺 task_id", "/api/v1/tasks/cancel", `{}`, "task_id 必填"},
 		{"Retry 缺 task_id", "/api/v1/tasks/retry", `{}`, "task_id 必填"},
