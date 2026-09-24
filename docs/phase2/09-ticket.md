@@ -398,7 +398,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 |------|-----|----|----|-----|-----|---------|---------|
 | 列表 | `GET /tickets` | `ticket:list` | GetFilter | — | `created_by OR assigned_to` | **策略 B**：实体子树透明读 OR 本人（`project_isolated` 强隔离标 future，见 §5.2.1） | GetFilter 不变 |
 | 详情 | `GET /tickets/:id` | `ticket:read` | canRead | read = canRead | 仅本人创建/被分派 | **兄弟虚拟组可读不可改**（策略 B） | 同 2b |
-| 创建 | `POST /tickets` | `ticket:create` | — | create 恒 true | 校验 org 存在，写 org_path | 同 2a | 同 2a |
+| 创建 | `POST /tickets` | `ticket:create` | — | create 恒 true（W0b 补**归属校验**：创建者与目标 org 同分支 IsInOrgBranch 或全局 org 管理权，非分支拒 70001） | 校验 org 存在+**assigned_to 拒收**（分派走 Assign 过状态机；「创建即分派」open+assignee 形态随 W0b 下线，随 B3 翻案批重议），写 org_path | 同 2a | 同 2a |
 | 更新 | `POST /tickets/update` | `ticket:update` | canRead | **创建人**（2b）；+ vg admin/owner（2c） | 创建人或处理人 | **2b：仅创建人**（透明读≠可改） | + 工单 org 的 admin/owner；+ ancestor owner |
 | 关闭 | `POST /tickets/close` | `ticket:close` | canRead | 处理人或创建人；+ vg admin（2c） | 仅处理人 | + scope 主管 | + org admin/owner |
 | 分派 | `POST /tickets/assign` | `ticket:assign` | canRead | 2a 仅 admin | admin bypass | scope=group/all + 子树内 | + org admin/owner / ancestor owner + 子树 |
@@ -449,6 +449,7 @@ CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authori
 POST /api/v1/tickets
 1. Casbin ticket:create
 2. 校验 type_code、org_id 存在
+2.5 W0b 归属校验：assigned_to 拒收；创建者与目标 org 同分支（IsInOrgBranch=成员 org 与目标互为祖先/后代）或全局 org 管理权（角色码短路+org:% 回退），否则 70001
 3. 读 org.path → org_path
 4. INSERT tickets（created_by=当前用户, status=open）
 5. INSERT ticket_events(action=created)

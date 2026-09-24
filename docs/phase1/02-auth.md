@@ -13,7 +13,7 @@
 |------|------|-----|--------|
 | 登录 | 用户输入账号密码，系统验证后签发双 Token | `POST /api/v1/auth/login` | `—`（公开） |
 | Token 刷新 | AT 过期，前端用 RT 换新 AT + 新 RT（轮换） | `POST /api/v1/auth/refresh` | `—`（持 RT） |
-| 登出 | 用户主动登出，AT 加入黑名单，RT 删除 | `POST /api/v1/auth/logout` | `—` |
+| 登出 | 用户主动登出，AT 加入黑名单，RT 删除；**W0b 起 device_id 必填**（空值 400——原静默归一 default 槽误删会话） | `POST /api/v1/auth/logout` | `device_id` 必填 |
 | 修改密码 | 用户修改自己的密码，旧密码验证后更新并吊销全部设备会话（见 §会话吊销） | `POST /api/v1/auth/password/update` | `—` |
 | 管理员重置密码 | superadmin 重置任意用户密码，用户首次登录强制改密 | `POST /api/v1/users/password/reset` | `user:reset_password` |
 | 首次登录改密 | 被重置密码的用户登录后强制修改密码 | 登录时检测 `must_change_password` 标记 | `—` |
@@ -136,7 +136,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 ### 登出黑名单
 
 ```
-POST /auth/logout (携带 AT)
+POST /auth/logout (携带 AT + device_id——W0b 起必填)
   │
   ├── 解析 AT，提取 jti + 过期时间
   ├── 将 jti 加入 Redis 黑名单：key = "blacklist:at:{jti}", TTL = AT 剩余有效期

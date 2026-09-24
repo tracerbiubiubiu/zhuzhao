@@ -49,6 +49,23 @@ func NewTicketService(
 	return s
 }
 
+// isGlobalOrgAdmin 全局组织管理员判定（commit-review §3.4 口径统一）：
+// 角色码 admin/superadmin 短路，回退 delegation.HasOrgManagePermission
+// （org:% 菜单闸门）——与 org_service.isGlobalOrgAdmin 同语义两入口不漂移。
+func (s *Service) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
+	roles, err := s.getRoles(ctx, userID)
+	if err != nil {
+		return false
+	}
+	for _, r := range roles {
+		if r == "admin" || r == "superadmin" {
+			return true
+		}
+	}
+	ok, err := s.delegation.HasOrgManagePermission(ctx, userID)
+	return err == nil && ok
+}
+
 // getRoles 获取用户角色码列表
 func (s *Service) getRoles(ctx context.Context, userID int64) ([]string, error) {
 	return s.roleFetcher.GetRoleCodesByUserID(ctx, userID)
@@ -107,11 +124,9 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if member, err := s.orgRepo.IsInOrgBranch(ctx, req.OrgID, actorUserID); err != nil {
 		return nil, err
 	} else if !member {
-		global, gerr := s.delegation.HasOrgManagePermission(ctx, actorUserID)
-		if gerr != nil {
-			return nil, gerr
-		}
-		if !global {
+		// 豁免口径与 org_service.isGlobalOrgAdmin 对齐（commit-review §3.4）：
+		// 角色码（admin/superadmin）短路 + org:% 菜单回退——两入口不漂移
+		if !s.isGlobalOrgAdmin(ctx, actorUserID) {
 			return nil, errcode.ErrNoPermission
 		}
 	}
@@ -190,7 +205,6 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		Priority:    priority,
 		Status:      StatusOpen,
 		CreatedBy:   actorUserID,
-		AssignedTo:  req.AssignedTo,
 		OrgID:       req.OrgID,
 		CustomData:  customData,
 	}
