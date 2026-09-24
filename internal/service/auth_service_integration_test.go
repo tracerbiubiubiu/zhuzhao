@@ -69,6 +69,17 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 	assert.Equal(t, errcode.ErrRefreshTokenReplayed.Code, biz.Code)
 
 	require.NoError(t, authSvc.Logout(ctx, refreshed.AccessToken, "dev-1"))
+
+	// W0b（二十四批登出槽）：device_id 必填——空值曾静默归一为 "default" 槽，
+	// 误删 default 会话而真实设备 RT 残留（最长 168h）。前端契约（01 §6）
+	// 已承诺登录/登出/改密三处同源，后端收紧为空即 400。
+	_, err = authSvc.Login(ctx, &model.LoginRequest{
+		EmployeeNo: "E000001", Password: "admin123",
+		DeviceID: "dev-1",
+	}, "127.0.0.1", "test-agent")
+	require.NoError(t, err)
+	err = authSvc.Logout(ctx, refreshed.AccessToken, "")
+	requireErrCode(t, err, errcode.ErrInvalidParams)
 }
 
 // C3 回归：改密后旧 RT（旧纪元）刷新必拒；新纪元 RT 正常刷新。

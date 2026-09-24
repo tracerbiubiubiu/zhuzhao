@@ -12,6 +12,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/redis"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
@@ -140,4 +141,23 @@ func provideTaskrunnerHandler(svc *service.TaskrunnerService, cfg config.Taskrun
 // provideJobsCallbackService 回调编排服务（E-②；jobs_handler 薄化的分层修复）。
 func provideJobsCallbackService(reg *jobs.Registry, repo *repository.JobSubmissionRepo, logger *slog.Logger) *service.JobsCallbackService {
 	return service.NewJobsCallbackService(reg, repo, logger)
+}
+
+// provideGateway 网关反代注册表（W0b wire 转正）：upstreams 未配置返回
+// (nil, nil)——router 侧 nil = 不挂载（网关化默认关闭）。
+func provideGateway(cfg *config.Config) (*gateway.Registry, error) {
+	ups := cfg.Gateway.Upstreams
+	if len(ups) == 0 {
+		return nil, nil
+	}
+	gwUps := make([]gateway.Upstream, len(ups))
+	for i, u := range ups {
+		gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix, Disabled: u.Disabled}
+	}
+	return gateway.New(gwUps, cfg.Gateway.AK, cfg.Gateway.SK)
+}
+
+// provideRateLimitConfig W0b wire 转正：Deps.RateLimit 注入源。
+func provideRateLimitConfig(cfg *config.Config) *config.RateLimitConfig {
+	return &cfg.RateLimit
 }

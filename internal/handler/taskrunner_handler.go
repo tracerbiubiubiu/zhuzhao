@@ -51,6 +51,13 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 		response.BadRequest(c, "params 超过上限（64KB）")
 		return
 	}
+	// W0b（十七批 SSRF 根治）：callback_url 一律服务端定（zhuzhao self_base_url +
+	// /internal/jobs/callback，按 action 分发）——生态内回调唯一合法消费者是
+	// zhuzhao 自身，用户级 URL 无正当用途；非空即 400（fail-fast 定案，非忽略+日志）。
+	if req.CallbackURL != "" {
+		response.BadRequest(c, "callback_url 不再接受（回调地址由服务端配置决定）")
+		return
+	}
 	// timeout_secs 上界预检（批次8 P1）：与 taskrunner validTimeoutSecs 同口径
 	//（0 = 默认 30s），免一次注定 400 的跨服务往返
 	if req.TimeoutSecs < 0 || req.TimeoutSecs > 86400 {

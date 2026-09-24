@@ -23,6 +23,7 @@ type Service struct {
 	orgRepo     *repository.OrgRepo
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
+	delegation  OrgDelegationChecker
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -41,6 +42,7 @@ func NewTicketService(
 		orgRepo:     orgRepo,
 		registry:    registry,
 		roleFetcher: roleFetcher,
+		delegation:  delegation,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
 	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
@@ -92,6 +94,28 @@ const defaultTicketPriority = 3
 
 // Create 创建工单
 func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, actorUserID int64) (*model.Ticket, error) {
+	// W0b（二十四批 P0-5）：assigned_to 在创建请求中拒收——分派须走 Assign 端点
+	// 过状态机（open→assigned 事件+指派人校验）；此处直传会落库 open 态带处理人。
+	if req.AssignedTo != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "assigned_to 不允许在创建时指定，请使用分派接口")
+	}
+	// W0b（二十四批 P0-5）：组织归属校验——创建者须与目标 org 同分支（任一
+	// 成员 org 是目标的祖先或后代，含自身）或持全局 org 管理权；否则任何持
+	// POST /tickets 者可向任意 org 注入工单（污染 scope=group 可见性与组织
+	// 统计）。resource.go 的 create 恒 true 仅指「已过 L1 的创建动作无需行级
+	// 判定」，不豁免归属约束。
+	if member, err := s.orgRepo.IsInOrgBranch(ctx, req.OrgID, actorUserID); err != nil {
+		return nil, err
+	} else if !member {
+		global, gerr := s.delegation.HasOrgManagePermission(ctx, actorUserID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		if !global {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+
 	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
 	ttype, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode)
 	if err != nil {
@@ -516,7 +540,17 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	if req.SourceTicketID == req.TargetTicketID {
 		return nil, errcode.ErrInvalidParams
 	}
-	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）
+	// W0b（二十四批侧信道）：鉴权先行——不可见工单不得经查重 409 泄露存在性，
+	// 须先走 authorizeCheck 返回 404+90001（防枚举语义与 Get/Update 同型）。
+	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
+	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
+		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
+			return nil, err
+		}
+	}
+	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）；
+	// 预检后移为友好路径，并发/顺序重复由 uq_ticket_relations_normalized
+	//（000028）兜底 → repo 层 23505 映射 ErrConflict（409），语义不变
 	relType := req.RelationType
 	if relType == "" {
 		relType = "related"
@@ -527,12 +561,6 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	}
 	if dup {
 		return nil, errcode.ErrConflict
-	}
-	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
-	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
-		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
-			return nil, err
-		}
 	}
 	rel := &model.TicketRelation{
 		SourceTicketID: req.SourceTicketID,

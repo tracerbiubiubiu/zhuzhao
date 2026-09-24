@@ -142,13 +142,13 @@ services:
       APP_JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
       # 网关反代（批次 B/E13）：SK 须与 activelist 侧 ACTIVELIST_CALLER_ZHUZHAO_SK 同值
       GATEWAY_AK: zhuzhao
-      GATEWAY_SK: ${GATEWAY_SK:-dev-gateway-sk}
+      GATEWAY_SK: ${GATEWAY_SK:?GATEWAY_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       # 任务代理 + 内网回调（E-④/E-②）：D 阶段起 taskrunner 容器化（deploy/compose.yaml），
       #   经共享网 zhuzhao_to_taskrunner 服务名寻址；SK 与 taskrunner 侧
       #   TASKRUNNER_CALLER_ZHUZHAO_SK / TASKRUNNER_SELF_SK 同值
       TASKRUNNER_BASE_URL: ${TASKRUNNER_BASE_URL:-http://taskrunner:8080}
-      TASKRUNNER_SK: ${TASKRUNNER_SK:-dev-taskrunner-sk}
-      INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:-dev-callback-sk}
+      TASKRUNNER_SK: ${TASKRUNNER_SK:?TASKRUNNER_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
+      INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:?INTERNAL_JOBS_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       TASKRUNNER_SELF_BASE_URL: ${TASKRUNNER_SELF_BASE_URL:-http://zhuzhao:33333}
     ports:
       - "${APP_PORT:-33333}:33333"

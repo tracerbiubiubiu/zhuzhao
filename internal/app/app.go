@@ -11,8 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	routerPkg "github.com/tracerbiubiubiu/zhuzhao/internal/router"
 )
 
 // App 应用实例
@@ -25,13 +29,29 @@ type App struct {
 }
 
 // NewApp 创建应用实例
-func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter) *App {
+// NewApp 创建应用实例。构造期执行 BK-22 fail-fast 对账（路由↔menu_apis
+// 双向；缺口 = 拒绝启动）——W0b wire 转正：原在 wire_gen 手码装配段的
+// 对账逻辑迁入此处，使 wire_gen 可安全再生。
+func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
+	pool *pgxpool.Pool, gw *gateway.Registry) (*App, error) {
+	var prefixes []string
+	if gw != nil {
+		prefixes = gw.Prefixes
+	}
+	bound, err := routerPkg.LoadBoundAPIs(context.Background(), pool)
+	if err != nil {
+		return nil, err
+	}
+	if gaps := routerPkg.AuditRouteCatalog(router.Routes(), bound, prefixes); len(gaps) > 0 {
+		return nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
+			len(gaps), routerPkg.FormatGaps(gaps))
+	}
 	return &App{
 		cfg:        cfg,
 		logger:     logger,
 		router:     router,
 		policyEval: policyEval,
-	}
+	}, nil
 }
 
 // Run 启动应用

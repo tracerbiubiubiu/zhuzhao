@@ -89,6 +89,26 @@ func (r *OrgRepo) IsMember(ctx context.Context, orgID, userID int64) (bool, erro
 	return exists, err
 }
 
+// IsInOrgBranch W0b（P0-5 归属校验的分支语义）：actor 是否与目标 org 同处
+// 一条 ltree 分支——任一成员 org 是目标的祖先或后代（含自身）。
+// 「只能在本部门树内建单」：D1 成员可向父 P 或子孙建，无关部门仍拒。
+func (r *OrgRepo) IsInOrgBranch(ctx context.Context, orgID, userID int64) (bool, error) {
+	var ok bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM user_orgs m
+			JOIN organizations mo ON mo.id = m.org_id AND mo.deleted_at IS NULL
+			CROSS JOIN organizations t
+			WHERE m.user_id = $1 AND t.id = $2 AND t.deleted_at IS NULL
+			  AND (mo.path <@ t.path OR t.path <@ mo.path)
+		)`, userID, orgID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("is in org branch: %w", err)
+	}
+	return ok, nil
+}
+
 // AddMember 添加组织成员（幂等）
 func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary bool) error {
 	tx, err := r.db.Begin(ctx)

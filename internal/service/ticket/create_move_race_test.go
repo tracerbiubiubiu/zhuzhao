@@ -46,6 +46,13 @@ func setupBK11(t *testing.T) (svc *Service, orgRepo *repository.OrgRepo, aID, bI
 	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
 		INSERT INTO users (username, password, employee_no, status) VALUES ('u%s', 'hash', 'E%s', 1)
 		RETURNING id`, suffix, suffix)).Scan(&actor))
+	// W0b（P0-5）：actor 挂 root 成员——锤击用例的 Move 会把 B 移到 root 直下，
+	// 挂 A 在 Move 后即出分支；root 使 A/B 任意移动都在分支内（归属语义不干扰锁竞态测试）
+	var rootID int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM organizations WHERE code='root'`).Scan(&rootID))
+	_, err := testPool.Exec(ctx,
+		`INSERT INTO user_orgs (user_id, org_id, is_primary) VALUES ($1, $2, true)`, actor, rootID)
+	require.NoError(t, err)
 	return
 }
 

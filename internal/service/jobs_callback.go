@@ -58,6 +58,20 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 	if err != nil {
 		return CallbackRetryable, "回调受理失败"
 	}
+	// W0b（二十批⑥）快照一致性：凭证行保留首记 action/params（Claim 冲突分支
+	// 不采纳新值；查回路径返回既有行），此处与回调 body 比对——不匹配即 SK 泄露/
+	// taskrunner 被控下挪用已存在 task_id 执行另一动作，409 拒（不可重试：重试同样
+	// 不匹配）。比对先于幂等/在途拦截，防「借 succeeded 语义伪装受理」。
+	// params 归一与 repo 写入同规则（空 → "{}"）。
+	bodyParams := string(in.Params)
+	if bodyParams == "" {
+		bodyParams = "{}"
+	}
+	if row.Action != in.Action || row.Params != bodyParams {
+		s.logger.Error("callback snapshot mismatch rejected",
+			"task_id", in.TaskID, "row_action", row.Action, "body_action", in.Action)
+		return CallbackNonRetryable, "task_id 凭证与回调内容不一致"
+	}
 	if !claimed {
 		// 未取得执行权：他人已执行完全成功（succeeded，终态幂等拦截），或他人正在途
 		// 执行（running，10 分钟抢占窗口内）——两种情形本回调都不再执行副作用，直接受理。

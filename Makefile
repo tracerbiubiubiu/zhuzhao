@@ -17,6 +17,8 @@ dev:
 tidy:
 	go mod tidy
 
+# W0b（2026-09-25）wire 已转正：手码装配升 provider（provideGateway/provideRateLimitConfig/
+# provideJobsCallbackService）+BK-22 对账移 NewApp——make wire 可安全再生。
 wire:
 	go run github.com/google/wire/cmd/wire ./internal/app/
 
