@@ -47,7 +47,7 @@
 | user | `internal/service/user/`、`handler/user/`、`repository/user/` | user.md |
 | role | `internal/service/role/`、`handler/role/`、`repository/role/` | role.md |
 | org | `internal/service/org/`、`handler/org/`、`repository/org/` | organization.md |
-| menu | `internal/service/menu/`、`handler/menu/`、`repository/menu/` | menu.md |
+| menu | `internal/service/menu_service.go`、`handler/menu_handler.go`、`repository/menu_repo.go`（扁平文件，非目录——W1 文档治理批回标） | menu.md |
 | authz | `internal/service/authz/`、`middleware/casbin.go`、`casbin/` | authz.md |
 | audit | `internal/service/audit/`、`middleware/audit.go`、`handler/audit/` | audit.md |
 | ticket | `internal/service/ticket/`（Phase 2 新建） | ticket.md |
