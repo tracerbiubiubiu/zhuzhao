@@ -92,7 +92,8 @@ JOIN LATERAL (VALUES
     ('al_types', '/al/api/v1/admin/types/:typeName/schema',   'al_type_manage_btn')
 ) AS v(page_code, api_path, btn_code) ON true
 JOIN menus page ON page.code = v.page_code
-WHERE ma.menu_id = btn.id AND ma.api_path = v.api_path;
+WHERE ma.menu_id = btn.id AND ma.api_path = v.api_path
+  AND ma.api_method != 'GET'; -- 红线同上：GET 不回迁页面外的搬移
 
 UPDATE menu_apis ma
 SET menu_id = page.id

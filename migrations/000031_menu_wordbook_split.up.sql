@@ -155,7 +155,8 @@ JOIN LATERAL (VALUES
 ) AS v(page_code, api_path, btn_code) ON true
 JOIN menus btn ON btn.code = v.btn_code AND btn.deleted_at IS NULL
 WHERE page.code = v.page_code AND page.deleted_at IS NULL
-  AND ma.menu_id = page.id AND ma.api_path = v.api_path;
+  AND ma.menu_id = page.id AND ma.api_path = v.api_path
+  AND ma.api_method != 'GET'; -- 红线：同 path 跨 method——GET 留页面（连坐搬移会把只读入口搬丢）
 
 -- GET /jobs 一并归 task_manage_btn（「/jobs* 管理面除外」语义：只勾页面不见 job 定义）
 UPDATE menu_apis ma
