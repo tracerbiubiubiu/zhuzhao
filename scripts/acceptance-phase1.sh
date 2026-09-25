@@ -294,9 +294,19 @@ VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d 
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "#27 GET http" "200" "$HC"
 check "#27 GET code" "0" "$(cat /tmp/p1.json | json_code)"
+# W1（词表重排）#27 改造为 B 案语义三段：页面=读、按钮=写
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+check "#27 GET http" "200" "$HC"
 HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xp$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EX$SUF\"}")
-check "#27 POST http" "200" "$HC"
-check "#27 POST code" "0" "$(cat /tmp/p1.json | json_code)"
+check "#27a 只绑页面 POST http=403" "403" "$HC"
+check "#27a code=70001" "70001" "$(cat /tmp/p1.json | json_code)"
+SU_CREATE_BTN=$(psql_q "SELECT id FROM menus WHERE code='system_user_create'")
+curl -s -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"role_id\":\"$VIEWER_ROLE\",\"menu_ids\":[\"$USER_MENU\",\"$SU_CREATE_BTN\"]}" >/dev/null
+VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xq$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EY$SUF\"}")
+check "#27b 补绑按钮 POST http=200" "200" "$HC"
+check "#27b code" "0" "$(cat /tmp/p1.json | json_code)"
 
 # --- #16 concurrent refresh (before #17) ---
 SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')

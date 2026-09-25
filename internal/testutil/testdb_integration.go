@@ -108,6 +108,13 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000028_ticket_relations_normalized.up.sql",
 			// R4：关联表 source 前导索引回补（000028 规范化后 OR 谓词退化顺序扫描）
 			"000029_ticket_relations_source_index.up.sql",
+			// W1（BK-18 整改）：类型/模板 5 端点 PUT/DELETE → POST（000030）
+			"000030_ticket_types_post.up.sql",
+			// W1（B 案词表重排）：页面=读/按钮=写 + role_menus 补绑（000031）
+			"000031_menu_wordbook_split.up.sql",
+			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
+			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
+			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。
 		} {
 			if err := runMigration(ctx, pool, name); err != nil {
 				sharedErr = err

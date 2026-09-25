@@ -65,7 +65,8 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return true, nil
 	}
 
-	// create 恒 true（路由级已校验 ticket:create）
+	// create 恒 true（W1 后路由级语义：L1=页面 GET/按钮 POST 绑定——POST /tickets 挂
+	// ticket_create_btn；归属约束在 service.Create 前置（IsInOrgBranch，W0b P0-5））
 	if req.Action == "create" || req.Action == "list" {
 		return true, nil
 	}
