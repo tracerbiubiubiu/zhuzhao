@@ -87,7 +87,7 @@ func TestJobsCallback_RealSubmitThenCallbackSemanticParams(t *testing.T) {
 	out, msg := svc.Execute(ctx, service.CallbackInput{
 		TaskID: "task-real-1", Action: "sync_users",
 		Params: json.RawMessage(`{ "since" : "2026-01-01" }`),
-		Actor: "taskrunner", SourceIP: "10.0.0.5",
+		Actor:  "taskrunner", SourceIP: "10.0.0.5",
 	})
 	assert.NotEqual(t, service.CallbackRetryable, out, "等价键序空白形态不得误 409: %s", msg)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&calls))
