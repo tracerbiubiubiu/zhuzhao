@@ -199,9 +199,9 @@
 
 | 位置 | 失真内容 | 实际状态 |
 |------|----------|----------|
-| `deliverables/.../activelist-stage-a-walkthrough` §遗留 | 「activelist 54cec15 与 zhuzhao 配置/文档均未 push」 | 09-15/09-16 已推送，四仓齐平 |
-| `docs/phase2/README.md` §93 | BK-13 仍标「待实施」 | IW1 已实施（2026-08-31，迁移 000017） |
-| `docs/modules/middleware.md:169` | AKSK 中间件标「⏳ Phase 3b/按需」 | 内部 aksk 已全面落地（utils v0.4.0 四仓齐平） |
+| `deliverables/.../activelist-stage-a-walkthrough` §遗留 | 「activelist 54cec15 与 zhuzhao 配置/文档均未 push」 | **✅ 已回标（2026-09-26 文档治理批）：09-15/16 已推齐平** |
+| `docs/phase2/README.md` §93 | BK-13 仍标「待实施」 | **✅ 已回标（2026-09-26）：IW1 已实施（迁移 000017）** |
+| `docs/modules/middleware.md:169` | AKSK 中间件标「⏳ Phase 3b/按需」 | **✅ 已回标（2026-09-26）：utils v0.4.x 四仓齐平落地** |
 | `docs/review/11-project-control.md` §4 迁移地图 | 附件迁移号标「现 **000026**」 | 000026 已被 `job_submissions_claimed_at` 占用，附件实际下一号 ~~000030~~ **000032（十二批勘误：W1 已占 000030/31 两连号）** |
 
 > 顺手修正建议：上述四行可在 Phase 4 首个文档批一并回标（归 §2.4 文档治理）。

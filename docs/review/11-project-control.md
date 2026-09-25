@@ -199,6 +199,12 @@ docs/
 
 ---
 
+### 7.x B13 权限覆盖矩阵（2026-09-26 完成）
+
+| 文档 | 状态 |
+|------|------|
+| [12-b13-permission-matrix-2026-09-26.md](./12-b13-permission-matrix-2026-09-26.md) | ✅ point-in-time 快照：79 端点×三层全对账；8 项盲区/不对称定性（审计/用户/组织读=管理面全局视图设计内；orgs update 不对称注记；users/orgs 建议 W3 后补 org 侧校验）；BK-21 泛化未到触发点；IAM 四平面边界清单（§26.1 输入交付） |
+
 ## 8. 遗留问题分类：Phase 3 前置 vs 随行（2026-08-31 整理；2026-09-01 增补 B11/IW4）
 
 > 本节取代原「下一步」清单，把全部已知未决项归入两档：**A 档 = Phase 3 启动前/启动时完成**（门禁与拍板，不做会让启动本身踩坑）；**B 档 = 随 Phase 3 对应子能力一起**（提前做无收益）。代码级 backlog 详情见 [phase2/00 §9](../phase2/00-implementation-plan.md)。**Phase 3 启动时从 [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) 进入检查流程**（本节 + §6 是其数据源）。
