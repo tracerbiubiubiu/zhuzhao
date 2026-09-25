@@ -88,10 +88,7 @@ var (
 
 // 菜单模块 60000-60999
 var (
-	ErrMenuAlreadyExists = util.New(60001, "菜单已存在")
-	ErrMenuNotFound      = util.New(60002, "菜单不存在")
-	ErrMenuHasChildren   = util.New(60003, "该菜单下有子菜单，无法删除")
-	ErrMenuIsSystem      = util.New(60004, "系统内置菜单不可删除")
+	ErrMenuNotFound = util.New(60002, "菜单不存在")
 )
 
 // 权限模块 70000-70999

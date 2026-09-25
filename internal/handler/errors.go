@@ -40,8 +40,6 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrOrgSystemProtected.Code: 403,
 	errcode.ErrRoleInUse.Code:          403,
 	errcode.ErrRoleIsSystem.Code:       403,
-	errcode.ErrMenuHasChildren.Code:    403,
-	errcode.ErrMenuIsSystem.Code:       403,
 	errcode.ErrForbidden.Code:          403,
 	errcode.ErrNoPermission.Code:       403,
 	errcode.ErrNoRoles.Code:            403,
@@ -69,7 +67,6 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrDomainAccountAlreadyExists.Code: 409,
 	errcode.ErrRoleAlreadyExists.Code:          409,
 	errcode.ErrOrgAlreadyExists.Code:           409,
-	errcode.ErrMenuAlreadyExists.Code:          409,
 	errcode.ErrDuplicatePrimaryOrg.Code:        409,
 	errcode.ErrTicketAlreadyClosed.Code:        409,
 

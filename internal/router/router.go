@@ -234,11 +234,11 @@ func New(deps Deps) *gin.Engine {
 				// 菜单模块
 				menus := biz.Group("/menus")
 				{
+					// W1（P4-W1 词表只读化）：三写接口删除——菜单行全走种子迁移
+					//（GET 树/详情保留=角色分配数据源；应急隐藏正确姿势=角色解绑，runbook）
 					menus.GET("", deps.MenuHandler.GetTree)
-					menus.POST("", deps.MenuHandler.Create)
+
 					menus.GET("/:id", deps.MenuHandler.Get)
-					menus.POST("/update", deps.MenuHandler.Update)
-					menus.POST("/delete", deps.MenuHandler.Delete)
 				}
 
 				// 审计日志
@@ -292,12 +292,14 @@ func New(deps Deps) *gin.Engine {
 					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，
 					// L1 admin/superadmin matcher 通配；operator 经类型配置页 AssignMenus 放行）
 					ticketMeta.POST("/ticket-types", deps.TicketHandler.CreateTicketType)
-					ticketMeta.PUT("/ticket-types/:code", deps.TicketHandler.UpdateTicketType)
-					ticketMeta.DELETE("/ticket-types/:code", deps.TicketHandler.DeleteTicketType)
-					ticketMeta.PUT("/ticket-types/:code/fields", deps.TicketHandler.ReplaceTicketTypeFields)
+					// W1（BK-18 整改，000030）：PUT/DELETE 全仓清零——POST zhuzhao 风格
+					//（code 入 body；standards §3-2 URL 不携带业务信息）
+					ticketMeta.POST("/ticket-types/update", deps.TicketHandler.UpdateTicketType)
+					ticketMeta.POST("/ticket-types/delete", deps.TicketHandler.DeleteTicketType)
+					ticketMeta.POST("/ticket-types/fields/replace", deps.TicketHandler.ReplaceTicketTypeFields)
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
-					ticketMeta.PUT("/ticket-templates/:code", deps.TicketHandler.UpdateTicketTemplate)
-					ticketMeta.DELETE("/ticket-templates/:code", deps.TicketHandler.DeleteTicketTemplate)
+					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
+					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)
 				}
 			}
 
