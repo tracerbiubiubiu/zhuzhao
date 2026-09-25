@@ -102,11 +102,15 @@ check "ticket menus(11)" "11" "$TM"
 TT=$(psql_q "SELECT COUNT(*) FROM ticket_types WHERE code IN ('incident','request')")
 check "ticket types(2)" "2" "$TT"
 
-# menu_apis 覆盖工单 16 条路由（09-ticket §3 API 表）
-MA=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
+# W1（词表重排）：ticket_list 页面行=7 GET（读入口）；8 写路由挂按钮行
+MA_GET=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
-  WHERE m.code = 'ticket_list'")
-check "ticket menu_apis(16)" "16" "$MA"
+  WHERE m.code = 'ticket_list' AND ma.api_method = 'GET'")
+check "ticket 页面 GET(8)" "8" "$MA_GET"
+MA_BTN=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
+  INNER JOIN menus m ON m.id = ma.menu_id
+  WHERE m.parent_id = (SELECT id FROM menus WHERE code='ticket_list') AND ma.api_method != 'GET'")
+check "ticket 按钮写(8)" "8" "$MA_BTN"
 
 # 2a: admin/superadmin 获得 11 个 ticket 菜单的 role_menus 绑定
 RM=$(psql_q "SELECT COUNT(DISTINCT rm.menu_id) FROM role_menus rm
@@ -179,8 +183,13 @@ ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 # 模拟管理员授权流程（对齐 Phase 1 #27 模式）：给 operator 绑定工单页面菜单 →
 # 页面菜单含全部 16 条 ticket menu_apis，L1 放行后由 L2/L3 管辖（R6/T7 的 403 用例才有意义）
 TICKET_PAGE_MENU=$(psql_q "SELECT id FROM menus WHERE code='ticket_list'")
+# W1（词表重排）：页面=读 API、写须按钮——operator 业务读写绑页面+全部工单按钮
+#（九既有 + ticket_relation_btn 新增；*_read_btn 零绑定为设计预期）
+TICKET_BTN_IDS=$(psql_q "SELECT string_agg(id::text, ',') FROM menus WHERE parent_id=$TICKET_PAGE_MENU AND menu_type=3")
+if [ -z "$TICKET_BTN_IDS" ]; then echo "FATAL: ticket 按钮行缺失（迁移 31 未应用？）"; exit 1; fi
+TICKET_MENU_IDS_JSON=$(TICKET_PAGE_MENU="$TICKET_PAGE_MENU" TICKET_BTN_IDS="$TICKET_BTN_IDS" python3 -c "import json,os; ids=[os.environ['TICKET_PAGE_MENU']]+os.environ['TICKET_BTN_IDS'].split(','); print(json.dumps(ids))")
 curl -s -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-  -d "{\"role_id\":\"$ROLE_O\",\"menu_ids\":[\"$TICKET_PAGE_MENU\"]}" >/dev/null
+  -d "{\"role_id\":\"$ROLE_O\",\"menu_ids\":$TICKET_MENU_IDS_JSON}" >/dev/null
 AID=$(make_user "a_$$" "$ROLE_O")
 BID=$(make_user "b_$$" "$ROLE_O")
 VID=$(make_user "v_$$" "$ROLE_V")

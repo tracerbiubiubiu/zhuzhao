@@ -2,6 +2,8 @@
 
 > **Step 8**，依赖 Step 5（authz）。与 Step 7（role）**可并行**；`AssignMenus` 在 role 模块，菜单 CRUD 在本模块。  
 > **`GET /user/menus` / `GET /user/permissions` 在本 Step 交付**（里程碑 M4，见 [README §2.3](./README.md#23-里程碑验收推荐按此推进)）。
+>
+> **⚠ W1（P4-W1，2026-09-26）菜单词表只读化**：三写接口（POST /menus、/menus/update、/menus/delete）已删除——菜单行全走种子迁移（业界「词表进代码/绑定进数据」共识：Keycloak 无菜单管理、Grafana/Backstage 导航=代码）。GET 树/详情保留（角色分配 UI 数据源）。应急隐藏正确姿势=**角色解绑**（导航+权限码+Casbin 策略同事务收），非菜单删除。重建触发条件（多租户/租户自定义菜单）见 phase4/00 §3 信号组 C。B 案词表重排（页面=读 API、写 API 挂按钮行）随 000031 落地——见 §菜单-API 绑定勘误。
 
 ---
 
@@ -27,8 +29,8 @@
 
 | 来源 | 何时用 | 谁写 | 例子 |
 |------|--------|------|------|
-| **迁移种子 SQL**（主路径） | 系统内置页、随版本发布的新功能页 | 开发在 `000002_seed.up.sql`（或新 migration） | Phase 1 的「用户/角色/菜单/组织」 |
-| **登记 API** `POST /menus` | 运维/管理员在 UI 上增补、热修元数据；未来租户自定义菜单 | 超级管理员 | 「菜单管理」页里手工加一行 |
+| **迁移种子 SQL**（唯一主路径） | 系统内置页、随版本发布的新功能页 | 开发在 `000002_seed.up.sql`（或新 migration） | Phase 1 的「用户/角色/菜单/组织」 |
+| ~~**登记 API** `POST /menus`~~ | ~~运维/管理员在 UI 上增补、热修元数据~~ **W1 删除**：真实菜单全 `is_system=true` 改删即拒，登记入口名存实亡；「rename/icon/sort 低频化妆不值得换环境漂移」（热修后 DB 偏离种子，新建环境 migrate-up 不一致） | — | — |
 | **角色分配** `POST /roles/menus` | 已有菜单记录，决定某角色能看哪些 | 管理员 | 给 `operator` 只勾「用户管理」+ 部分按钮 |
 
 **新增前端路由时的推荐流程**（Phase 1 起）：
@@ -38,7 +40,7 @@
 2. 后端：同一 PR / migration 写入 menus + menu_apis 种子（is_system=true）
 3. 后端：router 注册对应 API
 4. 角色：默认仅 superadmin/admin 全绑；自定义角色由管理员在「角色管理」勾菜单
-5. （可选）管理员日后用 POST /menus 微调 name/icon/sort，不改 component 契约
+5. ~~（可选）管理员日后用 POST /menus 微调~~ **W1：登记 API 已删——name/icon/sort 调整走新种子迁移**
 ```
 
 > **不要**指望「只改前端、不调 API、不写 migration」——`GET /user/menus` 读的是 DB；没有记录就没有动态路由。登记 API 是**运维入口**，不是替代种子的主路径。
@@ -247,7 +249,7 @@ GET /user/permissions
 
 | 机制 | Phase 1 实际拦截 | 与权限码关系 |
 |------|------------------|--------------|
-| **Casbin L1** | `menu_apis` → `(path, method)` | 角色绑定**页面菜单**即获得该页全部 `menu_apis`；**不**直接 match `user:list` 字符串 |
+| **Casbin L1** | `menu_apis` → `(path, method)` | **W1（B 案词表重排，000031）**：角色绑定**页面菜单**=获得该页**读 API**（GET 行）；**写 API 挂对应按钮行**（写权限须勾按钮）；**不**直接 match `user:list` 字符串 |
 | **前端显隐** | `GET /user/permissions` | 写操作 → `button:{permission}`；进页 → `route:{path}` |
 | **Phase 2+ 文档/注解** | Handler 注释 `// perm: user:create` | 与按钮码同表，便于 swagger/审计对齐 |
 
@@ -267,7 +269,7 @@ GET /user/permissions
 | `assign_menu` | 分配菜单 | POST `/roles/menus`（含查看已绑菜单 GET） |
 | `move` | 移动组织树 | POST `/orgs/move` |
 | `member` | 组织成员增删查 | GET/POST `/orgs/…/members*` |
-| `audit:list` | 审计日志（**Phase 1 无菜单**） | GET `/audit/logs` |
+| ~~`audit:list`~~ `audit:read`（W1 勘误：000025 种子实值） | 审计日志（**Phase 1 无菜单**） | GET `/audit/logs` |
 
 **页面菜单（type=2）隐式权限** — 无单独按钮，绑定页面即通过 Casbin 获得：
 
@@ -294,7 +296,7 @@ GET /user/permissions
 | `role:assign_menu` 覆盖 GET menus | ✅ 一个码管「分配菜单」能力 |
 | `org:member` 覆盖成员三 API | ✅ 一个码管「成员管理」面板 |
 | 路径示例 `/system/users` | ✅ 已改为 `/system/user`（与 seed 一致） |
-| Phase 1 无菜单种子 | `audit:list` 仅 admin/superadmin 通配 Casbin | ✅ 08-audit 已标注；Phase 2+ 补菜单 |
+| Phase 1 无菜单种子 | `audit:read`（~~audit:list~~ 系文档笔误，实值为 read——000025）仅 admin/superadmin 通配 Casbin | ✅ 08-audit 已标注；W1 已补（000025+全量绑定） |
 
 > 新增 API 时：**先**在本表加 `{resource}:{action}`，**再**写 `menu_apis` + 按需加按钮种子；禁止自造同义码（如 `user:reset` 与 `user:reset_password` 并存）。
 

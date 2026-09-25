@@ -1636,12 +1636,23 @@
         },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest": {
             "type": "object",
+            "required": [
+                "code"
+            ],
             "properties": {
+                "code": {
+                    "description": "W1（BK-18 整改）：code 从 path param 迁入 body",
+                    "type": "string"
+                },
                 "fields": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput"
                     }
+                },
+                "version": {
+                    "description": "Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。\n须 \u003e 0，否则 400。",
+                    "type": "integer"
                 }
             }
         },
@@ -1779,7 +1790,14 @@
         },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTemplateRequest": {
             "type": "object",
+            "required": [
+                "code"
+            ],
             "properties": {
+                "code": {
+                    "description": "W1（BK-18 整改）：code 从 path param 迁入 body",
+                    "type": "string"
+                },
                 "default_fields": {
                     "type": "array",
                     "items": {
@@ -1795,12 +1813,23 @@
                 "name": {
                     "type": "string",
                     "maxLength": 200
+                },
+                "version": {
+                    "description": "Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中\nticket_templates.version 才写，否则 409。须 \u003e 0，否则 400。",
+                    "type": "integer"
                 }
             }
         },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTypeRequest": {
             "type": "object",
+            "required": [
+                "code"
+            ],
             "properties": {
+                "code": {
+                    "description": "W1（BK-18 整改）：code 从 path param 迁入 body（POST 风格，standards §3-2）",
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -1822,6 +1851,10 @@
                     "items": {
                         "type": "integer"
                     }
+                },
+                "version": {
+                    "description": "Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中\nticket_types.version 才写，否则 409。须 \u003e 0，否则 400。",
+                    "type": "integer"
                 }
             }
         },
