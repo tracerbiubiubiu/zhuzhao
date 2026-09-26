@@ -8,6 +8,16 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
+// MapStringValueOverflow 27 批 D-5：22001（value too long）→ 400。
+// 纵深兜底——model 层 max= 绑定（D-3）为主防线，防未来新字段漏绑时 500。
+func MapStringValueOverflow(err error) *errcode.Error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "22001" {
+		return errcode.ErrInvalidParams
+	}
+	return nil
+}
+
 func mapUniqueViolation(err error) *errcode.Error {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {

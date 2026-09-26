@@ -98,5 +98,8 @@ snapshot-diff:
 	bash scripts/snapshot.sh --diff
 
 # 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
+guard-roundtrip:
+	bash scripts/migration-roundtrip-check.sh
+
 guard:
 	go test -count=1 -run 'TestArchitecture|TestGuard' ./internal/...

@@ -141,9 +141,17 @@ func TestArchitecture_LayerDependency(t *testing.T) {
 				// 已知豁免：handler 复用 repository 的「查询参数结构体」（UserListQuery /
 				// AuditListQuery 等）属于轻量类型复用，非数据访问。
 				// 数据访问违规由 TestArchitecture_NoDBInHandler 单独拦截。
+				// 27 批 D-6 收紧：原无条件放行与注释「仅查询参数结构体」不符——
+				// 改文件级白名单（import 粒度无符号信息）：三个已知合法消费点——
+				// user/audit handler 的查询结构体 + errors.go 的 PG 错误映射函数。
+				// 新文件想 import repository 须扩此白名单（评审可见）。
 				if !ok && layer == "handler" && targetLayer == "repository" {
-					t.Logf("ℹ️  已知豁免（非阻断）：%s\n    handler 复用 repository 查询参数结构体，属类型复用而非数据访问。\n    若新增的是数据访问调用，请改为经 service 层。", path)
-					ok = true
+					switch filepath.Base(path) {
+					case "user_handler.go", "audit_handler.go", "errors.go":
+						ok = true
+					default:
+						t.Errorf("❌ handler→repository 仅白名单文件可 import（user_handler/audit_handler/errors.go），其余经 service：%s", path)
+					}
 				}
 				if !ok {
 					t.Errorf("❌ 分层违规：%s\n    %s 层不应依赖 %s 层（%s）\n    允许：%v\n    修复：把逻辑下沉到 service，或通过接口/Port 解耦",

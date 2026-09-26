@@ -7,6 +7,7 @@ WHERE role_id IN (SELECT id FROM roles WHERE code IN ('admin','superadmin'))
   AND menu_id IN (
     SELECT id FROM menus WHERE code IN (
       'ticket_type_manage','task_center','al_data','al_types','audit_log',
+      'al_manage','task_manage',  -- 27 批 D-1：up⑥ CROSS JOIN 含两目录，漏撤则往返多 4 行
       'task_submit_btn','task_read_btn','task_manage_btn','task_operate_btn',
       'al_data_write_btn','al_type_manage_btn','ticket_relation_btn','ticket_type_write_btn'));
 
@@ -28,6 +29,18 @@ FROM (VALUES
     ('/api/v1/menus/delete')
 ) AS v(api_path)
 JOIN menus m ON m.code = 'system_menu'
+ON CONFLICT DO NOTHING;
+
+-- 27 批 D-1 修复：role_menus 忠实逆——up ⑤ 删了 admin/superadmin 对三按钮的
+-- 000002 原绑定，down 须重建（漏则往返净丢 6 行）
+INSERT INTO role_menus (role_id, menu_id)
+SELECT r.id, m.id
+FROM roles r
+CROSS JOIN menus m
+WHERE r.code IN ('admin', 'superadmin') AND r.deleted_at IS NULL
+  AND m.code IN ('system_menu_create', 'system_menu_update', 'system_menu_delete')
+  AND m.deleted_at IS NULL
+  AND NOT EXISTS (SELECT 1 FROM role_menus rm WHERE rm.role_id = r.id AND rm.menu_id = m.id)
 ON CONFLICT DO NOTHING;
 
 -- ④ 撤 4 元数据 GET 复制（只删 ticket_type_manage 页面行的四个 GET）

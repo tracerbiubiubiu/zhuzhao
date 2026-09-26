@@ -117,6 +117,12 @@ func maskSensitive(body []byte) string {
 func maskSensitiveMap(m map[string]any) {
 	sensitiveKeys := []string{"password", "old_password", "new_password", "secret", "token"}
 	for key, val := range m {
+		// 27 批 D-7：追加 *_token 后缀匹配（access_token/refresh_token 等）——
+		// 当前 auth 组不挂审计故无实效，防未来审计面端点回传凭据明文入库
+		if strings.HasSuffix(strings.ToLower(key), "_token") {
+			m[key] = "***"
+			continue
+		}
 		for _, sk := range sensitiveKeys {
 			if strings.EqualFold(key, sk) {
 				m[key] = "***"

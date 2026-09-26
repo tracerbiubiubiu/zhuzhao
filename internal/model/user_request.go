@@ -4,12 +4,12 @@ import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 
 // CreateUserRequest 创建用户
 type CreateUserRequest struct {
-	Username      string              `json:"username" binding:"required"`
+	Username      string              `json:"username" binding:"required,max=50"`
 	Password      string              `json:"password" binding:"required,min=8"` // F-9：最小长度（完整复杂度策略 Phase 2）
-	EmployeeNo    string              `json:"employee_no"`
+	EmployeeNo    string              `json:"employee_no" binding:"omitempty,max=50"`
 	DomainAccount string              `json:"domain_account"`
 	UserDomain    string              `json:"user_domain"`
-	RealName      string              `json:"real_name"`
+	RealName      string              `json:"real_name" binding:"omitempty,max=100"`
 	Email         string              `json:"email"`
 	Phone         string              `json:"phone"`
 	Avatar        string              `json:"avatar"`
@@ -24,7 +24,7 @@ type UpdateUserRequest struct {
 	ID      int64 `json:"id,string" binding:"required"`
 	Version int   `json:"version" binding:"required"`
 	// 指针字段：nil = 未传（保持原值），非 nil 空串 = 显式清空
-	EmployeeNo    *string `json:"employee_no"`
+	EmployeeNo    *string `json:"employee_no" binding:"omitempty,max=50"`
 	DomainAccount *string `json:"domain_account"`
 	UserDomain    *string `json:"user_domain"`
 	RealName      *string `json:"real_name"`
