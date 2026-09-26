@@ -19,6 +19,14 @@ func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
 }
 
 // GetTree GET /api/v1/menus
+//
+//	@Summary		菜单树
+//	@Tags			menus
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/menus [get]
 func (h *MenuHandler) GetTree(c *gin.Context) {
 	tree, err := h.menuService.GetTree(c.Request.Context())
 	if err != nil {
@@ -29,6 +37,14 @@ func (h *MenuHandler) GetTree(c *gin.Context) {
 }
 
 // Get GET /api/v1/menus/:id
+//
+//	@Summary		菜单详情
+//	@Tags			menus
+//	@Produce		json
+//	@Param			id	path	int	true	"菜单 ID"
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/menus/{id} [get]
 func (h *MenuHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
