@@ -143,7 +143,8 @@ func TestArchitecture_LayerDependency(t *testing.T) {
 				// 数据访问违规由 TestArchitecture_NoDBInHandler 单独拦截。
 				// 27 批 D-6 收紧：原无条件放行与注释「仅查询参数结构体」不符——
 				// 改文件级白名单（import 粒度无符号信息）：三个已知合法消费点——
-				// user/audit handler 的查询结构体 + errors.go 的 PG 错误映射函数。
+				// user/audit handler 的查询结构体 + errors.go 的 PG 错误映射函数
+				//（28 批 M-2a：errors.go 是真实调用非类型复用——注释如实记录让步）。
 				// 新文件想 import repository 须扩此白名单（评审可见）。
 				if !ok && layer == "handler" && targetLayer == "repository" {
 					switch filepath.Base(path) {

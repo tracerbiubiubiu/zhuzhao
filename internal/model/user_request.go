@@ -7,12 +7,12 @@ type CreateUserRequest struct {
 	Username      string              `json:"username" binding:"required,max=50"`
 	Password      string              `json:"password" binding:"required,min=8"` // F-9：最小长度（完整复杂度策略 Phase 2）
 	EmployeeNo    string              `json:"employee_no" binding:"omitempty,max=50"`
-	DomainAccount string              `json:"domain_account"`
-	UserDomain    string              `json:"user_domain"`
+	DomainAccount string              `json:"domain_account" binding:"omitempty,max=100"`
+	UserDomain    string              `json:"user_domain" binding:"omitempty,max=255"`
 	RealName      string              `json:"real_name" binding:"omitempty,max=100"`
-	Email         string              `json:"email"`
-	Phone         string              `json:"phone"`
-	Avatar        string              `json:"avatar"`
+	Email         string              `json:"email" binding:"omitempty,email,max=100"`
+	Phone         string              `json:"phone" binding:"omitempty,max=20"`
+	Avatar        string              `json:"avatar" binding:"omitempty,max=500"`
 	RoleIDs       jsonutil.Int64Slice `json:"role_ids"`
 	OrgIDs        jsonutil.Int64Slice `json:"org_ids"`
 	PrimaryOrgID  *int64              `json:"primary_org_id,string"`
@@ -25,12 +25,12 @@ type UpdateUserRequest struct {
 	Version int   `json:"version" binding:"required"`
 	// 指针字段：nil = 未传（保持原值），非 nil 空串 = 显式清空
 	EmployeeNo    *string `json:"employee_no" binding:"omitempty,max=50"`
-	DomainAccount *string `json:"domain_account"`
-	UserDomain    *string `json:"user_domain"`
-	RealName      *string `json:"real_name"`
-	Email         *string `json:"email"`
-	Phone         *string `json:"phone"`
-	Avatar        *string `json:"avatar"`
+	DomainAccount *string `json:"domain_account" binding:"omitempty,max=100"`
+	UserDomain    *string `json:"user_domain" binding:"omitempty,max=255"`
+	RealName      *string `json:"real_name" binding:"omitempty,max=100"`
+	Email         *string `json:"email" binding:"omitempty,email,max=100"`
+	Phone         *string `json:"phone" binding:"omitempty,max=20"`
+	Avatar        *string `json:"avatar" binding:"omitempty,max=500"`
 }
 
 // UserIDRequest 带 user_id 的请求
@@ -65,10 +65,10 @@ type SetUserOrgsRequest struct {
 
 // UpdateProfileRequest 更新个人资料（patch 语义同 UpdateUserRequest）
 type UpdateProfileRequest struct {
-	RealName *string `json:"real_name"`
-	Email    *string `json:"email"`
-	Phone    *string `json:"phone"`
-	Avatar   *string `json:"avatar"`
+	RealName *string `json:"real_name" binding:"omitempty,max=100"`
+	Email    *string `json:"email" binding:"omitempty,email,max=100"`
+	Phone    *string `json:"phone" binding:"omitempty,max=20"`
+	Avatar   *string `json:"avatar" binding:"omitempty,max=500"`
 }
 
 // UpdatePasswordRequest 用户修改密码

@@ -79,6 +79,7 @@ benchmark:
 # 四档链式全量门禁（经 2c 脚本链式：phase1 → 2a → 2b → 2c，对齐 AGENTS.md 门禁定义）
 acceptance:
 	bash scripts/acceptance-phase2c.sh
+	bash scripts/migration-roundtrip-check.sh
 
 acceptance-2a:
 	bash scripts/acceptance-phase2a.sh
@@ -97,9 +98,10 @@ snapshot:
 snapshot-diff:
 	bash scripts/snapshot.sh --diff
 
-# 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
+# 迁移往返数据 diff（依赖开发 PG 容器；28 批 SYS-3：挂入 acceptance 链尾强制执行）
 guard-roundtrip:
 	bash scripts/migration-roundtrip-check.sh
 
+# 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
 guard:
 	go test -count=1 -run 'TestArchitecture|TestGuard' ./internal/...

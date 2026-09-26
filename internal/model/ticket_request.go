@@ -4,8 +4,8 @@ import "encoding/json"
 
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
-	TypeCode     string          `json:"type_code" binding:"required"`
-	Title        string          `json:"title" binding:"required"`
+	TypeCode     string          `json:"type_code" binding:"required,max=50"`
+	Title        string          `json:"title" binding:"required,max=200"`
 	Description  string          `json:"description"`
 	Priority     int             `json:"priority"`
 	AssignedTo   *int64          `json:"assigned_to,string,omitempty"`
@@ -17,7 +17,7 @@ type CreateTicketRequest struct {
 // UpdateTicketRequest 更新工单（POST /tickets/update，id 放 body）
 type UpdateTicketRequest struct {
 	ID          int64   `json:"id,string" binding:"required"`
-	Title       *string `json:"title,omitempty"`
+	Title       *string `json:"title,omitempty" binding:"omitempty,max=200"`
 	Description *string `json:"description,omitempty"`
 	Priority    *int    `json:"priority,omitempty"`
 }
