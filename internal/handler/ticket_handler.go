@@ -419,7 +419,7 @@ func (h *TicketHandler) CreateTicketType(c *gin.Context) {
 //	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.UpdateTicketTypeRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code} [put]
+//	@Router		/api/v1/ticket-types/update [post]
 func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 	// W1（BK-18 整改）：POST /ticket-types/update——req.Code 入 body（binding required）
 	var req model.UpdateTicketTypeRequest
@@ -442,7 +442,7 @@ func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 //	@Produce	json
 //	@Param		code	path	string	true	"类型编码"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code} [delete]
+//	@Router		/api/v1/ticket-types/delete [post]
 func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
 	// W1（BK-18 整改）：POST /ticket-types/delete——code 入 body
 	var req model.DeleteByCodeRequest
@@ -466,7 +466,7 @@ func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
 //	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.ReplaceTypeFieldsRequest	true	"字段集"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code}/fields [put]
+//	@Router		/api/v1/ticket-types/fields/replace [post]
 func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 	// W1（BK-18 整改）：POST /ticket-types/fields/replace——req.Code 入 body
 	var req model.ReplaceTypeFieldsRequest
@@ -518,7 +518,7 @@ func (h *TicketHandler) CreateTicketTemplate(c *gin.Context) {
 //	@Param		code	path	string							true	"模板编码"
 //	@Param		req		body	model.UpdateTicketTemplateRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-templates/{code} [put]
+//	@Router		/api/v1/ticket-templates/update [post]
 func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
 	// W1（BK-18 整改）：POST /ticket-templates/update——req.Code 入 body
 	var req model.UpdateTicketTemplateRequest
@@ -541,7 +541,7 @@ func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
 //	@Produce	json
 //	@Param		code	path	string	true	"模板编码"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-templates/{code} [delete]
+//	@Router		/api/v1/ticket-templates/delete [post]
 func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
 	// W1（BK-18 整改）：POST /ticket-templates/delete——code 入 body
 	var req model.DeleteByCodeRequest

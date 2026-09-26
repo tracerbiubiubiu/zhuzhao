@@ -803,23 +803,6 @@ paths:
       tags:
       - ticket-admin
   /api/v1/ticket-templates/{code}:
-    delete:
-      parameters:
-      - description: 模板编码
-        in: path
-        name: code
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 删除工单模板
-      tags:
-      - ticket-admin
     get:
       parameters:
       - description: 模板编码
@@ -837,7 +820,26 @@ paths:
       summary: 工单模板详情
       tags:
       - ticket
-    put:
+  /api/v1/ticket-templates/delete:
+    post:
+      parameters:
+      - description: 模板编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单模板
+      tags:
+      - ticket-admin
+  /api/v1/ticket-templates/update:
+    post:
       consumes:
       - application/json
       parameters:
@@ -894,49 +896,6 @@ paths:
       summary: 新建工单类型
       tags:
       - ticket-admin
-  /api/v1/ticket-types/{code}:
-    delete:
-      parameters:
-      - description: 类型编码
-        in: path
-        name: code
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 删除工单类型（有工单禁删 → 409）
-      tags:
-      - ticket-admin
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: 类型编码
-        in: path
-        name: code
-        required: true
-        type: string
-      - description: 更新内容
-        in: body
-        name: req
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTypeRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 更新工单类型（patch；code 不可改）
-      tags:
-      - ticket-admin
   /api/v1/ticket-types/{code}/fields:
     get:
       parameters:
@@ -955,7 +914,26 @@ paths:
       summary: 工单类型字段定义
       tags:
       - ticket
-    put:
+  /api/v1/ticket-types/delete:
+    post:
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单类型（有工单禁删 → 409）
+      tags:
+      - ticket-admin
+  /api/v1/ticket-types/fields/replace:
+    post:
       consumes:
       - application/json
       parameters:
@@ -978,6 +956,32 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 全量替换类型字段集
+      tags:
+      - ticket-admin
+  /api/v1/ticket-types/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: 更新内容
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新工单类型（patch；code 不可改）
       tags:
       - ticket-admin
   /api/v1/tickets:

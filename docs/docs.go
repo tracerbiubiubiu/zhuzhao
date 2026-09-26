@@ -677,15 +677,15 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/ticket-templates/{code}": {
-            "get": {
+        "/api/v1/ticket-templates/delete": {
+            "post": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "ticket"
+                    "ticket-admin"
                 ],
-                "summary": "工单模板详情",
+                "summary": "删除工单模板",
                 "parameters": [
                     {
                         "type": "string",
@@ -703,8 +703,10 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "put": {
+            }
+        },
+        "/api/v1/ticket-templates/update": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -741,15 +743,17 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/api/v1/ticket-templates/{code}": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "ticket-admin"
+                    "ticket"
                 ],
-                "summary": "删除工单模板",
+                "summary": "工单模板详情",
                 "parameters": [
                     {
                         "type": "string",
@@ -819,8 +823,76 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/ticket-types/{code}": {
-            "put": {
+        "/api/v1/ticket-types/delete": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "删除工单类型（有工单禁删 → 409）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/fields/replace": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket-admin"
+                ],
+                "summary": "全量替换类型字段集",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "字段集",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/update": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -857,32 +929,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ticket-admin"
-                ],
-                "summary": "删除工单类型（有工单禁删 → 409）",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
             }
         },
         "/api/v1/ticket-types/{code}/fields": {
@@ -901,44 +947,6 @@ const docTemplate = `{
                         "name": "code",
                         "in": "path",
                         "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ticket-admin"
-                ],
-                "summary": "全量替换类型字段集",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "字段集",
-                        "name": "req",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest"
-                        }
                     }
                 ],
                 "responses": {
