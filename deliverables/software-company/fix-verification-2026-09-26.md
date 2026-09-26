@@ -162,3 +162,9 @@ snapshot() {
 **你确实把 7 条发现里的实质问题都修掉了**——D-1 是**精确的忠实逆**（内容级零差异）、D-2 在原失败点通过、D-4/D-6 经反向测试确认为真修复、D-3/D-5 端到端从 500 变 400。**但**：(1) 配套的"系统性门禁"**默认跑不起来**，且其"明细"只是计数，撑不起它声称的防护力；(2) D-7 无测试；(3) 提交信息对 ticket title 的归因有误。建议优先修 SYS-1（一行改动）并顺手把 SYS-2 换成内容级快照，否则这个门禁会给人"已验证"的错觉。
 
 **补充**：D-3 的遗漏面比原报告更宽——除 `CreateUserRequest` 五个字段外，`UpdateUserRequest.RealName` 与**整个 `UpdateProfileRequest`（用户自助改资料路径）**同样无 `max=`；逐字段精确长度见 **§五**。该清单已按"先不动代码"约定写成可照抄的改法，未改动仓库任何文件。
+
+---
+
+## 附：处置回执（2026-09-26 当日闭环，`ed9fac3`）
+
+SYS-1（stderr 捕获+解析空显式失败）/SYS-2（内容级逐行快照）/SYS-3（PATH 优先+Makefile 注释归位 M-3+挂 acceptance 链尾）/M-1（Title/TypeCode/Update 指针补 max= 兑现+虚报定性 02 行 31）/D-3 遗漏面（user_request 19 处含 UpdateProfileRequest 四指针+email 格式）/D-7（正反例测试，含 tokens 反例）/M-2a（白名单注释如实）——`make guard-roundtrip` 默认入口 31 对零漂移验证过。本档为闭环验证档案。
