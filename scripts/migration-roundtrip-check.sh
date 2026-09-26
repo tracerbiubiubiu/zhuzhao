@@ -26,16 +26,20 @@ if [ "$N" = "999" ]; then N=$LAST; fi
 snapshot() {
   docker exec "$PG_C" psql -U zhuzhao -d "$DB" -At -F $'\x1f' -c "
     SELECT 'menus', code, coalesce(parent_id::text,''), coalesce(menu_type::text,''),
-           coalesce(path,''), coalesce(component,''), coalesce(permission,''), coalesce(name,'')
+           coalesce(path,''), coalesce(component,''), coalesce(permission,''), coalesce(name,''),
+           coalesce(sort_order::text,''), coalesce(icon,''), coalesce(visible::text,''), coalesce(is_system::text,'')
       FROM menus
     UNION ALL
-    SELECT 'menu_apis', m.code, coalesce(ma.api_path,''), coalesce(ma.api_method::text,''),'','','',''
+    SELECT 'menu_apis', m.code, coalesce(ma.api_path,''), coalesce(ma.api_method::text,''),
+           '','','','','','','',''
       FROM menu_apis ma JOIN menus m ON m.id = ma.menu_id
     UNION ALL
-    SELECT 'role_menus', r.code, m.code,'','','','',''
+    SELECT 'role_menus', r.code, m.code,
+           '','','','','','','','',''
       FROM role_menus rm JOIN roles r ON r.id=rm.role_id JOIN menus m ON m.id=rm.menu_id
     UNION ALL
-    SELECT 'casbin_rule', coalesce(ptype,''), coalesce(v0,''), coalesce(v1,''), coalesce(v2,''), coalesce(v3,''),'',''
+    SELECT 'casbin_rule', coalesce(ptype,''), coalesce(v0,''), coalesce(v1,''),
+           coalesce(v2,''), coalesce(v3,''),'','','','','',''
       FROM casbin_rule
   " | LC_ALL=C sort
 }
