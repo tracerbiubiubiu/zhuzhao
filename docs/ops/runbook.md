@@ -90,6 +90,7 @@
 
 1. 跑 acceptance 前先停演示 app（33333 互斥），用 `make docker-dev-reset` 重置标准环境；
 2. dev server 必带 `INTERNAL_JOBS_SK`（见 1.2）；
+3. 本机 shell 若设了 `HTTP_PROXY`/`http_proxy`，curl 打 localhost 会走代理返回 502——加 `--noproxy '*'` 绕过（27 批审计环境踩坑，验收误判高发点）；
 3. docker-dev-reset 后如跑 taskrunner 相关测试，重建 scratch 库；
 4. **门禁判定禁只数 ok 行数**——必须看整体退出码/FAIL 行（utils 编译破损漏检事故）；
 5. 事故改环境（口令/迁移）后立即回写 runbook 本节。
