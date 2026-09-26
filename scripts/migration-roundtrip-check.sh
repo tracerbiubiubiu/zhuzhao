@@ -39,7 +39,7 @@ snapshot() {
       FROM role_menus rm JOIN roles r ON r.id=rm.role_id JOIN menus m ON m.id=rm.menu_id
     UNION ALL
     SELECT 'casbin_rule', coalesce(ptype,''), coalesce(v0,''), coalesce(v1,''),
-           coalesce(v2,''), coalesce(v3,''),'','','','','',''
+           coalesce(v2,''), coalesce(v3,''),coalesce(v4,''),coalesce(v5,''),'','','',''
       FROM casbin_rule
   " | LC_ALL=C sort
 }
