@@ -632,6 +632,9 @@ definitions:
     type: object
 info:
   contact: {}
+  description: zhuzhao——Go 模块化单体 IAM + 工单系统（三层鉴权 + 资源级工单）
+  title: zhuzhao API
+  version: "1.0"
 paths:
   /api/v1/audit/logs:
     get:

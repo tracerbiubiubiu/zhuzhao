@@ -98,7 +98,7 @@ zhuzhao-ui/
 
 **Token 存储抽象**：`common/request/tokenStorage.ts` 定义 get/set/clear 接口，现态实现 = 内存 + localStorage（AT/RT + **`device_id`**——浏览器级 UUID，后端白名单 `[a-zA-Z0-9_-]{1,64}`（D2-22，UUID 天然合规），**登录/登出/改密三处同源（刷新不需要——设备身份在 RT claims 内，RefreshRequest 无此字段）**；后端注释明确要求前端生成并每次登录携带，缺省归 "default" 单槽会多浏览器互踢 20004/20015，登出漏传则吊销 "default" 空槽而真实 RT 槽残留，**改密轮换 RT 时漏传会把新 RT 写进 "default" 错槽 → 互踢**）；同浏览器多标签共享同一 device_id（配合单飞刷新），不同浏览器各自独立槽位。B7 cookie 会话演进（phase2 D2-23 方向）时**只换实现**，调用面零改动。localStorage 方案运行期须配合 XSS 基线（§6）。
 
-**API 类型生成链（02 §5.3 处置 #3，P4-W2 壳层件）**：前端类型不手写——后端 `make swag` 产出 OpenAPI 后经 openapi-typescript（或 orval）生成 TS 类型进 `src/api/__generated__/`，链路 = `make swag && pnpm codegen`。⚠ swag 产物为 Swagger 2.0——**2026-09-21 拍板：目标格式 OpenAPI 3.0**，链路中加转换步（swagger2openapi 类工具做 2.0→3.0 机械转换），具体工具随 P4-W2 首日锁版本一并定。契约漂移（后端改字段形状）在**前端编译期报错**，不靠人记（对症「OKPage 形状变化断言要改」类历史教训）。纪律：生成物不手改、随后端契约批同批再生成。
+**API 类型生成链（02 §5.3 处置 #3，P4-W2 壳层件）**：前端类型不手写——后端 `make swag` 产出 OpenAPI 后经 openapi-typescript（或 orval）生成 TS 类型进 `src/api/__generated__/`，链路 = `make swag && pnpm codegen`。⚠ swag 产物为 Swagger 2.0——**2026-09-21 拍板：目标格式 OpenAPI 3.0**，链路中加转换步（swagger2openapi 类工具做 2.0→3.0 机械转换），具体工具随 P4-W2 首日锁版本一并定。契约漂移（后端改字段形状）在**前端编译期报错**，不靠人记（对症「OKPage 形状变化断言要改」类历史教训）。纪律：生成物不手改、随后端契约批同批再生成。**✅ 已落定并首跑（2026-09-27，W2 出口闭合批）**：`swagger2openapi 7.0.8`（2.0→3.0）+ `openapi-typescript 7.13.0`；链路 = 主仓 `make swag` → 本仓 `pnpm codegen`（`scripts/codegen.sh`，主仓路径可用 `ZHUZHAO_REPO` 覆盖）→ `src/api/__generated__/schema.d.ts` 随仓提交（eslint 豁免）；前置补齐 = 主仓 `cmd/server/main.go` 补 @title/@version 总注解（info 块空则 swagger2openapi 拒转）。
 
 ### 3.4 权限三件套（12-frontend §3.5 的实现规格）
 
@@ -153,7 +153,7 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 | 验收基线 | 12-frontend §5 FE1–FE3（FE4 审批链路随主轴⑤翻案批复活时验收，02 §5.1 已同步修订） | FE1 动态表单 / **FE2 管理全流程无 SQL（口径=02 §5.1：用户/角色/菜单/组织/工单类型配置）** / **FE3 viewer 业务只读可见/管理面+审计不可见**（B 案后口径，替换原「双级不可见」） |
 | 构建 | `pnpm build` → dist | 产物交付=nginx 静态容器 + 反代 API（00 §2.1 五拍板⑤推荐形态）；CI 分仓：zhuzhao-ui 自己的流水线跑前端门禁，Go 四仓门禁不掺和 |
 
-**仓引导（02 §5.3 处置 #4，P4-W2 首日）**：zhuzhao-ui 落 AGENTS.md（前端版协作协议：门禁四件 + 提交规范 + 变更评审三节的前端适配——摘要/影响面/验证证据）、README（定位 + 设计文档指回本仓 docs/phase4/01）、LICENSE 已在、node/pnpm 版本锁定文件（`.nvmrc`/`package.json` engines）——四个 Go 仓都有协作协议，新仓不裸奔。**分支纪律（所有者 2026-09-21 指示）**：不直接在 main 开发——main 只收合入；建设期每 Wave 开短命分支（`p4-w2-shell`…），全量前端门禁绿后合入即删（对齐 standards §12.7 单主干精神，前端无 CI 故门禁本地跑、合入前必绿）；种子拷入也在首个 wave 分支上进行。
+**仓引导（02 §5.3 处置 #4，P4-W2 首日）**：zhuzhao-ui 落 AGENTS.md（前端版协作协议：门禁四件 + 提交规范 + 变更评审三节的前端适配——摘要/影响面/验证证据）、README（定位 + 设计文档指回本仓 docs/phase4/01）、LICENSE 已在、node/pnpm 版本锁定文件（`.nvmrc`/`package.json` engines）——四个 Go 仓都有协作协议，新仓不裸奔。**分支纪律（所有者 2026-09-21 指示）**：不直接在 main 开发——main 只收合入；建设期每 Wave 开短命分支（`p4-w2-shell`…），全量前端门禁绿后合入即删（对齐 standards §12.7 单主干精神）；种子拷入也在首个 wave 分支上进行。**✅ CI 已上线（2026-09-27，W2 出口闭合批）**：`zhuzhao-ui/.github/workflows/ci.yml`（lint+typecheck+build / test 双 job，push+PR 触发，main/p4-w*/feature/**）——本表「CI 必跑」「CI 分仓」两行落地；E2E 打真三栈仍按本地验收纪律人工执行（与 Go 仓 acceptance 同口径）。
 
 ## 8. 里程碑切分（编号与 02 号 §2 对齐；2026-09-21 验证修订：原 W1–W4 改 P4-W2–P4-W5，消除跨文档错位）
 
