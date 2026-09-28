@@ -122,13 +122,16 @@ func (h *OrgHandler) GetMembers(c *gin.Context) {
 // ListMembersRoster GET /api/v1/orgs/members/list（P4-W3「我的组织」自服务名册）
 //
 //	@Summary	委托组成员名册（自服务，L3：owner/admin 或全局管理员可读）
-//	@Tags		orgs
+//	@Description	自服务名册（「我的组织」页消费）：与管理面 GET /orgs/:id/members 的区别——
+//	本端点跳过 Casbin 走 L3 委托判定，且行内必含 org_member_role/ticket_scope；
+//	排序 owner>admin>member
+//	@Tags		org
 //	@Accept		json
 //	@Produce	json
 //	@Param		org_id		query	string	true	"组织 ID"
 //	@Param		page		query	int		false	"页码"
 //	@Param		page_size	query	int		false	"每页条数"
-//	@Success	200			{object}	response.Response
+//	@Success	200			{object}	response.Response{data=model.OrgMemberRosterResponse}
 //	@Security	BearerAuth
 //	@Router		/api/v1/orgs/members/list [get]
 func (h *OrgHandler) ListMembersRoster(c *gin.Context) {

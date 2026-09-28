@@ -35,9 +35,9 @@ func TestNormalizePage(t *testing.T) {
 		{10000, 100, 10000, 100}, // 边界值本身放行
 	}
 	for _, c := range cases {
-		gotPage, gotSize := normalizePage(c.page, c.pageSize)
+		gotPage, gotSize := NormalizePage(c.page, c.pageSize)
 		if gotPage != c.wantPage || gotSize != c.wantPageSize {
-			t.Errorf("normalizePage(%d, %d) = (%d, %d), want (%d, %d)",
+			t.Errorf("NormalizePage(%d, %d) = (%d, %d), want (%d, %d)",
 				c.page, c.pageSize, gotPage, gotSize, c.wantPage, c.wantPageSize)
 		}
 	}

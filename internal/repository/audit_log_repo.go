@@ -62,7 +62,7 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 }
 
 func (r *AuditLogRepo) List(ctx context.Context, q AuditListQuery) ([]*model.AuditLog, int64, error) {
-	page, pageSize := normalizePage(q.Page, q.PageSize)
+	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
 	where, args := buildAuditListWhere(q)
 	countSQL := `SELECT COUNT(*) FROM audit_logs` + where

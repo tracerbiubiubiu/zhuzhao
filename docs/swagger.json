@@ -416,6 +416,7 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "自服务名册（「我的组织」页消费）：与管理面 GET /orgs/:id/members 的区别——",
                 "consumes": [
                     "application/json"
                 ],
@@ -423,7 +424,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "orgs"
+                    "org"
                 ],
                 "summary": "委托组成员名册（自服务，L3：owner/admin 或全局管理员可读）",
                 "parameters": [
@@ -451,7 +452,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.OrgMemberRosterResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2708,6 +2721,72 @@
                 "device_id": {
                     "description": "与登录时一致；空则使用 default",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.OrgMemberRosterItem": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "employee_no": {
+                    "type": "string"
+                },
+                "is_primary": {
+                    "type": "boolean"
+                },
+                "joined_at": {
+                    "description": "RFC3339（json 序列化 time.Time）——对齐仓内时间字段惯例；nullable schema 故\n指针+omitempty（检视 P1：曾用 PG ::text 输出空格分隔格式，Safari new Date 不可解析）",
+                    "type": "string"
+                },
+                "org_member_role": {
+                    "description": "组内角色（000013）：owner（仅 SetOwners 可设）/ admin / member",
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "real_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "1=启用 0=禁用",
+                    "type": "integer"
+                },
+                "ticket_scope": {
+                    "description": "数据范围（000012）：assigned / group / all",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.OrgMemberRosterResponse": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.OrgMemberRosterItem"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
