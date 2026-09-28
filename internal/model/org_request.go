@@ -120,3 +120,21 @@ type OrgMemberRosterResponse struct {
 	Page     int                    `json:"page"`
 	PageSize int                    `json:"page_size"`
 }
+
+// MyOrgItem 「我的组织」自服务行（P4-W3——GET /user/orgs SelfService 版）：
+// 富化组织名/虚拟组标记+组内角色/数据范围（裸 UserOrg 缺这些，前端页面渲染需要）
+type MyOrgItem struct {
+	OrgID         int64      `json:"org_id,string"`
+	OrgCode       string     `json:"org_code"`
+	OrgName       string     `json:"org_name"`
+	IsVirtual     bool       `json:"is_virtual"`
+	IsPrimary     bool       `json:"is_primary"`
+	OrgMemberRole string     `json:"org_member_role"`
+	TicketScope   string     `json:"ticket_scope"`
+	JoinedAt      *time.Time `json:"joined_at,omitempty"`
+}
+
+// MyOrgsResponse 「我的组织」列表（信封 data 形状——list 包装与其他列表端点一致）
+type MyOrgsResponse struct {
+	List []*MyOrgItem `json:"list"`
+}

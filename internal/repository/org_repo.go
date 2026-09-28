@@ -825,3 +825,27 @@ func (r *OrgRepo) UnbindOrgRole(ctx context.Context, orgID, roleID int64) error 
 	}
 	return nil
 }
+
+// GetMyOrgs 「我的组织」富化列表（P4-W3 自服务面）：join organizations 带名称/虚拟组，
+// 含组内角色与数据范围（裸 UserOrg 缺——前端渲染需要）
+func (r *OrgRepo) GetMyOrgs(ctx context.Context, userID int64) ([]*model.MyOrgItem, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT o.id, COALESCE(o.code,''), COALESCE(o.name,''), o.is_virtual,
+		       uo.is_primary, uo.org_member_role, uo.ticket_scope, uo.joined_at
+		FROM user_orgs uo
+		INNER JOIN organizations o ON o.id = uo.org_id
+		WHERE uo.user_id = $1 AND o.deleted_at IS NULL
+		ORDER BY uo.is_primary DESC, uo.org_id ASC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get my orgs: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.MyOrgItem, error) {
+		var it model.MyOrgItem
+		if err := row.Scan(&it.OrgID, &it.OrgCode, &it.OrgName, &it.IsVirtual,
+			&it.IsPrimary, &it.OrgMemberRole, &it.TicketScope, &it.JoinedAt); err != nil {
+			return nil, err
+		}
+		return &it, nil
+	})
+}

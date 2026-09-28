@@ -122,6 +122,16 @@ func (s *OrgService) GetUserOrgs(ctx context.Context, userID int64) ([]*model.Us
 	return s.orgRepo.GetUserOrgs(ctx, userID)
 }
 
+// GetMyOrgs 「我的组织」自服务版（P4-W3，GET /user/orgs SelfService）：当前用户本人
+// 富化组织列表（组织名/虚拟组/组内角色/数据范围）。无需 L3——本人查本人。
+func (s *OrgService) GetMyOrgs(ctx context.Context, userID int64) (*model.MyOrgsResponse, error) {
+	items, err := s.orgRepo.GetMyOrgs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.MyOrgsResponse{List: items}, nil
+}
+
 func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err

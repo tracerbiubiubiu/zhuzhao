@@ -119,6 +119,26 @@ func (h *OrgHandler) GetMembers(c *gin.Context) {
 	response.OK(c, resp)
 }
 
+// GetMyOrgs GET /api/v1/user/orgs（P4-W3「我的组织」自服务数据源）
+//
+//	@Summary	我的组织列表（自服务：当前用户富化组织行——组织名/虚拟组/组内角色/数据范围）
+//	@Description	任何已认证用户可达（SelfService）；「我的组织」页数据源——
+//	owner/admin 控件可见性由前端调名册端点（GET /orgs/members/list）L3 判定
+//	@Tags		org
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{object}	response.Response{data=model.MyOrgsResponse}
+//	@Security	BearerAuth
+//	@Router		/api/v1/user/orgs [get]
+func (h *OrgHandler) GetMyOrgs(c *gin.Context) {
+	resp, err := h.orgService.GetMyOrgs(c.Request.Context(), c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, resp)
+}
+
 // ListMembersRoster GET /api/v1/orgs/members/list（P4-W3「我的组织」自服务名册）
 //
 //	@Summary	委托组成员名册（自服务，L3：owner/admin 或全局管理员可读）

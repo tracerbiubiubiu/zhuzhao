@@ -589,3 +589,35 @@ func TestDelegation_MembersRoster(t *testing.T) {
 	assert.EqualValues(t, 5, p2.Total)
 	assert.Equal(t, 2, p2.PageSize)
 }
+
+// P4-W3「我的组织」自服务数据源：GET /user/orgs（GetMyOrgs）——本人富化组织行
+// （组织名/虚拟组/组内角色/数据范围——裸 UserOrg 缺这些，前端渲染需要）
+func TestMyOrgs_SelfService(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	resp, err := env.orgSvc.GetMyOrgs(ctx, env.mem1)
+	require.NoError(t, err)
+	require.Len(t, resp.List, 1)
+	row := resp.List[0]
+	assert.Equal(t, "vg_2c_", row.OrgCode[:6])
+	assert.Equal(t, "2c VG", row.OrgName)
+	assert.True(t, row.IsVirtual, "虚拟组标记")
+	assert.Equal(t, "member", row.OrgMemberRole)
+	assert.Equal(t, "assigned", row.TicketScope)
+	assert.False(t, row.IsPrimary)
+	assert.NotNil(t, row.JoinedAt)
+
+	// owner 任命后角色实时反映（admin）
+	require.NoError(t, env.orgSvc.SetMemberRole(ctx, &model.SetOrgMemberRoleRequest{OrgID: env.vgID, UserID: env.mem1, OrgMemberRole: "admin"}, env.owner))
+	resp2, err := env.orgSvc.GetMyOrgs(ctx, env.mem1)
+	require.NoError(t, err)
+	assert.Equal(t, "admin", resp2.List[0].OrgMemberRole)
+
+	// 无组织用户 → 空列表（非错误）
+	empty, err := env.orgSvc.GetMyOrgs(ctx, env.super)
+	require.NoError(t, err)
+	assert.Empty(t, empty.List)
+}
