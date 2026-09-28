@@ -576,4 +576,16 @@ func TestDelegation_MembersRoster(t *testing.T) {
 	// ⑤ 组织不存在 → ErrOrgNotFound（预检，非空列表冒充 200——对齐 ListOrgRoles）
 	_, err = env.orgSvc.ListMembersRoster(ctx, 999999999, env.super, 1, 20)
 	requireErrCode(t, err, errcode.ErrOrgNotFound)
+
+	// ⑥ 排序：owner 首位（owner>admin>member——与 ListByOrgID 的 id ASC 是区分性特征，
+	// CASE 分支序写反时此断言即红）
+	require.NotEmpty(t, resp.List)
+	assert.Equal(t, env.owner, resp.List[0].UserID, "owner 应排首位")
+
+	// ⑦ 分页：page_size=2 → 首页 2 行、total 仍全量、回显=repo 规范化实际值
+	p2, err := env.orgSvc.ListMembersRoster(ctx, env.vgID, env.owner, 1, 2)
+	require.NoError(t, err)
+	assert.Len(t, p2.List, 2)
+	assert.EqualValues(t, 5, p2.Total)
+	assert.Equal(t, 2, p2.PageSize)
 }

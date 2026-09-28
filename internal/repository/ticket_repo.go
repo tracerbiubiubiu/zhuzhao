@@ -71,7 +71,7 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if filter.Where == "" && !filter.Unscoped {
 		return nil, 0, fmt.Errorf("ticket list: missing scope filter (obtain via registry.GetFilter, or set resource.Filter.Unscoped explicitly)")
 	}
-	page, pageSize := normalizePage(q.Page, q.PageSize)
+	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
 	// 拼接 WHERE：scope filter + 业务筛选
 	var conds []string

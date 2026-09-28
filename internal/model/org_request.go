@@ -1,6 +1,10 @@
 package model
 
-import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
+import (
+	"time"
+
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
+)
 
 // OrgMemberRequest 组织成员操作
 type OrgMemberRequest struct {
@@ -104,7 +108,9 @@ type OrgMemberRosterItem struct {
 	OrgMemberRole string `json:"org_member_role"`
 	// 数据范围（000012）：assigned / group / all
 	TicketScope string `json:"ticket_scope"`
-	JoinedAt    string `json:"joined_at"`
+	// RFC3339（json 序列化 time.Time）——对齐仓内时间字段惯例；nullable schema 故
+	// 指针+omitempty（检视 P1：曾用 PG ::text 输出空格分隔格式，Safari new Date 不可解析）
+	JoinedAt *time.Time `json:"joined_at,omitempty"`
 }
 
 // OrgMemberRosterResponse 委托组成员名册（分页，信封 data 形状对齐 OrgMemberListResponse）
