@@ -46,6 +46,7 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/user/profile/update":  true, // 自服务
 	"GET /api/v1/user/menus":            true, // 自服务
 	"GET /api/v1/user/permissions":      true, // 自服务
+	"GET /api/v1/user/orgs":             true, // 自服务（P4-W3「我的组织」数据源）
 	"POST /api/v1/orgs/delete":          true, // 委托语义（orgDelegated，Service 层判定）
 	"POST /api/v1/orgs/members":         true,
 	"GET /api/v1/orgs/members/list":     true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）

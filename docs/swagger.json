@@ -1834,6 +1834,46 @@
                 }
             }
         },
+        "/api/v1/user/orgs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "任何已认证用户可达（SelfService）；「我的组织」页数据源——",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "我的组织列表（自服务：当前用户富化组织行——组织名/虚拟组/组内角色/数据范围）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/permissions": {
             "get": {
                 "security": [
@@ -2721,6 +2761,47 @@
                 "device_id": {
                     "description": "与登录时一致；空则使用 default",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgItem": {
+            "type": "object",
+            "properties": {
+                "is_primary": {
+                    "type": "boolean"
+                },
+                "is_virtual": {
+                    "type": "boolean"
+                },
+                "joined_at": {
+                    "type": "string"
+                },
+                "org_code": {
+                    "type": "string"
+                },
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "org_member_role": {
+                    "type": "string"
+                },
+                "org_name": {
+                    "type": "string"
+                },
+                "ticket_scope": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgsResponse": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgItem"
+                    }
                 }
             }
         },

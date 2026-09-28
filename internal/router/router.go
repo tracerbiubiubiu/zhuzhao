@@ -164,6 +164,8 @@ func New(deps Deps) *gin.Engine {
 					userSelf.POST("/profile/update", deps.UserHandler.UpdateProfile)
 					userSelf.GET("/menus", deps.UserHandler.GetMenus)
 					userSelf.GET("/permissions", deps.UserHandler.GetPermissions)
+					// 「我的组织」自服务数据源（P4-W3：非 admin 委托者可达——users/:id/orgs 挂 biz 组不可用）
+					userSelf.GET("/orgs", deps.OrgHandler.GetMyOrgs)
 				}
 			}
 

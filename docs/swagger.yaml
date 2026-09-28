@@ -279,6 +279,33 @@ definitions:
         description: 与登录时一致；空则使用 default
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgItem:
+    properties:
+      is_primary:
+        type: boolean
+      is_virtual:
+        type: boolean
+      joined_at:
+        type: string
+      org_code:
+        type: string
+      org_id:
+        example: "0"
+        type: string
+      org_member_role:
+        type: string
+      org_name:
+        type: string
+      ticket_scope:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgsResponse:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgItem'
+        type: array
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.OrgMemberRosterItem:
     properties:
       avatar:
@@ -1825,6 +1852,28 @@ paths:
       summary: 当前用户菜单
       tags:
       - users
+  /api/v1/user/orgs:
+    get:
+      consumes:
+      - application/json
+      description: 任何已认证用户可达（SelfService）；「我的组织」页数据源——
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.MyOrgsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 我的组织列表（自服务：当前用户富化组织行——组织名/虚拟组/组内角色/数据范围）
+      tags:
+      - org
   /api/v1/user/permissions:
     get:
       produces:
