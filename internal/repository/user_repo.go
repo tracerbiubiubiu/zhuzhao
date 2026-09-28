@@ -85,9 +85,57 @@ func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize 
 	return users, total, nil
 }
 
+// ListOrgMembersRoster 委托组成员名册（P4-W3「我的组织」自服务面）：
+// 与 ListByOrgID 的区别——必含 uo.org_member_role + uo.ticket_scope（03 号 §2-S7，
+// 裸 User 形态会让前端组内角色列拿不到数据）
+func (r *UserRepo) ListOrgMembersRoster(ctx context.Context, orgID int64, page, pageSize int) ([]*model.OrgMemberRosterItem, int64, error) {
+	page, pageSize = normalizePage(page, pageSize)
+	var total int64
+	if err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL`, orgID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count org members roster: %w", err)
+	}
+	const q = `
+		SELECT u.id, u.username,
+			COALESCE(u.employee_no, '') AS employee_no,
+			COALESCE(u.real_name, '') AS real_name,
+			COALESCE(u.email, '') AS email,
+			COALESCE(u.phone, '') AS phone,
+			COALESCE(u.avatar, '') AS avatar,
+			u.status,
+			uo.is_primary,
+			uo.org_member_role,
+			uo.ticket_scope,
+			COALESCE(uo.joined_at::text, '') AS joined_at
+		FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
+		ORDER BY CASE uo.org_member_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id ASC
+		LIMIT $2 OFFSET $3`
+	rows, err := r.db.Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list org members roster: %w", err)
+	}
+	defer rows.Close()
+	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.OrgMemberRosterItem, error) {
+		var it model.OrgMemberRosterItem
+		if err := row.Scan(&it.UserID, &it.Username, &it.EmployeeNo, &it.RealName,
+			&it.Email, &it.Phone, &it.Avatar, &it.Status,
+			&it.IsPrimary, &it.OrgMemberRole, &it.TicketScope, &it.JoinedAt); err != nil {
+			return nil, err
+		}
+		return &it, nil
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
 // FindByEmployeeNo 登录用：工号精确匹配；未删除用户
-func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
-	// B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
+func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) { // B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
 	// 当前入口已保证非空，防御未来新增调用方）
 	const q = `SELECT` + userSelectColumns + `
     FROM users WHERE employee_no = $1 AND deleted_at IS NULL
