@@ -884,6 +884,36 @@ paths:
       summary: 菜单详情
       tags:
       - menus
+  /api/v1/orgs/members/list:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 组织 ID
+        in: query
+        name: org_id
+        required: true
+        type: string
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 委托组成员名册（自服务，L3：owner/admin 或全局管理员可读）
+      tags:
+      - orgs
   /api/v1/orgs/members/role:
     post:
       consumes:

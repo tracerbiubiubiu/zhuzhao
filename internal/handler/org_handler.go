@@ -119,6 +119,34 @@ func (h *OrgHandler) GetMembers(c *gin.Context) {
 	response.OK(c, resp)
 }
 
+// ListMembersRoster GET /api/v1/orgs/members/list（P4-W3「我的组织」自服务名册）
+//
+//	@Summary	委托组成员名册（自服务，L3：owner/admin 或全局管理员可读）
+//	@Tags		orgs
+//	@Accept		json
+//	@Produce	json
+//	@Param		org_id		query	string	true	"组织 ID"
+//	@Param		page		query	int		false	"页码"
+//	@Param		page_size	query	int		false	"每页条数"
+//	@Success	200			{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/orgs/members/list [get]
+func (h *OrgHandler) ListMembersRoster(c *gin.Context) {
+	orgID, err := strconv.ParseInt(c.Query("org_id"), 10, 64)
+	if err != nil || orgID <= 0 {
+		response.BadRequest(c, "无效的组织 ID")
+		return
+	}
+	page := queryInt(c, "page", 1)
+	pageSize := queryInt(c, "page_size", 20)
+	resp, err := h.orgService.ListMembersRoster(c.Request.Context(), orgID, c.GetInt64("userID"), page, pageSize)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, resp)
+}
+
 // AddMember POST /api/v1/orgs/members
 func (h *OrgHandler) AddMember(c *gin.Context) {
 	var req model.OrgMemberRequest

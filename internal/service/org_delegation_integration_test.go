@@ -523,3 +523,57 @@ func TestBK20_DeleteOrgWithOpenTickets(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, env.orgSvc.DeleteOrgDelegated(ctx, env.vgID, env.super))
 }
+
+// P4-W3 名册端点（02 §2-W3 阻塞件，03 号 §2-S7）：owner/admin/全局可读、普通成员拒、
+// 响应必含 org_member_role+ticket_scope（裸 User 形态组内角色列拿不到数据——十三批走查）
+func TestDelegation_MembersRoster(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	// owner 调整 mem1 数据范围（group）——名册须反映实时值（非默认 assigned）
+	require.NoError(t, env.orgSvc.SetMemberScope(ctx, &model.SetMemberScopeRequest{
+		OrgID: env.vgID, UserID: env.mem1, TicketScope: "group"}, env.owner))
+
+	findRow := func(list []*model.OrgMemberRosterItem, userID int64) *model.OrgMemberRosterItem {
+		for _, it := range list {
+			if it.UserID == userID {
+				return it
+			}
+		}
+		return nil
+	}
+
+	// ① owner 可读：双字段断言（owner/admin/member 三类角色 + 非默认 scope）
+	resp, err := env.orgSvc.ListMembersRoster(ctx, env.vgID, env.owner, 1, 20)
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, resp.Total) // owner/admin/admin2/mem1/mem2
+	ownerRow := findRow(resp.List, env.owner)
+	require.NotNil(t, ownerRow)
+	assert.Equal(t, "owner", ownerRow.OrgMemberRole, "SetOwners 双轨同步后名册须见 owner")
+	adminRow := findRow(resp.List, env.admin)
+	require.NotNil(t, adminRow)
+	assert.Equal(t, "admin", adminRow.OrgMemberRole)
+	memRow := findRow(resp.List, env.mem1)
+	require.NotNil(t, memRow)
+	assert.Equal(t, "member", memRow.OrgMemberRole)
+	assert.Equal(t, "group", memRow.TicketScope, "名册须反映 SetMemberScope 实时值")
+	assert.NotEmpty(t, memRow.Username, "名册须含用户基础字段（非裸 ID）")
+
+	// ② admin 可读（L3 口径对齐 ListOrgRoles）
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.admin, 1, 20)
+	require.NoError(t, err)
+
+	// ③ 全局管理员可读
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.super, 1, 20)
+	require.NoError(t, err)
+
+	// ④ 普通成员拒（ErrNoPermission 70001）
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.mem2, 1, 20)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+
+	// ⑤ 组织不存在 → ErrOrgNotFound（预检，非空列表冒充 200——对齐 ListOrgRoles）
+	_, err = env.orgSvc.ListMembersRoster(ctx, 999999999, env.super, 1, 20)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+}

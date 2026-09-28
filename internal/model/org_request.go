@@ -86,3 +86,31 @@ type OrgMemberListResponse struct {
 	Page     int     `json:"page"`
 	PageSize int     `json:"page_size"`
 }
+
+// OrgMemberRosterItem 委托组成员名册行（P4-W3「我的组织」自服务面）。
+// ⚠ 与 OrgMemberListResponse（裸 User）的区别：必含组内角色与数据范围两字段——
+// 03 号 §2-S7：无此二字段则「我的组织」组内角色列拿不到数据（十三批场景走查）。
+type OrgMemberRosterItem struct {
+	UserID     int64  `json:"user_id,string"`
+	Username   string `json:"username"`
+	EmployeeNo string `json:"employee_no"`
+	RealName   string `json:"real_name"`
+	Email      string `json:"email"`
+	Phone      string `json:"phone"`
+	Avatar     string `json:"avatar"`
+	Status     int    `json:"status"` // 1=启用 0=禁用
+	IsPrimary  bool   `json:"is_primary"`
+	// 组内角色（000013）：owner（仅 SetOwners 可设）/ admin / member
+	OrgMemberRole string `json:"org_member_role"`
+	// 数据范围（000012）：assigned / group / all
+	TicketScope string `json:"ticket_scope"`
+	JoinedAt    string `json:"joined_at"`
+}
+
+// OrgMemberRosterResponse 委托组成员名册（分页，信封 data 形状对齐 OrgMemberListResponse）
+type OrgMemberRosterResponse struct {
+	List     []*OrgMemberRosterItem `json:"list"`
+	Total    int64                  `json:"total"`
+	Page     int                    `json:"page"`
+	PageSize int                    `json:"page_size"`
+}

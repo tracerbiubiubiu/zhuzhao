@@ -178,6 +178,8 @@ func New(deps Deps) *gin.Engine {
 			{
 				orgDelegated.POST("/delete", deps.OrgHandler.Delete)
 				orgDelegated.POST("/members", deps.OrgHandler.AddMember)
+				// P4-W3「我的组织」名册（02 §2-W3 阻塞件）：L3 判定在 OrgService.ListMembersRoster
+				orgDelegated.GET("/members/list", deps.OrgHandler.ListMembersRoster)
 				orgDelegated.POST("/members/role", deps.OrgHandler.SetMemberRole)
 				orgDelegated.POST("/members/scope", deps.OrgHandler.SetMemberScope)
 				orgDelegated.GET("/roles/list", deps.OrgHandler.ListOrgRoles)

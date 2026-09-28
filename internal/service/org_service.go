@@ -276,6 +276,47 @@ func (s *OrgService) GetByID(ctx context.Context, id int64) (*model.Organization
 	return s.orgRepo.FindByID(ctx, id)
 }
 
+// ListMembersRoster 委托组成员名册（P4-W3「我的组织」自服务面，02 §2-W3）：
+// org admin/owner 或全局管理员可读（对齐 ListOrgRoles 的 L3 口径）；普通成员 → 50010。
+// 响应必含 org_member_role+ticket_scope（03 号 §2-S7——裸 User 形态组内角色列拿不到数据）。
+func (s *OrgService) ListMembersRoster(ctx context.Context, orgID, actorUserID int64, page, pageSize int) (*model.OrgMemberRosterResponse, error) {
+	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
+		return nil, err
+	}
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+	items, total, err := s.userRepo.ListOrgMembersRoster(ctx, orgID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	// 回显规范化与 repo normalizePage 对齐（D2-13：含 page 上限，防溢出回绕负 OFFSET）
+	if page < 1 {
+		page = 1
+	}
+	if page > 10000 {
+		page = 10000
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return &model.OrgMemberRosterResponse{
+		List:     items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
 func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize int) (*model.OrgMemberListResponse, error) {
 	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
 		return nil, err
