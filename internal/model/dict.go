@@ -26,7 +26,7 @@ type DictItem struct {
 	Remark    string    `json:"remark"`
 	Version   int64     `json:"version"`
 	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // DictTypeListResponse / DictItemListResponse 分页（PageData 形态）
