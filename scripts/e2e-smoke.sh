@@ -57,5 +57,29 @@ R=$(curl -s -o /tmp/e2e_smoke_write.json -w "%{http_code}" -X POST \
 [ "$(cat /tmp/e2e_smoke_write.json | code)" = "0" ] || fail "建类型信封 code≠0"
 ok "网关反代写（动态建表 ${TYPE_NAME}）"
 
+# ── 5. 网关反代写（zhuzhao 风格三端点——000032 整改后新形态：标识入 body）──
+R=$(curl -s -o /tmp/e2e_smoke_ev.json -w "%{http_code}" -X POST \
+  "$BASE/al/api/v1/admin/types/schema" -H "Authorization: Bearer $AT" \
+  -H "X-Request-ID: req-smoke-evolve" -H 'Content-Type: application/json' \
+  -d "{\"type_name\":\"$TYPE_NAME\",\"fields\":[{\"name\":\"env\",\"type\":\"string\",\"required\":false},{\"name\":\"region\",\"type\":\"string\"}],\"version\":1}")
+[ "$R" = "200" ] || fail "POST /al/admin/types/schema HTTP $R"
+[ "$(cat /tmp/e2e_smoke_ev.json | code)" = "0" ] || fail "schema 演进信封 code≠0"
+ok "schema 演进（标识入 body，version 1→2）"
+
+R=$(curl -s -o /tmp/e2e_smoke_dep.json -w "%{http_code}" -X POST \
+  "$BASE/al/api/v1/admin/types/deprecate" -H "Authorization: Bearer $AT" \
+  -H "X-Request-ID: req-smoke-dep" -H 'Content-Type: application/json' \
+  -d "{\"type_name\":\"$TYPE_NAME\"}")
+[ "$R" = "200" ] || fail "POST /al/admin/types/deprecate HTTP $R"
+[ "$(cat /tmp/e2e_smoke_dep.json | code)" = "0" ] || fail "deprecate 信封 code≠0"
+ok "类型废弃（冒烟类型即清理，幂等）"
+
+R=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  "$BASE/al/api/v1/data/restore" -H "Authorization: Bearer $AT" \
+  -H 'Content-Type: application/json' \
+  -d "{\"type_name\":\"$TYPE_NAME\",\"id\":99999999}")
+[ "$R" = "404" ] || fail "POST /al/data/restore HTTP $R（应 404——路由+body 链路通而不存在）"
+ok "数据恢复路由（404 反例断言）"
+
 echo "── E2E 冒烟全绿（$PASS_COUNT 项断言）──"
 exit 0
