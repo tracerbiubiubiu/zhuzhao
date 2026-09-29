@@ -102,7 +102,13 @@ func (h *TaskrunnerHandler) GetTask(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/api/v1/runs [get]
 func (h *TaskrunnerHandler) ListRuns(c *gin.Context) {
-	data, err := h.svc.ListRuns(c.Request.Context(), c.Request.URL.Query())
+	q := c.Request.URL.Query()
+	// 「只看我提交的」（02 W5 随批件）：me 由代理换 actor（username）——调用方不可
+	// 直接指定他人（submitted_by 为纯过滤列，替换同时保证语义一致）
+	if q.Get("submitted_by") == "me" {
+		q.Set("submitted_by", actorOf(c))
+	}
+	data, err := h.svc.ListRuns(c.Request.Context(), q)
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return

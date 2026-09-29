@@ -55,21 +55,14 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 	if taskID == "" {
 		taskID = uuid.NewString()
 	}
-	callback := in.CallbackURL
-	if callback == "" {
-		if selfBaseURL == "" {
-			return nil, fmt.Errorf("callback_url 未提供且服务自身地址未配置")
-		}
-		// C10 后回调端点统一 /internal/jobs/callback（action_id 在 body）——
-		// 路由只注册了这一个路径，拼接旧格式会导致回调 404 → 任务被判 non-retryable
-		callback = selfBaseURL + "/internal/jobs/callback"
-	}
+	_ = selfBaseURL // W0b 四口同收对齐（2026-09-29 W5 批修正）：taskrunner 拒收出站
+	// callback_url（非空 400，十七批）——回调目标一律其配置值（TASKRUNNER_CALLBACK_
+	// TARGET_URL）。zhuzhao 出站不再拼接传递（此前拼接透传=两仓契约断裂，提交恒 400）。
 	resp, err := s.client.Submit(ctx, taskrunner.SubmitRequest{
 		TaskID:      taskID,
 		RequestID:   reqid.From(ctx),
 		Action:      in.Action,
 		Dept:        in.Dept,
-		CallbackURL: callback,
 		Params:      in.Params,
 		SubmittedBy: actor,
 		SourceIP:    sourceIP,

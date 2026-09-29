@@ -80,7 +80,9 @@ type SubmitResponse struct {
 }
 
 func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse, error) {
-	if req.Action == "" || req.CallbackURL == "" {
+	// W0b 四口同收对齐（2026-09-29 W5 批修正）：callback_url 出站一律不传——
+	// taskrunner 拒收非空值（十七批），回调目标由其配置 TASKRUNNER_CALLBACK_TARGET_URL 定
+	if req.Action == "" {
 		return nil, errcode.ErrInvalidParams
 	}
 	requestID := req.RequestID
@@ -89,7 +91,6 @@ func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse
 	}
 	body := map[string]interface{}{
 		"action":       req.Action,
-		"callback_url": req.CallbackURL,
 		"request_id":   requestID,
 		"submitted_by": req.SubmittedBy,
 		"source_ip":    req.SourceIP,
