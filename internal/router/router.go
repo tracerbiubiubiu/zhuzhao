@@ -141,6 +141,8 @@ func New(deps Deps) *gin.Engine {
 		auth := v1.Group("/auth")
 		auth.Use(middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()))
 		{
+			// P4-7 登录验证码（enabled=false 仅返回开关态——前端显隐插槽）
+			auth.GET("/captcha", deps.AuthHandler.Captcha)
 			auth.POST("/login", deps.AuthHandler.Login)
 			auth.POST("/refresh", deps.AuthHandler.Refresh)
 		}

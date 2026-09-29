@@ -30,6 +30,7 @@ type AuthService struct {
 	scripts      *redispkg.Scripts
 	auditService *AuditService
 	refreshTTL   time.Duration
+	captchaSvc   *CaptchaService
 }
 
 // NewAuthService 创建 AuthService
@@ -40,6 +41,7 @@ func NewAuthService(
 	scripts *redispkg.Scripts,
 	auditService *AuditService,
 	jwtCfg config.JWTConfig,
+	captchaSvc *CaptchaService,
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
@@ -48,6 +50,7 @@ func NewAuthService(
 		scripts:      scripts,
 		auditService: auditService,
 		refreshTTL:   jwtCfg.RefreshTTL,
+		captchaSvc:   captchaSvc,
 	}
 }
 
@@ -61,6 +64,12 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	// 任意字符可致键不可读/膨胀（长度上限已在 binding max=64）
 	if req.DeviceID != "" && !validDeviceID(req.DeviceID) {
 		return nil, errcode.ErrInvalidParams
+	}
+
+	// P4-7：验证码一次性校验（enabled=false 恒通过——dev/E2E 登录契约不变）
+	if err := s.captchaSvc.Verify(ctx, req.CaptchaID, req.Captcha); err != nil {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 400)
+		return nil, err
 	}
 
 	blocked, err := s.scripts.LoginLockIsBlocked(ctx, req.EmployeeNo)
@@ -388,4 +397,9 @@ func validDeviceID(deviceID string) bool {
 		}
 	}
 	return true
+}
+
+// Captcha 生成验证码（透传 captchaSvc——nil 安全由构造保证）
+func (s *AuthService) Captcha(ctx context.Context) (map[string]any, error) {
+	return s.captchaSvc.Generate(ctx)
 }

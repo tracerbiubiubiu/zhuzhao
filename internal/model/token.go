@@ -27,6 +27,10 @@ type LoginRequest struct {
 	// D2-01：max=64——device_id 进 RT JWT claims 与 Redis 键（refresh:{uid}:{device}）
 	DeviceID   string `json:"device_id" binding:"omitempty,max=64"` // 前端生成 UUID 存 localStorage，每次登录带上
 	DeviceName string `json:"device_name" binding:"omitempty,max=64"`
+	// P4-7 验证码（captcha.enabled=true 时必填——handler 层经 CaptchaService 校验；
+	// omitempty 保 dev/E2E 关闭态登录契约零变化）
+	CaptchaID string `json:"captcha_id" binding:"omitempty,max=64"`
+	Captcha   string `json:"captcha" binding:"omitempty,max=8"`
 }
 
 // RefreshRequest 刷新 Token 请求

@@ -23,6 +23,10 @@ type Config struct {
 	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
 	Gateway      GatewayConfig      `mapstructure:"gateway"`
 	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+
+	// P4-7 登录验证码（顶层平面键；enabled=false dev/E2E 默认——登录契约零变化）
+	CaptchaEnabled bool   `mapstructure:"captcha_enabled"`
+	CaptchaTTL     string `mapstructure:"captcha_ttl"`
 }
 
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
@@ -253,6 +257,10 @@ func Load(path string) (*Config, error) {
 	// P4-9：反代信任网段（viper 对 slice env 不自动拆分——逗号分隔经 SetDefault
 	// 模板注入后由下方后处理 split；空 env 保持 config.yaml 值）
 	viper.BindEnv("server.trusted_proxies", "APP_SERVER_TRUSTED_PROXIES")
+	viper.BindEnv("captcha_enabled", "APP_CAPTCHA_ENABLED")
+	viper.SetDefault("captcha_enabled", false)
+	viper.BindEnv("captcha_ttl", "APP_CAPTCHA_TTL")
+	viper.SetDefault("captcha_ttl", "5m")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

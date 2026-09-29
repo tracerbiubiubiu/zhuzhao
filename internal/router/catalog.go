@@ -40,6 +40,7 @@ func (g CatalogGap) String() string {
 var catalogExempt = map[string]bool{
 	"POST /api/v1/auth/login":           true, // 认证公开端点
 	"POST /api/v1/auth/refresh":         true, // 认证公开端点
+	"GET /api/v1/auth/captcha":          true, // P4-7 验证码公开端点（匿名获取——登录前置）
 	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）
 	"POST /api/v1/auth/password/update": true, // 自服务
 	"GET /api/v1/user/profile":          true, // 自服务

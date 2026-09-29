@@ -16,6 +16,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -41,7 +42,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	scripts := provideRedisScripts(client)
 	auditLogRepo := repository.NewAuditLogRepo(pool)
 	auditService := service.NewAuditService(auditLogRepo, userRepo)
-	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
+	captchaSvc := service.NewCaptchaService(client, cfg.CaptchaEnabled, parseDuration(cfg.CaptchaTTL))
+	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig, captchaSvc)
 	authHandler := handler.NewAuthHandler(authService)
 	roleRepo := repository.NewRoleRepo(pool)
 	orgRepo := repository.NewOrgRepo(pool)
@@ -157,4 +159,12 @@ var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, han
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {
 	return cfg.Server.TrustedProxies
+}
+
+func parseDuration(s string) (d time.Duration) {
+	if s == "" {
+		return 0
+	}
+	d, _ = time.ParseDuration(s)
+	return d
 }
