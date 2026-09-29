@@ -113,3 +113,14 @@ var (
 	ErrNotificationCodeExists        = util.New(92002, "通知配置 code 已存在")
 	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道（首版仅 webhook）")
 )
+
+// 字典模块 92300-92399（P4-3）
+var (
+	ErrDictTypeNotFound = util.New(92301, "字典类型不存在或版本冲突")
+	ErrDictItemNotFound = util.New(92302, "字典项不存在或版本冲突")
+)
+
+// PAT 模块 92400-92499（P4-6）
+var (
+	ErrPatNotFound = util.New(92401, "PAT 不存在或已吊销")
+)

@@ -98,7 +98,7 @@ func (s *PatService) List(ctx context.Context, userID int64) ([]*model.PersonalA
 func (s *PatService) Revoke(ctx context.Context, userID, id int64) error {
 	if err := s.repo.Revoke(ctx, id, userID); err != nil {
 		if errors.Is(err, repository.ErrPatNotFound) {
-			return errcode.New(92401, "PAT 不存在或已吊销")
+			return errcode.ErrPatNotFound
 		}
 		s.logger.Error("pat revoke", "err", err)
 		return errcode.ErrInternal

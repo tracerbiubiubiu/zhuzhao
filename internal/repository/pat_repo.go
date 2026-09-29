@@ -74,7 +74,7 @@ func (r *PatRepo) FindActiveByHash(ctx context.Context, secretHash string) (user
 	err = r.db.QueryRow(ctx, `
 		SELECT p.user_id, COALESCE(NULLIF(u.real_name, ''), u.username), p.id
 		FROM personal_access_tokens p
-		JOIN users u ON u.id = p.user_id AND u.deleted_at IS NULL
+		JOIN users u ON u.id = p.user_id AND u.deleted_at IS NULL AND u.status = 1
 		WHERE p.secret_hash = $1 AND p.revoked_at IS NULL
 		  AND (p.expires_at IS NULL OR p.expires_at > NOW())`, secretHash,
 	).Scan(&userID, &userName, &patID)

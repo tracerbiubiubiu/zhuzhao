@@ -49,7 +49,7 @@ func (s *DictService) CreateType(ctx context.Context, t *model.DictType) error {
 func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
 	if err := s.repo.UpdateType(ctx, t); err != nil {
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
-			return errcode.New(92301, "字典类型不存在或版本冲突")
+			return errcode.ErrDictTypeNotFound
 		}
 		s.logger.Error("dict update type", "err", err)
 		return errcode.ErrInternal
@@ -60,7 +60,7 @@ func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
 func (s *DictService) DeleteType(ctx context.Context, code string) error {
 	if err := s.repo.DeleteTypeByCode(ctx, code); err != nil {
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
-			return errcode.New(92301, "字典类型不存在")
+			return errcode.ErrDictTypeNotFound
 		}
 		s.logger.Error("dict delete type", "err", err)
 		return errcode.ErrInternal
@@ -99,7 +99,7 @@ func (s *DictService) CreateItem(ctx context.Context, it *model.DictItem) error 
 		case errors.Is(err, repository.ErrDictItemDupCode):
 			return errcode.New(errcode.ErrConflict.Code, "字典项 code 已存在")
 		case errors.Is(err, repository.ErrDictTypeNotFound):
-			return errcode.New(92301, "字典类型不存在")
+			return errcode.ErrDictTypeNotFound
 		}
 		s.logger.Error("dict create item", "err", err)
 		return errcode.ErrInternal
@@ -110,7 +110,7 @@ func (s *DictService) CreateItem(ctx context.Context, it *model.DictItem) error 
 func (s *DictService) UpdateItem(ctx context.Context, it *model.DictItem) error {
 	if err := s.repo.UpdateItem(ctx, it); err != nil {
 		if errors.Is(err, repository.ErrDictItemNotFound) {
-			return errcode.New(92302, "字典项不存在或版本冲突")
+			return errcode.ErrDictItemNotFound
 		}
 		s.logger.Error("dict update item", "err", err)
 		return errcode.ErrInternal
