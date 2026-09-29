@@ -84,7 +84,16 @@ func (s *CronScheduler) tickOnce(ctx context.Context) {
 	}
 	defer func() { _, _ = conn.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", s.lockKey) }()
 
-	if err := s.job.Handle(execCtx, nil); err != nil {
+	// 审计修复（2026-09-30 P2）：job panic 兜底——Run 在裸 goroutine，panic=进程退出
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r))
+			}
+		}()
+		err = s.job.Handle(execCtx, nil)
+	}()
+	if err != nil {
 		// 归档类任务失败仅记日志（下个 tick 自然重试——可重入契约保证安全）
 		s.logger.Warn("cron: job failed (will retry next tick)", slog.String("job", s.name), slog.Any("err", err))
 	}

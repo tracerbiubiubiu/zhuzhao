@@ -137,16 +137,8 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 
 // archiveTable 单表**单批**归档：写文件（含 flush）→ 删同批行 → 返回（B-1 修法 c）。
 func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff time.Time) (exported, deleted int64, err error) {
-	runStamp := time.Now().Format("20060102-150405.000000000") // 纳秒：同秒重叠运行不共用文件
-	path := filepath.Join(j.outDir, fmt.Sprintf("%s-%s.jsonl", table, runStamp))
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-	if err != nil {
-		return 0, 0, fmt.Errorf("open %s: %w", path, err)
-	}
-	defer f.Close()
-
-	// B-1 修法 c：单批一执行（不再 for 循环至清空——长任务窗口与回调超时重试
-	// 双执行链路根除；剩余超期行由下次触发继续，收敛速率=tick 频率×批大小）
+	// 审计修复（2026-09-30 P2）：先取批后建文件——空批不再泄漏 0 字节文件
+	// （原序每 tick 每表一空文件 ≈5760/天，inode 无界）
 	select {
 	case <-ctx.Done():
 		return exported, deleted, ctx.Err()
@@ -159,6 +151,13 @@ func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff
 	if len(batch) == 0 {
 		return exported, deleted, nil
 	}
+	runStamp := time.Now().Format("20060102-150405.000000000") // 纳秒：同秒重叠运行不共用文件
+	path := filepath.Join(j.outDir, fmt.Sprintf("%s-%s.jsonl", table, runStamp))
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return exported, deleted, fmt.Errorf("open %s: %w", path, err)
+	}
+	defer f.Close()
 	ids := make([]int64, 0, len(batch))
 	for _, row := range batch {
 		if _, err := f.Write(append(row.Line, '\n')); err != nil {

@@ -51,8 +51,8 @@ func (s *NotificationService) Create(ctx context.Context, in *model.Notification
 	if in.Channel != "webhook" {
 		return errcode.ErrNotificationChannelNotSupport
 	}
-	if !strings.HasPrefix(in.WebhookURL, "http") {
-		return errcode.New(errcode.ErrInvalidParams.Code, "webhook_url 须为 http(s) 地址")
+	if err := webhook.ValidateURL(in.WebhookURL); err != nil {
+		return errcode.New(errcode.ErrInvalidParams.Code, "webhook_url 非法（须 http(s) 且不在元地址黑名单）")
 	}
 	if err := s.repo.Create(ctx, in); err != nil {
 		if errors.Is(err, repository.ErrNotificationDupCode) {
@@ -67,6 +67,10 @@ func (s *NotificationService) Create(ctx context.Context, in *model.Notification
 func (s *NotificationService) Update(ctx context.Context, in *model.NotificationConfig) error {
 	if in.Channel != "" && in.Channel != "webhook" {
 		return errcode.ErrNotificationChannelNotSupport
+	}
+	// 审计修复（2026-09-30 P2）：Update 原零校验（非法 URL 分发时才失败，死通道静默）
+	if err := webhook.ValidateURL(in.WebhookURL); err != nil {
+		return errcode.New(errcode.ErrInvalidParams.Code, "webhook_url 非法（须 http(s) 且不在元地址黑名单）")
 	}
 	if in.Channel == "" {
 		in.Channel = "webhook"

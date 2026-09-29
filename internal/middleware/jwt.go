@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -62,7 +63,12 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 				c.Abort()
 				return
 			}
-			pats.TouchLastUsed(context.Background(), patID) // 尽力而为（last_used_at 非关键路径）
+			// 审计修复（2026-09-30 P2）：真异步+超时（原同步写——池耗尽时请求无限阻塞）
+			go func(id int64) {
+				tctx, tcancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer tcancel()
+				pats.TouchLastUsed(tctx, id)
+			}(patID)
 			c.Set("userID", uid)
 			c.Set("username", uname)
 			c.Set("jti", fmt.Sprintf("pat:%d", patID))

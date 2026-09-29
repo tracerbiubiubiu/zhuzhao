@@ -183,6 +183,10 @@ func New(deps Deps) *gin.Engine {
 				{
 					userSelf.GET("/profile", deps.UserHandler.GetProfile)
 					userSelf.POST("/profile/update", deps.UserHandler.UpdateProfile)
+					// P4-3 字典消费面（审计修复 2026-09-30：受众=全员业务表单选项——
+					// SelfService 免 Casbin；管理面 CRUD 仍在 biz 组 L1）
+					userSelf.GET("/dicts/:code/items", deps.DictHandler.EnabledItems)
+
 					// P4-6 PAT 自服务（本人凭据——catalogExempt 登记）
 					userSelf.GET("/pats", deps.PatHandler.List)
 					userSelf.POST("/pats", deps.PatHandler.Create)
@@ -307,7 +311,6 @@ func New(deps Deps) *gin.Engine {
 					dicts.POST("", deps.DictHandler.CreateType)
 					dicts.POST("/update", deps.DictHandler.UpdateType)
 					dicts.POST("/delete", deps.DictHandler.DeleteType)
-					dicts.GET("/:code/items", deps.DictHandler.EnabledItems) // 消费面（登录可读）
 				}
 				dictItems := biz.Group("/dict-items")
 				{

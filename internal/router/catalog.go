@@ -42,6 +42,7 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/auth/refresh":         true, // 认证公开端点
 	"GET /api/v1/auth/captcha":          true, // P4-7 验证码公开端点（匿名获取——登录前置）
 	"GET /api/v1/user/pats":             true, // P4-6 PAT 自服务（SelfService——本人凭据）
+	"GET /api/v1/user/dicts/:code/items": true, // P4-3 字典消费面（SelfService——全员业务表单选项）
 	"POST /api/v1/user/pats":            true,
 	"POST /api/v1/user/pats/delete":     true,
 	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）

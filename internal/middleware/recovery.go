@@ -38,9 +38,9 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 						ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 3*time.Second)
 						defer cancel()
 						// 指纹=message+栈首 3 行（goroutine 头行含地址不稳定，取后续帧）
-						lines := strings.Split(stack, "\n")
+						lines := strings.Split(stack, "\n")[1:] // 审计修复：跳过首行 goroutine N 头行（N 易变致同因 panic 聚合失效）
 						if len(lines) > 6 {
-							lines = lines[:7]
+							lines = lines[:6]
 						}
 						h := sha256.Sum256([]byte(msg + strings.Join(lines, "\n")))
 						_ = sink.Upsert(ctx, hex.EncodeToString(h[:]), msg, stack, path)
