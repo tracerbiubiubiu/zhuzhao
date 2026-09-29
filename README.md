@@ -2,6 +2,8 @@
 
 > **定位（2026-09-03，§23 重定位后）**：IAM 内核 + 统一网关 + 通用能力底座（事件/审计/组织/HR）。工单模块已封版（对接公司内部平台，重启条件见 [design-decisions §23](docs/design/design-decisions.md)）；taskrunner/activelist 为独立部署服务，经 zhuzhao 网关接入（权限架构定版见 §25）。
 > 仓库名与 module path 的正式命名合并到内网迁移时执行（M-Mig，[13 号 §1](docs/phase3/13-implementation-plan.md)）——现只注定位不改库。
+>
+> **Phase 4 收官（2026-09-29）**：前端消费面全线交付（[zhuzhao-ui](https://github.com/tracerbiubiubiu/zhuzhao-ui)，E2E 19 spec 打真实栈）+穿插池点名五件+P2 小件四件套+cron 收归——完成定义四条全绿终验见 [02 号 §3.2](docs/phase4/02-implementation-plan.md)。
 
 zhuzhao 是 zhuzhao 生态的主仓库：Go（Gin + PostgreSQL + Casbin + Redis + Wire）模块化单体，对外是生态唯一入口（统一网关），对内承载 IAM 与通用能力。
 
@@ -14,6 +16,7 @@ zhuzhao 是 zhuzhao 生态的主仓库：Go（Gin + PostgreSQL + Casbin + Redis 
 | 统一网关 | `/al/*` 反代 activelist（AK/SK 出站签名 + X-Operator 身份断言）、`/api/v1/tasks|jobs|runs` 任务管理代理（E-④） |
 | 内网回调 | `POST /internal/jobs/callback`（AK/SK 验签——taskrunner 任务执行入口，幂等栅栏 + 动作注册表） |
 | 可观测 | 结构化访问日志（operator / auth / caller 归因）、审计归档（超期导出 JSONL） |
+| 平台服务（P4） | 通知通道（webhook 配置化+死信告警）/ 字典（业务枚举运行时化）/ 登录验证码（开关默认关）/ PAT 个人凭据（Bearer 直发）/ panic 聚合 + 路由对账 + `/metrics` / 审计响应体摘要 / 审计归档 cron 进程内收归（advisory lock） |
 
 ## 生态
 
