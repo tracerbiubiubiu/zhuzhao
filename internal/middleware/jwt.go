@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,8 +17,14 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
-// JWT JWT 认证中间件
-func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
+// PATGetter P4-6 PAT 查验出口（最小接口——repo 实现；nil=本实例不支持 PAT）
+type PATGetter interface {
+	FindActiveByHash(ctx context.Context, secretHash string) (userID int64, userName string, patID int64, err error)
+	TouchLastUsed(ctx context.Context, patID int64)
+}
+
+// JWT JWT 认证中间件（pats 非空时 Bearer zpat_* 走 PAT 查验——GitHub 形态直发）
+func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if hasMixedAuth(c) {
 			response.Error(c, http.StatusBadRequest, errcode.ErrMultipleAuthMethods)
@@ -44,6 +53,23 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
+
+		// P4-6 PAT：zpat_ 前缀走独立查验（sha256 单查=命中+未吊销+未过期+用户未删）
+		if pats != nil && strings.HasPrefix(tokenString, "zpat_") {
+			uid, uname, patID, err := pats.FindActiveByHash(c.Request.Context(), HashToken(tokenString))
+			if err != nil {
+				response.UnauthorizedError(c, errcode.ErrTokenInvalid)
+				c.Abort()
+				return
+			}
+			pats.TouchLastUsed(context.Background(), patID) // 尽力而为（last_used_at 非关键路径）
+			c.Set("userID", uid)
+			c.Set("username", uname)
+			c.Set("jti", fmt.Sprintf("pat:%d", patID))
+			c.Set("must_change_password", false)
+			c.Next()
+			return
+		}
 
 		claims, err := jwtManager.ParseAccessToken(tokenString)
 		if err != nil {
@@ -116,4 +142,10 @@ func hasMixedAuth(c *gin.Context) bool {
 // hasAKHeaders 是否携带 AK/SK 请求头（M2M 认证，Phase 3 上线）
 func hasAKHeaders(c *gin.Context) bool {
 	return c.GetHeader("X-AK-Access-Key") != ""
+}
+
+// HashToken PAT 明文→sha256 hex（与 service.HashSecret 同算式——middleware 不引 service 防环）
+func HashToken(plain string) string {
+	h := sha256.Sum256([]byte(plain))
+	return hex.EncodeToString(h[:])
 }

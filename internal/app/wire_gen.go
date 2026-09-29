@@ -73,6 +73,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	dictRepo := repository.NewDictRepo(pool)
 	dictService := service.NewDictService(dictRepo, logger)
 	dictHandler := handler.NewDictHandler(dictService)
+	patRepo := repository.NewPatRepo(pool)
+	patService := service.NewPatService(patRepo, logger)
+	patHandler := handler.NewPatHandler(patService)
 	ticketRepo := repository.NewTicketRepo(pool)
 	auditConfig := cfg.Audit
 	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
@@ -106,6 +109,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		AuditHandler:        auditHandler,
 		NotificationHandler: notificationHandler,
 		DictHandler:         dictHandler,
+		PatHandler:          patHandler,
+		PatLookup:           patRepo,
 		TicketHandler:       ticketHandler,
 		JWTManager:          manager,
 		Enforcer:            syncedEnforcer,
@@ -156,11 +161,11 @@ var pkgSet = wire.NewSet(
 	provideJobsCallbackService,
 )
 
-var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo, repository.NewDictRepo)
+var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo, repository.NewDictRepo, repository.NewPatRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, service.NewDictService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, service.NewDictService, service.NewPatService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler, handler.NewDictHandler)
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler, handler.NewDictHandler, handler.NewPatHandler)
 
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {

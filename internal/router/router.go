@@ -54,6 +54,10 @@ type Deps struct {
 	// P4-3 字典管理面（业务枚举运行时化——不碰权限策略面）
 	DictHandler *handler.DictHandler
 
+	// P4-6 PAT 自服务面（SelfService）+ JWT 中间件 zpat_ 分支消费的查验口
+	PatHandler *handler.PatHandler
+	PatLookup  middleware.PATGetter
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
@@ -153,7 +157,7 @@ func New(deps Deps) *gin.Engine {
 		// 以下路由需要 JWT 认证 + Casbin 鉴权 + 审计日志
 		authed := v1.Group("")
 		authed.Use(
-			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
@@ -172,6 +176,10 @@ func New(deps Deps) *gin.Engine {
 				{
 					userSelf.GET("/profile", deps.UserHandler.GetProfile)
 					userSelf.POST("/profile/update", deps.UserHandler.UpdateProfile)
+					// P4-6 PAT 自服务（本人凭据——catalogExempt 登记）
+					userSelf.GET("/pats", deps.PatHandler.List)
+					userSelf.POST("/pats", deps.PatHandler.Create)
+					userSelf.POST("/pats/delete", deps.PatHandler.Revoke)
 					userSelf.GET("/menus", deps.UserHandler.GetMenus)
 					userSelf.GET("/permissions", deps.UserHandler.GetPermissions)
 					// 「我的组织」自服务数据源（P4-W3：非 admin 委托者可达——users/:id/orgs 挂 biz 组不可用）
@@ -354,7 +362,7 @@ func New(deps Deps) *gin.Engine {
 	// 未配置上游不挂载（gateway 默认关闭）。
 	if deps.Gateway != nil {
 		deps.Gateway.Mount(r,
-			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
