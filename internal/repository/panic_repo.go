@@ -29,13 +29,13 @@ func (r *PanicRepo) Upsert(ctx context.Context, fingerprint, message, stack, pat
 
 // PanicRow 聚合行（fingerprint 不出网——内部聚合键）
 type PanicRow struct {
-	ID          int64     `json:"id,string"`
-	Message     string    `json:"message"`
-	Stack       string    `json:"stack"`
-	Path        string    `json:"path"`
-	Count       int64     `json:"count"`
-	FirstAt     time.Time `json:"first_at"`
-	LastAt      time.Time `json:"last_at"`
+	ID      int64     `json:"id,string"`
+	Message string    `json:"message"`
+	Stack   string    `json:"stack"`
+	Path    string    `json:"path"`
+	Count   int64     `json:"count"`
+	FirstAt time.Time `json:"first_at"`
+	LastAt  time.Time `json:"last_at"`
 }
 
 // List 最近聚合（last_at DESC 分页）
