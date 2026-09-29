@@ -48,6 +48,9 @@ type Deps struct {
 	// E-④：任务管理代理端点（biz 组，三层校验后出站 taskrunner）
 	TaskrunnerHandler *handler.TaskrunnerHandler
 
+	// P4-2 通知通道：管理 API（biz 组）+ 内网死信告警入口（internal 组）
+	NotificationHandler *handler.NotificationHandler
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
@@ -126,6 +129,8 @@ func New(deps Deps) *gin.Engine {
 		}}
 		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
+		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
+		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
 	}
 
 	v1 := r.Group("/api/v1")
@@ -268,6 +273,15 @@ func New(deps Deps) *gin.Engine {
 					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
 					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
 					jobs.POST("/trigger", deps.TaskrunnerHandler.Trigger)
+				}
+
+				// P4-2 通知配置管理面（菜单 system_notification——visible=false 过渡态，配置页后补）
+				notifications := biz.Group("/notifications")
+				{
+					notifications.GET("", deps.NotificationHandler.List)
+					notifications.POST("", deps.NotificationHandler.Create)
+					notifications.POST("/update", deps.NotificationHandler.Update)
+					notifications.POST("/delete", deps.NotificationHandler.Delete)
 				}
 
 				tickets := biz.Group("/tickets")

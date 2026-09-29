@@ -48,7 +48,7 @@
 | 编号 | 项 | 量级 | 排位 |
 |------|----|------|------|
 | P4-1 | 菜单词表只读化（方案 B+词表拆分+BK-18 整改 000030+词表重排 000031 两连号+验收账号基座） | 4–5 天 | P4-W1 |
-| P4-2 | 通知通道（webhook 优先；渠道接口配置化=00 §2.1 既有口径，**含配置持久化+管理 API 面（无页面），配置页触发驱动后补——2026-09-21 拍板**；死信告警不依赖工单解封；**触发源注意（十三批场景走查）：ticket_events 无读 API、无 processed 列（000010 注释承诺的 Phase 3 迁移未实施）、无发射代码——实施须补事件消费面（轮询或 emit hook）+ 消费位迁移；**P4-2 预期占两连号（notification_configs 本体+事件消费位）——十四批锚点：000010:70 注释承诺「迁移 000021 加 event_type+processed」但该号已被 job_submissions 占用（承诺编号被 A2 挪用）**） | 2–4 天 | 穿插池 |
+| P4-2 | **✅ 已交付（2026-09-29）**：000033（notification_configs 表+菜单 90001/90002 显式高位 id——roundtrip 零漂移）+管理 API 四端点（biz 组，菜单 visible=false 过渡态配置页后补）+/internal/notify/dead-letter 死信入口（AK/SK 验签同 internal 组）+taskrunner 终败通知 hook（notify 包异步尽力而为，TASKRUNNER_NOTIFY_* env，E-⑥ 形态）——**全链闭环实测**：黑洞回调触发死信（max_retry=0 首败即死信）→webhook 送达完整事件（task_id/action/error/attempts）。原描述留档：通知通道（webhook 优先；渠道接口配置化=00 §2.1 既有口径，**含配置持久化+管理 API 面（无页面），配置页触发驱动后补——2026-09-21 拍板**；死信告警不依赖工单解封；**触发源注意（十三批场景走查）：ticket_events 无读 API、无 processed 列（000010 注释承诺的 Phase 3 迁移未实施）、无发射代码——实施须补事件消费面（轮询或 emit hook）+ 消费位迁移；**P4-2 预期占两连号（notification_configs 本体+事件消费位）——十四批锚点：000010:70 注释承诺「迁移 000021 加 event_type+processed」但该号已被 job_submissions 占用（承诺编号被 A2 挪用）**） | 2–4 天 | 穿插池 |
 | P4-3 | 字典/系统参数（只做业务枚举/运维参数，不碰权限策略面） | 2–3 天 | 穿插池 |
 | P4-4 | 用户面导出（excelize 固定列；**必须接 L2**，与 BK-21 同批） | 1–2 天+BK-21 | 穿插池 |
 | P4-5 | MCP server 读侧（AI 代运营；透传鉴权模式） | 3–5 天 | **提排 P4-W1/W2 并行窗口（2026-09-21 拍板 P2-7，原穿插池后位）** |

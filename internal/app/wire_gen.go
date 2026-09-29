@@ -63,6 +63,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	notificationRepo := repository.NewNotificationRepo(pool)
+	notificationService := service.NewNotificationService(notificationRepo, logger)
+	notificationHandler := handler.NewNotificationHandler(notificationService)
 	ticketRepo := repository.NewTicketRepo(pool)
 	auditConfig := cfg.Audit
 	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
@@ -88,27 +91,28 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	rateLimitConfig := provideRateLimitConfig(cfg)
 	v := provideTrustedProxies(cfg)
 	deps := router.Deps{
-		AuthHandler:       authHandler,
-		UserHandler:       userHandler,
-		RoleHandler:       roleHandler,
-		OrgHandler:        orgHandler,
-		MenuHandler:       menuHandler,
-		AuditHandler:      auditHandler,
-		TicketHandler:     ticketHandler,
-		JWTManager:        manager,
-		Enforcer:          syncedEnforcer,
-		RedisClient:       client,
-		DBPool:            pool,
-		Logger:            logger,
-		RoleFetcher:       rbacService,
-		AuditService:      auditService,
-		Registry:          registry,
-		JobsHandler:       jobsHandler,
-		InternalJobs:      internalJobsConfig,
-		TaskrunnerHandler: taskrunnerHandler,
-		Gateway:           gatewayRegistry,
-		RateLimit:         rateLimitConfig,
-		TrustedProxies:    v,
+		AuthHandler:         authHandler,
+		UserHandler:         userHandler,
+		RoleHandler:         roleHandler,
+		OrgHandler:          orgHandler,
+		MenuHandler:         menuHandler,
+		AuditHandler:        auditHandler,
+		NotificationHandler: notificationHandler,
+		TicketHandler:       ticketHandler,
+		JWTManager:          manager,
+		Enforcer:            syncedEnforcer,
+		RedisClient:         client,
+		DBPool:              pool,
+		Logger:              logger,
+		RoleFetcher:         rbacService,
+		AuditService:        auditService,
+		Registry:            registry,
+		JobsHandler:         jobsHandler,
+		InternalJobs:        internalJobsConfig,
+		TaskrunnerHandler:   taskrunnerHandler,
+		Gateway:             gatewayRegistry,
+		RateLimit:           rateLimitConfig,
+		TrustedProxies:      v,
 	}
 	engine := router.New(deps)
 	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry)
@@ -144,11 +148,11 @@ var pkgSet = wire.NewSet(
 	provideJobsCallbackService,
 )
 
-var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo)
+var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler)
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler)
 
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {

@@ -106,3 +106,10 @@ var (
 	ErrTicketTypeNotFound      = util.New(90003, "工单类型不存在")
 	ErrTicketAlreadyClosed     = util.New(90004, "工单已关闭")
 )
+
+// 通知模块 92000-92999（91000-91999 为附件预留段——02 号 IW2，勿占）
+var (
+	ErrNotificationConfigNotFound    = util.New(92001, "通知配置不存在")
+	ErrNotificationCodeExists        = util.New(92002, "通知配置 code 已存在")
+	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道（首版仅 webhook）")
+)
