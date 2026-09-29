@@ -7,6 +7,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // httpStatusByCode 业务错误码 → HTTP 状态码映射表（D2-06/07/D2-32 重构：
@@ -40,8 +41,6 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrOrgSystemProtected.Code: 403,
 	errcode.ErrRoleInUse.Code:          403,
 	errcode.ErrRoleIsSystem.Code:       403,
-	errcode.ErrMenuHasChildren.Code:    403,
-	errcode.ErrMenuIsSystem.Code:       403,
 	errcode.ErrForbidden.Code:          403,
 	errcode.ErrNoPermission.Code:       403,
 	errcode.ErrNoRoles.Code:            403,
@@ -69,7 +68,6 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrDomainAccountAlreadyExists.Code: 409,
 	errcode.ErrRoleAlreadyExists.Code:          409,
 	errcode.ErrOrgAlreadyExists.Code:           409,
-	errcode.ErrMenuAlreadyExists.Code:          409,
 	errcode.ErrDuplicatePrimaryOrg.Code:        409,
 	errcode.ErrTicketAlreadyClosed.Code:        409,
 
@@ -83,6 +81,12 @@ var httpStatusByCode = map[int]int{
 func writeServiceError(c *gin.Context, err error) {
 	var biz *errcode.Error
 	if !errors.As(err, &biz) {
+		// 27 批 D-5：PG 22001（超长）兜底 400——model max= 为主防线（D-3），
+		// 此处防新字段漏绑时客户端输入错误计 5xx 污染告警
+		if ec := repository.MapStringValueOverflow(err); ec != nil {
+			response.BadRequest(c, ec.Message)
+			return
+		}
 		response.InternalError(c, errcode.ErrInternal.Message)
 		return
 	}

@@ -21,6 +21,21 @@ func NewAuditHandler(auditService *service.AuditService) *AuditHandler {
 }
 
 // ListLogs GET /api/v1/audit/logs
+//
+//	@Summary		审计日志列表
+//	@Tags			audit
+//	@Accept			json
+//	@Produce		json
+//	@Param			page			query		int		false	"页码（默认 1）"
+//	@Param			page_size		query		int		false	"每页条数（默认 20）"
+//	@Param			path			query		string	false	"请求路径过滤"
+//	@Param			user_id			query		int		false	"用户 ID"
+//	@Param			start			query		string	false	"开始日期（YYYY-MM-DD）"
+//	@Param			end				query		string	false	"结束日期（YYYY-MM-DD）"
+//	@Param			employee_no		query		string	false	"工号"
+//	@Success		200 {object} response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/audit/logs [get]
 func (h *AuditHandler) ListLogs(c *gin.Context) {
 	q := repository.AuditListQuery{
 		Page:     queryInt(c, "page", 1),

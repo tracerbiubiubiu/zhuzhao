@@ -23,6 +23,7 @@ type Service struct {
 	orgRepo     *repository.OrgRepo
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
+	delegation  OrgDelegationChecker
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -41,10 +42,28 @@ func NewTicketService(
 		orgRepo:     orgRepo,
 		registry:    registry,
 		roleFetcher: roleFetcher,
+		delegation:  delegation,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
 	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
 	return s
+}
+
+// isGlobalOrgAdmin 全局组织管理员判定（commit-review §3.4 口径统一）：
+// 角色码 admin/superadmin 短路，回退 delegation.HasOrgManagePermission
+// （org:% 菜单闸门）——与 org_service.isGlobalOrgAdmin 同语义两入口不漂移。
+func (s *Service) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
+	roles, err := s.getRoles(ctx, userID)
+	if err != nil {
+		return false
+	}
+	for _, r := range roles {
+		if r == "admin" || r == "superadmin" {
+			return true
+		}
+	}
+	ok, err := s.delegation.HasOrgManagePermission(ctx, userID)
+	return err == nil && ok
 }
 
 // getRoles 获取用户角色码列表
@@ -92,6 +111,26 @@ const defaultTicketPriority = 3
 
 // Create 创建工单
 func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, actorUserID int64) (*model.Ticket, error) {
+	// W0b（二十四批 P0-5）：assigned_to 在创建请求中拒收——分派须走 Assign 端点
+	// 过状态机（open→assigned 事件+指派人校验）；此处直传会落库 open 态带处理人。
+	if req.AssignedTo != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "assigned_to 不允许在创建时指定，请使用分派接口")
+	}
+	// W0b（二十四批 P0-5）：组织归属校验——创建者须与目标 org 同分支（任一
+	// 成员 org 是目标的祖先或后代，含自身）或持全局 org 管理权；否则任何持
+	// POST /tickets 者可向任意 org 注入工单（污染 scope=group 可见性与组织
+	// 统计）。resource.go 的 create 恒 true 仅指「已过 L1 的创建动作无需行级
+	// 判定」，不豁免归属约束。
+	if member, err := s.orgRepo.IsInOrgBranch(ctx, req.OrgID, actorUserID); err != nil {
+		return nil, err
+	} else if !member {
+		// 豁免口径与 org_service.isGlobalOrgAdmin 对齐（commit-review §3.4）：
+		// 角色码（admin/superadmin）短路 + org:% 菜单回退——两入口不漂移
+		if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+
 	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
 	ttype, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode)
 	if err != nil {
@@ -166,7 +205,6 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		Priority:    priority,
 		Status:      StatusOpen,
 		CreatedBy:   actorUserID,
-		AssignedTo:  req.AssignedTo,
 		OrgID:       req.OrgID,
 		CustomData:  customData,
 	}
@@ -248,18 +286,10 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if ticket.Status == StatusClosed {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
-	// patch 语义
-	if req.Title != nil {
-		ticket.Title = *req.Title
-	}
-	if req.Description != nil {
-		ticket.Description = *req.Description
-	}
-	if req.Priority != nil {
-		if *req.Priority < 1 || *req.Priority > 4 {
-			return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
-		}
-		ticket.Priority = *req.Priority
+	// patch 语义：仅校验显式传入的 priority（W4 十六批 Med——写侧改字段级 COALESCE，
+	// nil 字段不覆盖；此处读出的 ticket 仅作授权/状态预检与响应载体）
+	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
 	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
 	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
@@ -268,7 +298,8 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	if err := s.ticketRepo.UpdateTx(ctx, tx, ticket); err != nil {
+	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority)
+	if err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -281,6 +312,17 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	// 响应=读出行合并请求 patch（updated_at 以 RETURNING 为准）；未传字段保持库值
+	if req.Title != nil {
+		ticket.Title = *req.Title
+	}
+	if req.Description != nil {
+		ticket.Description = *req.Description
+	}
+	if req.Priority != nil {
+		ticket.Priority = *req.Priority
+	}
+	ticket.UpdatedAt = updatedAt
 	return ticket, nil
 }
 
@@ -516,7 +558,17 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	if req.SourceTicketID == req.TargetTicketID {
 		return nil, errcode.ErrInvalidParams
 	}
-	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）
+	// W0b（二十四批侧信道）：鉴权先行——不可见工单不得经查重 409 泄露存在性，
+	// 须先走 authorizeCheck 返回 404+90001（防枚举语义与 Get/Update 同型）。
+	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
+	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
+		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
+			return nil, err
+		}
+	}
+	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）；
+	// 预检后移为友好路径，并发/顺序重复由 uq_ticket_relations_normalized
+	//（000028）兜底 → repo 层 23505 映射 ErrConflict（409），语义不变
 	relType := req.RelationType
 	if relType == "" {
 		relType = "related"
@@ -527,12 +579,6 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	}
 	if dup {
 		return nil, errcode.ErrConflict
-	}
-	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
-	for _, idStr := range []string{strconv.FormatInt(req.SourceTicketID, 10), strconv.FormatInt(req.TargetTicketID, 10)} {
-		if err := s.authorizeCheck(ctx, actorUserID, "update", idStr); err != nil {
-			return nil, err
-		}
 	}
 	rel := &model.TicketRelation{
 		SourceTicketID: req.SourceTicketID,

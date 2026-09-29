@@ -159,3 +159,19 @@ func extractBearer(auth string) string {
 	}
 	return ""
 }
+
+// Captcha
+//
+//	@Summary		登录验证码（enabled=false 时仅返回开关态——前端据此显隐插槽）
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200 {object} response.Response
+//	@Router			/api/v1/auth/captcha [get]
+func (h *AuthHandler) Captcha(c *gin.Context) {
+	resp, err := h.authService.Captcha(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, resp)
+}

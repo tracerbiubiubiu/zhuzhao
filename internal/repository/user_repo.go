@@ -59,7 +59,7 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.
 
 // ListByOrgID 组织成员列表（B4-5：分页——modules/organization.md §4.3 承诺）
 func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize int) ([]*model.User, int64, error) {
-	page, pageSize = normalizePage(page, pageSize)
+	page, pageSize = NormalizePage(page, pageSize)
 	var total int64
 	if err := r.db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM users u
@@ -85,10 +85,60 @@ func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize 
 	return users, total, nil
 }
 
+// ListOrgMembersRoster 委托组成员名册（P4-W3「我的组织」自服务面）：
+// 与 ListByOrgID 的区别——必含 uo.org_member_role + uo.ticket_scope（03 号 §2-S7，
+// 裸 User 形态会让前端组内角色列拿不到数据）
+func (r *UserRepo) ListOrgMembersRoster(ctx context.Context, orgID int64, page, pageSize int) ([]*model.OrgMemberRosterItem, int64, error) {
+	page, pageSize = NormalizePage(page, pageSize)
+	var total int64
+	if err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL`, orgID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count org members roster: %w", err)
+	}
+	const q = `
+		SELECT u.id, u.username,
+			COALESCE(u.employee_no, '') AS employee_no,
+			COALESCE(u.real_name, '') AS real_name,
+			COALESCE(u.email, '') AS email,
+			COALESCE(u.phone, '') AS phone,
+			COALESCE(u.avatar, '') AS avatar,
+			u.status,
+			uo.is_primary,
+			uo.org_member_role,
+			uo.ticket_scope,
+			-- RFC3339 由 Go 侧 time.Time 序列化（pgx 原生 scan）——勿用 ::text（检视 P1）
+			uo.joined_at
+		FROM users u
+		INNER JOIN user_orgs uo ON uo.user_id = u.id
+		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
+		ORDER BY CASE uo.org_member_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id ASC
+		LIMIT $2 OFFSET $3`
+	rows, err := r.db.Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list org members roster: %w", err)
+	}
+	defer rows.Close()
+	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.OrgMemberRosterItem, error) {
+		var it model.OrgMemberRosterItem
+		if err := row.Scan(&it.UserID, &it.Username, &it.EmployeeNo, &it.RealName,
+			&it.Email, &it.Phone, &it.Avatar, &it.Status,
+			&it.IsPrimary, &it.OrgMemberRole, &it.TicketScope, &it.JoinedAt); err != nil {
+			return nil, err
+		}
+		return &it, nil
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
 // FindByEmployeeNo 登录用：工号精确匹配；未删除用户
+// B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
+// 当前入口已保证非空，防御未来新增调用方）
 func (r *UserRepo) FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) {
-	// B4-1：补文档承诺的空串防御（与 docs/modules/user.md §5 登录查询一致；
-	// 当前入口已保证非空，防御未来新增调用方）
 	const q = `SELECT` + userSelectColumns + `
     FROM users WHERE employee_no = $1 AND deleted_at IS NULL
     AND employee_no <> '' AND employee_no IS NOT NULL LIMIT 1`
@@ -176,7 +226,7 @@ func (r *UserRepo) createUser(ctx context.Context, exec rowExec, user *model.Use
 
 // List 分页查询用户列表（仅未软删）
 func (r *UserRepo) List(ctx context.Context, q UserListQuery) ([]*model.User, int64, error) {
-	page, pageSize := normalizePage(q.Page, q.PageSize)
+	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
 	where, args := buildUserListWhere(q)
 
@@ -619,10 +669,11 @@ func escapeLike(s string) string {
 	return s
 }
 
-// normalizePage 用户/组织成员分页规范化。
+// NormalizePage 用户/组织成员分页规范化（导出：service 层回显复用——
+// 此前回显靠手写拷贝，单点调边界时回显与实际生效分页会静默失真）。
 // D2-13：page 上限 10000——对齐 B4-6 审计分页；原无上限时超大 page 经
 // (page-1)*pageSize 溢出回绕为负 OFFSET → SQL 500（且巨量 OFFSET 扫描放大 DB 压力）
-func normalizePage(page, pageSize int) (int, int) {
+func NormalizePage(page, pageSize int) (int, int) {
 	if page < 1 {
 		page = 1
 	}

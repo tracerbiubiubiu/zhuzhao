@@ -89,6 +89,26 @@ func (r *OrgRepo) IsMember(ctx context.Context, orgID, userID int64) (bool, erro
 	return exists, err
 }
 
+// IsInOrgBranch W0b（P0-5 归属校验的分支语义）：actor 是否与目标 org 同处
+// 一条 ltree 分支——任一成员 org 是目标的祖先或后代（含自身）。
+// 「只能在本部门树内建单」：D1 成员可向父 P 或子孙建，无关部门仍拒。
+func (r *OrgRepo) IsInOrgBranch(ctx context.Context, orgID, userID int64) (bool, error) {
+	var ok bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM user_orgs m
+			JOIN organizations mo ON mo.id = m.org_id AND mo.deleted_at IS NULL
+			CROSS JOIN organizations t
+			WHERE m.user_id = $1 AND t.id = $2 AND t.deleted_at IS NULL
+			  AND (mo.path <@ t.path OR t.path <@ mo.path)
+		)`, userID, orgID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("is in org branch: %w", err)
+	}
+	return ok, nil
+}
+
 // AddMember 添加组织成员（幂等）
 func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary bool) error {
 	tx, err := r.db.Begin(ctx)
@@ -804,4 +824,28 @@ func (r *OrgRepo) UnbindOrgRole(ctx context.Context, orgID, roleID int64) error 
 		return errcode.ErrNotFound
 	}
 	return nil
+}
+
+// GetMyOrgs 「我的组织」富化列表（P4-W3 自服务面）：join organizations 带名称/虚拟组，
+// 含组内角色与数据范围（裸 UserOrg 缺——前端渲染需要）
+func (r *OrgRepo) GetMyOrgs(ctx context.Context, userID int64) ([]*model.MyOrgItem, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT o.id, COALESCE(o.code,''), COALESCE(o.name,''), o.is_virtual,
+		       uo.is_primary, uo.org_member_role, uo.ticket_scope, uo.joined_at
+		FROM user_orgs uo
+		INNER JOIN organizations o ON o.id = uo.org_id
+		WHERE uo.user_id = $1 AND o.deleted_at IS NULL
+		ORDER BY uo.is_primary DESC, uo.org_id ASC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get my orgs: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.MyOrgItem, error) {
+		var it model.MyOrgItem
+		if err := row.Scan(&it.OrgID, &it.OrgCode, &it.OrgName, &it.IsVirtual,
+			&it.IsPrimary, &it.OrgMemberRole, &it.TicketScope, &it.JoinedAt); err != nil {
+			return nil, err
+		}
+		return &it, nil
+	})
 }

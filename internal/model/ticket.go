@@ -21,6 +21,11 @@ type Ticket struct {
 	SLADueAt    *time.Time      `json:"sla_due_at,omitempty" db:"sla_due_at"`
 	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
+
+	// 姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
+	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）
+	CreatedByName string  `json:"created_by_name,omitempty" db:"-"`
+	AssigneeName  *string `json:"assignee_name,omitempty" db:"-"`
 }
 
 // TicketType 工单类型配置

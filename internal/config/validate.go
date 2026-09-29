@@ -61,7 +61,35 @@ func (c *Config) Validate() error {
 	if c.Redis.Host == "" {
 		return fmt.Errorf("redis.host is required")
 	}
+
+	// W0a-P0-1：三个内网 SK 对齐 JWT 的 D2-09 纪律——仓库公开的 dev-* 默认值
+	// release 拒绝（公开 SK 可签名调 /internal/jobs/callback 补录分支=未授权删
+	// 审计，密钥即身份）；debug 放行以便本地零配置（compose 侧已去兜底 ${VAR:?}）。
+	if mode == "release" {
+		if isRepoKnownSK(c.Gateway.SK) {
+			return fmt.Errorf("gateway.sk must be overridden via GATEWAY_SK in release mode (repo-known value rejected)")
+		}
+		if isRepoKnownSK(c.Taskrunner.SK) {
+			return fmt.Errorf("taskrunner.sk must be overridden via TASKRUNNER_SK in release mode (repo-known value rejected)")
+		}
+		if c.InternalJobs.Enabled && isRepoKnownSK(c.InternalJobs.SK) {
+			return fmt.Errorf("internal_jobs.taskrunner_sk must be overridden via INTERNAL_JOBS_SK in release mode (repo-known value rejected)")
+		}
+	}
 	return nil
+}
+
+// repoKnownSKs 仓库内公开的 SK 默认值（compose 历史兜底/configs 示例）——
+// release 模式拒绝：公开值不构成秘密性，验签面（网关出站/回调入站）形同虚设。
+var repoKnownSKs = map[string]struct{}{
+	"dev-gateway-sk":    {},
+	"dev-taskrunner-sk": {},
+	"dev-callback-sk":   {},
+}
+
+func isRepoKnownSK(sk string) bool {
+	_, ok := repoKnownSKs[strings.TrimSpace(sk)]
+	return ok
 }
 
 func (c *JWTConfig) validate(mode string) error {

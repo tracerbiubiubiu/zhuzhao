@@ -40,14 +40,20 @@ func (g CatalogGap) String() string {
 var catalogExempt = map[string]bool{
 	"POST /api/v1/auth/login":           true, // 认证公开端点
 	"POST /api/v1/auth/refresh":         true, // 认证公开端点
+	"GET /api/v1/auth/captcha":          true, // P4-7 验证码公开端点（匿名获取——登录前置）
+	"GET /api/v1/user/pats":             true, // P4-6 PAT 自服务（SelfService——本人凭据）
+	"POST /api/v1/user/pats":            true,
+	"POST /api/v1/user/pats/delete":     true,
 	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）
 	"POST /api/v1/auth/password/update": true, // 自服务
 	"GET /api/v1/user/profile":          true, // 自服务
 	"POST /api/v1/user/profile/update":  true, // 自服务
 	"GET /api/v1/user/menus":            true, // 自服务
 	"GET /api/v1/user/permissions":      true, // 自服务
+	"GET /api/v1/user/orgs":             true, // 自服务（P4-W3「我的组织」数据源）
 	"POST /api/v1/orgs/delete":          true, // 委托语义（orgDelegated，Service 层判定）
 	"POST /api/v1/orgs/members":         true,
+	"GET /api/v1/orgs/members/list":     true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
 	"POST /api/v1/orgs/members/role":    true,
 	"POST /api/v1/orgs/members/scope":   true,
 	"GET /api/v1/orgs/roles/list":       true,

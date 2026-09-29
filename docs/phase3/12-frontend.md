@@ -72,25 +72,33 @@ interface DynamicFormField {
 - 变更审计：保存写审计事件（旧/新策略+参数）；
 - 单票例外入口（`visibility_override`）：T2 前仅后端留缝，不做 UI。
 
-## 4. 工程结构（建议）
+## 4. 工程结构（✅ 已随 P4-W2 落定回标，2026-09-27）
+
+> 原「建议」结构以 W2 实际落定为准回写：仓 = 独立 `zhuzhao-ui`（单仓单 SPA，01 号 §1/§9.1 拍板，degit 拷入 vue-element-plus-admin v3 种子）；目录取 `views`（01 §2 拍板），权限三件套落 `common/auth`，指令挂全局。设计 SSOT 已移交 [phase4/01-frontend-design.md](../phase4/01-frontend-design.md)，本节为落定快照。
 
 ```
-web/
-  src/api/<域>/<资源>/{index.ts, types/}
-  src/pages/<域>/<功能>/{components, composables}
-  src/common/components/{DynamicForm, Workflow?}   # Workflow 组件远期画布才引入
-  src/common/auth/{capability.ts}
-  src/directives/permission/
+zhuzhao-ui/                       # 独立仓（不放任何后端仓）
+  src/api/<域>/                    # API 模块（auth/…；类型逐步换 codegen 产物）
+  src/api/__generated__/           # openapi-typescript 生成物（不手改；pnpm codegen）
+  src/views/<域>/<功能>/            # 页面（system/ticket/task/al/audit/login/profile）
+  src/common/request/              # axios 实例+拦截器链（信封/401 分码/单飞刷新）
+  src/common/auth/                 # 权限三件套：usePermission/AuthButton/v-permission + tokenStorage
+  src/store/modules/               # user/permission/permissionRoutes（动态路由 buildRoutes）
+  src/router/                      # 常量路由+守卫；动态路由由菜单树 addRoute
+  e2e/                             # Playwright（S1/S2/FE3 + globalSetup 幂等建号）
+  scripts/codegen.sh               # make swag（主仓）→ swagger2openapi → openapi-typescript
 ```
 
-## 5. 验收标准
+（原建议中 `DynamicForm`/`Workflow` 组件随 P4-W4 ticket 域动工引入，位置不变。）
 
-| # | 用例 | 通过标准 |
-|---|------|---------|
-| FE1 | 动态表单 | 7 种字段类型渲染正确；required 校验拦截提交；值落 `custom_data` 并在详情回显 |
-| FE2 | 管理页 | 前端完成类型+字段+模板建配全流程，全程无 SQL |
-| FE3 | 权限 | viewer 角色看不到管理入口（路由+按钮双级） |
-| FE4 | 审批页 | WhatCanIDo 驱动按钮显隐；通过/驳回/转签全链路（7c 联调） |
+## 5. 验收标准（状态随 W2 回标）
+
+| # | 用例 | 通过标准 | 状态 |
+|---|------|---------|------|
+| FE1 | 动态表单 | 7 种字段类型渲染正确；required 校验拦截提交；值落 `custom_data` 并在详情回显 | ⏳ P4-W4 |
+| FE2 | 管理页 | 前端完成类型+字段+模板建配全流程，全程无 SQL | ⏳ P4-W4 |
+| FE3 | 权限 | viewer 角色看不到管理入口（路由+按钮双级） | ✅ P4-W2 E2E（`zhuzhao-ui/e2e/fe3-viewer-readonly.spec.ts`：菜单不可见 + GET /tickets=200 且 POST=403 API 双检；预设绑定见 e2e/global-setup.ts） |
+| FE4 | 审批页 | WhatCanIDo 驱动按钮显隐；通过/驳回/转签全链路（7c 联调） | ⏸ 随 §23 翻案批 |
 
 ## 6. 开放问题
 

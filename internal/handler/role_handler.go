@@ -20,6 +20,13 @@ func NewRoleHandler(rbacService *service.RBACService) *RoleHandler {
 }
 
 // List GET /api/v1/roles
+//
+//	@Summary	角色列表
+//	@Tags		roles
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles [get]
 func (h *RoleHandler) List(c *gin.Context) {
 	roles, err := h.rbacService.ListRoles(c.Request.Context(), !isSuperadminActor(c))
 	if err != nil {
@@ -30,6 +37,15 @@ func (h *RoleHandler) List(c *gin.Context) {
 }
 
 // Create POST /api/v1/roles
+//
+//	@Summary	创建角色
+//	@Tags		roles
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.CreateRoleRequest	true	"创建角色请求"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles [post]
 func (h *RoleHandler) Create(c *gin.Context) {
 	var req model.CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -45,6 +61,14 @@ func (h *RoleHandler) Create(c *gin.Context) {
 }
 
 // Get GET /api/v1/roles/:id
+//
+//	@Summary	角色详情
+//	@Tags		roles
+//	@Produce	json
+//	@Param		id		path	int	true	"角色 ID"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/{id} [get]
 func (h *RoleHandler) Get(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -60,6 +84,15 @@ func (h *RoleHandler) Get(c *gin.Context) {
 }
 
 // Update POST /api/v1/roles/update
+//
+//	@Summary	更新角色
+//	@Tags		roles
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.UpdateRoleRequest	true	"更新角色请求"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/update [post]
 func (h *RoleHandler) Update(c *gin.Context) {
 	var req model.UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,6 +108,15 @@ func (h *RoleHandler) Update(c *gin.Context) {
 }
 
 // Delete POST /api/v1/roles/delete
+//
+//	@Summary	删除角色
+//	@Tags		roles
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.RoleIDRequest	true	"删除角色请求"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/delete [post]
 func (h *RoleHandler) Delete(c *gin.Context) {
 	var req model.RoleIDRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -89,6 +131,15 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 }
 
 // AssignMenus POST /api/v1/roles/menus
+//
+//	@Summary	分配角色菜单
+//	@Tags		roles
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body	model.AssignMenusRequest	true	"分配菜单请求"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/menus [post]
 func (h *RoleHandler) AssignMenus(c *gin.Context) {
 	var req model.AssignMenusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -104,6 +155,14 @@ func (h *RoleHandler) AssignMenus(c *gin.Context) {
 }
 
 // GetMenus GET /api/v1/roles/:id/menus
+//
+//	@Summary	查询角色菜单
+//	@Tags		roles
+//	@Produce	json
+//	@Param		id		path	int	true	"角色 ID"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/{id}/menus [get]
 func (h *RoleHandler) GetMenus(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -119,6 +178,14 @@ func (h *RoleHandler) GetMenus(c *gin.Context) {
 }
 
 // GetPermissions GET /api/v1/roles/:id/permissions
+//
+//	@Summary	查询角色权限
+//	@Tags		roles
+//	@Produce	json
+//	@Param		id		path	int	true	"角色 ID"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/roles/{id}/permissions [get]
 func (h *RoleHandler) GetPermissions(c *gin.Context) {
 	roleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

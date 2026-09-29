@@ -161,10 +161,7 @@
 
 | code | 常量 | message | HTTP |
 |------|------|---------|------|
-| 60001 | `ErrMenuAlreadyExists` | 菜单已存在 | 409 |
 | 60002 | `ErrMenuNotFound` | 菜单不存在 | 404 |
-| 60003 | `ErrMenuHasChildren` | 该菜单下有子菜单，无法删除 | 409 |
-| 60004 | `ErrMenuIsSystem` | 系统内置菜单不可删除 | 403 |
 
 ### 鉴权 70000–70999
 

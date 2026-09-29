@@ -14,8 +14,14 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
-// AuditArchiveJob B11② 审计归档（03-audit-l2 §4；taskrunner M3 首个预置动作）。
-// 每日 cron 由 taskrunner 侧定义并回调（action_id = "audit_archive"）。
+// AuditArchiveJob B11② 审计归档（03-audit-l2 §4）。
+//
+// P4 cron 收归批（2026-09-29）：触发双形态——① 进程内 CronScheduler（ticker+
+// advisory lock，配置开关）② 既有 taskrunner 回调（action_id = "audit_archive"，
+// 部署侧二选一防双跑——收归启用即停 taskrunner 侧 job 定义）。
+// B-1 修法 c：**单批一执行**（去 for 循环——长任务窗口消除：单批秒级有界，
+// 剩余超期行由下个 tick/下次回调继续；空批=快速空过，tick 常跑无需频次控制）。
+// B-1 修法 d：本 Handler 可重入（幂等——单批内「先导出后删」+重跑自然续批）。
 //
 // 语义（P4/P7 定案）：
 //   - 超期行（created_at < NOW() - retention）导出 JSONL 到本地目录（卷挂载持久）；
@@ -129,7 +135,7 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 	return firstErr
 }
 
-// archiveTable 单表分批归档：写文件（含 flush）→ 删同批行，循环至无超期行。
+// archiveTable 单表**单批**归档：写文件（含 flush）→ 删同批行 → 返回（B-1 修法 c）。
 func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff time.Time) (exported, deleted int64, err error) {
 	runStamp := time.Now().Format("20060102-150405.000000000") // 纳秒：同秒重叠运行不共用文件
 	path := filepath.Join(j.outDir, fmt.Sprintf("%s-%s.jsonl", table, runStamp))
@@ -139,34 +145,33 @@ func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff
 	}
 	defer f.Close()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return exported, deleted, ctx.Err()
-		default:
-		}
-		batch, err := j.repo.ArchiveFetchBatch(ctx, table, cutoff, j.batchRows)
-		if err != nil {
-			return exported, deleted, err
-		}
-		if len(batch) == 0 {
-			return exported, deleted, nil
-		}
-		ids := make([]int64, 0, len(batch))
-		for _, row := range batch {
-			if _, err := f.Write(append(row.Line, '\n')); err != nil {
-				return exported, deleted, fmt.Errorf("write %s: %w", path, err)
-			}
-			ids = append(ids, row.ID)
-		}
-		// 文件先落盘（含缓冲冲刷）再删行——崩溃窗口内最多重复导出，不会丢
-		if err := f.Sync(); err != nil {
-			return exported, deleted, fmt.Errorf("sync %s: %w", path, err)
-		}
-		if err := j.repo.ArchiveDeleteBatch(ctx, table, ids); err != nil {
-			return exported, deleted, err
-		}
-		exported += int64(len(batch))
-		deleted += int64(len(ids))
+	// B-1 修法 c：单批一执行（不再 for 循环至清空——长任务窗口与回调超时重试
+	// 双执行链路根除；剩余超期行由下次触发继续，收敛速率=tick 频率×批大小）
+	select {
+	case <-ctx.Done():
+		return exported, deleted, ctx.Err()
+	default:
 	}
+	batch, err := j.repo.ArchiveFetchBatch(ctx, table, cutoff, j.batchRows)
+	if err != nil {
+		return exported, deleted, err
+	}
+	if len(batch) == 0 {
+		return exported, deleted, nil
+	}
+	ids := make([]int64, 0, len(batch))
+	for _, row := range batch {
+		if _, err := f.Write(append(row.Line, '\n')); err != nil {
+			return exported, deleted, fmt.Errorf("write %s: %w", path, err)
+		}
+		ids = append(ids, row.ID)
+	}
+	// 文件先落盘（含缓冲冲刷）再删行——崩溃窗口内最多重复导出，不会丢
+	if err := f.Sync(); err != nil {
+		return exported, deleted, fmt.Errorf("sync %s: %w", path, err)
+	}
+	if err := j.repo.ArchiveDeleteBatch(ctx, table, ids); err != nil {
+		return exported, deleted, err
+	}
+	return int64(len(batch)), int64(len(ids)), nil
 }

@@ -30,6 +30,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Param		page_size	query	int		false	"每页条数"
 //	@Param		type_code	query	string	false	"工单类型"
 //	@Param		status		query	string	false	"工单状态"
+//	@Param		assignee	query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
 func (h *TicketHandler) List(c *gin.Context) {
@@ -53,6 +54,16 @@ func (h *TicketHandler) List(c *gin.Context) {
 			return
 		}
 		q.Priority = &v
+	}
+	// W4（P1-c）：assignee=me 过滤——「处理人=我」维度。仅接受字面量 me（解析为
+	// 当前用户）；其余值 400，防被误当 user_id 语义扩散（前端契约仅 me 一形）
+	if a := c.Query("assignee"); a != "" {
+		if a != "me" {
+			response.BadRequest(c, "assignee 仅支持 me")
+			return
+		}
+		uid := c.GetInt64("userID")
+		q.AssigneeID = &uid
 	}
 	resp, err := h.ticketService.List(c.Request.Context(), q, c.GetInt64("userID"))
 	if err != nil {
@@ -419,19 +430,15 @@ func (h *TicketHandler) CreateTicketType(c *gin.Context) {
 //	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.UpdateTicketTypeRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code} [put]
+//	@Router		/api/v1/ticket-types/update [post]
 func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的类型编码")
-		return
-	}
+	// W1（BK-18 整改）：POST /ticket-types/update——req.Code 入 body（binding required）
 	var req model.UpdateTicketTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	t, err := h.ticketService.UpdateTicketType(c.Request.Context(), code, &req)
+	t, err := h.ticketService.UpdateTicketType(c.Request.Context(), req.Code, &req)
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -446,14 +453,15 @@ func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 //	@Produce	json
 //	@Param		code	path	string	true	"类型编码"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code} [delete]
+//	@Router		/api/v1/ticket-types/delete [post]
 func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的类型编码")
+	// W1（BK-18 整改）：POST /ticket-types/delete——code 入 body
+	var req model.DeleteByCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "code 必填")
 		return
 	}
-	if err := h.ticketService.DeleteTicketType(c.Request.Context(), code); err != nil {
+	if err := h.ticketService.DeleteTicketType(c.Request.Context(), req.Code); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -469,23 +477,19 @@ func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
 //	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.ReplaceTypeFieldsRequest	true	"字段集"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code}/fields [put]
+//	@Router		/api/v1/ticket-types/fields/replace [post]
 func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的类型编码")
-		return
-	}
+	// W1（BK-18 整改）：POST /ticket-types/fields/replace——req.Code 入 body
 	var req model.ReplaceTypeFieldsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), code, &req); err != nil {
+	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), req.Code, &req); err != nil {
 		writeServiceError(c, err)
 		return
 	}
-	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), code)
+	fields, err := h.ticketService.ListTicketTypeFieldsAdmin(c.Request.Context(), req.Code)
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -525,19 +529,15 @@ func (h *TicketHandler) CreateTicketTemplate(c *gin.Context) {
 //	@Param		code	path	string							true	"模板编码"
 //	@Param		req		body	model.UpdateTicketTemplateRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-templates/{code} [put]
+//	@Router		/api/v1/ticket-templates/update [post]
 func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的模板编码")
-		return
-	}
+	// W1（BK-18 整改）：POST /ticket-templates/update——req.Code 入 body
 	var req model.UpdateTicketTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	t, err := h.ticketService.UpdateTicketTemplate(c.Request.Context(), code, &req)
+	t, err := h.ticketService.UpdateTicketTemplate(c.Request.Context(), req.Code, &req)
 	if err != nil {
 		writeServiceError(c, err)
 		return
@@ -552,14 +552,15 @@ func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
 //	@Produce	json
 //	@Param		code	path	string	true	"模板编码"
 //	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-templates/{code} [delete]
+//	@Router		/api/v1/ticket-templates/delete [post]
 func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
-	code := c.Param("code")
-	if code == "" {
-		response.BadRequest(c, "无效的模板编码")
+	// W1（BK-18 整改）：POST /ticket-templates/delete——code 入 body
+	var req model.DeleteByCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "code 必填")
 		return
 	}
-	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), code); err != nil {
+	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), req.Code); err != nil {
 		writeServiceError(c, err)
 		return
 	}

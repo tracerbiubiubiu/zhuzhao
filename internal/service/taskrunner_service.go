@@ -11,6 +11,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"log/slog"
 )
 
 // TaskrunnerService 任务管理服务（E-④，16 号 §3）：三层校验后的网关代理层。
@@ -54,21 +55,14 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 	if taskID == "" {
 		taskID = uuid.NewString()
 	}
-	callback := in.CallbackURL
-	if callback == "" {
-		if selfBaseURL == "" {
-			return nil, fmt.Errorf("callback_url 未提供且服务自身地址未配置")
-		}
-		// C10 后回调端点统一 /internal/jobs/callback（action_id 在 body）——
-		// 路由只注册了这一个路径，拼接旧格式会导致回调 404 → 任务被判 non-retryable
-		callback = selfBaseURL + "/internal/jobs/callback"
-	}
+	_ = selfBaseURL // W0b 四口同收对齐（2026-09-29 W5 批修正）：taskrunner 拒收出站
+	// callback_url（非空 400，十七批）——回调目标一律其配置值（TASKRUNNER_CALLBACK_
+	// TARGET_URL）。zhuzhao 出站不再拼接传递（此前拼接透传=两仓契约断裂，提交恒 400）。
 	resp, err := s.client.Submit(ctx, taskrunner.SubmitRequest{
 		TaskID:      taskID,
 		RequestID:   reqid.From(ctx),
 		Action:      in.Action,
 		Dept:        in.Dept,
-		CallbackURL: callback,
 		Params:      in.Params,
 		SubmittedBy: actor,
 		SourceIP:    sourceIP,
@@ -80,8 +74,10 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 	// E5 提交凭证（薄）：{action, task_id, request_id}——request_id 由 repo 从 ctx 取
 	if _, err := s.subs.RecordSubmit(ctx, in.Action, resp.TaskID, actor, sourceIP, string(in.Params)); err != nil {
 		// 受理已成立，凭证记账失败不回滚用户侧结果（对账兜底：task_id 在 taskrunner 侧）
-		// ——与回调侧 MarkSucceeded 失败同款取舍
-		_ = err
+		// ——与回调侧 MarkSucceeded 失败同款取舍。W0b（十九批）：空吞 `_ = err`
+		// 改 Error 日志（对账线索：task_id/actor/action），无日志时只能靠人工拉齐
+		slog.Error("job_submissions RecordSubmit failed (task accepted, ledger missing)",
+			"task_id", resp.TaskID, "action", in.Action, "actor", actor, "err", err)
 	}
 	return resp, nil
 }
@@ -96,8 +92,12 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 		return nil, err
 	}
 	// 提交凭证：trigger 的真实 action_id 在 taskrunner job 定义内（zhuzhao 不感知），
-	// 凭证记 action="trigger:<job_id>"，跨查锚点为 task_id + request_id
-	_, _ = s.subs.RecordSubmit(ctx, "trigger:"+jobID, resp.TaskID, actor, sourceIP, "{}")
+	// 凭证记 action="trigger:<job_id>"，跨查锚点为 task_id + request_id。
+	// W0b：同 Submit 的记账失败取舍——不回滚，但必须留 Error 对账线索
+	if _, err := s.subs.RecordSubmit(ctx, "trigger:"+jobID, resp.TaskID, actor, sourceIP, "{}"); err != nil {
+		slog.Error("job_submissions RecordSubmit failed for trigger (task accepted, ledger missing)",
+			"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "err", err)
+	}
 	return resp, nil
 }
 

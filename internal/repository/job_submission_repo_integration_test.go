@@ -62,6 +62,36 @@ func TestJobSubmissionRepo_ClaimCallbackRowConcurrentSingleWinner(t *testing.T) 
 	assert.Equal(t, repository.JobStatusRunning, status)
 }
 
+// W0b（二十批⑥）：快照一致性素材——同 task_id 不同 action/params 的回调不得
+// 覆盖已记凭证（service 层 Execute 比对 row.Action/row.Params 与回调 body，
+// 不匹配即 409 拒执行）。本用例固定 repo 层行为：冲突分支不采纳新值，查回行
+// 保留首记快照（供 service 比对）。
+func TestJobSubmissionRepo_ClaimCallbackRowSnapshotPreserved(t *testing.T) {
+	resetJobSubmissions(t)
+	ctx := context.Background()
+	repo := repository.NewJobSubmissionRepo(testPool)
+
+	const taskID = "task-snapshot-mismatch"
+	// 首记：action=sync_users（RecordSubmit 首次抢占写入的凭证快照）
+	row, claimed, err := repo.ClaimCallbackRow(ctx, taskID, "sync_users", "E100001", "10.0.0.1", `{"since":"2026-01-01"}`)
+	require.NoError(t, err)
+	require.True(t, claimed)
+	_, err = testPool.Exec(ctx, `UPDATE job_submissions SET status='submitted' WHERE task_id=$1`, taskID)
+	require.NoError(t, err)
+
+	// 挪用场景：同 task_id、action=audit_archive、params 带 retention_days 覆盖
+	row2, claimed2, err := repo.ClaimCallbackRow(ctx, taskID, "audit_archive", "attacker", "1.2.3.4", `{"retention_days":0}`)
+	require.NoError(t, err)
+	// 无论本次是否抢到执行权（时序相关），行上快照必须是首记值而非挪用值
+	snap := row2
+	if claimed2 {
+		snap = row2
+	}
+	assert.Equal(t, "sync_users", snap.Action, "冲突分支不得采纳回调 body 的 action（快照完整性——service 层据此比对拒挪用）")
+	assert.Equal(t, `{"since":"2026-01-01"}`, snap.Params, "冲突分支不得采纳回调 body 的 params")
+	_ = row
+}
+
 // P1-1 顺序语义：覆盖「首次抢占 / 在途拦截 / 陈旧自愈 / 终态拦截 / 失败重试」全分支。
 func TestJobSubmissionRepo_ClaimCallbackRowSequentialSemantics(t *testing.T) {
 	resetJobSubmissions(t)

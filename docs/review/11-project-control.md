@@ -2,7 +2,8 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> 更新日期：**2026-09-11**（**审查修正批，doc-only**：① 3 条确认不一致已修——§1 回调路径改 `/internal/jobs/callback`、§3 去掉 ticket 元数据「只读」标注、`standards.md §4` 健康检查按主/子服务区分；② 失效代码路径与死链治理（utils 抽取遗留路径回改等）；③ 规模数字校准 + builtin 状态改「库就绪待接线」）｜ 分支：`feature/phase-3`（最近一次全量门禁复验 2026-09-01 四档全绿）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：**2026-09-27**（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 2026-09-22 文档批次（doc-only）：Phase 4 规划批最小回填（十九批治理）——00-03 号规划定稿、十六批安全审计登记（→W0）、虚标勘误四处、迁移谱系（W1 占 000030/31）、§6 TC1 回标（详见 phase4/ 各文件）
 > 2026-09-10 文档批次：四仓文档对账同步批（doc-only）。
 > 2026-09-20 文档批次（doc-only）：① 工单类型级可见性策略设计输入落档（10 号新增 §10 = S1 设计+四铁律+演进阶梯 T0–T7；11-authz §5 触发表补行 #7 + 中间档位说明；12-frontend 补 §3.6 配置页规格——均随 §23 翻案批取用，不驱动当前开发）；② Phase 4 规划素材盘点起步（新建 `phase4/00-planning-inventory.md`：85 登记点归五主轴+触发信号雷达表+能力对标检查补录 §8），本文件 §7 导航树补 phase4 行。
 > 2026-09-02 文档批次：Phase 3 待编写文档（03/06/07/08/09）全部补齐 + 13-implementation-plan 建档 + ops/deployment.md（B10）补齐（doc-only，未动代码/门禁）。
@@ -31,7 +32,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级 Casbin RBAC（BFS 角色展开 + 超管通配） | ✅ Phase 1 | `internal/middleware/casbin.go` `internal/casbin/enforcer.go` |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
-| **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性 | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
+| **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | 🟡 **库就绪待接线**（2026-09-04；**生产装配零消费者**，仅测试引用；首个消费者 = M-E；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
@@ -42,10 +43,11 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **网关反代（批次 B/E13）** | 前缀→上游注册表 / ReverseProxy / StripPrefix / AK/SK 出站签名 / 身份断言（X-Operator/X-Request-ID）/ 点段路径拒绝 / 502+10008 错误映射；根级挂载全链 JWT→限流→审计跳body→CasbinAuth | ✅ 2026-09-09（16 号批次 B）；**部署批与 E2E 联调 2026-09-14 闭环**（activelist 栈 compose 双网络/双副本/pgbackup+WAL，`/al` 签名透传贯通） | `internal/gateway/` `internal/router/router.go` |
 | **API 限流（07 §2）** | Redis Lua 令牌桶：键取 user_id/ClientIP（登录后/匿名二选一）+ 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503 | ✅ 2026-09-09；**演示栈已启用（2026-09-14，20/40）**：50 并发锤 `/al` 实证 40×200+10×429+Retry-After、补桶节拍与跨路由桶隔离 | `internal/middleware/ratelimit.go` |
 | **BK-22 路由↔menu_apis 对账** | 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀）+ wire 启动 fail-fast；发现跑抓出 audit/logs 权限面缺失 → 000025 | ✅ 2026-09-09 | `internal/router/catalog.go` |
+| **前端控制台 zhuzhao-ui（P4-W2）** | 壳层四件（路由守卫/请求层单飞刷新/会话管理/权限三件套）+ 登录/首登强制改密/工作台首页 + system 四占位页 + vitest 单测（43 例）+ **Playwright E2E 基建**（globalSetup 幂等建号+operator/viewer 预设绑定+admin 凭据闭环；S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec，打标准三栈不用 stub）+ **codegen 链**（主仓 `make swag` → 本仓 `pnpm codegen`：swagger2openapi 2.0→3.0 + openapi-typescript → `src/api/__generated__/`）+ **CI**（lint/typecheck/build + test） | ✅ P4-W2 壳层已交付+出口闭合（2026-09-27）；W3 system 域待启 | `../zhuzhao-ui`（设计 SSOT=phase4/01；FE 规格=phase3/12-frontend 已回标） |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号启动时按 A2 取下一可用号（现 **000026**；000017 已被 IW1 占用）
-- **✅ Phase 3 收口（2026-09-15，口径 A）**：项目内工程收口——M-E/M-A/M-HR(预留) 交付（见 §1 矩阵各行）；M-SSO/M-Mig 🚦 外部前置待触发。剩余可观测性/多实例/高可用/安全增强/ops/前端 = **随部署形态或上线触发**（非工程在办项）；执行结构 = **Wave W0–W4**（README §2.1.0，2026-08-31 确认，历史结构）。**文档已全量就绪（2026-09-02）**：01 / 02 / 03 / 06 / 07 / 08 / 09 / 10（含 7-0 决议）/ 11 / 12 / 13-implementation-plan（执行计划）已编写；ops/deployment.md（B10）已补齐（见 §8 B9）
+- **✅ Phase 3 收口（2026-09-15，口径 A）**：项目内工程收口——M-E/M-A 交付、~~M-HR(预留) 交付~~ **M-HR 未落码（2026-09-22 勘误：预留接口三件全无，对接时一并开工——见 phase4/00 §2.3 行内勘误）**（见 §1 矩阵各行）；M-SSO/M-Mig 🚦 外部前置待触发。剩余可观测性/多实例/高可用/安全增强/ops/前端 = **随部署形态或上线触发**（非工程在办项；**2026-09-27 注：前端已转 Phase 4 主动线且 W2 壳层已交付——见 §1 前端行，本句仅存 Phase 3 时点史实**）；执行结构 = **Wave W0–W4**（README §2.1.0，2026-08-31 确认，历史结构）。**文档已全量就绪（2026-09-02）**：01 / 02 / 03 / 06 / 07 / 08 / 09 / 10（含 7-0 决议）/ 11 / 12 / 13-implementation-plan（执行计划）已编写；ops/deployment.md（B10）已补齐（见 §8 B9）
 - **⚠ 2026-09-02 重定位（design-decisions §23）**：**工单自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复，如 BK-20）；工单业务（SLA/通知/审批流/分派/报表）、BranchedStateEngine、7a–7e、B3 推进端点、审批/报表前端**全部暂缓自研**（10/12 号转对接参考）。**Phase 3 主线 = M-E 事件/任务总线（taskrunner，Asynq + 审计归档首预置动作）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO 单点登录（🚦，§24）→ M-Mig 迁移准备**（排期见 13 §1）；M1/M5 随部署形态 🚦。工单对接形态与 Phase 2 资产处置 = 迁移时拍板（🚦）；翻案条件见 §23
 - **⚠ 2026-09-02 SSO（design-decisions §24）**：登录对接公司 SSO，**OAuth2.0 授权码模式**预留接口版（`SSOProvider` 接口 + `/auth/sso/login`·`/auth/sso/callback` + 身份映射对账键同 HR + 登录审计 method）；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（仅限已同步账号）、本地密码兜底并存。排位 **M-SSO**（13 §1，🚦 2–3 人日，进内网拿到公司接入信息后实施）
 - **⚠ 2026-09-03 activelist 职责收敛（ADR-003 修订）**：activelist 收窄为**动态数据模型平台**（类型注册/Schema 演进/动态校验/CRUD/存储），**事件与审计移交 zhuzhao**（事件 = zhuzhao Asynq 业务操作点显式发布；审计 = zhuzhao 侧记录），进程 3→1，**独立部署保留**；业界对标确认同类开源（NocoBase/Teable/Twenty 等）均连带事件/审计/UI，自研薄层合理；**共享 utils**：zhuzhao `internal/pkg` 抽独立共享项目（`crypto/errcode/jsonutil/resource/validate/response` 零依赖直抽；`jwt/logger/postgres/redis` 需 config 解耦），zhuzhao 与 activelist 共用，M-A 前置 🚦（详见 ADR-003 修订节 + 13 §9 U-B）
@@ -125,7 +127,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000028 | ticket_relations_normalized：规范化对部分唯一索引（P1-2，并发审查批次；先软删历史双向重复行再建唯一索引，DB 兜底反向判重） | 并发批次 |
 | 000029 | ticket_relations_source_index：补 source 前导部分索引（R4，第二轮审查——000028 规范化删除方向索引后，OR 谓词与 ListRelations source 臂退化顺序扫描） | 批次 8 |
 
-> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000029 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，000026–000028 = 并发审查批次，000029 = 批次 8 R4 索引回补，下一编号 **000030**）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000029 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，000026–000028 = 并发审查批次，000029 = 批次 8 R4 索引回补，~~下一编号 000030~~ **Phase 4 占用谱系（2026-09-26 更新）：P4-W1 已落 000030（BK-18 五端点 POST 化）+000031（B 案词表重排）两连号；000032/000033=P4-2 通知待占位（**两连号=notification_configs 本体+ticket_events 消费位，02 号十四批拍板口径——26 批级联勘误**），IW2 附件顺延 000034 起（A2 裁定）**）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
 ---
 
@@ -158,7 +160,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | MC3 | IsAncestorOwner 未用 ticketOrgPath | ✅ **已修复** |
 | P0 | RemoveMember 不清理 owner_user_ids | ✅ **已修复**（owner 三处同步清理） |
 | **HC1** | Comment/Note 不写 ticket_events（无审计事件） | ✅ **已修复（2026-08-31，A4）**：CreateComment/CreateNote 事务化并同事务写 comment/note 事件；TestHC1_CommentNoteWriteEvents |
-| **TC1** | delete 成功路径断言 | 🟡 **脚本层已覆盖**（2c 脚本 SAT 建单→删→GET 404）+ 委托删有 Go 测试（vg owner/vg admin/ancestor owner）；**Go 层全局 admin 删单成功测试仍缺** → 11 §8 A7 |
+| **TC1** | delete 成功路径断言 | ✅ **已闭环（2026-08-31 A7，本行 2026-09-22 回标）**：`TestTicket_Delete_AdminSucceeds` 已入集成基线（此前「Go 层仍缺」表述与 §8 A7 已完成状态同文件矛盾——十九批治理修正） |
 | **TC2** | 缺 relation 集成测试 | ✅ **已补**（`TestD9_CreateRelation`：正向 / 同向 409 / 删后建联 400） |
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
@@ -189,7 +191,7 @@ docs/
 ├── design/        # 为什么这样设计（决策与权衡）
 ├── proposal/      # 具体方案是什么
 ├── modules/       # 模块完整设计（跨阶段）
-├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；phase4 = 规划素材盘点起步，见 phase4/00）
+├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；**phase4 = 规划定稿待开工**：00 盘点/01 前端设计/02 实施计划/03 场景与测试矩阵，2026-09-22 十九轮校验收敛）
 ├── roadmap.md     # 三阶段总览
 ├── adr/           # 架构决策（001 L1 事件 / 002 Asynq / 003 activelist）
 └── review/        # 验证报告（本文件 = 能力总览，01-10 = 历史 review）
@@ -198,6 +200,12 @@ docs/
 **掌握流程**：遇到能力问题 → 查本文件矩阵定位模块 → 按需深入 `modules/` 对应文档 → 变更后回填本文件。
 
 ---
+
+### 7.x B13 权限覆盖矩阵（2026-09-26 完成）
+
+| 文档 | 状态 |
+|------|------|
+| [12-b13-permission-matrix-2026-09-26.md](./12-b13-permission-matrix-2026-09-26.md) | ✅ point-in-time 快照：79 端点×三层全对账；8 项盲区/不对称定性（审计/用户/组织读=管理面全局视图设计内；orgs update 不对称注记；users/orgs 建议 W3 后补 org 侧校验）；BK-21 泛化未到触发点；IAM 四平面边界清单（§26.1 输入交付） |
 
 ## 8. 遗留问题分类：Phase 3 前置 vs 随行（2026-08-31 整理；2026-09-01 增补 B11/IW4）
 
@@ -243,7 +251,7 @@ docs/
 | # | 事项 | 说明 |
 |---|------|------|
 | IW1 | ~~多虚拟组可见性场景闭环：BK-13 + BK-14~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴测试（原编号 W1，随 2026-08-31 编号治理改 IW；详见 00 §2.3） |
-| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性） |
+| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性） |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 

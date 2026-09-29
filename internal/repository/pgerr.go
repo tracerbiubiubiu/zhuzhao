@@ -8,6 +8,16 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
+// MapStringValueOverflow 27 批 D-5：22001（value too long）→ 400。
+// 纵深兜底——model 层 max= 绑定（D-3）为主防线，防未来新字段漏绑时 500。
+func MapStringValueOverflow(err error) *errcode.Error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "22001" {
+		return errcode.ErrInvalidParams
+	}
+	return nil
+}
+
 func mapUniqueViolation(err error) *errcode.Error {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
@@ -23,7 +33,7 @@ func mapUniqueViolation(err error) *errcode.Error {
 	case "idx_roles_code":
 		return errcode.ErrRoleAlreadyExists
 	case "idx_menus_code", "menus_code_key": // 000006 迁移前旧约束名兼容
-		return errcode.ErrMenuAlreadyExists
+		return errcode.ErrConflict // W1：菜单唯一冲突映射随只读化移除，回落通用 409（历史唯一消费方已删）
 	case "idx_user_orgs_single_primary": // B3-3：primary 互斥并发兜底
 		return errcode.ErrDuplicatePrimaryOrg
 	default:

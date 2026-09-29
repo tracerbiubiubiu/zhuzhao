@@ -250,7 +250,7 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 ```go
 // 模块 wire/启动处——模块的全部权限代码
-reg.Register(resource.Builtin("task", resource.PolicyOrgMember))
+reg.Register(resource.Builtin("task", resource.PolicyOrgMember))  // ⚠ 示例：M-E 接线形态——实际未接线（S-2 库就绪待接线，生产 Registry 现仅注册 ticket Resource）；首个 L2 消费方出现时按此形态接
 ```
 
 **设计与边界**：

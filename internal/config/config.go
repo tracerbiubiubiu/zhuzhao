@@ -23,6 +23,10 @@ type Config struct {
 	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
 	Gateway      GatewayConfig      `mapstructure:"gateway"`
 	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+
+	// P4-7 登录验证码（顶层平面键；enabled=false dev/E2E 默认——登录契约零变化）
+	CaptchaEnabled bool   `mapstructure:"captcha_enabled"`
+	CaptchaTTL     string `mapstructure:"captcha_ttl"`
 }
 
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
@@ -90,6 +94,10 @@ type ArchiveConfig struct {
 	BatchRows         int    `mapstructure:"batch_rows"`          // 默认 5000（单批导出后删行）
 	OutDir            string `mapstructure:"out_dir"`             // JSONL 落盘目录，默认 data/archive
 	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（默认 395，>180 等保口径留余量；<=0 取默认）
+	// P4 cron 收归（2026-09-29）：进程内 ticker+advisory lock——与 taskrunner 侧
+	// cron job 定义部署侧二选一防双跑（默认 false 保持 taskrunner 触发形态）
+	CronEnabled bool   `mapstructure:"cron_enabled"`
+	CronTick    string `mapstructure:"cron_tick"` // 默认 30s
 }
 
 // PolicyEvalConfig 判定日志管道参数（零值取默认，见 audit.PolicyEvalConfig.withDefaults）。
@@ -250,6 +258,17 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("taskrunner.self_base_url", "TASKRUNNER_SELF_BASE_URL")
 	viper.BindEnv("gateway.ak", "GATEWAY_AK")
 	viper.BindEnv("gateway.sk", "GATEWAY_SK")
+	// P4-9：反代信任网段（viper 对 slice env 不自动拆分——逗号分隔经 SetDefault
+	// 模板注入后由下方后处理 split；空 env 保持 config.yaml 值）
+	viper.BindEnv("server.trusted_proxies", "APP_SERVER_TRUSTED_PROXIES")
+	viper.BindEnv("audit.archive.cron_enabled", "APP_AUDIT_ARCHIVE_CRON_ENABLED")
+	viper.SetDefault("audit.archive.cron_enabled", false)
+	viper.BindEnv("audit.archive.cron_tick", "APP_AUDIT_ARCHIVE_CRON_TICK")
+	viper.SetDefault("audit.archive.cron_tick", "30s")
+	viper.BindEnv("captcha_enabled", "APP_CAPTCHA_ENABLED")
+	viper.SetDefault("captcha_enabled", false)
+	viper.BindEnv("captcha_ttl", "APP_CAPTCHA_TTL")
+	viper.SetDefault("captcha_ttl", "5m")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -258,6 +277,13 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	// slice env 后处理：BindEnv 命中时 Unmarshal 拿到整串，按逗号拆为网段列表
+	if raw := viper.GetString("server.trusted_proxies"); raw != "" {
+		cfg.Server.TrustedProxies = strings.Split(raw, ",")
+		for i := range cfg.Server.TrustedProxies {
+			cfg.Server.TrustedProxies[i] = strings.TrimSpace(cfg.Server.TrustedProxies[i])
+		}
 	}
 
 	cfg.Database.applyDefaults()

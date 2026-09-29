@@ -1,6 +1,10 @@
 package model
 
-import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
+import (
+	"time"
+
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
+)
 
 // OrgMemberRequest 组织成员操作
 type OrgMemberRequest struct {
@@ -85,4 +89,52 @@ type OrgMemberListResponse struct {
 	Total    int64   `json:"total"`
 	Page     int     `json:"page"`
 	PageSize int     `json:"page_size"`
+}
+
+// OrgMemberRosterItem 委托组成员名册行（P4-W3「我的组织」自服务面）。
+// ⚠ 与 OrgMemberListResponse（裸 User）的区别：必含组内角色与数据范围两字段——
+// 03 号 §2-S7：无此二字段则「我的组织」组内角色列拿不到数据（十三批场景走查）。
+type OrgMemberRosterItem struct {
+	UserID     int64  `json:"user_id,string"`
+	Username   string `json:"username"`
+	EmployeeNo string `json:"employee_no"`
+	RealName   string `json:"real_name"`
+	Email      string `json:"email"`
+	Phone      string `json:"phone"`
+	Avatar     string `json:"avatar"`
+	Status     int    `json:"status"` // 1=启用 0=禁用
+	IsPrimary  bool   `json:"is_primary"`
+	// 组内角色（000013）：owner（仅 SetOwners 可设）/ admin / member
+	OrgMemberRole string `json:"org_member_role"`
+	// 数据范围（000012）：assigned / group / all
+	TicketScope string `json:"ticket_scope"`
+	// RFC3339（json 序列化 time.Time）——对齐仓内时间字段惯例；nullable schema 故
+	// 指针+omitempty（检视 P1：曾用 PG ::text 输出空格分隔格式，Safari new Date 不可解析）
+	JoinedAt *time.Time `json:"joined_at,omitempty"`
+}
+
+// OrgMemberRosterResponse 委托组成员名册（分页，信封 data 形状对齐 OrgMemberListResponse）
+type OrgMemberRosterResponse struct {
+	List     []*OrgMemberRosterItem `json:"list"`
+	Total    int64                  `json:"total"`
+	Page     int                    `json:"page"`
+	PageSize int                    `json:"page_size"`
+}
+
+// MyOrgItem 「我的组织」自服务行（P4-W3——GET /user/orgs SelfService 版）：
+// 富化组织名/虚拟组标记+组内角色/数据范围（裸 UserOrg 缺这些，前端页面渲染需要）
+type MyOrgItem struct {
+	OrgID         int64      `json:"org_id,string"`
+	OrgCode       string     `json:"org_code"`
+	OrgName       string     `json:"org_name"`
+	IsVirtual     bool       `json:"is_virtual"`
+	IsPrimary     bool       `json:"is_primary"`
+	OrgMemberRole string     `json:"org_member_role"`
+	TicketScope   string     `json:"ticket_scope"`
+	JoinedAt      *time.Time `json:"joined_at,omitempty"`
+}
+
+// MyOrgsResponse 「我的组织」列表（信封 data 形状——list 包装与其他列表端点一致）
+type MyOrgsResponse struct {
+	List []*MyOrgItem `json:"list"`
 }

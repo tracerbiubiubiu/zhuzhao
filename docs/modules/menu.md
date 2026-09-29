@@ -1,6 +1,6 @@
 # 菜单模块设计
 
-> 模块代码（目标路径）：`internal/service/menu/` + `internal/repository/menu/` + `internal/handler/menu/`
+> 模块代码（实际路径，W1 回标）：`internal/service/menu_service.go` + `internal/repository/menu_repo.go` + `internal/handler/menu_handler.go`（扁平文件制）
 >
 > 旧系统参考：`doc/module-assessment-2026-08/menu.md` + `dynamic-routing-research.md`
 >

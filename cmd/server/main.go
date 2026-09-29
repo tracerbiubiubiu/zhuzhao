@@ -10,6 +10,10 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 )
 
+//	@title		zhuzhao API
+//	@version	1.0
+//	@description	zhuzhao——Go 模块化单体 IAM + 工单系统（三层鉴权 + 资源级工单）
+
 // run 业务逻辑（B4-6：defer cleanup 在函数内注册——原 main 直调 os.Exit(1)
 // 会跳过 defer，错误路径 DB/Redis/Casbin 不优雅关闭）
 func run() error {

@@ -10,8 +10,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -37,6 +35,10 @@ var pkgSet = wire.NewSet(
 	service.NewTaskrunnerService,
 	provideTaskrunnerHandler,
 	casbin.New,
+	// W0b wire 转正：网关/限流/回调服务原为 wire_gen 手码装配，升为 provider
+	provideGateway,
+	provideRateLimitConfig,
+	provideJobsCallbackService,
 )
 
 var repoSet = wire.NewSet(

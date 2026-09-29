@@ -15,6 +15,29 @@ func TestMaskSensitive(t *testing.T) {
 		check func(t *testing.T, out string)
 	}{
 		{
+			name:  "D-7 *_token 后缀脱敏",
+			input: `{"access_token":"at-secret","refresh_token":"rt-secret","Access_Token":"AT-SECRET"}`,
+			check: func(t *testing.T, out string) {
+				for _, leak := range []string{"at-secret", "rt-secret", "AT-SECRET"} {
+					if strings.Contains(out, leak) {
+						t.Fatalf("*_token 值 %s 未脱敏", leak)
+					}
+				}
+			},
+		},
+		{
+			name:  "D-7 反例：token 字面键仍走精确表，tokens 不脱敏",
+			input: `{"token":"tk-secret","tokens":["a","b"]}`,
+			check: func(t *testing.T, out string) {
+				if strings.Contains(out, "tk-secret") {
+					t.Fatal("token 精确键应脱敏（既有行为）")
+				}
+				if !strings.Contains(out, "a") {
+					t.Fatal("tokens 非凭据键不应被误伤（防实现写成 Contains 宽松匹配）")
+				}
+			},
+		},
+		{
 			name:  "顶层脱敏",
 			input: `{"employee_no":"E001","password":"secret123"}`,
 			check: func(t *testing.T, out string) {

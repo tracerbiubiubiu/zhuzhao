@@ -17,6 +17,8 @@ dev:
 tidy:
 	go mod tidy
 
+# W0b（2026-09-25）wire 已转正：手码装配升 provider（provideGateway/provideRateLimitConfig/
+# provideJobsCallbackService）+BK-22 对账移 NewApp——make wire 可安全再生。
 wire:
 	go run github.com/google/wire/cmd/wire ./internal/app/
 
@@ -77,6 +79,7 @@ benchmark:
 # 四档链式全量门禁（经 2c 脚本链式：phase1 → 2a → 2b → 2c，对齐 AGENTS.md 门禁定义）
 acceptance:
 	bash scripts/acceptance-phase2c.sh
+	bash scripts/migration-roundtrip-check.sh
 
 acceptance-2a:
 	bash scripts/acceptance-phase2a.sh
@@ -94,6 +97,10 @@ snapshot:
 # 只显示与上次快照的差异（AI 迭代后先看这个，30 秒掌握“改了什么”）
 snapshot-diff:
 	bash scripts/snapshot.sh --diff
+
+# 迁移往返数据 diff（依赖开发 PG 容器；28 批 SYS-3：挂入 acceptance 链尾强制执行）
+guard-roundtrip:
+	bash scripts/migration-roundtrip-check.sh
 
 # 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
 guard:

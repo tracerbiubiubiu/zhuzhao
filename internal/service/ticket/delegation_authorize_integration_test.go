@@ -277,6 +277,64 @@ func TestD9_ConcurrentDoubleClose(t *testing.T) {
 	}
 }
 
+// W0b（二十四批 P0-5）：Create 归属校验——非目标组织成员（且无全局 org 管理权）
+// 不得向该组织注入工单（污染 scope=group 可见性与组织统计）；assigned_to 在
+// 创建请求中拒收（open 态带处理人绕过状态机：无 assigned 事件、无指派人校验）。
+func TestD9_CreateOrgMembershipGuard(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	var outsider int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2c9co_%s', 'hash', 'E9CO%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider))
+
+	// outsider 向 vg 建单 → 70001（非成员且无全局管理权）
+	_, err := env.svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: "incident", Title: "越权注入", OrgID: env.vgID,
+	}, outsider)
+	requireErrCode(t, err, errcode.ErrNoPermission.Code)
+
+	// assigned_to 拒收：成员建单带 assigned_to → 400（分派须走 Assign 端点过状态机）
+	assignee := int64(999)
+	_, err = env.svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: "incident", Title: "带处理人", OrgID: env.vgID, AssignedTo: &assignee,
+	}, env.member)
+	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+
+	// 成员正常建单 → 200（回归）
+	tk := newTicketHelper(t, env.svc, env.member, env.vgID, "成员正常建单")
+	assert.NotZero(t, tk.ID)
+}
+
+// W0b（二十四批 P0-②侧信道）：不可见工单不得经 409 泄露存在性——
+// actor 对目标无 update 可见性时，即使两单间已存在关联也须先走鉴权返回 404+90001
+// （防枚举语义），而非命中查重 409。修复前顺序=先 ExistsRelationBetween 后鉴权。
+func TestD9_CreateRelationSideChannel(t *testing.T) {
+	env := setupD9(t)
+	ctx := context.Background()
+
+	// 组织外用户（无任何 user_orgs 行）——对 vg 内工单不可见
+	var outsider int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2c9out_%s', 'hash', 'E9OUT%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&outsider))
+
+	tkA := newTicketHelper(t, env.svc, env.member, env.vgID, "侧信道源")
+	tkB := newTicketHelper(t, env.svc, env.member, env.vgID, "侧信道目标")
+	// member 先建立关联（使查重必然命中）
+	_, err := env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, env.member)
+	require.NoError(t, err)
+
+	// outsider 对两单均不可见且关联已存在 → 须 90001（鉴权先行），不得 409 泄露存在性
+	_, err = env.svc.CreateRelation(ctx, &model.CreateRelationRequest{
+		SourceTicketID: tkA.ID, TargetTicketID: tkB.ID, RelationType: "related",
+	}, outsider)
+	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
+}
+
 // TC2/MC1 回归：工单关联 Go 层用例——正向建联、同向唯一（409）、
 // 目标被物理删除后建联 → 400（23503 映射，非 500）
 func TestD9_CreateRelation(t *testing.T) {

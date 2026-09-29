@@ -33,7 +33,7 @@
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
 3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
 4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 api/errcode.md 对账）；
-5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE（ticket-types/templates，封版不改）；新端点一律按本约定；
+5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**；
 7. **int64 ID 一律字符串序列化**（`json:",string"`）——规避 JS Number 精度丢失；
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
@@ -80,7 +80,7 @@
 2. **三层**：L1 路由级（Casbin，policy=角色×path×method）→ L2 数据范围（策略库 builtin 或手写 Resource，Registry 统一接缝）→ L3 动作矩阵；
 3. **平台策略库**（触发驱动）：`org-member`/`owner-only`/`role-gated` 三内置 + `Builtin()` 一行注册；**适用前提 = 资源表在 zhuzhao 库**；跨库资源走参数级组装（E-⑤ 模式）；
 4. **Q5 禁令**：L2/L3 判定每请求实时查询，**不缓存**；任何缓存提案必须连同失效级联方案评审；
-5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经 ResourceAuthorizer 接缝换判定后端，L1 不动）；
+5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经~~ResourceAuthorizer~~ **resource.Resource/Registry 接缝**（`internal/pkg/resource/registry.go`，Authorize/GetFilter——⚠ 2026-09-22 虚标审计勘误：全仓无 ResourceAuthorizer 类型，实际接缝为此，L1 不动）；
 6. 角色自定义全链（角色 CRUD / AssignMenus / org_roles 组织赋角 / BFS 三源展开）为平台本职，所有服务共用。
 7. **权限码命名与注册**：码 = `resource:verb`（K8s verb 规范同款，禁复合码）；服务 API 的码↔路由绑定一律迁移申报（声明式，与代码同版本，design-decisions §26.2），运行时只开放菜单/角色绑定管理，**不开放 API 绑定编辑**。
    - 存量例外注记（2026-09-09 对码盘点；2026-09-11 泛化）：**层级子资源三段形（`resource:subresource:verb`）按同口径允许**——适用 `ticket:type:manage`（000018，早于本公约）及 activelist 权限面四码 `activelist:type:read|manage`、`activelist:data:write|read`（000024）——语义为层级子资源而非复合动词，保留不改（改码 = 破坏既有角色绑定）；`role::superadmin` / `role::admin` 为 Casbin 角色名命名空间，非权限码，不在本公约范围。
@@ -171,3 +171,4 @@
 | 2026-09-15 | 四仓一致性审计批：§3 补错误定义三形态（10）与码值引用纪律（11）+ taskrunner 段预留注记（9）；§4 补命名约定行 + 配置口径修正（yaml+BindEnv 为实况，${VAR} 为可选增强）；§6 补访问日志标准字段（duration_ms 统一）；§9 补测试包选择约定 |
 | 2026-09-16 | 服务间验签统一批：§3.11 升格「服务端验签中间件不得各仓自研」——一律 aksk.GinMiddleware + response.AKSKFail()（统一信封+分档中文文案，caller/operator 归因键收编进 GinMiddleware，失败现场落 Verifier.Logger），aksk detail 豁免撤销；utils v0.4.0 发布 |
 | 2026-09-16 | 归因口径拍板（选项 4）：§6 访问日志新增 `auth` 身份平面字段（jwt/aksk/none）与适用范围（仅多平面服务）、caller 三仓恒出（空串占位）——zhuzhao operatorOf 扩链/新增 authOf；同日 §3.11 补归因键常量纪律（ContextKey*，v0.4.1），三仓消费方完成常量化 |
+| 2026-09-29 | P4-W5 前置批：§3-5 存量豁免更新——工单 PUT/DELETE 豁免消灭留痕（BK-18 已整改）+taskrunner cancel/retry 动词段豁免注记（纯内部 M2M 语义，规划拍板不返工）+activelist 三端点整改同步（标识入 body，000032） |

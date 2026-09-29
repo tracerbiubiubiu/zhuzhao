@@ -8,18 +8,19 @@ package app
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -45,7 +46,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	scripts := provideRedisScripts(client)
 	auditLogRepo := repository.NewAuditLogRepo(pool)
 	auditService := service.NewAuditService(auditLogRepo, userRepo)
-	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig)
+	captchaSvc := service.NewCaptchaService(client, cfg.CaptchaEnabled, parseDuration(cfg.CaptchaTTL))
+	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig, captchaSvc)
 	authHandler := handler.NewAuthHandler(authService)
 	roleRepo := repository.NewRoleRepo(pool)
 	orgRepo := repository.NewOrgRepo(pool)
@@ -67,76 +69,103 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	orgHandler := handler.NewOrgHandler(orgService)
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	notificationRepo := repository.NewNotificationRepo(pool)
+	notificationWebhook := webhook.New()
+	notificationService := service.NewNotificationService(notificationRepo, notificationWebhook, logger)
+	notificationHandler := handler.NewNotificationHandler(notificationService)
+	dictRepo := repository.NewDictRepo(pool)
+	dictService := service.NewDictService(dictRepo, logger)
+	dictHandler := handler.NewDictHandler(dictService)
+	patRepo := repository.NewPatRepo(pool)
+	patService := service.NewPatService(patRepo, logger)
+	patHandler := handler.NewPatHandler(patService)
+
 	ticketRepo := repository.NewTicketRepo(pool)
-	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
-	taskrunnerConfig := cfg.Taskrunner
-	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
-	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
-	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, cfg.Taskrunner)
-	policyEvalWriter := providePolicyEvalWriter(cfg.Audit, client, auditLogRepo, logger)
+	auditConfig := cfg.Audit
+	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
-	jobsRegistry := provideJobsRegistry(auditLogRepo, cfg.Audit, logger)
+	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
+	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
 	jobsHandler := handler.NewJobsHandler(jobsCallbackService)
+	internalJobsConfig := cfg.InternalJobs
+	taskrunnerConfig := cfg.Taskrunner
+	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
+	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
+	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig)
+	gatewayRegistry, err := provideGateway(cfg)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	rateLimitConfig := provideRateLimitConfig(cfg)
 	v := provideTrustedProxies(cfg)
-	// 批次 B/E13：网关反代注册表（gateway.upstreams 未配置时为 nil，不挂载）
-	var gwRegistry *gateway.Registry
-	gwPrefixes := []string{}
-	if ups := cfg.Gateway.Upstreams; len(ups) > 0 {
-		gwUps := make([]gateway.Upstream, len(ups))
-		for i, u := range ups {
-			gwUps[i] = gateway.Upstream{Prefix: u.Prefix, Target: u.Target, StripPrefix: u.StripPrefix, Disabled: u.Disabled}
-			gwPrefixes = append(gwPrefixes, u.Prefix)
-		}
-		gw, gwErr := gateway.New(gwUps, cfg.Gateway.AK, cfg.Gateway.SK)
-		if gwErr != nil {
-			return nil, nil, fmt.Errorf("gateway init: %w", gwErr)
-		}
-		gwRegistry = gw
-	}
-	rlCfg := cfg.RateLimit
 	deps := router.Deps{
-		AuthHandler:       authHandler,
-		UserHandler:       userHandler,
-		RoleHandler:       roleHandler,
-		OrgHandler:        orgHandler,
-		MenuHandler:       menuHandler,
-		AuditHandler:      auditHandler,
-		TicketHandler:     ticketHandler,
-		JobsHandler:       jobsHandler,
-		TaskrunnerHandler: taskrunnerHandler,
-		InternalJobs:      cfg.InternalJobs,
-		Gateway:           gwRegistry,
-		GatewayPrefixes:   gwPrefixes,
-		RateLimit:         &rlCfg,
-		JWTManager:        manager,
-		Enforcer:          syncedEnforcer,
-		RedisClient:       client,
-		DBPool:            pool,
-		Logger:            logger,
-		RoleFetcher:       rbacService,
-		AuditService:      auditService,
-		Registry:          registry,
-		TrustedProxies:    v,
+		AuthHandler:         authHandler,
+		UserHandler:         userHandler,
+		RoleHandler:         roleHandler,
+		OrgHandler:          orgHandler,
+		MenuHandler:         menuHandler,
+		AuditHandler:        auditHandler,
+		NotificationHandler: notificationHandler,
+		DictHandler:         dictHandler,
+		PatHandler:          patHandler,
+		PatLookup:           patRepo,
+		TicketHandler:       ticketHandler,
+		JWTManager:          manager,
+		Enforcer:            syncedEnforcer,
+		RedisClient:         client,
+		DBPool:              pool,
+		Logger:              logger,
+		RoleFetcher:         rbacService,
+		AuditService:        auditService,
+		Registry:            registry,
+		JobsHandler:         jobsHandler,
+		InternalJobs:        internalJobsConfig,
+		TaskrunnerHandler:   taskrunnerHandler,
+		Gateway:             gatewayRegistry,
+		RateLimit:           rateLimitConfig,
+		TrustedProxies:      v,
 	}
+	// P4-8：panic 聚合+运行时对账。engineRef 前置声明——闭包运行时取（engine 由
+	// router.New(deps) 在下方构造后回填）
+	var engineRef *gin.Engine
+	panicRepo := repository.NewPanicRepo(pool)
+	opsHandler := handler.NewOpsHandler(
+		func(ctx context.Context, page, pageSize int) (any, int64, error) {
+			return panicRepo.List(ctx, page, pageSize) // 适配桥（app 层可引 repo 具体类型）
+		}, func(ctx context.Context) []string {
+			bound, err := router.LoadBoundAPIs(ctx, pool)
+			if err != nil {
+				return []string{"[error] 绑定集查询失败: " + err.Error()}
+			}
+			var prefixes []string
+			if gatewayRegistry != nil {
+				prefixes = gatewayRegistry.Prefixes
+			}
+			gaps := router.AuditRouteCatalog(engineRef.Routes(), bound, prefixes)
+			out := make([]string, 0, len(gaps))
+			for _, g := range gaps {
+				out = append(out, g.String())
+			}
+			return out
+		})
+	deps.OpsHandler = opsHandler
+	deps.PanicSink = panicRepo
+
 	engine := router.New(deps)
-	// BK-22 fail-fast：路由↔menu_apis 双向对账（缺口 = 拒绝启动，清单见错误信息；
-	// 豁免集与网关前缀边界见 internal/router/catalog.go）
-	prefixes := make([]string, 0, len(cfg.Gateway.Upstreams))
-	for _, u := range cfg.Gateway.Upstreams {
-		prefixes = append(prefixes, u.Prefix)
+	engineRef = engine
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
 	}
-	bound, boundErr := router.LoadBoundAPIs(context.Background(), pool)
-	if boundErr != nil {
-		return nil, nil, boundErr
-	}
-	if gaps := router.AuditRouteCatalog(engine.Routes(), bound, prefixes); len(gaps) > 0 {
-		return nil, nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
-			len(gaps), router.FormatGaps(gaps))
-	}
-	app := NewApp(cfg, logger, engine, policyEvalWriter)
 	return app, func() {
 		cleanup3()
 		cleanup2()
@@ -151,16 +180,33 @@ var pkgSet = wire.NewSet(
 	provideJWTManager,
 	providePostgres,
 	provideRedis,
-	provideRedisScripts, providePolicyEvalWriter, provideRegistry, provideJobsRegistry, provideTaskrunnerClient, casbin.New,
+	provideRedisScripts,
+
+	providePolicyEvalWriter,
+	provideRegistry,
+
+	provideJobsRegistry,
+
+	provideTaskrunnerClient, service.NewTaskrunnerService, provideTaskrunnerHandler, casbin.New, provideGateway,
+	provideRateLimitConfig,
+	provideJobsCallbackService,
 )
 
-var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo)
+var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo, repository.NewDictRepo, repository.NewPatRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, service.NewDictService, service.NewPatService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler)
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler, handler.NewDictHandler, handler.NewPatHandler)
 
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {
 	return cfg.Server.TrustedProxies
+}
+
+func parseDuration(s string) (d time.Duration) {
+	if s == "" {
+		return 0
+	}
+	d, _ = time.ParseDuration(s)
+	return d
 }

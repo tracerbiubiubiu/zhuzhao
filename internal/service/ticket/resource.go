@@ -28,6 +28,8 @@ type OrgDelegationChecker interface {
 	IsOrgAdminOrOwner(ctx context.Context, userID, orgID int64) (bool, error)
 	// IsAncestorOwner 实体部门 owner 对子树的委托（D9）
 	IsAncestorOwner(ctx context.Context, userID int64, ticketOrgID int64, ticketOrgPath string) (bool, error)
+	// HasOrgManagePermission 全局组织管理权（org:% 闸门；W0b：Create 归属校验的全局豁免）
+	HasOrgManagePermission(ctx context.Context, userID int64) (bool, error)
 }
 
 // Resource 工单资源，实现 resource.Resource 接口。
@@ -63,7 +65,8 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return true, nil
 	}
 
-	// create 恒 true（路由级已校验 ticket:create）
+	// create 恒 true（W1 后路由级语义：L1=页面 GET/按钮 POST 绑定——POST /tickets 挂
+	// ticket_create_btn；归属约束在 service.Create 前置（IsInOrgBranch，W0b P0-5））
 	if req.Action == "create" || req.Action == "list" {
 		return true, nil
 	}

@@ -189,7 +189,7 @@ POST /api/v1/auth/refresh {refreshToken}
 ### 5.3 登出流程
 
 ```
-POST /api/v1/auth/logout
+POST /api/v1/auth/logout {device_id /* W0b 起必填——空值曾静默删 default 槽，真实设备 RT 残留 */}
 Authorization: Bearer {accessToken}
 
 1. 解析 AT，提取 jti

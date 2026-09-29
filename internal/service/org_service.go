@@ -122,6 +122,16 @@ func (s *OrgService) GetUserOrgs(ctx context.Context, userID int64) ([]*model.Us
 	return s.orgRepo.GetUserOrgs(ctx, userID)
 }
 
+// GetMyOrgs 「我的组织」自服务版（P4-W3，GET /user/orgs SelfService）：当前用户本人
+// 富化组织列表（组织名/虚拟组/组内角色/数据范围）。无需 L3——本人查本人。
+func (s *OrgService) GetMyOrgs(ctx context.Context, userID int64) (*model.MyOrgsResponse, error) {
+	items, err := s.orgRepo.GetMyOrgs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.MyOrgsResponse{List: items}, nil
+}
+
 func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
@@ -137,6 +147,12 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID,
 		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
 		return err
+	}
+	// W0a-P0-3：scope=all 仅全局管理员可授——与 SetMemberScope 同一纪律（04 §4.2）。
+	// 缺此守卫时 owner 可经 AddMember 的 ON CONFLICT 覆盖分支把成员抬成 all
+	//（AllScope 旁路整个 L2），绕过 BK-14 的全局档限制。
+	if req.TicketScope == "all" && !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		return errcode.ErrNoPermission
 	}
 	if role == "admin" {
 		// 指定 admin 需 owner 档（admin 调用 → 50008，04 §3.4）
@@ -268,6 +284,37 @@ func (s *OrgService) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, req *model.Se
 
 func (s *OrgService) GetByID(ctx context.Context, id int64) (*model.Organization, error) {
 	return s.orgRepo.FindByID(ctx, id)
+}
+
+// ListMembersRoster 委托组成员名册（P4-W3「我的组织」自服务面，02 §2-W3）：
+// org admin/owner 或全局管理员可读（对齐 ListOrgRoles 的 L3 口径）；普通成员 → 70001 ErrNoPermission。
+// 响应必含 org_member_role+ticket_scope（03 号 §2-S7——裸 User 形态组内角色列拿不到数据）。
+func (s *OrgService) ListMembersRoster(ctx context.Context, orgID, actorUserID int64, page, pageSize int) (*model.OrgMemberRosterResponse, error) {
+	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
+		return nil, err
+	}
+	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+	items, total, err := s.userRepo.ListOrgMembersRoster(ctx, orgID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	// 回显=repo 实际生效值（复用 NormalizePage——检视 P2：手写第 5 份拷贝会在
+	// 单点调分页边界时与实际 LIMIT/OFFSET 静默失真；D2-13 语义不变）
+	page, pageSize = repository.NormalizePage(page, pageSize)
+	return &model.OrgMemberRosterResponse{
+		List:     items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
 }
 
 func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize int) (*model.OrgMemberListResponse, error) {

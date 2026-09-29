@@ -3,7 +3,8 @@
 name: ci
 on:
   push:
-    branches: [dev, main, "feature/**"]
+    # phase4：Phase 4 实施期活跃分支（W0 B-4 拍板补入——原列表下活跃分支零检查）
+    branches: [dev, main, phase4, "feature/**"]
   pull_request:
 jobs:
   lint:

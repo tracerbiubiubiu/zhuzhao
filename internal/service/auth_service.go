@@ -30,6 +30,7 @@ type AuthService struct {
 	scripts      *redispkg.Scripts
 	auditService *AuditService
 	refreshTTL   time.Duration
+	captchaSvc   *CaptchaService
 }
 
 // NewAuthService 创建 AuthService
@@ -40,6 +41,7 @@ func NewAuthService(
 	scripts *redispkg.Scripts,
 	auditService *AuditService,
 	jwtCfg config.JWTConfig,
+	captchaSvc *CaptchaService,
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
@@ -48,6 +50,7 @@ func NewAuthService(
 		scripts:      scripts,
 		auditService: auditService,
 		refreshTTL:   jwtCfg.RefreshTTL,
+		captchaSvc:   captchaSvc,
 	}
 }
 
@@ -61,6 +64,12 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	// 任意字符可致键不可读/膨胀（长度上限已在 binding max=64）
 	if req.DeviceID != "" && !validDeviceID(req.DeviceID) {
 		return nil, errcode.ErrInvalidParams
+	}
+
+	// P4-7：验证码一次性校验（enabled=false 恒通过——dev/E2E 登录契约不变）
+	if err := s.captchaSvc.Verify(ctx, req.CaptchaID, req.Captcha); err != nil {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, nil, "", 400)
+		return nil, err
 	}
 
 	blocked, err := s.scripts.LoginLockIsBlocked(ctx, req.EmployeeNo)
@@ -221,8 +230,15 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 	if err != nil {
 		return errcode.ErrTokenInvalid
 	}
+	// W0b（二十四批登出槽）：device_id 必填——空值曾静默归一 "default" 槽，
+	// 误删 default 会话而真实设备 RT 残留（最长 168h）。AT claims 无 DeviceID
+	// 可用（AccessClaims 仅 uid/username/jti/mcp/typ），故从请求体收紧；
+	// 前端契约（01 §6）已承诺登录/登出/改密三处同源，零前端改动。
+	if deviceID == "" {
+		return errcode.ErrInvalidParams
+	}
 	// D2-22：device_id 白名单（与 Login 对齐）
-	if deviceID != "" && !validDeviceID(deviceID) {
+	if !validDeviceID(deviceID) {
 		return errcode.ErrInvalidParams
 	}
 
@@ -381,4 +397,9 @@ func validDeviceID(deviceID string) bool {
 		}
 	}
 	return true
+}
+
+// Captcha 生成验证码（透传 captchaSvc——nil 安全由构造保证）
+func (s *AuthService) Captcha(ctx context.Context) (map[string]any, error) {
+	return s.captchaSvc.Generate(ctx)
 }

@@ -52,7 +52,7 @@ func TestJWT_ExpiredToken_Returns20002(t *testing.T) {
 	require.NoError(t, err)
 	bearerRequest(c, at)
 
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 
 	assert.True(t, c.IsAborted(), "过期 token 必须中断请求链")
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -71,7 +71,7 @@ func TestJWT_InvalidSignature_Returns20003(t *testing.T) {
 		Secret:    "another-secret-key-0123456789abcdef",
 		AccessTTL: 30 * time.Minute,
 	})
-	middleware.JWT(forgedManager, rdb)(c)
+	middleware.JWT(forgedManager, rdb, nil)(c)
 
 	assert.True(t, c.IsAborted())
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -85,7 +85,7 @@ func TestJWT_RefreshTokenAsAccess_Returns20003(t *testing.T) {
 	require.NoError(t, err)
 	bearerRequest(c, rt)
 
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 
 	assert.True(t, c.IsAborted())
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -99,7 +99,7 @@ func TestJWT_ValidToken_Passes(t *testing.T) {
 	require.NoError(t, err)
 	bearerRequest(c, at)
 
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 
 	assert.False(t, c.IsAborted(), "有效 token 不应中断")
 	assert.NotEqual(t, http.StatusUnauthorized, w.Code)
@@ -118,7 +118,7 @@ func TestJWT_BlacklistedToken_Returns20003(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, rdb.Set(c, "blacklist:at:"+claims.JTI, "1", time.Minute).Err())
 
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 
 	assert.True(t, c.IsAborted())
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -128,7 +128,7 @@ func TestJWT_BlacklistedToken_Returns20003(t *testing.T) {
 // 无 Authorization 头 → 401（10002 通用未授权）
 func TestJWT_MissingHeader_Rejected(t *testing.T) {
 	c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 	assert.True(t, c.IsAborted())
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Contains(t, w.Body.String(), `"code":10002`)
@@ -139,7 +139,7 @@ func TestJWT_MissingHeader_Rejected(t *testing.T) {
 func TestJWT_AKOnlyHeader_ExplicitMessage(t *testing.T) {
 	c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
 	c.Request.Header.Set("X-AK-Access-Key", "some-ak")
-	middleware.JWT(manager, rdb)(c)
+	middleware.JWT(manager, rdb, nil)(c)
 	assert.True(t, c.IsAborted())
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Contains(t, w.Body.String(), "暂不支持该认证方式")

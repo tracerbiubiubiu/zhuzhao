@@ -44,7 +44,7 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrCannotAssignHigherOrgMemberRole, errcode.ErrCannotManageOrgMember,
 	errcode.ErrNotOrgOwner, errcode.ErrOrgHasOpenTickets,
 	// 菜单
-	errcode.ErrMenuAlreadyExists, errcode.ErrMenuNotFound, errcode.ErrMenuHasChildren, errcode.ErrMenuIsSystem,
+	errcode.ErrMenuNotFound,
 	// 权限
 	errcode.ErrNoPermission, errcode.ErrPolicyExists, errcode.ErrNoRoles, errcode.ErrPolicyReloadFailed,
 	// 工单
@@ -79,7 +79,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 58; got != want {
+	if got, want := len(allErrCodes), 55; got != want {
 		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -60,7 +61,12 @@ func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket
 // GetByID 按 ID 查询工单
 func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, error) {
 	const q = `SELECT` + ticketSelectColumns + ` FROM tickets WHERE id = $1`
-	return r.queryOne(ctx, q, id)
+	ticket, err := r.queryOne(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	r.enrichUserNames(ctx, []*model.Ticket{ticket})
+	return ticket, nil
 }
 
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
@@ -71,7 +77,7 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if filter.Where == "" && !filter.Unscoped {
 		return nil, 0, fmt.Errorf("ticket list: missing scope filter (obtain via registry.GetFilter, or set resource.Filter.Unscoped explicitly)")
 	}
-	page, pageSize := normalizePage(q.Page, q.PageSize)
+	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
 	// 拼接 WHERE：scope filter + 业务筛选
 	var conds []string
@@ -91,6 +97,10 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if q.Priority != nil {
 		args = append(args, *q.Priority)
 		conds = append(conds, fmt.Sprintf("priority = $%d", len(args)))
+	}
+	if q.AssigneeID != nil {
+		args = append(args, *q.AssigneeID)
+		conds = append(conds, fmt.Sprintf("assigned_to = $%d", len(args)))
 	}
 	where := ""
 	if len(conds) > 0 {
@@ -116,33 +126,99 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if err != nil {
 		return nil, 0, fmt.Errorf("collect tickets: %w", err)
 	}
+	r.enrichUserNames(ctx, tickets)
 	return tickets, total, nil
 }
 
-// Update 更新工单标题/描述/优先级（patch 语义）
-func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
-	return r.UpdateTx(ctx, r.db, t)
+// enrichUserNames 批量回填创建人/处理人姓名（W4 随批件，03 S9：列表「处理人」列
+// 裸 ID/N+1 消除）。单次 ANY 集查询；real_name 空回退 username；软删用户不回填
+// （字段 omitempty，调用方降级显 ID）。回填是读侧增强：失败不阻断主查询。
+func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticket) {
+	if len(tickets) == 0 {
+		return
+	}
+	ids := make([]int64, 0, len(tickets)*2)
+	seen := make(map[int64]struct{}, len(tickets)*2)
+	add := func(id int64) {
+		if id == 0 {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	for _, t := range tickets {
+		add(t.CreatedBy)
+		if t.AssignedTo != nil {
+			add(*t.AssignedTo)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	rows, err := r.db.Query(ctx,
+		`SELECT id, COALESCE(NULLIF(real_name, ''), username) FROM users WHERE id = ANY($1) AND deleted_at IS NULL`,
+		ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	names := make(map[int64]string, len(ids))
+	for rows.Next() {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return
+		}
+		names[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return
+	}
+	for _, t := range tickets {
+		if n, ok := names[t.CreatedBy]; ok {
+			t.CreatedByName = n
+		}
+		if t.AssignedTo != nil {
+			if n, ok := names[*t.AssignedTo]; ok {
+				v := n
+				t.AssigneeName = &v
+			}
+		}
+	}
 }
 
-// UpdateTx 事务内更新工单（BK-3：WHERE status<>'closed' 条件更新——
-// 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004）
-func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
+// Update 全量更新工单标题/描述/优先级（非事务入口；全字段非 nil = 整行覆盖语义保留）
+func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
+	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority)
+	t.UpdatedAt = updatedAt
+	return err
+}
+
+// UpdateTx 事务内字段级更新工单（BK-3：WHERE status<>'closed' 条件更新——
+// 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004；
+// W4 十六批 Med：COALESCE 字段级更新——nil 字段不落 SET 覆盖，
+// 两个并发 Update 各改不同字段不再互相冲掉）
+func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int) (time.Time, error) {
 	const q = `
 		UPDATE tickets SET
-			title = $2,
-			description = $3,
-			priority = $4,
+			title = COALESCE($2, title),
+			description = COALESCE($3, description),
+			priority = COALESCE($4, priority),
 			updated_at = NOW()
 		WHERE id = $1 AND status <> 'closed'
 		RETURNING updated_at`
-	err := exec.QueryRow(ctx, q, t.ID, t.Title, t.Description, t.Priority).Scan(&t.UpdatedAt)
+	var updatedAt time.Time
+	err := exec.QueryRow(ctx, q, id, title, description, priority).Scan(&updatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return errcode.ErrTicketAlreadyClosed
+			return time.Time{}, errcode.ErrTicketAlreadyClosed
 		}
-		return fmt.Errorf("update ticket: %w", err)
+		return time.Time{}, fmt.Errorf("update ticket: %w", err)
 	}
-	return nil
+	return updatedAt, nil
 }
 
 // resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004

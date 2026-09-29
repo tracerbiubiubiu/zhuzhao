@@ -48,19 +48,40 @@ type Deps struct {
 	// E-④：任务管理代理端点（biz 组，三层校验后出站 taskrunner）
 	TaskrunnerHandler *handler.TaskrunnerHandler
 
+	// P4-2 通知通道：管理 API（biz 组）+ 内网死信告警入口（internal 组）
+	NotificationHandler *handler.NotificationHandler
+
+	// P4-3 字典管理面（业务枚举运行时化——不碰权限策略面）
+	DictHandler *handler.DictHandler
+
+	// P4-6 PAT 自服务面（SelfService）+ JWT 中间件 zpat_ 分支消费的查验口
+	PatHandler *handler.PatHandler
+	PatLookup  middleware.PATGetter
+
+	// P4-8 P2 小件：panic 聚合/路由对账/指标
+	OpsHandler *handler.OpsHandler
+	PanicSink  middleware.PanicSink
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
 
-	// 反代上游前缀（= gateway.upstreams[].prefix）：AuditLog 对其跳 body
-	//（大文件/流式载荷不入审计参数）
-	GatewayPrefixes []string
+	//（W0b wire 转正：前缀列表改经 Gateway.Prefixes 派生——见 GatewayPrefixList）
 
 	// API 限流（07 §2）：nil = 不启用
 	RateLimit *config.RateLimitConfig
 
 	// TrustedProxies 信任的反代网段（B1-4）；空切片 = 不信任任何代理
 	TrustedProxies []string
+}
+
+// GatewayPrefixList 反代上游前缀派生（原独立 GatewayPrefixes 字段与
+// TrustedProxies 同为 []string 冲突 wire 注入，W0b 改由 Registry.Prefixes 派生）。
+func (d Deps) GatewayPrefixList() []string {
+	if d.Gateway == nil {
+		return nil
+	}
+	return d.Gateway.Prefixes
 }
 
 // RateLimitOrDisabled 限流未配置时返回零值配置（中间件内直通）。
@@ -83,7 +104,8 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	// 全局中间件
-	r.Use(middleware.Recovery(deps.Logger))
+	r.Use(middleware.Recovery(deps.Logger, deps.PanicSink))
+	r.Use(middleware.MetricsMiddleware()) // P4-8 指标埋点（全局链——AccessLogger 同位）
 	r.Use(middleware.RequestID())
 	r.Use(middleware.AccessLogger(deps.Logger))
 	r.Use(middleware.CORS())
@@ -93,6 +115,8 @@ func New(deps Deps) *gin.Engine {
 	r.Use(middleware.BodyLimit(1 << 20)) // 1MB
 
 	// 健康检查
+	// P4-8 指标端点（根级非 /api/v1——catalog 天然豁免；内网暴露面）
+	r.GET("/metrics", middleware.RenderMetrics)
 	r.GET("/health/live", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -119,6 +143,8 @@ func New(deps Deps) *gin.Engine {
 		}}
 		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
+		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
+		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
 	}
 
 	v1 := r.Group("/api/v1")
@@ -129,6 +155,8 @@ func New(deps Deps) *gin.Engine {
 		auth := v1.Group("/auth")
 		auth.Use(middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()))
 		{
+			// P4-7 登录验证码（enabled=false 仅返回开关态——前端显隐插槽）
+			auth.GET("/captcha", deps.AuthHandler.Captcha)
 			auth.POST("/login", deps.AuthHandler.Login)
 			auth.POST("/refresh", deps.AuthHandler.Refresh)
 		}
@@ -136,9 +164,9 @@ func New(deps Deps) *gin.Engine {
 		// 以下路由需要 JWT 认证 + Casbin 鉴权 + 审计日志
 		authed := v1.Group("")
 		authed.Use(
-			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
-			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
@@ -155,8 +183,14 @@ func New(deps Deps) *gin.Engine {
 				{
 					userSelf.GET("/profile", deps.UserHandler.GetProfile)
 					userSelf.POST("/profile/update", deps.UserHandler.UpdateProfile)
+					// P4-6 PAT 自服务（本人凭据——catalogExempt 登记）
+					userSelf.GET("/pats", deps.PatHandler.List)
+					userSelf.POST("/pats", deps.PatHandler.Create)
+					userSelf.POST("/pats/delete", deps.PatHandler.Revoke)
 					userSelf.GET("/menus", deps.UserHandler.GetMenus)
 					userSelf.GET("/permissions", deps.UserHandler.GetPermissions)
+					// 「我的组织」自服务数据源（P4-W3：非 admin 委托者可达——users/:id/orgs 挂 biz 组不可用）
+					userSelf.GET("/orgs", deps.OrgHandler.GetMyOrgs)
 				}
 			}
 
@@ -171,6 +205,8 @@ func New(deps Deps) *gin.Engine {
 			{
 				orgDelegated.POST("/delete", deps.OrgHandler.Delete)
 				orgDelegated.POST("/members", deps.OrgHandler.AddMember)
+				// P4-W3「我的组织」名册（02 §2-W3 阻塞件）：L3 判定在 OrgService.ListMembersRoster
+				orgDelegated.GET("/members/list", deps.OrgHandler.ListMembersRoster)
 				orgDelegated.POST("/members/role", deps.OrgHandler.SetMemberRole)
 				orgDelegated.POST("/members/scope", deps.OrgHandler.SetMemberScope)
 				orgDelegated.GET("/roles/list", deps.OrgHandler.ListOrgRoles)
@@ -227,15 +263,20 @@ func New(deps Deps) *gin.Engine {
 				// 菜单模块
 				menus := biz.Group("/menus")
 				{
+					// W1（P4-W1 词表只读化）：三写接口删除——菜单行全走种子迁移
+					//（GET 树/详情保留=角色分配数据源；应急隐藏正确姿势=角色解绑，runbook）
 					menus.GET("", deps.MenuHandler.GetTree)
-					menus.POST("", deps.MenuHandler.Create)
+
 					menus.GET("/:id", deps.MenuHandler.Get)
-					menus.POST("/update", deps.MenuHandler.Update)
-					menus.POST("/delete", deps.MenuHandler.Delete)
 				}
 
 				// 审计日志
 				audit := biz.Group("/audit")
+				{
+					// P4-8：panic 聚合查询+运行时路由对账（audit:read 面）
+					audit.GET("/panics", deps.OpsHandler.ListPanics)
+					audit.GET("/reconcile", deps.OpsHandler.Reconcile)
+				}
 				{
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
 				}
@@ -257,6 +298,32 @@ func New(deps Deps) *gin.Engine {
 					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
 					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
 					jobs.POST("/trigger", deps.TaskrunnerHandler.Trigger)
+				}
+
+				// P4-3 字典（000034 词表：页面 dict:read+写按钮 dict:manage；消费端点挂页面行）
+				dicts := biz.Group("/dicts")
+				{
+					dicts.GET("", deps.DictHandler.ListTypes)
+					dicts.POST("", deps.DictHandler.CreateType)
+					dicts.POST("/update", deps.DictHandler.UpdateType)
+					dicts.POST("/delete", deps.DictHandler.DeleteType)
+					dicts.GET("/:code/items", deps.DictHandler.EnabledItems) // 消费面（登录可读）
+				}
+				dictItems := biz.Group("/dict-items")
+				{
+					dictItems.GET("", deps.DictHandler.ListItems)
+					dictItems.POST("", deps.DictHandler.CreateItem)
+					dictItems.POST("/update", deps.DictHandler.UpdateItem)
+					dictItems.POST("/delete", deps.DictHandler.DeleteItem)
+				}
+
+				// P4-2 通知配置管理面（菜单 system_notification——visible=false 过渡态，配置页后补）
+				notifications := biz.Group("/notifications")
+				{
+					notifications.GET("", deps.NotificationHandler.List)
+					notifications.POST("", deps.NotificationHandler.Create)
+					notifications.POST("/update", deps.NotificationHandler.Update)
+					notifications.POST("/delete", deps.NotificationHandler.Delete)
 				}
 
 				tickets := biz.Group("/tickets")
@@ -285,12 +352,14 @@ func New(deps Deps) *gin.Engine {
 					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，
 					// L1 admin/superadmin matcher 通配；operator 经类型配置页 AssignMenus 放行）
 					ticketMeta.POST("/ticket-types", deps.TicketHandler.CreateTicketType)
-					ticketMeta.PUT("/ticket-types/:code", deps.TicketHandler.UpdateTicketType)
-					ticketMeta.DELETE("/ticket-types/:code", deps.TicketHandler.DeleteTicketType)
-					ticketMeta.PUT("/ticket-types/:code/fields", deps.TicketHandler.ReplaceTicketTypeFields)
+					// W1（BK-18 整改，000030）：PUT/DELETE 全仓清零——POST zhuzhao 风格
+					//（code 入 body；standards §3-2 URL 不携带业务信息）
+					ticketMeta.POST("/ticket-types/update", deps.TicketHandler.UpdateTicketType)
+					ticketMeta.POST("/ticket-types/delete", deps.TicketHandler.DeleteTicketType)
+					ticketMeta.POST("/ticket-types/fields/replace", deps.TicketHandler.ReplaceTicketTypeFields)
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
-					ticketMeta.PUT("/ticket-templates/:code", deps.TicketHandler.UpdateTicketTemplate)
-					ticketMeta.DELETE("/ticket-templates/:code", deps.TicketHandler.DeleteTicketTemplate)
+					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
+					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)
 				}
 			}
 
@@ -305,9 +374,9 @@ func New(deps Deps) *gin.Engine {
 	// 未配置上游不挂载（gateway 默认关闭）。
 	if deps.Gateway != nil {
 		deps.Gateway.Mount(r,
-			middleware.JWT(deps.JWTManager, deps.RedisClient),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
-			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixes...),
+			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
 		)
 	}

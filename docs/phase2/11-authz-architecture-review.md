@@ -139,7 +139,7 @@ NIST / OWASP 要求鉴权失败必须 fail-closed。文档未明确「三层是 
 
 **补充评估（2026-09-20，工单类型级可见性设计讨论，见 [phase3/10 §10](../phase3/10-ticket-business.md)）——中间档位显式化**：本表 #2/#3 的浅层形态各有一个**不触发本表**的进程内台阶：单票例外共享（不可转授的二部图直配）= `ticket_shares` 表 + 谓词 EXISTS 分支（Salesforce manual share 形态，仅当共享可**转授成链**时落到 #2）；策略表达灵活度 = CEL 表达式档（进程内求值、策略即数据，K8s ValidatingAdmissionPolicy 同款，仅当组合语义并∩差超出 CEL 表达力时落到 #3）。**本表真正绊线收敛为三条**：共享转授链 / 跨资源关系链（#1）/ 超 CEL 组合语义（#3 深化）。物化共享表 = 读压性能触发（T4），与本表无关。
 
-**隐藏成本提醒**：上 ReBAC 不只是加一个服务——org move、成员变更、角色变更全都要双写到关系 tuple，这条同步管道才是长期负担，这正是现在不上的理由。迁移路径已预留（`ResourceAuthorizer` 接口换实现），无沉没成本。
+**隐藏成本提醒**：上 ReBAC 不只是加一个服务——org move、成员变更、角色变更全都要双写到关系 tuple，这条同步管道才是长期负担，这正是现在不上的理由。迁移路径已预留（~~`ResourceAuthorizer`~~ 接口换实现，⚠ 2026-09-22 虚标审计勘误：该类型名未落码，实际接缝=`resource.Resource`/`Registry`（registry.go）），无沉没成本。
 
 ---
 
@@ -187,7 +187,7 @@ scope=3（向上访问）在工单模型中无对应值，两套枚举缺映射�
 
 - **OPA 不对口（形态层面）**：本项目核心判定是「在 SQL 里生成行级 WHERE」（ltree 锚点 + ticket_scope 三轴 + 委托子查询拼入查询），OPA 是布尔决策引擎、不生成 SQL——引入后 L2 过滤逻辑仍须留在 Go/PG 侧，等于策略写两份（Rego 一份、SQL 一份）。行级 PEP 必须在数据处（design-decisions §5 已论证，Zanzibar/K8s/AWS/OPA 无一例外）；OPA 的典型场景（admission control、无状态条件判定）本项目不存在。proposal 层对照表结论不变：「OPA | 关系遍历不擅长」。
 - **ReBAC 不经济**：当前授权关系 = 单棵组织树（ltree）、资源类型 ≤5（挂 L2 仅 ticket）、关系链深度 2–3，§5 触发表六条**零命中**（含 2026-09-03 §25.4 补评估）。迁移真实成本不在跑一个服务，而在 **org move / 成员变更 / 角色变更的 tuple 双写同步管道** + 与业务事务失去同库一致性 + 与 activelist「行级跟数据走、关系不集中注册」的设计正面冲突（§25.4 原话）。
-- **退路已铺**：`ResourceAuthorizer`（Check + ListFilter）接口 + Builtin 一行注册自 Phase 1 即在；命中触发表时换判定后端、L1 不动、无沉没成本。届时选型 OpenFGA（API 友好）优先，需 Zanzibar 级一致性再评估 SpiceDB（design-decisions §12.5 / §25.4）。
+- **退路已铺**：~~`ResourceAuthorizer`（Check + ListFilter）接口自 Phase 1 即在~~（⚠ 2026-09-22 虚标审计勘误：类型未落码；实际在位=`resource.Resource`（Authorize/GetFilter）+ Builtin 策略库，Phase 2 落地）；命中触发表时换判定后端、L1 不动、无沉没成本。届时选型 OpenFGA（API 友好）优先，需 Zanzibar 级一致性再评估 SpiceDB（design-decisions §12.5 / §25.4）。
 
 ### 9.2 本次复核认为最现实的两条触发器
 

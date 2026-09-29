@@ -438,9 +438,9 @@ func (s *TicketService) CanApproveNode(ctx context.Context, in CanApproveNodeInp
 
 - **节点数组即定义（已对齐）**：easy-workflow 的 `Node{NodeID, NodeName, NodeType(0开始/1任务/2网关/3结束), PrevNodeIDs[], UserIDs[], Roles[], IsCosigned, GWConfig, Events[]}` 与 zhuzhao `definition` 中每个 Node 的 `{code, type, meta{role/org_scope/min_level/user_id/any}}` 一一对应。迁移到完整自定义时后端模型改动极小。
 - **可吸收的细化点（即便骨架写死也值得加）**：
-  1. **`WhatCanIDo` 任务可操作查询**：后端按当前节点/状态返回"当前用户能做什么"（通过/驳回/转交/自由驳回），前端不硬编码按钮。**已落地**：API `GET /api/v1/workflow-tasks/:task_id/actions`（§4.5(4)），后端 `WhatCanIDo(taskID)` = 状态机判定允许转移 + `CanApproveNode` 判定操作资格。
+  1. **`WhatCanIDo` 任务可操作查询**：后端按当前节点/状态返回"当前用户能做什么"（通过/驳回/转交/自由驳回），前端不硬编码按钮。**~~已落地~~**（⚠ 2026-09-22 虚标审计勘误：未落码——无此路由/无 WhatCanIDo/无 workflow_tasks 表，系设计稿措辞失实）：API `GET /api/v1/workflow-tasks/:task_id/actions`（§4.5(4)），后端 `WhatCanIDo(taskID)` = 状态机判定允许转移 + `CanApproveNode` 判定操作资格。
   2. **Root 自动通过 + 显式 End 防呆**：流程一开始 Root 节点即自动通过（无需人审）；保留显式 End 节点防"分支末尾漏标结束导致流程卡死"。zhuzhao 已有 Root/End `NodeType`，补一条"实例启动时 Root 自动完成"的规则即可（Phase 3 引擎实现时纳入）。
-  3. **`BatchCode` 批次码（任务重提）**：节点被驳回后重新提交会产生"新一批 task"，用批次码区分，避免历史任务与重提任务混淆。**已落地**：`workflow_tasks.batch_code`（迁移 000019 DDL）已存在，§4.5(2) 会签 / §4.5(4) 已引用其语义。
+  3. **`BatchCode` 批次码（任务重提）**：节点被驳回后重新提交会产生"新一批 task"，用批次码区分，避免历史任务与重提任务混淆。**~~已落地~~**（⚠ 2026-09-22 虚标审计勘误：未落码——无 workflow_tasks 表，且 000019 实际=org_is_virtual，迁移号误指）：`workflow_tasks.batch_code` 设计稿，§4.5(2) 会签 / §4.5(4) 已引用其语义。
   4. **节点级事件钩子**：easy-workflow 的 `NodeStartEvents/NodeEndEvents/TaskFinishEvents` 是"流程与业务解耦"的成熟手法——zhuzhao 已用 L1 `ticket_events` 做同理的事，可在 Node `meta` 预留 `events` 字段（如 `on_enter` 触发改派），与 ADR-001 对齐。
 - **可选的结构简化（远期）**：easy-workflow 用**一个 `HybridGateway`**（Conditions + InevitableNodes + WaitForAllPrevNode）替代排他/并行/包含三种网关。zhuzhao 当前用 4 种显式 `NodeType`（Exclusive/Inclusive/Parallel/Loop），可读性更好、契合简单域；若未来网关变复杂，可平滑切换为混合网关，不必现在改。
 - **实例变量（网关条件）**：easy-workflow 的 `ProcInstVariable`（key/value，如 `$days>=3`）供网关条件表达式求值。zhuzhao 网关当前是 `SimpleExpression`（priority/role），若未来要"按工单字段分流"，可加 `workflow_instances.vars`（已预留 JSONB）+ 轻量表达式求值，与 easy-workflow 同构。

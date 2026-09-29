@@ -15,8 +15,8 @@ type RoleIDRequest struct {
 
 // CreateRoleRequest 创建角色
 type CreateRoleRequest struct {
-	Code        string `json:"code" binding:"required"`
-	Name        string `json:"name" binding:"required"`
+	Code        string `json:"code" binding:"required,max=50"`
+	Name        string `json:"name" binding:"required,max=100"`
 	Description string `json:"description"`
 	Priority    int    `json:"priority" binding:"required"`
 	SortOrder   int    `json:"sort_order"`
@@ -34,7 +34,7 @@ type CreateRoleRequest struct {
 type UpdateRoleRequest struct {
 	ID          int64   `json:"id,string" binding:"required"`
 	Version     int     `json:"version" binding:"required"`
-	Name        string  `json:"name" binding:"required"`
+	Name        string  `json:"name" binding:"required,max=100"`
 	Description *string `json:"description"`
 	Priority    int     `json:"priority" binding:"required"`
 	SortOrder   *int    `json:"sort_order"`

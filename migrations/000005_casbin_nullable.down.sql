@@ -1,4 +1,11 @@
 -- 回滚：恢复 v2-v5 为 NOT NULL DEFAULT ''
+-- 27 批 D-2 修复：回填 UPDATE 必须先于 SET NOT NULL——up 把 '' 转 NULL 后，
+-- down 时刻列必有 NULL，先 SET NOT NULL 直接违反约束（逐对回滚必失败）。
+UPDATE casbin_rule SET v2 = '' WHERE v2 IS NULL;
+UPDATE casbin_rule SET v3 = '' WHERE v3 IS NULL;
+UPDATE casbin_rule SET v4 = '' WHERE v4 IS NULL;
+UPDATE casbin_rule SET v5 = '' WHERE v5 IS NULL;
+
 ALTER TABLE casbin_rule ALTER COLUMN v2 SET DEFAULT '';
 ALTER TABLE casbin_rule ALTER COLUMN v2 SET NOT NULL;
 ALTER TABLE casbin_rule ALTER COLUMN v3 SET DEFAULT '';
@@ -7,7 +14,3 @@ ALTER TABLE casbin_rule ALTER COLUMN v4 SET DEFAULT '';
 ALTER TABLE casbin_rule ALTER COLUMN v4 SET NOT NULL;
 ALTER TABLE casbin_rule ALTER COLUMN v5 SET DEFAULT '';
 ALTER TABLE casbin_rule ALTER COLUMN v5 SET NOT NULL;
-UPDATE casbin_rule SET v2 = '' WHERE v2 IS NULL;
-UPDATE casbin_rule SET v3 = '' WHERE v3 IS NULL;
-UPDATE casbin_rule SET v4 = '' WHERE v4 IS NULL;
-UPDATE casbin_rule SET v5 = '' WHERE v5 IS NULL;

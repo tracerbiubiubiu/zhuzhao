@@ -260,6 +260,34 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrNoPermission)
 }
 
+// W0a-P0-3 守护：AddMember 的 ticket_scope=all 仅全局管理员可授——与 SetMemberScope
+// 同一纪律（04 §4.2）。修复前 owner 可经 ON CONFLICT 覆盖分支把任意成员（含自己）
+// 抬成 all（AllScope 旁路整个 L2）。
+func TestDelegation_AddMemberScopeAllGuard(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	var u1, u2 int64
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2csa_%s', 'hash', 'E2CSA%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&u1))
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf(`
+		INSERT INTO users (username, password, employee_no, status) VALUES ('p2csb_%s', 'hash', 'E2CSB%s', 1)
+		RETURNING id`, uniqueSuffix(), uniqueSuffix())).Scan(&u2))
+
+	// owner 加人并授 scope=all → 70001（越权：all 仅全局管理员）
+	err = env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u1, TicketScope: "all"}, env.owner)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+
+	// owner 授常规档（group）→ 200
+	require.NoError(t, env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u1, TicketScope: "group"}, env.owner))
+
+	// 全局管理员授 all → 200
+	require.NoError(t, env.orgSvc.AddMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: u2, TicketScope: "all"}, env.super))
+}
+
 // P0 回归：RemoveMember 移除 owner 后，owner_user_ids 同步清理且残留权限失效
 func TestDelegation_RemoveOwnerCleansOwnerUserIDs(t *testing.T) {
 	env := setupDelegation(t)
@@ -494,4 +522,102 @@ func TestBK20_DeleteOrgWithOpenTickets(t *testing.T) {
 	_, err = testPool.Exec(ctx, `UPDATE tickets SET status = 'closed' WHERE id = $1`, tid)
 	require.NoError(t, err)
 	require.NoError(t, env.orgSvc.DeleteOrgDelegated(ctx, env.vgID, env.super))
+}
+
+// P4-W3 名册端点（02 §2-W3 阻塞件，03 号 §2-S7）：owner/admin/全局可读、普通成员拒、
+// 响应必含 org_member_role+ticket_scope（裸 User 形态组内角色列拿不到数据——十三批走查）
+func TestDelegation_MembersRoster(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	// owner 调整 mem1 数据范围（group）——名册须反映实时值（非默认 assigned）
+	require.NoError(t, env.orgSvc.SetMemberScope(ctx, &model.SetMemberScopeRequest{
+		OrgID: env.vgID, UserID: env.mem1, TicketScope: "group"}, env.owner))
+
+	findRow := func(list []*model.OrgMemberRosterItem, userID int64) *model.OrgMemberRosterItem {
+		for _, it := range list {
+			if it.UserID == userID {
+				return it
+			}
+		}
+		return nil
+	}
+
+	// ① owner 可读：双字段断言（owner/admin/member 三类角色 + 非默认 scope）
+	resp, err := env.orgSvc.ListMembersRoster(ctx, env.vgID, env.owner, 1, 20)
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, resp.Total) // owner/admin/admin2/mem1/mem2
+	ownerRow := findRow(resp.List, env.owner)
+	require.NotNil(t, ownerRow)
+	assert.Equal(t, "owner", ownerRow.OrgMemberRole, "SetOwners 双轨同步后名册须见 owner")
+	adminRow := findRow(resp.List, env.admin)
+	require.NotNil(t, adminRow)
+	assert.Equal(t, "admin", adminRow.OrgMemberRole)
+	memRow := findRow(resp.List, env.mem1)
+	require.NotNil(t, memRow)
+	assert.Equal(t, "member", memRow.OrgMemberRole)
+	assert.Equal(t, "group", memRow.TicketScope, "名册须反映 SetMemberScope 实时值")
+	assert.NotEmpty(t, memRow.Username, "名册须含用户基础字段（非裸 ID）")
+
+	// ② admin 可读（L3 口径对齐 ListOrgRoles）
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.admin, 1, 20)
+	require.NoError(t, err)
+
+	// ③ 全局管理员可读
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.super, 1, 20)
+	require.NoError(t, err)
+
+	// ④ 普通成员拒（ErrNoPermission 70001）
+	_, err = env.orgSvc.ListMembersRoster(ctx, env.vgID, env.mem2, 1, 20)
+	requireErrCode(t, err, errcode.ErrNoPermission)
+
+	// ⑤ 组织不存在 → ErrOrgNotFound（预检，非空列表冒充 200——对齐 ListOrgRoles）
+	_, err = env.orgSvc.ListMembersRoster(ctx, 999999999, env.super, 1, 20)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
+
+	// ⑥ 排序：owner 首位（owner>admin>member——与 ListByOrgID 的 id ASC 是区分性特征，
+	// CASE 分支序写反时此断言即红）
+	require.NotEmpty(t, resp.List)
+	assert.Equal(t, env.owner, resp.List[0].UserID, "owner 应排首位")
+
+	// ⑦ 分页：page_size=2 → 首页 2 行、total 仍全量、回显=repo 规范化实际值
+	p2, err := env.orgSvc.ListMembersRoster(ctx, env.vgID, env.owner, 1, 2)
+	require.NoError(t, err)
+	assert.Len(t, p2.List, 2)
+	assert.EqualValues(t, 5, p2.Total)
+	assert.Equal(t, 2, p2.PageSize)
+}
+
+// P4-W3「我的组织」自服务数据源：GET /user/orgs（GetMyOrgs）——本人富化组织行
+// （组织名/虚拟组/组内角色/数据范围——裸 UserOrg 缺这些，前端渲染需要）
+func TestMyOrgs_SelfService(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := context.Background()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+
+	resp, err := env.orgSvc.GetMyOrgs(ctx, env.mem1)
+	require.NoError(t, err)
+	require.Len(t, resp.List, 1)
+	row := resp.List[0]
+	assert.Equal(t, "vg_2c_", row.OrgCode[:6])
+	assert.Equal(t, "2c VG", row.OrgName)
+	assert.True(t, row.IsVirtual, "虚拟组标记")
+	assert.Equal(t, "member", row.OrgMemberRole)
+	assert.Equal(t, "assigned", row.TicketScope)
+	assert.False(t, row.IsPrimary)
+	assert.NotNil(t, row.JoinedAt)
+
+	// owner 任命后角色实时反映（admin）
+	require.NoError(t, env.orgSvc.SetMemberRole(ctx, &model.SetOrgMemberRoleRequest{OrgID: env.vgID, UserID: env.mem1, OrgMemberRole: "admin"}, env.owner))
+	resp2, err := env.orgSvc.GetMyOrgs(ctx, env.mem1)
+	require.NoError(t, err)
+	assert.Equal(t, "admin", resp2.List[0].OrgMemberRole)
+
+	// 无组织用户 → 空列表（非错误）
+	empty, err := env.orgSvc.GetMyOrgs(ctx, env.super)
+	require.NoError(t, err)
+	assert.Empty(t, empty.List)
 }

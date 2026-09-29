@@ -127,12 +127,16 @@ func TestB2_WriteSeparation(t *testing.T) {
 	// 处理人 close 仍允许（2b 语义不变）：Assign 流程下 assignee 必伴随 assigned 状态
 	//（assigned→closed 非法），可达路径是「创建即分派」（status=open + assignee）——
 	// 以该形态验证 isAssignee 的 close 权（open→closed 合法转换）
-	assigned := int64(env.colleague)
-	tk2, err := env.svc.Create(ctx, &model.CreateTicketRequest{
-		TypeCode: "incident", Title: "处理人关闭正例", OrgID: env.d1, AssignedTo: &assigned,
-	}, env.u1)
-	require.NoError(t, err)
-	require.NoError(t, env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk2.ID}, env.colleague))
+	// W0b：创建请求拒收 assigned_to（绕过状态机无事件无校验）；「open+assignee」
+	// 形态（isAssignee 的 close 正例唯一载体）改直插构造——assign 动作语义=主管专属，
+	// 创建人 Assign 两步不可达（这正是原「创建即分派」存在的唯一原因）
+	var tk2ID int64
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path)
+		VALUES ('incident', '处理人关闭正例', 'x', 3, 'open', $1, $2,
+			$3, (SELECT path FROM organizations WHERE id = $3))
+		RETURNING id`, env.u1, env.colleague, env.d1).Scan(&tk2ID))
+	require.NoError(t, env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk2ID}, env.colleague))
 }
 
 // T-2b-3（BK-1 门禁）：内部备注仅 创建人/处理人/admin 可见可写；

@@ -11,8 +11,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	routerPkg "github.com/tracerbiubiubiu/zhuzhao/internal/router"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 // App 应用实例
@@ -22,16 +28,45 @@ type App struct {
 	router     *gin.Engine
 	server     *http.Server
 	policyEval *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron  *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
 }
 
 // NewApp 创建应用实例
-func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter) *App {
+// NewApp 创建应用实例。构造期执行 BK-22 fail-fast 对账（路由↔menu_apis
+// 双向；缺口 = 拒绝启动）——W0b wire 转正：原在 wire_gen 手码装配段的
+// 对账逻辑迁入此处，使 wire_gen 可安全再生。
+func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
+	pool *pgxpool.Pool, gw *gateway.Registry) (*App, error) {
+	var prefixes []string
+	if gw != nil {
+		prefixes = gw.Prefixes
+	}
+	bound, err := routerPkg.LoadBoundAPIs(context.Background(), pool)
+	if err != nil {
+		return nil, err
+	}
+	if gaps := routerPkg.AuditRouteCatalog(router.Routes(), bound, prefixes); len(gaps) > 0 {
+		return nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
+			len(gaps), routerPkg.FormatGaps(gaps))
+	}
+	// P4 cron 收归：配置开关启用则装配进程内调度器（audit_archive 单批可重入——
+	// ReentrantJob 契约见 cron_scheduler.go）
+	var auditCron *service.CronScheduler
+	if cfg.Audit.Archive.CronEnabled {
+		tick, _ := time.ParseDuration(cfg.Audit.Archive.CronTick)
+		job := service.NewAuditArchiveJob(repository.NewAuditLogRepo(pool),
+			cfg.Audit.Archive.RetentionDays, cfg.Audit.Archive.BatchRows, cfg.Audit.Archive.OutDir,
+			cfg.Audit.Archive.FileRetentionDays, logger)
+		auditCron = service.NewCronScheduler(pool, "audit_archive", job, tick, logger)
+		logger.Info("audit_archive cron enabled (in-process ticker; disable taskrunner-side job to avoid double-run)")
+	}
 	return &App{
 		cfg:        cfg,
 		logger:     logger,
 		router:     router,
 		policyEval: policyEval,
-	}
+		auditCron:  auditCron,
+	}, nil
 }
 
 // Run 启动应用
@@ -65,6 +100,11 @@ func (a *App) Run() error {
 	// B11① 判定日志 L2 管道随进程生命周期启停：收到信号 → pump 限时排空 channel
 	// 入 Redis + flusher 收尾落库（AfterShutdown 内 drain 的行留 Redis，重启续消不丢）
 	a.policyEval.Start(ctx)
+
+	// P4 cron 收归：进程内调度（ticker+advisory lock；配置开关启用）
+	if a.auditCron != nil {
+		go a.auditCron.Run(ctx)
+	}
 
 	select {
 	case err := <-serverErr:

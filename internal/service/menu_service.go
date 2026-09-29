@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/tracerbiubiubiu/zhuzhao-utils/validate"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -156,47 +155,16 @@ func (s *MenuService) GetByID(ctx context.Context, id int64) (*model.Menu, error
 	return s.menuRepo.FindByID(ctx, id)
 }
 
-func (s *MenuService) Create(ctx context.Context, req *model.CreateMenuRequest) (*model.Menu, error) {
-	if !validate.Identifier(req.Code) {
-		return nil, errcode.ErrInvalidParams
-	}
-	if err := s.validateMenuParent(ctx, req.MenuType, req.ParentID); err != nil {
-		return nil, err
-	}
-	// B4-4：类型必要字段——页面(2)必有 path（动态路由注册）、按钮(3)必有
-	// permission（权限码下发）；缺失将出现「树里有节点、权限码里无路由」的矛盾数据
-	if err := validateMenuRequiredFields(req.MenuType, req.Path, req.Permission); err != nil {
-		return nil, err
-	}
-	visible := true
-	if req.Visible != nil {
-		visible = *req.Visible
-	}
-	menu := &model.Menu{
-		ParentID:   req.ParentID,
-		Code:       req.Code,
-		Name:       req.Name,
-		MenuType:   req.MenuType,
-		Path:       req.Path,
-		Component:  req.Component,
-		Icon:       req.Icon,
-		Permission: req.Permission,
-		SortOrder:  req.SortOrder,
-		Visible:    visible,
-	}
-	if err := s.menuRepo.Create(ctx, menu); err != nil {
-		return nil, err
-	}
-	return menu, nil
-}
-
+// Update W1（P4-W1 词表只读化）：路由已删，无生产调用方——保留仅为
+// D2-17 patch 语义测试（d2_more_integration_test）与种子对账工具的载体，
+// 不构成运行时写入口。
 func (s *MenuService) Update(ctx context.Context, req *model.UpdateMenuRequest) (*model.Menu, error) {
 	menu, err := s.menuRepo.FindByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
 	if menu.IsSystem {
-		return nil, errcode.ErrMenuIsSystem
+		return nil, errcode.ErrConflict // W1：ErrMenuIsSystem 随只读化清理——fixture-only 路径回落通用冲突
 	}
 	// D2-17：patch 语义——未传字段保持现值；类型必要字段校验用合并后的值
 	if req.Path != nil {
@@ -227,24 +195,6 @@ func (s *MenuService) Update(ctx context.Context, req *model.UpdateMenuRequest) 
 		return nil, err
 	}
 	return menu, nil
-}
-
-func (s *MenuService) Delete(ctx context.Context, id int64) error {
-	menu, err := s.menuRepo.FindByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if menu.IsSystem {
-		return errcode.ErrMenuIsSystem
-	}
-	n, err := s.menuRepo.CountChildren(ctx, id)
-	if err != nil {
-		return err
-	}
-	if n > 0 {
-		return errcode.ErrMenuHasChildren
-	}
-	return s.menuRepo.Delete(ctx, id)
 }
 
 // validateMenuRequiredFields 菜单类型必要字段校验（B4-4）：

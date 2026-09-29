@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
@@ -58,6 +60,18 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 	if err != nil {
 		return CallbackRetryable, "回调受理失败"
 	}
+	// W0b（二十批⑥）快照一致性：凭证行保留首记 action/params（Claim 冲突分支
+	// 不采纳新值；查回路径返回既有行），此处与回调 body 比对——不匹配即 SK 泄露/
+	// taskrunner 被控下挪用已存在 task_id 执行另一动作，409 拒（不可重试：重试同样
+	// 不匹配）。比对先于幂等/在途拦截，防「借 succeeded 语义伪装受理」。
+	// W0b-复审（commit-review §3.2）：params 比对改语义化 JSON 比较——字节精确
+	// 比对会把等价形态（null/{}、键序空白差异、taskrunner 经 map 重序列化）
+	// 误判 409 于合法回调；安全判别力在 action + params 语义值。
+	if row.Action != in.Action || !paramsSemanticEqual(row.Params, in.Params) {
+		s.logger.Error("callback snapshot mismatch rejected",
+			"task_id", in.TaskID, "row_action", row.Action, "body_action", in.Action)
+		return CallbackNonRetryable, "task_id 凭证与回调内容不一致"
+	}
 	if !claimed {
 		// 未取得执行权：他人已执行完全成功（succeeded，终态幂等拦截），或他人正在途
 		// 执行（running，10 分钟抢占窗口内）——两种情形本回调都不再执行副作用，直接受理。
@@ -98,4 +112,26 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 			"task_id", in.TaskID, "action", in.Action)
 	}
 	return CallbackExecuted, "succeeded"
+}
+
+// paramsSemanticEqual 回调 params 与凭证快照的语义等价比较：
+// null/空均视为 {}；其余反序列化后 DeepEqual（键序/空白不敏感）。
+// 解析失败回退字节比较（防御：非 JSON 内容不因解析失败被放行）。
+func paramsSemanticEqual(a string, b json.RawMessage) bool {
+	norm := func(s string) any {
+		t := strings.TrimSpace(s)
+		if t == "" || t == "null" {
+			return map[string]any{}
+		}
+		var v any
+		if err := json.Unmarshal([]byte(t), &v); err != nil {
+			return nil // 解析失败标记
+		}
+		return v
+	}
+	na, nb := norm(a), norm(string(b))
+	if na == nil || nb == nil {
+		return strings.TrimSpace(a) == strings.TrimSpace(string(b))
+	}
+	return reflect.DeepEqual(na, nb)
 }
