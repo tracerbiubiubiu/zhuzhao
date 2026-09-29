@@ -68,6 +68,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	notificationRepo := repository.NewNotificationRepo(pool)
 	notificationService := service.NewNotificationService(notificationRepo, logger)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
+	dictRepo := repository.NewDictRepo(pool)
+	dictService := service.NewDictService(dictRepo, logger)
+	dictHandler := handler.NewDictHandler(dictService)
 	ticketRepo := repository.NewTicketRepo(pool)
 	auditConfig := cfg.Audit
 	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
@@ -100,6 +103,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		MenuHandler:         menuHandler,
 		AuditHandler:        auditHandler,
 		NotificationHandler: notificationHandler,
+		DictHandler:         dictHandler,
 		TicketHandler:       ticketHandler,
 		JWTManager:          manager,
 		Enforcer:            syncedEnforcer,
@@ -150,11 +154,11 @@ var pkgSet = wire.NewSet(
 	provideJobsCallbackService,
 )
 
-var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo)
+var repoSet = wire.NewSet(repository.NewUserRepo, repository.NewRoleRepo, repository.NewOrgRepo, repository.NewMenuRepo, repository.NewAuditLogRepo, repository.NewTicketRepo, repository.NewJobSubmissionRepo, repository.NewNotificationRepo, repository.NewDictRepo)
 
-var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
+var serviceSet = wire.NewSet(service.NewAuthService, service.NewUserService, service.NewRBACService, service.NewOrgDelegationService, service.NewOrgService, service.NewMenuService, service.NewAuditService, service.NewNotificationService, service.NewDictService, ticket.NewTicketService, wire.Bind(new(middleware.RoleFetcher), new(*service.RBACService)), wire.Bind(new(middleware.AuditLogger), new(*service.AuditService)), wire.Bind(new(ticket.OrgDelegationChecker), new(*service.OrgDelegationService)))
 
-var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler)
+var handlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewUserHandler, handler.NewRoleHandler, handler.NewOrgHandler, handler.NewMenuHandler, handler.NewAuditHandler, handler.NewTicketHandler, handler.NewJobsHandler, handler.NewNotificationHandler, handler.NewDictHandler)
 
 // provideTrustedProxies 信任代理网段（空 = 不信任任何代理，安全默认）
 func provideTrustedProxies(cfg *config.Config) []string {

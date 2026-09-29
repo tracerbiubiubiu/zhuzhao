@@ -51,6 +51,9 @@ type Deps struct {
 	// P4-2 通知通道：管理 API（biz 组）+ 内网死信告警入口（internal 组）
 	NotificationHandler *handler.NotificationHandler
 
+	// P4-3 字典管理面（业务枚举运行时化——不碰权限策略面）
+	DictHandler *handler.DictHandler
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
@@ -275,6 +278,23 @@ func New(deps Deps) *gin.Engine {
 					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
 					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
 					jobs.POST("/trigger", deps.TaskrunnerHandler.Trigger)
+				}
+
+				// P4-3 字典（000034 词表：页面 dict:read+写按钮 dict:manage；消费端点挂页面行）
+				dicts := biz.Group("/dicts")
+				{
+					dicts.GET("", deps.DictHandler.ListTypes)
+					dicts.POST("", deps.DictHandler.CreateType)
+					dicts.POST("/update", deps.DictHandler.UpdateType)
+					dicts.POST("/delete", deps.DictHandler.DeleteType)
+					dicts.GET("/:code/items", deps.DictHandler.EnabledItems) // 消费面（登录可读）
+				}
+				dictItems := biz.Group("/dict-items")
+				{
+					dictItems.GET("", deps.DictHandler.ListItems)
+					dictItems.POST("", deps.DictHandler.CreateItem)
+					dictItems.POST("/update", deps.DictHandler.UpdateItem)
+					dictItems.POST("/delete", deps.DictHandler.DeleteItem)
 				}
 
 				// P4-2 通知配置管理面（菜单 system_notification——visible=false 过渡态，配置页后补）
