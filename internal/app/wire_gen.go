@@ -12,6 +12,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -66,7 +67,8 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	menuHandler := handler.NewMenuHandler(menuService)
 	auditHandler := handler.NewAuditHandler(auditService)
 	notificationRepo := repository.NewNotificationRepo(pool)
-	notificationService := service.NewNotificationService(notificationRepo, logger)
+	notificationWebhook := webhook.New()
+	notificationService := service.NewNotificationService(notificationRepo, notificationWebhook, logger)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
 	dictRepo := repository.NewDictRepo(pool)
 	dictService := service.NewDictService(dictRepo, logger)

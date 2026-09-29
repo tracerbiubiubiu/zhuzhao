@@ -1,19 +1,16 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -21,13 +18,13 @@ import (
 // （死信告警等——webhook 优先，渠道接口配置化）。分发尽力而为：单渠道失败
 // 记日志不阻塞调用方（告警链路自身不得成为新的故障源）。
 type NotificationService struct {
-	repo   *repository.NotificationRepo
-	logger *slog.Logger
-	client *http.Client
+	repo    *repository.NotificationRepo
+	logger  *slog.Logger
+	webhook *webhook.Client
 }
 
-func NewNotificationService(repo *repository.NotificationRepo, logger *slog.Logger) *NotificationService {
-	return &NotificationService{repo: repo, logger: logger, client: &http.Client{Timeout: 5 * time.Second}}
+func NewNotificationService(repo *repository.NotificationRepo, hook *webhook.Client, logger *slog.Logger) *NotificationService {
+	return &NotificationService{repo: repo, logger: logger, webhook: hook}
 }
 
 // ---- 配置管理 ----
@@ -131,21 +128,7 @@ func (s *NotificationService) NotifyDeadLetter(ctx context.Context, p *model.Dea
 }
 
 func (s *NotificationService) postWebhook(ctx context.Context, c *model.NotificationConfig, body []byte) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.WebhookURL, bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("webhook status %d", resp.StatusCode)
-	}
-	return nil
+	return s.webhook.Post(ctx, c.WebhookURL, body)
 }
 
 // maskURL 日志脱敏：query 参数可能携带 token（钉钉/飞书 webhook 形态）——只留 origin+path
