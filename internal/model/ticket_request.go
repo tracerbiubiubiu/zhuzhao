@@ -73,6 +73,9 @@ type TicketListQuery struct {
 	TypeCode string
 	Status   string
 	Priority *int
+	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
+	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
+	AssigneeID *int64
 }
 
 // ===== IW3/BK-18：类型/字段/模板管理 =====

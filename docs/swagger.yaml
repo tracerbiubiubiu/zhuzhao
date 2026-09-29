@@ -1607,6 +1607,10 @@ paths:
         in: query
         name: status
         type: string
+      - description: 处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）
+        in: query
+        name: assignee
+        type: string
       produces:
       - application/json
       responses:
