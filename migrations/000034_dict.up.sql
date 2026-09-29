@@ -65,13 +65,3 @@ WHERE r.code IN ('admin', 'superadmin') AND r.deleted_at IS NULL
   AND NOT EXISTS (SELECT 1 FROM role_menus rm WHERE rm.role_id = r.id AND rm.menu_id = m.id)
 ON CONFLICT DO NOTHING;
 
--- role_menus 补绑（000031 ⑥ 同款语义）：新菜单（含 000033 的 system_notification/
--- notification_write_btn——该批漏绑，此处一并补）须绑 admin/superadmin 才对
--- GetUserMenus 可见（INNER JOIN 无通配旁路）。
-INSERT INTO role_menus (role_id, menu_id)
-SELECT r.id, m.id
-FROM roles r
-JOIN menus m ON m.id IN (90001, 90002, 90003, 90004)
-WHERE r.code IN ('admin', 'superadmin') AND r.deleted_at IS NULL
-  AND NOT EXISTS (SELECT 1 FROM role_menus rm WHERE rm.role_id = r.id AND rm.menu_id = m.id)
-ON CONFLICT DO NOTHING;

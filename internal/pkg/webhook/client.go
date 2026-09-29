@@ -7,8 +7,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	neturl "net/url"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -27,26 +29,33 @@ func New() *Client {
 	}}
 }
 
-// blockedHosts SSRF 元地址黑名单（管理面可配 URL 的出站面收敛——内网正常目标不受限）
-var blockedHosts = map[string]bool{
-	"169.254.169.254":          true, // 云元数据
+// blockedHostnames SSRF 元地址黑名单（域名面——IP 面走 net.ParseIP 规范化判定）
+var blockedHostnames = map[string]bool{
 	"metadata.google.internal": true,
-	"127.0.0.1":                true, "localhost": true, "::1": true,
-	"0.0.0.0": true,
+	"169.254.169.254":          true, // 云元数据字面 IP 也拦（保险）
 }
 
-// ValidateURL 出站前校验（Create/Update 配置面与 Post 投递面双保险）
+// ValidateURL 出站前校验（Create/Update 配置面与 Post 投递面双保险）。
+// 审计修正（2026-09-30 二轮）：原仅字面 map 匹配——大小写/IPv6 长格式/
+// IPv4-mapped 均绕过。现 net.ParseIP 规范化后判 Loopback/LinkLocalUnicast/
+// Unspecified；非 IP 字面量走域名黑名单（DNS 解析面受内网部署边界保护）。
 func ValidateURL(u string) error {
-	pu, err := neturl.Parse(u)
+	pu, err := url.Parse(u)
 	if err != nil {
 		return fmt.Errorf("URL 非法: %w", err)
 	}
 	if pu.Scheme != "http" && pu.Scheme != "https" {
 		return fmt.Errorf("URL 须为 http(s)")
 	}
-	host := pu.Hostname()
-	if blockedHosts[host] {
-		return fmt.Errorf("目标地址在出站黑名单（元地址/环回）")
+	host := strings.ToLower(strings.TrimSpace(pu.Hostname()))
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
+			return fmt.Errorf("目标地址在出站黑名单（环回/链路本地/未指定）")
+		}
+		return nil
+	}
+	if blockedHostnames[host] {
+		return fmt.Errorf("目标地址在出站黑名单（元地址）")
 	}
 	return nil
 }

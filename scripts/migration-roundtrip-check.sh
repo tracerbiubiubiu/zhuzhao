@@ -41,6 +41,23 @@ snapshot() {
     SELECT 'casbin_rule', coalesce(ptype,''), coalesce(v0,''), coalesce(v1,''),
            coalesce(v2,''), coalesce(v3,''),coalesce(v4,''),coalesce(v5,''),'','','',''
       FROM casbin_rule
+    UNION ALL
+    -- P4 业务表（审计修正 2026-09-30：000033 空 down 即在此盲区漏网——批一承诺兑现）
+    SELECT 'notification_configs', code, name, channel, webhook_url, enabled::text,
+           version::text, '','','','',''
+      FROM notification_configs
+    UNION ALL
+    SELECT 'dict_types', code, name, enabled::text, remark, version::text,
+           '','','','','',''
+      FROM dict_types
+    UNION ALL
+    SELECT 'dict_items', type_code, code, label, sort_order::text, enabled::text,
+           remark, version::text, '','','',''
+      FROM dict_items
+    UNION ALL
+    SELECT 'personal_access_tokens', name, coalesce(secret_hash,''), coalesce(scope,''),
+           coalesce(expires_at::text,''), coalesce(revoked_at::text,''), '','','','','',''
+      FROM personal_access_tokens
   " | LC_ALL=C sort
 }
 
@@ -53,4 +70,4 @@ if ! diff -u /tmp/rt_before.txt /tmp/rt_after.txt; then
   echo "❌ 迁移往返数据漂移（down 后 up 与原态不一致）"
   exit 1
 fi
-echo "✅ 往返零漂移（$N 对，menus/menu_apis/role_menus/casbin_rule 计数+明细）"
+echo "✅ 往返零漂移（$N 对，menus/menu_apis/role_menus/casbin_rule/P4 四业务表 计数+明细）"

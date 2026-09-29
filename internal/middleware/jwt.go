@@ -72,6 +72,8 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 			c.Set("userID", uid)
 			c.Set("username", uname)
 			c.Set("jti", fmt.Sprintf("pat:%d", patID))
+			// 注记（审计二轮 P3）：强制改密态（疑似失陷处置）不传导到 PAT——GitHub PAT
+			// 同款语义（跨密码重置存活）；处置失陷账号时须同步吊销其 PAT（运维 runbook 项）
 			c.Set("must_change_password", false)
 			c.Next()
 			return

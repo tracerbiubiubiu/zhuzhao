@@ -43,7 +43,11 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 							lines = lines[:6]
 						}
 						h := sha256.Sum256([]byte(msg + strings.Join(lines, "\n")))
-						_ = sink.Upsert(ctx, hex.EncodeToString(h[:]), msg, stack, path)
+						pathB := path
+						if len(pathB) > 200 { // 000036 列宽——超长路径截断防整条记录丢失
+							pathB = pathB[:200]
+						}
+						_ = sink.Upsert(ctx, hex.EncodeToString(h[:]), msg, stack, pathB)
 					}(fmt.Sprint(err), stack, c.Request.URL.Path)
 				}
 				response.InternalError(c, "服务器内部错误")
