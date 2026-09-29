@@ -250,6 +250,9 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("taskrunner.self_base_url", "TASKRUNNER_SELF_BASE_URL")
 	viper.BindEnv("gateway.ak", "GATEWAY_AK")
 	viper.BindEnv("gateway.sk", "GATEWAY_SK")
+	// P4-9：反代信任网段（viper 对 slice env 不自动拆分——逗号分隔经 SetDefault
+	// 模板注入后由下方后处理 split；空 env 保持 config.yaml 值）
+	viper.BindEnv("server.trusted_proxies", "APP_SERVER_TRUSTED_PROXIES")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -258,6 +261,13 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	// slice env 后处理：BindEnv 命中时 Unmarshal 拿到整串，按逗号拆为网段列表
+	if raw := viper.GetString("server.trusted_proxies"); raw != "" {
+		cfg.Server.TrustedProxies = strings.Split(raw, ",")
+		for i := range cfg.Server.TrustedProxies {
+			cfg.Server.TrustedProxies[i] = strings.TrimSpace(cfg.Server.TrustedProxies[i])
+		}
 	}
 
 	cfg.Database.applyDefaults()
