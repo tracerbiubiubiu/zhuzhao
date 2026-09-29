@@ -94,6 +94,10 @@ type ArchiveConfig struct {
 	BatchRows         int    `mapstructure:"batch_rows"`          // 默认 5000（单批导出后删行）
 	OutDir            string `mapstructure:"out_dir"`             // JSONL 落盘目录，默认 data/archive
 	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（默认 395，>180 等保口径留余量；<=0 取默认）
+	// P4 cron 收归（2026-09-29）：进程内 ticker+advisory lock——与 taskrunner 侧
+	// cron job 定义部署侧二选一防双跑（默认 false 保持 taskrunner 触发形态）
+	CronEnabled bool   `mapstructure:"cron_enabled"`
+	CronTick    string `mapstructure:"cron_tick"` // 默认 30s
 }
 
 // PolicyEvalConfig 判定日志管道参数（零值取默认，见 audit.PolicyEvalConfig.withDefaults）。
@@ -257,6 +261,10 @@ func Load(path string) (*Config, error) {
 	// P4-9：反代信任网段（viper 对 slice env 不自动拆分——逗号分隔经 SetDefault
 	// 模板注入后由下方后处理 split；空 env 保持 config.yaml 值）
 	viper.BindEnv("server.trusted_proxies", "APP_SERVER_TRUSTED_PROXIES")
+	viper.BindEnv("audit.archive.cron_enabled", "APP_AUDIT_ARCHIVE_CRON_ENABLED")
+	viper.SetDefault("audit.archive.cron_enabled", false)
+	viper.BindEnv("audit.archive.cron_tick", "APP_AUDIT_ARCHIVE_CRON_TICK")
+	viper.SetDefault("audit.archive.cron_tick", "30s")
 	viper.BindEnv("captcha_enabled", "APP_CAPTCHA_ENABLED")
 	viper.SetDefault("captcha_enabled", false)
 	viper.BindEnv("captcha_ttl", "APP_CAPTCHA_TTL")

@@ -47,7 +47,7 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 		RefreshTTL: 168 * time.Hour,
 	}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{
 		EmployeeNo: "E000001",
@@ -104,7 +104,7 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	}))
 
 	jwtCfg := config.JWTConfig{Secret: "test-secret-key-for-auth-service", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), service.NewAuditService(repository.NewAuditLogRepo(testPool), repo), jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), service.NewAuditService(repository.NewAuditLogRepo(testPool), repo), jwtCfg, nil)
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{
 		EmployeeNo: "E000001", Password: "admin123", DeviceID: "dev-1",
@@ -167,7 +167,7 @@ func TestAuthService_LoginWrongPassword(t *testing.T) {
 
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 
 	_, err = authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: "E000001", Password: "wrong"}, "127.0.0.1", "test-agent")
 	require.Error(t, err)
@@ -194,7 +194,7 @@ func newAuthServiceForTest(t *testing.T) *service.AuthService {
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	repo := repository.NewUserRepo(testPool)
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	return service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	return service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 }
 
 // B2-2 守护：新密码与旧密码相同 → 400（ErrInvalidParams），

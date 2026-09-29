@@ -104,7 +104,7 @@ func d2LoginUser(t *testing.T, employeeNo, password string) (*service.AuthServic
 	t.Cleanup(func() { _ = rdb.Close() })
 	jwtCfg := config.JWTConfig{Secret: "d2-test-secret-0123456789abcdef", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 	return authSvc, user, mr
 }
 
