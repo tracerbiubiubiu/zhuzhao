@@ -286,18 +286,10 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if ticket.Status == StatusClosed {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
-	// patch 语义
-	if req.Title != nil {
-		ticket.Title = *req.Title
-	}
-	if req.Description != nil {
-		ticket.Description = *req.Description
-	}
-	if req.Priority != nil {
-		if *req.Priority < 1 || *req.Priority > 4 {
-			return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
-		}
-		ticket.Priority = *req.Priority
+	// patch 语义：仅校验显式传入的 priority（W4 十六批 Med——写侧改字段级 COALESCE，
+	// nil 字段不覆盖；此处读出的 ticket 仅作授权/状态预检与响应载体）
+	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
 	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
 	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
@@ -306,7 +298,8 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	if err := s.ticketRepo.UpdateTx(ctx, tx, ticket); err != nil {
+	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority)
+	if err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -319,6 +312,17 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	// 响应=读出行合并请求 patch（updated_at 以 RETURNING 为准）；未传字段保持库值
+	if req.Title != nil {
+		ticket.Title = *req.Title
+	}
+	if req.Description != nil {
+		ticket.Description = *req.Description
+	}
+	if req.Priority != nil {
+		ticket.Priority = *req.Priority
+	}
+	ticket.UpdatedAt = updatedAt
 	return ticket, nil
 }
 

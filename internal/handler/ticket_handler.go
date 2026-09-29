@@ -30,6 +30,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Param		page_size	query	int		false	"每页条数"
 //	@Param		type_code	query	string	false	"工单类型"
 //	@Param		status		query	string	false	"工单状态"
+//	@Param		assignee	query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
 func (h *TicketHandler) List(c *gin.Context) {
@@ -53,6 +54,16 @@ func (h *TicketHandler) List(c *gin.Context) {
 			return
 		}
 		q.Priority = &v
+	}
+	// W4（P1-c）：assignee=me 过滤——「处理人=我」维度。仅接受字面量 me（解析为
+	// 当前用户）；其余值 400，防被误当 user_id 语义扩散（前端契约仅 me 一形）
+	if a := c.Query("assignee"); a != "" {
+		if a != "me" {
+			response.BadRequest(c, "assignee 仅支持 me")
+			return
+		}
+		uid := c.GetInt64("userID")
+		q.AssigneeID = &uid
 	}
 	resp, err := h.ticketService.List(c.Request.Context(), q, c.GetInt64("userID"))
 	if err != nil {

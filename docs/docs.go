@@ -1460,6 +1460,12 @@ const docTemplate = `{
                         "description": "工单状态",
                         "name": "status",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）",
+                        "name": "assignee",
+                        "in": "query"
                     }
                 ],
                 "responses": {
