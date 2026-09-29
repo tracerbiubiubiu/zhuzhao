@@ -49,3 +49,6 @@ doc/
 # 防复发：vendor 快照曾误入历史（ab6e2f5，GitHub Push Protection 拦截）；构建走 goproxy.cn 无需 vendor
 vendor/
 deployments/.env
+
+# 审计归档本地卷运行时产物（audit_archive 导出 JSONL，dev/运行期产生，不入库）
+data/
