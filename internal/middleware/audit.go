@@ -29,8 +29,10 @@ type AuditLogEntry struct {
 	IP          string
 	UserAgent   string
 	RequestBody string
-	RequestID   string // 03 §3.4：与 slog/判定日志/事件/taskrunner 同键关联
-	CreatedAt   time.Time
+	// P4-8 响应体摘要（截断 512B——排查「请求成功但响应异常」；skip 前缀为空）
+	ResponseSummary string
+	RequestID       string // 03 §3.4：与 slog/判定日志/事件/taskrunner 同键关联
+	CreatedAt       time.Time
 }
 
 // AuditLog 操作日志中间件（同步写入 DB）。
@@ -55,6 +57,13 @@ func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFu
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 
+		// P4-8 响应摘要捕获：包装 writer 截取前 512B（skip 前缀不包——流式/大响应零成本）
+		var capWriter *responseCaptureWriter
+		if !skipBody {
+			capWriter = &responseCaptureWriter{ResponseWriter: c.Writer, limit: 512}
+			c.Writer = capWriter
+		}
+
 		// 执行请求
 		c.Next()
 
@@ -65,17 +74,18 @@ func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFu
 
 		// 同步记录（响应已送达客户端；Shutdown drain 保证进程内审计仍落库）
 		entry := AuditLogEntry{
-			UserID:      c.GetInt64("userID"),
-			Username:    c.GetString("username"),
-			Method:      c.Request.Method,
-			Path:        c.Request.URL.Path,
-			StatusCode:  c.Writer.Status(),
-			Duration:    time.Since(start).Milliseconds(),
-			IP:          c.ClientIP(),
-			UserAgent:   c.Request.UserAgent(),
-			RequestBody: maskSensitive(bodyBytes),
-			RequestID:   c.GetString("request_id"),
-			CreatedAt:   time.Now(),
+			UserID:          c.GetInt64("userID"),
+			Username:        c.GetString("username"),
+			Method:          c.Request.Method,
+			Path:            c.Request.URL.Path,
+			StatusCode:      c.Writer.Status(),
+			Duration:        time.Since(start).Milliseconds(),
+			IP:              c.ClientIP(),
+			UserAgent:       c.Request.UserAgent(),
+			RequestBody:     maskSensitive(bodyBytes),
+			ResponseSummary: capWriter.summary(),
+			RequestID:       c.GetString("request_id"),
+			CreatedAt:       time.Now(),
 		}
 
 		// F-5 修复：请求 context 随客户端断连而取消，直接用它写库会丢审计
@@ -151,4 +161,29 @@ func truncateAuditBody(s string) string {
 		return s
 	}
 	return s[:maxAuditBody] + fmt.Sprintf(`...<truncated, total=%d>`, len(s))
+}
+
+// responseCaptureWriter 响应体截取包装（实现 gin.ResponseWriter 全接口——嵌入委托；
+// Write 双写：下游+截断缓冲）。skip 前缀不启用（导出流式响应零包装成本）。
+type responseCaptureWriter struct {
+	gin.ResponseWriter
+	buf   []byte
+	limit int
+}
+
+func (w *responseCaptureWriter) Write(b []byte) (int, error) {
+	if len(w.buf) < w.limit {
+		w.buf = append(w.buf, b...)
+		if len(w.buf) > w.limit {
+			w.buf = w.buf[:w.limit]
+		}
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *responseCaptureWriter) summary() string {
+	if w == nil {
+		return ""
+	}
+	return maskSensitive(w.buf)
 }

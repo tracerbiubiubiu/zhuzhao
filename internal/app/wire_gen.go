@@ -7,6 +7,9 @@
 package app
 
 import (
+	"context"
+
+	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
@@ -76,6 +79,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	patRepo := repository.NewPatRepo(pool)
 	patService := service.NewPatService(patRepo, logger)
 	patHandler := handler.NewPatHandler(patService)
+
 	ticketRepo := repository.NewTicketRepo(pool)
 	auditConfig := cfg.Audit
 	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
@@ -127,7 +131,34 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		RateLimit:           rateLimitConfig,
 		TrustedProxies:      v,
 	}
+	// P4-8：panic 聚合+运行时对账。engineRef 前置声明——闭包运行时取（engine 由
+	// router.New(deps) 在下方构造后回填）
+	var engineRef *gin.Engine
+	panicRepo := repository.NewPanicRepo(pool)
+	opsHandler := handler.NewOpsHandler(
+		func(ctx context.Context, page, pageSize int) (any, int64, error) {
+			return panicRepo.List(ctx, page, pageSize) // 适配桥（app 层可引 repo 具体类型）
+		}, func(ctx context.Context) []string {
+			bound, err := router.LoadBoundAPIs(ctx, pool)
+			if err != nil {
+				return []string{"[error] 绑定集查询失败: " + err.Error()}
+			}
+			var prefixes []string
+			if gatewayRegistry != nil {
+				prefixes = gatewayRegistry.Prefixes
+			}
+			gaps := router.AuditRouteCatalog(engineRef.Routes(), bound, prefixes)
+			out := make([]string, 0, len(gaps))
+			for _, g := range gaps {
+				out = append(out, g.String())
+			}
+			return out
+		})
+	deps.OpsHandler = opsHandler
+	deps.PanicSink = panicRepo
+
 	engine := router.New(deps)
+	engineRef = engine
 	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry)
 	if err != nil {
 		cleanup3()

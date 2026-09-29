@@ -41,8 +41,8 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO audit_logs (
 			user_id, username, method, path, status_code, duration,
-			ip, user_agent, request_body, request_id, created_at
-		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), $11)`,
+			ip, user_agent, request_body, response_summary, request_id, created_at
+		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), $12)`,
 		log.UserID,
 		log.Username,
 		log.Method,
@@ -52,6 +52,7 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 		log.IP,
 		log.UserAgent,
 		log.RequestBody,
+		log.ResponseSummary,
 		log.RequestID,
 		createdAt,
 	)

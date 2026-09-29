@@ -58,6 +58,10 @@ type Deps struct {
 	PatHandler *handler.PatHandler
 	PatLookup  middleware.PATGetter
 
+	// P4-8 P2 小件：panic 聚合/路由对账/指标
+	OpsHandler *handler.OpsHandler
+	PanicSink  middleware.PanicSink
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
@@ -100,7 +104,8 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	// 全局中间件
-	r.Use(middleware.Recovery(deps.Logger))
+	r.Use(middleware.Recovery(deps.Logger, deps.PanicSink))
+	r.Use(middleware.MetricsMiddleware()) // P4-8 指标埋点（全局链——AccessLogger 同位）
 	r.Use(middleware.RequestID())
 	r.Use(middleware.AccessLogger(deps.Logger))
 	r.Use(middleware.CORS())
@@ -110,6 +115,8 @@ func New(deps Deps) *gin.Engine {
 	r.Use(middleware.BodyLimit(1 << 20)) // 1MB
 
 	// 健康检查
+	// P4-8 指标端点（根级非 /api/v1——catalog 天然豁免；内网暴露面）
+	r.GET("/metrics", middleware.RenderMetrics)
 	r.GET("/health/live", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -265,6 +272,11 @@ func New(deps Deps) *gin.Engine {
 
 				// 审计日志
 				audit := biz.Group("/audit")
+				{
+					// P4-8：panic 聚合查询+运行时路由对账（audit:read 面）
+					audit.GET("/panics", deps.OpsHandler.ListPanics)
+					audit.GET("/reconcile", deps.OpsHandler.Reconcile)
+				}
 				{
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
 				}
