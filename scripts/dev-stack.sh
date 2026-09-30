@@ -29,7 +29,7 @@ up)
   ;;
 down)
   [ -d "$TROOT" ] && (cd "$TROOT" && docker compose -f deploy/compose.yaml down 2>/dev/null || true)
-  [ -d "$AROOT" ] && (cd "$AROOT" && docker compose -f deploy/compose.yaml down 2>/dev/null || true)
+  [ -d "$AROOT" ] && (cd "$AROOT" && docker compose -f deploy/compose.dev.yaml down 2>/dev/null || true)
   make docker-dev-down 2>/dev/null || true
   echo "✅ 三栈已停"
   ;;
