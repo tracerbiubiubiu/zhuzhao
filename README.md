@@ -3,7 +3,7 @@
 > **定位（2026-09-03，§23 重定位后）**：IAM 内核 + 统一网关 + 通用能力底座（事件/审计/组织/HR）。工单模块已封版（对接公司内部平台，重启条件见 [design-decisions §23](docs/design/design-decisions.md)）；taskrunner/activelist 为独立部署服务，经 zhuzhao 网关接入（权限架构定版见 §25）。
 > 仓库名与 module path 的正式命名合并到内网迁移时执行（M-Mig，[13 号 §1](docs/phase3/13-implementation-plan.md)）——现只注定位不改库。
 >
-> **Phase 4 收官（2026-09-29）**：前端消费面全线交付（[zhuzhao-ui](https://github.com/tracerbiubiubiu/zhuzhao-ui)，E2E 19 spec 打真实栈）+穿插池点名五件+P2 小件四件套+cron 收归——完成定义四条全绿终验见 [02 号 §3.2](docs/phase4/02-implementation-plan.md)。
+> **Phase 4 收官（2026-09-29）**：前端消费面全线交付（[zhuzhao-ui](https://github.com/tracerbiubiubiu/zhuzhao-ui)，E2E 18 spec 打真实栈）+穿插池点名五件+P2 小件四件套+cron 收归——完成定义四条全绿终验见 [02 号 §3.2](docs/phase4/02-implementation-plan.md)。
 
 zhuzhao 是 zhuzhao 生态的主仓库：Go（Gin + PostgreSQL + Casbin + Redis + Wire）模块化单体，对外是生态唯一入口（统一网关），对内承载 IAM 与通用能力。
 

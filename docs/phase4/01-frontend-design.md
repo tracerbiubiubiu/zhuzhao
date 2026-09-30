@@ -20,7 +20,7 @@
 | 客户端状态 | Pinia | ✅ 拍板 | **只放 session/菜单/UI 态**，见 §4 分界 |
 | 服务端状态 | `@tanstack/vue-query` | ✅ 定案（2026-09-21 随计划终确） | 管理端 90% 状态是服务端数据；缓存/重取/失效声明式，避免全量 Pinia 化的脏数据地狱 |
 | HTTP | axios | ✅ 定案（2026-09-21 随计划终确） | 拦截器链成熟（§3.3）；不引二次封装的请求库 |
-| 动态表单 | form-create（渲染 `@form-create/element-ui`；设计器 `@form-create/designer`） | ✅ 拍板（12-frontend §3.1 / 00 §2.1） | 仅工单自定义字段用；普通表单走 el-form + rules |
+| 动态表单 | form-create（渲染 `@form-create/element-ui`；设计器 `@form-create/designer`） | ✅ 拍板（12-frontend §3.1 / 00 §2.1）；**W4 实施注记：实际自写七类型轻量渲染器**（零新依赖，form-create 引入顺延至设计器批评估——02 §5 深水区策略） | 仅工单自定义字段用；普通表单走 el-form + rules |
 | 时间 | dayjs | ✅ 定案（2026-09-21 随计划终确） | 后端时间戳格式以 swag 为准，集中一处格式化 |
 | 原子 CSS | UnoCSS | ✅ 随种子启用（2026-09-28 回写） | 原「⏸ 暂不启用」作废——种子模板布局深度依赖原子类（`p-4`/`flex` 等贯穿全部组件），W2 实际保留启用（vite 插件+`virtual:uno.css`）；移除成本大于收益，保留按需追配默认 |
 | 质量门禁 | vue-tsc + ESLint + Prettier / Vitest / Playwright | ✅ 定案（2026-09-21 随计划终确） | 见 §7；与 Go 门禁分仓各跑 |

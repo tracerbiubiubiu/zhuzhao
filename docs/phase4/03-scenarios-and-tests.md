@@ -21,7 +21,7 @@
 | S4 | 角色管理+AssignMenus | 勾选树 **el-tree check-strictly=true**（B 案前提）；「viewer 只读/operator 读写」推荐预设写进页面文档 | AssignMenus 替换语义——重存会按当前勾选全量重算 casbin（intent-preserving 已防旧角色降权） |
 | S5 | 菜单管理（只读树） | W1 后无写接口，纯展示+角色分配入口 | — |
 | S6 | 组织管理（admin 面） | 树 CRUD/move/`ticket_visibility`（**仅 update 表单、仅实体组可配**，虚拟组 400）；子节点/成员占用预检 | org 删除守卫不查 org_roles（已知残留，读侧已挡） |
-| S7 | 我的组织（owner 面，静态路由）——**⚠ W3 阻塞项：SelfService 名册端点尚未实现（路由不存在，W3 前端依赖 0.5d 后端先交付，02 §2-W3 已挂）** | **⚠ 本轮新发现：现成员列表响应是裸 `model.User`，不含组内角色（owner/admin/member）与 ticket_scope 字段**（org_request.go:82-88）——「我的组织」页要展示「组内角色」列拿不到数据 | **W3 新增的名册端点必须返回 org_member_role+ticket_scope**（已回写 02 §2-W3） |
+| S7 | 我的组织（owner 面，静态路由）——~~⚠ W3 阻塞项：SelfService 名册端点尚未实现~~ **✅ 已交付**（W3 收口批——GET /orgs/members/list，含 org_member_role+ticket_scope） | **⚠ 本轮新发现：现成员列表响应是裸 `model.User`，不含组内角色（owner/admin/member）与 ticket_scope 字段**（org_request.go:82-88）——「我的组织」页要展示「组内角色」列拿不到数据 | **W3 新增的名册端点必须返回 org_member_role+ticket_scope**（已回写 02 §2-W3） |
 
 ## 3. 工单场景（S8–S12，operator 为主）
 

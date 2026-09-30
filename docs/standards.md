@@ -172,3 +172,4 @@
 | 2026-09-16 | 服务间验签统一批：§3.11 升格「服务端验签中间件不得各仓自研」——一律 aksk.GinMiddleware + response.AKSKFail()（统一信封+分档中文文案，caller/operator 归因键收编进 GinMiddleware，失败现场落 Verifier.Logger），aksk detail 豁免撤销；utils v0.4.0 发布 |
 | 2026-09-16 | 归因口径拍板（选项 4）：§6 访问日志新增 `auth` 身份平面字段（jwt/aksk/none）与适用范围（仅多平面服务）、caller 三仓恒出（空串占位）——zhuzhao operatorOf 扩链/新增 authOf；同日 §3.11 补归因键常量纪律（ContextKey*，v0.4.1），三仓消费方完成常量化 |
 | 2026-09-29 | P4-W5 前置批：§3-5 存量豁免更新——工单 PUT/DELETE 豁免消灭留痕（BK-18 已整改）+taskrunner cancel/retry 动词段豁免注记（纯内部 M2M 语义，规划拍板不返工）+activelist 三端点整改同步（标识入 body，000032） |
+| 2026-09-30 | 二轮审计批：92xxx 三段码表（通知/字典/PAT）+httpStatusByCode 映射规范——新码必须三件套同步（errcode.go var + errors_test allErrCodes + errcode.md 含反引号常量列格式）；down 迁移精确逆红线重申（000033 空 down 教训）+roundtrip 快照扩 P4 四业务表 |
