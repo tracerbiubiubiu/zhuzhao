@@ -1,6 +1,6 @@
 # 平台工程公约（zhuzhao 生态）
 
-> **适用范围**：zhuzhao / taskrunner / activelist / 后续所有内部项目。各项目仓库的工程文档引用本文件，**不必在各自文档中重复约定**。
+> **适用范围**：zhuzhao / taskrunner / activelist / **zhuzhao-ui（前端——§3 API 契约的最大消费方）** / 后续所有内部项目。各项目仓库的工程文档引用本文件，**不必在各自文档中重复约定**。
 > **地位**：跨项目工程公约的 **SSOT**。§25（design-decisions）为权限架构决策 SSOT；[16 号 §9](./phase3/16-external-integration.md) 为服务实例化落地表（允许差异/对齐清单），与本文件冲突时**以本文件为准**并回改本表。
 > **修改纪律**：改公约 = 所有者拍板 + 本文件更新 + 受影响仓库文档同步（各仓变更记录留痕）。
 > 建档：2026-09-04，由 16 号 §9 基线升格扩编而来。
@@ -14,9 +14,10 @@
 | **zhuzhao** | 单体（IAM 内核 + 统一网关 + 通用能力底座） | 认证/鉴权/用户/角色/组织/菜单/审计/事件发布；对外统一入口（网关） | 三层鉴权全量（L1/L2/L3）；权限管理面 |
 | **taskrunner** | 独立仓库 + 独立部署 + 独立 Redis + 独立 PG | 事件/任务总线：调度、重试、死信、记录、看板（通用调度，**不做业务判定**） | 无用户权限模型；服务间 AK/SK |
 | **activelist** | 独立仓库 + 独立部署 + 独立 PG | 动态数据模型薄层（类型注册/Schema 演进/数据 CRUD/导入导出） | 用户侧零权限（网关挡）；服务间 AK/SK |
+| **zhuzhao-ui** | 独立仓库单页应用（Vue 3 SPA） | 前端控制台：消费 zhuzhao 网关全部业务 API（含 `/al` 反代与 taskrunner 代理端点），零权限判定（真实边界在后端三层，显隐仅体验层） | 纯消费方——遵 §3 全部 API 契约；权限码仅作渲染决策（2026-10-01 增行） |
 
 - 微服务拆分不做（无多团队/M2M 需求）；**抄模式不抄架构**。
-- 工单模块已封版（对接公司内部平台；重启条件见 design-decisions §23）。
+- 工单模块已封版（对接公司内部平台；重启条件见 design-decisions §23）。**状态注记（2026-10-01，§12-3 断言对账）**：「封版」指 §23 对接评估与审批翻案线挂起；基础工单域已于 Phase 2 交付、P4-W4 前端消费面上线——封版范围不含已交付的基础 CRUD/评论/关联面。
 
 ## 2. 服务间通信与鉴权
 
@@ -39,7 +40,8 @@
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
 9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
 10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
-11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）。
+11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；
+12. **字段格式补充（2026-10-01 四仓联合验证批）**：① **date-only 业务字段传输 `YYYY-MM-DD`**（如工单自定义字段 date——后端 `time.Parse("2006-01-02")` 硬校验），不适用第 8 条 RFC3339；发送侧须按字面格式产出（前端曾以 datetime 控件直发 ISO 时间恒 400，实测教训入册）；② **ID 数组元素与标量同规**——发送侧一律字符串（第 7 条）；`jsonutil.Int64Slice` 双形态兼容仅为**收方宽容**，不构成发送 number 的许可（存量 `.map(Number)` 属违反本公约的欠账）。
 
 ## 4. 工程结构与代码组织（所有服务同规格）
 
@@ -51,7 +53,7 @@
 | 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
 | **命名约定** | 文件名 snake_case（repository=`<域>_repo.go`、handler=`<域>_handler.go`）；package 名小写单词与目录同名；构造函数 `NewXxx`（包内单主类型可裸 `New`），wire provider `provideXxx`；接口定义放**消费方**（最小接口）+ `var _ Interface = (*Impl)(nil)` 断言；sentinel error 命名 `ErrXxx`、消息带包名前缀小写英文（`"store: job_run not found"`）；常量就近定义于使用包（不设集中 consts 文件），导出 CamelCase / 非导出 camelCase，禁 SCREAMING_SNAKE（2026-09-15 四仓审计将事实惯例升格成文） |
 | 优雅启停 | 信号处理 + 依赖关闭顺序；**防孤儿进程**（重启先杀端口占用） |
-| 门禁 | 统一 Makefile：`lint`（vet + gofmt）/ `test` / `build`；zhuzhao 另有 `test-integration`（-race -p 1）与 `acceptance` 四档链 |
+| 门禁 | 统一 Makefile：`lint`（vet + gofmt）/ `test` / `build`；zhuzhao 另有 `test-integration`（-race -p 1）与 `acceptance` 四档链；**前端仓（zhuzhao-ui）另立六件门禁**（lint/typecheck/test/audit/build/test:e2e——E2E 打真实五栈不用 stub，规格见 phase4/01 号 §7），分仓各跑互不掺和 |
 | 健康检查 | **zhuzhao**：`/health/live`（存活）+ `/health/ready`（检 PG/Redis 硬依赖）；**子服务（taskrunner / activelist）**：`/healthz` + `/readyz`（检各自硬依赖：Redis/PG） |
 | 时区 | 容器固定 `TZ=Asia/Shanghai` |
 | **代码注释** | **关键函数必须注释**：导出符号有 doc comment（说什么）；复杂逻辑/安全相关/非直观分支注释写**为什么**（不复述代码）；对外 API 带 swagger 注记。惯例：中文注释 |
@@ -141,7 +143,7 @@
 
 1. **提交**：中文提交、分批提交（一个逻辑批次一个 commit）、**先验收后提交**（全门禁绿才可提交）、push 单独指示；
 2. **变更评审说明**：任何 `internal/ migrations/ configs/ cmd/ docs/` 改动附带三节——改动摘要 / 影响面 / 验证证据；未跑门禁必须如实说明；
-3. **文档体系规范**：docs 树 = `modules/`（能力文档）/ `phase1-3/`（阶段计划）/ `review/`（评审发现）/ `adr/`（重大架构决策）/ `design/`（设计推演与细节）/ `proposal/`（提案），顺序编号 + README 索引。**分工**：ADR = 重大不可逆架构决策（事件机制/任务执行器/集成形态），design-decisions = 演进中的设计细节拍板（编号顺延不回收），modules = 能力的长期文档。每个 SSOT 文档必须带**变更记录表**；**文档断言必须能与代码对账**（状态以代码为准）；
+3. **文档体系规范**：docs 树 = `modules/`（能力文档）/ `phase1-3/`（阶段计划）/ `review/`（评审发现）/ `adr/`（重大架构决策）/ `design/`（设计推演与细节）/ `proposal/`（提案），顺序编号 + README 索引。**分工**：ADR = 重大不可逆架构决策（事件机制/任务执行器/集成形态），design-decisions = 演进中的设计细节拍板（编号顺延不回收），modules = 能力的长期文档。每个 SSOT 文档必须带**变更记录表**；**文档断言必须能与代码对账**（状态以代码为准）；**时点报告**（审计/复检/验证类快照文档）各仓集中存放随仓提交：zhuzhao `deliverables/`、zhuzhao-ui `outputs/`，命名 `<类型>-<YYYY-MM-DD>.md`（2026-10-01 补）；
 4. **编号 namespace**：W（Wave）/ IW（独立窗口）/ BK（backlog）/ E/D（16 号配套）/ P（待拍板）/ F/C/AB（各评审文档本地）——引用前必查归属；
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
 6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增；
@@ -159,6 +161,8 @@
 | 排期（里程碑/人日/主链） | phase3/13 号 §1 |
 | 事件机制 / Asynq | ADR-001 / ADR-002 |
 | 工单（封版历史设计与对接参考） | phase2/09、phase3/10 |
+| 前端工程设计（技术栈/壳层/契约消费面/门禁） | phase4/01 号 |
+| 前端协作协议（六件门禁/提交规范/评审三节/文档规范） | zhuzhao-ui 仓 AGENTS.md |
 | AI/协作者流程协议（zhuzhao 仓） | AGENTS.md |
 
 ---
@@ -173,3 +177,4 @@
 | 2026-09-16 | 归因口径拍板（选项 4）：§6 访问日志新增 `auth` 身份平面字段（jwt/aksk/none）与适用范围（仅多平面服务）、caller 三仓恒出（空串占位）——zhuzhao operatorOf 扩链/新增 authOf；同日 §3.11 补归因键常量纪律（ContextKey*，v0.4.1），三仓消费方完成常量化 |
 | 2026-09-29 | P4-W5 前置批：§3-5 存量豁免更新——工单 PUT/DELETE 豁免消灭留痕（BK-18 已整改）+taskrunner cancel/retry 动词段豁免注记（纯内部 M2M 语义，规划拍板不返工）+activelist 三端点整改同步（标识入 body，000032） |
 | 2026-09-30 | 二轮审计批：92xxx 三段码表（通知/字典/PAT）+httpStatusByCode 映射规范——新码必须三件套同步（errcode.go var + errors_test allErrCodes + errcode.md 含反引号常量列格式）；down 迁移精确逆红线重申（000033 空 down 教训）+roundtrip 快照扩 P4 四业务表 |
+| 2026-10-01 | 四仓联合验证批：适用范围+§1 增 zhuzhao-ui 行（前端=契约消费方）+工单封版状态注记（基础域已交付被消费——§12-3 断言对账）；§3 补第 12 条（date-only `YYYY-MM-DD` 例外/ID 数组元素仍 string）；§4 门禁行补前端六件口径；§12-3 补时点报告存放命名（deliverables/·outputs/）；§13 SSOT 索引补前端两行 |
