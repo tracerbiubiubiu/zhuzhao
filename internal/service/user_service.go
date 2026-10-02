@@ -403,6 +403,16 @@ func (s *UserService) SetUserOrgs(ctx context.Context, req *model.SetUserOrgsReq
 	return s.orgService.SetUserOrgs(ctx, req)
 }
 
+// GetUserRoleIDs 查询用户已绑角色 ID 集（P2-5 前端角色回显反查——替代「工号精确
+// +角色过滤」N+1 推导；可见性同 GetUserOrgs 的 ensureVisible：目标为 superadmin
+// 且 actor 非超管 → 404，其余放行——路由级边界在 L1 Casbin，端点挂 system_user 页）
+func (s *UserService) GetUserRoleIDs(ctx context.Context, userID, actorUserID int64) ([]int64, error) {
+	if err := s.ensureVisible(ctx, actorUserID, userID); err != nil {
+		return nil, err
+	}
+	return s.roleRepo.ListRoleIDsByUserID(ctx, userID)
+}
+
 func (s *UserService) GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error) {
 	if err := s.ensureVisible(ctx, actorUserID, userID); err != nil {
 		return nil, err

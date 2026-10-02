@@ -242,6 +242,29 @@ func (h *UserHandler) GetUserOrgs(c *gin.Context) {
 	response.OK(c, gin.H{"orgs": orgs})
 }
 
+// GetUserRoles GET /api/v1/users/:id/roles
+//
+//	@Summary	查询用户已绑角色 ID 集
+//	@Tags		users
+//	@Produce	json
+//	@Param		id		path	int	true	"用户 ID"
+//	@Success	200		{object}	response.Response
+//	@Security	BearerAuth
+//	@Router		/api/v1/users/{id}/roles [get]
+func (h *UserHandler) GetUserRoles(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的用户 ID")
+		return
+	}
+	roleIDs, err := h.userService.GetUserRoleIDs(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"role_ids": roleIDs})
+}
+
 // SetUserOrgs POST /api/v1/users/orgs
 //
 //	@Summary	设置用户所属组织
