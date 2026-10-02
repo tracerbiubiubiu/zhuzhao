@@ -65,7 +65,7 @@ zhuzhao-ui/
        后端已双保险：AT claims 带标记时除 /auth/password/update 外全部业务端点 403+20007
        （internal/middleware/jwt.go），前端 gate 只是体验层
     5. 注册 404 catch-all（必须在全部 addRoute 之后，仅一次）
-    6. next()；目标路由不存在（component 解析失败/无权限）→ 落 404 页
+    6. next()；目标页有路由但无 `route:` 码 → **落 403**（复检 P3-7 对齐实现：routePermission 无码跳 /403；路由不存在由 catch-all 兜 404——二者不混）
 ```
 
 要点：profile/menus/permissions **三件并行**——profile 供顶栏用户信息与改密标记（刷新后强制改密流不失效）；菜单/权限码**每会话拉一次**，登出即清 Pinia（不落 localStorage，防登出残留）；「已加载」标志防守卫重入死循环。
