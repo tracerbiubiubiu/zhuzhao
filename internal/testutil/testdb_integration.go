@@ -112,6 +112,18 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000030_ticket_types_post.up.sql",
 			// W1（B 案词表重排）：页面=读/按钮=写 + role_menus 补绑（000031）
 			"000031_menu_wordbook_split.up.sql",
+			// P4-W5 前置：activelist 三端点标识入 body（000032）
+			"000032_al_post_style.up.sql",
+			// P4 穿插池：通知配置（000033）/字典（000034）/PAT（000035）/P2 ops（000036）
+			"000033_notification_configs.up.sql",
+			"000034_dict.up.sql",
+			"000035_pat.up.sql",
+			"000036_ops.up.sql",
+			// system 目录嵌挂修正（000037）+ 字典项路由重挂（000038）
+			"000037_system_menu_nest.up.sql",
+			"000038_dict_items_route.up.sql",
+			// P2-5：GET /users/:id/roles 页面读绑定（000039）
+			"000039_user_roles_route.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

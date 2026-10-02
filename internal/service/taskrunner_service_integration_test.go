@@ -54,8 +54,10 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 	require.Equal(t, "t-e4-1", resp.TaskID)
 	require.Contains(t, gotBody, `"action":"audit_archive"`)
 	require.Contains(t, gotBody, `"submitted_by":"10001"`)
-	// P0 回归：缺省 callback 必须指向 C10 后的统一回调路径（旧 :action_id 路由已删，404=任务必 failed）
-	require.Contains(t, gotBody, `"callback_url":"http://self:33333/internal/jobs/callback"`)
+	// W0b 四口同收（6aa7d52）：taskrunner 拒收出站 callback_url（非空 400）——zhuzhao
+	// 出站不再拼接传递（回调目标一律 taskrunner 配置 TASKRUNNER_CALLBACK_TARGET_URL）。
+	// 出站带该字段=两仓契约断裂（提交恒 400）——断言方向随 6aa7d52 反转，防回潮
+	require.NotContains(t, gotBody, `callback_url`)
 
 	var action, requestID, origin, status string
 	require.NoError(t, testPool.QueryRow(context.Background(),

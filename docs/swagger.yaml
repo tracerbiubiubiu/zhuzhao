@@ -254,6 +254,15 @@ definitions:
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest:
     properties:
+      captcha:
+        maxLength: 8
+        type: string
+      captcha_id:
+        description: |-
+          P4-7 验证码（captcha.enabled=true 时必填——handler 层经 CaptchaService 校验；
+          omitempty 保 dev/E2E 关闭态登录契约零变化）
+        maxLength: 64
+        type: string
       device_id:
         description: D2-01：max=64——device_id 进 RT JWT claims 与 Redis 键（refresh:{uid}:{device}）
         maxLength: 64
@@ -755,6 +764,18 @@ paths:
       summary: 审计日志列表
       tags:
       - audit
+  /api/v1/auth/captcha:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 登录验证码（enabled=false 时仅返回开关态——前端据此显隐插槽）
+      tags:
+      - auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -958,6 +979,88 @@ paths:
       summary: 菜单详情
       tags:
       - menus
+  /api/v1/notifications:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 页大小
+        in: query
+        name: page_size
+        type: integer
+      - description: code 模糊过滤
+        in: query
+        name: code
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 通知配置列表
+      tags:
+      - notifications
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 新建通知配置（webhook 渠道）
+      tags:
+      - notifications
+  /api/v1/notifications/delete:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除通知配置（body 携带 code——zhuzhao 风格）
+      tags:
+      - notifications
+  /api/v1/notifications/update:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新通知配置（version 乐观锁）
+      tags:
+      - notifications
   /api/v1/orgs/members/list:
     get:
       consumes:
@@ -2028,6 +2131,26 @@ paths:
       security:
       - BearerAuth: []
       summary: 查询用户所属组织
+      tags:
+      - users
+  /api/v1/users/{id}/roles:
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 查询用户已绑角色 ID 集
       tags:
       - users
   /api/v1/users/delete:

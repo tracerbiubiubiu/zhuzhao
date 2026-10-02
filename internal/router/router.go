@@ -237,6 +237,7 @@ func New(deps Deps) *gin.Engine {
 					users.POST("/password/reset", deps.UserHandler.ResetPassword)
 					users.POST("/orgs", deps.UserHandler.SetUserOrgs)
 					users.GET("/:id/orgs", deps.UserHandler.GetUserOrgs)
+					users.GET("/:id/roles", deps.UserHandler.GetUserRoles)
 				}
 
 				// 角色模块
