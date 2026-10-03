@@ -148,7 +148,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
-> 状态基准：2026-08-29 静态验证；权威清单见 `docs/review/10-phase2-comprehensive-verification.md`。
+> 状态基准：2026-08-29 静态验证；权威清单见 `docs/review/archive/10-phase2-comprehensive-verification.md`。
 
 | 编号 | 问题 | 状态 |
 |------|------|------|

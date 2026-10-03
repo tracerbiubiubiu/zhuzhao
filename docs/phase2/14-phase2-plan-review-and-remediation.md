@@ -3,13 +3,13 @@
 > **合并来源声明**：
 > 本文档合并了下列 5 份独立文档，解决多份验证报告的发现重复、描述不一致、SSOT 散落问题：
 > 1. `docs/phase2/12-phase1-backlog-and-phase2-review.md`（Phase 1 遗留项 37 项 6 类分类 + Phase 2 六维度二审）
->   ⚠️ **2026-08-31 断链注记**：本文件与下述 12/13 号三份文件**从未入库**（git 历史无删除记录，疑为本地工作稿）。其有效内容已并入本文档（Part 1 分类清单 / Part 3 检查点）与 [review/09-consolidated-findings.md](../review/09-consolidated-findings.md)；引用仅作历史溯源，勿按路径查找。
-> 2. `docs/review/05-plan-validation.md`（多轮验证报告，版本 1：编号 P-1~P-13）
-> 3. `docs/review/07-project-plan-verification.md`（多轮验证报告，版本 2：编号 P2-1~P2-6 / P3-1~P3-7）
+>   ⚠️ **2026-08-31 断链注记**：本文件与下述 12/13 号三份文件**从未入库**（git 历史无删除记录，疑为本地工作稿）。其有效内容已并入本文档（Part 1 分类清单 / Part 3 检查点）与 [review/archive/09-consolidated-findings.md](../review/archive/09-consolidated-findings.md)；引用仅作历史溯源，勿按路径查找。
+> 2. `docs/review/archive/05-plan-validation.md`（多轮验证报告，版本 1：编号 P-1~P-13）
+> 3. `docs/review/archive/07-project-plan-verification.md`（多轮验证报告，版本 2：编号 P2-1~P2-6 / P3-1~P3-7）
 > 4. `docs/phase2/13-project-plan-multi-round-verification.md`（多轮验证报告，版本 3：按用户 5 检查点组织）
 > 5. `docs/phase2/13-plan-remediation-actions.md`（修订行动清单步骤 1-6）
 >
-> **三份验证报告对应说明**：上文第 2/3/4 份即本文 Part 3 所称「三份独立验证报告」：review/05-plan-validation.md（验证 v1）+ review/07-project-plan-verification.md（验证 v2）+ phase2/13-project-plan-multi-round-verification.md（验证 v3）。
+> **三份验证报告对应说明**：上文第 2/3/4 份即本文 Part 3 所称「三份独立验证报告」：review/archive/05-plan-validation.md（验证 v1）+ review/archive/07-project-plan-verification.md（验证 v2）+ phase2/13-project-plan-multi-round-verification.md（验证 v3）。
 > **⚠️ 编号冲突提示**：当前 `docs/phase2/` 目录下存在两个完全独立文档均使用 13 号编号：(i) `13-project-plan-multi-round-verification.md`（验证报告 v3，作为三份验证之一）；(ii) `13-plan-remediation-actions.md`（修订行动清单，作为本文 Part 4 的来源）。二者为完全独立的文档（编号为 Phase 2 规划期间的冲突），本文统一通过全名或简称（13-验证 / 13-行动）区分，旧编号冲突随 5 份源文件一并删除后自然消除。
 >
 > **文档定位**：Phase 2 开工前唯一的「审查发现 + 遗留项处置 + 行动清单」SSOT 文档。所有发现统一编号为：
@@ -669,8 +669,8 @@ docs/
 - `docs/phase2/12-phase1-backlog-and-phase2-review.md`（Phase 1 遗留 37 项分类 + Phase 2 六维度二审）
 - `docs/phase2/13-plan-remediation-actions.md`（修订行动清单步骤 1-6 原稿）
 - `docs/phase2/13-project-plan-multi-round-verification.md`（多轮验证报告版本 3 原稿）
-- `docs/review/05-plan-validation.md`（多轮验证报告版本 1 原稿）
-- `docs/review/07-project-plan-verification.md`（多轮验证报告版本 2 原稿）
+- `docs/review/archive/05-plan-validation.md`（多轮验证报告版本 1 原稿）
+- `docs/review/archive/07-project-plan-verification.md`（多轮验证报告版本 2 原稿）
 
 ### 5.3 下一步行动（用户可选）
 

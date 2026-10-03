@@ -271,7 +271,7 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 
 #### 角色禁用语义（status=0）
 
-> B1-1 修复（源自 [review/01 §R1-AUTHZ-01](../review/01-phase1-systematic-review-findings.md)）：禁用角色此前全链路不生效。
+> B1-1 修复（源自 [review/01 §R1-AUTHZ-01](../review/archive/01-phase1-systematic-review-findings.md)）：禁用角色此前全链路不生效。
 
 `UpdateRoleRequest.status` 为指针字段（D2-03 patch 语义）——未传（nil）保持现值；显式传 `0` 禁用，**下次请求起**生效（与「角色变更下次请求生效」一致）。文档典型用法「只改名的请求」不再零值穿透静默禁用角色。
 
@@ -290,7 +290,7 @@ Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独
 
 #### 角色写操作的目标校验
 
-> B1-2 修复（源自 [review/01 §R2-RM-01](../review/01-phase1-systematic-review-findings.md)）：此前仅校验新 priority 值，未校验操作者与目标角色的强弱关系。
+> B1-2 修复（源自 [review/01 §R2-RM-01](../review/archive/01-phase1-systematic-review-findings.md)）：此前仅校验新 priority 值，未校验操作者与目标角色的强弱关系。
 
 角色模块三个写操作统一接入 `canManageTarget`（与用户模块同语义：**操作者须严格更强** `actorP < targetP`，superadmin 直通）：
 
