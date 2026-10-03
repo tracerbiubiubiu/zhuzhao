@@ -97,7 +97,7 @@ gateway:
   sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
   upstreams:
     - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
-      target: http://activelist:8080
+      target: http://127.0.0.1:8080
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 

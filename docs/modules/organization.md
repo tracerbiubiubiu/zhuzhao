@@ -20,7 +20,7 @@
 
 ### 1.1 Phase 1 设计决策：组织为共享资源（D2-37①）
 
-> 决策日期：2026-08-24（[review 03 号报告 D2-37](../review/03-second-deep-review-findings.md) 上线前决策点裁决，选方案①文档化）
+> 决策日期：2026-08-24（[review 03 号报告 D2-37](../review/archive/03-second-deep-review-findings.md) 上线前决策点裁决，选方案①文档化）
 
 Phase 1 组织写路径（AddMember / RemoveMember / Move / Update / Delete）**仅做存在性校验 + 路由级 RBAC（L1）防护，不做资源级属主/组织关系校验（L3）**——与用户侧 `SetUserOrgs` 的 `ensureCanManage` 不对称，属有意取舍而非疏漏：
 

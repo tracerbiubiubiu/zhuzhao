@@ -48,7 +48,7 @@ Phase 1 已定型**双轨吊销机制**（SSOT：[phase1/02-auth.md §会话吊�
 
 > **为何不在 Phase 1 顺带改**：改 RT value 结构牵动 Refresh 的 hash 比较逻辑与 B1-B4 守护测试，违背「Phase 1 收口不再扩面」原则；设备会话本就是本 Step 引入的能力，前置改造属本职范围。
 
-- [ ] **（D2-23，条件触发）收紧 CORS**：Phase 1 `AllowAllOrigins` 全放开（[cors.go](../../internal/middleware/cors.go)，Bearer 认证下低危可接受）。**本模块或后续任何 Step 引入 cookie 会话（凭据型）前必须先收紧**为 Origin 白名单 + `AllowCredentials` 显式约束——`AllowAllOrigins + credentials` 组合会被浏览器拒绝，且全放开凭据构成 CSRF 直接暴露面。本 Step 设备管理仍走 Bearer（不触发）；登记于此防 cookie 方案落地时漏检（[review 03 §10.2](../review/03-second-deep-review-findings.md)）
+- [ ] **（D2-23，条件触发）收紧 CORS**：Phase 1 `AllowAllOrigins` 全放开（[cors.go](../../internal/middleware/cors.go)，Bearer 认证下低危可接受）。**本模块或后续任何 Step 引入 cookie 会话（凭据型）前必须先收紧**为 Origin 白名单 + `AllowCredentials` 显式约束——`AllowAllOrigins + credentials` 组合会被浏览器拒绝，且全放开凭据构成 CSRF 直接暴露面。本 Step 设备管理仍走 Bearer（不触发）；登记于此防 cookie 方案落地时漏检（[review 03 §10.2](../review/archive/03-second-deep-review-findings.md)）
 
 ---
 
