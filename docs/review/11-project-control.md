@@ -43,7 +43,13 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **网关反代（批次 B/E13）** | 前缀→上游注册表 / ReverseProxy / StripPrefix / AK/SK 出站签名 / 身份断言（X-Operator/X-Request-ID）/ 点段路径拒绝 / 502+10008 错误映射；根级挂载全链 JWT→限流→审计跳body→CasbinAuth | ✅ 2026-09-09（16 号批次 B）；**部署批与 E2E 联调 2026-09-14 闭环**（activelist 栈 compose 双网络/双副本/pgbackup+WAL，`/al` 签名透传贯通） | `internal/gateway/` `internal/router/router.go` |
 | **API 限流（07 §2）** | Redis Lua 令牌桶：键取 user_id/ClientIP（登录后/匿名二选一）+ 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503 | ✅ 2026-09-09；**演示栈已启用（2026-09-14，20/40）**：50 并发锤 `/al` 实证 40×200+10×429+Retry-After、补桶节拍与跨路由桶隔离 | `internal/middleware/ratelimit.go` |
 | **BK-22 路由↔menu_apis 对账** | 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀）+ wire 启动 fail-fast；发现跑抓出 audit/logs 权限面缺失 → 000025 | ✅ 2026-09-09 | `internal/router/catalog.go` |
-| **前端控制台 zhuzhao-ui（P4-W2）** | 壳层四件（路由守卫/请求层单飞刷新/会话管理/权限三件套）+ 登录/首登强制改密/工作台首页 + system 四占位页 + vitest 单测（43 例）+ **Playwright E2E 基建**（globalSetup 幂等建号+operator/viewer 预设绑定+admin 凭据闭环；S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec，打标准三栈不用 stub）+ **codegen 链**（主仓 `make swag` → 本仓 `pnpm codegen`：swagger2openapi 2.0→3.0 + openapi-typescript → `src/api/__generated__/`）+ **CI**（lint/typecheck/build + test） | ✅ P4-W2 壳层已交付+出口闭合（2026-09-27）；W3 system 域待启 | `../zhuzhao-ui`（设计 SSOT=phase4/01；FE 规格=phase3/12-frontend 已回标） |
+| **通知配置（P4-2）** | notification_configs 表 + 管理 API 四端点 + /internal/notify/dead-letter 死信入口 + taskrunner 终败通知 hook（E-⑥ 形态）+ webhook 全链闭环实测 | ✅ 2026-09-29 | `internal/service/notification_service.go` `migrations/000033` |
+| **字典/系统参数（P4-3）** | 字典类型+字典项 CRUD + 消费端点 GET /user/dicts/:code/items（登录可读）+ 前端管理页 | ✅ 2026-09-29 | `internal/service/dict_service.go` `migrations/000034` |
+| **PAT 个人令牌（P4-6）** | personal_access_tokens 表 + 签发/吊销/列表端点 + 前端管理页 | ✅ 2026-09-29 | `internal/service/pat_service.go` `migrations/000035` |
+| **P2 运维小件（P4-8）** | panic 聚合查询 GET /audit/panics + 路由对账 GET /audit/reconcile + 指标采集预留 | ✅ 2026-09-29（随 W5 前端 audit 页同批交付） | `internal/service/panic_service.go` `migrations/000036` |
+| **自服务组织端点** | GET /user/orgs（富化行 org_member_role+ticket_scope+joined_at，catalogExempt） | ✅ 2026-09-29 | `internal/handler/org_handler.go` |
+| **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
+| **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 14 文件/108 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号启动时按 A2 取下一可用号（现 **000026**；000017 已被 IW1 占用）
@@ -95,7 +101,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ---
 
-## 4. 数据库迁移地图（29 对）
+## 4. 数据库迁移地图（39 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -126,6 +132,16 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000027 | ticket_config_version：类型/字段/模板三表 `version` 乐观锁列（P1-3，并发审查批次；version 可选 CAS，nil 保持旧 patch 语义） | 并发批次 |
 | 000028 | ticket_relations_normalized：规范化对部分唯一索引（P1-2，并发审查批次；先软删历史双向重复行再建唯一索引，DB 兜底反向判重） | 并发批次 |
 | 000029 | ticket_relations_source_index：补 source 前导部分索引（R4，第二轮审查——000028 规范化删除方向索引后，OR 谓词与 ListRelations source 臂退化顺序扫描） | 批次 8 |
+| 000030 | BK-18 五端点 PUT/DELETE→POST 整改 | P4-W1 |
+| 000031 | B 案词表重排+三新按钮+role_menus 补绑 | P4-W1 |
+| 000032 | activelist 三端点标识入 body（整改②） | P4-W5 前置 |
+| 000033 | notification_configs 表+菜单（P4-2） | P4 穿插池 |
+| 000034 | dict 表+菜单+页面行（P4-3） | P4 穿插池 |
+| 000035 | personal_access_tokens（P4-6 PAT） | P4 穿插池 |
+| 000036 | ops panic 聚合表+菜单（P4-8） | P4 穿插池 |
+| 000037 | system_menu_nest（system 目录嵌挂修正，P1-1） | P4-W3 |
+| 000038 | dict_items_route（字典项路由重挂） | P4-W3 |
+| 000039 | user_roles_route（GET /users/:id/roles 页面读绑定，P2-5） | P4 收尾批 |
 
 > **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000029 已占用**（000017/000018 = IW1/IW3，000019–000025 见上表，000026–000028 = 并发审查批次，000029 = 批次 8 R4 索引回补，~~下一编号 000030~~ **Phase 4 占用谱系（2026-09-26 更新）：P4-W1 已落 000030（BK-18 五端点 POST 化）+000031（B 案词表重排）两连号；000032/000033=P4-2 通知待占位（**两连号=notification_configs 本体+ticket_events 消费位，02 号十四批拍板口径——26 批级联勘误**），IW2 附件顺延 000034 起（A2 裁定）**）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
