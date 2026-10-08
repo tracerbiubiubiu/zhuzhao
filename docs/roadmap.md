@@ -1,6 +1,6 @@
 # 实施路线图（Roadmap）
 
-> 三阶段实施总览，每阶段的核心目标、模块清单和能力边界。
+> 各阶段实施总览，每阶段的核心目标、模块清单和能力边界。
 >
 > 创建日期：2026-08-12
 
@@ -119,6 +119,22 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ---
 
+## Phase 4（实施中）与 Phase 5（规划草案，未排期）
+
+> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。进度：W0–W2 已收口，下一步 W3 system 域。
+>
+> **Phase 5 = 前端可视化配置线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体底座。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；硬前置 = Phase 4 收口；排期待启动拍板。
+
+| 段 | 内容 | 性质 | 前置 |
+|----|------|------|------|
+| P5-S1 | 动态表单可视化设计器（form-create designer 转正；字段 schema 存储不变） | 纯前端 | Phase 4 收口 |
+| P5-S2 | 工单流程状态图可视化设计器（states/transitions 画布化；transitions JSONB 不变） | 纯前端为主 | Phase 4 收口 |
+| P5-S3 | 流程运行语义配置化（转换动作权限/自动分派/审批节点，蓝本 = [phase3/10](./phase3/10-ticket-business.md)） | 后端为主 | 🚦 §23 工单自研翻案 + S1/S2 收口 |
+| P5-S4 | taskrunner 任务面配置人性化（cron 构造器/动作下拉选名 + 创建时预校验/params 按动作 schema 渲染表单） | 前端为主 + 动作元数据小批 | Phase 4 收口（元数据面衔接 taskrunner.md「能力目录」定稿方案，不提前触发跨服务目录） |
+| P5-S5 | 对象存储底座与富媒体（MinIO 预签名/头像上传/工单附件/富文本字段类型） | 后端底座 + 前端上传面 | Phase 4 收口（存储底座收编 [phase2/10](./phase2/10-storage.md)/IW2 现成设计实施；富文本字段类型为新增设计） |
+
+---
+
 ## 预留扩展（按需启用）
 
 | 能力 | 预留点 | 启用条件 |
@@ -162,6 +178,8 @@ docs/
 │   ├── 10-ticket-business.md   # 已编写（工单业务能力闭环 SSOT）
 │   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
 │   └── 02–09 待编写（按需启用，未排期）
+├── phase4/                     # Phase 4 前端落地（实施中：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
+├── phase5/                     # Phase 5 规划草案（前端可视化配置线，未排期）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档
@@ -172,5 +190,5 @@ docs/
 - `design/` — 为什么这样设计（决策与权衡）
 - `proposal/` — 具体方案是什么（详细提案）
 - `modules/` — 模块完整设计（跨阶段的完整形态）
-- `phase1/` `phase2/` `phase3/` — 每阶段做什么（分阶段实施计划）
-- `roadmap.md` — 三阶段总览（本文）
+- `phase1/` `phase2/` `phase3/` `phase4/` `phase5/` — 每阶段做什么（分阶段实施计划）
+- `roadmap.md` — 各阶段总览（本文）

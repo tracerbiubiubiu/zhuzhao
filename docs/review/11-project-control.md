@@ -207,8 +207,8 @@ docs/
 ├── design/        # 为什么这样设计（决策与权衡）
 ├── proposal/      # 具体方案是什么
 ├── modules/       # 模块完整设计（跨阶段）
-├── phase1/2/3/4/  # 每阶段实施计划（phase3 已收口；**phase4 = 规划定稿待开工**：00 盘点/01 前端设计/02 实施计划/03 场景与测试矩阵，2026-09-22 十九轮校验收敛）
-├── roadmap.md     # 三阶段总览
+├── phase1/2/3/4/5/  # 每阶段实施计划（phase3 已收口；phase4 = 实施中：W0–W2 收口、下一步 W3 system 域；**phase5 = 规划草案未排期**：前端可视化配置线五段——表单设计器/流程状态图设计器/流程语义配置化🚦/taskrunner 任务面人性化/对象存储与富媒体（MinIO：头像上传/工单附件/富文本字段，IW2 附件件收编），2026-10-08 立项登记，SSOT=phase5/README）
+├── roadmap.md     # 各阶段总览（Phase 4/5 段已同步）
 ├── adr/           # 架构决策（001 L1 事件 / 002 Asynq / 003 activelist）
 └── review/        # 验证报告（本文件 = 能力总览，01-10 = 历史 review）
 ```
@@ -267,7 +267,7 @@ docs/
 | # | 事项 | 说明 |
 |---|------|------|
 | IW1 | ~~多虚拟组可见性场景闭环：BK-13 + BK-14~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴测试（原编号 W1，随 2026-08-31 编号治理改 IW；详见 00 §2.3） |
-| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性） |
+| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性）。**2026-10-08：附件/存储件收编为 Phase 5 S5 实施载体**（SSOT=[phase5/README](../phase5/README.md) §P5-S5，迁移号维持 IW2 预留 000034 起对账）；auth-enhance 维持本窗口触发驱动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 
