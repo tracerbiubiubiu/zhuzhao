@@ -28,6 +28,7 @@
 
 - 选型即定：form-create designer（`@form-create/designer` 拖拽 → rules/options JSON）——[12-frontend「阶段 2（远期可选）」](../phase3/12-frontend.md)转正；工单发起页渲染器已在位，本段只补**配置侧**。
 - **后端存储不变**：产物仍是 `ticket_type_fields` 字段 schema；字段类型仍限七种（input/textarea/number/date/select/multi_select/tips）。
+- **select/multi_select 选项引用 P4-3 字典**（已随 P4 交付）：设计器选项支持挂字典键而非死枚举，选项变更全系统生效（字典 API 形态衔接细节启动批核实）。
 - 新字段类型 = 另立后端批：渲染器 + `validateFieldInputs`/G2 schema 校验同步扩，遵守"只增不改"兼容纪律，不混入 S1。
 - 现 ticket/type 页表格模式保留为**专家模式/兜底**（phase4 深水区降级决策的形态直接复用）。
 
@@ -82,7 +83,7 @@
 
 ## 5. 排期与触发
 
-- **未排期**。硬前置 = **Phase 4 收口**（zhuzhao-ui 同仓共用门禁链；当前 W0–W2 已收口，下一步 W3 system 域）。
+- **前置已满足、排期待所有者拍板**。硬前置 = Phase 4 收口——**✅ 已满足**（七 Wave + P4-9 + 穿插池五件 + PAT 全交付，phase4 分支已合回 main，见 [02 号 §5.1](../phase4/02-implementation-plan.md) 完成定义全绿；2026-09/10）。
 - S3 追加触发 = §23 翻案条件成立。
 - S5 = 11 号 §8「独立窗口」IW2（附件/存储）的**实施载体收编**——IW2 行已补指向注记（2026-10-08），无额外触发；迁移用 IW2 预留号 000034 起（启动时按 A2 规则对账）。
 - 启动时按 [VISION §4 修改纪律](../VISION.md) 级联：design-decisions（翻案批）→ roadmap 现状 → 本目录另立实施计划（编号 namespace 启用 **P5-***，防撞号——既有 namespace 已全占用）。

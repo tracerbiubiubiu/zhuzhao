@@ -121,9 +121,9 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ## Phase 4（实施中）与 Phase 5（规划草案，未排期）
 
-> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。进度：W0–W2 已收口，下一步 W3 system 域。
+> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：7 Wave + P4-9 部署件 + 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 全交付，phase4 分支已合回 main。
 >
-> **Phase 5 = 前端可视化配置线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体底座。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；硬前置 = Phase 4 收口；排期待启动拍板。
+> **Phase 5 = 前端可视化配置线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体底座。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
 
 | 段 | 内容 | 性质 | 前置 |
 |----|------|------|------|
