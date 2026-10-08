@@ -467,10 +467,10 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 
 	// 2. 事务内重读被移动节点（锁定后快照，消灭 TOCTOU）
 	var oldPath, orgCode string
-	var isSystem bool
+	var isSystem, movingIsVirtual bool
 	err = tx.QueryRow(ctx, `
-		SELECT path::text, code, is_system FROM organizations
-		WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&oldPath, &orgCode, &isSystem)
+		SELECT path::text, code, is_system, is_virtual FROM organizations
+		WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&oldPath, &orgCode, &isSystem, &movingIsVirtual)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errcode.ErrOrgNotFound
@@ -491,9 +491,10 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		// 只取 path：id 与 *newParentID 恒等，无需 Scan 回写调用者指针——
 		// 消除并发交叉移动（测试传共享变量）时的 data race（B3-2 flaky 修复）
 		var parentPath string
+		var parentIsVirtual bool
 		err := tx.QueryRow(ctx, `
-			SELECT path::text FROM organizations
-			WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, *newParentID).Scan(&parentPath)
+			SELECT path::text, is_virtual FROM organizations
+			WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, *newParentID).Scan(&parentPath, &parentIsVirtual)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return errcode.ErrOrgNotFound
@@ -508,6 +509,11 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		}
 		if isDescendant {
 			return errcode.ErrOrgCannotMoveToChild
+		}
+		// 虚拟组父级必须为实体（与 Create 同款不变量——此前仅 create 校验，move 可绕过：
+		// 实测 2026-10-08 虚拟组经 move 挂入虚拟组成功）。兄弟可读语义以「同实体锚点」为前提。
+		if movingIsVirtual && parentIsVirtual {
+			return &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "虚拟组必须挂载在实体组织下"}
 		}
 		resolvedParentID = newParentID
 		newRootPath = parentPath + "." + orgCode

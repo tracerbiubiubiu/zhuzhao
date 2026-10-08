@@ -43,6 +43,16 @@ func insertOrg(t *testing.T, code, path string, parentID *int64) int64 {
 	return id
 }
 
+func insertVirtualOrg(t *testing.T, code, path string, parentID int64) int64 {
+	t.Helper()
+	var id int64
+	err := testPool.QueryRow(context.Background(), `
+		INSERT INTO organizations (code, name, parent_id, path, is_virtual, status, is_system, sort_order)
+		VALUES ($1, $1, $2, $3::ltree, true, 1, false, 1) RETURNING id`, code, &parentID, path).Scan(&id)
+	require.NoError(t, err)
+	return id
+}
+
 func requireErrCode(t *testing.T, err error, want *errcode.Error) {
 	t.Helper()
 	require.Error(t, err)
@@ -182,6 +192,30 @@ func TestOrgRepo_MoveTxGuard(t *testing.T) {
 	// 4) 不存在的目标父 → 404
 	err = repo.Move(ctx, deptA, func() *int64 { id := int64(999999); return &id }())
 	requireErrCode(t, err, errcode.ErrOrgNotFound)
+}
+
+// 虚拟组父级不变量守护（2026-10-08 实测缺口）：Create 校验「虚拟组必须挂实体下」，
+// Move 此前无同款校验——虚拟组可经移动挂入虚拟组，绕过 create 不变量。
+func TestOrgRepo_MoveVirtualUnderVirtualRejected(t *testing.T) {
+	resetOrgs(t)
+	ctx := context.Background()
+	repo := repository.NewOrgRepo(testPool)
+
+	root := insertOrg(t, "root", "root", nil)
+	vgA := insertVirtualOrg(t, "vg_a", "root.vg_a", root)
+	vgB := insertVirtualOrg(t, "vg_b", "root.vg_b", root)
+
+	// 1) 虚拟组移入虚拟组下 → 400（与 Create 同文案同码）
+	err := repo.Move(ctx, vgB, &vgA)
+	requireErrCode(t, err, &errcode.Error{Code: errcode.ErrInvalidParams.Code})
+
+	// 2) 实体父不受影响：虚拟组仍在实体 root 下可移到别实体——建实体 dept 验证正路
+	dept := insertOrg(t, "dept", "root.dept", &root)
+	require.NoError(t, repo.Move(ctx, vgB, &dept))
+	var path string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT path::text FROM organizations WHERE id = $1`, vgB).Scan(&path))
+	assert.Equal(t, "root.dept.vg_b", path, "虚拟组移到实体下应正常")
 }
 
 // B3-2 守护：并发交叉移动（A 移入 B 下、同时 B 移入 A 下）。
