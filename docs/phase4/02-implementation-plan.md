@@ -37,7 +37,7 @@
 | 态 | 项 |
 |----|----|
 | **主动做**（进 Wave/穿插池） | 前端全部（P4-W2–W5 + P4-9 部署件）、菜单只读化（P4-W1）、govulncheck/P2-14/§8.1 定性（P4-W0）、BK-21（随 P4-4 导出批）、登录验证码（P4-7，兼上线前置属性）、**④线漏排四行**（cron 调度评估/文档治理批/随手项打包/activelist 契约整改②——后者已拍改 W5 前置小批，2026-09-22） |
-| **持续监听**（信号线，不排期） | ② 全部（B7 CORS/B9 Watcher/M1 基座/L1 缓存/HA 三件/决策清单三项）、③ 全部（M-SSO/M-Mig/M-HR/taskrunner 后置项/PG 备份口径）、**主审计切异步（判定日志量超预期时；启用须补停机 drain）**、**taskrunner FireDue 多副本互斥（十六批 High-仅多实例：普通 SELECT 到期任务+UpdateJobNextRun 无 CAS，代码自认 duplicate fire risk——触发=taskrunner 多副本部署，与 B9/M1 同窗，FOR UPDATE SKIP LOCKED 或单 cron 副本）**、RT-1 衍生、runbook §4 四条、在线用户管理面、ReBAC 触发表、MFA/密码合规、E-⑤/E-⑥、密钥管理面 |
+| **持续监听**（信号线，不排期） | ② 全部（B7 CORS/B9 Watcher/M1 基座/L1 缓存/HA 三件/决策清单三项）、③ 全部（M-SSO/M-Mig/M-HR/taskrunner 后置项/PG 备份口径）、**主审计切异步（判定日志量超预期时；启用须补停机 drain）**、**taskrunner FireDue 多副本互斥（十六批 High-仅多实例：普通 SELECT 到期任务+UpdateJobNextRun 无 CAS，代码自认 duplicate fire risk——触发=taskrunner 多副本部署，与 B9/M1 同窗，FOR UPDATE SKIP LOCKED 或单 cron 副本）**、RT-1 衍生、runbook §4 四条、在线用户管理面、ReBAC 触发表、MFA/密码合规、E-⑤/E-⑥、密钥管理面、**activelist 独立前端/独立出口（2026-10-08 评估定性：现在不做——activelist 无浏览器能力系 fail-closed 安全设计（SK 全量验签），非缺陷；后端栈本就独立可搬（deploy/compose.prod.yaml），前端随 zhuzhao-ui 零改动。触发=出现 zhuzhao 之外的用户群/独立团队迭代前端需求，届时路径=边缘鉴权下沉（oauth2-proxy/JWT 边缘层，Grafana 生态模式）→多 SPA ingress 分发，微前端维持明确不做；与 M-SSO 同窗重估）** |
 | **明确不做**（本期显式关闭） | 配置热重载（00 §2.2 建议标不做）、微前端/SSR/移动端（01 号 §1；~~i18n~~ 已升格可选项随 §5.4 定案，十批复审勘误）、Keycloak-Ory 替换（§26.1 既有）、OPA 迁移（既有）、通用流程引擎（16 号红线）、**运行时菜单 CRUD**（P4-W1 关闭；重建触发=多租户自定义菜单，已登记 00 §3 信号组 C） |
 
 ### 3.1 P4 期末三态复核（2026-09-29，Phase 4 收官）
@@ -45,6 +45,7 @@
 - **主动做栏全数完成**：前端 P4-W2–W5+P4-9 ✅、W1 菜单词表 ✅、W0 ✅、P4-7 验证码 ✅、④线四行 ✅（cron 调度评估→收归落地 e3c1ff4 / 文档治理批 ✅ / 随手项打包**部分散落**——正确性六件中四件已随各批修，其余登记 P5 观察池 / activelist 整改② ✅）；BK-21 泛化触发点仍未到（无高危用户面导出）——保持监听。
 - **持续监听栏两项升格完成**：E-⑥ 终败通知端点 ✅（P4-2 死信告警=其形态落地，taskrunner 终败→zhuzhao 分发 webhook 全链实测）；工单状态流转/待办通知的事件消费面仍未做（ticket_events 无读 API/无 emit——依赖 §23 翻案，保持监听）。
 - **明确不做栏无变化**；②③其余项（B7/B9/SSO/Mig/HR 等）均未触发信号，维持原态。
+- **新增登记（2026-10-08）**：activelist 独立前端/独立出口——评估定性**现在不做**，入持续监听栏。activelist 无浏览器能力系 fail-closed 安全设计（SK 全量验签，zhuzhao 网关为唯一正门），后端栈本就独立可搬（deploy/compose.prod.yaml 双网拓扑），前端随 zhuzhao-ui 零改动；触发=出现 zhuzhao 外用户群或独立团队迭代前端需求，届时渐进路径=边缘鉴权下沉（oauth2-proxy/JWT 边缘层）→多 SPA ingress 分发，微前端维持明确不做；与 M-SSO 同窗重估。
 
 ### 3.2 完成定义四条终验（02 §5.1，2026-09-29）
 
