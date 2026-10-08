@@ -49,7 +49,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **P2 运维小件（P4-8）** | panic 聚合查询 GET /audit/panics + 路由对账 GET /audit/reconcile + 指标采集预留 | ✅ 2026-09-29（随 W5 前端 audit 页同批交付） | `internal/service/panic_service.go` `migrations/000036` |
 | **自服务组织端点** | GET /user/orgs（富化行 org_member_role+ticket_scope+joined_at，catalogExempt） | ✅ 2026-09-29 | `internal/handler/org_handler.go` |
 | **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
-| **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 14 文件/108 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
+| **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 15 文件/115 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
 
 ### 未实现 / 延后（明确不做）
 - **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号启动时按 A2 取下一可用号（现 **000026**；000017 已被 IW1 占用）
