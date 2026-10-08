@@ -28,7 +28,7 @@
 | # | 场景 | 走查要点 | 约束/坑 |
 |---|------|----------|---------|
 | S8 | 工单发起 | form-create 渲染 `GET /ticket-types/:code/fields` schema（**4 元数据 GET 双页绑定保 operator 可拉**——十二批红线）；priority 1–4 越界 400；**G2 服务端校验（regex/必填）的 400 message 回填挂到对应表单项+设计器 validate_regex 与 form-create rules 对齐客户端预检（二十三批）** | 模板卡片消费 `GET /ticket-templates` |
-| S9 | 工单列表 | 过滤仅 `type_code/status/priority`（**无 keyword/日期/org**）；**⚠ 新发现：`assigned_to/created_by` 是裸用户 ID 且无批量用户名反查端点**——「处理人」列需 N+1 `GET /users/:id` | **W4 后端随批件：工单列表响应回填处理人/创建人姓名（或加批量反查端点，二选一）**（已回写 02 §2-W4） |
+| S9 | 工单列表 | 过滤=`type_code/status/priority/assignee=me/created_by=me/keyword/created_from~to`（**2026-10-08 批扩容**：keyword=标题 ILIKE 子串+纯数字 OR 工单 ID、时间=YYYY-MM-DD UTC 切日闭开区间、created_by=me 同 assignee 契约；原「仅 type_code/status/priority 无 keyword/日期」口径过时，**org 维度仍无**）；~~assigned_to/created_by 裸 ID N+1~~（W4 随批件已回填姓名） | 前端同批：标题链接=详情入口（操作列删除）+筛选区全量点亮（W4 冒烟扩断言） |
 | S10 | 工单详情 | 评论公开/备注内部（**内部备注仅创建人/处理人/admin 可见**，service.go:493-509 服务端过滤，前端同权限分层渲染）；关联正反向判重 409/自关联 400；**评论作者=裸 user_id——展示策略随 W4 姓名回填批扩展到 comments 或接受单次批量查询（勿 N+1 逐条）；勿规划「完整事件轴」——ticket_events 无读 API（P4-2 消费面未建），详情=评论/备注+状态字段（二十三批）** | Close/Assign 成功**返回 OK(c,nil) 无 body**——前端靠 query invalidation 刷新，勿依赖响应体 |
 | S11 | 工单处理 | 动作=assign（open→assigned/取消分派→open）/close（过状态机，非法转换 400+90002；已关 409+90004）/update（closed 拒 409）；**in_progress/pending_verify/rejected 三态经 API 不可达**（B3 端点在翻案线）——状态筛选下拉可列 6 态，流转按钮只有分派/取消/关闭 | 状态机从 ticket_types.transitions JSONB 构建，**前端勿写死转换图**（类型可配） |
 | S12 | 类型配置三件套 |（**fields 替换端点为全量替换语义——保存前危险确认弹窗，二十三批**） W1 整改后全 POST（update/delete/fields/replace 五路径对照在 02 §2-W1）；写端点挂 `ticket_type_write_btn` | ticket_type_manage 页 B 后=4 共享 GET（绑页=导航+元数据读，写须绑按钮） |

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,29 +80,16 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	}
 	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
-	// 拼接 WHERE：scope filter + 业务筛选
+	// 拼接 WHERE：scope filter + 业务筛选（业务条件抽 ticketListConds 供单测）
 	var conds []string
 	var args []any
 	if filter.Where != "" {
 		args = append(args, filter.Args...)
 		conds = append(conds, filter.Where)
 	}
-	if q.TypeCode != "" {
-		args = append(args, q.TypeCode)
-		conds = append(conds, fmt.Sprintf("type_code = $%d", len(args)))
-	}
-	if q.Status != "" {
-		args = append(args, q.Status)
-		conds = append(conds, fmt.Sprintf("status = $%d", len(args)))
-	}
-	if q.Priority != nil {
-		args = append(args, *q.Priority)
-		conds = append(conds, fmt.Sprintf("priority = $%d", len(args)))
-	}
-	if q.AssigneeID != nil {
-		args = append(args, *q.AssigneeID)
-		conds = append(conds, fmt.Sprintf("assigned_to = $%d", len(args)))
-	}
+	bizConds, bizArgs := ticketListConds(q)
+	conds = append(conds, bizConds...)
+	args = append(args, bizArgs...)
 	where := ""
 	if len(conds) > 0 {
 		where = " WHERE " + joinConds(conds)
@@ -128,6 +116,54 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	}
 	r.enrichUserNames(ctx, tickets)
 	return tickets, total, nil
+}
+
+// ticketListConds 业务筛选条件拼装（scope 之外；$n 占位与 args 严格同序，单测覆盖）
+func ticketListConds(q model.TicketListQuery) ([]string, []any) {
+	var conds []string
+	var args []any
+	if q.TypeCode != "" {
+		args = append(args, q.TypeCode)
+		conds = append(conds, fmt.Sprintf("type_code = $%d", len(args)))
+	}
+	if q.Status != "" {
+		args = append(args, q.Status)
+		conds = append(conds, fmt.Sprintf("status = $%d", len(args)))
+	}
+	if q.Priority != nil {
+		args = append(args, *q.Priority)
+		conds = append(conds, fmt.Sprintf("priority = $%d", len(args)))
+	}
+	if q.AssigneeID != nil {
+		args = append(args, *q.AssigneeID)
+		conds = append(conds, fmt.Sprintf("assigned_to = $%d", len(args)))
+	}
+	if q.CreatedBy != nil {
+		args = append(args, *q.CreatedBy)
+		conds = append(conds, fmt.Sprintf("created_by = $%d", len(args)))
+	}
+	// 标题关键字：ILIKE 子串（D2-21 转义 + ESCAPE）；纯数字追加 ID 精确匹配——
+	//「粘工单号」是运维高频动作，纯标题子串永远漏命中
+	if q.Keyword != "" {
+		args = append(args, "%"+escapeLike(q.Keyword)+"%")
+		kw := len(args)
+		if id, err := strconv.ParseInt(q.Keyword, 10, 64); err == nil {
+			args = append(args, id)
+			conds = append(conds, fmt.Sprintf("(title ILIKE $%d ESCAPE '\\' OR id = $%d)", kw, len(args)))
+		} else {
+			conds = append(conds, fmt.Sprintf("title ILIKE $%d ESCAPE '\\'", kw))
+		}
+	}
+	// 创建时间闭开区间（handler 已把 date 解析为 UTC 边界，to=次日 00:00）
+	if q.CreatedFromAt != nil {
+		args = append(args, *q.CreatedFromAt)
+		conds = append(conds, fmt.Sprintf("created_at >= $%d", len(args)))
+	}
+	if q.CreatedToAt != nil {
+		args = append(args, *q.CreatedToAt)
+		conds = append(conds, fmt.Sprintf("created_at < $%d", len(args)))
+	}
+	return conds, args
 }
 
 // enrichUserNames 批量回填创建人/处理人姓名（W4 随批件，03 S9：列表「处理人」列

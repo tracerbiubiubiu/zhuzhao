@@ -1608,9 +1608,39 @@
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "优先级（1紧急/2高/3中/4低）",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）",
                         "name": "assignee",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建人过滤，仅支持 me（当前用户，「我发起的」）",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期起（YYYY-MM-DD，UTC 切日，含当日）",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期止（YYYY-MM-DD，UTC 切日，含当日）",
+                        "name": "created_to",
                         "in": "query"
                     }
                 ],

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -26,11 +28,16 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Tags		ticket
 //	@Accept		json
 //	@Produce	json
-//	@Param		page		query	int		false	"页码"
-//	@Param		page_size	query	int		false	"每页条数"
-//	@Param		type_code	query	string	false	"工单类型"
-//	@Param		status		query	string	false	"工单状态"
-//	@Param		assignee	query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
+//	@Param		page			query	int		false	"页码"
+//	@Param		page_size		query	int		false	"每页条数"
+//	@Param		type_code		query	string	false	"工单类型"
+//	@Param		status			query	string	false	"工单状态"
+//	@Param		priority		query	int		false	"优先级（1紧急/2高/3中/4低）"
+//	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
+//	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
+//	@Param		keyword			query	string	false	"标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）"
+//	@Param		created_from	query	string	false	"创建日期起（YYYY-MM-DD，UTC 切日，含当日）"
+//	@Param		created_to		query	string	false	"创建日期止（YYYY-MM-DD，UTC 切日，含当日）"
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
 func (h *TicketHandler) List(c *gin.Context) {
@@ -64,6 +71,46 @@ func (h *TicketHandler) List(c *gin.Context) {
 		}
 		uid := c.GetInt64("userID")
 		q.AssigneeID = &uid
+	}
+	// created_by=me——「我发起的」维度（契约同 assignee=me：仅字面量 me，其余 400）
+	if a := c.Query("created_by"); a != "" {
+		if a != "me" {
+			response.BadRequest(c, "created_by 仅支持 me")
+			return
+		}
+		uid := c.GetInt64("userID")
+		q.CreatedBy = &uid
+	}
+	// 标题关键字：trim 后空 = 不过滤；上限 50 字符（防超长串进 ILIKE 全表扫）
+	if kw := strings.TrimSpace(c.Query("keyword")); kw != "" {
+		if len([]rune(kw)) > 50 {
+			response.BadRequest(c, "keyword 最长 50 字符")
+			return
+		}
+		q.Keyword = kw
+	}
+	// 创建日期范围：YYYY-MM-DD（UTC 切日）；to 转「次日 00:00」闭开上界（含 to 当天）。
+	// 写反（from ≥ to 上界）400——对齐审计列表 B4-6：让「写反」与「无数据」可区分
+	if v := c.Query("created_from"); v != "" {
+		t, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			response.BadRequest(c, "无效的 created_from 日期")
+			return
+		}
+		q.CreatedFromAt = &t
+	}
+	if v := c.Query("created_to"); v != "" {
+		t, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			response.BadRequest(c, "无效的 created_to 日期")
+			return
+		}
+		next := t.AddDate(0, 0, 1)
+		q.CreatedToAt = &next
+	}
+	if q.CreatedFromAt != nil && q.CreatedToAt != nil && !q.CreatedFromAt.Before(*q.CreatedToAt) {
+		response.BadRequest(c, "created_from 不能晚于 created_to")
+		return
 	}
 	resp, err := h.ticketService.List(c.Request.Context(), q, c.GetInt64("userID"))
 	if err != nil {

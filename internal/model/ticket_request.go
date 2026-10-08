@@ -1,6 +1,9 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
@@ -76,6 +79,17 @@ type TicketListQuery struct {
 	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
 	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
 	AssigneeID *int64
+	// Keyword 标题关键字：ILIKE 子串（D2-21 转义）；纯数字时 OR 工单 ID 精确匹配
+	//（运维「粘工单号」高频动作，纯标题子串会漏）。空 = 不过滤
+	Keyword string
+	// CreatedFromAt/CreatedToAt 创建时间区间：handler 把 YYYY-MM-DD 解析为 UTC 闭开
+	// 区间边界（FromAt=当日 00:00 UTC，ToAt=次日 00:00 UTC，与 timestamptz 比较）；
+	// nil = 不过滤
+	CreatedFromAt *time.Time
+	CreatedToAt   *time.Time
+	// CreatedBy 创建人过滤：handler 把 created_by=me 解析为当前用户 ID（同 assignee=me
+	// 契约；「我发起的」维度，与「我处理的」凑待办/已办两视角）
+	CreatedBy *int64
 }
 
 // ===== IW3/BK-18：类型/字段/模板管理 =====

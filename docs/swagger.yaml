@@ -1710,9 +1710,29 @@ paths:
         in: query
         name: status
         type: string
+      - description: 优先级（1紧急/2高/3中/4低）
+        in: query
+        name: priority
+        type: integer
       - description: 处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）
         in: query
         name: assignee
+        type: string
+      - description: 创建人过滤，仅支持 me（当前用户，「我发起的」）
+        in: query
+        name: created_by
+        type: string
+      - description: 标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）
+        in: query
+        name: keyword
+        type: string
+      - description: 创建日期起（YYYY-MM-DD，UTC 切日，含当日）
+        in: query
+        name: created_from
+        type: string
+      - description: 创建日期止（YYYY-MM-DD，UTC 切日，含当日）
+        in: query
+        name: created_to
         type: string
       produces:
       - application/json
