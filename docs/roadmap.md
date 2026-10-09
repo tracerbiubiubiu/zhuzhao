@@ -119,19 +119,27 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ---
 
-## Phase 4（实施中）与 Phase 5（规划草案，未排期）
+## Phase 4（已收口）与 Phase 5 / Phase 6（规划草案，未排期）
 
-> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：7 Wave + P4-9 部署件 + 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 全交付，phase4 分支已合回 main。
+> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：批次总览七件（W0–W5 六波 + P4-9 部署件）+ 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 加成交付，phase4 分支已合回 main。
 >
-> **Phase 5 = 前端可视化配置线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体底座。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
+> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S9 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
 
 | 段 | 内容 | 性质 | 前置 |
 |----|------|------|------|
-| P5-S1 | 动态表单可视化设计器（form-create designer 转正；字段 schema 存储不变） | 纯前端 | Phase 4 收口 |
-| P5-S2 | 工单流程状态图可视化设计器（states/transitions 画布化；transitions JSONB 不变） | 纯前端为主 | Phase 4 收口 |
+| P5-S1 | 动态表单可视化设计器与字段自动化（12-frontend 阶段2 转正；字段 schema 存储不变；推荐自研设计器 sortablejs+属性面板，form-create designer 作 spike 对照；+ 字段计算/提交时联动——白名单 Go 侧求值器为 S1/S3 公共件） | 纯前端 + 求值器后端件 | 前置已满足 |
+| P5-S2 | 工单流程状态图可视化设计器（states/transitions 画布化；transitions JSONB 不变；现成画布组件 LogicFlow/vue-flow spike 拍板，bpmn.js 排除） | 纯前端为主 | 前置已满足 |
 | P5-S3 | 流程运行语义配置化（转换动作权限/自动分派/审批节点，蓝本 = [phase3/10](./phase3/10-ticket-business.md)） | 后端为主 | 🚦 §23 工单自研翻案 + S1/S2 收口 |
-| P5-S4 | taskrunner 任务面配置人性化（cron 构造器/动作下拉选名 + 创建时预校验/params 按动作 schema 渲染表单） | 前端为主 + 动作元数据小批 | Phase 4 收口（元数据面衔接 taskrunner.md「能力目录」定稿方案，不提前触发跨服务目录） |
-| P5-S5 | 对象存储底座与富媒体（MinIO 预签名/头像上传/工单附件/富文本字段类型） | 后端底座 + 前端上传面 | Phase 4 收口（存储底座收编 [phase2/10](./phase2/10-storage.md)/IW2 现成设计实施；富文本字段类型为新增设计） |
+| P5-S4 | 管理面配置人性化（taskrunner 任务面：cron 构造器/动作下拉选名 + 创建时预校验/params 按 schema 渲染表单） | 前端为主 + 动作元数据小批 | 前置已满足（元数据面衔接 taskrunner.md「能力目录」定稿方案，不提前触发跨服务目录） |
+| P5-S5 | 对象存储底座与富媒体（MinIO 预签名/头像上传/工单附件/富文本字段类型） | 后端底座 + 前端上传面 | 前置已满足（存储底座收编 [phase2/10](./phase2/10-storage.md)/IW2 现成设计实施；富文本字段类型为新增设计） |
+| P5-S6 | 消息通知（企业统一消息平台渠道[全渠道单接口]/消息模板·内容与人员参数化/工单状态流转触发/发送记录；通知配置页自 S4 迁入=通知中心页面族） | 后端为主 + 页面 | 前置已满足（P4-2 通知通道能力延伸，非 §23 翻案） |
+| P5-S7 | AI 助手（平台内对话；长线=AI 协助业务，示例=风险定性分析/自动下发工单——概要登记，形态未定参考 fastclaw） | 概要登记 | LLM 供给与形态启动批拍板（AI 代操作须收敛操作者权限+留痕） |
+| P5-S8 | 数据大屏（只读展示层） | 🚦 触发驱动后置 | 业务数据积累 + 明确受众（所有者明示后置） |
+| P5-S9 | 威胁情报缓存代理（对已有情报应用做能力补全：TTL 7/30 天缓存库，查询先缓存后回源） | 后端为主（通用件） | 前置已满足（上游 API 契约由企业方提供；消费方 = phase6 风险模块 R1 情报源） |
+
+### Phase 6：风险管理模块（2026-10-08 立项，规划草案未排期；[design-decisions §28](./design/design-decisions.md)）
+
+> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（至少 S1/S2/S6）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；MVP ≈ 4–6 周。
 
 ---
 
@@ -178,8 +186,9 @@ docs/
 │   ├── 10-ticket-business.md   # 已编写（工单业务能力闭环 SSOT）
 │   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
 │   └── 02–09 待编写（按需启用，未排期）
-├── phase4/                     # Phase 4 前端落地（实施中：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
+├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
 ├── phase5/                     # Phase 5 规划草案（前端可视化配置线，未排期）
+├── phase6/                     # Phase 6 规划草案（风险管理模块，未排期；硬前置=phase5 S1/S2/S6）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档

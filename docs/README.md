@@ -80,8 +80,9 @@ docs/
 │   ├── 13-implementation-plan.md    # 执行计划（排期 SSOT：现行主链里程碑/人日/依赖）
 │   └── 16-external-integration.md   # 外部服务集成配套（taskrunner/activelist 的 zhuzhao 侧能力清单）
 │
-├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；实施中）
+├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
 ├── phase5/                          # Phase 5：前端可视化配置线（规划草案，未排期；SSOT = phase5/README.md）
+├── phase6/                          # Phase 6：风险管理模块（规划草案，未排期；硬前置=phase5 S1/S2/S6；SSOT = phase6/README.md）
 │
 ├── review/                          # 审查记录（00–10 = Phase 1/2 历史快照；11 = 活文档·项目控制台）
 ├── api/                             # API 契约（后端 SSOT）

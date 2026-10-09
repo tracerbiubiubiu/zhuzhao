@@ -231,6 +231,8 @@ CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE read_
 3. 反射事件注册 → 显式 `TicketHooks` 接口
 4. （新增）引擎内嵌用户身份 → 用 `ApprovalRequirement` + `StateController` 委托 L2/L3，引擎不持有用户/组织概念
 
+> **2026-10-08 独立复核**：上表 12 项借鉴点与上述 4 条避坑局限经 easy-workflow 参考实现**代码级核验全部证实**（MIT；31 文件/4798 行；其零测试/裸 map 无锁并发/改定义即在途实例漂移等工程债亦在册）——"借设计不引库"结论维持，本节可放心作为翻案批实施蓝本；核验摘要见 [phase5/README §P5-S3](../phase5/README.md)。
+
 ### 4.3 数据模型
 
 > **2026-08-31 注（与 §4.10 决议的衔接）**：① 本节 000019 DDL **尚未含发布快照表**——按决议 4（版本/发布快照），快照表 DDL（`(workflow_id, version)` 唯一）随 7-0 修订补充，届时 Deploy 动作一并落地；② 节点 meta 示例中的 `min_level` 已被决议 1 **弃用**（改 `Assignee{rule,values}` 策略模型），示例待 7-0 更新，以决议为准。
