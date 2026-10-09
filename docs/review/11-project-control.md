@@ -3,6 +3,7 @@
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
 > 更新日期：**2026-09-27**（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 2026-10-09 文档批次（doc-only）：phase5 规划扩至十段（S10 工单协作与提醒——抄送/标签/角标/节点超时/导出+BK-21，场景差距核查四线合并产出）+ §4 迁移谱系对账（P4-2 实落 000033 单号、下一编号 000041）+ phase6 立项登记与前置扩展（S1/S2/S6+S10）+ UAA 全移权评估与角色壳方案（phase5 §6，议题搁置）
 > 2026-09-22 文档批次（doc-only）：Phase 4 规划批最小回填（十九批治理）——00-03 号规划定稿、十六批安全审计登记（→W0）、虚标勘误四处、迁移谱系（W1 占 000030/31）、§6 TC1 回标（详见 phase4/ 各文件）
 > 2026-09-10 文档批次：四仓文档对账同步批（doc-only）。
 > 2026-09-20 文档批次（doc-only）：① 工单类型级可见性策略设计输入落档（10 号新增 §10 = S1 设计+四铁律+演进阶梯 T0–T7；11-authz §5 触发表补行 #7 + 中间档位说明；12-frontend 补 §3.6 配置页规格——均随 §23 翻案批取用，不驱动当前开发）；② Phase 4 规划素材盘点起步（新建 `phase4/00-planning-inventory.md`：85 登记点归五主轴+触发信号雷达表+能力对标检查补录 §8），本文件 §7 导航树补 phase4 行。

@@ -123,7 +123,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 > **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：批次总览七件（W0–W5 六波 + P4-9 部署件）+ 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 加成交付，phase4 分支已合回 main。
 >
-> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S9 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
+> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S10 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
 
 | 段 | 内容 | 性质 | 前置 |
 |----|------|------|------|
@@ -140,7 +140,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ### Phase 6：风险管理模块（2026-10-08 立项，规划草案未排期；[design-decisions §28](./design/design-decisions.md)）
 
-> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（至少 S1/S2/S6）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；MVP ≈ 4–6 周。
+> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（S1/S2/S6+S10）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；MVP ≈ 4–6 周。
 
 ---
 
@@ -189,7 +189,7 @@ docs/
 │   └── 02–09 待编写（按需启用，未排期）
 ├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
 ├── phase5/                     # Phase 5 规划草案（前端可视化配置线，未排期）
-├── phase6/                     # Phase 6 规划草案（风险管理模块，未排期；硬前置=phase5 S1/S2/S6）
+├── phase6/                     # Phase 6 规划草案（风险管理模块，未排期；硬前置=phase5 S1/S2/S6+S10）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档
