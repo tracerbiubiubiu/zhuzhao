@@ -76,7 +76,7 @@
 > **BK-19（中优，非随手）**：工单 handler 层 Go 测试（TC-1），见 00 §9。
 > **BK-20** ✅ **已实施（2026-09-03，commit d4f5c17）**：OrgRepo.Delete / DeleteVgWithOwnerCleanup 同事务加 `status<>'closed'` 计数守卫；ErrOrgHasOpenTickets（50013→409）；TestBK20 集成测试 + acceptance 2c D6 补 3 断言；全门禁绿。已结工单委托残留=档案连续性登记不修（显式断开=删除前 SetOwners 清空）；语义 SSOT = design-decisions §21。
 > **BK-21（已登记 2026-09-08，触发驱动）**：IW4 护栏泛化——哨兵 + AST 守护仅覆盖 ticket_repo，新资源接 L2 时漏接 GetFilter 仍=静默全量；随首个新资源接 L2 / 导出功能实施（来源 = OPA/ReBAC 迁移复核，11-authz §9；详见 00 §9 / 11 §6+§8 B12）。
-> **在线用户管理面（触发驱动随手项，2026-09-08 登记；触发条件 = 强制下线/会话审计诉求或 M-SSO 多端会话管理，SSOT 见 review/11 §8 随手项）**：会话吊销原语全现成（`user:disabled` / SCAN `refresh:<uid>:*` / `blacklist:at:<jti>`），缺的仅管理端点——基础版 0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）；RuoYi-Go 双项目均有此面（反面参照：Kun 版用 KEYS 扫描）。
+> **在线用户管理面（触发驱动随手项，2026-09-08 登记；触发条件 = 强制下线/会话审计诉求或 M-UAA 多端会话管理，SSOT 见 review/11 §8 随手项）**：会话吊销原语全现成（`user:disabled` / SCAN `refresh:<uid>:*` / `blacklist:at:<jti>`），缺的仅管理端点——基础版 0.5–1 天；按设备精确强退需 RT value 改 JSON 存 AT jti（+1 天）；RuoYi-Go 双项目均有此面（反面参照：Kun 版用 KEYS 扫描）。
 
 > **IW3 备注**：BK-18 与 Phase 3 引擎零耦合——管理的是类型/字段/模板而非 workflow_definitions，Phase 3 落地后管理面原样复用，故不等 Phase 3。
 > activelist（ADR-003）**不属独立窗口**——~~它是 Phase 3 范畴，即 README §2.1.0 的 Wave W4（入口 = Wave W2 完成 + 启用条件命中）~~ **2026-09-03 更新：W4 已被 M-A 取代（§23.2 独立实现），与其他里程碑无链式依赖**；前置 = ~~共享 utils~~ ✅ 已完成（zhuzhao-utils v0.2.0）+ 批次 B 网关化（§25.5）；zhuzhao 侧配套见 [16 号](./16-external-integration.md)，勿在此表挂靠。

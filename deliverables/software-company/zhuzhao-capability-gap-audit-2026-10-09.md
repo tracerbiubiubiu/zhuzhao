@@ -86,7 +86,7 @@ Q1 多源汇聚✅｜Q2 合并=跨指纹缺口（P1-5）｜Q3 发给系统负责
 
 **分层定论**：认证 ✅ 可（§24，零改动）；角色分配 ✅ 可（entitlement+claims 映射）；L1 ⚠ 可谈（a=token claims 搬词表维护贵 / **b=UAA 管到角色、路径级留本地【推荐】**，代码影响=getRoles 数据源可切）；**L2/L3 ❌ 不可移交**（组织属主/委托/ticket_visibility 是平台私有数据语义，判定点必须在数据处——§25 定版；Keycloak 类同理）。
 
-**现状基线（代码）**：SSO 零落地（无 /auth/sso 路由/config 段/service 引用）；users 预埋 source/external_id/synced_at（000012）但 Go model 未映射；账密双轨=superadmin+source=local 保留、source=hr SSO 上线后默认禁（config `auth.local_password_for_hr`，过渡期不受影响）。
+**现状基线（代码）**：SSO 零落地（无 /auth/sso 路由/config 段/service 引用）；users 预埋 source/external_id/synced_at（000012）但 Go model 未映射；账密双轨=superadmin+source=local 保留、source=hr SSO 上线后默认禁——**设计已定（dd §24）、开关未落码**（`auth.local_password_for_hr` 随 M-UAA 件 4 账号消费者实现；现状无 source=hr 账号，过渡期全账密不受影响）。
 
 **「角色壳」方案（谈判首选，形式 b 落地设计）**：UAA 配 3–5 粗粒度应用角色+界面分配（其权限管理存在感真实满足——Keycloak/Okta/Azure AD 同款）；zhuzhao 登录按 claims **覆盖式同步**本地映射（**单向收敛**：本地细角色不反向暴露），L1/L2/L3 照常。四拍板点：单向收敛 / **fail=AT 期不重查仅登录刷新同步**（天然降级）/ 登录同步落审计+**定时对账防漂移** / 壳厚分级（**L0 只管应用准入起谈→L1 粗角色**）。代码代价仅 getRoles 接映射结果。
 

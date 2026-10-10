@@ -81,7 +81,7 @@
 | 项 | 约定 |
 |---|---|
 | request_id | `X-Request-ID` 头进出全程透传；zhuzhao 生成（`req-`+32hex）→ 透传下游 → 回调带回；与业务 body 内 request_id 同键关联（job_runs / trace_id） |
-| 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/auth/caller（仅服务间验签场景）/ip；**`auth` 身份平面**（jwt/aksk/none，2026-09-16 归因口径拍板）：operator=谁在操作（username→签名透传 X-Operator→anonymous），auth=以什么形式接入——两维分列避免「未登录人类」与「服务动作」语义混叠，M-SSO 后 auth 可细分为 jwt:local/jwt:sso；**适用范围：仅多身份平面服务（zhuzhao 网关/IAM）需要 `auth`，单平面子服务（taskrunner/activelist 纯 AK/SK）可省略**；`caller` 三仓恒出（无验签场景空串占位，行结构稳定供 ES 索引）；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
+| 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/auth/caller（仅服务间验签场景）/ip；**`auth` 身份平面**（jwt/aksk/none，2026-09-16 归因口径拍板）：operator=谁在操作（username→签名透传 X-Operator→anonymous），auth=以什么形式接入——两维分列避免「未登录人类」与「服务动作」语义混叠，M-UAA 后 auth 可细分为 jwt:local/jwt:sso；**适用范围：仅多身份平面服务（zhuzhao 网关/IAM）需要 `auth`，单平面子服务（taskrunner/activelist 纯 AK/SK）可省略**；`caller` 三仓恒出（无验签场景空串占位，行结构稳定供 ES 索引）；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
 | 审计 | **审计正本全在 zhuzhao**：请求级（audit_logs，脱敏+截断）+ 登录显式审计 + 业务操作点显式发布；服务自身零业务语义日志 |
 | 判定日志 | L2/L3 判定落 `policy_evaluation_logs`（B11①，E-① 已实施）；归档超期导出 JSONL 后删行（B11②/E-③，保留期 180 天可配置） |
 | 日志框架 | utils `logger`（slog + lumberjack，JSON Lines，字段稳定命名供 ES 演进） |
@@ -157,7 +157,7 @@
 4. **编号 namespace**：W（Wave）/ IW（独立窗口）/ BK（backlog）/ E/D（16 号配套）/ P（待拍板）/ F/C/AB（各评审文档本地）——引用前必查归属；
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
 6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增；
-7. **分支与版本**：功能分支开发（如 `feature/phase-2`），合入前全门禁；zhuzhao-utils 语义化版本，发版后各仓 pin。**维护态分支口径（2026-09-16 拍板，方案 a 后收敛）**：四仓 **main 单主干**——小批改动直接提交 main 推送（CI 即门禁）；隔离需求出现时（如 M-SSO）开短命功能分支，合入 main 后即删（远端+本地），不留阶段名常驻分支。
+7. **分支与版本**：功能分支开发（如 `feature/phase-2`），合入前全门禁；zhuzhao-utils 语义化版本，发版后各仓 pin。**维护态分支口径（2026-09-16 拍板，方案 a 后收敛）**：四仓 **main 单主干**——小批改动直接提交 main 推送（CI 即门禁）；隔离需求出现时（如 M-UAA）开短命功能分支，合入 main 后即删（远端+本地），不留阶段名常驻分支。
 
 ## 13. SSOT 索引
 

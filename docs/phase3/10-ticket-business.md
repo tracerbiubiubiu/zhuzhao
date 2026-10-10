@@ -642,7 +642,7 @@ CREATE INDEX idx_ticket_events_signal_unprocessed ON ticket_events(event_type, p
 
 ## 10. 类型级可见性策略（2026-09-20 登记——翻案重启点新增设计输入）
 
-> **状态**：设计输入，随 §23 翻案批落地（不驱动当前开发）。2026-09-20 类型级可见性讨论产出；触发判断点与 [11-authz §5](../phase2/11-authz-architecture-review.md) 联动（本批补行 #7 + 中间档位说明）；前端配置页规格见 [12-frontend §3.6](./12-frontend.md)。
+> **状态**：设计就绪；**T0 触发已命中（2026-10-09 dd §29 翻案成立）——待「工单恢复批」立项后实施（该批未排期；含 10.2 四铁律拍板[回溯生效 vs 建单时快照]）**。2026-09-20 类型级可见性讨论产出；触发判断点与 [11-authz §5](../phase2/11-authz-architecture-review.md) 联动（本批补行 #7 + 中间档位说明）；前端配置页规格见 [12-frontend §3.6](./12-frontend.md)。
 >
 > **需求形态**：按工单类型配置不同可见性——默认策略 = 发起人 ∪ 参与人 ∪ 抄送人可见（A 类）；某类型 = 指定部门全员可看（B 类）。业界同构：Salesforce OWD+sharing rules / Jira issue security scheme / JSM Request Participants。
 
@@ -670,7 +670,7 @@ participants 维护点 = Create（发起人）/ assignee 变更 / 评论 @ / 抄
 
 | # | 触发信号 | 跳到 | 业界锚点 |
 |---|---|---|---|
-| T0 | §23 工单翻案条件命中 | 本节 S1 落地（含 10.2 四铁律拍板） | Jira security scheme / Salesforce OWD+sharing rules |
+| T0 | §23 工单翻案条件命中 **✅ 已命中（2026-10-09，dd §29）** | 本节 S1 落地（含 10.2 四铁律拍板）——随「工单恢复批」立项（未排期） | Jira security scheme / Salesforce OWD+sharing rules |
 | T1 | 管理员要命名策略表达不了的条件（"P2 以上且部门=X 可见"） | **CEL 表达式档**（引擎仍进程内；写时编译校验+沙箱禁 I/O 限时+重叠语义属性测试） | K8s ValidatingAdmissionPolicy / GCP IAM conditions |
 | T2 | 单票例外共享诉求（**不可转授**的二部图直配） | `ticket_shares` 表 + override 列激活（谓词新增 EXISTS 分支，来源标记 admin/auto）；**出现转授即升 T3** | Salesforce manual share（多来源同表）/ GitHub collaborator |
 | T3 | 图语义：共享转授链 / 跨资源链 / 组合语义（并∩差）超 CEL | ReBAC 评估（= 11-authz §5 #1/#3 绊线；先过 tuple 双写一致性、activelist 行级自治冲突、List 适配三关） | Drive→Zanzibar（驱动=folder 级联+跨产品统一，非单资源直配不够用） |

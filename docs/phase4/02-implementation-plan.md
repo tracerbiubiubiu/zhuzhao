@@ -45,7 +45,7 @@
 - **主动做栏全数完成**：前端 P4-W2–W5+P4-9 ✅、W1 菜单词表 ✅、W0 ✅、P4-7 验证码 ✅、④线四行 ✅（cron 调度评估→收归落地 e3c1ff4 / 文档治理批 ✅ / 随手项打包**部分散落**——正确性六件中四件已随各批修，其余登记 P5 观察池 / activelist 整改② ✅）；BK-21 泛化触发点仍未到（无高危用户面导出）——保持监听。
 - **持续监听栏两项升格完成**：E-⑥ 终败通知端点 ✅（P4-2 死信告警=其形态落地，taskrunner 终败→zhuzhao 分发 webhook 全链实测）；工单状态流转/待办通知的事件消费面仍未做（ticket_events 无读 API/无 emit——依赖 §23 翻案，保持监听）。
 - **明确不做栏无变化**；②③其余项（B7/B9/SSO/Mig/HR 等）均未触发信号，维持原态。
-- **新增登记（2026-10-08）**：activelist 独立前端/独立出口——评估定性**现在不做**，入持续监听栏。activelist 无浏览器能力系 fail-closed 安全设计（SK 全量验签，zhuzhao 网关为唯一正门），后端栈本就独立可搬（deploy/compose.prod.yaml 双网拓扑），前端随 zhuzhao-ui 零改动；触发=出现 zhuzhao 外用户群或独立团队迭代前端需求，届时渐进路径=边缘鉴权下沉（oauth2-proxy/JWT 边缘层）→多 SPA ingress 分发，微前端维持明确不做；与 M-SSO 同窗重估。
+- **新增登记（2026-10-08）**：activelist 独立前端/独立出口——评估定性**现在不做**，入持续监听栏。activelist 无浏览器能力系 fail-closed 安全设计（SK 全量验签，zhuzhao 网关为唯一正门），后端栈本就独立可搬（deploy/compose.prod.yaml 双网拓扑），前端随 zhuzhao-ui 零改动；触发=出现 zhuzhao 外用户群或独立团队迭代前端需求，届时渐进路径=边缘鉴权下沉（oauth2-proxy/JWT 边缘层）→多 SPA ingress 分发，微前端维持明确不做；与 M-UAA 同窗重估。
 
 ### 3.2 完成定义四条终验（02 §5.1，2026-09-29）
 

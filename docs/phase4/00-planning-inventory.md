@@ -21,7 +21,7 @@
 | `docs/review/11-project-control.md` §6/§8 | 健康状态表 + A/B/独立窗口三档 + 随手项 | **遗留问题权威清单** |
 | `docs/phase2/00-implementation-plan.md` §9 | 代码级 backlog（BK 系列，与 11 号互为镜像） | 代码债权威 |
 | `docs/phase3/00-startup-checklist.md` | 决策清单 3 项、§74 随手项、IW2 剩余 | 启动检查口径 |
-| `docs/phase3/13-implementation-plan.md` / `14-planning-overview.md` | M-SSO/M-Mig/M-HR/M1 触发条件、M5 触发项表、U 不确定项、迁移号规划 | 排期 SSOT |
+| `docs/phase3/13-implementation-plan.md` / `14-planning-overview.md` | M-UAA/M-Mig/M-HR/M1 触发条件、M5 触发项表、U 不确定项、迁移号规划 | 排期 SSOT |
 | `docs/phase3/16-external-integration.md` | taskrunner 后置项、密钥管理、E-⑤/⑥、activelist 契约整改 | 外部集成 SSOT |
 | `docs/phase3/01/02/03/06/07/09/11/12/15` | 各子能力文档内嵌🚦触发项（多实例/HA/审计/安全/平台/分离/前端/脚本平台） | 子能力设计源 |
 | `docs/phase2/01-auth-enhance.md` / `10-storage.md` / `11-authz-architecture-review.md` | IW2 两件、ReBAC 触发表、PG RLS 预案、scope 枚举映射表 | Phase 2 遗留 |
@@ -75,7 +75,7 @@
 
 | 项 | 内容 | 触发/量级 |
 |----|------|-----------|
-| M-UAA（原 M-SSO 并入件 1，2026-10-09 立项 dd §30，[17 号](../phase3/17-uaa-integration.md)） | SSO=§24 设计已定稿（SLO 单点登出联动随件 1；纯网关模型下降级为「非网关路径独立 UI」可选项）+ MQ 数据面（资源上报/三消费者/数据权限回传）；独立部署保证三条 | 进内网拿到公司 OAuth2.0 接入信息 + MQ 资源即开工；**2–4 周（MQ 面）+ SSO 件 2–3 人日（mock IdP 可离线先行）** |
+| M-UAA（原 M-SSO 并入件 1，2026-10-09 立项 dd §30，[17 号](../phase3/17-uaa-integration.md)） | SSO=§24 设计已定稿（SLO 单点登出联动随件 1；纯网关模型下降级为「非网关路径独立 UI」可选项）+ MQ 数据面（资源上报/三消费者/数据权限回传）；独立部署保证三条 | 进内网拿到公司 OAuth2.0 接入信息 + MQ 资源即开工；**3–5 周全含（MQ 面 2–4 周 + SSO 件 2–3 人日；mock IdP 可离线先行）** |
 | M-Mig | 内网网络/凭据对接 + **正式命名 + module path 迁移**（与换 Git 平台合并一次）+ **工单对接形态/Phase 2 资产处置拍板**（保留兜底/适配层/下线）+ 07/08 生产项重估（CORS/限流/审计保留期）+ 内部工单平台权限表达力评估（对照三轴模型，§23.3） | 迁移窗口 |
 | M-HR | 预留接口版 HRFetcher ~~已在位~~（⚠ 2026-09-22 勘误：**未落码**，全仓无此类型，13 号「在位」/收官报告「✅ 完成」均虚标——真实对接时一并开工）；**启动拍三项**（离职在途工单处置策略/部门撤销×tickets.org_path 级联完整性须复用 OrgRepo.Move/跨部门权限分配规则），届时列硬验收项 | 真实对接；3–5 人日 |
 | taskrunner PG 备份口径 | job_runs 保留期一并拍 | 随 M4（**仅 closure-report §五 登记，最冷门**） |
@@ -96,9 +96,9 @@
 | 文档治理 | ADR 补 5–8 篇（三层鉴权/ltree 选型/双 Token+黑名单/迁移编号治理/ticket_visibility/虚拟组）/ architecture.md（1,899 行）+ design-decisions.md（1,414 行）拆分 / S-5 docs 中 15 处失效 `internal/*` 旧路径 / S-2 策略库「🟡 库就绪待接线」标注 / S-6 ADR-003 版本号滞后 / phase2/00:361 文档失实更正（tickets 无 version 列实走 status-CAS） | 纯文档约 1 天 |
 | cron 调度依赖 | zhuzhao 自身无 cron 引擎（无 robfig/cron）；审计归档 cron 由 taskrunner 侧定义并回调（audit_archive.go 注释）。**风险：taskrunner 不可用时审计归档无自动周期触发**。评估是否引入轻量 cron 或接受外部依赖 | 初版估 0.5 天；**终版=收归实施批 1.5–2 天（含 taskrunner 退役），以 02 号穿插池为准（2026-09-21 拍板）** |
 
-### 2.5 主轴⑤ 工单翻案线（全部挂起，等 §23 翻案条件）
+### 2.5 主轴⑤ 工单翻案线（✅ 翻案条件已命中 2026-10-09 dd §29——复活清单待排期）
 
-翻案条件 = 公司平台无法承接工单诉求 或 迁移取消（design-decisions §23）。翻案后整套复活：BK-19 handler 测试（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）/ B1 Step 7 设计期拍板清单（SLA 暂停态/通知矩阵/§2.5 二选一/signal 双写/min_level 悬空→Assignee{rule,values}/分派深度/报表深度/TB 负向）/ B2 权限码 seed（ticket:approve 等）/ B3 in_progress·pending_verify 推进端点 / B4 BranchedStateEngine 本体 / B5 / 10 号重启点（7-0 修订/发布快照表 DDL/§4 节点 meta 更新）/ 12 号 W2·7c 前端页（审批人配置/审批操作/SLA 报表）/ created_org_id（Step 7e 报表按需）/ 审批流引擎选型。**新增设计输入（2026-09-20）**：类型级可见性策略（按类型配可见性：默认=发起人∪参与人∪抄送人，B 类=部门锚定）——S1 设计+四铁律+演进阶梯 T0–T7 判断点已落 [10 号 §10](../phase3/10-ticket-business.md)，触发表联动 [11-authz §5](../phase2/11-authz-architecture-review.md)（补行 #7+中间档位说明），前端配置页规格 [12-frontend §3.6](../phase3/12-frontend.md)；随 T0 翻案批取用。
+**✅ 翻案已发生（2026-10-09，design-decisions §29）**：内部工单平台二开对接成本高、自研更适配——翻案条件实证成立，本轴从「挂起」转「**复活清单待排期**」（归入「工单恢复批」，**该批未立项排期**；S3 解冻拆 S3a/S3b、SLA 引擎不建=S10 轻量版，随 dd §29）。原挂起期清单（翻案条件 = 公司平台无法承接工单诉求 或 迁移取消，§23 原文）：BK-19 handler 测试（~0.5–1 天：httptest 绑定/L1 拒绝/正常路径）/ B1 Step 7 设计期拍板清单（SLA 暂停态/通知矩阵/§2.5 二选一/signal 双写/min_level 悬空→Assignee{rule,values}/分派深度/报表深度/TB 负向）/ B2 权限码 seed（ticket:approve 等）/ B3 in_progress·pending_verify 推进端点 / B4 BranchedStateEngine 本体 / B5 / 10 号重启点（7-0 修订/发布快照表 DDL/§4 节点 meta 更新）/ 12 号 W2·7c 前端页（审批人配置/审批操作/SLA 报表）/ created_org_id（Step 7e 报表按需）/ 审批流引擎选型。**新增设计输入（2026-09-20）**：类型级可见性策略（按类型配可见性：默认=发起人∪参与人∪抄送人，B 类=部门锚定）——S1 设计+四铁律+演进阶梯 T0–T7 判断点已落 [10 号 §10](../phase3/10-ticket-business.md)，触发表联动 [11-authz §5](../phase2/11-authz-architecture-review.md)（补行 #7+中间档位说明），前端配置页规格 [12-frontend §3.6](../phase3/12-frontend.md)；T0 已随翻案解锁，随工单恢复批取用。
 
 ---
 
@@ -122,7 +122,7 @@
 
 | 触发信号 | 触发后做什么 | 编号/量级 |
 |----------|--------------|-----------|
-| 进内网/拿到 OAuth2.0 接入信息 | M-UAA（原 M-SSO 并入件 1；17 号；SLO 随件 1） | 2–4 周（MQ 面）+ SSO 件 2–3 人日 |
+| 进内网/拿到 OAuth2.0 接入信息 | M-UAA（原 M-SSO 并入件 1；17 号；SLO 随件 1） | 3–5 周全含（MQ 面 2–4 周 + SSO 2–3 人日） |
 | 迁移窗口 | M-Mig 全套（含工单对接形态拍板） | 13 号 |
 | HR 对接启动 | M-HR + 三拍板（离职在途单=业务后果最重） | 3–5 人日 |
 | taskrunner M4 | PG 备份口径 + job_runs 保留期 | closure-report |
@@ -134,7 +134,7 @@
 |----------|--------------|------|
 | 首个新资源接 L2 / 导出功能 | BK-21 护栏泛化（导出必须接 L2） | BK-21/B12 |
 | 工单附件需求启动 | storage（先拍三决策点；占号按 A2） | IW2/10 号 |
-| 强制下线/会话审计诉求 或 M-SSO 多端会话 | 在线用户管理面（原语全现成；基础版 0.5–1 天，按设备精确强退 +1 天） | 11 §8 |
+| 强制下线/会话审计诉求 或 M-UAA 多端会话 | 在线用户管理面（原语全现成；基础版 0.5–1 天，按设备精确强退 +1 天） | 11 §8 |
 | 浏览器端大文件导入 | per-前缀 body 上限 | 16 号 |
 | 外部 M2M 调用方出现 | 密钥管理面（与 PAT 合并规划） | 09/16 号 |
 | 第三方系统需接任务回调（外部 callback 诉求） | **决策树（2026-09-22 业界对照+十七批补第 0 档）**：**⓪内部新服务（最先命中）=taskrunner 配置 action→base URL 映射，调用方只传 action——不是 code，注册表只给管理员登记外部 HTTPS 用**；①**拉模式首选倾向**——外部持 PAT（P4-6）轮询 GET /tasks/:id 或事件查询，零新增出站面、复用三层鉴权（Stripe/GitHub webhook+polling 双通道惯例）；②必须实时+消费方可控 → 预注册 code 模式（代号→注册表映射 URL）；③消费方自带任意 URL → egress proxy 沙箱（Stripe Smokescreen 形态：DNS 解析后校验 IP 非链路本地/私有/metadata 段，防 rebinding）；④网络层出站控制（K8s NetworkPolicy/egress gateway，随部署决策清单）——W0 SSRF 修复后 callback 一律服务端定（用户级 URL 已拒），外部需求出现才开此面；**两条设计约束（2026-09-22 十八批补）：不做 push+pull 双执行引擎（拉模式=读 API 消费方式，非第二套执行器——防「zhuzhao 再轮询 taskrunner 做 handler」误解）；将来外部 webhook payload=通知型（task_id/status/run_id），业务细节以 GET 详情为准、webhook 不当 RPC（SaaS 事件模型惯例）** | 02 §2-W0/十六批 |
@@ -162,7 +162,7 @@
 
 | 触发信号 | 触发后做什么 |
 |----------|--------------|
-| §23 工单翻案条件命中 | 主轴⑤整套复活 |
+| ~~§23 工单翻案条件命中~~ **✅ 已命中（2026-10-09，dd §29）** | 主轴⑤复活 →「工单恢复批」待排期（§2.5 清单；S3a/S3b 拆段与 SLA 不建随 dd §29） |
 | activelist 独立项目成型 | G1/G3/G4 蓝图项（E13 已并入批次 B 完成；ADR-003） |
 | ReBAC 触发表 6 条任一（跨资源关系链/per-resource 临时共享/策略运行时可配/多维组织/统一 PDP/ListObjects 核心化） | 评估 ReBAC 转向（§9.2：最现实=前两条；OPA 已复核不迁移） | 
 | 脚本平台诉求 | 15 号重读 §2–§6；选 Dagu 先过 GPL-3.0 法务确认 |
