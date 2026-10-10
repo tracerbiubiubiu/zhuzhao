@@ -180,13 +180,15 @@
 
 ## 6. 对接预留接口清单（内网前置，2026-10-09 补充）
 
+> **口径注（同日更新）**：角色壳方案（原推荐的形式 b）已被公司指南落地取代——公司实际模式为**自研类资源上报+MQ 全量下发**（phase3/17 M-UAA），与角色壳不矛盾但路径更明确。
+
 > **背景**：平台生产目标 = 公司内网。所有对接场景**一律预留接口**，内网前用外部/开发实现开发验证，内网到位填 config/写 adapter 即切换。
 >
 > **总纪律（三条）**：①模式 = **Port & Adapter + 防腐层**（仓库先例：TicketEngine Port / §24 SSOProvider；外部模型不得渗入域模型——S9 缓存代理即典型 ACL）；②**桩实现纪律（防虚标）**：预留 = 接口定义 + config 挂点 + 桩实现（未配置 fail-fast 报"未配置"），不做假实现、不留"已预留"的模糊表述——HRFetcher/ResourceAuthorizer 虚标教训（2026-09-22 审计实锤）；③外部 endpoint/凭据一律 config 化，禁止硬编码（与 §26.6 出站决策树/SK 管理纪律同源）。本表随实施收编 standards.md（**§1.1 开源定位与公司信息隔离基线**——公司信息零出现/对接全预留/测试全 mock，已升格为全仓强制基线）；正式契约文档不便外传的场景（统一消息平台/威胁情报应用）= 端口先行 + 所有者口述形态 + adapter 打桩跑通全链，真实契约内网到位后只改字段映射。
 
 | 端口 | 段 | 形态 | 内网时对接方 |
 |------|----|------|-------------|
-| `SSOProvider`（认证） | 既定 dd §24 | LoginURL/ExchangeCallback 已定稿，M-SSO 触发时实现 | 公司 UAA |
+| `SSOProvider`（认证） | 既定 dd §24 | LoginURL/ExchangeCallback 已定稿，随 M-UAA 件 1 实现（原 M-SSO 并入，[17 号](../phase3/17-uaa-integration.md)；mock IdP 可离线先行） | 公司 UAA |
 | `HRFetcher`（组织/人员） | 既定 M-HR | ⚠ 2026-09-22 勘误：接口未落码，对接时一并开工 | 公司 HR 接口 |
 | `ChannelSender`（消息发送） | S6 | Send 端口——统一消息平台 = 首个 adapter | 统一消息平台契约 |
 | `ThreatIntelProvider`（情报查询） | S9 | Query(type,value)——§24 同款预留模式 | 威胁情报应用 API |

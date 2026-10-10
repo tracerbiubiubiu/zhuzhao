@@ -71,14 +71,15 @@ docs/
 │   ├── 09-ticket.md                 # 2a/2b：工单 MVP + scope 升级
 │   └── 10-storage.md                # 2b：MinIO 预签名、附件
 │
-├── phase3/                          # Phase 3（重定位后）：通用能力底座 + 内网迁移（M-E taskrunner / M-A activelist / M-HR / M-SSO🚦 / M-Mig）
-│   ├── README.md                    # 大纲 + 边界 + 实施顺序（索引含 00–16 全量）
+├── phase3/                          # Phase 3（重定位后）：通用能力底座 + 内网迁移（M-E taskrunner / M-A activelist / M-HR / M-UAA🚦 / M-Mig）
+│   ├── README.md                    # 大纲 + 边界 + 实施顺序（索引含 00–17 全量）
 │   ├── 00-startup-checklist.md      # 启动检查单（唯一检查入口）
 │   ├── 01~09、11、14、15 号          # 可观测性/多实例/审计L2/HA/安全/运维/平台/部署分离/规划视图/脚本平台调研（多随 M1 🚦 或对接参考）
 │   ├── 10-ticket-business.md        # 工单业务能力（已转对接参考，§23）
 │   ├── 12-frontend.md               # 前端规格（参考）
 │   ├── 13-implementation-plan.md    # 执行计划（排期 SSOT：现行主链里程碑/人日/依赖）
-│   └── 16-external-integration.md   # 外部服务集成配套（taskrunner/activelist 的 zhuzhao 侧能力清单）
+│   ├── 16-external-integration.md   # 外部服务集成配套（taskrunner/activelist 的 zhuzhao 侧能力清单）
+│   └── 17-uaa-integration.md        # M-UAA：公司统一权限平台对接（已立项待内网启动）
 │
 ├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
 ├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段，规划草案未排期；SSOT = phase5/README.md）
@@ -156,7 +157,7 @@ docs/
 |------|------|---------|
 | [phase1/](./phase1/README.md) | 最小可用：认证鉴权框架 | 单实例 Docker Compose |
 | [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 → 2c 组内委托 | 单实例 Docker Compose |
-| [phase3/](./phase3/README.md) | 重定位后（§23）：通用能力底座 + 内网迁移——M-E 事件/任务总线（taskrunner）/ M-A activelist / M-HR / M-SSO🚦 / M-Mig；生产加固类随 M1 🚦 | 单实例起步，多实例随触发 |
+| [phase3/](./phase3/README.md) | 重定位后（§23）：通用能力底座 + 内网迁移——M-E 事件/任务总线（taskrunner）/ M-A activelist / M-HR / M-UAA🚦 / M-Mig；生产加固类随 M1 🚦 | 单实例起步，多实例随触发 |
 
 ### roadmap.md — 三阶段总览
 

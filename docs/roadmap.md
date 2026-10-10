@@ -74,6 +74,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 > **✅ 收口（2026-09-15，口径 A）**：**项目内工程已收口**——M-E（taskrunner）✅ 全收官（容器化部署+回调链联调+周期归档）、M-A（activelist）✅ 全收官（网关化+双栈部署+收尾四件）、M-HR 按拍板=预留接口即可；M-SSO / M-Mig 🚦 外部前置待触发（进内网/迁移窗口）。终验：四档 acceptance FAIL=0 + 四仓全门禁绿；见 [收官报告](../deliverables/software-company/phase3-closure-report-2026-09-15.md)。
 >
+> **✅ 翻案注记（2026-10-09，design-decisions §29）**：§23 已翻案——工单自研恢复为主线（工单/风险业务线由 phase5 底座/phase6 风险模块承接）；**M-UAA 已立项**（公司统一权限平台对接，[phase3/17](./phase3/17-uaa-integration.md)——SSO+MQ 权限数据面，触发已达成）。
 > **⚠ 重定位（2026-09-02，design-decisions §23；本节下文为 2026-08-25 暂缓期原文，保留作参考）**：工单自研暂缓（对接内部平台）、Phase 2 封版；**Phase 3 现行主链 = M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist → M-HR → M-SSO🚦 → M-Mig**，排期与里程碑见 [phase3/13](./phase3/13-implementation-plan.md) / [14](./phase3/14-planning-overview.md)；生产加固类（可观测/多实例/HA）降 🚦 随部署形态。
 >
 > **决策（2026-08-25，历史）**：当前没有微服务需求，Phase 3 整体暂缓，暂不排期。

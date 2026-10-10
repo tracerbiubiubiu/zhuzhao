@@ -2,6 +2,7 @@
 
 > **定位**：§21–§25 全部拍板后的 **Phase 3 规划现状整理稿**——把散落在 design-decisions（§21–§25）、13-implementation-plan、00-startup-checklist、phase3/README 里的规划信息归拢成一份可读的现状视图。**本文档是索引/视图，不是第二 SSOT**；每节的权威出处均已标注。
 > **状态**：规划整理（2026-09-02；2026-09-03 同步 §25 + 外部集成 16 号）。**SSOT** = [design-decisions §21–§25](../design/design-decisions.md)（决策）+ [13-implementation-plan](./13-implementation-plan.md) §1（排期）。
+> **⚠ 2026-10-09 增补注**：M-UAA 已立项（dd §30，[17-uaa-integration](./17-uaa-integration.md)）——原 M-SSO 并入其件 1；工单「暂缓」表述已被 dd §29 翻案取代。**本视图以下为 2026-09 收口期快照**，现行主链以 [13 号](./13-implementation-plan.md) 为准。
 > **标记约定**：`🚦` = 触发条件驱动，是否纳入本次排期由所有者决定；`⚠️` = 存在不确定性/待拍板；`~~划线~~` = 暂缓 / 被取代（历史保留）。
 
 ---

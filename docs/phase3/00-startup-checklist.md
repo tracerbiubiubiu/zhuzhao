@@ -23,7 +23,7 @@
 1. **刷新本表**：对照各登记处（00 §9 / 11 §6 / 11 §8 / phase3 README §4 / 09 合集）核对状态，更新本文件（~10 分钟）。
 2. **清空 A 档**：§2.1 七项全部完成或显式豁免（含 A2/A3 两个拍板）。
 3. **检查 W1**：多虚拟组场景闭环是否已实施？未做则决定「先行独立完成」或「并入启动批次」。
-4. **选定启动子能力**：按 [13 号 §1 现行主链](./13-implementation-plan.md)（M0 → M-E → M-A → M-HR → M-SSO🚦 → M-Mig；~~Step 1–7 触发条件~~ 见 [README §0](./README.md) 能力归类参考），映射 §2.2 B 档随行项；外部能力（taskrunner/activelist）按 [16 号](./16-external-integration.md) 评估 zhuzhao 侧配套。
+4. **选定启动子能力**：按 [13 号 §1 现行主链](./13-implementation-plan.md)（M0 → M-E → M-A → M-HR → M-UAA🚦[17 号，含原 M-SSO] → M-Mig；~~Step 1–7 触发条件~~ 见 [README §0](./README.md) 能力归类参考），映射 §2.2 B 档随行项；外部能力（taskrunner/activelist）按 [16 号](./16-external-integration.md) 评估 zhuzhao 侧配套。
 5. **过 §3 决策清单**剩余项。
 6. **迁移号核对**：按 A2 规则（谁先启动谁占用，后者重排）确认新迁移编号。
 7. **回填 [11-project-control](../review/11-project-control.md)** 能力矩阵，Phase 3 状态「暂缓」→「进行」。

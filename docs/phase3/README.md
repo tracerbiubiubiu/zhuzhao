@@ -4,6 +4,7 @@
 >
 > **🚦 启动入口**：启动 Phase 3 前先过 [00-startup-checklist.md](./00-startup-checklist.md)——A/B/W 全量清单 + 决策清单 + 检查顺序（2026-08-31 建档，启动时先刷新状态）。
 
+> **✅ 翻案注记（2026-10-09，design-decisions §29）**：§23 已翻案——工单自研恢复为主线；本文恢复为实施蓝本（S3a 排基线 S1/S2/S6 交付后、S3b 等首个真实审批场景）；M-UAA 已立项（[17-uaa-integration](./17-uaa-integration.md)）。
 > **⚠ 重定位（2026-09-02，SSOT = [design-decisions §23](../design/design-decisions.md)）**：工单**自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复）。本文「工单业务能力闭环」（W2/Step 7、§2.1.0 决议②⑤相关表述）**暂缓自研**，10/12 号转对接参考；Phase 3 主线改为 **M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO（🚦）→ M-Mig 迁移准备**（现行主链与排期见 [13-implementation-plan](./13-implementation-plan.md) §1 修订表；外部集成 zhuzhao 侧配套见 [16-external-integration](./16-external-integration.md)）。本文其余内容（多实例/HA/安全/运维/平台增强）仍为 🚦 参考设计。
 
 > ⚠️ **暂缓声明（2026-08-25）**：当前没有微服务需求，**Phase 3 整体暂缓、不排期**。本文件保留为参考，与 [../roadmap.md](../roadmap.md) 主视图一致——优先级是把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实跑稳。生产加固类能力按需取用，不拆 3a/3b 子阶段执行。
@@ -284,3 +285,4 @@ Phase 3 主能力稳定运行
 | [14-planning-overview.md](./14-planning-overview.md) | **规划整理视图（现行主链/暂缓/🚦/⚠️/文档/迁移/验收/决策清单，索引非 SSOT）** | **已编写（2026-09-02）** |
 | [15-script-platform-dagu-vs-inhouse.md](./15-script-platform-dagu-vs-inhouse.md) | **脚本任务平台选型调研（Dagu vs 自研 Asynq，M-E 脚本任务决策支撑）** | **已编写（2026-09-03，调研稿；随脚本任务降级转按需再启参考）** |
 | [16-external-integration.md](./16-external-integration.md) | **外部服务集成配套（taskrunner/activelist 契约的 zhuzhao 侧能力清单 + 实施细排 + P1–P7 拍板项）** | **已编写（2026-09-03）** |
+| [17-uaa-integration.md](./17-uaa-integration.md) | **M-UAA：公司统一权限平台对接**（SSO + MQ 资源上报/三消费者/数据权限回传；dd §30 已立项，🚦 待内网启动） | **已编写（2026-10-09）** |
