@@ -62,6 +62,23 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("redis.host is required")
 	}
 
+	// 服务端启动 fail-fast（自 config.Load 迁入 2026-10-12：Load 保持读+默认值
+	// 单一职责——admincli reset-password 只消费连接三节，不应被迫满足服务端
+	// 启动前置，否则应急通道被无关检查卡死）
+	if c.RateLimit.Enabled && (c.RateLimit.Default.RPS <= 0 || c.RateLimit.Default.Burst <= 0) {
+		// 限流（07 §2）：enabled 时规则必须显式且为正——静默兜底会让漏配 burst
+		// 变成「限流整体失效」的 fail-open（审计 M4），故 fail-fast 拒启
+		return fmt.Errorf("rate_limit.enabled=true 但 default.rps/burst 须为正数（当前 %d/%d）——缺省将导致限流整体失效",
+			c.RateLimit.Default.RPS, c.RateLimit.Default.Burst)
+	}
+	if c.InternalJobs.Enabled && c.InternalJobs.SK == "" {
+		return fmt.Errorf("internal_jobs.enabled=true 但 taskrunner_sk 未配置（env INTERNAL_JOBS_SK）——验签端点不允许裸奔")
+	}
+	if len(c.Gateway.Upstreams) > 0 && (c.Gateway.AK == "" || c.Gateway.SK == "") {
+		// 网关反代（批次 B/E13）：配置了上游即必须配出站签名密钥（fail-fast 对齐 internal_jobs）
+		return fmt.Errorf("gateway.upstreams 已配置但 ak/sk 缺失（env GATEWAY_AK / GATEWAY_SK）——出站签名必需")
+	}
+
 	// W0a-P0-1：三个内网 SK 对齐 JWT 的 D2-09 纪律——仓库公开的 dev-* 默认值
 	// release 拒绝（公开 SK 可签名调 /internal/jobs/callback 补录分支=未授权删
 	// 审计，密钥即身份）；debug 放行以便本地零配置（compose 侧已去兜底 ${VAR:?}）。

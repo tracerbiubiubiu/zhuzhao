@@ -90,3 +90,10 @@ func revokeUserSessionsWithRetry(ctx context.Context, rdb *goredis.Client, userI
 		"user_id", userID, "tag", "reconcile", "err", lastErr)
 	return lastErr
 }
+
+// RevokeUserSessionsWithRetry 导出包装（break-glass admincli 复用）。语义与内部版
+// 完全一致：DB 提交之后调用（disabled 标记 + 密码纪元 +1 + refresh 键清除），
+// 短退避重试 3 次，最终失败上抛并带 reconcile 标记日志。
+func RevokeUserSessionsWithRetry(ctx context.Context, rdb *goredis.Client, userID int64, accessTTL time.Duration) error {
+	return revokeUserSessionsWithRetry(ctx, rdb, userID, accessTTL)
+}

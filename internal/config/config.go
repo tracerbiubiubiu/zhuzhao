@@ -299,28 +299,15 @@ func Load(path string) (*Config, error) {
 		cfg.Audit.Archive.OutDir = "data/archive"
 	}
 
-	// API 限流（07 §2）：enabled 时规则必须显式且为正——静默兜底会让漏配 burst
-	// 变成「限流整体失效」的 fail-open（审计 M4），故 fail-fast 拒启
-	if cfg.RateLimit.Enabled {
-		if cfg.RateLimit.Default.RPS <= 0 || cfg.RateLimit.Default.Burst <= 0 {
-			return nil, fmt.Errorf("rate_limit.enabled=true 但 default.rps/burst 须为正数（当前 %d/%d）——缺省将导致限流整体失效",
-				cfg.RateLimit.Default.RPS, cfg.RateLimit.Default.Burst)
-		}
+	// internal_jobs AK 缺省归一化（默认值属 Load 职责；SK 强制属 Validate）
+	if cfg.InternalJobs.AK == "" {
+		cfg.InternalJobs.AK = "taskrunner"
 	}
 
-	if cfg.InternalJobs.Enabled {
-		if cfg.InternalJobs.SK == "" {
-			return nil, fmt.Errorf("internal_jobs.enabled=true 但 taskrunner_sk 未配置（env INTERNAL_JOBS_SK）——验签端点不允许裸奔")
-		}
-		if cfg.InternalJobs.AK == "" {
-			cfg.InternalJobs.AK = "taskrunner"
-		}
-	}
-
-	// 网关反代（批次 B/E13）：配置了上游即必须配出站签名密钥（fail-fast 对齐 internal_jobs）
-	if len(cfg.Gateway.Upstreams) > 0 && (cfg.Gateway.AK == "" || cfg.Gateway.SK == "") {
-		return nil, fmt.Errorf("gateway.upstreams 已配置但 ak/sk 缺失（env GATEWAY_AK / GATEWAY_SK）——出站签名必需")
-	}
+	// 服务端启动 fail-fast 检查（rate_limit/internal_jobs SK/gateway SK）在
+	// validate.go 的 Validate——Load 保持「读 + 默认值」单一职责，CLI 类
+	// 消费者（admincli reset-password）只消费连接三节，不应被迫满足
+	// 服务端启动前置（dev 栈演练实证：internal_jobs SK 卡死应急通道）。
 
 	return &cfg, nil
 }
