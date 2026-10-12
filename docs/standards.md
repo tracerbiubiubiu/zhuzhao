@@ -191,3 +191,4 @@
 | 2026-10-03 | 时点报告命名升三段式 `<类型>-<范围>-<日期>`（同日多份无区分位——随 zhuzhao-ui outputs 四报告统一批同步）； |
 | 2026-10-01 | 四仓联合验证批：适用范围+§1 增 zhuzhao-ui 行（前端=契约消费方）+工单封版状态注记（基础域已交付被消费——§12-3 断言对账）；§3 补第 12 条（date-only `YYYY-MM-DD` 例外/ID 数组元素仍 string）；§4 门禁行补前端六件口径；§12-3 补时点报告存放命名（deliverables/·outputs/）；§13 SSOT 索引补前端两行 |
 | 2026-10-12 | 500 留痕纪律：§3 增第 13 条——未分类错误中枢落 ERROR（writeServiceError，request_id/path/err）+服务源头禁吞错（notification list 首例补修）；panic 既有 Recovery+PanicSink 口径注记。驱动=首页统计卡瞬时 500 事后无迹可查 |
+| 2026-10-12 | 组织树读权限放开：000041 把 GET /api/v1/orgs 绑至工单管理菜单（operator/viewer 可读）——发起工单组织字段（S8 组织双源）与类型配置组织下拉的业务必需；组织管理写操作仍 admin 专属。驱动=多账号前端实测非 admin 403 toast + 静默降级空数据 |
