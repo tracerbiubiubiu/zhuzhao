@@ -1365,6 +1365,8 @@ type remoteUserQueryService struct {
 
 **§24 补充（2026-09-02）：账密通道保留范围**——传统账密登录**保留**，但按账号来源分域：`superadmin` 与 `source=local` 用户保留账密（应急通道：SSO 故障/网络隔离时管理员仍可进入；服务/外部协作者类本地账号）；**`source=hr` 用户 SSO 上线后默认禁用账密**（HR 同步的密码为占位值，放行即绕过公司 MFA/密码策略形成安全旁路）——config 开关 `auth.local_password_for_hr`（默认 false）。SSO 未上线的过渡期不受影响（现状全账密）。
 
+**§24 补充（2026-10-12）：break-glass 密码恢复已实物化**——「应急通道」不止于账密保留：superadmin 密码丢失且无其他超管时的恢复路径已落码为 `zhuzhao reset-password` 子命令（凭容器执行权授权，不走 HTTP；复用管理端重置语义[bcrypt+强制改密+全端会话吊销]+审计留痕），操作流程与手工 SQL 兜底见 [runbook §1](../runbook.md)。
+
 ---
 
 ## 26. IAM 演进路径、注册原则与支撑边界（2026-09-08 评估；三步走与四墙为助手建议，待所有者确认）

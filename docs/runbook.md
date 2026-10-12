@@ -1,0 +1,106 @@
+# runbook · 故障处置与运维手册
+
+> **定位**：真实事故与演练的沉淀位（`docs/README.md` 承诺的 Phase 3 欠账，2026-10-12 建档）。
+> 条目纪律：**写「验证过的事实」**——每节要么实机演练过、要么真实事故复盘过；未验证的设想写 `docs/` 对应设计文档，不进这里。
+> 维护：每次演练/事故后追加记录行；结论变更就地修订并注日期。
+
+---
+
+## 1. superadmin 密码恢复（break-glass）
+
+### 1.1 适用场景与授权模型
+
+- **场景**：superadmin 用户密码遗忘/疑似泄露，且无其他可用 superadmin 可走管理端 `POST /api/v1/users/password/reset` 代重置。
+- **授权模型**：不走 HTTP/会话，凭**容器执行权**授权——能 `docker exec` 进 app 容器者本已具备宿主级权限，工具不新增提权面（这也是不采用 HTTP break-glass 端点的原因：那会给认证系统开新攻击面）。
+- **能力边界**：仅接受**持启用中 superadmin 角色**的用户（普通用户走管理端重置，不得绕层级防护）；目标若处于禁用态则连带启用；重置后 `must_change_password=true`，下次登录强制改密。
+
+### 1.2 首选路径：CLI 子命令
+
+同二进制子命令分发（`deployments/Dockerfile` 零改动；2026-10-12 起的镜像自带）。
+
+```bash
+# 容器形态（演示/生产 compose，容器名 zhuzhao-app）——交互式
+docker exec -it zhuzhao-app /app/zhuzhao reset-password --username admin
+
+# 容器形态——管道式（共享终端推荐：密码不经回显也不进 shell 历史）
+printf '新密码\n' | docker exec -i zhuzhao-app /app/zhuzhao \
+  reset-password --username admin --password-stdin --yes
+
+# dev 宿主形态（make dev 栈，DB/Redis 经 configs/config.yaml + env 寻址）
+go run ./cmd/server reset-password --username admin
+```
+
+参数：`--username`（必填）/ `--password-stdin`（管道读一行密码）/ `--yes`（跳过交互确认）。
+
+工具执行顺序 = 与 HTTP 侧重置完全相同的语义：目标校验 → bcrypt 置换 + `must_change_password=true` → （若被禁）连带启用 → **全端会话吊销**（disabled 标记 + 密码纪元 INCR + refresh 键清除，短退避重试 3 次）→ `audit_logs` 落行（`method='CLI'`, `path='break-glass:reset-password'`）。
+
+### 1.3 密码输入方式注记
+
+交互形态为**明文双录**（stdlib 无关闭回显能力，为零新增依赖的取舍）：控制台可见输入，**共享终端/录屏环境一律改用 `--password-stdin` 管道形态**。
+
+### 1.4 会话吊销失败的对账（CLI 输出 ⚠️ 时执行）
+
+吊销失败不阻断重置（DB 已提交），残留 token 须手工清理（对齐 `internal/service/session_revoke.go` 三步语义）：
+
+```bash
+# ① 清 refresh 键（实际键名以 scan 结果为准）
+docker exec zhuzhao-redis redis-cli -a "$REDIS_PASSWORD" --scan \
+  --pattern 'refresh:<user_id>:*'
+# ② 密码纪元 +1（旧 RT 携旧纪元，下次 Refresh 即拒）
+docker exec zhuzhao-redis redis-cli -a "$REDIS_PASSWORD" incr user:pw_epoch:<user_id>
+# ③ 存量 AT 依赖 disabled 标记拒答（TTL=access_ttl，与 JWT 配置对齐）
+docker exec zhuzhao-redis redis-cli -a "$REDIS_PASSWORD" set user:disabled:<user_id> 1 ex 900
+```
+
+应用日志中带 `tag=reconcile` 的 ERROR 行即吊销失败现场（`session_revoke.go` 重试耗尽时落）。
+
+### 1.5 台账要求
+
+- CLI 正常路径已在 `audit_logs` 落一行（`method='CLI'`），但**操作者身份审计不覆盖**——须人工台账补记：时间/操作者/目标账号/触发原因/新密码交付方式。
+- CLI 输出「审计落库失败」告警时，台账为**唯一**留痕，必须补记。
+
+### 1.6 兜底路径：手工 SQL（镜像过旧无子命令时）
+
+> ⚠️ 此路径**绕过应用层一切留痕与会话吊销**，以下步骤**全部**为必做，缺一即留敞口。
+
+```sql
+-- ① 生成 bcrypt（任意工具，cost ≥ 10）：
+--    htpasswd -bnBC 12 "" '新密码' | tr -d ':\n'
+-- ② 置换密码 + 强制改密（+ 被禁时启用）
+UPDATE users SET password = '<hash>', must_change_password = true, updated_at = NOW()
+WHERE username = '<user>' AND deleted_at IS NULL;
+UPDATE users SET status = 1 WHERE username = '<user>' AND deleted_at IS NULL; -- 仅被禁时
+-- ③ 补审计行（尽力而为；无论如何人工台账必须补记）
+INSERT INTO audit_logs (user_id, username, method, path, status_code, duration, user_agent, request_body)
+SELECT id, username, 'CLI', 'break-glass:reset-password(sql)', 200, 0, 'manual',
+       '{"trigger":"break-glass","tool":"manual-sql"}'
+FROM users WHERE username = '<user>' AND deleted_at IS NULL;
+```
+
+**④ 手工会话吊销（必做——直改 SQL 不会吊销任何 token）**：按 §1.4 ①②③ 执行。
+
+### 1.7 演练记录
+
+| 日期 | 环境 | 范围 | 结果 |
+|---|---|---|---|
+| 2026-10-12 | dev 栈（交付批演练） | CLI 全链：重置→强改密→refresh 清除→纪元 +1→审计落行；非 superadmin 拒绝；禁用连带启用；目标不存在 | ✅ 6/6 用例过（`internal/pkg/admincli` 集成测试为常态门禁，随 `make test-integration` 持续回归） |
+| 2026-10-12 | dev 栈（**真实使用**） | 并行会话致 admin 凭据脱离验收态——CLI 一键重置回规范值 `admin12345` 并吊销存量会话 | ✅ 复原即用；首个真实场景实战 |
+
+> 演练捕获的操作知识：① CLI 重置后 `must_change_password=true`，如需直接清除强制改密标记，走 `POST /auth/password/update` **两步轮换**（新==旧被 B2-2 拒绝，须先改临时值再改回）；② CLI 只做连接三节最小配置校验，不受服务端启动 fail-fast（internal_jobs SK 等）牵连——该分离即本批由演练抓出后落码（config.Load 保持读+默认值，启动检查归 Validate）。
+
+---
+
+## 2. Phase 3 故障演练结论（2026-09-14，四项全过）
+
+> 原始记录：`deliverables/software-company/phase3-closure-report-2026-09-15.md`（阶段 E）。
+
+1. **kill 后队列续跑**：taskrunner 容器 kill 后任务不丢，重启续跑。注意口径：**`kill` = 人工停止**——`unless-stopped` 策略不会自动拉起被人工停止的容器（编排器语义），恢复须 `docker start` / `compose up`。
+2. **PG 自愈**：PG 容器重启后，zhuzhao / taskrunner 连接池自动恢复，无需重启应用。
+3. **dead 重驱**：造死法 = compose `MAX_RETRY` 旋钮临时置 0 + 任务自指黑洞（`127.0.0.1:1`）；重驱后终态/重试链恢复。`MAX_RETRY` 用完即回原值。
+4. **SIGTERM 排空**：收到 SIGTERM 后 0.237s 完成在途任务排空并干净退出（`ShutdownTimeout` 生效实证）。
+
+## 3. 备份与恢复要点（2026-09-14 运维补强批）
+
+- **每日备份**：zhuzhao/activelist 各带 pgbackup 侧车（RETAIN_COUNT 统一）。⚠️ 教训（「三日假备份」事故）：postgres 无 restart 策略时停机不自启 + 旧脚本失败静默 done 0——**备份必须定期恢复验证，不能只看文件存在**。
+- **恢复演练**：zhuzhao 21 表零差异恢复已实测。坑：shell 循环 `docker exec` 采表会吞 stdin（只采到 9 表）——用 `gexec` + heredoc 单会话采全。
+- **PITR**：`pg_dump` 逻辑备**不可**回放 WAL，须 `pg_basebackup` 物理基备（tar 流 stdout → 容器内落盘 + `docker cp`）；卷根 = 数据目录根勿套层；`recovery.signal` 手建 + chown 999；目标时刻若落在未归档段，活库 `pg_switch_wal` 切段后重启即解。
