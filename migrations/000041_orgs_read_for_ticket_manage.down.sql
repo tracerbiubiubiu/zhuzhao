@@ -10,4 +10,13 @@ WHERE ptype = 'p' AND v1 = '/api/v1/orgs' AND v2 = 'GET'
     JOIN role_menus rm ON rm.role_id = r.id
     JOIN menus m ON m.id = rm.menu_id
     WHERE m.code = 'ticket_manage' AND m.menu_type = 1
+      -- 忠实逆守卫：该角色若还有**其他菜单**也授予 GET /orgs（如同时绑 system_org，
+      -- 其规则源于彼处），则不删——否则回滚即静默丢权限（2026-10-12 复核批 A/B 实证）
+      AND NOT EXISTS (
+        SELECT 1 FROM role_menus rm2
+        JOIN menu_apis ma2 ON ma2.menu_id = rm2.menu_id
+        WHERE rm2.role_id = r.id
+          AND ma2.api_path = '/api/v1/orgs' AND ma2.api_method = 'GET'
+          AND rm2.menu_id <> m.id
+      )
   );

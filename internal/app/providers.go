@@ -26,13 +26,18 @@ import (
 // 这里把应用配置逐字段映射过去。
 
 func provideLogger(cfg config.LogConfig) *slog.Logger {
-	return logger.New(logger.Config{
+	logger := logger.New(logger.Config{
 		Level:      cfg.Level,
 		Dir:        cfg.Dir,
 		MaxSize:    cfg.MaxSize,
 		MaxBackups: cfg.MaxBackups,
 		MaxAge:     cfg.MaxAge,
 	})
+	// §3-13 留痕中枢依赖默认 slog：全局 slog.Error（如 writeServiceError 未分类错误
+	// 留痕）须与注入 logger 同 sink（app.log + stdout JSON）——不 SetDefault 则落
+	// stderr 默认 TEXT，request_id 溯源失效（2026-10-12 复核批发现，496ba4a 后续）。
+	slog.SetDefault(logger)
+	return logger
 }
 
 func provideJWTManager(cfg config.JWTConfig) *jwt.Manager {
