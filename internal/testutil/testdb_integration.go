@@ -124,6 +124,10 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000038_dict_items_route.up.sql",
 			// P2-5：GET /users/:id/roles 页面读绑定（000039）
 			"000039_user_roles_route.up.sql",
+			// al 域数据改名（000040，并行批）+ orgs 读放开两连（000041/000042，2026-10-12）
+			"000040_al_data_rename.up.sql",
+			"000041_orgs_read_for_ticket_manage.up.sql",
+			"000042_orgs_read_for_ticket_child_roles.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

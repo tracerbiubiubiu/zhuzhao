@@ -102,11 +102,11 @@ check "ticket menus(11)" "11" "$TM"
 TT=$(psql_q "SELECT COUNT(*) FROM ticket_types WHERE code IN ('incident','request')")
 check "ticket types(2)" "2" "$TT"
 
-# W1（词表重排）：ticket_list 页面行=7 GET（读入口）；8 写路由挂按钮行
+# W1（词表重排）：ticket_list 页面行=8 GET（读入口）+000042 补授 /orgs GET=9；写路由挂按钮行
 MA_GET=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.code = 'ticket_list' AND ma.api_method = 'GET'")
-check "ticket 页面 GET(8)" "8" "$MA_GET"
+check "ticket 页面 GET(9)" "9" "$MA_GET"
 MA_BTN=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.parent_id = (SELECT id FROM menus WHERE code='ticket_list') AND ma.api_method != 'GET'")
@@ -181,7 +181,8 @@ make_user() {
 ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 # 模拟管理员授权流程（对齐 Phase 1 #27 模式）：给 operator 绑定工单页面菜单 →
-# 页面菜单含全部 16 条 ticket menu_apis，L1 放行后由 L2/L3 管辖（R6/T7 的 403 用例才有意义）
+# 页面菜单含全部 17 条 ticket menu_apis（W1 词表：8 GET 读 + 8 写挂按钮；000042 补 /orgs GET=1），
+# L1 放行后由 L2/L3 管辖（R6/T7 的 403 用例才有意义）
 TICKET_PAGE_MENU=$(psql_q "SELECT id FROM menus WHERE code='ticket_list'")
 # W1（词表重排）：页面=读 API、写须按钮——operator 业务读写绑页面+全部工单按钮
 #（九既有 + ticket_relation_btn 新增；*_read_btn 零绑定为设计预期）

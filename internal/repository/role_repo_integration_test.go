@@ -108,3 +108,68 @@ func TestUserRepo_SuperadminChecks_DisabledRoleNotCounted(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 0, n, "禁用 superadmin 角色后 CountActiveSuperadminUsers 应为 0")
 }
+
+// 复核批 C 回归（2026-10-12）：子页面的 menu_apis 来源行必须让 /orgs GET 授权
+// 经得起 AssignMenus 全删重建——000042 首版只插 casbin 不插 menu_apis，任何一次
+// UI 保存菜单授权即被抹掉（viewer 下次保存即 403 复发）。本测试按 service 层
+// 真实重放路径（ListMenuAPIsByMenuIDs → AssignMenus）钉死「重建后存活」。
+func TestRoleRepo_AssignMenus_OrgsReadSurvivesRebuild(t *testing.T) {
+	resetUsers(t)
+	ctx := context.Background()
+	roleRepo := repository.NewRoleRepo(testPool)
+	menuRepo := repository.NewMenuRepo(testPool)
+
+	roleID := insertRole(t, "orgs_replay", 40, 1, false)
+
+	// 自清（resetUsers 删非系统角色会被 role_menus FK 挡——本测试是包内首个
+	// 给非系统角色挂 role_menus 的用例，残留会污染后续用例的 resetUsers）
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, roleID)
+		_, _ = testPool.Exec(ctx, `DELETE FROM casbin_rule WHERE v0 = 'role::orgs_replay'`)
+		_, _ = testPool.Exec(ctx, `DELETE FROM roles WHERE id = $1`, roleID)
+	})
+
+	// 只绑 ticket_type_manage（000042 发放面：工单管理目录直属子页面）
+	var typeMenuID int64
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT id FROM menus WHERE code = 'ticket_type_manage' AND deleted_at IS NULL`,
+	).Scan(&typeMenuID))
+
+	apis, err := menuRepo.ListMenuAPIsByMenuIDs(ctx, []int64{typeMenuID})
+	require.NoError(t, err)
+	require.NoError(t, roleRepo.AssignMenus(ctx, &model.Role{ID: roleID, Code: "orgs_replay"},
+		[]int64{typeMenuID}, apis))
+
+	// 重建后 /orgs GET 必须存活（来源 = 000042 up 补的 menu_apis 行）
+	var count int
+	require.NoError(t, testPool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM casbin_rule
+		WHERE ptype = 'p' AND v0 = 'role::orgs_replay'
+		  AND v1 = '/api/v1/orgs' AND v2 = 'GET'`).Scan(&count))
+	assert.Equal(t, 1, count, "AssignMenus 重建后 /orgs GET 规则应存活（menu_apis 来源行生效）")
+
+	// 反向对照：down 000042 删来源行后，同一路径重放不再发放（down 忠实逆的语义面）
+	// 自清（隔离债）：来源行是 000042 迁移种下的**共享夹具**，删后必须原地补回——否则
+	// 本包共享库此后永久缺该行，后续（含新增）依赖「ticket_type_manage→/orgs GET」授权
+	// 来源的用例会莫名失败。删除动作之前注册，保证 Delete 报错也不漏恢复。
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `
+			INSERT INTO menu_apis (menu_id, api_path, api_method)
+			VALUES ($1, '/api/v1/orgs', 'GET')
+			ON CONFLICT DO NOTHING`, typeMenuID)
+	})
+	_, err = testPool.Exec(ctx, `
+		DELETE FROM menu_apis
+		WHERE api_path = '/api/v1/orgs' AND api_method = 'GET'
+		  AND menu_id = $1`, typeMenuID)
+	require.NoError(t, err)
+	apis2, err := menuRepo.ListMenuAPIsByMenuIDs(ctx, []int64{typeMenuID})
+	require.NoError(t, err)
+	require.NoError(t, roleRepo.AssignMenus(ctx, &model.Role{ID: roleID, Code: "orgs_replay"},
+		[]int64{typeMenuID}, apis2))
+	require.NoError(t, testPool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM casbin_rule
+		WHERE ptype = 'p' AND v0 = 'role::orgs_replay'
+		  AND v1 = '/api/v1/orgs' AND v2 = 'GET'`).Scan(&count))
+	assert.Equal(t, 0, count, "来源行删除后重放不得再发放 /orgs GET")
+}
