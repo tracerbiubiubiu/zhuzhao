@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -95,6 +96,12 @@ func writeServiceError(c *gin.Context, err error) {
 			response.BadRequest(c, ec.Message)
 			return
 		}
+		// 可观测性（2026-10-12，首例=首页统计卡 GET /tickets 瞬时 500 无迹可查）：
+		// 未知错误此前只回通用文案不落日志，500 事后无法按 request_id 溯源。
+		// panic 不走此函数（gin recovery → stderr），另行排查。
+		slog.Error("unclassified service error",
+			"request_id", c.GetString("request_id"),
+			"path", c.FullPath(), "err", err)
 		response.InternalError(c, errcode.ErrInternal.Message)
 		return
 	}
@@ -102,5 +109,10 @@ func writeServiceError(c *gin.Context, err error) {
 		response.Error(c, status, biz)
 		return
 	}
+	// 业务码存在但未登记 HTTP 映射——同样落 ERROR（表驱动漏登记在测试期应被全码表
+	// 测试拦截，运行期出现即映射表与码表脱节，需暴露）
+	slog.Error("service error without http mapping",
+		"request_id", c.GetString("request_id"),
+		"path", c.FullPath(), "code", biz.Code, "err", err)
 	response.InternalError(c, biz.Message)
 }

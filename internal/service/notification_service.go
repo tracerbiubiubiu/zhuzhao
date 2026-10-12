@@ -38,6 +38,8 @@ func (s *NotificationService) List(ctx context.Context, page, pageSize int, code
 	}
 	list, total, err := s.repo.List(ctx, page, pageSize, codeLike)
 	if err != nil {
+		// 错误留痕纪律（standards §3-13）：500 类返回必须在源头落底层 err
+		s.logger.Error("notification list failed", "err", err)
 		return nil, errcode.ErrInternal
 	}
 	return &model.NotificationConfigListResponse{List: list, Total: total, Page: page, PageSize: pageSize}, nil

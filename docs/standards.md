@@ -52,6 +52,7 @@
 10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
 11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；
 12. **字段格式补充（2026-10-01 四仓联合验证批）**：① **date-only 业务字段传输 `YYYY-MM-DD`**（如工单自定义字段 date——后端 `time.Parse("2006-01-02")` 硬校验），不适用第 8 条 RFC3339；发送侧须按字面格式产出（前端曾以 datetime 控件直发 ISO 时间恒 400，实测教训入册）；② **ID 数组元素与标量同规**——发送侧一律字符串（第 7 条）；`jsonutil.Int64Slice` 双形态兼容仅为**收方宽容**，不构成发送 number 的许可（存量 `.map(Number)` 属违反本公约的欠账）。
+13. **500/内部错误必须留痕（2026-10-12 首例驱动：首页统计卡 `GET /tickets` 瞬时 500 事后无迹可查）**——① 未分类错误（非业务码）由 zhuzhao `writeServiceError` 中枢统一落 ERROR（`request_id/path/err` 明细，service error without http mapping 同规格）；② 服务源头**禁止吞错不落直接返回 ErrInternal**（存量零容忍：notification list 为首例补修；新增即审计项）；③ panic 不占本条——既有 Recovery 中间件口径（slog 堆栈 + PanicSink 指纹聚合落库 + 指标计数）；④ 前端/反代错误体归口各端点（blob 错误体解析属前端请求层职责，zhuzhao-ui 请求层已实现）。
 
 ## 4. 工程结构与代码组织（所有服务同规格）
 
@@ -189,3 +190,4 @@
 | 2026-09-30 | 二轮审计批：92xxx 三段码表（通知/字典/PAT）+httpStatusByCode 映射规范——新码必须三件套同步（errcode.go var + errors_test allErrCodes + errcode.md 含反引号常量列格式）；down 迁移精确逆红线重申（000033 空 down 教训）+roundtrip 快照扩 P4 四业务表 |
 | 2026-10-03 | 时点报告命名升三段式 `<类型>-<范围>-<日期>`（同日多份无区分位——随 zhuzhao-ui outputs 四报告统一批同步）； |
 | 2026-10-01 | 四仓联合验证批：适用范围+§1 增 zhuzhao-ui 行（前端=契约消费方）+工单封版状态注记（基础域已交付被消费——§12-3 断言对账）；§3 补第 12 条（date-only `YYYY-MM-DD` 例外/ID 数组元素仍 string）；§4 门禁行补前端六件口径；§12-3 补时点报告存放命名（deliverables/·outputs/）；§13 SSOT 索引补前端两行 |
+| 2026-10-12 | 500 留痕纪律：§3 增第 13 条——未分类错误中枢落 ERROR（writeServiceError，request_id/path/err）+服务源头禁吞错（notification list 首例补修）；panic 既有 Recovery+PanicSink 口径注记。驱动=首页统计卡瞬时 500 事后无迹可查 |
