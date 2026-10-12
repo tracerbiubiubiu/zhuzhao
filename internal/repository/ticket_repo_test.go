@@ -35,7 +35,7 @@ func TestTicketListConds(t *testing.T) {
 	uid := int64(7)
 
 	t.Run("空查询无条件", func(t *testing.T) {
-		conds, args := ticketListConds(model.TicketListQuery{})
+		conds, args := ticketListConds(model.TicketListQuery{}, 0)
 		if len(conds) != 0 || len(args) != 0 {
 			t.Fatalf("应无条件无参数，got conds=%v args=%v", conds, args)
 		}
@@ -44,7 +44,7 @@ func TestTicketListConds(t *testing.T) {
 	t.Run("存量四参条件与占位同序", func(t *testing.T) {
 		conds, args := ticketListConds(model.TicketListQuery{
 			TypeCode: "net", Status: "open", Priority: intPtr(2), AssigneeID: &uid,
-		})
+		}, 0)
 		want := []string{"type_code = $1", "status = $2", "priority = $3", "assigned_to = $4"}
 		for i, w := range want {
 			if conds[i] != w {
@@ -57,7 +57,7 @@ func TestTicketListConds(t *testing.T) {
 	})
 
 	t.Run("keyword 转义 ILIKE 元字符（D2-21）", func(t *testing.T) {
-		conds, args := ticketListConds(model.TicketListQuery{Keyword: `50%_ok\`})
+		conds, args := ticketListConds(model.TicketListQuery{Keyword: `50%_ok\`}, 0)
 		if len(conds) != 1 || conds[0] != `title ILIKE $1 ESCAPE '\'` {
 			t.Fatalf("unexpected conds: %v", conds)
 		}
@@ -67,7 +67,7 @@ func TestTicketListConds(t *testing.T) {
 	})
 
 	t.Run("纯数字 keyword OR 工单 ID 精确匹配", func(t *testing.T) {
-		conds, args := ticketListConds(model.TicketListQuery{Keyword: "123"})
+		conds, args := ticketListConds(model.TicketListQuery{Keyword: "123"}, 0)
 		if len(conds) != 1 || conds[0] != `(title ILIKE $1 ESCAPE '\' OR id = $2)` {
 			t.Fatalf("unexpected conds: %v", conds)
 		}
@@ -77,7 +77,7 @@ func TestTicketListConds(t *testing.T) {
 	})
 
 	t.Run("含非数字字符不带 ID 分支", func(t *testing.T) {
-		conds, args := ticketListConds(model.TicketListQuery{Keyword: "1a"})
+		conds, args := ticketListConds(model.TicketListQuery{Keyword: "1a"}, 0)
 		if len(conds) != 1 || strings.Contains(conds[0], "id =") {
 			t.Fatalf("非纯数字不应带 ID 条件: %v", conds)
 		}
@@ -87,7 +87,7 @@ func TestTicketListConds(t *testing.T) {
 	})
 
 	t.Run("时间区间闭开边界", func(t *testing.T) {
-		conds, args := ticketListConds(model.TicketListQuery{CreatedFromAt: &from, CreatedToAt: &toEx})
+		conds, args := ticketListConds(model.TicketListQuery{CreatedFromAt: &from, CreatedToAt: &toEx}, 0)
 		if conds[0] != "created_at >= $1" || conds[1] != "created_at < $2" {
 			t.Fatalf("unexpected conds: %v", conds)
 		}
@@ -99,7 +99,7 @@ func TestTicketListConds(t *testing.T) {
 	t.Run("混合条件占位连续无跳号", func(t *testing.T) {
 		conds, args := ticketListConds(model.TicketListQuery{
 			Status: "open", CreatedBy: &uid, Keyword: "网络", CreatedFromAt: &from, CreatedToAt: &toEx,
-		})
+		}, 0)
 		if len(conds) != len(args) {
 			t.Fatalf("conds 数 %d 与 args 数 %d 不一致", len(conds), len(args))
 		}
@@ -112,3 +112,24 @@ func TestTicketListConds(t *testing.T) {
 }
 
 func intPtr(i int) *int { return &i }
+
+// 占位符 offset 回归（2026-10-12 多账号实测发现）：scope filter（$1..$n）+ 业务条件
+// 混拼时，业务占位符必须从 n+1 起编——此前业务恒从 $1 起编，非 admin（scope 命中）
+// 任意筛选 → 占位符冲突 → PG 绑定错误 → 500。
+func TestTicketListCondsArgOffset(t *testing.T) {
+	uid := int64(7)
+	conds, args := ticketListConds(model.TicketListQuery{
+		Status: "open", AssigneeID: &uid,
+	}, 2) // 模拟 scope filter 已占用 $1（created_by/assigned_to）与 $2（org_path）
+	want := []string{"status = $3", "assigned_to = $5"}
+	_ = want
+	if conds[0] != "status = $3" {
+		t.Fatalf("conds[0] = %q, want status = $3", conds[0])
+	}
+	if conds[1] != "assigned_to = $4" {
+		t.Fatalf("conds[1] = %q, want assigned_to = $4", conds[1])
+	}
+	if len(args) != 2 || args[0] != "open" || args[1] != uid {
+		t.Fatalf("args 应为 [open 7]，got %v", args)
+	}
+}

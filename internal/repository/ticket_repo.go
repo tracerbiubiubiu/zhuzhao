@@ -87,7 +87,10 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 		args = append(args, filter.Args...)
 		conds = append(conds, filter.Where)
 	}
-	bizConds, bizArgs := ticketListConds(q)
+	// argOffset：scope filter（$1..$n）已占用的占位符数——业务条件必须从 n+1 起编，
+	// 否则与 scope 占位符冲突 → PG 绑定错误 → 非 admin 任意筛选 500（2026-10-12 多账号
+	// 实测发现：viewer/operator 列表筛选与工作台统计卡全 500，admin Unscoped 不受影响）
+	bizConds, bizArgs := ticketListConds(q, len(args))
 	conds = append(conds, bizConds...)
 	args = append(args, bizArgs...)
 	where := ""
@@ -118,50 +121,48 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	return tickets, total, nil
 }
 
-// ticketListConds 业务筛选条件拼装（scope 之外；$n 占位与 args 严格同序，单测覆盖）
-func ticketListConds(q model.TicketListQuery) ([]string, []any) {
+// ticketListConds 业务筛选条件拼装（scope 之外）：argOffset = scope filter 已占用的
+// 占位符数，$n 从 offset+1 起编与合并后 args 严格同序（零 DB 纯函数测覆盖 offset 0/非 0）
+func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	var conds []string
 	var args []any
+	n := argOffset
+	next := func(v any) string {
+		args = append(args, v)
+		n++
+		return fmt.Sprintf("$%d", n)
+	}
 	if q.TypeCode != "" {
-		args = append(args, q.TypeCode)
-		conds = append(conds, fmt.Sprintf("type_code = $%d", len(args)))
+		conds = append(conds, "type_code = "+next(q.TypeCode))
 	}
 	if q.Status != "" {
-		args = append(args, q.Status)
-		conds = append(conds, fmt.Sprintf("status = $%d", len(args)))
+		conds = append(conds, "status = "+next(q.Status))
 	}
 	if q.Priority != nil {
-		args = append(args, *q.Priority)
-		conds = append(conds, fmt.Sprintf("priority = $%d", len(args)))
+		conds = append(conds, "priority = "+next(*q.Priority))
 	}
 	if q.AssigneeID != nil {
-		args = append(args, *q.AssigneeID)
-		conds = append(conds, fmt.Sprintf("assigned_to = $%d", len(args)))
+		conds = append(conds, "assigned_to = "+next(*q.AssigneeID))
 	}
 	if q.CreatedBy != nil {
-		args = append(args, *q.CreatedBy)
-		conds = append(conds, fmt.Sprintf("created_by = $%d", len(args)))
+		conds = append(conds, "created_by = "+next(*q.CreatedBy))
 	}
 	// 标题关键字：ILIKE 子串（D2-21 转义 + ESCAPE）；纯数字追加 ID 精确匹配——
 	//「粘工单号」是运维高频动作，纯标题子串永远漏命中
 	if q.Keyword != "" {
-		args = append(args, "%"+escapeLike(q.Keyword)+"%")
-		kw := len(args)
+		kw := next("%" + escapeLike(q.Keyword) + "%")
 		if id, err := strconv.ParseInt(q.Keyword, 10, 64); err == nil {
-			args = append(args, id)
-			conds = append(conds, fmt.Sprintf("(title ILIKE $%d ESCAPE '\\' OR id = $%d)", kw, len(args)))
+			conds = append(conds, fmt.Sprintf("(title ILIKE %s ESCAPE '\\' OR id = %s)", kw, next(id)))
 		} else {
-			conds = append(conds, fmt.Sprintf("title ILIKE $%d ESCAPE '\\'", kw))
+			conds = append(conds, fmt.Sprintf("title ILIKE %s ESCAPE '\\'", kw))
 		}
 	}
 	// 创建时间闭开区间（handler 已把 date 解析为 UTC 边界，to=次日 00:00）
 	if q.CreatedFromAt != nil {
-		args = append(args, *q.CreatedFromAt)
-		conds = append(conds, fmt.Sprintf("created_at >= $%d", len(args)))
+		conds = append(conds, "created_at >= "+next(*q.CreatedFromAt))
 	}
 	if q.CreatedToAt != nil {
-		args = append(args, *q.CreatedToAt)
-		conds = append(conds, fmt.Sprintf("created_at < $%d", len(args)))
+		conds = append(conds, "created_at < "+next(*q.CreatedToAt))
 	}
 	return conds, args
 }
