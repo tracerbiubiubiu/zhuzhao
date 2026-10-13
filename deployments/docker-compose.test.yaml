@@ -1,0 +1,227 @@
+# ═══ 测试环境统一栈（单文件全组件）═══════════════════════════════════════
+# 一条命令拉起全套：PG×3 + Redis + app + activelist + taskrunner + ui（nginx 静态+双反代）
+#
+# 使用方法：
+#   docker compose -f deployments/docker-compose.test.yaml up -d --build
+#   （首建含 Go/前端全量构建，约 5-10 分钟；之后走层缓存）
+#   入口 = http://localhost:4001（ui 容器）；验证：curl localhost:4001/api/health/ready
+#
+# 与 dev 栈（docker-compose.dev.yaml + 宿主进程）的关系：
+#   ——双形态并存。本栈=稳定回归/演示环境（独立卷、干净数据、隔离网络）；
+#     dev 栈=日常开发（vite HMR 快改）。端口全错开：ui 4001 / app 33334。
+#
+# 数据：独立卷（项目名 zhuzhao_test 前缀）——全新干净态，首登 admin/admin123
+#   走强制改密流程自举（E2E globalSetup 同款链路）；与 dev 栈数据零共享。
+#
+# 口令/密钥：测试值显式内联（本文件仅测试用途；生产密钥纪律见 compose.yaml 注释）。
+# 迁移：app 启动前由 migrate 一次性服务执行（000001–000043）。
+#
+# 已知边界：
+#   - 配置来自 deployments/config.test.yaml（卷挂载）——gateway target 指向本栈
+#     activelist 服务名；configs/config.yaml 演进时需人工对齐本文件；
+#   - ui 徽标=测试环境（构建参数 VITE_APP_ENV 注入，见 ui.build.args）。
+name: zhuzhao_test
+
+services:
+  # ── zhuzhao 主库 ──
+  postgres:
+    image: postgres:15
+    container_name: zt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zhuzhao
+      POSTGRES_USER: zhuzhao
+      POSTGRES_PASSWORD: zhuzhao_test
+      TZ: Asia/Shanghai
+    volumes:
+      - zt_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zhuzhao_test
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: zt-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "zhuzhao_test"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a zhuzhao_test ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zhuzhao_test
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    profiles: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database
+      - postgres://zhuzhao:zhuzhao_test@postgres:5432/zhuzhao?sslmode=disable
+      - up
+    networks:
+      - zhuzhao_test
+
+  # ── zhuzhao app（配置卷挂载测试版：gateway target=activelist 服务名）──
+  app:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    image: zhuzhao-test:latest
+    container_name: zt-app
+    restart: unless-stopped
+    environment:
+      APP_DATABASE_HOST: postgres
+      APP_DATABASE_PORT: "5432"
+      APP_DATABASE_USER: zhuzhao
+      APP_DATABASE_PASSWORD: zhuzhao_test
+      APP_DATABASE_DBNAME: zhuzhao
+      APP_REDIS_HOST: redis
+      APP_REDIS_PORT: "6379"
+      APP_REDIS_PASSWORD: zhuzhao_test
+      APP_SERVER_PORT: "33333"
+      APP_SERVER_MODE: release
+      APP_SERVER_TRUSTED_PROXIES: 172.16.0.0/12
+      TZ: Asia/Shanghai
+      JWT_SECRET: zhuzhao-test-jwt-secret
+      GATEWAY_AK: zhuzhao
+      # 三组 SK 对值（测试常量）：app↔activelist / app↔taskrunner / taskrunner→app 回调
+      GATEWAY_SK: zhuzhao-test-gateway-sk
+      TASKRUNNER_BASE_URL: http://taskrunner:8080
+      TASKRUNNER_SK: zhuzhao-test-tr-sk
+      INTERNAL_JOBS_SK: zhuzhao-test-internal-sk
+      TASKRUNNER_SELF_BASE_URL: http://app:33333
+    volumes:
+      - ../deployments/config.test.yaml:/app/configs/config.yaml:ro
+    ports:
+      - "33334:33333" # 调试直连（浏览器入口走 ui 4001）
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - zhuzhao_test
+
+  # ── activelist（独立 PG + 服务；M-A6 验签对 GATEWAY_SK 同值）──
+  activelist-pg:
+    image: postgres:15
+    container_name: zt-al-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: activelist
+      POSTGRES_USER: activelist
+      POSTGRES_PASSWORD: zhuzhao_test_al
+      TZ: Asia/Shanghai
+    volumes:
+      - zt_al_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activelist"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zhuzhao_test
+
+  activelist:
+    build: ../../activelist
+    image: activelist-test:latest
+    container_name: zt-activelist
+    restart: unless-stopped
+    environment:
+      ACTIVELIST_CALLER_ZHUZHAO_SK: zhuzhao-test-gateway-sk
+      ACTIVELIST_PG_HOST: activelist-pg
+      ACTIVELIST_PG_PORT: "5432"
+      ACTIVELIST_PG_PASSWORD: zhuzhao_test_al
+      TZ: Asia/Shanghai
+    depends_on:
+      activelist-pg:
+        condition: service_healthy
+    networks:
+      - zhuzhao_test
+
+  # ── taskrunner（PG 形态 C7 + asynq 共用 redis DB1）──
+  taskrunner-pg:
+    image: postgres:15
+    container_name: zt-tr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taskrunner
+      POSTGRES_USER: taskrunner
+      POSTGRES_PASSWORD: zhuzhao_test_tr
+      TZ: Asia/Shanghai
+    volumes:
+      - zt_tr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskrunner"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zhuzhao_test
+
+  taskrunner:
+    build: ../../taskrunner
+    image: taskrunner-test:latest
+    container_name: zt-taskrunner
+    restart: unless-stopped
+    environment:
+      TASKRUNNER_DB_DRIVER: pg
+      TASKRUNNER_DB_HOST: taskrunner-pg
+      TASKRUNNER_DB_PORT: "5432"
+      TASKRUNNER_DB_USER: taskrunner
+      TASKRUNNER_DB_PASSWORD: zhuzhao_test_tr
+      TASKRUNNER_DB_NAME: taskrunner
+      TASKRUNNER_DB_SSLMODE: disable
+      TASKRUNNER_REDIS_ADDR: redis:6379
+      TASKRUNNER_REDIS_PASSWORD: zhuzhao_test
+      TASKRUNNER_REDIS_DB: "1" # 与 zhuzhao 会话键空间隔离（同实例分库）
+      TASKRUNNER_CALLER_ZHUZHAO_SK: zhuzhao-test-tr-sk
+      TASKRUNNER_SELF_SK: zhuzhao-test-internal-sk
+      TASKRUNNER_SELF_AK: taskrunner
+      TASKRUNNER_CALLBACK_TARGET_URL: http://app:33333/internal/jobs/callback
+      TZ: Asia/Shanghai
+    depends_on:
+      taskrunner-pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - zhuzhao_test
+
+  # ── ui（nginx 静态 + /api·/al/api 双反代 app；徽标=测试环境构建参数）──
+  ui:
+    build:
+      context: ../../zhuzhao-ui
+      dockerfile: deployments/Dockerfile
+      args:
+        VITE_APP_ENV: 测试环境
+    image: zhuzhao-ui-test:latest
+    container_name: zt-ui
+    restart: unless-stopped
+    environment:
+      UPSTREAM_APP: app
+    ports:
+      - "4001:80"
+    depends_on:
+      - app
+    networks:
+      - zhuzhao_test
+
+networks:
+  zhuzhao_test:
+
+volumes:
+  zt_pgdata:
+  zt_al_pgdata:
+  zt_tr_pgdata:

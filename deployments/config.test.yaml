@@ -1,0 +1,117 @@
+# 测试环境专用配置（docker-compose.test.yaml 卷挂载 /app/configs/config.yaml）
+# 与 configs/config.yaml 的唯一差异：gateway.upstreams target 指向 compose 服务名。
+# 漂移注意：configs/config.yaml 新增配置项时需人工对齐本文件（测试栈专用，可接受）。
+server:
+  port: 33333
+  mode: debug  # debug / release
+  # 信任的反向代理网段（CIDR/IP）。留空 = 不信任任何代理（X-Forwarded-For
+  # 不参与 ClientIP 解析，防伪造审计 IP）；Nginx 前置时填其内网网段，如：
+  # trusted_proxies: ["10.0.0.0/8"]
+  trusted_proxies: []
+
+database:
+  host: postgres
+  port: 5432
+  user: zhuzhao
+  password: zhuzhao_dev   # 生产：DB_PASSWORD 环境变量
+  dbname: zhuzhao
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 1h
+  conn_max_idle_time: 30m
+  connect_timeout: 5s
+  sslmode: disable        # 生产改为 require
+  statement_timeout: 30s  # 0 或不填表示不限制
+  application_name: zhuzhao
+
+redis:
+  host: redis
+  port: 6379
+  db: 0
+  password: zhuzhao_dev   # 与 deployments dev compose 的 REDIS_PASSWORD 对齐；生产：REDIS_PASSWORD 环境变量
+  pool_size: 20
+  min_idle_conns: 5
+  pool_timeout: 4s
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  max_retries: 2
+  conn_max_idle_time: 5m
+
+jwt:
+  # Phase 1: HS256 对称签名（单体底座）
+  # D2-09：仓库公开值非秘密——debug 可零配置启动，release 拒绝（须 JWT_SECRET 覆盖）
+  secret: "dev-only-0123456789abcdef0123456789abcdef0123456789abcdef"
+  # Phase 2: RS256 非对称签名（微服务化时启用）
+  # private_key: "${JWT_PRIVATE_KEY}"  # RSA 私钥
+  # jwks_url: "/.well-known/jwks.json"  # JWKS 公钥分发 endpoint
+  access_ttl: 30m
+  refresh_ttl: 168h  # 7天
+
+casbin:
+  model: "configs/casbin_model.conf"
+
+log:
+  level: debug       # debug / info / warn / error
+  dir: "logs"
+  max_size: 100      # MB
+  max_backups: 7
+  max_age: 30        # days
+
+# 审计归档（B11②/E-③）：库表 180 天热数据 → JSONL 归档（本地卷）；
+# 归档 JSONL 文件保留 395 天后周期清理（>180 等保口径留余量）
+audit:
+  archive:
+    retention_days: 180
+    batch_rows: 5000
+    out_dir: "data/archive"
+    file_retention_days: 395
+
+# 文件存储（Phase 2 启用）
+# storage:
+#   endpoint: "localhost:9000"     # MinIO / S3 兼容
+#   access_key: "minioadmin"
+#   secret_key: "minioadmin"
+#   bucket: "zhuzhao"
+#   region: "us-east-1"
+#   use_ssl: false
+#   presign_ttl: 15m               # 预签名 URL 有效期
+
+# 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
+taskrunner:
+  base_url: ""              # env TASKRUNNER_BASE_URL；空 = 任务端点 502
+  # self_base_url（W0b 后已成死配置——回调地址由 taskrunner 侧 CALLBACK_TARGET_URL 决定；保留 env 位防误删，env 名 TASKRUNNER_SELF_BASE_URL）
+  # TASKRUNNER_SELF_BASE_URL 可覆盖——宿主进程态 localhost，容器态 http://zhuzhao:33333
+  ak: zhuzhao
+  # sk: 从环境变量 TASKRUNNER_SK 注入
+  timeout: 10s
+
+# 内网回调端点（E-②）：/internal/jobs/callback 验 taskrunner 签名；enabled 且 sk 缺失拒启
+internal_jobs:
+  enabled: true
+  taskrunner_ak: taskrunner
+  # taskrunner_sk: 从环境变量 INTERNAL_JOBS_SK 注入
+
+# 网关反代（批次 B/E13）：前缀→上游注册表 + AK/SK 出站签名。upstreams 为空不挂载；
+# 开启后反代路由照常过 JWT + 限流 + CasbinAuth（menu_apis）并以本密钥对上游
+#（activelist，其 M-A6 验签）签名透传。生产 SK 经 GATEWAY_SK env 覆盖。
+gateway:
+  ak: zhuzhao
+  sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
+  upstreams:
+    - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
+      target: http://activelist:8080  # compose 服务名（测试栈内网 DNS）
+      strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
+      disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
+
+# API 限流（07 §2）：enabled: true 时 default.rps/burst 必填，
+# 缺失将 fail-fast 拒绝启动（无静默兜底）；routes 按 gin 路由模式（FullPath，含
+# :param 段）匹配并独立计桶（2026-09-11 批次 5a：桶隔离真生效）。
+# 2026-09-14 阶段 A 限流真机：演示栈启用默认规则（20 rps / burst 40，演示用法无感）。
+rate_limit:
+  enabled: true
+  default:
+    rps: 20              # 每用户/每 IP（登录后按 user_id，匿名按 ClientIP，二选一）
+    burst: 40
+  # routes 按需启用更严规则（示例）：
+  #   /api/v1/auth/login: { rps: 3, burst: 5 }
