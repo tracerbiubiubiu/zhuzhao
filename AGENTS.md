@@ -20,6 +20,8 @@ make swag              # 重新生成 Swagger
 
 **门禁纪律**：不得把未通过 `make acceptance` 的改动标记为"完成"；无法运行门禁时必须如实说明原因与影响。
 
+**测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/runbook.md §4 台账](docs/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
+
 ## 铁律：每次代码改动必须附带"变更评审说明"
 
 任何对 `internal/`、`migrations/`、`configs/`、`cmd/`、`docs/` 的改动，交付时在回复中固定附带三节：

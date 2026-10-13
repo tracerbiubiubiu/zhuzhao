@@ -104,3 +104,24 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 - **每日备份**：zhuzhao/activelist 各带 pgbackup 侧车（RETAIN_COUNT 统一）。⚠️ 教训（「三日假备份」事故）：postgres 无 restart 策略时停机不自启 + 旧脚本失败静默 done 0——**备份必须定期恢复验证，不能只看文件存在**。
 - **恢复演练**：zhuzhao 21 表零差异恢复已实测。坑：shell 循环 `docker exec` 采表会吞 stdin（只采到 9 表）——用 `gexec` + heredoc 单会话采全。
 - **PITR**：`pg_dump` 逻辑备**不可**回放 WAL，须 `pg_basebackup` 物理基备（tar 流 stdout → 容器内落盘 + `docker cp`）；卷根 = 数据目录根勿套层；`recovery.signal` 手建 + chown 999；目标时刻若落在未归档段，活库 `pg_switch_wal` 切段后重启即解。
+
+## 4. dev 栈测试账号台账（2026-10-13 统一口径）
+
+> **性质**：dev 栈公开测试凭据（生产凭据一律 env 注入，与本表无关）。**唯一权威 = 本表**；
+> 各仓套件（后端 acceptance / ui E2E / break-glass CLI）全部收敛到同一终值，禁止私设终态。
+
+### 4.1 账号清单
+
+| 账号 | 工号 | 密码 | 用途与归属 | 改密许可 |
+|---|---|---|---|---|
+| admin（superadmin） | E000001 | `admin12345` | **全生态唯一终态**：后端四档 acceptance / ui E2E global-setup / break-glass CLI 三处收敛同值 | **仅限三处**：① phase1 幂等改密流 ② ui `e2e/global-setup.ts` 收敛逻辑 ③ break-glass CLI 复原（§1）。**人工与 agent 的多账号测试禁止改 E000001**——用 E000002+ 专属账号 |
+| manager | E000002 | `Adm2#2609x`（用户自管） | 日常多账号手动测试（admin 角色，不动 E000001 的正确姿势） | 所有者自管 |
+| e2e_operator / e2e_viewer | E2E9020 / E2E9030 | `E2eOper#2609` / `E2eView#2609` | Playwright E2E 专属（global-setup 幂等建号） | 仅 `zhuzhao-ui/e2e/global-setup.ts` |
+| S1 演练号 | E2E 段随建 | global-setup 派发 | 强制改密流程演练（每轮重置，无常态） | 同上 |
+
+### 4.2 纪律
+
+1. **E000001 密码终态恒为 `admin12345`**——历史冲突根因 = ui E2E 曾把终态设为 `E2eAdmin#2609`、后端 acceptance 认 `admin12345`，谁后跑谁赢（2026-10-13 一天内三次互改实证）；已翻转为全生态收敛 admin12345（`global-setup.ts` main ① 注释）。
+2. **新增测试账号**：工号用手动段 `E8xxxx`（E2E 段 E2E9xxx 归 Playwright）；密码模式参考 `{Role}{N}#{YYMM}x`（≥8 位含大小写数字符号，过 min=8 复杂度），登记进本表。
+3. **改密后必须清强制改密标记**（否则 20007 门拦后续操作）：走 `/auth/password/update` **两步轮换**（新==旧被 B2-2 拒，先临时值再回终值）——break-glass CLI 只负责重置，标记清除是独立一步。
+4. agent 会话开工多账号测试前**先读本表**；发现 E000001 脱离终态，用 §1 CLI 复原而非再设新值。
