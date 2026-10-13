@@ -125,3 +125,53 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 2. **新增测试账号**：工号用手动段 `E8xxxx`（E2E 段 E2E9xxx 归 Playwright）；密码模式参考 `{Role}{N}#{YYMM}x`（≥8 位含大小写数字符号，过 min=8 复杂度），登记进本表。
 3. **改密后必须清强制改密标记**（否则 20007 门拦后续操作）：走 `/auth/password/update` **两步轮换**（新==旧被 B2-2 拒，先临时值再回终值）——break-glass CLI 只负责重置，标记清除是独立一步。
 4. agent 会话开工多账号测试前**先读本表**；发现 E000001 脱离终态，用 §1 CLI 复原而非再设新值。
+
+## 5. 存量协议兼容层接入（aksk/compat，2026-10-13 建档·批 3 待挂载）
+
+> **性质**：挂载日操作手册。utils `aksk/compat` 已交付（v0.4.2 待发），本节 = 目标服务拍板后的接线步骤与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
+
+### 5.1 挂载三步（目标服务拍板后）
+
+1. **config 密钥环**（env 注入，勿落明文；空 SK 拒启对齐生态 fail-closed 口径）：
+
+   ```yaml
+   compat_aksk:                          # 键名随服务配置惯例调整
+     keys:
+       LEGACY_AK_1: "${COMPAT_SK_1}"
+   ```
+
+2. **专用路由组挂载**：
+
+   ```go
+   verifier := &compat.Verifier{Keys: cfg.CompatAKSK.Keys} // SkipBody 抓包比对后再定，见 5.2-③
+   g := r.Group("/compat", compat.GinMiddleware(verifier, nil)) // onFail=nil 用默认 401；要分档文案传自定义
+   g.POST("/ingest", handler)
+   ```
+
+3. **纪律**：只挂专用路由组，**不与内部 `aksk.GinMiddleware` 混挂**（standards §3.11 豁免条款；存量签名不覆盖 method/path，混挂扩大跨端点重放面）。
+
+### 5.2 上线前向量比对（硬前置）
+
+1. 抓一条**新鲜**真实存量请求（≤5 分钟内，时间窗 ±5min），留存四个 `x-auth-*` 头 + 原始 body 字节。
+2. 原样重放（curl 模板，body 与抓包逐字节一致）：
+
+   ```bash
+   curl -v -X POST "http://<目标服务>/compat/ingest" \
+     -H "x-auth-access-key: $AK"  -H "x-auth-timestamp: $TS" \
+     -H "x-auth-signature: $SIG"  -H "x-auth-body-hash: $BH" \
+     --data-binary @captured_body.bin
+   ```
+
+3. **判定表**：
+
+   | 现象 | 结论 / 动作 |
+   |---|---|
+   | 200 | 主路径吻合（复算派），可直接上线 |
+   | 401 `签名不匹配`，`SkipBody=true` 后 200 | 对端为 skipBody 形态（body 不入签）——**固定开启 `Verifier.SkipBody`** 再上线 |
+   | 401 `签名已过期` | 双方时钟差超窗，先校时再比 |
+   | 401 `未知凭据` | 密钥环没配对，查 config |
+   | 401 `签名不匹配`（开关两态都败） | 线协议与冻结向量不符（分隔符/编码/拼接差异）——**停，回设计对账**，勿强上 |
+
+### 5.3 回退
+
+摘路由组中间件即恢复原状；config 密钥环段保留无副作用（不挂载不生效）。兼容层无 DB、无迁移，删除 = 删依赖 + 删路由组。
