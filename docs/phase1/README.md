@@ -294,7 +294,7 @@ Step 6–10 **无严格线性顺序**，按 [§2.3 里程碑](#23-里程碑验�
 | 数据范围 | Phase 1 不做组织范围过滤 | ✅ 已确认 |
 | 错误码 `20008`/`30006`/`70003` | Phase 1 验收必需；Step 4 写入 `errcode.go`（见 [errcode.md](../api/errcode.md)） | 📋 实现项 |
 | CORS | Phase 1 用 `gin-contrib/cors` **DefaultConfig + AllowAllOrigins**（全 Origin 放开，不做白名单）；生产上线前再改域名白名单 | ✅ 已确认 |
-| 存量 qingtao/aksk | **仅自研 Canonical**（`X-AK-*`）；**不**双栈、不长期并存；存量调用方迁移到新 SDK | ✅ 已确认（[02-auth §存量迁移](./02-auth.md#已决策存量-qingtaoaksk-迁移策略)） |
+| 存量 qingtao/aksk | **仅自研 Canonical**（`X-AK-*`）；**不**双栈、不长期并存；存量调用方迁移到新 SDK。**⚖ 2026-10-13 翻案**：迁移窗口内有限并存（utils `aksk/compat` 独立重实现兼容层，专用路由组隔离，迁移完成后整包删除） | ✅ 已确认（[02-auth §存量迁移](./02-auth.md#已决策存量-qingtaoaksk-迁移策略)） |
 | 部署与代码解耦 | 一套代码多种部署；拓扑只改配置/编排，不改业务逻辑；多副本横切 Phase 3 按配置启用 | ✅ 已确认（[design-decisions §18](../design/design-decisions.md#18-部署与代码解耦一套代码多种部署)） |
 
 ---

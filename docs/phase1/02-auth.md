@@ -429,6 +429,8 @@ signature, err := a.Sign(cfg.Sk, cfg.Ak, ts, nonce)
 
 **M2M 上线前**：通知调用方、提供 Canonical 签名示例与 AK 轮换流程；旧 `x-auth-*` 请求一律 **401**（无兼容模式）。
 
+> **⚖ 翻案追记（2026-10-13）**：经所有者拍板，上段「无兼容模式」修订为**迁移窗口内有限并存**——新增 utils `aksk/compat` 兼容层承接存量调用方。不变的边界：仍**强制迁移**（口子=桥非常态）、存量调用方迁完后**整包删除 compat**、`api_credentials` 不设 `sign_scheme`。与本决策的差异：① 兼容层为**独立重实现**（研读存量衍生实现复刻线协议，golden 向量经存量实现自身服务端校验器反向验证；**不引入 `qingtao/aksk` 依赖**——2026-08-14 评估结论「不直接依赖」继续有效）；② 存量框架实现系 qingtao/aksk 衍生（回加 body-hash 复算形态，非 v2.1.0 的 `ak,ts,nonce` 原样——线协议以 compat 测试冻结向量为准）；③ 我方端补强对冲原「不绑 method/path」缺陷：时间窗 ±5min 强制（存量实现不校验）、恒时比较、读体上限、空 SK fail-closed、caller=AK 归因；④ 隔离纪律：compat 只挂专用路由组，不与内部验签中间件（utils `aksk.GinMiddleware`，现行 `Authorization: HMAC` 单头形态，2026-09-03 基线修订）混挂——standards §3.11 已登记豁免。
+
 #### 为什么选 AK/SK 而不是 OAuth2 Client Credentials
 
 | 维度 | AK/SK 签名 | OAuth2 Client Credentials |

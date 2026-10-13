@@ -1092,7 +1092,7 @@ type remoteUserQueryService struct {
 | Casbin 策略存储 | ✅ 已明确 | PostgreSQL adapter，当前阶段内存 adapter 过渡 |
 | Wire 生成 vs 手动 | ✅ 已明确 | Wire CLI 已安装，`make wire` 自动生成 |
 | 部署与代码解耦 | ✅ 已确认 | 一套代码、配置驱动多种部署；业务层不感知拓扑。见 [§18 部署与代码解耦](./design-decisions.md#18-部署与代码解耦一套代码多种部署) |
-| 存量 qingtao/aksk 与自研 M2M 签名 | ✅ 已确认 | **仅 Canonical，强制迁移**；不双栈、不保留 `x-auth-*` 验签。见 [phase1/02-auth.md §已决策：存量 qingtao/aksk 迁移策略](../phase1/02-auth.md#已决策存量-qingtaoaksk-迁移策略) |
+| 存量 qingtao/aksk 与自研 M2M 签名 | ✅ 已确认 | **仅 Canonical，强制迁移**；不双栈、不保留 `x-auth-*` 验签。见 [phase1/02-auth.md §已决策：存量 qingtao/aksk 迁移策略](../phase1/02-auth.md#已决策存量-qingtaoaksk-迁移策略)。**⚖ 2026-10-13 翻案（有限并存）**：迁移窗口内经 utils `aksk/compat` 独立重实现兼容层承接存量调用方（不引原库、专用路由组隔离、迁移完成后整包删除），详见 02-auth 同节翻案追记 |
 
 ---
 
