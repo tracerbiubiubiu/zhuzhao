@@ -37,6 +37,24 @@ cd ../../taskrunner/deploy && docker compose up -d --build
 cd ../../zhuzhao/deployments && docker compose up -d --build
 ```
 
+## 二·五、测试环境（单文件 docker 化，2026-10-13）
+
+**用途**：稳定回归/演示环境——与宿主进程 dev 栈（vite HMR 快改）**双形态并存**，生命周期与 AI 会话/宿主进程完全解耦（会话回收不再连坐服务进程，2026-10-12/13 app·taskrunner 反复下线的根治）。
+
+```sh
+cd deployments
+docker compose -f docker-compose.test.yaml up -d --build   # 首建 5-10 分钟（Go+前端全量构建）
+# 入口 = http://localhost:4001（ui nginx：静态 + /api·/al/api 双反代 app）
+# 首登引导：admin / admin12345（与全生态终态口令同系；种子首登亦走强制改密链路）
+# 三链验证：登录 → /al/api/v1/admin/types（活动列表链）→ /api/v1/runs（任务链）
+```
+
+- **组成**：单文件全组件（10 容器）——zhuzhao PG/Redis/migrate/app + activelist PG/apiserver + taskrunner PG/taskrunner + ui（nginx 静态+双反代）；独立网 `zhuzhao_test`、独立卷 `zt_*` 前缀、宿主端口全错开（ui 4001 / app 直连 33334）；
+- **数据**：全新干净态（与 dev 栈零共享）——业务自举走首登改密流程（E2E globalSetup 同款链路）；
+- **配置**：`config.test.yaml` 卷挂载 app（与 configs/config.yaml 的唯一差异=gateway target 指本栈 activelist 服务名；configs 演进需人工对齐本文件）；
+- **徽标**：ui 构建参数 `VITE_APP_ENV=测试环境`——登录页环境徽标显式标注，防与生产混淆；
+- **E2E**：哨兵/全量仍打宿主 dev 栈（4000）；本栈的 E2E 打点切换=改 playwright baseURL 一行（触发驱动）。
+
 ## 三、密钥对值表（跨栈，拼装前核对）
 
 | 本栈变量 | 对端变量 | 对端栈 |
