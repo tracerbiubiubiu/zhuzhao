@@ -21,6 +21,7 @@ docs/
 ├── VISION.md                        # 产品定义与 MVP 边界（范围裁决锚点，必读）
 ├── roadmap.md                       # 三阶段实施路线图总览
 ├── standards.md                     # 工程公约 SSOT（代码/API/迁移/安全公约；AGENTS.md 引用，zhuzhao/taskrunner/activelist 全生态适用）
+├── acknowledgments.md               # 致谢与借鉴出处（借鉴/参考项目集中登记；新借鉴随批登记）
 ├── docs.go / swagger.json / swagger.yaml  # ⚙️ swag 生成物（make swag 输出，勿手改）
 │
 ├── design/                          # 框架设计文档（技术架构层面）

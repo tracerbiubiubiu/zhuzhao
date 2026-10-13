@@ -50,7 +50,7 @@
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
 9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
 10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
-11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；
+11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；**存量协议兼容层豁免（2026-10-13）**：utils `aksk/compat` 为本条登记在册的唯一例外（承接存量 `x-auth-*` 调用方，独立重实现而非自研中间件复辟）——只挂专用路由组、不与 `aksk.GinMiddleware` 混挂，存量调用方迁移完成后整包删除（[02-auth §存量迁移翻案追记](./phase1/02-auth.md)）；
 12. **字段格式补充（2026-10-01 四仓联合验证批）**：① **date-only 业务字段传输 `YYYY-MM-DD`**（如工单自定义字段 date——后端 `time.Parse("2006-01-02")` 硬校验），不适用第 8 条 RFC3339；发送侧须按字面格式产出（前端曾以 datetime 控件直发 ISO 时间恒 400，实测教训入册）；② **ID 数组元素与标量同规**——发送侧一律字符串（第 7 条）；`jsonutil.Int64Slice` 双形态兼容仅为**收方宽容**，不构成发送 number 的许可（存量 `.map(Number)` 属违反本公约的欠账）。
 13. **500/内部错误必须留痕（2026-10-12 首例驱动：首页统计卡 `GET /tickets` 瞬时 500 事后无迹可查）**——① 未分类错误（非业务码）由 zhuzhao `writeServiceError` 中枢统一落 ERROR（`request_id/path/err` 明细，service error without http mapping 同规格）；② 服务源头**禁止吞错不落直接返回 ErrInternal**（存量零容忍：notification list 为首例补修；新增即审计项）；③ panic 不占本条——既有 Recovery 中间件口径（slog 堆栈 + PanicSink 指纹聚合落库 + 指标计数）；④ 前端/反代错误体归口各端点（blob 错误体解析属前端请求层职责，zhuzhao-ui 请求层已实现）。
 
@@ -72,7 +72,7 @@
 
 ## 5. 公共包（zhuzhao-utils）
 
-- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk（**10 包**）；**版本：v0.4.1（2026-09-16 校准）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
+- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本：v0.4.1（当前各仓 pin）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正；**v0.4.2 待发（2026-10-13，未提交未打标）**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
 - **抽取边界：只抽无数据依赖的纯工具**——绑定 zhuzhao 库 schema 的构件（如策略谓词）不进 utils（design-decisions §25.3）；
 - 版本策略：语义化版本，发版后各仓 pin（去 replace）；临时 replace 仅限联调窗口；
 - **新增第三方依赖必须说明理由与替代方案**（go.mod 铁律）；公共能力优先沉淀进 zhuzhao-utils 而非各仓自引。
@@ -175,6 +175,7 @@
 | 前端工程设计（技术栈/壳层/契约消费面/门禁） | phase4/01 号 |
 | 前端协作协议（六件门禁/提交规范/评审三节/文档规范） | zhuzhao-ui 仓 AGENTS.md |
 | AI/协作者流程协议（zhuzhao 仓） | AGENTS.md |
+| 借鉴/参考项目出处与致谢（新借鉴随批登记纪律） | acknowledgments.md |
 
 ---
 

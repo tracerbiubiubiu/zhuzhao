@@ -72,3 +72,7 @@ CI（GitHub Actions）跑最小质量网（vet + gofmt + build + 单测 race）�
 ## License
 
 [MIT](LICENSE)
+
+## 致谢
+
+本项目的设计借鉴与参考过众多开源项目（协议蓝本 / 能力映射蓝本 / 反面对照驱动修正），集中登记见 [docs/acknowledgments.md](docs/acknowledgments.md)——借设计不借代码，出处可溯源。
