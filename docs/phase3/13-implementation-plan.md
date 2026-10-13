@@ -17,7 +17,7 @@
 | 里程碑 | ~~M0→M1→M2→M3→M4→M5~~ **现行主链（2026-09-02 §23）**：M0 启动准备（收窄）→ **M-E 事件/任务总线** → **M-A activelist 独立实现** → **M-HR HR 同步** → **M-Mig 迁移准备**；~~M1 可运维基座~~ / ~~M2 工单业务~~ / ~~M3 加固~~ / ~~M4 activelist 集成~~ / ~~M5 3b~~ 均降 🚦 或暂缓（见 §1 修订表） |
 | 硬前置 | ~~W2 以 W1 为硬前置~~ **修订（2026-09-02，design-decisions §22.1/§23）**：现行主链无硬前置链式依赖——**M-E 依赖 Asynq（ADR-002）引入 + 2c Authorize（已交付）**；M-A/M-HR/M-Mig 相互独立、按各自触发条件推进；防重约定（sla:scan Unique + L1 advisory lock）仅对事件基建适用，写码时按 [02-multi-instance](./02-multi-instance.md) 遵守 |
 | 门禁 | 每 Wave 退出标准 + `make acceptance` 四档 + 13 包 `-race` + Phase 3-min/full 验收 |
-| 迁移 | Phase 3 迁移编号启动时按 A2 规则重排（当前 000001–000025 已占用，下一编号 **000026**；000020–000023 = 判定日志/job_submissions/任务菜单/params 快照列，000024/000025 = activelist 权限面/audit_menu） |
+| 迁移 | Phase 3 迁移编号启动时按 A2 规则重排——**本行不写死「下一编号」**（旧值 000026 已被 000026_job_submissions_claimed_at 占用；2026-10-13 勘误），取号前以 [review/11 §4 迁移地图](../review/11-project-control.md) 为权威对账位；以下数字仅历史留痕：000020–000023 = 判定日志/job_submissions/任务菜单/params 快照列，000024/000025 = activelist 权限面/audit_menu |
 
 > ⚠️ **未给出日历排期**：本计划以「人日」计。若给定启动日期 + 人力数，可再展开为带日期的排期（Gantt）。
 

@@ -68,7 +68,7 @@ curl -fsS localhost:8080/health/ready
 
 ## 5. 数据库迁移规范
 
-- 迁移编号全局唯一；up/down 成对；启动前核对 `docs/phase2/README §2.4` 占用表（A2 规则）。
+- 迁移编号全局唯一；up/down 成对；启动前核对 **权威编号表 = [review/11 §4 迁移地图](../review/11-project-control.md)**（A2 规则；`docs/phase2/README §2.4` 已于 2026-10-12 退役逐号维护、改为指向该表）。
 - 每次变更：`make migrate-up` + 相关 acceptance 回归。
 
 ## 6. 备份与恢复

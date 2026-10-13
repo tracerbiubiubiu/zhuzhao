@@ -47,7 +47,7 @@
 
 1. **roadmap.md** = 执行视图（什么阶段做什么、现状）。
 2. **design-decisions.md** = 决策日志（为什么，带日期，旧决策保留不删）。
-3. **代码 / migrations/** = 真实落地（现状以磁盘 `migrations/` 为准；截至 2a 收口已落地 000010 / 000015 / 000016，后续编号见 phase2/README §2.4 预分配表）。
+3. **代码 / migrations/** = 真实落地（现状以磁盘 `migrations/` 为准；截至 2a 收口已落地 000010 / 000015 / 000016，后续编号见 [review/11 §4 迁移地图](./review/11-project-control.md)——phase2/README §2.4 已于 2026-10-12 退役逐号维护）。
 
 修改纪律（任何范围/阶段调整都按此顺序，缺一不可）：
 1. 在 `design-decisions.md` **追加**一条（日期 + 旧→新 + 理由），不删旧。

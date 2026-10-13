@@ -32,7 +32,7 @@ make swag              # 重新生成 Swagger
 
 ## 数据库迁移规范
 
-- 每个迁移 **up/down 成对**；编号**全局唯一**，新迁移前先核对 `migrations/` 与 `docs/phase2/README.md §2.4`、`docs/phase3/` 的编号占用表，**禁止编号冲突**。
+- 每个迁移 **up/down 成对**；编号**全局唯一**，新迁移前先核对 `migrations/` 实际占用 + **权威编号表 = [docs/review/11-project-control.md §4 迁移地图](docs/review/11-project-control.md)**（`docs/phase2/README.md §2.4` 已于 2026-10-12 退役逐号维护、改为指向该表），**禁止编号冲突**。
 - 修改已有表语义必须说明对存量数据的兼容处理。
 - 变更后必须 `make migrate-up` 并跑相关 acceptance。
 

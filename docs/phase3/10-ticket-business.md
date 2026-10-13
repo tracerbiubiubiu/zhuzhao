@@ -38,7 +38,7 @@
 | 预置定时任务（场景 B） | Asynq PeriodicTask / Scheduler | — | Asynq |
 | 事件机制升级 | L0 → L1（`ticket_events` 持久化 + 轮询补偿） | — | L1 |
 
-> 迁移编号从 000017 起（Phase 2 用至 000016，见 [phase2/README §2.4](../phase2/README.md#24-迁移编号规划自-000010-起)）。
+> 迁移编号从 000017 起（Phase 2 用至 000016，编号表见 [review/11 §4 迁移地图](../review/11-project-control.md)；`phase2/README §2.4` 已于 2026-10-12 退役逐号维护）。
 >
 > **已前移到 Phase 2a**（2026-08-25）：工单模板（原 000018，现 000015）和工单关联（原 000019，现 000016）因纯 DB 无事件依赖前移到 2a，Phase 3 迁移编号段整体前移至 000017-000021（含 000021 `ticket_events` ALTER）。
 >

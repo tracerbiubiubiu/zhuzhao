@@ -70,7 +70,7 @@
   - **审计归档 cron 部署坑（跨段）**：`audit.archive.cron_enabled` 默认 false 且 compose/config 均未开启——归档定时清理当前**不运行**，保留期 180 天形同虚设；部署清单必设 `APP_AUDIT_ARCHIVE_CRON_ENABLED=true` 或改默认值（随启动批拍）。
 - **BK-21 触发实锤**：风险单 = **新资源接 L2**——BK-21 护栏泛化（fail-closed 哨兵泛化 registry 层，1–2 天）**必须随本模块同批**（phase6 第一个随行件；此前多次分析确认的链式关系在此兑现）
 - 权限码 `risk:read`/`risk:manage` 等种子 + 菜单（风险台账/管理按钮）随批；审批需求（风险接受审批）：S3b 审批引擎等首个真实审批场景（dd §29 翻案后已解冻排期）——**第一档接受审批维持 superadmin/owner 确认制，S3b 落地后可升级**
-- 迁移：`risk_items`/`risk_sources` 等表族；编号启动时按 11 号 §4 对账（当前下一编号 000041，与 phase5 S5/S6 按启动序 A2 竞争）
+- 迁移：`risk_items`/`risk_sources` 等表族；编号启动时按 [11 号 §4 迁移地图](../review/11-project-control.md) 对账（**不在此写死下一编号**，与 phase5 S5/S6 按启动序 A2 竞争）
 - **对接预留接口（内网前置，2026-10-09 补充）**：`RiskSourceConnector` 端口（Ingest 事件 → 风险单——第一档实现 = 手动录入 + 上报 API；扫描器/SIEM webhook 连接器 = 第二档各写一个 adapter）+ S9 情报消费内部接口。总纪律同 [phase5 §6 对接预留清单](../phase5/README.md)：外部对接点一律 Port+Adapter+config，endpoint/凭据禁止硬编码，桩实现 fail-fast 不虚标。
 - **登录/登出审计随行（2026-10-09 隐藏需求核查补遗，合规随行件）**：`/auth` 匿名组无 AuditLog 中间件（`router.go:159-166`）——登录成功/失败/登出零审计；平台承担风险管理职能后为 ISO 27001 A.12.4 标准拷问点（与终报 P2-11"登录方式 sso/local 归因字段"是两件事，后者随 M-UAA 件 1[原 M-SSO]）。量级半天，本 phase 启动批随行或触发驱动。
 

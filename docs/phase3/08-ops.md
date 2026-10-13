@@ -32,7 +32,7 @@
 | 检查 | 方式 |
 |---|---|
 | up/down 成对 | 每个迁移必须有 `.up.sql` / `.down.sql`（脚本断言） |
-| 编号全局唯一 + 无冲突 | 启动时按 A2 规则核对占用表（phase2/README §2.4） |
+| 编号全局唯一 + 无冲突 | 启动时按 A2 规则核对权威编号表（[review/11 §4 迁移地图](../review/11-project-control.md)；phase2/README §2.4 已退役逐号维护） |
 | 可应用 / 可回滚 | 空库 `make migrate-up` → `migrate-down` 全量演练 |
 | 语法 | 迁移文件 SQL 语法检查（pg 解析或试跑） |
 | 联动 | `make migrate-up` + `make acceptance` 作为门禁 |
