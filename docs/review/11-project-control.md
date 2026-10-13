@@ -4,6 +4,7 @@
 >
 > 更新日期：**2026-09-27**（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-10-12 文档批次（break-glass 批）：**superadmin 密码恢复应急通道落码**——`zhuzhao reset-password` 子命令（同二进制分发零镜像改动：目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销 `RevokeUserSessionsWithRetry` 导出] + 禁用连带启用 + audit_logs 落行 method='CLI'）；**config 职责拆分**（服务端启动 fail-fast[rate_limit/internal_jobs SK/gateway SK] 自 Load 迁 Validate——演练实证应急通道被无关启动检查卡死；Load 保持读+默认值，server 路径 Load→Validate 行为不变）；`docs/runbook.md` 建档（Phase 3 承诺欠账补建：§1 恢复流程 CLI 首选/手工 SQL 兜底含清 Redis 会话 + §2 四项演练结论沉淀 + §3 备份/PITR 要点）；§1 矩阵补行；起因=superadmin 设计评估发现「最后一个 superadmin 忘密码零应用层通道」缺口（DB 直改不清会话/不留痕）；实战=同日并行会话致 admin 凭据脱离验收态，CLI 一键复原
+> 2026-10-13 文档批次（用户展示统一批）：**「人名(工号)」结构化展示契约落地**——后端 enrichUserNames 重构 userRefsByIDs 共享 helper（查询加 employee_no，回填 name+no 独立字段非合并串）+ 工单/评论作者回填（TicketComment/Note 此前裸 ID）+ **迁移 000044 审计操作人快照列**（employee_no/real_name 写入时经 users 定格——行内自描述，归档后无 users 可 join；增量列不动 username，存量行 NULL 读端兜底）+ model 三处加 *_no 字段（工单端点为泛型 @Success 不入 swagger——本批 swagger 增量仅审计 method 筛选参数）+ swag 重生成；前端 UserNameText 统一组件（三态降级）+ 工单列表/详情（含补创建人展示）/评论作者/审计操作人四处接入（MyOrg/用户管理已是姓名+工号独立列天然合规不动）；§4 迁移地图 42→44 对（补 000043 并行批行）+下一编号 000045、§1 W4 行契约增补指针；消歧器=工号拍板（域账号覆盖率/敏感性均劣）；dd §27 站内消息中心翻案同日另落
 > 2026-10-12 文档批次（000042 修复批+同步收口）：**000041/000042 迁移重写收口**（B=down 守卫换 menu_apis 来源维度[与 000041 同款]/C=up 补 menu_apis 来源行——首版只插 casbin 经不起 AssignMenus 重放，UI 保存菜单即 403 复发；down 顺序承重=先删来源行再守卫删 casbin）+000041 up 补 DISTINCT+testutil 清单补 000040-42（D2-31 欠账 ×3）+AssignMenus 重放回归测试入 `role_repo_integration_test.go`；**四档 acceptance 90×4 全绿收口**（2a 断言校准 ticket_list 页面 GET 8→9=设计内增长；operator/viewer 测试绑定清除种子态复原）；§4 迁移地图 39→42 对+下一编号 000043、§6 BK-23 补 provenance 盲区注记（roundtrip 对来源类缺陷结构性盲=000042 二次实证）+**BK-24 登记**（GET /orgs 读面超陈述，触发=进内网前安全审查随 UAA 批拍板）、B13 矩阵 orgs 行 2026-10-12 追记（L1 面扩至工单菜单角色）、phase2 README §2.4 编号表改指向本文件 §4（终结双维护）、dd §24 补 break-glass 实物化追记
 > 2026-10-09 文档批次（doc-only）：phase5 规划扩至十段（S10 工单协作与提醒——抄送/标签/角标/节点超时/导出+BK-21，场景差距核查四线合并产出）+ §4 迁移谱系对账（P4-2 实落 000033 单号、下一编号 000041）+ phase6 立项登记与前置扩展（S1/S2/S6+S10）+ UAA 全移权评估与角色壳方案（**已立项 M-UAA**，公司指南下发触发达成，[phase3/17](../phase3/17-uaa-integration.md)）
 > 2026-09-22 文档批次（doc-only）：Phase 4 规划批最小回填（十九批治理）——00-03 号规划定稿、十六批安全审计登记（→W0）、虚标勘误四处、迁移谱系（W1 占 000030/31）、§6 TC1 回标（详见 phase4/ 各文件）
@@ -35,7 +36,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级 Casbin RBAC（BFS 角色展开 + 超管通配） | ✅ Phase 1 | `internal/middleware/casbin.go` `internal/casbin/enforcer.go` |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
-| **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
+| **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | 🟡 **库就绪待接线**（2026-09-04；**生产装配零消费者**，仅测试引用；首个消费者 = M-E；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
@@ -105,7 +106,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ---
 
-## 4. 数据库迁移地图（42 对）
+## 4. 数据库迁移地图（44 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -149,8 +150,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000040 | al_data 菜单改名「名单数据」→「活动列表」（2026-10-08 用户拍板） | P4 收尾后调整 |
 | 000041 | orgs 读放开：GET /orgs 绑「工单管理」目录（menu_apis+casbin；down 含忠实逆守卫——无其他菜单来源才删，2026-10-12 复核批补） | 权限修复批 |
 | 000042 | orgs 读放开·绑定面修正：子页面（ticket_list/ticket_type_manage）补 menu_apis 来源行+casbin 存量补授（重写版：down=menu_apis 维度守卫+顺序承重；AssignMenus 重放回归测试随批） | 权限修复批 |
+| 000043 | al 域命名统一：菜单「名单数据」系→「活动列表」系（顶级/活动数据/活动类型；用户拍板，2026-10-13 并行批） | 权限修复批同期 |
+| 000044 | 审计操作人快照列（employee_no/real_name，写入时经 users 定格）——行内自描述可归因（归档后无 users 可 join，原仅 username=本地账号名非登录键）；增量列方案不动 username | 用户展示统一批 |
 
-> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000042 已占用**（000017–000029 见上表：IW1/IW3/并发审查批次/批次 8 回补；~~下一编号 000030~~ **Phase 4 谱系（2026-10-08 对账更新，明细见上表 30–39 行）**：000030/000031 = BK-18 整改+词表重排（W1 两连号）/000032 = activelist 整改②/000033 = 通知（P4-2 实落**单号**，非十四批预测的两连号——ticket_events 消费位未落）/000034–000036 = 字典/PAT/ops（穿插池）/000037–000039 = 菜单嵌套与路由种子（W3/收尾批）——**P4 全交付合回 main**；~~下一编号 000041~~ **000041/000042 = orgs 读放开两连（2026-10-12 权限修复批，明细见上表）——当前下一编号 000043**，IW2 附件（=phase5 S5）启动时按此对账）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
+> **编号冲突已拍板（A2，2026-08-31）**：2b-ext 附件与 Phase 3 SLA 都曾规划 `000017`，规则 = **谁先启动谁占用，后者整体重排**。当前 **000017–000044 已占用**（000017–000029 见上表：IW1/IW3/并发审查批次/批次 8 回补；~~下一编号 000030~~ **Phase 4 谱系（2026-10-08 对账更新，明细见上表 30–39 行）**：000030/000031 = BK-18 整改+词表重排（W1 两连号）/000032 = activelist 整改②/000033 = 通知（P4-2 实落**单号**，非十四批预测的两连号——ticket_events 消费位未落）/000034–000036 = 字典/PAT/ops（穿插池）/000037–000039 = 菜单嵌套与路由种子（W3/收尾批）——**P4 全交付合回 main**；~~下一编号 000041~~ **000041/000042 = orgs 读放开两连（2026-10-12 权限修复批）/000043 = al 域菜单改名（2026-10-13 并行批）/000044 = 审计操作人快照（2026-10-13 展示统一批），明细见上表——当前下一编号 000045**，IW2 附件（=phase5 S5）启动时按此对账）；Phase 3 SLA（10-ticket-business §2 旧规划编号）启动时按此规则重排。
 
 ---
 
@@ -276,7 +279,7 @@ docs/
 | # | 事项 | 说明 |
 |---|------|------|
 | IW1 | ~~多虚拟组可见性场景闭环：BK-13 + BK-14~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴测试（原编号 W1，随 2026-08-31 编号治理改 IW；详见 00 §2.3） |
-| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性）。**2026-10-08：附件/存储件收编为 Phase 5 S5 实施载体**（SSOT=[phase5/README](../phase5/README.md) §P5-S5，迁移号启动时按 §4 对账占用——原预留 000034 已被 P4-3 字典占用，当前下一编号 000043）；auth-enhance 维持本窗口触发驱动 |
+| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性）。**2026-10-08：附件/存储件收编为 Phase 5 S5 实施载体**（SSOT=[phase5/README](../phase5/README.md) §P5-S5，迁移号启动时按 §4 对账占用——原预留 000034 已被 P4-3 字典占用，当前下一编号 000045）；auth-enhance 维持本窗口触发驱动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 

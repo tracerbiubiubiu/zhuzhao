@@ -182,6 +182,8 @@ check "BFS: 父部门角色不继承子部门成员" "0" \
   "$(psql_q "SELECT COUNT(*) FROM org_roles orgr JOIN user_orgs m ON m.org_id = orgr.org_id WHERE m.user_id = $VB_ID AND orgr.role_id = $RB_ID")"
 
 # --- 临时成员过期：expired 成员不可读，未过期可读 ---
+# （member 路由权限来自 operator 的工单菜单绑定——2a T7 授予并持久，见 2c 同款
+# 依赖注释；勿在本档内改绑/清理，链边界卫生归 phase1 开头与 2c 结尾）
 EXP_ID=$(mkuser "p2b_exp_$SUF" "B2EX$SUF" "$ROLE_O" "$VGB_ID")
 EXPT=$(mklogin "B2EX$SUF" "pass1234")
 check "expired-before: member reads vg_b ticket (200)" "200" \

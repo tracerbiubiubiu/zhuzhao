@@ -128,6 +128,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000040_al_data_rename.up.sql",
 			"000041_orgs_read_for_ticket_manage.up.sql",
 			"000042_orgs_read_for_ticket_child_roles.up.sql",
+			// al 域命名统一（000043，2026-10-13 并行批）+ 审计操作人快照列（000044）
+			"000043_al_domain_rename.up.sql",
+			"000044_audit_operator_snapshot.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

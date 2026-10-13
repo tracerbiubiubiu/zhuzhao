@@ -167,9 +167,43 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	return conds, args
 }
 
+// userRef 用户展示引用（2026-10-13 结构化消歧）：Name=real_name 优先空回退 username；
+// No=工号独立字段（重名消歧器，前端 UserNameText 渲染「人名(工号)」三态降级）
+type userRef struct {
+	Name string
+	No   string
+}
+
+// userRefsByIDs 批量反查用户展示引用（单次 ANY 集查询；软删用户不回填——
+// 调用方按缺失降级显 ID）。回填是读侧增强：失败返回空 map 不阻断主查询。
+func (r *TicketRepo) userRefsByIDs(ctx context.Context, ids []int64) map[int64]userRef {
+	refs := make(map[int64]userRef, len(ids))
+	if len(ids) == 0 {
+		return refs
+	}
+	rows, err := r.db.Query(ctx,
+		`SELECT id, COALESCE(NULLIF(real_name, ''), username), COALESCE(employee_no, '') FROM users WHERE id = ANY($1) AND deleted_at IS NULL`,
+		ids)
+	if err != nil {
+		return refs
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var ref userRef
+		if err := rows.Scan(&id, &ref.Name, &ref.No); err != nil {
+			return refs
+		}
+		refs[id] = ref
+	}
+	if err := rows.Err(); err != nil {
+		return refs
+	}
+	return refs
+}
+
 // enrichUserNames 批量回填创建人/处理人姓名（W4 随批件，03 S9：列表「处理人」列
-// 裸 ID/N+1 消除）。单次 ANY 集查询；real_name 空回退 username；软删用户不回填
-// （字段 omitempty，调用方降级显 ID）。回填是读侧增强：失败不阻断主查询。
+// 裸 ID/N+1 消除；2026-10-13 升级结构化：name+employee_no 独立字段）。
 func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticket) {
 	if len(tickets) == 0 {
 		return
@@ -195,33 +229,17 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 	if len(ids) == 0 {
 		return
 	}
-	rows, err := r.db.Query(ctx,
-		`SELECT id, COALESCE(NULLIF(real_name, ''), username) FROM users WHERE id = ANY($1) AND deleted_at IS NULL`,
-		ids)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-	names := make(map[int64]string, len(ids))
-	for rows.Next() {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return
-		}
-		names[id] = name
-	}
-	if err := rows.Err(); err != nil {
-		return
-	}
+	refs := r.userRefsByIDs(ctx, ids)
 	for _, t := range tickets {
-		if n, ok := names[t.CreatedBy]; ok {
-			t.CreatedByName = n
+		if ref, ok := refs[t.CreatedBy]; ok {
+			t.CreatedByName = ref.Name
+			t.CreatedByNo = ref.No
 		}
 		if t.AssignedTo != nil {
-			if n, ok := names[*t.AssignedTo]; ok {
-				v := n
-				t.AssigneeName = &v
+			if ref, ok := refs[*t.AssignedTo]; ok {
+				name, no := ref.Name, ref.No
+				t.AssigneeName = &name
+				t.AssigneeNo = &no
 			}
 		}
 	}
@@ -382,6 +400,25 @@ func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64, includeIn
 	})
 	if err != nil {
 		return nil, fmt.Errorf("collect comments: %w", err)
+	}
+	// 作者回填（2026-10-13 展示统一批；此前 CreatedBy 裸 ID）——与工单 enrich 同款
+	// 批量反查；失败不阻断（调用方降级显 ID）
+	ids := make([]int64, 0, len(comments))
+	seen := make(map[int64]struct{}, len(comments))
+	for _, c := range comments {
+		if c.UserID != 0 {
+			if _, ok := seen[c.UserID]; !ok {
+				seen[c.UserID] = struct{}{}
+				ids = append(ids, c.UserID)
+			}
+		}
+	}
+	refs := r.userRefsByIDs(ctx, ids)
+	for _, c := range comments {
+		if ref, ok := refs[c.UserID]; ok {
+			c.CreatedByName = ref.Name
+			c.CreatedByNo = ref.No
+		}
 	}
 	return comments, nil
 }

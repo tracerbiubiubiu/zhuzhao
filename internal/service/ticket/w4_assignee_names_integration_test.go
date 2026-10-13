@@ -92,6 +92,10 @@ func TestW4_NameBackfill(t *testing.T) {
 	var aidName string
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT COALESCE(NULLIF(real_name, ''), username) FROM users WHERE id = $1`, aid).Scan(&aidName))
+	// 创建人工号（2026-10-13 展示统一批：*_no 结构化消歧字段与姓名同批回填）
+	var aidNo string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT COALESCE(employee_no, '') FROM users WHERE id = $1`, aid).Scan(&aidNo))
 
 	root := rootOrgID(t)
 	tk := newTicketHelper(t, svc, aid, root, "W4 姓名回填")
@@ -101,8 +105,11 @@ func TestW4_NameBackfill(t *testing.T) {
 	got, err := svc.Get(ctx, tk.ID, aid)
 	require.NoError(t, err)
 	assert.Equal(t, aidName, got.CreatedByName, "创建人姓名：real_name 空应回退 username")
+	assert.Equal(t, aidNo, got.CreatedByNo, "创建人工号：结构化消歧字段（2026-10-13）")
 	require.NotNil(t, got.AssigneeName)
 	assert.Equal(t, "张三"+suffix, *got.AssigneeName, "处理人姓名：real_name 优先")
+	require.NotNil(t, got.AssigneeNo)
+	assert.Equal(t, "E2W401_"+suffix, *got.AssigneeNo, "处理人工号：结构化消歧字段")
 
 	// 列表回填
 	list, err := svc.List(ctx, model.TicketListQuery{Page: 1, PageSize: 100}, aid)
@@ -116,8 +123,11 @@ func TestW4_NameBackfill(t *testing.T) {
 	}
 	require.NotNil(t, row, "列表应含目标工单")
 	assert.Equal(t, aidName, row.CreatedByName)
+	assert.Equal(t, aidNo, row.CreatedByNo)
 	require.NotNil(t, row.AssigneeName)
 	assert.Equal(t, "张三"+suffix, *row.AssigneeName)
+	require.NotNil(t, row.AssigneeNo)
+	assert.Equal(t, "E2W401_"+suffix, *row.AssigneeNo)
 
 	// 软删处理人 → 再读不回填（omitempty 隐去，前端降级显 ID）
 	_, err = testPool.Exec(ctx, `UPDATE users SET deleted_at = NOW() WHERE id = $1`, rid)

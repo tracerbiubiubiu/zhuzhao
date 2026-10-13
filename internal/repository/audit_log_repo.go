@@ -39,11 +39,17 @@ func (r *AuditLogRepo) Create(ctx context.Context, log *model.AuditLog) error {
 	if createdAt.IsZero() {
 		createdAt = time.Now()
 	}
+	// 操作人快照（000044）：写入时经 users 定格 employee_no/real_name——LEFT JOIN
+	// 单次主键查找同时取两列；匿名请求（user_id=0）LEFT JOIN 落 NULL
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO audit_logs (
-			user_id, username, method, path, status_code, duration,
+			user_id, username, employee_no, real_name, method, path, status_code, duration,
 			ip, user_agent, request_body, response_summary, request_id, created_at
-		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), $12)`,
+		)
+		SELECT $1, NULLIF($2, ''), u.employee_no, u.real_name, $3, $4, $5, $6,
+		       NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), $12
+		FROM (VALUES (1)) AS _anchor
+		LEFT JOIN users u ON u.id = $1`,
 		log.UserID,
 		log.Username,
 		log.Method,
@@ -75,7 +81,8 @@ func (r *AuditLogRepo) List(ctx context.Context, q AuditListQuery) ([]*model.Aud
 
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
 	listSQL := `
-		SELECT id, user_id, COALESCE(username, ''), method, path, status_code, duration,
+		SELECT id, user_id, COALESCE(username, ''), COALESCE(employee_no, ''), COALESCE(real_name, ''),
+			method, path, status_code, duration,
 			COALESCE(ip, ''), COALESCE(user_agent, ''), COALESCE(request_body, ''), created_at
 		FROM audit_logs` + where + `
 		ORDER BY created_at DESC, id DESC
@@ -136,6 +143,8 @@ func scanAuditLogRow(row pgx.CollectableRow) (*model.AuditLog, error) {
 		&log.ID,
 		&log.UserID,
 		&log.Username,
+		&log.EmployeeNo,
+		&log.RealName,
 		&log.Method,
 		&log.Path,
 		&log.StatusCode,

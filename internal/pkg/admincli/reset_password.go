@@ -154,9 +154,13 @@ func writeAuditLog(ctx context.Context, pool *pgxpool.Pool, userID int64, userna
 	if err != nil {
 		body = []byte(`{"trigger":"break-glass"}`)
 	}
+	// 操作人快照两列（000044 同款，2026-10-13 审查补漏）：CLI 行也走行内自描述，
+	// 否则该路径归档后仅剩 username（本地账号名）不可归因
 	_, err = pool.Exec(ctx, `
-		INSERT INTO audit_logs (user_id, username, method, path, status_code, duration, ip, user_agent, request_body)
-		VALUES ($1, $2, 'CLI', 'break-glass:reset-password', 200, 0, NULL, 'admincli', $3)`,
+		INSERT INTO audit_logs (user_id, username, employee_no, real_name, method, path, status_code, duration, ip, user_agent, request_body)
+		SELECT $1, $2, COALESCE(u.employee_no, ''), COALESCE(u.real_name, ''), 'CLI', 'break-glass:reset-password', 200, 0, NULL, 'admincli', $3
+		FROM (VALUES (1)) AS _anchor
+		LEFT JOIN users u ON u.id = $1`,
 		userID, username, string(body))
 	if err != nil {
 		slog.Error("break-glass audit insert failed; manual ledger required",

@@ -26,6 +26,12 @@ docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:
 # #9 防枚举对 NOPE999（不存在账号）也发错误密码——跨 run 累计 5 次同样触发锁定，
 # 使 B2 返回「账号已锁定」与 B1 失配（2026-09-08 验证暴露，状态污染类）
 docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:NOPE999" >/dev/null 2>&1 || true
+# 种子基线清理（2026-10-13 链边界卫生）：D2 断言只容忍 operator 的 ticket% 绑定、
+# 非工单绑定须为零——非工单残留来自 UI 多账号测试（2a T7 的工单绑定本身可持久，
+# 2b/2c 依赖之，链内勿清）；此处全量复原使验收链对独立重跑幂等（2c 结尾有同款收尾）
+docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -c \
+  "DELETE FROM role_menus WHERE role_id IN (SELECT id FROM roles WHERE code IN ('operator','viewer'));
+   DELETE FROM casbin_rule WHERE ptype='p' AND v0 IN ('role::operator','role::viewer')" >/dev/null 2>&1 || true
 
 pass=0
 fail=0

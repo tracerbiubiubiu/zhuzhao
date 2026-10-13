@@ -251,6 +251,11 @@ check "D10 columns exist (owner_user_ids)" "1" \
 check "D10 columns exist (org_member_role)" "1" \
   "$(psql_q "SELECT count(*) FROM information_schema.columns WHERE table_name='user_orgs' AND column_name='org_member_role'")"
 
+# 链尾卫生（2026-10-13）：本链 2a T7 给 operator 的工单菜单绑定到此复原——
+# phase1 开头有同款种子基线清理兜底，两处配合使验收链对独立重跑幂等
+psql_q "DELETE FROM role_menus WHERE role_id IN (SELECT id FROM roles WHERE code IN ('operator','viewer'))" >/dev/null 2>&1 || true
+psql_q "DELETE FROM casbin_rule WHERE ptype='p' AND v0 IN ('role::operator','role::viewer')" >/dev/null 2>&1 || true
+
 # ============================================================
 echo ""
 if [ "$sectionA" -eq 1 ] && [ "$fail" -eq 0 ]; then

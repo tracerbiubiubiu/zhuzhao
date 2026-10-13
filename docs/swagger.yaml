@@ -752,6 +752,10 @@ paths:
         in: query
         name: employee_no
         type: string
+      - description: HTTP 方法（GET/POST/PUT/DELETE 等）
+        in: query
+        name: method
+        type: string
       produces:
       - application/json
       responses:

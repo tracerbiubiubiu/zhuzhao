@@ -23,9 +23,13 @@ type Ticket struct {
 	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
 
 	// 姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
-	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）
+	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）。
+	// 结构化消歧（2026-10-13 展示统一批）：*_no = 工号独立字段（非合并串），前端
+	// UserNameText 统一渲染「人名(工号)」三态降级
 	CreatedByName string  `json:"created_by_name,omitempty" db:"-"`
+	CreatedByNo   string  `json:"created_by_no,omitempty" db:"-"`
 	AssigneeName  *string `json:"assignee_name,omitempty" db:"-"`
+	AssigneeNo    *string `json:"assignee_no,omitempty" db:"-"`
 }
 
 // TicketType 工单类型配置
@@ -65,6 +69,9 @@ type TicketComment struct {
 	Content    string    `json:"content" db:"content"`
 	IsInternal bool      `json:"is_internal" db:"is_internal"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+	// 作者回填（2026-10-13 展示统一批；此前 CreatedBy 裸 ID）——语义同 Ticket 姓名回填
+	CreatedByName string `json:"created_by_name,omitempty" db:"-"`
+	CreatedByNo   string `json:"created_by_no,omitempty" db:"-"`
 }
 
 // TicketEvent 工单事件日志（审计 + Phase 3 事件队列）

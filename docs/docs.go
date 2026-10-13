@@ -74,6 +74,12 @@ const docTemplate = `{
                         "description": "工号",
                         "name": "employee_no",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "HTTP 方法（GET/POST/PUT/DELETE 等）",
+                        "name": "method",
+                        "in": "query"
                     }
                 ],
                 "responses": {

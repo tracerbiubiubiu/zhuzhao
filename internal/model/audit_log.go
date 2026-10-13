@@ -15,9 +15,13 @@ type AuditLog struct {
 	UserAgent   string `json:"user_agent" db:"user_agent"`
 	RequestBody string `json:"request_body,omitempty" db:"request_body"`
 	// P4-8 响应体摘要（截断 512B；历史行为 NULL）
-	ResponseSummary string    `json:"response_summary,omitempty" db:"response_summary"`
-	RequestID       string    `json:"request_id,omitempty" db:"request_id"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+	ResponseSummary string `json:"response_summary,omitempty" db:"response_summary"`
+	RequestID       string `json:"request_id,omitempty" db:"request_id"`
+	// 操作人快照（000044，2026-10-13 展示统一批）：写入时刻自 users 定格——
+	// 归档导出后行内自描述可归因；存量行为 NULL（读端 username 兜底）
+	EmployeeNo string    `json:"employee_no,omitempty" db:"employee_no"`
+	RealName   string    `json:"real_name,omitempty" db:"real_name"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
 // AuditLogListResponse 审计日志分页
