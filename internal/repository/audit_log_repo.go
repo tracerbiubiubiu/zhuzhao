@@ -20,6 +20,7 @@ type AuditListQuery struct {
 	PageSize int
 	UserID   *int64
 	Path     string
+	Method   string
 	Start    *time.Time
 	End      *time.Time
 }
@@ -106,6 +107,11 @@ func buildAuditListWhere(q AuditListQuery) (string, []any) {
 	if q.Path != "" {
 		parts = append(parts, fmt.Sprintf("path = $%d", n))
 		args = append(args, q.Path)
+		n++
+	}
+	if q.Method != "" {
+		parts = append(parts, fmt.Sprintf("method = $%d", n))
+		args = append(args, q.Method)
 		n++
 	}
 	if q.Start != nil {

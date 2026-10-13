@@ -33,6 +33,7 @@ func NewAuditHandler(auditService *service.AuditService) *AuditHandler {
 //	@Param			start			query		string	false	"开始日期（YYYY-MM-DD）"
 //	@Param			end				query		string	false	"结束日期（YYYY-MM-DD）"
 //	@Param			employee_no		query		string	false	"工号"
+//	@Param			method			query		string	false	"HTTP 方法（GET/POST/PUT/DELETE 等）"
 //	@Success		200 {object} response.Response
 //	@Security		BearerAuth
 //	@Router			/api/v1/audit/logs [get]
@@ -41,6 +42,7 @@ func (h *AuditHandler) ListLogs(c *gin.Context) {
 		Page:     queryInt(c, "page", 1),
 		PageSize: queryInt(c, "page_size", 20),
 		Path:     c.Query("path"),
+		Method:   c.Query("method"),
 	}
 	if uid := c.Query("user_id"); uid != "" {
 		id, err := strconv.ParseInt(uid, 10, 64)
