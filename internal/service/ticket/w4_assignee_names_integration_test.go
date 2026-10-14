@@ -137,6 +137,47 @@ func TestW4_NameBackfill(t *testing.T) {
 	assert.Nil(t, got.AssigneeName, "软删用户不回填姓名")
 }
 
+// W4-2b（2026-10-14 审查补钉）：无工号用户的回填分支——姓名照常回填、工号空串。
+// 契约现状钉住：created_by_no 为值类型（空串经 omitempty 在 JSON 隐去）而
+// assignee_no 为 *string（非 nil 指针承载「有指派」，&"" 序列化为 ""）——两侧
+// 形态不对称系已知事项，契约是否统一待所有者拍板；本测试防该分支无断言回归。
+func TestW4_NameBackfill_NoEmployeeNo(t *testing.T) {
+	svc, aid, _, _, roles := setupTicket2a(t)
+	ctx := context.Background()
+	roles[aid] = []string{"admin"}
+
+	// 造「无工号创建人」：暂置种子账号 aid 工号为 NULL（defer 复原防串扰后续用例）
+	var origNo *string
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT employee_no FROM users WHERE id = $1`, aid).Scan(&origNo))
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(),
+			`UPDATE users SET employee_no = $1 WHERE id = $2`, origNo, aid)
+	})
+	_, err := testPool.Exec(ctx, `UPDATE users SET employee_no = NULL WHERE id = $1`, aid)
+	require.NoError(t, err)
+
+	// 无工号处理人
+	suffix := uniqueSuffix()
+	var rid int64
+	require.NoError(t, testPool.QueryRow(ctx,
+		`INSERT INTO users (username, password, employee_no, real_name, status) VALUES ($1, 'hash', NULL, $2, 1) RETURNING id`,
+		"w4_nonum_"+suffix, "无工号处理人"+suffix).Scan(&rid))
+
+	root := rootOrgID(t)
+	tk := newTicketHelper(t, svc, aid, root, "W4 无工号回填")
+	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &rid}, aid))
+
+	got, err := svc.Get(ctx, tk.ID, aid)
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.CreatedByName, "无工号创建人姓名仍回填")
+	assert.Empty(t, got.CreatedByNo, "无工号创建人：no 回填空串（JSON 端 omitempty 隐去）")
+	require.NotNil(t, got.AssigneeName)
+	assert.NotEmpty(t, *got.AssigneeName, "无工号处理人姓名照常回填")
+	require.NotNil(t, got.AssigneeNo, "有指派即非 nil（指针承载指派存在性）")
+	assert.Empty(t, *got.AssigneeNo, "无工号处理人：非 nil 指针 + 空串——与 created_by_no 形态不对称，现状钉住")
+}
+
 // W4-3（十六批 Med）：Update 字段级 COALESCE——nil 字段不覆盖，显式空串仍生效
 func TestW4_UpdateFieldLevelNoClobber(t *testing.T) {
 	svc, aid, _, _, _ := setupTicket2a(t)
