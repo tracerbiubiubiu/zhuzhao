@@ -117,7 +117,8 @@ func (c *Client) GetTask(ctx context.Context, taskID string) (json.RawMessage, e
 	return out, c.do(ctx, http.MethodGet, "/v1/tasks/"+url.PathEscape(taskID), nil, nil, "", &out)
 }
 
-// ListRuns GET /v1/runs（request_id/action/status/from/to 查询透传）。
+// ListRuns GET /v1/runs（query 全量透传——request_id/action/status/from/to 及
+// phase5 新增 id；submitted_by=me 重写在 handler 层）。
 func (c *Client) ListRuns(ctx context.Context, query url.Values) (json.RawMessage, error) {
 	var out json.RawMessage
 	return out, c.do(ctx, http.MethodGet, "/v1/runs", query, nil, "", &out)

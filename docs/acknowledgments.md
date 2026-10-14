@@ -30,10 +30,10 @@
 
 | 项目 | License | 关系 | 结论/用途 | 落点 |
 |------|---------|------|-----------|------|
-| [dagu-dev/dagu](https://github.com/dagu-dev/dagu) | GPL-3.0 | 🚦 仅评估 | 重编排外部引擎候选——**GPL 传染红线：若启用仅限外部进程集成，永不进依赖树** | [phase3/15](./phase3/15-script-platform-dagu-vs-inhouse.md) |
+| [dagucloud/dagu](https://github.com/dagucloud/dagu) | GPL-3.0 | 🚦 仅评估 | 重编排外部引擎候选——**GPL 传染红线：若启用仅限外部进程集成，永不进依赖树**（历经 yohamta → dagu-org → dagucloud 迁移，此为 2026-10 现行规范路径） | [phase3/15](./phase3/15-script-platform-dagu-vs-inhouse.md) |
 | gin 限流中间件生态（gin-contrib 所链 axiaoxin/gin-limiter/gin-redis-ip-limiter） | 各 MIT | 反面实证 | 官方 contrib 不含限流、所链三家全部弃养（含 panic 级缺陷实锤）——实锤「自研 + redis_rate 胶水」路线 | `internal/middleware/ratelimit.go`、2026-09-11 核验 |
 | [flipped-aurora/gin-vue-admin](https://github.com/flipped-aurora/gin-vue-admin) | Apache-2.0 | 选择性借鉴（随批吸收） | 附件上传（local+MinIO）/通知/固定列导出/字典/MCP 透传鉴权模式；**勿抄清单在册**：代码生成器/热更新/引导初始化/ACL 路线 | P4 交付、phase5 S5 |
-| [didip/LogicFlow](https://github.com/didi/LogicFlow)、[bcakmakoglu/vue-flow](https://github.com/bcakmakoglu/vue-flow) | 随选型批核验 | S2 画布 spike 候选 | transitions 同构零映射；X6/bpmn.js 已排除 | phase5 S2 |
+| [didi/LogicFlow](https://github.com/didi/LogicFlow)、[bcakmakoglu/vue-flow](https://github.com/bcakmakoglu/vue-flow) | 随选型批核验 | S2 画布 spike 候选 | transitions 同构零映射；X6/bpmn.js 已排除 | phase5 S2 |
 | [ueberdosis/tiptap](https://github.com/ueberdosis/tiptap)（vs wangEditor） | 随选型批核验 | S1 富文本候选 | 低维护富文本编辑器对照 | phase5 S1 |
 | [expr-lang/expr](https://github.com/expr-lang/expr) | 随选型批核验 | S1/S3 求值器预置 | 替代停更的 govaluate | phase5 S1/S3 |
 
@@ -44,3 +44,4 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-10-13 | 建页：集中登记借鉴/参考项目（§1 已实际借鉴 11 项 / §2 仅评估未采用 6 项）；许可自本地克隆核验 |
+| 2026-10-14 | 外链规范路径修正：dagu 现行仓为 dagucloud/dagu（历经 yohamta→dagu-org→dagucloud 迁移，GPL-3.0 不变）；LogicFlow 显示名笔误 didip→didi（URL 本正确）。驱动=外部审查残留核验 |
