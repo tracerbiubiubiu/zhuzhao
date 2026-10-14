@@ -64,8 +64,11 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 
 		roles, err := roleFetcher.GetRoleCodesByUserID(c.Request.Context(), userID)
 		if err != nil {
+			// request_id 入账（2026-10-13 故障注入实测）：本日志缺 rid——按响应 request_id
+			// 反查会漏掉 casbin 路径的 500（与 writeServiceError 留痕口径对齐）
 			logger.Error("casbin fetch roles failed",
 				slog.Any("error", err), slog.Int64("userID", userID),
+				slog.String("request_id", c.GetString("request_id")),
 				slog.String("path", c.Request.URL.Path))
 			response.InternalError(c, "获取用户角色失败")
 			c.Abort()
