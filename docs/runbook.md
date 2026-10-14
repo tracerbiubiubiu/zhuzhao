@@ -128,7 +128,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
 ## 5. 存量协议兼容层接入（aksk/compat，2026-10-13 建档·批 3 待挂载）
 
-> **性质**：挂载日操作手册。utils `aksk/compat` 已交付（v0.4.2 待发），本节 = 目标服务拍板后的接线步骤与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
+> **性质**：存量协议兼容层接入与验证手册。utils `aksk/compat` 已交付并发布（v0.4.2），zhuzhao 侧已预接线（§5.1，默认关）；本节 = 内网调用场景就位后的密钥配置与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
 
 ### 5.1 预接线状态（2026-10-14 已完成）与剩余两步
 

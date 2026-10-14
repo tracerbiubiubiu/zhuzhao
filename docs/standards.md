@@ -73,7 +73,7 @@
 
 ## 5. 公共包（zhuzhao-utils）
 
-- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本：v0.4.1（当前各仓 pin）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正；**v0.4.2 待发（2026-10-13，未提交未打标）**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
+- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本：v0.4.2（当前各仓 pin，2026-10-14 打标）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正、**v0.4.2**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件+出站 Transport，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）+ jsonutil.Int64Slice 补 MarshalJSON（发送侧 ID 数组一律字符串）+ jwt ParseRefreshToken 过期错误 ErrTokenExpired 哨兵 + postgres 移除 MaxIdleConns 口径误映射；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
 - **抽取边界：只抽无数据依赖的纯工具**——绑定 zhuzhao 库 schema 的构件（如策略谓词）不进 utils（design-decisions §25.3）；
 - 版本策略：语义化版本，发版后各仓 pin（去 replace）；临时 replace 仅限联调窗口；
 - **新增第三方依赖必须说明理由与替代方案**（go.mod 铁律）；公共能力优先沉淀进 zhuzhao-utils 而非各仓自引。
