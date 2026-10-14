@@ -33,7 +33,7 @@ type SetMemberScopeRequest struct {
 // SetOrgOwnersRequest 设置组织负责人（2c，04 §3.2）
 type SetOrgOwnersRequest struct {
 	OrgID        int64               `json:"org_id,string" binding:"required"`
-	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" binding:"required"` // 元素为字符串 ID（项目惯例）；空数组=清空（仅全局）
+	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" binding:"required" swaggertype:"array,string"` // 元素为字符串 ID（项目惯例）；空数组=清空（仅全局）
 }
 
 // SetOrgMemberRoleRequest 任命/变更组内角色（2c，04 §3.3）

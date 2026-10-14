@@ -19,7 +19,7 @@ type Organization struct {
 	Status       int                 `json:"status" db:"status"`         // 1=启用 0=禁用
 	IsSystem     bool                `json:"is_system" db:"is_system"`
 	SortOrder    int                 `json:"sort_order" db:"sort_order"`
-	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" db:"owner_user_ids"` // 2c 负责人（可多人；元素字符串 ID）
+	OwnerUserIDs jsonutil.Int64Slice `json:"owner_user_ids" db:"owner_user_ids" swaggertype:"array,string"` // 2c 负责人（可多人；元素字符串 ID）；swaggertype 对齐 v0.4.2 起出站字符串数组（契约审计 S3）
 	CreatedBy    *int64              `json:"created_by,string" db:"created_by"`
 	TenantID     int64               `json:"tenant_id,string" db:"tenant_id"`
 	Version      int                 `json:"version" db:"version"`

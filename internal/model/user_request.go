@@ -13,8 +13,8 @@ type CreateUserRequest struct {
 	Email         string              `json:"email" binding:"omitempty,email,max=100"`
 	Phone         string              `json:"phone" binding:"omitempty,max=20"`
 	Avatar        string              `json:"avatar" binding:"omitempty,max=500"`
-	RoleIDs       jsonutil.Int64Slice `json:"role_ids"`
-	OrgIDs        jsonutil.Int64Slice `json:"org_ids"`
+	RoleIDs       jsonutil.Int64Slice `json:"role_ids" swaggertype:"array,string"`
+	OrgIDs        jsonutil.Int64Slice `json:"org_ids" swaggertype:"array,string"`
 	PrimaryOrgID  *int64              `json:"primary_org_id,string"`
 }
 
@@ -47,7 +47,7 @@ type UpdateUserStatusRequest struct {
 // SetUserRolesRequest 分配角色
 type SetUserRolesRequest struct {
 	UserID  int64               `json:"user_id,string" binding:"required"`
-	RoleIDs jsonutil.Int64Slice `json:"role_ids"`
+	RoleIDs jsonutil.Int64Slice `json:"role_ids" swaggertype:"array,string"`
 }
 
 // ResetPasswordRequest 管理员重置密码
@@ -59,7 +59,7 @@ type ResetPasswordRequest struct {
 // SetUserOrgsRequest 全量设置用户组织
 type SetUserOrgsRequest struct {
 	UserID       int64               `json:"user_id,string" binding:"required"`
-	OrgIDs       jsonutil.Int64Slice `json:"org_ids"`
+	OrgIDs       jsonutil.Int64Slice `json:"org_ids" swaggertype:"array,string"`
 	PrimaryOrgID *int64              `json:"primary_org_id,string"`
 }
 

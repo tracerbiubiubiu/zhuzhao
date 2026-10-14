@@ -3,7 +3,7 @@ definitions:
     properties:
       menu_ids:
         items:
-          type: integer
+          type: string
         type: array
       role_id:
         example: "0"
@@ -215,7 +215,7 @@ definitions:
         type: string
       org_ids:
         items:
-          type: integer
+          type: string
         type: array
       password:
         description: F-9：最小长度（完整复杂度策略 Phase 2）
@@ -232,7 +232,7 @@ definitions:
         type: string
       role_ids:
         items:
-          type: integer
+          type: string
         type: array
       user_domain:
         maxLength: 255
@@ -432,7 +432,7 @@ definitions:
       owner_user_ids:
         description: 元素为字符串 ID（项目惯例）；空数组=清空（仅全局）
         items:
-          type: integer
+          type: string
         type: array
     required:
     - org_id
@@ -442,7 +442,7 @@ definitions:
     properties:
       org_ids:
         items:
-          type: integer
+          type: string
         type: array
       primary_org_id:
         example: "0"
@@ -457,7 +457,7 @@ definitions:
     properties:
       role_ids:
         items:
-          type: integer
+          type: string
         type: array
       user_id:
         example: "0"
@@ -2315,6 +2315,26 @@ paths:
       summary: 更新用户
       tags:
       - users
+  /compat/echo:
+    post:
+      consumes:
+      - application/json
+      description: AK/SK 验签通过即回显 caller/request_id——存量调用场景就位前按 runbook §5.2 完成线协议比对的判定靶；无业务副作用。存量
+        x-auth-* 签名（非 JWT），鉴权走 compat 中间件
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 存量协议兼容层验证端点
+      tags:
+      - compat
   /internal/jobs/callback:
     post:
       consumes:

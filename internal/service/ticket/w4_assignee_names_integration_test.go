@@ -106,7 +106,6 @@ func TestW4_NameBackfill(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, aidName, got.CreatedByName, "创建人姓名：real_name 空应回退 username")
 	assert.Equal(t, aidNo, got.CreatedByNo, "创建人工号：结构化消歧字段（2026-10-13）")
-	require.NotNil(t, got.AssigneeName)
 	assert.Equal(t, "张三"+suffix, got.AssigneeName, "处理人姓名：real_name 优先")
 	assert.Equal(t, "E2W401_"+suffix, got.AssigneeNo, "处理人工号：结构化消歧字段")
 
@@ -123,7 +122,6 @@ func TestW4_NameBackfill(t *testing.T) {
 	require.NotNil(t, row, "列表应含目标工单")
 	assert.Equal(t, aidName, row.CreatedByName)
 	assert.Equal(t, aidNo, row.CreatedByNo)
-	require.NotNil(t, row.AssigneeName)
 	assert.Equal(t, "张三"+suffix, row.AssigneeName)
 	assert.Equal(t, "E2W401_"+suffix, row.AssigneeNo)
 
@@ -169,7 +167,6 @@ func TestW4_NameBackfill_NoEmployeeNo(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.CreatedByName, "无工号创建人姓名仍回填")
 	assert.Empty(t, got.CreatedByNo, "无工号创建人：no 回填空串（JSON 端 omitempty 隐去）")
-	require.NotNil(t, got.AssigneeName)
 	assert.NotEmpty(t, got.AssigneeName, "无工号处理人姓名照常回填")
 	assert.Empty(t, got.AssigneeNo, "无工号处理人：空串经 omitempty 在 JSON 隐去（与 created_by_no 同形态）")
 }

@@ -2589,6 +2589,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/compat/echo": {
+            "post": {
+                "description": "AK/SK 验签通过即回显 caller/request_id——存量调用场景就位前按 runbook §5.2 完成线协议比对的判定靶；无业务副作用。存量 x-auth-* 签名（非 JWT），鉴权走 compat 中间件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "compat"
+                ],
+                "summary": "存量协议兼容层验证端点",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/jobs/callback": {
             "post": {
                 "description": "结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试",
@@ -2624,7 +2653,7 @@ const docTemplate = `{
                 "menu_ids": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "role_id": {
@@ -2918,7 +2947,7 @@ const docTemplate = `{
                 "org_ids": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "password": {
@@ -2941,7 +2970,7 @@ const docTemplate = `{
                 "role_ids": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "user_domain": {
@@ -3219,7 +3248,7 @@ const docTemplate = `{
                     "description": "元素为字符串 ID（项目惯例）；空数组=清空（仅全局）",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 }
             }
@@ -3233,7 +3262,7 @@ const docTemplate = `{
                 "org_ids": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "primary_org_id": {
@@ -3255,7 +3284,7 @@ const docTemplate = `{
                 "role_ids": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "user_id": {
