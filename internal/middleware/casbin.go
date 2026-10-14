@@ -102,8 +102,11 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			if err != nil {
 				enforceErr = err
 				// 单角色 enforce 失败继续尝试其余角色，但必须留痕
+				// request_id 入账（2026-10-14）：与取角色失败分支同 rationale——
+				// 本路径终态 503，按响应 rid 反查不能漏掉
 				logger.Error("casbin enforce error",
 					slog.Any("error", err), slog.String("subject", subject),
+					slog.String("request_id", c.GetString("request_id")),
 					slog.String("path", path), slog.String("method", method))
 				continue
 			}
