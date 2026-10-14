@@ -158,7 +158,7 @@
 3. **文档体系规范**：docs 树 = `modules/`（能力文档）/ `phase1-3/`（阶段计划）/ `review/`（评审发现）/ `adr/`（重大架构决策）/ `design/`（设计推演与细节）/ `proposal/`（提案），顺序编号 + README 索引。**分工**：ADR = 重大不可逆架构决策（事件机制/任务执行器/集成形态），design-decisions = 演进中的设计细节拍板（编号顺延不回收），modules = 能力的长期文档。每个 SSOT 文档必须带**变更记录表**；**文档断言必须能与代码对账**（状态以代码为准）；**时点报告**（审计/复检/验证类快照文档）各仓集中存放随仓提交：各仓统一 `deliverables/`，命名 `<topic-kebab>-<YYYY-MM-DD>.md`（对齐主仓既有惯例；2026-10-03 统一）；
 4. **编号 namespace**：W（Wave）/ IW（独立窗口）/ BK（backlog）/ E/D（16 号配套）/ P（待拍板）/ F/C/AB（各评审文档本地）——引用前必查归属；
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
-6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增；
+6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增。**改 wire 形态（字段类型/omitempty/指针化/序列化行为）五点必查（2026-10-14 契约审计批立约，三例在册：MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾）**——① 消费端 Go struct（grep 四仓字段名）② 测试侧镜像解码 struct ③ swagger 表达（数组 ID 字段带 `swaggertype:"array,string"`，CI 有 swagger 新鲜度守卫）④ zhuzhao-ui codegen 触发 ⑤ 文档口径（含「待发/已发」类措辞）；
 7. **分支与版本**：功能分支开发（如 `feature/phase-2`），合入前全门禁；zhuzhao-utils 语义化版本，发版后各仓 pin。**维护态分支口径（2026-09-16 拍板，方案 a 后收敛）**：四仓 **main 单主干**——小批改动直接提交 main 推送（CI 即门禁）；隔离需求出现时（如 M-UAA）开短命功能分支，合入 main 后即删（远端+本地），不留阶段名常驻分支。
 
 ## 13. SSOT 索引
@@ -198,3 +198,4 @@
 | 2026-10-13 | 存量协议兼容层批：§3-11 验签条款增 `aksk/compat` 唯一登记豁免（只挂专用路由组、迁移后整包删除——02-auth §存量迁移翻案追记）；§5 utils 清单 10→11 包（aksk/compat，v0.4.2 待发）。驱动=存量 `x-auth-*` 调用方兼容口子（capabilities 对账见 compat 包注释） |
 | 2026-10-13 | 借鉴出处纪律建档：§13 SSOT 索引增 acknowledgments.md 行——借鉴/参考项目集中致谢与溯源，新借鉴随批登记（借设计不借代码/无 LICENSE 禁拷码/公司内部参考不入页） |
 | 2026-10-14 | JSON 契约审计批：§3 增第 14 条「JSON 序列化形态公约」（同概念同形态/无值分组单表达/bool 恒出数组不 null/零值语义数值禁 omitempty/写响应回显规范化/PATCH null 语义/出站 ID 恒 string）——三仓审计驱动（zhuzhao/activelist/taskrunner + utils Int64Slice MarshalJSON 补齐），修复随各仓同日提交，审计明细见 deliverables/json-contract-audit-2026-10-14.md |
+| 2026-10-14 | 审计循环机制化收口：§12-6 跨仓契约变更增「wire 形态五点必查」清单（MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾三例驱动）；zhuzhao ci.yml 增 swagger 新鲜度守卫（make swag 同款命令 + git diff --exit-code，swag v1.16.4 钉版）——/compat/echo 注解漏生成首例驱动 |

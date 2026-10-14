@@ -17,6 +17,13 @@ jobs:
       - run: go vet ./...
       - name: gofmt 漂移检查
         run: test -z "$(gofmt -l . | grep -v vendor)"
+      # swagger 新鲜度守卫（2026-10-14 契约审计批）：注解/模型改动后未重跑 make swag
+      # 即提交 → 此处拦下（首例=/compat/echo 注解曾漏生成入册）
+      - name: swagger 新鲜度检查
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.4
+          "$(go env GOPATH)/bin/swag" init -g cmd/server/main.go -o docs --parseDependency --parseInternal
+          git diff --exit-code docs/swagger.json docs/swagger.yaml docs/docs.go
       - run: go build ./...
   test:
     runs-on: ubuntu-latest
