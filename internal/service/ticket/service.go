@@ -583,7 +583,7 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	rel := &model.TicketRelation{
 		SourceTicketID: req.SourceTicketID,
 		TargetTicketID: req.TargetTicketID,
-		RelationType:   req.RelationType,
+		RelationType:   relType, // 回显规范化值（2026-10-14 契约审计 B2：空入参原样回显致创建响应 "" 与列表 "related" 漂移）
 		CreatedBy:      actorUserID,
 	}
 	if err := s.ticketRepo.CreateRelation(ctx, rel); err != nil {
