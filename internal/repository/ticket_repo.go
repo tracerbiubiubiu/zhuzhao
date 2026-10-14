@@ -236,10 +236,10 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 			t.CreatedByNo = ref.No
 		}
 		if t.AssignedTo != nil {
+			// 2026-10-14 契约审计 B3：随四字段统一值类型，回填不再取址
 			if ref, ok := refs[*t.AssignedTo]; ok {
-				name, no := ref.Name, ref.No
-				t.AssigneeName = &name
-				t.AssigneeNo = &no
+				t.AssigneeName = ref.Name
+				t.AssigneeNo = ref.No
 			}
 		}
 	}

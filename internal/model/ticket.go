@@ -25,11 +25,14 @@ type Ticket struct {
 	// 姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
 	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）。
 	// 结构化消歧（2026-10-13 展示统一批）：*_no = 工号独立字段（非合并串），前端
-	// UserNameText 统一渲染「人名(工号)」三态降级
-	CreatedByName string  `json:"created_by_name,omitempty" db:"-"`
-	CreatedByNo   string  `json:"created_by_no,omitempty" db:"-"`
-	AssigneeName  *string `json:"assignee_name,omitempty" db:"-"`
-	AssigneeNo    *string `json:"assignee_no,omitempty" db:"-"`
+	// UserNameText 统一渲染「人名(工号)」三态降级。
+	// 四字段统一值类型 + omitempty（2026-10-14 契约审计 B3：原 Assignee 系 *string
+	// 与 Created 系形态不对称——空工号时一侧字段消失一侧出 ""；「有指派」语义由
+	// AssignedTo 承载，回填组无需 tri-state）
+	CreatedByName string `json:"created_by_name,omitempty" db:"-"`
+	CreatedByNo   string `json:"created_by_no,omitempty" db:"-"`
+	AssigneeName  string `json:"assignee_name,omitempty" db:"-"`
+	AssigneeNo    string `json:"assignee_no,omitempty" db:"-"`
 }
 
 // TicketType 工单类型配置

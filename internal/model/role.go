@@ -13,7 +13,9 @@ type Role struct {
 	Status      int    `json:"status" db:"status"` // 1=启用 0=禁用
 	Priority    int    `json:"priority" db:"priority"`
 	// BK-12：角色继承父（BFS 源 3：绑子得父，沿链向上展开）；单调规则 child.priority ≤ parent.priority
-	ParentID  *int64     `json:"parent_id,string,omitempty" db:"parent_id"`
+	// omitempty 已去（2026-10-14 契约审计 B3）：根角色 parent_id 出 null，与 Org/Menu
+	// ParentID 的 null 约定对齐（phase4/01 §根节点拍板形态），同名 ID 指针跨资源同形态
+	ParentID  *int64     `json:"parent_id,string" db:"parent_id"`
 	SortOrder int        `json:"sort_order" db:"sort_order"`
 	IsSystem  bool       `json:"is_system" db:"is_system"`
 	TenantID  int64      `json:"tenant_id,string" db:"tenant_id"`

@@ -107,9 +107,8 @@ func TestW4_NameBackfill(t *testing.T) {
 	assert.Equal(t, aidName, got.CreatedByName, "创建人姓名：real_name 空应回退 username")
 	assert.Equal(t, aidNo, got.CreatedByNo, "创建人工号：结构化消歧字段（2026-10-13）")
 	require.NotNil(t, got.AssigneeName)
-	assert.Equal(t, "张三"+suffix, *got.AssigneeName, "处理人姓名：real_name 优先")
-	require.NotNil(t, got.AssigneeNo)
-	assert.Equal(t, "E2W401_"+suffix, *got.AssigneeNo, "处理人工号：结构化消歧字段")
+	assert.Equal(t, "张三"+suffix, got.AssigneeName, "处理人姓名：real_name 优先")
+	assert.Equal(t, "E2W401_"+suffix, got.AssigneeNo, "处理人工号：结构化消歧字段")
 
 	// 列表回填
 	list, err := svc.List(ctx, model.TicketListQuery{Page: 1, PageSize: 100}, aid)
@@ -125,22 +124,20 @@ func TestW4_NameBackfill(t *testing.T) {
 	assert.Equal(t, aidName, row.CreatedByName)
 	assert.Equal(t, aidNo, row.CreatedByNo)
 	require.NotNil(t, row.AssigneeName)
-	assert.Equal(t, "张三"+suffix, *row.AssigneeName)
-	require.NotNil(t, row.AssigneeNo)
-	assert.Equal(t, "E2W401_"+suffix, *row.AssigneeNo)
+	assert.Equal(t, "张三"+suffix, row.AssigneeName)
+	assert.Equal(t, "E2W401_"+suffix, row.AssigneeNo)
 
 	// 软删处理人 → 再读不回填（omitempty 隐去，前端降级显 ID）
 	_, err = testPool.Exec(ctx, `UPDATE users SET deleted_at = NOW() WHERE id = $1`, rid)
 	require.NoError(t, err)
 	got, err = svc.Get(ctx, tk.ID, aid)
 	require.NoError(t, err)
-	assert.Nil(t, got.AssigneeName, "软删用户不回填姓名")
+	assert.Empty(t, got.AssigneeName, "软删用户不回填姓名")
 }
 
 // W4-2b（2026-10-14 审查补钉）：无工号用户的回填分支——姓名照常回填、工号空串。
-// 契约现状钉住：created_by_no 为值类型（空串经 omitempty 在 JSON 隐去）而
-// assignee_no 为 *string（非 nil 指针承载「有指派」，&"" 序列化为 ""）——两侧
-// 形态不对称系已知事项，契约是否统一待所有者拍板；本测试防该分支无断言回归。
+// 契约审计 B3 后四字段已统一值类型 + omitempty（空工号 → 字段在 JSON 隐去，
+// 「有指派」语义由 AssignedTo 承载），本测试防该分支无断言回归。
 func TestW4_NameBackfill_NoEmployeeNo(t *testing.T) {
 	svc, aid, _, _, roles := setupTicket2a(t)
 	ctx := context.Background()
@@ -173,9 +170,8 @@ func TestW4_NameBackfill_NoEmployeeNo(t *testing.T) {
 	assert.NotEmpty(t, got.CreatedByName, "无工号创建人姓名仍回填")
 	assert.Empty(t, got.CreatedByNo, "无工号创建人：no 回填空串（JSON 端 omitempty 隐去）")
 	require.NotNil(t, got.AssigneeName)
-	assert.NotEmpty(t, *got.AssigneeName, "无工号处理人姓名照常回填")
-	require.NotNil(t, got.AssigneeNo, "有指派即非 nil（指针承载指派存在性）")
-	assert.Empty(t, *got.AssigneeNo, "无工号处理人：非 nil 指针 + 空串——与 created_by_no 形态不对称，现状钉住")
+	assert.NotEmpty(t, got.AssigneeName, "无工号处理人姓名照常回填")
+	assert.Empty(t, got.AssigneeNo, "无工号处理人：空串经 omitempty 在 JSON 隐去（与 created_by_no 同形态）")
 }
 
 // W4-3（十六批 Med）：Update 字段级 COALESCE——nil 字段不覆盖，显式空串仍生效
