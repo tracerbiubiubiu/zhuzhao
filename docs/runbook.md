@@ -130,33 +130,32 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
 > **性质**：挂载日操作手册。utils `aksk/compat` 已交付（v0.4.2 待发），本节 = 目标服务拍板后的接线步骤与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
 
-### 5.1 挂载三步（目标服务拍板后）
+### 5.1 预接线状态（2026-10-14 已完成）与剩余两步
 
-1. **config 密钥环**（env 注入，勿落明文；空 SK 拒启对齐生态 fail-closed 口径）：
+**已预接线（默认关）**：config 段 `compat_aksk`（`Enabled`/`Keys` 密钥环；`Validate` 对「启用而密钥环空/含空 SK」fail-closed 拒启）+ `/compat` 专用路由组 + **`POST /compat/echo` 判定靶**（验签通过回显 caller/request_id，无业务副作用）。目标服务 = zhuzhao 主仓。
+
+**剩余两步**：
+
+1. **填密钥开开关**（存量 AK/SK 对出带同步进配置卷，SK 勿入 git；`SkipBody` 先保持默认 false，待 5.2 判定）：
 
    ```yaml
-   compat_aksk:                          # 键名随服务配置惯例调整
+   compat_aksk:
+     enabled: true
      keys:
-       LEGACY_AK_1: "${COMPAT_SK_1}"
+       LEGACY_AK_1: "<SK 出带同步>"
    ```
 
-2. **专用路由组挂载**：
+2. **真实请求抓包 → §5.2 判定表**（重放靶 = `/compat/echo`）；业务端点随真实场景就位后同组并列。
 
-   ```go
-   verifier := &compat.Verifier{Keys: cfg.CompatAKSK.Keys} // SkipBody 抓包比对后再定，见 5.2-③
-   g := r.Group("/compat", compat.GinMiddleware(verifier, nil)) // onFail=nil 用默认 401；要分档文案传自定义
-   g.POST("/ingest", handler)
-   ```
-
-3. **纪律**：只挂专用路由组，**不与内部 `aksk.GinMiddleware` 混挂**（standards §3.11 豁免条款；存量签名不覆盖 method/path，混挂扩大跨端点重放面）。
+**纪律**：只挂 `/compat` 专用路由组，**不与内部 `aksk.GinMiddleware` 混挂**（standards §3.11 豁免条款；存量签名不覆盖 method/path，混挂扩大跨端点重放面；路由组只隔离组外——组内须实质单端点或幂等/无副作用）。
 
 ### 5.2 上线前向量比对（硬前置）
 
 1. 抓一条**新鲜**真实存量请求（≤5 分钟内，时间窗 ±5min），留存四个 `x-auth-*` 头 + 原始 body 字节。
-2. 原样重放（curl 模板，body 与抓包逐字节一致）：
+2. 原样重放（curl 模板，body 与抓包逐字节一致；靶 = 预接线判定端点）：
 
    ```bash
-   curl -v -X POST "http://<目标服务>/compat/ingest" \
+   curl -v -X POST "http://<服务>/compat/echo" \
      -H "x-auth-access-key: $AK"  -H "x-auth-timestamp: $TS" \
      -H "x-auth-signature: $SIG"  -H "x-auth-body-hash: $BH" \
      --data-binary @captured_body.bin

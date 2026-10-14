@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk/compat"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
@@ -44,6 +45,11 @@ type Deps struct {
 	// Enabled=false（默认）不挂路由；SK 缺失已在 config.Load 拒绝启动（fail-closed）。
 	JobsHandler  *handler.JobsHandler
 	InternalJobs config.InternalJobsConfig
+
+	// 存量协议兼容层（/compat 路由组，utils aksk/compat 验签；翻案决策见
+	// phase1/02-auth §存量迁移翻案追记）。Enabled=false（默认）不挂路由；
+	// 密钥环空/含空 SK 已在 config.Validate 拒启（fail-closed）。
+	CompatAKSK config.CompatAKSKConfig
 
 	// E-④：任务管理代理端点（biz 组，三层校验后出站 taskrunner）
 	TaskrunnerHandler *handler.TaskrunnerHandler
@@ -145,6 +151,20 @@ func New(deps Deps) *gin.Engine {
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
 		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
 		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
+	}
+
+	// 存量协议兼容层（2026-10-14 预接线，翻案决策见 phase1/02-auth §存量迁移
+	// 翻案追记）：AK/SK 验签 = utils aksk/compat（存量 x-auth-* 协议，独立验签
+	// 器不与内部混挂——standards §3-11 豁免；组内现仅 echo 单端点，符合「实质
+	// 单端点」收紧口径）。Echo = runbook §5.2 上线前向量比对判定靶；真实调用
+	// 场景就位后：密钥环出带同步进 config → enabled=true → 业务端点同组并列。
+	if deps.CompatAKSK.Enabled {
+		keys := make(map[string][]byte, len(deps.CompatAKSK.Keys))
+		for ak, sk := range deps.CompatAKSK.Keys {
+			keys[ak] = []byte(sk)
+		}
+		compatGroup := r.Group("/compat", compat.GinMiddleware(&compat.Verifier{Keys: keys}, nil))
+		compatGroup.POST("/echo", (&handler.CompatHandler{}).Echo)
 	}
 
 	v1 := r.Group("/api/v1")

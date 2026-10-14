@@ -24,6 +24,12 @@ type Config struct {
 	Gateway      GatewayConfig      `mapstructure:"gateway"`
 	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
 
+	// 存量协议兼容层（utils aksk/compat v0.4.2，phase1/02-auth §存量迁移翻案追记）：
+	// /compat 路由组接收存量框架 x-auth-* 签名调用方。Enabled=false（默认）不挂路由
+	// 不破坏存量启动；启用而密钥环为空/含空 SK 在 Validate 拒启（fail-closed）。
+	// SK 经部署配置卷注入（勿入 git）；生产前须按 runbook §5.2 完成真实请求向量比对。
+	CompatAKSK CompatAKSKConfig `mapstructure:"compat_aksk"`
+
 	// P4-7 登录验证码（顶层平面键；enabled=false dev/E2E 默认——登录契约零变化）
 	CaptchaEnabled bool   `mapstructure:"captcha_enabled"`
 	CaptchaTTL     string `mapstructure:"captcha_ttl"`
@@ -79,6 +85,16 @@ type InternalJobsConfig struct {
 	Enabled bool   `mapstructure:"enabled"`
 	AK      string `mapstructure:"taskrunner_ak"` // 默认 "taskrunner"
 	SK      string `mapstructure:"taskrunner_sk"` // env：INTERNAL_JOBS_SK
+}
+
+// CompatAKSKConfig 存量协议兼容层密钥环（utils aksk/compat；使用纪律见包注释与
+// standards §3-11 豁免——兼容中间件只挂 /compat 专用路由组，组内实质单端点）。
+// Keys 为存量调用方 AK → SK 明文映射（对端 Mongo 出带同步；部署经配置卷注入，
+// 勿入 git）。路由组当前仅 /compat/echo 验证端点（runbook §5.2 判定靶），业务
+// 端点随真实调用场景就位后同组并列。
+type CompatAKSKConfig struct {
+	Enabled bool              `mapstructure:"enabled"`
+	Keys    map[string]string `mapstructure:"keys"` // AK → SK（SK 勿落明文进 git，经配置卷/env 注入）
 }
 
 // AuditConfig 审计管道（B11① 判定日志 L2，03-audit-l2 §2.3；P3 拍板 2026-09-03：

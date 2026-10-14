@@ -91,6 +91,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
 	jobsHandler := handler.NewJobsHandler(jobsCallbackService)
 	internalJobsConfig := cfg.InternalJobs
+	compatAKSKConfig := cfg.CompatAKSK
 	taskrunnerConfig := cfg.Taskrunner
 	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
 	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
@@ -126,6 +127,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		Registry:            registry,
 		JobsHandler:         jobsHandler,
 		InternalJobs:        internalJobsConfig,
+		CompatAKSK:          compatAKSKConfig,
 		TaskrunnerHandler:   taskrunnerHandler,
 		Gateway:             gatewayRegistry,
 		RateLimit:           rateLimitConfig,

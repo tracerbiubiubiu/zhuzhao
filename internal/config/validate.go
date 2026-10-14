@@ -74,6 +74,18 @@ func (c *Config) Validate() error {
 	if c.InternalJobs.Enabled && c.InternalJobs.SK == "" {
 		return fmt.Errorf("internal_jobs.enabled=true 但 taskrunner_sk 未配置（env INTERNAL_JOBS_SK）——验签端点不允许裸奔")
 	}
+	if c.CompatAKSK.Enabled && len(c.CompatAKSK.Keys) == 0 {
+		// 存量协议兼容层（aksk/compat）：启用而密钥环为空 = 每个请求都 401，无意义
+		return fmt.Errorf("compat_aksk.enabled=true 但 keys 密钥环为空——存量调用方 AK/SK 未出带同步，验签端点不允许裸奔")
+	}
+	if c.CompatAKSK.Enabled {
+		for ak, sk := range c.CompatAKSK.Keys {
+			// 空 SK 条目 = HMAC 空密钥可伪造（验签器侧亦兜底按未知凭据拒），配置层直接拒启
+			if sk == "" {
+				return fmt.Errorf("compat_aksk.keys 中 AK %q 的 SK 为空——空密钥条目视同未知凭据（fail-closed）", ak)
+			}
+		}
+	}
 	if len(c.Gateway.Upstreams) > 0 && (c.Gateway.AK == "" || c.Gateway.SK == "") {
 		// 网关反代（批次 B/E13）：配置了上游即必须配出站签名密钥（fail-fast 对齐 internal_jobs）
 		return fmt.Errorf("gateway.upstreams 已配置但 ak/sk 缺失（env GATEWAY_AK / GATEWAY_SK）——出站签名必需")
