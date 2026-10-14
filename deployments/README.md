@@ -43,9 +43,12 @@ cd ../../zhuzhao/deployments && docker compose up -d --build
 
 ```sh
 cd deployments
-docker compose -f docker-compose.test.yaml up -d --build   # 首建 5-10 分钟（Go+前端全量构建）
+docker compose -f docker-compose.test.yaml --profile migrate up -d --build   # 首建 5-10 分钟（Go+前端全量构建）
+# ⚠ --profile migrate 必带：migrate 服务挂 profiles:["migrate"]，plain up 不启动它——
+#   全新卷将无 schema，app 起不来（复跑时卷已有表，带 profile 重放幂等无害）
 # 入口 = http://localhost:4001（ui nginx：静态 + /api·/al/api 双反代 app）
-# 首登引导：admin / admin12345（与全生态终态口令同系；种子首登亦走强制改密链路）
+# 首登引导：admin / admin123（种子口令，首登强制改密；与 compose 文件头注释一致）
+#   改密终态与全生态对齐 = admin12345（runbook §4 台账）
 # 三链验证：登录 → /al/api/v1/admin/types（活动列表链）→ /api/v1/runs（任务链）
 ```
 

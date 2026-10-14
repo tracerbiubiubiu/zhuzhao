@@ -93,7 +93,7 @@ services:
       APP_SERVER_MODE: release
       APP_SERVER_TRUSTED_PROXIES: 172.16.0.0/12
       TZ: Asia/Shanghai
-      JWT_SECRET: zhuzhao-test-jwt-secret
+      JWT_SECRET: zhuzhao-test-jwt-secret-32b-min!! # release 模式强制 ≥32 字符
       GATEWAY_AK: zhuzhao
       # 三组 SK 对值（测试常量）：app↔activelist / app↔taskrunner / taskrunner→app 回调
       GATEWAY_SK: zhuzhao-test-gateway-sk
