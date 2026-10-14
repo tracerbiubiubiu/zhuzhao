@@ -26,13 +26,15 @@ type NotificationConfigListResponse struct {
 }
 
 // DeadLetterNotifyPayload 死信告警载荷（taskrunner 终败时经 /internal/notify/dead-letter 投递）
+// 2026-10-14 契约审计 B3：RequestID/JobID/Attempts 去 omitempty，与投递方
+//（taskrunner notify.Payload）成对恒出——Attempts=0/空 id 不得凭空消失
 type DeadLetterNotifyPayload struct {
 	TaskID    string `json:"task_id"`
-	RequestID string `json:"request_id,omitempty"`
+	RequestID string `json:"request_id"`
 	Action    string `json:"action"`
-	JobID     string `json:"job_id,omitempty"`
+	JobID     string `json:"job_id"`
 	Dept      string `json:"dept,omitempty"`
 	Error     string `json:"error,omitempty"`
-	Attempts  int    `json:"attempts,omitempty"`
+	Attempts  int    `json:"attempts"`
 	FailedAt  string `json:"failed_at,omitempty"`
 }
