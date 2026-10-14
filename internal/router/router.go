@@ -154,18 +154,9 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	// 存量协议兼容层（2026-10-14 预接线，翻案决策见 phase1/02-auth §存量迁移
-	// 翻案追记）：AK/SK 验签 = utils aksk/compat（存量 x-auth-* 协议，独立验签
-	// 器不与内部混挂——standards §3-11 豁免；组内现仅 echo 单端点，符合「实质
-	// 单端点」收紧口径）。Echo = runbook §5.2 上线前向量比对判定靶；真实调用
-	// 场景就位后：密钥环出带同步进 config → enabled=true → 业务端点同组并列。
-	if deps.CompatAKSK.Enabled {
-		keys := make(map[string][]byte, len(deps.CompatAKSK.Keys))
-		for ak, sk := range deps.CompatAKSK.Keys {
-			keys[ak] = []byte(sk)
-		}
-		compatGroup := r.Group("/compat", compat.GinMiddleware(&compat.Verifier{Keys: keys}, nil))
-		compatGroup.POST("/echo", (&handler.CompatHandler{}).Echo)
-	}
+	// 翻案追记）：Enabled=false（默认）不挂载；装配逻辑独立为 mountCompatGroup
+	//（可测——开关/验签/归因的装配层断言见 compat_mount_test.go）。
+	mountCompatGroup(r, deps.CompatAKSK)
 
 	v1 := r.Group("/api/v1")
 	{
@@ -406,4 +397,22 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	return r
+}
+
+// mountCompatGroup 装配存量协议兼容层（/compat 路由组，2026-10-14 预接线，
+// 翻案决策见 phase1/02-auth §存量迁移翻案追记）。Enabled=false（默认）不挂载
+// 任何路由；启用则挂 compat.GinMiddleware 验签 + /compat/echo 判定靶（runbook
+// §5.2 上线前向量比对）。装配独立成函数以便开关/验签/归因链路的装配层测试
+// （compat_mount_test.go）；真实调用场景就位后业务端点同组并列（组内实质
+// 单端点口径，standards §3.11 豁免）。
+func mountCompatGroup(r *gin.Engine, cfg config.CompatAKSKConfig) {
+	if !cfg.Enabled {
+		return
+	}
+	keys := make(map[string][]byte, len(cfg.Keys))
+	for ak, sk := range cfg.Keys {
+		keys[ak] = []byte(sk)
+	}
+	compatGroup := r.Group("/compat", compat.GinMiddleware(&compat.Verifier{Keys: keys}, nil))
+	compatGroup.POST("/echo", (&handler.CompatHandler{}).Echo)
 }
