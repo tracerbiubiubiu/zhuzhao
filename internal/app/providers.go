@@ -49,13 +49,14 @@ func provideJWTManager(cfg config.JWTConfig) *jwt.Manager {
 
 func providePostgres(cfg config.DatabaseConfig) (*pgxpool.Pool, func(), error) {
 	return postgres.New(postgres.Config{
-		Host:             cfg.Host,
-		Port:             cfg.Port,
-		User:             cfg.User,
-		Password:         cfg.Password,
-		DBName:           cfg.DBName,
-		MaxOpenConns:     cfg.MaxOpenConns,
-		MaxIdleConns:     cfg.MaxIdleConns,
+		Host:         cfg.Host,
+		Port:         cfg.Port,
+		User:         cfg.User,
+		Password:     cfg.Password,
+		DBName:       cfg.DBName,
+		MaxOpenConns: cfg.MaxOpenConns,
+		// MaxIdleConns 接线已移除（2026-10-14 utils v0.4.2 口径修正）：pgxpool
+		// 无空闲连接上限旋钮，空闲回收由 ConnMaxIdleTime 承接
 		ConnMaxLifetime:  cfg.ConnMaxLifetime,
 		ConnMaxIdleTime:  cfg.ConnMaxIdleTime,
 		ConnectTimeout:   cfg.ConnectTimeout,

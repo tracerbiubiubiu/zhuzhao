@@ -124,7 +124,7 @@ type DatabaseConfig struct {
 	Password         string        `mapstructure:"password"`
 	DBName           string        `mapstructure:"dbname"`
 	MaxOpenConns     int           `mapstructure:"max_open_conns"`
-	MaxIdleConns     int           `mapstructure:"max_idle_conns"`
+	MaxIdleConns     int           `mapstructure:"max_idle_conns"` // deprecated（2026-10-14 utils v0.4.2）：pgxpool 无空闲上限旋钮，字段保留兼容存量 yaml（不再接线，空闲回收走 ConnMaxIdleTime）
 	ConnMaxLifetime  time.Duration `mapstructure:"conn_max_lifetime"`
 	ConnMaxIdleTime  time.Duration `mapstructure:"conn_max_idle_time"`
 	ConnectTimeout   time.Duration `mapstructure:"connect_timeout"`

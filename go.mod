@@ -21,8 +21,6 @@ require (
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/google/subcommands v1.2.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/crypto v0.56.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
@@ -111,7 +109,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/tracerbiubiubiu/zhuzhao-utils v0.4.1
+	github.com/tracerbiubiubiu/zhuzhao-utils v0.4.2
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
