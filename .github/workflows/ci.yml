@@ -6,9 +6,15 @@ on:
     # phase4：Phase 4 实施期活跃分支（W0 B-4 拍板补入——原列表下活跃分支零检查）
     branches: [dev, main, phase4, "feature/**"]
   pull_request:
+# 连续 push 只跑最新提交（对齐 activelist/taskrunner 惯例——过期 run 自动取消省时长）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -27,6 +33,7 @@ jobs:
       - run: go build ./...
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # 对齐 activelist/taskrunner 挂起兜底口径
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
