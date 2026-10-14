@@ -174,7 +174,7 @@ func (h *RoleHandler) GetMenus(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"menu_ids": menuIDs})
+	response.OK(c, gin.H{"menu_ids": int64IDsToStrings(menuIDs)})
 }
 
 // GetPermissions GET /api/v1/roles/:id/permissions

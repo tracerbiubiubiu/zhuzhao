@@ -11,6 +11,17 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
+// int64IDsToStrings 出站 ID 数组字符串化（2026-10-14 契约审计 B1：standards §3-12
+// 发送侧一律字符串——原 []int64 直出为 JSON number，前端按字符串比对全不命中；
+// utils jsonutil.Int64Slice 的 MarshalJSON 随 v0.4.2 可用后可迁移至该形态）
+func int64IDsToStrings(ids []int64) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = strconv.FormatInt(id, 10)
+	}
+	return out
+}
+
 // UserHandler 用户处理器
 type UserHandler struct {
 	userService *service.UserService
@@ -262,7 +273,7 @@ func (h *UserHandler) GetUserRoles(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"role_ids": roleIDs})
+	response.OK(c, gin.H{"role_ids": int64IDsToStrings(roleIDs)})
 }
 
 // SetUserOrgs POST /api/v1/users/orgs
