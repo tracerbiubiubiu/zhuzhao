@@ -89,6 +89,12 @@ internal_jobs:
   taskrunner_ak: taskrunner
   # taskrunner_sk: 从环境变量 INTERNAL_JOBS_SK 注入
 
+# 存量协议兼容层（runbook §5）：/compat 专用路由组判定靶，默认关不挂路由；
+# enabled 且密钥环空/含空 SK 拒启（fail-closed）。SK 经部署配置卷注入（勿入 git）。
+compat_aksk:
+  enabled: false
+  keys: {}                  # 例：LEGACY_AK: "<SK 出带同步后填入>"
+
 # 网关反代（批次 B/E13）：前缀→上游注册表 + AK/SK 出站签名。upstreams 为空不挂载；
 # 开启后反代路由照常过 JWT + 限流 + CasbinAuth（menu_apis）并以本密钥对上游
 #（activelist，其 M-A6 验签）签名透传。生产 SK 经 GATEWAY_SK env 覆盖。

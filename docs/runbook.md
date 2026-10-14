@@ -126,7 +126,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 3. **改密后必须清强制改密标记**（否则 20007 门拦后续操作）：走 `/auth/password/update` **两步轮换**（新==旧被 B2-2 拒，先临时值再回终值）——break-glass CLI 只负责重置，标记清除是独立一步。
 4. agent 会话开工多账号测试前**先读本表**；发现 E000001 脱离终态，用 §1 CLI 复原而非再设新值。
 
-## 5. 存量协议兼容层接入（aksk/compat，2026-10-13 建档·批 3 待挂载）
+## 5. 存量协议兼容层接入（aksk/compat，2026-10-13 建档·10-14 已预接线默认关）
 
 > **性质**：存量协议兼容层接入与验证手册。utils `aksk/compat` 已交付并发布（v0.4.2），zhuzhao 侧已预接线（§5.1，默认关）；本节 = 内网调用场景就位后的密钥配置与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
 
@@ -161,15 +161,15 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
      --data-binary @captured_body.bin
    ```
 
-3. **判定表**：
+3. **判定表**（当前挂载 `onFail=nil` = utils 默认响应：鉴权失败恒为统一文案 `401 {"code":10002,"message":"未授权：AK/SK 签名验证失败"}`，读体超限另为 413/400 + `code 10001`——**响应不分档，分档看 zhuzhao 服务端日志** `compat: verify failed` 的 `err` 字段；如需响应侧分档，经 `GinMiddleware` 自定义 `onFail` 按本包哨兵 `Err*` 实现，勿复用内部 `response.AKSKFail`——两包哨兵不同源，`errors.Is` 恒 false）：
 
-   | 现象 | 结论 / 动作 |
+   | 服务端日志 err 分档 | 结论 / 动作 |
    |---|---|
-   | 200 | 主路径吻合（复算派），可直接上线 |
-   | 401 `签名不匹配`，`SkipBody=true` 后 200 | 对端为 skipBody 形态（body 不入签）——**固定开启 `Verifier.SkipBody`** 再上线 |
-   | 401 `签名已过期` | 双方时钟差超窗，先校时再比 |
-   | 401 `未知凭据` | 密钥环没配对，查 config |
-   | 401 `签名不匹配`（开关两态都败） | 线协议与冻结向量不符（分隔符/编码/拼接差异）——**停，回设计对账**，勿强上 |
+   | （无失败记录，200） | 主路径吻合（复算派），可直接上线 |
+   | `signature mismatch`，`SkipBody=true` 后 200 | 对端为 skipBody 形态（body 不入签）——**固定开启 `Verifier.SkipBody`** 再上线 |
+   | `timestamp out of allowed window` | 双方时钟差超窗，先校时再比 |
+   | `unknown credential` | 密钥环没配对，查 config |
+   | `signature mismatch`（开关两态都败） | 线协议与冻结向量不符（分隔符/编码/拼接差异）——**停，回设计对账**，勿强上 |
 
 ### 5.3 回退
 
