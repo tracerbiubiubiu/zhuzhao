@@ -94,7 +94,7 @@ func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFu
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), auditWriteTimeout)
 		defer cancel()
 		if err := auditLogger.Insert(ctx, entry); err != nil {
-			slog.Error("audit log write failed", "err", err, "path", entry.Path)
+			slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)
 		}
 	}
 }

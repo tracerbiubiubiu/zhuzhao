@@ -103,11 +103,10 @@ func RateLimit(rdb *goredis.Client, cfg config.RateLimitConfig) gin.HandlerFunc 
 			retry = 1
 		}
 		c.Header("Retry-After", strconv.FormatInt(retry, 10))
-		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-			"code":       errcode.ErrTooManyReqs.Code,
-			"message":    errcode.ErrTooManyReqs.Message,
-			"data":       nil,
-			"request_id": c.GetString("request_id"),
-		})
+		// 信封收编（2026-10-15 清欠批：原 gin.H 手拼四字段与 utils response 信封
+		// 同构但绕单写入口，信封字段演进时不跟随）——response.Fail 携 request_id，
+		// Fail 后显式 Abort 语义同 AbortWithStatusJSON
+		response.Fail(c, http.StatusTooManyRequests, errcode.ErrTooManyReqs.Code, errcode.ErrTooManyReqs.Message)
+		c.Abort()
 	}
 }
