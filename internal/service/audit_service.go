@@ -8,6 +8,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -43,7 +44,10 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 		IP:          ip,
 		UserAgent:   userAgent,
 		RequestBody: loginAuditBody(employeeNo),
-		CreatedAt:   time.Now(),
+		// request_id 自 request context 取（中间件已注入 reqid）——03 §3.4 同键
+		// 关联口径：登录审计行此前空缺该键，反查断链
+		RequestID: reqid.From(ctx),
+		CreatedAt: time.Now(),
 	}
 	if userID != nil {
 		entry.UserID = *userID
@@ -52,7 +56,7 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loginAuditWriteTimeout)
 	defer cancel()
 	if err := s.Insert(writeCtx, entry); err != nil {
-		slog.Error("audit log write failed", "err", err, "path", entry.Path)
+		slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)
 	}
 }
 
