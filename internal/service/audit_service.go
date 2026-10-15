@@ -35,7 +35,7 @@ func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntr
 // LogLogin 登录审计（公开路由不走 AuditLog 中间件，由 AuthService 显式调用）。
 // D2-04：与中间件路径（F-5）对齐——登录请求的 ctx 随客户端断连取消，
 // 直接透传会丢登录成功/失败审计（撞库攻击无 DB 证据）；改用
-// WithoutCancel + 独立超时，覆盖 auth_service 全部 11 处 LogLogin 调用
+// WithoutCancel + 独立超时，覆盖 auth_service 全部 12 处 LogLogin 调用
 func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent string, userID *int64, username string, statusCode int) {
 	entry := middleware.AuditLogEntry{
 		Method:      "POST",
