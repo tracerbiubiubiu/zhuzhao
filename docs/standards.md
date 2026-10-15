@@ -44,8 +44,8 @@
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
 3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
 4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 api/errcode.md 对账）；
-5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
-6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**；
+5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；**zhuzhao 侧 `/api/v1/tasks` 组的 `/cancel`·`/retry` 为该豁免契约的镜像路由（透传 taskrunner，2026-10-15 补登记）**；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
+6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**。**特例在册（2026-10-15 全仓审计立约）**：activelist 列表端点为 keyset 游标分页且 `next_cursor` 进响应信封——动态表百万行量级下 offset 深翻页不可用、zhuzhao-ui cursorPager 已消费该契约；属 offset+total 形态不适用的领域特例，新端点勿援引；
 7. **int64 ID 一律字符串序列化**（`json:",string"`）——规避 JS Number 精度丢失；
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
 9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
@@ -59,7 +59,7 @@
 
 | 项 | 约定 |
 |---|---|
-| 分层 | handler → service → repository（handler 禁 DB、service 禁 HTTP、repository 禁外层依赖） |
+| 分层 | handler → service → repository（handler 禁 DB、service 禁 HTTP、repository 禁外层依赖）。**判定口径（2026-10-15 审计成文）**：禁令禁的是能力越界（handler 触 DB 连接、service 发 HTTP、repository 依赖上层）——非越界用途的 stdlib 类型引用（如 `http.MaxBytesError` 判型、`sql.NullTime` 扫描）不判违；handler 引 repository 查询 filter 结构体属灰区，以 `architecture_test.go` 白名单制管理 |
 | 目录结构 | 各服务同构骨架：`cmd/<server>/` 入口、`internal/app/`（wire 装配）、`internal/handler|service|repository|model|middleware/`、`internal/pkg/`（服务内公共构件，**升格 zhuzhao-utils 的候选区**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致 |
 | 依赖注入 | google/wire（装配收敛于 `internal/app`） |
 | 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
@@ -105,7 +105,7 @@
 |---|---|
 | 迁移文件 | **up/down 成对**；编号**全局唯一**（zhuzhao 仓内按 A2 规则：谁先启动谁占用，后者整体重排）；**各独立服务迁移编号自成体系，与 zhuzhao 无关** |
 | 写法建议 | 优先幂等（IF NOT EXISTS / ON CONFLICT / DO $$ 判列）；zhuzhao 集成测试容器按 testutil **显式清单**重执行——**新迁移必须同步登记该清单**，漏登 = 测试容器缺列全包炸 |
-| 建表基线 | id 自增 / version 乐观锁 / created_at·updated_at / 软删 deleted_at（唯一索引配 `WHERE deleted_at IS NULL` 部分索引）；业务唯一键语义固定后建部分唯一索引 |
+| 建表基线 | id 自增 / version 乐观锁 / created_at·updated_at / 软删 deleted_at（唯一索引配 `WHERE deleted_at IS NULL` 部分索引）；业务唯一键语义固定后建部分唯一索引。**taskrunner 豁免在册（2026-10-15 登记）**：schema 代码内嵌无版本化迁移文件（其 docs §10 条件登记——演进频率上升再评估）；job_runs/jobs 为任务域状态机表，无 version/created_at/软删属状态机语义而非业务实体，基线不适用 |
 | 事务与并发 | 跨表写**必须同事务**（检查+写入同事务，防 check-then-act 窗口，B4-5）；悲观锁按场景选用（FOR SHARE 防写锁窗口读旧快照 / FOR UPDATE 队列竞争 / advisory lock 串行化长操作，BK-11/B3-2 模式）；**全表带 version 乐观锁**（并发写 → ErrConcurrentModification）；失败路径必须整体回滚不留部分写 |
 | 跨库边界 | 服务间**不直连对方库**；身份数据需要时走事件同步副本（契约由数据接收方定义） |
 
@@ -160,6 +160,7 @@
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
 6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增。**改 wire 形态（字段类型/omitempty/指针化/序列化行为）五点必查（2026-10-14 契约审计批立约，三例在册：MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾）**——① 消费端 Go struct（grep 四仓字段名）② 测试侧镜像解码 struct ③ swagger 表达（数组 ID 字段带 `swaggertype:"array,string"`，CI 有 swagger 新鲜度守卫）④ zhuzhao-ui codegen 触发 ⑤ 文档口径（含「待发/已发」类措辞）；
 7. **分支与版本**：功能分支开发（如 `feature/phase-2`），合入前全门禁；zhuzhao-utils 语义化版本，发版后各仓 pin。**维护态分支口径（2026-09-16 拍板，方案 a 后收敛）**：四仓 **main 单主干**——小批改动直接提交 main 推送（CI 即门禁）；隔离需求出现时（如 M-UAA）开短命功能分支，合入 main 后即删（远端+本地），不留阶段名常驻分支。
+8. **CI 红窗纪律（2026-10-14 立约，10 月四例归因驱动）**——main 单主干下 CI 红窗即主干破损：① **push 后验绿再收工**：push 会话必须确认本轮 run 结论（`gh run list` / Actions 页）才算交付闭环——push 不是终点，绿了才是（§12-1「先验收后提交」的自然延伸）；② **红窗禁叠新批**：发现红先归因修复，修复提交信息引用失败 run 并注根因分类（契约未同步 / 门禁漏跑 / 依赖环境 / flaky）——分类积累方能识别真 flaky；③ **同 HEAD 重跑即绿 = 疑似 flaky**：登记后排查，禁止无归因 re-run 当修复；④ **拆笔不破主干**（细化 §11-4）：同批拆多笔时每笔独立可过门禁，类型/契约类双侧变更（类型定义 + 发送侧）禁拆笔；⑤ **跨仓契约变更双仓同窗推送**（§12-6 配套）：生产端先推、消费端后推的窗口期必致消费端红窗，契约批两仓提交齐再一起推。
 
 ## 13. SSOT 索引
 
@@ -190,8 +191,8 @@
 | 2026-09-16 | 归因口径拍板（选项 4）：§6 访问日志新增 `auth` 身份平面字段（jwt/aksk/none）与适用范围（仅多平面服务）、caller 三仓恒出（空串占位）——zhuzhao operatorOf 扩链/新增 authOf；同日 §3.11 补归因键常量纪律（ContextKey*，v0.4.1），三仓消费方完成常量化 |
 | 2026-09-29 | P4-W5 前置批：§3-5 存量豁免更新——工单 PUT/DELETE 豁免消灭留痕（BK-18 已整改）+taskrunner cancel/retry 动词段豁免注记（纯内部 M2M 语义，规划拍板不返工）+activelist 三端点整改同步（标识入 body，000032） |
 | 2026-09-30 | 二轮审计批：92xxx 三段码表（通知/字典/PAT）+httpStatusByCode 映射规范——新码必须三件套同步（errcode.go var + errors_test allErrCodes + errcode.md 含反引号常量列格式）；down 迁移精确逆红线重申（000033 空 down 教训）+roundtrip 快照扩 P4 四业务表 |
-| 2026-10-03 | 时点报告命名升三段式 `<类型>-<范围>-<日期>`（同日多份无区分位——随 zhuzhao-ui outputs 四报告统一批同步）； |
 | 2026-10-01 | 四仓联合验证批：适用范围+§1 增 zhuzhao-ui 行（前端=契约消费方）+工单封版状态注记（基础域已交付被消费——§12-3 断言对账）；§3 补第 12 条（date-only `YYYY-MM-DD` 例外/ID 数组元素仍 string）；§4 门禁行补前端六件口径；§12-3 补时点报告存放命名（deliverables/·outputs/）；§13 SSOT 索引补前端两行 |
+| 2026-10-03 | 时点报告命名升三段式 `<类型>-<范围>-<日期>`（同日多份无区分位——随 zhuzhao-ui outputs 四报告统一批同步）； |
 | 2026-10-12 | 500 留痕纪律：§3 增第 13 条——未分类错误中枢落 ERROR（writeServiceError，request_id/path/err）+服务源头禁吞错（notification list 首例补修）；panic 既有 Recovery+PanicSink 口径注记。驱动=首页统计卡瞬时 500 事后无迹可查 |
 | 2026-10-12 | 组织树读权限放开：000041 把 GET /api/v1/orgs 绑至工单管理菜单（operator/viewer 可读）——发起工单组织字段（S8 组织双源）与类型配置组织下拉的业务必需；组织管理写操作仍 admin 专属。驱动=多账号前端实测非 admin 403 toast + 静默降级空数据 |
 | 2026-10-12 | 000042 补 000041 覆盖缺口：casbin 发放原仅扫工单管理目录本体绑定角色，漏只绑子菜单的角色（viewer 只绑类型配置→放开后仍 403）；casbin 发放改扫目录+全部子菜单绑定角色，down 忠实逆守卫（无其他菜单授予则删）。驱动=同批 FE4 哨兵首跑即捕获 |
@@ -199,3 +200,4 @@
 | 2026-10-13 | 借鉴出处纪律建档：§13 SSOT 索引增 acknowledgments.md 行——借鉴/参考项目集中致谢与溯源，新借鉴随批登记（借设计不借代码/无 LICENSE 禁拷码/公司内部参考不入页） |
 | 2026-10-14 | JSON 契约审计批：§3 增第 14 条「JSON 序列化形态公约」（同概念同形态/无值分组单表达/bool 恒出数组不 null/零值语义数值禁 omitempty/写响应回显规范化/PATCH null 语义/出站 ID 恒 string）——三仓审计驱动（zhuzhao/activelist/taskrunner + utils Int64Slice MarshalJSON 补齐），修复随各仓同日提交，审计明细见 deliverables/json-contract-audit-2026-10-14.md |
 | 2026-10-14 | 审计循环机制化收口：§12-6 跨仓契约变更增「wire 形态五点必查」清单（MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾三例驱动）；zhuzhao ci.yml 增 swagger 新鲜度守卫（make swag 同款命令 + git diff --exit-code，swag v1.16.4 钉版）——/compat/echo 注解漏生成首例驱动 |
+| 2026-10-15 | 全仓公约审计批：§3-5 补 zhuzhao tasks cancel/retry 镜像段登记；§3-6 立 activelist keyset 游标特例（百万行 offset 不可用，ui cursorPager 消费中，新端点勿援引）；§4 分层禁令判定口径成文（stdlib 类型引用不判违/handler 引 filter 结构体走架构测试白名单）；§8 建 taskrunner 基线豁免登记（schema 内嵌+状态机表）；§12-8 立 CI 红窗纪律五点（10-14 四例 CI 失败归因驱动） |

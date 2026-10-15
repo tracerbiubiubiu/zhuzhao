@@ -47,3 +47,12 @@
 - `adr/ADR-001-event-mechanism-l1-steady-state.md`（L1 事件源作为长期稳态，Asynq 不替代）
 - `phase3/10-ticket-business.md` §4.5(3)（审批完成与 L1 事件联动）、§4.6（Asynq 职责切分与场景落地）、§2.5（SLA 违约链路：场景 C 组合态）、§3（通知服务，场景 D 消息通知异步化）
 - `modules/ticket.md` §6（三档事件机制 L0/L1/L2 概述）
+
+---
+
+## 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 建档 | 异步任务执行器选型 Asynq 决策（taskrunner 仓 docs/taskrunner.md 为实现侧 SSOT，ADR-002 为主仓镜像） |
+| 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；完整历史见 git log |

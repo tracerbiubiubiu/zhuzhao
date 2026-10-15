@@ -543,3 +543,12 @@ migrations/0000xx_ticket_menu.up.sql   # 可选：菜单与 Casbin
 | [03-org-enhance.md](./03-org-enhance.md) | ticket_scope、虚拟组 |
 | [10-storage.md](./10-storage.md) | 附件 |
 | [04-org-delegation.md](./04-org-delegation.md) | 2c Authorize |
+
+---
+
+## 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 建档 | 工单模块完整设计（Phase 2 交付蓝本；2026-09-02 §23 封版转对接参考，phase3/10 为业务侧续篇） |
+| 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；完整历史见 git log |
