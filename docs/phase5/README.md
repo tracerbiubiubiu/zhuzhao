@@ -16,7 +16,7 @@
 |----|------|------|
 | 状态机引擎 | 通用引擎，从 `ticket_types.transitions` JSONB 构建，校验 from→to | `internal/service/ticket/state_machine.go` |
 | 流程配置数据 | 每类型一套 states/transitions JSONB（默认六状态图）；字段 schema/模板同表族 | 迁移 000010；默认图常量在 `type_admin.go` |
-| 管理端 API | 类型 CRUD（states/transitions 可写，`validateTypeGraph` 校验端点合法）+ 字段全量替换 + 模板 CRUD，乐观锁 | `type_admin.go` + `router.go:352-363` |
+| 管理端 API | 类型 CRUD（states/transitions 可写，`validateTypeGraph` 校验端点合法）+ 字段全量替换 + 模板 CRUD，乐观锁 | `type_admin.go` + `router.go:361-378` |
 | 动作语义 | **代码硬编码**：Close/Assign/Update 各端点方法内按三层鉴权 + 属主/委托判定，状态变更经 `AssertTransition` | `service.go:330/:390/:432` |
 | 前端 | ticket/type 页已交付：states/transitions=JSON 源码模式、字段=表格全量替换；工单发起=**自研七类型轻量渲染器**（W4 交付；form-create 库引入决策顺延至设计器批，`views/ticket/create/index.vue` 头注释） | zhuzhao-ui `src/views/ticket/type/index.vue`、`views/ticket/create/index.vue` |
 | 任务面 | task_center 四 Tab 已交付（运行记录/死信/任务定义/提交任务），但 **action_id/cron_spec/params 全手填**；动作合法性回调时才校验（未注册→404，执行期才失败）；动作清单 = zhuzhao `internal/jobs` 注册表，**无读端点**；cron = robfig/cron 五段表达式，分钟级 tick 扫 `next_run` | zhuzhao-ui `views/task/list/index.vue`；zhuzhao `jobs.Registry` + `jobs_callback.go`；taskrunner `cron.go`、`repository/jobs.go` |

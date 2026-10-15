@@ -2,7 +2,7 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> 更新日期：**2026-09-27**（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：**2026-10-15**（**文档对账批**：§3 API 地图对齐路由实态——/menus「CRUD」反向断言修正[代码 P4-W1 起只读]+P4 增量端点补行+`router.go` 过期行号勘误+头部日期滚动恢复）。历史批注——2026-09-27（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-10-12 文档批次（break-glass 批）：**superadmin 密码恢复应急通道落码**——`zhuzhao reset-password` 子命令（同二进制分发零镜像改动：目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销 `RevokeUserSessionsWithRetry` 导出] + 禁用连带启用 + audit_logs 落行 method='CLI'）；**config 职责拆分**（服务端启动 fail-fast[rate_limit/internal_jobs SK/gateway SK] 自 Load 迁 Validate——演练实证应急通道被无关启动检查卡死；Load 保持读+默认值，server 路径 Load→Validate 行为不变）；`docs/runbook.md` 建档（Phase 3 承诺欠账补建：§1 恢复流程 CLI 首选/手工 SQL 兜底含清 Redis 会话 + §2 四项演练结论沉淀 + §3 备份/PITR 要点）；§1 矩阵补行；起因=superadmin 设计评估发现「最后一个 superadmin 忘密码零应用层通道」缺口（DB 直改不清会话/不留痕）；实战=同日并行会话致 admin 凭据脱离验收态，CLI 一键复原
 > 2026-10-14 文档批次（v0.4.2 发行与四仓 pin 齐平批）：**utils tag v0.4.2 打标推送**（发行内容=compat 收口[Transport/豁免收紧]/Int64Slice MarshalJSON/jwt ErrTokenExpired 哨兵/postgres MaxIdleConns 移除）+ **三仓 pin 齐平**（zhuzhao `1333f3d` 含 OwnerUserIDs 字符串化生效与 MaxIdleConns 消费端同步；activelist `ad590ab`/taskrunner `9e7343e` 纯 go.mod——影响面核查=两仓零处触及变更面，双 CI 含集成+race 绿）；同批发现并修复：standards §5 与 runbook §5 性质行「v0.4.2 待发」口径过时（发布后未同步）、swagger 对 Int64Slice 出站类型表达背离（number[] vs 实发 string[]，加 swaggertype:"array,string" 七处并重生成）、W4 测试三处值类型字段上恒真 NotNil 清理
 > 2026-10-14 文档批次（二轮一致性审计收口批，四仓联动）：**全仓统一核查遗留欠账清零**——zhuzhao：runbook §5.2 判定表对齐 onFail=nil 实现（分档键改服务端日志 err 三档；响应恒统一文案）+ §5 标题残留清理 + config.yaml 补 compat_aksk 样例段 + §3 API 地图补 `/compat/echo` 行 + 外部审查残留批行回填；activelist：include_deleted 口径三处对齐（头注「已被取代」反向矛盾修正）+ 契约审计护栏测试补齐（游标字符串化集成断言/meta·repository 两包建测）；taskrunner：GET /v1/runs 补 submitted_by 文档 + 护栏测试（params null 三入口/RunView.ID 字符串化/`?id=` 筛选承重/source_ip/notify 恒出）；zhuzhao-ui：任务中心 runs 筛选补重置按钮（对齐筛选栏配方）+ 注释勘误
@@ -57,7 +57,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **通知配置（P4-2）** | notification_configs 表 + 管理 API 四端点 + /internal/notify/dead-letter 死信入口 + taskrunner 终败通知 hook（E-⑥ 形态）+ webhook 全链闭环实测 | ✅ 2026-09-29 | `internal/service/notification_service.go` `migrations/000033` |
 | **字典/系统参数（P4-3）** | 字典类型+字典项 CRUD + 消费端点 GET /user/dicts/:code/items（登录可读）+ 前端管理页 | ✅ 2026-09-29 | `internal/service/dict_service.go` `migrations/000034` |
 | **PAT 个人令牌（P4-6）** | personal_access_tokens 表 + 签发/吊销/列表端点 + 前端管理页 | ✅ 2026-09-29 | `internal/service/pat_service.go` `migrations/000035` |
-| **P2 运维小件（P4-8）** | panic 聚合查询 GET /audit/panics + 路由对账 GET /audit/reconcile + 指标采集预留 | ✅ 2026-09-29（随 W5 前端 audit 页同批交付） | `internal/service/panic_service.go` `migrations/000036` |
+| **P2 运维小件（P4-8）** | panic 聚合查询 GET /audit/panics + 路由对账 GET /audit/reconcile + 指标采集预留 | ✅ 2026-09-29（随 W5 前端 audit 页同批交付） | `internal/repository/panic_repo.go` + `internal/handler/ops_handler.go`（原写 panic_service.go 系路径腐烂，2026-10-15 勘误） `migrations/000036` |
 | **自服务组织端点** | GET /user/orgs（富化行 org_member_role+ticket_scope+joined_at，catalogExempt） | ✅ 2026-09-29 | `internal/handler/org_handler.go` |
 | **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
 | **break-glass 应急通道（admincli）** | `zhuzhao reset-password` 子命令：superadmin 密码恢复（目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销] + 禁用连带启用 + audit_logs 落行 method='CLI'）；同二进制子命令分发零镜像改动；流程与兜底 SQL 见 `docs/runbook.md` §1 | ✅ 2026-10-12（集成 4 用例常态门禁 + dev 栈演练） | `cmd/server/reset_password.go` `internal/pkg/admincli/` `internal/service/session_revoke.go` |
@@ -95,18 +95,21 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 分组 | 端点 | 说明 |
 |------|------|------|
-| `/auth` | login / refresh | 公开 |
-| 自助（登录后） | logout、password/update、user/profile、user/menus、user/permissions | 本人 |
-| `/orgs`（委托） | delete、members、members/role、owners、members/delete | org admin/owner 操作 |
-| `/users` | CRUD + status + roles + password/reset + orgs | 管理端 |
+| `/metrics` `/health/*` | Prometheus 文本 + 存活/就绪探针 | 公开（探针豁免信封） |
+| `/auth` | captcha（GET，P4-7）+ login / refresh | 公开 |
+| 自助（登录后） | logout、auth/password/update、user/profile(+update)、user/menus、user/permissions、user/dicts/:code/items、user/pats（列表/签发/吊销）、user/orgs | 本人 |
+| `/orgs`（委托） | delete、members、members/role、members/list、members/scope、members/delete、owners、roles/list、roles/bind、roles/delete | org admin/owner 操作 |
+| `/users` | CRUD + status + roles(+按 id 查询) + password/reset + orgs(+按 id 查询) | 管理端 |
 | `/roles` | CRUD + menus + permissions | 管理端 |
 | `/orgs` | 树 CRUD + move + members | 管理端 |
-| `/menus` | CRUD | 管理端 |
-| `/audit/logs` | 审计日志查询 | 管理端 |
+| `/menus` | **只读**（GET 列表/详情——写接口已随 P4-W1 词表只读化删除，菜单行走种子迁移） | 管理端读 |
+| `/dicts` `/dict-items` | 字典类型/项 CRUD（P4-3 管理面） | 管理端 |
+| `/notifications` | 通知配置 CRUD（P4-2 管理面） | 管理端 |
+| `/audit/logs` `/audit/panics` `/audit/reconcile` | 审计日志查询 + panic 聚合 + 路由对账（P4-8） | 管理端 |
 | `/tickets` | CRUD + close + assign + comments + notes + relations | 工单 |
-| `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板）：**读 + 管理**（BK-18 已补 7 写端点：2 POST + 5 PUT/DELETE，后者属 standards §3.5 存量公约豁免；`router.go:275-287`） | 读：无专属码；管理：`ticket:type:manage`（L1 通配 admin/superadmin，operator 经类型配置页 AssignMenus 放行） |
-| `/v1/tasks` `/v1/runs` `/v1/jobs` `/v1/dead-letters` | 任务管理代理（E-④，三层校验后出站 taskrunner） | task:submit/read/manage |
-| `/internal/jobs/callback` | 内网回调（AK/SK 验签 GinMiddleware+AKSKFail 统一形态，action 在 body；C10） | taskrunner 内网，默认关 |
+| `/ticket-types` `/ticket-templates` | 元数据（类型/字段/模板）：**读 + 管理**（BK-18 已补 7 写端点：2 POST + 5 PUT/DELETE 整改后均为 POST，`router.go:361-378`） | 读：无专属码；管理：`ticket:type:manage`（L1 通配 admin/superadmin，operator 经类型配置页 AssignMenus 放行） |
+| `/v1/tasks` `/v1/runs` `/v1/jobs` `/v1/dead-letters` | 任务管理代理（E-④，三层校验后出站 taskrunner；tasks 组 `/cancel`·`/retry` 动词段 = taskrunner 豁免契约镜像） | task:submit/read/manage |
+| `/internal/jobs/callback` `/internal/notify/dead-letter` | 内网回调 + 死信通知入口（AK/SK 验签 GinMiddleware+AKSKFail 统一形态，action 在 body；C10） | taskrunner 内网，默认关 |
 | `/compat/echo` | 存量协议兼容判定靶（aksk/compat 验签 GinMiddleware，验签过回显 caller/request_id；standards §3.11 豁免登记） | 存量调用方内网，默认关 |
 | `/al/*`（网关反代） | activelist 透传（JWT→限流→审计跳body→Casbin→身份断言→AK/SK 出站签名；menu_apis 000024 权限面） | 批次 B/E13 |
 
