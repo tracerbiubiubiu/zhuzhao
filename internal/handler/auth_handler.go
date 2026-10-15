@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 
@@ -131,6 +132,12 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 func writeAuthError(c *gin.Context, err error) {
 	var biz *errcode.Error
 	if !errors.As(err, &biz) {
+		// 可观测性（§3-13①，2026-10-15 对齐 writeServiceError 口径）：登录/刷新链路
+		// 的未分类错误（DB/Redis 故障裸 err 上抛）此前只回通用文案不落日志，500 事后
+		// 无法按 request_id 溯源
+		slog.Error("unclassified auth error",
+			"request_id", c.GetString("request_id"),
+			"path", c.FullPath(), "err", err)
 		response.InternalError(c, errcode.ErrInternal.Message)
 		return
 	}

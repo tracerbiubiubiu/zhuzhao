@@ -18,13 +18,14 @@ import (
 // 未登记的码维持 default：500 + 10000（auth 模块 20001+ 由 auth handler 直写，
 // 10007/10008 由中间件直写，10000/70002 本义即 500）。
 var httpStatusByCode = map[int]int{
-	// P4 新段（审计修复 2026-09-30：原漏登记——全部断链 500+10000）
-	92001: http.StatusNotFound,   // 通知配置不存在
-	92002: http.StatusConflict,   // 通知配置 code 已存在
-	92003: http.StatusBadRequest, // 不支持的通知渠道
-	92301: http.StatusNotFound,   // 字典类型不存在/版本冲突
-	92302: http.StatusNotFound,   // 字典项不存在/版本冲突
-	92401: http.StatusNotFound,   // PAT 不存在或已吊销
+	// P4 新段（审计修复 2026-09-30：原漏登记——全部断链 500+10000；2026-10-15 起键值
+	// 改引 errcode 常量——§3-11 码值引用纪律，与表内其余行同风格）
+	errcode.ErrNotificationConfigNotFound.Code:    http.StatusNotFound,   // 通知配置不存在
+	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,   // 通知配置 code 已存在
+	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest, // 不支持的通知渠道
+	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
+	errcode.ErrDictItemNotFound.Code:              http.StatusNotFound,   // 字典项不存在/版本冲突
+	errcode.ErrPatNotFound.Code:                   http.StatusNotFound,   // PAT 不存在或已吊销
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,

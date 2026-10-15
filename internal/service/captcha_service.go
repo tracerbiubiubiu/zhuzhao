@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 	"time"
@@ -81,6 +82,9 @@ func (s *CaptchaService) Verify(ctx context.Context, captchaID, code string) err
 		if err == redis.Nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, "验证码已过期，请刷新后重试")
 		}
+		// §3-13 留痕：业务码 503 不经 writeServiceError/writeAuthError 中枢日志，
+		// 源头落一行否则 Redis 故障无迹可查
+		slog.Error("captcha verify redis failure", "err", err)
 		return errcode.ErrServiceUnavailable
 	}
 	if stored != strings.ToUpper(strings.TrimSpace(code)) {

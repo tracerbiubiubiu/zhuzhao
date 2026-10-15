@@ -2785,7 +2785,7 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "parent_id": {
-                    "description": "BK-12：继承父（可选）。校验规则（2026-08-31 拍板）：child.priority ≤ parent.priority\n（子不弱于父）+ 父启用/非系统/无环/非自身",
+                    "description": "BK-12：继承父（可选）。校验规则（2026-08-31 拍板）：child.priority ≤ parent.priority\n（子不弱于父）+ 父启用/非系统/无环/非自身。omitempty 已去（§3-14① 同概念同形态）：\n与 menu/org 请求侧对齐 null 形态，未传 = null = 不设父",
                     "type": "string",
                     "example": "0"
                 },
@@ -3404,7 +3404,7 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "parent_id": {
-                    "description": "BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承",
+                    "description": "BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承。\nomitempty 已去（§3-14①，与 Create/menu/org 请求侧对齐 null 形态）",
                     "type": "string",
                     "example": "0"
                 },

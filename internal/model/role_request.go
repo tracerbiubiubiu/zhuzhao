@@ -24,8 +24,9 @@ type CreateRoleRequest struct {
 	// 原零值合并导致无法创建禁用角色，与 Update 的 oneof=0 1 行为不一致
 	Status *int `json:"status" binding:"omitempty,oneof=0 1"`
 	// BK-12：继承父（可选）。校验规则（2026-08-31 拍板）：child.priority ≤ parent.priority
-	// （子不弱于父）+ 父启用/非系统/无环/非自身
-	ParentID *int64 `json:"parent_id,string,omitempty"`
+	// （子不弱于父）+ 父启用/非系统/无环/非自身。omitempty 已去（§3-14① 同概念同形态）：
+	// 与 menu/org 请求侧对齐 null 形态，未传 = null = 不设父
+	ParentID *int64 `json:"parent_id,string"`
 }
 
 // UpdateRoleRequest 更新角色。
@@ -39,7 +40,8 @@ type UpdateRoleRequest struct {
 	Priority    int     `json:"priority" binding:"required"`
 	SortOrder   *int    `json:"sort_order"`
 	Status      *int    `json:"status" binding:"omitempty,oneof=0 1"`
-	// BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承
-	ParentID    *int64 `json:"parent_id,string,omitempty"`
+	// BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承。
+	// omitempty 已去（§3-14①，与 Create/menu/org 请求侧对齐 null 形态）
+	ParentID    *int64 `json:"parent_id,string"`
 	ClearParent bool   `json:"clear_parent"`
 }

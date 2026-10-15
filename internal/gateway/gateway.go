@@ -21,6 +21,8 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // Upstream 反代上游定义（config gateway.upstreams 项）。
@@ -106,7 +108,7 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadGateway)
 			_ = json.NewEncoder(w).Encode(response.Response{
-				Code:      10008, // 通用段 ErrServiceUnavailable：5xx 可重试语义
+				Code:      errcode.ErrServiceUnavailable.Code, // 通用段：5xx 可重试语义
 				Message:   "上游服务暂时不可用",
 				RequestID: req.Header.Get("X-Request-ID"),
 			})
@@ -117,7 +119,7 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 		// 路径 ≠ 上游实际执行的路径；menu_apis 一旦出现前缀通配模式即成提权面。
 		rest := c.Param("rest")
 		if rest == "" || rest != path.Clean(rest) {
-			response.Fail(c, http.StatusBadRequest, 10001, "非法路径")
+			response.Fail(c, http.StatusBadRequest, errcode.ErrInvalidParams.Code, "非法路径")
 			return
 		}
 		proxy.ServeHTTP(c.Writer, c.Request)
@@ -136,7 +138,7 @@ func (r *Registry) Mount(router gin.IRouter, authzMiddlewares ...gin.HandlerFunc
 			// Restrict 资源开关（首版）：停用 = 503（位于 Casbin 之后——未授权者
 			// 仍 403，不向未授权者泄露停用状态；升级路径 = per-user 授权表）
 			g.Use(func(c *gin.Context) {
-				response.Fail(c, http.StatusServiceUnavailable, 10008, "上游资源维护中，暂停访问")
+				response.Fail(c, http.StatusServiceUnavailable, errcode.ErrServiceUnavailable.Code, "上游资源维护中，暂停访问")
 				c.Abort()
 			})
 		}

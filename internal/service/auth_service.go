@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -74,6 +75,8 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 
 	blocked, err := s.scripts.LoginLockIsBlocked(ctx, req.EmployeeNo)
 	if err != nil {
+		// §3-13 留痕：业务码 503 不经错误中枢日志，源头落一行否则 Redis 故障无迹可查
+		slog.Error("login lock check failed", "err", err)
 		return nil, errcode.ErrServiceUnavailable
 	}
 	if blocked {
@@ -85,6 +88,7 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	if err != nil {
 		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
 		if lockErr != nil {
+			slog.Error("fail-login lock write failed", "err", lockErr)
 			return nil, errcode.ErrServiceUnavailable
 		}
 		if blocked {

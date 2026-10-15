@@ -121,7 +121,7 @@ func (s *DictService) UpdateItem(ctx context.Context, it *model.DictItem) error 
 func (s *DictService) DeleteItem(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteItemByID(ctx, id); err != nil {
 		if errors.Is(err, repository.ErrDictItemNotFound) {
-			return errcode.New(92302, "字典项不存在")
+			return errcode.ErrDictItemNotFound
 		}
 		s.logger.Error("dict delete item", "err", err)
 		return errcode.ErrInternal

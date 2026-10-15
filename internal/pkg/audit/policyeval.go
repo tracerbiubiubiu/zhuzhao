@@ -24,6 +24,8 @@ import (
 
 // PolicyEvalEntry 判定日志行（与 policy_evaluation_logs 列对齐）。
 type PolicyEvalEntry struct {
+	// 内部管道载荷（Redis List → 批量落库），不出站 API——int64 直存无 JS 精度问题；
+	// 若未来判定日志开读端点，本字段须按 §3-7 改 `,string` 出站
 	ActorID      int64    `json:"actor_id"`
 	ActorRoles   []string `json:"actor_roles,omitempty"`
 	ResourceType string   `json:"resource_type"`

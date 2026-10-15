@@ -97,7 +97,8 @@ definitions:
       parent_id:
         description: |-
           BK-12：继承父（可选）。校验规则（2026-08-31 拍板）：child.priority ≤ parent.priority
-          （子不弱于父）+ 父启用/非系统/无环/非自身
+          （子不弱于父）+ 父启用/非系统/无环/非自身。omitempty 已去（§3-14① 同概念同形态）：
+          与 menu/org 请求侧对齐 null 形态，未传 = null = 不设父
         example: "0"
         type: string
       priority:
@@ -541,7 +542,9 @@ definitions:
         maxLength: 100
         type: string
       parent_id:
-        description: BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承
+        description: |-
+          BK-12：ParentID 显式变更（nil=保持现值）；ClearParent=true 清除继承。
+          omitempty 已去（§3-14①，与 Create/menu/org 请求侧对齐 null 形态）
         example: "0"
         type: string
       priority:
