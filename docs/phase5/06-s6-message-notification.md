@@ -73,6 +73,8 @@
 | 3 | 事件面基建批次 | 事件面 3–5 天随本段首个批次落（S10 超时扫描/phase6 共享） |
 | 4 | **事件面命名（2026-10-16 外审提出）** | ✅ **已拍（2026-10-16）：通用 `DomainEvent`/`DomainHook`**（原 `StatusChangeHook`/`TicketEvent`/`TicketHook` 措辞废止——以 Ticket 命名承载 risk 事件与域无关主张错位；订阅按 `biz_type` 路由；包 `internal/pkg/domainevent`；HookRegistry 不变；消费方侧名字保持业务化如 TicketNotifyHook）。A.1 已按新名改写；S6/S3a/phase6 R3 共享枢纽命名一次钉死 |
 
+> **状态注（2026-10-16）**：本表拍板点已随批量预确认拍定（2026-10-16 所有者「按建议」——✅34/🔶1，状态 SSOT = [11 号 §4](./11-implementation-plan.md)；各段启动时异议可翻，翻案成本=改一行）。
+
 ## 8. 边界（不做）
 
 - **不做渠道 SDK 直连**（邮件/钉钉均经统一消息平台）；**不做站内通知一期以外的实时通道承诺**（分期口径 §6）；模板不做富排版引擎（纯文本/轻 HTML 占位符渲染）。
