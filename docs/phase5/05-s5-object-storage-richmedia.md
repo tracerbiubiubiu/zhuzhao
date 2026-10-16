@@ -1,4 +1,4 @@
-# 05 — P5-S5 对象存储底座与富媒体：MinIO（设计稿）
+# 05 — P5-S5 对象存储底座与富媒体：RustFS（S3 兼容；2026-10-16 后端拍定——原 MinIO，见变更记录）（设计稿）
 
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：**第一棒（底座先行）**——S1 富文本调色板、S6 以后各富媒体消费件的依赖；顺序约束：底座 → 头像 → 附件 → 富文本。
 > **量级**：1.5–2 周（底座 1–2 天 → 头像 0.5–1 天 → 附件 2–3 天 → 富文本 3–5 天）+ 卷备份随行 0.5–1 天。**迁移**：有（`file_objects`/`ticket_attachments` 两表族；编号启动时按 [review/11 §4](../review/11-project-control.md) 对账，**不写死下一编号**，A2 规则）。
@@ -6,7 +6,7 @@
 
 ## 1. 定位与由来
 
-全仓无对象存储/附件能力；个人头像 = URL 字符串手填；工单字段七类型无富文本/文件。头像、富文本、附件三类富媒体诉求**共用同一存储缺口**——MinIO 作公共底座收编实施（2026-10-08 所有者指示，dd §27）。phase6 弱依赖（风险证据附件，未交付则降级外链）。
+全仓无对象存储/附件能力；个人头像 = URL 字符串手填；工单字段七类型无富文本/文件。头像、富文本、附件三类富媒体诉求**共用同一存储缺口**——对象存储作公共底座收编实施（2026-10-08 所有者指示，dd §27；**后端 2026-10-16 拍定 RustFS**——原 MinIO：官方已无开源镜像[八源拉取全败实证]且 AGPLv3，RustFS = Apache 2.0 + S3/MinIO 双兼容，镜像已拉已冒烟）。phase6 弱依赖（风险证据附件，未交付则降级外链）。
 
 ## 2. 现状基线（代码级锚点，2026-10-15 核实）
 
@@ -20,8 +20,8 @@
 
 ## 3. 底座（10 号蓝本实施——要点转录，全文以 10 号为准）
 
-- **S3 兼容客户端**：开发 MinIO / 生产云 OSS 仅**配置切换**非代码分支；SDK 选型预置 **minio-go v7**（官方维护、预签名 API 齐全）。
-- **预签名上传/下载**：前端直传，后端不扛文件流；上传流程 = 预签名 → 前端直传对象存储 → `attachments/confirm` 写元数据（服务端验证对象存在与 size）。**协议口径注（2026-10-15 公约对表，standards §3-1）**：直传环节的上行（PUT）与服务端对象探测（HEAD）均为 **S3/MinIO 对象存储协议层动作**——第三方存储既有协议、不经平台 API 面，不在「方法仅 GET/POST」公约辖域；**平台自有 API 全部 GET/POST**（presign upload/download + attachments confirm/list/delete 五端点，10 号 §4 即此形态）。
+- **S3 兼容客户端**：开发 **RustFS**（2026-10-16 拍定）/ 生产云 OSS 仅**配置切换**非代码分支；SDK 选型预置 **minio-go v7**（对任意 S3 兼容端点工作——对 RustFS 的兼容性随 B5-1 首日 spike 实测，备选 aws-sdk-go-v2）。**后端切换依据（2026-10-16 所有者）**：MinIO 官方已无开源镜像（八源拉取全败实证）且 AGPLv3；RustFS = Apache 2.0 + S3/MinIO 双兼容（**实测 2026-10-16**：`/minio/health/live` 200、`RUSTFS_ROOT_*` 兼容 `MINIO_ROOT_*`、未签名请求 403 fail-closed）。
+- **预签名上传/下载**：前端直传，后端不扛文件流；上传流程 = 预签名 → 前端直传对象存储 → `attachments/confirm` 写元数据（服务端验证对象存在与 size）。**协议口径注（2026-10-15 公约对表，standards §3-1）**：直传环节的上行（PUT）与服务端对象探测（HEAD）均为 **S3 兼容对象存储协议层动作**（RustFS/MinIO 同构）——第三方存储既有协议、不经平台 API 面，不在「方法仅 GET/POST」公约辖域；**平台自有 API 全部 GET/POST**（presign upload/download + attachments confirm/list/delete 五端点，10 号 §4 即此形态）。
 - **配置面**（10 号 §2 样例为准）：`storage:` 段（endpoint/region/bucket/AK/SK/use_ssl/上下行 TTL/`max_upload_bytes: 10MB`/`allowed_mime_prefixes`）——endpoint/凭据 config 化禁硬编码（README §6 总纪律③）。
 - **对象 key 规范**：`{domain}/{yyyy}/{mm}/{uuid}.{ext}`；**禁止客户端自选路径**（随机 UUID 防穿越）。
 - **桶与 key 布局展开（2026-10-15 所有者问询，蓝本骨架细化；现成例子 = 10 号 §2 示例）**：
@@ -56,7 +56,7 @@
 - **API 面**（10 号 §4 五端点为准）：presign upload/download + attachments confirm/list/delete——**附录 A.4 全景另含代理下载与 settings KV 两枚（2026-10-16 外审对齐措辞）**；confirm 校验 `created_by == 当前用户` 且对象未绑定。
 - **错误码**：91001 FileTooLarge / 91002 FileTypeNotAllowed / 91003 FileNotFound / 91004 AlreadyBound（区间 91000–91999）。
 - **删除语义**（10 号 §9 既定建议）：删附件仅删关联，对象 GC 后移（GC Job 触发驱动）。
-- **compose 增 MinIO 服务**；迁移编号启动对账（A2）。
+- **compose 增对象存储服务（RustFS + rustfs-backup 双实例草案已落 deployments 两份 compose——profile=storage 隔离默认不起，2026-10-16 工程预备批；起容器冒烟通过）**；迁移编号启动对账（A2）。
 
 ## 4. 头像上传（自服务面）
 
@@ -91,9 +91,9 @@
   - **② 服务端草稿箱（`ticket_drafts` 表+列表页+保留期，2–3 天）：不做默认，登记触发驱动**——触发信号 = 真实出现"跨设备/跨天填单"诉求（长审批类表单场景；业界锚点 = 宜搭/飞书审批草稿箱）。①的存在使其降级为锦上添花。
   - **③ 工单 draft 状态态：维持不做**——动状态机默认图 + L2 可见性/S6 触发/角标计数/报表四处排除逻辑，全局涟漪远超场景强度（与批量下发"草稿态留二档"同款结论）。
 
-## 7. MinIO 备份随行件（2026-10-09 登记；2026-10-15 业界方案展开）
+## 7. 对象存储备份随行件（2026-10-09 登记；2026-10-15 业界方案展开；**2026-10-16 随后端切 RustFS——工具链 mc → rclone**）
 
-PG 有 pgbackup+WAL+PITR 完整体系，MinIO **零备份设计**——附件丢失 = 工单证据链断裂；且对象存储**无 WAL 类事务日志可 ship，PITR 原生不可得**，RPO = 复制/镜像周期（附件场景日级可接受，显式登记不默认）。
+PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设计**——附件丢失 = 工单证据链断裂；且对象存储**无 WAL 类事务日志可 ship，PITR 原生不可得**，RPO = 复制/镜像周期（附件场景日级可接受，显式登记不默认）。
 
 **业界方案四类（2026-10-15 核验；均为社区版 mc CLI 能力，不涉控制台裁撤面）**：
 
@@ -104,7 +104,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，MinIO **零备份设计**——附件丢
 | Batch Replication | 批量复制作业 | 大存量一次性迁移 | 非常态备份机制 |
 | 卷快照/停机 tar | PV 级快照 | 完整 | 一致性风险/需停机——**不取为主方案**（可作恢复演练辅助） |
 
-**落地建议（拍板点 5）**：目标 MinIO 实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配）；单机起步期目标实例暂缺 → **B = `mc mirror` 定时（独立卷第二 MinIO 实例）+ 目标桶版本化**起步，登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
+**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone mirror` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
 
 ## 8. 启动拍板点
 
@@ -114,7 +114,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，MinIO **零备份设计**——附件丢
 | 2 | 附件下载形态 | ✅ **已拍（2026-10-15，与 #1 联拍）**：统一后端代理——预签名形态弃用（L2 绕过+无审计），302 同 #1 升级路径 |
 | 3 | 附件权限码 | ✅ **已拍（2026-10-15）**：复用 `ticket:update` 零新码——所有者「先不需要单独权限」 |
 | 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；md-editor-rt / bytemd / milkdown 择一（W0 spike 定） |
-| 5 | MinIO 备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 MinIO 实例（独立卷）+ `mc mirror` 定时 + 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
+| 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone mirror` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
 | 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；业界对表补 presigned POST policy 强制点（实现形态随批拍，见 §3 业界对表注） |
 | 7 | 限制值配置化开放 | ✅ **已拍（2026-10-15）：归属 S5 段内做**（底座批后随行/段尾，**可切出**——排期吃紧先静态 config 形态交付零返工，配置化切独立小批）；形态 = 开放·分层（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI）+ 硬底线不可配 + 按 key 编辑层级（存储限制类 superadmin-only）+ 变更审计/钳制——详录 §3 |
 | 8 | **img 认证最后一跳（2026-10-16 外审实锤缺口——已核代码）** | ✅ **已拍（2026-10-16）：Cookie 双凭证**——登录/刷新旁设 `HttpOnly; SameSite=Lax; Path=/api/v1/files` 短时效 cookie（TTL 对齐 access token），files 路由中间件 cookie 回退（header 优先）——`<img>` 原生可用、浏览器缓存/304 生效、前端零渲染改造、302 升级路径顺带解锁；与逐次审计兼容（cookie 映射用户）；tokenStorage 已预留「B7 cookie 会话演进」向。实施设计 = 附录 A.11（含验收负向三件）；业界锚点 = GitHub/GitLab 应用内 cookie 阵营（GitLab 文档原话：同源 `<img>` 自动带 session cookie 是应用内私有图片可渲染的原因）；Slack/Notion/Discord 签发时效链阵营的动机（跨服务嵌入/CDN 卸载/防公网滥用）内网语境均不存在。证据：`middleware/jwt.go` 仅读 Authorization header + ui token 在 localStorage——`<img src>` 裸请求必 401 |
@@ -125,7 +125,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，MinIO **零备份设计**——附件丢
 
 ## 10. 影响面
 
-- **迁移**：两表族（编号对账）；**权限**：预置零新码（拍板点 3）；**配置**：`storage:` 段新增 + compose MinIO 服务；**错误码**：91000–91999 段启用（91001–91004 四码随批登记 `api/errcode.md`——standards §3-4 对账位）；**端口**：对象存储客户端（S3 兼容抽象即端口，README §6 清单第 7 行）。
+- **迁移**：两表族（编号对账）；**权限**：预置零新码（拍板点 3）；**配置**：`storage:` 段新增 + compose RustFS 双实例（草案已落）；**错误码**：91000–91999 段启用（91001–91004 四码随批登记 `api/errcode.md`——standards §3-4 对账位）；**端口**：对象存储客户端（S3 兼容抽象即端口，README §6 清单第 7 行）。
 - **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移两枚。
 
 ## 11. 验收口径
@@ -175,11 +175,11 @@ deployments/compose.yaml           # minio + minio-backup（B5-5 第二实例）
 
 ```yaml
 storage:
-  endpoint: http://minio:9000      # MINIO_ENDPOINT
+  endpoint: http://rustfs:9000     # RUSTFS_ENDPOINT（compose 服务名；dev 栈 localhost:9000）
   region: us-east-1
   bucket: zhuzhao
-  access_key: ${MINIO_ACCESS_KEY}  # env 注入，禁烤镜像
-  secret_key: ${MINIO_SECRET_KEY}
+  access_key: ${RUSTFS_ACCESS_KEY}  # env 注入，禁烤镜像（值与 compose RUSTFS_ROOT_* 同源）
+  secret_key: ${RUSTFS_SECRET_KEY}
   use_ssl: false
   presign_upload_ttl: 15m
   max_upload_bytes: 10485760       # 10MB 全局（KV 可覆盖，天花板 100MB 代码钳制）
@@ -249,7 +249,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 前端选文件 → ① POST presign/upload（声明 purpose/ticket_id/file_name/mime/size）
   服务端：权限+限制矩阵预检（size≤上限 / mime∈白名单∧∉黑名单 / 个数≤20）
         → 生成 uuid key → INSERT file_objects(pending) → 签发 PUT URL（Content-Type 钉入签名）
-→ ② 前端 PUT 直传 MinIO（类型被签名钉死，改类型=签名失效 403）
+→ ② 前端 PUT 直传 RustFS（类型被签名钉死，改类型=签名失效 403）
 → ③ POST attachments/confirm
   服务端：HEAD 实测（存在/size 与声明比对/content-type 与签名一致）
         → UPDATE status=confirmed, confirmed_at → INSERT ticket_attachments → 事务提交

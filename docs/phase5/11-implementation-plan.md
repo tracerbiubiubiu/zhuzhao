@@ -12,6 +12,7 @@
 W0 ────── W1–3 ────── W3–5 ────── W5–7.5 ───── W7.5–9 ── W9–11 ─── W11–13 ──── W13–14.5
 启动计划   S5 存储     S1 表单     S6 消息一期    S2 流程图   S10 协作    S4+S9       S6 二期
           MinIO底座   拖拽设计器   模板+触发      状态图画布   抄送/标签   任务面人性化  站内消息中心
+          （RustFS）
                                  通知           改图告警    角标/超时   情报缓存      （铃铛）
                                  ──────────── 一期收口 ≈12–13 周 · 含二期 ≈14–15 周 ────────────
 ```
@@ -55,19 +56,19 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 选型拍板 | ✅ | 设计器=自研（spike 降对称验证）；画布=LogicFlow 优先；MD 库=md-editor-rt 🔶（所有者人工调查后终定） |
 | spike 时点安排 | ✅ 2026-10-16 拍定：**方案乙——三项 spike 移各段首日** | S1 spike 随 B1-1 首日、S2 spike 随 B2-1 首日、MD 编辑器 spike 随 B5-4 前置（粘贴直传全链需 S5 底座在位，W0 无法验证；纯前端体验确认可在 B5-1 后提前）。理由：MD spike 硬依赖底座/各段首日语境最真实/W0 收轻；三案均有同日对照候选，翻案成本可控 |
 | 迁移号对账 | ✅ | 实际占用=权威表（000001–000044），下一可用 000045；各段取号当天按 A2 再对账 |
-| **工程预备** | 🔵 **compose 草案 ✅ 落地（2026-10-16）/ 镜像预拉 ⛔ 网络阻塞** | ② **compose 草案 ✅**：`docker-compose.yaml` + `dev` 两份已增 `minio` + `minio-backup` 双服务（profile=storage 隔离——默认不起不改变现栈行为，语法与 profile 双验证通过；"可起容器"冒烟待镜像到位后补测；`minio-backup` 独立卷/独立凭据/B5-5 mirror 目标；版本 latest 草案占位 **B5-1 钉死**；`test` 栈随 B5-1 四档同步——归属边界照旧）。① **MinIO 镜像预拉 ⛔**：八源全败（daocloud 502/直连 denied/1panel·xuanyuan·dockerpull·dockerhub.icu EOF·超时/1ms·rat.dev not found/aityp denied）——**网络层阻断非人力可解，阻塞 B5-1 开工前置**；所有者侧动作：开代理后补拉 `minio/minio` + `minio/mc`，或提供可用源；预拉目的已部分达成（**提前一天暴露阻断**，B5-1 当天不会被卡）。凭据入 `.env`（gitignored） |
+| **工程预备** | ✅ **两件落地（2026-10-16）+ 后端拍定切 RustFS** | ② **compose 草案 ✅（RustFS 版）**：`docker-compose.yaml` + `dev` 两份已增 `rustfs` + `rustfs-backup` 双服务（profile=storage 隔离——默认不起不改变现栈行为，语法与 profile 双验证通过；**rustfs 起容器真冒烟通过**：`/health` 200 + `/minio/health/live` 200 兼容 + 未签名 403 fail-closed；`rustfs-backup` 独立卷/独立凭据/B5-5 rclone mirror 目标；版本 latest 草案占位 **B5-1 钉死**；`test` 栈随 B5-1 四档同步）。① **镜像预拉 ✅（RustFS 路线）**：`rustfs/rustfs` + `rclone/rclone` 已拉已冒烟；MinIO 系镜像八源全败——**2026-10-16 所有者拍板后端切 RustFS**（MinIO 官方已无开源镜像 + AGPLv3；详见 05 号变更记录），`minio/minio`/`minio/mc` 预拉需求废止。凭据入 `.env`（gitignored） |
 
-**W0 完成定义（DoD，2026-10-16 外审补写死）**：工程预备两件落地（镜像本地冒烟可跑 + 三份 compose 起容器冒烟可达）+ 文档人工检查通过——确认人 = 所有者，确认后 W0 翻 ✅、W1 开工 B5-1。（MD 编辑器库终定为 🔶 项，出口条件 = **B5-4 开工前必须终定**，不阻塞 W0/B5-1~3。）**现态（2026-10-16 实施线收口）**：compose 件 ✅（两份草案落地+双验证）；镜像件 ⛔ 八源网络全阻断——**DoD 未达成，W0 维持未收口**，镜像补拉（所有者开代理/提供可用源）+ 冒烟后 W0 翻 ✅。
+**W0 完成定义（DoD，2026-10-16 外审补写死）**：工程预备两件落地（镜像本地冒烟可跑 + 三份 compose 起容器冒烟可达）+ 文档人工检查通过——确认人 = 所有者，确认后 W0 翻 ✅、W1 开工 B5-1。（MD 编辑器库终定为 🔶 项，出口条件 = **B5-4 开工前必须终定**，不阻塞 W0/B5-1~3。）**现态（2026-10-16 实施线收口·RustFS 切换后）**：compose 件 ✅（两份 RustFS 草案+profile 双验证+**rustfs 起容器真冒烟**）；镜像件 ✅（`rustfs/rustfs` + `rclone/rclone` 已拉已冒烟——MinIO 系八源全败后所有者拍板切 RustFS）。**DoD 达成，待所有者确认后 W0 翻 ✅。**
 
 ### 2.2 S5 对象存储与富媒体（W1–3；段稿 = [05 号](./05-s5-object-storage-richmedia.md)，拍板八枚全闭环）
 
 | 批次 | 内容 | 迁移/登记 | 验收要点 |
 |------|------|-----------|---------|
-| B5-1 底座（1–2 天） | compose 增 MinIO 服务 + `storage:` config 段 + storage 模块（S3 兼容 client + presign 上下行）+ 单桶/域前缀/全私有/服务端 uuid 布局 + 限制矩阵硬底线（显式枚举白名单+html/svg 黑名单+presign 钉 Content-Type+confirm HEAD） | 迁移 **000045**（`file_objects`，取号当天 A2 对账）；errcode **91001–91004** 登记 `api/errcode.md`；对象存储客户端端口（README §6 第 7 行） | 四档 acceptance（10 号 §7 用例 S1–S6 为底稿：预签名上行/confirm/403/超限 400+91001）；presign 链路 E2E |
+| B5-1 底座（1–2 天） | **RustFS 双实例草案已落（W0 工程预备）**——B5-1 接 `storage:` config 段 + **首日兼容验证 spike**（presign 往返/桶策略/rclone mirror——minio-go↔RustFS 实测，备选 aws-sdk-go-v2）+ storage 模块（S3 兼容 client + presign 上下行）+ 单桶/域前缀/全私有/服务端 uuid 布局 + 限制矩阵硬底线（显式枚举白名单+html/svg 黑名单+presign 钉 Content-Type+confirm HEAD） | 迁移 **000045**（`file_objects`，取号当天 A2 对账）；errcode **91001–91004** 登记 `api/errcode.md`；对象存储客户端端口（README §6 第 7 行） | 四档 acceptance（10 号 §7 用例 S1–S6 为底稿：预签名上行/confirm/403/超限 400+91001）；presign 链路 E2E |
 | B5-2 头像（0.5–1 天） | profile 头像 URL 手填 → 预签名直传 + **统一代理下载端点 `GET /files/{key}`**（已拍形态首落地；鉴权+审计中间件；302 升级缝预留） | 权限零新码 | 头像上传→代理下载回显 E2E；img src 稳定 URL 断言 |
 | B5-3 附件（2–3 天） | `ticket_attachments` 全链：presign 上传 + confirm 关联 + 详情页展示/下载（复用 B5-2 代理端点）+ 删除（删关联+GC） | 迁移 **000046**（取号当天对账）；权限复用 `ticket:update`（已拍）+ 下载随工单读走 L2 | 无权限 403（L2 外用户）/超限 400+91001/单单 ≤20/下载审计行断言 |
 | B5-4 richtext（3–5 天 +1 天随行） | 字段类型第八种 `richtext`（`validateFieldInputs`/G2 校验同步扩，只增不改）+ MD 编辑器接入（md-editor-rt 🔶，spike+人工调查后终定；bytemd/milkdown 对照）+ **服务端消毒 SSOT**（MD 白名单渲染）+ **粘贴图片直传全链**（paste→Blob→presign→稳定 URL）+ **发起页表单级本地草稿**（整页序列化+附件 pending 对象恢复复用，载体含 S1 create 页随行——[05 号 §6](./05-s5-object-storage-richmedia.md)）+ S1 调色板预留 | 权限零新码 | 存储型 XSS 负向用例（恶意 MD 提交被消毒）必测；粘贴直传 E2E；历史单裂图回归（稳定 URL）；草稿恢复/清稿用例 |
-| B5-5 备份随行（0.5–1 天，必做件） | `mc mirror` 定时起步（升级触发：桶复制+双端版本化）+ **恢复演练**（activelist pgbackup 首验+演练惯例）+ RPO 显式登记 | deploy/compose 随行 | 演练实测：删桶→恢复→对象比对零差异 |
+| B5-5 备份随行（0.5–1 天，必做件） | **`rclone mirror` 定时起步**（2026-10-16 随后端切 RustFS，原 mc mirror——rclone/rclone 镜像已拉已验证；升级触发：RustFS 服务端桶复制+双端版本化，能力随 B5-1 spike 验证）+ **恢复演练**（activelist pgbackup 首验+演练惯例）+ RPO 显式登记 | deploy/compose 随行（rustfs-backup 实例 W0 草案已落） | 演练实测：删桶→恢复→对象比对零差异 |
 | B5-6 配置化（可切出，+0.5–1 天） | 限制值开放·分层：config 默认 + `system_settings` KV + 管理面 UI + 硬底线不可配 + min_editor_tier（存储限制类 superadmin-only）+ 变更审计/服务端钳制 | 迁移 **000047**（system_settings——2026-10-16 外审对账补齐第三枚，取号当天 A2 再对账）；审计保留期管理端点为同一 KV 面下一消费者（登记欠账） | 硬底线负向（admin 改 html 白名单被拒）；钳制断言 |
 
 ### 2.3 S1 表单设计器与字段自动化（W3–5；段稿 = [01 号](./01-s1-form-designer.md)，选型已拍自研）
@@ -211,7 +212,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 ### 5.6 验收环境坑位备忘（验收脚本教训沉淀，每段 acceptance 前过一遍）
 
 - acceptance 打 33333 **常驻 server**——改 API 契约后**重启常驻进程再验收**（旧进程=过期 API 假绿/假红）；acceptance 须跑**标准环境**（`docker-dev-reset` + `make dev`），演示栈 DB 有污染=假 FAIL。
-- S5 起三栈增 MinIO 容器（compose）；taskrunner scratch 库重建口径不变。
+- S5 起三栈增 **RustFS** 容器（compose，profile=storage——W0 草案已落两份）；taskrunner scratch 库重建口径不变。
 - 管道后 `$?` 取 tail 退出码——exit 证据重定向直取；生成 Go 文件后跑**完整** make lint（gofmt 回拷漂移防局部漏检）。
 
 ### 5.7 每段收口（对齐 phase4）
@@ -235,7 +236,8 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | RK-P5-9 | 单人 Wave 拖期连锁 | 全程 | 中 | 中 | §0 走查制提前暴露 + S1 ③④/S2 ④/S4-3 可后移不阻收口 + phase6 快路径兜底选项（S1/S2 兜底形态先行） | 任一 Wave 超期 2 周 |
 | RK-P5-10 | 本地草稿边界（清缓存/换设备丢失；附件 pending 超窗标重传） | S5 | 低 | 低 | 服务端草稿箱触发驱动在案（05 号 §6）+ 恢复失败标"需重传"不静默 | 用户草稿丢失反馈 |
 | RK-P5-11 | S3a 绕行债（phase6 期间硬编码转换权限） | phase6 期 | 中 | 中 | 绕行禁令（[03 号 §3 头注](./03-s3-flow-semantics.md)：记账等 S3a，禁另造状态/端点/硬编码） | ticket 域出现转换级权限特判 |
-| RK-P5-12 | acceptance 环境漂移（三栈+MinIO 四栈后旧脚本/旧进程） | 全程 | 中 | 中 | §5.6 坑位备忘（33333 重启/标准环境）+ B5-1 起验收脚本同步扩 MinIO 段 | acceptance 假绿/假红 |
+| RK-P5-12 | acceptance 环境漂移（三栈+RustFS 四栈后旧脚本/旧进程） | 全程 | 中 | 中 | §5.6 坑位备忘（33333 重启/标准环境）+ B5-1 起验收脚本同步扩 RustFS 段 | acceptance 假绿/假红 |
+| RK-P5-13 | **RustFS 为年轻产品**（2024 年发布，生产案例少于 MinIO） | S5 | 中 | 中 | B5-1 首日兼容验证 spike（presign 往返/桶策略/rclone mirror 实测——minio-go 兼容性一并验，备选 aws-sdk-go-v2）+ S3 兼容抽象保证换回/换他（MinIO/云 OSS）= 配置级切换 + 05 号附录 A 端口收窄 4 方法 | spike 不兼容项出现 |
 
 ### 5.9 批次 ↔ 段稿 ↔ 验收 ↔ 迁移 SSOT 映射总表（对齐 phase2/00 §8 惯例）
 
@@ -270,3 +272,4 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 2026-10-16 | **实现计划拍板批（所有者「先落档」）**：✅ **本计划批准转执行态**（头部状态行翻新）；✅ §2.1 spike 时点=方案乙（三项移各段首日）；✅ **S6#4 事件面命名=DomainEvent/DomainHook**（包 internal/pkg/domainevent；消费方侧名字业务化）；✅ **§4 台账 22 项开放项批量预确认**（现态 35 项·✅34·🔶1=W0-MD 留所有者终定）——**phase5 全部规划决策清零**；级联=06 A.1 按新名改写/03 号两处 TicketHooks 称谓同步/README §5 三处 |
 | 2026-10-16 | 命名级联收尾批（实施线复查补，四处旧称谓残留清零）：①§2.4 B6-1 行 StatusChangeHook/TicketHooks → DomainEvent/DomainHook（包 internal/pkg/domainevent）②README §2 S3 段「显式 TicketHooks 钩子」→ DomainHook（标注拍板点 S6#4）③README §2 选型表 S6 行 StatusChangeHook → DomainEvent/DomainHook ④06 号拍板点表 #3/#4 行序归位——变更记录历史行不动（留痕即史） |
 | 2026-10-16 | **W0 专项外审回声批（第四轮，7 项全成立）**：①**§2.1 补工程预备行**（⬜ W0 唯一剩余：镜像预拉+compose 三栈服务定义草案——归属边界写死：W0 交可起容器草案/B5-1 接 `storage:` config 与验收/test 栈随 B5-1 四档同步）+ **§2.1 尾注 W0 DoD**（两件落地+所有者确认——原「文档人工检查通过」不覆盖环境准备项）；②§1 Wave W0 行同步（批次列/量级 ≈0.5–1 天[原 1 周含拍板会+spike 已清出]/验收列）；③台账 W0-MD 行补出口条件（**B5-4 开工前必须终定，终定前 B5-4 不排入**） |
+| 2026-10-16 | **存储后端拍定批（所有者：MinIO → RustFS）+ 工程预备收口**：§2.1 工程预备两件 ✅（compose RustFS 双实例草案双验证 + `rustfs/rustfs`·`rclone/rclone` 镜像已拉已冒烟——起容器实测 `/health` 200/`/minio/health/live` 200 兼容/未签名 403 fail-closed）+ §1/§0 ASCII/§2.2 B5-1（**首日兼容验证 spike**：presign 往返/桶策略/rclone mirror/minio-go↔RustFS，备选 aws-sdk-go-v2）/B5-5（mc mirror→**rclone**，镜像已拉）/§5.6/§5.8 同步 + **RK-P5-13 新增**（RustFS 年轻产品风险——S3 兼容抽象保底：换回/换他=配置级切换）；切换依据 = MinIO 官方已无开源镜像（八源拉取全败实证）+ AGPLv3，RustFS = Apache 2.0 + S3/MinIO 双兼容——**DoD 达成，W0 待所有者确认翻 ✅** |

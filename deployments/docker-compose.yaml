@@ -111,47 +111,53 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO 对象存储（phase5 S5/B5-1 消费；W0 工程预备草案——2026-10-16）：
-  #   W0 交「可起容器草案」，B5-1 接 config 与验收（test 栈随 B5-1 四档同步）；
+  # RustFS 对象存储（phase5 S5/B5-1 消费；2026-10-16 所有者拍板：MinIO → RustFS——
+  #   MinIO 官方已无开源镜像且 AGPLv3，RustFS = Apache 2.0 + S3/MinIO 兼容[实测
+  #   /minio/health/live 200、RUSTFS_ROOT_* 兼容 MINIO_ROOT_*]；镜像已拉已冒烟）。
+  #   W0 交「可起容器草案」（本次已实测起容器+/health 200/未签名 403 fail-closed），
+  #   B5-1 接 `storage:` config 段与验收 + **首日兼容验证 spike**（presign 往返/桶策略/
+  #   rclone mirror 实测），test 栈随 B5-1 四档同步。
   #   profile=storage 隔离——默认不起、不改变现栈行为：
-  #   docker compose -f deployments/docker-compose.yaml --profile storage up -d minio
+  #   docker compose -f deployments/docker-compose.yaml --profile storage up -d rustfs
   #   B5-1 时移除 profiles 行转常驻（随栈自启）。
-  # 凭据经 .env 注入（MINIO_ROOT_*），生产务必覆盖默认值。
+  # 凭据经 .env 注入（RUSTFS_ROOT_*），生产务必覆盖默认值。
   # ⚠ 版本 B5-1 钉死（latest 为草案期占位——对齐 postgres:15/redis:6.2 的可复现纪律）。
-  minio:
-    image: minio/minio:latest
-    container_name: zhuzhao-minio
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: zhuzhao-rustfs
     restart: unless-stopped
     profiles: ["storage"]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-zhuzhao_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-zhuzhao_minio_dev}
+      RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     ports:
       # dev 便利映射（浏览器直传需宿主机可达）；生产形态（不暴露/反代）B5-1 定
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${RUSTFS_API_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
     healthcheck:
-      # minio 镜像内置 mc：ready 探测（依赖内嵌别名 local）
-      test: ["CMD", "mc", "ready", "local"]
+      # 实测（2026-10-16）：/health 200；容器内置 curl/wget/busybox
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MinIO 备份第二实例（B5-5 消费；mc mirror 目标桶——W0 草案占位，独立卷/独立凭据）：
-  # 起步形态 = mc mirror 定时 + 目标桶版本化（05 号 §7 拍板 #5），恢复演练强制随行。
-  minio-backup:
-    image: minio/minio:latest
-    container_name: zhuzhao-minio-backup
+  # RustFS 备份第二实例（B5-5 消费；rclone mirror 目标桶——W0 草案占位，独立卷/独立凭据）：
+  # 起步形态 = rclone mirror 定时 + 目标桶版本化（05 号 §7 拍板 #5，工具随 RustFS 切
+  # rclone——镜像已拉已验证；mc 对非 MinIO 端点的可用性随 B5-1 spike 一并验证），
+  # 恢复演练强制随行。
+  rustfs-backup:
+    image: rustfs/rustfs:latest
+    container_name: zhuzhao-rustfs-backup
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_BACKUP_ROOT_USER:-zhuzhao_minio_bk}
-      MINIO_ROOT_PASSWORD: ${MINIO_BACKUP_ROOT_PASSWORD:-zhuzhao_minio_bk_dev}
+      RUSTFS_ROOT_USER: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
     volumes:
-      - minio_backup_data:/data
+      - rustfs_backup_data:/data
     profiles: ["storage"]
 
 
@@ -242,5 +248,5 @@ volumes:
   redis_data:
   wal_archive:
   backups:
-  minio_data:
-  minio_backup_data:
+  rustfs_data:
+  rustfs_backup_data:

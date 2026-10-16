@@ -3,7 +3,7 @@
 > **Step 6**，依赖 Phase 2a（工单 MVP 可不带附件运行）；与 Step 7（auth-enhance）可并行。  
 > 用户头像、工单附件共用同一 storage 模块，见 [phase1/04-user §头像](../phase1/04-user.md#头像avatar)。
 
-> **⚠ 实施收编注（2026-10-15）**：本设计由 [phase5 S5（05 号）](../phase5/05-s5-object-storage-richmedia.md)实施收编（IW2 载体）——实施级修正两处以 05 号 §3 为准：① 类型白名单改**显式枚举 + `text/html`/`image/svg+xml` 黑名单**（本文件 §2 `text/` 前缀白名单会放行 text/html，XSS 载体）；② 直传链路类型防伪 = **presign 钉 Content-Type + confirm HEAD 实测尺寸 + 下载侧 nosniff/分型 disposition**（后端不见字节，服务端嗅探不适用于直传形态）。备份设计另见 05 号 §7。
+> **⚠ 实施收编注（2026-10-15；2026-10-16 补后端拍定）**：本设计由 [phase5 S5（05 号）](../phase5/05-s5-object-storage-richmedia.md)实施收编（IW2 载体）——实施级修正两处以 05 号 §3 为准：① 类型白名单改**显式枚举 + `text/html`/`image/svg+xml` 黑名单**（本文件 §2 `text/` 前缀白名单会放行 text/html，XSS 载体）；② 直传链路类型防伪 = **presign 钉 Content-Type + confirm HEAD 实测尺寸 + 下载侧 nosniff/分型 disposition**（后端不见字节，服务端嗅探不适用于直传形态）。备份设计另见 05 号 §7。**存储后端拍定 RustFS（2026-10-16 所有者）**：本文件 MinIO 字样为历史蓝本示例——S3 兼容设计同构适用（S3 兼容客户端/预签名/配置切换均不变），切 RustFS 理由与实测证据见 05 号变更记录。
 
 ---
 
