@@ -16,7 +16,7 @@
 | 头像 | URL 字符串手填（patch 更新，max=500） | `internal/model/user.go:18`（Avatar 列）+ `internal/model/user_request.go:71`（`UpdateProfileRequest.Avatar` binding max=500） |
 | 字段类型 | 七类型白名单，无 richtext | `internal/service/ticket/type_admin.go:24` |
 | 错误码段 | 91000–91999 存储段**未占用**（[phase2/00 §9](../phase2/00-implementation-plan.md) 既有登记随批落） | docs/phase2/00 §9 |
-| compose | 无 MinIO 服务（部署时增，或 config 指向已有 S3） | deployments/compose |
+| compose | 无对象存储常驻服务（**RustFS + rustfs-backup 双实例草案已落 deployments 两份 compose，profile=storage 隔离默认不起——W0 工程预备 2026-10-16 落地**） | deployments/compose |
 
 ## 3. 底座（10 号蓝本实施——要点转录，全文以 10 号为准）
 
@@ -155,7 +155,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 ```
 internal/pkg/storage/              # 端口层：S3 兼容抽象，零业务语义（README §6 端口第 7 行）
   client.go                        #   Client 接口：PresignPut / PresignGet / StatObject / RemoveObject
-  minio.go                         #   minio-go v7 实现（生产 OSS = 换实现文件，接口不动）
+  minio.go                         #   minio-go v7 实现（S3 兼容客户端——对 RustFS/云 OSS 同构；换后端=配置级切换；备选 aws-sdk-go-v2 随 B5-1 spike 验证）
   config.go                        #   StorageConfig 结构 + viper BindEnv（endpoint/AK/SK 等 config 化，禁硬编码）
 internal/repository/storage_repo.go    # file_objects CRUD（pgx，事务接口最小依赖惯例）
 internal/service/storage/          # 业务服务层：presign/confirm/limits/GC
@@ -165,7 +165,7 @@ internal/service/storage/          # 业务服务层：presign/confirm/limits/GC
 internal/handler/storage_handler.go    # presign/confirm/files 代理/settings KV 路由
 internal/service/ticket/attachment_service.go   # 附件业务归 ticket 域（领域隔离，10 号 §8 蓝本同款）
 internal/pkg/jobs/… + cronloop     # 孤儿对象 GC（骑既有 cron 设施，§3）
-deployments/compose.yaml           # minio + minio-backup（B5-5 第二实例）两服务
+deployments/compose.yaml           # rustfs + rustfs-backup（B5-5 第二实例）两服务；RustFS 草案 W0 已落，profile=storage 隔离
 ```
 
 - **Wire 装配**：`storage.ProviderSet`（Client→Repo→Service→Handler），与既有 provider 分层惯例一致。
@@ -174,12 +174,16 @@ deployments/compose.yaml           # minio + minio-backup（B5-5 第二实例）
 ### A.2 config 完整结构（出厂默认；运行时覆盖见 A.7）
 
 ```yaml
+# 凭据写法对齐项目 viper 惯例：config 内字面值 + 运行时 BindEnv/AutomaticEnv 覆盖
+# （viper 不做 ${VAR} 插值——勿照抄 compose 的 env 引用形态）；B5-1 启用时同步在
+# internal/config/config.go 新增 storage.endpoint/access_key/secret_key 的 BindEnv 行
+# （env 名对齐 compose：STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY 或显式映射到 RUSTFS_ROOT_*）
 storage:
-  endpoint: http://rustfs:9000     # RUSTFS_ENDPOINT（compose 服务名；dev 栈 localhost:9000）
+  endpoint: http://rustfs:9000     # compose 服务名；dev 栈 localhost:9000
   region: us-east-1
   bucket: zhuzhao
-  access_key: ${RUSTFS_ACCESS_KEY}  # env 注入，禁烤镜像（值与 compose RUSTFS_ROOT_* 同源）
-  secret_key: ${RUSTFS_SECRET_KEY}
+  access_key: "zhuzhao_rustfs"     # 默认（与 compose 默认值同源）
+  secret_key: "zhuzhao_rustfs_dev"
   use_ssl: false
   presign_upload_ttl: 15m
   max_upload_bytes: 10485760       # 10MB 全局（KV 可覆盖，天花板 100MB 代码钳制）
@@ -286,7 +290,7 @@ views/ticket/detail/ 附件列表区块          # 下载走 /files/ 稳定 URL�
 
 ### A.8 备份实施（B5-5，已拍 #5）
 
-compose 增 `minio-backup` 服务（独立卷第二实例，零宿主端口）；`mc mirror` 定时任务（对齐 pgbackup cron/RETAIN_COUNT 惯例）+ 目标桶版本化开启；**恢复演练一次入 B5-5 验收**（删测试对象→mirror 回灌→比对）；RPO=镜像周期显式登记于 runbook（§7）。
+compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；**W0 工程预备草案已落**）；`rclone mirror` 定时任务（**随后端切 RustFS 调整——`rclone/rclone` 镜像已拉已验证**；对齐 pgbackup cron/RETAIN_COUNT 惯例）+ 目标桶版本化开启；**恢复演练一次入 B5-5 验收**（删测试对象→mirror 回灌→比对）；RPO=镜像周期显式登记于 runbook（§7）。
 
 ### A.9 兼容与灰度
 

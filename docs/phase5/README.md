@@ -137,7 +137,7 @@
 | S2 | 画布 | ✅ **已拍（2026-10-15）：LogicFlow 优先**（vue-flow 同日对照作对称验证） | 编辑器开箱能力（网格/对齐/锚点/JSON 序列化）更贴状态图模型；判据=transitions 映射代码量/自定义节点成本/中文交互/bundle |
 | S4 | cron 构造器 | 自写轻量组件（预设模式=el-select+时间选择组装五段表达式；自定义模式=表达式透传），不引第三方 cron 组件 | 第三方 vue cron 组件质量参差；robfig/cron 五段子集面小，自写可控 |
 | S4 | 动作元数据端点 | `GET /jobs/actions`（现网关代理组 `/jobs` 下扩展，挂 `task:read`）+ `jobs.Registry` 注册体扩展 name/description/paramsSchema | 复用既有代理组与权限码，零新增权限面 |
-| S5 | 对象存储 SDK | minio-go v7（官方 SDK） | 官方维护、预签名 API 齐全 |
+| S5 | 对象存储 SDK | minio-go v7（**S3 兼容客户端，非 MinIO 专属**——对 RustFS/云 OSS 同构；备选 aws-sdk-go-v2） | S3 API 面齐全、预签名/HEAD/DELETE 四方法覆盖端口层需求 |
 | S5 | **头像/附件下载形态（✅ 已拍 2026-10-15）** | **统一后端代理下载端点**（`GET /files/{key}` + 鉴权中间件 + L2 判定 + 审计）——头像/附件/MD 内嵌图三面统一；业界三模式对表后「授权后短 TTL 预签发+302」为升级选项：handler 投递策略缝，切换 ≤0.5 天、前端零改 | 预签名 GET 有时效对 img src 不友好且绕 L2；公共读桶暴露面大 |
 | S5 | **附件权限码（✅ 已拍 2026-10-15）** | 复用 `ticket:update`（上传/删除）+ 下载随工单读权限（L2），**零新权限码**——所有者「先不需要单独权限」 | 独立 `ticket:attach` 的收益低于 menu_apis/按钮种子与映射成本 |
 | S6 | 模板渲染 | 简单 `{{key}}` 占位符 + 值按渠道转义（HTML 渠道 escape）；不用 text/template | 防模板语法执行（用户可控字段值不可为模板代码） |

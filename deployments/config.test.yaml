@@ -67,11 +67,13 @@ audit:
     out_dir: "data/archive"
     file_retention_days: 395
 
-# 文件存储（Phase 2 启用）
+# 文件存储（Phase 5 S5 启用；对象存储后端 RustFS 拍定，S3 兼容）
+# 凭据写法对齐项目 viper 惯例：config 内字面值 + 运行时 BindEnv/AutomaticEnv 覆盖
+# （viper 不做 ${VAR} 插值——勿照抄 env 引用形态；B5-1 启用时按 05 号附录 A.2 对表）
 # storage:
-#   endpoint: "localhost:9000"     # MinIO / S3 兼容
-#   access_key: "minioadmin"
-#   secret_key: "minioadmin"
+#   endpoint: "localhost:9000"     # RustFS / S3 兼容端点
+#   access_key: "zhuzhao_rustfs"   # test 默认（与 compose.test.yaml 启用时同源）
+#   secret_key: "zhuzhao_rustfs_dev"
 #   bucket: "zhuzhao"
 #   region: "us-east-1"
 #   use_ssl: false
