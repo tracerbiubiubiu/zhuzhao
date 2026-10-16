@@ -109,7 +109,7 @@ Query(type, value) →
 ```
 
 - **单飞**（singleflight）：同 key 并发未命中只放一个回源（`golang.org/x/sync/singleflight`——防缓存击穿放大上游配额消耗，本件存在的意义即保护上游配额）；
-- 上游限流自留量：简单令牌桶（config QPS 上限，缺省 1 QPS——保守起步），超桶请求直接走降级路径。
+- 上游限流自留量：**`golang.org/x/time/rate.Limiter`**（标准扩展件，勿自写——config QPS 上限，缺省 1 QPS 保守起步），超桶请求直接走降级路径。
 
 ### A.4 API 契约
 
