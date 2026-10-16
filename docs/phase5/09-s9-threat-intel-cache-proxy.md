@@ -129,6 +129,7 @@ GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:q
 - singleflight：并发 10 同 key 查询 → 上游仅 1 次调用（计数断言）；
 - 降级矩阵：有缓存+429 → stale 返回；无缓存+429 → 503 errcode；stub 态全链绿 / 非 stub 未配置 → fail-fast 错误码；
 - 归一化：`EXAMPLE.COM` 与 `example.com` 同缓存行（UNIQUE 命中）；
+- 404 入缓存（2026-10-16 评审批深审项 D）：上游 404（查无记录）→ 正常入库返回 stale=false → 二查命中零上游调用；上游 5xx → 不缓存走失败链；
 - hit_count 递增与 expires_at 语义（7 天类型 30 天类型各一例）；
 - ACL 断言：上游响应未知字段透传不解析（result 原样）——防腐层行为验证。
 
@@ -141,3 +142,4 @@ GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:q
 | 2026-10-15 | 建档（phase5 分支十段设计稿批，概要登记细化）——未新增决策 |
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 intel_cache DDL 全文（UNIQUE+部分过期索引+**归一化查询值**——domain 小写等按类型注册；TTL 双档 config）/A.2 ThreatIntelProvider 端口+HTTP adapter（映射层独立函数 mapUpstreamResponse——契约到手只改此函数）+两态桩（stub config/fail-fast ErrIntelNotConfigured 防虚标）/A.3 查询代理链路（命中/懒过期**异步回源**/未命中回源/**singleflight 防击穿**——同 key 并发仅一次上游调用，保护配额即本件存在意义+上游令牌桶自留量）/A.4 API 契约（intel:query 唯一新码；phase6 R1 消费=进程内 service 直依赖不经 HTTP 自调用）/A.5 验收补充（singleflight 并发断言/降级矩阵/归一化/ACL 透传负向） |
 | 2026-10-16 | **评审批深审项 D（所有者「落」并批）**：A.3 补**上游 404=正常结果入缓存**（clean 答案缓存 TTL 内免打上游——保护配额；错误≠查无前者走失败链；404 vs 200+空结果形态随契约对表） |
+| 2026-10-16 | **404 缓存验收断言批（一致性尾巴修复）**：A.5 补「404 入缓存→二查零上游调用；上游 5xx 不缓存走失败链」用例（对齐 A.3 深审项 D） |
