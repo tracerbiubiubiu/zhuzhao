@@ -53,8 +53,87 @@
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制）。拍板点 1/2 已批量预确认（11 号 §4）。
+
+### A.1 表 DDL（迁移全文级，编号启动对账）
+
+```sql
+CREATE TABLE intel_cache (
+    id          BIGSERIAL PRIMARY KEY,
+    intel_type  VARCHAR(30) NOT NULL,        -- ip / domain / hash / url（config 枚举白名单）
+    query_value VARCHAR(200) NOT NULL,       -- 归一化后查询值（ip 原样/domain 小写/hash 小写——归一化规则随类型注册）
+    result      JSONB NOT NULL,              -- 上游响应原样（ACL：外部模型透传，不渗入域模型）
+    fetched_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at  TIMESTAMPTZ NOT NULL,        -- fetched_at + TTL(intel_type)
+    hit_count   INT NOT NULL DEFAULT 0,
+    UNIQUE (intel_type, query_value)
+);
+CREATE INDEX idx_intel_cache_expiry ON intel_cache (expires_at) WHERE expires_at < NOW();
+-- 懒过期：查询命中已过期行 → 按降级策略处理（拍板点 1）+ 回源刷新；周期物理清理骑 CronScheduler（低频，防表膨胀）
+```
+
+- TTL 双档 config：`intel.ttl: {ip: 168h, domain: 168h, hash: 720h}`（7/30 天按类型——§3 既定，KV 可调随 S5 配置化面复用可选）。
+
+### A.2 端口与两态桩（§4 落地）
+
+```go
+// internal/pkg/threatintel/（端口+adapter，ACL 防腐层）
+type Query struct { Type, Value string }
+type IntelResult struct {
+    Data   json.RawMessage // 上游响应透传
+    FetchedAt time.Time
+    Stale  bool             // 陈旧标记（拍板点 2：响应元字段形态）
+}
+type ThreatIntelProvider interface { Query(ctx context.Context, q Query) (IntelResult, error) }
+```
+
+- **HTTP adapter**（`http.go`）：endpoint/鉴权头/字段映射全部 config（`intel.upstream.*`），**映射层独立函数** `mapUpstreamResponse()`——真实契约到手只改此函数（§24 SSOProvider 同款）；
+- **两态桩**：`intel.upstream.stub=true` → 开发态桩（返回构造样例 + 落日志，全链可测）；`false` 且未配置 endpoint → fail-fast `ErrIntelNotConfigured`（errcode 随批登记；与 S6 两态桩同口径防虚标）。
+
+### A.3 查询代理链路
+
+```
+Query(type, value) →
+  ① 归一化（按类型注册的归一化函数——domain 小写等） →
+  ② 查 intel_cache：UNIQUE 命中 →
+       未过期：hit_count++ → 返回（stale=false）
+       已过期：拍板点 1 预确认 = 返回过期缓存（stale=true + fetched_at）**同时异步回源刷新**（goroutine，失败仅落日志——不阻塞消费者）→
+  ③ 未命中 → 调上游（HTTP adapter）→
+       成功：INSERT ... ON CONFLICT (intel_type, query_value) DO UPDATE → 返回（stale=false）
+       上游 429/配额耗尽：有过期缓存 → 返回过期带标记；无 → 503 ErrIntelUpstreamQuota（errcode 随批）
+       上游其他错误：502 透传语义（errcode 归一，不泄内部细节——standards §3-4）
+```
+
+- **单飞**（singleflight）：同 key 并发未命中只放一个回源（`golang.org/x/sync/singleflight`——防缓存击穿放大上游配额消耗，本件存在的意义即保护上游配额）；
+- 上游限流自留量：简单令牌桶（config QPS 上限，缺省 1 QPS——保守起步），超桶请求直接走降级路径。
+
+### A.4 API 契约
+
+```
+GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:query（新码，B9-1 随批对 menu_apis/种子）
+响应：{ "code":0, "data": { "type":"ip", "value":"1.2.3.4",
+         "result": {...上游原样...},
+         "stale": false, "fetched_at": "…", "hit_count": 3 } }
+```
+
+- 权限码 `intel:query` 为本段唯一新码（管理/清理端点 superadmin-only 挂既有系统管理族）；phase6 R1 消费 = 进程内调 service 层（模块化单体直依赖，与 R3 惯例一致），**不经 HTTP 自调用**；
+- 限流：query 端点挂 rate_limit 独立桶（外部配额保护的镜像——平台侧也限流，双保险）。
+
+### A.5 验收补充（在 §7 基础上）
+
+- singleflight：并发 10 同 key 查询 → 上游仅 1 次调用（计数断言）；
+- 降级矩阵：有缓存+429 → stale 返回；无缓存+429 → 503 errcode；stub 态全链绿 / 非 stub 未配置 → fail-fast 错误码；
+- 归一化：`EXAMPLE.COM` 与 `example.com` 同缓存行（UNIQUE 命中）；
+- hit_count 递增与 expires_at 语义（7 天类型 30 天类型各一例）；
+- ACL 断言：上游响应未知字段透传不解析（result 原样）——防腐层行为验证。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-10-15 | 建档（phase5 分支十段设计稿批，概要登记细化）——未新增决策 |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 intel_cache DDL 全文（UNIQUE+部分过期索引+**归一化查询值**——domain 小写等按类型注册；TTL 双档 config）/A.2 ThreatIntelProvider 端口+HTTP adapter（映射层独立函数 mapUpstreamResponse——契约到手只改此函数）+两态桩（stub config/fail-fast ErrIntelNotConfigured 防虚标）/A.3 查询代理链路（命中/懒过期**异步回源**/未命中回源/**singleflight 防击穿**——同 key 并发仅一次上游调用，保护配额即本件存在意义+上游令牌桶自留量）/A.4 API 契约（intel:query 唯一新码；phase6 R1 消费=进程内 service 直依赖不经 HTTP 自调用）/A.5 验收补充（singleflight 并发断言/降级矩阵/归一化/ACL 透传负向） |

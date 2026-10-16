@@ -98,8 +98,60 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制）。拍板点 1/2/3 已批量预确认（11 号 §4）。
+
+### A.1 动作元数据端点（B4-1）
+
+```
+GET /api/v1/jobs/actions                # 挂 task:read（拍板点 1 预确认：task:read + 最小读面）
+{ "code":0, "data": { "list": [
+  { "action_id": "audit_archive",
+    "name": "审计归档",
+    "description": "按保留期归档审计日志到 JSONL",
+    "params_schema": {...} | null       # 未声明 schema = null（前端降级 JSON 模式）
+} ], "total": 7 } }
+```
+
+- **`jobs.Registry` 注册体扩展**：现 `Register(actionID, Handler)` → `Register(actionID, Handler, ActionMeta{Name, Description, ParamsSchema json.RawMessage})`——meta 缺省允许（存量注册零破坏，前端降级）；
+- **最小读面边界（拍板点 1 预确认口径）**：响应**不含**参数默认值快照/历史运行数据/凭据类字段——动作清单是「能提交什么」，不是「跑过什么」；与 `/jobs` 数据面（admin 专属）语义分离；
+- **命名衔接**（§3.4）：端点响应字段 `action_id` 维持现网关代理组口径；taskrunner 能力目录落地时对齐其 `action_code` 命名（随批）。
+
+### A.2 fail-fast 预校验（B4-1 随行）
+
+- **落点 = zhuzhao 提交代理 handler**：`POST /jobs`（Create/Trigger 代理）转发前查 `jobs.Registry.Exists(actionID)`——未注册 → 400（errcode 随批登记，如 21010 ErrActionNotRegistered）；
+- **校验范围边界**：zhuzhao registry 只含 **zhuzhao 侧回调动作**——taskrunner 侧任务定义（admin 下拉已有）不经此校验（其合法性由 taskrunner Create 校验，既有）；预校验仅覆盖「zhuzhao 回调型动作」提交路径，注释写明防误扩展。
+
+### A.3 cron 构造器组件（B4-2，前端）
+
+```
+zhuzhao-ui/src/components/CronBuilder/
+  index.vue            # 双模式 tab：预设 / 专家（表达式直填+robfig 五段语法提示）
+  presets.ts           # 预设模式 → 五段表达式纯函数（单测承重：每种预设的生成/反解析）
+```
+
+- 预设四类：每天 HH:mm（`0 M H * * *`）/ 每周几 HH:mm（`0 M H W * *`）/ 每 N 小时（`0 0 */N * * *`）/ 每月几号 HH:mm（`0 M H D * *`）；
+- **双向**：专家模式手填表达式 → 反解析回显预设（可识别时）；不可识别保持专家态（不强行归一）；
+- 产物 = `cron_spec` 字符串原样提交，taskrunner 解析零改动；保存后 `next_run` 回显作预览（既有）；
+- 五段非法值（月 13 日 32）前端预检 + taskrunner 校验兜底（400 回显）。
+
+### A.4 死信收敛前置确认（拍板点 2，B4-3 前置）
+
+- taskrunner 侧聚合查询验证：`dead_letter` 表行 vs `job_runs.status='dead'` 行**一一对应**（SQL 对账脚本一次性跑演示/测试双栈）——成立才收敛 Tab（死信 Tab 并入运行记录 `status=dead` 筛选）；不成立（如重试产生多条 dead_letter 对一 run）则维持三 Tab 并登记差异清单。
+
+### A.5 验收补充（在 §8 基础上）
+
+- 元数据端点：operator 持 task:submit 可读清单（200）/ 无任何 task 码 403；响应不含参数快照与运行数据（最小读面断言）；
+- fail-fast：未注册动作提交 400+21010（**替代既有回调期 404**——负向必测）；存量已注册动作提交路径零变化；
+- 构造器：八种预设产物的表达式与 taskrunner `next_run` 解析一致（一致性断言）；专家模式非法表达式 400 回显；
+- 降级：`params_schema=null` 动作自动 JSON 模式；有 schema 动作渲染动态表单（远期半，B4 期不实现渲染器时此项顺延）。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（含水立挂账收窄：前端近似水位条已落）；未新增决策 |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 /jobs/actions 端点契约（Registry 注册体扩 ActionMeta{Name/Description/ParamsSchema}缺省允许存量零破坏；**最小读面边界**——不含参数快照/运行数据/凭据字段；action_id 命名衔接 taskrunner action_code）/A.2 fail-fast 预校验落点（zhuzhao 提交代理 handler 查 Registry.Exists，400+21010；**校验范围=仅 zhuzhao 回调型动作**注释防误扩展）/A.3 cron 构造器组件（四预设→五段表达式纯函数+专家反解析+非法值双检）/A.4 死信收敛前置（taskrunner 一一对应对账脚本，不成立维持三 Tab 登记差异）/A.5 验收补充（operator 读面/21010 负向/八预设一致性/降级） |

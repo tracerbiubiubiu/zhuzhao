@@ -101,6 +101,122 @@ S6 后实施。批次：①抄送（含 L2 特例通道 + 表形态拍板）→ 
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。拍板点 1/5/6 已批量预确认（11 号 §4）。
+
+### A.1 模块架构与代码落点
+
+```
+internal/service/ticket/
+  cc_service.go                    # 抄送（B10-1）：加/删/列表 + L2 特例支生效点
+  tag_service.go                   # 标签（B10-2）：挂/摘/按标签筛选
+  badge_service.go                 # 角标聚合（B10-3）：sections 计数
+  timeout_scanner.go               # 节点超时扫描（B10-4）：骑 CronScheduler，发 DomainEvent
+internal/repository/
+  ticket_cc_repo.go / tag_repo.go  # 两新表族 CRUD
+  ticket_repo.go                   # 扩展：status_changed_at 写入点与超时候选查询
+internal/handler/
+  ticket_handler.go                # cc/tag 端点扩展；export 端点
+  badge_handler.go                 # 角标聚合端点
+  system_handler.go                # cron 状态只读端点（B10-4 随行）
+internal/service/cron_scheduler.go # 扩展：任务状态登记（last_success/duration/rows）——观测面
+zhuzhao-ui/
+  views/ticket/detail/             # 抄送人区 + 标签编辑区
+  components/NavbarBadge.vue       # 全局角标（60s 轮询 sections）
+  views/ticket/list + views/audit  # 导出按钮（当前筛选透传）
+  src/api/collab.ts                # cc/tag/badge/export API 封装
+```
+
+### A.2 L2 特例通道实现（拍板点 1 已批量预确认：新增 OR 支 + fail-closed 哨兵同批）
+
+- **语义分层（关键设计约束）**：cc 支只进**读可见集**，不进操作授权集——
+  - `GetFilter`（列表/导出的行级过滤）**新增第四 OR 支**：`EXISTS (SELECT 1 FROM ticket_cc WHERE ticket_id = tickets.id AND user_id = :me)`——特例支进 GetFilter 本体 = **所有列表/导出/关联查询路径自动生效**（抄送可见性无逐调用点接线问题，与 BK-21「显式调用零护栏」焦虑正交：GetFilter 本体增强非新调用点）；
+  - `resource.Authorize`（操作授权：update/close/assign）**不加 cc 支**——抄送人能看不能改（Jira watcher 同语义：watch ≠ edit）；detail 读取判定走读可见集同源函数；
+  - **策略库 Registry 同批登记**（§6 影响面既定）：可见集变更登记防后续新查询路径漏用 GetFilter。
+- **哨兵同批（fail-closed）**：特例支上线同批加**负向断言**入 acceptance——非 cc 且三轴外用户对该单 403/不可见（§8 已列）；BK-21 泛化（导出同管线）与特例支同一提交，防「加了 OR 支忘收口导出」。
+
+### A.3 表族 DDL（迁移全文级，编号启动对账）
+
+```sql
+-- ① ticket_cc（拍板点 2 预确认：S10 先行 → role 语义预留，防 ticket_participants 双表）
+CREATE TABLE ticket_cc (
+    id         BIGSERIAL PRIMARY KEY,
+    ticket_id  BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    role       VARCHAR(20) NOT NULL DEFAULT 'cc',   -- 预留：cc / participant（对表项 §3.1）
+    created_by BIGINT NOT NULL REFERENCES users(id), -- 谁加的抄送（操作留痕）
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (ticket_id, user_id, role)
+);
+CREATE INDEX idx_ticket_cc_user ON ticket_cc (user_id);   -- 「抄送给我的」反查（GetFilter OR 支走此索引）
+
+-- ② tags（拍板点 6 预确认：默认共享 + created_by 留痕）
+CREATE TABLE tags (
+    id          BIGSERIAL PRIMARY KEY,
+    entity_type VARCHAR(30) NOT NULL,    -- ticket（risk 为 phase6 预留值）
+    entity_id   BIGINT NOT NULL,
+    tag         VARCHAR(50) NOT NULL,
+    created_by  BIGINT NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (entity_type, entity_id, tag) -- 同实体同标签唯一（幂等挂载）
+);
+CREATE INDEX idx_tags_entity ON tags (entity_type, entity_id);
+CREATE INDEX idx_tags_tag    ON tags (tag);            -- 标签筛选与输入联想
+
+-- ③ status_changed_at（拍板点 5 预确认：AssertTransition 同事务写）
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ;
+-- 存量一次性回填（随迁移）：UPDATE tickets SET status_changed_at = updated_at WHERE status_changed_at IS NULL;
+--   ⚠ 回填值 = 近似（updated_at 被评论/编辑污染）——存量单首轮扫描可能误报超时，
+--   缓解：迁移后首跑扫描设观察模式（只记日志不发通知）或回填后重置活跃单为 NOW()（启动批二选一拍）。
+CREATE INDEX idx_tickets_timeout ON tickets (status, status_changed_at)
+    WHERE status NOT IN ('closed', 'rejected');       -- 部分索引：扫描只摸活跃单
+```
+
+- 写入点：`AssertTransition` 成功后同事务 `UPDATE tickets SET status_changed_at = NOW()`（与状态写同事务，零漂移窗口）；CreateTicket 初始化同写。
+
+### A.4 角标聚合端点（B10-3）
+
+```
+GET /api/v1/badges                      # 登录态；响应 sections 为开放 map（扩展零改协议）
+{ "code":0, "data": { "sections": {
+    "todo": 12,                          # assignee=me AND status NOT IN 终态（不走 GetFilter 全量——assignee 查询天然可见）
+    "unread": —                          # 二期（S6 B6-7 并入，06 号 §6）
+} } }
+```
+
+- 前端 `NavbarBadge` 60s 轮询 + 页面切换即时刷新；未知 section 前端忽略（向前兼容 phase6 `risk` section）；
+- 非数字/缺失 section 容错；单请求多计数（替代现状首页每状态一次 total）。
+
+### A.5 节点超时扫描器（B10-4）
+
+- **注册**：CronScheduler 增 `timeout_scan` 任务（周期 config，默认 5m；advisory lock 单实例既有）；
+- **扫描逻辑**：逐活跃 ticket_type → 解析 transitions meta（state→`timeout_minutes`，S2 画布承载）→ 候选查询（部分索引 `idx_tickets_timeout`：`status = ? AND status_changed_at < NOW() - interval`）→ 命中则 **Dispatch `DomainEvent{BizType:"ticket", Action:"ticket.timeout"}`**；
+- **通知复用 S6 规则面**（关键复用设计）：扫描器只发事件、不发通知——S6 `message_rules` 配置 `ticket.timeout` 事件的模板/收件人（按级别路由 = recipients spec，§5.1 第一档）——超时通知与状态通知同一条渲染→发送→message_log 链，零新通知代码；
+- **查重**：S6 消费者侧节流窗口既定（60s）不适用于扫描周期场景——扫描器侧同单同状态只发一次：`message_log` 查重（biz_id + Action + 当前状态存在 sent 记录则跳过）；状态流转后 `status_changed_at` 刷新，自然重置；
+- **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`）+ `GET /api/v1/system/cron-status`（admin 只读）+ 扫描失败 Dispatch `DomainEvent{Action:"cron.failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。
+
+### A.6 导出端点（B10-5）
+
+```
+GET /api/v1/tickets/export              # 与 List 同筛选参数（GET 复用，§3.5 对表注）
+GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，撞期合并实施）
+```
+
+- **流式**：excelize `StreamWriter`——header 先写、逐行 flush（防大结果集内存膨胀）；行数钳制（⚠ 对齐审计导出挂账口径 ≈5 万，超出 400 提示收窄筛选）；挂既有 rate_limit 桶；
+- **BK-21 铁律落地**：导出查询**调用与 List 同一个 filter 构造函数**（代码级同源——cc 特例支/三轴自动一致），验收断言「导出行数 = 同筛选列表 total」；
+- 响应：`Content-Disposition: attachment; filename=*.xlsx`（RFC 5987）；审计落行（谁/筛选/行数——对齐审计导出挂账的「导出自审计」业界标配）。
+
+### A.7 验收补充（在 §8 基础上）
+
+- cc 特例四向：org 外 cc 用户列表可见 + detail 可开；**非 cc 且三轴外不可见（403）**；cc 用户 update/close **403**（Authorize 不加支断言）；删 cc 后可见性即时回收；
+- 超时链路：造候选 → 扫描 → `ticket.timeout` 事件 → 规则通知；同单同状态二次扫描**不重发**；状态流转后重新计时；
+- cron 观测：状态端点可见 timeout_scan 上次成功/耗时；注入失败 → `cron.failed` 事件 → 告警规则触发；
+- 导出：同筛选行数一致断言；无权限 403；超行数钳制 400；xlsx 打开可读（列头/编码）；
+- tags：跨用户共享可见（B 见 A 挂的标签）；重复挂载幂等；按标签筛选与列表联动。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
@@ -108,3 +224,4 @@ S6 后实施。批次：①抄送（含 L2 特例通道 + 表形态拍板）→ 
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（五件零实现负向核查）；含 participants 对表项（2026-10-15 核对发现）；未新增决策 |
 | 2026-10-15 | 公约对表批：§3.5 导出端点形态对表注——查询语义 GET 为预置方向、流式/keyset 属 §3-6 机器迭代许可场景不进管理台信封，与审计导出挂账统一对表 |
 | 2026-10-16 | **第一批外审回声批（两设计缺口落档）**：§3.4 补**时间源前置**（tickets 无 `status_changed_at` 列——代码级核实；推荐新列 AssertTransition 同事务写，拍板点 +5，量级 +0.5 天）；§3.2/§5 补 **tags 可见性语义拍板点 +6**（「用户级」歧义——建议默认共享+created_by 留痕，B10-2 前拍）；头部量级/迁移行同步 |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 模块架构（cc/tag/badge/timeout_scanner 四服务落点）/A.2 **L2 特例通道语义分层**（cc 支进 GetFilter 读可见集=全路径自动生效、**不进 Authorize 操作授权**——抄送人能看不能改；Registry 登记+BK-21 同批哨兵）/A.3 三表族 DDL 全文（ticket_cc 带 role 预留防 participants 双表/tags 共享+UNIQUE 幂等/status_changed_at+部分索引+**存量回填近似性警示**——首跑观察模式或重置二选一）/A.4 角标 sections 开放 map 契约/A.5 超时扫描器（**复用 S6 规则面**：扫描器只发 ticket.timeout DomainEvent、S6 message_rules 路由通知零新通知代码；message_log 查重防重发）+ cron 可观测面（Status()+只读端点+cron.failed 事件告警）/A.6 导出（流式 StreamWriter+行数钳制+**与 List 同 filter 函数同源断言**+导出自审计）/A.7 验收补充（cc 四向/超时链路/cron 观测/导出四向/tags 三向负向） |
