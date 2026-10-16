@@ -126,8 +126,7 @@ func (r *HookRegistry) Dispatch(ev TicketEvent)                 // 每订阅者�
 
 - **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
 - **域无关兑现**：TicketEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名讨论（拍板点 4，B6-1 前钉死）**：TicketEvent 系命名与域无关主张概念错位，候选改通用 `DomainEvent`/`BizHook`（订阅按 biz_type 路由）——结构不变、纯措辞级；
-- **节流实现口径（2026-10-16 外审补遗）**：内存滑动窗口 = **单实例假设**；**多副本部署时 Redis 化**（登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）；
-- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Type 窗口 60s 内去重（内存 sliding window，单实例够用——多副本部署时登记 Redis 化触发驱动）。
+- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Type 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
 
 ### A.2 表族 DDL（迁移全文级，编号启动对账）
 

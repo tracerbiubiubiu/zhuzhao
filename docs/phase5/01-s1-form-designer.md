@@ -127,7 +127,7 @@ zhuzhao/
   internal/pkg/datafetcher/                  # DataFetcher 端口 + source registry（README §6 第 6 行）
 ```
 
-### A.2 元数据承载（⚠ 结构决策，启动批拍）
+### A.2 元数据承载（✅ 方案 b 已采纳 2026-10-16——新列 `field_meta`，正文 §3.3①/§6 已对齐；原 ⚠ 候选待拍态废止）
 
 `field_options` 现存**数组形态**（select 选项 `["a","b"]` 或 `[{label,value}]`，`optionValues` 按数组解析）——formula/auto_fill 若并入只能改对象形态 `{options:[...], formula:"…"}`，**破坏既有消费方**（渲染器选项渲染/服务端 optionValues/存量行）。两案：
 
