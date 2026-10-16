@@ -40,6 +40,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # MinIO 对象存储（phase5 S5/B5-1 开发依赖；W0 工程预备草案——2026-10-16）：
+  #   profile=storage 隔离——默认不起（不拉镜像时不破坏现栈 up -d）：
+  #   docker compose -f deployments/docker-compose.dev.yaml --profile storage up -d minio
+  #   B5-1 时移除 profiles 行转常驻依赖；config.yaml `storage.endpoint` 对 localhost:9000。
+  #   ⚠ 版本 B5-1 钉死（latest 为草案期占位）。
+  minio:
+    image: minio/minio:latest
+    container_name: zhuzhao-dev-minio
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: zhuzhao_minio
+      MINIO_ROOT_PASSWORD: zhuzhao_minio_dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - dev_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   dev_pg_data:
   dev_redis_data:
+  dev_minio_data:

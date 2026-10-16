@@ -55,9 +55,9 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 选型拍板 | ✅ | 设计器=自研（spike 降对称验证）；画布=LogicFlow 优先；MD 库=md-editor-rt 🔶（所有者人工调查后终定） |
 | spike 时点安排 | ✅ 2026-10-16 拍定：**方案乙——三项 spike 移各段首日** | S1 spike 随 B1-1 首日、S2 spike 随 B2-1 首日、MD 编辑器 spike 随 B5-4 前置（粘贴直传全链需 S5 底座在位，W0 无法验证；纯前端体验确认可在 B5-1 后提前）。理由：MD spike 硬依赖底座/各段首日语境最真实/W0 收轻；三案均有同日对照候选，翻案成本可控 |
 | 迁移号对账 | ✅ | 实际占用=权威表（000001–000044），下一可用 000045；各段取号当天按 A2 再对账 |
-| **工程预备** | ⬜ **W0 唯一剩余（2026-10-16 外审回灌执行表）** | ① **MinIO 镜像预拉**：`minio/minio`（server）+ `minio/mc`（mirror CLI）——首次使用不预拉有 blob 阻断前科，拉完 docker run 冒烟；② **compose 三栈服务定义草案**：`docker-compose.yaml`/`dev`/`test` 三份各增 `minio`（数据卷+凭据 env 注入禁烤镜像+app 同网络）与 `minio-backup`（独立卷/零宿主端口/B5-5 mirror 目标），凭据入 `.env`（gitignored）。**归属边界**：W0 交「服务定义+可起容器」，**B5-1 接 `storage:` config 段与验收使用，compose.test.yaml 的 MinIO 随 B5-1 四档 acceptance 同步** |
+| **工程预备** | 🔵 **compose 草案 ✅ 落地（2026-10-16）/ 镜像预拉 ⛔ 网络阻塞** | ② **compose 草案 ✅**：`docker-compose.yaml` + `dev` 两份已增 `minio` + `minio-backup` 双服务（profile=storage 隔离——默认不起不改变现栈行为，语法与 profile 双验证通过；"可起容器"冒烟待镜像到位后补测；`minio-backup` 独立卷/独立凭据/B5-5 mirror 目标；版本 latest 草案占位 **B5-1 钉死**；`test` 栈随 B5-1 四档同步——归属边界照旧）。① **MinIO 镜像预拉 ⛔**：八源全败（daocloud 502/直连 denied/1panel·xuanyuan·dockerpull·dockerhub.icu EOF·超时/1ms·rat.dev not found/aityp denied）——**网络层阻断非人力可解，阻塞 B5-1 开工前置**；所有者侧动作：开代理后补拉 `minio/minio` + `minio/mc`，或提供可用源；预拉目的已部分达成（**提前一天暴露阻断**，B5-1 当天不会被卡）。凭据入 `.env`（gitignored） |
 
-**W0 完成定义（DoD，2026-10-16 外审补写死）**：工程预备两件落地（镜像本地冒烟可跑 + 三份 compose 起容器冒烟可达）+ 文档人工检查通过——确认人 = 所有者，确认后 W0 翻 ✅、W1 开工 B5-1。（MD 编辑器库终定为 🔶 项，出口条件 = **B5-4 开工前必须终定**，不阻塞 W0/B5-1~3。）
+**W0 完成定义（DoD，2026-10-16 外审补写死）**：工程预备两件落地（镜像本地冒烟可跑 + 三份 compose 起容器冒烟可达）+ 文档人工检查通过——确认人 = 所有者，确认后 W0 翻 ✅、W1 开工 B5-1。（MD 编辑器库终定为 🔶 项，出口条件 = **B5-4 开工前必须终定**，不阻塞 W0/B5-1~3。）**现态（2026-10-16 实施线收口）**：compose 件 ✅（两份草案落地+双验证）；镜像件 ⛔ 八源网络全阻断——**DoD 未达成，W0 维持未收口**，镜像补拉（所有者开代理/提供可用源）+ 冒烟后 W0 翻 ✅。
 
 ### 2.2 S5 对象存储与富媒体（W1–3；段稿 = [05 号](./05-s5-object-storage-richmedia.md)，拍板八枚全闭环）
 
