@@ -196,7 +196,7 @@ GET /api/v1/badges                      # 登录态；响应 sections 为开放 
 - **扫描逻辑**：逐活跃 ticket_type → 解析 transitions meta（state→`timeout_minutes`，S2 画布承载）→ 候选查询（部分索引 `idx_tickets_timeout`：`status = ? AND status_changed_at < NOW() - interval`）→ 命中则 **Dispatch `DomainEvent{BizType:"ticket", Action:"ticket.timeout"}`**；
 - **通知复用 S6 规则面**（关键复用设计）：扫描器只发事件、不发通知——S6 `message_rules` 配置 `ticket.timeout` 事件的模板/收件人（按级别路由 = recipients spec，§5.1 第一档）——超时通知与状态通知同一条渲染→发送→message_log 链，零新通知代码；
 - **查重**：S6 消费者侧节流窗口既定（60s）不适用于扫描周期场景——扫描器侧同单同状态只发一次：`message_log` 查重（biz_id + Action + 当前状态存在 sent 记录则跳过）；状态流转后 `status_changed_at` 刷新，自然重置；
-- **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`）+ `GET /api/v1/system/cron-status`（admin 只读）+ 扫描失败 Dispatch `DomainEvent{Action:"cron.failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。
+- **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`）+ `GET /api/v1/system/cron-status`（admin 只读）+ 扫描失败 Dispatch `DomainEvent{BizType:"ops", Action:"ops.cron_failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。**BizType=`ops`（运维域，非 ticket——域边界显式化，2026-10-16 审计补：按 Action 命名约定 `{biz_type}.{动作}` 统一，避免隐式落 message_rules 表 DEFAULT 'ticket'）**。
 
 ### A.6 导出端点（B10-5）
 
@@ -213,7 +213,7 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 
 - cc 特例四向：org 外 cc 用户列表可见 + detail 可开；**非 cc 且三轴外不可见（403）**；cc 用户 update/close **403**（Authorize 不加支断言）；删 cc 后可见性即时回收；
 - 超时链路：造候选 → 扫描 → `ticket.timeout` 事件 → 规则通知；同单同状态二次扫描**不重发**；状态流转后重新计时；
-- cron 观测：状态端点可见 timeout_scan 上次成功/耗时；注入失败 → `cron.failed` 事件 → 告警规则触发；
+- cron 观测：状态端点可见 timeout_scan 上次成功/耗时；注入失败 → `ops.cron_failed` 事件（BizType=ops）→ 告警规则触发；
 - 导出：同筛选行数一致断言；无权限 403；超行数钳制 400；xlsx 打开可读（列头/编码）；
 - tags：跨用户共享可见（B 见 A 挂的标签）；重复挂载幂等；按标签筛选与列表联动。
 
