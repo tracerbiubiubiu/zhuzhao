@@ -117,7 +117,7 @@
 // internal/pkg/domainevent/hooks.go（编译期注册，app.go 装配——跨域公共件，ticket service 为首个发布方）
 type DomainEvent struct {
     BizType    string          // ticket / risk / …（订阅按 biz_type 路由——域无关路由键）
-    Action     string          // ticket.created / ticket.status_changed / ticket.assigned / …
+    Action     string          // ticket.created / ticket.status_changed / ticket.assigned / ticket.cc_added / …
     BizID      int64; RefCode string   // biz_id=业务主键；RefCode=业务编码（工单 type_code 等）
     From, To   string          // status_changed 专用
     ActorID    int64; OccurredAt time.Time
@@ -130,6 +130,7 @@ func (r *HookRegistry) Dispatch(ev DomainEvent)                // 每订阅者�
 ```
 
 - **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
+- **事件枚举补 cc_added（2026-10-16 评审批）**：抄送「收通知」依赖事件可订阅——S10 抄送落库时 emit `ticket.cc_added`（payload 含 cc 用户/role），S6 message_rules 即可订阅抄送通知；**无此事件=抄送通知须硬编码进 cc_service（违 §5.2 禁令）**——枚举随 B10-1 同批钉入；
 - **域无关兑现**：DomainEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名已拍（拍板点 4，2026-10-16）**：通用 `DomainEvent`/`DomainHook`——原 TicketEvent 系措辞废止（结构不变，本节已按新名改写）；
 - **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Action 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
 
@@ -203,14 +204,15 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 ```
 
 - 单遍正则替换 `{{ticket.assignee_name}}` **点路径占位符**（2026-10-16 升级：原平铺 {{key}} → 点路径——Mustache/Handlebars logic-less 思想，**if/loop/函数执行不进模板** = 业界对用户可编辑模板的安全红线；vars = 调用方从 context 树扁平化的点键 map，实现仍单遍替换；**不引库**——Handlebars-Go raymond 停更/osteele-liquid 过重（2026-10 核实），点路径解析自写 ≤0.5 天）；**禁二次展开**——字段值含 `{{` 不再解析，注入负向 §10；**值转义按渠道进行（三族）**：HTML 渠道 `html.EscapeString`、markdown 渠道转义值中链接/加粗元字符（`[]()*_` 等——防 `[点我](http://evil)` 被渲染成链接的内容注入/钓鱼面：收件人看到的是"系统发的"）、纯文本渠道原样；
-- **变量字典 = 服务端 SSOT（2026-10-16 新增）**：按 `(biz_type, event)` 供给可用变量树（键+人读标签，端点=A.6）——工单域=内置字段（human_key/标题/状态/负责人/创建人/链接）+ S1 `field_meta` 动态字段（**与 S1 字段元数据同源**，字段改 key 失效告警同件 §4）+ 时间类；校验两道=规则保存时**模板引用 ⊆ 字典**拦截 + 渲染时 vars 缺**内置**引用键报错拒发（防静默空串；动态字段缺失分档处置见下方粒度错配注）；`variables` 列保留=编辑器回填的引用清单（展示/审计）；picker 数据源=A.8.1 变量选择器/A.8.2 字段引用下拉；phase6 risk 域照此自供字典（域无关兑现）；**与 S1 expr 求值器分界**=通知占位符零执行 vs 计算字段受控执行，两件勿混；**条件段落**（"有截止日期才显示某段"——Liquid `{% if %}` 形态）登记触发不预建；**⚠ 粒度错配注（2026-10-16 外审发现，方案 a 采纳）**：模板**跨类型共享**（A.8.2 选择器只按渠道过滤）× 动态字段**类型私有**（field_meta per ticket_type）——模板引用类型 A 私有字段 → 规则绑类型 B → 渲染缺键按"拒发"会**断掉类型 B 全部通知**。处置：**渲染缺键分两类**——内置键缺失 = fail（模板 bug，保持拒发）；**动态字段缺失 = skip 该占位符 + message_log 警告**（类型错配可运维发现）——零 schema 变更，B6-3 实施落；
+- **变量字典 = 服务端 SSOT（2026-10-16 新增）**：按 `(biz_type, event)` 供给可用变量树（键+人读标签，端点=A.6）——工单域=内置字段（human_key/标题/状态/负责人/创建人/链接）+ S1 `field_meta` 动态字段（**与 S1 字段元数据同源**，字段改 key 失效告警同件 §4；**字典 path=派生 slug**——`ticket.fields.f_<字段ID>`：field_key 无字符集约束[代码实证 `validateFieldInputs` 不限 key 字符集，中文/含点键打断点路径]，模板只许引用字典 path，picker 选择即插入为主 UX，vars 扁平化按 field_meta 映射 slug 键；S1 登记新字段 key ASCII slug 软约束不回改存量——2026-10-16 评审批 P1-1）+ 时间类；校验两道=规则保存时**模板引用 ⊆ 字典**拦截 + 渲染时 vars 缺**内置**引用键报错拒发（防静默空串；动态字段缺失分档处置见下方粒度错配注）；`variables` 列保留=编辑器回填的引用清单（展示/审计）；picker 数据源=A.8.1 变量选择器/A.8.2 字段引用下拉；phase6 risk 域照此自供字典（域无关兑现）；**与 S1 expr 求值器分界**=通知占位符零执行 vs 计算字段受控执行，两件勿混；**条件段落**（"有截止日期才显示某段"——Liquid `{% if %}` 形态）登记触发不预建；**⚠ 粒度错配注（2026-10-16 外审发现，方案 a 采纳）**：模板**跨类型共享**（A.8.2 选择器只按渠道过滤）× 动态字段**类型私有**（field_meta per ticket_type）——模板引用类型 A 私有字段 → 规则绑类型 B → 渲染缺键按"拒发"会**断掉类型 B 全部通知**。处置：**渲染缺键分两类**——内置键缺失 = fail（模板 bug，保持拒发）；**动态字段缺失 = skip 该占位符 + message_log 警告**（类型错配可运维发现）——零 schema 变更，B6-3 实施落；**第四象限补齐（键存在但该单无值——存量单无新字段值/内置空值如未指派）= 空串渲染 + message_log 标 warned 不拒发**（数据常态≠配置错误，拒发会系统性丢通知；正文空串≠收件人跳过[A.8.2]，两处分别断言）——四象限至此完整：内置缺失 fail / 动态缺失 skip+警告 / 键在无值 空串+warned / 正常渲染（2026-10-16 评审批 P1-2 后半）；
 - 时间类变量：`{{time.now}}`/`{{time.due_in}}` 由调用方注入渲染前 vars（格式 config 化，§4）——**点路径命名空间统一**（2026-10-16 外审对齐：原平铺 {{now}}/{{due_in}} 与点路径约定不一致）；
 - 种子模板随迁移 INSERT（`is_system=true`，仅编号+标题+链接三变量——**人读编号拍板点 2 联动**：不随批则种子模板链接-only）。
 
 ### A.5 订阅规则与触发链路（B6-5）
 
 - **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关）；
-- **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；
+- **引用完整性双向守卫（三层，2026-10-16 评审批采纳）**：①**模板保存**——引用 ⊆ 所绑 rules 的 (biz_type,event) 字典并集，越界拦截/告警（原只有删除守卫——改正文静默破坏既有规则要到下次触发才以 failed 暴露；与 S1 影响分析同件）；②**规则保存**——模板动态字段引用 ⊆ 该 type_code 的 field_meta ∪ 内置 ∪ 时间类，**软告警不拦截**（field_meta 类型私有，(biz_type,event) 粒度不足以表达类型维度——粗校验①兜底+细告警②提示）；③**渲染时四象限**（A.4，运行时兜底）；
+- **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；**emit 单点锚=AssertTransition（2026-10-16 评审批）**：Dispatch 挂接锚定状态机咽喉 AssertTransition 单点——手工/API/批量/S3 动作多入口路径经同一咽喉，锚一处全路径覆盖，多入口各自挂=漏发；
 - 人读编号（拍板点 2 随批）：`tickets` 加 `human_key VARCHAR(30) UNIQUE`，Create 时 `TK-yyyymmdd-NNNN`（按日序列，UNIQUE 冲突重试 ≤3）；存量单 NULL——模板变量解析时 NULL 回退展示 id（`#123`）。
 
 ### A.6 API 面（通知中心页面族，自 S4 迁入）
@@ -219,7 +221,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 |-----------|------|------|
 | POST `/api/v1/notifications/templates`·`/templates/update`·`/templates/delete` + GET 列表（**2026-10-16 外审修正：原 PUT 违 §3-1 改 house style**——code 入 body） | 通知配置管理权限（对齐 notification_configs 既有码） | 模板 CRUD + 删除守卫（被 rules 引用 → 拦截，与 S1 影响分析同件） |
 | POST `/api/v1/notifications/templates/preview` | 同上 | 模板干跑渲染（body+vars 样例 → 渲染结果，零落库——A.8.1 测试数据预览；复用 A.4 Render 零新渲染逻辑，2026-10-16 业界核验批新增设计行） |
-| GET `/api/v1/notifications/variables`（query: biz_type+event） | 同上 | **变量字典树**（键+人读标签——A.8.1 变量选择器/A.8.2 字段引用下拉数据源；工单域与 S1 field_meta 同源；phase6 risk 自供同款，2026-10-16 新增设计行） |
+| GET `/api/v1/notifications/variables`（query: biz_type+event） | 同上 | **变量字典树**（键+人读标签——A.8.1 变量选择器/A.8.2 字段引用下拉数据源；工单域与 S1 field_meta 同源；phase6 risk 自供同款，2026-10-16 新增设计行）；**查询粒度（评审批 P2-1）**：模板页无 event 上下文→按 biz_type 取各 event 并集（超集）展示；规则保存按精确 (biz_type,event)+类型维度（动态字段 ⊆ 该 type_code field_meta，软告警——A.5 守卫②） |
 | GET `/api/v1/notifications/logs` | 同上 | message_log 列表（PageData §3-6） |
 | GET/POST `/api/v1/notifications/rules`、启停 | 同上 | 订阅规则管理 |
 
@@ -230,6 +232,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 - 事件面：第二订阅者挂载演示（phase6 前向验收的实现路径——mock hook 验证）；订阅者 panic 不影响主链与其他订阅者（recover 负向）；事务回滚零派发；
 - 节流：同单 60s 内连续翻转 → 仅首发通知落 message_log；
 - 渲染注入与字典校验负向：字段值含 `{{evt}}`/`<script>`/`[x](http://evil)` → 单遍替换不执行 + HTML 渠道转义断言 + markdown 渠道元字符转义后不渲染为链接（A.4 三族，2026-10-16 扩）；模板引用字典外变量 → 规则保存时拦截 + 渲染缺键**分档断言**（A.4 粒度错配注两档）：**内置键缺失 = 拒发**（模板 bug）/ **动态字段缺失 = skip 占位符 + message_log 警告**（类型错配，不判失败）——"不静默空串"仅指内置档（变量字典批 2026-10-16；分档对齐 2026-10-16 外审尾巴修复）；
+- 缺值与守卫负向（2026-10-16 评审批）：①模板引用的动态字段在工单 custom_data 无值 → 空串渲染 + log warned + 状态非 failed（不拒发——与「键缺失 skip」分别断言）；②收件人字段空 → 跳过该收件人（A.8.2 语义），与①独立用例；③模板追加某规则字典外占位符 → 保存拦截（改守卫——删除守卫已有）；④field_key 含中文/点的字段 → 字典供 `ticket.fields.f_<ID>` slug path 渲染正常（P1-1 字符集隔离）；
 - 两态桩：stub=true 全链绿 / stub=false 未配置 → 10007 类"未配置"错误码（errcode 随批登记）——**虚标防线**；
 - 域无关：mock risk 通知（biz_type=risk）走全链成功，ticket 表零改动。
 
@@ -238,11 +241,11 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 > **文档归属纪律（2026-10-16 确认）**：功能规格/页面设计 SSOT 集中主仓 `docs/`（先例 phase3/12-frontend、phase4/01-frontend-design——标题即"zhuzhao-ui 工程设计"亦坐主仓）；zhuzhao-ui 仓 docs 只放工程规范（frontend-standard/testing-standard），ui 仓只承载实现产物（组件/E2E spec/测试）。主仓管"页面该长什么样、为什么"，ui 仓管"实现成了什么样"。
 > **业界对表（2026-10-16 核验）**：模板编辑=Novu 渠道级编辑器+云短信控制台变量约束；收件人=Jira Automation Send notification picker；发送记录=Novu activity feed；铃铛=GitLab To-dos/GitHub Notifications——均为通行交互，对表即可不重新发明。
 
-**A.8.1 模板管理页（B6-3）**：列表（code/名称/渠道/is_system 只读标识/更新时间）+ 编辑器三件套——①**变量选择器**（吃 A.6 变量字典树：键+人读标签——2026-10-16 由手维护清单升级，选择即插入）；②占位符**点击插入**（选择器选中 → 光标处插点路径 `{{ticket.assignee_name}}`，防手输打错被校验拒发）；③**测试数据预览**=新增 `POST /templates/preview` 干跑 A.4 Render（body+vars 样例 → 渲染结果，零落库——业界标配里本设计原唯一缺件，A.6 已同步加行）。种子模板只读并展示准则出处（编号+标题+链接防越 L2，§4）。
+**A.8.1 模板管理页（B6-3）**：列表（code/名称/渠道/is_system 只读标识/更新时间）+ 编辑器三件套——①**变量选择器**（吃 A.6 变量字典树：键+人读标签——2026-10-16 由手维护清单升级，选择即插入）；②占位符**点击插入**（选择器选中 → 光标处插点路径——动态字段为 slug path `ticket.fields.f_<ID>`[字典权威，键字符集隔离]，防手输打错被校验拒发）；③**测试数据预览**=新增 `POST /templates/preview` 干跑 A.4 Render（body+vars 样例 → 渲染结果，零落库——业界标配里本设计原唯一缺件，A.6 已同步加行）。种子模板只读并展示准则出处（编号+标题+链接防越 L2，§4）。
 
 **A.8.2 订阅规则页（B6-6）**：列表（type_code/event/模板/收件人摘要/启停）；编辑器=type_code+event 下拉（event=DomainEvent Action 枚举）→ 模板选择器（按渠道过滤）→ **收件人 picker**（对表 Jira Automation）：字段引用下拉（候选=变量字典，§5.1 第一档）+ 固定人员远程搜索选人（复用既有 el-select 用户搜索）；spec 结构同 A.5。**fallback 语义（业界缺口，编辑器须透出）**：字段引用空值 → 第一档默认**跳过该收件人**（落 message_log 不发不报错）；回退语义（assignee 空发 reporter——Jira smart value 默认值形态）=二档按需，第一档 spec 无 fallback 字段。
 
-**A.8.3 发送记录页（B6-6）**：筛选维度对表 Novu activity（渠道/状态 sent·failed·dead/时间范围/模板 code/biz_type）+ PageData（§3-6）+ **单条详情面板**（错误全文/重试次数/渲染后 subject——排障主入口）；dead 行醒标并链死信告警语境。
+**A.8.3 发送记录页（B6-6）**：筛选维度对表 Novu activity（渠道/状态 sent·failed·dead/时间范围/模板 code/biz_type）+ PageData（§3-6）+ **单条详情面板**（错误全文/重试次数/渲染后 subject——排障主入口）；dead 行醒标并链死信告警语境；**失败聚合视角**（按 template_code+error 聚合——系统性配置错误[一个模板坏了断一片]一眼定位免逐行翻）；failed 行「重发」动作=**触发驱动登记**（新建 log 行不覆盖原行——首次真实需要或 B6-6 顺手，评审批 P3）。
 
 **A.8.4 渠道配置页（type=uip，B6-2）**：继承 P4-2 notification_configs 既有页面骨架扩展（endpoint/鉴权头表单区）——**不单独详设**；两态桩状态管理面透出（stub=true 徽标——虚标纪律的页面锚）。
 
@@ -264,3 +267,4 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-10-16 | **业界核验回标批（所有者问询三线：通道模式/页面 UI/富排版边界）**：①§3 补**直连差异清单**（企微/钉钉/飞书同为 HTTP+JSON 推送与 UIP adapter 同构——直连再拍时拍什么：鉴权两族/收件人 ID 映射/渠道限频，均 adapter 内部消化端口不动）②**附录 A.8 新增**（通知中心页面族 UI 详设五小节：模板编辑器三件套[变量 tag/点击插入/preview 干跑端点——A.6 同步加行]/规则页 Jira 式收件人 picker+fallback 语义[第一档=字段空跳过]/日志页筛选维度/渠道页继承 P4-2 不单独详设/铃铛交互细节；文档归属注=设计 SSOT 集中主仓，ui 仓只放工程规范与实现）③§8 边界行校准（不做的是富排版引擎/可视化编辑器/完整模板语言——正文格式按渠道 adapter 归属：纯文本/轻 HTML/markdown 子集，业界无统一 markdown——钉钉无表格/企微双方言/飞书私有 JSON）④A.4 转义纪律扩三族（+markdown 渠道值转义——防字段值 `[x](http://evil)` 渲染成链接的内容注入面）⑤§10/A.7 注入负向补 markdown 渠道断言（11 号「六负向」计数不变——并入既有注入条目） |
 | 2026-10-16 | **模板语法与变量字典批（所有者「补，然后看看是否有详细计划」）**：占位符 {{key}} 平铺 → **点路径 logic-less**（{{ticket.assignee_name}}——Mustache/Handlebars 思想零执行语义；禁二次展开/渠道转义纪律不变；不引库[raymond 停更/osteele-liquid 过重 2026-10 核实]，点路径解析自写 ≤0.5 天）+ **变量字典=服务端 SSOT**（按 biz_type+event 供给变量树：工单域=内置字段+S1 field_meta 同源+时间类——校验反转=模板引用⊆字典+渲染缺键拒发；variables 列退为编辑器回填展示；端点=A.6 新行 GET /notifications/variables；picker 数据源=A.8.1/A.8.2；phase6 risk 自供字典=域无关兑现）+ 条件段落（Liquid {% if %} 形态）登记触发不预建 + 与 S1 expr 求值器分界注；§4 渲染句/A.2 variables 列注/A.7 字典校验负向/A.8.1·A.8.2/11 号 B6-3·B6-4 行/README §2·选型表·§3 边界同步（+0.5–1 天一期上缘含，与 B6-4 通知偏好合计 +1–2 天总账对账留实施批） |
 | 2026-10-16 | **渲染缺键分档对齐批（外审尾巴修复）**：A.4 校验两道句 + A.7 字典校验负向按粒度错配注两档改写（**内置键缺失=拒发 / 动态字段缺失=skip+警告**——原统一"缺键拒发"表述与已落分档矛盾，验收测试照旧句会写错方向）——四象限之"键存在无值"两态（全景计划 P1-2）另批待采纳 |
+| 2026-10-16 | **评审采纳批（P1×3+P2×2+P3×2+深审 7 项并批，所有者「落」）**：①A.4 **slug 字典供给**（`ticket.fields.f_<ID>`——field_key 无字符集约束代码实锤 `validateFieldInputs`，中文/含点键打断点路径；字典权威供 path+picker 即插+vars 按 field_meta 映射；S1 登记 ASCII slug 软约束）+ **四象限齐**（+键存在无值=空串渲染+warned 不拒发——存量单/未指派防系统性丢通知；与 A.8.2 收件人跳过区分断言）②A.5 **引用完整性双向守卫三层**（模板保存字典并集拦截[改守卫补齐——原只删守卫]/规则保存类型精确软告警/渲染四象限兜底）+ **emit 单点锚=AssertTransition**（状态机咽喉一处挂接全路径覆盖，多入口各自挂=漏发）③A.1 枚举补 **ticket.cc_added**（S10 抄送通知订阅依赖——无此事件须硬编码进 cc_service 违 §5.2 禁令；10 号 §3.1 同步，随 B10-1 钉入）④A.6 字典端点查询粒度句（模板页并集超集/规则侧类型精确）⑤A.7 负向 +4（空串渲染/收件人跳过独立/模板改守卫/slug 隔离）⑥A.8.1 slug 即插注/A.8.3 失败聚合视角+重发触发驱动登记——**S6 侧量级 +1–1.5 天一期上缘含（11 号 B6-3 同批，累计 +2–3 天总账对账留实施批）；深审 7 项分落 05 号（ETag/仅 200 审计+演练联合场景）/09 号（404 入缓存）/README（digest 挂账）** |

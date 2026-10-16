@@ -24,7 +24,7 @@
 ### 3.1 工单抄送（CC）
 
 - `ticket_cc` 表 + 请求/事件扩展；**抄送人来源三档**：①手动选人；②流程节点配置（S2 节点 meta 增 cc 规则——依赖 S2 适配层扩展）；③按级别规则（phase6 风险工单按等级自动选抄送人——依赖本件的规则挂点）。
-- 抄送者可见性与通知走 S6（业界对标 Jira watcher）。
+- 抄送者可见性与通知走 S6（业界对标 Jira watcher）——**抄送落库同事务 emit `ticket.cc_added`**（DomainEvent，06 号 A.1 枚举：S6 message_rules 订阅抄送通知；无此事件=通知须硬编码进 cc_service 违 06 号 §5.2 禁令；随 B10-1 落，2026-10-16 评审批）。
 - **抄送 × L2 可见性拍板点（表设计前必拍）**：现 L2 可见集无 watcher 通道（§2）——phase6 头号场景"风险工单按等级抄送安全负责人"，安全负责人通常**不在业务 org 子树内**，按现 L2 **连工单都打不开 = 抄送失效**。二选一：
   - **① "抄送即可见"L2 特例通道（推荐）**：cc 用户并入 GetFilter/Authorize 可见集（Jira watcher 同语义）——注意与既有三轴的合取关系（特例=新增 OR 支，fail-closed 哨兵与 BK-21 泛化同批对表）；
   - ② 选人限定在可见范围内——**砍掉 phase6 场景，不可取**。
@@ -235,3 +235,4 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 模块架构（cc/tag/badge/timeout_scanner 四服务落点）/A.2 **L2 特例通道语义分层**（cc 支进 GetFilter 读可见集=全路径自动生效、**不进 Authorize 操作授权**——抄送人能看不能改；Registry 登记+BK-21 同批哨兵）/A.3 三表族 DDL 全文（ticket_cc 带 role 预留防 participants 双表/tags 共享+UNIQUE 幂等/status_changed_at+部分索引+**存量回填近似性警示**——首跑观察模式或重置二选一）/A.4 角标 sections 开放 map 契约/A.5 超时扫描器（**复用 S6 规则面**：扫描器只发 ticket.timeout DomainEvent、S6 message_rules 路由通知零新通知代码；message_log 查重防重发）+ cron 可观测面（Status()+只读端点+cron.failed 事件告警）/A.6 导出（流式 StreamWriter+行数钳制+**与 List 同 filter 函数同源断言**+导出自审计）/A.7 验收补充（cc 四向/超时链路/cron 观测/导出四向/tags 三向负向） |
 | 2026-10-16 | **全计划业界对标批（所有者）**：§3.2 补姊妹挂账 **@提及**（触发驱动——Jira/GitHub/Slack 协作标配：解析→通知+可见性[随拍板点 1 口径]，量级 1–2 天） |
 | 2026-10-16 | **badge 注册制批（实施线详设+A.1 补注）**：badge_service 计算器注册制（各域注册 section 计算函数，handler 只编排——防 phase6 往 ticket 域塞 risk 计数）+ 定位注（跨域枢纽宿主 ticket 域可接受，phase6 注册时再议升位）——外审评审确认设计方向 ✅ |
+| 2026-10-16 | **评审批 cc_added 事件补（深审项 A）**：§3.1 抄送落库同事务 emit `ticket.cc_added`（DomainEvent——S6 message_rules 订阅抄送通知的订阅依据；无此事件=通知须硬编码进 cc_service 违 06 号 §5.2 禁令）；06 号 A.1 枚举行同步 |

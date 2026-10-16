@@ -105,7 +105,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 | Batch Replication | 批量复制作业 | 大存量一次性迁移 | 非常态备份机制 |
 | 卷快照/停机 tar | PV 级快照 | 完整 | 一致性风险/需停机——**不取为主方案**（可作恢复演练辅助） |
 
-**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone mirror` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
+**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone mirror` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）——**含 DB↔对象联合场景**（旧库快照+新桶 → file_objects 引用悬空的负向演示：元数据与对象存在性对账；2026-10-16 评审批深审项 E）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
 
 ## 8. 启动拍板点
 
@@ -240,7 +240,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 | 2 | POST `/api/v1/tickets/attachments/confirm` | `ticket:update` + L2 | HEAD 实测（存在/size/content-type 比对声明）→ 翻 confirmed + 写 ticket_attachments；校验 created_by=当前用户 + 对象未绑定（91004）+ purpose↔key 前缀一致 |
 | 3 | GET `/api/v1/tickets/:id/attachments` | `ticket:read` + L2 | PageData 分页 |
 | 4 | POST `/api/v1/tickets/attachments/delete` | `ticket:update` + L2 | 删关联行 + file_objects 翻 deleted；对象物理删除走 GC（10 号"仅删关联"口径） |
-| 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名） |
+| 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名）；**ETag 透传**（RustFS 对象 ETag → 响应头 + If-None-Match 条件请求——richtext 多图工单回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 透传顺手预留不承诺）（2026-10-16 评审批深审项 B） |
 | 6 | GET `/api/v1/system/settings/:key` + POST `/api/v1/system/settings/update`（B5-6——**2026-10-16 外审修正：原 GET/PUT 违 §3-1，改 house style**） | GET=admin 读 / POST=按 min_editor_tier（存储限制类 superadmin-only），key/value 入 body | KV 读写 + 钳制校验（越界 400 非静默修正）+ 变更审计 |
 
 > 直传环节的 PUT/HEAD 为 S3 协议层动作，不经平台 API 面（§3 协议口径注）。错误码 91001–91004 随 B5-1 登记 `api/errcode.md`。
@@ -350,3 +350,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-16 | 外审对齐批：A.3 补编号口径注（000045/000046 = 对账结论非锁定——A2 撞号让位重排）+ **B5-6 system_settings 迁移 000047 登记**（S5 合计三枚——外审计数补齐） |
 | 2026-10-16 | **第二批外审回声批（公约硬冲突优先修）**：①**A.4 #6 GET/PUT → GET+POST update（house style）**——原写法违 §3-1 且 §3-1 恰以本段为首批应用例（自指冲突，外审第 1 条）；②§3 配置化「放行 PUT/GET-PUT 两端点」措辞同步；③孤儿 GC 定位统一（正文采纳附录基线形态：B5-1 随批 GC+orphan_gc_days KV——正文/附录/A.9 三处对齐）；④「五端点」措辞补全景注（A.4 六行）；⑤A.11 hasMixedAuth 语义修正（header+cookie 并存≠mixed-auth，以 header 为准）；⑥B5-6 切出口径补「仍计一期收口」 |
 | 2026-10-16 | **全计划业界对标批（所有者）**：§4 补**图片处理随行件**（业界照片上传标配两缺口：缩略图——列表页全原图流量浪费/EXIF 剥离——GPS 隐私泄露面；confirm 时处理，随 B5-2，+0.5–1 天） |
+| 2026-10-16 | **评审批深审两项（所有者「落」并批）**：①A.4 #5 代理下载补 **ETag 透传+If-None-Match**（richtext 多图回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 顺手预留）（深审项 B，≈0.25 天随 B5-2/3）；②§7 恢复演练补 **DB↔对象联合场景**（旧库+新桶引用悬空负向演示）（深审项 E） |
