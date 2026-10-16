@@ -22,7 +22,7 @@
 
 ### 3.1 画布选型（启动首件）
 
-- **采用现成拖拽画布组件，不自研画布**。候选 **LogicFlow / vue-flow**（均 MIT，推荐）：启动批**各 0.5 天同一 PoC spike**——拖节点/连线/序列化回 transitions/回显——按映射成本 + 交互手感 + 包体拍板；**LogicFlow 优先**（编辑器开箱能力：网格/对齐/锚点/JSON 序列化更贴状态图模型；判据 = transitions 映射代码量/自定义节点成本/中文交互/bundle）。
+- **采用现成拖拽画布组件，不自研画布**。✅ **已拍（2026-10-15 所有者）：LogicFlow 优先**——启动批**各 0.5 天同一 PoC spike**（拖节点/连线/序列化回 transitions/回显）降为**对称验证**（vue-flow 同日对照），按映射成本 + 交互手感 + 包体终定实现；LogicFlow 依据 = 编辑器开箱能力（网格/对齐/锚点/JSON 序列化更贴状态图模型；判据 = transitions 映射代码量/自定义节点成本/中文交互/bundle）。
 - AntV X6 备选（能力过剩）；**bpmn.js 排除**（BPMN 2.0 标准模型与 transitions JSONB 不匹配且过重）。
 - 数据面：**状态=节点、转换=边，与 transitions JSONB 天然同构**，映射器为浅层翻译。
 
@@ -45,7 +45,7 @@ keyword 现为 title ILIKE + 纯数字 ID 精确匹配（`ticket_repo.go` ListTi
 
 | # | 事项 | 建议 |
 |---|------|------|
-| 1 | 画布选型 | LogicFlow 优先 spike（vue-flow 同日对照，各 0.5 天） |
+| 1 | 画布选型 | ✅ **已拍（2026-10-15 所有者）：LogicFlow 优先**——spike（vue-flow 同日对照，各 0.5 天）降为对称验证 |
 | 2 | lint 增强是否阻断保存 | 告警不阻断起步（告警确认后可保存），阻断收益出现再收紧 |
 
 ## 5. 边界（不做）
@@ -82,8 +82,69 @@ keyword 现为 title ILIKE + 纯数字 ID 精确匹配（`ticket_repo.go` ListTi
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。
+
+### A.1 关键事实：transitions 存储形态 = 邻接表（非边数组）
+
+```json
+{"open":["assigned","closed"],"assigned":["in_progress","open"],"in_progress":["pending_verify","rejected","closed"],"pending_verify":["closed","in_progress"],"closed":["open"],"rejected":["open"]}
+```
+
+（`type_admin.go:20` defaultTransitions 实证）——映射器核心 = **邻接表 ↔ 画布 graphData 双向转换**：schema→画布 = states 数组逐个建节点 + 邻接表展开为边（from→to 各建一条）；画布→schema = 边列表按 source 折叠回 `map[from][]to` + states 收集。**双向均为浅层纯函数**（选 LogicFlow 的核心理由在此兑现）。
+
+### A.2 模块架构与代码落点
+
+```
+zhuzhao-ui/
+  src/components/FlowGraphDesigner/     # 画布层/适配层分离（§3.2 纪律）
+    index.vue                           #   壳：LogicFlow 容器 + 工具栏（加状态/连线/删除/保存）
+    mapper.ts                           #   唯一适配层：邻接表 ↔ LogicFlow graphData 纯函数（单测承重）
+    nodes/StateNode.ts                  #   自定义节点（状态名 + 终态/起始态语义样式）
+    lint.ts                             #   前端图 lint：可达性 BFS/孤立节点/无出边死锁（B2-4）
+  src/views/ticket/type/index.vue       # 画布模式 tab 与 JSON 源码模式共存（同一 Pinia store 单一数据源）
+```
+
+- **后端零改动**兑现：产物序列化回既有 `PUT /ticket-types/:code`（states/transitions + version CAS），无新端点/迁移。
+- **节点坐标不入库（⚠ 设计决策）**：transitions JSONB 无 x/y，布局数据是**本地视图偏好**——存 localStorage（按 type_code），重开无缓存时 dagre 自动布局；不为此加 type 级 layout 列（守住"后端零改动"承诺，多端打开各自动布局可接受）。
+
+### A.3 映射器契约（mapper.ts，往返幂等承重）
+
+```ts
+toGraph(states: string[], transitions: Record<string,string[]>): GraphData
+fromGraph(g: GraphData): { states: string[]; transitions: Record<string,string[]> }
+```
+
+- 边去重（邻接表展开天然去重；画布重复连线前端禁 + mapper 兜底 Set）；孤立边（端点不在 states）→ 保存前拦截 + 高亮定位；
+- **校验双保险**：前端 `validateTypeGraph` 镜像预检（端点合法性，规则与后端单测对齐）→ 后端既有校验兜底；
+- **往返幂等断言**：默认六状态图 toGraph→fromGraph 深比较为零 diff（E2E 承重用例 §8）。
+
+### A.4 改图在途单告警（B2-3，必做件实现口径）
+
+- 链路：保存前 → `GET /tickets?type_code=X&status=S` 逐状态拉 total（既有能力，**零后端改动**）→ 新图 states 集合不含的在途状态 → 命中则弹确认框（列出受影响状态与单量，"仍要保存/取消"）；
+- 兜底安全网：告警被绕过（API 直调）时 `AssertTransition` 照旧拒绝——**不产生僵死脏数据，告警纯体验层**；
+- ⚠ 可选增强（启动批拍）：后端聚合端点 `GET /ticket-types/:code/inflight-summary` 一次返回分布（前端 6 次请求并 1 次），量级 +0.5 天，非必做。
+
+### A.5 lint 增强（B2-4，可选批）
+
+- 规则：① 终态可达性（每个非终态存在到终态路径，BFS）；② 孤立状态（无入边且非起始态）；③ 无出边死锁（非终态零出边）；
+- **告警不阻断**（拍板点 2 建议）：画布保存时角标列出 + 点击定位节点；阻断收益出现再收紧（配置开关预留）；
+- 中文化：LogicFlow 文案包 + 自定义节点文本——量级计入 B2-4。
+
+### A.6 验收补充（在 §8 基础上）
+
+- 往返幂等：默认图 roundtrip 零 diff；自定义图（加状态+跨层连线）保存重开一致；
+- 告警：在途单覆盖改图 → 确认框弹 出（受影响状态/单量正确）→ 取消不保存/仍保存后旧状态单转换被拒（AssertTransition 断言）；
+- lint：构造孤立节点/死锁图 → 角标告警定位（阻断开关关闭时可保存）；
+- 多端布局：清 localStorage 重开 → 自动布局渲染不丢图数据（坐标非数据断言）。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；拍板点带建议值；未新增决策（全部收编自 README 总纲与设计源） |
+| 2026-10-15 | W0 前置拍板批（所有者逐项确认）：✅拍板点 1 画布选型 = **LogicFlow 优先**（vue-flow 同日对照 spike 降为对称验证）；拍板点 2（lint 是否阻断）维持待启动拍 |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 **关键事实落档——transitions 真实形态 = 邻接表**（defaultTransitions 实证，映射器=邻接表↔graphData 浅层纯函数，LogicFlow 选型理由在此兑现）/A.2 模块架构（mapper.ts 唯一适配层+**节点坐标不入库**——localStorage 本地视图偏好，守后端零改动承诺）/A.3 映射器契约（往返幂等+校验双保险）/A.4 在途告警实现口径（逐状态 total 零后端改动+AssertTransition 兜底安全网+可选聚合端点）/A.5 lint 三规则实现/A.6 验收补充 |

@@ -42,8 +42,9 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 ### 3.3 字段自动计算/联动（2026-10-08 所有者场景补充）
 
-- **① 计算字段**：按已填字段公式自动算派生字段。落点 = 字段 schema 扩展（meta 增 `formula`，**承载于既有 `ticket_type_fields.field_options` JSONB 列**——000010:20，全表唯一扩展列）+ **服务端求值为 SSOT**（提交时后端算入 `custom_data`，前端仅预览展示——防篡改，与现有哲学一致）。
+- **① 计算字段**：按已填字段公式自动算派生字段。落点 = 字段 schema 扩展（meta 增 `formula`，**承载于新列 `field_meta` JSONB**——附录 A.2 方案 b：`field_options` 为数组形态（select 选项），混载元数据须改对象形态、破坏渲染器/optionValues/存量行消费方，**2026-10-16 外审对齐后采纳新列方案，正文与附录以此为准**）+ **服务端求值为 SSOT**（提交时后端算入 `custom_data`，前端仅预览展示——防篡改，与现有哲学一致）。
 - **② 提交时条件取数回写**：按字段值判断后从数据源取数自动写入字段。落点 = 字段联动规则（数据层自动化，非流程层）；取数走 `DataFetcher` 端口（按 source 类型注册 fetcher——[README §6 对接预留清单](./README.md)）。
+- **③ 编辑时预填 auto_fill（2026-10-16 所有者场景登记——phase6 实际场景驱动；触发驱动挂账不入本段基线，消费者 = phase6 R3）**：与 ① 的语义分层——formula = **强制计算**（服务端 SSOT，人工改无效）；auto_fill = **建议预填**（编辑时实时带出、UI 标注"自动带出可修改"、提交信任用户值）。场景（phase6 R3）：风险事件主机 IP 带入工单系统 IP 字段 + 按 IP 查 **CMDB** 带出责任人——CMDB 即取数白名单（拍板点 2）的首个企业外部源实例（cmdb fetcher，零新拍板）。落点 = `field_meta` 新列扩 `auto_fill` 元数据（触发字段 key + fetcher 类型 + 字段映射，与 formula 同列承载——附录 A.2 方案 b，一枚 ALTER）；**执行时机双态预留**：元数据结构含 timing 标记（提交时/编辑时），**本段实现只做提交时取数（B1-4），编辑时预填留触发驱动**——phase6 R3 启动时消费、届时展开详细设计（交互链：字段 onChange → 轻量取数端点 → 预填+可覆盖）。业界同型：ServiceNow Variable auto-population / Salesforce cross-object lookup 带出 / 低代码「数据联动」；Jira 裸功能无此能力（靠 ScriptRunner 插件补）——真实需求 + 现成范式。
 - **求值器统一为白名单 Go 侧表达式求值器**（phase3/10 §4.2 既定路线；easy-workflow 表达式拼 SQL + 黑名单防注入为反面教材）；选型预置 = **expr-lang/expr**（MIT/活跃/默认沙箱/自定义函数白名单——README §2 选型表）。字段公式（本段）与网关条件（S3）**共用同一件**。
 
 ### 3.4 随行件三件（2026-10-09 隐藏需求核查补遗）
@@ -62,7 +63,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 | # | 事项 | 建议（README 既定口径） |
 |---|------|------------------------|
-| 1 | 设计器选型 | **自研**（sortablejs+属性面板）；form-create designer 半天 spike 对照后正式拍（判据详录 §3.1）；form-create runtime 作渲染引擎备选在案（§3.1③，触发驱动） |
+| 1 | 设计器选型 | ✅ **已拍（2026-10-15 所有者）：自研**（sortablejs+属性面板）；form-create designer 半天 spike 降为**对称验证**（判据详录 §3.1）——所有者另有疑问保留追问；form-create runtime 作渲染引擎备选在案（§3.1③，触发驱动） |
 | 2 | 取数数据源白名单 | 内部资源 / activelist / 外部 HTTP——外部源回 [dd §26.6](../design/design-decisions.md) 出站决策树 |
 | 3 | 取数身份 | 系统身份 vs 发起人代理——**L2 可见性边界**，宁窄勿宽 |
 | 4 | 字典守卫形态 | 挂接批补删除守卫（推荐）vs 禁用不删使用纪律 |
@@ -75,7 +76,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 ## 6. 影响面
 
-- **迁移**：零（formula 承载于既有 `field_options` JSONB 列，无新列/新表；启动批若拍加专用列则改判为一枚 ALTER）。
+- **迁移**：一枚 ALTER（`field_meta` JSONB 新列——附录 A.2 方案 b，2026-10-16 外审对齐后采纳为正文口径；原「承载 field_options 零迁移」口径废止——数组形态混载破坏消费方）。
 - **权限**：零新增码（管理面沿用既有类型管理权限；取数联动运行期走既有 L2 管线）。
 - **前端**：`views/ticket/type` 设计器面板、`views/ticket/create` 渲染器扩展（formula 预览）、detail 回显。
 - **端口**：`DataFetcher`（取数源白名单；README §6 清单第 6 行，随本段登记）。
@@ -104,9 +105,87 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。
+
+### A.1 模块架构与代码落点
+
+```
+zhuzhao-ui/
+  src/components/FormDesigner/          # 「先目录后包」落点（§3.1），三层分离
+    index.vue                           #   壳：三栏（组件库/画布/属性面板）+ 工具栏（预览/保存）
+    FieldCanvas.vue                     #   画布交互层：sortablejs 拖拽排序 + 选中态（零业务）
+    FieldPalette.vue                    #   组件库：七类型卡片（richtext 随 S5 进调色板）
+    FieldPropertyPanel.vue              #   属性面板：按 field_type 分组渲染配置项（el-form 动态 schema）
+    schema.ts                           #   FieldDef TS 类型 + 序列化 + 前端校验（与后端 validateFieldInputs 镜像——规则变更两处同步，单测对齐）
+  src/views/ticket/type/index.vue       # 画布模式 tab + 表格专家模式 + JSON 模式三态共存
+  src/views/ticket/create/index.vue     # 渲染器扩展：formula 前端预览（提示"服务端计算"）/草稿（05 号 §6）
+zhuzhao/
+  internal/service/ticket/formula_eval.go    # 求值器封装（expr-lang/expr，编译结果 LRU 缓存）
+  internal/service/ticket/field_linkage.go   # 提交时取数回写（B1-4）
+  internal/pkg/datafetcher/                  # DataFetcher 端口 + source registry（README §6 第 6 行）
+```
+
+### A.2 元数据承载（⚠ 结构决策，启动批拍）
+
+`field_options` 现存**数组形态**（select 选项 `["a","b"]` 或 `[{label,value}]`，`optionValues` 按数组解析）——formula/auto_fill 若并入只能改对象形态 `{options:[...], formula:"…"}`，**破坏既有消费方**（渲染器选项渲染/服务端 optionValues/存量行）。两案：
+
+| 案 | 形态 | 影响 |
+|----|------|------|
+| a | field_options 改对象 `{options, formula, auto_fill}` | 存量迁移（数组→对象）+ 消费方双形态兼容过渡——违约"只增不改"精神 |
+| **b（推荐）** | **新列 `field_meta` JSONB**（`{formula, auto_fill, linkage}`），`field_options` 保持数组语义纯净 | 一枚 ALTER（01 号 §6 预留口子原文：「启动批若拍加专用列则改判为一枚 ALTER」）；optionValues/渲染器零改 |
+
+`field_meta` 结构：`{"formula": "unit_price * quantity", "auto_fill": {"trigger_field": "host_ip", "fetcher": "cmdb", "mapping": {...}, "timing": "submit"} }`（auto_fill 双态预留见 §3.3③，timing=submit 本段唯一实现值）。
+
+### A.3 求值器契约（formula_eval.go，S1/S3 公共件）
+
+```go
+type EvalEnv struct { Fields map[string]any; Actor EvalActor; Now time.Time }
+func EvalFormula(expr string, env EvalEnv) (any, error)
+```
+
+- **expr-lang/expr 默认沙箱**：禁 import/任意方法调用；字段值类型白名单（string/int/float/bool/time）；
+- **内置函数白名单**（启动批定首集，建议）：`sum/avg/round/min/max/len` + 日期 `now/dateDiff/formatDate`——注册为 expr 自定义函数，禁用户自定义函数；
+- **编译缓存**：按字段存编译后 program（formula 随 schema 变更失效），提交链零重复编译；
+- **提交链落点**：`Submit` 校验后、写 `custom_data` 前——**formula 字段一律重算覆盖**（前端预览值不可信，篡改负向必测 §8）；formula 引用字段缺失/类型不符 → 400 带字段名（fail-fast 不静默跳过）。
+
+### A.4 DataFetcher 端口契约（B1-4）
+
+```go
+type FetchSource struct { Type string; Config json.RawMessage }   // internal_db / activelist / external_http / cmdb(预留)
+type DataFetcher interface { Fetch(ctx, src FetchSource, key string) (map[string]any, error) }
+```
+
+- registry 按 Type 注册（`internal/pkg/datafetcher/registry.go`，app.go 装配）——白名单外的 Type 拒启/拒执（fail-closed，拍板点 2 落点）；
+- **取数执行时机**：`Submit` 事务内、formula 重算**之前**（取数结果可被 formula 引用）；**失败策略** = 取数失败不阻塞提交、目标字段留空 + `linkage_missed` 事件（与分派失败⑤同哲学）——⚠ 启动批确认；
+- **取数身份**（拍板点 3）：默认系统身份（service 账号）；外部 HTTP 走 dd §26.6 出站决策树；
+- 超时钳制 3s/次、单次提交取数 ≤3 个字段（防提交被外部源拖死）。
+
+### A.5 设计器交互规格
+
+- **三栏**：左组件库（七类型卡片拖入）／中画布（已选字段列表，sortablejs 拖拽排序，点击选中）／右属性面板（配置项按类型：通用[label/field_key/required/sort_order] + 类型特有[select 选项挂字典键、number 步进、regex]）；
+- **field_key 生成**：默认拼音/语义建议 + 唯一性前端预检（后端 validateFieldInputs 兜底）；
+- **保存**：全量 PUT fields（既有 ReplaceTypeFields 契约不变）+ version CAS；**影响分析随行件**在保存前调（被 formula/模板引用字段变更 → 告警确认）；
+- **预览**：右侧抽屉内嵌**真渲染器**（create 页同组件树）渲染未保存 schema——所见即所得（§3.1 论证）；
+- **三模式共存**：画布（默认）/表格（专家）/JSON（源码）tab 切换，同一份 schema 三向同步（单一数据源 = Pinia store）。
+
+### A.6 验收补充（在 §8 基础上）
+
+- schema 往返幂等：设计器 → 保存 → 重开回显 → 再保存，diff 为空；
+- formula 链路：A→B 计算字段，改 A 提交 → 服务端重算 B（**前端篡改 B 被覆盖**负向）；formula 引用字段删除 → 保存被影响分析拦截告警；
+- 取数联动：mock fetcher 命中回填 / 失败留空 + linkage_missed 事件 / 白名单外 Type 拒执；
+- 求值器沙箱负向：expr 含 `import`/函数外调用 → 编译期拒绝。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；拍板点带建议值；未新增决策（全部收编自 README 总纲与设计源） |
 | 2026-10-15 | 选型论证深化批（业界对标讨论落档）：§3.1 补 view model ≠ domain model 正论（业界四类玩家收敛对照：平台级字段/布局分离·nocobase·JSON Forms 双层）/Vue3 生态情报（formily unmaintained·designable React 为主·活跃项唯 form-create）/四路线代价账（**form-create runtime 作渲染引擎登记正式备选**——单向投影 ≈2–3 天，触发驱动）/「先目录后包」落点纪律（components/FormDesigner 三层分离）/预览一致性优势 + 交互打磨前置为批次①验收项；§4 拍板点 1 补 spike 判据与备选指引——推荐结论不变（自研），spike 照跑 |
+| 2026-10-15 | W0 前置拍板批（所有者逐项确认）：✅拍板点 1 = **自研**（form-create designer spike 降为对称验证）——所有者另有疑问保留追问权，论证深化见 §3.1 |
+| 2026-10-16 | auto_fill 编辑时预填登记批（所有者 phase6 实际场景提出）：§3.3 增 ③——formula（强制计算）之外的第二种联动语义（建议预填·人工可改），CMDB = 取数白名单首个企业外部源实例；field_options 双态元数据预留（本段实现只做提交时，编辑时预填触发驱动、phase6 R3 启动消费）——登记挂账不入基线，详录 §3.3③ |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 模块架构（FormDesigner 三层目录+create 页扩展+后端三落点）/A.2 **元数据承载结构决策**（⚠ field_options 现为数组形态、formula 并入即破坏消费方——推荐新列 field_meta JSONB（§6 影响面预留口子兑现），启动批拍）/A.3 求值器契约（expr 沙箱+函数白名单+编译缓存+提交链重算覆盖）/A.4 DataFetcher 契约（registry fail-closed+取数失败不阻塞留空+linkage_missed 事件+3s/3 字段钳制）/A.5 设计器交互规格（三栏/三模式共存单一数据源/预览=真渲染器）/A.6 验收补充（往返幂等/篡改覆盖/沙箱负向） |
+| 2026-10-16 | **外审对齐批（矛盾消解）**：§3.3①③/§6 正文对齐附录 A.2 **方案 b（`field_meta` 新列）**并采纳为正文口径——原「承载 field_options 零迁移」口径废止（数组形态混载破坏消费方）；迁移零→一枚 ALTER；README 同步 |

@@ -1,7 +1,7 @@
 # 06 — P5-S6 消息通知：统一消息平台 + 模板 + 工单触发（设计稿）
 
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：与 S2 并行（S1 后）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
-> **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族；二期 notifications 表族——编号启动时对账，不写死）。
+> **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
 
 ## 1. 定位与由来
@@ -69,7 +69,8 @@
 | # | 事项 | 建议 |
 |---|------|------|
 | 1 | 触发挂接机制 | **a) 显式 emit = 可订阅钩子**（推荐起步；b 需补 processed 迁移 + L1 消费面） |
-| 2 | 人读编号 TK- 随批与否 | **推荐随批**（+0.5 天；不随批则模板只引用链接） |
+| 2 | 人读编号 TK- 随批与否 | **推荐随批**（+0.5 天；不随批则模板只引用链接）。**生成器抽象（2026-10-16 外审补遗）**：随批时落**跨域公共件** `internal/pkg/humankey`（前缀注册表 + 按日序列 + UNIQUE 冲突重试 ≤3）——phase6 `RISK-2026-NNNN` 零改复用（zhuzhao 单仓，不进 utils——A.10 同纪律），勿等 phase6 返工 |
+| 4 | **事件面命名（2026-10-16 外审提出，B6-1 前钉死）** | 现稿 A.1 用 `StatusChangeHook`/`TicketEvent`/`TicketHook`——**以 Ticket 命名却要承载 risk 事件，与域无关主张概念错位**。建议改通用命名（候选 `DomainEvent`/`BizHook`，订阅按 `biz_type` 路由）——S6/S3a/phase6 R3 共享枢纽，契约+命名一次钉死防三处漂移；改名为纯措辞级（结构不变，A.1 接口形状已域无关） |
 | 3 | 事件面基建批次 | 事件面 3–5 天随本段首个批次落（S10 超时扫描/phase6 共享） |
 
 ## 8. 边界（不做）
@@ -79,7 +80,7 @@
 
 ## 9. 影响面
 
-- **迁移**：一期两表族 +（emit 落地所需的事件面挂点，若走钩子形态零迁移）；二期 notifications 表族。
+- **迁移**：一期两表族 + `message_rules` 轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；+（emit 落地所需的事件面挂点，若走钩子形态零迁移）；二期 notifications 表族。
 - **权限**：通知中心管理页沿用配置管理权限；`message_log` 管理面权限随批（对齐 notification_configs 既有口径）。
 - **端口**：`ChannelSender`（README §6 第 3 行）。
 - **消费者**：S10（抄送通知/超时逾期通知）、phase6 R3（风险事件通知 + 关单钩子挂点）、任务链（S3 动作库"通知"动作）。
@@ -102,9 +103,135 @@
 
 ---
 
+## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
+
+> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。事件面接口 = S3a TicketHooks 对表钉死形态（[03 号 §3 头注](./03-s3-flow-semantics.md)、11 号 §2.4）。
+
+### A.1 事件面基建（B6-1，StatusChangeHook）
+
+```go
+// internal/service/ticket/hooks.go（编译期注册，app.go 装配）
+type TicketEvent struct {
+    Type       string          // ticket.created / ticket.status_changed / ticket.assigned / …
+    TicketID   int64; TypeCode string
+    From, To   string          // status_changed 专用
+    ActorID    int64; OccurredAt time.Time
+    Payload    json.RawMessage
+}
+type TicketHook interface { OnTicketEvent(ctx context.Context, ev TicketEvent) }
+type HookRegistry struct { subs map[string]TicketHook }        // 有序（注册序）
+func (r *HookRegistry) Register(name string, h TicketHook)      // 重复名 panic（装配期暴露）
+func (r *HookRegistry) Dispatch(ev TicketEvent)                 // 每订阅者独立 goroutine + recover；at-most-once
+```
+
+- **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
+- **域无关兑现**：TicketEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名讨论（拍板点 4，B6-1 前钉死）**：TicketEvent 系命名与域无关主张概念错位，候选改通用 `DomainEvent`/`BizHook`（订阅按 biz_type 路由）——结构不变、纯措辞级；
+- **节流实现口径（2026-10-16 外审补遗）**：内存滑动窗口 = **单实例假设**；**多副本部署时 Redis 化**（登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）；
+- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Type 窗口 60s 内去重（内存 sliding window，单实例够用——多副本部署时登记 Redis 化触发驱动）。
+
+### A.2 表族 DDL（迁移全文级，编号启动对账）
+
+```sql
+CREATE TABLE message_templates (
+    id         BIGSERIAL PRIMARY KEY,
+    code       VARCHAR(50) NOT NULL,             -- 业务引用键（规则/动作库引用）
+    name       VARCHAR(100) NOT NULL,
+    channel    VARCHAR(20) NOT NULL DEFAULT 'uip',
+    subject    VARCHAR(200) NOT NULL,
+    body       TEXT NOT NULL,                    -- {{key}} 占位符
+    variables  JSONB NOT NULL DEFAULT '[]',      -- 模板声明的变量清单（渲染前校验）
+    is_system  BOOLEAN DEFAULT FALSE,            -- 种子模板（编号+标题+链接），防越 L2 泄露准则（§4）
+    created_by BIGINT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (code)
+);
+
+CREATE TABLE message_log (
+    id           BIGSERIAL PRIMARY KEY,
+    template_code VARCHAR(50),
+    channel      VARCHAR(20) NOT NULL,
+    recipient    VARCHAR(200) NOT NULL,          -- 平台外标识（邮箱/工号/IM id）
+    biz_type     VARCHAR(30) NOT NULL DEFAULT 'ticket',
+    biz_id       BIGINT,                         -- ⚠ 域无关：biz_type+biz_id 而非 ticket_id（phase6 risk 通知零改复用）
+    subject      VARCHAR(200),
+    status       VARCHAR(20) NOT NULL,           -- sent / failed / dead（dead 接既有死信告警链）
+    error        TEXT,
+    retry_count  INT DEFAULT 0,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    sent_at      TIMESTAMPTZ
+);
+CREATE INDEX idx_message_log_biz ON message_log (biz_type, biz_id, created_at);
+CREATE INDEX idx_message_log_status ON message_log (status, created_at);
+
+-- 二期（B6-7）：
+CREATE TABLE notifications (
+    id           BIGSERIAL PRIMARY KEY,
+    recipient_id BIGINT NOT NULL REFERENCES users(id),
+    biz_type     VARCHAR(30) NOT NULL,
+    biz_id       BIGINT,
+    payload      JSONB NOT NULL,                 -- 深链（页面路由+参数）+ 摘要
+    read_at      TIMESTAMPTZ,                    -- 行级已读（第一档）
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_notifications_unread ON notifications (recipient_id, read_at);
+```
+
+### A.3 ChannelSender 端口与两态桩（B6-2）
+
+```go
+// internal/pkg/msgchannel/（端口）+ uip/（adapter）
+type OutboundMessage struct { Channel, Recipient, Subject, Body string; Meta map[string]string }
+type ChannelSender interface { Send(ctx context.Context, msg OutboundMessage) SendResult }
+```
+
+- **按 channel 路由的双 adapter 并存**：`webhook` → 既有 P4-2 client（死信告警链不动）；`uip` → 新 adapter（HTTP+JSON 骨架：endpoint/鉴权头 config `notification.uip.*`，**字段映射独立函数** `mapToUIP()`——真实契约到手只改此函数）；
+- **两态桩**（§3 口径落地）：`notification.uip.stub=true` → 开发态桩（返回成功 + slog 落 msg 摘要，全链 E2E 可跑）；`false` 且 endpoint 未配置 → `ErrNotificationNotConfigured` fail-fast（**虚标防线负向必测** §10）；
+- 发送重试：failed 进既有死信队列（复用 P4-2 链），dead 告警——不新建重试体系。
+
+### A.4 模板渲染器（B6-3）
+
+```go
+func Render(tpl string, vars map[string]string, channel string) (string, error)
+```
+
+- 单遍正则替换 `{{key}}`（**禁二次展开**——字段值含 `{{` 不再解析，注入负向 §10）；HTML 渠道值 `html.EscapeString`、纯文本渠道原样；
+- **变量校验**：模板 `variables` 清单 ⊄ 传入 vars → 报错拒发（防静默空串通知）；
+- 时间类变量：`{{now}}`/`{{due_in}}` 由调用方注入渲染前 vars（格式 config 化，§4）；
+- 种子模板随迁移 INSERT（`is_system=true`，仅编号+标题+链接三变量——**人读编号拍板点 2 联动**：不随批则种子模板链接-only）。
+
+### A.5 订阅规则与触发链路（B6-5）
+
+- **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关）；
+- **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；
+- 人读编号（拍板点 2 随批）：`tickets` 加 `human_key VARCHAR(30) UNIQUE`，Create 时 `TK-yyyymmdd-NNNN`（按日序列，UNIQUE 冲突重试 ≤3）；存量单 NULL——模板变量解析时 NULL 回退展示 id（`#123`）。
+
+### A.6 API 面（通知中心页面族，自 S4 迁入）
+
+| 方法/路径 | 权限 | 用途 |
+|-----------|------|------|
+| POST `/api/v1/notifications/templates`·`/templates/update`·`/templates/delete` + GET 列表（**2026-10-16 外审修正：原 PUT 违 §3-1 改 house style**——code 入 body） | 通知配置管理权限（对齐 notification_configs 既有码） | 模板 CRUD + 删除守卫（被 rules 引用 → 拦截，与 S1 影响分析同件） |
+| GET `/api/v1/notifications/logs` | 同上 | message_log 列表（PageData §3-6） |
+| GET/POST `/api/v1/notifications/rules`、启停 | 同上 | 订阅规则管理 |
+
+二期（B6-7）：`GET /api/v1/notifications/inbox`（PageData）+ `POST /read`（单条/全部）+ 未读数并入 S10 角标 sections。
+
+### A.7 验收补充（在 §10 基础上）
+
+- 事件面：第二订阅者挂载演示（phase6 前向验收的实现路径——mock hook 验证）；订阅者 panic 不影响主链与其他订阅者（recover 负向）；事务回滚零派发；
+- 节流：同单 60s 内连续翻转 → 仅首发通知落 message_log；
+- 渲染注入负向：字段值含 `{{evt}}`/`<script>` → 单遍替换不执行 + HTML 渠道转义断言；
+- 两态桩：stub=true 全链绿 / stub=false 未配置 → 10007 类"未配置"错误码（errcode 随批登记）——**虚标防线**；
+- 域无关：mock risk 通知（biz_type=risk）走全链成功，ticket 表零改动。
+
+---
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（P4-2 本体/事件面缺口）；含二期站内消息中心（2026-10-13 翻案）；未新增决策 |
 | 2026-10-15 | 公约对表批：§5.4 message_log 管理页列表补 PageData 形态注（standards §3-6） |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 StatusChangeHook 接口全文（TicketEvent 结构/编译期注册/after-commit 派发=异步投递实现锚点/recover 隔离/节流落订阅者侧）——即 S3a 对表钉死形态/A.2 三表族 DDL 全文（**message_log 用 biz_type+biz_id 域无关键**——phase6 risk 零改复用；notifications 二期表随落）/A.3 ChannelSender 端口+双 adapter 并存（webhook 既有链不动）+两态桩实现（stub config 开关+ErrNotificationNotConfigured 虚标防线）/A.4 渲染器契约（单遍替换禁二次展开+变量清单校验拒发）/A.5 订阅规则轻表 message_rules 建议（域无关 recipients spec）+触发链装配+人读编号实现（human_key 列+UNIQUE 冲突重试）/A.6 API 面/A.7 验收补充（第二订阅者/panic 隔离/节流/注入/两态桩/域无关六负向） |
+| 2026-10-16 | **第一批外审回声批**：**拍板点 +4（事件面命名）**——A.1 TicketEvent 系以 Ticket 命名与域无关主张错位，通用命名候选 DomainEvent/BizHook（B6-1 前钉死，S3a/phase6 共享枢纽）；§4/§9 迁移计数对齐（两表族→+message_rules+human_key ALTER ≥3 段）；§5.3 生成器抽象登记（internal/pkg/humankey 跨域公共件——phase6 RISK- 零改复用） |
+| 2026-10-16 | **第二批外审回声批（公约硬冲突）**：A.6 模板端点 GET/PUT → POST house style（`/templates`·`/update`·`/delete`，code 入 body——§3-1 首批应用例自指冲突修正）；A.1 补**节流单实例假设注**（多副本 Redis 化，触发=副本数>1） |

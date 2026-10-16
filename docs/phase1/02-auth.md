@@ -833,3 +833,5 @@ internal/repository/user/           # 密码验证依赖
 - ✅ **登录限流**：Phase 1 用 Redis Lua（INCR+EXPIRE 原子），阈值 15min/5 次。
 - ✅ **Redis 故障**：鉴权链路 fail-close（503）。
 - ✅ **会话吊销**：禁用/删除用户写 `user:disabled:{userId}`。
+
+> **📌 补注（2026-10-16，phase5 S5 拍板点 #8——第二凭证面登记）**：文件读取通道新增旁路 cookie 凭证 `file_session`（`HttpOnly; SameSite=Lax; Path=/api/v1/files`，TTL 对齐 access token；HMAC 签名 uid+exp）——因 `<img>` 等浏览器原生资源加载发不出 Authorization header，files 代理路由认证序 = header 优先 → cookie 回退；`hasMixedAuth` 并存语义维持 400。cookie 不承载刷新能力，泄漏最坏后果 = 只读拉文件。设计 SSOT = [phase5/05 号附录 A.11](../phase5/05-s5-object-storage-richmedia.md)，实现细节随 S5-B5-2 落码。业界锚点 = GitHub/GitLab 应用内私有内容的 cookie 门禁形态。

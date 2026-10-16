@@ -120,11 +120,11 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ---
 
-## Phase 4（已收口）与 Phase 5 / Phase 6（规划草案，未排期）
+## Phase 4（已收口）与 Phase 5（已排期，`phase5` 分支实施前）/ Phase 6（规划草案，未排期）
 
 > **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：批次总览七件（W0–W5 六波 + P4-9 部署件）+ 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 加成交付，phase4 分支已合回 main。
 >
-> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S10 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口），排期待所有者拍板。
+> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S10 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口）；**✅ 排期已拍（2026-10-15 所有者按建议 Wave 序：W0 → S5 → S1 → S6 一期 → S2 → S10 → S4 → S9 → S6 二期，一期收口 ≈12–13 周/含二期 ≈14–15 周）**；十段设计稿 01–10 号 + 实施计划 11 号齐备，均在 `phase5` 分支（2026-10-15 起——详细计划与实施均在分支内，完成定义全绿后合回 main）；S5 八枚段内拍板闭环（2026-10-15/16）。
 
 | 段 | 内容 | 性质 | 前置 |
 |----|------|------|------|
@@ -189,7 +189,7 @@ docs/
 │   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
 │   └── 02–09 已编写（能力域/阶段文档，2026-09 起陆续完成；按需启用）
 ├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
-├── phase5/                     # Phase 5 规划草案（前端可视化配置线，未排期）
+├── phase5/                     # Phase 5 已排期（通用能力底座线十段设计稿 01–10 + 实施计划 11 号——phase5 分支）
 ├── phase6/                     # Phase 6 规划草案（风险管理模块，未排期；硬前置=phase5 S1/S2/S6+S10）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
