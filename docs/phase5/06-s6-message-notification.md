@@ -70,7 +70,7 @@
 |---|------|------|
 | 1 | 触发挂接机制 | **a) 显式 emit = 可订阅钩子**（推荐起步；b 需补 processed 迁移 + L1 消费面） |
 | 2 | 人读编号 TK- 随批与否 | **推荐随批**（+0.5 天；不随批则模板只引用链接）。**生成器抽象（2026-10-16 外审补遗）**：随批时落**跨域公共件** `internal/pkg/humankey`（前缀注册表 + 按日序列 + UNIQUE 冲突重试 ≤3）——phase6 `RISK-2026-NNNN` 零改复用（zhuzhao 单仓，不进 utils——A.10 同纪律），勿等 phase6 返工 |
-| 4 | **事件面命名（2026-10-16 外审提出，B6-1 前钉死）** | 现稿 A.1 用 `StatusChangeHook`/`TicketEvent`/`TicketHook`——**以 Ticket 命名却要承载 risk 事件，与域无关主张概念错位**。建议改通用命名（候选 `DomainEvent`/`BizHook`，订阅按 `biz_type` 路由）——S6/S3a/phase6 R3 共享枢纽，契约+命名一次钉死防三处漂移；改名为纯措辞级（结构不变，A.1 接口形状已域无关） |
+| 4 | **事件面命名（2026-10-16 外审提出）** | ✅ **已拍（2026-10-16）：通用 `DomainEvent`/`DomainHook`**（原 `StatusChangeHook`/`TicketEvent`/`TicketHook` 措辞废止——以 Ticket 命名承载 risk 事件与域无关主张错位；订阅按 `biz_type` 路由；包 `internal/pkg/domainevent`；HookRegistry 不变；消费方侧名字保持业务化如 TicketNotifyHook）。A.1 已按新名改写；S6/S3a/phase6 R3 共享枢纽命名一次钉死 |
 | 3 | 事件面基建批次 | 事件面 3–5 天随本段首个批次落（S10 超时扫描/phase6 共享） |
 
 ## 8. 边界（不做）
@@ -105,28 +105,29 @@
 
 ## 附录 A：详细技术设计（实施级，2026-10-16 补充——样板深度对齐 05 号附录 A）
 
-> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。事件面接口 = S3a TicketHooks 对表钉死形态（[03 号 §3 头注](./03-s3-flow-semantics.md)、11 号 §2.4）。
+> ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。事件面接口 = S3a 对表钉死形态（[03 号 §3 头注](./03-s3-flow-semantics.md)、11 号 §2.4）——**命名已拍（2026-10-16 拍板点 4）：通用 `DomainEvent`/`DomainHook`**（原 TicketEvent 系措辞废止；消费方侧名字保持业务化）。
 
-### A.1 事件面基建（B6-1，StatusChangeHook）
+### A.1 事件面基建（B6-1，✅ 命名已拍 DomainEvent/DomainHook）
 
 ```go
-// internal/service/ticket/hooks.go（编译期注册，app.go 装配）
-type TicketEvent struct {
-    Type       string          // ticket.created / ticket.status_changed / ticket.assigned / …
-    TicketID   int64; TypeCode string
+// internal/pkg/domainevent/hooks.go（编译期注册，app.go 装配——跨域公共件，ticket service 为首个发布方）
+type DomainEvent struct {
+    BizType    string          // ticket / risk / …（订阅按 biz_type 路由——域无关路由键）
+    Action     string          // ticket.created / ticket.status_changed / ticket.assigned / …
+    BizID      int64; RefCode string   // biz_id=业务主键；RefCode=业务编码（工单 type_code 等）
     From, To   string          // status_changed 专用
     ActorID    int64; OccurredAt time.Time
     Payload    json.RawMessage
 }
-type TicketHook interface { OnTicketEvent(ctx context.Context, ev TicketEvent) }
-type HookRegistry struct { subs map[string]TicketHook }        // 有序（注册序）
-func (r *HookRegistry) Register(name string, h TicketHook)      // 重复名 panic（装配期暴露）
-func (r *HookRegistry) Dispatch(ev TicketEvent)                 // 每订阅者独立 goroutine + recover；at-most-once
+type DomainHook interface { OnDomainEvent(ctx context.Context, ev DomainEvent) }
+type HookRegistry struct { subs map[string]DomainHook }        // 有序（注册序）
+func (r *HookRegistry) Register(name string, h DomainHook)     // 重复名 panic（装配期暴露）
+func (r *HookRegistry) Dispatch(ev DomainEvent)                // 每订阅者独立 goroutine + recover；at-most-once
 ```
 
 - **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
-- **域无关兑现**：TicketEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名讨论（拍板点 4，B6-1 前钉死）**：TicketEvent 系命名与域无关主张概念错位，候选改通用 `DomainEvent`/`BizHook`（订阅按 biz_type 路由）——结构不变、纯措辞级；
-- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Type 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
+- **域无关兑现**：DomainEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名已拍（拍板点 4，2026-10-16）**：通用 `DomainEvent`/`DomainHook`——原 TicketEvent 系措辞废止（结构不变，本节已按新名改写）；
+- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Action 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
 
 ### A.2 表族 DDL（迁移全文级，编号启动对账）
 
@@ -234,3 +235,4 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 StatusChangeHook 接口全文（TicketEvent 结构/编译期注册/after-commit 派发=异步投递实现锚点/recover 隔离/节流落订阅者侧）——即 S3a 对表钉死形态/A.2 三表族 DDL 全文（**message_log 用 biz_type+biz_id 域无关键**——phase6 risk 零改复用；notifications 二期表随落）/A.3 ChannelSender 端口+双 adapter 并存（webhook 既有链不动）+两态桩实现（stub config 开关+ErrNotificationNotConfigured 虚标防线）/A.4 渲染器契约（单遍替换禁二次展开+变量清单校验拒发）/A.5 订阅规则轻表 message_rules 建议（域无关 recipients spec）+触发链装配+人读编号实现（human_key 列+UNIQUE 冲突重试）/A.6 API 面/A.7 验收补充（第二订阅者/panic 隔离/节流/注入/两态桩/域无关六负向） |
 | 2026-10-16 | **第一批外审回声批**：**拍板点 +4（事件面命名）**——A.1 TicketEvent 系以 Ticket 命名与域无关主张错位，通用命名候选 DomainEvent/BizHook（B6-1 前钉死，S3a/phase6 共享枢纽）；§4/§9 迁移计数对齐（两表族→+message_rules+human_key ALTER ≥3 段）；§5.3 生成器抽象登记（internal/pkg/humankey 跨域公共件——phase6 RISK- 零改复用） |
 | 2026-10-16 | **第二批外审回声批（公约硬冲突）**：A.6 模板端点 GET/PUT → POST house style（`/templates`·`/update`·`/delete`，code 入 body——§3-1 首批应用例自指冲突修正）；A.1 补**节流单实例假设注**（多副本 Redis 化，触发=副本数>1） |
+| 2026-10-16 | **事件面命名拍定批（所有者）**：✅ 拍板点 4 = **DomainEvent/DomainHook**（包 internal/pkg/domainevent；biz_type 路由；HookRegistry 不变；消费方侧名字业务化）——A.1 全节按新名改写（原 StatusChangeHook/TicketEvent/TicketHook 措辞废止）；03 号两处同步 |
