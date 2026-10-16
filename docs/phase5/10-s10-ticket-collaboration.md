@@ -115,7 +115,11 @@ S6 后实施。批次：①抄送（含 L2 特例通道 + 表形态拍板）→ 
 internal/service/ticket/
   cc_service.go                    # 抄送（B10-1）：加/删/列表 + L2 特例支生效点
   tag_service.go                   # 标签（B10-2）：挂/摘/按标签筛选
-  badge_service.go                 # 角标聚合（B10-3）：sections 计数
+  badge_service.go                 # 角标聚合（B10-3）：sections 计数——**计算器注册制**：各域向
+                                   #   badge 注册 section 计算函数（ticket 域注册 todo；phase6
+                                   #   risk 域注册 risk），handler 只做编排——防 phase6 往
+                                   #   ticket 域塞 risk 计数（域边界，对齐 DomainEvent 注册哲学）——定位注（2026-10-16 外审）：badge 实为跨域聚合枢纽却宿主 ticket 域，
+                                   #   可接受（import 方向 risk→ticket 消费方引宿主）；phase6 注册时再议升位
   timeout_scanner.go               # 节点超时扫描（B10-4）：骑 CronScheduler，发 DomainEvent
 internal/repository/
   ticket_cc_repo.go / tag_repo.go  # 两新表族 CRUD
@@ -230,3 +234,4 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 | 2026-10-16 | **第一批外审回声批（两设计缺口落档）**：§3.4 补**时间源前置**（tickets 无 `status_changed_at` 列——代码级核实；推荐新列 AssertTransition 同事务写，拍板点 +5，量级 +0.5 天）；§3.2/§5 补 **tags 可见性语义拍板点 +6**（「用户级」歧义——建议默认共享+created_by 留痕，B10-2 前拍）；头部量级/迁移行同步 |
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 模块架构（cc/tag/badge/timeout_scanner 四服务落点）/A.2 **L2 特例通道语义分层**（cc 支进 GetFilter 读可见集=全路径自动生效、**不进 Authorize 操作授权**——抄送人能看不能改；Registry 登记+BK-21 同批哨兵）/A.3 三表族 DDL 全文（ticket_cc 带 role 预留防 participants 双表/tags 共享+UNIQUE 幂等/status_changed_at+部分索引+**存量回填近似性警示**——首跑观察模式或重置二选一）/A.4 角标 sections 开放 map 契约/A.5 超时扫描器（**复用 S6 规则面**：扫描器只发 ticket.timeout DomainEvent、S6 message_rules 路由通知零新通知代码；message_log 查重防重发）+ cron 可观测面（Status()+只读端点+cron.failed 事件告警）/A.6 导出（流式 StreamWriter+行数钳制+**与 List 同 filter 函数同源断言**+导出自审计）/A.7 验收补充（cc 四向/超时链路/cron 观测/导出四向/tags 三向负向） |
 | 2026-10-16 | **全计划业界对标批（所有者）**：§3.2 补姊妹挂账 **@提及**（触发驱动——Jira/GitHub/Slack 协作标配：解析→通知+可见性[随拍板点 1 口径]，量级 1–2 天） |
+| 2026-10-16 | **badge 注册制批（实施线详设+A.1 补注）**：badge_service 计算器注册制（各域注册 section 计算函数，handler 只编排——防 phase6 往 ticket 域塞 risk 计数）+ 定位注（跨域枢纽宿主 ticket 域可接受，phase6 注册时再议升位）——外审评审确认设计方向 ✅ |
