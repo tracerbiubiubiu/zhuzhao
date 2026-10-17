@@ -114,7 +114,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 | 1 | 头像下载形态 | ✅ **已拍（2026-10-15）**：后端代理端点——「授权后短 TTL 预签发+302」升级路径已评估：handler 投递段留策略缝，切换 ≤0.5 天（路由/鉴权/L2/审计全复用，§4） |
 | 2 | 附件下载形态 | ✅ **已拍（2026-10-15，与 #1 联拍）**：统一后端代理——预签名形态弃用（L2 绕过+无审计），302 同 #1 升级路径 |
 | 3 | 附件权限码 | ✅ **已拍（2026-10-15）**：复用 `ticket:update` 零新码——所有者「先不需要单独权限」 |
-| 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；md-editor-rt / bytemd / milkdown 择一（W0 spike 定） |
+| 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；**库 ✅ md-editor-rt 拍定（2026-10-17 所有者「按建议」）**——原 W0 择库 spike 销账，B5-4 首日 spike 保留=粘贴直传扩展验证（bytemd/milkdown 对照留存备翻——RK-P5-5） |
 | 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone mirror` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
 | 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；业界对表补 presigned POST policy 强制点（实现形态随批拍，见 §3 业界对表注） |
 | 7 | 限制值配置化开放 | ✅ **已拍（2026-10-15）：归属 S5 段内做**（底座批后随行/段尾，**可切出**——排期吃紧先静态 config 形态交付零返工，配置化切独立小批）；形态 = 开放·分层（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI）+ 硬底线不可配 + 按 key 编辑层级（存储限制类 superadmin-only）+ 变更审计/钳制——详录 §3 |
@@ -272,12 +272,12 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 src/api/storage.ts                    # presignUpload/confirm/listAttachments/deleteFiles/settings KV
 src/components/Upload/FileUploader.vue    # ①②③ 链路封装（进度/重试/类型前端预检——仅 UX，服务端为 SSOT）
 src/components/Upload/AvatarUploader.vue  # 头像专用（purpose=avatar，即时预览——本地 Blob URL，非服务端回读）
-src/components/MdEditor/index.vue         # md-editor-rt 🔶 封装：onUploadImg 桥接 presign 通道；禁 base64 内联（编辑器配置）；本地草稿自动保存（onChange 防抖 → localStorage + 恢复提示，§6）
+src/components/MdEditor/index.vue         # md-editor-rt 封装（✅ 2026-10-17 拍定）：onUploadImg 桥接 presign 通道；禁 base64 内联（编辑器配置）；本地草稿自动保存（onChange 防抖 → localStorage + 恢复提示，§6）
 views/ticket/detail/ 附件列表区块          # 下载走 /files/ 稳定 URL；删除二次确认
 ```
 
 - 上传组件**不做**：分片/断点续传（>100MB 不做，§9）、图片裁剪（登记触发驱动）、拖拽多文件（单次批量 ≤5 由服务端钳）。
-- MD 编辑器择库 spike（W0/B5-4 前置）判据不变：粘贴直传扩展对接 A.5 链路的改造量。
+- MD 编辑器 B5-4 首日 spike 判据收窄（择库已拍 2026-10-17）：验证点=粘贴直传扩展对接 A.5 链路的改造量（RK-P5-5 封装隔离兜底不变）。
 
 ### A.7 权限矩阵
 
@@ -353,3 +353,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-16 | **全计划业界对标批（所有者）**：§4 补**图片处理随行件**（业界照片上传标配两缺口：缩略图——列表页全原图流量浪费/EXIF 剥离——GPS 隐私泄露面；confirm 时处理，随 B5-2，+0.5–1 天） |
 | 2026-10-16 | **评审批深审两项（所有者「落」并批）**：①A.4 #5 代理下载补 **ETag 透传+If-None-Match**（richtext 多图回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 顺手预留）（深审项 B，≈0.25 天随 B5-2/3）；②§7 恢复演练补 **DB↔对象联合场景**（旧库+新桶引用悬空负向演示）（深审项 E） |
 | 2026-10-16 | **条件请求验收断言批（一致性尾巴修复）**：§11 补 If-None-Match → 304 且审计行不新增负向（对齐 A.4 #5 审计仅 200 落行；Range 透传可用不承诺） |
+| 2026-10-17 | **MD 库拍定批（所有者「md库先按你的建议来」）**：拍板点 4 库=**md-editor-rt ✅**（原择库 spike 销账；B5-4 首日 spike 收窄为粘贴直传扩展验证）；A.6 MdEditor 封装/判据行两处同步——台账 🔶 清零 |
