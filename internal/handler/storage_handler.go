@@ -1,10 +1,17 @@
 package handler
 
 import (
+	"errors"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 )
 
@@ -70,4 +77,57 @@ func (h *StorageHandler) Confirm(c *gin.Context) {
 		return
 	}
 	response.OK(c, f)
+}
+
+// normalizeETag 归一化客户端 If-None-Match（剥 W/ 前缀与引号——与库内快照裸值比对）。
+func normalizeETag(v string) string {
+	v = strings.TrimSpace(v)
+	v = strings.TrimPrefix(v, "W/")
+	return strings.Trim(v, `"`)
+}
+
+// ProxyDownload godoc
+//
+//	@Summary		文件代理下载（稳定 URL——头像等对象经应用投递）
+//	@Description	定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即 404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3
+//	@Tags			storage
+//	@Produce		octet-stream
+//	@Param			key	path string true "对象键（{domain}/{yyyy}/{mm}/{uuid}.{ext}）"
+//	@Success		200	{file}	file "对象流（ETag/nosniff/private/分型 disposition）"
+//	@Failure		304	"命中 If-None-Match（零传输零审计行）"
+//	@Failure		404	{object} response.Response "91003（含 pending/非支持面/替换嫌疑同形）"
+//	@Router			/api/v1/files/{key} [get]
+func (h *StorageHandler) ProxyDownload(c *gin.Context) {
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	if key == "" || strings.Contains(key, "..") {
+		writeServiceError(c, errcode.ErrFileNotFound)
+		return
+	}
+	dl, err := h.svc.Download(c.Request.Context(), key, normalizeETag(c.GetHeader("If-None-Match")))
+	if errors.Is(err, storageservice.ErrNotModified) {
+		c.Status(http.StatusNotModified)
+		return
+	}
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	defer dl.Body.Close()
+	f := dl.File
+
+	disposition := "attachment"
+	if h.svc.InlineDisposition(f.MIMEType) {
+		disposition = "inline"
+	}
+	c.Header("Content-Type", f.MIMEType)
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Cache-Control", "private")
+	if f.ETag != nil {
+		c.Header("ETag", `"`+*f.ETag+`"`)
+	}
+	c.Header("Content-Disposition", disposition+"; filename*=UTF-8''"+url.PathEscape(f.FileName))
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, dl.Body)
+	// 审计（A.4 #5 收窄）：avatar 免审计；ticket_attachment/ticket_richtext
+	// 的 handler 级审计行（谁/何时/key/结果，仅 200）随 B5-3 接入
 }

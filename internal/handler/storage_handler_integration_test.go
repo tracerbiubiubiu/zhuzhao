@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +30,8 @@ import (
 )
 
 type hStubClient struct {
-	stat *pkgstorage.ObjectInfo
+	stat    *pkgstorage.ObjectInfo
+	getBody []byte
 }
 
 func (s *hStubClient) PresignPut(_ context.Context, key, contentType string, ttl time.Duration) (*pkgstorage.PresignedPut, error) {
@@ -43,6 +45,13 @@ func (s *hStubClient) PresignGet(_ context.Context, key string, _ time.Duration)
 }
 func (s *hStubClient) StatObject(_ context.Context, _ string) (*pkgstorage.ObjectInfo, error) {
 	return s.stat, nil
+}
+
+func (s *hStubClient) GetObject(_ context.Context, _ string, matchETag string) (io.ReadCloser, *pkgstorage.ObjectInfo, error) {
+	if matchETag != "" && matchETag != s.stat.ETag {
+		return nil, nil, pkgstorage.ErrObjectReplaced
+	}
+	return io.NopCloser(bytes.NewReader(s.getBody)), s.stat, nil
 }
 func (s *hStubClient) RemoveObject(_ context.Context, _ string) error { return nil }
 
@@ -65,7 +74,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	}
 	cfg.ApplyDefaults()
 	svc := storageservice.NewService(repository.NewStorageRepo(testPool),
-		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 100, ETag: "e", ContentType: "image/png"}},
+		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 21, ETag: "etag-h", ContentType: "image/png"}, getBody: []byte("avatar-proxy-bytes")},
 		cfg, slog.Default())
 	h := handler.NewStorageHandler(svc)
 
@@ -79,6 +88,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	})
 	g.POST("/storage/presign/upload", h.PresignUpload)
 	g.POST("/tickets/attachments/confirm", h.Confirm)
+	g.GET("/files/*key", h.ProxyDownload)
 	return r, uid
 }
 
@@ -176,5 +186,57 @@ func TestStorageHandler_Contract(t *testing.T) {
 		w3, env3 := post(t, r, "/api/v1/tickets/attachments/confirm", map[string]any{"object_key": pre.ObjectKey})
 		assert.Equal(t, http.StatusConflict, w3.Code)
 		assert.Equal(t, errcode.ErrFileAlreadyBound.Code, env3.Code)
+	})
+
+	t.Run("代理下载——响应头契约（A.4 #5）", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		_, env := post(t, r2, "/api/v1/storage/presign/upload", validUpload)
+		require.Equal(t, 0, env.Code)
+		var pre struct {
+			ObjectKey string `json:"object_key"`
+		}
+		require.NoError(t, json.Unmarshal(env.Data, &pre))
+		_, env2 := post(t, r2, "/api/v1/tickets/attachments/confirm", map[string]any{"object_key": pre.ObjectKey})
+		require.Equal(t, 0, env2.Code)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/files/"+pre.ObjectKey, nil)
+		req.Header.Set("Authorization", "Bearer x") // 组中间件已注入 userID——header 值仅占位
+		w := httptest.NewRecorder()
+		r2.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "avatar-proxy-bytes", w.Body.String())
+		assert.Equal(t, "image/png", w.Header().Get("Content-Type"))
+		assert.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
+		assert.Equal(t, "private", w.Header().Get("Cache-Control"))
+		assert.Equal(t, `"etag-h"`, w.Header().Get("ETag"))
+		assert.Contains(t, w.Header().Get("Content-Disposition"), "inline")
+		assert.Contains(t, w.Header().Get("Content-Disposition"), "filename*=UTF-8''")
+	})
+
+	t.Run("代理下载——If-None-Match 304（零审计行）", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		_, env := post(t, r2, "/api/v1/storage/presign/upload", validUpload)
+		require.Equal(t, 0, env.Code)
+		var pre struct {
+			ObjectKey string `json:"object_key"`
+		}
+		require.NoError(t, json.Unmarshal(env.Data, &pre))
+		_, err2 := post(t, r2, "/api/v1/tickets/attachments/confirm", map[string]any{"object_key": pre.ObjectKey})
+		require.Equal(t, 0, err2.Code)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/files/"+pre.ObjectKey, nil)
+		req.Header.Set("If-None-Match", `"etag-h"`)
+		w := httptest.NewRecorder()
+		r2.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusNotModified, w.Code)
+		assert.Empty(t, w.Body.String())
+	})
+
+	t.Run("代理下载——未知键 404", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/files/avatars/2026/10/nope.png", nil)
+		w := httptest.NewRecorder()
+		r2.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }

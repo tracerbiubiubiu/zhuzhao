@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -105,4 +106,34 @@ func (m *MinioClient) RemoveObject(ctx context.Context, key string) error {
 		return fmt.Errorf("storage: remove object: %w", err)
 	}
 	return nil
+}
+
+// GetObject 读取对象流（代理投递段）。matchETag 非空时 SetMatchETag 条件读——
+// 对象被重放替换（etag 漂移）时存储侧 412 → ErrObjectReplaced（拍板 1b 防重放）。
+func (m *MinioClient) GetObject(ctx context.Context, key, matchETag string) (io.ReadCloser, *ObjectInfo, error) {
+	opts := minio.GetObjectOptions{}
+	if matchETag != "" {
+		if err := opts.SetMatchETag(matchETag); err != nil {
+			return nil, nil, fmt.Errorf("storage: set match etag: %w", err)
+		}
+	}
+	obj, err := m.cli.GetObject(ctx, m.bucket, key, opts)
+	if err != nil {
+		if minio.ToErrorResponse(err).Code == "PreconditionFailed" {
+			return nil, nil, ErrObjectReplaced
+		}
+		return nil, nil, fmt.Errorf("storage: get object: %w", err)
+	}
+	st, err := obj.Stat()
+	if err != nil {
+		_ = obj.Close()
+		if minio.ToErrorResponse(err).Code == "PreconditionFailed" {
+			return nil, nil, ErrObjectReplaced
+		}
+		if minio.ToErrorResponse(err).Code == "NoSuchKey" {
+			return nil, nil, ErrObjectNotFound
+		}
+		return nil, nil, fmt.Errorf("storage: stat object: %w", err)
+	}
+	return obj, &ObjectInfo{Key: key, Size: st.Size, ETag: strings.Trim(st.ETag, `"`), ContentType: st.ContentType}, nil
 }

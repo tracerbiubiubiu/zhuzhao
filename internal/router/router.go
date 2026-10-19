@@ -213,6 +213,18 @@ func New(deps Deps) *gin.Engine {
 				}
 			}
 
+			// phase5 S5 文件代理（A.4 #5）：JWT+限流独立链——不挂通用审计中间件
+			//（A.4 #5 收窄：avatar 免审计、ticket 态 handler 级行随 B5-3、304 不落行）；
+			// A.11 cookie 旁路凭证随 B5-2-2 演进本组认证（header 优先→cookie 回退）
+			files := v1.Group("/files")
+			files.Use(
+				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+			)
+			{
+				files.GET("/*key", deps.StorageHandler.ProxyDownload)
+			}
+
 			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
 			// L1 仅要求认证（SelfService 标记跳过 Casbin enforce——owner/admin 不是
 			// Casbin 角色，纯菜单 L1 会把无全局菜单的委托者挡在 L3 之前）；

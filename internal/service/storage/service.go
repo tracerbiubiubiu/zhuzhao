@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"time"
@@ -170,6 +171,68 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 	f.ETag = &etag
 	f.ConfirmedAt = &now
 	return f, nil
+}
+
+// ErrNotModified 客户端 If-None-Match 命中库内 etag 快照——代理侧直接 304
+// （不触存储、不落审计行——A.4 #5 审计仅 200 全量投递落行）。
+var ErrNotModified = errors.New("storage: not modified")
+
+// Download 代理下载投递（body 流 + 元数据；handler 负责响应头与审计收窄）。
+type Download struct {
+	Body io.ReadCloser
+	File *model.FileObject
+}
+
+// Download 代理下载（A.4 #5）：定位元数据 → 状态/purpose 面校验 →
+// If-None-Match 命中快照则 304 哨兵 → GetObject 条件读（库内 etag 作
+// If-Match——对象被重放替换即 ErrObjectReplaced，拍板 1b 防御默认开）。
+// B5-2 支持面=avatar（登录态可见，A.7）；ticket 态 L2 管线随 B5-3 扩。
+func (s *Service) Download(ctx context.Context, key, ifNoneMatch string) (*Download, error) {
+	if s.client == nil {
+		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
+	f, err := s.repo.GetByObjectKey(ctx, s.bucket, key)
+	if err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return nil, errcode.ErrFileNotFound
+		}
+		s.logger.Error("storage get by key", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	// 同形 404：pending（未确认）/ deleted / 非 B5-2 支持面——不泄露状态差异
+	if f.Status != model.FileStatusConfirmed || f.Purpose != "avatar" {
+		return nil, errcode.ErrFileNotFound
+	}
+	if ifNoneMatch != "" && f.ETag != nil && ifNoneMatch == *f.ETag {
+		return nil, ErrNotModified
+	}
+	var matchETag string
+	if f.ETag != nil {
+		matchETag = *f.ETag
+	}
+	body, _, err := s.client.GetObject(ctx, key, matchETag)
+	if err != nil {
+		if errors.Is(err, pkgstorage.ErrObjectReplaced) {
+			s.logger.Error("storage object replaced after confirm（重放替换嫌疑）", "key", key)
+			return nil, errcode.ErrFileNotFound
+		}
+		if errors.Is(err, pkgstorage.ErrObjectNotFound) {
+			return nil, errcode.ErrFileNotFound
+		}
+		s.logger.Error("storage get object", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	return &Download{Body: body, File: f}, nil
+}
+
+// InlineDisposition 代理下载 Content-Disposition 分型（inline 前缀表判定）。
+func (s *Service) InlineDisposition(mime string) bool {
+	for _, p := range s.cfg.InlineMIMEPrefixes {
+		if strings.HasPrefix(strings.ToLower(mime), p) {
+			return true
+		}
+	}
+	return false
 }
 
 // MIMEAllowed 白名单显式枚举（支持尾部 `.*` 通配）∧ 不在黑名单。

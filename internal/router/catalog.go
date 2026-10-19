@@ -46,6 +46,7 @@ var catalogExempt = map[string]bool{
 	// phase5 S5 B5-1：对象存储登录态自服务面（A.7——avatar/*_create purpose；
 	// ticket_attachment/richtext 态的 ticket:update+L2 分流随 B5-3 扩后移出豁免）
 	"POST /api/v1/storage/presign/upload":      true,
+	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 L2 随 B5-3）
 	"POST /api/v1/tickets/attachments/confirm": true,
 	"POST /api/v1/user/pats":                   true,
 	"POST /api/v1/user/pats/delete":            true,
