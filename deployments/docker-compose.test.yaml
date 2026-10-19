@@ -56,6 +56,26 @@ services:
     networks:
       - zhuzhao_test
 
+  # phase5 S5 对象存储（B5-1 批4 骨架——presign E2E 随消费者批接入时启用；
+  # profile=storage 隔离：默认不起、test 栈现行为零变化。版本钉死与 CORS env
+  # 对齐 deployments/docker-compose.yaml 主栈草案，判据①⑤实测形态）
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    container_name: zt-rustfs
+    restart: unless-stopped
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      RUSTFS_ROOT_USER: zhuzhao_rustfs
+      RUSTFS_ROOT_PASSWORD: zhuzhao_rustfs_dev
+      # S3 口 CORS（spike 判据①实测必设——不设存在反射式 CORS 风险 GHSA-x5xv-223c-8vm7；
+      # ui 测试栈源为 5174 端口[zhuzhao-ui-test vite preview]）
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:5174
+    volumes:
+      - zt_rustfs_data:/data
+    networks:
+      - zhuzhao_test
+
   migrate:
     image: migrate/migrate:v4.17.0
     profiles: ["migrate"]
@@ -225,3 +245,4 @@ volumes:
   zt_pgdata:
   zt_al_pgdata:
   zt_tr_pgdata:
+  zt_rustfs_data:

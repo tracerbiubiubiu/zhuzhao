@@ -118,3 +118,24 @@ rate_limit:
     burst: 40
   # routes 按需启用更严规则（示例）：
   #   /api/v1/auth/login: { rps: 3, burst: 5 }
+
+# phase5 S5 对象存储（05 号 A.2 出厂默认；enabled=false 骨架先行零现栈影响——
+# B5-1 消费者接入时翻 true。凭据与 compose rustfs 服务默认值同源；env 覆盖走
+# STORAGE_ENDPOINT/STORAGE_ACCESS_KEY/STORAGE_SECRET_KEY；release 模式拒绝仓库公开 SK）
+storage:
+  enabled: false
+  endpoint: http://localhost:9000   # 容器态改 http://rustfs:9000（compose 服务名）
+  region: us-east-1
+  bucket: zhuzhao
+  access_key: "zhuzhao_rustfs"
+  secret_key: "zhuzhao_rustfs_dev"
+  use_ssl: false
+  presign_upload_ttl: 15m
+  max_upload_bytes: 10485760        # 10MB 全局（KV 可覆盖，天花板 100MB 代码钳制）
+  max_attachments_per_ticket: 20
+  max_presign_batch: 20
+  allowed_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf,
+    text/plain, application/zip, application/msword, application/vnd.openxmlformats-officedocument.*]
+  blocked_mime_types: [text/html, image/svg+xml]   # 硬底线：KV 不可白名单化
+  inline_mime_prefixes: [image/]    # 代理下载 Content-Disposition 分型
+  orphan_gc_days: 7

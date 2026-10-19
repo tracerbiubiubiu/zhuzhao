@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 )
 
 // Config 全局配置
@@ -33,6 +35,10 @@ type Config struct {
 	// P4-7 登录验证码（顶层平面键；enabled=false dev/E2E 默认——登录契约零变化）
 	CaptchaEnabled bool   `mapstructure:"captcha_enabled"`
 	CaptchaTTL     string `mapstructure:"captcha_ttl"`
+
+	// phase5 S5 对象存储（05 号 A.2；enabled=false 默认零现栈影响——批4 骨架先行，
+	// 消费者随 B5-1 后续批接入）
+	Storage storage.StorageConfig `mapstructure:"storage"`
 }
 
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
@@ -285,6 +291,11 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("captcha_enabled", false)
 	viper.BindEnv("captcha_ttl", "APP_CAPTCHA_TTL")
 	viper.SetDefault("captcha_ttl", "5m")
+	// phase5 S5 对象存储（05 号 A.2——env 名对齐部署侧 STORAGE_*；slice 项走 config.yaml）
+	viper.BindEnv("storage.enabled", "STORAGE_ENABLED")
+	viper.BindEnv("storage.endpoint", "STORAGE_ENDPOINT")
+	viper.BindEnv("storage.access_key", "STORAGE_ACCESS_KEY")
+	viper.BindEnv("storage.secret_key", "STORAGE_SECRET_KEY")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -304,6 +315,7 @@ func Load(path string) (*Config, error) {
 
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
+	cfg.Storage.ApplyDefaults()
 
 	if cfg.Audit.Archive.RetentionDays <= 0 {
 		cfg.Audit.Archive.RetentionDays = 180

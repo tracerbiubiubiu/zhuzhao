@@ -104,6 +104,14 @@ func (c *Config) Validate() error {
 		if c.InternalJobs.Enabled && isRepoKnownSK(c.InternalJobs.SK) {
 			return fmt.Errorf("internal_jobs.taskrunner_sk must be overridden via INTERNAL_JOBS_SK in release mode (repo-known value rejected)")
 		}
+		// phase5 S5 对象存储（05 号 A.2；debug 放行 compose 同源默认，release 拒仓库公开值）
+		if c.Storage.Enabled && c.Storage.SecretKey == "zhuzhao_rustfs_dev" {
+			return fmt.Errorf("storage.secret_key must be overridden via STORAGE_SECRET_KEY in release mode (repo-known value rejected)")
+		}
+	}
+	// phase5 S5 对象存储：disabled 直过，启用态逐项 fail-fast（storage 包内）
+	if err := c.Storage.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
