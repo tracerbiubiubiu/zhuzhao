@@ -174,6 +174,8 @@ type TransitionAction interface {
 
 **拆分触发信号（出现任一即重评，形态届时定）**：①第二消费方出现（独立工单门户/其他产品线复用引擎）；②部署独立性需求（工单流量需独立扩缩容）；③团队拆分（多人分域维护）。**phase5 能做的准备**：附录 A.1 落点已把引擎件聚类（cc/tag/badge/timeout_scanner/export+引擎本体），保持聚类纪律+域间只经 DomainEvent/service 接口通信（不经表直查）即=「画边界」完成。
 
+**耦合面定性补充（2026-10-19 追问"是否需重构主仓"——三条本质一条已决，不建议为拆库重构）**：① AssertTransition×策略库 = **本质耦合**（「权限判定在数据处」架构定律——Jira workflow condition 同样长在平台权限体系；B3-1 落策略库加深耦合是正确方向）；② DomainEvent 订阅者全在主仓 = 拆库后正确形态非障碍（内核发事件/业务消费——零重构）；③ assignment_rules 引用 orgs/users 表 = 领域数据引用（单体正常形态，拆时改 ID 引用+解析——现在改 = YAGNI）；④ 动作库 = 框架/实现已在 B3-3 分离 ✅。**一条画边界补强（随 B3-1 顺手做，不单独立项）**：① **engine 子包化**——`internal/service/ticket/engine/` 收拢状态机推进+转换校验+扫描器（纯包内整理不改行为）；② **架构依赖规则工具化**——depguard/go-arch-lint 类把「engine 不 import 业务外依赖/域间禁表直查经接口」变成 CI 强制（modular monolith 标准实践——Spring Modulith 的 Go 等价物，成本半天），**边界从纪律变编译器管**。**反面清单（不做）**：不为拆库重写存储抽象（YAGNI）/不做引擎通用化（16 号红线）/S3a·S3b·SLA 三波演进期不做包大重组（跨波重组=同步灾难）。
+
 ### A.5 验收补充（在 §8 基础上）
 
 - Jira 四段：condition 不满足 → available 端点不含该转换 + AssertTransition 拒（双重）；validator 表达式 false → 400 带字段名；post-action 失败 → 转换成功+补偿事件（不回滚断言）；
