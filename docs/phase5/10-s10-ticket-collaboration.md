@@ -122,6 +122,8 @@ internal/service/ticket/
                                    #   ticket 域塞 risk 计数（域边界，对齐 DomainEvent 注册哲学）——定位注（2026-10-16 外审）：badge 实为跨域聚合枢纽却宿主 ticket 域，
                                    #   可接受（import 方向 risk→ticket 消费方引宿主）；phase6 注册时再议升位
   timeout_scanner.go               # 节点超时扫描（B10-4）：骑 CronScheduler，发 DomainEvent
+                                   #   ⚠ 落点迁移注（2026-10-19）：随 03 号附录 A.6 engine 子包化，
+                                   #   B10-4 实施时收拢至 internal/service/ticket/engine/
 internal/repository/
   ticket_cc_repo.go / tag_repo.go  # 两新表族 CRUD
   ticket_repo.go                   # 扩展：status_changed_at 写入点与超时候选查询

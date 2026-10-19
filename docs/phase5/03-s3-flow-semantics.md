@@ -37,7 +37,7 @@
 ### 3.3 动作库框架（Post-function 形态）
 
 - **流转时自动动作**（2026-10-08 所有者场景）："按字段判断分支后取数回写"若发生在流转时（进入某状态触发），落点 = **转换后动作**——实现形态 = 节点/转换 meta + 显式钩子（**已拍命名 `DomainHook`**——拍板点 S6#4，2026-10-16，原 TicketHooks 称谓废止；phase3/10 §4.2 既定，编译期检查）；**引擎不内置功能节点类型**（节点类型膨胀 = easy-workflow 反面；功能外挂与 Jira post-functions 同构）。
-- **动作库类型（2026-10-09 登记）**：取数回写 / 消息通知（S6）/ 抄送（S10）/ **提交任务**（工单到达某节点或审批通过后自动起 taskrunner 任务——走既有 Submit 通道，理想态登记）。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
+- **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **提交任务**（走既有 Submit 通道，理想态登记）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
 - 提交时机的同款诉求归 S1 字段联动，勿混入流程层（执行时机三分界）。
 
 ## 4. S3b：审批流引擎（等首个真实审批场景）
@@ -112,7 +112,7 @@ ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transitions_meta JSONB DEFAULT
 ```
 
 - **可用转换查询**：`GET /tickets/:id/transitions/available`（Jira condition 语义=按当前用户过滤——前端按钮渲染依据；服务端 AssertTransition 仍为 fail-closed 兜底，前端过滤仅 UX）；
-- **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。
+- **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。**字段引用约定（2026-10-19 外审补 P2-5）**：内置字段=标识符直引（priority == 'P1'）；**动态字段=map 索引形式 custom_data["字段名"]**（expr 支持字符串索引——中文/含点 key 不作标识符，规避解析失败与内建冲突）；与 S6 变量字典 slug 约定的统一对表随 B3-1（两处引用同一字段语义须一致）。
 
 ### A.2 自动分派：assignment_rules DDL（五决议既定 §3.2）
 
@@ -131,6 +131,8 @@ CREATE TABLE assignment_rules (
 CREATE INDEX idx_assignment_rules_type ON assignment_rules (type_code, priority);
 -- OnAfterCreate Hook：按 priority 遍历→首个命中执行分派（走 Assign 不绕鉴权）；
 -- 无命中保持 open+dispatch_missed 事件（决议④）；失败不回滚创建（决议⑤）
+-- 管理面（2026-10-19 外审 P3-9 补）：规则 CRUD 管理端点+页面归 B3-2（类型管理页族扩展；
+--   权限沿用类型管理权限——零新码），随 B3-2 验收「规则配置→命中→自动分派」全链
 ```
 
 ### A.3 动作库框架（Post-function 形态）
@@ -141,8 +143,10 @@ type TransitionAction interface {
     Execute(ctx context.Context, ev domainevent.DomainEvent, t *model.Ticket) error
 }
 // internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go（首批三动作）
-// 注册：app.go 装配 actionRegistry.Register("notify", NewNotifyAction(...))——重复名 panic
-// 失败语义：不回滚转换（Hook 捕获+事件+异步补偿——分派决议⑤同款）
+// 注册：app.go 装配 actionRegistry.Register(name, NewXxxAction(...))——重复名 panic
+// 失败语义：不回滚转换（Hook 捕获 + Dispatch DomainEvent{BizType:"ops", Action:"ops.action_failed"}
+//   [payload=动作名/工单/错误——消费方=ops 告警规则(S6 规则面配置)] + 异步补偿队列——分派决议⑤同款）
+//   补偿事件命名定案（2026-10-19 外审 P2-6：原三缺[名/消费方/内容]补齐）
 ```
 
 ### A.4 easy-workflow 对照开发法（所有者提议"参考修改补强"的操作化——不 fork 不 import）
@@ -179,9 +183,10 @@ type TransitionAction interface {
 ### A.5 验收补充（在 §8 基础上）
 
 - Jira 四段：condition 不满足 → available 端点不含该转换 + AssertTransition 拒（双重）；validator 表达式 false → 400 带字段名；post-action 失败 → 转换成功+补偿事件（不回滚断言）；
-- meta 往返：画布（S2）配置 meta → 保存 → 回显一致；无 meta 存量类型零行为变化（零破坏断言）；
+- meta 往返：**B3-1 配置面**（类型管理页扩展——S2 画布范围不含 meta 编辑，见 A.7 界注）配置 meta → 保存 → 回显一致；无 meta 存量类型零行为变化（零破坏断言）；
 - 分派：规则命中自动分派（决议①–⑤逐条）；keyword 注入负向（LIKE 通配符转义）；
 - 求值器沙箱负向（与 01 号 A.6 同款）。
+- 界注（2026-10-19 外审 P1-2）：**meta 编辑面归本段 B3-1**（类型管理页扩展+配套端点）——S2 画布范围=states/transitions 邻接表+后端零改动（02 号 §3 结构性不覆盖 transitions_meta 独立列）；transitions JSONB 内的 timeout_minutes 既有 meta 可由 S2 画布 v1 承载或 JSON 专家模式编辑（02 号未列，随 B2-2 范围确认）。
 ---
 
 ## 附录：工单引擎演进路线（跨段视图，2026-10-16 所有者提议立项——以业界引擎为参照系的统一演进计划）
@@ -224,7 +229,9 @@ type TransitionAction interface {
 | **升级/转派**（状态变更写操作） | **S3a 动作库**（DomainHook 转换后同步动作，事务内） | **同步强一致**——挂 at-most-once 钩子会丢+重复消费=重复转派；可靠性升级路径=transactional outbox（1–2 天 DomainHook 零改，§5.10 既评） |
 | 计划任务（超时扫描） | 事件**生产者**（扫描器=把时间条件转换为事件的适配器） | 扫描幂等+事件查重 |
 
-**防蔓延边界两条**：①动作实现分层——**代码注册为主（DomainHook 编译期）、配置规则限于通知/收件人**（不做全可配 Automation 引擎：规则冲突/顺序/循环治理成本）；②**循环触发防护**注记（事件→动作→状态变更→事件需链深限制，B6-1/B10-4 实施落）。
+**⚠ 升级链通道裁定（2026-10-19 外审发现自相矛盾，修法拍定）**：升级转派是写操作需强一致，但"超时 DomainEvent → 转派" rides at-most-once 派发=事件丢失即转派静默丢失——**违反自家分层**。修法：**转派由超时扫描器事务内直调**（扫描批事务=强一致通道；扫描幂等/查重已有），DomainEvent 仅作通知面；outbox（1–2 天）登记为扫描器形态不可行时的备选。**同根裁定（外审 P2-4）**：TransitionAction 框架补**两种触发形态**——①转换后形态（post-function，事务=转换事务）②事件订阅形态（超时/升级链等无转换上下文，事务=触发方扫描批事务）——两形态同一接口、事务边界随触发方，B3-3 框架按双形态设计。
+
+**防蔓延边界两条**：①动作实现分层——**代码注册为主（DomainHook 编译期）、配置规则限于通知/收件人**（不做全可配 Automation 引擎：规则冲突/顺序/循环治理成本）；②**循环触发防护**注记（事件→动作→状态变更→事件需链深限制——**落点=B6-1/B10-4/B3-3 三处**[2026-10-19 外审补：动作库是升格后最大新事件面，post_actions 链深限制随 B3-3 框架落]）。
 
 ### phase6 前核心引擎目标态（2026-10-19 gap 分析——所有者问"phase6 前能否做到规范完整的核心引擎"）
 
@@ -260,3 +267,4 @@ type TransitionAction interface {
 | 2026-10-19 | **S3a 升格排期批（所有者拍「升」）**：头注段属性（条件段→排期段 W13–15、纳入 phase5 收官；S3b 维持触发驱动）/§1 溯源修正联动/§3 头注时点决策更新（触发信号不再等待——A+C 方案被升格决策取代，绕行禁令 W13 前仍有效）/附录演进路线矩阵与触发总表与 gap 表三处 S3a 状态翻 ✅已排期 |
 | 2026-10-19 | **S3a 附录 A 详细技术设计批（升格排期后按排期段标准补齐——05 号样板深度）**：A.1 **Jira transition 四段对表**（condition=转换级权限/validator=前置条件/post-function=动作库——20 年业界解剖照表设计不漏项）+ transitions_meta 独立列（对齐 01 号 A.2 方案 b）+ available 端点（前端过滤 UX+服务端兜底双重）/A.2 assignment_rules DDL（五决议既定）/A.3 动作库框架（TransitionAction 编译期注册+失败不回滚）/A.4 **easy-workflow 对照开发法**（所有者提议"参考修改补强"的操作化——fork 改造≈2–3 周四层重写>对照自研 2 周，参考实现=免费错题本）/A.5 验收补充 |
 | 2026-10-19 | **引擎独立性评估批（所有者问"工单引擎是否拆独立仓库"）**：附录 A.6 新增——**现在不拆**（判据=跨仓消费方≥2，项目第三次同判据同答案：FormDesigner/utils/本次同构）；引擎耦合面四条（策略库/DomainEvent 订阅者/assignment_rules 表依赖/动作库业务语义——拆=连带重写）；演化期纪律（三波演进跨仓同步负收益，modular monolith 内部领域隔离=既定架构「画边界非拆」）；**拆分触发信号三条**（第二消费方/部署独立/团队拆分）+phase5 准备（引擎件聚类纪律+域间禁表直查） |
+| 2026-10-19 | **S3a 详设外审深修批（外审 P1×3+P2×4+P3×2 全修）**：**P1-1 升级链一致性自相矛盾修法拍定**=转派由超时扫描器事务内直调（扫描批事务=强一致通道）+DomainEvent 仅通知面+outbox 备选登记（事件驱动统一模型节裁定）；**P1-2 meta 配置面归 B3-1**（类型管理页扩展——02 号画布范围结构性不覆盖独立列+A.5 验收主语改 B3-1+A.5 加界注）；**P1-3 通知双通道分工**=流转通知收敛走 S6 规则面（notify 动作降无规则兜底——§3.3 修正）；P2-4 框架补两触发形态（转换后/事件订阅——事务边界随触发方）；P2-5 expr 字段引用约定（内置=标识符直引/动态=map 索引+与 S6 slug 统一随 B3-1）；P2-6 补偿事件定案（ops.action_failed+消费方 ops 告警规则+payload）；P2-7 循环防护落点补 B3-3；P3-9 assignment_rules 管理面归 B3-2；03 号 A.7 界注+变更记录批行 |
