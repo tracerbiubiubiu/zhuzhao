@@ -137,6 +137,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 - 补测：**代理下载鉴权负向**（无 L2 可见性用户拿不到对象——若拍代理形态）；存储型 XSS 负向（恶意 MD 内嵌 HTML/`<script>` 经**服务端渲染**被转义/白名单过滤，前端不自行渲染用户输入）；头像直传回显链路；**粘贴图片直传**（paste → 预签名 → 链接插入 → 回显不裂图）。
 - 条件请求负向（2026-10-16 评审批深审项 B）：同 key 带 If-None-Match 二次请求 → 304 且**审计行不新增**（审计仅 200 全量投递落行——A.4 #5）；Range 头透传可用不承诺（10MB 上限下低优）。
 - 回归：既有 URL 手填头像兼容读取（存量列不破坏）。
+- **B5-1 底座验收完成注（2026-10-19 批7 收口）**：S1/S4 底座面全过——真 RustFS E2E 四场景（testcontainers）+ 四档 phase1 S5 六断言 98/0 + 2a/b/c 全绿 + 迁移往返 45 对零漂移；S2（confirm 关联工单）/S6（头像链路）随 B5-2/B5-3、S3（无 ticket 权限 403）随 B5-3 L2 接线、S5（下载时效）随 B5-2 代理端点——底座期间 403 面由 purpose 白名单（拒 ticket 态）承载。
 
 ## 12. 文档衔接
 
@@ -368,3 +369,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-19 | **B5-1 spike 判据① CORS 预验批（当日顺手验——判据①销账）**：起 compose 草案容器实测——默认零 CORS 头（浏览器必拦）；`RUSTFS_CORS_ALLOWED_ORIGINS` 显式设置后预检完整放行（allow-methods 含 PUT/allow-headers \*/expose-headers 含 etag），白名单外零头拦截；MinIO 兼容变量无效；**安全公告 GHSA-x5xv-223c-8vm7（不设=反射式 CORS 风险）→ compose 草案 env 补默认值**；桶级 PutBucketCors 未支持（讨论 #736）→ 全局 env 形态；**直传方案无需重审**。健康三件复验（/health 200 + /minio/health/live 200 + 未签名 403） |
 | 2026-10-19 | **B5-1 spike 判据②③④预验批（minio-go v7.4.1 scratch 实测，B5-1 批2）**：②presign PUT 往返闭环（PUT 200 → StatObject[size+**etag=MD5 形态实得**——etag 列快照可行性再证]→presigned GET content-match）；③未签名 403（判据①批已证）；④Content-Type 钉入签名（`PresignHeader` extraHeaders 形态）——篡改 CT=text/html → **403 SignatureDoesNotMatch 存储侧拒**（限制矩阵「防谎报」锚点实证）；⑥桶复制 GetBucketReplication 读 API 通（err=nil 空配置）——**生效性深测随 B5-5**（rclone 起步形态维持）；**minio-go v7.4.1 兼容面全绿**（BucketExists/MakeBucket/PresignHeader/StatObject/PresignedGetObject——备选 aws-sdk-go-v2 维持挂账不启用） |
 | 2026-10-19 | **B5-1 spike 判据⑤预验批（批3）+ rclone 术语修正**：判据⑤ 主→备双实例（zhuzhao-rustfs→rustfs-backup，compose 内网服务名互访）`rclone sync` **全量+增量双实测通过**（首轮全量复制/次轮仅拷新对象 second.txt；rclone **v1.75.2** 实测——镜像 tag 随 B5-5 钉死）；**⚠ 术语修正：rclone 无 `mirror` 命令**（mc mirror 迁移笔误，正确命令=`sync` 单向含删除=镜像语义）——§7/A.8/拍板点 5/README/11 号正文与 compose 注释全量替换，2026-10-16 历史变更记录行留痕不改；判据⑥ GetBucketReplication 读 API 通（err=nil）维持「生效性深测随 B5-5」——**spike 六判据至此全部预验完毕，B5-1 首日 spike 提前完成** |
+| 2026-10-19 | **B5-1 底座收口批（批7）**：E2E 四场景（ec2051a）+ 四档接入（469f689）+ §11 验收完成注（S1/S4 底座面全过、S2/S3/S5/S6 各归后续批）——**B5-1 收口，B5-2 头像开工** |
