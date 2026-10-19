@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"time"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -69,4 +71,34 @@ func (r *StorageRepo) Confirm(ctx context.Context, id int64, sizeBytes int64, et
 		return ErrStorageAlreadyBound
 	}
 	return nil
+}
+
+// ListExpiredPending 孤儿 GC 候选（05 号 A.3 修正②——部分索引 idx_file_objects_gc 命中；
+// limit 单批有界，ReentrantJob 收敛语义：一轮清不完下轮续）。
+func (r *StorageRepo) ListExpiredPending(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects
+		WHERE bucket = $1 AND status = 'pending' AND created_at < $2
+		ORDER BY id LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// MarkDeleted GC 落标（条件更新 pending→deleted；0 行=已处理，幂等）。
+func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE file_objects SET status = 'deleted' WHERE id = $1 AND status = 'pending'`, id)
+	return err
 }
