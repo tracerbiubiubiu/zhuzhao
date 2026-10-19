@@ -259,6 +259,44 @@
                 }
             }
         },
+        "/api/v1/files/{key}": {
+            "get": {
+                "description": "定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即 404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "文件代理下载（稳定 URL——头像等对象经应用投递）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "对象键（{domain}/{yyyy}/{mm}/{uuid}.{ext}）",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "对象流（ETag/nosniff/private/分型 disposition）",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "命中 If-None-Match（零传输零审计行）"
+                    },
+                    "404": {
+                        "description": "91003（含 pending/非支持面/替换嫌疑同形）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/jobs": {
             "get": {
                 "security": [
