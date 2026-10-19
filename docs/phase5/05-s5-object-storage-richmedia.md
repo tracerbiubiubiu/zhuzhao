@@ -22,6 +22,7 @@
 
 - **S3 兼容客户端**：开发 **RustFS**（2026-10-16 拍定）/ 生产云 OSS 仅**配置切换**非代码分支；SDK 选型预置 **minio-go v7**（对任意 S3 兼容端点工作——对 RustFS 的兼容性随 B5-1 首日 spike 实测，备选 aws-sdk-go-v2）。**后端切换依据（2026-10-16 所有者）**：MinIO 官方已无开源镜像（八源拉取全败实证）且 AGPLv3；RustFS = Apache 2.0 + S3/MinIO 双兼容（**实测 2026-10-16**：`/minio/health/live` 200、`RUSTFS_ROOT_*` 兼容 `MINIO_ROOT_*`、未签名请求 403 fail-closed）。
 - **预签名上传/下载**：前端直传，后端不扛文件流；上传流程 = 预签名 → 前端直传对象存储 → `attachments/confirm` 写元数据（服务端验证对象存在与 size）。**协议口径注（2026-10-15 公约对表，standards §3-1）**：直传环节的上行（PUT）与服务端对象探测（HEAD）均为 **S3 兼容对象存储协议层动作**（RustFS/MinIO 同构）——第三方存储既有协议、不经平台 API 面，不在「方法仅 GET/POST」公约辖域；**平台自有 API 全部 GET/POST**（presign upload/download + attachments confirm/list/delete 五端点，10 号 §4 即此形态）。
+- **CORS（2026-10-19 B5-1 前置拍板批补——外审缺口）**：浏览器直传=跨源请求（ui origin ≠ RustFS 端口），预检 OPTIONS 必须存储端放行——**CORS 落点=RustFS 服务端配置（compose env/桶 CORS API），非应用 config 段**；**B5-1 首日 spike 第一优先判据**（curl 预检模拟即可验）；⚠ 若实测 RustFS 无 CORS 配置能力=直传方案重审（退路=平台代理扛流，违反「后端不扛流」基线——设计级风险，spike 首日必须回答）。
 - **配置面**（10 号 §2 样例为准）：`storage:` 段（endpoint/region/bucket/AK/SK/use_ssl/上下行 TTL/`max_upload_bytes: 10MB`/`allowed_mime_prefixes`）——endpoint/凭据 config 化禁硬编码（README §6 总纪律③）。
 - **对象 key 规范**：`{domain}/{yyyy}/{mm}/{uuid}.{ext}`；**禁止客户端自选路径**（随机 UUID 防穿越）。
 - **桶与 key 布局展开（2026-10-15 所有者问询，蓝本骨架细化；现成例子 = 10 号 §2 示例）**：
@@ -116,7 +117,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 | 3 | 附件权限码 | ✅ **已拍（2026-10-15）**：复用 `ticket:update` 零新码——所有者「先不需要单独权限」 |
 | 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；**库 ✅ md-editor-rt 拍定（2026-10-17 所有者「按建议」）**——原 W0 择库 spike 销账，B5-4 首日 spike 保留=粘贴直传扩展验证（bytemd/milkdown 对照留存备翻——RK-P5-5） |
 | 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone mirror` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
-| 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；业界对表补 presigned POST policy 强制点（实现形态随批拍，见 §3 业界对表注） |
+| 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；**presign 形态拍定 1b（2026-10-19 所有者「按建议」·B5-1 前置批）= PUT + Content-Type 钉签名 + confirm HEAD 实测 + etag 列快照比对**（A.3 修正③/A.4 #2/#5 三处级联）——POST policy 降增强登记（触发=滥用实测出现/spike 顺带验证成熟；论据：重放覆盖两形态皆存→etag 防御两形态皆需，POST 边际收益仅尺寸存储侧预拦，代价=端口层/A.5 链路/前端三处改+RustFS 兼容未验——PUT 为 S3 最核心操作） |
 | 7 | 限制值配置化开放 | ✅ **已拍（2026-10-15）：归属 S5 段内做**（底座批后随行/段尾，**可切出**——排期吃紧先静态 config 形态交付零返工，配置化切独立小批）；形态 = 开放·分层（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI）+ 硬底线不可配 + 按 key 编辑层级（存储限制类 superadmin-only）+ 变更审计/钳制——详录 §3 |
 | 8 | **img 认证最后一跳（2026-10-16 外审实锤缺口——已核代码）** | ✅ **已拍（2026-10-16）：Cookie 双凭证**——登录/刷新旁设 `HttpOnly; SameSite=Lax; Path=/api/v1/files` 短时效 cookie（TTL 对齐 access token），files 路由中间件 cookie 回退（header 优先）——`<img>` 原生可用、浏览器缓存/304 生效、前端零渲染改造、302 升级路径顺带解锁；与逐次审计兼容（cookie 映射用户）；tokenStorage 已预留「B7 cookie 会话演进」向。实施设计 = 附录 A.11（含验收负向三件）；业界锚点 = GitHub/GitLab 应用内 cookie 阵营（GitLab 文档原话：同源 `<img>` 自动带 session cookie 是应用内私有图片可渲染的原因）；Slack/Notion/Discord 签发时效链阵营的动机（跨服务嵌入/CDN 卸载/防公网滥用）内网语境均不存在。证据：`middleware/jwt.go` 仅读 Authorization header + ui token 在 localStorage——`<img src>` 裸请求必 401 |
 
@@ -173,6 +174,7 @@ deployments/compose.yaml           # rustfs + rustfs-backup（B5-5 第二实例�
 
 - **Wire 装配**：`storage.ProviderSet`（Client→Repo→Service→Handler），与既有 provider 分层惯例一致。
 - **端口方法面刻意收窄**（4 方法）：presign GET 仅 B5-5 备份与 302 升级用；业务链路不出现预签名下载（已拍代理）。
+- **落位钉死（2026-10-19 B5-1 前置批——两会话对表）**：端口=`internal/pkg/storage/`（taskrunner/webhook 基建先例；pkg 禁反向依赖业务层守护[TestArchitecture_PkgNoBusinessDependency，2026-10-19 在案]合规）；业务=repository/service/handler 各层照常——防两会话并行各写。
 
 ### A.2 config 完整结构（出厂默认；运行时覆盖见 A.7）
 
@@ -222,6 +224,10 @@ CREATE TABLE file_objects (
     file_name   VARCHAR(255) NOT NULL,          -- 原始文件名（仅回显；下载头 RFC 5987 编码防注入）
     mime_type   VARCHAR(100) NOT NULL,          -- presign 钉入签名的类型（防谎报锚点）
     size_bytes  BIGINT,                         -- confirm HEAD 实测回填（声明值预检存 presign 阶段）
+    etag        VARCHAR(128),                   -- ⚠ 修正③（2026-10-19 拍板 1b）：confirm 时 StatObject 回填快照——
+                                                --   代理下载 S3 If-Match 比对（≠快照→404+告警：防 presign TTL 内
+                                                --   同 URL 重放替换已 confirm 对象）+ 客户端 If-None-Match 304 数据源
+                                                --   （A.4 #5 ETag 透传零额外 stat 兑现——一列两用）
     created_by  BIGINT NOT NULL REFERENCES users(id),
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     confirmed_at TIMESTAMPTZ,
@@ -239,10 +245,10 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 | # | 方法/路径 | 权限 | 用途 |
 |---|-----------|------|------|
 | 1 | POST `/api/v1/storage/presign/upload` | per-purpose（见 A.7 权限矩阵） | 返回 upload_url/method/headers/object_key/expires_at；**服务端同时写 file_objects(status=pending)**（A.3 修正②） |
-| 2 | POST `/api/v1/tickets/attachments/confirm` | `ticket:update` + L2 | HEAD 实测（存在/size/content-type 比对声明）→ 翻 confirmed + 写 ticket_attachments；校验 created_by=当前用户 + 对象未绑定（91004）+ purpose↔key 前缀一致 |
+| 2 | POST `/api/v1/tickets/attachments/confirm` | `ticket:update` + L2 | HEAD 实测（存在/size/content-type 比对声明）→ 翻 confirmed + 写 ticket_attachments；校验 created_by=当前用户 + 对象未绑定（91004）+ purpose↔key 前缀一致；**StatObject 回填 etag 落列（2026-10-19 拍板 1b——#5 之 304 与代理 If-Match 的数据源）**；**purpose=\*_create 态（建单前，A.5 建单前链）confirm 翻 confirmed 不落 ticket_attachments（建单事务落绑）** |
 | 3 | GET `/api/v1/tickets/:id/attachments` | `ticket:read` + L2 | PageData 分页 |
 | 4 | POST `/api/v1/tickets/attachments/delete` | `ticket:update` + L2 | 删关联行 + file_objects 翻 deleted；对象物理删除走 GC（10 号"仅删关联"口径） |
-| 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名）；**ETag 透传**（RustFS 对象 ETag → 响应头 + If-None-Match 条件请求——richtext 多图工单回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 透传顺手预留不承诺）（2026-10-16 评审批深审项 B） |
+| 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名）；**ETag 透传**（RustFS 对象 ETag → 响应头 + If-None-Match 条件请求——richtext 多图工单回访 304 免重传；**2026-10-19 拍板 1b 扩**：etag 读列快照零额外 stat + **S3 If-Match 比对存储对象 ≠ 列快照 → 404+告警**（防 presign TTL 内重放替换已 confirm 对象）——一列两用）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 透传顺手预留不承诺）（2026-10-16 评审批深审项 B） |
 | 6 | GET `/api/v1/system/settings/:key` + POST `/api/v1/system/settings/update`（B5-6——**2026-10-16 外审修正：原 GET/PUT 违 §3-1，改 house style**） | GET=admin 读 / POST=按 min_editor_tier（存储限制类 superadmin-only），key/value 入 body | KV 读写 + 钳制校验（越界 400 非静默修正）+ 变更审计 |
 
 > 直传环节的 PUT/HEAD 为 S3 协议层动作，不经平台 API 面（§3 协议口径注）。错误码 91001–91004 随 B5-1 登记 `api/errcode.md`。
@@ -264,6 +270,8 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 ```
 
 **粘贴图片直传链**（B5-4）：编辑器 paste → Blob → ① presign(purpose=ticket_richtext) → ② PUT → ③ confirm → 编辑器插入 `![](…)`——**src 用代理端点相对路径** `/api/v1/files/tickets/…`（稳定 URL 硬约束，§6；`GET /files/*key` 为 GET 通配，与 §3-2 无涉且不与既有静态路由冲突——gin 静态 vs 通配冲突教训在案，启动批验证路由注册顺序）。
+
+**建单前上传链（2026-10-19 B5-1 前置拍板批补——draft attachment 形态）**：发起页附件/richtext 贴图发生在建单前（无 ticket_id 可声明，A.4 #2 原契约断裂）——① presign purpose 用 `*_create` 态（attachment_create / richtext_create，ticket_id 可空）→ ② PUT 直传 → ③ confirm（翻 confirmed 但**不写 ticket_attachments**，悬挂态）→ ④ 建单请求携带 object_key 列表 → CreateTicket **同事务**校验（created_by=本人 / status=confirmed / 未绑定）+ INSERT ticket_attachments；失败半挂态兜底=不 confirm 走既有 pending GC，confirm 未建单的 confirmed 悬挂对象走第三条对账扫描（A.3 已登记）。**契约变更登记（§12-6 五点查）**：CreateTicketRequest 增 attachments 字段——Go struct / 测试镜像 / swagger / codegen / 文档五点随 B5-3 批查。
 
 **下载投递策略缝**（B5-2 落地）：`proxy.go` 中 `deliver(ctx, obj, meta)` 单函数——现实现 = 流式转发；升级 = `PresignGet(60s)` + 302（响应头经 `response-content-*` 签名参数携带）。切换 ≤0.5 天、前端零改（§4 评估在案）。
 
@@ -356,3 +364,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-19 | **条件请求验收断言批（一致性尾巴修复）**：§11 补 If-None-Match → 304 且审计行不新增负向（对齐 A.4 #5 审计仅 200 落行；Range 透传可用不承诺） |
 | 2026-10-19 | **第二意见体检回声批（并行外审报告——计数 1 处）**：§10 涉及文件行「迁移两枚」→「**迁移三枚**（000045–000047 对账口径——A.3）」（对齐 B5-6 settings KV 第三枚登记） |
 | 2026-10-17 | **MD 库拍定批（所有者「md库先按你的建议来」）**：拍板点 4 库=**md-editor-rt ✅**（原择库 spike 销账；B5-4 首日 spike 收窄为粘贴直传扩展验证）；A.6 MdEditor 封装/判据行两处同步——台账 🔶 清零 |
+| 2026-10-19 | **B5-1 前置拍板批（所有者「按建议」——两会话收敛 v2）**：①**拍板点 6 presign 形态拍定 1b**（PUT+Content-Type 钉签名+confirm 实测+**etag 列快照**——A.3 修正③ etag 列/A.4 #2 confirm 回填+A.5 create 态/A.4 #5 If-Match 防重放+304 读列级联；POST policy 降增强登记[触发=滥用实测/spike 顺带验证]）②**§3 补 CORS**（外审缺口：落点=存储端配置非应用 config 段；spike 第一优先判据——RustFS 无 CORS 能力则直传方案重审）③**A.5 补建单前上传链**（draft attachment：purpose \*_create 态+建单携带 object_key 同事务落绑；CreateTicketRequest 契约变更 §12-6 五点查登记）④**A.1 落位钉死**（端口=pkg/storage 基建先例守护合规，业务各层照常） |
