@@ -131,6 +131,12 @@ services:
     environment:
       RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
       RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      # S3 口 CORS（B5-1 spike 判据①实测通过 2026-10-19）：显式设置后预检完整放行
+      # （allow-methods 含 PUT / allow-headers * / expose-headers 含 etag），白名单外
+      # Origin 零 CORS 头拦截；⚠ 不设存在反射式 CORS 风险（GHSA-x5xv-223c-8vm7）
+      # 必须显式设置；桶级 PutBucketCors 未支持（rustfs 讨论 #736）——全局 env 即可
+      # （console 口另有 RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS，容器自带默认 *，独立配置）
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
     volumes:
       - rustfs_data:/data
     ports:
