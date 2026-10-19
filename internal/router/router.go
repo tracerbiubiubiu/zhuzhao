@@ -32,6 +32,10 @@ type Deps struct {
 	AuditHandler  *handler.AuditHandler
 	TicketHandler *handler.TicketHandler
 
+	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
+	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
+	StorageHandler *handler.StorageHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -355,6 +359,15 @@ func New(deps Deps) *gin.Engine {
 					tickets.POST("/notes", deps.TicketHandler.CreateNote)
 					tickets.GET("/:id/relations", deps.TicketHandler.ListRelations)
 					tickets.POST("/relations", deps.TicketHandler.CreateRelation)
+					// phase5 S5 B5-1：confirm 端点（A.4 #2——登录态自服务面；
+					// ticket:update+L2 分流随 B5-3 purpose 扩展）
+					tickets.POST("/attachments/confirm", deps.StorageHandler.Confirm)
+				}
+
+				// phase5 S5 B5-1：对象存储（A.4 #1——登录态自服务，catalogExempt 登记）
+				storageGroup := biz.Group("/storage")
+				{
+					storageGroup.POST("/presign/upload", deps.StorageHandler.PresignUpload)
 				}
 
 				// 工单元数据（类型/模板）

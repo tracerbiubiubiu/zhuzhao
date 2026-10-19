@@ -8,6 +8,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
@@ -15,10 +16,12 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
+	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 	"time"
 )
@@ -86,6 +89,20 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	registry := provideRegistry(policyEvalWriter)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
 	ticketHandler := handler.NewTicketHandler(ticketService)
+	// phase5 S5 B5-1（05 号 A.1 装配链）：禁用态 client=nil，服务层显式拒绝；
+	// GC cron 装配在 NewApp（随 storage.enabled 门控——与 auditCron 同款）
+	storageConfig := cfg.Storage
+	var storageClient pkgstorage.Client
+	if storageConfig.Enabled {
+		mc, err := pkgstorage.NewMinioClient(&storageConfig)
+		if err != nil {
+			return nil, nil, fmt.Errorf("storage client init: %w", err)
+		}
+		storageClient = mc
+	}
+	storageRepo := repository.NewStorageRepo(pool)
+	storageService := storageservice.NewService(storageRepo, storageClient, &storageConfig, logger)
+	storageHandler := handler.NewStorageHandler(storageService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
@@ -117,6 +134,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatHandler:          patHandler,
 		PatLookup:           patRepo,
 		TicketHandler:       ticketHandler,
+		StorageHandler:      storageHandler,
 		JWTManager:          manager,
 		Enforcer:            syncedEnforcer,
 		RedisClient:         client,

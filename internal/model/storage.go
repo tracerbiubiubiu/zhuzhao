@@ -27,10 +27,10 @@ const (
 
 // PresignUploadInput 预签名上行声明（A.4 #1；ticket 态的 ticket_id 字段随 B5-3 扩）。
 type PresignUploadInput struct {
-	Purpose   string `json:"purpose"`
-	FileName  string `json:"file_name"`
-	MIMEType  string `json:"mime_type"`
-	SizeBytes int64  `json:"size_bytes,string"`
+	Purpose   string `json:"purpose" binding:"required"`
+	FileName  string `json:"file_name" binding:"required"`
+	MIMEType  string `json:"mime_type" binding:"required"`
+	SizeBytes int64  `json:"size_bytes,string" binding:"required"`
 }
 
 // PresignUploadResponse 预签名上行（Headers 须客户端直传原样携带——CT 已钉入签名）。
@@ -44,5 +44,5 @@ type PresignUploadResponse struct {
 
 // ConfirmFileInput confirm 声明（B5-1 底座态；ticket 关联落绑参数随 B5-3 扩）。
 type ConfirmFileInput struct {
-	ObjectKey string `json:"object_key"`
+	ObjectKey string `json:"object_key" binding:"required"`
 }

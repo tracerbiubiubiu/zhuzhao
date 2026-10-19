@@ -47,6 +47,13 @@ definitions:
     required:
     - id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput:
+    properties:
+      object_key:
+        type: string
+    required:
+    - object_key
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateCommentRequest:
     properties:
       content:
@@ -253,6 +260,35 @@ definitions:
     required:
     - id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject:
+    properties:
+      bucket:
+        type: string
+      confirmed_at:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        example: "0"
+        type: string
+      etag:
+        type: string
+      file_name:
+        type: string
+      id:
+        type: integer
+      mime_type:
+        type: string
+      object_key:
+        type: string
+      purpose:
+        type: string
+      size_bytes:
+        example: "0"
+        type: string
+      status:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest:
     properties:
       captcha:
@@ -362,6 +398,38 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput:
+    properties:
+      file_name:
+        type: string
+      mime_type:
+        type: string
+      purpose:
+        type: string
+      size_bytes:
+        example: "0"
+        type: string
+    required:
+    - file_name
+    - mime_type
+    - purpose
+    - size_bytes
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse:
+    properties:
+      expires_at:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      method:
+        type: string
+      object_key:
+        type: string
+      upload_url:
+        type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest:
     properties:
@@ -1386,6 +1454,42 @@ paths:
       summary: 查执行记录（request_id 跨查即此）
       tags:
       - tasks
+  /api/v1/storage/presign/upload:
+    post:
+      consumes:
+      - application/json
+      description: 限制矩阵预检（MIME 白名单+黑名单/大小）→ 服务端生成对象键 → 签发 PUT 直传 URL。purpose 取 avatar
+        / attachment_create / richtext_create（ticket 态随附件批）
+      parameters:
+      - description: 上传声明
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse'
+              type: object
+        "400":
+          description: 91001 超限 / 91002 类型不允许 / 10003 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 对象预签名上传（返回直传 URL——Content-Type 已钉入签名）
+      tags:
+      - storage
   /api/v1/tasks:
     post:
       consumes:
@@ -1846,6 +1950,46 @@ paths:
       summary: 分派工单
       tags:
       - ticket
+  /api/v1/tickets/attachments/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 校验归属（非本人同形 404 防枚举）与 pending 态 → 对象存储 HEAD 实测（size/类型）→ 翻 confirmed。重复
+        confirm 409
+      parameters:
+      - description: 对象键
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject'
+              type: object
+        "404":
+          description: 91003 不存在（含非本人防枚举同形）
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: 91004 已确认/已关联
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 确认上行对象（HEAD 实测→落 confirmed+etag 快照）
+      tags:
+      - storage
   /api/v1/tickets/close:
     post:
       consumes:

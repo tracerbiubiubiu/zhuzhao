@@ -62,7 +62,11 @@ func NewService(repo *repository.StorageRepo, client pkgstorage.Client, cfg *pkg
 
 // PresignUpload 预签名上行（A.4 #1）：限制矩阵预检 → 服务端生成 key →
 // 落 pending → 签发钉死 Content-Type 的 PUT URL。
+// 禁用态（storage.enabled=false——装配侧注入 nil client）显式拒绝而非 panic。
 func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInput, userID int64) (*model.PresignUploadResponse, error) {
+	if s.client == nil {
+		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
 	purpose := strings.TrimSpace(in.Purpose)
 	mime := strings.ToLower(strings.TrimSpace(in.MIMEType))
 
@@ -112,6 +116,9 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 // Confirm 确认上行（A.4 #2 底座态）：归属/状态校验 → HEAD 实测（size/类型/etag）
 // → 条件更新 pending→confirmed。ticket 关联落绑随 B5-3 扩展。
 func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userID int64) (*model.FileObject, error) {
+	if s.client == nil {
+		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
 	f, err := s.repo.GetByObjectKey(ctx, s.bucket, in.ObjectKey)
 	if err != nil {
 		if errors.Is(err, repository.ErrStorageObjectNotFound) {

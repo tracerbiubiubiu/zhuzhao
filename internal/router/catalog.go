@@ -43,25 +43,29 @@ var catalogExempt = map[string]bool{
 	"GET /api/v1/auth/captcha":           true, // P4-7 验证码公开端点（匿名获取——登录前置）
 	"GET /api/v1/user/pats":              true, // P4-6 PAT 自服务（SelfService——本人凭据）
 	"GET /api/v1/user/dicts/:code/items": true, // P4-3 字典消费面（SelfService——全员业务表单选项）
-	"POST /api/v1/user/pats":             true,
-	"POST /api/v1/user/pats/delete":      true,
-	"POST /api/v1/auth/logout":           true, // 自服务（SelfService）
-	"POST /api/v1/auth/password/update":  true, // 自服务
-	"GET /api/v1/user/profile":           true, // 自服务
-	"POST /api/v1/user/profile/update":   true, // 自服务
-	"GET /api/v1/user/menus":             true, // 自服务
-	"GET /api/v1/user/permissions":       true, // 自服务
-	"GET /api/v1/user/orgs":              true, // 自服务（P4-W3「我的组织」数据源）
-	"POST /api/v1/orgs/delete":           true, // 委托语义（orgDelegated，Service 层判定）
-	"POST /api/v1/orgs/members":          true,
-	"GET /api/v1/orgs/members/list":      true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
-	"POST /api/v1/orgs/members/role":     true,
-	"POST /api/v1/orgs/members/scope":    true,
-	"GET /api/v1/orgs/roles/list":        true,
-	"POST /api/v1/orgs/roles/bind":       true,
-	"POST /api/v1/orgs/roles/delete":     true,
-	"POST /api/v1/orgs/owners":           true,
-	"POST /api/v1/orgs/members/delete":   true,
+	// phase5 S5 B5-1：对象存储登录态自服务面（A.7——avatar/*_create purpose；
+	// ticket_attachment/richtext 态的 ticket:update+L2 分流随 B5-3 扩后移出豁免）
+	"POST /api/v1/storage/presign/upload":      true,
+	"POST /api/v1/tickets/attachments/confirm": true,
+	"POST /api/v1/user/pats":                   true,
+	"POST /api/v1/user/pats/delete":            true,
+	"POST /api/v1/auth/logout":                 true, // 自服务（SelfService）
+	"POST /api/v1/auth/password/update":        true, // 自服务
+	"GET /api/v1/user/profile":                 true, // 自服务
+	"POST /api/v1/user/profile/update":         true, // 自服务
+	"GET /api/v1/user/menus":                   true, // 自服务
+	"GET /api/v1/user/permissions":             true, // 自服务
+	"GET /api/v1/user/orgs":                    true, // 自服务（P4-W3「我的组织」数据源）
+	"POST /api/v1/orgs/delete":                 true, // 委托语义（orgDelegated，Service 层判定）
+	"POST /api/v1/orgs/members":                true,
+	"GET /api/v1/orgs/members/list":            true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
+	"POST /api/v1/orgs/members/role":           true,
+	"POST /api/v1/orgs/members/scope":          true,
+	"GET /api/v1/orgs/roles/list":              true,
+	"POST /api/v1/orgs/roles/bind":             true,
+	"POST /api/v1/orgs/roles/delete":           true,
+	"POST /api/v1/orgs/owners":                 true,
+	"POST /api/v1/orgs/members/delete":         true,
 }
 
 func exemptPath(method, path string) bool { return catalogExempt[method+" "+path] }

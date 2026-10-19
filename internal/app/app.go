@@ -16,9 +16,11 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	routerPkg "github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
+	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 )
 
 // App 应用实例
@@ -29,6 +31,7 @@ type App struct {
 	server     *http.Server
 	policyEval *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
 	auditCron  *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
+	storageGC  *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
 }
 
 // NewApp 创建应用实例
@@ -60,12 +63,27 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		auditCron = service.NewCronScheduler(pool, "audit_archive", job, tick, logger)
 		logger.Info("audit_archive cron enabled (in-process ticker; disable taskrunner-side job to avoid double-run)")
 	}
+	// phase5 S5 B5-1：孤儿对象 GC（骑既有 CronScheduler——05 号 A.3 修正②）；
+	// tick=1h 起步（低频扫描，config 化触发驱动）。GCJob 结构性满足 ReentrantJob，
+	// 零 import service 根包（域隔离守护）——装配在此处完成；client 构造失败
+	// 只禁 GC 不拒启（presign 主链路由 wire_gen 侧 fail-fast——失败时请求面已挡）。
+	var storageGC *service.CronScheduler
+	if cfg.Storage.Enabled {
+		if gcClient, cerr := pkgstorage.NewMinioClient(&cfg.Storage); cerr == nil {
+			gc := storageservice.NewGCJob(repository.NewStorageRepo(pool), gcClient, &cfg.Storage, logger)
+			storageGC = service.NewCronScheduler(pool, "storage_gc", gc, time.Hour, logger)
+			logger.Info("storage_gc cron enabled (orphan pending objects, 1h tick)")
+		} else {
+			logger.Error("storage_gc disabled: client init failed", "err", cerr)
+		}
+	}
 	return &App{
 		cfg:        cfg,
 		logger:     logger,
 		router:     router,
 		policyEval: policyEval,
 		auditCron:  auditCron,
+		storageGC:  storageGC,
 	}, nil
 }
 
@@ -104,6 +122,11 @@ func (a *App) Run() error {
 	// P4 cron 收归：进程内调度（ticker+advisory lock；配置开关启用）
 	if a.auditCron != nil {
 		go a.auditCron.Run(ctx)
+	}
+
+	// phase5 S5：孤儿对象 GC cron（storage.enabled 门控——NewApp 装配）
+	if a.storageGC != nil {
+		go a.storageGC.Run(ctx)
 	}
 
 	select {
