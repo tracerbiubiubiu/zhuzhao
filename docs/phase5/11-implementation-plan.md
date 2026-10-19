@@ -137,7 +137,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 | 批次 | 内容 | 拍板依赖 |
 |------|------|---------|
-| B3-1 转换级权限+前置条件 | transitions meta 扩展（触发者范围/条件表达式——expr 求值器与 S1 共用）+ **AssertTransition 叠加校验**（端点级保留、更严叠加）+ 策略层接入（fail-closed，§25 分界重审随批） | 拍板点 ②（§25 分界，随批） |
+| B3-1 转换级权限+前置条件 | **`transitions_meta` 独立列**（"from>to" 键三段结构 condition/validator/post_actions——对齐 01 号 A.2 方案 b 先例，详录 03 号附录 A.1）+ **`GET /tickets/:id/transitions/available`** 端点（condition 前端过滤=UX、AssertTransition 服务端兜底双重）+ expr 求值器与 S1 共用 + **AssertTransition 叠加校验**（端点级保留、更严叠加）+ 策略层接入（fail-closed，§25 分界重审随批） | 拍板点 ②（§25 分界，随批） |
 | B3-2 自动分派 | `assignment_rules` 表 + 规则匹配引擎（OnAfterCreate Hook 五决议既定——03 号 §3.2） | — |
 | B3-3 动作库框架+首批动作 | DomainHook 转换后动作框架 + 首批三动作：通知（S6）/抄送（S10）/**转派**（升级链与动作库结合不独立建——ops 域超时事件联动） | 拍板点 ③（首批动作，2026-10-16 批量预确认=通知+抄送，**转派随本批升格加入**） |
 
@@ -304,6 +304,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | B6-1…6 | [06 §3–5 + 附录 A](./06-s6-message-notification.md) | 06 §10 + A.7 六负向 | message_templates/message_log 两表族 + message_rules 轻表 + human_key ALTER——**≥3 段**（启动时对账） |
 | B2-1…4 | [02 §3 + 附录 A](./02-s2-flow-graph-designer.md) | 02 §8 + A.6 | 零 |
 | B10-1…5 | [10 号](./10-s10-ticket-collaboration.md) | 10 号 §验收 + 附录 A.7 | ticket_cc + tags 两表族 + `status_changed_at` ALTER（含部分索引/存量回填——附录 A.3） |
+| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表 + `transitions_meta` 新列一枚 ALTER（03 号附录 A.1） |
 | B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | intel_cache 表族 |
 
 **迁移 PR 检查单**（每迁移必过，对齐 phase2/00 §5.3 六条 + BK-23）：①编号 A2 对账（§3）；②幂等（IF NOT EXISTS）；③down 可逆且先让位；④唯一索引带 `WHERE deleted_at IS NULL`（软删表）；⑤`testutil` 迁移列表同步 + 新表级联测试；⑥大 DDL 真实 PG 演练 up→down→up + A/B 快照比对（§5.4）。
