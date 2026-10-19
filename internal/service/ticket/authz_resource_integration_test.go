@@ -44,7 +44,7 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
 
 	roles := stubRoleFetcher{}
-	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool))
+	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool))
 
 	// 预取 root org id（seedMinimal 已建）
 	var rootID int64

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -15,15 +16,39 @@ import (
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 )
 
-// StorageHandler 对象存储端点（phase5 S5 B5-1 底座，05 号 A.4）。
-// B5-1 权限面 = 登录态自服务（avatar/*_create purpose——A.7）；
-// ticket_attachment/ticket_richtext 的 ticket:update+L2 分流随 B5-3 扩。
-type StorageHandler struct {
-	svc *storageservice.Service
+// TicketAuthorizer ticket 态 purpose 的 L2 工单可见性判定（B5-3——A.7：
+// ticket:update+L2 面）。实现方=ticket.Service（结构性满足，域间零 import——
+// handler 为编排层，A.7「L2 resource.Authorize 调用点」先例）。
+type TicketAuthorizer interface {
+	AuthorizeTicketAttachment(ctx context.Context, userID, ticketID int64) error
 }
 
-func NewStorageHandler(svc *storageservice.Service) *StorageHandler {
-	return &StorageHandler{svc: svc}
+// StorageHandler 对象存储端点（phase5 S5，05 号 A.4）。
+// 权限面：avatar/*_create=登录态自服务；ticket 态=ticket:update+L2（B5-3）。
+type StorageHandler struct {
+	svc        *storageservice.Service
+	ticketAuth TicketAuthorizer
+}
+
+func NewStorageHandler(svc *storageservice.Service, ticketAuth TicketAuthorizer) *StorageHandler {
+	return &StorageHandler{svc: svc, ticketAuth: ticketAuth}
+}
+
+// authorizeTicketPurpose ticket 态 purpose 的 L2 编排（无 ticket_id 400；
+// L2 失败透传 404/403/500 由 writeServiceError 分流）。
+func (h *StorageHandler) authorizeTicketPurpose(c *gin.Context, purpose string, ticketID *int64) bool {
+	if purpose != "ticket_attachment" && purpose != "ticket_richtext" {
+		return true
+	}
+	if ticketID == nil {
+		response.BadRequest(c, "参数错误")
+		return false
+	}
+	if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *ticketID); err != nil {
+		writeServiceError(c, err)
+		return false
+	}
+	return true
 }
 
 // PresignUpload godoc
@@ -42,6 +67,9 @@ func (h *StorageHandler) PresignUpload(c *gin.Context) {
 	var in model.PresignUploadInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.BadRequest(c, "参数错误")
+		return
+	}
+	if !h.authorizeTicketPurpose(c, in.Purpose, in.TicketID) {
 		return
 	}
 	resp, err := h.svc.PresignUpload(c.Request.Context(), &in, c.GetInt64("userID"))
@@ -70,6 +98,13 @@ func (h *StorageHandler) Confirm(c *gin.Context) {
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
+	}
+	// confirm 分流按 TicketID：带 ticket_id 即 ticket 态落绑（建单前态不带）
+	if in.TicketID != nil {
+		if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *in.TicketID); err != nil {
+			writeServiceError(c, err)
+			return
+		}
 	}
 	f, err := h.svc.Confirm(c.Request.Context(), &in, c.GetInt64("userID"))
 	if err != nil {

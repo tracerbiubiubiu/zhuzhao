@@ -24,6 +24,7 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
+	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -35,12 +36,14 @@ func NewTicketService(
 	registry resource.Registry,
 	roleFetcher middleware.RoleFetcher,
 	delegation OrgDelegationChecker,
+	storageRepo *repository.StorageRepo,
 ) *Service {
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
 		orgRepo:     orgRepo,
 		registry:    registry,
+		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
 	}
@@ -230,6 +233,16 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		Action:   EventCreated,
 	}); err != nil {
 		return nil, err
+	}
+	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
+	if len(req.Attachments) > 0 {
+		if err := s.storageRepo.BindCreateAttachments(ctx, tx, actorUserID, ticket.ID, req.Attachments); err != nil {
+			if errors.Is(err, repository.ErrStorageObjectNotFound) {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
+			}
+			return nil, fmt.Errorf("bind attachments: %w", err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
@@ -620,4 +633,11 @@ func (s *Service) ListTicketTemplates(ctx context.Context) ([]*model.TicketTempl
 // GetTicketTemplate 按 code 查询工单模板
 func (s *Service) GetTicketTemplate(ctx context.Context, code string) (*model.TicketTemplate, error) {
 	return s.ticketRepo.GetTicketTemplate(ctx, code)
+}
+
+// AuthorizeTicketAttachment L2 面（B5-3）：storage 端点对 ticket 态 purpose
+// 的工单可见性判定（action=update——附件上传/确认/删除同面）。供 handler
+// 编排层结构性注入（TicketAuthorizer 接口），域间零 import。
+func (s *Service) AuthorizeTicketAttachment(ctx context.Context, userID, ticketID int64) error {
+	return s.authorizeCheck(ctx, userID, "update", strconv.FormatInt(ticketID, 10))
 }

@@ -43,17 +43,21 @@ func TestKeyFor(t *testing.T) {
 	assert.True(t, strings.HasPrefix(key2, "tickets/"), "建单前附件落工单域前缀")
 
 	_, err = KeyFor("ticket_attachment", "image/png")
-	assert.Error(t, err, "B5-1 白名单外 purpose 拒绝（L2 态随 B5-3）")
+	assert.NoError(t, err, "ticket 态 B5-3 已入白名单")
+	_, err = KeyFor("evil_purpose", "image/png")
+	assert.Error(t, err, "白名单外 purpose 拒绝")
 
 	_, err = KeyFor("avatar", "application/x-evil")
 	assert.Error(t, err, "白名单外类型无法推导 ext")
 }
 
-func TestPurposePrefixesB51支持面(t *testing.T) {
-	// B5-1 三 purpose 与 A.7 对表（ticket 态接入时扩此处即守范围）
+func TestPurposePrefixes支持面(t *testing.T) {
+	// B5-3 后五 purpose 支持面与 A.7 对表（扩面即守范围）
 	assert.Equal(t, map[string]string{
 		"avatar":            "avatars/",
 		"attachment_create": "tickets/",
 		"richtext_create":   "tickets/",
+		"ticket_attachment": "tickets/",
+		"ticket_richtext":   "tickets/",
 	}, purposePrefixes)
 }

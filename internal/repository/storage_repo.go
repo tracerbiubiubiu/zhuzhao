@@ -128,3 +128,75 @@ func (r *StorageRepo) MarkAvatarDropped(ctx context.Context, bucket, objectKey s
 		bucket, objectKey)
 	return err
 }
+
+// ConfirmAndBind ticket 态确认并落绑（repo 内单事务：条件翻 confirmed +
+// INSERT ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
+// ErrStorageAlreadyBound）。B5-3 批2。
+func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uploadedBy int64, sizeBytes int64, etag string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE file_objects SET status='confirmed', size_bytes=$2, etag=$3, confirmed_at=NOW()
+		WHERE id=$1 AND status='pending'`, fileID, sizeBytes, etag)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageAlreadyBound
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by)
+		VALUES ($1, $2, $3)`, ticketID, fileID, uploadedBy); err != nil {
+		if isPgUnique(err) {
+			return ErrStorageAlreadyBound
+		}
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// BindCreateAttachments 建单前绑定（A.5 建单前链）：悬挂 confirmed 对象批量
+// 校验+落绑+purpose 翻正式态。校验失败返回 ErrStorageObjectNotFound（对象
+// 不存在/非本人/非 confirmed/悬挂态不符/已绑定——建单方参数错，service 统一
+// 映射 400）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）。
+func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, userID, ticketID int64, keys []string) error {
+	for _, key := range keys {
+		var id int64
+		var purpose string
+		var createdBy int64
+		var status string
+		err := exec.QueryRow(ctx, `
+			SELECT id, purpose, created_by, status FROM file_objects
+			WHERE object_key=$1`, key).
+			Scan(&id, &purpose, &createdBy, &status)
+		if err != nil {
+			return ErrStorageObjectNotFound
+		}
+		if createdBy != userID || status != "confirmed" || purpose == "" {
+			return ErrStorageObjectNotFound
+		}
+		formal := ""
+		switch purpose {
+		case "attachment_create":
+			formal = "ticket_attachment"
+		case "richtext_create":
+			formal = "ticket_richtext"
+		default:
+			return ErrStorageObjectNotFound // 非悬挂态对象不可建单落绑
+		}
+		if _, err := exec.Exec(ctx, `
+			INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by)
+			VALUES ($1, $2, $3)`, ticketID, id, userID); err != nil {
+			return err
+		}
+		if _, err := exec.Exec(ctx, `
+			UPDATE file_objects SET purpose=$3 WHERE id=$1 AND purpose=$2`, id, purpose, formal); err != nil {
+			return err
+		}
+	}
+	return nil
+}

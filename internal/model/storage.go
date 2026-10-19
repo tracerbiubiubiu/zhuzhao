@@ -25,12 +25,13 @@ const (
 	FileStatusDeleted   = "deleted"
 )
 
-// PresignUploadInput 预签名上行声明（A.4 #1；ticket 态的 ticket_id 字段随 B5-3 扩）。
+// PresignUploadInput 预签名上行声明（A.4 #1；ticket 态必带 ticket_id——B5-3）。
 type PresignUploadInput struct {
 	Purpose   string `json:"purpose" binding:"required"`
 	FileName  string `json:"file_name" binding:"required"`
 	MIMEType  string `json:"mime_type" binding:"required"`
 	SizeBytes int64  `json:"size_bytes,string" binding:"required"`
+	TicketID  *int64 `json:"ticket_id,string,omitempty"`
 }
 
 // PresignUploadResponse 预签名上行（Headers 须客户端直传原样携带——CT 已钉入签名）。
@@ -42,7 +43,17 @@ type PresignUploadResponse struct {
 	ExpiresAt time.Time         `json:"expires_at"`
 }
 
-// ConfirmFileInput confirm 声明（B5-1 底座态；ticket 关联落绑参数随 B5-3 扩）。
+// ConfirmFileInput confirm 声明（ticket 态必带 ticket_id 落绑——B5-3）。
 type ConfirmFileInput struct {
 	ObjectKey string `json:"object_key" binding:"required"`
+	TicketID  *int64 `json:"ticket_id,string,omitempty"`
+}
+
+// TicketAttachment 工单附件关联行（000046）。
+type TicketAttachment struct {
+	ID           int64     `json:"id"`
+	TicketID     int64     `json:"ticket_id,string"`
+	FileObjectID int64     `json:"file_object_id,string"`
+	UploadedBy   int64     `json:"uploaded_by,string"`
+	CreatedAt    time.Time `json:"created_at"`
 }

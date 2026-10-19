@@ -15,6 +15,9 @@ type CreateTicketRequest struct {
 	OrgID        int64           `json:"org_id,string" binding:"required"`
 	TemplateCode string          `json:"template_code,omitempty"` // 可选：命中模板则预填
 	CustomData   json.RawMessage `json:"custom_data,omitempty"`
+	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+	// confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments
+	Attachments []string `json:"attachments,omitempty"`
 }
 
 // UpdateTicketRequest 更新工单（POST /tickets/update，id 放 body）

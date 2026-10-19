@@ -28,6 +28,15 @@ var purposePrefixes = map[string]string{
 	"avatar":            "avatars/",
 	"attachment_create": "tickets/",
 	"richtext_create":   "tickets/",
+	"ticket_attachment": "tickets/",
+	"ticket_richtext":   "tickets/",
+}
+
+// ticketPurposes ticket 态集合（presign/confirm 必带 ticket_id——L2 在
+// handler 编排层判定，service 校验形态完整性）。
+var ticketPurposes = map[string]bool{
+	"ticket_attachment": true,
+	"ticket_richtext":   true,
 }
 
 // mimeExt 白名单类型的扩展名推导表（ext 从签名钉死的 Content-Type 推导，
@@ -72,8 +81,10 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 	mime := strings.ToLower(strings.TrimSpace(in.MIMEType))
 
 	if _, ok := purposePrefixes[purpose]; !ok {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code,
-			fmt.Sprintf("purpose 非法（B5-1 支持 %s；ticket 态随 B5-3）", "avatar/attachment_create/richtext_create"))
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "purpose 非法")
+	}
+	if ticketPurposes[purpose] && in.TicketID == nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 purpose 必带 ticket_id")
 	}
 	if !MIMEAllowed(mime, s.cfg.AllowedMIMETypes, s.cfg.BlockedMIMETypes) {
 		return nil, errcode.ErrFileTypeNotAllowed
@@ -154,6 +165,28 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 	}
 	if st.ContentType != "" && !strings.EqualFold(st.ContentType, f.MIMEType) {
 		return nil, errcode.ErrFileTypeNotAllowed
+	}
+
+	// ticket 态分流（B5-3）：落绑关联行（repo 内单事务）；建单前态维持悬挂翻 confirmed
+	if ticketPurposes[f.Purpose] {
+		if in.TicketID == nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
+		}
+		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag); err != nil {
+			if errors.Is(err, repository.ErrStorageAlreadyBound) {
+				return nil, errcode.ErrFileAlreadyBound
+			}
+			s.logger.Error("storage confirm and bind", "err", err)
+			return nil, errcode.ErrInternal
+		}
+		size := st.Size
+		etag := st.ETag
+		now := time.Now()
+		f.Status = model.FileStatusConfirmed
+		f.SizeBytes = &size
+		f.ETag = &etag
+		f.ConfirmedAt = &now
+		return f, nil
 	}
 
 	if err := s.repo.Confirm(ctx, f.ID, st.Size, st.ETag); err != nil {

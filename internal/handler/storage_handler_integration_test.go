@@ -29,6 +29,16 @@ import (
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 )
 
+// denyAuth TicketAuthorizer 桩：deny 恒 403 / allow 恒过。
+type denyAuth struct{ allow bool }
+
+func (d *denyAuth) AuthorizeTicketAttachment(_ context.Context, _, _ int64) error {
+	if d.allow {
+		return nil
+	}
+	return errcode.ErrNoPermission
+}
+
 type hStubClient struct {
 	stat    *pkgstorage.ObjectInfo
 	getBody []byte
@@ -76,7 +86,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	svc := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 21, ETag: "etag-h", ContentType: "image/png"}, getBody: []byte("avatar-proxy-bytes")},
 		cfg, slog.Default())
-	h := handler.NewStorageHandler(svc)
+	h := handler.NewStorageHandler(svc, &denyAuth{})
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -249,6 +259,25 @@ func TestStorageHandler_Contract(t *testing.T) {
 		assert.Equal(t, 0, env3.Code)
 		w4, _ := post(t, r2, "/api/v1/storage/avatar/bind", map[string]any{"object_key": pre.ObjectKey})
 		assert.Equal(t, http.StatusOK, w4.Code, "同键重复 bind 幂等")
+	})
+
+	t.Run("ticket 态 presign——L2 deny 403", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		w2, env2 := post(t, r2, "/api/v1/storage/presign/upload", map[string]any{
+			"purpose": "ticket_attachment", "file_name": "a.png", "mime_type": "image/png",
+			"size_bytes": "10", "ticket_id": "999",
+		})
+		assert.Equal(t, http.StatusForbidden, w2.Code)
+		assert.Equal(t, errcode.ErrNoPermission.Code, env2.Code)
+	})
+
+	t.Run("ticket 态 presign——缺 ticket_id 400", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		w2, env2 := post(t, r2, "/api/v1/storage/presign/upload", map[string]any{
+			"purpose": "ticket_attachment", "file_name": "a.png", "mime_type": "image/png", "size_bytes": "10",
+		})
+		assert.Equal(t, http.StatusBadRequest, w2.Code)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, env2.Code)
 	})
 
 	t.Run("avatar bind——未知键同形 404", func(t *testing.T) {

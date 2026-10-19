@@ -87,8 +87,6 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditConfig := cfg.Audit
 	policyEvalWriter := providePolicyEvalWriter(auditConfig, client, auditLogRepo, logger)
 	registry := provideRegistry(policyEvalWriter)
-	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService)
-	ticketHandler := handler.NewTicketHandler(ticketService)
 	// phase5 S5 B5-1（05 号 A.1 装配链）：禁用态 client=nil，服务层显式拒绝；
 	// GC cron 装配在 NewApp（随 storage.enabled 门控——与 auditCron 同款）
 	storageConfig := cfg.Storage
@@ -102,7 +100,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	}
 	storageRepo := repository.NewStorageRepo(pool)
 	storageService := storageservice.NewService(storageRepo, storageClient, &storageConfig, logger)
-	storageHandler := handler.NewStorageHandler(storageService)
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo)
+	ticketHandler := handler.NewTicketHandler(ticketService)
+	storageHandler := handler.NewStorageHandler(storageService, ticketService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
