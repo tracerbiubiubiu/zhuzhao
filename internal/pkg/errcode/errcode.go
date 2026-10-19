@@ -107,7 +107,15 @@ var (
 	ErrTicketAlreadyClosed     = util.New(90004, "工单已关闭")
 )
 
-// 通知模块 92000-92999（91000-91999 为附件预留段——02 号 IW2，勿占）
+// 对象存储 91000-91999（phase5 S5——02 号 IW2 预留段启用，B5-1 批6；语义=10 号 §10）
+var (
+	ErrFileTooLarge       = util.New(91001, "文件大小超过限制")
+	ErrFileTypeNotAllowed = util.New(91002, "文件类型不允许")
+	ErrFileNotFound       = util.New(91003, "文件不存在")
+	ErrFileAlreadyBound   = util.New(91004, "文件已关联其它资源")
+)
+
+// 通知模块 92000-92999（91000-91999 已由对象存储段启用——见上）
 var (
 	ErrNotificationConfigNotFound    = util.New(92001, "通知配置不存在")
 	ErrNotificationCodeExists        = util.New(92002, "通知配置 code 已存在")

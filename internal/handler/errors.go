@@ -26,6 +26,10 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
 	errcode.ErrDictItemNotFound.Code:              http.StatusNotFound,   // 字典项不存在/版本冲突
 	errcode.ErrPatNotFound.Code:                   http.StatusNotFound,   // PAT 不存在或已吊销
+	errcode.ErrFileTooLarge.Code:                  http.StatusBadRequest, // 文件大小超限（phase5 S5）
+	errcode.ErrFileTypeNotAllowed.Code:            http.StatusBadRequest, // 文件类型不允许
+	errcode.ErrFileNotFound.Code:                  http.StatusNotFound,   // 文件不存在（含防枚举归属遮蔽）
+	errcode.ErrFileAlreadyBound.Code:              http.StatusConflict,   // 已确认/已关联
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,

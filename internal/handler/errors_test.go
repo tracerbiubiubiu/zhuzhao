@@ -54,6 +54,8 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrNotificationConfigNotFound, errcode.ErrNotificationCodeExists, errcode.ErrNotificationChannelNotSupport,
 	errcode.ErrDictTypeNotFound, errcode.ErrDictItemNotFound,
 	errcode.ErrPatNotFound,
+	// 对象存储（phase5 S5 B5-1）
+	errcode.ErrFileTooLarge, errcode.ErrFileTypeNotAllowed, errcode.ErrFileNotFound, errcode.ErrFileAlreadyBound,
 }
 
 // unmappedAllowlist 有意不进 httpStatusByCode 的码（writeServiceError 落 default 500+10000）：
@@ -83,7 +85,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 61; got != want {
+	if got, want := len(allErrCodes), 65; got != want {
 		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
 	}
 
