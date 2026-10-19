@@ -223,6 +223,7 @@ type TransitionAction interface {
 | **SLA 层 1（完整）** | **硬触发五条任一**（对外承诺/停表语义[分水岭]/业务日历/达成率 KPI/自动升级链）；软三条两条以上评估 | 1–2 周自研（无现成可嵌入引擎——JSM policy 模型借鉴） | [10 号 §5](./10-s10-ticket-collaboration.md) |
 | **升级链 escalation** | 超时自动转派诉求（人工处理跟不上量） | ~1 周（**与 S3a 动作库天然结合**：ops.cron_failed/超时 DomainEvent → 动作库「转派」动作——不独立建链） | 本文件 §3.3 + [10 号附录 A.5](./10-s10-ticket-collaboration.md) |
 | **表单条件显隐**（交互层联动） | 业务方提出「选了 A 才填 B」类联动诉求（业界表单设计器标配——唯一显式不做的能力边界） | ≈2–3 天（复用 S1/S3 expr 公共件——前端渲染层显隐+必填动态切换+服务端兜底断言；零迁移零结构改动） | [01 号 §5](./01-s1-form-designer.md) |
+| **多源内容采集**（微信公众号等订阅/推送源） | ✅ **业务意图已声明（2026-10-19 所有者）**——桥接方案拍板即立项 | MVP ≈1–1.5 周（轮询桥接+HTML 消毒+入库列表+通知复用；图片转存+全文检索 +1 周） | **归属 phase6 新段**（09 号不迁移——查询代理 pull ≠ 推送采集 push 两形态）；形态=**通用数据录入接口**：统一信封（source/type/payload）+按源 schema 注册校验（防「通用=无 schema」dump 陷阱）+服务间 AK/SK HMAC 鉴权[standards §4]+raw 报文留档（对账/重放）+DomainEvent 出站；前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐） | [09 号 §6 留口注](./09-s9-threat-intel-cache-proxy.md) |
 
 ### 事件驱动统一模型（2026-10-19 所有者架构提议采纳——引擎扩展的统一形态）
 
@@ -285,3 +286,4 @@ type TransitionAction interface {
 | 2026-10-19 | **gap2 排期确认批（所有者确认）+ W0 收口级联**：①gap 表/结论/触发总表/能力矩阵四处——gap2「SLA 层 0.5」✅ 确认排期 **W15 随 S3a 同窗顺带**（0.5–1 天，不占独立 Wave——「核心引擎目标态」时点锁定 ≈W15，决策项销账）②W0 ✅ 收口级联（11 号 §1/§2.1/README §5——详录 11 号） |
 | 2026-10-19 | **P0 四项修正批（并行外审合并报告五项实证全证实——本文件 2 处）**：①**A.3 执行端点显式化（P0-1）**：`POST /tickets/transition` B3-1 首件交付——校验→单事务执行（status_changed_at 同写）→commit-后回调（emit 锚+post-function 挂点），Close/Assign 收敛为封装；②P0-2 锚点修正牵连（修正详录 06 号 A.5/10 号 §3.4）——合并报告同时修正本会话此前「emit 锚=AssertTransition」错误口径（深审 C 轮未验证调用位置即提议，认领） |
 | 2026-10-19 | **P0 修正批二轮回声（修正批自身精度问题三处）**：A.3 执行端点段——①「submit/close/assign」→「Create 硬编码 open/Close→closed/Assign 推算 open↔assigned」（无 submit 端点，router.go:344-352 实证）②收敛列表去 Update（Update 非 status 端点）+补 Create 保留说明（创建非转换，独立 emit ticket.created）③补 L1 权限归属拍板项（menu_apis 注册对账——挂既有菜单/新码二选一）+status_changed_at 写点指向 UpdateStatusTx 终版锚（10 号二轮修正牵连） |
+| 2026-10-19 | **多源内容采集演进登记批（所有者问询「通用录入接口+归属 phase6」——方向确认落档）**：演进触发总表 +1 行「**多源内容采集**（微信公众号等）」——触发=业务意图已声明+桥接方案拍板即立项 / 量级 MVP ≈1–1.5 周 / **归属 phase6 新段（09 号不迁移——pull 缓存代理≠push 采集两形态）** / 形态=**通用数据录入接口**（统一信封+按源 schema 注册校验[防 dump 陷阱]+AK/SK HMAC[standards §4]+raw 留档+DomainEvent 出站）/ 前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐）——演进总表至此**十一级**全带量级与归属 |
