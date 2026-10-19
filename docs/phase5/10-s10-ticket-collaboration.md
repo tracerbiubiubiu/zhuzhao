@@ -44,7 +44,7 @@
 
 ### 3.4 节点级超时 + 逾期分级通知
 
-- `states/transitions` meta 扩展 `timeout_minutes`（节点停留超时）+ 扫描任务**骑既有 CronScheduler**（`cron_scheduler.go`，advisory lock 单实例已就位）+ S6 模板通知（按级别/角色路由收件人）。**⚠ 时间源前置（2026-10-16 外审代码级核实——拍板点 5，B10-4 前拍）**：`tickets` **无 `status_changed_at` 列**（实核 ticket_repo 列清单）——"节点停留时长"无数据源；`updated_at` 不可靠（评论/编辑都 bump）、`sla_due_at` 是截止时间非进入时间且从不写入。**推荐 (a) 新增 `status_changed_at` 列**（`AssertTransition` 成功同事务写入——扫描 O(1) 读列）；备选 (b) ticket_events 取最近状态事件（依赖事件完整性 + JOIN 成本高，不取）。量级 +0.5 天（ALTER + 写入点）。
+- **`ticket_types.transition_meta` JSONB 新列承载 `timeout_minutes`（state 级键——2026-10-19 结构修正：原「transitions meta 零 DDL」承载不存在，代码实证 transitions=邻接表 `Record<string,string[]>` 无边属性位）+ B10-4 一枚 ALTER 建列**（S3a 后续扩展 "from>to" 转换级键复用同列——一列两用，键形以 ">" 区分）+ 扫描任务**骑既有 CronScheduler**（`cron_scheduler.go`，advisory lock 单实例已就位）+ S6 模板通知（按级别/角色路由收件人）。**⚠ 时间源前置（2026-10-16 外审代码级核实——拍板点 5，B10-4 前拍）**：`tickets` **无 `status_changed_at` 列**（实核 ticket_repo 列清单）——"节点停留时长"无数据源；`updated_at` 不可靠（评论/编辑都 bump）、`sla_due_at` 是截止时间非进入时间且从不写入。**推荐 (a) 新增 `status_changed_at` 列**（`AssertTransition` 成功同事务写入——扫描 O(1) 读列）；备选 (b) ticket_events 取最近状态事件（依赖事件完整性 + JOIN 成本高，不取）。量级 +0.5 天（ALTER + 写入点）。
 - **轻量版，刻意不做完整 SLA 引擎**（§23 暂缓域不碰）：无 ticket_sla 表/无违约升级链/无暂停恢复——"服务承诺管理"诉求出现再升级。**溯源澄清（2026-10-19 所有者质询边界来源，考古修正）**：§29 原文仅方向性定论「刻意轻量不做完整 SLA 引擎」一句（+死存储核实），**并未逐条列出此四件**——四件=规划写作时从"完整 SLA 组件清单做减法"的**设计推演**（2026-10-09 S10 立项三件+2026-10-16 业界对表补业务日历一件），非所有者逐条拍板；其真实支撑=§23 暂缓纪律（SLA 整域暂缓的真实决策）+**隐性场景假设**（内部工单无对外承诺诉求）——**边界锚点应为触发信号清单（§5 硬五条）而非"定论引用"：假设失效或信号出现即重开，边界是当前态非永久钉死**。
 - **`sla_due_at`/`default_sla_hours` 死存储字段去留随本件拍**（启动批）：删除（迁移清理）vs 保留注释标记 deprecated。
 - **cron 可观测面随行（2026-10-09 补遗，+0.5 天）**：本件落**首个业务扫描任务**，同批补 cron 设施只读状态端点（任务名/上次成功/耗时/结果行数）+ 失败接 S6 告警——**超期扫描静默失败 = 提醒永不发出，合规场景不可接受静默失败**（audit_archive cron 默认关且未开启是先例）；phase6 三个扫描任务（deadline 超期/接受单到期重审/终态对账）将继承此观测面。
@@ -79,7 +79,7 @@
 
 ## 6. 影响面
 
-- **迁移**：`ticket_cc` + tag 两表族（+`timeout_minutes` 走 meta 零 DDL；编号对账）。
+- **迁移**：`ticket_cc` + tags 两表族 + `status_changed_at` ALTER + **`ticket_types.transition_meta` JSONB 一枚 ALTER**（timeout_minutes 承载——结构修正后口径；编号对账）。
 - **权限**：导出走 GetFilter 同管线（BK-21 泛化同批）；抄送特例通道若立 = L2 可见集新增 OR 支（**策略库 Registry 同批登记**，防漏调）。
 - **消费方**：S6（抄送/超时通知）、phase6（四件依赖 + 风险关单对账扫描继承 cron 观测面）、S2（节点 meta cc 规则）。
 - **前端**：详情页抄送人区/标签编辑、全局角标（布局层）、工单/审计列表导出按钮。
@@ -100,7 +100,7 @@ S6 后实施。批次：①抄送（含 L2 特例通道 + 表形态拍板）→ 
 |------|------|
 | [phase3/10 §10](../phase3/10-ticket-business.md) | ticket_participants 蓝本对表项（§3.1 ⚠）；类型级可见性批 = 潜在前置 |
 | [06-s6](./06-s6-message-notification.md) | 通知通道/模板/未读数 sections；实施序前置 |
-| [02-s2](./02-s2-flow-graph-designer.md) | 节点 meta 扩展（timeout_minutes/cc 规则）承载 |
+| [02-s2](./02-s2-flow-graph-designer.md) | 画布范围界注互指（meta 编辑不在 S2——transition_meta 编辑归本段 B10-4 管理面/S3a B3-1） |
 | [phase6/README §3](../phase6/README.md) | 四件依赖与降级说明；cron 观测面继承方 |
 | [review/11 §8 BK-21 行](../review/11-project-control.md) | 护栏泛化触发实锤（导出/抄送特例支同批） |
 
@@ -175,7 +175,13 @@ CREATE TABLE tags (
 CREATE INDEX idx_tags_entity ON tags (entity_type, entity_id);
 CREATE INDEX idx_tags_tag    ON tags (tag);            -- 标签筛选与输入联想
 
--- ③ status_changed_at（拍板点 5 预确认：AssertTransition 同事务写）
+-- ③ ticket_types.transition_meta（2026-10-19 结构修正新增：timeout_minutes 承载——
+--    原「走 transitions meta 零 DDL」不成立：transitions=邻接表 Record<string,string[]> 无边属性位）
+ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transition_meta JSONB DEFAULT '{}';
+-- state 级键先入（B10-4）：{"pending_verify": {"timeout_minutes": 240}}
+-- S3a B3-1 扩展 "from>to" 转换级键复用同列（condition/validator/post_actions）——一键两形以 ">" 区分
+
+-- ④ status_changed_at（拍板点 5 预确认：AssertTransition 同事务写）
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ;
 -- 存量一次性回填（随迁移）：UPDATE tickets SET status_changed_at = updated_at WHERE status_changed_at IS NULL;
 --   ⚠ 回填值 = 近似（updated_at 被评论/编辑污染）——存量单首轮扫描可能误报超时，
@@ -202,7 +208,7 @@ GET /api/v1/badges                      # 登录态；响应 sections 为开放 
 ### A.5 节点超时扫描器（B10-4）
 
 - **注册**：CronScheduler 增 `timeout_scan` 任务（周期 config，默认 5m；advisory lock 单实例既有）；
-- **扫描逻辑**：逐活跃 ticket_type → 解析 transitions meta（state→`timeout_minutes`，S2 画布承载）→ 候选查询（部分索引 `idx_tickets_timeout`：`status = ? AND status_changed_at < NOW() - interval`）→ 命中则 **Dispatch `DomainEvent{BizType:"ticket", Action:"ticket.timeout"}`**；
+- **扫描逻辑**：逐活跃 ticket_type → 解析 `transition_meta` JSONB（state 级键→`timeout_minutes`；**编辑面=B10-4 管理页扩展或 JSON 专家模式——S2 画布不承载**[结构修正]）→ 候选查询（部分索引 `idx_tickets_timeout`：`status = ? AND status_changed_at < NOW() - interval`）→ 命中则 **Dispatch `DomainEvent{BizType:"ticket", Action:"ticket.timeout"}`**；
 - **通知复用 S6 规则面**（关键复用设计）：扫描器只发事件、不发通知——S6 `message_rules` 配置 `ticket.timeout` 事件的模板/收件人（按级别路由 = recipients spec，§5.1 第一档）——超时通知与状态通知同一条渲染→发送→message_log 链，零新通知代码；
 - **查重**：S6 消费者侧节流窗口既定（60s）不适用于扫描周期场景——扫描器侧同单同状态只发一次：`message_log` 查重（biz_id + Action + 当前状态存在 sent 记录则跳过）；状态流转后 `status_changed_at` 刷新，自然重置；
 - **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`）+ `GET /api/v1/system/cron-status`（admin 只读）+ 扫描失败 Dispatch `DomainEvent{BizType:"ops", Action:"ops.cron_failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。**BizType=`ops`（运维域，非 ticket——域边界显式化，2026-10-16 审计补：按 Action 命名约定 `{biz_type}.{动作}` 统一，避免隐式落 message_rules 表 DEFAULT 'ticket'）**。
@@ -241,3 +247,4 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 | 2026-10-16 | **评审批 cc_added 事件补（深审项 A）**：§3.1 抄送落库同事务 emit `ticket.cc_added`（DomainEvent——S6 message_rules 订阅抄送通知的订阅依据；无此事件=通知须硬编码进 cc_service 违 06 号 §5.2 禁令）；06 号 A.1 枚举行同步 |
 | 2026-10-16 | **SLA 业界对表与升级触发批（所有者问"为什么这样设计/后续对齐业界的触发事件"）**：§5 边界补 SLA 业界对表注——六组件/时钟三模型（A 截止时间戳=B 纪元 B 事件式/C 状态老化=本件）/设计理由五条/**升级触发信号清单**（硬五条：对外承诺·停表语义[分水岭]·业务日历·达成率考核·自动升级链；软三条）+升级形态预置（sla_timer_events+goal 表+aging/SLA 两层并存——status_changed_at 即模型 B 地基） |
 | 2026-10-19 | **SLA 边界溯源修正批（所有者质询"四件边界从哪里来"——考古发现标注瑕疵）**：dd §29 原文（行 1447 实证）仅方向性定论「刻意轻量不做完整 SLA 引擎」一句，**未列四件细分**；git log -S 考古：三连（无升级链/无暂停恢复）首现于 9e7b856 S10 立项批=规划写作时从完整组件清单减法的**设计推演**、业务日历第四件首现于 d79af12 业界对表批——原「dd §29 定论，边界钉死」表述将推演产物冠以定论引用（标注纪律瑕疵，BK-16 同族）；§3.4 修正为三层溯源（方向定论=§29/四件=设计推演/真实锚点=§23 纪律+隐性场景假设[内部无承诺诉求]+触发信号清单硬五条）——**边界=当前态非永久钉死，假设失效或信号出现即重开** |
+| 2026-10-19 | **timeout_minutes 承载结构修正批（外审全面审计 P1——三方矛盾：代码 transitions=纯邻接表无边属性位/02 号画布签名 Record<string,string[]>+后端零改动/S3a transitions_meta 列 W13–15 晚于 B10-4 W9–11）**：修法 (a) 拍定——`ticket_types.transition_meta` JSONB 一枚 ALTER **随 B10-4 建**（state 级键存 timeout_minutes），S3a 扩展 "from>to" 键复用同列（一列两用、">" 区分键形）——§3.4 主句/§6 迁移行/§9 衔接行/A.3 DDL 补第③枚/A.5 扫描逻辑句五处修正；「零 DDL」口径废止；**timeout 编辑面=B10-4 管理页或 JSON 专家模式（S2 画布不承载——与 02 号界注对齐）** |

@@ -104,15 +104,18 @@
 - **meta 结构（对齐 01 号 A.2 方案 b 先例——独立列防结构混载）**：
 
 ```sql
-ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transitions_meta JSONB DEFAULT '{}';
--- 键 = "from>to"（转换定位）；值 = condition/validator/post_actions 三段
+-- ⚠ 列交付时点（2026-10-19 结构修正）：本列由 S10 B10-4（W9–11）**先行创建**（列名
+-- transition_meta——B10-4 用 state 级键存 timeout_minutes），本段 B3-1 扩展 "from>to"
+-- 转换级键复用同列（一列两用、">" 区分键形）——勿重复建列，ALTER 随 B10-4 编号
+ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transition_meta JSONB DEFAULT '{}';
+-- 转换级键 = "from>to"（定位）；值 = condition/validator/post_actions 三段
 -- {"in_progress>pending_verify": {"roles": ["assignee","org_admin"],
 --   "condition": "priority == 'P1'", "post_actions": ["notify","cc_team","reassign"]}}
 -- 缺省 = 既有行为（零破坏）；存储与 transitions 邻接表分列——01 号 A.2 同款决策
 ```
 
 - **可用转换查询**：`GET /tickets/:id/transitions/available`（Jira condition 语义=按当前用户过滤——前端按钮渲染依据；服务端 AssertTransition 仍为 fail-closed 兜底，前端过滤仅 UX）；
-- **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。**字段引用约定（2026-10-19 外审补 P2-5）**：内置字段=标识符直引（priority == 'P1'）；**动态字段=map 索引形式 custom_data["字段名"]**（expr 支持字符串索引——中文/含点 key 不作标识符，规避解析失败与内建冲突）；与 S6 变量字典 slug 约定的统一对表随 B3-1（两处引用同一字段语义须一致）。
+- **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。**condition 类型扩展触发登记（2026-10-19 外审）**：首批=roles/属主/处理人三类（phase6 R3 复核态=属主类，够用）；字段值条件（Jira field-valued condition）由 validator=expr 覆盖数据侧，condition 面的字段值形态出现诉求再扩（触发登记勿预建）。**字段引用约定（2026-10-19 外审补 P2-5）**：内置字段=标识符直引（priority == 'P1'）；**动态字段=map 索引形式 custom_data["字段名"]**（expr 支持字符串索引——中文/含点 key 不作标识符，规避解析失败与内建冲突）；与 S6 变量字典 slug 约定的统一对表随 B3-1（两处引用同一字段语义须一致）。
 
 ### A.2 自动分派：assignment_rules DDL（五决议既定 §3.2）
 
@@ -133,6 +136,8 @@ CREATE INDEX idx_assignment_rules_type ON assignment_rules (type_code, priority)
 -- 无命中保持 open+dispatch_missed 事件（决议④）；失败不回滚创建（决议⑤）
 -- 管理面（2026-10-19 外审 P3-9 补）：规则 CRUD 管理端点+页面归 B3-2（类型管理页族扩展；
 --   权限沿用类型管理权限——零新码），随 B3-2 验收「规则配置→命中→自动分派」全链
+-- 扩展触发登记（2026-10-19 外审）：决议①=keyword LIKE 仅包含匹配——「按字段值分派」
+--   （custom_data 条件选组）出现诉求再扩（触发登记勿预建，Jira component 路由同源形态）
 ```
 
 ### A.3 动作库框架（Post-function 形态）
@@ -186,7 +191,7 @@ type TransitionAction interface {
 - meta 往返：**B3-1 配置面**（类型管理页扩展——S2 画布范围不含 meta 编辑，见 A.7 界注）配置 meta → 保存 → 回显一致；无 meta 存量类型零行为变化（零破坏断言）；
 - 分派：规则命中自动分派（决议①–⑤逐条）；keyword 注入负向（LIKE 通配符转义）；
 - 求值器沙箱负向（与 01 号 A.6 同款）。
-- 界注（2026-10-19 外审 P1-2）：**meta 编辑面归本段 B3-1**（类型管理页扩展+配套端点）——S2 画布范围=states/transitions 邻接表+后端零改动（02 号 §3 结构性不覆盖 transitions_meta 独立列）；transitions JSONB 内的 timeout_minutes 既有 meta 可由 S2 画布 v1 承载或 JSON 专家模式编辑（02 号未列，随 B2-2 范围确认）。
+- 界注（2026-10-19 外审 P1-2）：**meta 编辑面归本段 B3-1**（类型管理页扩展+配套端点）——S2 画布范围=states/transitions 邻接表+后端零改动（02 号 §3 结构性不覆盖 transitions_meta 独立列）；**timeout_minutes 承载=transition_meta 新列（B10-4 建列、state 级键——2026-10-19 结构修正，transitions JSONB 邻接表无边属性位）**，编辑面=B10-4 管理页/JSON 专家模式。
 ---
 
 ## 附录：工单引擎演进路线（跨段视图，2026-10-16 所有者提议立项——以业界引擎为参照系的统一演进计划）
@@ -269,3 +274,4 @@ type TransitionAction interface {
 | 2026-10-19 | **引擎独立性评估批（所有者问"工单引擎是否拆独立仓库"）**：附录 A.6 新增——**现在不拆**（判据=跨仓消费方≥2，项目第三次同判据同答案：FormDesigner/utils/本次同构）；引擎耦合面四条（策略库/DomainEvent 订阅者/assignment_rules 表依赖/动作库业务语义——拆=连带重写）；演化期纪律（三波演进跨仓同步负收益，modular monolith 内部领域隔离=既定架构「画边界非拆」）；**拆分触发信号三条**（第二消费方/部署独立/团队拆分）+phase5 准备（引擎件聚类纪律+域间禁表直查） |
 | 2026-10-19 | **S3a 详设外审深修批（外审 P1×3+P2×4+P3×2 全修）**：**P1-1 升级链一致性自相矛盾修法拍定**=转派由超时扫描器事务内直调（扫描批事务=强一致通道）+DomainEvent 仅通知面+outbox 备选登记（事件驱动统一模型节裁定）；**P1-2 meta 配置面归 B3-1**（类型管理页扩展——02 号画布范围结构性不覆盖独立列+A.5 验收主语改 B3-1+A.5 加界注）；**P1-3 通知双通道分工**=流转通知收敛走 S6 规则面（notify 动作降无规则兜底——§3.3 修正）；P2-4 框架补两触发形态（转换后/事件订阅——事务边界随触发方）；P2-5 expr 字段引用约定（内置=标识符直引/动态=map 索引+与 S6 slug 统一随 B3-1）；P2-6 补偿事件定案（ops.action_failed+消费方 ops 告警规则+payload）；P2-7 循环防护落点补 B3-3；P3-9 assignment_rules 管理面归 B3-2；03 号 A.7 界注+变更记录批行 |
 | 2026-10-19 | **边界工具化时机前移批（随 11 号同款，所有者拍「按建议修改」）**：A.6 画边界补强两件拆开排——工具化前移 W1 开工首件（CI 自第一行代码生效）/engine 子包化维持随 B3-1（顺手零成本） |
+| 2026-10-19 | **timeout 承载修正级联（随 10 号结构修正批）+ 两扩展触发登记（外审 P3）**：A.1 DDL 注列交付时点（B10-4 先建 transition_meta、B3-1 扩展键复用——勿重复建列）+A.5 界注修正（上轮「transitions JSONB 内既有 meta」假设错误已改）+condition 字段值形态/assignment_rules 字段值分派两处扩展触发登记 |
