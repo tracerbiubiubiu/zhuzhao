@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -42,6 +44,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	// A.11 文件通道旁路凭证（B5-2-2 形态 B：值=access JWT，登出/吊销联动即失效）
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn)
 	response.OK(c, pair)
 }
 
@@ -66,6 +70,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn)
 	response.OK(c, pair)
 }
 
@@ -102,6 +107,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	middleware.ClearFileSessionCookie(c)
 	response.OK(c, nil)
 }
 
@@ -126,6 +132,8 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	// 密码修改换发新 token 对——文件 cookie 随旧 access 同步清除后重签
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn)
 	response.OK(c, pair)
 }
 

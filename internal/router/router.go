@@ -218,7 +218,8 @@ func New(deps Deps) *gin.Engine {
 			// A.11 cookie 旁路凭证随 B5-2-2 演进本组认证（header 优先→cookie 回退）
 			files := v1.Group("/files")
 			files.Use(
-				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+				// A.11 双凭证：header 优先→file_session cookie 桥接（B5-2-2 形态 B）
+				middleware.FileAuth(middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup)),
 				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			)
 			{
