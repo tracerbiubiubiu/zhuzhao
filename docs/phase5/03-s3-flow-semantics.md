@@ -1,7 +1,7 @@
 # 03 — P5-S3 流程运行语义配置化（S3a/S3b）（设计稿）
 
 > **段属性**：**S3a 已升格排期段（2026-10-19 所有者拍「升」，原条件段）——W13–15 实施、纳入 phase5 收官**（升格论据=事件驱动统一模型+phase6 前核心引擎目标，见附录演进路线 gap1）；S3b 审批流**等首个真实审批场景**再启动（无消费者不建引擎——easy-workflow 教训），**不计入 phase5 收口**。
-> **量级**：S3a ≈ 2 周（转换级语义 + 分派 + 动作库框架；零新表或轻表）；S3b 待场景（workflow_* 表族，DDL 蓝本现成）。
+> **量级**：S3a ≈ 2 周（转换级语义 + 分派 + 动作库框架；**assignment_rules 一表 + transitions_meta 一枚 ALTER**——2026-10-19 详设后精确化，原"零新表或轻表"措辞修正）；S3b 待场景（workflow_* 表族，DDL 蓝本现成）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。**实施蓝本 = [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)**（§23 翻案后恢复实施蓝本地位，2026-10-09）；翻案决策 = [design-decisions §29](../design/design-decisions.md)。
 
 ## 1. 定位与由来
@@ -67,7 +67,7 @@
 
 ## 7. 影响面
 
-- **迁移**：S3a 零新表或轻表（转换 meta 走 transitions JSONB 扩展；assignment_rules 一表）；S3b 有（workflow_* 五表族，DDL 蓝本 §4.3）。
+- **迁移**：S3a = assignment_rules 一表 + `transitions_meta` 新列一枚 ALTER（附录 A.1 方案——原"JSONB 扩展零 DDL"措辞修正）；S3b 有（workflow_* 五表族，DDL 蓝本 §4.3）。
 - **权限**：转换级语义落策略层（fail-closed）；动作库执行走既有权限码体系，不新增旁路。
 - **端口/公共件**：求值器（与 S1 共用）；动作 handler 注册表（代码注册，编译期检查）。
 - **依赖**：S1/S2 收口（画布/设计器承载 meta 配置面）+ S6（通知动作消费者）——**排期硬约束**。
