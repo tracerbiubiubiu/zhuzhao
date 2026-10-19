@@ -417,6 +417,31 @@ check "#S5-2 声明超限 91001" "91001" "$(curl -s -X POST "$BASE/storage/presi
 STPRE2=$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"evil.html","mime_type":"image/png","size_bytes":"50"}')
 check "#S5-3 篡改 CT 直传 403" "403" "$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$(echo "$STPRE2" | json_field "d['data']['upload_url']")" -H "Content-Type: text/html" --data-binary 'evil-payload-x')"
 
+# --- S6 头像链路（B5-2：bind 回写+cookie 通道+登出吊销联动）---
+STAV=$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"s6.png","mime_type":"image/png","size_bytes":"42"}')
+AVKEY=$(echo "$STAV" | json_field "d['data']['object_key']")
+AVURL=$(echo "$STAV" | json_field "d['data']['upload_url']")
+curl -s -o /dev/null -X PUT "$AVURL" -H "Content-Type: image/png" --data-binary 's6-avatar-payload-bytes-012345678901234567890'
+check "#S6-0 直传+confirm" "0" "$(curl -s -X POST "$BASE/tickets/attachments/confirm" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"object_key\":\"$AVKEY\"}" | json_code)"
+check "#S6-1 头像 bind" "0" "$(curl -s -X POST "$BASE/storage/avatar/bind" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"object_key\":\"$AVKEY\"}" | json_code)"
+# 未 confirm 直接 bind 应 404（pending 同形）——负向
+check "#S6-2 未确认 bind 拒绝" "91003" "$(curl -s -X POST "$BASE/storage/avatar/bind" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"object_key\":\"avatars/2026/10/never-confirmed.png\"}" | json_code)"
+# cookie 通道：从 login 响应 Set-Cookie 提取 file_session（A.11 形态 B）
+HDRS=$(curl -s -D - -o /dev/null -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
+FSCOOKIE=$(echo "$HDRS" | grep -i '^set-cookie:' | grep file_session | sed 's/.*file_session=\([^;]*\).*/\1/' | tr -d '\r\n')
+check "#S6-3 login 签发 file cookie" "yes" "$([ -n "$FSCOOKIE" ] && echo yes)"
+check "#S6-3 cookie Path 限定" "yes" "$(echo "$HDRS" | grep -i 'set-cookie:.*file_session' | grep -q 'Path=/api/v1/files' && echo yes)"
+# cookie 通道拉头像（无 Authorization header——img 原生形态模拟）
+check "#S6-4 cookie 通道拉头像" "200" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/files/$AVKEY" -H "Cookie: file_session=$FSCOOKIE")"
+check "#S6-5 无凭证拉头像拒绝" "401" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/files/$AVKEY")"
+# 登出吊销联动（形态 B 核心：logout 后同 cookie 立即 401）
+# 登出用 FSCOOKIE 本身（cookie 值=access JWT——形态 B 自洽：吊销同一 jti）
+curl -s -X POST "$BASE/auth/logout" -H "Authorization: Bearer $FSCOOKIE" -H 'Content-Type: application/json' -d '{"device_id":"acceptance-s6"}' >/dev/null
+check "#S6-6 登出后旧 cookie 立即失效" "401" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/files/$AVKEY" -H "Cookie: file_session=$FSCOOKIE")"
+# 复登供后续脚本段使用（幂等惯例）
+SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
+SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+
 echo ""
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
 [ "$fail" -eq 0 ]

@@ -381,6 +381,8 @@ func New(deps Deps) *gin.Engine {
 				storageGroup := biz.Group("/storage")
 				{
 					storageGroup.POST("/presign/upload", deps.StorageHandler.PresignUpload)
+					// B5-2-3：头像回写（A.4 #7 契约行——B5-2 新增）
+					storageGroup.POST("/avatar/bind", deps.StorageHandler.BindAvatar)
 				}
 
 				// 工单元数据（类型/模板）

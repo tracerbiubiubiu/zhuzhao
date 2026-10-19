@@ -102,3 +102,29 @@ func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) error {
 		`UPDATE file_objects SET status = 'deleted' WHERE id = $1 AND status = 'pending'`, id)
 	return err
 }
+
+// GetUserAvatar 读当前头像对象键（avatar 回写链——users 表跨表读，
+// repository 平铺包域内直查；换后端形态时随 avatar 链整体迁移）。
+func (r *StorageRepo) GetUserAvatar(ctx context.Context, userID int64) (string, error) {
+	var avatar string
+	err := r.db.QueryRow(ctx, `SELECT coalesce(avatar, '') FROM users WHERE id = $1`, userID).Scan(&avatar)
+	if err != nil {
+		return "", err
+	}
+	return avatar, nil
+}
+
+// UpdateUserAvatar 回写头像对象键。
+func (r *StorageRepo) UpdateUserAvatar(ctx context.Context, userID int64, objectKey string) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET avatar = $2 WHERE id = $1`, userID, objectKey)
+	return err
+}
+
+// MarkAvatarDropped 旧头像弃旧（A.7：换头像即弃旧 GC 收——条件限定
+// purpose=avatar，防止误标他域对象）。
+func (r *StorageRepo) MarkAvatarDropped(ctx context.Context, bucket, objectKey string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE file_objects SET status = 'deleted' WHERE bucket = $1 AND object_key = $2 AND purpose = 'avatar'`,
+		bucket, objectKey)
+	return err
+}

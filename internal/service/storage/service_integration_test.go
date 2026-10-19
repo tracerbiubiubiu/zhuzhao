@@ -33,8 +33,11 @@ type stubClient struct {
 	presignErr error
 	stat       *pkgstorage.ObjectInfo
 	statErr    error
-	getBody    []byte // GetObject 返回体
+	getBody    []byte   // GetObject 返回体
+	removed    []string // RemoveObject 记录（弃旧/断言用）
 }
+
+func (s *stubClient) removedKeys() []string { return s.removed }
 
 func (s *stubClient) PresignPut(_ context.Context, key, contentType string, ttl time.Duration) (*pkgstorage.PresignedPut, error) {
 	if s.presignErr != nil {
@@ -67,7 +70,10 @@ func (s *stubClient) GetObject(_ context.Context, key, matchETag string) (io.Rea
 	return io.NopCloser(bytes.NewReader(s.getBody)), s.stat, nil
 }
 
-func (s *stubClient) RemoveObject(_ context.Context, _ string) error { return nil }
+func (s *stubClient) RemoveObject(_ context.Context, key string) error {
+	s.removed = append(s.removed, key)
+	return nil
+}
 
 func insertUser(t *testing.T) int64 {
 	t.Helper()

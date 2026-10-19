@@ -47,6 +47,7 @@ var catalogExempt = map[string]bool{
 	// ticket_attachment/richtext 态的 ticket:update+L2 分流随 B5-3 扩后移出豁免）
 	"POST /api/v1/storage/presign/upload":      true,
 	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 L2 随 B5-3）
+	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
 	"POST /api/v1/tickets/attachments/confirm": true,
 	"POST /api/v1/user/pats":                   true,
 	"POST /api/v1/user/pats/delete":            true,

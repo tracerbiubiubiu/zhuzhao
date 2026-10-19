@@ -1134,6 +1134,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/storage/avatar/bind": {
+            "post": {
+                "description": "校验对象（confirmed+本人+avatar 面，非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象 best-effort 删除+标 deleted）；同键重复幂等。前端渲染 src=/api/v1/files/{avatar}",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "头像回写（确认对象绑定为当前用户头像）",
+                "parameters": [
+                    {
+                        "description": "对象键",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "91003（含非本人/pending/非 avatar 面防枚举同形）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/storage/presign/upload": {
             "post": {
                 "description": "限制矩阵预检（MIME 白名单+黑名单/大小）→ 服务端生成对象键 → 签发 PUT 直传 URL。purpose 取 avatar / attachment_create / richtext_create（ticket 态随附件批）",

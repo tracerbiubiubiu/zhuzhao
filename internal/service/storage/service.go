@@ -225,6 +225,46 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string) (*Downl
 	return &Download{Body: body, File: f}, nil
 }
 
+// BindAvatar 头像回写（A.4 #7——B5-2 契约新增行）：校验对象
+// （confirmed+本人+avatar 面，非皆同形 404 防枚举）→ users.avatar 落对象键
+// → 旧头像对象 best-effort 删除+标 deleted（A.7 弃旧语义）；同键重复 bind 幂等。
+func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64) (*model.FileObject, error) {
+	if s.client == nil {
+		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
+	f, err := s.repo.GetByObjectKey(ctx, s.bucket, objectKey)
+	if err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return nil, errcode.ErrFileNotFound
+		}
+		s.logger.Error("storage get by key", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	if f.CreatedBy != userID || f.Status != model.FileStatusConfirmed || f.Purpose != "avatar" {
+		return nil, errcode.ErrFileNotFound
+	}
+
+	old, err := s.repo.GetUserAvatar(ctx, userID)
+	if err != nil {
+		s.logger.Error("storage get user avatar", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	if err := s.repo.UpdateUserAvatar(ctx, userID, objectKey); err != nil {
+		s.logger.Error("storage update user avatar", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	// 弃旧：先回写新键成功再处理旧对象（失败不阻塞——对象残留由对账扫描收）
+	if old != "" && old != objectKey {
+		if err := s.client.RemoveObject(ctx, old); err != nil {
+			s.logger.Warn("storage drop old avatar remove failed", "key", old, "err", err)
+		}
+		if err := s.repo.MarkAvatarDropped(ctx, s.bucket, old); err != nil {
+			s.logger.Error("storage mark avatar dropped", "key", old, "err", err)
+		}
+	}
+	return f, nil
+}
+
 // InlineDisposition 代理下载 Content-Disposition 分型（inline 前缀表判定）。
 func (s *Service) InlineDisposition(mime string) bool {
 	for _, p := range s.cfg.InlineMIMEPrefixes {

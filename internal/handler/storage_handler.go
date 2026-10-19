@@ -131,3 +131,29 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 	// 审计（A.4 #5 收窄）：avatar 免审计；ticket_attachment/ticket_richtext
 	// 的 handler 级审计行（谁/何时/key/结果，仅 200）随 B5-3 接入
 }
+
+// BindAvatar godoc
+//
+//	@Summary		头像回写（确认对象绑定为当前用户头像）
+//	@Description	校验对象（confirmed+本人+avatar 面，非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象 best-effort 删除+标 deleted）；同键重复幂等。前端渲染 src=/api/v1/files/{avatar}
+//	@Tags			storage
+//	@Accept			json
+//	@Produce		json
+//	@Param			req	body		model.ConfirmFileInput	true	"对象键"
+//	@Success		200	{object}	response.Response{data=model.FileObject}
+//	@Failure		404	{object}	response.Response	"91003（含非本人/pending/非 avatar 面防枚举同形）"
+//	@Failure		500	{object}	response.Response
+//	@Router			/api/v1/storage/avatar/bind [post]
+func (h *StorageHandler) BindAvatar(c *gin.Context) {
+	var in model.ConfirmFileInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	f, err := h.svc.BindAvatar(c.Request.Context(), in.ObjectKey, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, f)
+}

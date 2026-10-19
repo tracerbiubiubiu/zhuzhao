@@ -87,6 +87,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 		c.Next()
 	})
 	g.POST("/storage/presign/upload", h.PresignUpload)
+	g.POST("/storage/avatar/bind", h.BindAvatar)
 	g.POST("/tickets/attachments/confirm", h.Confirm)
 	g.GET("/files/*key", h.ProxyDownload)
 	return r, uid
@@ -230,6 +231,31 @@ func TestStorageHandler_Contract(t *testing.T) {
 		r2.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusNotModified, w.Code)
 		assert.Empty(t, w.Body.String())
+	})
+
+	t.Run("avatar bind——200 回显+users.avatar 落键+重复幂等", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		_, env := post(t, r2, "/api/v1/storage/presign/upload", validUpload)
+		require.Equal(t, 0, env.Code)
+		var pre struct {
+			ObjectKey string `json:"object_key"`
+		}
+		require.NoError(t, json.Unmarshal(env.Data, &pre))
+		_, err2 := post(t, r2, "/api/v1/tickets/attachments/confirm", map[string]any{"object_key": pre.ObjectKey})
+		require.Equal(t, 0, err2.Code)
+
+		w, env3 := post(t, r2, "/api/v1/storage/avatar/bind", map[string]any{"object_key": pre.ObjectKey})
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, 0, env3.Code)
+		w4, _ := post(t, r2, "/api/v1/storage/avatar/bind", map[string]any{"object_key": pre.ObjectKey})
+		assert.Equal(t, http.StatusOK, w4.Code, "同键重复 bind 幂等")
+	})
+
+	t.Run("avatar bind——未知键同形 404", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		w2, env2 := post(t, r2, "/api/v1/storage/avatar/bind", map[string]any{"object_key": "avatars/2026/10/other.png"})
+		assert.Equal(t, http.StatusNotFound, w2.Code)
+		assert.Equal(t, errcode.ErrFileNotFound.Code, env2.Code)
 	})
 
 	t.Run("代理下载——未知键 404", func(t *testing.T) {

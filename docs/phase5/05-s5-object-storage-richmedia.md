@@ -250,6 +250,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 | 3 | GET `/api/v1/tickets/:id/attachments` | `ticket:read` + L2 | PageData 分页 |
 | 4 | POST `/api/v1/tickets/attachments/delete` | `ticket:update` + L2 | 删关联行 + file_objects 翻 deleted；对象物理删除走 GC（10 号"仅删关联"口径） |
 | 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名）；**ETag 透传**（RustFS 对象 ETag → 响应头 + If-None-Match 条件请求——richtext 多图工单回访 304 免重传；**2026-10-19 拍板 1b 扩**：etag 读列快照零额外 stat + **S3 If-Match 比对存储对象 ≠ 列快照 → 404+告警**（防 presign TTL 内重放替换已 confirm 对象）——一列两用）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 透传顺手预留不承诺）（2026-10-16 评审批深审项 B） |
+| 7 | POST `/api/v1/storage/avatar/bind` | 登录态（本人对象——A.7 avatar 面） | 头像回写：校验 confirmed+本人+avatar 面（非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象 best-effort 删+标 deleted）；同键幂等；**B5-2-3 契约新增行（建单前绑定先例同款——实施批补契约）** |
 | 6 | GET `/api/v1/system/settings/:key` + POST `/api/v1/system/settings/update`（B5-6——**2026-10-16 外审修正：原 GET/PUT 违 §3-1，改 house style**） | GET=admin 读 / POST=按 min_editor_tier（存储限制类 superadmin-only），key/value 入 body | KV 读写 + 钳制校验（越界 400 非静默修正）+ 变更审计 |
 
 > 直传环节的 PUT/HEAD 为 S3 协议层动作，不经平台 API 面（§3 协议口径注）。错误码 91001–91004 随 B5-1 登记 `api/errcode.md`。
@@ -328,7 +329,8 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 
 ### A.11 img 认证实施设计（拍板点 #8 已拍——Cookie 双凭证，2026-10-16）
 
-- **Cookie 规范（⚠ 实施级建议，启动批确认制）**：name=`file_session`；值 = 服务端 HMAC 签名串（`uid+exp`，密钥复用 JWT 签名密钥——无状态、无 Redis 依赖）；属性 `HttpOnly; SameSite=Lax; Path=/api/v1/files` + 生产 `Secure`；TTL = 与 access token 有效期对齐。
+- **Cookie 规范（⚠ 实施级建议，启动批确认制）**：name=`file_session`；属性 `HttpOnly; SameSite=Lax; Path=/api/v1/files` + 生产 `Secure`；TTL = 与 access token 有效期对齐。
+- **✅ 形态 B 实施确认（2026-10-19 B5-2-2，偏离原「HMAC uid+exp 无状态」方案）**：cookie 值=**同款 access JWT**（FileAuth 无 header 时桥为 Bearer 走既有 JWT 链）——①登出/密码修改/会话吊销经既有黑名单链**立即失效**（原无状态方案的「cookie 保留至 exp」边界被消除——负向②由客户端语义升为服务端强保证）②零新原语（utils jwt.Manager 无需加方法，零跨仓）③桥接实现 ~20 行。代价：files 认证经 Redis 黑名单两键 pipeline（原方案零 Redis）——files 路径本就要过限流（Redis 已在链上），边际成本可忽略。
 - **签发/轮换/清除**：login 与 refresh 成功响应 `Set-Cookie`（重设即轮换）；logout 显式过期清除；密码修改/会话吊销（break-glass 链路）同步清除。
 - **中间件回退**：files 路由认证顺序 = Authorization header 优先（既有 API 调用不受影响）→ 无 header 时读 `file_session` cookie 验签。**header+cookie 并存非 mixed-auth**（2026-10-16 外审修正：cookie 是文件通道的旁路凭证而非替代认证——`hasMixedAuth` 维持 Bearer+AK 互斥语义不变，二者随请求共存时以 header 为准、cookie 静默忽略）。
 - **前端零改造**：`<img>`/`el-avatar`/MD 渲染器 src 直接用 `/api/v1/files/...` 相对路径（同源自动带 cookie）；axios 拦截器与 tokenStorage 无感知。
@@ -370,3 +372,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-19 | **B5-1 spike 判据②③④预验批（minio-go v7.4.1 scratch 实测，B5-1 批2）**：②presign PUT 往返闭环（PUT 200 → StatObject[size+**etag=MD5 形态实得**——etag 列快照可行性再证]→presigned GET content-match）；③未签名 403（判据①批已证）；④Content-Type 钉入签名（`PresignHeader` extraHeaders 形态）——篡改 CT=text/html → **403 SignatureDoesNotMatch 存储侧拒**（限制矩阵「防谎报」锚点实证）；⑥桶复制 GetBucketReplication 读 API 通（err=nil 空配置）——**生效性深测随 B5-5**（rclone 起步形态维持）；**minio-go v7.4.1 兼容面全绿**（BucketExists/MakeBucket/PresignHeader/StatObject/PresignedGetObject——备选 aws-sdk-go-v2 维持挂账不启用） |
 | 2026-10-19 | **B5-1 spike 判据⑤预验批（批3）+ rclone 术语修正**：判据⑤ 主→备双实例（zhuzhao-rustfs→rustfs-backup，compose 内网服务名互访）`rclone sync` **全量+增量双实测通过**（首轮全量复制/次轮仅拷新对象 second.txt；rclone **v1.75.2** 实测——镜像 tag 随 B5-5 钉死）；**⚠ 术语修正：rclone 无 `mirror` 命令**（mc mirror 迁移笔误，正确命令=`sync` 单向含删除=镜像语义）——§7/A.8/拍板点 5/README/11 号正文与 compose 注释全量替换，2026-10-16 历史变更记录行留痕不改；判据⑥ GetBucketReplication 读 API 通（err=nil）维持「生效性深测随 B5-5」——**spike 六判据至此全部预验完毕，B5-1 首日 spike 提前完成** |
 | 2026-10-19 | **B5-1 底座收口批（批7）**：E2E 四场景（ec2051a）+ 四档接入（469f689）+ §11 验收完成注（S1/S4 底座面全过、S2/S3/S5/S6 各归后续批）——**B5-1 收口，B5-2 头像开工** |
+| 2026-10-19 | **B5-2 头像批落地（批 1–3：f6a9cd7 代理下载/e6c5116 swag 补/6391e6d Cookie 双凭证/本批 avatar 回写）**：①代理端点 GET /api/v1/files/*key（独立链 JWT+限流不挂通用审计——A.4 #5 收窄；同形 404 三态+If-None-Match 304+etag 作 If-Match 默认开=拍板 1b 防重放落点；端口面扩第 5 方法 GetObject——A.1 四方法收窄对代理读流系设计缺口已登记）②A.11 **形态 B 确认**（cookie=access JWT，登出吊销联动即失效——见 A.11 注记）③A.4 新增 #7 avatar/bind 行（校验三态同形 404/旧头像弃旧标 deleted/同键幂等）④缩略图+EXIF 随行件拍形态=**前端 canvas 压缩单 key**（零 Go 侧新依赖——ui 件随 B5-2 前端批） |
