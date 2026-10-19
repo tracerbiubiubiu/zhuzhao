@@ -3,8 +3,8 @@
 name: ci
 on:
   push:
-    # phase4：Phase 4 实施期活跃分支（W0 B-4 拍板补入——原列表下活跃分支零检查）
-    branches: [dev, main, phase4, phase5, "feature/**"]
+    # phase5：Phase 5 实施期活跃分支（phase4 已合回 main 删除，死条目随批清理）
+    branches: [dev, main, phase5, "feature/**"]
   pull_request:
 # 连续 push 只跑最新提交（对齐 activelist/taskrunner 惯例——过期 run 自动取消省时长）
 concurrency:
