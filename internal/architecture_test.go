@@ -163,6 +163,80 @@ func TestArchitecture_LayerDependency(t *testing.T) {
 	}
 }
 
+// TestArchitecture_PkgNoBusinessDependency pkg 横切工具层禁止依赖业务层：
+// internal/pkg/** 是被所有层消费的底层（横切件/端口归属），反向依赖
+// service/repository/handler/app/gateway = 分层循环，必须拦截。
+// 豁免：admincli（break-glass CLI 复原工具——AGENTS 承认的独立入口，
+// 不经 handler 全链，依赖 repository/service 为其既有形态）。
+// （phase5 W1 开工首件——03 号附录 A.6「架构依赖规则工具化」2026-10-19 拍板前移，
+// 维持自研 guard 路线不引入 golangci-lint 工具链。）
+func TestArchitecture_PkgNoBusinessDependency(t *testing.T) {
+	mod := modulePath(t)
+	files := scanDir(t, filepath.Join("..", "internal", "pkg"))
+	forbidden := []string{"service", "repository", "handler", "app", "gateway"}
+
+	for path, f := range files {
+		isBreakGlassCLI := strings.Contains(filepath.ToSlash(path), "/pkg/admincli/")
+		for imp := range importsOf(f) {
+			if !strings.HasPrefix(imp, mod+"/internal/") {
+				continue
+			}
+			targetLayer := strings.Split(strings.TrimPrefix(imp, mod+"/internal/"), "/")[0]
+			for _, bad := range forbidden {
+				if targetLayer == bad {
+					if isBreakGlassCLI {
+						continue
+					}
+					t.Errorf("❌ pkg 层反向依赖业务层：%s\n    引用了 internal/%s\n    修复：业务语义留在 service，pkg 只收横切逻辑；确属独立入口参照 admincli 形态并扩豁免（评审可见）",
+						path, targetLayer)
+				}
+			}
+		}
+	}
+}
+
+// TestArchitecture_ServiceDomainIsolation service 域间横向隔离（modular monolith
+// 域边界——03 号附录 A.6「画边界」2026-10-19 拍板前移 W1 首件）：
+//
+//	· service 根包（auth/user/org/menu 等平铺域）与其子包（ticket 域、未来的
+//	  storage/notification/engine）之间、子包彼此之间，禁止直接 import；
+//	· 域间协作只经 DomainEvent 钩子（internal/pkg/domainevent，S6 B6-1 建）/
+//	  显式接口 Port；
+//	· 「域间禁表直查」由本条 + TestGuard_TicketRepoListCallSites 共同承担
+//	  （repository 平铺包，按域拆包属 03 号反面清单「不做包大重组」）。
+//
+// 测试文件豁免（scanDir 跳过 _test.go——集成测试组包 fixtures 允许跨域引用）。
+// engine 专属禁单（不 import 业务外依赖）留 B3-1 建目录时随设计补强——
+// 本条已覆盖 engine→其他域 service 的主违规面。
+func TestArchitecture_ServiceDomainIsolation(t *testing.T) {
+	mod := modulePath(t)
+	files := scanDir(t, filepath.Join("..", "internal", "service"))
+
+	for path, f := range files {
+		rel := filepath.ToSlash(path)
+		rel = strings.TrimPrefix(rel, "../internal/service/") // scanDir 从 ../ 起走，须连前缀一并裁
+		selfDomain := ""
+		if strings.Contains(rel, "/") {
+			selfDomain = strings.Split(rel, "/")[0]
+		}
+		for imp := range importsOf(f) {
+			if !strings.HasPrefix(imp, mod+"/internal/service") {
+				continue
+			}
+			suffix := strings.TrimPrefix(imp, mod+"/internal/service")
+			targetDomain := ""
+			if suffix != "" {
+				targetDomain = strings.Split(strings.TrimPrefix(suffix, "/"), "/")[0]
+			}
+			if targetDomain == selfDomain {
+				continue
+			}
+			t.Errorf("❌ service 域间横向依赖：%s\n    %q 域不得直接 import %q 域\n    修复：经 DomainEvent 钩子 / 显式接口 Port 解耦（03 号 A.6 域边界）；确属同域合并/新豁免须登记修订本断言",
+				path, selfDomain, targetDomain)
+		}
+	}
+}
+
 // TestArchitecture_NoDBInHandler handler 层禁止直接碰数据库：
 // 所有数据访问必须经 service -> repository。
 func TestArchitecture_NoDBInHandler(t *testing.T) {

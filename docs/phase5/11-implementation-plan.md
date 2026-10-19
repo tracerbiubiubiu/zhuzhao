@@ -35,7 +35,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | Wave | 段 | 批次 | 量级 | 依赖 |
 |------|----|------|------|------|
 | W0（≈0.5–1 天；原 ~1 周含拍板会+spike，均已清出） | 启动批 | 本计划落档审批（✅）+ spike 时点安排（✅ §2.1）+ 迁移号对账（✅ 000045 起可用）+ **工程预备 ✅ 两件落地**（RustFS compose 双实例草案已落 + `rustfs/rustfs`·`rclone/rclone` 镜像已拉已冒烟）+ **后端拍定 MinIO → RustFS**（§2.1） | — | **✅ W0 已收口（2026-10-19 所有者确认）**——W1 开工 B5-1（DoD 见 §2.1 尾注） |
-| W1–3 | S5 | **开工首件：架构依赖规则工具化**（depguard 类 CI 强制域间边界，半天——边界从 W1 第一行代码起生效，03 号附录 A.6）→ B5-1 底座 → B5-2 头像 → B5-3 附件 → B5-4 richtext → B5-5 备份随行；（B5-6 配置化可切出） | 1.5–2 周 | W0 |
+| W1–3 | S5 | **✅ 开工首件：架构依赖规则工具化（2026-10-19 落地——自研 guard 扩两条断言：pkg 禁反向依赖业务层[admincli 豁免]+service 域间横向隔离；金丝雀负向验证可拦；未引 golangci-lint 零新增依赖——详录 03 号 A.6 落地状态注）** → B5-1 底座 → B5-2 头像 → B5-3 附件 → B5-4 richtext → B5-5 备份随行；（B5-6 配置化可切出） | 1.5–2 周 | W0 |
 | W3–5 | S1 | B1-1 设计器壳 → B1-2 字典/人员补全 → B1-3 求值器+formula → B1-4 取数联动 → B1-5 随行三件（③④可后移不阻收口） | 1.5–2.5 周 | S5 底座（richtext 调色板） |
 | W5–7.5 | S6 一期 | B6-1 事件面基建 → B6-2 通道层 → B6-3 模板层 → B6-4 收件人解析 → B6-5 触发挂接 → B6-6 发送记录 | 2–2.5 周 | — |
 | W7.5–9 | S2 | B2-1 画布 spike → B2-2 画布+映射器 → B2-3 改图在途单告警 → B2-4 lint 增强+中文化（④可选） | 1–2 周 | —（S6 错峰衔接——S6 一期 W7.5 收口后进 S2，单人串行） |
@@ -373,3 +373,4 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 2026-10-19 | **P0 四项修正批（并行外审合并报告五项实证全证实）**：①**B3-1 行补执行端点首件交付**（`POST /tickets/transition`——P0-1：运行时仅三条路，画布多状态图无执行落点；Close/Assign 收敛为封装）②**B6-5 行 emit 锚修正**（P0-2：AssertTransition=tx 前纯校验不可作锚→统一转换入口 commit-后回调——详录 06 号 A.5/03 号 A.3/10 号 §3.4 三文件牵连）③其余 P0-3（09 号 DDL）/P0-4（notification_repo 500——代码批待令）详录各稿 |
 | 2026-10-19 | **P0 修正批二轮回声**：①§2.8 标题 W13–14.5→**W15–16.5**、§3 W0–W14.5→**W0–W16.5**（对齐 §1/§0 总表——S3a 升格级联两处残留，P1-8 补漏）②S10-5 拍板点行同步 10 号终版锚（`UpdateStatusTx` 咽喉——消 B10-4 W9–11 / B3-1 W13–15 排期倒挂：中间版锚端点晚于扫描器交付）③B3-1 行补量级注（执行端点+收敛改造 +0.5–1 天计入段量级）+L1 权限归属随批拍注 |
 | 2026-10-19 | **P0 修正批三轮回声**：B6-5 行同步 06 号 emit 锚**过渡态**（B6-5 W5–7.5 → B3-1 W13–15 间=Close/Assign 服务层 commit 后显式 emit 两处，B3-1 收敛后归一——二轮「写点倒挂」的 emit 侧同族补漏：终态锚 B3-1 端点 W13–15 才在位，S6 一期 W7.5 验收若无过渡态 emit 即无通知可测） |
+| 2026-10-19 | **W1 开工首件落地批（架构依赖规则工具化 ✅——A.6 拍板执行；代码+文档一批，未提交待令）**：internal/architecture_test.go 增两条架构守护断言——TestArchitecture_PkgNoBusinessDependency（pkg 横切层禁反向依赖业务层[service/repository/handler/app/gateway]·admincli break-glass CLI 文件级豁免）+ TestArchitecture_ServiceDomainIsolation（service 根包↔子包互禁直接 import[ticket/未来 storage/notification/engine]·域间协作只经 DomainEvent/Port——「域间禁表直查」与 TestGuard_TicketRepoListCallSites 共担）；**维持自研 guard 路线未引入 golangci-lint 工具链**（既有框架已在 CI test job 生效[ci.yml `go test ./internal/...` 天然包含 internal 根包守护测试]，扩展断言零新增依赖达成 A.6 同款效果——AGENTS 新增依赖纪律对表）；验证=正向 5/5 PASS+金丝雀负向两断言均正确拦截后清理+make lint 过；级联=03 号 A.6 落地状态注+变更记录 |

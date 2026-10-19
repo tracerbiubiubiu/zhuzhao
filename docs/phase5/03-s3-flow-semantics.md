@@ -193,6 +193,8 @@ type TransitionAction interface {
 
 **耦合面定性补充（2026-10-19 追问"是否需重构主仓"——三条本质一条已决，不建议为拆库重构）**：① AssertTransition×策略库 = **本质耦合**（「权限判定在数据处」架构定律——Jira workflow condition 同样长在平台权限体系；B3-1 落策略库加深耦合是正确方向）；② DomainEvent 订阅者全在主仓 = 拆库后正确形态非障碍（内核发事件/业务消费——零重构）；③ assignment_rules 引用 orgs/users 表 = 领域数据引用（单体正常形态，拆时改 ID 引用+解析——现在改 = YAGNI）；④ 动作库 = 框架/实现已在 B3-3 分离 ✅。**画边界补强（2026-10-19 时机优化拍定——两件拆开排）**：① **架构依赖规则工具化**——depguard/go-arch-lint 类把「engine 不 import 业务外依赖/域间禁表直查经接口」变成 CI 强制（modular monolith 标准实践——Spring Modulith 的 Go 等价物，成本半天），**前移至 W1 开工首件**（规则从第一行 B5 代码起生效——五段新代码全在边界内产生，拖至 W13=前 12 周游离规则外一次性清算反痛）；② **engine 子包化**——`internal/service/ticket/engine/` 收拢状态机推进+转换校验+扫描器（纯包内整理不改行为），**维持随 B3-1**（S3a 本要动这些文件，顺手零成本）。**边界从纪律变编译器管，自 W1 起。****反面清单（不做）**：不为拆库重写存储抽象（YAGNI）/不做引擎通用化（16 号红线）/S3a·S3b·SLA 三波演进期不做包大重组（跨波重组=同步灾难）。
 
+**① 落地状态（2026-10-19 W1 开工首件 ✅）**：以**自研架构守护测试扩展**落地（internal/architecture_test.go 增 TestArchitecture_PkgNoBusinessDependency[pkg 横切层禁反向依赖业务层——admincli break-glass CLI 文件级豁免] + TestArchitecture_ServiceDomainIsolation[service 根包↔子包互禁直接 import——域间只经 DomainEvent/Port 解耦]）——未引入 golangci-lint/depguard 工具链：既有 guard 框架已在 CI test job 生效（ci.yml `go test ./internal/...` 天然包含 internal 根包守护测试），扩展断言零新增依赖达成同款 CI 强制；验证=正向 5/5 PASS + 金丝雀负向验证两断言均正确拦截 + make lint 过。「engine 不 import 业务外依赖」专属禁单维持随 B3-1 建目录补强（本条已覆盖 engine→其他域主违规面）；② engine 子包化不变。
+
 ---
 
 ## 附录：工单引擎演进路线（跨段视图，2026-10-16 所有者提议立项——以业界引擎为参照系的统一演进计划）
@@ -287,3 +289,4 @@ type TransitionAction interface {
 | 2026-10-19 | **P0 四项修正批（并行外审合并报告五项实证全证实——本文件 2 处）**：①**A.3 执行端点显式化（P0-1）**：`POST /tickets/transition` B3-1 首件交付——校验→单事务执行（status_changed_at 同写）→commit-后回调（emit 锚+post-function 挂点），Close/Assign 收敛为封装；②P0-2 锚点修正牵连（修正详录 06 号 A.5/10 号 §3.4）——合并报告同时修正本会话此前「emit 锚=AssertTransition」错误口径（深审 C 轮未验证调用位置即提议，认领） |
 | 2026-10-19 | **P0 修正批二轮回声（修正批自身精度问题三处）**：A.3 执行端点段——①「submit/close/assign」→「Create 硬编码 open/Close→closed/Assign 推算 open↔assigned」（无 submit 端点，router.go:344-352 实证）②收敛列表去 Update（Update 非 status 端点）+补 Create 保留说明（创建非转换，独立 emit ticket.created）③补 L1 权限归属拍板项（menu_apis 注册对账——挂既有菜单/新码二选一）+status_changed_at 写点指向 UpdateStatusTx 终版锚（10 号二轮修正牵连） |
 | 2026-10-19 | **多源内容采集演进登记批（所有者问询「通用录入接口+归属 phase6」——方向确认落档）**：演进触发总表 +1 行「**多源内容采集**（微信公众号等）」——触发=业务意图已声明+桥接方案拍板即立项 / 量级 MVP ≈1–1.5 周 / **归属 phase6 新段（09 号不迁移——pull 缓存代理≠push 采集两形态）** / 形态=**通用数据录入接口**（统一信封+按源 schema 注册校验[防 dump 陷阱]+AK/SK HMAC[standards §4]+raw 留档+DomainEvent 出站）/ 前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐）——演进总表至此**十一级**全带量级与归属 |
+| 2026-10-19 | **W1 开工首件落地批（① 架构依赖规则工具化 ✅——A.6 拍板执行）**：A.6 补落地状态注——以自研 guard 扩展两条断言落地（pkg 禁反向依赖业务层[admincli 豁免] + service 域间横向隔离[根包↔子包互禁 import，DomainEvent/Port 解耦]）；未引 golangci-lint 工具链（CI test job 天然包含、零新增依赖）；正向+金丝雀负向+lint 三验证过；「engine 不 import 业务外依赖」专属禁单维持随 B3-1（详录 11 号同批变更记录） |
