@@ -45,9 +45,9 @@ services:
   #   profile=storage 隔离——默认不起（不拉镜像时不破坏现栈 up -d）：
   #   docker compose -f deployments/docker-compose.dev.yaml --profile storage up -d rustfs
   #   B5-1 时移除 profiles 行转常驻依赖；config.yaml `storage.endpoint` 对 localhost:9000。
-  #   ⚠ 版本 B5-1 钉死（latest 为草案期占位）。
+  #   ✅ 版本已钉死 1.0.1（2026-10-19 B5-1 批1——判据①实测版本，digest 与 latest 一致）。
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.1
     container_name: zhuzhao-dev-rustfs
     profiles: ["storage"]
     command: ["server", "/data", "--console-address", ":9001"]

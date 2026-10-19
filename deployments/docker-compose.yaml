@@ -121,9 +121,9 @@ services:
   #   docker compose -f deployments/docker-compose.yaml --profile storage up -d rustfs
   #   B5-1 时移除 profiles 行转常驻（随栈自启）。
   # 凭据经 .env 注入（RUSTFS_ROOT_*），生产务必覆盖默认值。
-  # ⚠ 版本 B5-1 钉死（latest 为草案期占位——对齐 postgres:15/redis:6.2 的可复现纪律）。
+  # ✅ 版本已钉死 1.0.1（2026-10-19 B5-1 批1——判据①实测版本 digest 一致；对齐 postgres:15/redis:6.2 可复现纪律）。
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.1
     container_name: zhuzhao-rustfs
     restart: unless-stopped
     profiles: ["storage"]
@@ -155,7 +155,7 @@ services:
   # rclone——镜像已拉已验证；mc 对非 MinIO 端点的可用性随 B5-1 spike 一并验证），
   # 恢复演练强制随行。
   rustfs-backup:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.1
     container_name: zhuzhao-rustfs-backup
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
