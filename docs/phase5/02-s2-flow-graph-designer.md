@@ -30,7 +30,7 @@
 
 - states/transitions 画布化：节点=状态、连线=合法转换，产物序列化回现有 transitions JSONB，**后端零改动**；中文化与交互打磨计入量级。
 - **分层要求**：画布层（LogicFlow/vue-flow 封装+交互）与 schema 适配层（transitions 映射器）**分离**——任务域将来若立流程设计器可复用画布层、只换适配器。
-- **界注（2026-10-19 外审 P1-2）**：本段画布范围=states/transitions 邻接表编辑+后端零改动——**transitions_meta 独立列（S3a：condition/validator/post_actions）的编辑不在本段**（独立列经独立端点，画布序列化只回 transitions JSONB 结构上不可达）；S3a B3-1 交付类型管理页 meta 配置面后，画布二期可扩展（触发驱动）。
+- **界注（2026-10-19 外审 P1-2）**：本段画布范围=states/transitions 邻接表编辑+后端零改动——**transition_meta 独立列（S3a：condition/validator/post_actions）的编辑不在本段**（独立列经独立端点，画布序列化只回 transitions JSONB 结构上不可达）；S3a B3-1 交付类型管理页 meta 配置面后，画布二期可扩展（触发驱动）。
 - **引擎与数据模型不合并**：工单流程 = 人触发的实体状态图，任务流程 = 完成事件驱动的执行编排，**不同构**——任务侧编排维持 [phase3/16](../phase3/16-external-integration.md) 红线（不做通用流程引擎；轻编排 = zhuzhao 回调串联、重编排 = 外部 DAG [phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) GPL 法务前置），**不得为复用而把两者捏成"通用流程模块"**。
 
 ### 3.3 可选校验增强批（纯增量、向后兼容）
@@ -151,3 +151,4 @@ fromGraph(g: GraphData): { states: string[]; transitions: Record<string,string[]
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；拍板点带建议值；未新增决策（全部收编自 README 总纲与设计源） |
 | 2026-10-15 | W0 前置拍板批（所有者逐项确认）：✅拍板点 1 画布选型 = **LogicFlow 优先**（vue-flow 同日对照 spike 降为对称验证）；拍板点 2（lint 是否阻断）维持待启动拍 |
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 **关键事实落档——transitions 真实形态 = 邻接表**（defaultTransitions 实证，映射器=邻接表↔graphData 浅层纯函数，LogicFlow 选型理由在此兑现）/A.2 模块架构（mapper.ts 唯一适配层+**节点坐标不入库**——localStorage 本地视图偏好，守后端零改动承诺）/A.3 映射器契约（往返幂等+校验双保险）/A.4 在途告警实现口径（逐状态 total 零后端改动+AssertTransition 兜底安全网+可选聚合端点）/A.5 lint 三规则实现/A.6 验收补充 |
+| 2026-10-19 | **第二意见体检回声批（并行外审报告——naming 1 处）**：§3 界注 `transitions_meta`→**`transition_meta`**（对齐 10 号 A.3 DDL 权威单数——全仓名统一随本批） |

@@ -1,6 +1,6 @@
 # 06 — P5-S6 消息通知：统一消息平台 + 模板 + 工单触发（设计稿）
 
-> **段属性**：基线段（phase5 收口对象）。**建议实施序**：与 S2 并行（S1 后）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
+> **段属性**：基线段（phase5 收口对象）。**建议实施序**：与 S2 错峰衔接（S1 后；单人串行——S6 一期先于 S2）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
 > **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
 
@@ -47,7 +47,7 @@
   - **a) 显式 emit（推荐起步）**：状态变更 service 层调用；**须做成可订阅内部钩子**（事件类型化/多订阅者/recover 隔离/事务提交后派发）——**工单状态变更事件面 = S6 与 phase6 的共享基础设施**（一次变更、多订阅者；phase6 R3 风险关单/进状态设 timeout 基准/任务链三个消费者共享同一面，dd §29 事件面定论）——**禁止把消费方逻辑硬编码进 ticket service 状态变更路径**（风险域焊进工单域 = 破坏领域隔离）。
   - b) ticket_events 消费面（phase3/10 原设计）：事件表**无 processed 列/无消费面**（§2），选 b 需补迁移；L1 单消费者模型另需分布式锁防重。
 - **投递语义（2026-10-09 补遗）**：触发挂接须**异步投递**（状态变更事务外；发送失败不阻塞、不回滚工单事务——通知无状态可补发，同步阻塞反拖累主路径）+ **同单短时多变更的节流/去重**（防状态翻转通知风暴）。
-- **用户通知偏好（2026-10-16 全计划业界对标补——业界通知系统 v1 必备：GitHub/Jira notification settings）**：per-user **opt-out/免打扰**（按事件类型静默或全局暂停档），发送链**前置过滤**（收件人解析后、`ChannelSender.Send` 前查偏好）；存储 = 轻表或 `user_preferences` KV（随批拍）。缺了 = 通知骚扰且用户无法自关（运维被迫人工改库）。量级 +0.5–1 天（随 B6-4 收件人解析批）。
+- **用户通知偏好（2026-10-16 全计划业界对标补——业界通知系统 v1 必备：GitHub/Jira notification settings）**：per-user **opt-out/免打扰**（按事件类型静默或全局暂停档），发送链**前置过滤**（收件人解析后、`ChannelSender.Send` 前查偏好）；存储 = 轻表或 `user_preferences` KV（随批拍）。缺了 = 通知骚扰且用户无法自关（运维被迫人工改库）。量级 +0.5–1 天（随 B6-4 收件人解析批）。存储形态随批拍——**若起轻表，回灌 11 号 §5.9 B6 行迁移计数**（现「≥3 段」口径）。
 - **一致性分级（dd §29）**：通知 = 低一致性消费者（丢失无害，钩子 at-most-once 可接受）；**高一致性消费者（phase6 风险关单）失败由对账扫描补偿**（phase6 R3 设计项，非本段范围——但事件面设计须留其挂点）。
 
 ### 5.3 人读编号（前置随批件）
@@ -56,7 +56,7 @@
 
 ### 5.4 发送记录
 
-`message_log` 表（模板/收件人/状态/错误/重试）+ 管理页（列表按 standards §3-6 PageData 形态——offset+total+钳制）；失败复用既有死信告警链。
+`message_log` 表（模板/收件人/状态/错误/重试）+ 管理页（列表按 standards §3-6 PageData 形态——offset+total+钳制）；失败复用既有死信告警链——**接缝（2026-10-19 外审补）**：`ChannelSender.Send` 终败 = **进程内直调** notification service 死信告警方法（与 `/internal/notify/dead-letter` HTTP handler 共用内部函数——同进程不自绕 HTTP）；`DeadLetterNotifyPayload` 扩展可选字段 biz_type/biz_id/template_code（指针型——taskrunner 既有投递零破坏），排障可归因到模板与业务对象。
 
 ## 6. 二期：站内消息中心（2026-10-13 翻案，一期交付后实施）
 
@@ -146,6 +146,7 @@ CREATE TABLE message_templates (
     body       TEXT NOT NULL,                    -- {{ticket.assignee_name}} 点路径占位符（logic-less，A.4）
     variables  JSONB NOT NULL DEFAULT '[]',      -- 编辑器从变量字典回填的引用清单（展示/审计；渲染校验=引用⊆字典，A.4）
     is_system  BOOLEAN DEFAULT FALSE,            -- 种子模板（编号+标题+链接），防越 L2 泄露准则（§4）
+    version    BIGINT NOT NULL DEFAULT 1,        -- 乐观锁（管理面并发编辑——对齐 notification_configs 000033 全仓惯例；CAS 更新携 version 命中才写，0 行=409）
     created_by BIGINT NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -210,7 +211,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 
 ### A.5 订阅规则与触发链路（B6-5）
 
-- **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关）；
+- **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled, version 乐观锁——对齐 notification_configs CAS 全仓惯例)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关）；
 - **引用完整性双向守卫（三层，2026-10-16 评审批采纳）**：①**模板保存**——引用 ⊆ 所绑 rules 的 (biz_type,event) 字典并集，越界拦截/告警（原只有删除守卫——改正文静默破坏既有规则要到下次触发才以 failed 暴露；与 S1 影响分析同件）；②**规则保存**——模板动态字段引用 ⊆ 该 type_code 的 field_meta ∪ 内置 ∪ 时间类，**软告警不拦截**（field_meta 类型私有，(biz_type,event) 粒度不足以表达类型维度——粗校验①兜底+细告警②提示）；③**渲染时四象限**（A.4，运行时兜底）；守卫拦截/告警与模板·规则管理操作审计留痕随批（对齐 settings PUT 变更审计先例——11 号 B6-3 行同源）；
 - **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；**emit 单点锚=AssertTransition（2026-10-16 评审批）**：Dispatch 挂接锚定状态机咽喉 AssertTransition 单点——手工/API/批量/S3 动作多入口路径经同一咽喉，锚一处全路径覆盖，多入口各自挂=漏发；
 - 人读编号（拍板点 2 随批）：`tickets` 加 `human_key VARCHAR(30) UNIQUE`，Create 时 `TK-yyyymmdd-NNNN`（按日序列，UNIQUE 冲突重试 ≤3）；存量单 NULL——模板变量解析时 NULL 回退展示 id（`#123`）。
@@ -269,3 +270,4 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-10-16 | **渲染缺键分档对齐批（外审尾巴修复）**：A.4 校验两道句 + A.7 字典校验负向按粒度错配注两档改写（**内置键缺失=拒发 / 动态字段缺失=skip+警告**——原统一"缺键拒发"表述与已落分档矛盾，验收测试照旧句会写错方向）——四象限之"键存在无值"两态（全景计划 P1-2）另批待采纳 |
 | 2026-10-16 | **评审采纳批（P1×3+P2×2+P3×2+深审 7 项并批，所有者「落」）**：①A.4 **slug 字典供给**（`ticket.fields.f_<ID>`——field_key 无字符集约束代码实锤 `validateFieldInputs`，中文/含点键打断点路径；字典权威供 path+picker 即插+vars 按 field_meta 映射；S1 登记 ASCII slug 软约束）+ **四象限齐**（+键存在无值=空串渲染+warned 不拒发——存量单/未指派防系统性丢通知；与 A.8.2 收件人跳过区分断言）②A.5 **引用完整性双向守卫三层**（模板保存字典并集拦截[改守卫补齐——原只删守卫]/规则保存类型精确软告警/渲染四象限兜底）+ **emit 单点锚=AssertTransition**（状态机咽喉一处挂接全路径覆盖，多入口各自挂=漏发）③A.1 枚举补 **ticket.cc_added**（S10 抄送通知订阅依赖——无此事件须硬编码进 cc_service 违 §5.2 禁令；10 号 §3.1 同步，随 B10-1 钉入）④A.6 字典端点查询粒度句（模板页并集超集/规则侧类型精确）⑤A.7 负向 +4（空串渲染/收件人跳过独立/模板改守卫/slug 隔离）⑥A.8.1 slug 即插注/A.8.3 失败聚合视角+重发触发驱动登记——**S6 侧量级 +1–1.5 天一期上缘含（11 号 B6-3 同批，累计 +2–3 天总账对账留实施批）；深审 7 项分落 05 号（ETag/仅 200 审计+演练联合场景）/09 号（404 入缓存）/README（digest 挂账）** |
 | 2026-10-16 | **守卫审计留痕补锚批（一致性尾巴修复）**：A.5 双向守卫补「守卫拦截/告警与模板·规则管理操作审计留痕」（对齐 settings PUT 变更审计先例——11 号 B6-3 行的 06 号侧锚点） |
+| 2026-10-19 | **第二意见体检回声批（并行外审报告独立复核属实——本级 4 处）**：①A.2 `message_templates` DDL 补 **`version` 乐观锁列**（对齐 notification_configs 000033 全仓管理面惯例——CAS 更新携 version 命中才写 0 行=409；报告 A-1）②A.5 `message_rules` spec 同步补 version ③§5.4 补**死信接缝设计**（Send 终败=进程内直调 notification service 死信告警方法[与 /internal/notify/dead-letter handler 共用内部函数，不自绕 HTTP]+DeadLetterNotifyPayload 扩展可选 biz_type/biz_id/template_code 指针字段 taskrunner 零破坏——报告 A-2 实施卡点）④头注「与 S2 并行」→「错峰衔接（S6 先——单人串行）」（报告 B-6 镜像侧）⑤§5.2 用户通知偏好补「若起轻表回灌 11 号 §5.9 B6 行迁移计数」（报告 B-9 条件回灌） |

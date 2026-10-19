@@ -127,7 +127,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 ## 10. 影响面
 
 - **迁移**：两表族（编号对账）；**权限**：预置零新码（拍板点 3）；**配置**：`storage:` 段新增 + compose RustFS 双实例（草案已落）；**错误码**：91000–91999 段启用（91001–91004 四码随批登记 `api/errcode.md`——standards §3-4 对账位）；**端口**：对象存储客户端（S3 兼容抽象即端口，README §6 清单第 7 行）。
-- **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移两枚。
+- **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移三枚（000045–000047 对账口径——A.3）。
 
 ## 11. 验收口径
 
@@ -353,5 +353,6 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-16 | **第二批外审回声批（公约硬冲突优先修）**：①**A.4 #6 GET/PUT → GET+POST update（house style）**——原写法违 §3-1 且 §3-1 恰以本段为首批应用例（自指冲突，外审第 1 条）；②§3 配置化「放行 PUT/GET-PUT 两端点」措辞同步；③孤儿 GC 定位统一（正文采纳附录基线形态：B5-1 随批 GC+orphan_gc_days KV——正文/附录/A.9 三处对齐）；④「五端点」措辞补全景注（A.4 六行）；⑤A.11 hasMixedAuth 语义修正（header+cookie 并存≠mixed-auth，以 header 为准）；⑥B5-6 切出口径补「仍计一期收口」 |
 | 2026-10-16 | **全计划业界对标批（所有者）**：§4 补**图片处理随行件**（业界照片上传标配两缺口：缩略图——列表页全原图流量浪费/EXIF 剥离——GPS 隐私泄露面；confirm 时处理，随 B5-2，+0.5–1 天） |
 | 2026-10-16 | **评审批深审两项（所有者「落」并批）**：①A.4 #5 代理下载补 **ETag 透传+If-None-Match**（richtext 多图回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 顺手预留）（深审项 B，≈0.25 天随 B5-2/3）；②§7 恢复演练补 **DB↔对象联合场景**（旧库+新桶引用悬空负向演示）（深审项 E） |
-| 2026-10-16 | **条件请求验收断言批（一致性尾巴修复）**：§11 补 If-None-Match → 304 且审计行不新增负向（对齐 A.4 #5 审计仅 200 落行；Range 透传可用不承诺） |
+| 2026-10-19 | **条件请求验收断言批（一致性尾巴修复）**：§11 补 If-None-Match → 304 且审计行不新增负向（对齐 A.4 #5 审计仅 200 落行；Range 透传可用不承诺） |
+| 2026-10-19 | **第二意见体检回声批（并行外审报告——计数 1 处）**：§10 涉及文件行「迁移两枚」→「**迁移三枚**（000045–000047 对账口径——A.3）」（对齐 B5-6 settings KV 第三枚登记） |
 | 2026-10-17 | **MD 库拍定批（所有者「md库先按你的建议来」）**：拍板点 4 库=**md-editor-rt ✅**（原择库 spike 销账；B5-4 首日 spike 收窄为粘贴直传扩展验证）；A.6 MdEditor 封装/判据行两处同步——台账 🔶 清零 |

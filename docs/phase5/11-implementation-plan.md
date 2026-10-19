@@ -138,18 +138,11 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 | 批次 | 内容 | 拍板依赖 |
 |------|------|---------|
-| B3-1 转换级权限+前置条件 | **`transitions_meta` 独立列**（"from>to" 键三段结构 condition/validator/post_actions——对齐 01 号 A.2 方案 b 先例，详录 03 号附录 A.1）+ **`GET /tickets/:id/transitions/available`** 端点（condition 前端过滤=UX、AssertTransition 服务端兜底双重）+ expr 求值器与 S1 共用 + **AssertTransition 叠加校验**（端点级保留、更严叠加）+ 策略层接入（fail-closed，§25 分界重审随批）+ **engine 子包化**（`internal/service/ticket/engine/` 收拢状态机/转换校验/扫描器——画边界；架构依赖规则工具化已于 W1 开工首件前移——03 号附录 A.6） | 拍板点 ②（§25 分界，随批） |
+| B3-1 转换级权限+前置条件 | **`transition_meta` 列**（**复用 B10-4 已建**——W9–11 先行创建[state 级键存 timeout_minutes]，本批复用扩展 "from>to" 键三段结构 condition/validator/post_actions，**零新 DDL**——对齐 01 号 A.2 方案 b 先例，详录 03 号附录 A.1）+ **`GET /tickets/:id/transitions/available`** 端点（condition 前端过滤=UX、AssertTransition 服务端兜底双重）+ expr 求值器与 S1 共用 + **AssertTransition 叠加校验**（端点级保留、更严叠加）+ 策略层接入（fail-closed，§25 分界重审随批）+ **engine 子包化**（`internal/service/ticket/engine/` 收拢状态机/转换校验/扫描器——画边界；架构依赖规则工具化已于 W1 开工首件前移——03 号附录 A.6） | 拍板点 ②（§25 分界，随批） |
 | B3-2 自动分派 | `assignment_rules` 表 + 规则匹配引擎（OnAfterCreate Hook 五决议既定——03 号 §3.2）+ **规则 CRUD 管理端点+管理页**（类型管理页族扩展零新码——外审 P3-9） | — |
 | B3-3 动作库框架+首批动作 | DomainHook 动作框架**双触发形态**（转换后 post-function/事件订阅——事务边界随触发方，03 号附录 A 裁定）+ 循环触发链深限制随框架落 + 首批动作：抄送（S10）/**转派**（扫描器事务内直调——强一致通道）+ notify 降无规则兜底（通知收敛走 S6 规则面——双通道分工 03 号 §3.3） | 拍板点 ③（首批动作，批量预确认+升格批调整） |
 
-> 迁移：assignment_rules 一表 + `transitions_meta` 新列一枚 ALTER（03 号附录 A.1 方案——对齐 01 号 A.2 先例；编号启动对账）。验收 = 03 号 §8（**非属主转换被拒 fail-closed 负向必测**/分派无命中保持 open+dispatch_missed 事件）。**绕行禁令在 W13 前仍有效**（S3a 未实施期间撞墙需求记账等本段）。
-
-## 3. 编号规则
-
-- **批次**：`B<段号>-<序>`（如 B5-1）；Wave 沿用 W0–W14.5。
-- **遗留/登记项 namespace**：启用 `P5-*`（如 P5-BK-1 起）——既有 W/IW/BK/AB/F/C 已全占用，防撞号（README §5）。
-- **迁移号**：各段启动当天按 [review/11 §4](../review/11-project-control.md) A2 对账取号，不预写死（S5 计划占用 **000045–000047**[含 B5-6 settings KV——2026-10-16 外审对账补齐] 为当前对账结论，非预留锁定；S6 计划 message_log/message_rules/human_key ALTER ≥3 段同口径）。
-- **错误码**：S5 启用 91000–91999 段（91001–91004 随 B5-1 登记 `api/errcode.md`）；其余段随批登记。
+> 迁移：assignment_rules 一表（`transition_meta` 列**复用 B10-4 已建**——2026-10-19 结构修正后 B3-1 零新 DDL，扩展 from>to 键；编号启动对账）。验收 = 03 号 §8（**非属主转换被拒 fail-closed 负向必测**/分派无命中保持 open+dispatch_missed 事件）。**绕行禁令在 W13 前仍有效**（S3a 未实施期间撞墙需求记账等本段）。
 
 ## 3. 编号规则
 
@@ -307,7 +300,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | B6-1…6 | [06 §3–5 + 附录 A](./06-s6-message-notification.md) | 06 §10 + A.7 六负向 | message_templates/message_log 两表族 + message_rules 轻表 + human_key ALTER——**≥3 段**（启动时对账） |
 | B2-1…4 | [02 §3 + 附录 A](./02-s2-flow-graph-designer.md) | 02 §8 + A.6 | 零 |
 | B10-1…5 | [10 号](./10-s10-ticket-collaboration.md) | 10 号 §验收 + 附录 A.7 | ticket_cc + tags 两表族 + `status_changed_at` ALTER + **`transition_meta` JSONB ALTER**（附录 A.3 四枚） |
-| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表 + `transitions_meta` 新列一枚 ALTER（03 号附录 A.1） |
+| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表（`transition_meta` 列复用 B10-4 已建——零新 DDL，03 号附录 A.1） |
 | B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | intel_cache 表族 |
 
 **迁移 PR 检查单**（每迁移必过，对齐 phase2/00 §5.3 六条 + BK-23）：①编号 A2 对账（§3）；②幂等（IF NOT EXISTS）；③down 可逆且先让位；④唯一索引带 `WHERE deleted_at IS NULL`（软删表）；⑤`testutil` 迁移列表同步 + 新表级联测试；⑥大 DDL 真实 PG 演练 up→down→up + A/B 快照比对（§5.4）。
@@ -374,3 +367,5 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 2026-10-19 | **边界工具化时机前移批（所有者拍「按你的建议修改」）**：架构依赖规则工具化（depguard 类 CI 强制域间边界，半天）自 B3-1 拆出**前移至 W1 开工首件**——规则从 W1 第一行代码起 CI 生效，S5/S1/S6/S2/S10 五段新代码全在边界内产生（拖至 W13=前 12 周代码游离规则外一次性清算反痛）；engine 子包化维持随 B3-1（移动既有代码，S3a 本要动这些文件顺手零成本）；§1 W1 行/§2.9 B3-1 行/03 号 A.6 三处同步 |
 | 2026-10-19 | **全局体检批（所有者令全面检查：代码×计划×演进×场景×边界）**：核验结论=现状锚点抽查全准确（state_machine/jobs Registry/迁移尾 000044/keyword ILIKE 实证）+演进链 8 衔接点全有依赖声明与降级路径+场景三层覆盖+边界全段在位；两处轻补——05 号验收节补场景标尺行（对齐段稿格式）+ §5.8 登记性能 SLO 触发驱动（内部量级小非硬需求，触发=性能诉求出现） |
 | 2026-10-19 | **timeout 承载结构修正级联（外审全面审计 P1：代码邻接表无边属性位×02 号画布签名×S3a 列晚于 B10-4 三方矛盾——修法 a：transition_meta JSONB 一列两用）**：§2.6 B10-4 行/§5.9 B10 行迁移列（四枚）+ metrics 横切触发驱动登记（§5.8，外审 P3——message_log 失败聚合+死信告警=管理面等价物在位）——10 号/03 号为详录载体 |
+| 2026-10-19 | **B3 侧 transitions_meta 口径级联批（上批列交付时点前移漏改——B3-1 行/§2.9 尾注/§5.9 B3 行三处）**：「transitions_meta 新列一枚 ALTER」→「**列复用 B10-4 已建、B3-1 零新 DDL**（扩展 from>to 键）」——消双建列歧义（迁移归属与编号对账口径对齐 10 号结构修正批） |
+| 2026-10-19 | **第二意见体检回声批（并行外审报告独立复核全属实——本级 3 处）**：①**§3 编号规则整块重复删除**（L147–159 逐字双份，跨 4 轮未清——报告独立发现）②③B3-1 行/§2.9 尾注/§5.9 B3 行 naming `transitions_meta`→**`transition_meta`**（对齐 10 号 A.3 DDL 权威单数——全仓名统一随本批，报告 B-3 项） |
