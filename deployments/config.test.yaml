@@ -117,3 +117,24 @@ rate_limit:
     burst: 40
   # routes 按需启用更严规则（示例）：
   #   /api/v1/auth/login: { rps: 3, burst: 5 }
+
+# phase5 S5 对象存储（对齐 configs/config.yaml 段；endpoint=compose 服务名）。
+# 默认 disabled——ui E2E 消费时随 rustfs profile 一起翻 env：
+# STORAGE_ENABLED=true（app 服务 env 已预留接线注释，见 docker-compose.test.yaml）。
+storage:
+  enabled: false
+  endpoint: http://rustfs:9000
+  region: us-east-1
+  bucket: zhuzhao
+  access_key: "zhuzhao_rustfs"
+  secret_key: "zhuzhao_rustfs_dev"
+  use_ssl: false
+  presign_upload_ttl: 15m
+  max_upload_bytes: 10485760
+  max_attachments_per_ticket: 20
+  max_presign_batch: 20
+  allowed_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf,
+    text/plain, application/zip, application/msword, application/vnd.openxmlformats-officedocument.*]
+  blocked_mime_types: [text/html, image/svg+xml]
+  inline_mime_prefixes: [image/]
+  orphan_gc_days: 7

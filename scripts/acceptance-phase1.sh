@@ -400,6 +400,23 @@ done
 sleep 2  # 服务端 redis 连接池重连缓冲（ready/登录在恢复瞬间会 fail-close 10008）
 check "#17 code" "10008" "$CODE"
 
+# --- S5 对象存储底座（phase5 B5-1：S1 全链/S4 声明超限/判据④ 篡改 CT 直传拒）---
+# 验收环境前提：dev 栈起 rustfs（--profile storage）且 app 以 STORAGE_ENABLED=true 启动
+STPRE=$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"验收头像.png","mime_type":"image/png","size_bytes":"100"}')
+check "#S5-1 presign" "0" "$(echo "$STPRE" | json_code)"
+STURL=$(echo "$STPRE" | json_field "d['data']['upload_url']")
+STKEY=$(echo "$STPRE" | json_field "d['data']['object_key']")
+STCT=$(echo "$STPRE" | json_field "d['data']['headers']['Content-Type']")
+check "#S5-1 CT 钉签名" "image/png" "$STCT"
+check "#S5-1 PUT 直传" "200" "$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$STURL" -H "Content-Type: $STCT" --data-binary 'storage-acceptance-payload-0123456789')"
+STCF=$(curl -s -X POST "$BASE/tickets/attachments/confirm" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"object_key\":\"$STKEY\"}")
+check "#S5-1 confirm" "0" "$(echo "$STCF" | json_code)"
+check "#S5-1 confirmed 态" "confirmed" "$(echo "$STCF" | json_field "d['data']['status']")"
+check "#S5-1 etag 快照非空" "yes" "$([ -n "$(echo "$STCF" | json_field "d['data']['etag']")" ] && echo yes)"
+check "#S5-2 声明超限 91001" "91001" "$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"big.png","mime_type":"image/png","size_bytes":"99999999"}' | json_code)"
+STPRE2=$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"evil.html","mime_type":"image/png","size_bytes":"50"}')
+check "#S5-3 篡改 CT 直传 403" "403" "$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$(echo "$STPRE2" | json_field "d['data']['upload_url']")" -H "Content-Type: text/html" --data-binary 'evil-payload-x')"
+
 echo ""
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
 [ "$fail" -eq 0 ]
