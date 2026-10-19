@@ -89,6 +89,83 @@
 
 ---
 
+## 附录 A：S3a 详细技术设计（实施级，2026-10-19 补——升格排期后按排期段标准补齐，05 号样板深度）
+
+### A.1 转换级语义：Jira transition 四段对表 + meta 结构
+
+**Jira workflow transition 四段解剖（20 年业界共识）——S3a 三能力精确对齐**：
+
+| Jira 术语 | 语义 | zhuzhao 对应（批次） |
+|-----------|------|---------------------|
+| **condition** | 谁能看到/执行转换（权限门——不满足则按钮不渲染） | B3-1 转换级权限（roles/属主/处理人） |
+| **validator** | 执行前校验（不满足拒绝+报错） | B3-1 前置条件（expr 表达式） |
+| **post-function** | 执行后自动化动作 | B3-3 动作库 |
+
+- **meta 结构（对齐 01 号 A.2 方案 b 先例——独立列防结构混载）**：
+
+```sql
+ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transitions_meta JSONB DEFAULT '{}';
+-- 键 = "from>to"（转换定位）；值 = condition/validator/post_actions 三段
+-- {"in_progress>pending_verify": {"roles": ["assignee","org_admin"],
+--   "condition": "priority == 'P1'", "post_actions": ["notify","cc_team","reassign"]}}
+-- 缺省 = 既有行为（零破坏）；存储与 transitions 邻接表分列——01 号 A.2 同款决策
+```
+
+- **可用转换查询**：`GET /tickets/:id/transitions/available`（Jira condition 语义=按当前用户过滤——前端按钮渲染依据；服务端 AssertTransition 仍为 fail-closed 兜底，前端过滤仅 UX）；
+- **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。
+
+### A.2 自动分派：assignment_rules DDL（五决议既定 §3.2）
+
+```sql
+CREATE TABLE assignment_rules (
+    id          BIGSERIAL PRIMARY KEY,
+    type_code   VARCHAR(50) NOT NULL,
+    priority    INT NOT NULL DEFAULT 100,
+    keyword     VARCHAR(100),                     -- LIKE 包含匹配（决议①不分词）
+    target_org  BIGINT NOT NULL REFERENCES organizations(id),
+    target_user BIGINT REFERENCES users(id),      -- 决议③必须属于 target_org（写侧校验）
+    enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by  BIGINT NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_assignment_rules_type ON assignment_rules (type_code, priority);
+-- OnAfterCreate Hook：按 priority 遍历→首个命中执行分派（走 Assign 不绕鉴权）；
+-- 无命中保持 open+dispatch_missed 事件（决议④）；失败不回滚创建（决议⑤）
+```
+
+### A.3 动作库框架（Post-function 形态）
+
+```go
+type TransitionAction interface {
+    Name() string                                    // 注册键（编译期——反射反面）
+    Execute(ctx context.Context, ev domainevent.DomainEvent, t *model.Ticket) error
+}
+// internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go（首批三动作）
+// 注册：app.go 装配 actionRegistry.Register("notify", NewNotifyAction(...))——重复名 panic
+// 失败语义：不回滚转换（Hook 捕获+事件+异步补偿——分派决议⑤同款）
+```
+
+### A.4 easy-workflow 对照开发法（所有者提议"参考修改补强"的操作化——不 fork 不 import）
+
+**核验结论回顾（2026-10-08 代码级复核）**：四条避坑点全是骨架级——fork 后要改的恰是承重墙：
+
+| 避坑点 | zhuzhao 要求 | fork 改造量 |
+|--------|-------------|------------|
+| MySQL 绑定 | PG+pgx | 存储层全重写 |
+| 表达式拼 SQL+黑名单 | expr 白名单（防注入红线） | 求值层全重写 |
+| 反射事件 | 编译期注册 | 事件层全重写 |
+| 引擎内嵌身份 | 身份归三层鉴权 | 身份层剥离 |
+
+**量化**：fork 改造 ≈2–3 周（四层重写+继承零测试/裸 map 竞争）> 对照自研 ≈2 周（设计已细化到本附录级）。**操作化方法**：easy-workflow 仓库作为参考实现放在手边——实现每个模块前先读其对应模块，**取结构、避缺陷**（RuoYi/easy-workflow 两次核验同款方法论；它的真实价值=免费错题本）。生态事实：Go 侧无 Flowable 级引擎（Temporal 为 durable execution 不同范式）——自研语义层是 Go 生态正常选择。
+
+### A.5 验收补充（在 §8 基础上）
+
+- Jira 四段：condition 不满足 → available 端点不含该转换 + AssertTransition 拒（双重）；validator 表达式 false → 400 带字段名；post-action 失败 → 转换成功+补偿事件（不回滚断言）；
+- meta 往返：画布（S2）配置 meta → 保存 → 回显一致；无 meta 存量类型零行为变化（零破坏断言）；
+- 分派：规则命中自动分派（决议①–⑤逐条）；keyword 注入负向（LIKE 通配符转义）；
+- 求值器沙箱负向（与 01 号 A.6 同款）。
+---
+
 ## 附录：工单引擎演进路线（跨段视图，2026-10-16 所有者提议立项——以业界引擎为参照系的统一演进计划）
 
 > **定位**：S2/S3/S6/S10/SLA 各段能力统一到「工单引擎」主线——**现状处于哪个阶段、每级演进的触发事件、量级预估**，一张图收口。触发事件为立项开关（照单触发勿再推演）；各能力的详细设计归各自段稿（本文只做演进视角汇总）。业界参照系 = Jira（workflow→Automation→JSM）/ ServiceNow（Flow→SLA 引擎）——两家演进史与本阶梯同构。
@@ -163,3 +240,4 @@
 | 2026-10-19 | **SLA 边界溯源修正批（随 10 号同款）**：§1「SLA 引擎不建（dd §29 定论）」修正——§29 原文仅方向性一句，细分边界=设计推演；触发信号在案 10 号 §5 |
 | 2026-10-19 | **事件驱动统一模型+phase6 前核心引擎目标批（所有者架构提议：状态变化触发事件，通知/升级转派/计划任务统一为事件消费者或生产者）**：03 号演进路线新增两节——①**事件驱动统一模型**（业界收敛形态 Jira Automation 同构；三分架构=通知走 S6 规则面 at-most-once/转派走 S3a 动作库同步事务内/扫描器=事件生产者——一致性等级显式分层；防蔓延两条=代码注册为主不做全可配+循环触发防护注记）②**phase6 前核心引擎目标态**（gap 两项：S3a 升格 ~2 周+SLA 层 0.5 0.5–1 天≈15 周达成；S3b 维持触发驱动不构成缺口；**决策项=所有者：S3a 是否升格排期**） |
 | 2026-10-19 | **S3a 升格排期批（所有者拍「升」）**：头注段属性（条件段→排期段 W13–15、纳入 phase5 收官；S3b 维持触发驱动）/§1 溯源修正联动/§3 头注时点决策更新（触发信号不再等待——A+C 方案被升格决策取代，绕行禁令 W13 前仍有效）/附录演进路线矩阵与触发总表与 gap 表三处 S3a 状态翻 ✅已排期 |
+| 2026-10-19 | **S3a 附录 A 详细技术设计批（升格排期后按排期段标准补齐——05 号样板深度）**：A.1 **Jira transition 四段对表**（condition=转换级权限/validator=前置条件/post-function=动作库——20 年业界解剖照表设计不漏项）+ transitions_meta 独立列（对齐 01 号 A.2 方案 b）+ available 端点（前端过滤 UX+服务端兜底双重）/A.2 assignment_rules DDL（五决议既定）/A.3 动作库框架（TransitionAction 编译期注册+失败不回滚）/A.4 **easy-workflow 对照开发法**（所有者提议"参考修改补强"的操作化——fork 改造≈2–3 周四层重写>对照自研 2 周，参考实现=免费错题本）/A.5 验收补充 |
