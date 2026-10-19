@@ -64,7 +64,7 @@
 | 2 | ticket_cc vs ticket_participants 表形态 | 启动时按 §3.1 对表项拍（谁先启动谁对表） |
 | 3 | sla_due_at/default_sla_hours 去留 | 随节点超时件拍（倾向注释标记 deprecated，删除收益低） |
 | 4 | 导出格式 | excelize 固定列（P4-4 al 域同款）；CSV 流式形态仅审计导出挂账项按需 |
-| 5 | **节点超时时间源（2026-10-16 外审补遗）** | **新增 `status_changed_at` 列**（AssertTransition 同事务写——推荐 a 案）；ticket_events 反查不取（完整性依赖+JOIN 成本）；B10-4 前确认，量级 +0.5 天 |
+| 5 | **节点超时时间源（2026-10-16 外审补遗）** | **新增 `status_changed_at` 列**（`UpdateStatusTx` 咽喉内同写——2026-10-19 两轮修正：AssertTransition=tx 前纯校验不可作锚；中间版锚 B3-1 端点有排期倒挂[晚于 B10-4 交付]，终版锚 repo 层唯一状态写咽喉[存量 Close/Assign 与 B3-1 端点全经它]——推荐 a 案）；ticket_events 反查不取（完整性依赖+JOIN 成本）；B10-4 前确认，量级 +0.5 天 |
 | 6 | **tags 可见性语义（2026-10-16 外审补遗）** | **默认共享**（created_by 留痕；可见性随工单 L2）——私有标签诉求出现再加 owner 限定；B10-2 前确认 |
 
 > **状态注（2026-10-16）**：本表拍板点已随批量预确认拍定（2026-10-16 所有者「按建议」——✅34/🔶1，状态 SSOT = [11 号 §4](./11-implementation-plan.md)；各段启动时异议可翻，翻案成本=改一行）。
@@ -181,7 +181,7 @@ ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transition_meta JSONB DEFAULT 
 -- state 级键先入（B10-4）：{"pending_verify": {"timeout_minutes": 240}}
 -- S3a B3-1 扩展 "from>to" 转换级键复用同列（condition/validator/post_actions）——一键两形以 ">" 区分
 
--- ④ status_changed_at（拍板点 5 预确认：AssertTransition 同事务写）
+-- ④ status_changed_at（拍板点 5 预确认：UpdateStatusTx 咽喉内同写——2026-10-19 终版锚，修正史见 §3.4 写入点注）
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ;
 -- 存量一次性回填（随迁移）：UPDATE tickets SET status_changed_at = updated_at WHERE status_changed_at IS NULL;
 --   ⚠ 回填值 = 近似（updated_at 被评论/编辑污染）——存量单首轮扫描可能误报超时，
@@ -190,7 +190,7 @@ CREATE INDEX idx_tickets_timeout ON tickets (status, status_changed_at)
     WHERE status NOT IN ('closed', 'rejected');       -- 部分索引：扫描只摸活跃单
 ```
 
-- 写入点：`AssertTransition` 成功后同事务 `UPDATE tickets SET status_changed_at = NOW()`（与状态写同事务，零漂移窗口）；CreateTicket 初始化同写。
+- 写入点：**`UpdateStatusTx`（repo 层唯一状态写咽喉）内 `SET status_changed_at = NOW()`**（与状态写同语句同事务，零漂移窗口；CreateTicket 初始化同写）。⚠ 2026-10-19 两轮修正：①原「`AssertTransition` 成功后同事务」表述不准——AssertTransition=tx.Begin 前纯校验（service.go:352 vs :357 实证）；②中间版「锚 B3-1 执行端点事务内」有**排期倒挂**——B10-4（W9–11）先于 B3-1（W13–15），W11–W13 窗口存量 Close/Assign（service.go:363/:432）不经新端点、该列持续 stale=扫描器产生新漂移；③**终版锚 `UpdateStatusTx`**：存量路径与 B3-1 端点（收敛封装后）全部经此咽喉，**B10-4 交付时点即全量正确写入，无需等 B3-1**（03 号 A.3 同步）。
 
 ### A.4 角标聚合端点（B10-3）
 
@@ -249,3 +249,5 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 | 2026-10-19 | **SLA 边界溯源修正批（所有者质询"四件边界从哪里来"——考古发现标注瑕疵）**：dd §29 原文（行 1447 实证）仅方向性定论「刻意轻量不做完整 SLA 引擎」一句，**未列四件细分**；git log -S 考古：三连（无升级链/无暂停恢复）首现于 9e7b856 S10 立项批=规划写作时从完整组件清单减法的**设计推演**、业务日历第四件首现于 d79af12 业界对表批——原「dd §29 定论，边界钉死」表述将推演产物冠以定论引用（标注纪律瑕疵，BK-16 同族）；§3.4 修正为三层溯源（方向定论=§29/四件=设计推演/真实锚点=§23 纪律+隐性场景假设[内部无承诺诉求]+触发信号清单硬五条）——**边界=当前态非永久钉死，假设失效或信号出现即重开** |
 | 2026-10-19 | **timeout_minutes 承载结构修正批（外审全面审计 P1——三方矛盾：代码 transitions=纯邻接表无边属性位/02 号画布签名 Record<string,string[]>+后端零改动/S3a transitions_meta 列 W13–15 晚于 B10-4 W9–11）**：修法 (a) 拍定——`ticket_types.transition_meta` JSONB 一枚 ALTER **随 B10-4 建**（state 级键存 timeout_minutes），S3a 扩展 "from>to" 键复用同列（一列两用、">" 区分键形）——§3.4 主句/§6 迁移行/§9 衔接行/A.3 DDL 补第③枚/A.5 扫描逻辑句五处修正；「零 DDL」口径废止；**timeout 编辑面=B10-4 管理页或 JSON 专家模式（S2 画布不承载——与 02 号界注对齐）** |
 | 2026-10-19 | **gap2 排期确认级联（随 03 号——所有者确认）**：§5 四层路径层 0.5 处补「✅ W15 随 S3a 同窗顺带排期」（deadline 模型 A——phase6 前核心引擎目标态收口件；transition_meta 列本段 B10-4 交付、S3a 复用扩展） |
+| 2026-10-19 | **P0-2 写入点口径修正批（并行外审合并报告）**：拍板点 5/A.3 DDL 注/§3.4 写入点三处——「AssertTransition 同事务写」→「**统一转换执行入口事务内同写**」（AssertTransition=tx 前纯校验 service.go:352 vs :357 实证——写点锚定 B3-1 `POST /tickets/transition` 事务内） |
+| 2026-10-19 | **P0 修正批二轮回声（写点终版锚——消排期倒挂）**：拍板点 5/A.3 DDL 注/§3.4 三处「统一转换执行入口事务内同写」→「**`UpdateStatusTx` 咽喉内同写**」——上批中间版锚 B3-1 端点（W13–15）晚于 B10-4 扫描器（W9–11）：W11–W13 窗口存量 Close/Assign（service.go:363/:432）不经新端点、该列持续 stale=扫描器新漂移；终版锚 repo 层唯一状态写咽喉，存量路径与 B3-1 封装全经它，**B10-4 交付时点即全量正确** |

@@ -236,6 +236,8 @@ type TransitionAction interface {
 | **升级/转派**（状态变更写操作） | **S3a 动作库**（DomainHook 转换后同步动作，事务内） | **同步强一致**——挂 at-most-once 钩子会丢+重复消费=重复转派；可靠性升级路径=transactional outbox（1–2 天 DomainHook 零改，§5.10 既评） |
 | 计划任务（超时扫描） | 事件**生产者**（扫描器=把时间条件转换为事件的适配器） | 扫描幂等+事件查重 |
 
+**执行端点显式化（P0-1，2026-10-19 并行外审合并报告——B3-1 首件交付）**：`POST /tickets/transition`（body: to + comment 可选）——运行时转换现状仅三条路（Create 硬编码 open/Close→closed/Assign 推算 open↔assigned——router.go:344-352 实证，无 submit 端点），画布可配多状态图但无泛化执行落点；本端点=校验（三层鉴权+AssertTransition 叠加+validator）→ **单事务执行**（状态写+status_changed_at 同事务——写点终版锚 `UpdateStatusTx` 咽喉，10 号 §3.4 二轮修正）→ **commit-后回调**（DomainEvent emit 锚+TransitionAction post-function 触发——P0-2 修正后的正确挂点）；现 Close/Assign 定向端点收敛为其封装（Create=创建非转换，保留独立端点、commit 后 emit `ticket.created`；Update 非 status 端点不涉收敛）（对齐 Jira transition 端点形态）。**L1 权限归属随 B3-1 拍**：menu_apis 声明式注册对账（挂既有工单操作菜单 / 新权限码二选一——转换级 condition 细粒度由本段 L2/L3 兜底，L1 只做粗粒度入口）。
+
 **⚠ 升级链通道裁定（2026-10-19 外审发现自相矛盾，修法拍定）**：升级转派是写操作需强一致，但"超时 DomainEvent → 转派" rides at-most-once 派发=事件丢失即转派静默丢失——**违反自家分层**。修法：**转派由超时扫描器事务内直调**（扫描批事务=强一致通道；扫描幂等/查重已有），DomainEvent 仅作通知面；outbox（1–2 天）登记为扫描器形态不可行时的备选。**同根裁定（外审 P2-4）**：TransitionAction 框架补**两种触发形态**——①转换后形态（post-function，事务=转换事务）②事件订阅形态（超时/升级链等无转换上下文，事务=触发方扫描批事务）——两形态同一接口、事务边界随触发方，B3-3 框架按双形态设计。
 
 **防蔓延边界两条**：①动作实现分层——**代码注册为主（DomainHook 编译期）、配置规则限于通知/收件人**（不做全可配 Automation 引擎：规则冲突/顺序/循环治理成本）；②**循环触发防护**注记（事件→动作→状态变更→事件需链深限制——**落点=B6-1/B10-4/B3-3 三处**[2026-10-19 外审补：动作库是升格后最大新事件面，post_actions 链深限制随 B3-3 框架落]）。
@@ -281,3 +283,5 @@ type TransitionAction interface {
 | 2026-10-19 | **第二意见体检回声批（并行外审报告——本级 3 处）**：①naming：头注量级行/§6 影响面行/A.5 界注 `transitions_meta`→**`transition_meta`**（对齐 10 号 A.3 DDL 权威单数——全仓名统一随本批）②**附录排序归位**（A.5 验收补充移至 A.6 之前——原 A.1→A.2→A.3→A.4→A.6→A.5 逆序，跨节引用[A.5 引 01 号 A.6]不受影响）③A.5 内悬空引用「见 A.7 界注」→「见下方界注」（界注本就在 A.5 内，A.7 节不存在） |
 | 2026-10-19 | **条件显隐演进触发登记批（所有者「按方案登记」——随 01 号量级补完）**：演进触发事件总表 +1 行「**表单条件显隐**（交互层联动）」——触发=业务方提出「选了 A 才填 B」类联动诉求 / 量级 ≈2–3 天（复用 S1/S3 expr 公共件，零迁移）/ 设计出处 01 号 §5——演进触发总表至此九级全带量级，照单触发 SSOT 完整 |
 | 2026-10-19 | **gap2 排期确认批（所有者确认）+ W0 收口级联**：①gap 表/结论/触发总表/能力矩阵四处——gap2「SLA 层 0.5」✅ 确认排期 **W15 随 S3a 同窗顺带**（0.5–1 天，不占独立 Wave——「核心引擎目标态」时点锁定 ≈W15，决策项销账）②W0 ✅ 收口级联（11 号 §1/§2.1/README §5——详录 11 号） |
+| 2026-10-19 | **P0 四项修正批（并行外审合并报告五项实证全证实——本文件 2 处）**：①**A.3 执行端点显式化（P0-1）**：`POST /tickets/transition` B3-1 首件交付——校验→单事务执行（status_changed_at 同写）→commit-后回调（emit 锚+post-function 挂点），Close/Assign 收敛为封装；②P0-2 锚点修正牵连（修正详录 06 号 A.5/10 号 §3.4）——合并报告同时修正本会话此前「emit 锚=AssertTransition」错误口径（深审 C 轮未验证调用位置即提议，认领） |
+| 2026-10-19 | **P0 修正批二轮回声（修正批自身精度问题三处）**：A.3 执行端点段——①「submit/close/assign」→「Create 硬编码 open/Close→closed/Assign 推算 open↔assigned」（无 submit 端点，router.go:344-352 实证）②收敛列表去 Update（Update 非 status 端点）+补 Create 保留说明（创建非转换，独立 emit ticket.created）③补 L1 权限归属拍板项（menu_apis 注册对账——挂既有菜单/新码二选一）+status_changed_at 写点指向 UpdateStatusTx 终版锚（10 号二轮修正牵连） |

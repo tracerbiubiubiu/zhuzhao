@@ -72,7 +72,11 @@ CREATE TABLE intel_cache (
     hit_count   INT NOT NULL DEFAULT 0,
     UNIQUE (intel_type, query_value)
 );
-CREATE INDEX idx_intel_cache_expiry ON intel_cache (expires_at) WHERE expires_at < NOW();
+CREATE INDEX idx_intel_cache_expiry ON intel_cache (expires_at);
+-- 2026-10-19 P0-3 修正：原 partial index 谓词 `WHERE expires_at < NOW()` 为非法 DDL
+-- （PG 要求索引谓词 IMMUTABLE，NOW() 是 STABLE 不满足——B9-1 迁移即失败；
+--  二轮精度修正：原记 VOLATILE 不准，结论不变）；
+-- 过期判定移入查询层 WHERE expires_at < NOW()（部分索引收益本就有限——过期行物理删除/清理任务可后续挂账）。
 -- 懒过期：查询命中已过期行 → 按降级策略处理（拍板点 1）+ 回源刷新；周期物理清理骑 CronScheduler（低频，防表膨胀）
 ```
 
@@ -143,3 +147,5 @@ GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:q
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 intel_cache DDL 全文（UNIQUE+部分过期索引+**归一化查询值**——domain 小写等按类型注册；TTL 双档 config）/A.2 ThreatIntelProvider 端口+HTTP adapter（映射层独立函数 mapUpstreamResponse——契约到手只改此函数）+两态桩（stub config/fail-fast ErrIntelNotConfigured 防虚标）/A.3 查询代理链路（命中/懒过期**异步回源**/未命中回源/**singleflight 防击穿**——同 key 并发仅一次上游调用，保护配额即本件存在意义+上游令牌桶自留量）/A.4 API 契约（intel:query 唯一新码；phase6 R1 消费=进程内 service 直依赖不经 HTTP 自调用）/A.5 验收补充（singleflight 并发断言/降级矩阵/归一化/ACL 透传负向） |
 | 2026-10-16 | **评审批深审项 D（所有者「落」并批）**：A.3 补**上游 404=正常结果入缓存**（clean 答案缓存 TTL 内免打上游——保护配额；错误≠查无前者走失败链；404 vs 200+空结果形态随契约对表） |
 | 2026-10-16 | **404 缓存验收断言批（一致性尾巴修复）**：A.5 补「404 入缓存→二查零上游调用；上游 5xx 不缓存走失败链」用例（对齐 A.3 深审项 D） |
+| 2026-10-19 | **P0-3 非法 DDL 修正批（并行外审合并报告）**：A.3 索引改普通 `(expires_at)`——原 partial index 谓词 `WHERE expires_at < NOW()` 非法（PG 要求 IMMUTABLE，NOW() 是 STABLE 不满足，B9-1 迁移即失败）；过期判定移入查询层 |
+| 2026-10-19 | **P0 修正批二轮回声（纯精度）**：DDL 注与上行「NOW() 是 VOLATILE」→「STABLE」（PG 语义 now()=STABLE，非 IMMUTABLE 即不可入索引谓词——结论不变；上行同批未提交随改，无历史改写） |
