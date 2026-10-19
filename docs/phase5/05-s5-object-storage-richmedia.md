@@ -106,7 +106,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 | Batch Replication | 批量复制作业 | 大存量一次性迁移 | 非常态备份机制 |
 | 卷快照/停机 tar | PV 级快照 | 完整 | 一致性风险/需停机——**不取为主方案**（可作恢复演练辅助） |
 
-**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone mirror` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）——**含 DB↔对象联合场景**（旧库快照+新桶 → file_objects 引用悬空的负向演示：元数据与对象存在性对账；2026-10-16 评审批深审项 E）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
+**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone sync` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）——**含 DB↔对象联合场景**（旧库快照+新桶 → file_objects 引用悬空的负向演示：元数据与对象存在性对账；2026-10-16 评审批深审项 E）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。
 
 ## 8. 启动拍板点
 
@@ -116,7 +116,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 | 2 | 附件下载形态 | ✅ **已拍（2026-10-15，与 #1 联拍）**：统一后端代理——预签名形态弃用（L2 绕过+无审计），302 同 #1 升级路径 |
 | 3 | 附件权限码 | ✅ **已拍（2026-10-15）**：复用 `ticket:update` 零新码——所有者「先不需要单独权限」 |
 | 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；**库 ✅ md-editor-rt 拍定（2026-10-17 所有者「按建议」）**——原 W0 择库 spike 销账，B5-4 首日 spike 保留=粘贴直传扩展验证（bytemd/milkdown 对照留存备翻——RK-P5-5） |
-| 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone mirror` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
+| 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone sync` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
 | 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；**presign 形态拍定 1b（2026-10-19 所有者「按建议」·B5-1 前置批）= PUT + Content-Type 钉签名 + confirm HEAD 实测 + etag 列快照比对**（A.3 修正③/A.4 #2/#5 三处级联）——POST policy 降增强登记（触发=滥用实测出现/spike 顺带验证成熟；论据：重放覆盖两形态皆存→etag 防御两形态皆需，POST 边际收益仅尺寸存储侧预拦，代价=端口层/A.5 链路/前端三处改+RustFS 兼容未验——PUT 为 S3 最核心操作） |
 | 7 | 限制值配置化开放 | ✅ **已拍（2026-10-15）：归属 S5 段内做**（底座批后随行/段尾，**可切出**——排期吃紧先静态 config 形态交付零返工，配置化切独立小批）；形态 = 开放·分层（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI）+ 硬底线不可配 + 按 key 编辑层级（存储限制类 superadmin-only）+ 变更审计/钳制——详录 §3 |
 | 8 | **img 认证最后一跳（2026-10-16 外审实锤缺口——已核代码）** | ✅ **已拍（2026-10-16）：Cookie 双凭证**——登录/刷新旁设 `HttpOnly; SameSite=Lax; Path=/api/v1/files` 短时效 cookie（TTL 对齐 access token），files 路由中间件 cookie 回退（header 优先）——`<img>` 原生可用、浏览器缓存/304 生效、前端零渲染改造、302 升级路径顺带解锁；与逐次审计兼容（cookie 映射用户）；tokenStorage 已预留「B7 cookie 会话演进」向。实施设计 = 附录 A.11（含验收负向三件）；业界锚点 = GitHub/GitLab 应用内 cookie 阵营（GitLab 文档原话：同源 `<img>` 自动带 session cookie 是应用内私有图片可渲染的原因）；Slack/Notion/Discord 签发时效链阵营的动机（跨服务嵌入/CDN 卸载/防公网滥用）内网语境均不存在。证据：`middleware/jwt.go` 仅读 Authorization header + ui token 在 localStorage——`<img src>` 裸请求必 401 |
@@ -301,7 +301,7 @@ views/ticket/detail/ 附件列表区块          # 下载走 /files/ 稳定 URL�
 
 ### A.8 备份实施（B5-5，已拍 #5）
 
-compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；**W0 工程预备草案已落**）；`rclone mirror` 定时任务（**随后端切 RustFS 调整——`rclone/rclone` 镜像已拉已验证**；对齐 pgbackup cron/RETAIN_COUNT 惯例）+ 目标桶版本化开启；**恢复演练一次入 B5-5 验收**（删测试对象→mirror 回灌→比对）；RPO=镜像周期显式登记于 runbook（§7）。
+compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；**W0 工程预备草案已落**）；`rclone sync` 定时任务（**随后端切 RustFS 调整——`rclone/rclone` 镜像已拉已验证，v1.75.2**；对齐 pgbackup cron/RETAIN_COUNT 惯例；⚠ 术语修正 2026-10-19：**rclone 无 `mirror` 命令**——系 mc mirror 迁移笔误，正确命令=`sync`（单向含删除=镜像语义）；**✅ 判据⑤预验（2026-10-19）：主→备双实例全量+增量实测通（sync 仅拷新对象）**）+ 目标桶版本化开启；**恢复演练一次入 B5-5 验收**（删测试对象→sync 回灌→比对）；RPO=镜像周期显式登记于 runbook（§7）。
 
 ### A.9 兼容与灰度
 
@@ -367,3 +367,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-19 | **B5-1 前置拍板批（所有者「按建议」——两会话收敛 v2）**：①**拍板点 6 presign 形态拍定 1b**（PUT+Content-Type 钉签名+confirm 实测+**etag 列快照**——A.3 修正③ etag 列/A.4 #2 confirm 回填+A.5 create 态/A.4 #5 If-Match 防重放+304 读列级联；POST policy 降增强登记[触发=滥用实测/spike 顺带验证]）②**§3 补 CORS**（外审缺口：落点=存储端配置非应用 config 段；spike 第一优先判据——RustFS 无 CORS 能力则直传方案重审）③**A.5 补建单前上传链**（draft attachment：purpose \*_create 态+建单携带 object_key 同事务落绑；CreateTicketRequest 契约变更 §12-6 五点查登记）④**A.1 落位钉死**（端口=pkg/storage 基建先例守护合规，业务各层照常） |
 | 2026-10-19 | **B5-1 spike 判据① CORS 预验批（当日顺手验——判据①销账）**：起 compose 草案容器实测——默认零 CORS 头（浏览器必拦）；`RUSTFS_CORS_ALLOWED_ORIGINS` 显式设置后预检完整放行（allow-methods 含 PUT/allow-headers \*/expose-headers 含 etag），白名单外零头拦截；MinIO 兼容变量无效；**安全公告 GHSA-x5xv-223c-8vm7（不设=反射式 CORS 风险）→ compose 草案 env 补默认值**；桶级 PutBucketCors 未支持（讨论 #736）→ 全局 env 形态；**直传方案无需重审**。健康三件复验（/health 200 + /minio/health/live 200 + 未签名 403） |
 | 2026-10-19 | **B5-1 spike 判据②③④预验批（minio-go v7.4.1 scratch 实测，B5-1 批2）**：②presign PUT 往返闭环（PUT 200 → StatObject[size+**etag=MD5 形态实得**——etag 列快照可行性再证]→presigned GET content-match）；③未签名 403（判据①批已证）；④Content-Type 钉入签名（`PresignHeader` extraHeaders 形态）——篡改 CT=text/html → **403 SignatureDoesNotMatch 存储侧拒**（限制矩阵「防谎报」锚点实证）；⑥桶复制 GetBucketReplication 读 API 通（err=nil 空配置）——**生效性深测随 B5-5**（rclone 起步形态维持）；**minio-go v7.4.1 兼容面全绿**（BucketExists/MakeBucket/PresignHeader/StatObject/PresignedGetObject——备选 aws-sdk-go-v2 维持挂账不启用） |
+| 2026-10-19 | **B5-1 spike 判据⑤预验批（批3）+ rclone 术语修正**：判据⑤ 主→备双实例（zhuzhao-rustfs→rustfs-backup，compose 内网服务名互访）`rclone sync` **全量+增量双实测通过**（首轮全量复制/次轮仅拷新对象 second.txt；rclone **v1.75.2** 实测——镜像 tag 随 B5-5 钉死）；**⚠ 术语修正：rclone 无 `mirror` 命令**（mc mirror 迁移笔误，正确命令=`sync` 单向含删除=镜像语义）——§7/A.8/拍板点 5/README/11 号正文与 compose 注释全量替换，2026-10-16 历史变更记录行留痕不改；判据⑥ GetBucketReplication 读 API 通（err=nil）维持「生效性深测随 B5-5」——**spike 六判据至此全部预验完毕，B5-1 首日 spike 提前完成** |
