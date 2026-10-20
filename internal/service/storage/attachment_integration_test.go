@@ -8,6 +8,7 @@ package storage_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,6 +101,15 @@ func TestTicketAttachment_Scenarios(t *testing.T) {
 		require.NoError(t, testPool.QueryRow(context.Background(),
 			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1 AND uploaded_by=$2`, tkID, uid).Scan(&n))
 		assert.Equal(t, 1, n, "关联行落库")
+
+		// 000047 随行件：ticket 态 confirm 同语句落通用归属（DB 为准）+ 响应回显一致
+		var ownerKind, ownerID string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT owner_kind, owner_id FROM file_objects WHERE id=$1`, f.ID).Scan(&ownerKind, &ownerID))
+		assert.Equal(t, model.FileOwnerTicket, ownerKind)
+		assert.Equal(t, strconv.FormatInt(tkID, 10), ownerID)
+		require.NotNil(t, f.OwnerKind)
+		assert.Equal(t, model.FileOwnerTicket, *f.OwnerKind, "响应内存态归属与库一致")
 	})
 
 	t.Run("重复绑同单 91004", func(t *testing.T) {

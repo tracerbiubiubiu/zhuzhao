@@ -3356,6 +3356,13 @@ const docTemplate = `{
                 "object_key": {
                     "type": "string"
                 },
+                "owner_id": {
+                    "type": "string"
+                },
+                "owner_kind": {
+                    "description": "通用归属引用（000047 随行件）：ticket 态 confirm/建单落绑填 ticket、avatar bind 填 user；\nNULL = 未归属（pending / *_create 悬挂态 / 存量行）。元数据面，不作判定依据。",
+                    "type": "string"
+                },
                 "purpose": {
                     "type": "string"
                 },

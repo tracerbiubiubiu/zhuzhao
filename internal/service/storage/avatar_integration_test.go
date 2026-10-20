@@ -8,6 +8,7 @@ package storage_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -109,5 +110,11 @@ func TestBindAvatar_Scenarios(t *testing.T) {
 		require.NoError(t, testPool.QueryRow(context.Background(),
 			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&status))
 		assert.Equal(t, model.FileStatusConfirmed, status)
+		// 000047 随行件：avatar bind 置归属 user/<uid>（归属先于 users.avatar 回写）
+		var ownerKind, ownerID string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT owner_kind, owner_id FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&ownerKind, &ownerID))
+		assert.Equal(t, model.FileOwnerUser, ownerKind)
+		assert.Equal(t, strconv.FormatInt(uid, 10), ownerID)
 	})
 }

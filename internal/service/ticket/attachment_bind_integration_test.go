@@ -10,6 +10,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"strconv"
 	"testing"
 	"time"
 
@@ -128,6 +129,14 @@ func TestCreate_TicketAttachmentBind(t *testing.T) {
 		require.NoError(t, testPool.QueryRow(context.Background(),
 			`SELECT purpose FROM file_objects WHERE bucket='b53' AND object_key=$1`, k2).Scan(&p2))
 		assert.Equal(t, "ticket_richtext", p2)
+		// 000047 随行件：建单落绑同语句落通用归属 ticket/<id>（附件与 richtext 贴图同款）
+		for _, k := range []string{k1, k2} {
+			var ownerKind, ownerID string
+			require.NoError(t, testPool.QueryRow(context.Background(),
+				`SELECT owner_kind, owner_id FROM file_objects WHERE bucket='b53' AND object_key=$1`, k).Scan(&ownerKind, &ownerID))
+			assert.Equal(t, model.FileOwnerTicket, ownerKind, "key %s 归属类型", k)
+			assert.Equal(t, strconv.FormatInt(tk.ID, 10), ownerID, "key %s 归属工单", k)
+		}
 	})
 
 	t.Run("他人对象拒绝——400 参数错误", func(t *testing.T) {

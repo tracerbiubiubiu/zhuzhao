@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"time"
 
@@ -20,7 +21,7 @@ var (
 	ErrStorageAttachmentLimit = errors.New("repository: ticket attachment limit exceeded")
 )
 
-const fileObjectColumns = `id, bucket, object_key, purpose, status, file_name, mime_type, size_bytes, etag, created_by, created_at, confirmed_at`
+const fileObjectColumns = `id, bucket, object_key, purpose, status, file_name, mime_type, size_bytes, etag, created_by, created_at, confirmed_at, owner_kind, owner_id`
 
 type StorageRepo struct {
 	db *pgxpool.Pool
@@ -47,7 +48,7 @@ func (r *StorageRepo) GetByObjectKey(ctx context.Context, bucket, objectKey stri
 		"SELECT "+fileObjectColumns+" FROM file_objects WHERE bucket = $1 AND object_key = $2",
 		bucket, objectKey,
 	).Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName, &f.MIMEType,
-		&f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt)
+		&f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrStorageObjectNotFound
 	}
@@ -89,7 +90,7 @@ func (r *StorageRepo) ListExpiredPending(ctx context.Context, bucket string, bef
 	for rows.Next() {
 		f := &model.FileObject{}
 		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
-			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt); err != nil {
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
 			return nil, err
 		}
 		out = append(out, f)
@@ -121,7 +122,7 @@ func (r *StorageRepo) ListDeleted(ctx context.Context, bucket string, limit int)
 	for rows.Next() {
 		f := &model.FileObject{}
 		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
-			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt); err != nil {
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
 			return nil, err
 		}
 		out = append(out, f)
@@ -162,6 +163,22 @@ func (r *StorageRepo) MarkAvatarDropped(ctx context.Context, bucket, objectKey s
 	return err
 }
 
+// SetObjectOwner 置对象通用归属（000047 随行件）。avatar bind 填 user；ticket 态由
+// ConfirmAndBind / BindCreateAttachments 在翻态语句内同步落 ticket，不经本方法。
+// 0 行 → ErrStorageObjectNotFound（(bucket, object_key) 唯一键对齐）。
+func (r *StorageRepo) SetObjectOwner(ctx context.Context, bucket, objectKey, ownerKind, ownerID string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE file_objects SET owner_kind = $3, owner_id = $4 WHERE bucket = $1 AND object_key = $2`,
+		bucket, objectKey, ownerKind, ownerID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageObjectNotFound
+	}
+	return nil
+}
+
 // ConfirmAndBind ticket 态确认并落绑（repo 内单事务：同单行锁串行化并发绑定 +
 // 附件数计数校验（05 号 §3 个数上限执行点）+ 条件翻 confirmed + INSERT
 // ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
@@ -190,8 +207,9 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 	}
 
 	tag, err := tx.Exec(ctx, `
-		UPDATE file_objects SET status='confirmed', size_bytes=$2, etag=$3, confirmed_at=NOW()
-		WHERE id=$1 AND status='pending'`, fileID, sizeBytes, etag)
+		UPDATE file_objects SET status='confirmed', size_bytes=$2, etag=$3, confirmed_at=NOW(),
+		       owner_kind=$4, owner_id=$5
+		WHERE id=$1 AND status='pending'`, fileID, sizeBytes, etag, model.FileOwnerTicket, strconv.FormatInt(ticketID, 10))
 	if err != nil {
 		return err
 	}
@@ -263,7 +281,8 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, b
 			return err
 		}
 		tag, err := exec.Exec(ctx, `
-			UPDATE file_objects SET purpose=$3 WHERE id=$1 AND purpose=$2`, id, purpose, formal)
+			UPDATE file_objects SET purpose=$3, owner_kind=$4, owner_id=$5 WHERE id=$1 AND purpose=$2`,
+			id, purpose, formal, model.FileOwnerTicket, strconv.FormatInt(ticketID, 10))
 		if err != nil {
 			return err
 		}

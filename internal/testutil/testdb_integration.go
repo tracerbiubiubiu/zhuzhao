@@ -134,6 +134,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// phase5 S5 对象元数据表（000045，B5-1 批5）+ 工单附件关联（000046，B5-3 批1）
 			"000045_file_objects.up.sql",
 			"000046_ticket_attachments.up.sql",
+			// file_objects 通用归属两列（000047，B5-4 随行件——A2 取号先建占 047，B5-6 顺位 048）
+			"000047_file_objects_owner.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

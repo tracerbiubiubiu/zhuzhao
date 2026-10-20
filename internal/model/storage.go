@@ -16,7 +16,17 @@ type FileObject struct {
 	CreatedBy   int64      `json:"created_by,string"`
 	CreatedAt   time.Time  `json:"created_at"`
 	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
+	// 通用归属引用（000047 随行件）：ticket 态 confirm/建单落绑填 ticket、avatar bind 填 user；
+	// NULL = 未归属（pending / *_create 悬挂态 / 存量行）。元数据面，不作判定依据。
+	OwnerKind *string `json:"owner_kind,omitempty"`
+	OwnerID   *string `json:"owner_id,omitempty"`
 }
+
+// file_objects.owner_kind 取值（000047）；后续 script_package / run / ingest / export 按需扩。
+const (
+	FileOwnerTicket = "ticket"
+	FileOwnerUser   = "user"
+)
 
 // file_objects.status 状态机（05 号 A.3 修正②：presign 即写 pending）。
 const (

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -190,6 +191,9 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		f.SizeBytes = &size
 		f.ETag = &etag
 		f.ConfirmedAt = &now
+		// 归属已由 ConfirmAndBind 同语句落库（000047）——内存态同步供响应回显
+		ownerKind, ownerID := model.FileOwnerTicket, strconv.FormatInt(*in.TicketID, 10)
+		f.OwnerKind, f.OwnerID = &ownerKind, &ownerID
 		return f, nil
 	}
 
@@ -304,10 +308,20 @@ func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64
 		s.logger.Error("storage get user avatar", "err", err)
 		return nil, errcode.ErrInternal
 	}
+	// 归属先于回写（000047 随行件）：对象置 owner=user 后再写 users.avatar——若后者失败，
+	// 留下的只是"已归属本人但未挂为头像"的 confirmed 对象（无害）；反序则可能出现挂为头像
+	// 却无归属的行，未来按 NULL=未归属的对账/GC 消费者会误判。
+	ownerID := strconv.FormatInt(userID, 10)
+	if err := s.repo.SetObjectOwner(ctx, s.bucket, objectKey, model.FileOwnerUser, ownerID); err != nil {
+		s.logger.Error("storage set avatar owner", "key", objectKey, "err", err)
+		return nil, errcode.ErrInternal
+	}
 	if err := s.repo.UpdateUserAvatar(ctx, userID, objectKey); err != nil {
 		s.logger.Error("storage update user avatar", "err", err)
 		return nil, errcode.ErrInternal
 	}
+	ownerKind := model.FileOwnerUser
+	f.OwnerKind, f.OwnerID = &ownerKind, &ownerID
 	// 弃旧：先回写新键成功再处理旧对象（标 deleted 行态优先→物理删 best-effort，
 	// 失败残留由 GC 二扫收——与 DeleteTicketAttachment 同款口径，2026-10-20 对齐）
 	if old != "" && old != objectKey {
