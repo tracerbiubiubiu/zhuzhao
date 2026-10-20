@@ -19,6 +19,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,19 @@ func (g CatalogGap) String() string {
 }
 
 // catalogExempt 自服务/公开路径精确豁免集（"METHOD PATH"）。
+
+// CatalogExemptRoutes 豁免登记全集（排序）——导出供守护测试引用
+// （SelfServiceContextKey 同款先例；修复验证审计 M-2：豁免路由须伴随
+// 运行时放行，防「只登记忘挂标记」的 P0-1 同族复发）。
+func CatalogExemptRoutes() []string {
+	out := make([]string, 0, len(catalogExempt))
+	for k := range catalogExempt {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 var catalogExempt = map[string]bool{
 	"POST /api/v1/auth/login":            true, // 认证公开端点
 	"POST /api/v1/auth/refresh":          true, // 认证公开端点

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -110,6 +111,31 @@ func TestStorageSelfServiceChain_ViewerAllowed(t *testing.T) {
 		assert.NotEqual(t, http.StatusForbidden, w.Code,
 			"viewer 过 %s %s 应放行（403=SelfService 标记缺失，S5 自服务面被 Casbin 拦）", tc.method, tc.path)
 		assert.NotEqual(t, http.StatusUnauthorized, w.Code, "JWT 层不应拒绝（stub Redis 已放行）")
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "路由应存在（404=注册被误删——审计 M-6 判别力补强）")
+	}
+}
+
+// 修复验证审计 M-2（封死 P0-1 复发通道）：catalogExempt 全集逐条过 viewer 全链
+// ——豁免登记（启动对账豁免）必须伴随运行时放行（SelfService 标记/公开/专用链），
+// 任何一条 403 =「只登记豁免、忘挂标记组」同族复发。引擎无业务 handler
+// （nil→panic→500 属预期非 403），断言仅针对 L1 Casbin 拦截形态。
+func TestCatalogExempt_NotBlockedByL1(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+
+	for _, entry := range router.CatalogExemptRoutes() {
+		entry := entry
+		t.Run(entry, func(t *testing.T) {
+			parts := strings.SplitN(entry, " ", 2)
+			require.Len(t, parts, 2)
+			method, path := parts[0], parts[1]
+			require.True(t, strings.HasPrefix(path, "/api/v1/"), "豁免登记应为 /api/v1 面：%s", entry)
+			path = regexp.MustCompile(`:[a-z_]+`).ReplaceAllString(path, "1")
+			path = strings.ReplaceAll(path, "*key", "x.png")
+
+			w := do(r, m, 1, method, path)
+			assert.NotEqual(t, http.StatusForbidden, w.Code,
+				"exempt 被 L1 拦截——豁免登记未伴随运行时放行（P0-1 同族复发）")
+		})
 	}
 }
 
