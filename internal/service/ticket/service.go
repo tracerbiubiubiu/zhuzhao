@@ -245,6 +245,11 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 			if errors.Is(err, repository.ErrStorageObjectNotFound) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
 			}
+			// 审计 M-3：同 key 重复出现在 attachments → UNIQUE 冲突此前未映射
+			// 落 500（用户输入面应 400）
+			if errors.Is(err, repository.ErrStorageAlreadyBound) {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含重复对象")
+			}
 			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code,
 					fmt.Sprintf("工单附件数超过上限（%d）", s.storageCfg.MaxAttachmentsPerTicket))

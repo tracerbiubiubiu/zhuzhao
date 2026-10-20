@@ -349,7 +349,7 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 		s.logger.Error("storage unlink attachment", "err", err)
 		return errcode.ErrInternal
 	}
-	if err := s.repo.MarkObjectDeleted(ctx, objectKey); err != nil {
+	if err := s.repo.MarkObjectDeleted(ctx, s.bucket, objectKey); err != nil {
 		s.logger.Error("storage mark object deleted", "key", objectKey, "err", err)
 		return errcode.ErrInternal
 	}

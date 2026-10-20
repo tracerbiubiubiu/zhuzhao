@@ -185,7 +185,7 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
 		return err
 	}
-	if maxCount > 0 && n >= maxCount {
+	if maxCount > 0 && n+1 > maxCount { // 与 BindCreateAttachments 的 n+len 同形（审计 M-10）
 		return ErrStorageAttachmentLimit
 	}
 
@@ -216,7 +216,7 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 // ——S5 评审 P2-2）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
 // 并发加固 + 计数校验 + bucket 条件 2026-10-20（S5 评审 P1/D1-3）。
 func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, bucket string, userID, ticketID int64, keys []string, maxCount int) error {
-	// 附件数计数（建单路径执行点）：本次 keys 去重后与已有合计不超上限
+	// 附件数计数（建单路径执行点）：本次 keys 与已有合计不超上限（重复键由 UNIQUE 兜底——审计 M-7 措辞对齐）
 	var n int
 	if err := exec.QueryRow(ctx,
 		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
@@ -331,8 +331,12 @@ func (r *StorageRepo) UnlinkAttachment(ctx context.Context, bucket string, ticke
 	return nil
 }
 
-// MarkObjectDeleted 对象弃旧标 deleted（通用——avatar/附件删除共用）。
-func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, objectKey string) error {
-	_, err := r.db.Exec(ctx, `UPDATE file_objects SET status = 'deleted' WHERE object_key = $1`, objectKey)
+// MarkObjectDeleted 对象弃旧标 deleted（附件删除路径专用——审计 M-5：补 bucket
+// 与 purpose 双条件，防多桶/key 碰撞误标他域对象；avatar 弃旧走 MarkAvatarDropped）。
+func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, bucket, objectKey string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE file_objects SET status = 'deleted'
+		WHERE bucket = $1 AND object_key = $2
+		  AND purpose IN ('ticket_attachment', 'ticket_richtext')`, bucket, objectKey)
 	return err
 }

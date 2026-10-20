@@ -147,6 +147,17 @@ func TestCreate_TicketAttachmentBind(t *testing.T) {
 		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err))
 	})
 
+	t.Run("重复键建单——400 参数错误（审计 M-3）", func(t *testing.T) {
+		env := newB53Env(t)
+		k := env.confirmedCreate(t, env.u1, "attachment_create")
+		_, err := env.svc.Create(context.Background(), env.createReq([]string{k, k}), env.u1)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "同 key 双发应 400 非 500")
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM ticket_attachments ta JOIN file_objects fo ON fo.id=ta.file_object_id WHERE fo.object_key=$1`, k).Scan(&n))
+		assert.Equal(t, 0, n, "整单回滚（与超限同语义——UNIQUE 兜底后错误上抛回滚建单）")
+	})
+
 	t.Run("无附件建单——零变化回归", func(t *testing.T) {
 		env := newB53Env(t)
 		_, err := env.svc.Create(context.Background(), env.createReq(nil), env.u1)
