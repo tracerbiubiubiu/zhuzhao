@@ -35,6 +35,7 @@ type stubClient struct {
 	statErr    error
 	getBody    []byte   // GetObject 返回体
 	removed    []string // RemoveObject 记录（弃旧/断言用）
+	removeErr  error    // RemoveObject 注入失败（best-effort 删除路径——P2-1 删除口径批）
 }
 
 func (s *stubClient) removedKeys() []string { return s.removed }
@@ -72,7 +73,7 @@ func (s *stubClient) GetObject(_ context.Context, key, matchETag string) (io.Rea
 
 func (s *stubClient) RemoveObject(_ context.Context, key string) error {
 	s.removed = append(s.removed, key)
-	return nil
+	return s.removeErr
 }
 
 func insertUser(t *testing.T) int64 {

@@ -127,4 +127,22 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		err := svc.DeleteTicketAttachment(context.Background(), tkID, "tickets/2026/10/nope.png", uid)
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
 	})
+
+	// S5 评审 P2-1（2026-10-20）删除口径批：对象物理删失败不阻塞——行先翻
+	// deleted（行态优先），对象残留由 GC 二扫收（修复前 deleted 无扫描覆盖=泄漏）。
+	t.Run("删附件对象删除失败——仍标 deleted（GC 二扫收残留）", func(t *testing.T) {
+		svc, stub := newSvc(t)
+		stub.removeErr = assert.AnError
+		key, tkID := bound(t, svc)
+		err := svc.DeleteTicketAttachment(context.Background(), tkID, key, uid)
+		require.NoError(t, err, "best-effort 物理删失败不阻塞删关联+落标")
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&status))
+		assert.Equal(t, model.FileStatusDeleted, status, "行已翻 deleted——对象残留 GC 二扫收")
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tkID).Scan(&n))
+		assert.Zero(t, n, "关联行已删")
+	})
 }

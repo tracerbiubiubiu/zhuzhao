@@ -302,13 +302,14 @@ func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64
 		s.logger.Error("storage update user avatar", "err", err)
 		return nil, errcode.ErrInternal
 	}
-	// 弃旧：先回写新键成功再处理旧对象（失败不阻塞——对象残留由对账扫描收）
+	// 弃旧：先回写新键成功再处理旧对象（标 deleted 行态优先→物理删 best-effort，
+	// 失败残留由 GC 二扫收——与 DeleteTicketAttachment 同款口径，2026-10-20 对齐）
 	if old != "" && old != objectKey {
-		if err := s.client.RemoveObject(ctx, old); err != nil {
-			s.logger.Warn("storage drop old avatar remove failed", "key", old, "err", err)
-		}
 		if err := s.repo.MarkAvatarDropped(ctx, s.bucket, old); err != nil {
 			s.logger.Error("storage mark avatar dropped", "key", old, "err", err)
+		}
+		if err := s.client.RemoveObject(ctx, old); err != nil {
+			s.logger.Warn("storage drop old avatar remove deferred to gc", "key", old, "err", err)
 		}
 	}
 	return f, nil
@@ -327,8 +328,10 @@ func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]
 	return list, nil
 }
 
-// DeleteTicketAttachment 删附件（A.4 #4：删关联+对象弃旧——best-effort 删本体
-// +标 deleted；L2 update 面由 handler 编排）。
+// DeleteTicketAttachment 删附件（A.4 #4：删关联 → 行翻 deleted（行态优先）→
+// 对象物理删 best-effort——失败残留由 GC 二扫收（2026-10-20 删除口径对齐：
+// 原「删本体+标 deleted」顺序在物理删失败时对象无扫描覆盖=永久泄漏）。
+// L2 update 面由 handler 编排。
 func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string, userID int64) error {
 	if s.client == nil {
 		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
@@ -340,11 +343,12 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 		s.logger.Error("storage unlink attachment", "err", err)
 		return errcode.ErrInternal
 	}
-	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
-		s.logger.Warn("storage remove attachment object failed", "key", objectKey, "err", err)
-	}
 	if err := s.repo.MarkObjectDeleted(ctx, objectKey); err != nil {
 		s.logger.Error("storage mark object deleted", "key", objectKey, "err", err)
+		return errcode.ErrInternal
+	}
+	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
+		s.logger.Warn("storage remove attachment object deferred to gc", "key", objectKey, "err", err)
 	}
 	_ = userID
 	return nil

@@ -97,10 +97,42 @@ func (r *StorageRepo) ListExpiredPending(ctx context.Context, bucket string, bef
 	return out, rows.Err()
 }
 
-// MarkDeleted GC 落标（条件更新 pending→deleted；0 行=已处理，幂等）。
-func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) error {
-	_, err := r.db.Exec(ctx,
-		`UPDATE file_objects SET status = 'deleted' WHERE id = $1 AND status = 'pending'`, id)
+// DeleteRowIfPending GC pending 路径物理清行（条件删除 pending 态；0 行=已被
+// 并发 confirm 翻态不动——A.9「对象与行均消失」终态。2026-10-20 删除口径对齐批：
+// 原 MarkDeleted 留行为中间态，pending 孤儿路径改直达终态）。
+func (r *StorageRepo) DeleteRowIfPending(ctx context.Context, id int64) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1 AND status = 'pending'`, id)
+	return err
+}
+
+// ListDeleted 二扫候选：删附件/弃旧流程 best-effort 物理删失败后的 deleted 行
+// （对象残留）——重删成功后行物理清除（S5 评审 P2-1：修复前 deleted 态无任何
+// 扫描覆盖 = 对象永久无主泄漏）。重试语义无时间窗，ORDER BY id 单批有界收敛。
+func (r *StorageRepo) ListDeleted(ctx context.Context, bucket string, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects
+		WHERE bucket = $1 AND status = 'deleted'
+		ORDER BY id LIMIT $2`, bucket, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRowById 二扫路径物理清行（deleted 为终态无并发翻态，无条件删；
+// FK 撞残留关联行时报错由调用方 Warn 留待下轮自愈）。
+func (r *StorageRepo) DeleteRowById(ctx context.Context, id int64) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1`, id)
 	return err
 }
 
