@@ -244,7 +244,13 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, ticketA
 	if ticketPurposes[f.Purpose] {
 		ticketID, err := s.repo.GetBoundTicketID(ctx, s.bucket, key)
 		if err != nil {
-			return nil, errcode.ErrFileNotFound
+			if errors.Is(err, repository.ErrStorageObjectNotFound) {
+				return nil, errcode.ErrFileNotFound
+			}
+			// DB 故障不再吞成 404（S5 评审 P2-2 service 层残留——修复验证
+			// 审计 M-1：repo 层分流被本消费点抵消，端到端仍静默 404 且无留痕）
+			s.logger.Error("storage get bound ticket", "key", key, "err", err)
+			return nil, errcode.ErrInternal
 		}
 		if ticketAuthz != nil {
 			if err := ticketAuthz(ticketID); err != nil {
