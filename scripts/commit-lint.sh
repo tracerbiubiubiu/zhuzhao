@@ -1,0 +1,96 @@
+#!/bin/sh
+# commit-lint —— §12-9 提交信息格式扫描器（发现链第 1 道：push 决策点必跑）
+#
+# 用法：
+#   scripts/commit-lint.sh                  # 默认扫待推送窗口 origin/<当前分支>..HEAD
+#   scripts/commit-lint.sh HEAD~40          # 扫近 40 笔（单点参数自动补 ..HEAD）
+#   make commit-lint                        # 同第一行
+#   make commit-lint RANGE=HEAD~40          # 同第二行
+#
+# 校验规则（docs/standards.md §12-9）：
+#   ① 主题行 = type(scope): 摘要（type 枚举小写；scope 可选小写）
+#   ② 摘要 <=40 字（去前缀按字符计，中文友好）
+#   ③ 摘要结尾不加句号
+#   ④ 主题行与正文之间必须空行
+#
+# 退出码：0 全绿 / 1 有违例（可复用于 CI 兜底道）。
+# 违例处置：push 前发现 -> git rebase -i <base> 对应笔 reword（本地历史可改窗口）；
+#          已 push 存量不追溯（§12-9 原口径）。
+#
+# ⚠ 实现注记：执行字符串一律 ASCII + 变量引用用 ${var} 花括号形式——
+#   macOS 自带 bash 3.2 在 set -u + UTF-8 locale 下，双引号内 $var 紧贴
+#   多字节字符（emoji/中文标点）会被误拼进变量名报 unbound（实测两次）。
+#   中文只出现在注释行（bash 词法忽略，无风险）。
+
+set -u
+export LC_ALL=en_US.UTF-8
+
+range=""
+if [ -n "${1:-}" ]; then
+    range="${1}"
+else
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    if [ -n "${branch}" ] && [ "${branch}" != "HEAD" ] &&
+       git show-ref --verify --quiet "refs/remotes/origin/${branch}" 2>/dev/null; then
+        range="origin/${branch}..HEAD"
+    else
+        range="HEAD~20"
+    fi
+fi
+# 单点参数语义修正：HEAD~20 应为「近 20 笔」——rev-list 单点会列全部祖先
+case "${range}" in
+    *..*) ;;
+    *) range="${range}..HEAD" ;;
+esac
+if ! git rev-list -1 "${range}" >/dev/null 2>&1; then
+    echo "[FAIL] commit-lint: invalid range '${range}'"
+    exit 1
+fi
+
+violations=0
+total=0
+for h in $(git rev-list "${range}"); do
+    total=$((total + 1))
+    subject=$(git log -1 --format=%s "${h}")
+    second=$(git log -1 --format=%B "${h}" | sed -n '2p')
+    reasons=""
+
+    # ① type(scope): 结构
+    echo "${subject}" | grep -qE '^(feat|fix|docs|refactor|test|chore|build|ci|perf)(\([a-z0-9_-]+\))?: ' ||
+        reasons="${reasons}
+    [1] subject not in 'type(scope): summary' form"
+
+    # ② 摘要 <=40 字（按字符计）
+    summary=$(printf '%s' "${subject}" | sed -E 's/^(feat|fix|docs|refactor|test|chore|build|ci|perf)(\([a-z0-9_-]+\))?: //')
+    len=$(printf '%s' "${summary}" | wc -m | tr -d ' ')
+    [ "${len}" -le 40 ] || reasons="${reasons}
+    [2] summary ${len} chars (limit 40)"
+
+    # ③ 结尾不加句号（中/英文句号均算；省略号结尾不拦）
+    case "${summary}" in
+        *.|*.。|*。）) reasons="${reasons}
+    [3] summary ends with a period" ;;
+    esac
+
+    # ④ 主题行与正文间必须空行（%B 第二行非空 = 缺空行）
+    [ -n "${second}" ] && reasons="${reasons}
+    [4] no blank line between subject and body"
+
+    if [ -n "${reasons}" ]; then
+        violations=$((violations + 1))
+        echo "[FAIL] $(git log -1 --format='%h %s' "${h}")${reasons}"
+    fi
+done
+
+if [ "${violations}" -gt 0 ]; then
+    echo "----"
+    echo "[FAIL] commit-lint: ${violations}/${total} commits violate 12-9"
+    echo "       fix before push: git rebase -i <base> then reword; pushed history stays untouched"
+    exit 1
+fi
+if [ "${total}" -eq 0 ]; then
+    echo "[OK] commit-lint: no commits in range (all pushed?)"
+    exit 0
+fi
+echo "[OK] commit-lint: ${total} commits all pass (12-9)"
+exit 0
