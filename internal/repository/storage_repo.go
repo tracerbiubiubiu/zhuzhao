@@ -15,8 +15,9 @@ import (
 // StorageRepo file_objects 元数据访问（phase5 S5 B5-1；对象本体在 RustFS）。
 // 错误形态对齐仓内范式：sentinel 由 service 映射 errcode。
 var (
-	ErrStorageObjectNotFound = errors.New("repository: file object not found")
-	ErrStorageAlreadyBound   = errors.New("repository: file object already confirmed/bound")
+	ErrStorageObjectNotFound  = errors.New("repository: file object not found")
+	ErrStorageAlreadyBound    = errors.New("repository: file object already confirmed/bound")
+	ErrStorageAttachmentLimit = errors.New("repository: ticket attachment limit exceeded")
 )
 
 const fileObjectColumns = `id, bucket, object_key, purpose, status, file_name, mime_type, size_bytes, etag, created_by, created_at, confirmed_at`
@@ -129,15 +130,32 @@ func (r *StorageRepo) MarkAvatarDropped(ctx context.Context, bucket, objectKey s
 	return err
 }
 
-// ConfirmAndBind ticket 态确认并落绑（repo 内单事务：条件翻 confirmed +
-// INSERT ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
-// ErrStorageAlreadyBound）。B5-3 批2。
-func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uploadedBy int64, sizeBytes int64, etag string) error {
+// ConfirmAndBind ticket 态确认并落绑（repo 内单事务：同单行锁串行化并发绑定 +
+// 附件数计数校验（05 号 §3 个数上限执行点）+ 条件翻 confirmed + INSERT
+// ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
+// ErrStorageAlreadyBound；超上限 → ErrStorageAttachmentLimit）。B5-3 批2；
+// 并发加固 + 计数校验 2026-10-20（S5 评审 P1）。
+func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uploadedBy int64, sizeBytes int64, etag string, maxCount int) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
+
+	// 同单行锁：串行化并发 confirm 绑定同一工单（否则计数校验有 TOCTOU 窗口——
+	// 两个并发各见 N-1 均过校验则 N+1 超限）。锁序：tickets → file_objects 恒定。
+	var lockID int64
+	if err := tx.QueryRow(ctx, `SELECT id FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&lockID); err != nil {
+		return err
+	}
+	var n int
+	if err := tx.QueryRow(ctx,
+		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
+		return err
+	}
+	if maxCount > 0 && n >= maxCount {
+		return ErrStorageAttachmentLimit
+	}
 
 	tag, err := tx.Exec(ctx, `
 		UPDATE file_objects SET status='confirmed', size_bytes=$2, etag=$3, confirmed_at=NOW()
@@ -160,18 +178,30 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 }
 
 // BindCreateAttachments 建单前绑定（A.5 建单前链）：悬挂 confirmed 对象批量
-// 校验+落绑+purpose 翻正式态。校验失败返回 ErrStorageObjectNotFound（对象
-// 不存在/非本人/非 confirmed/悬挂态不符/已绑定——建单方参数错，service 统一
-// 映射 400）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）。
-func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, userID, ticketID int64, keys []string) error {
+// 计数校验+加锁校验+落绑+purpose 翻正式态。校验失败返回 ErrStorageObjectNotFound
+// （对象不存在/非本人/非 confirmed/悬挂态不符/已被并发他单绑定——建单方参数错，
+// service 统一映射 400）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
+// 并发加固 + 计数校验 2026-10-20（S5 评审 P1：FOR UPDATE 串行化并发建单双绑窗口）。
+func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, userID, ticketID int64, keys []string, maxCount int) error {
+	// 附件数计数（建单路径执行点）：本次 keys 去重后与已有合计不超上限
+	var n int
+	if err := exec.QueryRow(ctx,
+		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
+		return err
+	}
+	if maxCount > 0 && n+len(keys) > maxCount {
+		return ErrStorageAttachmentLimit
+	}
 	for _, key := range keys {
 		var id int64
 		var purpose string
 		var createdBy int64
 		var status string
+		// FOR UPDATE：对象行锁串行化并发建单——后到事务阻塞至此单提交后重读，
+		// purpose 已翻正式态 → switch default 拒绝（修复前双双落绑）
 		err := exec.QueryRow(ctx, `
 			SELECT id, purpose, created_by, status FROM file_objects
-			WHERE object_key=$1`, key).
+			WHERE object_key=$1 FOR UPDATE`, key).
 			Scan(&id, &purpose, &createdBy, &status)
 		if err != nil {
 			return ErrStorageObjectNotFound
@@ -191,11 +221,19 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, u
 		if _, err := exec.Exec(ctx, `
 			INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by)
 			VALUES ($1, $2, $3)`, ticketID, id, userID); err != nil {
+			if isPgUnique(err) {
+				return ErrStorageAlreadyBound
+			}
 			return err
 		}
-		if _, err := exec.Exec(ctx, `
-			UPDATE file_objects SET purpose=$3 WHERE id=$1 AND purpose=$2`, id, purpose, formal); err != nil {
+		tag, err := exec.Exec(ctx, `
+			UPDATE file_objects SET purpose=$3 WHERE id=$1 AND purpose=$2`, id, purpose, formal)
+		if err != nil {
 			return err
+		}
+		if tag.RowsAffected() == 0 {
+			// 并发兜底（锁异常路径）：对象已被翻正式态，拒绝本单落绑
+			return ErrStorageObjectNotFound
 		}
 	}
 	return nil

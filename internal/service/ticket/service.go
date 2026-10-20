@@ -13,6 +13,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -24,7 +25,8 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
-	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageRepo *repository.StorageRepo   // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg  *pkgstorage.StorageConfig // 附件数上限（05 号 §3 个数上限建单路径执行点——S5 评审 P1）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -37,12 +39,14 @@ func NewTicketService(
 	roleFetcher middleware.RoleFetcher,
 	delegation OrgDelegationChecker,
 	storageRepo *repository.StorageRepo,
+	storageCfg *pkgstorage.StorageConfig,
 ) *Service {
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
 		orgRepo:     orgRepo,
 		registry:    registry,
+		storageCfg:  storageCfg,
 		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
@@ -237,9 +241,13 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
 	if len(req.Attachments) > 0 {
-		if err := s.storageRepo.BindCreateAttachments(ctx, tx, actorUserID, ticket.ID, req.Attachments); err != nil {
+		if err := s.storageRepo.BindCreateAttachments(ctx, tx, actorUserID, ticket.ID, req.Attachments, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
 			if errors.Is(err, repository.ErrStorageObjectNotFound) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
+			}
+			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("工单附件数超过上限（%d）", s.storageCfg.MaxAttachmentsPerTicket))
 			}
 			return nil, fmt.Errorf("bind attachments: %w", err)
 		}

@@ -172,9 +172,13 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		if in.TicketID == nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
 		}
-		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag); err != nil {
+		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, s.cfg.MaxAttachmentsPerTicket); err != nil {
 			if errors.Is(err, repository.ErrStorageAlreadyBound) {
 				return nil, errcode.ErrFileAlreadyBound
+			}
+			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("工单附件数超过上限（%d）", s.cfg.MaxAttachmentsPerTicket))
 			}
 			s.logger.Error("storage confirm and bind", "err", err)
 			return nil, errcode.ErrInternal

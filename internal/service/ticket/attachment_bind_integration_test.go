@@ -29,6 +29,7 @@ import (
 type b53Env struct {
 	svc    *Service
 	stg    *storageservice.Service
+	stgCfg *pkgstorage.StorageConfig
 	u1, u2 int64
 	orgID  int64
 }
@@ -40,17 +41,17 @@ func newB53Env(t *testing.T) *b53Env {
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
 	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
-	svcT := NewTicketService(testPool, ticketRepo, orgRepo, reg, stubRoleFetcher{}, orgdeleg.NewOrgDelegationService(testPool),
-		repository.NewStorageRepo(testPool))
-
-	cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: "b53",
+	stgCfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: "b53",
 		AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
-	cfg.ApplyDefaults()
+	stgCfg.ApplyDefaults()
+	svcT := NewTicketService(testPool, ticketRepo, orgRepo, reg, stubRoleFetcher{}, orgdeleg.NewOrgDelegationService(testPool),
+		repository.NewStorageRepo(testPool), stgCfg)
+
 	stg := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&b53StubClient{info: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}},
-		cfg, slog.Default())
+		stgCfg, slog.Default())
 
-	env := &b53Env{svc: svcT, stg: stg}
+	env := &b53Env{svc: svcT, stg: stg, stgCfg: stgCfg}
 	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM organizations WHERE code='root' LIMIT 1`).Scan(&env.orgID))
 	for _, u := range []*int64{&env.u1, &env.u2} {
 		require.NoError(t, testPool.QueryRow(ctx,
@@ -150,6 +151,61 @@ func TestCreate_TicketAttachmentBind(t *testing.T) {
 		env := newB53Env(t)
 		_, err := env.svc.Create(context.Background(), env.createReq(nil), env.u1)
 		require.NoError(t, err)
+	})
+
+	// S5 评审 P1（2026-10-20）：建单路径个数上限——05 号 §3「单工单附件 ≤20」
+	// 在 BindCreateAttachments 的执行点（修复前零执行点）。
+	t.Run("建单附件数超上限拒", func(t *testing.T) {
+		env := newB53Env(t)
+		env.stgCfg.MaxAttachmentsPerTicket = 2
+		keys := []string{
+			env.confirmedCreate(t, env.u1, "attachment_create"),
+			env.confirmedCreate(t, env.u1, "attachment_create"),
+			env.confirmedCreate(t, env.u1, "attachment_create"),
+		}
+		_, err := env.svc.Create(context.Background(), env.createReq(keys), env.u1)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "3 keys 超上限 2 应整单拒绝")
+	})
+
+	// S5 评审 P1（2026-10-20）：并发双绑窗口——两个并发 Create 携同一悬挂对象，
+	// 应恰一成功（修复前双双成功、一对象绑两单）。
+	t.Run("并发建单同对象恰一成功", func(t *testing.T) {
+		env := newB53Env(t)
+		k := env.confirmedCreate(t, env.u1, "attachment_create")
+
+		type bindRes struct {
+			id  int64
+			err error
+		}
+		ch := make(chan bindRes, 2)
+		for i := 0; i < 2; i++ {
+			go func() {
+				tk, err := env.svc.Create(context.Background(), env.createReq([]string{k}), env.u1)
+				var id int64
+				if tk != nil {
+					id = tk.ID
+				}
+				ch <- bindRes{id: id, err: err}
+			}()
+		}
+		r1, r2 := <-ch, <-ch
+		successes := 0
+		for i, r := range []bindRes{r1, r2} {
+			if r.err == nil {
+				successes++
+				continue
+			}
+			assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, r.err),
+				"失败侧应为 400 无效对象（第 %d 个并发）", i+1)
+		}
+		assert.Equal(t, 1, successes, "并发双绑应恰一成功")
+
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(), `
+			SELECT count(*) FROM ticket_attachments ta
+			JOIN file_objects fo ON fo.id = ta.file_object_id
+			WHERE fo.object_key = $1`, k).Scan(&n))
+		assert.Equal(t, 1, n, "对象只能落一个工单的关联行")
 	})
 }
 

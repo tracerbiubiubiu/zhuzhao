@@ -144,4 +144,38 @@ func TestTicketAttachment_Scenarios(t *testing.T) {
 			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tkID).Scan(&n))
 		assert.Equal(t, 0, n, "建单前态 confirm 不落 ticket_attachments（A.5 建单前链）")
 	})
+
+	// S5 评审 P1（2026-10-20）：个数上限执行点——05 号 §3 限制矩阵「confirm 计数校验」。
+	// 小上限（3）实证：前 3 个成功、第 4 个 400（修复前零执行点全放行）。
+	t.Run("附件数超上限拒——confirm 计数校验", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+		})
+		cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket,
+			AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
+		cfg.ApplyDefaults()
+		cfg.MaxAttachmentsPerTicket = 3
+		svc := storageservice.NewService(repository.NewStorageRepo(testPool),
+			&stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}, getBody: []byte("png")},
+			cfg, testLogger())
+		tkID := insertTicket(t, uid)
+		bind := func() error {
+			resp, err := svc.PresignUpload(context.Background(), &model.PresignUploadInput{
+				Purpose: "ticket_attachment", FileName: "a.png", MIMEType: "image/png", SizeBytes: 10,
+				TicketID: &tkID,
+			}, uid)
+			if err != nil {
+				return err
+			}
+			_, err = svc.Confirm(context.Background(), &model.ConfirmFileInput{
+				ObjectKey: resp.ObjectKey, TicketID: &tkID,
+			}, uid)
+			return err
+		}
+		for i := 0; i < 3; i++ {
+			require.NoError(t, bind(), "前 3 个附件应成功（第 %d 个）", i+1)
+		}
+		err := bind()
+		assert.Equal(t, errcode.ErrInvalidParams.Code, codeOf(t, err), "第 4 个附件应被计数校验拒绝")
+	})
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	orgdeleg "github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -44,7 +45,9 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
 
 	roles := stubRoleFetcher{}
-	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool))
+	stgCfg := &pkgstorage.StorageConfig{}
+	stgCfg.ApplyDefaults()
+	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool), stgCfg)
 
 	// 预取 root org id（seedMinimal 已建）
 	var rootID int64
