@@ -192,6 +192,9 @@ func New(deps Deps) *gin.Engine {
 				// 认证模块（需鉴权）
 				selfService.POST("/auth/logout", deps.AuthHandler.Logout)
 				selfService.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)
+				// B5-4 richtext 渲染 SSOT（05 号 §6）：登录态自服务——无票据访问面、
+				// 纯消毒渲染（A.7 存储自服务面同款形态）
+				selfService.POST("/tickets/richtext/render", deps.TicketHandler.RenderRichtext)
 
 				// 当前用户信息
 				userSelf := selfService.Group("/user")

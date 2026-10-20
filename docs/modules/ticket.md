@@ -352,7 +352,8 @@ var ticketTransitions = map[string][]string{
 | GET | `/api/v1/tickets` | `ticket:list` | 工单列表（按 scope 过滤） |
 | POST | `/api/v1/tickets` | `ticket:create` | 创建工单 |
 | GET | `/api/v1/tickets/:id` | `ticket:read` | 工单详情 |
-| POST | `/api/v1/tickets/update` | `ticket:update` | 更新工单 |
+| POST | `/api/v1/tickets/update` | `ticket:update` | 更新工单（patch：title/description/priority/custom_data 增量[键覆盖·null 删键·G2 整体重校验]/attachments 增量落绑——B5-4） |
+| POST | `/api/v1/tickets/richtext/render` | 登录态（自服务） | richtext 服务端渲染/消毒（B5-4——白名单 HTML 出站，无票据访问面） |
 | POST | `/api/v1/tickets/close` | `ticket:close` | 关闭工单 |
 | POST | `/api/v1/tickets/assign` | `ticket:assign` | 分派工单 |
 | POST | `/api/v1/tickets/delete` | `ticket:delete` | 删除工单 |

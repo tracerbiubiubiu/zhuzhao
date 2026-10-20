@@ -247,7 +247,7 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 
 // Update 全量更新工单标题/描述/优先级（非事务入口；全字段非 nil = 整行覆盖语义保留）
 func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
-	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority)
+	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority, nil)
 	t.UpdatedAt = updatedAt
 	return err
 }
@@ -255,18 +255,20 @@ func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
 // UpdateTx 事务内字段级更新工单（BK-3：WHERE status<>'closed' 条件更新——
 // 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004；
 // W4 十六批 Med：COALESCE 字段级更新——nil 字段不落 SET 覆盖，
-// 两个并发 Update 各改不同字段不再互相冲掉）
-func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int) (time.Time, error) {
+// 两个并发 Update 各改不同字段不再互相冲掉。
+// B5-4：+customData（nil 不覆盖；合并后的完整 JSONB——合并与 G2 重校验在 service 层）
+func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int, customData []byte) (time.Time, error) {
 	const q = `
 		UPDATE tickets SET
 			title = COALESCE($2, title),
 			description = COALESCE($3, description),
 			priority = COALESCE($4, priority),
+			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
 		WHERE id = $1 AND status <> 'closed'
 		RETURNING updated_at`
 	var updatedAt time.Time
-	err := exec.QueryRow(ctx, q, id, title, description, priority).Scan(&updatedAt)
+	err := exec.QueryRow(ctx, q, id, title, description, priority, customData).Scan(&updatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return time.Time{}, errcode.ErrTicketAlreadyClosed

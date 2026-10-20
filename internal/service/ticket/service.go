@@ -329,6 +329,20 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
+	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项）：传入键覆盖、null 删键；合并后
+	// 整体 G2 重校验（含未改动字段——防基线外字段绕进、required 被 null 清空）。
+	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地，请求体已入通用审计行。
+	var customData []byte
+	if len(req.CustomData) > 0 {
+		merged, err := mergeCustomData(ticket.CustomData, req.CustomData)
+		if err != nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
+		}
+		if err := s.validateCustomData(ctx, ticket.TypeCode, merged); err != nil {
+			return nil, err
+		}
+		customData = merged
+	}
 	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
 	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
 	tx, err := s.db.Begin(ctx)
@@ -336,7 +350,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority)
+	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority, customData)
 	if err != nil {
 		return nil, err
 	}
@@ -366,8 +380,37 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if req.Priority != nil {
 		ticket.Priority = *req.Priority
 	}
+	if customData != nil {
+		ticket.CustomData = customData
+	}
 	ticket.UpdatedAt = updatedAt
 	return ticket, nil
+}
+
+// mergeCustomData custom_data 增量 patch 合并（B5-4）：patch 须为 JSON 对象；其键覆盖基线，
+// 值为 JSON null 的键删除（清空字段）；基线为空按空对象起算。返回合并后的紧凑 JSON。
+func mergeCustomData(base, patch json.RawMessage) (json.RawMessage, error) {
+	merged := map[string]json.RawMessage{}
+	if len(base) > 0 {
+		if err := json.Unmarshal(base, &merged); err != nil {
+			return nil, err
+		}
+		if merged == nil {
+			merged = map[string]json.RawMessage{}
+		}
+	}
+	var p map[string]json.RawMessage
+	if err := json.Unmarshal(patch, &p); err != nil || p == nil {
+		return nil, fmt.Errorf("custom_data patch must be a JSON object")
+	}
+	for k, v := range p {
+		if string(v) == "null" {
+			delete(merged, k)
+			continue
+		}
+		merged[k] = v
+	}
+	return json.Marshal(merged)
 }
 
 // Close 关闭工单（状态机校验 + 事件）

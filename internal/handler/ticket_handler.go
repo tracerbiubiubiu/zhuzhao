@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -186,6 +187,33 @@ func (h *TicketHandler) Update(c *gin.Context) {
 		return
 	}
 	response.OK(c, ticket)
+}
+
+// RenderRichtext POST /api/v1/tickets/richtext/render
+//
+//	@Summary	richtext 字段服务端渲染（消毒 SSOT）
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RenderRichtextRequest	true	"MD 源文本"
+//	@Success	200		{object}	response.Response{data=model.RenderRichtextResponse}
+//	@Router		/api/v1/tickets/richtext/render [post]
+func (h *TicketHandler) RenderRichtext(c *gin.Context) {
+	var in model.RenderRichtextRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if len(in.Content) > ticketsvc.RichtextMaxBytes {
+		response.BadRequest(c, fmt.Sprintf("正文超过 %d KiB 上限", ticketsvc.RichtextMaxBytes>>10))
+		return
+	}
+	html, err := ticketsvc.RenderRichtext(in.Content)
+	if err != nil {
+		response.InternalError(c, "渲染失败")
+		return
+	}
+	response.OK(c, model.RenderRichtextResponse{HTML: html})
 }
 
 // Close POST /api/v1/tickets/close

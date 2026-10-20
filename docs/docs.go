@@ -2155,6 +2155,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/richtext/render": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "richtext 字段服务端渲染（消毒 SSOT）",
+                "parameters": [
+                    {
+                        "description": "MD 源文本",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/update": {
             "post": {
                 "consumes": [
@@ -3588,6 +3633,26 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "# 标题\n\n- 列表"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest": {
             "type": "object",
             "required": [
@@ -3901,6 +3966,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "custom_data": {
+                    "description": "B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、\n值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。\n字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     }
                 },
                 "description": {

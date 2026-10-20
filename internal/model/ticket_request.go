@@ -30,6 +30,21 @@ type UpdateTicketRequest struct {
 	// richtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments
 	// 同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点
 	Attachments []string `json:"attachments,omitempty"`
+	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
+	// 值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
+	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
+	CustomData json.RawMessage `json:"custom_data,omitempty"`
+}
+
+// RenderRichtextRequest richtext 服务端渲染（B5-4——05 号 §6 渲染/消毒 SSOT 出站：
+// 前端不自行渲染用户输入；登录态自服务——无票据访问面，纯消毒渲染）。
+type RenderRichtextRequest struct {
+	Content string `json:"content" binding:"required" example:"# 标题\n\n- 列表"`
+}
+
+// RenderRichtextResponse 渲染产物（白名单 HTML）。
+type RenderRichtextResponse struct {
+	HTML string `json:"html"`
 }
 
 // AssignTicketRequest 分派工单（POST /tickets/assign）

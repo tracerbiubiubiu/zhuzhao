@@ -66,6 +66,7 @@ var catalogExempt = map[string]bool{
 	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
 	"POST /api/v1/tickets/attachments/delete":  true, // B5-3 删附件（L2 update 面）
 	"POST /api/v1/tickets/attachments/confirm": true,
+	"POST /api/v1/tickets/richtext/render":     true, // B5-4 渲染 SSOT（登录态自服务——无票据访问，纯消毒渲染）
 	"POST /api/v1/user/pats":                   true,
 	"POST /api/v1/user/pats/delete":            true,
 	"POST /api/v1/auth/logout":                 true, // 自服务（SelfService）

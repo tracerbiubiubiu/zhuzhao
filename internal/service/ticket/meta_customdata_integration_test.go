@@ -233,3 +233,70 @@ func requireErrCodeInline(t *testing.T, err error, expect int, msgAndArgs ...any
 	require.Truef(t, errors.As(err, &ee), "err 应为 errcode.Error：%T %v · %v", err, err, msgAndArgs)
 	assert.Equalf(t, expect, ee.Code, "错误码不匹配：err=%v · %v", ee, msgAndArgs)
 }
+
+// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：键覆盖 / 新增 / null 删键 /
+// 非对象 400 / 带 schema 类型合并后 G2 整体重校验（含 required 被 null 清空）。
+func TestUpdate_CustomDataPatch(t *testing.T) {
+	svc, aid, _, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"}
+	ctx := context.Background()
+	oid := childOrgID(t, "cdp")
+
+	t.Run("键覆盖+新增+null 删键（无 schema 类型不校验）", func(t *testing.T) {
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "incident", Title: "patch", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"a":"1","keep":"k","gone":"x"}`)}, aid)
+		require.NoError(t, err)
+		got, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID,
+			CustomData: json.RawMessage(`{"a":"2","b":"new","gone":null}`)}, aid)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"a":"2","keep":"k","b":"new"}`, string(got.CustomData), "响应=合并态")
+		fresh, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"a":"2","keep":"k","b":"new"}`, string(fresh.CustomData), "落库=合并态（未传键保持）")
+	})
+
+	t.Run("不传 custom_data 零变化（patch 语义回归）", func(t *testing.T) {
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "incident", Title: "keep", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"a":"1"}`)}, aid)
+		require.NoError(t, err)
+		title := "只改标题"
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: &title}, aid)
+		require.NoError(t, err)
+		fresh, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"a":"1"}`, string(fresh.CustomData))
+	})
+
+	t.Run("非对象 patch 400", func(t *testing.T) {
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "incident", Title: "patch2", Priority: 2, OrgID: oid}, aid)
+		require.NoError(t, err)
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`[1,2]`)}, aid)
+		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "数组不是对象")
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`"str"`)}, aid)
+		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "标量不是对象")
+	})
+
+	t.Run("带 schema 类型：合并后 G2 整体重校验", func(t *testing.T) {
+		code := "cdp" + uniqueSuffix()
+		_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "patch 类型"})
+		require.NoError(t, err)
+		require.NoError(t, svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+			Fields: []model.TicketTypeFieldInput{
+				{FieldKey: "srv", FieldLabel: "系统", FieldType: "input", Required: true, SortOrder: 1},
+				{FieldKey: "body", FieldLabel: "正文", FieldType: "richtext", SortOrder: 2},
+			}}))
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "g2", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"srv":"x","body":"# v1"}`)}, aid)
+		require.NoError(t, err)
+
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`{"body":123}`)}, aid)
+		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "richtext 非字符串被 G2 拒")
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`{"srv":null}`)}, aid)
+		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "required 字段被 null 清空被拒（合并后整体校验）")
+
+		got, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID,
+			CustomData: json.RawMessage(`{"body":"# v2 ![i](/api/v1/files/t/a.png)"}`)}, aid)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"srv":"x","body":"# v2 ![i](/api/v1/files/t/a.png)"}`, string(got.CustomData), "合法 patch 仅改 body、srv 保持")
+	})
+}

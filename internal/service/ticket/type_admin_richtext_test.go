@@ -34,10 +34,10 @@ func TestValidateFieldValue_Richtext(t *testing.T) {
 	})
 
 	t.Run("恰到上限放行、超一字节拒", func(t *testing.T) {
-		okRaw, _ := json.Marshal(strings.Repeat("a", richtextMaxBytes))
+		okRaw, _ := json.Marshal(strings.Repeat("a", RichtextMaxBytes))
 		require.NoError(t, validateFieldValue(f, okRaw))
 
-		bigRaw, _ := json.Marshal(strings.Repeat("a", richtextMaxBytes+1))
+		bigRaw, _ := json.Marshal(strings.Repeat("a", RichtextMaxBytes+1))
 		err := validateFieldValue(f, bigRaw)
 		var e *errcode.Error
 		require.ErrorAs(t, err, &e)

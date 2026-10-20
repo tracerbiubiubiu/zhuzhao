@@ -27,9 +27,10 @@ var validFieldTypes = map[string]bool{
 	"select": true, "multi_select": true, "tips": true, "richtext": true,
 }
 
-// richtextMaxBytes richtext 字段 MD 源文本上限（防 custom_data JSONB 慢性膨胀——图片走对象存储
+// RichtextMaxBytes richtext 字段 MD 源文本上限（防 custom_data JSONB 慢性膨胀——图片走对象存储
 // 稳定 URL、禁 base64 内联为既定纪律，正文 256 KiB 远超工单叙述需求）；可随 B5-6 限制配置化入 KV。
-const richtextMaxBytes = 256 << 10
+// 导出供渲染端点同限（入站校验与渲染入口一致）。
+const RichtextMaxBytes = 256 << 10
 
 // CreateTicketType 新建类型（states/transitions 缺省默认图）
 func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketTypeRequest) (*model.TicketType, error) {
@@ -312,8 +313,8 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		if err := json.Unmarshal(raw, &sv); err != nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为 Markdown 字符串", f.FieldKey))
 		}
-		if len(sv) > richtextMaxBytes {
-			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 正文超过 %d KiB 上限", f.FieldKey, richtextMaxBytes>>10))
+		if len(sv) > RichtextMaxBytes {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 正文超过 %d KiB 上限", f.FieldKey, RichtextMaxBytes>>10))
 		}
 	case "number":
 		var nv float64
