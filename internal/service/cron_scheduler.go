@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,6 +30,48 @@ type CronScheduler struct {
 	name    string
 	tick    time.Duration
 	logger  *slog.Logger
+
+	// B5-5 cron 最小件（2026-10-19 收窄批落地）：上次成功/失败时间与末次错误——
+	// 数据面供 B10-4 `GET /system/cron-status` 聚合端点消费（端点本批不建，读侧维持登记）
+	mu     sync.Mutex
+	status CronStatus
+}
+
+// CronStatus cron 任务运行状态快照（B5-5 最小件；零值 = 尚未成功过）。
+type CronStatus struct {
+	LastSuccessAt time.Time
+	LastFailureAt time.Time
+	LastError     string // 截断 200，对齐判定日志 reason 口径
+	LastDuration  time.Duration
+}
+
+// Status 返回运行状态快照（并发安全）。
+func (s *CronScheduler) Status() CronStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.status
+}
+
+func (s *CronScheduler) recordSuccess(d time.Duration) {
+	s.mu.Lock()
+	s.status.LastSuccessAt = time.Now()
+	s.status.LastDuration = d
+	s.mu.Unlock()
+}
+
+func (s *CronScheduler) recordFailure(err error) {
+	msg := ""
+	if err != nil {
+		if len(err.Error()) > 200 {
+			msg = err.Error()[:200]
+		} else {
+			msg = err.Error()
+		}
+	}
+	s.mu.Lock()
+	s.status.LastFailureAt = time.Now()
+	s.status.LastError = msg
+	s.mu.Unlock()
 }
 
 // ReentrantJob B-1 修法 d：可重入契约升格为接口约束（从 audit_archive 的
@@ -77,24 +120,43 @@ func (s *CronScheduler) tickOnce(ctx context.Context) {
 	}
 	defer conn.Release()
 
-	// pg_try_advisory_lock：非阻塞——他实例在跑则本 tick 跳过
+	// pg_try_advisory_lock：非阻塞——他实例在跑则本 tick 跳过。
+	// B5-5 最小件：lock 查询失败此前静默跳过——留痕（PG 抖动时任务看似在跑
+	// 实则全跳，静默失联无迹可查；2026-10-19 收窄批修复 :82-84）
 	var ok bool
-	if err := conn.QueryRow(execCtx, "SELECT pg_try_advisory_lock($1)", s.lockKey).Scan(&ok); err != nil || !ok {
+	if err := conn.QueryRow(execCtx, "SELECT pg_try_advisory_lock($1)", s.lockKey).Scan(&ok); err != nil {
+		s.logger.Warn("cron: try_lock query failed", slog.String("job", s.name), slog.Any("err", err))
+		return
+	}
+	if !ok {
 		return
 	}
 	defer func() { _, _ = conn.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", s.lockKey) }()
 
 	// 审计修复（2026-09-30 P2）：job panic 兜底——Run 在裸 goroutine，panic=进程退出
+	started := time.Now()
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
 				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r))
+				err = errPanic
 			}
 		}()
 		err = s.job.Handle(execCtx, nil)
 	}()
 	if err != nil {
+		s.recordFailure(err)
 		// 归档类任务失败仅记日志（下个 tick 自然重试——可重入契约保证安全）
 		s.logger.Warn("cron: job failed (will retry next tick)", slog.String("job", s.name), slog.Any("err", err))
+		return
 	}
+	s.recordSuccess(time.Since(started))
+	s.logger.Info("cron: job done", slog.String("job", s.name), slog.Duration("took", time.Since(started)))
 }
+
+// errPanic panic 兜底转错误语义（recordFailure 留末次错误面）
+var errPanic = &cronPanicError{}
+
+type cronPanicError struct{}
+
+func (*cronPanicError) Error() string { return "job panicked (see error log)" }

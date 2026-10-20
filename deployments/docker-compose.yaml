@@ -166,6 +166,42 @@ services:
       - rustfs_backup_data:/data
     profiles: ["storage"]
 
+  # 对象存储备份侧车（B5-5——05 号 §7 拍板 #5 B 形态）：rclone sync 主→备单向同步 +
+  # --backup-dir 删除/覆盖保护（天目录轮转，不依赖服务端版本化）；失败留痕/last-success
+  # 对齐 pgbackup 教训；恢复演练见 backup/README.md。镜像钉死 1.75.2（2026-10-19 判据⑤
+  # 实测版本——可复现纪律对齐 postgres:15/redis:6.2/rustfs:1.0.1）。RPO=同步周期
+  # （MIRROR_INTERVAL，dev 1h；附件场景日级可接受——05 号 §7 显式登记）。
+  rustfs-mirror:
+    image: rclone/rclone:1.75.2
+    container_name: zhuzhao-rustfs-mirror
+    restart: unless-stopped
+    environment:
+      RCLONE_CONFIG_SRC_TYPE: s3
+      RCLONE_CONFIG_SRC_PROVIDER: Other
+      RCLONE_CONFIG_SRC_ENDPOINT: http://rustfs:9000
+      RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
+      RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      RCLONE_CONFIG_SRC_REGION: us-east-1
+      RCLONE_CONFIG_DST_TYPE: s3
+      RCLONE_CONFIG_DST_PROVIDER: Other
+      RCLONE_CONFIG_DST_ENDPOINT: http://rustfs-backup:9000
+      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
+      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
+      RCLONE_CONFIG_DST_REGION: us-east-1
+      BUCKET: ${STORAGE_BUCKET:-zhuzhao}
+      MIRROR_INTERVAL: "${RUSTFS_MIRROR_INTERVAL:-3600}"
+      RETAIN_COUNT: "${RUSTFS_MIRROR_RETAIN_COUNT:-14}"
+      TZ: Asia/Shanghai
+    volumes:
+      - ./backup/rustfs-mirror.sh:/usr/local/bin/rustfs-mirror.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/rustfs-mirror.sh"]
+    networks:
+      - default
+    depends_on:
+      - rustfs
+      - rustfs-backup
+    profiles: ["storage"]
+
 
   app:
     build:

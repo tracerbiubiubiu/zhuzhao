@@ -104,6 +104,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 - **每日备份**：zhuzhao/activelist 各带 pgbackup 侧车（RETAIN_COUNT 统一）。⚠️ 教训（「三日假备份」事故）：postgres 无 restart 策略时停机不自启 + 旧脚本失败静默 done 0——**备份必须定期恢复验证，不能只看文件存在**。
 - **恢复演练**：zhuzhao 21 表零差异恢复已实测。坑：shell 循环 `docker exec` 采表会吞 stdin（只采到 9 表）——用 `gexec` + heredoc 单会话采全。
 - **PITR**：`pg_dump` 逻辑备**不可**回放 WAL，须 `pg_basebackup` 物理基备（tar 流 stdout → 容器内落盘 + `docker cp`）；卷根 = 数据目录根勿套层；`recovery.signal` 手建 + chown 999；目标时刻若落在未归档段，活库 `pg_switch_wal` 切段后重启即解。
+- **对象存储备份**（2026-10-20 B5-5）：`rustfs-mirror` 侧车 rclone sync 主→备 + 双重删除保护（`--backup-dir` 归档轮转 + 目标桶版本化）+ 失败不静默；**RPO = 同步周期**（dev 1h）——对象存储无 WAL 类日志、PITR 不可得，属显式登记口径。恢复步骤与演练记录见 [deployments/backup/README.md](../deployments/backup/README.md)「对象存储备份与恢复」。
 
 ## 4. dev 栈测试账号台账（2026-10-13 统一口径）
 
