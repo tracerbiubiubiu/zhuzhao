@@ -209,7 +209,7 @@ storage:
 
 > **编号口径（2026-10-16 外审对齐补注）**：本文 DDL 注释中的 000045/000046 为 2026-10-15 对账结论（review/11 §4：000001–000044 占用），**非锁定**——取号当天按 A2 规则再对账，撞号让位整体重排（11 号 §5.9 同口径）。
 
-**迁移 000045（`file_objects`，含 ⚠ 两处对 10 号的实施级修正）**：
+**迁移 000045（`file_objects`，含 ⚠ 三处对 10 号的实施级修正——①purpose 列②presign 即写 pending③etag 快照列；2026-10-20 评审回声批修正计数并补建单绑定查询面索引）**：
 
 ```sql
 CREATE TABLE file_objects (
@@ -235,9 +235,11 @@ CREATE TABLE file_objects (
     UNIQUE (bucket, object_key)
 );
 CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE status = 'pending';
+-- 建单前绑定落绑校验的查询面（created_by+status 复合，A.5 建单前链——迁移实有，2026-10-20 评审回声批补档）
+CREATE INDEX idx_file_objects_creator ON file_objects (created_by, status);
 ```
 
-**迁移 000046（`ticket_attachments`，同 10 号 §3）**：ticket_id FK CASCADE + file_object_id FK + uploaded_by + UNIQUE(ticket_id, file_object_id) + idx(ticket_id)。**richtext 内嵌图不建关联表**——图片引用存在于 MD 源文本（`custom_data`），生命周期：删工单不级联删图，随 GC 触发驱动再议（登记）。**编辑时泄漏（2026-10-16 外审补遗，登记第三条 GC）**：编辑 MD 删掉某图后，confirmed 对象永久无主（无关联表可查引用）——登记**定期对账扫描**为触发驱动件：cron 解析存量 custom_data 的 `/files/` 引用集，标记超期（N 天）无引用的 confirmed 对象 deleted；启动信号 = 附件量级/磁盘水位触发，与「删工单不级联」同批再议。
+**迁移 000046（`ticket_attachments`，同 10 号 §3）**：ticket_id FK CASCADE + file_object_id FK + uploaded_by + UNIQUE(ticket_id, file_object_id) + idx(ticket_id)。**richtext 内嵌图落绑语义（2026-10-20 评审 P1-3 拍板 a 案——推翻原「不建关联表」措辞）**：建单前贴图与附件同经 CreateTicket `attachments` 列表统一落绑 `ticket_attachments`（实现即此形态——B5-3 BindCreateAttachments 对 richtext_create 同样插关联行+翻 ticket_richtext），`GetBoundTicketID` 即下载 L2 锚点；图片引用同时存在于 MD 源文本（`custom_data`）。生命周期：删工单级联清关联行，对象本体由 GC/对账扫描收。**编辑已建单工单的贴图增量绑定**（UpdateTicket 扩 attachments 增量）登记随 B5-4 实施。**编辑时泄漏（2026-10-16 外审补遗，登记第三条 GC）**：编辑 MD 删掉某图后，confirmed 对象永久无主（无关联表可查引用）——登记**定期对账扫描**为触发驱动件：cron 解析存量 custom_data 的 `/files/` 引用集，标记超期（N 天）无引用的 confirmed 对象 deleted；启动信号 = 附件量级/磁盘水位触发，与「删工单不级联」同批再议。
 
 **B5-6 KV 表**：`system_settings`（key VARCHAR PK / value JSONB / updated_by / updated_at）——存储限制为首个消费者，审计保留期为已登记的第二个。**迁移 000047（对账结论非锁定）**——S5 合计三枚迁移（000045–000047，2026-10-16 外审对账补齐第三枚）。
 
@@ -247,7 +249,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 |---|-----------|------|------|
 | 1 | POST `/api/v1/storage/presign/upload` | per-purpose（见 A.7 权限矩阵） | 返回 upload_url/method/headers/object_key/expires_at；**服务端同时写 file_objects(status=pending)**（A.3 修正②） |
 | 2 | POST `/api/v1/tickets/attachments/confirm` | `ticket:update` + L2 | HEAD 实测（存在/size/content-type 比对声明）→ 翻 confirmed + 写 ticket_attachments；校验 created_by=当前用户 + 对象未绑定（91004）+ purpose↔key 前缀一致；**StatObject 回填 etag 落列（2026-10-19 拍板 1b——#5 之 304 与代理 If-Match 的数据源）**；**purpose=\*_create 态（建单前，A.5 建单前链）confirm 翻 confirmed 不落 ticket_attachments（建单事务落绑）** |
-| 3 | GET `/api/v1/tickets/:id/attachments` | `ticket:read` + L2 | PageData 分页 |
+| 3 | GET `/api/v1/tickets/:id/attachments` | `ticket:read` + L2 | 全量数组（≤max_attachments_per_ticket 上限内有界——2026-10-20 评审回声批对齐实现，B5-6 分页触发驱动） |
 | 4 | POST `/api/v1/tickets/attachments/delete` | `ticket:update` + L2 | 删关联行 + file_objects 翻 deleted；对象物理删除走 GC（10 号"仅删关联"口径） |
 | 5 | GET `/api/v1/files/*key` | 登录态 + per-purpose 鉴权（头像=本人或任意登录态展示场景；附件=工单 L2 可见性；richtext 图=同附件） | **统一代理下载**（已拍 #1/#2）：鉴权→L2 判定→**审计落行**→投递策略缝（deliverProxy：流式转发 + `nosniff` + 分型 disposition + RFC 5987 文件名）；**ETag 透传**（RustFS 对象 ETag → 响应头 + If-None-Match 条件请求——richtext 多图工单回访 304 免重传；**2026-10-19 拍板 1b 扩**：etag 读列快照零额外 stat + **S3 If-Match 比对存储对象 ≠ 列快照 → 404+告警**（防 presign TTL 内重放替换已 confirm 对象）——一列两用）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 透传顺手预留不承诺）（2026-10-16 评审批深审项 B） |
 | 7 | POST `/api/v1/storage/avatar/bind` | 登录态（本人对象——A.7 avatar 面） | 头像回写：校验 confirmed+本人+avatar 面（非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象 best-effort 删+标 deleted）；同键幂等；**B5-2-3 契约新增行（建单前绑定先例同款——实施批补契约）** |
@@ -266,7 +268,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
         → 生成 uuid key → INSERT file_objects(pending) → 签发 PUT URL（Content-Type 钉入签名）
 → ② 前端 PUT 直传 RustFS（类型被签名钉死，改类型=签名失效 403）
 → ③ POST attachments/confirm
-  服务端：HEAD 实测（存在/size 与声明比对/content-type 与签名一致）
+  服务端：HEAD 实测（存在/size 对全局上限比对/content-type 与签名一致——2026-10-20 评审回声批措辞收口：声明值不持久化（A.3），上限比对即防线，per-purpose 差异化随 B5-6 同用实测比对）
         → UPDATE status=confirmed, confirmed_at → INSERT ticket_attachments → 事务提交
 失败路径：②未发生或③超时 → 对象滞留 pending → GC cron 扫描删除（A.3 修正②闭环）
 ```
@@ -283,7 +285,7 @@ CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE stat
 src/api/storage.ts                    # presignUpload/confirm/listAttachments/deleteFiles/settings KV
 src/components/Upload/FileUploader.vue    # ①②③ 链路封装（进度/重试/类型前端预检——仅 UX，服务端为 SSOT）
 src/components/Upload/AvatarUploader.vue  # 头像专用（purpose=avatar，即时预览——本地 Blob URL，非服务端回读）
-src/components/MdEditor/index.vue         # md-editor-rt 封装（✅ 2026-10-17 拍定）：onUploadImg 桥接 presign 通道；禁 base64 内联（编辑器配置）；本地草稿自动保存（onChange 防抖 → localStorage + 恢复提示，§6）
+src/components/MdEditor/index.vue         # md-editor-rt 封装（✅ 2026-10-17 拍定）：onUploadImg 桥接 presign 通道；**贴图 key 自动收进表单 attachments 隐藏域**（建单落绑通道——A.3 richtext 落绑语义 a 案，2026-10-20）；禁 base64 内联（编辑器配置）；本地草稿自动保存（onChange 防抖 → localStorage + 恢复提示，§6）
 views/ticket/detail/ 附件列表区块          # 下载走 /files/ 稳定 URL；删除二次确认
 ```
 
@@ -309,7 +311,7 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 
 - **存量头像兼容**：`users.avatar` 旧数据为外链 URL——读取侧按前缀分流（`http(s)://` 开头直显 / 否则视为 object_key 拼代理路径）；列语义不变、零迁移。
 - **灰度顺序**：B5-1 底座（无前端）→ B5-2 头像（单点自服务，炸了不伤业务）→ B5-3 附件 → B5-4 richtext（新字段类型，存量类型零影响——只增不改）。
-- **验收补充**（在 §11 基础上）：pending 超时 GC 用例（presign 后不 confirm，orphan_gc_days 后对象与行均消失）；类型防伪负向三件（改 Content-Type 重放=签名失效 / 谎报 size=confirm 拒 / svg 改扩展名=mime 判定拦截）；并发 confirm 同一对象=仅一单成功（UNIQUE+状态机）。
+- **验收补充**（在 §11 基础上）：pending 超时 GC 用例（presign 后不 confirm，orphan_gc_days 后对象与行均消失）；类型防伪负向三件（改 Content-Type 重放=签名失效 / 实测 size 超全局上限=confirm 拒[措辞收口 2026-10-20——上限比对即防线] / svg 改扩展名=mime 判定拦截）；并发 confirm 同一对象=仅一单成功（UNIQUE+状态机）；**GC×confirm 竞态注记（2026-10-20 评审 D1-2）**：GC 先删对象后落标与 confirm 的 StatObject→翻 confirmed 交错时，极端序可致行 confirmed 而对象已删（下载终 404）——presign TTL 15m + orphan_gc_days 7d 双窗使真实概率趋零（URL 过期后对象不可能新出现、7 天后 confirm 非正常流），接受不设防；**删除口径闭环（2026-10-20 评审 P2-2 修复批）**：删附件/弃旧=先标 deleted 行态优先，对象物理删 best-effort 失败由 GC 二扫（deleted 态重删+成功即物理清行）收敛——本表 GC 用例「行均消失」由两段收敛达成。
 
 ### A.10 依赖与 utils 对表（2026-10-16 所有者问询；AGENTS「新增依赖须说明理由与替代方案」落档位）
 
@@ -373,3 +375,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-19 | **B5-1 spike 判据⑤预验批（批3）+ rclone 术语修正**：判据⑤ 主→备双实例（zhuzhao-rustfs→rustfs-backup，compose 内网服务名互访）`rclone sync` **全量+增量双实测通过**（首轮全量复制/次轮仅拷新对象 second.txt；rclone **v1.75.2** 实测——镜像 tag 随 B5-5 钉死）；**⚠ 术语修正：rclone 无 `mirror` 命令**（mc mirror 迁移笔误，正确命令=`sync` 单向含删除=镜像语义）——§7/A.8/拍板点 5/README/11 号正文与 compose 注释全量替换，2026-10-16 历史变更记录行留痕不改；判据⑥ GetBucketReplication 读 API 通（err=nil）维持「生效性深测随 B5-5」——**spike 六判据至此全部预验完毕，B5-1 首日 spike 提前完成** |
 | 2026-10-19 | **B5-1 底座收口批（批7）**：E2E 四场景（ec2051a）+ 四档接入（469f689）+ §11 验收完成注（S1/S4 底座面全过、S2/S3/S5/S6 各归后续批）——**B5-1 收口，B5-2 头像开工** |
 | 2026-10-19 | **B5-2 头像批落地（批 1–3：f6a9cd7 代理下载/e6c5116 swag 补/6391e6d Cookie 双凭证/本批 avatar 回写）**：①代理端点 GET /api/v1/files/*key（独立链 JWT+限流不挂通用审计——A.4 #5 收窄；同形 404 三态+If-None-Match 304+etag 作 If-Match 默认开=拍板 1b 防重放落点；端口面扩第 5 方法 GetObject——A.1 四方法收窄对代理读流系设计缺口已登记）②A.11 **形态 B 确认**（cookie=access JWT，登出吊销联动即失效——见 A.11 注记）③A.4 新增 #7 avatar/bind 行（校验三态同形 404/旧头像弃旧标 deleted/同键幂等）④缩略图+EXIF 随行件拍形态=**前端 canvas 压缩单 key**（零 Go 侧新依赖——ui 件随 B5-2 前端批） |
+| 2026-10-20 | **S5 代码评审修复批（两轮评审 P0/P1/P2 全清——05 号回声部分）**：①A.3 richtext 落绑语义拍 a 案（推翻「不建关联表」——建单贴图与附件同经 CreateTicket attachments 列表统一落绑，实现即此形态；编辑增量绑定登记随 B5-4）②A.3 标题计数修正（两处→三处）+DDL 补 idx_file_objects_creator（迁移实有）③A.5/A.9 size 措辞收口（实测对全局上限=防线，声明值不持久化）④A.4 #3 对齐实现（全量数组，分页触发驱动）⑤A.9 补 GC×confirm 竞态注记（TTL 15m+7d 双窗接受不设防）+删除口径闭环注（先标 deleted+GC 二扫收敛——代码修复批 602e3c7）⑥A.6 MdEditor 补 attachments 隐藏域 |
