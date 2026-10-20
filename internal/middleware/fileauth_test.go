@@ -35,7 +35,7 @@ func TestFileSessionCookie_Attributes(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
-	SetFileSessionCookie(c, "tok-abc", 900)
+	SetFileSessionCookie(c, "tok-abc", 900, false)
 	cookies := w.Result().Cookies()
 	require.Len(t, cookies, 1)
 	ck := cookies[0]
@@ -45,6 +45,20 @@ func TestFileSessionCookie_Attributes(t *testing.T) {
 	assert.True(t, ck.HttpOnly, "HttpOnly 防 JS 读取")
 	assert.Equal(t, http.SameSiteLaxMode, ck.SameSite)
 	assert.Equal(t, 900, ck.MaxAge, "TTL 对齐 access token 有效期")
+	assert.False(t, ck.Secure, "默认 false——内网 HTTP 兼容（A.11「生产 Secure」经配置开启）")
+}
+
+// S5 评审 P2-4（2026-10-20）：A.11「生产 Secure」配置化——secure=true 属性在。
+func TestSetFileSessionCookie_SecureFlag(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	SetFileSessionCookie(c, "tok-abc", 900, true)
+	cookies := w.Result().Cookies()
+	require.Len(t, cookies, 1)
+	assert.True(t, cookies[0].Secure, "secure=true 须带 Secure 属性（HTTPS 网关生产形态）")
 }
 
 func TestFileSessionCookie_Clear(t *testing.T) {

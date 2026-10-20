@@ -108,7 +108,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 	t.Run("删除附件——Unlink+对象弃旧", func(t *testing.T) {
 		svc, stub := newSvc(t)
 		key, tkID := bound(t, svc)
-		err := svc.DeleteTicketAttachment(context.Background(), tkID, key, uid)
+		err := svc.DeleteTicketAttachment(context.Background(), tkID, key)
 		require.NoError(t, err)
 		assert.Equal(t, []string{key}, stub.removedKeys(), "对象本体 best-effort 删除")
 		var n int
@@ -124,7 +124,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 	t.Run("删除他人附件——归属校验拒", func(t *testing.T) {
 		svc, _ := newSvc(t)
 		_, tkID := bound(t, svc)
-		err := svc.DeleteTicketAttachment(context.Background(), tkID, "tickets/2026/10/nope.png", uid)
+		err := svc.DeleteTicketAttachment(context.Background(), tkID, "tickets/2026/10/nope.png")
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
 	})
 
@@ -134,7 +134,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		svc, stub := newSvc(t)
 		stub.removeErr = assert.AnError
 		key, tkID := bound(t, svc)
-		err := svc.DeleteTicketAttachment(context.Background(), tkID, key, uid)
+		err := svc.DeleteTicketAttachment(context.Background(), tkID, key)
 		require.NoError(t, err, "best-effort 物理删失败不阻塞删关联+落标")
 		var status string
 		require.NoError(t, testPool.QueryRow(context.Background(),
@@ -144,5 +144,33 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		require.NoError(t, testPool.QueryRow(context.Background(),
 			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tkID).Scan(&n))
 		assert.Zero(t, n, "关联行已删")
+	})
+
+	// S5 评审 P2-2/D1-3（2026-10-20）健壮性批：①GetBoundTicketID 跨桶隔离
+	//（修复前裸查 object_key 无 bucket 条件）；②非 ErrNoRows 错误上抛
+	//（修复前 DB 故障吞成 404 哨兵、绕过 5xx 告警面）。
+	t.Run("GetBoundTicketID——跨桶隔离+DB 错误上抛", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = 'other-h'`)
+		})
+		tkID := insertTicket(t, uid)
+		var foID int64
+		require.NoError(t, testPool.QueryRow(context.Background(), `
+			INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
+			VALUES ('other-h', 'tickets/2026/10/cross-bucket.png', 'ticket_attachment', 'confirmed', 'x.png', 'image/png', $1)
+			RETURNING id`, uid).Scan(&foID))
+		_, err := testPool.Exec(context.Background(),
+			`INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`, tkID, foID, uid)
+		require.NoError(t, err)
+
+		repo := repository.NewStorageRepo(testPool)
+		_, err = repo.GetBoundTicketID(context.Background(), itBucket, "tickets/2026/10/cross-bucket.png")
+		assert.ErrorIs(t, err, repository.ErrStorageObjectNotFound,
+			"itBucket 查询不得命中 other-h 桶对象（修复前裸查命中）")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err = repo.GetBoundTicketID(ctx, itBucket, "tickets/2026/10/any.png")
+		assert.ErrorIs(t, err, context.Canceled, "DB 错误须上抛（修复前吞成 404 哨兵）")
 	})
 }

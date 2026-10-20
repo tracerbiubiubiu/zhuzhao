@@ -13,14 +13,17 @@ const FileSessionCookieName = "file_session"
 // 形态 B（B5-2-2 实施批确认制，偏离 A.11 原 HMAC uid+exp 方案并落档）：
 // cookie 值=同款 access JWT——登出/密码修改/会话吊销经既有黑名单链
 // **立即失效**（优于原案无状态形态的「保留至 exp」边界），且零新原语。
-// 属性：Path 限定 /api/v1/files + HttpOnly + SameSite=Lax（A.11 规范）。
-func SetFileSessionCookie(c *gin.Context, accessToken string, maxAgeSeconds int) {
+// 属性：Path 限定 /api/v1/files + HttpOnly + SameSite=Lax（A.11 规范）；
+// secure=生产 HTTPS 网关形态带 Secure（storage.file_cookie_secure 配置——
+// 默认 false 内网 HTTP 兼容，S5 评审 P2-4 落地 A.11「生产 Secure」）。
+func SetFileSessionCookie(c *gin.Context, accessToken string, maxAgeSeconds int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     FileSessionCookieName,
 		Value:    accessToken,
 		Path:     "/api/v1/files",
 		MaxAge:   maxAgeSeconds,
 		HttpOnly: true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

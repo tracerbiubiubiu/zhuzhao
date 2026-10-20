@@ -25,6 +25,9 @@ type StorageConfig struct {
 	BlockedMIMETypes        []string `mapstructure:"blocked_mime_types"`
 	InlineMIMEPrefixes      []string `mapstructure:"inline_mime_prefixes"`
 	OrphanGCDays            int      `mapstructure:"orphan_gc_days"`
+	// FileCookieSecure 文件通道 cookie Secure 属性（A.11「生产 Secure」——
+	// HTTPS 网关部署置 true；默认 false 内网 HTTP 兼容。S5 评审 P2-4）
+	FileCookieSecure bool `mapstructure:"file_cookie_secure"`
 }
 
 // maxUploadBytesCeil 上传上限代码天花板（A.2 注：KV 可覆盖至天花板，

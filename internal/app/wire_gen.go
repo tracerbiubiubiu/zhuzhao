@@ -51,7 +51,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	auditService := service.NewAuditService(auditLogRepo, userRepo)
 	captchaSvc := service.NewCaptchaService(client, cfg.CaptchaEnabled, parseDuration(cfg.CaptchaTTL))
 	authService := service.NewAuthService(userRepo, manager, client, scripts, auditService, jwtConfig, captchaSvc)
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg.Storage.FileCookieSecure)
 	roleRepo := repository.NewRoleRepo(pool)
 	orgRepo := repository.NewOrgRepo(pool)
 	orgDelegationService := service.NewOrgDelegationService(pool)

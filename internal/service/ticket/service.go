@@ -241,7 +241,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
 	if len(req.Attachments) > 0 {
-		if err := s.storageRepo.BindCreateAttachments(ctx, tx, actorUserID, ticket.ID, req.Attachments, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
+		if err := s.storageRepo.BindCreateAttachments(ctx, tx, s.storageCfg.Bucket, actorUserID, ticket.ID, req.Attachments, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
 			if errors.Is(err, repository.ErrStorageObjectNotFound) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
 			}

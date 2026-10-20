@@ -296,6 +296,8 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("storage.endpoint", "STORAGE_ENDPOINT")
 	viper.BindEnv("storage.access_key", "STORAGE_ACCESS_KEY")
 	viper.BindEnv("storage.secret_key", "STORAGE_SECRET_KEY")
+	// A.11「生产 Secure」：文件通道 cookie Secure 属性（HTTPS 网关置 true——S5 评审 P2-4）
+	viper.BindEnv("storage.file_cookie_secure", "STORAGE_FILE_COOKIE_SECURE")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

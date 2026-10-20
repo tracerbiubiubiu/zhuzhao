@@ -212,9 +212,10 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 // BindCreateAttachments 建单前绑定（A.5 建单前链）：悬挂 confirmed 对象批量
 // 计数校验+加锁校验+落绑+purpose 翻正式态。校验失败返回 ErrStorageObjectNotFound
 // （对象不存在/非本人/非 confirmed/悬挂态不符/已被并发他单绑定——建单方参数错，
-// service 统一映射 400）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
-// 并发加固 + 计数校验 2026-10-20（S5 评审 P1：FOR UPDATE 串行化并发建单双绑窗口）。
-func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, userID, ticketID int64, keys []string, maxCount int) error {
+// service 统一映射 400；仅 pgx.ErrNoRows 转哨兵，DB 故障原样上抛走 500 面
+// ——S5 评审 P2-2）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
+// 并发加固 + 计数校验 + bucket 条件 2026-10-20（S5 评审 P1/D1-3）。
+func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, bucket string, userID, ticketID int64, keys []string, maxCount int) error {
 	// 附件数计数（建单路径执行点）：本次 keys 去重后与已有合计不超上限
 	var n int
 	if err := exec.QueryRow(ctx,
@@ -233,10 +234,13 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, u
 		// purpose 已翻正式态 → switch default 拒绝（修复前双双落绑）
 		err := exec.QueryRow(ctx, `
 			SELECT id, purpose, created_by, status FROM file_objects
-			WHERE object_key=$1 FOR UPDATE`, key).
+			WHERE bucket=$1 AND object_key=$2 FOR UPDATE`, bucket, key).
 			Scan(&id, &purpose, &createdBy, &status)
 		if err != nil {
-			return ErrStorageObjectNotFound
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrStorageObjectNotFound
+			}
+			return err
 		}
 		if createdBy != userID || status != "confirmed" || purpose == "" {
 			return ErrStorageObjectNotFound
@@ -294,25 +298,30 @@ func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int6
 }
 
 // GetBoundTicketID 对象绑定的工单（无绑定 → ErrStorageObjectNotFound；
-// 下载面 L2 判定锚点——B5-3 批3）。
-func (r *StorageRepo) GetBoundTicketID(ctx context.Context, objectKey string) (int64, error) {
+// 下载面 L2 判定锚点——B5-3 批3。bucket 条件 + 非 ErrNoRows 错误上抛
+// ——S5 评审 P2-2/D1-3 健壮性批 2026-10-20：原裸查跨桶命中、DB 故障吞成 404）。
+func (r *StorageRepo) GetBoundTicketID(ctx context.Context, bucket, objectKey string) (int64, error) {
 	var ticketID int64
 	err := r.db.QueryRow(ctx, `
 		SELECT ta.ticket_id FROM ticket_attachments ta
 		JOIN file_objects fo ON fo.id = ta.file_object_id
-		WHERE fo.object_key = $1 LIMIT 1`, objectKey).Scan(&ticketID)
-	if err != nil {
+		WHERE fo.bucket = $1 AND fo.object_key = $2 LIMIT 1`, bucket, objectKey).Scan(&ticketID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrStorageObjectNotFound
+	}
+	if err != nil {
+		return 0, err
 	}
 	return ticketID, nil
 }
 
-// UnlinkAttachment 删关联行（0 行 → ErrStorageObjectNotFound）。
-func (r *StorageRepo) UnlinkAttachment(ctx context.Context, ticketID int64, objectKey string) error {
+// UnlinkAttachment 删关联行（0 行 → ErrStorageObjectNotFound；bucket 条件
+// 与 (bucket,object_key) 唯一键对齐——S5 评审 D1-3 健壮性批）。
+func (r *StorageRepo) UnlinkAttachment(ctx context.Context, bucket string, ticketID int64, objectKey string) error {
 	tag, err := r.db.Exec(ctx, `
 		DELETE FROM ticket_attachments
-		WHERE ticket_id = $1 AND file_object_id = (SELECT id FROM file_objects WHERE object_key = $2)`,
-		ticketID, objectKey)
+		WHERE ticket_id = $1 AND file_object_id = (SELECT id FROM file_objects WHERE bucket = $2 AND object_key = $3)`,
+		ticketID, bucket, objectKey)
 	if err != nil {
 		return err
 	}

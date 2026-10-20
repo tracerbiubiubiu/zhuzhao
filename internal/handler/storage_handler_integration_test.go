@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -72,8 +73,51 @@ func (s *hStubClient) GetObject(_ context.Context, _ string, matchETag string) (
 }
 func (s *hStubClient) RemoveObject(_ context.Context, _ string) error { return nil }
 
+// auditRecorder 审计桩（A.4 #5 收窄面断言用——S5 评审 P2-5 健壮性批）。
+type auditRecorder struct{ entries []middleware.AuditLogEntry }
+
+func (a *auditRecorder) Insert(_ context.Context, e middleware.AuditLogEntry) error {
+	a.entries = append(a.entries, e)
+	return nil
+}
+
+// insertHTicket 直插最小工单行（handler 包独立环境——storage 包 insertTicket 跨包不可用）。
+func insertHTicket(t *testing.T, uid int64) int64 {
+	t.Helper()
+	ctx := context.Background()
+	_, err := testPool.Exec(ctx, `
+		INSERT INTO organizations (code, name, path, is_virtual, status, sort_order, is_system)
+		SELECT 'root', 'Root', 'root', false, 1, 0, true
+		WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE code = 'root')`)
+	require.NoError(t, err)
+	_, err = testPool.Exec(ctx, `
+		INSERT INTO ticket_types (code, name, states, transitions)
+		SELECT 'incident', '事件', '["open","assigned","closed"]', '{}'
+		WHERE NOT EXISTS (SELECT 1 FROM ticket_types WHERE code = 'incident')`)
+	require.NoError(t, err)
+	var orgID int64
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT id FROM organizations WHERE code = 'root' LIMIT 1`).Scan(&orgID))
+	var id int64
+	require.NoError(t, testPool.QueryRow(ctx, `
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path)
+		VALUES ('incident', 'h 附件审计测试', 'x', 3, 'open', $1, $2,
+			(SELECT path FROM organizations WHERE id = $2))
+		RETURNING id`, uid, orgID).Scan(&id))
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)
+	})
+	return id
+}
+
 // newStorageRouter 复刻 biz 组挂法；userID 经组中间件注入（鉴权链等价物）。
 func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
+	return newStorageRouterWith(t, nil, false)
+}
+
+// newStorageRouterWith 参数化装配：审计桩注入 + TicketAuthorizer 放行开关
+// （ticket 态 200 全链场景用——S5 评审 P2-5 健壮性批）。
+func newStorageRouterWith(t *testing.T, audit middleware.AuditLogger, allowAuth bool) (*gin.Engine, int64) {
 	t.Helper()
 	var uid int64
 	eno := fmt.Sprintf("EHSTG%d", time.Now().UnixNano())
@@ -93,7 +137,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	svc := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 21, ETag: "etag-h", ContentType: "image/png"}, getBody: []byte("avatar-proxy-bytes")},
 		cfg, slog.Default())
-	h := handler.NewStorageHandler(svc, &denyAuth{}, nil)
+	h := handler.NewStorageHandler(svc, &denyAuth{allow: allowAuth}, audit)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -231,6 +275,52 @@ func TestStorageHandler_Contract(t *testing.T) {
 		assert.Equal(t, `"etag-h"`, w.Header().Get("ETag"))
 		assert.Contains(t, w.Header().Get("Content-Disposition"), "inline")
 		assert.Contains(t, w.Header().Get("Content-Disposition"), "filename*=UTF-8''")
+		// S5 评审 P3（2026-10-20）：实测 size 在手——补 Content-Length（进度条/长度校验）
+		assert.Equal(t, "21", w.Header().Get("Content-Length"))
+	})
+
+	// S5 评审 P2-5（2026-10-20）：审计白名单正向化——仅 ticket 态 200 落行
+	//（avatar 高频渲染免审计，A.4 #5 收窄口径的有测化）。
+	t.Run("代理下载——审计白名单（仅 ticket 态 200 落行）", func(t *testing.T) {
+		rec := &auditRecorder{}
+		r2, uid := newStorageRouterWith(t, rec, true)
+
+		// avatar 面：确认对象下载——零审计行
+		_, env := post(t, r2, "/api/v1/storage/presign/upload", validUpload)
+		require.Equal(t, 0, env.Code)
+		var pre struct {
+			ObjectKey string `json:"object_key"`
+		}
+		require.NoError(t, json.Unmarshal(env.Data, &pre))
+		_, env2 := post(t, r2, "/api/v1/tickets/attachments/confirm", map[string]any{"object_key": pre.ObjectKey})
+		require.Equal(t, 0, env2.Code)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/files/"+pre.ObjectKey, nil)
+		w := httptest.NewRecorder()
+		r2.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Empty(t, rec.entries, "avatar 下载免审计（A.7 收窄——热路径写放大）")
+
+		// ticket 面：直插 confirmed 绑定对象 → 下载——恰一行审计（含 key）
+		tkID := insertHTicket(t, uid)
+		akey := "tickets/2026/10/audit-face.png"
+		_, err := testPool.Exec(context.Background(), `
+			INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
+			VALUES ('it-h', $1, 'ticket_attachment', 'confirmed', 'a.png', 'image/png', $2)`, akey, uid)
+		require.NoError(t, err)
+		var foID int64
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT id FROM file_objects WHERE bucket='it-h' AND object_key=$1`, akey).Scan(&foID))
+		_, err = testPool.Exec(context.Background(),
+			`INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`, tkID, foID, uid)
+		require.NoError(t, err)
+
+		req2 := httptest.NewRequest(http.MethodGet, "/api/v1/files/"+akey, nil)
+		w2 := httptest.NewRecorder()
+		r2.ServeHTTP(w2, req2)
+		require.Equal(t, http.StatusOK, w2.Code)
+		require.Len(t, rec.entries, 1, "ticket 态 200 恰落一行")
+		assert.Equal(t, http.MethodGet, rec.entries[0].Method)
+		assert.Contains(t, rec.entries[0].Path, akey, "审计行含对象键（A.7 谁/何时/key/结果）")
 	})
 
 	t.Run("代理下载——If-None-Match 304（零审计行）", func(t *testing.T) {

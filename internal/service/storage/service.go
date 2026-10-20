@@ -242,7 +242,7 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, ticketA
 	}
 	// ticket 态：须已绑定工单 + L2 回调判定（A.7 下载=工单 L2 可见性）
 	if ticketPurposes[f.Purpose] {
-		ticketID, err := s.repo.GetBoundTicketID(ctx, key)
+		ticketID, err := s.repo.GetBoundTicketID(ctx, s.bucket, key)
 		if err != nil {
 			return nil, errcode.ErrFileNotFound
 		}
@@ -332,11 +332,11 @@ func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]
 // 对象物理删 best-effort——失败残留由 GC 二扫收（2026-10-20 删除口径对齐：
 // 原「删本体+标 deleted」顺序在物理删失败时对象无扫描覆盖=永久泄漏）。
 // L2 update 面由 handler 编排。
-func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string, userID int64) error {
+func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string) error {
 	if s.client == nil {
 		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
-	if err := s.repo.UnlinkAttachment(ctx, ticketID, objectKey); err != nil {
+	if err := s.repo.UnlinkAttachment(ctx, s.bucket, ticketID, objectKey); err != nil {
 		if errors.Is(err, repository.ErrStorageObjectNotFound) {
 			return errcode.ErrFileNotFound
 		}
@@ -350,7 +350,6 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
 		s.logger.Warn("storage remove attachment object deferred to gc", "key", objectKey, "err", err)
 	}
-	_ = userID
 	return nil
 }
 

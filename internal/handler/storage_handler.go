@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -168,17 +169,25 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 	if f.ETag != nil {
 		c.Header("ETag", `"`+*f.ETag+`"`)
 	}
+	if f.SizeBytes != nil {
+		// 实测 size 在手——补 Content-Length（进度条/长度校验；S5 评审 P3）
+		c.Header("Content-Length", strconv.FormatInt(*f.SizeBytes, 10))
+	}
 	c.Header("Content-Disposition", disposition+"; filename*=UTF-8''"+url.PathEscape(f.FileName))
 	c.Status(http.StatusOK)
 	_, _ = io.Copy(c.Writer, dl.Body)
-	// 审计（A.4 #5 收窄）：仅 ticket 态 200 全量投递落行（avatar 免——热路径
-	// 写放大；304/404 不落——防写放大）
-	if dl.File.Purpose != "avatar" && h.auditLog != nil {
-		_ = h.auditLog.Insert(c.Request.Context(), middleware.AuditLogEntry{
+	// 审计（A.4 #5 收窄）：仅 ticket 态 200 全量投递落行——正向白名单
+	//（avatar 免——热路径写放大；304/404 不落——防写放大；未来新 purpose
+	// 默认不落不误伤——S5 评审 P2-5）；Insert 失败留痕不再静默吞
+	if (f.Purpose == "ticket_attachment" || f.Purpose == "ticket_richtext") && h.auditLog != nil {
+		if err := h.auditLog.Insert(c.Request.Context(), middleware.AuditLogEntry{
 			UserID: c.GetInt64("userID"), Method: http.MethodGet,
 			Path: c.Request.URL.Path, StatusCode: http.StatusOK,
 			RequestID: c.GetString("request_id"), CreatedAt: time.Now(),
-		})
+		}); err != nil {
+			slog.Warn("storage proxy download audit insert failed",
+				"key", key, "request_id", c.GetString("request_id"), "err", err)
+		}
 	}
 }
 
@@ -237,7 +246,7 @@ func (h *StorageHandler) DeleteAttachment(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
-	if err := h.svc.DeleteTicketAttachment(c.Request.Context(), in.TicketID, in.ObjectKey, c.GetInt64("userID")); err != nil {
+	if err := h.svc.DeleteTicketAttachment(c.Request.Context(), in.TicketID, in.ObjectKey); err != nil {
 		writeServiceError(c, err)
 		return
 	}
