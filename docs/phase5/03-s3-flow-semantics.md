@@ -114,6 +114,8 @@ ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transition_meta JSONB DEFAULT 
 -- 缺省 = 既有行为（零破坏）；存储与 transitions 邻接表分列——01 号 A.2 同款决策
 ```
 
+`post_actions` 元素允许字符串或 `{ "name": "...", "params": {...} }` 对象形态（B3-3 随行件——2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）。
+
 - **可用转换查询**：`GET /tickets/:id/transitions/available`（Jira condition 语义=按当前用户过滤——前端按钮渲染依据；服务端 AssertTransition 仍为 fail-closed 兜底，前端过滤仅 UX）；
 - **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。**condition 类型扩展触发登记（2026-10-19 外审）**：首批=roles/属主/处理人三类（phase6 R3 复核态=属主类，够用）；字段值条件（Jira field-valued condition）由 validator=expr 覆盖数据侧，condition 面的字段值形态出现诉求再扩（触发登记勿预建）。**字段引用约定（2026-10-19 外审补 P2-5）**：内置字段=标识符直引（priority == 'P1'）；**动态字段=map 索引形式 custom_data["字段名"]**（expr 支持字符串索引——中文/含点 key 不作标识符，规避解析失败与内建冲突）；与 S6 变量字典 slug 约定的统一对表随 B3-1（两处引用同一字段语义须一致）。
 
@@ -153,6 +155,8 @@ type TransitionAction interface {
 //   [payload=动作名/工单/错误——消费方=ops 告警规则(S6 规则面配置)] + 异步补偿队列——分派决议⑤同款）
 //   补偿事件命名定案（2026-10-19 外审 P2-6：原三缺[名/消费方/内容]补齐）
 ```
+
+可选方法 `ParamsSchema() json.RawMessage`：返回动作参数的 JSON Schema（nil 合法）；`Execute` 签名不变（B3-3 随行件，2026-10-20 回灌）。
 
 ### A.4 easy-workflow 对照开发法（所有者提议"参考修改补强"的操作化——不 fork 不 import）
 
@@ -225,7 +229,7 @@ type TransitionAction interface {
 | **SLA 层 1（完整）** | **硬触发五条任一**（对外承诺/停表语义[分水岭]/业务日历/达成率 KPI/自动升级链）；软三条两条以上评估 | 1–2 周自研（无现成可嵌入引擎——JSM policy 模型借鉴） | [10 号 §5](./10-s10-ticket-collaboration.md) |
 | **升级链 escalation** | 超时自动转派诉求（人工处理跟不上量） | ~1 周（**与 S3a 动作库天然结合**：ops.cron_failed/超时 DomainEvent → 动作库「转派」动作——不独立建链） | 本文件 §3.3 + [10 号附录 A.5](./10-s10-ticket-collaboration.md) |
 | **表单条件显隐**（交互层联动） | 业务方提出「选了 A 才填 B」类联动诉求（业界表单设计器标配——唯一显式不做的能力边界） | ≈2–3 天（复用 S1/S3 expr 公共件——前端渲染层显隐+必填动态切换+服务端兜底断言；零迁移零结构改动） | [01 号 §5](./01-s1-form-designer.md) |
-| **多源内容采集**（微信公众号等订阅/推送源） | ✅ **业务意图已声明（2026-10-19 所有者）**——桥接方案拍板即立项 | MVP ≈1–1.5 周（轮询桥接+HTML 消毒+入库列表+通知复用；图片转存+全文检索 +1 周） | **归属 phase6 新段**（09 号不迁移——查询代理 pull ≠ 推送采集 push 两形态）；形态=**通用数据录入接口**：统一信封（source/type/payload）+按源 schema 注册校验（防「通用=无 schema」dump 陷阱）+服务间 AK/SK HMAC 鉴权[standards §4]+raw 报文留档（对账/重放）+DomainEvent 出站；前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐） | [09 号 §6 留口注](./09-s9-threat-intel-cache-proxy.md) |
+| **多源内容采集**（微信公众号等订阅/推送源） | ✅ **业务意图已声明（2026-10-19 所有者）**——桥接方案拍板即立项 | MVP ≈1–1.5 周（轮询桥接+HTML 消毒+入库列表+通知复用；图片转存+全文检索 +1 周） | **归属 phase6 新段**（09 号不迁移——查询代理 pull ≠ 推送采集 push 两形态）；形态=**通用数据录入接口**：统一信封（source/type/payload）+按源 schema 注册校验（防「通用=无 schema」dump 陷阱）+服务间 AK/SK HMAC 鉴权[standards §4]+raw 报文留档（对账/重放）+DomainEvent 出站；前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐）；拉取侧 http-pull / db-pull / file-pull + `ingest_sources` 水位表（推 / 拉皆备——所有者 2026-10-20；2026-10-20 回灌） | [09 号 §6 留口注](./09-s9-threat-intel-cache-proxy.md) |
 
 ### 事件驱动统一模型（2026-10-19 所有者架构提议采纳——引擎扩展的统一形态）
 

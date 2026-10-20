@@ -8,6 +8,8 @@
 
 对**已有威胁情报 web 应用做能力补全**（**应用本体不动**）——解决其每日/每小时查询配额限制。技术形态 = **外部限流 API 的缓存代理**（通用件），威胁情报是**首个消费者**；**消费方 = phase6 风险模块 R1**（风险事件情报源之一）。
 
+随行件（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）：缓存机制层（键归一化 / TTL per type / singleflight / stale 降级）独立为通用包（如 `internal/pkg/apicache`），情报为首个消费者；表名 / 端口名 / API / 权限码保持情报语义不变。第二消费者 = 资产平台查询门面的读穿缓存（phase6/7）。
+
 **归属判定**：所有者口径"phase5 = 通用能力，phase6 = 业务能力"——本件是通用缓存代理，威胁情报仅为首个消费者，故归 phase5。
 
 ## 2. 查询流程

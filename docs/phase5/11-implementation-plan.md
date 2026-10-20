@@ -35,13 +35,13 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | Wave | 段 | 批次 | 量级 | 依赖 |
 |------|----|------|------|------|
 | W0（≈0.5–1 天；原 ~1 周含拍板会+spike，均已清出） | 启动批 | 本计划落档审批（✅）+ spike 时点安排（✅ §2.1）+ 迁移号对账（✅ 000045 起可用）+ **工程预备 ✅ 两件落地**（RustFS compose 双实例草案已落 + `rustfs/rustfs`·`rclone/rclone` 镜像已拉已冒烟）+ **后端拍定 MinIO → RustFS**（§2.1） | — | **✅ W0 已收口（2026-10-19 所有者确认）**——W1 开工 B5-1（DoD 见 §2.1 尾注） |
-| W1–3 | S5 | **✅ 开工首件：架构依赖规则工具化（2026-10-19 落地——自研 guard 扩两条断言：pkg 禁反向依赖业务层[admincli 豁免]+service 域间横向隔离；金丝雀负向验证可拦；未引 golangci-lint 零新增依赖——详录 03 号 A.6 落地状态注）** → B5-1 底座 → B5-2 头像 → B5-3 附件 → B5-4 richtext → B5-5 备份随行；（B5-6 配置化可切出） | 1.5–2 周 | W0 |
+| W1–3 | S5 | **✅ 开工首件：架构依赖规则工具化（2026-10-19 落地——自研 guard 扩两条断言：pkg 禁反向依赖业务层[admincli 豁免]+service 域间横向隔离；金丝雀负向验证可拦；未引 golangci-lint 零新增依赖——详录 03 号 A.6 落地状态注）** → B5-1 底座 → B5-2 头像 → B5-3 附件 → B5-4 richtext → B5-5 备份随行；（B5-6 配置化可切出）；+ 随行件：file_objects owner 两可空列（**新 ALTER 迁移**——000045 已收口不改，随 B5-4/B5-5 落）/ 前缀占名 / confirm·GC 绑定器（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md） | 1.5–2 周 | W0 |
 | W3–5 | S1 | B1-1 设计器壳 → B1-2 字典/人员补全 → B1-3 求值器+formula → B1-4 取数联动 → B1-5 随行三件（③④可后移不阻收口） | 1.5–2.5 周 | S5 底座（richtext 调色板） |
-| W5–7.5 | S6 一期 | B6-1 事件面基建 → B6-2 通道层 → B6-3 模板层 → B6-4 收件人解析 → B6-5 触发挂接 → B6-6 发送记录 | 2–2.5 周 | — |
-| W7.5–9 | S2 | B2-1 画布 spike → B2-2 画布+映射器 → B2-3 改图在途单告警 → B2-4 lint 增强+中文化（④可选） | 1–2 周 | —（S6 错峰衔接——S6 一期 W7.5 收口后进 S2，单人串行） |
+| W5–7.5 | S6 一期 | B6-1 事件面基建 → B6-2 通道层 → B6-3 模板层 → B6-4 收件人解析 → B6-5 触发挂接 → B6-6 发送记录；+ 事件分类学约定（2026-10-20 回灌） | 2–2.5 周 | — |
+| W7.5–9 | S2 | B2-1 画布 spike → B2-2 画布+映射器 → B2-3 改图在途单告警 → B2-4 lint 增强+中文化（④可选）；+ 壳层去耦验收项（2026-10-20 回灌） | 1–2 周 | —（S6 错峰衔接——S6 一期 W7.5 收口后进 S2，单人串行） |
 | W9–11 | S10 | B10-1 抄送 → B10-2 标签 → B10-3 角标 → B10-4 节点超时+cron 可观测面 → B10-5 导出（BK-21 泛化） | 1.5–2 周 | S6（抄送可见性/超时通知依赖） |
-| W11–13 | S4 → S9 | B4-1 动作元数据端点 → B4-2 cron 构造器 → B4-3 operator 选单/死信收敛；（S9）B9-1 缓存代理 | 1–1.5 周 + ~1 周 | S4 前置批已落（2026-10-13） |
-| W13–15 | **S3a 语义引擎**（2026-10-19 所有者拍「升」——自触发驱动升格排期） | B3-1 转换级权限+前置条件 → B3-2 自动分派 → B3-3 动作库框架+首批动作（通知/抄送/**转派**——升级链与动作库结合不独立建）；**SLA 层 0.5 随窗顺带**（gap2 确认 2026-10-19，0.5–1 天——phase6 前核心引擎目标态收口） | ~2 周 | S6 B6-1 事件面 + S10 B10-4 超时事件（W9–11 先于本段，依赖成立） |
+| W11–13 | S4 → S9 | B4-1 动作元数据端点 → B4-2 cron 构造器 → B4-3 operator 选单/死信收敛；（S9）B9-1 缓存代理；+ B4 kind/owner_service 与 ParamsSchema 钉标、B9-1 缓存层独立包（2026-10-20 回灌） | 1–1.5 周 + ~1 周 | S4 前置批已落（2026-10-13） |
+| W13–15 | **S3a 语义引擎**（2026-10-19 所有者拍「升」——自触发驱动升格排期） | B3-1 转换级权限+前置条件 → B3-2 自动分派 → B3-3 动作库框架+首批动作（通知/抄送/**转派**——升级链与动作库结合不独立建）；**SLA 层 0.5 随窗顺带**（gap2 确认 2026-10-19，0.5–1 天——phase6 前核心引擎目标态收口）；+ B3-3 post_actions 对象形态与 ParamsSchema()（2026-10-20 回灌） | ~2 周 | S6 B6-1 事件面 + S10 B10-4 超时事件（W9–11 先于本段，依赖成立） |
 | W15–16.5 | S6 二期 | B6-7 站内 inbox（notifications 表族+已读+未读聚合+消息中心页） | 1.5–2 周 | S6 一期收口 + S3a（W13–15） |
 | 触发插入 | 条件段 | S3b（首个真实审批场景）/S8（数据触发）——不计收口；**引擎演进全景见 [03 号附录「工单引擎演进路线」](./03-s3-flow-semantics.md)** | 见 03/08 号稿 | 各自触发条件 |
 
@@ -65,10 +65,10 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 | 批次 | 内容 | 迁移/登记 | 验收要点 |
 |------|------|-----------|---------|
-| B5-1 底座（1–2 天） | **✅ 收口（2026-10-19，批1–批7 十小批交付：版本钉死 1.0.1/spike 六判据预验/pkg-storage 端口层+config/迁移 000045/服务层+errcode 91001–91004/场景矩阵 20 条/GC 红绿/端点+路由+装配+swagger/真 RustFS E2E 四场景/四档 98+2a·b·c 全绿+迁移往返 45 对零漂移——详变更记录）**；原计划： `storage:` config 段 + **首日兼容验证 spike（6 判据·CORS 居首——2026-10-19 前置拍板批）**（①浏览器跨源预检 CORS[✅ **预验通过 2026-10-19**：env `RUSTFS_CORS_ALLOWED_ORIGINS`——判据①当日前置批顺手验掉，详 05 号 §3]②presign PUT 往返③未签名 403/桶策略④Content-Type 钉签名——**✅ ②③④ 预验过 2026-10-19**（往返 content-match 闭环/未签名 403/篡改 CT→**403 SignatureDoesNotMatch**；**minio-go v7.4.1↔RustFS 兼容实证**，aws-sdk 备选维持挂账）⑤rclone sync[✅ **预验过 2026-10-19**：主→备双实例全量+增量实测（sync 仅拷新对象）——⚠ 术语修正：rclone 无 mirror 命令，系 mc 迁移笔误]⑥桶复制能力（读 API 通、生效性深测随 B5-5——rclone 起步形态维持））+ storage 模块（S3 兼容 client + presign 上下行）+ 单桶/域前缀/全私有/服务端 uuid 布局 + 限制矩阵硬底线（显式枚举白名单+html/svg 黑名单+presign 钉 Content-Type+confirm HEAD） | 迁移 **000045**（`file_objects`，取号当天 A2 对账）；errcode **91001–91004** 登记 `api/errcode.md`；对象存储客户端端口（README §6 第 7 行） | 四档 acceptance（10 号 §7 用例 S1–S6 为底稿：预签名上行/confirm/403/超限 400+91001）；presign 链路 E2E |
-| B5-2 头像（0.5–1 天） | **✅ 收口（2026-10-19 代码+acceptance S6-1~6；2026-10-20 评审修复批补注：自服务面 L1 缺口[普通角色 403]随 P0-1 修复[SelfService 标记组]闭环——普通用户可用性至此成立）**；原计划：profile 头像 URL 手填 → 预签名直传 + **统一代理下载端点 `GET /files/{key}`**（已拍形态首落地；鉴权+审计中间件；302 升级缝预留） | 权限零新码 | 头像上传→代理下载回显 E2E；img src 稳定 URL 断言 |
+| B5-1 底座（1–2 天） | **✅ 收口（2026-10-19，批1–批7 十小批交付：版本钉死 1.0.1/spike 六判据预验/pkg-storage 端口层+config/迁移 000045/服务层+errcode 91001–91004/场景矩阵 20 条/GC 红绿/端点+路由+装配+swagger/真 RustFS E2E 四场景/四档 98+2a·b·c 全绿+迁移往返 45 对零漂移——详变更记录）**；原计划： `storage:` config 段 + **首日兼容验证 spike（6 判据·CORS 居首——2026-10-19 前置拍板批）**（①浏览器跨源预检 CORS[✅ **预验通过 2026-10-19**：env `RUSTFS_CORS_ALLOWED_ORIGINS`——判据①当日前置批顺手验掉，详 05 号 §3]②presign PUT 往返③未签名 403/桶策略④Content-Type 钉签名——**✅ ②③④ 预验过 2026-10-19**（往返 content-match 闭环/未签名 403/篡改 CT→**403 SignatureDoesNotMatch**；**minio-go v7.4.1↔RustFS 兼容实证**，aws-sdk 备选维持挂账）⑤rclone sync[✅ **预验过 2026-10-19**：主→备双实例全量+增量实测（sync 仅拷新对象）——⚠ 术语修正：rclone 无 mirror 命令，系 mc 迁移笔误]⑥桶复制能力（读 API 通、生效性深测随 B5-5——rclone 起步形态维持））+ storage 模块（S3 兼容 client + presign 上下行）+ 单桶/域前缀/全私有/服务端 uuid 布局 + 限制矩阵硬底线（显式枚举白名单+html/svg 黑名单+presign 钉 Content-Type+confirm HEAD）；随行件（2026-10-20 回灌，校正）：file_objects owner_kind/owner_id 两可空列经**新 ALTER 迁移**（000045 已收口不改；A2 对账口径 000048）随 B5-4/B5-5 落 + 前缀命名空间占名（scripts/ artifacts/ ingest/ exports/）+ confirm/GC 按 purpose 绑定器化（05 号 §3/附录 A.3 随行件迁移段/A.4） | 迁移 **000045**（`file_objects`，取号当天 A2 对账）；errcode **91001–91004** 登记 `api/errcode.md`；对象存储客户端端口（README §6 第 7 行） | 四档 acceptance（10 号 §7 用例 S1–S6 为底稿：预签名上行/confirm/403/超限 400+91001）；presign 链路 E2E |
+| B5-2 头像（0.5–1 天） | **✅ 收口（2026-10-19 代码+acceptance S6-1~6；2026-10-20 评审修复批补注：自服务面 L1 缺口[普通角色 403]随 P0-1 修复[SelfService 标记组]闭环——普通用户可用性至此成立）**；原计划：profile 头像 URL 手填 → 预签名直传 + **统一代理下载端点 `GET /files/{key}`**（已拍形态首落地；鉴权+审计中间件；302 升级缝预留）；随行件（2026-10-20 回灌）：avatar purpose 填 owner_kind=user（通用归属引用首个消费者） | 权限零新码 | 头像上传→代理下载回显 E2E；img src 稳定 URL 断言 |
 | B5-3 附件（2–3 天） | `ticket_attachments` 全链：presign 上传 + confirm 关联 + 详情页展示/下载（复用 B5-2 代理端点）+ 删除（删关联+GC） | 迁移 **000046**（取号当天对账）；权限复用 `ticket:update`（已拍）+ 下载随工单读走 L2 | 无权限 403（L2 外用户）/超限 400+91001/单单 ≤20/下载审计行断言 |
-| B5-4 richtext（3–5 天 +1 天随行） | 字段类型第八种 `richtext`（`validateFieldInputs`/G2 校验同步扩，只增不改）+ MD 编辑器接入（**md-editor-rt ✅ 已拍 2026-10-17**；首日 spike=粘贴直传扩展验证；bytemd/milkdown 对照留存备翻——RK-P5-5 封装层隔离）+ **服务端消毒 SSOT**（MD 白名单渲染）+ **粘贴图片直传全链**（paste→Blob→presign→稳定 URL）+ **发起页表单级本地草稿**（整页序列化+附件 pending 对象恢复复用，载体含 S1 create 页随行——[05 号 §6](./05-s5-object-storage-richmedia.md)）+ **编辑已建单工单的贴图增量绑定**（UpdateTicket 扩 attachments 增量——05 号 A.3 richtext 落绑语义 a 案登记，2026-10-20 评审 P1-3）+ S1 调色板预留 | 权限零新码 | 存储型 XSS 负向用例（恶意 MD 提交被消毒）必测；粘贴直传 E2E；历史单裂图回归（稳定 URL）；草稿恢复/清稿用例 |
+| B5-4 richtext（3–5 天 +1 天随行） | 字段类型第八种 `richtext`（`validateFieldInputs`/G2 校验同步扩，只增不改）+ MD 编辑器接入（**md-editor-rt ✅ 已拍 2026-10-17**；首日 spike=粘贴直传扩展验证；bytemd/milkdown 对照留存备翻——RK-P5-5 封装层隔离）+ **服务端消毒 SSOT**（MD 白名单渲染）+ **粘贴图片直传全链**（paste→Blob→presign→稳定 URL）+ **发起页表单级本地草稿**（整页序列化+附件 pending 对象恢复复用，载体含 S1 create 页随行——[05 号 §6](./05-s5-object-storage-richmedia.md)）+ **编辑已建单工单的贴图增量绑定**（UpdateTicket 扩 attachments 增量——05 号 A.3 richtext 落绑语义 a 案登记，2026-10-20 评审 P1-3）+ S1 调色板预留 + 随行件（2026-10-20 回灌）：`file_objects` ALTER 追加 owner_kind/owner_id 两可空列（A2 对账取号，口径 000048；零回填，down=DROP）+ 附件/头像写侧填 owner_kind（ticket/user）——可随本批或 B5-5 落 | 权限零新码 | 存储型 XSS 负向用例（恶意 MD 提交被消毒）必测；粘贴直传 E2E；历史单裂图回归（稳定 URL）；草稿恢复/清稿用例；owner 两列迁移往返零漂移 |
 | B5-5 备份随行（0.5–1 天，必做件） | **`rclone sync` 定时起步**（2026-10-16 随后端切 RustFS，原 mc mirror——rclone/rclone 镜像已拉已验证，**v1.75.2 实测（2026-10-19 判据⑤）——镜像 tag 随 B5-5 钉死**；升级触发：RustFS 服务端桶复制+双端版本化，**✅ 判据⑤预验通过（主→备全量+增量双实测）/桶复制读 API 通、生效性深测随本批**）+ **cron 最小件前置（2026-10-19 0.5 收窄批）**：mirror 任务失败留痕+上次成功时间+advisory lock 查询失败静默跳过修复（cron_scheduler.go:82-84——现存 audit_archive 同受益；完整可观测面[Status 聚合端点/运行指标]维持 B10-4）+ **恢复演练**（activelist pgbackup 首验+演练惯例）+ RPO 显式登记 | deploy/compose 随行（rustfs-backup 实例 W0 草案已落） | 演练实测：删桶→恢复→对象比对零差异 |
 | B5-6 配置化（可切出，+0.5–1 天） | 限制值开放·分层：config 默认 + `system_settings` KV + 管理面 UI + 硬底线不可配 + min_editor_tier（存储限制类 superadmin-only）+ 变更审计/服务端钳制 | 迁移 **000047**（system_settings——2026-10-16 外审对账补齐第三枚，取号当天 A2 再对账）；审计保留期管理端点为同一 KV 面下一消费者（登记欠账） | 硬底线负向（admin 改 html 白名单被拒）；钳制断言 |
 
@@ -88,7 +88,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 | 批次 | 内容 | 说明 |
 |------|------|------|
-| B6-1 事件面基建（3–5 天） | **可订阅内部钩子**（✅ 命名已拍 **DomainEvent/DomainHook**——包 `internal/pkg/domainevent` 跨域公共件，BizType 路由，06 号附录 A.1 接口全文；事件类型化/多订阅者/recover 隔离/事务提交后派发）——S6/phase6/任务链共享基础设施，禁硬编码消费方；**与 S3a 动作库按 DomainHook 形态对表钉死**（C 方案：S3a 后插时事件面零返工——[03 号 §3 头注](./03-s3-flow-semantics.md)） | 拍板点 ③（随首批） |
+| B6-1 事件面基建（3–5 天） | **可订阅内部钩子**（✅ 命名已拍 **DomainEvent/DomainHook**——包 `internal/pkg/domainevent` 跨域公共件，BizType 路由，06 号附录 A.1 接口全文；事件类型化/多订阅者/recover 隔离/事务提交后派发）——S6/phase6/任务链共享基础设施，禁硬编码消费方；**与 S3a 动作库按 DomainHook 形态对表钉死**（C 方案：S3a 后插时事件面零返工——[03 号 §3 头注](./03-s3-flow-semantics.md)）；+ 事件分类学约定（2026-10-20 回灌：Action = biz_type.verb 固定词表 + updated 载荷带 changes + 每 Action 预留 payload schema 登记位——06 号 A.1） | 拍板点 ③（随首批） |
 | B6-2 通道层 | `ChannelSender` 端口 + `notification_configs` 增 type=uip + **两态桩**（开发态=成功+落日志/生产态=未配置 fail-fast，config 开关；虚标纪律） | — |
 | B6-3 模板层 | `message_templates` 表族迁移 + CRUD + 管理页 + `{{ticket.assignee_name}}` 点路径占位符渲染（logic-less 零执行，值转义防注入——06 号 A.4）+ **变量字典端点与编辑器 picker**（按 biz_type+event 供给，S1 field_meta 同源——A.6/A.8.1；+0.5–1 天一期上缘含）+ **slug 字典 path/四象限缺值语义**（A.4 评审批）+ **引用完整性双向守卫**（模板改守卫[字典并集拦截]+规则保存类型精确软告警——A.5 三层）+ 模板/规则管理操作审计留痕（对齐管理面审计纪律）+ 种子模板（只含编号+标题+链接，防越 L2 泄露）+ 删除守卫——**评审批合计 +1–1.5 天一期上缘含（模板两增批累计 +2–3 天，总账对账留实施批）** | — |
 | B6-4 收件人解析 | 第一档：工单字段引用（assignee/creator，候选=变量字典）+ 固定人员 + **用户通知偏好**（per-user opt-out/免打扰，发送链前置过滤——06 号 §5.2 业界对标批；+0.5–1 天） | — |
@@ -102,7 +102,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | 批次 | 内容 | 说明 |
 |------|------|------|
 | B2-1 画布 spike（首日） | LogicFlow 主验（vue-flow 同日对照，各 0.5 天）：拖节点/连线/序列化回 transitions/回显——映射成本+手感+包体终定实现 | ✅ 方向已拍；spike=对称验证 |
-| B2-2 画布+映射器 | 状态=节点/转换=边画布化 + 序列化往返幂等 + 画布层/适配层分离 + JSON 源码模式共存（专家兜底） | 后端零改动 |
+| B2-2 画布+映射器 | 状态=节点/转换=边画布化 + 序列化往返幂等 + 画布层/适配层分离 + JSON 源码模式共存（专家兜底）；+ 壳层去耦验收项（2026-10-20 回灌：壳层数据经 props/emit 不直连工单 Pinia store——02 号 A.2） | 后端零改动 |
 | B2-3 改图在途单告警 | 保存图扫描在途单状态分布，脱离新图→告警确认 | 半天级 |
 | B2-4 lint 增强+中文化（④可选） | 终态可达性/孤立状态/死锁告警 | 拍板点（lint 是否阻断，本批前拍） |
 
@@ -121,13 +121,13 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 ### 2.7 S4 管理面人性化 + S9 情报缓存代理（W11–13）
 
 **S4**（段稿 = [04 号](./04-s4-task-console-ux.md)；先行批 2026-10-13 已落，在其上增强）：
-- B4-1 动作元数据端点：`GET /jobs/actions`（挂 `task:read`）+ `jobs.Registry` 扩 name/description/paramsSchema + 创建 fail-fast 预校验（~1 天）
+- B4-1 动作元数据端点：`GET /jobs/actions`（挂 `task:read`）+ `jobs.Registry` 扩 name/description/paramsSchema + 创建 fail-fast 预校验（~1 天）；+ 随行件（2026-10-20 回灌）：响应加 kind/owner_service 预留字段 + ParamsSchema 钉 JSON Schema draft 2020-12 子集（04 号 A.1）
 - B4-2 cron 构造器：预设模式+专家模式，产物仍 `cron_spec`（自写组件，不引三方）；首日可点原型（双模式切换+预设生成→next_run 预览亲点后定稿——04 号 §3.1）
 - B4-3 operator 选单/死信收敛：operator 只读端点权限归属（拍板①）/死信并入 runs 状态筛选（拍板②，前置=确认死信行与 job_runs 一一对应）
 - 拍板③ params schema 动态表单=远期两步走后半，不入本段基线。
 
 **S9**（段稿 = [09 号](./09-s9-threat-intel-cache-proxy.md)）：
-- B9-1 缓存代理：`intel_cache` 迁移 + `ThreatIntelProvider` 端口+通用 HTTP 实现+config 挂点（契约未到=桩 fail-fast）+ 查询先缓存后回源 + TTL 双档 config 化（~1 周）
+- B9-1 缓存代理：`intel_cache` 迁移 + `ThreatIntelProvider` 端口+通用 HTTP 实现+config 挂点（契约未到=桩 fail-fast）+ 查询先缓存后回源 + TTL 双档 config 化（~1 周）；+ 随行件（2026-10-20 回灌）：缓存机制层独立为通用包 internal/pkg/apicache，情报为首个消费者（09 号 §1）
 - 拍板①降级策略（建议：过期缓存+陈旧标记）/②陈旧标记透出形态（建议：响应元字段）——启动批拍。
 
 ### 2.8 S6 二期 站内消息中心（W15–16.5）
@@ -140,7 +140,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 |------|------|---------|
 | B3-1 转换级权限+前置条件 | **执行端点 `POST /tickets/transition` 首件交付**（P0-1 显式化 2026-10-19：运行时转换现状仅三条路，画布多状态图无执行落点——现 Close/Assign 定向端点收敛为其封装）+ **`transition_meta` 列**（**复用 B10-4 已建**——W9–11 先行创建[state 级键存 timeout_minutes]，本批复用扩展 "from>to" 键三段结构 condition/validator/post_actions，**零新 DDL**——对齐 01 号 A.2 方案 b 先例，详录 03 号附录 A.1）+ **`GET /tickets/:id/transitions/available`** 端点（condition 前端过滤=UX、AssertTransition 服务端兜底双重）+ expr 求值器与 S1 共用 + **AssertTransition 叠加校验**（端点级保留、更严叠加）+ 策略层接入（fail-closed，§25 分界重审随批）+ **engine 子包化**（`internal/service/ticket/engine/` 收拢状态机/转换校验/扫描器——画边界；架构依赖规则工具化已于 W1 开工首件前移——03 号附录 A.6）——**量级注（2026-10-19 二轮回声）：执行端点+Close/Assign 收敛改造（含既有集成测试改走封装层）+0.5–1 天计入段量级；L1 权限归属随批拍（03 号 A.3 拍板项）** | 拍板点 ②（§25 分界，随批） |
 | B3-2 自动分派 | `assignment_rules` 表 + 规则匹配引擎（OnAfterCreate Hook 五决议既定——03 号 §3.2）+ **规则 CRUD 管理端点+管理页**（类型管理页族扩展零新码——外审 P3-9） | — |
-| B3-3 动作库框架+首批动作 | DomainHook 动作框架**双触发形态**（转换后 post-function/事件订阅——事务边界随触发方，03 号附录 A 裁定）+ 循环触发链深限制随框架落 + 首批动作：抄送（S10）/**转派**（扫描器事务内直调——强一致通道）+ notify 降无规则兜底（通知收敛走 S6 规则面——双通道分工 03 号 §3.3） | 拍板点 ③（首批动作，批量预确认+升格批调整） |
+| B3-3 动作库框架+首批动作 | DomainHook 动作框架**双触发形态**（转换后 post-function/事件订阅——事务边界随触发方，03 号附录 A 裁定）+ 循环触发链深限制随框架落 + 首批动作：抄送（S10）/**转派**（扫描器事务内直调——强一致通道）+ notify 降无规则兜底（通知收敛走 S6 规则面——双通道分工 03 号 §3.3）；+ 随行件（2026-10-20 回灌）：post_actions 元素允许 {name, params} 对象形态 + TransitionAction 可选 ParamsSchema()（03 号 A.1/A.3） | 拍板点 ③（首批动作，批量预确认+升格批调整） |
 
 > 迁移：assignment_rules 一表（`transition_meta` 列**复用 B10-4 已建**——2026-10-19 结构修正后 B3-1 零新 DDL，扩展 from>to 键；编号启动对账）。验收 = 03 号 §8（**非属主转换被拒 fail-closed 负向必测**/分派无命中保持 open+dispatch_missed 事件）。**绕行禁令在 W13 前仍有效**（S3a 未实施期间撞墙需求记账等本段）。
 
@@ -290,18 +290,18 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 | 批次 | 段稿章节 | 验收口径 | 迁移/登记 |
 |------|---------|---------|-----------|
-| B5-1 | [05 §3 + 附录 A.1–A.3](./05-s5-object-storage-richmedia.md) | **phase2/10** §7 S1–S6（底座蓝本验收用例——非 phase5/10 号 S10，消同表两义）+ 附录 A.9 GC/防伪负向 | 000045 + errcode 91001–91004 |
-| B5-2 | 05 §4 + A.5 投递缝 | 附录 A.7 头像行 + A.9 兼容 | — |
+| B5-1 | [05 §3 + 附录 A.1–A.3](./05-s5-object-storage-richmedia.md) | **phase2/10** §7 S1–S6（底座蓝本验收用例——非 phase5/10 号 S10，消同表两义）+ 附录 A.9 GC/防伪负向 | 000045 + errcode 91001–91004；随行件（2026-10-20 回灌，校正）：000045 已收口（740d2e9）**不改**；owner_kind/owner_id 两可空列经**新 ALTER 迁移**（A2 当天对账取号，口径 000048）随 B5-4/B5-5 落（05 号 A.3 随行件迁移段；研究稿 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md） |
+| B5-2 | 05 §4 + A.5 投递缝 | 附录 A.7 头像行 + A.9 兼容 | —；随行件（2026-10-20 回灌）：avatar purpose 填 owner_kind=user（05 号 A.3） |
 | B5-3 | 05 §5 + A.4/A.5 | A.7 权限矩阵负向（403） | 000046 |
-| B5-4 | 05 §6 + A.5 直传链/A.6 | XSS 负向 + 粘贴直传 E2E + 草稿恢复 | — |
+| B5-4 | 05 §6 + A.5 直传链/A.6 | XSS 负向 + 粘贴直传 E2E + 草稿恢复 | 随行件 ALTER 迁移：file_objects owner_kind/owner_id 两可空列（A2 对账取号，口径 000048；2026-10-20 回灌，可随 B5-5 落） |
 | B5-5 | 05 §7 + A.8 | 恢复演练实测 | compose 双实例 |
 | B5-6（可切出） | 05 §3 配置化 + A.4 #6 | 硬底线负向 + 钳制断言 | **000047**（system_settings KV——§3 口径回写） |
 | B1-1…5 | [01 §3 + 附录 A](./01-s1-form-designer.md) | 01 §8 + A.6 | `field_meta` 新列一枚 ALTER（方案 b 已采纳） |
-| B6-1…6 | [06 §3–5 + 附录 A](./06-s6-message-notification.md) | 06 §10 + A.7 六负向 | message_templates/message_log 两表族 + message_rules 轻表 + human_key ALTER——**≥3 段**（启动时对账） |
-| B2-1…4 | [02 §3 + 附录 A](./02-s2-flow-graph-designer.md) | 02 §8 + A.6 | 零 |
+| B6-1…6 | [06 §3–5 + 附录 A](./06-s6-message-notification.md) | 06 §10 + A.7 六负向 | message_templates/message_log 两表族 + message_rules 轻表 + human_key ALTER——**≥3 段**（启动时对账）；+ 事件分类学约定（06 号 A.1——2026-10-20 回灌） |
+| B2-1…4 | [02 §3 + 附录 A](./02-s2-flow-graph-designer.md) | 02 §8 + A.6 | 零；+ 壳层去耦验收项（02 号 A.2——2026-10-20 回灌） |
 | B10-1…5 | [10 号](./10-s10-ticket-collaboration.md) | 10 号 §验收 + 附录 A.7 | ticket_cc + tags 两表族 + `status_changed_at` ALTER + **`transition_meta` JSONB ALTER**（附录 A.3 四枚） |
-| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表（`transition_meta` 列复用 B10-4 已建——零新 DDL，03 号附录 A.1） |
-| B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | intel_cache 表族 |
+| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表（`transition_meta` 列复用 B10-4 已建——零新 DDL，03 号附录 A.1）；+ B3-3 post_actions 对象形态与 ParamsSchema()（03 号 A.1/A.3——2026-10-20 回灌） |
+| B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | intel_cache 表族；+ 随行件（2026-10-20 回灌）：B4 kind/owner_service·ParamsSchema 钉标（04 号 A.1）、B9-1 缓存层独立包（09 号 §1） |
 
 **迁移 PR 检查单**（每迁移必过，对齐 phase2/00 §5.3 六条 + BK-23）：①编号 A2 对账（§3）；②幂等（IF NOT EXISTS）；③down 可逆且先让位；④唯一索引带 `WHERE deleted_at IS NULL`（软删表）；⑤`testutil` 迁移列表同步 + 新表级联测试；⑥大 DDL 真实 PG 演练 up→down→up + A/B 快照比对（§5.4）。
 
@@ -321,6 +321,8 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 **为什么 asynq 不进主仓**：①唯一的异步通知面可接受丢失（补发无害）；②需要队列的场景（任务执行）已是独立服务 taskrunner 的职责，主仓再起 asynq = 双队列基础设施+双监控面，无场景支撑（与「微服务不拆」同源）。
 
 **升级路径（现成、结构同构、业务代码零改）**：DomainEvent 与 phase3/10 §7 L1 事件设计同构——若「事件绝不丢」成为硬约束，升级 = `Dispatch` 改「同事务写 outbox + asynq/轮询投递」（dd §16 Outbox+Asynq 既定路线）。**触发信号**：①通知必达成合规硬要求；②高一致性跨域消费者增多且对账补偿不足；③多副本部署后钩子扇出成瓶颈。
+
+**调度分工边界（D18，2026-10-20 规划研究回灌定口径——边界成文防再漂）**：进程内 CronScheduler **只承接平台维护型扫描**（超期 / 到期 / 终态对账 / GC——需同进程 DB 事务 + advisory lock 单实例，S10 可观测面覆盖）；业务任务 / 连接器拉取 / 脚本等一切需重试·死信·审计·UI 可见的周期工作**一律 taskrunner**；CronScheduler 不再承接业务任务（研究稿 03-A4 / D18；10 号 cron 设施行同注）。
 
 **Kafka 评估（2026-10-16 所有者问询"需不需要引入 Kafka、变化大吗"——结论：不引入，维持分级方案）**：
 - **量级错配**：Kafka 设计目标=每秒百万级流分发/跨系统日志流；本平台事件量=每天数千~数万条状态变更——四个数量级错配，用 Kafka 运通知=用货运列车送快递；

@@ -45,7 +45,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 - **① 计算字段**：按已填字段公式自动算派生字段。落点 = 字段 schema 扩展（meta 增 `formula`，**承载于新列 `field_meta` JSONB**——附录 A.2 方案 b：`field_options` 为数组形态（select 选项），混载元数据须改对象形态、破坏渲染器/optionValues/存量行消费方，**2026-10-16 外审对齐后采纳新列方案，正文与附录以此为准**）+ **服务端求值为 SSOT**（提交时后端算入 `custom_data`，前端仅预览展示——防篡改，与现有哲学一致）。
 - **② 提交时条件取数回写**：按字段值判断后从数据源取数自动写入字段。落点 = 字段联动规则（数据层自动化，非流程层）；取数走 `DataFetcher` 端口（按 source 类型注册 fetcher——[README §6 对接预留清单](./README.md)）。
-- **③ 编辑时预填 auto_fill（2026-10-16 所有者场景登记——phase6 实际场景驱动；触发驱动挂账不入本段基线，消费者 = phase6 R3）**：与 ① 的语义分层——formula = **强制计算**（服务端 SSOT，人工改无效）；auto_fill = **建议预填**（编辑时实时带出、UI 标注"自动带出可修改"、提交信任用户值）。场景（phase6 R3）：风险事件主机 IP 带入工单系统 IP 字段 + 按 IP 查 **CMDB** 带出责任人——CMDB 即取数白名单（拍板点 2）的首个企业外部源实例（cmdb fetcher，零新拍板）。落点 = `field_meta` 新列扩 `auto_fill` 元数据（触发字段 key + fetcher 类型 + 字段映射，与 formula 同列承载——附录 A.2 方案 b，一枚 ALTER）；**执行时机双态预留**：元数据结构含 timing 标记（提交时/编辑时），**本段实现只做提交时取数（B1-4），编辑时预填留触发驱动**——phase6 R3 启动时消费、届时展开详细设计（交互链：字段 onChange → 轻量取数端点 → 预填+可覆盖）。业界同型：ServiceNow Variable auto-population / Salesforce cross-object lookup 带出 / 低代码「数据联动」；Jira 裸功能无此能力（靠 ScriptRunner 插件补）——真实需求 + 现成范式。
+- **③ 编辑时预填 auto_fill（2026-10-16 所有者场景登记——phase6 实际场景驱动；触发驱动挂账不入本段基线，消费者 = phase6 R3）**：与 ① 的语义分层——formula = **强制计算**（服务端 SSOT，人工改无效）；auto_fill = **建议预填**（编辑时实时带出、UI 标注"自动带出可修改"、提交信任用户值）。场景（phase6 R3）：风险事件主机 IP 带入工单系统 IP 字段 + 按 IP 查 **CMDB** 带出责任人——CMDB 即取数白名单（拍板点 2）的首个企业外部源实例（fetcher = asset-platform——资产平台查询门面，只查询不建台账；2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md；零新拍板）。落点 = `field_meta` 新列扩 `auto_fill` 元数据（触发字段 key + fetcher 类型 + 字段映射，与 formula 同列承载——附录 A.2 方案 b，一枚 ALTER）；**执行时机双态预留**：元数据结构含 timing 标记（提交时/编辑时），**本段实现只做提交时取数（B1-4），编辑时预填留触发驱动**——phase6 R3 启动时消费、届时展开详细设计（交互链：字段 onChange → 轻量取数端点 → 预填+可覆盖）。业界同型：ServiceNow Variable auto-population / Salesforce cross-object lookup 带出 / 低代码「数据联动」；Jira 裸功能无此能力（靠 ScriptRunner 插件补）——真实需求 + 现成范式。
 - **求值器统一为白名单 Go 侧表达式求值器**（phase3/10 §4.2 既定路线；easy-workflow 表达式拼 SQL + 黑名单防注入为反面教材）；选型预置 = **expr-lang/expr**（MIT/活跃/默认沙箱/自定义函数白名单——README §2 选型表）。字段公式（本段）与网关条件（S3）**共用同一件**。
 - **④ 字段级校验规则（2026-10-16 全计划业界对标补——业界表单设计器标配，现仅 required 单档）**：`field_meta.validation`（与 formula/auto_fill 同列承载——附录 A.2 方案 b）：regex 匹配 / 数值 min-max / 文本长度区间；**渲染端 rules 生成 + 服务端提交校验双落**（防绕过——服务端为 SSOT 同 formula 哲学）。量级 +0.5–1 天（随 B1-3 求值器批）。业界同型：JSON Forms validators / Jira field context。
 
@@ -157,7 +157,7 @@ func EvalFormula(expr string, env EvalEnv) (any, error)
 ### A.4 DataFetcher 端口契约（B1-4）
 
 ```go
-type FetchSource struct { Type string; Config json.RawMessage }   // internal_db / activelist / external_http / cmdb(预留)
+type FetchSource struct { Type string; Config json.RawMessage }   // internal_db / activelist / external_http / asset-platform（资产平台查询门面，只查询不建台账——2026-10-20 回灌）
 type DataFetcher interface { Fetch(ctx, src FetchSource, key string) (map[string]any, error) }
 ```
 

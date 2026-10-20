@@ -15,7 +15,7 @@
 | L2 可见集 | 属主（created_by/assigned_to）∨ org 锚点子树 ∪ 委托轴（BK-13 三支 SQL）——**无 watcher 通道** | `internal/service/ticket/resource.go` `GetFilter`/`delegatedVisibilitySQL`（≈:140-176） |
 | 抄送/标签/角标/超时/导出 | **五件零实现**（ticket_cc/tag 表、聚合计数端点、timeout_minutes、审计/工单导出端点均不存在，2026-10-15 grep 核实；zhuzhao 仓内零 excelize/CSV 导出） | — |
 | keyword 搜索 | title ILIKE（转义）+ 纯数字 ID 精确匹配 | `internal/repository/ticket_repo.go` ListTickets 条件构造（≈:145-154） |
-| cron 设施 | P4 收归的进程内 CronScheduler（ticker + pg advisory lock + ReentrantJob 契约）已就位，现仅 audit_archive 一任务；**无清单读端点/上次成功时间/失败告警** | `internal/service/cron_scheduler.go`；`internal/app/app.go:52-61,104` |
+| cron 设施 | P4 收归的进程内 CronScheduler（ticker + pg advisory lock + ReentrantJob 契约）已就位，现仅 audit_archive 一任务；**无清单读端点/上次成功时间/失败告警**。**调度分工口径（2026-10-20 规划研究回灌，D18，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）**：CronScheduler 只承接平台维护型扫描（超期 / 到期 / 对账 / GC），业务 / 拉取 / 脚本类周期工作一律 taskrunner——本段 timeout_scan 属维护型，骑 CronScheduler 口径成立；phase6 三个扫描任务同理 | `internal/service/cron_scheduler.go`；`internal/app/app.go:52-61,104` |
 | SLA 死存储 | `tickets.sla_due_at` / `ticket_types.default_sla_hours` **从不写入**（只读兼容） | `internal/model/ticket.go:21,46` |
 | 通知依赖 | 抄送可见性通知/超时通知的通道与模板 = S6 交付物 | [06-s6](./06-s6-message-notification.md) |
 

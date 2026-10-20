@@ -69,7 +69,7 @@
 - **先行批已落地（2026-10-13，zhuzhao-ui 直提、未随本段立项）**：运行序号列与筛选（taskrunner `GET /v1/runs` 增 `id` 输出列与 `id` 精确筛选——小改随观察环境生效）；提交任务=运行记录页首主按钮+对话框（admin=任务定义下拉自动补全（label=description）、带出定义级默认参数、无参定义隐藏参数区；operator 暂保持 action 输入）；Tab 重排为 运行记录/任务定义/死信+死信红点徽标。S4 启动时在此之上增强、不推倒。
 - **队列水位精确化（登记挂账，2026-10-13 用户巡检提出；2026-10-15 核对收窄）**：~~缺聚合水位~~——**前端近似水位条已随 2026-10-13 交互批落地**（页首排队/执行/失败/死信计数，30s 轮询；数据=runs 端点按 status 各拉 total，零后端改动，语义=job_runs 表态非队列瞬时深度）；挂账项收窄为**精确队列瞬时深度**（taskrunner asynq Inspector 队列统计端点，zhuzhao 代理透传，前端水位条数据源切换）；触发=任务量上来出现积压排查需求；量级≈半天（taskrunner 端点+代理路由+前端数据源切换各一小段）。详录=[04-s4 §2/§3.5](./04-s4-task-console-ux.md)。
 - **S4 启动登记（2026-10-13 任务中心 UX 评审产出）**：① **operator 选单依赖动作注册表读端点**——`/jobs` 数据面 admin 专属（B13 权限边界），operator 提交选单需按 task:submit 口径的动作只读端点，权限归属启动拍板；② **死信并入运行记录状态筛选**——前置=确认死信行与 job_runs 一一对应（taskrunner 聚合查询），收敛后 Tab 减为两个；③ 远期 params schema 动态表单即上文「两步走」后半，勿重复立项。
-- **任务域可能需求备忘（2026-10-09 所有者提出；⚠ 保留争议、仅记录、不排期——不进基线段/量级总账/拍板清单，不影响本 phase 任何规划口径）**：设想方向 = 任务管理支持**上传自定义脚本运行** + 定时策略 + **脚本输出（stdout）回显** + 工单流程中编排。**争议保留点**：上传脚本 = 平台代行任意代码（安全/沙箱/许可均未议），所有者未做任何推进定性，本备忘不构成 15 号 🚦 项的触发信号。既有资产备查（若未来启动直接复用、勿重新调研）：[15 号](../phase3/15-script-platform-dagu-vs-inhouse.md) 2026-09-03 已完成 Dagu（GPL）vs 自研 Asynq 完整选型调研后降级 🚦（其 §1 原始需求与本设想近似；§7 五个待拍板点 = 许可/沙箱/依赖策略/PoC/安全合并），[16 号](../phase3/16-external-integration.md) taskrunner「不做」清单同款「用户上传脚本（🚦 按需再启）」；增量点仅二 = stdout 回显（15 号未单列）与流程中编排（落点 = S3 动作库「提交任务」理想态既有登记，非 DAG——16 号红线不碰）。§3 工单动作域红线与本备忘无关（该行已加域限定注记）。**是否启动、何时启动、走哪条路线，全部留待所有者后续明确。**
+- **任务域可能需求备忘（2026-10-09 所有者提出；⚠ 保留争议、仅记录、不排期——不进基线段/量级总账/拍板清单，不影响本 phase 任何规划口径）**：设想方向 = 任务管理支持**上传自定义脚本运行** + 定时策略 + **脚本输出（stdout）回显** + 工单流程中编排。**争议保留点**：上传脚本 = 平台代行任意代码（安全/沙箱/许可均未议），所有者未做任何推进定性，本备忘不构成 15 号 🚦 项的触发信号。既有资产备查（若未来启动直接复用、勿重新调研）：[15 号](../phase3/15-script-platform-dagu-vs-inhouse.md) 2026-09-03 已完成 Dagu（GPL）vs 自研 Asynq 完整选型调研后降级 🚦（其 §1 原始需求与本设想近似；§7 五个待拍板点 = 许可/沙箱/依赖策略/PoC/安全合并），[16 号](../phase3/16-external-integration.md) taskrunner「不做」清单同款「用户上传脚本（🚦 按需再启）」；增量点仅二 = stdout 回显（15 号未单列）与流程中编排（落点 = S3 动作库「提交任务」理想态既有登记，非 DAG——16 号红线不碰）。§3 工单动作域红线与本备忘无关（该行已加域限定注记）。**是否启动、何时启动、走哪条路线，全部留待所有者后续明确。**（2026-10-20 注：已进入 phase7/8 规划视野——研究稿 `deliverables/software-company/secops-platform-vision-2026-10/`，所有者同日明确「公司 SOAR 过渡编排、能力先迁、编排终态迁回平台」；**本 phase 口径不变、仍不排期**；04 号 §3.6 同注）
 
 ### P5-S5 对象存储底座与富媒体（RustFS——2026-10-16 后端拍定，原 MinIO；后端底座 + 前端上传面）
 
@@ -208,6 +208,11 @@
 | `DataFetcher`（字段联动取数） | S1 | 按 source 类型注册 fetcher | 取数源白名单 |
 | 对象存储客户端 | S5 | S3 兼容接口已是抽象形态（**RustFS**/OSS 仅配置切换——2026-10-16 拍定） | 生产对象存储 |
 | `RiskSourceConnector`（风险源接入） | phase6 R1（跨段引用） | Ingest 事件→风险单——第一档=手动+上报 API，扫描器/SIEM 连接器=二档 | 扫描器/SIEM（详见 phase6 §3） |
+| `IngestSource` / `SourceAdapter`（统一接入：推/拉） | phase6 新段（跨段引用；03 演进总表"通用数据录入接口"行） | 推：上报 API + webhook 入口站；拉：http-pull / db-pull / file-pull + `ingest_sources` 水位表；每源一 normalizer（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md） | 漏扫结果平台（首源）→ SOC / 日志平台告警 |
+| `AssetResolver`（资产查询门面） | phase6 R3 / 告警路由（跨段引用） | `Resolve(identifiers) / List(kind, org)`——调外部资产平台，字段归一 + 键映射 + 可选读穿缓存；实体存 asset_ref + asset_snapshot，**不建台账**（2026-10-20 回灌） | 公司资产平台 |
+| `Connector`（声明式出站连接器） | phase7（跨段引用） | HTTP 连接器通用件：auth 类型族 / 限流 / 熔断 / 健康；operation → `actions(kind=connector)`（2026-10-20 回灌） | SOC / SOAR / 资产平台 / 智能体平台 |
+| `ScriptExecutor`（沙箱执行端） | phase8（跨段引用） | taskrunner 第二执行端；契约 = manifest + stdin/stdout/stderr/env/exit code（2026-10-20 回灌） | —（内部） |
+| `AgentProvider`（AI 智能体平台） | 终态（跨段引用） | 出：智能体为能力来源（kind=agent 连接器）；入：产出经统一接入层；反向：Action/MCP 暴露 + on-behalf-of（2026-10-20 回灌） | 公司 AI 智能体平台 |
 
 （taskrunner/activelist 的服务寻址已 config 化 BindEnv，三栈容器化随迁，无额外预留项。）
 

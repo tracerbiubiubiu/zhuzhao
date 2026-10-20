@@ -109,6 +109,8 @@ zhuzhao-ui/
   src/views/ticket/type/index.vue       # 画布模式 tab 与 JSON 源码模式共存（同一 Pinia store 单一数据源）
 ```
 
+- 随行件（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）：壳层 `FlowGraphDesigner/index.vue` 数据经 props/emit，不直连工单 Pinia store——为 phase10 playbook 设计器复用画布层预留；不越本稿"不合并通用流程模块"红线。
+
 - **后端零改动**兑现：产物序列化回既有 `PUT /ticket-types/:code`（states/transitions + version CAS），无新端点/迁移。
 - **节点坐标不入库（⚠ 设计决策）**：transitions JSONB 无 x/y，布局数据是**本地视图偏好**——存 localStorage（按 type_code），重开无缓存时 dagre 自动布局；不为此加 type 级 layout 列（守住"后端零改动"承诺，多端打开各自动布局可接受）。
 

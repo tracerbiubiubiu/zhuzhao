@@ -134,6 +134,8 @@ func (r *HookRegistry) Dispatch(ev DomainEvent)                // 每订阅者�
 - **域无关兑现**：DomainEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名已拍（拍板点 4，2026-10-16）**：通用 `DomainEvent`/`DomainHook`——原 TicketEvent 系措辞废止（结构不变，本节已按新名改写）；
 - **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Action 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
 
+**事件分类学约定（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md，D20）**：`Action = <biz_type>.<verb>`，verb 取固定词表——实体类 created / updated / status_changed / assigned / commented / closed / reopened / deleted；执行类（run）started / succeeded / failed / canceled / dead / timed_out；系统类 ops.*。`updated` 事件 Payload 必带 `changes: [{field, from, to}]`。每个 Action 预留 payload JSON Schema 登记位（第一档可为空）。零代码约定，防 phase7 运行类事件接入时重命名。
+
 ### A.2 表族 DDL（迁移全文级，编号启动对账）
 
 ```sql

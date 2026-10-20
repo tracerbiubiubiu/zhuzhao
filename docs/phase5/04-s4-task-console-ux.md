@@ -53,7 +53,7 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 
 ### 3.6 任务域需求备忘（保留争议，不排期）
 
-所有者 2026-10-09 设想 = 任务支持**上传自定义脚本运行** + 定时策略 + **stdout 回显** + 工单流程中编排。**争议保留点**：上传脚本 = 平台代行任意代码（安全/沙箱/许可均未议），本备忘**不构成 15 号 🚦 触发信号**、不进基线/量级/拍板清单。既有资产备查（启动时直接复用勿重新调研）：[phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) Dagu(GPL) vs 自研完整选型（§7 五待拍板 = 许可/沙箱/依赖策略/PoC/安全）、16 号「用户上传脚本 🚦 按需再启」；增量点仅二 = stdout 回显（15 号未单列）与流程中编排（落点 = S3 动作库「提交任务」既有登记，非 DAG）。**是否启动全部留所有者。**
+所有者 2026-10-09 设想 = 任务支持**上传自定义脚本运行** + 定时策略 + **stdout 回显** + 工单流程中编排。**争议保留点**：上传脚本 = 平台代行任意代码（安全/沙箱/许可均未议），本备忘**不构成 15 号 🚦 触发信号**、不进基线/量级/拍板清单。既有资产备查（启动时直接复用勿重新调研）：[phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) Dagu(GPL) vs 自研完整选型（§7 五待拍板 = 许可/沙箱/依赖策略/PoC/安全）、16 号「用户上传脚本 🚦 按需再启」；增量点仅二 = stdout 回显（15 号未单列）与流程中编排（落点 = S3 动作库「提交任务」既有登记，非 DAG）。**是否启动全部留所有者。**（2026-10-20：已进入 phase7/8 规划视野——研究稿 deliverables/software-company/secops-platform-vision-2026-10/；本 phase 口径不变，仍不排期）
 
 ## 4. 启动拍板点
 
@@ -113,18 +113,22 @@ GET /api/v1/jobs/actions                # 挂 task:read（拍板点 1 预确认�
   { "action_id": "audit_archive",
     "name": "审计归档",
     "description": "按保留期归档审计日志到 JSONL",
+    "kind": "handler",
+    "owner_service": "zhuzhao",
     "params_schema": {...} | null       # 未声明 schema = null（前端降级 JSON 模式）
 } ], "total": 7 } }
 ```
 
-- **`jobs.Registry` 注册体扩展**：现 `Register(actionID, Handler)` → `Register(actionID, Handler, ActionMeta{Name, Description, ParamsSchema json.RawMessage})`——meta 缺省允许（存量注册零破坏，前端降级）；
+kind / owner_service 为多执行端预留字段（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）。
+
+- **`jobs.Registry` 注册体扩展**：现 `Register(actionID, Handler)` → `Register(actionID, Handler, ActionMeta{Name, Description, ParamsSchema json.RawMessage})`——meta 缺省允许（存量注册零破坏，前端降级）；ParamsSchema 钉为 **JSON Schema draft 2020-12 子集**（与 S1 渲染器、AI 工具定义同语言；2026-10-20 回灌）；
 - **最小读面边界（拍板点 1 预确认口径）**：响应**不含**参数默认值快照/历史运行数据/凭据类字段——动作清单是「能提交什么」，不是「跑过什么」；与 `/jobs` 数据面（admin 专属）语义分离；
 - **命名衔接**（§3.4）：端点响应字段 `action_id` 维持现网关代理组口径；taskrunner 能力目录落地时对齐其 `action_code` 命名（随批）。
 
 ### A.2 fail-fast 预校验（B4-1 随行）
 
 - **落点 = zhuzhao 提交代理 handler**：`POST /jobs`（Create/Trigger 代理）转发前查 `jobs.Registry.Exists(actionID)`——未注册 → 400（errcode 随批登记，如 21010 ErrActionNotRegistered）；
-- **校验范围边界**：zhuzhao registry 只含 **zhuzhao 侧回调动作**——taskrunner 侧任务定义（admin 下拉已有）不经此校验（其合法性由 taskrunner Create 校验，既有）；预校验仅覆盖「zhuzhao 回调型动作」提交路径，注释写明防误扩展。
+- **校验范围边界**：zhuzhao registry 只含 **zhuzhao 侧回调动作**——taskrunner 侧任务定义（admin 下拉已有）不经此校验（其合法性由 taskrunner Create 校验，既有）；预校验仅覆盖「zhuzhao 回调型动作」提交路径；多执行端（脚本沙箱 / 连接器）= phase7+ 按 taskrunner 能力目录方案触发后扩展，当前仅 zhuzhao 回调型（2026-10-20 回灌）。
 
 ### A.3 cron 构造器组件（B4-2，前端）
 
