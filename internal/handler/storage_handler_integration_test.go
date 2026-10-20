@@ -39,6 +39,13 @@ func (d *denyAuth) AuthorizeTicketAttachment(_ context.Context, _, _ int64) erro
 	return errcode.ErrNoPermission
 }
 
+func (d *denyAuth) AuthorizeTicketFileRead(_ context.Context, _, _ int64) error {
+	if d.allow {
+		return nil
+	}
+	return errcode.ErrNoPermission
+}
+
 type hStubClient struct {
 	stat    *pkgstorage.ObjectInfo
 	getBody []byte
@@ -86,7 +93,7 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	svc := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 21, ETag: "etag-h", ContentType: "image/png"}, getBody: []byte("avatar-proxy-bytes")},
 		cfg, slog.Default())
-	h := handler.NewStorageHandler(svc, &denyAuth{})
+	h := handler.NewStorageHandler(svc, &denyAuth{}, nil)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -98,6 +105,8 @@ func newStorageRouter(t *testing.T) (*gin.Engine, int64) {
 	})
 	g.POST("/storage/presign/upload", h.PresignUpload)
 	g.POST("/storage/avatar/bind", h.BindAvatar)
+	g.GET("/tickets/:id/attachments", h.ListAttachments)
+	g.POST("/tickets/attachments/delete", h.DeleteAttachment)
 	g.POST("/tickets/attachments/confirm", h.Confirm)
 	g.GET("/files/*key", h.ProxyDownload)
 	return r, uid
@@ -285,6 +294,21 @@ func TestStorageHandler_Contract(t *testing.T) {
 		w2, env2 := post(t, r2, "/api/v1/storage/avatar/bind", map[string]any{"object_key": "avatars/2026/10/other.png"})
 		assert.Equal(t, http.StatusNotFound, w2.Code)
 		assert.Equal(t, errcode.ErrFileNotFound.Code, env2.Code)
+	})
+
+	t.Run("附件列表——L2 deny 403", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/tickets/999/attachments", nil)
+		w := httptest.NewRecorder()
+		r2.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("删附件——L2 deny 403", func(t *testing.T) {
+		r2, _ := newStorageRouter(t)
+		w2, env2 := post(t, r2, "/api/v1/tickets/attachments/delete", map[string]any{"ticket_id": "1", "object_key": "tickets/x.png"})
+		assert.Equal(t, http.StatusForbidden, w2.Code)
+		assert.Equal(t, errcode.ErrNoPermission.Code, env2.Code)
 	})
 
 	t.Run("代理下载——未知键 404", func(t *testing.T) {

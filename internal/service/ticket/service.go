@@ -641,3 +641,9 @@ func (s *Service) GetTicketTemplate(ctx context.Context, code string) (*model.Ti
 func (s *Service) AuthorizeTicketAttachment(ctx context.Context, userID, ticketID int64) error {
 	return s.authorizeCheck(ctx, userID, "update", strconv.FormatInt(ticketID, 10))
 }
+
+// AuthorizeTicketFileRead 附件下载/列表的 L2 读面（B5-3 批3——A.7：下载=工单
+// L2 可见性 ticket:read 管线）。与 update 面同款结构性注入。
+func (s *Service) AuthorizeTicketFileRead(ctx context.Context, userID, ticketID int64) error {
+	return s.authorizeCheck(ctx, userID, "read", strconv.FormatInt(ticketID, 10))
+}

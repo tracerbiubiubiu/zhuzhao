@@ -51,14 +51,14 @@ func TestDownload_Scenarios(t *testing.T) {
 
 	t.Run("未知键——404", func(t *testing.T) {
 		svc, _ := newDlSvc(t, []byte("x"), "e1")
-		_, err := svc.Download(context.Background(), "avatars/2026/10/nope.png", "")
+		_, err := svc.Download(context.Background(), "avatars/2026/10/nope.png", "", nil)
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
 	})
 
 	t.Run("pending 态同形 404（未 confirm 不可下载）", func(t *testing.T) {
 		svc, _ := newDlSvc(t, []byte("x"), "e1")
 		key := presigned(t, svc, uid, "image/png")
-		_, err := svc.Download(context.Background(), key, "")
+		_, err := svc.Download(context.Background(), key, "", nil)
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
 	})
 
@@ -68,14 +68,14 @@ func TestDownload_Scenarios(t *testing.T) {
 		_, err := testPool.Exec(context.Background(),
 			`UPDATE file_objects SET purpose='ticket_attachment' WHERE bucket=$1 AND object_key=$2`, itBucket, key)
 		require.NoError(t, err)
-		_, err = svc.Download(context.Background(), key, "")
+		_, err = svc.Download(context.Background(), key, "", nil)
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
 	})
 
 	t.Run("If-None-Match 命中——304 哨兵（免重传）", func(t *testing.T) {
 		svc, _ := newDlSvc(t, []byte("body-bytes"), "etag-ok")
 		key := confirmedKey(t, svc)
-		_, err := svc.Download(context.Background(), key, "etag-ok")
+		_, err := svc.Download(context.Background(), key, "etag-ok", nil)
 		assert.ErrorIs(t, err, storageservice.ErrNotModified)
 	})
 
@@ -84,7 +84,7 @@ func TestDownload_Scenarios(t *testing.T) {
 		key := confirmedKey(t, svc) // 库内快照落 etag-v1
 		stub.stat.ETag = "etag-v2"  // 对象被重放替换（当前 etag 漂移）
 		stub.getBody = []byte("evil-replaced")
-		_, err := svc.Download(context.Background(), key, "")
+		_, err := svc.Download(context.Background(), key, "", nil)
 		// 服务层消费 ErrObjectReplaced 哨兵→映射同形 404（检测+告警留痕在层内；
 		// 拍板 1b：不向客户端泄露替换细节）
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err))
@@ -93,7 +93,7 @@ func TestDownload_Scenarios(t *testing.T) {
 	t.Run("成功——流+元数据", func(t *testing.T) {
 		svc, _ := newDlSvc(t, []byte("avatar-bytes-0123"), "etag-live")
 		key := confirmedKey(t, svc)
-		dl, err := svc.Download(context.Background(), key, "")
+		dl, err := svc.Download(context.Background(), key, "", nil)
 		require.NoError(t, err)
 		defer dl.Body.Close()
 		got, err := io.ReadAll(dl.Body)

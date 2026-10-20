@@ -200,3 +200,60 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, u
 	}
 	return nil
 }
+
+// ListAttachmentsByTicket 附件列表视图（JOIN file_objects——B5-3 批3）。
+func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT ta.id, ta.ticket_id, fo.object_key, fo.file_name, fo.mime_type, fo.size_bytes, ta.uploaded_by, ta.created_at
+		FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE ta.ticket_id = $1 ORDER BY ta.id`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.TicketAttachmentView{}
+	for rows.Next() {
+		v := &model.TicketAttachmentView{}
+		if err := rows.Scan(&v.ID, &v.TicketID, &v.ObjectKey, &v.FileName, &v.MIMEType, &v.SizeBytes, &v.UploadedBy, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// GetBoundTicketID 对象绑定的工单（无绑定 → ErrStorageObjectNotFound；
+// 下载面 L2 判定锚点——B5-3 批3）。
+func (r *StorageRepo) GetBoundTicketID(ctx context.Context, objectKey string) (int64, error) {
+	var ticketID int64
+	err := r.db.QueryRow(ctx, `
+		SELECT ta.ticket_id FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE fo.object_key = $1 LIMIT 1`, objectKey).Scan(&ticketID)
+	if err != nil {
+		return 0, ErrStorageObjectNotFound
+	}
+	return ticketID, nil
+}
+
+// UnlinkAttachment 删关联行（0 行 → ErrStorageObjectNotFound）。
+func (r *StorageRepo) UnlinkAttachment(ctx context.Context, ticketID int64, objectKey string) error {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM ticket_attachments
+		WHERE ticket_id = $1 AND file_object_id = (SELECT id FROM file_objects WHERE object_key = $2)`,
+		ticketID, objectKey)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageObjectNotFound
+	}
+	return nil
+}
+
+// MarkObjectDeleted 对象弃旧标 deleted（通用——avatar/附件删除共用）。
+func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, objectKey string) error {
+	_, err := r.db.Exec(ctx, `UPDATE file_objects SET status = 'deleted' WHERE object_key = $1`, objectKey)
+	return err
+}

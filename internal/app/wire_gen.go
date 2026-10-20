@@ -102,7 +102,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	storageService := storageservice.NewService(storageRepo, storageClient, &storageConfig, logger)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo)
 	ticketHandler := handler.NewTicketHandler(ticketService)
-	storageHandler := handler.NewStorageHandler(storageService, ticketService)
+	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)

@@ -49,6 +49,18 @@ type ConfirmFileInput struct {
 	TicketID  *int64 `json:"ticket_id,string,omitempty"`
 }
 
+// TicketAttachmentView 附件列表视图（关联行 JOIN file_objects——B5-3 批3）。
+type TicketAttachmentView struct {
+	ID         int64     `json:"id"`
+	TicketID   int64     `json:"ticket_id,string"`
+	ObjectKey  string    `json:"object_key"`
+	FileName   string    `json:"file_name"`
+	MIMEType   string    `json:"mime_type"`
+	SizeBytes  *int64    `json:"size_bytes,string,omitempty"`
+	UploadedBy int64     `json:"uploaded_by,string"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 // TicketAttachment 工单附件关联行（000046）。
 type TicketAttachment struct {
 	ID           int64     `json:"id"`

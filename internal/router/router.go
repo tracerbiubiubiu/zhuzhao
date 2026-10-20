@@ -375,6 +375,10 @@ func New(deps Deps) *gin.Engine {
 					// phase5 S5 B5-1：confirm 端点（A.4 #2——登录态自服务面；
 					// ticket:update+L2 分流随 B5-3 purpose 扩展）
 					tickets.POST("/attachments/confirm", deps.StorageHandler.Confirm)
+					// B5-3 批3：附件列表（L2 read）/删除（L2 update）——exempt+handler L2
+					//（与 confirm 同款；L1 收敛绑定面随段收口评估）
+					tickets.GET("/:id/attachments", deps.StorageHandler.ListAttachments)
+					tickets.POST("/attachments/delete", deps.StorageHandler.DeleteAttachment)
 				}
 
 				// phase5 S5 B5-1：对象存储（A.4 #1——登录态自服务，catalogExempt 登记）

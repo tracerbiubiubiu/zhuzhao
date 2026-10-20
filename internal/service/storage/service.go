@@ -220,7 +220,7 @@ type Download struct {
 // If-None-Match 命中快照则 304 哨兵 → GetObject 条件读（库内 etag 作
 // If-Match——对象被重放替换即 ErrObjectReplaced，拍板 1b 防御默认开）。
 // B5-2 支持面=avatar（登录态可见，A.7）；ticket 态 L2 管线随 B5-3 扩。
-func (s *Service) Download(ctx context.Context, key, ifNoneMatch string) (*Download, error) {
+func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, ticketAuthz func(ticketID int64) error) (*Download, error) {
 	if s.client == nil {
 		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
@@ -232,9 +232,21 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string) (*Downl
 		s.logger.Error("storage get by key", "err", err)
 		return nil, errcode.ErrInternal
 	}
-	// 同形 404：pending（未确认）/ deleted / 非 B5-2 支持面——不泄露状态差异
-	if f.Status != model.FileStatusConfirmed || f.Purpose != "avatar" {
+	// 同形 404：pending（未确认）/ deleted / 非支持面——不泄露状态差异
+	if f.Status != model.FileStatusConfirmed || (f.Purpose != "avatar" && !ticketPurposes[f.Purpose]) {
 		return nil, errcode.ErrFileNotFound
+	}
+	// ticket 态：须已绑定工单 + L2 回调判定（A.7 下载=工单 L2 可见性）
+	if ticketPurposes[f.Purpose] {
+		ticketID, err := s.repo.GetBoundTicketID(ctx, key)
+		if err != nil {
+			return nil, errcode.ErrFileNotFound
+		}
+		if ticketAuthz != nil {
+			if err := ticketAuthz(ticketID); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if ifNoneMatch != "" && f.ETag != nil && ifNoneMatch == *f.ETag {
 		return nil, ErrNotModified
@@ -296,6 +308,42 @@ func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64
 		}
 	}
 	return f, nil
+}
+
+// ListTicketAttachments 附件列表视图（B5-3 批3；L2 read 面由 handler 编排）。
+func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
+	if s.repo == nil {
+		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
+	list, err := s.repo.ListAttachmentsByTicket(ctx, ticketID)
+	if err != nil {
+		s.logger.Error("storage list attachments", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	return list, nil
+}
+
+// DeleteTicketAttachment 删附件（A.4 #4：删关联+对象弃旧——best-effort 删本体
+// +标 deleted；L2 update 面由 handler 编排）。
+func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string, userID int64) error {
+	if s.client == nil {
+		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
+	if err := s.repo.UnlinkAttachment(ctx, ticketID, objectKey); err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return errcode.ErrFileNotFound
+		}
+		s.logger.Error("storage unlink attachment", "err", err)
+		return errcode.ErrInternal
+	}
+	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
+		s.logger.Warn("storage remove attachment object failed", "key", objectKey, "err", err)
+	}
+	if err := s.repo.MarkObjectDeleted(ctx, objectKey); err != nil {
+		s.logger.Error("storage mark object deleted", "key", objectKey, "err", err)
+	}
+	_ = userID
+	return nil
 }
 
 // InlineDisposition 代理下载 Content-Disposition 分型（inline 前缀表判定）。

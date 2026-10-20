@@ -1950,6 +1950,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/attachments/delete": {
+            "post": {
+                "description": "L2 update 面；删关联行+对象本体 best-effort 删+标 deleted（A.4 #4）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "删除工单附件（删关联+对象弃旧）",
+                "parameters": [
+                    {
+                        "description": "工单 ID+对象键",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DeleteAttachmentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "91003 不存在/非绑定",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/close": {
             "post": {
                 "consumes": [
@@ -2169,6 +2209,56 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/attachments": {
+            "get": {
+                "description": "L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "工单附件列表（JOIN 视图）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -3627,6 +3717,38 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "object_key": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "uploaded_by": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput": {
             "type": "object",
             "required": [
@@ -3956,6 +4078,22 @@ const docTemplate = `{
                 },
                 "timeout_secs": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.DeleteAttachmentInput": {
+            "type": "object",
+            "required": [
+                "object_key",
+                "ticket_id"
+            ],
+            "properties": {
+                "object_key": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },

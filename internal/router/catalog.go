@@ -48,6 +48,8 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/storage/presign/upload":      true,
 	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 L2 随 B5-3）
 	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
+	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
+	"POST /api/v1/tickets/attachments/delete":  true, // B5-3 删附件（L2 update 面）
 	"POST /api/v1/tickets/attachments/confirm": true,
 	"POST /api/v1/user/pats":                   true,
 	"POST /api/v1/user/pats/delete":            true,

@@ -6,11 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
@@ -21,6 +24,7 @@ import (
 // handler 为编排层，A.7「L2 resource.Authorize 调用点」先例）。
 type TicketAuthorizer interface {
 	AuthorizeTicketAttachment(ctx context.Context, userID, ticketID int64) error
+	AuthorizeTicketFileRead(ctx context.Context, userID, ticketID int64) error
 }
 
 // StorageHandler 对象存储端点（phase5 S5，05 号 A.4）。
@@ -28,10 +32,11 @@ type TicketAuthorizer interface {
 type StorageHandler struct {
 	svc        *storageservice.Service
 	ticketAuth TicketAuthorizer
+	auditLog   middleware.AuditLogger // A.4 #5 收窄：仅 ticket 态 200 投递落行
 }
 
-func NewStorageHandler(svc *storageservice.Service, ticketAuth TicketAuthorizer) *StorageHandler {
-	return &StorageHandler{svc: svc, ticketAuth: ticketAuth}
+func NewStorageHandler(svc *storageservice.Service, ticketAuth TicketAuthorizer, auditLog middleware.AuditLogger) *StorageHandler {
+	return &StorageHandler{svc: svc, ticketAuth: ticketAuth, auditLog: auditLog}
 }
 
 // authorizeTicketPurpose ticket 态 purpose 的 L2 编排（无 ticket_id 400；
@@ -138,7 +143,10 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 		writeServiceError(c, errcode.ErrFileNotFound)
 		return
 	}
-	dl, err := h.svc.Download(c.Request.Context(), key, normalizeETag(c.GetHeader("If-None-Match")))
+	dl, err := h.svc.Download(c.Request.Context(), key, normalizeETag(c.GetHeader("If-None-Match")),
+		func(ticketID int64) error {
+			return h.ticketAuth.AuthorizeTicketFileRead(c.Request.Context(), c.GetInt64("userID"), ticketID)
+		})
 	if errors.Is(err, storageservice.ErrNotModified) {
 		c.Status(http.StatusNotModified)
 		return
@@ -163,8 +171,77 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 	c.Header("Content-Disposition", disposition+"; filename*=UTF-8''"+url.PathEscape(f.FileName))
 	c.Status(http.StatusOK)
 	_, _ = io.Copy(c.Writer, dl.Body)
-	// 审计（A.4 #5 收窄）：avatar 免审计；ticket_attachment/ticket_richtext
-	// 的 handler 级审计行（谁/何时/key/结果，仅 200）随 B5-3 接入
+	// 审计（A.4 #5 收窄）：仅 ticket 态 200 全量投递落行（avatar 免——热路径
+	// 写放大；304/404 不落——防写放大）
+	if dl.File.Purpose != "avatar" && h.auditLog != nil {
+		_ = h.auditLog.Insert(c.Request.Context(), middleware.AuditLogEntry{
+			UserID: c.GetInt64("userID"), Method: http.MethodGet,
+			Path: c.Request.URL.Path, StatusCode: http.StatusOK,
+			RequestID: c.GetString("request_id"), CreatedAt: time.Now(),
+		})
+	}
+}
+
+// ListAttachments godoc
+//
+//	@Summary		工单附件列表（JOIN 视图）
+//	@Description	L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size
+//	@Tags			storage
+//	@Produce		json
+//	@Param			id	path int true "工单 ID"
+//	@Success		200	{object}	response.Response{data=[]model.TicketAttachmentView}
+//	@Failure		404	{object}	response.Response
+//	@Router			/api/v1/tickets/{id}/attachments [get]
+func (h *StorageHandler) ListAttachments(c *gin.Context) {
+	ticketID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || ticketID <= 0 {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketAuth.AuthorizeTicketFileRead(c.Request.Context(), c.GetInt64("userID"), ticketID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	list, err := h.svc.ListTicketAttachments(c.Request.Context(), ticketID)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, list)
+}
+
+// DeleteAttachmentInput 删附件请求。
+type DeleteAttachmentInput struct {
+	TicketID  int64  `json:"ticket_id,string" binding:"required"`
+	ObjectKey string `json:"object_key" binding:"required"`
+}
+
+// DeleteAttachment godoc
+//
+//	@Summary		删除工单附件（删关联+对象弃旧）
+//	@Description	L2 update 面；删关联行+对象本体 best-effort 删+标 deleted（A.4 #4）
+//	@Tags			storage
+//	@Accept			json
+//	@Produce		json
+//	@Param			req	body DeleteAttachmentInput true "工单 ID+对象键"
+//	@Success		200	{object}	response.Response
+//	@Failure		404	{object}	response.Response	"91003 不存在/非绑定"
+//	@Router			/api/v1/tickets/attachments/delete [post]
+func (h *StorageHandler) DeleteAttachment(c *gin.Context) {
+	var in DeleteAttachmentInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), in.TicketID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	if err := h.svc.DeleteTicketAttachment(c.Request.Context(), in.TicketID, in.ObjectKey, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // BindAvatar godoc
