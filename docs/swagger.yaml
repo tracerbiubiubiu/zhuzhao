@@ -51,6 +51,9 @@ definitions:
     properties:
       object_key:
         type: string
+      ticket_id:
+        example: "0"
+        type: string
     required:
     - object_key
     type: object
@@ -130,6 +133,13 @@ definitions:
       assigned_to:
         example: "0"
         type: string
+      attachments:
+        description: |-
+          B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+          confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments
+        items:
+          type: string
+        type: array
       custom_data:
         items:
           type: integer
@@ -408,6 +418,9 @@ definitions:
       purpose:
         type: string
       size_bytes:
+        example: "0"
+        type: string
+      ticket_id:
         example: "0"
         type: string
     required:

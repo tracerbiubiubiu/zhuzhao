@@ -2938,6 +2938,10 @@ const docTemplate = `{
             "properties": {
                 "object_key": {
                     "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },
@@ -3045,6 +3049,13 @@ const docTemplate = `{
                 "assigned_to": {
                     "type": "string",
                     "example": "0"
+                },
+                "attachments": {
+                    "description": "B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂\nconfirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "custom_data": {
                     "type": "array",
@@ -3437,6 +3448,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "size_bytes": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
                     "type": "string",
                     "example": "0"
                 }
