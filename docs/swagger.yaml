@@ -570,6 +570,28 @@ definitions:
     required:
     - user_id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView:
+    properties:
+      description:
+        type: string
+      key:
+        type: string
+      min_editor_tier:
+        description: superadmin | admin
+        type: string
+      source:
+        description: config=出厂默认 | kv=运行时覆盖
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        example: "0"
+        type: string
+      value:
+        items:
+          type: integer
+        type: array
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView:
     properties:
       created_at:
@@ -690,6 +712,18 @@ definitions:
     - name
     - priority
     - version
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest:
+    properties:
+      key:
+        type: string
+      value:
+        items:
+          type: integer
+        type: array
+    required:
+    - key
+    - value
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketRequest:
     properties:
@@ -1638,6 +1672,46 @@ paths:
       summary: 对象预签名上传（返回直传 URL——Content-Type 已钉入签名）
       tags:
       - storage
+  /api/v1/system/settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView'
+                  type: array
+              type: object
+      summary: 设置列表（catalog 全量——含有效值/来源/编辑层级）
+      tags:
+      - system
+  /api/v1/system/settings/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 键值对
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新设置（tier 分层+硬底线校验——越界 400）
+      tags:
+      - system
   /api/v1/tasks:
     post:
       consumes:

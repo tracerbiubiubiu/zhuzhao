@@ -30,9 +30,9 @@ type StorageConfig struct {
 	FileCookieSecure bool `mapstructure:"file_cookie_secure"`
 }
 
-// maxUploadBytesCeil 上传上限代码天花板（A.2 注：KV 可覆盖至天花板，
+// MaxUploadBytesCeil 上传上限代码天花板（导出供 B5-6 catalog 硬底线校验）（A.2 注：KV 可覆盖至天花板，
 // 天花板本身不可配——硬底线纪律）。
-const maxUploadBytesCeil = 100 << 20
+const MaxUploadBytesCeil = 100 << 20
 
 // ApplyDefaults 出厂默认（缺省项补齐；显式配置优先——Load 后处理调用）。
 func (c *StorageConfig) ApplyDefaults() {
@@ -91,8 +91,8 @@ func (c *StorageConfig) Validate() error {
 	if ttl <= 0 || ttl > time.Hour {
 		return fmt.Errorf("storage.presign_upload_ttl 须在 (0, 1h]")
 	}
-	if c.MaxUploadBytes <= 0 || c.MaxUploadBytes > maxUploadBytesCeil {
-		return fmt.Errorf("storage.max_upload_bytes 须在 (0, %d]", maxUploadBytesCeil)
+	if c.MaxUploadBytes <= 0 || c.MaxUploadBytes > MaxUploadBytesCeil {
+		return fmt.Errorf("storage.max_upload_bytes 须在 (0, %d]", MaxUploadBytesCeil)
 	}
 	if c.MaxAttachmentsPerTicket > 100 || c.MaxPresignBatch > 100 {
 		return fmt.Errorf("storage.max_attachments_per_ticket/max_presign_batch 上限 100")

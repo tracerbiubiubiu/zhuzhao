@@ -136,6 +136,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000046_ticket_attachments.up.sql",
 			// file_objects 通用归属两列（000047，B5-4 随行件——A2 取号先建占 047，B5-6 顺位 048）
 			"000047_file_objects_owner.up.sql",
+			// system_settings KV 表 + 设置管理页种子（000048，B5-6 配置化）
+			"000048_system_settings.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

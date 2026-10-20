@@ -36,6 +36,9 @@ type Deps struct {
 	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
 	StorageHandler *handler.StorageHandler
 
+	// B5-6 配置化设置管理（biz 组——GET=admin 读 / POST=tier 校验在 service）
+	SettingsHandler *handler.SettingsHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -333,6 +336,13 @@ func New(deps Deps) *gin.Engine {
 				}
 				{
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
+				}
+
+				// B5-6 配置化设置管理（05 号 A.4 #6——biz 组走 CasbinAuth：
+				// GET 绑 system_setting 页面行 / POST 绑 system_setting_update 按钮行）
+				{
+					biz.GET("/system/settings", deps.SettingsHandler.List)
+					biz.POST("/system/settings/update", deps.SettingsHandler.Update)
 				}
 
 				// 工单模块（Phase 2a）

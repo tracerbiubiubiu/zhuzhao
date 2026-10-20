@@ -65,7 +65,7 @@ func TestStorageConfig_Validate(t *testing.T) {
 
 	t.Run("上传上限天花板钳制", func(t *testing.T) {
 		cfg := base()
-		cfg.MaxUploadBytes = maxUploadBytesCeil + 1
+		cfg.MaxUploadBytes = MaxUploadBytesCeil + 1
 		assert.Error(t, cfg.Validate())
 	})
 

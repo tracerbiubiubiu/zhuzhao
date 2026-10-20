@@ -103,6 +103,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, &storageConfig)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
+	settingsRepo := repository.NewSettingsRepo(pool)
+	settingsService := service.NewSettingsService(settingsRepo, &storageConfig, logger)
+	settingsHandler := handler.NewSettingsHandler(settingsService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
 	jobsCallbackService := provideJobsCallbackService(jobsRegistry, jobSubmissionRepo, logger)
@@ -135,6 +138,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatLookup:           patRepo,
 		TicketHandler:       ticketHandler,
 		StorageHandler:      storageHandler,
+		SettingsHandler:     settingsHandler,
 		JWTManager:          manager,
 		Enforcer:            syncedEnforcer,
 		RedisClient:         client,
