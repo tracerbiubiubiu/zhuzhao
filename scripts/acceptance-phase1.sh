@@ -452,9 +452,21 @@ if [ -n "$VIEWER_RID" ]; then
     -d "{\"username\":\"v$SUF\",\"password\":\"pass1234\",\"employee_no\":\"$VEN\",\"role_ids\":[\"$VIEWER_RID\"]}" >/dev/null
   VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
   check "#S5-7 viewer presign L1 放行" "0" "$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"v.png","mime_type":"image/png","size_bytes":"10"}' | json_code)"
+  # B5-4 渲染端点同为 SelfService 登录态面——普通角色亦过 L1
+  check "#S5-8 viewer render L1 放行" "0" "$(curl -s -X POST "$BASE/tickets/richtext/render" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d '{"content":"# v"}' | json_code)"
 else
   skip=$((skip+1)); echo "SKIP #S5-7 viewer presign（种子缺 viewer 角色）"
 fi
+
+# --- S5-8 richtext 渲染 SSOT（B5-4 回归闸 2026-10-21）：服务端白名单渲染——script 丢弃 / h1 保留 / 危险 scheme 消毒 ---
+RR=$(curl -s -X POST "$BASE/tickets/richtext/render" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"content":"# 标题\n\n<script>alert(1)</script>\n\n[x](javascript:alert(2))\n\n![i](/api/v1/files/tickets/a.png)"}')
+check "#S5-8 render code" "0" "$(echo "$RR" | json_code)"
+RH=$(echo "$RR" | json_field "d['data']['html']")
+check "#S5-8 render h1 保留" "yes" "$(echo "$RH" | grep -q '<h1>' && echo yes || echo no)"
+check "#S5-8 render script 丢弃" "yes" "$(echo "$RH" | grep -qi 'alert(1)' && echo no || echo yes)"
+check "#S5-8 render javascript: 消毒" "yes" "$(echo "$RH" | grep -qi 'javascript:' && echo no || echo yes)"
+check "#S5-8 render 稳定 URL 图片保留" "yes" "$(echo "$RH" | grep -q '/api/v1/files/tickets/a.png' && echo yes || echo no)"
+check "#S5-8 render 超限 400" "400" "$(python3 -c "import json;print(json.dumps({'content':'a'*(256*1024+1)}))" | curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/tickets/richtext/render" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' --data-binary @-)"
 
 echo ""
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
