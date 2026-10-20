@@ -226,6 +226,24 @@ func New(deps Deps) *gin.Engine {
 				files.GET("/*key", deps.StorageHandler.ProxyDownload)
 			}
 
+			// phase5 S5 对象存储自服务面（05 号 A.7——S5 评审 P0-1 修复 2026-10-20）：
+			// 五端点=登录态+handler 层 L2 编排（ticket 态 purpose 走 TicketAuthorizer），
+			// 挂 SelfService 标记组（PAT/orgDelegated 同款形态）——原挂 biz 组无标记，
+			// catalogExempt 仅是启动对账豁免不产生运行时跳过，普通角色被 Casbin 全拦。
+			// authed 级 JWT+限流+审计链保留（删附件审计经通用审计中间件落行）。
+			storageSelf := authed.Group("")
+			storageSelf.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			{
+				storageSelf.POST("/storage/presign/upload", deps.StorageHandler.PresignUpload)
+				// B5-2-3：头像回写（A.4 #7 契约行——B5-2 新增）
+				storageSelf.POST("/storage/avatar/bind", deps.StorageHandler.BindAvatar)
+				// A.4 #2 confirm（ticket 态落绑；L2 在 handler 编排层判定）
+				storageSelf.POST("/tickets/attachments/confirm", deps.StorageHandler.Confirm)
+				// B5-3 批3：附件列表（L2 read）/删除（L2 update）——与 confirm 同款
+				storageSelf.GET("/tickets/:id/attachments", deps.StorageHandler.ListAttachments)
+				storageSelf.POST("/tickets/attachments/delete", deps.StorageHandler.DeleteAttachment)
+			}
+
 			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
 			// L1 仅要求认证（SelfService 标记跳过 Casbin enforce——owner/admin 不是
 			// Casbin 角色，纯菜单 L1 会把无全局菜单的委托者挡在 L3 之前）；
@@ -372,21 +390,8 @@ func New(deps Deps) *gin.Engine {
 					tickets.POST("/notes", deps.TicketHandler.CreateNote)
 					tickets.GET("/:id/relations", deps.TicketHandler.ListRelations)
 					tickets.POST("/relations", deps.TicketHandler.CreateRelation)
-					// phase5 S5 B5-1：confirm 端点（A.4 #2——登录态自服务面；
-					// ticket:update+L2 分流随 B5-3 purpose 扩展）
-					tickets.POST("/attachments/confirm", deps.StorageHandler.Confirm)
-					// B5-3 批3：附件列表（L2 read）/删除（L2 update）——exempt+handler L2
-					//（与 confirm 同款；L1 收敛绑定面随段收口评估）
-					tickets.GET("/:id/attachments", deps.StorageHandler.ListAttachments)
-					tickets.POST("/attachments/delete", deps.StorageHandler.DeleteAttachment)
-				}
-
-				// phase5 S5 B5-1：对象存储（A.4 #1——登录态自服务，catalogExempt 登记）
-				storageGroup := biz.Group("/storage")
-				{
-					storageGroup.POST("/presign/upload", deps.StorageHandler.PresignUpload)
-					// B5-2-3：头像回写（A.4 #7 契约行——B5-2 新增）
-					storageGroup.POST("/avatar/bind", deps.StorageHandler.BindAvatar)
+					// phase5 S5 五端点已移 authed 级 SelfService 标记组（storageSelf，
+					// 见 files 组后）——S5 评审 P0-1：biz 无标记时普通角色被 Casbin 全拦
 				}
 
 				// 工单元数据（类型/模板）

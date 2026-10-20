@@ -442,6 +442,20 @@ check "#S6-6 登出后旧 cookie 立即失效" "401" "$(curl -s -o /dev/null -w 
 SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
 SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 
+# --- S5-7 普通角色 L1 放行（S5 评审 P0-1 回归闸 2026-10-20）---
+# viewer 角色无任何 casbin 策略：五端点挂 SelfService 标记组后应过 L1（修复前 403）。
+# 建用户走超管 API（幂等随机工号），presign 即足以证明过链（后续链与角色无关）。
+VIEWER_RID=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+VEN="EV$SUF"
+if [ -n "$VIEWER_RID" ]; then
+  curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+    -d "{\"username\":\"v$SUF\",\"password\":\"pass1234\",\"employee_no\":\"$VEN\",\"role_ids\":[\"$VIEWER_RID\"]}" >/dev/null
+  VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+  check "#S5-7 viewer presign L1 放行" "0" "$(curl -s -X POST "$BASE/storage/presign/upload" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d '{"purpose":"avatar","file_name":"v.png","mime_type":"image/png","size_bytes":"10"}' | json_code)"
+else
+  skip=$((skip+1)); echo "SKIP #S5-7 viewer presign（种子缺 viewer 角色）"
+fi
+
 echo ""
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
 [ "$fail" -eq 0 ]

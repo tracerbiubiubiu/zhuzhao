@@ -43,10 +43,11 @@ var catalogExempt = map[string]bool{
 	"GET /api/v1/auth/captcha":           true, // P4-7 验证码公开端点（匿名获取——登录前置）
 	"GET /api/v1/user/pats":              true, // P4-6 PAT 自服务（SelfService——本人凭据）
 	"GET /api/v1/user/dicts/:code/items": true, // P4-3 字典消费面（SelfService——全员业务表单选项）
-	// phase5 S5 B5-1：对象存储登录态自服务面（A.7——avatar/*_create purpose；
-	// ticket_attachment/richtext 态的 ticket:update+L2 分流随 B5-3 扩后移出豁免）
+	// phase5 S5 对象存储自服务面（05 号 A.7——五端点挂 authed 级 SelfService 标记组
+	// [router storageSelf]，ticket 态 purpose 的 ticket:update+L2 由 handler 编排层
+	// 判定——S5 评审 P0-1 修复 2026-10-20：原挂 biz 无标记致普通角色全 403）
 	"POST /api/v1/storage/presign/upload":      true,
-	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 L2 随 B5-3）
+	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 handler L2）
 	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
 	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
 	"POST /api/v1/tickets/attachments/delete":  true, // B5-3 删附件（L2 update 面）

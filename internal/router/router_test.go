@@ -92,6 +92,27 @@ func TestBizChain_ViewerDenied(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, w.Code, "viewer 访问业务路由应被 Casbin 拒绝")
 }
 
+// S5 评审 P0-1（2026-10-20）：对象存储自服务面五端点必须挂 SelfService 标记——
+// 普通角色（viewer，无任何 casbin 策略）应过链进 handler（零值 handler panic=500 属
+// 预期）。若只挂 biz 无标记，catalogExempt 仅是启动对账豁免、运行时 Casbin 照拦 →
+// 403（评审实证：普通角色头像上传不可用）。
+func TestStorageSelfServiceChain_ViewerAllowed(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodPost, "/api/v1/storage/presign/upload"},
+		{http.MethodPost, "/api/v1/storage/avatar/bind"},
+		{http.MethodPost, "/api/v1/tickets/attachments/confirm"},
+		{http.MethodPost, "/api/v1/tickets/attachments/delete"},
+		{http.MethodGet, "/api/v1/tickets/1/attachments"},
+	} {
+		w := do(r, m, 1, tc.method, tc.path)
+		assert.NotEqual(t, http.StatusForbidden, w.Code,
+			"viewer 过 %s %s 应放行（403=SelfService 标记缺失，S5 自服务面被 Casbin 拦）", tc.method, tc.path)
+		assert.NotEqual(t, http.StatusUnauthorized, w.Code, "JWT 层不应拒绝（stub Redis 已放行）")
+	}
+}
+
 // 零角色用户：自服务路由同样拒绝（70003 语义，自服务白名单不豁免零角色）
 func TestSelfServiceChain_ZeroRolesDenied(t *testing.T) {
 	r, m := newRouterEngine(t, map[int64][]string{1: {}})
