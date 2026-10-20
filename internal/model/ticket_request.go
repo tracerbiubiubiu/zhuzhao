@@ -26,6 +26,10 @@ type UpdateTicketRequest struct {
 	Title       *string `json:"title,omitempty" binding:"omitempty,max=200"`
 	Description *string `json:"description,omitempty"`
 	Priority    *int    `json:"priority,omitempty"`
+	// B5-4 编辑增量绑定（05 号 A.3 a 案）：悬挂 confirmed 对象（attachment_create/
+	// richtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments
+	// 同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点
+	Attachments []string `json:"attachments,omitempty"`
 }
 
 // AssignTicketRequest 分派工单（POST /tickets/assign）
@@ -125,7 +129,7 @@ type UpdateTicketTypeRequest struct {
 type TicketTypeFieldInput struct {
 	FieldKey      string          `json:"field_key" binding:"required,max=50"`
 	FieldLabel    string          `json:"field_label" binding:"required,max=100"`
-	FieldType     string          `json:"field_type" binding:"required,oneof=input textarea number date select multi_select tips"`
+	FieldType     string          `json:"field_type" binding:"required,oneof=input textarea number date select multi_select tips richtext"`
 	FieldOptions  json.RawMessage `json:"field_options"`
 	Required      bool            `json:"required"`
 	ValidateRegex string          `json:"validate_regex" binding:"omitempty,max=200"`

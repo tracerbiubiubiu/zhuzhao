@@ -235,3 +235,82 @@ func b53Code(t *testing.T, err error) int {
 	require.ErrorAs(t, err, &e)
 	return e.Code
 }
+
+// B5-4 编辑增量绑定（05 号 A.3 a 案）：Update(attachments=[...]) 对已建单工单落绑悬挂对象，
+// 与建单同款语义（本人/confirmed/悬挂态/未绑定、重复 400、超上限 400）+ owner 归属 ticket。
+func TestUpdate_TicketAttachmentIncrement(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("编辑保存增量落绑——关联行+purpose 翻正式+归属", func(t *testing.T) {
+		env := newB53Env(t)
+		tk, err := env.svc.Create(ctx, env.createReq(nil), env.u1)
+		require.NoError(t, err)
+
+		k := env.confirmedCreate(t, env.u1, "richtext_create")
+		title := "B5-4 编辑增量"
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: &title, Attachments: []string{k}}, env.u1)
+		require.NoError(t, err)
+
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1 AND uploaded_by=$2`, tk.ID, env.u1).Scan(&n))
+		assert.Equal(t, 1, n, "增量绑定落关联行")
+		var purpose, ownerKind, ownerID string
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT purpose, owner_kind, owner_id FROM file_objects WHERE bucket='b53' AND object_key=$1`, k).
+			Scan(&purpose, &ownerKind, &ownerID))
+		assert.Equal(t, "ticket_richtext", purpose, "purpose 翻正式态")
+		assert.Equal(t, model.FileOwnerTicket, ownerKind)
+		assert.Equal(t, strconv.FormatInt(tk.ID, 10), ownerID)
+	})
+
+	t.Run("仅附件无字段改动也可增量（patch 空字段）", func(t *testing.T) {
+		env := newB53Env(t)
+		tk, err := env.svc.Create(ctx, env.createReq(nil), env.u1)
+		require.NoError(t, err)
+		k := env.confirmedCreate(t, env.u1, "attachment_create")
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Attachments: []string{k}}, env.u1)
+		require.NoError(t, err)
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tk.ID).Scan(&n))
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("他人对象/重复对象拒 400，事务整体回滚", func(t *testing.T) {
+		env := newB53Env(t)
+		tk, err := env.svc.Create(ctx, env.createReq(nil), env.u1)
+		require.NoError(t, err)
+
+		kOther := env.confirmedCreate(t, env.u2, "attachment_create")
+		title := "不应落库"
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Title: &title, Attachments: []string{kOther}}, env.u1)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "他人对象=无效对象 400")
+
+		kMine := env.confirmedCreate(t, env.u1, "attachment_create")
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Attachments: []string{kMine, kMine}}, env.u1)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "同 key 重复 400")
+
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tk.ID).Scan(&n))
+		assert.Equal(t, 0, n, "失败路径零落绑")
+		var gotTitle string
+		require.NoError(t, testPool.QueryRow(ctx, `SELECT title FROM tickets WHERE id=$1`, tk.ID).Scan(&gotTitle))
+		assert.NotEqual(t, title, gotTitle, "绑定失败时字段 patch 同事务回滚")
+	})
+
+	t.Run("超上限 400（既有计数+本次 keys）", func(t *testing.T) {
+		env := newB53Env(t)
+		env.stgCfg.MaxAttachmentsPerTicket = 2
+		tk, err := env.svc.Create(ctx, env.createReq(nil), env.u1)
+		require.NoError(t, err)
+		k1 := env.confirmedCreate(t, env.u1, "attachment_create")
+		k2 := env.confirmedCreate(t, env.u1, "attachment_create")
+		k3 := env.confirmedCreate(t, env.u1, "attachment_create")
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Attachments: []string{k1, k2}}, env.u1)
+		require.NoError(t, err)
+		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Attachments: []string{k3}}, env.u1)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "第 3 个超 max=2 拒")
+	})
+}

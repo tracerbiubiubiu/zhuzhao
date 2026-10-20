@@ -13,7 +13,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 | 项 | 现状 | 锚点 |
 |----|------|------|
 | 渲染器 | 自研七类型轻量渲染器已交付（W4）；**头注释明示：form-create 库引入决策顺延至本设计器批** | zhuzhao-ui `src/views/ticket/create/index.vue:3-8` |
-| 字段类型 | 七种白名单：input/textarea/number/date/select/multi_select/tips | zhuzhao `internal/service/ticket/type_admin.go:24`（`validFieldTypes`） |
+| 字段类型 | 八种白名单：input/textarea/number/date/select/multi_select/tips/**richtext**（第八种 B5-4 后端已扩 2026-10-20，05 号 §6；前端渲染器仍七类型至 ui 批） | zhuzhao `internal/service/ticket/type_admin.go:24`（`validFieldTypes`） |
 | 字段保存 | **全量替换**：事务内先清后插 + 父类型 `version` CAS；**对存量 `custom_data` 零检查** | `internal/repository/ticket_repo.go` `ReplaceTypeFields`（≈:786 起） |
 | 字典（P4-3 已交付） | `/dicts` + `/dict-items` 管理四端点 + 用户侧 `EnabledItems` 读端点 | `internal/router/router.go:199`（EnabledItems）、`:320-325`（管理组） |
 | 字典删除 | dict_types/dict_items **无守卫硬删**（items 级联随删）——挂接字典键后成引用完整性缺口 | `internal/repository/dict_repo.go` `DeleteTypeByCode`（≈:89 起） |

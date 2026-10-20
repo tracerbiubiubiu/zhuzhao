@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
@@ -240,22 +241,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
-	if len(req.Attachments) > 0 {
-		if err := s.storageRepo.BindCreateAttachments(ctx, tx, s.storageCfg.Bucket, actorUserID, ticket.ID, req.Attachments, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
-			if errors.Is(err, repository.ErrStorageObjectNotFound) {
-				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
-			}
-			// 审计 M-3：同 key 重复出现在 attachments → UNIQUE 冲突此前未映射
-			// 落 500（用户输入面应 400）
-			if errors.Is(err, repository.ErrStorageAlreadyBound) {
-				return nil, errcode.New(errcode.ErrInvalidParams.Code, "attachments 含重复对象")
-			}
-			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
-				return nil, errcode.New(errcode.ErrInvalidParams.Code,
-					fmt.Sprintf("工单附件数超过上限（%d）", s.storageCfg.MaxAttachmentsPerTicket))
-			}
-			return nil, fmt.Errorf("bind attachments: %w", err)
-		}
+	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, req.Attachments); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
@@ -299,6 +286,31 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 	}, nil
 }
 
+// bindAttachmentsTx 悬挂对象落绑共用件（B5-3 建单前链 + B5-4 编辑增量——05 号 A.3 a 案）：
+// attachment_create/richtext_create 悬挂 confirmed 对象在调用方事务内校验+落绑+purpose
+// 翻正式。错误映射：无效对象/重复对象/超上限 → 400（用户输入面）；其余上抛 500 面。
+func (s *Service) bindAttachmentsTx(ctx context.Context, tx pgx.Tx, ticketID, actorUserID int64, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	if err := s.storageRepo.BindCreateAttachments(ctx, tx, s.storageCfg.Bucket, actorUserID, ticketID, keys, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
+		}
+		// 审计 M-3：同 key 重复出现在 attachments → UNIQUE 冲突此前未映射
+		// 落 500（用户输入面应 400）
+		if errors.Is(err, repository.ErrStorageAlreadyBound) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含重复对象")
+		}
+		if errors.Is(err, repository.ErrStorageAttachmentLimit) {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("工单附件数超过上限（%d）", s.storageCfg.MaxAttachmentsPerTicket))
+		}
+		return fmt.Errorf("bind attachments: %w", err)
+	}
+	return nil
+}
+
 // Update 更新工单（patch 语义）
 func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, actorUserID int64) (*model.Ticket, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "update", strconv.FormatInt(req.ID, 10)); err != nil {
@@ -326,6 +338,12 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	defer tx.Rollback(ctx)
 	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority)
 	if err != nil {
+		return nil, err
+	}
+	// B5-4 编辑增量绑定（05 号 A.3 a 案）：编辑已建单工单时新贴图/附件（悬挂 confirmed 对象）
+	// 随保存同事务落绑——与建单同款语义。UpdateTx 的 UPDATE 已持工单行锁且先行，
+	// 计数校验无 TOCTOU 窗口（与 ConfirmAndBind 的 FOR UPDATE tickets 同序）。
+	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, req.Attachments); err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{

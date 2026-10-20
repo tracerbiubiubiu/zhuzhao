@@ -20,11 +20,16 @@ const (
 	defaultTransitions = `{"open":["assigned","closed"],"assigned":["in_progress","open"],"in_progress":["pending_verify","rejected","closed"],"pending_verify":["closed","in_progress"],"closed":["open"],"rejected":["open"]}`
 )
 
-// 允许的字段类型（7 种，12-frontend §3.1 DynamicFormField 同构）
+// 允许的字段类型（8 种，12-frontend §3.1 DynamicFormField 同构；richtext 第八种=B5-4，
+// 05 号 §6——存储态 MD 源文本、服务端白名单渲染为 SSOT，只增不改）
 var validFieldTypes = map[string]bool{
 	"input": true, "textarea": true, "number": true, "date": true,
-	"select": true, "multi_select": true, "tips": true,
+	"select": true, "multi_select": true, "tips": true, "richtext": true,
 }
+
+// richtextMaxBytes richtext 字段 MD 源文本上限（防 custom_data JSONB 慢性膨胀——图片走对象存储
+// 稳定 URL、禁 base64 内联为既定纪律，正文 256 KiB 远超工单叙述需求）；可随 B5-6 限制配置化入 KV。
+const richtextMaxBytes = 256 << 10
 
 // CreateTicketType 新建类型（states/transitions 缺省默认图）
 func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketTypeRequest) (*model.TicketType, error) {
@@ -300,6 +305,15 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		var sv string
 		if err := json.Unmarshal(raw, &sv); err != nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为字符串", f.FieldKey))
+		}
+	case "richtext":
+		// MD 源文本（存储态纯文本——05 号 §6）；渲染/消毒在服务端出站侧，入站只收字符串+上限
+		var sv string
+		if err := json.Unmarshal(raw, &sv); err != nil {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为 Markdown 字符串", f.FieldKey))
+		}
+		if len(sv) > richtextMaxBytes {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 正文超过 %d KiB 上限", f.FieldKey, richtextMaxBytes>>10))
 		}
 	case "number":
 		var nv float64

@@ -3779,7 +3779,8 @@
                         "date",
                         "select",
                         "multi_select",
-                        "tips"
+                        "tips",
+                        "richtext"
                     ]
                 },
                 "required": {
@@ -3887,6 +3888,13 @@
                 "id"
             ],
             "properties": {
+                "attachments": {
+                    "description": "B5-4 编辑增量绑定（05 号 A.3 a 案）：悬挂 confirmed 对象（attachment_create/\nrichtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments\n同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
