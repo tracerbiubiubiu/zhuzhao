@@ -155,6 +155,18 @@ func TestTicketAttachment_Scenarios(t *testing.T) {
 		assert.Equal(t, 0, n, "建单前态 confirm 不落 ticket_attachments（A.5 建单前链）")
 	})
 
+	// M7 变异边界回归（2026-10-22）：size 恰好等于上限应放行（> 而非 >=）。
+	// 变异测试发现 `>` 改 `>=` 后无测试捕获——本测试杀死该变异。
+	t.Run("size 恰好等于上限放行（M7 变异边界）", func(t *testing.T) {
+		svc := newSvc(t)
+		resp, err := svc.PresignUpload(context.Background(), &model.PresignUploadInput{
+			Purpose: "avatar", FileName: "boundary.png", MIMEType: "image/png",
+			SizeBytes: 10 << 20, // 恰好 = ApplyDefaults 的 MaxUploadBytes=10MB
+		}, uid)
+		require.NoError(t, err, "size==上限应放行（> 而非 >=）")
+		assert.NotEmpty(t, resp.ObjectKey)
+	})
+
 	// S5 评审 P1（2026-10-20）：个数上限执行点——05 号 §3 限制矩阵「confirm 计数校验」。
 	// 小上限（3）实证：前 3 个成功、第 4 个 400（修复前零执行点全放行）。
 	t.Run("附件数超上限拒——confirm 计数校验", func(t *testing.T) {
