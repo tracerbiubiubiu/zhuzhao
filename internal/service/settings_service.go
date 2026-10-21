@@ -103,6 +103,25 @@ var settingsCatalog = []settingKey{
 			}
 		},
 	},
+	{
+		// 05 号 §3 可配四类之一（大小/个数/MIME/孤儿 GC 天数）——S5 收口后评审
+		// 补批 2026-10-21：首版 catalog 漏此键（GC 阈值只能 config 重启改）。
+		Key: "storage.orphan_gc_days", MinTier: "superadmin",
+		Description: "孤儿对象 GC 阈值天数（pending 超此天数未 confirm 即回收）",
+		Validate: func(v json.RawMessage) error {
+			var n int
+			if err := json.Unmarshal(v, &n); err != nil || n < 1 || n > 365 {
+				return fmt.Errorf("须为 1–365 整数")
+			}
+			return nil
+		},
+		Apply: func(v json.RawMessage, c *storcfg.StorageConfig) {
+			var n int
+			if json.Unmarshal(v, &n) == nil {
+				c.OrphanGCDays = n
+			}
+		},
+	},
 }
 
 // SettingsService 设置管理服务（B5-6——GET 列表 + POST 更新，tier 分层+硬底线钳制）。
@@ -166,7 +185,8 @@ func (s *SettingsService) List(ctx context.Context) ([]model.SettingView, error)
 }
 
 // Update 更新设置：tier 校验 → 硬底线 Validate → KV upsert → in-memory Apply。
-// 审计：POST 经 authed 级通用审计中间件自动留痕（who/when/old→new body）。
+// 审计双留痕：①POST 经 authed 级通用审计中间件（who/when/path/新值 body）；
+// ②旧值→新值由本处日志补位（A.7「旧值→新值」——中间件 body 只含新值，评审补批 2026-10-21）。
 func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRequest, actorUserID int64, actorRoles []string) error {
 	var sk *settingKey
 	for i := range settingsCatalog {
@@ -187,13 +207,21 @@ func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRe
 	if err := sk.Validate(req.Value); err != nil {
 		return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("值非法：%s", err))
 	}
+	// 旧值快照（upsert 前读——A.7 变更审计的旧值侧；首次更新记 -）
+	oldVal := "-"
+	if old, err := s.repo.Get(ctx, req.Key); err != nil {
+		s.logger.Warn("settings: read old value failed (audit old_value=-)", "key", req.Key, "err", err)
+	} else if old != nil {
+		oldVal = string(old.Value)
+	}
 	// KV upsert
 	if err := s.repo.Upsert(ctx, req.Key, req.Value, actorUserID); err != nil {
 		return err
 	}
 	// in-memory apply（运行时生效——单实例）
 	sk.Apply(req.Value, s.cfg)
-	s.logger.Info("setting updated", "key", req.Key, "by", actorUserID)
+	s.logger.Info("setting updated", "key", req.Key, "by", actorUserID,
+		"old_value", oldVal, "new_value", string(req.Value))
 	return nil
 }
 
@@ -225,6 +253,9 @@ func (s *SettingsService) defaultValue(key string) json.RawMessage {
 		return b
 	case "storage.allowed_mime_types":
 		b, _ := json.Marshal(s.cfg.AllowedMIMETypes)
+		return b
+	case "storage.orphan_gc_days":
+		b, _ := json.Marshal(s.cfg.OrphanGCDays)
 		return b
 	}
 	return json.RawMessage(`null`)

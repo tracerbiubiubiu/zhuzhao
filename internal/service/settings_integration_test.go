@@ -4,7 +4,9 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,15 +42,71 @@ func newSettingsSvc(t *testing.T) (*service.SettingsService, *storcfg.StorageCon
 func TestSettings_CatalogAndCRUD(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("列表返回四键全 config 来源", func(t *testing.T) {
+	t.Run("列表返回五键全 config 来源", func(t *testing.T) {
 		svc, _, _ := newSettingsSvc(t)
 		list, err := svc.List(ctx)
 		require.NoError(t, err)
-		assert.Len(t, list, 4, "catalog 四键")
+		assert.Len(t, list, 5, "catalog 五键（S5 收口后评审补批 +orphan_gc_days）")
 		for _, v := range list {
 			assert.Equal(t, "config", v.Source)
 			assert.Equal(t, "superadmin", v.MinEditorTier, "存储限制类默认 superadmin-only")
 		}
+	})
+
+	// S5 收口后评审补批（2026-10-21）：05 号 §3 可配四类漏了孤儿 GC 天数——
+	// catalog 补 storage.orphan_gc_days（Validate 1–365 + Apply）。
+	t.Run("orphan_gc_days 可配——KV 生效+指针 mutate", func(t *testing.T) {
+		svc, cfg, uid := newSettingsSvc(t)
+		require.Equal(t, 7, cfg.OrphanGCDays, "出厂默认 7（ApplyDefaults）")
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.orphan_gc_days", Value: []byte(`3`),
+		}, uid, []string{"superadmin"}))
+		assert.Equal(t, 3, cfg.OrphanGCDays, "in-memory apply 立即生效（GC 阈值随之可调）")
+	})
+
+	t.Run("orphan_gc_days 越界负向", func(t *testing.T) {
+		svc, _, uid := newSettingsSvc(t)
+		for _, tc := range []struct{ name, val string }{
+			{"零值", `0`},
+			{"超 365", `366`},
+			{"非整数", `"x"`},
+		} {
+			err := svc.Update(ctx, &model.UpdateSettingRequest{
+				Key: "storage.orphan_gc_days", Value: []byte(tc.val),
+			}, uid, []string{"superadmin"})
+			require.Error(t, err, tc.name)
+		}
+	})
+
+	// 同批：变更审计补旧值留痕（A.7「谁/何时/旧值→新值」——通用审计中间件
+	// body 只含新值，旧值经服务端日志补位）。
+	t.Run("更新留痕含旧值→新值", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM system_settings`)
+		})
+		var uid int64
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`INSERT INTO users (employee_no, username, password, status) VALUES ($1, $1, 'hash', 1) RETURNING id`,
+			"SETOLD"+uniqueSuffix()).Scan(&uid))
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid)
+		})
+		var buf bytes.Buffer
+		cfg := &storcfg.StorageConfig{}
+		cfg.ApplyDefaults()
+		svc := service.NewSettingsService(repository.NewSettingsRepo(testPool), cfg,
+			slog.New(slog.NewTextHandler(&buf, nil)))
+
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`10`),
+		}, uid, []string{"superadmin"}))
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`15`),
+		}, uid, []string{"superadmin"}))
+		out := buf.String()
+		assert.Contains(t, out, "old_value=-", "首次更新无旧值记 -")
+		assert.Contains(t, out, "old_value=10", "二次更新须留旧值 10")
+		assert.Contains(t, out, "new_value=15")
 	})
 
 	t.Run("superadmin 更新→KV 生效→config 指针被 mutate", func(t *testing.T) {
