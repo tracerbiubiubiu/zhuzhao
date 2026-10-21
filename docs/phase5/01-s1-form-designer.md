@@ -25,7 +25,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 ### 3.1 可视化设计器（前端为主）
 
 - **启动首件 = 设计器选型拍板**。**推荐自研**：sortablejs 拖拽排序 + 属性面板，产物即 field schema **零映射**；form-create designer 作**半天 spike 对照**——其 rules/options 组件树 JSON 与规范化 schema 不同构，引入需双向映射器 + 面板裁剪到七类型，高级布局能力用不上，**模型税大于成熟度收益**（phase4/02 深水区教训同源）。
-- **选型论证深化（2026-10-15 业界对标讨论落档）**：
+- **选型论证深化（2026-10-15 业界对标讨论落档；2026-10-21 措辞校正——Jira 表单能力来自 ProForma 收购（2019）非自研，业界准确表述=「自建或收编，不引开源表单库」）**：
   - **正论升级——view model ≠ domain model**：业界主流无一把渲染器组件实例树存库——Jira/ServiceNow/Salesforce/Dynamics 均「字段定义（封闭类型枚举）与布局配置分离」；nocobase collection/block 同构分离；[JSON Forms](https://jsonforms.io/docs/uischema) 将其标准化为 JSON Schema（数据契约）+ UI Schema（视图）双层。存储契约三性质：服务端可校验（G2/custom_data 管线依赖）、跨端中立（详情回显/S6 模板引用/S3 条件/S7 AI 填表消费）、纯声明式（rules 的 on/hook/update 为**函数体**，JSONB 不可存且成注入面）。**本仓 schema 已在业界主流侧，差距在配置体验层（= 本段本体），不在模型层**。
   - **生态情报**：Vue3 表单设计器开源面狭窄——formily 2025 起 unmaintained、designable 以 React 为主（Vue3 支持有限）、form-generator 类停更，活跃项唯 form-create——「成熟方案替代」并无更优候选，单点上游集中度反而加分自研。
   - **四路线代价账**：整体引入（designer+rules 入库）≈2–4 周一次性 + 永久映射税 + 服务端开放集校验重做，业界无人走；自研 ≈1–2 周（已入总账）+ 每新类型 1–2 天三处线性扩；SaaS 表单（Jotform/简道云类）内网+IAM 集成不可行；**form-create runtime 作渲染引擎 = 正式备选**（schema→rules **单向投影**、只渲染不保存——无往返漂移，白拿其 validate 数组/control 渲染层能力，≈2–3 天可启用；触发 = 渲染层联动需求变重时重评，本段边界 §5 不变）。
@@ -163,8 +163,15 @@ type DataFetcher interface { Fetch(ctx, src FetchSource, key string) (map[string
 
 - registry 按 Type 注册（`internal/pkg/datafetcher/registry.go`，app.go 装配）——白名单外的 Type 拒启/拒执（fail-closed，拍板点 2 落点）；
 - **取数执行时机**：`Submit` 事务内、formula 重算**之前**（取数结果可被 formula 引用）；**失败策略** = 取数失败不阻塞提交、目标字段留空 + `linkage_missed` 事件（与分派失败⑤同哲学）——⚠ 启动批确认；
-- **取数身份**（拍板点 3）：默认系统身份（service 账号）；外部 HTTP 走 dd §26.6 出站决策树；
-- 超时钳制 3s/次、单次提交取数 ≤3 个字段（防提交被外部源拖死）。
+- **取数身份**（拍板点 3，2026-10-21 修正后拍定——按源三分治）：
+  - `internal_db` = **发起人身份**（查询注入发起人 L2 范围，取不到即留空）——理由 = 回写即探测：发起人可控字段值 → Submit 事务内 fetcher → 结果写 custom_data → 发起人可见；若用系统身份则 fetcher 能读到发起人 L2 看不到的行（建单即泄露通道）。此理由 2026-10-21 外审核验发现，原文档（"默认系统身份"）未评估此面；
+  - `activelist` = **服务身份**——ADR-003：activelist 零权限检查、X-Operator 仅入 AK/SK 签名覆盖做审计归因（非权限边界）、独立服务+独立库。用户身份在此**不产生行级过滤效果**，只多一个审计标签；
+  - `asset-platform` / `external_http` = **服务身份** + 平台侧只回填非敏感白名单字段（外部系统鉴权形态待 X5 契约确认后细化）；
+  - ~~默认系统身份~~（原已拍口径保留留痕——与"internal_db 用发起人"不矛盾：按源分治取代全局默认）；
+- **取数限流与审计**（2026-10-21 A 类登记入 A.4——核验批补点，非拍板项）：
+  - **限流**：per-source fail-fast——命中即按既有失败策略降级（留空 + `linkage_missed`），**不排队等待**（取数在 Submit 事务内，排队会拉长事务占锁）；Redis 故障时不照抄路由中间件 503 fail-close（会让建单直接炸），改 fail-open 跳过限流（写 Warn 日志）；阈值 config 化（`datafetcher.rate_limit_per_source`，维度 = per source × per request，默认并发 ≤3 / 60s 窗口 ≤10 次，启动批可调）；
+  - **审计**：每次取数日志含 `operator/source/target/duration/hit`——`operator` 必填（缺了它审计对"谁在探测"零信息；internal_db 用发起人身份时尤其关键——它是唯一能探测 L2 边界的源）；
+- 超时钳制 3s/次、单次提交取数 ≤3 个字段（防提交被外部源拖死——最坏 3×3s=9s 在事务内，限流 fail-fast 是唯一防线）。
 
 ### A.5 设计器交互规格
 
