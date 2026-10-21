@@ -59,6 +59,7 @@ type TicketTypeField struct {
 	FieldLabel    string          `json:"field_label" db:"field_label"`
 	FieldType     string          `json:"field_type" db:"field_type"`
 	FieldOptions  json.RawMessage `json:"field_options,omitempty" db:"field_options"`
+	FieldMeta     json.RawMessage `json:"field_meta,omitempty" db:"field_meta"` // B1-3 formula/extension
 	Required      bool            `json:"required" db:"required"`
 	ValidateRegex string          `json:"validate_regex,omitempty" db:"validate_regex"`
 	SortOrder     int             `json:"sort_order" db:"sort_order"`

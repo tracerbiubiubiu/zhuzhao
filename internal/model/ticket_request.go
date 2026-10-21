@@ -148,6 +148,7 @@ type TicketTypeFieldInput struct {
 	FieldLabel    string          `json:"field_label" binding:"required,max=100"`
 	FieldType     string          `json:"field_type" binding:"required,oneof=input textarea number date select multi_select tips richtext"`
 	FieldOptions  json.RawMessage `json:"field_options"`
+	FieldMeta     json.RawMessage `json:"field_meta,omitempty"` // B1-3 formula/extension（附录 A.2 方案 b）
 	Required      bool            `json:"required"`
 	ValidateRegex string          `json:"validate_regex" binding:"omitempty,max=200"`
 	SortOrder     int             `json:"sort_order"`

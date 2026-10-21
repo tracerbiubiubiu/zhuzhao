@@ -13,6 +13,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -201,6 +202,12 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
 		return nil, err
 	}
+	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
+	// 服务端重算覆盖（前端预览值不可信，篡改负向必测 01 §8）
+	customData, err = s.applyFormulas(ctx, req.TypeCode, customData)
+	if err != nil {
+		return nil, err
+	}
 
 	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
 	// org_path 是 2b scope=group 可见性过滤的依赖列（P2-D1 move 级联维护镜像），
@@ -286,6 +293,44 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 	}, nil
 }
 
+// applyFormulas B1-3 提交链 formula 重算（A.3）：从 field_meta 组装投影 →
+// exprcalc.ApplyFormulas 重算覆盖。custom_data 为 json.RawMessage——解码→重算→重编码。
+func (s *Service) applyFormulas(ctx context.Context, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return customData, err // 无字段即无 formula——透传
+	}
+	var schema []exprcalc.FormulaField
+	for _, f := range fields {
+		if len(f.FieldMeta) == 0 {
+			continue
+		}
+		var meta struct {
+			Formula string `json:"formula"`
+		}
+		if err := json.Unmarshal(f.FieldMeta, &meta); err != nil || meta.Formula == "" {
+			continue
+		}
+		schema = append(schema, exprcalc.FormulaField{Key: f.FieldKey, Formula: meta.Formula})
+	}
+	if len(schema) == 0 {
+		return customData, nil
+	}
+	var data map[string]any
+	if err := json.Unmarshal(customData, &data); err != nil || data == nil {
+		return customData, nil // 空/非法对象——G2 已拦
+	}
+	out, err := exprcalc.ApplyFormulas(schema, data)
+	if err != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return nil, errcode.ErrInternal
+	}
+	return json.RawMessage(b), nil
+}
+
 // bindAttachmentsTx 悬挂对象落绑共用件（B5-3 建单前链 + B5-4 编辑增量——05 号 A.3 a 案）：
 // attachment_create/richtext_create 悬挂 confirmed 对象在调用方事务内校验+落绑+purpose
 // 翻正式。错误映射：无效对象/重复对象/超上限 → 400（用户输入面）；其余上抛 500 面。
@@ -354,6 +399,11 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
 		if err := s.validateCustomData(ctx, ticket.TypeCode, merged); err != nil {
+			return nil, err
+		}
+		// B1-3 formula 重算（同 Create 链——校验后、写前）
+		merged, err = s.applyFormulas(ctx, ticket.TypeCode, merged)
+		if err != nil {
 			return nil, err
 		}
 		customData = merged

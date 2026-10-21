@@ -140,6 +140,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000048_system_settings.up.sql",
 			// file_objects deleted 态部分索引（000049，S5 GC 二扫收敛扫描）
 			"000049_file_objects_deleted_idx.up.sql",
+			// ticket_type_fields field_meta JSONB（000051，S1 B1-3 formula 承载列）
+			"000051_field_meta.up.sql",
 			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
 			"000050_system_settings_version.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时

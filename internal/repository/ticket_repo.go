@@ -509,7 +509,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 // ListTicketTypeFields 查询工单类型字段定义
 func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket type fields: %w", err)
@@ -517,7 +517,7 @@ func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) 
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -842,9 +842,9 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 		f := &fields[i]
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO ticket_type_fields
-				(type_code, field_key, field_label, field_type, field_options, required, validate_regex, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8)`,
-			code, f.FieldKey, f.FieldLabel, f.FieldType, f.FieldOptions, f.Required, f.ValidateRegex, f.SortOrder); err != nil {
+				(type_code, field_key, field_label, field_type, field_options, field_meta, required, validate_regex, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9)`,
+			code, f.FieldKey, f.FieldLabel, f.FieldType, f.FieldOptions, f.FieldMeta, f.Required, f.ValidateRegex, f.SortOrder); err != nil {
 			return fmt.Errorf("insert type field %s: %w", f.FieldKey, err)
 		}
 	}
@@ -858,7 +858,7 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 // ListTicketTypeFieldsAll 管理端全量读取（与只读版同列，含 validate_regex）
 func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list type fields: %w", err)
@@ -866,7 +866,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		return &f, nil

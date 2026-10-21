@@ -627,6 +627,11 @@ definitions:
       field_label:
         maxLength: 100
         type: string
+      field_meta:
+        description: B1-3 formula/extension（附录 A.2 方案 b）
+        items:
+          type: integer
+        type: array
       field_options:
         items:
           type: integer

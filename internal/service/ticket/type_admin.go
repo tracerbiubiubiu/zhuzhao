@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+
 	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
 )
 
 // 000010 默认状态图（新类型缺省；与 DDL DEFAULT 保持一致）
@@ -210,11 +212,32 @@ func validateFieldInputs(inputs []model.TicketTypeFieldInput) ([]model.TicketTyp
 		}
 		f := model.TicketTypeField{
 			FieldKey: in.FieldKey, FieldLabel: in.FieldLabel, FieldType: in.FieldType,
-			FieldOptions: in.FieldOptions, Required: in.Required,
+			FieldOptions: in.FieldOptions, FieldMeta: in.FieldMeta, Required: in.Required,
 			ValidateRegex: in.ValidateRegex, SortOrder: in.SortOrder,
 		}
 		if f.SortOrder == 0 {
 			f.SortOrder = (i + 1) * 10
+		}
+		// B1-3 formula 语法预检：field_meta.formula 非空时编译校验（附录 A.3——
+		// 保存时即拒非法表达式；编译缓存零成本）。formula 只允许 number/input 型。
+		if len(in.FieldMeta) > 0 {
+			var meta struct {
+				Formula string `json:"formula"`
+			}
+			if err := json.Unmarshal(in.FieldMeta, &meta); err != nil {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("field_key %q 的 field_meta 须为 JSON 对象", in.FieldKey))
+			}
+			if meta.Formula != "" {
+				if in.FieldType != "number" && in.FieldType != "input" {
+					return nil, errcode.New(errcode.ErrInvalidParams.Code,
+						fmt.Sprintf("field_key %q：formula 仅允许 number/input 型字段", in.FieldKey))
+				}
+				if err := exprcalc.CheckSyntax(meta.Formula); err != nil {
+					return nil, errcode.New(errcode.ErrInvalidParams.Code,
+						fmt.Sprintf("field_key %q 的 formula 语法错误: %v", in.FieldKey, err))
+				}
+			}
 		}
 		// select/multi_select 选项规整：接受 ["a","b"] 或 [{"label","value"}]；空选项拒绝
 		if in.FieldType == "select" || in.FieldType == "multi_select" {

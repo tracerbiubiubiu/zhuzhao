@@ -3940,6 +3940,13 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
+                "field_meta": {
+                    "description": "B1-3 formula/extension（附录 A.2 方案 b）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "field_options": {
                     "type": "array",
                     "items": {
