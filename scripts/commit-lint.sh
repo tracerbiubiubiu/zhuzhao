@@ -12,6 +12,9 @@
 #   ② 摘要 <=40 字（去前缀按字符计，中文友好）
 #   ③ 摘要结尾不加句号
 #   ④ 主题行与正文之间必须空行
+#   ⑤ swagger 新鲜度（窗口级）：触及 internal/model|handler 的窗口，本地跑
+#      make swag 后 docs 生成物必须零漂移（对齐 CI lint 形态——红窗三次实证
+#      f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」）
 #
 # 退出码：0 全绿 / 1 有违例（可复用于 CI 兜底道）。
 # 违例处置：push 前发现 -> git rebase -i <base> 对应笔 reword（本地历史可改窗口）；
@@ -91,6 +94,37 @@ fi
 if [ "${total}" -eq 0 ]; then
     echo "[OK] commit-lint: no commits in range (all pushed?)"
     exit 0
+fi
+
+# ⑤ swagger 新鲜度（窗口级一次性，对齐 CI lint 形态）——触及注解/模型面的窗口，
+#    本地重跑 swag 后 docs 生成物必须零漂移；漂移 = 生成物过期（第三次红窗实证后前移）。
+swagger_stale=0
+changed_api=$(git diff --name-only "${range}" -- internal/model internal/handler 2>/dev/null)
+if [ -n "${changed_api}" ]; then
+    swag_bin=$(command -v swag || true)
+    if [ -z "${swag_bin}" ]; then
+        gopath=$(go env GOPATH 2>/dev/null || true)
+        if [ -n "${gopath}" ] && [ -x "${gopath}/bin/swag" ]; then
+            swag_bin="${gopath}/bin/swag"
+        fi
+    fi
+    if [ -z "${swag_bin}" ]; then
+        echo "[WARN] swagger gate skipped: swag CLI not found (go install github.com/swaggo/swag/cmd/swag@v1.16.4)"
+    else
+        "${swag_bin}" init -g cmd/server/main.go -o docs --parseDependency --parseInternal >/dev/null 2>&1
+        stale=$(git diff --name-only -- docs/docs.go docs/swagger.json docs/swagger.yaml)
+        if [ -n "${stale}" ]; then
+            swagger_stale=1
+            echo "[FAIL] swagger gate: artifacts stale for this window (api files changed, docs/ regenerated differs) --"
+            echo "       run 'make swag' (already done) and ADD the docs/ delta to your commit:"
+            git diff --stat -- docs/docs.go docs/swagger.json docs/swagger.yaml | sed 's/^/       /'
+        fi
+    fi
+fi
+
+if [ "${swagger_stale}" -ne 0 ]; then
+    echo "[FAIL] commit-lint: ${total} commits format-ok but swagger artifacts stale (rule 5)"
+    exit 1
 fi
 echo "[OK] commit-lint: ${total} commits all pass (12-9)"
 exit 0
