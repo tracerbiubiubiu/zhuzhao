@@ -34,6 +34,12 @@ var mdRenderer = goldmark.New(
 	),
 )
 
+// ⚠ 保险丝（2026-10-21 所有者核验提醒）：goldmark 渲染器注册=后注册同 Kind 覆盖
+// 先注册——stableSrcImageRenderer 是 Image 的全局唯一生效点。后续新增渲染器
+//（如 S1 富文本渲染面）须显式链式委托本渲染器（自定义渲染器内调用
+// stableSrcImageRenderer.renderImage）而非重新 Register(ast.KindImage,...)，
+// 否则外链图白名单静默失效——TestRenderRichtext_ImageSrcWhitelist 为回归闸。
+
 // stableSrcImageRenderer 内嵌图稳定 URL 白名单渲染器（拍板 P4）。
 type stableSrcImageRenderer struct{}
 
