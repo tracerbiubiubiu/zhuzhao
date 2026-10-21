@@ -28,6 +28,7 @@
 | F-C2 | P3 | 侧车 MIRROR_INTERVAL/RETAIN_COUNT 无启动校验——非法值 sleep 报错后立即重试 = 忙循环 | 开放（0.1 天，随手） |
 | F-C1 | P3 | 侧车无 healthcheck/机器可读 last-success（成败只在容器日志） | **挂 B10-4**（并行线登记） |
 | F-E1 | P3 | 08 §7 P1 行旧口径 000048 残留 | **已修**（doc-fix 批） |
+| F-B2 | P3 | AssignMenus「DELETE ALL + INSERT ALL」无锁——两管理员并发重绑同一角色，两事务交错 → 终态为两意图 UNION（互毁） | **已修**（`30ff6c8`：事务内 roles 行 FOR UPDATE）；并发回归测试+变异验证 8/8 红（2026-10-21 补，原修复漏附测试——§9/§12-10 公约首例补课） |
 
 并行线已修不再列：F-B1（1d4eb7e）、F-D1（9bee2c7）、F-A7（92a4b1f/000049）、F-A6、渲染外链图与 custom_data 封顶（710e3e6）。
 

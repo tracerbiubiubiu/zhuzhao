@@ -71,7 +71,8 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 	}
 	defer tx.Rollback(ctx)
 
-	// 串行化同一角色的并发菜单重绑（F-B2 修复 2026-10-22）：
+	// 串行化同一角色的并发菜单重绑（F-B2 修复 2026-10-21，编号落档见
+	// deliverables/software-company/zhuzhao-batch-audit-2026-10-21.md §二）：
 	// DELETE ALL + INSERT ALL 在无锁时两事务交错 → UNION 结果
 	//（两管理员的意图均被破坏）。FOR UPDATE 行锁使 DELETE→INSERT 原子串行化。
 	var lockID int64
