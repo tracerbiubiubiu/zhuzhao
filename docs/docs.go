@@ -3253,7 +3253,7 @@ const docTemplate = `{
                     "example": "0"
                 },
                 "attachments": {
-                    "description": "B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂\nconfirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments",
+                    "description": "B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂\nconfirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。\n语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete\n（内嵌图 ticket_richtext 不可经该端点删——随工单生命周期，A.7）",
                     "type": "array",
                     "items": {
                         "type": "string"
