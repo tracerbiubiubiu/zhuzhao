@@ -3885,6 +3885,10 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "version": {
+                    "description": "kv 行当前版本（回传 expected_version 用）",
+                    "type": "integer"
                 }
             }
         },
@@ -4061,6 +4065,10 @@ const docTemplate = `{
                 "value"
             ],
             "properties": {
+                "expected_version": {
+                    "description": "ExpectedVersion F-D2 乐观锁（可选）：传 List 返回的 version——并发他人\n已改过即 400 提示刷新；不传=服务端重读重试（兼容存量调用，last-write-wins）。",
+                    "type": "integer"
+                },
                 "key": {
                     "type": "string"
                 },
