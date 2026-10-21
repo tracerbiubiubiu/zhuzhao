@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -274,6 +275,46 @@ func TestUpdate_CustomDataPatch(t *testing.T) {
 		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "数组不是对象")
 		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`"str"`)}, aid)
 		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "标量不是对象")
+	})
+
+	// 分批审计 F-B1（2026-10-21）：并发双 patch 各自键不得互丢——修复前 GetByID
+	// 在事务外读基线、Go 合并后整列写回，两并发各持过期基线后写者丢前写者键；
+	// 修复=行锁内取新鲜基线再合并（同单更新串行化）。多轮并发对提高失配检出率。
+	t.Run("并发 patch 各自键不丢（F-B1 回归闸）", func(t *testing.T) {
+		svc, aid, _, _, roles := setupTicket2a(t)
+		roles[aid] = []string{"admin"}
+		oid := childOrgID(t, "cdpc")
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "incident", Title: "并发 patch", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"base":"v0"}`)}, aid)
+		require.NoError(t, err)
+
+		const rounds = 5
+		for round := 0; round < rounds; round++ {
+			start := make(chan struct{})
+			errs := make(chan error, 2)
+			for _, key := range []string{"ka", "kb"} {
+				k := fmt.Sprintf("%s%d", key, round)
+				go func(patchKey string) {
+					<-start
+					_, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID,
+						CustomData: json.RawMessage(`{"` + patchKey + `":"v"}`)}, aid)
+					errs <- err
+				}(k)
+			}
+			close(start)
+			require.NoError(t, <-errs, "第 %d 轮并发 patch a", round)
+			require.NoError(t, <-errs, "第 %d 轮并发 patch b", round)
+		}
+
+		fresh, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		var m map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(fresh.CustomData, &m))
+		assert.Equal(t, json.RawMessage(`"v0"`), m["base"])
+		for round := 0; round < rounds; round++ {
+			assert.Contains(t, m, fmt.Sprintf("ka%d", round), "第 %d 轮 ka 键不得被并发丢", round)
+			assert.Contains(t, m, fmt.Sprintf("kb%d", round), "第 %d 轮 kb 键不得被并发丢", round)
+		}
 	})
 
 	t.Run("带 schema 类型：合并后 G2 整体重校验", func(t *testing.T) {

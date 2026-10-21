@@ -252,6 +252,24 @@ func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
 	return err
 }
 
+// LockCustomDataTx 行锁内读 custom_data 新鲜基线（分批审计 F-B1 修复 2026-10-21）：
+// custom_data patch 此前基于事务外 GetByID 的基线在 Go 层合并后整列写回——两个并发
+// Update 各持过期基线合并，后写者丢前写者键。本方法在更新事务内 FOR UPDATE 取基线
+// （锁持至提交，同单更新串行化），合并与 G2 校验仍先行于写。0 行=已关闭（并发 close，
+// BK-3 同款定性）→ ErrTicketAlreadyClosed。
+func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketID int64) ([]byte, error) {
+	var cd []byte
+	err := exec.QueryRow(ctx,
+		`SELECT custom_data FROM tickets WHERE id=$1 AND status <> 'closed' FOR UPDATE`, ticketID).Scan(&cd)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrTicketAlreadyClosed
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lock ticket custom_data: %w", err)
+	}
+	return cd, nil
+}
+
 // UpdateTx 事务内字段级更新工单（BK-3：WHERE status<>'closed' 条件更新——
 // 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004；
 // W4 十六批 Med：COALESCE 字段级更新——nil 字段不落 SET 覆盖，

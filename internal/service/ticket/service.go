@@ -329,12 +329,26 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
+	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
+	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
 	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项）：传入键覆盖、null 删键；合并后
 	// 整体 G2 重校验（含未改动字段——防基线外字段绕进、required 被 null 清空）。
 	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地，请求体已入通用审计行。
+	// F-B1（2026-10-21 分批审计）：基线改在事务内 FOR UPDATE 取新鲜值——事务外
+	// GetByID 的基线在并发 Update 下已过期，Go 合并整列写回会丢并发方键；行锁
+	// 持至提交使同单更新串行化，合并恒新鲜且 G2 校验仍先于写。
 	var customData []byte
 	if len(req.CustomData) > 0 {
-		merged, err := mergeCustomData(ticket.CustomData, req.CustomData)
+		base, err := s.ticketRepo.LockCustomDataTx(ctx, tx, req.ID)
+		if err != nil {
+			return nil, err
+		}
+		merged, err := mergeCustomData(base, req.CustomData)
 		if err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
@@ -343,13 +357,6 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		}
 		customData = merged
 	}
-	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
-	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
 	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority, customData)
 	if err != nil {
 		return nil, err
