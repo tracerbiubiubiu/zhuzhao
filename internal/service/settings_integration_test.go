@@ -183,4 +183,27 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 		_ = svc2 // boot 即 apply（构造函数路径）
 		assert.Equal(t, 5, cfg2.MaxAttachmentsPerTicket, "boot 读 KV 覆盖生效")
 	})
+
+	// 分批审计 F-D1（2026-10-21）：boot 覆盖须过 Validate——DB 手工写入越界值
+	//（绕过 Update 路径）不得在启动时绕过硬底线（修复前直接 Apply 生效）。
+	t.Run("boot 越界 KV 跳过保默认", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM system_settings`)
+		})
+		var uid int64
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`INSERT INTO users (employee_no, username, password, status) VALUES ($1, $1, 'hash', 1) RETURNING id`,
+			"SETBAD"+uniqueSuffix()).Scan(&uid))
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid)
+		})
+		_, err := testPool.Exec(context.Background(),
+			`INSERT INTO system_settings (key, value, updated_by) VALUES ('storage.max_upload_bytes', '999999999999', $1)`, uid)
+		require.NoError(t, err)
+		cfg := &storcfg.StorageConfig{MaxUploadBytes: 10 << 20}
+		cfg.ApplyDefaults()
+		_ = service.NewSettingsService(repository.NewSettingsRepo(testPool), cfg, nil)
+		assert.LessOrEqual(t, cfg.MaxUploadBytes, int64(10<<20),
+			"越界 KV（超 100MB 天花板）boot 不得生效——config 默认保持")
+	})
 }

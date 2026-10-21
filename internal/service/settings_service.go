@@ -143,22 +143,33 @@ func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.StorageConfi
 	return s
 }
 
-// applyAllOverrides 启动路径：读全量 KV → 按 catalog Apply 到 config 指针。
+// applyAllOverrides 启动路径：读全量 KV → 逐键 Validate（硬底线在 boot 路径同样
+// 设防——DB 被手工写入越界值时跳过保 config 默认，分批审计 F-D1 修复 2026-10-21）
+// → 按 catalog Apply 到 config 指针。
 func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 	kvs, err := s.repo.ListAll(ctx)
 	if err != nil {
 		s.logger.Warn("settings: boot apply overrides failed (config defaults active)", "err", err)
 		return
 	}
-	applied := 0
+	applied, skipped := 0, 0
 	for _, sk := range settingsCatalog {
 		if kv, ok := kvs[sk.Key]; ok && kv != nil {
+			if err := sk.Validate(kv.Value); err != nil {
+				skipped++
+				s.logger.Warn("settings: boot skip invalid KV (config default active)",
+					"key", sk.Key, "err", err)
+				continue
+			}
 			sk.Apply(kv.Value, s.cfg)
 			applied++
 		}
 	}
 	if applied > 0 {
 		s.logger.Info("settings: boot applied KV overrides", "count", applied)
+	}
+	if skipped > 0 {
+		s.logger.Warn("settings: boot skipped invalid KV overrides", "count", skipped)
 	}
 }
 
