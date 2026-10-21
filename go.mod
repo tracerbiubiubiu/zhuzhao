@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/casbin/casbin/v3 v3.10.0
+	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
