@@ -135,6 +135,10 @@ func TestCatalogExempt_NotBlockedByL1(t *testing.T) {
 			w := do(r, m, 1, method, path)
 			assert.NotEqual(t, http.StatusForbidden, w.Code,
 				"exempt 被 L1 拦截——豁免登记未伴随运行时放行（P0-1 同族复发）")
+			// F-A2（2026-10-21 审计）：404 判别——路由被删/改名时豁免登记残留，
+			// 仅判 403 会静默绿（nil handler 路径为 500，可区分）
+			assert.NotEqual(t, http.StatusNotFound, w.Code,
+				"路由应存在（404=豁免登记指向已删/改名路由）")
 		})
 	}
 }
