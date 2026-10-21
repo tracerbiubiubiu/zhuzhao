@@ -419,6 +419,25 @@ func (h *TicketHandler) ListTicketTypes(c *gin.Context) {
 //	@Param		code	path		string	true	"工单类型编码"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-types/{code}/fields [get]
+//
+// FieldImpact godoc
+//
+//	@Summary		字段在途影响分析（全量替换前的变更代价）
+//	@Description	每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价
+//	@Tags			ticket
+//	@Produce		json
+//	@Param			code	path string true "类型编码"
+//	@Success		200	{object}	response.Response{data=map[string]int}
+//	@Router			/api/v1/ticket-types/{code}/fields/impact [get]
+func (h *TicketHandler) FieldImpact(c *gin.Context) {
+	impact, err := h.ticketService.FieldImpact(c.Request.Context(), c.Param("code"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, impact)
+}
+
 func (h *TicketHandler) ListTicketTypeFields(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {

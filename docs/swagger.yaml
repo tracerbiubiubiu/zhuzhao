@@ -1951,21 +1951,69 @@ paths:
       - ticket-admin
   /api/v1/ticket-types/{code}/fields:
     get:
+      description: 每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价
       parameters:
       - description: 工单类型编码
         in: path
         name: code
         required: true
         type: string
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
       produces:
+      - application/json
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response'
-      summary: 工单类型字段定义
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+      summary: 字段在途影响分析（全量替换前的变更代价）
       tags:
+      - ticket
+      - ticket
+  /api/v1/ticket-types/{code}/fields/impact:
+    get:
+      description: 每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价
+      parameters:
+      - description: 工单类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+      summary: 字段在途影响分析（全量替换前的变更代价）
+      tags:
+      - ticket
       - ticket
   /api/v1/ticket-types/delete:
     post:

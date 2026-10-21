@@ -1779,17 +1779,27 @@ const docTemplate = `{
         },
         "/api/v1/ticket-types/{code}/fields": {
             "get": {
+                "description": "每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价",
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "ticket",
                     "ticket"
                 ],
-                "summary": "工单类型字段定义",
+                "summary": "字段在途影响分析（全量替换前的变更代价）",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "工单类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "类型编码",
                         "name": "code",
                         "in": "path",
                         "required": true
@@ -1799,7 +1809,75 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/{code}/fields/impact": {
+            "get": {
+                "description": "每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价",
+                "produces": [
+                    "application/json",
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket",
+                    "ticket"
+                ],
+                "summary": "字段在途影响分析（全量替换前的变更代价）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }

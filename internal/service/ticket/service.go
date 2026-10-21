@@ -301,6 +301,12 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 	}, nil
 }
 
+// FieldImpact B1-5 每字段在途使用计数（全量替换前的变更代价提示——软告警
+// 不阻断）。返回 = field_key → 在途工单数。
+func (s *Service) FieldImpact(ctx context.Context, typeCode string) (map[string]int, error) {
+	return s.ticketRepo.FieldImpact(ctx, typeCode)
+}
+
 // applyFetches B1-4 取数联动（A.4）：从 field_meta 组装 FetchField 投影 →
 // datafetcher.ApplyFetches 回写。失败不阻塞（A.4 失败策略）——missed 记日志。
 func (s *Service) applyFetches(ctx context.Context, typeCode string, customData json.RawMessage, actorUserID int64) json.RawMessage {

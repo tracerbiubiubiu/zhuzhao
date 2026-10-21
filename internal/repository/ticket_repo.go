@@ -252,6 +252,34 @@ func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
 	return err
 }
 
+// FieldImpact 每字段在途使用计数（B1-5 随行件——全量替换前的变更代价提示）。
+// 在途 = status NOT IN ('closed','rejected')；使用 = custom_data 含该键。
+func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[string]int, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT f.field_key, COUNT(t.id)
+		FROM ticket_type_fields f
+		LEFT JOIN tickets t
+			ON t.type_code = f.type_code
+			AND t.status NOT IN ('closed', 'rejected')
+			AND t.custom_data ? f.field_key
+		WHERE f.type_code = $1
+		GROUP BY f.field_key`, typeCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var key string
+		var n int
+		if err := rows.Scan(&key, &n); err != nil {
+			return nil, err
+		}
+		out[key] = n
+	}
+	return out, rows.Err()
+}
+
 // LockCustomDataTx 行锁内读 custom_data 新鲜基线（分批审计 F-B1 修复 2026-10-21）：
 // custom_data patch 此前基于事务外 GetByID 的基线在 Go 层合并后整列写回——两个并发
 // Update 各持过期基线合并，后写者丢前写者键。本方法在更新事务内 FOR UPDATE 取基线

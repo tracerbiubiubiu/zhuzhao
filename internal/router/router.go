@@ -412,6 +412,7 @@ func New(deps Deps) *gin.Engine {
 				{
 					ticketMeta.GET("/ticket-types", deps.TicketHandler.ListTicketTypes)
 					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.ListTicketTypeFields)
+					ticketMeta.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 					ticketMeta.GET("/ticket-templates", deps.TicketHandler.ListTicketTemplates)
 					ticketMeta.GET("/ticket-templates/:code", deps.TicketHandler.GetTicketTemplate)
 					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，
