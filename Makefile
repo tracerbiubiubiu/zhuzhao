@@ -25,6 +25,12 @@ wire:
 lint:
 	go vet ./...
 	@test -z "$$(gofmt -l . 2>&1 | grep -v '^vendor/' | tee /dev/stderr)" || (echo "ERROR: gofmt drift detected, run 'gofmt -w .'" && exit 1)
+	@# swagger 新鲜度（红窗第三/四例同族收口 2026-10-22——struct/注释改动必随批
+	@# make swag，CI 新鲜度守卫前移到本地）：重生成后 docs/ 有 diff 即失败；
+	@# 失败时工作树已含重生成产物，review 后随批提交即可。
+	@$(MAKE) --no-print-directory swag >/dev/null 2>&1 || (echo "ERROR: make swag failed" && exit 1)
+	@git diff --quiet -- docs/docs.go docs/swagger.json docs/swagger.yaml \
+		|| (echo "ERROR: swagger drift detected — run 'make swag' and commit regenerated docs/（与 CI 新鲜度守卫同款）" && exit 1)
 
 # §12-9 发现链第 1 道：push 决策点必跑（默认待推送窗口；make commit-lint RANGE=HEAD~20 扫指定范围）
 commit-lint:
