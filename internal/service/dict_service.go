@@ -58,6 +58,16 @@ func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
 }
 
 func (s *DictService) DeleteType(ctx context.Context, code string) error {
+	// B1-2 删除守卫（拍板点④）：被 ticket_type_fields 的 `dict:<code>` 引用时拒删
+	//（先守卫后删——误删即全部引用字段选项悬空；项删除不拦=运营高频动作）
+	inUse, err := s.repo.HasFieldDictRef(ctx, code)
+	if err != nil {
+		s.logger.Error("dict guard scan field refs", "err", err)
+		return errcode.ErrInternal
+	}
+	if inUse {
+		return errcode.ErrDictTypeInUse
+	}
 	if err := s.repo.DeleteTypeByCode(ctx, code); err != nil {
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
 			return errcode.ErrDictTypeNotFound

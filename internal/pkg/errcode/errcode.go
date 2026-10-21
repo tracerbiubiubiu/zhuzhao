@@ -125,6 +125,7 @@ var (
 // 字典模块 92300-92399（P4-3）
 var (
 	ErrDictTypeNotFound = util.New(92301, "字典类型不存在或版本冲突")
+	ErrDictTypeInUse    = util.New(92304, "字典类型被字段引用中，不可删除")
 	ErrDictItemNotFound = util.New(92302, "字典项不存在或版本冲突")
 )
 

@@ -24,6 +24,7 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,   // 通知配置 code 已存在
 	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest, // 不支持的通知渠道
 	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
+	errcode.ErrDictTypeInUse.Code:                 http.StatusBadRequest, // 92304 被字段引用（B1-2 删除守卫）
 	errcode.ErrDictItemNotFound.Code:              http.StatusNotFound,   // 字典项不存在/版本冲突
 	errcode.ErrPatNotFound.Code:                   http.StatusNotFound,   // PAT 不存在或已吊销
 	errcode.ErrFileTooLarge.Code:                  http.StatusBadRequest, // 文件大小超限（phase5 S5）

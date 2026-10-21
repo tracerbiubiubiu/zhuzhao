@@ -87,6 +87,23 @@ func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType) error {
 }
 
 // DeleteTypeByCode 按 code 删（items FK ON DELETE CASCADE 随删）
+// HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫——01 号 §3.2
+// 拍板点④"补删除守卫"）。引用形态 = ticket_type_fields.field_options JSONB 数组
+// 元素精确等于 "dict:<code>"（jsonb_array_elements_text 精确匹配，非 LIKE 模糊）。
+func (r *DictRepo) HasFieldDictRef(ctx context.Context, code string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM ticket_type_fields f,
+			jsonb_array_elements_text(f.field_options) e
+			WHERE e = 'dict:' || $1
+		)`, code).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func (r *DictRepo) DeleteTypeByCode(ctx context.Context, code string) error {
 	tag, err := r.db.Exec(ctx, "DELETE FROM dict_types WHERE code = $1", code)
 	if err != nil {
