@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -315,6 +316,20 @@ func TestUpdate_CustomDataPatch(t *testing.T) {
 			assert.Contains(t, m, fmt.Sprintf("ka%d", round), "第 %d 轮 ka 键不得被并发丢", round)
 			assert.Contains(t, m, fmt.Sprintf("kb%d", round), "第 %d 轮 kb 键不得被并发丢", round)
 		}
+	})
+
+	// 拍板 P5（2026-10-21）：custom_data 总量 64KiB 封顶——未知键放行（向前兼容）
+	// 但跨请求累加须有界（防 JSONB 慢性膨胀/TOAST/备份放大）。
+	t.Run("custom_data 超总量上限拒 400", func(t *testing.T) {
+		svc, aid, _, _, roles := setupTicket2a(t)
+		roles[aid] = []string{"admin"}
+		oid := childOrgID(t, "cdcap")
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "incident", Title: "cap", Priority: 2, OrgID: oid}, aid)
+		require.NoError(t, err)
+		big := strings.Repeat("x", 65<<10)
+		patch := []byte(`{"blob":"` + big + `"}`)
+		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: patch}, aid)
+		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "单请求即超 64KiB 拒")
 	})
 
 	t.Run("带 schema 类型：合并后 G2 整体重校验", func(t *testing.T) {

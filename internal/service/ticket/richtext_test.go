@@ -50,3 +50,30 @@ func TestRenderRichtext(t *testing.T) {
 		assert.Equal(t, "", strings.TrimSpace(html))
 	})
 }
+
+// 拍板 P4（2026-10-21）：内嵌图仅稳定 URL——外链/协议相对图 src 须被剥除
+// （探针实证 bluemonday 把 //host 归入"相对 URL"放行——查看即外联追踪面）；
+// 稳定 URL 前缀保留；<a href> 外链保留（点击非自动加载）。
+func TestRenderRichtext_ImageSrcWhitelist(t *testing.T) {
+	cases := []struct {
+		name, src string
+		keep      bool
+	}{
+		{"协议相对外链剥除", "//evil.example.com/track.png", false},
+		{"https 外链剥除", "https://evil.example.com/t.png", false},
+		{"稳定 URL 保留", "/api/v1/files/tickets/2026/10/a.png", true},
+	}
+	for _, tc := range cases {
+		html, err := RenderRichtext("![" + tc.name + "](" + tc.src + ")")
+		require.NoError(t, err, tc.name)
+		if tc.keep {
+			assert.Contains(t, html, `src="`+tc.src+`"`, tc.name)
+		} else {
+			assert.NotContains(t, html, tc.src, tc.name+"——src 不得存活")
+		}
+	}
+	// <a href> 外链保留
+	html, err := RenderRichtext("[外链](https://example.com/x)")
+	require.NoError(t, err)
+	assert.Contains(t, html, `href="https://example.com/x"`, "外链 <a> 保留")
+}

@@ -268,9 +268,19 @@ func optionValues(raw json.RawMessage) ([]string, error) {
 	return values, nil
 }
 
+// CustomDataMaxBytes custom_data JSONB 总量上限（拍板 P5 2026-10-21）：
+// 未知键放行（向前兼容——白名单化会令带杂键的存量单无法 patch 保存），
+// 但整体体量封顶防跨请求累加膨胀（TOAST/备份放大）；与 RichtextMaxBytes 同族。
+const CustomDataMaxBytes = 64 << 10
+
 // validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
 // 仅校验 schema 已知键（未知键放行，向前兼容）；模板预填发生在合并后的 customData 上。
 func (s *Service) validateCustomData(ctx context.Context, typeCode string, customData json.RawMessage) error {
+	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
+	if len(customData) > CustomDataMaxBytes {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("custom_data 超过 %d KiB 上限", CustomDataMaxBytes>>10))
+	}
 	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
 	if err != nil || len(fields) == 0 {
 		return err // 无字段定义（或读取失败）不校验——读取失败随 Create 一起失败
