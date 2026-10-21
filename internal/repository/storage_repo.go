@@ -197,12 +197,16 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 	if err := tx.QueryRow(ctx, `SELECT id FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&lockID); err != nil {
 		return err
 	}
+	// 计数仅含 ticket_attachment 行——richtext 内嵌图独立软限不占附件额度
+	//（05 §3 两档口径，拍板 P2 2026-10-21；maxCount=0 时调用方声明跳过计数）
 	var n int
-	if err := tx.QueryRow(ctx,
-		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
 		return err
 	}
-	if maxCount > 0 && n+1 > maxCount { // 与 BindCreateAttachments 的 n+len 同形（审计 M-10）
+	if maxCount > 0 && n+1 > maxCount { // 与 BindCreateAttachments 的分档计数同形（审计 M-10）
 		return ErrStorageAttachmentLimit
 	}
 
@@ -235,13 +239,15 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 // 并发加固 + 计数校验 + bucket 条件 2026-10-20（S5 评审 P1/D1-3）。
 func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, bucket string, userID, ticketID int64, keys []string, maxCount int) error {
 	// 附件数计数（建单路径执行点）：本次 keys 与已有合计不超上限（重复键由 UNIQUE 兜底——审计 M-7 措辞对齐）
+	// 附件数计数（建单路径执行点）：仅 ticket_attachment 行/键计入——richtext
+	// 内嵌图独立软限不占额（05 §3 两档口径，拍板 P2 2026-10-21）；混合列表中
+	// richtext 键的额度判定移入循环 formal 分档处
 	var n int
-	if err := exec.QueryRow(ctx,
-		`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, ticketID).Scan(&n); err != nil {
+	if err := exec.QueryRow(ctx, `
+		SELECT count(*) FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
 		return err
-	}
-	if maxCount > 0 && n+len(keys) > maxCount {
-		return ErrStorageAttachmentLimit
 	}
 	for _, key := range keys {
 		var id int64
@@ -267,6 +273,11 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, b
 		switch purpose {
 		case "attachment_create":
 			formal = "ticket_attachment"
+			// 仅附件键占额（richtext 键独立软限不占——拍板 P2 2026-10-21）
+			n++
+			if maxCount > 0 && n > maxCount {
+				return ErrStorageAttachmentLimit
+			}
 		case "richtext_create":
 			formal = "ticket_richtext"
 		default:

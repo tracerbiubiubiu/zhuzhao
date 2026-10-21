@@ -8,6 +8,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -149,6 +150,57 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 	// S5 评审 P2-2/D1-3（2026-10-20）健壮性批：①GetBoundTicketID 跨桶隔离
 	//（修复前裸查 object_key 无 bucket 条件）；②非 ErrNoRows 错误上抛
 	//（修复前 DB 故障吞成 404 哨兵、绕过 5xx 告警面）。
+	// 拍板 P2（2026-10-21）：richtext 内嵌图不计入附件额度——05 §3 两档口径
+	//（"单工单附件 ≤20；richtext 内嵌图软限"）。贴满 20 图后传普通附件应成功。
+	t.Run("贴满 20 张内嵌图仍可传普通附件", func(t *testing.T) {
+		svc, _ := newSvc(t)
+		tkID := insertTicket(t, uid)
+		ctx := context.Background()
+		for i := 0; i < 20; i++ {
+			key := fmt.Sprintf("tickets/2026/10/rt-%d.png", i)
+			var foID int64
+			require.NoError(t, testPool.QueryRow(ctx, `
+				INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
+				VALUES ($1, $2, 'ticket_richtext', 'confirmed', 'r.png', 'image/png', $3) RETURNING id`,
+				itBucket, key, uid).Scan(&foID))
+			_, err := testPool.Exec(ctx,
+				`INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`, tkID, foID, uid)
+			require.NoError(t, err)
+		}
+		resp, err := svc.PresignUpload(ctx, &model.PresignUploadInput{
+			Purpose: "ticket_attachment", FileName: "a.png", MIMEType: "image/png", SizeBytes: 10, TicketID: &tkID,
+		}, uid)
+		require.NoError(t, err)
+		_, err = svc.Confirm(ctx, &model.ConfirmFileInput{ObjectKey: resp.ObjectKey, TicketID: &tkID}, uid)
+		require.NoError(t, err, "richtext 图不计入附件额度——贴满 20 图仍可传普通附件")
+	})
+
+	// 拍板 P3（2026-10-21）：richtext 内嵌图不单独删——A.7「随工单」口径。
+	// 删内嵌图=MD 正文死链且无恢复路径，API 面拒 400。
+	t.Run("删内嵌图拒 400（随工单生命周期）", func(t *testing.T) {
+		svc, _ := newSvc(t)
+		tkID := insertTicket(t, uid)
+		key := "tickets/2026/10/embedded.png"
+		var foID int64
+		require.NoError(t, testPool.QueryRow(context.Background(), `
+			INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
+			VALUES ($1, $2, 'ticket_richtext', 'confirmed', 'e.png', 'image/png', $3) RETURNING id`,
+			itBucket, key, uid).Scan(&foID))
+		_, err := testPool.Exec(context.Background(),
+			`INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`, tkID, foID, uid)
+		require.NoError(t, err)
+
+		err = svc.DeleteTicketAttachment(context.Background(), tkID, key)
+		require.Error(t, err, "内嵌图不可经删附件端点单独删（修复前 200）")
+		e, ok := err.(*errcode.Error)
+		require.True(t, ok)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, e.Code)
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM ticket_attachments WHERE ticket_id=$1`, tkID).Scan(&n))
+		assert.Equal(t, 1, n, "关联行不得被删")
+	})
+
 	t.Run("GetBoundTicketID——跨桶隔离+DB 错误上抛", func(t *testing.T) {
 		t.Cleanup(func() {
 			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = 'other-h'`)

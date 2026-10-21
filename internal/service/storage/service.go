@@ -356,6 +356,21 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 	if s.client == nil {
 		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
+	// 拍板 P3（2026-10-21）：richtext 内嵌图随工单生命周期——不单独删（A.7）。
+	// 误删即 MD 正文死链且对象物理删后无恢复路径；正确姿势=从正文移除引用，
+	// 对象由对账扫描家族收（A.3 第三条登记）。
+	f, err := s.repo.GetByObjectKey(ctx, s.bucket, objectKey)
+	if err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return errcode.ErrFileNotFound
+		}
+		s.logger.Error("storage get object", "err", err)
+		return errcode.ErrInternal
+	}
+	if f.Purpose == "ticket_richtext" {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			"内嵌图随工单生命周期管理，不单独删除（从正文移除引用即可，对象由对账扫描回收）")
+	}
 	if err := s.repo.UnlinkAttachment(ctx, s.bucket, ticketID, objectKey); err != nil {
 		if errors.Is(err, repository.ErrStorageObjectNotFound) {
 			return errcode.ErrFileNotFound
@@ -363,9 +378,11 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 		s.logger.Error("storage unlink attachment", "err", err)
 		return errcode.ErrInternal
 	}
+	// F-A6（2026-10-21 审计）：Mark 失败降级 Warn 不返 500——unlink 已成功
+	//（用户视角删除完成），返 500 反致重试撞 404；行残留 confirmed 无关联由
+	// 对账扫描家族收（与 confirmed 孤儿同族）
 	if err := s.repo.MarkObjectDeleted(ctx, s.bucket, objectKey); err != nil {
-		s.logger.Error("storage mark object deleted", "key", objectKey, "err", err)
-		return errcode.ErrInternal
+		s.logger.Warn("storage mark object deleted deferred to reconciliation", "key", objectKey, "err", err)
 	}
 	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
 		s.logger.Warn("storage remove attachment object deferred to gc", "key", objectKey, "err", err)
