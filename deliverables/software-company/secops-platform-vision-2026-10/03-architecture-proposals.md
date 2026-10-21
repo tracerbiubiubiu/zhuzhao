@@ -104,7 +104,7 @@ event_subscriptions (name PK, type_filter text[], cursor bigint, status, last_er
 
 **[业界出处]** Transactional outbox（微服务界标准模式）；SOAR 的 incident 事件流都是持久化的，否则 playbook 触发不可靠也不可审计。
 
-**[代价与风险]** 一表一 goroutine 一游标表，≈ 1 周；风险：事件表膨胀（分区+保留期）、投递延迟（tick 秒级，可接受）。**对 S6 的影响**：S6#4 若已按进程内钩子实现，追加 outbox 是增量不是重写——建议 S6 一期实现时把事件结构体设计成"可序列化"，为本提案留门。
+**[代价与风险]** 一表一 goroutine 一游标表，≈ 1 周（**最小升级档 1–2 天** = 11 号 §5.10 路径，仅含 domain_events 表 + Dispatch 改投递器；本 1 周为 A3 全量，另含订阅游标管理 / 重放 / 保留期）；风险：事件表膨胀（分区+保留期）、投递延迟（tick 秒级，可接受）。**对 S6 的影响**：S6#4 若已按进程内钩子实现，追加 outbox 是增量不是重写——建议 S6 一期实现时把事件结构体设计成"可序列化"，为本提案留门。
 
 ---
 
@@ -215,7 +215,7 @@ maintenance_windows (id, match jsonb, starts_at, ends_at, created_by, reason)
 
 **[业界出处]** OCSF 字段骨架；XSOAR incident dedup；TheHive alert→case 提升模型。
 
-**[代价与风险]** 表+规则+流水线 2–3 周；对 phase6 的影响：risk_items 需加 `source_kind`、`alert_count`、`first_seen/last_seen`、`attack_tactics`、`asset_ref/asset_snapshot`（外部资产引用+解析时快照，不建资产表）几列——建议 phase6 建表时**预留**而非日后加列。
+**[代价与风险]** 表+规则+流水线 2–3 周。**前置互注**：资产解析字段依赖 X5 资产平台契约（README 外部输入清单）——解析失败降级 `asset_ref=null` 进路由，不阻塞 A8 主体。对 phase6 的影响：risk_items 需加 `source_kind`、`alert_count`、`first_seen/last_seen`、`attack_tactics`、`asset_ref/asset_snapshot`（外部资产引用+解析时快照，不建资产表）几列——建议 phase6 建表时**预留**而非日后加列。
 
 ---
 

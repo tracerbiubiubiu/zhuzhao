@@ -303,6 +303,8 @@ INFO internal intel ok score=35 stale=False
 
 ## 8. 完整样例 B · Job：证书到期巡检（定时，输出自动转告警）
 
+> 注：`platform.assets.list` 的返回结构（`identifiers` / `attrs` 字段路径）为**假设契约**——解析门面未建，形态随 X5 资产平台契约（README 外部输入清单）定稿，届时仅调整字段路径、脚本逻辑不变。
+
 **manifest.yaml（节选差异）**
 ```yaml
 kind: Job
