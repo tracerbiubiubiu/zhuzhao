@@ -98,11 +98,29 @@ func (r *StorageRepo) ListExpiredPending(ctx context.Context, bucket string, bef
 	return out, rows.Err()
 }
 
-// DeleteRowIfPending GC pending 路径物理清行（条件删除 pending 态；0 行=已被
-// 并发 confirm 翻态不动——A.9「对象与行均消失」终态。2026-10-20 删除口径对齐批：
-// 原 MarkDeleted 留行为中间态，pending 孤儿路径改直达终态）。
-func (r *StorageRepo) DeleteRowIfPending(ctx context.Context, id int64) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1 AND status = 'pending'`, id)
+// DeleteRowIfPending GC pending 路径物理清行（条件删除 pending 态）。
+// 返回是否实际删除——false = 已被并发 confirm 翻态让位（F-A1 修复 2026-10-21：
+// 调用方据此跳过对象物理删，修复前「先删对象后清行」存在把并发刚 confirm 的
+// 对象物理删掉的数据丢失窗口）。A.9「对象与行均消失」终态。
+func (r *StorageRepo) DeleteRowIfPending(ctx context.Context, id int64) (bool, error) {
+	tag, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1 AND status = 'pending'`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// InsertDeletedTombstone F-A1 兜底（2026-10-21）：一扫已条件清行后对象物理删
+// 失败时补插 deleted 墓碑行——交二扫重试（否则行已删、对象残留成无扫描覆盖
+// 的泄漏）。ON CONFLICT DO NOTHING：与二扫/并发路径竞态时让位。
+func (r *StorageRepo) InsertDeletedTombstone(ctx context.Context, f *model.FileObject) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type,
+		                          size_bytes, etag, created_by, created_at, confirmed_at, owner_kind, owner_id)
+		VALUES ($1,$2,$3,'deleted',$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		ON CONFLICT (bucket, object_key) DO NOTHING`,
+		f.Bucket, f.ObjectKey, f.Purpose, f.FileName, f.MIMEType,
+		f.SizeBytes, f.ETag, f.CreatedBy, f.CreatedAt, f.ConfirmedAt, f.OwnerKind, f.OwnerID)
 	return err
 }
 

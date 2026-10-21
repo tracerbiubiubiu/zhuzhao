@@ -58,7 +58,7 @@ func TestGCJob_Scenarios(t *testing.T) {
 		cfg.ApplyDefaults() // OrphanGCDays=7
 		rec := &removeRecorder{}
 		repo := repository.NewStorageRepo(testPool)
-		return storageservice.NewGCJob(repo, rec, cfg, testLogger()), rec
+		return storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger()), rec
 	}
 
 	// S5 评审删除口径批（2026-10-20）：pending 孤儿路径改物理清行——A.9「对象与
@@ -100,28 +100,50 @@ func TestGCJob_Scenarios(t *testing.T) {
 		assert.Len(t, rec.removed, 1, "二次运行零重复删除")
 	})
 
-	t.Run("对象删除失败——行保持 pending 待下轮重试，任务不炸", func(t *testing.T) {
-		gc := func() *storageservice.GCJob {
-			// 构造 remove 失败桩
-			t.Cleanup(func() {
-				_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
-			})
-			cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket, AccessKey: "a", SecretKey: "k", PresignUploadTTL: "15m"}
-			cfg.ApplyDefaults()
-			rec := &removeRecorder{removeErr: assert.AnError}
-			return storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, cfg, testLogger())
-		}()
-		insertPendingDirect(t, uid, "avatars/2026/10/failrm.png", 8*24*time.Hour, "pending")
+	// F-A1（2026-10-21）：一扫改「先条件清行、后删对象」——两种失败模式都收敛：
+	// ① 行清成功+对象删失败 → 补插 deleted 墓碑走二扫（非 pending 残留）；
+	// ② List 与清行之间撞上并发 confirm → 条件删 0 行让位，不动物理删。
+	t.Run("pending 对象删除失败——补 deleted 墓碑走二扫（F-A1）", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+		})
+		cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket, AccessKey: "a", SecretKey: "k", PresignUploadTTL: "15m"}
+		cfg.ApplyDefaults()
+		rec := &removeRecorder{removeErr: assert.AnError}
+		gc := storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger())
+		insertPendingDirect(t, uid, "avatars/2026/10/failrm-tomb.png", 8*24*time.Hour, "pending")
 		require.NoError(t, gc.Handle(context.Background(), nil), "单条失败不炸整批（扫描类收敛语义）")
 		var status string
 		require.NoError(t, testPool.QueryRow(context.Background(),
-			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, "avatars/2026/10/failrm.png").Scan(&status))
-		assert.Equal(t, model.FileStatusPending, status, "删除失败行保持 pending——下轮重试")
+			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, "avatars/2026/10/failrm-tomb.png").Scan(&status))
+		assert.Equal(t, model.FileStatusDeleted, status, "行已清+对象删失败=补 deleted 墓碑交二扫（修复前语义=pending 残留）")
+		// 二扫重试（remove 恢复成功）→ 对象删+行物理清除
+		rec.removeErr = nil
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, "avatars/2026/10/failrm-tomb.png").Scan(&n))
+		assert.Zero(t, n, "墓碑经二扫收敛——对象与行均消失")
+		assert.Equal(t, []string{"avatars/2026/10/failrm-tomb.png"}, rec.removed, "二扫重删一次成功")
 	})
 
-	// S5 评审 P2-1（2026-10-20）删除口径批：deleted 态二扫——删附件/弃旧流程
-	// best-effort 物理删失败后的行（对象残留），GC 重删成功即物理清行
-	//（修复前 deleted 无任何扫描覆盖 = 对象永久无主泄漏）。
+	t.Run("并发 confirm 让位——刚确认对象不被 GC 删（F-A1 核心断言）", func(t *testing.T) {
+		gc, rec := newGC(t)
+		key := "avatars/2026/10/concurrent-confirm.png"
+		insertPendingDirect(t, uid, key, 8*24*time.Hour, "pending")
+		// 模拟竞态：GC 列出候选后、清行前，用户 confirm 翻态（直接 SQL 翻 confirmed）
+		_, err := testPool.Exec(context.Background(),
+			`UPDATE file_objects SET status='confirmed', confirmed_at=NOW() WHERE bucket=$1 AND object_key=$2`,
+			itBucket, key)
+		require.NoError(t, err)
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		assert.Empty(t, rec.removed, "并发 confirm 让位——对象不得被物理删（修复前=行 confirmed 在库、对象被删的数据丢失窗口）")
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&status))
+		assert.Equal(t, model.FileStatusConfirmed, status, "行保持 confirmed——数据不丢")
+	})
+
 	t.Run("deleted 残留对象——二扫重删+行物理清除", func(t *testing.T) {
 		gc, rec := newGC(t)
 		insertPendingDirect(t, uid, "avatars/2026/10/dead-leftover.png", 0, "deleted")
@@ -141,7 +163,7 @@ func TestGCJob_Scenarios(t *testing.T) {
 			cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket, AccessKey: "a", SecretKey: "k", PresignUploadTTL: "15m"}
 			cfg.ApplyDefaults()
 			rec := &removeRecorder{removeErr: assert.AnError}
-			return storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, cfg, testLogger())
+			return storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger())
 		}()
 		insertPendingDirect(t, uid, "avatars/2026/10/dead-failrm.png", 0, "deleted")
 		require.NoError(t, gc.Handle(context.Background(), nil), "二扫单条失败不炸整批")

@@ -33,7 +33,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 			AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
 		cfg.ApplyDefaults()
 		stub := &stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}, getBody: []byte("png")}
-		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, cfg, testLogger()), stub
+		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, pkgstorage.NewConfigStore(cfg), testLogger()), stub
 	}
 
 	// bound 建 ticket 态已绑定附件（走全链 presign→confirm(ticket_id)）。

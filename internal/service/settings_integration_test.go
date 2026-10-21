@@ -19,7 +19,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
-func newSettingsSvc(t *testing.T) (*service.SettingsService, *storcfg.StorageConfig, int64) {
+func newSettingsSvc(t *testing.T) (*service.SettingsService, *storcfg.ConfigStore, int64) {
 	t.Helper()
 	// 建测试用户（FK updated_by 需要）
 	var uid int64
@@ -35,8 +35,9 @@ func newSettingsSvc(t *testing.T) (*service.SettingsService, *storcfg.StorageCon
 		AllowedMIMETypes: []string{"image/png"}, BlockedMIMETypes: []string{"text/html"}}
 	cfg.ApplyDefaults()
 	repo := repository.NewSettingsRepo(testPool)
-	svc := service.NewSettingsService(repo, cfg, nil)
-	return svc, cfg, uid
+	store := storcfg.NewConfigStore(cfg)
+	svc := service.NewSettingsService(repo, store, nil)
+	return svc, store, uid
 }
 
 func TestSettings_CatalogAndCRUD(t *testing.T) {
@@ -56,12 +57,12 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 	// S5 收口后评审补批（2026-10-21）：05 号 §3 可配四类漏了孤儿 GC 天数——
 	// catalog 补 storage.orphan_gc_days（Validate 1–365 + Apply）。
 	t.Run("orphan_gc_days 可配——KV 生效+指针 mutate", func(t *testing.T) {
-		svc, cfg, uid := newSettingsSvc(t)
-		require.Equal(t, 7, cfg.OrphanGCDays, "出厂默认 7（ApplyDefaults）")
+		svc, store, uid := newSettingsSvc(t)
+		require.Equal(t, 7, store.Load().OrphanGCDays, "出厂默认 7（ApplyDefaults）")
 		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
 			Key: "storage.orphan_gc_days", Value: []byte(`3`),
 		}, uid, []string{"superadmin"}))
-		assert.Equal(t, 3, cfg.OrphanGCDays, "in-memory apply 立即生效（GC 阈值随之可调）")
+		assert.Equal(t, 3, store.Load().OrphanGCDays, "快照整体替换立即生效（GC 阈值随之可调——F-D3）")
 	})
 
 	t.Run("orphan_gc_days 越界负向", func(t *testing.T) {
@@ -94,7 +95,7 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 		var buf bytes.Buffer
 		cfg := &storcfg.StorageConfig{}
 		cfg.ApplyDefaults()
-		svc := service.NewSettingsService(repository.NewSettingsRepo(testPool), cfg,
+		svc := service.NewSettingsService(repository.NewSettingsRepo(testPool), storcfg.NewConfigStore(cfg),
 			slog.New(slog.NewTextHandler(&buf, nil)))
 
 		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
@@ -110,11 +111,11 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 	})
 
 	t.Run("superadmin 更新→KV 生效→config 指针被 mutate", func(t *testing.T) {
-		svc, cfg, uid := newSettingsSvc(t)
+		svc, store, uid := newSettingsSvc(t)
 		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
 			Key: "storage.max_upload_bytes", Value: []byte(`20971520`),
 		}, uid, []string{"superadmin"}))
-		assert.Equal(t, int64(20<<20), cfg.MaxUploadBytes, "in-memory apply 立即生效")
+		assert.Equal(t, int64(20<<20), store.Load().MaxUploadBytes, "快照整体替换立即生效")
 
 		list, err := svc.List(ctx)
 		require.NoError(t, err)
@@ -179,13 +180,67 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 		// 新建实例——boot 路径应读到 KV 并 apply
 		cfg2 := &storcfg.StorageConfig{MaxAttachmentsPerTicket: 20}
 		cfg2.ApplyDefaults()
-		svc2 := service.NewSettingsService(repository.NewSettingsRepo(testPool), cfg2, nil)
-		_ = svc2 // boot 即 apply（构造函数路径）
-		assert.Equal(t, 5, cfg2.MaxAttachmentsPerTicket, "boot 读 KV 覆盖生效")
+		store2 := storcfg.NewConfigStore(cfg2)
+		_ = service.NewSettingsService(repository.NewSettingsRepo(testPool), store2, nil) // boot 即 apply（构造函数路径）
+		assert.Equal(t, 5, store2.Load().MaxAttachmentsPerTicket, "boot 读 KV 覆盖生效")
 	})
 
 	// 分批审计 F-D1（2026-10-21）：boot 覆盖须过 Validate——DB 手工写入越界值
 	//（绕过 Update 路径）不得在启动时绕过硬底线（修复前直接 Apply 生效）。
+	t.Run("F-D2 乐观锁——expected_version 正确则成功且 version+1", func(t *testing.T) {
+		svc, _, uid := newSettingsSvc(t)
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`50`),
+		}, uid, []string{"superadmin"}))
+		list, err := svc.List(ctx)
+		require.NoError(t, err)
+		var ver int64
+		for _, v := range list {
+			if v.Key == "storage.max_presign_batch" {
+				ver = v.Version
+			}
+		}
+		require.Equal(t, int64(1), ver, "首次 KV 写入 version=1")
+		ev := ver
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`60`), ExpectedVersion: &ev,
+		}, uid, []string{"superadmin"}))
+		list, err = svc.List(ctx)
+		require.NoError(t, err)
+		for _, v := range list {
+			if v.Key == "storage.max_presign_batch" {
+				assert.Equal(t, int64(2), v.Version, "CAS 成功 version+1")
+			}
+		}
+	})
+
+	t.Run("F-D2 乐观锁——过期 expected_version 拒 400（并发修改不再静默覆盖）", func(t *testing.T) {
+		svc, _, uid := newSettingsSvc(t)
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`50`),
+		}, uid, []string{"superadmin"}))
+		stale := int64(1)
+		// 他人已改成 version=2，管理员仍持 version=1 的 stale 期望
+		require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`70`),
+		}, uid, []string{"superadmin"}))
+		err := svc.Update(ctx, &model.UpdateSettingRequest{
+			Key: "storage.max_presign_batch", Value: []byte(`90`), ExpectedVersion: &stale,
+		}, uid, []string{"superadmin"})
+		require.Error(t, err, "stale 期望必须拒（修复前=静默覆盖）")
+		e, ok := err.(*errcode.Error)
+		require.True(t, ok)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, e.Code, "并发冲突映射 400（提示刷新）")
+		// 库内值保持后写者的 70，不被 stale 覆盖为 90
+		list, lerr := svc.List(ctx)
+		require.NoError(t, lerr)
+		for _, v := range list {
+			if v.Key == "storage.max_presign_batch" {
+				assert.JSONEq(t, `70`, string(v.Value), "后写者值不被 stale 覆盖")
+			}
+		}
+	})
+
 	t.Run("boot 越界 KV 跳过保默认", func(t *testing.T) {
 		t.Cleanup(func() {
 			_, _ = testPool.Exec(context.Background(), `DELETE FROM system_settings`)
@@ -202,8 +257,9 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 		require.NoError(t, err)
 		cfg := &storcfg.StorageConfig{MaxUploadBytes: 10 << 20}
 		cfg.ApplyDefaults()
-		_ = service.NewSettingsService(repository.NewSettingsRepo(testPool), cfg, nil)
-		assert.LessOrEqual(t, cfg.MaxUploadBytes, int64(10<<20),
+		store := storcfg.NewConfigStore(cfg)
+		_ = service.NewSettingsService(repository.NewSettingsRepo(testPool), store, nil)
+		assert.LessOrEqual(t, store.Load().MaxUploadBytes, int64(10<<20),
 			"越界 KV（超 100MB 天花板）boot 不得生效——config 默认保持")
 	})
 }

@@ -136,7 +136,7 @@ func newStorageRouterWith(t *testing.T, audit middleware.AuditLogger, allowAuth 
 	cfg.ApplyDefaults()
 	svc := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&hStubClient{stat: &pkgstorage.ObjectInfo{Size: 21, ETag: "etag-h", ContentType: "image/png"}, getBody: []byte("avatar-proxy-bytes")},
-		cfg, slog.Default())
+		pkgstorage.NewConfigStore(cfg), slog.Default())
 	h := handler.NewStorageHandler(svc, &denyAuth{allow: allowAuth}, audit)
 
 	gin.SetMode(gin.TestMode)

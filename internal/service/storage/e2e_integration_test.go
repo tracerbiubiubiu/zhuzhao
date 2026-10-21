@@ -75,7 +75,7 @@ func TestStorageE2E_RustFS(t *testing.T) {
 	cfg := setupRustFS(t)
 	client, err := pkgstorage.NewMinioClient(cfg)
 	require.NoError(t, err)
-	svc := storageservice.NewService(repository.NewStorageRepo(testPool), client, cfg, testLogger())
+	svc := storageservice.NewService(repository.NewStorageRepo(testPool), client, pkgstorage.NewConfigStore(cfg), testLogger())
 
 	t.Run("S1 全链：presign→PUT 直传→confirm（真实 etag 快照）", func(t *testing.T) {
 		resp, err := svc.PresignUpload(context.Background(), &model.PresignUploadInput{

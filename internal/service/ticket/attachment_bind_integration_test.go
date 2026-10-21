@@ -46,11 +46,11 @@ func newB53Env(t *testing.T) *b53Env {
 		AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
 	stgCfg.ApplyDefaults()
 	svcT := NewTicketService(testPool, ticketRepo, orgRepo, reg, stubRoleFetcher{}, orgdeleg.NewOrgDelegationService(testPool),
-		repository.NewStorageRepo(testPool), stgCfg)
+		repository.NewStorageRepo(testPool), pkgstorage.NewConfigStore(stgCfg))
 
 	stg := storageservice.NewService(repository.NewStorageRepo(testPool),
 		&b53StubClient{info: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}},
-		stgCfg, slog.Default())
+		pkgstorage.NewConfigStore(stgCfg), slog.Default())
 
 	env := &b53Env{svc: svcT, stg: stg, stgCfg: stgCfg}
 	require.NoError(t, testPool.QueryRow(ctx, `SELECT id FROM organizations WHERE code='root' LIMIT 1`).Scan(&env.orgID))

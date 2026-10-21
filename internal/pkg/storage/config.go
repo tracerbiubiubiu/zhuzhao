@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -116,3 +117,34 @@ func (c *StorageConfig) Validate() error {
 func (c *StorageConfig) TTL() (time.Duration, error) {
 	return time.ParseDuration(c.PresignUploadTTL)
 }
+
+// ConfigStore StorageConfig 的原子快照存储（分批审计 F-D3 修复 2026-10-21）：
+// settings KV 的运行时覆盖（Update/boot apply）与请求侧读（presign 白名单遍历、
+// 附件上限判定、GC 阈值）并发，直接 mutate 共享 struct 字段（slice 头/int 换值）
+// 无同步=data race。快照整体替换：Load() 返回的 *StorageConfig 视为只读；
+// 更新方 clone→改→Store。装配侧全链（wire 三服务 + app GC）共享同一实例——
+// 修复前 wire 值拷贝 &storageConfig 与 app &cfg.Storage 分裂，KV 改 orphan_gc_days
+// 到不了 GC（boot/运行时均不生效）。
+type ConfigStore struct {
+	p atomic.Pointer[StorageConfig]
+}
+
+// NewConfigStore 以初始快照建存储（nil 容忍——Load 返回零值配置）。
+func NewConfigStore(initial *StorageConfig) *ConfigStore {
+	s := &ConfigStore{}
+	if initial != nil {
+		s.p.Store(initial)
+	}
+	return s
+}
+
+// Load 当前快照（只读约定；未 Store 过时返回零值）。
+func (s *ConfigStore) Load() *StorageConfig {
+	if c := s.p.Load(); c != nil {
+		return c
+	}
+	return &StorageConfig{}
+}
+
+// Store 整体替换快照（调用方 clone 后修改再存入，存后不得再改）。
+func (s *ConfigStore) Store(c *StorageConfig) { s.p.Store(c) }

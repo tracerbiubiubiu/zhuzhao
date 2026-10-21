@@ -98,7 +98,7 @@ func newService(t *testing.T, stub *stubClient) (*storageservice.Service, *repos
 	}
 	cfg.ApplyDefaults()
 	repo := repository.NewStorageRepo(testPool)
-	return storageservice.NewService(repo, stub, cfg, slog.Default()), repo
+	return storageservice.NewService(repo, stub, pkgstorage.NewConfigStore(cfg), slog.Default()), repo
 }
 
 func codeOf(t *testing.T, err error) int {

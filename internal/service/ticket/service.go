@@ -26,8 +26,8 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
-	storageRepo *repository.StorageRepo   // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
-	storageCfg  *pkgstorage.StorageConfig // 附件数上限（05 号 §3 个数上限建单路径执行点——S5 评审 P1）
+	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -40,7 +40,7 @@ func NewTicketService(
 	roleFetcher middleware.RoleFetcher,
 	delegation OrgDelegationChecker,
 	storageRepo *repository.StorageRepo,
-	storageCfg *pkgstorage.StorageConfig,
+	storageCfg *pkgstorage.ConfigStore,
 ) *Service {
 	s := &Service{
 		db:          db,
@@ -293,7 +293,8 @@ func (s *Service) bindAttachmentsTx(ctx context.Context, tx pgx.Tx, ticketID, ac
 	if len(keys) == 0 {
 		return nil
 	}
-	if err := s.storageRepo.BindCreateAttachments(ctx, tx, s.storageCfg.Bucket, actorUserID, ticketID, keys, s.storageCfg.MaxAttachmentsPerTicket); err != nil {
+	cfg := s.storageCfg.Load() // 快照只读（F-D3）
+	if err := s.storageRepo.BindCreateAttachments(ctx, tx, cfg.Bucket, actorUserID, ticketID, keys, cfg.MaxAttachmentsPerTicket); err != nil {
 		if errors.Is(err, repository.ErrStorageObjectNotFound) {
 			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
 		}
@@ -304,7 +305,7 @@ func (s *Service) bindAttachmentsTx(ctx context.Context, tx pgx.Tx, ticketID, ac
 		}
 		if errors.Is(err, repository.ErrStorageAttachmentLimit) {
 			return errcode.New(errcode.ErrInvalidParams.Code,
-				fmt.Sprintf("工单附件数超过上限（%d）", s.storageCfg.MaxAttachmentsPerTicket))
+				fmt.Sprintf("工单附件数超过上限（%d）", cfg.MaxAttachmentsPerTicket))
 		}
 		return fmt.Errorf("bind attachments: %w", err)
 	}

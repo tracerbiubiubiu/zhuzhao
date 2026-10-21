@@ -34,7 +34,7 @@ func TestBindAvatar_Scenarios(t *testing.T) {
 			AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
 		cfg.ApplyDefaults()
 		stub := &stubClient{stat: &pkgstorage.ObjectInfo{Size: 100, ETag: "e", ContentType: "image/png"}, getBody: []byte("png")}
-		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, cfg, testLogger()), stub
+		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, pkgstorage.NewConfigStore(cfg), testLogger()), stub
 	}
 
 	confirmedAvatar := func(t *testing.T, svc *storageservice.Service, who int64) string {

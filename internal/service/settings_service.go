@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -127,12 +128,12 @@ var settingsCatalog = []settingKey{
 // SettingsService 设置管理服务（B5-6——GET 列表 + POST 更新，tier 分层+硬底线钳制）。
 type SettingsService struct {
 	repo   *repository.SettingsRepo
-	cfg    *storcfg.StorageConfig // 指针——mutate 实现运行时覆盖（单实例）
+	cfg    *storcfg.ConfigStore // F-D3（2026-10-21）：原子快照——clone→改→Store，与请求侧读并发安全
 	logger *slog.Logger
 }
 
 // NewSettingsService 创建时读全量 KV 覆盖并 apply（boot 路径——三层 ② 优先于 ①）。
-func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.StorageConfig, logger *slog.Logger) *SettingsService {
+func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.ConfigStore, logger *slog.Logger) *SettingsService {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -145,13 +146,14 @@ func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.StorageConfi
 
 // applyAllOverrides 启动路径：读全量 KV → 逐键 Validate（硬底线在 boot 路径同样
 // 设防——DB 被手工写入越界值时跳过保 config 默认，分批审计 F-D1 修复 2026-10-21）
-// → 按 catalog Apply 到 config 指针。
+// → clone→Apply→Store 整体替换快照（F-D3——不再原地 mutate 共享指针）。
 func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 	kvs, err := s.repo.ListAll(ctx)
 	if err != nil {
 		s.logger.Warn("settings: boot apply overrides failed (config defaults active)", "err", err)
 		return
 	}
+	merged := *s.cfg.Load()
 	applied, skipped := 0, 0
 	for _, sk := range settingsCatalog {
 		if kv, ok := kvs[sk.Key]; ok && kv != nil {
@@ -161,11 +163,12 @@ func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 					"key", sk.Key, "err", err)
 				continue
 			}
-			sk.Apply(kv.Value, s.cfg)
+			sk.Apply(kv.Value, &merged)
 			applied++
 		}
 	}
 	if applied > 0 {
+		s.cfg.Store(&merged)
 		s.logger.Info("settings: boot applied KV overrides", "count", applied)
 	}
 	if skipped > 0 {
@@ -185,6 +188,7 @@ func (s *SettingsService) List(ctx context.Context) ([]model.SettingView, error)
 		if kv, ok := kvs[sk.Key]; ok && kv != nil {
 			v.Value = kv.Value
 			v.Source = "kv"
+			v.Version = kv.Version // F-D2：乐观锁期望值（前端回传 expected_version 用）
 			v.UpdatedBy = kv.UpdatedBy
 			v.UpdatedAt = &kv.UpdatedAt
 		} else {
@@ -225,12 +229,17 @@ func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRe
 	} else if old != nil {
 		oldVal = string(old.Value)
 	}
-	// KV upsert
-	if err := s.repo.Upsert(ctx, req.Key, req.Value, actorUserID); err != nil {
+	// KV upsert（F-D2：version 乐观锁——expected_version 非空时严格 CAS）
+	if err := s.repo.Upsert(ctx, req.Key, req.Value, actorUserID, req.ExpectedVersion); err != nil {
+		if errors.Is(err, repository.ErrSettingsVersionConflict) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "设置已被并发修改，请刷新后重试")
+		}
 		return err
 	}
-	// in-memory apply（运行时生效——单实例）
-	sk.Apply(req.Value, s.cfg)
+	// in-memory apply（F-D3：clone→改→Store 整体换快照——并发读安全）
+	merged := *s.cfg.Load()
+	sk.Apply(req.Value, &merged)
+	s.cfg.Store(&merged)
 	s.logger.Info("setting updated", "key", req.Key, "by", actorUserID,
 		"old_value", oldVal, "new_value", string(req.Value))
 	return nil
@@ -252,21 +261,22 @@ func tierAllowed(minTier string, roles []string) bool {
 
 // defaultValue 从 config 读出厂默认（用于列表展示 Source=config 行）。
 func (s *SettingsService) defaultValue(key string) json.RawMessage {
+	c := s.cfg.Load()
 	switch key {
 	case "storage.max_upload_bytes":
-		b, _ := json.Marshal(s.cfg.MaxUploadBytes)
+		b, _ := json.Marshal(c.MaxUploadBytes)
 		return b
 	case "storage.max_attachments_per_ticket":
-		b, _ := json.Marshal(s.cfg.MaxAttachmentsPerTicket)
+		b, _ := json.Marshal(c.MaxAttachmentsPerTicket)
 		return b
 	case "storage.max_presign_batch":
-		b, _ := json.Marshal(s.cfg.MaxPresignBatch)
+		b, _ := json.Marshal(c.MaxPresignBatch)
 		return b
 	case "storage.allowed_mime_types":
-		b, _ := json.Marshal(s.cfg.AllowedMIMETypes)
+		b, _ := json.Marshal(c.AllowedMIMETypes)
 		return b
 	case "storage.orphan_gc_days":
-		b, _ := json.Marshal(s.cfg.OrphanGCDays)
+		b, _ := json.Marshal(c.OrphanGCDays)
 		return b
 	}
 	return json.RawMessage(`null`)

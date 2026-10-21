@@ -63,7 +63,7 @@ func TestTicketAttachment_Scenarios(t *testing.T) {
 		cfg.ApplyDefaults()
 		return storageservice.NewService(repository.NewStorageRepo(testPool),
 			&stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}, getBody: []byte("png")},
-			cfg, testLogger())
+			pkgstorage.NewConfigStore(cfg), testLogger())
 	}
 
 	t.Run("presign ticket_attachment 落 pending", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestTicketAttachment_Scenarios(t *testing.T) {
 		cfg.MaxAttachmentsPerTicket = 3
 		svc := storageservice.NewService(repository.NewStorageRepo(testPool),
 			&stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}, getBody: []byte("png")},
-			cfg, testLogger())
+			pkgstorage.NewConfigStore(cfg), testLogger())
 		tkID := insertTicket(t, uid)
 		bind := func() error {
 			resp, err := svc.PresignUpload(context.Background(), &model.PresignUploadInput{

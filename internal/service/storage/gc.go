@@ -19,11 +19,11 @@ import (
 type GCJob struct {
 	repo   *repository.StorageRepo
 	client storage.Client
-	cfg    *storage.StorageConfig
+	cfg    *storage.ConfigStore // F-D3：与 wire 三服务共享同一快照存储（KV 改 orphan_gc_days 即时可见）
 	logger *slog.Logger
 }
 
-func NewGCJob(repo *repository.StorageRepo, client storage.Client, cfg *storage.StorageConfig, logger *slog.Logger) *GCJob {
+func NewGCJob(repo *repository.StorageRepo, client storage.Client, cfg *storage.ConfigStore, logger *slog.Logger) *GCJob {
 	return &GCJob{repo: repo, client: client, cfg: cfg, logger: logger}
 }
 
@@ -31,32 +31,41 @@ const gcBatchSize = 100
 
 // Handle 两段扫描：
 //
-//  1. pending 孤儿（超 orphan_gc_days）：先删对象后清行（fail-safe 顺序——清行
-//     失败则对象已删、行残留 pending 下轮重删对象[存储侧幂等]；反向则可能行已
-//     清而对象残留成无主泄漏）。行物理清除= A.9「对象与行均消失」终态
-//     （条件删 pending 态，并发 confirm 翻态时让位不动）。
+//  1. pending 孤儿（超 orphan_gc_days）：**先条件清行、后删对象**（分批审计 F-A1
+//     修复 2026-10-21——原「先删对象后清行」在 List 与 Remove 之间撞上并发 confirm
+//     会把刚确认的对象物理删掉：行 confirmed 在库、对象 404）。条件删 0 行 = 已被
+//     并发 confirm 翻态，让位不动；行删成功而对象删失败 → 补插 deleted 墓碑行走
+//     二扫重试（否则行已清、对象残留成无扫描覆盖的泄漏）。两种失败模式均收敛。
 //  2. deleted 残留（二扫，2026-10-20）：删附件/弃旧流程 best-effort 物理删失败
-//     后的行——重删对象成功即物理清行；失败保持 deleted 下轮再试（修复前
-//     deleted 态无扫描覆盖=对象永久无主泄漏，S5 评审 P2-1）。
+//     后的行（含 F-A1 墓碑）——重删对象成功即物理清行；失败保持 deleted 下轮再试
+//     （修复前 deleted 态无扫描覆盖=对象永久无主泄漏，S5 评审 P2-1）。
 func (g *GCJob) Handle(ctx context.Context, _ json.RawMessage) error {
-	before := time.Now().AddDate(0, 0, -g.cfg.OrphanGCDays)
-	rows, err := g.repo.ListExpiredPending(ctx, g.cfg.Bucket, before, gcBatchSize)
+	cfg := g.cfg.Load()
+	before := time.Now().AddDate(0, 0, -cfg.OrphanGCDays)
+	rows, err := g.repo.ListExpiredPending(ctx, cfg.Bucket, before, gcBatchSize)
 	if err != nil {
 		g.logger.Error("storage gc list expired pending", "err", err)
 		return err
 	}
 	for _, f := range rows {
-		if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
-			// 单条失败不炸整批：行保持 pending，下轮重试（对象删除幂等）
-			g.logger.Warn("storage gc remove object failed", "key", f.ObjectKey, "err", err)
+		deleted, err := g.repo.DeleteRowIfPending(ctx, f.ID)
+		if err != nil {
+			g.logger.Error("storage gc delete pending row", "key", f.ObjectKey, "err", err)
 			continue
 		}
-		if err := g.repo.DeleteRowIfPending(ctx, f.ID); err != nil {
-			g.logger.Error("storage gc delete pending row", "key", f.ObjectKey, "err", err)
+		if !deleted {
+			continue // 并发 confirm 让位：对象已属用户，不动（F-A1）
+		}
+		if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
+			g.logger.Warn("storage gc remove object failed, tombstoned for second sweep", "key", f.ObjectKey, "err", err)
+			if terr := g.repo.InsertDeletedTombstone(ctx, f); terr != nil {
+				// 行已清且墓碑插入失败 = 对象无扫描覆盖——升级 Error 供人工介入（极低概率双失败）
+				g.logger.Error("storage gc tombstone insert failed (object leak, manual cleanup needed)", "key", f.ObjectKey, "err", terr)
+			}
 		}
 	}
 
-	dead, err := g.repo.ListDeleted(ctx, g.cfg.Bucket, gcBatchSize)
+	dead, err := g.repo.ListDeleted(ctx, cfg.Bucket, gcBatchSize)
 	if err != nil {
 		g.logger.Error("storage gc list deleted", "err", err)
 		return err

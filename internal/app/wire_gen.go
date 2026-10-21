@@ -90,6 +90,9 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	// phase5 S5 B5-1（05 号 A.1 装配链）：禁用态 client=nil，服务层显式拒绝；
 	// GC cron 装配在 NewApp（随 storage.enabled 门控——与 auditCron 同款）
 	storageConfig := cfg.Storage
+	// F-D3（2026-10-21）：三服务 + NewApp GC 共享同一原子快照存储（KV 运行时
+	// 覆盖与请求侧读并发安全；修复前值拷贝指针分裂——orphan_gc_days 到不了 GC）。
+	storageStore := pkgstorage.NewConfigStore(&storageConfig)
 	var storageClient pkgstorage.Client
 	if storageConfig.Enabled {
 		mc, err := pkgstorage.NewMinioClient(&storageConfig)
@@ -99,12 +102,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		storageClient = mc
 	}
 	storageRepo := repository.NewStorageRepo(pool)
-	storageService := storageservice.NewService(storageRepo, storageClient, &storageConfig, logger)
-	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, &storageConfig)
+	storageService := storageservice.NewService(storageRepo, storageClient, storageStore, logger)
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
-	settingsService := service.NewSettingsService(settingsRepo, &storageConfig, logger)
+	settingsService := service.NewSettingsService(settingsRepo, storageStore, logger)
 	settingsHandler := handler.NewSettingsHandler(settingsService)
 	jobsRegistry := provideJobsRegistry(auditLogRepo, auditConfig, logger)
 	jobSubmissionRepo := repository.NewJobSubmissionRepo(pool)
@@ -183,7 +186,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 	engine := router.New(deps)
 	engineRef = engine
-	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry)
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore)
 	if err != nil {
 		cleanup3()
 		cleanup2()

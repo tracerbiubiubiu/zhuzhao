@@ -62,13 +62,13 @@ const maxFileNameRunes = 255
 type Service struct {
 	repo   *repository.StorageRepo
 	client pkgstorage.Client
-	cfg    *pkgstorage.StorageConfig
+	cfg    *pkgstorage.ConfigStore // F-D3（2026-10-21）：原子快照——KV 运行时覆盖与请求侧读并发安全
 	bucket string
 	logger *slog.Logger
 }
 
-func NewService(repo *repository.StorageRepo, client pkgstorage.Client, cfg *pkgstorage.StorageConfig, logger *slog.Logger) *Service {
-	return &Service{repo: repo, client: client, cfg: cfg, bucket: cfg.Bucket, logger: logger}
+func NewService(repo *repository.StorageRepo, client pkgstorage.Client, cfg *pkgstorage.ConfigStore, logger *slog.Logger) *Service {
+	return &Service{repo: repo, client: client, cfg: cfg, bucket: cfg.Load().Bucket, logger: logger}
 }
 
 // PresignUpload 预签名上行（A.4 #1）：限制矩阵预检 → 服务端生成 key →
@@ -80,6 +80,7 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 	}
 	purpose := strings.TrimSpace(in.Purpose)
 	mime := strings.ToLower(strings.TrimSpace(in.MIMEType))
+	cfg := s.cfg.Load() // 快照只读（F-D3）
 
 	if _, ok := purposePrefixes[purpose]; !ok {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "purpose 非法")
@@ -87,10 +88,10 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 	if ticketPurposes[purpose] && in.TicketID == nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 purpose 必带 ticket_id")
 	}
-	if !MIMEAllowed(mime, s.cfg.AllowedMIMETypes, s.cfg.BlockedMIMETypes) {
+	if !MIMEAllowed(mime, cfg.AllowedMIMETypes, cfg.BlockedMIMETypes) {
 		return nil, errcode.ErrFileTypeNotAllowed
 	}
-	if in.SizeBytes <= 0 || in.SizeBytes > s.cfg.MaxUploadBytes {
+	if in.SizeBytes <= 0 || in.SizeBytes > cfg.MaxUploadBytes {
 		return nil, errcode.ErrFileTooLarge
 	}
 	fileName := strings.TrimSpace(in.FileName)
@@ -111,7 +112,7 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 		return nil, errcode.ErrInternal
 	}
 
-	ttl, err := s.cfg.TTL()
+	ttl, err := cfg.TTL()
 	if err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "presign ttl 非法")
 	}
@@ -161,7 +162,8 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		return nil, errcode.ErrInternal
 	}
 	// HEAD 实测双卡点：size 实测超限拒（谎报声明绕不过）；类型与签名钉死值一致
-	if st.Size > s.cfg.MaxUploadBytes {
+	cfg := s.cfg.Load()
+	if st.Size > cfg.MaxUploadBytes {
 		return nil, errcode.ErrFileTooLarge
 	}
 	if st.ContentType != "" && !strings.EqualFold(st.ContentType, f.MIMEType) {
@@ -173,13 +175,13 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		if in.TicketID == nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
 		}
-		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, s.cfg.MaxAttachmentsPerTicket); err != nil {
+		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, cfg.MaxAttachmentsPerTicket); err != nil {
 			if errors.Is(err, repository.ErrStorageAlreadyBound) {
 				return nil, errcode.ErrFileAlreadyBound
 			}
 			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code,
-					fmt.Sprintf("工单附件数超过上限（%d）", s.cfg.MaxAttachmentsPerTicket))
+					fmt.Sprintf("工单附件数超过上限（%d）", cfg.MaxAttachmentsPerTicket))
 			}
 			s.logger.Error("storage confirm and bind", "err", err)
 			return nil, errcode.ErrInternal
@@ -392,7 +394,7 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 
 // InlineDisposition 代理下载 Content-Disposition 分型（inline 前缀表判定）。
 func (s *Service) InlineDisposition(mime string) bool {
-	for _, p := range s.cfg.InlineMIMEPrefixes {
+	for _, p := range s.cfg.Load().InlineMIMEPrefixes {
 		if strings.HasPrefix(strings.ToLower(mime), p) {
 			return true
 		}

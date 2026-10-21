@@ -37,7 +37,7 @@ func TestDownload_Scenarios(t *testing.T) {
 			stat:    &pkgstorage.ObjectInfo{Size: int64(len(body)), ETag: etag, ContentType: "image/png"},
 			getBody: body,
 		}
-		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, cfg, testLogger()), stub
+		return storageservice.NewService(repository.NewStorageRepo(testPool), stub, pkgstorage.NewConfigStore(cfg), testLogger()), stub
 	}
 
 	// confirmedKey 走真实链路建一条已确认 avatar 对象（库内 etag=桩当前 etag）。

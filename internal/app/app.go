@@ -39,7 +39,7 @@ type App struct {
 // 双向；缺口 = 拒绝启动）——W0b wire 转正：原在 wire_gen 手码装配段的
 // 对账逻辑迁入此处，使 wire_gen 可安全再生。
 func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
-	pool *pgxpool.Pool, gw *gateway.Registry) (*App, error) {
+	pool *pgxpool.Pool, gw *gateway.Registry, storageCfg *pkgstorage.ConfigStore) (*App, error) {
 	var prefixes []string
 	if gw != nil {
 		prefixes = gw.Prefixes
@@ -70,7 +70,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	var storageGC *service.CronScheduler
 	if cfg.Storage.Enabled {
 		if gcClient, cerr := pkgstorage.NewMinioClient(&cfg.Storage); cerr == nil {
-			gc := storageservice.NewGCJob(repository.NewStorageRepo(pool), gcClient, &cfg.Storage, logger)
+			// F-D3：GC 与 wire 三服务共享同一 ConfigStore——修复前 &cfg.Storage 与
+			// wire 值拷贝 &storageConfig 分裂，KV 改 orphan_gc_days 到不了 GC。
+			gc := storageservice.NewGCJob(repository.NewStorageRepo(pool), gcClient, storageCfg, logger)
 			storageGC = service.NewCronScheduler(pool, "storage_gc", gc, time.Hour, logger)
 			logger.Info("storage_gc cron enabled (orphan pending objects, 1h tick)")
 		} else {
