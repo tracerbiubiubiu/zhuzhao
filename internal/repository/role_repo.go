@@ -71,6 +71,15 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 	}
 	defer tx.Rollback(ctx)
 
+	// 串行化同一角色的并发菜单重绑（F-B2 修复 2026-10-22）：
+	// DELETE ALL + INSERT ALL 在无锁时两事务交错 → UNION 结果
+	//（两管理员的意图均被破坏）。FOR UPDATE 行锁使 DELETE→INSERT 原子串行化。
+	var lockID int64
+	if err := tx.QueryRow(ctx,
+		`SELECT id FROM roles WHERE id = $1 FOR UPDATE`, role.ID).Scan(&lockID); err != nil {
+		return fmt.Errorf("lock role for menu assign: %w", err)
+	}
+
 	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, role.ID); err != nil {
 		return fmt.Errorf("delete role_menus: %w", err)
 	}
