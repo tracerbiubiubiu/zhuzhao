@@ -55,6 +55,8 @@
 13. **500/内部错误必须留痕（2026-10-12 首例驱动：首页统计卡 `GET /tickets` 瞬时 500 事后无迹可查）**——① 未分类错误（非业务码）由 zhuzhao `writeServiceError` 中枢统一落 ERROR（`request_id/path/err` 明细，service error without http mapping 同规格）；② 服务源头**禁止吞错不落直接返回 ErrInternal**（存量零容忍：notification list 为首例补修；新增即审计项）；③ panic 不占本条——既有 Recovery 中间件口径（slog 堆栈 + PanicSink 指纹聚合落库 + 指标计数）；④ 前端/反代错误体归口各端点（blob 错误体解析属前端请求层职责，zhuzhao-ui 请求层已实现）。
 14. **JSON 序列化形态公约（2026-10-14 三仓契约审计批立约；审计明细随 zhuzhao deliverables）**——① **同概念唯一 wire 形态**：同一业务概念在列表/详情/请求/响应各面编码必须一致（反面在册：taskrunner params 转义字符串 vs JobView 原生对象双形态——升级为 ui 协同决策项收敛）；② **「无值」按语义分组单表达**：关系指针类（`parent_id` 等文档拍板形态）出 `null`，回填/enrich 类（`*_name/*_no/last_*`）值类型 + `omitempty`（空即字段消失）——同组字段禁混两形态（反面在册：Ticket 回填四字段、Role.ParentID 偏离方已修）；③ **bool 恒出、数组恒不 null**：`false` 不得被 omitempty 吞（反面：Field.Sensitive 已修），空数组出 `[]`（`jsonutil.Int64Slice` nil 亦编 `[]`）；④ **零值有语义的数值禁 omitempty**（attempts/count/duration 类，反面：死信载荷 Attempts 已修）；⑤ **写响应回显规范化后的持久值**（Create/PATCH 响应与后续 GET 必一致，反面：relation_type 已修）；⑥ **PATCH 显式设计 null 语义**——指针/RawMessage 字段对显式 `null` 必须拒绝或明示忽略，禁直通落库（反面：taskrunner params 已修为 400）；⑦ 出站 int64 ID 恒 `,string`/`Int64Slice`（含分页游标/回显数组，反面：after_id、role_ids 已修）。**新增跨 HTTP 字段先对表本条**。
 
+15. **周期任务归属（D18 调度分工口径，2026-10-20 双审计立约 / 2026-10-21 补录）**——进程内 CronScheduler（zhuzhao `cron_scheduler.go`）**仅承接平台维护型扫描**：超期 / 到期 / 终态对账 / GC 这类需同进程 DB 事务、单实例 advisory lock 的内务任务；**业务任务、脚本、连接器拉取、及一切需要重试·死信·审计·UI 可见的周期工作一律 taskrunner**。判据=任务性质而非大小：属业务域或需独立可观测/重试语义 → taskrunner；属平台自身维护且需与业务写同事务 → 进程内。护栏：新增周期任务先对表本条（归属歧义=评审必问）；CronScheduler 不再承接业务任务（存量无违例——audit_archive/GC/timeout_scan 三任务均维护型）。
+
 ## 4. 工程结构与代码组织（所有服务同规格）
 
 | 项 | 约定 |
@@ -240,3 +242,4 @@
 | 2026-10-20 | §12-9 正文条款增**改动摘要编号约定**（所有者提议）：改动摘要多条用 ①②③ 编号、单条不编——逐条可引用（与批次/拍板/外审发现编号生态同构）+ 完整性可对账（缺号即暴露漏写，与 diff 逻辑块对账）；原「批量大时可列编号清单」软建议升格硬约定；存量不追溯 |
 | 2026-10-20 | §12-9 增**push 决策点扫描**（`make commit-lint`，发现链第 1 道）：push 指令前必跑（默认待推送窗口），违例先本地 rebase reword 再推——本地历史可改窗口内消灭格式违例；CI 推送范围校验为第 2 道兜底。动因=格式违例屡次被后续提交覆盖后才人工发现（scripts/commit-lint.sh 随批落地） |
 | 2026-10-20 | §12-9 增**push 前置三件**（push 闸门完整形态）+同日细则二条：①commit-lint 全绿 ②功能批次验收/审计状态明确——已收口/已审计/所有者明示直推+**功能批机械判定**（窗口内提交触及 internal/migrations/configs/cmd 即功能批、混合从功能面，纯 docs/scripts 豁免）③窗口核对——待推送集合=已检查集合+**报告钉窗口端点**（形如 origin/<branch>..HEAD @ \<hash\>，push 时核差集）；commit 照常批批走不冻结（本地可塑），push 才是统一检查闸门 |
+| 2026-10-21 | §3-15 立「周期任务归属」公约（D18 调度分工口径成文防漂——五批审计收口批随批补录；phase5/10 号 S10 cron 行同口径注记在册） |
