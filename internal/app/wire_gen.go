@@ -103,7 +103,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	}
 	storageRepo := repository.NewStorageRepo(pool)
 	storageService := storageservice.NewService(storageRepo, storageClient, storageStore, logger)
-	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore)
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore, nil)
 	ticketHandler := handler.NewTicketHandler(ticketService)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)

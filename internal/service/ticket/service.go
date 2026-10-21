@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -29,6 +31,7 @@ type Service struct {
 	delegation  OrgDelegationChecker
 	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
 	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
+	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -42,6 +45,7 @@ func NewTicketService(
 	delegation OrgDelegationChecker,
 	storageRepo *repository.StorageRepo,
 	storageCfg *pkgstorage.ConfigStore,
+	fetcherReg *datafetcher.Registry,
 ) *Service {
 	s := &Service{
 		db:          db,
@@ -49,6 +53,7 @@ func NewTicketService(
 		orgRepo:     orgRepo,
 		registry:    registry,
 		storageCfg:  storageCfg,
+		fetcherReg:  fetcherReg,
 		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
@@ -202,6 +207,9 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
 		return nil, err
 	}
+	// B1-4 取数联动（A.4：Submit 事务内、formula 重算之前——取数结果可被
+	// formula 引用）；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
+	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
 	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
 	// 服务端重算覆盖（前端预览值不可信，篡改负向必测 01 §8）
 	customData, err = s.applyFormulas(ctx, req.TypeCode, customData)
@@ -291,6 +299,61 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 		Page:     q.Page,
 		PageSize: q.PageSize,
 	}, nil
+}
+
+// applyFetches B1-4 取数联动（A.4）：从 field_meta 组装 FetchField 投影 →
+// datafetcher.ApplyFetches 回写。失败不阻塞（A.4 失败策略）——missed 记日志。
+func (s *Service) applyFetches(ctx context.Context, typeCode string, customData json.RawMessage, actorUserID int64) json.RawMessage {
+	if s.fetcherReg == nil {
+		return customData // 无注册源——取数面未装配
+	}
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return customData
+	}
+	var schema []datafetcher.FetchField
+	for _, f := range fields {
+		if len(f.FieldMeta) == 0 {
+			continue
+		}
+		var meta struct {
+			Fetch struct {
+				Source    datafetcher.FetchSource `json:"source"`
+				TriggerBy string                  `json:"trigger_by"`
+				Mapping   map[string]string       `json:"mapping"`
+			} `json:"fetch"`
+		}
+		if err := json.Unmarshal(f.FieldMeta, &meta); err != nil || meta.Fetch.Source.Type == "" {
+			continue
+		}
+		ff := datafetcher.FetchField{
+			Key: f.FieldKey, Source: meta.Fetch.Source,
+			TriggerBy: meta.Fetch.TriggerBy, Mapping: meta.Fetch.Mapping,
+		}
+		if ff.TriggerBy == "" {
+			ff.TriggerBy = f.FieldKey
+		}
+		schema = append(schema, ff)
+	}
+	if len(schema) == 0 {
+		return customData
+	}
+	var data map[string]any
+	if err := json.Unmarshal(customData, &data); err != nil || data == nil {
+		return customData
+	}
+	out, missed, err := datafetcher.ApplyFetches(s.fetcherReg, schema, data, datafetcher.Actor{UserID: actorUserID})
+	if err != nil {
+		return customData // 取数面错误不阻塞提交
+	}
+	if len(missed) > 0 {
+		slog.Warn("ticket fetch linkage missed", "type_code", typeCode, "missed", missed)
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return customData
+	}
+	return json.RawMessage(b)
 }
 
 // applyFormulas B1-3 提交链 formula 重算（A.3）：从 field_meta 组装投影 →

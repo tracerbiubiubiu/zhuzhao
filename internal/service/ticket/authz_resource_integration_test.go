@@ -47,7 +47,7 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	roles := stubRoleFetcher{}
 	stgCfg := &pkgstorage.StorageConfig{}
 	stgCfg.ApplyDefaults()
-	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool), pkgstorage.NewConfigStore(stgCfg))
+	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool), pkgstorage.NewConfigStore(stgCfg), nil)
 
 	// 预取 root org id（seedMinimal 已建）
 	var rootID int64
