@@ -81,3 +81,45 @@ func (r *MessageTemplateRepo) List(ctx context.Context, page, pageSize int, code
 	}
 	return out, total, nil
 }
+
+// Create 创建模板。
+func (r *MessageTemplateRepo) Create(ctx context.Context, t *model.MessageTemplate) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO message_templates (code, name, channel, biz_type, subject, body, variable_schema, enabled, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		t.Code, t.Name, t.Channel, t.BizType, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.CreatedBy)
+	if err != nil {
+		if isPgUnique(err) {
+			return ErrTemplateDupCode
+		}
+	}
+	return err
+}
+
+// Update 更新模板（version CAS）。
+func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTemplate) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE message_templates SET name=$2, subject=$3, body=$4, variable_schema=$5,
+			enabled=$6, version=version+1, updated_at=NOW()
+		WHERE code=$1 AND version=$7`,
+		t.Code, t.Name, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.Version)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrTemplateNotFound
+	}
+	return nil
+}
+
+// Delete 删除模板。
+func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
+	tag, err := r.db.Exec(ctx, `DELETE FROM message_templates WHERE code = $1`, code)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrTemplateNotFound
+	}
+	return nil
+}

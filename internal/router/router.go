@@ -39,6 +39,9 @@ type Deps struct {
 	// B5-6 配置化设置管理（biz 组——GET=admin 读 / POST=tier 校验在 service）
 	SettingsHandler *handler.SettingsHandler
 
+	// S6 B6-3 消息模板管理
+	MessageTemplateHandler *handler.MessageTemplateHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -429,6 +432,12 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)
+
+					// S6 B6-3 消息模板管理（通知中心页面族——自 S4 迁入）
+					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)
+					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
+					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
+					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
 				}
 			}
 
