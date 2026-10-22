@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +15,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -29,13 +31,29 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
-	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
-	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
-	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
+	storageRepo *repository.StorageRepo   // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg  *pkgstorage.ConfigStore   // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
+	fetcherReg  *datafetcher.Registry     // B1-4：取数联动（nil=无注册源，取数跳过）
+	eventReg    *domainevent.HookRegistry // B6-1：领域事件（nil=不派发——首版装配态）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
 // Wire 语义保证：Registry 单例，TicketService 构造（自注册）先于 router.New。
+// SetEventRegistry B6-1：注入领域事件注册表（app 装配层调用——wire_gen 零改；
+// nil=不派发，首版装配态安全默认）。
+func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
+	s.eventReg = reg
+	return s
+}
+
+// emitEvent B6-1：事务提交后派发领域事件（06 号 A.1——at-most-once 异步投递；
+// eventReg=nil 时 NOP）。
+func (s *Service) emitEvent(ev domainevent.DomainEvent) {
+	if s.eventReg != nil {
+		s.eventReg.Dispatch(context.Background(), ev)
+	}
+}
+
 func NewTicketService(
 	db *pgxpool.Pool,
 	ticketRepo *repository.TicketRepo,
@@ -275,6 +293,15 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	// B6-1：工单创建事件（事务提交后派发——06 号 §5.2a 异步投递）
+	s.emitEvent(domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketCreated,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
+		},
+		Timestamp: time.Now(),
+	})
 	return ticket, nil
 }
 
@@ -721,7 +748,19 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	// B6-1：工单分派事件（事务提交后派发）
+	s.emitEvent(domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketAssigned,
+		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"from_assignee": fromAssignee, "to_assignee": toAssignee,
+		},
+		Timestamp: time.Now(),
+	})
+	return nil
 }
 
 // Delete 删除工单（2a：仅 admin）
