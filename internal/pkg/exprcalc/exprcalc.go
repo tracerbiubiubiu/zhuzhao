@@ -97,3 +97,13 @@ func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, 
 	}
 	return out, nil
 }
+
+// CheckSyntax 仅编译校验（不运行——schema 保存时预检用，空环境无字段值
+// 时运行会报 nil 运算假阳性）。
+func CheckSyntax(src string) error {
+	if len(src) > MaxExprLen {
+		return fmt.Errorf("表达式超过 %d 字符长度上限", MaxExprLen)
+	}
+	_, err := expr.Compile(src, expr.AsAny())
+	return err
+}
