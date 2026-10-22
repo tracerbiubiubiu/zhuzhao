@@ -48,11 +48,13 @@ func TestFetchLinkage_Fields(t *testing.T) {
 	require.NoError(t, err)
 
 	// 字段：host_ip（触发）+ responsible（目标——fetch 映射回写）
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 		Fields: []model.TicketTypeFieldInput{
 			{FieldKey: "host_ip", FieldLabel: "主机 IP", FieldType: "input", Required: true, SortOrder: 1},
 			{FieldKey: "responsible", FieldLabel: "责任人", FieldType: "input", Required: false, SortOrder: 2,
 				FieldMeta: json.RawMessage(`{"fetch":{"source":{"type":"internal_db"},"trigger_by":"host_ip","mapping":{"owner":"responsible","org":"dept"}}}`)},
+			// B1-7 批2：mapping 目标须为 schema 字段——补 dept 声明（一查多填目标）
+			{FieldKey: "dept", FieldLabel: "部门", FieldType: "input", Required: false, SortOrder: 3},
 		}})
 	require.NoError(t, err)
 
@@ -80,7 +82,7 @@ func TestFetchLinkage_TypeValidation(t *testing.T) {
 	code := "fvt" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "取数校验"})
 	require.NoError(t, err)
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 		Fields: []model.TicketTypeFieldInput{
 			{FieldKey: "host_ip", FieldLabel: "IP", FieldType: "input", Required: true, SortOrder: 1},
 			{FieldKey: "port", FieldLabel: "端口", FieldType: "number", Required: false, SortOrder: 2,
@@ -120,7 +122,7 @@ func TestDictSelect_SubmitRealValue(t *testing.T) {
 	tcode := "dsel" + uniqueSuffix()
 	_, err = svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: tcode, Name: "字典 select"})
 	require.NoError(t, err)
-	err = svc.ReplaceTicketTypeFields(ctx, tcode, &model.ReplaceTypeFieldsRequest{Code: tcode,
+	_, err = svc.ReplaceTicketTypeFields(ctx, tcode, &model.ReplaceTypeFieldsRequest{Code: tcode,
 		Fields: []model.TicketTypeFieldInput{
 			{FieldKey: "sev", FieldLabel: "级别", FieldType: "select", Required: true, SortOrder: 1,
 				FieldOptions: json.RawMessage(`["dict:` + dcode + `"]`)},

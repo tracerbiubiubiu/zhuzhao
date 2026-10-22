@@ -349,3 +349,11 @@ func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
 	assert.Equal(t, "/api/v1/users", auditCapture.entries[0].Path)
 	assert.Equal(t, http.StatusForbidden, auditCapture.entries[0].StatusCode)
 }
+
+// B1-7 批2：impact 归位管理组（01 号 §3.4 拍板——撤 SelfService 挂法，catalogExempt
+// 同步撤销后全集循环自动脱测）——无类型管理权限的登录用户 403。
+func TestFieldImpact_RequiresTypeAdmin(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+	w := do(r, m, 1, http.MethodGet, "/api/v1/ticket-types/incident/fields/impact")
+	assert.Equal(t, http.StatusForbidden, w.Code, "viewer 访问 impact 应被 Casbin 拦（管理组）")
+}

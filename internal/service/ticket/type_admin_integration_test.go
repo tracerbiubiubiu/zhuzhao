@@ -59,22 +59,22 @@ func TestBK18_TypeCRUDAndValidation(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrConflict.Code)
 
 	// ③ 字段集校验：重复 key / select 无选项 / 坏正则 → 400
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true, FieldOptions: rawJSON(`[]`)},
 		{FieldKey: "env", FieldLabel: "重复", FieldType: "input"},
 	}})
 	require.Error(t, err, "重复 field_key 应被拒")
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true},
 	}})
 	require.Error(t, err, "select 无选项应被拒")
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "biz_no", FieldLabel: "单号", FieldType: "input", ValidateRegex: "["},
 	}})
 	require.Error(t, err, "坏正则应被拒")
 
 	// ④ 合法字段集 → 替换成功 + has_custom_fields 同步
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true,
 			FieldOptions: rawJSON(`[{"label":"生产","value":"prod"},{"label":"测试","value":"test"}]`)},
 		{FieldKey: "biz_no", FieldLabel: "业务单号", FieldType: "input", Required: true, ValidateRegex: "^BK[0-9]{4}$", SortOrder: 20},

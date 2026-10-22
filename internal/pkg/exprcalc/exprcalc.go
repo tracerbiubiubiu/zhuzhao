@@ -32,6 +32,7 @@ type EvalEnv struct {
 type FormulaField struct {
 	Key     string
 	Formula string
+	Type    string // field_type（B1-7 批2：提交期结果类型校验——三路F-B-3 收口）
 }
 
 // 护栏常量（A.3：长度钳制；超时经 context 取消传递——提交链值域天然有界，
@@ -109,6 +110,12 @@ func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, 
 		if fv, ok := v.(float64); ok && (math.IsInf(fv, 0) || math.IsNaN(fv)) {
 			return nil, fmt.Errorf("formula 字段 %q 结果为非有限数（%v）——检查除零/溢出", f.Key, fv)
 		}
+		// B1-7 批2（三路F-B-3 收口，所有者 2026-10-22 拍定）：提交期类型校验——
+		// 公式结果类型须匹配 field_type，不符硬 400 不宽容转换（保存期预判不可
+		// 实施：AsAny 无静态结果类型、保存期无字段值——重算后校验为唯一可测锚点）
+		if err := checkFormulaType(f, v); err != nil {
+			return nil, err
+		}
 		out[f.Key] = v
 	}
 	return out, nil
@@ -137,6 +144,46 @@ func (p *envIdentProbe) Visit(node *ast.Node) {
 	if id, ok := (*node).(*ast.IdentifierNode); ok && id.Value == "$env" {
 		p.found = true
 	}
+}
+
+// checkFormulaType 提交期结果类型校验（number=int/int64/float64、input=string；
+// 其余 field_type 保存期已拒 formula，此处放行兼容）。
+func checkFormulaType(f FormulaField, v any) error {
+	switch f.Type {
+	case "number":
+		switch v.(type) {
+		case float64, int, int64:
+			return nil
+		}
+		return fmt.Errorf("formula 字段 %q（number）结果须为数字，got %T——类型漂移拒绝提交", f.Key, v)
+	case "input":
+		if _, ok := v.(string); ok {
+			return nil
+		}
+		return fmt.Errorf("formula 字段 %q（input）结果须为字符串，got %T——类型漂移拒绝提交", f.Key, v)
+	}
+	return nil
+}
+
+// identCollector 标识符收集（保存期引用存在性/禁链式校验用——内置已全禁，
+// 任何标识符都应是字段引用）。
+type identCollector struct{ idents []string }
+
+func (p *identCollector) Visit(node *ast.Node) {
+	if id, ok := (*node).(*ast.IdentifierNode); ok {
+		p.idents = append(p.idents, id.Value)
+	}
+}
+
+// Identifiers 提取表达式引用的标识符集（B1-7 批2 保存期校验共用件）。
+func Identifiers(src string) ([]string, error) {
+	tree, err := parser.Parse(src)
+	if err != nil {
+		return nil, err
+	}
+	var p identCollector
+	ast.Walk(&tree.Node, &p)
+	return p.idents, nil
 }
 
 // rejectEnvIdentifier 保存与提交双防线共用（A.6 拍板=token 级非子串扫描）。

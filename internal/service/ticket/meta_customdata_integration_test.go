@@ -336,11 +336,12 @@ func TestUpdate_CustomDataPatch(t *testing.T) {
 		code := "cdp" + uniqueSuffix()
 		_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "patch 类型"})
 		require.NoError(t, err)
-		require.NoError(t, svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		_, rerr := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 			Fields: []model.TicketTypeFieldInput{
 				{FieldKey: "srv", FieldLabel: "系统", FieldType: "input", Required: true, SortOrder: 1},
 				{FieldKey: "body", FieldLabel: "正文", FieldType: "richtext", SortOrder: 2},
-			}}))
+			}})
+		require.NoError(t, rerr)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "g2", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(`{"srv":"x","body":"# v1"}`)}, aid)
 		require.NoError(t, err)

@@ -111,20 +111,155 @@ func (s *Service) ListTicketTypeFieldsAdmin(ctx context.Context, typeCode string
 	return s.ticketRepo.ListTicketTypeFieldsAll(ctx, typeCode)
 }
 
+// FieldSoftWarning 锁死守卫软提示（保存可继续——在途计数提醒；A.5 2026-10-22
+// 拍板：软提示=options 收窄/required false→true，借 impact 在途计数）。
+type FieldSoftWarning struct {
+	Field    string `json:"field"`
+	Reason   string `json:"reason"`
+	InFlight int    `json:"in_flight"`
+}
+
 // ReplaceTicketTypeFields 全量替换字段集（校验：key 唯一/类型枚举/select 选项/正则可编译）。
 // P1-3：req.Version 可选乐观锁，以父类型 ticket_types.version 做 CAS；nil = 旧行为。
-func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req *model.ReplaceTypeFieldsRequest) error {
+func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req *model.ReplaceTypeFieldsRequest) ([]FieldSoftWarning, error) {
 	if req.Version != nil && *req.Version <= 0 {
-		return errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
 	if _, err := s.ticketRepo.GetTicketType(ctx, code); err != nil {
-		return err
+		return nil, err
 	}
 	fields, err := validateFieldInputs(req.Fields)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.ticketRepo.ReplaceTypeFields(ctx, code, fields, req.Version)
+	// B1-7 批2 锁死守卫（01 号 §2/A.5 拍板终版——兼容性判据版）：硬锁 400 =
+	// 改 field_type / 改 field_key / 删除（按 key diff 新旧，判据=是否破坏已落库
+	// 数据或旧单编辑）；软提示（可继续，借 impact 在途计数）= options 收窄 /
+	// required false→true；余自由（label/排序/新增/formula/fetch/validation/
+	// options 只增不减/required true→false）。首次定义（旧集空）不受锁。
+	old, err := s.ticketRepo.ListTicketTypeFieldsAll(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkFieldLock(old, fields); err != nil {
+		return nil, err
+	}
+	if err := s.checkDictCodesExist(ctx, fields); err != nil {
+		return nil, err
+	}
+	warnings := s.softFieldWarnings(ctx, code, old, fields)
+	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, req.Version)
+}
+
+// checkFieldLock 锁死守卫硬锁面（纯函数便于测试）：旧集非空时，旧 key 必须全部
+// 存在于新集（删/改 key 均表现为旧 key 缺失）且 field_type 不可变。
+func checkFieldLock(old []*model.TicketTypeField, neu []model.TicketTypeField) error {
+	if len(old) == 0 {
+		return nil
+	}
+	newByKey := make(map[string]*model.TicketTypeField, len(neu))
+	for i := range neu {
+		newByKey[neu[i].FieldKey] = &neu[i]
+	}
+	for _, o := range old {
+		n, ok := newByKey[o.FieldKey]
+		if !ok {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q 已有存量数据引用，删除/改 key 属硬锁不可达——锁死守卫（01 号 §2/A.5）", o.FieldKey))
+		}
+		if n.FieldType != o.FieldType {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q 的 field_type 不可变更（%s → %s）——锁死守卫；如需换型请新建字段", o.FieldKey, o.FieldType, n.FieldType))
+		}
+	}
+	return nil
+}
+
+// checkDictCodesExist B1-7 批2（三路F-B-8 收口）：字典引用保存期存在性校验——
+// 码不存在的字典在运行期 expandDictOptions 展开为空集（校验跳过=旁路），
+// 保存期前置拦截。只查存在不查启用：运行期按 dict_items.enabled 展开（类型
+// 停用不构成旁路），与 expandDictOptions 语义对齐。
+func (s *Service) checkDictCodesExist(ctx context.Context, fields []model.TicketTypeField) error {
+	for i := range fields {
+		f := &fields[i]
+		if f.FieldType != "select" && f.FieldType != "multi_select" {
+			continue
+		}
+		var elems []json.RawMessage
+		if json.Unmarshal(f.FieldOptions, &elems) != nil || len(elems) != 1 {
+			continue // 非单元素字典引用形态（具体选项列表）不查
+		}
+		var sv string
+		if json.Unmarshal(elems[0], &sv) != nil || !strings.HasPrefix(sv, "dict:") {
+			continue
+		}
+		code := strings.TrimPrefix(sv, "dict:")
+		var exists bool
+		if err := s.db.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM dict_types WHERE code = $1)`, code).Scan(&exists); err != nil {
+			return errcode.ErrInternal
+		}
+		if !exists {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q 引用的字典 %q 不存在——保存被拒（运行期空集=校验旁路）", f.FieldKey, code))
+		}
+	}
+	return nil
+}
+
+// softFieldWarnings 软提示集（不阻断）：options 收窄 / required false→true，
+// 附 FieldImpact 在途计数；计数查询失败静默降级为无计数提示（软语义不阻塞）。
+func (s *Service) softFieldWarnings(ctx context.Context, code string, old []*model.TicketTypeField, neu []model.TicketTypeField) []FieldSoftWarning {
+	if len(old) == 0 {
+		return nil
+	}
+	newByKey := make(map[string]*model.TicketTypeField, len(neu))
+	for i := range neu {
+		newByKey[neu[i].FieldKey] = &neu[i]
+	}
+	type softRef struct{ field, reason string }
+	var softs []softRef
+	for _, o := range old {
+		n, ok := newByKey[o.FieldKey]
+		if !ok {
+			continue // 硬锁已拦，此处不可达
+		}
+		if !o.Required && n.Required {
+			softs = append(softs, softRef{o.FieldKey, "required 加严（false→true）——在途单编辑将按必填校验"})
+		}
+		if (o.FieldType == "select" || o.FieldType == "multi_select") && o.FieldType == n.FieldType {
+			oldVals, err1 := optionValues(o.FieldOptions)
+			newVals, err2 := optionValues(n.FieldOptions)
+			if err1 == nil && err2 == nil && len(oldVals) > len(newVals) {
+				nv := map[string]bool{}
+				for _, v := range newVals {
+					nv[v] = true
+				}
+				narrowed := false
+				for _, v := range oldVals {
+					if !nv[v] {
+						narrowed = true
+						break
+					}
+				}
+				if narrowed {
+					softs = append(softs, softRef{o.FieldKey, "options 收窄——在途单中的旧取值编辑时将不符新选项集"})
+				}
+			}
+		}
+	}
+	if len(softs) == 0 {
+		return nil
+	}
+	impact, err := s.FieldImpact(ctx, code)
+	if err != nil {
+		impact = nil // 软语义：计数失败降级为无计数
+	}
+	ws := make([]FieldSoftWarning, 0, len(softs))
+	for _, sr := range softs {
+		ws = append(ws, FieldSoftWarning{Field: sr.field, Reason: sr.reason, InFlight: impact[sr.field]})
+	}
+	return ws
 }
 
 // CreateTicketTemplate 新建模模板（type 须存在；org 须存在，org_path 服务端解析）
@@ -262,7 +397,146 @@ func validateFieldInputs(inputs []model.TicketTypeFieldInput) ([]model.TicketTyp
 		}
 		fields = append(fields, f)
 	}
+	// B1-7 批2 保存校验三件（A.5——走查定稿拍板）：①禁链式+引用存在性
+	// （formula 标识符须为同列表存在的非 formula 数据字段——N1 终局）②fetch
+	// 引用（trigger_by 存在且非 formula 字段、mapping 目标存在）③触发引用图
+	// 无环（自触发边忽略——trigger_by 缺省即自身）。
+	if err := checkFieldReferences(fields); err != nil {
+		return nil, err
+	}
 	return fields, nil
+}
+
+// formulaOf 取 field_meta.formula（无则空串）。
+func formulaOf(meta json.RawMessage) string {
+	if len(meta) == 0 {
+		return ""
+	}
+	var m struct {
+		Formula string `json:"formula"`
+	}
+	_ = json.Unmarshal(meta, &m)
+	return m.Formula
+}
+
+// fetchConfigOf 取 field_meta.fetch 投影（无 fetch 配置时 has=false）。
+func fetchConfigOf(meta json.RawMessage) (triggerBy string, mapping map[string]string, has bool) {
+	if len(meta) == 0 {
+		return "", nil, false
+	}
+	var m struct {
+		Fetch struct {
+			Source struct {
+				Type string `json:"type"`
+			} `json:"source"`
+			TriggerBy string            `json:"trigger_by"`
+			Mapping   map[string]string `json:"mapping"`
+		} `json:"fetch"`
+	}
+	if json.Unmarshal(meta, &m) != nil || m.Fetch.Source.Type == "" {
+		return "", nil, false
+	}
+	return m.Fetch.TriggerBy, m.Fetch.Mapping, true
+}
+
+// checkFieldReferences 保存期跨字段引用校验（纯函数）。
+func checkFieldReferences(fields []model.TicketTypeField) error {
+	byKey := make(map[string]*model.TicketTypeField, len(fields))
+	formulaKeys := map[string]bool{}
+	for i := range fields {
+		byKey[fields[i].FieldKey] = &fields[i]
+		if formulaOf(fields[i].FieldMeta) != "" {
+			formulaKeys[fields[i].FieldKey] = true
+		}
+	}
+	for i := range fields {
+		f := &fields[i]
+		if formula := formulaOf(f.FieldMeta); formula != "" {
+			ids, err := exprcalc.Identifiers(formula)
+			if err != nil {
+				return errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("字段 %q 的 formula 解析失败: %v", f.FieldKey, err))
+			}
+			for _, id := range ids {
+				if _, ok := byKey[id]; !ok {
+					return errcode.New(errcode.ErrInvalidParams.Code,
+						fmt.Sprintf("formula 字段 %q 引用了不存在的字段 %q——引用须为同 schema 数据字段", f.FieldKey, id))
+				}
+				if formulaKeys[id] {
+					return errcode.New(errcode.ErrInvalidParams.Code,
+						fmt.Sprintf("formula 字段 %q 引用了 formula 字段 %q——禁止 formula→formula 链式（N1 终局；组合能力归注册函数与 fetcher 接力）", f.FieldKey, id))
+				}
+			}
+		}
+		triggerBy, mapping, has := fetchConfigOf(f.FieldMeta)
+		if !has {
+			continue
+		}
+		trigger := triggerBy
+		if trigger == "" {
+			trigger = f.FieldKey // 缺省自触发（applyFetches 同款默认）
+		}
+		if _, ok := byKey[trigger]; !ok {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q 的取数触发字段 %q 不存在", f.FieldKey, trigger))
+		}
+		if formulaKeys[trigger] {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q 的取数触发字段 %q 是 formula 字段——时序不可能（链=取数→校验→公式）", f.FieldKey, trigger))
+		}
+		for src, dst := range mapping {
+			if _, ok := byKey[dst]; !ok {
+				return errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("字段 %q 的取数映射 %q→%q 目标字段不存在", f.FieldKey, src, dst))
+			}
+		}
+	}
+	return checkTriggerCycle(fields)
+}
+
+// checkTriggerCycle 触发引用图无环（边=trigger→取数目标；自环=缺省自触发，忽略）。
+func checkTriggerCycle(fields []model.TicketTypeField) error {
+	adj := map[string][]string{}
+	for i := range fields {
+		triggerBy, _, has := fetchConfigOf(fields[i].FieldMeta)
+		if !has {
+			continue
+		}
+		trigger := triggerBy
+		if trigger == "" {
+			trigger = fields[i].FieldKey
+		}
+		if trigger != fields[i].FieldKey {
+			adj[trigger] = append(adj[trigger], fields[i].FieldKey)
+		}
+	}
+	const (
+		white, gray, black = 0, 1, 2
+	)
+	state := map[string]int{}
+	var cycleAt string
+	var dfs func(string) bool
+	dfs = func(n string) bool {
+		state[n] = gray
+		for _, m := range adj[n] {
+			if state[m] == gray {
+				cycleAt = n + "↔" + m
+				return true
+			}
+			if state[m] == white && dfs(m) {
+				return true
+			}
+		}
+		state[n] = black
+		return false
+	}
+	for n := range adj {
+		if state[n] == white && dfs(n) {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("取数触发引用图成环（%s）——环形接力保存被拒", cycleAt))
+		}
+	}
+	return nil
 }
 
 // optionValues 抽取 select/multi_select 的 value 集合（兼容字符串数组与 {label,value} 对象数组）

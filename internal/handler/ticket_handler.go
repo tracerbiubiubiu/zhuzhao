@@ -587,7 +587,8 @@ func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), req.Code, &req); err != nil {
+	ws, err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), req.Code, &req)
+	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -596,7 +597,26 @@ func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
+	if len(ws) > 0 {
+		// B1-7 批2 软提示：data 契约不变（仍是字段数组，ui 零改），提示走
+		// envelope.message——结构化字段随 ui 批3 再议（跨仓同窗纪律）。
+		response.OKWithMessage(c, softWarningText(ws), fields)
+		return
+	}
 	response.OK(c, fields)
+}
+
+// softWarningText 锁死守卫软提示消息（options 收窄/required 加严——在途计数）。
+func softWarningText(ws []ticketsvc.FieldSoftWarning) string {
+	parts := make([]string, 0, len(ws))
+	for _, w := range ws {
+		if w.InFlight > 0 {
+			parts = append(parts, fmt.Sprintf("%s：%s（在途 %d 单）", w.Field, w.Reason, w.InFlight))
+		} else {
+			parts = append(parts, w.Field+"："+w.Reason)
+		}
+	}
+	return "已保存（软提示）：" + strings.Join(parts, "；")
 }
 
 // CreateTicketTemplate POST /api/v1/ticket-templates

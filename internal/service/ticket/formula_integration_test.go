@@ -29,7 +29,7 @@ func TestFormula_Fields(t *testing.T) {
 
 	t.Run("formula 字段保存+提交重算覆盖（篡改被覆盖）", func(t *testing.T) {
 		// price*qty=total（篡改 total=99999 → 服务端覆盖为 12）
-		err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		_, err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 			Fields: []model.TicketTypeFieldInput{
 				{FieldKey: "price", FieldLabel: "单价", FieldType: "number", Required: true, SortOrder: 1},
 				{FieldKey: "qty", FieldLabel: "数量", FieldType: "number", Required: true, SortOrder: 2},
@@ -63,7 +63,7 @@ func TestFormula_Fields(t *testing.T) {
 	})
 
 	t.Run("formula 非法类型拒保存", func(t *testing.T) {
-		err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		_, err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 			Fields: []model.TicketTypeFieldInput{
 				{FieldKey: "d", FieldLabel: "日期", FieldType: "date", SortOrder: 1,
 					FieldMeta: json.RawMessage(`{"formula":"now()"}`)},
@@ -74,7 +74,7 @@ func TestFormula_Fields(t *testing.T) {
 	})
 
 	t.Run("formula 语法错误拒保存", func(t *testing.T) {
-		err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		_, err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 			Fields: []model.TicketTypeFieldInput{
 				{FieldKey: "n", FieldLabel: "数", FieldType: "number", SortOrder: 1},
 				{FieldKey: "x", FieldLabel: "计", FieldType: "number", SortOrder: 2,

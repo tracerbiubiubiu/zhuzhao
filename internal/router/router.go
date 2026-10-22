@@ -248,9 +248,6 @@ func New(deps Deps) *gin.Engine {
 				// B5-3 批3：附件列表（L2 read）/删除（L2 update）——与 confirm 同款
 				storageSelf.GET("/tickets/:id/attachments", deps.StorageHandler.ListAttachments)
 				storageSelf.POST("/tickets/attachments/delete", deps.StorageHandler.DeleteAttachment)
-				// B1-5 影响分析（读面——F-D-1 修复 2026-10-22：原挂 biz 无 SelfService
-				// 标记致非 admin 403；实为类型管理面元数据读端点，登录态即可）
-				storageSelf.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 			}
 
 			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
@@ -425,6 +422,10 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/ticket-types/update", deps.TicketHandler.UpdateTicketType)
 					ticketMeta.POST("/ticket-types/delete", deps.TicketHandler.DeleteTicketType)
 					ticketMeta.POST("/ticket-types/fields/replace", deps.TicketHandler.ReplaceTicketTypeFields)
+					// B1-7 批2 归位管理组（01 号 §3.4 拍板）：锁死后破坏性告警面消亡，
+					// 仅剩新增 required/软提示两件的在途量提醒——「能改字段即可看影响」，
+					// 与 fields/replace 同组；撤 SelfService 挂法（F-D-1 方向修正）。
+					ticketMeta.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)

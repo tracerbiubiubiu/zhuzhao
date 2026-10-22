@@ -28,7 +28,7 @@ func TestFieldImpact_Analysis(t *testing.T) {
 
 	t.Run("FieldImpact——每字段在途使用计数", func(t *testing.T) {
 		// 建两个字段 + 三张在途单（两张用了 host_ip，一张用了 note）
-		err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		_, err := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
 			Fields: []model.TicketTypeFieldInput{
 				{FieldKey: "host_ip", FieldLabel: "IP", FieldType: "input", Required: false, SortOrder: 1},
 				{FieldKey: "note", FieldLabel: "备注", FieldType: "textarea", SortOrder: 2},

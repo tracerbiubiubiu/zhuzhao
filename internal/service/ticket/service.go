@@ -382,7 +382,7 @@ func (s *Service) applyFormulas(ctx context.Context, typeCode string, customData
 		if err := json.Unmarshal(f.FieldMeta, &meta); err != nil || meta.Formula == "" {
 			continue
 		}
-		schema = append(schema, exprcalc.FormulaField{Key: f.FieldKey, Formula: meta.Formula})
+		schema = append(schema, exprcalc.FormulaField{Key: f.FieldKey, Formula: meta.Formula, Type: f.FieldType})
 	}
 	if len(schema) == 0 {
 		return customData, nil
