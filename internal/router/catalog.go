@@ -60,33 +60,33 @@ var catalogExempt = map[string]bool{
 	// phase5 S5 对象存储自服务面（05 号 A.7——五端点挂 authed 级 SelfService 标记组
 	// [router storageSelf]，ticket 态 purpose 的 ticket:update+L2 由 handler 编排层
 	// 判定——S5 评审 P0-1 修复 2026-10-20：原挂 biz 无标记致普通角色全 403）
-	"POST /api/v1/storage/presign/upload":      true,
+	"POST /api/v1/storage/presign/upload":          true,
 	"GET /api/v1/ticket-types/:code/fields/impact": true, // B1-5 字段影响分析（读面——ticket_list 消费）
-	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 handler L2）
-	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
-	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
-	"POST /api/v1/tickets/attachments/delete":  true, // B5-3 删附件（L2 update 面）
-	"POST /api/v1/tickets/attachments/confirm": true,
-	"POST /api/v1/tickets/richtext/render":     true, // B5-4 渲染 SSOT（登录态自服务——无票据访问，纯消毒渲染）
-	"POST /api/v1/user/pats":                   true,
-	"POST /api/v1/user/pats/delete":            true,
-	"POST /api/v1/auth/logout":                 true, // 自服务（SelfService）
-	"POST /api/v1/auth/password/update":        true, // 自服务
-	"GET /api/v1/user/profile":                 true, // 自服务
-	"POST /api/v1/user/profile/update":         true, // 自服务
-	"GET /api/v1/user/menus":                   true, // 自服务
-	"GET /api/v1/user/permissions":             true, // 自服务
-	"GET /api/v1/user/orgs":                    true, // 自服务（P4-W3「我的组织」数据源）
-	"POST /api/v1/orgs/delete":                 true, // 委托语义（orgDelegated，Service 层判定）
-	"POST /api/v1/orgs/members":                true,
-	"GET /api/v1/orgs/members/list":            true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
-	"POST /api/v1/orgs/members/role":           true,
-	"POST /api/v1/orgs/members/scope":          true,
-	"GET /api/v1/orgs/roles/list":              true,
-	"POST /api/v1/orgs/roles/bind":             true,
-	"POST /api/v1/orgs/roles/delete":           true,
-	"POST /api/v1/orgs/owners":                 true,
-	"POST /api/v1/orgs/members/delete":         true,
+	"GET /api/v1/files/*key":                       true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 handler L2）
+	"POST /api/v1/storage/avatar/bind":             true, // B5-2-3 头像回写（SelfService——本人对象）
+	"GET /api/v1/tickets/:id/attachments":          true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
+	"POST /api/v1/tickets/attachments/delete":      true, // B5-3 删附件（L2 update 面）
+	"POST /api/v1/tickets/attachments/confirm":     true,
+	"POST /api/v1/tickets/richtext/render":         true, // B5-4 渲染 SSOT（登录态自服务——无票据访问，纯消毒渲染）
+	"POST /api/v1/user/pats":                       true,
+	"POST /api/v1/user/pats/delete":                true,
+	"POST /api/v1/auth/logout":                     true, // 自服务（SelfService）
+	"POST /api/v1/auth/password/update":            true, // 自服务
+	"GET /api/v1/user/profile":                     true, // 自服务
+	"POST /api/v1/user/profile/update":             true, // 自服务
+	"GET /api/v1/user/menus":                       true, // 自服务
+	"GET /api/v1/user/permissions":                 true, // 自服务
+	"GET /api/v1/user/orgs":                        true, // 自服务（P4-W3「我的组织」数据源）
+	"POST /api/v1/orgs/delete":                     true, // 委托语义（orgDelegated，Service 层判定）
+	"POST /api/v1/orgs/members":                    true,
+	"GET /api/v1/orgs/members/list":                true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
+	"POST /api/v1/orgs/members/role":               true,
+	"POST /api/v1/orgs/members/scope":              true,
+	"GET /api/v1/orgs/roles/list":                  true,
+	"POST /api/v1/orgs/roles/bind":                 true,
+	"POST /api/v1/orgs/roles/delete":               true,
+	"POST /api/v1/orgs/owners":                     true,
+	"POST /api/v1/orgs/members/delete":             true,
 }
 
 func exemptPath(method, path string) bool { return catalogExempt[method+" "+path] }
