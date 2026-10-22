@@ -204,12 +204,14 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 
 	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
+	// B1-4 取数联动（A.4：Submit 事务内、formula 重算之前——取数结果可被
+	// formula 引用）；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
+	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
+	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
+	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
 	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
 		return nil, err
 	}
-	// B1-4 取数联动（A.4：Submit 事务内、formula 重算之前——取数结果可被
-	// formula 引用）；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
-	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
 	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
 	// 服务端重算覆盖（前端预览值不可信，篡改负向必测 01 §8）
 	customData, err = s.applyFormulas(ctx, req.TypeCode, customData)

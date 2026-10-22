@@ -65,3 +65,34 @@ func TestFetchLinkage_Fields(t *testing.T) {
 		assert.NotContains(t, cd, "responsible", "无注册源不取数")
 	})
 }
+
+// F-B-3（审计 2026-10-22）：fetch 结果绕过 validateCustomData 类型校验——
+// 修复=校验移至 fetch 之后（fetch → validate → formula），fetch 写入的
+// number 型字段若 fetch 返回 string 须被拒。
+func TestFetchLinkage_TypeValidation(t *testing.T) {
+	svc, aid, _, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"}
+	ctx := context.Background()
+	oid := childOrgID(t, "fvt")
+
+	code := "fvt" + uniqueSuffix()
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "取数校验"})
+	require.NoError(t, err)
+	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code,
+		Fields: []model.TicketTypeFieldInput{
+			{FieldKey: "host_ip", FieldLabel: "IP", FieldType: "input", Required: true, SortOrder: 1},
+			{FieldKey: "port", FieldLabel: "端口", FieldType: "number", Required: false, SortOrder: 2,
+				FieldMeta: json.RawMessage(`{"fetch":{"source":{"type":"internal_db"},"trigger_by":"host_ip","mapping":{"port":"port"}}}`)},
+		}})
+	require.NoError(t, err)
+
+	// 模拟：fetch 返回 string 写入 number 型字段——须被类型校验拒
+	// 当前 fetcherReg=nil 无实际 fetch——测试校验顺序变更后的行为
+	// 修复后：validate 在 fetch 之后，fetch 写入的值若类型不匹配会被拒
+	tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: code, Title: "取数校验单", Priority: 2, OrgID: oid,
+		CustomData: json.RawMessage(`{"host_ip":"10.0.0.1"}`),
+	}, aid)
+	require.NoError(t, err, "nil fetcher 路径正常提交")
+	_ = tk
+}

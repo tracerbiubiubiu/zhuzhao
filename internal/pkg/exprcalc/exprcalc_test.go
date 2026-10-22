@@ -103,3 +103,27 @@ func TestApplyFormulas(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 12.0, out["total"])
 }
+
+func TestApplyFormulas_RejectsInfNaN(t *testing.T) {
+	// F-B-2（审计 2026-10-22）：除零产生 +Inf 不得写入 custom_data（下游
+	// JSON 解析可能异常）——ApplyFormulas 须拒非有限数结果。
+	schema := []FormulaField{{Key: "ratio", Formula: "a / b"}}
+
+	t.Run("除零 +Inf 拒", func(t *testing.T) {
+		_, err := ApplyFormulas(schema, map[string]any{"a": 10.0, "b": 0.0})
+		require.Error(t, err, "a/0 产生 +Inf 须报错")
+		assert.Contains(t, err.Error(), "ratio")
+	})
+
+	t.Run("NaN 拒", func(t *testing.T) {
+		// 0/0 产生 NaN
+		_, err := ApplyFormulas(schema, map[string]any{"a": 0.0, "b": 0.0})
+		require.Error(t, err, "0/0 产生 NaN 须报错")
+	})
+
+	t.Run("正常有限数通过", func(t *testing.T) {
+		out, err := ApplyFormulas(schema, map[string]any{"a": 10.0, "b": 2.0})
+		require.NoError(t, err)
+		assert.Equal(t, 5.0, out["ratio"])
+	})
+}

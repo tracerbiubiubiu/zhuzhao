@@ -156,6 +156,11 @@ func EvalFormula(expr string, env EvalEnv) (any, error)
 - **内置函数白名单**（启动批定首集，建议）：`sum/avg/round/min/max/len` + 日期 `now/dateDiff/formatDate`——注册为 expr 自定义函数，禁用户自定义函数；
 - **编译缓存**：按字段存编译后 program（formula 随 schema 变更失效），提交链零重复编译；
 - **提交链落点**：`Submit` 校验后、写 `custom_data` 前——**formula 字段一律重算覆盖**（前端预览值不可信，篡改负向必测 §8）；formula 引用字段缺失/类型不符 → 400 带字段名（fail-fast 不静默跳过）。
+- **审计回声注（2026-10-22 全面审计批 B）**：
+  - **$env 语义**：expr 的 `$env` 标识符返回完整 env map（= custom_data 全量）——非安全漏洞（formula 本就引用全字段），但公式中无意嵌入 `$env` 会将全量数据 dump 到计算字段值；宜文档注明 + 后续禁用（`expr.DisableBuiltin("env")`）
+  - **除零/NaN**：IEEE 754 除零产生 ±Inf——已加 IsInf/IsNaN 校验拒提交（F-B-2 修复 2026-10-22）
+  - **级联引用取快照值**：formula A 引用 formula B 时，A 使用 B 的**提交时快照值**（用户填入值），非 B 的公式计算结果——单趟评估防级联篡改的正确设计（F-B-4 注记）
+  - **取数顺序**：Create 链 = fetch → validate → formula（F-B-3 修复 2026-10-22——fetch 写入的值须过 G2 校验）；**Update 链不调 applyFetches**（仅 Create 取数，编辑时预填是 §3.3③ 触发驱动件——F-B-5 注记）
 
 ### A.4 DataFetcher 端口契约（B1-4）
 

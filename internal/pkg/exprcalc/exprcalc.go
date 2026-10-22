@@ -10,6 +10,7 @@ package exprcalc
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -92,6 +93,11 @@ func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, 
 		v, err := EvalFormula(src, env)
 		if err != nil {
 			return nil, fmt.Errorf("formula 字段 %q 求值失败: %w", f.Key, err)
+		}
+		// F-B-2（审计 2026-10-22）：非有限数结果拒——除零产生 ±Inf/NaN
+		// 写入 custom_data 会破坏下游 JSON 消费方（IEEE 754 序列化异常）
+		if fv, ok := v.(float64); ok && (math.IsInf(fv, 0) || math.IsNaN(fv)) {
+			return nil, fmt.Errorf("formula 字段 %q 结果为非有限数（%v）——检查除零/溢出", f.Key, fv)
 		}
 		out[f.Key] = v
 	}
