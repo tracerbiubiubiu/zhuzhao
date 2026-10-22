@@ -14,10 +14,10 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 |----|------|------|
 | 渲染器 | 自研七类型轻量渲染器已交付（W4）；**头注释明示：form-create 库引入决策顺延至本设计器批** | zhuzhao-ui `src/views/ticket/create/index.vue:3-8` |
 | 字段类型 | **十一种**白名单：input/textarea/number/date/select/multi_select/tips/richtext/**radio/rating/file**（richtext B5-4 已落；**radio 第 9 + rating 第 10 + file 第 11 = B1-6 能力面扩展批 2026-10-22 所有者"全加"拍定**——radio 与 select 同模型（单值字符串）不同渲染（el-radio-group）；rating 与 number 同模型（el-slider/el-rate）；**file = 上传字段类型**（custom_data 存 object_key 数组、G2 required→至少 1 个 + 可选 MIME 白名单校验、前端复用 S5 presign/confirm 链内联渲染——业界 Jira/SN/SF/Typeform 均标配，安全场景"上传截图/日志/报告"刚需） | zhuzhao `internal/service/ticket/type_admin.go:24`（`validFieldTypes`——B1-6 时扩 radio/rating/file） |
-| 字段保存 | **全量替换**：事务内先清后插 + 父类型 `version` CAS；**对存量 `custom_data` 零检查** | `internal/repository/ticket_repo.go` `ReplaceTypeFields`（≈:786 起） |
+| 字段保存 | **全量替换**：事务内先清后插 + 父类型 `version` CAS；**对存量 `custom_data` 零检查**——**2026-10-22 拍板锁死守卫（终版=兼容性判据版，待实施；判据 = 是否破坏已落库数据或旧单编辑）**：**硬锁 400** = 改 field_type / 改 field_key / 删除；**软提示**（可继续，借 impact 在途计数提醒）= options 收窄 / required false→true；**自由** = label / 排序 / 新增 / col_span / group / visible_when / formula / fetch / validation / options 只增不减 / required true→false；附带语义：改公式/挂取数**不回溯存量单**，仅影响后续提交与编辑（业界对标：Jira 自定义字段类型不可变/SN 列 key 不可变/SF 删字段依赖门硬拦） | `internal/repository/ticket_repo.go` `ReplaceTypeFields`（≈:786 起） |
 | 字典（P4-3 已交付） | `/dicts` + `/dict-items` 管理四端点 + 用户侧 `EnabledItems` 读端点 | `internal/router/router.go:199`（EnabledItems）、`:320-325`（管理组） |
 | 字典删除 | dict_types/dict_items **无守卫硬删**（items 级联随删）——挂接字典键后成引用完整性缺口 | `internal/repository/dict_repo.go` `DeleteTypeByCode`（≈:89 起） |
-| 详情回显 | custom_data 仅 create 页提交，**detail/list 页零渲染**（"填了看不见"台账硬伤） | zhuzhao-ui `views/ticket/`（grep 仅 create/index.vue:143 命中） |
+| 详情回显 | ~~custom_data 仅 create 页提交，detail/list 页零渲染~~ **已闭合（2026-10-22 勘误——S1 执行期已落，旧差距行过时）**：detail 页按 schema 渲染 custom_data（customValue 读取 + richtext 图处理均实装）；list 页表格不渲染自定义字段=设计内 | zhuzhao-ui `views/ticket/detail/index.vue:73-92` |
 | 专家模式 | ticket/type 页表格模式 = phase4 深水区降级决策的兜底形态，保留 | zhuzhao-ui `views/ticket/type/index.vue` |
 
 ## 3. 目标形态与范围
@@ -49,6 +49,15 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 - **① 计算字段**：按已填字段公式自动算派生字段。落点 = 字段 schema 扩展（meta 增 `formula`，**承载于新列 `field_meta` JSONB**——附录 A.2 方案 b：`field_options` 为数组形态（select 选项），混载元数据须改对象形态、破坏渲染器/optionValues/存量行消费方，**2026-10-16 外审对齐后采纳新列方案，正文与附录以此为准**）+ **服务端求值为 SSOT**（提交时后端算入 `custom_data`，前端仅预览展示——防篡改，与现有哲学一致）。
 - **② 提交时条件取数回写**：按字段值判断后从数据源取数自动写入字段。落点 = 字段联动规则（数据层自动化，非流程层）；取数走 `DataFetcher` 端口（按 source 类型注册 fetcher——[README §6 对接预留清单](./README.md)）。
 - **③ 编辑时预填 auto_fill（2026-10-16 所有者场景登记——phase6 实际场景驱动；触发驱动挂账不入本段基线，消费者 = phase6 R3）**：与 ① 的语义分层——formula = **强制计算**（服务端 SSOT，人工改无效）；auto_fill = **建议预填**（编辑时实时带出、UI 标注"自动带出可修改"、提交信任用户值）。场景（phase6 R3）：风险事件主机 IP 带入工单系统 IP 字段 + 按 IP 查 **CMDB** 带出责任人——CMDB 即取数白名单（拍板点 2）的首个企业外部源实例（fetcher = asset-platform——资产平台查询门面，只查询不建台账；2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md；零新拍板）。落点 = `field_meta` 新列扩 `auto_fill` 元数据（触发字段 key + fetcher 类型 + 字段映射，与 formula 同列承载——附录 A.2 方案 b，一枚 ALTER）；**执行时机双态预留**：元数据结构含 timing 标记（提交时/编辑时），**本段实现只做提交时取数（B1-4），编辑时预填留触发驱动**——phase6 R3 启动时消费、届时展开详细设计（交互链：字段 onChange → 轻量取数端点 → 预填+可覆盖）。业界同型：ServiceNow Variable auto-population / Salesforce cross-object lookup 带出 / 低代码「数据联动」；Jira 裸功能无此能力（靠 ScriptRunner 插件补）——真实需求 + 现成范式。
+- **③⁺ auto_fill 全链定稿（2026-10-22 所有者场景走查批——canonical 例：漏洞修复工单「填主机 IP → 自动带出责任人（可人工改）」；本条为设计定稿，实现随 phase6 R3 首源批）**：
+  - **语义分层终版**：formula = 强制计算（服务端 SSOT，人工改无效）；fetch = **建议预填——查询结果是该字段的默认值而非终值，人工改有效**。提交链「仅补空不覆盖」已实装（`datafetcher.ApplyFetches`：仅当目标字段不存在时写入——datafetcher.go 注释明示）；提交兜底边界拍板 = **总是补空**（用户留空也查，"希望自动完成"初衷，故意留空罕见不设例外）；
+  - **三层分工（"设计器配的是数据不是组件"）**：引擎一份（读配置调度，B1-4 已落）+ **适配器按源一份**（"怎么跟外部系统说话"在代码：URL/鉴权/协议/超时/身份——写一次服务该源所有字段所有类型；`external_http` 通用适配器落地后新系统零代码，仅白名单+URL 模板配置）+ 字段配置纯数据（"查什么、放哪"，零代码）。渲染形态 11 种 field_type 写死（唯一"组件清单"），字段数量/配置无限=schema 表里的行——新字段不产生新组件新代码；
+  - **配置结构定稿**：`field_meta.fetch = { source, params, mapping }`——**params 多参绑定**（泛化替换单 `trigger_by`：适配器入参名 → 表单字段 key 或常量，如 `{ip: host_ip, region: "cn-east"}`；**适配器代码声明入参契约**（名称/必填），属性面板据此自动渲染绑定控件——ServiceNow IntegrationHub / n8n action 入参绑定同型）；**mapping 一查多填**（一次查询多结果键 → 多个目标字段，如 `{owner_name→owner, level→asset_level}`）；
+  - **编辑时交互（主路径，phase6 R3）**：触发字段失焦防抖 500ms → `POST /ticket-types/{code}/fields/prefill`（登录即可 + 按用户限流 + 3s）→ 预填 + 浅蓝「自动带出」标签 + 刷新图标（tooltip："根据 XX 从资产平台自动带出，可修改"）；人工改 → 标签变灰「已手动修改」，提交以用户值为准；改触发值/点刷新 → 重取；详情页字段标签挂**静态徽标「自动带出」**（schema 驱动，不逐值记来源）；
+  - **错误 UX 三档**：查询失败（超时/源不可用）= 红字"自动查询失败，请手动填写" + 重试图标（复用表单统一 error 位，不发明新控件）；查无结果 = 灰字"未查询到，请手动填写"；查到但值不对 = 无警告直接改。均记 `linkage_missed` 事件（已有）；
+  - **链式取数（fetch→fetch）**：保存期校验三件（params 引用字段须存在 / **不许绑 formula 字段**——时序不可能：链=取数→校验→公式 / 触发引用图**无环**——A 触发 B、B 触发 A 保存时 400）；编辑时级联**限深 ≤3 跳**（中间值落表单后自然接力，人工改后用人工值）；提交兜底**多趟收敛 ≤3 趟**（第 2 趟处理第 1 趟填出的触发值——替换单趟读原始提交值）；配置习惯：**一查多填优先，两跳只用于真跨源接力**（IP→源1→employee_id→源2 HR），更复杂多跳做进专用 fetcher（服务端代码内部接力，配置仍一跳）；
+  - **canonical 走查**：设计器——`host_ip`(input,required) + `owner` 挂 fetch{source: asset-platform, params:{ip: host_ip}, mapping:{owner_name→owner, level→asset_level}} + `asset_level`(input，无自身配置，被映射顺带填) → 保存即五行 schema 数据零代码；建单——填 IP `10.1.2.3` → 500ms → owner 预填「张三(E000123)」可改、asset_level 同查落值；提交——未预填且空 → 兜底查补空；详情——通用渲染 + 「自动带出」徽标；
+  - **业界同型**：ServiceNow lookup 自动带出 / IntegrationHub 入参绑定 / Salesforce cross-object 带出 / 国内低代码「数据联动」（简道云/明道云）——交互链同构，方向无偏差；对照差距=本条各实现件均未落地（registry 生产装配为空、prefill 端点未建），phase6 R3 首源批一次接通。
 - **求值器统一为白名单 Go 侧表达式求值器**（phase3/10 §4.2 既定路线；easy-workflow 表达式拼 SQL + 黑名单防注入为反面教材）；选型预置 = **expr-lang/expr**（MIT/活跃/默认沙箱/自定义函数白名单——README §2 选型表）。字段公式（本段）与网关条件（S3）**共用同一件**。
 - **④ 字段级校验规则（2026-10-16 全计划业界对标补——业界表单设计器标配，现仅 required 单档）**：`field_meta.validation`（与 formula/auto_fill 同列承载——附录 A.2 方案 b）：regex 匹配 / 数值 min-max / 文本长度区间；**渲染端 rules 生成 + 服务端提交校验双落**（防绕过——服务端为 SSOT 同 formula 哲学）。量级 +0.5–1 天（随 B1-3 求值器批）。业界同型：JSON Forms validators / Jira field context。
 
@@ -56,7 +65,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 | 件 | 内容 | 量级 |
 |----|------|------|
-| 字段变更在途影响分析 | 字段保存=全量替换、对存量 custom_data 零检查；引入 formula 与 S6 模板变量引用后，**保存前须做影响面告警**（被 formula/模板引用的字段、存量单含该字段数据 → 告警确认，防"引用字段被删/改 key → 公式与模板静默失效"）——与 S2 改图告警同型 | +0.5 天 |
+| 字段变更在途影响分析 | 字段保存=全量替换、对存量 custom_data 零检查；引入 formula 与 S6 模板变量引用后，**保存前须做影响面告警**（被 formula/模板引用的字段、存量单含该字段数据 → 告警确认，防"引用字段被删/改 key → 公式与模板静默失效"）——与 S2 改图告警同型。**2026-10-22 拍板角色缩小**：字段锁死（§2）后删/改不可达，破坏性告警面消亡；剩余用途=**新增 required 字段与软提示两件（options 收窄 / required 加严）的在途量提醒**；**端点归位管理组（终版=与 fields/replace 同组——"能改字段即可看影响"）**（撤 SelfService 挂法——catalog「ticket_list 消费」注记失实，ui 仓零消费实证 2026-10-22；外审 F-D-1 P0 移挂方向随之修正为归位） | +0.5 天 |
 | 详情页 custom_data 回显 | 现状零渲染（§2 已核）；随渲染器批补详情页按 schema 回显 | ≤1 天 |
 | 字典引用守卫 | select 挂字典键后，dict 删除须有守卫（存在引用 schema → 拦截或告警）或拍"禁用不删"使用纪律——org 删守卫不查 org_roles 教训同型 | 挂接批随行 |
 
@@ -159,8 +168,13 @@ func EvalFormula(expr string, env EvalEnv) (any, error)
 - **审计回声注（2026-10-22 全面审计批 B）**：
   - **$env 语义**：expr 的 `$env` 标识符返回完整 env map（= custom_data 全量）——非安全漏洞（formula 本就引用全字段），但公式中无意嵌入 `$env` 会将全量数据 dump 到计算字段值；宜文档注明 + 后续禁用（`expr.DisableBuiltin("env")`）
   - **除零/NaN**：IEEE 754 除零产生 ±Inf——已加 IsInf/IsNaN 校验拒提交（F-B-2 修复 2026-10-22）
-  - **级联引用取快照值**：formula A 引用 formula B 时，A 使用 B 的**提交时快照值**（用户填入值），非 B 的公式计算结果——单趟评估防级联篡改的正确设计（F-B-4 注记）
+  - **级联引用取快照值**：formula A 引用 formula B 时，A 使用 B 的**提交时快照值**（用户填入值），非 B 的公式计算结果——~~单趟评估防级联篡改的正确设计（F-B-4 注记）~~ **定性反了（N1）且已拍终局（2026-10-22 所有者场景走查）：禁止 formula 引用 formula**——保存时 400，表达式=数据字段引用+注册函数调用，快照语义随禁令消亡（详见 N1 终局注）
   - **取数顺序**：Create 链 = fetch → validate → formula（F-B-3 修复 2026-10-22——fetch 写入的值须过 G2 校验）；**Update 链不调 applyFetches**（仅 Create 取数，编辑时预填是 §3.3③ 触发驱动件——F-B-5 注记）
+- **独立复核注（2026-10-22 全面审计 A/B 批复核落档——两段结论全证实；探针实证 = /tmp 沙箱同版本 v1.17.8）**：
+  - **N1（P2·B1-6 前拍）级联快照定性修正**：上「级联引用取快照值」条的「防级联篡改的正确设计」定性**不成立（方向反了）**——快照语义（单趟 env=提交值）恰**开**篡改通道：formula A 引用 formula B 时，A 取 B 的**客户端提交值**固化进服务端计算结果（提交链不剥离 formula 字段提交值 + required 又豁免），篡改 B 自身会被覆盖（A.6 有测）但**经 A 引用 B 可洗入任意值（零测试覆盖）**；两级联（按 schema 序把已算值写回 env）终止性相同、通道关闭。~~待拍：(a) 改两级联（推荐）或 (b) 维持快照 + 该条改如实表述（实现取舍：单趟保终止，代价 = 级联引用可被提交值污染）+ 补篡改经引用负向测试~~ **已拍终局（2026-10-22 所有者场景走查）：③禁止 formula 引用 formula——超出原 a/b 两案**。理据：复杂/多步组合的归宿=注册函数（B1-6 函数注册表，Go 侧可组合可测身份可控）与 fetcher 接力（§3.3③⁺），配置面保持一跳，链式需求不存在则链式问题整类消除；两级联方案作废。实现三件：保存校验（formula 引用仅限同类型数据字段）+ 提交链剥离 formula 字段提交值（兜底）+ 篡改经引用负向测试
+  - **N3（P3·随 B1-6）$env 禁用法修正**：$env 条建议的 `expr.DisableBuiltin("env")` 医不对症——`$env` 是语言级变量非内置函数（DisableAllBuiltins 下探针实证仍返回全量 Fields map）；禁用须源码级拒绝（编译前检 `$env` 子串）或结果侧校验
+  - **N2（P3·随 B1-6 函数注册表）函数集现状对齐**：f32464c 后实际**零内置函数放行**（仅算术/比较/逻辑运算符——字段依赖调用运行期 fail-closed「cannot call nil」，纯字面量调用编译期常量折叠、静态受 2048 钳制无放大向量，无害）；本节「建议首集 sum/avg/…+日期三件」由 B1-6 函数注册表（AddFunction 首批 5 函数）实际取代；`exprcalc.go` 头注「仅放行 sum/avg/round/min/max/len」失实随批改
+  - **余开小项（P3·随批）**：「超时经 context 取消传递」注释失实（实际仅长度钳制、无 context 接线）；`EvalEnv.Now` 死代码（设而不可达）
 
 ### A.4 DataFetcher 端口契约（B1-4）
 
@@ -185,16 +199,22 @@ type DataFetcher interface { Fetch(ctx, src FetchSource, key string) (map[string
 
 - **三栏**：左组件库（七类型卡片拖入）／中画布（已选字段列表，sortablejs 拖拽排序，点击选中）／右属性面板（配置项按类型：通用[label/field_key/required/sort_order] + 类型特有[select 选项挂字典键、number 步进、regex]）；
 - **field_key 生成**：默认拼音/语义建议 + 唯一性前端预检（后端 validateFieldInputs 兜底）；
-- **保存**：全量 PUT fields（既有 ReplaceTypeFields 契约不变）+ version CAS；**影响分析随行件**在保存前调（被 formula/模板引用字段变更 → 告警确认）；
+- **保存**：全量 PUT fields（既有 ReplaceTypeFields 契约不变）+ version CAS；**锁死守卫（2026-10-22 拍板终版=兼容性判据版，待实施）**：按 key diff 新旧 schema——**硬锁 400**（改 field_type / 改 field_key / 删除）、**软提示**（options 收窄、required false→true——借 impact 在途计数）、**自由**（label/排序/新增/col_span/group/visible_when/formula/fetch/validation/options 只增不减/required true→false）；保存校验随行三件：formula 引用仅限同类型数据字段（禁 formula→formula）、fetch params 引用字段存在且非 formula 字段、触发引用图无环；**影响分析随行件角色缩小为「新增 required 字段 + 软提示两件的在途计数提醒」**（§3.4 2026-10-22 拍板）；
 - **预览**：右侧抽屉内嵌**真渲染器**（create 页同组件树）渲染未保存 schema——所见即所得（§3.1 论证）；
 - **三模式共存**：画布（默认）/表格（专家）/JSON（源码）tab 切换，同一份 schema 三向同步（单一数据源 = Pinia store）。
 
 ### A.6 验收补充（在 §8 基础上）
 
 - schema 往返幂等：设计器 → 保存 → 重开回显 → 再保存，diff 为空；
-- formula 链路：A→B 计算字段，改 A 提交 → 服务端重算 B（**前端篡改 B 被覆盖**负向）；formula 引用字段删除 → 保存被影响分析拦截告警；
+- formula 链路：**A→B 链式保存被拒 400（2026-10-22 拍板禁引用，替原 A→B 级联用例）**；单 formula 前端篡改提交值 → 服务端重算覆盖（负向）；formula 引用不存在字段 → 保存 400（锁死后删除不可达，引用存在性校验前置）；
 - 取数联动：mock fetcher 命中回填 / 失败留空 + linkage_missed 事件 / 白名单外 Type 拒执；
-- 求值器沙箱负向：expr 含 `import`/函数外调用 → 编译期拒绝。
+- 求值器沙箱负向：expr 含 `import`/函数外调用 → 编译期拒绝；
+- **语义收口批测试矩阵（2026-10-22 定稿——与上列既有用例互补；实施时逐条先红后绿）**：
+  - **禁链式保存校验**：〔负〕formula A 引用 formula B 的 key → 保存 400；〔负〕formula 引用不存在的 key → 保存 400；〔正〕formula 引用数据字段保存成功 + 提交重算覆盖篡改（既有用例保留不动）；N1 篡改经引用通道随禁令结构性闭合——无提交期路径可测，保存期 400 即回归锚点；
+  - **锁死守卫（ReplaceTypeFields diff，按 key 对比新旧）**：〔正〕新类型首次全量保存；〔正〕存量类型改 label + 新增字段 + 调排序 → 200；〔负〕存量字段改 field_type → 400；〔负〕改 field_key（=删+增）→ 400；〔负〕从列表移除存量字段（=删除）→ 400；〔负〕硬锁三件为拍板终版断言（2026-10-22 = 兼容性判据版）；〔正·自由面〕改 label / 加 col_span / 改 formula / 补挂 fetch → 200（判据版解锁面——B1-6 布局与存量加取数两场景的回归锚点）；〔软提示〕options 收窄 / required false→true → 保存通过且返回在途计数提示；version CAS 冲突由既有用例覆盖；
+  - **impact 端点归位管理组**：〔正〕带类型管理权限角色调用 → 200；〔负〕普通登录用户（无菜单权限）→ 403；〔测试反转〕TestCatalogExempt impact 子测从"SelfService 组绿"改判"管理组 + catalog 豁免清单不含 impact"；既有 TestFieldImpact_Analysis 功能断言不动；
+  - **$env 源码级拒绝（N3 落地）**：〔负〕公式含 `$env` → 拒——保存 CheckSyntax 与提交求值**双防线各一测**；〔负〕`$env['x']` 取值路径 → 拒；〔正·不误伤〕字段名含 env 字样（如 `environment`）与字符串字面量含 "$env" 字样均不误拒（2026-10-22 拍板=**token 级检测**——解析后拦 `$env` 标识符本身，非子串扫描）；〔重写〕exprcalc 既有"禁环境逃逸标识符"测试名实对齐——现测 `$now.__unix`（未知标识符，过因错误原因），从未覆盖 `$env` 本尊（探针实证仍可取值），重写为真 $env 用例；
+  - **随行修正（无新负向）**：`EvalEnv.Now` 死码删除后 exprcalc_test 两处构造引用同步改；92303 errcode 预留注记纯文档无测试面。
 
 ---
 
@@ -214,3 +234,5 @@ type DataFetcher interface { Fetch(ctx, src FetchSource, key string) (map[string
 | 2026-10-19 | **条件显隐量级登记批（所有者「按方案登记」——业界持平代价账补完）**：§5 边界行补**量级 ≈2–3 天**（复用 S1/S3 expr 公共件——前端渲染层显隐+必填动态切换+服务端兜底断言，零迁移零结构改动）——此前只有触发信号无量级，为六能力域唯一缺口；03 号演进触发总表同步加行（演进 SSOT 完整性） |
 | 2026-10-19 | **可点原型扩展批（双钻复盘立约——§3.1）**：B1-1 首日 spike（选型对称验证）外追加半天**交互流可点原型**（假数据点完「拖入→属性面板→预览→序列化」主交互流，所有者亲点后再定属性面板信息架构）——UX 手感面验证前移至设计定稿前；同日 standards §12-10 立外审截断规则（详 standards 变更记录） |
 | 2026-10-22 | **B1-1 首日 spike 双路完成（§3.1 判据红线判定）**：A 路对称验证 8 项发现（regex 往返丢失[RegExp→`{}` 实测]/richtext HTML 编辑器与 MD SSOT 语义断/tips 原生 div 映射/uniqueId 默认键/field_meta 面板缺/裁剪 menu 未生效+内置 AI 助理待裁/内部字段污染/DnD 自动化不可驱动）→ 非接近无损；B 路 sortablejs 可点原型主交互流全通（regex 字符串无损往返成对照）——**翻案不成立维持自研，原型落 prototypes/ 供所有者亲点** |
+| 2026-10-22 | **全面审计 A/B 批独立复核落档批（两段结论全证实；探针实证 expr v1.17.8）**：P0（committed HEAD 缺 CheckSyntax 不可独立编译）✅ 已修 = 105c62c；F-B-1 内置全集超宣称 ✅ 已修 = f32464c DisableAllBuiltins（字段依赖调用运行期 fail-closed / 字面量常量折叠无害 / now() 逃逸面消除）；A 批（B1-2 守卫/92304 三处登记/引用形态）逐项属实。**新登记 3 项（复核 N 系前缀——与双路 F-B-x 撞车区隔，后者同号异义 ≥4 处）**：N1 级联快照「防篡改」定性反了（P2·B1-6 前拍——A 引用 B 取提交值 = 篡改经引用固化通道，零测试覆盖，详见 A.3 复核注）/ N3 $env 禁用建议 `DisableBuiltin("env")` 医不对症（P3·随 B1-6——语言级变量非内置函数）/ N2 exprcalc 头注与零函数现状矛盾（P3·随 B1-6 函数注册表）；余开：超时注释失实 / `EvalEnv.Now` 死码（P3·随批） |
+| 2026-10-22 | **所有者场景走查定稿批（表单联动全链——canonical 例：漏洞修复工单「填主机 IP → 自动带出责任人（可人工改）」）**：①**N1 终局=禁止 formula 引用 formula**（超出两级联/维持两案——复杂组合归注册函数与 fetcher 接力，配置面一跳，链式问题整类消除；两级联方案作废，A.3/A.6 同步）②**字段锁死拍板**（§2/A.5：存量字段仅 label 可改，改类型/改 key/删除 400，新增与排序自由——ServiceNow 稳态型；Jira 类型不可变/SF 删字段依赖门对标）③**§3.3③⁺ auto_fill 全链定稿**（语义分层终版「默认值而非终值」/params 多参绑定泛化替换单 trigger_by+适配器入参契约声明/一查多填/编辑时预填交互与三档错误 UX/链式限深 ≤3+提交多趟收敛 ≤3 趟/兜底总是补空/detail 静态徽标——实现随 phase6 R3 首源批）④**impact 端点角色缩小+归位管理组**（锁死后破坏性告警消亡，剩新增 required 在途提醒；catalog「ticket_list 消费」注记失实勘误——ui 仓零消费实证；外审 F-D-1 P0 移挂方向修正）⑤**§2 detail 渲染差距行勘误**（S1 执行期已闭合）⑥**A.6 语义收口批测试矩阵定稿**（禁链式/锁死守卫/impact 归位/$env 拒绝四组正负向，含 $env 既有测试名实不符重写与 catalog impact 子测反转）⑦**六项拍板终版（所有者"按推荐"）**：锁死范围=**兼容性判据版**（硬锁三件 type/key/删除、软提示两件 options 收窄/required 加严、其余自由——判据"是否破坏已落库数据或旧单编辑"；附带语义改公式/挂取数不回溯存量单；严格字面版因自锁死区[错误公式不可修正]与挡 B1-6 布局/存量加取数而弃）/ impact 归位=与 fields/replace 同组 / auto_fill 兜底=总是补空 / 编辑时带出=维持 phase6 R3 / $env 检测=token 级 / ui 仓 e2e 键数断言修复=并入语义收口批。实现分两波：锁死守卫/禁链式保存校验/impact 归位=近期修复批；prefill 端点/params 泛化/external_http 适配器/前端交互=phase6 R3 |
