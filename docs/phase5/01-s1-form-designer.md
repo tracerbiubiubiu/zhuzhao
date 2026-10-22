@@ -42,6 +42,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 ### 3.2 select/multi_select 选项引用字典（P4-3 衔接）+ 人员自动补全
 
 - 设计器选项支持**挂字典键**而非死枚举，选项变更全系统生效（字典端点已核在位，见 §2）。
+  - **校验侧展开（2026-10-22 F-B-2 外审 P0 修复）**：`validateCustomData` 对 field_options 含 `dict:<code>` 的 select/multi_select 自动展开为真实字典项值集再校验——修复前 optionValues 只见字面量 `["dict:code"]`，用户提交真实字典项（如 `high`）必被拒（B1-2 核心功能 100% 失效）。
 - **人员/部门类字段自动补全**（2026-10-09 场景补充）：指派/抄送/参与人选人走既有用户搜索端点；M-HR 对接后（HRFetcher）组织人员数据入本地表，补全零额外对接——依赖 M-HR 触发，**不阻塞本段**。
 
 ### 3.3 字段自动计算/联动（2026-10-08 所有者场景补充）
@@ -163,7 +164,7 @@ func EvalFormula(expr string, env EvalEnv) (any, error)
 ```
 
 - **expr-lang/expr 默认沙箱**：禁 import/任意方法调用；字段值类型白名单（string/int/float/bool/time）；
-- **内置函数白名单**（启动批定首集，建议）：`sum/avg/round/min/max/len` + 日期 `now/dateDiff/formatDate`——注册为 expr 自定义函数，禁用户自定义函数；
+- **函数面（2026-10-22 f32464c 修正——原「白名单 sum/avg/…」系文档声称实现空转）**：当前 = `DisableAllBuiltins` 仅算术/比较/逻辑运算符可用；函数白名单重注（AddFunction 首批 sum/avg/round/min/max/len）随 B1-6 函数注册表；
 - **编译缓存**：按字段存编译后 program（formula 随 schema 变更失效），提交链零重复编译；
 - **提交链落点**：`Submit` 校验后、写 `custom_data` 前——**formula 字段一律重算覆盖**（前端预览值不可信，篡改负向必测 §8）；formula 引用字段缺失/类型不符 → 400 带字段名（fail-fast 不静默跳过）。
 - **审计回声注（2026-10-22 全面审计批 B）**：
