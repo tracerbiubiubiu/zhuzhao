@@ -29,18 +29,16 @@ func TestEvalFormula_Basics(t *testing.T) {
 		assert.Equal(t, true, v)
 	})
 
-	t.Run("内置函数白名单（sum/round/min/max/len）", func(t *testing.T) {
-		v, err := EvalFormula("round(price * qty)", env)
-		require.NoError(t, err)
-		assert.Equal(t, float64(32), v) // expr round 返回 float64（就近取整）
+	t.Run("内置函数全禁（F-B-6/7 修复——仅算术/比较/逻辑运算符可用）", func(t *testing.T) {
+		// 白名单函数也被禁（DisableAllBuiltins）——当前口径：纯算术表达式
+		_, err := EvalFormula("round(price * qty)", env)
+		require.Error(t, err, "round 被禁——仅算术可用")
 
-		v, err = EvalFormula("min(price, qty)", env)
-		require.NoError(t, err)
-		assert.Equal(t, 3, v)
+		_, err = EvalFormula("len(name)", env)
+		require.Error(t, err, "len 被禁")
 
-		v, err = EvalFormula("len(name)", env)
-		require.NoError(t, err)
-		assert.Equal(t, 1, v)
+		_, err = EvalFormula("toJSON(env)", env)
+		require.Error(t, err, "toJSON 被禁——F-B-6 修复前此函数可用")
 	})
 
 	t.Run("字段缺失 fail-fast（带字段名）", func(t *testing.T) {

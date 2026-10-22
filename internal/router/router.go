@@ -248,6 +248,9 @@ func New(deps Deps) *gin.Engine {
 				// B5-3 批3：附件列表（L2 read）/删除（L2 update）——与 confirm 同款
 				storageSelf.GET("/tickets/:id/attachments", deps.StorageHandler.ListAttachments)
 				storageSelf.POST("/tickets/attachments/delete", deps.StorageHandler.DeleteAttachment)
+				// B1-5 影响分析（读面——F-D-1 修复 2026-10-22：原挂 biz 无 SelfService
+				// 标记致非 admin 403；实为类型管理面元数据读端点，登录态即可）
+				storageSelf.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 			}
 
 			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
@@ -412,7 +415,6 @@ func New(deps Deps) *gin.Engine {
 				{
 					ticketMeta.GET("/ticket-types", deps.TicketHandler.ListTicketTypes)
 					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.ListTicketTypeFields)
-					ticketMeta.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 					ticketMeta.GET("/ticket-templates", deps.TicketHandler.ListTicketTemplates)
 					ticketMeta.GET("/ticket-templates/:code", deps.TicketHandler.GetTicketTemplate)
 					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，

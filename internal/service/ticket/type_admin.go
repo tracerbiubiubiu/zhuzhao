@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"time"
 
@@ -296,6 +297,41 @@ func optionValues(raw json.RawMessage) ([]string, error) {
 // 但整体体量封顶防跨请求累加膨胀（TOAST/备份放大）；与 RichtextMaxBytes 同族。
 const CustomDataMaxBytes = 64 << 10
 
+// expandDictOptions 将 field_options 中的 "dict:<code>" 引用展开为该字典
+// 启用项的 code 值集（F-B-2 修复——select 校验须对真实字典项校验而非字面量）。
+// 非 dict 引用原样返回；dict 查询失败返回原样（fail-open——校验侧选项集为空
+// 时不拦截，与"无选项不校验"语义一致）。
+func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) json.RawMessage {
+	var elems []json.RawMessage
+	if err := json.Unmarshal(raw, &elems); err != nil || len(elems) != 1 {
+		return raw
+	}
+	var sv string
+	if err := json.Unmarshal(elems[0], &sv); err != nil || !strings.HasPrefix(sv, "dict:") {
+		return raw
+	}
+	code := strings.TrimPrefix(sv, "dict:")
+	rows, err := s.db.Query(ctx,
+		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
+	if err != nil {
+		return raw // fail-open——选项集为空不拦截
+	}
+	defer rows.Close()
+	codes := make([]string, 0, 8)
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			return raw
+		}
+		codes = append(codes, c)
+	}
+	b, err := json.Marshal(codes)
+	if err != nil {
+		return raw
+	}
+	return json.RawMessage(b)
+}
+
 // validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
 // 仅校验 schema 已知键（未知键放行，向前兼容）；模板预填发生在合并后的 customData 上。
 func (s *Service) validateCustomData(ctx context.Context, typeCode string, customData json.RawMessage) error {
@@ -316,11 +352,34 @@ func (s *Service) validateCustomData(ctx context.Context, typeCode string, custo
 		return errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 	}
 	for _, f := range fields {
+		// F-B-2 外审 P0 修复（2026-10-22）：field_options 为 dict: 引用时展开为
+		// 真实字典项值集（optionValues 只见 ["dict:code"] 字面量，真实值全被拒）
+		if f.FieldOptions != nil && (f.FieldType == "select" || f.FieldType == "multi_select") {
+			f.FieldOptions = s.expandDictOptions(ctx, f.FieldOptions)
+		}
 		raw, present := data[f.FieldKey]
 		isEmpty := !present || len(raw) == 0 || string(raw) == "null" || string(raw) == `""`
-		if f.Required && isEmpty {
+		// F-B-4 外审 P1 修复（2026-10-22）：formula 字段跳过 required 校验——
+		// 服务端 applyFormulas 会重算写入值，required 检查在空值时误拒
+		//（修复前：required formula 字段 + 用户不填 → 400"必填" → 类型死锁）
+		isFormula := false
+		if len(f.FieldMeta) > 0 {
+			var m struct {
+				Formula string `json:"formula"`
+			}
+			_ = json.Unmarshal(f.FieldMeta, &m)
+			isFormula = m.Formula != ""
+		}
+		if f.Required && isEmpty && !isFormula {
 			return errcode.New(errcode.ErrInvalidParams.Code,
 				fmt.Sprintf("字段 %q（%s）为必填", f.FieldKey, f.FieldLabel))
+		}
+		// formula 字段空值也继续——applyFormulas 会算入
+		if isEmpty && !isFormula {
+			continue
+		}
+		if isEmpty {
+			continue // formula 空值跳过类型校验（值由公式产出）
 		}
 		if isEmpty {
 			continue

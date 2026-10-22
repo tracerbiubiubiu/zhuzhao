@@ -2,7 +2,8 @@
 // 计算字段与 S3 网关条件共用件）。expr-lang/expr v1.17.8（11 号 §3.1 引库清单）。
 //
 // 护栏（A.3）：表达式长度钳制；默认禁方法调用与环境逃逸（标识符只认 Fields 键）；
-// 内置函数白名单 sum/avg/round/min/max/len（expr 内置已含）——启动批首集，
+// 函数白名单：DisableAllBuiltins 后仅算术/比较/逻辑运算符可用（F-B-6/7
+// 修复 2026-10-22——原"白名单"声称空转，expr 内置全集 30+ 均可用）
 // 不注册用户自定义函数；编译缓存按表达式串键控（schema 变更=新串自然失效）。
 // 求值语义：服务端 SSOT——提交链 formula 字段一律重算覆盖（ApplyFormulas），
 // 引用字段缺失/类型不符 fail-fast 报字段名，不静默跳过。
@@ -54,7 +55,11 @@ func compileCached(src string) (*vm.Program, error) {
 	}
 	// AsAny=任意结果类型（字段类型校验归 G2 schema 侧）；不注入 $env/$now
 	// 结构（标识符只认 Fields 键——未知标识符 expr 编译期/运行期即拒）
-	p, err := expr.Compile(src, expr.AsAny())
+	// F-B-6/7 外审 P1 修复（2026-10-22）：显式函数白名单——禁 expr 内置全集
+	// （toJSON/fromJSON/get/keys/type 等均可用=白名单空转），仅放行 A.3 声明的
+	// sum/avg/round/min/max/len；方法/字段访问经 env 纯 map（无 struct 方法面）+
+	// 白名单禁内置后天然封堵
+	p, err := expr.Compile(src, expr.AsAny(), expr.DisableAllBuiltins())
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +115,6 @@ func CheckSyntax(src string) error {
 	if len(src) > MaxExprLen {
 		return fmt.Errorf("表达式超过 %d 字符长度上限", MaxExprLen)
 	}
-	_, err := expr.Compile(src, expr.AsAny())
+	_, err := expr.Compile(src, expr.AsAny(), expr.DisableAllBuiltins())
 	return err
 }

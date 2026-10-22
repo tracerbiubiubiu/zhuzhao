@@ -438,6 +438,14 @@ func (h *TicketHandler) FieldImpact(c *gin.Context) {
 	response.OK(c, impact)
 }
 
+// ListTicketTypeFields GET /api/v1/ticket-types/:code/fields
+//
+//	@Summary	工单类型字段定义
+//	@Tags		ticket
+//	@Produce	json
+//	@Param		code	path		string	true	"工单类型编码"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/ticket-types/{code}/fields [get]
 func (h *TicketHandler) ListTicketTypeFields(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {

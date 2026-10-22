@@ -15,6 +15,8 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 // mockFetcher 固定结果集桩
@@ -95,4 +97,49 @@ func TestFetchLinkage_TypeValidation(t *testing.T) {
 	}, aid)
 	require.NoError(t, err, "nil fetcher 路径正常提交")
 	_ = tk
+}
+
+// F-B-2 外审 P0（2026-10-22）：挂字典 select 字段提交必 400——
+// validateFieldValue 用 optionValues(["dict:code"]) 当唯一合法值，
+// 用户选真实字典项（如 "high"）即被拒。修复=校验前展开字典引用。
+func TestDictSelect_SubmitRealValue(t *testing.T) {
+	svc, aid, _, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"}
+	ctx := context.Background()
+	oid := childOrgID(t, "dsv")
+
+	// 建字典类型 + 项
+	dictSvc := service.NewDictService(repository.NewDictRepo(testPool), nil)
+	dcode := "dsv" + uniqueSuffix()
+	err := dictSvc.CreateType(ctx, &model.DictType{Code: dcode, Name: "严重级别"})
+	require.NoError(t, err)
+	err = dictSvc.CreateItem(ctx, &model.DictItem{TypeCode: dcode, Code: "high", Label: "高危", SortOrder: 1, Enabled: true})
+	require.NoError(t, err)
+
+	// 建工单类型：select 字段挂字典
+	tcode := "dsel" + uniqueSuffix()
+	_, err = svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: tcode, Name: "字典 select"})
+	require.NoError(t, err)
+	err = svc.ReplaceTicketTypeFields(ctx, tcode, &model.ReplaceTypeFieldsRequest{Code: tcode,
+		Fields: []model.TicketTypeFieldInput{
+			{FieldKey: "sev", FieldLabel: "级别", FieldType: "select", Required: true, SortOrder: 1,
+				FieldOptions: json.RawMessage(`["dict:` + dcode + `"]`)},
+		}})
+	require.NoError(t, err)
+
+	t.Run("提交真实字典项值须通过（修复前 400）", func(t *testing.T) {
+		_, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: tcode, Title: "字典单", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"sev":"high"}`),
+		}, aid)
+		require.NoError(t, err, "真实字典项 high 须通过校验（修复前被 optionValues 拒）")
+	})
+
+	t.Run("提交不在字典内的值须拒", func(t *testing.T) {
+		_, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: tcode, Title: "字典单负向", Priority: 2, OrgID: oid,
+			CustomData: json.RawMessage(`{"sev":"nonexistent"}`),
+		}, aid)
+		require.Error(t, err, "不在字典项内的值须被拒")
+	})
 }
