@@ -13,7 +13,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 | 项 | 现状 | 锚点 |
 |----|------|------|
 | 渲染器 | 自研七类型轻量渲染器已交付（W4）；**头注释明示：form-create 库引入决策顺延至本设计器批** | zhuzhao-ui `src/views/ticket/create/index.vue:3-8` |
-| 字段类型 | 八种白名单：input/textarea/number/date/select/multi_select/tips/**richtext**（第八种 B5-4 前后端均已扩 2026-10-20——前端随 ui 批 238f4769 交付，F-B5 勘误 2026-10-21） | zhuzhao `internal/service/ticket/type_admin.go:24`（`validFieldTypes`） |
+| 字段类型 | **十种**白名单：input/textarea/number/date/select/multi_select/tips/richtext/**radio/rating**（第八种 richtext B5-4 已落；**radio 第 9 + rating 第 10 = B1-6 能力面扩展批 2026-10-22 所有者"全加"拍定**——radio 与 select 同数据模型（单值字符串）不同渲染（el-radio-group 平铺）；rating 与 number 同数据模型不同渲染（el-slider/el-rate 评分）——业界对标 Jira/SN/SF 均标配） | zhuzhao `internal/service/ticket/type_admin.go:24`（`validFieldTypes`——B1-6 时扩 radio/rating） |
 | 字段保存 | **全量替换**：事务内先清后插 + 父类型 `version` CAS；**对存量 `custom_data` 零检查** | `internal/repository/ticket_repo.go` `ReplaceTypeFields`（≈:786 起） |
 | 字典（P4-3 已交付） | `/dicts` + `/dict-items` 管理四端点 + 用户侧 `EnabledItems` 读端点 | `internal/router/router.go:199`（EnabledItems）、`:320-325`（管理组） |
 | 字典删除 | dict_types/dict_items **无守卫硬删**（items 级联随删）——挂接字典键后成引用完整性缺口 | `internal/repository/dict_repo.go` `DeleteTypeByCode`（≈:89 起） |
@@ -77,8 +77,8 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 ## 5. 边界（不做）
 
-- **表单运行时交互层联动不做**（条件显隐/必填动态切换——[phase3/12](../phase3/12-frontend.md) §3.1 阶段 1 既定口径，eflow 亦仅 hidden/readonly；**触发信号：业务方提出「选了 A 才填 B」类联动诉求即立项**——业界表单设计器标配项，唯一显式不做的能力边界；**量级 ≈2–3 天[2026-10-19 登记]**——复用 S1/S3 expr 公共件，前端渲染层显隐+必填动态切换+服务端兜底断言，零迁移零结构改动）；自动化限于提交时计算/取数回写（本段）与流转时动作（S3）。
-- 新字段类型不入本段（§3.5）；移动端/响应式不做（phase3/12 §6）。
+- **条件显隐——✅ 翻案进 B1-6（2026-10-22 所有者"全加"拍定）**：`field_meta.visible_when` 表达式（复用 S1/S3 expr 公共件——B1-3 exprcalc 已落为集成件）+ 渲染端 watch 联动 + G2 提交时跳过隐藏字段（required 不校验、值不写入——防绕过）；量级 ≈1–2 天（原 2–3 天登记基于无 expr 底座，现已有减为集成）。~~原"不做"口径留痕~~（2026-10-19 前唯一显式不做边界——触发信号"选了 A 才填 B"由所有者 2026-10-22 主动提出，翻案成立）。
+- 新字段类型（radio/rating）与布局件（col_span/group）归 **B1-6 能力面扩展批**（2026-10-22 拍定——01 号 §2 字段类型行已同步十种）；移动端/响应式维持不做（phase3/12 §6）。
 - 引擎与存储零改动——**S1 只换配置界面，不构成 §23 自研推进的额外动作**（README §3 不动拍板）。
 
 ## 6. 影响面
