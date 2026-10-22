@@ -28,6 +28,9 @@ const (
 var validFieldTypes = map[string]bool{
 	"input": true, "textarea": true, "number": true, "date": true,
 	"select": true, "multi_select": true, "tips": true, "richtext": true,
+	// B1-6 批1（第 9/10/11 类型）：radio=与 select 同数据模型不同渲染；
+	// rating=与 number 同模型；file=上传字段（object_key 数组——01 号 §2/§3.5）
+	"radio": true, "rating": true, "file": true,
 }
 
 // RichtextMaxBytes richtext 字段 MD 源文本上限（防 custom_data JSONB 慢性膨胀——图片走对象存储
@@ -182,7 +185,7 @@ func checkFieldLock(old []*model.TicketTypeField, neu []model.TicketTypeField) e
 func (s *Service) checkDictCodesExist(ctx context.Context, fields []model.TicketTypeField) error {
 	for i := range fields {
 		f := &fields[i]
-		if f.FieldType != "select" && f.FieldType != "multi_select" {
+		if f.FieldType != "select" && f.FieldType != "multi_select" && f.FieldType != "radio" {
 			continue
 		}
 		var elems []json.RawMessage
@@ -375,16 +378,47 @@ func validateFieldInputs(inputs []model.TicketTypeFieldInput) ([]model.TicketTyp
 				}
 			}
 		}
-		// select/multi_select 选项规整：接受 ["a","b"] 或 [{"label","value"}]；空选项拒绝
-		if in.FieldType == "select" || in.FieldType == "multi_select" {
+		// select/multi_select/radio 选项规整：接受 ["a","b"] 或 [{"label","value"}]；空选项拒绝
+		// （B1-6 批1：radio 与 select 同数据模型——G2/字典引用共用校验）
+		if in.FieldType == "select" || in.FieldType == "multi_select" || in.FieldType == "radio" {
 			values, err := optionValues(in.FieldOptions)
 			if err != nil || len(values) == 0 {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code,
 					fmt.Sprintf("字段 %q 为 select/multi_select，field_options 须为非空选项数组", in.FieldKey))
 			}
 		}
-		if in.FieldType == "number" && len(in.FieldOptions) > 0 {
-			return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 为 number，不接受 field_options", in.FieldKey))
+		if (in.FieldType == "number" || in.FieldType == "rating") && len(in.FieldOptions) > 0 {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 为 %s，不接受 field_options", in.FieldKey, in.FieldType))
+		}
+		// B1-6 批1：file 的 field_options = 可选 MIME 白名单（字符串数组，元素含 "/"）
+		if in.FieldType == "file" && len(in.FieldOptions) > 0 {
+			var mimes []string
+			if err := json.Unmarshal(in.FieldOptions, &mimes); err != nil {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 为 file，field_options 须为 MIME 字符串数组", in.FieldKey))
+			}
+			for _, m := range mimes {
+				if !strings.Contains(m, "/") {
+					return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 的 MIME 白名单元素 %q 须形如 image/png", in.FieldKey, m))
+				}
+			}
+		}
+		// B1-6 批1：field_meta 布局键校验（col_span 1–24 / group 字符串 / visible_when 语法）
+		if len(in.FieldMeta) > 0 {
+			var layout struct {
+				ColSpan     *int   `json:"col_span"`
+				Group       string `json:"group"`
+				VisibleWhen string `json:"visible_when"`
+			}
+			if err := json.Unmarshal(in.FieldMeta, &layout); err == nil {
+				if layout.ColSpan != nil && (*layout.ColSpan < 1 || *layout.ColSpan > 24) {
+					return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 的 col_span 须为 1–24", in.FieldKey))
+				}
+				if layout.VisibleWhen != "" {
+					if err := exprcalc.CheckSyntax(layout.VisibleWhen); err != nil {
+						return nil, errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 的 visible_when 语法错误: %v", in.FieldKey, err))
+					}
+				}
+			}
 		}
 		if in.ValidateRegex != "" {
 			if _, err := regexp.Compile(in.ValidateRegex); err != nil {
@@ -439,6 +473,18 @@ func fetchConfigOf(meta json.RawMessage) (triggerBy string, mapping map[string]s
 	return m.Fetch.TriggerBy, m.Fetch.Mapping, true
 }
 
+// visibleWhenOf 取 field_meta.visible_when（无则空串——B1-6 批1 条件显隐）。
+func visibleWhenOf(meta json.RawMessage) string {
+	if len(meta) == 0 {
+		return ""
+	}
+	var m struct {
+		VisibleWhen string `json:"visible_when"`
+	}
+	_ = json.Unmarshal(meta, &m)
+	return m.VisibleWhen
+}
+
 // checkFieldReferences 保存期跨字段引用校验（纯函数）。
 func checkFieldReferences(fields []model.TicketTypeField) error {
 	byKey := make(map[string]*model.TicketTypeField, len(fields))
@@ -465,6 +511,19 @@ func checkFieldReferences(fields []model.TicketTypeField) error {
 				if formulaKeys[id] {
 					return errcode.New(errcode.ErrInvalidParams.Code,
 						fmt.Sprintf("formula 字段 %q 引用了 formula 字段 %q——禁止 formula→formula 链式（N1 终局；组合能力归注册函数与 fetcher 接力）", f.FieldKey, id))
+				}
+			}
+		}
+		// B1-6 批1：visible_when 引用存在性（引用 formula 字段允许——快照语义与
+		// A.3 级联注一致；不存在即保存期拼错）
+		if vw := visibleWhenOf(f.FieldMeta); vw != "" {
+			ids, err := exprcalc.Identifiers(vw)
+			if err == nil {
+				for _, id := range ids {
+					if _, ok := byKey[id]; !ok {
+						return errcode.New(errcode.ErrInvalidParams.Code,
+							fmt.Sprintf("字段 %q 的 visible_when 引用了不存在的字段 %q", f.FieldKey, id))
+					}
 				}
 			}
 		}
@@ -611,28 +670,92 @@ func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) js
 
 // validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
 // 仅校验 schema 已知键（未知键放行，向前兼容）；模板预填发生在合并后的 customData 上。
-func (s *Service) validateCustomData(ctx context.Context, typeCode string, customData json.RawMessage) error {
+// validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
+// B1-6 批1 起返回剔除隐藏字段后的 custom_data（visible_when=false 的字段 required
+// 不校验、值剔除不写入——防绕过；无剔除时原样返回零重编码）。
+func (s *Service) validateCustomData(ctx context.Context, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
 	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
 	if len(customData) > CustomDataMaxBytes {
-		return errcode.New(errcode.ErrInvalidParams.Code,
+		return nil, errcode.New(errcode.ErrInvalidParams.Code,
 			fmt.Sprintf("custom_data 超过 %d KiB 上限", CustomDataMaxBytes>>10))
 	}
 	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
 	if err != nil || len(fields) == 0 {
-		return err // 无字段定义（或读取失败）不校验——读取失败随 Create 一起失败
+		return customData, err // 无字段定义（或读取失败）不校验——读取失败随 Create 一起失败
 	}
 	if len(customData) == 0 {
 		customData = json.RawMessage("{}")
 	}
 	var data map[string]json.RawMessage
 	if err := json.Unmarshal(customData, &data); err != nil {
-		return errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
+	}
+	// B1-6 批1 条件显隐（01 号 §5 翻案）：G2 提交时跳过隐藏字段。求值 env=提交
+	// 快照值；求值失败/非布尔结果视为可见（保守=校验更严，不静默放行隐藏值）。
+	hidden := map[string]bool{}
+	var envData map[string]any
+	for _, f := range fields {
+		vw := visibleWhenOf(f.FieldMeta)
+		if vw == "" {
+			continue
+		}
+		if envData == nil {
+			envData = map[string]any{}
+			_ = json.Unmarshal(customData, &envData)
+		}
+		v, err := exprcalc.EvalFormula(vw, exprcalc.EvalEnv{Fields: envData})
+		if err != nil {
+			continue
+		}
+		if b, ok := v.(bool); ok && !b {
+			hidden[f.FieldKey] = true
+		}
 	}
 	for _, f := range fields {
+		if hidden[f.FieldKey] {
+			continue // required 不校验 + 值剔除（回写侧统一 prune）
+		}
 		// F-B-2 外审 P0 修复（2026-10-22）：field_options 为 dict: 引用时展开为
 		// 真实字典项值集（optionValues 只见 ["dict:code"] 字面量，真实值全被拒）
-		if f.FieldOptions != nil && (f.FieldType == "select" || f.FieldType == "multi_select") {
+		if f.FieldOptions != nil && (f.FieldType == "select" || f.FieldType == "multi_select" || f.FieldType == "radio") {
 			f.FieldOptions = s.expandDictOptions(ctx, f.FieldOptions)
+		}
+		// B1-6 批1 file：required→至少 1 个 object_key（缺失/null/空数组均拒）
+		if f.FieldType == "file" && f.Required {
+			rawF, presentF := data[f.FieldKey]
+			if !presentF || len(rawF) == 0 || string(rawF) == "null" || string(rawF) == "[]" {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("字段 %q（%s）为必填（至少 1 个文件）", f.FieldKey, f.FieldLabel))
+			}
+		}
+		// B1-6 批1 file：MIME 白名单对照（field_options 列表 × file_objects.mime_type
+		// ——presign 钉入的声明锚点，G2 不可凭 object_key 后缀推断）
+		if f.FieldType == "file" {
+			var allow []string
+			_ = json.Unmarshal(f.FieldOptions, &allow)
+			if len(allow) > 0 {
+				var keys []string
+				if rawF, ok := data[f.FieldKey]; ok {
+					_ = json.Unmarshal(rawF, &keys)
+				}
+				if len(keys) > 0 {
+					var mimes []string
+					if err := s.db.QueryRow(ctx,
+						`SELECT array_agg(fo.mime_type) FROM file_objects fo WHERE fo.object_key = ANY($1)`, keys).Scan(&mimes); err != nil {
+						return nil, errcode.ErrInternal
+					}
+					allowSet := map[string]bool{}
+					for _, m := range allow {
+						allowSet[m] = true
+					}
+					for _, m := range mimes {
+						if m != "" && !allowSet[m] {
+							return nil, errcode.New(errcode.ErrInvalidParams.Code,
+								fmt.Sprintf("字段 %q 的文件类型 %q 不在白名单内", f.FieldKey, m))
+						}
+					}
+				}
+			}
 		}
 		raw, present := data[f.FieldKey]
 		isEmpty := !present || len(raw) == 0 || string(raw) == "null" || string(raw) == `""`
@@ -648,7 +771,7 @@ func (s *Service) validateCustomData(ctx context.Context, typeCode string, custo
 			isFormula = m.Formula != ""
 		}
 		if f.Required && isEmpty && !isFormula {
-			return errcode.New(errcode.ErrInvalidParams.Code,
+			return nil, errcode.New(errcode.ErrInvalidParams.Code,
 				fmt.Sprintf("字段 %q（%s）为必填", f.FieldKey, f.FieldLabel))
 		}
 		// 空值跳过类型校验（formula 字段空值亦然——required 已豁免，值由
@@ -657,10 +780,20 @@ func (s *Service) validateCustomData(ctx context.Context, typeCode string, custo
 			continue
 		}
 		if err := validateFieldValue(f, raw); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	if len(hidden) > 0 {
+		for k := range hidden {
+			delete(data, k)
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			return nil, errcode.ErrInternal
+		}
+		return json.RawMessage(b), nil
+	}
+	return customData, nil
 }
 
 // validateFieldValue 单字段类型/选项/正则校验
@@ -680,7 +813,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		if len(sv) > RichtextMaxBytes {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 正文超过 %d KiB 上限", f.FieldKey, RichtextMaxBytes>>10))
 		}
-	case "number":
+	case "number", "rating": // B1-6 批1：rating 与 number 同数据模型
 		var nv float64
 		if err := json.Unmarshal(raw, &nv); err != nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为数字", f.FieldKey))
@@ -693,7 +826,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		if _, err := time.Parse("2006-01-02", sv); err != nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 日期格式须为 YYYY-MM-DD", f.FieldKey))
 		}
-	case "select":
+	case "select", "radio": // B1-6 批1：radio 与 select 同数据模型（单值字符串+选项成员）
 		var sv string
 		if err := json.Unmarshal(raw, &sv); err != nil {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为字符串选项", f.FieldKey))
@@ -701,6 +834,16 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		values, _ := optionValues(f.FieldOptions)
 		if len(values) > 0 && !contains(values, sv) {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 取值 %q 不在选项内", f.FieldKey, sv))
+		}
+	case "file": // B1-6 批1：object_key 数组（形态校验；required/MIME 在 validateCustomData）
+		var arr []string
+		if err := json.Unmarshal(raw, &arr); err != nil {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为 object_key 字符串数组", f.FieldKey))
+		}
+		for _, k := range arr {
+			if k == "" {
+				return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 含空 object_key", f.FieldKey))
+			}
 		}
 	case "multi_select":
 		var arr []string

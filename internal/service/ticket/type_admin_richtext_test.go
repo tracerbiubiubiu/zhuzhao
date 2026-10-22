@@ -15,7 +15,10 @@ import (
 // B5-4：richtext 第八种字段类型——枚举扩 + G2 值校验（字符串 + MD 源文本上限）。
 func TestValidFieldTypes_RichtextEighth(t *testing.T) {
 	assert.True(t, validFieldTypes["richtext"], "richtext 须在允许类型内（05 号 §6）")
-	assert.Len(t, validFieldTypes, 8, "只增不改：七种既有 + richtext")
+	// B1-6 批1（2026-10-22）：第 9/10/11 类型加入——只增不改语义延续（11 种终态）
+	assert.True(t, validFieldTypes["radio"] && validFieldTypes["rating"] && validFieldTypes["file"],
+		"radio/rating/file 须在允许类型内（01 号 §2 B1-6）")
+	assert.Len(t, validFieldTypes, 11, "只增不改：八种 + radio/rating/file")
 }
 
 func TestValidateFieldValue_Richtext(t *testing.T) {

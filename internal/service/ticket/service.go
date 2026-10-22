@@ -209,7 +209,10 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
 	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
 	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
-	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
+	// B1-6 批1：validateCustomData 返回剔除隐藏字段后的 custom_data（visible_when
+	// =false 的字段 required 不校验、值不写入——防绕过）
+	customData, err = s.validateCustomData(ctx, req.TypeCode, customData)
+	if err != nil {
 		return nil, err
 	}
 	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
@@ -258,7 +261,15 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
-	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, req.Attachments); err != nil {
+	// B1-6 批1：file 字段 object_key 并入落绑（01 号 §3.5 file×附件五点——
+	// custom_data 只存展示态引用，权威归属走 ticket_attachments 既有链；
+	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）
+	fileKeys, err := s.fileFieldKeys(ctx, req.TypeCode, ticket.CustomData)
+	if err != nil {
+		return nil, err
+	}
+	bindKeys := append(append([]string{}, req.Attachments...), fileKeys...)
+	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -402,6 +413,42 @@ func (s *Service) applyFormulas(ctx context.Context, typeCode string, customData
 	return json.RawMessage(b), nil
 }
 
+// fileFieldKeys 收集 custom_data 中 file 字段的 object_key（B1-6 批1——落绑用）。
+func (s *Service) fileFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return nil, err
+	}
+	hasFile := false
+	for _, f := range fields {
+		if f.FieldType == "file" {
+			hasFile = true
+			break
+		}
+	}
+	if !hasFile {
+		return nil, nil
+	}
+	var data map[string]any
+	if json.Unmarshal(customData, &data) != nil {
+		return nil, nil
+	}
+	var keys []string
+	for _, f := range fields {
+		if f.FieldType != "file" {
+			continue
+		}
+		if arr, ok := data[f.FieldKey].([]any); ok {
+			for _, k := range arr {
+				if ks, ok := k.(string); ok && ks != "" {
+					keys = append(keys, ks)
+				}
+			}
+		}
+	}
+	return keys, nil
+}
+
 // bindAttachmentsTx 悬挂对象落绑共用件（B5-3 建单前链 + B5-4 编辑增量——05 号 A.3 a 案）：
 // attachment_create/richtext_create 悬挂 confirmed 对象在调用方事务内校验+落绑+purpose
 // 翻正式。错误映射：无效对象/重复对象/超上限 → 400（用户输入面）；其余上抛 500 面。
@@ -469,7 +516,8 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		if err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
-		if err := s.validateCustomData(ctx, ticket.TypeCode, merged); err != nil {
+		merged, err = s.validateCustomData(ctx, ticket.TypeCode, merged)
+		if err != nil {
 			return nil, err
 		}
 		// B1-3 formula 重算（同 Create 链——校验后、写前）
