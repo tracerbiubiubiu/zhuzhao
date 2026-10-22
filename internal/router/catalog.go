@@ -61,6 +61,7 @@ var catalogExempt = map[string]bool{
 	// [router storageSelf]，ticket 态 purpose 的 ticket:update+L2 由 handler 编排层
 	// 判定——S5 评审 P0-1 修复 2026-10-20：原挂 biz 无标记致普通角色全 403）
 	"POST /api/v1/storage/presign/upload":      true,
+	"GET /api/v1/ticket-types/:code/fields/impact": true, // B1-5 字段影响分析（读面——ticket_list 消费）
 	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 handler L2）
 	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
 	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
