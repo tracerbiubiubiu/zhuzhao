@@ -674,7 +674,20 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	// B6-5：工单关闭事件（事务提交后派发）
+	s.emitEvent(domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketClosed,
+		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"title": ticket.Title, "type_code": ticket.TypeCode,
+			"status": StatusClosed,
+		},
+		Timestamp: time.Now(),
+	})
+	return nil
 }
 
 // Assign 分派工单（2a：仅 admin bypass；2b 扩展主管 scope）
