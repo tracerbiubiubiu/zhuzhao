@@ -128,7 +128,7 @@ PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设�
 ## 10. 影响面
 
 - **迁移**：两表族（编号对账）；**权限**：预置零新码（拍板点 3）；**配置**：`storage:` 段新增 + compose RustFS 双实例（草案已落）；**错误码**：91000–91999 段启用（91001–91004 四码随批登记 `api/errcode.md`——standards §3-4 对账位）；**端口**：对象存储客户端（S3 兼容抽象即端口，README §6 清单第 7 行）。
-- **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移四枚（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV——A.3）。
+- **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移六枚（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV、000049=deleted 部分索引[双审计 F-A7]、000050=version 乐观锁[五批审计 F-D2]——审计批补两枚，「四枚」口径 2026-10-22 修复批统一）。
 - **F-D3 修复注记（2026-10-21 五批审计收口批）**：`StorageConfig` 消费方从裸共享指针切换为 `pkgstorage.ConfigStore`（`atomic.Pointer` 快照——clone→改→Store 整体替换）——①消除 settings KV 运行时覆盖（`Apply` 直接 mutate slice 头/int 字段）与并发请求读的 data race；②修复 wire 值拷贝 `&storageConfig` 与 app `&cfg.Storage` 分裂——KV 改 `orphan_gc_days` 此前到不了 GC（boot/运行时均不生效，隐藏功能缺口）。三服务（storage Service / ticket Service / settings Service）与 app GC 共享同一 `ConfigStore` 实例（wire 侧创建单例注入四处）；14 处测试构造点同批切快照。
 
 ## 11. 验收口径
@@ -246,7 +246,7 @@ CREATE INDEX idx_file_objects_creator ON file_objects (created_by, status);
 
 **B5-6 KV 表**：`system_settings`（key VARCHAR PK / value JSONB / updated_by / updated_at）——存储限制为首个消费者，审计保留期为已登记的第二个。
 
-  **F-D2 version 乐观锁（2026-10-21 五批审计收口批——迁移 000050）**：`system_settings` 追加 `version BIGINT NOT NULL DEFAULT 1`（存量行回填 1）。Update 走「读版本→条件更新 version+1」的 CAS：`expected_version` 非空时严格校验（两管理员并发改同键，后写者不再静默覆盖——400 提示刷新）；为空时服务端重读重试 ≤3 次（兼容存量调用，竞态下收敛）。`List` 回传 `version` 供前端回传 `expected_version`。**迁移 000048（原口径 000047，因 owner 随行件 2026-10-20 先建让位——A2 规则）**——S5 合计四枚迁移（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV；2026-10-16 外审对账补齐第三枚，2026-10-20 规划研究回灌补第四枚）。
+  **F-D2 version 乐观锁（2026-10-21 五批审计收口批——迁移 000050）**：`system_settings` 追加 `version BIGINT NOT NULL DEFAULT 1`（存量行回填 1）。Update 走「读版本→条件更新 version+1」的 CAS：`expected_version` 非空时严格校验（两管理员并发改同键，后写者不再静默覆盖——400 提示刷新）；为空时服务端重读重试 ≤3 次（兼容存量调用，竞态下收敛）。`List` 回传 `version` 供前端回传 `expected_version`。**迁移 000048（原口径 000047，因 owner 随行件 2026-10-20 先建让位——A2 规则）**——S5 合计**六枚**迁移（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV；2026-10-16 外审对账补齐第三枚，2026-10-20 规划研究回灌补第四枚，2026-10-21 双审计/五批审计补 000049 索引与 000050 乐观锁——「四枚」口径 2026-10-22 修复批统一）。
 
 ### A.4 API 契约（全端点；信封 `{code,message,data,request_id}`，standards §3-3）
 
@@ -389,3 +389,4 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 | 2026-10-20 | **B5-4 后端四：渲染 SSOT 落地 + custom_data 增量 patch（后端面收官）**：①§6 渲染选型拍定实落——goldmark v1.8.6 + bluemonday v1.0.27（双保险：默认档整体丢弃内嵌 HTML + UGC 白名单 + 相对 URL 放行）；端点 `POST /tickets/richtext/render`（§6 实施注+A.4 契约；登录态自服务+exempt）②A.3 拍板项 custom_data patch 已落（UpdateTicketRequest +custom_data；键覆盖/null 删键/G2 整体重校验/仅非终态；changes[] 随 S6 事件面）③渲染单测五场景（XSS 负向：script 丢弃/javascript·data scheme 消毒/稳定 URL 保留）+ handler 三场景 + custom_data 集成四子场景 + 四档 237/0 复跑 + 新端点真机冒烟 |
 | 2026-10-20 | **B5-5 备份随行收口**：①`rustfs-mirror` 侧车（rclone 1.75.2 钉死、profile=storage；remote 纯 env 注入）——sync 主→备 + `--backup-dir` 天目录轮转 + 目标桶版本化幂等启用（**RustFS 实测支持 PutBucketVersioning**）+ 失败留痕；②cron 最小件（lock 查询失败 Warn 留痕[原静默跳过]+`CronStatus` 数据面+panic 转失败记录——audit_archive/storage_gc 同受益，B10-4 端点消费位）；③**恢复演练五步实测全过**：check 哈希对账 24 matching/0 diff → 增量 → 损→恢字节一致 → 删除归档保护 → DB↔对象双向对账负向（引用集以 confirmed 为准）；④RPO 显式登记=同步周期（dev 1h）；backup/README 增对象存储节 + runbook §3 增行 |
 | 2026-10-21 | **五批审计 P2 三项收口批**：①F-A1 GC 一扫改「先条件清行、后删对象+墓碑走二扫」（A.9 竞态注记更新——修复前先删后清在 List 与 Remove 间撞并发 confirm 可致刚确认对象被物理删）②F-D3 `ConfigStore` 原子快照（A.1 装配链注记——消 data race + 修 wire/app 指针分裂致 KV 到不了 GC 的隐藏缺口）③F-D2 KV version 乐观锁=**迁移 000050**（B5-6 段注记——CAS + expected_version 严格校验）。验证：单测-race 16 包 / 集成-race 5 包 ok、000050 up→down→up 零漂移、lint 绿；acceptance 四档未跑（owner 侧） |
+| 2026-10-22 | **迁移计数口径统一（全量核查报告 P2-7——随修复批落）**：§6 涉及文件行与 B5-6 段两处「四枚」→**六枚 000045–000050**（000049=deleted 部分索引[双审计 F-A7]、000050=version 乐观锁[五批审计 F-D2] 实落后未随更新——与 review/11「五枚」收口口径及 11 号 §3 对齐，实际下一编号 000052）；05 号此前全文无 000049 登记一并补 |

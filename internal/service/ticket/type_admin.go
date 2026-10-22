@@ -299,8 +299,11 @@ const CustomDataMaxBytes = 64 << 10
 
 // expandDictOptions 将 field_options 中的 "dict:<code>" 引用展开为该字典
 // 启用项的 code 值集（F-B-2 修复——select 校验须对真实字典项校验而非字面量）。
-// 非 dict 引用原样返回；dict 查询失败返回原样（fail-open——校验侧选项集为空
-// 时不拦截，与"无选项不校验"语义一致）。
+// 非 dict 引用原样返回；字典码不存在与 DB 查询故障两臂均返回空集 []
+// （fail-open——校验侧 len==0 即跳过，"无选项不校验"语义。P1-1 修复
+// 2026-10-22：错误臂原返回原文，经 optionValues 成字面量单选项 → 一切
+// 合法 select 值被 400 拒，fail-closed 实效与 fail-open 意图相反；码不
+// 存在臂由保存期字典码存在性校验收口[B1-7]，运行期空集仅为兜底）。
 func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) json.RawMessage {
 	var elems []json.RawMessage
 	if err := json.Unmarshal(raw, &elems); err != nil || len(elems) != 1 {
@@ -314,20 +317,20 @@ func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) js
 	rows, err := s.db.Query(ctx,
 		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
 	if err != nil {
-		return raw // fail-open——选项集为空不拦截
+		return json.RawMessage("[]") // DB 故障→空集=真 fail-open（原文返回会拒一切合法值）
 	}
 	defer rows.Close()
 	codes := make([]string, 0, 8)
 	for rows.Next() {
 		var c string
 		if err := rows.Scan(&c); err != nil {
-			return raw
+			return json.RawMessage("[]")
 		}
 		codes = append(codes, c)
 	}
 	b, err := json.Marshal(codes)
 	if err != nil {
-		return raw
+		return json.RawMessage("[]")
 	}
 	return json.RawMessage(b)
 }
@@ -374,13 +377,8 @@ func (s *Service) validateCustomData(ctx context.Context, typeCode string, custo
 			return errcode.New(errcode.ErrInvalidParams.Code,
 				fmt.Sprintf("字段 %q（%s）为必填", f.FieldKey, f.FieldLabel))
 		}
-		// formula 字段空值也继续——applyFormulas 会算入
-		if isEmpty && !isFormula {
-			continue
-		}
-		if isEmpty {
-			continue // formula 空值跳过类型校验（值由公式产出）
-		}
+		// 空值跳过类型校验（formula 字段空值亦然——required 已豁免，值由
+		// applyFormulas 算入；P2-6 清理 2026-10-22：原三重连判第三支不可达）
 		if isEmpty {
 			continue
 		}
