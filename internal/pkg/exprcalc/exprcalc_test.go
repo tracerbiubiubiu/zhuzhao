@@ -69,10 +69,26 @@ func TestEvalFormula_Guardrails(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("禁环境逃逸标识符（Fields-only env——$env 无注入即不可达）", func(t *testing.T) {
-		// env 只含 Fields map（无 struct 方法面）——$env 非法标识符/未知键即拒
-		_, err := EvalFormula("$now.__unix", env)
-		require.Error(t, err)
+	t.Run("禁 $env 环境变量（token 级——双防线，B1-7 批1/N3）", func(t *testing.T) {
+		// $env 是语言级变量非内置函数（DisableAllBuiltins 不覆盖——探针实证返回
+		// 全量 Fields map）；解析后拦标识符本身（A.6 拍板=token 级非子串扫描）
+		require.Error(t, CheckSyntax("$env"), "保存期防线：CheckSyntax 拒")
+		_, err := EvalFormula("$env", env)
+		require.Error(t, err, "提交期防线：求值拒")
+		_, err = EvalFormula(`$env['price']`, env)
+		require.Error(t, err, "取值路径拒（下标）")
+		_, err = EvalFormula("$env.price", env)
+		require.Error(t, err, "取值路径拒（点路径）")
+	})
+
+	t.Run("$env 检测不误伤（token 级非子串）", func(t *testing.T) {
+		env2 := EvalEnv{Fields: map[string]any{"environment": "prod"}}
+		v, err := EvalFormula("environment", env2)
+		require.NoError(t, err, "字段名含 env 字样不误拒")
+		assert.Equal(t, "prod", v)
+		v, err = EvalFormula(`price == "$env"`, env)
+		require.NoError(t, err, "字符串字面量含 $env 不误拒")
+		assert.False(t, v.(bool))
 	})
 
 	t.Run("求值超时（炸弹表达式）", func(t *testing.T) {

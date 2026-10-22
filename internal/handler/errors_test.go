@@ -52,7 +52,7 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrTicketTypeNotFound, errcode.ErrTicketAlreadyClosed,
 	// 通知（P4-2）/字典（P4-3）/PAT（P4-6）——审计修复 2026-09-30 补登记
 	errcode.ErrNotificationConfigNotFound, errcode.ErrNotificationCodeExists, errcode.ErrNotificationChannelNotSupport,
-	errcode.ErrDictTypeNotFound, errcode.ErrDictItemNotFound,
+	errcode.ErrDictTypeNotFound, errcode.ErrDictItemNotFound, errcode.ErrDictTypeInUse,
 	errcode.ErrPatNotFound,
 	// 对象存储（phase5 S5 B5-1）
 	errcode.ErrFileTooLarge, errcode.ErrFileTypeNotAllowed, errcode.ErrFileNotFound, errcode.ErrFileAlreadyBound,
@@ -85,7 +85,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 65; got != want {
+	if got, want := len(allErrCodes), 66; got != want {
 		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
 	}
 

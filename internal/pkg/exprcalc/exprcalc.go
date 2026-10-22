@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/ast"
+	"github.com/expr-lang/expr/parser"
 	"github.com/expr-lang/expr/vm"
 )
 
@@ -46,6 +48,9 @@ var (
 func compileCached(src string) (*vm.Program, error) {
 	if len(src) > MaxExprLen {
 		return nil, fmt.Errorf("表达式超过 %d 字符长度上限", MaxExprLen)
+	}
+	if err := rejectEnvIdentifier(src); err != nil {
+		return nil, err
 	}
 	cacheMu.RLock()
 	p, ok := cache[src]
@@ -115,6 +120,35 @@ func CheckSyntax(src string) error {
 	if len(src) > MaxExprLen {
 		return fmt.Errorf("表达式超过 %d 字符长度上限", MaxExprLen)
 	}
+	if err := rejectEnvIdentifier(src); err != nil {
+		return err
+	}
 	_, err := expr.Compile(src, expr.AsAny(), expr.DisableAllBuiltins())
 	return err
+}
+
+// envIdentProbe token 级 $env 探测（B1-7 批1/N3——$env 是 expr 语言级变量非
+// 内置函数，DisableAllBuiltins 不覆盖[探针实证返回全量 Fields map]；解析后拦
+// 标识符本身：$env/$env.x/$env['x'] 三形态全命中 IdentifierNode.Value=="$env"，
+// 字符串字面量含 "$env" 与含 env 字样的字段名零误伤）。
+type envIdentProbe struct{ found bool }
+
+func (p *envIdentProbe) Visit(node *ast.Node) {
+	if id, ok := (*node).(*ast.IdentifierNode); ok && id.Value == "$env" {
+		p.found = true
+	}
+}
+
+// rejectEnvIdentifier 保存与提交双防线共用（A.6 拍板=token 级非子串扫描）。
+func rejectEnvIdentifier(src string) error {
+	tree, err := parser.Parse(src)
+	if err != nil {
+		return err
+	}
+	var probe envIdentProbe
+	ast.Walk(&tree.Node, &probe)
+	if probe.found {
+		return fmt.Errorf("表达式不允许引用 $env 环境变量（A.3/A.6——全量字段 dump 通道）")
+	}
+	return nil
 }
