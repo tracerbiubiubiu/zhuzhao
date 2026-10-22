@@ -757,6 +757,8 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
 			"from_assignee": fromAssignee, "to_assignee": toAssignee,
+			"title": ticket.Title, "type_code": ticket.TypeCode,
+			"priority": ticket.Priority, "status": ticket.Status,
 		},
 		Timestamp: time.Now(),
 	})

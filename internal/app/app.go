@@ -16,6 +16,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -48,7 +49,13 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	}
 	// B6-1：领域事件注册表（S6/phase6/S10 共享基础设施——一次变更多订阅者）
 	eventRegistry := domainevent.NewHookRegistry(logger)
-	_ = eventRegistry // B6-5 触发挂接批消费（当前无订阅者——基础设施在位）
+	// B6-5 触发挂接：工单事件→模板→渲染→ChannelSender 发送
+	notifyHook := ticket.NewTicketNotifyHook(
+		repository.NewMessageTemplateRepo(pool),
+		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: true}, logger), // 开发态桩
+		logger,
+	)
+	eventRegistry.Subscribe(domainevent.BizTicket, notifyHook)
 
 	// B1-6 批2：表达式函数注册表装配（lookup_dict 需 db 闭包；纯函数 now/upper
 	// 已在 exprcalc 包内默认注册；risk_score/sla_deadline 待 phase6 源后加函数）
