@@ -60,13 +60,14 @@ func compileCached(src string) (*vm.Program, error) {
 	if ok {
 		return p, nil
 	}
+	opts := compileOptions()
 	// AsAny=任意结果类型（字段类型校验归 G2 schema 侧）；不注入 $env/$now
 	// 结构（标识符只认 Fields 键——未知标识符 expr 编译期/运行期即拒）
 	// F-B-6/7 外审 P1 修复（2026-10-22）：显式函数白名单——禁 expr 内置全集
 	// （toJSON/fromJSON/get/keys/type 等均可用=白名单空转），仅放行 A.3 声明的
 	// sum/avg/round/min/max/len；方法/字段访问经 env 纯 map（无 struct 方法面）+
 	// 白名单禁内置后天然封堵
-	p, err := expr.Compile(src, expr.AsAny(), expr.DisableAllBuiltins())
+	p, err := expr.Compile(src, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +132,61 @@ func CheckSyntax(src string) error {
 	if err := rejectEnvIdentifier(src); err != nil {
 		return err
 	}
-	_, err := expr.Compile(src, expr.AsAny(), expr.DisableAllBuiltins())
+	_, err := expr.Compile(src, compileOptions()...)
 	return err
+}
+
+// ── B1-6 批2：函数注册表（A.3「函数白名单」实施形态——DisableAllBuiltins 后
+// 零内置，计算能力=注册 Go 函数；新增能力=加函数非新字段类型）──
+var (
+	funcMu   sync.RWMutex
+	funcRegs = map[string]expr.Option{}
+)
+
+// AddFunction 注册自定义函数（装配期注入 db 闭包用；进程级注册表——覆盖式，
+// 重名后写胜出；函数集变更整体清空编译缓存=旧产物自然失效）。
+func AddFunction(name string, fn func(params ...any) (any, error)) {
+	opt := expr.Function(name, fn)
+	funcMu.Lock()
+	funcRegs[name] = opt
+	funcMu.Unlock()
+	cacheMu.Lock()
+	cache = map[string]*vm.Program{}
+	cacheMu.Unlock()
+}
+
+// compileOptions 组装编译选项：沙箱基线（AsAny+全禁内置）+ 已注册函数集。
+func compileOptions() []expr.Option {
+	funcMu.RLock()
+	defer funcMu.RUnlock()
+	opts := make([]expr.Option, 0, len(funcRegs)+2)
+	opts = append(opts, expr.AsAny(), expr.DisableAllBuiltins())
+	for _, o := range funcRegs {
+		opts = append(opts, o)
+	}
+	return opts
+}
+
+func init() {
+	// 默认纯函数集（无外部依赖）；db 依赖函数（如 lookup_dict）由装配层
+	// AddFunction 注入闭包。risk_score/sla_deadline 无真实数据源不注册
+	//（虚标纪律——formula 引用即保存期「未知函数」拒，phase6 源到位后加函数）。
+	AddFunction("now", func(params ...any) (any, error) {
+		if len(params) != 0 {
+			return nil, fmt.Errorf("now() 无参")
+		}
+		return time.Now().Format(time.RFC3339), nil
+	})
+	AddFunction("upper", func(params ...any) (any, error) {
+		if len(params) != 1 {
+			return nil, fmt.Errorf("upper(s) 须一参")
+		}
+		str, ok := params[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("upper 参数须字符串")
+		}
+		return strings.ToUpper(str), nil
+	})
 }
 
 // envIdentProbe token 级 $env 探测（B1-7 批1/N3——$env 是 expr 语言级变量非
@@ -167,7 +221,7 @@ func checkFormulaType(f FormulaField, v any) error {
 }
 
 // identCollector 标识符收集（保存期引用存在性/禁链式校验用——内置已全禁，
-// 任何标识符都应是字段引用）。
+// 值位标识符都应是字段引用）。
 type identCollector struct{ idents []string }
 
 func (p *identCollector) Visit(node *ast.Node) {
@@ -176,15 +230,37 @@ func (p *identCollector) Visit(node *ast.Node) {
 	}
 }
 
-// Identifiers 提取表达式引用的标识符集（B1-7 批2 保存期校验共用件）。
+// calleeCollector 调用位标识符收集（B1-6 批2——函数名不属字段引用：
+// lookup_dict(...) 的 callee 是函数名非引用）。
+type calleeCollector struct{ names map[string]bool }
+
+func (c *calleeCollector) Visit(node *ast.Node) {
+	if call, ok := (*node).(*ast.CallNode); ok {
+		if id, ok := call.Callee.(*ast.IdentifierNode); ok {
+			c.names[id.Value] = true
+		}
+	}
+}
+
+// Identifiers 提取表达式引用的字段标识符集（B1-7 批2 保存期校验共用件；
+// B1-6 批2 起排除函数调用位标识符——与字段同名的函数名值位引用属罕见冲突，
+// 校验面按引用处理不另设豁免）。
 func Identifiers(src string) ([]string, error) {
 	tree, err := parser.Parse(src)
 	if err != nil {
 		return nil, err
 	}
+	cc := calleeCollector{names: map[string]bool{}}
+	ast.Walk(&tree.Node, &cc)
 	var p identCollector
 	ast.Walk(&tree.Node, &p)
-	return p.idents, nil
+	out := make([]string, 0, len(p.idents))
+	for _, id := range p.idents {
+		if !cc.names[id] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 
 // rejectEnvIdentifier 保存与提交双防线共用（A.6 拍板=token 级非子串扫描）。

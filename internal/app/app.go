@@ -21,6 +21,7 @@ import (
 	routerPkg "github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
 // App 应用实例
@@ -44,6 +45,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	if gw != nil {
 		prefixes = gw.Prefixes
 	}
+	// B1-6 批2：表达式函数注册表装配（lookup_dict 需 db 闭包；纯函数 now/upper
+	// 已在 exprcalc 包内默认注册；risk_score/sla_deadline 待 phase6 源后加函数）
+	ticket.RegisterExprDictLookup(pool)
+
 	bound, err := routerPkg.LoadBoundAPIs(context.Background(), pool)
 	if err != nil {
 		return nil, err

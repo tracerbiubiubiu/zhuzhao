@@ -5,6 +5,7 @@
 package exprcalc
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -139,5 +140,52 @@ func TestApplyFormulas_RejectsInfNaN(t *testing.T) {
 		out, err := ApplyFormulas(schema, map[string]any{"a": 10.0, "b": 2.0})
 		require.NoError(t, err)
 		assert.Equal(t, 5.0, out["ratio"])
+	})
+}
+
+func TestFunctionRegistry(t *testing.T) {
+	env := EvalEnv{Fields: map[string]any{"a": 21, "name": "abc"}}
+
+	t.Run("默认纯函数：upper/now（B1-6 批2）", func(t *testing.T) {
+		v, err := EvalFormula(`upper("ab")`, env)
+		require.NoError(t, err)
+		assert.Equal(t, "AB", v)
+		v, err = EvalFormula(`upper(name)`, env)
+		require.NoError(t, err)
+		assert.Equal(t, "ABC", v)
+		v, err = EvalFormula("now()", env)
+		require.NoError(t, err)
+		s, ok := v.(string)
+		require.True(t, ok, "now() 产 RFC3339 字符串（input 型 formula 兼容）")
+		_, err = time.Parse(time.RFC3339, s)
+		require.NoError(t, err)
+	})
+
+	t.Run("AddFunction 自定义函数 + 未知函数仍拒", func(t *testing.T) {
+		t.Cleanup(func() { /* 注册表为进程级——测试内注册即全局，无清理面（覆盖式） */ })
+		AddFunction("double", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("double(x) 须一参")
+			}
+			var n float64
+			switch v := params[0].(type) {
+			case float64:
+				n = v
+			case int:
+				n = float64(v)
+			case int64:
+				n = float64(v)
+			default:
+				return nil, fmt.Errorf("double 参数须数字")
+			}
+			return n * 2, nil
+		})
+		v, err := EvalFormula("double(a)", env)
+		require.NoError(t, err)
+		assert.Equal(t, float64(42), v)
+		_, err = EvalFormula("triple(a)", env)
+		require.Error(t, err, "未注册函数运行期拒（白名单语义——编译期无 env 不可判，探针既证）")
+		require.NoError(t, CheckSyntax("double(a)"), "保存期防线识别已注册函数")
+		// 未注册函数编译期不可判（运行期拒）——保存期防线的兜底在提交链求值
 	})
 }
