@@ -163,3 +163,13 @@ func escapeValue(v any) any {
 		return v
 	}
 }
+
+// EscapeIf 渠道感知的已渲染文本转义（A-9 审计修复——Quadrant 替换后的
+// 文本不再含占位符，直接按渠道决定是否 HTML 转义整串）。
+// 非转义渠道（uip/webhook）原样返回；转义渠道 HTML 转义全文。
+func EscapeIf(channel, text string) string {
+	if !channelEscapes(channel) {
+		return text
+	}
+	return EscapeHTML(text)
+}

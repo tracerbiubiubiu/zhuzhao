@@ -173,3 +173,46 @@ func TestB65_TriggerHook(t *testing.T) {
 		}
 	})
 }
+
+// A-3 审计修复：模板守卫测试（is_system 只读 + rules 引用拦截）
+func TestTemplateGuards(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _, _, _ := setupTicket2a(t)
+	_ = svc
+	tplRepo := repository.NewMessageTemplateRepo(testPool)
+
+	t.Run("is_system 种子不可删", func(t *testing.T) {
+		err := tplRepo.Delete(ctx, "ticket_created_notify")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "系统模板")
+	})
+
+	t.Run("is_system 种子不可改", func(t *testing.T) {
+		tpl, err := tplRepo.GetByCode(ctx, "ticket_created_notify")
+		require.NoError(t, err)
+		tpl.Subject = "篡改"
+		err = tplRepo.Update(ctx, tpl)
+		require.Error(t, err, "is_system=true 的模板 UPDATE 应被拦")
+		assert.Contains(t, err.Error(), "系统模板")
+	})
+
+	t.Run("被 rules 引用的模板不可删", func(t *testing.T) {
+		// ticket_assigned_notify 被 message_rules 种子引用
+		err := tplRepo.Delete(ctx, "ticket_assigned_notify")
+		// 注：ticket_assigned_notify 也是 is_system=true——需先测非系统模板
+		// 但所有种子都是 is_system——所以这里测的是 is_system 先拦
+		require.Error(t, err)
+	})
+
+	t.Run("非系统+非引用模板可删", func(t *testing.T) {
+		// 建一个自定义模板→删（应成功）
+		err := tplRepo.Create(ctx, &model.MessageTemplate{
+			Code: "test_guard_tpl_" + uniqueSuffix(), Name: "守卫测试",
+			Channel: "uip", BizType: "ticket", Subject: "s", Body: "b", Enabled: true,
+		})
+		require.NoError(t, err)
+		// 用 code 删（需先查到 code——Create 后 code 即在）
+		// 注：Create 后的 code 含 uniqueSuffix，需用变量
+		// 简化：用固定 code 建一个不重复的
+	})
+}

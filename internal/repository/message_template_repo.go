@@ -98,6 +98,18 @@ func (r *MessageTemplateRepo) Create(ctx context.Context, t *model.MessageTempla
 
 // Update 更新模板（version CAS）。
 func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTemplate) error {
+	// A-4 审计修复：is_system 模板不可 UPDATE（只读语义补全——Delete 已拦）
+	var isSys bool
+	if err := r.db.QueryRow(ctx,
+		`SELECT is_system FROM message_templates WHERE code = $1`, t.Code).Scan(&isSys); err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrTemplateNotFound
+		}
+		return err
+	}
+	if isSys {
+		return ErrTemplateSystem
+	}
 	tag, err := r.db.Exec(ctx, `
 		UPDATE message_templates SET name=$2, subject=$3, body=$4, variable_schema=$5,
 			enabled=$6, version=version+1, updated_at=NOW()

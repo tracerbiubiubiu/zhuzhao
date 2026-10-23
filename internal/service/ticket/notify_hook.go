@@ -72,14 +72,6 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 	}
 	tplCode := rule.TemplateCode
 
-	// 同单连发节流（06 号 §5.2 投递语义补遗——防状态翻转通知风暴）：
-	// 同 (biz_type, biz_id, action) 在窗口内只发一次；窗口外自然过期。
-	if h.throttle.shouldSkip(string(ev.BizType), ev.BizID, string(ev.Action)) {
-		h.logger.Info("notify: throttled (same biz+action in window)",
-			"action", ev.Action, "biz_id", ev.BizID)
-		return
-	}
-
 	// ① 查模板
 	tpl, err := h.tplRepo.GetByCode(ctx, tplCode)
 	if err != nil {
@@ -104,8 +96,10 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
 		return
 	}
-	subject := msgrender.RenderEscaped(subjR.Text, vars, tpl.Channel)
-	body := msgrender.RenderEscaped(bodyR.Text, vars, tpl.Channel)
+	// A-9 审计修复：Quadrant 已完成占位符替换——RenderEscaped 会再跑一次旧 Render
+	// （用原始 vars），若模板文本残留 {{}} 会被二次替换。改为直接转义 Quadrant 结果。
+	subject := msgrender.EscapeIf(tpl.Channel, subjR.Text)
+	body := msgrender.EscapeIf(tpl.Channel, bodyR.Text)
 	for _, w := range append(subjR.Warnings, bodyR.Warnings...) {
 		h.logger.Info("notify: render warning", "detail", w, "action", ev.Action, "biz_id", ev.BizID)
 	}
@@ -136,8 +130,17 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 	}
 	recipients = filtered
 
-	// ⑤ 发送（ChannelSender——当前=UIP 两态桩）
-	err = h.sender.Send(ctx, channelsender.Message{
+	// A-8 审计修复：节流移到偏好过滤后——全 opt-out 不占节流窗口
+	if h.throttle.shouldSkip(string(ev.BizType), ev.BizID, string(ev.Action)) {
+		h.logger.Info("notify: throttled (same biz+action in window)",
+			"action", ev.Action, "biz_id", ev.BizID)
+		return
+	}
+
+	// ⑤ 发送（ChannelSender——A-7 审计修复：ctx 加 5s 超时防 goroutine 永久阻塞）
+	sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	err = h.sender.Send(sendCtx, channelsender.Message{
 		Recipients:   recipients,
 		Subject:      subject,
 		Body:         body,

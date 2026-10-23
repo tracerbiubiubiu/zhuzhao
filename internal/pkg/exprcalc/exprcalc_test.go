@@ -17,7 +17,6 @@ import (
 func TestEvalFormula_Basics(t *testing.T) {
 	env := EvalEnv{
 		Fields: map[string]any{"price": 10.5, "qty": 3, "name": "x", "flag": true},
-		Now:    time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC),
 	}
 
 	t.Run("算术/比较/逻辑", func(t *testing.T) {
@@ -51,7 +50,7 @@ func TestEvalFormula_Basics(t *testing.T) {
 }
 
 func TestEvalFormula_Guardrails(t *testing.T) {
-	env := EvalEnv{Fields: map[string]any{"a": 1}, Now: time.Now()}
+	env := EvalEnv{Fields: map[string]any{"a": 1}}
 
 	t.Run("表达式长度钳制", func(t *testing.T) {
 		long := strings.Repeat("a + ", 2000) + "1"

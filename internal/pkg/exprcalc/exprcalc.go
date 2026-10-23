@@ -26,7 +26,6 @@ import (
 // EvalEnv 求值环境（A.3 契约形态——Actor 随 S3 网关条件扩，本批仅 Fields+Now）。
 type EvalEnv struct {
 	Fields map[string]any
-	Now    time.Time
 }
 
 // FormulaField formula 字段的 schema 投影（ticket 域组装自 field_meta）。
@@ -36,7 +35,7 @@ type FormulaField struct {
 	Type    string // field_type（B1-7 批2：提交期结果类型校验——三路F-B-3 收口）
 }
 
-// 护栏常量（A.3：长度钳制；超时经 context 取消传递——提交链值域天然有界，
+// 护栏常量（A.3：长度钳制；~~超时经 context 取消传递~~ [审计 P3 清理 2026-10-23：未接线——长度钳制为唯一防线]；提交链值域天然有界，
 // 长度钳制为第一道）
 const MaxExprLen = 2048
 
@@ -97,7 +96,7 @@ func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, 
 	for k, v := range data {
 		out[k] = v
 	}
-	env := EvalEnv{Fields: data, Now: time.Now()}
+	env := EvalEnv{Fields: data}
 	for _, f := range schema {
 		src := strings.TrimSpace(f.Formula)
 		if src == "" {

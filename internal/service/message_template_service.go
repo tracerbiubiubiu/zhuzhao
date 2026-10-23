@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
@@ -33,7 +34,7 @@ var supportedChannels = map[string]bool{"uip": true, "webhook": true}
 
 func validateChannel(channel string) error {
 	if !supportedChannels[channel] {
-		return fmt.Errorf("channel %q 不在支持列表——新渠道须先落 adapter", channel)
+		return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("channel %q 不在支持列表——新渠道须先落 adapter", channel))
 	}
 	return nil
 }
