@@ -7,12 +7,13 @@
 #   make commit-lint                        # 同第一行
 #   make commit-lint RANGE=HEAD~40          # 同第二行
 #
-# 校验规则（docs/standards.md §12-9）：
+# 校验规则（docs/standards.md §12-9 + AGENTS.md 三节）：
 #   ① 主题行 = type(scope): 摘要（type 枚举小写；scope 可选小写）
 #   ② 摘要 <=40 字（去前缀按字符计，中文友好）
 #   ③ 摘要结尾不加句号
 #   ④ 主题行与正文之间必须空行
-#   ⑤ swagger 新鲜度（窗口级）：触及 internal/model|handler 的窗口，本地跑
+#   ⑤ 正文至少有一行非空内容（AGENTS.md 三节必附：改动摘要/影响面/验证证据）
+#   ⑥ swagger 新鲜度（窗口级）：触及 internal/model|handler 的窗口，本地跑
 #      make swag 后 docs 生成物必须零漂移（对齐 CI lint 形态——红窗三次实证
 #      f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」）
 #
@@ -78,6 +79,11 @@ for h in $(git rev-list "${range}"); do
     # ④ 主题行与正文间必须空行（%B 第二行非空 = 缺空行）
     [ -n "${second}" ] && reasons="${reasons}
     [4] no blank line between subject and body"
+
+    # ⑤ 正文至少有一行非空内容（AGENTS.md 三节必附）
+    body_lines=$(git log -1 --format=%B "${h}" | sed -n '3,$p' | grep -c '.' || true)
+    [ "${body_lines}" -gt 0 ] || reasons="${reasons}
+    [5] body empty (three sections required: changes / impact / evidence)"
 
     if [ -n "${reasons}" ]; then
         violations=$((violations + 1))
