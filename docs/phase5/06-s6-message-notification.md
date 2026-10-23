@@ -4,6 +4,18 @@
 > **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
 
+## 1.5 通知能力三入口（2026-10-23 对话设计批——架构澄清）
+
+NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发送，写一次）；触发形态 = **入口层**（多路复用，不重复）：
+
+| 入口 | 触发时机 | 收件人来源 | 内容来源 | 实施时机 |
+|------|---------|-----------|---------|---------|
+| **事件触发**（B6-5） | 工单状态变更 | 事件上下文解析 | 规则绑定模板 + 事件参数 | **S6 一期 ✅** |
+| **定时触发** | cron 扫描超时/到期 | 配置人群 | 数据聚合（在途单 digest） | B10-4 自然出现（不预建） |
+| **人工触发** | 管理页/工单页按钮 | 管理员选择 | 自定义或选模板 | 有场景时加薄端点（半天） |
+
+定时和人工触发**不预建**——NotificationService 接口设计留好"可被任意调用方调"即可（B6-2 通道层设计时注意此约束）。
+
 ## 1. 定位与由来
 
 **定位 = P4-2 通知通道的能力延伸，非 §23 翻案**：P4-2 已交付渠道配置化 webhook + 死信告警 + taskrunner 终败通知 hook（E-⑥ 形态落地）；§23 暂缓清单中"通知"一项随 P4-2 事实上解封。本段补齐三件：**统一消息平台渠道 + 消息模板 + 工单事件触发**。**SLA/审批/分派/报表维持暂缓不碰**。站内通知原"不取"（2026-10-08/09 两次拍板）——2026-10-13 所有者铃铛需求**翻案**：原口径否决的是"触达通道"，铃铛实际要"站内聚合工作面"，与钉钉/邮件互补非替代——**挂 S6 二期**（见 §6）。
@@ -213,6 +225,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 
 ### A.5 订阅规则与触发链路（B6-5）
 
+- **B6-4 收件人来源增补（2026-10-23 对话设计批——升级催办场景依赖）**：第一档 `field` 引用（assignee/creator）之外增补 **`supervisor`** 来源——解析链：assignee → 查所属 org → 查该 org 的 admin/owner（org_roles 表既有）。B10-4 超时升级通知的"知会处理人上级"依赖此来源；实现 = 收件人解析器加一个 `source: "supervisor"` 分支（org 查询+缓存），不新增表。
 - **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled, version 乐观锁——对齐 notification_configs CAS 全仓惯例)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关；列名落 DDL 时取 `biz_type` 与 message_log 对齐——工单域非工单事件[如 ops.cron_failed 类]订阅键届时随二期/phase6 需求写死，2026-10-20 评审回声批注）；
 - **引用完整性双向守卫（三层，2026-10-16 评审批采纳）**：①**模板保存**——引用 ⊆ 所绑 rules 的 (biz_type,event) 字典并集，越界拦截/告警（原只有删除守卫——改正文静默破坏既有规则要到下次触发才以 failed 暴露；与 S1 影响分析同件）；②**规则保存**——模板动态字段引用 ⊆ 该 type_code 的 field_meta ∪ 内置 ∪ 时间类，**软告警不拦截**（field_meta 类型私有，(biz_type,event) 粒度不足以表达类型维度——粗校验①兜底+细告警②提示）；③**渲染时四象限**（A.4，运行时兜底）；守卫拦截/告警与模板·规则管理操作审计留痕随批（对齐 settings PUT 变更审计先例——11 号 B6-3 行同源）；
 - **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；**emit 单点锚=统一转换执行入口 commit-后回调（2026-10-19 P0-2 修正，原 2026-10-16 评审批表述作废）**：原表述「Dispatch 挂接锚定状态机咽喉 AssertTransition 单点」**技术上不成立**——AssertTransition=tx.Begin 前纯校验（service.go:352 vs :357 实证），作锚=事务前派发（回滚也发通知）且 created/cc_added 不经它；修正后锚=B3-1 首件 `POST /tickets/transition` 的 commit-后回调（单一咽喉覆盖全路径的**意图保留**，挂点从事务前移到事务后）；**过渡态显式化（2026-10-19 三轮回声）**：B6-5（W5–7.5）远早于 B3-1（W13–15）——S6 一期收口前 status 类事件 emit=Close/Assign 服务层 commit 后**显式 emit 两处**（拍板点① a 案本意），B3-1 端点收敛后归一、临时代码随收敛删除；**非 transition 事件 emit 点枚举钉死（2026-10-19 二轮回声补）**：transition 类事件统一走执行入口回调；`ticket.created`=Create 服务 commit 后、`ticket.cc_added`=B10-1 抄送落库 commit 后各自显式 emit（两处不经转换咽喉——防实施期「挂哪」开放问题）；**事件常量归属与命名映射（P1-21 采纳，2026-10-19）**：DomainEvent Action 常量单一来源=`internal/pkg/domainevent`（repository 层可引——事件名非服务私有）；`ticket_events.action`（bare 值审计惯例，service 包 Event* 常量随迁上移）与 DomainEvent.Action（点前缀订阅键）映射函数同包收口——顺带消灭 repository 层事件名字面量（ticket_repo:345 `'deleted'` 即此类，根因=常量居 service 包 repository 不可 import）；

@@ -37,6 +37,15 @@
 ### 3.3 动作库框架（Post-function 形态）
 
 - **流转时自动动作**（2026-10-08 所有者场景）："按字段判断分支后取数回写"若发生在流转时（进入某状态触发），落点 = **转换后动作**——实现形态 = 节点/转换 meta + 显式钩子（**已拍命名 `DomainHook`**——拍板点 S6#4，2026-10-16，原 TicketHooks 称谓废止；phase3/10 §4.2 既定，编译期检查）；**引擎不内置功能节点类型**（节点类型膨胀 = easy-workflow 反面；功能外挂与 Jira post-functions 同构）。
+- **on_complete 任务完成通知（2026-10-23 对话设计批——计划任务跑完通知场景）**：任务（cron/script/connector）完成后可配置通知——设计形态 = `on_complete.notify` 段（任务配置内嵌，非独立表）：
+  ```json
+  { "on_complete": { "notify": {
+      "template": "daily_scan_report",
+      "params_mapping": { "vuln_count": "result.total", "high_count": "result.high" },
+      "recipients": ["security_team"], "channels": ["email", "dingtalk"]
+  } } }
+  ```
+  **params_mapping 语义**：模板占位符 ← 任务返回值路径（`result.xxx`）或固定值（`literal`）——GitHub Actions outputs/inputs 同构。任务跑完 → 返回值 map → params_mapping 解析 → 模板渲染 → NotificationService.send()。实现 = S3a 动作参数化框架的一个消费场景（Action 参数 `from` 来源可以是 `event`/`result`/`literal`）；NotificationService 接口设计需确保可被 Action 框架调用（S6 B6-2 设计时注意——非代码变更）。
 - **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **提交任务**（走既有 Submit 通道，理想态登记）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
 - 提交时机的同款诉求归 S1 字段联动，勿混入流程层（执行时机三分界）。
 
