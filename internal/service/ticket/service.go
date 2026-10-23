@@ -314,6 +314,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		Payload: domainevent.Payload{
 			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
 			"human_key": ticket.HumanKey,
+			// B6-4 creator 档收件人锚点（外审实例批——修复前无此键致 creator 解析恒空）
+			"actor": strconv.FormatInt(actorUserID, 10),
 		},
 		Timestamp: time.Now(),
 	})

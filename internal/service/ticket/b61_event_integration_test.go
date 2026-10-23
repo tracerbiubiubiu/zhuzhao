@@ -75,6 +75,9 @@ func TestB61_DomainEventDispatch(t *testing.T) {
 		assert.Equal(t, strconv.FormatInt(tk.ID, 10), ev.BizID) // BizID=字符串化 id
 		assert.Equal(t, aid, ev.ActorID)
 		assert.Equal(t, "事件单", ev.Payload["title"])
+		// 外审实例批②生产端钉测：payload 须含 actor 键——resolveRecipientsFromRule
+		// 的 creator 档读 payload["actor"]（修复前 Create 只带顶层 ActorID，键恒空）
+		assert.Equal(t, strconv.FormatInt(aid, 10), ev.Payload["actor"], "creator 档收件人锚点")
 		assert.GreaterOrEqual(t, len(wildcards), 1, "通配订阅者也收到")
 	})
 

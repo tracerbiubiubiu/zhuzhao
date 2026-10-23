@@ -66,12 +66,47 @@ func EscapeHTML(s string) string {
 	return replacer.Replace(s)
 }
 
-// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"落地）：
-// email_html = HTML 转义（用户可控值防 XSS）；纯文本渠道（dingtalk/短邮件）不转义。
+// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"）。外审实例批两处修正：
+// ① 渠道名对齐真实名空间——原只认 email_html（DDL 默认 channel='uip'，转义对
+//
+//	真实流量零效果），改显式映射：uip/webhook=纯文本不转义（UIP 契约到手后按
+//	实际正文格式重映射此表）；email_html 及未知渠道=HTML 转义（fail-safe）。
+//
+// ② 值级转义——原对渲染后整串转义（模板静态文本也被转义），改为只转义被替换
+//
+//	进正文的变量值，模板自身文本原样。
 func RenderEscaped(template string, vars map[string]any, channel string) string {
-	out := Render(template, vars)
-	if channel == "email_html" {
-		return EscapeHTML(out)
+	if !channelEscapes(channel) {
+		return Render(template, vars)
+	}
+	return Render(template, escapeValues(vars))
+}
+
+func channelEscapes(channel string) bool {
+	switch channel {
+	case "uip", "webhook":
+		return false
+	default:
+		return true
+	}
+}
+
+// escapeValues 深拷贝变量树，字符串叶子做 HTML 转义（值级转义——模板文本不动）。
+func escapeValues(vars map[string]any) map[string]any {
+	out := make(map[string]any, len(vars))
+	for k, v := range vars {
+		out[k] = escapeValue(v)
 	}
 	return out
+}
+
+func escapeValue(v any) any {
+	switch t := v.(type) {
+	case string:
+		return EscapeHTML(t)
+	case map[string]any:
+		return escapeValues(t)
+	default:
+		return v
+	}
 }
