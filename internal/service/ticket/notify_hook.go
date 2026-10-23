@@ -24,6 +24,7 @@ type TicketNotifyHook struct {
 	tplRepo  *repository.MessageTemplateRepo
 	ruleRepo *repository.MessageRuleRepo
 	logRepo  *repository.MessageLogRepo
+	optRepo  *repository.NotificationOptoutRepo
 	sender   channelsender.ChannelSender
 	logger   *slog.Logger
 }
@@ -33,13 +34,14 @@ func NewTicketNotifyHook(
 	tplRepo *repository.MessageTemplateRepo,
 	ruleRepo *repository.MessageRuleRepo,
 	logRepo *repository.MessageLogRepo,
+	optRepo *repository.NotificationOptoutRepo,
 	sender channelsender.ChannelSender,
 	logger *slog.Logger,
 ) *TicketNotifyHook {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, sender: sender, logger: logger}
+	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, optRepo: optRepo, sender: sender, logger: logger}
 }
 
 // OnDomainEvent DomainHook 实现——工单事件触发通知（每订阅者独立 goroutine
@@ -80,6 +82,25 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		h.logger.Info("notify: no recipients resolved", "action", ev.Action, "biz_id", ev.BizID)
 		return
 	}
+
+	// B6-4 偏好过滤（06 号 §5.1——收件人解析后、Send 前查 opt-out/免打扰）
+	filtered := make([]string, 0, len(recipients))
+	for _, rcpt := range recipients {
+		// rcpt=字符串化用户 ID——查 notification_optouts
+		var uid int64
+		if _, err := fmt.Sscan(rcpt, &uid); err == nil && uid > 0 && h.optRepo != nil {
+			if opted, _ := h.optRepo.IsOptedOut(ctx, uid, string(ev.BizType), string(ev.Action)); opted {
+				h.logger.Info("notify: recipient opted out", "user", rcpt, "action", ev.Action)
+				continue
+			}
+		}
+		filtered = append(filtered, rcpt)
+	}
+	if len(filtered) == 0 {
+		h.logger.Info("notify: all recipients opted out", "action", ev.Action, "biz_id", ev.BizID)
+		return
+	}
+	recipients = filtered
 
 	// ⑤ 发送（ChannelSender——当前=UIP 两态桩）
 	err = h.sender.Send(ctx, channelsender.Message{

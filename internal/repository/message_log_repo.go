@@ -125,3 +125,23 @@ func (r *MessageRuleRepo) ListRules(ctx context.Context) ([]*model.MessageRule, 
 	}
 	return out, nil
 }
+
+// ── NotificationOptoutRepo（B6-4——per-user opt-out/免打扰）──
+
+type NotificationOptoutRepo struct {
+	db *pgxpool.Pool
+}
+
+func NewNotificationOptoutRepo(db *pgxpool.Pool) *NotificationOptoutRepo {
+	return &NotificationOptoutRepo{db: db}
+}
+
+// IsOptedOut 检查用户是否对指定事件静默（精确 action 或 '*' 全域免打扰）。
+func (r *NotificationOptoutRepo) IsOptedOut(ctx context.Context, userID int64, bizType, eventAction string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM notification_optouts
+			WHERE user_id = $1 AND biz_type = $2 AND event_action IN ($3, '*'))`,
+		userID, bizType, eventAction).Scan(&exists)
+	return exists, err
+}

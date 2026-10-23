@@ -54,6 +54,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		repository.NewMessageTemplateRepo(pool),
 		repository.NewMessageRuleRepo(pool),
 		repository.NewMessageLogRepo(pool),
+		repository.NewNotificationOptoutRepo(pool),
 		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: true}, logger), // 开发态桩
 		logger,
 	)
