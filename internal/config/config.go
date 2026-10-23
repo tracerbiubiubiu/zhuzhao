@@ -50,8 +50,9 @@ type NotificationConfig struct {
 	UIP UIPConfig `mapstructure:"uip"`
 }
 
-// UIPConfig 统一消息平台（UIP）adapter 配置（A.3：endpoint/鉴权头 config 化——
-// 真实契约到手只改映射层 mapToUIP，配置面不动）。
+// UIPConfig 统一消息平台（UIP）adapter 配置（A.3：endpoint config 化——
+// 真实契约到手只改映射层 mapToUIP 并扩鉴权头字段，配置面不动；
+// 鉴权头字段待契约定形后补——勿超前引用）。
 type UIPConfig struct {
 	Endpoint string `mapstructure:"endpoint"` // UIP 端点（空=开发态桩；生产态空→92004 fail-fast）
 }

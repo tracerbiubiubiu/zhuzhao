@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // Message 出站消息（渠道无关——收件人/主题/正文已解析为最终形态）。
@@ -69,8 +71,10 @@ func (s *UIPStubSender) Send(ctx context.Context, msg Message) error {
 		return nil
 	}
 	if s.cfg.Endpoint == "" {
-		// 生产态未配置：fail-fast（虚标防线——06 号 §3「桩不得标注为已实现」）
-		return fmt.Errorf("UIP 渠道未配置 endpoint（生产态 fail-fast——非开发态桩）")
+		// 生产态未配置：fail-fast（虚标防线——06 号 §3「桩不得标注为已实现」；
+		// 92004 错误码对象——v3 审计 Y-6：裸 fmt.Errorf 无业务语义，消费方
+		// errors.As 拿不到码值，映射表 92004→500 形同虚设）
+		return errcode.ErrNotificationNotConfigured
 	}
 	// TODO B6-2 后续：真实 UIP HTTP 调用（契约到手后补——endpoint/鉴权头/字段映射
 	// 层独立成函数，06 号 §3「无契约先行开发」口径）
