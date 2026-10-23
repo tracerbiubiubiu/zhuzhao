@@ -72,7 +72,6 @@ func (s *MessageTemplateService) Create(ctx context.Context, t *model.MessageTem
 	if !errors.Is(err, errcode.ErrMsgTplNotFound) {
 		return err
 	}
-	// TODO: 真实写入（INSERT）
 	return s.repo.Create(ctx, t)
 }
 

@@ -172,4 +172,54 @@ func TestB65_TriggerHook(t *testing.T) {
 				"无 to_assignee=assignee 档解析空——静默不通知（跳过即不落发送行）")
 		}
 	})
+
+	// 偏好过滤回归锚（外审 F-S6-1-4——optRepo 在 hook 已接线但零用例；
+	// 06 号 §10 验收标尺"偏好过滤"落锚）：收件人设 opt-out 后静默+零 log 行。
+	t.Run("收件人 opt-out ticket.closed→静默不发送不落 log", func(t *testing.T) {
+		sender.mu.Lock()
+		sender.msgs = nil
+		sender.mu.Unlock()
+
+		// bid 对 ticket.closed 设静默（000056 UNIQUE 幂等）
+		_, err := testPool.Exec(ctx, `
+			INSERT INTO notification_optouts (user_id, biz_type, event_action)
+			VALUES ($1, 'ticket', 'ticket.closed') ON CONFLICT DO NOTHING`, bid)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(ctx,
+				`DELETE FROM notification_optouts WHERE user_id=$1 AND biz_type='ticket' AND event_action='ticket.closed'`, bid)
+		})
+
+		code3 := "b65o_" + uniqueSuffix()
+		_, err = svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{
+			Code: code3, Name: "偏好过滤批",
+			Transitions: json.RawMessage(`{"open":["assigned"],"assigned":["closed"]}`),
+		})
+		require.NoError(t, err)
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code3, Title: "opt-out 静默单", Priority: 2, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
+		time.Sleep(200 * time.Millisecond)
+
+		require.NoError(t, svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, aid))
+		time.Sleep(200 * time.Millisecond)
+
+		// 断言只看 closed 模板——同单 Assign 触发的 assigned 通知（bid 合法收件）
+		// 也会落捕获，opt-out 只对 ticket.closed 生效
+		for _, m := range sender.messages() {
+			if m.TemplateCode != "ticket_closed_notify" {
+				continue
+			}
+			assert.NotContains(t, m.Recipients, strconv.FormatInt(bid, 10),
+				"opt-out 收件人须被过滤不发送")
+		}
+		// 全过滤→hook 提前返回→零 log 行（"跳过即不落发送行"语义）
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM message_log WHERE biz_id=$1 AND template_code='ticket_closed_notify'`,
+			strconv.FormatInt(tk.ID, 10)).Scan(&n))
+		assert.Equal(t, 0, n, "opt-out 过滤后该单不落发送 log 行")
+	})
 }

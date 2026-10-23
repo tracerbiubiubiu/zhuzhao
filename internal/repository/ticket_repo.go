@@ -378,6 +378,10 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 	return nil
 }
 
+// eventActionDeleted ticket_events.action 受控枚举值（F-S6-2-4 字面量提常量）。
+// 注：与 domainevent.Action（"ticket.deleted" 点路径）异名空间——此为事件表 action 列词表。
+const eventActionDeleted = "deleted"
+
 // Delete 物理删除工单。删除权限：全局 admin bypass + 2c 组织委托（org owner/admin、
 // ancestor owner，见 04 §4.2）。关联表处理：ticket_comments / ticket_relations 由
 // DB ON DELETE CASCADE 清理；ticket_events 为 SET NULL（000014）——事件行存活、
@@ -390,8 +394,8 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, 'deleted', NULLIF($3, ''))`,
-		id, actorUserID, reqid.From(ctx)); err != nil {
+		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, $4, NULLIF($3, ''))`,
+		id, actorUserID, reqid.From(ctx), eventActionDeleted); err != nil {
 		// 23503 = 工单已不存在（重复/并发删除）→ 404，且无事件残留（BK-16 修正）
 		if ec := MapForeignKeyViolation(err); ec != nil {
 			return errcode.ErrTicketNotFound
