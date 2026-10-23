@@ -54,3 +54,18 @@ FROM roles r
 JOIN role_menus rm ON rm.role_id = r.id
 JOIN menus m ON m.id = rm.menu_id AND m.code = 'ticket_type_manage' AND m.deleted_at IS NULL
 AND NOT EXISTS (SELECT 1 FROM casbin_rule c WHERE c.ptype='p' AND c.v0='role::'||r.code AND c.v1='/api/v1/message-templates' AND c.v2='GET');
+
+-- POST 三端点绑定（同 menu 同模式——B6-3 管理面写操作）
+INSERT INTO menu_apis (menu_id, api_path, api_method)
+SELECT m.id, v.path, 'POST'
+FROM menus m, (VALUES ('/api/v1/message-templates'), ('/api/v1/message-templates/update'), ('/api/v1/message-templates/delete')) AS v(path)
+WHERE m.code = 'ticket_type_manage' AND m.deleted_at IS NULL
+AND NOT EXISTS (SELECT 1 FROM menu_apis ma WHERE ma.menu_id = m.id AND ma.api_path = v.path AND ma.api_method = 'POST');
+
+INSERT INTO casbin_rule (ptype, v0, v1, v2)
+SELECT DISTINCT 'p', 'role::' || r.code, v.path, 'POST'
+FROM roles r
+JOIN role_menus rm ON rm.role_id = r.id
+JOIN menus m ON m.id = rm.menu_id AND m.code = 'ticket_type_manage' AND m.deleted_at IS NULL
+CROSS JOIN (VALUES ('/api/v1/message-templates'), ('/api/v1/message-templates/update'), ('/api/v1/message-templates/delete')) AS v(path)
+WHERE NOT EXISTS (SELECT 1 FROM casbin_rule c WHERE c.ptype='p' AND c.v0='role::'||r.code AND c.v1=v.path AND c.v2='POST');
