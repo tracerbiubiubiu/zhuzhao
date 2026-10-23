@@ -1,9 +1,9 @@
 // 模板守卫集成测试（外审 F-2-2 重写——真实断言+CI 可跑）。
 // 用 testcontainers 真 PG——守卫逻辑涉及 SQL 条件分支，mock 无意义。
 //
-// ⚠ 生命周期纪律：SetupPostgresShared 无引用计数（sharedOnce+sharedTerm 直关池），
-// 本文件是 internal 包唯一持池测试——顶层测试只许一个，cleanup 只许尾部一次；
-// 多顶层测试各自 defer cleanup 会提前杀掉 TestMain 持有的共享容器
+// ⚠ 生命周期纪律：SetupPostgresShared 为共享池（TestMain 统一收——本文件不调 cleanup()），
+// 测试数据用 t.Cleanup 清理；容器生命周期归 TestMain。
+//（同 service/ticket 包 main_integration_test.go 形态）。
 //（实测：新增第二个顶层测试后全 binary "closed pool"）。
 //go:build integration
 

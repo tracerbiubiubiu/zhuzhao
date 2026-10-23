@@ -31,6 +31,12 @@
 | B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
 | B-12 | S1 | P2-8 游离 godoc（ticket_handler 4 处） | 随手批 | 全量核查 | 5min |
 | B-13 | S1 | P1-21 `'deleted'` 字面量在 repo + Subscribe 无 name | 随手批 | 外审 F-2-7 | ~0.5h |
+| B-14 | S6 | 渠道命名两套冲突（设计文档 email/dingtalk vs 实现 uip/webhook） | 文档批 | 06 号 §3 | 5min |
+| B-15 | S3a | 03 号 §3.3 on_complete 直调 send() vs 通知收敛走 S6 规则面——二选一成文 | S3a 开工前 | 03 号 §3.3 | 拍板 |
+| B-16 | S6 | A.5③ 守卫拦截/告警（被引用字段改 key/删时规则失效——与 S1 影响分析同件复用） | B6-7 二期 | 06 号 A.5 | +0.5 天 |
+| B-17 | S6 | 11 号计划面回填（escalation/on_complete/supervisor/三入口等七关键词在 11 号零登记） | 文档批 | 外审 F-3-6 | 15min |
+| B-18 | S10 | last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径 | B10-4 开工前 | 外审 F-3-7/8 | 拍板 |
+| B-19 | — | B13 权限覆盖矩阵审计（全端点×三层——半天 doc-only） | phase5 收官前 | 09 月提议至今 | +0.5 天 |
 
 ## C. 触发驱动（有明确触发信号，信号不到不动）
 
@@ -52,6 +58,9 @@
 | C-14 | S5 | cookie Secure release 强制 | 生产 HTTPS 网关前置 | 外审 F-4-7 |
 | C-15 | S6 | 死信/emitEvent ctx 超时+request_id | 接入链路追踪时 | 外审 F-2-8 |
 | C-16 | S6 | 节流入口廉价预判 | 通知量级异常增大时 | 外审 F-2-8 |
+| C-17 | S5 | mirror 侧车失败聚合可见面（F-C1） | B10-4 |
+| C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行 | P3 量级到了 |
+| C-19 | S6 | settings Upsert version 乐观锁（F-D2——000060 在途收尾） | 下个迁移顺位 |
 
 ## D. 外部依赖 / 远期
 
@@ -78,6 +87,7 @@
 | rules version 乐观锁 | upsert 语义=设计终态（配置数据 last-writer-wins）——外审 000060 迁移对已建，收尾后转 ✅ |
 | binder 接口化 | YAGNI 销账（外审 F-4-1：purpose 分支内联三处显式=实施终态） |
 | exprcalc 超时注释+Now 死码 | ✅ 已清（bf4a388） |
+| JWT_SECRET<32 release 拒启 | ✅ 已落码（validate.go:139-147 完整实现——旧登记「未提交」过时） |
 
 ## 挂账质量判据（外审 F-4-5 推广）
 
@@ -87,4 +97,4 @@
 
 ---
 
-*基线：zhuzhao `33b42a7` / zhuzhao-ui `9ada8da4`（2026-10-23 双仓 CI 绿）*
+*基线：zhuzhao `469847f` / zhuzhao-ui `9ada8da4`（2026-10-23 双仓 CI 绿）——外审分析整合后 49 项*
