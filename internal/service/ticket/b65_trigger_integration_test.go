@@ -5,6 +5,8 @@ package ticket
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -84,7 +86,7 @@ func TestB65_TriggerHook(t *testing.T) {
 		assert.NotEmpty(t, last.Recipients, "收件人非空（分派对象）")
 	})
 
-	t.Run("Create→ticket.created→首版不送自通知", func(t *testing.T) {
+	t.Run("Create→ticket.created→无种子规则不通知（拍板 A 规则驱动）", func(t *testing.T) {
 		sender.mu.Lock()
 		sender.msgs = nil
 		sender.mu.Unlock()
@@ -96,11 +98,78 @@ func TestB65_TriggerHook(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 
 		msgs := sender.messages()
-		// 首版 created→不送（resolveRecipients 返回 nil）
-		// 但 assigned 不在此子测中触发——msgs 应为空或仅含其他动作
+		// 拍板 A（2026-10-23）：created 删硬编码特判走规则驱动——开箱无 created
+		// 种子规则（000054）=零通知，配规则+creator 档后真实生效
 		for _, m := range msgs {
 			assert.NotEqual(t, "ticket_created_notify", m.TemplateCode,
-				"首版创建通知不送自通知（06 号 §5.1 第一档）")
+				"无规则不通知（06 号 §0 开箱零通知原则）")
+		}
+	})
+
+	// 外审实例批回归锚点（2026-10-23）：修复前 Close emit payload 缺 to_assignee，
+	// assignee 档解析恒空 → closed 通知 100% 静默丢失且 message_log 零行。
+	// 默认图 assigned 不可直达 closed（须过 in_progress——B3-1 通用转换端点前无入口），
+	// 本子测用自定义图放行 assigned→closed。
+	t.Run("Close→ticket.closed→assignee 收通知+log 落行", func(t *testing.T) {
+		sender.mu.Lock()
+		sender.msgs = nil
+		sender.mu.Unlock()
+
+		code2 := "b65c_" + uniqueSuffix()
+		_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{
+			Code: code2, Name: "关单通知批",
+			Transitions: json.RawMessage(`{"open":["assigned"],"assigned":["closed"]}`),
+		})
+		require.NoError(t, err)
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code2, Title: "关单通知回归单", Priority: 2, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
+		time.Sleep(200 * time.Millisecond)
+
+		require.NoError(t, svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, aid))
+		time.Sleep(200 * time.Millisecond) // 异步派发
+
+		var closedMsg *channelsender.Message
+		for i := range sender.messages() {
+			if m := sender.messages()[i]; m.TemplateCode == "ticket_closed_notify" {
+				closedMsg = &m
+				break
+			}
+		}
+		require.NotNil(t, closedMsg, "关闭事件须触发关单通知（payload to_assignee 锚点）")
+		assert.Contains(t, closedMsg.Recipients, strconv.FormatInt(bid, 10),
+			"收件人=处理人（消费 rules recipient_type=assignee）")
+
+		logRepo := repository.NewMessageLogRepo(testPool)
+		logs, total, err := logRepo.List(ctx, 1, 50, "ticket", "ticket_closed_notify")
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, total, int64(1), "关单通知须落 message_log")
+		found := false
+		for _, l := range logs {
+			if l.BizID == strconv.FormatInt(tk.ID, 10) && l.Status == "sent" {
+				found = true
+			}
+		}
+		assert.True(t, found, "该工单关单通知 log 行 status=sent")
+	})
+
+	t.Run("未指派工单关闭→assignee 档解析空→静默不发送", func(t *testing.T) {
+		sender.mu.Lock()
+		sender.msgs = nil
+		sender.mu.Unlock()
+
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "未指派关单单", Priority: 2, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, aid))
+		time.Sleep(200 * time.Millisecond)
+
+		for _, m := range sender.messages() {
+			assert.NotEqual(t, "ticket_closed_notify", m.TemplateCode,
+				"无 to_assignee=assignee 档解析空——静默不通知（跳过即不落发送行）")
 		}
 	})
 }
