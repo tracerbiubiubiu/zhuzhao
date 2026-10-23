@@ -53,23 +53,27 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 	}
 	_ = tpl
 
-	// ② recipient_type 枚举
+	// ② recipient_type 枚举（v3 审计 Y-1：裸 fmt.Errorf → errcode 400，修复前 errors.As
+	// 落空 → 500+10000 污染 5xx 告警面）
 	switch rule.RecipientType {
 	case "assignee", "creator", "fixed":
 	default:
-		return fmt.Errorf("recipient_type %q 不合法（assignee/creator/fixed）", rule.RecipientType)
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("recipient_type %q 不合法（assignee/creator/fixed）", rule.RecipientType))
 	}
 
 	// ③ event_action 词表校验（ticket. 前缀 + 已知动作）
 	if !isValidEventAction(rule.EventAction) {
-		return fmt.Errorf("event_action %q 不在支持词表", rule.EventAction)
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("event_action %q 不在支持词表", rule.EventAction))
 	}
 
 	// ④ fixed 收件人非空时验格式（逗号分隔数字 ID）
 	if rule.RecipientType == "fixed" && rule.FixedRecipients != "" {
 		for _, id := range strings.Split(rule.FixedRecipients, ",") {
 			if _, err := strconv.ParseInt(strings.TrimSpace(id), 10, 64); err != nil {
-				return fmt.Errorf("fixed_recipients 含非数字 ID %q", strings.TrimSpace(id))
+				return errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("fixed_recipients 含非数字 ID %q", strings.TrimSpace(id)))
 			}
 		}
 	}

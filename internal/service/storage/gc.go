@@ -93,9 +93,15 @@ func (g *GCJob) Handle(ctx context.Context, _ json.RawMessage) error {
 	} else {
 		for _, f := range confirmed {
 			// 软删行（confirmed→deleted）→ 物理删对象 → 二扫物理清行
-			if err := g.repo.MarkDeleted(ctx, f.ID); err != nil {
+			// v3 审计 Y-2：MarkDeleted 加反连接条件后返回是否实际标记——
+			// false=List 与 Mark 之间被并发建单落绑，让位不动物理删
+			marked, err := g.repo.MarkDeleted(ctx, f.ID)
+			if err != nil {
 				g.logger.Error("storage gc mark confirmed orphan deleted", "key", f.ObjectKey, "err", err)
 				continue
+			}
+			if !marked {
+				continue // 并发绑定让位（Y-2）
 			}
 			if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
 				g.logger.Warn("storage gc remove confirmed orphan failed, second sweep will retry", "key", f.ObjectKey, "err", err)

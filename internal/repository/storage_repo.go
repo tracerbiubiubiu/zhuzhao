@@ -418,7 +418,17 @@ func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, b
 }
 
 // MarkDeleted 软删行（confirmed→deleted——第三段 GC 前置标记）。
-func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) error {
-	_, err := r.db.Exec(ctx, `UPDATE file_objects SET status='deleted' WHERE id=$1 AND status='confirmed'`, id)
-	return err
+// v3 审计 Y-2（2026-10-23）：WHERE 加 NOT EXISTS 反连接条件——修复前仅守
+// status='confirmed'，List 与 MarkDeleted 之间并发建单落绑（BindCreateAttachments
+// 插 ticket_attachments 但不改 status）会把已绑定在用对象软删+物理删。
+// 返回是否实际标记（false=已被并发绑定或翻态让位，调用方跳过物理删）。
+func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE file_objects SET status='deleted'
+		WHERE id=$1 AND status='confirmed'
+		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = file_objects.id)`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
 }

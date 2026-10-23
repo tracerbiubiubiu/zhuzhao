@@ -258,4 +258,31 @@ func TestGCJob_ConfirmedOrphans(t *testing.T) {
 			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
 		assert.Equal(t, "confirmed", status, "avatar purpose 不在第三段扫描范围")
 	})
+
+	// v3 审计 Y-2（2026-10-23）：MarkDeleted 加反连接条件后的并发绑定让位——
+	// List 与 Mark 之间被并发建单落绑（插 ticket_attachments 但不改 status）时，
+	// MarkDeleted 返回 false（让位），不动物理删（修复前 WHERE 仅守 confirmed → 在用对象被误删）。
+	t.Run("并发绑定让位——Mark 返回 false 不物理删（Y-2）", func(t *testing.T) {
+		key := "tickets/2026/10/y2-concurrent.png"
+		seedConfirmed(key, "attachment_create", 30*24*time.Hour)
+		// 模拟竞态：GC List 已完成、MarkDeleted 前——并发建单落绑插关联行（status 仍 confirmed）
+		ticketID := insertTicket(t, uid)
+		var foID int64
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT id FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&foID))
+		_, execErr := testPool.Exec(context.Background(), `
+			INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`,
+			ticketID, foID, uid)
+		require.NoError(t, execErr)
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM ticket_attachments WHERE ticket_id=$1`, ticketID)
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM tickets WHERE id=$1`, ticketID)
+		})
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&status))
+		assert.Equal(t, "confirmed", status, "已绑定在用对象不得被第三段软删（Y-2：MarkDeleted NOT EXISTS 让位）")
+		assert.NotContains(t, rec.removed, key, "已绑定对象不得被物理删")
+	})
 }
