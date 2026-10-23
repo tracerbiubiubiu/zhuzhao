@@ -52,11 +52,6 @@ func CatalogExemptRoutes() []string {
 }
 
 var catalogExempt = map[string]bool{
-	// S6 B6-6 消息管理（管理面——menu_apis 随 UI 管理页批补）
-	"GET /api/v1/message-logs":          true,
-	"GET /api/v1/message-rules":         true,
-	"POST /api/v1/message-rules":        true,
-	"POST /api/v1/message-rules/delete": true,
 
 	"POST /api/v1/auth/login":            true, // 认证公开端点
 	"POST /api/v1/auth/refresh":          true, // 认证公开端点
