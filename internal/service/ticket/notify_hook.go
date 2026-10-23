@@ -92,9 +92,23 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		"ticket": buildTicketVars(ev),
 	}
 
-	// ③ 渲染（渠道感知转义——06 号 A.4"值转义按渠道进行"）
-	subject := msgrender.RenderEscaped(tpl.Subject, vars, tpl.Channel)
-	body := msgrender.RenderEscaped(tpl.Body, vars, tpl.Channel)
+	// ③ 渲染（四象限三分档——B6-3 增强批：内置键缺失=fail 拒发/动态键=skip+warn）
+	subjR := msgrender.RenderQuadrant(tpl.Subject, vars)
+	bodyR := msgrender.RenderQuadrant(tpl.Body, vars)
+	if subjR.Err != nil || bodyR.Err != nil {
+		err := subjR.Err
+		if err == nil {
+			err = bodyR.Err
+		}
+		h.logger.Warn("notify: render rejected (builtin key missing)",
+			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
+		return
+	}
+	subject := msgrender.RenderEscaped(subjR.Text, vars, tpl.Channel)
+	body := msgrender.RenderEscaped(bodyR.Text, vars, tpl.Channel)
+	for _, w := range append(subjR.Warnings, bodyR.Warnings...) {
+		h.logger.Info("notify: render warning", "detail", w, "action", ev.Action, "biz_id", ev.BizID)
+	}
 
 	// ④ 解析收件人（消费 message_rules 的 recipient_type/fixed_recipients——修复前旁路 DDL）
 	recipients := resolveRecipientsFromRule(ev, rule.RecipientType, rule.FixedRecipients)

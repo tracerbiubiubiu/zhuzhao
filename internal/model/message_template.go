@@ -13,6 +13,7 @@ type MessageTemplate struct {
 	Body           string    `json:"body"`                      // 正文模板
 	VariableSchema []byte    `json:"variable_schema,omitempty"` // 可用变量声明（JSONB）
 	Enabled        bool      `json:"enabled"`
+	IsSystem       bool      `json:"is_system"` // 种子模板只读（B6-3）
 	Version        int64     `json:"version"`
 	CreatedBy      *int64    `json:"created_by,string,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`

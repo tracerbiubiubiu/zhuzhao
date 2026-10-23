@@ -14,8 +14,63 @@ import (
 // 占位符正则：{{ticket.field_key}} 或 {{ticket.field_key.sub}}（点路径）
 var placeholderRe = regexp.MustCompile(`\{\{(\w+(?:\.\w+)*)\}\}`)
 
+// builtinKeys 内置键集合（06 号 A.4 四象限——这些键必须始终有值，缺失=fail 拒发）。
+// 通知链每次组装载荷必含——缺失说明模板或数据有错（非正常场景）。
+var builtinKeys = map[string]bool{
+	"ticket.title":     true,
+	"ticket.type_code": true,
+	"ticket.priority":  true,
+	"ticket.status":    true,
+	"ticket.human_key": true,
+	"ticket.link":      true,
+}
+
+// RenderResult 渲染结果（四象限三分档——B6-3 增强批）。
+type RenderResult struct {
+	Text     string   // 渲染后文本
+	Err      error    // 内置键缺失→非 nil（拒发信号）
+	Warnings []string // 动态键跳过/键在无值 的警告（日志面——不影响发送）
+}
+
+// RenderQuadrant 四象限三分档渲染（B6-3 增强批核心件——06 号 A.4）。
+//
+// 三分档：
+//   - 内置键缺失 → Err 非 nil（**fail 拒发**——模板引用了必须有的变量但没有）
+//   - 动态键缺失 → 替换为空串 + Warning（**skip+warn**——动态字段可能不在）
+//   - 键在但值为 nil → 替换为空串 + Warning（**空串+warned**）
+func RenderQuadrant(template string, vars map[string]any) RenderResult {
+	var warnings []string
+	var renderErr error
+
+	text := placeholderRe.ReplaceAllStringFunc(template, func(m string) string {
+		path := strings.Trim(m, "{}")
+		val, ok := lookupPath(vars, path)
+		if !ok {
+			if builtinKeys[path] {
+				// 内置键缺失 = fail（拒发——组装一个 error 信号）
+				if renderErr == nil {
+					renderErr = fmt.Errorf("内置键 %s 缺失——载荷组装错误，拒发", path)
+				}
+				return m // 保留原样（错误已设置，最终不发送）
+			}
+			// 动态键缺失 = skip + warn
+			warnings = append(warnings, fmt.Sprintf("动态键 %s 未命中——跳过", path))
+			return ""
+		}
+		if val == nil {
+			// 键在但无值 = 空串 + warn
+			warnings = append(warnings, fmt.Sprintf("键 %s 值为 nil——替换为空串", path))
+			return ""
+		}
+		return fmt.Sprint(val)
+	})
+
+	return RenderResult{Text: text, Err: renderErr, Warnings: warnings}
+}
+
 // Render 渲染模板——将 {{path}} 替换为 vars 中对应值。
 // 未命中的占位符保留原样（管理员可见——非静默消除）。
+// 注意：此函数不做四象限分档——旧调用方兼容保留；新调用方应用 RenderQuadrant。
 func Render(template string, vars map[string]any) string {
 	return placeholderRe.ReplaceAllStringFunc(template, func(m string) string {
 		path := strings.Trim(m, "{}")
@@ -55,9 +110,14 @@ func ExtractPlaceholders(template string) []string {
 	return out
 }
 
-// RenderBoth 渲染主题+正文（便捷函数）。
+// RenderBoth 渲染主题+正文（便捷函数——旧调用方兼容）。
 func RenderBoth(subject, body string, vars map[string]any) (string, string) {
 	return Render(subject, vars), Render(body, vars)
+}
+
+// RenderBothQuadrant 四象限渲染主题+正文（B6-3 增强批——任一 Err 则整体拒发）。
+func RenderBothQuadrant(subject, body string, vars map[string]any) (RenderResult, RenderResult) {
+	return RenderQuadrant(subject, vars), RenderQuadrant(body, vars)
 }
 
 // EscapeHTML HTML 转义（邮件 HTML 渠道用——用户可控值防注入）。
@@ -66,15 +126,7 @@ func EscapeHTML(s string) string {
 	return replacer.Replace(s)
 }
 
-// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"）。外审实例批两处修正：
-// ① 渠道名对齐真实名空间——原只认 email_html（DDL 默认 channel='uip'，转义对
-//
-//	真实流量零效果），改显式映射：uip/webhook=纯文本不转义（UIP 契约到手后按
-//	实际正文格式重映射此表）；email_html 及未知渠道=HTML 转义（fail-safe）。
-//
-// ② 值级转义——原对渲染后整串转义（模板静态文本也被转义），改为只转义被替换
-//
-//	进正文的变量值，模板自身文本原样。
+// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"）。
 func RenderEscaped(template string, vars map[string]any, channel string) string {
 	if !channelEscapes(channel) {
 		return Render(template, vars)
@@ -82,6 +134,7 @@ func RenderEscaped(template string, vars map[string]any, channel string) string 
 	return Render(template, escapeValues(vars))
 }
 
+// channelEscapes 渠道→转义族映射（uip/webhook=纯文本不转义；其余=HTML fail-safe）。
 func channelEscapes(channel string) bool {
 	switch channel {
 	case "uip", "webhook":
