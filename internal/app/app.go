@@ -52,6 +52,8 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	// B6-5 触发挂接：工单事件→模板→渲染→ChannelSender 发送
 	notifyHook := ticket.NewTicketNotifyHook(
 		repository.NewMessageTemplateRepo(pool),
+		repository.NewMessageRuleRepo(pool),
+		repository.NewMessageLogRepo(pool),
 		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: true}, logger), // 开发态桩
 		logger,
 	)

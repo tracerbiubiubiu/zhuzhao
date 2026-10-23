@@ -44,7 +44,7 @@ func TestB65_TriggerHook(t *testing.T) {
 	reg := domainevent.NewHookRegistry(nil)
 	tplRepo := repository.NewMessageTemplateRepo(testPool)
 	sender := &captureSender{}
-	hook := NewTicketNotifyHook(tplRepo, sender, nil)
+	hook := NewTicketNotifyHook(tplRepo, repository.NewMessageRuleRepo(testPool), repository.NewMessageLogRepo(testPool), sender, nil)
 	reg.Subscribe(domainevent.BizTicket, hook)
 
 	svc, aid, bid, _, roles := setupTicket2a(t)

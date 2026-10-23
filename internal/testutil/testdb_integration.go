@@ -146,6 +146,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000052_impact_rebind_admin.up.sql",
 			// S6 B6-3: message_templates
 			"000053_message_templates.up.sql",
+			// S6 B6-6: message_log + message_rules + menu_apis
+			"000054_message_log.up.sql",
 			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
 			"000050_system_settings_version.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时

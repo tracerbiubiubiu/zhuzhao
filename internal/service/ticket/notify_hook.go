@@ -9,38 +9,37 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/msgrender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
-// Action→模板 code 映射（种子模板——06 号 §4；管理员可改）。
-var actionTemplateMap = map[domainevent.Action]string{
-	domainevent.TicketCreated:  "ticket_created_notify",
-	domainevent.TicketAssigned: "ticket_assigned_notify",
-	domainevent.TicketClosed:   "ticket_closed_notify",
-}
-
 // TicketNotifyHook 工单通知钩子（实现 DomainHook——06 号 拍板点 4 消费方侧
 // 名字保持业务化）。
 type TicketNotifyHook struct {
-	tplRepo *repository.MessageTemplateRepo
-	sender  channelsender.ChannelSender
-	logger  *slog.Logger
+	tplRepo  *repository.MessageTemplateRepo
+	ruleRepo *repository.MessageRuleRepo
+	logRepo  *repository.MessageLogRepo
+	sender   channelsender.ChannelSender
+	logger   *slog.Logger
 }
 
 // NewTicketNotifyHook 创建工单通知钩子。
 func NewTicketNotifyHook(
 	tplRepo *repository.MessageTemplateRepo,
+	ruleRepo *repository.MessageRuleRepo,
+	logRepo *repository.MessageLogRepo,
 	sender channelsender.ChannelSender,
 	logger *slog.Logger,
 ) *TicketNotifyHook {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &TicketNotifyHook{tplRepo: tplRepo, sender: sender, logger: logger}
+	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, sender: sender, logger: logger}
 }
 
 // OnDomainEvent DomainHook 实现——工单事件触发通知（每订阅者独立 goroutine
@@ -49,10 +48,16 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 	if ev.BizType != domainevent.BizTicket {
 		return // 非 ticket 域不处理
 	}
-	tplCode, ok := actionTemplateMap[ev.Action]
-	if !ok {
-		return // 无对应模板的动作不通知（updated/commented 等）
+	// B6-6：message_rules 路由（替代硬编码映射——管理员可改）
+	rule, err := h.ruleRepo.GetByAction(ctx, string(ev.BizType), string(ev.Action))
+	if err != nil {
+		h.logger.Warn("notify: rule lookup failed", "action", ev.Action, "err", err)
+		return
 	}
+	if rule == nil {
+		return // 无规则=不通知（updated/commented 等）
+	}
+	tplCode := rule.TemplateCode
 
 	// ① 查模板
 	tpl, err := h.tplRepo.GetByCode(ctx, tplCode)
@@ -85,14 +90,25 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		BizID:        ev.BizID,
 		TemplateCode: tpl.Code,
 	})
+	status := "sent"
+	sendErr := ""
 	if err != nil {
+		status = "failed"
+		sendErr = err.Error()
 		h.logger.Error("notify: send failed",
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
 		// 不 return error——at-most-once（06 号 §5.2 异步投递，失败不阻塞）
+	} else {
+		h.logger.Info("notify: sent",
+			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code,
+			"recipients", fmt.Sprint(recipients))
 	}
-	h.logger.Info("notify: sent",
-		"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code,
-		"recipients", fmt.Sprint(recipients))
+	// B6-6：发送记录落行（成功/失败均记录——06 号 §5.4）
+	_ = h.logRepo.Insert(ctx, &model.MessageLog{
+		TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID,
+		Channel: h.sender.Channel(), Recipients: strings.Join(recipients, ","),
+		Subject: subject, Body: body, Status: status, Error: sendErr,
+	})
 }
 
 // buildTicketVars 从事件载荷组装 ticket.* 变量树。
