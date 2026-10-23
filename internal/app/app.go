@@ -61,7 +61,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		repository.NewMessageRuleRepo(pool),
 		repository.NewMessageLogRepo(pool),
 		repository.NewNotificationOptoutRepo(pool),
-		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: true}, logger), // 开发态桩
+		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: cfg.Server.Mode != "release"}, logger), // 开发态桩
 		logger,
 		notifSvc, // 06 号 §5.4 死信集成（实现 NotifyDeadLetterSender）
 	)
