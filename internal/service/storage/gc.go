@@ -80,8 +80,33 @@ func (g *GCJob) Handle(ctx context.Context, _ json.RawMessage) error {
 		}
 	}
 
-	if len(rows)+len(dead) > 0 {
-		g.logger.Info("storage gc pass", "pending_scanned", len(rows), "deleted_rescanned", len(dead))
+	// F-4-4 外审修复：第三段——反连接回收（confirmed + 工单域 purpose + 无
+	// ticket_attachments 关联行 + 超期 → 软删行+物理删对象）。覆盖 2/3 场景：
+	// ①建单前 confirmed 悬挂（binding 永不到来）②删单后残留（CASCADE 清关联
+	// 行但对象本体未删）。第三场景「编辑从正文删引用」需 custom_data 引用集
+	// 解析——继续挂账（RK-P5-16）。
+	orphanThreshold := time.Now().AddDate(0, 0, -cfg.OrphanGCDays*2) // 双倍阈值——confirmed 态比 pending 更保守
+	confirmed, err := g.repo.ListConfirmedOrphans(ctx, cfg.Bucket, orphanThreshold, gcBatchSize)
+	if err != nil {
+		g.logger.Error("storage gc list confirmed orphans", "err", err)
+		// 不 return——前两段已收敛，第三段失败不影响主链
+	} else {
+		for _, f := range confirmed {
+			// 软删行（confirmed→deleted）→ 物理删对象 → 二扫物理清行
+			if err := g.repo.MarkDeleted(ctx, f.ID); err != nil {
+				g.logger.Error("storage gc mark confirmed orphan deleted", "key", f.ObjectKey, "err", err)
+				continue
+			}
+			if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
+				g.logger.Warn("storage gc remove confirmed orphan failed, second sweep will retry", "key", f.ObjectKey, "err", err)
+			}
+		}
+	}
+
+	if len(rows)+len(dead)+len(confirmed) > 0 {
+		g.logger.Info("storage gc pass",
+			"pending_scanned", len(rows), "deleted_rescanned", len(dead),
+			"confirmed_orphans", len(confirmed))
 	}
 	return nil
 }

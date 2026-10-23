@@ -388,3 +388,42 @@ func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, bucket, objectKey s
 		  AND purpose IN ('ticket_attachment', 'ticket_richtext')`, bucket, objectKey)
 	return err
 }
+
+// ListConfirmedOrphans F-4-4 外审修复：反连接——confirmed + 工单域 + 无关联行 + 超期。
+// 覆盖建单前悬挂（binding 永不到来）+ 删单后残留（CASCADE 清行但对象未删）。
+func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT f.id, f.bucket, f.object_key, f.purpose, f.status, f.file_name, f.mime_type,
+			f.size_bytes, f.etag, f.created_by, f.created_at, f.confirmed_at,
+			f.owner_kind, f.owner_id
+		FROM file_objects f
+		WHERE f.status = 'confirmed'
+			AND f.bucket = $1
+			AND f.purpose IN ('ticket_attachment', 'ticket_richtext', 'attachment_create', 'richtext_create')
+			AND f.confirmed_at < $2
+			AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
+		ORDER BY f.id
+		LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*model.FileObject
+	for rows.Next() {
+		f := &model.FileObject{}
+		var confirmedAt, ownerKind, ownerID *string
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status,
+			&f.FileName, &f.MIMEType, &f.SizeBytes, &f.ETag,
+			&f.CreatedBy, &f.CreatedAt, &confirmedAt, &ownerKind, &ownerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
+}
+
+// MarkDeleted 软删行（confirmed→deleted——第三段 GC 前置标记）。
+func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) error {
+	_, err := r.db.Exec(ctx, `UPDATE file_objects SET status='deleted' WHERE id=$1 AND status='confirmed'`, id)
+	return err
+}

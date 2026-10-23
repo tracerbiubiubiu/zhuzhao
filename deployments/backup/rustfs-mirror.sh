@@ -14,6 +14,12 @@ set -eu
 BUCKET="${BUCKET:-zhuzhao}"
 MIRROR_INTERVAL="${MIRROR_INTERVAL:-3600}"
 RETAIN_COUNT="${RETAIN_COUNT:-14}"
+
+# F-4-2 外审修复：env 类型+范围校验（0=忙循环 / abc=重启风暴）
+case "$MIRROR_INTERVAL" in ''|*[!0-9]*) echo "ERROR: MIRROR_INTERVAL must be numeric" >&2; exit 1;; esac
+case "$RETAIN_COUNT" in ''|*[!0-9]*) echo "ERROR: RETAIN_COUNT must be numeric" >&2; exit 1;; esac
+[ "$MIRROR_INTERVAL" -ge 60 ] || { echo "ERROR: MIRROR_INTERVAL must be >=60s" >&2; exit 1; }
+[ "$RETAIN_COUNT" -ge 1 ] && [ "$RETAIN_COUNT" -le 365 ] || { echo "ERROR: RETAIN_COUNT must be 1-365" >&2; exit 1; }
 ARCHIVE_ROOT="backup-archive"
 
 do_sync() {
