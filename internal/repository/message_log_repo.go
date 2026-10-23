@@ -145,3 +145,9 @@ func (r *NotificationOptoutRepo) IsOptedOut(ctx context.Context, userID int64, b
 		userID, bizType, eventAction).Scan(&exists)
 	return exists, err
 }
+
+// DeleteRuleByAction 按事件动作删规则（测试清理面）。
+func (r *MessageRuleRepo) DeleteRuleByAction(ctx context.Context, bizType, eventAction string) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM message_rules WHERE biz_type=$1 AND event_action=$2`, bizType, eventAction)
+	return err
+}

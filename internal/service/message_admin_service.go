@@ -3,6 +3,9 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -13,6 +16,7 @@ import (
 type MessageAdminService struct {
 	logRepo  *repository.MessageLogRepo
 	ruleRepo *repository.MessageRuleRepo
+	tplRepo  *repository.MessageTemplateRepo
 	pool     *pgxpool.Pool
 }
 
@@ -20,6 +24,7 @@ func NewMessageAdminService(pool *pgxpool.Pool) *MessageAdminService {
 	return &MessageAdminService{
 		logRepo:  repository.NewMessageLogRepo(pool),
 		ruleRepo: repository.NewMessageRuleRepo(pool),
+		tplRepo:  repository.NewMessageTemplateRepo(pool),
 		pool:     pool,
 	}
 }
@@ -38,7 +43,49 @@ func (s *MessageAdminService) ListRules(ctx context.Context) ([]*model.MessageRu
 	return s.ruleRepo.ListRules(ctx)
 }
 
+// validateUpsertRule F-2-4 修复：规则保存四项校验（外审发现的越权外发路径）。
+func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *model.MessageRule) error {
+	// ① 模板存在且启用
+	tpl, err := s.tplRepo.GetByCode(ctx, rule.TemplateCode)
+	if err != nil {
+		return fmt.Errorf("模板 %s 不存在或未启用: %w", rule.TemplateCode, err)
+	}
+	_ = tpl
+
+	// ② recipient_type 枚举
+	switch rule.RecipientType {
+	case "assignee", "creator", "fixed":
+	default:
+		return fmt.Errorf("recipient_type %q 不合法（assignee/creator/fixed）", rule.RecipientType)
+	}
+
+	// ③ event_action 词表校验（ticket. 前缀 + 已知动作）
+	if !isValidEventAction(rule.EventAction) {
+		return fmt.Errorf("event_action %q 不在支持词表", rule.EventAction)
+	}
+
+	// ④ fixed 收件人非空时验格式（逗号分隔数字 ID）
+	if rule.RecipientType == "fixed" && rule.FixedRecipients != "" {
+		for _, id := range strings.Split(rule.FixedRecipients, ",") {
+			if _, err := strconv.ParseInt(strings.TrimSpace(id), 10, 64); err != nil {
+				return fmt.Errorf("fixed_recipients 含非数字 ID %q", strings.TrimSpace(id))
+			}
+		}
+	}
+	return nil
+}
+
+var validEventActions = map[string]bool{
+	"ticket.created": true, "ticket.assigned": true, "ticket.closed": true,
+	"ticket.updated": true, "ticket.commented": true,
+}
+
+func isValidEventAction(action string) bool { return validEventActions[action] }
+
 func (s *MessageAdminService) UpsertRule(ctx context.Context, rule *model.MessageRule) error {
+	if err := s.validateUpsertRule(ctx, rule); err != nil {
+		return err
+	}
 	if rule.BizType == "" {
 		rule.BizType = "ticket"
 	}

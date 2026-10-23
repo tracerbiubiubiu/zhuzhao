@@ -411,15 +411,6 @@ func (h *TicketHandler) ListTicketTypes(c *gin.Context) {
 	response.OK(c, gin.H{"types": types})
 }
 
-// ListTicketTypeFields GET /api/v1/ticket-types/:code/fields
-//
-//	@Summary	工单类型字段定义
-//	@Tags		ticket
-//	@Produce	json
-//	@Param		code	path		string	true	"工单类型编码"
-//	@Success	200		{object}	response.Response
-//	@Router		/api/v1/ticket-types/{code}/fields [get]
-//
 // FieldImpact godoc
 //
 //	@Summary		字段在途影响分析（全量替换前的变更代价）
