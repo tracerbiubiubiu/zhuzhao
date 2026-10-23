@@ -24,13 +24,19 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,   // 通知配置 code 已存在
 	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest, // 不支持的通知渠道
 	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
-	errcode.ErrDictTypeInUse.Code:                 http.StatusBadRequest, // 92304 被字段引用（B1-2 删除守卫）
-	errcode.ErrDictItemNotFound.Code:              http.StatusNotFound,   // 字典项不存在/版本冲突
-	errcode.ErrPatNotFound.Code:                   http.StatusNotFound,   // PAT 不存在或已吊销
-	errcode.ErrFileTooLarge.Code:                  http.StatusBadRequest, // 文件大小超限（phase5 S5）
-	errcode.ErrFileTypeNotAllowed.Code:            http.StatusBadRequest, // 文件类型不允许
-	errcode.ErrFileNotFound.Code:                  http.StatusNotFound,   // 文件不存在（含防枚举归属遮蔽）
-	errcode.ErrFileAlreadyBound.Code:              http.StatusConflict,   // 已确认/已关联
+	errcode.ErrDictTypeInUse.Code:                 http.StatusBadRequest, // 92304
+	// S6 B6-3 消息模板段（92500-92599——外审 F-1-4 修复）
+	errcode.ErrMsgTplNotFound.Code:        http.StatusNotFound,   // 92501
+	errcode.ErrMsgTplDupCode.Code:         http.StatusConflict,   // 92502
+	errcode.ErrMsgTplSystem.Code:          http.StatusForbidden,  // 92503
+	errcode.ErrMsgTplReferenced.Code:      http.StatusConflict,   // 92504
+	errcode.ErrMsgTplVersionConflict.Code: http.StatusConflict,   // 92505 被字段引用（B1-2 删除守卫）
+	errcode.ErrDictItemNotFound.Code:      http.StatusNotFound,   // 字典项不存在/版本冲突
+	errcode.ErrPatNotFound.Code:           http.StatusNotFound,   // PAT 不存在或已吊销
+	errcode.ErrFileTooLarge.Code:          http.StatusBadRequest, // 文件大小超限（phase5 S5）
+	errcode.ErrFileTypeNotAllowed.Code:    http.StatusBadRequest, // 文件类型不允许
+	errcode.ErrFileNotFound.Code:          http.StatusNotFound,   // 文件不存在（含防枚举归属遮蔽）
+	errcode.ErrFileAlreadyBound.Code:      http.StatusConflict,   // 已确认/已关联
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,

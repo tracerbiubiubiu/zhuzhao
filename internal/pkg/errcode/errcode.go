@@ -123,6 +123,17 @@ var (
 	ErrNotificationNotConfigured     = util.New(92004, "通知渠道未配置（生产态 fail-fast）")
 )
 
+// ── 消息模板段 92500-92599（S6 B6-3——外审 F-1-4 修复：从 repository 上提，
+//
+//	避免与 92000 通知段撞码）──
+var (
+	ErrMsgTplNotFound        = util.New(92501, "消息模板不存在")
+	ErrMsgTplDupCode         = util.New(92502, "模板 code 已存在")
+	ErrMsgTplSystem          = util.New(92503, "系统模板不可修改或删除")
+	ErrMsgTplReferenced      = util.New(92504, "模板被订阅规则引用中，不可删除")
+	ErrMsgTplVersionConflict = util.New(92505, "模板版本冲突——请刷新后重试")
+)
+
 // 字典模块 92300-92399（P4-3）
 var (
 	ErrDictTypeNotFound = util.New(92301, "字典类型不存在或版本冲突")

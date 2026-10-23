@@ -85,8 +85,8 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 	}
 
 	// ③ 渲染（四象限三分档——B6-3 增强批：内置键缺失=fail 拒发/动态键=skip+warn）
-	subjR := msgrender.RenderQuadrant(tpl.Subject, vars)
-	bodyR := msgrender.RenderQuadrant(tpl.Body, vars)
+	subjR := msgrender.RenderQuadrantEscaped(tpl.Subject, vars, tpl.Channel)
+	bodyR := msgrender.RenderQuadrantEscaped(tpl.Body, vars, tpl.Channel)
 	if subjR.Err != nil || bodyR.Err != nil {
 		err := subjR.Err
 		if err == nil {
@@ -96,10 +96,8 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
 		return
 	}
-	// A-9 审计修复：Quadrant 已完成占位符替换——RenderEscaped 会再跑一次旧 Render
-	// （用原始 vars），若模板文本残留 {{}} 会被二次替换。改为直接转义 Quadrant 结果。
-	subject := msgrender.EscapeIf(tpl.Channel, subjR.Text)
-	body := msgrender.EscapeIf(tpl.Channel, bodyR.Text)
+	subject := subjR.Text
+	body := bodyR.Text
 	for _, w := range append(subjR.Warnings, bodyR.Warnings...) {
 		h.logger.Info("notify: render warning", "detail", w, "action", ev.Action, "biz_id", ev.BizID)
 	}

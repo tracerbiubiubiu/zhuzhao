@@ -8,14 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
-var (
-	ErrTemplateNotFound = errcode.New(92001, "消息模板不存在")
-	ErrTemplateDupCode  = errcode.New(92002, "模板 code 已存在")
-)
+var ()
 
 type MessageTemplateRepo struct {
 	db *pgxpool.Pool
@@ -43,7 +40,7 @@ func (r *MessageTemplateRepo) GetByCode(ctx context.Context, code string) (*mode
 			enabled, is_system, version, created_by, created_at, updated_at
 		 FROM message_templates WHERE code = $1 AND enabled = true`, code))
 	if err == pgx.ErrNoRows {
-		return nil, ErrTemplateNotFound
+		return nil, errcode.ErrMsgTplNotFound
 	}
 	return t, err
 }
@@ -90,7 +87,7 @@ func (r *MessageTemplateRepo) Create(ctx context.Context, t *model.MessageTempla
 		t.Code, t.Name, t.Channel, t.BizType, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.CreatedBy)
 	if err != nil {
 		if isPgUnique(err) {
-			return ErrTemplateDupCode
+			return errcode.ErrMsgTplDupCode
 		}
 	}
 	return err
@@ -103,12 +100,12 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 	if err := r.db.QueryRow(ctx,
 		`SELECT is_system FROM message_templates WHERE code = $1`, t.Code).Scan(&isSys); err != nil {
 		if err == pgx.ErrNoRows {
-			return ErrTemplateNotFound
+			return errcode.ErrMsgTplNotFound
 		}
 		return err
 	}
 	if isSys {
-		return ErrTemplateSystem
+		return errcode.ErrMsgTplSystem
 	}
 	tag, err := r.db.Exec(ctx, `
 		UPDATE message_templates SET name=$2, subject=$3, body=$4, variable_schema=$5,
@@ -123,20 +120,12 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 		var exists bool
 		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM message_templates WHERE code=$1)`, t.Code).Scan(&exists)
 		if !exists {
-			return ErrTemplateNotFound
+			return errcode.ErrMsgTplNotFound
 		}
-		return ErrTemplateVersionConflict
+		return errcode.ErrMsgTplVersionConflict
 	}
 	return nil
 }
-
-// ErrTemplateSystem 系统模板不可删（B6-3 增强批——A.8.1 种子只读语义）。
-var ErrTemplateSystem = errcode.New(92003, "系统模板不可修改或删除")
-
-// ErrTemplateReferenced 模板被 message_rules 引用中（B6-3 增强批删除守卫）。
-var ErrTemplateVersionConflict = errcode.New(92005, "模板版本冲突——请刷新后重试")
-
-var ErrTemplateReferenced = errcode.New(92004, "模板被订阅规则引用中，不可删除")
 
 // Delete 删除模板（守卫：is_system 不可删 + 被 message_rules 引用不可删）。
 func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
@@ -145,28 +134,27 @@ func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
 	if err := r.db.QueryRow(ctx,
 		`SELECT is_system FROM message_templates WHERE code = $1`, code).Scan(&isSys); err != nil {
 		if err == pgx.ErrNoRows {
-			return ErrTemplateNotFound
+			return errcode.ErrMsgTplNotFound
 		}
 		return err
 	}
 	if isSys {
-		return ErrTemplateSystem
+		return errcode.ErrMsgTplSystem
 	}
-	// 守卫② 被 message_rules 引用
-	var refCount int
-	if err := r.db.QueryRow(ctx,
-		`SELECT count(*) FROM message_rules WHERE template_code = $1 AND enabled = true`, code).Scan(&refCount); err != nil {
-		return err
-	}
-	if refCount > 0 {
-		return ErrTemplateReferenced
-	}
-	tag, err := r.db.Exec(ctx, `DELETE FROM message_templates WHERE code = $1`, code)
+	// 守卫②+F-1-8 修复：引用即拦[含禁用规则] + 单语句原子化
+	tag, err := r.db.Exec(ctx,
+		"DELETE FROM message_templates WHERE code = $1 AND NOT EXISTS (SELECT 1 FROM message_rules WHERE template_code = $1)",
+		code)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrTemplateNotFound
+		var exists bool
+		_ = r.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM message_templates WHERE code=$1)", code).Scan(&exists)
+		if !exists {
+			return errcode.ErrMsgTplNotFound
+		}
+		return errcode.ErrMsgTplReferenced
 	}
 	return nil
 }

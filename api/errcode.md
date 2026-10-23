@@ -22,3 +22,12 @@
 | 92302 | ErrDictItemNotFound     | 字典项不存在或版本冲突   | 404  | 同上                                               |
 | 92304 | ErrDictTypeInUse        | 字典类型被字段引用中，不可删除 | 400 | B1-2 删除守卫：ticket_type_fields 引用 `dict:<code>` 时拒删；清引用后可删 |
 | 92004 | ErrNotificationNotConfigured   | 通知渠道未配置（生产态 fail-fast） | 500 | 06 号 §3 两态桩防线——S6 B6-2 |
+
+## 92500-92599 消息模板段（S6 B6-3——外审 F-1-4 修复：从 92000 通知段迁移避免撞码）
+| 码 | 名称 | 含义 | HTTP | 备注 |
+|---|---|---|---|---|
+| 92501 | ErrMsgTplNotFound | 消息模板不存在 | 404 | |
+| 92502 | ErrMsgTplDupCode | 模板 code 已存在 | 409 | |
+| 92503 | ErrMsgTplSystem | 系统模板不可修改或删除 | 403 | 种子模板只读（is_system=true） |
+| 92504 | ErrMsgTplReferenced | 模板被订阅规则引用中 | 409 | 须先解引 |
+| 92505 | ErrMsgTplVersionConflict | 模板版本冲突 | 409 | CAS 乐观锁 |

@@ -164,6 +164,16 @@ func escapeValue(v any) any {
 	}
 }
 
+// RenderQuadrantEscaped 四象限+值级转义（外审 F-1-1 终修：在替换时同步转义值——
+// 模板文本原样，仅变量值按渠道转义。消除了"先渲染后全文转义"的粒度问题）。
+func RenderQuadrantEscaped(template string, vars map[string]any, channel string) RenderResult {
+	if !channelEscapes(channel) {
+		return RenderQuadrant(template, vars) // 非转义渠道直接走普通 Quadrant
+	}
+	// 值级转义：深拷贝变量树，字符串叶子做 HTML 转义，再走 Quadrant
+	return RenderQuadrant(template, escapeValues(vars))
+}
+
 // EscapeIf 渠道感知的已渲染文本转义（A-9 审计修复——Quadrant 替换后的
 // 文本不再含占位符，直接按渠道决定是否 HTML 转义整串）。
 // 非转义渠道（uip/webhook）原样返回；转义渠道 HTML 转义全文。
