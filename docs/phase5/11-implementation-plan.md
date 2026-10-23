@@ -152,7 +152,7 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 
 - **批次**：`B<段号>-<序>`（如 B5-1）；Wave 沿用 W0–W16.5。
 - **遗留/登记项 namespace**：启用 `P5-*`（如 P5-BK-1 起）——既有 W/IW/BK/AB/F/C 已全占用，防撞号（README §5）。
-- **迁移号**：各段启动当天按 [review/11 §4](../review/11-project-control.md) A2 对账取号，不预写死（S5 已实占 **000045–000050 六枚**——000045=file_objects / 000046=ticket_attachments / 000047=owner 随行件 ALTER / 000048=system_settings KV[B5-6] / 000049=deleted 部分索引[双审计 F-A7] / 000050=version 乐观锁[五批审计 F-D2]——「四枚」口径 2026-10-22 修复批统一；**000051**=field_meta JSONB[S1 B1-3]、**000052**=impact 归位管理组绑定[B1-7 批2]；下一编号 **000053**。S6 计划 message_log/message_rules/human_key ALTER ≥3 段同口径）。
+- **迁移号**：各段启动当天按 [review/11 §4](../review/11-project-control.md) A2 对账取号，不预写死（S5 已实占 **000045–000050 六枚**——000045=file_objects / 000046=ticket_attachments / 000047=owner 随行件 ALTER / 000048=system_settings KV[B5-6] / 000049=deleted 部分索引[双审计 F-A7] / 000050=version 乐观锁[五批审计 F-D2]——「四枚」口径 2026-10-22 修复批统一；**000051**=field_meta JSONB[S1 B1-3]、**000052**=impact 归位管理组绑定[B1-7 批2]；下一编号 **000061**（000058=is_system / 000059=message_rebind / 000060=rules_version）。S6 计划 message_log/message_rules/human_key ALTER ≥3 段同口径）。
 - **错误码**：S5 启用 91000–91999 段（91001–91004 随 B5-1 登记 `api/errcode.md`）；其余段随批登记。
 
 ### 3.1 引库与自研总账（2026-10-16 造轮子审计批——原则「能引则引，业务薄层自研」；实施期新增依赖先对表本节）

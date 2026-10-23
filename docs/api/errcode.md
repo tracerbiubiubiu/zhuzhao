@@ -1,5 +1,7 @@
 # 错误码约定
 
+> ⚠ **本文档为陈旧副本——权威登记 = [`api/errcode.md`](../../api/errcode.md)**（外审 F-A-1 双份文件问题：phase5 起新码只入根 api/errcode.md，本文件停止更新、待归并删除）。
+
 > 业务错误码（`code`）分段、HTTP 映射与 Phase 1 验收对照。  
 > **响应体外层结构**（`code` / `message` / `data` / `request_id`）以 [`response.md`](./response.md) 为 SSOT。  
 > 实现：`internal/pkg/errcode/errcode.go` + `zhuzhao-utils/response`（2026-09 公共包抽取：`internal/pkg/response` → `zhuzhao-utils/response`，原路径删除）
