@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
@@ -25,6 +27,7 @@ type TicketNotifyHook struct {
 	ruleRepo *repository.MessageRuleRepo
 	logRepo  *repository.MessageLogRepo
 	optRepo  *repository.NotificationOptoutRepo
+	throttle *notifyThrottle
 	sender   channelsender.ChannelSender
 	logger   *slog.Logger
 }
@@ -41,7 +44,7 @@ func NewTicketNotifyHook(
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, optRepo: optRepo, sender: sender, logger: logger}
+	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, optRepo: optRepo, sender: sender, logger: logger, throttle: newNotifyThrottle(60 * time.Second)}
 }
 
 // OnDomainEvent DomainHook 实现——工单事件触发通知（每订阅者独立 goroutine
@@ -60,6 +63,14 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		return // 无规则=不通知（updated/commented 等）
 	}
 	tplCode := rule.TemplateCode
+
+	// 同单连发节流（06 号 §5.2 投递语义补遗——防状态翻转通知风暴）：
+	// 同 (biz_type, biz_id, action) 在窗口内只发一次；窗口外自然过期。
+	if h.throttle.shouldSkip(string(ev.BizType), ev.BizID, string(ev.Action)) {
+		h.logger.Info("notify: throttled (same biz+action in window)",
+			"action", ev.Action, "biz_id", ev.BizID)
+		return
+	}
 
 	// ① 查模板
 	tpl, err := h.tplRepo.GetByCode(ctx, tplCode)
@@ -165,4 +176,36 @@ func resolveRecipients(ev domainevent.DomainEvent) []string {
 		return nil
 	}
 	return ids
+}
+
+// notifyThrottle 同单连发节流器（06 号 §5.2——防状态翻转通知风暴）。
+// 进程内 sync.Map + 时间窗：同 (biz, id, action) 在 window 内只放行首次。
+// 单实例部署形态足够（多副本升 Redis——06 号 §5.2 注记）。
+type notifyThrottle struct {
+	mu     sync.Mutex
+	seen   map[string]time.Time
+	window time.Duration
+}
+
+func newNotifyThrottle(window time.Duration) *notifyThrottle {
+	return &notifyThrottle{seen: map[string]time.Time{}, window: window}
+}
+
+// shouldSkip 返回 true=窗口内重复（跳过）；false=首次或已过期（放行并记时间戳）。
+func (t *notifyThrottle) shouldSkip(bizType, bizID, action string) bool {
+	key := bizType + ":" + bizID + ":" + action
+	now := time.Now()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	// 顺手清理过期项（防 map 无限增长——量级=工单×动作，天然有界但保守清理）
+	for k, ts := range t.seen {
+		if now.Sub(ts) > t.window {
+			delete(t.seen, k)
+		}
+	}
+	if ts, ok := t.seen[key]; ok && now.Sub(ts) < t.window {
+		return true
+	}
+	t.seen[key] = now
+	return false
 }
