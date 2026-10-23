@@ -439,12 +439,12 @@ func New(deps Deps) *gin.Engine {
 
 					// S6 B6-3 消息模板管理（通知中心页面族——自 S4 迁入）
 					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)
-					ticketMeta.GET("/ticket-types/:code/fields/variables", deps.MessageTemplateHandler.Variables)
 					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
 					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
 					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
 
 					// S6 B6-3 增强批：用户通知偏好自服务（登录态——非管理面）
+					selfService.GET("/ticket-types/:code/fields/variables", deps.MessageTemplateHandler.Variables)
 					selfService.GET("/me/notification-optouts", deps.NotificationPrefHandler.ListOptouts)
 					selfService.POST("/me/notification-optouts", deps.NotificationPrefHandler.SetOptout)
 
