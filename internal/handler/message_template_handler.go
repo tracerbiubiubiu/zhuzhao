@@ -18,6 +18,13 @@ func NewMessageTemplateHandler(ts *service.MessageTemplateService) *MessageTempl
 	return &MessageTemplateHandler{templateService: ts}
 }
 
+// Func (h *messagetemplatehandler) list GET /api/v1/message-templates
+//
+//	@Summary		消息模板列表
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-templates [get]
+//
 // List GET /api/v1/message-templates
 func (h *MessageTemplateHandler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -30,6 +37,13 @@ func (h *MessageTemplateHandler) List(c *gin.Context) {
 	response.OKPage(c, templates, total, page, pageSize)
 }
 
+// Func (h *messagetemplatehandler) create POST /api/v1/message-templates
+//
+//	@Summary		创建消息模板
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-templates [post]
+//
 // Create POST /api/v1/message-templates
 func (h *MessageTemplateHandler) Create(c *gin.Context) {
 	var req model.MessageTemplate
@@ -48,6 +62,13 @@ func (h *MessageTemplateHandler) Create(c *gin.Context) {
 	response.OK(c, req)
 }
 
+// Func (h *messagetemplatehandler) update POST /api/v1/message-templates/update
+//
+//	@Summary		更新消息模板
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-templates/update [post]
+//
 // Update POST /api/v1/message-templates/update
 func (h *MessageTemplateHandler) Update(c *gin.Context) {
 	var req model.MessageTemplate
@@ -66,6 +87,13 @@ func (h *MessageTemplateHandler) Update(c *gin.Context) {
 	response.OK(c, req)
 }
 
+// Func (h *messagetemplatehandler) delete POST /api/v1/message-templates/delete
+//
+//	@Summary		删除消息模板
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-templates/delete [post]
+//
 // Delete POST /api/v1/message-templates/delete
 func (h *MessageTemplateHandler) Delete(c *gin.Context) {
 	var req struct {

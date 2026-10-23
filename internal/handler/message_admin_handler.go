@@ -19,6 +19,13 @@ func NewMessageAdminHandler(as *service.MessageAdminService) *MessageAdminHandle
 	return &MessageAdminHandler{adminService: as}
 }
 
+// func (h *MessageAdminHandler) ListLogs GET /api/v1/message-logs
+//
+//	@Summary		发送记录列表
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-logs [get]
+//
 // ListLogs GET /api/v1/message-logs
 func (h *MessageAdminHandler) ListLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -32,6 +39,13 @@ func (h *MessageAdminHandler) ListLogs(c *gin.Context) {
 	response.OKPage(c, logs, total, page, pageSize)
 }
 
+// func (h *MessageAdminHandler) ListRules GET /api/v1/message-rules
+//
+//	@Summary		订阅规则列表
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-rules [get]
+//
 // ListRules GET /api/v1/message-rules
 func (h *MessageAdminHandler) ListRules(c *gin.Context) {
 	rules, err := h.adminService.ListRules(c.Request.Context())
@@ -42,6 +56,13 @@ func (h *MessageAdminHandler) ListRules(c *gin.Context) {
 	response.OK(c, rules)
 }
 
+// func (h *MessageAdminHandler) UpsertRule POST /api/v1/message-rules
+//
+//	@Summary		创建/更新订阅规则
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-rules [post]
+//
 // UpsertRule POST /api/v1/message-rules
 func (h *MessageAdminHandler) UpsertRule(c *gin.Context) {
 	var req model.MessageRule
@@ -60,6 +81,13 @@ func (h *MessageAdminHandler) UpsertRule(c *gin.Context) {
 	response.OK(c, nil)
 }
 
+// func (h *MessageAdminHandler) DeleteRule POST /api/v1/message-rules/delete
+//
+//	@Summary		删除订阅规则
+//	@Tags		message
+//	@Produce	json
+//	@Router		/api/v1/message-rules/delete [post]
+//
 // DeleteRule POST /api/v1/message-rules/delete
 func (h *MessageAdminHandler) DeleteRule(c *gin.Context) {
 	var req struct {

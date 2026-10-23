@@ -1215,6 +1215,68 @@ paths:
       summary: 菜单详情
       tags:
       - menus
+  /api/v1/message-logs:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 发送记录列表
+      tags:
+      - message
+  /api/v1/message-rules:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 订阅规则列表
+      tags:
+      - message
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 创建/更新订阅规则
+      tags:
+      - message
+  /api/v1/message-rules/delete:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 删除订阅规则
+      tags:
+      - message
+  /api/v1/message-templates:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 消息模板列表
+      tags:
+      - message
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 创建消息模板
+      tags:
+      - message
+  /api/v1/message-templates/delete:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 删除消息模板
+      tags:
+      - message
+  /api/v1/message-templates/update:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 更新消息模板
+      tags:
+      - message
   /api/v1/notifications:
     get:
       parameters:
