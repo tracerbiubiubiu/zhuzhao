@@ -139,7 +139,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		DictHandler:         dictHandler,
 		MessageTemplateHandler: handler.NewMessageTemplateHandler(
 			service.NewMessageTemplateService(repository.NewMessageTemplateRepo(pool))),
-		MessageAdminHandler: handler.NewMessageAdminHandler(pool),
+		MessageAdminHandler: handler.NewMessageAdminHandler(service.NewMessageAdminService(pool)),
 		PatHandler:          patHandler,
 		PatLookup:           patRepo,
 		TicketHandler:       ticketHandler,
