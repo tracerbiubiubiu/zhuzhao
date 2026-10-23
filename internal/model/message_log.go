@@ -34,6 +34,7 @@ type MessageRule struct {
 	RecipientType   string    `json:"recipient_type"` // assignee / creator / fixed
 	FixedRecipients string    `json:"fixed_recipients,omitempty"`
 	Enabled         bool      `json:"enabled"`
+	Version         int64     `json:"version"` // 乐观锁（000060——upsert 携陈旧 version → 92506/409）
 	CreatedBy       *int64    `json:"created_by,string,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`

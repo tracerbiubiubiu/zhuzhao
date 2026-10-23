@@ -20,13 +20,14 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
-// captureSender 测试用 ChannelSender 桩——捕获发送消息。
+// captureSender 测试用 ChannelSender 桩——捕获发送消息。Channel 返回 "uip"=
+// 扮演 UIP adapter（channel 错配守卫按真实渠道名比对——微批 A）。
 type captureSender struct {
 	mu   sync.Mutex
 	msgs []channelsender.Message
 }
 
-func (c *captureSender) Channel() string { return "test" }
+func (c *captureSender) Channel() string { return "uip" }
 func (c *captureSender) Send(_ context.Context, msg channelsender.Message) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -221,5 +222,53 @@ func TestB65_TriggerHook(t *testing.T) {
 			`SELECT count(*) FROM message_log WHERE biz_id=$1 AND template_code='ticket_closed_notify'`,
 			strconv.FormatInt(tk.ID, 10)).Scan(&n))
 		assert.Equal(t, 0, n, "opt-out 过滤后该单不落发送 log 行")
+	})
+
+	// channel 错配运行时守卫（审计 P1-2 + 06 §3 F-3-2 两级渠道词表）：白名单保留
+	// webhook（adapter 渠道），但一期仅 uip 单 sender——webhook 模板必须显式失败
+	// 并落 failed 行，不得静默错发 UIP 桩（修复前：照发+log 记 sent+渠道失真）。
+	t.Run("webhook 模板→无 adapter 路由→显式失败+log failed", func(t *testing.T) {
+		sender.mu.Lock()
+		sender.msgs = nil
+		sender.mu.Unlock()
+
+		whCode := "b65wh_" + uniqueSuffix()
+		require.NoError(t, tplRepo.Create(ctx, &model.MessageTemplate{
+			Code: whCode, Name: "webhook 错配探针", Channel: "webhook", BizType: "ticket",
+			Subject: "s", Body: "b", Enabled: true,
+		}))
+		t.Cleanup(func() { _, _ = testPool.Exec(ctx, `DELETE FROM message_templates WHERE code=$1`, whCode) })
+
+		// closed 种子规则临时指向 webhook 模板（尾部复原种子路由）
+		_, err := testPool.Exec(ctx,
+			`UPDATE message_rules SET template_code=$1 WHERE biz_type='ticket' AND event_action='ticket.closed'`, whCode)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(ctx,
+				`UPDATE message_rules SET template_code='ticket_closed_notify' WHERE biz_type='ticket' AND event_action='ticket.closed'`)
+		})
+
+		code4 := "b65w_" + uniqueSuffix()
+		_, err = svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{
+			Code: code4, Name: "渠道错配探针批",
+			Transitions: json.RawMessage(`{"open":["closed"]}`),
+		})
+		require.NoError(t, err)
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code4, Title: "渠道错配探针单", Priority: 2, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, aid))
+		time.Sleep(200 * time.Millisecond)
+
+		for _, m := range sender.messages() {
+			assert.NotEqual(t, whCode, m.TemplateCode, "错配渠道不得透传发送")
+		}
+		var status, errMsg string
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT status, error FROM message_log WHERE biz_id=$1 AND template_code=$2 ORDER BY id DESC LIMIT 1`,
+			strconv.FormatInt(tk.ID, 10), whCode).Scan(&status, &errMsg))
+		assert.Equal(t, "failed", status, "错配须显式失败留痕（防静默错发）")
+		assert.Contains(t, errMsg, "channel mismatch")
 	})
 }

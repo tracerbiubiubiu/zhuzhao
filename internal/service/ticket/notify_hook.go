@@ -79,6 +79,24 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		return
 	}
 
+	// channel 错配运行时守卫（审计 P1-2 + 06 §3 F-3-2 两级渠道词表）：channel=
+	// adapter 层，白名单保留 uip/webhook，但一期仅 uip 单 sender——错配模板
+	// （如 webhook）显式失败并落 failed 行，防静默错发（修复前：照发 UIP 桩+
+	// log 记 sent+渠道失真）。路由层（map[channel]sender）落地后此守卫自然
+	// 变 no-op——触发驱动（首个非 uip 模板真实需求，~0.5 天）。
+	if tpl.Channel != h.sender.Channel() {
+		h.logger.Error("notify: channel mismatch — no adapter route",
+			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code,
+			"tpl_channel", tpl.Channel, "sender_channel", h.sender.Channel())
+		_ = h.logRepo.Insert(ctx, &model.MessageLog{
+			TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID,
+			Channel: tpl.Channel, Status: "failed",
+			Error: fmt.Sprintf("channel mismatch: template=%s sender=%s (adapter route not enabled)",
+				tpl.Channel, h.sender.Channel()),
+		})
+		return
+	}
+
 	// ② 组装变量（event payload 即变量源——ticket.* 前缀）
 	vars := map[string]any{
 		"ticket": buildTicketVars(ev),
@@ -189,25 +207,6 @@ func buildTicketVars(ev domainevent.DomainEvent) map[string]any {
 		vars["link"] = fmt.Sprintf("/ticket/detail/%s", ev.BizID)
 	}
 	return vars
-}
-
-// resolveRecipients 第一档收件人解析（06 号 §5.1——消费 message_rules 的
-// recipient_type/fixed_recipients 列；修复前旁路 DDL 硬编码 switch）。
-// created 不再特判——走规则驱动（拍板 A：配了规则才通知，开箱零通知原则）。
-func resolveRecipients(ev domainevent.DomainEvent) []string {
-	// 兼容旧调用：无 rule 上下文时按事件类型兜底（待调用方全量迁移后删）
-	return resolveRecipientsFromRule(ev, defaultRecipientType(ev), "")
-}
-
-func defaultRecipientType(ev domainevent.DomainEvent) string {
-	switch ev.Action {
-	case domainevent.TicketAssigned:
-		return "assignee"
-	case domainevent.TicketCreated:
-		return "creator"
-	default:
-		return "assignee"
-	}
 }
 
 // resolveRecipientsFromRule 按 message_rules 的收件人配置解析。

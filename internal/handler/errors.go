@@ -23,6 +23,7 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrNotificationConfigNotFound.Code:    http.StatusNotFound,   // 通知配置不存在
 	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,   // 通知配置 code 已存在
 	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest, // 不支持的通知渠道
+	errcode.ErrNotificationNotConfigured.Code:     http.StatusInternalServerError, // 92004 渠道未配置 fail-fast（台账口径 500）
 	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
 	errcode.ErrDictTypeInUse.Code:                 http.StatusBadRequest, // 92304
 	// S6 B6-3 消息模板段（92500-92599——外审 F-1-4 修复）
@@ -30,7 +31,8 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrMsgTplDupCode.Code:         http.StatusConflict,   // 92502
 	errcode.ErrMsgTplSystem.Code:          http.StatusForbidden,  // 92503
 	errcode.ErrMsgTplReferenced.Code:      http.StatusConflict,   // 92504
-	errcode.ErrMsgTplVersionConflict.Code: http.StatusConflict,   // 92505 被字段引用（B1-2 删除守卫）
+	errcode.ErrMsgTplVersionConflict.Code: http.StatusConflict,   // 92505 模板 version CAS 冲突
+	errcode.ErrMsgRuleVersionConflict.Code: http.StatusConflict,  // 92506 订阅规则 version CAS 冲突（000060）
 	errcode.ErrDictItemNotFound.Code:      http.StatusNotFound,   // 字典项不存在/版本冲突
 	errcode.ErrPatNotFound.Code:           http.StatusNotFound,   // PAT 不存在或已吊销
 	errcode.ErrFileTooLarge.Code:          http.StatusBadRequest, // 文件大小超限（phase5 S5）

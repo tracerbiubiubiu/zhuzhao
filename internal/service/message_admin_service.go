@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -92,7 +93,10 @@ func (s *MessageAdminService) UpsertRule(ctx context.Context, rule *model.Messag
 	if rule.RecipientType == "" {
 		rule.RecipientType = "assignee"
 	}
-	_, err := s.pool.Exec(ctx, `
+	// version CAS（000060 乐观锁——对齐 message_templates/system_settings 全仓惯例）：
+	// 新建=无冲突直接 INSERT（version 起步 1，入参 version 忽略）；更新=DO UPDATE
+	// WHERE version 命中才写并自增；陈旧 version → 0 行 → 92506/409 不静默覆盖。
+	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO message_rules (biz_type, event_action, template_code, recipient_type, fixed_recipients, enabled, created_by)
 		VALUES ($1, $2, $3, $4, NULLIF($5,''), $6, $7)
 		ON CONFLICT (biz_type, event_action) DO UPDATE SET
@@ -100,10 +104,18 @@ func (s *MessageAdminService) UpsertRule(ctx context.Context, rule *model.Messag
 			recipient_type = EXCLUDED.recipient_type,
 			fixed_recipients = EXCLUDED.fixed_recipients,
 			enabled = EXCLUDED.enabled,
-			updated_at = NOW()`,
+			updated_at = NOW(),
+			version = message_rules.version + 1
+		WHERE message_rules.version = $8`,
 		rule.BizType, rule.EventAction, rule.TemplateCode, rule.RecipientType,
-		rule.FixedRecipients, rule.Enabled, rule.CreatedBy)
-	return err
+		rule.FixedRecipients, rule.Enabled, rule.CreatedBy, rule.Version)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errcode.ErrMsgRuleVersionConflict
+	}
+	return nil
 }
 
 func (s *MessageAdminService) DeleteRule(ctx context.Context, id int64) error {

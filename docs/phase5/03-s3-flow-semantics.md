@@ -42,10 +42,10 @@
   { "on_complete": { "notify": {
       "template": "daily_scan_report",
       "params_mapping": { "vuln_count": "result.total", "high_count": "result.high" },
-      "recipients": ["security_team"], "channels": ["email", "dingtalk"]
+      "recipients": ["security_team"], "delivery": ["email", "dingtalk"]
   } } }
   ```
-  **params_mapping 语义**：模板占位符 ← 任务返回值路径（`result.xxx`）或固定值（`literal`）——GitHub Actions outputs/inputs 同构。任务跑完 → 返回值 map → params_mapping 解析 → 模板渲染 → NotificationService.send()。实现 = S3a 动作参数化框架的一个消费场景（Action 参数 `from` 来源可以是 `event`/`result`/`literal`）；NotificationService 接口设计需确保可被 Action 框架调用（S6 B6-2 设计时注意——非代码变更）。
+  **params_mapping 语义**：模板占位符 ← 任务返回值路径（`result.xxx`）或固定值（`literal`）——GitHub Actions outputs/inputs 同构。**通知通路拍定（2026-10-23 批 3 对表 F-3-3——事件优先，与下条「通知收敛走 S6 规则面」同规矩，原直调表述作废）**：任务完成一律 emit `<biz_type>.run.succeeded`（D20 执行类词表兑现，payload 带 `result.*` 与任务元数据）——通知/审计/B6-7 inbox/phase6 任务链订阅同一事件；`on_complete.notify` 仅作**无规则兜底**（= post_action.notify 同款地位，S6 节流查重兜底）；`result.*` 落为变量字典新增命名空间（msgrender 点路径已支持）。兜底发送实现 = **`MessageDispatcher` 派发编排器**（06 号 §1.5 编排器前置件）——原「NotificationService.send()」直调表述勘误：NotificationService 是 P4-2 渠道配置管理（无 Send/渲染/解析能力，同名异物已消歧）。实现 = S3a 动作参数化框架的一个消费场景（Action 参数 `from` 来源可以是 `event`/`result`/`literal`）。
 - **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **提交任务**（走既有 Submit 通道，理想态登记）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
 - 提交时机的同款诉求归 S1 字段联动，勿混入流程层（执行时机三分界）。
 

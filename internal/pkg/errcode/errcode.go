@@ -132,6 +132,9 @@ var (
 	ErrMsgTplSystem          = util.New(92503, "系统模板不可修改或删除")
 	ErrMsgTplReferenced      = util.New(92504, "模板被订阅规则引用中，不可删除")
 	ErrMsgTplVersionConflict = util.New(92505, "模板版本冲突——请刷新后重试")
+	// ErrMsgRuleVersionConflict 订阅规则 version CAS 冲突（微批 A——000060 乐观锁；
+	// 对齐 92505 模板同款语义：并发编辑后写者 409 提示刷新，不静默覆盖）
+	ErrMsgRuleVersionConflict = util.New(92506, "订阅规则版本冲突——请刷新后重试")
 )
 
 // 字典模块 92300-92399（P4-3）

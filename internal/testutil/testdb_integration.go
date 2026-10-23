@@ -158,6 +158,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000058_is_system.up.sql",
 			// S6 外审 F-2-4: message rebind
 			"000059_message_rebind.up.sql",
+			// 微批 A: message_rules version 乐观锁（审计残余③）
+			"000060_message_rules_version.up.sql",
 			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
 			"000050_system_settings_version.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时

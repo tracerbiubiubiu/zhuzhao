@@ -85,11 +85,11 @@ func (r *MessageRuleRepo) GetByAction(ctx context.Context, bizType, eventAction 
 	var rule model.MessageRule
 	err := r.db.QueryRow(ctx, `
 		SELECT id, biz_type, event_action, template_code, recipient_type,
-			COALESCE(fixed_recipients, ''), enabled, COALESCE(created_by, 0), created_at, updated_at
+			COALESCE(fixed_recipients, ''), enabled, version, COALESCE(created_by, 0), created_at, updated_at
 		FROM message_rules WHERE biz_type = $1 AND event_action = $2 AND enabled = true`,
 		bizType, eventAction).Scan(
 		&rule.ID, &rule.BizType, &rule.EventAction, &rule.TemplateCode, &rule.RecipientType,
-		&rule.FixedRecipients, &rule.Enabled, &rule.CreatedBy, &rule.CreatedAt, &rule.UpdatedAt)
+		&rule.FixedRecipients, &rule.Enabled, &rule.Version, &rule.CreatedBy, &rule.CreatedAt, &rule.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil // 无规则=不通知（非错误）
 	}
@@ -103,7 +103,7 @@ func (r *MessageRuleRepo) GetByAction(ctx context.Context, bizType, eventAction 
 func (r *MessageRuleRepo) ListRules(ctx context.Context) ([]*model.MessageRule, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, biz_type, event_action, template_code, recipient_type,
-			COALESCE(fixed_recipients, ''), enabled, COALESCE(created_by, 0), created_at, updated_at
+			COALESCE(fixed_recipients, ''), enabled, version, COALESCE(created_by, 0), created_at, updated_at
 		FROM message_rules ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (r *MessageRuleRepo) ListRules(ctx context.Context) ([]*model.MessageRule, 
 		var rule model.MessageRule
 		var createdBy int64
 		if err := rows.Scan(&rule.ID, &rule.BizType, &rule.EventAction, &rule.TemplateCode,
-			&rule.RecipientType, &rule.FixedRecipients, &rule.Enabled, &createdBy,
+			&rule.RecipientType, &rule.FixedRecipients, &rule.Enabled, &rule.Version, &createdBy,
 			&rule.CreatedAt, &rule.UpdatedAt); err != nil {
 			return nil, err
 		}
