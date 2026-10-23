@@ -192,7 +192,8 @@
 |------|------|---------|------|
 | 92001 | `ErrNotificationConfigNotFound` | 通知配置不存在 | 404 |
 | 92002 | `ErrNotificationCodeExists` | 通知配置 code 已存在 | 409 |
-| 92003 | `ErrNotificationChannelNotSupport` | 不支持的通知渠道（首版仅 webhook） | 400 |
+| 92003 | `ErrNotificationChannelNotSupport` | 不支持的通知渠道 | 400 |
+| 92004 | `ErrNotificationNotConfigured` | 通知渠道未配置（生产态 fail-fast） | 500 |
 | 92301 | `ErrDictTypeNotFound` | 字典类型不存在或版本冲突 | 404 |
 | 92302 | `ErrDictItemNotFound` | 字典项不存在或版本冲突 | 404 |
 | 92401 | `ErrPatNotFound` | PAT 不存在或已吊销 | 404 |

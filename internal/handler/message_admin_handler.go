@@ -36,6 +36,13 @@ func (h *MessageAdminHandler) ListLogs(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
+	// 拍板 B 过渡脱敏（外审 2.3）：列表面 body 可能含工单字段值（越 L2 面），
+	// 一期先截断出站——完整方案=通知中心独立权限码+菜单重绑（S6 二期或 S10 前）
+	for _, l := range logs {
+		if l != nil && len(l.Body) > 200 {
+			l.Body = l.Body[:200] + "…（截断——详情请查 message_log 表）"
+		}
+	}
 	response.OKPage(c, logs, total, page, pageSize)
 }
 

@@ -59,3 +59,19 @@ func ExtractPlaceholders(template string) []string {
 func RenderBoth(subject, body string, vars map[string]any) (string, string) {
 	return Render(subject, vars), Render(body, vars)
 }
+
+// EscapeHTML HTML 转义（邮件 HTML 渠道用——用户可控值防注入）。
+func EscapeHTML(s string) string {
+	replacer := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&#34;", "'", "&#39;")
+	return replacer.Replace(s)
+}
+
+// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"落地）：
+// email_html = HTML 转义（用户可控值防 XSS）；纯文本渠道（dingtalk/短邮件）不转义。
+func RenderEscaped(template string, vars map[string]any, channel string) string {
+	out := Render(template, vars)
+	if channel == "email_html" {
+		return EscapeHTML(out)
+	}
+	return out
+}

@@ -119,7 +119,8 @@ var (
 var (
 	ErrNotificationConfigNotFound    = util.New(92001, "通知配置不存在")
 	ErrNotificationCodeExists        = util.New(92002, "通知配置 code 已存在")
-	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道（首版仅 webhook）")
+	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道")
+	ErrNotificationNotConfigured     = util.New(92004, "通知渠道未配置（生产态 fail-fast）")
 )
 
 // 字典模块 92300-92399（P4-3）

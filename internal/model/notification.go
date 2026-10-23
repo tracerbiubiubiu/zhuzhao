@@ -37,4 +37,9 @@ type DeadLetterNotifyPayload struct {
 	Error     string `json:"error,omitempty"`
 	Attempts  int    `json:"attempts"`
 	FailedAt  string `json:"failed_at,omitempty"`
+	// S6 B6-6 扩展（06 号 A.5 死信接缝设计——外审 0.2 修复）：
+	// 可选指针字段供未来 S6 触发链接管死信时归因（一期 taskrunner 不传=零破坏）
+	BizType      *string `json:"biz_type,omitempty"`
+	BizID        *string `json:"biz_id,omitempty"`
+	TemplateCode *string `json:"template_code,omitempty"`
 }

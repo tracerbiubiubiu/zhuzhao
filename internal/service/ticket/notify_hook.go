@@ -92,11 +92,12 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		"ticket": buildTicketVars(ev),
 	}
 
-	// ③ 渲染
-	subject, body := msgrender.RenderBoth(tpl.Subject, tpl.Body, vars)
+	// ③ 渲染（渠道感知转义——06 号 A.4"值转义按渠道进行"）
+	subject := msgrender.RenderEscaped(tpl.Subject, vars, tpl.Channel)
+	body := msgrender.RenderEscaped(tpl.Body, vars, tpl.Channel)
 
-	// ④ 解析收件人（第一档=工单字段引用——06 号 §5.1）
-	recipients := resolveRecipients(ev)
+	// ④ 解析收件人（消费 message_rules 的 recipient_type/fixed_recipients——修复前旁路 DDL）
+	recipients := resolveRecipientsFromRule(ev, rule.RecipientType, rule.FixedRecipients)
 	if len(recipients) == 0 {
 		h.logger.Info("notify: no recipients resolved", "action", ev.Action, "biz_id", ev.BizID)
 		return
@@ -175,21 +176,44 @@ func buildTicketVars(ev domainevent.DomainEvent) map[string]any {
 	return vars
 }
 
-// resolveRecipients 第一档收件人解析（06 号 §5.1——工单字段引用+固定人员）。
-// 当前实现：assigned→to_assignee；created→actor（创建人=发起人）。
+// resolveRecipients 第一档收件人解析（06 号 §5.1——消费 message_rules 的
+// recipient_type/fixed_recipients 列；修复前旁路 DDL 硬编码 switch）。
+// created 不再特判——走规则驱动（拍板 A：配了规则才通知，开箱零通知原则）。
 func resolveRecipients(ev domainevent.DomainEvent) []string {
-	var ids []string
+	// 兼容旧调用：无 rule 上下文时按事件类型兜底（待调用方全量迁移后删）
+	return resolveRecipientsFromRule(ev, defaultRecipientType(ev), "")
+}
+
+func defaultRecipientType(ev domainevent.DomainEvent) string {
 	switch ev.Action {
 	case domainevent.TicketAssigned:
-		// to_assignee 是用户 ID 的字符串化（strconv.FormatInt 产物——06 号 §5.1
-		// 第一档工单字段引用；真实工号解析待 B6-4 完整实现）
+		return "assignee"
+	case domainevent.TicketCreated:
+		return "creator"
+	default:
+		return "assignee"
+	}
+}
+
+// resolveRecipientsFromRule 按 message_rules 的收件人配置解析。
+// recipient_type: assignee→事件 payload to_assignee；creator→actor；fixed→DDL 列表。
+func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedRecipients string) []string {
+	var ids []string
+	switch recipientType {
+	case "assignee":
 		if to, ok := ev.Payload["to_assignee"].(string); ok && to != "" {
 			ids = append(ids, to)
 		}
-	case domainevent.TicketCreated:
-		// 创建通知→发起人本人（无意义？——生产态按 message_rules 配置收件人）
-		// 首版暂不送 created 通知（避免自己通知自己）
-		return nil
+	case "creator":
+		if actor, ok := ev.Payload["actor"].(string); ok && actor != "" {
+			ids = append(ids, actor)
+		}
+	case "fixed":
+		for _, id := range strings.Split(fixedRecipients, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				ids = append(ids, id)
+			}
+		}
 	}
 	return ids
 }
