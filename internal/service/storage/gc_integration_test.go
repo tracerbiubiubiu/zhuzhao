@@ -173,3 +173,89 @@ func TestGCJob_Scenarios(t *testing.T) {
 		assert.Equal(t, model.FileStatusDeleted, status, "重删失败行保持 deleted——下轮再试")
 	})
 }
+
+// TestGCJob_ConfirmedOrphans F-4-4 第三段守卫（外审 F-4 遗留补课）：
+// confirmed + 工单域 purpose + 无 ticket_attachments 关联 + 超 double 阈值 → 软删+回收。
+func TestGCJob_ConfirmedOrphans(t *testing.T) {
+	uid := insertUser(t)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+	})
+	cfg := &pkgstorage.StorageConfig{
+		Enabled: true, Endpoint: "http://stub", Bucket: itBucket,
+		AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m",
+	}
+	cfg.ApplyDefaults()
+	rec := &removeRecorder{}
+	repo := repository.NewStorageRepo(testPool)
+	gc := storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger())
+
+	seedConfirmed := func(key, purpose string, age time.Duration) {
+		_, err := testPool.Exec(context.Background(), `
+			INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by, confirmed_at)
+			VALUES ($1, $2, $3, 'confirmed', 'f.png', 'image/png', $4, NOW() - $5::interval)`,
+			itBucket, key, purpose, uid, age.String())
+		require.NoError(t, err)
+	}
+
+	t.Run("悬挂建单对象超期→回收", func(t *testing.T) {
+		key := "tickets/2026/10/orphan_hang.png"
+		seedConfirmed(key, "attachment_create", 24*30*time.Hour) // 超 7×2 阈值
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
+		assert.Equal(t, "deleted", status, "悬挂 confirmed 超期应被第三段软删")
+	})
+
+	t.Run("有关联行的 confirmed 不动（防误删在用附件）", func(t *testing.T) {
+		// 测试容器自建最小种子（ organizations root 可能不存在——upsert 保证）
+		var orgID int64
+		err := testPool.QueryRow(context.Background(),
+			`SELECT id FROM organizations WHERE code='gc_test_org' LIMIT 1`).Scan(&orgID)
+		if err != nil {
+			require.NoError(t, testPool.QueryRow(context.Background(), `
+				INSERT INTO organizations (code, name, path, is_virtual, status, sort_order, is_system)
+				VALUES ('gc_test_org', 'GC测试', 'gc_test_org', false, 1, 99, false)
+				RETURNING id`).Scan(&orgID))
+		}
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `UPDATE organizations SET deleted_at=NOW() WHERE code='gc_test_org'`)
+		})
+		key := "tickets/2026/10/attached.png"
+		seedConfirmed(key, "ticket_attachment", 24*30*time.Hour)
+		// 建工单+关联行——反连接应排除此对象
+		var ticketID int64
+		require.NoError(t, testPool.QueryRow(context.Background(), `
+			INSERT INTO tickets (type_code, title, status, priority, org_id, org_path, created_by)
+			VALUES ('incident', 'gc测试', 'open', 2, $2, 'gc_test_org', $1)
+			RETURNING id`, uid, orgID).Scan(&ticketID))
+		var foID int64
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT id FROM file_objects WHERE object_key=$1`, key).Scan(&foID))
+		_, execErr := testPool.Exec(context.Background(), `
+			INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by) VALUES ($1, $2, $3)`,
+			ticketID, foID, uid)
+		require.NoError(t, execErr)
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM ticket_attachments WHERE ticket_id=$1`, ticketID)
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM tickets WHERE id=$1`, ticketID)
+		})
+
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
+		assert.Equal(t, "confirmed", status, "有关联行（在用附件）不得回收")
+	})
+
+	t.Run("非工单域 purpose 不动（avatar 不归第三段）", func(t *testing.T) {
+		key := "avatars/gc_exempt.png"
+		seedConfirmed(key, "avatar", 24*30*time.Hour)
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
+		assert.Equal(t, "confirmed", status, "avatar purpose 不在第三段扫描范围")
+	})
+}
