@@ -693,13 +693,19 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 		return err
 	}
 	// B6-5：工单关闭事件（事务提交后派发）
+	closedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"status": StatusClosed,
+	}
+	// B6-4 收件人锚点：assignee 档通知链读此键——修复前 payload 缺此键
+	// 致 closed 通知 100% 静默丢失（外审实例批发现）
+	if ticket.AssignedTo != nil {
+		closedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
 	s.emitEvent(domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketClosed,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
-		Payload: domainevent.Payload{
-			"title": ticket.Title, "type_code": ticket.TypeCode,
-			"status": StatusClosed,
-		},
+		Payload:   closedPayload,
 		Timestamp: time.Now(),
 	})
 	return nil
