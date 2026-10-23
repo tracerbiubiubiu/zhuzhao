@@ -52,6 +52,8 @@ func CatalogExemptRoutes() []string {
 }
 
 var catalogExempt = map[string]bool{
+	"GET /api/v1/me/notification-optouts":  true, // B6-3 自服务偏好（登录态）
+	"POST /api/v1/me/notification-optouts": true,
 
 	"POST /api/v1/auth/login":            true, // 认证公开端点
 	"POST /api/v1/auth/refresh":          true, // 认证公开端点

@@ -43,7 +43,8 @@ type Deps struct {
 	MessageTemplateHandler *handler.MessageTemplateHandler
 
 	// S6 B6-6 消息管理（log 查看 + rules CRUD）
-	MessageAdminHandler *handler.MessageAdminHandler
+	MessageAdminHandler     *handler.MessageAdminHandler
+	NotificationPrefHandler *handler.NotificationPrefHandler
 
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
@@ -441,6 +442,10 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
 					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
 					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
+
+					// S6 B6-3 增强批：用户通知偏好自服务（登录态——非管理面）
+					selfService.GET("/me/notification-optouts", deps.NotificationPrefHandler.ListOptouts)
+					selfService.POST("/me/notification-optouts", deps.NotificationPrefHandler.SetOptout)
 
 					// S6 B6-6 消息管理（发送记录 + 订阅规则）
 					ticketMeta.GET("/message-logs", deps.MessageAdminHandler.ListLogs)
