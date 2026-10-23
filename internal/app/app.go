@@ -61,11 +61,16 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		repository.NewMessageRuleRepo(pool),
 		repository.NewMessageLogRepo(pool),
 		repository.NewNotificationOptoutRepo(pool),
-		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: cfg.Server.Mode != "release"}, logger), // 开发态桩
+		// UIP 两态桩（06 号 §3/A.3）：StubMode=非 release 推导；Endpoint 经
+		// notification.uip.endpoint config 注入（微批 A——生产态空→92004 fail-fast）
+		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{
+			StubMode: cfg.Server.Mode != "release",
+			Endpoint: cfg.Notification.UIP.Endpoint,
+		}, logger),
 		logger,
 		notifSvc, // 06 号 §5.4 死信集成（实现 NotifyDeadLetterSender）
 	)
-	eventRegistry.Subscribe(domainevent.BizTicket, notifyHook)
+	eventRegistry.Subscribe(domainevent.BizTicket, "ticket.notify", notifyHook)
 
 	// B1-6 批2：表达式函数注册表装配（lookup_dict 需 db 闭包；纯函数 now/upper
 	// 已在 exprcalc 包内默认注册；risk_score/sla_deadline 待 phase6 源后加函数）

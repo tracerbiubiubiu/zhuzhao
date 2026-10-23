@@ -5,6 +5,7 @@ package domainevent
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,12 +19,12 @@ func TestHookRegistry_BizTypeRouting(t *testing.T) {
 	r := NewHookRegistry(nil)
 	var ticketGot, riskGot atomic.Int32
 
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, ev DomainEvent) {
+	r.Subscribe(BizTicket, "routing.ticket", HookFunc(func(_ context.Context, ev DomainEvent) {
 		if ev.BizType == BizTicket {
 			ticketGot.Add(1)
 		}
 	}))
-	r.Subscribe("risk", HookFunc(func(_ context.Context, ev DomainEvent) {
+	r.Subscribe("risk", "routing.risk", HookFunc(func(_ context.Context, ev DomainEvent) {
 		if ev.BizType == "risk" {
 			riskGot.Add(1)
 		}
@@ -46,7 +47,7 @@ func TestHookRegistry_MultiSubscriber(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
-		r.Subscribe(BizTicket, HookFunc(func(_ context.Context, _ DomainEvent) {
+		r.Subscribe(BizTicket, fmt.Sprintf("multi.%d", i), HookFunc(func(_ context.Context, _ DomainEvent) {
 			defer wg.Done()
 			count.Add(1)
 		}))
@@ -65,11 +66,11 @@ func TestHookRegistry_RecoverIsolation(t *testing.T) {
 	done := make(chan struct{})
 
 	// 订阅者 1 panic——不连坐
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, _ DomainEvent) {
+	r.Subscribe(BizTicket, "recover.panic", HookFunc(func(_ context.Context, _ DomainEvent) {
 		panic("subscriber blew up")
 	}))
 	// 订阅者 2 正常
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, _ DomainEvent) {
+	r.Subscribe(BizTicket, "recover.healthy", HookFunc(func(_ context.Context, _ DomainEvent) {
 		healthy.Add(1)
 		close(done)
 	}))
@@ -92,8 +93,8 @@ func TestHookRegistry_WildcardSubscriber(t *testing.T) {
 	r := NewHookRegistry(nil)
 	var ticketCnt, riskCnt, wildCnt atomic.Int32
 
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, ev DomainEvent) { ticketCnt.Add(1) }))
-	r.Subscribe("risk", HookFunc(func(_ context.Context, ev DomainEvent) { riskCnt.Add(1) }))
+	r.Subscribe(BizTicket, "wild.ticket", HookFunc(func(_ context.Context, ev DomainEvent) { ticketCnt.Add(1) }))
+	r.Subscribe("risk", "wild.risk", HookFunc(func(_ context.Context, ev DomainEvent) { riskCnt.Add(1) }))
 	r.SubscribeAll(HookFunc(func(_ context.Context, ev DomainEvent) { wildCnt.Add(1) }))
 
 	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, Timestamp: time.Now()})
@@ -107,18 +108,31 @@ func TestHookRegistry_WildcardSubscriber(t *testing.T) {
 
 func TestHookRegistry_NilHookSafe(t *testing.T) {
 	r := NewHookRegistry(nil)
-	r.Subscribe(BizTicket, nil) // 不 panic 不注册
+	r.Subscribe(BizTicket, "nil.hook", nil) // 不 panic 不注册（名字也不占用）
 	assert.Equal(t, 0, r.SubscriberCount(BizTicket))
 }
 
 func TestHookRegistry_SubscriberCount(t *testing.T) {
 	r := NewHookRegistry(nil)
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, _ DomainEvent) {}))
-	r.Subscribe(BizTicket, HookFunc(func(_ context.Context, _ DomainEvent) {}))
-	r.Subscribe("risk", HookFunc(func(_ context.Context, _ DomainEvent) {}))
+	r.Subscribe(BizTicket, "count.t1", HookFunc(func(_ context.Context, _ DomainEvent) {}))
+	r.Subscribe(BizTicket, "count.t2", HookFunc(func(_ context.Context, _ DomainEvent) {}))
+	r.Subscribe("risk", "count.r1", HookFunc(func(_ context.Context, _ DomainEvent) {}))
 	assert.Equal(t, 2, r.SubscriberCount(BizTicket))
 	assert.Equal(t, 1, r.SubscriberCount("risk"))
 	assert.Equal(t, []BizType{"risk", BizTicket}, r.SortedBizTypes())
+}
+
+// 重名防护（06 号 A.1「重复名 panic（装配期暴露）」——微批 A）：双注册属装配
+// 错误，启动即 panic 好过运行期重复派发静默翻倍。
+func TestHookRegistry_DuplicateNamePanics(t *testing.T) {
+	r := NewHookRegistry(nil)
+	r.Subscribe(BizTicket, "dup.name", HookFunc(func(_ context.Context, _ DomainEvent) {}))
+	assert.PanicsWithValue(t,
+		`domainevent: hook 注册名 "dup.name" 重复（biz=risk）——装配期双注册`,
+		func() {
+			r.Subscribe("risk", "dup.name", HookFunc(func(_ context.Context, _ DomainEvent) {}))
+		}, "跨域重名同样 panic（名字全局唯一）")
+	assert.Equal(t, 0, r.SubscriberCount("risk"), "panic 前未落注册")
 }
 
 func TestDomainEvent_String(t *testing.T) {

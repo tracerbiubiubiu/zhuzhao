@@ -32,3 +32,4 @@
 | 92503 | ErrMsgTplSystem | 系统模板不可修改或删除 | 403 | 种子模板只读（is_system=true） |
 | 92504 | ErrMsgTplReferenced | 模板被订阅规则引用中 | 409 | 须先解引 |
 | 92505 | ErrMsgTplVersionConflict | 模板版本冲突 | 409 | CAS 乐观锁 |
+| 92506 | ErrMsgRuleVersionConflict | 订阅规则版本冲突 | 409 | CAS 乐观锁（000060——微批 A） |

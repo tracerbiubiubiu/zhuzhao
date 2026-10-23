@@ -27,7 +27,7 @@ func TestB61_DomainEventDispatch(t *testing.T) {
 	var assigned []domainevent.DomainEvent
 	var wildcards []domainevent.DomainEvent
 
-	reg.Subscribe(domainevent.BizTicket, domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
+	reg.Subscribe(domainevent.BizTicket, "b61.capture", domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
 		mu.Lock()
 		defer mu.Unlock()
 		switch ev.Action {

@@ -39,6 +39,21 @@ type Config struct {
 	// phase5 S5 对象存储（05 号 A.2；enabled=false 默认零现栈影响——批4 骨架先行，
 	// 消费者随 B5-1 后续批接入）
 	Storage storage.StorageConfig `mapstructure:"storage"`
+
+	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化：契约到手填值即切
+	// 生产态；微批 A 修复审计 P1-3「Endpoint 无配置入口」）
+	Notification NotificationConfig `mapstructure:"notification"`
+}
+
+// NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
+type NotificationConfig struct {
+	UIP UIPConfig `mapstructure:"uip"`
+}
+
+// UIPConfig 统一消息平台（UIP）adapter 配置（A.3：endpoint/鉴权头 config 化——
+// 真实契约到手只改映射层 mapToUIP，配置面不动）。
+type UIPConfig struct {
+	Endpoint string `mapstructure:"endpoint"` // UIP 端点（空=开发态桩；生产态空→92004 fail-fast）
 }
 
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
@@ -298,6 +313,9 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("storage.secret_key", "STORAGE_SECRET_KEY")
 	// A.11「生产 Secure」：文件通道 cookie Secure 属性（HTTPS 网关置 true——S5 评审 P2-4）
 	viper.BindEnv("storage.file_cookie_secure", "STORAGE_FILE_COOKIE_SECURE")
+	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化；契约到手填值切生产态）
+	viper.BindEnv("notification.uip.endpoint", "NOTIFICATION_UIP_ENDPOINT")
+	viper.SetDefault("notification.uip.endpoint", "")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

@@ -4,6 +4,7 @@ package domainevent
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sort"
 	"sync"
@@ -14,6 +15,7 @@ type HookRegistry struct {
 	mu     sync.RWMutex
 	subs   map[BizType][]DomainHook
 	all    []DomainHook // 全域订阅者（"*" 通配）
+	names  map[string]bool
 	logger *slog.Logger
 }
 
@@ -24,18 +26,26 @@ func NewHookRegistry(logger *slog.Logger) *HookRegistry {
 	}
 	return &HookRegistry{
 		subs:   make(map[BizType][]DomainHook),
+		names:  make(map[string]bool),
 		logger: logger,
 	}
 }
 
 // Subscribe 按业务域订阅（同域多订阅者按注册序派发——order 字段不引入，
 // 注册序即声明序，消费方间无依赖）。
-func (r *HookRegistry) Subscribe(biz BizType, hook DomainHook) {
+//
+// name = 全局唯一注册名（06 号 A.1「重复名 panic（装配期暴露）」——微批 A 落地：
+// 双注册属装配错误，启动即 panic 好过运行期重复派发静默翻倍）。
+func (r *HookRegistry) Subscribe(biz BizType, name string, hook DomainHook) {
 	if hook == nil {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.names[name] {
+		panic(fmt.Sprintf("domainevent: hook 注册名 %q 重复（biz=%s）——装配期双注册", name, biz))
+	}
+	r.names[name] = true
 	r.subs[biz] = append(r.subs[biz], hook)
 }
 

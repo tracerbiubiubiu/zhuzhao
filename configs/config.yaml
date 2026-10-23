@@ -75,6 +75,13 @@ audit:
   file_cookie_secure: false      # 文件通道 cookie Secure 属性（HTTPS 网关前置置 true——A.11/审计 M-4）
 #   presign_ttl: 15m               # 预签名 URL 有效期
 
+# phase5 S6 统一消息平台（UIP）渠道——06 号 §3/A.3：endpoint config 化
+#（env NOTIFICATION_UIP_ENDPOINT）；dev 空值=两态桩开发态；契约到手填值切生产态
+#（字面值——viper 不支持 ${} 插值）
+notification:
+  uip:
+    endpoint: ""
+
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
   base_url: ""              # env TASKRUNNER_BASE_URL；空 = 任务端点 502

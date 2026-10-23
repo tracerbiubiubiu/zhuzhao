@@ -48,7 +48,7 @@ func TestB65_TriggerHook(t *testing.T) {
 	tplRepo := repository.NewMessageTemplateRepo(testPool)
 	sender := &captureSender{}
 	hook := NewTicketNotifyHook(tplRepo, repository.NewMessageRuleRepo(testPool), repository.NewMessageLogRepo(testPool), repository.NewNotificationOptoutRepo(testPool), sender, nil, nil) // notifySvc=nil（测试不验死信面）
-	reg.Subscribe(domainevent.BizTicket, hook)
+	reg.Subscribe(domainevent.BizTicket, "b65.notify", hook)
 
 	svc, aid, bid, _, roles := setupTicket2a(t)
 	roles[aid] = []string{"admin"}
