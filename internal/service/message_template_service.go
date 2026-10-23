@@ -76,6 +76,10 @@ func (s *MessageTemplateService) Create(ctx context.Context, t *model.MessageTem
 }
 
 func (s *MessageTemplateService) Update(ctx context.Context, t *model.MessageTemplate) error {
+	// F-1-9b 修复：Update 也须校验引用⊆字典（修复前旁路——改模板正文可绕过）
+	if err := validatePlaceholders(t.Subject, t.Body); err != nil {
+		return err
+	}
 	// F-1-7 修复：Update 不校验 channel（不可变——SET 无 channel 列）
 	return s.repo.Update(ctx, t)
 }
