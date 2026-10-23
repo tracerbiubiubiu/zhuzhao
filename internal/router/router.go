@@ -42,6 +42,9 @@ type Deps struct {
 	// S6 B6-3 消息模板管理
 	MessageTemplateHandler *handler.MessageTemplateHandler
 
+	// S6 B6-6 消息管理（log 查看 + rules CRUD）
+	MessageAdminHandler *handler.MessageAdminHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -438,6 +441,12 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
 					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
 					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
+
+					// S6 B6-6 消息管理（发送记录 + 订阅规则）
+					ticketMeta.GET("/message-logs", deps.MessageAdminHandler.ListLogs)
+					ticketMeta.GET("/message-rules", deps.MessageAdminHandler.ListRules)
+					ticketMeta.POST("/message-rules", deps.MessageAdminHandler.UpsertRule)
+					ticketMeta.POST("/message-rules/delete", deps.MessageAdminHandler.DeleteRule)
 				}
 			}
 
