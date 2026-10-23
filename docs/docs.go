@@ -1950,6 +1950,18 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ticket-types/{code}/fields/variables": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "模板可用变量集（变量字典——06 号 A.6）",
+                "responses": {}
+            }
+        },
         "/api/v1/tickets": {
             "get": {
                 "consumes": [

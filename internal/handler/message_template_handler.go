@@ -109,3 +109,22 @@ func (h *MessageTemplateHandler) Delete(c *gin.Context) {
 	}
 	response.OK(c, nil)
 }
+
+// Variables GET /api/v1/ticket-types/:code/fields/variables
+//
+//	@Summary		模板可用变量集（变量字典——06 号 A.6）
+//	@Tags			message
+//	@Produce		json
+//	@Router			/api/v1/ticket-types/{code}/fields/variables [get]
+func (h *MessageTemplateHandler) Variables(c *gin.Context) {
+	// 内置变量（通知链每次必供——四象限 fail 档锚点）
+	vars := []map[string]string{
+		{"path": "ticket.title", "desc": "工单标题"},
+		{"path": "ticket.type_code", "desc": "工单类型编码"},
+		{"path": "ticket.priority", "desc": "优先级（1-4）"},
+		{"path": "ticket.status", "desc": "当前状态"},
+		{"path": "ticket.human_key", "desc": "人读编号（TK-yyyymmdd-NNNN）"},
+		{"path": "ticket.link", "desc": "工单链接"},
+	}
+	response.OK(c, vars)
+}

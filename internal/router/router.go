@@ -439,6 +439,7 @@ func New(deps Deps) *gin.Engine {
 
 					// S6 B6-3 消息模板管理（通知中心页面族——自 S4 迁入）
 					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)
+					ticketMeta.GET("/ticket-types/:code/fields/variables", deps.MessageTemplateHandler.Variables)
 					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
 					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
 					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
