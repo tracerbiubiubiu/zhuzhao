@@ -605,6 +605,17 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		ticket.CustomData = customData
 	}
 	ticket.UpdatedAt = updatedAt
+	// B6-1/D20：工单更新事件（载荷带 changes[] 键级 diff）
+	s.emitEvent(domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"title": ticket.Title, "type_code": ticket.TypeCode,
+			"human_key": ticket.HumanKey, "status": ticket.Status,
+			"changes": buildChanges(req), // D20 键级 diff
+		},
+		Timestamp: time.Now(),
+	})
 	return ticket, nil
 }
 
@@ -974,4 +985,22 @@ func (s *Service) AuthorizeTicketAttachment(ctx context.Context, userID, ticketI
 // L2 可见性 ticket:read 管线）。与 update 面同款结构性注入。
 func (s *Service) AuthorizeTicketFileRead(ctx context.Context, userID, ticketID int64) error {
 	return s.authorizeCheck(ctx, userID, "read", strconv.FormatInt(ticketID, 10))
+}
+
+// buildChanges D20 键级变更集（工单 Update 事件载荷）。
+func buildChanges(req *model.UpdateTicketRequest) []domainevent.Change {
+	var changes []domainevent.Change
+	if req.Title != nil {
+		changes = append(changes, domainevent.Change{Key: "title", NewVal: *req.Title})
+	}
+	if req.Priority != nil {
+		changes = append(changes, domainevent.Change{Key: "priority", NewVal: *req.Priority})
+	}
+	if req.Description != nil {
+		changes = append(changes, domainevent.Change{Key: "description", NewVal: *req.Description})
+	}
+	if req.CustomData != nil {
+		changes = append(changes, domainevent.Change{Key: "custom_data"})
+	}
+	return changes
 }

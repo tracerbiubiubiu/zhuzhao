@@ -107,7 +107,13 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrTemplateNotFound
+		// CAS 区分：不存在→404 / version 不匹配→409（B6-3 增强批）
+		var exists bool
+		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM message_templates WHERE code=$1)`, t.Code).Scan(&exists)
+		if !exists {
+			return ErrTemplateNotFound
+		}
+		return ErrTemplateVersionConflict
 	}
 	return nil
 }
@@ -116,6 +122,8 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 var ErrTemplateSystem = errcode.New(92003, "系统模板不可修改或删除")
 
 // ErrTemplateReferenced 模板被 message_rules 引用中（B6-3 增强批删除守卫）。
+var ErrTemplateVersionConflict = errcode.New(92005, "模板版本冲突——请刷新后重试")
+
 var ErrTemplateReferenced = errcode.New(92004, "模板被订阅规则引用中，不可删除")
 
 // Delete 删除模板（守卫：is_system 不可删 + 被 message_rules 引用不可删）。
