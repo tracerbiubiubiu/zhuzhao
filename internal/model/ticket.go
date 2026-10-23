@@ -8,6 +8,7 @@ import (
 // Ticket 工单主表模型
 type Ticket struct {
 	ID          int64           `json:"id,string" db:"id"`
+	HumanKey    string          `json:"human_key,omitempty" db:"human_key"` // TK-yyyymmdd-NNNN
 	TypeCode    string          `json:"type_code" db:"type_code"`
 	Title       string          `json:"title" db:"title"`
 	Description string          `json:"description" db:"description"`

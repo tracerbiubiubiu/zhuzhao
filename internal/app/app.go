@@ -19,6 +19,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	routerPkg "github.com/tracerbiubiubiu/zhuzhao/internal/router"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -49,6 +50,11 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	}
 	// B6-1：领域事件注册表（S6/phase6/S10 共享基础设施——一次变更多订阅者）
 	eventRegistry := domainevent.NewHookRegistry(logger)
+	// 06 号 §5.4 死信集成：ChannelSender.Send 终败→进程内直调死信告警
+	notifRepo := repository.NewNotificationRepo(pool)
+	notifWebhook := webhook.New()
+	notifSvc := service.NewNotificationService(notifRepo, notifWebhook, logger)
+
 	// B6-5 触发挂接：工单事件→模板→渲染→ChannelSender 发送
 	notifyHook := ticket.NewTicketNotifyHook(
 		repository.NewMessageTemplateRepo(pool),
@@ -57,6 +63,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		repository.NewNotificationOptoutRepo(pool),
 		channelsender.NewUIPStubSender(channelsender.UIPStubConfig{StubMode: true}, logger), // 开发态桩
 		logger,
+		notifSvc, // 06 号 §5.4 死信集成（实现 NotifyDeadLetterSender）
 	)
 	eventRegistry.Subscribe(domainevent.BizTicket, notifyHook)
 

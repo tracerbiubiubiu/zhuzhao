@@ -18,6 +18,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/humankey"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -31,10 +32,11 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
-	storageRepo *repository.StorageRepo   // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
-	storageCfg  *pkgstorage.ConfigStore   // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
-	fetcherReg  *datafetcher.Registry     // B1-4：取数联动（nil=无注册源，取数跳过）
-	eventReg    *domainevent.HookRegistry // B6-1：领域事件（nil=不派发——首版装配态）
+	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
+	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
+	eventReg    *domainevent.HookRegistry
+	keyGen      *humankey.Generator // B6-1：领域事件（nil=不派发——首版装配态）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -72,6 +74,7 @@ func NewTicketService(
 		registry:    registry,
 		storageCfg:  storageCfg,
 		fetcherReg:  fetcherReg,
+		keyGen:      humankey.New(db, "TK"),
 		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
@@ -290,6 +293,17 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
 		return nil, err
 	}
+	// S6 §5.3：生成人读编号 TK-yyyymmdd-NNNN（同事务写——原子性）
+	if ticket.HumanKey == "" && s.keyGen != nil {
+		hk, err := s.keyGen.Next(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("human_key: %w", err)
+		}
+		ticket.HumanKey = hk
+		if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, hk, ticket.ID); err != nil {
+			return nil, fmt.Errorf("write human_key: %w", err)
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
@@ -299,6 +313,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
 			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
+			"human_key": ticket.HumanKey,
 		},
 		Timestamp: time.Now(),
 	})

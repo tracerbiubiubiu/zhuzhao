@@ -20,16 +20,23 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
+// NotifyDeadLetterSender 死信告警接口（06 号 §5.4——ChannelSender.Send 终败
+// 时进程内直调；与 /internal/notify/dead-letter HTTP handler 共用内部函数）。
+type NotifyDeadLetterSender interface {
+	NotifyDeadLetter(ctx context.Context, p *model.DeadLetterNotifyPayload) error
+}
+
 // TicketNotifyHook 工单通知钩子（实现 DomainHook——06 号 拍板点 4 消费方侧
 // 名字保持业务化）。
 type TicketNotifyHook struct {
-	tplRepo  *repository.MessageTemplateRepo
-	ruleRepo *repository.MessageRuleRepo
-	logRepo  *repository.MessageLogRepo
-	optRepo  *repository.NotificationOptoutRepo
-	throttle *notifyThrottle
-	sender   channelsender.ChannelSender
-	logger   *slog.Logger
+	tplRepo   *repository.MessageTemplateRepo
+	ruleRepo  *repository.MessageRuleRepo
+	logRepo   *repository.MessageLogRepo
+	optRepo   *repository.NotificationOptoutRepo
+	throttle  *notifyThrottle
+	notifySvc NotifyDeadLetterSender
+	sender    channelsender.ChannelSender
+	logger    *slog.Logger
 }
 
 // NewTicketNotifyHook 创建工单通知钩子。
@@ -40,11 +47,12 @@ func NewTicketNotifyHook(
 	optRepo *repository.NotificationOptoutRepo,
 	sender channelsender.ChannelSender,
 	logger *slog.Logger,
+	notifySvc NotifyDeadLetterSender,
 ) *TicketNotifyHook {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, optRepo: optRepo, sender: sender, logger: logger, throttle: newNotifyThrottle(60 * time.Second)}
+	return &TicketNotifyHook{tplRepo: tplRepo, ruleRepo: ruleRepo, logRepo: logRepo, optRepo: optRepo, sender: sender, logger: logger, throttle: newNotifyThrottle(60 * time.Second), notifySvc: notifySvc}
 }
 
 // OnDomainEvent DomainHook 实现——工单事件触发通知（每订阅者独立 goroutine
@@ -129,6 +137,14 @@ func (h *TicketNotifyHook) OnDomainEvent(ctx context.Context, ev domainevent.Dom
 		sendErr = err.Error()
 		h.logger.Error("notify: send failed",
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
+		// 06 号 §5.4：Send 终败→进程内直调死信告警（与 /internal/notify/dead-letter 共用）
+		if h.notifySvc != nil {
+			_ = h.notifySvc.NotifyDeadLetter(ctx, &model.DeadLetterNotifyPayload{
+				Action: "channel_send_failed",
+				Error:  sendErr,
+				Dept:   string(ev.BizType), // biz_type 复用 Dept 字段（载荷结构对齐 taskrunner 既有投递）
+			})
+		}
 		// 不 return error——at-most-once（06 号 §5.2 异步投递，失败不阻塞）
 	} else {
 		h.logger.Info("notify: sent",

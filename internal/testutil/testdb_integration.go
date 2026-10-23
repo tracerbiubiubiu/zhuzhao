@@ -152,6 +152,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000055_message_admin_apis.up.sql",
 			// S6 B6-4: notification opt-outs
 			"000056_notification_optouts.up.sql",
+			// S6 §5.3: human_key
+			"000057_human_key.up.sql",
 			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
 			"000050_system_settings_version.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
