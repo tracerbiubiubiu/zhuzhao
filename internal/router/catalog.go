@@ -52,6 +52,7 @@ func CatalogExemptRoutes() []string {
 }
 
 var catalogExempt = map[string]bool{
+	"GET /api/v1/ticket-types/:code/fields/variables": true, // B6-3 变量字典（模板编辑器读面）
 	"GET /api/v1/me/notification-optouts":  true, // B6-3 自服务偏好（登录态）
 	"POST /api/v1/me/notification-optouts": true,
 

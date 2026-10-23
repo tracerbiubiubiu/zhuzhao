@@ -469,5 +469,17 @@ check "#S5-8 render 稳定 URL 图片保留" "yes" "$(echo "$RH" | grep -q '/api
 check "#S5-8 render 超限 400" "400" "$(python3 -c "import json;print(json.dumps({'content':'a'*(256*1024+1)}))" | curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/tickets/richtext/render" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' --data-binary @-)"
 
 echo ""
+# ── S6 通知链路面（B6-7 前补课——通知端点冒烟 #MSG 前缀）──
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/message-templates" -H "Authorization: Bearer $SAT")
+check "#MSG-1 message-templates 列表" "200" "$RC"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/message-logs" -H "Authorization: Bearer $SAT")
+check "#MSG-2 message-logs 列表" "200" "$RC"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/message-rules" -H "Authorization: Bearer $SAT")
+check "#MSG-3 message-rules 列表" "200" "$RC"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/me/notification-optouts" -H "Authorization: Bearer $SAT")
+check "#MSG-4 opt-outs 自服务" "200" "$RC"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ticket-types/incident/fields/variables" -H "Authorization: Bearer $SAT")
+check "#MSG-5 variables 变量字典" "200" "$RC"
+
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
 [ "$fail" -eq 0 ]
