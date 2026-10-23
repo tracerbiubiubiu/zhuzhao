@@ -73,6 +73,10 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 `message_log` 表（模板/收件人/状态/错误/重试）+ 管理页（列表按 standards §3-6 PageData 形态——offset+total+钳制）；失败复用既有死信告警链——**接缝（2026-10-19 外审补）**：`ChannelSender.Send` 终败 = **进程内直调** notification service 死信告警方法（与 `/internal/notify/dead-letter` HTTP handler 共用内部函数——同进程不自绕 HTTP）；`DeadLetterNotifyPayload` 扩展可选字段 biz_type/biz_id/template_code（指针型——taskrunner 既有投递零破坏），排障可归因到模板与业务对象。
 
+**删除守卫口径注（2026-10-23 外审 F-1-8/F3-1-4）**：模板删除守卫 = 被规则引用即拦（**含禁用规则**——修复前只数 enabled=true，禁用规则引用被忽略→删后规则再启用即静默不通知）；守卫与删除合并为单语句 NOT EXISTS 原子化（无并发窗口）。
+
+**发送超时层次注（2026-10-23 外审 F3-1-5）**：桩期 5s = goroutine 兜底（——防 UIP 端点挂起致 goroutine 永久阻塞）；契约期 = UIP 契约超时为准，5s 降为下限保护。
+
 ## 6. 二期：站内消息中心（2026-10-13 翻案，一期交付后实施）
 
 - **定性**：消息中心 = **事件系统的消费者**——S6 channel 抽象新增「站内 inbox」通道 + notifications 表族（recipient/payload 深链/created_at）+ per-user 已读状态（行级 read_at 第一档/全部已读批量/未读数聚合端点）+ 保留策略（N 天封顶，复用 message_log 经验）。

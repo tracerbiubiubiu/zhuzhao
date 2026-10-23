@@ -138,8 +138,8 @@ func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
 		}
 		return err
 	}
-	if isSys {
-		return errcode.ErrMsgTplSystem
+	if err := checkDeleteGuard(isSys); err != nil {
+		return err
 	}
 	// 守卫②+F-1-8 修复：引用即拦[含禁用规则] + 单语句原子化
 	tag, err := r.db.Exec(ctx,
@@ -155,6 +155,15 @@ func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
 			return errcode.ErrMsgTplNotFound
 		}
 		return errcode.ErrMsgTplReferenced
+	}
+	return nil
+}
+
+// checkDeleteGuard 删除守卫纯函数（外审 F3-1-1：从 integration 测试抽为免 DB 单测——CI 可跑）。
+// 返回 nil=可删；92503=系统模板。守卫②（NOT EXISTS 原子化）在 SQL 层。
+func checkDeleteGuard(isSystem bool) error {
+	if isSystem {
+		return errcode.ErrMsgTplSystem
 	}
 	return nil
 }

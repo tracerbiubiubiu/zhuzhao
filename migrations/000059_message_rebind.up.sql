@@ -1,4 +1,4 @@
--- S6 外审 F-2-4 修复：消息管理 12 端点从 ticket_type_manage 重绑到 system_notification
+-- S6 外审 F-2-4 修复：消息管理 8 端点从 ticket_type_manage 重绑到 system_notification
 -- （权限语义修正：消息模板/规则/发送记录属通知中心，非工单类型管理面）
 -- 先从 ticket_type_manage 删旧绑定
 DELETE FROM menu_apis

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
@@ -37,10 +38,16 @@ var supportedChannels = map[string]bool{"uip": true, "webhook": true}
 // （管理员写了不存在/不支持的变量→保存期 400——比运行时跳过更早反馈）。
 func validatePlaceholders(subject, body string) error {
 	for _, ph := range msgrender.ExtractPlaceholders(subject + " " + body) {
-		if !builtinVarSet[ph] {
-			return errcode.New(errcode.ErrInvalidParams.Code,
-				fmt.Sprintf("模板引用了不支持的变量 %s——可用变量见 variables 端点", ph))
+		if builtinVarSet[ph] {
+			continue
 		}
+		// F3-1-3 修复：ticket.fields.* 前缀放行（S1 field_meta 动态字段源——
+		// RenderQuadrant 的「动态键 skip+warn」档设计可达；variables 端点随二期补枚举）
+		if strings.HasPrefix(ph, "ticket.fields.") {
+			continue
+		}
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("模板引用了不支持的变量 %s——可用变量见 variables 端点", ph))
 	}
 	return nil
 }
