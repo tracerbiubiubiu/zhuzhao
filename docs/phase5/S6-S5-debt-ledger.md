@@ -29,7 +29,7 @@
 | B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | B6-7 二期或 phase6 | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
 | B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
-| B-12 | S1 | P2-8 游离 godoc（ticket_handler 4 处） | 随手批 | 全量核查 | 5min |
+| B-12 | S1 | ~~P2-8 游离 godoc（ticket_handler 4 处）~~ **✅ 已修（bf4a388 删 FieldImpact 前重复块——现存 ticket_handler.go:432 为合法附着非游离——v3 审计 L-2 补标）** | 随手批 | 全量核查 | 5min |
 | B-13 | S1 | P1-21 `'deleted'` 字面量在 repo + Subscribe 无 name | 随手批 | 外审 F-2-7 | ~0.5h |
 | B-14 | S6 | ~~渠道命名两套冲突~~ **✅ 已修（33b42a7 批 3 对表——06 号 §3:39 两级渠道词表成文：channel=adapter 层 uip/webhook + delivery=偏好层——v3 审计 R-2 补标）** | 文档批 | 06 号 §3 | 5min |
 | B-15 | S3a | ~~on_complete 直调 send() vs 通知收敛走 S6 规则面——二选一成文~~ **✅ 已拍死（33b42a7 批 3 对表——03 号 §3:48 事件优先成文，原直调表述作废——v3 审计 R-2 补标）** | S3a 开工前 | 03 号 §3.3 | 拍板 |
@@ -53,14 +53,14 @@
 | C-9 | S1 | spec JSONB 收件人模型 / form-create runtime 渲染引擎 | ≥2 来源组合 / 渲染联动变重时 | 06 号 A.5 注 |
 | C-10 | S1 | manager_id 显式汇报线 | M-HR 启动 | HR 同步待设计 |
 | C-11 | S5 | aws-sdk-go 备选 | rclone/RustFS 兼容劣化 | RK-P5-13 |
-| C-12 | S6 | stub 独立 config 段（`notification.uip.*`） | 接 UIP 真实契约前 | 外审 F-1-14 |
+| C-12 | S6 | ~~stub 独立 config 段（`notification.uip.*`）~~ **✅ 已落（微批 A——Notification.UIP.Endpoint 四链+BindEnv+生产态 fail-fast；契约接入面归 D-1——v3 审计 L-2 补标）** | 接 UIP 真实契约前 | 外审 F-1-14 |
 | C-13 | S6 | markdown 渠道转义（`channelEscapes` 加第三族） | UIP 契约确认正文格式后 | 外审 F-2-9 |
 | C-14 | S5 | cookie Secure release 强制 | 生产 HTTPS 网关前置 | 外审 F-4-7 |
 | C-15 | S6 | 死信/emitEvent ctx 超时+request_id | 接入链路追踪时 | 外审 F-2-8 |
 | C-16 | S6 | 节流入口廉价预判 | 通知量级异常增大时 | 外审 F-2-8 |
 | C-17 | S5 | mirror 侧车失败聚合可见面（F-C1） | B10-4 |
 | C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行 | P3 量级到了 |
-| C-19 | S6 | settings Upsert version 乐观锁（F-D2——000060 在途收尾） | 下个迁移顺位 |
+| C-19 | S6 | ~~settings Upsert version 乐观锁（F-D2——000060 在途收尾）~~ **✅ 已落码（000050+settings_service.go:232 CAS+expected_version 双测试——早于本台账终版即已交付，登记滞后——v3 审计 L-2 补标）** | 下个迁移顺位 |
 
 ## D. 外部依赖 / 远期
 
@@ -94,7 +94,10 @@
 > **登记了触发信号 ≠ 触发信号可观测**——C 组「触发驱动」类挂账若代码面零实现
 > 观测面（端点/日志/SQL），事实上等于「永不触发」。后续登记触发驱动项须同时
 > 回答：触发信号由什么代码产生？谁来读？
+> **豁免（v3 审计 L-2 补）**：诉求/决策型触发（如 C-3 护栏泛化、C-4 翻案、
+> C-8 危害实证）信号=所有者人判断，不要求代码观测面——判据只约束技术信号型
+> 条目（量级水位/契约到达/依赖启动类）。
 
 ---
 
-*基线：zhuzhao `f3e321d` / zhuzhao-ui `9ada8da4`（2026-10-23 双仓 CI 绿）——A 组 4 项全清；下一迁移编号 000061*
+*基线：zhuzhao `4deecab` / zhuzhao-ui `9ada8da4`（2026-10-23）——A 组 4 项全清+B-12/13/14/15/17/C-12/C-19 已销（v3 审计 R-2/L-2）；下一迁移编号 000062（000061=Y-3 message_rules FK 已占）*

@@ -111,6 +111,7 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 ## 10. 验收口径
 
 - 后端随四档 acceptance；管理页走 ui CI + E2E + 场景走查。
+- **API 文档面口径（v3 审计 Y-5 登记）**：自服务端点（`GET/POST /me/notification-optouts`——登录态用户自查自设偏好）**不进 Swagger**——Swagger 面向管理页/前端契约消费，自服务端点无页面消费者且豁免 menu_apis（SelfService 组直挂），补注解属伪需求；后续若通知中心独立页面消费再补。
 - 场景标尺：状态流转 → 模板渲染（占位符替换 + 转义——**注入负向必测**：字段值含 `{{`/HTML 不被执行、markdown 渠道不渲染为链接）→ 收件人解析 → 桩发送 → message_log 落行；异步投递（发送失败不回滚工单事务）；同单连发节流生效；未配置渠道生产态 fail-fast 报"未配置"（**虚标防线负向**）。
 - phase6 前向验收：事件面多订阅者挂载演示（第二订阅者零改 ticket service）。
 
