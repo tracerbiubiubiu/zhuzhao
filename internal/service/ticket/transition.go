@@ -241,3 +241,24 @@ func AvailableTransitionsFor(ctx context.Context, t *model.Ticket, transitions m
 	}
 	return out
 }
+
+// parseStateMeta 提取 state 级段（B10-4 timeout/SLA due 共用——与 parseTransitionMeta
+// 对偶；坏数据返回 nil 由调用方跳过）。
+func parseStateMeta(raw json.RawMessage, state string) (*stateMeta, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	seg, ok := m[state]
+	if !ok {
+		return nil, nil
+	}
+	var sm stateMeta
+	if err := json.Unmarshal(seg, &sm); err != nil {
+		return nil, err
+	}
+	return &sm, nil
+}

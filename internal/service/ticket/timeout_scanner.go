@@ -35,6 +35,7 @@ const (
 // stateMeta transition_meta 的 state 级段（结构对齐 validateTransitionMeta）。
 type stateMeta struct {
 	TimeoutMinutes *int `json:"timeout_minutes"`
+	SLADueHours    *int `json:"sla_due_hours"` // SLA 层 0.5（deadline 模型 A——进入状态时刻+N 小时=due）
 	Escalation     *struct {
 		Notify                  []string `json:"notify"`
 		ReminderIntervalMinutes *int     `json:"reminder_interval_minutes"`
@@ -78,14 +79,21 @@ func (s *TimeoutScanner) Handle(ctx context.Context, _ json.RawMessage) error {
 			continue
 		}
 		for state, m := range metas {
-			if m.TimeoutMinutes == nil || *m.TimeoutMinutes <= 0 {
-				continue
+			if m.TimeoutMinutes != nil && *m.TimeoutMinutes > 0 {
+				n, err := s.scanState(ctx, tc.code, state, *m.TimeoutMinutes, m.Escalation)
+				if err != nil {
+					return fmt.Errorf("scan %s/%s: %w", tc.code, state, err)
+				}
+				scanned += n
 			}
-			n, err := s.scanState(ctx, tc.code, state, *m.TimeoutMinutes, m.Escalation)
-			if err != nil {
-				return fmt.Errorf("scan %s/%s: %w", tc.code, state, err)
+			// SLA 层 0.5：deadline 到期扫描（due 刻=进入状态+sla_due_hours）
+			if m.SLADueHours != nil && *m.SLADueHours > 0 {
+				n, err := s.scanDeadline(ctx, tc.code, state, *m.SLADueHours)
+				if err != nil {
+					return fmt.Errorf("deadline %s/%s: %w", tc.code, state, err)
+				}
+				scanned += n
 			}
-			scanned += n
 		}
 	}
 	if s.observe {
@@ -298,4 +306,81 @@ func joinIDs(ids []string) string {
 		out += id
 	}
 	return out
+}
+
+// scanDeadline deadline 到期扫描（SLA 层 0.5——模型 A 截止时间戳语义）：
+// 命中 emit ticket.deadline（收件人=assignee∪人工指定上级，与 timeout 同构——
+// message_log 查重防重发）。due 写入点在 Transition commit 后按 to 态 sla_due_hours 计算。
+func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state string, dueHours int) (int, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, COALESCE(human_key, ''), title, assigned_to, escalation_supervisor_id
+		FROM tickets
+		WHERE type_code = $1 AND status = $2
+		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, typeCode, state)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	cands, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (candidateRow, error) {
+		var c candidateRow
+		err := r.Scan(&c.id, &c.humanKey, &c.title, &c.assignedTo, &c.escalationSupervisorID)
+		return c, err
+	})
+	if err != nil {
+		return 0, err
+	}
+	notify := []string{"assignee", "supervisor"}
+	sent := 0
+	for _, c := range cands {
+		_, ok, err := s.shouldRemind(ctx, c.id, state, 24*60, 1) // deadline 单次提醒
+		if err != nil {
+			return sent, err
+		}
+		if !ok {
+			continue
+		}
+		if s.observe {
+			sent++
+			s.logger.Warn("deadline_scan: overdue candidate (observe, not sent)", "ticket", c.id, "state", state)
+			continue
+		}
+		s.emitDeadline(c, state, notify)
+		if err := s.bumpReminder(ctx, c.id, "deadline:"+state); err != nil {
+			return sent, err
+		}
+		sent++
+	}
+	return sent, nil
+}
+
+// emitDeadline 到期事件（cc_users=assignee∪上级——timeout 同构）。
+func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []string) {
+	if s.eventReg == nil {
+		return
+	}
+	var targets []string
+	var toAssignee string
+	if c.assignedTo != nil {
+		toAssignee = strconv.FormatInt(*c.assignedTo, 10)
+		targets = append(targets, toAssignee)
+	}
+	if c.escalationSupervisorID != nil {
+		targets = append(targets, strconv.FormatInt(*c.escalationSupervisorID, 10))
+	}
+	if len(targets) == 0 {
+		return
+	}
+	payload := domainevent.Payload{"title": c.title, "status": state}
+	if c.humanKey != "" {
+		payload["human_key"] = c.humanKey
+	} else {
+		payload["human_key"] = strconv.FormatInt(c.id, 10)
+	}
+	payload["to_assignee"] = toAssignee
+	payload["cc_users"] = joinIDs(targets)
+	s.eventReg.Dispatch(context.Background(), domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketDeadline,
+		BizID:   strconv.FormatInt(c.id, 10),
+		Payload: payload, Timestamp: time.Now(),
+	})
 }

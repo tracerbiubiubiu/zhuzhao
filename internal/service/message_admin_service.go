@@ -88,6 +88,7 @@ var validEventActions = map[string]bool{
 	"ops.cron_failed":        true, // S10 B10-4 cron 失败告警（BizType=ops——000064 种子）
 	"ticket.transitioned":    true, // S3a B3-1（无种子规则=默认不通知——管理员可配）
 	"ticket.dispatch_missed": true, // S3a B3-2（新单无人接监控——管理员可配告警路由）
+	"ticket.deadline":        true, // S3a SLA 层 0.5（deadline 到期——000071 种子规则）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }

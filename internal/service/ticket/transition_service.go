@@ -95,6 +95,17 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: payload, Timestamp: time.Now(),
 	})
+	// S3a 随窗件 SLA 层 0.5：按 to 状态的 sla_due_hours 写 due 刻（模型 A——
+	// 进入状态时刻+N 小时；无配置=清 NULL）
+	if toMeta, err := parseStateMeta(ttype.TransitionMeta, req.To); err == nil && toMeta != nil {
+		if toMeta.SLADueHours != nil && *toMeta.SLADueHours > 0 {
+			_, _ = s.db.Exec(ctx,
+				`UPDATE tickets SET sla_due_at = NOW() + make_interval(hours => $1) WHERE id = $2`,
+				*toMeta.SLADueHours, req.ID)
+		} else {
+			_, _ = s.db.Exec(ctx, `UPDATE tickets SET sla_due_at = NULL WHERE id = $1`, req.ID)
+		}
+	}
 	// S3a B3-3：post_actions（commit 后——失败不回滚转换[RunPostActions 内捕获]）
 	if s.actionReg != nil {
 		s.actionReg.RunPostActions(ctx, slog.Default(), tm, ActionContext{

@@ -149,6 +149,7 @@ func validateTransitionMeta(states []string, meta json.RawMessage) error {
 		}
 		var seg struct {
 			TimeoutMinutes *int `json:"timeout_minutes"`
+			SLADueHours    *int `json:"sla_due_hours"` // S3a 随窗件 SLA 层 0.5（deadline 模型 A）
 			Escalation     *struct {
 				Notify                  []string `json:"notify"`
 				ReminderIntervalMinutes *int     `json:"reminder_interval_minutes"`
@@ -160,6 +161,9 @@ func validateTransitionMeta(states []string, meta json.RawMessage) error {
 		}
 		if seg.TimeoutMinutes != nil && *seg.TimeoutMinutes <= 0 {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].timeout_minutes 须为正整数", state))
+		}
+		if seg.SLADueHours != nil && *seg.SLADueHours <= 0 {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].sla_due_hours 须为正整数", state))
 		}
 		if e := seg.Escalation; e != nil {
 			for _, n := range e.Notify {
