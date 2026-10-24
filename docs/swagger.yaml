@@ -12,6 +12,20 @@ definitions:
     - ticket_id
     - user_ids
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest:
+    properties:
+      tags:
+        items:
+          type: string
+        maxItems: 20
+        type: array
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - tags
+    - ticket_id
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest:
     properties:
       menu_ids:
@@ -484,6 +498,18 @@ definitions:
     required:
     - ticket_id
     - user_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest:
+    properties:
+      tag:
+        maxLength: 50
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - tag
+    - ticket_id
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest:
     properties:
@@ -1095,6 +1121,18 @@ paths:
       summary: 刷新 Token
       tags:
       - auth
+  /api/v1/badges:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 待办角标聚合（sections 开放 map——前端 60s 轮询；未知 section 前端忽略）
+      tags:
+      - badge
   /api/v1/dead-letters:
     get:
       produces:
@@ -2364,6 +2402,24 @@ paths:
       summary: 工单关联列表
       tags:
       - ticket
+  /api/v1/tickets/{id}/tags:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单标签列表
+      tags:
+      - ticket
   /api/v1/tickets/assign:
     post:
       consumes:
@@ -2622,6 +2678,48 @@ paths:
                   $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse'
               type: object
       summary: richtext 字段服务端渲染（消毒 SSOT）
+      tags:
+      - ticket
+  /api/v1/tickets/tags:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 添加工单标签
+      tags:
+      - ticket
+  /api/v1/tickets/tags/remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 移除标签请求（自摘=读可见；摘他人挂的=update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 移除工单标签
       tags:
       - ticket
   /api/v1/tickets/update:

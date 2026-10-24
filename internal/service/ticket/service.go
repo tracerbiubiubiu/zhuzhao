@@ -38,6 +38,7 @@ type Service struct {
 	eventReg    *domainevent.HookRegistry
 	keyGen      *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
 	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
+	tagRepo     *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -69,6 +70,7 @@ func NewTicketService(
 	fetcherReg *datafetcher.Registry,
 ) *Service {
 	ccRepo := repository.NewTicketCCRepo(db)
+	tagRepo := repository.NewTagRepo(db)
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
@@ -81,6 +83,7 @@ func NewTicketService(
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
 		ccRepo:      ccRepo,
+		tagRepo:     tagRepo,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
 	// + S10 B10-1 抄送特例支（读可见集）

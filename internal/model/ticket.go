@@ -47,6 +47,16 @@ type TicketCCRow struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// TagRow 标签行回显（S10 B10-2——默认共享+挂载人留痕；TagRepo join users 富化，
+// 软删挂载人保留标签行不回填姓名——共享标签可溯源）。
+type TagRow struct {
+	Tag           string    `json:"tag"`
+	CreatedBy     int64     `json:"created_by,string"`
+	CreatedByName string    `json:"created_by_name,omitempty"`
+	CreatedByNo   string    `json:"created_by_no,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 // TicketType 工单类型配置
 type TicketType struct {
 	ID              int64           `json:"id,string" db:"id"`

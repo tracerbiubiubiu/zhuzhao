@@ -46,6 +46,9 @@ type Deps struct {
 	MessageAdminHandler     *handler.MessageAdminHandler
 	NotificationPrefHandler *handler.NotificationPrefHandler
 
+	// S10 B10-3 角标聚合（登录态自服务——sections 开放 map）
+	BadgeHandler *handler.BadgeHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -210,6 +213,13 @@ func New(deps Deps) *gin.Engine {
 				selfService.POST("/tickets/cc", deps.TicketHandler.AddCC)
 				selfService.POST("/tickets/cc/remove", deps.TicketHandler.RemoveCC)
 				selfService.GET("/tickets/:id/cc", deps.TicketHandler.ListCC)
+				// S10 B10-2 标签（拍板点 6 默认共享无权限模型——挂/自摘/列表=read 面；
+				// 摘他人挂的=update 面；可见性随工单 L2）
+				selfService.POST("/tickets/tags", deps.TicketHandler.AddTags)
+				selfService.POST("/tickets/tags/remove", deps.TicketHandler.RemoveTag)
+				selfService.GET("/tickets/:id/tags", deps.TicketHandler.ListTags)
+				// S10 B10-3 角标聚合（登录态——A.4 sections 开放 map，phase6 零改协议并入）
+				selfService.GET("/badges", deps.BadgeHandler.List)
 
 				// 当前用户信息
 				userSelf := selfService.Group("/user")

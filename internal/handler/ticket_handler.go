@@ -48,6 +48,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 		PageSize: queryInt(c, "page_size", 20),
 		TypeCode: c.Query("type_code"),
 		Status:   c.Query("status"),
+		Tag:      c.Query("tag"),
 	}
 	if q.Page < 1 {
 		q.Page = 1
@@ -745,4 +746,71 @@ func (h *TicketHandler) ListCC(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"cc": rows})
+}
+
+// AddTags POST /api/v1/tickets/tags（S10 B10-2 标签）
+//
+//	@Summary	添加工单标签
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AddTicketTagsRequest	true	"添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/tags [post]
+func (h *TicketHandler) AddTags(c *gin.Context) {
+	var req model.AddTicketTagsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误（tags ≤20 个，单个 ≤50 字符）")
+		return
+	}
+	rows, err := h.ticketService.AddTags(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"tags": rows})
+}
+
+// RemoveTag POST /api/v1/tickets/tags/remove
+//
+//	@Summary	移除工单标签
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RemoveTicketTagRequest	true	"移除标签请求（自摘=读可见；摘他人挂的=update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/tags/remove [post]
+func (h *TicketHandler) RemoveTag(c *gin.Context) {
+	var req model.RemoveTicketTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketService.RemoveTag(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// ListTags GET /api/v1/tickets/:id/tags
+//
+//	@Summary	工单标签列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Param		id	path	int	true	"工单 ID"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/tickets/{id}/tags [get]
+func (h *TicketHandler) ListTags(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	rows, err := h.ticketService.ListTags(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"tags": rows})
 }

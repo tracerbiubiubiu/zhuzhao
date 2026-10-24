@@ -144,6 +144,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatHandler:              patHandler,
 		PatLookup:               patRepo,
 		TicketHandler:           ticketHandler,
+		BadgeHandler:            handler.NewBadgeHandler(ticket.NewBadgeService(pool)),
 		StorageHandler:          storageHandler,
 		SettingsHandler:         settingsHandler,
 		JWTManager:              manager,

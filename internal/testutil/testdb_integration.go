@@ -167,6 +167,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000061_message_rules_fk.up.sql",
 			// S10 B10-1: ticket_cc + 种子模板/规则（cc 特例支/通知链集成依赖）
 			"000062_ticket_cc.up.sql",
+			// S10 B10-2: tags 通用标签表
+			"000063_tags.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

@@ -243,6 +243,25 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/badges": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badge"
+                ],
+                "summary": "待办角标聚合（sections 开放 map——前端 60s 轮询；未知 section 前端忽略）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dead-letters": {
             "get": {
                 "security": [
@@ -2526,6 +2545,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/tags": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "添加工单标签",
+                "parameters": [
+                    {
+                        "description": "添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/tags/remove": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "移除工单标签",
+                "parameters": [
+                    {
+                        "description": "移除标签请求（自摘=读可见；摘他人挂的=update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/update": {
             "post": {
                 "consumes": [
@@ -2702,6 +2787,34 @@ const docTemplate = `{
                     "ticket"
                 ],
                 "summary": "工单关联列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/tags": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单标签列表",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3369,6 +3482,26 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest": {
+            "type": "object",
+            "required": [
+                "tags",
+                "ticket_id"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest": {
             "type": "object",
             "required": [
@@ -4018,6 +4151,23 @@ const docTemplate = `{
                     "example": "0"
                 },
                 "user_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest": {
+            "type": "object",
+            "required": [
+                "tag",
+                "ticket_id"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "ticket_id": {
                     "type": "string",
                     "example": "0"
                 }

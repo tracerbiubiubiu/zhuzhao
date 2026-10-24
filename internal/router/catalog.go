@@ -72,9 +72,15 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/tickets/attachments/confirm": true,
 	"POST /api/v1/tickets/richtext/render":     true, // B5-4 渲染 SSOT（登录态自服务——无票据访问，纯消毒渲染）
 	// S10 B10-1 抄送（L2 read/update 面——service 层动态判定，工单操作不走静态权限码）
-	"POST /api/v1/tickets/cc":           true,
-	"POST /api/v1/tickets/cc/remove":    true,
-	"GET /api/v1/tickets/:id/cc":        true,
+	"POST /api/v1/tickets/cc":        true,
+	"POST /api/v1/tickets/cc/remove": true,
+	"GET /api/v1/tickets/:id/cc":     true,
+	// S10 B10-2 标签（L2 read/update 面——service 层动态判定；默认共享拍板点 6）
+	"POST /api/v1/tickets/tags":        true,
+	"POST /api/v1/tickets/tags/remove": true,
+	"GET /api/v1/tickets/:id/tags":     true,
+	// S10 B10-3 角标聚合（登录态自服务——sections 内不含越权数据）
+	"GET /api/v1/badges":                true,
 	"POST /api/v1/user/pats":            true,
 	"POST /api/v1/user/pats/delete":     true,
 	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）

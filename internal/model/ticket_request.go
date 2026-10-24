@@ -103,6 +103,9 @@ type TicketListQuery struct {
 	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
 	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
 	AssigneeID *int64
+	// Tag 标签筛选（S10 B10-2）：EXISTS tags 子查询精确匹配；可见性仍由 L2
+	// GetFilter 管线约束（标签可见性随工单——拍板点 6 口径）。空 = 不过滤
+	Tag string
 	// Keyword 标题关键字：ILIKE 子串（D2-21 转义）；纯数字时 OR 工单 ID 精确匹配
 	//（运维「粘工单号」高频动作，纯标题子串会漏）。空 = 不过滤
 	Keyword string
@@ -198,6 +201,20 @@ type UpdateTicketTemplateRequest struct {
 type AddTicketCCRequest struct {
 	TicketID int64   `json:"ticket_id,string" binding:"required"`
 	UserIDs  []int64 `json:"user_ids" binding:"required,gt=0,dive,gt=0"`
+}
+
+// AddTicketTagsRequest 添加标签（S10 B10-2——POST /tickets/tags；读可见面协作动作，
+// 与评论同档：透明读可见即可协作打标——拍板点 6 默认共享无权限模型）。
+type AddTicketTagsRequest struct {
+	TicketID int64    `json:"ticket_id,string" binding:"required"`
+	Tags     []string `json:"tags" binding:"required,gt=0,max=20,dive,max=50"`
+}
+
+// RemoveTicketTagRequest 移除标签（POST /tickets/tags/remove）。
+// 自摘=读可见；摘他人挂的=update 权（与 cc 摘除对称）。
+type RemoveTicketTagRequest struct {
+	TicketID int64  `json:"ticket_id,string" binding:"required"`
+	Tag      string `json:"tag" binding:"required,max=50"`
 }
 
 // RemoveTicketCCRequest 移除抄送（POST /tickets/cc/remove）。

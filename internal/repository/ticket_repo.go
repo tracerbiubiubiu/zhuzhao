@@ -157,6 +157,10 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 			conds = append(conds, fmt.Sprintf("title ILIKE %s ESCAPE '\\'", kw))
 		}
 	}
+	// 标签筛选（S10 B10-2）：可见性由外层 GetFilter 管线约束——标签不旁路 L2
+	if q.Tag != "" {
+		conds = append(conds, "EXISTS (SELECT 1 FROM tags tg WHERE tg.entity_type = 'ticket' AND tg.entity_id = tickets.id AND tg.tag = "+next(q.Tag)+")")
+	}
 	// 创建时间闭开区间（handler 已把 date 解析为 UTC 边界，to=次日 00:00）
 	if q.CreatedFromAt != nil {
 		conds = append(conds, "created_at >= "+next(*q.CreatedFromAt))
