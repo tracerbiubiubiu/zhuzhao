@@ -157,14 +157,49 @@ func TestB104_Timeout(t *testing.T) {
 		assert.Zero(t, rows, "观察模式不耗水位")
 	})
 
+	t.Run("D1 修复：重入同状态后水位归零（审计 D1）", func(t *testing.T) {
+		tk2, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "D1 重入单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk2.ID, AssignedTo: &bid}, aid))
+		backdateStatusChanged(t, tk2.ID, 2*time.Hour)
+		for i := 0; i < 2; i++ {
+			require.NoError(t, scanner.Handle(ctx, nil))
+			_, err := testPool.Exec(ctx, `UPDATE ticket_reminders SET last_reminder_at = NOW() - interval '31 minutes' WHERE ticket_id = $1`, tk2.ID)
+			require.NoError(t, err)
+		}
+		// 转出→转回（走 Assign 通道——Assign 也经 UpdateStatusTx 写状态但不走 Transition
+		// 的清水位逻辑……Assign 不清水位！只有 Transition 清。所以此处用 Transition 转出再转回）
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk2.ID, To: "open"}, bid)
+		require.NoError(t, err)
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk2.ID, To: "assigned"}, bid)
+		require.NoError(t, err)
+		backdateStatusChanged(t, tk2.ID, 2*time.Hour)
+
+		var count int
+		err = testPool.QueryRow(ctx,
+			`SELECT reminder_count FROM ticket_reminders WHERE ticket_id = $1 AND state = 'assigned'`, tk2.ID).Scan(&count)
+		if err != nil { // 行可能不存在（DELETE 后未再催）——nil 即归零
+			count = 0
+		}
+		assert.Zero(t, count, "重入后旧状态水位被 Transition 清零")
+
+		require.NoError(t, scanner.Handle(ctx, nil))
+		var after int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT reminder_count FROM ticket_reminders WHERE ticket_id = $1 AND state = 'assigned'`, tk2.ID).Scan(&after))
+		assert.Equal(t, 1, after, "重入后再催=从 1 起算")
+	})
+
 	t.Run("状态离开：partial 索引天然排除", func(t *testing.T) {
-		// 取消分派 → open（无超时配置状态）
+		before := timeoutMsgs() // D1 子测可能追加了 tk2 的催办——取基线差值
 		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: nil}, aid))
 		_, err := testPool.Exec(ctx, `UPDATE ticket_reminders SET last_reminder_at = NOW() - interval '31 minutes' WHERE ticket_id = $1`, tk.ID)
 		require.NoError(t, err)
 		require.NoError(t, scanner.Handle(ctx, nil))
 		time.Sleep(150 * time.Millisecond)
-		assert.Equal(t, 2, timeoutMsgs(), "离开超时状态后不再催办")
+		assert.Equal(t, before, timeoutMsgs(), "离开超时状态后不再催办（tk 离开 assigned）")
 	})
 }
 

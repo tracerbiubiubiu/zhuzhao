@@ -29,13 +29,13 @@ func TestB33_Actions(t *testing.T) {
 
 	// bid 入 org（cc 动作无需 org——决议③ 是分派规则的事）
 	reg := NewActionRegistry()
-	reg.Register(&CCAction{svc: svc})
-	reg.Register(&ReassignAction{svc: svc})
+	reg.Register(NewCCAction(svc))
+	reg.Register(NewReassignAction(svc))
 	reg.Register(&NotifyAction{Reg: svc.eventReg})
 	svc.SetActionRegistry(reg)
 
 	t.Run("注册表：重复 panic/Names 排序/未注册 Get false", func(t *testing.T) {
-		assert.Error(t, reg.Register(&CCAction{svc: svc}), "重复注册返回 error")
+		assert.Error(t, reg.Register(NewCCAction(svc)), "重复注册返回 error")
 		names := reg.Names()
 		assert.Equal(t, []string{"cc", "notify", "reassign"}, names)
 		_, ok := reg.Get("spawn_task")

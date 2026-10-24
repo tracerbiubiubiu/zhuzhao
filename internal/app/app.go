@@ -280,6 +280,16 @@ func (a *App) Shutdown() error {
 	return serverErr
 }
 
+// taskSubmitterAdapter TaskrunnerService → ticket.TaskSubmitter 端口适配
+// （域隔离禁 service 互 import——app 装配层做类型转换，zip 同构字段）。
+type taskSubmitterAdapter struct{ svc *service.TaskrunnerService }
+
+func (a *taskSubmitterAdapter) Submit(ctx context.Context, in *ticket.TaskSubmitInput, actor, sourceIP, selfBaseURL string) (any, error) {
+	return a.svc.Submit(ctx, &service.TaskSubmitInput{
+		Action: in.Action, Params: in.Params, TimeoutSecs: in.TimeoutSecs,
+	}, actor, sourceIP, selfBaseURL)
+}
+
 // cronJobFunc 函数适配 ReentrantJob（S6 B6-7 inbox_cleanup——InboxService.CleanupExpired）。
 type cronJobFunc func(ctx context.Context) error
 

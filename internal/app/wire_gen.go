@@ -108,6 +108,13 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	// S3a B3-2：分派规则服务（OnAfterCreate 在 ticketService.Create 内调——
 	// 通过 DispatchService 持有 svc 反向引用；装配期注入）
 	dispatchSvc := ticket.NewDispatchService(repository.NewAssignmentRuleRepo(pool), ticketService, logger)
+	// S3a B3-3：动作库装配（修复前漏注入——actionReg 恒 nil 致 post_actions
+	// 整链路生产不执行且静默跳过；审计 A1）
+	actionReg := ticket.NewActionRegistry()
+	actionReg.Register(&ticket.NotifyAction{}) // eventReg 在 NewApp 层——SetEventRegistry 后生效
+	actionReg.Register(&ticket.CCAction{Svc: ticketService})
+	actionReg.Register(&ticket.ReassignAction{Svc: ticketService})
+	ticketService.SetActionRegistry(actionReg)
 	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
@@ -122,6 +129,11 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	taskrunnerConfig := cfg.Taskrunner
 	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
 	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
+	// spawn_task 动作（durable_submit——taskrunner 持久化凭证；适配器桥接。
+	// Registry 指针引用——SetActionRegistry 已注入，此处 Register 同一实例生效）
+	if err := actionReg.Register(ticket.NewSpawnTaskAction(&taskSubmitterAdapter{svc: taskrunnerService})); err != nil {
+		panic(err) // 装配期 fail-fast
+	}
 	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig, jobsRegistry)
 	gatewayRegistry, err := provideGateway(cfg)
 	if err != nil {

@@ -53,15 +53,18 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 
 // CCAction 抄送动作（复用 cc_service AddCC——读可见特例支自动生效）。
 type CCAction struct {
-	svc *Service
+	Svc *Service
 }
+
+// NewCCAction 构造（app 装配用——A1 修复随批）。
+func NewCCAction(svc *Service) *CCAction { return &CCAction{Svc: svc} }
 
 func (a *CCAction) Name() string                { return "cc" }
 func (a *CCAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce }
 
 // Execute params: {"user_ids": [int...]}——以动作上下文操作人身份挂抄送。
 func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
-	if a.svc == nil || ac.Params == nil {
+	if a.Svc == nil || ac.Params == nil {
 		return nil
 	}
 	list, ok := ac.Params["user_ids"].([]any)
@@ -81,7 +84,7 @@ func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
 	if ac.SystemAsCreator {
 		actor = ac.Ticket.CreatedBy // 系统身份重放——creator 恒有「抄送他人」update 面
 	}
-	_, err := a.svc.AddCC(ctx, &model.AddTicketCCRequest{
+	_, err := a.Svc.AddCC(ctx, &model.AddTicketCCRequest{
 		TicketID: ac.Ticket.ID, UserIDs: ids,
 	}, actor)
 	return err
@@ -90,15 +93,18 @@ func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
 // ReassignAction 转派动作（升级链——强一致写操作；A.3 裁定：扫描器事务内直调
 // 同源。此实现=转换后形态，事务=调用方转换事务之后的独立事务）。
 type ReassignAction struct {
-	svc *Service
+	Svc *Service
 }
+
+// NewReassignAction 构造（app 装配用——A1 修复随批）。
+func NewReassignAction(svc *Service) *ReassignAction { return &ReassignAction{Svc: svc} }
 
 func (a *ReassignAction) Name() string                { return "reassign" }
 func (a *ReassignAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce } // 写操作但单条 Assign 幂等可重试
 
 // Execute params: {"user_id": int}——转派到目标处理人。
 func (a *ReassignAction) Execute(ctx context.Context, ac ActionContext) error {
-	if a.svc == nil || ac.Params == nil {
+	if a.Svc == nil || ac.Params == nil {
 		return nil
 	}
 	f, ok := ac.Params["user_id"].(float64)
@@ -110,13 +116,18 @@ func (a *ReassignAction) Execute(ctx context.Context, ac ActionContext) error {
 	if ac.SystemAsCreator {
 		actor = ac.Ticket.CreatedBy
 	}
-	return a.svc.Assign(ctx, &model.AssignTicketRequest{ID: ac.Ticket.ID, AssignedTo: &uid}, actor)
+	return a.Svc.Assign(ctx, &model.AssignTicketRequest{ID: ac.Ticket.ID, AssignedTo: &uid}, actor)
 }
 
 // SpawnTaskAction 提交任务动作（owner 2026-10-24 场景实证——「下发即起任务」；
 // durable_submit：taskrunner 持久化凭证+回调幂等栅栏消费）。
 type SpawnTaskAction struct {
-	client TaskSubmitter // taskrunner 提交通道接口（防 service 互 import——端口注入）
+	Client TaskSubmitter // taskrunner 提交通道接口（防 service 互 import——端口注入）
+}
+
+// NewSpawnTaskAction 构造（app 装配用——A1 修复随批）。
+func NewSpawnTaskAction(client TaskSubmitter) *SpawnTaskAction {
+	return &SpawnTaskAction{Client: client}
 }
 
 // TaskSubmitInput 提交请求（taskrunner_service.TaskSubmitInput 投影——域隔离
@@ -140,7 +151,7 @@ func (a *SpawnTaskAction) Delivery() DeliverySemantics { return DeliveryDurableS
 // 提交一次性任务；params 支持 {"from": "ticket.field"} 简单取数（event/result
 // 全量映射随 B3-3 后批）。
 func (a *SpawnTaskAction) Execute(ctx context.Context, ac ActionContext) error {
-	if a.client == nil || ac.Params == nil {
+	if a.Client == nil || ac.Params == nil {
 		return fmt.Errorf("spawn_task: 未装配 taskrunner 通道")
 	}
 	actionID, _ := ac.Params["action"].(string)
@@ -159,7 +170,7 @@ func (a *SpawnTaskAction) Execute(ctx context.Context, ac ActionContext) error {
 	if tv, ok := ac.Params["timeout_secs"].(float64); ok {
 		timeout = int(tv)
 	}
-	_, err := a.client.Submit(ctx, &TaskSubmitInput{
+	_, err := a.Client.Submit(ctx, &TaskSubmitInput{
 		Action: actionID, Params: taskParams, TimeoutSecs: timeout,
 	}, fmt.Sprintf("action:%d", ac.ActorID), "", "")
 	return err
