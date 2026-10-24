@@ -25,10 +25,17 @@ type BadgeService struct {
 }
 
 // NewBadgeService 创建并完成 ticket 域自注册（todo）。
+// unread section 经 RegisterUnread 由装配层注入（B6-7 inbox 依赖——避免
+// badge 直接依赖 inbox service 的构造环）。
 func NewBadgeService(db *pgxpool.Pool) *BadgeService {
 	s := &BadgeService{db: db, sections: map[string]SectionFunc{}, logger: slog.Default()}
 	s.Register("todo", s.todoCount)
 	return s
+}
+
+// RegisterUnread 注册未读数 section（S6 B6-7——inbox service 装配后调用）。
+func (s *BadgeService) RegisterUnread(fn SectionFunc) {
+	s.Register("unread", fn)
 }
 
 // Register 注册/覆盖一个 section 计算器（域内装配期调用；非并发安全——仅启动期）。

@@ -162,3 +162,16 @@ type AssignmentRule struct {
 	CreatedBy  int64     `json:"created_by,string"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+// NotificationRow 站内通知行（S6 二期 B6-7——事件快照读过即完；title/link
+// 入站即渲染，读面零渲染逻辑）。
+type NotificationRow struct {
+	ID          int64      `json:"id,string"`
+	RecipientID int64      `json:"recipient_id,string"`
+	BizType     string     `json:"biz_type"`
+	BizID       *int64     `json:"biz_id,string,omitempty"`
+	Title       string     `json:"title"`
+	Link        string     `json:"link,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ReadAt      *time.Time `json:"read_at,omitempty"`
+}

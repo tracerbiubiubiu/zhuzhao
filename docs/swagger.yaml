@@ -1029,6 +1029,14 @@ definitions:
     - object_key
     - ticket_id
     type: object
+  internal_handler.notificationIDReq:
+    properties:
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
   response.Response:
     properties:
       code:
@@ -1617,6 +1625,70 @@ paths:
       security:
       - BearerAuth: []
       summary: 删除通知配置（body 携带 code——zhuzhao 风格）
+      tags:
+      - notifications
+  /api/v1/notifications/inbox:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页
+        in: query
+        name: page_size
+        type: integer
+      - description: 仅未读
+        in: query
+        name: unread
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 站内收件箱分页（倒序；unread=true 仅未读）
+      tags:
+      - notifications
+  /api/v1/notifications/read:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 通知 ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.notificationIDReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 单条已读（幂等；非本人 404 同形）
+      tags:
+      - notifications
+  /api/v1/notifications/read-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 全部已读（批量——返回置读条数）
       tags:
       - notifications
   /api/v1/notifications/update:

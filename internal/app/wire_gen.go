@@ -146,6 +146,13 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		}
 	}
 	intelSvc := threatintel.NewService(pool, intelProvider, intelTTL, logger)
+	// S6 二期 B6-7 站内消息中心（inbox=事件消费者——订阅 ticket/ops 双域；
+	// 未读数注入 badges sections；90 天保留清理骑 CronScheduler）
+	inboxSvc := ticket.NewInboxService(pool, 90, logger)
+	badgeSvc := ticket.NewBadgeService(pool)
+	badgeSvc.RegisterUnread(func(ctx context.Context, uid int64) (int64, error) {
+		return inboxSvc.UnreadCount(ctx, uid)
+	})
 
 	cronRegistry := service.NewCronRegistry()
 	deps := router.Deps{
@@ -164,7 +171,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatHandler:              patHandler,
 		PatLookup:               patRepo,
 		TicketHandler:           ticketHandler,
-		BadgeHandler:            handler.NewBadgeHandler(ticket.NewBadgeService(pool)),
+		BadgeHandler:            handler.NewBadgeHandler(badgeSvc),
 		SystemHandler:           handler.NewSystemHandler(cronRegistry),
 		IntelHandler:            handler.NewIntelHandler(intelSvc),
 		StorageHandler:          storageHandler,
@@ -213,7 +220,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 	engine := router.New(deps)
 	engineRef = engine
-	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore, cronRegistry)
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore, cronRegistry, inboxSvc)
 	if err != nil {
 		cleanup3()
 		cleanup2()

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,14 +30,15 @@ import (
 
 // App 应用实例
 type App struct {
-	cfg         *config.Config
-	logger      *slog.Logger
-	router      *gin.Engine
-	server      *http.Server
-	policyEval  *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
-	auditCron   *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
-	storageGC   *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
-	timeoutScan *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
+	cfg          *config.Config
+	logger       *slog.Logger
+	router       *gin.Engine
+	server       *http.Server
+	policyEval   *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron    *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
+	storageGC    *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
+	timeoutScan  *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
+	inboxCleanup *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
 }
 
 // NewApp 创建应用实例
@@ -45,7 +47,7 @@ type App struct {
 // 对账逻辑迁入此处，使 wire_gen 可安全再生。
 func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
 	pool *pgxpool.Pool, gw *gateway.Registry, storageCfg *pkgstorage.ConfigStore,
-	cronReg *service.CronRegistry) (*App, error) {
+	cronReg *service.CronRegistry, inboxSvc *ticket.InboxService) (*App, error) {
 	var prefixes []string
 	if gw != nil {
 		prefixes = gw.Prefixes
@@ -73,6 +75,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		notifSvc, // 06 号 §5.4 死信集成（实现 NotifyDeadLetterSender）
 	)
 	eventRegistry.Subscribe(domainevent.BizTicket, "ticket.notify", notifyHook)
+	// S6 二期 B6-7：inbox=事件消费者（站内通知落库）——SetEventRegistry 惯例注入
 	// S10 B10-4：ops 域（cron 失败告警）双订阅——同一编排链（MessageDispatcher）
 	eventRegistry.Subscribe(domainevent.BizOps, "ops.notify", notifyHook)
 
@@ -155,19 +158,31 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	}
 	// cron-status 数据面：注册表共享（wire_gen 建 handler 时已注入同实例——
 	// 装配环经注册表壳解开；nil 调度器跳过）
+	// S6 B6-7：inbox=事件消费者（站内通知落库）——SetEventRegistry 惯例注入
+	var inboxCleanup *service.CronScheduler
+	if inboxSvc != nil {
+		inboxSvc.SetEventRegistry(eventRegistry)
+		// 消息保留清理 cron（恒启用——90 天封顶；cronFailEmit 同挂）
+		inboxCleanup = service.NewCronScheduler(pool, "inbox_cleanup",
+			cronJobFunc(func(ctx context.Context) error { return inboxSvc.CleanupExpired(ctx) }),
+			24*time.Hour, logger)
+		inboxCleanup.SetOnFailure(cronFailEmit)
+		cronReg.Register("inbox_cleanup", inboxCleanup)
+	}
 	cronReg.Register("audit_archive", auditCron)
 	cronReg.Register("storage_gc", storageGC)
 	if timeoutScan != nil {
 		cronReg.Register("timeout_scan", &timeoutScanProvider{sch: timeoutScan, observe: timeoutObserve})
 	}
 	return &App{
-		cfg:         cfg,
-		logger:      logger,
-		router:      router,
-		policyEval:  policyEval,
-		auditCron:   auditCron,
-		storageGC:   storageGC,
-		timeoutScan: timeoutScan,
+		cfg:          cfg,
+		logger:       logger,
+		router:       router,
+		policyEval:   policyEval,
+		auditCron:    auditCron,
+		storageGC:    storageGC,
+		timeoutScan:  timeoutScan,
+		inboxCleanup: inboxCleanup,
 	}, nil
 }
 
@@ -218,6 +233,11 @@ func (a *App) Run() error {
 		go a.timeoutScan.Run(ctx)
 	}
 
+	// S6 B6-7：消息保留清理 cron
+	if a.inboxCleanup != nil {
+		go a.inboxCleanup.Run(ctx)
+	}
+
 	select {
 	case err := <-serverErr:
 		// 服务器异常退出（非 graceful shutdown）
@@ -259,6 +279,11 @@ func (a *App) Shutdown() error {
 	a.logger.Info("server stopped")
 	return serverErr
 }
+
+// cronJobFunc 函数适配 ReentrantJob（S6 B6-7 inbox_cleanup——InboxService.CleanupExpired）。
+type cronJobFunc func(ctx context.Context) error
+
+func (f cronJobFunc) Handle(ctx context.Context, _ json.RawMessage) error { return f(ctx) }
 
 // timeoutScanProvider timeout_scan 注册表适配：Status 取自调度器 + Observe
 // 标记取自装配 config（cron-status 透出——B10-4 观察模式运维确认口）。
