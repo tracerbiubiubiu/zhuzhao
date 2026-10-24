@@ -16,13 +16,14 @@ import (
 
 // TicketHandler 工单处理器
 type TicketHandler struct {
-	ticketService *ticketsvc.Service
-	audit         middleware.AuditLogger // S10 B10-5 导出自审计（可选 nil——测试装配）
+	ticketService   *ticketsvc.Service
+	audit           middleware.AuditLogger     // S10 B10-5 导出自审计（可选 nil——测试装配）
+	dispatchService *ticketsvc.DispatchService // S3a B3-2 分派规则管理面
 }
 
 // NewTicketHandler 创建 TicketHandler
-func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLogger) *TicketHandler {
-	return &TicketHandler{ticketService: ticketService, audit: audit}
+func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLogger, dispatch *ticketsvc.DispatchService) *TicketHandler {
+	return &TicketHandler{ticketService: ticketService, audit: audit, dispatchService: dispatch}
 }
 
 // List GET /api/v1/tickets
@@ -873,4 +874,87 @@ func (h *TicketHandler) ListAvailableTransitions(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"transitions": transitions})
+}
+
+// ListAssignmentRules GET /api/v1/assignment-rules（S3a B3-2——管理面）
+//
+//	@Summary	自动分派规则列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/assignment-rules [get]
+func (h *TicketHandler) ListAssignmentRules(c *gin.Context) {
+	rules, err := h.dispatchService.ListRules(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"rules": rules})
+}
+
+// CreateAssignmentRule POST /api/v1/assignment-rules
+//
+//	@Summary	建自动分派规则（target_user 须属 target_org——决议③写侧校验）
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.CreateAssignmentRuleRequest	true	"规则"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules [post]
+func (h *TicketHandler) CreateAssignmentRule(c *gin.Context) {
+	var req model.CreateAssignmentRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	rule, err := h.dispatchService.CreateRule(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, rule)
+}
+
+// DeleteAssignmentRule POST /api/v1/assignment-rules/delete
+//
+//	@Summary	删自动分派规则
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AssignmentRuleIDRequest	true	"规则 ID"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules/delete [post]
+func (h *TicketHandler) DeleteAssignmentRule(c *gin.Context) {
+	var req model.AssignmentRuleIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.dispatchService.DeleteRule(c.Request.Context(), req.ID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// UpdateAssignmentRuleEnabled POST /api/v1/assignment-rules/enabled
+//
+//	@Summary	启停自动分派规则
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.UpdateAssignmentRuleEnabledRequest	true	"启停"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules/enabled [post]
+func (h *TicketHandler) UpdateAssignmentRuleEnabled(c *gin.Context) {
+	var req model.UpdateAssignmentRuleEnabledRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.dispatchService.UpdateRuleEnabled(c.Request.Context(), req.ID, req.Enabled); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
 }

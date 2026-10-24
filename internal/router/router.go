@@ -448,10 +448,10 @@ func New(deps Deps) *gin.Engine {
 					tickets.GET("/:id", deps.TicketHandler.Get)
 					tickets.POST("/update", deps.TicketHandler.Update)
 					tickets.POST("/close", deps.TicketHandler.Close)
-				// S3a B3-1：统一转换执行端点 + 可用转换查询（L1=ticket:read 码受众
-				// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
-				tickets.POST("/transition", deps.TicketHandler.Transition)
-				tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
+					// S3a B3-1：统一转换执行端点 + 可用转换查询（L1=ticket:read 码受众
+					// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
+					tickets.POST("/transition", deps.TicketHandler.Transition)
+					tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
 					tickets.POST("/assign", deps.TicketHandler.Assign)
 					tickets.POST("/delete", deps.TicketHandler.Delete)
 					tickets.GET("/:id/comments", deps.TicketHandler.ListComments)
@@ -485,6 +485,13 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)
+
+					// S3a B3-2：自动分派规则 CRUD（类型管理页族扩展——零新码，拍板③
+					// 权限沿用 ticket:type:manage）
+					ticketMeta.GET("/assignment-rules", deps.TicketHandler.ListAssignmentRules)
+					ticketMeta.POST("/assignment-rules", deps.TicketHandler.CreateAssignmentRule)
+					ticketMeta.POST("/assignment-rules/delete", deps.TicketHandler.DeleteAssignmentRule)
+					ticketMeta.POST("/assignment-rules/enabled", deps.TicketHandler.UpdateAssignmentRuleEnabled)
 
 					// S6 B6-3 消息模板管理（通知中心页面族——自 S4 迁入）
 					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)

@@ -16,7 +16,7 @@ import (
 // 不依赖 ticketService（纯渲染），NewTicketHandler(nil) 即可。
 func TestTicketHandler_RenderRichtext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewTicketHandler(nil, nil)
+	h := NewTicketHandler(nil, nil, nil)
 	r := gin.New()
 	r.POST("/render", h.RenderRichtext)
 

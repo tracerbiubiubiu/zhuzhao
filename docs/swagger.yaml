@@ -55,6 +55,14 @@ definitions:
     required:
     - id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest:
+    properties:
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.BindOrgRoleRequest:
     properties:
       org_id:
@@ -87,6 +95,27 @@ definitions:
         type: string
     required:
     - object_key
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest:
+    properties:
+      enabled:
+        type: boolean
+      keyword:
+        type: string
+      priority:
+        type: integer
+      target_org:
+        example: "0"
+        type: string
+      target_user:
+        example: "0"
+        type: string
+      type_code:
+        maxLength: 50
+        type: string
+    required:
+    - target_org
+    - type_code
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateCommentRequest:
     properties:
@@ -733,6 +762,16 @@ definitions:
     - id
     - to
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest:
     properties:
       device_id:
@@ -1006,6 +1045,80 @@ info:
   title: zhuzhao API
   version: "1.0"
 paths:
+  /api/v1/assignment-rules:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 自动分派规则列表
+      tags:
+      - ticket
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 规则
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 建自动分派规则（target_user 须属 target_org——决议③写侧校验）
+      tags:
+      - ticket
+  /api/v1/assignment-rules/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 规则 ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删自动分派规则
+      tags:
+      - ticket
+  /api/v1/assignment-rules/enabled:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 启停
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 启停自动分派规则
+      tags:
+      - ticket
   /api/v1/audit/logs:
     get:
       consumes:

@@ -12,7 +12,7 @@ import (
 // 校验失败在触达 service 前返回，nil service 即可测（对齐审计列表 B4-6 测试法）
 func TestTicketList_ParamValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewTicketHandler(nil, nil)
+	h := NewTicketHandler(nil, nil, nil)
 
 	tests := []struct {
 		name  string

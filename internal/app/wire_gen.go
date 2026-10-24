@@ -105,7 +105,10 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	storageRepo := repository.NewStorageRepo(pool)
 	storageService := storageservice.NewService(storageRepo, storageClient, storageStore, logger)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore, nil)
-	ticketHandler := handler.NewTicketHandler(ticketService, auditService)
+	// S3a B3-2：分派规则服务（OnAfterCreate 在 ticketService.Create 内调——
+	// 通过 DispatchService 持有 svc 反向引用；装配期注入）
+	dispatchSvc := ticket.NewDispatchService(repository.NewAssignmentRuleRepo(pool), ticketService, logger)
+	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
 	settingsService := service.NewSettingsService(settingsRepo, storageStore, logger)

@@ -180,6 +180,10 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000067_intel_cache.up.sql",
 			// S3a B3-1: 统一转换端点 menu_apis
 			"000068_transition_apis.up.sql",
+			// S3a B3-2: 自动分派规则表
+			"000069_assignment_rules.up.sql",
+			// S3a B3-2: 分派规则 CRUD 路由绑定
+			"000070_assignment_rules_api.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

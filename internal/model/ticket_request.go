@@ -238,3 +238,24 @@ type TransitionTicketRequest struct {
 	To      string `json:"to" binding:"required,max=64"`
 	Comment string `json:"comment,omitempty"`
 }
+
+// CreateAssignmentRuleRequest 建分派规则（S3a B3-2——管理端点）。
+type CreateAssignmentRuleRequest struct {
+	TypeCode   string `json:"type_code" binding:"required,max=50"`
+	Priority   int    `json:"priority"`
+	Keyword    string `json:"keyword,omitempty,max=100"`
+	TargetOrg  int64  `json:"target_org,string" binding:"required"`
+	TargetUser *int64 `json:"target_user,string,omitempty"`
+	Enabled    *bool  `json:"enabled,omitempty"`
+}
+
+// AssignmentRuleIDRequest 规则 ID（删/启停）。
+type AssignmentRuleIDRequest struct {
+	ID int64 `json:"id,string" binding:"required"`
+}
+
+// UpdateAssignmentRuleEnabledRequest 启停。
+type UpdateAssignmentRuleEnabledRequest struct {
+	ID      int64 `json:"id,string" binding:"required"`
+	Enabled bool  `json:"enabled"`
+}

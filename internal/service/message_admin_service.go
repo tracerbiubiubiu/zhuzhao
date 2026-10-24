@@ -83,9 +83,11 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 var validEventActions = map[string]bool{
 	"ticket.created": true, "ticket.assigned": true, "ticket.closed": true,
 	"ticket.updated": true, "ticket.commented": true,
-	"ticket.cc_added": true, // S10 B10-1（种子规则 000062 同款——管理员可改路由）
-	"ticket.timeout":  true, // S10 B10-4 超时催办（种子规则 000064 同款）
-	"ops.cron_failed": true, // S10 B10-4 cron 失败告警（BizType=ops——000064 种子）
+	"ticket.cc_added":        true, // S10 B10-1（种子规则 000062 同款——管理员可改路由）
+	"ticket.timeout":         true, // S10 B10-4 超时催办（种子规则 000064 同款）
+	"ops.cron_failed":        true, // S10 B10-4 cron 失败告警（BizType=ops——000064 种子）
+	"ticket.transitioned":    true, // S3a B3-1（无种子规则=默认不通知——管理员可配）
+	"ticket.dispatch_missed": true, // S3a B3-2（新单无人接监控——管理员可配告警路由）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }

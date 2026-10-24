@@ -149,3 +149,16 @@ type TicketRelation struct {
 	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }
+
+// AssignmentRule 自动分派规则（S3a B3-2——03 号附录 A.2）。
+type AssignmentRule struct {
+	ID         int64     `json:"id,string"`
+	TypeCode   string    `json:"type_code"`
+	Priority   int       `json:"priority"`
+	Keyword    string    `json:"keyword,omitempty"` // 空=不限（类型兜底）；LIKE 包含
+	TargetOrg  int64     `json:"target_org,string"`
+	TargetUser *int64    `json:"target_user,string,omitempty"` // 决议③须属 target_org；空=仅分组织
+	Enabled    bool      `json:"enabled"`
+	CreatedBy  int64     `json:"created_by,string"`
+	CreatedAt  time.Time `json:"created_at"`
+}

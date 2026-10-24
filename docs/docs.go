@@ -15,6 +15,122 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/assignment-rules": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "自动分派规则列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "建自动分派规则（target_user 须属 target_org——决议③写侧校验）",
+                "parameters": [
+                    {
+                        "description": "规则",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/assignment-rules/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "删自动分派规则",
+                "parameters": [
+                    {
+                        "description": "规则 ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/assignment-rules/enabled": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "启停自动分派规则",
+                "parameters": [
+                    {
+                        "description": "启停",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/audit/logs": {
             "get": {
                 "security": [
@@ -3772,6 +3888,18 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.BindOrgRoleRequest": {
             "type": "object",
             "required": [
@@ -3817,6 +3945,36 @@ const docTemplate = `{
                 "ticket_id": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest": {
+            "type": "object",
+            "required": [
+                "target_org",
+                "type_code"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "keyword": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "target_org": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "target_user": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "type_code": {
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },
@@ -4707,6 +4865,21 @@ const docTemplate = `{
                 "to": {
                     "type": "string",
                     "maxLength": 64
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },

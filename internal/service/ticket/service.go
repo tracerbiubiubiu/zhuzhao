@@ -39,12 +39,19 @@ type Service struct {
 	keyGen      *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
 	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
 	tagRepo     *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
+	dispatcher  *DispatchService         // S3a B3-2：自动分派（OnAfterCreate——app 装配注入）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
 // Wire 语义保证：Registry 单例，TicketService 构造（自注册）先于 router.New。
 // SetEventRegistry B6-1：注入领域事件注册表（app 装配层调用——wire_gen 零改；
 // nil=不派发，首版装配态安全默认）。
+// SetDispatcher S3a B3-2：注入自动分派器（app 装配层调用——nil=不分派）。
+func (s *Service) SetDispatcher(d *DispatchService) *Service {
+	s.dispatcher = d
+	return s
+}
+
 func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
 	s.eventReg = reg
 	return s
@@ -327,6 +334,11 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		},
 		Timestamp: time.Now(),
 	})
+	// S3a B3-2：OnAfterCreate 自动分派（决议⑤——失败不回滚创建；在事件 emit 后
+	// 调用=事务已提交，分派走 Assign 全链含事件）
+	if s.dispatcher != nil {
+		s.dispatcher.OnAfterCreate(ctx, ticket)
+	}
 	return ticket, nil
 }
 
