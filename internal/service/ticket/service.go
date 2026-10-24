@@ -340,19 +340,9 @@ func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.
 
 // List 工单列表（L2 行级过滤；admin bypass L2）
 func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID int64) (*model.TicketListResponse, error) {
-	var filter resource.Filter
-	roles, err := s.getRoles(ctx, actorUserID)
+	filter, err := s.resolveListFilter(ctx, actorUserID)
 	if err != nil {
-		return nil, fmt.Errorf("fetch roles: %w", err)
-	}
-	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
-		// admin bypass L2：显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝，防漏接静默全量）
-		filter = resource.Filter{Unscoped: true}
-	} else {
-		filter, err = s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	tickets, total, err := s.ticketRepo.List(ctx, filter, q)
 	if err != nil {
@@ -364,6 +354,45 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 		Page:     q.Page,
 		PageSize: q.PageSize,
 	}, nil
+}
+
+// resolveListFilter List/Export 共用的行级过滤解析（BK-21 同源 service 面）：
+// admin/superadmin 显式 Unscoped，其余走 registry.GetFilter（cc 特例支/L2 三轴同源）。
+func (s *Service) resolveListFilter(ctx context.Context, actorUserID int64) (resource.Filter, error) {
+	roles, err := s.getRoles(ctx, actorUserID)
+	if err != nil {
+		return resource.Filter{}, fmt.Errorf("fetch roles: %w", err)
+	}
+	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
+		// admin bypass L2：显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝，防漏接静默全量）
+		return resource.Filter{Unscoped: true}, nil
+	}
+	return s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
+}
+
+// MaxExportRows 导出行数钳制（A.6：≈5 万——超限 400 提示收窄筛选；与审计导出挂账口径对齐）
+const MaxExportRows = 50000
+
+// ErrExportTooMany 导出超限（service 层语义码——handler 转 400）
+var ErrExportTooMany = errcode.New(errcode.ErrInvalidParams.Code, "导出行数超过上限 50000，请收窄筛选条件")
+
+// ExportStream 导出取行（S10 B10-5）：与 List 同 resolveListFilter + 同
+// buildTicketWhere（BK-21 代码级同源）；先 COUNT 钳制再逐行回调（流式零驻留）。
+// 返回总行数（审计/断言用）。
+func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, actorUserID int64, rowFn func(*model.Ticket) error) (int64, error) {
+	filter, err := s.resolveListFilter(ctx, actorUserID)
+	if err != nil {
+		return 0, err
+	}
+	total, err := s.ticketRepo.CountByFilter(ctx, filter, q)
+	if err != nil {
+		return 0, err
+	}
+	if total > MaxExportRows {
+		return total, ErrExportTooMany
+	}
+	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, rowFn)
+	return total, err
 }
 
 // FieldImpact B1-5 每字段在途使用计数（全量替换前的变更代价提示——软告警

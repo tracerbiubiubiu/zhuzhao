@@ -2640,6 +2640,55 @@ paths:
       summary: 删除工单
       tags:
       - ticket
+  /api/v1/tickets/export:
+    get:
+      parameters:
+      - description: 工单类型
+        in: query
+        name: type_code
+        type: string
+      - description: 工单状态
+        in: query
+        name: status
+        type: string
+      - description: 优先级
+        in: query
+        name: priority
+        type: integer
+      - description: 标签（S10 B10-2）
+        in: query
+        name: tag
+        type: string
+      - description: 处理人过滤，仅支持 me
+        in: query
+        name: assignee
+        type: string
+      - description: 创建人过滤，仅支持 me
+        in: query
+        name: created_by
+        type: string
+      - description: 标题关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 创建日期起（YYYY-MM-DD）
+        in: query
+        name: created_from
+        type: string
+      - description: 创建日期止（YYYY-MM-DD）
+        in: query
+        name: created_to
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: xlsx 附件
+          schema:
+            type: file
+      summary: 工单导出（xlsx 流式——与列表同筛选/同可见性；行数上限 5 万）
+      tags:
+      - ticket
   /api/v1/tickets/notes:
     post:
       consumes:

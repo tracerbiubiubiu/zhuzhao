@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	ticketsvc "github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
@@ -16,11 +17,12 @@ import (
 // TicketHandler 工单处理器
 type TicketHandler struct {
 	ticketService *ticketsvc.Service
+	audit         middleware.AuditLogger // S10 B10-5 导出自审计（可选 nil——测试装配）
 }
 
 // NewTicketHandler 创建 TicketHandler
-func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
-	return &TicketHandler{ticketService: ticketService}
+func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLogger) *TicketHandler {
+	return &TicketHandler{ticketService: ticketService, audit: audit}
 }
 
 // List GET /api/v1/tickets
@@ -41,7 +43,10 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Param		created_to		query	string	false	"创建日期止（YYYY-MM-DD，UTC 切日，含当日）"
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
-func (h *TicketHandler) List(c *gin.Context) {
+//
+// parseListQuery List/Export 共用的查询参数解析（S10 B10-5——BK-21 handler 级
+// 同源：导出与列表同一解析函数，筛选语义零漂移）。ok=false 时已写响应。
+func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 	// BK-7：分页归一前置到 handler（响应回显与 SQL 实际执行一致，page=0/负数不再回显原值）
 	q := model.TicketListQuery{
 		Page:     queryInt(c, "page", 1),
@@ -60,7 +65,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 		v, err := strconv.Atoi(p)
 		if err != nil {
 			response.BadRequest(c, "priority 须为整数")
-			return
+			return q, false
 		}
 		q.Priority = &v
 	}
@@ -69,7 +74,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if a := c.Query("assignee"); a != "" {
 		if a != "me" {
 			response.BadRequest(c, "assignee 仅支持 me")
-			return
+			return q, false
 		}
 		uid := c.GetInt64("userID")
 		q.AssigneeID = &uid
@@ -78,7 +83,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if a := c.Query("created_by"); a != "" {
 		if a != "me" {
 			response.BadRequest(c, "created_by 仅支持 me")
-			return
+			return q, false
 		}
 		uid := c.GetInt64("userID")
 		q.CreatedBy = &uid
@@ -87,7 +92,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if kw := strings.TrimSpace(c.Query("keyword")); kw != "" {
 		if len([]rune(kw)) > 50 {
 			response.BadRequest(c, "keyword 最长 50 字符")
-			return
+			return q, false
 		}
 		q.Keyword = kw
 	}
@@ -97,7 +102,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			response.BadRequest(c, "无效的 created_from 日期")
-			return
+			return q, false
 		}
 		q.CreatedFromAt = &t
 	}
@@ -105,10 +110,18 @@ func (h *TicketHandler) List(c *gin.Context) {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			response.BadRequest(c, "无效的 created_to 日期")
-			return
+			return q, false
 		}
 		next := t.AddDate(0, 0, 1)
 		q.CreatedToAt = &next
+	}
+	return q, true
+}
+
+func (h *TicketHandler) List(c *gin.Context) {
+	q, ok := parseListQuery(c)
+	if !ok {
+		return
 	}
 	if q.CreatedFromAt != nil && q.CreatedToAt != nil && !q.CreatedFromAt.Before(*q.CreatedToAt) {
 		response.BadRequest(c, "created_from 不能晚于 created_to")

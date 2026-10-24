@@ -257,6 +257,19 @@ func New(deps Deps) *gin.Engine {
 				files.GET("/*key", deps.StorageHandler.ProxyDownload)
 			}
 
+			// S10 B10-5 工单导出（10 号 A.6）：流式响应挂 v1 级独立链（免通用审计的
+			// body/响应捕获——二进制 xlsx 摘要无值且可能非 UTF-8；导出自审计在 handler
+			// 手动落行[谁/筛选/行数]）；L1 = CasbinAuth + menu_apis 绑 ticket_list（000065）
+			ticketExport := v1.Group("")
+			ticketExport.Use(
+				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+				middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
+			)
+			{
+				ticketExport.GET("/tickets/export", deps.TicketHandler.Export)
+			}
+
 			// phase5 S5 对象存储自服务面（05 号 A.7——S5 评审 P0-1 修复 2026-10-20）：
 			// 五端点=登录态+handler 层 L2 编排（ticket 态 purpose 走 TicketAuthorizer），
 			// 挂 SelfService 标记组（PAT/orgDelegated 同款形态）——原挂 biz 组无标记，

@@ -102,11 +102,12 @@ check "ticket menus(11)" "11" "$TM"
 TT=$(psql_q "SELECT COUNT(*) FROM ticket_types WHERE code IN ('incident','request')")
 check "ticket types(2)" "2" "$TT"
 
-# W1（词表重排）：ticket_list 页面行=8 GET（读入口）+000042 补授 /orgs GET=9；写路由挂按钮行
+# W1（词表重排）：ticket_list 页面行=8 GET（读入口）+000042 补授 /orgs GET=9
+# +S10 B10-5 导出 GET /tickets/export GET=10（000065 绑定——设计内增长）；写路由挂按钮行
 MA_GET=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.code = 'ticket_list' AND ma.api_method = 'GET'")
-check "ticket 页面 GET(9)" "9" "$MA_GET"
+check "ticket 页面 GET(10)" "10" "$MA_GET"
 MA_BTN=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.parent_id = (SELECT id FROM menus WHERE code='ticket_list') AND ma.api_method != 'GET'")

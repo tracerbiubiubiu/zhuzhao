@@ -81,23 +81,9 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	}
 	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
-	// 拼接 WHERE：scope filter + 业务筛选（业务条件抽 ticketListConds 供单测）
-	var conds []string
-	var args []any
-	if filter.Where != "" {
-		args = append(args, filter.Args...)
-		conds = append(conds, filter.Where)
-	}
-	// argOffset：scope filter（$1..$n）已占用的占位符数——业务条件必须从 n+1 起编，
-	// 否则与 scope 占位符冲突 → PG 绑定错误 → 非 admin 任意筛选 500（2026-10-12 多账号
-	// 实测发现：viewer/operator 列表筛选与工作台统计卡全 500，admin Unscoped 不受影响）
-	bizConds, bizArgs := ticketListConds(q, len(args))
-	conds = append(conds, bizConds...)
-	args = append(args, bizArgs...)
-	where := ""
-	if len(conds) > 0 {
-		where = " WHERE " + joinConds(conds)
-	}
+	// 拼接 WHERE：scope filter + 业务筛选——BK-21 同源件（S10 B10-5）：
+	// buildTicketWhere 为 List/Export 两路共用（代码级同一构造函数，可见性不漂移）
+	where, args := buildTicketWhere(filter, q)
 
 	// count
 	var total int64
@@ -120,6 +106,65 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	}
 	r.enrichUserNames(ctx, tickets)
 	return tickets, total, nil
+}
+
+// buildTicketWhere List/Export 共用的 WHERE 构造（BK-21：导出与列表代码级同源，
+// cc 特例支/三轴自动一致——验收断言「导出行数 = 同筛选列表 total」锚定本同源性）。
+func buildTicketWhere(filter resource.Filter, q model.TicketListQuery) (string, []any) {
+	var conds []string
+	var args []any
+	if filter.Where != "" {
+		args = append(args, filter.Args...)
+		conds = append(conds, filter.Where)
+	}
+	// argOffset：scope filter（$1..$n）已占用的占位符数——业务条件必须从 n+1 起编，
+	// 否则与 scope 占位符冲突 → PG 绑定错误 → 非 admin 任意筛选 500（2026-10-12 多账号
+	// 实测发现：viewer/operator 列表筛选与工作台统计卡全 500，admin Unscoped 不受影响）
+	bizConds, bizArgs := ticketListConds(q, len(args))
+	conds = append(conds, bizConds...)
+	args = append(args, bizArgs...)
+	if len(conds) == 0 {
+		return "", args
+	}
+	return " WHERE " + joinConds(conds), args
+}
+
+// CountByFilter 导出行数（钳制判定 + BK-21 行数一致断言数据源）——与 List 同 buildTicketWhere。
+func (r *TicketRepo) CountByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery) (int64, error) {
+	if filter.Where == "" && !filter.Unscoped {
+		return 0, fmt.Errorf("ticket count: missing scope filter (IW4 fail-closed 哨兵)")
+	}
+	where, args := buildTicketWhere(filter, q)
+	var total int64
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM tickets`+where, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count tickets: %w", err)
+	}
+	return total, nil
+}
+
+// StreamRowsByFilter 导出取行：无分页全量（行数已由 service 钳制）——逐行回调
+// （excelize StreamWriter 逐行 flush，防大结果集整集驻留内存）。
+func (r *TicketRepo) StreamRowsByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery, fn func(*model.Ticket) error) error {
+	if filter.Where == "" && !filter.Unscoped {
+		return fmt.Errorf("ticket export: missing scope filter (IW4 fail-closed 哨兵)")
+	}
+	where, args := buildTicketWhere(filter, q)
+	rows, err := r.db.Query(ctx,
+		`SELECT`+ticketSelectColumns+` FROM tickets`+where+` ORDER BY id DESC`, args...)
+	if err != nil {
+		return fmt.Errorf("export tickets: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		t, err := scanTicketCollectableRow(rows)
+		if err != nil {
+			return fmt.Errorf("collect export row: %w", err)
+		}
+		if err := fn(t); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // ticketListConds 业务筛选条件拼装（scope 之外）：argOffset = scope filter 已占用的
