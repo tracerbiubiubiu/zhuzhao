@@ -719,6 +719,20 @@ definitions:
     - field_label
     - field_type
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest:
+    properties:
+      comment:
+        type: string
+      id:
+        example: "0"
+        type: string
+      to:
+        maxLength: 64
+        type: string
+    required:
+    - id
+    - to
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest:
     properties:
       device_id:
@@ -2493,6 +2507,26 @@ paths:
       summary: 工单标签列表
       tags:
       - ticket
+  /api/v1/tickets/{id}/transitions/available:
+    get:
+      description: condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed
+        兜底，前端过滤仅 UX
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 当前用户可执行的转换列表（Jira condition 语义——按用户过滤）
+      tags:
+      - ticket
   /api/v1/tickets/assign:
     post:
       consumes:
@@ -2842,6 +2876,29 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 移除工单标签
+      tags:
+      - ticket
+  /api/v1/tickets/transition:
+    post:
+      consumes:
+      - application/json
+      description: AssertTransition 状态机 + transition_meta from>to condition 权限门（fail-closed）+
+        validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned
+      parameters:
+      - description: 转换请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 执行工单状态转换（condition/validator 服务端判——统一入口）
       tags:
       - ticket
   /api/v1/tickets/update:

@@ -230,3 +230,11 @@ type RemoveTicketCCRequest struct {
 	TicketID int64 `json:"ticket_id,string" binding:"required"`
 	UserID   int64 `json:"user_id,string" binding:"required"`
 }
+
+// TransitionTicketRequest 统一转换执行（S3a B3-1——POST /tickets/transition）。
+// to=目标状态；comment 可选说明（写评论）；condition/validator 在服务端判。
+type TransitionTicketRequest struct {
+	ID      int64  `json:"id,string" binding:"required"`
+	To      string `json:"to" binding:"required,max=64"`
+	Comment string `json:"comment,omitempty"`
+}

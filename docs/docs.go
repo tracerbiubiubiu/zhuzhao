@@ -2777,6 +2777,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/transition": {
+            "post": {
+                "description": "AssertTransition 状态机 + transition_meta from\u003eto condition 权限门（fail-closed）+ validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "执行工单状态转换（condition/validator 服务端判——统一入口）",
+                "parameters": [
+                    {
+                        "description": "转换请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/update": {
             "post": {
                 "consumes": [
@@ -2981,6 +3015,35 @@ const docTemplate = `{
                     "ticket"
                 ],
                 "summary": "工单标签列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/transitions/available": {
+            "get": {
+                "description": "condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed 兜底，前端过滤仅 UX",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "当前用户可执行的转换列表（Jira condition 语义——按用户过滤）",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4624,6 +4687,26 @@ const docTemplate = `{
                 "validate_regex": {
                     "type": "string",
                     "maxLength": 200
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "to"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "to": {
+                    "type": "string",
+                    "maxLength": 64
                 }
             }
         },

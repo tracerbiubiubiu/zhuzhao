@@ -827,3 +827,50 @@ func (h *TicketHandler) ListTags(c *gin.Context) {
 	}
 	response.OK(c, gin.H{"tags": rows})
 }
+
+// Transition POST /api/v1/tickets/transition（S3a B3-1——统一转换执行端点）
+//
+//	@Summary		执行工单状态转换（condition/validator 服务端判——统一入口）
+//	@Description	AssertTransition 状态机 + transition_meta from>to condition 权限门（fail-closed）+ validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned
+//	@Tags			ticket
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.TransitionTicketRequest	true	"转换请求"
+//	@Success		200		{object}	response.Response
+//	@Router			/api/v1/tickets/transition [post]
+func (h *TicketHandler) Transition(c *gin.Context) {
+	var req model.TransitionTicketRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	ticket, err := h.ticketService.Transition(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, ticket)
+}
+
+// ListAvailableTransitions GET /api/v1/tickets/:id/transitions/available
+//
+//	@Summary		当前用户可执行的转换列表（Jira condition 语义——按用户过滤）
+//	@Description	condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed 兜底，前端过滤仅 UX
+//	@Tags			ticket
+//	@Produce		json
+//	@Param			id	path	int	true	"工单 ID"
+//	@Success		200	{object}	response.Response
+//	@Router			/api/v1/tickets/{id}/transitions/available [get]
+func (h *TicketHandler) ListAvailableTransitions(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	transitions, err := h.ticketService.ListAvailableTransitions(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"transitions": transitions})
+}

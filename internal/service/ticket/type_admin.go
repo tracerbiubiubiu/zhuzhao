@@ -86,35 +86,46 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 	// B10-4：transition_meta 键域须 ⊆ states（改图后残留旧状态键 → 400 收口，
 	// 防扫描器扫已删状态的悬空超时配置）。仅发 meta 时取存量 states 判键域。
 	if len(req.TransitionMeta) > 0 {
-		stateList, err := s.metaKeyDomain(ctx, code, req.States)
+		stateList, t, err := s.metaKeyDomain(ctx, code, req.States)
 		if err != nil {
 			return nil, err
 		}
 		if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
 			return nil, err
 		}
+		// S3a B3-1："from>to" 转换级键校验（条件 roles 词表+validator 语法+键域
+		// ⊆ transitions 展开集——与 B10-4 state 级键共存同列两形）
+		var transitions map[string][]string
+		if len(req.Transitions) > 0 {
+			_ = json.Unmarshal(req.Transitions, &transitions)
+		} else {
+			_ = json.Unmarshal(t.Transitions, &transitions)
+		}
+		if err := ValidateTransitionMeta(stateList, transitions, req.TransitionMeta); err != nil {
+			return nil, err
+		}
 	}
 	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, req.Version)
 }
 
-// metaKeyDomain 取 meta 键域判定的 states 基线：请求带 states 用请求值，否则读存量。
-func (s *Service) metaKeyDomain(ctx context.Context, code string, reqStates json.RawMessage) ([]string, error) {
-	if len(reqStates) > 0 {
-		var stateList []string
-		if err := json.Unmarshal(reqStates, &stateList); err != nil {
-			return nil, errcode.New(errcode.ErrInvalidParams.Code, "states 须为字符串数组")
-		}
-		return stateList, nil
-	}
+// metaKeyDomain 取 meta 键域判定的 states+transitions 基线：请求带 states 用请求值，
+// 否则读存量。返回 (states, 存量类型对象供 transitions 读取)。
+func (s *Service) metaKeyDomain(ctx context.Context, code string, reqStates json.RawMessage) ([]string, *model.TicketType, error) {
 	t, err := s.ticketRepo.GetTicketType(ctx, code)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var stateList []string
-	if err := json.Unmarshal(t.States, &stateList); err != nil {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code, "存量 states 解析失败")
+	if len(reqStates) > 0 {
+		if err := json.Unmarshal(reqStates, &stateList); err != nil {
+			return nil, nil, errcode.New(errcode.ErrInvalidParams.Code, "states 须为字符串数组")
+		}
+		return stateList, t, nil
 	}
-	return stateList, nil
+	if err := json.Unmarshal(t.States, &stateList); err != nil {
+		return nil, nil, errcode.New(errcode.ErrInvalidParams.Code, "存量 states 解析失败")
+	}
+	return stateList, t, nil
 }
 
 // validateTransitionMeta B10-4：state 级节点元数据结构校验（键⊆states；值含
@@ -131,6 +142,9 @@ func validateTransitionMeta(states []string, meta json.RawMessage) error {
 	}
 	for state, raw := range m {
 		if !set[state] {
+			if strings.Contains(state, ">") {
+				continue // "from>to" 转换级键（S3a B3-1）——归 ValidateTransitionMeta 校验
+			}
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta 键 %q 不在 states 中", state))
 		}
 		var seg struct {

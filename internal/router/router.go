@@ -448,6 +448,10 @@ func New(deps Deps) *gin.Engine {
 					tickets.GET("/:id", deps.TicketHandler.Get)
 					tickets.POST("/update", deps.TicketHandler.Update)
 					tickets.POST("/close", deps.TicketHandler.Close)
+				// S3a B3-1：统一转换执行端点 + 可用转换查询（L1=ticket:read 码受众
+				// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
+				tickets.POST("/transition", deps.TicketHandler.Transition)
+				tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
 					tickets.POST("/assign", deps.TicketHandler.Assign)
 					tickets.POST("/delete", deps.TicketHandler.Delete)
 					tickets.GET("/:id/comments", deps.TicketHandler.ListComments)

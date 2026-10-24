@@ -63,7 +63,7 @@ func (r *Resource) Name() string { return "工单 (Ticket)" }
 
 // Actions 返回工单资源支持的动作
 func (r *Resource) Actions() []string {
-	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note"}
+	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note", "transition"}
 }
 
 // Authorize 资源级鉴权（L2 可见性 → L3 属主 + canOperate）
@@ -219,6 +219,9 @@ func pathInAnchors(orgPath string, anchors []string) bool {
 //	       透明读旁观者不可写；2c 扩 org admin/owner——见 09 §5.4 回标）；
 //	update = 仅创建人（RK-11 收窄：透明读可见≠可改，处理人改单走 close/重新分派）；
 //	close = 处理人或创建人；
+//	transition = 处理人或创建人（S3a B3-1——与 close 同面；condition 细粒度
+//	       在 canOperate 之上由 checkCondition 叠加——两层分离：L3 属主面 +
+//	       transition_meta roles 面[可配 assignee/creator/org_admin/admin]）；
 //	assign = ticket_scope group/all 主管（2b-org 000012 后激活；此前仅 admin bypass）；
 //	delete = 仅 admin bypass。
 func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID int64, action string, ticket *model.Ticket) (bool, error) {
@@ -247,6 +250,11 @@ func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID 
 		}
 		needDelegation = true
 	case "close":
+		if isAssignee || isCreator {
+			return true, nil
+		}
+		needDelegation = true
+	case "transition": // S3a B3-1——L3 属主面与 close 同；condition 细粒度叠加在上层
 		if isAssignee || isCreator {
 			return true, nil
 		}
