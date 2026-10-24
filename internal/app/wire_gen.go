@@ -17,6 +17,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
@@ -128,6 +129,21 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	}
 	rateLimitConfig := provideRateLimitConfig(cfg)
 	v := provideTrustedProxies(cfg)
+	// S9 B9-1 情报缓存代理（stub 默认 true——契约未到桩先行；非 stub 且
+	// endpoint 空 → fail-fast 拒启防虚标）
+	intelProvider, err := threatintel.NewProvider(cfg.Intel.Upstream, logger)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	intelTTL := map[string]time.Duration{}
+	for k, v := range cfg.Intel.TTL {
+		if d, perr := time.ParseDuration(v); perr == nil {
+			intelTTL[k] = d
+		}
+	}
+	intelSvc := threatintel.NewService(pool, intelProvider, intelTTL, logger)
+
 	cronRegistry := service.NewCronRegistry()
 	deps := router.Deps{
 		AuthHandler:         authHandler,
@@ -147,6 +163,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		TicketHandler:           ticketHandler,
 		BadgeHandler:            handler.NewBadgeHandler(ticket.NewBadgeService(pool)),
 		SystemHandler:           handler.NewSystemHandler(cronRegistry),
+		IntelHandler:            handler.NewIntelHandler(intelSvc),
 		StorageHandler:          storageHandler,
 		SettingsHandler:         settingsHandler,
 		JWTManager:              manager,

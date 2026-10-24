@@ -43,6 +43,10 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,
 	errcode.ErrActionNotRegistered.Code:  400, // S4 B4-1：未注册动作提交即拒（21010）
+	// S9 B9-1 情报缓存段（92600-92602——09 号 A.2）
+	errcode.ErrIntelNotConfigured.Code: 500, // 契约未配置 fail-fast（与 92004 同口径）
+	errcode.ErrIntelUpstreamQuota.Code: 503, // 配额耗尽且无缓存降级（拍板点 1 失败臂）
+	errcode.ErrIntelUpstream.Code:      502, // 上游不可用透传语义
 
 	// 401 未认证
 	errcode.ErrUnauthorized.Code: 401,

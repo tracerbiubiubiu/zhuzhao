@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 )
 
 // Config 全局配置
@@ -45,11 +46,24 @@ type Config struct {
 	Notification NotificationConfig `mapstructure:"notification"`
 	// Tickets 工单域内务配置（S10 B10-4——超时扫描骑 CronScheduler，D18 维护型口径）
 	Tickets TicketsConfig `mapstructure:"tickets"`
+	// Intel 威胁情报缓存代理（S9 B9-1——09 号附录 A.2/A.3）
+	Intel IntelConfig `mapstructure:"intel"`
 }
 
 // NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
 type NotificationConfig struct {
 	UIP UIPConfig `mapstructure:"uip"`
+}
+
+// IntelConfig 情报缓存代理配置。
+type IntelConfig struct {
+	Upstream threatintel.Config `mapstructure:"upstream"`
+	// TTL 类型级缓存时长（如 ip: 168h / hash: 720h——7/30 天双档；缺省 7 天）
+	TTL map[string]string `mapstructure:"ttl"`
+	// QPS 上游自留量限流（缺省 1——保守起步保护配额；0=禁用）
+	QPS float64 `mapstructure:"qps"`
+	// QueryRatePerMin 平台侧查询端点限流（次/分；缺省 60）
+	QueryRatePerMin int `mapstructure:"query_rate_per_min"`
 }
 
 // TicketsConfig 工单域内务（S10 B10-4 节点超时）。
@@ -335,6 +349,15 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("tickets.timeout_scan_enabled", true)
 	viper.SetDefault("tickets.timeout_scan_tick", "5m")
 	viper.SetDefault("tickets.timeout_observe", true)
+	// S9 B9-1 情报缓存（stub 默认 true——契约未到桩先行防虚标；TTL 7/30 天双档）
+	viper.SetDefault("intel.upstream.stub", true)
+	viper.SetDefault("intel.upstream.endpoint", "")
+	viper.SetDefault("intel.ttl.ip", "168h")
+	viper.SetDefault("intel.ttl.domain", "168h")
+	viper.SetDefault("intel.ttl.hash", "720h")
+	viper.SetDefault("intel.ttl.url", "168h")
+	viper.SetDefault("intel.qps", 1.0)
+	viper.SetDefault("intel.query_rate_per_min", 60)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

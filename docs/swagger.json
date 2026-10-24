@@ -316,6 +316,53 @@
                 }
             }
         },
+        "/api/v1/intel/query": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "外部限流 API 的缓存代理（ACL 防腐——result 上游原样透传）；配额耗尽降级返回过期缓存带 stale 标记",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "intel"
+                ],
+                "summary": "威胁情报查询（先缓存后回源；stale=过期缓存降级标记）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "情报类型（ip/domain/hash/url）",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "查询值",
+                        "name": "value",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/jobs": {
             "get": {
                 "security": [

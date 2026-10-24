@@ -111,10 +111,14 @@ var (
 var (
 	// S4 B4-1：任务动作 fail-fast（未注册动作提交即拒——原回调期 404 后置收口）
 	ErrActionNotRegistered = util.New(21010, "动作未注册")
-	ErrFileTooLarge        = util.New(91001, "文件大小超过限制")
-	ErrFileTypeNotAllowed  = util.New(91002, "文件类型不允许")
-	ErrFileNotFound        = util.New(91003, "文件不存在")
-	ErrFileAlreadyBound    = util.New(91004, "文件已关联其它资源")
+	// S9 B9-1 情报缓存段（92600-92602）
+	ErrIntelNotConfigured = util.New(92600, "情报上游未配置（intel.upstream.endpoint）")
+	ErrIntelUpstreamQuota = util.New(92601, "情报上游配额耗尽（无可用缓存）")
+	ErrIntelUpstream      = util.New(92602, "情报上游不可用")
+	ErrFileTooLarge       = util.New(91001, "文件大小超过限制")
+	ErrFileTypeNotAllowed = util.New(91002, "文件类型不允许")
+	ErrFileNotFound       = util.New(91003, "文件不存在")
+	ErrFileAlreadyBound   = util.New(91004, "文件已关联其它资源")
 )
 
 // 通知模块 92000-92999（91000-91999 已由对象存储段启用——见上）

@@ -176,6 +176,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000065_ticket_export_api.up.sql",
 			// S4 B4-1: 动作清单端点 menu_apis 绑定
 			"000066_jobs_actions_api.up.sql",
+			// S9 B9-1: intel_cache 表 + intel:query 码
+			"000067_intel_cache.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

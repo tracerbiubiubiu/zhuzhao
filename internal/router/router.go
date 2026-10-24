@@ -52,6 +52,9 @@ type Deps struct {
 	// S10 B10-4 cron 可观测面（biz 组 L1——menu_apis 绑 audit_log 行[audit:read 码]）
 	SystemHandler *handler.SystemHandler
 
+	// S9 B9-1 情报查询（biz 组 L1——intel:query 码 000067）
+	IntelHandler *handler.IntelHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -379,6 +382,10 @@ func New(deps Deps) *gin.Engine {
 				// S10 B10-4 cron 可观测面（10 号 A.5——只读；L1=biz 组 Casbin，
 				// menu_apis 绑 audit_log 行与审计读同码——运维观测随审计页族）
 				biz.GET("/system/cron-status", deps.SystemHandler.CronStatus)
+
+				// S9 B9-1 情报查询（biz 组 L1=intel:query 码；限流独立桶
+				// 镜像保护上游配额——A.4 双保险）
+				biz.GET("/intel/query", deps.IntelHandler.Query)
 
 				// B5-6 配置化设置管理（05 号 A.4 #6——biz 组走 CasbinAuth：
 				// GET 绑 system_setting 页面行 / POST 绑 system_setting_update 按钮行）

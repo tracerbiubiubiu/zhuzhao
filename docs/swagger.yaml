@@ -1189,6 +1189,36 @@ paths:
       summary: 文件代理下载（稳定 URL——头像等对象经应用投递）
       tags:
       - storage
+  /api/v1/intel/query:
+    get:
+      description: 外部限流 API 的缓存代理（ACL 防腐——result 上游原样透传）；配额耗尽降级返回过期缓存带 stale 标记
+      parameters:
+      - description: 情报类型（ip/domain/hash/url）
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: 查询值
+        in: query
+        name: value
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 威胁情报查询（先缓存后回源；stale=过期缓存降级标记）
+      tags:
+      - intel
   /api/v1/jobs:
     get:
       produces:
