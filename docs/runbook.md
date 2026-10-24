@@ -128,6 +128,18 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 3. **改密后必须清强制改密标记**（否则 20007 门拦后续操作）：走 `/auth/password/update` **两步轮换**（新==旧被 B2-2 拒，先临时值再回终值）——break-glass CLI 只负责重置，标记清除是独立一步。
 4. agent 会话开工多账号测试前**先读本表**；发现 E000001 脱离终态，用 §1 CLI 复原而非再设新值。
 
+### 4.3 节点超时催办观察模式（S10 B10-4——上线后必关）
+
+> **催办通知默认只记日志不发送**（`tickets.timeout_observe: true`——存量数据回填近似值防误报）。
+> dev 栈重启后按以下步骤确认并关闭：
+
+1. `GET /api/v1/system/cron-status`（admin）→ 确认 `timeout_scan` 任务存在且 `observe: true`
+2. 等首个扫描周期（默认 5 分钟）→ 查服务端日志 `timeout_scan: overdue candidate (observe, not sent)` 确认无误报
+3. `configs/config.yaml` 置 `tickets.timeout_observe: false`（或 env `TICKETS_TIMEOUT_OBSERVE=false`）→ 重启
+4. 复查 cron-status → `observe: false` → 下个周期起实际催办
+
+不关的后果：所有超时催办/SLA deadline 通知**只记日志不发送**——功能静默失效。
+
 ## 5. 存量协议兼容层接入（aksk/compat，2026-10-13 建档·10-14 已预接线默认关）
 
 > **性质**：存量协议兼容层接入与验证手册。utils `aksk/compat` 已交付并发布（v0.4.2），zhuzhao 侧已预接线（§5.1，默认关）；本节 = 内网调用场景就位后的密钥配置与上线前比对流程。背景决策：[phase1/02-auth §存量迁移翻案追记](./phase1/02-auth.md)。
