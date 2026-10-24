@@ -102,7 +102,7 @@ if [ "${total}" -eq 0 ]; then
     exit 0
 fi
 
-# ⑤ swagger 新鲜度（窗口级一次性，对齐 CI lint 形态）——触及注解/模型面的窗口，
+# ⑥ swagger 新鲜度（窗口级一次性，对齐 CI lint 形态）——触及注解/模型面的窗口，
 #    本地重跑 swag 后 docs 生成物必须零漂移；漂移 = 生成物过期（第三次红窗实证后前移）。
 swagger_stale=0
 changed_api=$(git diff --name-only "${range}" -- internal/model internal/handler 2>/dev/null)
@@ -129,7 +129,7 @@ if [ -n "${changed_api}" ]; then
 fi
 
 if [ "${swagger_stale}" -ne 0 ]; then
-    echo "[FAIL] commit-lint: ${total} commits format-ok but swagger artifacts stale (rule 5)"
+    echo "[FAIL] commit-lint: ${total} commits format-ok but swagger artifacts stale (rule 6)"
     exit 1
 fi
 echo "[OK] commit-lint: ${total} commits all pass (12-9)"

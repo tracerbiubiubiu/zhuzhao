@@ -217,7 +217,7 @@ type ChannelSender interface { Send(ctx context.Context, msg OutboundMessage) Se
 ```
 
 - **按 channel 路由的双 adapter 并存**：`webhook` → 既有 P4-2 client（死信告警链不动）；`uip` → 新 adapter（HTTP+JSON 骨架：endpoint/鉴权头 config `notification.uip.*`，**字段映射独立函数** `mapToUIP()`——真实契约到手只改此函数）；
-- **两态桩**（§3 口径落地）：`notification.uip.stub=true` → 开发态桩（返回成功 + slog 落 msg 摘要，全链 E2E 可跑）；`false` 且 endpoint 未配置 → `ErrNotificationNotConfigured` fail-fast（**虚标防线负向必测** §10）；
+- **两态桩**（§3 口径落地）：~~`notification.uip.stub=true`~~ **StubMode 由 `server.mode != "release"` 推导，无独立 stub 配置键**（26b238e 实现形态——v3 审计 Y-14 勘误：原描述的 stub 键先在漂移）→ 开发态桩（返回成功 + slog 落 msg 摘要，全链 E2E 可跑）；release 态且 `notification.uip.endpoint` 未配置 → `ErrNotificationNotConfigured`（92004）fail-fast（**虚标防线负向必测** §10；607a2a9 起 port.go 真发射 92004 码对象）；
 - 发送重试：failed 进既有死信队列（复用 P4-2 链），dead 告警——不新建重试体系。
 
 ### A.4 模板渲染器（B6-3）

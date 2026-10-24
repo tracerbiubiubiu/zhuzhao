@@ -37,7 +37,7 @@ func TestB61_DomainEventDispatch(t *testing.T) {
 			assigned = append(assigned, ev)
 		}
 	}))
-	reg.SubscribeAll(domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
+	reg.SubscribeAll("b61.capture", domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
 		mu.Lock()
 		defer mu.Unlock()
 		wildcards = append(wildcards, ev)

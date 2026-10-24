@@ -95,7 +95,7 @@ func TestHookRegistry_WildcardSubscriber(t *testing.T) {
 
 	r.Subscribe(BizTicket, "wild.ticket", HookFunc(func(_ context.Context, ev DomainEvent) { ticketCnt.Add(1) }))
 	r.Subscribe("risk", "wild.risk", HookFunc(func(_ context.Context, ev DomainEvent) { riskCnt.Add(1) }))
-	r.SubscribeAll(HookFunc(func(_ context.Context, ev DomainEvent) { wildCnt.Add(1) }))
+	r.SubscribeAll("test.wild", HookFunc(func(_ context.Context, ev DomainEvent) { wildCnt.Add(1) }))
 
 	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, Timestamp: time.Now()})
 	r.Dispatch(context.Background(), DomainEvent{BizType: "risk", Action: "risk.created", Timestamp: time.Now()})
@@ -144,4 +144,14 @@ func TestDomainEvent_String(t *testing.T) {
 	assert.Contains(t, ev.String(), "ticket.created")
 	assert.Contains(t, ev.String(), "123")
 	assert.Contains(t, ev.String(), "42")
+}
+
+// TestHookRegistry_SubscribeAllDuplicateNamePanics v3 审计 Y-8：SubscribeAll 与
+// Subscribe 共用名空间——重名（含跨 Subscribe/SubscribeAll）装配期 panic。
+func TestHookRegistry_SubscribeAllDuplicateNamePanics(t *testing.T) {
+	r := NewHookRegistry(nil)
+	noop := HookFunc(func(_ context.Context, _ DomainEvent) {})
+	r.SubscribeAll("audit.all", noop)
+	assert.Panics(t, func() { r.SubscribeAll("audit.all", noop) }, "SubscribeAll 重名须 panic")
+	assert.Panics(t, func() { r.Subscribe(BizTicket, "audit.all", noop) }, "跨 Subscribe/SubscribeAll 同名须 panic（共用名空间）")
 }

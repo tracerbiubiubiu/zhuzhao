@@ -50,12 +50,19 @@ func (r *HookRegistry) Subscribe(biz BizType, name string, hook DomainHook) {
 }
 
 // SubscribeAll 全域订阅（通配 "*"——跨域消费者如审计/调试面）。
-func (r *HookRegistry) SubscribeAll(hook DomainHook) {
+// name 全局唯一（与 Subscribe 共用 r.names 名空间——v3 审计 Y-8：修复前无 name
+// 参数无重名防护，通配订阅双注册会静默翻倍派发，与 A.1「重复名 panic 装配期暴露」
+// 口径不对称）。
+func (r *HookRegistry) SubscribeAll(name string, hook DomainHook) {
 	if hook == nil {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.names[name] {
+		panic(fmt.Sprintf("domainevent: hook 注册名 %q 重复（biz=*）——装配期双注册", name))
+	}
+	r.names[name] = true
 	r.all = append(r.all, hook)
 }
 

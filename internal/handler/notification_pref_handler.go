@@ -15,6 +15,13 @@ func NewNotificationPrefHandler(ps *service.NotificationPrefService) *Notificati
 	return &NotificationPrefHandler{prefService: ps}
 }
 
+// ListOptouts GET /api/v1/me/notification-optouts
+//
+//	@Summary	当前用户通知退订列表（B6-4 偏好自服务）
+//	@Tags		notification
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/me/notification-optouts [get]
 func (h *NotificationPrefHandler) ListOptouts(c *gin.Context) {
 	uid := c.GetInt64("user_id")
 	out, err := h.prefService.ListOptouts(c.Request.Context(), uid)
@@ -25,6 +32,15 @@ func (h *NotificationPrefHandler) ListOptouts(c *gin.Context) {
 	response.OK(c, out)
 }
 
+// SetOptout POST /api/v1/me/notification-optouts
+//
+//	@Summary	设置当前用户通知退订（按 biz_type+event_action；"*" 通配同域全退）
+//	@Tags		notification
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Failure	400	{object}	response.Response
+//	@Router		/api/v1/me/notification-optouts [post]
 func (h *NotificationPrefHandler) SetOptout(c *gin.Context) {
 	uid := c.GetInt64("user_id")
 	var req struct {

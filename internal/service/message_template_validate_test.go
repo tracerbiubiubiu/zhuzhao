@@ -59,4 +59,11 @@ func TestValidatePlaceholders_IntegrationPaths(t *testing.T) {
 	err := s.Create(context.Background(), tpl)
 	require.Error(t, err, "Create 应在 repo 层前被校验拦截")
 	assert.Contains(t, err.Error(), "ticket.ghost")
+
+	// v3 审计 Y-5（2026-10-23）：Update 路径同款——修复前本文件仅直调
+	// validatePlaceholders 函数（名为"Update 拒动态键"实为函数测），回退
+	// Update 内的校验调用不会红任何测试；现经 svc.Update 真链路锁定。
+	errU := s.Update(context.Background(), tpl)
+	require.Error(t, errU, "Update 应在 repo 层前被校验拦截（F-1-9b 旁路修复真锁——撤 Update 内校验必红）")
+	assert.Contains(t, errU.Error(), "ticket.ghost")
 }

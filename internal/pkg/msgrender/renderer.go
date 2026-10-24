@@ -126,14 +126,6 @@ func EscapeHTML(s string) string {
 	return replacer.Replace(s)
 }
 
-// RenderEscaped 渠道感知渲染（06 号 A.4 "值转义按渠道进行"）。
-func RenderEscaped(template string, vars map[string]any, channel string) string {
-	if !channelEscapes(channel) {
-		return Render(template, vars)
-	}
-	return Render(template, escapeValues(vars))
-}
-
 // channelEscapes 渠道→转义族映射（uip/webhook=纯文本不转义；其余=HTML fail-safe）。
 func channelEscapes(channel string) bool {
 	switch channel {

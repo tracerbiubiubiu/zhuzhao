@@ -40,3 +40,16 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go test -race -count=1 ./internal/...
+  test-integration:
+    # v3 审计 Y-9（2026-10-23）：integration 标签测试此前从未进 CI（守卫测试
+    # "CI 可跑"声称不实——F-2-2 黄项）；ubuntu runner 自带 Docker daemon，
+    # testcontainers（PG/RustFS）直接可用。全量集成时长浮动大，不设 race、
+    # 单独 job 不阻塞 test 门（并行跑）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -tags integration -count=1 -timeout 20m ./internal/...

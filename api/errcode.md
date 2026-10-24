@@ -22,7 +22,15 @@
 | 92302 | ErrDictItemNotFound     | 字典项不存在或版本冲突   | 404  | 同上                                               |
 | 92303 | （预留未分配——01 号 A.6 原登记已删注，号位保持空洞防误占） | — | — | — | — |
 | 92304 | ErrDictTypeInUse        | 字典类型被字段引用中，不可删除 | 400 | B1-2 删除守卫：ticket_type_fields 引用 `dict:<code>` 时拒删；清引用后可删 |
-| 92004 | ErrNotificationNotConfigured   | 通知渠道未配置（生产态 fail-fast） | 500 | 06 号 §3 两态桩防线——S6 B6-2 |
+
+## 92000-92299 通知（P4-2 启用；92004 随 S6 B6-2 两态桩增补——本段 2026-10-23 v3 审计 Y-6 补登记：原 92004 误插字典段、92001-92003 零登记）
+
+| code  | 常量                              | 含义                             | HTTP | 备注                                   |
+|-------|-----------------------------------|----------------------------------|------|----------------------------------------|
+| 92001 | ErrNotificationConfigNotFound     | 通知配置不存在                   | 404  | P4-2 notification_configs              |
+| 92002 | ErrNotificationCodeExists         | 通知配置 code 已存在             | 409  |                                        |
+| 92003 | ErrNotificationChannelNotSupport  | 不支持的通知渠道                 | 400  |                                        |
+| 92004 | ErrNotificationNotConfigured      | 通知渠道未配置（生产态 fail-fast）| 500  | 06 号 §3 两态桩防线——S6 B6-2；607a2a9 起 port.go 真发射 |
 
 ## 92500-92599 消息模板段（S6 B6-3——外审 F-1-4 修复：从 92000 通知段迁移避免撞码）
 | 码 | 名称 | 含义 | HTTP | 备注 |
