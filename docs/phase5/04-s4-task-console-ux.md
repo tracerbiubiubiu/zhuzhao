@@ -46,7 +46,7 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 | 项 | 内容 | 状态 |
 |----|------|------|
 | **队列水位精确化（挂账收窄，2026-10-15 核对更新）** | 前端近似水位条**已落**（runs total 聚合，§2）；挂账项收窄为**精确队列瞬时深度**——taskrunner asynq Inspector 队列统计端点 + zhuzhao 代理透传 + 水位条数据源切换；触发 = 任务量上来出现积压排查需求；量级 ≈ 半天 | 挂账 |
-| 死信并入运行记录状态筛选 | 前置 = 确认死信行与 job_runs 一一对应（taskrunner 聚合查询），收敛后 Tab 减为两个 | S4 启动拍 |
+| 死信并入运行记录状态筛选 | **✅ 对账结论（2026-10-24）：一一对应不成立——维持三 Tab**。死信=asynq archived 队列残留（Redis 侧，retry 即出列+保留上限），runs=job_runs 表（PG 审计事实）——两存储行数语义天然不对齐，A.4 判据走"不收敛"臂 | ✅ 关闭（2026-10-24） |
 | operator 动作只读端点权限 | §3.2 拍板点 | S4 启动拍 |
 | params schema 动态表单 | §3.3 远期半，勿重复立项 | 已登记 |
 | **taskrunner patch 通道 callback_url 死字段清理（2026-10-17 核出）** | W0b SSRF 收口后三路径（create 拒收用户值/cron 触发读侧覆盖/手动 trigger 读侧覆盖——`cron.go:85`、`task_service.go:588`，出站一律配置值 `TASKRUNNER_CALLBACK_TARGET_URL`）下 jobs 表 callback_url 列已成死存储，但 `patchJobReq.CallbackURL` 仍在 API 面透传（更新死列，**无安全影响**）；清理 = 删字段+测试，一行级 | 挂账（触发 = 下次动 taskrunner 随批，或 B4-1 联动顺手——同一张任务定义契约） |
@@ -163,4 +163,5 @@ zhuzhao-ui/src/components/CronBuilder/
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（含水立挂账收窄：前端近似水位条已落）；未新增决策 |
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 /jobs/actions 端点契约（Registry 注册体扩 ActionMeta{Name/Description/ParamsSchema}缺省允许存量零破坏；**最小读面边界**——不含参数快照/运行数据/凭据字段；action_id 命名衔接 taskrunner action_code）/A.2 fail-fast 预校验落点（zhuzhao 提交代理 handler 查 Registry.Exists，400+21010；**校验范围=仅 zhuzhao 回调型动作**注释防误扩展）/A.3 cron 构造器组件（四预设→五段表达式纯函数+专家反解析+非法值双检）/A.4 死信收敛前置（taskrunner 一一对应对账脚本，不成立维持三 Tab 登记差异）/A.5 验收补充（operator 读面/21010 负向/八预设一致性/降级） |
 | 2026-10-17 | **§3.5 挂账 +1（所有者问询「回调地址改名字」后代码核实）**：名字制本体**已落地**（taskrunner W0b SSRF 收口批——create 拒收/cron+trigger 读侧配置覆盖，用户只传 action_id）；本批仅登记 patch 通道死字段清理挂账（触发驱动，B4-1 联动顺手） |
+| 2026-10-24 | **S4 全批交付（B4-1 zhuzhao 80adb2c+ui d39fe5eb / B4-2 ui 014fc42c；B4-3 对账结论=B 维持现状）**：①**B4-1**：jobs.Registry 扩 ActionMeta（Register 可变参缺省存量零破坏；旧 Actions()[]string 更名 ActionIDs）+GET /jobs/actions 本地直读端点（000066 绑 task_center 行 task:read 码——operator 提交选单口径；audit_archive 注册带元数据首例）+**提交 fail-fast 21010**（Submit/CreateJob 查 Registry 未注册即 400；Trigger 不拦防误伤多执行端）+operator 提交对话框 action 手填改可搜索下拉（加载失败回退手填）；②**B4-2**：CronBuilder 组件（预设四类/专家双模式/双向反解析/产物 cron_spec 五段 taskrunner 零改动）接入任务定义表单；presets 纯函数 17 测（六段带秒必拒/步进 */N 先于 daily 判定坑在册）；可点原型纪律合并入段走查；③**B4-3 死信对账结论=一一对应不成立**：taskrunner 死信=asynq Inspector archived 队列残留视图（Redis 侧），runs=job_runs 表（PG 审计事实）——两存储行数语义天然不对齐（archived 保留上限+retry 即出列）→ 按 A.4 判据**维持三 Tab 不收敛**（运行记录 status=dead 筛选已覆盖审计面查询诉求）。验证=22 包单测+fail-fast 负向+四档 246/0+ui 四件绿（test 175） |
 | 2026-10-19 | **可点原型随行批（双钻复盘立约——§3.1）**：B4-2 开工首日半天可点原型（预设/专家双模式切换 + 四类预设生成 → next_run 预览，假数据亲点后定稿面板布局）——UX 手感面验证前移至设计定稿前；同日 standards §12-10 立外审截断规则（详 standards 变更记录） |
