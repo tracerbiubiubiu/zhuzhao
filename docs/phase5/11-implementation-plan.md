@@ -308,9 +308,11 @@ W0 ────── W1–3 ────── W3–5 ────── W5–7
 | B1-1…5 | [01 §3 + 附录 A](./01-s1-form-designer.md) | 01 §8 + A.6 | `field_meta` 新列一枚 ALTER（方案 b 已采纳） |
 | B6-1…6 | [06 §3–5 + 附录 A](./06-s6-message-notification.md) | 06 §10 + A.7 六负向 | message_templates/message_log 两表族 + message_rules 轻表 + human_key ALTER——**≥3 段**（启动时对账）；+ 事件分类学约定（06 号 A.1——2026-10-20 回灌） |
 | B2-1…4 | [02 §3 + 附录 A](./02-s2-flow-graph-designer.md) | 02 §8 + A.6 | 零；+ 壳层去耦验收项（02 号 A.2——2026-10-20 回灌） |
-| B10-1…5 | [10 号](./10-s10-ticket-collaboration.md) | 10 号 §验收 + 附录 A.7 | ticket_cc + tags 两表族 + `status_changed_at` ALTER + **`transition_meta` JSONB ALTER**（附录 A.3 四枚）；**+ `ticket_reminders` 侧表**（escalation 催办水位——10 号 §3.4 F-3-7 拍定，取号对账；2026-10-23 批 3 对表） |
-| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | assignment_rules 一表（`transition_meta` 列复用 B10-4 已建——零新 DDL，03 号附录 A.1）；+ B3-3 post_actions 对象形态与 ParamsSchema()（03 号 A.1/A.3——2026-10-20 回灌）；**+ `run.succeeded` emit + `result.*` 命名空间（零 DDL——03 号 §3.3 on_complete 事件优先；2026-10-23 批 3 对表）** |
-| B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | intel_cache 表族；+ 随行件（2026-10-20 回灌）：B4 kind/owner_service·ParamsSchema 钉标（04 号 A.1）、B9-1 缓存层独立包（09 号 §1） |
+| B10-1…5 | [10 号](./10-s10-ticket-collaboration.md) | 10 号 §验收 + 附录 A.7 | **✅ 实落对账（2026-10-24）**：ticket_cc **000062**+tags **000063**（B10-1/2）+ transition_meta/status_changed_at/escalation_supervisor_id/ticket_reminders 四件套 **000064**+导出绑定 **000065**（B10-4/5）；B10-2 tags 实并入 000063 |
+| B3-1…3 | [03 §3 + 附录 A](./03-s3-flow-semantics.md) | 03 §8 + A.5 | **✅ 实落对账（2026-10-24）**：转换端点绑定 **000068**（B3-1）+ assignment_rules **000069/070**（B3-2——transition_meta 列复用 B10-4 已建兑现）；+ post_actions 对象形态与 ParamsSchema()（已落）；run.succeeded 反向链=B-8 挂账（taskrunner 契约面，未含） |
+| B4-1…3 / B9-1 | [04](./04-s4-task-console-ux.md) / [09](./09-s9-threat-intel-cache-proxy.md) | 各稿验收口径 | **✅ 实落对账（2026-10-24）**：动作清单绑定 **000066**（B4-1）+ intel_cache **000067**（B9-1）；B4-1 kind/owner_service·ParamsSchema 钉标已落 Registry ActionMeta；B9-1 缓存层=internal/pkg/threatintel 独立包已落 |
+| B6-7 | [06 §6](./06-s6-message-notification.md) | §6 场景标尺 + A.8.5 | notifications 表族+消息中心路由 **000072**（S6 二期——编号启动对账兑现） |
+| SLA 0.5（随窗件） | [03 §5 四层路径](./03-s3-flow-semantics.md) | §5 升级触发信号负清单 | sla_due_at 激活+deadline 种子 **000071**（模型 A——W15 随窗兑现） |
 
 **迁移 PR 检查单**（每迁移必过，对齐 phase2/00 §5.3 六条 + BK-23）：①编号 A2 对账（§3）；②幂等（IF NOT EXISTS）；③down 可逆且先让位；④唯一索引带 `WHERE deleted_at IS NULL`（软删表）；⑤`testutil` 迁移列表同步 + 新表级联测试；⑥大 DDL 真实 PG 演练 up→down→up + A/B 快照比对（§5.4）。
 
