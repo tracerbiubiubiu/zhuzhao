@@ -210,7 +210,8 @@ func buildTicketVars(ev domainevent.DomainEvent) map[string]any {
 }
 
 // resolveRecipientsFromRule 按 message_rules 的收件人配置解析。
-// recipient_type: assignee→事件 payload to_assignee；creator→actor；fixed→DDL 列表。
+// recipient_type: assignee→事件 payload to_assignee；creator→actor；fixed→DDL 列表；
+// cc→payload cc_users（S10 B10-1——ticket.cc_added 的本次新增抄送人，逗号分隔）。
 func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedRecipients string) []string {
 	var ids []string
 	switch recipientType {
@@ -221,6 +222,14 @@ func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedR
 	case "creator":
 		if actor, ok := ev.Payload["actor"].(string); ok && actor != "" {
 			ids = append(ids, actor)
+		}
+	case "cc":
+		if cc, ok := ev.Payload["cc_users"].(string); ok {
+			for _, id := range strings.Split(cc, ",") {
+				if id = strings.TrimSpace(id); id != "" {
+					ids = append(ids, id)
+				}
+			}
 		}
 	case "fixed":
 		for _, id := range strings.Split(fixedRecipients, ",") {

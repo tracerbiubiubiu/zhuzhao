@@ -33,6 +33,7 @@ const (
 	TicketAssigned  Action = "ticket.assigned"
 	TicketUpdated   Action = "ticket.updated"
 	TicketCommented Action = "ticket.commented"
+	TicketCCAdded   Action = "ticket.cc_added" // S10 B10-1 抄送（10 号 §3.1 评审批——S6 message_rules 订阅抄送通知）
 )
 
 // Payload 事件载荷——按 Action 预留 payload schema 登记位（06 号 A.1）。

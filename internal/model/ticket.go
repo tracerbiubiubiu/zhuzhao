@@ -36,6 +36,17 @@ type Ticket struct {
 	AssigneeNo    string `json:"assignee_no,omitempty" db:"-"`
 }
 
+// TicketCCRow 抄送行回显（S10 B10-1——repo 层 join users 富化；
+// 「人名(工号)」结构化契约同 TicketRow 展示统一批口径：real_name 空回退 username、
+// 软删用户不回填姓名但保留 ID 行——抄送关系本身可见）。
+type TicketCCRow struct {
+	UserID     int64     `json:"user_id,string"`
+	Name       string    `json:"name,omitempty"`
+	EmployeeNo string    `json:"employee_no,omitempty"`
+	Role       string    `json:"role"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 // TicketType 工单类型配置
 type TicketType struct {
 	ID              int64           `json:"id,string" db:"id"`

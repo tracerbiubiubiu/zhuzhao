@@ -1,4 +1,17 @@
 definitions:
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest:
+    properties:
+      ticket_id:
+        example: "0"
+        type: string
+      user_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - ticket_id
+    - user_ids
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest:
     properties:
       menu_ids:
@@ -459,6 +472,18 @@ definitions:
         type: string
     required:
     - refresh_token
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest:
+    properties:
+      ticket_id:
+        example: "0"
+        type: string
+      user_id:
+        example: "0"
+        type: string
+    required:
+    - ticket_id
+    - user_id
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest:
     properties:
@@ -2285,6 +2310,24 @@ paths:
       summary: 工单附件列表（JOIN 视图）
       tags:
       - storage
+  /api/v1/tickets/{id}/cc:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单抄送列表
+      tags:
+      - ticket
   /api/v1/tickets/{id}/comments:
     get:
       parameters:
@@ -2408,6 +2451,48 @@ paths:
       summary: 删除工单附件（删关联+对象弃旧）
       tags:
       - storage
+  /api/v1/tickets/cc:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 添加工单抄送
+      tags:
+      - ticket
+  /api/v1/tickets/cc/remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 移除抄送请求（本人自摘走读可见；摘他人需 update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 移除工单抄送
+      tags:
+      - ticket
   /api/v1/tickets/close:
     post:
       consumes:

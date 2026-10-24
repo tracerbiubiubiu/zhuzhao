@@ -205,6 +205,11 @@ func New(deps Deps) *gin.Engine {
 				// B5-4 richtext 渲染 SSOT（05 号 §6）：登录态自服务——无票据访问面、
 				// 纯消毒渲染（A.7 存储自服务面同款形态）
 				selfService.POST("/tickets/richtext/render", deps.TicketHandler.RenderRichtext)
+				// S10 B10-1 抄送（10 号附录 A.2）：工单操作不走静态权限码——L2/L3 在
+				// service 层动态判定（自抄送/自摘/列表=read 面；抄他人/摘他人=update 面）
+				selfService.POST("/tickets/cc", deps.TicketHandler.AddCC)
+				selfService.POST("/tickets/cc/remove", deps.TicketHandler.RemoveCC)
+				selfService.GET("/tickets/:id/cc", deps.TicketHandler.ListCC)
 
 				// 当前用户信息
 				userSelf := selfService.Group("/user")

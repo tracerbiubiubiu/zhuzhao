@@ -360,6 +360,9 @@ var ticketTransitions = map[string][]string{
 | GET | `/api/v1/tickets/:id/comments` | `ticket:read` | 回复列表 |
 | POST | `/api/v1/tickets/comments` | `ticket:comment` | 添加回复 |
 | POST | `/api/v1/tickets/notes` | `ticket:note` | 添加内部备注 |
+| POST | `/api/v1/tickets/cc` | 登录态（L2/L3 动态） | 添加抄送（S10 B10-1：仅本人=读可见；含他人=update 权；幂等；emit ticket.cc_added→S6 规则路由通知） |
+| POST | `/api/v1/tickets/cc/remove` | 登录态（L2/L3 动态） | 移除抄送（自摘=读可见；摘他人=update 权；幂等） |
+| GET | `/api/v1/tickets/:id/cc` | 登录态（L2 read 面） | 抄送列表（「人名(工号)」富化；不可见单 404 同形） |
 
 ### 4.2 Service 接口
 

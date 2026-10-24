@@ -42,7 +42,7 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	ticketRepo := repository.NewTicketRepo(testPool)
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
-	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
+	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool), repository.NewTicketCCRepo(testPool)))
 
 	roles := stubRoleFetcher{}
 	stgCfg := &pkgstorage.StorageConfig{}

@@ -192,3 +192,17 @@ type UpdateTicketTemplateRequest struct {
 	// ticket_templates.version 才写，否则 409。须 > 0，否则 400。
 	Version *int `json:"version,omitempty"`
 }
+
+// AddTicketCCRequest 添加抄送（S10 B10-1——POST /tickets/cc）。
+// user_ids 仅收本人=自抄送（读可见即可）；含他人=加他人（update 权）。
+type AddTicketCCRequest struct {
+	TicketID int64   `json:"ticket_id,string" binding:"required"`
+	UserIDs  []int64 `json:"user_ids" binding:"required,gt=0,dive,gt=0"`
+}
+
+// RemoveTicketCCRequest 移除抄送（POST /tickets/cc/remove）。
+// 移除本人=读可见即可；移除他人=update 权。
+type RemoveTicketCCRequest struct {
+	TicketID int64 `json:"ticket_id,string" binding:"required"`
+	UserID   int64 `json:"user_id,string" binding:"required"`
+}

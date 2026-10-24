@@ -2250,6 +2250,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/cc": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "添加工单抄送",
+                "parameters": [
+                    {
+                        "description": "添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/cc/remove": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "移除工单抄送",
+                "parameters": [
+                    {
+                        "description": "移除抄送请求（本人自摘走读可见；摘他人需 update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/close": {
             "post": {
                 "consumes": [
@@ -2564,6 +2630,34 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/cc": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单抄送列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -3256,6 +3350,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "user_ids"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "user_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest": {
             "type": "object",
             "required": [
@@ -3890,6 +4003,23 @@ const docTemplate = `{
             "properties": {
                 "refresh_token": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "user_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },

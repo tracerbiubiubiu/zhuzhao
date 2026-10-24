@@ -41,7 +41,7 @@ func newB53Env(t *testing.T) *b53Env {
 	ticketRepo := repository.NewTicketRepo(testPool)
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
-	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
+	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool), repository.NewTicketCCRepo(testPool)))
 	stgCfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: "b53",
 		AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m"}
 	stgCfg.ApplyDefaults()

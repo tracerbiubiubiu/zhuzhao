@@ -32,18 +32,27 @@ type OrgDelegationChecker interface {
 	HasOrgManagePermission(ctx context.Context, userID int64) (bool, error)
 }
 
+// CCChecker 抄送关系判定（S10 B10-1——实现于 repository.TicketCCRepo）。
+// L2 特例通道（拍板点 1 预确认「抄送即可见」）：**只进读可见集**，不进操作授权集
+// （10 号附录 A.2 语义分层——抄送人能看不能改，Jira watcher 同语义）。
+type CCChecker interface {
+	IsCC(ctx context.Context, ticketID, userID int64) (bool, error)
+}
+
 // Resource 工单资源，实现 resource.Resource 接口。
 // 2b（09-ticket §5.2）：策略 B——L2 读 = 属主 ∨ 实体锚点透明读；
-// 2c（04 §4.2）：L3 写加组织委托（org admin/owner + ancestor owner）。
+// 2c（04 §4.2）：L3 写加组织委托（org admin/owner + ancestor owner）；
+// S10 B10-1：读可见集新增抄送特例 OR 支（GetFilter + Authorize 可见段）。
 type Resource struct {
 	repo       ticketRepo
 	resolver   ScopeResolver
 	delegation OrgDelegationChecker
+	cc         CCChecker
 }
 
 // NewResource 创建工单资源实例（由 NewTicketService 调用，注册到 Registry）
-func NewResource(repo ticketRepo, resolver ScopeResolver, delegation OrgDelegationChecker) *Resource {
-	return &Resource{repo: repo, resolver: resolver, delegation: delegation}
+func NewResource(repo ticketRepo, resolver ScopeResolver, delegation OrgDelegationChecker, cc CCChecker) *Resource {
+	return &Resource{repo: repo, resolver: resolver, delegation: delegation, cc: cc}
 }
 
 // Code 返回资源编码
@@ -114,6 +123,15 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		}
 		visible = del
 	}
+	// S10 B10-1 抄送特例支（只扩可见集，不进 canOperate——cc 用户后续动作
+	// 走 403 errDenied 而非 404，A.7「能看不能改」断言锚点）
+	if !visible && r.cc != nil {
+		ccVisible, err := r.cc.IsCC(ctx, ticketID, req.UserID)
+		if err != nil {
+			return false, err
+		}
+		visible = ccVisible
+	}
 	if !visible {
 		return false, nil // 不可见 → Service 层转 404
 	}
@@ -139,8 +157,9 @@ func isOwner(userID int64, ticket *model.Ticket) bool {
 
 // GetFilter 列表行级过滤（2b 策略 B，09-ticket §5.2）：
 // 属主（created_by/assigned_to）∨ 实体锚点透明读（org_path <@ ANY 锚点）
-// ∨ 组织委托（BK-13 委托轴，与 org_delegation 判定同语义）。
-// 锚点为空（用户无组织归属）时锚点支恒假，退化为属主 ∪ 委托语义。
+// ∨ 组织委托（BK-13 委托轴，与 org_delegation 判定同语义）
+// ∨ 抄送（S10 B10-1 特例支——ccVisibilitySQL）。
+// 锚点为空（用户无组织归属）时锚点支恒假，退化为属主 ∪ 委托 ∪ 抄送语义。
 func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resource.Filter, error) {
 	scope, err := r.resolver.ResolveScope(ctx, userID)
 	if err != nil {
@@ -154,10 +173,18 @@ func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resou
 	paths := scope.ReadPaths()
 	return resource.Filter{
 		Where: `(created_by = $1 OR assigned_to = $1 OR org_path <@ ANY($2::ltree[]) OR ` +
-			delegatedVisibilitySQL + `)`,
+			delegatedVisibilitySQL + ` OR ` + ccVisibilitySQL + `)`,
 		Args: []interface{}{userID, paths},
 	}, nil
 }
+
+// ccVisibilitySQL S10 B10-1 抄送特例支（拍板点 1 预确认「抄送即可见」）：
+// cc 关系并入**读可见集**（列表/导出/关联查询全路径自动生效——GetFilter 本体增强
+// 非新调用点，与 BK-21「显式调用零护栏」正交）；不进 canOperate（能看不能改）。
+// 命中索引：idx_ticket_cc_user（000062）。
+const ccVisibilitySQL = `EXISTS (
+	SELECT 1 FROM ticket_cc
+	WHERE ticket_id = tickets.id AND user_id = $1 AND role = 'cc')`
 
 // delegatedVisibilitySQL L2 委托轴（BK-13）：工单所属 org 的 owner（owner_user_ids）
 // / org admin·owner / ancestor owner——与 org_delegation.IsOrgAdminOrOwner/

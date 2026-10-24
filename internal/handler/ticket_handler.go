@@ -679,3 +679,70 @@ func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
 	}
 	response.OK(c, nil)
 }
+
+// AddCC POST /api/v1/tickets/cc（S10 B10-1 抄送）
+//
+//	@Summary	添加工单抄送
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AddTicketCCRequest	true	"添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/cc [post]
+func (h *TicketHandler) AddCC(c *gin.Context) {
+	var req model.AddTicketCCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	rows, err := h.ticketService.AddCC(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"cc": rows})
+}
+
+// RemoveCC POST /api/v1/tickets/cc/remove
+//
+//	@Summary	移除工单抄送
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RemoveTicketCCRequest	true	"移除抄送请求（本人自摘走读可见；摘他人需 update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/cc/remove [post]
+func (h *TicketHandler) RemoveCC(c *gin.Context) {
+	var req model.RemoveTicketCCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketService.RemoveCC(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// ListCC GET /api/v1/tickets/:id/cc
+//
+//	@Summary	工单抄送列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Param		id	path	int	true	"工单 ID"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/tickets/{id}/cc [get]
+func (h *TicketHandler) ListCC(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	rows, err := h.ticketService.ListCC(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"cc": rows})
+}

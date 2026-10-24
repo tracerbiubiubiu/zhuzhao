@@ -162,6 +162,11 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000060_message_rules_version.up.sql",
 			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
 			"000050_system_settings_version.up.sql",
+			// v3 审计 Y-3: message_rules FK → message_templates（本清单此前漏登——
+			// 无测试断言该约束故未爆，随 000062 补齐）
+			"000061_message_rules_fk.up.sql",
+			// S10 B10-1: ticket_cc + 种子模板/规则（cc 特例支/通知链集成依赖）
+			"000062_ticket_cc.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

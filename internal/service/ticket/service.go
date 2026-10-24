@@ -36,7 +36,8 @@ type Service struct {
 	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
 	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
 	eventReg    *domainevent.HookRegistry
-	keyGen      *humankey.Generator // B6-1：领域事件（nil=不派发——首版装配态）
+	keyGen      *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
+	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -67,6 +68,7 @@ func NewTicketService(
 	storageCfg *pkgstorage.ConfigStore,
 	fetcherReg *datafetcher.Registry,
 ) *Service {
+	ccRepo := repository.NewTicketCCRepo(db)
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
@@ -78,9 +80,11 @@ func NewTicketService(
 		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
+		ccRepo:      ccRepo,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
-	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
+	// + S10 B10-1 抄送特例支（读可见集）
+	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation, ccRepo))
 	return s
 }
 

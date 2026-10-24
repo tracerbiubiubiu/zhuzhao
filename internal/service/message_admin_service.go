@@ -56,10 +56,10 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 	// ② recipient_type 枚举（v3 审计 Y-1：裸 fmt.Errorf → errcode 400，修复前 errors.As
 	// 落空 → 500+10000 污染 5xx 告警面）
 	switch rule.RecipientType {
-	case "assignee", "creator", "fixed":
+	case "assignee", "creator", "fixed", "cc": // cc=S10 B10-1（payload cc_users——抄送通知档）
 	default:
 		return errcode.New(errcode.ErrInvalidParams.Code,
-			fmt.Sprintf("recipient_type %q 不合法（assignee/creator/fixed）", rule.RecipientType))
+			fmt.Sprintf("recipient_type %q 不合法（assignee/creator/fixed/cc）", rule.RecipientType))
 	}
 
 	// ③ event_action 词表校验（ticket. 前缀 + 已知动作）
@@ -83,6 +83,7 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 var validEventActions = map[string]bool{
 	"ticket.created": true, "ticket.assigned": true, "ticket.closed": true,
 	"ticket.updated": true, "ticket.commented": true,
+	"ticket.cc_added": true, // S10 B10-1（种子规则 000062 同款——管理员可改路由）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }
