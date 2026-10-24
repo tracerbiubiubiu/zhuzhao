@@ -40,22 +40,9 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	if err := sm.AssertTransition(ticket.Status, req.To); err != nil {
 		return nil, err
 	}
-	// ③ condition 权限门（transition_meta from>to——Jira condition 同语义）
-	roles, err := s.getRoles(ctx, actorUserID)
+	// ③④ condition 权限门 + validator 前置条件（R3 审计修复——三路同源）
+	tm, err := s.checkTransitionMeta(ctx, ticket, req.To, actorUserID, ttype)
 	if err != nil {
-		return nil, fmt.Errorf("fetch roles: %w", err)
-	}
-	isOrgAdmin, _ := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, ticket.OrgID)
-	actor := resolveActor(ticket, actorUserID, roles, isOrgAdmin)
-	tm, err := parseTransitionMeta(ttype.TransitionMeta, ticket.Status, req.To)
-	if err != nil {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
-	}
-	if !checkCondition(tm, actor) {
-		return nil, errcode.ErrNoPermission // fail-closed：可见但角色不符 → 403
-	}
-	// ④ validator 数据侧前置条件（expr——上下文=custom_data+内置字段）
-	if err := checkValidator(tm, ticket); err != nil {
 		return nil, err
 	}
 	// ⑤ 单事务执行（UpdateStatusTx 咽喉=状态写+status_changed_at 同语句——E-2 锚）
@@ -122,6 +109,32 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	}
 	// 返回最新态
 	return s.ticketRepo.GetByID(ctx, req.ID)
+}
+
+// checkTransitionMeta transition_meta 转换级语义检查（condition+validator——
+// R3 审计修复：Close/Assign 与 Transition 三路同源调用，消"condition 只在
+// /transition 路径生效"旁路）。tm=nil/空=放行（零配置兼容）。
+func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket, toStatus string, actorUserID int64, ttype *model.TicketType) (*TransitionMeta, error) {
+	tm, err := parseTransitionMeta(ttype.TransitionMeta, ticket.Status, toStatus)
+	if err != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
+	}
+	if tm == nil {
+		return nil, nil // 无配置=既有行为
+	}
+	roles, err := s.getRoles(ctx, actorUserID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch roles: %w", err)
+	}
+	isOrgAdmin, _ := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, ticket.OrgID)
+	actor := resolveActor(ticket, actorUserID, roles, isOrgAdmin)
+	if !checkCondition(tm, actor) {
+		return nil, errcode.ErrNoPermission
+	}
+	if err := checkValidator(tm, ticket); err != nil {
+		return nil, err
+	}
+	return tm, nil
 }
 
 // ListAvailableTransitions 当前用户可执行的转换列表（GET /:id/transitions/available

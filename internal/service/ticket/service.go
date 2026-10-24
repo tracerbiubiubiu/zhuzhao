@@ -727,6 +727,11 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err := sm.AssertTransition(ticket.Status, StatusClosed); err != nil {
 		return err
 	}
+	// R3 审计修复：Close 也走 condition+validator（原旁路——/close 端点绕过
+	// transition_meta 语义检查，phase6 依赖 condition 做权限时=安全漏洞）
+	if _, err := s.checkTransitionMeta(ctx, ticket, StatusClosed, actorUserID, ttype); err != nil {
+		return err
+	}
 
 	// 更新状态 + 写事件 + 可选关闭说明
 	tx, err := s.db.Begin(ctx)
@@ -824,6 +829,10 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 			return fmt.Errorf("build state machine: %w", err)
 		}
 		if err := sm.AssertTransition(ticket.Status, newStatus); err != nil {
+			return err
+		}
+		// R3 审计修复：Assign 状态转换时也走 condition+validator（同 Close）
+		if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
 			return err
 		}
 	}
