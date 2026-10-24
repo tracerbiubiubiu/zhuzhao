@@ -23,8 +23,8 @@
 | B-3 | S6 | `'*'` 免打扰跨域生效 | B6-7 二期 | 外审 F-1-12 | +0.5h |
 | B-4 | S6 | acceptance 通知深面（注入/节流/fail-fast/偏好四类） | B6-7 前补课 | 06 号 §10 | +0.5 天 |
 | B-5 | S6 | opt-out service 直连 db 收敛到 repo | 架构批 | 外审 F-1-12 | +0.5h |
-| B-6 | S10 | MessageDispatcher 编排器抽出（notify_hook 内联→独立件） | B10-4 首件 | 06 号 §1.5 | +0.5–1 天 |
-| B-7 | S10 | escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支 | B10-4 | 10 号 §3.4 / 06 号 A.5 | ~2 天 |
+| ~~B-6~~ | S10 | ~~MessageDispatcher 编排器抽出~~ **✅ 已落（B10-4 62c03c2——dispatcher.go 抽出+hook 薄壳+ops 双域订阅）** | — | 06 号 §1.5 | 销账 |
+| ~~B-7~~ | S10 | ~~escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支~~ **✅ 已落（B10-4 62c03c2——实施偏差：supervisor 不做 recipient_type 第四枚举，目标集由扫描器 emit 时解析进 cc_users 载荷，规则面零扩）** | — | 10 号 §3.4 | 销账 |
 | B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 | B3-3 | 03 号 §3.3 | 随批 |
 | B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | B6-7 二期或 phase6 | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
