@@ -8,16 +8,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 )
 
 // NotifyAction 通知动作（无规则兜底档——S6 message_rules 无路由时的直发）。
 type NotifyAction struct {
-	Reg *domainevent.HookRegistry // 经事件走 MessageDispatcher 编排链（不直调发送）
+	// Svc 经工单服务事件出口派发 ticket.action_notify（走 MessageDispatcher
+	// 编排链，不直调发送）——审计 A1 连带修复：原持 HookRegistry 但装配期
+	// 无法取得（eventRegistry 构造在 NewApp 晚于动作注册）致 Reg 恒 nil
+	// 静默 no-op；改持 Service（装配序早于动作注册）复用 emitEvent 出口。
+	Svc *Service
 }
 
 func (a *NotifyAction) Name() string                { return "notify" }
@@ -26,7 +27,7 @@ func (a *NotifyAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce 
 // Execute params: {"template": "code", "recipients": ["id"...]}——emit
 // ticket.action_notify 事件由 S6 规则面路由（无规则则该动作静默——设计内）。
 func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
-	if a.Reg == nil {
+	if a.Svc == nil {
 		return nil
 	}
 	recipients := ""
@@ -40,14 +41,8 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 			}
 		}
 	}
-	a.Reg.Dispatch(ctx, domainevent.DomainEvent{
-		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
-		BizID: strconv.FormatInt(ac.Ticket.ID, 10), ActorID: ac.ActorID,
-		Payload: domainevent.Payload{
-			"title": ac.Ticket.Title, "human_key": ac.Ticket.HumanKey,
-			"cc_users": recipients, // cc 档收件人锚点复用（resolveRecipients cc 分支）
-		},
-	})
+	a.Svc.EmitActionNotify(ctx, ac.Ticket.ID, ac.ActorID, ac.Ticket.Title,
+		ac.Ticket.HumanKey, recipients)
 	return nil
 }
 

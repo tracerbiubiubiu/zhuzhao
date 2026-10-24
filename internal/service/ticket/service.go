@@ -72,6 +72,21 @@ func (s *Service) emitEvent(ev domainevent.DomainEvent) {
 	}
 }
 
+// EmitActionNotify post_action notify 动作的事件出口（NotifyAction 专用——
+// 走与 created/assigned/closed 同一事件编排链；at-most-once 异步）。
+// 载荷键 cc_users=cc 档收件人锚点复用（resolveRecipients cc 分支）。
+func (s *Service) EmitActionNotify(ctx context.Context, ticketID, actorID int64, title, humanKey, recipients string) {
+	_ = ctx // 事件派发为异步 fire-and-forget（emitEvent 内部 Dispatch 自管生命周期）
+	s.emitEvent(domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
+		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorID,
+		Payload: domainevent.Payload{
+			"title": title, "human_key": humanKey,
+			"cc_users": recipients,
+		},
+	})
+}
+
 func NewTicketService(
 	db *pgxpool.Pool,
 	ticketRepo *repository.TicketRepo,
@@ -766,6 +781,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
+	// D1 审计修复：关闭=状态离开旧状态——清旧状态催办水位（与 Transition 同源；
+	// 修复前 assigned 催满→关闭→重开回 assigned 残留水位致永不催）
+	s.clearReminderWatermark(ctx, req.ID, ticket.Status)
 	// B6-5：工单关闭事件（事务提交后派发）
 	closedPayload := domainevent.Payload{
 		"title": ticket.Title, "type_code": ticket.TypeCode,
@@ -868,6 +886,11 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
+	}
+	// D1 审计修复：状态变更即离开旧状态——清旧状态催办水位（与 Transition/Close
+	// 同源三路；修复前 assigned 催满→取消分派回 open→重分派残留水位致永不催）
+	if newStatus != ticket.Status {
+		s.clearReminderWatermark(ctx, req.ID, ticket.Status)
 	}
 	// B6-1：工单分派事件（事务提交后派发）
 	s.emitEvent(domainevent.DomainEvent{

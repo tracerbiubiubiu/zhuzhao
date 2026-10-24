@@ -192,6 +192,56 @@ func TestB104_Timeout(t *testing.T) {
 		assert.Equal(t, 1, after, "重入后再催=从 1 起算")
 	})
 
+	t.Run("D1 补全：Assign 通道状态变更同清水位（三路同源）", func(t *testing.T) {
+		tk3, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "D1 Assign 通道单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk3.ID, AssignedTo: &bid}, aid))
+		backdateStatusChanged(t, tk3.ID, 2*time.Hour)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		// 取消分派（assigned→open——Assign 通道状态变更）→ assigned 水位应清
+		// （修复前仅 Transition 清——Assign 残留致重分派后水位累加永不催）
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk3.ID, AssignedTo: nil}, aid))
+		var count int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM ticket_reminders WHERE ticket_id = $1 AND state = 'assigned'`, tk3.ID).Scan(&count))
+		assert.Zero(t, count, "Assign 通道状态变更清旧状态水位")
+		// 重分派回 assigned → 再催=从 1 起算（非残留累加）
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk3.ID, AssignedTo: &bid}, aid))
+		backdateStatusChanged(t, tk3.ID, 2*time.Hour)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		var after int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT reminder_count FROM ticket_reminders WHERE ticket_id = $1 AND state = 'assigned'`, tk3.ID).Scan(&after))
+		assert.Equal(t, 1, after, "重分派后水位从 1 起算")
+	})
+
+	t.Run("D1 补全：Close 通道清旧状态水位", func(t *testing.T) {
+		tk4, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "D1 Close 通道单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk4.ID, AssignedTo: &bid}, aid))
+		backdateStatusChanged(t, tk4.ID, 2*time.Hour)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		// 默认六态图 assigned→closed 不邻接——先转 in_progress 再 Close
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk4.ID, To: "in_progress"}, bid)
+		require.NoError(t, err)
+		// Close 前直插 in_progress 水位行（类型未配 in_progress timeout 扫描器
+		// 造不出——SQL 直插等价模拟），使断言特异指向 Close 的清理
+		// （Transition 清 assigned / Close 清 in_progress——两断言互不覆盖）
+		if _, err := testPool.Exec(ctx,
+			`INSERT INTO ticket_reminders (ticket_id, state, reminder_count, last_reminder_at) VALUES ($1, 'in_progress', 1, NOW())`, tk4.ID); err != nil {
+			require.NoError(t, err)
+		}
+		require.NoError(t, svc.Close(ctx, &model.CloseTicketRequest{ID: tk4.ID}, aid))
+		var count int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM ticket_reminders WHERE ticket_id = $1 AND state = 'in_progress'`, tk4.ID).Scan(&count))
+		assert.Zero(t, count, "Close 清旧状态水位（修复前残留——重开场景永不催）")
+	})
+
 	t.Run("状态离开：partial 索引天然排除", func(t *testing.T) {
 		before := timeoutMsgs() // D1 子测可能追加了 tk2 的催办——取基线差值
 		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: nil}, aid))

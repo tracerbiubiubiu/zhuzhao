@@ -147,4 +147,37 @@ func TestB31_Transition(t *testing.T) {
 		// vid 既不可见（L2 404）也非属主——L2 先拦=404
 		requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
 	})
+
+	// R3 审计修复回归锚：Close/Assign 端点与 Transition 三路同源走
+	// checkTransitionMeta（修复前 /close /assign 旁路 condition/validator——
+	// transition 级权限语义只在 /transition 生效=安全洞）
+	t.Run("R3 补：Close 端点同走 validator（旁路封堵）", func(t *testing.T) {
+		tk := newTicket("Close validator 单", &bid) // priority=3
+		_, err := svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "in_progress"}, bid)
+		require.NoError(t, err)
+		// in_progress>closed validator priority==1（函数级 meta 已配）——
+		// 走 /close 端点（非 /transition）同样被拦=三路同源
+		err = svc.Close(ctx, &model.CloseTicketRequest{ID: tk.ID}, bid)
+		require.Error(t, err, "非 P1 走 /close 被 validator 拦")
+		var ee *errcode.Error
+		require.ErrorAs(t, err, &ee)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, ee.Code)
+	})
+
+	t.Run("R3 补：Assign 状态变更同走 condition（旁路封堵）", func(t *testing.T) {
+		// 追加 assigned>open 键（roles=[admin]）——仅 admin 可取消分派回 open
+		meta := `{
+			"assigned>in_progress": {"roles": ["assignee"]},
+			"in_progress>closed": {"validator": "priority == 1"},
+			"assigned>open": {"roles": ["admin"]}
+		}`
+		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
+		require.NoError(t, err)
+		tk := newTicket("Assign condition 单", &bid) // assigned 态
+		// bid（assignee）取消分派 assigned→open——condition roles=[admin] 不含 → 403
+		err = svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: nil}, bid)
+		requireErrCode(t, err, errcode.ErrNoPermission.Code)
+		// aid（admin）取消分派——condition 放行
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: nil}, aid))
+	})
 }

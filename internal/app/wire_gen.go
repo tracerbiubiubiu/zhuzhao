@@ -111,7 +111,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	// S3a B3-3：动作库装配（修复前漏注入——actionReg 恒 nil 致 post_actions
 	// 整链路生产不执行且静默跳过；审计 A1）
 	actionReg := ticket.NewActionRegistry()
-	actionReg.Register(&ticket.NotifyAction{}) // eventReg 在 NewApp 层——SetEventRegistry 后生效
+	actionReg.Register(&ticket.NotifyAction{Svc: ticketService}) // 经 Service 事件出口（eventRegistry 在 NewApp 晚于装配——Reg 注入不可达，改持 Svc）
 	actionReg.Register(&ticket.CCAction{Svc: ticketService})
 	actionReg.Register(&ticket.ReassignAction{Svc: ticketService})
 	ticketService.SetActionRegistry(actionReg)

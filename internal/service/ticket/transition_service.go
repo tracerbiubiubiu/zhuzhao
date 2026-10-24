@@ -67,11 +67,7 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	}
 	// D1 修复（审计）：清旧状态催办水位——重入同状态时 reminder_count 从零起算
 	// （修复前残留=达上限后永不催；全仓此前零 DELETE 调用点）
-	if _, err := s.db.Exec(ctx,
-		`DELETE FROM ticket_reminders WHERE ticket_id = $1 AND state = $2`, req.ID, ticket.Status); err != nil {
-		// 清水位失败不影响转换本身（下次转走再清）——记日志
-		slog.Warn("transition: clear reminder watermark failed", "ticket", req.ID, "state", ticket.Status, "err", err)
-	}
+	s.clearReminderWatermark(ctx, req.ID, ticket.Status)
 	// ⑥ commit 后 emit（B6-1 锚——统一转换事件；action 命名 ticket.transitioned
 	// 与 created/assigned/closed 平级；Close/Assign 仍发各自事件=向后兼容）
 	payload := domainevent.Payload{
@@ -135,6 +131,16 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 		return nil, err
 	}
 	return tm, nil
+}
+
+// clearReminderWatermark 清旧状态催办水位（审计 D1——Transition/Close/Assign
+// 三路同源：凡状态离开旧状态均清该状态水位行，重入时 reminder_count 归零）。
+// 失败仅告警不影响主流程（下次状态变更再清——与 D1 首修口径一致）。
+func (s *Service) clearReminderWatermark(ctx context.Context, ticketID int64, state string) {
+	if _, err := s.db.Exec(ctx,
+		`DELETE FROM ticket_reminders WHERE ticket_id = $1 AND state = $2`, ticketID, state); err != nil {
+		slog.Warn("clear reminder watermark failed", "ticket", ticketID, "state", state, "err", err)
+	}
 }
 
 // ListAvailableTransitions 当前用户可执行的转换列表（GET /:id/transitions/available

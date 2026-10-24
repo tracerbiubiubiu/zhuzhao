@@ -31,7 +31,7 @@ func TestB33_Actions(t *testing.T) {
 	reg := NewActionRegistry()
 	reg.Register(NewCCAction(svc))
 	reg.Register(NewReassignAction(svc))
-	reg.Register(&NotifyAction{Reg: svc.eventReg})
+	reg.Register(&NotifyAction{Svc: svc})
 	svc.SetActionRegistry(reg)
 
 	t.Run("注册表：重复 panic/Names 排序/未注册 Get false", func(t *testing.T) {
