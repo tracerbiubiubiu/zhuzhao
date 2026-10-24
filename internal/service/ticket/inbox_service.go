@@ -50,7 +50,9 @@ func (s *InboxService) SetEventRegistry(reg *domainevent.HookRegistry) *InboxSer
 
 // seedTemplates B6-7 入站渲染摘要（biz_type+action → title 模板；06 号 A.8.5
 // 消息行=摘要+时间+深链——读面零渲染的代价是入站渲染面在此集中）。
-var seedTemplates = map[string]string{
+// seedTemplates 入站渲染词表（审计 P3-2：注释约束勿运行时写——Go 无 const map
+// 惯例，防御=不变量约定+代码评审；新事件动作须同步登记此表否则站内静默不落库）
+var seedTemplates = map[string]string{ //nolint:gochecknoglobals // 装配期初始化运行期只读
 	"ticket.created":         "新工单：{{title}}",
 	"ticket.assigned":        "工单已分派给您：{{title}}",
 	"ticket.closed":          "工单已关闭：{{title}}",
