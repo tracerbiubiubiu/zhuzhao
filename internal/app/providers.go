@@ -124,7 +124,15 @@ func provideJobsRegistry(repo *repository.AuditLogRepo, cfg config.AuditConfig, 
 	reg := jobs.NewRegistry()
 	reg.Register("audit_archive", service.NewAuditArchiveJob(repo,
 		cfg.Archive.RetentionDays, cfg.Archive.BatchRows, cfg.Archive.OutDir,
-		cfg.Archive.FileRetentionDays, logger))
+		cfg.Archive.FileRetentionDays, logger),
+		// S4 B4-1：动作元数据（GET /jobs/actions 出站——name/描述；kind/owner_service
+		// 多执行端预留恒 handler/zhuzhao；params_schema 未声明=null 前端降级 JSON 模式）
+		jobs.ActionMeta{
+			Name:         "审计归档",
+			Description:  "按保留期导出审计日志/判定日志到 JSONL 并删行（单批有界，可重入）",
+			Kind:         "handler",
+			OwnerService: "zhuzhao",
+		})
 	return reg
 }
 
@@ -140,8 +148,8 @@ func provideTaskrunnerClient(cfg config.TaskrunnerConfig) *taskrunner.Client {
 }
 
 // provideTaskrunnerHandler 任务管理端点（E-④；selfBaseURL 供缺省 callback 拼接）。
-func provideTaskrunnerHandler(svc *service.TaskrunnerService, cfg config.TaskrunnerConfig) *handler.TaskrunnerHandler {
-	return handler.NewTaskrunnerHandler(svc, cfg.SelfBaseURL)
+func provideTaskrunnerHandler(svc *service.TaskrunnerService, cfg config.TaskrunnerConfig, jobsReg *jobs.Registry) *handler.TaskrunnerHandler {
+	return handler.NewTaskrunnerHandler(svc, cfg.SelfBaseURL, jobsReg)
 }
 
 // provideJobsCallbackService 回调编排服务（E-②；jobs_handler 薄化的分层修复）。

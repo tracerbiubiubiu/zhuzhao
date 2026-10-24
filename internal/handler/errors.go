@@ -42,6 +42,7 @@ var httpStatusByCode = map[int]int{
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,
+	errcode.ErrActionNotRegistered.Code:  400, // S4 B4-1：未注册动作提交即拒（21010）
 
 	// 401 未认证
 	errcode.ErrUnauthorized.Code: 401,

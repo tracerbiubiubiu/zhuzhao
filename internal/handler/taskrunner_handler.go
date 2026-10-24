@@ -3,14 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
@@ -18,11 +20,47 @@ import (
 // 后代理 taskrunner API。权限码：task:submit / task:read / task:manage（000022 seed）。
 type TaskrunnerHandler struct {
 	svc         *service.TaskrunnerService
-	selfBaseURL string // 缺省 callback 拼接用（部署同网可达的内网地址，config 可覆盖请求值）
+	selfBaseURL string         // 缺省 callback 拼接用（部署同网可达的内网地址，config 可覆盖请求值）
+	jobsReg     *jobs.Registry // S4 B4-1：动作清单端点 + 提交 fail-fast 预校验
 }
 
-func NewTaskrunnerHandler(svc *service.TaskrunnerService, selfBaseURL string) *TaskrunnerHandler {
-	return &TaskrunnerHandler{svc: svc, selfBaseURL: selfBaseURL}
+func NewTaskrunnerHandler(svc *service.TaskrunnerService, selfBaseURL string, jobsReg *jobs.Registry) *TaskrunnerHandler {
+	return &TaskrunnerHandler{svc: svc, selfBaseURL: selfBaseURL, jobsReg: jobsReg}
+}
+
+// ListActions GET /api/v1/jobs/actions（S4 B4-1——动作清单只读端点）。
+// 最小读面（A.1）：仅 action_id+meta（能提交什么），不含参数快照/运行数据/凭据——
+// 与 /jobs 数据面（admin 专属）语义分离；operator 持 task:read 可读（提交选单口径）。
+//
+//	@Summary		任务动作清单（提交选单数据源——最小读面）
+//	@Description	注册动作的 id/名称/描述/参数 schema（null=未声明降级 JSON 模式）；不含运行数据
+//	@Tags			tasks
+//	@Produce		json
+//	@Success		200	{object}	response.Response
+//	@Security		BearerAuth
+//	@Router			/api/v1/jobs/actions [get]
+func (h *TaskrunnerHandler) ListActions(c *gin.Context) {
+	if h.jobsReg == nil {
+		response.OK(c, gin.H{"list": []jobs.ActionInfo{}, "total": 0})
+		return
+	}
+	list := h.jobsReg.Actions()
+	response.OK(c, gin.H{"list": list, "total": len(list)})
+}
+
+// failFastAction S4 B4-1 随行：未注册动作提交即拒（A.2——校验范围仅 zhuzhao 回调型
+// 动作提交路径[Submit/CreateJob]；taskrunner 侧任务定义不经此校验；多执行端扩展
+// 触发后另对表）。返回 true=已写响应（调用方 return）。
+func (h *TaskrunnerHandler) failFastAction(c *gin.Context, actionID string) bool {
+	if h.jobsReg == nil {
+		return false // 未注入（测试装配/多执行端形态）——走既有 taskrunner 校验路径
+	}
+	if _, ok := h.jobsReg.Get(actionID); ok {
+		return false
+	}
+	writeServiceError(c, errcode.New(errcode.ErrActionNotRegistered.Code,
+		fmt.Sprintf("动作 %q 未注册（合法动作见 GET /jobs/actions）", actionID)))
+	return true
 }
 
 // actor 从 gin ctx 取工号（JWT 中间件注入；system 场景为空串）。
@@ -56,6 +94,10 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 	// zhuzhao 自身，用户级 URL 无正当用途；非空即 400（fail-fast 定案，非忽略+日志）。
 	if req.CallbackURL != "" {
 		response.BadRequest(c, "callback_url 不再接受（回调地址由服务端配置决定）")
+		return
+	}
+	// S4 B4-1 fail-fast：未注册动作提交即拒（A.2——原回调期 404 后置收口）
+	if h.failFastAction(c, req.Action) {
 		return
 	}
 	// timeout_secs 上界预检（批次8 P1）：与 taskrunner validTimeoutSecs 同口径
@@ -147,6 +189,15 @@ func (h *TaskrunnerHandler) CreateJob(c *gin.Context) {
 	body, err := c.GetRawData()
 	if err != nil {
 		response.BadRequest(c, "读取请求体失败")
+		return
+	}
+	// S4 B4-1 fail-fast：任务定义携带 zhuzhao 回调动作时提交即校验（A.2 范围注——
+	// 多执行端[脚本/连接器]动作触发后另对表，此处仅拦 zhuzhao 回调型拼写错）
+	var probe struct {
+		Action string `json:"action"`
+	}
+	_ = json.Unmarshal(body, &probe)
+	if probe.Action != "" && h.failFastAction(c, probe.Action) {
 		return
 	}
 	data, err := h.svc.CreateJob(c.Request.Context(), json.RawMessage(body), actorOf(c))

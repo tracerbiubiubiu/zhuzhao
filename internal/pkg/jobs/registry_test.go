@@ -18,7 +18,7 @@ func TestRegistryRegisterGet(t *testing.T) {
 	if _, ok := r.Get("nope"); ok {
 		t.Fatal("unknown action must not be found (P6: 404 快速失败)")
 	}
-	if acts := r.Actions(); len(acts) != 1 || acts[0] != "audit_archive" {
+	if acts := r.ActionIDs(); len(acts) != 1 || acts[0] != "audit_archive" {
 		t.Fatalf("actions = %v", acts)
 	}
 }

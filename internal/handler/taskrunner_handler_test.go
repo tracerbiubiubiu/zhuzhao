@@ -19,8 +19,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
+	"context"
+
 	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -35,7 +38,9 @@ func newTaskrunnerProxyRouter(t *testing.T, upstream *httptest.Server) *gin.Engi
 	if upstream != nil {
 		client = taskrunner.New(taskrunner.Config{BaseURL: upstream.URL, AK: "zhuzhao", SK: []byte("sk-test")})
 	}
-	h := NewTaskrunnerHandler(service.NewTaskrunnerService(client, nil), "http://self:33333")
+	reg := jobs.NewRegistry()
+	reg.Register("audit_archive", jobs.HandlerFunc(func(context.Context, json.RawMessage) error { return nil }))
+	h := NewTaskrunnerHandler(service.NewTaskrunnerService(client, nil), "http://self:33333", reg)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("username", "10001"); c.Next() }) // 模拟 JWT 注入
 	biz := r.Group("/api/v1")
@@ -73,6 +78,8 @@ func TestTaskrunnerHandler_BadRequest(t *testing.T) {
 		wantMsg string
 	}{
 		{"Submit 空 body", "/api/v1/tasks", "", "action 必填"},
+		// S4 B4-1 fail-fast：未注册动作提交即拒（原回调期 404 后置收口——21010）
+		{"Submit 未注册动作 fail-fast", "/api/v1/tasks", `{"action":"no_such_action","params":{}}`, "未注册"},
 		{"Submit 缺 action", "/api/v1/tasks", `{"params":{}}`, "action 必填"},
 		{"Submit params 超 64KB 上限", "/api/v1/tasks",
 			`{"action":"audit_archive","params":"` + strings.Repeat("x", 64<<10) + `"}`, "params 超过上限"},

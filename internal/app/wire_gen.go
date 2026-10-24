@@ -118,7 +118,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	taskrunnerConfig := cfg.Taskrunner
 	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
 	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
-	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig)
+	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig, jobsRegistry)
 	gatewayRegistry, err := provideGateway(cfg)
 	if err != nil {
 		cleanup3()

@@ -21,6 +21,8 @@ import (
 // 新增错误码时必须同步：① 本清单 ② httpStatusByCode 或 unmappedAllowlist，
 // 否则 count 断言/逐码断言失败——防止再出现 50012/70004 式静默断链。
 var allErrCodes = []*errcode.Error{
+	// S4 B4-1：动作未注册（fail-fast）
+	errcode.ErrActionNotRegistered,
 	// 通用
 	errcode.ErrInternal, errcode.ErrInvalidParams, errcode.ErrUnauthorized,
 	errcode.ErrForbidden, errcode.ErrNotFound, errcode.ErrConflict,
@@ -89,7 +91,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 73; got != want {
+	if got, want := len(allErrCodes), 74; got != want {
 		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
 	}
 

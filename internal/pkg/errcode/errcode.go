@@ -109,10 +109,12 @@ var (
 
 // 对象存储 91000-91999（phase5 S5——02 号 IW2 预留段启用，B5-1 批6；语义=10 号 §10）
 var (
-	ErrFileTooLarge       = util.New(91001, "文件大小超过限制")
-	ErrFileTypeNotAllowed = util.New(91002, "文件类型不允许")
-	ErrFileNotFound       = util.New(91003, "文件不存在")
-	ErrFileAlreadyBound   = util.New(91004, "文件已关联其它资源")
+	// S4 B4-1：任务动作 fail-fast（未注册动作提交即拒——原回调期 404 后置收口）
+	ErrActionNotRegistered = util.New(21010, "动作未注册")
+	ErrFileTooLarge        = util.New(91001, "文件大小超过限制")
+	ErrFileTypeNotAllowed  = util.New(91002, "文件类型不允许")
+	ErrFileNotFound        = util.New(91003, "文件不存在")
+	ErrFileAlreadyBound    = util.New(91004, "文件已关联其它资源")
 )
 
 // 通知模块 92000-92999（91000-91999 已由对象存储段启用——见上）

@@ -400,6 +400,9 @@ func New(deps Deps) *gin.Engine {
 				biz.GET("/dead-letters", deps.TaskrunnerHandler.DeadLetters)
 				jobs := biz.Group("/jobs")
 				{
+					// S4 B4-1：动作清单只读端点（本地注册表直读非代理——L1=task:read
+					// 经 menu_apis 000066；operator 提交选单口径）
+					jobs.GET("/actions", deps.TaskrunnerHandler.ListActions)
 					jobs.GET("", deps.TaskrunnerHandler.ListJobs)
 					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
 					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
