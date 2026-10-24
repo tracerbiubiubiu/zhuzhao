@@ -65,11 +65,11 @@ func (s *Service) Query(ctx context.Context, intelType, rawValue string) (*Respo
 		if !time.Now().After(hit.ExpiresAt) {
 			s.bumpHit(ctx, intelType, value)
 			hit.HitCount++
-			return hit.toResponse(false), nil
+			return hit.toResponse(intelType, value, false), nil
 		}
 		// 懒过期（拍板点 1 预确认）：stale 返回 + 异步回源刷新（失败仅落日志不阻塞）
 		go s.refresh(context.Background(), intelType, value, ttl)
-		return hit.toResponse(true), nil
+		return hit.toResponse(intelType, value, true), nil
 	}
 
 	// ② 未命中：singleflight 回源（同 key 并发仅一次上游调用）
@@ -80,7 +80,7 @@ func (s *Service) Query(ctx context.Context, intelType, rawValue string) (*Respo
 		// 429 降级：有（过期）缓存 → stale 返回；无 → 503（A.3）
 		if errors.Is(err, ErrIntelUpstreamQuota) {
 			if hit, ok := s.lookupIncludingExpired(ctx, intelType, value); ok {
-				return hit.toResponse(true), nil
+				return hit.toResponse(intelType, value, true), nil
 			}
 			return nil, ErrIntelUpstreamQuota
 		}
@@ -96,9 +96,11 @@ type cacheRow struct {
 	HitCount  int
 }
 
-func (r cacheRow) toResponse(stale bool) *Response {
+func (r cacheRow) toResponse(intelType, value string, stale bool) *Response {
+	// type/value 由调用方透传（审计 G1-2：修复前恒空串——命中/懒过期/429-stale
+	// 三条缓存路径出站字段缺失，违反 09 号 A.4 契约与回源路径不一致）
 	return &Response{
-		Type: "", Value: "", Result: r.Result, Stale: stale,
+		Type: intelType, Value: value, Result: r.Result, Stale: stale,
 		FetchedAt: r.FetchedAt, HitCount: r.HitCount,
 	}
 }
@@ -121,10 +123,7 @@ func (s *Service) lookupRow(ctx context.Context, intelType, value string) (*cach
 	if err != nil {
 		return nil, false // 含 ErrNoRows 与瞬时 DB 错——均走回源路径
 	}
-	resp := r.toResponse(false)
-	resp.Type, resp.Value = intelType, value
-	// toResponse 不带 type/value（fetchAndStore 侧统一填）——此处补
-	return &cacheRow{Result: r.Result, FetchedAt: r.FetchedAt, ExpiresAt: r.ExpiresAt, HitCount: r.HitCount}, true
+	return &r, true // type/value 由 toResponse 调用方透传（G1-2 死代码清理）
 }
 
 func (s *Service) bumpHit(ctx context.Context, intelType, value string) {

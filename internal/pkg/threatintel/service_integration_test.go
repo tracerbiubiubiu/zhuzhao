@@ -70,6 +70,10 @@ func TestB91_IntelCache(t *testing.T) {
 		assert.EqualValues(t, 1, p.count(), "二查命中——零上游调用")
 		assert.False(t, r2.Stale)
 		assert.GreaterOrEqual(t, r2.HitCount, int(2))
+		// G1-2 审计锚：命中路径经 toResponse——type/value 透传（修复前恒空串）
+		assert.Equal(t, "domain", r2.Type, "命中路径 type 透传")
+		assert.Equal(t, v, r2.Value, "命中路径 value 透传")
+		assert.JSONEq(t, `{"risk":"high","source":"fake"}`, string(r2.Result), "命中路径 result 保真")
 	})
 
 	t.Run("归一化：EXAMPLE.COM 与 example.com 同缓存行", func(t *testing.T) {

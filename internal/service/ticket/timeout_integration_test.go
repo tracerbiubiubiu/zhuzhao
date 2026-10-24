@@ -47,8 +47,8 @@ func TestB104_Timeout(t *testing.T) {
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "超时批"})
 	require.NoError(t, err)
 	// transition_meta：assigned 节点 60 分钟超时 + escalation（间隔 30 分/上限 2 次/
-	// notify 含 supervisor——人工指定档）
-	meta := `{"assigned":{"timeout_minutes":60,"escalation":{"notify":["assignee","supervisor"],"reminder_interval_minutes":30,"max_reminders":2}}}`
+	// notify 含 supervisor——人工指定档）+ in_progress 节点 sla_due_hours 1h（G1-1 锚）
+	meta := `{"assigned":{"timeout_minutes":60,"escalation":{"notify":["assignee","supervisor"],"reminder_interval_minutes":30,"max_reminders":2}},"in_progress":{"sla_due_hours":1}}`
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: jsonRaw(t, meta)})
 	require.NoError(t, err)
 
@@ -250,6 +250,54 @@ func TestB104_Timeout(t *testing.T) {
 		require.NoError(t, scanner.Handle(ctx, nil))
 		time.Sleep(150 * time.Millisecond)
 		assert.Equal(t, before, timeoutMsgs(), "离开超时状态后不再催办（tk 离开 assigned）")
+	})
+
+	// G1-1 审计锚：deadline 水位键读写一致（修复前 shouldRemind 读裸 state 而
+	// bumpReminder 写 deadline:state——查重恒不命中每 tick 重发，且被 timeout
+	// 水位反向压制）
+	deadlineMsgs := func() int {
+		n := 0
+		for _, m := range sender.messages() {
+			if m.TemplateCode == "ticket_deadline_notify" {
+				n++
+			}
+		}
+		return n
+	}
+	t.Run("SLA deadline：到期单次提醒+查重（G1-1 修复锚）", func(t *testing.T) {
+		before := deadlineMsgs()
+		tk5, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "SLA deadline 单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk5.ID, AssignedTo: &bid}, aid))
+		// Transition 到 in_progress（to 态 sla_due_hours=1 → due=NOW()+1h 写入）
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk5.ID, To: "in_progress"}, bid)
+		require.NoError(t, err)
+		var due int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM tickets WHERE id = $1 AND sla_due_at IS NOT NULL`, tk5.ID).Scan(&due))
+		require.Equal(t, 1, due, "Transition 后 due_at 写入（in_progress sla_due_hours 配置）")
+		// 拨到期 → 第一次扫描：应发一次
+		_, err = testPool.Exec(ctx, `UPDATE tickets SET sla_due_at = NOW() - interval '1 minute' WHERE id = $1`, tk5.ID)
+		require.NoError(t, err)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		time.Sleep(150 * time.Millisecond)
+		assert.Equal(t, before+1, deadlineMsgs(), "到期首扫发一次 deadline 通知")
+		var count int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT reminder_count FROM ticket_reminders WHERE ticket_id = $1 AND state = 'deadline:in_progress'`, tk5.ID).Scan(&count))
+		assert.Equal(t, 1, count, "deadline 水位写在 deadline: 前缀键")
+		// 第二次扫描：水位查重应拦截（修复前每 tick 重发）。断言走水位而非消息
+		// 计数——重发会被 S6 节流窗吞（消息面不红），但 scanner 侧 bumpReminder
+		// 同步执行必递增——水位是穿透节流的特异性证据。
+		require.NoError(t, scanner.Handle(ctx, nil))
+		var count2 int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT reminder_count FROM ticket_reminders WHERE ticket_id = $1 AND state = 'deadline:in_progress'`, tk5.ID).Scan(&count2))
+		assert.Equal(t, 1, count2, "第二扫查重拦截——水位不递增（变异态重发+bump→2 必红）")
+		time.Sleep(150 * time.Millisecond)
+		assert.Equal(t, before+1, deadlineMsgs(), "第二扫查重拦截——不重发")
 	})
 }
 

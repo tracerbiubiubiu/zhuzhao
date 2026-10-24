@@ -332,7 +332,9 @@ func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state strin
 	notify := []string{"assignee", "supervisor"}
 	sent := 0
 	for _, c := range cands {
-		_, ok, err := s.shouldRemind(ctx, c.id, state, 24*60, 1) // deadline 单次提醒
+		// 水位键=deadline:state（与 bumpReminder 写键一致——审计 G1-1：修复前读裸
+		// state 键=查重恒不命中每 tick 重发，且被 timeout 水位反向压制不发）
+		_, ok, err := s.shouldRemind(ctx, c.id, "deadline:"+state, 24*60, 1) // deadline 单次提醒
 		if err != nil {
 			return sent, err
 		}
