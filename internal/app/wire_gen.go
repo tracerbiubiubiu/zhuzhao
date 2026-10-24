@@ -128,6 +128,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	}
 	rateLimitConfig := provideRateLimitConfig(cfg)
 	v := provideTrustedProxies(cfg)
+	cronRegistry := service.NewCronRegistry()
 	deps := router.Deps{
 		AuthHandler:         authHandler,
 		UserHandler:         userHandler,
@@ -145,6 +146,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatLookup:               patRepo,
 		TicketHandler:           ticketHandler,
 		BadgeHandler:            handler.NewBadgeHandler(ticket.NewBadgeService(pool)),
+		SystemHandler:           handler.NewSystemHandler(cronRegistry),
 		StorageHandler:          storageHandler,
 		SettingsHandler:         settingsHandler,
 		JWTManager:              manager,
@@ -191,7 +193,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 	engine := router.New(deps)
 	engineRef = engine
-	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore)
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore, cronRegistry)
 	if err != nil {
 		cleanup3()
 		cleanup2()

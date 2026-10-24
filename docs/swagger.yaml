@@ -45,6 +45,10 @@ definitions:
         description: nil = 取消分派
         example: "0"
         type: string
+      escalation_supervisor_id:
+        description: EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）
+        example: "0"
+        type: string
       id:
         example: "0"
         type: string
@@ -174,6 +178,11 @@ definitions:
           type: integer
         type: array
       description:
+        type: string
+      escalation_supervisor_id:
+        description: EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign
+          改）
+        example: "0"
         type: string
       org_id:
         example: "0"
@@ -859,6 +868,13 @@ definitions:
         maxLength: 100
         type: string
       states:
+        items:
+          type: integer
+        type: array
+      transition_meta:
+        description: |-
+          TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
+          nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
         items:
           type: integer
         type: array
@@ -1841,6 +1857,18 @@ paths:
       summary: 对象预签名上传（返回直传 URL——Content-Type 已钉入签名）
       tags:
       - storage
+  /api/v1/system/cron-status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: cron 任务状态（只读——上次成功/失败/耗时；超时扫描含观察模式标记）
+      tags:
+      - system
   /api/v1/system/settings:
     get:
       produces:

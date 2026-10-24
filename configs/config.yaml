@@ -147,3 +147,9 @@ storage:
   blocked_mime_types: [text/html, image/svg+xml]   # 硬底线：KV 不可白名单化
   inline_mime_prefixes: [image/]    # 代理下载 Content-Disposition 分型
   orphan_gc_days: 7
+
+# 工单域内务（S10 B10-4 节点超时——扫描骑 CronScheduler，D18 维护型口径）
+tickets:
+  timeout_scan_enabled: true   # 超时扫描开关（无 transition_meta 配置的类型零成本跳过）
+  timeout_scan_tick: 5m        # 扫描周期
+  timeout_observe: true        # 观察模式：只记日志不发送（存量回填近似值防误报——确认后关闭）

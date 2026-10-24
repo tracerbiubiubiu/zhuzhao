@@ -20,6 +20,7 @@ type BizType string
 
 const (
 	BizTicket BizType = "ticket" // 工单域（S6 触发/S10 超时/phase6 R3 消费）
+	BizOps    BizType = "ops"    // 运维域（S10 B10-4 cron 失败告警——消息钩子双订阅）
 	// 后续按需新增（risk/task/…）——包不预注册消费方
 )
 
@@ -34,6 +35,12 @@ const (
 	TicketUpdated   Action = "ticket.updated"
 	TicketCommented Action = "ticket.commented"
 	TicketCCAdded   Action = "ticket.cc_added" // S10 B10-1 抄送（10 号 §3.1 评审批——S6 message_rules 订阅抄送通知）
+	TicketTimeout   Action = "ticket.timeout"  // S10 B10-4 节点超时（扫描器只发事件——S6 规则面路由通知）
+)
+
+// ops 域（运维告警——cron 失败等；10 号 A.5：域边界显式化防落 message_rules 默认 ticket）
+const (
+	ActionOpsCronFailed Action = "ops.cron_failed"
 )
 
 // Payload 事件载荷——按 Action 预留 payload schema 登记位（06 号 A.1）。

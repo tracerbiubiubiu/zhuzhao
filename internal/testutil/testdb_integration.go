@@ -169,6 +169,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000062_ticket_cc.up.sql",
 			// S10 B10-2: tags 通用标签表
 			"000063_tags.up.sql",
+			// S10 B10-4: 节点超时+催办（transition_meta/status_changed_at/
+			// escalation_supervisor_id/ticket_reminders+种子+cron-status 绑定）
+			"000064_ticket_timeout.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

@@ -1398,6 +1398,25 @@
                 }
             }
         },
+        "/api/v1/system/cron-status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "cron 任务状态（只读——上次成功/失败/耗时；超时扫描含观察模式标记）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/system/settings": {
             "get": {
                 "produces": [
@@ -3524,6 +3543,11 @@
                     "type": "string",
                     "example": "0"
                 },
+                "escalation_supervisor_id": {
+                    "description": "EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）",
+                    "type": "string",
+                    "example": "0"
+                },
                 "id": {
                     "type": "string",
                     "example": "0"
@@ -3698,6 +3722,11 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "escalation_supervisor_id": {
+                    "description": "EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign 改）",
+                    "type": "string",
+                    "example": "0"
                 },
                 "org_id": {
                     "type": "string",
@@ -4641,6 +4670,13 @@
                     "maxLength": 100
                 },
                 "states": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "transition_meta": {
+                    "description": "TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；\nnil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）",
                     "type": "array",
                     "items": {
                         "type": "integer"

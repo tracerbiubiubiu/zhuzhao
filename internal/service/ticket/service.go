@@ -255,14 +255,15 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// 快照必须在事务内与 Move 的 FOR UPDATE 写锁串行化后读取（BK-11 ①）：
 	// 事务外裸读会命中「读旧 path → move 级联提交 → 写入过期 org_path」竞态。
 	ticket := &model.Ticket{
-		TypeCode:    req.TypeCode,
-		Title:       req.Title,
-		Description: description,
-		Priority:    priority,
-		Status:      StatusOpen,
-		CreatedBy:   actorUserID,
-		OrgID:       req.OrgID,
-		CustomData:  customData,
+		TypeCode:             req.TypeCode,
+		Title:                req.Title,
+		Description:          description,
+		Priority:             priority,
+		Status:               StatusOpen,
+		CreatedBy:            actorUserID,
+		EscalationSupervisor: req.EscalationSupervisor,
+		OrgID:                req.OrgID,
+		CustomData:           customData,
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -787,6 +788,12 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 
 	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 		return err
+	}
+	// B10-4：催办上级人工指定随分派事务更新（nil=保持不动；dd §31 基线档）
+	if req.EscalationSupervisor != nil {
+		if err := s.ticketRepo.UpdateEscalationSupervisorTx(ctx, tx, req.ID, *req.EscalationSupervisor); err != nil {
+			return err
+		}
 	}
 	if newStatus != ticket.Status {
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {

@@ -29,13 +29,14 @@ import (
 
 // App 应用实例
 type App struct {
-	cfg        *config.Config
-	logger     *slog.Logger
-	router     *gin.Engine
-	server     *http.Server
-	policyEval *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
-	auditCron  *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
-	storageGC  *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
+	cfg         *config.Config
+	logger      *slog.Logger
+	router      *gin.Engine
+	server      *http.Server
+	policyEval  *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron   *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
+	storageGC   *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
+	timeoutScan *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
 }
 
 // NewApp 创建应用实例
@@ -43,7 +44,8 @@ type App struct {
 // 双向；缺口 = 拒绝启动）——W0b wire 转正：原在 wire_gen 手码装配段的
 // 对账逻辑迁入此处，使 wire_gen 可安全再生。
 func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
-	pool *pgxpool.Pool, gw *gateway.Registry, storageCfg *pkgstorage.ConfigStore) (*App, error) {
+	pool *pgxpool.Pool, gw *gateway.Registry, storageCfg *pkgstorage.ConfigStore,
+	cronReg *service.CronRegistry) (*App, error) {
 	var prefixes []string
 	if gw != nil {
 		prefixes = gw.Prefixes
@@ -71,6 +73,8 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		notifSvc, // 06 号 §5.4 死信集成（实现 NotifyDeadLetterSender）
 	)
 	eventRegistry.Subscribe(domainevent.BizTicket, "ticket.notify", notifyHook)
+	// S10 B10-4：ops 域（cron 失败告警）双订阅——同一编排链（MessageDispatcher）
+	eventRegistry.Subscribe(domainevent.BizOps, "ops.notify", notifyHook)
 
 	// B1-6 批2：表达式函数注册表装配（lookup_dict 需 db 闭包；纯函数 now/upper
 	// 已在 exprcalc 包内默认注册；risk_score/sla_deadline 待 phase6 源后加函数）
@@ -111,13 +115,59 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 			logger.Error("storage_gc disabled: client init failed", "err", cerr)
 		}
 	}
+	// S10 B10-4 节点超时扫描（10 号 A.5——骑 CronScheduler，D18 维护型口径；
+	// observe 默认 true=发布安全默认：存量回填近似值确认无异常后经 config 关闭）
+	var timeoutScan *service.CronScheduler
+	var timeoutObserve bool
+	if cfg.Tickets.TimeoutScanEnabled {
+		tick, _ := time.ParseDuration(cfg.Tickets.TimeoutScanTick)
+		if tick <= 0 {
+			tick = 5 * time.Minute
+		}
+		timeoutObserve = cfg.Tickets.TimeoutObserve
+		scanner := ticket.NewTimeoutScanner(pool, eventRegistry, timeoutObserve, logger)
+		timeoutScan = service.NewCronScheduler(pool, "timeout_scan", scanner, tick, logger)
+		if timeoutObserve {
+			logger.Warn("timeout_scan enabled in OBSERVE mode (log-only, no dispatch — set tickets.timeout_observe=false after first clean cycle)", slog.Duration("tick", tick))
+		} else {
+			logger.Info("timeout_scan cron enabled", slog.Duration("tick", tick))
+		}
+	}
+	// B10-4 观测面：cron 失败 → DomainEvent{ops, ops.cron_failed} → S6 规则面告警
+	// （10 号 A.5 静默失败不可接受——种子规则收件人 empty=暂不发送，管理员配置后生效）
+	cronFailEmit := func(job string, err error) {
+		eventRegistry.Dispatch(context.Background(), domainevent.DomainEvent{
+			BizType: domainevent.BizOps, Action: domainevent.ActionOpsCronFailed,
+			BizID: job, Payload: domainevent.Payload{
+				"job": job, "error": fmt.Sprintf("%v", err), "last_success": "see /system/cron-status",
+			},
+			Timestamp: time.Now(),
+		})
+	}
+	if auditCron != nil {
+		auditCron.SetOnFailure(cronFailEmit)
+	}
+	if storageGC != nil {
+		storageGC.SetOnFailure(cronFailEmit)
+	}
+	if timeoutScan != nil {
+		timeoutScan.SetOnFailure(cronFailEmit)
+	}
+	// cron-status 数据面：注册表共享（wire_gen 建 handler 时已注入同实例——
+	// 装配环经注册表壳解开；nil 调度器跳过）
+	cronReg.Register("audit_archive", auditCron)
+	cronReg.Register("storage_gc", storageGC)
+	if timeoutScan != nil {
+		cronReg.Register("timeout_scan", &timeoutScanProvider{sch: timeoutScan, observe: timeoutObserve})
+	}
 	return &App{
-		cfg:        cfg,
-		logger:     logger,
-		router:     router,
-		policyEval: policyEval,
-		auditCron:  auditCron,
-		storageGC:  storageGC,
+		cfg:         cfg,
+		logger:      logger,
+		router:      router,
+		policyEval:  policyEval,
+		auditCron:   auditCron,
+		storageGC:   storageGC,
+		timeoutScan: timeoutScan,
 	}, nil
 }
 
@@ -163,6 +213,11 @@ func (a *App) Run() error {
 		go a.storageGC.Run(ctx)
 	}
 
+	// S10 B10-4：节点超时扫描 cron（tickets.timeout_scan_enabled 门控）
+	if a.timeoutScan != nil {
+		go a.timeoutScan.Run(ctx)
+	}
+
 	select {
 	case err := <-serverErr:
 		// 服务器异常退出（非 graceful shutdown）
@@ -204,3 +259,13 @@ func (a *App) Shutdown() error {
 	a.logger.Info("server stopped")
 	return serverErr
 }
+
+// timeoutScanProvider timeout_scan 注册表适配：Status 取自调度器 + Observe
+// 标记取自装配 config（cron-status 透出——B10-4 观察模式运维确认口）。
+type timeoutScanProvider struct {
+	sch     *service.CronScheduler
+	observe bool
+}
+
+func (p *timeoutScanProvider) Status() service.CronStatus { return p.sch.Status() }
+func (p *timeoutScanProvider) Observe() bool              { return p.observe }

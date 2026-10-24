@@ -84,6 +84,8 @@ var validEventActions = map[string]bool{
 	"ticket.created": true, "ticket.assigned": true, "ticket.closed": true,
 	"ticket.updated": true, "ticket.commented": true,
 	"ticket.cc_added": true, // S10 B10-1（种子规则 000062 同款——管理员可改路由）
+	"ticket.timeout":  true, // S10 B10-4 超时催办（种子规则 000064 同款）
+	"ops.cron_failed": true, // S10 B10-4 cron 失败告警（BizType=ops——000064 种子）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }

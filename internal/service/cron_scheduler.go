@@ -32,9 +32,13 @@ type CronScheduler struct {
 	logger  *slog.Logger
 
 	// B5-5 cron 最小件（2026-10-19 收窄批落地）：上次成功/失败时间与末次错误——
-	// 数据面供 B10-4 `GET /system/cron-status` 聚合端点消费（端点本批不建，读侧维持登记）
+	// 数据面供 B10-4 `GET /system/cron-status` 聚合端点消费
 	mu     sync.Mutex
 	status CronStatus
+
+	// B10-4 观测面：失败回调（app 装配挂 DomainEvent{ops, ops.cron_failed}——
+	// 经 S6 规则面告警；10 号 A.5「超期扫描静默失败不可接受」收口件）。nil=无。
+	onFailure func(job string, err error)
 }
 
 // CronStatus cron 任务运行状态快照（B5-5 最小件；零值 = 尚未成功过）。
@@ -59,6 +63,9 @@ func (s *CronScheduler) recordSuccess(d time.Duration) {
 	s.mu.Unlock()
 }
 
+// SetOnFailure 装配期挂失败回调（非并发安全——仅启动期）。
+func (s *CronScheduler) SetOnFailure(fn func(job string, err error)) { s.onFailure = fn }
+
 func (s *CronScheduler) recordFailure(err error) {
 	msg := ""
 	if err != nil {
@@ -72,6 +79,9 @@ func (s *CronScheduler) recordFailure(err error) {
 	s.status.LastFailureAt = time.Now()
 	s.status.LastError = msg
 	s.mu.Unlock()
+	if s.onFailure != nil {
+		s.onFailure(s.name, err) // 事件派发 at-most-once 异步——回调内自带隔离
+	}
 }
 
 // ReentrantJob B-1 修法 d：可重入契约升格为接口约束（从 audit_archive 的

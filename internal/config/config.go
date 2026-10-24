@@ -43,11 +43,25 @@ type Config struct {
 	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化：契约到手填值即切
 	// 生产态；微批 A 修复审计 P1-3「Endpoint 无配置入口」）
 	Notification NotificationConfig `mapstructure:"notification"`
+	// Tickets 工单域内务配置（S10 B10-4——超时扫描骑 CronScheduler，D18 维护型口径）
+	Tickets TicketsConfig `mapstructure:"tickets"`
 }
 
 // NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
 type NotificationConfig struct {
 	UIP UIPConfig `mapstructure:"uip"`
+}
+
+// TicketsConfig 工单域内务（S10 B10-4 节点超时）。
+type TicketsConfig struct {
+	// TimeoutScanEnabled 超时扫描任务开关（默认开——扫描只发事件，无 meta 配置
+	// 的类型零成本跳过；关闭=不装配）
+	TimeoutScanEnabled bool `mapstructure:"timeout_scan_enabled"`
+	// TimeoutScanTick 扫描周期（默认 5m——10 号 A.5）
+	TimeoutScanTick string `mapstructure:"timeout_scan_tick"`
+	// TimeoutObserve 观察模式（默认 true=发布安全默认：存量 status_changed_at 为
+	// updated_at 近似回填，首轮可能误报——观察确认后关闭才实际发送；cron-status 可见）
+	TimeoutObserve bool `mapstructure:"timeout_observe"`
 }
 
 // UIPConfig 统一消息平台（UIP）adapter 配置（A.3：endpoint config 化——
@@ -317,6 +331,10 @@ func Load(path string) (*Config, error) {
 	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化；契约到手填值切生产态）
 	viper.BindEnv("notification.uip.endpoint", "NOTIFICATION_UIP_ENDPOINT")
 	viper.SetDefault("notification.uip.endpoint", "")
+	// S10 B10-4 超时扫描（observe 默认 true——E-2 拍定缓解①，dev/release 同默认）
+	viper.SetDefault("tickets.timeout_scan_enabled", true)
+	viper.SetDefault("tickets.timeout_scan_tick", "5m")
+	viper.SetDefault("tickets.timeout_observe", true)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)

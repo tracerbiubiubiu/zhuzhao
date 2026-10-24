@@ -83,7 +83,87 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 			return nil, err
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.IsActive, req.Version)
+	// B10-4：transition_meta 键域须 ⊆ states（改图后残留旧状态键 → 400 收口，
+	// 防扫描器扫已删状态的悬空超时配置）。仅发 meta 时取存量 states 判键域。
+	if len(req.TransitionMeta) > 0 {
+		stateList, err := s.metaKeyDomain(ctx, code, req.States)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
+			return nil, err
+		}
+	}
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, req.Version)
+}
+
+// metaKeyDomain 取 meta 键域判定的 states 基线：请求带 states 用请求值，否则读存量。
+func (s *Service) metaKeyDomain(ctx context.Context, code string, reqStates json.RawMessage) ([]string, error) {
+	if len(reqStates) > 0 {
+		var stateList []string
+		if err := json.Unmarshal(reqStates, &stateList); err != nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "states 须为字符串数组")
+		}
+		return stateList, nil
+	}
+	t, err := s.ticketRepo.GetTicketType(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	var stateList []string
+	if err := json.Unmarshal(t.States, &stateList); err != nil {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code, "存量 states 解析失败")
+	}
+	return stateList, nil
+}
+
+// validateTransitionMeta B10-4：state 级节点元数据结构校验（键⊆states；值含
+// timeout_minutes>0 与 escalation 可选嵌套段——notify⊆{assignee,supervisor}、
+// reminder_interval_minutes/max_reminders>0）。零 DB 纯函数（单测直测）。
+func validateTransitionMeta(states []string, meta json.RawMessage) error {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(meta, &m); err != nil {
+		return errcode.New(errcode.ErrInvalidParams.Code, "transition_meta 须为对象")
+	}
+	set := map[string]bool{}
+	for _, st := range states {
+		set[st] = true
+	}
+	for state, raw := range m {
+		if !set[state] {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta 键 %q 不在 states 中", state))
+		}
+		var seg struct {
+			TimeoutMinutes *int `json:"timeout_minutes"`
+			Escalation     *struct {
+				Notify                  []string `json:"notify"`
+				ReminderIntervalMinutes *int     `json:"reminder_interval_minutes"`
+				MaxReminders            *int     `json:"max_reminders"`
+			} `json:"escalation"`
+		}
+		if err := json.Unmarshal(raw, &seg); err != nil {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q] 结构不合法", state))
+		}
+		if seg.TimeoutMinutes != nil && *seg.TimeoutMinutes <= 0 {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].timeout_minutes 须为正整数", state))
+		}
+		if e := seg.Escalation; e != nil {
+			for _, n := range e.Notify {
+				if n != "assignee" && n != "supervisor" {
+					return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].escalation.notify 含未知目标 %q（assignee/supervisor）", state, n))
+				}
+			}
+			// 下限 5 分钟：S6 通知链有 60s 同单同动作节流窗（06 号 §5.2 投递语义），
+			// 催办间隔若小于节流窗会被吞——校验层挡在配置面而非发送面
+			if e.ReminderIntervalMinutes != nil && *e.ReminderIntervalMinutes < 5 {
+				return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].escalation.reminder_interval_minutes 须 ≥5 分钟（小于通知节流窗会被吞）", state))
+			}
+			if e.MaxReminders != nil && *e.MaxReminders < 0 {
+				return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%q].escalation.max_reminders 须为非负整数", state))
+			}
+		}
+	}
+	return nil
 }
 
 // DeleteTicketType 删除类型（有工单禁删 → ErrConflict，走停用）

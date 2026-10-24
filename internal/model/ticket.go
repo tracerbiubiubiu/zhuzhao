@@ -20,8 +20,14 @@ type Ticket struct {
 	OrgPath     string          `json:"org_path" db:"org_path"` // ltree 路径
 	CustomData  json.RawMessage `json:"custom_data,omitempty" db:"custom_data"`
 	SLADueAt    *time.Time      `json:"sla_due_at,omitempty" db:"sla_due_at"`
-	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
+	// StatusChangedAt 进入当前状态时刻（S10 B10-4——E-2 拍定 a 案：UpdateStatusTx
+	// 咽喉同写，节点停留时长数据源；存量回填=updated_at 近似）
+	StatusChangedAt *time.Time `json:"status_changed_at,omitempty" db:"status_changed_at"`
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——E-1 拍定：人工指定为
+	// 基线 > HR manager_id 为进阶[dd §31]；Create/Assign 可填可改）
+	EscalationSupervisor *int64    `json:"escalation_supervisor_id,string,omitempty" db:"escalation_supervisor_id"`
+	CreatedAt            time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at" db:"updated_at"`
 
 	// 姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
 	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）。
@@ -59,12 +65,15 @@ type TagRow struct {
 
 // TicketType 工单类型配置
 type TicketType struct {
-	ID              int64           `json:"id,string" db:"id"`
-	Code            string          `json:"code" db:"code"`
-	Name            string          `json:"name" db:"name"`
-	Description     string          `json:"description" db:"description"`
-	States          json.RawMessage `json:"states" db:"states"`
-	Transitions     json.RawMessage `json:"transitions" db:"transitions"`
+	ID          int64           `json:"id,string" db:"id"`
+	Code        string          `json:"code" db:"code"`
+	Name        string          `json:"name" db:"name"`
+	Description string          `json:"description" db:"description"`
+	States      json.RawMessage `json:"states" db:"states"`
+	Transitions json.RawMessage `json:"transitions" db:"transitions"`
+	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation
+	// 承载；S3a 后 "from>to" 转换级键复用同列）
+	TransitionMeta  json.RawMessage `json:"transition_meta,omitempty" db:"transition_meta"`
 	DefaultSLAHours int             `json:"default_sla_hours" db:"default_sla_hours"`
 	HasCustomFields bool            `json:"has_custom_fields" db:"has_custom_fields"`
 	IsActive        bool            `json:"is_active" db:"is_active"`

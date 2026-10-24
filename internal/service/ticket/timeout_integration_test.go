@@ -1,0 +1,235 @@
+//go:build integration
+
+// S10 B10-4 节点超时集成测试：写入点（status_changed_at/supervisor 指定）+
+// 扫描链路（候选/观察模式/催办水位/间隔与上限/目标集含人工指定上级）。
+package ticket
+
+import (
+	"context"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+)
+
+// backdateStatusChanged 把单的进入状态时间拨回（造超时候选——测试专用直改库）。
+func backdateStatusChanged(t *testing.T, ticketID int64, d time.Duration) {
+	t.Helper()
+	_, err := testPool.Exec(context.Background(),
+		`UPDATE tickets SET status_changed_at = NOW() - make_interval(secs => $2::double precision / 1.0) WHERE id = $1`,
+		ticketID, d.Seconds())
+	require.NoError(t, err)
+}
+
+func TestB104_Timeout(t *testing.T) {
+	ctx := context.Background()
+
+	// 通知链组装（000064 种子规则：ticket.timeout → ticket_timeout_notify, cc）
+	reg := domainevent.NewHookRegistry(nil)
+	sender := &captureSender{}
+	hook := NewTicketNotifyHook(
+		repository.NewMessageTemplateRepo(testPool), repository.NewMessageRuleRepo(testPool),
+		repository.NewMessageLogRepo(testPool), repository.NewNotificationOptoutRepo(testPool),
+		sender, nil, nil)
+	reg.Subscribe(domainevent.BizTicket, "b104.notify", hook)
+
+	svc, aid, bid, vid, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"} // assign 需主管面
+	oid := childOrgID(t, "b104")
+	code := "b104_" + uniqueSuffix()
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "超时批"})
+	require.NoError(t, err)
+	// transition_meta：assigned 节点 60 分钟超时 + escalation（间隔 30 分/上限 2 次/
+	// notify 含 supervisor——人工指定档）
+	meta := `{"assigned":{"timeout_minutes":60,"escalation":{"notify":["assignee","supervisor"],"reminder_interval_minutes":30,"max_reminders":2}}}`
+	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: jsonRaw(t, meta)})
+	require.NoError(t, err)
+
+	tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+		TypeCode: code, Title: "超时链路单", Priority: 3, OrgID: oid,
+		EscalationSupervisor: &vid, // 发起时人工指定催办上级（dd §31 基线档）
+	}, aid)
+	require.NoError(t, err)
+	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
+
+	scanner := NewTimeoutScanner(testPool, reg, false, nil)
+	observeScanner := NewTimeoutScanner(testPool, reg, true, nil)
+
+	countReminder := func() (int, time.Time) {
+		var c int
+		var last *time.Time
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT reminder_count, last_reminder_at FROM ticket_reminders WHERE ticket_id = $1 AND state = 'assigned'`, tk.ID).
+			Scan(&c, &last))
+		var lt time.Time
+		if last != nil {
+			lt = *last
+		}
+		return c, lt
+	}
+	timeoutMsgs := func() int {
+		n := 0
+		for _, m := range sender.messages() {
+			if m.TemplateCode == "ticket_timeout_notify" {
+				n++
+			}
+		}
+		return n
+	}
+
+	t.Run("未超时：扫描空过（水位零行）", func(t *testing.T) {
+		require.NoError(t, scanner.Handle(ctx, nil))
+		var rows int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM ticket_reminders WHERE ticket_id = $1`, tk.ID).Scan(&rows))
+		assert.Zero(t, rows)
+	})
+
+	t.Run("超时候选：事件到人（assignee∪人工指定上级）+ 水位 1", func(t *testing.T) {
+		backdateStatusChanged(t, tk.ID, 2*time.Hour)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		time.Sleep(200 * time.Millisecond) // 事件异步派发
+
+		msgs := sender.messages()
+		require.NotEmpty(t, msgs, "超时候选须触发通知")
+		var hit *struct{ recipients []string }
+		for _, m := range msgs {
+			if m.TemplateCode == "ticket_timeout_notify" {
+				hit = &struct{ recipients []string }{m.Recipients}
+			}
+		}
+		require.NotNil(t, hit, "须有 ticket_timeout_notify 发送")
+		assert.ElementsMatch(t, []string{itoa(bid), itoa(vid)}, hit.recipients,
+			"目标集=处理人 ∪ 人工指定催办上级（cc 档载荷锚点）")
+		c, _ := countReminder()
+		assert.Equal(t, 1, c)
+	})
+
+	t.Run("间隔未到：不重发", func(t *testing.T) {
+		require.NoError(t, scanner.Handle(ctx, nil))
+		time.Sleep(150 * time.Millisecond)
+		assert.Equal(t, 1, timeoutMsgs())
+		c, _ := countReminder()
+		assert.Equal(t, 1, c)
+	})
+
+	t.Run("间隔已到：第 2 次催办；达上限后停", func(t *testing.T) {
+		// 催办重复断言钉水位（权威源）：通知面 60s 节流窗与测试加速的时间回拨
+		// 互扰（生产间隔 ≥5min 恒 > 节流窗——校验层已下限挡配置），消息送达链
+		// 已由首催子测验证
+		_, err := testPool.Exec(ctx, `UPDATE ticket_reminders SET last_reminder_at = NOW() - interval '31 minutes' WHERE ticket_id = $1`, tk.ID)
+		require.NoError(t, err)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		c, _ := countReminder()
+		assert.Equal(t, 2, c, "间隔已到水位 +1")
+
+		// 上限 2 已达——再扫不进位
+		_, err = testPool.Exec(ctx, `UPDATE ticket_reminders SET last_reminder_at = NOW() - interval '31 minutes' WHERE ticket_id = $1`, tk.ID)
+		require.NoError(t, err)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		c, _ = countReminder()
+		assert.Equal(t, 2, c, "max_reminders=2 达上限停止")
+	})
+
+	t.Run("观察模式：只记日志不发送不耗水位", func(t *testing.T) {
+		// 新候选（第二张单，无 escalation 段=单发档）
+		tk2, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "观察模式单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk2.ID, AssignedTo: &bid}, aid))
+		backdateStatusChanged(t, tk2.ID, 2*time.Hour)
+
+		before := timeoutMsgs()
+		require.NoError(t, observeScanner.Handle(ctx, nil))
+		time.Sleep(150 * time.Millisecond)
+		assert.Equal(t, before, timeoutMsgs(), "观察模式不发送")
+		var rows int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM ticket_reminders WHERE ticket_id = $1`, tk2.ID).Scan(&rows))
+		assert.Zero(t, rows, "观察模式不耗水位")
+	})
+
+	t.Run("状态离开：partial 索引天然排除", func(t *testing.T) {
+		// 取消分派 → open（无超时配置状态）
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: nil}, aid))
+		_, err := testPool.Exec(ctx, `UPDATE ticket_reminders SET last_reminder_at = NOW() - interval '31 minutes' WHERE ticket_id = $1`, tk.ID)
+		require.NoError(t, err)
+		require.NoError(t, scanner.Handle(ctx, nil))
+		time.Sleep(150 * time.Millisecond)
+		assert.Equal(t, 2, timeoutMsgs(), "离开超时状态后不再催办")
+	})
+}
+
+func TestB104_WritePoints(t *testing.T) {
+	ctx := context.Background()
+	svc, aid, bid, vid, roles := setupTicket2a(t)
+	oid := childOrgID(t, "b104w")
+
+	t.Run("Create：status_changed_at 初始化 + supervisor 落库", func(t *testing.T) {
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: "incident", Title: "写入点单", Priority: 3, OrgID: oid,
+			EscalationSupervisor: &vid,
+		}, aid)
+		require.NoError(t, err)
+		got, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		require.NotNil(t, got.StatusChangedAt, "创建即初始化进入状态时间")
+		assert.False(t, got.StatusChangedAt.After(time.Now().Add(time.Minute)))
+		require.NotNil(t, got.EscalationSupervisor)
+		assert.EqualValues(t, vid, *got.EscalationSupervisor)
+	})
+
+	t.Run("Assign：状态转换刷新 status_changed_at + supervisor 随分派改", func(t *testing.T) {
+		roles[aid] = []string{"admin"} // assign 需主管面
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: "incident", Title: "分派写入点单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		before, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		require.NotNil(t, before.StatusChangedAt)
+
+		time.Sleep(1100 * time.Millisecond) // 造时差（同秒难以断言先后）
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{
+			ID: tk.ID, AssignedTo: &bid, EscalationSupervisor: &vid,
+		}, aid))
+		after, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		require.NotNil(t, after.StatusChangedAt)
+		assert.True(t, after.StatusChangedAt.After(*before.StatusChangedAt),
+			"状态转换（open→assigned）刷新进入状态时间——UpdateStatusTx 咽喉同写")
+		require.NotNil(t, after.EscalationSupervisor)
+		assert.EqualValues(t, vid, *after.EscalationSupervisor, "分派时人工指定催办上级落库")
+	})
+
+	t.Run("幻影 supervisor：FK 400", func(t *testing.T) {
+		roles[aid] = []string{"admin"}
+		ghost := int64(999999999)
+		err := svc.Assign(ctx, &model.AssignTicketRequest{ID: 1, AssignedTo: &bid, EscalationSupervisor: &ghost}, aid)
+		// ID=1 若不存在先 404——换实存单：直接建一张
+		tk, cerr := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: "incident", Title: "幻影上级单", Priority: 3, OrgID: oid,
+		}, aid)
+		require.NoError(t, cerr)
+		err = svc.Assign(ctx, &model.AssignTicketRequest{
+			ID: tk.ID, AssignedTo: &bid, EscalationSupervisor: &ghost,
+		}, aid)
+		requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+	})
+}
+
+// jsonRaw 测试便捷：[]byte 直转 json.RawMessage。
+func jsonRaw(t *testing.T, s string) []byte {
+	t.Helper()
+	return []byte(s)
+}
+
+func itoa(v int64) string { return strconv.FormatInt(v, 10) }

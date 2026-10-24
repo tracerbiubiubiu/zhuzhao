@@ -7,14 +7,16 @@ import (
 
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
-	TypeCode     string          `json:"type_code" binding:"required,max=50"`
-	Title        string          `json:"title" binding:"required,max=200"`
-	Description  string          `json:"description"`
-	Priority     int             `json:"priority"`
-	AssignedTo   *int64          `json:"assigned_to,string,omitempty"`
-	OrgID        int64           `json:"org_id,string" binding:"required"`
-	TemplateCode string          `json:"template_code,omitempty"` // 可选：命中模板则预填
-	CustomData   json.RawMessage `json:"custom_data,omitempty"`
+	TypeCode string `json:"type_code" binding:"required,max=50"`
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign 改）
+	EscalationSupervisor *int64          `json:"escalation_supervisor_id,string,omitempty"`
+	Title                string          `json:"title" binding:"required,max=200"`
+	Description          string          `json:"description"`
+	Priority             int             `json:"priority"`
+	AssignedTo           *int64          `json:"assigned_to,string,omitempty"`
+	OrgID                int64           `json:"org_id,string" binding:"required"`
+	TemplateCode         string          `json:"template_code,omitempty"` // 可选：命中模板则预填
+	CustomData           json.RawMessage `json:"custom_data,omitempty"`
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。
 	// 语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete
@@ -53,6 +55,8 @@ type RenderRichtextResponse struct {
 type AssignTicketRequest struct {
 	ID         int64  `json:"id,string" binding:"required"`
 	AssignedTo *int64 `json:"assigned_to,string,omitempty"` // nil = 取消分派
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）
+	EscalationSupervisor *int64 `json:"escalation_supervisor_id,string,omitempty"`
 }
 
 // CloseTicketRequest 关闭工单（POST /tickets/close）
@@ -140,6 +144,9 @@ type UpdateTicketTypeRequest struct {
 	States      json.RawMessage `json:"states"`
 	Transitions json.RawMessage `json:"transitions"`
 	IsActive    *bool           `json:"is_active"`
+	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
+	// nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
+	TransitionMeta json.RawMessage `json:"transition_meta"`
 	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
 	// ticket_types.version 才写，否则 409。须 > 0，否则 400。
 	Version *int `json:"version,omitempty"`

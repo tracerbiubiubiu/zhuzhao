@@ -131,7 +131,7 @@ func TestUpdateTicketTypeOptimisticLock(t *testing.T) {
 	t.Run("nil version 保持旧行为且版本递增", func(t *testing.T) {
 		code := insertCfgType(t, "cfg-nil")
 		name := "n-new"
-		got, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, nil)
+		got, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		assert.Equal(t, "n-new", got.Name)
 		assert.Equal(t, 2, mustTypeVersion(t, code), "无 CAS 也应递增版本")
@@ -141,7 +141,7 @@ func TestUpdateTicketTypeOptimisticLock(t *testing.T) {
 		code := insertCfgType(t, "cfg-ok")
 		one := 1
 		name := "n2"
-		_, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, &one)
+		_, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, nil, &one)
 		require.NoError(t, err)
 		assert.Equal(t, 2, mustTypeVersion(t, code))
 	})
@@ -150,10 +150,10 @@ func TestUpdateTicketTypeOptimisticLock(t *testing.T) {
 		code := insertCfgType(t, "cfg-stale")
 		one := 1
 		nameA := "a"
-		_, err := repo.UpdateTicketType(ctx, code, &nameA, nil, nil, nil, nil, &one)
+		_, err := repo.UpdateTicketType(ctx, code, &nameA, nil, nil, nil, nil, nil, &one)
 		require.NoError(t, err)
 		nameB := "b"
-		_, err = repo.UpdateTicketType(ctx, code, &nameB, nil, nil, nil, nil, &one)
+		_, err = repo.UpdateTicketType(ctx, code, &nameB, nil, nil, nil, nil, nil, &one)
 		require.ErrorIs(t, err, errcode.ErrConcurrentModification)
 		var name string
 		require.NoError(t, testPool.QueryRow(ctx, `SELECT name FROM ticket_types WHERE code = $1`, code).Scan(&name))
@@ -163,7 +163,7 @@ func TestUpdateTicketTypeOptimisticLock(t *testing.T) {
 	t.Run("类型不存在 → 90003", func(t *testing.T) {
 		one := 1
 		name := "x"
-		_, err := repo.UpdateTicketType(ctx, cfgUnique("no_such_type"), &name, nil, nil, nil, nil, &one)
+		_, err := repo.UpdateTicketType(ctx, cfgUnique("no_such_type"), &name, nil, nil, nil, nil, nil, &one)
 		require.ErrorIs(t, err, errcode.ErrTicketTypeNotFound)
 	})
 
@@ -172,7 +172,7 @@ func TestUpdateTicketTypeOptimisticLock(t *testing.T) {
 		one := 1
 		errs := runConcurrently(2, func(i int) error {
 			name := fmt.Sprintf("racer-%d", i)
-			_, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, &one)
+			_, err := repo.UpdateTicketType(ctx, code, &name, nil, nil, nil, nil, nil, &one)
 			return err
 		})
 		assertExactlyOneConflict(t, errs)

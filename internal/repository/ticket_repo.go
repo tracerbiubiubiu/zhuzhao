@@ -20,7 +20,8 @@ import (
 
 const ticketSelectColumns = `
 	id, type_code, title, COALESCE(description, '') AS description, priority, status,
-	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at, created_at, updated_at`
+	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
+	status_changed_at, escalation_supervisor_id, created_at, updated_at`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -40,13 +41,13 @@ func (r *TicketRepo) Create(ctx context.Context, t *model.Ticket) error {
 // CreateTx 事务内创建工单
 func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10)
-		RETURNING id, created_at, updated_at`
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11)
+		RETURNING id, created_at, updated_at, status_changed_at`
 	err := exec.QueryRow(ctx, q,
 		t.TypeCode, t.Title, t.Description, t.Priority, t.Status,
-		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData,
-	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
+		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor,
+	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
@@ -355,8 +356,10 @@ func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, fromStatus, toS
 // 并发 Close 双写不再产生 closed→closed 脏事件；Close+Assign 竞态不再把 closed
 // 工单复活为 assigned）。0 行 = 状态已漂移或工单不存在，由 resolveClosedOrMissing 定性。
 func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64, fromStatus, toStatus string) error {
+	// B10-4（E-2 拍定 a 案）：repo 层唯一状态写咽喉——status_changed_at 同语句
+	// 同事务写入（零漂移窗口；存量路径与 S3a B3-1 转换端点全经此）
 	tag, err := exec.Exec(ctx,
-		`UPDATE tickets SET status = $3, updated_at = NOW() WHERE id = $1 AND status = $2`,
+		`UPDATE tickets SET status = $3, updated_at = NOW(), status_changed_at = NOW() WHERE id = $1 AND status = $2`,
 		id, fromStatus, toStatus)
 	if err != nil {
 		return fmt.Errorf("update ticket status: %w", err)
@@ -504,9 +507,9 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE code = $1`, code).Scan(
-		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt,
 	)
 	if err != nil {
@@ -522,7 +525,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -530,7 +533,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	defer rows.Close()
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
-		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -697,7 +700,7 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 	err := row.Scan(
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
-		&t.CreatedAt, &t.UpdatedAt,
+		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -754,27 +757,28 @@ func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) 
 // P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
 // 谓词 AND version = $7，命中才写，且恒有 SET version = version + 1。
 // 0 行（ErrNoRows）再定性：类型不存在 → 90003；存在但 version 不匹配 → 409 冲突。
-func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
+func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions, transitionMeta json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
 	q := `
 		UPDATE ticket_types SET
 			name = COALESCE($2, name),
 			description = COALESCE($3, description),
 			states = COALESCE($4, states),
 			transitions = COALESCE($5, transitions),
-			is_active = COALESCE($6, is_active),
+			transition_meta = COALESCE($6, transition_meta),
+			is_active = COALESCE($7, is_active),
 			version = version + 1
 		WHERE code = $1`
-	args := []any{code, name, description, states, transitions, isActive}
+	args := []any{code, name, description, states, transitions, transitionMeta, isActive}
 	if version != nil {
-		q += ` AND version = $7`
+		q += ` AND version = $8`
 		args = append(args, *version)
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at`
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
-		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -914,7 +918,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -922,7 +926,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	defer rows.Close()
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
-		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -1013,4 +1017,16 @@ func (r *TicketRepo) DeleteTicketTemplate(ctx context.Context, code string) erro
 		return errcode.ErrNotFound
 	}
 	return nil
+}
+
+// UpdateEscalationSupervisorTx 事务内更新催办上级·人工指定（S10 B10-4——dd §31
+// 基线档；幻影用户 FK 23503 → 400）。
+func (r *TicketRepo) UpdateEscalationSupervisorTx(ctx context.Context, exec rowExec, id int64, supervisorID int64) error {
+	_, err := exec.Exec(ctx,
+		`UPDATE tickets SET escalation_supervisor_id = $2, updated_at = NOW() WHERE id = $1`,
+		id, supervisorID)
+	if ec := MapForeignKeyViolation(err); ec != nil {
+		return errcode.New(ec.Code, "催办上级用户不存在")
+	}
+	return err
 }

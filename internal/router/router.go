@@ -49,6 +49,9 @@ type Deps struct {
 	// S10 B10-3 角标聚合（登录态自服务——sections 开放 map）
 	BadgeHandler *handler.BadgeHandler
 
+	// S10 B10-4 cron 可观测面（biz 组 L1——menu_apis 绑 audit_log 行[audit:read 码]）
+	SystemHandler *handler.SystemHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -359,6 +362,10 @@ func New(deps Deps) *gin.Engine {
 				{
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
 				}
+
+				// S10 B10-4 cron 可观测面（10 号 A.5——只读；L1=biz 组 Casbin，
+				// menu_apis 绑 audit_log 行与审计读同码——运维观测随审计页族）
+				biz.GET("/system/cron-status", deps.SystemHandler.CronStatus)
 
 				// B5-6 配置化设置管理（05 号 A.4 #6——biz 组走 CasbinAuth：
 				// GET 绑 system_setting 页面行 / POST 绑 system_setting_update 按钮行）
