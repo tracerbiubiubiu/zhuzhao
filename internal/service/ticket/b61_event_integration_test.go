@@ -37,7 +37,9 @@ func TestB61_DomainEventDispatch(t *testing.T) {
 			assigned = append(assigned, ev)
 		}
 	}))
-	reg.SubscribeAll("b61.capture", domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
+	// 名与上面 Subscribe 的 "b61.capture" 异名——Y-8 起 Subscribe/SubscribeAll
+	// 共用 names 名空间，同名即装配期 panic（CI test-integration 首跑实锤）
+	reg.SubscribeAll("b61.wildcard", domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) {
 		mu.Lock()
 		defer mu.Unlock()
 		wildcards = append(wildcards, ev)
