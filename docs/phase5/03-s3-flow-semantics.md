@@ -46,7 +46,7 @@
   } } }
   ```
   **params_mapping 语义**：模板占位符 ← 任务返回值路径（`result.xxx`）或固定值（`literal`）——GitHub Actions outputs/inputs 同构。**通知通路拍定（2026-10-23 批 3 对表 F-3-3——事件优先，与下条「通知收敛走 S6 规则面」同规矩，原直调表述作废）**：任务完成一律 emit `<biz_type>.run.succeeded`（D20 执行类词表兑现，payload 带 `result.*` 与任务元数据）——通知/审计/B6-7 inbox/phase6 任务链订阅同一事件；`on_complete.notify` 仅作**无规则兜底**（= post_action.notify 同款地位，S6 节流查重兜底）；`result.*` 落为变量字典新增命名空间（msgrender 点路径已支持）。兜底发送实现 = **`MessageDispatcher` 派发编排器**（06 号 §1.5 编排器前置件）——原「NotificationService.send()」直调表述勘误：NotificationService 是 P4-2 渠道配置管理（无 Send/渲染/解析能力，同名异物已消歧）。实现 = S3a 动作参数化框架的一个消费场景（Action 参数 `from` 来源可以是 `event`/`result`/`literal`）。
-- **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **提交任务**（走既有 Submit 通道，理想态登记）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
+- **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正；2026-10-24 首批调整）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **spawn_task 提交任务**（✅ 2026-10-24 所有者场景走查升**首批**——「a 下发工单给 b 同时起计划任务做信息收集」场景实证；走既有 taskrunner Submit 通道[AK/SK 出站+持久化凭证]，一致性=at-least-once+幂等栅栏消费——见下「触发/执行收敛全景」）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
 - 提交时机的同款诉求归 S1 字段联动，勿混入流程层（执行时机三分界）。
 
 ## 4. S3b：审批流引擎（等首个真实审批场景）
@@ -158,7 +158,12 @@ type TransitionAction interface {
     Name() string                                    // 注册键（编译期——反射反面）
     Execute(ctx context.Context, ev domainevent.DomainEvent, t *model.Ticket) error
 }
-// internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go（首批三动作）
+// internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go / spawn_task.go
+//   （首批四动作——2026-10-24 spawn_task 升首批：owner 场景「下发即起任务」实证）
+// 一致性声明（动作接口随行件）：Delivery() DeliverySemantics——
+//   at_most_once（通知类：丢可补发）| durable_submit（spawn_task 类：taskrunner
+//   持久化凭证落 DB，事件重投=重复提交被回调幂等栅栏挡——at-least-once+幂等消费）；
+//   两类不得共用投递语义（框架按声明选择重试/审计策略）
 // 注册：app.go 装配 actionRegistry.Register(name, NewXxxAction(...))——重复名 panic
 // 失败语义：不回滚转换（Hook 捕获 + Dispatch DomainEvent{BizType:"ops", Action:"ops.action_failed"}
 //   [payload=动作名/工单/错误——消费方=ops 告警规则(S6 规则面配置)] + 异步补偿队列——分派决议⑤同款）
@@ -258,6 +263,12 @@ type TransitionAction interface {
 
 **防蔓延边界两条**：①动作实现分层——**代码注册为主（DomainHook 编译期）、配置规则限于通知/收件人**（不做全可配 Automation 引擎：规则冲突/顺序/循环治理成本）；②**循环触发防护**注记（事件→动作→状态变更→事件需链深限制——**落点=B6-1/B10-4/B3-3 三处**[2026-10-19 外审补：动作库是升格后最大新事件面，post_actions 链深限制随 B3-3 框架落]）。
 
+**触发/执行收敛全景（2026-10-24 所有者问询「外部接口调用与事件触发底层走同一条路吗」——设计确认落档）**：
+- **原则：触发源可以很多，动作执行收敛到一条路。** 触发源四类——HTTP 进来的操作 / 进程内生命周期 / cron 定时扫描（B10-4 已落）/ 未来的 automation 规则——全部先变成 DomainEvent 再消费；**出站适配器每外部系统恰一个**（UIP=ChannelSender、taskrunner=AK/SK 客户端——触发源不各自带 HTTP）；**入站也收敛**（taskrunner 完成回调 /internal/jobs/callback → 幂等栅栏 → 转 `run.succeeded` 事件——回调处理器不做业务动作，B-8 落地后闭环）。
+- **「正常关闭 vs 非正常关闭触发不同任务」的承载**：转换级 post_actions 天然分流——`→closed` 转换挂任务 d1、`→rejected` 转换挂 d2，**零新条件机制**（走哪条转换本身就是条件）；同终态内更细的条件才需要表达式（expr 求值器 S1 已有）。
+- **automation_rules（事件→条件→动作列表，对齐 Jira Automation）拍定形态 B（2026-10-24）**：**只落本设计登记，实现触发驱动**——首个真实编排场景需要管理员配置面（而非改流程配置）时立项；转换级配置（transition_meta post_actions）承载"跟着流程图走"的场景（含 owner 下发即起任务例）。防蔓延边界①维持（代码注册为主）不变——automation_rules 是其**登记的演进形态**而非例外。
+- **通知双路径现状注记**：S6 事件链（message_templates/rules/log）与 P4-2 `NotificationService`（notification_configs webhook——现服务 taskrunner 终败通知/死信入口）并存——统一进 S6 链排 S6 二期（B6-7）既定，非 S3a 范围。
+
 ### phase6 前核心引擎目标态（2026-10-19 gap 分析——所有者问"phase6 前能否做到规范完整的核心引擎"）
 
 **判据**：核心能力齐（可配置/事件面/语义引擎/提醒计量），外围等触发。**gap 两项**：
@@ -299,6 +310,7 @@ type TransitionAction interface {
 | 2026-10-19 | **第二意见体检回声批（并行外审报告——本级 3 处）**：①naming：头注量级行/§6 影响面行/A.5 界注 `transitions_meta`→**`transition_meta`**（对齐 10 号 A.3 DDL 权威单数——全仓名统一随本批）②**附录排序归位**（A.5 验收补充移至 A.6 之前——原 A.1→A.2→A.3→A.4→A.6→A.5 逆序，跨节引用[A.5 引 01 号 A.6]不受影响）③A.5 内悬空引用「见 A.7 界注」→「见下方界注」（界注本就在 A.5 内，A.7 节不存在） |
 | 2026-10-19 | **条件显隐演进触发登记批（所有者「按方案登记」——随 01 号量级补完）**：演进触发事件总表 +1 行「**表单条件显隐**（交互层联动）」——触发=业务方提出「选了 A 才填 B」类联动诉求 / 量级 ≈2–3 天（复用 S1/S3 expr 公共件，零迁移）/ 设计出处 01 号 §5——演进触发总表至此九级全带量级，照单触发 SSOT 完整 |
 | 2026-10-19 | **gap2 排期确认批（所有者确认）+ W0 收口级联**：①gap 表/结论/触发总表/能力矩阵四处——gap2「SLA 层 0.5」✅ 确认排期 **W15 随 S3a 同窗顺带**（0.5–1 天，不占独立 Wave——「核心引擎目标态」时点锁定 ≈W15，决策项销账）②W0 ✅ 收口级联（11 号 §1/§2.1/README §5——详录 11 号） |
+| 2026-10-24 | **动作库批次调整 + 收敛全景落档（所有者「按建议落档」）**：①**spawn_task 升首批**（原「理想态登记」——owner 场景「a 下发工单给 b 同时起计划任务做信息收集」实证；走 taskrunner Submit 通道，一致性=at-least-once+幂等栅栏）+ 动作接口增 **Delivery() 一致性声明**（at_most_once / durable_submit 两档——框架按声明选重试/审计策略）；②**触发/执行收敛全景**落档事件驱动统一模型节（触发源四类→DomainEvent 收敛→ActionRegistry/MessageDispatcher；出站适配器一外部系统一个；入站回调→幂等栅栏→run.succeeded 闭环；「正常/非正常关闭触发不同任务」= 转换级 post_actions 天然分流零新机制；通知双路径[S6 链 vs P4-2]现状注记——S6 二期统一既定）；③**automation_rules 拍定形态 B**：只落设计登记、实现触发驱动（Jira Automation 对齐的事件→条件→动作列表；防蔓延边界①维持）——详「触发/执行收敛全景」段 |
 | 2026-10-19 | **P0 四项修正批（并行外审合并报告五项实证全证实——本文件 2 处）**：①**A.3 执行端点显式化（P0-1）**：`POST /tickets/transition` B3-1 首件交付——校验→单事务执行（status_changed_at 同写）→commit-后回调（emit 锚+post-function 挂点），Close/Assign 收敛为封装；②P0-2 锚点修正牵连（修正详录 06 号 A.5/10 号 §3.4）——合并报告同时修正本会话此前「emit 锚=AssertTransition」错误口径（深审 C 轮未验证调用位置即提议，认领） |
 | 2026-10-19 | **P0 修正批二轮回声（修正批自身精度问题三处）**：A.3 执行端点段——①「submit/close/assign」→「Create 硬编码 open/Close→closed/Assign 推算 open↔assigned」（无 submit 端点，router.go:344-352 实证）②收敛列表去 Update（Update 非 status 端点）+补 Create 保留说明（创建非转换，独立 emit ticket.created）③补 L1 权限归属拍板项（menu_apis 注册对账——挂既有菜单/新码二选一）+status_changed_at 写点指向 UpdateStatusTx 终版锚（10 号二轮修正牵连） |
 | 2026-10-19 | **多源内容采集演进登记批（所有者问询「通用录入接口+归属 phase6」——方向确认落档）**：演进触发总表 +1 行「**多源内容采集**（微信公众号等）」——触发=业务意图已声明+桥接方案拍板即立项 / 量级 MVP ≈1–1.5 周 / **归属 phase6 新段（09 号不迁移——pull 缓存代理≠push 采集两形态）** / 形态=**通用数据录入接口**（统一信封+按源 schema 注册校验[防 dump 陷阱]+AK/SK HMAC[standards §4]+raw 留档+DomainEvent 出站）/ 前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐）——演进总表至此**十一级**全带量级与归属 |
