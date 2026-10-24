@@ -47,6 +47,7 @@
 - **`ticket_types.transition_meta` JSONB 新列承载 `timeout_minutes`（state 级键——2026-10-19 结构修正：原「transitions meta 零 DDL」承载不存在，代码实证 transitions=邻接表 `Record<string,string[]>` 无边属性位）+ B10-4 一枚 ALTER 建列**（S3a 后续扩展 "from>to" 转换级键复用同列——一列两用，键形以 ">" 区分）+ 扫描任务**骑既有 CronScheduler**（`cron_scheduler.go`，advisory lock 单实例已就位）+ S6 模板通知（按级别/角色路由收件人）。**⚠ 时间源前置（2026-10-16 外审代码级核实——拍板点 5，B10-4 前拍）**：`tickets` **无 `status_changed_at` 列**（实核 ticket_repo 列清单）——"节点停留时长"无数据源；`updated_at` 不可靠（评论/编辑都 bump）、`sla_due_at` 是截止时间非进入时间且从不写入。**推荐 (a) 新增 `status_changed_at` 列**（`AssertTransition` 成功同事务写入——扫描 O(1) 读列）；备选 (b) ticket_events 取最近状态事件（依赖事件完整性 + JOIN 成本高，不取）。量级 +0.5 天（ALTER + 写入点）。
 
 - **escalation 催办设计（2026-10-23 对话设计批——超时催办场景核心；2026-10-23 批 3 对表 F-3-2/F-3-7 口径修正）**：`transition_meta` 的 state 级 `timeout_minutes` 之外，增补 `escalation` 嵌套段（零新迁移——JSONB 列 B10-4 已建）：`{"notify":["assignee","supervisor"],"delivery":["email","dingtalk"],"reminder_interval_minutes":240,"max_reminders":3}`——`delivery` = 投递偏好（UIP 侧路由，两级词表见 06 号 §3，一期不校验透传；原 `channels` 字样作废——防撞 adapter 白名单 400）。cron 扫描：每小时 → overdue 且 status 未变 → 距上次催办 > interval？→ 发送催办（supervisor 经 B6-4 收件人解析——解析规则三句已拍死，06 号 A.5）→ 更新催办水位；达 max_reminders 停止；工单离开该状态 = 天然停止。**`last_reminder_at` 归属拍定（F-3-7——撤「均可」开放决策）**：**侧表 `ticket_reminders(ticket_id, state, reminder_count, last_reminder_at)`**（一枚 ALTER 随 B10-4，取号对账）——催办水位按「每单每状态」天然成对、扫描器 O(1) 读、避 JSONB 读改写并发（`LockCustomDataTx` 先例同型问题）；tickets 加列与 transition_meta 内嵌两案作废。量级 ≈ 1 天（cron 骨架已有，增 escalation 解析 + 侧表读写）。
+- **supervisor 来源拍板修订（2026-10-24 所有者场景走查——dd §31 通则落实例，台账 E-1 销账）**：催办上级**不推导**——解析顺序 = **工单级人工指定 > HR `users.manager_id`（M-HR 后，人工未指定时）> 缺席**；人工指定落点 = `CreateTicketRequest/AssignTicketRequest` 增可选 `escalation_supervisor_id`（`tickets.escalation_supervisor_id BIGINT` 列随 000064——工单级覆盖类型级默认，Assign 重指派可改）；原"org 管理角色码推导"三句作废（06 号 A.5 同步修正）。**transition_meta 表单化编辑面升 B10-4 必做件**（所有者场景"设计流程时节点即可设置超时时间与策略"——节点超时分钟+策略表单配置，非 JSON 专家模式兜底；画布节点面板配置留画布二期触发驱动）。**E-2 落定（2026-10-24 确认）**：`status_changed_at` 列 + 存量回填**首跑观察模式**（只记日志不发通知——A.3 回填近似性警示的缓解①）。
 - **轻量版，刻意不做完整 SLA 引擎**（§23 暂缓域不碰）：无 ticket_sla 表/无违约升级链/无暂停恢复——"服务承诺管理"诉求出现再升级。**溯源澄清（2026-10-19 所有者质询边界来源，考古修正）**：§29 原文仅方向性定论「刻意轻量不做完整 SLA 引擎」一句（+死存储核实），**并未逐条列出此四件**——四件=规划写作时从"完整 SLA 组件清单做减法"的**设计推演**（2026-10-09 S10 立项三件+2026-10-16 业界对表补业务日历一件），非所有者逐条拍板；其真实支撑=§23 暂缓纪律（SLA 整域暂缓的真实决策）+**隐性场景假设**（内部工单无对外承诺诉求）——**边界锚点应为触发信号清单（§5 硬五条）而非"定论引用"：假设失效或信号出现即重开，边界是当前态非永久钉死**。
 - **`sla_due_at`/`default_sla_hours` 死存储字段去留随本件拍**（启动批）：删除（迁移清理）vs 保留注释标记 deprecated。
 - **cron 可观测面随行（2026-10-09 补遗，+0.5 天）**：本件落**首个业务扫描任务**，同批补 cron 设施只读状态端点（任务名/上次成功/耗时/结果行数）+ 失败接 S6 告警——**超期扫描静默失败 = 提醒永不发出，合规场景不可接受静默失败**（audit_archive cron 默认关且未开启是先例）；phase6 三个扫描任务（deadline 超期/接受单到期重审/终态对账）将继承此观测面。
@@ -81,7 +82,7 @@
 
 ## 6. 影响面
 
-- **迁移**：`ticket_cc` + tags 两表族 + `status_changed_at` ALTER + **`ticket_types.transition_meta` JSONB 一枚 ALTER**（timeout_minutes 承载——结构修正后口径；编号对账）。
+- **迁移**：`ticket_cc` + tags 两表族 + `status_changed_at` ALTER + `escalation_supervisor_id` ALTER（2026-10-24 拍板增）+ **`ticket_types.transition_meta` JSONB 一枚 ALTER**（timeout_minutes 承载——结构修正后口径；编号对账）。
 - **权限**：导出走 GetFilter 同管线（BK-21 泛化同批）；抄送特例通道若立 = L2 可见集新增 OR 支（**策略库 Registry 同批登记**，防漏调）。
 - **消费方**：S6（抄送/超时通知）、phase6（四件依赖 + 风险关单对账扫描继承 cron 观测面）、S2（节点 meta cc 规则）。
 - **前端**：详情页抄送人区/标签编辑、全局角标（布局层）、工单/审计列表导出按钮。
