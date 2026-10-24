@@ -40,6 +40,7 @@ type Service struct {
 	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
 	tagRepo     *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
 	dispatcher  *DispatchService         // S3a B3-2：自动分派（OnAfterCreate——app 装配注入）
+	actionReg   *ActionRegistry          // S3a B3-3：动作库（post_actions 消费——app 装配注入）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -49,6 +50,12 @@ type Service struct {
 // SetDispatcher S3a B3-2：注入自动分派器（app 装配层调用——nil=不分派）。
 func (s *Service) SetDispatcher(d *DispatchService) *Service {
 	s.dispatcher = d
+	return s
+}
+
+// SetActionRegistry S3a B3-3：注入动作库（post_actions 消费——nil=不执行）。
+func (s *Service) SetActionRegistry(r *ActionRegistry) *Service {
+	s.actionReg = r
 	return s
 }
 

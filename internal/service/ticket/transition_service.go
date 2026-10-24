@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -94,6 +95,13 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: payload, Timestamp: time.Now(),
 	})
+	// S3a B3-3：post_actions（commit 后——失败不回滚转换[RunPostActions 内捕获]）
+	if s.actionReg != nil {
+		s.actionReg.RunPostActions(ctx, slog.Default(), tm, ActionContext{
+			Ticket: ticket, From: ticket.Status, To: req.To, ActorID: actorUserID,
+			SystemAsCreator: true,
+		}, 0)
+	}
 	// 返回最新态
 	return s.ticketRepo.GetByID(ctx, req.ID)
 }

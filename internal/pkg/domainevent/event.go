@@ -37,7 +37,8 @@ const (
 	TicketCCAdded        Action = "ticket.cc_added"        // S10 B10-1 抄送（10 号 §3.1 评审批——S6 message_rules 订阅抄送通知）
 	TicketTimeout        Action = "ticket.timeout"         // S10 B10-4 节点超时（扫描器只发事件——S6 规则面路由通知）
 	TicketTransitioned   Action = "ticket.transitioned"    // S3a B3-1 统一转换（POST /tickets/transition）
-	TicketDispatchMissed Action = "ticket.dispatch_missed" // S3a B3-2 自动分派无命中（决议④） // S3a B3-1 统一转换（POST /tickets/transition）  // S10 B10-4 节点超时（扫描器只发事件——S6 规则面路由通知）
+	TicketDispatchMissed Action = "ticket.dispatch_missed" // S3a B3-2 自动分派无命中（决议④）
+	TicketActionNotify   Action = "ticket.action_notify"   // S3a B3-3 notify 动作（无规则兜底档——S6 规则面可配路由） // S3a B3-1 统一转换（POST /tickets/transition）  // S10 B10-4 节点超时（扫描器只发事件——S6 规则面路由通知）
 )
 
 // ops 域（运维告警——cron 失败等；10 号 A.5：域边界显式化防落 message_rules 默认 ticket）
