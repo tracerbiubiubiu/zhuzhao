@@ -188,6 +188,10 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000071_sla_due_at.up.sql",
 			// S6 二期 B6-7: notifications 表族+消息中心菜单/路由
 			"000072_notifications_inbox.up.sql",
+			// S3a B3-2 补遗: 分派规则管理页菜单行（孤岛页补路由）
+			"000073_assignment_rules_menu.up.sql",
+			// E2E 补齐批: phase5 三页面 role_menus 回补（admin+superadmin）
+			"000074_phase5_menus_role_bind.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

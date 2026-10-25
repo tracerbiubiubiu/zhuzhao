@@ -109,6 +109,17 @@
 | G-12 | ui | 铃铛 invalidateQueries 死代码（角标最长 60s 不更新）/画布 undo 后 lint 态 stale/intel 页裸 fetch 绕 api 层/附件列表失败静默 | P2/P3 | +0.5 天 | 前端随手批 |
 | G-13 | 文档 | 10 号变更记录缺 SLA 0.5 交付行；errcode.md 双份已补登 21010/92600-92602（✅ 随本批修） | P3 | ✅/5min | 文档批 |
 | G-14 | S1 | FieldImpact radio 选项收窄漏检+dict: 引用收窄天然失效 | P3 | 15min | B1-6 前小修 |
+| G-15 | ui/S5 | storage API 六端点漏 `/api/v1` 前缀（b72b854d 建档即如此）——浏览器内附件列表拿回 index.html 渲成 3418 幽灵行、五个 POST 404：头像上传/附件上传删除/富文本渲染整面静默失效 | **P0** | ✅ ui e88173bd | 销账（+`apiPaths.test` 静态守卫，红→绿恰报六处） |
+| G-16 | S9/S6-2 | intel_query/message_center 建菜单行未绑 role_menus（000031 惯例漏项）——全员不可达，铃铛 /messages 404 | **P0** | ✅ 000074 | 销账 |
+| G-17 | S3a | 分派规则页（ui 45a72256）无菜单行——孤岛页；viewNames 守卫单向不报 | **P0** | ✅ 000073+000074 | 销账（ui 反向守卫同批） |
+| G-18 | ui | E2E 三 spec 失配：S5 私有 login 等 submit 型按钮+history 路径（B5-2/3 自建档从未跑绿）/S10 等已被 UserPicker 替换的 ID 输入框/S12 字段配置默认设计模式——三者均被误判「超时」 | P1 | ✅ ui e88173bd | 销账 |
+| G-19 | ui | UserPicker `/^\d+$/` 分流工号查询，E 前缀工号永走 username 分支——工号搜索不可用 | P2 | ✅ ui e88173bd | 销账 |
+| G-20 | ui | viewNames 派生器两盲区（INSERT…SELECT 页面行只认别名 p 且一律记按钮 / UPDATE visible 不重放）+「零动作」守卫从未登记 0 形同虚设 → system_setting 无 defineOptions、system_notification 名错，两页 keep-alive 恒不命中 | P2 | ✅ 本批 | 销账 |
+| G-21 | ui | 菜单 icon 映射漏 intel/message（icons.test 种子清单手工维护未同步）——侧栏图标静默空白 | P3 | ✅ 本批 | 销账 |
+| G-22 | ui/CI | viewNames 同级主仓固定拉 main——特性分支种子页在 CI 不进期望名单（反向守卫会误报孤岛） | P3 | ✅ 本批（同名分支优先，push 后核 CI 转绿） | 销账待核 |
+| G-23 | S6-2 | 消息中心是否默认全员可见：现 000074 仅绑 admin+superadmin；operator/viewer 及自建角色须经角色管理分配本页，否则其头部铃铛跳 /messages 仍 404（铃铛对所有登录用户渲染） | 拍板 | 所有者 | E 组候选（a=static route 兜底 / b=种子绑全部内置角色 / c=维持按角色分配+铃铛按菜单可达性隐藏） |
+| G-24 | ui | SEED_ICON_NAMES / MENU_ICON_MAP / viewNames STATIC_ROUTES 三清单手工维护——派生化（从迁移种子/routes.ts 解析） | P3 | 登记 | 触发=再漏一次 |
+| G-25 | ui | phase5 新能力 E2E spec 为零——五件待补：CC/标签、S2 画布、S6-2 消息中心+铃铛、S3a 转换+规则页 | P1 | 本批下一步 | 补齐后更新 AGENTS/README 计数 |
 
 ## 挂账质量判据（外审 F-4-5 推广）
 
@@ -121,4 +132,4 @@
 
 ---
 
-*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）；下一迁移编号 000073*
+*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 11 件 G-15~G-25（P0×3/P1×2/P2×2/P3×3/拍板×1——G-15~G-22 已销，G-23 待拍，G-24 登记，G-25 下一步）**；下一迁移编号 **000075**（000073/000074 本批占用）*
