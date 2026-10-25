@@ -41,3 +41,17 @@
 | 92504 | ErrMsgTplReferenced | 模板被订阅规则引用中 | 409 | 须先解引 |
 | 92505 | ErrMsgTplVersionConflict | 模板版本冲突 | 409 | CAS 乐观锁 |
 | 92506 | ErrMsgRuleVersionConflict | 订阅规则版本冲突 | 409 | CAS 乐观锁（000060——微批 A） |
+
+## 92600-92602 威胁情报（S9 B9-1——2026-10-24 增补）
+
+| 码 | 名称 | 含义 | HTTP | 备注 |
+|---|---|---|---|---|
+| 92600 | ErrIntelNotConfigured | 情报上游未配置 | 500 | 生产态空 endpoint fail-fast |
+| 92601 | ErrIntelUpstreamQuota | 上游配额耗尽且无可用缓存 | 503 | 降级矩阵无缓存臂 |
+| 92602 | ErrIntelUpstream | 上游查询失败 | 502 | 401/5xx 归并 |
+
+## 21010 任务动作（S4 B4-1——2026-10-24 增补）
+
+| 码 | 名称 | 含义 | HTTP | 备注 |
+|---|---|---|---|---|
+| 21010 | ErrActionNotRegistered | 动作未注册 | 400 | 提交 fail-fast（不再回调期 404）；合法动作见 GET /jobs/actions |

@@ -89,6 +89,27 @@
 | exprcalc 超时注释+Now 死码 | ✅ 已清（bf4a388） |
 | JWT_SECRET<32 release 拒启 | ✅ 已落码（validate.go:139-147 完整实现——旧登记「未提交」过时） |
 
+## G. 收官审计新增（2026-10-25——分段对表×场景业界×前端全量审计产出）
+
+> 出处：收官全量审计（六路分段取证+前端检查+真机走查）；编号 G-序号（承接 v5 审计 G 系发现位）。
+
+| # | 段 | 项 | 级 | 量级 | 挂点 |
+|---|---|---|---|---|---|
+| G-1 | S1 | fetch 装配链生产雷：fetcherReg wire 第 9 参恒 nil（R1 同型第五例）——auto_fill 静默不生效，formula 引用 fetch 字段提交期 400 卡用户；错误 UX 三档未建 | P1 | 随 phase6 R3 首源批 | C-1/C-2 并账（registry 注入+适配器+超时/限流/审计一次配齐） |
+| G-2 | S6 | variables 变量字典端点缺席——管理员重存种子模板（含 reminder_count/event.*）即 400；白名单硬编码与种子模板不同源 | P1 | +0.5 天 | =B-2 加重证据（随 B6-7 二期） |
+| G-3 | S5 | avatar confirmed 后用户永不 bind → 对象永无 GC 覆盖（第三段仅扫 ticket purpose）——行+对象永久泄漏 | P2 | +0.5 天 | GC 第三段扩 avatar purpose（磁盘水位前） |
+| G-4 | S3a | sla_due_at 仅 Transition 写刻——经 Close 到终态的单无 deadline 刻（Close/Assign 收敛批未做） | P2 | +0.5 天 | Close/Assign 收敛批随行 |
+| G-5 | S3a | RunPostActions 失败仅 slog——A.3 要求的 ops.action_failed 事件未 emit（可观测缺口） | P2 | 5min | 随批（词表+inbox 登记同批） |
+| G-6 | S3a | reassign 声明 at_most_once 但语义=同步强一致通道——失败静默丢转派，一致性档位需复核 | P2 | 拍板 | S3a 二期拍板 |
+| G-7 | S6 | inbox 不查 opt-out——站内通知用户无法自关（与外发偏好脱节） | P2 | +0.5 天 | 通知中心权限批（业界=GitHub per-channel） |
+| G-8 | S6 | ticket.action_notify（B3-3 已上线）未登记 inbox 词表——站内静默 | P3 | 5min | 随批登记 |
+| G-9 | S6 | ops.cron_failed 词表行是死行（payload 无 to_assignee/cc_users——collectRecipients 恒空） | P3 | 15min | 随批（改锚点或特判 job 收件人） |
+| G-10 | S6 | message_log 实落表与 A.2 漂移（biz_id VARCHAR/无 dead 态/retry_count）+死信归因字段折损 | P3 | 登记不修 | 二期表形态批 |
+| G-11 | S9 | CleanupExpired 未挂 cron——过期行只懒查不物理删，长期运行只增不删 | P2 | 15min | 生产部署前必挂 |
+| G-12 | ui | 铃铛 invalidateQueries 死代码（角标最长 60s 不更新）/画布 undo 后 lint 态 stale/intel 页裸 fetch 绕 api 层/附件列表失败静默 | P2/P3 | +0.5 天 | 前端随手批 |
+| G-13 | 文档 | 10 号变更记录缺 SLA 0.5 交付行；errcode.md 双份已补登 21010/92600-92602（✅ 随本批修） | P3 | ✅/5min | 文档批 |
+| G-14 | S1 | FieldImpact radio 选项收窄漏检+dict: 引用收窄天然失效 | P3 | 15min | B1-6 前小修 |
+
 ## 挂账质量判据（外审 F-4-5 推广）
 
 > **登记了触发信号 ≠ 触发信号可观测**——C 组「触发驱动」类挂账若代码面零实现
@@ -100,4 +121,4 @@
 
 ---
 
-*基线：zhuzhao `4deecab` / zhuzhao-ui `9ada8da4`（2026-10-23）——A 组 4 项全清+B-12/13/14/15/17/C-12/C-19 已销（v3 审计 R-2/L-2）；下一迁移编号 000062（000061=Y-3 message_rules FK 已占）*
+*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）；下一迁移编号 000073*

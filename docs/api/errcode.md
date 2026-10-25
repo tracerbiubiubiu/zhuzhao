@@ -199,12 +199,22 @@
 | 92301 | `ErrDictTypeNotFound` | 字典类型不存在或版本冲突 | 404 |
 | 92302 | `ErrDictItemNotFound` | 字典项不存在或版本冲突 | 404 |
 | 92401 | `ErrPatNotFound` | PAT 不存在或已吊销 | 404 |
+| 92304 | `ErrDictTypeInUse` | 字典类型被引用禁止删除 | 409 |（phase5 S1 B1-2 删除守卫）
+| 92501 | `ErrMsgTplNotFound` | 消息模板不存在 | 404 |（phase5 S6 模板段）
+| 92502 | `ErrMsgTplDupCode` | 模板 code 已存在 | 409 |
+| 92503 | `ErrMsgTplSystem` | 系统模板不可修改或删除 | 403 |（is_system 只读）
+| 92504 | `ErrMsgTplReferenced` | 模板被订阅规则引用中 | 409 |
+| 92505 | `ErrMsgTplVersionConflict` | 模板版本冲突 | 409 |（CAS 乐观锁）
+| 92506 | `ErrMsgRuleVersionConflict` | 订阅规则版本冲突 | 409 |（CAS——000060）
+| 92600 | `ErrIntelNotConfigured` | 情报上游未配置 | 500 |（S9 生产态 fail-fast）
+| 92601 | `ErrIntelUpstreamQuota` | 上游配额耗尽且无可用缓存 | 503 |（降级矩阵无缓存臂）
+| 92602 | `ErrIntelUpstream` | 上游查询失败 | 502 |
 
 > 90001–90004 已于 **2a Step 2** 写入 `errcode.go`（勿改号）；本段余量预留。不可见工单对外统一 **90001**（决策已收口 2026-08-19，不再与 10004 二选一；10004 保留给通用资源不存在场景，见 [phase2/09-ticket §7](../phase2/09-ticket.md)）。
 
 ### 文件存储 91000–91999
 
-<!-- D2-44①：整段为未实现预留（errcode.go 尚未定义，勿据此对接） -->
+<!-- phase5 S5 已启用：91001-91004 落码（2026-10-19 B5-3 批），详表见根 api/errcode.md（SSOT） -->
 
 | code | 常量 | message | HTTP |
 |------|------|---------|------|
@@ -284,3 +294,10 @@
 | 建档 | Phase 1 认证段起建，随码扩容分段登记（通用/认证/用户/角色/组织/菜单/鉴权/工单/平台扩展 92xxx + 跨服务段指针） |
 | 2026-09-30 | 92xxx 三段码表（通知/字典/PAT）+ httpStatusByCode 映射规范，新码三件套同步纪律 |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；完整历史见 git log |
+| 2026-10-25 | phase5 收官对账补齐：平台扩展段补 92304/92501-06/92600-02（S1 删除守卫/S6 模板与规则/S9 情报）+文件存储段 91001-04 启用注记+S4 任务段 21010 新增——与根 api/errcode.md 双份同步（归并悬案维持 F-A-1 登记） |
+
+### 任务动作 21010（phase5 S4 B4-1）
+
+| code | 常量 | message | HTTP |
+|------|------|---------|------|
+| 21010 | `ErrActionNotRegistered` | 动作未注册 | 400 |（提交 fail-fast；合法动作见 GET /jobs/actions）
