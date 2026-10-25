@@ -102,12 +102,19 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		}
 		storageClient = mc
 	}
+	eventRegistry := provideEventRegistry(logger)
 	storageRepo := repository.NewStorageRepo(pool)
 	storageService := storageservice.NewService(storageRepo, storageClient, storageStore, logger)
 	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore, nil)
 	// S3a B3-2：分派规则服务（OnAfterCreate 在 ticketService.Create 内调——
 	// 通过 DispatchService 持有 svc 反向引用；装配期注入）
 	dispatchSvc := ticket.NewDispatchService(repository.NewAssignmentRuleRepo(pool), ticketService, logger)
+	// G2-3 审计修复：SetDispatcher 从未被调用（装配遗漏——dispatcher 恒 nil
+	// 致 OnAfterCreate 静默跳过，自动分派生产不可达；与 R1 同型）
+	ticketService.SetDispatcher(dispatchSvc)
+	// G2-4 审计修复：事件出口注入（修复前全仓无调用——emitEvent NOP 致生产
+	// 全事件静默：inbox 零落库/通知链全哑/post_actions notify 不可达）
+	ticketService.SetEventRegistry(eventRegistry)
 	// S3a B3-3：动作库装配（修复前漏注入——actionReg 恒 nil 致 post_actions
 	// 整链路生产不执行且静默跳过；审计 A1）
 	actionReg := ticket.NewActionRegistry()
@@ -184,25 +191,28 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		PatLookup:               patRepo,
 		TicketHandler:           ticketHandler,
 		BadgeHandler:            handler.NewBadgeHandler(badgeSvc),
-		SystemHandler:           handler.NewSystemHandler(cronRegistry),
-		IntelHandler:            handler.NewIntelHandler(intelSvc),
-		StorageHandler:          storageHandler,
-		SettingsHandler:         settingsHandler,
-		JWTManager:              manager,
-		Enforcer:                syncedEnforcer,
-		RedisClient:             client,
-		DBPool:                  pool,
-		Logger:                  logger,
-		RoleFetcher:             rbacService,
-		AuditService:            auditService,
-		Registry:                registry,
-		JobsHandler:             jobsHandler,
-		InternalJobs:            internalJobsConfig,
-		CompatAKSK:              compatAKSKConfig,
-		TaskrunnerHandler:       taskrunnerHandler,
-		Gateway:                 gatewayRegistry,
-		RateLimit:               rateLimitConfig,
-		TrustedProxies:          v,
+		// G2-2 审计修复：InboxHandler 漏装配（deps 缺字段——nil 进路由，调用即
+		// nil pointer panic，inbox 三端点全 500；notifications 零落库同根）
+		InboxHandler:      handler.NewInboxHandler(inboxSvc),
+		SystemHandler:     handler.NewSystemHandler(cronRegistry),
+		IntelHandler:      handler.NewIntelHandler(intelSvc),
+		StorageHandler:    storageHandler,
+		SettingsHandler:   settingsHandler,
+		JWTManager:        manager,
+		Enforcer:          syncedEnforcer,
+		RedisClient:       client,
+		DBPool:            pool,
+		Logger:            logger,
+		RoleFetcher:       rbacService,
+		AuditService:      auditService,
+		Registry:          registry,
+		JobsHandler:       jobsHandler,
+		InternalJobs:      internalJobsConfig,
+		CompatAKSK:        compatAKSKConfig,
+		TaskrunnerHandler: taskrunnerHandler,
+		Gateway:           gatewayRegistry,
+		RateLimit:         rateLimitConfig,
+		TrustedProxies:    v,
 	}
 	// P4-8：panic 聚合+运行时对账。engineRef 前置声明——闭包运行时取（engine 由
 	// router.New(deps) 在下方构造后回填）
@@ -232,7 +242,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 
 	engine := router.New(deps)
 	engineRef = engine
-	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore, cronRegistry, inboxSvc)
+	app, err := NewApp(cfg, logger, engine, policyEvalWriter, pool, gatewayRegistry, storageStore, cronRegistry, inboxSvc, eventRegistry)
 	if err != nil {
 		cleanup3()
 		cleanup2()

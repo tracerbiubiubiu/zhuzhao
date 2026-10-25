@@ -41,19 +41,29 @@ type App struct {
 	inboxCleanup *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
 }
 
+// provideEventRegistry 领域事件注册表 provider（B6-1 共享基础设施——
+// G2-4 审计修复：原 NewApp 内构造晚于 wire_gen 装配段，ticketService 事件
+// 出口/inbox 订阅/NotifyAction 三处消费无法同实例注入——emitEvent NOP 致
+// 生产全事件静默（集成测试自建 registry 故门禁无感）。provider 化后
+// wire_gen 装配段可先取实例注入再传 NewApp）。
+func provideEventRegistry(logger *slog.Logger) *domainevent.HookRegistry {
+	return domainevent.NewHookRegistry(logger)
+}
+
 // NewApp 创建应用实例
 // NewApp 创建应用实例。构造期执行 BK-22 fail-fast 对账（路由↔menu_apis
 // 双向；缺口 = 拒绝启动）——W0b wire 转正：原在 wire_gen 手码装配段的
 // 对账逻辑迁入此处，使 wire_gen 可安全再生。
 func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyEval *audit.PolicyEvalWriter,
 	pool *pgxpool.Pool, gw *gateway.Registry, storageCfg *pkgstorage.ConfigStore,
-	cronReg *service.CronRegistry, inboxSvc *ticket.InboxService) (*App, error) {
+	cronReg *service.CronRegistry, inboxSvc *ticket.InboxService,
+	eventReg *domainevent.HookRegistry) (*App, error) {
 	var prefixes []string
 	if gw != nil {
 		prefixes = gw.Prefixes
 	}
 	// B6-1：领域事件注册表（S6/phase6/S10 共享基础设施——一次变更多订阅者）
-	eventRegistry := domainevent.NewHookRegistry(logger)
+	eventRegistry := eventReg
 	// 06 号 §5.4 死信集成：ChannelSender.Send 终败→进程内直调死信告警
 	notifRepo := repository.NewNotificationRepo(pool)
 	notifWebhook := webhook.New()
@@ -169,8 +179,16 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		inboxCleanup.SetOnFailure(cronFailEmit)
 		cronReg.Register("inbox_cleanup", inboxCleanup)
 	}
-	cronReg.Register("audit_archive", auditCron)
-	cronReg.Register("storage_gc", storageGC)
+	// G2-1 审计修复：typed-nil 陷阱——nil *CronScheduler 装进非 nil interface，
+	// Register 的 p==nil 挡不住 → Status() nil 解引用 500（真机走查实证：
+	// dev 配置 audit cron 关闭时 /system/cron-status 全路由 500）。
+	// 与 timeout_scan 分支同款显式守卫。
+	if auditCron != nil {
+		cronReg.Register("audit_archive", auditCron)
+	}
+	if storageGC != nil {
+		cronReg.Register("storage_gc", storageGC)
+	}
 	if timeoutScan != nil {
 		cronReg.Register("timeout_scan", &timeoutScanProvider{sch: timeoutScan, observe: timeoutObserve})
 	}

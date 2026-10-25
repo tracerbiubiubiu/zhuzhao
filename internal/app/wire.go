@@ -88,6 +88,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		handlerSet,
 		// B1-4：从配置提取信任代理网段，供 router.Deps.TrustedProxies 消费
 		provideTrustedProxies,
+		provideEventRegistry,
 		wire.Struct(new(router.Deps), "*"),
 		router.New,
 		NewApp,
