@@ -192,6 +192,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000073_assignment_rules_menu.up.sql",
 			// E2E 补齐批: phase5 三页面 role_menus 回补（admin+superadmin）
 			"000074_phase5_menus_role_bind.up.sql",
+			// E2E 补齐批二程: 分派规则写端点迁按钮行（L1 越权修复）
+			"000075_assignment_rules_write_btn.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。
