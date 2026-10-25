@@ -131,7 +131,7 @@ rate_limit:
 # B5-1 消费者接入时翻 true。凭据与 compose rustfs 服务默认值同源；env 覆盖走
 # STORAGE_ENDPOINT/STORAGE_ACCESS_KEY/STORAGE_SECRET_KEY；release 模式拒绝仓库公开 SK）
 storage:
-  enabled: false
+  enabled: true    # dev 栈 RustFS 在跑（RK-P5-12 环境漂移修正——acceptance S5 面全绿前提）
   endpoint: http://localhost:9000   # 容器态改 http://rustfs:9000（compose 服务名）
   region: us-east-1
   bucket: zhuzhao
