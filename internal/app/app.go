@@ -179,6 +179,15 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		inboxCleanup.SetOnFailure(cronFailEmit)
 		cronReg.Register("inbox_cleanup", inboxCleanup)
 	}
+	// G-11 审计修复：S9 情报缓存过期物理清理（生产前必挂——过期行只懒查
+	// 不物理删=表只增不减；24h 低频+advisory lock 单实例+cron-status 可见）
+	intelCleanup := service.NewCronScheduler(pool, "intel_cleanup",
+		cronJobFunc(func(ctx context.Context) error {
+			_, err := pool.Exec(ctx, `DELETE FROM intel_cache WHERE expires_at < NOW() - interval '7 days'`)
+			return err
+		}), 24*time.Hour, logger)
+	intelCleanup.SetOnFailure(cronFailEmit)
+	cronReg.Register("intel_cleanup", intelCleanup)
 	// G2-1 审计修复：typed-nil 陷阱——nil *CronScheduler 装进非 nil interface，
 	// Register 的 p==nil 挡不住 → Status() nil 解引用 500（真机走查实证：
 	// dev 配置 audit cron 关闭时 /system/cron-status 全路由 500）。

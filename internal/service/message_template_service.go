@@ -52,10 +52,28 @@ func validatePlaceholders(subject, body string) error {
 	return nil
 }
 
-// builtinVarSet 内置变量白名单（与 variables 端点返回一致——消息字段动态源待二期补）。
+// builtinVarSet 内置变量白名单（与 Variables 端点 BuiltinVars 同源——G-2 审计修复：
+// 修复前缺 reminder_count/overdue_minutes/from_status/to_status/to_assignee/
+// from_assignee/actor，管理员重存种子模板 ticket_timeout_notify 即 400）。
+// 完整面=全事件 emit 链实际可发出的键——新增事件载荷键须同步登记此处+端点。
 var builtinVarSet = map[string]bool{
+	// 基础六键（create/assign/close 全链）
 	"ticket.title": true, "ticket.type_code": true, "ticket.priority": true,
 	"ticket.status": true, "ticket.human_key": true, "ticket.link": true,
+	// 转换事件（ticket.transitioned——S3a B3-1）
+	"ticket.from_status": true, "ticket.to_status": true,
+	// 分派事件（ticket.assigned——S6 B6-5）
+	"ticket.from_assignee": true, "ticket.to_assignee": true,
+	// 抄送事件（ticket.cc_added——S10 B10-1；to_assignee 亦可作收件人锚）
+	"ticket.cc_users": true,
+	// 超时催办（ticket.timeout——S10 B10-4 扫描器 emit）
+	"ticket.reminder_count": true, "ticket.overdue_minutes": true,
+	// 到期提醒（ticket.deadline——S3a SLA0.5）
+	// deadline 载荷=title/status/human_key/to_assignee/cc_users——无独占键
+	// 操作人（创建/更新事件——S6 B6-5）
+	"ticket.actor": true,
+	// 运维域（ops.cron_failed——B10-4 观测面）
+	"event.job": true, "event.error": true,
 }
 
 func validateChannel(channel string) error {

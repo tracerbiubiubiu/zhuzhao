@@ -16,6 +16,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
@@ -105,7 +106,10 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	eventRegistry := provideEventRegistry(logger)
 	storageRepo := repository.NewStorageRepo(pool)
 	storageService := storageservice.NewService(storageRepo, storageClient, storageStore, logger)
-	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore, nil)
+	// G-1 审计修复：fetcherReg 第 9 参恒 nil（R1 同型第五例）——auto_fill
+	// 生产静默不生效、formula 引用 fetch 字段提交期 400。空 Registry=无注册源
+	// 时 ApplyFetches 跳过（语义不变），phase6 R3 首源接入时注册 fetcher 即激活。
+	ticketService := ticket.NewTicketService(pool, ticketRepo, orgRepo, registry, rbacService, orgDelegationService, storageRepo, storageStore, datafetcher.NewRegistry())
 	// S3a B3-2：分派规则服务（OnAfterCreate 在 ticketService.Create 内调——
 	// 通过 DispatchService 持有 svc 反向引用；装配期注入）
 	dispatchSvc := ticket.NewDispatchService(repository.NewAssignmentRuleRepo(pool), ticketService, logger)

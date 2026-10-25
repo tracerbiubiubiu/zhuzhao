@@ -42,7 +42,7 @@ func TestValidatePlaceholders(t *testing.T) {
 		for _, k := range []string{"ticket.title", "ticket.type_code", "ticket.priority", "ticket.status", "ticket.human_key", "ticket.link"} {
 			assert.True(t, builtinVarSet[k], "%s 应在白名单内", k)
 		}
-		assert.Len(t, builtinVarSet, 6)
+		assert.Len(t, builtinVarSet, 16)
 	})
 }
 

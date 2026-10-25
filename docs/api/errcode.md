@@ -199,16 +199,16 @@
 | 92301 | `ErrDictTypeNotFound` | 字典类型不存在或版本冲突 | 404 |
 | 92302 | `ErrDictItemNotFound` | 字典项不存在或版本冲突 | 404 |
 | 92401 | `ErrPatNotFound` | PAT 不存在或已吊销 | 404 |
-| 92304 | `ErrDictTypeInUse` | 字典类型被引用禁止删除 | 409 |（phase5 S1 B1-2 删除守卫）
+| 92304 | `ErrDictTypeInUse` | 字典类型被字段引用中，不可删除 | 409 |（phase5 S1 B1-2 删除守卫）
 | 92501 | `ErrMsgTplNotFound` | 消息模板不存在 | 404 |（phase5 S6 模板段）
 | 92502 | `ErrMsgTplDupCode` | 模板 code 已存在 | 409 |
 | 92503 | `ErrMsgTplSystem` | 系统模板不可修改或删除 | 403 |（is_system 只读）
-| 92504 | `ErrMsgTplReferenced` | 模板被订阅规则引用中 | 409 |
-| 92505 | `ErrMsgTplVersionConflict` | 模板版本冲突 | 409 |（CAS 乐观锁）
-| 92506 | `ErrMsgRuleVersionConflict` | 订阅规则版本冲突 | 409 |（CAS——000060）
-| 92600 | `ErrIntelNotConfigured` | 情报上游未配置 | 500 |（S9 生产态 fail-fast）
-| 92601 | `ErrIntelUpstreamQuota` | 上游配额耗尽且无可用缓存 | 503 |（降级矩阵无缓存臂）
-| 92602 | `ErrIntelUpstream` | 上游查询失败 | 502 |
+| 92504 | `ErrMsgTplReferenced` | 模板被订阅规则引用中，不可删除 | 409 |
+| 92505 | `ErrMsgTplVersionConflict` | 模板版本冲突——请刷新后重试 | 409 |（CAS 乐观锁）
+| 92506 | `ErrMsgRuleVersionConflict` | 订阅规则版本冲突——请刷新后重试 | 409 |（CAS——000060）
+| 92600 | `ErrIntelNotConfigured` | 情报上游未配置（intel.upstream.endpoint） | 500 |（S9 生产态 fail-fast）
+| 92601 | `ErrIntelUpstreamQuota` | 情报上游配额耗尽（无可用缓存） | 503 |（降级矩阵无缓存臂）
+| 92602 | `ErrIntelUpstream` | 情报上游不可用 | 502 |
 
 > 90001–90004 已于 **2a Step 2** 写入 `errcode.go`（勿改号）；本段余量预留。不可见工单对外统一 **90001**（决策已收口 2026-08-19，不再与 10004 二选一；10004 保留给通用资源不存在场景，见 [phase2/09-ticket §7](../phase2/09-ticket.md)）。
 

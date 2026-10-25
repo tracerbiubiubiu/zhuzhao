@@ -44,7 +44,8 @@ const (
 
 // ops 域（运维告警——cron 失败等；10 号 A.5：域边界显式化防落 message_rules 默认 ticket）
 const (
-	ActionOpsCronFailed Action = "ops.cron_failed"
+	ActionOpsCronFailed   Action = "ops.cron_failed"
+	ActionOpsActionFailed Action = "ops.action_failed" // S3a B3-3 动作失败（G-5 审计修复——可观测）
 )
 
 // Payload 事件载荷——按 Action 预留 payload schema 登记位（06 号 A.1）。

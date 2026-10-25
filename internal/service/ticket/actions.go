@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
@@ -55,7 +57,13 @@ type TransitionAction interface {
 type ActionRegistry struct {
 	mu       sync.RWMutex
 	actions  map[string]TransitionAction
-	maxDepth int // 循环触发链深限制（post_actions 级联上限——03 号防蔓延②）
+	maxDepth int                              // 循环触发链深限制（post_actions 级联上限——03 号防蔓延②）
+	emitter  func(ev domainevent.DomainEvent) // G-5：失败事件出口（装配注入——nil=仅日志）
+}
+
+// SetEmitter G-5：注入失败事件出口（app 装配层调用——nil=仅日志不 emit）。
+func (r *ActionRegistry) SetEmitter(fn func(ev domainevent.DomainEvent)) {
+	r.emitter = fn
 }
 
 func NewActionRegistry() *ActionRegistry {
@@ -138,6 +146,18 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 			if logger != nil {
 				logger.Warn("action failed (transition not rolled back)",
 					"action", ref.Name, "ticket", ac.Ticket.ID, "err", err)
+			}
+			// G-5：emit ops.action_failed（A.3 可观测要求——S6 规则面可配告警路由）
+			if r.emitter != nil {
+				r.emitter(domainevent.DomainEvent{
+					BizType: domainevent.BizOps, Action: domainevent.ActionOpsActionFailed,
+					BizID: strconv.FormatInt(ac.Ticket.ID, 10),
+					Payload: domainevent.Payload{
+						"action": ref.Name, "error": err.Error(),
+						"ticket_id": strconv.FormatInt(ac.Ticket.ID, 10),
+					},
+					Timestamp: time.Now(),
+				})
 			}
 		}
 	}
