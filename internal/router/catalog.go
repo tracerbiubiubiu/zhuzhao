@@ -79,6 +79,10 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/tickets/tags":        true,
 	"POST /api/v1/tickets/tags/remove": true,
 	"GET /api/v1/tickets/:id/tags":     true,
+	// S6 二期 B6-7 站内消息中心（G-23 实施 000076：自数据 selfService——服务端限 recipient=self）
+	"GET /api/v1/notifications/inbox":     true,
+	"POST /api/v1/notifications/read":     true,
+	"POST /api/v1/notifications/read-all": true,
 	// S10 B10-3 角标聚合（登录态自服务——sections 内不含越权数据）
 	"GET /api/v1/badges":                true,
 	"POST /api/v1/user/pats":            true,

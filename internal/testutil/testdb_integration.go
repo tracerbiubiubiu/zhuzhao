@@ -23,6 +23,15 @@ var (
 	sharedErr  error
 )
 
+// testPGImage testcontainers 用的 PG 镜像——ZHUZHAO_TEST_PG_IMAGE 可覆盖
+// （镜像源拉不到 alpine 变体时指向本地已有 tag，如 postgres:15；同大版本服务端语义一致）。
+func testPGImage() string {
+	if v := os.Getenv("ZHUZHAO_TEST_PG_IMAGE"); v != "" {
+		return v
+	}
+	return "postgres:15-alpine"
+}
+
 // SetupPostgresShared 全包共享一个 PG 容器（TestMain 用）。
 func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 	sharedOnce.Do(func() {
@@ -30,7 +39,7 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 		defer cancel()
 
 		container, err := postgres.Run(ctx,
-			"postgres:15-alpine",
+			testPGImage(),
 			postgres.WithDatabase("zhuzhao_test"),
 			postgres.WithUsername("zhuzhao"),
 			postgres.WithPassword("zhuzhao_test"),
@@ -194,6 +203,9 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000074_phase5_menus_role_bind.up.sql",
 			// E2E 补齐批二程: 分派规则写端点迁按钮行（L1 越权修复）
 			"000075_assignment_rules_write_btn.up.sql",
+			// E2E 补齐批三程: 消息中心自服务化（G-23）/ 字典·通知写端点迁按钮行（G-26）
+			"000076_message_center_selfservice.up.sql",
+			"000077_dict_notification_write_btn.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

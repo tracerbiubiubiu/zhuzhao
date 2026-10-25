@@ -117,10 +117,10 @@
 | G-20 | ui | viewNames 派生器两盲区（INSERT…SELECT 页面行只认别名 p 且一律记按钮 / UPDATE visible 不重放）+「零动作」守卫从未登记 0 形同虚设 → system_setting 无 defineOptions、system_notification 名错，两页 keep-alive 恒不命中 | P2 | ✅ 本批 | 销账 |
 | G-21 | ui | 菜单 icon 映射漏 intel/message（icons.test 种子清单手工维护未同步）——侧栏图标静默空白 | P3 | ✅ 本批 | 销账 |
 | G-22 | ui/CI | viewNames 同级主仓固定拉 main——特性分支种子页在 CI 不进期望名单（反向守卫会误报孤岛） | P3 | ✅ 本批（同名分支优先，push 后核 CI 转绿） | 销账待核 |
-| G-23 | S6-2 | 消息中心是否默认全员可见：现 000074 仅绑 admin+superadmin；operator/viewer 及自建角色须经角色管理分配本页，否则其头部铃铛跳 /messages 仍 404（铃铛对所有登录用户渲染） | 拍板 | 所有者 | E 组候选（a=static route 兜底 / b=种子绑全部内置角色 / c=维持按角色分配+铃铛按菜单可达性隐藏） |
+| G-23 | S6-2 | 消息中心是否默认全员可见：铃铛对所有登录用户渲染，而 /messages 由菜单驱动仅绑定角色可达（000074 后=admin+superadmin），operator/viewer 点铃铛 404 | 拍板 | ✅ 按建议实施（三程 2026-10-25）：a 变体=inbox 三端点移 selfService（自数据）+ ui /messages 常量路由 + 000076 菜单行惰性化；入口=铃铛，侧栏项消失 | 销账 |
 | G-24 | ui | SEED_ICON_NAMES / MENU_ICON_MAP / viewNames STATIC_ROUTES 三清单手工维护——派生化（从迁移种子/routes.ts 解析） | P3 | 登记 | 触发=再漏一次 |
 | G-25 | ui | phase5 新能力 E2E spec 为零——五件待补：CC/标签、S2 画布、S6-2 消息中心+铃铛、S3a 转换+规则页 | P1 | ✅ 本批二程（26 spec / 33 用例） | 销账 |
-| G-26 | S3a | **L1 越权**：000070 把 /assignment-rules 三写端点挂 ticket_type_manage 页面行（000073 照抄）——违反 W1 B 案「页面=读/写挂按钮」；viewer/operator 预设只绑页面即持建/停/删规则权（POST 实测 400 过 L1） | **P1** | ✅ 000075（按钮行+页面摘除+非管理 casbin 清除）+ ui switch v-permission + p5-s3a-rules 钉 403 | 销账；**对账建议**：扫全部 menu_apis「页面行(menu_type=2)挂 POST」= B 案漏项清单（本批仅修本域） |
+| G-26 | S3a/全库 | **L1 越权**：000070 把 /assignment-rules 三写端点挂 ticket_type_manage 页面行（000073 照抄）——违反 W1 B 案「页面=读/写挂按钮」；viewer/operator 预设只绑页面即持建/停/删规则权（POST 实测 400 过 L1） | **P1** | ✅ 000075（本域）+ **对账已执行**：全库扫页面行挂 POST 得 system_dict×6/system_notification×8（按钮行 dict_write_btn/notification_write_btn 建行即空绑，两页仅绑 admin/superadmin=潜伏）→ ✅ **000077** 迁按钮行 + intent-preserving；message_center×2 随 G-23；ticket_list transition×1=000068 设计内维持 | 销账 |
 | G-27 | ui/S3a | 规则页 orgOptions IIFE 快照（query 在途即永久空）——冷加载 UI 建不了规则 | P1 | ✅ 本批（computed） | 销账 |
 
 ## 挂账质量判据（外审 F-4-5 推广）
@@ -134,4 +134,4 @@
 
 ---
 
-*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-23 待拍、G-24 登记外全部销账）**；下一迁移编号 **000076**（000073/000074/000075 本批占用）*
+*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-24 登记外全部销账；G-23 三程按建议实施）**；下一迁移编号 **000078**（000073–000077 本批五对占用）*

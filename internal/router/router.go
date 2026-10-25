@@ -229,6 +229,11 @@ func New(deps Deps) *gin.Engine {
 				selfService.GET("/tickets/:id/tags", deps.TicketHandler.ListTags)
 				// S10 B10-3 角标聚合（登录态——A.4 sections 开放 map，phase6 零改协议并入）
 				selfService.GET("/badges", deps.BadgeHandler.List)
+				// S6 二期 B6-7 站内消息中心（G-23 实施 000076：严格自数据——服务端限 recipient=self、
+				// 非本人 404，与 /badges 同性质；铃铛对全员渲染，路由由 ui 常量路由兜底，不再走菜单 L1）
+				selfService.GET("/notifications/inbox", deps.InboxHandler.Inbox)
+				selfService.POST("/notifications/read", deps.InboxHandler.MarkRead)
+				selfService.POST("/notifications/read-all", deps.InboxHandler.MarkAllRead)
 
 				// 当前用户信息
 				userSelf := selfService.Group("/user")
@@ -389,11 +394,6 @@ func New(deps Deps) *gin.Engine {
 				// S9 B9-1 情报查询（biz 组 L1=intel:query 码；限流独立桶
 				// 镜像保护上游配额——A.4 双保险）
 				biz.GET("/intel/query", deps.IntelHandler.Query)
-
-				// S6 二期 B6-7 站内消息中心读面（biz 组 L1=inbox:read 码）
-				biz.GET("/notifications/inbox", deps.InboxHandler.Inbox)
-				biz.POST("/notifications/read", deps.InboxHandler.MarkRead)
-				biz.POST("/notifications/read-all", deps.InboxHandler.MarkAllRead)
 
 				// B5-6 配置化设置管理（05 号 A.4 #6——biz 组走 CasbinAuth：
 				// GET 绑 system_setting 页面行 / POST 绑 system_setting_update 按钮行）
