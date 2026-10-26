@@ -20,13 +20,19 @@ type Client struct {
 }
 
 func New() *Client {
-	return &Client{http: &http.Client{
+	return NewWithClient(&http.Client{
 		Timeout: 5 * time.Second,
 		// 禁重定向：3xx 直接返回响应（由 ≥3xx 分支判失败）——防 302 绕过 URL 校验
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-	}}
+	})
+}
+
+// NewWithClient 自定义 HTTP 客户端构造（集成测试用——自定义 Transport 绕开
+// 真实 DNS/网络直达 httptest 监听；URL 校验面不受影响）。
+func NewWithClient(hc *http.Client) *Client {
+	return &Client{http: hc}
 }
 
 // blockedHostnames SSRF 元地址黑名单（域名面——IP 面走 net.ParseIP 规范化判定）

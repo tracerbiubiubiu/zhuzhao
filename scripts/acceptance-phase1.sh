@@ -485,6 +485,17 @@ RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/me/notification-optouts" -H "
 check "#MSG-4 opt-outs 自服务" "200" "$RC"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ticket-types/incident/fields/variables" -H "Authorization: Bearer $SAT")
 check "#MSG-5 variables 变量字典" "200" "$RC"
+# ── 观测面冒烟（审计缺口批 2026-10-24——cron-status 端点零测试收口）──
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/system/cron-status" -H "Authorization: Bearer $SAT")
+check "#MSG-6 cron-status 观测面" "200" "$RC"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/jobs/actions" -H "Authorization: Bearer $SAT")
+check "#MSG-7 jobs actions 注册表" "200" "$RC"
+# /runs 代理 taskrunner 上游——base_url 空=502（configs/config.yaml E-④ 口径），
+# 仅在验收栈配了上游时冒烟
+if [ -n "${TASKRUNNER_BASE_URL:-}" ]; then
+  RC=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/runs" -H "Authorization: Bearer $SAT")
+  check "#MSG-8 runs 观测面" "200" "$RC"
+fi
 
 echo "=== SUMMARY pass=$pass fail=$fail skip=$skip ==="
 [ "$fail" -eq 0 ]

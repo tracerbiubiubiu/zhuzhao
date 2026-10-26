@@ -8,6 +8,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 func TestB33_Actions(t *testing.T) {
@@ -112,6 +115,100 @@ func TestB33_Actions(t *testing.T) {
 		_, ok := reg.Get("notify")
 		assert.True(t, ok, "notify 动作注册存活")
 
+	})
+}
+
+// TestB33_NotifyActionE2E 人工入口（入口三）端到端锚（审计缺口批——原仅注册
+// 存活性断言，Execute 本体零覆盖：params 解析/事件派发/无规则静默撤了不会红）。
+// 链路=转换携带 notify post_action → EmitActionNotify 派发 ticket.action_notify
+// → cc 档规则（消费 payload cc_users←params.recipients）→ 捕获 sender+log 落行。
+func TestB33_NotifyActionE2E(t *testing.T) {
+	ctx := context.Background()
+	reg := domainevent.NewHookRegistry(nil)
+	tplRepo := repository.NewMessageTemplateRepo(testPool)
+	sender := &captureSender{}
+	hook := NewTicketNotifyHook(tplRepo, repository.NewMessageRuleRepo(testPool),
+		repository.NewMessageLogRepo(testPool), repository.NewNotificationOptoutRepo(testPool),
+		sender, nil, nil)
+	reg.Subscribe(domainevent.BizTicket, "b33.notifye2e", hook)
+
+	svc, aid, bid, _, roles := setupTicket2a(t)
+	roles[aid] = []string{"admin"}
+	svc.SetEventRegistry(reg)
+	oid := childOrgID(t, "b33e2")
+	code := "b33e2_" + uniqueSuffix()
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "动作通知端到端"})
+	require.NoError(t, err)
+
+	areg := NewActionRegistry()
+	areg.Register(&NotifyAction{Svc: svc})
+	svc.SetActionRegistry(areg)
+
+	tpl := "b33e2_tpl_" + uniqueSuffix()
+	require.NoError(t, tplRepo.Create(ctx, &model.MessageTemplate{
+		Code: tpl, Name: "动作通知", Channel: "uip", BizType: "ticket",
+		Subject: "{{ticket.title}}", Body: "{{ticket.human_key}}", Enabled: true,
+	}))
+	_, err = testPool.Exec(ctx, `INSERT INTO message_rules (biz_type, event_action, template_code, recipient_type)
+		VALUES ('ticket', 'ticket.action_notify', $1, 'cc') ON CONFLICT DO NOTHING`, tpl)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action='ticket.action_notify'`)
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_templates WHERE code=$1`, tpl)
+	})
+
+	meta := `{"assigned>in_progress":{"post_actions":[{"name":"notify","params":{"recipients":[` + itoa64(bid) + `]}}]}}`
+	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
+	require.NoError(t, err)
+
+	run := func(t *testing.T, title string) *model.Ticket {
+		t.Helper()
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: title, Priority: 2, OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
+		time.Sleep(100 * time.Millisecond)
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "in_progress"}, bid)
+		require.NoError(t, err)
+		time.Sleep(200 * time.Millisecond) // 异步派发
+		return tk
+	}
+
+	t.Run("正向：notify 动作→action_notify 事件→cc 规则→发送+log", func(t *testing.T) {
+		tk := run(t, "动作通知正向单")
+
+		var got *channelsender.Message
+		for i := range sender.messages() {
+			if m := sender.messages()[i]; m.TemplateCode == tpl {
+				got = &m
+				break
+			}
+		}
+		require.NotNil(t, got, "action_notify 事件经规则路由到发送")
+		assert.Contains(t, got.Recipients, itoa64(bid), "cc 档消费 params.recipients→cc_users")
+
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM message_log WHERE biz_id=$1 AND template_code=$2`,
+			itoa64(tk.ID), tpl).Scan(&n))
+		assert.Equal(t, 1, n, "动作通知落 log")
+	})
+
+	t.Run("负向：无规则静默（撤规则后同链路零发送零 log）", func(t *testing.T) {
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action='ticket.action_notify'`)
+		before := len(sender.messages())
+
+		tk := run(t, "动作通知静默单")
+
+		for _, m := range sender.messages()[before:] {
+			assert.NotEqual(t, tpl, m.TemplateCode, "无规则=动作静默（设计内——cc 动作等旁链不染）")
+		}
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM message_log WHERE biz_id=$1 AND template_code=$2`,
+			itoa64(tk.ID), tpl).Scan(&n))
+		assert.Equal(t, 0, n, "静默不落发送行")
 	})
 }
 
