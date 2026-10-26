@@ -1,0 +1,78 @@
+# 端口分配表（全生态权威——zhuzhao / taskrunner / activelist / zhuzhao-ui）
+
+> **定位**：全仓端口分配唯一权威。新增服务、新增端点、新增测试基础设施先查本表登记再取号——防端口冲突（所有者 2026-10-26 发起）。
+>
+> **三原则**：
+> 1. **固定端口**（dev compose / acceptance / 前端）从本表取号，新占用先登记——冲突时用环境变量覆盖（如 `APP_PORT=33334 make dev`）。
+> 2. **动态端口**（testcontainers / CI 集成测试）不加约束——Docker 随机分配天然零冲突，39000–39999 是预留段而非绑定规则。
+> 3. **跨仓**（taskrunner / activelist）在同一张表登记（所有者维护，三仓共用），各仓 compose 自管映射。
+
+## 端口分配总表
+
+### zhuzhao 主仓（dev / 测试 / 验收）
+
+| 端口 | 用途 | 使用环境 | 占用方 | 可覆盖 env |
+|------|------|----------|--------|------------|
+| **33333** | zhuzhao app HTTP（API + 代理下载） | dev / acceptance / E2E | compose app 容器 + `make dev` 本地 | `APP_PORT` |
+| **33334** | zhuzhao app 第二实例（并行会话 / 调试） | dev 并行 | `APP_PORT=33334 make dev` | `APP_PORT` |
+| **48080** | zhuzhao-ui 容器（nginx） | dev compose | compose ui 容器 | `UI_PORT` |
+| **4000** | vite dev server（前端本地开发 / E2E webServer） | dev / E2E | vite（ui 仓） | —（vite.config server.port） |
+| **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | compose 已注释不映射 |
+| **5433** | PostgreSQL（**测试专用**——本机独立容器跑 migration 验证） | audit / migration 验证 | 手动 `docker run -p 5433:5432` | — |
+| **6379** | Redis（dev compose） | dev | compose redis 容器 | — |
+| **9000** | RustFS API（S3 兼容端点） | dev | compose rustfs 容器 | `RUSTFS_API_PORT` |
+| **9001** | RustFS Console（管理面板） | dev | compose rustfs 容器 | `RUSTFS_CONSOLE_PORT` |
+| **9002** | RustFS backup API（第二实例 S3） | dev | compose rustfs-backup 容器 | 不映射（compose 内网互访） |
+
+### 跨仓服务（dev compose 内网互通）
+
+| 端口 | 用途 | 使用环境 | 占用方 | 仓 |
+|------|------|----------|--------|-----|
+| **18080** | taskrunner HTTP API | dev compose | taskrunner 容器 | taskrunner 仓 |
+| **18081** | activelist HTTP API | dev compose | activelist 容器 | activelist 仓 |
+
+### 预留段
+
+| 端口段 | 用途 | 说明 |
+|--------|------|------|
+| **39000–39999** | testcontainers 随机端口（Docker 分配） | 集成测试的 PG / RustFS / 临时 HTTP——Docker 自主分配，非强制绑定 |
+| **33335–33399** | zhuzhao 未来多实例（当前零使用） | 并行测试 / 多环境 dev |
+| **48081–48099** | ui 未来多实例（当前零使用） | 并行前端 dev |
+| **5434–5439** | PG 测试多实例（当前零使用，5433 已用） | 并行 migration 验证 |
+| **9100–9199** | 对象存储测试多实例（当前零使用） | RustFS 第三实例等 |
+
+## 冲突处理指引
+
+### 常见冲突场景
+
+| 场景 | 症状 | 解法 |
+|------|------|------|
+| 本机装了 PostgreSQL | compose postgres 起不来（5432 已占） | compose 注释了端口映射（内网互访），无需映射——若需 psql 直连改映射 `- "5433:5432"` |
+| 本机装了 Redis | compose redis 起不来（6379 已占） | 同上——compose 未映射 6379；本地 `make dev` 走容器内网 |
+| dev app 没跑 | acceptance 脚本全红（33333 连不上） | 先 `make dev`；或换端口 `BASE_URL=http://localhost:33334 bash scripts/acceptance-phase1.sh` |
+| 两个 vite 项目同时跑 | 4000 被占（vite 自动跳 4001） | 无害——vite 自动避让；E2E webServer 固定 4000 则需先杀 |
+| dev app 换了端口 | E2E 连不上 33333 | `E2E_API_BASE=http://127.0.0.1:33334` 覆盖 |
+
+### 验收脚本端口可覆盖（已支持）
+
+所有 acceptance 脚本第一行已支持环境变量覆盖：
+```bash
+# 默认 33333
+bash scripts/acceptance-phase1.sh
+
+# 换端口
+BASE_URL=http://localhost:33334/api/v1 HEALTH_URL=http://localhost:33334/health/ready bash scripts/acceptance-phase1.sh
+```
+
+### 新增服务取号纪律
+
+1. 查本表确认端口未被占用
+2. 优先用预留段（33335+ / 48081+ / 5434+ / 9100+）
+3. 在本表登记（用途 / 环境 / 占用方 / env 变量）
+4. compose 加映射时引用 env 变量（对齐 `"${APP_PORT:-33333}:33333"` 既有模式）
+
+## 变更记录
+
+| 日期 | 变更 |
+|------|------|
+| 2026-10-26 | 建档（所有者发起：测试/验证端口未提前分配致经常冲突）；首版分配表 + 三原则 + 冲突处理指引 |

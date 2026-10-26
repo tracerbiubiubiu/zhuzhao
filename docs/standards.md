@@ -73,6 +73,10 @@
 | **代码注释** | **关键函数必须注释**：导出符号有 doc comment（说什么）；复杂逻辑/安全相关/非直观分支注释写**为什么**（不复述代码）；对外 API 带 swagger 注记。惯例：中文注释 |
 | **文件规模** | 单文件 **超过 200 行即评估拆分**（按职责/子域切，不机械按行数硬切）；新增文件尽量低于该阈值。存量豁免：已冻结模块（ticket）与历史大文件不做突击拆分，触碰时顺手拆 |
 
+### 端口分配纪律（2026-10-26 立约）
+
+全生态端口分配唯一权威 = [ops/port-allocation.md](ops/port-allocation.md)——新增服务、新增端点、新增测试基础设施**先查表登记再取号**；固定端口从分配表取、动态端口走 testcontainers 随机分配；冲突用环境变量覆盖（`APP_PORT` / `BASE_URL` / `E2E_API_BASE` 等既有变量），不改脚本硬编码。跨仓（taskrunner / activelist）端口在同一张表登记。
+
 ## 5. 公共包（zhuzhao-utils）
 
 - 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本：v0.4.2（当前各仓 pin，2026-10-14 打标）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正、**v0.4.2**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件+出站 Transport，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）+ jsonutil.Int64Slice 补 MarshalJSON（发送侧 ID 数组一律字符串）+ jwt ParseRefreshToken 过期错误 ErrTokenExpired 哨兵 + postgres 移除 MaxIdleConns 口径误映射；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
@@ -251,3 +255,4 @@
 | 2026-10-21 | §12-10 增**并发回归测试须过变异验证**一条——F-B1 变异验证实证驱动：`-race` 全绿≠测试能抓 bug；临时移除修复连跑 ≥8 次须**稳定变红**方为真守卫，时绿时红=假守卫靠**加轮数**堆命中率（实证：单轮 3 并发漏守 25%→串行 6 轮 8/8 全红）。与 §9 并发回归测试纪律互补（§9 管"要有回归测试及其形态"，本条管"测试本身有效性验证"）；详见 deliverables/software-company/zhuzhao-batch-audit-2026-10-21.md §七 |
 | 2026-10-22 | §12-9 ⑤ commit-lint 增**窗口级 swagger 新鲜度检查**（rule 5）——触及 internal/model/handler 的窗口本地重跑 swag 后 docs 生成物须零漂移（对齐 CI lint 形态、防线由 push 后红窗**前移至 push 决策点**）；红窗三次实证 f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」。同批：F-B2 悬空编号落档 + AssignMenus 并发回归测试补课（变异验证 8/8 红——§12-10 公约首例应用） |
 | 2026-10-23 | §12-9 增**披露一致性**子条（v3 审计实证四次同型错位后成文）：提交正文改动摘要与实际文件集必须一致——声称「XX 同步」则该文件必须在 `git show --stat` 集中；代提交归属错位须正文显式声明；动因=dc9acd7「review/11 同步」声称落空+33b42a7/b101cc6 归属错位+b743c7f 未含 errors.go。同日 §12-9 ⑤ commit-lint 增**规则 ⑤ 纯空正文检测**（f3e321d——第 3 行起非空行数=0 即违例，守住三节必附底线；实证 c5296a7/f780e8b 漏网被抓、有正文提交零误报） |
+| 2026-10-26 | §4 增端口分配纪律条（端口权威=ops/port-allocation.md；先查表再取号；冲突走 env 覆盖） |

@@ -1,3 +1,4 @@
+# 端口分配权威表：docs/ops/port-allocation.md（先查表再取号）
 # 完整部署用 compose：包含应用 + 数据库 + 缓存
 # D2-33：显式项目名（默认取目录名，与 dev compose 同目录会共享网络/卷前缀）
 name: zhuzhao
