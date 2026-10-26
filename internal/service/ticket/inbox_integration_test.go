@@ -67,8 +67,13 @@ func TestB67_Inbox(t *testing.T) {
 	})
 
 	t.Run("读面：inbox 分页/单条已读/全部已读/未读数", func(t *testing.T) {
-		// bid 再来两条
+		// bid 再来两条。Dispatch 每订阅者一个 goroutine——两条紧挨着发，落库顺序不定（曾 3 跑 1 挂），
+		// 「最新在前」断言依赖 id 序，故第一条落库后再发第二条
 		reg.Dispatch(ctx, ev(domainevent.TicketClosed, itoaInbox(bid), ""))
+		assert.Eventually(t, func() bool {
+			n, err := inbox.UnreadCount(ctx, bid)
+			return err == nil && n >= 2
+		}, 2*time.Second, 50*time.Millisecond)
 		reg.Dispatch(ctx, ev(domainevent.TicketTimeout, itoaInbox(bid), ""))
 		assert.Eventually(t, func() bool {
 			n, err := inbox.UnreadCount(ctx, bid)

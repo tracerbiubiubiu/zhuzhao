@@ -3927,6 +3927,7 @@ const docTemplate = `{
                 },
                 "user_ids": {
                     "type": "array",
+                    "maxItems": 20,
                     "items": {
                         "type": "integer"
                     }

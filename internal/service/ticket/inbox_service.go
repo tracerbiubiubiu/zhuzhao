@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -94,15 +95,26 @@ func (s *InboxService) OnDomainEvent(ctx context.Context, ev domainevent.DomainE
 	}
 }
 
+// selfNoiseActions 操作人即内容生产者的动作——不给 actor 自己落站内信（处理人编辑/评论自己的单
+// 又收到「工单已更新」=纯噪音，审计 #8）。assigned/cc_added 等保留 actor 可为收件人（自派/「抄送我」
+// 产生确认——TestB67 既定语义）；全局 actor 排除与接 message_rules 路由属产品拍板（台账 G-7 并账）。
+var selfNoiseActions = map[domainevent.Action]bool{
+	domainevent.TicketUpdated:   true,
+	domainevent.TicketCommented: true,
+}
+
 // collectRecipients 收件人解析（to_assignee ∪ cc_users——S6 一期同锚点；去重）。
 func collectRecipients(ev domainevent.DomainEvent) []int64 {
 	seen := map[int64]bool{}
+	skipActor := selfNoiseActions[ev.Action]
 	var out []int64
 	add := func(s string) {
-		if id, err := strconv.ParseInt(s, 10, 64); err == nil && id > 0 && !seen[id] {
-			seen[id] = true
-			out = append(out, id)
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil || id <= 0 || seen[id] || (skipActor && id == ev.ActorID) {
+			return
 		}
+		seen[id] = true
+		out = append(out, id)
 	}
 	if to, ok := ev.Payload["to_assignee"].(string); ok {
 		add(to)
@@ -117,13 +129,20 @@ func collectRecipients(ev domainevent.DomainEvent) []int64 {
 	return out
 }
 
+// titleVar 标题模板占位 {{key}}（单词字符键——payload 浅层键名）。
+var titleVar = regexp.MustCompile(`\{\{(\w+)\}\}`)
+
 // renderTitle 入站渲染（{{key}} 单层占位替换——payload 浅层；缺键保留原样）。
+// 单次扫描：替换入的值不再被重新扫描——修前按 payload map 逐键 ReplaceAll（遍历随机序），
+// 工单标题含 "{{human_key}}"/"{{cc_users}}" 字面即可能被二次展开（msgrender 有同款防护，此处平行实现曾缺）。
 func renderTitle(tpl string, ev domainevent.DomainEvent) string {
-	out := tpl
-	for k, v := range ev.Payload {
-		out = strings.ReplaceAll(out, "{{"+k+"}}", fmt.Sprint(v))
-	}
-	return out
+	return titleVar.ReplaceAllStringFunc(tpl, func(m string) string {
+		k := m[2 : len(m)-2]
+		if v, ok := ev.Payload[k]; ok {
+			return fmt.Sprint(v)
+		}
+		return m
+	})
 }
 
 func splitCSV(s string) []string {

@@ -128,19 +128,46 @@ func parsePostActions(tm *TransitionMeta) []actionRef {
 	return out
 }
 
+// actionDepthKey ctx 携带的 post_actions 链深：Transition 读出当前深度，动作执行时 +1 透传——
+// 动作内再触发 Transition（未来 transition 类动作）即形成 commit→post_actions→Transition 递归，
+// 由 maxDepth 截断。修前调用方恒传 0 且无递归载体，maxDepth 守卫形同虚设（审计 #3）。
+type actionDepthKey struct{}
+
+// actionDepth 当前链深（无标记=0，顶层转换）。
+func actionDepth(ctx context.Context) int {
+	if d, ok := ctx.Value(actionDepthKey{}).(int); ok {
+		return d
+	}
+	return 0
+}
+
+// withActionDepth 子动作 ctx（深度 +1）。
+func withActionDepth(ctx context.Context, depth int) context.Context {
+	return context.WithValue(ctx, actionDepthKey{}, depth)
+}
+
 // RunPostActions 执行转换后动作（Transition commit 后调用——决议：动作失败
-// 不回滚转换[捕获+结构化日志]，链深 maxDepth 限循环级联）。
+// 不回滚转换[捕获+结构化日志]，链深 maxDepth 限循环级联——depth 来自 actionDepth(ctx)，
+// 动作以 depth+1 的 ctx 执行，级联转换超深即截断并记日志）。
 func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger, tm *TransitionMeta, ac ActionContext, depth int) {
-	if tm == nil || depth > r.maxDepth {
+	if tm == nil {
 		return
 	}
+	if depth > r.maxDepth {
+		if logger != nil {
+			logger.Warn("post_actions chain depth exceeded (cascade cut)",
+				"ticket", ac.Ticket.ID, "depth", depth, "max", r.maxDepth)
+		}
+		return
+	}
+	actCtx := withActionDepth(ctx, depth+1)
 	for _, ref := range parsePostActions(tm) {
 		a, ok := r.Get(ref.Name)
 		if !ok {
 			continue // 未注册动作=配置漂移（保存期可校验）——运行期跳过
 		}
 		ac.Params = ref.Params
-		if err := a.Execute(ctx, ac); err != nil {
+		if err := a.Execute(actCtx, ac); err != nil {
 			// 失败语义（A.3）：不回滚转换——结构化日志（ops.action_failed 事件
 			// 面登记触发驱动——当前无消费者先落日志）
 			if logger != nil {

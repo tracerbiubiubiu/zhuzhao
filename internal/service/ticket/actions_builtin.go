@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 )
@@ -33,17 +35,35 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 	recipients := ""
 	if ac.Params != nil {
 		if list, ok := ac.Params["recipients"].([]any); ok {
-			for i, r := range list {
-				if i > 0 {
-					recipients += ","
-				}
-				recipients += fmt.Sprint(r)
+			// JSON 数字解出为 float64——必须经 int64 再格式化：fmt.Sprint(float64(1000000))="1e+06"，
+			// 用户 ID ≥1e6 时收件人串全部损坏（CCAction 同款转换，此处曾漏）
+			parts := idsFromParam(list)
+			strs := make([]string, len(parts))
+			for i, id := range parts {
+				strs[i] = strconv.FormatInt(id, 10)
 			}
+			recipients = strings.Join(strs, ",")
 		}
 	}
 	a.Svc.EmitActionNotify(ctx, ac.Ticket.ID, ac.ActorID, ac.Ticket.Title,
 		ac.Ticket.HumanKey, recipients)
 	return nil
+}
+
+// idsFromParam 动作参数里的 ID 列表（JSON 解出的 float64 / 数字字符串）→ int64；非法项跳过。
+func idsFromParam(list []any) []int64 {
+	ids := make([]int64, 0, len(list))
+	for _, v := range list {
+		switch x := v.(type) {
+		case float64:
+			ids = append(ids, int64(x))
+		case string:
+			if n, err := strconv.ParseInt(x, 10, 64); err == nil {
+				ids = append(ids, n)
+			}
+		}
+	}
+	return ids
 }
 
 // CCAction 抄送动作（复用 cc_service AddCC——读可见特例支自动生效）。
@@ -66,12 +86,7 @@ func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
 	if !ok || len(list) == 0 {
 		return nil
 	}
-	ids := make([]int64, 0, len(list))
-	for _, v := range list {
-		if f, ok := v.(float64); ok {
-			ids = append(ids, int64(f))
-		}
-	}
+	ids := idsFromParam(list)
 	if len(ids) == 0 {
 		return nil
 	}

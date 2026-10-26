@@ -132,13 +132,22 @@ type candidateRow struct {
 }
 
 func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, timeoutMinutes int, esc *stateMetaEscalation) (int, error) {
+	notify, interval, maxReminders := escalationPlan(esc)
+	// 候选窗口 LIMIT 500 只装「本轮可催」的单：已催满（reminder_count ≥ max）与间隔未到（last_reminder_at
+	// 在 interval 内）在 SQL 层排除——修前两类单仍占名额、循环里 shouldRemind=false 跳过，前 500 个催满后
+	// 第 501+ 个永不催办（静默饿死）。shouldRemind 仍复核一次作并发/边界兜底。
 	rows, err := s.db.Query(ctx, `
-		SELECT id, COALESCE(human_key, ''), title, assigned_to, escalation_supervisor_id,
-		       EXTRACT(EPOCH FROM (NOW() - status_changed_at)) / 60.0
-		FROM tickets
-		WHERE type_code = $1 AND status = $2
-		  AND status_changed_at < NOW() - make_interval(mins => $3)
-		ORDER BY id LIMIT 500`, typeCode, state, timeoutMinutes)
+		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.assigned_to, t.escalation_supervisor_id,
+		       EXTRACT(EPOCH FROM (NOW() - t.status_changed_at)) / 60.0
+		FROM tickets t
+		WHERE t.type_code = $1 AND t.status = $2
+		  AND t.status_changed_at < NOW() - make_interval(mins => $3)
+		  AND NOT EXISTS (
+		        SELECT 1 FROM ticket_reminders tr
+		        WHERE tr.ticket_id = t.id AND tr.state = $2
+		          AND (tr.reminder_count >= $4
+		               OR tr.last_reminder_at > NOW() - make_interval(mins => $5)))
+		ORDER BY t.id LIMIT 500`, typeCode, state, timeoutMinutes, maxReminders, interval)
 	if err != nil {
 		return 0, err
 	}
@@ -151,7 +160,6 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 		return 0, err
 	}
 
-	notify, interval, maxReminders := escalationPlan(esc)
 	sent := 0
 	for _, c := range cands {
 		next, ok, err := s.shouldRemind(ctx, c.id, state, interval, maxReminders)
@@ -169,6 +177,8 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 			continue
 		}
 		s.emitTimeout(c, state, notify, next)
+		// 先发后记水位：bumpReminder 失败则本轮已发而水位未进 → 下轮重发（at-most-once 退化为 at-least-once）。
+		// 权衡取向=宁重发勿漏催（催办是提醒非账务）；反向「先记后发」在 emit 失败时漏一次且计数已耗。审计 #20 登记。
 		if err := s.bumpReminder(ctx, c.id, state); err != nil {
 			return sent, err
 		}

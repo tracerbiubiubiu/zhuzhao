@@ -77,7 +77,7 @@ func TestRenderQuadrant(t *testing.T) {
 		"ticket": map[string]any{
 			"title": "测试工单", "type_code": "incident",
 			"priority": 2, "status": "open",
-			"human_key": "TK-20261023-0001", "link": "/ticket/detail/1",
+			"human_key": "TK-20261023-0001", "link": "/tickets/1",
 			"custom_field": nil, // 键在但无值
 		},
 	}

@@ -808,7 +808,21 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
 		return err
 	}
+	return s.assignAuthorized(ctx, req, actorUserID)
+}
 
+// AssignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2）。
+// 鉴权已在规则创建期以 ticket:type:manage 行使（谁能配置自动分派），执行期不再按某个自然人
+// 过 L2/L3：修前用 rule.CreatedBy 走 Assign，规则创建者非该单可操作人（非 admin 的管理员建的规则、
+// 跨组织）即 403→仅 Warn+dispatch_missed，自动分派在真实角色分布下静默失效。
+// 状态机/条件校验/事务/事件全链与 Assign 一致；auditActor 记入事件与 ticket_events 供归因
+// （=规则创建者，与 post_actions「系统身份重放」同口径）。
+func (s *Service) AssignAsSystem(ctx context.Context, req *model.AssignTicketRequest, auditActor int64) error {
+	return s.assignAuthorized(ctx, req, auditActor)
+}
+
+// assignAuthorized Assign 的鉴权后主体（Assign/AssignAsSystem 共用）。
+func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64) error {
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err

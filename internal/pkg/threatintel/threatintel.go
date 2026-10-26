@@ -92,6 +92,11 @@ func NewProvider(cfg Config, logger *slog.Logger) (Provider, error) {
 	}
 	timeout, err := time.ParseDuration(cfg.Timeout)
 	if err != nil || timeout <= 0 {
+		// 非法值降级 10s 并留痕——静默降级与仓内 fail-fast 口径不一致（审计 #12）；
+		// 不拒启：timeout 非安全边界，误配只影响上游等待时长
+		if logger != nil {
+			logger.Warn("intel.upstream.timeout invalid, fallback 10s", "configured", cfg.Timeout, "err", err)
+		}
 		timeout = 10 * time.Second
 	}
 	return &HTTPProvider{cfg: cfg, client: &http.Client{Timeout: timeout}, logger: logger}, nil

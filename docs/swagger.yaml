@@ -7,6 +7,7 @@ definitions:
       user_ids:
         items:
           type: integer
+        maxItems: 20
         type: array
     required:
     - ticket_id

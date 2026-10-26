@@ -69,7 +69,9 @@ func buildEventVars(ev domainevent.DomainEvent) map[string]any {
 			inner["human_key"] = ev.BizID
 		}
 		if _, ok := inner["link"]; !ok {
-			inner["link"] = fmt.Sprintf("/ticket/detail/%s", ev.BizID)
+			// ui 路由为 /tickets/:id（routes.ts TicketDetail）；与 inboxLink 同口径——
+			// 修前写 /ticket/detail/ 致全部 UIP 模板 {{ticket.link}} 点击 404（全仓唯一 link 产生点）
+			inner["link"] = fmt.Sprintf("/tickets/%s", ev.BizID)
 		}
 	}
 	return map[string]any{root: inner}

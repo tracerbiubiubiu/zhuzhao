@@ -6,7 +6,6 @@ package ticket
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"time"
@@ -20,14 +19,9 @@ import (
 // DispatchService 自动分派+规则管理面。
 type DispatchService struct {
 	ruleRepo *repository.AssignmentRuleRepo
-	svc      *Service // 工单服务（Assign 通道）
-	db       interface {
-		Exec(ctx context.Context, sql string, args ...any) (tag, error)
-	}
-	logger *slog.Logger
+	svc      *Service // 工单服务（AssignAsSystem 通道）
+	logger   *slog.Logger
 }
-
-type tag interface{ RowsAffected() int64 }
 
 // NewDispatchService 创建。
 func NewDispatchService(ruleRepo *repository.AssignmentRuleRepo, svc *Service, logger *slog.Logger) *DispatchService {
@@ -38,8 +32,8 @@ func NewDispatchService(ruleRepo *repository.AssignmentRuleRepo, svc *Service, l
 }
 
 // OnAfterCreate 工单创建后自动分派（决议②——OnAfterCreate Hook 语义）。
-// 走 svc.Assign（内部 authorizeCheck[actor=admin]→状态机→事务→事件全链）。
-// 失败不回滚创建（决议⑤）——仅记日志 + dispatch_missed 事件。
+// 走 svc.AssignAsSystem（系统身份：鉴权在规则创建期行使；状态机→事务→事件全链不变，
+// 事件 actor=规则创建者供归因）。失败不回滚创建（决议⑤）——仅记日志 + dispatch_missed 事件。
 func (d *DispatchService) OnAfterCreate(ctx context.Context, ticket *model.Ticket) {
 	rule, err := d.ruleRepo.MatchOnCreate(ctx, ticket.TypeCode, ticket.Title)
 	if err != nil {
@@ -50,12 +44,13 @@ func (d *DispatchService) OnAfterCreate(ctx context.Context, ticket *model.Ticke
 		d.emitDispatchMissed(ctx, ticket)
 		return
 	}
-	// 命中 → 走 Assign（决议③ target_user 须属 target_org——写侧已校验）
-	adminID := rule.CreatedBy // 用规则创建者身份走 admin 通道（最简——正式态可换系统账号）
+	// 命中 → 走 AssignAsSystem（决议③ target_user 须属 target_org——写侧已校验）
+	// 系统身份：不以 rule.CreatedBy 过 L2/L3（修前非该单可操作人建的规则一律 403 静默失效）；
+	// 事件/ticket_events actor 仍记规则创建者供归因
 	if rule.TargetUser != nil {
-		if err := d.svc.Assign(ctx, &model.AssignTicketRequest{
+		if err := d.svc.AssignAsSystem(ctx, &model.AssignTicketRequest{
 			ID: ticket.ID, AssignedTo: rule.TargetUser,
-		}, adminID); err != nil {
+		}, rule.CreatedBy); err != nil {
 			d.logger.Warn("dispatch: auto-assign failed (not rolling back create)",
 				"err", err, "ticket", ticket.ID, "rule", rule.ID)
 			d.emitDispatchMissed(ctx, ticket)
@@ -128,5 +123,3 @@ func (d *DispatchService) DeleteRule(ctx context.Context, id int64) error {
 func (d *DispatchService) UpdateRuleEnabled(ctx context.Context, id int64, enabled bool) error {
 	return d.ruleRepo.UpdateEnabled(ctx, id, enabled)
 }
-
-var _ = fmt.Sprintf // 防 unused（fmt 后续扩 org 级分派时用）

@@ -6,6 +6,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -93,6 +94,26 @@ func (h *TicketHandler) Export(c *gin.Context) {
 		return
 	}
 
+	// 导出自审计（A.6：谁/筛选/行数——流式挂独立链不经通用审计中间件，手动落行）。
+	// 落在 f.Write 之前：行数此刻已知，客户端中途断开也须留痕（数据已生成即视为已导出）；
+	// ctx 用 WithoutCancel——客户端断开会取消请求 ctx，审计写入不得随之丢失。
+	if h.audit != nil {
+		_ = h.audit.Insert(context.WithoutCancel(c.Request.Context()), middleware.AuditLogEntry{
+			UserID:          c.GetInt64("userID"),
+			Username:        c.GetString("username"),
+			Method:          "GET",
+			Path:            "/api/v1/tickets/export",
+			StatusCode:      200,
+			Duration:        0,
+			IP:              c.ClientIP(),
+			UserAgent:       c.Request.UserAgent(),
+			RequestBody:     c.Request.URL.RawQuery, // 筛选条件（谁在导什么范围的行）
+			ResponseSummary: fmt.Sprintf("rows=%d", total),
+			RequestID:       c.GetString("request_id"), // 与 middleware/logger.go 同键（原 X-Request-ID 键无人设置，恒空）
+			CreatedAt:       time.Now(),
+		})
+	}
+
 	filename := "tickets_" + time.Now().UTC().Format("20060102_150405") + ".xlsx"
 	c.Header("Content-Disposition",
 		fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, filename))
@@ -103,24 +124,6 @@ func (h *TicketHandler) Export(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-
-	// 导出自审计（A.6：谁/筛选/行数——流式挂独立链不经通用审计中间件，手动落行）
-	if h.audit != nil {
-		_ = h.audit.Insert(c.Request.Context(), middleware.AuditLogEntry{
-			UserID:      c.GetInt64("userID"),
-			Username:    c.GetString("username"),
-			Method:      "GET",
-			Path:        "/api/v1/tickets/export",
-			StatusCode:  200,
-			Duration:    0,
-			IP:          c.ClientIP(),
-			UserAgent:   c.Request.UserAgent(),
-			RequestBody: c.Request.URL.RawQuery, // 筛选条件（谁在导什么范围的行）
-			RequestID:   c.GetString("X-Request-ID"),
-			CreatedAt:   time.Now(),
-		})
-	}
-	_ = total
 }
 
 // anyRow []string → []interface{}（excelize SetRow 形态）

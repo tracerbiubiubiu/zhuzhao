@@ -54,6 +54,23 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
 		return nil, err
 	}
+	// S3a 随窗件 SLA 层 0.5：按 to 状态的 sla_due_hours 写 due 刻（模型 A——进入状态时刻+N 小时）。
+	// 与状态写同事务：修前在 commit 后裸 Exec 且吞错（无事务无日志——写失败即状态已变而 due 刻陈旧）；
+	// 无 meta/无配置一律显式清 NULL——修前 toMeta==nil 不清，靠「扫描只遍历配了 meta 的状态」隐式兜住。
+	var slaHours *int
+	if toMeta, perr := parseStateMeta(ttype.TransitionMeta, req.To); perr == nil && toMeta != nil &&
+		toMeta.SLADueHours != nil && *toMeta.SLADueHours > 0 {
+		slaHours = toMeta.SLADueHours
+	}
+	if slaHours != nil {
+		if _, err := tx.Exec(ctx,
+			`UPDATE tickets SET sla_due_at = NOW() + make_interval(hours => $1) WHERE id = $2`,
+			*slaHours, req.ID); err != nil {
+			return nil, fmt.Errorf("set sla_due_at: %w", err)
+		}
+	} else if _, err := tx.Exec(ctx, `UPDATE tickets SET sla_due_at = NULL WHERE id = $1`, req.ID); err != nil {
+		return nil, fmt.Errorf("clear sla_due_at: %w", err)
+	}
 	// 可选说明 → 写评论（与 Close 同语义）
 	if req.Comment != "" {
 		if err := s.ticketRepo.CreateCommentTx(ctx, tx, &model.TicketComment{
@@ -85,23 +102,13 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: payload, Timestamp: time.Now(),
 	})
-	// S3a 随窗件 SLA 层 0.5：按 to 状态的 sla_due_hours 写 due 刻（模型 A——
-	// 进入状态时刻+N 小时；无配置=清 NULL）
-	if toMeta, err := parseStateMeta(ttype.TransitionMeta, req.To); err == nil && toMeta != nil {
-		if toMeta.SLADueHours != nil && *toMeta.SLADueHours > 0 {
-			_, _ = s.db.Exec(ctx,
-				`UPDATE tickets SET sla_due_at = NOW() + make_interval(hours => $1) WHERE id = $2`,
-				*toMeta.SLADueHours, req.ID)
-		} else {
-			_, _ = s.db.Exec(ctx, `UPDATE tickets SET sla_due_at = NULL WHERE id = $1`, req.ID)
-		}
-	}
-	// S3a B3-3：post_actions（commit 后——失败不回滚转换[RunPostActions 内捕获]）
+	// S3a B3-3：post_actions（commit 后——失败不回滚转换[RunPostActions 内捕获]）；
+	// 链深取自 ctx（动作内再触发转换时递增——见 actionDepth），修前恒传 0 致 maxDepth 守卫形同虚设
 	if s.actionReg != nil {
 		s.actionReg.RunPostActions(ctx, slog.Default(), tm, ActionContext{
 			Ticket: ticket, From: ticket.Status, To: req.To, ActorID: actorUserID,
 			SystemAsCreator: true,
-		}, 0)
+		}, actionDepth(ctx))
 	}
 	// 返回最新态
 	return s.ticketRepo.GetByID(ctx, req.ID)

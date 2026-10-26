@@ -190,3 +190,11 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 ### 5.3 回退
 
 摘路由组中间件即恢复原状；config 密钥环段保留无副作用（不挂载不生效）。兼容层无 DB、无迁移，删除 = 删依赖 + 删路由组。
+
+## 6. 迁移回滚与 B 案守卫耦合（2026-10-26 外审 #7 登记）
+
+> 自 `45dcb25`（B 案三道守卫）起，app 启动会审计 menu_apis：页面/目录行（menu_type≠3）承载非 GET 绑定即 **拒启**（例外仅 `pageWriteAllow`）。000075/000076/000077 三对迁移的 down 按「回种原状」原则会把写端点**回挂页面行**——所以：
+>
+> - **只回滚 DB 不回滚代码 = 回滚后 app 拒启**（错误信息列出违例行与处置）。
+> - 正确序：①回退代码到 `45dcb25` 之前（或临时在 `pageWriteAllow` 登记待回滚的绑定）→ ②`migrate down` → ③启动。反向（先 down 再回代码）同样可行，但中间窗口服务不可启。
+> - 往返门禁（`scripts/migration-roundtrip-check.sh`）在全新库上 down→up，不经 app 启动，故不受影响；这条耦合只在**运维回滚**路径出现。

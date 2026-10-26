@@ -122,6 +122,12 @@
 | G-25 | ui | phase5 新能力 E2E spec 为零——五件待补：CC/标签、S2 画布、S6-2 消息中心+铃铛、S3a 转换+规则页 | P1 | ✅ 本批二程（26 spec / 33 用例） | 销账 |
 | G-26 | S3a/全库 | **L1 越权**：000070 把 /assignment-rules 三写端点挂 ticket_type_manage 页面行（000073 照抄）——违反 W1 B 案「页面=读/写挂按钮」；viewer/operator 预设只绑页面即持建/停/删规则权（POST 实测 400 过 L1） | **P1** | ✅ 000075（本域）+ **对账已执行**：全库扫页面行挂 POST 得 system_dict×6/system_notification×8（按钮行 dict_write_btn/notification_write_btn 建行即空绑，两页仅绑 admin/superadmin=潜伏）→ ✅ **000077** 迁按钮行 + intent-preserving；message_center×2 随 G-23；ticket_list transition×1=000068 设计内维持 ；**结构性守卫落地（四程）**：AuditPageWriteBindings+pageWriteAllow→启动 fail-fast / TestCatalogPageRows_NoWriteBindings（CI）/ acceptance D2 B案 三道 | 销账 |
 | G-27 | ui/S3a | 规则页 orgOptions IIFE 快照（query 在途即永久空）——冷加载 UI 建不了规则 | P1 | ✅ 本批（computed） | 销账 |
+| G-28 | 全库 | 迁移回滚与 B 案守卫耦合：000075/76/77 down 回挂写端点到页面行，而启动 fail-fast 拒启——只回滚 DB 不回滚代码之路被堵（外审 #7） | 登记 | ✅ AGENTS 迁移规范 + runbook §6 操作序 | 文档已落 |
+| G-29 | S6-2 | inbox 收件人路由接 message_rules（管理员可关某类站内信）+ 全局 actor 排除（外审 #8 设计半；本批仅 updated/commented 自收去噪） | 拍板 | 与 G-7（站内 opt-out）并账——通知中心权限批 | 待拍 |
+| G-30 | S6 | `HookRegistry.Drain`：`wg.Add` 与 `Wait` 并发——计数 0 时 Add 未 happens-before Wait（sync 文档明令禁止）可漏排空；app.go 注释「UIP 3s」≠实际 5s，5s 预算 < 发送 5s+落库，drain 超时成常态（外审 #10） | P2 | **所有者在途 registry.go/app.go 未提交**——建议：Add 前原子 closed 闸拒新事件、预算≥8s、注释改 5s | 待所有者落 |
+| G-31 | S10 | 标签摘除 UX：B「挂」已存在标签是 ON CONFLICT 无操作，再摘=摘 A 挂的→需 update 权 403（外审 #18 判设计内，拍板点 6 口径）；可改进=挂接口回告「已存在」 | P3 | 登记 | 触发=用户反馈 |
+| G-32 | S3a | `SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作=委托放大点（外审 #19）——配置面受 ticket:type:manage 控制，评审新动作须按此口径 | 登记 | ✅ 03 号变更记录注 | 文档已落 |
+| G-33 | S10 | 催办先发后记水位：bumpReminder 失败→下轮重发（at-most-once 退化 at-least-once）取向=宁重发勿漏催（外审 #20） | 登记 | ✅ 代码注 + 10 号变更记录 | 文档已落 |
 
 ## 挂账质量判据（外审 F-4-5 推广）
 
@@ -134,4 +140,4 @@
 
 ---
 
-*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-24 登记外全部销账；G-23 三程按建议实施）**；下一迁移编号 **000079**（000073–000078 本批六对占用）*
+*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-24 登记外全部销账；G-23 三程按建议实施）**；**+ 外审 v4 批（2026-10-26）G-28~G-33 六件（登记已落 3 / 拍板 1 / 待所有者在途 1 / UX 登记 1）**；下一迁移编号 **000079**（000073–000078 占用）*

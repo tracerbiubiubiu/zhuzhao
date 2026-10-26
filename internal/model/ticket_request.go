@@ -205,9 +205,10 @@ type UpdateTicketTemplateRequest struct {
 
 // AddTicketCCRequest 添加抄送（S10 B10-1——POST /tickets/cc）。
 // user_ids 仅收本人=自抄送（读可见即可）；含他人=加他人（update 权）。
+// max=20 与 AddTicketTagsRequest.Tags 同口径——缺上限即单请求任意量批量 INSERT 的 DoS 面（审计 #11）。
 type AddTicketCCRequest struct {
 	TicketID int64   `json:"ticket_id,string" binding:"required"`
-	UserIDs  []int64 `json:"user_ids" binding:"required,gt=0,dive,gt=0"`
+	UserIDs  []int64 `json:"user_ids" binding:"required,gt=0,max=20,dive,gt=0"`
 }
 
 // AddTicketTagsRequest 添加标签（S10 B10-2——POST /tickets/tags；读可见面协作动作，

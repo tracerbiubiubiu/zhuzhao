@@ -212,16 +212,10 @@ func hasRoleCode(roles []string, code string) bool {
 	return false
 }
 
-// AvailableTransitions 列出当前用户可执行的转换（GET /tickets/:id/transitions/
+// AvailableTransitionsFor 列出当前用户可执行的转换（GET /tickets/:id/transitions/
 // available——Jira condition 语义：按当前用户过滤；服务端 AssertTransition +
-// condition 为 fail-closed 兜底，前端过滤仅 UX）。
-type AvailableTransition struct {
-	To string `json:"to"`
-	// ConditionSatisfied=false 的转换不出现（前端按钮渲染依据=只列可点的）
-	_ struct{}
-}
-
-// AvailableTransitionsFor 计算（纯函数——DB 判定 orgAdmin 由调用方预取注入）。
+// condition 为 fail-closed 兜底，前端过滤仅 UX）。纯函数——DB 判定 orgAdmin 由调用方预取注入；
+// 返回 []string（原同名 struct 类型零引用，审计 #14 删除）。
 func AvailableTransitionsFor(ctx context.Context, t *model.Ticket, transitions map[string][]string,
 	metaRaw json.RawMessage, userID int64, roles []string, isOrgAdmin bool) []string {
 	actor := resolveActor(t, userID, roles, isOrgAdmin)

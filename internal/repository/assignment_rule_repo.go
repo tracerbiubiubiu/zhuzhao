@@ -73,7 +73,8 @@ func (r *AssignmentRuleRepo) UpdateEnabled(ctx context.Context, id int64, enable
 }
 
 // MatchOnCreate OnAfterCreate 命中查询（03 号决议：按 priority 升序→首个命中）。
-// keyword=NULL/空=不限（类型兜底）；非空=标题 LIKE 包含匹配（决议①不分词）。
+// keyword=NULL/空=不限（类型兜底）；非空=标题 LIKE 包含匹配（决议①不分词；大小写敏感——LIKE 原语义，
+// 改 ILIKE 属行为变更待拍）。keyword 内 \ % _ 作字面匹配（SQL 层转义——修前 keyword='%' 即全量命中，审计 #13）。
 // 返回 nil=无命中（调用方走 dispatch_missed 分支）。
 func (r *AssignmentRuleRepo) MatchOnCreate(ctx context.Context, typeCode, title string) (*model.AssignmentRule, error) {
 	var a model.AssignmentRule
@@ -81,7 +82,8 @@ func (r *AssignmentRuleRepo) MatchOnCreate(ctx context.Context, typeCode, title 
 		SELECT id, type_code, priority, COALESCE(keyword, ''), target_org, target_user, enabled, created_by, created_at
 		FROM assignment_rules
 		WHERE type_code = $1 AND enabled
-		  AND (keyword IS NULL OR keyword = '' OR $2 LIKE '%' || keyword || '%')
+		  AND (keyword IS NULL OR keyword = ''
+		       OR $2 LIKE '%' || replace(replace(replace(keyword, '\', '\\'), '%', '\%'), '_', '\_') || '%' ESCAPE '\')
 		ORDER BY priority, id
 		LIMIT 1`, typeCode, title).Scan(
 		&a.ID, &a.TypeCode, &a.Priority, &a.Keyword, &a.TargetOrg,
