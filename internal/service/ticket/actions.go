@@ -184,7 +184,7 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 					Payload: domainevent.Payload{
 						"action": ref.Name, "error": err.Error(),
 						"ticket_id": strconv.FormatInt(ac.Ticket.ID, 10),
-						"actor": strconv.FormatInt(ac.ActorID, 10),
+						"actor":     strconv.FormatInt(ac.ActorID, 10),
 					},
 					Timestamp: time.Now(),
 				})

@@ -65,8 +65,8 @@ var seedTemplates = map[string]string{ //nolint:gochecknoglobals // 装配期初
 	"ticket.dispatch_missed": "工单待分派：{{title}}",
 	"ticket.deadline":        "工单已到处理期限：{{title}}",
 	// G-8（2026-10-26 收口批补登）：notify 动作也落站内——payload.cc_users=动作 params.recipients，锚点实
-	"ticket.action_notify":   "流程提醒：{{title}}",
-	"ops.cron_failed":        "定时任务失败：{{job}}",
+	"ticket.action_notify": "流程提醒：{{title}}",
+	"ops.cron_failed":      "定时任务失败：{{job}}",
 }
 
 // OnDomainEvent DomainHook 实现——事件→站内通知落库。
