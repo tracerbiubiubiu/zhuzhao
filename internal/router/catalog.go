@@ -199,3 +199,55 @@ func FormatGaps(gaps []CatalogGap) string {
 	}
 	return b.String()
 }
+
+// pageWriteAllow W1 B 案「页面=读 API、写端点挂按钮行」的显式例外（"menu_code METHOD PATH"）。
+// 唯一在册：ticket_list ↔ POST /tickets/transition——000068 设计内（L1 与既有操作同受众，真正约束在
+// L2/L3 与按人过滤的 available）。新增例外必须带设计出处注释；禁止为省事把写端点挂回页面行——
+// 页面行进 viewer/operator 预设即连带放行写权（000070/000073 分派规则、000034/000059 字典·通知三案实证）。
+var pageWriteAllow = map[string]bool{
+	"ticket_list POST /api/v1/tickets/transition": true,
+}
+
+// PageWriteBinding 页面/目录行（menu_type≠3）上的非 GET 绑定——B 案违例候选。
+type PageWriteBinding struct {
+	MenuCode string
+	Method   string
+	Path     string
+}
+
+func (b PageWriteBinding) String() string { return b.MenuCode + " " + b.Method + " " + b.Path }
+
+// AuditPageWriteBindings B 案守卫：页面/目录行不得承载写端点（pageWriteAllow 之外）。
+// 与 BK-22 对账同址双守卫：app 层启动 fail-fast + integration 测试（CI test-integration job）。
+func AuditPageWriteBindings(ctx context.Context, q boundQuerier) ([]PageWriteBinding, error) {
+	rows, err := q.Query(ctx, `
+SELECT m.code, ma.api_method, ma.api_path
+FROM menu_apis ma JOIN menus m ON m.id = ma.menu_id
+WHERE m.menu_type <> 3 AND m.deleted_at IS NULL AND ma.api_method <> 'GET'
+ORDER BY m.code, ma.api_path, ma.api_method`)
+	if err != nil {
+		return nil, fmt.Errorf("读取页面行写绑定: %w", err)
+	}
+	defer rows.Close()
+	var out []PageWriteBinding
+	for rows.Next() {
+		var b PageWriteBinding
+		if err := rows.Scan(&b.MenuCode, &b.Method, &b.Path); err != nil {
+			return nil, fmt.Errorf("scan 页面行写绑定: %w", err)
+		}
+		if pageWriteAllow[b.String()] {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// FormatPageWriteBindings 违例清单换行缩进（启动日志/测试断言共用）。
+func FormatPageWriteBindings(vs []PageWriteBinding) string {
+	var b strings.Builder
+	for _, v := range vs {
+		b.WriteString("\n  " + v.String())
+	}
+	return b.String()
+}

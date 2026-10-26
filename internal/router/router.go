@@ -55,7 +55,7 @@ type Deps struct {
 	// S9 B9-1 情报查询（biz 组 L1——intel:query 码 000067）
 	IntelHandler *handler.IntelHandler
 
-	// S6 二期 B6-7 站内消息中心（biz 组 L1——inbox:read 码 000072）
+	// S6 二期 B6-7 站内消息中心（000076 起 selfService 组——自数据无 L1 码；inbox:read 随 000078 退役）
 	InboxHandler *handler.InboxHandler
 
 	JWTManager   *jwt.Manager

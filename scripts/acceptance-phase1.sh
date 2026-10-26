@@ -291,6 +291,11 @@ OP_BIND=$(psql_q "SELECT COUNT(*) FROM role_menus rm JOIN roles r ON r.id=rm.rol
 check "D2 seed operator unbound(非工单)" "0" "$OP_BIND"
 OPV_DESC=$(psql_q "SELECT COUNT(*) FROM roles WHERE code IN ('operator','viewer') AND description LIKE '系统预留角色%'")
 check "D2 seed desc fixed" "2" "$OPV_DESC"
+# D2-B 案（E2E 补齐批四程）：页面/目录行（menu_type≠3）不得承载写端点——例外仅 ticket_list transition（000068 设计内）。
+# 与 router.AuditPageWriteBindings/pageWriteAllow 同口径（app 启动 fail-fast + integration 测试双守卫），本条为四档门禁内第三道；
+# 根因史：000070/000073 分派规则三写挂页面行→viewer 预设即持写权（000075 修）、000034/000059 字典×6/通知×8 同病（000077 修）。
+PW_VIOL=$(psql_q "SELECT COUNT(*) FROM menu_apis ma JOIN menus m ON m.id=ma.menu_id WHERE m.menu_type<>3 AND m.deleted_at IS NULL AND ma.api_method<>'GET' AND NOT (m.code='ticket_list' AND ma.api_path='/api/v1/tickets/transition' AND ma.api_method='POST')")
+check "D2 B案 页面行零写端点" "0" "$PW_VIOL"
 
 # --- #27 ---
 USER_MENU=$(psql_q "SELECT id FROM menus WHERE code='system_user'")

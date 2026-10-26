@@ -206,6 +206,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// E2E 补齐批三程: 消息中心自服务化（G-23）/ 字典·通知写端点迁按钮行（G-26）
 			"000076_message_center_selfservice.up.sql",
 			"000077_dict_notification_write_btn.up.sql",
+			// E2E 补齐批四程: 删 message_center 幽灵行（inbox:read 退役）
+			"000078_drop_message_center_menu.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

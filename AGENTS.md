@@ -36,6 +36,7 @@ make swag              # 重新生成 Swagger
 
 - 每个迁移 **up/down 成对**；编号**全局唯一**，新迁移前先核对 `migrations/` 实际占用 + **权威编号表 = [docs/review/11-project-control.md §4 迁移地图](docs/review/11-project-control.md)**（`docs/phase2/README.md §2.4` 已于 2026-10-12 退役逐号维护、改为指向该表），**禁止编号冲突**。
 - 修改已有表语义必须说明对存量数据的兼容处理。
+- **菜单/权限种子（W1 B 案，2026-10-25 守卫化）**：新菜单页迁移必带 `role_menus` 绑 admin+superadmin（000031 惯例，否则 GetUserMenus 不可见）；**页面行（menu_type≠3）只挂 GET，写端点一律挂按钮行**——违反即三道守卫全红：app 启动 fail-fast（`router.AuditPageWriteBindings`）+ `TestCatalogPageRows_NoWriteBindings`（CI test-integration）+ acceptance phase1 `D2 B案`；例外须带设计出处登记 `pageWriteAllow`（当前唯一：ticket_list transition，000068）。身份作用域数据（如 inbox）走 selfService 组 + ui 常量路由，不走菜单授权。
 - 变更后必须 `make migrate-up` 并跑相关 acceptance。
 
 ## 代码约定

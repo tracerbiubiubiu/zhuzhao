@@ -101,6 +101,16 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		return nil, fmt.Errorf("BK-22 路由↔menu_apis 对账失败（%d 项缺口，拒启 fail-fast）：%s",
 			len(gaps), routerPkg.FormatGaps(gaps))
 	}
+	// B 案守卫（E2E 补齐批四程）：页面/目录行不得承载写端点——写端点挂页面行会随 viewer/operator
+	// 预设（只绑页面）连带放行写权（000070/000073、000034/000059 三案实证）。例外登记 pageWriteAllow。
+	pageWrites, err := routerPkg.AuditPageWriteBindings(context.Background(), pool)
+	if err != nil {
+		return nil, err
+	}
+	if len(pageWrites) > 0 {
+		return nil, fmt.Errorf("B 案对账失败（页面行承载写端点 %d 项，拒启 fail-fast——迁按钮行或带设计出处登记 pageWriteAllow）：%s",
+			len(pageWrites), routerPkg.FormatPageWriteBindings(pageWrites))
+	}
 	// P4 cron 收归：配置开关启用则装配进程内调度器（audit_archive 单批可重入——
 	// ReentrantJob 契约见 cron_scheduler.go）
 	var auditCron *service.CronScheduler
