@@ -149,17 +149,31 @@ func TestB33_NotifyActionE2E(t *testing.T) {
 		Code: tpl, Name: "动作通知", Channel: "uip", BizType: "ticket",
 		Subject: "{{ticket.title}}", Body: "{{ticket.human_key}}", Enabled: true,
 	}))
-	_, err = testPool.Exec(ctx, `INSERT INTO message_rules (biz_type, event_action, template_code, recipient_type)
-		VALUES ('ticket', 'ticket.action_notify', $1, 'cc') ON CONFLICT DO NOTHING`, tpl)
-	require.NoError(t, err)
+	tpl2 := "b33e2_tpl2_" + uniqueSuffix()
+	require.NoError(t, tplRepo.Create(ctx, &model.MessageTemplate{
+		Code: tpl2, Name: "动作通知·覆盖版", Channel: "uip", BizType: "ticket",
+		Subject: "[OVR] {{ticket.title}}", Body: "override", Enabled: true,
+	}))
+	// 000079 起有种子规则（ticket_action_notify）——upsert 到测试模板，cleanup 复原种子
+	upsertRule := func(code string) {
+		_, err := testPool.Exec(ctx, `INSERT INTO message_rules (biz_type, event_action, template_code, recipient_type)
+			VALUES ('ticket', 'ticket.action_notify', $1, 'cc')
+			ON CONFLICT (biz_type, event_action) DO UPDATE SET template_code = EXCLUDED.template_code, enabled = true`, code)
+		require.NoError(t, err)
+	}
+	upsertRule(tpl)
 	t.Cleanup(func() {
-		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action='ticket.action_notify'`)
-		_, _ = testPool.Exec(ctx, `DELETE FROM message_templates WHERE code=$1`, tpl)
+		upsertRule("ticket_action_notify") // 复原 000079 种子（负向子测会删规则）
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_templates WHERE code IN ($1, $2)`, tpl, tpl2)
 	})
 
-	meta := `{"assigned>in_progress":{"post_actions":[{"name":"notify","params":{"recipients":[` + itoa64(bid) + `]}}]}}`
-	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
-	require.NoError(t, err)
+	setMeta := func(params string) {
+		t.Helper()
+		meta := `{"assigned>in_progress":{"post_actions":[{"name":"notify","params":` + params + `}]}}`
+		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
+		require.NoError(t, err)
+	}
+	setMeta(`{"recipients":[` + itoa64(bid) + `]}`)
 
 	run := func(t *testing.T, title string) *model.Ticket {
 		t.Helper()
@@ -195,7 +209,35 @@ func TestB33_NotifyActionE2E(t *testing.T) {
 		assert.Equal(t, 1, n, "动作通知落 log")
 	})
 
-	t.Run("负向：无规则静默（撤规则后同链路零发送零 log）", func(t *testing.T) {
+	t.Run("模板参数覆盖：params.template 指定 tpl2 → 覆盖规则默认（2026-10-26 收口批生效锚）", func(t *testing.T) {
+		upsertRule(tpl) // 负向子测可能删过规则——复原到规则默认 tpl
+		setMeta(`{"recipients":[` + itoa64(bid) + `], "template":"` + tpl2 + `"}`)
+		before := len(sender.messages())
+
+		tk := run(t, "动作通知覆盖单")
+
+		var got *channelsender.Message
+		for i := range sender.messages()[before:] {
+			if m := sender.messages()[before:][i]; m.TemplateCode == tpl2 {
+				got = &m
+				break
+			}
+		}
+		require.NotNil(t, got, "动作显式指定的模板须覆盖规则默认")
+		assert.Contains(t, got.Subject, "[OVR]", "渲染自覆盖模板")
+		for _, m := range sender.messages()[before:] {
+			assert.NotEqual(t, tpl, m.TemplateCode, "规则默认模板不得同时再发一份")
+		}
+		var n int
+		require.NoError(t, testPool.QueryRow(ctx,
+			`SELECT count(*) FROM message_log WHERE biz_id=$1 AND template_code=$2`,
+			itoa64(tk.ID), tpl2).Scan(&n))
+		assert.Equal(t, 1, n, "覆盖模板落 log")
+
+		setMeta(`{"recipients":[` + itoa64(bid) + `]}`) // 还原无 template 参数形态
+	})
+
+	t.Run("负向：无规则静默（撤规则后同链路零发送零 log——规则仍是开关）", func(t *testing.T) {
 		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action='ticket.action_notify'`)
 		before := len(sender.messages())
 

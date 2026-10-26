@@ -75,15 +75,20 @@ func (s *Service) emitEvent(ev domainevent.DomainEvent) {
 // EmitActionNotify post_action notify 动作的事件出口（NotifyAction 专用——
 // 走与 created/assigned/closed 同一事件编排链；at-most-once 异步）。
 // 载荷键 cc_users=cc 档收件人锚点复用（resolveRecipients cc 分支）。
-func (s *Service) EmitActionNotify(ctx context.Context, ticketID, actorID int64, title, humanKey, recipients string) {
+func (s *Service) EmitActionNotify(ctx context.Context, ticketID, actorID int64, title, humanKey, recipients, templateCode string) {
 	_ = ctx // 事件派发为异步 fire-and-forget（emitEvent 内部 Dispatch 自管生命周期）
+	payload := domainevent.Payload{
+		"title": title, "human_key": humanKey,
+		"cc_users": recipients,
+	}
+	// S3a B3-3：动作显式指定的模板码（2026-10-26 通知面收口批生效——空=走规则/种子默认）
+	if templateCode != "" {
+		payload["template_code"] = templateCode
+	}
 	s.emitEvent(domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
 		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorID,
-		Payload: domainevent.Payload{
-			"title": title, "human_key": humanKey,
-			"cc_users": recipients,
-		},
+		Payload: payload,
 	})
 }
 

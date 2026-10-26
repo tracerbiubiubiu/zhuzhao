@@ -27,12 +27,14 @@ func (a *NotifyAction) Name() string                { return "notify" }
 func (a *NotifyAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce }
 
 // Execute params: {"template": "code", "recipients": ["id"...]}——emit
-// ticket.action_notify 事件由 S6 规则面路由（无规则则该动作静默——设计内）。
+// ticket.action_notify 事件由 S6 规则面路由；template 可选（2026-10-26 通知面收口批生效——此前参数
+// 写在文档里但从未被读）：显式指定时覆盖规则默认模板（规则仍是开关与兜底）；不指定走规则/种子默认。
 func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 	if a.Svc == nil {
 		return nil
 	}
 	recipients := ""
+	tplCode := ""
 	if ac.Params != nil {
 		if list, ok := ac.Params["recipients"].([]any); ok {
 			// JSON 数字解出为 float64——必须经 int64 再格式化：fmt.Sprint(float64(1000000))="1e+06"，
@@ -44,9 +46,12 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 			}
 			recipients = strings.Join(strs, ",")
 		}
+		if t, ok := ac.Params["template"].(string); ok {
+			tplCode = t
+		}
 	}
 	a.Svc.EmitActionNotify(ctx, ac.Ticket.ID, ac.ActorID, ac.Ticket.Title,
-		ac.Ticket.HumanKey, recipients)
+		ac.Ticket.HumanKey, recipients, tplCode)
 	return nil
 }
 

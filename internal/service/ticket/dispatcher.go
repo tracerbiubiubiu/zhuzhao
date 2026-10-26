@@ -59,6 +59,12 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		return // 无规则=不通知（updated/commented 等）
 	}
 	tplCode := rule.TemplateCode
+	// S3a B3-3 notify 动作的模板参数（EmitActionNotify 透传 template_code）：动作显式指定时
+	// 覆盖规则默认——**规则仍是开关**（无规则不发送）与兜底模板；码不存在走下方统一 not-found 拒发。
+	// （2026-10-26 通知面收口批生效——此前该参数写在动作文档里但从未被读）
+	if t, ok := ev.Payload["template_code"].(string); ok && t != "" {
+		tplCode = t
+	}
 
 	// ① 查模板
 	tpl, err := h.tplRepo.GetByCode(ctx, tplCode)

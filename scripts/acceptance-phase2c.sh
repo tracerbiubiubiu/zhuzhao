@@ -193,6 +193,10 @@ D6T_HTTP=$(curl -s -o /tmp/p2c_d6t.json -w '%{http_code}' -X POST "$BASE/orgs/de
 check "D6 vg with open ticket → 409" "409" "$D6T_HTTP"
 D6T_CODE=$(cat /tmp/p2c_d6t.json | json_code)
 check "D6 vg with open ticket code=50013" "50013" "$D6T_CODE"
+# 结单前先回 open：dev 栈走查数据可能含 incident 全量命中分派规则（新单秒变 assigned——2026-10-26 实证），
+# assigned 在 incident 图不可直达 closed；open→open 的 transition 会 409 但无害（open 单直接走 close）
+curl -s -X POST "$BASE/tickets/transition" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$TID20\",\"to\":\"open\"}" >/dev/null
 curl -s -X POST "$BASE/tickets/close" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID20\",\"comment\":\"BK20 结单\"}" >/dev/null
 # SAT 设置 VG2 的 owner 为 OWNER 用户，owner 删空组
