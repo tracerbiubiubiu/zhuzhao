@@ -84,7 +84,8 @@ notification:
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
-  base_url: ""              # env TASKRUNNER_BASE_URL；空 = 任务端点 502
+  base_url: "http://127.0.0.1:8081"  # env TASKRUNNER_BASE_URL 优先(dev 宿主形态);release 拒仓库已知值
+  sk: "dev-tr-e2e-sk"                 # env TASKRUNNER_SK 优先(同 caller 密钥)
   # self_base_url（W0b 后已成死配置——回调地址由 taskrunner 侧 CALLBACK_TARGET_URL 决定；保留 env 位防误删，env 名 TASKRUNNER_SELF_BASE_URL）
   # TASKRUNNER_SELF_BASE_URL 可覆盖——宿主进程态 localhost，容器态 http://zhuzhao:33333
   ak: zhuzhao
@@ -111,7 +112,7 @@ gateway:
   sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
   upstreams:
     - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
-      target: http://activelist:8080
+      target: http://127.0.0.1:8080
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 
