@@ -60,7 +60,17 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			return
 		}
 
-		pool, err := pgxpool.New(ctx, connStr)
+		// MaxConns 显式钉 4（2026-10-26 BK11 CI 挂死批）：pgxpool 默认
+		// max(4, GOMAXPROCS) 在本地多核机上池更大，事务窗口内嵌套池取
+		// （Create→fileFieldKeys/keyGen）的池耗尽死锁本地永不复现、CI 4 核
+		// 必现窗口——钉 4 使本地与 CI 同为最严格口径，同类回归本地即暴露。
+		cfg, err := pgxpool.ParseConfig(connStr)
+		if err != nil {
+			sharedErr = err
+			return
+		}
+		cfg.MaxConns = 4
+		pool, err := pgxpool.NewWithConfig(ctx, cfg)
 		if err != nil {
 			sharedErr = err
 			return

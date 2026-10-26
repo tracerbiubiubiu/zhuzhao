@@ -278,6 +278,23 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err != nil {
 		return nil, err
 	}
+	// 池连接调用一律在 Begin 的事务窗口外（2026-10-26 BK11 CI 挂死根因修复：
+	// Create 事务内曾嵌套池取——fileFieldKeys/keyGen 各要第二个连接，与并发
+	// Move 在 4 连接池上构成池耗尽循环等待；与上方 fetch/validate/formula
+	// 的 schema 读同规，提到事务外预取）
+	fileKeys, err := s.fileFieldKeys(ctx, req.TypeCode, customData)
+	if err != nil {
+		return nil, err
+	}
+	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
+	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
+	var humanKey string
+	if s.keyGen != nil {
+		humanKey, err = s.keyGen.Next(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("human_key: %w", err)
+		}
+	}
 
 	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
 	// org_path 是 2b scope=group 可见性过滤的依赖列（P2-D1 move 级联维护镜像），
@@ -321,23 +338,17 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
 	// B1-6 批1：file 字段 object_key 并入落绑（01 号 §3.5 file×附件五点——
 	// custom_data 只存展示态引用，权威归属走 ticket_attachments 既有链；
-	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）
-	fileKeys, err := s.fileFieldKeys(ctx, req.TypeCode, ticket.CustomData)
-	if err != nil {
-		return nil, err
-	}
+	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）——fileKeys 已在
+	// Begin 前预取（池调用禁入事务窗口，见上方注记）
 	bindKeys := append(append([]string{}, req.Attachments...), fileKeys...)
 	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
 		return nil, err
 	}
-	// S6 §5.3：生成人读编号 TK-yyyymmdd-NNNN（同事务写——原子性）
-	if ticket.HumanKey == "" && s.keyGen != nil {
-		hk, err := s.keyGen.Next(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("human_key: %w", err)
-		}
-		ticket.HumanKey = hk
-		if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, hk, ticket.ID); err != nil {
+	// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
+	// 同事务写行（原子性不变）
+	if ticket.HumanKey == "" && humanKey != "" {
+		ticket.HumanKey = humanKey
+		if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, humanKey, ticket.ID); err != nil {
 			return nil, fmt.Errorf("write human_key: %w", err)
 		}
 	}
