@@ -15,6 +15,10 @@
 |------|------|----------|--------|------------|
 | **33333** | zhuzhao app HTTP（API + 代理下载） | dev / acceptance / E2E | compose app 容器 + `make dev` 本地 | `APP_PORT` |
 | **33334** | zhuzhao app 第二实例（并行会话 / 调试） | dev 并行 | `APP_PORT=33334 make dev` | `APP_PORT` |
+
+> **33334 状态更新（2026-10-15）**：机制已接线（config.go `server.port`↔`APP_PORT` BindEnv +
+> Makefile kill 行参数化）——`APP_PORT=33334 make dev` 实测可双实例共存（33333/33334 各自
+> 独立服务互不误杀）。两会并用时：并行会话占 33333,本表第二实例走 33334。
 | **48080** | zhuzhao-ui 容器（nginx） | dev compose | compose ui 容器 | `UI_PORT` |
 | **4000** | vite dev server（前端本地开发 / E2E webServer） | dev / E2E | vite（ui 仓） | —（vite.config server.port） |
 | **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | 映射 `"5432:5432"` 已启用（docker-compose.dev.yaml L16 实测；原「已注释不映射」描述与文件不符——本机无原生 5432 时该映射无害） |
