@@ -2,7 +2,7 @@
 
 > **文档定位**：point-in-time 复盘报告——`TestBK11_CreateVsMoveHammer` CI 挂死（10-24 起 15 run 挂 7 笔）的完整证据链、三层根因、已交付修复（`039aca6`，CI 绿）与彻底方案登记（连接解析跟随 ctx，**待拍板**）。
 > **影响面定性**：不止 CI flake——生产 4 核部署 ≥4 并发 Create 同样可永久挂死，属真实并发缺陷，CI 率先照出。
-> **同日关联**：CI 环境差登记「pgxpool 默认池随核数漂移」第四坑；hotfix 已随 `039aca6` 合入 phase5。
+> **同日关联**：新增 CI 环境差坑一条——pgxpool 默认池随核数漂移致池类死锁本地永不复现（机理 §3.3，对冲 = §4 testutil 钉 4，坑注记随本复盘在案）；hotfix 已随 `039aca6` 合入 phase5。
 
 ---
 
@@ -21,6 +21,8 @@
    - `service.go:334` → `keyGen.Next` → `humankey.Generator` 自持 `*pgxpool.Pool` 做 `CREATE SEQUENCE`+`nextval`——`f055c60` 引入；
 4. 池配置 → `testdb_integration.go` `pgxpool.New(connStr)` 无 MaxConns → 默认 `max(4, GOMAXPROCS)`：**CI 4 核 runner=4，本地 M 系列≥8——死锁本地永不复现**；
 5. 复现实验（先红）→ 池钉 4 + 未修代码，本地 `-count=5` 于 2m30s 挂死——诊断实证。
+
+> 注：本节与 §3 引用的代码行号（`service.go:325/334/533`、`create_move_race_test.go:144`）均为**挂死现场的修复前历史行号**；修复后现行位置见 §4 与 `039aca6` diff。
 
 ## 3. 根因（三层）
 
@@ -85,7 +87,7 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 |------|---------|------|
 | hotfix（读上移，已交付） | 人保证不犯 | 下批还能犯 |
 | 架构测试/depguard 检查 | 机器告诉你犯了 | 事后检测、启发式可能漏报 |
-| TxRepo 类型隔离 | 编译期不让犯 | 更强但 28 持有点全改接口、跨域可绕 |
+| TxRepo 类型隔离 | 编译期不让犯 | 更强但 28 个持池点全改接口、跨域可绕 |
 | **ctx 连接解析** | **犯不了也无须不犯** | 错误写法自动变对——不变量从纪律变物理 |
 
 正确性兜底与坏味道暴露兼得：每个意外 auto-join 都有 Warn，CI 可断言零 Warn——事务窗口仍应保持最短，只是不再以死锁为代价。
@@ -116,6 +118,7 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 | 彻底方案 dbtx 连接解析（§7） | ⬜ 待拍板——建议至少做试点批 |
 | 请求级 deadline 中间件（§7.6 批3） | ⬜ 待拍板（独立小件） |
 | humankey 计数行表化（消每日 SEQUENCE 目录膨胀，顺带可进事务） | ⬜ 挂账，随下次动 humankey 顺带 |
+| fileFieldKeys 类型 schema 读进程内缓存（§6 观察——热路径省一次 DB 往返、消一个嵌套风险点） | ⬜ 挂账，随 dbtx 推广批评估或独立小件 |
 
 ## 9. 文档衔接与参考资料
 
