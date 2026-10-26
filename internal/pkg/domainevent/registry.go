@@ -1,5 +1,6 @@
 // HookRegistry 订阅注册表 + 派发器（06 号 A.1——按 biz_type 路由、多订阅者、
-// 每订阅者独立 goroutine + recover 隔离、at-most-once）。
+// 每订阅者独立 goroutine + recover 隔离、at-most-once；Drain 供优雅退出排空在途
+// 订阅者——丢失窗口收窄为仅进程崩溃）。
 package domainevent
 
 import (
@@ -17,6 +18,7 @@ type HookRegistry struct {
 	all    []DomainHook // 全域订阅者（"*" 通配）
 	names  map[string]bool
 	logger *slog.Logger
+	wg     sync.WaitGroup // 在途订阅者 goroutine 计数（Drain 等待对象）
 }
 
 // NewHookRegistry 创建注册表。
@@ -67,7 +69,8 @@ func (r *HookRegistry) SubscribeAll(name string, hook DomainHook) {
 }
 
 // Dispatch 派发事件——每订阅者独立 goroutine + recover 隔离（at-most-once：
-// 派发后进程崩溃即丢一条——通知低一致性接受，phase6 高一致性走对账扫描）。
+// 派发后进程崩溃即丢一条——通知低一致性接受，phase6 高一致性走对账扫描；
+// 优雅退出经 Drain 等待在途订阅者，计划内重启不丢）。
 // 调用方须在事务提交后调用（06 号 §5.2 异步投递——发送失败不阻塞不回滚）。
 func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 	r.mu.RLock()
@@ -78,7 +81,9 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 	r.mu.RUnlock()
 
 	for _, h := range append(targeted, wild...) {
+		r.wg.Add(1)
 		go func(hook DomainHook) {
+			defer r.wg.Done()
 			defer func() {
 				if rec := recover(); rec != nil {
 					r.logger.Error("DomainHook subscriber panicked",
@@ -88,6 +93,24 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 			}()
 			hook.OnDomainEvent(ctx, ev)
 		}(h)
+	}
+}
+
+// Drain 等待全部在途订阅者 goroutine 结束，或 ctx 到期先返回（ctx.Err()）。
+// 供优雅退出调用：须在停止新事件来源（HTTP server 关闭、cron ctx 取消）之后、
+// 关闭 PG/Redis 之前——订阅者落 message_log / notifications 需要连接存活。
+// 不排空的后果 = 计划内重启也丢在途通知（原仅崩溃丢的口径与实现不符）。
+func (r *HookRegistry) Drain(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 

@@ -155,3 +155,51 @@ func TestHookRegistry_SubscribeAllDuplicateNamePanics(t *testing.T) {
 	assert.Panics(t, func() { r.SubscribeAll("audit.all", noop) }, "SubscribeAll 重名须 panic")
 	assert.Panics(t, func() { r.Subscribe(BizTicket, "audit.all", noop) }, "跨 Subscribe/SubscribeAll 同名须 panic（共用名空间）")
 }
+
+// Drain 优雅退出排空：在途订阅者跑完才返回——断言不靠 sleep，Drain 不等即红。
+func TestHookRegistry_DrainWaitsInflight(t *testing.T) {
+	r := NewHookRegistry(nil)
+	var done atomic.Int32
+	r.Subscribe(BizTicket, "drain.slow", HookFunc(func(_ context.Context, _ DomainEvent) {
+		time.Sleep(80 * time.Millisecond)
+		done.Add(1)
+	}))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, BizID: "1"})
+	require.Equal(t, int32(0), done.Load(), "Dispatch 即发即返，订阅者仍在途")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	require.NoError(t, r.Drain(ctx))
+	assert.Equal(t, int32(1), done.Load(), "Drain 返回时在途订阅者已完成")
+}
+
+func TestHookRegistry_DrainTimeout(t *testing.T) {
+	r := NewHookRegistry(nil)
+	release := make(chan struct{})
+	r.Subscribe(BizTicket, "drain.block", HookFunc(func(_ context.Context, _ DomainEvent) { <-release }))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, BizID: "1"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	require.ErrorIs(t, r.Drain(ctx), context.DeadlineExceeded, "订阅者阻塞时按 ctx 到期返回，不无限等")
+
+	close(release) // 释放阻塞订阅者（防 goroutine 泄漏到其他用例）
+	require.NoError(t, r.Drain(context.Background()), "释放后可排空")
+}
+
+func TestHookRegistry_DrainEmptyImmediate(t *testing.T) {
+	r := NewHookRegistry(nil)
+	require.NoError(t, r.Drain(context.Background()), "无在途订阅者立即返回")
+}
+
+// panic 订阅者经 recover 后仍须计 Done——defer 顺序（Done 外层、recover 内层）被改坏
+// 即 Drain 悬挂到 ctx 超时 → 本测红。
+func TestHookRegistry_DrainAfterSubscriberPanic(t *testing.T) {
+	r := NewHookRegistry(nil)
+	r.Subscribe(BizTicket, "drain.panic", HookFunc(func(_ context.Context, _ DomainEvent) { panic("boom") }))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, BizID: "1"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	require.NoError(t, r.Drain(ctx), "panic 订阅者不得让 Drain 悬挂")
+}

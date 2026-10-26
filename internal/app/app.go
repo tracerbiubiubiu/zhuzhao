@@ -34,11 +34,12 @@ type App struct {
 	logger       *slog.Logger
 	router       *gin.Engine
 	server       *http.Server
-	policyEval   *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
-	auditCron    *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
-	storageGC    *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
-	timeoutScan  *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
-	inboxCleanup *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
+	policyEval   *audit.PolicyEvalWriter   // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron    *service.CronScheduler    // P4 cron 收归：nil=未启用（配置开关）
+	storageGC    *service.CronScheduler    // phase5 S5 孤儿 GC：nil=storage 未启用
+	timeoutScan  *service.CronScheduler    // S10 B10-4 节点超时：nil=未启用（配置开关）
+	inboxCleanup *service.CronScheduler    // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
+	events       *domainevent.HookRegistry // 领域事件总线：Shutdown 排空在途订阅者（nil=跳过）
 }
 
 // provideEventRegistry 领域事件注册表 provider（B6-1 共享基础设施——
@@ -220,6 +221,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		storageGC:    storageGC,
 		timeoutScan:  timeoutScan,
 		inboxCleanup: inboxCleanup,
+		events:       eventRegistry,
 	}, nil
 }
 
@@ -308,6 +310,21 @@ func (a *App) Shutdown() error {
 		if !a.policyEval.Stop(5 * time.Second) {
 			a.logger.Warn("policy_eval writer shutdown timeout, residual rows stay in redis")
 		}
+	}
+
+	// 3. 领域事件总线排空：等在途订阅者（通知发送/inbox 落行）跑完再放行 cleanup
+	// 关 PG。新事件来源此刻已停（server 已关、cron 随 Run 的信号 ctx 取消）；
+	// 预算 5s 覆盖 UIP 发送 3s 超时 + 落库；超时放弃=仅余崩溃窗口语义，Warn 留痕
+	if a.events != nil {
+		drainStart := time.Now()
+		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := a.events.Drain(drainCtx); err != nil {
+			a.logger.Warn("domain event drain timeout, in-flight subscribers abandoned",
+				slog.Any("error", err))
+		} else {
+			a.logger.Info("domain event bus drained", slog.Duration("took", time.Since(drainStart)))
+		}
+		drainCancel()
 	}
 
 	// B4-6：审计为同步写入（08-audit.md Phase 1 决策：无队列，优雅关闭无需 drain）；

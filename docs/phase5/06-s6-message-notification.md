@@ -147,6 +147,7 @@ type DomainHook interface { OnDomainEvent(ctx context.Context, ev DomainEvent) }
 type HookRegistry struct { subs map[string]DomainHook }        // 有序（注册序）
 func (r *HookRegistry) Register(name string, h DomainHook)     // 重复名 panic（装配期暴露）
 func (r *HookRegistry) Dispatch(ev DomainEvent)                // 每订阅者独立 goroutine + recover；at-most-once
+func (r *HookRegistry) Drain(ctx context.Context) error         // 优雅退出排空在途订阅者（2026-10-26——app.Shutdown 5s 预算；丢失窗口收窄为仅崩溃）
 ```
 
 - **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
