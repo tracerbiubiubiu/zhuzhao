@@ -16,7 +16,7 @@
 | A-3 | S6 | F-D2 rules version 乐观锁 | 000060 ✅ 已入库 **33b42a7**（v3 审计 R-1 勘误——原标 b101cc6 系错标：000060/92506/CAS 实际全在 33b42a7，b101cc6 仅含 F-1-9b/92303/台账） | ✅ **已修** |
 | A-4 | — | 外审批 3 对表文档批（06/10/11/05 四稿） | b75917d/baccad6/d14678e | ✅ **已修** |
 | A-5 | S6 | 事件总线优雅退出排空——`HookRegistry` goroutine fire-and-forget 无 WaitGroup，**计划内重启也丢在途通知/inbox 行**，与 11 号 §5.10「仅崩溃丢」口径不符 | 2026-10-26 事件面走查 | ✅ **已修**（`Drain(ctx)` + app.Shutdown 步 3 五秒预算；四单测含 panic 订阅者不悬挂锚 + 变异验证去 Add/Done 两测红） |
-| A-6 | S3a/ui | **transition_meta 丢配置 footgun（P1，2026-10-26 核出）**：ui 类型弹窗 `loadMetaFromRow` 把转换级键（"from>to"——condition/validator/post_actions）当 state 行加载，保存走「引用已删状态」分支**静默丢弃**——API 配好的转换级 meta 被一次 UI 保存清掉；修复 = load/serialize 双侧保留含 `>` 键形原样透传 | 03 号 2026-10-26 登记 | +0.5 天（建议随 phase5 走查/合 main 批先行，不等 phase6） |
+| A-6 | S3a/ui | **transition_meta 丢配置 footgun（P1，2026-10-26 核出）**：ui 类型弹窗 `loadMetaFromRow` 把转换级键（"from>to"——condition/validator/post_actions）当 state 行加载，保存走「引用已删状态」分支**静默丢弃**——API 配好的转换级 meta 被一次 UI 保存清掉；修复 = load/serialize 双侧保留含 `>` 键形原样透传 | 03 号 2026-10-26 登记 | +0.5 天（建议随 phase5 走查/合 main 批先行，不等 phase6） ✅ **已修**（ui d45f3506 load/serialize 双侧保留 `>` 键形——2026-10-26 所有者落） |
 
 ## B. 已锁定消化批次（挂而不悬——锚点已写进 11 号/段稿）
 
@@ -40,7 +40,7 @@
 | B-16 | S6 | A.5③ 守卫拦截/告警（被引用字段改 key/删时规则失效——与 S1 影响分析同件复用） | B6-7 二期 | 06 号 A.5 | +0.5 天 |
 | B-17 | S6 | ~~11 号计划面回填~~ **✅ 已修（33b42a7 批 3 对表——11 号 §4/§2.4/§3.3/§5.9 七关键词全回填（escalation/supervisor/ticket_reminders/MessageDispatcher/run.succeeded/manager_id/on_complete）——v3 审计 R-2 补标）** | 文档批 | 外审 F-3-6 | 15min |
 | B-18 | S10 | last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径 | B10-4 开工前 | 外审 F-3-7/8 | 拍板 |
-| B-19 | — | B13 权限覆盖矩阵审计（全端点×三层——半天 doc-only） | phase5 收官前 | 09 月提议至今 | +0.5 天 |
+| B-19 | — | B13 权限覆盖矩阵审计（全端点×三层） | phase5 收官前 | ✅ **[14 号](../review/14-b13-permission-matrix-2026-10-26.md)**（2026-10-26 point-in-time：123 绑定+44 豁免全量对账（首版 45 系注释示例误计，验证批勘误）——通过，无新增待拍板） | 销账 |
 | B-20 | S3a | spawn_task `from: ticket.field` 工单字段→入参映射（`actions_builtin.go:161` 注释已承诺、实现缺——现仅静态 params） | phase6 启动批 | 03 号 2026-10-26 登记 | +0.5–1 天 |
 | B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面（=边属性面板，ecmdb edgeProperty 同款交互）——**范围随 S2 走查结论门控**：基础档=弹窗/页内配置面（+1–2 天）；走查判画布局促则扩容为**设计器整合批**（02 号 2026-10-26 登记四件：类型列表→独立设计器路由页[ecmdb 三栏布局：NodePanel/画布/PropertySetting] + 终态可配化[state 级 meta 加 terminal 布尔——修前端写死 TERMINAL_STATES 名单缺口] + 判断边标签/可选菱形装饰 + 本配置面）≈+3–4 天 | phase6 启动批 | 03 号 2026-10-26 登记 / 02 号 2026-10-26 登记 | +1–2 天（整合批 3–4） |
 
@@ -107,10 +107,10 @@
 | G-2 | S6 | variables 变量字典端点缺席——管理员重存种子模板（含 reminder_count/event.*）即 400；白名单硬编码与种子模板不同源 | P1 | +0.5 天 | =B-2 加重证据（随 B6-7 二期） |
 | G-3 | S5 | avatar confirmed 后用户永不 bind → 对象永无 GC 覆盖（第三段仅扫 ticket purpose）——行+对象永久泄漏 | P2 | +0.5 天 | GC 第三段扩 avatar purpose（磁盘水位前） |
 | G-4 | S3a | sla_due_at 仅 Transition 写刻——经 Close 到终态的单无 deadline 刻（Close/Assign 收敛批未做） | P2 | +0.5 天 | Close/Assign 收敛批随行 |
-| G-5 | S3a | RunPostActions 失败仅 slog——A.3 要求的 ops.action_failed 事件未 emit（可观测缺口） | P2 | 5min | 随批（词表+inbox 登记同批） |
+| G-5 | S3a | RunPostActions 失败可观测：ops.action_failed 事件 emit + 收件人锚点（ActorID/payload.actor——规则 creator/fixed 档可路由）+ 词表登记（UIP 面） | P2 | ✅ 2026-10-26 收口批（emit 原已在——补锚点+词表+ui 下拉镜像） | inbox 面因 ops 域无 cc/assignee 锚点归 **G-9** 批（勿加死词行） |
 | G-6 | S3a | reassign 声明 at_most_once 但语义=同步强一致通道——失败静默丢转派，一致性档位需复核 | P2 | 拍板 | S3a 二期拍板 |
 | G-7 | S6 | inbox 不查 opt-out——站内通知用户无法自关（与外发偏好脱节） | P2 | +0.5 天 | 通知中心权限批（业界=GitHub per-channel） |
-| G-8 | S6 | ticket.action_notify（B3-3 已上线）未登记 inbox 词表——站内静默 | P3 | 5min | 随批登记 |
+| G-8 | S6 | ticket.action_notify 未登记 inbox 词表——站内静默 | P3 | ✅ 2026-10-26 收口批（补词「流程提醒：{{title}}」——payload.cc_users=动作 recipients，锚点实） | 销账 |
 | G-9 | S6 | ops.cron_failed 词表行是死行（payload 无 to_assignee/cc_users——collectRecipients 恒空） | P3 | 15min | 随批（改锚点或特判 job 收件人） |
 | G-10 | S6 | message_log 实落表与 A.2 漂移（biz_id VARCHAR/无 dead 态/retry_count）+死信归因字段折损 | P3 | 登记不修 | 二期表形态批 |
 | G-11 | S9 | CleanupExpired 未挂 cron——过期行只懒查不物理删，长期运行只增不删 | P2 | 15min | 生产部署前必挂 |

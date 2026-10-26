@@ -90,6 +90,7 @@ var validEventActions = map[string]bool{
 	"ticket.dispatch_missed": true, // S3a B3-2（新单无人接监控——管理员可配告警路由）
 	"ticket.deadline":        true, // S3a SLA 层 0.5（deadline 到期——000071 种子规则）
 	"ticket.action_notify":   true, // S3a B3-3 notify 动作（000079 种子规则；动作 template 参数可逐次覆盖）
+	"ops.action_failed":      true, // S3a B3-3 动作失败告警（G-5——payload.actor 锚点，规则 creator/fixed 档可路由）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }

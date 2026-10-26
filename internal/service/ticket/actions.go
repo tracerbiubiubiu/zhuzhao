@@ -174,14 +174,17 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 				logger.Warn("action failed (transition not rolled back)",
 					"action", ref.Name, "ticket", ac.Ticket.ID, "err", err)
 			}
-			// G-5：emit ops.action_failed（A.3 可观测要求——S6 规则面可配告警路由）
+			// G-5：emit ops.action_failed（A.3 可观测要求——S6 规则面可配告警路由）；
+			// ActorID+payload.actor=收件人锚点（规则 recipient_type=creator 可路由到触发人；
+			// 词表 2026-10-26 收口批补登记——inbox 面因 ops 域无 cc/assignee 锚点归 G-9 批）
 			if r.emitter != nil {
 				r.emitter(domainevent.DomainEvent{
 					BizType: domainevent.BizOps, Action: domainevent.ActionOpsActionFailed,
-					BizID: strconv.FormatInt(ac.Ticket.ID, 10),
+					BizID: strconv.FormatInt(ac.Ticket.ID, 10), ActorID: ac.ActorID,
 					Payload: domainevent.Payload{
 						"action": ref.Name, "error": err.Error(),
 						"ticket_id": strconv.FormatInt(ac.Ticket.ID, 10),
+						"actor": strconv.FormatInt(ac.ActorID, 10),
 					},
 					Timestamp: time.Now(),
 				})
