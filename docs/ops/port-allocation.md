@@ -67,6 +67,20 @@
 | 两个 vite 项目同时跑 | 4000 被占（vite 自动跳 4001） | 无害——vite 自动避让；E2E webServer 固定 4000 则需先杀 |
 | dev app 换了端口 | E2E 连不上 33333 | `E2E_API_BASE=http://127.0.0.1:33334` 覆盖 |
 
+### 宿主形态的域名解析（2026-10-15 追加——本机开发/E2E 免改 config）
+
+compose 形态下 zhuzhao 网关上游为 `http://activelist:8080`（容器网络名）。**宿主机直跑
+zhuzhao（make dev）时该域名不可达** → /al 反代 502。两种解法：
+
+1. **本机别名（推荐，一次性）**：`sudo sh -c 'echo "127.0.0.1 activelist" >> /etc/hosts'`
+   ——此后 config.yaml 保持仓内默认，**不再需要「改→测→还原」循环**（2026-10-15 前
+   的宿主态临时改动即此痛点的历史形态）；仅本仓使用该名字，机器级无害；
+2. config 文件选择（未实现，备用）：`APP_CONFIG` env 选加载文件——main.go 的
+   `config.Load` 路径当前硬编码，需要时三行改造。
+
+注意：容器内 DNS 与宿主 /etc/hosts 相互独立——compose 形态（zhuzhao 容器态）不受
+该别名影响；宿主形态（make dev）下 activelist 走宿主 8080 直跑，与别名解析一致。
+
 ### 验收脚本端口可覆盖（已支持）
 
 所有 acceptance 脚本第一行已支持环境变量覆盖：
