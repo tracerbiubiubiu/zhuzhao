@@ -100,8 +100,11 @@ func entryToModel(entry middleware.AuditLogEntry) *model.AuditLog {
 		IP:          entry.IP,
 		UserAgent:   entry.UserAgent,
 		RequestBody: entry.RequestBody,
-		RequestID:   entry.RequestID,
-		CreatedAt:   entry.CreatedAt,
+		// 000036 加列、中间件 capWriter 一直在采（有 limit 封顶）、repo INSERT 也写 $10——唯独此处漏拷，
+		// 37150 行审计 response_summary 非空 0 行（2026-10-26 外审 #5 验证时核出）
+		ResponseSummary: entry.ResponseSummary,
+		RequestID:       entry.RequestID,
+		CreatedAt:       entry.CreatedAt,
 	}
 	if entry.UserID != 0 {
 		uid := entry.UserID
