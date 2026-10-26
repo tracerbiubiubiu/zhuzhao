@@ -42,7 +42,7 @@
 | B-18 | S10 | last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径 | B10-4 开工前 | 外审 F-3-7/8 | 拍板 |
 | B-19 | — | B13 权限覆盖矩阵审计（全端点×三层——半天 doc-only） | phase5 收官前 | 09 月提议至今 | +0.5 天 |
 | B-20 | S3a | spawn_task `from: ticket.field` 工单字段→入参映射（`actions_builtin.go:161` 注释已承诺、实现缺——现仅静态 params） | phase6 启动批 | 03 号 2026-10-26 登记 | +0.5–1 天 |
-| B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面——02 号界注「画布二期」实装 | phase6 启动批 | 03 号 2026-10-26 登记 / 02 号界注 | +1–2 天 |
+| B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面（=边属性面板，ecmdb edgeProperty 同款交互）——**范围随 S2 走查结论门控**：基础档=弹窗/页内配置面（+1–2 天）；走查判画布局促则扩容为**设计器整合批**（02 号 2026-10-26 登记四件：类型列表→独立设计器路由页[ecmdb 三栏布局：NodePanel/画布/PropertySetting] + 终态可配化[state 级 meta 加 terminal 布尔——修前端写死 TERMINAL_STATES 名单缺口] + 判断边标签/可选菱形装饰 + 本配置面）≈+3–4 天 | phase6 启动批 | 03 号 2026-10-26 登记 / 02 号 2026-10-26 登记 | +1–2 天（整合批 3–4） |
 
 ## C. 触发驱动（有明确触发信号，信号不到不动）
 
@@ -132,9 +132,9 @@
 | G-27 | ui/S3a | 规则页 orgOptions IIFE 快照（query 在途即永久空）——冷加载 UI 建不了规则 | P1 | ✅ 本批（computed） | 销账 |
 | G-28 | 全库 | 迁移回滚与 B 案守卫耦合：000075/76/77 down 回挂写端点到页面行，而启动 fail-fast 拒启——只回滚 DB 不回滚代码之路被堵（外审 #7） | 登记 | ✅ AGENTS 迁移规范 + runbook §6 操作序 | 文档已落 |
 | G-29 | S6-2 | inbox 收件人路由接 message_rules（管理员可关某类站内信）+ 全局 actor 排除（外审 #8 设计半；本批仅 updated/commented 自收去噪） | 拍板 | 与 G-7（站内 opt-out）并账——通知中心权限批 | 待拍 |
-| G-30 | S6 | `HookRegistry.Drain`：`wg.Add` 与 `Wait` 并发——计数 0 时 Add 未 happens-before Wait（sync 文档明令禁止）可漏排空；app.go 注释「UIP 3s」≠实际 5s，5s 预算 < 发送 5s+落库，drain 超时成常态（外审 #10） | P2 | **所有者在途 registry.go/app.go 未提交**——建议：Add 前原子 closed 闸拒新事件、预算≥8s、注释改 5s | 待所有者落 |
+| G-30 | S6 | `HookRegistry.Drain`：`wg.Add` 与 `Wait` 并发——计数 0 时 Add 未 happens-before Wait（sync 文档明令禁止）可漏排空；app.go 注释「UIP 3s」≠实际 5s，5s 预算 < 发送 5s+落库，drain 超时成常态（外审 #10） | P2 | ~~所有者在途 registry.go/app.go 未提交~~ **✅ 已修（2026-10-26，653a3b5 入库后理由失效即修）**：closed 闸（Dispatch 持 RLock 检查+Add，Drain 持 Lock 置位后 Wait——happens-before 成立即拒收残发+Warn 留痕）/ 预算 5s→8s / 注释 3s→5s 勘误；测试=closed 后拒收不迟到送达（变异验证去闸即红）+ 并发锤击 Dispatch×Drain（-race 无 panic、Drain 完成后零迟到） | ✅ 单测+变异+lint 0 + 四档 acceptance 249/0 + 迁移往返 79 对零漂移（当前树构建） |
 | G-31 | S10 | 标签摘除 UX：B「挂」已存在标签是 ON CONFLICT 无操作，再摘=摘 A 挂的→需 update 权 403（外审 #18 判设计内，拍板点 6 口径）；可改进=挂接口回告「已存在」 | P3 | 登记 | 触发=用户反馈 |
-| G-32 | S3a | `SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作=委托放大点（外审 #19）——配置面受 ticket:type:manage 控制，评审新动作须按此口径 | 登记 | ✅ 03 号变更记录注 | 文档已落 |
+| G-32 | S3a | **系统身份写操作的委托放大族（2026-10-26 并账扩容）**：①`SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作（外审 #19）——配置面受 ticket:type:manage 控制；②`assignAsSystem` 跳过 Assign 的 L2/L3（自动分派规则消费，unexport 防包外直调+权限旁路注释——同包唯一调用方 DispatchService）。族口径：**配置自动分派/动作=获得对应写操作的委托放大**，评审新系统身份通道须按此口径并回本条登记 | 登记 | ✅ 03 号变更记录注 + assignAsSystem unexport/注释（本批） | 文档+代码已落 |
 | G-33 | S10 | 催办先发后记水位：bumpReminder 失败→下轮重发（at-most-once 退化 at-least-once）取向=宁重发勿漏催（外审 #20） | 登记 | ✅ 代码注 + 10 号变更记录 | 文档已落 |
 
 ## 挂账质量判据（外审 F-4-5 推广）

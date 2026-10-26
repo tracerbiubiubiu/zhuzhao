@@ -19,7 +19,7 @@ import (
 // DispatchService 自动分派+规则管理面。
 type DispatchService struct {
 	ruleRepo *repository.AssignmentRuleRepo
-	svc      *Service // 工单服务（AssignAsSystem 通道）
+	svc      *Service // 工单服务（assignAsSystem 通道——权限旁路口径见其注，G-32）
 	logger   *slog.Logger
 }
 
@@ -44,11 +44,12 @@ func (d *DispatchService) OnAfterCreate(ctx context.Context, ticket *model.Ticke
 		d.emitDispatchMissed(ctx, ticket)
 		return
 	}
-	// 命中 → 走 AssignAsSystem（决议③ target_user 须属 target_org——写侧已校验）
-	// 系统身份：不以 rule.CreatedBy 过 L2/L3（修前非该单可操作人建的规则一律 403 静默失效）；
+	// 命中 → 走 assignAsSystem（决议③ target_user 须属 target_org——写侧已校验）
+	// 系统身份：不以 rule.CreatedBy 过 L2/L3（修前非该单可操作人建的规则一律 403 静默失效；
+	// 权限旁路口径见 service.go assignAsSystem 注——G-32 委托放大族）；
 	// 事件/ticket_events actor 仍记规则创建者供归因
 	if rule.TargetUser != nil {
-		if err := d.svc.AssignAsSystem(ctx, &model.AssignTicketRequest{
+		if err := d.svc.assignAsSystem(ctx, &model.AssignTicketRequest{
 			ID: ticket.ID, AssignedTo: rule.TargetUser,
 		}, rule.CreatedBy); err != nil {
 			d.logger.Warn("dispatch: auto-assign failed (not rolling back create)",

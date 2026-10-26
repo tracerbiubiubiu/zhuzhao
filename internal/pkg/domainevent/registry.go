@@ -19,6 +19,7 @@ type HookRegistry struct {
 	names  map[string]bool
 	logger *slog.Logger
 	wg     sync.WaitGroup // 在途订阅者 goroutine 计数（Drain 等待对象）
+	closed bool           // Drain 置位后总线永久拒收（mu 保护——G-30：Add 须 happens-before Wait）
 }
 
 // NewHookRegistry 创建注册表。
@@ -74,14 +75,27 @@ func (r *HookRegistry) SubscribeAll(name string, hook DomainHook) {
 // 调用方须在事务提交后调用（06 号 §5.2 异步投递——发送失败不阻塞不回滚）。
 func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 	r.mu.RLock()
+	if r.closed {
+		r.mu.RUnlock()
+		// 拒收不静默吞：通知语义至少留痕（排空期事件来源应已停，残发=调度收尾竞态）
+		r.logger.Warn("event bus closed (draining), dispatch rejected",
+			"biz_type", ev.BizType, "action", ev.Action, "biz_id", ev.BizID)
+		return
+	}
 	targeted := make([]DomainHook, len(r.subs[ev.BizType]))
 	copy(targeted, r.subs[ev.BizType])
 	wild := make([]DomainHook, len(r.all))
 	copy(wild, r.all)
+	// G-30：wg.Add 必须在持锁段内完成——Drain 在 Lock 下置 closed 后才 Wait，
+	// 经 RLock 放行的 Add 必然 happens-before Wait（sync 契约：计数 0 时的 Add
+	// 不得与 Wait 并发）。计数先于 goroutine 启动，spawn 推迟到解锁后。
+	hooks := append(targeted, wild...)
+	for range hooks {
+		r.wg.Add(1)
+	}
 	r.mu.RUnlock()
 
-	for _, h := range append(targeted, wild...) {
-		r.wg.Add(1)
+	for _, h := range hooks {
 		go func(hook DomainHook) {
 			defer r.wg.Done()
 			defer func() {
@@ -99,8 +113,13 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 // Drain 等待全部在途订阅者 goroutine 结束，或 ctx 到期先返回（ctx.Err()）。
 // 供优雅退出调用：须在停止新事件来源（HTTP server 关闭、cron ctx 取消）之后、
 // 关闭 PG/Redis 之前——订阅者落 message_log / notifications 需要连接存活。
-// 不排空的后果 = 计划内重启也丢在途通知（原仅崩溃丢的口径与实现不符）。
+// 一次性语义：先在 Lock 下置 closed（此后 Dispatch 在 RLock 内被拒+Warn）再 Wait，
+// 与 Dispatch 持锁段内的 wg.Add 构成 happens-before——计数 0 窗口的并发 Add 漏排空
+// 已消除（G-30）。总线 Drain 后永久关闭（进程退出语义，无重开）。
 func (r *HookRegistry) Drain(ctx context.Context) error {
+	r.mu.Lock()
+	r.closed = true
+	r.mu.Unlock()
 	done := make(chan struct{})
 	go func() {
 		r.wg.Wait()

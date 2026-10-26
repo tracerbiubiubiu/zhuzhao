@@ -203,3 +203,62 @@ func TestHookRegistry_DrainAfterSubscriberPanic(t *testing.T) {
 	defer cancel()
 	require.NoError(t, r.Drain(ctx), "panic 订阅者不得让 Drain 悬挂")
 }
+
+// G-30 主断言：完整排空一次 → closed 恒置位（置位在 Wait 前）→ 新 Dispatch 拒收。
+func TestHookRegistry_ClosedRejectsNewDispatch(t *testing.T) {
+	r := NewHookRegistry(nil)
+	var served atomic.Int32
+	r.Subscribe(BizTicket, "closed.serve", HookFunc(func(_ context.Context, _ DomainEvent) {
+		served.Add(1)
+	}))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketCreated, BizID: "1"})
+	require.NoError(t, r.Drain(context.Background()), "首次排空（在途 1 件）")
+	require.Equal(t, int32(1), served.Load(), "排空前在途订阅者已送达")
+
+	// Drain 返回后 closed 必已置位（置位发生在 Wait 之前）——新事件拒收
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketClosed, BizID: "2"})
+	assert.Equal(t, int32(1), served.Load(), "closed 后 Dispatch 拒收：订阅者不得再被调用")
+	require.NoError(t, r.Drain(context.Background()), "二次 Drain（空转）")
+	assert.Equal(t, int32(1), served.Load(), "拒收事件不得延迟送达")
+}
+
+// G-30 并发锤击：多 goroutine Dispatch 与 Drain 竞争——无 panic、Drain 可完成、
+// 完成后无迟到送达（-race 下验证锁序）。
+func TestHookRegistry_ConcurrentDispatchVsDrain(t *testing.T) {
+	r := NewHookRegistry(nil)
+	var served atomic.Int32
+	r.Subscribe(BizTicket, "race.sub", HookFunc(func(_ context.Context, _ DomainEvent) {
+		time.Sleep(time.Millisecond)
+		served.Add(1)
+	}))
+
+	stop := make(chan struct{})
+	var senders sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		senders.Add(1)
+		go func() {
+			defer senders.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					r.Dispatch(context.Background(), DomainEvent{
+						BizType: BizTicket, Action: TicketCreated, BizID: "1",
+					})
+				}
+			}
+		}()
+	}
+
+	drained := make(chan error, 1)
+	go func() { drained <- r.Drain(context.Background()) }()
+	time.Sleep(30 * time.Millisecond) // 制造 Dispatch×Drain 竞争窗口（锤击测试的必要等待）
+	close(stop)
+	senders.Wait()
+	require.NoError(t, <-drained, "发送方全停后 Drain 必须完成")
+
+	snap := served.Load()
+	time.Sleep(20 * time.Millisecond)
+	assert.Equal(t, snap, served.Load(), "Drain 完成后不得有迟到送达（拒收事件不派发）")
+}

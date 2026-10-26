@@ -313,11 +313,12 @@ func (a *App) Shutdown() error {
 	}
 
 	// 3. 领域事件总线排空：等在途订阅者（通知发送/inbox 落行）跑完再放行 cleanup
-	// 关 PG。新事件来源此刻已停（server 已关、cron 随 Run 的信号 ctx 取消）；
-	// 预算 5s 覆盖 UIP 发送 3s 超时 + 落库；超时放弃=仅余崩溃窗口语义，Warn 留痕
+	// 关 PG。新事件来源此刻已停（server 已关、cron 随信号 ctx 取消；残发由 closed 闸拒收+Warn）；
+	// 预算 8s 覆盖 UIP 发送 5s 超时（A-7 后实际值——原注释 3s 失实，G-30 勘误）+ 落库；
+	// 超时放弃=仅余崩溃窗口语义，Warn 留痕
 	if a.events != nil {
 		drainStart := time.Now()
-		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		drainCtx, drainCancel := context.WithTimeout(context.Background(), 8*time.Second)
 		if err := a.events.Drain(drainCtx); err != nil {
 			a.logger.Warn("domain event drain timeout, in-flight subscribers abandoned",
 				slog.Any("error", err))
