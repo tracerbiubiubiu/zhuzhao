@@ -10,6 +10,12 @@ run: build
 	./$(BUILD_DIR)/$(APP_NAME)
 
 # 防孤儿进程占用端口（历史坑：旧二进制残留导致验收跑在过期代码上）
+# 2026-10-14：taskrunner 三件套补 dev 默认——并行会话/裸 make dev 启动不再丢
+# 任务代理（此前无 TASKRUNNER_* env 的重启会让任务中心 502）；显式 env 仍优先
+TASKRUNNER_BASE_URL ?= http://127.0.0.1:8081
+TASKRUNNER_SK ?= dev-tr-e2e-sk
+INTERNAL_JOBS_SK ?= dev-tr-e2e-sk
+export TASKRUNNER_BASE_URL TASKRUNNER_SK INTERNAL_JOBS_SK
 dev:
 	@lsof -ti:33333 | xargs kill -9 2>/dev/null || true
 	go run ./cmd/server

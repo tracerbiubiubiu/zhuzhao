@@ -84,8 +84,7 @@ notification:
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
-  base_url: "http://127.0.0.1:8081"  # env TASKRUNNER_BASE_URL 优先(dev 宿主形态);release 拒仓库已知值
-  sk: "dev-tr-e2e-sk"                 # env TASKRUNNER_SK 优先(同 caller 密钥)
+  base_url: ""              # env TASKRUNNER_BASE_URL 优先(dev 宿主形态 make dev 已带默认);空 = 任务端点 502
   # self_base_url（W0b 后已成死配置——回调地址由 taskrunner 侧 CALLBACK_TARGET_URL 决定；保留 env 位防误删，env 名 TASKRUNNER_SELF_BASE_URL）
   # TASKRUNNER_SELF_BASE_URL 可覆盖——宿主进程态 localhost，容器态 http://zhuzhao:33333
   ak: zhuzhao
