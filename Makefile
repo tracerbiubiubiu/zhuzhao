@@ -15,9 +15,11 @@ run: build
 TASKRUNNER_BASE_URL ?= http://127.0.0.1:8081
 TASKRUNNER_SK ?= dev-tr-e2e-sk
 INTERNAL_JOBS_SK ?= dev-tr-e2e-sk
-export TASKRUNNER_BASE_URL TASKRUNNER_SK INTERNAL_JOBS_SK
+# 第二实例机制(docs/ops/port-allocation.md 33334):并行会话各用各的端口,互不误杀
+APP_PORT ?= 33333
+export APP_PORT
 dev:
-	@lsof -ti:33333 | xargs kill -9 2>/dev/null || true
+	@lsof -ti:$(APP_PORT) | xargs kill -9 2>/dev/null || true
 	go run ./cmd/server
 
 tidy:

@@ -313,6 +313,7 @@ func Load(path string) (*Config, error) {
 
 	// 环境变量绑定（AutomaticEnv 对 nested key 不自动映射，需显式 BindEnv）
 	viper.BindEnv("server.mode", "APP_SERVER_MODE")
+	viper.BindEnv("server.port", "APP_PORT") // 端口分配表 33334 第二实例机制(APP_PORT=33334 make dev)
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
