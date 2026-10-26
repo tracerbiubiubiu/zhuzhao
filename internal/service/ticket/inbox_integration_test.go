@@ -47,10 +47,14 @@ func TestB67_Inbox(t *testing.T) {
 
 	t.Run("事件→落库：assigned 单收件人 + cc 多人去重", func(t *testing.T) {
 		reg.Dispatch(ctx, ev(domainevent.TicketAssigned, itoaInbox(bid), itoaInbox(aid)+","+itoaInbox(bid)))
+		// 落库为逐人 INSERT（inbox 循环）——两行可见时点不同步：只等 assignee
+		// 行会在 cc 行落库前抢跑断言（2026-10-26 CI flake 实锤，nA actual=0）；
+		// 两行都等到再取精确值（去重后各恰 1 条，本子测试内无后续写入）
 		assert.Eventually(t, func() bool {
-			var n int64
-			require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifications WHERE recipient_id = $1`, bid).Scan(&n))
-			return n >= 1
+			var a, b int64
+			require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifications WHERE recipient_id = $1`, aid).Scan(&a))
+			require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifications WHERE recipient_id = $1`, bid).Scan(&b))
+			return a >= 1 && b >= 1
 		}, 2*time.Second, 50*time.Millisecond)
 		var nA, nB int64
 		require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifications WHERE recipient_id = $1`, aid).Scan(&nA))
