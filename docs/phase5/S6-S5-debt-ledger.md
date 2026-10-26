@@ -4,6 +4,8 @@
 > 整理规则：按「消化时机」分五组（A 即时可清 / B 已锁批次 / C 触发驱动 /
 > D 外部依赖 / E 待拍板）——组内按段排。已修项不列；N/A 项列并标因。
 > 代码实态逐项 grep 交叉核验（基线 zhuzhao `f3e321d` / ui `9ada8da4`）。
+>
+> **消化容器拍板（2026-10-26 所有者）**：**不立 phase5 二期**——B 组开项默认消化容器 = **phase6 启动批随行**（走查/合 main 批可顺手的仍随最近批带走；B-1/2/3/16 的「B6-7 二期」锚已随 B6-7 交付失效，启动批范围圈定时统一重锚）。
 
 ## A. 即时可清（零设计，随最近一批带走）
 
@@ -13,6 +15,8 @@
 | A-2 | S1 | 92303 errcode 预留注记 | 01 号 A.6 原登记 | ✅ **已修**（本批） |
 | A-3 | S6 | F-D2 rules version 乐观锁 | 000060 ✅ 已入库 **33b42a7**（v3 审计 R-1 勘误——原标 b101cc6 系错标：000060/92506/CAS 实际全在 33b42a7，b101cc6 仅含 F-1-9b/92303/台账） | ✅ **已修** |
 | A-4 | — | 外审批 3 对表文档批（06/10/11/05 四稿） | b75917d/baccad6/d14678e | ✅ **已修** |
+| A-5 | S6 | 事件总线优雅退出排空——`HookRegistry` goroutine fire-and-forget 无 WaitGroup，**计划内重启也丢在途通知/inbox 行**，与 11 号 §5.10「仅崩溃丢」口径不符 | 2026-10-26 事件面走查 | ✅ **已修**（`Drain(ctx)` + app.Shutdown 步 3 五秒预算；四单测含 panic 订阅者不悬挂锚 + 变异验证去 Add/Done 两测红） |
+| A-6 | S3a/ui | **transition_meta 丢配置 footgun（P1，2026-10-26 核出）**：ui 类型弹窗 `loadMetaFromRow` 把转换级键（"from>to"——condition/validator/post_actions）当 state 行加载，保存走「引用已删状态」分支**静默丢弃**——API 配好的转换级 meta 被一次 UI 保存清掉；修复 = load/serialize 双侧保留含 `>` 键形原样透传 | 03 号 2026-10-26 登记 | +0.5 天（建议随 phase5 走查/合 main 批先行，不等 phase6） |
 
 ## B. 已锁定消化批次（挂而不悬——锚点已写进 11 号/段稿）
 
@@ -25,7 +29,7 @@
 | B-5 | S6 | opt-out service 直连 db 收敛到 repo | 架构批 | 外审 F-1-12 | +0.5h |
 | ~~B-6~~ | S10 | ~~MessageDispatcher 编排器抽出~~ **✅ 已落（B10-4 62c03c2——dispatcher.go 抽出+hook 薄壳+ops 双域订阅）** | — | 06 号 §1.5 | 销账 |
 | ~~B-7~~ | S10 | ~~escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支~~ **✅ 已落（B10-4 62c03c2——实施偏差：supervisor 不做 recipient_type 第四枚举，目标集由扫描器 emit 时解析进 cc_users 载荷，规则面零扩）** | — | 10 号 §3.4 | 销账 |
-| B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 | B3-3 | 03 号 §3.3 | 随批 |
+| B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 | phase6 启动批（2026-10-26 重锚——B3-3 交付偏差③未含，原「B3-3 随批」锚失效） | 03 号 §3.3 | 随批 |
 | B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | B6-7 二期或 phase6 | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
 | B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
@@ -37,6 +41,8 @@
 | B-17 | S6 | ~~11 号计划面回填~~ **✅ 已修（33b42a7 批 3 对表——11 号 §4/§2.4/§3.3/§5.9 七关键词全回填（escalation/supervisor/ticket_reminders/MessageDispatcher/run.succeeded/manager_id/on_complete）——v3 审计 R-2 补标）** | 文档批 | 外审 F-3-6 | 15min |
 | B-18 | S10 | last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径 | B10-4 开工前 | 外审 F-3-7/8 | 拍板 |
 | B-19 | — | B13 权限覆盖矩阵审计（全端点×三层——半天 doc-only） | phase5 收官前 | 09 月提议至今 | +0.5 天 |
+| B-20 | S3a | spawn_task `from: ticket.field` 工单字段→入参映射（`actions_builtin.go:161` 注释已承诺、实现缺——现仅静态 params） | phase6 启动批 | 03 号 2026-10-26 登记 | +0.5–1 天 |
+| B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面——02 号界注「画布二期」实装 | phase6 启动批 | 03 号 2026-10-26 登记 / 02 号界注 | +1–2 天 |
 
 ## C. 触发驱动（有明确触发信号，信号不到不动）
 
@@ -61,6 +67,8 @@
 | C-17 | S5 | mirror 侧车失败聚合可见面（F-C1） | B10-4 |
 | C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行 | P3 量级到了 |
 | C-19 | S6 | ~~settings Upsert version 乐观锁（F-D2——000060 在途收尾）~~ **✅ 已落码（000050+settings_service.go:232 CAS+expected_version 双测试——早于本台账终版即已交付，登记滞后——v3 审计 L-2 补标）** | 下个迁移顺位 |
+| C-20 | S6 | **outbox 持久化事件**：`DomainEvent` 加 EventID + 发布点事务内落 `domain_event_outbox`（12 处收敛于 emitEvent 透传 tx）+ 骑既有 CronScheduler 轮询投递复用现总线与全部订阅者 + 订阅者幂等化（inbox `unique(event_id,user_id)` / 通知 message_log 按 event_id 查重）——语义 at-most-once→at-least-once、崩溃不丢、可重放；零新依赖 ≈1–2 天（03 号 outbox 备选 / 11 号 §5.10）。**注**：MQ/asynq 本身不解决「commit 后崩溃」窄缝（DB 与队列双写），outbox 为必经之路；跨进程消费者出现时仅换轮询器投递目的地，业务代码不动 | 出现「丢一条即事故」的消费者（phase6 R3 若不走对账）或跨进程消费者（taskrunner/未来 SOC 平台订阅工单事件） |
+| C-21 | S4 | 任务结果留存/展示（taskrunner result 存储+端点——`job_runs` 现无 result 列，error 为唯一结果载荷）+ 结果可配置落 activelist / 任务数据源可配为 activelist 两设想 | phase7/8 脚本平台立项批（或所有者明示单独立项） | 04 号 §3.5（2026-10-26 登记） |
 
 ## D. 外部依赖 / 远期
 
