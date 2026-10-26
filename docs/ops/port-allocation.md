@@ -17,7 +17,7 @@
 | **33334** | zhuzhao app 第二实例（并行会话 / 调试） | dev 并行 | `APP_PORT=33334 make dev` | `APP_PORT` |
 | **48080** | zhuzhao-ui 容器（nginx） | dev compose | compose ui 容器 | `UI_PORT` |
 | **4000** | vite dev server（前端本地开发 / E2E webServer） | dev / E2E | vite（ui 仓） | —（vite.config server.port） |
-| **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | compose 已注释不映射 |
+| **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | 映射 `"5432:5432"` 已启用（docker-compose.dev.yaml L16 实测；原「已注释不映射」描述与文件不符——本机无原生 5432 时该映射无害） |
 | **5433** | PostgreSQL（**测试专用**——本机独立容器跑 migration 验证） | audit / migration 验证 | 手动 `docker run -p 5433:5432` | — |
 | **6379** | Redis（dev compose） | dev | compose redis 容器 | — |
 | **9000** | RustFS API（S3 兼容端点） | dev | compose rustfs 容器 | `RUSTFS_API_PORT` |
@@ -28,8 +28,18 @@
 
 | 端口 | 用途 | 使用环境 | 占用方 | 仓 |
 |------|------|----------|--------|-----|
-| **18080** | taskrunner HTTP API | dev compose | taskrunner 容器 | taskrunner 仓 |
-| **18081** | activelist HTTP API | dev compose | activelist 容器 | activelist 仓 |
+| **18080** | taskrunner HTTP API | dev compose | taskrunner 容器 | taskrunner 仓（⚠ 2026-10-15 核对：compose 未发布宿主端口（C3 内网），容器态亦未常驻——现状为宿主过渡形态，见下节） |
+| **18081** | activelist HTTP API | dev compose | activelist 容器 | activelist 仓（⚠ 同上——现状为宿主过渡形态，见下节） |
+
+### 宿主过渡形态（2026-10-15 核对登记——现状实际占用，与 compose 形态并存期）
+
+当前 dev 实跑为宿主 go-run 形态（compose 的 app 容器态未建成/未常驻），实际占用登记如下：
+
+| 端口 | 用途 | 占用方 | 说明 |
+|------|------|--------|------|
+| **8081** | taskrunner 宿主直跑（SQLite 零依赖） | `TASKRUNNER_HTTP_ADDR=:8081 go run ./cmd/taskrunner` | E2E W5/任务中心数据源；compose 容器态建成（18080 内网）后退役 |
+| **8080** | activelist 宿主直跑 | `ACTIVELIST_PG_PORT=15432 go run ./cmd/apiserver` | E2E W5/活动列表数据源；PG 走 activelist-dev compose（15432） |
+| **15432** | activelist dev PostgreSQL（宿主调试口） | activelist compose.dev `"15432:5432"` | compose.dev.yaml 自带映射，非本表新增 |
 
 ### 预留段
 
