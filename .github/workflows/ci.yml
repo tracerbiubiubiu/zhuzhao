@@ -30,6 +30,13 @@ jobs:
           go install github.com/swaggo/swag/cmd/swag@v1.16.4
           "$(go env GOPATH)/bin/swag" init -g cmd/server/main.go -o docs --parseDependency --parseInternal
           git diff --exit-code docs/swagger.json docs/swagger.yaml docs/docs.go
+      # wire 新鲜度守卫（2026-10-24 B 方案全量修）：providers.go/provideApp 改动后
+      # 未跑 make wire 即提交 → 此处拦下（形态同 swagger 守卫——再生后 diff 非零即红）
+      - name: wire 新鲜度检查
+        run: |
+          go install github.com/google/wire/cmd/wire@v0.7.0
+          "$(go env GOPATH)/bin/wire" ./internal/app/
+          git diff --exit-code internal/app/wire_gen.go
       - run: go build ./...
   test:
     runs-on: ubuntu-latest
