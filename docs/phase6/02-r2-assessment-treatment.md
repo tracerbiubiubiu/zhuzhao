@@ -52,7 +52,7 @@ SLA 计时引擎（升级信号清单见 §2）；评分模型（后续档）；
 | 项 | 关系 |
 |----|------|
 | [R1](01-r1-ingest-ledger.md) | 处置流水表 / risk_events 同批设计；级别枚举影响台账筛选 |
-| [phase5 S6](../phase5/06-s6-message-notification.md) | 临期/超期/到期重审/状态变化通知——域无关触发面 |
+| [phase5 S6](../phase5/06-s6-message-notification.md) | 临期/超期/到期重审/状态变化通知——域无关触发面；**收件人=风险 owner 需收件人轴域无关泛化**（债台账 H-5 候选：风险单创建人=录入者/上报服务账号 ≠ owner，工单域四档解析不到 `risk_items.owner_user_id`——R1 首条风险通知规则前落，2026-10-27 第五组登记） |
 | [phase5 S10](../phase5/10-s10-ticket-collaboration.md) | 超时扫描器形态复用；按级别通知依赖 S10 逾期分级 |
 | [dd §29](../design/design-decisions.md) | SLA 不建/审批确认制边界依据 |
 | [phase6/00 号](00-flow-engine-v2.md) | 无直接依赖；S3b 触发后接受审批可升级 |

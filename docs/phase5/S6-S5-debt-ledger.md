@@ -22,7 +22,7 @@
 
 | # | 段 | 项 | 消化点 | 锚 | 量级 |
 |---|---|---|---|---|---|
-| B-1 | S6 | D20 changes[] 真值 diff（旧值比对+custom_data 键级粒度） | B6-7 二期 | 06 号 A.1 | +0.5 天 |
+| B-1 | S6 | D20 changes[] 真值 diff（旧值比对+custom_data 键级粒度）——**2026-10-27 第五组改锚 [phase6/06 号件 6](../phase6/06-ticket-completeness.md)**（ticket_events payload 落库与事件载荷共用同一 diff 函数，分开做是写两遍） | phase6 06 号 B2 波（件 6 同批） | 06 号 A.1 | +0.5 天 |
 | B-2 | S6 | variables 端点补动态字段源+时间类——**并账 H-3**（2026-10-27 升格为通知能力增强批核心件=G-2 加重证据） | 通知能力增强批 | 06 号 A.6 | +0.5 天 |
 | B-3 | S6 | `'*'` 免打扰跨域生效 | B6-7 二期 | 外审 F-1-12 | +0.5h |
 | B-4 | S6 | acceptance 通知深面（注入/节流/fail-fast/偏好四类） | B6-7 前补课 | 06 号 §10 | +0.5 天 |
@@ -30,19 +30,19 @@
 | ~~B-6~~ | S10 | ~~MessageDispatcher 编排器抽出~~ **✅ 已落（B10-4 62c03c2——dispatcher.go 抽出+hook 薄壳+ops 双域订阅）** | — | 06 号 §1.5 | 销账 |
 | ~~B-7~~ | S10 | ~~escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支~~ **✅ 已落（B10-4 62c03c2——实施偏差：supervisor 不做 recipient_type 第四枚举，目标集由扫描器 emit 时解析进 cc_users 载荷，规则面零扩）** | — | 10 号 §3.4 | 销账 |
 | B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 **+ 任务结果→自动转换（2026-10-27 三方二次对比补强①，所有者批准）**：事件订阅形态 TransitionAction（03 号 P2-4 双形态②）消费 `run.succeeded`/`run.failed` 执行配置转换（成功→X、失败→Y），或 B0-4 词表加 `last_run.status`——否则「工单触发任务」闭环只到事件不到状态（eflow PassProcessTaskJob 对照）；详 [phase6/06 号 §3.16](../phase6/06-ticket-completeness.md) | phase6 启动批（2026-10-26 重锚——B3-3 交付偏差③未含，原「B3-3 随批」锚失效） | 03 号 §3.3 | 随批（+0.5–1 天） |
-| B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | B6-7 二期或 phase6 | RK-P5-16 | +1 天 |
+| B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | **2026-10-27 第五组：启动批裁出、留账触发**（非 phase6 硬依赖；GC 其余三段已覆盖主场景） | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
 | B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
 | B-12 | S1 | ~~P2-8 游离 godoc（ticket_handler 4 处）~~ **✅ 已修（bf4a388 删 FieldImpact 前重复块——现存 ticket_handler.go:432 为合法附着非游离——v3 审计 L-2 补标）** | 随手批 | 全量核查 | 5min |
 | B-13 | S1 | P1-21 `'deleted'` 字面量在 repo + Subscribe 无 name | 随手批 | 外审 F-2-7 | ~0.5h |
 | B-14 | S6 | ~~渠道命名两套冲突~~ **✅ 已修（33b42a7 批 3 对表——06 号 §3:39 两级渠道词表成文：channel=adapter 层 uip/webhook + delivery=偏好层——v3 审计 R-2 补标）** | 文档批 | 06 号 §3 | 5min |
 | B-15 | S3a | ~~on_complete 直调 send() vs 通知收敛走 S6 规则面——二选一成文~~ **✅ 已拍死（33b42a7 批 3 对表——03 号 §3:48 事件优先成文，原直调表述作废——v3 审计 R-2 补标）** | S3a 开工前 | 03 号 §3.3 | 拍板 |
-| B-16 | S6 | A.5③ 守卫拦截/告警（被引用字段改 key/删时规则失效——与 S1 影响分析同件复用） | B6-7 二期 | 06 号 A.5 | +0.5 天 |
+| B-16 | S6 | A.5③ 守卫拦截/告警（被引用字段改 key/删时规则失效——与 S1 影响分析同件复用）——**2026-10-27 第五组改锚 [phase6/00 号 B0-3 deploy 预检](../phase6/00-flow-engine-v2.md)**（预检本就算字段 diff，顺手扫 message_templates 的字段引用是同一处代码） | phase6 00 号 B0-3 | 06 号 A.5 | +0.5 天 |
 | B-17 | S6 | ~~11 号计划面回填~~ **✅ 已修（33b42a7 批 3 对表——11 号 §4/§2.4/§3.3/§5.9 七关键词全回填（escalation/supervisor/ticket_reminders/MessageDispatcher/run.succeeded/manager_id/on_complete）——v3 审计 R-2 补标）** | 文档批 | 外审 F-3-6 | 15min |
-| B-18 | S10 | last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径 | B10-4 开工前 | 外审 F-3-7/8 | 拍板 |
+| ~~B-18~~ | S10 | ~~last_reminder_at 落列决策 + recipients_spec JSONB vs 两列口径~~ **✅ 销账（2026-10-27 第五组）**：①last_reminder_at 已随 B10-4 以 `ticket_reminders` 侧表落地（F-3-7 拍定，000064，账面滞后一月）；②recipients_spec 半项归 **H-5**（收件人轴域无关泛化——仅为风险域事件；工单侧 creator/cc 四档够用） | — | 外审 F-3-7/8 | 销账 |
 | B-19 | — | B13 权限覆盖矩阵审计（全端点×三层） | phase5 收官前 | ✅ **[14 号](../review/14-b13-permission-matrix-2026-10-26.md)**（2026-10-26 point-in-time：123 绑定+44 豁免全量对账（首版 45 系注释示例误计，验证批勘误）——通过，无新增待拍板） | 销账 |
 | B-20 | S3a | spawn_task `from: ticket.field` 工单字段→入参映射（`actions_builtin.go:161` 注释已承诺、实现缺——现仅静态 params） | phase6 启动批 | 03 号 2026-10-26 登记 | +0.5–1 天 |
-| B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面（=边属性面板，ecmdb edgeProperty 同款交互）——**范围随 S2 走查结论门控**：基础档=弹窗/页内配置面（+1–2 天）；走查判画布局促则扩容为**设计器整合批**（02 号 2026-10-26 登记四件：类型列表→独立设计器路由页[ecmdb 三栏布局：NodePanel/画布/PropertySetting] + 终态可配化[state 级 meta 加 terminal 布尔——修前端写死 TERMINAL_STATES 名单缺口] + 判断边标签/可选菱形装饰 + 本配置面）≈+3–4 天 | phase6 启动批 | 03 号 2026-10-26 登记 / 02 号 2026-10-26 登记 | +1–2 天（整合批 3–4） |
+| B-21 | S2/S3a | 转换级 meta（condition/validator/post_actions）前端配置面——**2026-10-27 第五组拍板：基础档并入 [phase6/00 号 B0-5](../phase6/00-flow-engine-v2.md)**（同一边属性面板增 validator 表达式输入 + post_actions 动作选择器，B0-5 2–3→3–4 天）；**整合批作为独立批销账**，其四件去向：独立设计器路由页=B0-2 向导页已覆盖 / **终态可配化=前提到 B0-2/B0-3**（06 号件 9 `cancelled` 硬前置——后端 `ticket_repo.go:313`、`badge_service.go:66` 与前端 `types.ts:24` 三处写死 closed/rejected）/ 判断边标签=B0-5 条件构建器顺带 / 本配置面=并入；剩余体验项随 S2 走查结论触发 | phase6 00 号 B0-5 / B0-2 / B0-3 | 03 号 2026-10-26 登记 / 02 号 2026-10-26 登记 | 并入（B0-5 +1 天）/ 终态可配化 +0.5–1 天 |
 
 ## C. 触发驱动（有明确触发信号，信号不到不动）
 
@@ -147,6 +147,7 @@
 | H-2 | S6 | **通用渠道接口 + 钉钉首发 adapter**（2026-10-27 所有者拍板修订——公司钉钉为**封装接口**，渠道抽象必须泛化）：`ChannelSender` 端口（已存在：`Send(ctx, Message) + Channel()`，UIP 桩为首个实现）即该通用接口——dingtalk 作为第二个实现类（封装钉钉 API 适配器：认证/消息体封装/markdown 透传），**后续飞书/企微/外部钉钉等各自实现同一接口**；配套：`channelEscapes` 加 `dingtalk` 第三族（markdown 不做 HTML 转义——C-13 提前）+ 渠道白名单/管理页枚举扩展 + notification_configs 加 dingtalk 配置段（endpoint/secret/封装 API 参数）+ message_log 渠道记录 | ~1–2 天 | **✅ 已拍（2026-10-27 所有者）**：通用接口 = 既有 `ChannelSender` 端口（不新造）；各渠道各自实现（钉钉封装 API 首发 adapter），禁业务代码硬编码平台 HTTP（06 号 §3 红线既有） |
 | H-3 | S6 | **variables 字典端点 + 编辑器变量 picker**（=B-2/G-2 并账升级为本批核心件）：按 `(biz_type, event)` 供变量树（内置六键 + S1 `field_meta` 动态字段 slug + 时间类）+ 模板编辑器变量选择器（点击即插 `ticket.fields.f_<ID>` path）——修复"管理员重存种子模板 400"（G-2） | +0.5 天 | 无（B-2/G-2 既定方案） |
 | H-4 | S6 | **测试与文档随行**：四象限渲染回归（dingtalk 渠道下 markdown 原样）、规则两级回退（精确/通配）、钉钉 adapter 负向（签名错/非 2xx）→ message_log failed+死信；06 号 §3 渠道词表加 dingtalk+§4 H-1 粒度注 | ~0.5 天 | — |
+| H-5 | S6 | **收件人轴域无关泛化**（B-18 ②半项归入，2026-10-27 第五组）：非工单域事件的收件人解析——首例 risk 域（R2 deadline 临期/超期、到期重审、级别变更）收件人=`risk_items.owner_user_id`，而工单域四档（assignee/creator/fixed/cc）读的是工单字段、解析不到；形态=收件人档加「本单据 owner」域枚举或 recipients_spec 表达式（与 H-1 规则面/H-3 变量字典同片代码）。**工单侧不需要**：整改工单 `created_by`=风险 owner（phase6/03 号拍板 6 建议）故「创建人」即 owner；owner 交接后 `created_by` 不改（审计留痕），risk service 把新 owner 加入工单抄送即可到达 | +0.5 天 | 候选——触发=R1 首条风险通知规则配置前（phase6 README §3 对 phase5 要求 1 的落点） |
 
 **合计 ≈ 2.5–4 天；建议容器 = 独立「通知能力增强批」或并入通知中心权限批（G-7+G-29 同域）；phase6 R3 风险单联动 = 多类型差异化通知的第一个真实消费者。**依赖：无硬前置（钉钉机器人协议公开，UIP 契约不影响 dingtalk 独立通道——C-13 的"契约确认"门控仅约束 UIP 面正文格式，本批绕开）。
 
