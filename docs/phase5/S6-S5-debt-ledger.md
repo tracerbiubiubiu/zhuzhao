@@ -143,8 +143,8 @@
 
 | # | 项 | 内容 | 量级 | 拍板 |
 |---|---|---|---|---|
-| H-1 | S6 | **规则粒度加 type_code**：`message_rules` 加 `type_code VARCHAR(64) NULL`（NULL=全类型通配，存量行回填 NULL 语义不变）+ UNIQUE 改 `(biz_type, event_action, COALESCE(type_code,''))`（函数唯一索引）+ 渲染链规则查询两级回退（类型精确 → 通配）+ 规则管理面加类型下拉 + `/jobs/actions` 同款 schema 面 | ~1 天 | **拍板 H-2**：粒度加在**规则**（推荐——模板跨类型复用，规则决定"哪类型哪事件用哪模板"）vs 加在模板（模板私有化复制） |
-| H-2 | S6 | **钉钉 markdown 渠道**：`channelEscapes` 加 `dingtalk` 第三族（markdown 不做 HTML 转义——C-13 提前落地）+ ChannelSender 加 dingtalk adapter（机器人 webhook：`{"msgtype":"markdown","markdown":{"text":...}}`，支持加签/关键词安全设置）+ 白名单/管理页渠道枚举扩展 + message_log 渠道记录 | ~1–2 天 | **拍板 H-3**：独立 `dingtalk` 渠道类型（推荐——签名/关键词安全设置 adapter 内聚）vs 复用 `webhook` 渠道加渲染族 |
+| H-1 | S6 | **规则粒度加 type_code**：`message_rules` 加 `type_code VARCHAR(64) NULL`（NULL=全类型通配，存量行回填 NULL 语义不变）+ UNIQUE 改 `(biz_type, event_action, COALESCE(type_code,''))`（函数唯一索引）+ 渲染链规则查询两级回退（类型精确 → 通配）+ 规则管理面加类型下拉 + `/jobs/actions` 同款 schema 面 | ~1 天 | **✅ 已拍（2026-10-27 所有者「按建议」）**：粒度加在规则（模板跨类型复用） |
+| H-2 | S6 | **通用渠道接口 + 钉钉首发 adapter**（2026-10-27 所有者拍板修订——公司钉钉为**封装接口**，渠道抽象必须泛化）：`ChannelSender` 端口（已存在：`Send(ctx, Message) + Channel()`，UIP 桩为首个实现）即该通用接口——dingtalk 作为第二个实现类（封装钉钉 API 适配器：认证/消息体封装/markdown 透传），**后续飞书/企微/外部钉钉等各自实现同一接口**；配套：`channelEscapes` 加 `dingtalk` 第三族（markdown 不做 HTML 转义——C-13 提前）+ 渠道白名单/管理页枚举扩展 + notification_configs 加 dingtalk 配置段（endpoint/secret/封装 API 参数）+ message_log 渠道记录 | ~1–2 天 | **✅ 已拍（2026-10-27 所有者）**：通用接口 = 既有 `ChannelSender` 端口（不新造）；各渠道各自实现（钉钉封装 API 首发 adapter），禁业务代码硬编码平台 HTTP（06 号 §3 红线既有） |
 | H-3 | S6 | **variables 字典端点 + 编辑器变量 picker**（=B-2/G-2 并账升级为本批核心件）：按 `(biz_type, event)` 供变量树（内置六键 + S1 `field_meta` 动态字段 slug + 时间类）+ 模板编辑器变量选择器（点击即插 `ticket.fields.f_<ID>` path）——修复"管理员重存种子模板 400"（G-2） | +0.5 天 | 无（B-2/G-2 既定方案） |
 | H-4 | S6 | **测试与文档随行**：四象限渲染回归（dingtalk 渠道下 markdown 原样）、规则两级回退（精确/通配）、钉钉 adapter 负向（签名错/非 2xx）→ message_log failed+死信；06 号 §3 渠道词表加 dingtalk+§4 H-1 粒度注 | ~0.5 天 | — |
 
