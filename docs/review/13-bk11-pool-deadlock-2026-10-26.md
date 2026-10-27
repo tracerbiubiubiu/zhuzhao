@@ -130,3 +130,4 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 
 - 2026-10-26 初稿：当日定位→先红复现→修复（`039aca6` CI 绿）→业界对照→彻底方案登记，一气呵成。
 - 2026-10-27 增补：**同类残留 Update 修毕**——初稿只修 Create 两嵌套点，外审核出 `Update` 锁内窗口的 `validateCustomData`/`applyFormulas` 仍走池读（`ListTicketTypeFields` 无 tx 变体）；比 Create 更直接：N≥MaxConns 个并发 Update（带 custom_data）各持 1 连接各要第 2 个，**自闭环死锁无需第三方**（生产 4 核默认池=4 即 4 并发中招）。修法=repo `RowQuerier` 接口 + `ListTicketTypeFieldsTx`（`039aca6` 预取方案的姊妹件：不预取、改走 tx 连接，保 F-B1 锁内合并语义不动）；`TestBK11_UpdateHammer`（6 并发×10 轮×MaxConns=4，每轮 5s 兜底）先红（round 0 ctx deadline）后绿（0.12s）。
+- 2026-10-27 增补二：**humankey 并发引导竞态**（双锚验证回声）——`TestBK11_CreateVsMoveHammer` 隔离跑（每次全新容器）首轮 6/6 红：当日首个并发 `Next()` 同建 `seq_<prefix>_<date>`，`CREATE SEQUENCE IF NOT EXISTS` 对 pg_class 目录检查非原子撞 23505（duplicate key pg_class_relname_nsp_index）——039aca6 把 keyGen 提事务外使并发窗口更齐（原在 tx 内同样存在，窗口更散）。生产暴露面=每日首两个并发建单同时落地（概率低但真）；修=23505 视同「已被并发方建成」继续 nextval，隔离跑 ×5 全绿。

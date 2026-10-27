@@ -4,9 +4,11 @@ package humankey
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,10 +30,15 @@ func (g *Generator) Next(ctx context.Context) (string, error) {
 	dateStr := time.Now().Format("20060102")
 	seqName := fmt.Sprintf("seq_%s_%s", g.prefix, dateStr)
 
-	// 建序列（不存在则当日首个——IF NOT EXISTS 幂等）
+	// 建序列（不存在则当日首个——IF NOT EXISTS 幂等）。并发首建竞态（2026-10-27 BK11 锤击
+	// 首轮实证）：CREATE ... IF NOT EXISTS 对 pg_class 目录检查非原子，当日首个并发 Next 撞
+	// 23505 duplicate key（pg_class_relname_nsp_index）——序列已被并发方建成，视同成功继续取值
 	if _, err := g.db.Exec(ctx,
 		fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s START 1 INCREMENT 1`, seqName)); err != nil {
-		return "", fmt.Errorf("humankey: create seq: %w", err)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+			return "", fmt.Errorf("humankey: create seq: %w", err)
+		}
 	}
 
 	// 取下一值（最多重试 3 次——冲突概率极低[序列自增]）
