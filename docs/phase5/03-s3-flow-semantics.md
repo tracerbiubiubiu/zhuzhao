@@ -274,6 +274,7 @@ type TransitionAction interface {
 - **「正常关闭 vs 非正常关闭触发不同任务」的承载**：转换级 post_actions 天然分流——`→closed` 转换挂任务 d1、`→rejected` 转换挂 d2，**零新条件机制**（走哪条转换本身就是条件）；同终态内更细的条件才需要表达式（expr 求值器 S1 已有）。
 - **automation_rules（事件→条件→动作列表，对齐 Jira Automation）拍定形态 B（2026-10-24）**：**只落本设计登记，实现触发驱动**——首个真实编排场景需要管理员配置面（而非改流程配置）时立项；转换级配置（transition_meta post_actions）承载"跟着流程图走"的场景（含 owner 下发即起任务例）。防蔓延边界①维持（代码注册为主）不变——automation_rules 是其**登记的演进形态**而非例外。
 - **通知双路径现状注记**：S6 事件链（message_templates/rules/log）与 P4-2 `NotificationService`（notification_configs webhook——现服务 taskrunner 终败通知/死信入口）并存——统一进 S6 链排 S6 二期（B6-7）既定，非 S3a 范围。
+- **跨服务打通实态与关联键口径（2026-10-27 所有者问「工单/计划任务/活动列表/通知是否全面打通」代码核实落档）**：判词=**脊柱统一、四肢部分接线**。统一的三件：身份/权限（zhuzhao=IAM，taskrunner/activelist 零权限检查、AK/SK 验签+X-Operator 归因，网关反代带身份断言）、关联键（request_id 全链：taskrunner 客户端 body+`X-Request-ID` 双通道，`pkg/taskrunner/client.go`）、事件编排（进程内 DomainEvent→MessageDispatcher/ActionRegistry）。点对点实态：工单→taskrunner 提交通、数据映射 B-20 未落；taskrunner→工单 `/internal/jobs/callback` 端点在、`run.succeeded` 代码零消费者（B-8 未落）；工单/前端→activelist 网关反代通（`internal/gateway`）；**activelist→事件摄入未接线**（ADR-003 原方向，无路由——phase6 README §7 触发登记）；工单字段←activelist = DataFetcher 源类型在、registry 空（Week 0 prefill 四件）；通知双路径见上。**关联键三键成文**：`ticket_id`（业务主体）/ `run_id`（taskrunner 运行）/ `request_id`（全链贯穿）——跨服务排障与回调关联以此三键为准，禁止另造关联字段。**B-8 范围再补 output mapping**：`result.*` 按字段白名单回写工单 custom_data（Update 同事务、actor=system）——业界对照 Camunda/Zeebe external task 的 input/output mapping（B-20=输入、本条=输出）+ message correlation key（=三键），Jira Automation smart values 为同类变量上下文；eflow 已实现全闭环（结果回写→自动推进）。**ADR-002 账实修订**：go.mod 无 asynq，事件面实落进程内 HookRegistry——ADR-002 状态改「已采纳但未实施」。
 
 ### phase6 前核心引擎目标态（2026-10-19 gap 分析——所有者问"phase6 前能否做到规范完整的核心引擎"）
 
@@ -303,6 +304,7 @@ type TransitionAction interface {
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；phase3/10 蓝本转录；未新增决策 |
 | 2026-10-27 | **演进总表 +四触发行（phase6 工单三方对标批登记）**：转换时字段采集（R3 硬前置）/ 运行态只读图 / 状态级字段权限矩阵 / 软删替代物理删——量级照单预估，设计出处 [phase6/06 号](../phase6/06-ticket-completeness.md)；phase5 正文与能力矩阵不动（收口口径锁死）；B0 快照/自动路由两行随 phase6/00 号 B0-1 立项批入表（既定） |
 | 2026-10-27 | **B0-1 文档动作①：演进总表入表两行**（所有者拍 00 号拍板点 1=立项）——定义快照版本化（B0-3）/ 自动路由（B0-4）✅ 已立项；升级链行 +「B0-4 词表含时间谓词后=条件路由配置形态」注 |
+| 2026-10-27 | **收敛全景 +跨服务打通实态与关联键三键**（所有者问「是否全面打通」核实）：脊柱统一/四肢部分接线判词；activelist→事件摄入未接线登记；三键 ticket_id/run_id/request_id 成文；B-8 范围再补 output mapping；ADR-002 账实修订指针 |
 | 2026-10-15 | 公约对表批：§4 补 S3b 实施换算注——蓝本（08-25 成文，早于 §3 公约建纲）内 `PUT /workflows/:code` 等端点形态实施时按 standards §3-1/§3-2 换算，照抄即违公约 |
 | 2026-10-16 | 时点决策批（所有者问询"phase6 前要不要升级引擎"）：维持条件段（方案 A+C）——phase6 MVP 不依赖 S3a，后插代价评估=叠加式语义层/数据零迁移/周边在位（详录 §3 头注）；**绕行禁令**（撞墙需求记账等 S3a，禁另造状态/端点/硬编码）+ 显式触发信号（phase6 R3 首个转换级权限需求，预期撞墙点=复核态）登记 |
 | 2026-10-16 | **工单引擎演进路线批（所有者提议：aging/SLA/S3 统一引擎视角规划）**：新增「附录：工单引擎演进路线」——六能力域矩阵（流程定义/流转语义/审批/事件提醒/协作/承诺计量 × 现状/已排期/触发驱动）+ **演进触发事件总表**（八级演进逐条：触发事件/量级/设计出处——S3a=phase6 R3 转换级权限需求、S3b=首个审批场景、SLA 层 0.5=固定时限承诺、层 1=硬五条任一、升级链=自动转派诉求[与 S3a 动作库结合不独立建]）+ 演进纪律三条（防过早/防撞墙/防漂移）——业界参照系=Jira workflow→Automation→JSM 与 ServiceNow 同构 |
