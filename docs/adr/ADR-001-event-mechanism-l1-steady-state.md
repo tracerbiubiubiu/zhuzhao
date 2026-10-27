@@ -4,7 +4,7 @@
 2026-08-25
 
 ## 状态
-已采纳
+**已采纳·部分实施（2026-10-28 注）**——`ticket_events` 表内留痕已落（事务内写入）；「轮询单消费者」**未实施**：事件分发实落为进程内 `domainevent.HookRegistry` 直发（at-most-once，Drain 闸 G-30；见 [phase5/03 号收敛全景](../phase5/03-s3-flow-semantics.md) 2026-10-28 打通实态注，app.go 装配核实无轮询消费者）。可重放/不丢升级路径 = transactional outbox（债台账 C-20），不引 MQ。本文件保留 L1 事件源结论的历史记录（「Asynq 不替代事件源」裁定不受影响；ADR-002 已于 2026-10-27 同口径修订）。
 
 ## 背景
 讨论工单业务能力的事件驱动机制时，提出疑问：当前 L1（`ticket_events` 表持久化 + 轮询单消费者）是否最优？是否应引入 Kafka（高吞吐事件流）或 Asynq（Redis 队列）？
