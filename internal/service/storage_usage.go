@@ -60,17 +60,8 @@ func (s *StorageUsageSampler) Sample(ctx context.Context) error {
 	}
 	middleware.SetGauge("zhuzhao_storage_usage_bytes", "total", float64(total))
 
-	if s.capacity <= 0 {
-		return nil // 容量基线未配——只暴露不判阈（C-6 拍板形态③）
-	}
+	level := usageLevel(total, s.capacity)
 	ratio := float64(total) / float64(s.capacity)
-	level := 0
-	switch {
-	case ratio >= 0.90:
-		level = 2
-	case ratio >= 0.80:
-		level = 1
-	}
 	if level >= 1 {
 		s.logger.Warn("storage: usage above threshold",
 			"usage_bytes", total, "capacity_bytes", s.capacity,
@@ -94,6 +85,24 @@ func (s *StorageUsageSampler) Sample(ctx context.Context) error {
 		s.level = level
 	}
 	return nil
+}
+
+// usageLevel 容量档位纯函数（80/90 双档）——容量未配（≤0）恒 0 只暴露不判阈。
+// 独立成函数供双向跃迁单测（E2E 受 60s 节流窗限制无法在同一分派器内验证回落沿
+// 投递——生产小时级采样下档位跃迁间隔恒 ≥1h，节流窗咬不到本事件，见 E2E 测试注）。
+func usageLevel(total, capacity int64) int {
+	if capacity <= 0 {
+		return 0
+	}
+	ratio := float64(total) / float64(capacity)
+	switch {
+	case ratio >= 0.90:
+		return 2
+	case ratio >= 0.80:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func levelName(level int) string {
