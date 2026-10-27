@@ -137,6 +137,17 @@
 | G-32 | S3a | **系统身份写操作的委托放大族（2026-10-26 并账扩容）**：①`SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作（外审 #19）——配置面受 ticket:type:manage 控制；②`assignAsSystem` 跳过 Assign 的 L2/L3（自动分派规则消费，unexport 防包外直调+权限旁路注释——同包唯一调用方 DispatchService）。族口径：**配置自动分派/动作=获得对应写操作的委托放大**，评审新系统身份通道须按此口径并回本条登记 | 登记 | ✅ 03 号变更记录注 + assignAsSystem unexport/注释（本批） | 文档+代码已落 |
 | G-33 | S10 | 催办先发后记水位：bumpReminder 失败→下轮重发（at-most-once 退化 at-least-once）取向=宁重发勿漏催（外审 #20） | 登记 | ✅ 代码注 + 10 号变更记录 | 文档已落 |
 
+## L. 文档架构整理（2026-10-27 立项——phase5 合回 main 后执行）
+
+| # | 项 | 内容 | 量级 | 触发 |
+|---|---|---|---|---|
+| L-1 | 全仓 | **deliverables/ 归位 docs/ 体系**：24 文件 git mv——A 组审计终稿 11 篇（含 json-contract-audit-2026-10-14，系审计终稿非提案——外部报告分组修正）+ B 组收尾 2 篇 → `docs/review/`；C 组研究稿 10 篇（secops-platform-vision-2026-10/）+ 任务卡 → `docs/proposal/`；overview.md **保留**（时间线索引有独立价值） | ~0.5 天 | **phase5 合回 main 后**独立 doc-only 批——并行会话在途期间不搬（26 文件未暂存改动撞车风险） |
+| L-2 | 全仓 | **36 处 deliverables/ 引用改写**：22 个 docs/ 文件（phase3/4/5/6 段稿+11 号控制台+roadmap+runbook+standards；11 个 markdown 链接+25 个纯文本提及）随 L-1 同批改新路径；**高权重三件必须核**：11 号控制台批次行 / standards / runbook | 随 L-1 | 同上 |
+| L-3 | deliverables/overview.md | 修 5 处 `.workbuddy/` 死链（cb996f2 已删该目录；:24/25/52/53/65 五处）——**L-1 搬移时顺带**（overview 保留不拆，外部报告"拆进 review/README"建议不采纳） | 5min | 随 L-1 |
+| L-4 | 全仓 | **overview.md 指向更新**（保留决策修正外部报告 D 组"拆解删除"建议）+ `docs/review/README.md` 与 `docs/proposal/README.md` 各补一行归位说明 | 10min | 随 L-1 |
+
+> **外部报告核验结论备查（2026-10-27）**：盘点/分组/不按 phase 拆三点采纳；四处修正——①实为 24 文件非 23；②json-contract-audit 归 review（审计终稿非提案——三仓修复已提交+standards §3-14 立约）；③overview 保留不拆（时间线索引独立价值，仅修死链）；④**成本重估**：24 mv + 22 文件 36 处引用改写（11 号/standards/runbook 三 SSOT 在内）——非"git mv+相对路径修正"轻量级。deliverables/ 现位系刻意决策（11 号批次行"deliverables 另笔"——立项前研究→结论蒸馏 docs/→研究稿留档的工作流载体），非历史混乱；L 组执行即工作流终态归位。
+
 ## 挂账质量判据（外审 F-4-5 推广）
 
 > **登记了触发信号 ≠ 触发信号可观测**——C 组「触发驱动」类挂账若代码面零实现
