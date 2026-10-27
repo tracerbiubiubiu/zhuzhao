@@ -232,7 +232,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 - 时间类变量：`{{time.now}}`/`{{time.due_in}}` 由调用方注入渲染前 vars（格式 config 化，§4）——**点路径命名空间统一**（2026-10-16 外审对齐：原平铺 {{now}}/{{due_in}} 与点路径约定不一致）；
 - ~~**⚠ 实施差距注（2026-10-23 外审实例批钉账）**~~ **✅ 已实施（c309ca7 B6-3 增强批）**：RenderQuadrant 四象限三分档落地（内置键缺失=fail 拒发[hook 检查 subjR/bodyR.Err] / 动态键缺失=skip+warn / 键在无值=空串+warn）——6 子测覆盖。
 - 种子模板随迁移 INSERT（`is_system=true`，仅编号+标题+链接三变量——**人读编号拍板点 2 联动**：不随批则种子模板链接-only）。
-- ~~**实施注（2026-10-23）**：种子模板当前无 is_system 只读标识列~~ **✅ 已实施（000058 迁移+c309ca7）**：is_system 列+种子三行标 true+Delete 守卫（Update 拦截面审计批补）；渲染转义 = **渠道→转义族映射**（`channelEscapes`：uip/webhook=纯文本不转义[UIP 契约到手按实际正文格式重映射此表]、email_html 及未知渠道=HTML 转义 fail-safe）+ **值级转义**（仅转义替换进正文的变量值，模板自身文本原样）。
+- ~~**实施注（2026-10-23）**：种子模板当前无 is_system 只读标识列~~ **✅ 已实施（000058 迁移+c309ca7）**：is_system 列+种子三行标 true+Delete 守卫（Update 拦截面审计批补）；渲染转义 = **渠道→转义族映射**（`channelEscapes`：uip/webhook=纯文本不转义[UIP 契约到手按实际正文格式重映射此表]、email_html 及未知渠道=HTML 转义 fail-safe）。**H-2 前瞻（2026-10-27 已拍）**：dingtalk 第三族（markdown 不转义）+独立 adapter 已立项——公司钉钉为封装 API，`ChannelSender` 端口即通用渠道接口，钉钉/飞书/企微各自实现；UIP 契约门控不阻 dingtalk（台账 H 组）。+ **值级转义**（仅转义替换进正文的变量值，模板自身文本原样）。
 
 ### A.5 订阅规则与触发链路（B6-5）
 
