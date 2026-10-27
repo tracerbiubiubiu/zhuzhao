@@ -77,7 +77,7 @@
 - 实现 `channel=webhook` 的 ChannelSender（复用 P4-2 webhook.Client + HMAC 签名走 standards §4）；payload=DomainEvent 载荷+模板渲染标题/正文 JSON 信封；目标 URL/secret 载体（message_rules 扩展列 vs channel_config JSONB）随启动批细化。**定位收窄（2026-10-27，随债台账 H 组 H-2 立项）**：个人 IM 到达由 H-2「通用渠道接口 + 钉钉首发 adapter」承担（ChannelSender 端口即通用接口，本件 webhook 是其另一实现类）；本件定位 = **工单事件→外部系统**（R1 状态回写镜像侧、第三方系统订阅）；群机器人 incoming-webhook 形态（补强②）退为备选变体，仅在钉钉 adapter 不覆盖的群到达场景启用。
 - 意义：「工单事件→外部系统」零新引擎（message_rules 配置即得）；R1 状态口径若拍「处置结论回写镜像侧」，此即出站通道；ficus syncVulnerabilityTask（办结→Kafka 回写漏洞库）同构先例。
 
-### 3.11 件 11 工单侧第一档固定统计（~1–2 天；**B 档不含**——归 04 号拍板 3，第四组确认）
+### 3.11 件 11 工单侧第一档固定统计（~1–2 天；**✅ 2026-10-27 第四组拍定：随 R1 聚合端点同批交付**——04 号拍板 3，不计入 06 号 B 档量级）
 
 - `GET /tickets/stats`：group_by 白名单枚举（status/priority/type_code）+ 指标（计数、超期在办数/率）——**时长排行类留二档 DSL**（无 closed_at 列硬算成本高）；L2 同源=buildTicketWhere 三件套直接复用（[ticket_export.go](../../internal/handler/ticket_export.go) 先例）。
 - 随 R1 聚合端点同批同模式（[04 号](04-r4-metrics-reports.md) §3.1 拍板点 3 同一决策，两处一并拍）；蓝本=ficus dashboard（三方最强统计面）。
@@ -175,3 +175,4 @@
 | 2026-10-27 | **第二组回写 + H 组对表**（所有者「落档」）：件 10 定位收窄为「工单事件→外部系统」（个人 IM 到达由债台账 H-2 钉钉 adapter 承担，群机器人形态退为备选）；件 13 **降为触发驱动**；件 15 **拆两段**（最小档随 00 号 B0-3，完整档维持 P2——覆盖关系登记）；§7 拍板 5 改写（仅件 14 仍待拍） |
 | 2026-10-27 | **第五组尾款账面回写**（所有者「按建议」）：**件 14 入批**（B3 波，B 档十件 ≈10–12 天）；件 9 +终态可配化依赖（前后端写死 closed/rejected 三处核实，00 号 B0-2/B0-3 承接）；件 6 +债台账 B-1 真值 diff 同批；§6 B3 行与候选行重排；拍板 5 全部落定 |
 | 2026-10-27 | **第三组 R3 对表 + 打通五件**：件 5 +`field:<key>` 取人语义载体注（复核权限绑 risk_owner）；§3.16 +⑤ output mapping（B-8 范围再补，result.* 白名单回写工单字段） |
+| 2026-10-27 | **第四组对表**：件 11 拍定随 R1 聚合端点同批交付（04 号拍板 3），06 号拍板 2 随之落定 |
