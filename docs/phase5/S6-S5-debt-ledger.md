@@ -29,7 +29,7 @@
 | B-5 | S6 | opt-out service 直连 db 收敛到 repo | 架构批 | 外审 F-1-12 | +0.5h |
 | ~~B-6~~ | S10 | ~~MessageDispatcher 编排器抽出~~ **✅ 已落（B10-4 62c03c2——dispatcher.go 抽出+hook 薄壳+ops 双域订阅）** | — | 06 号 §1.5 | 销账 |
 | ~~B-7~~ | S10 | ~~escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支~~ **✅ 已落（B10-4 62c03c2——实施偏差：supervisor 不做 recipient_type 第四枚举，目标集由扫描器 emit 时解析进 cc_users 载荷，规则面零扩）** | — | 10 号 §3.4 | 销账 |
-| B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 | phase6 启动批（2026-10-26 重锚——B3-3 交付偏差③未含，原「B3-3 随批」锚失效） | 03 号 §3.3 | 随批 |
+| B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 **+ 任务结果→自动转换（2026-10-27 三方二次对比补强①，所有者批准）**：事件订阅形态 TransitionAction（03 号 P2-4 双形态②）消费 `run.succeeded`/`run.failed` 执行配置转换（成功→X、失败→Y），或 B0-4 词表加 `last_run.status`——否则「工单触发任务」闭环只到事件不到状态（eflow PassProcessTaskJob 对照）；详 [phase6/06 号 §3.16](../phase6/06-ticket-completeness.md) | phase6 启动批（2026-10-26 重锚——B3-3 交付偏差③未含，原「B3-3 随批」锚失效） | 03 号 §3.3 | 随批（+0.5–1 天） |
 | B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | B6-7 二期或 phase6 | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
 | B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
