@@ -68,7 +68,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	pair, err := h.authService.Refresh(c.Request.Context(), req.RefreshToken)
+	pair, err := h.authService.Refresh(c.Request.Context(), req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		writeAuthError(c, err)
 		return

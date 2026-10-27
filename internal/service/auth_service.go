@@ -18,6 +18,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -169,7 +170,7 @@ return {v, e}
 `
 
 // Refresh 刷新 Token，RT 轮换
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+func (s *AuthService) Refresh(ctx context.Context, refreshToken, ip, userAgent string) (*model.TokenPair, error) {
 	claims, err := s.jwtManager.ParseRefreshToken(refreshToken)
 	if err != nil {
 		return nil, errcode.ErrRefreshTokenInvalid
@@ -222,6 +223,13 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 	if storedHash != hashToken(refreshToken) {
+		// C-5/RT-1 观测先行（2026-10-27 拍板）：重放命中即落审计行+WARN——记录面
+		// 不设降噪前提（合法重放也留痕，三周后追查「一查便知」依赖此行）；告警面
+		// （宽限窗口/family_id）仍按台账 C-5 触发条件挂起，记录≠告警两事不互斥
+		s.auditService.LogRefreshReplay(ctx, claims.UserID, user.Username, ip, userAgent)
+		slog.Warn("auth: refresh token replay detected (RT-1)",
+			"user_id", claims.UserID, "username", user.Username, "ip", ip,
+			"request_id", reqid.From(ctx))
 		return nil, errcode.ErrRefreshTokenReplayed
 	}
 

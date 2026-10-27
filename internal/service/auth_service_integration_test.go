@@ -57,16 +57,26 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 
-	refreshed, err := authSvc.Refresh(ctx, pair.RefreshToken)
+	refreshed, err := authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
-	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
+	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
 	// 槽位已推进到新 RT，旧 RT 重现 = 重放信号（RT-1）→ 20015
 	assert.Equal(t, errcode.ErrRefreshTokenReplayed.Code, biz.Code)
+
+	// C-5 观测先行（2026-10-27 拍板）：重放命中须落审计行——此前仅 401 可见、DB 零证据
+	logs, lerr := auditSvc.List(ctx, repository.AuditListQuery{
+		Page: 1, PageSize: 10, Path: "/api/v1/auth/refresh",
+	}, "")
+	require.NoError(t, lerr)
+	require.Len(t, logs.List, 1, "重放命中恰落一行 RT-1 审计")
+	assert.Equal(t, 401, logs.List[0].StatusCode)
+	assert.Contains(t, logs.List[0].RequestBody, "20015")
+	assert.Equal(t, "admin", logs.List[0].Username)
 
 	require.NoError(t, authSvc.Logout(ctx, refreshed.AccessToken, "dev-1"))
 
@@ -130,13 +140,13 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	require.Equal(t, "1", n)
 
 	// 新 RT（新纪元）正常刷新
-	refreshed, err := authSvc.Refresh(ctx, newPair.RefreshToken)
+	refreshed, err := authSvc.Refresh(ctx, newPair.RefreshToken, "", "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
 	// 旧 RT（pwe=0）刷新 → 纪元比对不一致 → 401 + 20014（密码已修改）
 	// （单槽语义副作用：该次消费同时清掉 dev-1 槽位，属 02-auth 既定盗用信号设计）
-	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
+	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
@@ -147,7 +157,7 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 		EmployeeNo: "E000001", Password: "NewPass456", DeviceID: "dev-2",
 	}, "127.0.0.1", "test-agent")
 	require.NoError(t, err)
-	_, err = authSvc.Refresh(ctx, relogin.RefreshToken)
+	_, err = authSvc.Refresh(ctx, relogin.RefreshToken, "", "")
 	require.NoError(t, err)
 }
 

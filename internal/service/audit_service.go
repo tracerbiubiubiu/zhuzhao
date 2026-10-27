@@ -63,6 +63,40 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 // loginAuditWriteTimeout 登录审计写入独立超时（与 middleware.auditWriteTimeout 对齐）
 const loginAuditWriteTimeout = 3 * time.Second
 
+// LogRefreshReplay 刷新令牌重放审计（C-5/RT-1——2026-10-27 观测先行批）。
+// /auth/refresh 为公开路由不走 AuditLog 中间件，20015 命中（槽位已推进而旧 RT
+// 重现 = 盗用重放/迟到提交）此前仅以 401 响应可见、DB 零证据。记录≠告警：多标签
+// 并发刷新/弱网迟到提交等合法重放同样命中，降噪前提（宽限窗口/family_id）只 gate
+// 告警面不 gate 记录面——维持台账 C-5 原触发条件。WithoutCancel+独立超时与
+// LogLogin 同纪律（D2-04：客户端断连不丢安全证据）。
+func (s *AuditService) LogRefreshReplay(ctx context.Context, userID int64, username, ip, userAgent string) {
+	entry := middleware.AuditLogEntry{
+		Method:          "POST",
+		Path:            "/api/v1/auth/refresh",
+		StatusCode:      401,
+		IP:              ip,
+		UserAgent:       userAgent,
+		RequestBody:     refreshReplayAuditBody(userID, username),
+		ResponseSummary: "RT-1: refresh token replayed (slot advanced, stale RT resurfaced)",
+		RequestID:       reqid.From(ctx),
+		UserID:          userID,
+		Username:        username,
+		CreatedAt:       time.Now(),
+	}
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loginAuditWriteTimeout)
+	defer cancel()
+	if err := s.Insert(writeCtx, entry); err != nil {
+		slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)
+	}
+}
+
+func refreshReplayAuditBody(userID int64, username string) string {
+	b, _ := json.Marshal(map[string]any{
+		"user_id": userID, "username": username, "err": 20015,
+	})
+	return string(b)
+}
+
 // List 查询审计日志；employeeNo 非空时按工号解析为 user_id（优先于 q.UserID）。
 // D2-27：按工号解析走含软删查询——用户软删后其历史审计仍应可查（原 404）
 func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery, employeeNo string) (*model.AuditLogListResponse, error) {
