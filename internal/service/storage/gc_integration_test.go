@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -58,7 +59,7 @@ func TestGCJob_Scenarios(t *testing.T) {
 		cfg.ApplyDefaults() // OrphanGCDays=7
 		rec := &removeRecorder{}
 		repo := repository.NewStorageRepo(testPool)
-		return storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger()), rec
+		return storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger(), false), rec
 	}
 
 	// S5 评审删除口径批（2026-10-20）：pending 孤儿路径改物理清行——A.9「对象与
@@ -81,7 +82,9 @@ func TestGCJob_Scenarios(t *testing.T) {
 		assert.Empty(t, rec.removed)
 	})
 
-	t.Run("过期 confirmed 不动（GC 只扫 pending——confirmed 归对账扫描管辖）", func(t *testing.T) {
+	// 2026-10-27 观测批注：第四段（avatar 弃置收割）存在但 newGC 默认 observe=true
+	// 只记不删——本用例语义从「GC 只扫 pending」变为「observe 默认不删」，断言不变
+	t.Run("过期 confirmed 不动（observe 默认挡住第四段——见 G-3 三态用例）", func(t *testing.T) {
 		gc, rec := newGC(t)
 		insertPendingDirect(t, uid, "avatars/2026/10/old-confirmed.png", 30*24*time.Hour, "confirmed")
 		require.NoError(t, gc.Handle(context.Background(), nil))
@@ -110,7 +113,7 @@ func TestGCJob_Scenarios(t *testing.T) {
 		cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket, AccessKey: "a", SecretKey: "k", PresignUploadTTL: "15m"}
 		cfg.ApplyDefaults()
 		rec := &removeRecorder{removeErr: assert.AnError}
-		gc := storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger())
+		gc := storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger(), false)
 		insertPendingDirect(t, uid, "avatars/2026/10/failrm-tomb.png", 8*24*time.Hour, "pending")
 		require.NoError(t, gc.Handle(context.Background(), nil), "单条失败不炸整批（扫描类收敛语义）")
 		var status string
@@ -163,7 +166,7 @@ func TestGCJob_Scenarios(t *testing.T) {
 			cfg := &pkgstorage.StorageConfig{Enabled: true, Endpoint: "s", Bucket: itBucket, AccessKey: "a", SecretKey: "k", PresignUploadTTL: "15m"}
 			cfg.ApplyDefaults()
 			rec := &removeRecorder{removeErr: assert.AnError}
-			return storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger())
+			return storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger(), false)
 		}()
 		insertPendingDirect(t, uid, "avatars/2026/10/dead-failrm.png", 0, "deleted")
 		require.NoError(t, gc.Handle(context.Background(), nil), "二扫单条失败不炸整批")
@@ -188,7 +191,9 @@ func TestGCJob_ConfirmedOrphans(t *testing.T) {
 	cfg.ApplyDefaults()
 	rec := &removeRecorder{}
 	repo := repository.NewStorageRepo(testPool)
-	gc := storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger())
+	// observe=true=发布默认姿态——本函数既有 avatar 豁免用例在第四段存在下仍须绿
+	// （enforce 语义由下方 G-3 三态用例自带实例覆盖）
+	gc := storageservice.NewGCJob(repo, rec, pkgstorage.NewConfigStore(cfg), testLogger(), true)
 
 	seedConfirmed := func(key, purpose string, age time.Duration) {
 		_, err := testPool.Exec(context.Background(), `
@@ -249,14 +254,16 @@ func TestGCJob_ConfirmedOrphans(t *testing.T) {
 		assert.Equal(t, "confirmed", status, "有关联行（在用附件）不得回收")
 	})
 
-	t.Run("非工单域 purpose 不动（avatar 不归第三段）", func(t *testing.T) {
+	// 2026-10-27 G-3 观测批：第三段仍显式豁免 avatar；第四段（avatar 弃置收割）存在但
+	// 本实例 observe=true 只记不删——断言语义从「不归第三段」扩为「默认姿态下不删」
+	t.Run("非工单域 purpose 不动（avatar 不归第三段；第四段 observe 默认不删）", func(t *testing.T) {
 		key := "avatars/gc_exempt.png"
 		seedConfirmed(key, "avatar", 24*30*time.Hour)
 		require.NoError(t, gc.Handle(context.Background(), nil))
 		var status string
 		require.NoError(t, testPool.QueryRow(context.Background(),
 			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
-		assert.Equal(t, "confirmed", status, "avatar purpose 不在第三段扫描范围")
+		assert.Equal(t, "confirmed", status, "avatar 第三段豁免+第四段 observe 默认不删（enforce 见 G-3 三态用例）")
 	})
 
 	// v3 审计 Y-2（2026-10-23）：MarkDeleted 加反连接条件后的并发绑定让位——
@@ -284,5 +291,57 @@ func TestGCJob_ConfirmedOrphans(t *testing.T) {
 			`SELECT status FROM file_objects WHERE bucket=$1 AND object_key=$2`, itBucket, key).Scan(&status))
 		assert.Equal(t, "confirmed", status, "已绑定在用对象不得被第三段软删（Y-2：MarkDeleted NOT EXISTS 让位）")
 		assert.NotContains(t, rec.removed, key, "已绑定对象不得被物理删")
+	})
+
+	// G-3（2026-10-27 观测批）：avatar 弃置收割三态——observe 不删/enforce 删/bound 不删
+	t.Run("avatar 无绑定超期-enforce 模式回收（G-3）", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+		})
+		cfg := &pkgstorage.StorageConfig{
+			Enabled: true, Endpoint: "http://stub", Bucket: itBucket,
+			AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m",
+		}
+		cfg.ApplyDefaults()
+		rec := &removeRecorder{}
+		gc := storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger(), false)
+		// 隔离：前序子测试残留的 confirmed avatar 会被 enforce 首轮一并收割（行为正确
+		// ——弃置即应收；但计数差值断言需只含本用例行）——清桶后种唯一行
+		_, err0 := testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+		require.NoError(t, err0)
+		key := "avatars/2026/10/abandoned-avatar.png"
+		before := middleware.GetCounter("zhuzhao_gc_reclaimed_total", "avatar") // 基线须事前取（进程内全局）
+		seedConfirmed(key, "avatar", 24*30*time.Hour)                           // 超 7×2 阈值且无 users.avatar 引用
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
+		assert.Equal(t, "deleted", status, "enforce 模式下无绑定超期 avatar 应被第四段软删（修复前=永久泄漏）")
+		assert.Contains(t, rec.removed, key)
+		assert.Equal(t, float64(1), middleware.GetCounter("zhuzhao_gc_reclaimed_total", "avatar")-before, "回收计数按 purpose 入 /metrics")
+	})
+
+	t.Run("avatar 已绑定不删-反连接防误删（G-3 防误删守卫）", func(t *testing.T) {
+		t.Cleanup(func() {
+			_, _ = testPool.Exec(context.Background(), `DELETE FROM file_objects WHERE bucket = $1`, itBucket)
+			_, _ = testPool.Exec(context.Background(), `UPDATE users SET avatar = '' WHERE id = $1`, uid)
+		})
+		cfg := &pkgstorage.StorageConfig{
+			Enabled: true, Endpoint: "http://stub", Bucket: itBucket,
+			AccessKey: "ak", SecretKey: "sk", PresignUploadTTL: "15m",
+		}
+		cfg.ApplyDefaults()
+		rec := &removeRecorder{}
+		gc := storageservice.NewGCJob(repository.NewStorageRepo(testPool), rec, pkgstorage.NewConfigStore(cfg), testLogger(), false)
+		key := "avatars/2026/10/bound-avatar.png"
+		seedConfirmed(key, "avatar", 24*30*time.Hour)
+		_, err := testPool.Exec(context.Background(), `UPDATE users SET avatar = $2 WHERE id = $1`, uid, key)
+		require.NoError(t, err) // users.avatar 指向该键=在用头像
+		require.NoError(t, gc.Handle(context.Background(), nil))
+		var status string
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT status FROM file_objects WHERE object_key=$1`, key).Scan(&status))
+		assert.Equal(t, "confirmed", status, "已绑定 avatar 不得回收（users.avatar 反连接防误删）")
+		assert.NotContains(t, rec.removed, key)
 	})
 }

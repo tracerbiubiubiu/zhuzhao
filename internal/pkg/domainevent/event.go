@@ -46,6 +46,10 @@ const (
 const (
 	ActionOpsCronFailed   Action = "ops.cron_failed"
 	ActionOpsActionFailed Action = "ops.action_failed" // S3a B3-3 动作失败（G-5 审计修复——可观测）
+	// C-6 存储用量越限（2026-10-27 观测批）：阈值检查骑 storage_usage_sample cron，
+	// 档位跃迁时 emit（warn 80%/critical 90%）——种子规则 000080（fixed+空收件人，
+	// 管理员配置后生效，同 ops.cron_failed 惯例）
+	ActionOpsStorageUsageHigh Action = "ops.storage_usage_high"
 )
 
 // Payload 事件载荷——按 Action 预留 payload schema 登记位（06 号 A.1）。

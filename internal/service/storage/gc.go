@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
@@ -17,14 +18,15 @@ import (
 // 收敛语义：单批有界、单条失败不炸整批（失败行保持原态下轮重试）——与
 // audit_archive 同款 ReentrantJob 契约。
 type GCJob struct {
-	repo   *repository.StorageRepo
-	client storage.Client
-	cfg    *storage.ConfigStore // F-D3：与 wire 三服务共享同一快照存储（KV 改 orphan_gc_days 即时可见）
-	logger *slog.Logger
+	repo          *repository.StorageRepo
+	client        storage.Client
+	cfg           *storage.ConfigStore // F-D3：与 wire 三服务共享同一快照存储（KV 改 orphan_gc_days 即时可见）
+	logger        *slog.Logger
+	avatarObserve bool // G-3（2026-10-27 观测批）：avatar 段观察模式——true=只记不删
 }
 
-func NewGCJob(repo *repository.StorageRepo, client storage.Client, cfg *storage.ConfigStore, logger *slog.Logger) *GCJob {
-	return &GCJob{repo: repo, client: client, cfg: cfg, logger: logger}
+func NewGCJob(repo *repository.StorageRepo, client storage.Client, cfg *storage.ConfigStore, logger *slog.Logger, avatarObserve bool) *GCJob {
+	return &GCJob{repo: repo, client: client, cfg: cfg, logger: logger, avatarObserve: avatarObserve}
 }
 
 const gcBatchSize = 100
@@ -103,8 +105,42 @@ func (g *GCJob) Handle(ctx context.Context, _ json.RawMessage) error {
 			if !marked {
 				continue // 并发绑定让位（Y-2）
 			}
+			middleware.AddCounter("zhuzhao_gc_reclaimed_total", f.Purpose, 1)
 			if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
 				g.logger.Warn("storage gc remove confirmed orphan failed, second sweep will retry", "key", f.ObjectKey, "err", err)
+			}
+		}
+	}
+
+	// G-3（2026-10-27 观测批）：第四段——avatar 弃置收割（abandoned-upload reaper：
+	// confirmed + 超期 + 无 users.avatar 绑定。场景=传完头像未走绑定/换头像重传把
+	// 旧的晾着——行+对象此前永久泄漏，第三段显式豁免 avatar 即本缺口）。超期窗口
+	// 复用第三段口径（×2 保守，不另立 TTL 机制——业界 reaper 惯例细节见台账 G-3 行）。
+	// 观察模式默认开（发布安全默认同 B10-4 timeoutObserve 纪律）：只记日志+计数不真删，
+	// 确认无误删后 config 显式关闭才实际回收。双保险：users.avatar 反连接（List 与
+	// Mark 两道）+ MarkAvatarOrphanDeleted 并发绑定让位。
+	avatarOrphans, err := g.repo.ListConfirmedAvatarOrphans(ctx, cfg.Bucket, orphanThreshold, gcBatchSize)
+	if err != nil {
+		g.logger.Error("storage gc list avatar orphans", "err", err)
+		// 不 return——前三段已收敛，第四段失败不影响主链
+	} else if g.avatarObserve {
+		if len(avatarOrphans) > 0 {
+			g.logger.Warn("storage gc avatar reaper OBSERVE mode (no delete — set storage.avatar_gc_observe=false to enable)",
+				"candidates", len(avatarOrphans), "oldest_key", avatarOrphans[0].ObjectKey)
+		}
+	} else {
+		for _, f := range avatarOrphans {
+			marked, err := g.repo.MarkAvatarOrphanDeleted(ctx, f.ID, f.ObjectKey)
+			if err != nil {
+				g.logger.Error("storage gc mark avatar orphan deleted", "key", f.ObjectKey, "err", err)
+				continue
+			}
+			if !marked {
+				continue // 并发绑定让位（用户恰在窗口内完成头像绑定）
+			}
+			middleware.AddCounter("zhuzhao_gc_reclaimed_total", "avatar", 1)
+			if err := g.client.RemoveObject(ctx, f.ObjectKey); err != nil {
+				g.logger.Warn("storage gc remove avatar orphan failed, second sweep will retry", "key", f.ObjectKey, "err", err)
 			}
 		}
 	}
@@ -112,7 +148,7 @@ func (g *GCJob) Handle(ctx context.Context, _ json.RawMessage) error {
 	if len(rows)+len(dead)+len(confirmed) > 0 {
 		g.logger.Info("storage gc pass",
 			"pending_scanned", len(rows), "deleted_rescanned", len(dead),
-			"confirmed_orphans", len(confirmed))
+			"confirmed_orphans", len(confirmed), "avatar_orphans", len(avatarOrphans))
 	}
 	return nil
 }

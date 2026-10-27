@@ -16,6 +16,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
@@ -132,7 +133,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		if gcClient, cerr := pkgstorage.NewMinioClient(&cfg.Storage); cerr == nil {
 			// F-D3：GC 与 wire 三服务共享同一 ConfigStore——修复前 &cfg.Storage 与
 			// wire 值拷贝 &storageConfig 分裂，KV 改 orphan_gc_days 到不了 GC。
-			gc := storageservice.NewGCJob(repository.NewStorageRepo(pool), gcClient, storageCfg, logger)
+			gc := storageservice.NewGCJob(repository.NewStorageRepo(pool), gcClient, storageCfg, logger, cfg.Storage.AvatarObserve())
 			storageGC = service.NewCronScheduler(pool, "storage_gc", gc, time.Hour, logger)
 			logger.Info("storage_gc cron enabled (orphan pending objects, 1h tick)")
 		} else {
@@ -199,6 +200,34 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		}), 24*time.Hour, logger)
 	intelCleanup.SetOnFailure(cronFailEmit)
 	cronReg.Register("intel_cleanup", intelCleanup)
+	// C-6（2026-10-27 观测批——A-2 拍板 a 案）：storage 用量 SQL 采样 gauge + 容量
+	// 阈值检查（capacity_bytes=0 只暴露不判阈；80/90 双档 WARN+跃迁 emit；采样面与
+	// 阈值面同轮同源）。file_objects 按 purpose 聚合——avatar 段泄漏当日显形。
+	storageSampler := service.NewStorageUsageSampler(pool, eventRegistry, cfg.Storage.CapacityBytes, logger)
+	storageUsageSample := service.NewCronScheduler(pool, "storage_usage_sample",
+		cronJobFunc(storageSampler.Sample), time.Hour, logger)
+	storageUsageSample.SetOnFailure(cronFailEmit)
+	cronReg.Register("storage_usage_sample", storageUsageSample)
+	// C-16（2026-10-27 观测批）：小时发送量差值检查——超阈值 WARN（volume_warn_per_hour
+	// =0 关；日志面兜底不走 S6 通知闭环，通知系统自身故障时其告警通道同时失效）。
+	// 计数器进程内单调，差值基线随进程重启重置（重启小时窗口静默——单实例低频可接受）。
+	lastNotifyTotal := middleware.GetCounter("zhuzhao_notify_sent_total", "ok") +
+		middleware.GetCounter("zhuzhao_notify_sent_total", "dead")
+	notifyVolumeCheck := service.NewCronScheduler(pool, "notify_volume_check",
+		cronJobFunc(func(ctx context.Context) error {
+			total := middleware.GetCounter("zhuzhao_notify_sent_total", "ok") +
+				middleware.GetCounter("zhuzhao_notify_sent_total", "dead")
+			delta := total - lastNotifyTotal
+			lastNotifyTotal = total
+			if lim := cfg.Notification.VolumeWarnPerHour; lim > 0 && delta > float64(lim) {
+				logger.Warn("notify: hourly send volume above threshold",
+					"sent_last_hour", int64(delta), "threshold", lim,
+					"hint", "检查 message_rules 收件面是否误配全员")
+			}
+			return nil
+		}), time.Hour, logger)
+	notifyVolumeCheck.SetOnFailure(cronFailEmit)
+	cronReg.Register("notify_volume_check", notifyVolumeCheck)
 	// G2-1 审计修复：typed-nil 陷阱——nil *CronScheduler 装进非 nil interface，
 	// Register 的 p==nil 挡不住 → Status() nil 解引用 500（真机走查实证：
 	// dev 配置 audit cron 关闭时 /system/cron-status 全路由 500）。

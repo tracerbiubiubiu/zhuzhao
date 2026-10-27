@@ -29,6 +29,18 @@ type StorageConfig struct {
 	// FileCookieSecure 文件通道 cookie Secure 属性（A.11「生产 Secure」——
 	// HTTPS 网关部署置 true；默认 false 内网 HTTP 兼容。S5 评审 P2-4）
 	FileCookieSecure bool `mapstructure:"file_cookie_secure"`
+	// CapacityBytes 容量基线（C-6——2026-10-27 观测批）：>0 时启用阈值判定
+	// （80% warn/90% crit——WARN 每轮记录，事件仅档位跃迁 emit）；0=只暴露
+	// 用量绝对值不判阈（默认——容量未定时不制造噪声）
+	CapacityBytes int64 `mapstructure:"capacity_bytes"`
+	// AvatarGCObserve avatar 弃置收割观察模式（G-3——nil 默认 true=只记不删，
+	// 发布安全默认同 B10-4 timeoutObserve 纪律；确认无误删后显式置 false 启用回收）
+	AvatarGCObserve *bool `mapstructure:"avatar_gc_observe"`
+}
+
+// AvatarObserve 默认档：未配置（nil）=观察模式开（不删）
+func (c *StorageConfig) AvatarObserve() bool {
+	return c.AvatarGCObserve == nil || *c.AvatarGCObserve
 }
 
 // MaxUploadBytesCeil 上传上限代码天花板（导出供 B5-6 catalog 硬底线校验）（A.2 注：KV 可覆盖至天花板，

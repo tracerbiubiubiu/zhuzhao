@@ -81,6 +81,7 @@ audit:
 notification:
   uip:
     endpoint: ""
+  volume_warn_per_hour: 500      # 小时发送量 WARN 阈值（C-16 观测批）：0=关；批量导入轰炸的仪表面信号
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
 taskrunner:
@@ -147,6 +148,8 @@ storage:
   blocked_mime_types: [text/html, image/svg+xml]   # 硬底线：KV 不可白名单化
   inline_mime_prefixes: [image/]    # 代理下载 Content-Disposition 分型
   orphan_gc_days: 7
+  capacity_bytes: 0              # 容量基线（C-6 观测批）：0=只暴露用量不判阈；>0 启用 80%/90% 双档告警
+  avatar_gc_observe: true        # avatar 弃置收割观察模式（G-3）：只记不删——确认无误删后置 false 启用回收
 
 # 工单域内务（S10 B10-4 节点超时——扫描骑 CronScheduler，D18 维护型口径）
 tickets:

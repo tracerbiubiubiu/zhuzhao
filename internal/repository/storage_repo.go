@@ -417,6 +417,49 @@ func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, b
 	return out, rows.Err()
 }
 
+// ListConfirmedAvatarOrphans G-3（2026-10-27 观测批）：confirmed + avatar purpose +
+// 无 users.avatar 引用 + 超期——abandoned-upload reaper 查询面。「是否已绑定」
+// 是应用层知识（users.avatar 存对象键），S3 lifecycle 规则做不了这一层。
+func (r *StorageRepo) ListConfirmedAvatarOrphans(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects f
+		WHERE f.status = 'confirmed'
+			AND f.bucket = $1
+			AND f.purpose = 'avatar'
+			AND f.confirmed_at < $2
+			AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar = f.object_key)
+		ORDER BY f.id
+		LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// MarkAvatarOrphanDeleted avatar 专用软删标记（第四段 GC 前置——反连接条件与
+// MarkDeleted 的 ticket_attachments 守卫不同：avatar 的并发绑定面是 users.avatar，
+// List 与 Mark 之间用户完成头像绑定时让位不动物理删，Y-2 同款并发语义）。
+func (r *StorageRepo) MarkAvatarOrphanDeleted(ctx context.Context, id int64, objectKey string) (bool, error) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE file_objects SET status='deleted'
+		WHERE id=$1 AND status='confirmed' AND purpose='avatar'
+		  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar = $2)`, id, objectKey)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 // MarkDeleted 软删行（confirmed→deleted——第三段 GC 前置标记）。
 // v3 审计 Y-2（2026-10-23）：WHERE 加 NOT EXISTS 反连接条件——修复前仅守
 // status='confirmed'，List 与 MarkDeleted 之间并发建单落绑（BindCreateAttachments

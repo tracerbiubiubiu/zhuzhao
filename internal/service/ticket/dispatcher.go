@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
@@ -176,6 +177,13 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		h.logger.Info("notify: sent",
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code,
 			"recipients", fmt.Sprint(recipients))
+	}
+	// C-16（2026-10-27 观测批）：发送量计数进 /metrics（ok/dead 双标——小时级
+	// notify_volume_check cron 算差值超阈 WARN；批量导入全成功场景死信告警不可依赖）
+	if status == "sent" {
+		middleware.AddCounter("zhuzhao_notify_sent_total", "ok", 1)
+	} else {
+		middleware.AddCounter("zhuzhao_notify_sent_total", "dead", 1)
 	}
 	// B6-6：发送记录落行（成功/失败均记录——06 号 §5.4）
 	_ = h.logRepo.Insert(ctx, &model.MessageLog{

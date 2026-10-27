@@ -53,6 +53,11 @@ type Config struct {
 // NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
 type NotificationConfig struct {
 	UIP UIPConfig `mapstructure:"uip"`
+	// VolumeWarnPerHour 小时发送量 WARN 阈值（C-16——2026-10-27 观测批；批量导入
+	// 场景投递全成功零死信，死信告警抓不住「成功的骚扰」）。0=关（默认代码态；
+	// configs/config.yaml 随批给 500）；超限仅 WARN 日志不走 S6 通知闭环——
+	// 通知系统自身故障时其告警通道同时失效，日志面才自守
+	VolumeWarnPerHour int `mapstructure:"volume_warn_per_hour"`
 }
 
 // IntelConfig 情报缓存代理配置。
