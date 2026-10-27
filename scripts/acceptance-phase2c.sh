@@ -92,7 +92,11 @@ http_of() { curl -s -o /tmp/p2c.json -w '%{http_code}' "$@"; }
 code_of() { cat /tmp/p2c.json | json_code; }
 
 # --- 环境：P(实体) > VG(虚拟组)；owner/admin/m1/m2/admin2 五用户 ---
-ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+# 最小权限用户改用运行时自建零绑定临时角色（同 2a T7 自愈化——不依赖 seed viewer 绑定态）
+RV_JSON=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"p2c_viewer_$SUF\",\"name\":\"2c 最小权限角色\",\"priority\":60}")
+ROLE_V=$(echo "$RV_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+check "create ephemeral least-priv role" "1" "$([ "$ROLE_V" != "0" ] && echo 1 || echo 0)"
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 P_ID=$(mkorg "p2c_p_$SUF" "2c P" "$ROOT_ID" false)
 VG_ID=$(mkorg "vg_2c_$SUF" "2c VG" "$P_ID" true)

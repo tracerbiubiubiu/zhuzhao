@@ -198,3 +198,14 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 > - **只回滚 DB 不回滚代码 = 回滚后 app 拒启**（错误信息列出违例行与处置）。
 > - 正确序：①回退代码到 `45dcb25` 之前（或临时在 `pageWriteAllow` 登记待回滚的绑定）→ ②`migrate down` → ③启动。反向（先 down 再回代码）同样可行，但中间窗口服务不可启。
 > - 往返门禁（`scripts/migration-roundtrip-check.sh`）在全新库上 down→up，不经 app 启动，故不受影响；这条耦合只在**运维回滚**路径出现。
+
+## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
+
+> 来源=两会并行开发当周的三次互相干扰事故：端口互杀（互相 `make dev` 杀对方服务）/ Redis 于验收中途被重启 / **T7 假红**（一会的 viewer 角色页面绑定实验污染另一会的验收断言）。
+
+1. **端口分治**：33333=标准实例（`make dev`），只跑四档 acceptance 与联调；33334=实验二实例（`APP_PORT=33334 make dev`，88e0d19 机制），一切 schema/数据/角色绑定实验在此进行。两会各占其一，不抢不杀。
+2. **验收独占**：跑 acceptance 前确认无他会在跑（`pgrep -fl acceptance-phase`）；验收期间不对共享 dev 栈做 docker 重启/种子数据/角色绑定变更。
+3. **验收夹具自愈**：脚本对「角色零绑定→403」类断言一律用**运行时自建临时角色**（`p2a_viewer_*` / `p2c_viewer_*`，跑完残留随 `docker-dev-reset` 清），不得依赖 seed `viewer` 角色的绑定状态——它可能被任何会话的功能实验合法修改。phase1 仍用 seed viewer 做角色停用语义夹具，但它自带绑定清理守卫且居于链首。
+4. **共享库直改须自清**：实验性 role_menus/种子数据改动在实验结束或验收窗口前还原（`docker-dev-reset` 一步到位）。
+5. **验证环境存疑即重跑**：acceptance 出现「断言值与响应体自相矛盾」「时序相关偶发红」时，先疑环境（另一会在写同一栈）再疑代码——本仓历史上所有 acceptance 假红（NOPE999 锁污染/T7）均系环境类。
+

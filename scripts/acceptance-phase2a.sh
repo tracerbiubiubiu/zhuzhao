@@ -147,7 +147,7 @@ SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
 check "sa login" "0" "$(echo "$SA" | json_code)"
 SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 
-# --- 预创建：组织 + 用户 A(创建者) + 用户 B(处理人) + 用户 V(viewer, 无 ticket 权限)
+# --- 预创建：组织 + 用户 A(创建者) + 用户 B(处理人) + 用户 V（零绑定临时角色，无 ticket 权限）
 ROOT_ID=$(psql_q "SELECT id FROM organizations WHERE parent_id IS NULL ORDER BY id LIMIT 1")
 [ -z "$ROOT_ID" ] && echo "WARN: no root org found, cannot create sub-org" >&2 && ROOT_ID=1
 
@@ -178,8 +178,14 @@ make_user() {
     -d "$payload")
   echo "$resp" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))"
 }
-# role 4 = viewer (seed), role 3 = operator, role 2 = admin
-ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+# T7 自愈化（2026-10-26）：改用本次运行自建的**零绑定临时角色**，不再依赖 seed
+# viewer 保持零绑定——后者可能被任何会话的功能实验合法修改（曾致 T7 假红：
+# 页面行绑定=GET 200/POST 403）。零 role_menus 即 T7 全部前提；残留行随 reset 清。
+RV_CODE="p2a_viewer_$$"
+RV_JSON=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"$RV_CODE\",\"name\":\"2a T7 无权限角色\",\"priority\":60}")
+ROLE_V=$(echo "$RV_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+check "create ephemeral no-perm role" "1" "$([ "$ROLE_V" != "0" ] && echo 1 || echo 0)"
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 # 模拟管理员授权流程（对齐 Phase 1 #27 模式）：给 operator 绑定工单页面菜单 →
 # 页面菜单含全部 17 条 ticket menu_apis（W1 词表：8 GET 读 + 8 写挂按钮；000042 补 /orgs GET=1），
@@ -365,7 +371,7 @@ CMT=$(psql_q "SELECT COUNT(*) FROM ticket_comments WHERE ticket_id=$TID_A AND is
 check "close comment saved" "1" "$CMT"
 
 # ========================================================================
-# T7 / R8: 无 ticket:list 路由权限（viewer 角色，未绑定 ticket_list 菜单）→ 403 + 70001
+# T7 / R8: 无 ticket:list 路由权限（p2a_viewer_* 零绑定临时角色）→ 403 + 70001
 # ========================================================================
 T7=$(curl -s -o /tmp/p2a.json -w "%{http_code}" "$BASE/tickets" \
   -H "Authorization: Bearer $VAT")
