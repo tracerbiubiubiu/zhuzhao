@@ -107,6 +107,8 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 - **恢复演练**：zhuzhao 21 表零差异恢复已实测。坑：shell 循环 `docker exec` 采表会吞 stdin（只采到 9 表）——用 `gexec` + heredoc 单会话采全。
 - **PITR**：`pg_dump` 逻辑备**不可**回放 WAL，须 `pg_basebackup` 物理基备（tar 流 stdout → 容器内落盘 + `docker cp`）；卷根 = 数据目录根勿套层；`recovery.signal` 手建 + chown 999；目标时刻若落在未归档段，活库 `pg_switch_wal` 切段后重启即解。
 - **对象存储备份**（2026-10-20 B5-5）：`rustfs-mirror` 侧车 rclone sync 主→备 + 双重删除保护（`--backup-dir` 归档轮转 + 目标桶版本化）+ 失败不静默；**RPO = 同步周期**（dev 1h）——对象存储无 WAL 类日志、PITR 不可得，属显式登记口径。恢复步骤与演练记录见 [deployments/backup/README.md](../deployments/backup/README.md)「对象存储备份与恢复」。
+- **存储栈升级纪律**（2026-10-27 A-2 拍板 C-11 b 案落行）：动存储栈（RustFS 升级 / minio-go 或 rclone 客户端升级 / 镜像换版）**必跑附件全链验收**（头像上传绑定 / 附件上传下载删除 / richtext 贴图渲染三线 + `make acceptance` S5 面）——兼容劣化信号必然以报障显形，观测者=执行升级的人，本行即其检查单。
+- **存储用量观测**（2026-10-27 观测批）：应用侧 `/metrics` 暴露 `zhuzhao_storage_usage_bytes`（按 purpose——`file_objects` SQL 采样）+ 越限 `ops.storage_usage_high` 事件（种子规则收件人空=管理员在消息管理面配置后生效）。运维侧备选：RustFS 原生 `/minio/v2/metrics`（MinIO 兼容端点）**兼容性未实测**——实测通过后磁盘容量水位可零开发接入抓取端，登记在案勿默认其存在。
 
 ## 4. dev 栈测试账号台账（2026-10-13 统一口径）
 

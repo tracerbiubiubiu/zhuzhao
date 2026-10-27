@@ -61,7 +61,7 @@
 | 项 | 关系 |
 |----|------|
 | [Week 0 基建件](05-launch-batch.md) | BK-21 泛化（risk 接 L2 哨兵）/ HR mock+指派轴（owner·部门负责人解析） |
-| [phase5 S9](../phase5/07-s7-ai-assistant.md) | 情报缓存代理 = R1 情报源之一（消费方） |
+| [phase5 S9](../phase5/09-s9-threat-intel-cache-proxy.md) | 情报缓存代理 = R1 情报源之一（消费方） |
 | [phase5 README §6 端口表](../phase5/README.md) | `RiskSourceConnector` / `IngestSource·SourceAdapter` / `AssetResolver`（D29 降级口径） |
 | [phase5 S6](../phase5/06-s6-message-notification.md) | 通知（owner 指派/超期/状态变化）——域无关触发面零新通知代码 |
 | [hr-directory-sync](../proposal/hr-directory-sync.md) | 交接三件/部门负责人轴/岗位轴（设计输入） |

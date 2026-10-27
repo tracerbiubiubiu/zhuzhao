@@ -210,7 +210,7 @@
 | `RiskSourceConnector`（风险源接入） | phase6 R1（跨段引用） | Ingest 事件→风险单——第一档=手动+上报 API，扫描器/SIEM 连接器=二档 | 扫描器/SIEM（详见 phase6 §3） |
 | `IngestSource` / `SourceAdapter`（统一接入：推/拉） | phase6 新段（跨段引用；03 演进总表"通用数据录入接口"行） | 推：上报 API + webhook 入口站；拉：http-pull / db-pull / file-pull + `ingest_sources` 水位表；每源一 normalizer（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md） | 漏扫结果平台（首源）→ SOC / 日志平台告警 |
 | `AssetResolver`（资产查询门面） | phase6 R3 / 告警路由（跨段引用） | `Resolve(identifiers) / List(kind, org)`——调外部资产平台，字段归一 + 键映射 + 可选读穿缓存；实体存 asset_ref + asset_snapshot，**不建台账**（2026-10-20 回灌） | 公司资产平台 |
-| `Connector`（声明式出站连接器） | phase7（跨段引用） | HTTP 连接器通用件：auth 类型族 / 限流 / 熔断 / 健康；operation → `actions(kind=connector)`（2026-10-20 回灌） | SOC / SOAR / 资产平台 / 智能体平台 |
+| `Connector`（声明式出站连接器） | phase8（跨段引用——2026-10-27 归属统一：原记 phase7 与愿景稿 phase8 两说，按 phased-plan §4.3 声明式连接器归自动化能力中心=phase8 为准） | HTTP 连接器通用件：auth 类型族 / 限流 / 熔断 / 健康；operation → `actions(kind=connector)`（2026-10-20 回灌） | SOC / SOAR / 资产平台 / 智能体平台 |
 | `ScriptExecutor`（沙箱执行端） | phase8（跨段引用） | taskrunner 第二执行端；契约 = manifest + stdin/stdout/stderr/env/exit code（2026-10-20 回灌） | —（内部） |
 | `AgentProvider`（AI 智能体平台） | 终态（跨段引用） | 出：智能体为能力来源（kind=agent 连接器）；入：产出经统一接入层；反向：Action/MCP 暴露 + on-behalf-of（2026-10-20 回灌） | 公司 AI 智能体平台 |
 | `TodoEventPusher`（工单待办外推） | M-UAA 对接批（跨段引用；2026-10-26 所有者提出预留） | 场景：工单流转到指派人时向公司门户/待办中心推待办事件（节点配置指派人即触发）。事件源=既有 `ticket.assigned`/状态流转 DomainEvent（D20 分类学——订阅侧适配，工单状态机零改动）；Port + 两态桩（stub 落日志/未配置 fail-fast——防虚标纪律同款）；契约=公司待办接口，随 UAA 内网对接期获取 | 公司统一待办/门户接口 |

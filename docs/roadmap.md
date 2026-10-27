@@ -120,7 +120,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ---
 
-## Phase 4（已收口）与 Phase 5（已排期，`phase5` 分支实施前）/ Phase 6（规划草案，未排期）
+## Phase 4（已收口）与 Phase 5（十段全清·收口中，`phase5` 分支——2026-10-27 全景审计口径）/ Phase 6（设计稿齐备 00–05 号，未排期）
 
 > **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：批次总览七件（W0–W5 六波 + P4-9 部署件）+ 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 加成交付，phase4 分支已合回 main。
 >
@@ -189,8 +189,8 @@ docs/
 │   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
 │   └── 02–09 已编写（能力域/阶段文档，2026-09 起陆续完成；按需启用）
 ├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
-├── phase5/                     # Phase 5 已排期（通用能力底座线十段设计稿 01–10 + 实施计划 11 号——phase5 分支）
-├── phase6/                     # Phase 6 规划草案（风险管理模块，未排期；硬前置=phase5 S1/S2/S6+S10）
+├── phase5/                     # Phase 5 十段全清·收口中（通用能力底座线——phase5 分支，待合 main）
+├── phase6/                     # Phase 6 风险管理模块（设计稿 00–05 号齐备，未排期；硬前置=phase5 基线收口）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档
