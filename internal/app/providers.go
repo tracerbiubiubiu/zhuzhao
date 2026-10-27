@@ -26,6 +26,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
@@ -286,6 +287,12 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	actionReg.Register(&ticket.NotifyAction{Svc: ticketService}) // 经 Service 事件出口（eventRegistry 在 NewApp 晚于装配——Reg 注入不可达，改持 Svc）
 	actionReg.Register(&ticket.CCAction{Svc: ticketService})
 	actionReg.Register(&ticket.ReassignAction{Svc: ticketService})
+	// G-5：动作失败事件出口接线（修复前全仓零调用——r.emitter 恒 nil，
+	// ops.action_failed 永不派发：动作失败仅 slog.Warn，S6 规则面/inbox 均不可达。
+	// fire-and-forget 同 emitEvent 口径：Background ctx，Dispatch 内部自管生命周期）
+	actionReg.SetEmitter(func(ev domainevent.DomainEvent) {
+		eventRegistry.Dispatch(context.Background(), ev)
+	})
 	ticketService.SetActionRegistry(actionReg)
 	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
