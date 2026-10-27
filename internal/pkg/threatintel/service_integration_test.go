@@ -64,6 +64,7 @@ func TestB91_IntelCache(t *testing.T) {
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, p.count())
 		assert.False(t, r1.Stale)
+		assert.False(t, r1.ExpiresAt.IsZero(), "回源路径 expires_at 出站（2026-10-27 增补）")
 
 		r2, err := svc.Query(ctx, "domain", v)
 		require.NoError(t, err)
@@ -73,6 +74,7 @@ func TestB91_IntelCache(t *testing.T) {
 		// G1-2 审计锚：命中路径经 toResponse——type/value 透传（修复前恒空串）
 		assert.Equal(t, "domain", r2.Type, "命中路径 type 透传")
 		assert.Equal(t, v, r2.Value, "命中路径 value 透传")
+		assert.False(t, r2.ExpiresAt.IsZero(), "命中路径 expires_at 透传")
 		assert.JSONEq(t, `{"risk":"high","source":"fake"}`, string(r2.Result), "命中路径 result 保真")
 	})
 

@@ -124,7 +124,7 @@ Query(type, value) →
 GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:query（新码，B9-1 随批对 menu_apis/种子）
 响应：{ "code":0, "data": { "type":"ip", "value":"1.2.3.4",
          "result": {...上游原样...},
-         "stale": false, "fetched_at": "…", "hit_count": 3 } }
+         "stale": false, "fetched_at": "…", "expires_at": "…", "hit_count": 3 } }
 ```
 
 - 权限码 `intel:query` 为本段唯一新码（管理/清理端点 superadmin-only 挂既有系统管理族）；phase6 R1 消费 = 进程内调 service 层（模块化单体直依赖，与 R3 惯例一致），**不经 HTTP 自调用**；
@@ -138,6 +138,12 @@ GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:q
 - 404 入缓存（2026-10-16 评审批深审项 D）：上游 404（查无记录）→ 正常入库返回 stale=false → 二查命中零上游调用；上游 5xx → 不缓存走失败链；
 - hit_count 递增与 expires_at 语义（7 天类型 30 天类型各一例）；
 - ACL 断言：上游响应未知字段透传不解析（result 原样）——防腐层行为验证。
+
+### A.6 展示层演进登记（2026-10-27，前端会话对账批——触发驱动，不排期）
+
+- **`expires_at` 出站增补（已实落）**：Response 加缓存到期时刻（回源=now+ttl、缓存路径透传）——查询页可展示 TTL 剩余/缓存价值；
+- **查询结果语义卡（触发 = 上游真实契约定稿）**：现展示为递归键值树+原始 JSON 双视图（契约未知形态的通用解）；契约到手后升级为**结论先行的分区卡**（判定徽标色/置信度/资产属性/检测明细，业界锚点 VirusTotal 报告页），**schema 驱动**（字段展示配置化，上游契约变更改配置不改组件）；取词口径与 phase6 R1 情报源六组骨架对齐（R1 消费同一份 result，台账列与查询页共用语义映射防口径漂移）；
+- **查询结果快照明确不做**：查询历史仅存元数据（type/value/ts/stale/hit_count）——①本机 localStorage 快照自证无效，取证/审计诉求的正解=**服务端查询日志端点**（触发驱动登记，出现合规审计诉求时立项）；②「回看当时结果」诉求由同键重查覆盖（命中 intel_cache 零上游调用，近似零成本）；③完整 result 入历史有 localStorage 配额风险（500 条 × 任意大 JSON）。
 
 ---
 
@@ -155,3 +161,4 @@ GET /api/v1/intel/query?type=ip&value=1.2.3.4    # 登录态 + 权限码 intel:q
 | 2026-10-24 | **B9-1 交付（zhuzhao 1d6cf39）**：迁移 000067=intel_cache 表+intel:query 码/intel_query 菜单行（唯一新码）；internal/pkg/threatintel（ACL 防腐：Provider 端口+HTTP adapter[mapUpstreamResponse 独立映射层]+两态桩[stub 默认 true 桩先行/非 stub 空 endpoint fail-fast 92600]）+查询链路 A.3 全文级（singleflight 防击穿[x/sync 升直连]/懒过期 stale+异步回源刷新/404 查无入缓存/429 降级矩阵/归一化按类型注册/CleanupExpired 物理清理预留）；GET /intel/query+errcode 92600-92602（全码表 77）；config intel.* 段（TTL 双档 ip·domain·url 168h/hash 720h）。验证=TestB91 八子测全绿（singleflight 并发 10 收敛/ACL JSONEq 透传）+四档 246/0+往返 67 对零漂移+22 包单测。**实施偏差一件登记**：A.3 上游令牌桶 rate.Limiter 未随批落——config 键 intel.qps 已挂、Limiter 注入挂真实契约接入批（stub 态无意义 YAGNI；拍板点①②按预确认口径落齐） |
 | 2026-10-19 | **采集域归属澄清批（所有者问询「文档是否迁移 phase6」）**：§6 补**采集域归属**注——多源采集立项时**新建 phase6 文档**（通用数据录入接口形态——03 号演进总表行），**本文件不迁移**（W11–13 phase5 交付物；pull 缓存代理≠push 采集入库两形态语义相邻但工程身份不同） |
 | 2026-10-25 | **intel_query 页可达性回补（E2E 补齐批核出）**：000067 建菜单行**未绑 role_menus**（000031/000034/000048 惯例漏项——GetUserMenus 按绑定 INNER JOIN 无通配旁路）→ 情报查询页对含 superadmin 在内全员不可见、动态路由不注册；**迁移 000074** 绑 admin+superadmin；ui 侧 icon 裸名 `intel` 补映射（此前侧栏图标静默空白，icons.test 种子清单手工维护未同步） |
+| 2026-10-27 | **展示层演进对账批（前端会话）**：A.4 响应 +`expires_at` 出站（已实落——集成测试断言随批）；+A.6 展示层演进登记三条：语义卡（触发=上游契约定稿，schema 驱动+R1 六组骨架口径对齐）/ 结果快照明确不做（本机快照无取证效力，审计诉求=服务端查询日志端点触发驱动；回看诉求由同键重查走缓存覆盖） |

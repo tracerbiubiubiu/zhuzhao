@@ -46,7 +46,9 @@ type Response struct {
 	Result    json.RawMessage `json:"result"`
 	Stale     bool            `json:"stale"`
 	FetchedAt time.Time       `json:"fetched_at"`
-	HitCount  int             `json:"hit_count"`
+	// ExpiresAt 缓存到期时刻（2026-10-27 增补——前端 TTL 剩余展示；回源路径=now+ttl）
+	ExpiresAt time.Time `json:"expires_at"`
+	HitCount  int       `json:"hit_count"`
 }
 
 // Query 查询主链路。
@@ -101,7 +103,7 @@ func (r cacheRow) toResponse(intelType, value string, stale bool) *Response {
 	// 三条缓存路径出站字段缺失，违反 09 号 A.4 契约与回源路径不一致）
 	return &Response{
 		Type: intelType, Value: value, Result: r.Result, Stale: stale,
-		FetchedAt: r.FetchedAt, HitCount: r.HitCount,
+		FetchedAt: r.FetchedAt, ExpiresAt: r.ExpiresAt, HitCount: r.HitCount,
 	}
 }
 
@@ -156,9 +158,9 @@ func (s *Service) fetchAndStore(ctx context.Context, intelType, value string, tt
 		s.logger.Warn("threatintel: cache store failed (returning fresh result)", "err", serr)
 	}
 	if notFound {
-		return &Response{Type: intelType, Value: value, Result: data, Stale: false, FetchedAt: now, HitCount: 1}, nil
+		return &Response{Type: intelType, Value: value, Result: data, Stale: false, FetchedAt: now, ExpiresAt: now.Add(ttl), HitCount: 1}, nil
 	}
-	return &Response{Type: intelType, Value: value, Result: data, Stale: false, FetchedAt: now, HitCount: 1}, nil
+	return &Response{Type: intelType, Value: value, Result: data, Stale: false, FetchedAt: now, ExpiresAt: now.Add(ttl), HitCount: 1}, nil
 }
 
 // refresh 异步回源刷新（懒过期路径——失败仅落日志，下轮查询再试）。
