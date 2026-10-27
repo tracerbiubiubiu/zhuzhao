@@ -695,7 +695,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		ticket.CustomData = customData
 	}
 	ticket.UpdatedAt = updatedAt
-	// B6-1/D20：工单更新事件（载荷带 changes[] 键级 diff）
+	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
 	s.emitEvent(domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
@@ -1116,7 +1116,7 @@ func (s *Service) AuthorizeTicketFileRead(ctx context.Context, userID, ticketID 
 	return s.authorizeCheck(ctx, userID, "read", strconv.FormatInt(ticketID, 10))
 }
 
-// buildChanges D20 键级变更集（工单 Update 事件载荷）。
+// buildChanges 工单 Update 事件载荷变更集：字段级新值 diff（无旧值比对、custom_data 不展开键级——D20 真值 diff 待台账 B-1）。
 func buildChanges(req *model.UpdateTicketRequest) []domainevent.Change {
 	var changes []domainevent.Change
 	if req.Title != nil {

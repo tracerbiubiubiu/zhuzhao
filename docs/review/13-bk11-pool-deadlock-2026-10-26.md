@@ -2,6 +2,7 @@
 
 > **文档定位**：point-in-time 复盘报告——`TestBK11_CreateVsMoveHammer` CI 挂死（10-24 起 15 run 挂 7 笔）的完整证据链、三层根因、已交付修复（`039aca6`，CI 绿）与彻底方案登记（连接解析跟随 ctx，**待拍板**）。
 > **影响面定性**：不止 CI flake——生产 4 核部署 ≥4 并发 Create 同样可永久挂死，属真实并发缺陷，CI 率先照出。
+> **⚠ 订正（2026-10-27 全景审计 A-5，对称验证确认）**：上处及 `039aca6`/`a91da0f` 两笔 message 的「4 核/4 并发中招」表述沿自当时错误前提——真实边界由**池容量**决定：生产 `MaxOpenConns` 默认 25（`config.applyDefaults`，config.go:203；yaml 显式同值），中招条件 = **事务窗口内并发 > MaxConns(25)**（核数不影响池上限）。CI 复现依赖 testutil 钉 4；后续容量评估一律以 MaxConns 为基线，勿再引「4 核=4 池」口径。
 > **同日关联**：新增 CI 环境差坑一条——pgxpool 默认池随核数漂移致池类死锁本地永不复现（机理 §3.3，对冲 = §4 testutil 钉 4，坑注记随本复盘在案）；hotfix 已随 `039aca6` 合入 phase5。
 
 ---

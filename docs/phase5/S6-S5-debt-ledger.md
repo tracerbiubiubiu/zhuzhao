@@ -53,19 +53,19 @@
 | C-3 | — | BK-21 GetFilter 护栏泛化 | 首个新资源接 L2 / 导出功能 | 工程约束 |
 | C-4 | — | BK-19 handler 层测试 | 工单封版翻案时 | phase2 遗留 |
 | C-5 | S6 | RT-1 观测面（20015 审计/WARN） | 先有降噪前提（宽限窗口/family_id） | 06 号 §5.2 |
-| C-6 | S5 | RK-P5-15 richtext 图数上限 + 触发信号观测面 | 磁盘水位/贴图密集（**需先补观测**——见判据） | 05 号 §3 |
+| C-6 | S5 | RK-P5-15 richtext 图数上限 + 触发信号观测面 | 磁盘水位/贴图密集（**需先补观测**——见判据）。**◆待拍（2026-10-27 审计 A-2）**：量级水位型无观测面=事实上永不触发——二选一：a. 补最小观测面（/metrics 手写计数器基座加 storage 用量 gauge，零新依赖）b. 改判人判断型并写明谁看 | 05 号 §3 |
 | C-7 | S5 | RK-P5-14 附件独立权限码 | 工单域权限细化诉求 | 05 号 A.7 |
 | C-8 | — | BK-12 残留（org 删除守卫不查 org_roles） | 出现孤儿绑定行实际危害时 | AGENTS 遗留 |
 | C-9 | S1 | spec JSONB 收件人模型 / form-create runtime 渲染引擎 | ≥2 来源组合 / 渲染联动变重时 | 06 号 A.5 注 |
 | C-10 | S1 | manager_id 显式汇报线 | M-HR 启动 | HR 同步待设计 |
-| C-11 | S5 | aws-sdk-go 备选 | rclone/RustFS 兼容劣化 | RK-P5-13 |
+| C-11 | S5 | aws-sdk-go 备选（**◆待拍 A-2：技术信号型无观测**） | rclone/RustFS 兼容劣化 | RK-P5-13 |
 | C-12 | S6 | ~~stub 独立 config 段（`notification.uip.*`）~~ **✅ 已落（微批 A——Notification.UIP.Endpoint 四链+BindEnv+生产态 fail-fast；契约接入面归 D-1——v3 审计 L-2 补标）** | 接 UIP 真实契约前 | 外审 F-1-14 |
 | C-13 | S6 | markdown 渠道转义（`channelEscapes` 加第三族） | UIP 契约确认正文格式后 | 外审 F-2-9 |
 | C-14 | S5 | cookie Secure release 强制 | 生产 HTTPS 网关前置 | 外审 F-4-7 |
 | C-15 | S6 | 死信/emitEvent ctx 超时+request_id | 接入链路追踪时 | 外审 F-2-8 |
-| C-16 | S6 | 节流入口廉价预判 | 通知量级异常增大时 | 外审 F-2-8 |
+| C-16 | S6 | 节流入口廉价预判（**◆待拍 A-2：量级水位型无观测**——通知量级异常增大无埋点可观测） | 通知量级异常增大时 | 外审 F-2-8 |
 | C-17 | S5 | mirror 侧车失败聚合可见面（F-C1） | B10-4 |
-| C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行 | P3 量级到了 |
+| C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行（**◆待拍 A-2：量级水位型无观测**） | P3 量级到了 |
 | C-19 | S6 | ~~settings Upsert version 乐观锁（F-D2——000060 在途收尾）~~ **✅ 已落码（000050+settings_service.go:232 CAS+expected_version 双测试——早于本台账终版即已交付，登记滞后——v3 审计 L-2 补标）** | 下个迁移顺位 |
 | C-20 | S6 | **outbox 持久化事件**：`DomainEvent` 加 EventID + 发布点事务内落 `domain_event_outbox`（12 处收敛于 emitEvent 透传 tx）+ 骑既有 CronScheduler 轮询投递复用现总线与全部订阅者 + 订阅者幂等化（inbox `unique(event_id,user_id)` / 通知 message_log 按 event_id 查重）——语义 at-most-once→at-least-once、崩溃不丢、可重放；零新依赖 ≈1–2 天（03 号 outbox 备选 / 11 号 §5.10）。**注**：MQ/asynq 本身不解决「commit 后崩溃」窄缝（DB 与队列双写），outbox 为必经之路；跨进程消费者出现时仅换轮询器投递目的地，业务代码不动 | 出现「丢一条即事故」的消费者（phase6 R3 若不走对账）或跨进程消费者（taskrunner/未来 SOC 平台订阅工单事件） |
 | C-21 | S4 | 任务结果留存/展示（taskrunner result 存储+端点——`job_runs` 现无 result 列，error 为唯一结果载荷）+ 结果可配置落 activelist / 任务数据源可配为 activelist 两设想 | phase7/8 脚本平台立项批（或所有者明示单独立项） | 04 号 §3.5（2026-10-26 登记） |
@@ -103,9 +103,9 @@
 
 | # | 段 | 项 | 级 | 量级 | 挂点 |
 |---|---|---|---|---|---|
-| G-1 | S1 | fetch 装配链生产雷：fetcherReg wire 第 9 参恒 nil（R1 同型第五例）——auto_fill 静默不生效，formula 引用 fetch 字段提交期 400 卡用户；错误 UX 三档未建 | P1 | 随 phase6 R3 首源批 | C-1/C-2 并账（registry 注入+适配器+超时/限流/审计一次配齐） |
-| G-2 | S6 | variables 变量字典端点缺席——管理员重存种子模板（含 reminder_count/event.*）即 400；白名单硬编码与种子模板不同源 | P1 | +0.5 天 | =B-2 加重证据（随 B6-7 二期） |
-| G-3 | S5 | avatar confirmed 后用户永不 bind → 对象永无 GC 覆盖（第三段仅扫 ticket purpose）——行+对象永久泄漏 | P2 | +0.5 天 | GC 第三段扩 avatar purpose（磁盘水位前） |
+| G-1 | S1 | fetch 装配链生产雷：fetcherReg wire 第 9 参恒 nil（R1 同型第五例）——auto_fill 静默不生效，formula 引用 fetch 字段提交期 400 卡用户；错误 UX 三档未建。**2026-10-27 销账批更新（半清）**：装配雷已排——providers.go:274 已注 `datafetcher.NewRegistry()`（空 Registry：ApplyFetches 跳过非 nil panic，「恒 nil」不再成立，装配处注释在案）；能力缺口（fetcher 实现/超时/限流/审计/UX 三档）归 C-1/C-2 不变 | P1 | 随 phase6 R3 首源批 | C-1/C-2 并账（registry 注入+适配器+超时/限流/审计一次配齐） |
+| G-2 | S6 | ~~variables 变量字典端点缺席~~ **✅ 销账（2026-10-27 销账批）**：router.go:511 selfService 端点 + handler Variables 实现均已落（B6-3 增强批交付，审计实证）；残余「白名单硬编码与种子模板不同源/动态字段源+时间类」归 **B-2** 唯一继续（本条原系 B-2 加重证据） | P1 | 销账 | →B-2 |
+| G-3 | S5 | avatar confirmed 后用户永不 bind → 对象永无 GC 覆盖（第三段仅扫 ticket purpose）——行+对象永久泄漏。**2026-10-27 销账批复核：成立**（gc.go:83 第三段反连接回收显式限定「工单域 purpose」，avatar 豁免即本缺口；行号已漂移以判据为准） | P2 | +0.5 天 | GC 第三段扩 avatar purpose（磁盘水位前） |
 | G-4 | S3a | sla_due_at 仅 Transition 写刻——经 Close 到终态的单无 deadline 刻（Close/Assign 收敛批未做） | P2 | +0.5 天 | Close/Assign 收敛批随行 |
 | G-5 | S3a | RunPostActions 失败可观测：ops.action_failed 事件 emit + 收件人锚点（ActorID/payload.actor——规则 creator/fixed 档可路由）+ 词表登记（UIP 面） | P2 | ✅ 2026-10-26 收口批（emit 原已在——补锚点+词表+ui 下拉镜像） | inbox 面因 ops 域无 cc/assignee 锚点归 **G-9** 批（勿加死词行） |
 | G-6 | S3a | reassign 声明 at_most_once 但语义=同步强一致通道——失败静默丢转派，一致性档位需复核 | P2 | 拍板 | S3a 二期拍板 |
@@ -113,7 +113,7 @@
 | G-8 | S6 | ticket.action_notify 未登记 inbox 词表——站内静默 | P3 | ✅ 2026-10-26 收口批（补词「流程提醒：{{title}}」——payload.cc_users=动作 recipients，锚点实） | 销账 |
 | G-9 | S6 | ops.cron_failed 词表行是死行（payload 无 to_assignee/cc_users——collectRecipients 恒空） | P3 | 15min | 随批（改锚点或特判 job 收件人） |
 | G-10 | S6 | message_log 实落表与 A.2 漂移（biz_id VARCHAR/无 dead 态/retry_count）+死信归因字段折损 | P3 | 登记不修 | 二期表形态批 |
-| G-11 | S9 | CleanupExpired 未挂 cron——过期行只懒查不物理删，长期运行只增不删 | P2 | 15min | 生产部署前必挂 |
+| G-11 | S9 | ~~CleanupExpired 未挂 cron~~ **✅ 销账（2026-10-27 销账批）**：app.go:195 `intel_cleanup` 已挂——`DELETE FROM intel_cache WHERE expires_at < NOW() - interval '7 days'`，骑 CronScheduler + SetOnFailure 告警（审计实证+独立复核双确认） | P2 | 销账 | — |
 | G-12 | ui | 铃铛 invalidateQueries 死代码（角标最长 60s 不更新）/画布 undo 后 lint 态 stale/intel 页裸 fetch 绕 api 层/附件列表失败静默 | P2/P3 | +0.5 天 | 前端随手批 |
 | G-13 | 文档 | 10 号变更记录缺 SLA 0.5 交付行；errcode.md 双份已补登 21010/92600-92602（✅ 随本批修） | P3 | ✅/5min | 文档批 |
 | G-14 | S1 | FieldImpact radio 选项收窄漏检+dict: 引用收窄天然失效 | P3 | 15min | B1-6 前小修 |
@@ -156,7 +156,13 @@
 > **豁免（v3 审计 L-2 补）**：诉求/决策型触发（如 C-3 护栏泛化、C-4 翻案、
 > C-8 危害实证）信号=所有者人判断，不要求代码观测面——判据只约束技术信号型
 > 条目（量级水位/契约到达/依赖启动类）。
+>
+> **观测面现状（2026-10-27 全景审计 A-2 核）**：现有观测面 = `/metrics` 手写
+> 三计数器（requests/panics/5xx——P4-8，internal/middleware/metrics.go，零依
+> 赖）；**业务水位零埋点**（磁盘用量/通知量级/intel 命中率/池饱和）——量级水
+> 位型 C 项（C-6/11/16/18）在 A-2 拍板前按「永不触发」管理；若拍 a 案（补观测
+> 面），/metrics 即扩展基座。
 
 ---
 
-*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-24 登记外全部销账；G-23 三程按建议实施）**；**+ 外审 v4 批（2026-10-26）G-28~G-33 六件（登记已落 3 / 拍板 1 / 待所有者在途 1 / UX 登记 1）**；下一迁移编号 **000080**（000073–000079 占用——000079 = action_notify_seed 已落盘）*
+*基线：zhuzhao `2dcb496` / zhuzhao-ui `7839aea2`（2026-10-25 收官审计）——A/E/F 组全清+B/C/D 组按上表销账；G 组=收官全量审计新增 14 件（P1×2/P2×7/P3×5）**+ E2E 补齐批（2026-10-25，ui e88173bd 起）新增 13 件 G-15~G-27（P0×3/P1×5/P2×2/P3×3——除 G-24 登记外全部销账；G-23 三程按建议实施）**；**+ 外审 v4 批（2026-10-26）G-28~G-33 六件（登记已落 3 / 拍板 1 / 待所有者在途 1 / UX 登记 1）**；**+ 提交与规划全景审计销账批（2026-10-27，基线 aa34302 报告对称验证后执行）**：G-2/G-11 销账、G-1 半清更新（装配雷已排）、G-3 复核成立重锚、C-6/11/16/18 标◆待拍（A-2 观测面决策待所有者）、判据段+观测面现状注——审计抽验 3 例滞后（G-2/G-11/G-1）全部落账；下一迁移编号 **000080**（000073–000079 占用——000079 = action_notify_seed 已落盘）*
