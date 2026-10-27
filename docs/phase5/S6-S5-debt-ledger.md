@@ -23,7 +23,7 @@
 | # | 段 | 项 | 消化点 | 锚 | 量级 |
 |---|---|---|---|---|---|
 | B-1 | S6 | D20 changes[] 真值 diff（旧值比对+custom_data 键级粒度） | B6-7 二期 | 06 号 A.1 | +0.5 天 |
-| B-2 | S6 | variables 端点补动态字段源+时间类 | B6-7 二期 | 06 号 A.6 | +0.5 天 |
+| B-2 | S6 | variables 端点补动态字段源+时间类——**并账 H-3**（2026-10-27 升格为通知能力增强批核心件=G-2 加重证据） | 通知能力增强批 | 06 号 A.6 | +0.5 天 |
 | B-3 | S6 | `'*'` 免打扰跨域生效 | B6-7 二期 | 外审 F-1-12 | +0.5h |
 | B-4 | S6 | acceptance 通知深面（注入/节流/fail-fast/偏好四类） | B6-7 前补课 | 06 号 §10 | +0.5 天 |
 | B-5 | S6 | opt-out service 直连 db 收敛到 repo | 架构批 | 外审 F-1-12 | +0.5h |
@@ -60,7 +60,7 @@
 | C-10 | S1 | manager_id 显式汇报线 | M-HR 启动 | HR 同步待设计 |
 | C-11 | S5 | aws-sdk-go 备选。**✅ 已拍 b 案（2026-10-27）改判人判断型**：信号必然以「附件链路报错/升级验收失败」形式显形，观测者=执行存储栈升级的人；配套升级纪律已落 runbook §3（动存储栈必跑附件全链验收）——要的是纪律不是仪表（兼容度 gauge 造不出也不省钱） | rclone/RustFS 兼容劣化（人判断型） | RK-P5-13 |
 | C-12 | S6 | ~~stub 独立 config 段（`notification.uip.*`）~~ **✅ 已落（微批 A——Notification.UIP.Endpoint 四链+BindEnv+生产态 fail-fast；契约接入面归 D-1——v3 审计 L-2 补标）** | 接 UIP 真实契约前 | 外审 F-1-14 |
-| C-13 | S6 | markdown 渠道转义（`channelEscapes` 加第三族） | UIP 契约确认正文格式后 | 外审 F-2-9 |
+| C-13 | S6 | markdown 渠道转义（`channelEscapes` 加第三族）——**并账 H-2**（2026-10-27 所有者需求明确提前：dingtalk 独立渠道，UIP 契约门控仅约束 UIP 面） | 随通知能力增强批 | 外审 F-2-9 |
 | C-14 | S5 | cookie Secure release 强制 | 生产 HTTPS 网关前置 | 外审 F-4-7 |
 | C-15 | S6 | 死信/emitEvent ctx 超时+request_id | 接入链路追踪时 | 外审 F-2-8 |
 | C-16 | S6 | 节流入口廉价预判。**✅ 已拍 a 案（2026-10-27）**：批量导入场景投递全成功零死信——死信告警抓不住「成功的骚扰」，受害者举报非可靠信号。落地=dispatcher 发送计数进 /metrics（ok/dead 双标）+ 小时级量级 cron 超阈值 WARN（**日志面兜底不走 S6 通知闭环**——通知系统自身故障时其告警通道同时失效，WARN 才自守；阈值 config 可配 0=关） | 通知量级异常增大——**计数器已建（2026-10-27 观测批——本批落码：dispatcher ok/dead 计数+notify_volume_check cron）**；廉价预判本体仍触发型 | 外审 F-2-8 |
@@ -136,6 +136,19 @@
 | G-31 | S10 | 标签摘除 UX：B「挂」已存在标签是 ON CONFLICT 无操作，再摘=摘 A 挂的→需 update 权 403（外审 #18 判设计内，拍板点 6 口径）；可改进=挂接口回告「已存在」 | P3 | 登记 | 触发=用户反馈 |
 | G-32 | S3a | **系统身份写操作的委托放大族（2026-10-26 并账扩容）**：①`SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作（外审 #19）——配置面受 ticket:type:manage 控制；②`assignAsSystem` 跳过 Assign 的 L2/L3（自动分派规则消费，unexport 防包外直调+权限旁路注释——同包唯一调用方 DispatchService）。族口径：**配置自动分派/动作=获得对应写操作的委托放大**，评审新系统身份通道须按此口径并回本条登记 | 登记 | ✅ 03 号变更记录注 + assignAsSystem unexport/注释（本批） | 文档+代码已落 |
 | G-33 | S10 | 催办先发后记水位：bumpReminder 失败→下轮重发（at-most-once 退化 at-least-once）取向=宁重发勿漏催（外审 #20） | 登记 | ✅ 代码注 + 10 号变更记录 | 文档已落 |
+
+## H. 通知能力增强批（2026-10-27 立项——所有者需求明确："多类型工单差异化模板 + 钉钉 markdown + 工单字段变量"；大部分架构已实现，三缺口增量）
+
+> **需求对照备查（2026-10-27 核验）**：①"到流程节点自动按模板发消息"=✅已实现（AssertTransition 单点 emit → rules 路由 → 渲染 → 发送 → message_log → 死信，三轮审计过）；②"邮件 HTML"=✅已实现（渲染器渠道分族：HTML 渠道值级转义+模板 HTML 原样）；③"钉钉 markdown"=⚠C-13 已登记（channelEscapes 加第三族，触发=契约确认——本批提前）；④"变量来源工单字段"=⚠架构已实现（`ticket.fields.f_<ID>` slug + 四象限渲染）但 variables 字典端点缺席=B-2/G-2 已挂账（本批并账）；⑤"每类型单独配模板"=🔴核心缺口（rules UNIQUE(biz_type,event_action) 无 type_code 维度——一事件动作只能绑一模板）。
+
+| # | 项 | 内容 | 量级 | 拍板 |
+|---|---|---|---|---|
+| H-1 | S6 | **规则粒度加 type_code**：`message_rules` 加 `type_code VARCHAR(64) NULL`（NULL=全类型通配，存量行回填 NULL 语义不变）+ UNIQUE 改 `(biz_type, event_action, COALESCE(type_code,''))`（函数唯一索引）+ 渲染链规则查询两级回退（类型精确 → 通配）+ 规则管理面加类型下拉 + `/jobs/actions` 同款 schema 面 | ~1 天 | **拍板 H-2**：粒度加在**规则**（推荐——模板跨类型复用，规则决定"哪类型哪事件用哪模板"）vs 加在模板（模板私有化复制） |
+| H-2 | S6 | **钉钉 markdown 渠道**：`channelEscapes` 加 `dingtalk` 第三族（markdown 不做 HTML 转义——C-13 提前落地）+ ChannelSender 加 dingtalk adapter（机器人 webhook：`{"msgtype":"markdown","markdown":{"text":...}}`，支持加签/关键词安全设置）+ 白名单/管理页渠道枚举扩展 + message_log 渠道记录 | ~1–2 天 | **拍板 H-3**：独立 `dingtalk` 渠道类型（推荐——签名/关键词安全设置 adapter 内聚）vs 复用 `webhook` 渠道加渲染族 |
+| H-3 | S6 | **variables 字典端点 + 编辑器变量 picker**（=B-2/G-2 并账升级为本批核心件）：按 `(biz_type, event)` 供变量树（内置六键 + S1 `field_meta` 动态字段 slug + 时间类）+ 模板编辑器变量选择器（点击即插 `ticket.fields.f_<ID>` path）——修复"管理员重存种子模板 400"（G-2） | +0.5 天 | 无（B-2/G-2 既定方案） |
+| H-4 | S6 | **测试与文档随行**：四象限渲染回归（dingtalk 渠道下 markdown 原样）、规则两级回退（精确/通配）、钉钉 adapter 负向（签名错/非 2xx）→ message_log failed+死信；06 号 §3 渠道词表加 dingtalk+§4 H-1 粒度注 | ~0.5 天 | — |
+
+**合计 ≈ 2.5–4 天；建议容器 = 独立「通知能力增强批」或并入通知中心权限批（G-7+G-29 同域）；phase6 R3 风险单联动 = 多类型差异化通知的第一个真实消费者。**依赖：无硬前置（钉钉机器人协议公开，UIP 契约不影响 dingtalk 独立通道——C-13 的"契约确认"门控仅约束 UIP 面正文格式，本批绕开）。
 
 ## L. 文档架构整理（2026-10-27 立项——phase5 合回 main 后执行）
 
