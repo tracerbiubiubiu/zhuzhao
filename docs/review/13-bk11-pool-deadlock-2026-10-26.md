@@ -129,3 +129,4 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 ## 变更记录
 
 - 2026-10-26 初稿：当日定位→先红复现→修复（`039aca6` CI 绿）→业界对照→彻底方案登记，一气呵成。
+- 2026-10-27 增补：**同类残留 Update 修毕**——初稿只修 Create 两嵌套点，外审核出 `Update` 锁内窗口的 `validateCustomData`/`applyFormulas` 仍走池读（`ListTicketTypeFields` 无 tx 变体）；比 Create 更直接：N≥MaxConns 个并发 Update（带 custom_data）各持 1 连接各要第 2 个，**自闭环死锁无需第三方**（生产 4 核默认池=4 即 4 并发中招）。修法=repo `RowQuerier` 接口 + `ListTicketTypeFieldsTx`（`039aca6` 预取方案的姊妹件：不预取、改走 tx 连接，保 F-B1 锁内合并语义不动）；`TestBK11_UpdateHammer`（6 并发×10 轮×MaxConns=4，每轮 5s 兜底）先红（round 0 ctx deadline）后绿（0.12s）。

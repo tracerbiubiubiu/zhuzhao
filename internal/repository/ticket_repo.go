@@ -590,9 +590,25 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	return types, nil
 }
 
-// ListTicketTypeFields 查询工单类型字段定义
+// ListTicketTypeFields 查询工单类型字段定义（池连接——仅限事务窗口外使用）。
 func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
-	rows, err := r.db.Query(ctx, `
+	return listTicketTypeFields(ctx, r.db, typeCode)
+}
+
+// RowQuerier 流式读抽象（Query 多行）——pgx.Tx 与 *pgxpool.Pool 均满足。
+// 用途=事务窗口内复用读方法（BK11：事务持连期间再向池取连=嵌套获取，N≥MaxConns 并发即自闭环
+// 死锁——Create 修复 039aca6，Update 2026-10-27 随批：validate/apply 走 Tx 变体）。
+type RowQuerier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// ListTicketTypeFieldsTx 事务内读字段定义（Update 锁内 G2 校验/formula 重算用——与池版同列同序）。
+func (r *TicketRepo) ListTicketTypeFieldsTx(ctx context.Context, q RowQuerier, typeCode string) ([]*model.TicketTypeField, error) {
+	return listTicketTypeFields(ctx, q, typeCode)
+}
+
+func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string) ([]*model.TicketTypeField, error) {
+	rows, err := q.Query(ctx, `
 		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {

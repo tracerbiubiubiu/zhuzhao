@@ -15,6 +15,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // 000010 默认状态图（新类型缺省；与 DDL DEFAULT 保持一致）
@@ -771,13 +772,15 @@ func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) js
 // validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
 // B1-6 批1 起返回剔除隐藏字段后的 custom_data（visible_when=false 的字段 required
 // 不校验、值剔除不写入——防绕过；无剔除时原样返回零重编码）。
-func (s *Service) validateCustomData(ctx context.Context, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
+// validateCustomData G2 提交期校验（q=取数通道：Create 前置传池 s.db；Update 锁内窗口传 tx——
+// BK11 同类防嵌套：池读在事务持连期间取第 2 连接，N≥MaxConns 并发即自闭环死锁）。
+func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
 	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
 	if len(customData) > CustomDataMaxBytes {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code,
 			fmt.Sprintf("custom_data 超过 %d KiB 上限", CustomDataMaxBytes>>10))
 	}
-	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, q, typeCode)
 	if err != nil || len(fields) == 0 {
 		return customData, err // 无字段定义（或读取失败）不校验——读取失败随 Create 一起失败
 	}

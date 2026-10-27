@@ -273,13 +273,13 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
 	// B1-6 批1：validateCustomData 返回剔除隐藏字段后的 custom_data（visible_when
 	// =false 的字段 required 不校验、值不写入——防绕过）
-	customData, err = s.validateCustomData(ctx, req.TypeCode, customData)
+	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData)
 	if err != nil {
 		return nil, err
 	}
 	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
 	// 服务端重算覆盖（前端预览值不可信，篡改负向必测 01 §8）
-	customData, err = s.applyFormulas(ctx, req.TypeCode, customData)
+	customData, err = s.applyFormulas(ctx, s.db, req.TypeCode, customData)
 	if err != nil {
 		return nil, err
 	}
@@ -508,8 +508,10 @@ func (s *Service) applyFetches(ctx context.Context, typeCode string, customData 
 
 // applyFormulas B1-3 提交链 formula 重算（A.3）：从 field_meta 组装投影 →
 // exprcalc.ApplyFormulas 重算覆盖。custom_data 为 json.RawMessage——解码→重算→重编码。
-func (s *Service) applyFormulas(ctx context.Context, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
-	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+// applyFormulas formula 重算（q=取数通道：Create 前置传池 s.db；Update 锁内窗口传 tx——
+// BK11 同类防嵌套，池读在事务持连期间会取第 2 连接，N≥MaxConns 并发自闭环死锁）。
+func (s *Service) applyFormulas(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, q, typeCode)
 	if err != nil || len(fields) == 0 {
 		return customData, err // 无字段即无 formula——透传
 	}
@@ -647,12 +649,13 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		if err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
-		merged, err = s.validateCustomData(ctx, ticket.TypeCode, merged)
+		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged)
 		if err != nil {
 			return nil, err
 		}
-		// B1-3 formula 重算（同 Create 链——校验后、写前）
-		merged, err = s.applyFormulas(ctx, ticket.TypeCode, merged)
+		// B1-3 formula 重算（同 Create 链——校验后、写前）；走 tx 连接（BK11 同类：
+		// 修前池读在事务持连期间取第 2 连接，6 并发×MaxConns=4 即自闭环死锁——锤击锚实证）
+		merged, err = s.applyFormulas(ctx, tx, ticket.TypeCode, merged)
 		if err != nil {
 			return nil, err
 		}
