@@ -192,7 +192,7 @@
 | L-3 | deliverables/overview.md | 修 5 处 `.workbuddy/` 死链（cb996f2 已删该目录；:24/25/52/53/65 五处）——**L-1 搬移时顺带**（overview 保留不拆，外部报告"拆进 review/README"建议不采纳） | 5min | 随 L-1 |
 | L-4 | 全仓 | **overview.md 指向更新**（保留决策修正外部报告 D 组"拆解删除"建议）+ `docs/review/README.md` 与 `docs/proposal/README.md` 各补一行归位说明 | 10min | 随 L-1 |
 | L-5 | modules+design | `modules/ticket.md`（839 行）与 `design/architecture.md`（2026-08 v0.6）回填——field_meta/transition_meta/assignment_rules/附件/抄送/标签/超时/API 面/80 迁移全未反映；docs/README 已挂陈旧注 | ~1–2 天 | phase6 立项批随行或独立文档批（外审 P3-2 登记） |
-| L-6 | 全仓 | errcode 双份归一：根 `api/errcode.md` 与 `docs/api/errcode.md` 并存（F-A-1 悬案）——建议 docs/api 为唯一、根文件改指针 | 15min | ◆随下批拍板（外审 P3-3 登记） |
+| ~~L-6~~ | 全仓 | ~~errcode 双份归一~~ **✅ 销账（2026-10-28 所有者批，本日执行）**：按 F-A-1 既定方向收口——根 `api/errcode.md` 为唯一权威，`docs/api/errcode.md` 303 行陈旧副本归并为指针（历史内容入 git 史），README/response 引用改指根文件；L-6 登记时「docs/api 为唯一」反向建议作废（与 10-23 已拍方向相反，依既定方向执行） | 15min | ✅ |
 
 > **外部报告核验结论备查（2026-10-27）**：盘点/分组/不按 phase 拆三点采纳；四处修正——①实为 24 文件非 23；②json-contract-audit 归 review（审计终稿非提案——三仓修复已提交+standards §3-14 立约）；③overview 保留不拆（时间线索引独立价值，仅修死链）；④**成本重估**：24 mv + 22 文件 36 处引用改写（11 号/standards/runbook 三 SSOT 在内）——非"git mv+相对路径修正"轻量级。deliverables/ 现位系刻意决策（11 号批次行"deliverables 另笔"——立项前研究→结论蒸馏 docs/→研究稿留档的工作流载体），非历史混乱；L 组执行即工作流终态归位。
 

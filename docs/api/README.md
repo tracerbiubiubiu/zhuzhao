@@ -7,7 +7,7 @@
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
 | **[response.md](./response.md)** | **HTTP 响应体 Envelope**（`code` / `message` / `data` / `request_id`） | 必读 |
-| [errcode.md](./errcode.md) | 业务错误码分段、HTTP 映射、Phase 1 验收对照 | 必读 |
+| [errcode.md](../../api/errcode.md) | 业务错误码分段、HTTP 映射与对外契约（**唯一权威**——docs/api/errcode.md 已归并为指针，L-6） | 必读 |
 | [../design/architecture.md](../design/architecture.md) §17 | API 路由总表 | 联调时 |
 
 ## 后端约定摘要
