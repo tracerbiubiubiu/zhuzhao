@@ -33,7 +33,7 @@ func NewAuditHandler(auditService *service.AuditService) *AuditHandler {
 //	@Param			start			query		string	false	"开始日期（YYYY-MM-DD）"
 //	@Param			end				query		string	false	"结束日期（YYYY-MM-DD）"
 //	@Param			employee_no		query		string	false	"工号"
-//	@Param			method			query		string	false	"HTTP 方法（GET/POST/PUT/DELETE 等）"
+//	@Param			method			query		string	false	"HTTP 方法（单值或逗号分隔多值，如 GET,POST）"
 //	@Success		200 {object} response.Response
 //	@Security		BearerAuth
 //	@Router			/api/v1/audit/logs [get]
