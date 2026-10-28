@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -42,6 +42,9 @@ lint:
 
 # §12-9 发现链第 1 道：push 决策点必跑（默认待推送窗口；make commit-lint RANGE=HEAD~20 扫指定范围）
 commit-lint:
+hooks:
+	git config core.hooksPath .githooks
+	@echo "✅ 并行提交守卫已装（pre-commit 在途可见+宽面提示 / commit-msg 跨主题 amend 拦截——standards §12-10；新环境开工第一步）"
 	scripts/commit-lint.sh $(RANGE)
 
 # EC2：DSN 外置（可用环境变量或命令行覆盖：make migrate-up MIGRATE_DSN=...）
