@@ -144,7 +144,7 @@ func TestB65_TriggerHook(t *testing.T) {
 			"收件人=处理人（消费 rules recipient_type=assignee）")
 
 		logRepo := repository.NewMessageLogRepo(testPool)
-		logs, total, err := logRepo.List(ctx, 1, 50, "ticket", "ticket_closed_notify")
+		logs, total, err := logRepo.List(ctx, 1, 50, "ticket", "ticket_closed_notify", "", "")
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, total, int64(1), "关单通知须落 message_log")
 		found := false
