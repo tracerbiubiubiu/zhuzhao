@@ -157,6 +157,70 @@ zhuzhao-ui/src/components/CronBuilder/
 
 ---
 
+## 附录 B：任务执行详情观测——三通道终态方案（2026-10-28 定形，C-21+ 输出面 SSOT）
+
+> **沿革**：2026-10-28 初稿（反向 report hub）→ 外审一轮五缺口（params 明文/批次幂等/截断语义/SQLite 写放大/终态守卫）→ 外审二轮**拓扑改「执行端就地写 + 指针回传」**（四缺口结构性消除）→ 本终态稿。两轮外审均经对称验证坐实后采纳（含一处双方都漏、终核补上的点：params 快照打码破坏重试重放）。
+
+### B.0 结论
+
+执行详情 = 一次 run 的三个视图：**LOG**（人读流）/ **PROGRESS**（UI 状态）/ **RESULT**（机器消费）。拓扑 = **在日志产生的地方存下来，把指针放到 run 记录里**（Airflow 同构：执行端日志 + 中心指针 + UI 读回）——执行端（zhuzhao 动作进程内）与 UI 读面（zhuzhao 代理）是同一服务，反向推送那一跳不存在必要性。
+
+### B.1 业界锚点（五铁律，两轮验证归纳）
+
+①日志与 run 记录**分离存储**，记录只放指针+摘要；②一切通道有上限且**显式截断标记**（GHA step summary 1MiB 静默丢弃 = 反面教训）；③机器消费数据（result/progress）**永不从日志解析**（CI 系全体最终补侧通道）；④run 关联键——per-run 路径下隐含，**不另存列**；⑤secret **写入侧精确值打码**（日志面；GHA 过度打码教训=不做模式猜测）。
+
+### B.2 现状事实（代码锚点，2026-10-28 两仓核实）
+
+`Handler` 签名 `Handle(ctx, params) error` **无返回值**（registry.go:28——result 接入须非破坏路径）；回调 2xx 响应体现被 taskrunner **丢弃**（拍板 2026-09-03「无响应体状态字段」，client.go:114——本方案 = 该拍板的**协议修订**）；`job_runs` 无 result 列（DDL 为准——Run 结构 19 字段，error 为唯一结果载荷）；`job_submissions.params` / `job_runs.params` **双明文**且重试重放依赖真值（C11 注释）；taskrunner SQLite/PG 双驱动 + worker 并发默认 10（SQLite 单写者敏感）；taskrunner 有 Redis（asynq）；UI 唯一消费方 = zhuzhao 任务中心代理。
+
+### B.3 终态设计
+
+**B.3.1 RESULT 通道（= C-21+ 件①扩展，随批 ~1–1.5 天）**
+- 数据：taskrunner `job_runs` 加 `result JSONB`（上限 64KB）+ `log_ref TEXT NULL`（指针列预留）；
+- **协议修订**：回调响应 2xx 带 JSON body `{result, log_ref?, log_count?, truncated?}`——缺 body = 无结果（向后兼容）；4xx/5xx 语义不变不带 body；taskrunner 解析落列（一次 UPDATE）；
+- 写入接口**非破坏**：ctx 注入 `jobs.SetResult(ctx, v)` setter 或可选接口 `ResultProvider`（仅产结果动作实现）——**存量动作零改动**；
+- 读面：runs 详情补 result；**列表 params 脱敏**（过渡档整段脱敏；ParamsSchema 扩 `secret:true` 标记后精确打码——标记位 schema 注记随批、实装随日志件）。
+
+**B.3.2 LOG 通道（触发挂账件 2.5–3.5 天含前端 ~1.5 天；触发 = 首个真实排障需求或 phase8 脚本批）**
+- 存储：zhuzhao 本地 `job_action_logs(task_id, seq, level, msg, ts)`——执行端就地写，**可与业务副作用同事务**（要么都成要么都不成）；
+- 写入：ctx 注入 RunLogger（Info/Warn/Error），本地小缓冲异步 flush（同库零网络跳）；
+- 截断：**head+tail 保留**（前 256KB + 后 768KB，中间单行省略 marker `… 省略 N 字节 / M 行 …`）——不用 ring buffer（丢头部=丢排障起点）；
+- 读面：`GET /runs/:task_id/logs?after=seq` 增量拉取（读本地表，实时）；详情页终端视图（2s 轮询增量/级别着色/自动滚动；SSE 推送留既有触发登记）；
+- 指针：结束时回调响应带 `log_ref="zhuzhao:job_action_logs/<task_id>"` + log_count + truncated → taskrunner 存指针；通用列表跳执行端详情（唯一 UI=zhuzhao 代理，无感）；
+- phase8：sandbox-runner pipe 捕获 stdout/stderr → 写自己 store + 回传 log_ref；读面按 scheme 路由拉取（**拉优于推**；契约随 phase8 定形，本批只留 log_ref scheme 不实现）。
+
+**B.3.3 PROGRESS 通道（触发挂账件，同上）**
+- Redis `run:{task_id}:progress`（JSON {percent, step, updated_at}）覆盖写 + TTL——**不落库**（免行膨胀与终态守卫问题）；终态摘要随 finish 路径落 run 记录（天然有守卫）；`ctx.SetProgress(pct, step)` 注入；
+- phase8 脚本：stdout 约定前缀（`##progress:40`，GHA `::` 命令同款）或文件。
+
+**B.3.4 安全与上限**
+- 日志/result 写入侧精确值打码；result 契约 = 动作作者不得放 secret（机器载荷最易回显密钥）；
+- **params 快照保原文**（重试重放依赖完整值——写入侧打码会破坏重试，两轮外审+终核一致）；读面脱敏（B.3.1）+ **静态加密 AES-GCM 独立 backlog 件**（不入本批）；
+- 上限组（拍板点）：result 64KB / 单行日志 4KB / 日志 head+tail 1MB / 保留 30 天（与 runs 清理口径对齐）。
+
+**B.3.5 既有立项对齐**
+B-8 `run.succeeded` emit 的 result 载荷来源 = 件①；B-20 输入侧对称同批 schema；§3.4 详情页 = 读面消费方；phase8 脚本契约（研究稿 05 号）的日志/工件通道与本方案 append→拉取协议对齐。
+
+### B.4 被否决替代（决策记录）
+
+- **反向 report hub（初稿）**：五弱点——热路径 RTT（500ms/次）、批次幂等（(run_id,seq) 唯一键+upsert）、SQLite 写放大（10 并发×2 次/秒行写争锁）、双路 result 分叉、progress 终态守卫；根因 = 错配参照系（Celery/Temporal 中心化上报前提是存在独立中心服务，zhuzhao 执行端即平台自身）。**回退条件**：产品明确要求「任务中心单页看全所有执行端日志」→ 回 push 但推**对象存储**非 DB、仍异步不占热路径（当前无此需求）。
+- **ring buffer**：丢头部恰是排障最需要的起点 + head/tail 双 marker 语义歧义 → head+tail 单 marker 替代。
+
+### B.5 拍板点（四）
+
+1. **协议修订批准**（2xx body——修订 2026-09-03 拍板）；
+2. 上限数值组（64KB/4KB/1MB/30 天）；
+3. 保留期两侧对齐口径（runs 默认 30 天）；
+4. 列表 params 过渡档 = 整段脱敏 vs 等 secret 标记实装（建议前者，先关读面）。
+
+### B.6 量级与排期
+
+件①（result + 协议修订 + 读面脱敏）**~1–1.5 天随 C-21+**（排期随台账 C-21+：走查后单独立批或 phase6 立项批）；日志/进度增强件 **2.5–3.5 天触发驱动**；phase8 拉取契约随 phase8。C-21+ 总账（输入②③/管理面④ ~6 天 + 本件① 1–1.5 天）不变量级框架。
+
+### B.7 验收口径
+
+件①：`ctx.SetResult` → runs 详情可见 result（64KB 截断显式标记）；列表 params 脱敏；**存量动作零改动不回归**；重试重放组装回调 params 完整（回归锚——打码不得进入快照）；协议向后兼容（taskrunner 旧版遇新 body 不炸）。日志件触发后：`ctx.Logger.Info` 详情页 2s 可见；head+tail marker 正确；secret 参数显示 `***`；kill -9 后**已 flush 部分**留存（丢失窗口 = 缓冲 flush 间隔，≤500ms/64KB——验收含此窗口）。
+
 ## 变更记录
 
 | 日期 | 变更 |
@@ -168,3 +232,4 @@ zhuzhao-ui/src/components/CronBuilder/
 | 2026-10-19 | **可点原型随行批（双钻复盘立约——§3.1）**：B4-2 开工首日半天可点原型（预设/专家双模式切换 + 四类预设生成 → next_run 预览，假数据亲点后定稿面板布局）——UX 手感面验证前移至设计定稿前；同日 standards §12-10 立外审截断规则（详 standards 变更记录） |
 | 2026-10-26 | **§3.5 挂账 +1 + §3.6 备忘补记（所有者问询「结果展示/结果落活动列表/数据源=活动列表/计划任务入参」核出）**：①§3.5 新挂账行——任务结果留存/展示（job_runs 无 result 列，error 为唯一结果载荷）+ 结果/数据源 × activelist 两设想（此前零登记，与 phase6 理想态③同族，phase6 README 已加指回注记）；②§3.6 补记——结果展示现状与样例指向研究稿 05 §7/§8；计划任务入参现状 = 定义级静态 JSON（创建后无编辑入口/cron 原样提交/schema 表单维持远期半）。实现零改动，纯登记 |
 | 2026-10-27 | **C-21 升格 C-21+ 任务数据面（所有者"肯定要加、是核心"）**：输入/输出双向绑定面（工单/消息/活动列表 × 任务 params/result）补全——②输入 fetcher 复用 S1 DataFetcher 端口、③输出含 notify_send/activelist 写、①taskrunner result 列；~6 天跨两仓；排期待定（走查后独立批或随 phase6 立项）——台账 C-21+ 块为实施细化 SSOT |
+| 2026-10-28 | **附录 B 定形批——任务执行详情观测三通道终态方案（所有者「整理完整方案落档」）**：拓扑 = 执行端就地写 + 指针回传 + 读面按指针路由（Airflow 同构；否决初稿 report hub——五弱点决策记录在 B.4）；两轮外审对称验证采纳（含终核补点：params 快照打码破坏重试重放→保原文+读面脱敏+静态加密另立件）；范围切分：result/协议修订/读面脱敏并入件①（~1–1.5 天），日志/进度 = 触发挂账件（2.5–3.5 天），phase8 拉取契约随 phase8；拍板点四（B.5）；C-21+ 件①范围与回调协议修订（2xx body——修订 2026-09-03 拍板）均以本附录为 SSOT |
