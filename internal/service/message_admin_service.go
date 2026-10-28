@@ -30,14 +30,17 @@ func NewMessageAdminService(pool *pgxpool.Pool) *MessageAdminService {
 	}
 }
 
-func (s *MessageAdminService) ListLogs(ctx context.Context, page, pageSize int, bizType, tplCode string) ([]*model.MessageLog, int64, error) {
+func (s *MessageAdminService) ListLogs(ctx context.Context, page, pageSize int, bizType, tplCode, status, bizID string) ([]*model.MessageLog, int64, error) {
 	if page < 1 {
 		page = 1
 	}
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	return s.logRepo.List(ctx, page, pageSize, bizType, tplCode)
+	if status != "" && status != "sent" && status != "failed" {
+		return nil, 0, errcode.New(errcode.ErrInvalidParams.Code, "status 须为 sent/failed")
+	}
+	return s.logRepo.List(ctx, page, pageSize, bizType, tplCode, status, bizID)
 }
 
 func (s *MessageAdminService) ListRules(ctx context.Context) ([]*model.MessageRule, error) {

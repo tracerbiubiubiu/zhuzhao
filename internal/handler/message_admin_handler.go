@@ -31,7 +31,7 @@ func (h *MessageAdminHandler) ListLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 	logs, total, err := h.adminService.ListLogs(c.Request.Context(), page, pageSize,
-		c.Query("biz_type"), c.Query("template_code"))
+		c.Query("biz_type"), c.Query("template_code"), c.Query("status"), c.Query("biz_id"))
 	if err != nil {
 		writeServiceError(c, err)
 		return

@@ -30,7 +30,7 @@ func (r *MessageLogRepo) Insert(ctx context.Context, log *model.MessageLog) erro
 }
 
 // List 分页列表（管理面）。
-func (r *MessageLogRepo) List(ctx context.Context, page, pageSize int, bizType, tplCode string) ([]*model.MessageLog, int64, error) {
+func (r *MessageLogRepo) List(ctx context.Context, page, pageSize int, bizType, tplCode, status, bizID string) ([]*model.MessageLog, int64, error) {
 	where := "WHERE 1=1"
 	args := []any{}
 	if bizType != "" {
@@ -40,6 +40,16 @@ func (r *MessageLogRepo) List(ctx context.Context, page, pageSize int, bizType, 
 	if tplCode != "" {
 		args = append(args, tplCode)
 		where += ` AND template_code = $` + strconv.Itoa(len(args))
+	}
+	// 排障筛选（2026-10-28 发送记录筛选批）：status 精确（sent/failed）、
+	// biz_id 精确（核对某工单的通知）——与分页正交，全部可选
+	if status != "" {
+		args = append(args, status)
+		where += ` AND status = $` + strconv.Itoa(len(args))
+	}
+	if bizID != "" {
+		args = append(args, bizID)
+		where += ` AND biz_id = $` + strconv.Itoa(len(args))
 	}
 	var total int64
 	if err := r.db.QueryRow(ctx, `SELECT count(*) FROM message_log `+where, args...).Scan(&total); err != nil {
