@@ -249,7 +249,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 方法/路径 | 权限 | 用途 |
 |-----------|------|------|
 | POST `/api/v1/notifications/templates`·`/templates/update`·`/templates/delete` + GET 列表（**2026-10-16 外审修正：原 PUT 违 §3-1 改 house style**——code 入 body） | 通知配置管理权限（对齐 notification_configs 既有码） | 模板 CRUD + 删除守卫（被 rules 引用 → 拦截，与 S1 影响分析同件） |
-| POST `/api/v1/notifications/templates/preview` | 同上 | 模板干跑渲染（body+vars 样例 → 渲染结果，零落库——A.8.1 测试数据预览；复用 A.4 Render 零新渲染逻辑，2026-10-16 业界核验批新增设计行） |
+| POST `/api/v1/notifications/templates/preview` | 同上 | 模板干跑渲染（body+vars 样例 → 渲染结果，零落库——A.8.1 测试数据预览；复用 A.4 Render 零新渲染逻辑，2026-10-16 业界核验批新增设计行）**→ H-6 已立项**（2026-10-27 通知能力增强批，含变量选择器 picker 与前端预览面板；动态字段值注入 H-3③a 为预览出真值的前置） |
 | GET `/api/v1/notifications/variables`（query: biz_type+event） | 同上 | **变量字典树**（键+人读标签——A.8.1 变量选择器/A.8.2 字段引用下拉数据源；工单域与 S1 field_meta 同源；phase6 risk 自供同款，2026-10-16 新增设计行）；**查询粒度（评审批 P2-1）**：模板页无 event 上下文→按 biz_type 取各 event 并集（超集）展示；规则保存按精确 (biz_type,event)+类型维度（动态字段 ⊆ 该 type_code field_meta，软告警——A.5 守卫②） |
 | GET `/api/v1/notifications/logs` | 同上 | message_log 列表（PageData §3-6） |
 | GET/POST `/api/v1/notifications/rules`、启停 | 同上 | 订阅规则管理 |
