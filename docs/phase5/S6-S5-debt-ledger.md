@@ -68,7 +68,34 @@
 | C-18 | S5 | ListDeleted 无索引（000049 partial idx 已建—— 态查询用）/ Mark 失败 500 残留行。**✅ 已拍 b 案（2026-10-27）改判人判断型**：低频渐进有体感，观察者=收「附件页慢」报障的维护者+段收口走查人；巡检 SQL 即观测面=`SELECT status, count(*) FROM file_objects GROUP BY status`（异常增长即信号）——已随本行入档，勿另立埋点 | P3 量级到了（人判断型） | — |
 | C-19 | S6 | ~~settings Upsert version 乐观锁~~ **✅ 已落码（000050+settings_service.go:232 CAS+expected_version 双测试——早于本台账终版即已交付，登记滞后——v3 审计 L-2 补标）**。（2026-10-27 编号消歧注：外审 F-D2 原发现覆盖 rules/settings 两面——rules 面=A-3[000060]，settings 面=本条[000050]；原括注「F-D2——000060 在途收尾」迁移号系串写，以本行为准） | 下个迁移顺位 |
 | C-20 | S6 | **outbox 持久化事件**：`DomainEvent` 加 EventID + 发布点事务内落 `domain_event_outbox`（12 处收敛于 emitEvent 透传 tx）+ 骑既有 CronScheduler 轮询投递复用现总线与全部订阅者 + 订阅者幂等化（inbox `unique(event_id,user_id)` / 通知 message_log 按 event_id 查重）——语义 at-most-once→at-least-once、崩溃不丢、可重放；零新依赖 ≈1–2 天（03 号 outbox 备选 / 11 号 §5.10）。**注**：MQ/asynq 本身不解决「commit 后崩溃」窄缝（DB 与队列双写），outbox 为必经之路；跨进程消费者出现时仅换轮询器投递目的地，业务代码不动 | 出现「丢一条即事故」的消费者（phase6 R3 若不走对账）或跨进程消费者（taskrunner/未来 SOC 平台订阅工单事件） |
-| C-21 | S4 | 任务结果留存/展示（taskrunner result 存储+端点——`job_runs` 现无 result 列，error 为唯一结果载荷）+ 结果可配置落 activelist / 任务数据源可配为 activelist 两设想 | phase7/8 脚本平台立项批（或所有者明示单独立项） | 04 号 §3.5（2026-10-26 登记） |
+| C-21 | S4 | ~~任务结果留存/展示 + 结果/数据源 × activelist 两设想~~ **⬆ 升格 C-21+ 任务数据面（2026-10-27 所有者"肯定要加、是核心"——输入/输出双向绑定面补全，不再等 phase7/8）** | 排期待定（phase5 走查后单独立项 或 随 phase6 立项批） | 04 号 §3.5（2026-10-26 登记 / 2026-10-27 升格） |
+
+### C-21+ · 任务数据面：输入/输出双向绑定（2026-10-27 立项细化——核心件）
+
+**问题**：任务中心现为数据孤岛——params 手写静态 JSON 进、跑完啥也不出（`job_runs` 无 result 列）；接上工单/消息/活动列表才有业务价值（所有者："工单、消息、活动列表等作为任务的输入、输出，肯定要而且是核心"）。
+
+**目标形态**：
+```
+输入绑定（提交/cron 触发时按 source 解析填充 params）
+  ├─ 工单：按单取字段（custom_data/状态/处理人）——"每天 9 点汇总昨日超时单"
+  ├─ 消息：按 biz_type+event 取 message_log 行
+  ├─ 活动列表：按 typeName+condition 查询行
+  └─ 静态值：手写 JSON（既有模式保留）
+输出绑定（回调完成后按 sink 写回）
+  ├─ 工单：结果写指定单评论/字段
+  ├─ 消息：经 S6 规则发通知（notify_send action——taskrunner.md 已预留）
+  └─ 活动列表：结果行写入 typeName
+```
+
+**拆分四件（跨两仓，合计 ~6 天）**：
+| # | 件 | 仓 | 量级 | 复用 |
+|---|---|---|---|---|
+| ① | result 存储：`job_runs` 加 result/output 列 + 读端点 | taskrunner | ~1 天 | — |
+| ② | 输入绑定：提交时按 source 解析填充 params（工单/消息/活动列表三 fetcher） | zhuzhao | ~2 天 | **S1 DataFetcher 端口+registry fail-closed（B1-4 刚落）** |
+| ③ | 输出绑定：回调后按 sink 写回（工单评论/notify_send/activelist 写） | zhuzhao | ~2 天 | notify_send（taskrunner.md 预留）/activelist 网关 |
+| ④ | 管理面：任务定义页输入/输出绑定配置段（source/sink 选择+参数映射） | ui | ~1 天 | S1 属性面板模式 |
+
+**为什么是核心**：①任务中心从数据孤岛变业务枢纽；②phase6 R3 暗依赖（风险整改自动化任务要读写工单/风险数据）；③输入 fetcher 与 S1 DataFetcher 同构——registry/白名单/审计三纪律直接沿用。
 
 ## D. 外部依赖 / 远期
 
