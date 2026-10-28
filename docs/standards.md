@@ -208,6 +208,7 @@
 
 | 主题 | 权威文档 |
 |---|---|
+| 进程内事件面公约（DomainEvent / at-most-once / Drain） | standards §14（机制细节：phase5/06 号）
 | 权限架构（PDP/PEP、网关、策略库、ReBAC 触发器） | design-decisions §25 |
 | 软删组织委托语义 / SoD / Phase 3 重定位 / SSO | design-decisions §21 / §20 / §22–24 |
 | 服务实例基线（允许差异、taskrunner 对齐清单 C 系列） | phase3/16 号 §9 |
@@ -222,6 +223,27 @@
 | 借鉴/参考项目出处与致谢（新借鉴随批登记纪律） | acknowledgments.md |
 
 ---
+
+## 14. 进程内事件面公约（DomainEvent——全生态）
+
+> **立法（2026-10-28 所有者拍板，gap-audit P1-7 落定）**：进程内事件面是 S6/S3a/phase6-R3/任务链多域共用基础设施——公约层 SSOT 在本节，机制细节锚 [phase5/06 号](phase5/06-s6-message-notification.md)（S6=第一消费者）；新消费者（含跨进程）一律遵本节约。**§13 索引行同步。**
+
+1. **发布时机**：emit 一律在业务事务 **commit 之后**（commit 前崩溃=事件不发生；commit 后崩溃=事件已发——进程内 **at-most-once** 已拍，勿在文档另立口径）。
+2. **订阅两层**：代码级 `HookRegistry.Subscribe(bizType, name, handler)`（消费逻辑）+ 配置级 message_rules（外发路由）——两层各管各的，禁止用规则面承载业务逻辑。
+3. **优雅退出**：Shutdown 走 `Drain`（closed 闸——Drain 后拒收残发，happens-before 保证；预算 8s）。并发细节终修=G-30，勿回退实现。
+4. **消费者义务**：at-most-once 下消费者无需幂等；**升级 at-least-once 的唯一正路 = C-20 outbox**（台账在档）——届时消费者幂等化（inbox unique(event_id,user_id) 形态）为前置。
+5. **禁止硬编码直调**：跨域消费（如风险关闭联动）必须走订阅钩子——把消费方逻辑焊进生产方 service = 破坏领域隔离（phase6 §3 拍板），评审拦截。
+6. **新域消费者随批三件**：①本节清点表加行 ②装配进 boot 期望订阅集 ③守卫测试（boot 断言——R1/G-5 装配遗漏族的结构性解，随 phase6 Week 0 落地）。
+7. **升级信号三条**（任一出现→重评 outbox/C-20）：跨进程消费者出现 /「丢一条即事故」级消费者出现 / 需要重放。
+
+**消费方清点（2026-10-28 时点——以代码 grep 为准，新消费者随批更新）**：
+
+| 侧 | 线 | 落点 |
+|---|---|---|
+| 订阅 | ticket/ops 两域 → MessageDispatcher（外发通知） | app.go 装配 |
+| 订阅 | ticket/ops 两域 → InboxService（站内信） | inbox_service.go |
+| 生产 | 工单生命周期（Create/Update/Assign/Close/Transition/cc/标签） | ticket service emitEvent |
+| 生产 | timeout 扫描 / cron 失败 / 动作失败 / 存储用量越限 | 各 cron/ops emit 点 |
 
 ## 变更记录
 
@@ -258,3 +280,4 @@
 | 2026-10-22 | §12-9 ⑤ commit-lint 增**窗口级 swagger 新鲜度检查**（rule 5）——触及 internal/model/handler 的窗口本地重跑 swag 后 docs 生成物须零漂移（对齐 CI lint 形态、防线由 push 后红窗**前移至 push 决策点**）；红窗三次实证 f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」。同批：F-B2 悬空编号落档 + AssignMenus 并发回归测试补课（变异验证 8/8 红——§12-10 公约首例应用） |
 | 2026-10-23 | §12-9 增**披露一致性**子条（v3 审计实证四次同型错位后成文）：提交正文改动摘要与实际文件集必须一致——声称「XX 同步」则该文件必须在 `git show --stat` 集中；代提交归属错位须正文显式声明；动因=dc9acd7「review/11 同步」声称落空+33b42a7/b101cc6 归属错位+b743c7f 未含 errors.go。同日 §12-9 ⑤ commit-lint 增**规则 ⑤ 纯空正文检测**（f3e321d——第 3 行起非空行数=0 即违例，守住三节必附底线；实证 c5296a7/f780e8b 漏网被抓、有正文提交零误报） |
 | 2026-10-26 | §4 增端口分配纪律条（端口权威=ops/port-allocation.md；先查表再取号；冲突走 env 覆盖） |
+| 2026-10-28 | **+§14 进程内事件面公约**（gap-audit P1-7 待拍板落定——所有者拍 b：公约层 SSOT 入 standards，机制细节锚 phase5/06 号；含消费方清点表与守卫纪律）；§13 索引 +事件面行 |

@@ -3,6 +3,7 @@
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：与 S2 错峰衔接（S1 后；单人串行——S6 一期先于 S2）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
 > **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
+> **事件面公约注（2026-10-28 P1-7 拍板）**：进程内事件面全生态公约层 = [standards §14](../standards.md)——本段为第一消费者，机制细节锚仍在本稿（事件面基建/Drain 语义）；新域消费者按公约三件随批。
 
 ## 1.5 通知能力三入口（2026-10-23 对话设计批——架构澄清）
 
@@ -311,3 +312,4 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-10-25 | **四程：000078 删 message_center 菜单行 + inbox:read 退役**（G-23 收尾）：000076 只 visible=false 过于保守——管理端 GetTree 含隐藏节点，「角色管理→分配菜单」树里该行可见可勾、勾了无效；复核往返门禁语义（行在两次全量 up 终态均不存在=零漂移，000073 删叶子行先例）后补删。`inbox:read` 码随行退役（三端点已 selfService，无第二使用点）。ui 侧 viewNames 派生器补 DELETE 形态、icons 撤 `message` 裸名。消息中心自此为纯常量路由页：入口=铃铛，权限=身份作用域（登录即可），与菜单/角色体系完全解耦 |
 | 2026-10-26 | **外审 v4 修复批（S6 域两条）**：①**P1 深链失效**（#1）：`notify_hook` 兜底 `link` 写的是 `/ticket/detail/{id}`，ui 路由实为 `/tickets/:id`——该处为全仓**唯一** link 产生点（所有 emit 点不带 link），000053/000062/000064/000071 六枚种子模板的 `{{ticket.link}}` 此前点击全部 404；`inboxLink` 同概念写法正确，一错一对并存两段；msgrender fixture 把错值固化成断言致测试永不发现——两处同修。②**站内信渲染/收件人**（#8）：`renderTitle` 改单次扫描（替换入的值不再被重新扫描——修前按 payload 逐键 ReplaceAll 且 map 随机序，标题含 `{{human_key}}` 字面可被二次展开，msgrender 有同款防护此处平行实现曾缺）；`ticket.updated/commented` 不再给 actor 自己落站内信（处理人编辑自己的单收「工单已更新」=噪音）——assigned/cc_added 保留 actor 可为收件人（TestB67「cc 收件人落库」既定语义）；**未动**：inbox 收件人路由接 message_rules、全局 actor 排除——属产品拍板，台账 G-29 与 G-7 并账。另 TestB67 两事件紧挨 Dispatch 的落库序 flaky 修为先落后发 |
 | 2026-10-26 | **通知面收口批：模板/规则管理面编辑化 + notify 动作模板参数生效**：①通知配置页只读→编辑面（模板 CRUD：is_system 置灰、channel=uip 一期固定；规则 CRUD：事件词表下拉/模板下拉/收件人四档/fixed 数字校验，upsert 同键=改绑）——「多模板」对管理员成为真能力（B6 polish 欠项销账）。②notify 动作 params.template 生效：EmitActionNotify 透传 template_code → dispatcher 覆盖规则默认（**规则仍是开关与兜底**）；词表补 ticket.action_notify。③**迁移 000079** 种子模板 ticket_action_notify + 规则（cc 档）——**翻案**「无种子默认静默」登记（拍板：显式配动作而静默是坑；删规则即回静默）。E2E 27 spec/34 用例全绿；四档 249/0 + 往返 79 对。任务完成通知（run 成败接模板）仍属 B-8/taskrunner 契约面挂账未动 |
+| 2026-10-28 | 头注 +事件面公约锚（P1-7 拍 b：SSOT=standards §14，本稿=机制细节锚——归属落定不搬家） |
