@@ -150,7 +150,7 @@
 
 - [11 号](../review/11-project-control.md) §6 健康状态 / §8 B 档随行清单；[review/13](../review/)（BK-11 复盘 SSOT）；[review/14](../review/14-b13-permission-matrix-2026-10-26.md)（B-19 权限矩阵）。
 - [phase5 README §6](../phase5/README.md) 端口行（RiskSourceConnector/IngestSource/AssetResolver/TodoEventPusher/UIP 差距/存储二 driver/SSE/AI 目录）。
-- [phase5/04 号 §3.7](../phase5/04-s4-task-console-ux.md) **任务控制台 UX 二期**（2026-10-28 登记不排期——二级菜单拆分/任务定义详情页/分类第一档；执行详情区数据依赖 C-21+ 件①；排期建议随 C-21+ 立项批或 06 号）。
+- [phase5/04 号 §3.7](../phase5/04-s4-task-console-ux.md) **任务控制台 UX 二期**（2026-10-28 设计定形——分类任务库两栏/执行页左参数右运行历史/定义管理分权〔task:manage 专属〕/AL 绑定深链/日志导出；四子菜单迁移；执行详情区依赖 C-21+ 件①；分期批1 UI 主批+菜单迁移/批2 category 列/批3 随件①）。
 - runbook §3（存储升级纪律）/ §6（迁移回滚操作序——G-28）。
 - 相邻仓：**zhuzhao-ui phase5 分支**（未合）；taskrunner（B-8 契约面/callback 对端）；activelist（ADR-003 SSOT 在其仓）；utils/activelist 零改动预期。
 
