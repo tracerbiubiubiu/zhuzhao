@@ -1161,7 +1161,7 @@ paths:
         in: query
         name: employee_no
         type: string
-      - description: HTTP 方法（GET/POST/PUT/DELETE 等）
+      - description: HTTP 方法（单值或逗号分隔多值，如 GET,POST）
         in: query
         name: method
         type: string
