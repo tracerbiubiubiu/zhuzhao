@@ -155,7 +155,7 @@
 | G-19 | ui | UserPicker `/^\d+$/` 分流工号查询，E 前缀工号永走 username 分支——工号搜索不可用 | P2 | ✅ ui e88173bd | 销账 |
 | G-20 | ui | viewNames 派生器两盲区（INSERT…SELECT 页面行只认别名 p 且一律记按钮 / UPDATE visible 不重放）+「零动作」守卫从未登记 0 形同虚设 → system_setting 无 defineOptions、system_notification 名错，两页 keep-alive 恒不命中 | P2 | ✅ 本批 | 销账 |
 | G-21 | ui | 菜单 icon 映射漏 intel/message（icons.test 种子清单手工维护未同步）——侧栏图标静默空白 | P3 | ✅ 本批 | 销账 |
-| G-22 | ui/CI | viewNames 同级主仓固定拉 main——特性分支种子页在 CI 不进期望名单（反向守卫会误报孤岛） | P3 | ✅ 本批（同名分支优先，push 后核 CI 转绿） | 销账待核 |
+| ~~G-22~~ | ui/CI | ~~viewNames 同级主仓固定拉 main——特性分支种子页在 CI 不进期望名单（反向守卫会误报孤岛）~~ **✅ 销账（2026-10-28 核对：phase5 分支 CI 连续绿）** | P3 | ✅ 本批（同名分支优先） | 销账 |
 | G-23 | S6-2 | 消息中心是否默认全员可见：铃铛对所有登录用户渲染，而 /messages 由菜单驱动仅绑定角色可达（000074 后=admin+superadmin），operator/viewer 点铃铛 404 | 拍板 | ✅ 按建议实施（三程 2026-10-25）：a 变体=inbox 三端点移 selfService（自数据）+ ui /messages 常量路由 + 000076 菜单行惰性化；入口=铃铛，侧栏项消失 + **000078** 删幽灵行/inbox:read 退役（四程） | 销账 |
 | G-24 | ui | SEED_ICON_NAMES / MENU_ICON_MAP / viewNames STATIC_ROUTES 三清单手工维护——派生化（从迁移种子/routes.ts 解析） | P3 | 登记 | 触发=再漏一次 |
 | G-25 | ui | phase5 新能力 E2E spec 为零——五件待补：CC/标签、S2 画布、S6-2 消息中心+铃铛、S3a 转换+规则页 | P1 | ✅ 本批二程（26 spec / 33 用例） | 销账 |
