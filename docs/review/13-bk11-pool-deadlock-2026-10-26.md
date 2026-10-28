@@ -64,7 +64,7 @@
 
 另：`fileFieldKeys` 每次建单读类型字段 schema——定义/配置类数据业界标配进程内缓存（流程引擎缓存已部署流程定义是 Jira/ServiceNow 常态），缓存化后该热路径读从根上消失。
 
-## 7. 彻底方案：连接解析跟随 ctx（自研轻量事务传播器——登记待拍板）
+## 7. 彻底方案：连接解析跟随 ctx（自研轻量事务传播器——✅ 试点批已拍 2026-10-28）
 
 ### 7.1 机制
 
@@ -116,8 +116,8 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 | 项 | 状态 |
 |----|------|
 | hotfix + 测试钉池 + 锤击超时（`039aca6`） | ✅ 已合，CI 绿 |
-| 彻底方案 dbtx 连接解析（§7） | ⬜ 待拍板——建议至少做试点批 |
-| 请求级 deadline 中间件（§7.6 批3） | ⬜ 待拍板（独立小件） |
+| 彻底方案 dbtx 连接解析（§7） | ✅ **试点批已拍（2026-10-28 所有者）**：dbtx 包 + ticket 域切换 + BK11 负向测试（故意事务内调池读——断言不挂死且 Warn 在案）+ 全量集成回归，~0.5–1 天；排期 = phase5 走查后小批或 phase6 启动批随行（Week 0 动 ticket 域顺手，随行登记 = [phase6/05 号](../phase6/05-launch-batch.md) §3）；批 2 推广批（19 repo + standards 成文）待试点结论 |
+| 请求级 deadline 中间件（§7.6 批3） | ⬜ 未单独拍——随试点批实施时顺带评估（~半天独立小件，互补非替代） |
 | humankey 计数行表化（消每日 SEQUENCE 目录膨胀，顺带可进事务） | ⬜ 挂账，随下次动 humankey 顺带 |
 | fileFieldKeys 类型 schema 读进程内缓存（§6 观察——热路径省一次 DB 往返、消一个嵌套风险点） | ⬜ 挂账，随 dbtx 推广批评估或独立小件 |
 
@@ -132,3 +132,4 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 - 2026-10-26 初稿：当日定位→先红复现→修复（`039aca6` CI 绿）→业界对照→彻底方案登记，一气呵成。
 - 2026-10-27 增补：**同类残留 Update 修毕**——初稿只修 Create 两嵌套点，外审核出 `Update` 锁内窗口的 `validateCustomData`/`applyFormulas` 仍走池读（`ListTicketTypeFields` 无 tx 变体）；比 Create 更直接：N≥MaxConns 个并发 Update（带 custom_data）各持 1 连接各要第 2 个，**自闭环死锁无需第三方**（生产 4 核默认池=4 即 4 并发中招）。修法=repo `RowQuerier` 接口 + `ListTicketTypeFieldsTx`（`039aca6` 预取方案的姊妹件：不预取、改走 tx 连接，保 F-B1 锁内合并语义不动）；`TestBK11_UpdateHammer`（6 并发×10 轮×MaxConns=4，每轮 5s 兜底）先红（round 0 ctx deadline）后绿（0.12s）。
 - 2026-10-27 增补二：**humankey 并发引导竞态**（双锚验证回声）——`TestBK11_CreateVsMoveHammer` 隔离跑（每次全新容器）首轮 6/6 红：当日首个并发 `Next()` 同建 `seq_<prefix>_<date>`，`CREATE SEQUENCE IF NOT EXISTS` 对 pg_class 目录检查非原子撞 23505（duplicate key pg_class_relname_nsp_index）——039aca6 把 keyGen 提事务外使并发窗口更齐（原在 tx 内同样存在，窗口更散）。生产暴露面=每日首两个并发建单同时落地（概率低但真）；修=23505 视同「已被并发方建成」继续 nextval，隔离跑 ×5 全绿。
+- 2026-10-28 拍板：**dbtx 试点批 ✅（所有者「可以，落档」）**——§7 彻底方案按建议拍试点（机制/成本/边界详 §7.1–7.5；判断依据=hotfix 防不住系实证[Create/Update 连犯两次]+ctx 全链穿透[26/26 签名零改动]+单域可逆）；随行登记 phase6/05 号 §3（走查后小批或启动批随行，不单开）；deadline 中间件（批 3）未单独拍、随试点实施顺带评估。
