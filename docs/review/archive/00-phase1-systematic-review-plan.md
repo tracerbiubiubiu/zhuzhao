@@ -3,7 +3,7 @@
 > **制定日期**：2026-08-21
 > **执行方式**：AI 检查 agent 编排（主会话统筹）+ 项目负责人人工复核并行推进
 > **检查范围**：`internal/` 全部 Go 源码（约 50 文件）↔ `docs/` 五组文档体系（phase1 / modules / api / design / proposal）
-> **定位**：继 [11-code-review.md](../phase1/11-code-review.md)（单轮审查，12 项已修复）与 [12-phase1-acceptance-report.md](../phase1/12-phase1-acceptance-report.md)（验收核查）之后的**第三轮系统性全库检查**，目标是零死角覆盖 + 结果交叉验证。
+> **定位**：继 [11-code-review.md](../../phase1/11-code-review.md)（单轮审查，12 项已修复）与 [12-phase1-acceptance-report.md](../../phase1/12-phase1-acceptance-report.md)（验收核查）之后的**第三轮系统性全库检查**，目标是零死角覆盖 + 结果交叉验证。
 
 ---
 

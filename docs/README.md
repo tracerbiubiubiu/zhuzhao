@@ -10,6 +10,7 @@
 |------|------|
 | **`dev`** | 唯一集成主线；文档 SSOT；代码 PR 合入目标 |
 | **`feature/step-N-*`** | Phase 1 短生命周期实现分支（从 `dev` 切出，合入后删除） |
+| **`phase<N>`** | Phase 4/5/6 长周期阶段分支（实施期主线，完成定义全绿后合回 main 删除——现行 `phase5`） |
 
 `docs/phase1/` 等为**文档目录**，与 Git 分支无关。详见 [phase1/README.md §Git 分支策略](./phase1/README.md#git-分支策略)。
 
@@ -19,7 +20,7 @@
 docs/
 ├── README.md                        # 本文件，文档索引
 ├── VISION.md                        # 产品定义与 MVP 边界（范围裁决锚点，必读）
-├── roadmap.md                       # 三阶段实施路线图总览
+├── roadmap.md                       # 分阶段实施路线图总览（Phase 1–6 已立项 + 7–11 研究稿导航）
 ├── standards.md                     # 工程公约 SSOT（代码/API/迁移/安全公约；AGENTS.md 引用，zhuzhao/taskrunner/activelist 全生态适用）
 ├── acknowledgments.md               # 致谢与借鉴出处（借鉴/参考项目集中登记；新借鉴随批登记）
 ├── docs.go / swagger.json / swagger.yaml  # ⚙️ swag 生成物（make swag 输出，勿手改）
@@ -83,10 +84,10 @@ docs/
 │   └── 17-uaa-integration.md        # M-UAA：公司统一权限平台对接（已立项待内网启动）
 │
 ├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
-├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段，规划草案未排期；SSOT = phase5/README.md）
-├── phase6/                          # Phase 6：风险管理模块（规划草案，未排期；硬前置=phase5 S1/S2/S6+S10；SSOT = phase6/README.md）
+├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段 ✅ 全部交付·走查收口中；SSOT = phase5/README.md）
+├── phase6/                          # Phase 6：风险管理模块（已立项转执行态——六组拍板闭环、00/06 已批准、合 main 暂缓待 phase5 测试收口；SSOT = phase6/README.md）
 │
-├── review/                          # 审查记录（00–10 = Phase 1/2 历史快照；11 = 活文档·项目控制台）
+├── review/                          # 审查记录（archive/ = 00–10 历史快照；11 = 活文档·项目控制台；12–14 = 复盘/权限矩阵等收官产物）
 ├── api/                             # API 契约（后端 SSOT）
 │   ├── response.md                  # 响应体 Envelope
 │   └── errcode.md                   # 业务错误码
@@ -110,7 +111,7 @@ docs/
 
 | 文档 | 定位 | 读者 |
 |------|------|------|
-| `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划 | 所有开发者 |
+| `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划（⚠ 2026-08 v0.6 后未回填——回填登记债台账 L-5；现行权威 = review/11 + 各阶段 README） | 所有开发者 |
 | `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
 | `rbac-inheritance-and-cascade.md` | RBAC 继承、业界对照、删改级联矩阵（**Phase 1 不实现**） | 架构 review |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
@@ -152,7 +153,7 @@ docs/
 
 ### phase1/ phase2/ phase3/ — 分阶段实现计划
 
-三阶段实施计划，每阶段一个目录，含 README 大纲和各模块详细计划。
+分阶段实施计划（phase1–6 各一目录），含 README 大纲和各模块详细计划。
 
 | 阶段 | 目标 | 部署形态 |
 |------|------|---------|
@@ -160,9 +161,9 @@ docs/
 | [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 → 2c 组内委托 | 单实例 Docker Compose |
 | [phase3/](./phase3/README.md) | 重定位后（§23）：通用能力底座 + 内网迁移——M-E 事件/任务总线（taskrunner）/ M-A activelist / M-HR / M-UAA🚦 / M-Mig；生产加固类随 M1 🚦 | 单实例起步，多实例随触发 |
 
-### roadmap.md — 三阶段总览
+### roadmap.md — 分阶段总览
 
-跨阶段的全景视图，一页看清三阶段的核心目标、模块清单和部署形态。详见 [roadmap.md](./roadmap.md)。
+跨阶段的全景视图，一页看清各阶段的核心目标、模块清单和部署形态。详见 [roadmap.md](./roadmap.md)。
 
 ### api/ — API 契约
 
@@ -208,6 +209,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 | [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳 |
 | [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳 |
 | [ADR-003](./adr/ADR-003-activelist-integration-form.md) | activelist 作为独立服务集成形态 | 已采纳 |
+| [ADR-004](./adr/ADR-004-ticket-type-template-flow.md) | 类型/模板/流程三者关系（A 案单向引用——条件左值引用简单、零迁移） | 已采纳（2026-10-27 建档） |
 
 ## 文档规范
 

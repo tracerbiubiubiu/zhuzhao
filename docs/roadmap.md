@@ -141,7 +141,11 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ### Phase 6：风险管理模块（2026-10-08 立项；**已立项转执行态——六组拍板闭环、启动段 00/06 号批准，2026-10-27/28；合 main 暂缓待 phase5 测试收口**；[design-decisions §28](./design/design-decisions.md)）
 
-> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（S1/S2/S6+S10）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；MVP ≈ 4–6 周。**（2026-10-28 级联补注：启动段 [phase6/00 号](./phase6/00-flow-engine-v2.md) 引擎 v2 + [06 号](./phase6/06-ticket-completeness.md) 工单完善批已批准、[07 号](./phase6/07-backlog-and-triggers.md) 挂账/触发总索引已建——本行「未排期/4–6 周」系初估，现行量级与拍板 SSOT = [phase6/05 号 §6.8 T1](./phase6/05-launch-batch.md)（R1 开工前 ≈7–8 周/整体 ≈13–16 周）；roadmap 本段其余细节以 phase6/README 为准。）**
+> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（S1/S2/S6+S10）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；MVP ≈ 4–6 周。**（2026-10-28 级联补注：启动段 [phase6/00 号](./phase6/00-flow-engine-v2.md) 引擎 v2 + [06 号](./phase6/06-ticket-completeness.md) 工单完善批已批准、[07 号](./phase6/07-backlog-and-triggers.md) 挂账/触发总索引已建——本行「未排期/4–6 周」系初估，现行量级与拍板 SSOT = [phase6/05 号 §6.8 T1](./phase6/05-launch-batch.md)（R1 开工前 ≈7–8 周/整体 ≈13–16 周）；roadmap 本段其余细节以 phase6/README 为准。）****
+
+### Phase 7–11：安全运营平台后续阶段（研究稿，未立项）
+
+> 定位 = 接入扩源 → 自动化能力中心 → 处置闭环与编排引擎 MVP → SOAR playbook 迁回 → 智能面（门控）。**无执行文档**——完整形态/切片/出口标准/时间线唯一登记处 = [deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md](../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md)（研究稿，D 系拍板状态见其 README）；docs 内 phase7/8 引用（phase5 README §6 端口表/债台账 C-21/phase6 07 号）均指向该稿。立项时建 docs/phaseN/ 并回灌本段；deliverables 归位 docs/ 见债台账 L-1。
 
 ---
 
@@ -164,7 +168,6 @@ docs/
 ├── design/                     # 架构设计（高层）
 │   ├── architecture.md         # 总体架构文档
 │   ├── design-decisions.md     # 设计决策记录
-│   ├── implementation-plan.md  # 已废弃，见 phase1/
 │   └── system-comparison.md    # 新旧系统对比
 ├── proposal/                   # 方案提案（详细）
 │   ├── overview.md             # 总览
@@ -190,7 +193,7 @@ docs/
 │   └── 02–09 已编写（能力域/阶段文档，2026-09 起陆续完成；按需启用）
 ├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
 ├── phase5/                     # Phase 5 十段全清·收口中（通用能力底座线——phase5 分支，待合 main）
-├── phase6/                     # Phase 6 风险管理模块（设计稿 00–05 号齐备，未排期；硬前置=phase5 基线收口）
+├── phase6/                     # Phase 6 风险管理模块（段级稿 00–07 号；已立项转执行态——00/06 已批准、合 main 暂缓待 phase5 测试收口）
 ├── roadmap.md                  # 本文：跨阶段总览
 ├── api/                        # API 文档
 ├── ops/                        # 运维文档

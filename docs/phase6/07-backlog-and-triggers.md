@@ -6,7 +6,7 @@
 
 ## 1. phase6 全貌（一段话）
 
-**启动段 [00 号](00-flow-engine-v2.md)**（P6-R0 引擎 v2：向导式设计器/定义快照+deploy/自动路由+`field:` 取人/条件构建器，B0-1…B0-5，≈3.5–4 周）**∥ [06 号](06-ticket-completeness.md)**（P6-R0b 工单完善批 B1/B2/B3 十件，与 00 号交错）→ **Week 0**（基建七件，8.5–12 天）→ **[R1](01-r1-ingest-ledger.md) 汇聚台账**（mock 漏扫源先行）→ **[R2](02-r2-assessment-treatment.md) 评估处置** → **[R3](03-r3-ticket-linkage.md) 处置联动**（核心价值段）→ **[R4](04-r4-metrics-reports.md) 度量报表**。拍板 SSOT = [05 号 §6 T1](05-launch-batch.md)（六组汇总）；量级：R1 开工前 ≈7–8 周、phase6 整体 ≈13–16 周。启动段+完善批把硬前置从「消费」变「强化」，风险模块开工时处置执行面即达「服务台工单比较完善」态。
+**启动段 [00 号](00-flow-engine-v2.md)**（P6-R0 引擎 v2：向导式设计器/定义快照+deploy/自动路由+`field:` 取人/条件构建器，B0-1…B0-5，≈3.5–4 周）**∥ [06 号](06-ticket-completeness.md)**（P6-R0b 工单完善批 B1/B2/B3 十件，与 00 号交错）→ **Week 0**（基建七件，9.5–13 天）→ **[R1](01-r1-ingest-ledger.md) 汇聚台账**（mock 漏扫源先行）→ **[R2](02-r2-assessment-treatment.md) 评估处置** → **[R3](03-r3-ticket-linkage.md) 处置联动**（核心价值段）→ **[R4](04-r4-metrics-reports.md) 度量报表**。拍板 SSOT = [05 号 §6 T1](05-launch-batch.md)（六组汇总）；量级：R1 开工前 ≈7–8 周、phase6 整体 ≈13–16 周。启动段+完善批把硬前置从「消费」变「强化」，风险模块开工时处置执行面即达「服务台工单比较完善」态。
 
 ## 2. 一致性核查结果（2026-10-28，只看边界/演进一致性）
 
@@ -125,7 +125,7 @@
 
 | 触发项 | 触发信号 | 权威登记处 | 量级/备注 |
 |---|---|---|---|
-| D-2 M-UAA | 内网启动 | 债台账 D-2 / [UAA 立项](../proposal/) | TodoEventPusher 随批 |
+| D-2 M-UAA | 内网启动 | 债台账 D-2 / [UAA 立项](../phase3/17-uaa-integration.md) | TodoEventPusher 随批 |
 | M-HR（manager_id 轴/离职处置） | 内网启动 | 债台账 C-10 / hr-directory-sync | Week 0 已 mock 先行 |
 | C-21 任务结果留存/落 activelist | phase7/8 脚本平台立项 | 债台账 C-21 / 04 号 §3.5 | — |
 | AI 目录数据模型 | D8/D10/D17 | phase5 README §6 | S7 载体=风险模块 |

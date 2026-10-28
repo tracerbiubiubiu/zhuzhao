@@ -19,7 +19,7 @@
 
 **总体结论**：
 
-1. 核心安全机制实现质量高：JWT 双 Token（GetDel 原子轮换、typ/alg 防混淆）、登录锁定（Lua 原子）、会话吊销时效、L1 Casbin fail-closed、用户模块防提权/乐观锁/软删、审计同步写入——均与主契约一致，[11-code-review.md](../phase1/11-code-review.md) 12 项历史修复**全部无回归**，近期修复（树组装、菜单按钮节点、响应契约）亦无回归。
+1. 核心安全机制实现质量高：JWT 双 Token（GetDel 原子轮换、typ/alg 防混淆）、登录锁定（Lua 原子）、会话吊销时效、L1 Casbin fail-closed、用户模块防提权/乐观锁/软删、审计同步写入——均与主契约一致，[11-code-review.md](../../phase1/11-code-review.md) 12 项历史修复**全部无回归**，近期修复（树组装、菜单按钮节点、响应契约）亦无回归。
 2. 两个 P1 均集中在**角色模块**：`status=0` 禁用角色后权限全链路不收回（应急止血手段失效）；DeleteRole/UpdateRole/AssignMenus 缺「目标角色」优先级与系统角色校验（分权场景下低权角色可破坏更强角色）。
 3. P2 集中于：文档承诺未兑现（JWT 20002、visible 过滤、中间件顺序、幂等语义）与并发窗口（Move TOCTOU、双 primary）。
 4. Phase 2 预留项（authz_service stub、空 Registry、RoleService.GetTree）均有文档计划标注，**不构成占位问题**。

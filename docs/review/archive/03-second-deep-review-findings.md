@@ -44,7 +44,7 @@
 ### [D2-03] P1：UpdateRole/UpdateOrg 的 Status 零值穿透——按文档典型用法一次「改名」请求即静默禁用角色
 
 - **位置**：`internal/model/role_request.go:36`（`Status int binding:"oneof=0 1"`——零值 0 放行且无法区分「未传」）+ `internal/service/rbac_service.go:119`（`role.Status = req.Status` 无条件覆盖）；组织同型：`internal/model/org_request.go:27` + `internal/service/org_service.go:227`
-- **触发**：[05-role.md:16](../phase1/05-role.md) 文档场景明确是「更新角色 | 修改角色名称、描述」——客户端只传 `{id, version, name, description}` 时 status 零值 0 穿透 → 角色被静默禁用 → **B1-1 语义下该角色全部成员的鉴权/菜单/优先级档位立即收回**，无任何告警。前端联调第一次改名字即触发
+- **触发**：[05-role.md:16](../../phase1/05-role.md) 文档场景明确是「更新角色 | 修改角色名称、描述」——客户端只传 `{id, version, name, description}` 时 status 零值 0 穿透 → 角色被静默禁用 → **B1-1 语义下该角色全部成员的鉴权/菜单/优先级档位立即收回**，无任何告警。前端联调第一次改名字即触发
 - **佐证**：用户模块 B2-3 已全面指针化（patch 语义），角色/组织未跟进；现有测试全部显式传 `Status: 1`，零值路径无守护
 - **修复**：`UpdateRoleRequest.Status`/`UpdateOrgRequest.Status` 改 `*int`（与 B2-3 同型）；补零值守护测试
 
@@ -270,14 +270,14 @@ go.mod 依赖无已知高危 CVE；migrations up/down 全对称（000008 down �
 
 ## 10. Phase 2/3 演进影响验证（2026-08-24 第三次复核）
 
-> **方法**：以当前代码为唯一事实来源逐项重验 §2-4 全部条目，交叉比对 [phase2/00-implementation-plan](../phase2/00-implementation-plan.md)、[01-auth-enhance](../phase2/01-auth-enhance.md)、[04-org-delegation](../phase2/04-org-delegation.md)、[phase3/README](../phase3/README.md) 等规划文档。
+> **方法**：以当前代码为唯一事实来源逐项重验 §2-4 全部条目，交叉比对 [phase2/00-implementation-plan](../../phase2/00-implementation-plan.md)、[01-auth-enhance](../../phase2/01-auth-enhance.md)、[04-org-delegation](../../phase2/04-org-delegation.md)、[phase3/README](../../phase3/README.md) 等规划文档。
 > **目的**：区分「Phase 1 必修（不修会阻断/污染 Phase 2/3 演进）」与「已有排期（Phase 2/3 计划已覆盖，Phase 1 不必修）」；本报告定位是修复 Phase 1，不做超前优化。
 
 ### 10.1 新增发现（2 项，均为规划级——代码无缺陷，但计划文档与代码现状脱节，不修正将在 Phase 2 对应 Step 直接踩坑）
 
 #### [D2-48] P1（规划）：Phase 2 迁移编号 000008 与已落地迁移冲突
 
-- **证据**：`migrations/` 目录实证存在 `000008_user_orgs_single_primary`（B3-3，2026-08-24 落地）；而 [phase2/00-implementation-plan](../phase2/00-implementation-plan.md) §2 M2a-2 / §3 Step 2 / §8 SSOT 表三处仍写「迁移 **000008**：ticket_types / tickets / ticket_comments」。该计划创建于 2026-08-19，早于 B3-3 落地——**规划未随 Phase 1 修复批次更新**。
+- **证据**：`migrations/` 目录实证存在 `000008_user_orgs_single_primary`（B3-3，2026-08-24 落地）；而 [phase2/00-implementation-plan](../../phase2/00-implementation-plan.md) §2 M2a-2 / §3 Step 2 / §8 SSOT 表三处仍写「迁移 **000008**：ticket_types / tickets / ticket_comments」。该计划创建于 2026-08-19，早于 B3-3 落地——**规划未随 Phase 1 修复批次更新**。
 - **影响**：2a Step 2 按计划建 000008 迁移时会与现有文件直接冲突（migrate 工具按序号执行，同号文件命名不同也构成 dirty 状态）；且 **000009 随后也被 Phase 1 占用**（本报告修复批次的加固迁移 `000009_phase1_hardening`：D2-10/35/41/D2-11(部分) 五索引 + D2-37① 角色描述修正，与 P1 立即批次同日落地）——SSOT 映射表整体失真。
 - **修复后状态（2026-08-24 已落地，覆盖原修复建议）**：phase2/README §2.4 与 00-implementation-plan（里程碑表 / Step 清单 / RK-6 / §5.3 检查单 / §8 映射表共 16 处）已整体重排——Phase 1 用至 **000009**；phase2 依次为：ticket=**000010**、org-enhance=**000011**（原建议「维持 000009」因 000009 被 Phase 1 加固迁移占用而失效，顺延一号）、auth-enhance=000012（视需要）、storage=000013、delegation=000014。testutil 迁移列表已同步纳入 000009（见 D2-31）。
   - 原「仅顺延 ticket、其余维持原号」方案作废：000009 占用使 org-enhance 及其后全部编号联动 +1；按 README §2.4 既有「顺序编号、不跳号」机制统一重排（即 §10.4 参考方案所述项目自身机制）。
@@ -285,7 +285,7 @@ go.mod 依赖无已知高危 CVE；migrations up/down 全对称（000008 down �
 #### [D2-49] P2（规划）：2b 设备管理 PRD 的两个前置条件在 Phase 1 均未成立
 
 - **证据**（grep + 读码实证）：
-  1. [01-auth-enhance](../phase2/01-auth-enhance.md) §1 前置条件声称「登录时已 `SADD devices:{userId}`、`SET refresh:{userId}:{deviceId}`（见 02-auth）」——**实际全仓 grep `SAdd|devices:` 零命中**，Phase 1 从未写过 devices 集合；
+  1. [01-auth-enhance](../../phase2/01-auth-enhance.md) §1 前置条件声称「登录时已 `SADD devices:{userId}`、`SET refresh:{userId}:{deviceId}`（见 02-auth）」——**实际全仓 grep `SAdd|devices:` 零命中**，Phase 1 从未写过 devices 集合；
   2. 同文档 §2.1 承诺 RT value 为设备元数据 JSON（`{jti, device_name, ip, user_agent, created_at, last_refresh_at}`）——**实际 `internal/service/auth_service.go:272` 存储的是 `hashToken(rt)`（SHA-256 hex）**，无任何设备元数据。
 - **影响**：2b Step 7（M2b-4）设备列表/踢出 API 的两个前置全缺——`GET /auth/devices` 无数据源（devices 集合不存在 + RT 无元数据可展示）。前置条件落空会在 2b 中期才暴露，届时需要回改 Phase 1 的 issueTokenPair/Logout/revoke 链路（改 RT value 结构还会牵动 Refresh 的 hash 比较逻辑与既有测试）。
 - **修复选项**（推荐 a，零代码扰动）：
@@ -297,8 +297,8 @@ go.mod 依赖无已知高危 CVE；migrations up/down 全对称（000008 down �
 
 | 本报告条目 | 排期位置 | 说明 |
 |---|---|---|
-| **D2-49**（§10.1） | **排期动作（外部质询采纳，两步）**：① Phase 1 第二批即修订 [01-auth-enhance §1](../phase2/01-auth-enhance.md) 前置条件（改为「2b Step 7 首任务负责落地」而非声称已存在）；② 2b Step 7 任务清单显式加首任务「devices 集合初始化（SADD）+ RT value 结构升级（hash 与设备元数据并存）」——重构 Refresh 比较逻辑与测试同 Step 完成 | 原 §10.1 只给影响未给排期动作、§10.2/§10.3 漏列，属文档内部不一致，已补 |
-| D2-42 密码复杂度 | **2b Step 7**（有明确里程碑绑定）：`ValidatePasswordPolicy` + 20013（[phase2/00 P2-D4 表](../phase2/00-implementation-plan.md) + 01-auth-enhance §3.4） | PRD 明确「策略归一：长度/复杂度统一走策略校验」 |
+| **D2-49**（§10.1） | **排期动作（外部质询采纳，两步）**：① Phase 1 第二批即修订 [01-auth-enhance §1](../../phase2/01-auth-enhance.md) 前置条件（改为「2b Step 7 首任务负责落地」而非声称已存在）；② 2b Step 7 任务清单显式加首任务「devices 集合初始化（SADD）+ RT value 结构升级（hash 与设备元数据并存）」——重构 Refresh 比较逻辑与测试同 Step 完成 | 原 §10.1 只给影响未给排期动作、§10.2/§10.3 漏列，属文档内部不一致，已补 |
+| D2-42 密码复杂度 | **2b Step 7**（有明确里程碑绑定）：`ValidatePasswordPolicy` + 20013（[phase2/00 P2-D4 表](../../phase2/00-implementation-plan.md) + 01-auth-enhance §3.4） | PRD 明确「策略归一：长度/复杂度统一走策略校验」 |
 | D2-38 Casbin Watcher/自动重载 | 3a multi-instance（RK-9：「Watcher 后移 Phase 3」） | Phase 2 全程单实例，StartAutoLoadPolicy 无必要 |
 | D2-36 菜单/组织树缓存、权限缓存 | 3b platform（RK-7：「缓存后移 Phase 3」）+ 权限缓存 L1 输入限定（authz 评审 §11） | Phase 2 数据规模不需要 |
 | D2-36 revokeUserSessions 全 keyspace SCAN | 2b Step 7：devices 集合语义落地后自然消解 | **依赖 D2-49 两步动作落地** |

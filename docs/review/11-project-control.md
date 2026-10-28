@@ -4,7 +4,7 @@
 >
 > **当前测试基线（单一真相源——2026-10-27 全景审计 B-1 立约）**：四档 acceptance **251/0**（122+68+26+35，2026-10-27 观测批时点全量实测刷新；前值 249/0=122+67+26+34 @`24920b3`，+2 系其后批次用例增量[T7 自愈化/G-5 观测面]，观测批自身零新增用例）。约定：历史批次行保留时点值**不回改**，此处为唯一当前值——其后批次增减用例须随批刷新本行；各文档/报告引用四档数字一律以此为准，勿复制历史行时点值。
 >
-> 更新日期：**2026-10-15**（**文档对账批**：§3 API 地图对齐路由实态——/menus「CRUD」反向断言修正[代码 P4-W1 起只读]+P4 增量端点补行+`router.go` 过期行号勘误+头部日期滚动恢复）。历史批注——2026-09-27（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
+> 更新日期：**2026-10-28**（**phase5 十段回填批（外审 P0-3）**：§1 矩阵补 phase5 九行 / §0 规模刷新（当日实测）/ 未实现附件行勘误（S5 已交付）/ §4 标题 79→80 对。上一更新 **2026-10-15**（**文档对账批**：§3 API 地图对齐路由实态——/menus「CRUD」反向断言修正[代码 P4-W1 起只读]+P4 增量端点补行+`router.go` 过期行号勘误+头部日期滚动恢复）。历史批注——2026-09-27（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-10-15 文档批次（phase5 设计稿批）：**phase5 十段段级设计稿建档（01–10 号）+ README 转「总纲/索引」两层**——每稿统一骨架（定位由来/现状锚点[2026-10-15 逐段代码核实]/拍板点带建议值/边界/影响面/量级/验收/文档衔接），未新增决策；核对增量回写（任务面三 Tab 现状勘误 + 水位挂账收窄[前端近似水位条已落、精确队列深度留挂账]/三处锚点勘误/S10 抄送×`ticket_participants` 对表项——防同语义双表）；§6 树 phase5 状态同步；全部在 `phase5` 分支（README §5 分支策略：启动切分支），排期仍待所有者拍板
 > 2026-10-20 批次（S5 代码评审修复批）：**两轮只读评审（基线 a78f8cb/a81c17e）P0×1+P1×3+P2×5 全清**——P0=自服务面五端点挂 biz 无 SelfService 标记致普通角色全 403（catalogExempt 仅启动对账豁免非运行时跳过；修复=标记组挂载[router 笔]+acceptance #S5-7 viewer 回归闸）；P1=附件数 ≤20 零执行点/建单绑定并发双绑窗口/richtext 落绑语义未拍（a 案拍定——建单贴图与附件同经 attachments 列表落绑）；P2=删除口径（先标 deleted+GC 二扫）/吞错映射/桶隔离/cookie Secure 配置化/审计白名单[storage 三笔]；§2.2 B5-2 行翻 ✅、B5-4 登记编辑增量绑定；评审报告对话输出未落档（所有者核验后定）
 > 2026-10-22 批次（**B1-6 能力面扩展批立项**——所有者"全加"拍定，排 S6 一期前）：**六件**=①radio 第 9 类型（与 select 同数据模型不同渲染 el-radio-group）+ ②rating/score 第 10 类型（与 number 同模型 el-slider/el-rate）+ ③col_span 多列布局（schema 可选字段 1–24，el-row/el-col 栅格）+ ④分组/折叠（schema 可选 group 字符串，el-collapse 分段——纯前端）+ ⑤**条件显隐翻案**（01 号 §3.5 原"唯一显式不做"→`field_meta.visible_when` 表达式+watch 联动+G2 跳过隐藏字段——exprcalc 已有底座减为集成件）+ ⑥**函数注册表**（exprcalc AddFunction 白名单——首批 risk_score/sla_deadline/lookup_dict/now/upper 5 函数，新计算能力=加 Go 函数非新字段类型——业界 Jira Expressions/Airtable functions 同款）；量级 ~4–5 天；01 号 §2 字段类型行同步**十种**
@@ -62,7 +62,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模**：75 个非测试 Go 源文件（`internal/`+`cmd/`）｜ 71 个测试文件 ｜ 268 个测试函数（含集成/性能）｜ 58 个迁移文件（29 对）｜ 13 份 review 文档（含本文件；**统计时点 2026-09-14**，随代码漂移——改动后请重算或更新时点）。
+**规模**：154 个非测试 Go 源文件（`internal/`+`cmd/`）｜ 148 个测试文件 ｜ 436 个测试函数（含集成/性能）｜ 160 个迁移文件（80 对）｜ 17 份 review 文档（5 在册 + archive 12 历史；**统计时点 2026-10-28**，随代码漂移——改动后请重算或更新时点）。
 
 ---
 
@@ -97,9 +97,18 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
 | **break-glass 应急通道（admincli）** | `zhuzhao reset-password` 子命令：superadmin 密码恢复（目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销] + 禁用连带启用 + audit_logs 落行 method='CLI'）；同二进制子命令分发零镜像改动；流程与兜底 SQL 见 `docs/runbook.md` §1 | ✅ 2026-10-12（集成 4 用例常态门禁 + dev 栈演练） | `cmd/server/reset_password.go` `internal/pkg/admincli/` `internal/service/session_revoke.go` |
 | **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 15 文件/115 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
+| **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 三段（反连接回收+avatar reaper observe） | ✅ 2026-10-19~21（五批） | `internal/service/storage/` `migrations/000045–000050` |
+| **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十种字段类型 + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7） | `internal/service/ticket/` `migrations/000051/000052` |
+| **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 2026-10-23（外审修复全清） | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061` |
+| **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24 | `internal/service/ticket/inbox_service.go` `migrations/000072` |
+| **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24（🔵 待走查） | zhuzhao-ui（02 号附录 A） |
+| **工单协作与提醒（P5-S10）** | 抄送（L2 特例通道——可见不可改）/标签（entity_type 泛型）/角标（计算器注册制）/节点超时+催办/Excel 导出（BK-21 同源三件套） | ✅ 2026-10-24（五批全清） | `internal/service/ticket/` `migrations/000062–000065` |
+| **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24 | `internal/pkg/jobs/` `migrations/000066` |
+| **威胁情报缓存代理（P5-S9）** | intel_cache TTL 7/30 天 config 化 + singleflight + 429 降级矩阵（8 子测）+ intel_cleanup cron | ✅ 2026-10-24 | `internal/pkg/threatintel/` `migrations/000067` |
+| **语义引擎（P5-S3a）** | transition 端点 + condition/validator（transition_meta "from>to" 键）+ assignment_rules 自动分派 + ActionRegistry 四动作（notify/cc/reassign/spawn_task）+ SLA0.5 deadline 激活 | ✅ 2026-10-24 | `internal/service/ticket/` `migrations/000068–000071` |
 
 ### 未实现 / 延后（明确不做）
-- **附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号启动时按 A2 取下一可用号（现 **000026**；000017 已被 IW1 占用）
+- ~~**附件**（file_objects/ticket_attachments）— 2b-ext 延后，迁移编号启动时按 A2 取下一可用号（现 **000026**；000017 已被 IW1 占用）~~ **✅ 已交付（Phase 5 S5——000045 file_objects / 000046 ticket_attachments / 000047 owner 列 / 000049 部分索引；2026-10-19~21，见 §4 地图与 [phase5/05 号](../phase5/05-s5-object-storage-richmedia.md)）**
 - **✅ Phase 3 收口（2026-09-15，口径 A）**：项目内工程收口——M-E/M-A 交付、~~M-HR(预留) 交付~~ **M-HR 未落码（2026-09-22 勘误：预留接口三件全无，对接时一并开工——见 phase4/00 §2.3 行内勘误）**（见 §1 矩阵各行）；M-UAA/M-Mig 🚦 外部前置待触发。剩余可观测性/多实例/高可用/安全增强/ops/前端 = **随部署形态或上线触发**（非工程在办项；**2026-09-27 注：前端已转 Phase 4 主动线且 W2 壳层已交付——见 §1 前端行，本句仅存 Phase 3 时点史实**）；执行结构 = **Wave W0–W4**（README §2.1.0，2026-08-31 确认，历史结构）。**文档已全量就绪（2026-09-02）**：01 / 02 / 03 / 06 / 07 / 08 / 09 / 10（含 7-0 决议）/ 11 / 12 / 13-implementation-plan（执行计划）已编写；ops/deployment.md（B10）已补齐（见 §8 B9）
 - **⚠ 2026-09-02 重定位（design-decisions §23）**：**工单自研暂缓（内部引擎优先，自研兜底）**——项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保数据安全修复，如 BK-20）；工单业务（SLA/通知/审批流/分派/报表）、BranchedStateEngine、7a–7e、B3 推进端点、审批/报表前端**全部暂缓自研**（10/12 号转对接参考）。**Phase 3 主线 = M-E 事件/任务总线（taskrunner，Asynq + 审计归档首预置动作）→ M-A activelist 独立实现 → M-HR HR 同步 → M-SSO 单点登录（🚦，§24）→ M-Mig 迁移准备**（排期见 13 §1）；M1/M5 随部署形态 🚦。工单对接形态与 Phase 2 资产处置 = 迁移时拍板（🚦）；翻案条件见 §23。**✅ 2026-10-09 §23 翻案**（dd §29）：工单自研恢复为主线；S3 拆 S3a（转换级语义+分派+动作库，排基线交付后）/S3b（审批流，等场景）；M-UAA 立项（SSO+MQ 数据面）
 - **⚠ 2026-09-02 SSO（design-decisions §24）**：登录对接公司 SSO，**OAuth2.0 授权码模式**预留接口版（`SSOProvider` 接口 + `/auth/sso/login`·`/auth/sso/callback` + 身份映射对账键同 HR + 登录审计 method）；**鉴权三层零改动**（callback 签发自有 JWT/RT）；JIT 默认关（仅限已同步账号）、本地密码兜底并存。排位 **M-SSO→M-UAA**（13 §1，🚦→**触发达成已立项**，公司指南下发对接形态明确；蓝本=[phase3/17](../phase3/17-uaa-integration.md)，量级 3–5 周全含=MQ 数据面 2–4 周+SSO 件 2–3 人日，17 号 §7 引用规则）
@@ -152,7 +161,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ---
 
-## 4. 数据库迁移地图（79 对）
+## 4. 数据库迁移地图（80 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|

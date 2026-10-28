@@ -191,6 +191,8 @@
 | L-2 | 全仓 | **36 处 deliverables/ 引用改写**：22 个 docs/ 文件（phase3/4/5/6 段稿+11 号控制台+roadmap+runbook+standards；11 个 markdown 链接+25 个纯文本提及）随 L-1 同批改新路径；**高权重三件必须核**：11 号控制台批次行 / standards / runbook | 随 L-1 | 同上 |
 | L-3 | deliverables/overview.md | 修 5 处 `.workbuddy/` 死链（cb996f2 已删该目录；:24/25/52/53/65 五处）——**L-1 搬移时顺带**（overview 保留不拆，外部报告"拆进 review/README"建议不采纳） | 5min | 随 L-1 |
 | L-4 | 全仓 | **overview.md 指向更新**（保留决策修正外部报告 D 组"拆解删除"建议）+ `docs/review/README.md` 与 `docs/proposal/README.md` 各补一行归位说明 | 10min | 随 L-1 |
+| L-5 | modules+design | `modules/ticket.md`（839 行）与 `design/architecture.md`（2026-08 v0.6）回填——field_meta/transition_meta/assignment_rules/附件/抄送/标签/超时/API 面/80 迁移全未反映；docs/README 已挂陈旧注 | ~1–2 天 | phase6 立项批随行或独立文档批（外审 P3-2 登记） |
+| L-6 | 全仓 | errcode 双份归一：根 `api/errcode.md` 与 `docs/api/errcode.md` 并存（F-A-1 悬案）——建议 docs/api 为唯一、根文件改指针 | 15min | ◆随下批拍板（外审 P3-3 登记） |
 
 > **外部报告核验结论备查（2026-10-27）**：盘点/分组/不按 phase 拆三点采纳；四处修正——①实为 24 文件非 23；②json-contract-audit 归 review（审计终稿非提案——三仓修复已提交+standards §3-14 立约）；③overview 保留不拆（时间线索引独立价值，仅修死链）；④**成本重估**：24 mv + 22 文件 36 处引用改写（11 号/standards/runbook 三 SSOT 在内）——非"git mv+相对路径修正"轻量级。deliverables/ 现位系刻意决策（11 号批次行"deliverables 另笔"——立项前研究→结论蒸馏 docs/→研究稿留档的工作流载体），非历史混乱；L 组执行即工作流终态归位。
 
