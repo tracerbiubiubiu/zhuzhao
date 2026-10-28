@@ -169,11 +169,13 @@ func TestErrcodeDocMessageSync(t *testing.T) {
 		codeMsg[m[1]] = m[2]
 	}
 
-	doc, err := os.ReadFile(filepath.Join(root, "docs", "api", "errcode.md"))
+	// L-6 归一（2026-10-28）：errcode.md 权威=根 api/errcode.md（docs/api 副本已删为指针）
+	doc, err := os.ReadFile(filepath.Join(root, "api", "errcode.md"))
 	if err != nil {
 		t.Fatalf("read errcode.md: %v", err)
 	}
-	rowRe := regexp.MustCompile(`\| (\d{5}) \| ` + "`[^`]+`" + ` \| ([^|]+) \|`)
+	// L-6 归一后根文件列形：| 码 | 标识符（无反引号） | message | HTTP | 备注 |
+	rowRe := regexp.MustCompile(`\| (\d{5}) \| \w+\s*\| ([^|]+) \|`)
 	checked := 0
 	for _, m := range rowRe.FindAllStringSubmatch(string(doc), -1) {
 		code, docMsg := m[1], strings.TrimSpace(m[2])

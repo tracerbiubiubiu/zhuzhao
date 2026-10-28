@@ -48,7 +48,7 @@
 |---|---|---|---|---|
 | 92600 | ErrIntelNotConfigured | 情报上游未配置（intel.upstream.endpoint） | 500 | 生产态空 endpoint fail-fast |
 | 92601 | ErrIntelUpstreamQuota | 情报上游配额耗尽（无可用缓存） | 503 | 降级矩阵无缓存臂 |
-| 92602 | ErrIntelUpstream | 上游查询失败 | 502 | 401/5xx 归并 |
+| 92602 | ErrIntelUpstream | 情报上游不可用 | 502 | 401/5xx 归并 |
 
 ## 21010 任务动作（S4 B4-1——2026-10-24 增补）
 
