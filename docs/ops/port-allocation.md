@@ -20,7 +20,7 @@
 > Makefile kill 行参数化）——`APP_PORT=33334 make dev` 实测可双实例共存（33333/33334 各自
 > 独立服务互不误杀）。两会并用时：并行会话占 33333,本表第二实例走 33334。
 | **48080** | zhuzhao-ui 容器（nginx） | dev compose | compose ui 容器 | `UI_PORT` |
-| **4000** | vite dev server（前端本地开发 / E2E webServer） | dev / E2E | vite（ui 仓） | —（vite.config server.port） |
+| **4000** | vite dev server（前端本地开发 / E2E webServer） | dev / E2E | vite（ui 仓，**strictPort 已启**） | `VITE_PORT`（vite.config 消费） |
 | **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | 映射 `"5432:5432"` 已启用（docker-compose.dev.yaml L16 实测；原「已注释不映射」描述与文件不符——本机无原生 5432 时该映射无害） |
 | **5433** | PostgreSQL（**测试专用**——本机独立容器跑 migration 验证） | audit / migration 验证 | 手动 `docker run -p 5433:5432` | — |
 | **6379** | Redis（dev compose） | dev | compose redis 容器 | — |
@@ -64,7 +64,8 @@
 | 本机装了 PostgreSQL | compose postgres 起不来（5432 已占） | compose 注释了端口映射（内网互访），无需映射——若需 psql 直连改映射 `- "5433:5432"` |
 | 本机装了 Redis | compose redis 起不来（6379 已占） | 同上——compose 未映射 6379；本地 `make dev` 走容器内网 |
 | dev app 没跑 | acceptance 脚本全红（33333 连不上） | 先 `make dev`；或换端口 `BASE_URL=http://localhost:33334 bash scripts/acceptance-phase1.sh` |
-| 两个 vite 项目同时跑 | 4000 被占（vite 自动跳 4001） | 无害——vite 自动避让；E2E webServer 固定 4000 则需先杀 |
+| 两个 vite 项目同时跑 | 4000 被占（~~vite 自动跳 4001~~ **2026-10-29 strictPort 后显式失败**） | 杀遗留实例（`lsof -ti:4000 -sTCP:LISTEN`）或 `VITE_PORT=48081 pnpm dev` 换预留段——原「自动避让无害」口径已证伪（见变更记录 10-29：auto-increment 静默漂移掩盖遗留进程四天，E2E reuseExistingServer 一直打旧实例） |
+| IM 软件（QQ/微信）动态抢端口 | vite 起在 4001 后 QQ 抢注 127.0.0.1:4001 IPv4——浏览器空响应（QQ specific 绑定压过 vite 通配绑定） | IM 本地监听**动态随机无可避开区间**；对策=strictPort 显性失败 + `VITE_PORT=48081+` 换预留段 + 重启 IM（其端口会重摇） |
 | dev app 换了端口 | E2E 连不上 33333 | `E2E_API_BASE=http://127.0.0.1:33334` 覆盖 |
 
 ### 宿主形态的域名解析（2026-10-15 追加——本机开发/E2E 免改 config）
@@ -104,3 +105,4 @@ BASE_URL=http://localhost:33334/api/v1 HEALTH_URL=http://localhost:33334/health/
 | 日期 | 变更 |
 |------|------|
 | 2026-10-26 | 建档（所有者发起：测试/验证端口未提前分配致经常冲突）；首版分配表 + 三原则 + 冲突处理指引 |
+| 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |\n
