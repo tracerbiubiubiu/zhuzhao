@@ -25,7 +25,7 @@
 | B-1 | S6 | D20 changes[] 真值 diff（旧值比对+custom_data 键级粒度）——**2026-10-27 第五组改锚 [phase6/06 号件 6](../phase6/06-ticket-completeness.md)**（ticket_events payload 落库与事件载荷共用同一 diff 函数，分开做是写两遍） | phase6 06 号 B2 波（件 6 同批） | 06 号 A.1 | +0.5 天 |
 | B-2 | S6 | variables 端点补动态字段源+时间类——**并账 H-3**（2026-10-27 升格为通知能力增强批核心件=G-2 加重证据） | 通知能力增强批 | 06 号 A.6 | +0.5 天 |
 | B-3 | S6 | `'*'` 免打扰跨域生效 | B6-7 二期 | 外审 F-1-12 | +0.5h |
-| B-4 | S6 | acceptance 通知深面（注入/节流/fail-fast/偏好四类） | B6-7 前补课 | 06 号 §10 | +0.5 天 |
+| B-4 | S6 | acceptance 通知深面（注入/节流/fail-fast/偏好四类） | phase6 启动批（2026-10-29 重锚——原「B6-7 前补课」锚随 B6-7 交付失效；已列启动批 §1.3 重锚清单随手件） | 06 号 §10 | +0.5 天 |
 | B-5 | S6 | opt-out service 直连 db 收敛到 repo | 架构批 | 外审 F-1-12 | +0.5h |
 | ~~B-6~~ | S10 | ~~MessageDispatcher 编排器抽出~~ **✅ 已落（B10-4 62c03c2——dispatcher.go 抽出+hook 薄壳+ops 双域订阅）** | — | 06 号 §1.5 | 销账 |
 | ~~B-7~~ | S10 | ~~escalation 催办 + ticket_reminders 侧表 + supervisor 第四分支~~ **✅ 已落（B10-4 62c03c2——实施偏差：supervisor 不做 recipient_type 第四枚举，目标集由扫描器 emit 时解析进 cc_users 载荷，规则面零扩）** | — | 10 号 §3.4 | 销账 |
