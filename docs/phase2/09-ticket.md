@@ -112,6 +112,9 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 
 **组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 4（2b-core）回归测试（move 后 scope 过滤仍正确）。
 
+
+> **关联域演进登记（2026-10-29 所有者，登记级不排期）**：①**多跳链式视图/关系图面板（加分功能）**——语义基线：关联=成对边、无传递性（A↔B↔C 链天然存在，各单详情只渲染直接边，Jira link 同构）；形态=详情页关联卡的**链式面板**：沿边遍历（默认 2 跳可展开）+环检测+L2 不可见节点占位；实现分解=**前端逐跳拉取**（getTicketRelations BFS，零后端，≈1–2 天）或后端聚合端点（一跳全链，+1 天）；触发=链式排查场景（事件链/依赖链）真实出现时随批。②**解除关联端点缺口（待拍板）**——后端现仅 List/Create（router.go:468-469），关联一经建立不可撤销（UI 无解除按钮、API 无端点）；`ticket_relations.deleted_at` 软删列已备（列表按软删过滤），补齐=`POST /tickets/relations/remove`（软删+Create 同款 L2/ticket:relation，零迁移）+ui 解除按钮，≈1–1.5 天。③已落（2026-10-29 ui 关联体验批）：已建关联 #id 快跳+搜索候选「查看」新标签+关联入口远程搜索下拉（ui 0ddf5117/1288253e）。
+
 ### Phase 2b 增量
 
 ```sql
@@ -552,3 +555,4 @@ migrations/0000xx_ticket_menu.up.sql   # 可选：菜单与 Casbin
 |---|---|
 | 建档 | 工单模块完整设计（Phase 2 交付蓝本；2026-09-02 §23 封版转对接参考，phase3/10 为业务侧续篇） |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；完整历史见 git log |
+| 2026-10-29 | **§2 关联域演进登记（所有者问询「链式关联/加错取消/搜索看详情」核出）**：①多跳链式视图/关系图面板登记为加分功能（触发驱动——链式排查场景出现时随批；前端逐跳 ≈1–2 天/后端聚合 +1 天）；②解除关联端点缺口登记待拍板（现仅 List/Create 不可撤销；软删列已备，补齐 ≈1–1.5 天）；③关联体验三小件已落 ui（#id 快跳/候选查看/远程搜索下拉——ui 0ddf5117/1288253e） |
