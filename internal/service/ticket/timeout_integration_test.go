@@ -355,7 +355,7 @@ func TestB104_WritePoints(t *testing.T) {
 		err = svc.Assign(ctx, &model.AssignTicketRequest{
 			ID: tk.ID, AssignedTo: &bid, EscalationSupervisor: &ghost,
 		}, aid)
-		requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+		requireErrCode(t, err, errcode.ErrUserNotFound.Code) // 幽灵 supervisor 前移为 30002（分派目标校验批）
 	})
 }
 
