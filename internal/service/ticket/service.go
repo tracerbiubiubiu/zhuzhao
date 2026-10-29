@@ -830,6 +830,29 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	return s.assignAuthorized(ctx, req, actorUserID)
 }
 
+// validateAssignTargetUser 分派目标用户校验（2026-10-29 幽灵分派修复）：
+// 存在且启用（软删由 WHERE 排除；status=1 启用）。违规用 30002/30003 码+
+// 定制 message（码=语义档位，message 带目标 ID 供排障——同 ErrInvalidParams
+// 定制先例）。EscalationSupervisor 亦为用户 ID，同规则。
+func (s *Service) validateAssignTargetUser(ctx context.Context, userID int64) error {
+	var status int
+	err := s.db.QueryRow(ctx,
+		`SELECT status FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.New(errcode.ErrUserNotFound.Code,
+			fmt.Sprintf("分派目标用户不存在: %d", userID))
+	}
+	if err != nil {
+		return fmt.Errorf("query assign target user: %w", err)
+	}
+	if status != 1 {
+		return errcode.New(errcode.ErrUserDisabled.Code,
+			fmt.Sprintf("分派目标用户已禁用: %d", userID))
+	}
+	return nil
+}
+
+// assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
 // assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
 // unexport（G-32）：同包唯一调用方 DispatchService，防包外绕过鉴权直调）。
 // ⚠ 权限旁路：跳过 Assign 的 L2/L3 鉴权——调用方须已有 ticket:type:manage 语义授权
@@ -851,6 +874,21 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
 	if ticket.Status == StatusClosed {
 		return errcode.ErrTicketAlreadyClosed
+	}
+	// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写
+	// assigned_to 无校验，幽灵 assignee 可挂单（详情页处理人残缺/通知无法送达，
+	// 所有者测试复现）。取消分派（AssignedTo nil）不校验。自动分派同链受控
+	// （目标来自成员解析，成员被禁用后规则触发→响亮 400+dispatch_missed，
+	// 优于原幽灵挂单静默成功）。
+	if req.AssignedTo != nil {
+		if err := s.validateAssignTargetUser(ctx, *req.AssignedTo); err != nil {
+			return err
+		}
+	}
+	if req.EscalationSupervisor != nil {
+		if err := s.validateAssignTargetUser(ctx, *req.EscalationSupervisor); err != nil {
+			return err
+		}
 	}
 	fromAssignee := ""
 	if ticket.AssignedTo != nil {
