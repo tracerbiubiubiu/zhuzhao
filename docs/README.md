@@ -185,7 +185,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 | `deployment.md` | 环境要求、配置项说明、部署步骤、Docker/K8s 配置 | Phase 1 |
 | `runbook.md` | 常见故障现象、排查步骤、应急操作（superadmin 密码恢复 break-glass/故障演练结论/备份 PITR 要点） | ✅ 已建（2026-10-12，随 break-glass 批补 Phase 3 欠账） |
 
-### review/ — 审查记录（00–10 历史快照 / 11 活文档）
+### review/ — 审查记录（archive/ = 00–10 历史快照 / 11 活文档·项目控制台 / 12–14 收官产物）
 
 | 文件 | 定位 | 状态 |
 |------|------|------|
