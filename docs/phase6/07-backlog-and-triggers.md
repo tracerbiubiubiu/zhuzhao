@@ -75,7 +75,7 @@
 | 高级搜索（custom_data 筛选） | 台账自定义字段筛选诉求 | README §3 | JSONB 谓词 vs 值表二选一 |
 | 规则化自动建单 | S3a 动作库演进 × D20 对表 | README §3 理想态① / 03 号 §5 | — |
 | 威胁情报→资产自动建单 | 资产平台就绪（所有者明示先不做） | README §3 理想态② | — |
-| 资产解析步（D29） | phase7 前置批 | README §7 / 03 号 §5 | phase6 内 `asset_ref=null` 降级 |
+| 资产解析步（D29） | phase7 前置批 | README §7 / 03 号 §5 | phase6 内 `asset_ref=null` 降级；含资产维度漏洞全历史视图（2026-10-29 场景登记，README §7） |
 | 合规映射（D26）/数据分类（D27） | 触发 / X5 契约 | README §7 / 04 号 §3.4 | R4 已预留引用字段/classification 列 |
 | 工单批量导入 | 触发 | 06 号 §4（P2） | — |
 | C-6 图数上限收紧本体 | 磁盘水位信号亮起（观测面已建：gauge+阈值 cron） | 债台账 C-6 | 上限收紧本体=触发型（观测批只落观测面） |
@@ -128,6 +128,7 @@
 | D-2 M-UAA | 内网启动 | 债台账 D-2 / [UAA 立项](../phase3/17-uaa-integration.md) | TodoEventPusher 随批 |
 | M-HR（manager_id 轴/离职处置） | 内网启动 | 债台账 C-10 / hr-directory-sync | Week 0 已 mock 先行 |
 | C-21 任务结果留存/落 activelist | phase7/8 脚本平台立项 | 债台账 C-21 / 04 号 §3.5 | — |
+| 能力目录（taskrunner capability_registry） | ~~触发驱动~~ **已拍提前提入 phase6（2026-10-29）** | taskrunner.md §4（taskrunner 仓） | 全量三步+utils SDK 同批 ≈3–4 天；排期落位随启动批圈范围；随实现批待拍=命名对齐（action/action_id/action_code）+ActionMeta 目录化 a/b |
 | AI 目录数据模型 | D8/D10/D17 | phase5 README §6 | S7 载体=风险模块 |
 | C-7 附件独立权限码 | 权限细化诉求 | 债台账 C-7 | — |
 | C-8 BK-12 残留 | 孤儿绑定实际危害 | 债台账 C-8 | — |
@@ -176,3 +177,5 @@
 | 2026-10-28 | **裁定落账批**：§4.1 C-6/C-16 由「已落码销账」改「观测面已落/本体仍触发」（与 §3.2 本体行对齐——外审①半修补全）；§3.2 +P1-6/P0-5/P1-7 三行（gap-audit「待登记 phase6」对称落位——外审④）；§2.3 +⑥ D6 webhook 入口站核对行 |
 | 2026-10-28 | **P0-5/P1-7 拍板落账批**：两行 ◆→✅（P0-5 四件形态/P1-7 拍 b 归 standards §14+守卫随 Week 0） |
 | 2026-10-28 | **核对销账批**：演进总表「表单条件显隐」✅ 已随 S1 B1-6 交付销账（§2.3①/§3.2 同步，能力三层全落核实：表达式/watch/G2 兜底）；债台账 G-22 ✅ 销账（CI 连续绿核实，§4.1 同步） |
+| 2026-10-29 | **能力目录提入登记批**：§3.5 +能力目录行（taskrunner capability_registry——所有者三拍板：①范围=动作路由目录[design-decisions §26.2 Form B 权限申报目录同名另物排除]②全量三步同批不拆半提入③utils 执行端 SDK 同批不后置；taskrunner 侧三闸门触发条件关闭）；落位随启动批圈范围；roadmap P5-S4 前置注+design-decisions S4 追加注级联更新；随实现批待拍两件=命名对齐+ActionMeta 目录化 a/b（SSOT=taskrunner.md §4 2026-10-29 行） |
+| 2026-10-29 | **资产维度漏洞全历史视图场景登记批**：§3.2 资产解析步（D29）行 +场景注（按资产看历史至今漏洞总数/类型/级别分布——本体挂 D29/D4 资产门面 phase7 前置批；数据前提=R1 关联资产+稳定键+已关闭单保留；SSOT=README §7 触发登记表 2026-10-29 行） |
