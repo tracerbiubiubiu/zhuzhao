@@ -137,7 +137,9 @@ services:
       # Origin 零 CORS 头拦截；⚠ 不设存在反射式 CORS 风险（GHSA-x5xv-223c-8vm7）
       # 必须显式设置；桶级 PutBucketCors 未支持（rustfs 讨论 #736）——全局 env 即可
       # （console 口另有 RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS，容器自带默认 *，独立配置）
-      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      # 2026-10-29 补 4000 双源：本仓 vite dev 已钉 4000（playwright webServer 同源），
+      # 5173 为历史端口保留防回退——白名单过期曾致头像直传 Failed to fetch（CORS 无 ACAO）
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4000,http://127.0.0.1:4000}
     volumes:
       - rustfs_data:/data
     ports:
