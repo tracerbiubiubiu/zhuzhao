@@ -130,6 +130,7 @@
 | C-14 cookie Secure | 生产 HTTPS 网关前置 | 债台账 C-14 | — |
 | C-15 死信/emitEvent ctx | 接入链路追踪 | 债台账 C-15 | — |
 | 品牌 logo 上传（设置页「品牌」区） | **所有者已明示（2026-10-30 问询「logo 是否支持设置上传」）**，排窗=phase6 主线间隙独立小批（「登录/登出审计随任意小批先行」同款先例，不进 Week 0 已拍范围） | **本行承载登记**（管理面 polish 新域，无既有登记处） | ~2 天两仓：presign/confirm 入对象存储（purpose=brand_logo）+ settings 键 `brand.logo.object_key` + **公开品牌读白名单端点**（登录页未登录态要用 logo——catalogExempt 新匿名面须过 BK-22 对账+安全走查，avatar 公开面同级别审视）；业界对标已做（GitLab Appearance/Entra 规格 240×240·50KB·透明 PNG/Jira Look and feel）——图走媒体存储+公开 URL 非配置内联 dataURL、上传裁剪方图 256×256 兜窄栏 38px 显示、URL 带 updated_at 破缓存、恢复默认；favicon 同批可选 +0.5 天 |
+| 双列侧边栏次级栏交互收口（方案 A 轻量版） | **所有者已明示（2026-10-30 走查指认两痛点：收起不知项名/展开太占空间）**，排窗=品牌 logo 同款主线间隙独立小批 | **本行承载登记**（前端布局交互域） | A ≈半天：①次级栏收起态=**整体隐藏**（现状 72px 里塞展开态文字菜单被挤压不可读——业界无此中间态，实测 secCollapsed=true 时 secText=「审计日志」裁切在案）②**叶子组不开栏**（审计日志类无子菜单一级项点击直达，不为单行开 200px 栏）③rail 项补 tooltip。B 完全体 +2–3 天可选：rail **hover flyout**（VS Code/GitLab/钉钉收敛形态——子菜单悬停可点可钉住，次级栏转纯可选常驻）。实况锚点：rail 72px + 次级栏 is-collapsed 挤压态 |
 
 ### 3.5 外部依赖类
 
