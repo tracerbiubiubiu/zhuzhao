@@ -16,6 +16,10 @@
 #   ⑥ swagger 新鲜度（窗口级）：触及 internal/model|handler 的窗口，本地跑
 #      make swag 后 docs 生成物必须零漂移（对齐 CI lint 形态——红窗三次实证
 #      f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」）
+#   ⑦ 披露一致性（WARN，文件级）——正文声称的「NN 号」须有对应 docs/phase*/NN-*.md
+#      变更（自动化 dc9acd7 类「声称同步某文件但文件不在提交」；内容级断言——
+#      声称的具体小节/量级注是否真改——仍需人工 grep，e4ea567 教训；WARN 级不 FAIL，
+#      引用型提法会误报，升格 FAIL 前先观察一个月）
 #
 # 退出码：0 全绿 / 1 有违例（可复用于 CI 兜底道）。
 # 违例处置：push 前发现 -> git rebase -i <base> 对应笔 reword（本地历史可改窗口）；
@@ -56,7 +60,8 @@ total=0
 for h in $(git rev-list "${range}"); do
     total=$((total + 1))
     subject=$(git log -1 --format=%s "${h}")
-    second=$(git log -1 --format=%B "${h}" | sed -n '2p')
+    body=$(git log -1 --format=%B "${h}")
+    second=$(printf '%s' "${body}" | sed -n '2p')
     reasons=""
 
     # ① type(scope): 结构
@@ -81,9 +86,27 @@ for h in $(git rev-list "${range}"); do
     [4] no blank line between subject and body"
 
     # ⑤ 正文至少有一行非空内容（AGENTS.md 三节必附）
-    body_lines=$(git log -1 --format=%B "${h}" | sed -n '3,$p' | grep -c '.' || true)
+    body_lines=$(printf '%s' "${body}" | sed -n '3,$p' | grep -c '.' || true)
     [ "${body_lines}" -gt 0 ] || reasons="${reasons}
     [5] body empty (three sections required: changes / impact / evidence)"
+
+    # ⑦ 披露一致性（WARN，文件级）——正文声称的「NN 号」须有对应 docs/phase*/NN-*.md 变更
+    #    （内容级断言仍需人工 grep；WARN 不计入 violations）
+    changed_files=$(git show --name-only --format= "${h}" 2>/dev/null)
+    claim_refs=$(printf '%s' "${body}" | grep -oE '[0-9]{1,2} 号' | sort -u || true)
+    if [ -n "${claim_refs}" ]; then
+        missing=""
+        for nn in ${claim_refs}; do
+            nn_num=$(printf '%s' "${nn}" | sed 's/ 号//')
+            case "${changed_files}" in
+                *"docs/phase"*/"${nn_num}-"*|*"docs/review/${nn_num}-"*|*"docs/phase"*/"${nn_num}_"*) ;;
+                *) missing="${missing} ${nn_num} 号" ;;
+            esac
+        done
+        if [ -n "${missing}" ]; then
+            echo "[WARN] ${h}: body cites 号 refs with no matching file change:${missing} (verify manually)"
+        fi
+    fi
 
     if [ -n "${reasons}" ]; then
         violations=$((violations + 1))
