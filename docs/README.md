@@ -86,6 +86,9 @@ docs/
 ├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
 ├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段 ✅ 全部交付·走查收口中；SSOT = phase5/README.md）
 ├── phase6/                          # Phase 6：风险管理模块（已立项转执行态——六组拍板闭环、00/06 已批准、合 main 暂缓待 phase5 测试收口；SSOT = phase6/README.md）
+├── phase7/                          # Phase 7：接入扩源+自动化地基（总纲已蒸馏 2026-10-29——已拍决策汇编，未立项；设计稿随立项批）
+├── phase8/                          # Phase 8：自动化能力中心=SOAR 能力迁移（总纲已蒸馏 2026-10-29——编排留 SOAR Stage 1）
+└── phase9/                          # Phase 9：处置闭环深化+自研编排引擎 MVP（总纲已蒸馏 2026-10-29——Stage 2 起点；outbox 此阶段落地）
 │
 ├── review/                          # 审查记录（archive/ = 00–10 历史快照；11 = 活文档·项目控制台；12–14 = 复盘/权限矩阵等收官产物）
 ├── api/                             # API 契约（后端 SSOT）

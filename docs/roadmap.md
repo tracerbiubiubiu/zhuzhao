@@ -145,7 +145,7 @@ Phase 1：最小可用                    Phase 2：业务可用（工单）    
 
 ### Phase 7–11：安全运营平台后续阶段（研究稿，未立项）
 
-> 定位 = 接入扩源 → 自动化能力中心 → 处置闭环与编排引擎 MVP → SOAR playbook 迁回 → 智能面（门控）。**无执行文档**——完整形态/切片/出口标准/时间线唯一登记处 = [deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md](../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md)（研究稿，D 系拍板状态见其 README）；docs 内 phase7/8 引用：phase5 README §6 端口表与 phase6 07 号指向该稿；债台账 C-21 已于 2026-10-27 升格 C-21+（任务数据面），**不再等 phase7/8**。立项时建 docs/phaseN/ 并回灌本段；deliverables 归位 docs/ 见债台账 L-1。
+> 定位 = 接入扩源 → 自动化能力中心 → 处置闭环与编排引擎 MVP → SOAR playbook 迁回 → 智能面（门控）。**phase7/8/9 总纲已蒸馏 docs/**（2026-10-29 建档：`docs/phase7/`、`docs/phase8/`、`docs/phase9/` 各 README——已拍决策汇编+范围索引，未立项；细化设计随各阶段立项批）——完整形态/切片/出口标准/时间线源头 = [deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md](../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md)（研究稿，D 系拍板状态见其 README）；docs 内 phase7/8 引用：phase5 README §6 端口表与 phase6 07 号指向该稿；债台账 C-21 已于 2026-10-27 升格 C-21+（任务数据面），**不再等 phase7/8**。立项时建 docs/phaseN/ 并回灌本段；deliverables 归位 docs/ 见债台账 L-1。
 
 ---
 
