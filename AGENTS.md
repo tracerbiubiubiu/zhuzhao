@@ -70,3 +70,14 @@ make swag              # 重新生成 Swagger
 - 剩余开放项均为 B 档随行（随 Phase 3 对应子能力）或独立窗口（附件 / auth-enhance / HR 同步按需启动），见 11 §8
 
 > 最新验证结果以 `docs/review/` 为准；修复后回填状态。
+
+## 多会话并发协议（2026-10-30）
+
+同一工作树可能有多个 AI 会话并行工作——**git 索引无归属概念**，索引污染已两次实证（dfa69c9 整批卷入 / 1418f33 卷走他人提交）。规则：
+
+- 提交一律走 `scripts/zz-commit.sh`（或等价 `git commit -F msg -- <paths>` 显式路径形态）；**禁止 `git add -A`、`git commit -a`、无路径的裸 `git commit`**。
+- 提交前 `git status` 核对文件归属；提交后 `git show --stat` 复核文件数。
+- rebase / amend / reset 为会话独占操作——执行前确认 origin 无新提交、索引无他人 staged 内容。
+- push 前 `git fetch` + 窗口差集核对（§12-9 push 前置三件）；多会话并行期间由单一会话执行推送。
+- 新会话开工第一步 `make hooks`（`.githooks` 双钩子：pre-commit 在途显影 / commit-msg 跨主题重题拦截）；两会以上并行时收尾在 [runbook §7 在途台账](docs/runbook.md) 落一行，后继会话开工先读。
+- 权威成文：[docs/standards.md](docs/standards.md) §12-10（路径提交条 + zz-commit 执行工具 / 机械守卫条 / 会间交接注 / 改史前 HEAD 归属核查）。
