@@ -21,7 +21,8 @@ import (
 const ticketSelectColumns = `
 	id, type_code, title, COALESCE(description, '') AS description, priority, status,
 	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
-	status_changed_at, escalation_supervisor_id, created_at, updated_at`
+	status_changed_at, escalation_supervisor_id, created_at, updated_at,
+	COALESCE(human_key, '') AS human_key`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -762,6 +763,7 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
 		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
+		&t.HumanKey, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
 	)
 	if err != nil {
 		return nil, err

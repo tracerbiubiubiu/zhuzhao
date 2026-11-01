@@ -41,7 +41,8 @@ type ActionContext struct {
 	Params   map[string]any           // post_actions 元素 params（对象形态）——动作自定义参数
 	RawEvent *domainevent.DomainEvent // 事件订阅形态的原事件（可空）
 	// SystemAsCreator 动作系统身份重放标记：post-function 是系统行为非用户行为——
-	// cc/reassign 等写面动作以工单创建者身份执行（creator 恒有 update/assign 面），
+	// cc 以工单创建者身份执行（creator 有 update 面）；reassign 走 assignAsSystem
+	// 系统通道（canOperate("assign") 不含 isCreator——2026-11-01 审计修复，G-32 族），
 	// ActorID 保留真实操作人供审计归因。
 	SystemAsCreator bool
 }

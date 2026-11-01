@@ -85,6 +85,29 @@ func TestB33_Actions(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, got.AssignedTo)
 		assert.EqualValues(t, aid, *got.AssignedTo, "reassign 动作转派到 aid")
+		assert.NotEmpty(t, got.HumanKey, "human_key 读回（P1-A 回归——列曾建而未读，导出编号列恒空）")
+	})
+
+	t.Run("reassign 系统通道：非 admin 创建者（P1-2 回归——修前以 creator 走 Assign 必 403 静默）", func(t *testing.T) {
+		meta := `{"in_progress>pending_verify":{"post_actions":[{"name":"reassign","params":{"user_id":` + itoa64(bid) + `}}]}}`
+		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
+		require.NoError(t, err)
+
+		// 创建者=bid（无角色——Create 走 org 管理豁免，但无 scope 锚点即无 assign 面）
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "reassign 系统通道单", Priority: 3, OrgID: oid,
+		}, bid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &aid}, aid))
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "in_progress"}, aid)
+		require.NoError(t, err)
+		// aid（处理人）触发转换——post_actions 系统通道重放（修前 actor=creator=bid 走 Assign → 403 → ops.action_failed）
+		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "pending_verify"}, aid)
+		require.NoError(t, err)
+		got, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		require.NotNil(t, got.AssignedTo)
+		assert.EqualValues(t, bid, *got.AssignedTo, "reassign 系统通道转派到 bid（非 admin 创建者场景不再 403）")
 	})
 
 	t.Run("未注册动作跳过 + 字符串形态 + 失败不回滚转换", func(t *testing.T) {

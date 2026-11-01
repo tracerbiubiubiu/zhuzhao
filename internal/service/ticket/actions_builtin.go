@@ -127,11 +127,14 @@ func (a *ReassignAction) Execute(ctx context.Context, ac ActionContext) error {
 		return fmt.Errorf("reassign: user_id 缺失")
 	}
 	uid := int64(f)
-	actor := ac.ActorID
 	if ac.SystemAsCreator {
-		actor = ac.Ticket.CreatedBy
+		// P1-2 修复（2026-11-01 审计）：canOperate("assign") 不含 isCreator——以 creator
+		// 身份走 Assign 在非 admin 创建者场景必 403（TestB33 曾用 admin creator 掩盖）。
+		// 改走 assignAsSystem 系统通道（G-32 委托放大族：配置型动作=获得对应写操作的
+		// 委托放大，配置面已受 ticket:type:manage 控制；auditActor=真实操作人归因）。
+		return a.Svc.assignAsSystem(ctx, &model.AssignTicketRequest{ID: ac.Ticket.ID, AssignedTo: &uid}, ac.ActorID)
 	}
-	return a.Svc.Assign(ctx, &model.AssignTicketRequest{ID: ac.Ticket.ID, AssignedTo: &uid}, actor)
+	return a.Svc.Assign(ctx, &model.AssignTicketRequest{ID: ac.Ticket.ID, AssignedTo: &uid}, ac.ActorID)
 }
 
 // SpawnTaskAction 提交任务动作（owner 2026-10-24 场景实证——「下发即起任务」；

@@ -94,6 +94,7 @@ var validEventActions = map[string]bool{
 	"ticket.deadline":        true, // S3a SLA 层 0.5（deadline 到期——000071 种子规则）
 	"ticket.action_notify":   true, // S3a B3-3 notify 动作（000079 种子规则；动作 template 参数可逐次覆盖）
 	"ops.action_failed":      true, // S3a B3-3 动作失败告警（G-5——payload.actor 锚点，规则 creator/fixed 档可路由）
+	"ops.storage_usage_high": true, // C-6 观测批阈值告警（000080 种子规则——曾缺词致管理面改不了收件人，2026-11-01 审计补）
 }
 
 func isValidEventAction(action string) bool { return validEventActions[action] }

@@ -138,14 +138,14 @@ func TestTaskrunnerHandler_EnvelopeErrorMapping(t *testing.T) {
 	t.Run("已登记码 10001 → 400", func(t *testing.T) {
 		up := newUpstream(t, errcode.ErrInvalidParams.Code, "cron_spec 非法")
 		defer up.Close()
-		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"a"}`)
+		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"audit_archive"}`)
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Contains(t, w.Body.String(), "cron_spec 非法")
 	})
 	t.Run("未登记码 79999 → 500 默认", func(t *testing.T) {
 		up := newUpstream(t, 79999, "上游内部态")
 		defer up.Close()
-		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"a"}`)
+		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"audit_archive"}`)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
@@ -183,8 +183,8 @@ func TestTaskrunnerHandler_ProxyPassthrough(t *testing.T) {
 			http.MethodGet, "/v1/jobs", "dept=dept-a", nil, ""},
 		{"DeadLetters 分页透传", http.MethodGet, "/api/v1/dead-letters?page=1", "",
 			http.MethodGet, "/v1/dead-letters", "page=1", nil, ""},
-		{"CreateJob raw body 透传 + actor 出站", http.MethodPost, "/api/v1/jobs", `{"action_id":"arch","cron_spec":"@daily"}`,
-			http.MethodPost, "/v1/jobs", "", []string{`"action_id":"arch"`}, "10001"},
+		{"CreateJob raw body 透传 + actor 出站", http.MethodPost, "/api/v1/jobs", `{"action_id":"audit_archive","cron_spec":"@daily"}`,
+			http.MethodPost, "/v1/jobs", "", []string{`"action_id":"audit_archive"`}, "10001"},
 		{"UpdateJob 标识在 body（C10）", http.MethodPost, "/api/v1/jobs/update", `{"job_id":"j-9","enabled":false}`,
 			http.MethodPost, "/v1/jobs/update", "", []string{`"job_id":"j-9"`}, "10001"},
 		{"Cancel task_id（C10）", http.MethodPost, "/api/v1/tasks/cancel", `{"task_id":"t-7"}`,
@@ -216,4 +216,23 @@ func TestTaskrunnerHandler_ProxyPassthrough(t *testing.T) {
 			require.Contains(t, w.Body.String(), `"echo":"ok"`) // 上游 data 原样透传
 		})
 	}
+}
+
+// P1-C 回归（2026-11-01 审计）：CreateJob fail-fast 探针曾误读 action 字段
+// （契约=action_id）致恒空永不生效——未注册动作的任务定义照常建入、回调期才 404。
+func TestTaskrunnerHandler_CreateJobFailFast(t *testing.T) {
+	r := newTaskrunnerProxyRouter(t, nil)
+	t.Run("未注册 action_id 提交即拒（21010）", func(t *testing.T) {
+		w := postJSON(t, r, "/api/v1/jobs", `{"action_id":"no_such_action","trigger_type":"manual"}`)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Contains(t, w.Body.String(), "未注册")
+	})
+	t.Run("已注册动作过探针（502=上游未配——证探针未误拦）", func(t *testing.T) {
+		w := postJSON(t, r, "/api/v1/jobs", `{"action_id":"audit_archive","trigger_type":"manual"}`)
+		require.Equal(t, http.StatusBadGateway, w.Code)
+	})
+	t.Run("旧形态 action 字段不再触发探针（契约外宽容）", func(t *testing.T) {
+		w := postJSON(t, r, "/api/v1/jobs", `{"action":"no_such_action","trigger_type":"manual"}`)
+		require.Equal(t, http.StatusBadGateway, w.Code, "action 键不属契约——不拦，走上游校验路径")
+	})
 }

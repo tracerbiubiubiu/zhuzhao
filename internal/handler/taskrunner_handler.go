@@ -194,10 +194,10 @@ func (h *TaskrunnerHandler) CreateJob(c *gin.Context) {
 	// S4 B4-1 fail-fast：任务定义携带 zhuzhao 回调动作时提交即校验（A.2 范围注——
 	// 多执行端[脚本/连接器]动作触发后另对表，此处仅拦 zhuzhao 回调型拼写错）
 	var probe struct {
-		Action string `json:"action"`
+		ActionID string `json:"action_id"` // 契约字段（client/ui 出站均为 action_id）——曾误读 action 致探针恒空永不生效（2026-11-01 审计修复）
 	}
 	_ = json.Unmarshal(body, &probe)
-	if probe.Action != "" && h.failFastAction(c, probe.Action) {
+	if probe.ActionID != "" && h.failFastAction(c, probe.ActionID) {
 		return
 	}
 	data, err := h.svc.CreateJob(c.Request.Context(), json.RawMessage(body), actorOf(c))
