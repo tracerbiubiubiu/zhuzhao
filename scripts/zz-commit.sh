@@ -42,8 +42,9 @@ for f in ${staged}; do
     esac
 done
 
-# 3) pathspec 提交（--only 语义）
-git commit -F "${msgfile}" -- ${paths}
+# 3) pathspec 提交（--only 语义；${amend} 为空或 --amend——2026-11-01 修复：原先变量赋值后未传入，
+#    --amend 形态静默退化为普通提交、在上一笔之上叠同名新提交）
+git commit ${amend} -F "${msgfile}" -- ${paths}
 
 # 4) 复核输出
 git show --stat --format='%h %s' HEAD
