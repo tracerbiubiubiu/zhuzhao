@@ -93,20 +93,30 @@ for h in $(git rev-list "${range}"); do
     # ⑦ 披露一致性（WARN，文件级）——正文声称的「NN 号」须有对应 docs/phase*/NN-*.md 变更
     #    （内容级断言仍需人工 grep；WARN 不计入 violations）
     changed_files=$(git show --name-only --format= "${h}" 2>/dev/null)
-    claim_refs=$(printf '%s' "${body}" | grep -oE '[0-9]{1,2} 号' | sort -u || true)
+    claim_refs=$(printf '%s' "${body}" | grep -oE '[0-9]{1,2} 号' | sed 's/ 号//' | sort -u || true)
     if [ -n "${claim_refs}" ]; then
         missing=""
         for nn in ${claim_refs}; do
-            nn_num=$(printf '%s' "${nn}" | sed 's/ 号//')
             case "${changed_files}" in
-                *"docs/phase"*/"${nn_num}-"*|*"docs/review/${nn_num}-"*|*"docs/phase"*/"${nn_num}_"*) ;;
-                *) missing="${missing} ${nn_num} 号" ;;
+                *"docs/phase"*/"${nn}-"*|*"docs/review/${nn}-"*|*"docs/phase"*/"${nn}_"*) ;;
+                *) missing="${missing} ${nn} 号" ;;
             esac
         done
         if [ -n "${missing}" ]; then
             echo "[WARN] ${h}: body cites 号 refs with no matching file change:${missing} (verify manually)"
         fi
     fi
+
+    # ⑧ 修复批同类扫描行（WARN）——standards §12「同类扫描」行立法（2026-10-29 六条接力链复盘）：
+    #    fix 类提交正文须含「同类扫描：」行；docs 批同等适用但留人工纪律（登记/演进类 docs 批
+    #    非修复语义，机械强校验噪声大——先 fix 面试点）。中文出注释/单引号模式，echo 保持 ASCII
+    #    （脚本头实现注记：$var 紧贴多字节字符在 bash 3.2 + UTF-8 下有 unbound 前科）
+    case "${subject}" in
+        fix\(*)
+            printf '%s' "${body}" | grep -q '同类扫描' || \
+                echo "[WARN] ${h}: fix-type commit body lacks 'tonglei-scan' line (standards §12 same-class scan rule - skip if not a fix batch)"
+            ;;
+    esac
 
     if [ -n "${reasons}" ]; then
         violations=$((violations + 1))
