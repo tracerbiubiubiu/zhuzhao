@@ -43,6 +43,9 @@ type CronScheduler struct {
 
 // CronStatus cron 任务运行状态快照（B5-5 最小件；零值 = 尚未成功过）。
 type CronStatus struct {
+	StartedAt time.Time // 调度 goroutine 启动时刻（零值 = 已注册未启动——注册≠启动，
+	// 2026-11-01 观测批补启动实证：三 cron 注册进 cron-status 可见但
+	// goroutine 从未拉起，运行了 11 个 tick 周期零执行零失败）
 	LastSuccessAt time.Time
 	LastFailureAt time.Time
 	LastError     string // 截断 200，对齐判定日志 reason 口径
@@ -105,6 +108,9 @@ func NewCronScheduler(pool *pgxpool.Pool, name string, job ReentrantJob, tick ti
 
 // Run 阻塞循环（App 生命周期内；ctx 取消即退出）
 func (s *CronScheduler) Run(ctx context.Context) {
+	s.mu.Lock()
+	s.status.StartedAt = time.Now()
+	s.mu.Unlock()
 	s.logger.Info("cron scheduler started", slog.String("job", s.name), slog.Duration("tick", s.tick))
 	t := time.NewTicker(s.tick)
 	defer t.Stop()

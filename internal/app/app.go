@@ -35,12 +35,17 @@ type App struct {
 	logger       *slog.Logger
 	router       *gin.Engine
 	server       *http.Server
-	policyEval   *audit.PolicyEvalWriter   // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
-	auditCron    *service.CronScheduler    // P4 cron 收归：nil=未启用（配置开关）
-	storageGC    *service.CronScheduler    // phase5 S5 孤儿 GC：nil=storage 未启用
-	timeoutScan  *service.CronScheduler    // S10 B10-4 节点超时：nil=未启用（配置开关）
-	inboxCleanup *service.CronScheduler    // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
-	events       *domainevent.HookRegistry // 领域事件总线：Shutdown 排空在途订阅者（nil=跳过）
+	policyEval   *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron    *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
+	storageGC    *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
+	timeoutScan  *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
+	inboxCleanup *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
+	intelCleanup *service.CronScheduler  // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
+	// 以下两件 2026-11-01 补启动（观测批注册了 scheduler 却漏 go Run——注册≠启动，
+	// cron-status 可见但 11 个 tick 周期零执行；StartedAt 字段由此而设）
+	storageUsageSample *service.CronScheduler    // C-6 存储用量采样：恒启用
+	notifyVolumeCheck  *service.CronScheduler    // C-16 通知量级检查：恒启用
+	events             *domainevent.HookRegistry // 领域事件总线：Shutdown 排空在途订阅者（nil=跳过）
 }
 
 // provideEventRegistry 领域事件注册表 provider（B6-1 共享基础设施——
@@ -242,15 +247,18 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		cronReg.Register("timeout_scan", &timeoutScanProvider{sch: timeoutScan, observe: timeoutObserve})
 	}
 	return &App{
-		cfg:          cfg,
-		logger:       logger,
-		router:       router,
-		policyEval:   policyEval,
-		auditCron:    auditCron,
-		storageGC:    storageGC,
-		timeoutScan:  timeoutScan,
-		inboxCleanup: inboxCleanup,
-		events:       eventRegistry,
+		cfg:                cfg,
+		logger:             logger,
+		router:             router,
+		policyEval:         policyEval,
+		auditCron:          auditCron,
+		storageGC:          storageGC,
+		timeoutScan:        timeoutScan,
+		inboxCleanup:       inboxCleanup,
+		intelCleanup:       intelCleanup,
+		storageUsageSample: storageUsageSample,
+		notifyVolumeCheck:  notifyVolumeCheck,
+		events:             eventRegistry,
 	}, nil
 }
 
@@ -304,6 +312,17 @@ func (a *App) Run() error {
 	// S6 B6-7：消息保留清理 cron
 	if a.inboxCleanup != nil {
 		go a.inboxCleanup.Run(ctx)
+	}
+
+	// G-11 / C-6 / C-16（2026-11-01 补启动——注册≠启动实证修复）
+	if a.intelCleanup != nil {
+		go a.intelCleanup.Run(ctx)
+	}
+	if a.storageUsageSample != nil {
+		go a.storageUsageSample.Run(ctx)
+	}
+	if a.notifyVolumeCheck != nil {
+		go a.notifyVolumeCheck.Run(ctx)
 	}
 
 	select {

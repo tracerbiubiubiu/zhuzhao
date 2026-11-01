@@ -13,6 +13,7 @@ import (
 // CronJobView cron 任务状态快照（GET /system/cron-status 出站形态）。
 type CronJobView struct {
 	Name           string     `json:"name"`
+	StartedAt      *time.Time `json:"started_at,omitempty"` // 调度 goroutine 启动时刻（零值=已注册未启动）
 	LastSuccessAt  *time.Time `json:"last_success_at,omitempty"`
 	LastFailureAt  *time.Time `json:"last_failure_at,omitempty"`
 	LastError      string     `json:"last_error,omitempty"`
@@ -44,6 +45,10 @@ func (h *SystemHandler) CronStatus(c *gin.Context) {
 		for name, p := range h.cronReg.Snapshot() {
 			st := p.Status()
 			v := CronJobView{Name: name, LastError: st.LastError, LastDurationMs: st.LastDuration.Milliseconds()}
+			if !st.StartedAt.IsZero() {
+				t := st.StartedAt
+				v.StartedAt = &t
+			}
 			if !st.LastSuccessAt.IsZero() {
 				t := st.LastSuccessAt
 				v.LastSuccessAt = &t
