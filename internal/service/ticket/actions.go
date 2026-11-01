@@ -168,7 +168,18 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 			continue // 未注册动作=配置漂移（保存期可校验）——运行期跳过
 		}
 		ac.Params = ref.Params
-		if err := a.Execute(actCtx, ac); err != nil {
+		// P2 修复（2026-11-01 审计）：动作 panic 不再沿同步栈上抛（转换已 commit，
+		// gin Recovery 接住时后续动作已全跳过且无事件）——recover 转为 error 走统一
+		// 失败分支（ops.action_failed 可观测，error 文案带 panic 前缀）。
+		err := func() (err error) {
+			defer func() {
+				if p := recover(); p != nil {
+					err = fmt.Errorf("action panic: %v", p)
+				}
+			}()
+			return a.Execute(actCtx, ac)
+		}()
+		if err != nil {
 			// 失败语义（A.3）：不回滚转换——结构化日志（ops.action_failed 事件
 			// 面登记触发驱动——当前无消费者先落日志）
 			if logger != nil {

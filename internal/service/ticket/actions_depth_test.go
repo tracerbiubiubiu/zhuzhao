@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 )
 
 // recursiveAction 模拟「动作内再触发转换」：Transition 从 ctx 取深度再跑一轮 post_actions。
@@ -49,4 +51,28 @@ func TestRunPostActions_DepthCutsCascade(t *testing.T) {
 func TestIdsFromParam_FloatAndNumericString(t *testing.T) {
 	got := idsFromParam([]any{float64(1000000), "1234567", float64(42), "x", true, nil})
 	assert.Equal(t, []int64{1000000, 1234567, 42}, got)
+}
+
+// P2 回归（2026-11-01 审计）：动作 panic 被 recover 转为统一失败分支——不沿同步栈
+// 上抛（转换已 commit），且 ops.action_failed 事件照发（error 带 panic 前缀）。
+type boomAction struct{}
+
+func (boomAction) Name() string                                 { return "boom" }
+func (boomAction) Delivery() DeliverySemantics                  { return DeliveryAtMostOnce }
+func (boomAction) Execute(context.Context, ActionContext) error { panic("kaboom") }
+
+func TestRunPostActions_PanicRecovered(t *testing.T) {
+	reg := NewActionRegistry()
+	require.NoError(t, reg.Register(boomAction{}))
+	var got *domainevent.DomainEvent
+	reg.SetEmitter(func(ev domainevent.DomainEvent) { cp := ev; got = &cp })
+	tm := &TransitionMeta{PostActions: []json.RawMessage{json.RawMessage(`{"name":"boom"}`)}}
+
+	assert.NotPanics(t, func() {
+		reg.RunPostActions(context.Background(), nil, tm, ActionContext{Ticket: &model.Ticket{ID: 7}, ActorID: 9}, 0)
+	}, "动作 panic 不得沿 RunPostActions 同步栈上抛")
+	require.NotNil(t, got, "panic 走统一失败分支——ops.action_failed 必须照发")
+	assert.Equal(t, domainevent.ActionOpsActionFailed, got.Action)
+	assert.Equal(t, "boom", got.Payload["action"])
+	assert.Contains(t, got.Payload["error"], "action panic: kaboom")
 }

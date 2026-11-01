@@ -314,8 +314,15 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 	if err := revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	// disabled 键会拦截刚签发的新 AT，须在重新签发前清除
-	// （密码已验证通过，旧 RT 已全部删除，其他设备旧 AT 最长 30 分钟自然过期）
+	// P1-D（2026-11-01 审计）：写改密地板——其他设备旧 AT 即时失效。修前为放行新 AT
+	// 清除 disabled 键的副作用是旧 AT 一并复活（残留 ≤AccessTTL；RT 已全死故窗口有界，
+	// 但凭证轮换恰是「怀疑 AT 被盗」的处置，不应留窗）。地板 TTL=AccessTTL+60s 自然过期；
+	// 写失败与吊销同档 fail-close。
+	if err := s.rdb.Set(ctx, fmt.Sprintf("user:at_min_iat:%d", userID), time.Now().Unix(),
+		s.jwtManager.AccessTTL()+time.Minute).Err(); err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	// disabled 键会拦截刚签发的新 AT，须在重新签发前清除（旧 AT 已由地板兜底）
 	if err := clearUserDisabled(ctx, s.rdb, userID); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}

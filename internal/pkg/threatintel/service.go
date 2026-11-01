@@ -165,9 +165,16 @@ func (s *Service) fetchAndStore(ctx context.Context, intelType, value string, tt
 
 // refresh 异步回源刷新（懒过期路径——失败仅落日志，下轮查询再试）。
 func (s *Service) refresh(ctx context.Context, intelType, value string, ttl time.Duration) {
-	if _, err := s.fetchAndStore(ctx, intelType, value, ttl); err != nil {
-		s.logger.Warn("threatintel: background refresh failed", "type", intelType, "value", value, "err", err)
-	}
+	// P2 修复（2026-11-01 审计）：懒过期臂并入 singleflight——N 个并发 stale 命中只回源
+	// 一次（SWR 规范 revalidate 同样防击穿；此前仅未命中臂有保护，与包注释「防击穿保
+	// 护上游配额即本件存在意义」相悖）。
+	_, _, _ = s.group.Do(intelType+"/"+value, func() (any, error) {
+		if _, err := s.fetchAndStore(ctx, intelType, value, ttl); err != nil {
+			s.logger.Warn("threatintel: background refresh failed", "type", intelType, "value", value, "err", err)
+			return nil, err
+		}
+		return nil, nil
+	})
 }
 
 func (s *Service) ttlOf(intelType string) time.Duration {

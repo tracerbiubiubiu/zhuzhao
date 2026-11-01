@@ -11,7 +11,7 @@
 ## 2. 现状基线（代码级锚点，2026-10-27 盘点）
 
 - **L3 处理人无字段编辑权**：`canOperate` 的 update=创建人(+委托)、transition=创建人∨处理人（`internal/service/ticket/resource.go` canOperate:227）——处理人填不了「整改措施」。
-- **详情页无流程图**：`zhuzhao-ui/src/views/ticket/detail/index.vue`（750 行）仅状态 tag+转换按钮，无 FlowGraph 引用；已走路径数据现成（ticket_events status_changed 序列）。
+- **详情页无流程图**：`zhuzhao-ui/src/views/ticket/detail/index.vue`（750 行）仅状态 tag+转换按钮，无 FlowGraph 引用；已走路径数据~~现成~~（ticket_events status_changed 序列——**⚠ 前置缺口（2026-11-01 审计 P1-3）：/transition 主路径不写 ticket_events**，序列仅含 close/assign 写点；件 1 交付时补齐统一事件行）。
 - **列表无「抄送我的」维度**：TicketListQuery 仅 AssigneeID/CreatedBy；cc 读特例支已存在（`ccVisibilitySQL`）。
 - **手动催办已登记未排期**：[phase5/10 号](../phase5/10-s10-ticket-collaboration.md) 2026-10-26 触发登记（emit→S6 零新通知代码、60s 节流窗径既定）。
 - **无关注/watcher**：ticket_cc.role 预留 cc/participant 值无消费（000062）。

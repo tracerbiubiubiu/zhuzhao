@@ -116,7 +116,7 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 | 项 | 状态 |
 |----|------|
 | hotfix + 测试钉池 + 锤击超时（`039aca6`） | ✅ 已合，CI 绿 |
-| 彻底方案 dbtx 连接解析（§7） | ✅ **试点批已拍（2026-10-28 所有者）**：dbtx 包 + ticket 域切换 + BK11 负向测试（故意事务内调池读——断言不挂死且 Warn 在案）+ 全量集成回归，~0.5–1 天；排期 = phase5 走查后小批或 phase6 启动批随行（Week 0 动 ticket 域顺手，随行登记 = [phase6/05 号](../phase6/05-launch-batch.md) §3）；批 2 推广批（19 repo + standards 成文）待试点结论 |
+| 彻底方案 dbtx 连接解析（§7） | ✅ **试点批已拍（2026-10-28 所有者）**：dbtx 包 + ticket 域切换 + BK11 负向测试（故意事务内调池读——断言不挂死且 Warn 在案）+ 全量集成回归 + **resolveClosedOrMissing tx 化（2026-11-01 审计 P2-1——UpdateStatusTx/UpdateAssignedToTx 零行路径在事务窗口内走池，BK11 同型最后一处残留，随试点同修）**，~0.5–1 天；排期 = phase5 走查后小批或 phase6 启动批随行（Week 0 动 ticket 域顺手，随行登记 = [phase6/05 号](../phase6/05-launch-batch.md) §3）；批 2 推广批（19 repo + standards 成文）待试点结论 |
 | 请求级 deadline 中间件（§7.6 批3） | ⬜ 未单独拍——随试点批实施时顺带评估（~半天独立小件，互补非替代） |
 | humankey 计数行表化（消每日 SEQUENCE 目录膨胀，顺带可进事务） | ⬜ 挂账，随下次动 humankey 顺带 |
 | fileFieldKeys 类型 schema 读进程内缓存（§6 观察——热路径省一次 DB 往返、消一个嵌套风险点） | ⬜ 挂账，随 dbtx 推广批评估或独立小件 |
