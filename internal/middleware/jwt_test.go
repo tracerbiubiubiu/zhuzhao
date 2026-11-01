@@ -173,4 +173,17 @@ func TestJWT_ATMinIATFloor(t *testing.T) {
 
 		assert.False(t, c.IsAborted(), "签发晚于地板的 AT 不受影响（新签 AT 场景）")
 	})
+	t.Run("无地板键（redis.Nil）→ 放行，不得 503", func(t *testing.T) {
+		// 2026-11-02 回归锚：Pipeline.Exec 把 GET 缺键的 redis.Nil 当首个命令错误返回，
+		// 78733bf 曾被既有 err!=nil→503 分支吞掉——无地板键（=绝大多数用户）全量 503。
+		c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
+		at, _, err := manager.GenerateAccessToken(42, "user-42", false)
+		require.NoError(t, err)
+		bearerRequest(c, at)
+
+		middleware.JWT(manager, rdb, nil)(c)
+
+		assert.False(t, c.IsAborted(), "无地板键不得被当成 Redis 故障")
+		assert.NotEqual(t, http.StatusServiceUnavailable, w.Code)
+	})
 }

@@ -101,7 +101,11 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 		blacklistCmd := pipe.Exists(c, blacklistKey)
 		disabledCmd := pipe.Exists(c, disabledKey)
 		atFloorCmd := pipe.Get(c, atFloorKey)
-		if _, err := pipe.Exec(c); err != nil {
+		// Pipeline.Exec 返回首个命令错误——GET 缺键即 redis.Nil（绝大多数用户无地板键），
+		// 不是服务故障；此处只把真实错误判为 503，Nil 交由下方 atFloorCmd 逐命令判定
+		//（2026-11-02 修：78733bf 引入 GET 后未过滤 Nil，致无地板键用户全量 503——
+		// 单测 TestJWT_ValidToken_Passes 红即此症）。
+		if _, err := pipe.Exec(c); err != nil && !errors.Is(err, redis.Nil) {
 			response.ServiceUnavailable(c)
 			c.Abort()
 			return
