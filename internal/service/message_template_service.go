@@ -72,8 +72,14 @@ var builtinVarSet = map[string]bool{
 	// deadline 载荷=title/status/human_key/to_assignee/cc_users——无独占键
 	// 操作人（创建/更新事件——S6 B6-5）
 	"ticket.actor": true,
-	// 运维域（ops.cron_failed——B10-4 观测面）
-	"event.job": true, "event.error": true,
+	// 运维域（ops.cron_failed——B10-4 观测面；000064 种子模板引用 last_success）
+	"event.job": true, "event.error": true, "event.last_success": true,
+	// 运维域（ops.action_failed——G-5 emit 载荷 action/error/ticket_id/actor；无种子模板，管理面可配）
+	"event.action": true, "event.ticket_id": true, "event.actor": true,
+	// 运维域（ops.storage_usage_high——C-6 观测批 000080 种子模板四键。2026-11-02 审计补：
+	// 修前重存该种子模板即 400「不支持的变量 event.level」——G-2 同型；批 A 正文称
+	// 「属批 B」而批 B 未落，本批闭环）
+	"event.level": true, "event.ratio": true, "event.usage_bytes": true, "event.capacity_bytes": true,
 }
 
 func validateChannel(channel string) error {

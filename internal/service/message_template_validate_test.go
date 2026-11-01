@@ -42,7 +42,9 @@ func TestValidatePlaceholders(t *testing.T) {
 		for _, k := range []string{"ticket.title", "ticket.type_code", "ticket.priority", "ticket.status", "ticket.human_key", "ticket.link"} {
 			assert.True(t, builtinVarSet[k], "%s 应在白名单内", k)
 		}
-		assert.Len(t, builtinVarSet, 16)
+		// 计数守卫=两处同源的弱锁（16→24：2026-11-02 审计补 ops 八键，handler 字典同步——
+		// 字典侧镜像见 handler/message_template_handler_test.go）
+		assert.Len(t, builtinVarSet, 24)
 	})
 }
 
@@ -66,4 +68,25 @@ func TestValidatePlaceholders_IntegrationPaths(t *testing.T) {
 	errU := s.Update(context.Background(), tpl)
 	require.Error(t, errU, "Update 应在 repo 层前被校验拦截（F-1-9b 旁路修复真锁——撤 Update 内校验必红）")
 	assert.Contains(t, errU.Error(), "ticket.ghost")
+}
+
+// 2026-11-02 审计补（词表「三处」第二/三处——批 A 正文称「属批 B」而批 B 未落）：
+// 种子模板实际引用的 ops 载荷键必须在白名单内，否则管理面重存种子模板即 400（G-2 同型）。
+func TestValidatePlaceholders_OpsSeedTemplates(t *testing.T) {
+	cases := map[string]string{
+		"000064 ops.cron_failed 种子":        "定时任务 {{event.job}} 执行失败：{{event.error}}\n上次成功：{{event.last_success}}",
+		"000080 ops.storage_usage_high 种子": "存储用量 {{event.level}}：{{event.ratio}}（{{event.usage_bytes}}/{{event.capacity_bytes}}）",
+		"ops.action_failed 可配模板":           "动作 {{event.action}} 失败：{{event.error}}（工单 {{event.ticket_id}}，触发人 {{event.actor}}）",
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, validatePlaceholders("subj", body), "ops 模板占位符须全在白名单")
+		})
+	}
+	// 镜像守卫（跨包不可直引 handler.BuiltinTemplateVars）：本次新增八键须全部在白名单——
+	// 与 internal/handler/message_template_handler_test.go 的字典侧镜像测试成对，两处任一漏改即红。
+	for _, k := range []string{"event.last_success", "event.action", "event.ticket_id", "event.actor",
+		"event.level", "event.ratio", "event.usage_bytes", "event.capacity_bytes"} {
+		assert.True(t, builtinVarSet[k], "白名单缺 %s", k)
+	}
 }
