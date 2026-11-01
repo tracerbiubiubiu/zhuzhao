@@ -1,6 +1,6 @@
 # zhuzhao
 
-> **定位（2026-09-03，§23 重定位后）**：IAM 内核 + 统一网关 + 通用能力底座（事件/审计/组织/HR）。工单模块已封版（对接公司内部平台，重启条件见 [design-decisions §23](docs/design/design-decisions.md)）；taskrunner/activelist 为独立部署服务，经 zhuzhao 网关接入（权限架构定版见 §25）。
+> **定位（2026-09-03，§23 重定位后）**：IAM 内核 + 统一网关 + 通用能力底座（事件/审计/组织/HR）。工单自研已恢复主线（§23 于 2026-10-09 经 §29 翻案——phase5 底座强化已交付、phase6 风险联动在册，决策见 [design-decisions §23/§29](docs/design/design-decisions.md)）；taskrunner/activelist 为独立部署服务，经 zhuzhao 网关接入（权限架构定版见 §25）。
 > 仓库名与 module path 的正式命名合并到内网迁移时执行（M-Mig，[13 号 §1](docs/phase3/13-implementation-plan.md)）——现只注定位不改库。
 >
 > **Phase 4 收官（2026-09-29）**：前端消费面全线交付（[zhuzhao-ui](https://github.com/tracerbiubiubiu/zhuzhao-ui)，E2E 18 spec 打真实栈）+穿插池点名五件+P2 小件四件套+cron 收归——完成定义四条全绿终验见 [02 号 §3.2](docs/phase4/02-implementation-plan.md)。
@@ -63,7 +63,7 @@ CI（GitHub Actions）跑最小质量网（vet + gofmt + build + 单测 race）�
 [docs/README.md](docs/README.md) 为文档树索引（modules / phase1-3 / review / adr / design / ops）。重点：
 
 - [docs/standards.md](docs/standards.md) —— 生态工程公约 SSOT（API 设计 / 工程结构 / 数据迁移 / 安全基线 / 测试约定）
-- [docs/design/design-decisions.md](docs/design/design-decisions.md) —— 演进中的设计拍板（权限架构 §25 / 工单封版 §23）
+- [docs/design/design-decisions.md](docs/design/design-decisions.md) —— 演进中的设计拍板（权限架构 §25 / 工单 §23 已翻案 §29）
 - [docs/phase3/16-external-integration.md](docs/phase3/16-external-integration.md) —— 外部集成 SSOT（16 号：基线 §9 / taskrunner 对齐清单）
 - [docs/review/11-project-control.md](docs/review/11-project-control.md) —— 能力总览（能力矩阵 / 健康状态 / 遗留问题）
 - [docs/api/errcode.md](docs/api/errcode.md) —— 业务错误码登记表

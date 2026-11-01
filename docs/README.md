@@ -86,6 +86,9 @@ docs/
 ├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
 ├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段 ✅ 全部交付·走查收口中；SSOT = phase5/README.md）
 ├── phase6/                          # Phase 6：风险管理模块（已立项转执行态——六组拍板闭环、00/06 已批准、合 main 暂缓待 phase5 测试收口；SSOT = phase6/README.md）
+├── phase7/                          # Phase 7：接入扩源与自动化地基（研究稿总纲蒸馏，未立项——README）
+├── phase8/                          # Phase 8：自动化能力中心（同上）
+├── phase9/                          # Phase 9：处置闭环与编排引擎 MVP（同上）
 ├── phase7/                          # Phase 7：接入扩源+自动化地基（总纲已蒸馏 2026-10-29——已拍决策汇编，未立项；设计稿随立项批）
 ├── phase8/                          # Phase 8：自动化能力中心=SOAR 能力迁移（总纲已蒸馏 2026-10-29——编排留 SOAR Stage 1）
 └── phase9/                          # Phase 9：处置闭环深化+自研编排引擎 MVP（总纲已蒸馏 2026-10-29——Stage 2 起点；outbox 此阶段落地）
@@ -103,7 +106,8 @@ docs/
     ├── README.md                    # ADR 索引与模板说明
     ├── ADR-001-event-mechanism-l1-steady-state.md  # L1 长期稳态
     ├── ADR-002-asynq-async-task-executor.md        # Asynq 异步任务执行器
-    └── ADR-003-activelist-integration-form.md      # activelist 集成形态
+    ├── ADR-003-activelist-integration-form.md      # activelist 集成形态
+    └── ADR-004-ticket-type-template-flow.md       # 类型/模板/流程三者关系（A 案单向）
 ```
 
 ## 文档分类说明
@@ -210,8 +214,8 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 
 | ADR | 决策 | 状态 |
 |-----|------|------|
-| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳 |
-| [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳 |
+| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳·部分实施（轮询实装；Asynq 未引——adr/README 口径） |
+| [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳·未实施（go.mod 无 asynq；现行=进程内 HookRegistry） |
 | [ADR-003](./adr/ADR-003-activelist-integration-form.md) | activelist 作为独立服务集成形态 | 已采纳 |
 | [ADR-004](./adr/ADR-004-ticket-type-template-flow.md) | 类型/模板/流程三者关系（A 案单向引用——条件左值引用简单、零迁移） | 已采纳（2026-10-27 建档） |
 

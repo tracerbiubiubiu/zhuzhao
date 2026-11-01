@@ -37,7 +37,7 @@
 | 工单模板/关联阶段归属 | **Phase 2a**（前移，纯 DB） | §2 铁律；迁移 000015/000016 |
 | Phase 3 排期 | §23 已翻案（§29 工单自研主线；phase5 十段已交付） | roadmap.md |
 | Phase 3 子阶段 | 不拆 3a/3b 执行（仅作能力归类参考） | roadmap.md / phase3/README.md |
-| 事件机制 | L1 长期稳态（ADR-001）+ Asynq（ADR-002） | ADR-001/002 |
+| 事件机制 | L1 长期稳态（ADR-001 部分实施）；Asynq 未引（ADR-002 已采纳未实施——现行事件面=进程内 HookRegistry） | ADR-001/002 |
 | 配置即代码 | workflow / SLA 种子用声明式 YAML + 版本化幂等载入（见 10-ticket-business §4.9） | 借鉴 ecmdb bootstrap |
 
 > 若需推翻上表任一项，**先改本文档 + design-decisions.md，再级联**，不要只动细节文档。

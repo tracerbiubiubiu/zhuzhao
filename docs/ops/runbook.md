@@ -11,7 +11,7 @@
 | compose | `deployments/docker-compose.yaml`（zhuzhao 侧） | `deployments/docker-compose.dev.yaml` + `go run ./cmd/server` |
 | 入口 | `zhuzhao-app:33333` | 同 :33333（**与演示栈互斥，先停一个**） |
 | 数据库 | `zhuzhao-postgres`（volume 持久） | `zhuzhao-dev-postgres:5432`（docker-dev-reset 可重置） |
-| **E000001 口令** | `Phase3Demo#2026`（bcrypt 已恢复） | 随 acceptance 漂移：admin123 → admin12345（phase1 脚本强制改密）→ 验证残留 B8Verify#2026 |
+| **E000001 口令** | `Phase3Demo#2026`（bcrypt 已恢复） | 随 acceptance 漂移：admin123 → admin12345（phase1 脚本强制改密）→ 验证残留 B8Verify#2026——**终态恒 admin12345（2026-10-13 起；权威=[docs/runbook §4](../runbook.md)+AGENTS；本列系历史演练叙述）** |
 | taskrunner | 独立三容器栈：`taskrunner/deploy/compose.yaml`（**compose 未改名**；改名的是 activelist——其 deploy/ 下为 compose.prod.yaml/compose.dev.yaml，须显式 -f，见 §1.6） | 不部署（回调链经 Go 集成测试） |
 
 - SK 配对：zhuzhao `GATEWAY_SK` ↔ activelist `ACTIVELIST_CALLER_ZHUZHAO_SK`；zhuzhao `internal_jobs` SK ↔ taskrunner `TASKRUNNER_SELF_SK`；taskrunner `TASKRUNNER_CALLER_ZHUZHAO_SK` ↔ zhuzhao internal_jobs 侧。本地默认 `dev-gateway-sk`/`dev-self-sk` 系，生产一律覆盖。
