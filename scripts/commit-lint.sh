@@ -9,7 +9,7 @@
 #
 # 校验规则（docs/standards.md §12-9 + AGENTS.md 三节）：
 #   ① 主题行 = type(scope): 摘要（type 枚举小写；scope 可选小写）
-#   ② 摘要 <=40 字（去前缀按字符计，中文友好）
+#   ② 摘要 <=50 字（去前缀按字符计，中文友好；2026-10-30 所有者拍 40→50）
 #   ③ 摘要结尾不加句号
 #   ④ 主题行与正文之间必须空行
 #   ⑤ 正文至少有一行非空内容（AGENTS.md 三节必附：改动摘要/影响面/验证证据）
@@ -69,11 +69,11 @@ for h in $(git rev-list "${range}"); do
         reasons="${reasons}
     [1] subject not in 'type(scope): summary' form"
 
-    # ② 摘要 <=40 字（按字符计）
+    # ② 摘要 <=50 字（按字符计；2026-10-30 所有者拍 40→50）
     summary=$(printf '%s' "${subject}" | sed -E 's/^(feat|fix|docs|refactor|test|chore|build|ci|perf)(\([a-z0-9_-]+\))?: //')
     len=$(printf '%s' "${summary}" | wc -m | tr -d ' ')
-    [ "${len}" -le 40 ] || reasons="${reasons}
-    [2] summary ${len} chars (limit 40)"
+    [ "${len}" -le 50 ] || reasons="${reasons}
+    [2] summary ${len} chars (limit 50)"
 
     # ③ 结尾不加句号（中/英文句号均算；省略号结尾不拦）
     case "${summary}" in
