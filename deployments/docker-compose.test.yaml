@@ -78,7 +78,6 @@ services:
 
   migrate:
     image: migrate/migrate:v4.17.0
-    profiles: ["migrate"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -232,7 +231,7 @@ services:
     environment:
       UPSTREAM_APP: app
     ports:
-      - "4001:80"
+      - "48081:80"
     depends_on:
       - app
     networks:
