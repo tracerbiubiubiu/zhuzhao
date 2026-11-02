@@ -137,7 +137,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 > **催办通知默认只记日志不发送**（`tickets.timeout_observe: true`——存量数据回填近似值防误报）。
 > dev 栈重启后按以下步骤确认并关闭：
 
-1. `GET /api/v1/system/cron-status`（admin）→ 确认 `timeout_scan` 任务存在且 `observe: true`
+1. `GET /api/v1/system/cron-status`（admin）→ 确认 `timeout_scan` 任务存在且 `observe: true`；**顺带核每个任务 `started_at` 非空**（空=已注册未启动——2026-11-01 观测批三 cron 曾注册未拉起、11 个 tick 零执行；f51cd4c 后此字段即「注册≠启动」探测点）
 2. 等首个扫描周期（默认 5 分钟）→ 查服务端日志 `timeout_scan: overdue candidate (observe, not sent)` 确认无误报
 3. `configs/config.yaml` 置 `tickets.timeout_observe: false`（或 env `TICKETS_TIMEOUT_OBSERVE=false`）→ 重启
 4. 复查 cron-status → `observe: false` → 下个周期起实际催办

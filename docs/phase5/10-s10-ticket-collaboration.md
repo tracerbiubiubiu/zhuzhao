@@ -214,7 +214,7 @@ GET /api/v1/badges                      # 登录态；响应 sections 为开放 
 - **扫描逻辑**：逐活跃 ticket_type → 解析 `transition_meta` JSONB（state 级键→`timeout_minutes`；**编辑面=B10-4 管理页扩展或 JSON 专家模式——S2 画布不承载**[结构修正]）→ 候选查询（部分索引 `idx_tickets_timeout`：`status = ? AND status_changed_at < NOW() - interval`）→ 命中则 **Dispatch `DomainEvent{BizType:"ticket", Action:"ticket.timeout"}`**；
 - **通知复用 S6 规则面**（关键复用设计）：扫描器只发事件、不发通知——S6 `message_rules` 配置 `ticket.timeout` 事件的模板/收件人（按级别路由 = recipients spec，§5.1 第一档）——超时通知与状态通知同一条渲染→发送→message_log 链，零新通知代码；
 - **查重**：S6 消费者侧节流窗口既定（60s）不适用于扫描周期场景——扫描器侧同单同状态只发一次：`message_log` 查重（biz_id + Action + 当前状态存在 sent 记录则跳过）；状态流转后 `status_changed_at` 刷新，自然重置；
-- **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`）+ `GET /api/v1/system/cron-status`（admin 只读）+ 扫描失败 Dispatch `DomainEvent{BizType:"ops", Action:"ops.cron_failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。**BizType=`ops`（运维域，非 ticket——域边界显式化，2026-10-16 审计补：按 Action 命名约定 `{biz_type}.{动作}` 统一，避免隐式落 message_rules 表 DEFAULT 'ticket'）**。
+- **cron 可观测面随行**：CronScheduler 增任务状态登记（`Status() map[string]{LastSuccess, LastDuration, LastRows}`；**2026-11-01 +`StartedAt`**——观测批三 cron 注册进 cronReg 却漏 `go Run` 的实证修复 f51cd4c：「已注册未启动」转可见字段，零值=未启动）+ `GET /api/v1/system/cron-status`（admin 只读，出站 +`started_at`）+ 扫描失败 Dispatch `DomainEvent{BizType:"ops", Action:"ops.cron_failed"}` → S6 规则告警（audit_archive 先例的静默失败教训收口）。**BizType=`ops`（运维域，非 ticket——域边界显式化，2026-10-16 审计补：按 Action 命名约定 `{biz_type}.{动作}` 统一，避免隐式落 message_rules 表 DEFAULT 'ticket'）**。
 
 ### A.6 导出端点（B10-5）
 

@@ -514,7 +514,7 @@ Wire Injector (wire.go)
 |------------|----------|------|
 | `Recovery` | 全局 | Panic 恢复 |
 | `Logger` | 全局 | 请求日志 |
-| `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled`（Redis 故障 503） |
+| `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled` + 改密地板 `user:at_min_iat`（AT.iat < 地板即 401，2026-11-01 P1-D；三键同趟 pipeline，Redis 故障 503——GET 缺键 redis.Nil 不算故障，bb4760c） |
 | `Casbin` | 需鉴权路由 | 路由级 RBAC（RoleFetcher 查角色） |
 | `Audit` | 需审计路由 | 操作记录 |
 | `RateLimit` | 登录等公开路由 | 登录限流在 **AuthService**（Lua）；API 级限流 Phase 3 |
@@ -740,6 +740,12 @@ blacklist:at:at_xyz789 → 1
 # 用户禁用/删除后即时吊销
 # Key:   user:disabled:{userId}
 user:disabled:1 → 1
+
+# 改密地板（自服务改密后其他设备旧 AT 即时失效——2026-11-01 P1-D）
+# Key:   user:at_min_iat:{userId}
+# Val:   unix 秒；签发 iat < 该值的 AT 即 401（新签 AT iat ≥ 地板不受影响）
+# TTL:   AccessTTL + 60s（自然过期零残留）
+user:at_min_iat:1 → 1762041600
 
 # 用户权限缓存（Phase 3 / 按需，Phase 1 不使用）
 # Key:   perm:user:{userId}

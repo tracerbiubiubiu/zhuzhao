@@ -118,6 +118,7 @@
 | **创建** | INSERT users；可选同事务 `user_roles` / `SetUserOrgsTx` | — | 工号/域账号组合冲突 |
 | **更新** | UPDATE 资料字段 | — | `is_system` 保护（admin 不可改 superadmin） |
 | **禁用** | `status=0` | `user:disabled` + DEL 全部 RT | 最后一个 superadmin |
+| **自服务改密** | UPDATE `password_hash` | DEL 全部 RT + 写 `user:at_min_iat` 地板（旧 AT 即时 401，2026-11-01 P1-D）+ 清 `user:disabled`（放行新签 AT） | 旧密码校验失败 |
 | **删除（软删）** | DELETE `user_roles`、`user_orgs`；`deleted_at=NOW()` | 同上会话吊销 | `is_system`、最后 superadmin、不能删自己 |
 | **SetRoles** | DELETE+INSERT `user_roles` | Phase 3：`DEL perm:user:{id}` | priority 防提权 |
 | **SetUserOrgs** | DELETE+INSERT `user_orgs` | — | primary 须在 org_ids 内 |
