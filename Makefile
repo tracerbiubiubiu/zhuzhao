@@ -18,9 +18,13 @@ INTERNAL_JOBS_SK ?= dev-tr-e2e-sk
 # 第二实例机制(docs/ops/port-allocation.md 33334):并行会话各用各的端口,互不误杀
 APP_PORT ?= 33333
 export APP_PORT
+# /al 上游 env 覆盖（2026-11-02 双拓扑治理）：宿主 dev 默认回环（activelist 宿主直跑），
+# compose/其余拓扑 make dev GATEWAY_AL_TARGET=http://activelist:18081 覆盖
+GATEWAY_AL_TARGET ?= http://127.0.0.1:18081
+export GATEWAY_AL_TARGET
 dev:
 	@lsof -ti:$(APP_PORT) | xargs kill -9 2>/dev/null || true
-	go run ./cmd/server
+	GATEWAY_AL_TARGET=$(GATEWAY_AL_TARGET) go run ./cmd/server
 
 tidy:
 	go mod tidy

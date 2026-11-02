@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -393,6 +394,17 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Audit.Archive.OutDir == "" {
 		cfg.Audit.Archive.OutDir = "data/archive"
+	}
+
+	// 网关 /al 上游 target env 覆盖（2026-11-02 双拓扑免改文件治理）：compose 服务名/
+	// 宿主回环随环境注入，基线文件不再手工编辑（此前本地态曾两度泄漏入库：1d4d36c）。
+	// slice 元素 viper BindEnv 不可达，走后处理；仅命中 /al 前缀，其余上游不受影响。
+	if alTarget := os.Getenv("GATEWAY_AL_TARGET"); alTarget != "" {
+		for i := range cfg.Gateway.Upstreams {
+			if cfg.Gateway.Upstreams[i].Prefix == "/al" {
+				cfg.Gateway.Upstreams[i].Target = alTarget
+			}
+		}
 	}
 
 	// internal_jobs AK 缺省归一化（默认值属 Load 职责；SK 强制属 Validate）
