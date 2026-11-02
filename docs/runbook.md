@@ -216,4 +216,12 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
 
+## 8. 中间件控制台口径（2026-11-02 拍板）
+
+**中间件控制台一律外部化：挂成熟外部工具，不内嵌业务应用、不自研。** 理由：内嵌=主动扩攻击面（IAM 平台尤其忌）+ 非核心方向永久维护负担 + 重复造 RedisInsight/Kibana 级轮子；业界主流为零。重开触发条件（三条）：①中间件实例×环境多到远超一只手；②zhuzhao 转型多团队内部平台产品（届时拿 CloudBeaver/CloudDM 类现成货，仍不自研）；③出现「工单驱动的数据操作审批」需求（与工单域有化学反应，属 phase 级新立项）。
+
+- **Redis**：`docker compose -f deployments/docker-compose.dev.yaml --profile tools up -d redisinsight` → http://localhost:5540 （tools profile 默认不起，不进主栈；连接 redis:6379 / 密码 zhuzhao_dev，首连 UI 输入一次）
+- **asynq 队列深查**：官方 asynqmon 三连实证不适用（停更 3 年+ / 无 arm64 镜像 / 不兼容 asynq v0.26 格式，详见 docker-compose.dev.yaml 注释）——现状用 zhuzhao-ui jobs/死信三 Tab + `redis-cli --scan --pattern 'asynq:{jobs}:*'`；未来真需要时给 taskrunner 加 `asynq.Inspector` 只读端点（其内部已实例化，小批可落）。
+- **PG / RustFS**：桌面客户端直连 5432（pgAdmin 等）；RustFS Console 自带（storage profile，9001）。
+
 

@@ -69,7 +69,29 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis 可视（2026-11-02 口径拍板：中间件控制台一律外部化——只挂外部工具，不内嵌
+  #   业务应用；profile=tools 隔离，默认不起）：
+  #   docker compose -f deployments/docker-compose.dev.yaml --profile tools up -d redisinsight
+  #   打开 http://localhost:5540 → 添加连接 host=redis port=6379 password=zhuzhao_dev
+  #   （REDIS_HOSTS 仅预填 host/port，密码首次在 UI 输入一次即可）。
+  #   asynqmon 不挂的原因（2026-11-02 实证三连）：官方 hibiken/asynqmon 停更 3 年+
+  #   无 arm64 镜像 + 不兼容本仓 taskrunner 的 asynq v0.26 队列格式（issue #302），
+  #   社区 fork 无发布镜像；队列深查现状=zhuzhao-ui jobs/死信三 Tab + redis-cli
+  #   --scan --pattern 'asynq:{jobs}:*'；未来需要时给 taskrunner 加 Inspector 只读
+  #   端点（它已内置 asynq.Inspector 实例，小批可落）。
+  redisinsight:
+    image: redis/redisinsight:3.8.0   # 版本钉死对齐 rustfs 判据①惯例
+    container_name: zhuzhao-dev-redisinsight
+    profiles: ["tools"]
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "5540:5540"
+    volumes:
+      - dev_redisinsight_data:/data
+
 volumes:
   dev_pg_data:
   dev_redis_data:
   dev_rustfs_data:
+  dev_redisinsight_data:

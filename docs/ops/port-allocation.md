@@ -24,6 +24,7 @@
 | **5432** | PostgreSQL（dev compose） | dev | compose postgres 容器 | 映射 `"5432:5432"` 已启用（docker-compose.dev.yaml L16 实测；原「已注释不映射」描述与文件不符——本机无原生 5432 时该映射无害） |
 | **5433** | PostgreSQL（**测试专用**——本机独立容器跑 migration 验证） | audit / migration 验证 | 手动 `docker run -p 5433:5432` | — |
 | **6379** | Redis（dev compose） | dev | compose redis 容器 | — |
+| **5540** | RedisInsight（Redis 可视，tools profile——2026-11-02 口径拍板，runbook §8） | dev | compose redisinsight 容器（默认不起） | — |
 | **9000** | RustFS API（S3 兼容端点） | dev | compose rustfs 容器 | `RUSTFS_API_PORT` |
 | **9001** | RustFS Console（管理面板） | dev | compose rustfs 容器 | `RUSTFS_CONSOLE_PORT` |
 | **9002** | RustFS backup API（第二实例 S3） | dev | compose rustfs-backup 容器 | 不映射（compose 内网互访） |
