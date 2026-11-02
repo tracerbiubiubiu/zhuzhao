@@ -112,7 +112,7 @@ gateway:
   sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
   upstreams:
     - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
-      target: http://activelist:8080  # compose 服务名（二次泄漏还原：a2beb00 后 1d4d36c 又带入本地 E2E 态——2026-11-02 审计再修）
+      target: http://activelist:18081  # compose 服务名@分配表 18081（原 8080 系高危冲突口，2026-11-02 所有者拍板迁移；二次泄漏史：a2beb00 revert 后 1d4d36c 曾再带入 127.0.0.1 态）
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 

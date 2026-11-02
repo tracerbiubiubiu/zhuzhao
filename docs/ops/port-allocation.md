@@ -33,7 +33,7 @@
 | 端口 | 用途 | 使用环境 | 占用方 | 仓 |
 |------|------|----------|--------|-----|
 | **18080** | taskrunner HTTP API | dev compose | taskrunner 容器 | taskrunner 仓（⚠ 2026-10-15 核对：compose 未发布宿主端口（C3 内网），容器态亦未常驻——现状为宿主过渡形态，见下节） |
-| **18081** | activelist HTTP API | dev compose | activelist 容器 | activelist 仓（⚠ 同上——现状为宿主过渡形态，见下节） |
+| **18081** | activelist HTTP API（全形态统一：容器内网+宿主直跑） | dev compose | activelist 容器 + 宿主 go-run | activelist 仓（✅ 2026-11-02 对齐——原 8080 迁 18081，fa72f2e） |
 
 ### 宿主过渡形态（2026-10-15 核对登记——现状实际占用，与 compose 形态并存期）
 
@@ -42,7 +42,7 @@
 | 端口 | 用途 | 占用方 | 说明 |
 |------|------|--------|------|
 | **8081** | taskrunner 宿主直跑（SQLite 零依赖） | `TASKRUNNER_HTTP_ADDR=:8081 go run ./cmd/taskrunner` | E2E W5/任务中心数据源；compose 容器态建成（18080 内网）后退役 |
-| **8080** | activelist 宿主直跑 | `ACTIVELIST_PG_PORT=15432 go run ./cmd/apiserver` | E2E W5/活动列表数据源；PG 走 activelist-dev compose（15432） |
+| **18081** | activelist 宿主直跑 | `ACTIVELIST_PG_PORT=15432 go run ./cmd/apiserver` | E2E W5/活动列表数据源；PG 走 activelist-dev compose（15432）——**2026-11-02 自 8080 迁入**（所有者：8080 高危冲突口；compose 内网同步 18081） |
 | **15432** | activelist dev PostgreSQL（宿主调试口） | activelist compose.dev `"15432:5432"` | compose.dev.yaml 自带映射，非本表新增 |
 
 ### 预留段
@@ -70,7 +70,7 @@
 
 ### 宿主形态的域名解析（2026-10-15 追加——本机开发/E2E 免改 config）
 
-compose 形态下 zhuzhao 网关上游为 `http://activelist:8080`（容器网络名）。**宿主机直跑
+compose 形态下 zhuzhao 网关上游为 `http://activelist:18081`（容器网络名——分配表 18081）。**宿主机直跑
 zhuzhao（make dev）时该域名不可达** → /al 反代 502。两种解法：
 
 1. **本机别名（推荐，一次性）**：`sudo sh -c 'echo "127.0.0.1 activelist" >> /etc/hosts'`
@@ -105,4 +105,4 @@ BASE_URL=http://localhost:33334/api/v1 HEALTH_URL=http://localhost:33334/health/
 | 日期 | 变更 |
 |------|------|
 | 2026-10-26 | 建档（所有者发起：测试/验证端口未提前分配致经常冲突）；首版分配表 + 三原则 + 冲突处理指引 |
-| 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |\n
+| 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |\n| 2026-11-02 | **activelist 8080→18081 全形态迁移**（所有者拍板：8080 宿主高危冲突口）：activelist fa72f2e（listen 默认/EXPOSE/compose.prod healthcheck/文档 9 处）+ zhuzhao 同批（网关 target×2/deployments README/本表两行）；taskrunner 容器内网 8080 维持（零宿主冲突面，18080 对齐属可选后续） |

@@ -67,7 +67,7 @@ docker compose -f docker-compose.test.yaml --profile migrate up -d --build   # �
 | `INTERNAL_JOBS_SK` | `TASKRUNNER_SELF_SK` | taskrunner |
 
 > taskrunner 栈五变量均 fail-closed 拒建（2026-10-01 硬化）；activelist 两变量同款。
-> 网关 `/al` target 默认 `http://activelist:8080`；`TASKRUNNER_BASE_URL` 默认 `http://taskrunner:8080`——共享网别名寻址，均无需改配置。
+> 网关 `/al` target 默认 `http://activelist:18081`（分配表 18081——原 8080 高危口 2026-11-02 迁）；`TASKRUNNER_BASE_URL` 默认 `http://taskrunner:8080`——共享网别名寻址，均无需改配置。
 
 ## 四、全链冒烟（拼装后）
 
