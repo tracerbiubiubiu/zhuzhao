@@ -24,6 +24,10 @@ GATEWAY_AL_TARGET ?= http://127.0.0.1:18081
 export GATEWAY_AL_TARGET
 dev:
 	@lsof -ti:$(APP_PORT) | xargs kill -9 2>/dev/null || true
+	@set -a; [ -f ../taskrunner/.env ] && . ../taskrunner/.env; set +a; \
+	INTERNAL_JOBS_SK=$${TASKRUNNER_SELF_SK:-dev-internal-jobs-sk} \
+	TASKRUNNER_SK=$${TASKRUNNER_CALLER_ZHUZHAO_SK:-dev-taskrunner-sk} \
+	TASKRUNNER_BASE_URL=$${TASKRUNNER_BASE_URL:-http://127.0.0.1:18080} \
 	GATEWAY_AL_TARGET=$(GATEWAY_AL_TARGET) go run ./cmd/server
 
 tidy:

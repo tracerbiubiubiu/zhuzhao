@@ -117,7 +117,7 @@ services:
       GATEWAY_AK: zhuzhao
       # 三组 SK 对值（测试常量）：app↔activelist / app↔taskrunner / taskrunner→app 回调
       GATEWAY_SK: zhuzhao-test-gateway-sk
-      TASKRUNNER_BASE_URL: http://taskrunner:8080
+      TASKRUNNER_BASE_URL: http://taskrunner:18080
       TASKRUNNER_SK: zhuzhao-test-tr-sk
       INTERNAL_JOBS_SK: zhuzhao-test-internal-sk
       TASKRUNNER_SELF_BASE_URL: http://app:33333

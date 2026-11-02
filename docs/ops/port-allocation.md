@@ -41,8 +41,8 @@
 
 | 端口 | 用途 | 占用方 | 说明 |
 |------|------|--------|------|
-| **8081** | taskrunner 宿主直跑（SQLite 零依赖） | `TASKRUNNER_HTTP_ADDR=:8081 go run ./cmd/taskrunner` | E2E W5/任务中心数据源；compose 容器态建成（18080 内网）后退役 |
-| **18081** | activelist 宿主直跑 | `ACTIVELIST_PG_PORT=15432 go run ./cmd/apiserver` | E2E W5/活动列表数据源；PG 走 activelist-dev compose（15432）——**2026-11-02 自 8080 迁入**（所有者：8080 高危冲突口；compose 内网同步 18081） |
+| **18080** | taskrunner 宿主直跑（SQLite 零依赖） | `./bin/taskrunner`（仓级 config/Dockerfile 已修 ：18080——2026-11-02 ea7518c+Dockerfile 同批，8081 旧登记作废；env 仅余 .env 持久化值） | E2E W5/任务中心数据源；compose 容器态同步 ：18080 |
+| **18081** | activelist 宿主直跑 | `go run ./cmd/apiserver`（config.yaml 缺省口已修 15432——2026-11-02，PG 走 activelist-dev compose 15432 映射） | E2E W5/活动列表数据源——**2026-11-02 自 8080 迁入**（所有者：8080 高危冲突口；compose 内网同步 18081） |
 | **15432** | activelist dev PostgreSQL（宿主调试口） | activelist compose.dev `"15432:5432"` | compose.dev.yaml 自带映射，非本表新增 |
 
 ### 预留段
