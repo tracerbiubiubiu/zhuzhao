@@ -4,17 +4,18 @@
 # 使用方法：
 #   docker compose -f deployments/docker-compose.test.yaml up -d --build
 #   （首建含 Go/前端全量构建，约 5-10 分钟；之后走层缓存）
-#   入口 = http://localhost:4001（ui 容器）；验证：curl localhost:4001/api/health/ready
+#   入口 = http://localhost:48081（ui 容器）；验证：curl localhost:48081/api/health/ready
 #
 # 与 dev 栈（docker-compose.dev.yaml + 宿主进程）的关系：
 #   ——双形态并存。本栈=稳定回归/演示环境（独立卷、干净数据、隔离网络）；
-#     dev 栈=日常开发（vite HMR 快改）。端口全错开：ui 4001 / app 33334。
+#     dev 栈=日常开发（vite HMR 快改）。端口全错开：ui 48081 / app 33334。
 #
 # 数据：独立卷（项目名 zhuzhao_test 前缀）——全新干净态，首登 admin/admin123
 #   走强制改密流程自举（E2E globalSetup 同款链路）；与 dev 栈数据零共享。
 #
 # 口令/密钥：测试值显式内联（本文件仅测试用途；生产密钥纪律见 compose.yaml 注释）。
-# 迁移：app 启动前由 migrate 一次性服务执行（000001–000043）。
+# 迁移：app 启动前由 migrate 一次性服务执行（000001 起全量重放，全新库幂等——
+#   具体编号随 migrations/ 增长，不写死防漂移）。
 #
 # 已知边界：
 #   - 配置来自 deployments/config.test.yaml（卷挂载）——gateway target 指向本栈
@@ -123,7 +124,7 @@ services:
     volumes:
       - ../deployments/config.test.yaml:/app/configs/config.yaml:ro
     ports:
-      - "33334:33333" # 调试直连（浏览器入口走 ui 4001）
+      - "33334:33333" # 调试直连（浏览器入口走 ui 48081）
     depends_on:
       postgres:
         condition: service_healthy

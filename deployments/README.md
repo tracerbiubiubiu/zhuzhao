@@ -43,16 +43,16 @@ cd ../../zhuzhao/deployments && docker compose up -d --build
 
 ```sh
 cd deployments
-docker compose -f docker-compose.test.yaml --profile migrate up -d --build   # 首建 5-10 分钟（Go+前端全量构建）
-# ⚠ --profile migrate 必带：migrate 服务挂 profiles:["migrate"]，plain up 不启动它——
-#   全新卷将无 schema，app 起不来（复跑时卷已有表，带 profile 重放幂等无害）
-# 入口 = http://localhost:4001（ui nginx：静态 + /api·/al/api 双反代 app）
+docker compose -f docker-compose.test.yaml up -d --build   # 首建 5-10 分钟（Go+前端全量构建）
+# migrate 一次性服务随 up 自启执行全量迁移（2026-11-02 去 profile——全新库首建即带
+#   schema；复跑时卷已有表，重放幂等无害）
+# 入口 = http://localhost:48081（ui nginx：静态 + /api·/al/api 双反代 app）
 # 首登引导：admin / admin123（种子口令，首登强制改密；与 compose 文件头注释一致）
 #   改密终态与全生态对齐 = admin12345（runbook §4 台账）
 # 三链验证：登录 → /al/api/v1/admin/types（活动列表链）→ /api/v1/runs（任务链）
 ```
 
-- **组成**：单文件全组件（10 容器）——zhuzhao PG/Redis/migrate/app + activelist PG/apiserver + taskrunner PG/taskrunner + ui（nginx 静态+双反代）；独立网 `zhuzhao_test`、独立卷 `zt_*` 前缀、宿主端口全错开（ui 4001 / app 直连 33334）；
+- **组成**：单文件全组件（10 容器）——zhuzhao PG/Redis/migrate/app + activelist PG/apiserver + taskrunner PG/taskrunner + ui（nginx 静态+双反代）；独立网 `zhuzhao_test`、独立卷 `zt_*` 前缀、宿主端口全错开（ui 48081 / app 直连 33334）；
 - **数据**：全新干净态（与 dev 栈零共享）——业务自举走首登改密流程（E2E globalSetup 同款链路）；
 - **配置**：`config.test.yaml` 卷挂载 app（与 configs/config.yaml 的唯一差异=gateway target 指本栈 activelist 服务名；configs 演进需人工对齐本文件）；
 - **徽标**：ui 构建参数 `VITE_APP_ENV=测试环境`——登录页环境徽标显式标注，防与生产混淆；

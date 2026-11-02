@@ -52,7 +52,7 @@
 |--------|------|------|
 | **39000–39999** | testcontainers 随机端口（Docker 分配） | 集成测试的 PG / RustFS / 临时 HTTP——Docker 自主分配，非强制绑定 |
 | **33335–33399** | zhuzhao 未来多实例（当前零使用） | 并行测试 / 多环境 dev |
-| **48081–48099** | ui 未来多实例（当前零使用） | 并行前端 dev |
+| **48081–48099** | ui 预留段——**48081 已占**=测试栈 ui（compose.test，2026-11-02 自 4001 迁入）；48082+ 空闲 | 并行前端 dev / 测试栈 |
 | **5434–5439** | PG 测试多实例（当前零使用，5433 已用） | 并行 migration 验证 |
 | **9100–9199** | 对象存储测试多实例（当前零使用） | RustFS 第三实例等 |
 
@@ -65,8 +65,8 @@
 | 本机装了 PostgreSQL | compose postgres 起不来（5432 已占） | compose 注释了端口映射（内网互访），无需映射——若需 psql 直连改映射 `- "5433:5432"` |
 | 本机装了 Redis | compose redis 起不来（6379 已占） | 同上——compose 未映射 6379；本地 `make dev` 走容器内网 |
 | dev app 没跑 | acceptance 脚本全红（33333 连不上） | 先 `make dev`；或换端口 `BASE_URL=http://localhost:33334 bash scripts/acceptance-phase1.sh` |
-| 两个 vite 项目同时跑 | 4000 被占（~~vite 自动跳 4001~~ **2026-10-29 strictPort 后显式失败**） | 杀遗留实例（`lsof -ti:4000 -sTCP:LISTEN`）或 `VITE_PORT=48081 pnpm dev` 换预留段——原「自动避让无害」口径已证伪（见变更记录 10-29：auto-increment 静默漂移掩盖遗留进程四天，E2E reuseExistingServer 一直打旧实例） |
-| IM 软件（QQ/微信）动态抢端口 | vite 起在 4001 后 QQ 抢注 127.0.0.1:4001 IPv4——浏览器空响应（QQ specific 绑定压过 vite 通配绑定） | IM 本地监听**动态随机无可避开区间**；对策=strictPort 显性失败 + `VITE_PORT=48081+` 换预留段 + 重启 IM（其端口会重摇） |
+| 两个 vite 项目同时跑 | 4000 被占（~~vite 自动跳 4001~~ **2026-10-29 strictPort 后显式失败**） | 杀遗留实例（`lsof -ti:4000 -sTCP:LISTEN`）或 `VITE_PORT=48082 pnpm dev` 换预留段（48081 已占=测试栈 ui）——原「自动避让无害」口径已证伪（见变更记录 10-29：auto-increment 静默漂移掩盖遗留进程四天，E2E reuseExistingServer 一直打旧实例） |
+| IM 软件（QQ/微信）动态抢端口 | vite 起在 4001 后 QQ 抢注 127.0.0.1:4001 IPv4——浏览器空响应（QQ specific 绑定压过 vite 通配绑定） | IM 本地监听**动态随机无可避开区间**；对策=strictPort 显性失败 + `VITE_PORT=48082+` 换预留段 + 重启 IM（其端口会重摇） |
 | dev app 换了端口 | E2E 连不上 33333 | `E2E_API_BASE=http://127.0.0.1:33334` 覆盖 |
 
 ### 宿主形态的域名解析（2026-10-15 追加——本机开发/E2E 免改 config）
