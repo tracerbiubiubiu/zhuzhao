@@ -13,7 +13,7 @@ X1 漏扫源（~~契约获取=外部第一动作、首源适配器与 DoD 的阻
 | 件 | 量级 | 出口贡献 |
 |----|------|---------|
 | R3 前置待建四件（prefill 端点 / params 泛化 / external_http 适配器 / DataFetcher 超时·限流·审计） | 3–4 天 | 接入地基（R3 接真实外部源前必须；11 号 §1 既定）。**M1 注（2026-10-28 核查）**：C-2 拆两半：后端三件（prefill 端点/params 泛化/external_http）已入 Week 0「R3 前置四件」；「前端交互」（编辑时预填运行时 UI/三档错误 UX）不在四件内——随 R3 立项批圈范围时计入（2026-11-01 与 07 号 §3.2/§4.1 对齐口径） |
-| HR 目录接口 mock 先行 + S3a 指派轴扩充 | 2–3 天 | 指派地基（R1 owner 指派 / R3 按部门负责人·直接上级分派；真实 HR 到位=换 adapter；[hr-directory-sync](../proposal/hr-directory-sync.md)） |
+| HR 目录接口 mock 先行 + S3a 指派轴扩充 | 2–3 天 | 指派地基（R1 owner 指派 / R3 按部门负责人·直接上级分派——**2026-11-02 验收口径补：任意层级上溯 resolveOrgHead(orgID,targetLevel)[一级部门负责人=P1-6 矩阵首实例消费方]**；真实 HR 到位=换 adapter；[hr-directory-sync](../proposal/hr-directory-sync.md)） |
 | BK-21 护栏泛化 | 1–2 天 | L2 地基（risk_items 接 L2 的 fail-closed 哨兵泛化 + **双 org 可见支**：主锚风险团队 org + 副锚 affected_org 只读 + owner 读写——第四组拍板，GetFilter 两 OR 支，cc 读特例同模式） |
 | mock IdP（可选随行） | ~1 天 | UAA 离线验收地基（A5 既定） |
 | **漏扫源 mock 适配器 + 模拟数据集**（2026-10-27 所有者：X1 改 mock 先行） | ~1 天 | 源地基（`RiskSourceConnector` 首个实现=mock；数据集覆盖指纹归并/重推/已关闭重报/级别与系统分布；真实漏扫=契约到位换 adapter，同 HR mock 模式） |
