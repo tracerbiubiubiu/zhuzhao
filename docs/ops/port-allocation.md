@@ -69,19 +69,20 @@
 | IM 软件（QQ/微信）动态抢端口 | vite 起在 4001 后 QQ 抢注 127.0.0.1:4001 IPv4——浏览器空响应（QQ specific 绑定压过 vite 通配绑定） | IM 本地监听**动态随机无可避开区间**；对策=strictPort 显性失败 + `VITE_PORT=48082+` 换预留段 + 重启 IM（其端口会重摇） |
 | dev app 换了端口 | E2E 连不上 33333 | `E2E_API_BASE=http://127.0.0.1:33334` 覆盖 |
 
-### 宿主形态的域名解析（2026-10-15 追加——本机开发/E2E 免改 config）
+### 宿主形态的网关上游（2026-10-15 追加 / 2026-11-03 更新——GATEWAY_AL_TARGET env 注入）
 
-compose 形态下 zhuzhao 网关上游为 `http://activelist:18081`（容器网络名——分配表 18081）。**宿主机直跑
-zhuzhao（make dev）时该域名不可达** → /al 反代 502。两种解法：
+compose 形态下 zhuzhao 网关 /al 上游为 `http://activelist:18081`（容器网络名——分配表 18081）。
+**宿主机直跑 zhuzhao（make dev）时该域名不可达** → /al 反代 502。
 
-1. **本机别名（推荐，一次性）**：`sudo sh -c 'echo "127.0.0.1 activelist" >> /etc/hosts'`
-   ——此后 config.yaml 保持仓内默认，**不再需要「改→测→还原」循环**（2026-10-15 前
-   的宿主态临时改动即此痛点的历史形态）；仅本仓使用该名字，机器级无害；
-2. config 文件选择（未实现，备用）：`APP_CONFIG` env 选加载文件——main.go 的
-   `config.Load` 路径当前硬编码，需要时三行改造。
+**现行机制（2026-11-02 治理）**：`make dev` 默认注入 `GATEWAY_AL_TARGET=http://127.0.0.1:18081`
+（`config.Load` 后处理仅改写 /al 前缀 upstream）——宿主形态直连 activelist 宿主直跑口 18081；
+compose/其余拓扑在 Makefile 顶部以 `make dev GATEWAY_AL_TARGET=http://activelist:18081` 覆盖。
+config.yaml 保持仓内默认（compose 服务名），**不再手工编辑**——历史「改→测→还原」循环
+（2026-10-15 前）与本机 /etc/hosts 别名方案（2026-10-15 追加，未装机）均为此痛点的旧形态；
+基线文件曾两度泄漏 127.0.0.1 态入库（1d4d36c），是 env 注入治理的直接动因。
 
-注意：容器内 DNS 与宿主 /etc/hosts 相互独立——compose 形态（zhuzhao 容器态）不受
-该别名影响；宿主形态（make dev）下 activelist 走宿主 8080 直跑，与别名解析一致。
+注意：容器内 DNS 与宿主 /etc/hosts 相互独立——compose 形态读 config 默认值（服务名解析）；
+宿主形态经 env 注入直连宿主 18081 直跑口。
 
 ### 验收脚本端口可覆盖（已支持）
 
@@ -106,4 +107,6 @@ BASE_URL=http://localhost:33334/api/v1 HEALTH_URL=http://localhost:33334/health/
 | 日期 | 变更 |
 |------|------|
 | 2026-10-26 | 建档（所有者发起：测试/验证端口未提前分配致经常冲突）；首版分配表 + 三原则 + 冲突处理指引 |
-| 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |\n| 2026-11-02 | **activelist 8080→18081 全形态迁移**（所有者拍板：8080 宿主高危冲突口）：activelist fa72f2e（listen 默认/EXPOSE/compose.prod healthcheck/文档 9 处）+ zhuzhao 同批（网关 target×2/deployments README/本表两行）；taskrunner 容器内网 8080 维持（零宿主冲突面，18080 对齐属可选后续） |
+| 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |
+| 2026-11-02 | **activelist 8080→18081 全形态迁移**（所有者拍板：8080 宿主高危冲突口）：activelist fa72f2e（listen 默认/EXPOSE/compose.prod healthcheck/文档 9 处）+ zhuzhao 同批（网关 target×2/deployments README/本表两行）；taskrunner 容器内网 8080 维持（零宿主冲突面，18080 对齐属可选后续） |
+| 2026-11-03 | 「宿主形态的域名解析」节改写为 **GATEWAY_AL_TARGET env 注入现行机制**（旧 /etc/hosts 别名 + APP_CONFIG 备用两解法降级为历史形态注记；宿主 8080 旧口残留句同步 18081）；变更记录表 10-29/11-02 两行字面 `\n` 断表修复（11-02 行此前渲染在表外） |
