@@ -91,10 +91,21 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 	if err != nil {
 		return nil, err
 	}
-	// 提交凭证：trigger 的真实 action_id 在 taskrunner job 定义内（zhuzhao 不感知），
-	// 凭证记 action="trigger:<job_id>"，跨查锚点为 task_id + request_id。
+	// 提交凭证：action/params 取上游回带的定义真实值（2026-11-03 trigger 回调修复）——
+	// 回调快照一致性校验（jobs_callback W0b）比对 action+params 语义值，旧合成键
+	// "trigger:<job_id>" 每次必失配 → 手动触发恒 409（run 失真标 failed + 死信累积）。
+	// 上游未升级（SubmitResponse 零值）时回退合成键——行为同修复前，不为更坏。
+	// 跨查锚点仍为 task_id + request_id。
 	// W0b：同 Submit 的记账失败取舍——不回滚，但必须留 Error 对账线索
-	if _, err := s.subs.RecordSubmit(ctx, "trigger:"+jobID, resp.TaskID, actor, sourceIP, "{}"); err != nil {
+	action := resp.Action
+	if action == "" {
+		action = "trigger:" + jobID
+	}
+	params := string(resp.Params)
+	if params == "" {
+		params = "{}"
+	}
+	if _, err := s.subs.RecordSubmit(ctx, action, resp.TaskID, actor, sourceIP, params); err != nil {
 		slog.Error("job_submissions RecordSubmit failed for trigger (task accepted, ledger missing)",
 			"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "err", err)
 	}

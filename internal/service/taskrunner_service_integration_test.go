@@ -30,7 +30,9 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"task_id": "t-e4-1", "accepted": true}})
 	})
 	fake.POST("/v1/jobs/trigger", func(c *gin.Context) {
-		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"task_id": "t-e4-2", "accepted": true}})
+		// 2026-11-03 trigger 回调修复：上游 SubmitOutput 回带定义真实 action/params 快照
+		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{
+			"task_id": "t-e4-2", "accepted": true, "action": "audit_archive", "params": gin.H{"retention_days": 90}}})
 	})
 	srv := httptest.NewServer(fake)
 	defer srv.Close()
@@ -74,12 +76,43 @@ func TestTaskrunnerServiceSubmitRecordsVoucher(t *testing.T) {
 		`SELECT params FROM job_submissions WHERE task_id='t-e4-1'`).Scan(&params))
 	require.Contains(t, params, "retention_days")
 
-	// 触发：凭证落档（action=trigger:<job_id>）
+	// 触发：凭证落档（action/params=上游回带的定义真实值——2026-11-03 trigger 回调修复：
+	// 旧合成键 "trigger:<job_id>" 过不了回调快照一致性校验（jobs_callback W0b），
+	// 手动触发恒 409 失真；记账同源后回调方可落 succeeded 终态）
 	resp2, err := svc.Trigger(ctx, "job-42", "10001", "10.0.0.9")
 	require.NoError(t, err)
 	require.Equal(t, "t-e4-2", resp2.TaskID)
+	var tAction, tParams string
+	require.NoError(t, testPool.QueryRow(context.Background(),
+		`SELECT action, params FROM job_submissions WHERE task_id='t-e4-2'`).Scan(&tAction, &tParams))
+	require.Equal(t, "audit_archive", tAction)
+	require.Contains(t, tParams, "retention_days")
+}
+
+// 旧上游兼容（2026-11-03 trigger 回调修复）：上游未回带 action/params（零值）时
+// 记账回退合成键 "trigger:<job_id>"——行为同修复前，混部窗口不为更坏。
+func TestTaskrunnerServiceTriggerVoucherFallbackLegacyUpstream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	fake := gin.New()
+	fake.POST("/v1/jobs/trigger", func(c *gin.Context) {
+		c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"task_id": "t-e4-legacy", "accepted": true}})
+	})
+	srv := httptest.NewServer(fake)
+	defer srv.Close()
+
+	client := taskrunner.New(taskrunner.Config{BaseURL: srv.URL, AK: "zhuzhao", SK: []byte("sk")})
+	subs := repository.NewJobSubmissionRepo(testPool)
+	svc := service.NewTaskrunnerService(client, subs)
+
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM job_submissions WHERE task_id='t-e4-legacy'`)
+	})
+
+	ctx := reqid.With(context.Background(), "req-e4-legacy")
+	_, err := svc.Trigger(ctx, "job-legacy", "10001", "10.0.0.9")
+	require.NoError(t, err)
 	var tAction string
 	require.NoError(t, testPool.QueryRow(context.Background(),
-		`SELECT action FROM job_submissions WHERE task_id='t-e4-2'`).Scan(&tAction))
-	require.Equal(t, "trigger:job-42", tAction)
+		`SELECT action FROM job_submissions WHERE task_id='t-e4-legacy'`).Scan(&tAction))
+	require.Equal(t, "trigger:job-legacy", tAction)
 }

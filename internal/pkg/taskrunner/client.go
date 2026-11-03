@@ -77,6 +77,11 @@ type SubmitRequest struct {
 type SubmitResponse struct {
 	TaskID   string `json:"task_id"`
 	Accepted bool   `json:"accepted"`
+	// Action/Params 真实快照（2026-11-03 trigger 回调修复，随上游 SubmitOutput 扩展）：
+	// Trigger 记账需与回调 body 同源值过快照一致性校验，旧合成键恒 409。旧上游不回
+	// 该两字段（零值）——Trigger 记账侧回退合成键兼容。
+	Action string          `json:"action"`
+	Params json.RawMessage `json:"params,omitempty"`
 }
 
 func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse, error) {
