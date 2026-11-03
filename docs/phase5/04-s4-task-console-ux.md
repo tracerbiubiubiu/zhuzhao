@@ -87,6 +87,7 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 **补充登记（2026-10-29 所有者「按建议来」）**：
 - **④ 任务域人名富化**（跨仓小批 0.5–1 天）：提交人/处理人直显工号（TaskRunRow 无 name 字段——UserNameText 000044「人名(工号)」契约在任务域断链）；修法 = runs 查询 join users 补 name + 前端换 UserNameText；随 C-21+ 或 06 号。
 - **⑤ 发送记录筛选**（✅ 已交付——cf01b7c 端点参数 + ui d36be276 筛选栏，主仓+ui 同窗推送）；排障场景 =「为什么没收到通知」三秒定位失败行。
+- **⑥ 死信排障面**（✅ 已交付 2026-11-03，ui 纯前端小批）：①Tab 红点改 mounted 静默探测驱动（原绑死信列表长度，首入 Tab 前恒隐——提醒语义失效）；②**DeadLetterRow 类型对齐真实响应**（原类型臆测：action/error/attempts/failed_at 字段在 asynq archived 投影中不存在，列表 3/4 列恒空仅 task_id 有值——「信息少」根因；真实形状 = type/state/last_error/retried/max_retry/last_failed_at，dev 实测取证）；③新增死信详情 dialog（类型/状态/重试账 + last_error 全文含对端响应片段——「task_id 凭证与回调内容不一致」类排障三秒定位）。远期：C-21+ 件① result 列落地后死信详情可关联同 task_id 的 runs 执行历史。
 
 **业界定性备查**：回调型队列
 
