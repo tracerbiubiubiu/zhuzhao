@@ -2476,7 +2476,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 删除工单类型（有工单禁删 → 409）
+      summary: 删除工单类型（有工单/模板引用禁删 → 409）
       tags:
       - ticket-admin
   /api/v1/ticket-types/fields/replace:

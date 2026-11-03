@@ -556,7 +556,7 @@ func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 
 // DeleteTicketType DELETE /api/v1/ticket-types/:code
 //
-//	@Summary	删除工单类型（有工单禁删 → 409）
+//	@Summary	删除工单类型（有工单/模板引用禁删 → 409）
 //	@Tags		ticket-admin
 //	@Produce	json
 //	@Param		code	path	string	true	"类型编码"

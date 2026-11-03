@@ -185,7 +185,7 @@ func validateTransitionMeta(states []string, meta json.RawMessage) error {
 	return nil
 }
 
-// DeleteTicketType 删除类型（有工单禁删 → ErrConflict，走停用）
+// DeleteTicketType 删除类型（有工单/模板引用禁删 → ErrConflict，走停用/先清模板）
 func (s *Service) DeleteTicketType(ctx context.Context, code string) error {
 	return s.ticketRepo.DeleteTicketType(ctx, code)
 }

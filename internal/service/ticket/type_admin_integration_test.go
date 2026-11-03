@@ -175,6 +175,36 @@ func TestBK18_TemplateCRUD(t *testing.T) {
 	require.Error(t, err)
 }
 
+// ---------- 类型删除模板引用预检：有模板禁删 → 409（修复前 FK 23503 裸 500） ----------
+
+func TestDeleteTypeWithTemplateReference(t *testing.T) {
+	svc, admin, _ := setupTicketAdmin(t)
+	ctx := context.Background()
+	code := "bk18_deltpl_" + uniqueSuffix()
+
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "带模板类型"})
+	require.NoError(t, err)
+
+	tplCode := code + "_tpl"
+	_, err = svc.CreateTicketTemplate(ctx, &model.CreateTicketTemplateRequest{
+		Code: tplCode, Name: "引用模板", TypeCode: code, DefaultPriority: 2, OrgID: 1,
+	}, admin)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, tplCode); err != nil {
+			t.Logf("cleanup: delete template %s: %v", tplCode, err)
+		}
+	})
+
+	// 有模板引用禁删 → 409 ErrConflict（修复前：FK 23503 裸 500）
+	err = svc.DeleteTicketType(ctx, code)
+	requireErrCode(t, err, errcode.ErrConflict.Code)
+
+	// 清掉模板后可删（预检不误伤正常路径）
+	require.NoError(t, svc.DeleteTicketTemplate(ctx, tplCode))
+	require.NoError(t, svc.DeleteTicketType(ctx, code))
+}
+
 // ---------- IW1 补：priority 刻度收敛（自由填 → 1–4 枚举） ----------
 
 func TestPriorityScaleValidation(t *testing.T) {

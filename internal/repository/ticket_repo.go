@@ -870,7 +870,7 @@ func (r *TicketRepo) resolveTypeVersionMiss(ctx context.Context, code string, ve
 	return errcode.ErrConcurrentModification
 }
 
-// DeleteTicketType 删除类型（有工单禁删；字段随类型一并删除）
+// DeleteTicketType 删除类型（有工单/模板引用禁删；字段随类型一并删除）
 func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -884,6 +884,15 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 	}
 	if cnt > 0 {
 		return errcode.ErrConflict // 有工单禁删，走停用
+	}
+	// 模板引用预检：ticket_templates.type_code FK 无级联，漏检则删除时 23503 裸 500
+	// （与工单禁删同语义移为友好路径）
+	var tplCnt int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM ticket_templates WHERE type_code = $1`, code).Scan(&tplCnt); err != nil {
+		return fmt.Errorf("count templates by type: %w", err)
+	}
+	if tplCnt > 0 {
+		return errcode.ErrConflict // 有模板引用禁删，先清理模板
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
 		return fmt.Errorf("delete type fields: %w", err)

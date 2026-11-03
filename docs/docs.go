@@ -2179,7 +2179,7 @@ const docTemplate = `{
                 "tags": [
                     "ticket-admin"
                 ],
-                "summary": "删除工单类型（有工单禁删 → 409）",
+                "summary": "删除工单类型（有工单/模板引用禁删 → 409）",
                 "parameters": [
                     {
                         "type": "string",
