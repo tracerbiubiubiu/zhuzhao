@@ -595,6 +595,13 @@ definitions:
     - password
     - user_id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest:
+    properties:
+      key:
+        type: string
+    required:
+    - key
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RoleIDRequest:
     properties:
       role_id:
@@ -664,6 +671,11 @@ definitions:
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView:
     properties:
+      default_value:
+        description: config 出厂默认（前端 恢复默认/已自定义 判定用）
+        items:
+          type: integer
+        type: array
       description:
         type: string
       key:
@@ -2131,6 +2143,27 @@ paths:
                   type: array
               type: object
       summary: 设置列表（catalog 全量——含有效值/来源/编辑层级）
+      tags:
+      - system
+  /api/v1/system/settings/reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 设置键
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 恢复默认（删除运行时覆盖回出厂值；幂等）
       tags:
       - system
   /api/v1/system/settings/update:

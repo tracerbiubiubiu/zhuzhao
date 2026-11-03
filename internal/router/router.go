@@ -400,6 +400,7 @@ func New(deps Deps) *gin.Engine {
 				{
 					biz.GET("/system/settings", deps.SettingsHandler.List)
 					biz.POST("/system/settings/update", deps.SettingsHandler.Update)
+					biz.POST("/system/settings/reset", deps.SettingsHandler.Reset)
 				}
 
 				// 工单模块（Phase 2a）

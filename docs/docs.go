@@ -1753,6 +1753,39 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/system/settings/reset": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "恢复默认（删除运行时覆盖回出厂值；幂等）",
+                "parameters": [
+                    {
+                        "description": "设置键",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/system/settings/update": {
             "post": {
                 "consumes": [
@@ -4736,6 +4769,17 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.RoleIDRequest": {
             "type": "object",
             "required": [
@@ -4836,6 +4880,13 @@ const docTemplate = `{
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView": {
             "type": "object",
             "properties": {
+                "default_value": {
+                    "description": "config 出厂默认（前端 恢复默认/已自定义 判定用）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },

@@ -52,3 +52,25 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	}
 	response.OK(c, nil)
 }
+
+// Reset POST /api/v1/system/settings/reset
+//
+//	@Summary		恢复默认（删除运行时覆盖回出厂值；幂等）
+//	@Tags			system
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body	model.ResetSettingRequest	true	"设置键"
+//	@Success		200	{object}	response.Response
+//	@Router			/api/v1/system/settings/reset [post]
+func (h *SettingsHandler) Reset(c *gin.Context) {
+	var req model.ResetSettingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.svc.Reset(c.Request.Context(), req.Key, c.GetInt64("userID"), rolesFromGin(c)); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}

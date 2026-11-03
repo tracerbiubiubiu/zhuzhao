@@ -127,9 +127,11 @@ var settingsCatalog = []settingKey{
 
 // SettingsService 设置管理服务（B5-6——GET 列表 + POST 更新，tier 分层+硬底线钳制）。
 type SettingsService struct {
-	repo   *repository.SettingsRepo
-	cfg    *storcfg.ConfigStore // F-D3（2026-10-21）：原子快照——clone→改→Store，与请求侧读并发安全
-	logger *slog.Logger
+	repo *repository.SettingsRepo
+	// factoryDefaults 出厂默认快照（New 时覆盖应用前取）——defaultValue 的读取源
+	factoryDefaults *storcfg.StorageConfig
+	cfg             *storcfg.ConfigStore // F-D3（2026-10-21）：原子快照——clone→改→Store，与请求侧读并发安全
+	logger          *slog.Logger
 }
 
 // NewSettingsService 创建时读全量 KV 覆盖并 apply（boot 路径——三层 ② 优先于 ①）。
@@ -138,6 +140,12 @@ func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.ConfigStore,
 		logger = slog.Default()
 	}
 	s := &SettingsService{repo: repo, cfg: cfg, logger: logger}
+	if cfg != nil {
+		// 出厂默认快照（覆盖应用**前**取——2026-11-03 修复：defaultValue 原读当前
+		// 快照，kv 覆盖生效后即被污染，default_value 字段/Reset 日志全部失真）
+		d := *cfg.Load()
+		s.factoryDefaults = &d
+	}
 	if repo != nil {
 		s.applyAllOverrides(context.Background())
 	}
@@ -153,7 +161,13 @@ func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 		s.logger.Warn("settings: boot apply overrides failed (config defaults active)", "err", err)
 		return
 	}
-	merged := *s.cfg.Load()
+	// clone 基座=出厂快照而非当前快照——Reset 删覆盖后残留旧值的根因
+	// （2026-11-03；boot 时两者等价，运行时 Reset 路径必须回出厂基座）
+	base := s.cfg.Load()
+	if s.factoryDefaults != nil {
+		base = s.factoryDefaults
+	}
+	merged := *base
 	applied, skipped := 0, 0
 	for _, sk := range settingsCatalog {
 		if kv, ok := kvs[sk.Key]; ok && kv != nil {
@@ -167,9 +181,13 @@ func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 			applied++
 		}
 	}
-	if applied > 0 {
+	// Store 条件=基座变化即写（applied>0 或基座≠当前快照）——boot 时两者等价零成本；
+	// Reset 删光覆盖后 applied=0，但回落出厂快照必须落 Store（残留旧值根因，2026-11-03）
+	if applied > 0 || base != s.cfg.Load() {
 		s.cfg.Store(&merged)
-		s.logger.Info("settings: boot applied KV overrides", "count", applied)
+		if applied > 0 {
+			s.logger.Info("settings: boot applied KV overrides", "count", applied)
+		}
 	}
 	if skipped > 0 {
 		s.logger.Warn("settings: boot skipped invalid KV overrides", "count", skipped)
@@ -184,7 +202,7 @@ func (s *SettingsService) List(ctx context.Context) ([]model.SettingView, error)
 	}
 	out := make([]model.SettingView, 0, len(settingsCatalog))
 	for _, sk := range settingsCatalog {
-		v := model.SettingView{Key: sk.Key, MinEditorTier: sk.MinTier, Description: sk.Description, Source: "config"}
+		v := model.SettingView{Key: sk.Key, MinEditorTier: sk.MinTier, Description: sk.Description, Source: "config", DefaultValue: s.defaultValue(sk.Key)}
 		if kv, ok := kvs[sk.Key]; ok && kv != nil {
 			v.Value = kv.Value
 			v.Source = "kv"
@@ -237,11 +255,54 @@ func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRe
 		return err
 	}
 	// in-memory apply（F-D3：clone→改→Store 整体换快照——并发读安全）
-	merged := *s.cfg.Load()
+	// clone 基座=出厂快照而非当前快照——Reset 删覆盖后残留旧值的根因
+	// （2026-11-03；boot 时两者等价，运行时 Reset 路径必须回出厂基座）
+	base := s.cfg.Load()
+	if s.factoryDefaults != nil {
+		base = s.factoryDefaults
+	}
+	merged := *base
 	sk.Apply(req.Value, &merged)
 	s.cfg.Store(&merged)
 	s.logger.Info("setting updated", "key", req.Key, "by", actorUserID,
 		"old_value", oldVal, "new_value", string(req.Value))
+	return nil
+}
+
+// Reset 恢复默认（2026-11-03 设置页走查批）：删除 kv 覆盖行回 config 出厂值。
+// tier 校验与 Update 同规；幂等——本无覆盖行时仍成功（重放安全）。删除后
+// applyAllOverrides 以剩余覆盖集重建内存快照（无覆盖=纯出厂默认）。
+func (s *SettingsService) Reset(ctx context.Context, key string, actorUserID int64, actorRoles []string) error {
+	var sk *settingKey
+	for i := range settingsCatalog {
+		if settingsCatalog[i].Key == key {
+			sk = &settingsCatalog[i]
+			break
+		}
+	}
+	if sk == nil {
+		return errcode.New(errcode.ErrInvalidParams.Code, "未知设置键 "+key)
+	}
+	if !tierAllowed(sk.MinTier, actorRoles) {
+		return errcode.New(errcode.ErrNoPermission.Code,
+			fmt.Sprintf("该设置需 %s 层级（当前角色无权恢复默认）", sk.MinTier))
+	}
+	// 旧值快照（删除前读——A.7 审计旧值侧；无覆盖行记 -）
+	oldVal := "-"
+	if old, err := s.repo.Get(ctx, key); err != nil {
+		s.logger.Warn("settings: read old value failed (audit old_value=-)", "key", key, "err", err)
+	} else if old != nil {
+		oldVal = string(old.Value)
+	}
+	rows, err := s.repo.Delete(ctx, key)
+	if err != nil {
+		return err
+	}
+	// 剩余覆盖集重建内存快照（被删键回落出厂默认；applyAllOverrides 内部失败仅
+	// Warn 降级——boot 同款语义，下次重启自愈）
+	s.applyAllOverrides(ctx)
+	s.logger.Info("setting reset to default", "key", key, "by", actorUserID,
+		"removed_rows", rows, "old_value", oldVal, "default_value", string(s.defaultValue(key)))
 	return nil
 }
 
@@ -261,7 +322,10 @@ func tierAllowed(minTier string, roles []string) bool {
 
 // defaultValue 从 config 读出厂默认（用于列表展示 Source=config 行）。
 func (s *SettingsService) defaultValue(key string) json.RawMessage {
-	c := s.cfg.Load()
+	c := s.factoryDefaults
+	if c == nil {
+		c = s.cfg.Load()
+	}
 	switch key {
 	case "storage.max_upload_bytes":
 		b, _ := json.Marshal(c.MaxUploadBytes)

@@ -6,6 +6,7 @@ package service_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"testing"
 
@@ -262,4 +263,57 @@ func TestSettings_CatalogAndCRUD(t *testing.T) {
 		assert.LessOrEqual(t, store.Load().MaxUploadBytes, int64(10<<20),
 			"越界 KV（超 100MB 天花板）boot 不得生效——config 默认保持")
 	})
+}
+
+// Reset 恢复默认（2026-11-03 设置页走查批）：删覆盖行回出厂值/tier 拒/幂等/未知键。
+func TestSettings_ResetToDefault(t *testing.T) {
+	svc, store, uid := newSettingsSvc(t)
+	ctx := context.Background()
+	super := []string{"superadmin"}
+	admin := []string{"admin"}
+
+	// ① 覆盖 → source=kv、值生效；Reset → kv 行删、List 回出厂默认、内存快照同步回落
+	require.NoError(t, svc.Update(ctx, &model.UpdateSettingRequest{
+		Key: "storage.max_upload_bytes", Value: mustJSON(t, 52428800), // 50MB
+	}, uid, super))
+	view, err := svc.List(ctx)
+	require.NoError(t, err)
+	for _, v := range view {
+		if v.Key == "storage.max_upload_bytes" {
+			assert.Equal(t, "kv", v.Source)
+			assert.Equal(t, int64(52428800), store.Load().MaxUploadBytes)
+			assert.JSONEq(t, `10485760`, string(v.DefaultValue),
+				"覆盖生效时 default_value 仍须=出厂 10MB（污染回归守卫）")
+		}
+	}
+	require.NoError(t, svc.Reset(ctx, "storage.max_upload_bytes", uid, super))
+	view, err = svc.List(ctx)
+	require.NoError(t, err)
+	for _, v := range view {
+		if v.Key == "storage.max_upload_bytes" {
+			assert.Equal(t, "config", v.Source, "Reset 后来源回出厂")
+			assert.JSONEq(t, `10485760`, string(v.Value), "值回出厂默认 10MB")
+			assert.Equal(t, int64(10<<20), store.Load().MaxUploadBytes, "内存快照同步回落")
+		}
+	}
+
+	// ② tier 拒：admin 无权 Reset（superadmin-only 键）
+	require.Error(t, svc.Reset(ctx, "storage.max_upload_bytes", uid, admin))
+
+	// ③ 幂等：无覆盖行时 Reset 仍成功（重放安全）
+	require.NoError(t, svc.Reset(ctx, "storage.max_upload_bytes", uid, super))
+
+	// ④ 未知键 400
+	err = svc.Reset(ctx, "storage.no_such_key", uid, super)
+	require.Error(t, err)
+	e, ok := err.(*errcode.Error)
+	require.True(t, ok)
+	assert.Equal(t, errcode.ErrInvalidParams.Code, e.Code)
+}
+
+func mustJSON(t *testing.T, v any) json.RawMessage {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return b
 }

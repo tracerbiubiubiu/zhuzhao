@@ -19,12 +19,18 @@ type SystemSetting struct {
 type SettingView struct {
 	Key           string          `json:"key"`
 	Value         json.RawMessage `json:"value"`
-	Source        string          `json:"source"`          // config=出厂默认 | kv=运行时覆盖
-	MinEditorTier string          `json:"min_editor_tier"` // superadmin | admin
+	DefaultValue  json.RawMessage `json:"default_value,omitempty"` // config 出厂默认（前端 恢复默认/已自定义 判定用）
+	Source        string          `json:"source"`                  // config=出厂默认 | kv=运行时覆盖
+	MinEditorTier string          `json:"min_editor_tier"`         // superadmin | admin
 	Description   string          `json:"description"`
 	UpdatedBy     int64           `json:"updated_by,string,omitempty"`
 	UpdatedAt     *time.Time      `json:"updated_at,omitempty"`
 	Version       int64           `json:"version,omitempty"` // kv 行当前版本（回传 expected_version 用）
+}
+
+// ResetSettingRequest 恢复默认（2026-11-03 设置页走查——删除 kv 覆盖行回 config 出厂值）。
+type ResetSettingRequest struct {
+	Key string `json:"key" binding:"required"`
 }
 
 // UpdateSettingRequest POST /system/settings/update

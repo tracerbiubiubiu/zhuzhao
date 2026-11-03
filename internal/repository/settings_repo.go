@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,6 +57,15 @@ func (r *SettingsRepo) ListAll(ctx context.Context) (map[string]*model.SystemSet
 // expected 非空 = 严格 CAS（与 List 回传版本不符即 ErrSettingsVersionConflict，
 // 两个管理员并发改同键时后写者不再静默覆盖）；expected 为空 = 服务端重读重试
 // ≤3 次（兼容存量调用，竞态下收敛）。插入路径 ON CONFLICT DO NOTHING + 重读。
+// Delete 删除覆盖行（恢复默认——2026-11-03 设置页走查批）。返回删除行数（0=本无覆盖）。
+func (r *SettingsRepo) Delete(ctx context.Context, key string) (int64, error) {
+	tag, err := r.db.Exec(ctx, `DELETE FROM system_settings WHERE key=$1`, key)
+	if err != nil {
+		return 0, fmt.Errorf("delete setting: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 func (r *SettingsRepo) Upsert(ctx context.Context, key string, value json.RawMessage, updatedBy int64, expected *int64) error {
 	for i := 0; i < 3; i++ {
 		cur, err := r.Get(ctx, key)
