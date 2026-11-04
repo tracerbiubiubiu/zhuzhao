@@ -1,0 +1,41 @@
+{
+  "time": "2026-11-04T02:53:00.866340+00:00",
+  "sources": [
+    {
+      "repo": "zhuzhao",
+      "ref": "HEAD",
+      "sha": "5c03581d5999139a3e8e5ead5972c026868aa181",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/zhuzhao"
+    },
+    {
+      "repo": "taskrunner",
+      "ref": "HEAD",
+      "sha": "1dcc83185f24b8dc2bed7bba6786272a5fdfb19f",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/taskrunner"
+    },
+    {
+      "repo": "activelist",
+      "ref": "HEAD",
+      "sha": "af0b350da650517df2c9d15cca4892cdcd51be88",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/activelist"
+    },
+    {
+      "repo": "zhuzhao-ui",
+      "ref": "HEAD",
+      "sha": "b20594cc744a61e2bcb41535b0ea668a711aa4df",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/zhuzhao-ui"
+    },
+    {
+      "repo": "zhuzhao-utils",
+      "ref": "HEAD",
+      "sha": "5a3900fa6013750e912eca958666831f0a6f2c9d",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/zhuzhao-utils"
+    },
+    {
+      "repo": "zhuzhao-utils",
+      "ref": "v0.4.2",
+      "sha": "21155a98e87a944b20600833f940698d2759c2e5",
+      "snapshot": "/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/zhuzhao-utils-v0.4.2"
+    }
+  ]
+}

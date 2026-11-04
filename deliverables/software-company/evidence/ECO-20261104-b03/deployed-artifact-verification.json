@@ -1,0 +1,27 @@
+{
+  "binaries": [
+    {
+      "container": "zt-app",
+      "binary_sha256": "b9f8865c542fb5e5b714ca18d48fdabe2ef77f950e37e3c6f35fdc00d09073ed",
+      "utils": [
+        "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8="
+      ]
+    },
+    {
+      "container": "zt-taskrunner",
+      "binary_sha256": "cee1840667334cd939734db77af98eb6b21cbf004049c7ea7156fd57ed145389",
+      "utils": [
+        "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8="
+      ]
+    },
+    {
+      "container": "zt-activelist",
+      "binary_sha256": "0f534fd28b7e6171fdbdaee7eb94d1ded79d6e1034a96368f6e7e5835d527b5d",
+      "utils": [
+        "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8="
+      ]
+    }
+  ],
+  "UI_artifact_files_checked": 259,
+  "UI_mismatches": []
+}

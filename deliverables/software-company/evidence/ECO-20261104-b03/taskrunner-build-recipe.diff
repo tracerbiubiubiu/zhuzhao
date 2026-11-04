@@ -1,0 +1,7 @@
+--- source/Dockerfile
++++ temporary/taskrunner.audit.Dockerfile
+@@ -1,4 +1,3 @@
+-# syntax=docker/dockerfile:1
+ # 单容器单进程：API server + Asynq worker + cron 循环（分钟级 tick）。
+ # 卷挂载：/data（SQLite 部署态；PG 部署经 TASKRUNNER_DB_DRIVER=pg 无需此卷）与 /logs。
+ FROM golang:1.26-alpine AS build

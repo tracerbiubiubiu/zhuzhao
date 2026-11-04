@@ -1,0 +1,43 @@
+{
+  "repos": [
+    {
+      "repo": "zhuzhao",
+      "head": "5c03581d5999139a3e8e5ead5972c026868aa181",
+      "status": [
+        " M docs/README.md",
+        " M docs/review/11-project-control.md",
+        " M docs/review/README.md",
+        " M docs/runbook.md",
+        "?? deliverables/software-company/evidence/",
+        "?? deliverables/software-company/zhuzhao-ecosystem-audit-b01-baseline-2026-11-04.md",
+        "?? deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md",
+        "?? deliverables/software-company/zhuzhao-ecosystem-audit-b03-environment-2026-11-04.md",
+        "?? deliverables/software-company/zhuzhao-ecosystem-audit-plan-2026-11-04.md",
+        "?? docs/review/audit-playbook.md"
+      ]
+    },
+    {
+      "repo": "taskrunner",
+      "head": "1dcc83185f24b8dc2bed7bba6786272a5fdfb19f",
+      "status": []
+    },
+    {
+      "repo": "activelist",
+      "head": "af0b350da650517df2c9d15cca4892cdcd51be88",
+      "status": []
+    },
+    {
+      "repo": "zhuzhao-ui",
+      "head": "b20594cc744a61e2bcb41535b0ea668a711aa4df",
+      "status": [
+        " M .gitignore"
+      ]
+    },
+    {
+      "repo": "zhuzhao-utils",
+      "head": "5a3900fa6013750e912eca958666831f0a6f2c9d",
+      "status": []
+    }
+  ],
+  "UI_gitignore_ownership": "unconfirmed; preserved and excluded from fixed source snapshot; no edit by audit session"
+}

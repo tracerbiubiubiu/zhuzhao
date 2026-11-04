@@ -1,0 +1,179 @@
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.01s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.01s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+=== RUN   TestJWT_ATMinIATFloor
+=== RUN   TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:161: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:161
+        	Error:      	Should be true
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:162: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:162
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+    jwt_test.go:163: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/experiments/atfloor-without-check/internal/middleware/jwt_test.go:163
+        	Error:      	"" does not contain "\"code\":20003"
+        	Test:       	TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003
+=== RUN   TestJWT_ATMinIATFloor/地板早于签发_→_放行
+=== RUN   TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503
+--- FAIL: TestJWT_ATMinIATFloor (0.00s)
+    --- FAIL: TestJWT_ATMinIATFloor/地板晚于签发_→_401+20003 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/地板早于签发_→_放行 (0.00s)
+    --- PASS: TestJWT_ATMinIATFloor/无地板键（redis.Nil）→_放行，不得_503 (0.00s)
+FAIL
+FAIL	github.com/tracerbiubiubiu/zhuzhao/internal/middleware	0.826s
+FAIL

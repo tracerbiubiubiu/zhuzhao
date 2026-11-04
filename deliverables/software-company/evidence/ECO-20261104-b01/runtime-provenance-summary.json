@@ -1,0 +1,29 @@
+[
+  {
+    "container": "zt-app",
+    "copy_exit": 0,
+    "build_metadata": [
+      "path\tgithub.com/tracerbiubiubiu/zhuzhao/cmd/server",
+      "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8=",
+      "build\tvcs.revision=f3f2077e88e16f1e80b555d2e24d322ea4306bb1",
+      "build\tvcs.time=2026-11-02T09:25:37Z",
+      "build\tvcs.modified=false"
+    ]
+  },
+  {
+    "container": "zt-taskrunner",
+    "copy_exit": 0,
+    "build_metadata": [
+      "path\tgithub.com/tracerbiubiubiu/taskrunner/cmd/taskrunner",
+      "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8="
+    ]
+  },
+  {
+    "container": "zt-activelist",
+    "copy_exit": 0,
+    "build_metadata": [
+      "path\tgithub.com/tracerbiubiubiu/activelist/cmd/apiserver",
+      "dep\tgithub.com/tracerbiubiubiu/zhuzhao-utils\tv0.4.2\th1:3mFo6QWBg4JwVpPY5YTT6so4DqkkovsB1s/y3OkJGj8="
+    ]
+  }
+]

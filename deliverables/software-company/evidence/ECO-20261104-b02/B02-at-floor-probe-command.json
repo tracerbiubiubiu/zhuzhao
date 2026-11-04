@@ -1,0 +1,17 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-count=8",
+    "-timeout=60s",
+    "-v",
+    "-run",
+    "^TestAudit_ATFloor_",
+    "./internal/middleware"
+  ],
+  "exit_code": 1,
+  "base_commit": "5c03581d5999139a3e8e5ead5972c026868aa181",
+  "fixture_only": "internal/middleware/audit_at_floor_probe_test.go",
+  "implementation_modified": false
+}

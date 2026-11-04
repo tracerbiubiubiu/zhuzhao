@@ -1,0 +1,48 @@
+{
+  "tag": "v0.4.2",
+  "tag_commit": "21155a98e87a944b20600833f940698d2759c2e5",
+  "HEAD": "5a3900fa6013750e912eca958666831f0a6f2c9d",
+  "commits_since_tag": [
+    {
+      "commit": "5a3900fa6013750e912eca958666831f0a6f2c9d",
+      "subject": "docs(readme): aksk 密钥模型段归位+提交规范指针",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "commit": "78511a71ec180e7838e79f6e342b3d00159178c9",
+      "subject": "docs(readme): 版本历史补 v0.4.3（待发）行——清欠批六件入册；哨兵消息前缀明标「消费方可感变更」（外审查意见：按消息文本的日志解析/断言需随版同步，勿静默随版）",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "commit": "1c27ca2f909724f3f2b6d64de73a286dc61a68c4",
+      "subject": "chore(utils): 清欠批 BK-25 六件（main 直提不動 tag，随 v0.4.3 发版收编）——①aksk/gin.go 与 compat/gin.go 默认响应码值改引 errcode 常量（§3-11 码值引用纪律，分档逻辑自持只借数值段）②哨兵消息补包名前缀（jwt×2/redis/postgres×3/jsonutil×2——aksk·compat 为范本，消费方零字面依赖已核）③README 依赖边界声明修正（response→errcode+aksk）④crypto/errcode/logger 三包建测（哈希往返/dummy 恒失败不 panic/通用段哨兵完整性/级别过滤+JSON Lines 落盘）⑤jwt AT 过期哨兵用例（负 AccessTTL，原仅 RT 侧有钉）",
+      "files": [
+        ".gitignore",
+        "README.md",
+        "aksk/compat/gin.go",
+        "aksk/gin.go",
+        "crypto/crypto_test.go",
+        "errcode/errcode_test.go",
+        "jsonutil/int64_slice.go",
+        "jwt/jwt.go",
+        "jwt/jwt_test.go",
+        "logger/logger_test.go",
+        "postgres/postgres.go",
+        "redis/redis.go"
+      ]
+    },
+    {
+      "commit": "cdb731799aea9705c5d931e57d9b7294c6e12e98",
+      "subject": "ci: 补 concurrency 取消组 + 分支放宽 **——对齐 activelist/taskrunner 惯例（过期 run 自动取消/短命分支可测）",
+      "files": [
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "cached_module_go_files_compared": 27,
+  "cache_vs_tag_go_source_mismatches": []
+}

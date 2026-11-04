@@ -1,0 +1,41 @@
+[
+  {
+    "repo": "zhuzhao",
+    "ref": "HEAD",
+    "changed_tracked_files": [],
+    "extra_files": [
+      "internal/middleware/audit_at_floor_probe_test.go",
+      "internal/service/audit_reset_probe_integration_test.go"
+    ]
+  },
+  {
+    "repo": "taskrunner",
+    "ref": "HEAD",
+    "changed_tracked_files": [],
+    "extra_files": []
+  },
+  {
+    "repo": "activelist",
+    "ref": "HEAD",
+    "changed_tracked_files": [],
+    "extra_files": []
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "ref": "HEAD",
+    "changed_tracked_files": [],
+    "extra_files": []
+  },
+  {
+    "repo": "zhuzhao-utils",
+    "ref": "HEAD",
+    "changed_tracked_files": [],
+    "extra_files": []
+  },
+  {
+    "repo": "zhuzhao-utils",
+    "ref": "v0.4.2",
+    "changed_tracked_files": [],
+    "extra_files": []
+  }
+]

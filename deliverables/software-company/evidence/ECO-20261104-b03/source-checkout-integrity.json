@@ -1,0 +1,27 @@
+[
+  {
+    "repo": "zhuzhao",
+    "implementation_diff_paths": [],
+    "head": "5c03581d5999139a3e8e5ead5972c026868aa181"
+  },
+  {
+    "repo": "taskrunner",
+    "implementation_diff_paths": [],
+    "head": "1dcc83185f24b8dc2bed7bba6786272a5fdfb19f"
+  },
+  {
+    "repo": "activelist",
+    "implementation_diff_paths": [],
+    "head": "af0b350da650517df2c9d15cca4892cdcd51be88"
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "implementation_diff_paths": [],
+    "head": "b20594cc744a61e2bcb41535b0ea668a711aa4df"
+  },
+  {
+    "repo": "zhuzhao-utils",
+    "implementation_diff_paths": [],
+    "head": "5a3900fa6013750e912eca958666831f0a6f2c9d"
+  }
+]

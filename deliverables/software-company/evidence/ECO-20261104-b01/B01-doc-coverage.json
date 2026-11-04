@@ -1,0 +1,1307 @@
+[
+  {
+    "repo": "zhuzhao",
+    "path": "AGENTS.md",
+    "lines": 83,
+    "bytes": 7708,
+    "sha256": "26944aeb0bf57a0a514356e578947a676812326ae81d1e3c2aa718652d5bba54",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "README.md",
+    "lines": 78,
+    "bytes": 5453,
+    "sha256": "5ebdca2328565009761b9cef0ee867fb9f943c90005fa64d21767e1e9f41eda4",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/README.md",
+    "lines": 245,
+    "bytes": 16347,
+    "sha256": "eb5e810faafb5086751a223f640a23147e00241d14bfdb8f278110a3ac00e7ce",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/VISION.md",
+    "lines": 87,
+    "bytes": 9862,
+    "sha256": "31dc2380ce4279986c314e37b7184ce7f140f3d7e8a79f65e444772a869bd4da",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/acknowledgments.md",
+    "lines": 47,
+    "bytes": 6701,
+    "sha256": "2051e3977b85966887d29df12ff74700a53dc409e77be074b3f3e1961e4b2516",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/adr/ADR-001-event-mechanism-l1-steady-state.md",
+    "lines": 45,
+    "bytes": 4291,
+    "sha256": "31fc9a33742c59fdc4802082e5c4c2958219d5e0e1d3b86a53251a98a3a1f0ba",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/adr/ADR-002-asynq-async-task-executor.md",
+    "lines": 58,
+    "bytes": 6553,
+    "sha256": "629d74343d70f672a4f080f68eb913f9266d3452871d7dd6986912c6381e3840",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/adr/ADR-003-activelist-integration-form.md",
+    "lines": 162,
+    "bytes": 21386,
+    "sha256": "545ef58f6ea3b765d18552bda6a05a4a5fe978f129c045fe2fde1e8e4a0c304b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/adr/ADR-004-ticket-type-template-flow.md",
+    "lines": 31,
+    "bytes": 3608,
+    "sha256": "bed4921f828648f4d8883c8ce024997d317cc922c08d13bf2bb532d96dd3d60b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/adr/README.md",
+    "lines": 57,
+    "bytes": 2366,
+    "sha256": "94ab621daaae50a73c66483261f448e03363e329cac0699bb74ecdd2c6c0e017",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/api/README.md",
+    "lines": 26,
+    "bytes": 1327,
+    "sha256": "7e7fa31022752857999f532b6c9b0afcc3063b89aa5111369ab53cd031bf5ea1",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/api/errcode.md",
+    "lines": 5,
+    "bytes": 762,
+    "sha256": "77f12b622fd6f86c9604c260e8dc9a1ea1e9322f7958d20a592dded3bb3760c1",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/api/response.md",
+    "lines": 204,
+    "bytes": 6855,
+    "sha256": "050f792fabb1c1df1a443536f33a4d992ea4ea0a008504e75dfc423729e677a2",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/design/architecture.md",
+    "lines": 1905,
+    "bytes": 91208,
+    "sha256": "ff8746d9444b0bef8b361ce32d617ca2a99eac60eefafc3c6cf8118c82346753",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/design/design-decisions.md",
+    "lines": 1496,
+    "bytes": 110881,
+    "sha256": "89f30b5502a8579ffefa2e0ecacc6429c68d94b2b09f75b588c17aca3ec2d4c1",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/design/rbac-inheritance-and-cascade.md",
+    "lines": 255,
+    "bytes": 17484,
+    "sha256": "65c3b8fc4b1281292c13fb563418898be26cbd8d1b199aaaac8838453bff09d7",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/design/system-comparison.md",
+    "lines": 593,
+    "bytes": 30518,
+    "sha256": "fd2f30fd21c5893ce2cd0235713ca18699fa2195d5671826b921b2eb8b496960",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/README.md",
+    "lines": 78,
+    "bytes": 4342,
+    "sha256": "4d188a45ca0870e5c70fb4fd02ac95f9186616643adc713545e19454bf35900a",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/audit.md",
+    "lines": 261,
+    "bytes": 8737,
+    "sha256": "cb456755a32fc03049a0f11354ae9b0b32878c5a995e147ac4d56467ffa6bf13",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/auth.md",
+    "lines": 279,
+    "bytes": 9448,
+    "sha256": "82b475f0e35616deb4575f37aa66ea5748d98bf1819d25434eb0c4a14e6bc7bf",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/authz.md",
+    "lines": 299,
+    "bytes": 18058,
+    "sha256": "5c6a9f8f2a2f1d12d453cb027c0c6685ec8cd585f0772931c6c7a1e9752e08ce",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/menu.md",
+    "lines": 230,
+    "bytes": 7729,
+    "sha256": "98eb02127d797a4ba4b982ba8e3d1cc573a4e2222c604a8f9e54aec7cdd4a6c7",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/middleware.md",
+    "lines": 195,
+    "bytes": 6748,
+    "sha256": "9e89a0bb287ab7c1680dc768d83c2652ddbbb4df92b5da3ac346d2543fcd5b1a",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/organization.md",
+    "lines": 402,
+    "bytes": 17781,
+    "sha256": "c3a2af951e8025263ec98acbeff01711f14801cb7a633d20395953e6bb1dbd0a",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/role.md",
+    "lines": 285,
+    "bytes": 9123,
+    "sha256": "20aa4ba5ca46dc799fab02f98b422eba2ccd095ae349ef73563bb7771ff3731f",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/ticket.md",
+    "lines": 839,
+    "bytes": 51822,
+    "sha256": "9454de845de888da3df060f1bea6594fb62059425bd0e200539111a505cc696a",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/modules/user.md",
+    "lines": 320,
+    "bytes": 12812,
+    "sha256": "8250e4bc26645551eed8b2875ff2041b26da5889ec6af19e6915a0b18c01111d",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/ops/README.md",
+    "lines": 12,
+    "bytes": 516,
+    "sha256": "cc105631386e0fd13b0301c7ce6fee4d60cba895fff832cea4b8895d05b0d1d1",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/ops/deployment.md",
+    "lines": 102,
+    "bytes": 4559,
+    "sha256": "e40ca07314181266ec8e4a34c5b6251605522406933d56a1b47984f8de8e5a13",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/ops/port-allocation.md",
+    "lines": 112,
+    "bytes": 9700,
+    "sha256": "d19c3946b4d968a4d49426f6b4bd7dc7a62a01f0417c559f4d0adf4acfb8d245",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/ops/runbook.md",
+    "lines": 105,
+    "bytes": 7794,
+    "sha256": "e487d339cd8c72f4d65d3aaa116607bc8f515fa3913aa590a47e7d371b360d5e",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/00-pre-coding-decisions.md",
+    "lines": 190,
+    "bytes": 8103,
+    "sha256": "9065d4c530f1c3b2e3d46199dffa1f6603c0c023062015fa63899bbfb7fe6dc7",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/01-infra.md",
+    "lines": 280,
+    "bytes": 15533,
+    "sha256": "b031e6aca395ae1e3f7629c27f1787ac34be176e166e2af4a6cbd94ba6e89ba2",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/02-auth.md",
+    "lines": 837,
+    "bytes": 46439,
+    "sha256": "c911c24f7c6a321170df9d720f16fe6bcdbe376c4ee136aac0c05985b3962158",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/03-authz.md",
+    "lines": 314,
+    "bytes": 13872,
+    "sha256": "a26ed6d5115fd8745bd3dee634a3b5c1c2ac8f1ffbc8954aeb9049e73de36eec",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/04-user.md",
+    "lines": 670,
+    "bytes": 33535,
+    "sha256": "cea2ce514a90042579d67c16b3d389c56a9bf104a3a602b94b00a84983fd7131",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/05-role.md",
+    "lines": 352,
+    "bytes": 19074,
+    "sha256": "718ab483bc8d45fb33450de084e42a144e8ed6a0ec9c907c5ce48a9c4eceebac",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/06-organization.md",
+    "lines": 308,
+    "bytes": 15378,
+    "sha256": "59ca8915e5900dabec4a3c9e855c06a55e00829b2364f5d5d83fa1164a77283e",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/07-menu.md",
+    "lines": 423,
+    "bytes": 21477,
+    "sha256": "62dbff0e2a8e138f767e80badb2cdf18b4e030fb4b631df0aab83714e0ca7dd0",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/08-audit.md",
+    "lines": 277,
+    "bytes": 12445,
+    "sha256": "9791ac3d606eb7b37612c0bbe97a66d0b723db3ddf940088268111c41e6b1521",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/09-middleware.md",
+    "lines": 369,
+    "bytes": 15106,
+    "sha256": "6e35e66762625daaace6a35bbdfed1e187d2a06d3c5b79a8586cacbd626a5322",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/10-concurrency.md",
+    "lines": 201,
+    "bytes": 8540,
+    "sha256": "eae2b6af0928a3e5e79c5f45dd3d0e39796f9443d34b00863c44adf0000fc755",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/11-code-review.md",
+    "lines": 204,
+    "bytes": 17227,
+    "sha256": "8abdf292aad4bf1aea83e1eb9f1e15f6d8a0f41515ca780d66767e73a7245c37",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/12-phase1-acceptance-report.md",
+    "lines": 143,
+    "bytes": 13368,
+    "sha256": "11216587bdad354b098de540e555e0d7a0b6829371ecee8298c5083d0f30ead6",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase1/README.md",
+    "lines": 318,
+    "bytes": 21130,
+    "sha256": "f14a0f899a72dc4b9222a4318f034ac8699b07738d4ae521a004d63e0f77a652",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/00-implementation-plan.md",
+    "lines": 400,
+    "bytes": 61001,
+    "sha256": "3b18708a60a3fa5a2d2173b6a7eb51483bf1159ec05e909d9e27efef4752965a",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/01-auth-enhance.md",
+    "lines": 205,
+    "bytes": 8545,
+    "sha256": "a54fed1b3e96aec5ce123e96e7c099dcb6970a8194a49f0bd333d70e8bf62f2f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/02-authz-resource.md",
+    "lines": 316,
+    "bytes": 17810,
+    "sha256": "e9a1222e62dab9c5d0082d66cd946f1cdbad2cfb1f2d970ba36bfd2d34359d23",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/03-org-enhance.md",
+    "lines": 222,
+    "bytes": 13147,
+    "sha256": "a6e84e732d51d33e16bc15087d6cacce2b6831053bf303c6ddaeb45ef321fcfc",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/04-org-delegation.md",
+    "lines": 383,
+    "bytes": 17220,
+    "sha256": "61a2605d2fd858a4431d74779c3cac94f20e99f18b9bd27f37b812efb7164939",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/09-ticket.md",
+    "lines": 558,
+    "bytes": 34211,
+    "sha256": "f4497de73ef00b7238c6ca6699813e2c62cbea3c60a3475a1c3afec4f71989e6",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/10-storage.md",
+    "lines": 212,
+    "bytes": 6950,
+    "sha256": "423ea070380e718b6f89cc6ecf4462e8099d291b2d8cdd66997361b73d694907",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/11-authz-architecture-review.md",
+    "lines": 209,
+    "bytes": 19444,
+    "sha256": "f93429312913995e2ea3560b42a4659effc6c4f4c0d26c5f74bad28e5266d83d",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/14-phase2-plan-review-and-remediation.md",
+    "lines": 680,
+    "bytes": 77278,
+    "sha256": "f054fb3f1808cbd3f110d3198ae63002aa2e3b584d796907a4d2717f311c5d22",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase2/README.md",
+    "lines": 299,
+    "bytes": 20042,
+    "sha256": "6cce4d0dce2718acc5dacdfa68374b96a498539d0e1c40a503c11006cf478042",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/00-startup-checklist.md",
+    "lines": 155,
+    "bytes": 36804,
+    "sha256": "d0761186bf7d94f89bad76a296d92d91c1efc70bc56c99523b8375aa3db51c7b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/01-observability.md",
+    "lines": 155,
+    "bytes": 5311,
+    "sha256": "2f7b57eb466d8731d975d02a57ba5b543de4b2c16f6cb937157529d2a6638663",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/02-multi-instance.md",
+    "lines": 84,
+    "bytes": 5369,
+    "sha256": "316d26f508d13760227c693ff24d90279c3041e3454d14ca3a7cf8087f3f6230",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/03-audit-l2.md",
+    "lines": 203,
+    "bytes": 16013,
+    "sha256": "ba216db766cd60f5dca0fc1faee802d571f6a6edf9629274401aee4f18b5180d",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/06-ha.md",
+    "lines": 165,
+    "bytes": 7814,
+    "sha256": "2e269f757339e0abbf8737666651e85f1b67347c6d9998f0eab6afefd9306264",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/07-security-enhance.md",
+    "lines": 134,
+    "bytes": 7238,
+    "sha256": "43f59e96948d797ec3cf77a80e847174e5bb160effe848c8e00014fd4acc54d2",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/08-ops.md",
+    "lines": 103,
+    "bytes": 4199,
+    "sha256": "f90cac9c061a904d6023e2065e076ae4fcaced154153e73801db35f19a40846e",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/09-platform.md",
+    "lines": 120,
+    "bytes": 6118,
+    "sha256": "85ffe1b0c7620d7152a5e5f87e99c107179692774868202200ac62b36d00b0b4",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/10-ticket-business.md",
+    "lines": 694,
+    "bytes": 61678,
+    "sha256": "361635d521f13ebdd6bcd769930861011449cfa5c2970bd22d2f5ca8d552fe04",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/11-deployment-split.md",
+    "lines": 188,
+    "bytes": 8566,
+    "sha256": "318ae80c5bf54d9eeccf0bf7bbd6332eff10e906fb1865bc7b7b98dcab72f4f7",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/12-frontend.md",
+    "lines": 106,
+    "bytes": 8140,
+    "sha256": "c71318465cba2fa648b6892f4cad559081c7abd53329de521d622b609e76014a",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/13-implementation-plan.md",
+    "lines": 226,
+    "bytes": 37615,
+    "sha256": "19c87f7d348e904e8af3b115168070319c9e6bc81820d9f98326c34266f1b740",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/14-planning-overview.md",
+    "lines": 174,
+    "bytes": 20650,
+    "sha256": "06261f25c1e1b1f5af841b6c56a8c4fcbf5a72b8bf4d32a1de06de69a9f6d80f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/15-script-platform-dagu-vs-inhouse.md",
+    "lines": 107,
+    "bytes": 9087,
+    "sha256": "12ece9596b2f02f1273a7285232464305d524d8a18a78b7b5476e4d97a6cc784",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/16-external-integration.md",
+    "lines": 222,
+    "bytes": 52248,
+    "sha256": "35f2c82f6d0a6390f0513b952f17f5927ae3833d072b22099dd87a025e310771",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/17-uaa-integration.md",
+    "lines": 138,
+    "bytes": 15932,
+    "sha256": "9ccb778e573244ab8ffedd7f116043010967098e90578034225a5f52855be861",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase3/README.md",
+    "lines": 288,
+    "bytes": 29158,
+    "sha256": "b033e69f8a535384b5db3a40356dca9a3bd74cab6a6646baa182b750d963c81f",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase4/00-planning-inventory.md",
+    "lines": 242,
+    "bytes": 34221,
+    "sha256": "76c0744170f3330ed299ceb87c376bdd1867bcbe7f8bebb4452e6392b639c76d",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase4/01-frontend-design.md",
+    "lines": 231,
+    "bytes": 38474,
+    "sha256": "1d9331e983437dd94beeca497048c4f2f7f65d2172397a00b0d2e942b14f6036",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase4/02-implementation-plan.md",
+    "lines": 207,
+    "bytes": 77794,
+    "sha256": "ce55613b71befcf2e868f603a8b994a0972ab75ed45982a19aab0955c09bf35f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase4/03-scenarios-and-tests.md",
+    "lines": 108,
+    "bytes": 16799,
+    "sha256": "80e542a12ee3112b72017537e8ce8670ecfb07bd07012dafd9b7ad7e8e5dc56b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase4/README.md",
+    "lines": 12,
+    "bytes": 771,
+    "sha256": "c7b8b99358d65c4120d86d4fe2ea61b59de7070aa42964578df6bdec50c18054",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/01-s1-form-designer.md",
+    "lines": 244,
+    "bytes": 54040,
+    "sha256": "5bed019767aabda9c323129008337935eef460f8ef3c37451837a8761552f023",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/02-s2-flow-graph-designer.md",
+    "lines": 159,
+    "bytes": 19694,
+    "sha256": "a4f488d76ba7430106d5a4598e2d6c875d0cce0a0f29a3685d0574ef4666377d",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/03-s3-flow-semantics.md",
+    "lines": 333,
+    "bytes": 63764,
+    "sha256": "fc4a36b0d0e7b290b1f05c9310a0a77a6d0dcf31bf638080490aefa49e94d77c",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/04-s4-task-console-ux.md",
+    "lines": 283,
+    "bytes": 42051,
+    "sha256": "f31ad10d835237dbd8d5f2f008ce5d2255f2879bde07e4b6bf28c37a6a602bdc",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/05-s5-object-storage-richmedia.md",
+    "lines": 393,
+    "bytes": 82588,
+    "sha256": "242f7c947c675d7eeef9b3b7fec31cdb0cc315648052b5efdcfcd0bb363600a8",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/06-s6-message-notification.md",
+    "lines": 316,
+    "bytes": 66713,
+    "sha256": "c00ea7027951498d1d302f4c86b4d6ea2e5bfa626e2efc9ab73ab33863021952",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/07-s7-ai-assistant.md",
+    "lines": 40,
+    "bytes": 2849,
+    "sha256": "cb79f8627d9b1f528b9641eca671bb08fb5b2213f8a839cc60c84337738cf6f9",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/08-s8-data-dashboard.md",
+    "lines": 33,
+    "bytes": 1351,
+    "sha256": "ae1ff8f267a7cb673fbd76c6e93a6871a382d5893314008af2e3a148e3cacb0a",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/09-s9-threat-intel-cache-proxy.md",
+    "lines": 164,
+    "bytes": 16314,
+    "sha256": "01b1f088ff427b5fd6f0070bc391729eab6cc0590f4ada17107e9e4c0791f65e",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/10-s10-ticket-collaboration.md",
+    "lines": 262,
+    "bytes": 45943,
+    "sha256": "c611ef0fa374e65d94e96eb828fb15d18c34b8fe73dc2462bcff54a4e7ef0a93",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/11-implementation-plan.md",
+    "lines": 440,
+    "bytes": 135288,
+    "sha256": "67019a4e51b89b1b336971b9e4d2aaf2d3d23ef18dfe46689086c626a74f42d5",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/README.md",
+    "lines": 307,
+    "bytes": 93753,
+    "sha256": "b72f7b25f4a3ad053619ea85b54bd3a17b7d5beecbd04219bef7d0c2fb06b60f",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase5/S6-S5-debt-ledger.md",
+    "lines": 223,
+    "bytes": 46016,
+    "sha256": "02710764331235a57894615603d60521da57bdabff61112221c220e3c2918fa3",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/00-flow-engine-v2.md",
+    "lines": 145,
+    "bytes": 31329,
+    "sha256": "f8379896df2f45b0fe56b4ab12395a91a326acf3cb3e7785dc3ea3d270e5ec81",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/01-r1-ingest-ledger.md",
+    "lines": 151,
+    "bytes": 37006,
+    "sha256": "46c5c123e37e95fa4a1cfcd48e929752ecd7a3e587a77e7a4a8e804c2324cabb",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/02-r2-assessment-treatment.md",
+    "lines": 72,
+    "bytes": 8229,
+    "sha256": "fe6b269ea2673ccdc66c7a42a5ce3c409883cb8fb939a6bbea193172b01a6a1b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/03-r3-ticket-linkage.md",
+    "lines": 114,
+    "bytes": 25633,
+    "sha256": "3bee96655a090ca7aa970774d5adbb92312c6d477cee7c966d6b6d44bb29dcbd",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/04-r4-metrics-reports.md",
+    "lines": 141,
+    "bytes": 12878,
+    "sha256": "bf5fa11ce59d70c692856f0d09ab6d8aab3c5c92a212f1aa88fa90a80c9dd2de",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/05-launch-batch.md",
+    "lines": 196,
+    "bytes": 23827,
+    "sha256": "82f0b14bac1a5118e7651f1a7b528d18bffc0c8c513d0d5c0b6364e7d74d6194",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/06-ticket-completeness.md",
+    "lines": 239,
+    "bytes": 42725,
+    "sha256": "09cdbedd51d8c5736615df536c3faba25f0be5192cb64aed7378f6891c36f269",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/07-backlog-and-triggers.md",
+    "lines": 224,
+    "bytes": 39487,
+    "sha256": "ef2e70064104d64d42287dfe632056d9b039dfa4f7748d6e25b79b7ffb79e38f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/08-home-workbench.md",
+    "lines": 105,
+    "bytes": 9616,
+    "sha256": "7d8185d951302ddad999d5c5beb2f70170dacb82fce80e6b96010b08f2f25e46",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/09-ticket-type-visibility.md",
+    "lines": 117,
+    "bytes": 15164,
+    "sha256": "179b909a3b9d71ba1fe650f5262dd0d08f793227ea4ef688ee3b4adf8b3e1259",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase6/README.md",
+    "lines": 234,
+    "bytes": 60813,
+    "sha256": "0131659e111d41c52c16e00ac87a4c4b73dd55c9f656050f3c8de76372be6716",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase7/README.md",
+    "lines": 63,
+    "bytes": 4259,
+    "sha256": "a0306ed96e9bb659386404f4df0c087f89fcfc5a2ca75a05d5d6233d658b23ab",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase8/README.md",
+    "lines": 63,
+    "bytes": 4518,
+    "sha256": "8196c122b4cb0739a8d2c78f014490fcbe1f9d571bbbd97e520b5d765c0426c6",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/phase9/README.md",
+    "lines": 59,
+    "bytes": 3946,
+    "sha256": "a5a77cffa839d3f20985cd97ffa71640785916aba1ec1028c002750463f346b5",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/README.md",
+    "lines": 13,
+    "bytes": 795,
+    "sha256": "dde978bf3435a733939e4bb8b08f630466931ada0bb3e9b9824a9dcd7dee9e08",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/auth-design.md",
+    "lines": 376,
+    "bytes": 13567,
+    "sha256": "d6ce48f34e688ea9de84584678d279c4c1ef2db1d83543a44299cb6294565dd8",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/data-init.md",
+    "lines": 456,
+    "bytes": 18312,
+    "sha256": "ca32b83edad68e956149cb414edb2cd5e3b3ce2ca0119c98209b1cbf9eebaf6c",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/deployment-evolution.md",
+    "lines": 252,
+    "bytes": 11356,
+    "sha256": "d8b0006c4260d08eb70c695d20ddfa51dba95e18720717ed2b9cb414a005e709",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/hr-directory-sync.md",
+    "lines": 427,
+    "bytes": 23043,
+    "sha256": "1d32ebc7a4049ef20276bb1401c8a21e7fb5d7a9fabd155c725cf802ed067349",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/overview.md",
+    "lines": 203,
+    "bytes": 14782,
+    "sha256": "8d1efbaac14d473a710551ffc146386196da8dc53ff530121a9426192d64dc09",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/proposal/resource-model.md",
+    "lines": 657,
+    "bytes": 22641,
+    "sha256": "a3258af685702008685f10a201b6524baf6461b3129d065a50f4f993c888b76f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/11-project-control.md",
+    "lines": 390,
+    "bytes": 131339,
+    "sha256": "7d0f2940526c2f4dbefd20467d7960d51a4dcaa7d7ba4ce77f1d037ddd8748d0",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/12-b13-permission-matrix-2026-09-26.md",
+    "lines": 135,
+    "bytes": 9040,
+    "sha256": "8da01998b6487a493cfd16f68bdda442f4e5a72c42c0dc66cbf564779de7af73",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/13-bk11-pool-deadlock-2026-10-26.md",
+    "lines": 135,
+    "bytes": 14620,
+    "sha256": "1b98069e4593bf64e0bb129197a88cd793890ecdcd62c70ed526b4d25774d4ce",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/14-b13-permission-matrix-2026-10-26.md",
+    "lines": 190,
+    "bytes": 15730,
+    "sha256": "9b45cbcad886b32494442e4f585b764b392628f7fe72a06dde17bcfeea94f3f8",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/README.md",
+    "lines": 15,
+    "bytes": 1688,
+    "sha256": "5efb8ed3a994a385c582ca4b9d427d5715760b634d4ba0fef22ff3d8378285cf",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/00-phase1-systematic-review-plan.md",
+    "lines": 150,
+    "bytes": 10890,
+    "sha256": "32cd3bdef23ab5a1a911c98b5d1950282d1d0dbc7334ec2d2c3344c289e578ec",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/01-phase1-systematic-review-findings.md",
+    "lines": 314,
+    "bytes": 32419,
+    "sha256": "155af3b78b3f9534527b34fbdded08abcadd004d7fba8dd92ca67a1e533d4051",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/02-phase1-remediation-plan.md",
+    "lines": 297,
+    "bytes": 18975,
+    "sha256": "11a40f8d37660a1eb400dac37372e05fe17c81d5d895ec525a8108584632b47b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/03-second-deep-review-findings.md",
+    "lines": 342,
+    "bytes": 46929,
+    "sha256": "5b73c33c89e087c4b09e6ee16b54f5aa213188cb746b2d89de6935f5a5df00f2",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/04-ecmdb-cross-project-learnings.md",
+    "lines": 62,
+    "bytes": 5487,
+    "sha256": "74b25042310cbf0568036a86f601d937a1ba758e4680a38e59207fa1ed0883ed",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/04-phase1-comprehensive-verification.md",
+    "lines": 418,
+    "bytes": 29302,
+    "sha256": "f36fd73b7c4c5ee755e41115f4a8e8afa7589d9ce4d7d7e6b2980f776f8d861a",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/05-docs-systematic-review.md",
+    "lines": 213,
+    "bytes": 17458,
+    "sha256": "e4c68d644f7eca99199322842ecd02060c01099e2b32ff7eb7e6be8274f2f2d6",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/06-phase2-docs-architecture-review.md",
+    "lines": 237,
+    "bytes": 20374,
+    "sha256": "4885f5652cf6dad17ba03ba94c60b502fca1f2c3df22021ae66ed85f4cdcfbc7",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/07-comprehensive-docs-review.md",
+    "lines": 322,
+    "bytes": 21967,
+    "sha256": "649ff65f22f83698e4efbd56737cf86405f03022a1ffdeb06f6f2918711b9b1d",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/08-final-recheck-and-new-findings.md",
+    "lines": 123,
+    "bytes": 13590,
+    "sha256": "de8021ae81dbb3a7caac85058408afe35f0aad1b6ab15422295aea7aae303712",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/09-consolidated-findings.md",
+    "lines": 104,
+    "bytes": 10716,
+    "sha256": "10f4f74c9837f6a5ceb6f143d07226555a98d72ddb3de53cce682d486a698f16",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/review/archive/10-phase2-comprehensive-verification.md",
+    "lines": 239,
+    "bytes": 15583,
+    "sha256": "3aa8a407a980408def6eb21e8ce1c4fc62b0fa9bb8f65fcda797fc982ffdfe1f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/roadmap.md",
+    "lines": 208,
+    "bytes": 24915,
+    "sha256": "880f8a6de90b036e572ba9050c5d0514fb836a5f1a9150588bcd55bd781d5ba6",
+    "reading_status": "本批全文阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/runbook.md",
+    "lines": 227,
+    "bytes": 20057,
+    "sha256": "1fcf6c1932d63b354cd282f04864ad450e323765f0c67629ec30952a8c8b9766",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao",
+    "path": "docs/standards.md",
+    "lines": 298,
+    "bytes": 67270,
+    "sha256": "38ba0e522deba22e9faa1ca6ac442a959d59974c961e460de6fc1d8d3c67d4cf",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "taskrunner",
+    "path": "README.md",
+    "lines": 68,
+    "bytes": 6822,
+    "sha256": "841739668d2cb59efa8131045a04d45993823b126cc447de0ca46e275709707a",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "taskrunner",
+    "path": "docs/ADR-002-asynq-async-task-executor.md",
+    "lines": 8,
+    "bytes": 614,
+    "sha256": "5f64e1510dabae2d6dc9120bde2abf09730e5313f4d04a7f1f2466cae0a7bc5b",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "taskrunner",
+    "path": "docs/ADR-004-db-first-outbox-reclaim.md",
+    "lines": 211,
+    "bytes": 55843,
+    "sha256": "5bd6d31648cd6b4f7b5eac9f80845d570ac18fdff6dbe0390165dabb1d982288",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "taskrunner",
+    "path": "docs/taskrunner.md",
+    "lines": 417,
+    "bytes": 78813,
+    "sha256": "637c6c001504f94dae6ccd135492244fe80333dcbc972bf59a6bfe25982624cb",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "taskrunner",
+    "path": "docs/zhuzhao-integration.md",
+    "lines": 133,
+    "bytes": 12255,
+    "sha256": "0bc4b136dfe0c6d6fabdbc908195a37f8c3ffdf6087c2dd6423f2e7b3986aafa",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "activelist",
+    "path": "README.md",
+    "lines": 74,
+    "bytes": 6891,
+    "sha256": "9e8f2491b112c2147d9c179ac4393da066bb5ceb04840e12379df05ecca755cd",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "activelist",
+    "path": "docs/ADR-003-integration-contract.md",
+    "lines": 203,
+    "bytes": 27585,
+    "sha256": "930d0495eca744f1953ef7f765f86df988480d0cfbf5eb955796eac4545af885",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "activelist",
+    "path": "docs/activelist.md",
+    "lines": 2467,
+    "bytes": 135315,
+    "sha256": "681137f23303e0560ebc0fa8eeef7050ebdc785f2058c4171c3dd77bf8e4b8a4",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "activelist",
+    "path": "docs/implementation-plan.md",
+    "lines": 180,
+    "bytes": 26782,
+    "sha256": "74c0042e1d9fb385c0c99585c27e5d233ed4744bcc749fb6b4d02e217e05d2b6",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "path": "AGENTS.md",
+    "lines": 75,
+    "bytes": 9913,
+    "sha256": "e8c188aabaf43d10dc849c90645b244cbc6964045d5e9cec59cbb850ffbf6a51",
+    "reading_status": "本批相关章节/检索；非全文",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "path": "README.md",
+    "lines": 76,
+    "bytes": 8139,
+    "sha256": "f53bded805e6ba42561c7acf01fbfc38480eb5ade7af099f7fc9045dec65437c",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "path": "docs/frontend-standard.md",
+    "lines": 439,
+    "bytes": 35290,
+    "sha256": "7f653ccd9770027dca2298cd9f8ee694e5f73a7f37969a4400857ebb61f472dc",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao-ui",
+    "path": "docs/testing-standard.md",
+    "lines": 93,
+    "bytes": 7066,
+    "sha256": "a47f0f289e225e40648b50ffa729a93c7467320528cacb8ca2d01ffa50b895a3",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  },
+  {
+    "repo": "zhuzhao-utils",
+    "path": "README.md",
+    "lines": 94,
+    "bytes": 8566,
+    "sha256": "4f55ca72510605f2de5636131684e26094d1eba6938d082cf0ac428902abcf6f",
+    "reading_status": "未开展本轮逐篇阅读",
+    "implementation_audit": "未覆盖（认证初核另见 B02）"
+  }
+]

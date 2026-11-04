@@ -1,0 +1,18 @@
+✅ E2E globalSetup：admin 闭环 + operator/viewer 预设绑定 + S1 重置完成
+
+Running 1 test using 1 worker
+
+(node:79165) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:79165) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS /api/v1/user/profile: HTTP 200 / code 0
+PASS /api/v1/user/menus: HTTP 200 / code 0
+PASS /api/v1/user/permissions: HTTP 200 / code 0
+PASS /api/v1/ticket-types?page_size=1: HTTP 200 / code 0
+PASS /api/v1/runs?page=1&page_size=1: HTTP 200 / code 0
+PASS /al/api/v1/admin/types?page_size=1: HTTP 200 / code 0
+PASS anonymous=401; viewer write=403; SPA + emitted script=200
+  ✓  1 audit-smoke-tests/environment.spec.ts:4:1 › rebuilt test stack: UI, auth, permissions and both upstream chains (623ms)
+
+  1 passed (3.5s)

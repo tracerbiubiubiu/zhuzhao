@@ -1,0 +1,36 @@
+import { test, expect } from '@playwright/test'
+import { API_BASE, api, apiLogin, loadState } from '../e2e/helpers'
+
+test('rebuilt test stack: UI, auth, permissions and both upstream chains', async ({ request }) => {
+  expect(API_BASE).toBe('http://127.0.0.1:48081')
+  const state = loadState()
+  const login = await apiLogin(state.admin.employeeNo, state.admin.password, 'audit-env-smoke')
+  expect(login.status).toBe(200)
+  expect(login.env?.code).toBe(0)
+  expect(login.env?.data?.must_change_password).toBe(false)
+  const token = login.env!.data.access_token
+  for (const path of [
+    '/api/v1/user/profile', '/api/v1/user/menus', '/api/v1/user/permissions',
+    '/api/v1/ticket-types?page_size=1', '/api/v1/runs?page=1&page_size=1',
+    '/al/api/v1/admin/types?page_size=1',
+  ]) {
+    const result = await api(path, { token })
+    expect(result.status, path).toBe(200)
+    expect(result.env?.code, path).toBe(0)
+    console.log(`PASS ${path}: HTTP 200 / code 0`)
+  }
+  const anonymous = await api('/api/v1/user/profile')
+  expect(anonymous.status).toBe(401)
+  const viewer = await apiLogin(state.viewer.employeeNo, state.viewer.password, 'audit-env-viewer')
+  expect(viewer.status).toBe(200)
+  const denied = await api('/api/v1/users', { token: viewer.env!.data.access_token, method: 'POST', body: {} })
+  expect(denied.status).toBe(403)
+  const page = await request.get('http://127.0.0.1:48081/')
+  expect(page.status()).toBe(200)
+  const html = await page.text()
+  const script = html.match(/<script[^>]+src="([^"]+)"/)
+  expect(script).not.toBeNull()
+  const asset = await request.get(new URL(script![1], 'http://127.0.0.1:48081/').href)
+  expect(asset.status()).toBe(200)
+  console.log('PASS anonymous=401; viewer write=403; SPA + emitted script=200')
+})

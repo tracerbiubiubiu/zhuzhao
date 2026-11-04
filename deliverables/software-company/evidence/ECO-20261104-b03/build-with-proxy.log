@@ -1,0 +1,9 @@
+ Image taskrunner-audit:1dcc83185f24 Building 
+ Image zhuzhao-audit:5c03581d5999 Building 
+ Image activelist-audit:af0b350da650 Building 
+ Image zhuzhao-ui-audit:b20594cc744a Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 4.01kB done
+#1 DONE 0.0s
+additional privileges requested: pass "--allow=fs.read=/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-environment/taskrunner.audit.Dockerfile" to grant requested privileges
+

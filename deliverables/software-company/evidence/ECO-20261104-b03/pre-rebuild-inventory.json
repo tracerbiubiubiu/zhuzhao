@@ -1,0 +1,245 @@
+{
+  "test": [
+    {
+      "id": "1d6def32baaaa2ab24e3e698f1daab6437e5a091d9855863a357631171137e4e",
+      "name": "zt-ui",
+      "image": "sha256:09a3dd51dc6bffee2d80a30c2b56adab83e7ab9fa4bd6605a70397872add7bf6",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T10:01:18.264944505Z",
+      "mounts": []
+    },
+    {
+      "id": "f2736bce16a03ebc62c6548708d47d200df4f5f208826ecb01b9fa48a9cd0ddf",
+      "name": "zt-app",
+      "image": "sha256:6df40b690d61e93b5b9c15adf110f3a6b945a98c29b3930e5a4cbf270a039308",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:59:50.511562465Z",
+      "mounts": [
+        {
+          "type": "bind",
+          "name": null,
+          "source": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/deployments/config.test.yaml",
+          "destination": "/app/configs/config.yaml"
+        }
+      ]
+    },
+    {
+      "id": "c9b633e7abec9f7fbe0be5ff3deb0dfa8e2bfb16f94c50ebe9aee6e5ec48aeb9",
+      "name": "zt-activelist",
+      "image": "sha256:4b2ae85656da8a43d48caf2964c0d88e56067fa443e1d0214c73199c04acaa9b",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:25.5188783Z",
+      "mounts": []
+    },
+    {
+      "id": "ee856d12d99f632e116df25ffe9998a776e450ccf4b42d02b60d9e7e486e6cda",
+      "name": "zt-taskrunner",
+      "image": "sha256:89dc1e16c83f159b70f1fd6a6d4c2008118fd5ac58696e12ab54d3479b6aa454",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:26.282701843Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "d09dfdc0f79d7b701526b563d89a3e28d98fb03ed8db32b067fa7b783f0fad8c",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/d09dfdc0f79d7b701526b563d89a3e28d98fb03ed8db32b067fa7b783f0fad8c/_data",
+          "destination": "/data"
+        },
+        {
+          "type": "volume",
+          "name": "8c83b9717b440f9c8b491106cb54929997f8f760afd0f78ed70a6baa6aebd388",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/8c83b9717b440f9c8b491106cb54929997f8f760afd0f78ed70a6baa6aebd388/_data",
+          "destination": "/logs"
+        }
+      ]
+    },
+    {
+      "id": "34db8bbb1eca964a8133a7084262ab147c2b552f1e1ed744095efabdfab0f4e7",
+      "name": "zt-tr-postgres",
+      "image": "sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:20.479712965Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao_test_zt_tr_pgdata",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao_test_zt_tr_pgdata/_data",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "id": "bb495224fdc70438551c3729ddc517edf99f4e78f6e648b81d3d5ff415f2b7cd",
+      "name": "zt-al-postgres",
+      "image": "sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:19.883581423Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao_test_zt_al_pgdata",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao_test_zt_al_pgdata/_data",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "id": "12d943c42e01bfbdd9c1f3087b266dae3d1c1250f8ef57ae40fe79ae0f75281b",
+      "name": "zt-postgres",
+      "image": "sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:20.039407756Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao_test_zt_pgdata",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao_test_zt_pgdata/_data",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "id": "ccbbad724a261ab958b02092aad2017e13078120ee3451b3b9a56bbbf184cb82",
+      "name": "zt-redis",
+      "image": "sha256:b362b5dff9d14d961dc3352db4776aba6a8c53ca2661d7c74ad2c121f82cdaea",
+      "project": "zhuzhao_test",
+      "status": "running",
+      "started_at": "2026-11-02T09:50:20.271594465Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "fcf60dc6178568ef1cdd33e851d5a279f6ea56201e5d80bf5cc4000820887922",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/fcf60dc6178568ef1cdd33e851d5a279f6ea56201e5d80bf5cc4000820887922/_data",
+          "destination": "/data"
+        }
+      ]
+    }
+  ],
+  "preserve": [
+    {
+      "id": "f524f17bcf9caa262cbbdae79e7d675192c63fffba75e142c0d71ebfda1ed7f9",
+      "name": "zhuzhao-dev-redisinsight",
+      "image": "sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84",
+      "project": "zhuzhao-dev",
+      "status": "running",
+      "started_at": "2026-11-02T13:38:13.74982025Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao-dev_dev_redisinsight_data",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao-dev_dev_redisinsight_data/_data",
+          "destination": "/data"
+        }
+      ]
+    },
+    {
+      "id": "3b1674925c99c2360020b92323cb50bc56d85ee8f39e0166cda0d7a761d5cb0b",
+      "name": "zhuzhao-dev-postgres",
+      "image": "sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550",
+      "project": "zhuzhao-dev",
+      "status": "running",
+      "started_at": "2026-10-30T00:44:43.411356302Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao-dev_dev_pg_data",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao-dev_dev_pg_data/_data",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "id": "75663b7d99c3fedfc2d1c8487242876fac08dfc4876da4b84774b081941c40f9",
+      "name": "zhuzhao-rustfs",
+      "image": "sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c",
+      "project": "zhuzhao",
+      "status": "running",
+      "started_at": "2026-10-30T00:44:22.907363001Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao_rustfs_data",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao_rustfs_data/_data",
+          "destination": "/data"
+        }
+      ]
+    },
+    {
+      "id": "7586d872e85658bebe2efd26e9b4c289b330c90b605b6f6cf2e18c10b256c32b",
+      "name": "activelist-dev-postgres",
+      "image": "sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550",
+      "project": "deploy",
+      "status": "running",
+      "started_at": "2026-10-30T00:44:43.690523261Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "deploy_pgdata",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/deploy_pgdata/_data",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "id": "9b39dd8e2df78660dcb2f9983c6d3bbf64a2ed8ebd5c2a85f5ae7fdfda2de71d",
+      "name": "zhuzhao-dev-redis",
+      "image": "sha256:b362b5dff9d14d961dc3352db4776aba6a8c53ca2661d7c74ad2c121f82cdaea",
+      "project": "zhuzhao-dev",
+      "status": "running",
+      "started_at": "2026-11-02T03:01:56.65415293Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao-dev_dev_redis_data",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao-dev_dev_redis_data/_data",
+          "destination": "/data"
+        },
+        {
+          "type": "bind",
+          "name": null,
+          "source": "/host_mnt/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/deployments/redis/redis.conf",
+          "destination": "/etc/redis/redis.conf"
+        }
+      ]
+    },
+    {
+      "id": "53dc5eca0aa38c9541b0958415dbddc145962d2bfe548af88b9273c945d6fa9a",
+      "name": "zhuzhao-rustfs-mirror",
+      "image": "sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5",
+      "project": "zhuzhao",
+      "status": "running",
+      "started_at": "2026-10-30T00:44:22.908419959Z",
+      "mounts": [
+        {
+          "type": "bind",
+          "name": null,
+          "source": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/deployments/backup/rustfs-mirror.sh",
+          "destination": "/usr/local/bin/rustfs-mirror.sh"
+        }
+      ]
+    },
+    {
+      "id": "61c054f94ff97af08a3a424312c94532ed8335324f113d752ae49ec4dbdae1d4",
+      "name": "zhuzhao-rustfs-backup",
+      "image": "sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c",
+      "project": "zhuzhao",
+      "status": "running",
+      "started_at": "2026-10-30T00:44:22.906951959Z",
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "zhuzhao_rustfs_backup_data",
+          "source": "/host_mnt/Users/bujibuji/data/docker/volumes/zhuzhao_rustfs_backup_data/_data",
+          "destination": "/data"
+        }
+      ]
+    }
+  ],
+  "cross_project_shared_test_volumes": []
+}

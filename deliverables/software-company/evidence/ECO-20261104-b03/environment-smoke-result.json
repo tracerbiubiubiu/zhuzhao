@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-environment/sources/zhuzhao-ui/node_modules/@playwright/test/cli.js",
+    "test",
+    "--config",
+    "/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-environment/sources/zhuzhao-ui/audit.playwright.config.ts"
+  ],
+  "api_base": "http://127.0.0.1:48081",
+  "exit": 0,
+  "seconds": 4.2,
+  "globalSetup": "unchanged snapshot e2e/global-setup.ts",
+  "purpose": "environment readiness smoke; not full browser E2E/acceptance"
+}

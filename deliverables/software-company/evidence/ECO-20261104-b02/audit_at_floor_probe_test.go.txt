@@ -1,0 +1,43 @@
+package middleware_test
+
+import (
+    "fmt"
+    "net/http"
+    "testing"
+    "time"
+
+    "github.com/stretchr/testify/require"
+    "github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+)
+
+// Audit-only probe: the token exists before the revocation floor is written.
+// No changes to the repository or to the middleware implementation.
+func TestAudit_ATFloor_OldTokenIssuedInSameSecond(t *testing.T) {
+    c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
+    oldAT, _, err := manager.GenerateAccessToken(42, "synthetic-user", false)
+    require.NoError(t, err)
+    claims, err := manager.ParseAccessToken(oldAT)
+    require.NoError(t, err)
+    require.NotNil(t, claims.IssuedAt)
+    // Reproduce UpdatePassword's floor for a revocation in the same second.
+    floor := claims.IssuedAt.Unix()
+    require.NoError(t, rdb.Set(c, "user:at_min_iat:42", floor, 31*time.Minute).Err())
+    bearerRequest(c, oldAT)
+    middleware.JWT(manager, rdb, nil)(c)
+    t.Logf("old_iat=%d revocation_floor=%d aborted=%v status=%d userID=%d", floor, floor, c.IsAborted(), w.Code, c.GetInt64("userID"))
+    require.True(t, c.IsAborted(), "AT minted before revocation must be rejected even in the same second")
+    require.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAudit_ATFloor_ControlEarlierSecondRejected(t *testing.T) {
+    c, w, manager, rdb := newJWTTestEnv(t, 30*time.Minute)
+    at, _, err := manager.GenerateAccessToken(42, "synthetic-user", false)
+    require.NoError(t, err)
+    claims, err := manager.ParseAccessToken(at)
+    require.NoError(t, err)
+    require.NoError(t, rdb.Set(c, "user:at_min_iat:42", fmt.Sprint(claims.IssuedAt.Unix()+1), 31*time.Minute).Err())
+    bearerRequest(c, at)
+    middleware.JWT(manager, rdb, nil)(c)
+    require.True(t, c.IsAborted())
+    require.Equal(t, http.StatusUnauthorized, w.Code)
+}

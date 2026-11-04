@@ -1,0 +1,42 @@
+2026/11/04 11:07:34 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.9.2
+  API Version: 1.55
+  Operating System: Docker Desktop
+  Total Memory: 7934 MB
+  Labels:
+    com.docker.desktop.address=unix:///Users/bujibuji/Library/Containers/com.docker.docker/Data/docker-cli.sock
+  Testcontainers for Go Version: v0.44.0
+  Resolved Docker Host: unix:///Users/bujibuji/.docker/run/docker.sock
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: d4de9fbe0a5056a2c626c82eeab8e3ba030fa7b4623fff26e544c6e1d796c6ad
+  Test ProcessID: 713ac100-66ec-4780-84fb-766b0922b43c
+2026/11/04 11:07:34 🐳 Creating container for image postgres:15
+2026/11/04 11:07:35 🐳 Creating container for image testcontainers/ryuk:0.14.0
+2026/11/04 11:07:35 ✅ Container created: 55db31b4c66a
+2026/11/04 11:07:35 🐳 Starting container: 55db31b4c66a
+2026/11/04 11:07:35 ✅ Container started: 55db31b4c66a
+2026/11/04 11:07:35 ⏳ Waiting for container id 55db31b4c66a image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message "Started", port 8080/tcp to be listening]
+2026/11/04 11:07:35 Shell not found in container
+2026/11/04 11:07:35 🔔 Container is ready: 55db31b4c66a
+2026/11/04 11:07:35 ✅ Container created: 9b8ccf9ca237
+2026/11/04 11:07:35 🐳 Starting container: 9b8ccf9ca237
+2026/11/04 11:07:35 ✅ Container started: 9b8ccf9ca237
+2026/11/04 11:07:35 ⏳ Waiting for container id 9b8ccf9ca237 image: postgres:15. Waiting for: all of: [log message "database system is ready to accept connections" (occurrence: 2)]
+2026/11/04 11:07:38 🔔 Container is ready: 9b8ccf9ca237
+=== RUN   TestAudit_AdminResetThenLogin_OldATMustStayRevoked
+    audit_reset_probe_integration_test.go:84: old_AT status: before=200 after_reset=403 after_new_login=200; fresh_AT=403/20007; floor_keys=0
+    audit_reset_probe_integration_test.go:85: 
+        	Error Trace:	/private/var/folders/v0/kn_fg6qx3gzfzj1558z8lvz00000gn/T/zhuzhao-audit-ECO-20261104-l72wgv6z/zhuzhao/internal/service/audit_reset_probe_integration_test.go:85
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 200
+        	Test:       	TestAudit_AdminResetThenLogin_OldATMustStayRevoked
+        	Messages:   	a revoked pre-reset AT must not become valid after legitimate login
+--- FAIL: TestAudit_AdminResetThenLogin_OldATMustStayRevoked (9.97s)
+FAIL
+2026/11/04 11:07:49 🐳 Stopping container: 9b8ccf9ca237
+2026/11/04 11:07:49 ✅ Container stopped: 9b8ccf9ca237
+2026/11/04 11:07:49 🐳 Terminating container: 9b8ccf9ca237
+2026/11/04 11:07:49 🚫 Container terminated: 9b8ccf9ca237
+FAIL	github.com/tracerbiubiubiu/zhuzhao/internal/service	15.869s
+FAIL

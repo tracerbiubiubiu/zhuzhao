@@ -1,0 +1,144 @@
+{
+  "batch": "ECO-20261104-B03",
+  "captured_at": "2026-11-04T06:14:56.244669+00:00",
+  "environment_directory": "/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-environment",
+  "source_changes": "no implementation edits; original snapshots are git archives, generated build/test helpers reside outside source checkouts",
+  "files": [
+    {
+      "path": "audit.playwright.config.ts.txt",
+      "sha256": "2822f954db38c74f74958fcffa8b5577e3d228ffbe099e2e7240ba4259291cc1"
+    },
+    {
+      "path": "build-adjustments.json",
+      "sha256": "898d9e85ab6ea9d4e7a65c31e8f9c3e643cd03c79f7232f1b27717b14f83dcfc"
+    },
+    {
+      "path": "build-result.json",
+      "sha256": "caf873f04269a69765c9bc9110dac72431ba1c44c7efb9f67c5250734428d15e"
+    },
+    {
+      "path": "build-with-proxy.log",
+      "sha256": "00776f8dea96feb74da9ce989cb0855071147dfa856bf941621407dbd276e7d1"
+    },
+    {
+      "path": "build-with-proxy2.log",
+      "sha256": "1cf29d90ac880713f47bdacd2ef8886c769adb899dd5f5cbfd6b0e278c6915ee"
+    },
+    {
+      "path": "build.log",
+      "sha256": "4a4350502f772c48ff47e0723b218d6a4931f6e488a1c2404194e0d7752649d5"
+    },
+    {
+      "path": "compose.audit.json",
+      "sha256": "59f1410b523d0021a9e62607f0132f7fdbe68d9156f0431a863816251136a343"
+    },
+    {
+      "path": "deployed-artifact-verification.json",
+      "sha256": "e0ac2a497f0e322673370d7c315f456b3b119cc1f90d023bd2b879caf8b1157f"
+    },
+    {
+      "path": "down-old-test-stack.log",
+      "sha256": "450b716d1bd3957e6ae30b6d0f3215c3570efc6704c78263b82e381756e35070"
+    },
+    {
+      "path": "environment-smoke-result.json",
+      "sha256": "d6e215f8e743c75116905b4270cf6406a924da56571d14c14e0326a103774a7a"
+    },
+    {
+      "path": "environment-smoke.log",
+      "sha256": "480b5a2216a47f1d4feeaf9c25b526ef7e5808ab29fde3282b8ee263f40adcbd"
+    },
+    {
+      "path": "environment.spec.ts.txt",
+      "sha256": "e575f15c30714de86889132f52ab023fd512bfcb512bfb4660b9d71e99f6d8d5"
+    },
+    {
+      "path": "final-worktree-state.json",
+      "sha256": "fe2606785d2898f07f1b4d9a4b58a0c0326bb5aeb7d7b362ad6ca6c71533cd88"
+    },
+    {
+      "path": "host-migrate-buildinfo.txt",
+      "sha256": "bbfb841154955278bbb4a8c52ecaf510e5947e98bb1c926dc16aac9b03178fad"
+    },
+    {
+      "path": "migrate-fresh-test-db.log",
+      "sha256": "2dedc6effb40bc1956578c6c24e352cbdf701cf737cb7d4c53476f233a4a58a2"
+    },
+    {
+      "path": "migration-runtime.json",
+      "sha256": "4e0d66570db2ebdb41af33b50b014f368eca7f60d3ab24f7163453f75bbdd16a"
+    },
+    {
+      "path": "new-image-provenance.json",
+      "sha256": "aa8889aee848a45dd8f878123bf432e660bbc610977077e67545e59550a4b6fc"
+    },
+    {
+      "path": "post-rebuild-inventory.json",
+      "sha256": "06434ca4f72b48311fd7eebfbe1475b32932bc6287f48659795ae5ab02fa0409"
+    },
+    {
+      "path": "pre-rebuild-inventory.json",
+      "sha256": "a6bceeeb131f61e394cb26bad61a7cd419c05d53d4c0260b1ccf6ca964e81caf"
+    },
+    {
+      "path": "readiness.json",
+      "sha256": "6f34732e3a6035cf7e556e7635e3ad5c6328df299059c77376559bb863c3e62d"
+    },
+    {
+      "path": "rebuild-steps.json",
+      "sha256": "077f19e8b644244b784feba3ef3c51a45a82ea029cf8914951f416455cf5447a"
+    },
+    {
+      "path": "source-checkout-integrity.json",
+      "sha256": "eeb579c9e73c15e92da6f248262c6362aace2ede12307c24e092c932b2d9ae75"
+    },
+    {
+      "path": "sources.json",
+      "sha256": "fc6b9347b249e6e5854b7bc04465dbf2a48696172a2764034ef80470c9bd0224"
+    },
+    {
+      "path": "start-applications.log",
+      "sha256": "1f478a8dcd8ebfdb42ae1973af80339104dc8067eb48d43e136796cb15f8e67f"
+    },
+    {
+      "path": "start-dependencies.log",
+      "sha256": "99f034e8677c02e1b3959a75aaf1b6efd81d028a784ab7f88e5afc86d0700a56"
+    },
+    {
+      "path": "taskrunner-build-recipe.diff",
+      "sha256": "e647521d5ef85ad1e76d97aced66a1373d2a4e2084e86e53e6bcdb6c6fdd2125"
+    },
+    {
+      "path": "ui-artifact-manifest.json",
+      "sha256": "423ea6dfe15fb36dbe6604da3bfaec0d9861ee0524c01d8276366d750dfb8651"
+    },
+    {
+      "path": "ui-host-build-result.json",
+      "sha256": "5ab9b2f38185133551f7ee2185fd70e3614a351a88693980927cea7aaf6a84ce"
+    },
+    {
+      "path": "ui-host-build.log",
+      "sha256": "942fe12f4b0d055deda15a18c965853717ed94c6877d3f5397b5e4f95ff961d3"
+    },
+    {
+      "path": "ui-lock-comparison.json",
+      "sha256": "200225cdef15ad0cdb401234dfc1caf67b8479baab63c3401049d6428f388d99"
+    },
+    {
+      "path": "ui-runtime-image-build.log",
+      "sha256": "a1b8e673aae73950bc4430a0047c7915d471e7d33995861ac2545299a29fafcd"
+    },
+    {
+      "path": "zt-activelist-buildinfo.txt",
+      "sha256": "bd9710e6172dc82dd1e22a1ed54a9dc414fc2bd675c23a57e9387e4d39c614ee"
+    },
+    {
+      "path": "zt-app-buildinfo.txt",
+      "sha256": "720092dcc4eec3806a1df56e1d15fd39b20f730a486d8ab18af4155599ef9d95"
+    },
+    {
+      "path": "zt-taskrunner-buildinfo.txt",
+      "sha256": "1d5c3891449401343425f210eec88b203677bed6fef09bf6cfaab93c4079ab76"
+    }
+  ]
+}
