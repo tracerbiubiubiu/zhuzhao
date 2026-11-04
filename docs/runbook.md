@@ -215,6 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
+   | Codex：全面审计接续 / R01 独立修复候选（test 48081/33334 维持原基线，dev 未重启） | 已完成的 B01–B04/指南/执行卡/治理工具分两笔纳管；剩余在途为 deliverables/software-company/zhuzhao-ecosystem-audit-r01-auth-revocation-candidate-2026-11-04.md、evidence/ECO-20261104-r01/ 及两棵独立修复工作树；详见执行卡 §4.2/§5 | 2（含本次治理提交；未推送；R01 未提交） | 2026-11-04（完成项提交；修复待正式 pin/完整门禁） |
 
 ## 8. 中间件控制台口径（2026-11-02 拍板）
 

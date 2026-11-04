@@ -20,6 +20,8 @@
 #      变更（自动化 dc9acd7 类「声称同步某文件但文件不在提交」；内容级断言——
 #      声称的具体小节/量级注是否真改——仍需人工 grep，e4ea567 教训；WARN 级不 FAIL，
 #      引用型提法会误报，升格 FAIL 前先观察一个月）
+#   ⑨ fix 正文三节结构（WARN）：各节须存在且有内容，支持无 scope 的 fix。
+#      先观察误报/漏报，不以新规则阻断存量提交；证据真实性仍须人工复核。
 #
 # 退出码：0 全绿 / 1 有违例（可复用于 CI 兜底道）。
 # 违例处置：push 前发现 -> git rebase -i <base> 对应笔 reword（本地历史可改窗口）；
@@ -32,6 +34,7 @@
 
 set -u
 export LC_ALL=en_US.UTF-8
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 range=""
 if [ -n "${1:-}" ]; then
@@ -112,9 +115,13 @@ for h in $(git rev-list "${range}"); do
     #    非修复语义，机械强校验噪声大——先 fix 面试点）。中文出注释/单引号模式，echo 保持 ASCII
     #    （脚本头实现注记：$var 紧贴多字节字符在 bash 3.2 + UTF-8 下有 unbound 前科）
     case "${subject}" in
-        fix\(*)
+        fix\(*|fix:\ *)
             printf '%s' "${body}" | grep -q '同类扫描' || \
                 echo "[WARN] ${h}: fix-type commit body lacks 'tonglei-scan' line (standards §12 same-class scan rule - skip if not a fix batch)"
+            if ! printf '%s\n' "${body}" | awk -v commit="${h}" -f "${script_dir}/check-fix-body.awk"; then
+                reasons="${reasons}
+    [9] fix body checker could not run"
+            fi
             ;;
     esac
 

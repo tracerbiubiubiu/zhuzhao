@@ -1,0 +1,42 @@
+{
+  "at": "2026-11-04T14:54:28.654856+08:00",
+  "baseline": "5c03581d5999139a3e8e5ead5972c026868aa181",
+  "scope": "uncommitted governance candidate; no product gate claim",
+  "checks": [
+    {
+      "name": "commit-lint-blackbox",
+      "command": [
+        "python3",
+        "scripts/test-commit-lint.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "shell-syntax",
+      "command": [
+        "sh",
+        "-n",
+        "scripts/commit-lint.sh"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "empty-window",
+      "command": [
+        "sh",
+        "scripts/commit-lint.sh",
+        "HEAD..HEAD"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

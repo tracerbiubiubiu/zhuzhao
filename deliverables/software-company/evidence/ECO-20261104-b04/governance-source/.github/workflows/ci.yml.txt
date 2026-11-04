@@ -1,0 +1,64 @@
+# 最小质量网（09 合集批次三）：lint + 单测。验收脚本需 Docker/Compose，
+# 仍按本地验收纪律（make acceptance-2a/2b/2c）人工执行。
+name: ci
+on:
+  push:
+    # phase5：Phase 5 实施期活跃分支（phase4 已合回 main 删除，死条目随批清理）
+    branches: [dev, main, phase5, "feature/**"]
+  pull_request:
+# 连续 push 只跑最新提交（对齐 activelist/taskrunner 惯例——过期 run 自动取消省时长）
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
+    steps:
+      - uses: actions/checkout@v4
+      - name: 提交格式守卫反例检查
+        run: python3 scripts/test-commit-lint.py
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - name: gofmt 漂移检查
+        run: test -z "$(gofmt -l . | grep -v vendor)"
+      # swagger 新鲜度守卫（2026-10-14 契约审计批）：注解/模型改动后未重跑 make swag
+      # 即提交 → 此处拦下（首例=/compat/echo 注解曾漏生成入册）
+      - name: swagger 新鲜度检查
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.4
+          "$(go env GOPATH)/bin/swag" init -g cmd/server/main.go -o docs --parseDependency --parseInternal
+          git diff --exit-code docs/swagger.json docs/swagger.yaml docs/docs.go
+      # wire 新鲜度守卫（2026-10-24 B 方案全量修）：providers.go/provideApp 改动后
+      # 未跑 make wire 即提交 → 此处拦下（形态同 swagger 守卫——再生后 diff 非零即红）
+      - name: wire 新鲜度检查
+        run: |
+          go install github.com/google/wire/cmd/wire@v0.7.0
+          "$(go env GOPATH)/bin/wire" ./internal/app/
+          git diff --exit-code internal/app/wire_gen.go
+      - run: go build ./...
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # 对齐 activelist/taskrunner 挂起兜底口径
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race -count=1 ./internal/...
+  test-integration:
+    # v3 审计 Y-9（2026-10-23）：integration 标签测试此前从未进 CI（守卫测试
+    # "CI 可跑"声称不实——F-2-2 黄项）；ubuntu runner 自带 Docker daemon，
+    # testcontainers（PG/RustFS）直接可用。全量集成时长浮动大，不设 race、
+    # 单独 job 不阻塞 test 门（并行跑）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -tags integration -count=1 -timeout 20m ./internal/...

@@ -1,0 +1,14 @@
+{
+  "commit-lint-blackbox.log": "e099fa191aa1ed50f8e237ea9c1c8c95d75f3d8ada6880f0aac5511e8957ba0a",
+  "diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "empty-window.log": "a732fe0ce43df647757e6356e33ab8dc91d9526f9658ec0b06d4dd6264180c5a",
+  "governance-source/.github/workflows/ci.yml.txt": "3ebaaccb3b175e6e0902cbf07e8924f99da1af956988ad20a887a6f258126458",
+  "governance-source/docs/review/audit-playbook.md.txt": "34326f5df4b3d4f6a2ea1dfe97d5bec410c9f420c04385e99dde75cd629343a3",
+  "governance-source/docs/standards.md.txt": "213288311be4efec7476829c85c96707a42cc77165925b7e611f50407d2b031b",
+  "governance-source/scripts/check-fix-body.awk.txt": "3e201ee325ece5ff0bae9a9de3b4475984879d5001f5fed4e34ae1ee9f39c2ac",
+  "governance-source/scripts/commit-lint.sh.txt": "ccc7e02591e05a4a31f4641e15547aeafee47fc2f1d35a4040ee3f5aa041be37",
+  "governance-source/scripts/test-commit-lint.py.txt": "e0b4107c6d1f843f29f539f1b4590315b00b0b31d2f4c5a0335890af68155f42",
+  "shell-syntax.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source-manifest.json": "88c4e741923e4e1c2954cb5055ebdd4235b406217b384b89c2115234ebc1b2b8",
+  "verification.json": "c9b545f5477823eda7e0e7f795d360e1480fb25676ff016de5de2c88baa5ee4b"
+}

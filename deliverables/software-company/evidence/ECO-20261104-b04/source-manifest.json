@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-04T15:17:30.229034+08:00",
+  "baseline": "5c03581d5999139a3e8e5ead5972c026868aa181",
+  "files": {
+    "docs/standards.md": "213288311be4efec7476829c85c96707a42cc77165925b7e611f50407d2b031b",
+    "docs/review/audit-playbook.md": "34326f5df4b3d4f6a2ea1dfe97d5bec410c9f420c04385e99dde75cd629343a3",
+    ".github/workflows/ci.yml": "3ebaaccb3b175e6e0902cbf07e8924f99da1af956988ad20a887a6f258126458",
+    "scripts/commit-lint.sh": "ccc7e02591e05a4a31f4641e15547aeafee47fc2f1d35a4040ee3f5aa041be37",
+    "scripts/check-fix-body.awk": "3e201ee325ece5ff0bae9a9de3b4475984879d5001f5fed4e34ae1ee9f39c2ac",
+    "scripts/test-commit-lint.py": "e0b4107c6d1f843f29f539f1b4590315b00b0b31d2f4c5a0335890af68155f42"
+  },
+  "committed": false
+}

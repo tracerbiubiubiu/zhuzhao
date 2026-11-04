@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
     steps:
       - uses: actions/checkout@v4
+      - name: 提交格式守卫反例检查
+        run: python3 scripts/test-commit-lint.py
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
