@@ -7,6 +7,8 @@
 - 正式批报告：[B01 基线与准备](../../deliverables/software-company/zhuzhao-ecosystem-audit-b01-baseline-2026-11-04.md)、[B02 认证撤权初核](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)；发现与证据按时点归档，后续修复另行复审。
 - [B03 测试环境重建](../../deliverables/software-company/zhuzhao-ecosystem-audit-b03-environment-2026-11-04.md) — 记录授权范围、产物来源、构建/迁移差异与冒烟；整体审计未完成，B02 问题未修。
 - [B04 修复治理与提交守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b04-repair-governance-2026-11-04.md) — 已完成的流程/提交结构检查与验证证据；R01 实现候选尚未提交，P0 仍开放。
+- [B05 验收脚本隔离核查](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md) — 命令桩确认迁移连接目标分裂，静态核实跨四档共享临时文件；P1/P2 未修。utils R01 已发布 v0.4.3，主仓修复尚未提交/部署。
+- [R01A utils v0.4.3 发布与正式依赖验证](../../deliverables/software-company/zhuzhao-ecosystem-audit-r01a-utils-release-2026-11-04.md) — 已授权发布、main/tag CI 及正式模块解析/单元检查；不代表父 R01/P0 或整体审计关闭。
 
 - **顶层（活文档+近期快照）**：
   - [11-project-control.md](./11-project-control.md) — 项目控制台**活文档**：能力矩阵 / 健康状态（遗留问题 SSOT，§6）/ Phase 3 前置随行分类（§8）/ 迁移地图。**每次改动后回填**（AGENTS.md 铁律），引用惯例 = 直接按路径 `docs/review/11-project-control.md`。

@@ -1,0 +1,3 @@
+go: downloading github.com/tracerbiubiubiu/zhuzhao-utils v0.4.3
+go: github.com/tracerbiubiubiu/zhuzhao-utils@v0.4.3: verifying module: github.com/tracerbiubiubiu/zhuzhao-utils@v0.4.3: reading https://goproxy.cn/sumdb/sum.golang.org/lookup/github.com/tracerbiubiubiu/zhuzhao-utils@v0.4.3: 404 Not Found
+	server response: not found: temporarily unavailable

@@ -1,0 +1,29 @@
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal	3.702s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/app	1.734s
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/casbin	[no test files]
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/config	1.577s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/gateway	1.629s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/handler	1.800s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/middleware	3.565s
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/model	[no test files]
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/admincli	1.671s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit	1.671s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender	1.461s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher	1.651s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent	1.868s
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode	[no test files]
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc	1.527s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/humankey	1.504s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs	1.484s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/msgrender	1.455s
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid	[no test files]
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource	1.422s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage	1.572s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner	1.619s
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel	[no test files]
+?   	github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook	[no test files]
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/repository	1.521s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/router	1.895s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/service	2.110s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/service/storage	1.760s
+ok  	github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket	1.722s

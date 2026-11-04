@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-04 [B05 验收脚本隔离核查](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)：确认 P1 迁移 DSN 与 PG_CONTAINER 目标分裂、P2 固定 /tmp 产物共享，均未修；命令桩未连接真实 dev。R01 接续：[R01A 库发布与消费验证](../../deliverables/software-company/zhuzhao-ecosystem-audit-r01a-utils-release-2026-11-04.md) 已完成：utils v0.4.3 发布指向 `9296ae170b71b06c623c54b6010a107406903346`，main/tag CI 通过；主仓独立候选正式 pin 下 lint/单元通过。前轮完整集成/四档原链/运行态撤权为 go.work 候选验证，往返为环境适配版，正式 pin 整套重验与原样完整门禁仍待完成。临时验收栈已清理。仅回填报告导航/修复状态，不改原健康矩阵或时点验收基线，B02-F01 仍开放。
+
 > 2026-11-04 R01 修复候选与定向复验（R01 本地记录未纳管）：双仓候选位于独立工作树，32 次定向集成、4 次 race 集成通过；两类变异各 8/8 命中。正式 utils pin 仍为 v0.4.2，关闭 go.work 后候选编译失败，待正式依赖/全量门禁/提交与部署；**B02-F01 仍开放**。原审计基线、常驻栈和既有产品通过数字未替换。
 
 > 2026-11-04 治理补强（所有者「继续」授权）：standards §12-9/§12-10 与审计指南新增分级修复、发现追溯和独立复验口径；commit-lint 新增 fix 三节正文 WARN 检查，CI 接入 10 个临时仓黑盒用例。记录见 [B04](../../deliverables/software-company/zhuzhao-ecosystem-audit-b04-repair-governance-2026-11-04.md)。这是提交治理能力变更，未改业务 API/权限/迁移；B02-F01 仍开放，R01 仅登记独立修复窗口，未更新既有业务通过数字。
