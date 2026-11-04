@@ -291,6 +291,12 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err != nil {
 		return nil, err
 	}
+	// 贴图落绑进料（2026-11-03 批）：richtext 字段 MD 内嵌图 /files/ 引用——
+	// 与 fileKeys 同规事务外预取（池纪律同上注记）
+	richtextKeys, err := s.richtextFieldKeys(ctx, req.TypeCode, customData)
+	if err != nil {
+		return nil, err
+	}
 	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
 	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
 	var humanKey string
@@ -345,7 +351,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// custom_data 只存展示态引用，权威归属走 ticket_attachments 既有链；
 	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）——fileKeys 已在
 	// Begin 前预取（池调用禁入事务窗口，见上方注记）
-	bindKeys := append(append([]string{}, req.Attachments...), fileKeys...)
+	bindKeys := append(append(append([]string{}, req.Attachments...), fileKeys...), richtextKeys...)
 	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
 		return nil, err
 	}
@@ -544,6 +550,39 @@ func (s *Service) applyFormulas(ctx context.Context, q repository.RowQuerier, ty
 		return nil, errcode.ErrInternal
 	}
 	return json.RawMessage(b), nil
+}
+
+// richtextFieldKeys 抽取 custom_data 中 richtext 字段 MD 的内嵌图 object_key
+// （2026-11-03 贴图落绑批——Create 进料侧；解析=ExtractFileRefs 与渲染同口径）。
+func (s *Service) richtextFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return nil, err
+	}
+	hasRT := false
+	for _, f := range fields {
+		if f.FieldType == "richtext" {
+			hasRT = true
+			break
+		}
+	}
+	if !hasRT {
+		return nil, nil
+	}
+	var data map[string]any
+	if json.Unmarshal(customData, &data) != nil {
+		return nil, nil
+	}
+	var keys []string
+	for _, f := range fields {
+		if f.FieldType != "richtext" {
+			continue
+		}
+		if v, ok := data[f.FieldKey].(string); ok && v != "" {
+			keys = append(keys, ExtractFileRefs(v)...)
+		}
+	}
+	return keys, nil
 }
 
 // fileFieldKeys 收集 custom_data 中 file 字段的 object_key（B1-6 批1——落绑用）。

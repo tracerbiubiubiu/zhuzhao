@@ -8,6 +8,7 @@ package ticket
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"strconv"
@@ -33,6 +34,7 @@ type b53Env struct {
 	stgCfg *pkgstorage.StorageConfig
 	u1, u2 int64
 	orgID  int64
+	rtType string
 }
 
 func newB53Env(t *testing.T) *b53Env {
@@ -312,5 +314,85 @@ func TestUpdate_TicketAttachmentIncrement(t *testing.T) {
 		require.NoError(t, err)
 		_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, Attachments: []string{k3}}, env.u1)
 		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err), "第 3 个超 max=2 拒")
+	})
+}
+
+// TestCreate_RichtextRefBind 贴图落绑批（2026-11-03）：richtext 字段 MD 内嵌图
+// /files/ 引用并入 Create 落绑进料——悬挂对象建单同事务落绑+翻 ticket_richtext
+// （05 号 245 行进料侧；此前两头不沾致悬挂对象永不转正、双 404 裂图）。
+func TestCreate_RichtextRefBind(t *testing.T) {
+	newRTEnv := func(t *testing.T) *b53Env {
+		t.Helper()
+		env := newB53Env(t)
+		code := "rt_bind_" + uniqueSuffix()
+		_, err := env.svc.CreateTicketType(context.Background(), &model.CreateTicketTypeRequest{
+			Code: code, Name: "贴图落绑批"})
+		require.NoError(t, err)
+		_, err = env.svc.ReplaceTicketTypeFields(context.Background(), code, &model.ReplaceTypeFieldsRequest{
+			Code: code,
+			Fields: []model.TicketTypeFieldInput{
+				{FieldKey: "supplement", FieldLabel: "补充说明", FieldType: "richtext", SortOrder: 1},
+			}})
+		require.NoError(t, err)
+		env.rtType = code
+		return env
+	}
+
+	t.Run("MD 内嵌图引用——建单落绑+purpose 翻 ticket_richtext", func(t *testing.T) {
+		env := newRTEnv(t)
+		key := env.confirmedCreate(t, env.u1, "richtext_create")
+		req := env.createReq(nil)
+		req.TypeCode = env.rtType
+		req.CustomData = json.RawMessage(`{"supplement":"正文 ![](/api/v1/files/` + key + `)"}`)
+		tk, err := env.svc.Create(context.Background(), req, env.u1)
+		require.NoError(t, err)
+
+		var purpose string
+		var n int
+		require.NoError(t, testPool.QueryRow(context.Background(),
+			`SELECT f.purpose, count(*) FROM file_objects f
+			 JOIN ticket_attachments a ON a.file_object_id = f.id
+			 WHERE f.bucket='b53' AND f.object_key=$1 AND a.ticket_id=$2 GROUP BY f.purpose`,
+			key, tk.ID).Scan(&purpose, &n))
+		assert.Equal(t, 1, n, "关联行落绑")
+		assert.Equal(t, "ticket_richtext", purpose, "purpose 翻正式态")
+		// 投递面证明：落绑+翻 purpose 后 storage 下载面放行（service 层无 L2——
+		// 真实工单可见性判定在 handler 的 ticketAuthz 闭包，B5-3 口径）
+		dl, err := env.stg.Download(context.Background(), key, "", env.u2, nil)
+		require.NoError(t, err)
+		if dl.Body != nil { // b53 桩 GetObject 返回 nil body——仅证放行面
+			_ = dl.Body.Close()
+		}
+	})
+
+	t.Run("无效 key（不存在）——400 同附件口径", func(t *testing.T) {
+		env := newRTEnv(t)
+		req := env.createReq(nil)
+		req.TypeCode = env.rtType
+		req.CustomData = json.RawMessage(`{"supplement":"![](/api/v1/files/tickets/2026/11/ghost.png)"}`)
+		_, err := env.svc.Create(context.Background(), req, env.u1)
+		require.Error(t, err)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err))
+	})
+
+	t.Run("他人悬挂对象——400（本人校验防白嫖）", func(t *testing.T) {
+		env := newRTEnv(t)
+		key := env.confirmedCreate(t, env.u2, "richtext_create")
+		req := env.createReq(nil)
+		req.TypeCode = env.rtType
+		req.CustomData = json.RawMessage(`{"supplement":"![](/api/v1/files/` + key + `)"}`)
+		_, err := env.svc.Create(context.Background(), req, env.u1)
+		require.Error(t, err)
+		assert.Equal(t, errcode.ErrInvalidParams.Code, b53Code(t, err))
+	})
+
+	t.Run("外链图——不产生落绑进料（无引用无对象，建单不受影响）", func(t *testing.T) {
+		env := newRTEnv(t)
+		req := env.createReq(nil)
+		req.TypeCode = env.rtType
+		req.CustomData = json.RawMessage(`{"supplement":"![](https://evil.example/x.png)"}`)
+		tk, err := env.svc.Create(context.Background(), req, env.u1)
+		require.NoError(t, err)
+		assert.NotEmpty(t, tk.ID)
 	})
 }

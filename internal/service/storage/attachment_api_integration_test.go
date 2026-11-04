@@ -53,7 +53,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		svc, _ := newSvc(t)
 		key, tkID := bound(t, svc)
 		var seenTicket int64
-		dl, err := svc.Download(context.Background(), key, "", func(ticketID int64) error {
+		dl, err := svc.Download(context.Background(), key, "", uid, func(ticketID int64) error {
 			seenTicket = ticketID
 			return nil
 		})
@@ -66,7 +66,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 	t.Run("ticket 态下载——L2 拒绝透传", func(t *testing.T) {
 		svc, _ := newSvc(t)
 		key, _ := bound(t, svc)
-		_, err := svc.Download(context.Background(), key, "", func(int64) error {
+		_, err := svc.Download(context.Background(), key, "", uid, func(int64) error {
 			return errcode.ErrNoPermission
 		})
 		assert.Equal(t, errcode.ErrNoPermission.Code, codeOf(t, err))
@@ -82,7 +82,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		// 只 confirm 不落绑（构造未绑定防御态：直改行绕过 ConfirmAndBind）
 		_, _ = testPool.Exec(context.Background(),
 			`UPDATE file_objects SET status='confirmed' WHERE bucket=$1 AND object_key=$2`, itBucket, resp.ObjectKey)
-		_, err = svc.Download(context.Background(), resp.ObjectKey, "", func(int64) error { return nil })
+		_, err = svc.Download(context.Background(), resp.ObjectKey, "", uid, func(int64) error { return nil })
 		assert.Equal(t, errcode.ErrFileNotFound.Code, codeOf(t, err), "ticket 态未绑定对象不可下载")
 	})
 
@@ -91,7 +91,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 		key := presigned(t, svc, uid, "image/png")
 		_, err := svc.Confirm(context.Background(), &model.ConfirmFileInput{ObjectKey: key}, uid)
 		require.NoError(t, err)
-		_, err = svc.Download(context.Background(), key, "", nil)
+		_, err = svc.Download(context.Background(), key, "", uid, nil)
 		assert.NoError(t, err, "avatar 面无需 L2 回调（nil 放行）")
 	})
 

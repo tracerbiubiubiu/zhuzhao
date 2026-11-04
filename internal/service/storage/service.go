@@ -230,7 +230,7 @@ type Download struct {
 // If-None-Match 命中快照则 304 哨兵 → GetObject 条件读（库内 etag 作
 // If-Match——对象被重放替换即 ErrObjectReplaced，拍板 1b 防御默认开）。
 // B5-2 支持面=avatar（登录态可见，A.7）；ticket 态 L2 管线随 B5-3 扩。
-func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, ticketAuthz func(ticketID int64) error) (*Download, error) {
+func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, callerUserID int64, ticketAuthz func(ticketID int64) error) (*Download, error) {
 	if s.client == nil {
 		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
@@ -242,8 +242,13 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, ticketA
 		s.logger.Error("storage get by key", "err", err)
 		return nil, errcode.ErrInternal
 	}
-	// 同形 404：pending（未确认）/ deleted / 非支持面——不泄露状态差异
-	if f.Status != model.FileStatusConfirmed || (f.Purpose != "avatar" && !ticketPurposes[f.Purpose]) {
+	// 同形 404：pending（未确认）/ deleted / 非支持面——不泄露状态差异。
+	// richtext_create 悬挂态对创建人本人放行（2026-11-03 贴图批——建单前编辑期
+	// 预览：自己的草稿图自己可见；他人/未登录仍同形 404 防枚举不变；未转正
+	// 悬挂对象由 GC 对账扫描收尾，兜底不变）
+	if f.Status != model.FileStatusConfirmed ||
+		!(f.Purpose == "avatar" || ticketPurposes[f.Purpose] ||
+			(f.Purpose == "richtext_create" && f.CreatedBy == callerUserID)) {
 		return nil, errcode.ErrFileNotFound
 	}
 	// ticket 态：须已绑定工单 + L2 回调判定（A.7 下载=工单 L2 可见性）

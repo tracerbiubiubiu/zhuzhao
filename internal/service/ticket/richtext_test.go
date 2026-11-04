@@ -77,3 +77,27 @@ func TestRenderRichtext_ImageSrcWhitelist(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, html, `href="https://example.com/x"`, "外链 <a> 保留")
 }
+
+// TestExtractFileRefs 内嵌图引用抽取（2026-11-03 贴图落绑批——Create 进料侧）。
+// 口径与 renderImage 对齐：仅 /api/v1/files/ 前缀计入，外链/空键排除，去重保序。
+func TestExtractFileRefs(t *testing.T) {
+	key := "/api/v1/files/tickets/2026/11/abc.png"
+	cases := []struct {
+		name string
+		src  string
+		want []string
+	}{
+		{"单图", "正文 ![](" + key + ") 尾", []string{"tickets/2026/11/abc.png"}},
+		{"带 alt 与标题", `![截图](` + key + ` "标题")`, []string{"tickets/2026/11/abc.png"}},
+		{"多图去重保序", "![](" + key + ") ![](" + key + ") ![](/api/v1/files/tickets/2026/11/def.png)", []string{"tickets/2026/11/abc.png", "tickets/2026/11/def.png"}},
+		{"外链图排除", "![](https://evil.example/x.png)", nil},
+		{"协议相对图排除", "![](//evil.example/x.png)", nil},
+		{"前缀仿冒排除", "![](https://x/api/v1/files/fake.png)", nil},
+		{"空 key 排除", "![](/api/v1/files/)", nil},
+		{"纯文本无图", "没有图片的正文", nil},
+	}
+	for _, tc := range cases {
+		got := ExtractFileRefs(tc.src)
+		assert.Equal(t, tc.want, got, tc.name)
+	}
+}

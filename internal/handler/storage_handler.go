@@ -145,6 +145,7 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 		return
 	}
 	dl, err := h.svc.Download(c.Request.Context(), key, normalizeETag(c.GetHeader("If-None-Match")),
+		c.GetInt64("userID"),
 		func(ticketID int64) error {
 			return h.ticketAuth.AuthorizeTicketFileRead(c.Request.Context(), c.GetInt64("userID"), ticketID)
 		})
