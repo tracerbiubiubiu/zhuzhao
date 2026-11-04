@@ -215,7 +215,19 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01 主仓候选（独立 codex/fix-at-revocation 工作树） | 本地执行卡/证据：.codex/audits/ECO-20261104/；主仓修复尚未提交，正式 pin v0.4.3 的 lint/单元通过，门禁隔离待修；本轮材料取消跟踪，不改业务代码。临时验收栈已清理，test 48081/33334 与 dev 保持原基线 | 主仓 5（含本次本地材料清理），未推送；utils v0.4.3 已按授权发布 | 2026-11-04（本地材料迁移） |
+   | Codex：全面审计 / R01 认证候选、R02 门禁隔离（各自独立工作树） | 本地执行卡/证据：.codex/audits/ECO-20261104/；R02 脚本修复原样完整门禁通过，已提交待固定快照复验；R01 主仓认证修复未提交，正式 pin v0.4.3 的 lint/单元通过。一次性验证环境已清理，test 48081/33334 与 dev 未改 | 主仓 6（含 R02），未推送；utils v0.4.3 已按授权发布 | 2026-11-04（门禁隔离修复） |
+
+### 7.1 验收连接与临时文件隔离（2026-11-04）
+
+`make acceptance` 首先调用 `scripts/migration-roundtrip-check.sh --check`，只读检查往返连接与建库权限，再运行四档 API 验收和迁移往返。宿主须具备 `psql`（libpq 客户端）、`migrate`、`python3`；`MIG` 可指定 migrate 可执行文件路径。缺工具、连接失败、无 CREATEDB 权限或 DSN 非法时，整链在 API/容器写操作之前退出。
+
+迁移往返的 SQL 和 migrate 都使用 `ROUNDTRIP_DSN`，不再一侧走 Docker、一侧猜宿主端口。默认兼容 dev：`postgres://zhuzhao:zhuzhao_dev@localhost:5432/postgres?sslmode=disable`。指定非默认 `PG_CONTAINER` 时，必须显式提供 `ROUNDTRIP_DSN`；其中数据库是只读预检/建删临时库所用的管理库，所有迁移和快照均改连随机生成的专属临时库。URI 的用户名/口令中保留字符须百分号编码；query 仅接受 `sslmode`、正整数 `connect_timeout`，缺省连接超时为 5 秒，拒绝 `dbname`、`host`、`options` 等覆盖项。
+
+隔离栈运行前显式设置 `BASE_URL`、`HEALTH_URL`、`PG_CONTAINER`、`PG_USER`、`PG_DB`、`REDIS_CONTAINER` 及 `ROUNDTRIP_DSN`，按 [端口表](ops/port-allocation.md) 核对实际映射。四档中的 SQL 仍按 `PG_CONTAINER` 运行，Redis 仍沿用现有验收口令 `zhuzhao_dev`；往返预检只证明自身连接可用，**不自动证明 API/PG/Redis 属于同一栈**，也不替代本节验收独占纪律。
+
+四档与往返每次调用各用 `mktemp -d` 建私有目录（权限受 `umask 077` 约束）；`TMPDIR` 只选择父目录，链中子阶段不共享具体目录。正常退出、失败及 INT/TERM 清理本次目录，往返只删除已成功创建的专属库，不再先 DROP 同名库。SIGKILL/宿主崩溃不能保证执行清理；疑有残留时先核本轮证据和归属，禁止按公共 `/tmp` 文件名或库名前缀批量清他人材料。
+
+复核入口：`python3 scripts/test-acceptance-isolation.py`（外部命令全部为桩，不连接真实环境，CI 同步执行）；真实数据库复核须另在专属环境执行往返。初次真实复核已在独立 PostgreSQL 15、自定义端口/账号及含保留字符的口令下完成；另以原业务基线运行原样 `make acceptance` 整链通过。一次性环境用后清理，未接入共享 dev/test；这不替代 R01 认证候选正式依赖版本的独立门禁。
 
 ## 8. 中间件控制台口径（2026-11-02 拍板）
 

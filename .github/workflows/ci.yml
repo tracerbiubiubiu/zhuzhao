@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: 提交格式守卫反例检查
         run: python3 scripts/test-commit-lint.py
+      - name: 验收隔离回归检查
+        run: python3 scripts/test-acceptance-isolation.py
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

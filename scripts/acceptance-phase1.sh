@@ -2,6 +2,19 @@
 # Phase 1 full acceptance (docs/phase1/README.md §1.3 + 08-audit.md)
 set -euo pipefail
 
+# 每次调用独立目录；子阶段只继承 TMPDIR 父目录，不共享响应/令牌文件。
+umask 077
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zz-acceptance-phase1.XXXXXXXX")"
+cleanup() {
+  local status=$?
+  if [ -n "${REDIS:-}" ]; then docker start "$REDIS" >/dev/null 2>&1 || true; fi
+  rm -rf -- "$TMP_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
 
@@ -37,10 +50,6 @@ pass=0
 fail=0
 skip=0
 
-cleanup_redis() {
-  docker start "$REDIS" >/dev/null 2>&1 || true
-}
-trap cleanup_redis EXIT
 
 json_code() { python3 -c "import sys,json; print(json.load(sys.stdin).get('code',''))"; }
 json_field() { python3 -c "import sys,json; d=json.load(sys.stdin); print($1)"; }
@@ -100,7 +109,7 @@ SRT2=$(echo "$NR" | python3 -c "import sys,json; print(json.load(sys.stdin)['dat
 
 # W0b：logout device_id 必填（空值曾误删 default 槽）——SAT2 登录未带 device（=default 槽），显式传 default 对齐
 check "#7 logout" "0" "$(curl -s -X POST "$BASE/auth/logout" -H "Authorization: Bearer $SAT2" -H 'Content-Type: application/json' -d '{"device_id":"default"}' | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $SAT2")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $SAT2")
 check "#8 post-logout http" "401" "$HC"
 
 SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
@@ -116,98 +125,98 @@ LOCK_EN="EL$RANDOM"
 for i in 1 2 3 4 5; do
   curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$LOCK_EN\",\"password\":\"wrong\"}" >/dev/null
 done
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$LOCK_EN\",\"password\":\"wrong\"}")
-CODE=$(cat /tmp/p1.json | json_code)
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$LOCK_EN\",\"password\":\"wrong\"}")
+CODE=$(cat "$TMP_DIR/p1.json" | json_code)
 check "#10 http" "429" "$HC"
 check "#10 code" "20006" "$CODE"
 
 # --- #22 ---
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $SAT" -H 'X-AK-Access-Key: x')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $SAT" -H 'X-AK-Access-Key: x')
 check "#22 http" "400" "$HC"
-check "#22 code" "20008" "$(cat /tmp/p1.json | json_code)"
+check "#22 code" "20008" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- M5 user for #11 ---
 SUF=$RANDOM
 curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
-  -d "{\"username\":\"u$SUF\",\"password\":\"pass1234\",\"employee_no\":\"E9$SUF\",\"role_ids\":[\"4\"]}" >/tmp/u.json
-TUID=$(cat /tmp/u.json | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+  -d "{\"username\":\"u$SUF\",\"password\":\"pass1234\",\"employee_no\":\"E9$SUF\",\"role_ids\":[\"4\"]}" >"$TMP_DIR/u.json"
+TUID=$(cat "$TMP_DIR/u.json" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
 TARGET_USER_ID="$TUID"
 LOGIN=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"E9$SUF\",\"password\":\"pass1234\"}")
 TAT=$(echo "$LOGIN" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 TRT=$(echo "$LOGIN" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refresh_token'])")
 curl -s -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$TUID\",\"status\":0}" >/dev/null
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -H "Authorization: Bearer $TAT" "$BASE/users")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -H "Authorization: Bearer $TAT" "$BASE/users")
 check "#11 http" "403" "$HC"
-check "#11 code" "30003" "$(cat /tmp/p1.json | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$TRT\"}")
+check "#11 code" "30003" "$(cat "$TMP_DIR/p1.json" | json_code)"
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$TRT\"}")
 check "#11b http" "401" "$HC"
-check "#11b code" "20004" "$(cat /tmp/p1.json | json_code)"
+check "#11b code" "20004" "$(cat "$TMP_DIR/p1.json" | json_code)"
 curl -s -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$TUID\",\"status\":1}" >/dev/null
 
 # --- #12 ---
 # B4-3：SAT 即 user_id=1，自禁用守卫（10003）先于 last-superadmin 守卫（30006）；
 # 30006 的 TOCTOU 事务守卫由 Go 集成测试覆盖，脚本层验证可达的最高优先守卫
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"user_id":"1","status":0}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/status" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"user_id":"1","status":0}')
 check "#12 http" "403" "$HC"
-check "#12 code（B4-3 自禁用守卫）" "10003" "$(cat /tmp/p1.json | json_code)"
+check "#12 code（B4-3 自禁用守卫）" "10003" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- #13 #21 admin user ---
 AEN="E8$SUF"
 curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"username\":\"a$SUF\",\"password\":\"pass1234\",\"employee_no\":\"$AEN\",\"role_ids\":[\"2\"]}" >/dev/null
 AAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$AEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/password/reset" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d '{"user_id":"1","password":"newpass1234"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/password/reset" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d '{"user_id":"1","password":"newpass1234"}')
 check "#13 http" "403" "$HC"
-check "#13 code" "30005" "$(cat /tmp/p1.json | json_code)"
+check "#13 code" "30005" "$(cat "$TMP_DIR/p1.json" | json_code)"
 SUPER_ROLE=$(psql_q "SELECT id FROM roles WHERE code='superadmin'")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/roles" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$TUID\",\"role_ids\":[\"$SUPER_ROLE\"]}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/roles" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$TUID\",\"role_ids\":[\"$SUPER_ROLE\"]}")
 check "#21 http" "403" "$HC"
-check "#21 code" "30009" "$(cat /tmp/p1.json | json_code)"
+check "#21 code" "30009" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- B1-2 目标校验：admin（非 superadmin）改系统角色菜单 → 403 + 40004 ---
 VIEWER_ROLE_ID=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[]}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[]}")
 check "B1-2 sys-menu http" "403" "$HC"
-check "B1-2 sys-menu code" "40004" "$(cat /tmp/p1.json | json_code)"
+check "B1-2 sys-menu code" "40004" "$(cat "$TMP_DIR/p1.json" | json_code)"
 # --- B1-2 目标校验：admin 删同级 admin 用户 → 403 + 30010（通用防提权码） ---
 # 创建真正的同级 peer（原脚本误查 AAT 自身工号 → 命中自删守卫 10003 而非 30010）
 PEN="EA$SUF"
 curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"username\":\"peer$SUF\",\"password\":\"pass1234\",\"employee_no\":\"$PEN\",\"role_ids\":[\"2\"]}" >/dev/null
 PEER_ID=$(psql_q "SELECT id FROM users WHERE employee_no='$PEN' AND deleted_at IS NULL")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/delete" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$PEER_ID\"}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/delete" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d "{\"user_id\":\"$PEER_ID\"}")
 check "B1-2 peer-del http" "403" "$HC"
-check "B1-2 peer-del code" "30010" "$(cat /tmp/p1.json | json_code)"
+check "B1-2 peer-del code" "30010" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- B2 断言组 ---
 # B2-2 改密新旧相同 → 400 + 10001
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d '{"old_password":"pass1234","new_password":"pass1234"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' -d '{"old_password":"pass1234","new_password":"pass1234"}')
 check "B2-2 same-pwd http" "400" "$HC"
-check "B2-2 same-pwd code" "10001" "$(cat /tmp/p1.json | json_code)"
+check "B2-2 same-pwd code" "10001" "$(cat "$TMP_DIR/p1.json" | json_code)"
 # B2-6 影子超管：admin 读 superadmin 角色详情/菜单/策略 → 404（防推断）
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE" -H "Authorization: Bearer $AAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/roles/$SUPER_ROLE" -H "Authorization: Bearer $AAT")
 check "B2-6 sa-role http" "404" "$HC"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/menus" -H "Authorization: Bearer $AAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/menus" -H "Authorization: Bearer $AAT")
 check "B2-6 sa-menus http" "404" "$HC"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/permissions" -H "Authorization: Bearer $AAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/roles/$SUPER_ROLE/permissions" -H "Authorization: Bearer $AAT")
 check "B2-6 sa-perms http" "404" "$HC"
 # B2-5 AssignMenus 不存在菜单 → 404 + 60002
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[\"999999\"]}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"role_id\":\"$VIEWER_ROLE_ID\",\"menu_ids\":[\"999999\"]}")
 check "B2-5 bad-menu http" "404" "$HC"
-check "B2-5 bad-menu code" "60002" "$(cat /tmp/p1.json | json_code)"
+check "B2-5 bad-menu code" "60002" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- #14 mcp ---
 curl -s -X POST "$BASE/users/password/reset" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"user_id\":\"$TUID\",\"password\":\"mcp123456\"}" >/dev/null
 MAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"E9$SUF\",\"password\":\"mcp123456\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -H "Authorization: Bearer $MAT" "$BASE/users")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -H "Authorization: Bearer $MAT" "$BASE/users")
 check "#14 block http" "403" "$HC"
-check "#14 block code" "20007" "$(cat /tmp/p1.json | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -H "Authorization: Bearer $MAT" "$BASE/user/menus")
+check "#14 block code" "20007" "$(cat "$TMP_DIR/p1.json" | json_code)"
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -H "Authorization: Bearer $MAT" "$BASE/user/menus")
 check "#14b http" "403" "$HC"
-check "#14b code" "20007" "$(cat /tmp/p1.json | json_code)"
+check "#14b code" "20007" "$(cat "$TMP_DIR/p1.json" | json_code)"
 check "#14 update" "0" "$(curl -s -X POST "$BASE/auth/password/update" -H "Authorization: Bearer $MAT" -H 'Content-Type: application/json' -d '{"old_password":"mcp123456","new_password":"finalpass1234"}' | json_code)"
 
 # --- #18-20 org ---
@@ -232,13 +241,13 @@ print(1 if walk(d) else 0)")
 check "#6c menu-tree-buttons" "1" "$MENU_TREE_OK"
 BODY18=$(json_body "{\"org_id\":\"2\",\"user_id\":\"$TARGET_USER_ID\"}")
 check "#18" "0" "$(curl -s -X POST "$BASE/orgs/members" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY18" | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"org_id":"2","user_id":"99999"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"org_id":"2","user_id":"99999"}')
 check "#19 http" "404" "$HC"
-check "#19 code" "50007" "$(cat /tmp/p1.json | json_code)"
+check "#19 code" "50007" "$(cat "$TMP_DIR/p1.json" | json_code)"
 BODY20=$(json_body "{\"user_id\":\"$TARGET_USER_ID\",\"org_ids\":[\"2\"],\"primary_org_id\":\"2\"}")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY20")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY20")
 check "#20 http" "200" "$HC"
-check "#20 code" "0" "$(cat /tmp/p1.json | json_code)"
+check "#20 code" "0" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- B3 断言组 ---
 # B3-1 AddMember 幂等不降级：先设 primary（org 2），再重复添加同 org 不带 is_primary → 200 且 primary 保持
@@ -249,7 +258,7 @@ B31_PRIMARY=$(psql_q "SELECT COUNT(*) FROM user_orgs WHERE user_id=$TARGET_USER_
 check "B3-1 primary-kept" "1" "$B31_PRIMARY"
 # B3-4 SetUserOrgs 重复 org_id → 去重成功（修复前主键冲突 500）
 BODY34=$(json_body "{\"user_id\":\"$TARGET_USER_ID\",\"org_ids\":[\"2\",\"2\"],\"primary_org_id\":\"2\"}")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY34")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY34")
 check "B3-4 dup-orgids http" "200" "$HC"
 B34_ROWS=$(psql_q "SELECT COUNT(*) FROM user_orgs WHERE user_id=$TARGET_USER_ID AND org_id=2")
 check "B3-4 no-dup-rows" "1" "$B34_ROWS"
@@ -262,10 +271,10 @@ check "#24" "1" "$(curl -s "$BASE/users?employee_no=E000001" -H "Authorization: 
 curl -s -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"username\":\"nr$SUF\",\"password\":\"pass1234\",\"employee_no\":\"EN$SUF\"}" >/dev/null
 NAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"EN$SUF\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $NAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $NAT")
 check "#15 http" "403" "$HC"
-check "#15 code" "70003" "$(cat /tmp/p1.json | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/user/menus" -H "Authorization: Bearer $NAT")
+check "#15 code" "70003" "$(cat "$TMP_DIR/p1.json" | json_code)"
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/user/menus" -H "Authorization: Bearer $NAT")
 check "#15b http" "403" "$HC"
 
 # --- #25 #26 viewer zero menu (fresh casbin) ---
@@ -280,9 +289,9 @@ curl -s -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-
 VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 MEN=$(curl -s "$BASE/user/menus" -H "Authorization: Bearer $VAT" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data']['menus']))")
 check "#25 menus empty" "0" "$MEN"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "#26 http" "403" "$HC"
-check "#26 code" "70001" "$(cat /tmp/p1.json | json_code)"
+check "#26 code" "70001" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- D2 种子断言（须在 #27 等 role_menus 变更用例之前执行：#27 会给 viewer 绑菜单） ---
 # D2-45：种子完整性——operator 无「非工单」菜单绑定（工单绑定来自 2a 验收的
@@ -302,31 +311,31 @@ USER_MENU=$(psql_q "SELECT id FROM menus WHERE code='system_user'")
 BODY27=$(json_body "{\"role_id\":\"$VIEWER_ROLE\",\"menu_ids\":[\"$USER_MENU\"]}")
 check "#27 assign" "0" "$(curl -s -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "$BODY27" | json_code)"
 VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "#27 GET http" "200" "$HC"
-check "#27 GET code" "0" "$(cat /tmp/p1.json | json_code)"
+check "#27 GET code" "0" "$(cat "$TMP_DIR/p1.json" | json_code)"
 # W1（词表重排）#27 改造为 B 案语义三段：页面=读、按钮=写
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "#27 GET http" "200" "$HC"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xp$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EX$SUF\"}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xp$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EX$SUF\"}")
 check "#27a 只绑页面 POST http=403" "403" "$HC"
-check "#27a code=70001" "70001" "$(cat /tmp/p1.json | json_code)"
+check "#27a code=70001" "70001" "$(cat "$TMP_DIR/p1.json" | json_code)"
 SU_CREATE_BTN=$(psql_q "SELECT id FROM menus WHERE code='system_user_create'")
 curl -s -X POST "$BASE/roles/menus" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"role_id\":\"$VIEWER_ROLE\",\"menu_ids\":[\"$USER_MENU\",\"$SU_CREATE_BTN\"]}" >/dev/null
 VAT=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d "{\"employee_no\":\"$VEN\",\"password\":\"pass1234\"}" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xq$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EY$SUF\"}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"username\":\"xq$SUF\",\"password\":\"xpass1234\",\"employee_no\":\"EY$SUF\"}")
 check "#27b 补绑按钮 POST http=200" "200" "$HC"
-check "#27b code" "0" "$(cat /tmp/p1.json | json_code)"
+check "#27b code" "0" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # --- #16 concurrent refresh (before #17) ---
 SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000001","password":"admin12345"}')
 CRT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['refresh_token'])")
-curl -s -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$CRT\"}" >/tmp/r1.json &
-curl -s -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$CRT\"}" >/tmp/r2.json &
+curl -s -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$CRT\"}" >"$TMP_DIR/r1.json" &
+curl -s -X POST "$BASE/auth/refresh" -H 'Content-Type: application/json' -d "{\"refresh_token\":\"$CRT\"}" >"$TMP_DIR/r2.json" &
 wait
-C1=$(cat /tmp/r1.json | json_code)
-C2=$(cat /tmp/r2.json | json_code)
+C1=$(cat "$TMP_DIR/r1.json" | json_code)
+C2=$(cat "$TMP_DIR/r2.json" | json_code)
 OK=0
 # 两码均须合法（0=成功 / 20004 空槽 / 20015 重放信号），且恰好一次成功
 refresh_code_ok() { [ "$1" = "0" ] || [ "$1" = "20004" ] || [ "$1" = "20015" ]; }
@@ -343,34 +352,34 @@ curl -s "$BASE/users" -H "Authorization: Bearer $SAT" >/dev/null
 AFTER=$(psql_q "SELECT COUNT(*) FROM audit_logs WHERE path='/api/v1/users' AND method='GET'")
 check "M6 GET audited" "1" "$([ "$AFTER" -gt "$BEFORE" ] && echo 1 || echo 0)"
 check "M6 audit list" "0" "$(curl -s "$BASE/audit/logs?page_size=5" -H "Authorization: Bearer $SAT" | json_code)"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/audit/logs" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/audit/logs" -H "Authorization: Bearer $VAT")
 check "M6 viewer audit 403" "403" "$HC"
 
 # --- B1-1 角色禁用生效链：禁用 viewer → 成员同 Token 即时 403（Casbin 每请求查 DB） ---
 docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -c "UPDATE roles SET status=0 WHERE code='viewer';" >/dev/null
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "B1-1 disabled http" "403" "$HC"
-check "B1-1 disabled code" "70003" "$(cat /tmp/p1.json | json_code)"
+check "B1-1 disabled code" "70003" "$(cat "$TMP_DIR/p1.json" | json_code)"
 # 重新启用 → 同一 Token 立即恢复访问（casbin_rule 未清除，策略保留）
 docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -c "UPDATE roles SET status=1 WHERE code='viewer';" >/dev/null
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $VAT")
 check "B1-1 re-enable http" "200" "$HC"
 
 # --- stub negative (org create) ---
 ORGCODE="org_$RANDOM"
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"is_virtual\":false}")
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/orgs" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"code\":\"$ORGCODE\",\"name\":\"测试组织\",\"parent_id\":\"1\",\"is_virtual\":false}")
 check "org create" "200" "$HC"
 
 # --- D2 断言组（review 03 号报告修复验收；种子断言已前移至 #27 之前，避免被测试自身的绑定污染） ---
 
 # D2-01：登录输入上限——employee_no 51 字符 → 400（防超大键灌爆 Redis）
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000000000000000000000000000000000000000000000000001","password":"x"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' -d '{"employee_no":"E000000000000000000000000000000000000000000000000001","password":"x"}')
 check "D2-01 emp_no>50 http" "400" "$HC"
 
 # D2-45：密码 7 字符创建用户 → 400 + 10001（binding min=8）
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"username":"pw7","password":"1234567","employee_no":"EPW7'"$RANDOM"'"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/users" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"username":"pw7","password":"1234567","employee_no":"EPW7'"$RANDOM"'"}')
 check "D2 pwd 7 chars http" "400" "$HC"
-check "D2 pwd 7 chars code" "10001" "$(cat /tmp/p1.json | json_code)"
+check "D2 pwd 7 chars code" "10001" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # D2-03：角色 Update patch 语义——只改名不带 status → status 保持 1（原零值穿透静默禁用）
 D2ROLE=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"code":"d2_patch'"$RANDOM"'","name":"补丁角色","priority":20}')
@@ -379,9 +388,9 @@ R=$(curl -s -X POST "$BASE/roles/update" -H "Authorization: Bearer $SAT" -H 'Con
 check "D2-03 role patch status kept" "1" "$(echo "$R" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")"
 
 # D2-06：系统组织 Update → 403 + 50012（原 500+10000 断链）
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" -X POST "$BASE/orgs/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"id":"1","version":1,"name":"root"}')
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" -X POST "$BASE/orgs/update" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d '{"id":"1","version":1,"name":"root"}')
 check "D2-06 org sys protect http" "403" "$HC"
-check "D2-06 org sys protect code" "50012" "$(cat /tmp/p1.json | json_code)"
+check "D2-06 org sys protect code" "50012" "$(cat "$TMP_DIR/p1.json" | json_code)"
 
 # D2-45/D2-19：改密审计脱敏——password/update 的 request_body 中新旧密码均为 ***
 CPW=$(psql_q "SELECT request_body FROM audit_logs WHERE path='/api/v1/auth/password/update' ORDER BY id DESC LIMIT 1")
@@ -392,8 +401,8 @@ AT_FOR_17=$SAT
 REDIS_C="${REDIS_CONTAINER:-$REDIS}"
 docker stop "$REDIS_C" >/dev/null 2>&1 || true
 sleep 1
-HC=$(curl -s -o /tmp/p1.json -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $AT_FOR_17")
-CODE=$(cat /tmp/p1.json | json_code)
+HC=$(curl -s -o "$TMP_DIR/p1.json" -w "%{http_code}" "$BASE/users" -H "Authorization: Bearer $AT_FOR_17")
+CODE=$(cat "$TMP_DIR/p1.json" | json_code)
 check "#17 http" "503" "$HC"
 # 等 Redis 就绪（trap 恢复存在竞态，防止后续用例 503 误报）
 # 显式重启（不再依赖 trap）并等待就绪——后续脚本段在此环境上继续跑

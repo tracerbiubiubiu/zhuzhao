@@ -108,6 +108,7 @@ benchmark:
 # 验收脚本（F-24/F-25：00 §5.5 本地回归纪律入口；容器名由脚本自动探测）
 # 四档链式全量门禁（经 2c 脚本链式：phase1 → 2a → 2b → 2c，对齐 AGENTS.md 门禁定义）
 acceptance:
+	bash scripts/migration-roundtrip-check.sh --check
 	bash scripts/acceptance-phase2c.sh
 	bash scripts/migration-roundtrip-check.sh
 

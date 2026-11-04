@@ -4,6 +4,19 @@
 # 运行前置：make docker-dev-reset && make dev（或等价部署），确保服务监听 BASE_URL
 set -euo pipefail
 
+# 每次调用独立目录；子阶段只继承 TMPDIR 父目录，不共享响应/令牌文件。
+umask 077
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zz-acceptance-phase2a.XXXXXXXX")"
+cleanup() {
+  local status=$?
+  if [ -n "${REDIS:-}" ]; then docker start "$REDIS" >/dev/null 2>&1 || true; fi
+  rm -rf -- "$TMP_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
 
@@ -31,10 +44,6 @@ pass=0
 fail=0
 skip=0
 
-cleanup_redis() {
-  docker start "$REDIS" >/dev/null 2>&1 || true
-}
-trap cleanup_redis EXIT
 
 # --- 辅助函数（与 acceptance-phase1.sh 保持一致）---
 json_code()   { python3 -c "import sys,json; print(json.load(sys.stdin).get('code',''))"; }
@@ -283,9 +292,9 @@ check "T2 A list excludes TID_B (他人创建, 自己未被分派)" "1" "$(echo 
 # ========================================================================
 # T3 / R4 / README §1.1-3: 不可见工单详情 → 404（90001，而非 403）
 # ========================================================================
-R4=$(curl -s -o /tmp/p2a.json -w "%{http_code}" \
+R4=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" \
   "$BASE/tickets/$TID_B" -H "Authorization: Bearer $AAT")
-R4C=$(cat /tmp/p2a.json | json_code)
+R4C=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T3 A读B 工单 http=404" "404" "$R4"
 check "T3 A读B 工单 code=90001" "90001" "$R4C"
 
@@ -314,18 +323,18 @@ AS=$(curl -s -X POST "$BASE/tickets/assign" \
 check "admin assigns B's ticket to A" "0" "$(echo "$AS" | json_code)"
 
 # A 对 B 的工单（已被分派=可见）做 DELETE：canOperate(delete)=false（即使可见也非属主/处理人能做）
-R6_DEL=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/delete" \
+R6_DEL=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/delete" \
   -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_B\"}")
-R6C=$(cat /tmp/p2a.json | json_code)
+R6C=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "R6 A 删除分派给自己但非创建的工单 http=403" "403" "$R6_DEL"
 check "R6 code=70001 (ErrNoPermission)" "70001" "$R6C"
 
 # 同样测试 assign 动作（A 自己不能分派他人）
-R6_ASS=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/assign" \
+R6_ASS=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/assign" \
   -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_A\",\"assigned_to\":\"$BID\"}")
-R6A=$(cat /tmp/p2a.json | json_code)
+R6A=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "R6 A assign A's ticket http=403" "403" "$R6_ASS"
 check "R6 assign code=70001" "70001" "$R6A"
 
@@ -348,10 +357,10 @@ check "T5 event assigned row" "1" "$T5_EV"
 # T6: 非法 transition → 400 + 90002
 # 种子 transitions：assigned 只能到 in_progress 或 open，不能直接 closed
 # ========================================================================
-CLOSE_BAD=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/close" \
+CLOSE_BAD=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/close" \
   -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_A\"}")
-T6C_HTTP=$(cat /tmp/p2a.json | json_code)
+T6C_HTTP=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T6 assigned→closed http=400" "400" "$CLOSE_BAD"
 check "T6 assigned→closed code=90002" "90002" "$T6C_HTTP"
 
@@ -373,16 +382,16 @@ check "close comment saved" "1" "$CMT"
 # ========================================================================
 # T7 / R8: 无 ticket:list 路由权限（p2a_viewer_* 零绑定临时角色）→ 403 + 70001
 # ========================================================================
-T7=$(curl -s -o /tmp/p2a.json -w "%{http_code}" "$BASE/tickets" \
+T7=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" "$BASE/tickets" \
   -H "Authorization: Bearer $VAT")
-T7C_HTTP=$(cat /tmp/p2a.json | json_code)
+T7C_HTTP=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T7 viewer GET tickets http=403" "403" "$T7"
 check "T7 viewer GET tickets code=70001" "70001" "$T7C_HTTP"
 # 同样验证 POST /tickets 也被 Casbin L1 拦
-T7P=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets" \
+T7P=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets" \
   -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' \
   -d "{\"type_code\":\"incident\",\"title\":\"viewer 不应能建\",\"priority\":3,\"org_id\":\"$TECH_ID\"}")
-T7PC=$(cat /tmp/p2a.json | json_code)
+T7PC=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T7 viewer POST tickets http=403" "403" "$T7P"
 check "T7 viewer POST code=70001" "70001" "$T7PC"
 
