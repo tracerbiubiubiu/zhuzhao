@@ -1,0 +1,16 @@
+{
+  "baseline-source/Makefile.txt": "fdcf0551becb78f0eeda07fe4ea02c8d19c3834d66233a8241e2ebe4574e851e",
+  "baseline-source/scripts/acceptance-phase1.sh.txt": "18fc20d6a5ad5f8996620e2740c722a4adb478c8af3720cb42ede2cc064e926d",
+  "baseline-source/scripts/acceptance-phase2a.sh.txt": "d886aaf9f5b921c96b6950b5922c2cbd1b577191dca97e2446ca172c4c59458c",
+  "baseline-source/scripts/acceptance-phase2b.sh.txt": "64a1601131eb6953dedd914eb283c5a19b3b840fbbbfce770c75b555732132c9",
+  "baseline-source/scripts/acceptance-phase2c.sh.txt": "e7074cda653118291a795f38c5c5a9f9ae23e4aab8e57823a529649980710f85",
+  "baseline-source/scripts/migration-roundtrip-check.sh.txt": "a69b39ee9164fc5e3e881f23b6eadf2b166b9d00346d120bef33170a6e071aa6",
+  "docker-record-only.py.txt": "d4fba3a4b7606deb0d30dd52eab863cab2277e1f90f3544e47408171511e182b",
+  "isolation-command-trace.json": "c77483cfe7d5a3114ab3ced1f10bc24474570bcacb1b1d10780bd7113fe394af",
+  "isolation-probe-result.json": "b1a9d578a01d88760cbd2485949ee37a032dfbc3c31a84783759ba4631af6e27",
+  "isolation-probe.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "migrate-stub-record-only.py.txt": "250d011a4ec50d2c64ff3b91d1ad5ed9e02e7b53005710cad280d13511c6cb84",
+  "migration-roundtrip-check.sh.txt": "a69b39ee9164fc5e3e881f23b6eadf2b166b9d00346d120bef33170a6e071aa6",
+  "shared-tmp-anchors.json": "9e6a12eba65e1afdbc18759b08451ece5958c82917a96d4172044c623078c3ba",
+  "source-manifest.json": "0b0af5089f5fa9350a49cea8544981a23fd48f59f2023da35b457f71ffc7fe96"
+}

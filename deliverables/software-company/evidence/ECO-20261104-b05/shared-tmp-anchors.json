@@ -1,0 +1,486 @@
+{
+  "baseline": "5c03581d5999139a3e8e5ead5972c026868aa181",
+  "scope": "static evidence; concurrent overwrite was not dynamically reproduced",
+  "anchors": [
+    {
+      "path": "scripts/migration-roundtrip-check.sh",
+      "line": 64,
+      "source": "snapshot > /tmp/rt_before.txt"
+    },
+    {
+      "path": "scripts/migration-roundtrip-check.sh",
+      "line": 67,
+      "source": "snapshot > /tmp/rt_after.txt"
+    },
+    {
+      "path": "scripts/migration-roundtrip-check.sh",
+      "line": 69,
+      "source": "if ! diff -u /tmp/rt_before.txt /tmp/rt_after.txt; then"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 103,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $SAT2\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 119,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/auth/login\" -H 'Content-Type: application/json' -d \"{\\\"employee_no\\\":\\\"$LOCK_EN\\\",\\\"password\\\":\\\"wrong\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 120,
+      "source": "CODE=$(cat /tmp/p1.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 125,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $SAT\" -H 'X-AK-Access-Key: x')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 127,
+      "source": "check \"#22 code\" \"20008\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 132,
+      "source": "  -d \"{\\\"username\\\":\\\"u$SUF\\\",\\\"password\\\":\\\"pass1234\\\",\\\"employee_no\\\":\\\"E9$SUF\\\",\\\"role_ids\\\":[\\\"4\\\"]}\" >/tmp/u.json"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 133,
+      "source": "TUID=$(cat /tmp/u.json | python3 -c \"import sys,json; print(json.load(sys.stdin)['data']['id'])\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 140,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -H \"Authorization: Bearer $TAT\" \"$BASE/users\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 142,
+      "source": "check \"#11 code\" \"30003\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 143,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/auth/refresh\" -H 'Content-Type: application/json' -d \"{\\\"refresh_token\\\":\\\"$TRT\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 145,
+      "source": "check \"#11b code\" \"20004\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 152,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/status\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d '{\"user_id\":\"1\",\"status\":0}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 154,
+      "source": "check \"#12 code（B4-3 自禁用守卫）\" \"10003\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 161,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/password/reset\" -H \"Authorization: Bearer $AAT\" -H 'Content-Type: application/json' -d '{\"user_id\":\"1\",\"password\":\"newpass1234\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 163,
+      "source": "check \"#13 code\" \"30005\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 165,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/roles\" -H \"Authorization: Bearer $AAT\" -H 'Content-Type: application/json' -d \"{\\\"user_id\\\":\\\"$TUID\\\",\\\"role_ids\\\":[\\\"$SUPER_ROLE\\\"]}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 167,
+      "source": "check \"#21 code\" \"30009\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 171,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/roles/menus\" -H \"Authorization: Bearer $AAT\" -H 'Content-Type: application/json' -d \"{\\\"role_id\\\":\\\"$VIEWER_ROLE_ID\\\",\\\"menu_ids\\\":[]}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 173,
+      "source": "check \"B1-2 sys-menu code\" \"40004\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 180,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/delete\" -H \"Authorization: Bearer $AAT\" -H 'Content-Type: application/json' -d \"{\\\"user_id\\\":\\\"$PEER_ID\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 182,
+      "source": "check \"B1-2 peer-del code\" \"30010\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 186,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/auth/password/update\" -H \"Authorization: Bearer $AAT\" -H 'Content-Type: application/json' -d '{\"old_password\":\"pass1234\",\"new_password\":\"pass1234\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 188,
+      "source": "check \"B2-2 same-pwd code\" \"10001\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 190,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/roles/$SUPER_ROLE\" -H \"Authorization: Bearer $AAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 192,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/roles/$SUPER_ROLE/menus\" -H \"Authorization: Bearer $AAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 194,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/roles/$SUPER_ROLE/permissions\" -H \"Authorization: Bearer $AAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 197,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/roles/menus\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"{\\\"role_id\\\":\\\"$VIEWER_ROLE_ID\\\",\\\"menu_ids\\\":[\\\"999999\\\"]}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 199,
+      "source": "check \"B2-5 bad-menu code\" \"60002\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 205,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -H \"Authorization: Bearer $MAT\" \"$BASE/users\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 207,
+      "source": "check \"#14 block code\" \"20007\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 208,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -H \"Authorization: Bearer $MAT\" \"$BASE/user/menus\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 210,
+      "source": "check \"#14b code\" \"20007\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 235,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/orgs/members/delete\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d '{\"org_id\":\"2\",\"user_id\":\"99999\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 237,
+      "source": "check \"#19 code\" \"50007\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 239,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/orgs\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"$BODY20\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 241,
+      "source": "check \"#20 code\" \"0\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 252,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users/orgs\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"$BODY34\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 265,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $NAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 267,
+      "source": "check \"#15 code\" \"70003\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 268,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/user/menus\" -H \"Authorization: Bearer $NAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 283,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 285,
+      "source": "check \"#26 code\" \"70001\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 305,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 307,
+      "source": "check \"#27 GET code\" \"0\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 309,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 311,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users\" -H \"Authorization: Bearer $VAT\" -H 'Content-Type: application/json' -d \"{\\\"username\\\":\\\"xp$SUF\\\",\\\"password\\\":\\\"xpass1234\\\",\\\"employee_no\\\":\\\"EX$SUF\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 313,
+      "source": "check \"#27a code=70001\" \"70001\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 318,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users\" -H \"Authorization: Bearer $VAT\" -H 'Content-Type: application/json' -d \"{\\\"username\\\":\\\"xq$SUF\\\",\\\"password\\\":\\\"xpass1234\\\",\\\"employee_no\\\":\\\"EY$SUF\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 320,
+      "source": "check \"#27b code\" \"0\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 325,
+      "source": "curl -s -X POST \"$BASE/auth/refresh\" -H 'Content-Type: application/json' -d \"{\\\"refresh_token\\\":\\\"$CRT\\\"}\" >/tmp/r1.json &"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 326,
+      "source": "curl -s -X POST \"$BASE/auth/refresh\" -H 'Content-Type: application/json' -d \"{\\\"refresh_token\\\":\\\"$CRT\\\"}\" >/tmp/r2.json &"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 328,
+      "source": "C1=$(cat /tmp/r1.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 329,
+      "source": "C2=$(cat /tmp/r2.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 346,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/audit/logs\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 351,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 353,
+      "source": "check \"B1-1 disabled code\" \"70003\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 356,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $VAT\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 361,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/orgs\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"{\\\"code\\\":\\\"$ORGCODE\\\",\\\"name\\\":\\\"测试组织\\\",\\\"parent_id\\\":\\\"1\\\",\\\"is_virtual\\\":false}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 367,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/auth/login\" -H 'Content-Type: application/json' -d '{\"employee_no\":\"E000000000000000000000000000000000000000000000000001\",\"password\":\"x\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 371,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/users\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d '{\"username\":\"pw7\",\"password\":\"1234567\",\"employee_no\":\"EPW7'\"$RANDOM\"'\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 373,
+      "source": "check \"D2 pwd 7 chars code\" \"10001\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 382,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" -X POST \"$BASE/orgs/update\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d '{\"id\":\"1\",\"version\":1,\"name\":\"root\"}')"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 384,
+      "source": "check \"D2-06 org sys protect code\" \"50012\" \"$(cat /tmp/p1.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 395,
+      "source": "HC=$(curl -s -o /tmp/p1.json -w \"%{http_code}\" \"$BASE/users\" -H \"Authorization: Bearer $AT_FOR_17\")"
+    },
+    {
+      "path": "scripts/acceptance-phase1.sh",
+      "line": 396,
+      "source": "CODE=$(cat /tmp/p1.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 286,
+      "source": "R4=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 288,
+      "source": "R4C=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 317,
+      "source": "R6_DEL=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" -X POST \"$BASE/tickets/delete\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 320,
+      "source": "R6C=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 325,
+      "source": "R6_ASS=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" -X POST \"$BASE/tickets/assign\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 328,
+      "source": "R6A=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 351,
+      "source": "CLOSE_BAD=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" -X POST \"$BASE/tickets/close\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 354,
+      "source": "T6C_HTTP=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 376,
+      "source": "T7=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" \"$BASE/tickets\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 378,
+      "source": "T7C_HTTP=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 382,
+      "source": "T7P=$(curl -s -o /tmp/p2a.json -w \"%{http_code}\" -X POST \"$BASE/tickets\" \\"
+    },
+    {
+      "path": "scripts/acceptance-phase2a.sh",
+      "line": 385,
+      "source": "T7PC=$(cat /tmp/p2a.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 131,
+      "source": "  \"$(curl -s -o /tmp/p2b.json -w '%{http_code}' \"$BASE/tickets/$TID\" -H \"Authorization: Bearer $VAT\")\""
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 132,
+      "source": "check \"R9 code=0\" \"0\" \"$(cat /tmp/p2b.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 134,
+      "source": "curl -s -o /tmp/p2b.json -w 'R10_HTTP=%{http_code}\\n' -X POST \"$BASE/tickets/update\" -H \"Authorization: Bearer $VAT\" -H 'Content-Type: application/json' -d \"$VA_BODY\" >&2"
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 135,
+      "source": "R10=$(cat /tmp/p2b.json | json_code)"
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 139,
+      "source": "NOTE_HTTP=$(curl -s -o /tmp/p2b_note.json -w '%{http_code}' -X POST \"$BASE/tickets/notes\" -H \"Authorization: Bearer $VAT\" -H 'Content-Type: application/json' -d \"{\\\"ticket_id\\\":\\\"$TID\\\",\\\"content\\\":\\\"va 备注\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2b.sh",
+      "line": 146,
+      "source": "SUP_BEFORE=$(curl -s -o /tmp/p2b_sup.json -w '%{http_code}' -X POST \"$BASE/tickets/assign\" -H \"Authorization: Bearer $SUP\" -H 'Content-Type: application/json' -d \"{\\\"id\\\":\\\"$TID\\\",\\\"assigned_to\\\":\\\"$VB_ID\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 91,
+      "source": "http_of() { curl -s -o /tmp/p2c.json -w '%{http_code}' \"$@\"; }"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 92,
+      "source": "code_of() { cat /tmp/p2c.json | json_code; }"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 139,
+      "source": "D3_HTTP=$(curl -s -o /tmp/p2c_d3.json -w '%{http_code}' -X POST \"$BASE/orgs/members/role\" -H \"Authorization: Bearer $ADMTOK\" -H 'Content-Type: application/json' -d \"{\\\"org_id\\\":\\\"$VG_ID\\\",\\\"user_id\\\":\\\"$M2\\\",\\\"org_member_role\\\":\\\"admin\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 141,
+      "source": "check \"D3 code=50010\" \"50010\" \"$(cat /tmp/p2c_d3.json | json_code)\""
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 150,
+      "source": "D5_HTTP=$(curl -s -o /tmp/p2c_d5.json -w '%{http_code}' -X POST \"$BASE/orgs/members/delete\" -H \"Authorization: Bearer $ADMTOK\" -H 'Content-Type: application/json' -d \"{\\\"org_id\\\":\\\"$VG_ID\\\",\\\"user_id\\\":\\\"$ADM2\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 152,
+      "source": "cp /tmp/p2c_d5.json /tmp/p2c.json  # 供 code_of 读取"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 172,
+      "source": "D8_HTTP=$(curl -s -o /tmp/p2c_d8.json -w '%{http_code}' -X POST \"$BASE/tickets/update\" -H \"Authorization: Bearer $M3TOK\" -H 'Content-Type: application/json' -d \"{\\\"id\\\":\\\"$TID2\\\",\\\"title\\\":\\\"member cross update\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 188,
+      "source": "D6_HTTP=$(curl -s -o /tmp/p2c_d6.json -w '%{http_code}' -X POST \"$BASE/orgs/delete\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"{\\\"org_id\\\":\\\"$VG2\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 196,
+      "source": "D6T_HTTP=$(curl -s -o /tmp/p2c_d6t.json -w '%{http_code}' -X POST \"$BASE/orgs/delete\" -H \"Authorization: Bearer $SAT\" -H 'Content-Type: application/json' -d \"{\\\"org_id\\\":\\\"$VG2\\\"}\")"
+    },
+    {
+      "path": "scripts/acceptance-phase2c.sh",
+      "line": 198,
+      "source": "D6T_CODE=$(cat /tmp/p2c_d6t.json | json_code)"
+    }
+  ]
+}

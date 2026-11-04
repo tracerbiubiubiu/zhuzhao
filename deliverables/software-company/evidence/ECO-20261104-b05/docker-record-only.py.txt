@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+import sys,json,os
+with open(os.environ["B05_TRACE"],"a") as f:f.write(json.dumps({"tool":os.path.basename(sys.argv[0]),"args":sys.argv[1:]})+"\n")
+sys.exit(0)

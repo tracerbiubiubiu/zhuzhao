@@ -1,0 +1,42 @@
+[
+  {
+    "tool": "docker",
+    "args": [
+      "exec",
+      "b05-isolated-postgres",
+      "psql",
+      "-U",
+      "zhuzhao",
+      "-d",
+      "postgres",
+      "-c",
+      "DROP DATABASE IF EXISTS zz_roundtrip_10896;",
+      "-c",
+      "CREATE DATABASE zz_roundtrip_10896;"
+    ]
+  },
+  {
+    "tool": "migrate-stub",
+    "args": [
+      "-path",
+      "migrations",
+      "-database",
+      "postgres://zhuzhao:zhuzhao_dev@localhost:5432/zz_roundtrip_10896?sslmode=disable",
+      "up"
+    ]
+  },
+  {
+    "tool": "docker",
+    "args": [
+      "exec",
+      "b05-isolated-postgres",
+      "psql",
+      "-U",
+      "zhuzhao",
+      "-d",
+      "postgres",
+      "-c",
+      "DROP DATABASE IF EXISTS zz_roundtrip_10896;"
+    ]
+  }
+]
