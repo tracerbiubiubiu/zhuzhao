@@ -1,4 +1,0 @@
-{
-  "app_ready": true,
-  "endpoint": "http://127.0.0.1:33334/health/ready"
-}

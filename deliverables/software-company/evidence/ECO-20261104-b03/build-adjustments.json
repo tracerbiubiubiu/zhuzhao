@@ -1,5 +1,0 @@
-{
-  "proxy": "reuse host system HTTP proxy via host.docker.internal:8118; container corepack pnpm@12.3.4 download verified",
-  "taskrunner_recipe": "omit only external #syntax frontend download; use bundled Dockerfile frontend; all build instructions unchanged",
-  "repository_files_changed": false
-}

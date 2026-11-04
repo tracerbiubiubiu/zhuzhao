@@ -1,8 +1,0 @@
-{
-  "tool": "host migrate",
-  "module_version": "v4.19.1",
-  "source_cli_version_output": "dev; actual module identified using go version -m",
-  "deviation_from_compose_image": "v4.17.0",
-  "postgres_binding": "127.0.0.1:55509",
-  "migrations_source_commit": "5c03581d5999139a3e8e5ead5972c026868aa181"
-}

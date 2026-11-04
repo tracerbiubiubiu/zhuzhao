@@ -194,7 +194,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 
 ### review/ — 审查记录（archive/ = 00–10 历史快照 / 11 活文档·项目控制台 / 12–14 收官产物）
 
-长期方法入口：[全面审计指南与执行模板](./review/audit-playbook.md)（设计/实现/关键实践、跨仓与前端体验）；各轮另建执行卡与时点报告，入口见 [review 索引](./review/README.md)。
+长期方法入口：[全面审计指南与执行模板](./review/audit-playbook.md)（设计/实现/关键实践、跨仓与前端体验）；必要正式发现见 [review 索引](./review/README.md)；执行卡、过程文档与原始证据默认放本地 `.codex/`，不随源码提交。
 
 | 文件 | 定位 | 状态 |
 |------|------|------|

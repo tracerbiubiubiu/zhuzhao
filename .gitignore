@@ -47,6 +47,9 @@ doc/
 .VSCodeCounter
 .zcode
 
+# Codex 本地工作文档、审计证据与执行进度（不随项目提交）
+.codex/
+
 # 防复发：vendor 快照曾误入历史（ab6e2f5，GitHub Push Protection 拦截）；构建走 goproxy.cn 无需 vendor
 vendor/
 deployments/.env

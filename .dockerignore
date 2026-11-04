@@ -1,0 +1,2 @@
+# Codex 本地工作材料不进入 Docker 构建上下文
+.codex/

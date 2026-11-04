@@ -1,9 +1,0 @@
-{
-  "command": [
-    "make",
-    "lint"
-  ],
-  "exit_code": 0,
-  "GOWORK": "off",
-  "module": "v0.4.3; no Replace"
-}
