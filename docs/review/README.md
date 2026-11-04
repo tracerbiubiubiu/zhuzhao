@@ -3,7 +3,7 @@
 本目录三层结构；长期审计方法与时点报告分开维护：
 
 - [audit-playbook.md](./audit-playbook.md) — **可复用全面审计指南**：设计→实现→关键实践，跨仓、前端功能/交互/视觉、七阶段、证据与报告模板；每次审计另建执行卡，不在指南保存当次基线或结论。
-- 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论，问题均未关闭。
+- 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论；B02 仍开放，B05 已由 `4de9070` 固定快照独立复验关闭（完整 hash 与证据摘要见报告末节）。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
