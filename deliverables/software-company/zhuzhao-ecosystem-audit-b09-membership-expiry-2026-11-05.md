@@ -1,5 +1,7 @@
 # 生态审计 B09：临时成员过期与组织委托（2026-11-05）
 
+> 最新状态：修复 `d2ab771292980c6bf40930a6bfec326b5bf6513d` 已完成固定提交独立重建与完整门禁，**B09-F01 在代码层复验关闭**。常驻 app 尚未升级，部署状态另计；下方保留发现时点事实。
+
 ## 范围与基线
 
 - 受审快照：主仓 `62e40244b1667e47c3f729250b36c5edcbf445aa` 的独立 git archive；业务实现仍为原基线 `5c03581d5999139a3e8e5ead5972c026868aa181`，其间七笔只涉及审计记录、规范及验收工具。
@@ -48,3 +50,21 @@
 - 修复提交、正常门禁、移除修复变异、固定提交独立重建及最终部署状态待后续增补；当前报告不以候选绿灯代替关单证据。
 
 本批不新增迁移、不改变成员表数据。发现影响健康状态，控制台由主审统一回填；未完成的全角色 HTTP 矩阵及其他 IAM 模块继续按整体执行卡审计。
+
+## 修复与固定提交复验
+
+修复提交：`d2ab771292980c6bf40930a6bfec326b5bf6513d`，分支 `codex/fix-expired-membership`，基于认证修复 `10f3f94`，正式消费 utils v0.4.3。六处成员授权查询统一加入有效期条件：`EffectiveOrgPriority`、`IsOrgAdminOrOwner`、`delegatedVisibilitySQL`、`OrgRepo.IsMember`、`OrgRepo.IsInOrgBranch`、`AssignmentRuleRepo.UserBelongsToOrg`；同步 phase2 的临时成员、委托 SQL 与 T10 设计。显式 owner 数组、工单创建人等独立权源仍按原设计判定，不删除过期关系行。
+
+固定提交由全新 `git archive` 提取并重新构建；归档 SHA-256 为 `1afe618f994e1fc75f991794e93b11176b1cb9ff0ed436bb7a573cf9e6062b40`。未修改验收断言，未使用本地 replace：
+
+- `make lint`、`make test-unit`、`make test-integration`、`make test-cover` 全部通过；完整集成 508.23 秒。
+- 原样 `make acceptance` 四档 **253 PASS / 0 FAIL / 0 SKIP**，**81 对迁移往返零漂移**。
+- 真实 PG 回归覆盖永久/未来/过期/边界 admin、member-role owner 及显式 owner 正向对照，`-race -count=8` 通过；六个独立实验副本各移除一处过滤，针对性断言分别 **8/8 稳定失败**。
+- 真实原生 app、JWT/Casbin/handler/API 共 15 步通过：有效成员名册/他人工单访问 200；到期后名册、成员管理、scope 修改和建单 403，他人工单单条读写 404、列表零条；独立创建人读取仍 200，续期后名册与他人工单读取恢复 200。测试有效期通过隔离库 SQL 设置，未声称现有 API 已提供到期时间写入能力。
+- 同一固定构建的认证撤销真实 API 13 步回归通过，避免新增授权修复回退 R01。
+
+专属 E800907/E800908，不使用 E000001，不保存令牌。自有 PG/Redis/RustFS 与 app 已清理；运行容器前后差集仅移除一个并行测试清理器容器，没有新增或重启常驻容器。因此不将“全体容器集合相等=false”误记为所有环境均未变化，也不混同业务门禁失败。
+
+实现与回归锚点：[六处授权修复及专项回归所在提交](https://github.com/tracerbiubiubiu/zhuzhao/commit/d2ab771292980c6bf40930a6bfec326b5bf6513d)、[`expired_membership_integration_test.go` 的 `TestExpiredMembership_AuthorizationBoundaries` 和 `TestExpiredMembership_ExplicitOwnerRemainsIndependent`](https://github.com/tracerbiubiubiu/zhuzhao/blob/d2ab771292980c6bf40930a6bfec326b5bf6513d/internal/service/expired_membership_integration_test.go#L20)。提交目前仅本地，远端链接待推送后可用；原始证据仍仅存本地上述目录，`commit.json`、`mutation-results.json`、`postcommit/verification-results.json`、`full-acceptance-result.json` 与两份 `live-*-result.json` 保留源码与各层验证结果。
+
+结论：本项在该固定代码提交关闭；没有合入 main，没有宣称常驻部署已修复。剩余全角色路由扫描、其他 IAM 能力及整体生态审计仍按计划继续，不因本项关单提前收口。
