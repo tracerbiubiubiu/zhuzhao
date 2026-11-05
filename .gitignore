@@ -56,3 +56,7 @@ deployments/.env
 
 # 审计归档本地卷运行时产物（audit_archive 导出 JSONL，dev/运行期产生，不入库）
 data/
+
+# 每日只读增量审计的报告与基线状态（本地留档，不入库；由审计代理写入，代理不改本文件）
+# 注意：清理工作树时勿用 git clean -fdx，-x 会连同该目录一起删除
+/audit-reports/

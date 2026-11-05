@@ -1,2 +1,5 @@
 # Codex 本地工作材料不进入 Docker 构建上下文
 .codex/
+
+# 每日审计报告与基线：体积随时间增长且每日变动，纳入上下文会打断 COPY . . 层缓存
+/audit-reports/
