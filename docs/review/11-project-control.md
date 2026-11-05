@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-05 R01 代码复验关闭：[B02-F01/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md) 的应用修复 `10f3f9485f1bbe5722192e2e367e735f162653ac` 已经全新归档重建，lint/单元/完整集成/覆盖率、原样四档253/0/0与81对往返、八轮专项与真实API十三步通过；三类移除修复变异各8/8稳定红。首轮集成环境初始化失败与中断重跑均保留，不冒充通过。**代码层关单，常驻app尚未部署，混合旧实例不满足修复条件**。B09仍开放，修复已提交 `d2ab771292980c6bf40930a6bfec326b5bf6513d`，固定提交独立门禁正在进行。新增代码未合main，整体全面审计尚未收口。
+
 > 2026-11-05 审计增量：[B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md) 已在原业务快照独立复现 3/3：scope 已过期，但组内委托、名册/成员管理、工单单条授权与列表仍放行；仅涉及带非空到期时间的成员关系，独立 owner 数组权源不变。修复在独立分支验证中，尚未关单。B02 的 R01 应用修复已提交 `10f3f9485f1bbe5722192e2e367e735f162653ac`（`codex/fix-auth-revocation`），正式 pin v0.4.3；候选四项常规门禁、原样 acceptance 253/0/0 + 81 对往返、真实 API 13 步与三类变异各 8/8 已通过，固定提交独立复验进行中。下方 11-04 的“未提交/待执行”为历史时点。常驻 app 尚未替换，不把分支验证写成部署修复；所有新增代码遵所有者最新要求不合入 main。
 
 > 2026-11-04 审计承接：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md) 仍开放；[B05 门禁隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md) 已按 R02 复验关闭。utils [v0.4.3](https://github.com/tracerbiubiubiu/zhuzhao-utils/releases/tag/v0.4.3) 已发布且 main/tag CI 通过；主仓认证候选正式 pin 的 lint/单元已过，尚未提交/部署，完整门禁仍待复验。长期方法见 [审计指南](./audit-playbook.md)；执行卡、过程报告、原始证据仅存本地 `.codex/audits/ECO-20261104/`，不纳管，不替代 docs 设计 SSOT。既有健康矩阵及历史验收数字未改。
