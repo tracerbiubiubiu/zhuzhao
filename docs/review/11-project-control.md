@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B06代码复验：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md) F05–F10在固定联合12401aa通过完整integration529.99s、lint/unit/cover、原样253/0/0与81对往返、撤销13步/成员15步，代码层关闭；包括Cron专用锁会话、通知creator/actor拆分、intel单飞结果。原d38夹具污染失败已留证且未放宽原断言。新增F11/P1编辑与公开回复漏消息已修92adc20/联合1a99a25，完整复验进行中，未关单。主线未合，test app=f69未含F09–F11，dev不动。
+
 > 2026-11-06 B08阶段报告：[前端功能/交互/视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)登记10项：草稿作用域、旧会话异步覆盖、深链筛选、ID精度、旧提示、AL空态、键盘操作、表格挂载异常、离线图标与亮色对比度。均已在独立UI分支提交修复，最新c83a53d，固定产物完整六项门禁待收口，不提前关单。主仓联合12401aa固定全量门禁在跑，常驻test app=f69；AL/TR最新镜像已构建待换。未合main，整体覆盖仍进行。
 
 > 2026-11-06 B07阶段报告：[兄弟服务与库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)登记AL池P1/导入体积P1/版本复用静默覆盖P0、TR空死信P1/同attempt旧delivery终态覆盖P1。AL池156ff03、revision afc3700、TR死信a1309cc固定代码复验关闭；import82290bc固定复验中，delivery fence修复中。TR仅test已升，AL运行仍待承接；utils9ed38f7仅codex分支推送供正式pseudo-version，未合main/发tag。网关1MB与运维直连大导入边界分列，整体覆盖未收口。

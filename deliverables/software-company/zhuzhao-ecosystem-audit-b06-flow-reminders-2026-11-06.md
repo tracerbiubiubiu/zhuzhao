@@ -1,10 +1,12 @@
 # 生态审计 B06 续批：流程快照、提醒与调度（2026-11-06）
 
+> **当前结论（2026-11-06）**：F05–F10已在独立联合快照 `12401aa52d5fa8842dd944b9366917b19ae7775e` 固定重建，通过 lint、完整单元、完整集成529.99s、cover、原样验收253/0/0和81对迁移往返，以及真实撤销13步/成员生命周期15步，代码层复验关闭。F11新增漏通知修复已提交，最新联合1a99a25另行复验中，暂不关闭。未合main；常驻test app=f69，只覆盖其中部分修复，dev不动。以下旧“待复验”段落保留验证过程时点，不代表当前状态。
+
 ## 范围与基线
 
 受审主仓完整快照 `5c03581d5999139a3e8e5ead5972c026868aa181`；全部新增探针仅加入独立 git archive，动态使用自有 testcontainers PostgreSQL 15、真实迁移/服务/仓储。初始原样业务代码不改。不是完整 HTTP 压测，不触共享 dev/test，不改 E000001。证据本地 `evidence/ECO-20261104-b06/semantic-review/`。
 
-本批延续票据状态机/协作扫描和运维实践深读；不代表135份设计或102债已全量审完。未来phase6定义快照/引擎v2仍待实施，但当前已交付的condition/validator必须在当前写入中成立，不能以未来规划豁免当前陈旧预检。
+本批延续票据状态机/协作扫描和运维实践深读；不代表原快照135份docs文件（130份Markdown，另5份生成/原型产物）或全部历史债已审完。未来phase6定义快照/引擎v2仍待实施，但当前已交付的condition/validator必须在当前写入中成立，不能以未来规划豁免当前陈旧预检。
 
 ## B06-F05 / P0：同状态变化可使旧处理人或旧validator通过提交
 
@@ -39,7 +41,11 @@ max_reminders校验允许非负，UI可选0。`shouldRemind` 在无水位行时�
 
 ## B06-F08 / P1：Cron会话锁占用业务池预算
 
-原基线 `CronScheduler.tickOnce` Acquire业务pool的连接持会话级advisory锁，真实维护job又走同pool。独立实验设合法MaxConns=1，真实AuditArchiveJob的ArchiveFetchBatch无法取连；八轮均无成功tick、ctx超时，`cron-pool-budget-baseline.json`/日志。较大池被多个cron及其他事务占满时同构，已有2分钟execCtx让它超时失败而非永久挂死。初核未发现对应已接受债，尚待独立修复；不能只规定池≥2规避整个资源模型。
+原基线 `CronScheduler.tickOnce` Acquire业务pool的连接持会话级advisory锁，真实维护job又走同pool。独立实验设合法MaxConns=1，真实AuditArchiveJob的ArchiveFetchBatch无法取连；八轮均无成功tick、ctx超时，`cron-pool-budget-baseline.json`/日志。较大池被多个cron及其他事务占满时同构，已有2分钟execCtx让它超时失败而非永久挂死。初核未发现对应已接受债；不能只规定池≥2规避整个资源模型。
+
+独立后笔修复 `8b3dc2d54cecf30ecd48097c2cde61b8516f7512`（`codex/fix-cron-lock-budget`，base e329db0）：每次tick从pool连接配置复制构建专用pgx会话，取锁者不再占业务池；锁未得即关闭，持锁调用真实job后在独立2秒预算解锁及关闭。运行仍有2分钟execCtx；失败（含connect/trylock/unlock/close）进入recordFailure及既有操作通知，竞争未得锁不记失败。已取消Run不再启动新尝试。部署说明明确每个活跃cron最多额外一条PG连接；当前七项维护任务并发预算须另加，不把提高MaxConns当修复。
+
+实际AuditArchiveJob+业务池MaxConns1、两个独立scheduler互斥、失败/panic/取消/专用会话中止及连接失败可观察八轮 `-race` 全绿；实际pg_stat_activity观测双实例峰值2–3（业务池1+至多两个活跃专用会话）、job同时执行峰值1，停机关闭业务池后0残留。恢复共用池、去除失败记录、去除会话关闭、忽略解锁错误四处变异各8/8红。候选lint/unit全绿；首次探针因取消后LastError被新错误覆盖而断言过严，保留失败日志并改为捕获确切OnFailure回调，不把该探针断言失败报产品缺陷。证据 `cron-lock-budget/{targeted-eight-v2.json,mutation-results.json,candidate-gates.json}`。未自行起第三轮全量integration；联合固定源完整integration/acceptance待root复验，不提前标完成。
 
 ## 修复状态与验证
 
@@ -62,3 +68,41 @@ P2候选文档漂移：docs/ops/deployment.md当前可执行指引仍≥Go1.22�
 联合 `d38f10f9c60a8457417c2630afba0926b103797d` 逐文件比对来源相等，固定归档已经lint/完整单元/专项八轮/cover及原样 **253 PASS / 0 FAIL / 0 SKIP、81对迁移往返零漂移**，真实撤销13步/成员生命周期15步通过；完整集成进行中，新F05–F07暂不提前关单。隔离test app的容器内二进制SHA已核，部署只用于联合浏览器验收，不代表合入main或dev已升级。F08仍为独立修复批，未随本次部署。
 
 本报告与[B06存储/事务前批](./zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)分列，发现编号连续且不重复计数。原始证据仅本地`.codex/audits/ECO-20261104/evidence/ECO-20261104-b06/semantic-review/`及`ECO-20261104-joint/d38f10f/`；过程材料不纳管。未读/未验项保留于执行卡，整体审计继续。
+
+## B06-F09 / P1：creator收件人把创建者与操作者混淆
+
+原快照 `5c03581`，`notify_hook.go` 的 `resolveRecipientsFromRule` 把 ticket 的creator规则固定解释成payload.actor；`Close` 等发布点却不带该键，因此漏发；CC发布点带actor=本次加抄送者，因而错发。真实Create(A)→Close(B)→HookRegistry→MessageDispatcher八轮红（零消息），真实Create(A)→AddCC(B)同链八轮红（收件人B而非A）。`semantic-review/creator-recipient-baseline.{json,log}`与`creator-recipient-cc-baseline.{json,log}`分开保留。先前会间消息把Close的源码推断误写成实际发给B，已及时更正，以这两组真实日志为准。
+
+修复`824305f5abf8b96679d98a684352cf21f16fe8c3`，分支`codex/fix-notification-creator`基于`823455c`（Cron与提醒测试隔离均为前置），16文件237+/39-。现有工单发布入口统一从工单created_by快照注入creator，actor仍本次操作者；扫描查询同源携带created_by。ticket规则缺creator时不猜测回退actor；ops无工单创建者，保留既有creator=actor责任人约定。异步消费者不查DB，真实Close排队后Delete再放行仍可通知创建者。新增ticket.creator变量字典、白名单同步，H-3其他动态字段/时间变量仍开放。Create/Update/Assign/Close/Transition/CC/notify动作/分派未命中/timeout/deadline十类已补真实发布回归，固定/cc/assignee与ops正对照并行验证。Delete/评论/备注原本只落ticket_events审计流，不因本修复新增DomainEvent行为。专项八轮、六类有效变异各八红、lint/unit/完整ticket包-race/cover全绿，证据`notification-creator/gates-v2.json`及`mutation-results.json`；v1 lint因额外导入的原始探针未gofmt失败（验证产物问题），保留原日志；另建v2冻结树仅格式化该探针后全部重跑。完整联合integration/acceptance仍由root复验，不提前关单。
+
+
+## 联合门禁续记：提醒回归夹具污染（验证缺陷，不计新产品问题）
+
+root联合d38完整integration发现新增TestAuditNoRegistryNoWatermark遗留活跃类型和无水位超期单，后续全局TestB104扫描多收到一次通知。我在原d38冻结归档完整ticket包28.89s独立复现（exit1），未放宽旧断言。单独提交`823455cb867c721d45730f826bc8d18fed9c7575`：只改新增reminder_delivery_integration_test.go，五类类型t.Cleanup停用、四registry限时Drain。原顺序每轮新PG八红、修复同进程新旧用例顺序每轮新PG八绿、修复完整ticket包-race20.67s及lint绿。证据`reminder-isolation/`。联合全门禁将纳入此后笔重新冻结；原失败保留，不把审计测试污染归成产品回归或假装先前完整integration绿。
+
+
+## B06-F10 / P1：SWR与清理扫描交错导致正常前台查询panic
+
+原快照`5c03581`，`internal/pkg/threatintel/service.go` 的`Service.refresh`和`Service.Query`共用singleflight group/key，前台Do成功要求`*Response`，后台成功却返回nil。复现为：真PG预置expires_at八天前缓存→真实Query立即返回stale并阻塞在受控Provider→真实CleanupExpired删旧行→前台Query真实miss并加入同flight→runtime.Stack确认真实WaitGroup等待后释放上游→后台成功存新缓存但返回nil→前台类型断言panic。原独立进程/PG八轮均同一panic、等待栅栏失败0，证据`semantic-review/intel-singleflight-cleanup-eight.json`及round-1..8.log。首次错误地-count8复用SetupPostgresShared，首轮有效panic而后七轮closed pool，属无效重复已保留，不能计八红。
+
+最小修复：refresh的Do回调返回fetchAndStore的真实Response和原err，后台错误仍Warn；其他缓存语义不改。永久回归合入既有B91的PG生命周期，覆盖真cleanup、实际singleflight等待、成功结果及Provider失败错误传递，避免额外顶层测试提早关闭全包共享池。冻结源原探针八绿，恢复nil返回的有效变异八红；完整情报包-race、lint/unit/cover绿，证据`intel-refresh-result/{fixed-original-eight.json,mutation-eight.json,gates.json,manifest.json}`。独立提交`c23e73c1eb6e94a0308784c0d1091fe8ab7810c2`（4文件99+/3-），完整联合integration/acceptance待root复验。
+
+
+## B06-F11 / P1：真实编辑与公开回复未接通已承诺消息中心
+
+原快照 `5c03581d5999139a3e8e5ead5972c026868aa181` 及最新含身份修复的c23均复现：真实Create→Assign给B→订阅Inbox→A调用Update/CreateComment→Drain→查B notifications，更新/公开回复各8/8无消息。Update发ticket.updated但缺to_assignee；CreateComment只有ticket_events事务留痕，无ticket.commented。既有Inbox词表/规则白名单和S6当前能力已承诺该事件；G7/G29偏好/规则增强不涵盖真实生产者完全未接线。没有手工构造事件来替代生产链。
+
+修复 `92adc205c85c07e900d79801743a3a2e174c16d1`：Update补现有处理人锚，公开评论事务成功后发已有ticket.commented，携工单身份/目标快照和元数据，不带正文、不扩CC广播；内部备注维持私有且不发布。多一次快照读取发生在事务前，未在tx窗口内再取池。原真实探针修复八绿、操作者去噪/内部备注/事务失败反向均通过；三类移除修复变异各八红，其中deferred constraint trigger真实强制commit失败，提前emit必失败。lint/unit/完整ticket包race18.48s/cover过；联合 `1a99a2534372da2106828b75962d162d98fdadac` 冻结完整integration/acceptance进行中，暂不关单。证据 `inbox-business-events/{current-c23-baseline.json,gates.json,mutation-results.json,manifest.json}`。
+
+## 本批新增源码锚点与固定联合证据
+
+- [`internal/service/ticket/notify_hook.go:80` 的 `resolveRecipientsFromRule`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/ticket/notify_hook.go#L80)。
+- [`internal/service/ticket/service.go:778` 的 `func (s *Service) Close`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/ticket/service.go#L778)。
+- [`internal/service/ticket/cc_service.go:24` 的 `func (s *Service) AddCC`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/ticket/cc_service.go#L24)。
+- [`internal/pkg/threatintel/service.go:167` 的 `func (s *Service) refresh`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/pkg/threatintel/service.go#L167)。
+- [`internal/service/ticket/service.go:1032` 的 `func (s *Service) CreateComment`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/ticket/service.go#L1032)。
+- [`internal/service/ticket/service.go:651` 的 `func (s *Service) Update`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/ticket/service.go#L651)。
+
+完整固定联合结果：`.codex/audits/ECO-20261104/evidence/ECO-20261104-joint/12401aa/gates/results.json`与`full-acceptance-result.json`。全部受审跟踪源码在git archive中逐字节相等，门禁后源码未漂移；临时隔离栈清理成功、已有容器ID/启动时间不变。原d38完整集成706.89秒失败确因为新增提醒夹具污染后续TestB104（非产品缺陷），823455c只清理新增夹具而未放宽原断言；原失败、无效变异与操作失误日志全部保留。单元口径cover是默认build标签范围，不将它解释为全integration覆盖率增长。
+
+P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索引持续补齐，历史台账仍逐行对账，**整体审计尚未收口**。原始证据/过程材料不纳管；必要报告与docs活状态纳管。
