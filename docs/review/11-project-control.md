@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 联合候选承接B10：有效设计/历史导航校准沿6199ef6必要差异，保留各修复分支新增实现说明；review索引采用root当前较新内容。仅文档，不覆盖已修实现或Swagger。
+
 > 联合候选承接 B06-F20：源码提交 `1550bbf9cf05eda89454021484069ce3e277cc78` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
 
 > 联合候选承接 B07-F10-consumer：源码 `bd05cfd39cf1448f58283f3f2129a0d6f0701a6b`，正式immutable utils pin；远端仅库codex分支已推，main/tag不动。本组合完整门禁待冻结，未合main/部署。

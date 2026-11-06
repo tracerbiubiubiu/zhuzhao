@@ -216,7 +216,7 @@ Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
 
 | ADR | 决策 | 状态 |
 |-----|------|------|
-| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳·部分实施（轮询实装；Asynq 未引——adr/README 口径） |
+| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳·部分实施：ticket_events事务留痕已落，轮询未实施；当前进程内HookRegistry分发（at-most-once/Drain），可靠重放升级见C-20 |
 | [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳·未实施（go.mod 无 asynq；现行=进程内 HookRegistry） |
 | [ADR-003](./adr/ADR-003-activelist-integration-form.md) | activelist 作为独立服务集成形态 | 已采纳 |
 | [ADR-004](./adr/ADR-004-ticket-type-template-flow.md) | 类型/模板/流程三者关系（A 案单向引用——条件左值引用简单、零迁移） | 已采纳（2026-10-27 建档） |

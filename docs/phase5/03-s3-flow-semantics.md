@@ -215,6 +215,8 @@ type TransitionAction interface {
 
 **① 落地状态（2026-10-19 W1 开工首件 ✅）**：以**自研架构守护测试扩展**落地（internal/architecture_test.go 增 TestArchitecture_PkgNoBusinessDependency[pkg 横切层禁反向依赖业务层——admincli break-glass CLI 文件级豁免] + TestArchitecture_ServiceDomainIsolation[service 根包↔子包互禁直接 import——域间只经 DomainEvent/Port 解耦]）——未引入 golangci-lint/depguard 工具链：既有 guard 框架已在 CI test job 生效（ci.yml `go test ./internal/...` 天然包含 internal 根包守护测试），扩展断言零新增依赖达成同款 CI 强制；验证=正向 5/5 PASS + 金丝雀负向验证两断言均正确拦截 + make lint 过。「engine 不 import 业务外依赖」专属禁单维持随 B3-1 建目录补强（本条已覆盖 engine→其他域主违规面）；② engine 子包化不变。
 
+> **2026-11-06实态校准**：上述engine子包化为原计划；当前状态机、转换和扫描器仍在 `internal/service/ticket/` 同包，未建 `engine/`。已有架构守卫约束跨域依赖，不构成该专属包边界；是否拆包交B0按实施收益评估，历史计划与日志保留。
+
 ---
 
 ## 附录：工单引擎演进路线（跨段视图，2026-10-16 所有者提议立项——以业界引擎为参照系的统一演进计划）

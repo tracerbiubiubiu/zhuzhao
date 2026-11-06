@@ -249,8 +249,10 @@
 |---|---|---|
 | 订阅 | ticket/ops 两域 → MessageDispatcher（外发通知） | app.go 装配 |
 | 订阅 | ticket/ops 两域 → InboxService（站内信） | inbox_service.go |
-| 生产 | 工单生命周期（Create/Update/Assign/Close/Transition/cc/标签） | ticket service emitEvent |
+| 生产 | 工单生命周期（Create/Update/Assign/Close/Transition/cc；标签与内部备注不发布DomainEvent） | `internal/service/ticket/service.go` 的 `emitEvent`（审计修复分支为 `emitTicketEvent`） |
 | 生产 | timeout 扫描 / cron 失败 / 动作失败 / 存储用量越限 | 各 cron/ops emit 点 |
+
+> 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
 
 ## 变更记录
 
@@ -300,3 +302,5 @@
 | 2026-11-02 | **§12-10 `scripts/zz-commit.sh --amend` 修复**（b9c3762：amend 变量赋值后未传给 git commit，--amend 形态静默退化为叠加同名新提交——6bd56ad 实证；此前用过 --amend 的笔须回看是否叠加而非替换）；**兄弟仓对齐现状登记**（11-02 四仓审计）：taskrunner/activelist/utils 均无 commit-lint/.githooks/make hooks、近 20 笔主题 >50 字 12/13/9 笔；ui 无主题行规则成文——10-30 立约的「兄弟仓修复批」待开；本批先在四仓 README/AGENTS 落 §12-9 指针对齐口径 |
 | 2026-11-04 | §12-9 补修复正文三节、发现 Refs 与提交后 hash 追溯（模板归审计指南）；§12-10 补分级修复、冻结审计窗口及复验/发布状态分列；commit-lint 规则⑨以 WARN 检查三节，fix 无 scope 同类扫描补齐，原硬门禁/存量不追溯不变。 |
 | 2026-11-04 | 所有者指定 Codex 本地材料归 `.codex/` 并从 Git/Docker 排除；§12-3 区分长期规范/必要正式发现与一般过程文档，不再默认全量纳管日志、执行卡和快照。 |
+
+| 2026-11-06 | B10事实校准：生产清单不再冒称标签发DomainEvent；公开回复原漏线与独立修复承接分列，at-most-once边界不变 |
