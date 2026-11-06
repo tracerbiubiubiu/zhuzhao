@@ -240,6 +240,8 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
 ## 9. 开发/测试环境恢复与来源核对（2026-11-06）
 
+> 当前原工作树的旧 `dev-stack.sh` / `make dev` 仍有B13所列编排与端口接管问题，独立修复尚未承接；恢复现场不要执行旧一键入口。按已登记的容器/卷/进程身份恢复，或先独立验证修复分支。下文区分既有运行来源与待验证的启动修复。
+
 1. 先核 §7 占用，再按容器 labels 的 Compose project、service、实际卷名确认归属。现有开发主库/Redis 为 `zhuzhao-dev`，AL开发库历史默认项目 `deploy`、卷 `deploy_pgdata`；改 project 名会改变默认卷名，不能把新空库当作恢复旧数据。保留未知或其他会话资源，禁止全局 prune、按前缀清理和端口互杀。
 2. 优先恢复已有容器/原卷；主PG与AL PG先逻辑备份，TR使用SQLite时同时备份其库及待提交日志状态，不能复制仍在写入的单个db文件。确认依赖健康、显式迁移成功且schema非dirty，再启动应用；主dev Compose只有依赖，AL dev Compose只有PG，TR生产Compose不发布宿主端口，不能互相替代。标准入口与拓扑见 [deployments/README](../deployments/README.md)。
 3. 开发全链分别核 API33333、AL18081、TR18080、Vite4000；Vite须使用仓库 `pnpm dev` 对应的 `--mode base`，不能用无mode命令造成标题/配置缺失。AK/SK三对必须同源，环境差异走env，不改冻结yaml。进程就绪后还要验证正常账号登录、真实业务读取；当前来源和已知问题见 [B13报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。

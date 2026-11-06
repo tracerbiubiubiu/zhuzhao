@@ -76,4 +76,14 @@ TR Compose失败被 `|| echo` 转为成功路径，最后仍输出编排完成�
 
 常规六项HTTP探针200，另核开发原卷/容器身份、test运行镜像和源码/产物链。SQLite原库只读打开备份曾失败，改用确认停写且无WAL的immutable只读快照后quick_check=ok并完成backup；Vite首次无mode导致标题配置缺失，已改base并重启本人进程，两次尝试均保留，不算产品新发现。
 
-F01–F06启动修复在独立codex分支；完整提交hash、固定复验和门禁结论后续追加。在尚未通过相关完整门禁前，状态为修复验收中，不能标完成。控制台及runbook已补来源/边界；剩余全面审计继续原计划，不因本批环境恢复而提前收口。
+### 启动修复提交与固定复验（尚未完成实栈门禁）
+
+独立分支 `codex/fix-dev-stack-isolation` 提交 **`760a58363b0a6b75c4f7e8233f7ebb3cc1137c7b`**（base8a3），9文件显式路径提交且工作树干净。F01–F05分别由 [scripts/dev-stack.sh 的 compose/owner检查/up/down](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/scripts/dev-stack.sh:35)、[Makefile 的 dev/docker-dev-*](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/Makefile:25)、[生产Compose ui.build.context](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/deployments/docker-compose.yaml:272)修复；F06相关当前README/端口/探针说明在候选同步。默认项目明确为zhuzhao-dev/deploy/taskrunner以保AL旧卷；所有配置与归属检查先于写操作，失败传递且等待健康，没有生产fallback或自动kill。TR部署栈仍只在内网，宿主应用另起，不扩安全边界。
+
+新 `scripts/test-dev-stack.py` 是外部命令全桩的黑盒回归，已接入CI lint步骤和make test-dev-stack。原8a归档17用例出现21个失败断言（含子用例），不是21次真实环境故障；最终19用例通过。五类逐项撤回修复的目标变异（全局project/生产fallback/TR吞错/port-kill/UI context）各串行8轮稳定红。4份只读Compose config确认独立卷和端口配置。bash -n、py_compile、diff-check、commit-lint均通过。
+
+root另从固定760a583重新git archive，679个跟踪文件逐一与Git内容匹配、零差异；再独立执行shell语法检查及全部19项黑盒，**8.946秒、exit0**。证据 `evidence/ECO-20261104-environment/dev-stack/root-fixed-760-results.json` 及同目录日志，不以未提交工作树结果替代。
+
+**仍未验证**：未运行候选真实up/down/reset、生产UI构建、Go全门禁、make acceptance或远端CI。独立工作树本身不是标准同级四仓布局，候选UI context在那里不存在；路径修复由标准同级fixture验证，不冒充镜像构建成功。TR原main生产探针的8080残留仍须承接B07-F11修复，不能把主仓候选提交当成兄弟main也已更新。候选未部署、未推送或合main，F01–F05保留“修复验收中”，不标完整关单。
+
+现场恢复与Chrome已完成，文档记录首批提交bf8a267；控制台/runbook明确旧工作树入口限制和当前端口预约。剩余全面审计继续原计划，不因环境恢复或桩测试通过而提前收口。
