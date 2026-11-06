@@ -143,8 +143,8 @@ func (r *TicketRepo) CountByFilter(ctx context.Context, filter resource.Filter, 
 	return total, nil
 }
 
-// StreamRowsByFilter 导出取行：无分页全量（行数已由 service 钳制）——逐行回调
-// （excelize StreamWriter 逐行 flush，防大结果集整集驻留内存）。
+// StreamRowsByFilter 导出取行：无分页逐行回调，service出口校验实际行数并可提前返回错误。
+// 工作表由handler增量编码，完成后显式Flush收尾。
 func (r *TicketRepo) StreamRowsByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery, fn func(*model.Ticket) error) error {
 	if filter.Where == "" && !filter.Unscoped {
 		return fmt.Errorf("ticket export: missing scope filter (IW4 fail-closed 哨兵)")

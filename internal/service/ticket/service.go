@@ -450,8 +450,8 @@ const MaxExportRows = 50000
 var ErrExportTooMany = errcode.New(errcode.ErrInvalidParams.Code, "导出行数超过上限 50000，请收窄筛选条件")
 
 // ExportStream 导出取行（S10 B10-5）：与 List 同 resolveListFilter + 同
-// buildTicketWhere（BK-21 代码级同源）；先 COUNT 钳制再逐行回调（流式零驻留）。
-// 返回总行数（审计/断言用）。
+// buildTicketWhere（BK-21 代码级同源）。COUNT只做预检，实际流仍逐行校验5万上限；
+// 第50001行报错而非截断成功。成功返回值=实际生成行数，供导出审计使用。
 func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, actorUserID int64, rowFn func(*model.Ticket) error) (int64, error) {
 	filter, err := s.resolveListFilter(ctx, actorUserID)
 	if err != nil {
@@ -464,8 +464,18 @@ func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, act
 	if total > MaxExportRows {
 		return total, ErrExportTooMany
 	}
-	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, rowFn)
-	return total, err
+	var exported int64
+	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, func(ticket *model.Ticket) error {
+		if exported >= MaxExportRows {
+			return ErrExportTooMany
+		}
+		if err := rowFn(ticket); err != nil {
+			return err
+		}
+		exported++
+		return nil
+	})
+	return exported, err
 }
 
 // FieldImpact B1-5 每字段在途使用计数（全量替换前的变更代价提示——软告警
