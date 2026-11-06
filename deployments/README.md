@@ -69,6 +69,12 @@ docker compose -f docker-compose.test.yaml up -d --build   # 首建 5-10 分钟�
 > taskrunner 栈五变量均 fail-closed 拒建（2026-10-01 硬化）；activelist 两变量同款。
 > 网关 `/al` target 默认 `http://activelist:18081`（分配表 18081——原 8080 高危口 2026-11-02 迁）；`TASKRUNNER_BASE_URL` 默认 `http://taskrunner:8080`——共享网别名寻址，均无需改配置。
 
+## 三·五、PostgreSQL 连接预算（2026-11-06 ECO-B06-F08）
+
+`database.max_open_conns` 只约束每个 app 的业务连接池。CronScheduler 的会话级 advisory lock 使用独立短命连接，同一调度器串行执行、每次最多额外一条；握手/取锁/Handle 共享两分钟执行预算，解锁和关闭各有独立两秒清理预算。失败、panic、取消和解锁异常均关闭专用会话，不把带锁连接放回业务池；锁竞争跳过不算失败，取锁/建连/清理失败记录 cron 状态并触发既有失败回调。
+
+部署估算 PostgreSQL 总连接至少按 **app副本数 ×（每副本业务池上限 + 同时活跃cron数）+ 迁移/备份/运维连接 + 余量** 预留。当前最多七个维护调度器，部分按开关启用；业务池默认25时每副本上界按25+7估算，不宣称全生态所有PG服务共享同一个上限。实际cron周期错峰通常低于此值，但不能依赖错峰代替预算。请结合数据库实例的`max_connections`与其他服务预算核对，不能只把业务池调大来规避嵌套取连。
+
 ## 四、全链冒烟（拼装后）
 
 ```sh

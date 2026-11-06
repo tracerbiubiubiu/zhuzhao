@@ -14,6 +14,27 @@ import (
 
 type auditCaptureEvent chan domainevent.DomainEvent
 
+// Every scanner reads all active types. Retire this fixture before the next test
+// so an intentionally unspent reminder cannot become another test's notification.
+func auditRetireReminderType(t *testing.T, code string) {
+	t.Helper()
+	t.Cleanup(func() {
+		_, err := testPool.Exec(context.Background(), `UPDATE ticket_types SET is_active=false WHERE code=$1`, code)
+		require.NoError(t, err)
+	})
+}
+
+func auditReminderRegistry(t *testing.T) *domainevent.HookRegistry {
+	t.Helper()
+	reg := domainevent.NewHookRegistry(nil)
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		require.NoError(t, reg.Drain(ctx))
+	})
+	return reg
+}
+
 func TestAuditTimeoutWatermarkWithoutEvent(t *testing.T) {
 	svc, aid, bid, _, roles := setupTicket2a(t)
 	roles[aid] = []string{"admin"}
@@ -22,6 +43,7 @@ func TestAuditTimeoutWatermarkWithoutEvent(t *testing.T) {
 	code := "remind_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	auditRetireReminderType(t, code)
 	meta := `{"assigned":{"timeout_minutes":1,"escalation":{"notify":["supervisor"],"max_reminders":1}}}`
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 	require.NoError(t, err)
@@ -29,7 +51,7 @@ func TestAuditTimeoutWatermarkWithoutEvent(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
 	backdateStatusChanged(t, tk.ID, 2*time.Hour)
-	reg := domainevent.NewHookRegistry(nil)
+	reg := auditReminderRegistry(t)
 	scanner := NewTimeoutScanner(testPool, reg, false, nil)
 	require.NoError(t, scanner.Handle(ctx, nil))
 	var count int
@@ -46,6 +68,7 @@ func TestAuditTimeoutZeroLimit(t *testing.T) {
 	code := "zero_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	auditRetireReminderType(t, code)
 	meta := `{"assigned":{"timeout_minutes":1,"escalation":{"notify":["assignee"],"max_reminders":0}}}`
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 	require.NoError(t, err)
@@ -53,7 +76,7 @@ func TestAuditTimeoutZeroLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
 	backdateStatusChanged(t, tk.ID, 2*time.Hour)
-	reg := domainevent.NewHookRegistry(nil)
+	reg := auditReminderRegistry(t)
 	scanner := NewTimeoutScanner(testPool, reg, false, nil)
 	require.NoError(t, scanner.Handle(ctx, nil))
 	var count int
@@ -74,6 +97,7 @@ func TestAuditReminderTargetsArriveLater(t *testing.T) {
 			code := "later_" + uniqueSuffix()
 			_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 			require.NoError(t, err)
+			auditRetireReminderType(t, code)
 			meta := `{"assigned":{"timeout_minutes":1,"escalation":{"notify":["supervisor"],"max_reminders":1}}}`
 			if deadline {
 				meta = `{"assigned":{"sla_due_hours":1}}`
@@ -88,7 +112,7 @@ func TestAuditReminderTargetsArriveLater(t *testing.T) {
 				_, err = testPool.Exec(ctx, `UPDATE tickets SET sla_due_at=NOW()-interval '1 hour',assigned_to=NULL WHERE id=$1`, tk.ID)
 				require.NoError(t, err)
 			}
-			reg := domainevent.NewHookRegistry(nil)
+			reg := auditReminderRegistry(t)
 			events := make(auditCaptureEvent, 4)
 			reg.Subscribe(domainevent.BizTicket, "audit.later", events)
 			scanner := NewTimeoutScanner(testPool, reg, false, nil)
@@ -127,13 +151,14 @@ func TestAuditReminderCandidateWindowSkipsMissingTargets(t *testing.T) {
 	code := "window_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	auditRetireReminderType(t, code)
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(`{"assigned":{"timeout_minutes":1,"escalation":{"notify":["supervisor"],"max_reminders":1}}}`)})
 	require.NoError(t, err)
 	_, err = testPool.Exec(ctx, `INSERT INTO tickets(type_code,title,status,created_by,assigned_to,org_id,org_path,status_changed_at) SELECT $1,'no target','assigned',$2,$3,$4,(SELECT path FROM organizations WHERE id=$4),NOW()-interval '2 hours' FROM generate_series(1,500)`, code, aid, bid, oid)
 	require.NoError(t, err)
 	var id int64
 	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,assigned_to,org_id,org_path,status_changed_at,escalation_supervisor_id) VALUES($1,'has target','assigned',$2,$3,$4,(SELECT path FROM organizations WHERE id=$4),NOW()-interval '2 hours',$5) RETURNING id`, code, aid, bid, oid, vid).Scan(&id))
-	reg := domainevent.NewHookRegistry(nil)
+	reg := auditReminderRegistry(t)
 	events := make(auditCaptureEvent, 2)
 	reg.Subscribe(domainevent.BizTicket, "audit.window", events)
 	require.NoError(t, NewTimeoutScanner(testPool, reg, false, nil).Handle(ctx, nil))
@@ -156,6 +181,7 @@ func TestAuditNoRegistryNoWatermark(t *testing.T) {
 	code := "noreg_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	auditRetireReminderType(t, code)
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(`{"assigned":{"timeout_minutes":1,"sla_due_hours":1}}`)})
 	require.NoError(t, err)
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 3, OrgID: oid}, aid)
