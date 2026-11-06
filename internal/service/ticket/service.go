@@ -813,6 +813,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 		return err
 	}
@@ -949,6 +952,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 
 	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
 	// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
+	var transitionType *model.TicketType
 	if newStatus != ticket.Status {
 		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
 		if err != nil {
@@ -965,6 +969,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
 			return err
 		}
+		transitionType = ttype
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -973,6 +978,9 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, transitionType); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 		return err
 	}

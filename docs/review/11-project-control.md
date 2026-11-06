@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 ECO-B06增量候选：汇集fb0fff2事务预检快照（工单持久字段/类型version锁下核对，变化409；含旧处理人condition撤销）与e329db0提醒预算（无事件不耗、max0不发、候选窗口不饿死）。八类移除修复变异各八轮红、满池新helper八轮绿，源lint/单元过、完整集成待收尾；联合门禁待执行，未部署未合main。边界限工单与类型配置，不提供跨用户/组织权限关系的分布式原子撤权。
+
 > 2026-11-06 ECO-B08 ID契约候选：`AddTicketCCRequest.UserIDs`复用现有Int64Slice兼容字符串数组和旧数字数组，保留>2^53精确值、正数/20项绑定守卫，Swagger同步string[]；前端Number舍入及supervisor数字400另由UI修复。handler八轮与完整单元通过，联合固定门禁待完成；只证明选择失败，不声称已错发给其他人。
 
 > 2026-11-06 ECO-B08待办候选：联合分支新增列表/导出可选状态集合，与单值status互斥，沿同一scope+业务WHERE；支持首页既有assigned/in_progress待办口径，避免导航混入closed。handler正负向和PG列表/计数/流三路+scope专项八轮通过，正常门禁与浏览器联合验证待完成；未合main。

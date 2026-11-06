@@ -51,6 +51,9 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		return nil, err
+	}
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
 		return nil, err
 	}
