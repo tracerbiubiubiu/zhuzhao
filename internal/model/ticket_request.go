@@ -175,8 +175,8 @@ type ReplaceTypeFieldsRequest struct {
 	// W1（BK-18 整改）：code 从 path param 迁入 body
 	Code   string                 `json:"code" binding:"required"`
 	Fields []TicketTypeFieldInput `json:"fields"`
-	// Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
-	// 须 > 0，否则 400。
+	// Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
+	// 预检后配置改变返回409；非nil须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 

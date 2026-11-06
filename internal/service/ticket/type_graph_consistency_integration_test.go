@@ -179,3 +179,100 @@ func TestTypeGraphConcurrentPartialWrites(t *testing.T) {
 		assert.Nil(t, req.Version)
 	}
 }
+
+// The row has been scanned before pgx calls QueryEnd. Pause that exact snapshot,
+// then let another request make the client-supplied future version become real.
+type graphReadPauseKey struct{}
+type graphSnapshotPause struct {
+	code             string
+	arrived, release chan struct{}
+	once             sync.Once
+}
+
+func (p *graphSnapshotPause) TraceQueryStart(ctx context.Context, _ *pgx.Conn, d pgx.TraceQueryStartData) context.Context {
+	if len(d.Args) > 0 && d.Args[0] == p.code && strings.Contains(d.SQL, "FROM ticket_types WHERE code = $1") {
+		return context.WithValue(ctx, graphReadPauseKey{}, true)
+	}
+	return ctx
+}
+func (p *graphSnapshotPause) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if ctx.Value(graphReadPauseKey{}) != true {
+		return
+	}
+	p.once.Do(func() { close(p.arrived) })
+	select {
+	case <-p.release:
+	case <-ctx.Done():
+	}
+}
+func TestTypeGraphFutureVersionCannotValidateOldSnapshot(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	svc := typeConfigService(testPool)
+	code := "future_graph_" + uniqueSuffix()
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code, States: []byte(`["open","assigned","in_progress","pending_verify","closed","rejected","review"]`), Transitions: []byte(`{"open":["closed"]}`)})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, e := testPool.Exec(context.Background(), `DELETE FROM ticket_types WHERE code=$1`, code)
+		require.NoError(t, e)
+	})
+	before, err := svc.ticketRepo.GetTicketType(ctx, code)
+	require.NoError(t, err)
+	pause := &graphSnapshotPause{code: code, arrived: make(chan struct{}), release: make(chan struct{})}
+	cfg := testPool.Config()
+	cfg.MaxConns = 2
+	cfg.ConnConfig.Tracer = pause
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	require.NoError(t, err)
+	defer pool.Close()
+	var once sync.Once
+	release := func() { once.Do(func() { close(pause.release) }) }
+	defer release()
+	future := int(before.Version) + 1
+	done := make(chan error, 1)
+	go func() {
+		_, e := typeConfigService(pool).UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{Version: &future, States: []byte(defaultStates)})
+		done <- e
+	}()
+	select {
+	case <-pause.arrived:
+	case <-ctx.Done():
+		t.Fatal("snapshot read not reached")
+	}
+	winner, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{Transitions: []byte(`{"open":["review"],"review":["closed"]}`)})
+	require.NoError(t, err)
+	require.EqualValues(t, future, winner.Version)
+	release()
+	require.ErrorIs(t, <-done, errcode.ErrConcurrentModification)
+	stored, err := svc.ticketRepo.GetTicketType(ctx, code)
+	require.NoError(t, err)
+	assertStoredGraph(t, stored)
+	assert.Equal(t, winner.Version, stored.Version)
+}
+func TestTypeConfigurationExplicitVersionMismatch(t *testing.T) {
+	ctx := context.Background()
+	svc := typeConfigService(testPool)
+	code := "mismatch_" + uniqueSuffix()
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, e := testPool.Exec(context.Background(), `DELETE FROM ticket_types WHERE code=$1`, code)
+		require.NoError(t, e)
+	})
+	name := "bump"
+	before, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{Name: &name})
+	require.NoError(t, err)
+	for _, v := range []int{int(before.Version) - 1, int(before.Version) + 1} {
+		_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{Version: &v, Transitions: []byte(`{"open":["closed"]}`)})
+		require.ErrorIs(t, err, errcode.ErrConcurrentModification)
+		_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Version: &v, Fields: []model.TicketTypeFieldInput{{FieldKey: "payload", FieldLabel: "Payload", FieldType: "input"}}})
+		require.ErrorIs(t, err, errcode.ErrConcurrentModification)
+	}
+	after, err := svc.ticketRepo.GetTicketType(ctx, code)
+	require.NoError(t, err)
+	assert.Equal(t, before.Version, after.Version)
+	assert.JSONEq(t, string(before.Transitions), string(after.Transitions))
+	fields, err := svc.ticketRepo.ListTicketTypeFieldsAll(ctx, code)
+	require.NoError(t, err)
+	assert.Empty(t, fields)
+}

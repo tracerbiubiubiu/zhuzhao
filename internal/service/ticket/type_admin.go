@@ -82,6 +82,9 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 		if err != nil {
 			return nil, err
 		}
+		if version != nil && int64(*version) != current.Version {
+			return nil, errcode.ErrConcurrentModification
+		}
 		states, transitions := req.States, req.Transitions
 		if len(states) == 0 {
 			states = current.States
@@ -226,13 +229,23 @@ type FieldSoftWarning struct {
 }
 
 // ReplaceTicketTypeFields 全量替换字段集（校验：key 唯一/类型枚举/select 选项/正则可编译）。
-// P1-3：req.Version 可选乐观锁，以父类型 ticket_types.version 做 CAS；nil = 旧行为。
+// 客户端version可选；旧字段预检前取父版本，写入CAS覆盖整个预检窗口。
 func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req *model.ReplaceTypeFieldsRequest) ([]FieldSoftWarning, error) {
 	if req.Version != nil && *req.Version <= 0 {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
-	if _, err := s.ticketRepo.GetTicketType(ctx, code); err != nil {
+	current, err := s.ticketRepo.GetTicketType(ctx, code)
+	if err != nil {
 		return nil, err
+	}
+	version := req.Version
+	if version != nil && int64(*version) != current.Version {
+		return nil, errcode.ErrConcurrentModification
+	}
+	if version == nil {
+		// 必须早于旧字段读取；否则旧空集预检可能搭配并发提交后的新版本。
+		snapshotVersion := int(current.Version)
+		version = &snapshotVersion
 	}
 	fields, err := validateFieldInputs(req.Fields)
 	if err != nil {
@@ -254,7 +267,7 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 		return nil, err
 	}
 	warnings := s.softFieldWarnings(ctx, code, old, fields)
-	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, req.Version)
+	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, version)
 }
 
 // checkFieldLock 锁死守卫硬锁面（纯函数便于测试）：旧集非空时，旧 key 必须全部
