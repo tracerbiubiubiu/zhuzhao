@@ -69,46 +69,48 @@ func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketT
 }
 
 // UpdateTicketType 更新类型（patch；code 不可改）。
-// P1-3：req.Version 可选乐观锁——传了才校验（nil = 旧行为）。
+// 客户端version仍可选；图/meta写使用同一持久快照校验并CAS，防止并发半图交错。
 func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.UpdateTicketTypeRequest) (*model.TicketType, error) {
 	if req.Version != nil && *req.Version <= 0 {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
-	if len(req.States) > 0 || len(req.Transitions) > 0 {
-		states, transitions := req.States, req.Transitions
-		if len(states) == 0 {
-			states = json.RawMessage(defaultStates)
-		}
-		if len(transitions) == 0 {
-			transitions = json.RawMessage(defaultTransitions)
-		}
-		if err := validateTypeGraph(states, transitions); err != nil {
-			return nil, err
-		}
-	}
-	// B10-4：transition_meta 键域须 ⊆ states（改图后残留旧状态键 → 400 收口，
-	// 防扫描器扫已删状态的悬空超时配置）。仅发 meta 时取存量 states 判键域。
-	if len(req.TransitionMeta) > 0 {
-		stateList, t, err := s.metaKeyDomain(ctx, code, req.States)
+	version := req.Version
+	graphChanged := len(req.States) > 0 || len(req.Transitions) > 0
+	if graphChanged || len(req.TransitionMeta) > 0 {
+		// 同一个持久快照同时提供缺省半图、meta键域和服务端CAS版本。
+		stateList, current, err := s.metaKeyDomain(ctx, code, req.States)
 		if err != nil {
 			return nil, err
 		}
-		if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
-			return nil, err
+		states, transitions := req.States, req.Transitions
+		if len(states) == 0 {
+			states = current.States
 		}
-		// S3a B3-1："from>to" 转换级键校验（条件 roles 词表+validator 语法+键域
-		// ⊆ transitions 展开集——与 B10-4 state 级键共存同列两形）
-		var transitions map[string][]string
-		if len(req.Transitions) > 0 {
-			_ = json.Unmarshal(req.Transitions, &transitions)
-		} else {
-			_ = json.Unmarshal(t.Transitions, &transitions)
+		if len(transitions) == 0 {
+			transitions = current.Transitions
 		}
-		if err := ValidateTransitionMeta(stateList, transitions, req.TransitionMeta); err != nil {
-			return nil, err
+		if graphChanged {
+			if err := validateTypeGraph(states, transitions); err != nil {
+				return nil, err
+			}
+		}
+		if len(req.TransitionMeta) > 0 {
+			if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
+				return nil, err
+			}
+			var transitionMap map[string][]string
+			_ = json.Unmarshal(transitions, &transitionMap)
+			if err := ValidateTransitionMeta(stateList, transitionMap, req.TransitionMeta); err != nil {
+				return nil, err
+			}
+		}
+		if version == nil {
+			// 兼容无version客户端，拒绝预检之后已变更的父配置。
+			snapshotVersion := int(current.Version)
+			version = &snapshotVersion
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, req.Version)
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, version)
 }
 
 // metaKeyDomain 取 meta 键域判定的 states+transitions 基线：请求带 states 用请求值，

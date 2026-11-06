@@ -153,8 +153,8 @@ type UpdateTicketTypeRequest struct {
 	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
 	// nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
 	TransitionMeta json.RawMessage `json:"transition_meta"`
-	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
-	// ticket_types.version 才写，否则 409。须 > 0，否则 400。
+	// Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。
+	// 缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 

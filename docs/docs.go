@@ -5276,7 +5276,7 @@ const docTemplate = `{
                     }
                 },
                 "version": {
-                    "description": "Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中\nticket_types.version 才写，否则 409。须 \u003e 0，否则 400。",
+                    "description": "Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。\n缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须\u003e0，否则400。",
                     "type": "integer"
                 }
             }
