@@ -265,11 +265,11 @@ services:
           - zhuzhao # taskrunner 回调寻址 http://zhuzhao:33333
 
   # P4-9 前端部署件：nginx 静态容器（dist 随镜像构建）+ /api·/al/api 精确反代 app。
-  # build context 跨仓相对路径（../zhuzhao-ui——两仓同级 checkout 布局）；
+  # build context 相对本文件目录（../../zhuzhao-ui——两仓同级checkout布局）；
   # app 侧 APP_SERVER_TRUSTED_PROXIES 同批启用（本文件 app.environment 段）。
   ui:
     build:
-      context: ../zhuzhao-ui
+      context: ../../zhuzhao-ui
       dockerfile: deployments/Dockerfile
     image: zhuzhao-ui:latest
     container_name: zhuzhao-ui
