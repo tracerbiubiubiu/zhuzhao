@@ -19,7 +19,7 @@ import (
 
 func TestExpandDictOptions_FailOpenArms(t *testing.T) {
 	ctx := context.Background()
-	svc := &Service{db: testPool} // expandDictOptions 仅用 db——直接构造
+	svc := &Service{} // 取数执行器显式传入，事务内调用方必须传tx
 
 	// 种字典：类型 + 两启用项 + 一停用项（展开只含启用、按 sort_order）
 	dictType := "p11_" + uniqueSuffix()
@@ -43,12 +43,12 @@ func TestExpandDictOptions_FailOpenArms(t *testing.T) {
 	dictRef := json.RawMessage(`["dict:` + dictType + `"]`)
 
 	t.Run("正常展开=启用项 code 集", func(t *testing.T) {
-		out := svc.expandDictOptions(ctx, dictRef)
+		out := svc.expandDictOptions(ctx, testPool, dictRef)
 		assert.JSONEq(t, `["a1","a2"]`, string(out))
 	})
 
 	t.Run("码不存在→空集（跳过校验语义）", func(t *testing.T) {
-		out := svc.expandDictOptions(ctx, json.RawMessage(`["dict:nope_`+uniqueSuffix()+`"]`))
+		out := svc.expandDictOptions(ctx, testPool, json.RawMessage(`["dict:nope_`+uniqueSuffix()+`"]`))
 		assert.JSONEq(t, `[]`, string(out))
 	})
 
@@ -56,8 +56,7 @@ func TestExpandDictOptions_FailOpenArms(t *testing.T) {
 		p2, err := pgxpool.New(ctx, testPool.Config().ConnString())
 		require.NoError(t, err)
 		p2.Close() // 已关闭 pool：Query 返回 closed 错误——真实 DB 故障臂
-		broken := &Service{db: p2}
-		out := broken.expandDictOptions(ctx, dictRef)
+		out := svc.expandDictOptions(ctx, p2, dictRef)
 		assert.JSONEq(t, `[]`, string(out))
 	})
 }

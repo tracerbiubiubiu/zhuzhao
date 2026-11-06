@@ -12,6 +12,8 @@ import (
 
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
@@ -736,7 +738,7 @@ const CustomDataMaxBytes = 64 << 10
 // 2026-10-22：错误臂原返回原文，经 optionValues 成字面量单选项 → 一切
 // 合法 select 值被 400 拒，fail-closed 实效与 fail-open 意图相反；码不
 // 存在臂由保存期字典码存在性校验收口[B1-7]，运行期空集仅为兜底）。
-func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) json.RawMessage {
+func (s *Service) expandDictOptions(ctx context.Context, q repository.RowQuerier, raw json.RawMessage) json.RawMessage {
 	var elems []json.RawMessage
 	if err := json.Unmarshal(raw, &elems); err != nil || len(elems) != 1 {
 		return raw
@@ -746,7 +748,7 @@ func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) js
 		return raw
 	}
 	code := strings.TrimPrefix(sv, "dict:")
-	rows, err := s.db.Query(ctx,
+	rows, err := q.Query(ctx,
 		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
 	if err != nil {
 		return json.RawMessage("[]") // DB 故障→空集=真 fail-open（原文返回会拒一切合法值）
@@ -819,7 +821,7 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 		// F-B-2 外审 P0 修复（2026-10-22）：field_options 为 dict: 引用时展开为
 		// 真实字典项值集（optionValues 只见 ["dict:code"] 字面量，真实值全被拒）
 		if f.FieldOptions != nil && (f.FieldType == "select" || f.FieldType == "multi_select" || f.FieldType == "radio") {
-			f.FieldOptions = s.expandDictOptions(ctx, f.FieldOptions)
+			f.FieldOptions = s.expandDictOptions(ctx, q, f.FieldOptions)
 		}
 		// B1-6 批1 file：required→至少 1 个 object_key（缺失/null/空数组均拒）
 		if f.FieldType == "file" && f.Required {
@@ -840,9 +842,14 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 					_ = json.Unmarshal(rawF, &keys)
 				}
 				if len(keys) > 0 {
-					var mimes []string
-					if err := s.db.QueryRow(ctx,
-						`SELECT array_agg(fo.mime_type) FROM file_objects fo WHERE fo.object_key = ANY($1)`, keys).Scan(&mimes); err != nil {
+					// Update已持事务连接：MIME读与schema/字典读一样复用q，不能再向池取连接。
+					rows, err := q.Query(ctx,
+						`SELECT fo.mime_type FROM file_objects fo WHERE fo.object_key = ANY($1)`, keys)
+					if err != nil {
+						return nil, errcode.ErrInternal
+					}
+					mimes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+					if err != nil {
 						return nil, errcode.ErrInternal
 					}
 					allowSet := map[string]bool{}
