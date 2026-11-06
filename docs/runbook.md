@@ -123,6 +123,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 | manager | E000002 | `Adm2#2609x`（用户自管） | 日常多账号手动测试（admin 角色，不动 E000001 的正确姿势） | 所有者自管 |
 | agent_s2（agent 专属） | E800001 | `Agt1#2610x` | agent 会话 UI 走查专属（admin 角色；2026-10-24 S2 画布走查建号——E000002 台账密码已脱靶且属所有者自管，按 §4.2#2 新建 E8 段） | agent 自管；所有者可随时禁用 |
 | agent_eco_chrome（仅独立 test 栈） | E800006 | 同 E800001 的公开测试口令 | 2026-11-06 ECO-B13 真实 Chrome 走查专属 admin；仅 `zhuzhao_test` 主库，未写入 dev/生产 | agent 自管；所有者可随时禁用，不由 E2E global-setup 接管 |
+| agent_eco_e2e_admin（test临时准备号，已回收） | E800007 | 原E800001公开测试值；回收时未改口令 | 2026-11-06原样E2E替换身份准备：因套件固定seed用户名/组织，已禁用软删、角色清空、58个RT清除及纪元推进；不复用，证据属ECO-B08 | 已回收；E000001/E800006未变 |
 | e2e_operator / e2e_viewer | E2E9020 / E2E9030 | `E2eOper#2609` / `E2eView#2609` | Playwright E2E 专属（global-setup 幂等建号） | 仅 `zhuzhao-ui/e2e/global-setup.ts` |
 | S1 演练号 | E2E 段随建 | global-setup 派发 | 强制改密流程演练（每轮重置，无常态） | 同上 |
 
@@ -216,7 +217,8 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B14（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；test app7389/AL19/TR5e，UI9f76已准确镜像承接，F14真实Chrome默认/悬停与持久S2三态各8轮及移除规则各8红，最后fixed恢复；新组合完整41待跑。dev仍原卷+原仓宿主版，b205旧F08异常保留。B14修复f917c64已32场绿及原SQL/三变异各八红，联合ba3ecb6已承接但全门禁未跑；F17/F18/F19也已路径承接，B14/F15/F16/F17/F18/F19自有资源均清。F20头像/资料1550bbf已72场race及真实RustFS两入口八绿，承接联合6ad4cda，资源全清；原生ba3专项已补但首轮ticket reaper失败留证。联合候选未部署，root统一冻结/共享环境调度，外部cmpfull不清理；未合main | 本轮文档与codex修复分支未推送；历史utils v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（B14新P0与联合候选） |
+
+2026-11-06审计交接已收口（非在途占用）：[五仓总报告](../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)。test=app dc3/AL60/TR eb3/UI c9，固定来源与镜像已核；dev保留原工作树/原卷，旧UI F08仍有。临时验收/PG/浏览器夹具已精确回收，常驻测试环境留供使用，其它会话cmpfull资源保留。代码/正式文档均路径提交、未合main；仅utils修复分支已推。Go漏洞可达扫描NOT_RUN，原日志/备份/截图与环境重启辅助仅主仓ignored `.codex`，不纳Git/Docker。后继操作先核当前端口/PID/镜像与下节环境来源，不用此历史交接替代实时归属检查。
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 

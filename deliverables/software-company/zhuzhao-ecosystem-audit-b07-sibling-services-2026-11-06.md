@@ -1,5 +1,7 @@
 # 生态审计 B07：兄弟服务与公共库（2026-11-06，阶段报告）
 
+> **最终消费/联合复验**：utils正式cd759 pseudo-version已在主仓dc3/AL60承接；AL60原生全PG/race196 PASS/0FAIL/0测试SKIP、新组合原样253/81与真实API均过，test同源更新。F10代码复验关闭，main/tag/生产未因此发布；下文“pin未升”为历史时点。
+
 ## 范围与基线
 
 固定原业务基线：activelist `af0b350da650517df2c9d15cca4892cdcd51be88`、taskrunner `1dcc83185f24b8dc2bed7bba6786272a5fdfb19f`。两消费者实际 pin utils v0.4.2（tag `21155a98e87a944b20600833f940698d2759c2e5`）；库增量兼核 v0.4.3 `9296ae170b71b06c623c54b6010a107406903346`，不将库HEAD当消费者版本。修复均在独立codex分支，禁止合main；正式发布版本与分支push分别记账。
@@ -113,3 +115,14 @@ utils修复 **`cd759a0402455731f805ba507bf8401447e00e29`** 已由root在SSH fetc
 两仓lint/unit、默认标签全仓race、构建与模块校验通过，各自在正式pin运行共享库双协议生命周期永久回归八轮通过。主仓新增真实httptest上游：成功签名/内容、读错不发送、读错伴Close错保留原读错误、读取成功但Close错沿原合同继续，四路原body恰Close一次；临时退回v0.4.3的永久回归八轮稳定红、正式pin八轮绿。root另读80行消费者回归和生产两Close差异，未用commit message代替验证。
 
 两消费者修复树干净、未推送或合main；共享dev/test未换版本，无新PG/Redis容器。最终主仓全量integration/cover/acceptance与AL/TR/UI组合仍待冻结，不沿用19/5e旧运行证明新pin已部署。证据 `data-coverage/b07-f10-consumer/{repair-result.json,version-source-manifest.json}`；原F10库级专项/变异记录继续保留。
+
+
+## 最终兄弟组合与消费关闭
+
+固定联合 **`dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`** 的719份跟踪文件逐一gitblob相等、门禁后源码干净：lint3.718秒、unit10.746秒、原生全量integration/race（原Makefile -p1）558.571秒、cover11.547秒通过；默认build标签总覆盖20.4%，不冒报相对增幅。原样四档124+68+26+35=253 PASS/0 FAIL/0 SKIP，81对fresh往返零漂移，R01真实API13步/B09成员15步全过；独占验收栈已清，原运行容器集合/ID/启动时间完全相同。
+
+AL固定60e6b29原生 `go test -tags integration -race -count=1 -json ./...` 138.814秒通过：81顶层测试，其中41个PG顶层逐源匹配全执行；含子测试196 PASS/0 FAIL/0测试SKIP，9测试包通过、3包无测试文件分列。66源码SHA未漂移、module verify/no replace通过，41PG+Ryuk按原生session及精确CID均已自动清理。10只PG保留端口映射，31只清理前未捕获端口，未补造DSN。证据 `joint/final-pg-integration-al60/result.json`。
+
+test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。 F10主仓真实Transport已消费，AL统一未用出站Transport不冒称本站泄漏修复；TR仍utils0.4.2，source eb3生产探针与此前业务代码范围分列。
+
+主仓/AL宿主Go1.26.6交叉Linux arm64复用既有准确运行层，显式关闭VCS元数据、以完整源码blob与二进制链为准；TR canonical build目标Go1.26.10新二进制与旧/新runtime逐字相同，仅补准确OCI标签。没有把TR离线apk失败计成全阶段构建绿；AL首个带祖级错误VCS的产物只留invalid诊断标签，未启动。最终图像ID与config digest分列，未拿后者冒充前者。离线链见 `joint/offline-siblings-final/result.json`；无新main合并或tag。

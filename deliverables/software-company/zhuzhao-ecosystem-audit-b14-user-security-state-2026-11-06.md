@@ -1,8 +1,10 @@
 # 生态全面审计 B14：资料写入覆盖账号安全状态（2026-11-06）
 
+> **最终后端联合复验（2026-11-06）**：B14-F01/P0在上述完整联合范围代码复验关闭，并已test承接；原禁用/强改覆写、两个资料入口/返回状态、旧AT及正常安全写均保留专门回归。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
+
 ## 结论、范围与基线
 
-**ECO-20261104-B14-F01 / P0，修复已提交、联合门禁待验：在途个人资料更新能覆盖管理员刚写入的禁用状态或强制改密标记，使后续新登录重新通过。** 采用本项目“安全/门禁失效”分级；不是匿名访问、密码回滚或R01旧令牌再次复活。两场景同根记一项。
+**ECO-20261104-B14-F01 / P0，代码复验关闭、已test承接：在途个人资料更新能覆盖管理员刚写入的禁用状态或强制改密标记，使后续新登录重新通过。** 采用本项目“安全/门禁失效”分级；不是匿名访问、密码回滚或R01旧令牌再次复活。两场景同根记一项。
 
 固定受审实现 **`b4435022d00ee789b9a62f74036824bd7d3791b7`**，包含R01纪元修复。UserService/UserRepo相关路径与原主仓一致，Auth/JWT采用该完整固定源码，不能混用主工作树的修复前认证。随后联合候选b306eed的相关路径未变。实验使用独立PG全81迁移和Redis，全部账号为合成E8段；未写共享dev/test、E000001或真实业务数据。
 
@@ -64,3 +66,12 @@ root已独立核生产SQL、191行永久回归、交接收据与测试边界，�
 root固定联合ba3ecb6的709跟踪文件逐一gitblob相等，未使用DSN装配shim或overlay。三包race/count8命令中，service的B14八轮共32场通过（包358.441秒），handler的F19两个永久目标各八轮通过（包7.560秒）；ticket包在创建PG前因Testcontainers reaper状态created失败，未进入业务断言，故整条命令exit1，不记全绿。原日志/result完整保留，不能把包装脚本正常退出当Go测试通过。
 
 保持同一固定源码，仅单独重跑ticket包原生TestMain：F15/F17/F18目标race/count8通过，12.731秒；没有修改测试或放宽启动预算，原reaper已自行清除。两轮原有运行容器无移除/重启，源码都干净。证据 `evidence/ECO-20261104-joint/ba3ecb6-native-targets/{result.json,ticket-retry/result.json}`。该续记补齐原生装配证明，仍非最终组合全量integration/cover/acceptance，也不因一次重跑绿断言已修复测试初始化时序风险。
+
+
+## 最终固定联合与运行承接
+
+固定联合 **`dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`** 的719份跟踪文件逐一gitblob相等、门禁后源码干净：lint3.718秒、unit10.746秒、原生全量integration/race（原Makefile -p1）558.571秒、cover11.547秒通过；默认build标签总覆盖20.4%，不冒报相对增幅。原样四档124+68+26+35=253 PASS/0 FAIL/0 SKIP，81对fresh往返零漂移，R01真实API13步/B09成员15步全过；独占验收栈已清，原运行容器集合/ID/启动时间完全相同。
+
+B14-F01/P0在上述完整联合范围代码复验关闭，并已test承接；原禁用/强改覆写、两个资料入口/返回状态、旧AT及正常安全写均保留专门回归。 test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。
+
+完整证据为本地忽略 `evidence/ECO-20261104-joint/dc3d540/{manifest.json,core-results.json,resume-installed-wire/core-results.json,acceptance/result.json,image-result.json,test-deployment/result.json}`。原make wire失败属B15原有工具sum缺口，CI同款固定v0.7.0 CLI生成及零漂移通过；原生ba3的ticket reaper初始化失败和原始运行器准备失败均保留，不以续跑绿覆盖原失败。
