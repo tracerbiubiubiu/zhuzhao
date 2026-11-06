@@ -111,7 +111,7 @@
 
 ## 7. 影响面
 
-- **主仓**：`state_machine.go` / `transition_service.go` / `timeout_scanner.go` / `type_admin.go` + 新迁移（快照表）+ deploy 端点 + acceptance 扩档；引擎子包边界维持 03 号 A.6 既定（engine 子包化已随 B3-1 落）。
+- **主仓**：`state_machine.go` / `transition_service.go` / `timeout_scanner.go` / `type_admin.go` + 新迁移（快照表）+ deploy 端点 + acceptance 扩档；引擎仍聚合于 `internal/service/ticket/` 领域目录，B3-1原定 `engine/` 子包收拢未实施。跨域依赖由 `internal/architecture_test.go` 的架构守卫约束；是否随B0整理包内边界另作实施评估，不把领域隔离等同于已存在专属engine包。
 - **前端仓**：`views/ticket/type` 拆解（对话框 → 向导页）、FlowGraphDesigner 增强（注册表/属性抽屉/边属性）、动态菜单注册新路由页、E2E 扩 spec；交付按六件门禁 + 推送后 CI 核实（AGENTS 纪律）。
 - **契约**：ticket-types API 扩展（deploy 端点、出边条件元数据形状）→ 主仓 `make swag` → 前端 `pnpm codegen`（codegen 接线面随批补）。
 - **文档**：03 号附录入表两行、phase6 README 硬前置注记、ADR-004 新立、**流程定义 JSON 契约文档**（`docs/api/flow-definition.md`，GRAPH.md 范式——states/transitions/transition_meta 全字段含条件·validator·post_actions·escalation·快照版本，B0-4 交付物）、前端仓 README/AGENTS 计数随批同步。

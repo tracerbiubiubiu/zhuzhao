@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B10：[现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)单批校准五组：引擎子包未实施、ADR轮询导航、标签非DomainEvent生产者、菜单只读及工单L1矩阵（台账失真P1）、旧部署导航。历史日志保留，L-5主体仍开放；仅文档，不以本批宣称实现全覆盖，事实对齐后结束本轮抛光。
+
 > 2026-11-06 B06代码复验：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md) F05–F10在固定联合12401aa通过完整integration529.99s、lint/unit/cover、原样253/0/0与81对往返、撤销13步/成员15步，代码层关闭；包括Cron专用锁会话、通知creator/actor拆分、intel单飞结果。原d38夹具污染失败已留证且未放宽原断言。新增F11/P1编辑与公开回复漏消息已修92adc20/联合1a99a25，完整复验进行中，未关单。主线未合，test app=f69未含F09–F11，dev不动。
 
 > 2026-11-06 B08阶段报告：[前端功能/交互/视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)登记10项：草稿作用域、旧会话异步覆盖、深链筛选、ID精度、旧提示、AL空态、键盘操作、表格挂载异常、离线图标与亮色对比度。均已在独立UI分支提交修复，最新c83a53d，固定产物完整六项门禁待收口，不提前关单。主仓联合12401aa固定全量门禁在跑，常驻test app=f69；AL/TR最新镜像已构建待换。未合main，整体覆盖仍进行。
@@ -103,7 +105,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
 | **组织** | 树形 CRUD、ltree 路径、move、成员管理、owner/成员角色、虚拟组、scope | ✅ Phase 1+2 | `internal/service/org_service.go` `org_delegation.go` |
-| **菜单** | CRUD、菜单树、权限码、前端数据 | ✅ Phase 1 | `internal/service/menu_service.go` |
+| **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级 Casbin RBAC（BFS 角色展开 + 超管通配） | ✅ Phase 1 | `internal/middleware/casbin.go` `internal/casbin/enforcer.go` |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
@@ -158,9 +160,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ### 权限码清单（Casbin seed 管理类）
 
-`user:create/update/delete/status/assign_role/assign_org/reset_password` ｜ `role:create/update/delete/assign_menu` ｜ `org:create/update/delete/move/member` ｜ `menu:create/update/delete`
+`user:create/update/delete/status/assign_role/assign_org/reset_password` ｜ `role:create/update/delete/assign_menu` ｜ `org:create/update/delete/move/member`
 
-> 工单操作不走静态权限码，走 **L2/L3 资源级动态判定**（create/read/update/close/assign/delete/comment/note）。
+> 上列仅为用户/角色/组织管理类速查，完整当前L1词表以 `menus`/`menu_apis` 迁移和路由目录为准。菜单生产写端点已退役，不再列菜单CRUD权限码。工单业务路由先过 **L1路由RBAC**（如ticket:list/create/update等），再过 **L2可见性/L3动作权**；cc/tags等已登记selfService的入口豁免L1业务码，仍由服务端检查读可见或update动作权，不能把自服务豁免推广到全部工单操作。
 
 ---
 

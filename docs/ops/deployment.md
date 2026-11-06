@@ -1,6 +1,8 @@
 # 部署指南（deployment.md）
 
-> **定位**：zhuzhao 单体服务的部署指南——环境要求、配置项、部署步骤、备份恢复、运维清单。对应 [phase3/08-ops](../phase3/08-ops.md)（Step 6）与 [phase3/11-deployment-split §2](../phase3/11-deployment-split.md)（档位 1：单体多副本为默认）。
+> **当前操作入口（2026-11-06校准）**：以[deployments/README.md](../../deployments/README.md)、[会话/故障runbook](../runbook.md)、[端口分配表](port-allocation.md)为准；构建工具链以根 `go.mod`，配置环境键以 `internal/config/config.go` 的 `Load`/BindEnv为准。下文为2026-09-02起步历史示例，含已过时env键、二进制命令和8080端口，**不可直接据此启动当前系统**；不为迁就旧示例改冻结配置基线。
+
+> **历史定位**：zhuzhao 单体服务的起步部署指南——环境要求、配置项、部署步骤、备份恢复、运维清单。对应 [phase3/08-ops](../phase3/08-ops.md)（Step 6）与 [phase3/11-deployment-split §2](../phase3/11-deployment-split.md)（档位 1：单体多副本为默认）。
 > **状态**：**已编写（2026-09-02，B10 补齐）**。
 > **标记约定**：`🚦` = 触发条件驱动；`⚠️` = 待拍板。
 

@@ -1,8 +1,10 @@
 # 菜单模块设计
 
+> **当前能力（Phase 4 W1起；2026-11-06核验）**：菜单词表和 `menu_apis` 由迁移维护，生产只提供菜单树/详情及用户菜单、权限码查询；运行时菜单CRUD/API绑定已退役，角色菜单分配仍可运行时进行。下文写接口、删除流程与旧DDL保留为Phase 1历史设计，不能作为当前可调用API。现行依据为[Phase4实施计划](../phase4/02-implementation-plan.md)的W1边界和[工程公约](../standards.md)的菜单迁移规则。
+
 > 模块代码（实际路径，W1 回标）：`internal/service/menu_service.go` + `internal/repository/menu_repo.go` + `internal/handler/menu_handler.go`（扁平文件制）
 >
-> 旧系统参考：`doc/module-assessment-2026-08/menu.md` + `dynamic-routing-research.md`
+> 旧系统参考树 `doc/` 已退役，不作为设计依据；下文历史示例以当前能力横幅为边界。
 >
 > 主键以 [phase1/07-menu.md](../phase1/07-menu.md) 为准（`BIGINT` + `code`）。
 
@@ -12,7 +14,7 @@
 
 **核心底座配套模块**。菜单管理 + 前端权限数据源。菜单是动态路由的核心，连接角色和 API 策略。
 
-> **菜单 ≠ 前端页面**：`menus` 表存路由/按钮**元数据**；Vue 组件在前端仓库。系统内置项由 **migration 种子** 写入；`POST /menus` 供管理员在「菜单管理」页**登记**增补项。见 [phase1/07-menu §菜单从哪里来](../phase1/07-menu.md#菜单从哪里来种子-sql-vs-登记-api)。
+> **菜单 ≠ 前端页面**：`menus` 表存路由/按钮**元数据**；Vue 组件在前端仓库。系统内置项由 **migration 种子** 写入；`POST /menus` 曾供管理员登记增补项，现已退役。历史设计见 [phase1/07-menu §菜单从哪里来](../phase1/07-menu.md#菜单从哪里来种子-sql-vs-登记-api)。
 
 与其他模块的关系：
 - 被 `role` 引用（角色-菜单分配）
@@ -64,7 +66,7 @@ CREATE TABLE menu_apis (
 
 ---
 
-## 3. 接口定义
+## 3. 历史接口定义（生产写入口已退役）
 
 ```go
 type MenuService interface {
@@ -92,7 +94,7 @@ type MenuService interface {
 
 ---
 
-## 4. 核心流程
+## 4. 历史核心流程（写流程不代表当前生产能力）
 
 ### 4.1 菜单类型层级约束（借鉴旧系统）
 

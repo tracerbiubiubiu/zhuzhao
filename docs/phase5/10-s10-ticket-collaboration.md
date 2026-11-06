@@ -115,6 +115,8 @@ S6 后实施。批次：①抄送（含 L2 特例通道 + 表形态拍板）→ 
 
 ### A.1 模块架构与代码落点
 
+> **2026-11-06路径校准**：本节 `engine/` 为原计划目标路径，当前 `TimeoutScanner` 实际位于 `internal/service/ticket/timeout_scanner.go`、仍属 `package ticket`；专属engine子包未实施。现行领域守卫与后续包内整理按03号A.6实态注。
+
 ```
 internal/service/ticket/
   cc_service.go                    # 抄送（B10-1）：加/删/列表 + L2 特例支生效点
