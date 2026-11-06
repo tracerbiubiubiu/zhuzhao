@@ -375,10 +375,11 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 	return updatedAt, nil
 }
 
-// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004
-func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, id int64) error {
+// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004。
+// 复用写入执行器：事务内不能再次向池取连接，且定性必须能看见事务自身写入。
+func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, exec rowExec, id int64) error {
 	var status string
-	err := r.db.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
+	err := exec.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errcode.ErrTicketNotFound
 	}
@@ -411,7 +412,7 @@ func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64,
 		return fmt.Errorf("update ticket status: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }
@@ -426,7 +427,7 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 		return fmt.Errorf("update assigned_to: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }

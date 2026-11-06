@@ -71,7 +71,9 @@ CREATE INDEX idx_user_orgs_org_role ON user_orgs (org_id, org_member_role)
 | `admin` | 10 | 只能增删 **member**；不能升降 admin/owner |
 | `member` | 20 | 默认；使用资源，无成员管理权 |
 
-**EffectiveOrgPriority(user, org)** = 若 `user_id ∈ org.owner_user_ids` 则视为 `owner`（priority 1），否则取 `user_orgs.org_member_role` 对应 priority。
+**EffectiveOrgPriority(user, org)** = 若 `user_id ∈ org.owner_user_ids` 则视为 `owner`（priority 1），否则仅取有效成员行（`expires_at IS NULL OR expires_at > NOW()`）的 `org_member_role` 对应 priority；已到期的成员行不授予委托权限。
+
+> 2026-11-05 B09：成员有效期同样约束组内管理、工单单条委托与列表委托，不能仅约束透明读/scope/BFS。显式 `owner_user_ids` 是独立权源，仍按既有规则生效；撤销这类 owner 须修改 owner 列表。到期不自动删除关系行，管理端仍可查询/清理存量关系。
 
 > `owner_user_ids` 与 `org_member_role=owner` **双轨对齐**：`SetOwners` 成功时，对每个 owner 确保存在 `user_orgs` 行且 `org_member_role='owner'`（无行则 INSERT，有行则 UPDATE）。
 
@@ -246,6 +248,7 @@ EXISTS (
   WHERE uo.user_id = $user
     AND uo.org_id = T.org_id
     AND uo.org_member_role IN ('admin', 'owner')
+    AND (uo.expires_at IS NULL OR uo.expires_at > NOW())
 )
 -- 或 user_id = ANY((SELECT owner_user_ids FROM organizations WHERE id = T.org_id))
 ```

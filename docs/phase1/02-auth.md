@@ -43,13 +43,13 @@
   ├── 签发 Access Token (AT)
   │   ├── 算法：HS256
   │   ├── TTL：30min
-  │   ├── Claims：userID, username, jti (唯一 ID)
-  │   └── 不存 Redis（纯无状态）
+  │   ├── Claims：userID, username, jti (唯一 ID), pwe（签发密码纪元）
+  │   └── 不逐枚存 Redis；请求时查黑名单/禁用标记/地板/当前密码纪元
   │
   └── 签发 Refresh Token (RT)
       ├── 算法：HS256
       ├── TTL：7d
-      ├── Claims：userID, jti, deviceID
+      ├── Claims：userID, jti, deviceID, pwe
       └── 存 Redis：key = "refresh:{userId}:{deviceId}", value = tokenHash
 ```
 
@@ -106,7 +106,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 
 参考 WorkOS、Authgear 等身份平台的实践：
 - RT 本质是服务端可控的会话凭证，不同于无状态 JWT
-- 存储 RT 不破坏 JWT 无状态性，因为 AT 仍然是无状态验证
+- AT 不逐枚存储，但现行撤销校验依赖 Redis 状态；不能把签名本地可验等同于鉴权完全无状态
 - RT 的核心需求是**可撤销**和**可轮换**，这必然需要服务端存储
 
 #### Phase 1 决策：仅用 Redis
@@ -119,11 +119,7 @@ Phase 1 **允许用户多设备同时登录**，但不提供设备管理 UI。
 4. **Phase 1 流量低**：单实例部署，Redis 不可用的概率极低
 5. **持久化兜底**：配置 Redis AOF（`appendfsync everysec`），最多丢 1 秒数据
 
-**Redis 重启的影响**：
-- 所有 RT 失效，用户刷新 AT 时返回 401，前端跳转登录页
-- AT 仍然有效（无状态 JWT），在 AT 过期前用户无感知
-- AT 短期有效（**30min**），影响窗口有限
-- **结论**：可接受的故障，不值得为 Phase 1 引入 DB + Redis 双写复杂度
+**Redis 状态丢失的影响**（正常保留持久数据的重启不等于丢失）：RT 槽位丢失使刷新失败；黑名单/拒绝标记/地板/纪元丢失可能使尚未过期的旧 AT 再次可用，尤其旧纪元 0 AT 与缺键兼容值相同。不得宣称「丢 Redis 仅导致重登」。灾难恢复须保留完整会话状态，或同时轮换 JWT secret（所有 AT/RT 重登），或在隔离访问期间等待旧 AT 全过期；AOF everysec 仍存在最近写入丢失窗口。
 
 #### Phase 2 演进方向
 
@@ -184,27 +180,30 @@ return 0     -- 未超限，继续校验密码；若最终失败无需再 INCR�
 
 **Redis 故障**：`EVAL` / `GET` 失败 → **503 + 10008**（fail-close，不放行登录）。
 
-> RT 刷新仍用 `GetDel`（不必 Lua）；登录限流与 RT 轮换是不同场景。
+> 早期演进设想曾为单独 `GetDel`；现行 C3 必须用 Lua 将 `GetDel` 与纪元读取原子化，见上文刷新流程。登录限流是另一条 Lua 链路。
 
 ### 会话吊销（禁用/删除用户；改密/重置密码复用同机制）
 
-JWT 无状态，仅靠 AT 黑名单无法覆盖「该用户所有设备上的未过期 AT」。Phase 1 用 **AT 拒绝标记 + 删除全部 RT** 双轨吊销：
+仅靠逐枚 AT 黑名单无法覆盖「该用户所有设备上的未过期 AT」。现行使用 **AT 拒绝标记 + 密码纪元递增 + 删除全部 RT**：
 
-> 触发场景：**禁用/删除用户**（全部路径，含最后 superadmin 守护分支）、**用户修改密码**（F-4：吊销全部设备后为当前设备重新签发）、**管理员重置密码**。注意改密场景签发新 Token 前须 `DEL user:disabled:{userId}`，否则新 AT 会被自己刚设的拒绝标记拦截。
+> 触发场景：**禁用/删除用户**（全部路径，含最后 superadmin 守护分支）、**用户修改密码**（F-4：吊销全部设备后为当前设备重新签发）、**管理员重置密码**。登录/改密只允许在纪元仍等于本次认证/撤销快照时原子清除 `user:disabled`，不能借用后来撤销的纪元。
 
 | 路径 | 机制 | 客户端表现 |
 |------|------|------------|
 | **AT** | `SET user:disabled:{userId}`，JWT 中间件 `EXISTS` | 带旧 AT 访问鉴权路由 → **403 + 30003** |
+| **AT 纪元** | AT `pwe` 与 `user:pw_epoch:{userId}` 严格相等；同秒也区分 | 拒绝标记清除后旧 AT 仍 **401 + 20003**；新 AT 可继续使用 |
 | **RT** | `DEL refresh:{userId}:*`（该用户全部设备） | `POST /auth/refresh` → **401 + 20004**，**不得**签发新 AT/RT |
 | **Refresh 兜底** | Refresh 内再查 `user:disabled` 或 DB `status` | 同上 401 + 20004（与 RT 已删同一对外语义，防 DEL 部分失败） |
 
 ```
 禁用或删除用户成功后（事务提交后，Redis 副作用）：
   SET user:disabled:{userId} 1  EX AT_TTL（30min，覆盖已签发 AT）
+  INCR user:pw_epoch:{userId}    （无 TTL；AT/RT 均绑定签发纪元）
   DEL refresh:{userId}:*          （该用户全部 RT，禁止再用 RT 换新 AT）
 
 JWT 中间件（鉴权路由）在黑名单检查之后：
   EXISTS user:disabled:{userId} → 403 + ErrUserDisabled（30003）
+  AT.pwe != 当前纪元 → 401 + ErrTokenInvalid（20003）
 
 AuthService.Refresh（/auth/refresh，无 JWT）在 GetDel 之前：
   EXISTS user:disabled:{userId} 或 users.status=禁用 → 401 + ErrRefreshTokenInvalid（20004）
@@ -214,7 +213,15 @@ AuthService.Refresh（/auth/refresh，无 JWT）在 GetDel 之前：
 > **登录 vs 已签发 AT vs RT**：  
 > - **登录时** `status=禁用` → **401 + 20001**（与密码错误同文案，防枚举）。  
 > - **已登录后**管理员禁用 → 旧 **AT** → **403 + 30003**；旧 **RT** → **401 + 20004**。  
-> - 解禁后登录成功 → `DEL user:disabled:{userId}`。
+> - 解禁后登录成功 → 在签发快照纪元仍匹配时清标记；旧 AT 不因清标记复活。
+
+#### B02-F01 / R01 纪元补强与兼容边界（2026-11-05）
+
+库侧 v0.4.3 已发布，主仓 go.mod 正式 pin，提供 AT 密码纪元签发 API；不用临时 replace/go.work 代替正式依赖。应用候选在 GOWORK=off 下 lint、单元、集成、覆盖率门禁及隔离环境原样四档验收 253/0/0、81 对迁移往返通过，另经真实 API 的 13 步撤销生命周期验证。移除纪元校验、凭据重读、全局撤销优先顺序三类变异各 8/8 稳定失败；固定提交独立重建的闭环证据见 B02 审计报告，部署状态须与代码验证状态分别核对。
+
+`auth_service.go` 的 `Login` 在读取纪元后重读用户凭据并校验密码，避免旧密码校验结果绑定新纪元；`UpdatePassword` 先完成全设备撤销再拉黑当前 AT，避免单条黑名单写失败跳过纪元推进；使用本次撤销 INCR 的返回值，并重读确认密码/状态后有条件清标记。`issueTokenPair` 为 AT/RT 注入同一快照；Refresh 使用消费时刻的纪元，之后即使发生撤销，新签 AT 也不会幸存。`jwt.go` 的 `JWT` 逐命令检查 Redis 错误；纪元缺键仅为 0，损坏/负值/故障为 503。文件 cookie 经 FileAuth 复用同一 JWT 判定；PAT 的既有独立语义不变。
+
+旧 AT 无 pwe 按 0 解析：当前纪元为 0 的用户保持可用，已有非零纪元的用户须换取新 Token/重新登录。秒级 `at_min_iat` 保留兼容，不能单独承担撤销安全。发布须先使含新 API 的 utils 正式版本可解析并更新主仓 pin，再替换所有旧鉴权实例，混合新旧读写实例不能宣称修复生效；回滚旧鉴权代码会重新暴露原缺陷。候选验证中的临时 go.work 不是发布或正式 pin 的证据。
 
 ### Redis 故障策略：fail-close
 
