@@ -1,5 +1,7 @@
 # 端口分配表（全生态权威——zhuzhao / taskrunner / activelist / zhuzhao-ui）
 
+> **2026-11-06当前校正**：taskrunner容器/宿主监听均为既定18080，冻结yaml与Dockerfile已一致；兄弟仓生产compose探针、说明及env-only默认的8080残留已由独立修复eb3c0c0对齐并实测healthy（B07-F11）。下方2026-11-02“容器8080维持”仅保留历史时点，已失效，不能作为当前端口依据；无新增宿主端口。
+
 > **定位**：全仓端口分配唯一权威。新增服务、新增端点、新增测试基础设施先查本表登记再取号——防端口冲突（所有者 2026-10-26 发起）。
 >
 > **三原则**：
@@ -110,3 +112,4 @@ BASE_URL=http://localhost:33334/api/v1 HEALTH_URL=http://localhost:33334/health/
 | 2026-10-29 | **vite 端口事故批**：10/25 遗留 vite 占 4000 致全部实例 auto-increment 漂移 4001（四天未察觉——E2E reuseExistingServer 一直打旧实例，同仓代码同源未炸属侥幸）；QQ 又抢注 127.0.0.1:4001 IPv4（specific 绑定压过 vite 通配绑定）致浏览器空响应。整改：ui 仓 vite.config +strictPort（显式失败替代静默漂移）+VITE_PORT 覆盖口（对齐本表原则 1）；冲突表修正「无害自动避让」证伪口径 + 新增 IM 动态端口应对行 |
 | 2026-11-02 | **activelist 8080→18081 全形态迁移**（所有者拍板：8080 宿主高危冲突口）：activelist fa72f2e（listen 默认/EXPOSE/compose.prod healthcheck/文档 9 处）+ zhuzhao 同批（网关 target×2/deployments README/本表两行）；taskrunner 容器内网 8080 维持（零宿主冲突面，18080 对齐属可选后续） |
 | 2026-11-03 | 「宿主形态的域名解析」节改写为 **GATEWAY_AL_TARGET env 注入现行机制**（旧 /etc/hosts 别名 + APP_CONFIG 备用两解法降级为历史形态注记；宿主 8080 旧口残留句同步 18081）；变更记录表 10-29/11-02 两行字面 `\n` 断表修复（11-02 行此前渲染在表外） |
+| 2026-11-06 | **B07-F11审计校正**：taskrunner生产探针/部署说明/env-only默认对齐既定18080（独立修复eb3c0c0，实际生产compose原unhealthy→修复healthy）；2026-11-02旧“容器8080维持”口径失效，历史行保留。冻结config与当前端口分配不变，无新增宿主映射。 |

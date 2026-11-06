@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B07增量：[兄弟服务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)扩至F01–F11（含既有panic两债去重）；AL导入与TR delivery/panic固定门禁关闭，网关本地超限现413、AL通用5xx已闭环；TR生产compose探针18080修复eb3c0c0独立实际healthy。仅test兄弟运行已升级AL19a4c1d/TR5e3f5f3，二进制SHA和迁移已核，app仍f69/dev不动。utils Transport读错Close修复cd759a0仅库分支，消费者pin未升，明确保留承接状态；逻辑备份恢复已实测，本轮未跑PITR。
+
 > 2026-11-06 B10：[现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)单批校准五组：引擎子包未实施、ADR轮询导航、标签非DomainEvent生产者、菜单只读及工单L1矩阵（台账失真P1）、旧部署导航。历史日志保留，L-5主体仍开放；仅文档，不以本批宣称实现全覆盖，事实对齐后结束本轮抛光。
 
 > 2026-11-06 B06代码复验：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md) F05–F10在固定联合12401aa通过完整integration529.99s、lint/unit/cover、原样253/0/0与81对往返、撤销13步/成员15步，代码层关闭；包括Cron专用锁会话、通知creator/actor拆分、intel单飞结果。原d38夹具污染失败已留证且未放宽原断言。新增F11/P1编辑与公开回复漏消息已修92adc20/联合1a99a25，完整复验进行中，未关单。主线未合，test app=f69未含F09–F11，dev不动。

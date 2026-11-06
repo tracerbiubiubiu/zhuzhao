@@ -215,7 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B09（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；root联合12401aa固定全量门禁中（前轮d38新增夹具污染已独立修正，原失败保留）；test app=f69、TR=a130、AL原版，最新兄弟镜像待换，RustFS59000自有/dev9000不动。B08正式10项已落档，UI c83a53d固定六项门禁中；B07 AL联合19a4c1d固定全PG过，TRdelivery ed1a40e固定全门禁过，panic后笔待验。R01/B09/storage/pool固定代码关单。utils9ed38f7仅codex分支已push；不合main，UI原仓.gitignore他方在途排除 | 文档phase5和修复codex分支均未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（阶段落档） |
+   | Codex：全面审计 / R01、B06–B10（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；root联合12401aa完整门禁过，最新1a99a25（F11消息接线）固定完整门禁中；test app=f69（未含F09–F11）、AL=19a4c1d、TR=5e3f5f3，RustFS59000自有/dev9000不动。B07正式11项，production探针eb3c0c0独立healthy，utils cd759a0库修复未升consumer。B08前端f104完整41新轮中（前轮39/2保留）；B10五组文档校准6199ef6。当前新F12嵌套审计脱敏另支最小修中，未冒称完成。UI原仓.gitignore他方在途排除，不合main | 本轮文档和修复codex分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（阶段增量） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 
