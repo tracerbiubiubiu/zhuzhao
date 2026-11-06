@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B11：[当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)以全81迁移独立PG、真实BFS/Casbin/router八轮核验：19主体×170case，共25840请求及5440次ServeHTTP交叉，差异0；124条菜单API关联=116唯一端点，44豁免按实际链分类。签名面/默认禁用及catalog反例均通过，无新增P0/P1。不把零handler哨兵500算业务成功，L2/L3仍看各批证据；旧14号仅时点先例。自有资源已清，未改共享环境。
+
 > 2026-11-06 B06-F12/P1：[审计嵌套数组漏脱敏](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)真实请求/响应探针在原5c与当前92各八红，独立f1ff68a修复八绿/变异红；已汇入7389ed7冻结全门禁中。F11同轮待复验。前笔1a99完整integration因临时RustFS启动等待超时失败，其它包过；相同源定向诊断后来过，具体启动延迟未归因，不记该轮绿。124前笔全量绿范围保留，主线未合、常驻test app仍f69。
 
 > 2026-11-06 B07增量：[兄弟服务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)扩至F01–F11（含既有panic两债去重）；AL导入与TR delivery/panic固定门禁关闭，网关本地超限现413、AL通用5xx已闭环；TR生产compose探针18080修复eb3c0c0独立实际healthy。仅test兄弟运行已升级AL19a4c1d/TR5e3f5f3，二进制SHA和迁移已核，app仍f69/dev不动。utils Transport读错Close修复cd759a0仅库分支，消费者pin未升，明确保留承接状态；逻辑备份恢复已实测，本轮未跑PITR。

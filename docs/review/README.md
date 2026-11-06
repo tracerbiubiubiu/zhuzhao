@@ -10,6 +10,7 @@
 - [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close消费端未承接，AL静默覆盖按P0。
 - [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十项有证据的功能/交互/视觉差距、分支修复与77图观察，最终固定产物完整六项门禁待收口，不宣称全面通过。
 - [B10 现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)：五组设计/导航事实校准，含菜单及工单L1速查P1失真；历史留存，L-5主体未销账。
+- [B11 当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)：19主体八轮共25840矩阵请求/5440交叉，差异0；权限行数与端点数、L1到达与业务成功分别计，不替代L2/L3。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
