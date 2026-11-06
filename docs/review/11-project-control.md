@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B07阶段报告：[兄弟服务与库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)登记AL池P1/导入体积P1/版本复用静默覆盖P0、TR空死信P1/同attempt旧delivery终态覆盖P1。AL池156ff03、revision afc3700、TR死信a1309cc固定代码复验关闭；import82290bc固定复验中，delivery fence修复中。TR仅test已升，AL运行仍待承接；utils9ed38f7仅codex分支推送供正式pseudo-version，未合main/发tag。网关1MB与运维直连大导入边界分列，整体覆盖未收口。
+
 > 2026-11-06 B06续批：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)正式登记F05/P0（同状态预检快照权限失效）、F06/F07/P1（无目标耗水位/零额度仍发）、F08/P1（Cron会话锁占业务池）。前三项fb0fff2/e329db0已进入独立联合d38f10f并仅部署test，原样253/0/0与81对往返通过、完整集成待收尾，未关单；Cron另批修复中。新增代码未合main。
 
 > 2026-11-06 B06 固定复验：[存储与事务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) F01/F04 经真实 RustFS 确认原实现会丢实物，按数据损坏升 P0；F01/F02/F04 在独立分支 `d07f560`、既有 BK11 P2-1（本轮动态定性 P1）在 `475b7ac` 代码层复验关闭。两固定快照各通过 lint/单元/完整集成/覆盖率、原样253/0/0与81对往返；专项八轮及变异稳定红，真实对象探针原两红/修复两绿。B-11/G-3补分支承接状态，dbtx总体仍待实施。**修复未合main、常驻app未升级，全面审计仍在继续**。
