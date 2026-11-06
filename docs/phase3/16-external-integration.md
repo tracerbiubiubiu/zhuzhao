@@ -1,5 +1,7 @@
 # 16 - 外部服务集成配套：taskrunner / activelist（zhuzhao 侧能力清单与实施细排）
 
+> 2026-11-06 ECO-B07-F06网关错误分档：维持既有1MiB浏览器入口上限；本地MaxBytesReader超限须返回413/10001且不访问上游，不能误报502/上游不可用。未知Content-Length同样按实际读取限体；真正上游连接故障仍502/10008。直连AL运维大导入独立，不放宽此前拍板。候选专项/变异八轮已过，最新固定联合门禁与运行回归待完成。
+
 > **定位**：M-E（taskrunner）与 M-A（activelist）的契约已于 2026-09-03 在**外部独立仓库**定稿。本文把「**zhuzhao 需要提供什么能力**」归拢为：契约要点摘要 + 代码现状对照 + 能力清单（M-E 线 / M-A 线）+ 里程碑对齐 + 迁移/权限码规划 + 待拍板项——供 zhuzhao 侧排期与实现，防跨仓库工作项遗漏。
 > **契约 SSOT**：taskrunner = taskrunner 仓库 `docs/taskrunner.md`（配套清单 `docs/zhuzhao-integration.md`）；activelist = activelist 仓库 `docs/ADR-003-integration-contract.md`。**排期 SSOT 仍为 [13-implementation-plan](./13-implementation-plan.md) §1**；权限前置 SSOT = [design-decisions §25.5](../design/design-decisions.md)。
 > **状态**：已编写（2026-09-03，基于两仓库契约文档 + zhuzhao 全仓代码盘点）。**编号约定**：本文 E1–E6（taskrunner 配套，对齐 zhuzhao-integration §2 编号）、D1–D5（activelist 能力需求，与 ADR-003 SSOT 同名同义）、P1–P7（待拍板）均**仅在本文范围内引用**。

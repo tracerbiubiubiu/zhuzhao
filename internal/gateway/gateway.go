@@ -9,6 +9,7 @@ package gateway
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -103,6 +104,17 @@ func buildMount(u Upstream, target *url.URL, ak string, sk []byte) (proxyMount, 
 			RequestID: func(req *http.Request) string { return req.Header.Get("X-Request-ID") },
 		},
 		ErrorHandler: func(w http.ResponseWriter, req *http.Request, perr error) {
+			var tooLarge *http.MaxBytesError
+			if errors.As(perr, &tooLarge) {
+				slog.Warn("gateway: request body too large", "prefix", u.Prefix, "limit", tooLarge.Limit)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				_ = json.NewEncoder(w).Encode(response.Response{
+					Code: errcode.ErrInvalidParams.Code, Message: "请求体超过网关上限，请缩小后重试",
+					RequestID: req.Header.Get("X-Request-ID"),
+				})
+				return
+			}
 			slog.Warn("gateway: upstream unreachable",
 				"prefix", u.Prefix, "target", u.Target, "err", perr)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
