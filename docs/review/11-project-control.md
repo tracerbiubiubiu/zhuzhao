@@ -1,6 +1,6 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-06 B14/P0开放**：[资料写入覆盖账号安全状态](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)在固定b443（已含R01）实际服务/PG81迁移/Redis各八轮确认：在途UpdateProfile把管理员禁用或强改标记写回旧值，后续真实Login+JWT受保护HTTP200；六顺序/版本控制正常，旧AT22/22仍拒绝，区别于R01旧AT复活。根因为通用资料Update回写安全字段而专用安全写不增version。独立codex修复中，未合main/部署，不能沿用738旧全绿称当前所有P0已清。
+> **2026-11-06 B14/P0修复待联合验收**：[资料写入覆盖账号安全状态](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)原固定b443各八轮确认、旧AT22/22仍拒绝；独立修复f917c64已移除资料SQL的安全字段回写并RETURNING当前值，个人/管理员两入口×两场景×八轮共32场通过，原SQL及三独立变异各八红，lint/unit/定向race通过。已按路径承接联合ba3ecb6，完整integration/cover/acceptance未跑，未合main或部署；不能沿用738旧全绿称当前所有P0已清。
 
 > **2026-11-06后续实现复验**：[B06增量](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)登记F13导出XML/临时文件与F14设置快照修复50cad5e/6d788d0，专项通过、联合门禁待新冻结；F16导出并发越上限/计数失真已8轮确认，F15字段校验嵌套池继续独立验证。[B12错误码登记](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)确认56个当前定义漏登记及单向守卫假绿，4da89fa已修并固定专项通过，未完成组合验收。B08-F12后端Swagger对象元数据bc245ed已固定lint/unit/八轮专项通过，前端绑定继续；不以旧全门禁代销新问题，未合main。
 
@@ -322,7 +322,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | B08前端 | f104固定六件门禁和41/41通过；F13长URL61已test承接；F12后端bc245及UI9f76固定契约/类型专项过，F14候选324已提交 | 当前test仍61；9f76未部署、F14动态与新组合完整41未跑，原dev b205保留已知异常，不声明全站可访问性认证 |
 | B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，联合完整门禁未完成；L6内容完整性未提前关单 |
-| B14资料/安全状态 | P0开放：两类并发各8/8覆盖禁用/强改，后续新登录/JWT200，六控制正确 | R01旧AT仍22/22拒绝；新资料写白名单修复独立进行，未合main/部署或完成新门禁 |
+| B14资料/安全状态 | P0修复f917c64已提交，原两类各八红，最终32场绿，原SQL与三变异各八红 | 已承接联合ba3ecb6；全仓integration/cover/acceptance未跑，未合main或部署，保持待复验 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 候选尚未真实启停/构建及完整门禁，未合main；外部审计资源保留，不以healthy或命令桩代替完整业务验收 |
 | 文档与历史债 | B10五组事实校准已提交，全文和101编号债逐行核对继续 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归 |
 

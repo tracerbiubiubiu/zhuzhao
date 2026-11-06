@@ -2,11 +2,11 @@
 
 ## 结论、范围与基线
 
-**ECO-20261104-B14-F01 / P0，开放：在途个人资料更新能覆盖管理员刚写入的禁用状态或强制改密标记，使后续新登录重新通过。** 采用本项目“安全/门禁失效”分级；不是匿名访问、密码回滚或R01旧令牌再次复活。两场景同根记一项。
+**ECO-20261104-B14-F01 / P0，修复已提交、联合门禁待验：在途个人资料更新能覆盖管理员刚写入的禁用状态或强制改密标记，使后续新登录重新通过。** 采用本项目“安全/门禁失效”分级；不是匿名访问、密码回滚或R01旧令牌再次复活。两场景同根记一项。
 
 固定受审实现 **`b4435022d00ee789b9a62f74036824bd7d3791b7`**，包含R01纪元修复。UserService/UserRepo相关路径与原主仓一致，Auth/JWT采用该完整固定源码，不能混用主工作树的修复前认证。随后联合候选b306eed的相关路径未变。实验使用独立PG全81迁移和Redis，全部账号为合成E8段；未写共享dev/test、E000001或真实业务数据。
 
-root从只读数据层复核发现候选后占用B14批，要求实际服务交错与认证结果验证；原始静态推断不单独计作P0证据。当前修复在独立codex分支准备，未合main、未部署或推送。
+root从只读数据层复核发现候选后占用B14批，要求实际服务交错与认证结果验证；原始静态推断不单独计作P0证据。修复现已在独立codex分支提交并承接到联合候选；尚未完成组合全门禁，未合main或部署。
 
 ## 根因与锚点
 
@@ -44,3 +44,16 @@ pgx QueryTracer只在生产UserRepo.Update的SQL即将发送前设置屏障，�
 首轮PG临时初始化服务器曾使健康探针过早成功，迁移未连接最终数据库；已保留失败日志并清理两只容器。正式轮改用TCP+SELECT1核最终库就绪；两轮四只资源均按精确ID+owner清理、inspect不存在。没有把初始化失败计作产品缺陷。
 
 该证明是实际服务写入和真实登录/JWT HTTP探针，不是完整HTTP资料请求并发压测。未来完整联合integration、acceptance、R01十三步及本批真实回归仍待执行；当前主线/开发原版/测试部署均未因此自动修复。全面审计继续，控制台和会话台账同步P0开放状态。
+
+
+## 修复提交与独立复验续记
+
+修复提交 **`f917c64242e08fdc59bd29179602148a9e8d00fd`**，分支 `codex/fix-user-security-state-consistency`，基于b306eed。实际挂点为 `UserRepo.Update`：资料SQL移除status和must_change_password写列，RETURNING回填它们的当前持久值；保留version CAS与既有10006映射。两个生产调用方 `UserService.Update` / `UpdateProfile` 共用此修复，管理员专用禁用/重置密码以及正常自主改密仍走原入口。根因修复没有新增全局锁、版本字段或依赖，也没有把密码hash列加入资料写。
+
+永久回归 `TestUserSecurityState_ProfileCannotUndoAdmin` 使用原生service TestMain的PG及独立真实Redis，实际管理员安全写、两个资料入口、AuthService登录与JWT HTTP链。两资料入口×两类安全写×8轮，共**32场通过**；验证安全状态保持、返回对象与DB一致、正常资料更新、专用恢复/改密、新令牌受限或正常可用、旧AT继续拒绝及旧资料CAS冲突。固定fixture在-race下通过；不是只核SQL或mock仓储。
+
+在最终同一fixture上，恢复原SQL、只恢复status回写、只恢复强改标记回写、仅移除安全字段RETURNING，分别八轮稳定失败。原SQL及三个变异断言均命中目标不变量；早期fixture的超时清理边界经同行指出后用sync.Once关闭release channel、有限context及缓冲结果通道修正，最终绿与变异全部重跑，未沿用旧收据。lint、完整单元及定向race通过；全仓integration、cover与acceptance尚待联合冻结轮，**不据此最终关闭P0**。
+
+root已独立核生产SQL、191行永久回归、交接收据与测试边界，并按显式路径承接为联合提交 `ba3ecb6dc643e529813198af97c8943245e7c500`。原生回归未改TestMain/迁移，联合候选尚未替换当前test app7389或dev原版。来源与联合提交均未合main；修复分支未推送。
+
+固定交接 `data-coverage/b14/repair-result.json` 列完整5文件hash、验证与清理；本批原探针四只容器已清，后续53只testcontainers逐一终止，owner标签残留0。证据留在忽略目录，报告及现行设计/控制台纳管。
