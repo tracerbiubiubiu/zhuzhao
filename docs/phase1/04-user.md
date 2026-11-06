@@ -601,6 +601,12 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 
 ---
 
+### 头像绑定与资料代际（2026-11-06，B06-F20）
+
+`internal/repository/storage_avatar.go` 的 `BindAvatar` 在原用户行锁事务内切换头像键时，同时递增 `users.version` 并更新 `updated_at`。已读取旧用户的 `Update` / `UpdateProfile` 随后写入须命中既有资料 CAS，否则返回 10006/409 要求重读，不能把已退役并删除的旧头像键恢复到 `users.avatar`。重绑当前同一键不推进代际，不制造无实际变化的资料冲突；失败绑定不改变代际。外链 URL 手填的既有公开契约保持，绑定请求不新增 version 参数。
+
+永久回归 `internal/service/avatar_profile_integration_test.go` 的 `TestUserAvatarProfileCAS` 覆盖个人/管理员两资料入口，绑定跨资料旧读、两方向顺序、同键幂等及 URL/拒绑控制。原根因与 B14 安全字段所有权不同：头像本身仍是合法资料字段，须由专用绑定写与资料写共用版本协议。该独立修复的全量联合门禁另由 root 固定组合承接，未合 main/部署。
+
 ## 测试用例
 
 ### Repository 层（testcontainers PG）

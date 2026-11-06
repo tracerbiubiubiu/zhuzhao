@@ -39,8 +39,13 @@ func (r *StorageRepo) BindAvatar(ctx context.Context, bucket, objectKey string, 
 	if _, err := tx.Exec(ctx, `UPDATE file_objects SET owner_kind = $2, owner_id = $3 WHERE id = $1`, id, model.FileOwnerUser, strconv.FormatInt(userID, 10)); err != nil {
 		return "", err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET avatar = $2 WHERE id = $1`, userID, objectKey); err != nil {
-		return "", err
+	// Avatar binding and metadata edits share the users.version generation.
+	// A profile read before this switch must fail CAS instead of restoring the
+	// retired old key. Rebinding the current key is a no-op for that generation.
+	if old != objectKey {
+		if _, err := tx.Exec(ctx, `UPDATE users SET avatar = $2, version = version + 1, updated_at = NOW() WHERE id = $1`, userID, objectKey); err != nil {
+			return "", err
+		}
 	}
 	var retired string
 	if old != "" && old != objectKey {

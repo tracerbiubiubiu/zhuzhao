@@ -215,6 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
+   | Codex：B06-F20 头像绑定/资料 CAS（独立 `codex/fix-avatar-profile-consistency`） | `storage_avatar.go`、`avatar_profile_integration_test.go` 与 phase1/04、phase5/05、11；原生TestMain自有PG（owner=ECO-20261104-B06-F20）及独立RustFS复验；过程证据归主仓 `.codex/audits/ECO-20261104/avatar-profile-consistency/`；root承接正式报告与最终联合门禁 | 本地修复提交待root承接；不合main/不推送，临时资源按精确归属清理 | 2026-11-06 |
    | Codex：ECO-B06-F19 通知偏好身份键（独立 `codex/fix-notification-pref-context`） | `notification_pref_handler.go` 两入口 + 真实 JWT/PG 集成回归；06/11 号同步。自有 testcontainers 动态 PG（owner=ECO-20261104-B06-F19-regression），不触 dev/test/Chrome；两入口专项各八轮通过，两类变异各八轮红，lint/完整单元通过；临时 PG 已清，联合验收由 root 承接 | 本独立分支 1 笔待 root 汇入，未推送；禁止合 main | 2026-11-06 |
    | Codex：B14 用户资料并发写安全状态（独立 `codex/fix-user-security-state-consistency`） | `internal/repository/user_repo.go`、`internal/service/user_security_state_integration_test.go`、phase1/04、review/11；过程证据归主仓 `.codex/audits/ECO-20261104/data-coverage/b14/`，root 负责正式报告与联合全门禁；不合 main、不推送 | 本地修复提交待 root 承接；独立测试容器随测试按归属清理 | 2026-11-06 |
    | Codex：B07-F10 utils 消费者升级（主仓/activelist 独立 `codex/fix-utils-transport-consumer`） | 仅两仓 go.mod/go.sum、主仓网关回归和必要文档；utils 远端修复 `cd759a0` 的不可变 pseudo-version，root 承接联合门禁。无共享环境/UI更换、不合 main、不推送 | 本地候选提交待 root 承接；过程收据归 `.codex/audits/ECO-20261104/data-coverage/b07-f10-consumer/` | 2026-11-06 |
