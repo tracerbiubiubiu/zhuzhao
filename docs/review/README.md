@@ -14,6 +14,7 @@
 - [B12 错误码登记与守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)：77当前定义补全、双向测试与四类稳定变异，联合门禁待验。
 - [B13 环境恢复与真实Chrome](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)：dev保卷恢复、测试准确镜像/端口及专属浏览器走查，启动修复与未覆盖边界分列。
 - [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终联合全门禁待验，未合main/部署。
+- [B15 接口/工具/迁移边界](../../deliverables/software-company/zhuzhao-ecosystem-audit-b15-contract-migration-boundaries-2026-11-06.md)：存储ID与Wire入口P2记账、定制引用回滚前置；撤销模板及MIG-S04运行P1候选，不把静态线索计作当前越权。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
