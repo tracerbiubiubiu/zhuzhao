@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-06 B06-F20/P1**：[头像/资料并发](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)在已含B14的ba3固定源实际两资料入口各八红，真实RustFS确认回指已deleted旧键；1550bbf同事务换键推进资料version/updated_at、同键幂等，72场race与物理两入口八轮绿、三变异稳定红，已承接6ad4cda。原生B14/F15/F17/F18/F19八轮已补（ticket首轮reaper初始化失败、同源单包重跑绿均留证），新组合完整门禁仍待，未合main/部署。
+
 > **2026-11-06 B14/P0修复待联合验收**：[资料写入覆盖账号安全状态](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)原固定b443各八轮确认、旧AT22/22仍拒绝；独立修复f917c64已移除资料SQL的安全字段回写并RETURNING当前值，个人/管理员两入口×两场景×八轮共32场通过，原SQL及三独立变异各八红，lint/unit/定向race通过。已按路径承接联合ba3ecb6，完整integration/cover/acceptance未跑，未合main或部署；不能沿用738旧全绿称当前所有P0已清。
 
 > **2026-11-06 B06增量承接**：F13导出XML/资源释放、F14设置全量快照、F15字典/MIME嵌套池、F16实际导出上限/计数、F17单边图、F18首次字段/版本同代、F19通知偏好身份键均已独立提交并通过专项/稳定变异，详细来源hash与边界见[B06流程报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)及[事务报告F15](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。联合ba3ecb6已按路径承接，完整integration/cover/acceptance待冻结；B12错误码4da与B08-F12后端bc245同样在候选，均不借旧门禁提前关单、未合main。
@@ -322,7 +324,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | B08前端 | test已承接9f76准确镜像；F12契约专项过，F13长URL八轮/变异过，F14真实Chrome与持久S2三态八轮/删除八红 | 新后端组合完整41待跑；f104旧完整成绩限旧组合，原dev b205保留F08异常；未合main/全站可访问性认证 |
 | B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，联合完整门禁未完成；L6内容完整性未提前关单 |
-| B14资料/安全状态 | P0修复f917c64已提交，原两类各八红，最终32场绿，原SQL与三变异各八红 | 已承接联合ba3ecb6；全仓integration/cover/acceptance未跑，未合main或部署，保持待复验 |
+| B14资料/安全状态 | P0修复f917c64已32场/关键变异八轮；联合ba3原生service八轮又32场过，旧AT仍拒绝 | 已承接联合；新组合全量integration/cover/acceptance待验，未合main/部署；头像同类F20/P1另1550bbf承接 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 候选尚未真实启停/构建及完整门禁，未合main；外部审计资源保留，不以healthy或命令桩代替完整业务验收 |
 | 文档与历史债 | B10五组事实校准已提交，全文和101编号债逐行核对继续 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归 |
 

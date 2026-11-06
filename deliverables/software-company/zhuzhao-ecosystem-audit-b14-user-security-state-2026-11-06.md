@@ -57,3 +57,10 @@ pgx QueryTracer只在生产UserRepo.Update的SQL即将发送前设置屏障，�
 root已独立核生产SQL、191行永久回归、交接收据与测试边界，并按显式路径承接为联合提交 `ba3ecb6dc643e529813198af97c8943245e7c500`。原生回归未改TestMain/迁移，联合候选尚未替换当前test app7389或dev原版。来源与联合提交均未合main；修复分支未推送。
 
 固定交接 `data-coverage/b14/repair-result.json` 列完整5文件hash、验证与清理；本批原探针四只容器已清，后续53只testcontainers逐一终止，owner标签残留0。证据留在忽略目录，报告及现行设计/控制台纳管。
+
+
+## 原生TestMain联合专项续记
+
+root固定联合ba3ecb6的709跟踪文件逐一gitblob相等，未使用DSN装配shim或overlay。三包race/count8命令中，service的B14八轮共32场通过（包358.441秒），handler的F19两个永久目标各八轮通过（包7.560秒）；ticket包在创建PG前因Testcontainers reaper状态created失败，未进入业务断言，故整条命令exit1，不记全绿。原日志/result完整保留，不能把包装脚本正常退出当Go测试通过。
+
+保持同一固定源码，仅单独重跑ticket包原生TestMain：F15/F17/F18目标race/count8通过，12.731秒；没有修改测试或放宽启动预算，原reaper已自行清除。两轮原有运行容器无移除/重启，源码都干净。证据 `evidence/ECO-20261104-joint/ba3ecb6-native-targets/{result.json,ticket-retry/result.json}`。该续记补齐原生装配证明，仍非最终组合全量integration/cover/acceptance，也不因一次重跑绿断言已修复测试初始化时序风险。
