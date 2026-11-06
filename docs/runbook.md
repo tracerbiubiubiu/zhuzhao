@@ -216,7 +216,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B13（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；test app7389/AL19/TR5e，UI已用61b35bf正确标记镜像重建（测试徽标），Chrome专属E800006通过；f104组合41/41为前次门禁，新61未重跑完整41。dev原卷恢复，宿主API33333/AL18081/TR18080/UI4000均就绪；原UI b205仍有B08-F08已知异常。B13环境编排修复在独立分支，root独占共享环境/Chrome，外部cmpfull及未知容器不清理。全文/债与总报告继续，原UI .gitignore他方在途排除，不合main | 本轮文档和codex修复分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（环境恢复与Chrome实查） |
+   | Codex：全面审计 / R01、B06–B13（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；test app7389/AL19/TR5e，UI已用61b35bf正确标记镜像重建（测试徽标），Chrome专属E800006通过；f104组合41/41为前次门禁，新61未重跑完整41。dev原卷恢复，宿主API33333/AL18081/TR18080/UI4000均就绪；原UI b205仍有B08-F08已知异常。B13启动760候选已固定19桩回归过，完整门禁待联合；F15/F16各自owner独立PG随机端口在验，不写共享dev/test；UI9f76仅离线封装待root统一Chrome窗口。root保留共享环境/Chrome调度，外部cmpfull及未知容器不清理。全文/债与总报告继续，原UI .gitignore他方在途排除，不合main | 本轮文档和codex修复分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（环境恢复与Chrome实查） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 

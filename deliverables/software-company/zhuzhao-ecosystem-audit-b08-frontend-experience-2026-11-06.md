@@ -1,5 +1,7 @@
 # 生态全面审计 B08：前端功能、交互、视觉与实践（阶段报告，2026-11-06）
 
+> **契约/体验后笔**：后端对象元数据 `bc245edfdcd3d2eabf4a64b84e7c34aa92c298ea` 已由root固定698文件零差异复验：lint3.858s、unit10.518s、schema专项race八轮2.575s通过，工作树净。前端F12窄绑定已提交 `9f76a1b1eba80434107d1797e9b7401aa0ef6623`，parent为F14暗按钮候选 `324bd5fba0806b45d024237b45598298c96582c1`；前端代码/类型回归已过，尚未部署或完成新组合浏览器门禁。F12按固定Swagger仅对custom_data及assigned_to做明确兼容，supervisor仍源自生成契约；两路supervisor各八次类型变异均使实际页面/wire测试编译失败，新增null取消正向，单测增至227。F14仍等待fixed/移除规则Chrome动态验证；不因候选提交提前关单。当前test运行仍61b35bf，下方f104/61成绩不代销新版本。
+
 > **同日后续增量**：F13已独立提交 `61b35bf75596c79bf42c7c7d26544ac584716ba2`，长描述 scoped `overflow-wrap:anywhere`；原八红/修复八绿/移除规则八红，S10与基础五项通过。root已将其干净archive重建为正确版本镜像并明确测试徽标，实际Chrome通过登录、首页深链、列表、必填反馈、任务记录与AL空态代表走查，1280/1024整页未见横溢；F14暗按钮仍复现，F12尚未接线。新61镜像未重跑完整41，不能借用下文f104整套成绩为新产物背书。原dev b205实际Chrome仍报F08已知异常，修复源未合main。见[B13环境/Chrome记录](./zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)；以下“F13未修/CUA不可用/旧镜像标签”均为之前批次时点，原证据保留。
 
 ## 结论与范围

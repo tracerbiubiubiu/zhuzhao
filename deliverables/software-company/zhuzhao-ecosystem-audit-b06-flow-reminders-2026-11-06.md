@@ -1,5 +1,7 @@
 # 生态审计 B06 续批：流程快照、提醒与调度（2026-11-06）
 
+> **后续实现增量**：新增F13/P1导出XLSX收尾/临时文件、F14/P1多键设置快照、F16/P1导出计数并发窗口，详末节；F13/F14修复各自专项通过，完整联合门禁待新组合，不能用738既有全绿关闭新增问题。F15事务字段校验嵌套取池正在独立PG核验，先不混入已闭范围。当前test app实际7389、UI61，dev已按原工作树保卷恢复；旧“test f69/dev不动”是之前时点，不代表现在。全面审计继续，未合main。
+
 > **当前结论（2026-11-06）**：F05–F10已在独立联合快照 `12401aa52d5fa8842dd944b9366917b19ae7775e` 固定重建，通过 lint、完整单元、完整集成529.99s、cover、原样验收253/0/0和81对迁移往返，以及真实撤销13步/成员生命周期15步，代码层复验关闭。F11漏通知与F12连续数组审计漏脱敏已在最新联合7389ed7固定全量门禁通过，代码层关闭；前笔1a99临时RustFS初始化超时失败仍保留，详末节。未合main；常驻test app=f69，只覆盖其中部分修复，dev不动。以下旧“待复验”段落保留验证过程时点，不代表当前状态。
 
 ## 范围与基线
@@ -130,3 +132,34 @@ P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索
 当前默认build标签总覆盖率20.4%；未与原5c作同口径归档对比，不报增幅，也不把integration测试算进该数字。验收专属栈清理成功；运行期间另一审计B11新增其自有PG/Redis，快照仅多这两容器、无移除/重启，不冒称容器集合完全不变。
 
 常驻test app已升级7389，容器内二进制SHA与image ID逐一匹配，AL/TR/UI/RustFS和dev的ID/启动时间保持；UI f104同一产物在新组合完整41例152.039秒全过。仅测试部署，**未合main、未把分支修复声明为生产发布**。旧1a99启动超时仍按未知初始化时序风险保留，后续绿不回写原失败。
+
+
+## B06-F13 / P1：导出工作表XML未收尾，spill临时文件未释放
+
+原5c与最新738的 `TicketHandler.Export` 字节一致。原锚点：[ticket_export.go 的 Export / NewFile / ExportStream / Write](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/handler/ticket_export.go#L54)。设计phase5/10 §A.6–A.7要求逐行编码及文件可读；原TestB105只收Service行集，没有检查最终XLSX。
+
+真实Gin handler→Service→隔离PG→XLSX ZIP中sheet1.xml，空表/一行/600行均严格XML解析unexpected EOF，原有效八轮XML共24次失败。excelize v2.11.0的Write不自动调用StreamWriter.Flush；其OpenReader/GetRows宽容解析仍可能返回行，因此不声称全部客户端打不开或数据完全丢失。600×32760B实物超过16MiB触发spill，成功、writer错误、取消后writer错误三路原样共24次临时文件残留。
+
+独立修复 **50cad5e32a7c3763edeec0b8ed010abe7ce5587e**，parent738、分支codex/fix-ticket-export-finalize-joint。锚点：[TicketHandler.Export 的 defer Close / Flush](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/ticket-export-finalize-joint/internal/handler/ticket_export.go:54)、[TestTicketExportWorkbook](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/ticket-export-finalize-joint/internal/handler/ticket_export_integration_test.go:60)。NewFile后立即defer Close覆盖所有早退/写失败，流成功后Flush，失败在成功审计及附件响应前返回。无新增依赖/路由/权限/迁移。
+
+修复race八轮绿246.154s；分别移除Flush仅XML八红、移除Close仅spill八红，预取消DB反控制仍绿。lint、完整单元、完整handler integration-race26.878s、cover通过，原/修复文件实物和日志在本地 `evidence/ECO-20261104-b06/export-xlsx/`。重复TestMain、internal包可见性、fixture参数与keyword过长的无效尝试保留，正式原证据从original-eight-v4.log算起。COUNT窗口不是本修复范围，见F16；完整联合门禁待后笔冻结，暂不标完整关单。
+
+## B06-F14 / P1：修改另一设置使已配置限制在运行时回退
+
+原5c/最新738的 `SettingsService.Update` 从factoryDefaults复制后只Apply当前键，其他KV只在boot/Reset全量读取。锚点：[settings_service.go 的 Update / applyAllOverrides](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/settings_service.go#L240)。S5约定出厂默认→全部KV覆盖→ConfigStore，已有CAS债C19不保证多键内存快照正确。
+
+真实738 Service/PG八轮：先设置max_upload_bytes=1048576，再设置max_presign_batch=7，运行上传限制回退10485760；数据库和svc.List仍显示1MiB，重新构造服务又恢复1MiB。不是UI缓存，也不是未来多实例传播能力。管理面与实际约束不一致，按P1。
+
+独立修复 **6d788d081d79fb626abe9097bdd3a0e3c0fc28c9**，parent50cad5e，分支codex/fix-settings-snapshot。[SettingsService 的 applyMu / Update / Reset / applyAllOverrides](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/settings-snapshot/internal/service/settings_service.go:129)对单实例持久写与全量重建串行，以出厂快照叠加所有有效KV再发布；读取失败保留旧完整快照并返回错误。硬底线校验与expected_version CAS保留，无API/权限/迁移/依赖变化。
+
+真实QueryTracer在Reset取得KV后暂停，另一Update在锁下等待；无锁变异允许旧Reset结果覆盖新Update。持久写后取消ctx的重读失败控制证明返回error且保留旧指针。**DB写可能已提交，错误后需重试/重启收敛；不是DB与内存跨介质原子事务，不承诺多实例传播。**
+
+三父项各race八轮绿8.909s；partial-apply/no-mutex/ignore-reload-error三类各八红。lint/unit/完整service integration-race255.315s/cover通过；unit-only service覆盖11.6→11.5%，新增分支由integration覆盖，不冒称覆盖率提升。证据 `evidence/ECO-20261104-b06/settings-state/`；首轮构造函数形参自动改稿导致编译失败不计通过。完整联合门禁待新冻结，未部署/合main、不提前关单。
+
+## B06-F16 / P1：导出COUNT预检与实际行流存在并发窗口
+
+基线 **7389ed79bdf409e466542992d9f1befa0c1a8529**，F13/F14不改变该Service路径。原锚点：[Service.ExportStream 的 CountByFilter / StreamRowsByFilter](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/ticket/service.go#L438)、[TicketRepo 的两次独立查询](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/repository/ticket_repo.go#L134)。phase5/10 §A.6明确5万上限和导出自审计。
+
+pgx QueryTracer在实际COUNT完成后，用另一真实PG会话提交插入/删除，再放行原Service：预检49999加2，rowFn实际50001、nil error；预检3删1，实际2行但返回总数3。两问题各八红；稳定50000正常、预检50001拒绝且零callback各八绿。不是权限过滤旁路证据，不升级安全P0。证据 `evidence/ECO-20261104-b06/export-count-window/`，原探针53.160s，数据库及Ryuk均精确清理。
+
+2026-11-06本轮已分号，独立修复基于6d788d0继续，须保证实际输出不越5万、成功审计数量等于文件，不允许静默截断。修复/变异与联合门禁尚未完成，保持开放；F13的XML/Close修复不代销此并发问题。F15字段校验嵌套池另由独立PG核验，未证实分支不混入本节结论。
