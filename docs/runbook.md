@@ -215,6 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
+   | Codex：ECO-B06-F19 通知偏好身份键（独立 `codex/fix-notification-pref-context`） | `notification_pref_handler.go` 两入口 + 真实 JWT/PG 集成回归；06/11 号同步。自有 testcontainers 动态 PG（owner=ECO-20261104-B06-F19-regression），不触 dev/test/Chrome；两入口专项各八轮通过，两类变异各八轮红，lint/完整单元通过；临时 PG 已清，联合验收由 root 承接 | 本独立分支 1 笔待 root 汇入，未推送；禁止合 main | 2026-11-06 |
    | Codex：全面审计 / R01、B06–B09（独立 codex 工作树） | 过程材料 .codex/audits/ECO-20261104/；R01=`10f3f94`、B09=`d2ab771`固定复验代码关单，临时资源已清，常驻app未升级；B06 storage=`d07f560`/冲突支路=`475b7ac`固定复验代码关单，自有临时栈已清；真实RustFS原两红/修复两绿；B07 AL池=`156ff03`、死信=`a1309cc`，revision/Reader候选待接续，自有PG50071；B08草稿=`fc1068b`/session=`604b96c`，独占test48081/33334记录固定产物来源，完整E2E仍有后端/环境/测试待办。所有者禁止合main，dev不动；UI原仓.gitignore仍排除 | 主仓phase5较origin/phase5有11笔（本次文档提交前；含他方ignore提交）；代码各留独立分支，未推送；utils v0.4.3历史已发布 | 2026-11-06（固定提交复验） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
