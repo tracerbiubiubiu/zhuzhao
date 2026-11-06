@@ -102,3 +102,14 @@ AL联合 `19a4c1d5cd84cc892b82ad52554db320bfad8f7f`（池/revision/流式导入/
 utils cd759a0修复仅独立库分支，AL仍pin reader的9ed正式pseudo-version、主仓联合仍pin v0.4.3，F10消费端承接明确未完成。TR eb3c0c0默认/production health修复仅独立生产拓扑验证，常驻测试TR仍5e；当前测试显式监听18080，不把本次生产探针缺陷推断为测试栈故障。自有生产演练项目均按归属清理。
 
 全文覆盖和所有组合故障尚未完成；逻辑恢复已实测，不宣称本轮PITR。新增关键缺陷继续按报告/修复/变异/固定门禁闭环，其余P2/P3统一记账，不能以十一项已核或运行升级替代全面审计结论。
+
+
+## B07-F10正式消费者承接续记（待最终联合门禁）
+
+utils修复 **`cd759a0402455731f805ba507bf8401447e00e29`** 已由root在SSH fetch/窗口差集核对后仅推 `codex/fix-aksk-transport-close-audit`，远端hash实核相同；main仍 `9296ae170b71b06c623c54b6010a107406903346`，没有合main或发布新tag。消费者使用Go正常解析的immutable **`v0.4.4-0.20261106080630-cd759a040245`**，h1 `RxddCy5x3NhJH5213M0qxSMIFnBL/w/vC5muOR0bVzg=`；下载源的两个Transport、97行永久回归及go.mod均与远端提交逐字节相同，sum.golang.org/`go mod verify`验证成功，无replace/GOWORK或本地实现替换。
+
+主仓来源 **`bd05cfd39cf1448f58283f3f2129a0d6f0701a6b`**，已按路径承接联合 **`38e6e442a8079bcc5aa4c1317a73f5df06931b28`**；AL来源 **`60e6b29ba8e03054a0badaac810a1ddda4b7c4c3`**，从19a4c1d保留Reader分类修复。只升级已有公共依赖，采用共享修复避免复制签名/错误/关闭语义。主仓实际消费者是 `internal/gateway/gateway.go` 的buildMount；AL当前仅入站GinMiddleware，无出站Transport，统一到修复超集不代表本站已触发该泄漏。TR的Client.Do/Notifier.NotifyDeadLetter只直接Sign，无Transport消费，仍pin v0.4.2，未为版本齐平做无关升级。
+
+两仓lint/unit、默认标签全仓race、构建与模块校验通过，各自在正式pin运行共享库双协议生命周期永久回归八轮通过。主仓新增真实httptest上游：成功签名/内容、读错不发送、读错伴Close错保留原读错误、读取成功但Close错沿原合同继续，四路原body恰Close一次；临时退回v0.4.3的永久回归八轮稳定红、正式pin八轮绿。root另读80行消费者回归和生产两Close差异，未用commit message代替验证。
+
+两消费者修复树干净、未推送或合main；共享dev/test未换版本，无新PG/Redis容器。最终主仓全量integration/cover/acceptance与AL/TR/UI组合仍待冻结，不沿用19/5e旧运行证明新pin已部署。证据 `data-coverage/b07-f10-consumer/{repair-result.json,version-source-manifest.json}`；原F10库级专项/变异记录继续保留。
