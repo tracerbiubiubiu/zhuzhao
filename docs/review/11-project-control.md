@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 ECO-B08 ID契约候选：`AddTicketCCRequest.UserIDs`复用现有Int64Slice兼容字符串数组和旧数字数组，保留>2^53精确值、正数/20项绑定守卫，Swagger同步string[]；前端Number舍入及supervisor数字400另由UI修复。handler八轮与完整单元通过，联合固定门禁待完成；只证明选择失败，不声称已错发给其他人。
+
 > 2026-11-06 ECO-B08待办候选：联合分支新增列表/导出可选状态集合，与单值status互斥，沿同一scope+业务WHERE；支持首页既有assigned/in_progress待办口径，避免导航混入closed。handler正负向和PG列表/计数/流三路+scope专项八轮通过，正常门禁与浏览器联合验证待完成；未合main。
 
 > 2026-11-06 联合验证分支：将已分别复验的认证10f3f94、成员有效期d2ab771、冲突支路475b7ac和存储d07f560汇集到 `codex/audit-integration`。逐文件核实与对应修复提交完全相同，lint/单元已过；联合完整门禁与测试部署待执行。未合main，原正式报告的部署边界保留。

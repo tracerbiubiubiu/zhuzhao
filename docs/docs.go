@@ -3974,7 +3974,7 @@ const docTemplate = `{
                     "type": "array",
                     "maxItems": 20,
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 }
             }
