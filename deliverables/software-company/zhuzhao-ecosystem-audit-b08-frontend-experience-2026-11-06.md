@@ -1,12 +1,12 @@
 # 生态全面审计 B08：前端功能、交互、视觉与实践（阶段报告，2026-11-06）
 
-> **契约/体验后笔**：后端对象元数据 `bc245edfdcd3d2eabf4a64b84e7c34aa92c298ea` 已由root固定698文件零差异复验：lint3.858s、unit10.518s、schema专项race八轮2.575s通过，工作树净。前端F12窄绑定已提交 `9f76a1b1eba80434107d1797e9b7401aa0ef6623`，parent为F14暗按钮候选 `324bd5fba0806b45d024237b45598298c96582c1`；前端代码/类型回归已过，尚未部署或完成新组合浏览器门禁。F12按固定Swagger仅对custom_data及assigned_to做明确兼容，supervisor仍源自生成契约；两路supervisor各八次类型变异均使实际页面/wire测试编译失败，新增null取消正向，单测增至227。F14仍等待fixed/移除规则Chrome动态验证；不因候选提交提前关单。当前test运行仍61b35bf，下方f104/61成绩不代销新版本。
+> **最新固定UI后笔**：F12窄契约绑定、F13长URL及F14暗按钮均已提交，UI最终候选 `9f76a1b1eba80434107d1797e9b7401aa0ef6623` 已用259文件SHA核对的准确镜像部署test。F14真实Chrome正常/悬停八轮绿、删除规则八红，工程S2及实际按下三态八轮/变异八轮完成，后文续记分开说明工具与覆盖。F12固定后端bc245专项及前端227单元/类型变异通过。新组合完整41尚未跑，三项保持待最终组合验收；原dev b205保留已知F08。以下f104/61及“未修”是历史批次时点。
 
 > **同日后续增量**：F13已独立提交 `61b35bf75596c79bf42c7c7d26544ac584716ba2`，长描述 scoped `overflow-wrap:anywhere`；原八红/修复八绿/移除规则八红，S10与基础五项通过。root已将其干净archive重建为正确版本镜像并明确测试徽标，实际Chrome通过登录、首页深链、列表、必填反馈、任务记录与AL空态代表走查，1280/1024整页未见横溢；F14暗按钮仍复现，F12尚未接线。新61镜像未重跑完整41，不能借用下文f104整套成绩为新产物背书。原dev b205实际Chrome仍报F08已知异常，修复源未合main。见[B13环境/Chrome记录](./zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)；以下“F13未修/CUA不可用/旧镜像标签”均为之前批次时点，原证据保留。
 
 ## 结论与范围
 
-**本批原F01–F13加单次视觉补充F14，共14项（P1×8、P2×6）：F01–F11已提交并在固定产物复验通过；F12/F13/F14为P2挂账未修。** UI六件门禁与完整41例真实栈通过，不代表整个生态审计结束、生产无错误或全站WCAG认证。未合main、未发布；远端CI本批未运行。正式报告与11号控制台由主会话统一维护；过程草稿与raw证据不纳管。
+**本批原F01–F13加单次视觉补充F14，共14项（P1×8、P2×6）：F01–F11已提交并在固定产物复验通过；F12/F13/F14三项P2现已修复并通过专项，待最终组合完整41验收。** UI六件门禁与完整41例真实栈通过，不代表整个生态审计结束、生产无错误或全站WCAG认证。未合main、未发布；远端CI本批未运行。正式报告与11号控制台由主会话统一维护；过程草稿与raw证据不纳管。
 
 原UI基线 `b20594cc744a61e2bcb41535b0ea668a711aa4df`；修复窗口止 `f1043a12e74e929dd223a5b718e0a27b3781c253` 共12笔，分支codex/fix-ui-audit，原UI仓他方.gitignore未改。原设计/API对照起点主仓 `5c03581d5999139a3e8e5ead5972c026868aa181`；跨仓原基线沿root执行卡，不另虚造兄弟hash。
 
@@ -182,3 +182,16 @@ root复核暗色主按钮浅紫底白字后，按要求只做一次真实compute
 保持同一固定UI `f1043a12e74e929dd223a5b718e0a27b3781c253` 和AL19/TR5e/RustFS，app另升 `7389ed79bdf409e466542992d9f1befa0c1a8529`（新增通知身份/情报单飞/消息接线/审计脱敏修复）。完整41例重新实跑：41 expected、0 skipped/0 unexpected/0 flaky，152.039秒，retries=0；旧f69组合150.191秒41绿作为上一组合保留，未覆盖。新证据fixed-f1043a12-7389-e2e-result.json/log。没有重复未变UI源码的安装与前五项门禁，也未叠加截图覆盖数。
 
 第三轮W5定义按准确job_id+description及本轮时间窗核后删除，0残留，保留job_runs历史；证据full-e2e-7389-tr-fixture-cleanup.json。新app容器二进制/image核对及仅目标升级见主审test-runtime-7389-result.json；其它test与dev容器保持。整体文档/历史债对账继续，三项P2仍待后续整改。
+
+
+## F12–F14固定后笔与实际浏览器复验
+
+来源窗口在原12笔后追加：F13 **`61b35bf75596c79bf42c7c7d26544ac584716ba2`**；F14 **`324bd5fba0806b45d024237b45598298c96582c1`**；F12 **`9f76a1b1eba80434107d1797e9b7401aa0ef6623`**。F12后端对象元数据 **`bc245edfdcd3d2eabf4a64b84e7c34aa92c298ea`** 固定698文件零差异，lint3.858秒、unit10.518秒、schema专项race八轮通过；UI仅以该固定Swagger再生custom_data对象合同，assigned_to允许null，supervisor仍绑定生成契约。两路supervisor:string→boolean分别八次实际页面与wire类型测试编译失败，227单元/28文件及lint/type/audit/build通过。不是全局忽略生成错误，也没有any兜底。
+
+F14仅在暗色primary按钮常规/hover/active三文字变量使用深色#111827；不全局加深主色，plain/text/link/禁用形态不机械覆盖。root通过已启用的Chrome扩展，实际测试域专属E800006登录会话，在工单创建页1024/1280视口量computed样式：fixed常规/hover八轮合格；仅删除三变量的独立mutant八轮稳定不合格，恢复fixed后console error0。实际Chrome这一轮未测持续按下态，不能混写成三态均由Chrome扩展验证。截图和原始computed收据留在忽略目录 `evidence/ECO-20261104-b08/p2/chrome-f14/`，未上传用户数据或将图片纳管。
+
+另用项目原有 `pnpm test:e2e` 专用headless工程上下文，在真实持久S2中repeat-each=8、workers1、retries0：fixed **8 expected/0 skip/0 flaky，53.724秒**；移除三变量的mutant **8个目标断言失败，42.087秒**。独立三态probe各八轮均实测:active=true：fixed默认**5.947**、hover**4.902**、active**7.537**；mutant对应**2.983/3.619/2.354**，八轮均低于4.5。工程上下文与用户Chrome分开，不用脚本接管个人浏览器。
+
+准确fixed镜像 `zhuzhao-ui-audit:9f76a1b1eba8`，ID `sha256:94f88b6c4c6ca74a5782b2634b75ad13694af0f8e1d7dee6fe400c05e456ee96`；259静态文件SHA及nginx模板均匹配，HTTP index SHA `addc4a93d8c2a38464f344de4244765e219ffb4affd000deb08b97e3953d638c`。对照完成后恢复该fixed镜像、light主题与默认视口；后台八容器ID/image/启动时间全部不变。S2本轮新增ticket/type残留0，原四单/一类型与审计/通知历史保留，Playwright工作进程残留0。私有canonical已收敛到9f准确来源，未再执行重启。证据 `p2/{image-9f76a1b1/result.json,active-standard-e2e/result.json,active-standard-e2e/three-state-summary.json}`。
+
+本节是修复和目标变异证据，不代替最终主仓/AL/TR候选组合的完整41例。F17/F18导致后端Swagger版本说明变化，最终UI需按固定新源再生并确认差异；最终六件门禁/完整浏览器回归与部署状态另记。全角色/全主题交集、手机、屏幕阅读器等未覆盖边界仍保留，不声明全站可访问性认证。所有新增源码未合main。

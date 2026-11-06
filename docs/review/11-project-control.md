@@ -4,7 +4,7 @@
 
 > **2026-11-06 B06增量承接**：F13导出XML/资源释放、F14设置全量快照、F15字典/MIME嵌套池、F16实际导出上限/计数、F17单边图、F18首次字段/版本同代、F19通知偏好身份键均已独立提交并通过专项/稳定变异，详细来源hash与边界见[B06流程报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)及[事务报告F15](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。联合ba3ecb6已按路径承接，完整integration/cover/acceptance待冻结；B12错误码4da与B08-F12后端bc245同样在候选，均不借旧门禁提前关单、未合main。
 
-> **2026-11-06 B13环境恢复**：[环境与真实Chrome报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。dev原PG/Redis/AL-PG容器及原卷恢复，4个宿主服务在线；原工作树UI仍b205，真实Chrome复现已登记B08-F08，不能称开发版零错误。test保留app7389/AL19/TR5e，UI61b35bf干净重建并准确标测试环境；专属账号登录/代表业务读取和1280/1024布局实查完成，未重跑新产物全41。B13另确认启动项目/卷碰撞、错误回退/假成功与生产UI构建路径缺口，独立分支修复验收中，不合main。以下“dev不动/f104”为先前时点。
+> **2026-11-06 B13环境恢复**：[环境与真实Chrome报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。dev原PG/Redis/AL-PG容器及原卷恢复，4个宿主服务在线；原工作树UI仍b205，真实Chrome复现已登记B08-F08，不能称开发版零错误。test保留app7389/AL19/TR5e，UI9f76准确镜像已承接并标测试环境；专属账号登录/代表业务读取和1280/1024布局实查完成，未重跑新产物全41。B13另确认启动项目/卷碰撞、错误回退/假成功与生产UI构建路径缺口，独立分支修复验收中，不合main。以下“dev不动/f104”为先前时点。
 
 > 2026-11-06最新联合终态：主仓7389ed7固定lint/完整单元/完整集成614.98s/cover、原样253/0/0与81对往返、撤销13步/成员15步全过；B06-F11/F12代码层关闭。仅test app升7389，AL19/TR5e与f104 UI同源新组合41/41，dev不动。[B08报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)现14项：11项复验完成，F12/F13/F14三项P2挂账。B07-F10库修复消费端未承接；全文/历史债/总报告仍进行，不合main。
 
@@ -317,9 +317,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 审计组 | 当前验证状态 | 主线/运行边界 |
 |---|---|---|
-| B02撤权/B09过期成员，B06业务 | 主仓联合7389已固定正常门禁及专项/变异，范围内F01–F12已验；F13/F14修复专项过，F16计数窗口已证实、F15继续验证 | 新增问题待下一固定组合完整门禁；仅test app=7389，main未合/生产未发，不外推旧全绿 |
+| B02撤权/B09过期成员，B06业务 | 联合7389范围F01–F12已完整复验；F13–F19均有独立修复/专项/稳定变异并承接ba3ecb6 | ba3新组合完整门禁待冻结；仅test app=7389，main未合/生产未发，不外推旧全绿 |
 | B07 AL/TR | AL19与TR5e固定复验及test承接；TR生产探针eb3独立拓扑healthy | utils F10读错Close仅库分支修复，消费者pin未升；其它已接受边界见B07 |
-| B08前端 | f104固定六件门禁和41/41通过；F13长URL61已test承接；F12后端bc245及UI9f76固定契约/类型专项过，F14候选324已提交 | 当前test仍61；9f76未部署、F14动态与新组合完整41未跑，原dev b205保留已知异常，不声明全站可访问性认证 |
+| B08前端 | test已承接9f76准确镜像；F12契约专项过，F13长URL八轮/变异过，F14真实Chrome与持久S2三态八轮/删除八红 | 新后端组合完整41待跑；f104旧完整成绩限旧组合，原dev b205保留F08异常；未合main/全站可访问性认证 |
 | B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，联合完整门禁未完成；L6内容完整性未提前关单 |
 | B14资料/安全状态 | P0修复f917c64已提交，原两类各八红，最终32场绿，原SQL与三变异各八红 | 已承接联合ba3ecb6；全仓integration/cover/acceptance未跑，未合main或部署，保持待复验 |
