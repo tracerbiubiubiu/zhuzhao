@@ -1,5 +1,6 @@
 // S10 B10-5 工单导出 handler（10 号 §3.5/附录 A.6）：excelize StreamWriter
-// 流式（逐行 flush 防大结果集驻留）；与 List 同 parseListQuery + 同
+// 逐行编码（库按阈值落临时文件，完成后 Flush 收尾、Close 回收）；
+// 与 List 同 parseListQuery + 同
 // resolveListFilter/buildTicketWhere（BK-21 代码级同源——导出不越查询可见性）；
 // 行数钳制 5 万；导出自审计（谁/筛选/行数——A.6 业界标配，流式响应不经通用
 // 审计中间件的 body 捕获，挂独立链 + handler 手动落行）。
@@ -57,6 +58,7 @@ func (h *TicketHandler) Export(c *gin.Context) {
 	}
 
 	f := excelize.NewFile()
+	defer func() { _ = f.Close() }()
 	sw, err := f.NewStreamWriter("Sheet1")
 	if err != nil {
 		response.InternalError(c, "导出初始化失败")
@@ -93,6 +95,13 @@ func (h *TicketHandler) Export(c *gin.Context) {
 			return
 		}
 		writeServiceError(c, err)
+		return
+	}
+
+	// StreamWriter 必须收尾 worksheet XML；Write 不会代为 Flush。
+	// 生成失败须在审计成功行和附件响应头之前返回。
+	if err := sw.Flush(); err != nil {
+		response.InternalError(c, "导出生成失败")
 		return
 	}
 
