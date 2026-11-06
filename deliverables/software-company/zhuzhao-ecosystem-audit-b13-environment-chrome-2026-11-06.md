@@ -103,3 +103,10 @@ root另从固定760a583重新git archive，679个跟踪文件逐一与Git内容�
 test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。 B13额外用未改Docker/Compose CLI运行候选up/down/reset：已存在其它来源dev资源时三者均在mutation前按归属拒绝，13个共享容器完全不变。第一轮缺必填TR环境变量先正确拒绝、未到owner检查，运行器预期错误另存；补合成preflight值后才计三次owner证据。详 `environment/real-owner-refusal-dc3d540/result.json`。正向重建整个生产/开发编排仍未执行，不能以此冒称已全栈生产演练。
 
 主仓运行镜像复用准确旧运行层，仅由固定719源码交叉构建新ELF并复拷configs/162迁移，165个载荷文件离线SHA全匹配。原始runner误要求VCS字段及FROM imageID解析失败均保留、未部署；最终采用显式buildvcs=false和校验ID的本地父tag成功。不改基线config、不动dev原卷，不以新test版本宣称原dev b205已修复。
+
+
+## 前端最终承接与Chrome出口
+
+最终c9/dc3/AL60/TR eb3组合完整41首轮通过，139.286秒、配置retry1/实际0retry/0flaky/0skip；原两次夹具失败和429均见[B08最终后记](./zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)，不抹成全程零错误。自动E2E用原globalSetup种子例外且密码指纹未变；临时E8准备号已回收，手工Chrome仍E800006。
+
+root重新加载最终test，核首页、真实列表/表单、退出重登和1024浅暗布局；测试徽标可见于登录页，暗色按钮对比5.947、整页横溢0、console error0。已恢复默认视口/浅色及首页。Chrome证据 `joint/dc3d540/final-chrome/`；实际用户可访问测试UI48081/API33334。开发原四宿主PID仍在，b205旧F08是未合main原版的已知问题，不称原dev已修复或生产已发布。

@@ -217,7 +217,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B15（独立codex工作树） | test=app dc3/AL60/TR eb3/UI c9，四image/三binary/HTTP来源已核；九基础/开发容器保留。后端全量Go+253/81/13/15通过，UI最终41/Chrome收尾中；E800007临时准备号已回收。dev仍原卷/原版，外部cmpfull保留；过程只在.codex | 本轮代码/正式文档已本地路径提交、不合main；utils cd759仅修复分支已推，消费者/生产不因此发布；root统一环境与push调度 | 2026-11-06（最终后端联合） |
+   | Codex：全面审计 / R01、B06–B15（独立codex工作树） | test=app dc3/AL60/TR eb3/UI c9，四image/三binary/HTTP来源已核；九基础/开发容器保留。后端全量Go+253/81/13/15通过，UI最终41首过/0实际retry、Chrome最终实查过，三轮夹具/HTTP429边界见B08；E800007临时准备号已回收。dev仍原卷/原版，外部cmpfull保留；过程只在.codex | 本轮代码/正式文档已本地路径提交、不合main；utils cd759仅修复分支已推，消费者/生产不因此发布；root统一环境与push调度 | 2026-11-06（最终后端联合） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 

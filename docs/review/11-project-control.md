@@ -1,6 +1,8 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-06最终后端关闭/测试承接**：固定dc3d540（719文件）lint/unit/全原生integration558.571s/cover20.4%、原样253/0/0+81往返、撤权13步/成员15步全过；B06-F13–F20、B12与B14代码复验关闭。AL60全PG/race196PASS/0FAIL/0skip；test已升appdc3/AL60/TR eb3/UI c9，image/binary/HTTP同源，九基础/开发容器保持。原make wire/P2、所有失败轮及未跑生产正向编排照实保留；UI41/Chrome最后收据另补，未合main/生产。
+> **2026-11-06最终前端/Chrome收口**：c9+dc3/AL60/TR eb3完成六件门禁及原样41首过（139.286s，配置retry1、实际0retry/flaky/skip），B08原14项限定范围关闭；Chrome重载最终产物的首页/列表/表单/退出重登、1024浅暗均过，暗按钮5.947、console error0，已恢复浅色/默认视口。早两轮夹具失败及HTTP429仍保留，W5节奏P2见B15；dev旧b205不随此修复，未合main/生产。
+
+> **2026-11-06最终后端关闭/测试承接**：固定dc3d540（719文件）lint/unit/全原生integration558.571s/cover20.4%、原样253/0/0+81往返、撤权13步/成员15步全过；B06-F13–F20、B12与B14代码复验关闭。AL60全PG/race196PASS/0FAIL/0skip；test已升appdc3/AL60/TR eb3/UI c9，image/binary/HTTP同源，九基础/开发容器保持。原make wire/P2、所有失败轮及未跑生产正向编排照实保留；UI41/Chrome最终收据已见顶部，未合main/生产。
 
 > **2026-11-06 B06-F20/P1**：[头像/资料并发](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)在已含B14的ba3固定源实际两资料入口各八红，真实RustFS确认回指已deleted旧键；1550bbf同事务换键推进资料version/updated_at、同键幂等，72场race与物理两入口八轮绿、三变异稳定红，已承接6ad4cda。原生B14/F15/F17/F18/F19八轮已补（ticket首轮reaper初始化失败、同源单包重跑绿均留证），新组合完整门禁仍待，未合main/部署。
 
@@ -323,12 +325,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 |---|---|---|
 | B02撤权/B09过期成员，B06业务 | dc3含F13–F20等后笔已固定正常门禁、253/81和真实13/15专项；对应代码关闭 | test app=dc3、AL60/TR eb3，主线未合/生产未发；专项/已接受边界逐报告保留 |
 | B07 AL/TR | test已AL60/TR eb3；主仓/AL正式pin cd759，AL60全PG/race196通过，新组合253/81过，F10关闭 | utils仅codex分支已推；main/tag不动、生产未发；AL不使用出站Transport及TR不升无关依赖的边界保留 |
-| B08前端 | test已承接9f76准确镜像；F12契约专项过，F13长URL八轮/变异过，F14真实Chrome与持久S2三态八轮/删除八红 | 新后端组合完整41待跑；f104旧完整成绩限旧组合，原dev b205保留F08异常；未合main/全站可访问性认证 |
+| B08前端 | test c9/dc3/AL60/TR eb3六件+41首过，原14项限定范围关闭；Chrome最终代表走查通过 | 0Playwright retry/flaky不等于0HTTP429，W5节奏另P2；dev旧F08保留，未合main/生产或全站认证 |
 | B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，已dc3完整门禁关闭，内容完整性/路径归一分列；主线仍待承接 |
 | B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 已test承接dc3，未合main/生产；头像同类F20也在同轮关闭，不扩成所有未来并发安全保证 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
-| B15横切边界 | 存储numeric ID/手写string与make wire缺工具sum两P2；定制引用down79的23503实测完整回滚、P1候选撤销 | 统一记账不扩本冻结批；三迁移静态线索未确认，162 SQL全文与fresh往返范围分列，详B15 |
+| B15横切边界 | 存储numeric ID/手写string、make wire缺工具sum及W5夹具节奏三P2；定制引用down79的23503实测完整回滚、P1候选撤销 | 统一记账不扩本冻结批；三迁移静态线索未确认，162 SQL全文与fresh往返范围分列，详B15 |
 | 文档与历史债 | B10五组事实校准已提交，全文和101编号债逐行核对继续 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归 |
 
 ### 历史底座记录

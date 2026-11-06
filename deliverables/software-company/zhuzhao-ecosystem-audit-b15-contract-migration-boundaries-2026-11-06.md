@@ -2,7 +2,7 @@
 
 ## 范围与基线
 
-有界横切收口，冻结主仓 `dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`；接口探针源 `bd05cfd39cf1448f58283f3f2129a0d6f0701a6b`、UI `9f76a1b1eba80434107d1797e9b7401aa0ef6623`，相关模型/消费者在后续冻结版本未改。迁移静读固定ba3ecb6，162 SQL与dc3逐字相同。只记录两项当前P2偏差、一项已动态确认的回滚前置；未确认线索与撤销候选另列。未改产品实现、依赖或历史SQL。
+有界横切收口，冻结主仓 `dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`；接口探针源 `bd05cfd39cf1448f58283f3f2129a0d6f0701a6b`、UI `9f76a1b1eba80434107d1797e9b7401aa0ef6623`，相关模型/消费者在后续冻结版本未改。迁移静读固定ba3ecb6，162 SQL与dc3逐字相同。记录三项当前P2偏差、一项已动态确认的回滚前置；未确认线索与撤销候选另列。未改产品实现、依赖或历史SQL。
 
 ## B15-F01 / P2：存储输出ID与字符串标准及手写消费者不一致
 
@@ -25,6 +25,12 @@ root首次完整门禁运行器在该额外生成步骤exit2，原日志保留�
 锚点：[000061建立规则→模板NO ACTION FK](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/migrations/000061_message_rules_fk.up.sql:8)、[000079 down删除种子](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/migrations/000079_action_notify_seed.down.sql:3) @ dc3d540。自有PG两库全81迁移，经真实MessageAdminService.UpsertRule合法创建ticket.transitioned→ticket_action_notify；81降至79成功，再down79实际23503。079整段SQL回滚，模板、默认规则、定制规则全字段保留；migrate checkpoint为v78 dirty=true，数据仍v79态。fresh默认对照同路线成功，v78 dirty=false，种子正常撤销。
 
 **撤销原MIG-S04/P1候选**：FK在保护合法用户依赖，不能为让down绿而删管理员规则；当前证据证明回滚需检查定制引用，不证明在线业务损坏。079旧注释的not-found Warn不能替代FK回滚前置。操作前应列出被撤模板的非本迁移规则引用，先裁定保留种子或显式改指；失败后须按实际数据态排查dirty，不能盲force checkpoint再继续。只读预检SQL及完整前后行在本地证据，不执行自动清依赖。
+
+## B15-F04 / P2：密集E2E夹具与页面初始化共享限流预算
+
+固定UI c9的w5-al-pages密集Node夹具后直接uiLogin，没有其它场景已使用的waitUserRateBudget。实际attempt2同主体前5秒77条请求，随后/profile与/permissions各429（RetryAfter1）导致初始化失败，原retry1恢复；最新原样41首过仍有AL数据POST429由原helpers.api的1.1秒退避一次恢复。是可观察的测试节奏风险，不是已证明错误限流或业务权限失效。最终0Playwright retry/0flaky不能写成全程0HTTP429。
+
+后续测试小批在密集夹具后核共享预算，沿既有helper为初始页面留足额度；不提高DUT限额、不延长失败断言或以无限重试涂绿。当前P2记账，原spec未改；真实request_id、access时序及三轮分开结果见B08最终收据。
 
 ## 未确认线索、撤销项与覆盖证据
 

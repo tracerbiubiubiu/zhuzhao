@@ -1,12 +1,14 @@
 # 生态全面审计 B08：前端功能、交互、视觉与实践（阶段报告，2026-11-06）
 
+> **最终组合收口**：UI `c9f0429ea05badac228f8e7e523e98859434339d` + app dc3/AL60e/TR eb3，完整六件门禁及41/41首轮通过，配置retries1、实际0 retry/0flaky/0skip，Chrome最终实查已完成。原14项在本报告限定范围修复复验关闭；P2测试节奏与全站/移动/辅助技术边界保留，未合main。
+
 > **最新固定UI后笔**：F12窄契约绑定、F13长URL及F14暗按钮均已提交，UI最终候选 `9f76a1b1eba80434107d1797e9b7401aa0ef6623` 已用259文件SHA核对的准确镜像部署test。F14真实Chrome正常/悬停八轮绿、删除规则八红，工程S2及实际按下三态八轮/变异八轮完成，后文续记分开说明工具与覆盖。F12固定后端bc245专项及前端227单元/类型变异通过。新组合完整41尚未跑，三项保持待最终组合验收；原dev b205保留已知F08。以下f104/61及“未修”是历史批次时点。
 
 > **同日后续增量**：F13已独立提交 `61b35bf75596c79bf42c7c7d26544ac584716ba2`，长描述 scoped `overflow-wrap:anywhere`；原八红/修复八绿/移除规则八红，S10与基础五项通过。root已将其干净archive重建为正确版本镜像并明确测试徽标，实际Chrome通过登录、首页深链、列表、必填反馈、任务记录与AL空态代表走查，1280/1024整页未见横溢；F14暗按钮仍复现，F12尚未接线。新61镜像未重跑完整41，不能借用下文f104整套成绩为新产物背书。原dev b205实际Chrome仍报F08已知异常，修复源未合main。见[B13环境/Chrome记录](./zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)；以下“F13未修/CUA不可用/旧镜像标签”均为之前批次时点，原证据保留。
 
 ## 结论与范围
 
-**本批原F01–F13加单次视觉补充F14，共14项（P1×8、P2×6）：F01–F11已提交并在固定产物复验通过；F12/F13/F14三项P2现已修复并通过专项，待最终组合完整41验收。** UI六件门禁与完整41例真实栈通过，不代表整个生态审计结束、生产无错误或全站WCAG认证。未合main、未发布；远端CI本批未运行。正式报告与11号控制台由主会话统一维护；过程草稿与raw证据不纳管。
+**本批原F01–F13加单次视觉补充F14，共14项（P1×8、P2×6）：F01–F14均已提交并在最终组合完成对应专项及完整41复验；下文原分批状态与失败轮按时点保留。** UI六件门禁与完整41例真实栈通过，不代表整个生态审计结束、生产无错误或全站WCAG认证。未合main、未发布；远端CI本批未运行。正式报告与11号控制台由主会话统一维护；过程草稿与raw证据不纳管。
 
 原UI基线 `b20594cc744a61e2bcb41535b0ea668a711aa4df`；修复窗口止 `f1043a12e74e929dd223a5b718e0a27b3781c253` 共12笔，分支codex/fix-ui-audit，原UI仓他方.gitignore未改。原设计/API对照起点主仓 `5c03581d5999139a3e8e5ead5972c026868aa181`；跨仓原基线沿root执行卡，不另虚造兄弟hash。
 
@@ -195,3 +197,22 @@ F14仅在暗色primary按钮常规/hover/active三文字变量使用深色#11182
 准确fixed镜像 `zhuzhao-ui-audit:9f76a1b1eba8`，ID `sha256:94f88b6c4c6ca74a5782b2634b75ad13694af0f8e1d7dee6fe400c05e456ee96`；259静态文件SHA及nginx模板均匹配，HTTP index SHA `addc4a93d8c2a38464f344de4244765e219ffb4affd000deb08b97e3953d638c`。对照完成后恢复该fixed镜像、light主题与默认视口；后台八容器ID/image/启动时间全部不变。S2本轮新增ticket/type残留0，原四单/一类型与审计/通知历史保留，Playwright工作进程残留0。私有canonical已收敛到9f准确来源，未再执行重启。证据 `p2/{image-9f76a1b1/result.json,active-standard-e2e/result.json,active-standard-e2e/three-state-summary.json}`。
 
 本节是修复和目标变异证据，不代替最终主仓/AL/TR候选组合的完整41例。F17/F18导致后端Swagger版本说明变化，最终UI需按固定新源再生并确认差异；最终六件门禁/完整浏览器回归与部署状态另记。全角色/全主题交集、手机、屏幕阅读器等未覆盖边界仍保留，不声明全站可访问性认证。所有新增源码未合main。
+
+
+## 最终c9组合六件与原样41复验关闭
+
+最终UI **`c9f0429ea05badac228f8e7e523e98859434339d`** 只较9f再生两处类型配置version说明（4+/4-），去注释后类型全文相同。固定后端Swagger ba3三文件SHA与最终dc3一致；fresh offline frozen依赖后lint5.222秒/type6.273秒/28文件227单测2.480秒/依赖audit1.476秒无已知漏洞/build4.376秒通过，codegen幂等、commit-lint过。镜像259文件+nginx模板逐SHA核对，test实际imageID `sha256:fdd4b717b44d2ccc6339b8ced54079f7426662586f646b91d7b53b530240fb33`；HTTP index SHA与9f相同，未把注释重生误报运行逻辑变化。
+
+固定test app **dc3d540a48e67bf56244efdc0f71cf32cbcb5e80** / AL **60e6b29ba8e03054a0badaac810a1ddda4b7c4c3** / TR **eb3c0c07615c9646da9a9ada673de16843c75564** / UI c9，原spec完整41例 **139.286秒exit0**，41 expected/0unexpected/0flaky/0skip；原配置workers1/retries1保持，实际每例首轮过、0次Playwright retry。wrapper只关闭会误起4000的webServer、指定绝对输出/JSON reporter和已核test入口，没有改断言、业务源码或限流。正常自动E2E沿runbook允许的原globalSetup种子流程，E000001密码指纹及强改标志前后不变；Chrome始终使用E800006。
+
+前两轮不回写：首次E8/admin在viewer第一笔菜单预设403、0测试，早先operator先写的推断已更正；第二轮专属E8/superadmin完整41为38pass+1flaky+2fail，原因分别为缺root组织成员、S16精确用户名admin等种子前提及W5AL初始化429。临时E800007已禁用软删、清角色、清58个RT并推进纪元；未改E000001或Chrome号。没有修改产品系统角色/组织归属守卫来拟合测试。
+
+最新41首过仍不等于零HTTP重试：精确窗1388条access中一次AL数据POST429由原helpers.api既有1.1秒退避恢复；前轮/profile与/permissions两429导致W5AL失败后原Playwright retry恢复。request_id与时序、77条前窗访问收据俱存。W5AL密集Node夹具后没有既有waitUserRateBudget的节奏风险按P2留账，不因最新绿删证，也未在本轮改等待/限流。
+
+两完整轮前后24容器id/image/PID/StartedAt、四宿主监听PID/内容均相同；无Playwright工作进程残留。TR两只本轮job按primary ID+business ID+description+时间四重匹配精确删除，历史runs保留；S8原用例有意留列表数据的四张本轮工单及两轮新type经code/窗口/creator核后走正式DeleteTicket→DeleteType，8个接口200/0，未清旧数据。证据 `evidence/ECO-20261104-b08/final-e2e/{manifest.json,attempt3/summary.json,attempt3/cleanup.json,attempt3/environment-diff.json,s8-exact-fixture-cleanup.json}`；五门禁在 `final-schema/manifest.json`。
+
+## 最终真实Chrome实查
+
+root使用已启用Chrome扩展1，重新加载实际c9后，用专属E800006完成首页/含16行的工单列表/创建表单、主题切换、退出确认及重新登录。1024×768浅/暗表单与列表均document.scrollWidth=clientWidth=1024；登录页明确测试环境。暗色主按钮14px正常字实测#111827/#818cf8，对比**5.947**；这是当前最终产物的一次复核，先前三态八轮/变异证据另保留。浏览器console error0，最终恢复light及默认1920×855并留首页，未提交业务表单。
+
+截图/DOM样式及结果只在 `joint/dc3d540/final-chrome/`。初次对隐藏switch input的指针点击被组件可见core拦截，检查真实DOM后点可见core成功，不列产品故障；最终一个button.textContent全等辅助判断返回false，身份以实际AX与截图为准，不以该辅助谓词推断登录失败。截图不入Git，不把代表页专家实查写成用户研究、全站axe或移动端认证。
