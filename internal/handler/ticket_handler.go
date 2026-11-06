@@ -37,6 +37,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLo
 //	@Param		type_code		query	string	false	"工单类型"
 //	@Param		status			query	string	false	"工单状态"
 //	@Param		statuses		query	string	false	"状态集合，逗号分隔，与status互斥（例assigned,in_progress）"
+//	@Param		exclude_statuses	query	string	false	"排除状态集合，逗号分隔，与status/statuses互斥"
 //	@Param		priority		query	int		false	"优先级（1紧急/2高/3中/4低）"
 //	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
@@ -57,26 +58,32 @@ func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 		Status:   c.Query("status"),
 		Tag:      c.Query("tag"),
 	}
-	if raw, present := c.GetQuery("statuses"); present {
-		if q.Status != "" {
-			response.BadRequest(c, "status 与 statuses 不能同时传入")
-			return q, false
-		}
-		parts := strings.Split(raw, ",")
-		if len(parts) > 32 {
-			response.BadRequest(c, "statuses 最多支持 32 个状态")
-			return q, false
-		}
-		seen := make(map[string]bool, len(parts))
-		for _, part := range parts {
-			status := strings.TrimSpace(part)
-			if status == "" || len([]rune(status)) > 20 {
-				response.BadRequest(c, "statuses 每个状态须为 1–20 字符")
+	for _, key := range []string{"statuses", "exclude_statuses"} {
+		if raw, present := c.GetQuery(key); present {
+			if q.Status != "" || len(q.Statuses) > 0 || len(q.ExcludeStatuses) > 0 {
+				response.BadRequest(c, "status、statuses 与 exclude_statuses 不能同时传入")
 				return q, false
 			}
-			if !seen[status] {
-				q.Statuses = append(q.Statuses, status)
-				seen[status] = true
+			parts := strings.Split(raw, ",")
+			if len(parts) > 32 {
+				response.BadRequest(c, key+" 最多支持 32 个状态")
+				return q, false
+			}
+			seen := make(map[string]bool, len(parts))
+			for _, part := range parts {
+				status := strings.TrimSpace(part)
+				if status == "" || len([]rune(status)) > 20 {
+					response.BadRequest(c, key+" 每个状态须为 1–20 字符")
+					return q, false
+				}
+				if !seen[status] {
+					if key == "statuses" {
+						q.Statuses = append(q.Statuses, status)
+					} else {
+						q.ExcludeStatuses = append(q.ExcludeStatuses, status)
+					}
+					seen[status] = true
+				}
 			}
 		}
 	}

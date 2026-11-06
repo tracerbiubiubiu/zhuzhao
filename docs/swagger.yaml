@@ -2556,6 +2556,10 @@ paths:
         in: query
         name: statuses
         type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
+        type: string
       - description: 优先级（1紧急/2高/3中/4低）
         in: query
         name: priority
@@ -2956,6 +2960,10 @@ paths:
       - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
         in: query
         name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
         type: string
       - description: 优先级
         in: query

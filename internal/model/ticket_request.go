@@ -107,7 +107,9 @@ type TicketListQuery struct {
 	Status   string
 	// Statuses 可选状态集合；handler接收逗号分隔statuses，与单值status互斥。
 	Statuses []string
-	Priority *int
+	// ExcludeStatuses 排除状态集合；与status/statuses互斥，角标非终态跳转使用。
+	ExcludeStatuses []string
+	Priority        *int
 	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
 	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
 	AssigneeID *int64

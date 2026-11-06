@@ -40,6 +40,7 @@ func fmtTime(t *time.Time) string {
 //	@Param		type_code		query	string	false	"工单类型"
 //	@Param		status			query	string	false	"工单状态"
 //	@Param		statuses		query	string	false	"状态集合，逗号分隔，与status互斥（例assigned,in_progress）"
+//	@Param		exclude_statuses	query	string	false	"排除状态集合，逗号分隔，与status/statuses互斥"
 //	@Param		priority		query	int		false	"优先级"
 //	@Param		tag				query	string	false	"标签（S10 B10-2）"
 //	@Param		assignee		query	string	false	"处理人过滤，仅支持 me"

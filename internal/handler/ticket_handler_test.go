@@ -39,6 +39,10 @@ func TestTicketList_ParamValidation(t *testing.T) {
 		{"created_by 非 me 字面量", "created_by=123", 400},
 		{"assignee 非 me 字面量（存量契约回归）", "assignee=456", 400},
 		{"priority 非整数（存量契约回归）", "priority=high", 400},
+		{"排除状态含空项", "exclude_statuses=closed,", 400},
+		{"排除状态过长", "exclude_statuses=" + strings.Repeat("a", 21), 400},
+		{"排除与包含互斥", "statuses=assigned&exclude_statuses=closed", 400},
+		{"排除与单值互斥", "status=open&exclude_statuses=closed", 400},
 		{"状态集合含空项", "statuses=assigned,", 400},
 		{"状态集合单项超长", "statuses=" + strings.Repeat("a", 21), 400},
 		{"状态集合过多", "statuses=" + strings.Repeat("a,", 32) + "b", 400},
@@ -54,5 +58,15 @@ func TestTicketList_ParamValidation(t *testing.T) {
 				t.Fatalf("HTTP = %d, want %d", w.Code, tt.want)
 			}
 		})
+	}
+}
+
+func TestTicketList_ExcludedStatusesParsing(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/api/v1/tickets?exclude_statuses=closed,%20rejected,closed&assignee=me", nil)
+	c.Set("userID", int64(17))
+	q, ok := parseListQuery(c)
+	if !ok || !reflect.DeepEqual(q.ExcludeStatuses, []string{"closed", "rejected"}) || q.AssigneeID == nil || *q.AssigneeID != 17 {
+		t.Fatalf("excluded-state/assignee query lost: ok=%v query=%+v", ok, q)
 	}
 }

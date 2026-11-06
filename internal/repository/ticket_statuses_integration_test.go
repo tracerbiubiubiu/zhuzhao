@@ -16,16 +16,20 @@ import (
 func TestTicketStatuses_ListAndExportRespectScope(t *testing.T) {
 	ctx := context.Background()
 	repo := repository.NewTicketRepo(testPool)
-	var visible, expected []int64
-	for _, status := range []string{"assigned", "in_progress", "pending_verify", "closed", "rejected"} {
+	var visible, expected, active []int64
+	for _, status := range []string{"assigned", "in_progress", "pending_verify", "closed", "rejected", "custom_open"} {
 		id := conflictTicket(t, status)
 		visible = append(visible, id)
+		if status != "closed" && status != "rejected" {
+			active = append(active, id)
+		}
 		if status == "assigned" || status == "in_progress" {
 			expected = append(expected, id)
 		}
 	}
 	conflictTicket(t, "assigned") // 同状态但scope不可见，必须不返回
 	filter := resource.Filter{Where: "id = ANY($1::bigint[])", Args: []any{visible}}
+	checkExcludedStatusRoutes(t, repo, filter, active)
 	q := model.TicketListQuery{Statuses: []string{"assigned", "in_progress"}, Page: 1, PageSize: 20}
 	rows, total, err := repo.List(ctx, filter, q)
 	require.NoError(t, err)
@@ -49,5 +53,25 @@ func TestTicketStatuses_ListAndExportRespectScope(t *testing.T) {
 	require.EqualValues(t, 1, total, "单状态兼容")
 	_, total, err = repo.List(ctx, filter, model.TicketListQuery{})
 	require.NoError(t, err)
-	require.EqualValues(t, 5, total, "省略状态仍保留原全部可见语义")
+	require.EqualValues(t, 6, total, "省略状态仍保留原全部可见语义")
+}
+
+func checkExcludedStatusRoutes(t *testing.T, repo *repository.TicketRepo, filter resource.Filter, expected []int64) {
+	t.Helper()
+	ctx := context.Background()
+	q := model.TicketListQuery{ExcludeStatuses: []string{"closed", "rejected"}, Page: 1, PageSize: 20}
+	rows, total, err := repo.List(ctx, filter, q)
+	require.NoError(t, err)
+	require.EqualValues(t, len(expected), total)
+	var ids []int64
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	require.ElementsMatch(t, expected, ids)
+	count, err := repo.CountByFilter(ctx, filter, q)
+	require.NoError(t, err)
+	require.Equal(t, total, count)
+	ids = nil
+	require.NoError(t, repo.StreamRowsByFilter(ctx, filter, q, func(row *model.Ticket) error { ids = append(ids, row.ID); return nil }))
+	require.ElementsMatch(t, expected, ids, "排除终态必须保留自定义非终态，导出仍同源且遵守scope")
 }
