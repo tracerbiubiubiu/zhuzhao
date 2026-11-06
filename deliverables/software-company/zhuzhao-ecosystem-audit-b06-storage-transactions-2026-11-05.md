@@ -1,5 +1,7 @@
 # 生态审计 B06：存储并发与事务冲突（2026-11-05）
 
+> **最终后端联合复验（2026-11-06）**：本增量F15/F20在上述完整联合范围代码复验关闭；F01–F04既有证据不外推，F20补齐资料并发写的独立链。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
+
 ## 范围与基线
 
 主仓原业务基线为 `5c03581d5999139a3e8e5ead5972c026868aa181`。本报告仅收录 S5 存储与 BK11 冲突支路的已证实发现，不代表主仓全部模块、135 份设计文档或 102 项挂账已经审完。设计输入是 phase5/05、S6-S5-debt-ledger 的 B-11/G-3、13 号 BK11 复盘与 phase6/05；未来 dbtx、outbox 等规划不作为当前缺陷重复计数。
@@ -81,3 +83,12 @@
 永久原生service TestMain回归 `TestUserAvatarProfileCAS` 九场×八轮race共72场绿；真实RustFS两入口各八绿、陈旧资料409且引用保持新键。只移除version、错误地让同键也增代、只去updated_at，三类分别两入口×八轮稳定红；同键绑定后、资料放行前独立核version/时间，避免后续资料写掩盖幂等性缺陷。lint/unit/cover、既有头像与三项GC race回归通过，同行复核无阻断。原生全仓integration/acceptance仍待最终联合轮，未提前关单。
 
 证据 `avatar-profile-consistency/{repair-result.json,report-draft.md}` 含六文件/十六日志SHA、原/固定/变异及物理夹具边界；21只自有容器（含RustFS）均inspect不存在，owner残留0。静读覆盖此前固定b306的156生产Go文件与14最新差集有独立索引；不把它自动外推到之后的新组合。收件人快照时刻仅P2边界候选，尚无明确提交瞬时合同及动态泄露证明，未混成另一已确认P1。
+
+
+## 最终固定联合与运行承接
+
+固定联合 **`dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`** 的719份跟踪文件逐一gitblob相等、门禁后源码干净：lint3.718秒、unit10.746秒、原生全量integration/race（原Makefile -p1）558.571秒、cover11.547秒通过；默认build标签总覆盖20.4%，不冒报相对增幅。原样四档124+68+26+35=253 PASS/0 FAIL/0 SKIP，81对fresh往返零漂移，R01真实API13步/B09成员15步全过；独占验收栈已清，原运行容器集合/ID/启动时间完全相同。
+
+本增量F15/F20在上述完整联合范围代码复验关闭；F01–F04既有证据不外推，F20补齐资料并发写的独立链。 test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。
+
+完整证据为本地忽略 `evidence/ECO-20261104-joint/dc3d540/{manifest.json,core-results.json,resume-installed-wire/core-results.json,acceptance/result.json,image-result.json,test-deployment/result.json}`。原make wire失败属B15原有工具sum缺口，CI同款固定v0.7.0 CLI生成及零漂移通过；原生ba3的ticket reaper初始化失败和原始运行器准备失败均保留，不以续跑绿覆盖原失败。

@@ -1,5 +1,7 @@
 # 生态全面审计 B12：错误码登记完整性与守卫（2026-11-06）
 
+> **最终后端联合复验（2026-11-06）**：B12登记完整性/双向守卫在上述完整联合范围代码复验关闭；L-6路径归一的历史结论与内容补齐分列，不改生产HTTP码值。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
+
 ## 范围与基线
 
 本批由root占号，确认1项P1与同根P2守卫缺口；修复已提交，专项通过，完整联合门禁仍待验证。原缺陷以主仓 `7389ed79bdf409e466542992d9f1befa0c1a8529` 冻结源实核；`73a76b09d998ff9df6930508031793829f255fdc` 为L6归一提交。独立修复 `4da89fad82b70d85bdda0830aca9e79ec5ce42da`（parent738），分支 `codex/fix-error-contract-registry`，工作树 `/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/error-contract`。仅 `api/errcode.md` 与 `internal/handler/errors_test.go` 两文件，无生产码/HTTP/依赖/迁移变化，未push/合main。
@@ -40,3 +42,12 @@
 root另以固定4da89fa的detached checkout独立执行三项错误码测试 `-race -count=8`，6.367秒exit0、工作树干净，见同目录root-fixed-results.json及root-fixed-three-eight.log。原始日志与变异源码仅本地.codex，不入Git/Docker。没有新增真实环境或账号。
 
 仍未执行此修复组合的完整integration/coverage/acceptance及远端CI，不标完整关单，不把主仓守卫当成跨仓自动契约测试，不修改生产HTTP行为去迁就旧稿。控制台同步修复与承接边界，全面审计继续。
+
+
+## 最终固定联合与运行承接
+
+固定联合 **`dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`** 的719份跟踪文件逐一gitblob相等、门禁后源码干净：lint3.718秒、unit10.746秒、原生全量integration/race（原Makefile -p1）558.571秒、cover11.547秒通过；默认build标签总覆盖20.4%，不冒报相对增幅。原样四档124+68+26+35=253 PASS/0 FAIL/0 SKIP，81对fresh往返零漂移，R01真实API13步/B09成员15步全过；独占验收栈已清，原运行容器集合/ID/启动时间完全相同。
+
+B12登记完整性/双向守卫在上述完整联合范围代码复验关闭；L-6路径归一的历史结论与内容补齐分列，不改生产HTTP码值。 test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。
+
+完整证据为本地忽略 `evidence/ECO-20261104-joint/dc3d540/{manifest.json,core-results.json,resume-installed-wire/core-results.json,acceptance/result.json,image-result.json,test-deployment/result.json}`。原make wire失败属B15原有工具sum缺口，CI同款固定v0.7.0 CLI生成及零漂移通过；原生ba3的ticket reaper初始化失败和原始运行器准备失败均保留，不以续跑绿覆盖原失败。

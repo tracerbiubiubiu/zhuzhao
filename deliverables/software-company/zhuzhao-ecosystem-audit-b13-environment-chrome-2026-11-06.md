@@ -94,3 +94,12 @@ root另从固定760a583重新git archive，679个跟踪文件逐一与Git内容�
 开发四个原宿主PID与健康探针再次核对均正常，未重新拉起或切换开发源码。测试UI已在独立F14对照窗口换为准确9f76镜像，删除三文字变量的mutant仅用于八轮负对照，最后恢复fixed；后台八容器不变，fixture/进程按归属清理。root实际Chrome的正常/hover八轮与工程S2的实际按下三态八轮证据分列于[B08续记](./zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)，不混报工具范围。
 
 当前test仍app7389/AL19/TR5e，UI9f；私有canonical仅将UI元数据收敛为实际fixed来源，未借该编辑执行环境重启。主仓联合ba3已承接F13–F19及B14新P0修复，尚未部署、未跑新组合全门禁。旧开发b205已知F08仍在，不称整个系统零错误。其他cmpfull会话资源均保留，未执行全局清理。
+
+
+## 最终后端与真实环境承接
+
+固定联合 **`dc3d540a48e67bf56244efdc0f71cf32cbcb5e80`** 的719份跟踪文件逐一gitblob相等、门禁后源码干净：lint3.718秒、unit10.746秒、原生全量integration/race（原Makefile -p1）558.571秒、cover11.547秒通过；默认build标签总覆盖20.4%，不冒报相对增幅。原样四档124+68+26+35=253 PASS/0 FAIL/0 SKIP，81对fresh往返零漂移，R01真实API13步/B09成员15步全过；独占验收栈已清，原运行容器集合/ID/启动时间完全相同。
+
+test现已承接同源app dc3/AL60e/TR eb3/UI c9，三后端二进制SHA、四imageID/源码标签与UI HTTP index核对相同；仅四应用更新，九个基础/开发容器保持，三PG备份目录已验证但未重复恢复演练。未合main或发布生产。前端最终41和Chrome后记另看B08/B13，不将后端门禁扩大成全站认证。 B13额外用未改Docker/Compose CLI运行候选up/down/reset：已存在其它来源dev资源时三者均在mutation前按归属拒绝，13个共享容器完全不变。第一轮缺必填TR环境变量先正确拒绝、未到owner检查，运行器预期错误另存；补合成preflight值后才计三次owner证据。详 `environment/real-owner-refusal-dc3d540/result.json`。正向重建整个生产/开发编排仍未执行，不能以此冒称已全栈生产演练。
+
+主仓运行镜像复用准确旧运行层，仅由固定719源码交叉构建新ELF并复拷configs/162迁移，165个载荷文件离线SHA全匹配。原始runner误要求VCS字段及FROM imageID解析失败均保留、未部署；最终采用显式buildvcs=false和校验ID的本地父tag成功。不改基线config、不动dev原卷，不以新test版本宣称原dev b205已修复。

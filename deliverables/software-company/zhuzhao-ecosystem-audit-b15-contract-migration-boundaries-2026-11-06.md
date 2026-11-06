@@ -14,7 +14,7 @@
 
 ## B15-F02 / P2：make wire入口缺工具校验和
 
-锚点：[Makefile 的 wire目标](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-verify/final-dc3d540/Makefile:57) @ dc3d540。原5c与本冻结源均pin Wire v0.7.0，缺google/subcommands及go-difflib内容sum。正常GOPROXY/GOSUMDB下，原/新两版的默认与显式readonly go run共4次均先报missing go.sum，模块SHA未变；不是本批升级utils引入，也不是只因离线代理。
+锚点：[Makefile 的 wire目标](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-verify/final-dc3d540/Makefile:43) @ dc3d540。原5c与本冻结源均pin Wire v0.7.0，缺google/subcommands及go-difflib内容sum。正常GOPROXY/GOSUMDB下，原/新两版的默认与显式readonly go run共4次均先报missing go.sum，模块SHA未变；不是本批升级utils引入，也不是只因离线代理。
 
 root首次完整门禁运行器在该额外生成步骤exit2，原日志保留。CI实际使用go install固定v0.7.0后调用CLI；已装工具的go version -m明确同版，root在不改冻结模块的前提按CI同款CLI生成1.930秒通过，wire_gen.go零漂移。lint、业务unit/integration/cover原样目标另有独立结果，不把首次make入口失败涂成全绿。
 
