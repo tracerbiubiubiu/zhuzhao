@@ -1,5 +1,7 @@
 # Phase 5 挂账统一台账（2026-10-23 终版——全仓口径）
 
+> 2026-11-06 ECO-B06：B-11非事务头像绑定和G-3 reaper的组合会误删实物，历史“反连接双保”不足以覆盖锁等待旧快照。`d07f560` 的原子绑定、退役终态和锁后新快照已固定复验（真实RustFS原两红/修复两绿，常规门禁全过）；B-11与G-3并发安全在代码分支关闭，**主线/部署待承接**，原G-3交付事实保留。默认工单confirmed GC同类误删另由B06-F04记录，不依赖avatar观察开关。
+
 > 本文件为 phase5 **全部段**未清项的唯一权威台账（外审 F-2-10 修复）。
 > 整理规则：按「消化时机」分五组（A 即时可清 / B 已锁批次 / C 触发驱动 /
 > D 外部依赖 / E 待拍板）——组内按段排。已修项不列；N/A 项列并标因。
@@ -32,7 +34,7 @@
 | B-8 | S3a | `run.succeeded` emit + `result.*` 命名空间 **+ 任务结果→自动转换（2026-10-27 三方二次对比补强①，所有者批准）**：事件订阅形态 TransitionAction（03 号 P2-4 双形态②）消费 `run.succeeded`/`run.failed` 执行配置转换（成功→X、失败→Y），或 B0-4 词表加 `last_run.status`——否则「工单触发任务」闭环只到事件不到状态（eflow PassProcessTaskJob 对照）；详 [phase6/06 号 §3.16](../phase6/06-ticket-completeness.md) **+ output mapping（2026-10-27 打通五件①，所有者「落」）**：`result.*` 按字段白名单回写工单 custom_data（Update 同事务、actor=system；白名单在 spawn_task 动作参数声明）——B-20 输入映射 + 本条输出映射 = Zeebe input/output mapping 对照，缺一不闭环 | phase6 启动批（2026-10-26 重锚——B3-3 交付偏差③未含，原「B3-3 随批」锚失效） | 03 号 §3.3 | 随批（+1–1.5 天） |
 | B-9 | S5 | 内嵌图引用集解析（回收最后一段——RK-P5-16） | **2026-10-27 第五组：启动批裁出、留账触发**（非 phase6 硬依赖；GC 其余三段已覆盖主场景） | RK-P5-16 | +1 天 |
 | B-10 | S6 | message_log GIN 索引 + fetcher 时机 | 触发（工单量级/首源） | S1 审计 | 随批 |
-| B-11 | S5 | BindAvatar 非事务（F-A3——"无害"论证因 GC 第三段已成立） | S6 二期或随手 | 五批审计 F-A3 | +0.5h |
+| B-11 | S5 | BindAvatar非事务；原“无害”论证被reaper交错推翻，enforce模式可误删成功绑定实物（ECO-B06-F01/P0，含旧键ABA） | 独立修复 `d07f560` 固定复验关闭；主线/部署待承接，不重复开发 | 五批审计F-A3；[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) | 既有+0.5h估算作历史，不代表实际风险 |
 | B-12 | S1 | ~~P2-8 游离 godoc（ticket_handler 4 处）~~ **✅ 已修（bf4a388 删 FieldImpact 前重复块——现存 ticket_handler.go:432 为合法附着非游离——v3 审计 L-2 补标）** | 随手批 | 全量核查 | 5min |
 | B-13 | S1 | P1-21 `'deleted'` 字面量在 repo + Subscribe 无 name | 随手批 | 外审 F-2-7 | ~0.5h |
 | B-14 | S6 | ~~渠道命名两套冲突~~ **✅ 已修（33b42a7 批 3 对表——06 号 §3:39 两级渠道词表成文：channel=adapter 层 uip/webhook + delivery=偏好层——v3 审计 R-2 补标）** | 文档批 | 06 号 §3 | 5min |

@@ -1,0 +1,59 @@
+# 生态审计 B06：存储并发与事务冲突（2026-11-05）
+
+## 范围与基线
+
+主仓原业务基线为 `5c03581d5999139a3e8e5ead5972c026868aa181`。本报告仅收录 S5 存储与 BK11 冲突支路的已证实发现，不代表主仓全部模块、135 份设计文档或 102 项挂账已经审完。设计输入是 phase5/05、S6-S5-debt-ledger 的 B-11/G-3、13 号 BK11 复盘与 phase6/05；未来 dbtx、outbox 等规划不作为当前缺陷重复计数。
+
+修复分列为 `codex/fix-storage-audit` 的 `d07f560c19e311d8c5255a8f7eb5867cc55f488a`、`codex/fix-ticket-conflict-pool` 的 `475b7ac896c94f9c7ef29d27236feff1eb1269e9`。两项均已完成固定提交复验；均未合入 main，常驻 app 尚未升级。
+
+静态/动态双轨：独立 git archive、真实 PostgreSQL 15、确定性锁交错；首轮对象删除端口桩后，又用真实 RustFS 1.0.1 与实际 MinioClient 补验。所有账号/对象均为自有临时资源，不使用 E000001。过程材料及原始日志仅本地 `.codex/audits/ECO-20261104/evidence/ECO-20261104-b06/`，不纳入 Git/Docker。
+
+## 分批发现
+
+### B06-F01 / P0：头像绑定与 enforce GC 交错可误删成功绑定的实物
+
+锚点（原基线）：[`service/storage/service.go` 的 `BindAvatar`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/service/storage/service.go#L297)、[`storage_repo.go` 的 `MarkAvatarOrphanDeleted`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/repository/storage_repo.go#L452)。`SetObjectOwner`、用户头像回写和弃旧分别提交；持用户行锁暂停真实 BindAvatar 时，GC 可把已确认、超期、尚未回写引用的头像标 deleted 并物理删除。释放行锁后 BindAvatar 仍成功。
+
+初核 PG/端口桩串行 5/5 复现；补验真实 RustFS 得到 `bind_error=<nil> avatar_matches=true status=deleted physical_stat_error=storage: object not found`。依项目“数据损坏”口径由过程稿的 P1 调整为 P0。本项须显式 `avatar_gc_observe=false`，默认观察模式不物理清理，不能把它说成默认即可触发。
+
+与既有 B-11 的非事务绑定同源；新增 reaper 使过去“仅可能泄漏、无害”的论证失效，更新原债而非另造重复债。换头像的旧键退役/重绑另有同根 ABA 窗口，已并入同一修复与回归。
+
+### B06-F02 / P1：满额普通附件误拒绝富文本图片确认
+
+锚点：[`storage_repo.go` 的 `ConfirmAndBind`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/repository/storage_repo.go#L205)。设计规定 richtext 不占普通附件额度，但该路径无条件执行 `n+1 > maxCount`。独立 max=1 实验：普通附件确认成功，随后 ticket_richtext 确认被附件数上限拒绝，5/5 复现；默认 max=20 满额时同构。
+
+修复在对象锁内读取 purpose，仅普通附件计硬上限，保留下一普通附件拒绝的对照，不通过提高配置上限掩盖问题。
+
+### B06-F03 / P1：工单状态冲突定性再次取池，满池事务相互等待
+
+锚点：[`ticket_repo.go` 的 `resolveClosedOrMissing`、`UpdateStatusTx`、`UpdateAssignedToTx`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/repository/ticket_repo.go#L378)。两个事务内零行写入口调用的定性 helper 使用 `r.db.QueryRow`，丢失事务连接；N 个事务占满 N 个池连接后都申请第二连接，直到 deadline。生产风险取决于 **MaxConns，N≥池容量**，与核数无直接关系。
+
+原探针串行 5/5 为 `pool_acquired=4 pool_idle=0`，应返回 90004 而实际超时。新增回归在四事务全部准入后才启动查询，保持事务不释放：两个入口各 8/8 稳定红；未提交的自身 closed 状态还会被池读成旧 open，错误返回并发修改。missing/冲突/正常写语义设正向对照。
+
+本项就是 13 号 §8 已登记的 2026-11-01 P2-1，本轮定性为已动态证实的 P1，不重复开债。局部修复复用现有 `rowExec`；dbtx 传播器/请求 deadline/其他域推广依旧是独立规划，不能一并销账。
+
+### B06-F04 / P0：默认工单 confirmed GC 等待落绑后仍用旧引用快照
+
+锚点：[`storage_repo.go` 的 `MarkDeleted`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/repository/storage_repo.go#L468)、`GCJob.Handle` 第三段。BindCreateAttachments 事务已锁对象并插关联、尚未提交时，GC 的单条 UPDATE 先取得“无引用”语句快照，再等对象锁；绑定提交后仍用旧反连接快照退役对象并删实物。此段默认执行，不受 avatar observe 保护。
+
+首轮 PG/端口桩连续 3/3：`binding_committed=true status=deleted ticket_refs=1 removed=[key]`。真实 RustFS 补验同样得到 `binding_committed=true status=deleted refs=1 physical_stat_error=storage: object not found`，确认数据丢失，按项目口径由过程稿 P1 升为 P0。它不是 F01 的同一路径：对象域、默认开关和落绑入口不同，分别保留发现与回归。
+
+## 修复建议、挂点与状态
+
+`d07f560` 将头像用户/对象归属、新引用和旧键退役放同一事务；deleted 为终态，禁止重绑退役键。avatar GC 与 ticket confirmed GC 均先取对象行锁，再用后一条 SQL 的新快照判断引用；GC 赢则绑定拒绝，绑定赢则 GC 让位。普通附件和 richtext 额度按 purpose 区分。无新增路由、权限码、配置项、依赖或迁移。
+
+**F01/F02/F04 在 d07f560 代码层复验关闭**；B-11/G-3 台账补分支证据与主线待承接状态。固定提交独立验证使用原消费 utils v0.4.2，不把本批单独修复误当认证问题也已修；与认证/过期成员的联合构建另做。
+
+`475b7ac` 的 F03 修复已提交，候选专项八轮、lint/单元及移除复用后三目标各 8/8 红成立；固定归档的 lint/单元/专项八轮已过，原样 acceptance 253/0/0、81 对往返已过，但首轮补充 API 探针因本地遗漏 hash_fixture.go 未执行，wrapper exit 1。该失败属证据运行器准备错误，保留原日志，不冒充全绿；补齐辅助文件、保持归档源码不变后，完整集成 **502.17 秒 / exit 0**、覆盖率、原样四档 **253/0/0** 与 **81 对往返**全部通过；真实撤销13步和成员生命周期15步也通过，**F03 在 475b7ac 代码层复验关闭**。运行容器差集仅移除并行测试清理器，常驻实例无新增或重启。该最终成功轮记录于 `pool-fix/postcommit-attempt2/`，没有覆盖首轮失败。
+
+## 验证证据
+
+- storage 固定提交原样 lint/单元通过；首次完整集成被会话中断，无退出码，不记通过；确认无遗留进程后重跑原样完整集成 **454.98 秒 / exit 0**，覆盖率门禁通过。源码逐文件 SHA 与原归档相同，工作树无改动。
+- 独立 PG/Redis/RustFS + 两个冻结兄弟应用镜像运行原样 `make acceptance`：**253 PASS / 0 FAIL / 0 SKIP**，**81 对迁移往返零漂移**。自身资源清理为 0，其他运行容器 ID/启动时间前后相同。
+- 五项确定性交错/额度回归 `-race -count=8` 全绿；恢复旧绑定/额度三目标合计 **24/24 红**，分别恢复 avatar、ticket 单条 GC 快照各 **8/8 红**。失败断言与目标不变量对应，不是编译或初始化故障。
+- 真实 RustFS 探针仅加入两个独立归档：原基线两项均红，d07f560 两项均绿。修复后工单为 `confirmed/refs=1/Stat成功`；GC 赢头像时返回“文件不存在”，用户头像没有悬挂引用。不是浏览器 E2E，也不是完整 HTTP 上传链，本实验通过预签 PUT 放置实物、SQL 设置超期夹具、调用真实 service/GC/PG/S3 路径。
+- 候选 storage 最初验收曾有 MSG8 返回 502；未保留足以归因的 taskrunner 退出现场，不能断言已证实其 panic。之后未改源码，增加兄弟服务 readyz 等待与进程监控的独立轮通过，taskrunner 同 PID、无 OOM。固定提交轮亦通过，原失败保留。
+
+本地证据：`storage-fix/fixed-commit/{source-manifest,fixed-verification-result,resumed-results,full-acceptance-result,interrupted-attempt}.json`、`storage-fix/physical/{baseline.log,fixed.log,results.json}`、`storage-fix/mutation*-results.json`；F03 为 `pool-fix/`。完整原始过程报告仍在本地，正式报告只保留必要事实、锚点、结论与边界。
+
+所有新增代码未合 main。分支代码关单不等于当前系统已部署修复；整体审计、未读设计、全角色路由/视觉体验和其他兄弟仓能力继续核验。

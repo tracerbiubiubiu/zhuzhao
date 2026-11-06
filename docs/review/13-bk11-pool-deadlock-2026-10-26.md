@@ -1,5 +1,7 @@
 # 13 — BK11 连接池死锁复盘 — 事务窗口嵌套池取的根因、修复与彻底方案（2026-10-26）
 
+> **2026-11-06 ECO-B06 复验**：§8既有P2-1 `resolveClosedOrMissing` 残留已在独立分支提交 `475b7ac896c94f9c7ef29d27236feff1eb1269e9`，复用两个零行写入口传入的 `rowExec`。池满与自身事务状态三类断言原各8/8红、修复八轮绿，移除复用各8/8红；固定归档的lint/单元/完整集成/覆盖率、原样253/0/0和81对往返均通过，代码层关闭。主线/常驻部署待承接；dbtx传播器、负向守卫、推广与请求deadline仍独立待实施。完整失败/成功证据见[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。
+
 > **文档定位**：point-in-time 复盘报告——`TestBK11_CreateVsMoveHammer` CI 挂死（10-24 起 15 run 挂 7 笔）的完整证据链、三层根因、已交付修复（`039aca6`，CI 绿）与彻底方案登记（连接解析跟随 ctx，**待拍板**）。
 > **影响面定性**：不止 CI flake——生产 4 核部署 ≥4 并发 Create 同样可永久挂死，属真实并发缺陷，CI 率先照出。
 > **⚠ 订正（2026-10-27 全景审计 A-5，对称验证确认）**：上处及 `039aca6`/`a91da0f` 两笔 message 的「4 核/4 并发中招」表述沿自当时错误前提——真实边界由**池容量**决定：生产 `MaxOpenConns` 默认 25（`config.applyDefaults`，config.go:203；yaml 显式同值），中招条件 = **事务窗口内并发 > MaxConns(25)**（核数不影响池上限）。CI 复现依赖 testutil 钉 4；后续容量评估一律以 MaxConns 为基线，勿再引「4 核=4 池」口径。

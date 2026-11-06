@@ -1,5 +1,7 @@
 # 05 — P6 启动批总账（Week 0 基建件 + 尾款随行）（设计稿）
 
+> 2026-11-06 ECO-B06承接：B-11头像原子绑定及 `resolveClosedOrMissing` tx化已分别在 `d07f560` / `475b7ac` 独立分支完成固定门禁、代码层关闭，**主线/部署待承接**。下表原估与范围保留历史，承接后不重复开发两件，也不借此销账dbtx总体试点。详[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。
+
 > **文档定位**：启动批账本（2026-10-26 建档）——把散在 [README §7](README.md)、[00 号](00-flow-engine-v2.md)、[债台账 B 组](../phase5/S6-S5-debt-ledger.md) 的启动批内容收拢成一张总账。**启动批 = 立项动作 → 本批基建 → R1 开工**；全程**不进核心切片计时**（D25「核心 6 周守住」从启动批出口起算）。
 
 ## 1. 启动批构成（三层）

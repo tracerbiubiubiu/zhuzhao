@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B06 固定复验：[存储与事务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) F01/F04 经真实 RustFS 确认原实现会丢实物，按数据损坏升 P0；F01/F02/F04 在独立分支 `d07f560`、既有 BK11 P2-1（本轮动态定性 P1）在 `475b7ac` 代码层复验关闭。两固定快照各通过 lint/单元/完整集成/覆盖率、原样253/0/0与81对往返；专项八轮及变异稳定红，真实对象探针原两红/修复两绿。B-11/G-3补分支承接状态，dbtx总体仍待实施。**修复未合main、常驻app未升级，全面审计仍在继续**。
+
 > 2026-11-05 B09 代码复验关闭：[临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md) 修复 `d2ab771292980c6bf40930a6bfec326b5bf6513d` 已固定归档独立通过 lint/单元/完整集成/覆盖率、原样四档253/0/0、81对往返、真实API有效→过期→续期15步及R01撤销13步；六处单独移除过滤各8/8红。**代码层关单，常驻app部署尚未升级，未合main**；R01同样已代码复验关闭，整体审计及其他批次继续。以下“仍开放/复验中”为历史时点。
 
 > 2026-11-05 R01 代码复验关闭：[B02-F01/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md) 的应用修复 `10f3f9485f1bbe5722192e2e367e735f162653ac` 已经全新归档重建，lint/单元/完整集成/覆盖率、原样四档253/0/0与81对往返、八轮专项与真实API十三步通过；三类移除修复变异各8/8稳定红。首轮集成环境初始化失败与中断重跑均保留，不冒充通过。**代码层关单，常驻app尚未部署，混合旧实例不满足修复条件**。B09仍开放，修复已提交 `d2ab771292980c6bf40930a6bfec326b5bf6513d`，固定提交独立门禁正在进行。新增代码未合main，整体全面审计尚未收口。
@@ -116,7 +118,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
 | **break-glass 应急通道（admincli）** | `zhuzhao reset-password` 子命令：superadmin 密码恢复（目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销] + 禁用连带启用 + audit_logs 落行 method='CLI'）；同二进制子命令分发零镜像改动；流程与兜底 SQL 见 `docs/runbook.md` §1 | ✅ 2026-10-12（集成 4 用例常态门禁 + dev 栈演练） | `cmd/server/reset_password.go` `internal/pkg/admincli/` `internal/service/session_revoke.go` |
 | **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 15 文件/115 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
-| **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 四段（pending/deleted/反连接回收/avatar reaper observe） | ✅ 2026-10-19~21（五批） | `internal/service/storage/` `migrations/000045–000050` |
+| **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 四段（pending/deleted/反连接回收/avatar reaper observe） | ✅ 既有能力已交付；2026-11-06：误删/额度修复 `d07f560` 独立复验通过，主线/部署待承接 | `internal/service/storage/` `migrations/000045–000050`；[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) |
 | **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7） | `internal/service/ticket/` `migrations/000051/000052` |
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 2026-10-23（外审修复全清） | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061` |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |

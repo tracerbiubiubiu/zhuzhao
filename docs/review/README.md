@@ -5,6 +5,7 @@
 - [audit-playbook.md](./audit-playbook.md) — **可复用全面审计指南**：设计→实现→关键实践，跨仓、前端功能/交互/视觉、七阶段、证据与报告模板；每次审计另建执行卡，不在指南保存当次基线或结论。
 - 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论；B02 由 `10f3f94`、B05 由 `4de9070` 固定快照独立复验在代码层关闭（完整 hash 与失败/成功证据见报告末节），常驻 app 部署状态另计。
 - [B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md)：原业务快照连续三轮确认过期委托缺口，已由 `d2ab771` 固定提交独立复验在代码层关闭；常驻 app 尚未升级，未合 main。
+- [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，主线/部署待承接，保留失败轮与边界。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
