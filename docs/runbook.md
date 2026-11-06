@@ -122,6 +122,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 | admin（superadmin） | E000001 | `admin12345` | **全生态唯一终态**：后端四档 acceptance / ui E2E global-setup / break-glass CLI 三处收敛同值 | **仅限三处**：① phase1 幂等改密流 ② ui `e2e/global-setup.ts` 收敛逻辑 ③ break-glass CLI 复原（§1）。**人工与 agent 的多账号测试禁止改 E000001**——用 E000002+ 专属账号 |
 | manager | E000002 | `Adm2#2609x`（用户自管） | 日常多账号手动测试（admin 角色，不动 E000001 的正确姿势） | 所有者自管 |
 | agent_s2（agent 专属） | E800001 | `Agt1#2610x` | agent 会话 UI 走查专属（admin 角色；2026-10-24 S2 画布走查建号——E000002 台账密码已脱靶且属所有者自管，按 §4.2#2 新建 E8 段） | agent 自管；所有者可随时禁用 |
+| agent_eco_chrome（仅独立 test 栈） | E800006 | 同 E800001 的公开测试口令 | 2026-11-06 ECO-B13 真实 Chrome 走查专属 admin；仅 `zhuzhao_test` 主库，未写入 dev/生产 | agent 自管；所有者可随时禁用，不由 E2E global-setup 接管 |
 | e2e_operator / e2e_viewer | E2E9020 / E2E9030 | `E2eOper#2609` / `E2eView#2609` | Playwright E2E 专属（global-setup 幂等建号） | 仅 `zhuzhao-ui/e2e/global-setup.ts` |
 | S1 演练号 | E2E 段随建 | global-setup 派发 | 强制改密流程演练（每轮重置，无常态） | 同上 |
 
@@ -205,7 +206,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
 > 来源=两会并行开发当周的三次互相干扰事故：端口互杀（互相 `make dev` 杀对方服务）/ Redis 于验收中途被重启 / **T7 假红**（一会的 viewer 角色页面绑定实验污染另一会的验收断言）。
 
-1. **端口分治**：33333=标准实例（`make dev`），只跑四档 acceptance 与联调；33334=实验二实例（`APP_PORT=33334 make dev`，88e0d19 机制），一切 schema/数据/角色绑定实验在此进行。两会各占其一，不抢不杀。
+1. **端口分治**：33333=标准 dev 实例；33334 历史用于实验二实例，但当前由独立 `zhuzhao_test` 占用，禁止再裸起 `APP_PORT=33334 make dev`。实验须在端口表另取未占用端口，并隔离数据库/Redis；只换 HTTP 端口不构成数据隔离。不抢不杀其他会话进程，验收另守下条独占纪律。
 2. **验收独占**：跑 acceptance 前确认无他会在跑（`pgrep -fl acceptance-phase`）；验收期间不对共享 dev 栈做 docker 重启/种子数据/角色绑定变更。
 3. **验收夹具自愈**：脚本对「角色零绑定→403」类断言一律用**运行时自建临时角色**（`p2a_viewer_*` / `p2c_viewer_*`，跑完残留随 `docker-dev-reset` 清），不得依赖 seed `viewer` 角色的绑定状态——它可能被任何会话的功能实验合法修改。phase1 仍用 seed viewer 做角色停用语义夹具，但它自带绑定清理守卫且居于链首。
 4. **共享库直改须自清**：实验性 role_menus/种子数据改动在实验结束或验收窗口前还原（`docker-dev-reset` 一步到位）。
@@ -215,7 +216,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B11（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；7389固定全门禁253/0/0+81对+撤销13/成员15过，test app=7389、AL19/TR5e、UI f104新组合41/41，RustFS59000自有/dev9000不动。B06含F11/F12代码关单；B08正式14项/11完成3P2挂账；B07 F10库修复consumer未承接。B11八轮矩阵差异0，报告dd04091、自有PG/Redis已清。全文/101债与总报告继续，UI原仓.gitignore他方在途排除，不合main | 本轮文档和codex修复分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（联合复验终态） |
+   | Codex：全面审计 / R01、B06–B13（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；test app7389/AL19/TR5e，UI已用61b35bf正确标记镜像重建（测试徽标），Chrome专属E800006通过；f104组合41/41为前次门禁，新61未重跑完整41。dev原卷恢复，宿主API33333/AL18081/TR18080/UI4000均就绪；原UI b205仍有B08-F08已知异常。B13环境编排修复在独立分支，root独占共享环境/Chrome，外部cmpfull及未知容器不清理。全文/债与总报告继续，原UI .gitignore他方在途排除，不合main | 本轮文档和codex修复分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（环境恢复与Chrome实查） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 
@@ -236,5 +237,15 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 - **Redis**：`docker compose -f deployments/docker-compose.dev.yaml --profile tools up -d redisinsight` → http://localhost:5540 （tools profile 默认不起，不进主栈；连接 redis:6379 / 密码 zhuzhao_dev，首连 UI 输入一次）
 - **asynq 队列深查**：官方 asynqmon 三连实证不适用（停更 3 年+ / 无 arm64 镜像 / 不兼容 asynq v0.26 格式，详见 docker-compose.dev.yaml 注释）——现状用 zhuzhao-ui jobs/死信三 Tab + `redis-cli --scan --pattern 'asynq:{jobs}:*'`；未来真需要时给 taskrunner 加 `asynq.Inspector` 只读端点（其内部已实例化，小批可落）。
 - **PG / RustFS**：桌面客户端直连 5432（pgAdmin 等）；RustFS Console 自带（storage profile，9001）。
+
+## 9. 开发/测试环境恢复与来源核对（2026-11-06）
+
+1. 先核 §7 占用，再按容器 labels 的 Compose project、service、实际卷名确认归属。现有开发主库/Redis 为 `zhuzhao-dev`，AL开发库历史默认项目 `deploy`、卷 `deploy_pgdata`；改 project 名会改变默认卷名，不能把新空库当作恢复旧数据。保留未知或其他会话资源，禁止全局 prune、按前缀清理和端口互杀。
+2. 优先恢复已有容器/原卷；主PG与AL PG先逻辑备份，TR使用SQLite时同时备份其库及待提交日志状态，不能复制仍在写入的单个db文件。确认依赖健康、显式迁移成功且schema非dirty，再启动应用；主dev Compose只有依赖，AL dev Compose只有PG，TR生产Compose不发布宿主端口，不能互相替代。标准入口与拓扑见 [deployments/README](../deployments/README.md)。
+3. 开发全链分别核 API33333、AL18081、TR18080、Vite4000；Vite须使用仓库 `pnpm dev` 对应的 `--mode base`，不能用无mode命令造成标题/配置缺失。AK/SK三对必须同源，环境差异走env，不改冻结yaml。进程就绪后还要验证正常账号登录、真实业务读取；当前来源和已知问题见 [B13报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。
+4. 独立测试入口为48081/API33334；数据和开发栈隔离。原始test迁移服务当前无profile，但app没有迁移完成依赖；首拉按“依赖→显式迁移成功→应用”执行。生产主Compose的migrate有profile，普通up不含迁移，二者不可混记。`/health/ready` 是API直连探针，不是 `/api/health/ready`。
+5. 记录“源码hash/工作区→依赖pin→构建参数→镜像或二进制摘要→运行实例→探针/Chrome”的对应关系。`latest`标签、本仓HEAD、独立修复分支不相互替代；前端构建时明确开发/测试徽标。开发使用localhost、测试可用127.0.0.1区分浏览器host作用域，避免不同端口共享同名Cookie；浏览器临时视口/主题检查结束后恢复。
+
+本轮现场清单、私有env、PID、备份、截图及重启辅助仅存在忽略的 `.codex/audits/ECO-20261104/environment-recovery-20261106/`，不入Git/Docker；长期规则以本节和部署入口为准。需要沿用现场进程时，先运行该目录 `devctl.py status`，`start`只恢复记录的构建产物并拒绝接管其他端口/PID，不自动升级源码或覆盖数据。
 
 
