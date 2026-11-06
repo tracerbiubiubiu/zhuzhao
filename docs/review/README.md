@@ -2,19 +2,21 @@
 
 本目录三层结构；长期审计方法与时点报告分开维护：
 
+- [首次五仓全面审计总报告（2026-11-06）](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)：设计演进/实现/关键实践与二次验证收口，7P0/39P1在固定修复范围关闭；test承接，main/生产未承接，dev保留原版。Go漏洞扫描NOT_RUN及其它覆盖限制显式列明。下列分批进度保留历史证据，当前结论以总报告及各报告最终节为准。
+
 - [audit-playbook.md](./audit-playbook.md) — **可复用全面审计指南**：设计→实现→关键实践，跨仓、前端功能/交互/视觉、七阶段、证据与报告模板；每次审计另建执行卡，不在指南保存当次基线或结论。
 - 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论；B02 由 `10f3f94`、B05 由 `4de9070` 固定快照独立复验在代码层关闭（完整 hash 与失败/成功证据见报告末节），常驻 app 部署状态另计。
-- [B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md)：原业务快照连续三轮确认过期委托缺口，已由 `d2ab771` 固定提交独立复验在代码层关闭；常驻 app 尚未升级，未合 main。
-- [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，主线/部署待承接，保留失败轮与边界。
-- [B06 流程/提醒/调度续批](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)：P0快照、提醒/调度/通知身份/情报单飞等F05–F10已固定联合12401aa全量门禁关闭；编辑/公开回复漏消息F11与连续数组审计漏脱敏F12也已在7389固定完整门禁关闭，早前RustFS初始化失败轮保留。
-- [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close已正式pin到主仓bd05/AL60e候选、联合门禁待验，AL静默覆盖按P0。
+- [B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md)：原业务快照连续三轮确认过期委托缺口，已由 `d2ab771` 固定提交独立复验在代码层关闭；test app已承接最终dc3，未合main/生产。
+- [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，test已承接最终dc3，主线/生产待承接，保留失败轮与边界。
+- [B06 流程/提醒/调度续批](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)：P0快照、提醒/调度/通知身份/情报单飞等F05–F10已固定联合12401aa全量门禁关闭；F11–F20及其后笔同类也已在最终dc3完整门禁关闭，早前RustFS初始化失败轮保留。
+- [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close已正式pin到主仓bd05/AL60e候选、最终dc3/AL60联合门禁通过，AL静默覆盖按P0。
 - [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十四项功能/交互/视觉发现，原14项限定范围复验关闭；c9/dc3/AL60/TR eb3六件与41首过及Chrome最终通过，原失败/HTTP429与全站认证边界保留，视觉与全量认证边界分列。
 - [B10 现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)：五组设计/导航事实校准，含菜单及工单L1速查P1失真；历史留存，L-5主体未销账。
 - [B11 当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)：19主体八轮共25840矩阵请求/5440交叉，差异0；权限行数与端点数、L1到达与业务成功分别计，不替代L2/L3。
-- [B12 错误码登记与守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)：77当前定义补全、双向测试与四类稳定变异，联合门禁待验。
+- [B12 错误码登记与守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)：77当前定义补全、双向测试与四类稳定变异，最终dc3完整门禁通过。
 - [B13 环境恢复与真实Chrome](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)：dev保卷恢复、测试准确镜像/端口及专属浏览器走查，启动修复与未覆盖边界分列。
-- [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终联合全门禁待验，未合main/部署。
-- [B15 接口/工具/迁移边界](../../deliverables/software-company/zhuzhao-ecosystem-audit-b15-contract-migration-boundaries-2026-11-06.md)：存储ID与Wire入口P2记账、定制引用回滚前置；撤销模板及MIG-S04运行P1候选，不把静态线索计作当前越权。
+- [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终dc3完整门禁通过并已test承接，未合main/生产。
+- [B15 接口/工具/迁移边界](../../deliverables/software-company/zhuzhao-ecosystem-audit-b15-contract-migration-boundaries-2026-11-06.md)：存储ID/Wire入口/定制引用回滚前置/W5限流节奏四P2记账；撤销模板及MIG-S04运行P1候选，不把静态线索计作当前越权。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
