@@ -7,10 +7,13 @@
 - [B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md)：原业务快照连续三轮确认过期委托缺口，已由 `d2ab771` 固定提交独立复验在代码层关闭；常驻 app 尚未升级，未合 main。
 - [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，主线/部署待承接，保留失败轮与边界。
 - [B06 流程/提醒/调度续批](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)：P0快照、提醒/调度/通知身份/情报单飞等F05–F10已固定联合12401aa全量门禁关闭；编辑/公开回复漏消息F11与连续数组审计漏脱敏F12也已在7389固定完整门禁关闭，早前RustFS初始化失败轮保留。
-- [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close消费端未承接，AL静默覆盖按P0。
-- [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十四项功能/交互/视觉发现，11项修复复验完成、3项P2挂账；f104完整六件及最新7389组合41/41通过，视觉与全量认证边界分列。
+- [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close已正式pin到主仓bd05/AL60e候选、联合门禁待验，AL静默覆盖按P0。
+- [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十四项功能/交互/视觉发现，11项原范围修复复验完成、3项P2已修/专项通过；9f已test承接、c9最终schema与镜像待新组合完整41；f104旧组合41/41保留，视觉与全量认证边界分列。
 - [B10 现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)：五组设计/导航事实校准，含菜单及工单L1速查P1失真；历史留存，L-5主体未销账。
 - [B11 当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)：19主体八轮共25840矩阵请求/5440交叉，差异0；权限行数与端点数、L1到达与业务成功分别计，不替代L2/L3。
+- [B12 错误码登记与守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)：77当前定义补全、双向测试与四类稳定变异，联合门禁待验。
+- [B13 环境恢复与真实Chrome](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)：dev保卷恢复、测试准确镜像/端口及专属浏览器走查，启动修复与未覆盖边界分列。
+- [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终联合全门禁待验，未合main/部署。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：

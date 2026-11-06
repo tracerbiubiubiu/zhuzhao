@@ -1,52 +1,32 @@
 # 11 · 项目能力总览图（Project Control）
 
-> 联合候选承接B10：有效设计/历史导航校准沿6199ef6必要差异，保留各修复分支新增实现说明；review索引采用root当前较新内容。仅文档，不覆盖已修实现或Swagger。
+> **本分支最终组合冻结准备**：生产代码截止6ad4cda（B06-F13–F20、B14、B12守卫、B13启动、F12对象契约及正式utils pin已承接）；当前仅同步root截至619f629的必要正式报告和共享控制台/台账，不覆写各修复的阶段设计或Swagger。待完整门禁的新联合范围另钉本次提交hash；目标兄弟AL60e/TReb3/UIc9均独立分支，不合main或提前声明部署。
 
-> 联合候选承接 B06-F20：源码提交 `1550bbf9cf05eda89454021484069ce3e277cc78` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> **2026-11-06 B06-F20/P1**：[头像/资料并发](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)在已含B14的ba3固定源实际两资料入口各八红，真实RustFS确认回指已deleted旧键；1550bbf同事务换键推进资料version/updated_at、同键幂等，72场race与物理两入口八轮绿、三变异稳定红，已承接6ad4cda。原生B14/F15/F17/F18/F19八轮已补（ticket首轮reaper初始化失败、同源单包重跑绿均留证），新组合完整门禁仍待，未合main/部署。
 
-> 联合候选承接 B07-F10-consumer：源码 `bd05cfd39cf1448f58283f3f2129a0d6f0701a6b`，正式immutable utils pin；远端仅库codex分支已推，main/tag不动。本组合完整门禁待冻结，未合main/部署。
+> **2026-11-06 B14/P0修复待联合验收**：[资料写入覆盖账号安全状态](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)原固定b443各八轮确认、旧AT22/22仍拒绝；独立修复f917c64已移除资料SQL的安全字段回写并RETURNING当前值，个人/管理员两入口×两场景×八轮共32场通过，原SQL及三独立变异各八红，lint/unit/定向race通过。已按路径承接联合ba3ecb6，完整integration/cover/acceptance未跑，未合main或部署；不能沿用738旧全绿称当前所有P0已清。
 
-> 联合候选承接 B14-F01：源码提交 `f917c64242e08fdc59bd29179602148a9e8d00fd` 的必要差异已引入本codex分支；专项32场及变异证据保留，本组合完整门禁待跑，未合main/部署。
+> **2026-11-06 B06增量承接**：F13导出XML/资源释放、F14设置全量快照、F15字典/MIME嵌套池、F16实际导出上限/计数、F17单边图、F18首次字段/版本同代、F19通知偏好身份键均已独立提交并通过专项/稳定变异，详细来源hash与边界见[B06流程报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)及[事务报告F15](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。联合ba3ecb6已按路径承接，完整integration/cover/acceptance待冻结；B12错误码4da与B08-F12后端bc245同样在候选，均不借旧门禁提前关单、未合main。
 
-> 联合候选承接 B06-F19：源码提交 `f9e1f63d6498edd5ac0350bfc93b5699fe83dd65` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> **2026-11-06 B13环境恢复**：[环境与真实Chrome报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。dev原PG/Redis/AL-PG容器及原卷恢复，4个宿主服务在线；原工作树UI仍b205，真实Chrome复现已登记B08-F08，不能称开发版零错误。test保留app7389/AL19/TR5e，UI9f76准确镜像已承接并标测试环境；专属账号登录/代表业务读取和1280/1024布局实查完成，未重跑新产物全41。B13另确认启动项目/卷碰撞、错误回退/假成功与生产UI构建路径缺口，独立分支修复验收中，不合main。以下“dev不动/f104”为先前时点。
 
-> 联合候选承接 B06-F18：源码提交 `26076f249fa879953dc7661da8f74314373307ec` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06最新联合终态：主仓7389ed7固定lint/完整单元/完整集成614.98s/cover、原样253/0/0与81对往返、撤销13步/成员15步全过；B06-F11/F12代码层关闭。仅test app升7389，AL19/TR5e与f104 UI同源新组合41/41，dev不动。[B08报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)现14项：11项复验完成，F12/F13/F14三项P2挂账。B07-F10库修复消费端未承接；全文/历史债/总报告仍进行，不合main。
 
-> 联合候选承接 B06-F17：源码提交 `641cfbe3f235cd00524fefc7b9272940a019c800` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B11：[当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)以全81迁移独立PG、真实BFS/Casbin/router八轮核验：19主体×170case，共25840请求及5440次ServeHTTP交叉，差异0；124条菜单API关联=116唯一端点，44豁免按实际链分类。签名面/默认禁用及catalog反例均通过，无新增P0/P1。不把零handler哨兵500算业务成功，L2/L3仍看各批证据；旧14号仅时点先例。自有资源已清，未改共享环境。
 
-> 联合候选承接 B06-F16：源码提交 `ab471a00a228bd323dd8d7490f4074599a1f513c` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B06-F12/P1：[审计嵌套数组漏脱敏](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)真实请求/响应探针在原5c与当前92各八红，独立f1ff68a修复八绿/变异红；已汇入7389ed7冻结全门禁中。F11同轮待复验。前笔1a99完整integration因临时RustFS启动等待超时失败，其它包过；相同源定向诊断后来过，具体启动延迟未归因，不记该轮绿。124前笔全量绿范围保留，主线未合、常驻test app仍f69。
 
-> 联合候选承接 B06-F15：源码提交 `4b0b788a1d7105a17439543117fbf19460f88f8d` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B07增量：[兄弟服务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)扩至F01–F11（含既有panic两债去重）；AL导入与TR delivery/panic固定门禁关闭，网关本地超限现413、AL通用5xx已闭环；TR生产compose探针18080修复eb3c0c0独立实际healthy。仅test兄弟运行已升级AL19a4c1d/TR5e3f5f3，二进制SHA和迁移已核，app仍f69/dev不动。utils Transport读错Close修复cd759a0仅库分支，消费者pin未升，明确保留承接状态；逻辑备份恢复已实测，本轮未跑PITR。
 
-> 联合候选承接 B13：源码提交 `760a58363b0a6b75c4f7e8233f7ebb3cc1137c7b` 的必要差异已引入本codex分支，端口说明冲突按该提交的现行预约/拓扑解析解决；本组合完整门禁待验证，未合main/部署。
+> 2026-11-06 B10：[现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)单批校准五组：引擎子包未实施、ADR轮询导航、标签非DomainEvent生产者、菜单只读及工单L1矩阵（台账失真P1）、旧部署导航。历史日志保留，L-5主体仍开放；仅文档，不以本批宣称实现全覆盖，事实对齐后结束本轮抛光。
 
-> 联合候选承接 B08-F12-backend：源码提交 `bc245edfdcd3d2eabf4a64b84e7c34aa92c298ea` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B06代码复验：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md) F05–F10在固定联合12401aa通过完整integration529.99s、lint/unit/cover、原样253/0/0与81对往返、撤销13步/成员15步，代码层关闭；包括Cron专用锁会话、通知creator/actor拆分、intel单飞结果。原d38夹具污染失败已留证且未放宽原断言。新增F11/P1编辑与公开回复漏消息已修92adc20/联合1a99a25，完整复验进行中，未关单。主线未合，test app=f69未含F09–F11，dev不动。
 
-> 联合候选承接 B12：源码提交 `4da89fad82b70d85bdda0830aca9e79ec5ce42da` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B08阶段报告：[前端功能/交互/视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)登记10项：草稿作用域、旧会话异步覆盖、深链筛选、ID精度、旧提示、AL空态、键盘操作、表格挂载异常、离线图标与亮色对比度。均已在独立UI分支提交修复，最新c83a53d，固定产物完整六项门禁待收口，不提前关单。主仓联合12401aa固定全量门禁在跑，常驻test app=f69；AL/TR最新镜像已构建待换。未合main，整体覆盖仍进行。
 
-> 联合候选承接 B06-F14：源码提交 `6d788d081d79fb626abe9097bdd3a0e3c0fc28c9` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
+> 2026-11-06 B07阶段报告：[兄弟服务与库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)登记AL池P1/导入体积P1/版本复用静默覆盖P0、TR空死信P1/同attempt旧delivery终态覆盖P1。AL池156ff03、revision afc3700、TR死信a1309cc固定代码复验关闭；import82290bc固定复验中，delivery fence修复中。TR仅test已升，AL运行仍待承接；utils9ed38f7仅codex分支推送供正式pseudo-version，未合main/发tag。网关1MB与运维直连大导入边界分列，整体覆盖未收口。
 
-> 联合候选承接 B06-F13：源码提交 `50cad5e32a7c3763edeec0b8ed010abe7ce5587e` 的必要差异已引入本codex分支；该来源的专项证据独立保留。本组合尚未完成全量门禁，未合main/部署。
-
-> 2026-11-06 B06-F12/P1：审计请求/响应连续数组嵌套漏脱敏，独立修复f1ff68a统一递归map/slice，保留敏感key及截断边界。来源真实中间件原/变异各八红、修复八绿及lint/unit/cover通过，本联合完整门禁待验。前笔1a99完整integration624.23s因临时RustFS准备超时exit2（业务断言前，全部其它包过），未记绿；124前笔完整绿保留，不把重跑当归因。未合main、未改历史审计记录。
-
-> 2026-11-06 B06-F11/P1：真实Update缺收件人锚、公开CreateComment未发既有ticket.commented，已按92adc20接通，内部备注不扩通知。最新c23旧探针每类八红、修复与commit失败反向/三类变异通过，独立联合完整门禁待复验，未关单。此前12401aa已固定通过lint/单元/完整集成529.99s/cover及原样253/0/0、81对往返、撤销13步/成员15步；F05–F10代码层闭环，未合main。
-
-> 2026-11-06 联合审计增量：B06-F09/P1 工单创建者与操作者拆分（824305f）、B06-F10/P1 情报后台刷新/前台 miss 共用 singleflight 结果（c23e73c）汇入独立 codex/audit-integration。来源专项/变异已通过；本次固定联合完整集成与原样 acceptance 待验证，未标完成，未合 main。
-
-> 2026-11-06联合增量：组合Cron锁连接预算8b3dc2d及提醒测试隔离823455c。Cron用专用会话（每活跃scheduler额外1 PG连接）+2s清理预算，单池1真实归档及双实例互斥/失败取消等八轮绿、四类变异各8红；新提醒fixture精确停用/Drain，原d38整包污染红已保留，隔离后旧断言不改八轮及ticket整包绿。最新联合完整门禁待执行，不以已通过的旧头代替。未合main。
-
-> 2026-11-06 ECO-B07-F06候选：实际隔离test正确登录后/al import 1MiB+1被拦却报502/10008，小体对照正确到AL404；网关现已按MaxBytesError映射413/10001，不联系上游。已知/未知长度、恰界/超界和真上游失联对照八轮通过，移除映射八红，lint/完整单元过；未部署/未合main，仍待联合固定复验。
-
-> 2026-11-06 ECO-B08候选补齐：角标非终态跳转新增exclude_statuses，保留自定义非终态，和首页statuses两状态口径分别兑现；handler及真实PG列表/导出计数/流/scope八轮通过，移除SQL八轮红，完整单元/Swagger/vet通过；联合最新门禁待执行。
-
-> 2026-11-06 ECO-B06增量候选：汇集fb0fff2事务预检快照（工单持久字段/类型version锁下核对，变化409；含旧处理人condition撤销）与e329db0提醒预算（无事件不耗、max0不发、候选窗口不饿死）。八类移除修复变异各八轮红、满池新helper八轮绿，源lint/单元过、完整集成待收尾；联合门禁待执行，未部署未合main。边界限工单与类型配置，不提供跨用户/组织权限关系的分布式原子撤权。
-
-> 2026-11-06 ECO-B08 ID契约候选：`AddTicketCCRequest.UserIDs`复用现有Int64Slice兼容字符串数组和旧数字数组，保留>2^53精确值、正数/20项绑定守卫，Swagger同步string[]；前端Number舍入及supervisor数字400另由UI修复。handler八轮与完整单元通过，联合固定门禁待完成；只证明选择失败，不声称已错发给其他人。
-
-> 2026-11-06 ECO-B08待办候选：联合分支新增列表/导出可选状态集合，与单值status互斥，沿同一scope+业务WHERE；支持首页既有assigned/in_progress待办口径，避免导航混入closed。handler正负向和PG列表/计数/流三路+scope专项八轮通过，正常门禁与浏览器联合验证待完成；未合main。
-
-> 2026-11-06 联合验证分支：将已分别复验的认证10f3f94、成员有效期d2ab771、冲突支路475b7ac和存储d07f560汇集到 `codex/audit-integration`。逐文件核实与对应修复提交完全相同，lint/单元已过；联合完整门禁与测试部署待执行。未合main，原正式报告的部署边界保留。
+> 2026-11-06 B06续批：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)正式登记F05/P0（同状态预检快照权限失效）、F06/F07/P1（无目标耗水位/零额度仍发）、F08/P1（Cron会话锁占业务池）。前三项fb0fff2/e329db0已进入独立联合d38f10f并仅部署test，原样253/0/0与81对往返通过、完整集成待收尾，未关单；Cron另批修复中。新增代码未合main。
 
 > 2026-11-06 B06 固定复验：[存储与事务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) F01/F04 经真实 RustFS 确认原实现会丢实物，按数据损坏升 P0；F01/F02/F04 在独立分支 `d07f560`、既有 BK11 P2-1（本轮动态定性 P1）在 `475b7ac` 代码层复验关闭。两固定快照各通过 lint/单元/完整集成/覆盖率、原样253/0/0与81对往返；专项八轮及变异稳定红，真实对象探针原两红/修复两绿。B-11/G-3补分支承接状态，dbtx总体仍待实施。**修复未合main、常驻app未升级，全面审计仍在继续**。
 
@@ -62,7 +42,7 @@
 
 > **用途**：一张地图快速掌握整个项目的能力、关键细节与当前健康状态，用于对 AI 快速迭代保持掌控。**每次代码改动后应同步更新本文**（见 `AGENTS.md`）。
 >
-> **当前测试基线（单一真相源——2026-10-27 全景审计 B-1 立约）**：四档 acceptance **251/0**（122+68+26+35，2026-10-27 观测批时点全量实测刷新；前值 249/0=122+67+26+34 @`24920b3`，+2 系其后批次用例增量[T7 自愈化/G-5 观测面]，观测批自身零新增用例）。约定：历史批次行保留时点值**不回改**，此处为唯一当前值——其后批次增减用例须随批刷新本行；各文档/报告引用四档数字一律以此为准，勿复制历史行时点值。
+> **当前测试基线（单一真相源——2026-10-27全景审计B-1立约；2026-11-06实测刷新）**：四档 acceptance **253/0/0**（phase1断言124 + 2a68 + 2b26 + 2c35；PASS/FAIL/SKIP）。原业务5c初核与最新固定联合7389ed7均为此计数，81对迁移往返另计；正常门禁不替代各安全缺陷专项。前251/0为10-27历史时点值，历史批次行不回改；当前值与范围只在此维护，来源见B06最新固定联合证据。分支代码通过不等于main已承接或生产已发布。
 >
 > 更新日期：**2026-11-04**（**09 号指针+迁移编号勘误微批**：§3 规模行迁移数 160→162（81 对）/ §4 标题 80→81 对 + 补 000081 行 + 尾注与 IW2 两处「下一编号」000081→000082 / §7 树 phase6 行设计稿 00–08→00–09——详下方批次行）。上一更新 **2026-11-02**（**11-01/02 文档批次**：§7 文档树 +phase7/8/9 行 / 观测批修复行 / 08 号范围 00–08 / 批次行「§6」→§7 勘误——详下方批次行）。上一更新 **2026-10-28**（**phase5 十段回填批（外审 P0-3）**：§1 矩阵补 phase5 九行 / §0 规模刷新（当日实测）/ 未实现附件行勘误（S5 已交付）/ §4 标题 79→80 对。更早 **2026-10-15**（**文档对账批**：§3 API 地图对齐路由实态——/menus「CRUD」反向断言修正[代码 P4-W1 起只读]+P4 增量端点补行+`router.go` 过期行号勘误+头部日期滚动恢复）。历史批注——2026-09-27（**W2 出口闭合批回填**：① Phase 4 实施态落档——W0 安全批/W1 词表只读化（000030/31）已推（至 6609782）；W2 前端壳层双侧交付（主仓 d513825=Swagger 61 路径 P1-8 闭合+dev-stack.sh；zhuzhao-ui 22c024aa=壳层四件+登录/首登改密/工作台+system 占位+vitest 43 例）+ 本批出口闭合三件（**E2E 起建**：Playwright 打标准三栈+globalSetup 幂等建号/角色预设/admin 凭据闭环，S1 强制改密/S2 冒烟/FE3 viewer 只读三 spec；**codegen 链**：swagger2openapi 7.0.8 + openapi-typescript 7.13.0 → `pnpm codegen`，生成物随仓；**zhuzhao-ui CI 上线**：lint/typecheck/build + test 双 job）；② §1 矩阵补前端行；③ 12-frontend §4/§5 回标（views 目录/API 布局/FE 状态随 W2 落定）；④ 主仓 ci.yml 触发分支补 `phase4`（W0 B-4 欠账一行）+ swag info 块补 @title/@version（swagger2openapi 转换前提）｜ 分支：`phase4`（Phase 4 **实施期**——原「规划期未动代码」口径作废；W1 批四档 acceptance 全绿 91+67+26+34 FAIL=0）｜ 文档体系见 [docs/roadmap.md](../roadmap.md)
 > 2026-11-04 批次（**09 号指针+迁移编号勘误微批**——09 号类型级可见性设计稿 2026-11-03 建档[草案待拍、代拍项搁置至 phase6 入口拍，所有者令]而仓内零指针 + 编号 SSOT 三处 stale 有撞号向导风险）：本文件[§3 规模行迁移数 162/81 对+§4 标题 81 对+000081 补行+尾注/IW2 下一编号→000082+§7 树 00–09] / phase6 README[§2 索引 +09 行草案指针+头注 00–09+变更记录] / 07 号[§3.2 +09 拍板触发行+变更记录] / roadmap :123/:196 同型 00–09 / 09 号本体随本批入库
@@ -143,7 +123,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
 | **组织** | 树形 CRUD、ltree 路径、move、成员管理、owner/成员角色、虚拟组、scope | ✅ Phase 1+2 | `internal/service/org_service.go` `org_delegation.go` |
-| **菜单** | CRUD、菜单树、权限码、前端数据 | ✅ Phase 1 | `internal/service/menu_service.go` |
+| **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级 Casbin RBAC（BFS 角色展开 + 超管通配） | ✅ Phase 1 | `internal/middleware/casbin.go` `internal/casbin/enforcer.go` |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
@@ -198,9 +178,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ### 权限码清单（Casbin seed 管理类）
 
-`user:create/update/delete/status/assign_role/assign_org/reset_password` ｜ `role:create/update/delete/assign_menu` ｜ `org:create/update/delete/move/member` ｜ `menu:create/update/delete`
+`user:create/update/delete/status/assign_role/assign_org/reset_password` ｜ `role:create/update/delete/assign_menu` ｜ `org:create/update/delete/move/member`
 
-> 工单操作不走静态权限码，走 **L2/L3 资源级动态判定**（create/read/update/close/assign/delete/comment/note）。
+> 上列仅为用户/角色/组织管理类速查，完整当前L1词表以 `menus`/`menu_apis` 迁移和路由目录为准。菜单生产写端点已退役，不再列菜单CRUD权限码。工单业务路由先过 **L1路由RBAC**（如ticket:list/create/update等），再过 **L2可见性/L3动作权**；cc/tags等已登记selfService的入口豁免L1业务码，仍由服务端检查读可见或update动作权，不能把自服务豁免推广到全部工单操作。
 
 ---
 
@@ -322,10 +302,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 门禁 | 命令 | 覆盖 |
 |------|------|------|
-| 单元测试 | `make test-unit` | 121 个测试函数（2026-09-14 时点） |
+| 单元测试 | `make test-unit` | 默认build标签、全internal包、race；数量依受测快照，历史121函数为2026-09-14时点 |
 | 集成测试 | `make test-integration` | 需 PG/Redis |
 | 覆盖率 | `make test-cover` | 覆盖率报告 |
-| **全量验收** | `make acceptance` | **四档链式门禁**（经 2c 脚本）：phase1（27 用例）→ 2a（R3-R8+T1-T7）→ 2b（R9-R10 虚拟组/scope/BFS）→ 2c（D1-D9 委托） |
+| **全量验收** | `make acceptance` | **四档链式门禁**（经 2c 脚本）：phase1（27组、当前124断言）→ 2a（68）→ 2b（26）→ 2c（35）；精确范围见本页当前测试基线 |
 | 分档入口 | `make acceptance-2a` / `-2b` / `-2c` | 单档运行（-2c 含全部上游回归） |
 | 其他 | `make lint` `build` `swag` `benchmark` | 静态检查/构建/文档 |
 
@@ -334,6 +314,24 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-06全面审计承接
+
+以下分支验证与主线/生产承接分开；不将后面的历史底座行理解为当前全项目零缺陷。
+
+| 审计组 | 当前验证状态 | 主线/运行边界 |
+|---|---|---|
+| B02撤权/B09过期成员，B06业务 | 联合7389范围F01–F12已完整复验；F13–F19均有独立修复/专项/稳定变异并承接ba3ecb6 | ba3新组合完整门禁待冻结；仅test app=7389，main未合/生产未发，不外推旧全绿 |
+| B07 AL/TR | AL19/TR5e为当前test；TR生产eb3已独立healthy；F10主仓bd05/AL60e正式pin cd759 pseudo-version，专项/真实HTTP旧pin八红/新pin八绿 | 仅utils修复codex分支已推，main/tag未动；消费者未合main/部署，最终全量联合门禁待跑 |
+| B08前端 | test已承接9f76准确镜像；F12契约专项过，F13长URL八轮/变异过，F14真实Chrome与持久S2三态八轮/删除八红 | 新后端组合完整41待跑；f104旧完整成绩限旧组合，原dev b205保留F08异常；未合main/全站可访问性认证 |
+| B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
+| B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，联合完整门禁未完成；L6内容完整性未提前关单 |
+| B14资料/安全状态 | P0修复f917c64已32场/关键变异八轮；联合ba3原生service八轮又32场过，旧AT仍拒绝 | 已承接联合；新组合全量integration/cover/acceptance待验，未合main/部署；头像同类F20/P1另1550bbf承接 |
+| B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
+| 文档与历史债 | B10五组事实校准已提交，全文和101编号债逐行核对继续 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归 |
+
+### 历史底座记录
+
 
 > 状态基准：2026-08-29 静态验证；权威清单见 `docs/review/archive/10-phase2-comprehensive-verification.md`。
 
