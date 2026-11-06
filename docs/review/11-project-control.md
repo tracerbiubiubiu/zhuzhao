@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B08阶段报告：[前端功能/交互/视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)登记10项：草稿作用域、旧会话异步覆盖、深链筛选、ID精度、旧提示、AL空态、键盘操作、表格挂载异常、离线图标与亮色对比度。均已在独立UI分支提交修复，最新c83a53d，固定产物完整六项门禁待收口，不提前关单。主仓联合12401aa固定全量门禁在跑，常驻test app=f69；AL/TR最新镜像已构建待换。未合main，整体覆盖仍进行。
+
 > 2026-11-06 B07阶段报告：[兄弟服务与库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)登记AL池P1/导入体积P1/版本复用静默覆盖P0、TR空死信P1/同attempt旧delivery终态覆盖P1。AL池156ff03、revision afc3700、TR死信a1309cc固定代码复验关闭；import82290bc固定复验中，delivery fence修复中。TR仅test已升，AL运行仍待承接；utils9ed38f7仅codex分支推送供正式pseudo-version，未合main/发tag。网关1MB与运维直连大导入边界分列，整体覆盖未收口。
 
 > 2026-11-06 B06续批：[流程/提醒/调度报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)正式登记F05/P0（同状态预检快照权限失效）、F06/F07/P1（无目标耗水位/零额度仍发）、F08/P1（Cron会话锁占业务池）。前三项fb0fff2/e329db0已进入独立联合d38f10f并仅部署test，原样253/0/0与81对往返通过、完整集成待收尾，未关单；Cron另批修复中。新增代码未合main。

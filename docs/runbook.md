@@ -215,7 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B09（独立 codex 工作树） | 过程材料 .codex/audits/ECO-20261104/；R01=`10f3f94`、B09=`d2ab771`固定复验代码关单，临时资源已清，test app=d38f10f已升级（联合完整集成待收尾，dev不动）；B06 storage=`d07f560`/冲突支路=`475b7ac`固定复验代码关单，自有临时栈已清；真实RustFS原两红/修复两绿；B07 AL池=156ff03/revision=afc3700固定过，import=82290bc待复验；TRa1309cc已部署test，delivery fence在修；utils9ed38f7仅codex分支已push；test RustFS59000专属，dev9000不动；B08草稿=`fc1068b`/session=`604b96c`，独占test48081/33334记录固定产物来源，完整E2E仍有后端/环境/测试待办。所有者禁止合main，dev不动；UI原仓.gitignore仍排除 | 主仓phase5较origin/phase5有11笔（本次文档提交前；含他方ignore提交）；代码各留独立分支，未推送；utils v0.4.3历史已发布 | 2026-11-06（固定提交复验） |
+   | Codex：全面审计 / R01、B06–B09（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；root联合12401aa固定全量门禁中（前轮d38新增夹具污染已独立修正，原失败保留）；test app=f69、TR=a130、AL原版，最新兄弟镜像待换，RustFS59000自有/dev9000不动。B08正式10项已落档，UI c83a53d固定六项门禁中；B07 AL联合19a4c1d固定全PG过，TRdelivery ed1a40e固定全门禁过，panic后笔待验。R01/B09/storage/pool固定代码关单。utils9ed38f7仅codex分支已push；不合main，UI原仓.gitignore他方在途排除 | 文档phase5和修复codex分支均未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（阶段落档） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 

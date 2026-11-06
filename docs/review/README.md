@@ -8,6 +8,7 @@
 - [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，主线/部署待承接，保留失败轮与边界。
 - [B06 流程/提醒/调度续批](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)：新增P0快照、两项P1提醒、P1调度池预算；修复与联合完整复验仍在进行，不提前关单。
 - [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：五项已证实发现，逐项区分代码复验、部署承接及未完门禁；AL版本复用静默覆盖按数据损坏列P0。
+- [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十项有证据的功能/交互/视觉差距、分支修复与77图观察，最终固定产物完整六项门禁待收口，不宣称全面通过。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：
