@@ -215,7 +215,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Codex：全面审计 / R01、B06–B10（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；root联合12401aa完整门禁过，最新1a99a25（F11消息接线）固定完整门禁中；test app=f69（未含F09–F11）、AL=19a4c1d、TR=5e3f5f3，RustFS59000自有/dev9000不动。B07正式11项，production探针eb3c0c0独立healthy，utils cd759a0库修复未升consumer。B08前端f104完整41新轮中（前轮39/2保留）；B10五组文档校准6199ef6。当前新F12嵌套审计脱敏另支最小修中，未冒称完成。UI原仓.gitignore他方在途排除，不合main | 本轮文档和修复codex分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（阶段增量） |
+   | Codex：全面审计 / R01、B06–B11（独立 codex 工作树） | 过程仅.codex/audits/ECO-20261104/；7389固定全门禁253/0/0+81对+撤销13/成员15过，test app=7389、AL19/TR5e、UI f104新组合41/41，RustFS59000自有/dev9000不动。B06含F11/F12代码关单；B08正式14项/11完成3P2挂账；B07 F10库修复consumer未承接。B11八轮矩阵差异0，报告dd04091、自有PG/Redis已清。全文/101债与总报告继续，UI原仓.gitignore他方在途排除，不合main | 本轮文档和codex修复分支未推送；utils历史v0.4.3已发布、reader分支已推；统一push前重核远端窗口 | 2026-11-06（联合复验终态） |
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
 
