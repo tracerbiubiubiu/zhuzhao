@@ -162,4 +162,31 @@ P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索
 
 pgx QueryTracer在实际COUNT完成后，用另一真实PG会话提交插入/删除，再放行原Service：预检49999加2，rowFn实际50001、nil error；预检3删1，实际2行但返回总数3。两问题各八红；稳定50000正常、预检50001拒绝且零callback各八绿。不是权限过滤旁路证据，不升级安全P0。证据 `evidence/ECO-20261104-b06/export-count-window/`，原探针53.160s，数据库及Ryuk均精确清理。
 
-2026-11-06本轮已分号，独立修复基于6d788d0继续，须保证实际输出不越5万、成功审计数量等于文件，不允许静默截断。修复/变异与联合门禁尚未完成，保持开放；F13的XML/Close修复不代销此并发问题。F15字段校验嵌套池另由独立PG核验，未证实分支不混入本节结论。
+独立修复 **`ab471a00a228bd323dd8d7490f4074599a1f513c`**，codex/fix-export-count-window，基于6d788d0保留F13/F14：实际rowFn入口检查第50001行并返回既有码ErrExportTooMany；成功返回实际生成数。handler在生成完成前不发附件/成功审计，因此超限400会丢弃部分工作簿，无静默截断；5万阈值、15列、权限/where同源不变，不承诺两查询共享快照。
+
+原三目标各八红、五类空/恰5万/预检超限/取消/生成失败控制各八绿；固定服务八场景与真实HTTP四场景均race八轮绿，成功XLSX实际行数=审计rows，超限400无附件/成功审计/spill残留。移除实际guard、返回旧count、静默截断、吞生成error四类各八红。lint/unit/cover与完整ticket/handler包race通过（22.179/21.511秒），unit-only ticket覆盖12.3→12.2%，不虚报提升。证据 `evidence/ECO-20261104-b06/f16-export-window/manifest.json`；最初HTTP夹具42P08已另存排除，纠正后v2全部重跑。自有PG/匿名卷精确清理。已承接联合b306eed；原生全仓integration/acceptance待最终冻结，未部署/合main。F15同型池问题见存储/事务报告增量，不重复计债。
+
+
+## B06-F17 / P1：单边流程图更新使用默认另一半，校验与持久化不一致
+
+固定原行为 `7389ed79bdf409e466542992d9f1befa0c1a8529`，锚点：[type_admin.go 的 UpdateTicketType](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/ticket/type_admin.go#L73)。只传states或transitions时，service用默认另一半校验，repository却保留实际持久另一半。真实Service/PG可删除仍被边引用的状态、为两态图写入不存在端点的默认六态边，也可误拒合法自定义转换。三目标在nil/显式当前version模式均八红，两合法控制在两模式均八绿。
+
+修复 **`641cfbe3f235cd00524fefc7b9272940a019c800`** 从4b0b788保留F15，后笔 **`26076f249fa879953dc7661da8f74314373307ec`** 补齐显式版本边界。UpdateTicketType从同一持久快照补另一半图、校验图/meta并CAS；客户端version仍可选，nil由服务端采用快照版本。双半图并发在缺CAS时两者都提交并坏图，修复恰一成功/一409且图合法；默认半图/无CAS变异各八红。普通属性patch仍原兼容路径，不扩大为角色撤权事务原子保证。
+
+## B06-F18 / P1：首次字段空集旧预检跨过硬锁覆盖新定义
+
+同一原hash，锚点：[type_admin.go 的 ReplaceTicketTypeFields](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/ticket/type_admin.go#L230)。旧请求读取空字段集并通过预检后暂停；另一请求先定义input/string并由真实Service.Create建单；无客户端version的旧number请求仍成功覆盖定义，旧单真实Service.Update随后400。旧字段读完、实际父UPDATE前两个交错点各八轮复现，显式当前版本409及无冲突nil定义/改标签/新增字段/旧单编辑控制均正常。
+
+最终26076f2先取父版本，再读旧字段并预检，所有写传该快照给既有父CAS事务。只给nil补CAS还会被显式“未来version”在预检后恰好命中他人提交后的版本绕过；图和字段两方法均先核显式version==所读快照，再以同代版本CAS，不仅检查请求为正整数。未来版本图、字段两交错点原/移除检查各八红；仅恢复nil无CAS或把父快照后移到旧字段读取之后也各八红，证明顺序与校验均必要。无冲突nil仍成功，没有强迫旧客户端新增字段。
+
+两发现最终六组专项race串行八轮通过，最终生产/两回归文件SHA与固定归档逐字一致。lint2.970秒、unit9.483秒、cover5.756秒、独占PG完整ticket包integration/race/cover24.137秒通过；83.6%是该包集成覆盖，12.2%是其单元口径，不混报全仓。Swagger已再生且零漂移；两笔commit-lint通过。过程 `evidence/ECO-20261104-b06/type-configuration/{f17-manifest,f18-manifest,cleanup}.json` 包含无效编译/夹具与空测试筛选的排除记录。自有PG0a619及匿名卷均精确清理。root承接为联合fe99ae1/fbb1642；全仓原生integration/acceptance仍待最终轮，未部署、推送或合main。
+
+## B06-F19 / P1：通知偏好自服务读取错误身份键
+
+固定原行为 `b4435022d00ee789b9a62f74036824bd7d3791b7`，锚点：[notification_pref_handler.go 的 ListOptouts / SetOptout](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/notification-pref-context/internal/handler/notification_pref_handler.go:26)，源码修复 **`f9e1f63d6498edd5ac0350bfc93b5699fe83dd65`**。JWT/PAT写入userID，而两入口GetInt64(user_id)取到0：本人已有偏好时GET200空数组，取消200但实际本人行不删，开启500/10000源于uid0外键。真实JWT→SelfService/CasbinAuth→RBAC/PG→原handler/service/repo八轮确认，未证跨用户泄露；按已承诺功能缺失P1，不升级P0。
+
+修复两入口读取既有userID，不补混淆别名、不放宽middleware。永久原生handler TestMain回归使用真实JWT、miniredis、真实RBAC角色BFS及PG，两目标各race八绿；分别恢复GET/POST旧键各八红。匿名401、两用户隔离、伪造body user_id无效、开启幂等及取消不删他人行控制通过。lint/完整单元通过，全量integration/cover/acceptance未跑。三轮自有testcontainers均自动终止、owner残留0，共享环境与Chrome未变；证据 `platform-coverage/f19/repair-result.json`。root承接联合dfc432f，未部署/合main，维持待完整复验。
+
+## 本增量承接边界
+
+F13–F19来源各有专项/变异证据，联合当前ba3ecb6另包含B14账号安全状态修复；当前完整门禁尚待新冻结，不把旧7389的253/81成绩外推到新组合。所有发现保留原证据、来源hash与承接状态；P0新B14详独立报告，主线和生产发布状态分列。当前full-read源码覆盖与设计/SQL验证深度也分列，不以文件读完替代行为检查。

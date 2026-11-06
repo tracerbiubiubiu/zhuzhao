@@ -57,3 +57,14 @@
 本地证据：`storage-fix/fixed-commit/{source-manifest,fixed-verification-result,resumed-results,full-acceptance-result,interrupted-attempt}.json`、`storage-fix/physical/{baseline.log,fixed.log,results.json}`、`storage-fix/mutation*-results.json`；F03 为 `pool-fix/`。完整原始过程报告仍在本地，正式报告只保留必要事实、锚点、结论与边界。
 
 所有新增代码未合 main。分支代码关单不等于当前系统已部署修复；整体审计、未读设计、全角色路由/视觉体验和其他兄弟仓能力继续核验。
+
+
+## B06-F15 / P1：编辑校验的字典与MIME分支在事务内再取池连接
+
+本增量固定基线 `7389ed79bdf409e466542992d9f1befa0c1a8529`。锚点：[type_admin.go 的 expandDictOptions / validateCustomData](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/ticket/type_admin.go#L749)、[Service.Update 的 Begin / LockCustomDataTx / validateCustomData](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/service/ticket/service.go#L687)。schema/formula虽已传tx，字典展开仍用s.db.Query，file白名单仍用池QueryRow；一条调用链局部透传不能覆盖整个事务窗口。合法编辑在池容量1或多事务满池时超时，回滚后数据不变、事件0；本轮没有数据覆盖/权限旁路证据，按功能缺陷P1，与BK11同族。
+
+原Service.Update/真实PG串行八轮，dict/file×单连接/满池四目标共32红，空闲双连接及不走对应分支四控制共32绿；所有连接预热，满池必须确认两个真实LockCustomDataTx屏障准入后才放行，取消取池计数>0才计目标失败。独立修复 **`4b0b788a1d7105a17439543117fbf19460f88f8d`**，分支codex/fix-ticket-validation-tx：私有expandDictOptions接RowQuerier，字典和MIME用同一个q；MIME用q.Query+CollectRows关闭结果集。Create事务前仍传池、Update持锁窗口传tx；schema/字典/MIME/formula同类链已核，无API、依赖、权限、配置或迁移变更。
+
+固定同探针64场全绿；只恢复字典池读或MIME池读，各自八轮稳定命中对应两目标失败，其余六场景通过。永久回归TestValidationReadsReuseTransaction及四类既有dict/file/并发patch回归-race八轮通过；永久回归对两种独立变异也各八红。lint2.007秒、完整单元8.428秒通过。独占PG装配shim仅在忽略归档中用于定向测试，生产与提交三源码逐字一致，未修改原迁移/测试业务断言；原生全仓TestMain集成与acceptance仍由联合门禁承接，不能把专项绿写成全验收完成。
+
+证据 `evidence/ECO-20261104-b06/field-validation-pool/` 的original/fixed/mutation/tracked-*-resume-results.json、final-source-equivalence.json及root-final-cleanup.json；前序夹具42703、错误cwd迁移空集和误选helper变异均单独保留、不计产品红绿。root已将必要差异承接为联合 `b4435022d00ee789b9a62f74036824bd7d3791b7`，当前候选含此修复但尚未部署。两代自有PG均按精确ID/owner确认闲置后清除，容器与匿名卷均不存在；共享dev/test/其他审计资源保留。来源与联合均未合main。

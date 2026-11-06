@@ -2,7 +2,7 @@
 
 > **2026-11-06 B14/P0修复待联合验收**：[资料写入覆盖账号安全状态](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)原固定b443各八轮确认、旧AT22/22仍拒绝；独立修复f917c64已移除资料SQL的安全字段回写并RETURNING当前值，个人/管理员两入口×两场景×八轮共32场通过，原SQL及三独立变异各八红，lint/unit/定向race通过。已按路径承接联合ba3ecb6，完整integration/cover/acceptance未跑，未合main或部署；不能沿用738旧全绿称当前所有P0已清。
 
-> **2026-11-06后续实现复验**：[B06增量](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)登记F13导出XML/临时文件与F14设置快照修复50cad5e/6d788d0，专项通过、联合门禁待新冻结；F16导出并发越上限/计数失真已8轮确认，F15字段校验嵌套池继续独立验证。[B12错误码登记](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)确认56个当前定义漏登记及单向守卫假绿，4da89fa已修并固定专项通过，未完成组合验收。B08-F12后端Swagger对象元数据bc245ed已固定lint/unit/八轮专项通过，前端绑定继续；不以旧全门禁代销新问题，未合main。
+> **2026-11-06 B06增量承接**：F13导出XML/资源释放、F14设置全量快照、F15字典/MIME嵌套池、F16实际导出上限/计数、F17单边图、F18首次字段/版本同代、F19通知偏好身份键均已独立提交并通过专项/稳定变异，详细来源hash与边界见[B06流程报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)及[事务报告F15](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。联合ba3ecb6已按路径承接，完整integration/cover/acceptance待冻结；B12错误码4da与B08-F12后端bc245同样在候选，均不借旧门禁提前关单、未合main。
 
 > **2026-11-06 B13环境恢复**：[环境与真实Chrome报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。dev原PG/Redis/AL-PG容器及原卷恢复，4个宿主服务在线；原工作树UI仍b205，真实Chrome复现已登记B08-F08，不能称开发版零错误。test保留app7389/AL19/TR5e，UI61b35bf干净重建并准确标测试环境；专属账号登录/代表业务读取和1280/1024布局实查完成，未重跑新产物全41。B13另确认启动项目/卷碰撞、错误回退/假成功与生产UI构建路径缺口，独立分支修复验收中，不合main。以下“dev不动/f104”为先前时点。
 
