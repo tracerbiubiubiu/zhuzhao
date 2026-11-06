@@ -36,6 +36,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLo
 //	@Param		page_size		query	int		false	"每页条数"
 //	@Param		type_code		query	string	false	"工单类型"
 //	@Param		status			query	string	false	"工单状态"
+//	@Param		statuses		query	string	false	"状态集合，逗号分隔，与status互斥（例assigned,in_progress）"
 //	@Param		priority		query	int		false	"优先级（1紧急/2高/3中/4低）"
 //	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
@@ -55,6 +56,29 @@ func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 		TypeCode: c.Query("type_code"),
 		Status:   c.Query("status"),
 		Tag:      c.Query("tag"),
+	}
+	if raw, present := c.GetQuery("statuses"); present {
+		if q.Status != "" {
+			response.BadRequest(c, "status 与 statuses 不能同时传入")
+			return q, false
+		}
+		parts := strings.Split(raw, ",")
+		if len(parts) > 32 {
+			response.BadRequest(c, "statuses 最多支持 32 个状态")
+			return q, false
+		}
+		seen := make(map[string]bool, len(parts))
+		for _, part := range parts {
+			status := strings.TrimSpace(part)
+			if status == "" || len([]rune(status)) > 20 {
+				response.BadRequest(c, "statuses 每个状态须为 1–20 字符")
+				return q, false
+			}
+			if !seen[status] {
+				q.Statuses = append(q.Statuses, status)
+				seen[status] = true
+			}
+		}
 	}
 	if q.Page < 1 {
 		q.Page = 1

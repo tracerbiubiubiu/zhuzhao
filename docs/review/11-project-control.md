@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 ECO-B08待办候选：联合分支新增列表/导出可选状态集合，与单值status互斥，沿同一scope+业务WHERE；支持首页既有assigned/in_progress待办口径，避免导航混入closed。handler正负向和PG列表/计数/流三路+scope专项八轮通过，正常门禁与浏览器联合验证待完成；未合main。
+
 > 2026-11-06 联合验证分支：将已分别复验的认证10f3f94、成员有效期d2ab771、冲突支路475b7ac和存储d07f560汇集到 `codex/audit-integration`。逐文件核实与对应修复提交完全相同，lint/单元已过；联合完整门禁与测试部署待执行。未合main，原正式报告的部署边界保留。
 
 > 2026-11-06 B06 固定复验：[存储与事务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) F01/F04 经真实 RustFS 确认原实现会丢实物，按数据损坏升 P0；F01/F02/F04 在独立分支 `d07f560`、既有 BK11 P2-1（本轮动态定性 P1）在 `475b7ac` 代码层复验关闭。两固定快照各通过 lint/单元/完整集成/覆盖率、原样253/0/0与81对往返；专项八轮及变异稳定红，真实对象探针原两红/修复两绿。B-11/G-3补分支承接状态，dbtx总体仍待实施。**修复未合main、常驻app未升级，全面审计仍在继续**。

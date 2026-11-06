@@ -185,6 +185,9 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	if q.Status != "" {
 		conds = append(conds, "status = "+next(q.Status))
 	}
+	if len(q.Statuses) > 0 {
+		conds = append(conds, "status = ANY("+next(q.Statuses)+"::text[])")
+	}
 	if q.Priority != nil {
 		conds = append(conds, "priority = "+next(*q.Priority))
 	}

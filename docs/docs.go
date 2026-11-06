@@ -2401,6 +2401,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "状态集合，逗号分隔，与status互斥（例assigned,in_progress）",
+                        "name": "statuses",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "优先级（1紧急/2高/3中/4低）",
                         "name": "priority",
@@ -2800,6 +2806,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工单状态",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态集合，逗号分隔，与status互斥（例assigned,in_progress）",
+                        "name": "statuses",
                         "in": "query"
                     },
                     {

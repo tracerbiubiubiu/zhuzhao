@@ -1,5 +1,7 @@
 # 01 · 前端工程设计（zhuzhao-ui 初版）
 
+> 2026-11-06 ECO-B08修复：工作台“我的待办”卡以处理人=本人且状态assigned/in_progress统计，导航须传 `assignee=me&statuses=assigned,in_progress`，列表/导出同一集合；单纯assignee=me会混入已关闭项。显式深链每次激活缓存页时恢复对应筛选，普通无query页签可保留筛选；点击卡具备键盘焦点及Enter触发。前后端联合验证待完成，独立codex分支未合main。
+
 > **文档定位**：zhuzhao-ui 的**工程设计文档**——架构、壳层、状态分界、页面范式、工程化与里程碑。功能规格不在本文：工单域（BK-18 前端/动态表单/审批页）以 [phase3/12-frontend](../phase3/12-frontend.md) 为规格 SSOT；动态路由与菜单契约以 [phase1/07-menu](../phase1/07-menu.md) 为准；工程架构五拍板（仓格局/底座/范例页/views/部署）以 [00 号 §2.1](./00-planning-inventory.md) 为准，本文是其展开。
 >
 > **状态基准**：2026-09-21。所有后端契约字段均经代码核验（`zhuzhao-utils/response`、`internal/model/token.go`、`internal/service/menu_service.go`、000002/22/24/25 菜单种子）。
