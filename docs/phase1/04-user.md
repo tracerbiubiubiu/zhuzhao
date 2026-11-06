@@ -564,6 +564,12 @@ Repository：`List(ctx, query)` 动态拼 WHERE；另提供 `FindByEmployeeNo(ct
 
 禁用/删除用户成功后必须写 `user:disabled:{userId}` 并删除该用户全部 RT（见 02-auth）。Phase 1 即实现，不是 Phase 2。
 
+### 资料写与安全状态隔离（2026-11-06，B14-F01）
+
+`internal/service/user_service.go` 的 `Update`（管理员改资料）与 `UpdateProfile`（个人资料）共享 `internal/repository/user_repo.go` 的 `Update`。该 SQL 只写资料字段、递增 `version` 并做原有 CAS；`status` 与 `must_change_password` 的先前读取值不得回写。状态由 `UpdateStatus` / `UpdateStatusTx` 修改，密码及强改标记由 `UpdatePassword` 修改（包含自服务改密、管理员重置及 break-glass 复用路径）。资料写响应经 `RETURNING` 回填当前安全状态，保持与持久值一致。
+
+并发边界：资料请求已经读取用户、管理员随后成功禁用或重置密码时，资料请求仍可保存正常资料，但须保留已提交的禁用/强改要求。禁用后新登录仍失败；重置后新登录仍须改密；旧 AT 的纪元撤销规则继续生效。永久回归 `internal/service/user_security_state_integration_test.go` 的 `TestUserSecurityState_ProfileCannotUndoAdmin` 固定真实 SQL 发送前交错，复用已有 TestMain 的 PG 并使用独立真实 Redis，覆盖两个资料入口及专用安全写、登录/JWT、资料 CAS 与写响应回显。
+
 ### 删除用户级联
 
 > 详见 [modules/user.md](../modules/user.md) §4。系统用户保护 + 事务内清理 + 事务外吊销。
