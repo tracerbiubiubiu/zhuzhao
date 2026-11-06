@@ -3,11 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -67,7 +70,7 @@ var allErrCodes = []*errcode.Error{
 }
 
 // unmappedAllowlist 有意不进 httpStatusByCode 的码（writeServiceError 落 default 500+10000）：
-// auth 模块 20001+ 由 auth handler 直写；10007/10008 由中间件直写；10000/70002 本义即 500。
+// 现役认证码由 auth/JWT 直写，10007/10008 由中间件直写；兼容定义20005/70002无生产出口。
 var unmappedAllowlist = map[int]string{
 	errcode.ErrInternal.Code:               "内部错误本义 500",
 	errcode.ErrTooManyReqs.Code:            "429 由登录锁定路径直写（TooManyRequests）",
@@ -75,7 +78,7 @@ var unmappedAllowlist = map[int]string{
 	errcode.ErrInvalidCredentials.Code:     "auth handler 直写",
 	errcode.ErrTokenExpired.Code:           "auth handler 直写",
 	errcode.ErrRefreshTokenInvalid.Code:    "auth handler 直写",
-	errcode.ErrTokenAlreadyRefreshed.Code:  "auth handler 直写",
+	errcode.ErrTokenAlreadyRefreshed.Code:  "仅兼容定义，无当前生产出口，默认降级",
 	errcode.ErrAccountLocked.Code:          "auth handler 直写",
 	errcode.ErrPasswordChangeRequired.Code: "auth handler 直写",
 	errcode.ErrMultipleAuthMethods.Code:    "auth handler 直写",
@@ -93,9 +96,7 @@ var unmappedAllowlist = map[int]string{
 func TestWriteServiceError_FullCodeTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	if got, want := len(allErrCodes), 77; got != want {
-		t.Errorf("全码清单数量 = %d, want %d——errcode.go 新增/删除业务码后未同步本测试", got, want)
-	}
+	errcodeNames(t) // 真实定义↔运行时清单双向核对，不能只锁清单自身的固定长度
 
 	seen := map[int]bool{}
 	for _, ec := range allErrCodes {
@@ -152,45 +153,147 @@ func TestWriteServiceError_NonBizError(t *testing.T) {
 	}
 }
 
-// TestErrcodeDocMessageSync errcode.go ↔ errcode.md 的 message 逐条一致守护。
-// 契约：errcode.md 表格 message 列 = 对外文案（代码为唯一运行时事实源）——
-// 30007/30008（文档多语义说明）、50011/50012/70004（文档嵌变更批注）两类
-// 漂移都曾实际发生；变更溯源写表格下方引用块，不进 message 列。
+// TestErrcodeDocMessageSync 定义、登记、默认文案、HTTP四向对账。
+// B12：仅遍历文档已有行会漏掉整段丢失；必须从实际定义出发，也拒绝幽灵登记。
 func TestErrcodeDocMessageSync(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	names := errcodeNames(t)
+	rows := readErrcodeRegistry(t)
+	for i, ec := range allErrCodes {
+		row, ok := rows[ec.Code]
+		if !ok {
+			t.Errorf("缺少已定义码登记：%d %s", ec.Code, names[i])
+			continue
+		}
+		delete(rows, ec.Code)
+		if row.name != names[i] || row.message != ec.Message {
+			t.Errorf("码%d登记漂移：name=%q/message=%q，want %q/%q", ec.Code, row.name, row.message, names[i], ec.Message)
+		}
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		// auth/中间件直写不走默认service映射，使用其实际渲染函数。
+		switch ec.Code {
+		case errcode.ErrInvalidCredentials.Code, errcode.ErrRefreshTokenInvalid.Code,
+			errcode.ErrAccountLocked.Code, errcode.ErrPasswordChanged.Code, errcode.ErrRefreshTokenReplayed.Code:
+			writeAuthError(c, ec)
+		case errcode.ErrTokenExpired.Code:
+			response.UnauthorizedError(c, ec)
+		case errcode.ErrPasswordChangeRequired.Code:
+			response.ForbiddenError(c, ec)
+		case errcode.ErrMultipleAuthMethods.Code:
+			response.Error(c, 400, ec)
+		case errcode.ErrTooManyReqs.Code:
+			response.TooManyRequests(c, ec)
+		case errcode.ErrServiceUnavailable.Code:
+			response.ServiceUnavailable(c)
+		default:
+			writeServiceError(c, ec)
+		}
+		if row.http != w.Code {
+			t.Errorf("码%d登记HTTP=%d，实际所属出口=%d", ec.Code, row.http, w.Code)
+		}
+	}
+	for code, row := range rows {
+		t.Errorf("登记无对应当前定义：%d %s（预留/退役码不得冒充现役）", code, row.name)
+	}
+}
+
+type errcodeRegistryRow struct {
+	name, message string
+	http          int
+}
+
+func readErrcodeRegistry(t *testing.T) map[int]errcodeRegistryRow {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(repoRoot(t), "api", "errcode.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := map[int]errcodeRegistryRow{}
+	for n, line := range strings.Split(string(b), "\n") {
+		if !strings.HasPrefix(line, "|") {
+			continue
+		}
+		cells := strings.Split(strings.Trim(line, "|"), "|")
+		if len(cells) < 4 {
+			continue
+		}
+		code, err := strconv.Atoi(strings.TrimSpace(cells[0]))
+		if err != nil {
+			continue
+		}
+		httpCode, err := strconv.Atoi(strings.TrimSpace(cells[3]))
+		if err != nil {
+			t.Fatalf("登记第%d行缺少HTTP：%s", n+1, line)
+		}
+		if _, exists := rows[code]; exists {
+			t.Fatalf("登记码%d重复", code)
+		}
+		rows[code] = errcodeRegistryRow{
+			name: strings.Trim(strings.TrimSpace(cells[1]), "`"), message: strings.TrimSpace(cells[2]), http: httpCode,
+		}
+	}
+	return rows
+}
+
+// errcodeNames 把编译后的错误值与清单选择器逐位对应，再与真实导出的Err变量集合比较。
+// 新增定义却不更新allErrCodes、只加清单却漏登记，两个方向都必须失败。
+func errcodeNames(t *testing.T) []string {
+	t.Helper()
 	root := repoRoot(t)
-
-	src, err := os.ReadFile(filepath.Join(root, "internal", "pkg", "errcode", "errcode.go"))
+	src, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "internal/pkg/errcode/errcode.go"), nil, 0)
 	if err != nil {
-		t.Fatalf("read errcode.go: %v", err)
+		t.Fatal(err)
 	}
-	newRe := regexp.MustCompile(`New\((\d+), "([^"]+)"\)`)
-	codeMsg := map[string]string{}
-	for _, m := range newRe.FindAllStringSubmatch(string(src), -1) {
-		codeMsg[m[1]] = m[2]
-	}
-
-	// L-6 归一（2026-10-28）：errcode.md 权威=根 api/errcode.md（docs/api 副本已删为指针）
-	doc, err := os.ReadFile(filepath.Join(root, "api", "errcode.md"))
-	if err != nil {
-		t.Fatalf("read errcode.md: %v", err)
-	}
-	// L-6 归一后根文件列形：| 码 | 标识符（无反引号） | message | HTTP | 备注 |
-	rowRe := regexp.MustCompile(`\| (\d{5}) \| \w+\s*\| ([^|]+) \|`)
-	checked := 0
-	for _, m := range rowRe.FindAllStringSubmatch(string(doc), -1) {
-		code, docMsg := m[1], strings.TrimSpace(m[2])
-		if codeMsg[code] == "" {
-			continue // 预留段（errcode.go 未定义，D2-44① 标注）
+	defined := map[string]bool{}
+	for _, decl := range src.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.VAR {
+			continue
 		}
-		checked++
-		if codeMsg[code] != docMsg {
-			t.Errorf("码 %s 文档/代码 message 漂移：\n  code=%q\n  doc =%q\n（语义说明/变更批注请移至表格下方引用块，勿嵌入 message 列）",
-				code, codeMsg[code], docMsg)
+		for _, spec := range gen.Specs {
+			for _, name := range spec.(*ast.ValueSpec).Names {
+				if strings.HasPrefix(name.Name, "Err") {
+					defined[name.Name] = true
+				}
+			}
 		}
 	}
-	if checked == 0 {
-		t.Fatal("errcode.md 表格解析为 0 行——文档结构变更后未同步本测试的行正则")
+	tests, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, "internal/handler/errors_test.go"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
+	var names []string
+	ast.Inspect(tests, func(n ast.Node) bool {
+		v, ok := n.(*ast.ValueSpec)
+		if !ok || len(v.Names) != 1 || v.Names[0].Name != "allErrCodes" {
+			return true
+		}
+		list, ok := v.Values[0].(*ast.CompositeLit)
+		if !ok {
+			t.Fatal("allErrCodes必须为显式错误变量清单")
+		}
+		for _, elt := range list.Elts {
+			sel, ok := elt.(*ast.SelectorExpr)
+			if !ok {
+				t.Fatal("allErrCodes只能引用errcode导出变量")
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || pkg.Name != "errcode" || !defined[sel.Sel.Name] {
+				t.Fatalf("清单引用重复或未定义码：%v", sel.Sel.Name)
+			}
+			delete(defined, sel.Sel.Name)
+			names = append(names, sel.Sel.Name)
+		}
+		return false
+	})
+	for name := range defined {
+		t.Errorf("已定义码未进入运行时清单：%s", name)
+	}
+	if len(names) != len(allErrCodes) || len(defined) != 0 {
+		t.Fatalf("错误码定义/清单不完整：names=%d values=%d missing=%d", len(names), len(allErrCodes), len(defined))
+	}
+	return names
 }
 
 // repoRoot 从测试文件位置向上定位仓库根（go.mod 所在目录）
