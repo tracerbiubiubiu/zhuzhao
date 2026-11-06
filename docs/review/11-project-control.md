@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> 2026-11-06 B06-F12/P1：[审计嵌套数组漏脱敏](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)真实请求/响应探针在原5c与当前92各八红，独立f1ff68a修复八绿/变异红；已汇入7389ed7冻结全门禁中。F11同轮待复验。前笔1a99完整integration因临时RustFS启动等待超时失败，其它包过；相同源定向诊断后来过，具体启动延迟未归因，不记该轮绿。124前笔全量绿范围保留，主线未合、常驻test app仍f69。
+
 > 2026-11-06 B07增量：[兄弟服务报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)扩至F01–F11（含既有panic两债去重）；AL导入与TR delivery/panic固定门禁关闭，网关本地超限现413、AL通用5xx已闭环；TR生产compose探针18080修复eb3c0c0独立实际healthy。仅test兄弟运行已升级AL19a4c1d/TR5e3f5f3，二进制SHA和迁移已核，app仍f69/dev不动。utils Transport读错Close修复cd759a0仅库分支，消费者pin未升，明确保留承接状态；逻辑备份恢复已实测，本轮未跑PITR。
 
 > 2026-11-06 B10：[现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)单批校准五组：引擎子包未实施、ADR轮询导航、标签非DomainEvent生产者、菜单只读及工单L1矩阵（台账失真P1）、旧部署导航。历史日志保留，L-5主体仍开放；仅文档，不以本批宣称实现全覆盖，事实对齐后结束本轮抛光。

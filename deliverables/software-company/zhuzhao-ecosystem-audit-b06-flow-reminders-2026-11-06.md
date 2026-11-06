@@ -1,6 +1,6 @@
 # 生态审计 B06 续批：流程快照、提醒与调度（2026-11-06）
 
-> **当前结论（2026-11-06）**：F05–F10已在独立联合快照 `12401aa52d5fa8842dd944b9366917b19ae7775e` 固定重建，通过 lint、完整单元、完整集成529.99s、cover、原样验收253/0/0和81对迁移往返，以及真实撤销13步/成员生命周期15步，代码层复验关闭。F11新增漏通知修复已提交，最新联合1a99a25另行复验中，暂不关闭。未合main；常驻test app=f69，只覆盖其中部分修复，dev不动。以下旧“待复验”段落保留验证过程时点，不代表当前状态。
+> **当前结论（2026-11-06）**：F05–F10已在独立联合快照 `12401aa52d5fa8842dd944b9366917b19ae7775e` 固定重建，通过 lint、完整单元、完整集成529.99s、cover、原样验收253/0/0和81对迁移往返，以及真实撤销13步/成员生命周期15步，代码层复验关闭。F11漏通知与F12连续数组审计漏脱敏均已独立提交，最新联合7389ed7复验中，暂不关闭；前笔1a99临时RustFS初始化超时失败已保留，详末节。未合main；常驻test app=f69，只覆盖其中部分修复，dev不动。以下旧“待复验”段落保留验证过程时点，不代表当前状态。
 
 ## 范围与基线
 
@@ -106,3 +106,19 @@ root联合d38完整integration发现新增TestAuditNoRegistryNoWatermark遗留�
 完整固定联合结果：`.codex/audits/ECO-20261104/evidence/ECO-20261104-joint/12401aa/gates/results.json`与`full-acceptance-result.json`。全部受审跟踪源码在git archive中逐字节相等，门禁后源码未漂移；临时隔离栈清理成功、已有容器ID/启动时间不变。原d38完整集成706.89秒失败确因为新增提醒夹具污染后续TestB104（非产品缺陷），823455c只清理新增夹具而未放宽原断言；原失败、无效变异与操作失误日志全部保留。单元口径cover是默认build标签范围，不将它解释为全integration覆盖率增长。
 
 P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索引持续补齐，历史台账仍逐行对账，**整体审计尚未收口**。原始证据/过程材料不纳管；必要报告与docs活状态纳管。
+
+## B06-F12 / P1：审计递归脱敏跳过连续数组
+
+原业务`5c03581d5999139a3e8e5ead5972c026868aa181`及当前`92adc205c85c07e900d79801743a3a2e174c16d1`的[`audit.go`的`maskSensitiveMap`](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/internal/middleware/audit.go:127)只递归数组直接包含的map，遇到slice→slice→map停止。文档[`phase1/08`敏感字段脱敏](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/docs/phase1/08-audit.md:100)明确承诺map/slice深度遍历；已认证请求会经过AuditLog，即便handler因参数错误拒绝，审计仍记录。真实Gin+AuditLog+responseCapture探针（仅合成fixture值）让请求`params.rows=[[{"PaSsWoRd":"synthetic-request-password"}]]`和响应`data.rows=[[{"refresh_token":"synthetic-response-token"}]]`进入两类审计字段，均泄露原文，直接password正控仍正确为***。原基线及当前候选各-count8八红，非DB故障/编译失败。证据`audit-redaction/baseline-eight.json`与`original-eight.log/current-eight.log`。
+
+独立修复将此改为统一`maskSensitiveValue`递归map与slice，不扩敏感键、不改变大小写、非JSON占位、2KB截断或bodylimit。**真实提交hash=`f1ff68a79c3bf409d9b9f052836a3c9e6ab794e6`**，分支codex/fix-audit-nested-redaction，base92adc20，4文件82+/9-；代码锚[`maskSensitiveValue`](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/audit-nested-redaction/internal/middleware/audit.go:150)，真实中间件回归[`TestAuditLog_NestedArrayRedaction`](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/audit-nested-redaction/internal/middleware/audit_nested_redaction_test.go:43)。本次保护之后写入的审计，不自动改写既有记录；不涉及已接受的params业务读面原文窗口。
+
+请求/响应、直接map/array、连续两/三层数组与非敏感shape正控专项-race八轮绿，完整middleware-race、lint/unit/cover绿（middleware覆盖率72.0%，未量化基线差值）；把audit.go恢复当前92adc20原文件后，HTTP链与数组回归各8红。证据`audit-redaction/gates.json,mutation-eight.json,manifest.json`；没有共享DB或账号变更。已汇入独立联合 `7389ed79bdf409e466542992d9f1befa0c1a8529`，源码逐文件等同来源；新固定完整integration/acceptance正在进行，未标完成/部署/合main。
+
+原快照永久锚点：[`internal/middleware/audit.go:127` 的 `maskSensitiveMap`](https://github.com/tracerbiubiubiu/zhuzhao/blob/5c03581d5999139a3e8e5ead5972c026868aa181/internal/middleware/audit.go#L127)。所有复现仅使用合成口令，未扫描或收录真实用户凭证。
+
+## 最新联合门禁失败记录与接续
+
+`1a99a2534372da2106828b75962d162d98fdadac` 完整integration624.23秒exit2，唯一失败TestStorageE2E_RustFS在临时容器startup/health等待123.22秒后Docker get-state context deadline，尚未进入存储业务断言；其它包含F11真实ticket链全部过。**该轮未通过，未记绿**。相同冻结源码只跑该目标后来通过，源码未改；这仅缩小为初始化时序问题的线索，具体延迟原因尚未查明，不以同HEAD重跑绿冒称已经修复。原日志、空闲资源快照和定向诊断均保留于ECO-20261104-joint/1a99a25/gates。
+
+新7389ed7从独立git archive重新运行原样全量门禁；没有放宽RustFS等待预算或业务断言。F11/F12在该轮完成前保持待复验。既有12401aa的完整通过结论及F05–F10代码关闭仍是原范围，不外推覆盖后两项。
