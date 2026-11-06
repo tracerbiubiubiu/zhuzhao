@@ -752,15 +752,18 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}
 	ticket.UpdatedAt = updatedAt
 	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
+	updatedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
+	}
+	if ticket.AssignedTo != nil {
+		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
 	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
-		Payload: domainevent.Payload{
-			"title": ticket.Title, "type_code": ticket.TypeCode,
-			"human_key": ticket.HumanKey, "status": ticket.Status,
-			"changes": buildChanges(req), // D20 键级 diff
-		},
-		Timestamp: time.Now(),
+		Payload: updatedPayload, Timestamp: time.Now(),
 	})
 	return ticket, nil
 }
@@ -1058,6 +1061,12 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
+	// Capture identity/recipient facts before the write. The asynchronous consumer
+	// must not depend on a ticket that may have been deleted after this commit.
+	ticket, err := s.ticketRepo.GetByID(ctx, req.TicketID)
+	if err != nil {
+		return nil, err
+	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
 		UserID:     actorUserID,
@@ -1081,6 +1090,20 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	payload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+	}
+	if ticket.AssignedTo != nil {
+		payload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	// Public reply only: internal notes have a narrower visibility boundary and
+	// do not enter this notification path. Never publish the comment body here.
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketCommented,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: payload, Timestamp: time.Now(),
+	})
 	return comment, nil
 }
 

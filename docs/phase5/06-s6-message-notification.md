@@ -56,7 +56,7 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 模板收件人为变量——**第一档** = 工单字段引用（assignee/creator）+ 固定人员；**第二档（按需）** = 角色+组织解析（工单组织的 admin/owner——L2/L3 域）。哲学与 assignee rule/事件解析角色同构：**解析归业务侧，消息平台只收最终收件人**。**域无关要求（phase6 复核回写）**：收件人声明方式不得焊死工单域——phase6 风险通知收件人 = risk owner（非工单字段），须支持工单域之外的业务实体声明。
 
-**创建者收件人语义（2026-11-06 ECO-B06-F09）**：ticket 域 `creator` 档仅读事件携带的 `creator`（本单 `created_by`），与当前 `actor`/ActorID 区分；现存所有工单发布入口在提交后从已读取工单快照附带该锚，timeout/deadline候选查询同源带出，不在异步通知消费时回查工单。已排队事件遇随后删单仍可通知原创建人；缺创建者锚不回退操作者。ops域没有工单创建者，保留既有creator档=事件actor（动作责任人）约定。通知变量字典同步新增`ticket.creator`，此为身份修复，不代表H-3动态字段/时间变量增强批全部交付。Delete/评论/内部备注目前只写ticket_events审计流，不因本修复新增DomainEvent或通知触发。
+**创建者收件人语义（2026-11-06 ECO-B06-F09）**：ticket 域 `creator` 档仅读事件携带的 `creator`（本单 `created_by`），与当前 `actor`/ActorID 区分；现存所有工单发布入口在提交后从已读取工单快照附带该锚，timeout/deadline候选查询同源带出，不在异步通知消费时回查工单。已排队事件遇随后删单仍可通知原创建人；缺创建者锚不回退操作者。ops域没有工单创建者，保留既有creator档=事件actor（动作责任人）约定。通知变量字典同步新增`ticket.creator`，此为身份修复，不代表H-3动态字段/时间变量增强批全部交付。F09时点Delete/评论/内部备注只写ticket_events审计流；后笔F11单独补公开评论事件接线，Delete/内部备注仍不新增通知触发。
 
 ### 5.2 触发层
 
@@ -318,3 +318,5 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-11-02 | **变量字典 ops 八键补全**（aa85654）：内置变量 16→24——+`event.last_success`（000064 cron_failed 种子引用）/`event.action`·`event.ticket_id`·`event.actor`（ops.action_failed 载荷）/`event.level`·`event.ratio`·`event.usage_bytes`·`event.capacity_bytes`（000080 storage_usage_high 种子）；修前管理面重存 000080 种子模板即 400（G-2 同型——白名单与种子脱节）；两处同源（service 白名单 / handler 字典）各加镜像测试 + 计数守卫；根因=08bde67 批 A 把后两处写成「属批 B 已登记」而无人承接 |
 
 > 2026-11-06 ECO-B06-F09：修复creator收件人混淆；真实创建者≠操作者、排队后删单、现存十类事件与固定/cc/assignee/ops正对照已补专项，完整门禁由联合codex冻结源码验证，未合main。
+
+> 2026-11-06 ECO-B06-F11：真实Update补处理人收件人锚，公开CreateComment在评论及审计事件同事务提交后发布ticket.commented（工单快照身份/标题/处理人，不含回复正文），让现存Inbox词表实际可达。selfNoiseActions继续排除当前操作者；内部备注仍仅审计、不公开通知。G-7/G-29的偏好与规则增强仍开放，本批不增CC广播、通知类别或权限。完整联合门禁待复验。
