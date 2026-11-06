@@ -18,7 +18,7 @@ type CreateTicketRequest struct {
 	AssignedTo           *int64          `json:"assigned_to,string,omitempty"`
 	OrgID                int64           `json:"org_id,string" binding:"required"`
 	TemplateCode         string          `json:"template_code,omitempty"` // 可选：命中模板则预填
-	CustomData           json.RawMessage `json:"custom_data,omitempty"`
+	CustomData           json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。
 	// 语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete
@@ -39,7 +39,7 @@ type UpdateTicketRequest struct {
 	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
 	// 值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
 	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
-	CustomData json.RawMessage `json:"custom_data,omitempty"`
+	CustomData json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
 }
 
 // RenderRichtextRequest richtext 服务端渲染（B5-4——05 号 §6 渲染/消毒 SSOT 出站：

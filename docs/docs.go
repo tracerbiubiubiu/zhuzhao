@@ -4255,10 +4255,7 @@ const docTemplate = `{
                     }
                 },
                 "custom_data": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "description": {
                     "type": "string"
@@ -5189,10 +5186,7 @@ const docTemplate = `{
                 },
                 "custom_data": {
                     "description": "B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、\n值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。\n字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "description": {
                     "type": "string"

@@ -233,3 +233,10 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 |---|---|
 | 建档 | 前端工程设计（技术栈/壳层/契约消费面/门禁——§13 SSOT 索引在册） |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；逐批复审留痕见文末复审表与 02 §5.5 |
+
+
+### 2026-11-06请求类型契约校准（B08-F12）
+
+`internal/model/ticket_request.go` 的Create/UpdateTicketRequest.CustomData使用RawMessage存储JSON，Swagger按底层字节误生成为number[]；生成元数据现在明确为object，对应表单字段对象与Update增量patch。生成器仍是既有swag→swagger2openapi→openapi-typescript链，不手改生成物。无字段定义的旧Create路径未全面校验JSON形状，本批不修改其运行兼容边界，也不以Swagger声明替代服务端G2校验。
+
+客户端Create/Assign请求应绑定实际生成类型，`assigned_to=null`取消分派与freeform custom_data可作有出处的窄适配；不得覆盖supervisor等已知字段的生成类型来掩盖漂移。生成类型单独改变supervisor形状后，真实调用方必须编译失败；常规正确字符串与取消分派保持通过。后端公开schema对象形状回归见 `ticket_schema_contract_test.go` 的 `TestTicketCustomDataSwaggerObject`，前端消费端另笔验证，不能把元数据修复视为已全部闭环。
