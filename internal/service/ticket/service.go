@@ -64,30 +64,47 @@ func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
 	return s
 }
 
-// emitEvent B6-1：事务提交后派发领域事件（06 号 A.1——at-most-once 异步投递；
-// eventReg=nil 时 NOP）。
-func (s *Service) emitEvent(ev domainevent.DomainEvent) {
+// emitTicketEvent 在提交后派发，并从本次业务读取的工单快照携带创建者。
+// 消费者不回查数据库：排队期间删单仍能找到创建者，且不把操作者误当创建者。
+func (s *Service) emitTicketEvent(ticket *model.Ticket, ev domainevent.DomainEvent) {
 	if s.eventReg != nil {
-		s.eventReg.Dispatch(context.Background(), ev)
+		s.eventReg.Dispatch(context.Background(), withTicketIdentity(ev, ticket.CreatedBy))
 	}
+}
+
+// withTicketIdentity 区分工单创建者与本次操作者；复制载荷防止修改其他订阅者使用的map。
+// 扫描事件没有操作者（ActorID=0），保持该语义；缺创建者时不猜测回退到actor。
+func withTicketIdentity(ev domainevent.DomainEvent, creatorID int64) domainevent.DomainEvent {
+	payload := make(domainevent.Payload, len(ev.Payload)+2)
+	for key, value := range ev.Payload {
+		payload[key] = value
+	}
+	if creatorID > 0 {
+		payload["creator"] = strconv.FormatInt(creatorID, 10)
+	}
+	if ev.ActorID > 0 {
+		payload["actor"] = strconv.FormatInt(ev.ActorID, 10)
+	}
+	ev.Payload = payload
+	return ev
 }
 
 // EmitActionNotify post_action notify 动作的事件出口（NotifyAction 专用——
 // 走与 created/assigned/closed 同一事件编排链；at-most-once 异步）。
 // 载荷键 cc_users=cc 档收件人锚点复用（resolveRecipients cc 分支）。
-func (s *Service) EmitActionNotify(ctx context.Context, ticketID, actorID int64, title, humanKey, recipients, templateCode string) {
-	_ = ctx // 事件派发为异步 fire-and-forget（emitEvent 内部 Dispatch 自管生命周期）
+func (s *Service) EmitActionNotify(ctx context.Context, ticket *model.Ticket, actorID int64, recipients, templateCode string) {
+	_ = ctx // 事件派发为异步 fire-and-forget（emitTicketEvent 内部 Dispatch 自管生命周期）
 	payload := domainevent.Payload{
-		"title": title, "human_key": humanKey,
+		"title": ticket.Title, "human_key": ticket.HumanKey,
 		"cc_users": recipients,
 	}
 	// S3a B3-3：动作显式指定的模板码（2026-10-26 通知面收口批生效——空=走规则/种子默认）
 	if templateCode != "" {
 		payload["template_code"] = templateCode
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
-		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorID,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorID,
 		Payload: payload,
 	})
 }
@@ -367,13 +384,13 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	// B6-1：工单创建事件（事务提交后派发——06 号 §5.2a 异步投递）
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketCreated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
 			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
 			"human_key": ticket.HumanKey,
-			// B6-4 creator 档收件人锚点（外审实例批——修复前无此键致 creator 解析恒空）
+			// actor仅作操作者；creator锚由emitTicketEvent从工单快照统一注入。
 			"actor": strconv.FormatInt(actorUserID, 10),
 		},
 		Timestamp: time.Now(),
@@ -735,7 +752,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}
 	ticket.UpdatedAt = updatedAt
 	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
@@ -855,7 +872,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if ticket.AssignedTo != nil {
 		closedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketClosed,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload:   closedPayload,
@@ -1013,7 +1030,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		s.clearReminderWatermark(ctx, req.ID, ticket.Status)
 	}
 	// B6-1：工单分派事件（事务提交后派发）
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketAssigned,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{

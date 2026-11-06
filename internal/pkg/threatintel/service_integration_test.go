@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -165,6 +167,72 @@ func TestB91_IntelCache(t *testing.T) {
 			"result 原样透传（防腐层）")
 	})
 
+	t.Run("cleanup during refresh preserves the foreground result", func(t *testing.T) {
+		for _, fail := range []bool{false, true} {
+			t.Run(fmt.Sprintf("upstream_error=%v", fail), func(t *testing.T) {
+				provider := &blockedRefreshProvider{started: make(chan struct{}), release: make(chan struct{})}
+				if fail {
+					provider.err = threatintel.ErrIntelUpstream
+				}
+				t.Cleanup(func() { provider.unblock.Do(func() { close(provider.release) }) })
+				svc := newSvcP(provider)
+				value := fmt.Sprintf("%s.cleanup.%v", unique, fail)
+				_, err := pool.Exec(ctx, `INSERT INTO intel_cache(intel_type,query_value,result,fetched_at,expires_at)
+					VALUES('domain',$1,'{}',NOW()-interval '10 days',NOW()-interval '8 days')`, value)
+				require.NoError(t, err)
+				stale, err := svc.Query(ctx, "domain", value)
+				require.NoError(t, err)
+				require.True(t, stale.Stale)
+				select {
+				case <-provider.started:
+				case <-time.After(time.Second):
+					t.Fatal("background refresh did not reach the provider")
+				}
+				require.NoError(t, svc.CleanupExpired(ctx))
+				type queryResult struct {
+					response   *threatintel.Response
+					err        error
+					panicValue any
+				}
+				results := make(chan queryResult, 1)
+				go func() {
+					r := queryResult{}
+					defer func() { r.panicValue = recover(); results <- r }()
+					r.response, r.err = svc.Query(ctx, "domain", value)
+				}()
+				// Observe the real singleflight waiter, so releasing the provider
+				// cannot accidentally run before the foreground miss has joined.
+				require.Eventually(t, func() bool {
+					buf := make([]byte, 1<<20)
+					n := runtime.Stack(buf, true)
+					for _, stack := range strings.Split(string(buf[:n]), "\n\n") {
+						if strings.Contains(stack, "singleflight.(*Group).Do") &&
+							strings.Contains(stack, "threatintel.(*Service).Query") && strings.Contains(stack, "WaitGroup") {
+							return true
+						}
+					}
+					return false
+				}, time.Second, time.Millisecond)
+				provider.unblock.Do(func() { close(provider.release) })
+				select {
+				case r := <-results:
+					require.Nil(t, r.panicValue, "a foreground miss joining refresh must not panic")
+					if fail {
+						require.ErrorIs(t, r.err, threatintel.ErrIntelUpstream)
+						require.Nil(t, r.response)
+					} else {
+						require.NoError(t, r.err)
+						require.NotNil(t, r.response)
+						require.False(t, r.response.Stale)
+						require.JSONEq(t, `{"fresh":true}`, string(r.response.Result))
+					}
+				case <-time.After(time.Second):
+					t.Fatal("foreground query did not finish")
+				}
+			})
+		}
+	})
+
 	t.Run("参数校验：未知类型/空值 400", func(t *testing.T) {
 		svc := newSvcP(&fakeProvider{result: json.RawMessage(`{}`)})
 		_, err := svc.Query(ctx, "cert", "x")
@@ -181,4 +249,26 @@ func (s *slowProvider) Query(_ context.Context, q threatintel.Query) (json.RawMe
 	atomic.AddInt64(s.calls, 1)
 	time.Sleep(150 * time.Millisecond)
 	return json.RawMessage(`{"slow":true}`), nil
+}
+
+// blockedRefreshProvider holds a real refresh in flight until its waiter is observed.
+type blockedRefreshProvider struct {
+	started   chan struct{}
+	release   chan struct{}
+	startOnce sync.Once
+	unblock   sync.Once
+	err       error
+}
+
+func (p *blockedRefreshProvider) Query(ctx context.Context, _ threatintel.Query) (json.RawMessage, error) {
+	p.startOnce.Do(func() { close(p.started) })
+	select {
+	case <-p.release:
+		if p.err != nil {
+			return nil, p.err
+		}
+		return json.RawMessage(`{"fresh":true}`), nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

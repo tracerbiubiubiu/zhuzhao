@@ -100,7 +100,7 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	if ticket.AssignedTo != nil {
 		payload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketTransitioned,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: payload, Timestamp: time.Now(),

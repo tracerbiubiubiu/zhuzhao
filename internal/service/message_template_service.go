@@ -71,7 +71,7 @@ var builtinVarSet = map[string]bool{
 	// 到期提醒（ticket.deadline——S3a SLA0.5）
 	// deadline 载荷=title/status/human_key/to_assignee/cc_users——无独占键
 	// 操作人（创建/更新事件——S6 B6-5）
-	"ticket.actor": true,
+	"ticket.actor": true, "ticket.creator": true,
 	// 运维域（ops.cron_failed——B10-4 观测面；000064 种子模板引用 last_success）
 	"event.job": true, "event.error": true, "event.last_success": true,
 	// 运维域（ops.action_failed——G-5 emit 载荷 action/error/ticket_id/actor；无种子模板，管理面可配）

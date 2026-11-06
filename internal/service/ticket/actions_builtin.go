@@ -19,7 +19,7 @@ type NotifyAction struct {
 	// Svc 经工单服务事件出口派发 ticket.action_notify（走 MessageDispatcher
 	// 编排链，不直调发送）——审计 A1 连带修复：原持 HookRegistry 但装配期
 	// 无法取得（eventRegistry 构造在 NewApp 晚于动作注册）致 Reg 恒 nil
-	// 静默 no-op；改持 Service（装配序早于动作注册）复用 emitEvent 出口。
+	// 静默 no-op；改持 Service（装配序早于动作注册）复用 emitTicketEvent 出口。
 	Svc *Service
 }
 
@@ -50,8 +50,7 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 			tplCode = t
 		}
 	}
-	a.Svc.EmitActionNotify(ctx, ac.Ticket.ID, ac.ActorID, ac.Ticket.Title,
-		ac.Ticket.HumanKey, recipients, tplCode)
+	a.Svc.EmitActionNotify(ctx, ac.Ticket, ac.ActorID, recipients, tplCode)
 	return nil
 }
 
