@@ -53,6 +53,18 @@
 
 源码`./...`的调用分析可能包括Gin未启用的导出入口或保守接边；本批没有把扫描器frame逐条升格为已确认业务漏洞。F02/F03先登记、再按最小版本批修与重扫，不在本报告偷换成已修复。
 
+## B17依赖修复候选与联合复验窗口
+
+本小批仍为Phase5，承接B16-F02/F03。主仓基于bcdf133准备（3b721b4仅补Markdown），三兄弟分别基于50314a7/2135232/481c7ec。四Go模块最低版本及三Docker构建入口统一1.26.10；CI沿go.mod精确选版，旧本地编译器需安装或允许自动下载该SDK。主仓/UI分支归属不变，没有main合并或正式发布。
+
+已提交并推送的三个兄弟候选：AL `db6a17bb686f09287d8793d1a3f98783bcc2e09d`、TR `1e31e3e95dc442b8384f3582cfc2850bd57d260b`、utils `563785a83ce2aeb12c5f2b65c42defb58a48c331`。net0.62.0/quic0.59.1及必要MVS依赖已get/tidy/verify，官方sumdb开启、无replace、业务源码与utils消费者pin不变。三准确SHA的CI已通过：AL [race及完整PG](https://github.com/tracerbiubiubiu/activelist/actions/runs/42337699606)、TR [race及专属PG/Redis](https://github.com/tracerbiubiubiu/taskrunner/actions/runs/42337704491)、utils [全部race](https://github.com/tracerbiubiubiu/zhuzhao-utils/actions/runs/42337711033)，实际Go1.26.10；未用无-v日志虚报每test/skip数。
+
+主仓候选另升Excelize2.11.1/compress1.20.2；MVS共14项，除四直接目标外含既有mscfb/efp/crypto/image/sync/sys/telemetry/term/text/tools的必要版本选择。efp和telemetry的精确pseudo由上游正式库的go.mod带入并经h1验证，不是为OpenPGP提示主动引入crypto pseudo；crypto仍为正式0.58.0。三F01文件逐SHA不变，业务Go源码无改动。正式目标的tag→commit、mod/ZIP SHA与h1、完整前后graph只在ignored原始证据留档。
+
+三个新linux/arm64、CGO0运行ELF均已按原生产buildflags重建：主仓`8709ba31478bee57c1fe58dedbe2c556a32ff54e19d1c7309b6a2a4a8bfe8a6e`、AL `b3ed59569cbc4fd7709a8c62f6dab8dadd120808c0ae37b8af8e0b84a2affc9b`、TR `69d73b46500d2c3426a99f130d272b95b47dcb66e7a140658a5f8ba17fb2fc2d`，全部实际Go1.26.10。AL/TR先行复扫均exit0、JSON完整、SHA未变，仅剩5932；AL仍仅模块精度，TR该项仅module，不能称绝对零漏洞或已验证OpenPGP可用。
+
+本机原生SDK获取先遇官方JSON TLS失败，另一次经官方toolchain模块机制/独立cache/开启sumdb的下载180s超时，无完整可信SDK；Linux工具镜像apk安装也在有界获取后取消，未跑过的race/PG均未伪记通过。改为准确新提交的Ubuntu CI执行原`make lint/test-unit/test-integration/test-cover`，集成维持race/p1、保留Wire守卫；不是删门禁绕过。主仓完整CI、四源码与主ELF复扫、新8容器原样253/81尚待，F02/F03暂不关单。已过的F01旧门禁不充当本批新依赖验证。
+
 ## 前端与部署安全差集
 
 - UI本轮`pnpm audit --prod --json --registry=https://registry.npmjs.org` exit0，各级已知漏洞报告均0；metadata dependencies233/optional96/total329，锁文件和package.json前后SHA不变。结果来自51d5e9a，Phase5合流树与之完全一致，不扩大为所有前端输入安全认证。

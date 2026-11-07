@@ -2,7 +2,7 @@
 # 使用方法：docker build -t zhuzhao:latest -f deployments/Dockerfile .
 
 # === Stage 1: build ===
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.10-alpine AS builder
 
 # 国内镜像源加速（apk + Go proxy）
 RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories && \

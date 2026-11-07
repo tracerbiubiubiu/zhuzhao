@@ -28,19 +28,19 @@ jobs:
           - module: zhuzhao
             repository: tracerbiubiubiu/zhuzhao
             revision: ""
-            go: 1.26.6
+            go: 1.26.10
           - module: activelist
             repository: tracerbiubiubiu/activelist
-            revision: 50314a7dd0e77b9c27a2ef3f4cd1594cceb77b49
-            go: 1.26.6
+            revision: db6a17bb686f09287d8793d1a3f98783bcc2e09d
+            go: 1.26.10
           - module: taskrunner
             repository: tracerbiubiubiu/taskrunner
-            revision: 21352322766c26ae9a35a45e3798f6155d6d3acd
+            revision: 1e31e3e95dc442b8384f3582cfc2850bd57d260b
             go: 1.26.10
           - module: zhuzhao-utils
             repository: tracerbiubiubiu/zhuzhao-utils
-            revision: 481c7ec3dc53c77cb23ac033985ea78593b0ca9c
-            go: 1.26.6
+            revision: 563785a83ce2aeb12c5f2b65c42defb58a48c331
+            go: 1.26.10
     env:
       GOWORK: "off"
       GOTOOLCHAIN: local
@@ -101,6 +101,7 @@ jobs:
             > "$EVIDENCE/source-go-env.json"
           python3 "$PARSER" snapshot --source source --expected-sha "$SOURCE_REVISION" \
             --expected-module "$MODULE_PATH" --output "$EVIDENCE/source-before.json"
+          (cd source && go list -deps ./...) > "$EVIDENCE/source-packages.txt"
           printf '%s\n' 'GOOS=linux GOARCH=arm64 CGO_ENABLED=0 GOWORK=off GOFLAGS=-mod=readonly' \
             'govulncheck -mode=source -scan=symbol -test=false -format=json -db=https://vuln.go.dev ./...' \
             > "$EVIDENCE/scan-command.txt"
@@ -148,7 +149,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.26.6
+          go-version: 1.26.10
           cache: false
       - name: Offline parser false-green regression
         run: python3 control/scripts/test-parse-govulncheck.py
@@ -172,7 +173,7 @@ jobs:
           (cd "$GITHUB_WORKSPACE/evidence" && sha256sum govulncheck > govulncheck.sha256)
           python3 control/scripts/parse-govulncheck.py verify-tool \
             --module-json evidence/tool-module.json --build-info evidence/tool-build-info.txt \
-            --binary "$TOOL" --expected-go go1.26.6 --expected-goos darwin --expected-goarch arm64 \
+            --binary "$TOOL" --expected-go go1.26.10 --expected-goos darwin --expected-goarch arm64 \
             --output evidence/tool-proof.json
           printf '%s\n' 'Official fixed scanner artifact only; the three real ELF scans remain a separate local task.' \
             >> "$GITHUB_STEP_SUMMARY"
