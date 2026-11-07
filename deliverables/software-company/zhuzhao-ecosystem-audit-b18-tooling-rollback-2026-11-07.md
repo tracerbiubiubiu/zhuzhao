@@ -45,9 +45,27 @@ exit0仅证明模板引用无阻断，不是整体回滚批准；exit1须由所�
 
 ## 收口边界
 
-B15-F02、B15-F03及B18-F01本地复验满足本批出口，交付关单仍待准确提交CI。F03只覆盖“操作预检与安全回滚流程”，不承诺所有down自动成功，也不移除FK的数据保护。存储ID合同、UI节奏/当前小残留、L5、dbtx预防试点、归档部署前置及原生dev承接继续按各自批次核验；未来规划或外部触发项不随本报告虚销账。
+B15-F02、B15-F03及B18-F01已通过下述准确提交CI，按本批范围收口。F03只覆盖“操作预检与安全回滚流程”，不承诺所有down自动成功，也不移除FK的数据保护。存储ID合同、UI当前小残留、L5、dbtx预防试点、归档部署前置及原生dev承接继续按各自批次核验；未来规划或外部触发项不随本报告虚销账。
 
 
-## Commit binding
+## 提交与准确CI
 
-Code fix: `ef90363f0f5fb70cac215c4a2979b7e97f565a0d`. The twelve-file explicit-path commit was checked after commit; no business source or dependency files were included. CI for this exact revision remains pending.
+代码修复`ef90363f0f5fb70cac215c4a2979b7e97f565a0d`，十二文件显式路径提交已回核，无业务源码或依赖文件。文档承接`996c167f4567e39362226937b25368b55b7f44bd`的[准确CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/42350455719)三个job全部通过；两提交之间仅审计文档变化，工具/测试源码字节一致。没有冒称ef自身另跑过一条CI。
+
+## UI节奏联合补证（B15-F04，待UI代码提交绑定）
+
+主仓732项、UI285项固定快照及三运行ELF逐SHA核验，真实编译器均Go1.26.10。attempt7通过原样253/0/0、81对往返及UI六件门禁41/41，默认retries=1但实际0retry/0flaky/0skip；W5额外8轮16例、retries0，功能HTTP429为0。完整门禁三条profile401/403分别对应PAT吊销/S1强制改密预期负测，不当成系统故障。
+
+之前失败轮保留：漏传ZHUZHAO_REPO导致隔离布局单测失败；S8c浏览器预检被宿主代理转发到nghttpx返回400，并未到RustFS；冷PG临时Unix server被socket健康探针误判ready。S8c由真实OPTIONS/NetLog及同栈对照确认，仅本轮Chromium增加目标域名代理例外后完成真实PUT/confirm/建单/详情图片，不改系统代理、CORS规则、浏览器安全策略或原断言。后续fresh完整门禁才算联合通过。attempt2默认outputDir覆盖导致原失败trace/截图丢失的限制如实保留，后续逐阶段独立目录及SHA；共享ignored依赖元数据被并行pnpm刷新，源码/项目锁文件未漂移，不声称共享缓存零写。
+
+W5变异采用限定8轮：恢复01c5原spec、普通负载下16/16通过且无429，**未复现默认用例稳定红**；相同有界真实耗桶前序负载下，修复16/16通过、功能429为0，去等待侧9绿7红、6/8轮有失败，出现21次浏览器429（14次profile/permissions）。耗桶阶段预期429单列（正侧509、负侧440），没有加码请求上限或修改限额/成功响应/功能断言。证明预算等待在已耗桶条件下有效，但负侧仍有概率性，不把它包装成每轮必红。完整原/修/变异数据和限制随UI提交交付，其他B19/B20候选不借本快照冒称已验。
+
+七轮环境验证及额外变异栈的自建容器、卷、网络均已精确回收；清理动作与起跑前资源交集为空，16个既有dev/test容器元数据保持。cmpfull等其他会话资源的并发增删逐ID另记，未清理或据此宣称整机无变化。过程中错误口述Go1.26.7已由实际拷出的三ELF纠正为Go1.26.10，未据错误口述运行其他镜像；root另独立重核三SHA/编译器。
+
+## B22：既有单测的时序假设修复
+
+B19本地门禁先后复现两处旧测试失败，分别是`internal/middleware/ratelimit_test.go`的`TestRateLimit_RouteBucketIsolation`跨Redis秒边界合法补令牌后第三次200，以及`internal/pkg/audit/policyeval_test.go`的`TestPolicyEvalWriteFlushToStore`两记录合法分两批刷盘却断言首批必须两条。生产限流Lua、规则与审计写入逻辑均未变。
+
+前者仅在两处miniredis夹具固定UTC时间；后者跨全部成功批次按原序检查总数和字段，不再假设调度批界。跨真实秒边界原8红/修8绿/去冻结8红，限流全套race×8为48PASS；受控首条刷完再写第二条时原8红/修8绿/移除修复8红，普通修复侧另8绿。未删除或放宽原业务字段/顺序断言，也不以提高生产限额或超时换绿。
+
+首两次完整单位门禁失败原样保存；同一组候选修正后，原生Go1.26.10原make test-unit/test-cover/test-integration全部exit0（15.19/28.38/737.81秒），Go源码在各次运行期间固定。lint首次私有缓存缺Swag运行库且proxy=off失败，保留日志；改用已有已核模块file代理后原make lint通过38.99秒，无新增依赖或生成漂移。原样253/81业务门禁在未变化的生产源码上已由上节验证；B22仅改测试，准确提交及CI继续单独绑定。

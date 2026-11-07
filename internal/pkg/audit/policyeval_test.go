@@ -78,9 +78,14 @@ func TestPolicyEvalWriteFlushToStore(t *testing.T) {
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	got := store.batches[0]
+	// A flush may occur between the two writes. Preserve the ordered-row
+	// assertions across successful batches without assuming scheduler timing.
+	var got []PolicyEvalEntry
+	for _, batch := range store.batches {
+		got = append(got, batch...)
+	}
 	if len(got) != 2 {
-		t.Fatalf("batch len = %d", len(got))
+		t.Fatalf("stored row count = %d", len(got))
 	}
 	if got[0].ActorID != 7 || got[0].Result != true || got[0].TraceID != "req-abc" {
 		t.Fatalf("row0 mutated: %+v", got[0])

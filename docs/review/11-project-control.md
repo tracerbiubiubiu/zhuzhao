@@ -1,6 +1,8 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-07 Phase5后续收口进展**：已归档并移除46个无运行引用的detached工作树，保留8个attached；该步未改五仓refs/运行服务，7份报告33个链接已迁往同内容的已推送快照。另经祖先/归档/远端tip复核删除4条旧远端分支，main保持。原生Go1.26.10 SDK已可信取得（仅ignored项目缓存，系统Go1.26.6未替换）；[B18工具/回滚预检](../../deliverables/software-company/zhuzhao-ecosystem-audit-b18-tooling-rollback-2026-11-07.md)已过原生lint/unit/integration/cover及自有栈253/81，准确提交CI待核；W5/存储ID及其余当前残留仍分批。**所有者要求Go1.27与Node24/26 LTS整体升级在Phase5合main后、基于main另批实施**；当前不合main、不启动Phase6。下面带日期段落保留历史范围和时点，不替代本段当前状态。
+> **2026-11-07 Phase5后续收口进展**：已归档并移除46个无运行引用的detached工作树，保留8个attached；该步未改五仓refs/运行服务，7份报告33个链接已迁往同内容的已推送快照。另经祖先/归档/远端tip复核删除4条旧远端分支，main保持。原生Go1.26.10 SDK已可信取得（仅ignored项目缓存，系统Go1.26.6未替换）；[B18工具/回滚预检](../../deliverables/software-company/zhuzhao-ecosystem-audit-b18-tooling-rollback-2026-11-07.md)已过原生lint/unit/integration/cover、自有栈253/81及996c167准确CI全绿；W5/存储ID及其余当前残留仍分批。**所有者要求Go1.27与Node24/26 LTS整体升级在Phase5合main后、基于main另批实施**；当前不合main、不启动Phase6。下面带日期段落保留历史范围和时点，不替代本段当前状态。
+
+> **本轮新增P1待修（公式字典查询）**：`ticket.Service.Update → applyFormulas(tx) → exprcalc.ApplyFormulas → RegisterExprDictLookup`仍绕过传入事务，使用裸池与Background取字典连接。专属PG/合法字段配置下Create成功、MaxConns1真实HTTP Update超时，取消后仍持事务；MaxConns2及普通公式对照均成功。正补独立进程串行复验及最小请求级上下文修复，dbtx架构推广暂缓。此前已销账的schema/字典选项Tx修复不覆盖该公式闭包，不将旧结论扩大为所有路径安全；本条未影响main或共享环境。
 
 > **2026-11-07 B16/B17安全验证与修复收口**：[正式报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主603c1b6、ALdb6a17b、TR1e31e3e、utils563785a准确CI全绿；四源码/三真实新ELF只剩未消费OpenPGP模块提示，包/调用链0，不称绝对零漏洞。原样253/0/0、81对往返及96次最低版本守卫变异有效，覆盖率20.29%仅普通tag内部包。保留test三Go应用已Go1.26.10并承接F01正确配置只读源，其他23容器及所有卷/网络保持；原生dev/main/生产未承接本批产物。主仓/UI仍实际phase5，兄弟为Phase5用途短分支；本地56→10分支有完整归档，54工作树目录保留。原B15四P2/历史债及本机SDK获取限制继续记账，不开始Phase6、不准备main PR/正式发布。下面带日期段落为各历史时点。
 
@@ -338,7 +340,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，已dc3完整门禁关闭，内容完整性/路径归一分列；主线仍待承接 |
 | B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 已test承接dc3，未合main/生产；头像同类F20也在同轮关闭，不扩成所有未来并发安全保证 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
-| B15横切边界 | 原四P2中工具sum/回滚前置已B18本地复验（CI待核），存储numeric ID合同及W5节奏仍各批处理；down79的23503保全业务数据但可留dirty，P1候选撤销 | 三迁移静态线索未确认，162 SQL全文与fresh往返范围分列；不把预检等同回滚许可，详B15/B18 |
+| B15横切边界 | 原四P2中工具sum/回滚前置已B18准确CI复验，存储numeric ID合同及W5节奏仍各批处理；down79的23503保全业务数据但可留dirty，P1候选撤销 | 三迁移静态线索未确认，162 SQL全文与fresh往返范围分列；不把预检等同回滚许可，详B15/B18 |
 | B16五仓安全验证 | UI生产依赖本轮0报告；首轮34 GO-ID已分层复验，F01/P2以bcdf133专项/稳定变异及完整门禁关闭，test配置源已切正确模板 | 主/AL stripped仅模块精度，TR符号不等于调用图；两fix提交元数据缺项已如实补录，不改已推历史，main未动 |
 | B17安全依赖修复 | 主603/ALdb6/TR1e31/utils5637准确CI、原253/81、新3ELF/4source复扫、最低版本96次ABA均过；Go1.26.10及net62/quic59.1，主另Excelize2.11.1/compress1.20.2 | F02在代码/test关闭，F03已升依赖、唯一OpenPGP模块提示按未导入边界保留；test已承接，原生dev/main/生产未切，无正式发布 |
 | 文档与历史债 | B10五组校准、130篇全文基线及最终差异、101编号债逐行映射均已核，五仓总报告已收口 | L-5主体未销账，其余未来/已接受取舍不当当前回归；Go源码/真实ELF补扫已B16/B17完成，许可证/完整供应链认证不扩大 |
