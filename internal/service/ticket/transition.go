@@ -166,11 +166,13 @@ func buildValidatorEnv(t *model.Ticket) exprcalc.EvalEnv {
 
 // checkValidator validator 数据侧前置条件（expr 结果须为 true）。tm=nil/空=跳过。
 // 返回 error 含表达式片段供 400 回显。
-func checkValidator(tm *TransitionMeta, t *model.Ticket) error {
+func checkValidator(ctx context.Context, tm *TransitionMeta, t *model.Ticket) error {
 	if tm == nil || tm.Validator == "" {
 		return nil
 	}
-	v, err := exprcalc.EvalFormula(tm.Validator, buildValidatorEnv(t))
+	env := buildValidatorEnv(t)
+	env.Context = ctx
+	v, err := exprcalc.EvalFormula(tm.Validator, env)
 	if err != nil {
 		return errcode.New(errcode.ErrInvalidParams.Code,
 			fmt.Sprintf("validator 求值失败（%s）: %v", truncate(tm.Validator, 60), err))

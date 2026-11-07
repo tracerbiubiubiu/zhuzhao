@@ -11,6 +11,7 @@
 package exprcalc
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -23,10 +24,15 @@ import (
 	"github.com/expr-lang/expr/vm"
 )
 
-// EvalEnv 求值环境（A.3 契约形态——Actor 随 S3 网关条件扩，本批仅 Fields+Now）。
+// EvalEnv 求值环境。Context 仅属当前调用，不进入编译缓存或用户字段。
 type EvalEnv struct {
-	Fields map[string]any
+	Fields  map[string]any
+	Context context.Context // 每次求值独立传入，编译 Program 不保留。
 }
+
+// 运行时私有槽不可作为 DSL 标识符。复制用户字段后再覆盖该槽，防任意 JSON 键
+// 替换 context；$env 的原有语法守卫同时阻止环境枚举/下标读取。
+const contextEnvKey = "\x1fexpr_context"
 
 // FormulaField formula 字段的 schema 投影（ticket 域组装自 field_meta）。
 type FormulaField struct {
@@ -35,8 +41,8 @@ type FormulaField struct {
 	Type    string // field_type（B1-7 批2：提交期结果类型校验——三路F-B-3 收口）
 }
 
-// 护栏常量（A.3：长度钳制；~~超时经 context 取消传递~~ [审计 P3 清理 2026-10-23：未接线——长度钳制为唯一防线]；提交链值域天然有界，
-// 长度钳制为第一道）
+// 护栏常量：长度钳制约束计算规模；求值 context 传给上下文感知函数的 I/O，
+// 不提供对 expr 虚拟机纯计算的抢占式超时。
 const MaxExprLen = 2048
 
 // 编译缓存（formula 随 schema 变更失效——串即键；schema 字段数天然有界，
@@ -82,13 +88,31 @@ func EvalFormula(src string, env EvalEnv) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return expr.Run(prog, env.Fields)
+	ctx := env.Context
+	if ctx == nil {
+		ctx = context.Background() // 保留旧纯函数调用的零值环境兼容。
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	fields := make(map[string]any, len(env.Fields)+1)
+	for key, value := range env.Fields {
+		fields[key] = value
+	}
+	fields[contextEnvKey] = ctx
+	return expr.Run(prog, fields)
 }
 
 // ApplyFormulas 提交链落点（A.3：校验后、写 custom_data 前）——
 // formula 字段一律重算覆盖（前端预览值不可信）；失败 fail-fast 带字段名。
 // 返回新 map（入参不变——幂等重算）。
 func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, error) {
+	return ApplyFormulasContext(context.Background(), schema, data)
+}
+
+// ApplyFormulasContext 将本次调用上下文传给上下文感知函数；旧纯函数调用仍可
+// 使用 ApplyFormulas。派生上下文只用于本轮求值，不写回 data。
+func ApplyFormulasContext(ctx context.Context, schema []FormulaField, data map[string]any) (map[string]any, error) {
 	if len(schema) == 0 {
 		return data, nil
 	}
@@ -96,7 +120,7 @@ func ApplyFormulas(schema []FormulaField, data map[string]any) (map[string]any, 
 	for k, v := range data {
 		out[k] = v
 	}
-	env := EvalEnv{Fields: data}
+	env := EvalEnv{Fields: data, Context: ctx}
 	for _, f := range schema {
 		src := strings.TrimSpace(f.Formula)
 		if src == "" {
@@ -143,9 +167,10 @@ var (
 )
 
 // AddFunction 注册自定义函数（装配期注入 db 闭包用；进程级注册表——覆盖式，
-// 重名后写胜出；函数集变更整体清空编译缓存=旧产物自然失效）。
-func AddFunction(name string, fn func(params ...any) (any, error)) {
-	opt := expr.Function(name, fn)
+// 重名后写胜出；函数集变更整体清空编译缓存=旧产物自然失效）。可选 types 为
+// expr.Function 类型声明；首参 context.Context 的函数由 WithContext 隐式传参。
+func AddFunction(name string, fn func(params ...any) (any, error), types ...any) {
+	opt := expr.Function(name, fn, types...)
 	funcMu.Lock()
 	funcRegs[name] = opt
 	funcMu.Unlock()
@@ -158,8 +183,8 @@ func AddFunction(name string, fn func(params ...any) (any, error)) {
 func compileOptions() []expr.Option {
 	funcMu.RLock()
 	defer funcMu.RUnlock()
-	opts := make([]expr.Option, 0, len(funcRegs)+2)
-	opts = append(opts, expr.AsAny(), expr.DisableAllBuiltins())
+	opts := make([]expr.Option, 0, len(funcRegs)+3)
+	opts = append(opts, expr.AsAny(), expr.DisableAllBuiltins(), expr.WithContext(contextEnvKey))
 	for _, o := range funcRegs {
 		opts = append(opts, o)
 	}

@@ -568,7 +568,7 @@ func (s *Service) applyFormulas(ctx context.Context, q repository.RowQuerier, ty
 	if err := json.Unmarshal(customData, &data); err != nil || data == nil {
 		return customData, nil // 空/非法对象——G2 已拦
 	}
-	out, err := exprcalc.ApplyFormulas(schema, data)
+	out, err := exprcalc.ApplyFormulasContext(withDictQuerier(ctx, q), schema, data)
 	if err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
 	}

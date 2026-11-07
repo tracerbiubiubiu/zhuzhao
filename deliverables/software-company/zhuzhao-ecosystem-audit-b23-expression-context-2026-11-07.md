@@ -31,6 +31,6 @@ Phase5小范围稳定性批，发现基线为主仓 `996c167f4567e39362226937b25
 - 明确选择可信原生Go1.26.10，完整原样 `make test-unit / test-cover / test-integration` 均exit0（10.63s / 5.55s / 566.02s），353份Go源及go.mod/sum起止SHA相同。该组合同时包含B19存储ID候选，源码与证据分别归属，提交仍分批。
 - `make lint` exit0（3.641s）；Swagger三生成物仅为新鲜度比较显式暂存，结束即撤暂存，无新漂移。`make swag wire` 首次off代理因私有业务缓存缺Wire运行库而失败，改用已有可信本地file代理后exit0（3.842s）；不改go.mod/sum、不绕过生成器。
 - 最终生产ELF SHA256 `82179b0bc48a4337e78fabdb2448110c4ede038e4b634e6b486c4fcd9dfd95f0`，Go1.26.10；隔离组合镜像 `sha256:1c6db8f4b15a11e2f7f8ab989b09fc7daac48979b381e0f079ec2b62a1d35155`，基镜像层与环境保持。它同时含B19和B23，当前明确标为uncommitted candidate，不冒称某一提交的已部署产物。
-- 原样四档acceptance / 81对迁移往返与当前UI全门禁正在新组合隔离栈验证；准确修复hash、CI与常驻环境承接尚未完成，不提前销账或标整体完成。
+- 原样 `make migrate-up` 与四档 `make acceptance` 在新组合隔离栈均exit0：253/0/0，81对迁移往返计数/明细零漂移，前后schema均81 clean（40.192s）。实际三Go容器ELF逐字匹配清单，主仓353源匹配821构建快照。UI完整门禁另出现B20撤销/重做用例首次及重试失败，不将该前端批次记绿；它不替代或否定本批独立Go与API出口。准确修复hash、CI与常驻环境承接尚未完成，整体收口仍未完成。
 
 原始探针、失败/正控/变异、源码SHA、独立复核及完整门禁日志仅在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{dbtx-pilot,expression-gates,expression-runtime}/`。正式新回归锚点：`internal/pkg/exprcalc/context_test.go` 的 `TestContextFunction_*`，`internal/service/ticket/expr_context_integration_test.go` 的 `TestExprLookup_*`；提交后补完整hash链接。常驻服务、数据与main均未由本批更新。

@@ -137,7 +137,7 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 	if !checkCondition(tm, actor) {
 		return nil, errcode.ErrNoPermission
 	}
-	if err := checkValidator(tm, ticket); err != nil {
+	if err := checkValidator(withDictQuerier(ctx, s.db), tm, ticket); err != nil {
 		return nil, err
 	}
 	return tm, nil

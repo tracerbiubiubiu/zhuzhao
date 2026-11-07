@@ -16,6 +16,10 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
 
 ## 2. 现状基线（代码级锚点，2026-10-15 核实）
 
+### 当前表达式字典读取边界（2026-11-07，ECO-B23）
+
+`exprcalc.go` 的 `EvalEnv.Context / ApplyFormulasContext` 传递本次求值上下文；`ticket/exprfuncs.go` 的 `withDictQuerier / RegisterExprDictLookup` 在求值时选取当前读通道。Create与事务前校验可用pool，Update锁内的formula及visible_when复用已有tx，转换validator使用当前请求ctx与事务前service池。编译缓存不保存请求/事务，字典I/O随ctx取消；这不提供纯计算VM抢占超时，也不表示通用dbtx传播器已实施。原formula后台池获取在MaxConns=1可稳定自锁，专项复验及新组合门禁状态见[B23报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b23-expression-context-2026-11-07.md)。以下带日期基线与变更记录保留历史语境。
+
 | 项 | 现状 | 锚点 |
 |----|------|------|
 | 渲染器 | 自研七类型轻量渲染器已交付（W4）；**头注释明示：form-create 库引入决策顺延至本设计器批** | zhuzhao-ui `src/views/ticket/create/index.vue:3-8` |

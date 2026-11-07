@@ -821,7 +821,7 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 			envData = map[string]any{}
 			_ = json.Unmarshal(customData, &envData)
 		}
-		v, err := exprcalc.EvalFormula(vw, exprcalc.EvalEnv{Fields: envData})
+		v, err := exprcalc.EvalFormula(vw, exprcalc.EvalEnv{Fields: envData, Context: withDictQuerier(ctx, q)})
 		if err != nil {
 			continue
 		}
