@@ -151,7 +151,7 @@
 | G-11 | S9 | ~~CleanupExpired 未挂 cron~~ **✅ 销账（2026-10-27 销账批）**：app.go:195 `intel_cleanup` 已挂——`DELETE FROM intel_cache WHERE expires_at < NOW() - interval '7 days'`，骑 CronScheduler + SetOnFailure 告警（审计实证+独立复核双确认） | P2 | 销账 | — |
 | G-12 | ui | 铃铛 invalidateQueries 死代码（角标最长 60s 不更新）/画布 undo 后 lint 态 stale/intel 页裸 fetch 绕 api 层/附件列表失败静默 | P2/P3 | +0.5 天 | 前端随手批 |
 | G-13 | 文档 | 10 号变更记录缺 SLA 0.5 交付行；errcode.md 双份已补登 21010/92600-92602（✅ 随本批修） | P3 | ✅/5min | 文档批 |
-| G-14 | S1 | FieldImpact radio 选项收窄漏检+dict: 引用收窄天然失效 | P3 | 15min | B1-6 前小修 |
+| ~~G-14~~ | S1 | ✅ **B26代码出口通过（2026-11-07）**：radio/完整值集合及静态↔不同dict切换、空字典G2约束与读取不确定软提示；原8红/修8绿、7变异各8红，正式完整Go+253/81通过；[B26报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b26-field-warnings-2026-11-07.md)。相同dict引用无旧历史快照，外部项变更影响仍需字典写侧合同，不冒称本批覆盖 | P3 | 原估算保留历史 | Phase5提交/CI及常驻承接另核；不改为硬锁 |
 | G-15 | ui/S5 | storage API 六端点漏 `/api/v1` 前缀（b72b854d 建档即如此）——浏览器内附件列表拿回 index.html 渲成 3418 幽灵行、五个 POST 404：头像上传/附件上传删除/富文本渲染整面静默失效 | **P0** | ✅ ui e88173bd | 销账（+`apiPaths.test` 静态守卫，红→绿恰报六处） |
 | G-16 | S9/S6-2 | intel_query/message_center 建菜单行未绑 role_menus（000031 惯例漏项）——全员不可达，铃铛 /messages 404 | **P0** | ✅ 000074 | 销账 |
 | G-17 | S3a | 分派规则页（ui 45a72256）无菜单行——孤岛页；viewNames 守卫单向不报 | **P0** | ✅ 000073+000074 | 销账（ui 反向守卫同批） |

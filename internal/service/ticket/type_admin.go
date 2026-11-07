@@ -346,10 +346,28 @@ func (s *Service) softFieldWarnings(ctx context.Context, code string, old []*mod
 		if !o.Required && n.Required {
 			softs = append(softs, softRef{o.FieldKey, "required 加严（false→true）——在途单编辑将按必填校验"})
 		}
-		if (o.FieldType == "select" || o.FieldType == "multi_select") && o.FieldType == n.FieldType {
-			oldVals, err1 := optionValues(o.FieldOptions)
-			newVals, err2 := optionValues(n.FieldOptions)
-			if err1 == nil && err2 == nil && len(oldVals) > len(newVals) {
+		if (o.FieldType == "select" || o.FieldType == "multi_select" || o.FieldType == "radio") && o.FieldType == n.FieldType {
+			oldCode, oldDict := dictOptionReference(o.FieldOptions)
+			newCode, newDict := dictOptionReference(n.FieldOptions)
+			if string(o.FieldOptions) == string(n.FieldOptions) || (oldDict && newDict && oldCode == newCode) {
+				continue // 同一引用没有旧字典快照，不能借原文空白差异推断历史变化。
+			}
+			// 此处仍在 ReplaceTypeFields 的事务前；有效字典值与 G2 同源，但错误不能当成空集。
+			oldRaw, oldErr := s.expandDictOptionsStrict(ctx, s.db, o.FieldOptions)
+			newRaw, newErr := s.expandDictOptionsStrict(ctx, s.db, n.FieldOptions)
+			oldVals, err1 := optionValues(oldRaw)
+			newVals, err2 := optionValues(newRaw)
+			if oldErr != nil || newErr != nil || err1 != nil || err2 != nil {
+				softs = append(softs, softRef{o.FieldKey, "options 影响无法评估——字典读取或选项解析失败，请核对在途单旧值"})
+				continue
+			}
+			// G2 的空集表示不限制取值；有限集改为空集放宽，空集改为有限集才是新增约束。
+			if len(newVals) == 0 {
+				continue
+			}
+			if len(oldVals) == 0 {
+				softs = append(softs, softRef{o.FieldKey, "options 新增约束——原选项集不限制取值，现在仅允许有限选项"})
+			} else {
 				nv := map[string]bool{}
 				for _, v := range newVals {
 					nv[v] = true
@@ -754,34 +772,50 @@ const CustomDataMaxBytes = 64 << 10
 // 合法 select 值被 400 拒，fail-closed 实效与 fail-open 意图相反；码不
 // 存在臂由保存期字典码存在性校验收口[B1-7]，运行期空集仅为兜底）。
 func (s *Service) expandDictOptions(ctx context.Context, q repository.RowQuerier, raw json.RawMessage) json.RawMessage {
-	var elems []json.RawMessage
-	if err := json.Unmarshal(raw, &elems); err != nil || len(elems) != 1 {
-		return raw
+	expanded, err := s.expandDictOptionsStrict(ctx, q, raw)
+	if err != nil {
+		return json.RawMessage("[]") // G2 既定故障策略：无选项限制，不把解析/查询故障升级为 HTTP 硬拒绝。
 	}
-	var sv string
-	if err := json.Unmarshal(elems[0], &sv); err != nil || !strings.HasPrefix(sv, "dict:") {
-		return raw
+	return expanded
+}
+
+func dictOptionReference(raw json.RawMessage) (string, bool) {
+	var values []string
+	if err := json.Unmarshal(raw, &values); err != nil || len(values) != 1 || !strings.HasPrefix(values[0], "dict:") {
+		return "", false
 	}
-	code := strings.TrimPrefix(sv, "dict:")
+	return strings.TrimPrefix(values[0], "dict:"), true
+}
+
+// expandDictOptionsStrict 区分成功空集与读取故障，供变更影响提示使用；G2 包装仍采用 fail-open。
+// 调用方显式传入池或事务，禁止在事务窗口内另向池取连接。
+func (s *Service) expandDictOptionsStrict(ctx context.Context, q repository.RowQuerier, raw json.RawMessage) (json.RawMessage, error) {
+	code, ok := dictOptionReference(raw)
+	if !ok {
+		return raw, nil
+	}
 	rows, err := q.Query(ctx,
 		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
 	if err != nil {
-		return json.RawMessage("[]") // DB 故障→空集=真 fail-open（原文返回会拒一切合法值）
+		return nil, err
 	}
 	defer rows.Close()
 	codes := make([]string, 0, 8)
 	for rows.Next() {
 		var c string
 		if err := rows.Scan(&c); err != nil {
-			return json.RawMessage("[]")
+			return nil, err
 		}
 		codes = append(codes, c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	b, err := json.Marshal(codes)
 	if err != nil {
-		return json.RawMessage("[]")
+		return nil, err
 	}
-	return json.RawMessage(b)
+	return json.RawMessage(b), nil
 }
 
 // validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
