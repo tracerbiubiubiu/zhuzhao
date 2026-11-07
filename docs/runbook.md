@@ -216,9 +216,10 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
+   | B16五仓安全验证（root协调；子agent仅隔离验证，root唯一提交/推送） | 主仓phase5两配置+config回归；B16报告/控制台/索引/standards/本台账 | CI采集已推；配置修复待整仓门禁，文档进行中 | 2026-11-07 |
    | （收尾自填；收口后清行） | | | |
 
-2026-11-07当前操作边界：本轮五仓同名 `codex/phase5-audit` 用于Phase5修复收尾，root为本批唯一推送者；原主仓/UI phase5仅文档/CI/忽略规则提交可按窗口同步。只推已核分支，不推main、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建；旧工作树原型经完整补丁/内容/SHA归档后精确清理，禁止全局clean/reset/prune，证据、备份、原卷和其他会话资源保留。推送记录及54工作树状态清单仅主仓ignored `.codex/audits/ECO-20261104/workspace-cleanup-20261107/`，不纳Git/Docker。
+2026-11-07当前操作边界：主仓/UI已将审计候选正常合流至实际phase5（09d224d/01c5dea），后续修改基于phase5；三个Go兄弟仍用Phase5用途的 `codex/phase5-audit`。root为本批唯一提交/推送者，只推已核分支，不推main、不准备main PR、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建。本地56分支收敛到10，46旧heads有archive ref及五份完整bundle，40旧工作树同hash detach、54目录与原证据保留；临时独立验证工作树另计，结束只收回本轮自建资源。禁止全局clean/reset/prune；证据、备份、原卷和其他会话资源保留。分支逐项清理/恢复收据仅主仓ignored `.codex/audits/ECO-20261104/security-20261107/branch-cleanup/`，不纳Git/Docker。B16门禁仅用自有隔离栈，不改常驻dev/test数据或配置。
 
 2026-11-06审计交接已收口（非在途占用）：[五仓总报告](../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)。test=app dc3/AL60/TR eb3/UI c9，固定来源与镜像已核；dev保留原工作树/原卷，旧UI F08仍有。临时验收/PG/浏览器夹具已精确回收，常驻测试环境留供使用，其它会话cmpfull资源保留。代码/正式文档均路径提交、未合main；仅utils修复分支已推。Go漏洞可达扫描NOT_RUN，原日志/备份/截图与环境重启辅助仅主仓ignored `.codex`，不纳Git/Docker。后继操作先核当前端口/PID/镜像与下节环境来源，不用此历史交接替代实时归属检查。
 
