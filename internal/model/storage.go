@@ -4,7 +4,7 @@ import "time"
 
 // FileObject 对象元数据（000045，phase5 S5——对象本体在 RustFS，本表只存元数据）。
 type FileObject struct {
-	ID          int64      `json:"id"`
+	ID          int64      `json:"id,string"`
 	Bucket      string     `json:"bucket"`
 	ObjectKey   string     `json:"object_key"`
 	Purpose     string     `json:"purpose"`
@@ -61,7 +61,7 @@ type ConfirmFileInput struct {
 
 // TicketAttachmentView 附件列表视图（关联行 JOIN file_objects——B5-3 批3）。
 type TicketAttachmentView struct {
-	ID         int64     `json:"id"`
+	ID         int64     `json:"id,string"`
 	TicketID   int64     `json:"ticket_id,string"`
 	ObjectKey  string    `json:"object_key"`
 	FileName   string    `json:"file_name"`
@@ -73,7 +73,7 @@ type TicketAttachmentView struct {
 
 // TicketAttachment 工单附件关联行（000046）。
 type TicketAttachment struct {
-	ID           int64     `json:"id"`
+	ID           int64     `json:"id,string"`
 	TicketID     int64     `json:"ticket_id,string"`
 	FileObjectID int64     `json:"file_object_id,string"`
 	UploadedBy   int64     `json:"uploaded_by,string"`

@@ -4457,7 +4457,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "0"
                 },
                 "mime_type": {
                     "type": "string"
@@ -4951,7 +4952,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "0"
                 },
                 "mime_type": {
                     "type": "string"

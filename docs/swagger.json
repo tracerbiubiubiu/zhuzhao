@@ -4449,7 +4449,8 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "0"
                 },
                 "mime_type": {
                     "type": "string"
@@ -4943,7 +4944,8 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "0"
                 },
                 "mime_type": {
                     "type": "string"

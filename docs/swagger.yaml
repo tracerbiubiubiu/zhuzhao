@@ -352,7 +352,8 @@ definitions:
       file_name:
         type: string
       id:
-        type: integer
+        example: "0"
+        type: string
       mime_type:
         type: string
       object_key:
@@ -704,7 +705,8 @@ definitions:
       file_name:
         type: string
       id:
-        type: integer
+        example: "0"
+        type: string
       mime_type:
         type: string
       object_key:
