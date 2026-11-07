@@ -1,0 +1,186 @@
+name: Go security evidence (not a security approval)
+
+on:
+  push:
+    branches: [phase5, codex/phase5-audit]
+    paths:
+      - .github/workflows/go-security.yml
+      - scripts/parse-govulncheck.py
+      - scripts/test-parse-govulncheck.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-security-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-evidence:
+    name: Source evidence - ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - module: zhuzhao
+            repository: tracerbiubiubiu/zhuzhao
+            revision: ""
+            go: 1.26.6
+          - module: activelist
+            repository: tracerbiubiubiu/activelist
+            revision: 50314a7dd0e77b9c27a2ef3f4cd1594cceb77b49
+            go: 1.26.6
+          - module: taskrunner
+            repository: tracerbiubiubiu/taskrunner
+            revision: 21352322766c26ae9a35a45e3798f6155d6d3acd
+            go: 1.26.10
+          - module: zhuzhao-utils
+            repository: tracerbiubiubiu/zhuzhao-utils
+            revision: 481c7ec3dc53c77cb23ac033985ea78593b0ca9c
+            go: 1.26.6
+    env:
+      GOWORK: "off"
+      GOTOOLCHAIN: local
+      GOSUMDB: sum.golang.org
+      GONOSUMDB: ""
+      GOPRIVATE: ""
+      GOPROXY: https://proxy.golang.org
+      SOURCE_REVISION: ${{ matrix.revision || github.sha }}
+      MODULE_PATH: github.com/${{ matrix.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ env.SOURCE_REVISION }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Offline parser false-green regression
+        run: python3 control/scripts/test-parse-govulncheck.py
+      - name: Install and verify the exact official scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          export GOPATH="$RUNNER_TEMP/govulncheck-source/gopath"
+          export GOMODCACHE="$RUNNER_TEMP/govulncheck-source/modcache"
+          export GOCACHE="$RUNNER_TEMP/govulncheck-source/buildcache"
+          export GOBIN="$RUNNER_TEMP/govulncheck-source/bin"
+          export GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOFLAGS=-mod=readonly
+          go version > "$GITHUB_WORKSPACE/evidence/scanner-compiler.txt"
+          go mod download -json golang.org/x/vuln@v1.4.0 > "$GITHUB_WORKSPACE/evidence/tool-module.json"
+          go install golang.org/x/vuln/cmd/govulncheck@v1.4.0 2> "$GITHUB_WORKSPACE/evidence/tool-install.stderr"
+          go version -m "$GOBIN/govulncheck" > "$GITHUB_WORKSPACE/evidence/tool-build-info.txt"
+          "$GOBIN/govulncheck" -version > "$GITHUB_WORKSPACE/evidence/tool-version.txt"
+          python3 control/scripts/parse-govulncheck.py verify-tool \
+            --module-json evidence/tool-module.json --build-info evidence/tool-build-info.txt \
+            --binary "$GOBIN/govulncheck" --expected-go "go${{ matrix.go }}" \
+            --expected-goos linux --expected-goarch amd64 --output evidence/tool-proof.json
+      - name: Collect production source evidence (findings require separate triage)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GOPATH="$RUNNER_TEMP/source/gopath"
+          export GOMODCACHE="$RUNNER_TEMP/source/modcache"
+          export GOCACHE="$RUNNER_TEMP/source/buildcache"
+          export GOOS=linux GOARCH=arm64 CGO_ENABLED=0 GOFLAGS=-mod=readonly
+          PARSER="$GITHUB_WORKSPACE/control/scripts/parse-govulncheck.py"
+          EVIDENCE="$GITHUB_WORKSPACE/evidence"
+          (cd source && go env -json GOOS GOARCH CGO_ENABLED GOWORK GOFLAGS GOVERSION) \
+            > "$EVIDENCE/source-go-env.json"
+          python3 "$PARSER" snapshot --source source --expected-sha "$SOURCE_REVISION" \
+            --expected-module "$MODULE_PATH" --output "$EVIDENCE/source-before.json"
+          printf '%s\n' 'GOOS=linux GOARCH=arm64 CGO_ENABLED=0 GOWORK=off GOFLAGS=-mod=readonly' \
+            'govulncheck -mode=source -scan=symbol -test=false -format=json -db=https://vuln.go.dev ./...' \
+            > "$EVIDENCE/scan-command.txt"
+          cd source
+          set +e
+          timeout 18m "$RUNNER_TEMP/govulncheck-source/bin/govulncheck" \
+            -mode=source -scan=symbol -test=false -format=json -db=https://vuln.go.dev ./... \
+            > "$EVIDENCE/govulncheck.json" 2> "$EVIDENCE/govulncheck.stderr"
+          SCAN_EXIT=$?
+          set -e
+          printf '%s\n' "$SCAN_EXIT" > "$EVIDENCE/govulncheck.exit"
+          cd "$GITHUB_WORKSPACE"
+          python3 "$PARSER" snapshot --source source --expected-sha "$SOURCE_REVISION" \
+            --expected-module "$MODULE_PATH" --output "$EVIDENCE/source-after.json"
+          python3 "$PARSER" collect --input "$EVIDENCE/govulncheck.json" \
+            --exit-code "$EVIDENCE/govulncheck.exit" --mode source --expected-go "go${{ matrix.go }}" \
+            --before "$EVIDENCE/source-before.json" --after "$EVIDENCE/source-after.json" \
+            --go-env "$EVIDENCE/source-go-env.json" \
+            --output "$EVIDENCE/result.json"
+      - name: Preserve raw evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-source-${{ matrix.module }}-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
+  darwin-scanner:
+    name: Official Darwin arm64 scanner artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOWORK: "off"
+      GOTOOLCHAIN: local
+      GOSUMDB: sum.golang.org
+      GONOSUMDB: ""
+      GOPRIVATE: ""
+      GOPROXY: https://proxy.golang.org
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.6
+          cache: false
+      - name: Offline parser false-green regression
+        run: python3 control/scripts/test-parse-govulncheck.py
+      - name: Cross-compile and prove the exact original official tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          export GOPATH="$RUNNER_TEMP/govulncheck-darwin/gopath"
+          export GOMODCACHE="$RUNNER_TEMP/govulncheck-darwin/modcache"
+          export GOCACHE="$RUNNER_TEMP/govulncheck-darwin/buildcache"
+          unset GOBIN
+          export GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 GOFLAGS=-mod=readonly
+          go version > "$GITHUB_WORKSPACE/evidence/scanner-compiler.txt"
+          go mod download -json golang.org/x/vuln@v1.4.0 > "$GITHUB_WORKSPACE/evidence/tool-module.json"
+          go install golang.org/x/vuln/cmd/govulncheck@v1.4.0 2> "$GITHUB_WORKSPACE/evidence/tool-install.stderr"
+          TOOL="$GOPATH/bin/darwin_arm64/govulncheck"
+          test -x "$TOOL"
+          cp "$TOOL" "$GITHUB_WORKSPACE/evidence/govulncheck"
+          go version -m "$TOOL" > "$GITHUB_WORKSPACE/evidence/tool-build-info.txt"
+          (cd "$GITHUB_WORKSPACE/evidence" && sha256sum govulncheck > govulncheck.sha256)
+          python3 control/scripts/parse-govulncheck.py verify-tool \
+            --module-json evidence/tool-module.json --build-info evidence/tool-build-info.txt \
+            --binary "$TOOL" --expected-go go1.26.6 --expected-goos darwin --expected-goarch arm64 \
+            --output evidence/tool-proof.json
+          printf '%s\n' 'Official fixed scanner artifact only; the three real ELF scans remain a separate local task.' \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve scanner and provenance even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: govulncheck-v1.4.0-darwin-arm64-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
