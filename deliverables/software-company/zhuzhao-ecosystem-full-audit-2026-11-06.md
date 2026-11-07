@@ -288,6 +288,6 @@ cd759a0402455731f805ba507bf8401447e00e29
 
 五仓本轮最终修复统一使用同名短分支 **`codex/phase5-audit`**；它是Phase5审计/修复分支，不是Phase6或生产发布分支。原修复来源分支与本报告固定hash保留。主仓/UI原phase5的已完成文档、CI及忽略规则提交也纳入推送核对；不把未包含全部修复的原phase5源码当成已验收修复组合。UI既有.VSCodeCounter忽略项规范保留，四兄弟仓补.codex的Git/Docker排除，过程材料不入库。
 
-主仓/UI的现有CI增加codex/** push过滤，UI按同名主仓分支读取种子；其余Go仓本已全分支运行。push前逐仓SSH fetch、提交格式/门禁状态/窗口核对；主仓同名分支先于UI推送，远端ref与准确SHA的CI必须另核。分支推送不等于正式发版：本轮**不新增tag/GitHub Release/生产部署**，utils已发布v0.4.3及本轮固定pseudo-version保持，正式main/tag发版待以后整合与安全证据决策。Go扫描仍NOT_RUN，本次清理未补扫。
+主仓/UI的现有CI增加codex/** push过滤，UI按同名主仓分支读取种子；其余Go仓本已全分支运行。push前逐仓fetch、提交格式/门禁状态/窗口核对；Git URL重写可能改变实际传输，按命令日志记录，不仅凭传入SSH设置判断；主仓同名分支先于UI推送，远端ref与准确SHA的CI必须另核。分支推送不等于正式发版：本轮**不新增tag/GitHub Release/生产部署**，utils已发布v0.4.3及本轮固定pseudo-version保持，正式main/tag发版待以后整合与安全证据决策。Go扫描仍NOT_RUN，本次清理未补扫。
 
 最新阶段顺序由所有者明确：继续以五仓Phase5检查、审计、修改为主；允许Phase6规划，实际须先Phase5合main并核验整合基线，再从main切Phase6。当前不执行main合并，不创建Phase6分支。原10-28“先从phase5切”的历史记录保留作演进证据，不再作为当前执行许可。精确工作树状态、归档清单、source→branch、SSH fetch/push窗口及CI收据仅存本地ignored `workspace-cleanup-20261107/`，不新增第二套设计或债台账。
