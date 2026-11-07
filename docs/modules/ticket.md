@@ -6,7 +6,7 @@
 
 > 内部 IT/运维工单系统，作为框架的第一个业务模块，验证三层鉴权体系的资源级权限能力。
 >
-> **⚠ 封版注记（2026-09-02 §23；已于 2026-10-09 经 §29 翻案[工单自研主线]——phase5 S1–S3a/S10 强化已交付，本文件回填登记 L-5）**：工单自研暂缓（历史）——本文件描述的已交付能力保持准确；未实现的演进设计（SLA/审批流等）转**对接参考**（[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)），翻案条件见 §23。
+> **现况校准（2026-11-07，L-5）**：本文现行实现证据基线为 `996c167`（Phase5分支），不是main/生产部署声明。工单自研已在2026-10-09翻案，S1/S2/S3a/S5/S6/S10相应能力已落码，当前继续Phase5审计与修复；Phase6须待Phase5经授权合main后再从main切出。§5/§8明确标出的引擎Port与多级审批是历史设计，未据此宣称实现。阶段/债务SSOT分别为[11号](../review/11-project-control.md)、[Phase5台账](../phase5/S6-S5-debt-ledger.md)、[Phase6边界](../phase6/README.md)。
 >
 > 创建日期：2026-08-12
 
@@ -59,76 +59,53 @@
 
 ### 2.2 三层鉴权在工单中的映射
 
-> **执行顺序**（[11-authz-architecture-review §2](../phase2/11-authz-architecture-review.md#2-q1l2l3-执行顺序已拍板l2-可见性在前) 已拍板，对齐 Freshdesk/Jira 主流）：L1 → **L2 可见性** → L3 属主 → canOperate。**L2 可见性是数据访问边界门，先于属主**——属主不豁免组织校验，属主是 scope 集合内的一个特例（scope=assigned 即仅属主可见），不是独立短路层。可见性通过后，canOperate 内部用 L3 属主判断决定哪些动作可放行。
+当前执行顺序是认证 → **L1路由RBAC → L2可见性 → L3 `canOperate`**。L1由`menu_apis`关联的路径/方法策略裁决，permission用于菜单/按钮声明，不能把前端权限码检查替代后端Casbin。已登记selfService的cc/tags/存储等入口跳过业务路由enforce，仍须认证、有有效角色，并由handler/service执行相应资源检查。
 
-```
-Allow ⟺ L1 通过 ∧ L2 可见性通过 ∧ canOperate 通过
-```
+当前非全局管理员的L2可见集为：**创建人/处理人 ∪ all scope ∪ 实体透明读锚点/group子树 ∪ 组织委托 ∪ 抄送**。列表`GetFilter`与单条`Authorize`共同表达这些分支；临时成员过期不再提供组织scope/委托来源。L2失败404，L2通过但动作拒绝403；未知动作默认拒绝。admin/superadmin为实现中显式全局豁免。
 
-```
-请求: POST /api/v1/tickets/123/update
-  │
-  ├─ L1 路由级 RBAC (Casbin)
-  │   用户是否拥有 "ticket:update" 权限码？
-  │   └─ 无 → 403
-  │
-  ├─ L2 资源级可见性（先于属主，数据访问边界门）
-  │   检查 ticket scope:
-  │   ├─ all:     全部工单可见
-  │   ├─ group:   工单 org_path 在用户可见组织路径下
-  │   └─ assigned: 仅 created_by/assigned_to == uid 可见（属主 = scope 子集）
-  │   └─ 不可见 → 404（不是 403，防信息泄露）
-  │
-  └─ L3 属主 + canOperate（可见性通过后，判属主 + 动作权）
-      用户能执行 "update" 操作吗？
-      ├─ L3 属主命中（created_by/assigned_to == uid）：read/comment/update/close 可放行
-      ├─ L2 命中非属主（scope 主管 / 2c org admin/owner）：可管本组
-      ├─ assign/delete：属主也不放行，需 admin/scope 主管
-      └─ 无权 → 403
-```
+**演进差异**：2026-08旧稿曾写“转部门后路径不符即404，属主不豁免组织校验”。该强隔离叙述不符合当前实现：L2规则本身包含属主OR支，不能由“L2先执行”推断转部门会自动失去旧单可见性。这里记录既有实现与旧设计的差异，不改变鉴权，也不把文档差异直接判为越权。
 
-> **关键澄清**（路径 A，对齐 Freshdesk/Jira 主流）：
-> - **属主不短路豁免 L2**：转部门后，若 scope=group 且工单 `org_path` 不在新组织路径下，L2 直接 fail（404），属主身份不豁免。转部门改旧工单的需求通过 scope 配置或重分派解决，不是属主自动豁免——避免属主豁免弱化数据隔离。
-> - **属主是 scope 的子集**：scope=assigned 的可见集就是属主（对齐 Freshdesk 的 assigned scope）。属主身份在 canOperate 内部用于决定 `read/comment/update/close` 是否放行。
-> - **能碰 ≠ 能改**：属主命中（L3）只是 canOperate 的输入之一，`assign/delete` 仍需 admin/scope 主管，属主也不放行。
+证据：[internal/middleware/casbin.go 的 `CasbinAuth / SelfService`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/middleware/casbin.go)；[internal/service/ticket/resource.go 的 `Resource.Authorize / GetFilter / canOperate`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/resource.go)；[internal/service/ticket/scope_resolver.go 的 `pgxScopeResolver.resolve`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/scope_resolver.go)。
 
 ### 2.3 权限矩阵
 
-| 操作 | 路由级权限码 | 资源级条件 | 属主条件 |
-|------|-------------|-----------|---------|
-| 查看工单列表 | `ticket:list` | 按 scope 过滤 | - |
-| 查看单条工单 | `ticket:read` | scope 可见性 | - |
-| 创建工单 | `ticket:create` | - | - |
-| 更新工单 | `ticket:update` | scope 可见性 | **2b：创建人**；2c + org admin/owner；透明读≠可改 |
-| 关闭工单 | `ticket:close` | scope 可见性 | 处理人或创建人（2b）；+ 主管 / org admin（2c） |
-| 分派工单 | `ticket:assign` | scope 可见性 | 主管以上 |
-| 删除工单 | `ticket:delete` | - | admin |
-| 添加回复 | `ticket:comment` | scope 可见性 | - |
-| 添加内部备注 | `ticket:note` | scope 可见性 | 处理团队成员 |
-| 导出工单 | `ticket:export` | - | admin |
+| 操作 | L1入口 | L2/L3要点（非全局管理员） |
+|---|---|---|
+| 列表/详情/评论读取/导出 | 菜单GET绑定；完整策略按迁移及路由目录核对 | 列表/导出走同一scope过滤；详情走read |
+| 创建 | 创建按钮POST绑定 | 创建归属组织检查，随后建单事务 |
+| 更新 | 更新按钮POST绑定 | 创建人或相应组织委托；仅处理人不因此获得update |
+| close/transition | 既有close按钮或已登记transition页面例外 | 创建人/处理人或组织委托；再叠加转换condition/validator |
+| assign | 分派按钮POST绑定 | group/all主管或组织委托；不是普通属主自动放行 |
+| delete | 删除按钮POST绑定 | 对应组织委托或全局管理员，不能简化成“仅admin” |
+| comment/note | 对应按钮POST绑定 | comment=读可见；note=创建人/处理人或组织委托，并与内部备注读面一致 |
+| cc/tags | 登录态selfService | 仅扩展自身/读取的操作按read；管理他人/修改按update检查，详各service |
+
+导出不是独立`ticket:export`权限码，也不能写成“admin专属”；实际`/tickets/export`挂工单列表页面GET面。页面行仅GET的唯一登记例外为000068的transition POST。证据：[internal/router/router.go 的 `New`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/router/router.go)；[internal/service/ticket/resource.go 的 `Resource.canOperate`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/resource.go)；[internal/service/ticket/cc_service.go 的 `Service.AddCC / RemoveCC`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/cc_service.go)；[internal/service/ticket/tag_service.go 的 `Service.AddTags / RemoveTag`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/tag_service.go)；[迁移000065](../../migrations/000065_ticket_export_api.up.sql)、[000068](../../migrations/000068_transition_apis.up.sql)。
 
 ### 2.4 Ticket Scope 设计
 
-借鉴 Freshdesk 的三档可见性，用 `ltree` 组织树实现：
+三档scope是L2可见集的组织扩展轴，不替代属主/委托/抄送分支；实体透明读与group路径按并集合并：
 
 | Scope | 含义 | 典型角色 | SQL 过滤逻辑 |
 |-------|------|---------|-------------|
-| `all` | 全部工单可见 | 主管、admin | 无额外过滤 |
+| `all` | 全部工单可见 | 仅有全局管理权限者可配置；仍需L1入口 | `Filter.Unscoped=true` |
 | `group` | 本组织（含子组织）工单 | 一线处理人 | `org_path <@ 用户可见组织路径` |
 | `assigned` | 仅本人创建或被分派的工单 | 外包、实习生 | `created_by = $userID OR assigned_to = $userID` |
 
 #### Scope 的存储
 
-在 `user_orgs` 关联表上增加 scope 字段，支持同一用户在不同组织拥有不同可见范围：
+`user_orgs.ticket_scope`已由000012落列，组织成员的scope可分别配置；`expires_at`过期关系不参与。下列DDL为Phase2设计摘要，不是应再次执行的迁移：
 
 ```sql
 -- 用户在组织中的工单可见范围
--- 一个用户在 A 部门可能是主管（scope=all），在 B 虚拟组只是普通成员（scope=assigned）
+-- 用户可在一个成员组织为group，在另一个为assigned；all写侧受全局管理权限限制
 ALTER TABLE user_orgs ADD COLUMN ticket_scope VARCHAR(20) DEFAULT 'assigned';
 -- 值: 'all' | 'group' | 'assigned'
 ```
 
 #### 列表查询的行级过滤
+
+**历史简化伪代码**：下例只保留scope轴的设计动机，不是当前签名/SQL。生产调用`Resource.GetFilter`，包含属主/委托/抄送，`TicketRepo`拒绝既无Where又未显式Unscoped的空过滤器；不得照抄此switch跳过守卫。
 
 ```go
 // repository/ticket_repo.go
@@ -168,9 +145,9 @@ func (r *TicketRepo) List(ctx context.Context, filter TicketFilter) ([]Ticket, i
 
 ## 3. 数据模型
 
-### 3.1 工单类型配置表
+### 3.1 工单类型配置表（初始设计投影）
 
-借鉴 ECMDB 的模型驱动思路和 easy-workflow 的 JSON 模板配置，工单类型通过配置表管理，新增类型无需改代码：
+借鉴 ECMDB 的模型驱动思路和 easy-workflow 的 JSON 模板配置，工单类型通过配置表管理，新增类型无需改Go代码。以下SQL保留2026-08设计草案投影，**不是迁移原文或完整现行DDL**；Phase5新增列/表见§3.4，迁移编号以11号地图为准：
 
 ```sql
 -- 工单类型配置表（定义"有哪些工单类型"）
@@ -181,7 +158,7 @@ CREATE TABLE ticket_types (
     description     TEXT,
     states          JSONB NOT NULL DEFAULT '["open","assigned","in_progress","pending_verify","closed","rejected"]',
     transitions     JSONB NOT NULL DEFAULT '{"open":["assigned","closed"],...}',
-    default_sla_hours INT DEFAULT 24,               -- 小时（类型级默认）；Phase 2a 仅配置存储，SLA 计时 Phase 3 启用。单位口径见 §3.2.1
+    default_sla_hours INT DEFAULT 24,               -- 小时（类型级默认）；Phase 2a 仅配置存储，完整响应/解决SLA未实施；当前deadline见§3.4。单位口径见 §3.2.1
     has_custom_fields BOOLEAN DEFAULT FALSE,
     is_active       BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMPTZ DEFAULT NOW()
@@ -201,7 +178,7 @@ CREATE TABLE ticket_type_fields (
 );
 ```
 
-### 3.2 工单主表
+### 3.2 工单主表（初始设计投影）
 
 所有类型共用一张表，`type_code` 区分类型，`custom_data` JSONB 存储自定义字段值：
 
@@ -243,11 +220,11 @@ CREATE TABLE ticket_comments (
 CREATE INDEX idx_comments_ticket ON ticket_comments (ticket_id, created_at);
 
 -- 工单事件日志（状态变更、分派等操作记录）
--- 双重职责：① 审计日志（工单详情页展示）；② 事件队列（Phase 3 启动后 L1 供通知/SLA 消费）
--- Phase 3 迁移 000021 会加 event_type（audit/signal）+ processed 列支持 L1 事件机制
+-- 当前仅业务审计记录，不是事件队列；旧event_type/processed轮询提案未实施
+-- 初建表投影：实际000014已撤销ticket_id的ON DELETE CASCADE；存量字段以迁移为准
 CREATE TABLE ticket_events (
     id          BIGSERIAL PRIMARY KEY,
-    ticket_id   BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    ticket_id   BIGINT REFERENCES tickets(id) ON DELETE SET NULL,
     user_id     BIGINT NOT NULL,
     action      VARCHAR(50) NOT NULL,        -- created, assigned, status_changed, closed, sla_breached
     from_value  VARCHAR(50),                 -- 变更前值
@@ -262,7 +239,7 @@ CREATE INDEX idx_events_ticket ON ticket_events (ticket_id, created_at);
 
 > **阶段归属（2026-08-25 锁定）**：工单模板、工单关联**无事件依赖、纯 DB**，已从 Phase 3 前移至 **Phase 2a**（迁移 `000015` / `000016`）。SSOT DDL 见 [phase2/09-ticket §2](../phase2/09-ticket.md#工单模板2a-前移迁移-000015)；此处为模块完整形态补录，两者必须一致。
 >
-> **SLA 单位口径**：`ticket_types.default_sla_hours` 以**小时**计（类型级默认）；`ticket_templates.default_sla_minutes` 以**分钟**计（模板级预填）。两者独立存储、Phase 2a 均不计算，Phase 3 SLA 启用时分别取用并注意单位换算。
+> **SLA 单位口径**：`ticket_types.default_sla_hours` 以**小时**计（类型级默认）；`ticket_templates.default_sla_minutes` 以**分钟**计（模板级预填）。两者在Phase2a仅存储；当前SLA0.5使用状态元数据`transition_meta[state].sla_due_hours`，不能把旧类型/模板默认值视为已接入完整SLA策略，完整响应/解决/工作日历仍是后续能力。
 
 ```sql
 -- 迁移 000015：工单模板（2a 前移，纯 DB）
@@ -273,7 +250,7 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     type_code           VARCHAR(50) NOT NULL REFERENCES ticket_types(code),
     default_priority    SMALLINT DEFAULT 3,
     default_fields      JSONB DEFAULT '{}',
-    default_sla_minutes INT,                      -- 分钟；仅存储，Phase 3 SLA 启用时取用
+    default_sla_minutes INT,                      -- 分钟；历史预填配置，不代表当前SLA0.5取值源
     org_id              BIGINT NOT NULL REFERENCES organizations(id),
     org_path            ltree NOT NULL,
     created_by          BIGINT NOT NULL,
@@ -303,7 +280,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 
 ### 3.3 状态机
 
-每种工单类型可以有自己的状态机配置（存储在 `ticket_types.transitions` JSONB 中），但默认使用统一状态机：
+当前`StateMachine`从`ticket_types.transitions`邻接表校验边；每张工单只有一个当前status，支持配置的不同后继与回路，不等于多token并行/会签工作流。下面保留Phase2默认示例，实际边以该类型配置为准；Phase5可视化状态图编辑器保存的仍是同一组states/transitions及meta。
 
 ```
                     ┌─────────┐
@@ -347,56 +324,53 @@ var ticketTransitions = map[string][]string{
 
 ---
 
+### 3.4 Phase5数据面与能力边界
+
+| 当前数据/能力 | 已落实现 | 边界 |
+|---|---|---|
+| 类型与字段 | `TicketType.TransitionMeta/Version`，字段`FieldMeta/ValidateRegex`；000018/000027/000051/000064 | `field_meta`承载公式/联动/可见性等配置；后端`validateCustomData`做整体校验，UI不独自决定合法性 |
+| 单据 | `human_key`、`status_changed_at`、`escalation_supervisor_id`、`sla_due_at` | 无workflow instance/task审批表；工单主表不因此具有通用version CAS |
+| 转换语义 | `transition_meta["from>to"]`的roles/validator/post_actions | 与`transition_meta[state]`超时配置共列，保存期校验键域；不等同审批引擎；图坐标仅UI localStorage视图偏好，不存在FlowLayout数据库列 |
+| 自动分派 | 000069 `assignment_rules`，类型+大小写敏感标题字面包含，priority/id升序首命中 | 创建提交后执行；配置授权的系统分派通道，归因保留规则创建者；无命中/仅org规则保持open并发dispatch_missed，失败不回滚创建 |
+| SLA0.5/催办 | 状态级`timeout_minutes/escalation/sla_due_hours`，000064 `ticket_reminders` | `Transition`同事务设置/清理due；扫描器发timeout/deadline事件。没有响应/解决双时钟、暂停态、工作日历完整SLA |
+| 存储附件 | 000045–000049对象元数据/附件关联/owner与GC，独立storage service | presign→直传→confirm；头像/附件/富文本按object_key寻址，ticket态额外L2；对象存储不是DB事务的一部分 |
+| 协作 | 000062抄送、000063标签、badges、导出 | cc扩读不扩写；标签不是DomainEvent生产者；待办集合/非终态集合口径不互换 |
+| 消息 | message_templates/rules/log、notifications与optouts，S6两期 | inbox真实落库；外发UIP仍为两态桩，不能称邮件/IM已真实接线 |
+
+证据：[internal/model/ticket.go 的 `Ticket / TicketType / TicketTypeField`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/model/ticket.go)；[internal/service/ticket/type_admin.go 的 `Service.validateCustomData / validateTypeGraph`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/type_admin.go)；[internal/service/ticket/transition_service.go 的 `Service.Transition`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/transition_service.go)；[internal/repository/assignment_rule_repo.go 的 `AssignmentRuleRepo.MatchOnCreate`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/repository/assignment_rule_repo.go)；[internal/service/ticket/dispatch_service.go 的 `DispatchService.OnAfterCreate`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/dispatch_service.go)；[internal/service/ticket/timeout_scanner.go 的 `TimeoutScanner.Handle`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/timeout_scanner.go)；[internal/handler/storage_handler.go 的 `StorageHandler.Confirm / BindAvatar / ListAttachments`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/handler/storage_handler.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)。
+
+---
+
 ## 4. 接口定义
 
 ### 4.1 API 路由（遵循 GET + POST 规范）
+
+下表为主链路摘要，不是完整路由目录；L1一律按§2.3与menu_apis实际绑定核对，表内旧权限名仅表示动作意图。完整注册见`internal/router/router.go`的`New`。
 
 | 方法 | 路径 | 权限码 | 说明 |
 |------|------|--------|------|
 | GET | `/api/v1/tickets` | `ticket:list` | 工单列表（按 scope 过滤） |
 | POST | `/api/v1/tickets` | `ticket:create` | 创建工单 |
-| GET | `/api/v1/tickets/:id` | `ticket:read` | 工单详情 |
+| GET | `/api/v1/tickets/:id` | 工单页面GET面 | 工单详情 |
 | POST | `/api/v1/tickets/update` | `ticket:update` | 更新工单（patch：title/description/priority/custom_data 增量[键覆盖·null 删键·G2 整体重校验]/attachments 增量落绑——B5-4） |
 | POST | `/api/v1/tickets/richtext/render` | 登录态（自服务） | richtext 服务端渲染/消毒（B5-4——白名单 HTML 出站，无票据访问面） |
 | POST | `/api/v1/tickets/close` | `ticket:close` | 关闭工单 |
 | POST | `/api/v1/tickets/assign` | `ticket:assign` | 分派工单 |
 | POST | `/api/v1/tickets/delete` | `ticket:delete` | 删除工单 |
-| GET | `/api/v1/tickets/:id/comments` | `ticket:read` | 回复列表 |
+| GET | `/api/v1/tickets/:id/comments` | 工单页面GET面 | 回复列表 |
 | POST | `/api/v1/tickets/comments` | `ticket:comment` | 添加回复 |
 | POST | `/api/v1/tickets/notes` | `ticket:note` | 添加内部备注 |
 | POST | `/api/v1/tickets/cc` | 登录态（L2/L3 动态） | 添加抄送（S10 B10-1：仅本人=读可见；含他人=update 权；幂等；emit ticket.cc_added→S6 规则路由通知） |
 | POST | `/api/v1/tickets/cc/remove` | 登录态（L2/L3 动态） | 移除抄送（自摘=读可见；摘他人=update 权；幂等） |
 | GET | `/api/v1/tickets/:id/cc` | 登录态（L2 read 面） | 抄送列表（「人名(工号)」富化；不可见单 404 同形） |
 
-### 4.2 Service 接口
+补充现行面：`POST /tickets/transition`、`GET /tickets/:id/transitions/available`；`GET /tickets/export`；relations；tags；badges/inbox；storage附件及files代理；类型/字段/模板管理与`assignment-rules`。`GET /ticket-types/:code`没有注册，不能按旧动态表单示例调用；类型详情配置由实际列表/管理响应承载。
 
-```go
-type TicketService interface {
-    // Create 创建工单
-    Create(ctx context.Context, req CreateTicketReq) (*Ticket, error)
-    
-    // Get 获取工单详情（含资源级鉴权）
-    Get(ctx context.Context, userID int64, scope TicketScope, ticketID int64) (*Ticket, error)
-    
-    // List 工单列表（按 scope 行级过滤）
-    List(ctx context.Context, filter TicketFilter) ([]Ticket, int64, error)
-    
-    // Update 更新工单（含属主判断）
-    Update(ctx context.Context, userID int64, ticketID int64, req UpdateTicketReq) error
-    
-    // Close 关闭工单
-    Close(ctx context.Context, userID int64, ticketID int64, comment string) error
-    
-    // Assign 分派工单
-    Assign(ctx context.Context, ticketID int64, assigneeID int64) error
-    
-    // Transition 状态转换
-    Transition(ctx context.Context, ticketID int64, targetStatus string) error
-    
-    // AddComment 添加回复
-    AddComment(ctx context.Context, ticketID int64, req CommentReq) error
-}
-```
+### 4.2 Service接口边界
+
+实际为`internal/service/ticket.Service`具体类型，而非旧稿虚构的`TicketService`接口。主链路包括`Create/Get/List/Update/Close/Assign/Delete/CreateComment/CreateNote/CreateRelation/ListRelations`，转换走`Transition/ListAvailableTransitions`，配置/协作分别放同包的type_admin/cc/tag文件。请求和actor参数以具体方法签名为准，不复制另一套接口。
+
+证据：[internal/service/ticket/service.go 的 `Service / NewTicketService`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/transition_service.go 的 `Service.Transition / ListAvailableTransitions`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/transition_service.go)。
 
 ### 4.3 ResourceRegistry 注册
 
@@ -408,7 +382,9 @@ type TicketService interface {
 
 ## 5. 工单类型抽象与 Hook 机制
 
-### 5.1 设计方案：统一接口 + 配置驱动 + Hook 扩展
+**当前落点**：统一`ticket.Service`+类型/字段配置；领域通知使用`DomainHook`，自动分派由`DispatchService.OnAfterCreate`显式调用，动作由`ActionRegistry`执行。下述`TicketHooks/TicketManager/TicketEngine`代码均为2026-08历史原型，仓内没有这些实现，不能作为可调用接口；现行语义见§3.4/§6。
+
+### 5.1 设计方案：统一接口 + 配置驱动 + Hook 扩展（历史设计，未按此落码）
 
 参考 ECMDB 的模型驱动资产管理（模型 → 属性 → 实例）和 easy-workflow 的 JSON 流程模板配置，采用混合方案：
 
@@ -426,7 +402,7 @@ type TicketService interface {
 | 纯前端配置（一张表 + JSON） | 零代码新增类型 | 无法实现类型特定业务逻辑 |
 | **混合方案（统一表 + 配置 + Hook）** | 新增类型只需配置；需要定制逻辑时用 Hook | 需要 Hook 机制设计 |
 
-### 5.2 Hook 接口定义
+### 5.2 Hook 接口定义（历史设计，未按此落码）
 
 借鉴 easy-workflow 的事件系统（NodeStartEvents/NodeEndEvents/TaskFinishEvents），设计工单生命周期钩子：
 
@@ -450,7 +426,7 @@ func (h *DefaultTicketHooks) OnAfterTransition(ctx context.Context, t *Ticket, o
 func (h *DefaultTicketHooks) OnAfterClose(ctx context.Context, t *Ticket) error      { return nil }
 ```
 
-### 5.3 类型注册管理
+### 5.3 类型注册管理（历史设计，未按此落码）
 
 ```go
 // TicketManager 管理工单类型和对应的 Hooks
@@ -477,10 +453,10 @@ func (m *TicketManager) GetHooks(typeCode string) TicketHooks {
 }
 ```
 
-### 5.4 Hook 使用示例
+### 5.4 Hook 使用示例（历史设计，未按此落码）
 
 ```go
-// 变更类工单的特殊 Hook（Phase 3 需要审批流时注册）
+// 历史原型：当时拟在Phase3审批场景注册，当前未实现该接口/调用
 type ChangeTicketHooks struct {
     DefaultTicketHooks
     workflowEngine WorkflowEngine
@@ -498,7 +474,7 @@ func NewTicketManager() *TicketManager {
         hooks: make(map[string]TicketHooks),
     }
     // Phase 2a: 所有类型使用默认 Hooks
-    // Phase 3: 注册变更类工单的特殊 Hooks
+    // 历史计划: 注册变更类工单的特殊Hooks，当前未落码
     // m.Register("change", &ChangeTicketHooks{...})
     return m
 }
@@ -510,13 +486,13 @@ func NewTicketManager() *TicketManager {
 
 | API | 说明 |
 |-----|------|
-| `GET /api/v1/ticket-types` | 获取所有工单类型 |
-| `GET /api/v1/ticket-types/:code` | 获取类型详情（含状态机配置） |
+| `GET /api/v1/ticket-types` | 类型列表响应携带该类型配置；未注册单类型GET |
 | `GET /api/v1/ticket-types/:code/fields` | 获取类型字段定义（前端动态渲染表单） |
 
-### 5.6 TicketEngine Port（引擎可替换边界）
+<a id="56-ticketengine-port引擎可替换边界"></a>
+### 5.6 TicketEngine Port（引擎可替换边界）（历史设计，未按此落码）
 
-> **目的**：锁定工单流程引擎的可替换边界。Phase 2a 的线性状态机、Phase 3 的 `BranchedStateEngine`、未来的远程 HTTP 引擎共用同一个 Port，上层 `TicketService` 不感知实现。
+> **目的**：锁定工单流程引擎的可替换边界。当时拟让本地状态机/分支引擎/远程引擎共用Port；当前没有此Port，实际仍是`StateMachine`与同包`Service`。审批语义属S3b等后续设计，不能因S2状态图已交付而宣称存在此接口。
 
 ```go
 // TicketEngine 工单流程引擎 Port（实现可替换，鉴权不在此层）
@@ -587,8 +563,8 @@ type StateController interface {
 
 | 实现 | 阶段 | 部署形态 | 说明 |
 |---|---|---|---|
-| `LinearStateEngine` | Phase 2a | 进程内 | `map[string][]string` 加载自 `ticket_types.transitions`，instanceID = ticketID |
-| `BranchedStateEngine` | Phase 3 | 进程内 | 手写 Node/Gateway 模型，支持分支/会签，借鉴 easy-workflow 设计不借代码 |
+| `LinearStateEngine`（未实现此类型名；实物为StateMachine） | 历史原型 | 进程内 | `map[string][]string` 加载自 `ticket_types.transitions`，instanceID = ticketID |
+| `BranchedStateEngine`（未实现） | 后续审批设计 | 进程内 | 手写 Node/Gateway 模型，支持分支/会签，借鉴 easy-workflow 设计不借代码 |
 | `RemoteHTTPWorkflowEngine` | 未来按需 | 独立部署第三方引擎 | HTTP 对接，需满足 §8.5 集成契约 |
 
 **关键边界——鉴权不进 Port**：
@@ -605,110 +581,42 @@ type StateController interface {
 
 ## 6. 事件驱动集成（概要）
 
-工单模块通过事件与其他模块协作。事件驱动作为独立的横切模块设计，L1→L2 升级（Outbox + Asynq）方案见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) 与 [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)，完整机制见 [phase3/10-ticket-business.md §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级)。
+工单业务日志`ticket_events`与进程内`DomainEvent`是两条不同机制。业务代码在相应用例事务内写审计事件；事务提交后的`emitTicketEvent`才调用`HookRegistry.Dispatch`。日志表没有event_type/processed轮询消费者，**不能用审计记录存在推导通知可重放**；统一转换等路径的具体落日志范围以各方法实现及挂账为准。
 
-### 工单相关事件
+当前事件包括created/assigned/updated/commented/closed/cc_added/timeout/transitioned/dispatch_missed/action_notify/deadline；这是`domainevent`词表，不等于每个动作都必定发送、所有订阅者都有规则。旧status_changed/sla_breached/approved/rejected表不是现行DomainEvent词表。
 
-| 事件类型 | 触发时机 | 消费者 |
-|---------|---------|--------|
-| `ticket.created` | 工单创建后 | 通知服务、SLA 计时器 |
-| `ticket.assigned` | 工单被分派后 | 通知服务（通知处理人） |
-| `ticket.status_changed` | 状态变更后 | 通知服务、SLA 计时器（启停） |
-| `ticket.closed` | 工单关闭后 | 满意度调查、SLA 统计 |
-| `ticket.sla_breached` | SLA 超时 | 告警服务、升级处理 |
-| `ticket.approved` | 审批节点通过（submit 成功，同一事务写 `workflow_records`） | 通知发起人 / 通知下一节点候选 / SLA 节点重置 |
-| `ticket.rejected` | 审批节点驳回（target=prev 退上级 / target=origin 打回发起人） | 通知发起人（被驳回）/ SLA 重置 |
+`HookRegistry`按biz_type分发，每订阅者独立goroutine并隔离panic；**at-most-once**，没有Outbox和自动重放。计划内退出先停止来源，再`Drain`等待在途订阅者（App预算8s）；进程崩溃、commit至dispatch间隙或排空超时仍可能丢通知，不能称可靠投递。
 
-### 三档事件机制（L0 / L1 / L2）
+当前两个消费面：`TicketNotifyHook → MessageDispatcher`按rules/模板/偏好/节流/通道发送并记message_log；`InboxService`独立订阅并落notifications。inbox落库是消费者自身持久化，不是事件源持久化；外发UIP桩成功也不表示真实邮件/IM送达。
 
-工单事件机制按阶段分三档演进，业务逻辑（通知内容、SLA 规则）跨档不变，只换调度器：
+| 历史方案 | 当前裁定 |
+|---|---|
+| L0 channel | 早期设想，Phase2a未实现当时描述的分发；当前使用HookRegistry goroutine |
+| L1 ticket_events轮询+processed+分布式锁 | ADR历史备选，未落码，不是Phase5稳态 |
+| L2 Outbox/Asynq事件消费者 | 未实施。C-20按触发条件评估Outbox；taskrunner已用Asynq执行任务，不等于主仓领域事件已持久化 |
 
-| 档 | 阶段 | 实现 | 可靠性 | 适用 |
-|---|---|---|---|---|
-| **L0** | Phase 2a | Go channel + goroutine | 进程崩溃丢 | MVP（2a 过渡） |
-| **L1** | **Phase 3 启动时实现（长期稳态，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）**；`ticket_events` 表 Phase 2a 已建（仅审计），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）Phase 3 启动时补列落地（原规划编号 000021 已被 job_submissions 占用，按 A2 启动时分配） | **进程内事件 + DB 持久化（`ticket_events` 表 + 轮询补偿）+ 分布式锁** | **进程崩溃不丢，多实例靠分布式锁防重** | **生产单/多实例** |
-| L2 | **暂缓（按需，见 ADR-001）** | Outbox + Asynq worker 多消费者 | 跨服务可靠 | 多消费者/微服务 |
+未来风险联动不能继承“通知可以丢”的容忍度；Phase6 R3规划终态对账，Outbox升级仍按C-20决策。本批不实现或承诺这些能力。
 
-> **Asynq 设计就绪**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)，Phase 3 启动时引入；Phase 2a 无异步业务）：作为"异步任务执行器"与 L1 并存，职责互补——L1 管事件事实持久化，Asynq 管异步任务执行（审批触发事件 + 预置定时任务）。Asynq 不替代 L1 事件源。
-
-**L1 设计要点**（见 [phase3/10-ticket-business.md §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级)）：
-
-- 事件先写 `ticket_events` 表（2a 已建，事务内保证不丢）
-- 消费者在事务后立即拉取 `ticket_events` 处理；多实例下的重复消费防护采用分布式锁方案（Phase 3 事件机制启动时落地，见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) L1 稳态）
-- SLA 定时扫描由 Asynq PeriodicTask 单点调度，**无需自写分布式锁**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）；L1 **事件消费**仍用分布式锁防重（多实例拉取 `ticket_events` 不重复）
-- L1 比 channel 可靠（崩溃不丢），比 Outbox 简单（无额外表/worker）——长期稳态
-- L1 是**长期稳态机制，非临时过渡**（ADR-001）：`processed` 标记、分布式锁防重、双重职责（audit/signal）分离均按产线级实现，不因"以为 L1 是过渡"而偷工减料
-- L2 升级时业务逻辑不变，只把"轮询拉取"换成"Asynq worker 消费 Outbox"——L2 是按需升级，不是必经路径
-
----
+证据：[internal/pkg/domainevent/event.go 的 `DomainEvent / Action`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/event.go)；[internal/pkg/domainevent/registry.go 的 `HookRegistry.Dispatch / Drain`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/registry.go)；[internal/service/ticket/service.go 的 `Service.emitTicketEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/dispatcher.go 的 `MessageDispatcher.Dispatch`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/dispatcher.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.SetEventRegistry / OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)；[internal/app/app.go 的 `App.Shutdown`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/app/app.go)；历史依据保留[ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)。
 
 ## 7. 分阶段实施
 
-> **口径说明**（2026-08-25 修订）：Phase 3 整体暂缓（见 [roadmap.md](../roadmap.md)），不拆 3a/3b 子阶段执行。工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现；**工单模板、工单关联已前移 Phase 2a（迁移 000015/000016，见 [09-ticket §2](../phase2/09-ticket.md)）；SLA 计时/违约、通知、审批流、分派、报表仍属 Phase 3（暂缓，设计就绪）**，事件机制用 L1（长期稳态，ADR-001）+ Asynq（ADR-002）。以下按"Phase 2 已实现 / Phase 3 暂缓"两段式描述，能力细节见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（Phase 3 启动时取用）。
->
-> **Phase 2 实现 SSOT**：[phase2/09-ticket.md](../phase2/09-ticket.md)（2a MVP + 2b scope + 2c Authorize）。  
-> **工单业务能力细节 SSOT**：[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)（SLA/通知/审批流/分派/报表/L1 升级，Phase 3 启动时取用）。
+| 时点/阶段 | 演进事实 | 当前边界 |
+|---|---|---|
+| Phase1 | IAM、登录/角色/组织/菜单与审计底座 | 不代表当时已有资源工单/审批引擎 |
+| Phase2a | 工单CRUD、状态邻接表、公开回复/内部备注、事件日志；模板/关联以000015/16前移 | 当时没有TicketHooks或L0 channel；保留历史虚标勘误 |
+| Phase2b/2c | scope、透明读/强隔离配置、组织角色继承与委托 | 附件/HR早期排期不等于交付：附件后来由Phase5 S5承接，HR真实接入仍未落地 |
+| 2026-08-25暂停/2026-09-02封版 | 当时工单深化暂缓，旧SLA/审批/Asynq方案留设计 | 历史决策，不能继续描述为当前Phase3整体暂停 |
+| Phase3/4底座与生态 | 生产横切能力按实际切片推进；taskrunner/AL网关与前端控制台形成 | 不把历史Phase3愿望清单全部视为实现；当前组件边界见architecture.md |
+| 2026-10-09翻案→Phase5 | 自研工单主线恢复；S1字段/表单、S2状态图、S3a转换/分派/动作、S5富媒体、S6消息、S10协作/超时等落码 | 审批S3b、完整SLA、通用报表/结果映射等不因此完成；S7/S8等按阶段稿的概要/触发边界判断 |
+| 当前Phase5审计修复 | 仍在phase5分支收口设计/代码/门禁与债务，main未合 | 以11号最新时点与各批固定验证报告为准，不将代码落地等同生产部署 |
+| Phase6+ | 风险R1–R4、工单完善06号、挂账索引07号；更远阶段为路线规划 | **先Phase5收口→经授权合main→从main切Phase6**；不把已批准规划当作当前API/表/任务 |
 
-### Phase 2a：工单 MVP
-
-| 能力 | 说明 |
-|------|------|
-| 工单 CRUD | 创建、查看、更新、关闭 |
-| 工单类型配置 | `ticket_types` + `ticket_type_fields` 表，支持前端动态表单 |
-| 状态机 | 从 `ticket_types.transitions` 加载，默认 open → assigned → in_progress → closed |
-| 路由级 RBAC | Casbin 权限码控制操作 |
-| 资源级 scope | **assigned** 可见性（2b 扩展 group/all） |
-| 工单模板 | 迁移 000015；模板预填字段/优先级/SLA（仅存储，SLA 计时 Phase 3 启用） |
-| 工单关联 | 迁移 000016；related/blocks/duplicates/split（前移 2a，纯 DB 无事件依赖） |
-| 组内 admin/owner 资源操作 | **Phase 2c**：见 [04-org-delegation §4](../phase2/04-org-delegation.md#4-authorize-升级step-10) |
-| 回复功能 | 公开回复 + 内部备注 |
-| 事件日志 | 状态变更记录 |
-| Hook 机制 | ~~`TicketHooks` 接口 + `DefaultTicketHooks`~~（⚠ 2026-09-22 虚标审计勘误：未落码，全仓零命中；实况=ticket_events 表直写） |
-| 进程内事件 | ~~Go channel 分发（L0，2a 过渡）~~（⚠ 2026-09-22 虚标审计勘误：未落码，无任何 channel 分发代码；L0/L1 均未实施，见 §6 设计） |
-
-### Phase 2b：scope + 附件 + 体验
-
-| 能力 | 说明 |
-|------|------|
-| group/all scope | **策略 B** 实体透明读 + scope 并集；`ticket_visibility` 配置，见 [03-org-enhance](../phase2/03-org-enhance.md) |
-| 工单附件 | [10-storage](../phase2/10-storage.md) 预签名直传 |
-
-### Phase 2c：组内委托
-
-| 能力 | 说明 |
-|------|------|
-| org admin/owner Authorize | [04-org-delegation](../phase2/04-org-delegation.md) |
-
-### Phase 3：工单完整业务能力闭环（暂缓，按需取用）
-
-> 工单作为下游能力的入口，需闭合以挂载通知/SLA/满意度/告警。能力设计已完成（见 [phase3/10-ticket-business.md](../phase3/10-ticket-business.md)），Phase 3 启动时取用。
->
-> ⚠️ **暂缓说明**（2026-08-25）：Phase 3 整体暂缓、不排期（见 [roadmap.md](../roadmap.md)）。以下能力**设计已就绪**，实际实现时机视真实需求决定。
-
-| 能力 | 说明 | 实现方式 |
-|------|------|---------|
-| SLA 计时 | 按优先级设定响应/解决时限 | `ticket_sla` 表 + Asynq PeriodicTask 扫描（替代进程内定时器，见 ADR-002） |
-| SLA 违约告警 | 超时触发告警/升级 | Asynq 定时扫描（单点调度，无需自写锁）；告警事件走 L1 |
-| 站内通知 | 工单分派、状态变更通知 | L1 事件（`ticket_events` 轮询） + `notifications` 表 |
-| 邮件通知 | 关键状态变更邮件提醒 | L1 事件 + SMTP（可走 Asynq 异步发送） |
-| 多级审批流 | 变更类工单走审批流（会签/分支） | **`BranchedStateEngine`**（手写两层分离：状态机内核 + ApprovalTaskLayer，借鉴 aifei-go flow + easy-workflow，注册到 `TicketEngine` Port） |
-| 自动分派规则 | 按类型/关键词自动分派 | `assignment_rules` 表 + 规则匹配引擎 |
-| 工单报表 | 按组织/处理人/类型统计 | SQL 聚合查询 + 进程内缓存 |
-| 事件机制 L1 | `ticket_events` 持久化 + 轮询补偿 + 分布式锁（长期稳态，ADR-001） | 见 §6 + [10-ticket-business §7](../phase3/10-ticket-business.md#7-事件机制-l0--l1-升级) |
-| Asynq 异步任务 | 审批触发事件 + 预置定时任务（ADR-002） | L1 事件源 + Asynq 执行器，职责互补 |
-
-> **工单模板与工单关联**已前移 Phase 2a（迁移 000015/000016，见 [phase2/09-ticket §2](../phase2/09-ticket.md#工单模板2a-前移迁移-000015)）；原 Phase 3 设计章节已迁移，DDL 与 API 以 09-ticket 为 SSOT。
-
-### L2 升级（暂缓，按需）
-
-| 能力 | 说明 | 升级方式 |
-|------|------|---------|
-| L2 Outbox | 可靠事件分发，多消费者 | L1 → L2：轮询拉取换成 Asynq worker 消费 Outbox（业务逻辑不变） |
-| 微服务拆分 | **不做**（无需求） | 见 [phase3/README §1.3](../phase3/README.md#13-不做什么) + [11-deployment-split.md](../phase3/11-deployment-split.md) |
-
----
+历史设计入口：[Phase2工单](../phase2/09-ticket.md)、[Phase3业务深化旧设计](../phase3/10-ticket-business.md)；现行实现/规划分别对齐[Phase5](../phase5/README.md)、[挂账台账](../phase5/S6-S5-debt-ledger.md)、[Phase6 README §5边界与07号索引](../phase6/README.md)。
 
 ## 8. 关键设计决策
+
+§8.1–8.6保留2026-08的引擎调研/替换契约，勾号表示当时采纳的设计方向，**不是实现验收**。当前Phase5仍为单status状态图+转换语义，无BranchedStateEngine/ApprovalTaskLayer/远程引擎。S2可视化已经交付，不再单独构成“须引外部引擎”的信号。
 
 ### 8.1 为什么不用现成工单产品
 
@@ -716,9 +624,9 @@ type StateController interface {
 |------|----------|
 | Zammad | Ruby 栈，4GB+ RAM，独立用户体系，无法共享 IAM |
 | FreeScout / GLPI | PHP 栈，需另起运行时 |
-| go-help-desk | 6 star，无生产验证，AGPL 传染性 |
-| escalated-go | 3 star，无审批流/工作流能力 |
-| easy-workflow | 功能优秀（会签、自由驳回、混合网关），**MIT 许可**，可作设计参考蓝图。否决的是"移植代码进我们的 Go 进程"（`MySQL 8 CTE` 方言 + GORM + 全局单例引擎，与 PG + pgx + Wire 存在近重写成本，非绝对"不兼容"——GORM 本身支持 PG），不是"Web API Server 独立部署"模式——后者作为 Phase 3+ 备选见 §8.5。注：原官方仓库 `qunarcorp/easy-workflow` 已不可访问（404），活跃分支为社区版 `Bunny3th/easy-workflow`（158 commits / 260 stars）；其权限模型**外置**（角色解析在业务侧事件回调），不存在"鉴权耦合" |
+| go-help-desk | 历史调研时生产验证不足、许可证不适配 |
+| escalated-go | 历史调研未满足审批流/工作流需求 |
+| easy-workflow | 功能优秀（会签、自由驳回、混合网关），**MIT 许可**，可作设计参考蓝图。否决的是"移植代码进我们的 Go 进程"（`MySQL 8 CTE` 方言 + GORM + 全局单例引擎，与 PG + pgx + Wire 存在近重写成本，非绝对"不兼容"——GORM 本身支持 PG），不是"Web API Server 独立部署"模式——后者作为 Phase 3+ 备选见 §8.5。注：原官方仓库 `qunarcorp/easy-workflow` 已不可访问（404），活跃分支为社区版 `Bunny3th/easy-workflow`（历史调研分支，当前活跃度未在本批复验）；其权限模型**外置**（角色解析在业务侧事件回调），不存在"鉴权耦合" |
 | ECMDB/EFlow | 架构优秀（Wire DI + 模型驱动 + 插件化），但 MongoDB + Kafka 技术栈不匹配，且 EFlow 工单系统未开源 |
 
 自研的核心优势：工单本身是一种"资源"，直接纳入框架已设计好的三层鉴权体系。
@@ -727,7 +635,7 @@ type StateController interface {
 
 easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考蓝图。**借的是设计，不是代码**——用 pgx 重写，避开它的三个实现局限。完整能力映射：
 
-| easy-workflow 能力 | 设计要点 | 自写 BranchedStateEngine 的实现 |
+| easy-workflow 能力 | 历史调研设计要点 | 历史自研拟案（未落地） |
 |------|---------|---------|
 | **4 种节点类型** | Root(0)/Task(1)/Gateway(2)/End(3)，极简分类 | ✅ 直接复用，`workflow_definitions.definition` JSONB 存 Node 列表 |
 | **混合网关** | 三字段组合：`Conditions`（排他分支）+ `InevitableNodes`（并行分发）+ `WaitForAllPrevNode`（0=包含/1=并行汇合） | ⚠️ **收窄为借鉴参考**：网关统一采用 aifei-go flow 的 `NodeType` 枚举（Exclusive/Inclusive/Parallel/Loop）表达，比 easy-workflow 三字段更标准、PG JSONB 友好、易持久化。easy-workflow 三字段仅作语义参考（会签 BatchCode + 自由驳回 BFS 仍借鉴），不照搬字段结构 |
@@ -738,7 +646,7 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 | **变量系统** | `$` 前缀变量 + `InstanceVariablesSave` + 表达式求值下放 DB | ⚠️ JSONB 存变量，Go 侧求值（`govaluate` 库或自写，**不交给 DB**——避免 SQL 注入且可单测） |
 | **TaskAction 自描述** | `WhatCanIDo` 返回可执行操作集合 | ✅ 保留，前端按钮直接驱动 |
 | **双表设计** | 5 运行表 + 5 历史表，冗余字段便于查询 | ✅ 运行表（`workflow_instances`/`workflow_tasks`）+ 历史归档，冗余 `ticket_id` 便于关联查询 |
-| **计划任务** | `ScheduleTask` + 进程内 `ScheduledTaskPool` | ⚠️ Phase 3 用 Asynq PeriodicTask 替代（更可靠，复用 ADR-001 L1 稳态的分布式锁方案） |
+| **计划任务** | `ScheduleTask` + 进程内 `ScheduledTaskPool` | 历史曾拟Asynq PeriodicTask；当前主仓内务用CronScheduler，任务执行在taskrunner，不实施旧L1轮询 |
 
 **自写时必须避开的三个 easy-workflow 局限**：
 
@@ -746,9 +654,9 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 2. **表达式求值下放 DB**（`ExpressionEvaluator` 拼 SQL 让 MySQL 算）→ Go 侧求值，避免 SQL 注入且可单元测试
 3. **反射事件注册**（`RegisterEvents` 无编译期检查）→ 显式 `TicketHooks` 接口，编译期保证方法签名正确
 
-> **Phase 2a 借鉴**（已落地）：流程定义 JSONB 存储、~~事件系统对应 `TicketHooks`~~（⚠ 2026-09-22 虚标审计勘误：TicketHooks 未落码，事件实况=ticket_events 表直写）、运行表+历史表双表设计。见 §3 `ticket_types.transitions`、§5 `TicketHooks`。
+> **Phase2a已落地的借鉴**：`ticket_types.transitions` JSONB。`TicketHooks`、workflow运行/历史双表没有落地；ticket_events审计表不能冒充workflow历史表。当前领域事件另见§6。
 >
-> **Phase 3 借鉴**（待落地）：混合网关三字段模型、会签+BatchCode、自由驳回（BFS 替代 CTE）、TaskAction 自描述。见 [phase3/10-ticket-business.md §4](../phase3/10-ticket-business.md#4-多级审批流branchedstateengine)。
+> **历史审批蓝图（未实现，后续S3b另评估）**：混合网关三字段模型、会签+BatchCode、自由驳回（BFS替代CTE）、TaskAction自描述。见 [phase3/10-ticket-business.md §4](../phase3/10-ticket-business.md#4-多级审批流branchedstateengine)。
 
 ### 8.3 从 ECMDB 借鉴什么
 
@@ -756,14 +664,15 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 |------|---------|
 | 模型驱动（Model → Attribute → Resource） | 工单类型驱动（TicketType → TicketTypeField → Ticket） |
 | 自定义字段用动态存储 | `tickets.custom_data` JSONB（类似 ECMDB 的 `mongox.MapStr`） |
-| 插件化资源动作 | `TicketHooks` 钩子机制，类型特定的业务逻辑通过 Hook 扩展 |
-| Wire 模块化 Provider Set | 工单模块的 Wire 注入遵循相同的分 Set 组织方式 |
+| 插件化资源动作 | 原拟TicketHooks；当前为显式领域事件/ActionRegistry，见§5/§6 |
+| Wire依赖装配 | 当前通过app/wire.go显式注入；不据此宣称分域Provider Set已拆完 |
 
-### 8.4 为什么 Phase 2a 不引入工作流引擎；Phase 3 如何升级
+<a id="84-为什么-phase-2a-不引入工作流引擎"></a>
+### 8.4 为什么Phase2a不引入工作流引擎（历史升级方案）
 
 Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 map 就能表达。引入 Temporal 等工作流引擎属于过度设计。
 
-**Phase 3 的升级路径**（[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)）：当变更类工单需要多级审批、会签、条件分支时，**首选自研 `BranchedStateEngine`**——借鉴 easy-workflow 的 Node/Gateway 模型（**设计，不借代码**），用 pgx 重写一个支持分支/会签的轻量状态机，注册到 `TicketEngine` Port（见 §5.6）。
+**2026-08历史升级路径（当前未实施）**（[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)）：当时拟在变更类工单出现多级审批/会签场景时首选自研`BranchedStateEngine`，注册到`TicketEngine` Port。两个类型都尚未实现；后续S3b须重新核场景与实施边界，不能把该设想当Phase5现况。
 
 评估过的外部方案：
 - Temporal（工业级，需独立 server）——过重，Phase 3 不引
@@ -771,7 +680,7 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 - **easy-workflow Web API Server 独立部署**（MIT 许可，可行但有代价）——见下方对比，作为 Phase 3 备选
 - 第三方闭源引擎服务化集成——见 §8.5 集成契约
 
-**Phase 3 两个合法选项**（当 §8.6 触发信号出现时）：
+**历史比较的两个备选方案**（后续须重评估，未构成当前批准排期）：
 
 | 维度 | 选项 A：自写 BranchedStateEngine（首选） | 选项 B：easy-workflow Web API Server（备选） |
 |---|---|---|
@@ -784,7 +693,7 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 | 许可证 | 自研 | MIT，无障碍 |
 | 风险 | 自写复杂度可控（有 §8.2 easy-workflow 蓝图 + aifei-go flow 参考两层分离结构） | 双库一致性 + 鉴权适配层 |
 
-**切换信号**：选项 A 首选开始；若出现"会签/网关需求复杂度超出预期（>3 种分支模式）"或"团队无带宽自写"或"需要可视化流程编辑器"，切到选项 B。
+**切换信号**：选项 A 首选开始；若出现"会签/网关需求复杂度超出预期（>3 种分支模式）"或"团队无带宽自写"或当时设想的"需要可视化流程编辑器"（该信号已由现行S2自研图编辑器解决，不再单独触发替换），切到选项 B。
 
 ### 8.5 第三方/闭源工作流引擎集成契约
 
@@ -795,7 +704,7 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 | 状态机定义/流转 | ✅ 用 | 引引擎的价值 |
 | 网关/会签/分支 | ✅ 用 | 线性机做不了的部分 |
 | 产出审批条件（ApprovalRequirement） | ✅ 用 | 只作**建议**，传给我们，L2/L3 裁决 |
-| **claim/complete 任务** | ❌ **禁用** | 必须改走我们的 `POST /api/v1/tickets/:id/...` 走三层鉴权 |
+| **claim/complete 任务** | ❌ **禁用** | 必须改走我们的 `POST /api/v1/tickets/<动作>（ID放body）` 走三层鉴权 |
 | **用户体系** | ❌ **禁用** | 引擎不能持有用户身份，所有 actor 都是我们映射过去的本地 user_id |
 | **权限判断** | ❌ **禁用** | 引擎不知道 `org_path`/`ticket_visibility`/`ReadAnchorPaths`，这些概念见 [09-ticket §5.2](../phase2/09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认) |
 
@@ -811,9 +720,10 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 - **分布式一致性**：不引入 XA/2PC（第三方引擎不支持），用 Saga + 对账（本地先写"发起中"，调远程成功更新，失败标记"需对账"，定时拉远程 GetState 修正）
 - **fail-closed**：远程引擎故障返回 503 deny，工单操作降级为只读
 
-### 8.6 工作流引擎升级触发信号量化表
+<a id="86-工作流引擎升级触发信号量化表"></a>
+### 8.6 工作流引擎升级触发信号量化表（历史评估条件，非已批准排期）
 
-"Phase 3 再评估"太虚，给硬指标。触发任一即启动从 `LinearStateEngine` → `BranchedStateEngine` 的升级：
+以下保留当时的量化评估条件；命中只代表需要重新评估，不自动启动或承诺引擎替换。当前实际类型为StateMachine，未实现LinearStateEngine：
 
 | 触发信号 | 阈值 | 含义 |
 |---|---|---|
@@ -822,22 +732,16 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 | 并行审批路径数 | ≥ 1 | 线性机无并行能力 |
 | 跨流程驳回场景 | 出现 | 需要自由驳回 |
 
-> 注：Phase 3 的 `BranchedStateEngine` 是手写实现，不引第三方引擎。第三方/闭源引擎的引入时机更靠后，需同时满足 §8.5 契约 + 上述触发信号。
+> 注：旧方案首选手写BranchedStateEngine，但当前没有实现；S3b与第三方引入须重核真实场景，第三方方案还需满足§8.5契约。
 
+<a id="85-404-vs-403-的安全语义"></a>
 ### 8.7 404 vs 403 的安全语义
 
 资源不可见时返回 **404** 而非 403，防止信息泄露（攻击者无法通过 403 推断资源存在）。这是业界标准做法（Freshdesk 文档原文："The ticket is either not there or you don't have permission"）。
 
 ### 8.8 事件驱动为何独立设计
 
-事件驱动不应耦合在工单模块内，因为：
-- 工单创建/状态变更会触发事件
-- 定时任务（SLA 检查、报表生成）会触发事件
-- 其他服务（用户管理、组织变更）也会触发事件
+工单、ops及未来业务域共享`domainevent`，一次变更多订阅者，业务域不硬编码未来risk消费者。历史ADR的L0/L1/L2命名保留作方案沿革；当前交付语义、可靠性限制与Outbox触发条件统一见§6，不能将旧轮询方案当现行架构。
 
-因此事件驱动作为独立的横切模块设计，L1→L2 升级方案详见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) 与 [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)。三档演进（见 §6 + [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）：
-- **Phase 2a（L0）→ Phase 3 启动时（L1）**：Phase 2a 用 Go 原生 channel（L0，过渡，进程崩溃丢事件）；Phase 3 启动时升级为 `ticket_events` 持久化 + 轮询补偿 + 分布式锁（L1，**长期稳态**，迁移 000021 补 event_type/processed 列）
-- **Asynq 与 L1 一同于 Phase 3 启动时引入**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）：与 L1 并存，作为异步任务执行器（审批触发事件 + 预置定时任务），不替代 L1 事件源
-- **L2 暂缓（按需）**：PostgreSQL Outbox + Asynq worker 多消费者——多消费者需求出现时升级，业务逻辑不变只换调度器
 
 > 跨服务事件传播（Redis Streams / Kafka）随微服务拆分推迟，不在近期范围。

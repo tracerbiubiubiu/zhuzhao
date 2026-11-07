@@ -118,7 +118,7 @@ docs/
 
 | 文档 | 定位 | 读者 |
 |------|------|------|
-| `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划（⚠ 2026-08 v0.6 后未回填——回填登记债台账 L-5；现行权威 = review/11 + 各阶段 README） | 所有开发者 |
+| `architecture.md` | Phase5现况与演进：模块/生态边界、鉴权与可靠性、schema/API权威入口及阶段裁定（2026-11-07 L-5主体校准；历史草图明确标注，能力状态以review/11为准） | 所有开发者 |
 | `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
 | `rbac-inheritance-and-cascade.md` | RBAC 继承、业界对照、删改级联矩阵（**Phase 1 不实现**） | 架构 review |
 | `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
