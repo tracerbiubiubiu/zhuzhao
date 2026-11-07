@@ -20,6 +20,6 @@ Phase5小范围稳定性批；主仓源码基线`996c167f4567e39362226937b25368b
 
 ## 修复建议与承接边界
 
-代码配置修复的专项出口已满足，三仓提交hash/准确CI提交后回填。B18原样253/81已使用同类TCP探针fixture，但不借它宣称当前B19/B20/公式上下文新组合已全部通过；新组合仍须独立验收。常驻环境在备份及来源核对后另行承接。
+代码配置修复的专项出口已满足：主仓 `dd5b54c65bc8dedea08e2b9a6f7e17a0a5fcc75d`、activelist `83909b86a697dd2fc69a71819a5e1327c9be1d03`、taskrunner `6d0e2ad592eccf0c12bb525958784200c478a45e`。主仓待推送窗口为 `f5a8a892579fd44f0bc5c0e633d541757d621c06..dd5b54c65bc8dedea08e2b9a6f7e17a0a5fcc75d`，AL/TR分别为上述基线至修复单笔；同批仅增加本报告绑定提交，推送前另核差集。准确CI仍待推送后核实。B18原样253/81已使用同类TCP探针fixture，但不借它宣称当前B19/B20/公式上下文新组合已全部通过；新组合仍须独立验收。常驻环境在备份及来源核对后另行承接。
 
 TCP返回0只说明该传输可接入，不能代替迁移/绑定种子、凭据、权限或应用ready探针。操作顺序见[runbook §9.1](../../docs/runbook.md#91-postgresql空卷初始化的tcp就绪判定)。过程脚本、逐轮结果、镜像入口快照、141项SHA清单和清理收据仅ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/postgres-readiness/`，不纳Git/Docker。
