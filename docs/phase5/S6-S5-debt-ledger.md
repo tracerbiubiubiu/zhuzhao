@@ -149,9 +149,9 @@
 | G-9 | S6 | ops.cron_failed 词表行是死行（payload 无 to_assignee/cc_users——collectRecipients 恒空） | P3 | 15min | 随批（改锚点或特判 job 收件人） |
 | G-10 | S6 | message_log 实落表与 A.2 漂移（biz_id VARCHAR/无 dead 态/retry_count）+死信归因字段折损 | P3 | 登记不修 | 二期表形态批 |
 | G-11 | S9 | ~~CleanupExpired 未挂 cron~~ **✅ 销账（2026-10-27 销账批）**：app.go:195 `intel_cleanup` 已挂——`DELETE FROM intel_cache WHERE expires_at < NOW() - interval '7 days'`，骑 CronScheduler + SetOnFailure 告警（审计实证+独立复核双确认） | P2 | 销账 | — |
-| ~~G-12~~ | ui | ✅ **B20代码/完整门禁关闭（2026-11-07）**：铃铛接实际badge查询、画布graph更新+invalid幂等（含JSON往返后撤销重做）、附件失败保旧列表/重试与部分成功提示；intel裸fetch已此前B08修。候选8绿/旧history8稳定红，最终29/230及41/41实际0retry/flaky/skip；[B20报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md) | P2/P3 | 原估算保留历史 | UI提交15225863；准确CI/常驻/Chrome代表承接另核 |
+| ~~G-12~~ | ui | ✅ **B20代码/完整门禁关闭（2026-11-07）**：铃铛接实际badge查询、画布graph更新+invalid幂等（含JSON往返后撤销重做）、附件失败保旧列表/重试与部分成功提示；intel裸fetch已此前B08修。候选8绿/旧history8稳定红，最终29/230及41/41实际0retry/flaky/skip；[B20报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md) | P2/P3 | 原估算保留历史 | UI152准确CI及保留test/Chrome代表承接已B27核 |
 | G-13 | 文档 | 10 号变更记录缺 SLA 0.5 交付行；errcode.md 双份已补登 21010/92600-92602（✅ 随本批修） | P3 | ✅/5min | 文档批 |
-| ~~G-14~~ | S1 | ✅ **B26代码出口通过（2026-11-07）**：radio/完整值集合及静态↔不同dict切换、空字典G2约束与读取不确定软提示；原8红/修8绿、7变异各8红，正式完整Go+253/81通过；[B26报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b26-field-warnings-2026-11-07.md)。相同dict引用无旧历史快照，外部项变更影响仍需字典写侧合同，不冒称本批覆盖 | P3 | 原估算保留历史 | Phase5提交/CI及常驻承接另核；不改为硬锁 |
+| ~~G-14~~ | S1 | ✅ **B26代码出口通过（2026-11-07）**：radio/完整值集合及静态↔不同dict切换、空字典G2约束与读取不确定软提示；原8红/修8绿、7变异各8红，正式完整Go+253/81通过；[B26报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b26-field-warnings-2026-11-07.md)。相同dict引用无旧历史快照，外部项变更影响仍需字典写侧合同，不冒称本批覆盖 | P3 | 原估算保留历史 | Phase5 f87ab1a/准确4db CI及dev/test承接已B27核；不改为硬锁 |
 | G-15 | ui/S5 | storage API 六端点漏 `/api/v1` 前缀（b72b854d 建档即如此）——浏览器内附件列表拿回 index.html 渲成 3418 幽灵行、五个 POST 404：头像上传/附件上传删除/富文本渲染整面静默失效 | **P0** | ✅ ui e88173bd | 销账（+`apiPaths.test` 静态守卫，红→绿恰报六处） |
 | G-16 | S9/S6-2 | intel_query/message_center 建菜单行未绑 role_menus（000031 惯例漏项）——全员不可达，铃铛 /messages 404 | **P0** | ✅ 000074 | 销账 |
 | G-17 | S3a | 分派规则页（ui 45a72256）无菜单行——孤岛页；viewNames 守卫单向不报 | **P0** | ✅ 000073+000074 | 销账（ui 反向守卫同批） |

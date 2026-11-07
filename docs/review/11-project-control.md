@@ -1,8 +1,8 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-07 Phase5后续收口进展**：已归档并移除46个无运行引用的detached工作树，保留8个attached；该步未改五仓refs/运行服务，7份报告33个链接已迁往同内容的已推送快照。另经祖先/归档/远端tip复核删除4条旧远端分支，main保持。原生Go1.26.10 SDK已可信取得（仅ignored项目缓存，系统Go1.26.6未替换）；[B18工具/回滚预检](../../deliverables/software-company/zhuzhao-ecosystem-audit-b18-tooling-rollback-2026-11-07.md)已过原生lint/unit/integration/cover、自有栈253/81及996c167准确CI全绿；W5/存储ID及其余当前残留仍分批。**所有者要求Go1.27与Node24/26 LTS整体升级在Phase5合main后、基于main另批实施**；当前不合main、不启动Phase6。下面带日期段落保留历史范围和时点，不替代本段当前状态。
+> **2026-11-07 Phase5后续最终收口**：[B27总收口](../../deliverables/software-company/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)汇总B18～B26与原安全批：主4db/UI152准确CI、四Go源码安全取证及最终Go/API/UI门禁通过；dev/test已承接可信Go1.26.10产物，5PG同卷TCP探针、test归档卷与Chrome代表走查均核。原生业务Env93/75/78经校准并保留原CWD/SQLite，系统Go1.26.6与Node22未全局替换。**Go1.27与Node24/26 LTS整体升级仍在Phase5经授权合main后，基于main另批实施**；当前未合main/生产、未启动Phase6。下方日期段保留原时点，最新运行映射以B27为准。
 
-> **本轮新增P1（公式/visible_when字典查询，代码出口通过）**：原`ticket.Service.Update → exprcalc → RegisterExprDictLookup`绕过已有事务并使用Background取第二连接，MaxConns1真实HTTP稳定阻塞。最小修复已在Phase5工作区复用当前q/ctx；原式和visible_when移除修复各8轮稳定失败、修复均成功，取消释放/跨DB与并发缓存隔离及完整原生Go lint/unit/integration/cover通过，读取收尾错误亦有独立回归。新组合253/0/0与81对往返零漂移已过；UI另有B20用例失败、该批仍待修，准确提交CI和常驻承接仍待核；详[B23报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b23-expression-context-2026-11-07.md)。dbtx架构试点暂缓且仍开放，此前schema读取Tx销账不扩大为所有表达式路径安全；main未动。
+> **B23/BK11表达式P1已在代码与保留dev/test关闭**：formula/visible_when复用已有q/ctx，原/变异各8轮稳定复现、取消释放与跨DB缓存隔离通过；完整Go、原253/81、准确4db CI与最终60ad运行源绑定均通过。详[B23](../../deliverables/software-company/zhuzhao-ecosystem-audit-b23-expression-context-2026-11-07.md)和[B27](../../deliverables/software-company/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)；通用dbtx传播器与请求deadline仍未实施，不能扩大旧schema读取Tx销账到所有未来调用。
 
 > **2026-11-07 B16/B17安全验证与修复收口**：[正式报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主603c1b6、ALdb6a17b、TR1e31e3e、utils563785a准确CI全绿；四源码/三真实新ELF只剩未消费OpenPGP模块提示，包/调用链0，不称绝对零漏洞。原样253/0/0、81对往返及96次最低版本守卫变异有效，覆盖率20.29%仅普通tag内部包。保留test三Go应用已Go1.26.10并承接F01正确配置只读源，其他23容器及所有卷/网络保持；原生dev/main/生产未承接本批产物。主仓/UI仍实际phase5，兄弟为Phase5用途短分支；本地56→10分支有完整归档，54工作树目录保留。原B15四P2/历史债及本机SDK获取限制继续记账，不开始Phase6、不准备main PR/正式发布。下面带日期段落为各历史时点。
 
@@ -333,20 +333,20 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 审计组 | 当前验证状态 | 主线/运行边界 |
 |---|---|---|
-| B02撤权/B09过期成员，B06业务 | dc3含F13–F20等后笔已固定正常门禁、253/81和真实13/15专项；对应代码关闭 | test app=dc3、AL60/TR eb3，主线未合/生产未发；专项/已接受边界逐报告保留 |
-| B07 AL/TR | test已AL60/TR eb3；主仓/AL正式pin cd759，AL60全PG/race196通过，新组合253/81过，F10关闭 | utils仅codex分支已推；main/tag不动、生产未发；AL不使用出站Transport及TR不升无关依赖的边界保留 |
-| B08前端 | test c9/dc3/AL60/TR eb3六件+41首过，原14项限定范围关闭；Chrome最终代表走查通过 | 0Playwright retry/flaky不等于0HTTP429，W5节奏另P2；dev旧F08保留，未合main/生产或全站认证 |
+| B02撤权/B09过期成员，B06业务 | dc3含F13–F20等后笔已固定正常门禁、253/81和真实13/15专项；对应代码关闭 | 保留test已承接最新60ad/ALb3ed/TR69d/UI152组合（B27）；主线未合/生产未发，旧专项/已接受边界逐报告保留 |
+| B07 AL/TR | test实际ALb3ed/TR69d；主仓/AL正式pin cd759，AL60全PG/race196通过，新组合253/81过，F10关闭 | utils仅codex分支已推；main/tag不动、生产未发；AL不使用出站Transport及TR不升无关依赖的边界保留 |
+| B08前端 | 原14项限定范围关闭；最新test UI152/60ad六件+41首过及Chrome代表走查通过 | 本轮UI阶段0HTTP429；W5旧概率性负控边界仍见B18。dev旧实例已更新运行源，不把它继续记为旧F08开放实例；未合main/生产或全站认证 |
 | B11当前L1矩阵 | 19主体八轮25840请求/5440交叉差异0，catalog反例有效 | 限L1到达与认证分类，业务L2/L3看各批；不复用旧14号为当前证明 |
 | B12错误码契约 | 77当前定义补全，AST定义/清单/登记/消息/HTTP双向守卫，4da89fa固定专项和四类各8轮变异有效 | 只改登记与测试，无生产HTTP变更，已dc3完整门禁关闭，内容完整性/路径归一分列；主线仍待承接 |
-| B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 已test承接dc3，未合main/生产；头像同类F20也在同轮关闭，不扩成所有未来并发安全保证 |
+| B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 保留test已承接最新60ad组合，未合main/生产；头像同类F20的原专项同轮关闭，不扩成所有未来并发安全保证 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
-| B15横切边界 | 原四P2中工具sum/回滚前置已B18准确CI复验，W5已b5cbf15专项验过；B19存储输出ID统一string并接生成类型，真实HTTP/JS与8轮变异、Go及253/81通过 | ID wire为破坏性变更，须两仓同步承接；UI完整门禁有独立B20画布失败，准确提交CI/部署待核。down79的23503保全业务数据但可留dirty，P1候选撤销；不把预检等同回滚许可，详B15/B18/B19 |
+| B15横切边界 | 原四P2中工具sum/回滚前置已B18准确CI复验，W5已b5cbf15专项验过；B19存储输出ID统一string并接生成类型，真实HTTP/JS与8轮变异、Go及253/81通过 | ID wire为破坏性变更，两仓已同步test承接；初版B20画布失败已修，最终41与准确主4db/UI152 CI通过，仓外numeric消费者仍须协调。down79的23503保全业务数据但可留dirty，P1候选撤销；不把预检等同回滚许可，详B15/B18/B19 |
 | B16五仓安全验证 | UI生产依赖本轮0报告；首轮34 GO-ID已分层复验，F01/P2以bcdf133专项/稳定变异及完整门禁关闭，test配置源已切正确模板 | 主/AL stripped仅模块精度，TR符号不等于调用图；两fix提交元数据缺项已如实补录，不改已推历史，main未动 |
-| B17安全依赖修复 | 主603/ALdb6/TR1e31/utils5637准确CI、原253/81、新3ELF/4source复扫、最低版本96次ABA均过；Go1.26.10及net62/quic59.1，主另Excelize2.11.1/compress1.20.2 | F02在代码/test关闭，F03已升依赖、唯一OpenPGP模块提示按未导入边界保留；test已承接，原生dev/main/生产未切，无正式发布 |
-| B24冷启动TCP就绪 | 三仓6 Compose/8 pg_isready补显式TCP；默认/全profiles展开、8轮旧误绿/新真实AL ready对照及三仓准确CI通过 | 常驻承接另核；不改变重启/时序/数据，不以TCP替代迁移和应用ready |
-| B25归档持久化 | prod/test app增加JSONL专属卷；真实导出3+2旧行、替换容器及PAX→fresh卷恢复内容/元数据一致，395天mtime边界专项过 | 原目录均0文件，未证明已丢数据；常驻尚未承接、备份/作业未自动启用，不改保留期或taskrunner执行日志；源规范/专项与组合夹具门禁分列 |
-| B20前端反馈 | UI15225863：badge实际订阅、画布重复load后撤销重做、附件失败恢复；最终29/230与41/41原样门禁通过，实际0retry/flaky/skip | 初版40过1失败及尾钩缺helper保留；UI0个429，三认证读均负控，外部testutil生命周期变化分列，准确CI/常驻/Chrome另核 |
-| B26字段软提示 | G-14完整值集合/radio/字典切换与读取不确定提示，正式354源完整Go及新60ad组合253/81通过 | 原故障策略和非阻断保存不变，同字典项外部变更无历史快照；准确提交CI、UI批和常驻另核，不混入通用dbtx试点 |
+| B17安全依赖修复 | 主603/ALdb6/TR1e31/utils5637准确CI、原253/81、新3ELF/4source复扫、最低版本96次ABA均过；Go1.26.10及net62/quic59.1，主另Excelize2.11.1/compress1.20.2 | F02在代码/test关闭，F03已升依赖、唯一OpenPGP模块提示按未导入边界保留；保留test与原生dev均已承接Go1.26.10，main/生产未切，无新正式发布 |
+| B24冷启动TCP就绪 | 三仓6 Compose/8 pg_isready补显式TCP；默认/全profiles展开、8轮旧误绿/新真实AL ready对照及三仓准确CI通过 | 本机5PG已同卷承接，生产模板未现场部署；不改变重启/时序/数据，不以TCP替代迁移和应用ready |
+| B25归档持久化 | prod/test app增加JSONL专属卷；真实导出3+2旧行、替换容器及PAX→fresh卷恢复内容/元数据一致，395天mtime边界专项过 | 原目录均0文件，未证明已丢数据；test已接归档卷，备份/作业未自动启用，不改保留期或taskrunner执行日志；源规范/专项与组合夹具门禁分列 |
+| B20前端反馈 | UI15225863：badge实际订阅、画布重复load后撤销重做、附件失败恢复；最终29/230与41/41原样门禁通过，实际0retry/flaky/skip | 初版40过1失败及尾钩缺helper保留；UI0个429，三认证读均负控，外部testutil生命周期变化分列，准确UI152 CI及test/Chrome代表承接已B27核 |
+| B26字段软提示 | G-14完整值集合/radio/字典切换与读取不确定提示，正式354源完整Go及新60ad组合253/81通过 | 原故障策略和非阻断保存不变，同字典项外部变更无历史快照；准确4db CI、UI批和dev/test均B27承接；不混入通用dbtx试点 |
 | 文档与历史债 | B10五组校准、130篇全文基线及最终差异、101编号债逐行映射均已核；B21/L-5两主体已按固定源码回填并经独立语义/链接复核 | L-5主体在Phase5文档分支关闭；跨文件P2/P3与L-1～4搬树仍各有边界，其余未来/已接受取舍不当当前回归；Go源码/真实ELF补扫已B16/B17完成，许可证/完整供应链认证不扩大 |
 
 ### 历史底座记录

@@ -28,7 +28,7 @@ Phase5小范围稳定性批，发现基线为主仓 `996c167f4567e39362226937b25
 
 ## 验证与承接状态
 
-- 明确选择可信原生Go1.26.10，完整原样 `make test-unit / test-cover / test-integration` 均exit0（10.63s / 5.55s / 566.02s），353份Go源及go.mod/sum起止SHA相同。该组合同时包含B19存储ID候选，源码与证据分别归属，提交仍分批。
+- 明确选择可信原生Go1.26.10，完整原样 `make test-unit / test-cover / test-integration` 均exit0（10.63s / 5.55s / 566.02s），353项Go源码/生成物及go.mod/sum起止SHA相同。该组合同时包含B19存储ID候选，源码与证据分别归属，提交仍分批。
 - `make lint` exit0（3.641s）；Swagger三生成物仅为新鲜度比较显式暂存，结束即撤暂存，无新漂移。`make swag wire` 首次off代理因私有业务缓存缺Wire运行库而失败，改用已有可信本地file代理后exit0（3.842s）；不改go.mod/sum、不绕过生成器。
 - 最终生产ELF SHA256 `82179b0bc48a4337e78fabdb2448110c4ede038e4b634e6b486c4fcd9dfd95f0`，Go1.26.10；隔离组合镜像 `sha256:1c6db8f4b15a11e2f7f8ab989b09fc7daac48979b381e0f079ec2b62a1d35155`，基镜像层与环境保持。它同时含B19和B23，当前明确标为uncommitted candidate，不冒称某一提交的已部署产物。
 - 原样 `make migrate-up` 与四档 `make acceptance` 在新组合隔离栈均exit0：253/0/0，81对迁移往返计数/明细零漂移，前后schema均81 clean（40.192s）。实际三Go容器ELF逐字匹配清单，主仓353源匹配821构建快照。UI完整门禁另出现B20撤销/重做用例首次及重试失败，不将该前端批次记绿；它不替代或否定本批独立Go与API出口。准确修复hash、CI与常驻环境承接尚未完成，整体收口仍未完成。
@@ -37,4 +37,4 @@ Phase5小范围稳定性批，发现基线为主仓 `996c167f4567e39362226937b25
 
 ## 固定提交与最终组合补证
 
-本批主仓完整提交 `82bda27e5a46c22d3d57daab4387dc1aa5dbae93`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。
+本批主仓完整提交 `82bda27e5a46c22d3d57daab4387dc1aa5dbae93`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。后续主4db/UI152准确CI与dev/test承接已核，当前映射及Chrome代表走查见[B27最终收口](./zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)；main/生产未变。上文保留本批原轮次与未执行路径，不用新时点倒补旧证据。

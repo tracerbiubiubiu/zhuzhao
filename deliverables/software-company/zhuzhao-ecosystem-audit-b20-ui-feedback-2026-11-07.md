@@ -18,7 +18,7 @@ SFC动态边界覆盖即时失效、旧列表保留、部分成功、过时响�
 
 上述第一版完整门禁的lint/typecheck、29文件230单测、生产依赖audit与build均过；UI阶段0个429，三条profile/permissions失败分别对应PAT吊销401与首登改密gate403负控，已按request时间窗归因。初版失败trace、独立诊断尾钩因缺acceptance checker报错、后续新镜像执行位错误均保留，不冒称这些轮次完整成功。
 
-最终354源G14/B19/B23后端组合已通过253/0/0与81迁移往返；最终原样pnpm gate已通过：29文件230单测、41/41 E2E，实际0 retry/flaky/skip，UI全部阶段0个429；候选8绿与旧history变异8同断言红。UI修复完整提交 `152258638abaa3bd3daa656255a794c5422a0e58`；准确CI、环境承接与Chrome代表走查另补。过程源码/trace/JSON/stdout/429归因/清理与元数据SHA仅保存在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{ui-residual,joint-b19-b20-b23}/`，不进Git/Docker。
+最终354源G14/B19/B23后端组合已通过253/0/0与81迁移往返；最终原样pnpm gate已通过：29文件230单测、41/41 E2E，实际0 retry/flaky/skip，UI全部阶段0个429；候选8绿与旧history变异8同断言红。UI修复完整提交 `152258638abaa3bd3daa656255a794c5422a0e58`；UI152准确CI、dev/test环境承接及Chrome代表走查已由[B27最终收口](./zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)补证；未合main/生产。过程源码/trace/JSON/stdout/429归因/清理与元数据SHA仅保存在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{ui-residual,joint-b19-b20-b23}/`，不进Git/Docker。
 
 G-12的intel裸fetch已由此前B08修复，本批不重复开发；消息Outbox、审批、完整SLA等未来能力不属于本批。视觉检查重点是失败横幅与旧列表共存、重试可达、角标和图状态一致；最终仅以实际代表页面为证，不扩大成全站覆盖。
 

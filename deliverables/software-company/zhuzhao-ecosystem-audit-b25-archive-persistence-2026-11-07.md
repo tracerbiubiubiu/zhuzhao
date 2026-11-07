@@ -28,4 +28,4 @@ DB180天、文件395天及task_runs/execution_logs永久保留均不改变。JSO
 
 ## 固定提交与最终组合补证
 
-本批主仓完整提交 `2f9d94bcfd214a10eb1d06a495f5f7e5a75c1381`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。
+本批主仓完整提交 `2f9d94bcfd214a10eb1d06a495f5f7e5a75c1381`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。后续主4db/UI152准确CI与dev/test承接已核，当前映射及Chrome代表走查见[B27最终收口](./zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)；main/生产未变。上文保留本批原轮次与未执行路径，不用新时点倒补旧证据。

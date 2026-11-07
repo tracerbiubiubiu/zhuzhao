@@ -233,7 +233,6 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
-   | Phase5剩余项收口（root唯一提交/推送；工具、回滚、清理并行取证） | B19存储模型/HTTP回归/Swagger及UI存储API/生成类型；B20三UI组件及同域E2E；B21/L-5主体已f27994b完成；B22已596f625提交；B23 exprcalc/ticket公式与visible_when/转换上下文及两回归，Go全门禁和新253/81已过；PG探针三仓已提交/推送，归档持久卷已2f9d94b提交；B26/G14两Go路径的完整门禁与253/81通过、待提交；B20画布切换后撤销告警补实际graph更新监听，专项/全UI门禁进行中。工具/回滚批ef90363已推并经996c167准确CI验绿。过程证据仅ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/` | B19主34d2c8b/UI306098df、B20 UI15225863、B21 f27994b、B23 82bda27、B25 2f9d94b、B26 f87ab1a均本地提交；最终Go/API/UI门禁通过，远端推送/准确CI/环境承接进行中 | 2026-11-07 |
 
 2026-11-07后续工具链安排（所有者明确）：Go1.27、Node24/26 LTS的整体升级，须等Phase5先合入main后，再基于main独立实施与验证；当前Phase5不提前切换。已完成的Go1.26.10安全修复继续保留。本机系统Go仍1.26.6；原生1.26.10已按官方toolchain模块/开启sumdb验证取得，仅保存在ignored `.codex`，未改全局PATH或系统安装。执行本地命令时显式选择已验证SDK；工具CLI的`GO`覆盖不替代其它Make目标所需的PATH设置。早先“SDK获取失败”段是历史时点，不再作为当前状态。
 
@@ -279,7 +278,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 容器内健康探针显式指定`pg_isready -h 127.0.0.1`，保留原用户/库及时序。空卷初始化的临时PostgreSQL只开放Unix socket，无host探针可能提前返回0，下游跨容器TCP仍拒绝连接；`service_healthy`与后续自动重启不能弥补这个判定差异。
 
-三仓6份Compose的8处探针按此修正，未改镜像、角色、端口、卷或依赖。TCP可接入后，仍须依次确认显式迁移/绑定种子成功与应用`/readyz`或`/health/ready`，不把它当完整验收。专项8轮fresh卷的旧误绿/新真实AL就绪对照、初期fixture失败及精确资源回收见[B24报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b24-postgres-readiness-2026-11-07.md)。当前只完成配置/专项验证，常驻环境和新的业务组合承接另验。
+三仓6份Compose的8处探针按此修正，未改镜像、角色、端口、卷或依赖。TCP可接入后，仍须依次确认显式迁移/绑定种子成功与应用`/readyz`或`/health/ready`，不把它当完整验收。专项8轮fresh卷的旧误绿/新真实AL就绪对照、初期fixture失败及精确资源回收见[B24报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b24-postgres-readiness-2026-11-07.md)。该专项时点只完成配置验证；本机5PG与新业务组合已由B27承接复核，生产模板部署仍另验。
 
 ### 9.2 审计JSONL卷与恢复
 
@@ -287,4 +286,12 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 
 2026-11-07承接前盘点：native archive与test写层均0文件，但test尚无持久挂载；app cron=false不代表manual回调禁用。5PG archive_mode均off、无运行pgbackup，不能把文档策略当运行备份。native三Go实际仍1.26.6，test为1.26.10旧B18组合；后续须核真实ELF、备份和挂载再更新，不靠启动hash推断当前产物。原生TR绝对SQLite路径与canonical CWD须同时保留。未知owner容器/他会话资源不清理。
 
+### 9.3 本机Phase5维护后运行基线（2026-11-07）
 
+主仓4db/UI152的代码与准确CI、原253/81及完整前端门禁通过后，dev/test已承接新产物；见[B27收口报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)。dev入口4000/API33333/AL18081/TR18080、test UI48081/API33334/RustFS59000保持；本机test PG原有效51692在本地运行闭包暂时钉住，不是仓库固定端口分配。不要对共享运行服务裸up/down、全局prune或删卷。
+
+当前本机native PID、精确二进制/Env/CWD与ready入口在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/environment-finalization/current-dev-manifest.json`；服务已运行时先核该清单与真实监听归属。重启须保留canonical CWD及TR绝对SQLite路径，Env用已校准的业务JSON，不混入新ambient值；KERN_PROCARGS2尾部apple执行元数据不是真实环境配置。旧11-06 devctl及一次性维护脚本基于旧PID，只作历史证据，不能直接拿来当前restart。其它机器仍按正式Make/Compose与各仓目标分支准备环境，不复制本机秘密或把本地闭包当生产模板。
+
+启动顺序为PG/Redis/S3就绪→AL/TR→main→UI；本机运行闭包只使用已验证的不可变镜像、同字节RO配置快照与原卷/网络，build上下文不从兄弟canonical main误取代码。5PG真实TCP/SQL与schema、归档33333权限和SQLite2/290已独立核验。已作停写后的独立5PG+SQLite备份，跨库非原子，不自动恢复覆盖数据；原卷、旧产物和未知owner资源保留。
+
+所有原生Go服务实际1.26.10，SDK只在ignored项目缓存、系统Go1.26.6/全局PATH没有替换；本地新编译须显式选可信1.26.10 SDK。Node仍22.14，整体Go1.27与Node24/26 LTS升级等Phase5合main后另批。E000001两栈只读bcrypt核验为既定终态且mcp=false，本次没有使用其登录/改密；Chrome只用既有E800006会话。

@@ -71,3 +71,8 @@ B19本地门禁先后复现两处旧测试失败，分别是`internal/middleware
 首两次完整单位门禁失败原样保存；同一组候选修正后，原生Go1.26.10原make test-unit/test-cover/test-integration全部exit0（15.19/28.38/737.81秒），Go源码在各次运行期间固定。lint首次私有缓存缺Swag运行库且proxy=off失败，保留日志；改用已有已核模块file代理后原make lint通过38.99秒，无新增依赖或生成漂移。原样253/81业务门禁在未变化的生产源码上已由上节验证；B22仅改测试，准确提交及CI继续单独绑定。
 
 **提交绑定**：B22为`596f625e8c678b26bce5bd96a8058cff91c17f5e`，锚点为[`ratelimit_test.go`的`TestRateLimit_RouteBucketIsolation`](https://github.com/tracerbiubiubiu/zhuzhao/blob/596f625e8c678b26bce5bd96a8058cff91c17f5e/internal/middleware/ratelimit_test.go#L121)与[`policyeval_test.go`的`TestPolicyEvalWriteFlushToStore`](https://github.com/tracerbiubiubiu/zhuzhao/blob/596f625e8c678b26bce5bd96a8058cff91c17f5e/internal/pkg/audit/policyeval_test.go#L65)。W5预算等待为UI `b5cbf1596be2d2df98038b6534c38a6242515f25`，锚点为[`w5-al-pages.spec.ts`的`beforeEach`及夹具后预算等待](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b5cbf1596be2d2df98038b6534c38a6242515f25/e2e/w5-al-pages.spec.ts#L17)。均为显式路径提交且提交后文件集已核，准确推送/CI另验，不能借用996c167的CI冒称本次新提交已验绿。新发现的公式字典嵌套池连接问题另按P1优先修复，不随本报告关闭。
+
+
+## 后续准确提交与环境承接
+
+B22、W5与公式字典P1后续均已独立闭环，准确主4db/UI152 CI及dev/test最新产物通过核验，见[B27最终收口](./zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)。原公式问题修复为82bda27，通用dbtx未实现；W5变异仍是上文披露的概率性证据，不升级成每轮必红。此处更新最终承接状态，不覆盖旧轮次失败或假定预检等于DB回滚许可。
