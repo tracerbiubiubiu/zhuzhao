@@ -1,5 +1,7 @@
 # 生态全面审计 B08：前端功能、交互、视觉与实践（阶段报告，2026-11-06）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 > **最终组合收口**：UI `c9f0429ea05badac228f8e7e523e98859434339d` + app dc3/AL60e/TR eb3，完整六件门禁及41/41首轮通过，配置retries1、实际0 retry/0flaky/0skip，Chrome最终实查已完成。原14项在本报告限定范围修复复验关闭；P2测试节奏与全站/移动/辅助技术边界保留，未合main。
 
 > **最新固定UI后笔**：F12窄契约绑定、F13长URL及F14暗按钮均已提交，UI最终候选 `9f76a1b1eba80434107d1797e9b7401aa0ef6623` 已用259文件SHA核对的准确镜像部署test。F14真实Chrome正常/悬停八轮绿、删除规则八红，工程S2及实际按下三态八轮/变异八轮完成，后文续记分开说明工具与覆盖。F12固定后端bc245专项及前端227单元/类型变异通过。新组合完整41尚未跑，三项保持待最终组合验收；原dev b205保留已知F08。以下f104/61及“未修”是历史批次时点。
@@ -33,13 +35,13 @@
 
 原b205的RichtextField只以字段key存储；真实同origin账号A类型A草稿被账号B类型B同名字段恢复，丢弃仍留内容。范围是浏览器本地内容，未声称后端越权。证据draft-A-edit.png、draft-B-other-account-restored.png、draft-discard-retains-content.png。
 
-修复 `fc1068b66ea4f33f2f1a02e9a9ef557b488c7560`，账号/类型/字段完整作用域、旧无属主key安全删除、timer/model/丢弃/提交后复原；锚点[src/components/useRichtextDraft.ts 的 richtextDraftKey/clearDraft/discardDraft](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/components/useRichtextDraft.ts:6)及create.handleSubmit。最终S8d真实栈+持久回读与相关单测通过。
+修复 `fc1068b66ea4f33f2f1a02e9a9ef557b488c7560`，账号/类型/字段完整作用域、旧无属主key安全删除、timer/model/丢弃/提交后复原；锚点[src/components/useRichtextDraft.ts 的 richtextDraftKey/clearDraft/discardDraft](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/components/useRichtextDraft.ts#L6)及create.handleSubmit。最终S8d真实栈+持久回读与相关单测通过。
 
 ### B08-F02 / P1 / 修复复验完成：旧异步结果覆盖或拆除新会话
 
 原快照锚点（完整hash见基线）：[src/common/request/src/index.ts:63](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/common/request/src/index.ts#L63) 的 `refreshAccessToken`；[src/store/modules/user.ts:1](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/store/modules/user.ts#L1) 的 `loadSession / resetState`。
 
-原b205刷新成功/终态失败、loadSession三种deferred交错可分别覆盖B token/清B会话/写旧A profile和权限菜单；未突破后端鉴权。修复 `604b96c2fb6133fa75b2800f7121d5badd0c966c`：generation隔离刷新单飞、响应、store和守卫写入。锚点[src/common/request/src/index.ts 的 refreshAccessToken/response interceptors](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/common/request/src/index.ts:67)、user.loadSession及tokenStorage.getSessionGeneration。
+原b205刷新成功/终态失败、loadSession三种deferred交错可分别覆盖B token/清B会话/写旧A profile和权限菜单；未突破后端鉴权。修复 `604b96c2fb6133fa75b2800f7121d5badd0c966c`：generation隔离刷新单飞、响应、store和守卫写入。锚点[src/common/request/src/index.ts 的 refreshAccessToken/response interceptors](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/common/request/src/index.ts#L67)、user.loadSession及tokenStorage.getSessionGeneration。
 
 三目标移除修复各8轮红（r03-session-mutation-summary.json），最终请求单测与S16换账号/S8d通过。早期跨目录mock解析失败实验无效，未计入有效证据。
 
@@ -49,7 +51,7 @@
 
 原b205：先点待处理卡→列表手改closed→回Home再点同一fullPath，URL=open但缓存筛选仍closed；不同query首次进入对照正常。两待办入口又只传assignee=me，把闭单混入。Home原统计assigned/in_progress，与BadgeService排除closed/rejected（含custom）本来不同，不能硬统一计数。
 
-首修 `ad5874590dd3ccee9f878541e629cc1a3ff075df`（主仓cd79374 statuses）+ `a1f8476c1102328a0c39dbe132f34befdb0506b9`（主仓9e2fef6 exclude_statuses）：显式深链onActivated兑现、无query正常页签保筛选、集合回显/单态改选/重置与list/export同源。锚点[src/views/ticket/list/index.vue 的 applyRouteFilters/statusSelection/statusFilter](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/views/ticket/list/index.vue:52)、NavbarBadge.goTodo/Home.goTickets。
+首修 `ad5874590dd3ccee9f878541e629cc1a3ff075df`（主仓cd79374 statuses）+ `a1f8476c1102328a0c39dbe132f34befdb0506b9`（主仓9e2fef6 exclude_statuses）：显式深链onActivated兑现、无query正常页签保筛选、集合回显/单态改选/重置与list/export同源。锚点[src/views/ticket/list/index.vue 的 applyRouteFilters/statusSelection/statusFilter](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/views/ticket/list/index.vue#L52)、NavbarBadge.goTodo/Home.goTickets。
 
 最终S2造assigned/closed/review_custom真实图状态：Home两态包含assigned排除闭单/custom；Badge保留custom、count=list.total；两路导出精确参数200；相同缓存路径再入/回显通过。证据早期home-query-before-v2.log/八轮正向及最终fixed-f1043a12-e2e-result.json。
 
@@ -59,31 +61,31 @@
 
 原b205 supervisor经Number而后端标量json,string；CC把9007199254740993变9007199254740992。旧app真实合成：supervisor numeric1→400/10001，同值string→200；实际大ID收件用户的JS舍入CC→400“抄送用户不存在”，精确numeric control→200，旧DTO string[]→400。**仅证明选人失败，未证明错误抄送他人。** 原始id-wire-baseline.json保留。
 
-修复 `2d4afd06ff703cf26609af7eca7cd5f0ae6ed32c` + 主仓91d7b90兼容Int64Slice + 测试定位 `e853323405eb9c7856d80605fd724c414e65bd5b`。建单/分派/CC保持string，排序BigInt。锚点[src/api/ticket/index.ts 的 CreateTicketInput/assignTicketApi/addTicketCCApi](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/api/ticket/index.ts:234)与两页面handleSubmit/doAddCC。旧supervisor单测真红；CC传输单测只是正向control，不谎称能单独抓调用方旧Number。最终S17真浏览器>2^53合成用户，三路payload精确string、建单回读/CC chip均通过。
+修复 `2d4afd06ff703cf26609af7eca7cd5f0ae6ed32c` + 主仓91d7b90兼容Int64Slice + 测试定位 `e853323405eb9c7856d80605fd724c414e65bd5b`。建单/分派/CC保持string，排序BigInt。锚点[src/api/ticket/index.ts 的 CreateTicketInput/assignTicketApi/addTicketCCApi](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/api/ticket/index.ts#L234)与两页面handleSubmit/doAddCC。旧supervisor单测真红；CC传输单测只是正向control，不谎称能单独抓调用方旧Number。最终S17真浏览器>2^53合成用户，三路payload精确string、建单回读/CC chip均通过。
 
 ### B08-F05 / P2 / 修复复验完成：类型页“三态不可达”说明过时
 
 原快照锚点（完整hash见基线）：[src/views/ticket/type/index.vue:738](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/views/ticket/type/index.vue#L738) 的 `类型编辑弹窗alert`。
 
-原b205编辑alert/注释未跟随Phase5 S3a。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`；[src/views/ticket/type/index.vue 的 编辑说明](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/views/ticket/type/index.vue:738)如实说明图+权限/条件/校验器与审批未启用，API注释同扫；最终P5-S2新旧文案正反断言通过。Phase4历史稿不倒改成当时已有S3a。
+原b205编辑alert/注释未跟随Phase5 S3a。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`；[src/views/ticket/type/index.vue 的 编辑说明](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/views/ticket/type/index.vue#L738)如实说明图+权限/条件/校验器与审批未启用，API注释同扫；最终P5-S2新旧文案正反断言通过。Phase4历史稿不倒改成当时已有S3a。
 
 ### B08-F06 / P1 / 修复复验完成：AL未选类型同时显示无目标写入入口
 
 原快照锚点（完整hash见基线）：[src/views/al/data/index.vue:175](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/views/al/data/index.vue#L175) 的 `openCreate / 空态模板`。
 
-原b205未选类型的选择提示旁又显示“暂无数据/写入首条”，能开空类型写框。原截图visual-20261106/1024x900-_al_data.png与反断言count1保留。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`；[src/views/al/data/index.vue 的 openCreate/selectedType空态](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/views/al/data/index.vue:175)校验有效非废弃类型、门控空态/表格。最终W5写入/cursor/软删恢复/废弃只读两例通过。
+原b205未选类型的选择提示旁又显示“暂无数据/写入首条”，能开空类型写框。原截图visual-20261106/1024x900-_al_data.png与反断言count1保留。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`；[src/views/al/data/index.vue 的 openCreate/selectedType空态](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/views/al/data/index.vue#L175)校验有效非废弃类型、门控空态/表格。最终W5写入/cursor/软删恢复/废弃只读两例通过。
 
 ### B08-F07 / P1 / 修复复验完成：Tooltip拦截键盘聚焦/密度，聚焦图标无名称
 
 原快照锚点（完整hash见基线）：[src/components/ProTable/Tools.vue:16](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/components/ProTable/Tools.vue#L16) 的 `Tooltip按钮模板`。
 
-原b205 Tooltip默认triggerKeys阻止原生Enter/Space；新增S2聚焦Enter曾真实红。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`，[src/components/ProTable/Tools.vue 的 两处trigger-keys/aria-label/aria-pressed](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/components/ProTable/Tools.vue:16)；最终Enter入聚焦、Esc退出及状态回显通过。五页探针命中同共享组件，非五条重复发现。
+原b205 Tooltip默认triggerKeys阻止原生Enter/Space；新增S2聚焦Enter曾真实红。修复 `f23d081080cf49354fd7017b92c59ffecbb735f6`，[src/components/ProTable/Tools.vue 的 两处trigger-keys/aria-label/aria-pressed](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/components/ProTable/Tools.vue#L16)；最终Enter入聚焦、Esc退出及状态回显通过。五页探针命中同共享组件，非五条重复发现。
 
 ### B08-F08 / P1 / 修复复验完成：首次unobserve(undefined)中断挂载观察
 
 原快照锚点（完整hash见基线）：[src/common/hooks/src/useTableFit.ts:41](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/common/hooks/src/useTableFit.ts#L41) 的 `syncObserve`。
 
-原b205 useTableFit.syncObserve无旧目标仍unobserve，真浏览器与新增同符号单测TypeError。修复 `80c34da918fb29cc5c60845c215567a522cd5bf2`；[src/common/hooks/src/useTableFit.ts 的 syncObserve](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/common/hooks/src/useTableFit.ts:41)仅旧目标非空时注销。移除守卫8/8精确TypeError红，最终初挂/换目标/卸载单测、整套E2E与视觉通过；pageerror事件与Vue errorHandler的console.error须分开理解，不能单靠pageerror0证明所有JS无错。
+原b205 useTableFit.syncObserve无旧目标仍unobserve，真浏览器与新增同符号单测TypeError。修复 `80c34da918fb29cc5c60845c215567a522cd5bf2`；[src/common/hooks/src/useTableFit.ts 的 syncObserve](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/common/hooks/src/useTableFit.ts#L41)仅旧目标非空时注销。移除守卫8/8精确TypeError红，最终初挂/换目标/卸载单测、整套E2E与视觉通过；pageerror事件与Vue errorHandler的console.error须分开理解，不能单靠pageerror0证明所有JS无错。
 
 ### B08-F09 / P2 / 修复复验完成：online组件未共享offline图标注册表
 
@@ -97,13 +99,13 @@
 
 root视觉线索经独立DOM核：文字完整、静止opacity1；亮warning2.03898/info2.80166，dark7.18259/5.24193。取computed前景/背景，12px文字参照[W3C常规文字4.5:1说明](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)，不是全站合规裁定。
 
-修复 `c83a53ded725da167eb1e9b3d408320336e25fb7` 限light/plain较深语义文字，背景/主色/dark/实色不改；[src/common/styles/src/var.css 的 亮色Tag文字变量](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/common/styles/src/var.css:88)。S2原产物info2.80166精确红，最终真实S2与亮暗DOM验证warning6.33214/info6.87556、dark不变。
+修复 `c83a53ded725da167eb1e9b3d408320336e25fb7` 限light/plain较深语义文字，背景/主色/dark/实色不改；[src/common/styles/src/var.css 的 亮色Tag文字变量](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/common/styles/src/var.css#L88)。S2原产物info2.80166精确红，最终真实S2与亮暗DOM验证warning6.33214/info6.87556、dark不变。
 
 ### B08-F11 / P1 / 修复复验完成：data-ignore空布尔属性仍被折叠
 
 原快照锚点（完整hash见基线）：[src/components/FilterBar/index.vue:20](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/components/FilterBar/index.vue#L20) 的 `controlEls(`。
 
-完整c83/S2导出点击超时揭出原b205共享FilterBar用!dataset.ignore，空属性值为''仍算控件，重置/导出在收起态隐藏。全src三调用点：工单、任务、审计均为空属性。修复 `5ecba4b37709acef63224abfeb477f1a0e707878`；[src/components/FilterBar/index.vue 的 controlEls](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/components/FilterBar/index.vue:20)改hasAttribute，S2增加真实可见性断言。
+完整c83/S2导出点击超时揭出原b205共享FilterBar用!dataset.ignore，空属性值为''仍算控件，重置/导出在收起态隐藏。全src三调用点：工单、任务、审计均为空属性。修复 `5ecba4b37709acef63224abfeb477f1a0e707878`；[src/components/FilterBar/index.vue 的 controlEls](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/components/FilterBar/index.vue#L20)改hasAttribute，S2增加真实可见性断言。
 
 从后续固定f104副本只移除此守卫并部署，8个串行新route实例均hidden/display none；恢复后8/8 visible/block（filter-mutant-eight.json/filter-fixed-eight.json及源码/产物manifest）。最终S2含两路导出均200；原c83整轮39/2保留。限流节奏另独立提交 `f1043a12e74e929dd223a5b718e0a27b3781c253`，不混入F11独立fix。
 
@@ -111,7 +113,7 @@ root视觉线索经独立DOM核：文字完整、静止opacity1；亮warning2.03
 
 原快照锚点（完整hash见基线）：[src/api/ticket/index.ts:230](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/api/ticket/index.ts#L230) 的 `CreateTicketInput`。
 
-[src/api/ticket/index.ts 的 CreateTicketInput/assignTicketApi](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/api/ticket/index.ts:234)手写类型，未绑定generated AssignTicketRequest/CreateTicketRequest。隔离f104副本只把schema两路supervisor:string改boolean，客户端仍string，vue-tsc exit0（generated-contract-mutation.json/log）。不是声称所有codegen消费者失效：system/user/role/org等4模块已有绑定。
+[src/api/ticket/index.ts 的 CreateTicketInput/assignTicketApi](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/api/ticket/index.ts#L234)手写类型，未绑定generated AssignTicketRequest/CreateTicketRequest。隔离f104副本只把schema两路supervisor:string改boolean，客户端仍string，vue-tsc exit0（generated-contract-mutation.json/log）。不是声称所有codegen消费者失效：system/user/role/org等4模块已有绑定。
 
 已知CustomData RawMessage在生成schema为number[]、UI注释也明确承认此失真；主仓ticket_request.go CreateTicketRequest.CustomData（21行）为契约前置。因此建议先校准Swagger对象形状，再逐请求绑定/加编译断言，不能直接全量alias。此项是防漂移能力缺口，F04真实故障已单独修复；未修改纳管生成物，变异只在独立副本，正常运行/构建保持f104。
 
@@ -119,7 +121,7 @@ root视觉线索经独立DOM核：文字完整、静止opacity1；亮warning2.03
 
 原快照锚点（完整hash见基线）：[src/views/ticket/detail/index.vue:584](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/b20594cc744a61e2bcb41535b0ea668a711aa4df/src/views/ticket/detail/index.vue#L584) 的 `<pre`。
 
-原b205与f104均保留[src/views/ticket/detail/index.vue 的 描述pre](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/views/ticket/detail/index.vue:584)仅whitespace-pre-wrap；合法合成长URL在1024暗色dual：pre横向溢出1983px、cardbody1963px，document/section仍0。证据固定源visual-extra-v4-20261106/observations.json的dark-dual-long-detail-1024，以及visual-extra-v5-20261106/dark-dual-long-url-end-1024.png末端截图；长中文/标题可换行不等于所有长文正常。建议限定描述长词/URL换行，验证亮暗、1024/宽屏与内容不被裁剪；本批不扩修复源。
+原b205与f104均保留[src/views/ticket/detail/index.vue 的 描述pre](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/views/ticket/detail/index.vue#L584)仅whitespace-pre-wrap；合法合成长URL在1024暗色dual：pre横向溢出1983px、cardbody1963px，document/section仍0。证据固定源visual-extra-v4-20261106/observations.json的dark-dual-long-detail-1024，以及visual-extra-v5-20261106/dark-dual-long-url-end-1024.png末端截图；长中文/标题可换行不等于所有长文正常。建议限定描述长词/URL换行，验证亮暗、1024/宽屏与内容不被裁剪；本批不扩修复源。
 
 ## 视觉、使用习惯与覆盖限制
 
@@ -177,7 +179,7 @@ W5既有helper默认宿主SQLite不适用于当前test PG，日志有不可达�
 
 root复核暗色主按钮浅紫底白字后，按要求只做一次真实computed测量：工单列表“新建工单”active，14px/500、opacity1、disabled=false，前景rgb(255,255,255)、背景rgb(129,140,248)，对比2.982903277。证据dark-primary-button-computed.json/dark-button.log；这是主动按钮的常规文字，参照前述W3C4.5:1，未按截图像素裁定，也不扩成全主题审计。
 
-源锚f104的[src/common/styles/src/var.css 的 html:root.dark](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/ECO-20261104/worktrees/ui-r03/src/common/styles/src/var.css:52)（主色#818cf8）与ElButton默认文字变量。建议后续只核暗色主按钮专用text/hover/active变量或对比合格的底色，不全局加深主色而伤害链接可读性；亮Tag的F10已完成仍保留原范围，本补充独立挂账。此项追加于已交root的13项版之后，原13项/六件结论与raw时点不回写。
+源锚f104的[src/common/styles/src/var.css 的 html:root.dark](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/9f76a1b1eba80434107d1797e9b7401aa0ef6623/src/common/styles/src/var.css#L52)（主色#818cf8）与ElButton默认文字变量。建议后续只核暗色主按钮专用text/hover/active变量或对比合格的底色，不全局加深主色而伤害链接可读性；亮Tag的F10已完成仍保留原范围，本补充独立挂账。此项追加于已交root的13项版之后，原13项/六件结论与raw时点不回写。
 
 ## 新后端组合二次验证（2026-11-06）
 

@@ -1,5 +1,7 @@
 # 生态全面审计 B12：错误码登记完整性与守卫（2026-11-06）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 > **最终后端联合复验（2026-11-06）**：B12登记完整性/双向守卫在上述完整联合范围代码复验关闭；L-6路径归一的历史结论与内容补齐分列，不改生产HTTP码值。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
 
 ## 范围与基线
@@ -37,7 +39,7 @@
 
 原738锚点：[api/errcode.md 的主仓登记](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/api/errcode.md#L1)、[errcode.go 的实际Err变量](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/pkg/errcode/errcode.go#L1)、[errors_test.go 的 TestErrcodeDocMessageSync / TestWriteServiceError_FullCodeTable](https://github.com/tracerbiubiubiu/zhuzhao/blob/7389ed79bdf409e466542992d9f1befa0c1a8529/internal/handler/errors_test.go#L155)。
 
-固定修复4da89fa挂点：[api/errcode.md 当前定义/跨仓边界](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/error-contract/api/errcode.md:1)、[errors_test.go 的 errcodeNames / readErrcodeRegistry / TestErrcodeDocMessageSync](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/error-contract/internal/handler/errors_test.go:157)。源码符号为主，行号仅辅助。
+固定修复4da89fa挂点：[api/errcode.md 当前定义/跨仓边界](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/api/errcode.md#L1)、[errors_test.go 的 errcodeNames / readErrcodeRegistry / TestErrcodeDocMessageSync](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/handler/errors_test.go#L157)。源码符号为主，行号仅辅助。
 
 root另以固定4da89fa的detached checkout独立执行三项错误码测试 `-race -count=8`，6.367秒exit0、工作树干净，见同目录root-fixed-results.json及root-fixed-three-eight.log。原始日志与变异源码仅本地.codex，不入Git/Docker。没有新增真实环境或账号。
 

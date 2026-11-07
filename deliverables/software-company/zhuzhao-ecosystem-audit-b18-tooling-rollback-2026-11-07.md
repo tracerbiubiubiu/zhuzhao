@@ -46,3 +46,8 @@ exit0仅证明模板引用无阻断，不是整体回滚批准；exit1须由所�
 ## 收口边界
 
 B15-F02、B15-F03及B18-F01本地复验满足本批出口，交付关单仍待准确提交CI。F03只覆盖“操作预检与安全回滚流程”，不承诺所有down自动成功，也不移除FK的数据保护。存储ID合同、UI节奏/当前小残留、L5、dbtx预防试点、归档部署前置及原生dev承接继续按各自批次核验；未来规划或外部触发项不随本报告虚销账。
+
+
+## Commit binding
+
+Code fix: `ef90363f0f5fb70cac215c4a2979b7e97f565a0d`. The twelve-file explicit-path commit was checked after commit; no business source or dependency files were included. CI for this exact revision remains pending.

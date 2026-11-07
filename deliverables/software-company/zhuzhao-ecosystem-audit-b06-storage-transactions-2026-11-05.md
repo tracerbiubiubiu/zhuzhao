@@ -1,5 +1,7 @@
 # 生态审计 B06：存储并发与事务冲突（2026-11-05）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 > **最终后端联合复验（2026-11-06）**：本增量F15/F20在上述完整联合范围代码复验关闭；F01–F04既有证据不外推，F20补齐资料并发写的独立链。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
 
 ## 范围与基线
@@ -74,7 +76,7 @@
 
 ## B06-F20 / P1：资料旧快照覆盖成功换绑后的头像引用
 
-本增量固定基线 `ba3ecb6dc643e529813198af97c8943245e7c500`，已含B14安全字段白名单；与F01的GC锁协议是不同写入链，不撤回F01原限定范围的复验结论。锚点：[StorageRepo.BindAvatar](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/integration-next/internal/repository/storage_avatar.go:15)及[UserRepo.Update](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/integration-next/internal/repository/user_repo.go:260)，修复源码hash如下。原BindAvatar换键不推进users.version，通用资料Update仍回写旧Avatar：资料真实读取后暂停，真实换绑完成并退役/物理删除旧键，再放行资料SQL，资料写成功但users.avatar恢复成deleted旧键。
+本增量固定基线 `ba3ecb6dc643e529813198af97c8943245e7c500`，已含B14安全字段白名单；与F01的GC锁协议是不同写入链，不撤回F01原限定范围的复验结论。锚点：[StorageRepo.BindAvatar](https://github.com/tracerbiubiubiu/zhuzhao/blob/cc8fd4ae4e2a4b91f77886d56f4ef6c38f1a81ae/internal/repository/storage_avatar.go#L15)及[UserRepo.Update](https://github.com/tracerbiubiubiu/zhuzhao/blob/cc8fd4ae4e2a4b91f77886d56f4ef6c38f1a81ae/internal/repository/user_repo.go#L260)，修复源码hash如下。原BindAvatar换键不推进users.version，通用资料Update仍回写旧Avatar：资料真实读取后暂停，真实换绑完成并退役/物理删除旧键，再放行资料SQL，资料写成功但users.avatar恢复成deleted旧键。
 
 个人/管理员两个实际资料入口各八轮复现，七类顺序、同键、URL手填/拒绝等控制共56场正常。独立真实RustFS经预签PUT、Stat、BindAvatar与Remove路径，两入口原各八红：旧键Stat notfound、新键仍存在，资料写nil却回指旧键。按功能失效P1；没有声称新对象本体已丢失，也不扩大成新的匿名攻击或P0。
 

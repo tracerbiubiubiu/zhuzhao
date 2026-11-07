@@ -1,5 +1,7 @@
 # 生态审计 B06 续批：流程快照、提醒与调度（2026-11-06）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 > **最终后端联合复验（2026-11-06）**：F13/F14/F16/F17/F18/F19在上述完整联合范围代码复验关闭；F05–F12既有关闭不变，F20见存储报告。 固定源dc3d540完整门禁及test承接已过，下文早先“待验/未部署”为原时点；未合main。
 
 > **后续实现增量**：新增F13/P1导出XLSX收尾/临时文件、F14/P1多键设置快照、F16/P1导出计数并发窗口，详末节；F13/F14修复各自专项通过，完整联合门禁待新组合，不能用738既有全绿关闭新增问题。F15事务字段校验嵌套取池正在独立PG核验，先不混入已闭范围。当前test app实际7389、UI61，dev已按原工作树保卷恢复；旧“test f69/dev不动”是之前时点，不代表现在。全面审计继续，未合main。
@@ -115,7 +117,7 @@ P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索
 
 原业务`5c03581d5999139a3e8e5ead5972c026868aa181`及当前`92adc205c85c07e900d79801743a3a2e174c16d1`的[`audit.go`的`maskSensitiveMap`](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/internal/middleware/audit.go:127)只递归数组直接包含的map，遇到slice→slice→map停止。文档[`phase1/08`敏感字段脱敏](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/docs/phase1/08-audit.md:100)明确承诺map/slice深度遍历；已认证请求会经过AuditLog，即便handler因参数错误拒绝，审计仍记录。真实Gin+AuditLog+responseCapture探针（仅合成fixture值）让请求`params.rows=[[{"PaSsWoRd":"synthetic-request-password"}]]`和响应`data.rows=[[{"refresh_token":"synthetic-response-token"}]]`进入两类审计字段，均泄露原文，直接password正控仍正确为***。原基线及当前候选各-count8八红，非DB故障/编译失败。证据`audit-redaction/baseline-eight.json`与`original-eight.log/current-eight.log`。
 
-独立修复将此改为统一`maskSensitiveValue`递归map与slice，不扩敏感键、不改变大小写、非JSON占位、2KB截断或bodylimit。**真实提交hash=`f1ff68a79c3bf409d9b9f052836a3c9e6ab794e6`**，分支codex/fix-audit-nested-redaction，base92adc20，4文件82+/9-；代码锚[`maskSensitiveValue`](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/audit-nested-redaction/internal/middleware/audit.go:150)，真实中间件回归[`TestAuditLog_NestedArrayRedaction`](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/audit-nested-redaction/internal/middleware/audit_nested_redaction_test.go:43)。本次保护之后写入的审计，不自动改写既有记录；不涉及已接受的params业务读面原文窗口。
+独立修复将此改为统一`maskSensitiveValue`递归map与slice，不扩敏感键、不改变大小写、非JSON占位、2KB截断或bodylimit。**真实提交hash=`f1ff68a79c3bf409d9b9f052836a3c9e6ab794e6`**，分支codex/fix-audit-nested-redaction，base92adc20，4文件82+/9-；代码锚[`maskSensitiveValue`](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/middleware/audit.go#L150)，真实中间件回归[`TestAuditLog_NestedArrayRedaction`](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/middleware/audit_nested_redaction_test.go#L43)。本次保护之后写入的审计，不自动改写既有记录；不涉及已接受的params业务读面原文窗口。
 
 请求/响应、直接map/array、连续两/三层数组与非敏感shape正控专项-race八轮绿，完整middleware-race、lint/unit/cover绿（middleware覆盖率72.0%，未量化基线差值）；把audit.go恢复当前92adc20原文件后，HTTP链与数组回归各8红。证据`audit-redaction/gates.json,mutation-eight.json,manifest.json`；没有共享DB或账号变更。已汇入独立联合 `7389ed79bdf409e466542992d9f1befa0c1a8529`，源码逐文件等同来源；新固定完整integration/acceptance正在进行，未标完成/部署/合main。
 
@@ -142,7 +144,7 @@ P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索
 
 真实Gin handler→Service→隔离PG→XLSX ZIP中sheet1.xml，空表/一行/600行均严格XML解析unexpected EOF，原有效八轮XML共24次失败。excelize v2.11.0的Write不自动调用StreamWriter.Flush；其OpenReader/GetRows宽容解析仍可能返回行，因此不声称全部客户端打不开或数据完全丢失。600×32760B实物超过16MiB触发spill，成功、writer错误、取消后writer错误三路原样共24次临时文件残留。
 
-独立修复 **50cad5e32a7c3763edeec0b8ed010abe7ce5587e**，parent738、分支codex/fix-ticket-export-finalize-joint。锚点：[TicketHandler.Export 的 defer Close / Flush](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/ticket-export-finalize-joint/internal/handler/ticket_export.go:54)、[TestTicketExportWorkbook](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/ticket-export-finalize-joint/internal/handler/ticket_export_integration_test.go:60)。NewFile后立即defer Close覆盖所有早退/写失败，流成功后Flush，失败在成功审计及附件响应前返回。无新增依赖/路由/权限/迁移。
+独立修复 **50cad5e32a7c3763edeec0b8ed010abe7ce5587e**，parent738、分支codex/fix-ticket-export-finalize-joint。锚点：[TicketHandler.Export 的 defer Close / Flush](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/handler/ticket_export.go#L54)、[TestTicketExportWorkbook](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/handler/ticket_export_integration_test.go#L60)。NewFile后立即defer Close覆盖所有早退/写失败，流成功后Flush，失败在成功审计及附件响应前返回。无新增依赖/路由/权限/迁移。
 
 修复race八轮绿246.154s；分别移除Flush仅XML八红、移除Close仅spill八红，预取消DB反控制仍绿。lint、完整单元、完整handler integration-race26.878s、cover通过，原/修复文件实物和日志在本地 `evidence/ECO-20261104-b06/export-xlsx/`。重复TestMain、internal包可见性、fixture参数与keyword过长的无效尝试保留，正式原证据从original-eight-v4.log算起。COUNT窗口不是本修复范围，见F16；完整联合门禁待后笔冻结，暂不标完整关单。
 
@@ -152,7 +154,7 @@ P2当前文档状态失真汇入后续单一校准批，原始135文件阅读索
 
 真实738 Service/PG八轮：先设置max_upload_bytes=1048576，再设置max_presign_batch=7，运行上传限制回退10485760；数据库和svc.List仍显示1MiB，重新构造服务又恢复1MiB。不是UI缓存，也不是未来多实例传播能力。管理面与实际约束不一致，按P1。
 
-独立修复 **6d788d081d79fb626abe9097bdd3a0e3c0fc28c9**，parent50cad5e，分支codex/fix-settings-snapshot。[SettingsService 的 applyMu / Update / Reset / applyAllOverrides](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/settings-snapshot/internal/service/settings_service.go:129)对单实例持久写与全量重建串行，以出厂快照叠加所有有效KV再发布；读取失败保留旧完整快照并返回错误。硬底线校验与expected_version CAS保留，无API/权限/迁移/依赖变化。
+独立修复 **6d788d081d79fb626abe9097bdd3a0e3c0fc28c9**，parent50cad5e，分支codex/fix-settings-snapshot。[SettingsService 的 applyMu / Update / Reset / applyAllOverrides](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/service/settings_service.go#L129)对单实例持久写与全量重建串行，以出厂快照叠加所有有效KV再发布；读取失败保留旧完整快照并返回错误。硬底线校验与expected_version CAS保留，无API/权限/迁移/依赖变化。
 
 真实QueryTracer在Reset取得KV后暂停，另一Update在锁下等待；无锁变异允许旧Reset结果覆盖新Update。持久写后取消ctx的重读失败控制证明返回error且保留旧指针。**DB写可能已提交，错误后需重试/重启收敛；不是DB与内存跨介质原子事务，不承诺多实例传播。**
 
@@ -185,7 +187,7 @@ pgx QueryTracer在实际COUNT完成后，用另一真实PG会话提交插入/删
 
 ## B06-F19 / P1：通知偏好自服务读取错误身份键
 
-固定原行为 `b4435022d00ee789b9a62f74036824bd7d3791b7`，锚点：[notification_pref_handler.go 的 ListOptouts / SetOptout](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/notification-pref-context/internal/handler/notification_pref_handler.go:26)，源码修复 **`f9e1f63d6498edd5ac0350bfc93b5699fe83dd65`**。JWT/PAT写入userID，而两入口GetInt64(user_id)取到0：本人已有偏好时GET200空数组，取消200但实际本人行不删，开启500/10000源于uid0外键。真实JWT→SelfService/CasbinAuth→RBAC/PG→原handler/service/repo八轮确认，未证跨用户泄露；按已承诺功能缺失P1，不升级P0。
+固定原行为 `b4435022d00ee789b9a62f74036824bd7d3791b7`，锚点：[notification_pref_handler.go 的 ListOptouts / SetOptout](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/internal/handler/notification_pref_handler.go#L26)，源码修复 **`f9e1f63d6498edd5ac0350bfc93b5699fe83dd65`**。JWT/PAT写入userID，而两入口GetInt64(user_id)取到0：本人已有偏好时GET200空数组，取消200但实际本人行不删，开启500/10000源于uid0外键。真实JWT→SelfService/CasbinAuth→RBAC/PG→原handler/service/repo八轮确认，未证跨用户泄露；按已承诺功能缺失P1，不升级P0。
 
 修复两入口读取既有userID，不补混淆别名、不放宽middleware。永久原生handler TestMain回归使用真实JWT、miniredis、真实RBAC角色BFS及PG，两目标各race八绿；分别恢复GET/POST旧键各八红。匿名401、两用户隔离、伪造body user_id无效、开启幂等及取消不删他人行控制通过。lint/完整单元通过，全量integration/cover/acceptance未跑。三轮自有testcontainers均自动终止、owner残留0，共享环境与Chrome未变；证据 `platform-coverage/f19/repair-result.json`。root承接联合dfc432f，未部署/合main，维持待完整复验。
 

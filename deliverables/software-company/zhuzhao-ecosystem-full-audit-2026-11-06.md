@@ -293,3 +293,14 @@ cd759a0402455731f805ba507bf8401447e00e29
 主仓/UI的现有CI增加codex/** push过滤，UI按同名主仓分支读取种子；其余Go仓本已全分支运行。push前逐仓fetch、提交格式/门禁状态/窗口核对；Git URL重写可能改变实际传输，按命令日志记录，不仅凭传入SSH设置判断；主仓同名分支先于UI推送，远端ref与准确SHA的CI必须另核。分支推送不等于正式发版：本轮**不新增tag/GitHub Release/生产部署**，utils已发布v0.4.3及本轮固定pseudo-version保持，正式main/tag发版待以后整合与安全证据决策。Go扫描仍NOT_RUN，本次清理未补扫。
 
 最新阶段顺序由所有者明确：继续以五仓Phase5检查、审计、修改为主；允许Phase6规划，实际须先Phase5合main并核验整合基线，再从main切Phase6。当前不执行main合并，不创建Phase6分支。原10-28“先从phase5切”的历史记录保留作演进证据，不再作为当前执行许可。精确工作树状态、归档清单、source→branch、SSH fetch/push窗口及CI收据仅存本地ignored `workspace-cleanup-20261107/`，不新增第二套设计或债台账。
+
+
+## 2026-11-07后续清理复核与工具链安排
+
+本节基于主仓`2ed8069370540fb7228b9f50e431eb2bc995dce8`、UI `01c5deae23e677853316f1ee2dd692c708246651`、AL `db6a17bb686f09287d8793d1a3f98783bcc2e09d`、TR `1e31e3e95dc442b8384f3582cfc2850bd57d260b`及utils `563785a83ce2aeb12c5f2b65c42defb58a48c331`，承接前段历史清理，不重写其当时状态。
+
+46个detached工作树已逐项确认跟踪/未跟踪clean、HEAD未变、无进程CWD或Docker/Compose路径引用后移除，保留8个attached。17份ignored材料归档共103,654,343字节、1,723成员，逐成员SHA/符号链接核验；可重建node_modules缓存另计。五份无前置bundle均独立verify通过，可恢复46个HEAD；本地heads/tags/archive refs清理前后逐字相同。28个当时容器元数据及原生dev三Go服务/Vite的PID、CWD、执行文件未因工作树清理改变；这仅是清理不干扰证明，不是服务全面验收。未注册环境sources、其他会话cmpfull及未知归属容器保留，不按目录名或前缀批量清理。
+
+7份历史分批报告33个源码链接已迁移到已推送分支可达、blob及行上下文相同的固定commit；历史修复hash与结论不变。逐报告将新链接反向还原后SHA与原文一致，diff空白检查通过。另经实时fetch、目标分支相等、旧tip祖先关系及归档/bundle完整tip复核，以精确lease删除主/UI各1条、utils2条旧远端分支；删除后远端不存在，main逐项未变。原件与清理收据仅主仓ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/cleanup/`，不纳Git/Docker。工具/回滚/E2E及存储ID合同批、原生dev和当前小残留继续各自验收；本次移除目录/旧头不代表剩余审计修复全部完成。
+
+所有者已指定：**Go1.27和Node24/26 LTS整体升级，在Phase5合入main后，再基于main单独实施**。当前Phase5保留已验收的Go1.26.10安全修复，不提前做大版本升级；本机系统Go1.26.6保持，项目原生1.26.10 SDK已通过官方toolchain模块/官方sumdb校验取得，放在ignored缓存，仅对单次命令显式选用。后续升级批要对齐四Go模块/真实产物/CI、UI Node版本文件与构建镜像、pnpm及前端六件门禁，具体patch与Node24或26取舍届时以官方支持状态和兼容性验证裁定，不在当前Phase5静默改pin。

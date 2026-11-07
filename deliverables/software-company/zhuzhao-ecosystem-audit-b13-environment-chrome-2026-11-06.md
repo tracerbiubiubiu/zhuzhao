@@ -1,5 +1,7 @@
 # 生态全面审计 B13：环境恢复、启动编排与真实Chrome（2026-11-06）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 ## 范围与基线
 
 所有者要求先整理开发/测试环境并使用已启用的Chrome插件实查。root独占共享环境与Chrome；并行代理只读配置/源码及独立工作树修复，不启动实验栈。本批不合main，不重置已有业务数据，不将端口在线等同全项目验收通过。
@@ -78,7 +80,7 @@ TR Compose失败被 `|| echo` 转为成功路径，最后仍输出编排完成�
 
 ### 启动修复提交与固定复验（尚未完成实栈门禁）
 
-独立分支 `codex/fix-dev-stack-isolation` 提交 **`760a58363b0a6b75c4f7e8233f7ebb3cc1137c7b`**（base8a3），9文件显式路径提交且工作树干净。F01–F05分别由 [scripts/dev-stack.sh 的 compose/owner检查/up/down](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/scripts/dev-stack.sh:35)、[Makefile 的 dev/docker-dev-*](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/Makefile:25)、[生产Compose ui.build.context](/Users/bujibuji/.codex/tmp/zhuzhao-audit/ECO-20261104-fix/dev-stack-isolation/deployments/docker-compose.yaml:272)修复；F06相关当前README/端口/探针说明在候选同步。默认项目明确为zhuzhao-dev/deploy/taskrunner以保AL旧卷；所有配置与归属检查先于写操作，失败传递且等待健康，没有生产fallback或自动kill。TR部署栈仍只在内网，宿主应用另起，不扩安全边界。
+独立分支 `codex/fix-dev-stack-isolation` 提交 **`760a58363b0a6b75c4f7e8233f7ebb3cc1137c7b`**（base8a3），9文件显式路径提交且工作树干净。F01–F05分别由 [scripts/dev-stack.sh 的 compose/owner检查/up/down](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/scripts/dev-stack.sh#L35)、[Makefile 的 dev/docker-dev-*](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/Makefile#L25)、[生产Compose ui.build.context](https://github.com/tracerbiubiubiu/zhuzhao/blob/2ed8069370540fb7228b9f50e431eb2bc995dce8/deployments/docker-compose.yaml#L272)修复；F06相关当前README/端口/探针说明在候选同步。默认项目明确为zhuzhao-dev/deploy/taskrunner以保AL旧卷；所有配置与归属检查先于写操作，失败传递且等待健康，没有生产fallback或自动kill。TR部署栈仍只在内网，宿主应用另起，不扩安全边界。
 
 新 `scripts/test-dev-stack.py` 是外部命令全桩的黑盒回归，已接入CI lint步骤和make test-dev-stack。原8a归档17用例出现21个失败断言（含子用例），不是21次真实环境故障；最终19用例通过。五类逐项撤回修复的目标变异（全局project/生产fallback/TR吞错/port-kill/UI context）各串行8轮稳定红。4份只读Compose config确认独立卷和端口配置。bash -n、py_compile、diff-check、commit-lint均通过。
 

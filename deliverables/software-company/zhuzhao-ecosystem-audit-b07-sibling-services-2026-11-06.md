@@ -1,5 +1,7 @@
 # 生态审计 B07：兄弟服务与公共库（2026-11-06，阶段报告）
 
+> **来源路径迁移（2026-11-07）**：仅迁移旧审计工作树的源码链接；目标文件逐字一致，原审计基线、历史 hash 与结论不变。
+
 > **最终消费/联合复验**：utils正式cd759 pseudo-version已在主仓dc3/AL60承接；AL60原生全PG/race196 PASS/0FAIL/0测试SKIP、新组合原样253/81与真实API均过，test同源更新。F10代码复验关闭，main/tag/生产未因此发布；下文“pin未升”为历史时点。
 
 ## 范围与基线
@@ -65,7 +67,7 @@ root已提交 `afc3700eb80c3d2a5b9c4c5e948f32f1e2c3dafb`，候选及固定git ar
 
 README 2026-11-02两个P2原债已去重。原1dcc831固定归档+故障注入：cron/reclaim/notifier各8轮真实子进程exit2；真实Asynq+SQLite/PG回调末次/耗尽panic归档但DB仍running，三个reclaim域0/0/0，共32红。注入仅证明异常隔离/回写缺口，不声称正常网络输入可直接触发panic；B06历史502无额外证据仍不归因为panic。修复产品提交 `3b268dc350e2f7fb14941963cca902f946798ee7`，测试观测校准后最终固定HEAD `5e3f5f3720a54fad9f5cec4a08481364693b8f7d`，codex/fix-taskrunner-panic-boundaries：后台单tick捕获Error+堆栈后下一tick继续，notifier单通知捕获后下一通知继续；回调panic转普通可重试错误，由现有failed/dead/retry与execution_id栅栏统一处理，过期不写不通知。四种移除捕获分别八轮红（callback双存储末次/耗尽32红），候选八轮绿；最终固定归档lint/全PGRedis race(11.9s)/专项八轮(19.63s)/build/19项含cron E2E(73.0s)全0、archive_equivalent=true。**F08/F09代码层关单（最新运行态见末节），未push**；root接运行部署。第一次3b固定归档专项假红为先读DB running再读broker archived的非原子观测；后笔只改archive后重读DB，原日志保留，改后基线仍32红。自有PG/Redis按ID+owner已清，taskrunner-panic-environment-cleanup.json。回调外任意程序错误、进程致命错误、DB持续写失败仍不扩大恢复承诺。
 
-F08源码锚点（固定5e3f5f3；原1dcc同符号）：[cron.Loop.Run](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/service/cron.go:67)、[ReclaimLoop.Run](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/service/reclaim.go:62)、[单tick runBackgroundTick](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/service/background.go:10)、[Notifier.NotifyDeadLetter](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/notify/notifier.go:60)。F09：[Deps.handleCallback回调入口](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/worker/worker.go:115)、[Deps.callCallback恢复边界](/Users/bujibuji/code/src/github.com/tracerbiubiubiu/taskrunner-audit-panic/internal/worker/worker.go:162)。证据：原归档taskrunner-panic-baseline.json/log；四变异taskrunner-panic-mutations.json及对应.log；观测校准候选/基线taskrunner-panic-v2-results.json；最终taskrunner-panic-fixed-v2-results.json。每项与README2026-11-02原始债互引，禁止重复计数。
+F08源码锚点（固定5e3f5f3；原1dcc同符号）：[cron.Loop.Run](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/service/cron.go#L67)、[ReclaimLoop.Run](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/service/reclaim.go#L62)、[单tick runBackgroundTick](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/service/background.go#L10)、[Notifier.NotifyDeadLetter](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/notify/notifier.go#L60)。F09：[Deps.handleCallback回调入口](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/worker/worker.go#L115)、[Deps.callCallback恢复边界](https://github.com/tracerbiubiubiu/taskrunner/blob/5e3f5f3720a54fad9f5cec4a08481364693b8f7d/internal/worker/worker.go#L162)。证据：原归档taskrunner-panic-baseline.json/log；四变异taskrunner-panic-mutations.json及对应.log；观测校准候选/基线taskrunner-panic-v2-results.json；最终taskrunner-panic-fixed-v2-results.json。每项与README2026-11-02原始债互引，禁止重复计数。
 
 ## B07-F10 / P2：utils双Transport读取失败不Close原Body
 
