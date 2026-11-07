@@ -1,7 +1,14 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
+.PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
+# 生成工具与业务依赖隔离；默认缓存已被 Git/Docker 忽略。GO 可显式选择已验证 SDK。
+GO ?= go
+GO_TOOL_CACHE ?= $(CURDIR)/.codex/tools
+GO_TOOL = GO="$(GO)" GO_TOOL_CACHE="$(GO_TOOL_CACHE)" python3 scripts/go-tool.py
+
+tools-install:
+	$(GO_TOOL) install wire swag
 
 build:
 	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/server
@@ -41,11 +48,11 @@ tidy:
 # W0b（2026-09-25）wire 已转正：手码装配升 provider（provideGateway/provideRateLimitConfig/
 # provideJobsCallbackService）+BK-22 对账移 NewApp——make wire 可安全再生。
 wire:
-	go run github.com/google/wire/cmd/wire ./internal/app/
+	$(GO_TOOL) wire ./internal/app/
 
 lint:
 	go vet ./...
-	@test -z "$$(gofmt -l . 2>&1 | grep -v '^vendor/' | tee /dev/stderr)" || (echo "ERROR: gofmt drift detected, run 'gofmt -w .'" && exit 1)
+	python3 scripts/check-gofmt.py
 	@# swagger 新鲜度（红窗第三/四例同族收口 2026-10-22——struct/注释改动必随批
 	@# make swag，CI 新鲜度守卫前移到本地）：重生成后 docs/ 有 diff 即失败；
 	@# 失败时工作树已含重生成产物，review 后随批提交即可。
@@ -94,7 +101,7 @@ docker-down:
 	cd deployments && docker-compose -f docker-compose.yaml down
 
 swag:
-	swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal
+	$(GO_TOOL) swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal
 
 test: test-unit
 

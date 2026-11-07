@@ -44,6 +44,8 @@ make dev  # 端口占用即拒启；不自动kill其它进程
 ## 开发与门禁
 
 ```sh
+make tools-install     # 固定版本Wire/Swag CLI，工具依赖与业务模块隔离
+make wire              # 再生Wire装配，默认按需安装固定工具
 make lint              # go vet + gofmt 漂移检查
 make test-unit         # 单元测试（-race -count=1）
 make test-integration  # 集成测试（testcontainers 真 PG，-tags integration，-p 1）
@@ -54,7 +56,9 @@ make swag              # 重新生成 Swagger（docs/docs.go）
 make guard             # 架构守护测试（go/ast 分层/命名静态断言）
 ```
 
-CI（GitHub Actions）跑最小质量网（vet + gofmt + build + 单测 race）；集成与四档 acceptance 按纪律在本地标准环境执行。
+Go SDK最低版本以`go.mod`为准；生成工具另需Python3，默认缓存到被Git/Docker忽略的`.codex/tools/`。工具入口不隐式下载SDK；可用`GO=/path/to/go make tools-install`显式选择。其它Go目标仍须将该SDK的`bin`放在本次命令的PATH中。工具私有依赖不写入业务`go.mod/go.sum`；`WIRE_BIN`/`SWAG_BIN`覆盖仍校验固定模块、版本、校验和及编译平台。
+
+CI复用原Make入口，执行lint、Wire/Swagger新鲜度、build、单测race及完整集成；四档acceptance与迁移往返按纪律在自有隔离环境执行。
 
 ## 文档
 

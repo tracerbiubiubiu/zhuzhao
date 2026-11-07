@@ -203,6 +203,22 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 > - 正确序：①回退代码到 `45dcb25` 之前（或临时在 `pageWriteAllow` 登记待回滚的绑定）→ ②`migrate down` → ③启动。反向（先 down 再回代码）同样可行，但中间窗口服务不可启。
 > - 往返门禁（`scripts/migration-roundtrip-check.sh`）在全新库上 down→up，不经 app 启动，故不受影响；这条耦合只在**运维回滚**路径出现。
 
+### 6.1 模板种子回滚前的只读依赖预检（B15-F03）
+
+定制规则引用待撤的种子模板时，down 000079会被000061外键拒绝：业务数据保全，但migrate检查点可能成为v78 dirty。相同风险还涉及down 000062/000064/000071/000080；不得自动删除用户配置或盲目force来换取回滚成功，历史SQL保持。
+
+前置为Python3、PATH中的`psql`及显式目标库只读账号。账号需要CONNECT、public schema USAGE、schema_migrations/message_rules SELECT及默认catalog可见性，无需写权限。通过安全环境注入`ROLLBACK_PREFLIGHT_DSN`后执行；不把口令原文写入终端历史、提交或审计附件：
+
+```sh
+python3 scripts/migration-template-preflight.py --target-version 78
+```
+
+工具不取本地默认DSN、不接收argv口令；URI须显式包含用户、单TCP host与数据库，仅允许sslmode/connect_timeout参数，清除继承PG*覆盖。返回0仅表示所选窗口没有存活模板外键引用阻断，**不是整个回滚许可**；1表示存在阻断引用，须由所有者决定保留模板或重新绑定定制规则后重查；2表示未证实（dirty、权限/连接错误、范围缺失、未知FK、历史SQL漂移等），不得当作通过。
+
+支持clean current到本地已有且>=61、低于current的target；跨过000061外键/000060版本列边界显式拒绝。五类seed-down按真实DELETE谓词顺序模拟，79带template_code限定；整份已核down文件SHA变化、新增未建模消息迁移或入站FK变化均须先重新核验策略。工具仅执行一个REPEATABLE READ READ ONLY事务并ROLLBACK，不执行migrate/down/force或业务写入；快照不排斥后续写入，实际回滚须协调维护窗口并紧邻down重跑。模板正文删除影响另行审阅。
+
+target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码回退耦合。失败down后先核实际数据及dirty检查点，禁止仅凭目标号force。脚本回归入口为`python3 scripts/test-migration-template-preflight.py`；真实PG与项目门禁证据在对应分批审计报告中单列，不能用只读预检代替回滚演练。
+
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
 > 来源=两会并行开发当周的三次互相干扰事故：端口互杀（互相 `make dev` 杀对方服务）/ Redis 于验收中途被重启 / **T7 假红**（一会的 viewer 角色页面绑定实验污染另一会的验收断言）。
@@ -217,6 +233,9 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
+   | Phase5剩余项收口（root唯一提交/推送；工具、回滚、清理并行取证） | 主仓 Makefile、scripts/go-tool.py、scripts/migration-template-preflight.py 及相应正式报告/操作文档；UI e2e/w5-al-pages.spec.ts。过程证据仅ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/` | 当前改动尚未提交；以各仓实时status为准 | 2026-11-07 |
+
+2026-11-07后续工具链安排（所有者明确）：Go1.27、Node24/26 LTS的整体升级，须等Phase5先合入main后，再基于main独立实施与验证；当前Phase5不提前切换。已完成的Go1.26.10安全修复继续保留。本机系统Go仍1.26.6；原生1.26.10已按官方toolchain模块/开启sumdb验证取得，仅保存在ignored `.codex`，未改全局PATH或系统安装。执行本地命令时显式选择已验证SDK；工具CLI的`GO`覆盖不替代其它Make目标所需的PATH设置。早先“SDK获取失败”段是历史时点，不再作为当前状态。
 
 2026-11-07当前操作边界：主仓/UI已将审计候选正常合流至实际phase5（09d224d/01c5dea），后续修改基于phase5；三个Go兄弟仍用Phase5用途的 `codex/phase5-audit`。root为本批唯一提交/推送者，只推已核分支，不推main、不准备main PR、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建。本地56分支收敛到10，46旧heads有archive ref及五份完整bundle，40旧工作树同hash detach、54目录与原证据保留；临时独立验证工作树另计，结束只收回本轮自建资源。禁止全局clean/reset/prune；证据、备份、原卷和其他会话资源保留。分支逐项清理/恢复收据仅主仓ignored `.codex/audits/ECO-20261104/security-20261107/branch-cleanup/`，不纳Git/Docker。B16/B17破坏性验收仅用自有隔离栈；保留test三应用与F01配置源承接另见下一段，业务数据和原生dev保持。
 

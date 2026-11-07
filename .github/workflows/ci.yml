@@ -25,22 +25,24 @@ jobs:
         run: python3 scripts/test-acceptance-isolation.py
       - name: 开发编排隔离回归检查
         run: python3 scripts/test-dev-stack.py
+      - name: 生成工具入口与回滚预检反例检查
+        run: |
+          python3 scripts/test-go-tool.py
+          python3 scripts/test-migration-template-preflight.py
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           check-latest: false
+      - name: Go格式检查源码边界回归
+        run: python3 scripts/test-check-gofmt.py
       # 原 Makefile lint 包含 vet、gofmt 与 Swagger 新鲜度，CI 复用同一入口。
       - name: lint 与 Swagger 新鲜度检查
-        run: |
-          go install github.com/swaggo/swag/cmd/swag@v1.16.4
-          export PATH="$(go env GOPATH)/bin:$PATH"
-          make lint
+        run: make lint
       # wire 新鲜度守卫（2026-10-24 B 方案全量修）：providers.go/provideApp 改动后
       # 未跑 make wire 即提交 → 此处拦下（形态同 swagger 守卫——再生后 diff 非零即红）
       - name: wire 新鲜度检查
         run: |
-          go install github.com/google/wire/cmd/wire@v0.7.0
-          "$(go env GOPATH)/bin/wire" ./internal/app/
+          make wire
           git diff --exit-code internal/app/wire_gen.go
       - run: go build ./...
   test:
