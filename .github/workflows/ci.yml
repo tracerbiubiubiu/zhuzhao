@@ -4,7 +4,7 @@ name: ci
 on:
   push:
     # phase5：Phase 5 实施期活跃分支（phase4 已合回 main 删除，死条目随批清理）
-    branches: [dev, main, phase5, "feature/**"]
+    branches: [dev, main, phase5, "feature/**", "codex/**"]
   pull_request:
 # 连续 push 只跑最新提交（对齐 activelist/taskrunner 惯例——过期 run 自动取消省时长）
 concurrency:
