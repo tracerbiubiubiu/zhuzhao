@@ -281,4 +281,10 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 三仓6份Compose的8处探针按此修正，未改镜像、角色、端口、卷或依赖。TCP可接入后，仍须依次确认显式迁移/绑定种子成功与应用`/readyz`或`/health/ready`，不把它当完整验收。专项8轮fresh卷的旧误绿/新真实AL就绪对照、初期fixture失败及精确资源回收见[B24报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b24-postgres-readiness-2026-11-07.md)。当前只完成配置/专项验证，常驻环境和新的业务组合承接另验。
 
+### 9.2 审计JSONL卷与恢复
+
+prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，out_dir覆盖须同步挂载；新挂载须重建才生效。重建前停实际写入方并保真备份旧写层，不能直接换空卷。JSONL独立于pg_dump和RustFS，PAX只读备份→fresh卷恢复的步骤见[backup README](../deployments/backup/README.md#审计-jsonl-持久化与离线恢复2026-11-07)，真实导出/替换/恢复证据及限制见[B25报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b25-archive-persistence-2026-11-07.md)。默认180天DB/395天文件mtime不变；taskrunner两类执行日志永久保留不在本范围。
+
+2026-11-07承接前盘点：native archive与test写层均0文件，但test尚无持久挂载；app cron=false不代表manual回调禁用。5PG archive_mode均off、无运行pgbackup，不能把文档策略当运行备份。native三Go实际仍1.26.6，test为1.26.10旧B18组合；后续须核真实ELF、备份和挂载再更新，不靠启动hash推断当前产物。原生TR绝对SQLite路径与canonical CWD须同时保留。未知owner容器/他会话资源不清理。
+
 

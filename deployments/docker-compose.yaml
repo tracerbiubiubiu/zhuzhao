@@ -250,6 +250,8 @@ services:
       TASKRUNNER_SK: ${TASKRUNNER_SK:?TASKRUNNER_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:?INTERNAL_JOBS_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       TASKRUNNER_SELF_BASE_URL: ${TASKRUNNER_SELF_BASE_URL:-http://zhuzhao:33333}
+    volumes:
+      - app_archive:/app/data/archive # 审计 JSONL：容器替换后保留（out_dir 覆盖须同步挂载）
     ports:
       - "${APP_PORT:-33333}:33333"
     depends_on:
@@ -292,6 +294,7 @@ networks:
     external: true
 
 volumes:
+  app_archive:
   pg_data:
   redis_data:
   wal_archive:

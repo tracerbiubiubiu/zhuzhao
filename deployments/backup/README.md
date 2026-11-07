@@ -7,8 +7,90 @@
 | 逻辑备份 | `pg_dump -Fc`（pgbackup 侧车，每日 02:00） | 每日 | 14 份（`RETAIN_COUNT` 可调） |
 | 增量 | WAL 归档（postgres `archive_mode=on`，`archive_timeout=300s`） | 持续 | 随 `wal_archive` 卷 |
 | 对象存储 | `rclone sync` 主→备（rustfs-mirror 侧车，phase5 S5/B5-5） | `MIRROR_INTERVAL`（dev 1h；**RPO=周期**，附件场景日级可接受——显式登记不默认） | `--backup-dir` 天目录 14 个（`RETAIN_COUNT`）+ 目标桶**版本化**（RustFS 实测支持） |
+| 审计 JSONL | `audit_archive` 导出目录的专属卷；单独离线备份 | 按实际归档/备份窗口执行，本批不新增调度 | 本地文件按 mtime 保留 395 天（默认）；离线副本另行登记保留/销毁策略 |
 
 备份卷：`backups`（pg_dump 产物 zh-*.dump）、`wal_archive`（WAL 归档，pgbackup 只读挂载）。
+
+## 审计 JSONL 持久化与离线恢复（2026-11-07）
+
+`AuditArchiveJob.Handle`（`internal/service/audit_archive.go`）将过期的 `audit_logs`、
+`policy_evaluation_logs` 单批导出为**普通 JSONL**，文件 `Sync` 成功后删除同批 DB 行。
+这些文件不在后续 `pg_dump` 中，也不属于 RustFS 附件桶，必须独立备份。
+生产 Compose 的 `app_archive`、test Compose 的 `zt_app_archive` 均挂到
+`/app/data/archive`；实际卷名随 Compose project 前缀生成，以容器 Mounts 为准。
+镜像预建目录归属 `33333:33333`，新命名卷使用 Docker 默认 copy-up 保留该归属，
+无需把目录放宽到 777。已有宿主/卷数据或自定义运行用户需先核归属与写权限。
+
+默认 `audit.archive.out_dir=data/archive`，容器工作目录 `/app`。如果通过
+`APP_AUDIT_ARCHIVE_OUT_DIR` 覆盖目录，须同步调整挂载目标、备份路径和恢复路径；
+否则实际产物仍可能落入容器写层。native 进程用启动日志中的绝对目录为准，
+不能把宿主目录当成 Docker named volume。新增挂载只在 app **重建**后生效；
+重建前先备份原容器写层内的既有文件，再迁移到新卷，禁止直接删除原容器。
+
+### 备份与 fresh 卷恢复
+
+先停实际归档写入方：app 进程内 ticker 和 taskrunner 回调均不能在快照期间写入。
+可在维护窗口停止 app，使用实际部署的 `-f`/`-p`/env 组合；本批不会自动停止或重建环境。
+以下使用已在场 PostgreSQL 镜像的 GNU tar，源卷只读挂载，不安装包或增加常驻服务。
+归档含个人信息，产物保存在受限本地目录，随备份一起保存 SHA256 与文件
+`SHA/条数/UID/GID/mode/mtime` 清单；不上传到未登记的目的地。
+
+```sh
+set -eu
+# 设置实际容器名（test 对应 zt-app、zt-postgres）及已存在的受保护本地目录
+archive_app=zhuzhao-app
+archive_pg=zhuzhao-postgres
+archive_backup=/protected/local/audit-archive-YYYYMMDD.tar
+archive_volume="$(docker inspect "$archive_app" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/data/archive"}}{{.Name}}{{end}}{{end}}')"
+archive_tar_image="$(docker inspect "$archive_pg" --format '{{.Image}}')"
+test -n "$archive_volume" # 无 named volume 时先处理旧写层数据，勿导出空卷
+umask 077
+
+# 源卷只读，PAX 保留纳秒 mtime 与数字 UID/GID；GNU tar 要先核版本
+docker run --rm --network none --read-only --entrypoint tar \
+  "$archive_tar_image" --version
+docker run --rm --network none --read-only --user 33333:33333 \
+  --mount "type=volume,src=$archive_volume,dst=/archive,readonly" \
+  --entrypoint tar "$archive_tar_image" \
+  --format=pax --numeric-owner -cpf - -C /archive . > "$archive_backup"
+# 上一命令须 exit 0，再记哈希并核对清单，不能仅以 tar 文件存在判断成功
+shasum -a 256 "$archive_backup"
+
+# 只恢复到新建空卷，先核对备份哈希；恢复容器临时 root 用于保留所有者
+archive_restore_volume=zhuzhao-archive-restore-YYYYMMDD
+if docker volume inspect "$archive_restore_volume" >/dev/null 2>&1; then
+  echo "恢复卷已存在，请改用未占用名称" >&2
+  exit 1
+fi
+docker volume create "$archive_restore_volume"
+docker run --rm -i --network none --read-only --user 0:0 \
+  --mount "type=volume,src=$archive_restore_volume,dst=/archive" \
+  --entrypoint tar "$archive_tar_image" --same-owner -xpf - -C /archive \
+  < "$archive_backup"
+```
+
+恢复后以 app 实际用户核 JSONL 可逐行解析、条数/哈希与清单一致、UID/GID/mode/mtime
+保持，再在维护窗口显式把 app 指向恢复卷并验证。保留原卷供回退，勿在原卷上覆盖试恢复。
+本次所用 Docker 的 `docker cp` 默认 tar 流把文件所有者改成 root、mtime 截断到秒，
+隔离负向演练已检出；
+需保真时使用上面的 PAX 路径。生产首次接卷前的旧写层文件，同样须在停写后以
+PAX/数字所有者保真迁移并核对，不能以新增空卷遮住尚未备份的文件。
+
+### 保留范围与验证边界
+
+- DB 默认保留 180 天、单批 5000 行；文件默认保留 395 天。现有清理器仅扫描
+  `out_dir` **顶层 `.jsonl` 文件的 mtime**，不按文件名日期，不递归，不清理离线 tar；
+  恢复时重置 mtime 会改变清理时间。离线副本的期限、责任人与销毁方式需另行登记，
+  不因本批加卷而自动轮转。卷仍在同宿主机，不能等同异机备份。
+- 应用 `cron_enabled=false` 只关闭进程内 ticker；taskrunner 的 manual/cron 作业定义
+  仍须独立核对。本批不启用作业、不改保留天数；`task_runs` / `execution_logs`
+  的永久保留不在此次归档范围。
+- 2026-11-07 独立 PG（81 份真实迁移）+ 自有卷演练：真实 service 导出 3+2 条合成过期行，
+  DB 各保留 1 条新行；容器替换及 PAX 备份→fresh 卷恢复后，JSONL 解析/条数/SHA、
+  UID/GID/mode/纳秒 mtime 一致。仅合成夹具验证 400 天旧 mtime 文件删除，
+  1 天新 mtime 的旧文件名、非 JSONL 和子目录文件保留。常驻 dev/test 未应用或触发归档；
+  当前环境实际备份是否启用，仍须按运行容器与日志核验，不能从本策略表推定。
 
 ## 恢复步骤（pg_dump → 全量恢复）
 

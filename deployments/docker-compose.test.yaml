@@ -123,6 +123,7 @@ services:
       TASKRUNNER_SELF_BASE_URL: http://app:33333
     volumes:
       - ../deployments/config.test.yaml:/app/configs/config.yaml:ro
+      - zt_app_archive:/app/data/archive # 与生产同口径，独立于 DB/对象存储卷
     ports:
       - "33334:33333" # 调试直连（浏览器入口走 ui 48081）
     depends_on:
@@ -242,6 +243,7 @@ networks:
   zhuzhao_test:
 
 volumes:
+  zt_app_archive:
   zt_pgdata:
   zt_al_pgdata:
   zt_tr_pgdata:
