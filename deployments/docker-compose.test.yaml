@@ -37,7 +37,7 @@ services:
     volumes:
       - zt_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -146,7 +146,7 @@ services:
     volumes:
       - zt_al_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U activelist"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U activelist"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -183,7 +183,7 @@ services:
     volumes:
       - zt_tr_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U taskrunner"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U taskrunner"]
       interval: 5s
       timeout: 5s
       retries: 10

@@ -265,7 +265,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 ## 9. 开发/测试环境恢复与来源核对（2026-11-06）
 
-> 当前原工作树的旧 `dev-stack.sh` / `make dev` 仍有B13所列编排与端口接管问题，独立修复尚未承接；恢复现场不要执行旧一键入口。按已登记的容器/卷/进程身份恢复，或先独立验证修复分支。下文区分既有运行来源与待验证的启动修复。
+> 2026-11-07当前源码：主仓实际phase5已承接B13启动隔离与端口拒抢修复；下文11-06恢复二进制仍可能较旧，不能由当前HEAD推断运行产物已升级。先按§7核占用和实际容器/卷/PID来源，准备go.mod要求的SDK，再使用已验证入口；不接管其他进程或用新空卷冒充数据恢复。
 
 1. 先核 §7 占用，再按容器 labels 的 Compose project、service、实际卷名确认归属。现有开发主库/Redis 为 `zhuzhao-dev`，AL开发库历史默认项目 `deploy`、卷 `deploy_pgdata`；改 project 名会改变默认卷名，不能把新空库当作恢复旧数据。保留未知或其他会话资源，禁止全局 prune、按前缀清理和端口互杀。
 2. 优先恢复已有容器/原卷；主PG与AL PG先逻辑备份，TR使用SQLite时同时备份其库及待提交日志状态，不能复制仍在写入的单个db文件。确认依赖健康、显式迁移成功且schema非dirty，再启动应用；主dev Compose只有依赖，AL dev Compose只有PG，TR生产Compose不发布宿主端口，不能互相替代。标准入口与拓扑见 [deployments/README](../deployments/README.md)。
@@ -274,5 +274,11 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 5. 记录“源码hash/工作区→依赖pin→构建参数→镜像或二进制摘要→运行实例→探针/Chrome”的对应关系。`latest`标签、本仓HEAD、独立修复分支不相互替代；前端构建时明确开发/测试徽标。开发使用localhost、测试可用127.0.0.1区分浏览器host作用域，避免不同端口共享同名Cookie；浏览器临时视口/主题检查结束后恢复。
 
 本轮现场清单、私有env、PID、备份、截图及重启辅助仅存在忽略的 `.codex/audits/ECO-20261104/environment-recovery-20261106/`，不入Git/Docker；长期规则以本节和部署入口为准。需要沿用现场进程时，先运行该目录 `devctl.py status`，`start`只恢复记录的构建产物并拒绝接管其他端口/PID，不自动升级源码或覆盖数据。
+
+### 9.1 PostgreSQL空卷初始化的TCP就绪判定
+
+容器内健康探针显式指定`pg_isready -h 127.0.0.1`，保留原用户/库及时序。空卷初始化的临时PostgreSQL只开放Unix socket，无host探针可能提前返回0，下游跨容器TCP仍拒绝连接；`service_healthy`与后续自动重启不能弥补这个判定差异。
+
+三仓6份Compose的8处探针按此修正，未改镜像、角色、端口、卷或依赖。TCP可接入后，仍须依次确认显式迁移/绑定种子成功与应用`/readyz`或`/health/ready`，不把它当完整验收。专项8轮fresh卷的旧误绿/新真实AL就绪对照、初期fixture失败及精确资源回收见[B24报告](../deliverables/software-company/zhuzhao-ecosystem-audit-b24-postgres-readiness-2026-11-07.md)。当前只完成配置/专项验证，常驻环境和新的业务组合承接另验。
 
 
