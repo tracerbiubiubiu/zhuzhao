@@ -147,6 +147,30 @@ class EvidenceParserCLI(unittest.TestCase):
         self.assertEqual(result["frames_without_module"], 1)
         self.assertEqual(result["security_verdict"], "PENDING_PROJECT_IMPACT_REVIEW")
 
+    def test_binary_wildcard_marks_entire_target_limited(self):
+        self.config["scan_mode"] = "binary"
+        self.finding["finding"]["trace"][0]["function"] = "org/dep/*"
+        process, result = self.run_collect(self.messages + [self.finding], mode="binary")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertTrue(result["binary_fallback_detected"])
+        self.assertEqual(result["wildcard_finding_messages"], 1)
+        self.assertEqual(result["binary_symbol_precision"], "LIMITED_STRIPPED_BINARY_FALLBACK_DETECTED")
+        self.assertEqual(result["go_ids"], ["GO-2026-1234"])
+        self.assertEqual(result["security_verdict"], "PENDING_PROJECT_IMPACT_REVIEW")
+
+    def test_binary_named_frame_does_not_prove_precise_extraction(self):
+        self.config["scan_mode"] = "binary"
+        process, result = self.run_collect(self.messages + [self.finding], mode="binary")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertFalse(result["binary_fallback_detected"])
+        self.assertEqual(result["binary_symbol_precision"], "NOT_ESTABLISHED_FROM_JSON")
+        self.assertEqual(result["symbol_finding_messages"], 1)
+
+    def test_source_frames_are_not_binary_precision_evidence(self):
+        process, result = self.run_collect(self.messages + [self.finding])
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(result["binary_symbol_precision"], "NOT_APPLICABLE")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

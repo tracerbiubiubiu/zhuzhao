@@ -1,6 +1,6 @@
 # 生态全面审计 B16：Phase5安全验证（2026-11-07）
 
-> **执行中**：本批先补安全证据，再分批修复。UI生产依赖审计本轮无已知漏洞报告；四Go源码与三个真实ELF的本轮结果待真实扫描输出，不借普通CI绿宣称安全通过。B16-F01/P2已完成专项修复与反向变异，整仓门禁进行，尚未关单。本批无main合并、main PR、Phase6实施或正式发布。
+> **执行中**：本批先补安全证据，再分批修复。UI生产依赖审计本轮无已知漏洞报告；四Go源码与三个真实ELF已完成本轮采集并有发现待处置；主仓/AL的stripped二进制扫描仅有模块精度，不借普通CI绿宣称安全通过。B16-F01/P2已完成专项修复与反向变异，整仓门禁进行，尚未关单。本批无main合并、main PR、Phase6实施或正式发布。
 
 ## 范围与基线
 
@@ -12,7 +12,7 @@
 
 ## B16-F01 / P2：Secure配置行位于错误命名空间
 
-基线主仓09d224d（与前固定dc3生产内容相同）：[configs/config.yaml](../../configs/config.yaml)及[deployments/config.test.yaml](../../deployments/config.test.yaml)的`file_cookie_secure`位于`audit`段；实际消费是[config.go](../../internal/config/config.go)的`StorageConfig.FileCookieSecure`、`Load`及`storage.file_cookie_secure`绑定，最终由`SetFileSessionCookie`消费。Ruby YAML真实解析确认`audit.file_cookie_secure=false`而storage对应键缺失，不仅是注释或rg猜测。
+基线主仓09d224d（与前固定dc3生产内容相同）：[configs/config.yaml](../../configs/config.yaml)及[deployments/config.test.yaml](../../deployments/config.test.yaml)的`file_cookie_secure`位于`audit`段；实际字段为[storage/config.go的StorageConfig.FileCookieSecure](https://github.com/tracerbiubiubiu/zhuzhao/blob/09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b/internal/pkg/storage/config.go#L31)，经[config.go的Load/BindEnv](https://github.com/tracerbiubiubiu/zhuzhao/blob/09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b/internal/config/config.go#L351)读取，最终由[SetFileSessionCookie](https://github.com/tracerbiubiubiu/zhuzhao/blob/09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b/internal/middleware/fileauth.go#L19)消费；原错位行分别为[基线配置L75](https://github.com/tracerbiubiubiu/zhuzhao/blob/09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b/configs/config.yaml#L75)、[test配置L80](https://github.com/tracerbiubiubiu/zhuzhao/blob/09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b/deployments/config.test.yaml#L80)。Ruby YAML真实解析确认`audit.file_cookie_secure=false`而storage对应键缺失，不仅是注释或rg猜测。
 
 当前dev/test是HTTP且缺省false，本批未证明泄露或绕过；`STORAGE_FILE_COOKIE_SECURE`环境覆盖和Secure setter已有实现。问题是编辑模板该行true不能到达真实Storage字段，按安全配置合同偏差P2，不升P1或推断生产已受影响。
 
@@ -24,7 +24,28 @@
 
 本机固定官方工具获取在约5分钟预算后停止：精确依赖ZIP不完整、h1未闭合，未产出可执行文件，未运行source或binary扫描；失败与partial保留，未替换依赖/关闭sumdb/改全局配置。后续改用[go-security.yml](../../.github/workflows/go-security.yml)在隔离runner采集四模块源码，官方v1.4.0工具及实际依赖h1独立校验；另交叉构建Darwin arm64官方工具并保存SHA/构建信息，供本机对三真实ELF扫描。
 
-[parse-govulncheck.py](../../scripts/parse-govulncheck.py)完整解码JSON对象流，区分执行失败、findings待分级及限定配置无发现；source调用链与binary符号存在分开，binary Go版本按SBOM核。缺module frame仍保留待分级；不能按JSON exit0、仅有OSV元数据或CI采集成功宣称零漏洞。[离线回归](../../scripts/test-parse-govulncheck.py)20/20通过，覆盖截断/非法JSON、缺config/SBOM、源变化/错误Go/目标及exit0有发现等假绿路径。该workflow是证据采集，不是自动安全批准/升级或发布授权。
+[parse-govulncheck.py](../../scripts/parse-govulncheck.py)完整解码JSON对象流，区分执行失败、findings待分级及限定配置无发现；source报告的调用链与binary精度分开，binary Go版本按SBOM核。缺module frame仍保留待分级；不能按JSON exit0、仅有OSV元数据或CI采集成功宣称零漏洞。[离线回归](../../scripts/test-parse-govulncheck.py)最初20/20通过，补stripped回退解释后23/23通过，覆盖截断/非法JSON、缺config/SBOM、源变化/错误Go/目标及exit0有发现等假绿路径。该workflow是证据采集，不是自动安全批准/升级或发布授权。
+
+## 本轮Go采集结果与分批处置
+
+[准确191d6e5的Actions运行](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/42333853841)五jobs采集成功；四源码artifact均核GitHub archive digest后安全解包，用固定191解析器离线重放一致。数据库更新时间`2026-11-05T23:49:57Z`。源码独立GO-ID数：主仓34（17个有symbol级报告）、AL18（9）、utils18（11）、TR9（5）；跨仓合并为34个GO-ID、39个GO-ID+模块组合、6个受影响模块，不能加总为漏洞或可利用项数。
+
+官方Darwin工具ZIP digest与GitHub一致，实际本机`go version -m`及官方v1.4.0/依赖h1再核，工具SHA为`25ad1de33f62bc5557214b2bfdfc77a86f6b5fe7e765ce074ba79a776fd57047`。本机三真实ELF扫描均exit0、前后SHA不变、完整JSON解析通过：主仓33、AL17、TR9个GO-ID。主仓/AL剥离符号，v1.4.0的[binary回退规则](https://github.com/golang/vuln/blob/v1.4.0/internal/vulncheck/binary.go#L107)会把受影响模块的OSV符号全集合成函数frame，含OpenPGP通配符；**两份整份结果仅模块精度**，不能称这些函数存在或可达。TR的具名符号也不证明业务调用图/利用路径。解析器保留原始发现并显式标出全目标精度限制，新增三条真实CLI回归；旧解析结果保留，不覆盖原始JSON。
+
+### B16-F02 / P1：受审运行构建仍含已修复的Go标准库版本
+
+主仓、AL真实ELF为Go1.26.6，包含官方已修复区间；TR已1.26.10。Go[官方发布记录](https://go.dev/doc/devel/release#go1.26.10)及[GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)确认同1.26分支最小统一目标1.26.10；不要求跳1.27。受审源码锚点为[主仓go.mod](https://github.com/tracerbiubiubiu/zhuzhao/blob/191d6e5efb3dd92d74f9943d803fd3f97f605f23/go.mod#L3)及构建入口的`go`版本控制；实际产物SHA/Go信息以本轮manifest为准，不用go.mod最低版本替代真实编译版本。
+
+该P1为已知受影响运行构建的处置优先级，未证明当前HTTP部署存在可利用的HTTP2攻击、证书链绕过或已发生入侵。下一修复批将统一固定安全补丁、重建并重扫实际产物、完整功能门禁后再关闭；改go.mod或CI绿均不能单独关闭部署版本问题。
+
+### B16-F03 / P2：依赖图公告与真实入口需分层收敛
+
+- `golang.org/x/net`目标正式v0.62.0；旧兄弟v0.57.0/主v0.60.0与本轮公告范围相交。主仓[go.mod的x/net](https://github.com/tracerbiubiubiu/zhuzhao/blob/191d6e5efb3dd92d74f9943d803fd3f97f605f23/go.mod#L148)为可复核锚点，HTTP2与html的包/symbol命中分列，不凭module存在断言当前输入可触发。
+- 主仓`excelize/v2`目标正式v2.11.1，覆盖所报全部修复；当前[ticket_export.go的导出入口](https://github.com/tracerbiubiubiu/zhuzhao/blob/191d6e5efb3dd92d74f9943d803fd3f97f605f23/internal/handler/ticket_export.go#L60)只用`NewFile`、固定列流式导出，无用户工作簿导入/公式求值。source把embedded模板读取或宽泛OSV符号列入报告，不能称已证任意XLSX/公式DoS。
+- `quic-go`正式v0.59.1、主仓`compress`正式v1.20.2是已有修复候选；当前生产没有RunQUIC/HTTP3配置，compress在源码仅module命中，不新报线上崩溃。优先随兼容的小批升级收敛，不增加新协议/新能力。
+- `x/crypto`的GO-2026-5932仅已弃OpenPGP模块包，四源码均无package/symbol命中；当前正式最新v0.58.0仍可有module提示，不能误指bcrypt或整个crypto。没有正式v0.59.0；不为凑零报告强塞删除OpenPGP的pseudo-version，保留未导入证据与后续触发条件。上项升级自然带到v0.58.0时仍须照实记module提示。
+
+源码`./...`的调用分析可能包括Gin未启用的导出入口或保守接边；本批没有把扫描器frame逐条升格为已确认业务漏洞。F02/F03先登记、再按最小版本批修与重扫，不在本报告偷换成已修复。
 
 ## 前端与部署安全差集
 
@@ -38,4 +59,4 @@
 
 ## 记录与后续出口
 
-原始命令/JSON/配置解析/只读DB聚合、分支逐ref表、归档bundle与恢复说明仅存主仓ignored `.codex/audits/ECO-20261104/security-20261107/`。正式结论入本报告及项目控制台；分批修复按发现编号/固定hash/原与变异证据记录，完成必要门禁后才关单。四源码/三ELF逐目标待补PASS/发现待处置/LIMITED，工具与DB时点、真实构建版本不缺省为零。本批不涉及稳定性下一批或Phase6实现。
+原始命令/JSON/配置解析/只读DB聚合、分支逐ref表、归档bundle与恢复说明仅存主仓ignored `.codex/audits/ECO-20261104/security-20261107/`。正式结论入本报告及项目控制台；分批修复按发现编号/固定hash/原与变异证据记录，完成必要门禁后才关单。四源码/三ELF均已采集、发现待处置；主/AL二进制明确LIMITED，工具与DB时点、真实构建版本不缺省为零。本批不涉及稳定性下一批或Phase6实现。

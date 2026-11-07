@@ -1,6 +1,6 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-07 B16安全验证执行中**：[B16报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主仓/UI候选已正常合流至实际phase5（09d224d/01c5dea），后续直接在phase5修复；三个Go兄弟继续Phase5用途的codex/phase5-audit。56本地分支收敛到10，46旧heads有archive ref与完整bundle、54工作树目录保留，main未动。UI生产依赖审计本轮0报告；Go本地工具获取失败后已推191d6e5隔离CI采集，四源码/三真实ELF须以本轮逐项结果为准，采集绿不等于安全通过。B16-F01/P2（两模板Secure配置层级）专项/稳定变异已过，整仓门禁待，不提前关单。不准备main PR/Phase6，不新增正式tag/release/生产部署。下面带日期段落为各历史时点。
+> **2026-11-07 B16安全验证执行中**：[B16报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主仓/UI候选已正常合流至实际phase5（09d224d/01c5dea），后续直接在phase5修复；三个Go兄弟继续Phase5用途的codex/phase5-audit。56本地分支收敛到10，46旧heads有archive ref与完整bundle、54工作树目录保留，main未动。UI生产依赖审计本轮0报告；四Go源码/三真实ELF均已采集并有发现，主/AL stripped ELF仅模块精度，F02/P1运行Go补丁及F03/P2依赖图待批修，采集绿不等于安全通过。B16-F01/P2（两模板Secure配置层级）专项/稳定变异已过，整仓门禁待，不提前关单。不准备main PR/Phase6，不新增正式tag/release/生产部署。下面带日期段落为各历史时点。
 
 > **2026-11-07剩余项分流（仅计划，未实施）**：[总报告后续建议](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md#剩余项分流与下一步建议2026-11-07)已把Go补扫/四P2、当前小残留、Phase6前置与随行、外部依赖/量级触发分开；旧已修P2不重开。优先补安全证据和回滚/工具/E2E稳定性，再排ID合同/dbtx试点/L-5。Go仍NOT_RUN、未修新项或新跑门禁；main继续暂停；Phase6须待Phase5合main后从main切出（11-07所有者最新顺序）。原冻结修复/运行结论不因排序改变，历史债SSOT仍为Phase5/6台账。
 
@@ -337,7 +337,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 已test承接dc3，未合main/生产；头像同类F20也在同轮关闭，不扩成所有未来并发安全保证 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
 | B15横切边界 | 存储numeric ID/手写string、make wire工具sum、定制引用回滚前置及W5夹具节奏四P2；down79的23503实测完整回滚、P1候选撤销 | 统一记账不扩本冻结批；三迁移静态线索未确认，162 SQL全文与fresh往返范围分列，详B15 |
-| B16五仓安全验证 | UI生产依赖本轮0报告；四Go源码/三真实ELF正在补证，不能继承普通CI绿；F01/P2配置层级专项/变异已过、整仓门禁待 | 主仓/UI实际phase5，兄弟Phase5用途短分支；main未动，未启Secure/归档或改常驻运行配置，详B16 |
+| B16五仓安全验证 | UI生产依赖本轮0报告；四Go源码/三真实ELF均已采集，合并34 GO-ID待影响分级，主/AL stripped二进制仅模块精度；F01/P2专项/变异过、整仓门禁待，F02/P1运行Go补丁及F03/P2依赖图待批修 | 主仓/UI实际phase5，兄弟Phase5用途短分支；采集绿不是安全批准，main未动，未启Secure/归档或改常驻运行配置，详B16 |
 | 文档与历史债 | B10五组校准、130篇全文基线及最终差异、101编号债逐行映射均已核，五仓总报告已收口 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归；Go漏洞可达扫描NOT_RUN，许可证/SBOM未作认证 |
 
 ### 历史底座记录

@@ -200,12 +200,26 @@ def collect(args):
             level = "symbol" if first.get("function") else "package" if first.get("package") else "module"
             findings.append({"level": level, **finding})
         ids = sorted({f["osv"] for f in findings})
+        # v1.4.0 falls back to every known vulnerable symbol in affected
+        # modules when a binary has no symbol table. Those JSON frames still
+        # contain function names; a package wildcard proves fallback, but its
+        # absence does not prove precise extraction. Never call these frames
+        # physical symbol-presence or runtime reachability evidence.
+        wildcards = sum(any("*" in str(frame.get("function", ""))
+                            for frame in finding["trace"]) for finding in findings)
+        binary_fallback = args.mode == "binary" and wildcards > 0
         result.update({"findings": findings, "go_ids": ids, "finding_messages": len(findings),
                        "symbol_finding_messages": sum(f["level"] == "symbol" for f in findings),
+                       "wildcard_finding_messages": wildcards,
+                       "binary_fallback_detected": binary_fallback,
+                       "binary_symbol_precision": (
+                           "LIMITED_STRIPPED_BINARY_FALLBACK_DETECTED" if binary_fallback
+                           else "NOT_ESTABLISHED_FROM_JSON" if args.mode == "binary"
+                           else "NOT_APPLICABLE"),
                        "frames_without_module": sum(not frame.get("module") for finding in findings
                                                     for frame in finding["trace"]),
                        "findings_present": bool(findings),
-                       "interpretation": "Source traces and binary symbol presence require separate project-impact review; not an exploitability certificate."})
+                       "interpretation": "Levels count reported JSON frames. Source traces and binary precision require separate project-impact review; function frames alone do not prove binary symbol presence or runtime reachability."})
         if not result["errors"]:
             result["status"] = ("EVIDENCE_COLLECTED_FINDINGS_REQUIRE_TRIAGE" if findings
                                 else "EVIDENCE_COLLECTED_NO_FINDINGS_REPORTED")
