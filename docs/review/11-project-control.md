@@ -1,10 +1,10 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-07 B16安全验证执行中**：[B16报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主仓/UI候选已正常合流至实际phase5（09d224d/01c5dea），后续直接在phase5修复；三个Go兄弟继续Phase5用途的codex/phase5-audit。56本地分支收敛到10，46旧heads有archive ref与完整bundle、54工作树目录保留，main未动。UI生产依赖审计本轮0报告；四Go源码/三真实ELF均已采集并有发现，主/AL stripped ELF仅模块精度，F02/P1运行Go补丁及F03/P2依赖图待批修，采集绿不等于安全通过。B16-F01/P2（两模板Secure配置层级）专项/稳定变异和整仓门禁、253/81往返通过，代码层关闭。不准备main PR/Phase6，不新增正式tag/release/生产部署。下面带日期段落为各历史时点。
+> **2026-11-07 B16/B17安全验证与修复收口**：[正式报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主603c1b6、ALdb6a17b、TR1e31e3e、utils563785a准确CI全绿；四源码/三真实新ELF只剩未消费OpenPGP模块提示，包/调用链0，不称绝对零漏洞。原样253/0/0、81对往返及96次最低版本守卫变异有效，覆盖率20.29%仅普通tag内部包。保留test三Go应用已Go1.26.10并承接F01正确配置只读源，其他23容器及所有卷/网络保持；原生dev/main/生产未承接本批产物。主仓/UI仍实际phase5，兄弟为Phase5用途短分支；本地56→10分支有完整归档，54工作树目录保留。原B15四P2/历史债及本机SDK获取限制继续记账，不开始Phase6、不准备main PR/正式发布。下面带日期段落为各历史时点。
 
-> **2026-11-07剩余项分流（仅计划，未实施）**：[总报告后续建议](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md#剩余项分流与下一步建议2026-11-07)已把Go补扫/四P2、当前小残留、Phase6前置与随行、外部依赖/量级触发分开；旧已修P2不重开。优先补安全证据和回滚/工具/E2E稳定性，再排ID合同/dbtx试点/L-5。Go仍NOT_RUN、未修新项或新跑门禁；main继续暂停；Phase6须待Phase5合main后从main切出（11-07所有者最新顺序）。原冻结修复/运行结论不因排序改变，历史债SSOT仍为Phase5/6台账。
+> **2026-11-07开工前的剩余项分流（历史计划时点）**：[总报告后续建议](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md#剩余项分流与下一步建议2026-11-07)把Go补扫/四P2、当前小残留、Phase6前置与随行、外部依赖/量级触发分开；旧已修P2不重开。当时Go为NOT_RUN；当前安全补证/修复已见首段B16/B17，后续继续回滚/工具/E2E稳定性，再排ID合同/dbtx试点/L-5。main继续暂停；Phase6须待Phase5合main后从main切出，历史债SSOT仍为Phase5/6台账。
 
-> **2026-11-06全面审计收口**：[五仓总报告](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)已收口设计/实现/关键实践与二次复验，7P0/39P1在固定修复范围关闭；test承接dc3/AL60/TR eb3/UI c9，main/生产未承接，dev原版仍有已登记F08。130篇文档、156生产Go、162 SQL/81对及101债编号覆盖已核，未来能力/开放债不虚销账。B15四P2继续挂账；Go漏洞可达扫描因精确工具依赖获取超时为NOT_RUN、结果未知，不能称零漏洞或供应链认证。下列带日期进度为历史时点，当前以本段和§6为准。
+> **2026-11-06全面审计收口**：[五仓总报告](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)已收口设计/实现/关键实践与二次复验，7P0/39P1在固定修复范围关闭；test承接dc3/AL60/TR eb3/UI c9，main/生产未承接，dev原版仍有已登记F08。130篇文档、156生产Go、162 SQL/81对及101债编号覆盖已核，未来能力/开放债不虚销账。B15四P2继续挂账；Go漏洞可达扫描因精确工具依赖获取超时为NOT_RUN、结果未知，不能称零漏洞或供应链认证。下列带日期进度为历史时点；当前以首段B16/B17及§6为准。
 
 > **2026-11-06最终前端/Chrome收口**：c9+dc3/AL60/TR eb3完成六件门禁及原样41首过（139.286s，配置retry1、实际0retry/flaky/skip），B08原14项限定范围关闭；Chrome重载最终产物的首页/列表/表单/退出重登、1024浅暗均过，暗按钮5.947、console error0，已恢复浅色/默认视口。早两轮夹具失败及HTTP429仍保留，W5节奏P2见B15；dev旧b205不随此修复，未合main/生产。
 
@@ -337,9 +337,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | B14资料/安全状态 | f917c64原/修复/变异及原生专项过，最终dc3完整门禁/253/81通过，代码复验关闭 | 已test承接dc3，未合main/生产；头像同类F20也在同轮关闭，不扩成所有未来并发安全保证 |
 | B13环境/启动 | dev保卷恢复4宿主服务，test固定版本在线，真实Chrome代表走查已核；启动候选760a583固定679文件零差异、19桩回归过/五类变异各8红 | 端口表准确登记test33334/UI48081/RustFS59000及第二dev33335须核归属；候选真实启停/构建与完整门禁边界保留，未合main，不以healthy/命令桩代替验收 |
 | B15横切边界 | 存储numeric ID/手写string、make wire工具sum、定制引用回滚前置及W5夹具节奏四P2；down79的23503实测完整回滚、P1候选撤销 | 统一记账不扩本冻结批；三迁移静态线索未确认，162 SQL全文与fresh往返范围分列，详B15 |
-| B16五仓安全验证 | UI生产依赖本轮0报告；四Go源码/三真实ELF均已采集，合并34 GO-ID待影响分级，主/AL stripped二进制仅模块精度；F01/P2以bcdf133专项/变异及lint/unit/原生integration572.033s/cover/253与81对全过、代码关闭；F02/P1运行Go补丁及F03/P2依赖图待批修 | 主仓/UI实际phase5，兄弟Phase5用途短分支；采集绿不是安全批准，main未动，未启Secure/归档或改常驻运行配置，提交元数据补录见B16 |
-| B17安全依赖修复候选 | 四Go模块/三构建入口统一1.26.10及net62/quic59.1，主仓另Excelize2.11.1/compress1.20.2；ALdb6/TR1e31/utils5637准确CI全绿，主仓完整原Make CI与新组合253/81、四source复扫待 | 三新真实ELF已重建，兄弟先行复扫仅未导入OpenPGP提示；F02/F03仍待联合收口，未合main/正式发布/生产承接 |
-| 文档与历史债 | B10五组校准、130篇全文基线及最终差异、101编号债逐行映射均已核，五仓总报告已收口 | L-5主体未销账，其余未来/已接受取舍不当成当前功能回归；Go漏洞可达扫描NOT_RUN，许可证/SBOM未作认证 |
+| B16五仓安全验证 | UI生产依赖本轮0报告；首轮34 GO-ID已分层复验，F01/P2以bcdf133专项/稳定变异及完整门禁关闭，test配置源已切正确模板 | 主/AL stripped仅模块精度，TR符号不等于调用图；两fix提交元数据缺项已如实补录，不改已推历史，main未动 |
+| B17安全依赖修复 | 主603/ALdb6/TR1e31/utils5637准确CI、原253/81、新3ELF/4source复扫、最低版本96次ABA均过；Go1.26.10及net62/quic59.1，主另Excelize2.11.1/compress1.20.2 | F02在代码/test关闭，F03已升依赖、唯一OpenPGP模块提示按未导入边界保留；test已承接，原生dev/main/生产未切，无正式发布 |
+| 文档与历史债 | B10五组校准、130篇全文基线及最终差异、101编号债逐行映射均已核，五仓总报告已收口 | L-5主体未销账，其余未来/已接受取舍不当当前回归；Go源码/真实ELF补扫已B16/B17完成，许可证/完整供应链认证不扩大 |
 
 ### 历史底座记录
 

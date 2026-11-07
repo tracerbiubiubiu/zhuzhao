@@ -216,10 +216,11 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
-   | B16/B17五仓安全验证与依赖修复（root协调；root唯一提交/推送） | B16已bcdf133提交并推；B17三兄弟db6/1e31/5637提交推送、准确CI绿，主仓mod/sum/构建及CI候选待准确CI/Go重扫/8容器253与81对；正式报告/控制台/本台账 | 本地SDK/工具路径失败已留证，完整门禁改远端原Make目标；本地仅自有新runtime栈，不改共享数据，不合main/Phase6 | 2026-11-07 |
    | （收尾自填；收口后清行） | | | |
 
-2026-11-07当前操作边界：主仓/UI已将审计候选正常合流至实际phase5（09d224d/01c5dea），后续修改基于phase5；三个Go兄弟仍用Phase5用途的 `codex/phase5-audit`。root为本批唯一提交/推送者，只推已核分支，不推main、不准备main PR、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建。本地56分支收敛到10，46旧heads有archive ref及五份完整bundle，40旧工作树同hash detach、54目录与原证据保留；临时独立验证工作树另计，结束只收回本轮自建资源。禁止全局clean/reset/prune；证据、备份、原卷和其他会话资源保留。分支逐项清理/恢复收据仅主仓ignored `.codex/audits/ECO-20261104/security-20261107/branch-cleanup/`，不纳Git/Docker。B16门禁仅用自有隔离栈，不改常驻dev/test数据或配置。
+2026-11-07当前操作边界：主仓/UI已将审计候选正常合流至实际phase5（09d224d/01c5dea），后续修改基于phase5；三个Go兄弟仍用Phase5用途的 `codex/phase5-audit`。root为本批唯一提交/推送者，只推已核分支，不推main、不准备main PR、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建。本地56分支收敛到10，46旧heads有archive ref及五份完整bundle，40旧工作树同hash detach、54目录与原证据保留；临时独立验证工作树另计，结束只收回本轮自建资源。禁止全局clean/reset/prune；证据、备份、原卷和其他会话资源保留。分支逐项清理/恢复收据仅主仓ignored `.codex/audits/ECO-20261104/security-20261107/branch-cleanup/`，不纳Git/Docker。B16/B17破坏性验收仅用自有隔离栈；保留test三应用与F01配置源承接另见下一段，业务数据和原生dev保持。
+
+2026-11-07 B16/B17收口交接（非在途占用）：主603c1b6/ALdb6a17b/TR1e31e3e/utils563785a准确CI全绿，四source/三实际ELF复扫只余未消费OpenPGP模块提示，253/81在自有8容器完成并精确回收。保留test仅3Go应用承接已验收ELF及F01正确只读配置源，端口/网络/所有原卷/Env值保持，含UI在内的23个非目标容器不变；3PG备份、旧images/反向override及失败回退收据仅ignored本轮`b17-environment/`。共享环境未跑acceptance、未改E000001或其它账号角色。原生dev/main/生产未切换，后继仍先核实际PID/image/配置来源；本机原生SDK获取失败，不能把旧Go1.26.6当新门禁工具，完整原Make目标已由准确603的Go1.26.10 Ubuntu CI验证。Go最小版本前置按go.mod，不降低floor绕过；后续本地SDK/工具整理继续Phase5，不提前建Phase6。
 
 2026-11-06审计交接已收口（非在途占用）：[五仓总报告](../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)。test=app dc3/AL60/TR eb3/UI c9，固定来源与镜像已核；dev保留原工作树/原卷，旧UI F08仍有。临时验收/PG/浏览器夹具已精确回收，常驻测试环境留供使用，其它会话cmpfull资源保留。代码/正式文档均路径提交、未合main；仅utils修复分支已推。Go漏洞可达扫描NOT_RUN，原日志/备份/截图与环境重启辅助仅主仓ignored `.codex`，不纳Git/Docker。后继操作先核当前端口/PID/镜像与下节环境来源，不用此历史交接替代实时归属检查。
 

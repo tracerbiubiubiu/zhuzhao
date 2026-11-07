@@ -1,6 +1,6 @@
 # 生态全面审计 B16：Phase5安全验证（2026-11-07）
 
-> **安全修复继续分批执行**：UI生产依赖审计本轮无已知漏洞报告；四Go源码与三个真实ELF已完成本轮采集并有发现待处置；主仓/AL的stripped二进制扫描仅有模块精度，不借普通CI绿宣称安全通过。B16-F01/P2专项、反变异及整仓门禁已通过，在代码层关闭；F02/P1与F03/P2依赖升级由下一小批继续，不提前销账。本批无main合并、main PR、Phase6实施或正式发布。
+> **B16安全补证与B17修复复验收口**：F01/P2配置层级、F02/P1受审Go运行构建及F03/P2依赖版本升级已完成本批代码和测试栈验证；保留测试栈承接三新Go1.26.10产物及正确配置模板。四源码/三真实ELF复扫仅剩未消费的OpenPGP模块提示，不称绝对零漏洞；主仓/AL stripped扫描精度限制保留。完整CI、253/81、真实E8同Host直传与版本守卫变异均有效。原生dev、main及生产未承接本批运行产物，Phase6未开始，无main PR或正式发布。以下首轮/候选段保留当时状态，当前以“最终复验与承接”节为准。
 
 ## 范围与基线
 
@@ -53,7 +53,7 @@
 
 源码`./...`的调用分析可能包括Gin未启用的导出入口或保守接边；本批没有把扫描器frame逐条升格为已确认业务漏洞。F02/F03先登记、再按最小版本批修与重扫，不在本报告偷换成已修复。
 
-## B17依赖修复候选与联合复验窗口
+## B17依赖修复候选与联合复验窗口（提交时状态）
 
 本小批仍为Phase5，承接B16-F02/F03。主仓基于bcdf133准备（3b721b4仅补Markdown），三兄弟分别基于50314a7/2135232/481c7ec。四Go模块最低版本及三Docker构建入口统一1.26.10；CI沿go.mod精确选版，旧本地编译器需安装或允许自动下载该SDK。主仓/UI分支归属不变，没有main合并或正式发布。
 
@@ -64,6 +64,38 @@
 三个新linux/arm64、CGO0运行ELF均已按原生产buildflags重建：主仓`8709ba31478bee57c1fe58dedbe2c556a32ff54e19d1c7309b6a2a4a8bfe8a6e`、AL `b3ed59569cbc4fd7709a8c62f6dab8dadd120808c0ae37b8af8e0b84a2affc9b`、TR `69d73b46500d2c3426a99f130d272b95b47dcb66e7a140658a5f8ba17fb2fc2d`，全部实际Go1.26.10。AL/TR先行复扫均exit0、JSON完整、SHA未变，仅剩5932；AL仍仅模块精度，TR该项仅module，不能称绝对零漏洞或已验证OpenPGP可用。
 
 本机原生SDK获取先遇官方JSON TLS失败，另一次经官方toolchain模块机制/独立cache/开启sumdb的下载180s超时，无完整可信SDK；Linux工具镜像apk安装也在有界获取后取消，未跑过的race/PG均未伪记通过。改为准确新提交的Ubuntu CI执行原`make lint/test-unit/test-integration/test-cover`，集成维持race/p1、保留Wire守卫；不是删门禁绕过。主仓完整CI、四源码与主ELF复扫、新8容器原样253/81尚待，F02/F03暂不关单。已过的F01旧门禁不充当本批新依赖验证。
+
+## 最终复验与承接
+
+**代码固定点**：主仓`603c1b64810bfa5c1fa4688b7ea413747e372d27`；AL/TR/utils为上一节三个完整SHA。主仓[准确提交的普通CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/42338549931)三个job全过：原`make lint`（vet/gofmt/Swagger）、`make test-unit`、`make test-integration`（原样`-v -race -count=1 -p 1 -tags=integration`，整job12m39s）、`make test-cover`，加Wire再生零差和四套脚本回归；实际Go1.26.10 linux/amd64，集成原始日志无FAIL/SKIP。覆盖率原profile为2041/10059=20.2903%，仅普通tag内部包单测，未计集成覆盖，不以不同平台的旧20.4%宣称提升。
+
+**源码和真实产物复扫**：[准确603的安全证据CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/42338549928)四源码/工具五job全过，artifact SHA与API一致，固定603解析器重放一致，全部tracked文件逐一匹配对应Git对象、前后无漂移，官方工具及依赖h1闭合。四源码各只有GO-2026-5932一条module finding，package/symbol均0；生产配置下的605/393/440/370包依赖清单没有OpenPGP前缀。主仓/AL/TR三新实际ELF也各仅5932、扫描exit0且前后SHA一致；strip和TR无调用图的精度边界不变。原其它GO-ID已不再被本轮配置报告，未将“CI采集成功”或宽泛OSV符号当可利用性结论。
+
+**原样生态验收**：同三ELF在独立新8容器栈通过`make migrate-up`及原`make acceptance`：253PASS/0FAIL/0SKIP（124+68+26+35），81对迁移往返零漂移，schema前后81|f；隔离E000001终态admin12345真实bcrypt验证通过。专属E8账号完成Login→presign→保持签名Host的真实PUT200；JWT/签名值未留档。主源码726文件前后不变，8容器/7卷/1网精确回收，外部容器及网卷前后完全一致。S3同Host DNS夹具仅用于这一隔离拓扑；保留栈原有共同可达endpoint和CORS另经只读核验，不借夹具误报原栈DNS故障。
+
+首轮原make实际252/0/0且81对过，采集器的253硬断言失败；唯一少项为`#MSG-8 runs 观测面`，宿主环境漏传原脚本条件`TASKRUNNER_BASE_URL`，不是MCP或产品回归。第二轮仅补宿主本轮loopback地址、app仍内部服务名，在完整新栈原样重跑253/81；首轮与差集未覆盖。依赖解析初次临时ZIP错误、原SDK/工具获取失败也保留，没有把补充CGO0普通测试冒称race/完整PG。
+
+**最低版本守卫**：四真实模块mod/sum固定后，旧Go1.26.6在GOTOOLCHAIN=local/无网络/无缓存下各8轮被最低1.26.10拒绝；仅降低副本floor到1.26.0各8轮放行，恢复后各8轮再拒绝，共96次。固定Go1.26.10四模块正控通过。这只证明模块版本前置，不冒称已用旧Go实际编译或复现漏洞利用。
+
+**保留测试栈**：仅替换`zhuzhao_test`的app/activelist/taskrunner为同三新ELF；新image只改变已验收runtime的metadata，运行文件字节不变，真实revision分别绑定603/db6/1e31。先留3份PG custom备份并核SHA/只读目录，保留准确旧image/反向override；TR原两个匿名卷、PG/Redis/RustFS/UI、网络/端口与全部Env键值保持。app的只读配置源改指当前phase5的`deployments/config.test.yaml`（SHA52ff6b3d…），语义仅已验收F01键路径修正，其他值全等。三ready、三ELF/Go1.26.10及无token401只读边界均核；没有对共享库跑acceptance或改账号角色。原生dev未切换，main/生产未承接，不将健康探针扩大为整站认证。
+
+配置挂载切换首次因附加metadata断言失败已自动回退到上一健康B17镜像/旧bind；采集器确有错误的Env原始list顺序比较，原/新键均唯一、canonical键值相同。首次具体失败行及已删中间容器ID未完整采集，不能把该谓词猜成已证首因；缺口原样登记。唯一一次改用逐checkpoint/唯一键canonical比较的重做通过，最终只三目标容器变化，其他资源保持，未隐去失败或伪造中间ID。
+
+**处置口径**：F01与F02在上述代码/保留test范围关闭，F03的已发布依赖修复完成；5932保留为未导入OpenPGP的模块级边界。后续出现实际OpenPGP导入或新的正式修复版本时重开对应处置，当前不强塞删除API的pseudo，也不说零漏洞。许可证、所有镜像OS组件、原生dev和生产不在本批安全认证范围。本地SDK获取仍受阻，后续原生dev/本地工具链整理继续按Phase5安排；原B15四P2及历史债没有随本批虚销账。
+
+## 本批提交窗口
+
+主仓提交按实际phase5 first-parent窗口`17da0a3ae51f93f9ee2d05cf55fa7bae6cec5824..603c1b64810bfa5c1fa4688b7ea413747e372d27`逐笔为：
+
+- `09d224dca1fdeaf9e2e70e8bf7dd5aaedd3ee31b`：正常承接既有已审候选，结果树等于cc8；第二亲携带的旧审计历史不重计为本批新修复。
+- `191d6e5efb3dd92d74f9943d803fd3f97f605f23`：隔离安全证据采集。
+- `f0e000490bf35ce1377ab199b6c7dc3e6906f602`：B16/分支归档正式记录。
+- `bb3bfc65c7e8ae733f2bc1b3e0517a13a04111e4`：stripped精度解释与CLI回归。
+- `bcdf133a8e014577dd5d99e580f73e4dab437b5e`：F01配置与专项/整仓验收收口。
+- `3b721b4484c559f1c9349de9091d2cb2a4de2687`：完整hash/提交关联补录。
+- `603c1b64810bfa5c1fa4688b7ea413747e372d27`：B17依赖、编译版本与CI原Make目标。
+
+UI本批只正常合流`01c5deae23e677853316f1ee2dd692c708246651`，树等于51d；AL/TR/utils各一笔B17新修复hash如上。报告收口的后续纯Markdown提交另计，不改变上述被测源码或运行产物来源；不用包含第二亲历史的普通双点log冒称本批仅七笔全部历史。
 
 ## 前端与部署安全差集
 
@@ -77,4 +109,4 @@
 
 ## 记录与后续出口
 
-原始命令/JSON/配置解析/只读DB聚合、分支逐ref表、归档bundle与恢复说明仅存主仓ignored `.codex/audits/ECO-20261104/security-20261107/`。正式结论入本报告及项目控制台；分批修复按发现编号/固定hash/原与变异证据记录，完成必要门禁后才关单。四源码/三ELF均已采集、发现待处置；主/AL二进制明确LIMITED，工具与DB时点、真实构建版本不缺省为零。本批不涉及稳定性下一批或Phase6实现。
+原始命令/JSON/配置解析/只读DB聚合、分支逐ref表、归档bundle与恢复说明仅存主仓ignored `.codex/audits/ECO-20261104/security-20261107/`。正式结论入本报告及项目控制台；分批修复按发现编号/固定hash/原与变异证据记录，完成必要门禁后才关单。四源码/三ELF已完成分层复验，F01/F02与已发布依赖修复按上述代码/test范围收口，仅未导入OpenPGP模块提示继续保留；主/AL二进制明确LIMITED，工具与DB时点、真实构建版本不缺省为零。本批不涉及稳定性下一批或Phase6实现。

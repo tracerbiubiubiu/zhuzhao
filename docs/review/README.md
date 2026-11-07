@@ -2,7 +2,7 @@
 
 本目录三层结构；长期审计方法与时点报告分开维护：
 
-- [首次五仓全面审计总报告（2026-11-06）](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)：设计演进/实现/关键实践与二次验证收口，7P0/39P1在固定修复范围关闭；test承接，main/生产未承接，dev保留原版。Go漏洞扫描NOT_RUN及其它覆盖限制显式列明。下列分批进度保留历史证据，当前结论以总报告及各报告最终节为准。
+- [首次五仓全面审计总报告（2026-11-06）](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)：设计演进/实现/关键实践与二次验证收口，7P0/39P1在该固定窗口关闭；当时Go漏洞扫描NOT_RUN。11-07的安全补证/修复及保留test承接见B16/B17，main/生产仍未承接。下列分批进度保留历史证据，当前以各报告最终节及控制台为准。
 
 - [audit-playbook.md](./audit-playbook.md) — **可复用全面审计指南**：设计→实现→关键实践，跨仓、前端功能/交互/视觉、七阶段、证据与报告模板；每次审计另建执行卡，不在指南保存当次基线或结论。
 - 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论；B02 由 `10f3f94`、B05 由 `4de9070` 固定快照独立复验在代码层关闭（完整 hash 与失败/成功证据见报告末节），常驻 app 部署状态另计。
@@ -17,7 +17,7 @@
 - [B13 环境恢复与真实Chrome](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)：dev保卷恢复、测试准确镜像/端口及专属浏览器走查，启动修复与未覆盖边界分列。
 - [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终dc3完整门禁通过并已test承接，未合main/生产。
 - [B15 接口/工具/迁移边界](../../deliverables/software-company/zhuzhao-ecosystem-audit-b15-contract-migration-boundaries-2026-11-06.md)：存储ID/Wire入口/定制引用回滚前置/W5限流节奏四P2记账；撤销模板及MIG-S04运行P1候选，不把静态线索计作当前越权。
-- [B16 Phase5五仓安全验证（执行中）](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)：实际phase5合流、56→10分支有档清理、UI生产依赖及四Go源码/三真实ELF已采集（主/AL二进制仅模块精度）；Go补丁/依赖图待批修，配置P2已由专项/变异及整仓253/81门禁关闭，不以采集绿当安全通过。
+- [B16/B17 Phase5五仓安全验证与修复](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)：56→10分支完整归档，四source/三新ELF复扫仅未消费OpenPGP模块提示，配置与Go依赖修复及CI/253/81/96次版本守卫变异通过；保留test已Go1.26.10，原生dev/main/生产未切，不称绝对零漏洞。
 - 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
 
 - **顶层（活文档+近期快照）**：

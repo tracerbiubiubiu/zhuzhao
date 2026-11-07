@@ -1,6 +1,6 @@
 # zhuzhao 生态首次全面审计总报告（2026-11-06）
 
-> **2026-11-07后续窗口**：[B16安全验证](zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)已开始。主仓/UI修复已回到实际phase5，旧来源heads完整归档后本地56→10；Go补扫及新配置P2按B16独立记账。下文基线、运行及NOT_RUN均为11-06冻结时点，不以新分支头暗示运行镜像已升级；本轮继续不合main/不准备main PR、不开始Phase6。
+> **2026-11-07后续窗口已收口**：[B16/B17安全验证与修复](zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)：Go补扫已完成，四源码/三新真实ELF仅未消费OpenPGP模块提示；配置/Go依赖修复经准确CI、253/81及版本守卫变异通过，保留test已承接Go1.26.10。主仓/UI仍实际phase5，旧heads有档收敛56→10。下文基线、运行及NOT_RUN为11-06冻结时点，不改历史总数；原生dev/main/生产未承接本批产物，不准备main PR或开始Phase6。
 
 ## 结论与交付边界
 
