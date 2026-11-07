@@ -24,6 +24,8 @@
 
 验收首轮保留97PASS/5FAIL：隔离runner使用Docker动态published=0，验收stop/start Redis后端口重分配，app仍连旧端口；独立同容器stop/start探针稳定确认HostPort变更。第二轮仅将本轮自有端口在随机选定后显式固定，完整新栈/原样断言通过，不把环境首红算产品回归或抹去。两轮均精确清理自有容器/卷/网络；共享dev/test ID/PID/StartedAt无变化，期间消失的Ryuk已由完整集成轮原生TestSessionID736f57ab确认归属，不谎称全部容器无差异。
 
+修复提交为`bcdf133a8e014577dd5d99e580f73e4dab437b5e`，Refs为B16-F01；同类扫描已覆盖两模板、Load/BindEnv、StorageConfig及Cookie setter，配置声明均在storage段，未见同类残留。证据解释修复为`bb3bfc65c7e8ae733f2bc1b3e0517a13a04111e4`，Refs为B16扫描精度边界；同类扫描覆盖source/binary配置、缺module frame、stripped通配符/具名frame及各异常流，23条CLI回归有效。两笔已推fix正文有三节，但漏同类扫描/Refs且多摘要用了项目要求编号之外的普通列表；commit-lint为WARN而非FAIL，不等于人工格式合规。本文补齐永久hash/关联与扫描证据，保留已推历史不改写；后续fix按完整模板提交。
+
 ## Go工具与扫描证据状态
 
 本机固定官方工具获取在约5分钟预算后停止：精确依赖ZIP不完整、h1未闭合，未产出可执行文件，未运行source或binary扫描；失败与partial保留，未替换依赖/关闭sumdb/改全局配置。后续改用[go-security.yml](../../.github/workflows/go-security.yml)在隔离runner采集四模块源码，官方v1.4.0工具及实际依赖h1独立校验；另交叉构建Darwin arm64官方工具并保存SHA/构建信息，供本机对三真实ELF扫描。

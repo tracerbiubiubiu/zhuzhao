@@ -216,7 +216,7 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
 
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
-   | B16五仓安全验证（root协调；子agent仅隔离验证，root唯一提交/推送） | 主仓phase5两配置+config回归；B16报告/控制台/索引/standards/本台账 | CI采集已推；配置修复待整仓门禁，文档进行中 | 2026-11-07 |
+   | B16/B17五仓安全验证与依赖修复（root协调；root唯一提交/推送） | B16三配置/回归已bcdf133提交并推；B17主仓mod/sum/Go构建约束在ignored副本准备，三兄弟mod/sum/构建约束按各固定基线准备；正式报告/控制台/本台账 | B16整仓门禁已过；B17尚未关单，不合main/Phase6 | 2026-11-07 |
    | （收尾自填；收口后清行） | | | |
 
 2026-11-07当前操作边界：主仓/UI已将审计候选正常合流至实际phase5（09d224d/01c5dea），后续修改基于phase5；三个Go兄弟仍用Phase5用途的 `codex/phase5-audit`。root为本批唯一提交/推送者，只推已核分支，不推main、不准备main PR、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建。本地56分支收敛到10，46旧heads有archive ref及五份完整bundle，40旧工作树同hash detach、54目录与原证据保留；临时独立验证工作树另计，结束只收回本轮自建资源。禁止全局clean/reset/prune；证据、备份、原卷和其他会话资源保留。分支逐项清理/恢复收据仅主仓ignored `.codex/audits/ECO-20261104/security-20261107/branch-cleanup/`，不纳Git/Docker。B16门禁仅用自有隔离栈，不改常驻dev/test数据或配置。
