@@ -77,7 +77,6 @@ audit:
 #   bucket: "zhuzhao"
 #   region: "us-east-1"
 #   use_ssl: false
-  file_cookie_secure: false      # 文件通道 cookie Secure 属性（HTTPS 网关前置置 true——A.11/审计 M-4）
 #   presign_ttl: 15m               # 预签名 URL 有效期
 
 # 任务管理代理（E-④）：zhuzhao → taskrunner API 出站
@@ -123,6 +122,7 @@ rate_limit:
 # 默认 disabled——ui E2E 消费时随 rustfs profile 一起翻 env：
 # STORAGE_ENABLED=true（app 服务 env 已预留接线注释，见 docker-compose.test.yaml）。
 storage:
+  file_cookie_secure: false      # 文件通道 cookie Secure 属性（HTTPS 网关前置置 true——A.11/审计 M-4）
   enabled: false
   endpoint: http://rustfs:9000
   region: us-east-1

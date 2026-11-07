@@ -1,6 +1,6 @@
 # 生态全面审计 B16：Phase5安全验证（2026-11-07）
 
-> **执行中**：本批先补安全证据，再分批修复。UI生产依赖审计本轮无已知漏洞报告；四Go源码与三个真实ELF已完成本轮采集并有发现待处置；主仓/AL的stripped二进制扫描仅有模块精度，不借普通CI绿宣称安全通过。B16-F01/P2已完成专项修复与反向变异，整仓门禁进行，尚未关单。本批无main合并、main PR、Phase6实施或正式发布。
+> **安全修复继续分批执行**：UI生产依赖审计本轮无已知漏洞报告；四Go源码与三个真实ELF已完成本轮采集并有发现待处置；主仓/AL的stripped二进制扫描仅有模块精度，不借普通CI绿宣称安全通过。B16-F01/P2专项、反变异及整仓门禁已通过，在代码层关闭；F02/P1与F03/P2依赖升级由下一小批继续，不提前销账。本批无main合并、main PR、Phase6实施或正式发布。
 
 ## 范围与基线
 
@@ -18,7 +18,11 @@
 
 修复仅将两行移入各自既有`storage`段，仍为false；不新增重复storage、不改enabled/端口/密钥/运行配置，不启用Secure或归档。新增[file_cookie_secure_template_test.go](../../internal/config/file_cookie_secure_template_test.go)经真实模板→`config.Load`→StorageConfig→Cookie头验证默认false、只改模板true、env true正控与env false覆盖；包外测试隔离Viper和环境，串行执行。
 
-专项证据：最终测试SHA下，原两模板各8/8精确失败于Secure=false/want=true，其余6正控绿；修复8叶race串行8轮绿；ignored副本逐模板移回旧层各8/8红，其余正控保持绿，恢复后绿。config+middleware完整race单测、vet/gofmt/diff通过，Ruby语义比较确认除键路径外所有值不变。初版测试误判既有storage.enabled导致控制夹具红，已保留并剔除，最终测试全重跑；没有把夹具错误算产品发现。**完整lint/unit/integration/cover/acceptance尚待，修复提交与最终复验稍后补，不借旧门禁关闭本项。**
+专项证据：最终测试SHA下，原两模板各8/8精确失败于Secure=false/want=true，其余6正控绿；修复8叶race串行8轮绿；ignored副本逐模板移回旧层各8/8红，其余正控保持绿，恢复后绿。config+middleware完整race单测、vet/gofmt/diff通过，Ruby语义比较确认除键路径外所有值不变。初版测试误判既有storage.enabled导致控制夹具红，已保留并剔除，最终测试全重跑；没有把夹具错误算产品发现。
+
+整仓重新冻结191d6e5+仅三文件修复（725文件SHA清单）：原`make lint`、`test-unit`、完整原生`test-integration -race -p1`（572.033s）、`test-cover`全通过，另有三套脚本守卫和module verify通过。原样`make migrate-up`/`make acceptance`在独立新7容器+原生app上通过253/0/0（39.593s）、81对往返零漂移，隔离E000001密码终态admin12345；源码SHA前后未变。三owned SHA分别c2d90fb3b28f46c133dc65f7ba9cabef4e6a2f2c1eaf349290b3e8d42a4ea4fb、52ff6b3d15d0b1b53e4faaffcd33c970229b3b2dc8dce0bd9b9e03bca0569165、84dbabd4f72c63862a8462533a515675de059258c879e8439fcf1b84a0a655ea。F01代码层关闭，未切常驻dev/test配置。
+
+验收首轮保留97PASS/5FAIL：隔离runner使用Docker动态published=0，验收stop/start Redis后端口重分配，app仍连旧端口；独立同容器stop/start探针稳定确认HostPort变更。第二轮仅将本轮自有端口在随机选定后显式固定，完整新栈/原样断言通过，不把环境首红算产品回归或抹去。两轮均精确清理自有容器/卷/网络；共享dev/test ID/PID/StartedAt无变化，期间消失的Ryuk已由完整集成轮原生TestSessionID736f57ab确认归属，不谎称全部容器无差异。
 
 ## Go工具与扫描证据状态
 
