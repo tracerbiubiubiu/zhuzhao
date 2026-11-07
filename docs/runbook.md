@@ -218,6 +218,8 @@ FROM users WHERE username = '<user>' AND deleted_at IS NULL;
    |---|---|---|---|
    | （收尾自填；收口后清行） | | | |
 
+2026-11-07当前操作边界：本轮五仓同名 `codex/phase5-audit` 用于Phase5修复收尾，root为本批唯一推送者；原主仓/UI phase5仅文档/CI/忽略规则提交可按窗口同步。只推已核分支，不推main、不打新tag/正式release、不部署生产或切phase6。Phase6按新顺序等Phase5合main后再从main创建；旧工作树原型经完整补丁/内容/SHA归档后精确清理，禁止全局clean/reset/prune，证据、备份、原卷和其他会话资源保留。推送记录及54工作树状态清单仅主仓ignored `.codex/audits/ECO-20261104/workspace-cleanup-20261107/`，不纳Git/Docker。
+
 2026-11-06审计交接已收口（非在途占用）：[五仓总报告](../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)。test=app dc3/AL60/TR eb3/UI c9，固定来源与镜像已核；dev保留原工作树/原卷，旧UI F08仍有。临时验收/PG/浏览器夹具已精确回收，常驻测试环境留供使用，其它会话cmpfull资源保留。代码/正式文档均路径提交、未合main；仅utils修复分支已推。Go漏洞可达扫描NOT_RUN，原日志/备份/截图与环境重启辅助仅主仓ignored `.codex`，不纳Git/Docker。后继操作先核当前端口/PID/镜像与下节环境来源，不用此历史交接替代实时归属检查。
 
 ### 7.1 验收连接与临时文件隔离（2026-11-04）
