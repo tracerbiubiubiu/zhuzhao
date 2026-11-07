@@ -2,7 +2,7 @@
 
 > **2026-11-07 Phase5后续收口进展**：已归档并移除46个无运行引用的detached工作树，保留8个attached；该步未改五仓refs/运行服务，7份报告33个链接已迁往同内容的已推送快照。另经祖先/归档/远端tip复核删除4条旧远端分支，main保持。原生Go1.26.10 SDK已可信取得（仅ignored项目缓存，系统Go1.26.6未替换）；[B18工具/回滚预检](../../deliverables/software-company/zhuzhao-ecosystem-audit-b18-tooling-rollback-2026-11-07.md)已过原生lint/unit/integration/cover、自有栈253/81及996c167准确CI全绿；W5/存储ID及其余当前残留仍分批。**所有者要求Go1.27与Node24/26 LTS整体升级在Phase5合main后、基于main另批实施**；当前不合main、不启动Phase6。下面带日期段落保留历史范围和时点，不替代本段当前状态。
 
-> **本轮新增P1待修（公式字典查询）**：`ticket.Service.Update → applyFormulas(tx) → exprcalc.ApplyFormulas → RegisterExprDictLookup`仍绕过传入事务，使用裸池与Background取字典连接。专属PG/合法字段配置下Create成功、MaxConns1真实HTTP Update超时，取消后仍持事务；MaxConns2及普通公式对照均成功。正补独立进程串行复验及最小请求级上下文修复，dbtx架构推广暂缓。此前已销账的schema/字典选项Tx修复不覆盖该公式闭包，不将旧结论扩大为所有路径安全；本条未影响main或共享环境。
+> **本轮新增P1（公式/visible_when字典查询，待组合验收）**：原`ticket.Service.Update → exprcalc → RegisterExprDictLookup`绕过已有事务并使用Background取第二连接，MaxConns1真实HTTP稳定阻塞。最小修复已在Phase5工作区复用当前q/ctx；原式和visible_when移除修复各8轮稳定失败、修复均成功，取消释放/跨DB与并发缓存隔离及完整原生Go lint/unit/integration/cover通过，读取收尾错误亦有独立回归。新组合253/81与UI门禁、提交CI和常驻承接仍待核，不提前销账；详[B23报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b23-expression-context-2026-11-07.md)。dbtx架构试点暂缓且仍开放，此前schema读取Tx销账不扩大为所有表达式路径安全；main未动。
 
 > **2026-11-07 B16/B17安全验证与修复收口**：[正式报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)。主603c1b6、ALdb6a17b、TR1e31e3e、utils563785a准确CI全绿；四源码/三真实新ELF只剩未消费OpenPGP模块提示，包/调用链0，不称绝对零漏洞。原样253/0/0、81对往返及96次最低版本守卫变异有效，覆盖率20.29%仅普通tag内部包。保留test三Go应用已Go1.26.10并承接F01正确配置只读源，其他23容器及所有卷/网络保持；原生dev/main/生产未承接本批产物。主仓/UI仍实际phase5，兄弟为Phase5用途短分支；本地56→10分支有完整归档，54工作树目录保留。原B15四P2/历史债及本机SDK获取限制继续记账，不开始Phase6、不准备main PR/正式发布。下面带日期段落为各历史时点。
 
