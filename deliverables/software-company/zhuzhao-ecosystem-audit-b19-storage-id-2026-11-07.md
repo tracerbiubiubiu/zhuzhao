@@ -21,3 +21,7 @@
 - 同组合UI完整门禁的lint/typecheck、29文件230单测、生产依赖audit及build通过；41个E2E为40过、1个B20画布用例失败（含一次配置内重试），附件上传/删除/网络失败重试用例通过。UI整体仍不记完成，B20修复后须重验完整门禁；不以此次部分通过替代最终前端验收。
 
 原始前后HTTP/JS、生成命令、源码SHA、变异、编译兼容和联合失败记录保留在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{storage-contract,joint-b19-b20-b23}/`，不进Git/Docker。当前仅完成代码/专项及后端组合出口；两仓完整修复hash、准确CI与部署状态提交后另绑，不提前报告生产事故或已部署修复。
+
+## 固定提交与最终组合补证
+
+本批主仓完整提交 `34d2c8bb4b3269bf75c5de55c9a94ef5facd5ed2`。UI配套 `306098df5970f731cd32f82c3ed1fe63eb140a10`（契约）与 `152258638abaa3bd3daa656255a794c5422a0e58`（交互反馈）。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。

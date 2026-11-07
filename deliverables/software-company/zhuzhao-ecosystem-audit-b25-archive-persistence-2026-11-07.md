@@ -25,3 +25,7 @@ DB180天、文件395天及task_runs/execution_logs永久保留均不改变。JSO
 - 此专项没有运行make acceptance。root新组合真实镜像另通过原样253/0/0及81往返，但该组合使用自有Compose夹具，不声称它覆盖本批正式named-volume YAML。正式配置承接须在备份与来源核对后重建app、复核挂载/非root写权限/ready和关键路径，常驻尚未应用。
 
 完整hash和部署承接状态在提交后补录。原始只读环境盘点、两次真实恢复、失败记录、源与证据清单仅在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{archive-persistence,environment-finalization}/`；不跟踪数据库转储、Env或原始个人数据。
+
+## 固定提交与最终组合补证
+
+本批主仓完整提交 `2f9d94bcfd214a10eb1d06a495f5f7e5a75c1381`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。

@@ -5,6 +5,8 @@
 > **量级**：1–2 周。**迁移**：零。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。范围/边界总纲 = [README §2 P5-S2](./README.md)；选型预置与分层要求 = dd §27（2026-10-08 所有者确认）。
 
+> 2026-11-07 B20当前行为：`FlowGraphDesigner.ensureLf`监听实际graph:updated并保持invalid写入幂等；覆盖JSON↔画布重复load后的真实键盘undo/redo。History.add可因重复快照跳过history:change，不能把其当图更新保证。原完整页面候选8绿/恢复旧监听8稳定红，最终41 E2E通过；证据见[B20报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)，部署与准确CI另核。
+
 ## 1. 定位与由来
 
 状态图本身已"数据可配"（每类型一套 states/transitions JSONB，迁移 000010 起），缺可视化编辑界面——现状 = ui type 页 JSON 源码模式 + 常用模板按钮（phase4 深水区降级兜底形态，[phase3/12 §3.2](../phase3/12-frontend.md)）。本段补"画布"，**只换配置界面，引擎与存储零改动**（§23 口径，不构成自研推进的额外动作）。

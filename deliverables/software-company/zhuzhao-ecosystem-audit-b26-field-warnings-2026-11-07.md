@@ -24,3 +24,7 @@
 - 首个runtime镜像因构建目录copyfile丢执行位而app启动permission denied，未将其计为验收通过；保留失败镜像268e及attempt4。改为显式COPY chmod0755后镜像`8cfe9ec7cbb0a4663915dc261c30fc486e8e8f7f831a67adb4b60b81bdd9d000`通过非root执行权限检查及attempt5真实启动/验收。ELF源与字节不变，未改正式Dockerfile或常驻环境。
 
 UI B20完整门禁、准确提交CI与常驻承接另核，当前代码出口通过不等于生产已部署。正式完整修复hash提交后补绑；源码、矩阵、七变异与原始失败/成功日志只在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{field-soft-warnings,g14-runtime,joint-b19-b20-b23}/`。
+
+## 固定提交与最终组合补证
+
+本批主仓完整提交 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。

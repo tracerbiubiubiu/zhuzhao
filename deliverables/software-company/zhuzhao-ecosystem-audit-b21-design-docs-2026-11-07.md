@@ -22,3 +22,7 @@
 76条相对文件链接均存在，独立复核的58条入站/文内fragment均能定位；旧节号/锚点保留兼容，特别保留Token细节、组织/审计API和404语义入口。围栏/目录及 `git diff --check` 通过。文档批不另起业务门禁；正在运行的组合业务门禁不能替代本批逐项语义核对。
 
 剩余仅历史跨文件语气/章节显示及P3措辞：phase3 README旧L1轮询叙述、phase1/proposal统一Runner旧目标、auth文档旧节号、architecture“多设备管理”概括，已在ignored交接列明；本批停止扩面，后续随文档归并承接。L-1至L-4整体搬树仍按合main后独立批执行，不能因L-5主体完成就视为这些搬迁已完成。固定原始claim/link/fragment/围栏检查与前后文证据只在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/l5-docs/`。
+
+## 固定提交与最终组合补证
+
+本批主仓完整提交 `f27994bcbd832b7a4162846f181044431b925516`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。

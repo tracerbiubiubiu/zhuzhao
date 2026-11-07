@@ -34,3 +34,7 @@ Phase5小范围稳定性批，发现基线为主仓 `996c167f4567e39362226937b25
 - 原样 `make migrate-up` 与四档 `make acceptance` 在新组合隔离栈均exit0：253/0/0，81对迁移往返计数/明细零漂移，前后schema均81 clean（40.192s）。实际三Go容器ELF逐字匹配清单，主仓353源匹配821构建快照。UI完整门禁另出现B20撤销/重做用例首次及重试失败，不将该前端批次记绿；它不替代或否定本批独立Go与API出口。准确修复hash、CI与常驻环境承接尚未完成，整体收口仍未完成。
 
 原始探针、失败/正控/变异、源码SHA、独立复核及完整门禁日志仅在ignored `.codex/audits/ECO-20261104/phase5-closeout-20261107/{dbtx-pilot,expression-gates,expression-runtime}/`。正式新回归锚点：`internal/pkg/exprcalc/context_test.go` 的 `TestContextFunction_*`，`internal/service/ticket/expr_context_integration_test.go` 的 `TestExprLookup_*`；提交后补完整hash链接。常驻服务、数据与main均未由本批更新。
+
+## 固定提交与最终组合补证
+
+本批主仓完整提交 `82bda27e5a46c22d3d57daab4387dc1aa5dbae93`。最终运行源码354项逐字绑定主仓 `f87ab1aefcbf1843bd8714c5accf245033f99d8b`，原样253/81及29文件230单测、41/41 E2E均通过；[组合补证与保留限制](./zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md#验证证据与已纠正的初版误判)保留初版失败、wrapper缺checker与未执行附加control，不扩大本批原覆盖。准确远端CI/常驻承接仍待。
