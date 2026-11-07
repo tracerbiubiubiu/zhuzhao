@@ -64,30 +64,47 @@ func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
 	return s
 }
 
-// emitEvent B6-1：事务提交后派发领域事件（06 号 A.1——at-most-once 异步投递；
-// eventReg=nil 时 NOP）。
-func (s *Service) emitEvent(ev domainevent.DomainEvent) {
+// emitTicketEvent 在提交后派发，并从本次业务读取的工单快照携带创建者。
+// 消费者不回查数据库：排队期间删单仍能找到创建者，且不把操作者误当创建者。
+func (s *Service) emitTicketEvent(ticket *model.Ticket, ev domainevent.DomainEvent) {
 	if s.eventReg != nil {
-		s.eventReg.Dispatch(context.Background(), ev)
+		s.eventReg.Dispatch(context.Background(), withTicketIdentity(ev, ticket.CreatedBy))
 	}
+}
+
+// withTicketIdentity 区分工单创建者与本次操作者；复制载荷防止修改其他订阅者使用的map。
+// 扫描事件没有操作者（ActorID=0），保持该语义；缺创建者时不猜测回退到actor。
+func withTicketIdentity(ev domainevent.DomainEvent, creatorID int64) domainevent.DomainEvent {
+	payload := make(domainevent.Payload, len(ev.Payload)+2)
+	for key, value := range ev.Payload {
+		payload[key] = value
+	}
+	if creatorID > 0 {
+		payload["creator"] = strconv.FormatInt(creatorID, 10)
+	}
+	if ev.ActorID > 0 {
+		payload["actor"] = strconv.FormatInt(ev.ActorID, 10)
+	}
+	ev.Payload = payload
+	return ev
 }
 
 // EmitActionNotify post_action notify 动作的事件出口（NotifyAction 专用——
 // 走与 created/assigned/closed 同一事件编排链；at-most-once 异步）。
 // 载荷键 cc_users=cc 档收件人锚点复用（resolveRecipients cc 分支）。
-func (s *Service) EmitActionNotify(ctx context.Context, ticketID, actorID int64, title, humanKey, recipients, templateCode string) {
-	_ = ctx // 事件派发为异步 fire-and-forget（emitEvent 内部 Dispatch 自管生命周期）
+func (s *Service) EmitActionNotify(ctx context.Context, ticket *model.Ticket, actorID int64, recipients, templateCode string) {
+	_ = ctx // 事件派发为异步 fire-and-forget（emitTicketEvent 内部 Dispatch 自管生命周期）
 	payload := domainevent.Payload{
-		"title": title, "human_key": humanKey,
+		"title": ticket.Title, "human_key": ticket.HumanKey,
 		"cc_users": recipients,
 	}
 	// S3a B3-3：动作显式指定的模板码（2026-10-26 通知面收口批生效——空=走规则/种子默认）
 	if templateCode != "" {
 		payload["template_code"] = templateCode
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
-		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorID,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorID,
 		Payload: payload,
 	})
 }
@@ -367,13 +384,13 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	// B6-1：工单创建事件（事务提交后派发——06 号 §5.2a 异步投递）
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketCreated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
 			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
 			"human_key": ticket.HumanKey,
-			// B6-4 creator 档收件人锚点（外审实例批——修复前无此键致 creator 解析恒空）
+			// actor仅作操作者；creator锚由emitTicketEvent从工单快照统一注入。
 			"actor": strconv.FormatInt(actorUserID, 10),
 		},
 		Timestamp: time.Now(),
@@ -433,8 +450,8 @@ const MaxExportRows = 50000
 var ErrExportTooMany = errcode.New(errcode.ErrInvalidParams.Code, "导出行数超过上限 50000，请收窄筛选条件")
 
 // ExportStream 导出取行（S10 B10-5）：与 List 同 resolveListFilter + 同
-// buildTicketWhere（BK-21 代码级同源）；先 COUNT 钳制再逐行回调（流式零驻留）。
-// 返回总行数（审计/断言用）。
+// buildTicketWhere（BK-21 代码级同源）。COUNT只做预检，实际流仍逐行校验5万上限；
+// 第50001行报错而非截断成功。成功返回值=实际生成行数，供导出审计使用。
 func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, actorUserID int64, rowFn func(*model.Ticket) error) (int64, error) {
 	filter, err := s.resolveListFilter(ctx, actorUserID)
 	if err != nil {
@@ -447,8 +464,18 @@ func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, act
 	if total > MaxExportRows {
 		return total, ErrExportTooMany
 	}
-	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, rowFn)
-	return total, err
+	var exported int64
+	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, func(ticket *model.Ticket) error {
+		if exported >= MaxExportRows {
+			return ErrExportTooMany
+		}
+		if err := rowFn(ticket); err != nil {
+			return err
+		}
+		exported++
+		return nil
+	})
+	return exported, err
 }
 
 // FieldImpact B1-5 每字段在途使用计数（全量替换前的变更代价提示——软告警
@@ -735,15 +762,18 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}
 	ticket.UpdatedAt = updatedAt
 	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
-	s.emitEvent(domainevent.DomainEvent{
+	updatedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
+	}
+	if ticket.AssignedTo != nil {
+		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
 		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
-		Payload: domainevent.Payload{
-			"title": ticket.Title, "type_code": ticket.TypeCode,
-			"human_key": ticket.HumanKey, "status": ticket.Status,
-			"changes": buildChanges(req), // D20 键级 diff
-		},
-		Timestamp: time.Now(),
+		Payload: updatedPayload, Timestamp: time.Now(),
 	})
 	return ticket, nil
 }
@@ -813,6 +843,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 		return err
 	}
@@ -852,7 +885,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if ticket.AssignedTo != nil {
 		closedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketClosed,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload:   closedPayload,
@@ -949,6 +982,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 
 	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
 	// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
+	var transitionType *model.TicketType
 	if newStatus != ticket.Status {
 		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
 		if err != nil {
@@ -965,6 +999,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
 			return err
 		}
+		transitionType = ttype
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -973,6 +1008,9 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, transitionType); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 		return err
 	}
@@ -1005,7 +1043,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		s.clearReminderWatermark(ctx, req.ID, ticket.Status)
 	}
 	// B6-1：工单分派事件（事务提交后派发）
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketAssigned,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: domainevent.Payload{
@@ -1033,6 +1071,12 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
+	// Capture identity/recipient facts before the write. The asynchronous consumer
+	// must not depend on a ticket that may have been deleted after this commit.
+	ticket, err := s.ticketRepo.GetByID(ctx, req.TicketID)
+	if err != nil {
+		return nil, err
+	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
 		UserID:     actorUserID,
@@ -1056,6 +1100,20 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	payload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+	}
+	if ticket.AssignedTo != nil {
+		payload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	// Public reply only: internal notes have a narrower visibility boundary and
+	// do not enter this notification path. Never publish the comment body here.
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketCommented,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: payload, Timestamp: time.Now(),
+	})
 	return comment, nil
 }
 

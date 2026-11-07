@@ -13,7 +13,7 @@ func TestBuiltinTemplateVars_CoversOpsSeedKeys(t *testing.T) {
 	for _, v := range BuiltinTemplateVars() {
 		got[v["path"]] = true
 	}
-	for _, k := range []string{"event.job", "event.error", "event.last_success",
+	for _, k := range []string{"ticket.creator", "event.job", "event.error", "event.last_success",
 		"event.action", "event.ticket_id", "event.actor",
 		"event.level", "event.ratio", "event.usage_bytes", "event.capacity_bytes"} {
 		assert.True(t, got[k], "variables 端点字典缺 %s——管理员看不到可用键", k)

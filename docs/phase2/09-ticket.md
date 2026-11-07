@@ -497,7 +497,7 @@ POST /api/v1/tickets
 |---|------|------|
 | T8 | scope=group 用户列表 | 含子 org 工单。✅ 已覆盖（Step 5）：`TestB2Org_ScopeSupervisorAndAll`（Get/List）+ phase2b 脚本主管分派 |
 | T9 | vg_a member、策略 B | **可读** vg_b 工单；**不可 update** vg_b（403） |
-| T10 | expires_at 过期成员 | 失去该 org 透明读与 scope 路径。✅ 已覆盖（Step 5）：`TestB2Org_ExpiredMemberLosesAnchor` + BFS 过期隔离 |
+| T10 | expires_at 过期成员 | 失去由该成员关系授予的透明读/scope/组内委托。Step 5 的 `TestB2Org_ExpiredMemberLosesAnchor` + BFS 只覆盖前两类；2026-11-05 B09 补 `TestExpiredMembership_AuthorizationBoundaries`，覆盖 admin/owner 成员过期后的单条读写、列表、名册/移员与建单归属判定；显式 owner 数组的独立权源保留正向对照。 |
 | T11 | 附件 confirm | 见 storage S1–S2 |
 | T12 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | vg_a member **不可读** vg_b（404） |
 | T13 | vg_a admin 改 vg_a 内他人工单 | 2c：**200**；2b：403（非创建人） |

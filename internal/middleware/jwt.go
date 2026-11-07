@@ -93,7 +93,7 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 			return
 		}
 
-		// B4-1：黑名单 + disabled + 改密地板 三键 pipeline 一次往返（原两次串行 EXISTS）
+		// 黑名单 + disabled + 改密地板 + 密码纪元：一次 pipeline，逐命令 fail-close。
 		blacklistKey := fmt.Sprintf("blacklist:at:%s", claims.JTI)
 		disabledKey := fmt.Sprintf("user:disabled:%d", claims.UserID)
 		atFloorKey := fmt.Sprintf("user:at_min_iat:%d", claims.UserID)
@@ -101,6 +101,7 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 		blacklistCmd := pipe.Exists(c, blacklistKey)
 		disabledCmd := pipe.Exists(c, disabledKey)
 		atFloorCmd := pipe.Get(c, atFloorKey)
+		epochCmd := pipe.Get(c, fmt.Sprintf("user:pw_epoch:%d", claims.UserID))
 		// Pipeline.Exec 返回首个命令错误——GET 缺键即 redis.Nil（绝大多数用户无地板键），
 		// 不是服务故障；此处只把真实错误判为 503，Nil 交由下方 atFloorCmd 逐命令判定
 		//（2026-11-02 修：78733bf 引入 GET 后未过滤 Nil，致无地板键用户全量 503——
@@ -128,6 +129,28 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 			c.Abort()
 			return
 		}
+		// B02-F01：撤销必须单调；秒级 iat 地板不能区分同秒新旧令牌，
+		// disabled 被新登录清除后也不能让旧 AT 复活。缺键只兼容纪元 0。
+		var epoch int64
+		if raw, err := epochCmd.Result(); err == nil {
+			var parseErr error
+			epoch, parseErr = strconv.ParseInt(raw, 10, 64)
+			if parseErr != nil || epoch < 0 {
+				response.ServiceUnavailable(c)
+				c.Abort()
+				return
+			}
+		} else if !errors.Is(err, redis.Nil) {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
+		}
+		if claims.Pwe < 0 || claims.Pwe != epoch {
+			response.UnauthorizedError(c, errcode.ErrTokenInvalid)
+			c.Abort()
+			return
+		}
+
 		// P1-D（2026-11-01 审计）：改密地板——签发早于地板的 AT 即时 401（与黑名单同语义）。
 		// 修前自服务改密为放行新 AT 清除 disabled 键，其他设备旧 AT 复活残留 ≤AccessTTL；
 		// 地板随 AccessTTL+60s 自然过期，新签 AT 的 iat ≥ 地板不受影响。Redis 故障同趟 fail-close。

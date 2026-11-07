@@ -6,7 +6,7 @@ definitions:
         type: string
       user_ids:
         items:
-          type: integer
+          type: string
         maxItems: 20
         type: array
     required:
@@ -204,9 +204,7 @@ definitions:
           type: string
         type: array
       custom_data:
-        items:
-          type: integer
-        type: array
+        type: object
       description:
         type: string
       escalation_supervisor_id:
@@ -577,8 +575,8 @@ definitions:
         type: array
       version:
         description: |-
-          Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
-          须 > 0，否则 400。
+          Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
+          预检后配置改变返回409；非nil须>0，否则400。
         type: integer
     required:
     - code
@@ -881,9 +879,7 @@ definitions:
           B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
           值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
           字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
-        items:
-          type: integer
-        type: array
+        type: object
       description:
         type: string
       id:
@@ -950,8 +946,8 @@ definitions:
         type: array
       version:
         description: |-
-          Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
-          ticket_types.version 才写，否则 409。须 > 0，否则 400。
+          Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。
+          缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须>0，否则400。
         type: integer
     required:
     - code
@@ -2552,6 +2548,14 @@ paths:
         in: query
         name: status
         type: string
+      - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
+        in: query
+        name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
+        type: string
       - description: 优先级（1紧急/2高/3中/4低）
         in: query
         name: priority
@@ -2948,6 +2952,14 @@ paths:
       - description: 工单状态
         in: query
         name: status
+        type: string
+      - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
+        in: query
+        name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
         type: string
       - description: 优先级
         in: query

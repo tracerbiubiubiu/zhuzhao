@@ -101,6 +101,8 @@ func OperationLog(auditRepo AuditRepo) gin.HandlerFunc {
 
 > D2-19：递归（嵌套对象/数组）+ 大小写不敏感（`strings.EqualFold`）+ 非法 JSON 落 `<binary len=N>` 占位（原顶层精确匹配三重绕过：嵌套 password 裸入库 / `Password` 大小写绕过 / form-encoded 原文整段落库）。D2-08：入库前截断至 2KB（`<truncated, total=N>` 标记）。
 
+> 2026-11-06 ECO-B06-F12：原实现漏遍历连续数组中的对象，现由 `audit.go` 的 `maskSensitiveValue` 统一递归 map/slice；请求体与响应摘要共享此路径。敏感键集合、大小写匹配、2KB 截断及请求体上限不变；实际中间件回归覆盖两层/三层数组及非敏感值保留。
+
 ```go
 func maskSensitive(body []byte) string {
     var m map[string]any

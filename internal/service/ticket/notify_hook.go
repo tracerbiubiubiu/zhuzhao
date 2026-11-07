@@ -78,7 +78,7 @@ func buildEventVars(ev domainevent.DomainEvent) map[string]any {
 }
 
 // resolveRecipientsFromRule 按 message_rules 的收件人配置解析。
-// recipient_type: assignee→事件 payload to_assignee；creator→actor；fixed→DDL 列表；
+// recipient_type: assignee→事件 payload to_assignee；creator→ticket creator（ops维持actor）；fixed→DDL 列表；
 // cc→payload cc_users（S10 B10-1——ticket.cc_added 的本次新增抄送人，逗号分隔）。
 func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedRecipients string) []string {
 	var ids []string
@@ -88,8 +88,12 @@ func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedR
 			ids = append(ids, to)
 		}
 	case "creator":
-		if actor, ok := ev.Payload["actor"].(string); ok && actor != "" {
-			ids = append(ids, actor)
+		key := "actor" // 运维事件没有工单创建者，保留既有动作责任人约定。
+		if ev.BizType == domainevent.BizTicket {
+			key = "creator" // 缺锚不回退actor，否则会把通知交给另一位操作者。
+		}
+		if creator, ok := ev.Payload[key].(string); ok && creator != "" {
+			ids = append(ids, creator)
 		}
 	case "cc":
 		if cc, ok := ev.Payload["cc_users"].(string); ok {

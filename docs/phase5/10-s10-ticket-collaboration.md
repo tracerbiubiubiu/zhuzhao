@@ -1,5 +1,9 @@
 # 10 — P5-S10 工单协作与提醒能力（设计稿）
 
+> 2026-11-06 ECO-B06提醒候选：max_reminders=0不发送；无实际目标或无事件注册表不消耗timeout/deadline水位，后续指定目标仍可首发；timeout候选SQL先排无目标避免占500窗口。既有先发后记、崩溃丢事件与重发取舍仍沿G-33/ADR-001。源修复e329db0已提交且专项八轮/变异通过，联合固定门禁待执行。
+
+> 2026-11-06 ECO-B08接口校准：添加抄送的 `user_ids` 元素按standards字符串ID契约发送；DTO使用现有jsonutil.Int64Slice兼容旧数字数组并保持int64精确，正数与20项上限不变，Swagger为string[]。前端催办上级单ID同样按既有string标签发送。当前分支已修、联合门禁及真实UI复验待完成，未合main。
+
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：S6 交付后（抄送可见性/通知、超时逾期通知依赖 S6）；phase6 硬前置四件之一。
 > **量级**：≈ 1.5–2 周（抄送 2–3 天 + 标签 2 天 + 角标 1–2 天 + 节点超时 3–4 天 + 导出含 BK-21 2–3 天）+ cron 可观测面 +0.5 天 + **`status_changed_at` 列 +0.5 天（拍板点 5，2026-10-16 外审补遗）**。**迁移**：有（`ticket_cc`/tag 两表族 + `status_changed_at` ALTER；编号启动时对账）。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。由来 = 2026-10-09 所有者完整使用场景 vs 规划/代码差距核查（**五件全为零实现，代码级核实**）。
@@ -225,7 +229,8 @@ GET /api/v1/tickets/export              # 与 List 同筛选参数（GET 复用�
 GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，撞期合并实施）
 ```
 
-- **流式**：excelize `StreamWriter`——header 先写、逐行 flush（防大结果集内存膨胀）；行数钳制（⚠ 对齐审计导出挂账口径 ≈5 万，超出 400 提示收窄筛选）；挂既有 rate_limit 桶；
+- **逐行编码**：excelize `StreamWriter`——表头/数据逐行写入缓冲，库按阈值落临时文件；取行结束后 `Flush` 收尾并校验错误，再封装 XLSX 写 HTTP 响应，所有返回路径 `Close` 清理临时文件；行数钳制（⚠ 对齐审计导出挂账口径 ≈5 万，超出 400 提示收窄筛选）；挂既有 rate_limit 桶；
+- **并发增删口径（B06-F16，2026-11-06）**：COUNT只作快速预检；实际生成流的第50001行必须终止并400，丢弃尚未发送的工作簿，不返回截断文件。成功审计的rows等于实际写入文件的数据行数，不能沿用预检总数；同筛选List行数/行集一致断言以数据未并发变化为前提，不承诺两次独立查询共享读快照。
 - **BK-21 铁律落地**：导出查询**调用与 List 同一个 filter 构造函数**（代码级同源——cc 特例支/三轴自动一致），验收断言「导出行数 = 同筛选列表 total」；
 - 响应：`Content-Disposition: attachment; filename=*.xlsx`（RFC 5987）；审计落行（谁/筛选/行数——对齐审计导出挂账的「导出自审计」业界标配）。
 
@@ -262,3 +267,6 @@ GET /api/v1/audit/logs/export           # 审计导出挂账项（README §5，�
 | 2026-10-24 | **B10-1 抄送交付（zhuzhao 111d007 + ui 34c3b751）**：①迁移 000062=ticket_cc（A.3 ① DDL——role 预留/UNIQUE 幂等/idx_ticket_cc_user 反查）+ 种子模板 ticket_cc_notify + 种子规则 ticket.cc_added→recipient_type=cc（通知走 S6 规则面零新通知代码——resolveRecipients 增 cc 档+规则面枚举/词表同步放行）②**L2 特例通道落地**（A.2 语义分层）：GetFilter 第四 OR 支 ccVisibilitySQL（列表/导出/关联查询全路径自动生效，BK-21 正交）+ Authorize 可见段 cc 支——**只进读可见集不进 canOperate**（抄送人改单/抄他人/删单 403 而非 404）③授权口径：自抄送/自摘/列表=read 面，抄他人/摘他人=update 权（可见性扩散=写面动作）④幂等挂载（事件只对本次新增人生效）+ 幻影用户 FK→400（RETURNING 流上 FK 延迟到 rows.Err() 浮出的坑在册）⑤三端点挂 selfService+catalogExempt（B5-3 附件面同款——工单操作不走静态权限码）；Resource 结构注入 CCChecker（NewResource 四参——测试三调用点同步）。**三档来源**：①手动已落；②节点配置依赖 S2 适配层扩展/S3a、③按级别依赖 phase6——随各自批次。**验证**：TestB101 六子测（A.7 cc 四向全落+幂等+幻影 400+通知到人）+集成三包绿+22 包单测+lint+**往返门禁 62 对零漂移**+**四档 acceptance 246/0（119+67+26+34）**；UI 冒烟=卡片渲染/UserPicker/前后端接线通（33333 旧二进制 404 属预期——dev 栈重启后所有者可亲手走查）；testutil 清单顺手补 000061 漏登（无断言故未爆）。**段状态 ⬜ 开工中（B10-2~B10-5 未启；B10-4 前仍有 E-1/E-2 待拍）** |
 | 2026-10-26 | **外审 v4 修复批（S10 域四条）**：①**催办扫描饿死修复**（#4）：`scanState` 候选窗口 `LIMIT 500` 现只装本轮可催的单——已催满（reminder_count≥max）与间隔未到在 SQL `NOT EXISTS` 层排除；修前两类单仍占名额、循环里 skip，前 500 个催满后第 501+ 个永不催（静默饿死）；shouldRemind 保留作并发兜底。②**水位权衡登记**（#20）：先发后记——bumpReminder 失败则下轮重发（at-most-once 退化 at-least-once）；取向=宁重发勿漏催，反向在 emit 失败时漏一次且计数已耗，代码注释落档。③`AddTicketCCRequest.UserIDs` 补 `max=20`（与 Tags 同口径；#11）。④**标签摘除口径注记**（#18，判设计内）：A 挂标签后 B 再「挂」同标签是 ON CONFLICT 无操作（行 created_by 仍为 A），B 摘该标签=摘他人挂的→需 update 权→403，与拍板点 6「挂/自摘读面、摘他人 update 权」一致；UX 可改进点=挂标签接口可回告「已存在」，登记不改。另 NotifyAction 收件人 float64→int64（#6，与 CCAction 共享 idsFromParam） |
 | 2026-10-26 | **手动催办演进件登记（所有者批准，触发驱动不排期）**：owner/发起人对在办工单手动发起催办——底层复用本段消息链（emit DomainEvent → S6 规则面路由，零新通知代码），**通道可选邮件/钉钉等类型**（UIP 渠道参数或 message_rules 通道映射，实现随立项拍）；与 B10-4 自动超时催办互补（手动=即时单发、自动=水位多轮），按钮授权口径与频控（复用 60s 节流窗径）随立项细化 |
+
+| 2026-11-06 | B06-F13/P1：真实导出 handler 产物 worksheet XML 缺结束标签、超过16MiB工作表的临时文件未回收；补 StreamWriter.Flush（审计/响应头前）与 File.Close（全返回路径）。精确738原样八轮复现；修复、逐处移除修复变异及门禁状态以B06报告为准；未合main。 |
+| 2026-11-06 | B06-F16/P1：原738预检49999后并发插入2行实际导出50001，删除/小增量也使成功审计沿用旧count；保留COUNT预检、实际rowFn出口守5万并按成功生成数返回。超限不静默截断，HTTP附件/成功审计在完成前均不发送。专项/变异与门禁状态见B06报告，未合main。 |

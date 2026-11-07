@@ -197,7 +197,8 @@ const delegatedVisibilitySQL = `EXISTS (
 	       $1 = ANY(o.owner_user_ids)
 	    OR EXISTS (SELECT 1 FROM user_orgs du
 	               WHERE du.org_id = o.id AND du.user_id = $1
-	                 AND du.org_member_role IN ('admin', 'owner'))
+	                 AND du.org_member_role IN ('admin', 'owner')
+	                 AND (du.expires_at IS NULL OR du.expires_at > NOW()))
 	    OR EXISTS (SELECT 1 FROM organizations anc
 	               WHERE anc.path @> o.path AND $1 = ANY(anc.owner_user_ids))
 	  ))`

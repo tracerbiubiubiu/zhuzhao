@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard
+.PHONY: build run dev tidy wire migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -9,13 +9,13 @@ build:
 run: build
 	./$(BUILD_DIR)/$(APP_NAME)
 
-# 防孤儿进程占用端口（历史坑：旧二进制残留导致验收跑在过期代码上）
+# 已有监听时拒启并显示归属；换APP_PORT或由所有者处理原进程。
 # 2026-10-14：taskrunner 三件套补 dev 默认——并行会话/裸 make dev 启动不再丢
 # 任务代理（此前无 TASKRUNNER_* env 的重启会让任务中心 502）；显式 env 仍优先
-TASKRUNNER_BASE_URL ?= http://127.0.0.1:8081
+TASKRUNNER_BASE_URL ?= http://127.0.0.1:18080
 TASKRUNNER_SK ?= dev-tr-e2e-sk
 INTERNAL_JOBS_SK ?= dev-tr-e2e-sk
-# 第二实例机制(docs/ops/port-allocation.md 33334):并行会话各用各的端口,互不误杀
+# 并行实例先查docs/ops/port-allocation.md与runbook §7：33334现归test，空闲端口可显式APP_PORT覆盖。
 APP_PORT ?= 33333
 export APP_PORT
 # /al 上游 env 覆盖（2026-11-02 双拓扑治理）：宿主 dev 默认回环（activelist 宿主直跑），
@@ -23,7 +23,12 @@ export APP_PORT
 GATEWAY_AL_TARGET ?= http://127.0.0.1:18081
 export GATEWAY_AL_TARGET
 dev:
-	@lsof -ti:$(APP_PORT) | xargs kill -9 2>/dev/null || true
+	@if command -v lsof >/dev/null 2>&1; then \
+		listeners=$$(lsof -nP -iTCP:"$(APP_PORT)" -sTCP:LISTEN 2>/dev/null || true); \
+		if [ -n "$$listeners" ]; then \
+			printf 'ERROR: APP_PORT=%s 已被监听，请先核进程归属或换APP_PORT；未停止原进程。\n%s\n' "$(APP_PORT)" "$$listeners" >&2; exit 1; \
+		fi; \
+	fi
 	@set -a; [ -f ../taskrunner/.env ] && . ../taskrunner/.env; set +a; \
 	INTERNAL_JOBS_SK=$${TASKRUNNER_SELF_SK:-dev-internal-jobs-sk} \
 	TASKRUNNER_SK=$${TASKRUNNER_CALLER_ZHUZHAO_SK:-dev-taskrunner-sk} \
@@ -65,17 +70,18 @@ migrate-up:
 migrate-down:
 	migrate -path migrations -database "$(MIGRATE_DSN)" down
 
-# 本地开发：只起 PG + Redis
+# 本地开发：显式project保留既有开发卷，仅起PG/Redis。
+ZHUZHAO_DEV_PROJECT ?= zhuzhao-dev
 docker-dev-up:
-	cd deployments && docker-compose -f docker-compose.dev.yaml up -d
+	docker compose -p "$(ZHUZHAO_DEV_PROJECT)" -f deployments/docker-compose.dev.yaml up -d --wait postgres redis
 
 docker-dev-down:
-	cd deployments && docker-compose -f docker-compose.dev.yaml down
+	docker compose -p "$(ZHUZHAO_DEV_PROJECT)" -f deployments/docker-compose.dev.yaml down
 
 # 清空 PG/Redis 数据卷并重建（会删除所有本地 dev 数据，随后自动 migrate-up）
 docker-dev-reset:
-	cd deployments && docker-compose -f docker-compose.dev.yaml down -v
-	cd deployments && docker-compose -f docker-compose.dev.yaml up -d
+	docker compose -p "$(ZHUZHAO_DEV_PROJECT)" -f deployments/docker-compose.dev.yaml down -v
+	docker compose -p "$(ZHUZHAO_DEV_PROJECT)" -f deployments/docker-compose.dev.yaml up -d --wait postgres redis
 	@echo "Waiting for postgres..."
 	@sleep 5
 	$(MAKE) migrate-up
@@ -136,3 +142,7 @@ guard-roundtrip:
 # 架构守护：分层依赖 / 命名 / 技术债门禁（防止 AI 迭代悄悄破坏架构）
 guard:
 	go test -count=1 -run 'TestArchitecture|TestGuard' ./internal/...
+
+# 离线黑盒：全部外部命令为桩，不访问Docker/共享进程。
+test-dev-stack:
+	python3 scripts/test-dev-stack.py

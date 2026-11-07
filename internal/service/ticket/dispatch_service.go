@@ -68,7 +68,7 @@ func (d *DispatchService) emitDispatchMissed(ctx context.Context, ticket *model.
 	// dispatch_missed = 走 DomainEvent{ticket, "ticket.dispatch_missed"}——
 	// S6 规则面可配告警通知（管理端"新单无人接"监控场景）
 	if d.svc != nil && d.svc.eventReg != nil {
-		d.svc.emitEvent(domainevent.DomainEvent{
+		d.svc.emitTicketEvent(ticket, domainevent.DomainEvent{
 			BizType: domainevent.BizTicket,
 			Action:  domainevent.TicketDispatchMissed,
 			BizID:   strconv.FormatInt(ticket.ID, 10),

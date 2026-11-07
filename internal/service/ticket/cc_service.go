@@ -81,7 +81,7 @@ func (s *Service) emitCCAdded(ctx context.Context, ticketID, actorUserID int64, 
 	// recipient_type=cc 收件人档锚点（resolveRecipientsFromRule case "cc"）
 	payload["cc_users"] = strings.Join(ids, ",")
 	payload["actor"] = strconv.FormatInt(actorUserID, 10)
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketCCAdded,
 		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorUserID,
 		Payload:   payload,

@@ -157,6 +157,8 @@ ALTER TABLE user_orgs ADD COLUMN org_member_role VARCHAR(20) NOT NULL DEFAULT 'm
 组内踢人/改 member：admin 只能动 org_member_role=member 的用户
 ```
 
+**临时成员有效期（B09，2026-11-05 校准）**：所有由成员关系产生的授权须满足 `expires_at IS NULL OR expires_at > NOW()`，包括透明读、scope、组织赋角、组内委托、建单组织归属，以及新分派规则的目标成员校验。到期不等于删除数据库关系行；关系展示/清理与授权分开。`owner_user_ids` 属独立显式委托，不随成员行有效期自动撤销。回归见 `internal/service/expired_membership_integration_test.go` 的 `TestExpiredMembership_AuthorizationBoundaries` 与 `TestExpiredMembership_ExplicitOwnerRemainsIndependent`；单条与列表两侧均须覆盖。
+
 > 实体 HR 部门的「负责人」通常来自 HR 字段或本地指定；虚拟项目组的负责人 **纯 IAM 指定**。HR Job **不覆盖** `owner_user_ids` / 虚拟组 `org_member_role`。
 
 ---

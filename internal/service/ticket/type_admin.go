@@ -12,6 +12,8 @@ import (
 
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
@@ -67,46 +69,51 @@ func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketT
 }
 
 // UpdateTicketType 更新类型（patch；code 不可改）。
-// P1-3：req.Version 可选乐观锁——传了才校验（nil = 旧行为）。
+// 客户端version仍可选；图/meta写使用同一持久快照校验并CAS，防止并发半图交错。
 func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.UpdateTicketTypeRequest) (*model.TicketType, error) {
 	if req.Version != nil && *req.Version <= 0 {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
-	if len(req.States) > 0 || len(req.Transitions) > 0 {
-		states, transitions := req.States, req.Transitions
-		if len(states) == 0 {
-			states = json.RawMessage(defaultStates)
-		}
-		if len(transitions) == 0 {
-			transitions = json.RawMessage(defaultTransitions)
-		}
-		if err := validateTypeGraph(states, transitions); err != nil {
-			return nil, err
-		}
-	}
-	// B10-4：transition_meta 键域须 ⊆ states（改图后残留旧状态键 → 400 收口，
-	// 防扫描器扫已删状态的悬空超时配置）。仅发 meta 时取存量 states 判键域。
-	if len(req.TransitionMeta) > 0 {
-		stateList, t, err := s.metaKeyDomain(ctx, code, req.States)
+	version := req.Version
+	graphChanged := len(req.States) > 0 || len(req.Transitions) > 0
+	if graphChanged || len(req.TransitionMeta) > 0 {
+		// 同一个持久快照同时提供缺省半图、meta键域和服务端CAS版本。
+		stateList, current, err := s.metaKeyDomain(ctx, code, req.States)
 		if err != nil {
 			return nil, err
 		}
-		if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
-			return nil, err
+		if version != nil && int64(*version) != current.Version {
+			return nil, errcode.ErrConcurrentModification
 		}
-		// S3a B3-1："from>to" 转换级键校验（条件 roles 词表+validator 语法+键域
-		// ⊆ transitions 展开集——与 B10-4 state 级键共存同列两形）
-		var transitions map[string][]string
-		if len(req.Transitions) > 0 {
-			_ = json.Unmarshal(req.Transitions, &transitions)
-		} else {
-			_ = json.Unmarshal(t.Transitions, &transitions)
+		states, transitions := req.States, req.Transitions
+		if len(states) == 0 {
+			states = current.States
 		}
-		if err := ValidateTransitionMeta(stateList, transitions, req.TransitionMeta); err != nil {
-			return nil, err
+		if len(transitions) == 0 {
+			transitions = current.Transitions
+		}
+		if graphChanged {
+			if err := validateTypeGraph(states, transitions); err != nil {
+				return nil, err
+			}
+		}
+		if len(req.TransitionMeta) > 0 {
+			if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
+				return nil, err
+			}
+			var transitionMap map[string][]string
+			_ = json.Unmarshal(transitions, &transitionMap)
+			if err := ValidateTransitionMeta(stateList, transitionMap, req.TransitionMeta); err != nil {
+				return nil, err
+			}
+		}
+		if version == nil {
+			// 兼容无version客户端，拒绝预检之后已变更的父配置。
+			snapshotVersion := int(current.Version)
+			version = &snapshotVersion
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, req.Version)
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, version)
 }
 
 // metaKeyDomain 取 meta 键域判定的 states+transitions 基线：请求带 states 用请求值，
@@ -222,13 +229,23 @@ type FieldSoftWarning struct {
 }
 
 // ReplaceTicketTypeFields 全量替换字段集（校验：key 唯一/类型枚举/select 选项/正则可编译）。
-// P1-3：req.Version 可选乐观锁，以父类型 ticket_types.version 做 CAS；nil = 旧行为。
+// 客户端version可选；旧字段预检前取父版本，写入CAS覆盖整个预检窗口。
 func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req *model.ReplaceTypeFieldsRequest) ([]FieldSoftWarning, error) {
 	if req.Version != nil && *req.Version <= 0 {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
-	if _, err := s.ticketRepo.GetTicketType(ctx, code); err != nil {
+	current, err := s.ticketRepo.GetTicketType(ctx, code)
+	if err != nil {
 		return nil, err
+	}
+	version := req.Version
+	if version != nil && int64(*version) != current.Version {
+		return nil, errcode.ErrConcurrentModification
+	}
+	if version == nil {
+		// 必须早于旧字段读取；否则旧空集预检可能搭配并发提交后的新版本。
+		snapshotVersion := int(current.Version)
+		version = &snapshotVersion
 	}
 	fields, err := validateFieldInputs(req.Fields)
 	if err != nil {
@@ -250,7 +267,7 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 		return nil, err
 	}
 	warnings := s.softFieldWarnings(ctx, code, old, fields)
-	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, req.Version)
+	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, version)
 }
 
 // checkFieldLock 锁死守卫硬锁面（纯函数便于测试）：旧集非空时，旧 key 必须全部
@@ -736,7 +753,7 @@ const CustomDataMaxBytes = 64 << 10
 // 2026-10-22：错误臂原返回原文，经 optionValues 成字面量单选项 → 一切
 // 合法 select 值被 400 拒，fail-closed 实效与 fail-open 意图相反；码不
 // 存在臂由保存期字典码存在性校验收口[B1-7]，运行期空集仅为兜底）。
-func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) json.RawMessage {
+func (s *Service) expandDictOptions(ctx context.Context, q repository.RowQuerier, raw json.RawMessage) json.RawMessage {
 	var elems []json.RawMessage
 	if err := json.Unmarshal(raw, &elems); err != nil || len(elems) != 1 {
 		return raw
@@ -746,7 +763,7 @@ func (s *Service) expandDictOptions(ctx context.Context, raw json.RawMessage) js
 		return raw
 	}
 	code := strings.TrimPrefix(sv, "dict:")
-	rows, err := s.db.Query(ctx,
+	rows, err := q.Query(ctx,
 		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
 	if err != nil {
 		return json.RawMessage("[]") // DB 故障→空集=真 fail-open（原文返回会拒一切合法值）
@@ -819,7 +836,7 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 		// F-B-2 外审 P0 修复（2026-10-22）：field_options 为 dict: 引用时展开为
 		// 真实字典项值集（optionValues 只见 ["dict:code"] 字面量，真实值全被拒）
 		if f.FieldOptions != nil && (f.FieldType == "select" || f.FieldType == "multi_select" || f.FieldType == "radio") {
-			f.FieldOptions = s.expandDictOptions(ctx, f.FieldOptions)
+			f.FieldOptions = s.expandDictOptions(ctx, q, f.FieldOptions)
 		}
 		// B1-6 批1 file：required→至少 1 个 object_key（缺失/null/空数组均拒）
 		if f.FieldType == "file" && f.Required {
@@ -840,9 +857,14 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 					_ = json.Unmarshal(rawF, &keys)
 				}
 				if len(keys) > 0 {
-					var mimes []string
-					if err := s.db.QueryRow(ctx,
-						`SELECT array_agg(fo.mime_type) FROM file_objects fo WHERE fo.object_key = ANY($1)`, keys).Scan(&mimes); err != nil {
+					// Update已持事务连接：MIME读与schema/字典读一样复用q，不能再向池取连接。
+					rows, err := q.Query(ctx,
+						`SELECT fo.mime_type FROM file_objects fo WHERE fo.object_key = ANY($1)`, keys)
+					if err != nil {
+						return nil, errcode.ErrInternal
+					}
+					mimes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+					if err != nil {
 						return nil, errcode.ErrInternal
 					}
 					allowSet := map[string]bool{}

@@ -44,6 +44,7 @@ func (s *OrgDelegationService) EffectiveOrgPriority(ctx context.Context, userID,
 		END
 	FROM organizations o
 	LEFT JOIN user_orgs m ON m.org_id = o.id AND m.user_id = $3
+		AND (m.expires_at IS NULL OR m.expires_at > NOW())
 	WHERE o.id = $2`
 	var priority int
 	if err := s.db.QueryRow(ctx, q, userID, orgID, userID).Scan(&priority); err != nil {
@@ -62,6 +63,7 @@ func (s *OrgDelegationService) IsOrgAdminOrOwner(ctx context.Context, userID, or
 			SELECT 1 FROM user_orgs m
 			WHERE m.org_id = o.id AND m.user_id = $3
 			  AND m.org_member_role IN ('admin', 'owner')
+			  AND (m.expires_at IS NULL OR m.expires_at > NOW())
 		)
 	FROM organizations o
 	WHERE o.id = $2`

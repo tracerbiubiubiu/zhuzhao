@@ -123,6 +123,7 @@ func (s *TimeoutScanner) listTypesWithMeta(ctx context.Context) ([]typeMetaRow, 
 }
 
 type candidateRow struct {
+	createdBy              int64
 	id                     int64
 	humanKey               string
 	title                  string
@@ -133,28 +134,37 @@ type candidateRow struct {
 
 func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, timeoutMinutes int, esc *stateMetaEscalation) (int, error) {
 	notify, interval, maxReminders := escalationPlan(esc)
+	if maxReminders <= 0 {
+		return 0, nil
+	}
+	wantAssignee, wantSupervisor := false, false
+	for _, target := range notify {
+		wantAssignee = wantAssignee || target == "assignee"
+		wantSupervisor = wantSupervisor || target == "supervisor"
+	}
 	// 候选窗口 LIMIT 500 只装「本轮可催」的单：已催满（reminder_count ≥ max）与间隔未到（last_reminder_at
 	// 在 interval 内）在 SQL 层排除——修前两类单仍占名额、循环里 shouldRemind=false 跳过，前 500 个催满后
 	// 第 501+ 个永不催办（静默饿死）。shouldRemind 仍复核一次作并发/边界兜底。
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.assigned_to, t.escalation_supervisor_id,
+		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.created_by, t.assigned_to, t.escalation_supervisor_id,
 		       EXTRACT(EPOCH FROM (NOW() - t.status_changed_at)) / 60.0
 		FROM tickets t
 		WHERE t.type_code = $1 AND t.status = $2
+		  AND (($6 AND t.assigned_to IS NOT NULL) OR ($7 AND t.escalation_supervisor_id IS NOT NULL))
 		  AND t.status_changed_at < NOW() - make_interval(mins => $3)
 		  AND NOT EXISTS (
 		        SELECT 1 FROM ticket_reminders tr
 		        WHERE tr.ticket_id = t.id AND tr.state = $2
 		          AND (tr.reminder_count >= $4
 		               OR tr.last_reminder_at > NOW() - make_interval(mins => $5)))
-		ORDER BY t.id LIMIT 500`, typeCode, state, timeoutMinutes, maxReminders, interval)
+		ORDER BY t.id LIMIT 500`, typeCode, state, timeoutMinutes, maxReminders, interval, wantAssignee, wantSupervisor)
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
 	cands, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (candidateRow, error) {
 		var c candidateRow
-		return c, r.Scan(&c.id, &c.humanKey, &c.title, &c.assignedTo, &c.escalationSupervisorID, &c.overdueMinutes)
+		return c, r.Scan(&c.id, &c.humanKey, &c.title, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID, &c.overdueMinutes)
 	})
 	if err != nil {
 		return 0, err
@@ -176,7 +186,9 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 				"overdue_minutes", int64(c.overdueMinutes))
 			continue
 		}
-		s.emitTimeout(c, state, notify, next)
+		if !s.emitTimeout(c, state, notify, next) {
+			continue // no dispatched event: preserve this ticket's reminder budget
+		}
 		// 先发后记水位：bumpReminder 失败则本轮已发而水位未进 → 下轮重发（at-most-once 退化为 at-least-once）。
 		// 权衡取向=宁重发勿漏催（催办是提醒非账务）；反向「先记后发」在 emit 失败时漏一次且计数已耗。审计 #20 登记。
 		if err := s.bumpReminder(ctx, c.id, state); err != nil {
@@ -217,6 +229,9 @@ func escalationPlan(esc *stateMetaEscalation) (notify []string, interval, maxRem
 // shouldRemind 水位判定：返回（本次是第几次催办, 是否应发, err）——次数供载荷
 // {{ticket.reminder_count}} 渲染（种子模板 000064）。
 func (s *TimeoutScanner) shouldRemind(ctx context.Context, ticketID int64, state string, interval, maxReminders int) (int, bool, error) {
+	if maxReminders <= 0 {
+		return 0, false, nil
+	}
 	var count int
 	var last *time.Time
 	err := s.db.QueryRow(ctx,
@@ -255,9 +270,9 @@ func (s *TimeoutScanner) bumpReminder(ctx context.Context, ticketID int64, state
 // emitTimeout 组装目标集并发事件。目标解析（dd §31）：
 // assignee=处理人；supervisor=人工指定 escalation_supervisor_id（manager_id 档
 // 挂 M-HR；未指定=缺席不推导）。cc_users=全部目标（种子规则 recipient_type=cc）。
-func (s *TimeoutScanner) emitTimeout(c candidateRow, state string, notify []string, reminderCount int) {
+func (s *TimeoutScanner) emitTimeout(c candidateRow, state string, notify []string, reminderCount int) bool {
 	if s.eventReg == nil {
-		return
+		return false
 	}
 	var targets []string
 	wantSupervisor, wantAssignee := false, false
@@ -280,7 +295,7 @@ func (s *TimeoutScanner) emitTimeout(c candidateRow, state string, notify []stri
 		targets = append(targets, toSupervisor)
 	}
 	if len(targets) == 0 {
-		return // 无可送达目标（未指派且无上级）——不发空事件
+		return false // 无可送达目标（未指派且无上级）——不发空事件
 	}
 	payload := domainevent.Payload{
 		"title": c.title, "status": state,
@@ -299,12 +314,13 @@ func (s *TimeoutScanner) emitTimeout(c candidateRow, state string, notify []stri
 	payload["cc_users"] = joinIDs(targets)
 	payload["overdue_minutes"] = int64(c.overdueMinutes)
 	payload["reminder_count"] = reminderCount
-	s.eventReg.Dispatch(context.Background(), domainevent.DomainEvent{
+	s.eventReg.Dispatch(context.Background(), withTicketIdentity(domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketTimeout,
 		BizID:     strconv.FormatInt(c.id, 10),
 		Payload:   payload,
 		Timestamp: time.Now(),
-	})
+	}, c.createdBy))
+	return true
 }
 
 func joinIDs(ids []string) string {
@@ -323,7 +339,7 @@ func joinIDs(ids []string) string {
 // message_log 查重防重发）。due 写入点在 Transition commit 后按 to 态 sla_due_hours 计算。
 func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state string, dueHours int) (int, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, COALESCE(human_key, ''), title, assigned_to, escalation_supervisor_id
+		SELECT id, COALESCE(human_key, ''), title, created_by, assigned_to, escalation_supervisor_id
 		FROM tickets
 		WHERE type_code = $1 AND status = $2
 		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, typeCode, state)
@@ -333,7 +349,7 @@ func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state strin
 	defer rows.Close()
 	cands, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (candidateRow, error) {
 		var c candidateRow
-		err := r.Scan(&c.id, &c.humanKey, &c.title, &c.assignedTo, &c.escalationSupervisorID)
+		err := r.Scan(&c.id, &c.humanKey, &c.title, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID)
 		return c, err
 	})
 	if err != nil {
@@ -356,7 +372,9 @@ func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state strin
 			s.logger.Warn("deadline_scan: overdue candidate (observe, not sent)", "ticket", c.id, "state", state)
 			continue
 		}
-		s.emitDeadline(c, state, notify)
+		if !s.emitDeadline(c, state, notify) {
+			continue // no target yet: assigning one later must still notify
+		}
 		if err := s.bumpReminder(ctx, c.id, "deadline:"+state); err != nil {
 			return sent, err
 		}
@@ -366,9 +384,9 @@ func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state strin
 }
 
 // emitDeadline 到期事件（cc_users=assignee∪上级——timeout 同构）。
-func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []string) {
+func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []string) bool {
 	if s.eventReg == nil {
-		return
+		return false
 	}
 	var targets []string
 	var toAssignee string
@@ -380,7 +398,7 @@ func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []str
 		targets = append(targets, strconv.FormatInt(*c.escalationSupervisorID, 10))
 	}
 	if len(targets) == 0 {
-		return
+		return false
 	}
 	payload := domainevent.Payload{"title": c.title, "status": state}
 	if c.humanKey != "" {
@@ -390,9 +408,10 @@ func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []str
 	}
 	payload["to_assignee"] = toAssignee
 	payload["cc_users"] = joinIDs(targets)
-	s.eventReg.Dispatch(context.Background(), domainevent.DomainEvent{
+	s.eventReg.Dispatch(context.Background(), withTicketIdentity(domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketDeadline,
 		BizID:   strconv.FormatInt(c.id, 10),
 		Payload: payload, Timestamp: time.Now(),
-	})
+	}, c.createdBy))
+	return true
 }

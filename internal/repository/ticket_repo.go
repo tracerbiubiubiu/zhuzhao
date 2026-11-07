@@ -143,8 +143,8 @@ func (r *TicketRepo) CountByFilter(ctx context.Context, filter resource.Filter, 
 	return total, nil
 }
 
-// StreamRowsByFilter 导出取行：无分页全量（行数已由 service 钳制）——逐行回调
-// （excelize StreamWriter 逐行 flush，防大结果集整集驻留内存）。
+// StreamRowsByFilter 导出取行：无分页逐行回调，service出口校验实际行数并可提前返回错误。
+// 工作表由handler增量编码，完成后显式Flush收尾。
 func (r *TicketRepo) StreamRowsByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery, fn func(*model.Ticket) error) error {
 	if filter.Where == "" && !filter.Unscoped {
 		return fmt.Errorf("ticket export: missing scope filter (IW4 fail-closed 哨兵)")
@@ -184,6 +184,12 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	}
 	if q.Status != "" {
 		conds = append(conds, "status = "+next(q.Status))
+	}
+	if len(q.Statuses) > 0 {
+		conds = append(conds, "status = ANY("+next(q.Statuses)+"::text[])")
+	}
+	if len(q.ExcludeStatuses) > 0 {
+		conds = append(conds, "NOT (status = ANY("+next(q.ExcludeStatuses)+"::text[]))")
 	}
 	if q.Priority != nil {
 		conds = append(conds, "priority = "+next(*q.Priority))
@@ -375,10 +381,11 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 	return updatedAt, nil
 }
 
-// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004
-func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, id int64) error {
+// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004。
+// 复用写入执行器：事务内不能再次向池取连接，且定性必须能看见事务自身写入。
+func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, exec rowExec, id int64) error {
 	var status string
-	err := r.db.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
+	err := exec.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errcode.ErrTicketNotFound
 	}
@@ -411,7 +418,7 @@ func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64,
 		return fmt.Errorf("update ticket status: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }
@@ -426,7 +433,7 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 		return fmt.Errorf("update assigned_to: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }

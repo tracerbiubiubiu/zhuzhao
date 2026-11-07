@@ -155,48 +155,6 @@ func (r *StorageRepo) DeleteRowById(ctx context.Context, id int64) error {
 	return err
 }
 
-// GetUserAvatar 读当前头像对象键（avatar 回写链——users 表跨表读，
-// repository 平铺包域内直查；换后端形态时随 avatar 链整体迁移）。
-func (r *StorageRepo) GetUserAvatar(ctx context.Context, userID int64) (string, error) {
-	var avatar string
-	err := r.db.QueryRow(ctx, `SELECT coalesce(avatar, '') FROM users WHERE id = $1`, userID).Scan(&avatar)
-	if err != nil {
-		return "", err
-	}
-	return avatar, nil
-}
-
-// UpdateUserAvatar 回写头像对象键。
-func (r *StorageRepo) UpdateUserAvatar(ctx context.Context, userID int64, objectKey string) error {
-	_, err := r.db.Exec(ctx, `UPDATE users SET avatar = $2 WHERE id = $1`, userID, objectKey)
-	return err
-}
-
-// MarkAvatarDropped 旧头像弃旧（A.7：换头像即弃旧 GC 收——条件限定
-// purpose=avatar，防止误标他域对象）。
-func (r *StorageRepo) MarkAvatarDropped(ctx context.Context, bucket, objectKey string) error {
-	_, err := r.db.Exec(ctx,
-		`UPDATE file_objects SET status = 'deleted' WHERE bucket = $1 AND object_key = $2 AND purpose = 'avatar'`,
-		bucket, objectKey)
-	return err
-}
-
-// SetObjectOwner 置对象通用归属（000047 随行件）。avatar bind 填 user；ticket 态由
-// ConfirmAndBind / BindCreateAttachments 在翻态语句内同步落 ticket，不经本方法。
-// 0 行 → ErrStorageObjectNotFound（(bucket, object_key) 唯一键对齐）。
-func (r *StorageRepo) SetObjectOwner(ctx context.Context, bucket, objectKey, ownerKind, ownerID string) error {
-	tag, err := r.db.Exec(ctx,
-		`UPDATE file_objects SET owner_kind = $3, owner_id = $4 WHERE bucket = $1 AND object_key = $2`,
-		bucket, objectKey, ownerKind, ownerID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrStorageObjectNotFound
-	}
-	return nil
-}
-
 // ConfirmAndBind ticket 态确认并落绑（repo 内单事务：同单行锁串行化并发绑定 +
 // 附件数计数校验（05 号 §3 个数上限执行点）+ 条件翻 confirmed + INSERT
 // ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
@@ -215,17 +173,26 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 	if err := tx.QueryRow(ctx, `SELECT id FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&lockID); err != nil {
 		return err
 	}
-	// 计数仅含 ticket_attachment 行——richtext 内嵌图独立软限不占附件额度
-	//（05 §3 两档口径，拍板 P2 2026-10-21；maxCount=0 时调用方声明跳过计数）
-	var n int
-	if err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM ticket_attachments ta
-		JOIN file_objects fo ON fo.id = ta.file_object_id
-		WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
+	// 与建单/编辑绑定同口径：先锁待绑对象，仅普通附件占用附件额度。
+	// 已有普通附件满额时，richtext 内嵌图仍允许确认（独立软限）。
+	var purpose string
+	if err := tx.QueryRow(ctx, `SELECT purpose FROM file_objects WHERE id=$1 FOR UPDATE`, fileID).Scan(&purpose); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrStorageAlreadyBound
+		}
 		return err
 	}
-	if maxCount > 0 && n+1 > maxCount { // 与 BindCreateAttachments 的分档计数同形（审计 M-10）
-		return ErrStorageAttachmentLimit
+	if purpose != "ticket_richtext" && maxCount > 0 {
+		var n int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*) FROM ticket_attachments ta
+			JOIN file_objects fo ON fo.id = ta.file_object_id
+			WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
+			return err
+		}
+		if n+1 > maxCount {
+			return ErrStorageAttachmentLimit
+		}
 	}
 
 	tag, err := tx.Exec(ctx, `
@@ -380,7 +347,7 @@ func (r *StorageRepo) UnlinkAttachment(ctx context.Context, bucket string, ticke
 }
 
 // MarkObjectDeleted 对象弃旧标 deleted（附件删除路径专用——审计 M-5：补 bucket
-// 与 purpose 双条件，防多桶/key 碰撞误标他域对象；avatar 弃旧走 MarkAvatarDropped）。
+// 与 purpose 双条件，防多桶/key 碰撞误标他域对象；avatar 弃旧走 BindAvatar）。
 func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, bucket, objectKey string) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE file_objects SET status = 'deleted'
@@ -446,31 +413,31 @@ func (r *StorageRepo) ListConfirmedAvatarOrphans(ctx context.Context, bucket str
 	return out, rows.Err()
 }
 
-// MarkAvatarOrphanDeleted avatar 专用软删标记（第四段 GC 前置——反连接条件与
-// MarkDeleted 的 ticket_attachments 守卫不同：avatar 的并发绑定面是 users.avatar，
-// List 与 Mark 之间用户完成头像绑定时让位不动物理删，Y-2 同款并发语义）。
-func (r *StorageRepo) MarkAvatarOrphanDeleted(ctx context.Context, id int64, objectKey string) (bool, error) {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE file_objects SET status='deleted'
-		WHERE id=$1 AND status='confirmed' AND purpose='avatar'
-		  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar = $2)`, id, objectKey)
+// MarkDeleted 软删 confirmed 工单孤儿（第三段 GC 前置）。先锁对象行，再以
+// 新语句复查关联；单条 UPDATE 在等待 BindCreateAttachments 时取得的旧快照
+// 看不到其刚提交的 ticket_attachments，仍会误删在用对象（B06-04）。
+func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return false, err
 	}
-	return tag.RowsAffected() > 0, nil
-}
-
-// MarkDeleted 软删行（confirmed→deleted——第三段 GC 前置标记）。
-// v3 审计 Y-2（2026-10-23）：WHERE 加 NOT EXISTS 反连接条件——修复前仅守
-// status='confirmed'，List 与 MarkDeleted 之间并发建单落绑（BindCreateAttachments
-// 插 ticket_attachments 但不改 status）会把已绑定在用对象软删+物理删。
-// 返回是否实际标记（false=已被并发绑定或翻态让位，调用方跳过物理删）。
-func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
-	tag, err := r.db.Exec(ctx, `
+	defer tx.Rollback(ctx)
+	var lockID int64
+	err = tx.QueryRow(ctx, `SELECT id FROM file_objects WHERE id=$1 FOR UPDATE`, id).Scan(&lockID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	tag, err := tx.Exec(ctx, `
 		UPDATE file_objects SET status='deleted'
 		WHERE id=$1 AND status='confirmed'
 		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = file_objects.id)`, id)
 	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil

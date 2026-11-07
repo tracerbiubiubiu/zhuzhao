@@ -31,16 +31,14 @@ zhuzhao 是 zhuzhao 生态的主仓库：Go（Gin + PostgreSQL + Casbin + Redis 
 ## 快速开始
 
 ```sh
-# 演示栈（app + PG + Redis + pgbackup 侧车；演示账号 E000001 / Phase3Demo#2026，详见 runbook）
-docker compose -f deployments/docker-compose.yaml up -d --build
-curl http://localhost:33333/health/ready
-
-# 本地开发栈（仅 PG/Redis 容器，应用进程 go run）
-docker compose -f deployments/docker-compose.dev.yaml up -d
-make dev
+# 本地开发依赖（保留原开发卷；应用进程在宿主启动）
+make docker-dev-up
+make migrate-up
+make dev  # 端口占用即拒启；不自动kill其它进程
 ```
 
 - 端点：`/api/v1/*`（业务 API，JWT）、`/al/*`（activelist 反代）、`/internal/jobs/callback`（内网回调，默认关）、`/health/live`、`/health/ready`；
+- AL/TR/UI宿主进程需分别启动；三组Compose辅助脚本、既有project/数据卷与显式部署迁移见 [启动指南](deployments/README.md)。账号纪律见 [runbook §4](docs/runbook.md)。
 - 运维两套栈的区分、env 注入与常见故障：[docs/ops/runbook.md](docs/ops/runbook.md)。
 
 ## 开发与门禁

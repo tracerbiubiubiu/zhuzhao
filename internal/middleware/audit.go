@@ -142,15 +142,18 @@ func maskSensitiveMap(m map[string]any) {
 		if val == nil {
 			continue
 		}
-		switch typed := val.(type) {
-		case map[string]any:
-			maskSensitiveMap(typed)
-		case []any:
-			for _, item := range typed {
-				if child, ok := item.(map[string]any); ok {
-					maskSensitiveMap(child)
-				}
-			}
+		maskSensitiveValue(val)
+	}
+}
+
+// maskSensitiveValue 遍历 JSON 容器，包括连续多层数组（ECO-B06-F12）。
+func maskSensitiveValue(value any) {
+	switch typed := value.(type) {
+	case map[string]any:
+		maskSensitiveMap(typed)
+	case []any:
+		for _, item := range typed {
+			maskSensitiveValue(item)
 		}
 	}
 }

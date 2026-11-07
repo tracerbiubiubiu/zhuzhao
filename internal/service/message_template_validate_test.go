@@ -16,7 +16,7 @@ import (
 func TestValidatePlaceholders(t *testing.T) {
 
 	t.Run("合法内置键放行", func(t *testing.T) {
-		err := validatePlaceholders("[{{ticket.human_key}}] {{ticket.title}}", "链接：{{ticket.link}}")
+		err := validatePlaceholders("[{{ticket.human_key}}] {{ticket.title}}", "链接：{{ticket.link}} 创建人：{{ticket.creator}}")
 		require.NoError(t, err)
 	})
 
@@ -42,9 +42,9 @@ func TestValidatePlaceholders(t *testing.T) {
 		for _, k := range []string{"ticket.title", "ticket.type_code", "ticket.priority", "ticket.status", "ticket.human_key", "ticket.link"} {
 			assert.True(t, builtinVarSet[k], "%s 应在白名单内", k)
 		}
-		// 计数守卫=两处同源的弱锁（16→24：2026-11-02 审计补 ops 八键，handler 字典同步——
+		// 计数守卫=两处同源的弱锁（24→25：2026-11-06 增创建者身份锚，仍保留ops八键，handler 字典同步——
 		// 字典侧镜像见 handler/message_template_handler_test.go）
-		assert.Len(t, builtinVarSet, 24)
+		assert.Len(t, builtinVarSet, 25)
 	})
 }
 

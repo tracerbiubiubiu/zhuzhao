@@ -128,6 +128,7 @@ func BuiltinTemplateVars() []map[string]string {
 		{"path": "ticket.reminder_count", "desc": "催办次数（timeout）"},
 		{"path": "ticket.overdue_minutes", "desc": "已超时分钟数（timeout）"},
 		{"path": "ticket.actor", "desc": "操作人 ID"},
+		{"path": "ticket.creator", "desc": "工单创建人 ID（与操作人区分）"},
 		{"path": "event.job", "desc": "定时任务名（ops.cron_failed）"},
 		{"path": "event.error", "desc": "错误信息（ops.cron_failed / ops.action_failed）"},
 		{"path": "event.last_success", "desc": "上次成功指引（ops.cron_failed）"},

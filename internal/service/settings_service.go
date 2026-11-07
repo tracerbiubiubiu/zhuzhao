@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
@@ -127,7 +128,8 @@ var settingsCatalog = []settingKey{
 
 // SettingsService 设置管理服务（B5-6——GET 列表 + POST 更新，tier 分层+硬底线钳制）。
 type SettingsService struct {
-	repo *repository.SettingsRepo
+	repo    *repository.SettingsRepo
+	applyMu sync.Mutex // 串行化本实例持久写与整份配置快照发布（Update/Reset共锁）
 	// factoryDefaults 出厂默认快照（New 时覆盖应用前取）——defaultValue 的读取源
 	factoryDefaults *storcfg.StorageConfig
 	cfg             *storcfg.ConfigStore // F-D3（2026-10-21）：原子快照——clone→改→Store，与请求侧读并发安全
@@ -147,7 +149,7 @@ func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.ConfigStore,
 		s.factoryDefaults = &d
 	}
 	if repo != nil {
-		s.applyAllOverrides(context.Background())
+		_ = s.applyAllOverrides(context.Background())
 	}
 	return s
 }
@@ -155,11 +157,11 @@ func NewSettingsService(repo *repository.SettingsRepo, cfg *storcfg.ConfigStore,
 // applyAllOverrides 启动路径：读全量 KV → 逐键 Validate（硬底线在 boot 路径同样
 // 设防——DB 被手工写入越界值时跳过保 config 默认，分批审计 F-D1 修复 2026-10-21）
 // → clone→Apply→Store 整体替换快照（F-D3——不再原地 mutate 共享指针）。
-func (s *SettingsService) applyAllOverrides(ctx context.Context) {
+func (s *SettingsService) applyAllOverrides(ctx context.Context) error {
 	kvs, err := s.repo.ListAll(ctx)
 	if err != nil {
-		s.logger.Warn("settings: boot apply overrides failed (config defaults active)", "err", err)
-		return
+		s.logger.Warn("settings: apply overrides failed (previous snapshot retained)", "err", err)
+		return fmt.Errorf("reload settings snapshot: %w", err)
 	}
 	// clone 基座=出厂快照而非当前快照——Reset 删覆盖后残留旧值的根因
 	// （2026-11-03；boot 时两者等价，运行时 Reset 路径必须回出厂基座）
@@ -192,6 +194,7 @@ func (s *SettingsService) applyAllOverrides(ctx context.Context) {
 	if skipped > 0 {
 		s.logger.Warn("settings: boot skipped invalid KV overrides", "count", skipped)
 	}
+	return nil
 }
 
 // List 管理面列表：返回全部 catalog 键的有效值（KV > config）+ 来源 + 编辑层级。
@@ -240,6 +243,8 @@ func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRe
 	if err := sk.Validate(req.Value); err != nil {
 		return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("值非法：%s", err))
 	}
+	s.applyMu.Lock()
+	defer s.applyMu.Unlock()
 	// 旧值快照（upsert 前读——A.7 变更审计的旧值侧；首次更新记 -）
 	oldVal := "-"
 	if old, err := s.repo.Get(ctx, req.Key); err != nil {
@@ -254,16 +259,10 @@ func (s *SettingsService) Update(ctx context.Context, req *model.UpdateSettingRe
 		}
 		return err
 	}
-	// in-memory apply（F-D3：clone→改→Store 整体换快照——并发读安全）
-	// clone 基座=出厂快照而非当前快照——Reset 删覆盖后残留旧值的根因
-	// （2026-11-03；boot 时两者等价，运行时 Reset 路径必须回出厂基座）
-	base := s.cfg.Load()
-	if s.factoryDefaults != nil {
-		base = s.factoryDefaults
+	// 从出厂快照与全部持久覆盖重建，保留其它键；失败保留旧快照并返回错误。
+	if err := s.applyAllOverrides(ctx); err != nil {
+		return err
 	}
-	merged := *base
-	sk.Apply(req.Value, &merged)
-	s.cfg.Store(&merged)
 	s.logger.Info("setting updated", "key", req.Key, "by", actorUserID,
 		"old_value", oldVal, "new_value", string(req.Value))
 	return nil
@@ -287,6 +286,8 @@ func (s *SettingsService) Reset(ctx context.Context, key string, actorUserID int
 		return errcode.New(errcode.ErrNoPermission.Code,
 			fmt.Sprintf("该设置需 %s 层级（当前角色无权恢复默认）", sk.MinTier))
 	}
+	s.applyMu.Lock()
+	defer s.applyMu.Unlock()
 	// 旧值快照（删除前读——A.7 审计旧值侧；无覆盖行记 -）
 	oldVal := "-"
 	if old, err := s.repo.Get(ctx, key); err != nil {
@@ -298,9 +299,10 @@ func (s *SettingsService) Reset(ctx context.Context, key string, actorUserID int
 	if err != nil {
 		return err
 	}
-	// 剩余覆盖集重建内存快照（被删键回落出厂默认；applyAllOverrides 内部失败仅
-	// Warn 降级——boot 同款语义，下次重启自愈）
-	s.applyAllOverrides(ctx)
+	// 与Update同锁重建剩余覆盖集；重建失败不发布快照，并向调用方报告失败。
+	if err := s.applyAllOverrides(ctx); err != nil {
+		return err
+	}
 	s.logger.Info("setting reset to default", "key", key, "by", actorUserID,
 		"removed_rows", rows, "old_value", oldVal, "default_value", string(s.defaultValue(key)))
 	return nil

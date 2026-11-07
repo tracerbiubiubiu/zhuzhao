@@ -1,5 +1,9 @@
 # 01 · 前端工程设计（zhuzhao-ui 初版）
 
+> 2026-11-06 ECO-B08角标导航：NavbarBadge待办按后端非终态口径，传assignee=me及exclude_statuses=closed,rejected；不能套用首页assigned/in_progress枚举漏掉自定义状态。列表/导出同过滤，缓存激活时恢复显式深链；本轮联合固定验证待收口。
+
+> 2026-11-06 ECO-B08修复：工作台“我的待办”卡以处理人=本人且状态assigned/in_progress统计，导航须传 `assignee=me&statuses=assigned,in_progress`，列表/导出同一集合；单纯assignee=me会混入已关闭项。显式深链每次激活缓存页时恢复对应筛选，普通无query页签可保留筛选；点击卡具备键盘焦点及Enter触发。前后端联合验证待完成，独立codex分支未合main。
+
 > **文档定位**：zhuzhao-ui 的**工程设计文档**——架构、壳层、状态分界、页面范式、工程化与里程碑。功能规格不在本文：工单域（BK-18 前端/动态表单/审批页）以 [phase3/12-frontend](../phase3/12-frontend.md) 为规格 SSOT；动态路由与菜单契约以 [phase1/07-menu](../phase1/07-menu.md) 为准；工程架构五拍板（仓格局/底座/范例页/views/部署）以 [00 号 §2.1](./00-planning-inventory.md) 为准，本文是其展开。
 >
 > **状态基准**：2026-09-21。所有后端契约字段均经代码核验（`zhuzhao-utils/response`、`internal/model/token.go`、`internal/service/menu_service.go`、000002/22/24/25 菜单种子）。
@@ -229,3 +233,10 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 |---|---|
 | 建档 | 前端工程设计（技术栈/壳层/契约消费面/门禁——§13 SSOT 索引在册） |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；逐批复审留痕见文末复审表与 02 §5.5 |
+
+
+### 2026-11-06请求类型契约校准（B08-F12）
+
+`internal/model/ticket_request.go` 的Create/UpdateTicketRequest.CustomData使用RawMessage存储JSON，Swagger按底层字节误生成为number[]；生成元数据现在明确为object，对应表单字段对象与Update增量patch。生成器仍是既有swag→swagger2openapi→openapi-typescript链，不手改生成物。无字段定义的旧Create路径未全面校验JSON形状，本批不修改其运行兼容边界，也不以Swagger声明替代服务端G2校验。
+
+客户端Create/Assign请求应绑定实际生成类型，`assigned_to=null`取消分派与freeform custom_data可作有出处的窄适配；不得覆盖supervisor等已知字段的生成类型来掩盖漂移。生成类型单独改变supervisor形状后，真实调用方必须编译失败；常规正确字符串与取消分派保持通过。后端公开schema对象形状回归见 `ticket_schema_contract_test.go` 的 `TestTicketCustomDataSwaggerObject`，前端消费端另笔验证，不能把元数据修复视为已全部闭环。

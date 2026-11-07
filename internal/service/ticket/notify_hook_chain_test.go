@@ -16,7 +16,7 @@ import (
 func TestResolveRecipients_RulesDriven(t *testing.T) {
 	ev := domainevent.DomainEvent{
 		BizType: "ticket", Action: domainevent.TicketCreated,
-		Payload: map[string]any{"actor": "42", "to_assignee": "100"},
+		Payload: map[string]any{"actor": "99", "creator": "42", "to_assignee": "100"},
 	}
 
 	t.Run("recipient_type=assignee→取 payload assignee", func(t *testing.T) {
@@ -24,7 +24,7 @@ func TestResolveRecipients_RulesDriven(t *testing.T) {
 		assert.Equal(t, []string{"100"}, ids)
 	})
 
-	t.Run("recipient_type=creator→取 payload actor", func(t *testing.T) {
+	t.Run("recipient_type=creator→取工单创建者", func(t *testing.T) {
 		ids := resolveRecipientsFromRule(ev, "creator", "")
 		assert.Equal(t, []string{"42"}, ids)
 	})

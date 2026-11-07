@@ -1,23 +1,46 @@
 # zhuzhao 部署 runbook（含三栈拼装）
 
-> 部署态 = `docker-compose.yaml`（本目录）；开发态 = `docker-compose.dev.yaml` + `scripts/dev-stack.sh`。
+> 部署态 = `docker-compose.yaml`（本目录）；宿主开发 = `docker-compose.dev.yaml` 依赖 + 手动启动四个宿主进程。`scripts/dev-stack.sh` 仅作三组 Compose 依赖/部署辅助，不代表宿主联调全链已就绪。
 > 本文件是**三栈拼装的总 runbook**：activelist / taskrunner 各自栈的细节见其仓 `deploy/README.md`。
+
+## 〇、开发依赖与宿主应用（B13，2026-11-06）
+
+常用宿主开发形态：主仓 PG/Redis（5432/6379）、activelist PG（15432）；应用为主仓 `make dev`（33333）、AL `make build` 后宿主进程（18081）、SQLite taskrunner 宿主进程（18080），以及 UI `pnpm dev`（4000）。各仓配置/密钥按各自文档注入，环境差异走 env，不改 `configs/config.yaml` 基线。E000001 终态与改密权限以 [runbook §4](../docs/runbook.md) 为准。
+
+```sh
+# 只准备主仓开发PG/Redis；原卷保持 zhuzhao-dev_dev_pg_data/dev_redis_data
+make docker-dev-up
+# AL依赖保留原默认project=deploy和deploy_pgdata，不自动更名换空库
+(cd ../activelist && docker compose -p deploy -f deploy/compose.dev.yaml up -d --wait postgres)
+# 迁移由操作者显式执行，再分别按各仓文档起宿主应用
+make migrate-up
+make dev  # 端口已被监听时拒启并显示归属；需要并行实例可APP_PORT=33335 make dev
+```
+
+`bash scripts/dev-stack.sh up` 的范围是：①主仓 dev PG/Redis，②AL dev PG，③TR **容器部署栈**（生产compose、仅内网、不发布宿主18080）。它不启动主仓/AL/vite宿主进程，也不会为宿主开发启动SQLite taskrunner。宿主开发需按 TR 文档另起原仓SQLite进程，并核对回调与SK；不要把容器TR健康等同宿主任务/回调链可达。纯宿主开发用上面两组依赖即可。
+
+脚本要求Docker Compose v2（支持`up --wait`），全部配置/归属预检在任何资源变更前完成；main/AL/TR任一失败均非0，保留已成功启动的资源供检查，不回退主仓生产compose、不自动回滚或删卷。`down`按TR→AL→main停止，`reset`=down后up，**均不删数据卷或共享外部网络**；`make docker-dev-reset`是另一条显式删卷命令，不能当无损重启使用。
+
+三组显式project默认分别为`zhuzhao-dev` / `deploy` / `taskrunner`，保留既有数据源；`COMPOSE_PROJECT_NAME`全局值不能覆盖这些显式参数。可用`ZHUZHAO_DEV_PROJECT` / `ACTIVELIST_DEV_PROJECT` / `TASKRUNNER_PROJECT`指定其它、互不相同的project，或`ACTIVELIST_DIR` / `TASKRUNNER_DIR`指定同级布局之外的仓路径，`DEV_STACK_WAIT_TIMEOUT`为健康等待秒数（默认90）。**改project会改默认卷名**：已有固定容器归属或同project的Compose来源不匹配时脚本拒绝接管，先由所有者核对标签/卷与备份迁移，不自动改名、清理或换库。
+
+离线回归：`make test-dev-stack`，仅shell/Python命令桩，不访问真实Docker或服务。本批尚未用此候选脚本做真实启停/完整acceptance；实机恢复记录与候选脚本验收分别记账。
 
 ## 一、单起 zhuzhao 栈（不含两上游）
 
 ```sh
 cd deployments
-# env 口径（如实）：JWT_SECRET 无兜底必填；POSTGRES_PASSWORD/REDIS_PASSWORD 有 dev
-# 兜底 zhuzhao_dev——生产务必经 .env 覆盖强值（弱兜底清理已登记主仓随手项池）
-export JWT_SECRET=<强值>
-echo 'POSTGRES_PASSWORD=<强值>' >> .env
-echo 'REDIS_PASSWORD=<强值>' >> .env
-docker compose up -d --build     # postgres/redis/migrate/app/pgbackup/ui
+# 首次参考本目录.env.example手工准备.env，已有文件保留；现有卷沿用原DB口令。
+# 必填JWT_SECRET/GATEWAY_SK/TASKRUNNER_SK/INTERNAL_JOBS_SK，跨仓SK按下方对值表。
+# PG/Redis虽有dev兜底，生产必须配置强值；不要向已有.env盲目追加不同口令。
+docker compose up -d postgres redis
+# migrate带profile，普通up不会自动运行；先明确应用迁移再起app
+docker compose --profile migrate run --rm migrate
+docker compose up -d --build app pgbackup ui
 # 验证：curl http://127.0.0.1:${APP_PORT:-33333}/health/ready
 ```
 
-- `migrate` 服务先行（migrate/migrate v4.17，up 完成即退）；app 依赖 PG/Redis healthy。
-- `ui` = 前端控制台（nginx 静态 + `/api`·`/al/api` 精确反代 app；构建上下文跨仓 `../zhuzhao-ui`——**两仓同级 checkout**）。
+- `migrate` 服务需显式profile/run（migrate/migrate v4.17，完成即退），普通`up`不含它；app依赖PG/Redis healthy，不会代执行迁移。
+- `ui` = 前端控制台（nginx 静态 + `/api`·`/al/api` 精确反代 app；构建上下文相对本目录跨仓 `../../zhuzhao-ui`——**两仓同级 checkout**）。
 - `APP_SERVER_TRUSTED_PROXIES`（默认 `172.16.0.0/12`）：经 ui 反代后 ClientIP 还原依赖此配置，空值=限流桶全站共享。
 
 ## 二、三栈拼装（顺序敏感）
@@ -67,7 +90,13 @@ docker compose -f docker-compose.test.yaml up -d --build   # 首建 5-10 分钟�
 | `INTERNAL_JOBS_SK` | `TASKRUNNER_SELF_SK` | taskrunner |
 
 > taskrunner 栈五变量均 fail-closed 拒建（2026-10-01 硬化）；activelist 两变量同款。
-> 网关 `/al` target 默认 `http://activelist:18081`（分配表 18081——原 8080 高危口 2026-11-02 迁）；`TASKRUNNER_BASE_URL` 默认 `http://taskrunner:8080`——共享网别名寻址，均无需改配置。
+> 网关 `/al` target 默认 `http://activelist:18081`（分配表 18081——原 8080 高危口 2026-11-02 迁）；`TASKRUNNER_BASE_URL` 默认 `http://taskrunner:18080`——共享网别名寻址，均无需改配置。
+
+## 三·五、PostgreSQL 连接预算（2026-11-06 ECO-B06-F08）
+
+`database.max_open_conns` 只约束每个 app 的业务连接池。CronScheduler 的会话级 advisory lock 使用独立短命连接，同一调度器串行执行、每次最多额外一条；握手/取锁/Handle 共享两分钟执行预算，解锁和关闭各有独立两秒清理预算。失败、panic、取消和解锁异常均关闭专用会话，不把带锁连接放回业务池；锁竞争跳过不算失败，取锁/建连/清理失败记录 cron 状态并触发既有失败回调。
+
+部署估算 PostgreSQL 总连接至少按 **app副本数 ×（每副本业务池上限 + 同时活跃cron数）+ 迁移/备份/运维连接 + 余量** 预留。当前最多七个维护调度器，部分按开关启用；业务池默认25时每副本上界按25+7估算，不宣称全生态所有PG服务共享同一个上限。实际cron周期错峰通常低于此值，但不能依赖错峰代替预算。请结合数据库实例的`max_connections`与其他服务预算核对，不能只把业务池调大来规避嵌套取连。
 
 ## 四、全链冒烟（拼装后）
 

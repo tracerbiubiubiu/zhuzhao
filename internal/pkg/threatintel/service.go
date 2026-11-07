@@ -169,11 +169,13 @@ func (s *Service) refresh(ctx context.Context, intelType, value string, ttl time
 	// 一次（SWR 规范 revalidate 同样防击穿；此前仅未命中臂有保护，与包注释「防击穿保
 	// 护上游配额即本件存在意义」相悖）。
 	_, _, _ = s.group.Do(intelType+"/"+value, func() (any, error) {
-		if _, err := s.fetchAndStore(ctx, intelType, value, ttl); err != nil {
+		// Foreground misses may join this same flight after a cleanup/cache-read
+		// race. Both entry points must publish the same *Response result type.
+		result, err := s.fetchAndStore(ctx, intelType, value, ttl)
+		if err != nil {
 			s.logger.Warn("threatintel: background refresh failed", "type", intelType, "value", value, "err", err)
-			return nil, err
 		}
-		return nil, nil
+		return result, err
 	})
 }
 

@@ -51,6 +51,9 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		return nil, err
+	}
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
 		return nil, err
 	}
@@ -97,7 +100,7 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	if ticket.AssignedTo != nil {
 		payload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
 	}
-	s.emitEvent(domainevent.DomainEvent{
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketTransitioned,
 		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
 		Payload: payload, Timestamp: time.Now(),

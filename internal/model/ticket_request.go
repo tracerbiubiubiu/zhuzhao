@@ -3,6 +3,8 @@ package model
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 )
 
 // CreateTicketRequest 创建工单
@@ -16,7 +18,7 @@ type CreateTicketRequest struct {
 	AssignedTo           *int64          `json:"assigned_to,string,omitempty"`
 	OrgID                int64           `json:"org_id,string" binding:"required"`
 	TemplateCode         string          `json:"template_code,omitempty"` // 可选：命中模板则预填
-	CustomData           json.RawMessage `json:"custom_data,omitempty"`
+	CustomData           json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
 	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
 	// confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。
 	// 语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete
@@ -37,7 +39,7 @@ type UpdateTicketRequest struct {
 	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
 	// 值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
 	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
-	CustomData json.RawMessage `json:"custom_data,omitempty"`
+	CustomData json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
 }
 
 // RenderRichtextRequest richtext 服务端渲染（B5-4——05 号 §6 渲染/消毒 SSOT 出站：
@@ -103,7 +105,11 @@ type TicketListQuery struct {
 	PageSize int
 	TypeCode string
 	Status   string
-	Priority *int
+	// Statuses 可选状态集合；handler接收逗号分隔statuses，与单值status互斥。
+	Statuses []string
+	// ExcludeStatuses 排除状态集合；与status/statuses互斥，角标非终态跳转使用。
+	ExcludeStatuses []string
+	Priority        *int
 	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
 	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
 	AssigneeID *int64
@@ -147,8 +153,8 @@ type UpdateTicketTypeRequest struct {
 	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
 	// nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
 	TransitionMeta json.RawMessage `json:"transition_meta"`
-	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
-	// ticket_types.version 才写，否则 409。须 > 0，否则 400。
+	// Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。
+	// 缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 
@@ -169,8 +175,8 @@ type ReplaceTypeFieldsRequest struct {
 	// W1（BK-18 整改）：code 从 path param 迁入 body
 	Code   string                 `json:"code" binding:"required"`
 	Fields []TicketTypeFieldInput `json:"fields"`
-	// Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
-	// 须 > 0，否则 400。
+	// Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
+	// 预检后配置改变返回409；非nil须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 
@@ -207,8 +213,8 @@ type UpdateTicketTemplateRequest struct {
 // user_ids 仅收本人=自抄送（读可见即可）；含他人=加他人（update 权）。
 // max=20 与 AddTicketTagsRequest.Tags 同口径——缺上限即单请求任意量批量 INSERT 的 DoS 面（审计 #11）。
 type AddTicketCCRequest struct {
-	TicketID int64   `json:"ticket_id,string" binding:"required"`
-	UserIDs  []int64 `json:"user_ids" binding:"required,gt=0,max=20,dive,gt=0"`
+	TicketID int64               `json:"ticket_id,string" binding:"required"`
+	UserIDs  jsonutil.Int64Slice `json:"user_ids" binding:"required,gt=0,max=20,dive,gt=0" swaggertype:"array,string"`
 }
 
 // AddTicketTagsRequest 添加标签（S10 B10-2——POST /tickets/tags；读可见面协作动作，

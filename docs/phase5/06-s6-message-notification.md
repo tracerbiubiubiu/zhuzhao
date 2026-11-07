@@ -56,6 +56,8 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 模板收件人为变量——**第一档** = 工单字段引用（assignee/creator）+ 固定人员；**第二档（按需）** = 角色+组织解析（工单组织的 admin/owner——L2/L3 域）。哲学与 assignee rule/事件解析角色同构：**解析归业务侧，消息平台只收最终收件人**。**域无关要求（phase6 复核回写）**：收件人声明方式不得焊死工单域——phase6 风险通知收件人 = risk owner（非工单字段），须支持工单域之外的业务实体声明。
 
+**创建者收件人语义（2026-11-06 ECO-B06-F09）**：ticket 域 `creator` 档仅读事件携带的 `creator`（本单 `created_by`），与当前 `actor`/ActorID 区分；现存所有工单发布入口在提交后从已读取工单快照附带该锚，timeout/deadline候选查询同源带出，不在异步通知消费时回查工单。已排队事件遇随后删单仍可通知原创建人；缺创建者锚不回退操作者。ops域没有工单创建者，保留既有creator档=事件actor（动作责任人）约定。通知变量字典同步新增`ticket.creator`，此为身份修复，不代表H-3动态字段/时间变量增强批全部交付。F09时点Delete/评论/内部备注只写ticket_events审计流；后笔F11单独补公开评论事件接线，Delete/内部备注仍不新增通知触发。
+
 ### 5.2 触发层
 
 - 链路：工单状态流转/待办 → 选模板 → 字段值填参 → 解析收件人 → 经统一消息平台发送。
@@ -65,6 +67,8 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 - **投递语义（2026-10-09 补遗）**：触发挂接须**异步投递**（状态变更事务外；发送失败不阻塞、不回滚工单事务——通知无状态可补发，同步阻塞反拖累主路径）+ **同单短时多变更的节流/去重**（防状态翻转通知风暴）。
 - **用户通知偏好（2026-10-16 全计划业界对标补——业界通知系统 v1 必备：GitHub/Jira notification settings）**：per-user **opt-out/免打扰**（按事件类型静默或全局暂停档），发送链**前置过滤**（收件人解析后、`ChannelSender.Send` 前查偏好）；存储 = 轻表或 `user_preferences` KV（随批拍）。缺了 = 通知骚扰且用户无法自关（运维被迫人工改库）。量级 +0.5–1 天（随 B6-4 收件人解析批）。存储形态随批拍——**若起轻表，回灌 11 号 §5.9 B6 行迁移计数**（现「≥3 段」口径）。
 - **一致性分级（dd §29）**：通知 = 低一致性消费者（丢失无害，钩子 at-most-once 可接受）；**高一致性消费者（phase6 风险关单）失败由对账扫描补偿**（phase6 R3 设计项，非本段范围——但事件面设计须留其挂点）。
+
+**自服务身份契约（2026-11-06 ECO-B06-F19）**：`GET/POST /api/v1/me/notification-optouts` 只读取认证中间件写入的 `userID`，客户端不能指定偏好归属。`notification_pref_handler.go` 的 `ListOptouts` / `SetOptout` 与 JWT/PAT 保持同一上下文键；启用偏好后查询须回显本人行，取消偏好须实际删除本人行。原实现读取不存在的 `user_id`，导致查询假空、取消假成功、启用触发 user_id=0 外键错误；独立候选已修，联合完整门禁待验，未合 main/部署。
 
 ### 5.3 人读编号（前置随批件）
 
@@ -243,7 +247,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 - **引用完整性双向守卫（三层，2026-10-16 评审批采纳）**：①**模板保存**——引用 ⊆ 所绑 rules 的 (biz_type,event) 字典并集，越界拦截/告警（原只有删除守卫——改正文静默破坏既有规则要到下次触发才以 failed 暴露；与 S1 影响分析同件）；②**规则保存**——模板动态字段引用 ⊆ 该 type_code 的 field_meta ∪ 内置 ∪ 时间类，**软告警不拦截**（field_meta 类型私有，(biz_type,event) 粒度不足以表达类型维度——粗校验①兜底+细告警②提示）；③**渲染时四象限**（A.4，运行时兜底）；守卫拦截/告警与模板·规则管理操作审计留痕随批（对齐 settings PUT 变更审计先例——11 号 B6-3 行同源）；
 - **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；**emit 单点锚=统一转换执行入口 commit-后回调（2026-10-19 P0-2 修正，原 2026-10-16 评审批表述作废）**：原表述「Dispatch 挂接锚定状态机咽喉 AssertTransition 单点」**技术上不成立**——AssertTransition=tx.Begin 前纯校验（service.go:352 vs :357 实证），作锚=事务前派发（回滚也发通知）且 created/cc_added 不经它；修正后锚=B3-1 首件 `POST /tickets/transition` 的 commit-后回调（单一咽喉覆盖全路径的**意图保留**，挂点从事务前移到事务后）；**过渡态显式化（2026-10-19 三轮回声）**：B6-5（W5–7.5）远早于 B3-1（W13–15）——S6 一期收口前 status 类事件 emit=Close/Assign 服务层 commit 后**显式 emit 两处**（拍板点① a 案本意），B3-1 端点收敛后归一、临时代码随收敛删除；**非 transition 事件 emit 点枚举钉死（2026-10-19 二轮回声补）**：transition 类事件统一走执行入口回调；`ticket.created`=Create 服务 commit 后、`ticket.cc_added`=B10-1 抄送落库 commit 后各自显式 emit（两处不经转换咽喉——防实施期「挂哪」开放问题）；**事件常量归属与命名映射（P1-21 采纳，2026-10-19）**：DomainEvent Action 常量单一来源=`internal/pkg/domainevent`（repository 层可引——事件名非服务私有）；`ticket_events.action`（bare 值审计惯例，service 包 Event* 常量随迁上移）与 DomainEvent.Action（点前缀订阅键）映射函数同包收口——顺带消灭 repository 层事件名字面量（ticket_repo:345 `'deleted'` 即此类，根因=常量居 service 包 repository 不可 import）；
 - 人读编号（拍板点 2 随批）：`tickets` 加 `human_key VARCHAR(30) UNIQUE`，Create 时 `TK-yyyymmdd-NNNN`（按日序列，UNIQUE 冲突重试 ≤3）；存量单 NULL——模板变量解析时 NULL 回退展示 id（`#123`）。**✅ 已落（2026-10-23 f055c60，迁移 000057 + `internal/pkg/humankey` 前缀注册表生成器——phase6 RISK- 同件复用）**。
-- **收件人解析实施注（2026-10-23 拍板 A 落地）**：`resolveRecipientsFromRule` **消费 message_rules 的 recipient_type/fixed_recipients 列**（assignee→payload.to_assignee / creator→payload.actor / fixed→DDL 列表）——修复前旁路 DDL 硬编码 switch（收件人列为装饰性）；**created 删硬编码"不送自通知"特判**（原实现擅自发明产品决策且使 created 种子模板成死场景）——走规则驱动，种子规则不含 created=开箱零通知（06 号 §0 原则），配 creator/fixed 档规则后真实生效；**未指派单关闭**=assignee 档解析空→静默不通知（b65 未指派子测钉此行为）。
+- **收件人解析实施注（2026-10-23 拍板 A 落地）**：`resolveRecipientsFromRule` **消费 message_rules 的 recipient_type/fixed_recipients 列**（assignee→payload.to_assignee / creator→payload.creator（持久created_by快照，actor仅作操作者） / fixed→DDL 列表）——修复前旁路 DDL 硬编码 switch（收件人列为装饰性）；**created 删硬编码"不送自通知"特判**（原实现擅自发明产品决策且使 created 种子模板成死场景）——走规则驱动，种子规则不含 created=开箱零通知（06 号 §0 原则），配 creator/fixed 档规则后真实生效；**未指派单关闭**=assignee 档解析空→静默不通知（b65 未指派子测钉此行为）。
 
 ### A.6 API 面（通知中心页面族，自 S4 迁入）
 
@@ -314,3 +318,7 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 | 2026-10-26 | **通知面收口批：模板/规则管理面编辑化 + notify 动作模板参数生效**：①通知配置页只读→编辑面（模板 CRUD：is_system 置灰、channel=uip 一期固定；规则 CRUD：事件词表下拉/模板下拉/收件人四档/fixed 数字校验，upsert 同键=改绑）——「多模板」对管理员成为真能力（B6 polish 欠项销账）。②notify 动作 params.template 生效：EmitActionNotify 透传 template_code → dispatcher 覆盖规则默认（**规则仍是开关与兜底**）；词表补 ticket.action_notify。③**迁移 000079** 种子模板 ticket_action_notify + 规则（cc 档）——**翻案**「无种子默认静默」登记（拍板：显式配动作而静默是坑；删规则即回静默）。E2E 27 spec/34 用例全绿；四档 249/0 + 往返 79 对。任务完成通知（run 成败接模板）仍属 B-8/taskrunner 契约面挂账未动 |
 | 2026-10-28 | 头注 +事件面公约锚（P1-7 拍 b：SSOT=standards §14，本稿=机制细节锚——归属落定不搬家） |
 | 2026-11-02 | **变量字典 ops 八键补全**（aa85654）：内置变量 16→24——+`event.last_success`（000064 cron_failed 种子引用）/`event.action`·`event.ticket_id`·`event.actor`（ops.action_failed 载荷）/`event.level`·`event.ratio`·`event.usage_bytes`·`event.capacity_bytes`（000080 storage_usage_high 种子）；修前管理面重存 000080 种子模板即 400（G-2 同型——白名单与种子脱节）；两处同源（service 白名单 / handler 字典）各加镜像测试 + 计数守卫；根因=08bde67 批 A 把后两处写成「属批 B 已登记」而无人承接 |
+
+> 2026-11-06 ECO-B06-F09：修复creator收件人混淆；真实创建者≠操作者、排队后删单、现存十类事件与固定/cc/assignee/ops正对照已补专项，完整门禁由联合codex冻结源码验证，未合main。
+
+> 2026-11-06 ECO-B06-F11：真实Update补处理人收件人锚，公开CreateComment在评论及审计事件同事务提交后发布ticket.commented（工单快照身份/标题/处理人，不含回复正文），让现存Inbox词表实际可达。selfNoiseActions继续排除当前操作者；内部备注仍仅审计、不公开通知。G-7/G-29的偏好与规则增强仍开放，本批不增CC广播、通知类别或权限。完整联合门禁待复验。

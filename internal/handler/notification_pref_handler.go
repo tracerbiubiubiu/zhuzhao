@@ -23,7 +23,7 @@ func NewNotificationPrefHandler(ps *service.NotificationPrefService) *Notificati
 //	@Success	200	{object}	response.Response
 //	@Router		/api/v1/me/notification-optouts [get]
 func (h *NotificationPrefHandler) ListOptouts(c *gin.Context) {
-	uid := c.GetInt64("user_id")
+	uid := c.GetInt64("userID")
 	out, err := h.prefService.ListOptouts(c.Request.Context(), uid)
 	if err != nil {
 		writeServiceError(c, err)
@@ -42,7 +42,7 @@ func (h *NotificationPrefHandler) ListOptouts(c *gin.Context) {
 //	@Failure	400	{object}	response.Response
 //	@Router		/api/v1/me/notification-optouts [post]
 func (h *NotificationPrefHandler) SetOptout(c *gin.Context) {
-	uid := c.GetInt64("user_id")
+	uid := c.GetInt64("userID")
 	var req struct {
 		BizType     string `json:"biz_type" binding:"required"`
 		EventAction string `json:"event_action" binding:"required"`
