@@ -236,7 +236,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
    | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
    |---|---|---|---|
-   | — | 当前无在途文件；五仓文档整理已收口，验证与边界见本轮正式记录 | 各分支未推，按实际Git窗口核对 | 2026-11-08 |
+   | 五仓文档二次复核（root统筹） | 文档/静态/本地门禁已收口，私有验收栈已回收；仅root负责本轮提交/推送，精确窗口见交付收据 | 收尾按实际Git窗口核对 | 2026-11-08 |
 
 2026-11-08提交检查安装（RR-GIT-01）：Go四仓在当前目标工作树运行`make hooks`，UI运行`pnpm hooks`，需要Python3；installer仅设置当前worktree的相对`.githooks`，保留common配置供尚未承接的main使用，不手动把所有仓统一指向主仓绝对路径。消息在commit-msg检查，pre-push/CI再按真实新增窗口检查存库文本。固定`commit-policy-baseline`只豁免其祖先，不自动前移；显式历史审计不豁免。新增merge也须规范主题与正文；规则、缺对象处置与遗留外仓钩子兼容见standards §12-9。主仓`make test-commit-lint`与兄弟/ UI相应入口验证反例，不能以空待推窗口代替检查器测试。
 
@@ -277,7 +277,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 > 2026-11-07当前源码：主仓实际phase5已承接B13启动隔离与端口拒抢修复；下文11-06恢复二进制仍可能较旧，不能由当前HEAD推断运行产物已升级。先按§7核占用和实际容器/卷/PID来源，准备go.mod要求的SDK，再使用已验证入口；不接管其他进程或用新空卷冒充数据恢复。
 
 1. 先核 §7 占用，再按容器 labels 的 Compose project、service、实际卷名确认归属。现有开发主库/Redis 为 `zhuzhao-dev`，AL开发库历史默认项目 `deploy`、卷 `deploy_pgdata`；改 project 名会改变默认卷名，不能把新空库当作恢复旧数据。保留未知或其他会话资源，禁止全局 prune、按前缀清理和端口互杀。
-2. 优先恢复已有容器/原卷；主PG与AL PG先逻辑备份，TR使用SQLite时同时备份其库及待提交日志状态，不能复制仍在写入的单个db文件。确认依赖健康、显式迁移成功且schema非dirty，再启动应用；主dev Compose只有依赖，AL dev Compose只有PG，TR生产Compose不发布宿主端口，不能互相替代。标准入口与拓扑见 [deployments/README](deployment.md)。
+2. 优先恢复已有容器/原卷；主PG与AL PG先逻辑备份，TR使用SQLite时同时备份其库及待提交日志状态，不能复制仍在写入的单个db文件。确认依赖健康、显式迁移成功且schema非dirty，再启动应用；主dev Compose只有依赖，AL dev Compose只有PG，TR生产Compose不发布宿主端口，不能互相替代。标准入口与拓扑见 [部署与联调](deployment.md)。
 3. 开发全链分别核 API33333、AL18081、TR18080、Vite4000；Vite须使用仓库 `pnpm dev` 对应的 `--mode base`，不能用无mode命令造成标题/配置缺失。AK/SK三对必须同源，环境差异走env，不改冻结yaml。进程就绪后还要验证正常账号登录、真实业务读取；当前来源和已知问题见 [B13报告](../review/reports/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)。
 4. 独立测试入口为48081/API33334；数据和开发栈隔离。原始test迁移服务当前无profile，但app没有迁移完成依赖；首拉按“依赖→显式迁移成功→应用”执行。生产主Compose的migrate有profile，普通up不含迁移，二者不可混记。`/health/ready` 是API直连探针，不是 `/api/health/ready`。
 5. 记录“源码hash/工作区→依赖pin→构建参数→镜像或二进制摘要→运行实例→探针/Chrome”的对应关系。`latest`标签、本仓HEAD、独立修复分支不相互替代；前端构建时明确开发/测试徽标。开发使用localhost、测试可用127.0.0.1区分浏览器host作用域，避免不同端口共享同名Cookie；浏览器临时视口/主题检查结束后恢复。

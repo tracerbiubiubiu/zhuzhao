@@ -12,7 +12,7 @@
 
 ## 当前状态与阅读顺序（2026-11-08）
 
-S10五批已交付：手动CC、共享标签、sections角标、节点老化/催办与工单XLSX导出。先看A.2的读写分层、A.5真实水位、A.6导出同源链，再看历史拍板来源。代码/test来源与原失败看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[B06](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)；main/生产另计，本轮文档最终门禁尚未回填。
+S10五批已交付：手动CC、共享标签、sections角标、节点老化/催办与工单XLSX导出。先看A.2的读写分层、A.5真实水位、A.6导出同源链，再看历史拍板来源。代码/test来源与原失败看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[B06](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)；main/生产另计。首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
 
 当前只有手动CC来源；节点配置/按风险级别规则、HR manager、delivery选择、手动催办、@提及、审计导出和完整SLA仍按既有门控。BK-21本批实现List/Export同源，**新资源通用护栏泛化仍归Phase6 Week0**。§2“零实现”与原周数仅是立项历史。
 

@@ -10,9 +10,9 @@
 
 ## 正式报告
 
-本轮目录整理与验证见[五仓文档归位记录](reports/documentation-reorganization-2026-11-08.md)；旧审计结论按各自冻结时点保留。
+首次目录整理与验证见[五仓文档归位记录](reports/documentation-reorganization-2026-11-08.md)，按原始要求再次核对的遗漏、修正与范围见[二次复核记录](reports/documentation-recheck-2026-11-08.md)；旧审计结论按各自冻结时点保留。
 
-[reports/README.md](reports/README.md)完整索引41篇正式报告。追本轮修复先读[11-08复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27最终收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，再按需要读[11-06全量总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及分批原证据。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号。
+[reports/README.md](reports/README.md)索引全部正式报告。追代码修复先读[11-08复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27最终收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，再按需要读[11-06全量总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及分批原证据。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号。
 
 报告保留原hash、失败、NOT_RUN、变异验证与运行边界；固定窗口通过不等于main/生产已承接。12/14权限矩阵已归reports，仍保留point-in-time性质；当前L1全角色/路由验证以B11所述窗口为准。
 

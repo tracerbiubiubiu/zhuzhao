@@ -30,9 +30,9 @@
 
 | 你要做什么 | 读这里（顺序） |
 |-----------|---------------|
-| 5 分钟了解权限现状 | review/11 §2 权限模型速查 → standards §7 |
+| 5 分钟了解权限现状 | [控制台 §2](../review/11-project-control.md#2-权限模型速查) → [工程公约](../standards.md) §7 |
 | 理解为什么这样设计 | design-decisions §25 → §26 → 11-authz §2/§3 |
-| 改权限相关代码 | 本文 → phase2/02 → review/11 §6（先看在册债务避免重复踩） |
+| 改权限相关代码 | 本文 → [资源授权](../phase2/02-authz-resource.md) → [健康状态](../review/11-project-control.md#6-当前健康状态遗留问题追踪)（先看在册债务） |
 | 新服务接入（taskrunner/activelist 式） | 16 号 §9 基线 → ADR-003 → design-decisions §26.2（注册协议） |
 | 判断「要不要引入 X / 能力该不该做」 | 11-authz §5 触发表 → §25.4 反触发评估 → §26.4 四墙 |
 | 排查权限问题 | review/11 §2 速查 → §6 健康状态 → 11-authz §3 不变量（403/404/503 语义） |
@@ -45,7 +45,7 @@
 
 ## 1. 模块定位
 
-**核心底座模块**。鉴权分为两层：
+**核心底座模块**。实现位置分为路由中间件和业务 Service 两处；业务判定仍按 L1 路由、L2 资源可见性、L3 动作权限三层理解：
 
 | 层级 | 位置 | Phase 1 | Phase 2+ |
 |------|------|---------|----------|
@@ -54,8 +54,8 @@
 
 与其他模块的关系：
 - `middleware/casbin.go`：路由级鉴权（查 `casbin_rule` + `user_roles`）
-- 各 Service 在 Phase 2 自注册 Resource 到 ResourceRegistry
-- Handler 调用 `registry.Authorize`（**不在 middleware**，无 `resource_authz.go`）
+- 当前由 `internal/app/providers.go` 装配 Registry，`internal/service/ticket/service.go` 的 `NewTicketService` 自注册工单 Resource；其他资源不能因接口存在就视为已经接入。
+- Handler 进入工单 Service 后，由 `internal/service/ticket/service.go` 的 `authorizeCheck → authorize` 调用 `registry.Authorize`；列表/导出共用 `resolveListFilter`：admin/superadmin 显式返回 `Unscoped`，其余调用 `registry.GetFilter`。资源检查不在通用 middleware，也没有 `resource_authz.go`。
 
 ---
 
@@ -153,7 +153,7 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 
 - **零角色**用户：白名单**不**生效，仍 **403 + 70003**（未分配角色不能进系统）。
 - **不写入** `menu_apis` / 菜单树；权限码列标 `—`（见 [07-menu](../phase1/07-menu.md)）。
-- 实现 SSOT：[phase1/09-middleware §Casbin](../phase1/09-middleware.md#casbin-中间件g-表消除) 伪代码。
+- 当前实现以 `internal/middleware/casbin.go` 的 `SelfService / CasbinAuth` 和 `internal/router/router.go` 的注册顺序为准；[Phase 1 伪代码](../phase1/09-middleware.md#casbin-中间件g-表消除)保留设计来源。
 
 ### 2.3 admin 路由 bypass ≠ 业务无约束
 
@@ -187,7 +187,7 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 **priority 计算**（与 [04-user §多角色](../phase1/04-user.md#多角色与有效-priority) 一致）：
 
 ```go
-// EffectivePriority = min(用户全部角色的 priority)；越小越强
+// 管理防提权使用直接角色的最小 priority；越小越强，不用组织派生角色升级管理权。
 func CanManageUser(actorP, targetP int) bool {
     return actorP < targetP // 严格更强才能管对方（含 admin 不能动 admin）
 }
@@ -206,7 +206,7 @@ func CanManageUser(actorP, targetP int) bool {
 
 ### 2.4 Phase 2b+：BFS 三源合并 + 可选缓存
 
-Phase 2 扩展 `RoleFetcher`：
+当前由 `RBACService.GetRoleCodesByUserID` 合并直接角色、有效组织成员所在节点的组织角色及父角色链；角色来源见[角色模块](role.md)。当前没有接线权限结果 Redis 缓存或跨实例 Watcher。下框是早期接口/缓存演进草图，符号不是现行 API，不可直接复制为实现：
 
 ```go
 func (f *roleFetcher) FetchRoleCodes(ctx context.Context, userID int64) ([]string, error) {
@@ -221,7 +221,7 @@ func (f *roleFetcher) FetchRoleCodes(ctx context.Context, userID int64) ([]strin
 
 Phase 1 只定义 `Resource` / `Registry` 接口，不注册业务 Resource。
 
-Phase 2 工单等模块在 Service 构造函数中 `registry.Register(...)`，在 Service 方法内调用：
+当前工单在 `NewTicketService` 构造函数中 `registry.Register(...)`，在 Service 方法内调用。下面只演示调用形态，`uid / roles / ticketID` 由业务用例准备：
 
 ```go
 ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
@@ -254,13 +254,13 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 ```go
 // 模块 wire/启动处——模块的全部权限代码
-reg.Register(resource.Builtin("task", resource.OrgMember("tasks")))  // ⚠ 示例：M-E 接线形态——实际未接线（S-2 库就绪待接线，生产 Registry 现仅注册 ticket Resource）；首个 L2 消费方出现时按此形态接
+reg.Register(resource.Builtin("task", resource.OrgMember("tasks")))  // 接线示意，tasks只是本库表占位；跨库taskrunner不适用。生产Registry当前仅注册ticket。
 ```
 
 **设计与边界**：
 
 - **策略逻辑（代码）与策略数据（DB）分离**：事实（谁绑什么角色/权限）进 DB 由管理面运营——现状已如此；语义（模块用哪个行级策略）写死在模块注册处，**不进 DB/管理面**——它与模块代码同生命周期，「不发版换行级策略」无真实变更场景，进 DB 只制造代码与配置漂移面（K8s 内置 ClusterRole / AWS managed policy 同款取舍）。
-- **fail-fast**：注册时校验资源表满足 schema 约定（缺 org_id/created_by 列即启动报错），不留到运行时 SQL 报错。
+- **schema 护栏能力**：`RequireSchema` 可校验资源表满足列约定；接入 Builtin 的模块须在启动路径显式调用并处理错误。`Registry.Register` 本身只注册资源，不自动查库；当前没有 Builtin 消费者，也没有生产装配调用 `RequireSchema`，不能把工具能力当作已经自动生效的启动守卫。
 - **护栏**：每策略正/负向集成测试（成员可见非成员 404 / 属主可见他人 403 / role-gated 无码 403）+ IW4 哨兵对 Unscoped 路径的兼容验证；第二个带 L2 的资源出现时，`TestGuard_TicketRepoListCallSites` 泛化为「凡 Filter 参数的 repo.List 必经 Service」。
 - **PEP 归属不变**：策略库是 PDP 复用构件，判定执行仍在各模块 Service 内（design-decisions §25.1——行级 PEP 必然在数据处）。
 
@@ -272,7 +272,7 @@ reg.Register(resource.Builtin("task", resource.OrgMember("tasks")))  // ⚠ 示�
 |------|------|------|
 | g 表消除 + BFS 展开 | ✅ Phase 2b 采用 | 简化 Casbin 模型 |
 | expanded_roles 存 context | ✅ 采用 | Casbin 中间件写入 `roles` 供 handler 复用 |
-| 三源合并 | ⏳ Phase 2b | Phase 1 仅直接角色 |
+| 三源合并 | ✅ 已实现 | 当前合并直接角色、组织角色、父角色链；Phase 1 仅直接角色是历史范围 |
 | 资源自注册 | ✅ Phase 2 工单验证 | Phase 1 空接口 |
 | Restrict 9 种 ConditionType | ❌ 改为 ltree + 内联 | 降低抽象成本 |
 | grants 内存缓存 | ❌ Phase 3 Redis 按需 | 多实例一致 |

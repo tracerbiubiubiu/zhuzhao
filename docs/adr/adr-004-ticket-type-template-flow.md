@@ -19,7 +19,7 @@
 
 ## 理由
 - **与服务台 / OA 主流同形**：ServiceNow（表为根、字段即列、`sys_template` 预填、Flow 挂表）、钉钉 / 飞书审批（审批模板 = 表单 + 流程 + 可见范围一体）、ficus-oa。
-- **Jira 的反向先例**：公司管理项目的 scheme 体系（Workflow Scheme / Screen Scheme / Field Configuration Scheme）是 B 的完整形态，也是管理员投诉首位；Atlassian 后推出团队管理项目（每项目捆绑配置）即回到 A。B 的价值只在数百项目复用同一套流程 / 表单的规模下兑现。
+- **本项目的配置维护取舍**：B能跨类型复用流程与表单，也会增加配置引用维护和变更影响分析。当前没有“同一流程被多表单复用”或“同一表单服务多类型”的真实需求，优先维持类型为根的A；复用需求出现时再按[00号拍板点2](../phase6/00-flow-engine-v2.md#5-启动拍板点)评估B。
 - **eflow 的双向引用有前提**：form-create 表单天然是独立产品；zhuzhao 没有这个前提，字段本就归类型。
 - **零迁移**：A 不动任何表；B 需模板升独立资源、流程独立成表、全部 transition_meta / 字段引用改绑。
 - **B 阵营真正有价值且与 A 兼容的两件已另行吸收**：Jira Transition Screen（转换时弹字段）= 06 号件 1「转换时字段采集」；ServiceNow UI Policy（按状态控字段可见 / 必填）= P2「状态级字段权限矩阵」。

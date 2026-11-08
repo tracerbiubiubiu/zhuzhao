@@ -6,6 +6,8 @@
 > **状态 = 规划期（未立项未排期）**——立项前置 = phase7 收口 + X3/X6/X7 输入。
 > **量级口径**：6–9 周（07 号 §3；原 8–11 周去掉 DAG MVP 加 SOAR 集成）。
 
+**阅读用语**：sandbox-runner是规划中的隔离脚本执行服务；manifest是描述脚本入口、依赖及输入输出的清单；playbook是由编排平台推进的操作步骤。脚本可运行能力与协议文档定稿是两件事，具体设计见[脚本契约](../proposal/secops-platform/05-script-node-contract.md)。D/A/F/X等来源短码见[术语与编号](../proposal/secops-platform/README.md#术语与编号)。
+
 ## 1. 定位与一句话
 
 公司已有 SOAR（D3）→ 本阶段平台是**能力提供方 + 人机界面**：把 SOAR 的能力逐个迁为平台 Action（connector/script），流程调度**继续用 SOAR**；**不建编排引擎**（Stage 2 引擎 = phase9 既定排期，D1）。

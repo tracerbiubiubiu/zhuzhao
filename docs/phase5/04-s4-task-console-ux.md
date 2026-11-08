@@ -8,7 +8,7 @@
 
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：S10 之后（依赖序宽松，靠后）；**先行批已落地**（2026-10-13），启动时在其上增强、不推倒。
 > **量级**：1–1.5 周（动作元数据读端点 + 预校验 ~1 天随行；通知配置页已迁 S6）。**迁移**：零。
-> **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。协议蓝本 = taskrunner 仓 `docs/taskrunner.md`「能力目录」两级路由方案（2026-09-15 定稿、实现后置）；立项 = dd §27。
+> **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。协议蓝本现行入口为taskrunner的[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md)（原`docs/taskrunner.md`中的两级路由方案，2026-09-15定稿、尚未实施；后继已列入Phase6范围）；立项 = dd §27。
 
 ## 1. 定位与由来
 
@@ -141,7 +141,7 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 
 | 文档 | 关系 |
 |------|------|
-| taskrunner 仓 `docs/taskrunner.md` | 协议蓝本（能力目录两级路由定稿/`action_code` 命名口径/脱敏后置） |
+| taskrunner仓[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md) / [当前运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/taskrunner.md) | 前者为尚未实施的目录蓝本，后者解释当前执行/回调；原目录章节与脱敏后置不当作已落能力 |
 | [phase3/16](../phase3/16-external-integration.md) | ProcessAt/E-⑤ 部门标签/E-⑥ 终败通知——触发驱动不收编 |
 | [phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) | 脚本平台选型备查（§3.6 备忘，勿重新调研） |
 | [01-s1](./01-s1-form-designer.md) | params schema 动态表单同构复用其渲染器 |

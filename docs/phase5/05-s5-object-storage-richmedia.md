@@ -10,14 +10,14 @@
 
 ## 当前状态与阅读顺序（2026-11-08）
 
-S5已交付预签名直传、头像/附件/richtext落绑、统一代理下载、配置覆盖与四段GC；代码复验及dev/test来源看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，后续详情缓存看[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)。main/生产承接另计；本轮只整理文档，最终门禁尚未回填。
+S5已交付预签名直传、头像/附件/richtext落绑、统一代理下载、配置覆盖与四段GC；代码复验及dev/test来源看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，后续详情缓存看[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)。main/生产承接另计；首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
 
 先读A.1当前组件、A.4 API与A.7授权，再按场景看上传/下载/GC。§2是立项历史基线；原估算、选型比较和“待验”日期段保留其时点。底座蓝本来自phase2/10，本稿的后继批准及代码校准优先于旧蓝本，不能把两份不同阶段描述同时当现行合同。
 
 当前边界：UI只持久化单richtext字段草稿；整页草稿+附件恢复、正文引用解析回收、302投递等仍是目标/触发项，见相应段和[既有债台账](s6-s5-debt-ledger.md)。
 
 ```mermaid
-flowchart LR
+flowchart TD
     UI[头像/附件/RichtextField] --> API[StorageHandler 认证与资源授权]
     API --> SVC[storage.Service + ConfigStore快照]
     SVC --> DB[StorageRepo 元数据与绑定事务]

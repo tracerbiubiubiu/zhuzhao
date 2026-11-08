@@ -11,12 +11,12 @@
 
 ## 当前状态与阅读顺序（2026-11-08）
 
-一期模板/规则/外发编排与二期站内消息中心已交付，但**外发UIP仍是两态桩，站内inbox是独立消费者**。先读A.1机制、A.3真实sender、A.5两路分工与A.6真实API；管理面既有UI与事件词表边界看A.9。代码/test承接看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)，main/生产另计，本轮文档门禁尚未回填。
+一期模板/规则/外发编排与二期站内消息中心已交付，但**外发UIP仍是两态桩，站内inbox是独立消费者**。先读A.1机制、A.3真实sender、A.5两路分工与A.6真实API；管理面既有UI与事件词表边界看A.9。代码/test承接看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)，main/生产另计。首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
 
 H-2多渠道/钉钉、H-3动态字段与时间变量、H-6 picker/preview、G-7+G-29①站内规则/偏好仍按[债台账](s6-s5-debt-ledger.md)排位；已拍不等于已实现。§2是立项历史基线，原周数和日期收据保留时点含义。
 
 ```mermaid
-flowchart LR
+flowchart TD
     COMMIT[业务提交成功] --> EV[DomainEvent]
     EV --> BUS[HookRegistry 按域订阅/异步派发/Drain]
     BUS --> HOOK[TicketNotifyHook]

@@ -1,6 +1,6 @@
 # phase5/ — 通用能力与产品化底座：范围、交付现状与设计索引
 
-> **当前口径（2026-11-08）**：Phase5 基线能力及 S3a 已交付，审计修复已在当前 Phase5 候选复验；B27 所列后端产物已由本机 dev/test 承接，11-08 的后续 UI 修复另有独占门禁证据。**main/生产尚未承接**，本轮文档整理也仍在进行，不能用上批门禁代替本批最终结果。S3b 审批、S7 AI、S8 大屏及债台账中的后续增强均未因此交付。“十段”指设计编号，不表示这十类能力全部实现。
+> **当前口径（2026-11-08）**：Phase5 基线能力及 S3a 已交付，审计修复已在当前 Phase5 候选复验；B27 所列后端产物已由本机 dev/test 承接，11-08 的后续 UI 修复另有独占门禁证据。**main/生产尚未承接**。首轮五仓文档整理及必要本地门禁已完成，范围与未覆盖项见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)；后续复核与修改须另记证据，不能用旧绿替代新验收。S3b 审批、S7 AI、S8 大屏及债台账中的后续增强均未因此交付。“十段”指设计编号，不表示这十类能力全部实现。
 
 阅读顺序：先看[项目控制台](../review/11-project-control.md)的当前能力/迁移/运行边界，再读本页范围与 [11 号实施记录](11-implementation-plan.md)，最后按需进 01–10 号段稿。[债台账](s6-s5-debt-ledger.md)管理开放项与已关闭项的追溯；[B27 收口报告](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)和 [11-08 followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)给出各自固定快照的验证。下文保留立项时问题、估算和拍板过程；带日期的旧“现状/待做/下一步”须结合本页局部校准阅读。
 
@@ -78,7 +78,7 @@
   - **action_id 手填 → 动作下拉**：zhuzhao `jobs.Registry` 暴露**元数据读端点**（id/名称/描述/params schema），提交任务表单换搜索下拉；顺带**创建时 fail-fast 预校验**（现状未注册动作到回调时才 404，失败后置到执行期）。
   - **params 手填 JSON → 两步走**：近期保留 JSON 模式 + 动作说明旁挂（现"勿填口令/密钥/PII"提示与 64KB 预检维持）；远期动作注册时声明 params schema，前端按 schema 渲染动态表单——**与 S1 动态表单渲染器同构复用**（未声明 schema 的动作自动降级 JSON 模式）。
   - 可选后端随行（触发驱动，不预做）：[16 号](../phase3/16-external-integration.md) 后置项「一次性延迟任务 ProcessAt」若启用，提交表单增"指定时间执行一次"模式（与 cron 构造器同面板）。
-- **协议衔接（勿另起炉灶）**：动作元数据面 = taskrunner `docs/taskrunner.md`「能力目录」两级路由方案（2026-09-15 定稿、实现后置）的**单服务前段**——目录解决"提交方不手填回调地址"，S4 解决"人不手填 action_id"，共用同一份动作注册元数据；跨服务目录（taskrunner 查目录、端点自注册、`owner_service` 多调用方）维持其既有触发（多服务接入时启用），S4 不依赖、不提前。
+- **协议衔接（勿另起炉灶）**：S4现行单服务动作元数据面与taskrunner的[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md)共用注册元数据来源；该两级路由方案于2026-09-15定稿，尚未实施。目录目标是让提交方不手填回调地址，S4解决人不手填action_id。跨服务目录、端点自注册与多调用方能力已由后继决定提前列入Phase6，见[启动批](../phase6/05-launch-batch.md)，不能继续按旧“仅多服务接入触发”排位；也不能把S4单服务读面交付等同目录已上线。
 - **通知渠道配置页 → 迁至 S6**（2026-10-08 消息模块整段化）：渠道配置+消息模板+发送记录=通知中心一个页面族，归 S6 统一交付；本段回归 taskrunner 任务面。
 - **先行批已落地（2026-10-13，zhuzhao-ui 直提、未随本段立项）**：运行序号列与筛选（taskrunner `GET /v1/runs` 增 `id` 输出列与 `id` 精确筛选——小改随观察环境生效）；提交任务=运行记录页首主按钮+对话框（admin=任务定义下拉自动补全（label=description）、带出定义级默认参数、无参定义隐藏参数区；operator 暂保持 action 输入）；Tab 重排为 运行记录/任务定义/死信+死信红点徽标。S4 启动时在此之上增强、不推倒。
 - **队列水位精确化（登记挂账，2026-10-13 用户巡检提出；2026-10-15 核对收窄）**：~~缺聚合水位~~——**前端近似水位条已随 2026-10-13 交互批落地**（页首排队/执行/失败/死信计数，30s 轮询；数据=runs 端点按 status 各拉 total，零后端改动，语义=job_runs 表态非队列瞬时深度）；挂账项收窄为**精确队列瞬时深度**（taskrunner asynq Inspector 队列统计端点，zhuzhao 代理透传，前端水位条数据源切换）；触发=任务量上来出现积压排查需求；量级≈半天（taskrunner 端点+代理路由+前端数据源切换各一小段）。详录=[04-s4 §2/§3.5](./04-s4-task-console-ux.md)。
@@ -265,7 +265,7 @@
 | [phase3/10-ticket-business.md](../phase3/10-ticket-business.md) | S3 设计蓝本（assignment_rules / BranchedStateEngine / workflow_*；§23 起转对接参考）；**§3 通知服务设计 = S6 对接参考**（邮件矩阵/事件订阅——站内通知已翻案挂 S6 二期，此处仅通道/模板参考） |
 | [phase4/02-implementation-plan.md](../phase4/02-implementation-plan.md) | 深水区降级决策出处（设计器批后置 = 本 phase 由来）；**P4-2 行 = 通知配置页本体交付记录**（管理 API 四端点/迁移 000033/死信告警链/菜单 visible=false 过渡态） |
 | [phase2/10-storage.md](../phase2/10-storage.md) | S5 底座 + 附件设计 SSOT（预签名上下行/`file_objects`/`ticket_attachments`/key 规范/MIME 白名单/配置样例）；头像共用 storage 模块（10 号 §0 即列） |
-| taskrunner 仓 `docs/taskrunner.md` | S4 协议蓝本（「能力目录」两级路由定稿方案 / 动作注册表 / 内置例外与能力服务后置项——均实现后置，S4 不提前触发） |
+| taskrunner仓[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md) / [运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/taskrunner.md) | S4单服务读面与未来目录的边界；目录已列入Phase6但尚未实施，执行/回调以当前运行设计与API契约为准 |
 | [phase3/16-external-integration.md](../phase3/16-external-integration.md) | S4 可选随行项出处（一次性延迟 ProcessAt / E-⑤ 部门可见性 / E-⑥ 终败通知——均触发驱动，维持 16 号后置不收编） |
 | [design-decisions §27](../design/design-decisions.md) | 立项决策登记 |
 

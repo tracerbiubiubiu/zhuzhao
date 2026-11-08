@@ -47,7 +47,7 @@ S3b任务行审批仍待真实场景；定义快照、自动路由、Close/Assig
 ### 3.3 动作库框架（Post-function 形态）
 
 - **流转时自动动作**（2026-10-08 所有者场景）："按字段判断分支后取数回写"若发生在流转时（进入某状态触发），落点 = **转换后动作**——实现形态 = 节点/转换 meta + 显式钩子（**已拍命名 `DomainHook`**——拍板点 S6#4，2026-10-16，原 TicketHooks 称谓废止；phase3/10 §4.2 既定，编译期检查）；**引擎不内置功能节点类型**（节点类型膨胀 = easy-workflow 反面；功能外挂与 Jira post-functions 同构）。
-- **on_complete 任务完成通知（2026-10-23 对话设计批——计划任务跑完通知场景）**：任务（cron/script/connector）完成后可配置通知——设计形态 = `on_complete.notify` 段（任务配置内嵌，非独立表）：
+- **on_complete 任务完成通知（2026-10-23 对话设计批——已拍方向，尚未实施）**：以下是计划任务跑完通知的目标合同，当前任务配置没有可直接启用的`on_complete.notify`能力；与B-8反向事件、B-20输入映射的实施一并核对。设计形态 = `on_complete.notify` 段（任务配置内嵌，非独立表）：
   ```json
   { "on_complete": { "notify": {
       "template": "daily_scan_report",
@@ -56,13 +56,14 @@ S3b任务行审批仍待真实场景；定义快照、自动路由、Close/Assig
   } } }
   ```
   **params_mapping 语义**：模板占位符 ← 任务返回值路径（`result.xxx`）或固定值（`literal`）——GitHub Actions outputs/inputs 同构。**通知通路拍定（2026-10-23 批 3 对表 F-3-3——事件优先，与下条「通知收敛走 S6 规则面」同规矩，原直调表述作废）**：任务完成一律 emit `<biz_type>.run.succeeded`（D20 执行类词表兑现，payload 带 `result.*` 与任务元数据）——通知/审计/B6-7 inbox/phase6 任务链订阅同一事件；`on_complete.notify` 仅作**无规则兜底**（= post_action.notify 同款地位，S6 节流查重兜底）；`result.*` 落为变量字典新增命名空间（msgrender 点路径已支持）。兜底发送实现 = **`MessageDispatcher` 派发编排器**（06 号 §1.5 编排器前置件）——原「NotificationService.send()」直调表述勘误：NotificationService 是 P4-2 渠道配置管理（无 Send/渲染/解析能力，同名异物已消歧）。实现 = S3a 动作参数化框架的一个消费场景（Action 参数 `from` 来源可以是 `event`/`result`/`literal`）。
-- **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正；2026-10-24 首批调整）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **spawn_task 提交任务**（✅ 2026-10-24 所有者场景走查升**首批**——「a 下发工单给 b 同时起计划任务做信息收集」场景实证；走既有 taskrunner Submit 通道[AK/SK 出站+持久化凭证]，一致性=at-least-once+幂等栅栏消费——见下「触发/执行收敛全景」）。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
+- **动作库类型（2026-10-09 登记；2026-10-19 双通道分工修正；2026-10-24 首批调整）**：取数回写 / 抄送（S10）/ **转派**（升级链——扫描器事务内直调，见事件驱动统一模型裁定）/ **spawn_task 提交任务**（✅ 2026-10-24 所有者场景走查升**首批**——「a 下发工单给 b 同时起计划任务做信息收集」场景实证；走既有 taskrunner Submit 通道[AK/SK 出站+持久化凭证]）。当前`durable_submit`指下游接收后的持久凭证与回调幂等；动作仍在转换commit后派发，没有生产者outbox或补偿队列，不能承诺这段至少投递一次——见下「触发/执行收敛全景」。**通知收敛走 S6 规则面**——message_rules 直接订阅 DomainEvent，post_action 再配 notify = 同一流转两处可配通知（重复通知/配置漂移无仲裁；业界对照：Jira notification scheme 全局订阅 vs Automation 动作有明确分层）——**notify 动作降为无规则兜底**并注明 S6 节流查重兜底。🚦 前置不变（随场景逐个启用，框架先行不预做动作本体）。
 - 提交时机的同款诉求归 S1 字段联动，勿混入流程层（执行时机三分界）。
 
 ## 4. S3b：审批流引擎（等首个真实审批场景）
 
 - **蓝本全套现成**（phase3/10 §4）：`BranchedStateEngine`（状态机内核）+ `ApprovalTaskLayer`（人工任务层 claim/submit）两层分离；`workflow_definitions/instances/node_states/records/tasks` 五表 DDL（§4.3）；`CanApproveNode` 契约骨架与调用顺序铁律（L1→解析 Req→L2→L3，§4.5）；`WhatCanIDo` 任务可操作查询；驳回/回退语义（target=prev/origin + 自由驳回 BFS + 会签 batch_code，§4.5(2)）。
 - **7-0 设计期五决议（2026-08-31 拍板，随批生效）**：①审批人策略 = `Assignee{rule,values}`（**弃 min_level**——users 无 level 列）；②模板-流程绑定类型 1:1 默认 + 模板 nullable 覆盖；③发起人撤回 = WITHDRAWING 栅栏模式；④**版本/发布快照**（编辑版/发布版分离，Deploy 锁快照，运行时按实例版本取——原地改 definition 禁止，防在途漂移）；⑤signal 双写分离。
+  **后继覆盖注（2026-11-08核对）**：上条②保留8月决议的原表述；10月27日[ADR-004](../adr/adr-004-ticket-type-template-flow.md)已定类型为流程与字段的根、模板仅作发单预填，不持流程。未来S3b细化须依后继裁定对表，不能据旧“模板覆盖”另建绑定语义；快照仍按已批准的类型级边界推进。
 - **easy-workflow 借鉴核验闭环（2026-10-08 代码级复核）**：§4.2 十二项借鉴点全部证实、四条避坑点（MySQL CTE/表达式拼 SQL/反射事件/引擎内嵌身份）全部被其真实缺陷证实——**借设计不引库**（MIT 但零测试/裸 map 竞争/改定义即在途漂移），无新增借鉴项。
 - **当前风险接受**：已拍的风险接受第一档=owner发起、风险团队risk:manage确认（默认制衡开，详Phase6 R2）；S3b 落地后可升级。**触发时点 = 首个真实审批场景出现**（残留开放项，dd §29）。
 - **S3b 实施换算注（2026-10-15 公约对表）**：蓝本成文于 2026-08-25（早于 standards §3 API 公约建纲 2026-09-07），蓝本内端点形态（如 §4.7 `PUT /workflows/:code`）**实施时按公约新端点口径换算**（POST + 标识/动作入 body，§3-1/§3-2）——照抄即违公约。

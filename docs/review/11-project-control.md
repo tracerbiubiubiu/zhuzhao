@@ -1,13 +1,15 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-08五仓文档整理收口**：原225份文档逐项审读/处置，当前274份Markdown统一各仓docs入口；2532处本地引用与命名/目录/围栏检查零问题，11张图解析渲染通过。各仓必要本地门禁已通过，初红、默认skip及运行边界见[本轮记录](reports/documentation-reorganization-2026-11-08.md)。维护约定见[documentation.md](../documentation.md)；无业务契约/迁移/依赖变化，未push/合main或更新共享运行服务。
+> **2026-11-08文档二次复核**：按原始要求重核迁移消费者、内容一致性、现行状态、示例前置与阅读体验，修正初轮遗漏并补说明；本轮验证进度与覆盖边界见[二次复核记录](reports/documentation-recheck-2026-11-08.md)。无业务代码、配置、依赖或迁移变化。
+>
+> **首次归位快照**：原225份文档逐项审读/处置，当轮274份Markdown、2532处本地引用检查零问题，11张图解析渲染通过；初红、默认skip及当时未推送边界保留在[首次整理记录](reports/documentation-reorganization-2026-11-08.md)。随后按所有者指令推送17笔，五仓精确HEAD CI通过；本轮二次复核另判，未合main或更新共享运行服务。维护约定见[documentation.md](../documentation.md)。
 
 > **用途**：从能力矩阵、迁移地图和健康状态掌握当前项目；改动后同步本页。原逐日流水见[历史记录](archive/project-control-history-2026-11-08.md)，不再与当前摘要混排。
 
 ## 当前摘要（2026-11-08）
 
-- **工作边界**：主仓/UI在实际phase5维护，三个Go兄弟在codex/phase5-audit复验，现有dev/test已承接B27注明的Go1.26.10产物；11-08后续UI/提交规范修复的本地验证见[followup](reports/zhuzhao-report-followup-2026-11-08.md)。main/生产未承接，本轮文档整理也不包含push、合main或提前启动Phase6。
-- **既有测试基线**：原样四档acceptance **253/0/0**（124+68+26+35），81对迁移往返另计；上批Go覆盖率20.4%。这些是所述旧固定快照的证据。本轮另跑原样253/0/0与81往返、UI241单测/41E2E、主仓与兄弟原Make目标；当前结果与首次超时/默认skip分别见[本轮记录](reports/documentation-reorganization-2026-11-08.md)。
+- **工作边界**：主仓/UI在实际phase5维护，三个Go兄弟在codex/phase5-audit复验，现有dev/test已承接B27注明的Go1.26.10产物；11-08后续UI/提交规范修复的本地验证见[followup](reports/zhuzhao-report-followup-2026-11-08.md)。首次文档候选已推且五仓CI通过，本轮二次复核内容/静态/必要本地门禁也已收口，精确提交和远端窗口另核。main/生产未承接，不提前启动Phase6。
+- **测试与证据**：原样四档acceptance **253/0/0**（124+68+26+35），81对迁移往返另计；Go覆盖率20.4%。首次整理的固定快照、超时与复验见[首次记录](reports/documentation-reorganization-2026-11-08.md)。本轮二次复核重新通过253/0/0与81往返、UI241单测/41E2E、主仓与兄弟原Make目标；缓存命中、TR默认未覆盖专项及当前来源见[二次记录](reports/documentation-recheck-2026-11-08.md)。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
 - **追溯入口**：[B27最终运行与安全收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md) → [11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)；首次全量覆盖与固定基线见[11-06总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)。原失败、NOT_RUN、旧HEAD及未部署表述保留其时点含义。
@@ -28,8 +30,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层 | ✅ 2026-11-08内容/静态/必要本地门禁收口；历史失败和未覆盖专项如实分列 | [维护约定](../documentation.md)、[review索引](README.md) |
-| **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；未push/未核本轮远端CI，main尚未承接 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
+| **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
+| **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；main尚未承接 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
@@ -41,7 +43,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
-| **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 一行注册 + schema fail-fast（`RequireSchema`） | 🟡 **库就绪待接线**（2026-09-04；**生产装配零消费者**，仅测试引用；首个消费者 = M-E；工单手写策略与 builtin 双路并存不合流） | `internal/pkg/resource/builtin.go` |
+| **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
 | **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 **utils aksk.GinMiddleware + response.AKSKFail() 统一形态**【2026-09-16 验签统一批：信封+分档中文文案，替代原零依赖默认响应】+ 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3）；2026-09-16 接入生态统一中间件形态 | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
 | **审计归档（B11②，E-③）** | `audit_archive` 首个预置动作：audit_logs + policy_evaluation_logs 超期导出 JSONL→**单批导出成功后按同批 id 删行**（fsync 后删，崩溃窗口仅重复不丢）；保留期默认 180 天可配/params 可覆盖；单表失败跳过、任一失败→5xx 可重试可重入 | ✅ 2026-09-04（03 §4；本地卷 P4；注册进 jobs Registry） | `internal/service/audit_archive.go` |

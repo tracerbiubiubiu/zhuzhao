@@ -18,6 +18,8 @@
 ## 状态
 已采纳（**2026-09-03 部分条款经职责收敛修订，见「2026-09-03 职责收敛修订」节**）。**2026-09-03 起集成契约 SSOT = activelist 仓库 `docs/ADR-003-integration-contract.md`，本文件为镜像**（反向同步债已于 2026-09-03 清理：方案 D 定稿 / 导入幂等=全量替换 / 排期口径 / D1–D5 需求表均已对齐；D1 状态按实际代码核验更新为已完成）。
 
+> **现行路径（2026-11-08）**：上段大写文件名保留原时点名称；今天查activelist的[集成ADR](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/adr/adr-003-integration-contract.md)、[当前PG设计](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/design/overview.md)、[HTTP契约](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/contract.md)与[数据契约](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/data-contract.md)。本篇保留历史镜像；原Mongo文档路径和节号仍用于追溯，不能据此寻找当前维护文件。
+
 ## 背景
 activelist 仓库 `docs/activelist.md` 设计了一个基于 MongoDB + Go 的动态多类型数据全生命周期管理平台（高可靠/高可用要求）。需要决策：它与 zhuzhao 的关系（独立 vs 内化）、数据库选型（Mongo vs PG）、以及是否需要跨事务一致。
 
