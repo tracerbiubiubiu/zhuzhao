@@ -22,7 +22,7 @@ UI修复提交 `bebfe523d2a84f7d017bc46fcaf05d38e883844c` 的六文件与联合�
 
 主仓、UI和三个Go兄弟均纳管同源 `scripts/commit-policy.py`、`test-commit-policy.py`、`install-git-hooks.sh` 与三钩。本地commit-msg在旧重题早退之前校验消息原文，pre-push逐ref检查Git提供的旧/新OID；CI独立job用push before/after或PR base/head并fetch-depth 0，缺对象只允许精确补fetch，不使用猜测窗口。新merge同样要求CC主题和非空正文。
 
-启用基线：主仓3ca6402、UI bebfe523、TR6d0e2ad、AL83909b8、utils563785a，完整SHA随各仓baseline文件纳管。自动窗口排除其祖先，显式历史审计仍严格；不移动历史水位，不重写996b399/f3f2077或UI6a95fd2a。主仓保留Swagger⑥与披露/同类扫描/三节WARN⑦⑧⑨，生成器失败不再因无diff误绿。
+最终豁免基线：主仓3ca6402、UI15225863、TR6d0e2ad、AL83909b8、utils563785a，均为本轮开工已推快照，完整SHA随各仓baseline文件纳管。自动窗口排除其祖先，显式历史审计仍严格；不移动历史水位，不重写996b399/f3f2077或UI6a95fd2a。主仓保留Swagger⑥与披露/同类扫描/三节WARN⑦⑧⑨，生成器失败不再因无diff误绿。
 
 安装仅写worktree-local hooksPath，不把三个canonical main切换到缺文件的相对路径。遗留main仍借用主仓绝对钩子时，仅在钩子物理位置确在本仓之外、本仓无core/基线、外部来源具有core三条件下明确WARN沿原行为；本仓标准/嵌套钩子缺文件均FAIL。原重题诊断补变量边界，避免macOS bash将全角括号吞入变量名产生非法UTF-8。
 
@@ -39,6 +39,8 @@ UI修复提交 `bebfe523d2a84f7d017bc46fcaf05d38e883844c` 的六文件与联合�
 本批旧13项词表实红、补齐绿；等数量错键变异红、缺主仓源码直接ENOENT失败。含新选项的原样 `pnpm gate` 再次全部通过：31文件241测、E2E41/41，零retry/flaky/skip及HTTP429；独占 `make acceptance` 再次253/0/0，81对迁移往返零漂移。Go354/AL44/TR43运行源逐SHA匹配原构建receipt，实际三ELF SHA与Go1.26.10元数据核验通过。主仓753/UI296冻结manifest保持，canonical UI与快照无差异，共享node元数据保持，全部本轮容器/卷/网络已精确回收，既有容器无增删改。
 
 UI修复提交 `22d9fafa011e30f8af8c71a790221f3317e83034` 的五文件与本轮冻结源相同。RR-DOC-01代码/登记复验关闭；当前仅本地分批提交，未push、未合main或发布。所有原失败与最终结果分列，第三批以ignored `joint-doc/final-summary.json` 为准。
+
+UI收尾提交 `bf61c863169cbe659e5af47e32167375c1f98fc5` 只将豁免基线从安装前本地bebfe523收紧为开工已推15225863，让本轮richtext提交也纳入自动扫描；没有前移水位或增加豁免，不改变第三批已验收业务源。最终真实pending/pre-push/CI载荷窗口另实核。
 
 ## 验证与环境边界
 
