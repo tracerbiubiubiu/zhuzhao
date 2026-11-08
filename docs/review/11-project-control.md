@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-08 报告后续第一批通过**：[分批复验记录](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。RR-UI-01由UI `bebfe523` 修复详情richtext清空/移除缓存与旧响应覆盖，十条生产回归/两目标各八轮变异有效；原gate通过（30文件240测、41 E2E零retry/flaky/skip）、主仓lint/unit/integration/cover及独占253/0/0、81往返通过并已清理。提交规范和UI登记随后分批承接，不合main、不推送或替换共享运行服务。
+
 > **2026-11-07 Phase5后续最终收口**：[B27总收口](../../deliverables/software-company/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)汇总B18～B26与原安全批：主4db/UI152准确CI、四Go源码安全取证及最终Go/API/UI门禁通过；dev/test已承接可信Go1.26.10产物，5PG同卷TCP探针、test归档卷与Chrome代表走查均核。原生业务Env93/75/78经校准并保留原CWD/SQLite，系统Go1.26.6与Node22未全局替换。**Go1.27与Node24/26 LTS整体升级仍在Phase5经授权合main后，基于main另批实施**；当前未合main/生产、未启动Phase6。下方日期段保留原时点，最新运行映射以B27为准。
 
 > **B23/BK11表达式P1已在代码与保留dev/test关闭**：formula/visible_when复用已有q/ctx，原/变异各8轮稳定复现、取消释放与跨DB缓存隔离通过；完整Go、原253/81、准确4db CI与最终60ad运行源绑定均通过。详[B23](../../deliverables/software-company/zhuzhao-ecosystem-audit-b23-expression-context-2026-11-07.md)和[B27](../../deliverables/software-company/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)；通用dbtx传播器与请求deadline仍未实施，不能扩大旧schema读取Tx销账到所有未来调用。
@@ -158,7 +160,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **角色回显端点** | GET /users/:id/roles（role_ids 数组——前端分配角色对话框反查，替代 N+1） | ✅ 2026-10-03 | `internal/handler/user_handler.go` `migrations/000039` |
 | **break-glass 应急通道（admincli）** | `zhuzhao reset-password` 子命令：superadmin 密码恢复（目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销] + 禁用连带启用 + audit_logs 落行 method='CLI'）；同二进制子命令分发零镜像改动；流程与兜底 SQL 见 `docs/runbook.md` §1 | ✅ 2026-10-12（集成 4 用例常态门禁 + dev 栈演练） | `cmd/server/reset_password.go` `internal/pkg/admincli/` `internal/service/session_revoke.go` |
 | **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 15 文件/115 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
-| **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 四段（pending/deleted/反连接回收/avatar reaper observe） | ✅ 既有能力已交付；2026-11-06：误删/额度修复 `d07f560` 独立复验通过，主线/部署待承接 | `internal/service/storage/` `migrations/000045–000050`；[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md) |
+| **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 四段（pending/deleted/反连接回收/avatar reaper observe） | ✅ 既有能力已交付；2026-11-08 RR-UI-01：UI bebfe523详情缓存清空/移除与异步身份修复已原gate/253/81复验 | `internal/service/storage/` `migrations/000045–000050`；[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)；[本轮复验](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md) |
 | **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7） | `internal/service/ticket/` `migrations/000051/000052` |
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 2026-10-23（外审修复全清） | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061` |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |
@@ -326,6 +328,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-08报告复核后修复
+
+| 发现 | 当前状态 | 验证与边界 |
+|---|---|---|
+| RR-UI-01详情richtext缓存 | UI bebfe523生产修复、十条回归与独占联合门禁通过，代码复验关闭 | 两目标各八轮变异稳定红；gate240/41、253/81过，未推送/合main/部署共享服务；[复验报告](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md) |
 
 ### 2026-11-06全面审计承接
 

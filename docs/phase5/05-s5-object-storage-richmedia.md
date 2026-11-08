@@ -82,6 +82,8 @@
 
 ## 6. 富文本字段类型（richtext，第八种——新增设计）
 
+- **详情回显缓存契约（2026-11-08 RR-UI-01）**：UI `src/views/ticket/detail/index.vue` 通过 `useRenderedRichtext.ts` 的 `useRenderedRichtext` 仅消费服务端消毒 HTML。字段清空或从 schema 移除时同步删除缓存并撤销在途请求的写入资格；内容变化以每字段独立请求身份判断结果新鲜度，覆盖同 tick 的 A→B→A，卸载后也不接纳旧响应。源字符串相等不足以证明请求仍有效；失败保持空渲染，不回退原始 HTML。后端 `Service.Update` / `mergeCustomData` 的 null 删键合同不变，当前详情编辑框没有自定义字段清空按钮，本修复覆盖 API/其它来源更新后同一详情组件刷新的路径。修复与验证状态见[本轮复验报告](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。
+
 - 字段类型枚举扩 `richtext`（`validateFieldInputs`/G2 schema 校验同步扩，守"只增不改"）；与 S1 设计器联动（进可选字段类型调色板，依赖本段底座先行）。**✅ 后端已落（2026-10-20 B5-4 后端二）**：三处枚举扩（`TicketTypeFieldInput` binding oneof / `validFieldTypes` / `validateFieldValue`）+ MD 源文本 **256 KiB 上限**（`richtextMaxBytes`——防 custom_data JSONB 慢性膨胀，图片禁 base64 内联为既定纪律；可随 B5-6 限制配置化入 KV）；单测钉"8 种只增不改"+ 非字符串/超上限 400 + validate_regex 同样生效。前端调色板/渲染随 ui 批。
 - **编辑器形态：Markdown vs WYSIWYG（2026-10-15 所有者倾向 MD，设计复核支持——启动批正式拍）**：
   - **推荐 Markdown**：① 工单正文域（描述/复现步骤/结论）排版诉求 = 标题/列表/代码块/表格/图片，MD 全覆盖；② 目标用户 = 内网技术/安全团队，MD 上手零门槛；③ **存储态 = 纯文本**——体积小、可直接 ILIKE 检索、可 diff，HTML 存储则检索带标签噪声；④ **消毒面大幅缩小**——MD 渲染默认转义内嵌 HTML，渲染器白名单即消毒，vs WYSIWYG 存 HTML 需维护 allowlist sanitizer（标签/属性/URL scheme/style 全量）。
@@ -361,6 +363,7 @@ compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；*
 
 | 日期 | 变更 |
 |---|---|
+| 2026-11-08 | §6补RR-UI-01详情缓存合同：清空/移除撤缓存与请求资格、独立身份拦晚响应及A→B→A、卸载失效；生产十条回归与两目标各八轮变异有效，联合门禁状态见本轮复验报告，不改服务端渲染/API合同 |
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；phase2/10 底座蓝本全量转录；未新增决策 |
 | 2026-10-15 | 公约对表批：§3 补直传协议口径注（PUT 上行/HEAD 探测 = S3 协议层动作非平台 API，不经 §3-1 辖域；平台五端点全 GET/POST）+ §10 错误码补登记位 `api/errcode.md`（§3-4） |
 | 2026-10-15 | richtext 形态批（所有者问询）：编辑器倾向 Markdown（§6 复核四条收益：存储纯文本可检索/消毒面小/目标用户适配/体积）+ 粘贴图片直传链路落档 + **内嵌图片 src 稳定 URL 硬约束**（反哺拍板点 1/2 代理端点推荐）+ 服务端白名单渲染 SSOT 口径 |
