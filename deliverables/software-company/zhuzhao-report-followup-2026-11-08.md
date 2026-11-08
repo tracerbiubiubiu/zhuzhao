@@ -51,3 +51,53 @@ UI原六件gate与主仓四档acceptance均在本轮独占栈执行通过。实�
 主仓普通lint首轮生成工具明确拒绝系统Go1.26.6；显式1.26.10后新工具缓存安装超时，改用已有、由工具入口核验版本/来源的固定缓存后lint/unit/cover及完整integration全部通过（integration987.18秒），覆盖率20.4%。未降低go.mod下限或修改全局PATH；Go源码未改。
 
 原始执行卡、基线、命令日志、快照与资源归属仅在 ignored `.codex/audits/report-followup-20261108/`。共享 dev/test、账号、原卷和其它会话资源不变。E000001仅允许独占 acceptance/globalSetup 的既定幂等例外流，不手工改共享凭据。
+
+## 收口复核与交付候选（2026-11-08）
+
+所有者同意保全utils引用、补批次归档说明与镜像经验、验证ignored材料备份，并冻结五仓交付候选。本批只改主仓本报告、11-06总报告、runbook与review/11；消费者pin、业务实现、配置、迁移、权限和API均保持。本轮继续不push、不合main、不打tag或发布，不改共享运行服务。历史三批验收与部署时点仍分别保留。
+
+### 依赖引用保护与冷下载
+
+主仓与AL消费`v0.4.4-0.20261106080630-cd759a040245`，精确提交为`cd759a0402455731f805ba507bf8401447e00e29`；TR仍为v0.4.2。本批在[runbook §7](../../docs/runbook.md#7-多会话协作与验收环境纪律2026-10-26-立约)登记utils远端`refs/heads/codex/phase5-audit`为清理保护项。保护解除要求实时清点消费者pin、验证承载提交的新长期远端引用，并重新验证精确版本可下载；不会因本机bundle或proxy缓存命中就解除。正式main/tag发布走后续流程，不用库HEAD代替消费者版本。
+
+冷下载仅用本轮独立临时模块缓存与已验Go1.26.10 SDK，不清理共享缓存、不引入replace/GOWORK。下载与五仓SSH远端查询收据仅存ignored `.codex/audits/closeout-20261108/pin-and-repos/`；冷下载成功证明本轮时点可获取及内容一致，不是第三方永久托管承诺。
+
+本轮全空模块缓存经官方proxy/sumdb下载成功，主仓/AL的module及go.mod两项h1均匹配；38份Go/go.mod/go.sum与目标commit逐字相同，`go mod verify`通过。SDK实际为Go1.26.10，其二进制SHA与既有已验收据一致。SSH fetch实时确认utils受保护远端tip为`563785a83ce2aeb12c5f2b65c42defb58a48c331`且包含所需commit；本地main不含、本地tag无包含。额外`ls-remote`全量分支/tag查询两次遭SSH reset，保留失败、不再重试，不宣称已实时排除其他远端tag。
+
+### 编号归档与运维经验
+
+[总报告“批次编号与归档口径”](./zhuzhao-ecosystem-full-audit-2026-11-06.md#批次编号与归档口径2026-11-08补记)补齐23个文件/22个批号、B06续批、B17→B16、B22→B18和B01/B03/B04本地原件映射。批次覆盖、产品发现、报告份数分别记录，不因缺同名文件推断漏跑。`deliverables/software-company/evidence/`当前仅有六个本地空批目录、无文件，`git ls-files`亦为0，目录存在不代表原始证据已入库；正式结论入Git、原始材料ignored的边界保持。
+
+runbook登记B03实际migrate镜像拉取与宿主CLI版本差异、固定工具缓存入口的核验方式。特定“daocloud/EOF”说法在已有本地`environment-startup-review.md`中明确缺原始证据，本批仅登记为未证实线索，不编造根因或把替代源写成已验标准方案。
+
+### 原始材料备份与恢复边界
+
+本轮备份范围为`.codex/audits/ECO-20261104/`及`.codex/audits/report-followup-20261108/`的报告原件、执行卡、日志、manifest、截图、数据库备份及既有归档/bundle。276项排除记录包含依赖/构建/Vite缓存、快照Git管理目录、临时ELF/Mach-O与镜像/build-stage tar；这些运行产物副本未纳本包，原件全部保留，不宣称本包覆盖全部运行镜像。备份位于仓库外本机专用目录，目录700、归档与manifest600；只在本机处理，不上传运行数据或秘密。
+
+主包为本机`~/.codex/backups/zhuzhao-closeout-20261108/evidence-20261108T091538Z.tar.gz`，1,038,614,302字节，SHA256为`ceaa590f5ee72d09c8c6ce281307cc82fb33dab90b523a1fd6783faf6655b02e`。147,392成员（131,606普通文件、3链接、15,783目录）逐成员SHA/链接校验通过，捕获期间源零变化。13件实际恢复样本逐SHA相同，覆盖B01/B03/B04、11-08执行卡/收据/门禁日志及五份bundle；五份bundle各在空bare仓验证通过。首轮最终化遇系统Python无`hashlib.file_digest`，改用兼容流式SHA后重新完整校验，原失败保留。
+
+精确utils下载的`.info/.mod/.zip/.ziphash`四件共83,703字节另保存至本轮`pin-and-repos/module-artifacts/`，manifest绑定目标commit、h1及原pin收据SHA；本轮门禁/提交收尾后，连同新的命令日志与窗口收据补入独立补充包，不递归纳入模块缓存或重写主包。下载包只作本机恢复材料，不替代远端引用保护。
+
+旧归档bundle与本轮待推候选分开保存；收尾另按五仓显式当前分支创建无前置bundle，在新空bare仓验证、恢复并检查本轮待推提交可达性及对象完整性。主仓本批提交后的准确HEAD、五个新包路径/SHA与恢复结果以本轮`backup/candidate-bundles.json`为准，不把旧五份bundle当作已覆盖11-08新提交；补充包引用这些仓外包的路径/SHA，不递归复制大包。
+
+逐成员SHA/符号链接验证、独立恢复抽样及本轮交付收据均记录在ignored `.codex/audits/closeout-20261108/`，主包及manifest/排除清单/收据也存仓外备份目录。该备份与工作树在同一台机器/同盘，能够防范工作目录误删，但不构成异地容灾或生产恢复演练。
+
+### 候选窗口与验证状态
+
+五仓固定分支、完整HEAD、SSH fetch时点与待推提交以本轮ignored收据为准；主仓本批纯文档提交位于下列开工HEAD之后，最终提交/窗口收据另存，不在自己的正文循环引用自身hash。后续任何推送仍须重新fetch、核真实待推集合与提交规范，推送后再核对应精确提交的远端CI；本地门禁不替代远端CI、main整合或生产部署。
+
+2026-11-08 17:14:59–17:15:05（Asia/Shanghai）五仓SSH fetch全部成功，目标分支`FETCH_HEAD`与tracking tip逐项相同，采集时各仓behind均0。固定待推窗口（左端为已fetch远端，右端为本轮开工本地HEAD）：
+
+- 主仓`phase5`：`3ca640226814768a9c3b240d281569f017dccfb3..059b0a129a69ef6453260356560de995f4f42e02`，4笔；本批纯文档提交另追加于此右端。
+- UI `phase5`：`152258638abaa3bd3daa656255a794c5422a0e58..bf61c863169cbe659e5af47e32167375c1f98fc5`，4笔。
+- taskrunner `codex/phase5-audit`：`6d0e2ad592eccf0c12bb525958784200c478a45e..b51d224f3ec2e6e4caa45d4095dbd7fc92191eeb`，1笔。
+- activelist `codex/phase5-audit`：`83909b86a697dd2fc69a71819a5e1327c9be1d03..2ebafca1f1f52ec1cf5c950e25f854c7c6875bbe`，1笔。
+- utils `codex/phase5-audit`：`563785a83ce2aeb12c5f2b65c42defb58a48c331..46a5605d94bffc719ca43e0f5312214c00847be5`，1笔。
+
+上述11笔逐仓以同源[scripts/commit-policy.py](../../scripts/commit-policy.py)的`main`解析`range --strict`、`select_commits`选取精确窗口及`check_commits`检查，全部通过，未使用历史基线豁免。五个候选均未进入已fetch的`origin/main`；这是本轮时点关系，不替代将来推送前的重新核对。
+
+本轮以已验Go1.26.10 SDK及工具入口核验的固定缓存执行原样`make lint`、`make test-unit`、`make test-cover`、`make test-integration`，全部通过；integration 643.688秒，覆盖率20.4%（与上一批披露的舍入值相同），Swagger无漂移。独占8容器栈原样`make migrate-up`到81且dirty=false，原样`make acceptance` 43.152秒，四档124+68+26+35合计253/0/0，81对迁移往返零漂移，前后schema均81|f。
+
+主354/AL44/TR43个Go/go.mod/go.sum条目及实际ELF逐项匹配既有构建receipt，本轮复用已核产物，不冒称重新构建。753文件冻结快照自身前后零漂移；canonical仅四份授权Markdown有本批修改与结果回填，脚本/配置/迁移/业务源未变，不宣称整个工作树与冻结副本逐字相同。8容器及私有卷/网络精确回收，既有容器增删改为0；integration的临时Ryuk自动退出，无手工清理。本轮收据以`gates/main/results.json`、`gates/main/cleanup-post-reaper.json`、`gates/acceptance/final-summary.json`及`cleanup-final.json`为准，冻结后文档差异另记，不覆盖原时点manifest。
+
+本轮未重复UI门禁、安全扫描、生产部署或异地灾备演练，原结果仍属于各自固定时点。最终路径提交后的消息窗口、五仓候选恢复和本轮日志补充包结果另存本轮ignored收据；未push所以没有本轮远端CI结论。

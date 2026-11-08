@@ -126,6 +126,19 @@
 
 证据目录仅本地`.codex/audits/ECO-20261104/`：`evidence/ECO-20261104-joint/dc3d540/`、`evidence/ECO-20261104-joint/final-pg-integration-al60/`、`evidence/ECO-20261104-b08/final-schema/`、`evidence/ECO-20261104-b08/final-e2e/`，以及`final-source-coverage/`、`final-doc-delta/`、`migration-source-coverage.json`、`final-coverage-exit-review`和`data-coverage/final-ledger-check.json`。相关manifest记录SHA/环境/命令/清理；目录中的过程文档、原日志、SQL备份、截图不纳Git，也不进入Docker上下文。
 
+### 批次编号与归档口径（2026-11-08补记）
+
+本目录`zhuzhao-ecosystem-audit-b*.md`实有23个文件、22个独立批号；批号B01–B27表示执行顺序，不等于27份独立入库报告。两份B06按对象域续批，B17/B22合并记录，准备批B01/B03/B04原件保留在ignored目录。该映射补充归档入口，不改写各批冻结基线、发现等级或验收时点。
+
+- B01基线：本地`.codex/audits/ECO-20261104/zhuzhao-ecosystem-audit-b01-baseline-2026-11-04.md`，记录五仓基线、utils消费版本与产物归因限制，无新增产品发现。
+- B03环境：同目录`zhuzhao-ecosystem-audit-b03-environment-2026-11-04.md`，记录阶段0测试栈重建、构建绕行及其验证边界，不抵扣业务审计。
+- B04治理：同目录`zhuzhao-ecosystem-audit-b04-repair-governance-2026-11-04.md`，记录分级修复、提交正文与发现追溯守卫，不属于新增业务模块审计。以上三份原件未入Git，不能仅凭同名evidence目录推断其已入库。
+- B06：[存储/事务](./zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)与[流程/提醒续批](./zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)分列，发现编号延续、不重复计数。
+- B17：并入[B16安全验证与修复](./zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)，不是缺失的独立报告。
+- B22：并入[B18工具/回滚报告的“B22：既有单测的时序假设修复”](./zhuzhao-ecosystem-audit-b18-tooling-rollback-2026-11-07.md#b22既有单测的时序假设修复)，[B27](./zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)亦回链提交`596f625e8c678b26bce5bd96a8058cff91c17f5e`及原/修/去修验证。
+
+其余独立批号B02、B05、B07–B16、B18–B21、B23–B27均有本目录同编号报告。原始材料备份、依赖引用保护及五仓后续候选状态见[11-08 followup的收口记录](./zhuzhao-report-followup-2026-11-08.md#收口复核与交付候选2026-11-08)，历史报告不据后续本地门禁宣称main或生产已承接。
+
 ## 修复窗口逐笔hash
 
 以下范围分别为主仓37、UI16、AL5、TR6、utils4笔；不是把未包含于目标的其它分支改动混入。主仓后续纯报告提交不改变本轮生产代码，修复来源通过补丁承接者另有source→integrated映射。
