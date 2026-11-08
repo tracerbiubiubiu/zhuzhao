@@ -12,6 +12,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commit-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 提交规则与窗口反例检查
+        run: make test-commit-lint
+      - name: 校验事件中真实新增提交
+        run: python3 scripts/commit-policy.py ci --fetch-missing
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
@@ -19,8 +30,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: 安全证据解析器负向检查
         run: python3 scripts/test-parse-govulncheck.py
-      - name: 提交格式守卫反例检查
-        run: python3 scripts/test-commit-lint.py
       - name: 验收隔离回归检查
         run: python3 scripts/test-acceptance-isolation.py
       - name: 开发编排隔离回归检查

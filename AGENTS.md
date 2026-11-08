@@ -79,5 +79,5 @@ make swag              # 重新生成 Swagger
 - 提交前 `git status` 核对文件归属；提交后 `git show --stat` 复核文件数。
 - rebase / amend / reset 为会话独占操作——执行前确认 origin 无新提交、索引无他人 staged 内容。
 - push 前 `git fetch` + 窗口差集核对（§12-9 push 前置三件）；多会话并行期间由单一会话执行推送。
-- 新会话开工第一步 `make hooks`（`.githooks` 双钩子：pre-commit 在途显影 / commit-msg 跨主题重题拦截）；两会以上并行时收尾在 [runbook §7 在途台账](docs/runbook.md) 落一行，后继会话开工先读。
+- 新会话开工第一步 `make hooks`（当前worktree安装三钩：pre-commit 在途显影 / commit-msg 消息规则+跨主题重题拦截 / pre-push 真实新增窗口；CI另按事件SHA检查）；两会以上并行时收尾在 [runbook §7 在途台账](docs/runbook.md) 落一行，后继会话开工先读。固定启用基线只豁免已推历史，显式历史审计仍严格，见 standards §12-9。
 - 权威成文：[docs/standards.md](docs/standards.md) §12-10（路径提交条 + zz-commit 执行工具 / 机械守卫条 / 会间交接注 / 改史前 HEAD 归属核查）。

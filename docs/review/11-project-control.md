@@ -133,6 +133,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；未push/未核本轮远端CI，main尚未承接 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md) |
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
@@ -334,6 +335,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 发现 | 当前状态 | 验证与边界 |
 |---|---|---|
 | RR-UI-01详情richtext缓存 | UI bebfe523生产修复、十条回归与独占联合门禁通过，代码复验关闭 | 两目标各八轮变异稳定红；gate240/41、253/81过，未推送/合main/部署共享服务；[复验报告](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md) |
+| RR-GIT-01提交规范 | 五仓自包含三钩与CI真实窗口已接线，本地各42反例通过 | 固定基线祖先不追溯；主仓另10+5回归；未推送所以远端CI未验证，canonical main仍未承接新门禁 |
 
 ### 2026-11-06全面审计承接
 

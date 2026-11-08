@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
+.PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint test-commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin
@@ -64,9 +64,13 @@ lint:
 commit-lint:
 	scripts/commit-lint.sh $(RANGE)
 
+test-commit-lint:
+	python3 scripts/test-commit-policy.py
+	python3 scripts/test-commit-lint.py
+	python3 scripts/test-commit-lint-window.py
+
 hooks:
-	git config core.hooksPath .githooks
-	@echo "✅ 并行提交守卫已装（pre-commit 在途可见+宽面提示 / commit-msg 跨主题 amend 拦截——standards §12-10；新环境开工第一步）"
+	scripts/install-git-hooks.sh
 
 # EC2：DSN 外置（可用环境变量或命令行覆盖：make migrate-up MIGRATE_DSN=...）
 MIGRATE_DSN ?= postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable

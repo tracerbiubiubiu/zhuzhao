@@ -37,15 +37,19 @@ export LC_ALL=en_US.UTF-8
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 range=""
+explicit_range=0
 if [ -n "${1:-}" ]; then
     range="${1}"
+    explicit_range=1
 else
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
     if [ -n "${branch}" ] && [ "${branch}" != "HEAD" ] &&
        git show-ref --verify --quiet "refs/remotes/origin/${branch}" 2>/dev/null; then
         range="origin/${branch}..HEAD"
     else
-        range="HEAD~20"
+        # 初推检查固定启用基线之后全部提交，不猜近20笔。
+        baseline=$(cat "${script_dir}/commit-policy-baseline") || exit 1
+        range="${baseline}..HEAD"
     fi
 fi
 # 单点参数语义修正：HEAD~20 应为「近 20 笔」——rev-list 单点会列全部祖先
@@ -60,38 +64,33 @@ fi
 
 violations=0
 total=0
-for h in $(git rev-list "${range}"); do
+[ "$(git rev-parse --is-shallow-repository)" = false ] || {
+    echo "[FAIL] shallow history; fetch --unshallow"; exit 1;
+}
+if [ "${explicit_range}" -eq 1 ]; then
+    commits=$(git rev-list "${range}") || exit 1
+else
+    baseline=$(cat "${script_dir}/commit-policy-baseline") || exit 1
+    printf '%s\n' "${baseline}" | grep -qE '^[0-9a-f]{40}$' || {
+        echo "[FAIL] invalid adoption baseline"; exit 1;
+    }
+    git cat-file -e "${baseline}^{commit}" || exit 1
+    commits=$(git rev-list "${range}" --not "${baseline}") || exit 1
+    echo "[INFO] adoption baseline ancestors excluded: ${baseline}"
+fi
+for h in ${commits}; do
     total=$((total + 1))
     subject=$(git log -1 --format=%s "${h}")
     body=$(git log -1 --format=%B "${h}")
-    second=$(printf '%s' "${body}" | sed -n '2p')
     reasons=""
 
-    # ① type(scope): 结构
-    echo "${subject}" | grep -qE '^(feat|fix|docs|refactor|test|chore|build|ci|perf)(\([a-z0-9_-]+\))?: ' ||
-        reasons="${reasons}
-    [1] subject not in 'type(scope): summary' form"
-
-    # ② 摘要 <=50 字（按字符计；2026-10-30 所有者拍 40→50）
-    summary=$(printf '%s' "${subject}" | sed -E 's/^(feat|fix|docs|refactor|test|chore|build|ci|perf)(\([a-z0-9_-]+\))?: //')
-    len=$(printf '%s' "${summary}" | wc -m | tr -d ' ')
-    [ "${len}" -le 50 ] || reasons="${reasons}
-    [2] summary ${len} chars (limit 50)"
-
-    # ③ 结尾不加句号（中/英文句号均算；省略号结尾不拦）
-    case "${summary}" in
-        *.|*.。|*。）) reasons="${reasons}
-    [3] summary ends with a period" ;;
-    esac
-
-    # ④ 主题行与正文间必须空行（%B 第二行非空 = 缺空行）
-    [ -n "${second}" ] && reasons="${reasons}
-    [4] no blank line between subject and body"
-
-    # ⑤ 正文至少有一行非空内容（AGENTS.md 三节必附）
-    body_lines=$(printf '%s' "${body}" | sed -n '3,$p' | grep -c '.' || true)
-    [ "${body_lines}" -gt 0 ] || reasons="${reasons}
-    [5] body empty (three sections required: changes / impact / evidence)"
+    # ①-⑤与commit-msg/pre-push/五仓CI共用同一消息规则。
+    if checked=$(printf '%s\n' "${body}" | python3 "${script_dir}/commit-policy.py" message - --raw 2>&1); then
+        :
+    else
+        reasons="${checked}
+    [1-5] shared message policy failed"
+    fi
 
     # ⑦ 披露一致性（WARN，文件级）——正文声称的「NN 号」须有对应 docs/phase*/NN-*.md 变更
     #    （内容级断言仍需人工 grep；WARN 不计入 violations）
@@ -157,7 +156,10 @@ if [ -n "${changed_api}" ]; then
     if [ -z "${swag_bin}" ]; then
         echo "[WARN] swagger gate skipped: swag CLI not found (go install github.com/swaggo/swag/cmd/swag@v1.16.4)"
     else
-        "${swag_bin}" init -g cmd/server/main.go -o docs --parseDependency --parseInternal >/dev/null 2>&1
+        if ! "${swag_bin}" init -g cmd/server/main.go -o docs --parseDependency --parseInternal >/dev/null 2>&1; then
+            echo "[FAIL] swagger gate: generator failed"
+            exit 1
+        fi
         stale=$(git diff --name-only -- docs/docs.go docs/swagger.json docs/swagger.yaml)
         if [ -n "${stale}" ]; then
             swagger_stale=1

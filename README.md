@@ -71,6 +71,10 @@ CI复用原Make入口，执行lint、Wire/Swagger新鲜度、build、单测race�
 - [docs/api/errcode.md](docs/api/errcode.md) —— 业务错误码登记表
 - [docs/ops/runbook.md](docs/ops/runbook.md) —— 运维手册（两套栈速查 / 故障处置 / 故障演练复现）
 
+## 提交检查
+
+首次在当前工作树运行 `make hooks`（需Python3），安装本仓三钩，不依赖兄弟仓绝对路径。`make commit-lint`检查新增窗口并保留Swagger检查，`make test-commit-lint`验证规则/窗口反例；显式`make commit-lint RANGE=HEAD~20`仍为严格历史审计。CI独立检查事件中的push/PR准确SHA，固定启用基线之前的历史不追溯，所有新增merge同样要规范主题与正文。规则与多工作树安装边界见[standards §12-9](docs/standards.md)，本轮跨仓复验见[RR-GIT-01](deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。
+
 ## License
 
 [MIT](LICENSE)

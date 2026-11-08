@@ -18,6 +18,18 @@ UI修复提交 `bebfe523d2a84f7d017bc46fcaf05d38e883844c` 的六文件与联合�
 
 同类扫描检查详情富文本与未被页面引用的 `RichtextView.vue`；后者不在本批消费路径，未以本次缓存修复替代其未来启用前的安全复核。
 
+## 第二批 RR-GIT-01：五仓提交消息与真实窗口
+
+主仓、UI和三个Go兄弟均纳管同源 `scripts/commit-policy.py`、`test-commit-policy.py`、`install-git-hooks.sh` 与三钩。本地commit-msg在旧重题早退之前校验消息原文，pre-push逐ref检查Git提供的旧/新OID；CI独立job用push before/after或PR base/head并fetch-depth 0，缺对象只允许精确补fetch，不使用猜测窗口。新merge同样要求CC主题和非空正文。
+
+启用基线：主仓3ca6402、UI bebfe523、TR6d0e2ad、AL83909b8、utils563785a，完整SHA随各仓baseline文件纳管。自动窗口排除其祖先，显式历史审计仍严格；不移动历史水位，不重写996b399/f3f2077或UI6a95fd2a。主仓保留Swagger⑥与披露/同类扫描/三节WARN⑦⑧⑨，生成器失败不再因无diff误绿。
+
+安装仅写worktree-local hooksPath，不把三个canonical main切换到缺文件的相对路径。遗留main仍借用主仓绝对钩子时，仅在钩子物理位置确在本仓之外、本仓无core/基线、外部来源具有core三条件下明确WARN沿原行为；本仓标准/嵌套钩子缺文件均FAIL。原重题诊断补变量边界，避免macOS bash将全角括号吞入变量名产生非法UTF-8。
+
+独立复核实际发现并修正两类接线问题：对`-F`原文strip-comments可能换掉非法主题并误拒字面Markdown；`!=标准.githooks`不能证明钩子在仓外。最终42项共享反例包含真实Git pathspec提交、无关staged守恒、四种legacy兼容边界、初推/force/多ref/删除、精确CI SHA、缺对象与浅克隆拒绝，五仓各42项全绿。主仓另10条旧WARN/正文回归和5条wrapper/Swagger反例全绿；三兄弟Go1.26.10 lint/test/build、UI lint/typecheck/240单测/build通过。CI已接线但尚未push，因此没有本轮远端CI运行结论。
+
+独立路径提交绑定：taskrunner `b51d224f3ec2e6e4caa45d4095dbd7fc92191eeb`（10文件）；activelist `2ebafca1f1f52ec1cf5c950e25f854c7c6875bbe`（10文件）；utils `46a5605d94bffc719ca43e0f5312214c00847be5`（10文件）；UI `63c4f4f16d789a004cc3bc5de0c539c19ff04828`（11文件）。各仓六个共享源/钩子逐字一致；主仓配套提交另由后续记录绑定，不循环自引完整SHA。
+
 ## 验证与环境边界
 
 UI原六件gate与主仓四档acceptance均在本轮独占栈执行通过。实际三个Go容器ELF与既有构建receipt的完整Go/go.mod/go.sum集合逐项相等，元数据Go1.26.10；没有把不同HEAD冒称重新构建。main746文件/UI288文件冻结manifest门禁前后无漂移，canonical UI与快照相同，共享node_modules元数据保持；本轮8容器及私有卷/网络已精确回收。
