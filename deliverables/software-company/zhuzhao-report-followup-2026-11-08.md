@@ -28,7 +28,17 @@ UI修复提交 `bebfe523d2a84f7d017bc46fcaf05d38e883844c` 的六文件与联合�
 
 独立复核实际发现并修正两类接线问题：对`-F`原文strip-comments可能换掉非法主题并误拒字面Markdown；`!=标准.githooks`不能证明钩子在仓外。最终42项共享反例包含真实Git pathspec提交、无关staged守恒、四种legacy兼容边界、初推/force/多ref/删除、精确CI SHA、缺对象与浅克隆拒绝，五仓各42项全绿。主仓另10条旧WARN/正文回归和5条wrapper/Swagger反例全绿；三兄弟Go1.26.10 lint/test/build、UI lint/typecheck/240单测/build通过。CI已接线但尚未push，因此没有本轮远端CI运行结论。
 
-独立路径提交绑定：taskrunner `b51d224f3ec2e6e4caa45d4095dbd7fc92191eeb`（10文件）；activelist `2ebafca1f1f52ec1cf5c950e25f854c7c6875bbe`（10文件）；utils `46a5605d94bffc719ca43e0f5312214c00847be5`（10文件）；UI `63c4f4f16d789a004cc3bc5de0c539c19ff04828`（11文件）。各仓六个共享源/钩子逐字一致；主仓配套提交另由后续记录绑定，不循环自引完整SHA。
+独立路径提交绑定：taskrunner `b51d224f3ec2e6e4caa45d4095dbd7fc92191eeb`（10文件）；activelist `2ebafca1f1f52ec1cf5c950e25f854c7c6875bbe`（10文件）；utils `46a5605d94bffc719ca43e0f5312214c00847be5`（10文件）；UI `63c4f4f16d789a004cc3bc5de0c539c19ff04828`（11文件）。各仓六个共享源/钩子逐字一致；主仓配套工具与规范提交 `03e0146195ecca6f705329870e209a361efe9559`（16文件），不循环自引报告提交SHA。
+
+## 第三批 RR-DOC-01：UI清欠登记与真实词表
+
+主仓S6的A.9补齐原6a95fd2a的M-2、M-4与richtext降级项事实，S10回链既有两状态top-K待办分页，UI工程规范反向引用；通知配置注释改指真实A.9。phase6/07只补事件元数据触发登记，原件18 visible_when不动；当前不存在事件词表读取端点，未新增API或批准实施批次。
+
+同类核对发现UI `EVENT_OPTIONS`为13项，后端`validEventActions`为14项，缺既有`ops.storage_usage_high`选项。本批补齐，并新增UI `eventOptions.test.ts`以TypeScript AST读取生产Vue数组、与后端生产map完整集合核对（含重复/空集合/解析失败守卫）；缺主仓源文件不得skip，不只比较计数。仍有手维护/响应生成schema缺口，均如实登记，不宣称已实现元数据端点或完整codegen接线。
+
+本批旧13项词表实红、补齐绿；等数量错键变异红、缺主仓源码直接ENOENT失败。含新选项的原样 `pnpm gate` 再次全部通过：31文件241测、E2E41/41，零retry/flaky/skip及HTTP429；独占 `make acceptance` 再次253/0/0，81对迁移往返零漂移。Go354/AL44/TR43运行源逐SHA匹配原构建receipt，实际三ELF SHA与Go1.26.10元数据核验通过。主仓753/UI296冻结manifest保持，canonical UI与快照无差异，共享node元数据保持，全部本轮容器/卷/网络已精确回收，既有容器无增删改。
+
+UI修复提交 `22d9fafa011e30f8af8c71a790221f3317e83034` 的五文件与本轮冻结源相同。RR-DOC-01代码/登记复验关闭；当前仅本地分批提交，未push、未合main或发布。所有原失败与最终结果分列，第三批以ignored `joint-doc/final-summary.json` 为准。
 
 ## 验证与环境边界
 

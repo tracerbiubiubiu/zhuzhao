@@ -289,10 +289,24 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 
 ---
 
+### A.9 前端清欠与事件词表登记（RR-DOC-01）
+
+既有UI提交 `6a95fd2a` 的四文件修复此前只有提交正文，未回填模块登记；本节补齐事实与剩余边界，不重写或拆分已推历史。
+
+- **M-2管理面API收口**：UI `src/api/message/index.ts` 的 `listMessageTemplatesApi` 等八函数承载模板CRUD、规则列表/upsert/删除、日志分页；`src/views/system/notification/index.vue` 使用这些封装。相关生成schema仍有`responses: never`缺口，当前手写类型不是完整codegen接线，后续补响应注解时再切换，不能写“全部类型漂移已有编译期守卫”。模板选项固定取首100条，属于当前有界选择面，不等于无限量全取；增长后需扩搜索/分页。
+- **M-4待办分页**：UI `src/views/message/center/index.vue` 的 `fetchTop` 与 `todosQuery` 按`assignee=me`分别取`assigned`/`in_progress`两源，用同一页大小分段拉前K条，再按精确int64 ID倒序归并切20条显示。排除已关闭单、不在50条静默截断；这是既定两状态待办口径，不宣称覆盖未来全部可配置状态，亦非跨分页请求的快照一致性保证。
+- **richtext降级项**：原报告跨工单泄漏P0判断不成立，`AppView`以`route.fullPath`分实例；`6a95fd2a`的源指纹修复只覆盖非空同单更新。清空/移除与乱序/A→B→A残留已由RR-UI-01补齐，当前生产入口是详情页的`useRenderedRichtext`，合同与完整门禁见[05号§6](05-s5-object-storage-richmedia.md)和[本轮复验报告](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。
+- **m-2事件词表**：`notification/index.vue` 的 `EVENT_OPTIONS`仍手维护，后端权威为`internal/service/message_admin_service.go`的`validEventActions`，不是模板变量的25键字典。本轮发现漏`ops.storage_usage_high`选项并补齐，完整集合由UI跨仓契约守卫核对。没有事件元数据读取端点；旧注释“07号§3.4件18”实际指向visible_when，已改指本节。读取端点仅登记为后续消除手维护的改进，路径/权限/实现批次尚未批准，不把拟议`/message-events`写成已存在API。
+
+### 本节变更说明
+
+RR-DOC-01补登记与锚点，并在同类核对中补现有后端事件选项；不新增API、迁移、权限或依赖。当前修复/复验状态以本轮报告为准。
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
+| 2026-11-08 | A.9补6a95fd2a的M-2/M-4/richtext降级项与事件元数据边界，纠正件18悬空引用；补现有storage_usage_high选项与全集合守卫，结果见RR-DOC-01复验 |
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（P4-2 本体/事件面缺口）；含二期站内消息中心（2026-10-13 翻案）；未新增决策 |
 | 2026-10-15 | 公约对表批：§5.4 message_log 管理页列表补 PageData 形态注（standards §3-6） |
 | 2026-10-16 | **详细技术设计批（附录 A，实施级——05 号样板深度）**：A.1 StatusChangeHook 接口全文（TicketEvent 结构/编译期注册/after-commit 派发=异步投递实现锚点/recover 隔离/节流落订阅者侧）——即 S3a 对表钉死形态/A.2 三表族 DDL 全文（**message_log 用 biz_type+biz_id 域无关键**——phase6 risk 零改复用；notifications 二期表随落）/A.3 ChannelSender 端口+双 adapter 并存（webhook 既有链不动）+两态桩实现（stub config 开关+ErrNotificationNotConfigured 虚标防线）/A.4 渲染器契约（单遍替换禁二次展开+变量清单校验拒发）/A.5 订阅规则轻表 message_rules 建议（域无关 recipients spec）+触发链装配+人读编号实现（human_key 列+UNIQUE 冲突重试）/A.6 API 面/A.7 验收补充（第二订阅者/panic 隔离/节流/注入/两态桩/域无关六负向） |
