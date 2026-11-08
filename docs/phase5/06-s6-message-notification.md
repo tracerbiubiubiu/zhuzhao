@@ -1,31 +1,52 @@
-# 06 — P5-S6 消息通知：统一消息平台 + 模板 + 工单触发（设计稿）
+<a id="06--p5-s6-消息通知统一消息平台--模板--工单触发设计稿"></a>
 
-> **段属性**：基线段（phase5 收口对象）。**建议实施序**：与 S2 错峰衔接（S1 后；单人串行——S6 一期先于 S2）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
-> **量级**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
-> **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
+# 06 — P5-S6 消息通知：统一消息平台 + 模板 + 工单触发（实施说明与设计沿革）
+
+> **段属性**：基线段（phase5 收口对象）。**原实施序**：与 S2 错峰衔接（S1 后；单人串行——S6 一期先于 S2）；**S10 依赖本段**（抄送通知/超时通知），phase6 硬前置 = 本段**一期**口径。
+> **原规划量级（非当前排期）**：一期约 2–2.5 周（通道/模板/解析/触发/记录各 2–3 天 + 事件面基建 3–5 天）+ **二期站内消息中心 1.5–2 周**（2026-10-13 翻案挂入，S6 总账 3–4 周）。**迁移**：有（一期 `message_templates`/`message_log` 两表族 + `message_rules` 订阅规则轻表（附录 A.5）+ `tickets.human_key` ALTER（拍板点 2 随批时）——**≥3 段迁移（2026-10-16 外审计数对齐）**；二期 notifications 表族——编号启动时对账，不写死）。
+> **文档定位**：段级实施说明与设计来源（2026-10-15 建档，phase5 分支）。对接参考 = [phase3/10 §3 通知服务设计](../phase3/10-ticket-business.md)（邮件矩阵/事件订阅）；立项与演进 = dd §27（2026-10-08 四轮）+ 站内消息中心翻案条（2026-10-13）。
 > **事件面公约注（2026-10-28 P1-7 拍板）**：进程内事件面全生态公约层 = [standards §14](../standards.md)——本段为第一消费者，机制细节锚仍在本稿（事件面基建/Drain 语义）；新域消费者按公约三件随批。
 
-> 2026-11-07 B20当前行为：NavbarBadge以VueQuery订阅消息写操作既有失效key `badge`，已读后立即重取，60s后台同步保留；请求层处理错误，保留上份成功数据。真实E2E在reload前核角标，不以刷新掩盖失效；最终41 E2E通过，详[B20报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。事件可靠性/Outbox及ops收件人合同不由本批补齐。
+> 2026-11-07 B20当前行为：NavbarBadge以VueQuery订阅消息写操作既有失效key `badge`，已读后立即重取，60s后台同步保留；请求层处理错误，保留上份成功数据。真实E2E在reload前核角标，不以刷新掩盖失效；最终41 E2E通过，详[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。事件可靠性/Outbox及ops收件人合同不由本批补齐。
 
-## 1.5 通知能力三入口（2026-10-23 对话设计批——架构澄清）
+## 当前状态与阅读顺序（2026-11-08）
 
-NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发送，写一次）；触发形态 = **入口层**（多路复用，不重复）：
+一期模板/规则/外发编排与二期站内消息中心已交付，但**外发UIP仍是两态桩，站内inbox是独立消费者**。先读A.1机制、A.3真实sender、A.5两路分工与A.6真实API；管理面既有UI与事件词表边界看A.9。代码/test承接看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)，main/生产另计，本轮文档门禁尚未回填。
 
-| 入口 | 触发时机 | 收件人来源 | 内容来源 | 实施时机 |
-|------|---------|-----------|---------|---------|
-| **事件触发**（B6-5） | 工单状态变更 | 事件上下文解析 | 规则绑定模板 + 事件参数 | **S6 一期 ✅** |
-| **定时触发** | cron 扫描超时/到期 | 配置人群 | 数据聚合（在途单 digest） | B10-4 自然出现（不预建） |
-| **人工触发** | 管理页/工单页按钮 | 管理员选择 | 自定义或选模板 | 有场景时加薄端点（半天） |
+H-2多渠道/钉钉、H-3动态字段与时间变量、H-6 picker/preview、G-7+G-29①站内规则/偏好仍按[债台账](s6-s5-debt-ledger.md)排位；已拍不等于已实现。§2是立项历史基线，原周数和日期收据保留时点含义。
 
-**编排器前置件（2026-10-23 批 3 对表 F-3-1 落档）**：上表「能力层」当前实体化为 `TicketNotifyHook.OnDomainEvent` 内嵌编排链（查模板→渲染→解析收件人→偏好过滤→节流→发送→log，≈115 行，`service/ticket/notify_hook.go`）——**定时/人工入口开工前须先抽出 `MessageDispatcher`**（单方法 `Dispatch(ctx, req)`，hook 变「DomainEvent → DispatchRequest」薄适配器；业界同型=多入口单管道：Laravel Notifications / Knock workflow）。登记 = **B10-4 开工首件（+0.5–1 天，11 号 B10-4 行已同步）**——按「第二个消费者出现时抽」纪律，不单开批（现在抽无第二消费者验证抽象边界）。命名消歧：P4-2 `NotificationService` = 渠道配置管理（List/Create/Update/Delete/NotifyDeadLetter，无 Send/渲染/解析）**不改名**（调用面+swagger 已铺）；新层 = `MessageDispatcher`，上表与 03 号 §3.3 原「NotificationService」能力层指代一律读作此层。
+```mermaid
+flowchart LR
+    COMMIT[业务提交成功] --> EV[DomainEvent]
+    EV --> BUS[HookRegistry 按域订阅/异步派发/Drain]
+    BUS --> HOOK[TicketNotifyHook]
+    HOOK --> DISP[MessageDispatcher]
+    DISP --> RULE[规则/模板/渲染/偏好/节流]
+    RULE --> UIP[单UIP桩sender]
+    UIP --> LOG[message_log sent/failed + 失败告警]
+    BUS --> INBOX[InboxService 固定动作/标题/收件人]
+    INBOX --> N[notifications title/link]
+    N --> SELF[本人inbox/read/read-all]
+    N --> BADGE[badges.unread]
+```
 
-定时和人工触发**不预建**——NotificationService 接口设计留好"可被任意调用方调"即可（B6-2 通道层设计时注意此约束）。
+总线在进程内at-most-once，失败不回滚业务事务；没有由此获得持久重试/Outbox保证。inbox尚不消费外发rules/opt-out，图中两路不能合并成“同一通道已接线”。
+
+<a id="15-通知能力三入口2026-10-23-对话设计批架构澄清"></a>
+
+## 1.5 通知能力三入口
+
+能力编排当前已实体化为`internal/service/ticket/dispatcher.go`的`MessageDispatcher.Dispatch`，B10-4出现第二个消费者时完成抽取；`TicketNotifyHook.OnDomainEvent`是薄适配器，不再保留“开工前待抽”的当前待办。
+
+事件触发与timeout/deadline扫描都发布DomainEvent后进入该管道；扫描器只确定目标并发事件。人工触发薄端点仍待真实场景，不能写成已存在API。P4-2的`NotificationService`只管渠道配置/死信告警，与新编排层同名概念必须分开：模板/规则/渲染链指MessageDispatcher。
 
 ## 1. 定位与由来
 
-**定位 = P4-2 通知通道的能力延伸，非 §23 翻案**：P4-2 已交付渠道配置化 webhook + 死信告警 + taskrunner 终败通知 hook（E-⑥ 形态落地）；§23 暂缓清单中"通知"一项随 P4-2 事实上解封。本段补齐三件：**统一消息平台渠道 + 消息模板 + 工单事件触发**。**SLA/审批/分派/报表维持暂缓不碰**。站内通知原"不取"（2026-10-08/09 两次拍板）——2026-10-13 所有者铃铛需求**翻案**：原口径否决的是"触达通道"，铃铛实际要"站内聚合工作面"，与钉钉/邮件互补非替代——**挂 S6 二期**（见 §6）。
+**定位 = P4-2 通知通道的能力延伸，非 §23 翻案**：P4-2 已交付渠道配置化 webhook + 死信告警 + taskrunner 终败通知 hook（E-⑥ 形态落地）；§23 暂缓清单中"通知"一项随 P4-2 事实上解封。本段补齐三件：**统一消息平台渠道 + 消息模板 + 工单事件触发**。**本段不扩完整SLA/审批/报表**；Phase5后来已交付S3a自动分派及SLA0.5，不再把§23旧全局暂缓当当前能力状态。站内通知原"不取"（2026-10-08/09 两次拍板）——2026-10-13 所有者铃铛需求**翻案**：原口径否决的是"触达通道"，铃铛实际要"站内聚合工作面"，与钉钉/邮件互补非替代——**挂 S6 二期**（见 §6）。
 
-## 2. 现状基线（代码级锚点，2026-10-15 核实）
+<a id="2-现状基线代码级锚点2026-10-15-核实"></a>
+
+## 2. 立项基线（历史）（代码级锚点，2026-10-15 核实）
 
 | 项 | 现状 | 锚点 |
 |----|------|------|
@@ -37,9 +58,9 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 ## 3. 通道层（环境红利：全渠道单接口）
 
-- 企业统一消息平台 = 邮件/钉钉等所有渠道**共用一个调用接口**——通道抽象只需在既有 `notification_configs` 上**新增一种渠道类型**（type=uip：endpoint/凭据配置），**不做任何渠道 SDK 直连**（直连属环境变化再拍）。
+- 当前`notification.uip.endpoint`用于UIP桩装配，`notification_configs`保留P4-2 webhook配置管理；不能把“配置里有uip”写成统一消息平台真实发送已对接。已拍通用渠道扩展见H-2，业务调用仍经ChannelSender。
 - 发送器抽象为 **`ChannelSender` 端口**（Send）——统一消息平台 = 首个 adapter；换平台/加渠道 = 新 adapter，**业务代码禁止硬编码平台 HTTP 调用**（README §6 清单第 3 行）。
-- **两级渠道词表（2026-10-23 批 3 对表 F-3-2 落档）**：`channel` = **adapter 层**（S6 侧传输适配，白名单 `uip`/`webhook`——新渠道=新 adapter，supportedChannels 校验不变）；`delivery` = **投递偏好层**（email/dingtalk/… 等平台内部路由目标——UIP 契约面，非 S6 传输语义）。`channelsender.Message` 增可选 `delivery []string` **透传字段**：一期不校验、UIP 契约确认前允许留空；escalation（10 号 §3.4）/on_complete（03 号 §3.3）设计稿中的 `channels` 字段均按此词表改标 `delivery`——防实施者把投递偏好当 adapter 渠道撞白名单 400（两条路都不通的原死结消解）。
+- **两级渠道词表（2026-10-23 批 3 对表 F-3-2 落档）**：`channel` = **adapter 层**（S6 侧传输适配，白名单 `uip`/`webhook`——新渠道=新 adapter，supportedChannels 校验不变）；`delivery` = **投递偏好层**（email/dingtalk/… 等平台内部路由目标——UIP 契约面，非 S6 传输语义）。`delivery []string`是已定词表下的**设计目标**；当前`channelsender.Message`没有该字段，尚未透传，待UIP契约D-1对表；escalation（10 号 §3.4）/on_complete（03 号 §3.3）设计稿中的 `channels` 字段均按此词表改标 `delivery`——防实施者把投递偏好当 adapter 渠道撞白名单 400（两条路都不通的原死结消解）。
 - **直连差异清单（2026-10-16 业界核验回标——「直连属环境变化再拍」补齐"再拍时拍什么"，防重新调研）**：企微/钉钉/飞书服务端推送同为 HTTP+JSON（群机器人 webhook / 应用消息 API 两形态，官方 SDK 仅为薄包装），与 UIP adapter 同构、端口签名不动；直连时三点真差异全落 adapter 内部——①鉴权两族（静态 webhook+可选 HMAC-SHA256 签名 vs app secret→access_token 生命周期管理：缓存+过期刷新）；②收件人 ID 体系渠道私有（企微 userid/飞书 open_id/钉钉手机号——需 user→渠道 ID 映射，UIP 核心价值即收敛此映射）；③每渠道分钟级限频（机器人约 20–100 条/分钟，钉钉超限罚停 10 分钟）须 adapter 自带令牌桶+退避；正文格式差异见 §8/A.4。
 - **无契约先行开发策略（2026-10-09 所有者确认）**：平台为 HTTP 发消息形式、正式契约文档不便外传——**端口先行**：模板/渲染/触发/message_log 全链先建，adapter 按"HTTP+JSON"常见形态先写骨架（endpoint/鉴权头 config 化，字段映射层独立成函数），真实契约到手只改映射。
 - **桩两态口径（2026-10-09 审计建议采纳，防虚标纪律）**：开发态桩 = 返回成功 + 落日志（供触发→模板→渲染→记录全链 E2E）；生产态 = 未配置 **fail-fast** 报错；两态由 config 开关区分。**桩不得标注为"已实现统一消息平台对接"**。
@@ -47,8 +68,8 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 ## 4. 模板层
 
 - **表**：`message_templates`（code/名称/渠道/主题/正文/变量 schema）+ CRUD + 管理页（通知中心页面族，自 S4 迁入）。
-- **渲染**：**服务端占位符替换（字段值转义）**——不用完整模板引擎/text/template，防模板语法执行（用户可控的工单字段值不得被当模板代码）；选型预置 = `{{ticket.assignee_name}}` **点路径占位符**（logic-less 零执行——2026-10-16 升级，A.4）+ 值按渠道转义（A.4 三族）。**变量字典 = 服务端 SSOT**：按 (biz_type, event) 供给可用变量树（工单域与 S1 field_meta 同源），模板引用 ⊆ 字典——模板作者零手维护变量清单（A.4）。
-- **变量来源含时间类**（当前时间/相对时限，格式可配——2026-10-09 场景补充）。
+- **渲染**：**服务端占位符替换（字段值转义）**——不用完整模板引擎/text/template，防模板语法执行（用户可控的工单字段值不得被当模板代码）；选型预置 = `{{ticket.assignee_name}}` **点路径占位符**（logic-less 零执行——2026-10-16 升级，A.4）+ 值按渠道转义（A.4 三族）。**当前内置变量字典 = 服务端SSOT**，仅25个内置键；按(biz_type,event)供动态树、field_meta slug与时间变量是H-3目标，picker归H-6，当前不能声称已有全动态字典（A.4）。
+- **时间类变量为已拍未实施目标**（H-3），不是当前字典输出。
 - **模板内容设计准则（2026-10-09 隐藏需求核查）**：通知出平台边界（邮件/IM）——默认只带"**编号 + 标题 + 链接**"，详情留在平台内（点入过 L2），**防渲染详情字段向 L2 不可见收件人泄露内容**；详情入正文须显式声明为例外。预置种子模板只含编号+标题+链接（不含越 L2 才可见字段；更丰富模板由管理员自担）。
 - **模板/字段引用完整性同批**：模板删除守卫 + 被引用字段改 key/删除的失效告警——与 S1 字段变更影响分析同件复用。
 
@@ -80,17 +101,21 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 `message_log` 表（模板/收件人/状态/错误/重试）+ 管理页（列表按 standards §3-6 PageData 形态——offset+total+钳制）；失败复用既有死信告警链——**接缝（2026-10-19 外审补）**：`ChannelSender.Send` 终败 = **进程内直调** notification service 死信告警方法（与 `/internal/notify/dead-letter` HTTP handler 共用内部函数——同进程不自绕 HTTP）；`DeadLetterNotifyPayload` 扩展可选字段 biz_type/biz_id/template_code（指针型——taskrunner 既有投递零破坏），排障可归因到模板与业务对象。
 
-**删除守卫口径注（2026-10-23 外审 F-1-8/F3-1-4）**：模板删除守卫 = 被规则引用即拦（**含禁用规则**——修复前只数 enabled=true，禁用规则引用被忽略→删后规则再启用即静默不通知）；守卫与删除合并为单语句 NOT EXISTS 原子化（无并发窗口）。
+**当前删除守卫**：被规则引用即拦（含禁用规则），系统种子只读；`MessageTemplateRepo.Delete`使用NOT EXISTS条件删除，`000061_message_rules_fk`再以外键封住并发引用悬挂。不能把单语句快照称为整个引用关系“无并发窗口”。
 
-**发送超时层次注（2026-10-23 外审 F3-1-5）**：桩期 5s = goroutine 兜底（——防 UIP 端点挂起致 goroutine 永久阻塞）；契约期 = UIP 契约超时为准，5s 降为下限保护。
+**当前发送超时**：MessageDispatcher给Send派生5s context；adapter必须尊重取消，context本身不强杀忽略取消的goroutine。真实UIP契约与超时调整仍在接入批，不把旧“5s下限”推为既有外部协议。
 
-## 6. 二期：站内消息中心（2026-10-13 翻案，一期交付后实施）
+<a id="6-二期站内消息中心2026-10-13-翻案一期交付后实施"></a>
 
-- **定性**：消息中心 = **事件系统的消费者**——S6 channel 抽象新增「站内 inbox」通道 + notifications 表族（recipient/payload 深链/created_at）+ per-user 已读状态（行级 read_at 第一档/全部已读批量/未读数聚合端点）+ 保留策略（N 天封顶，复用 message_log 经验）。
-- **硬依赖 S6 一期**：触发/模板/收件人解析全是 S6 资产，inbox 只加通道 + 读面——绕开则成第二套触发/去重/保留的假消息系统。
-- **待办与消息语义分离（业界地基）**：待办 = 状态派生（已办自动消失，无已读概念）；消息 = 事件快照（读过即完）——铃铛 UI 第一档双 tab（通知/待办）合并入口，数据模型分开。
-- **实时通道分期**：角标轮询（S10 既有 60s）→ 站内消息 SSE（二期，单向推送内部够用；WebSocket 过度）→ 浏览器原生 Notification 弹窗（可选增强件，登记不承诺）。
-- 未读数聚合并入 S10 角标端点 sections 扩展；**phase6 硬前置维持 S6 一期口径不变**（风险台账不依赖消息中心）。
+## 6. 已交付二期：站内消息中心
+
+`InboxService`直接订阅ticket/ops DomainEvent，按固定`seedTemplates`选择动作，把payload的`to_assignee ∪ cc_users`去重后落`notifications`；`title/link`在入站时确定，读面不再渲染。它不是ChannelSender adapter，也尚未接外发模板/规则/opt-out。
+
+消息中心经`/messages`常量路由从铃铛进入，后端inbox/read/read-all是本人自服务，非本人404；`inbox:read`已随000078退役。保留期默认90天，清理骑CronScheduler；unread注册到BadgeService。updated/commented不发给actor自己，其余回执保持；全局actor排除已决定维持窄版，G-29①接rules与G-7接偏好仍为Phase6随行。
+
+待办是状态派生，消息是事件快照；当前消息中心待办只取assigned/in_progress两源top-K，按ID精确归并，见A.9。badges.todo的非终态统计定义与该列表分开说明，不能凭同名断言数字严格相同。
+
+实时仍为60s轮询及写操作失效刷新；SSE/浏览器弹窗为触发项，并未随二期交付。Phase6硬前置仍按既有S6一期范围。
 
 ## 7. 启动拍板点
 
@@ -106,7 +131,7 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 ## 8. 边界（不做）
 
 - **不做渠道 SDK 直连**（邮件/钉钉均经统一消息平台）；**不做站内通知一期以外的实时通道承诺**（分期口径 §6）；**模板不做富排版引擎**——占位符替换为唯一模板语法，不做可视化编辑器/完整模板语言（业界该层=独立产品线体量：Novu 渠道编辑器/SendGrid 拖拽设计器/MJML 生态）；**正文格式按渠道 adapter 归属**（纯文本/轻 HTML/markdown 子集——业界无统一 markdown：钉钉子集无表格/企微 markdown 与 markdown_v2 双方言并存/飞书富文本为私有 JSON 结构，2026-10-16 业界核验；渲染转义纪律见 A.4）。
-- SLA/审批/分派/报表维持暂缓（§23 域不碰）；站内 inbox 不入一期（§6 二期）。
+- 本段不新做完整SLA/审批/报表；已实现S3a分派/通知联动回链03号。站内inbox已作为二期交付，后续实时及规则/偏好补齐仍单列。
 
 ## 9. 影响面
 
@@ -138,141 +163,133 @@ NotificationService = **能力层**（模板渲染 + 收件人解析 + 通道发
 
 > ⚠ 标注 = 实施级设计建议（启动批确认制，不新增拍板点）。事件面接口 = S3a 对表钉死形态（[03 号 §3 头注](./03-s3-flow-semantics.md)、11 号 §2.4）——**命名已拍（2026-10-16 拍板点 4）：通用 `DomainEvent`/`DomainHook`**（原 TicketEvent 系措辞废止；消费方侧名字保持业务化）。
 
-### A.1 事件面基建（B6-1，✅ 命名已拍 DomainEvent/DomainHook）
+<a id="a1-事件面基建b6-1-命名已拍-domaineventdomainhook"></a>
+<a id="a1"></a>
+
+### A.1 当前事件面基建
+
+真实接口位于`internal/pkg/domainevent/event.go`的`DomainEvent/DomainHook`及`registry.go`的`HookRegistry`。以下为接口摘录，不是独立可运行程序：
 
 ```go
-// internal/pkg/domainevent/hooks.go（编译期注册，app.go 装配——跨域公共件，ticket service 为首个发布方）
 type DomainEvent struct {
-    BizType    string          // ticket / risk / …（订阅按 biz_type 路由——域无关路由键）
-    Action     string          // ticket.created / ticket.status_changed / ticket.assigned / ticket.cc_added / …
-    BizID      int64; RefCode string   // biz_id=业务主键；RefCode=业务编码（工单 type_code 等）
-    From, To   string          // status_changed 专用
-    ActorID    int64; OccurredAt time.Time
-    Payload    json.RawMessage
+    BizType BizType
+    Action Action
+    BizID string
+    ActorID int64
+    Payload Payload // map[string]any
+    Timestamp time.Time
 }
-type DomainHook interface { OnDomainEvent(ctx context.Context, ev DomainEvent) }
-type HookRegistry struct { subs map[string]DomainHook }        // 有序（注册序）
-func (r *HookRegistry) Register(name string, h DomainHook)     // 重复名 panic（装配期暴露）
-func (r *HookRegistry) Dispatch(ev DomainEvent)                // 每订阅者独立 goroutine + recover；at-most-once
-func (r *HookRegistry) Drain(ctx context.Context) error         // 优雅退出排空在途订阅者（2026-10-26——app.Shutdown 5s 预算；丢失窗口收窄为仅崩溃）
+type DomainHook interface { OnDomainEvent(context.Context, DomainEvent) }
+// HookRegistry方法：
+// Subscribe(biz BizType, name string, hook DomainHook)
+// SubscribeAll(name string, hook DomainHook)
+// Dispatch(ctx context.Context, ev DomainEvent)
+// Drain(ctx context.Context) error
 ```
 
-- **派发时机 = DB 事务提交后**：ticket service 状态变更路径在 `tx.Commit()` 成功后调 `Dispatch`（事务内只收集事件，提交失败零派发）——异步投递语义（§5.2）的实现锚点；
-- **事件枚举补 cc_added（2026-10-16 评审批）**：抄送「收通知」依赖事件可订阅——S10 抄送落库时 emit `ticket.cc_added`（payload 含 cc 用户/role），S6 message_rules 即可订阅抄送通知；**无此事件=抄送通知须硬编码进 cc_service（违 §5.2 禁令）**——枚举随 B10-1 同批钉入；
-- **域无关兑现**：DomainEvent 无工单专属字段渗透到订阅者契约（Payload 透传），phase6 R3 关单钩子/任务链按同名接口挂载，**第二订阅者零改 ticket service**（§10 phase6 前向验收）；**命名已拍（拍板点 4，2026-10-16）**：通用 `DomainEvent`/`DomainHook`——原 TicketEvent 系措辞废止（结构不变，本节已按新名改写）；
-- **节流/去重落订阅者侧**（S6 消费者自责）：同 ticket_id+Action 窗口 60s 内去重（内存 sliding window = **单实例假设**；**多副本部署时 Redis 化**，登记触发 = 副本数 >1，对齐 [phase3/02](../phase3/02-multi-instance.md) 多实例纪律）。
+注册名全局唯一，重复名在装配期panic；按域及通配订阅派发，每订阅者独立goroutine/recover。Dispatch须在业务提交后调用，Drain闭闸并等待在途订阅者；进程崩溃仍可丢事件，高一致性消费者依其已定对账方案，Outbox待既有未来批。
 
-**事件分类学约定（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md，D20）**：`Action = <biz_type>.<verb>`，verb 取固定词表——实体类 created / updated / status_changed / assigned / commented / closed / reopened / deleted；执行类（run）started / succeeded / failed / canceled / dead / timed_out；系统类 ops.*。`updated` 事件 Payload 必带 `changes: [{field, from, to}]`。每个 Action 预留 payload JSON Schema 登记位（第一档可为空）。零代码约定，防 phase7 运行类事件接入时重命名。
+当前Action常量集中在`event.go`，含11个ticket动作与3个ops动作；不是所有研究词表都已产生事件。`Change`当前字段为`key/old_val/new_val`，`buildChanges`还未提供完整旧值/custom_data键级diff，D20真值补齐仍B-1，不能用目标`{field,from,to}`冒充当前载荷。
 
-### A.2 表族 DDL（迁移全文级，编号启动对账）
+通知侧60s去重键为biz_type+biz_id+Action，位于MessageDispatcher消费者；单实例内存节流，多副本升级仍按原触发条件。
 
-```sql
-CREATE TABLE message_templates (
-    id         BIGSERIAL PRIMARY KEY,
-    code       VARCHAR(50) NOT NULL,             -- 业务引用键（规则/动作库引用）
-    name       VARCHAR(100) NOT NULL,
-    channel    VARCHAR(20) NOT NULL DEFAULT 'uip',
-    subject    VARCHAR(200) NOT NULL,
-    body       TEXT NOT NULL,                    -- {{ticket.assignee_name}} 点路径占位符（logic-less，A.4）
-    variables  JSONB NOT NULL DEFAULT '[]',      -- 编辑器从变量字典回填的引用清单（展示/审计；渲染校验=引用⊆字典，A.4）
-    is_system  BOOLEAN DEFAULT FALSE,            -- 种子模板（编号+标题+链接），防越 L2 泄露准则（§4）
-    version    BIGINT NOT NULL DEFAULT 1,        -- 乐观锁（管理面并发编辑——对齐 notification_configs 000033 全仓惯例；CAS 更新携 version 命中才写，0 行=409）
-    created_by BIGINT NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (code)
-);
+<a id="a2-表族-ddl迁移全文级编号启动对账"></a>
+<a id="a2"></a>
 
-CREATE TABLE message_log (
-    id           BIGSERIAL PRIMARY KEY,
-    template_code VARCHAR(50),
-    channel      VARCHAR(20) NOT NULL,
-    recipient    VARCHAR(200) NOT NULL,          -- 平台外标识（邮箱/工号/IM id）
-    biz_type     VARCHAR(30) NOT NULL DEFAULT 'ticket',
-    biz_id       BIGINT,                         -- ⚠ 域无关：biz_type+biz_id 而非 ticket_id（phase6 risk 通知零改复用）
-    subject      VARCHAR(200),
-    status       VARCHAR(20) NOT NULL,           -- sent / failed / dead（dead 接既有死信告警链）
-    error        TEXT,
-    retry_count  INT DEFAULT 0,
-    created_at   TIMESTAMPTZ DEFAULT NOW(),
-    sent_at      TIMESTAMPTZ
-);
-CREATE INDEX idx_message_log_biz ON message_log (biz_type, biz_id, created_at);
-CREATE INDEX idx_message_log_status ON message_log (status, created_at);
+### A.2 当前数据表与迁移
 
--- 二期（B6-7）：
-CREATE TABLE notifications (
-    id           BIGSERIAL PRIMARY KEY,
-    recipient_id BIGINT NOT NULL REFERENCES users(id),
-    biz_type     VARCHAR(30) NOT NULL,
-    biz_id       BIGINT,
-    payload      JSONB NOT NULL,                 -- 深链（页面路由+参数）+ 摘要
-    read_at      TIMESTAMPTZ,                    -- 行级已读（第一档）
-    created_at   TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_notifications_unread ON notifications (recipient_id, read_at);
-```
+实际字段/类型以迁移文件为准，不复制早期草图作建表脚本：
 
-### A.3 ChannelSender 端口与两态桩（B6-2）
+| 表 | 当前承载与来源 |
+|---|---|
+| message_templates | `000053_message_templates`：code/biz_type/channel/subject/body/variable_schema/enabled/version；000058追加is_system只读标识 |
+| message_log | `000054_message_log`：biz_id为VARCHAR，recipients为TEXT列表，保存subject/body及sent/failed/error；没有单recipient、retry_count、sent_at或warned状态 |
+| message_rules | 000054列式biz_type+event_action唯一、template_code、recipient_type/fixed_recipients/enabled；000060追加version，000061追加模板FK |
+| notification_optouts | 000056，本人biz_type/event_action静默覆盖 |
+| tickets.human_key | 000057及humankey生成器，TK编号已实施，存量回退展示id |
+| notifications | `000072_notifications_inbox`保存recipient_id/biz_type/BIGINT biz_id/title/link/read_at/created_at，未读部分索引；不是早期payload JSONB草图 |
 
-```go
-// internal/pkg/msgchannel/（端口）+ uip/（adapter）
-//   定位注（2026-10-16 模块划分审计）：单消费方（notification service）放 pkg/ =
-//   横切能力端口而非领域件（webhook/aksk 既有先例同款）——notification service
-//   若升格 internal/service/notification/ 域目录，端口留 pkg 不随迁（adapter 语义稳定）
-type OutboundMessage struct { Channel, Recipient, Subject, Body string; Meta map[string]string }
-type ChannelSender interface { Send(ctx context.Context, msg OutboundMessage) SendResult }
-```
+管理面权限绑定经历000054/55/59与后续页面写按钮治理；消息中心经000076/78转本人自服务。编号与追加迁移查[迁移地图](../review/11-project-control.md#4-数据库迁移地图81-对)，不能重新执行旧建议SQL。
 
-- **按 channel 路由的双 adapter 并存**：`webhook` → 既有 P4-2 client（死信告警链不动）；`uip` → 新 adapter（HTTP+JSON 骨架：endpoint/鉴权头 config `notification.uip.*`，**字段映射独立函数** `mapToUIP()`——真实契约到手只改此函数）；
-- **两态桩**（§3 口径落地）：~~`notification.uip.stub=true`~~ **StubMode 由 `server.mode != "release"` 推导，无独立 stub 配置键**（26b238e 实现形态——v3 审计 Y-14 勘误：原描述的 stub 键先在漂移）→ 开发态桩（返回成功 + slog 落 msg 摘要，全链 E2E 可跑）；release 态且 `notification.uip.endpoint` 未配置 → `ErrNotificationNotConfigured`（92004）fail-fast（**虚标防线负向必测** §10；607a2a9 起 port.go 真发射 92004 码对象）；
-- 发送重试：failed 进既有死信队列（复用 P4-2 链），dead 告警——不新建重试体系。
+<a id="a3-channelsender-端口与两态桩b6-2"></a>
+<a id="a3"></a>
 
-### A.4 模板渲染器（B6-3）
+### A.3 当前ChannelSender与UIP桩
 
-```go
-func Render(tpl string, vars map[string]string, channel string) (string, error)
-```
+`internal/pkg/channelsender/port.go`的真实端口是`Send(ctx, Message) error`与`Channel() string`；Message携带Recipients、Subject、Body、BizType、BizID、TemplateCode，没有delivery字段。旧`msgchannel/OutboundMessage/SendResult`是未采用草图。
 
-- 单遍正则替换 `{{ticket.assignee_name}}` **点路径占位符**（2026-10-16 升级：原平铺 {{key}} → 点路径——Mustache/Handlebars logic-less 思想，**if/loop/函数执行不进模板** = 业界对用户可编辑模板的安全红线；vars = 调用方从 context 树扁平化的点键 map，实现仍单遍替换；**不引库**——Handlebars-Go raymond 停更/osteele-liquid 过重（2026-10 核实），点路径解析自写 ≤0.5 天）；**禁二次展开**——字段值含 `{{` 不再解析，注入负向 §10；**值转义按渠道进行（三族）**：HTML 渠道 `html.EscapeString`、markdown 渠道转义值中链接/加粗元字符（`[]()*_` 等——防 `[点我](http://evil)` 被渲染成链接的内容注入/钓鱼面：收件人看到的是"系统发的"）、纯文本渠道原样；
-- **变量字典 = 服务端 SSOT（2026-10-16 新增）**：按 `(biz_type, event)` 供给可用变量树（键+人读标签，端点=A.6）——工单域=内置字段（human_key/标题/状态/负责人/创建人/链接）+ S1 `field_meta` 动态字段（**与 S1 字段元数据同源**，字段改 key 失效告警同件 §4；**字典 path=派生 slug**——`ticket.fields.f_<字段ID>`：field_key 无字符集约束[代码实证 `validateFieldInputs` 不限 key 字符集，中文/含点键打断点路径]，模板只许引用字典 path，picker 选择即插入为主 UX，vars 扁平化按 field_meta 映射 slug 键；S1 登记新字段 key ASCII slug 软约束不回改存量——2026-10-16 评审批 P1-1）+ 时间类；校验两道=规则保存时**模板引用 ⊆ 字典**拦截 + 渲染时 vars 缺**内置**引用键报错拒发（防静默空串；动态字段缺失分档处置见下方粒度错配注）；`variables` 列保留=编辑器回填的引用清单（展示/审计）；picker 数据源=A.8.1 变量选择器/A.8.2 字段引用下拉；phase6 risk 域照此自供字典（域无关兑现）；**与 S1 expr 求值器分界**=通知占位符零执行 vs 计算字段受控执行，两件勿混；**条件段落**（"有截止日期才显示某段"——Liquid `{% if %}` 形态）登记触发不预建；**⚠ 粒度错配注（2026-10-16 外审发现，方案 a 采纳）**：模板**跨类型共享**（A.8.2 选择器只按渠道过滤）× 动态字段**类型私有**（field_meta per ticket_type）——模板引用类型 A 私有字段 → 规则绑类型 B → 渲染缺键按"拒发"会**断掉类型 B 全部通知**。处置：**渲染缺键分两类**——内置键缺失 = fail（模板 bug，保持拒发）；**动态字段缺失 = skip 该占位符 + message_log 警告**（类型错配可运维发现）——零 schema 变更，B6-3 实施落；**第四象限补齐（键存在但该单无值——存量单无新字段值/内置空值如未指派）= 空串渲染 + message_log 标 warned 不拒发**（数据常态≠配置错误，拒发会系统性丢通知；正文空串≠收件人跳过[A.8.2]，两处分别断言）——四象限至此完整：内置缺失 fail / 动态缺失 skip+警告 / 键在无值 空串+warned / 正常渲染（2026-10-16 评审批 P1-2 后半）；
-- 时间类变量：`{{time.now}}`/`{{time.due_in}}` 由调用方注入渲染前 vars（格式 config 化，§4）——**点路径命名空间统一**（2026-10-16 外审对齐：原平铺 {{now}}/{{due_in}} 与点路径约定不一致）；
-- ~~**⚠ 实施差距注（2026-10-23 外审实例批钉账）**~~ **✅ 已实施（c309ca7 B6-3 增强批）**：RenderQuadrant 四象限三分档落地（内置键缺失=fail 拒发[hook 检查 subjR/bodyR.Err] / 动态键缺失=skip+warn / 键在无值=空串+warn）——6 子测覆盖。
-- 种子模板随迁移 INSERT（`is_system=true`，仅编号+标题+链接三变量——**人读编号拍板点 2 联动**：不随批则种子模板链接-only）。
-- ~~**实施注（2026-10-23）**：种子模板当前无 is_system 只读标识列~~ **✅ 已实施（000058 迁移+c309ca7）**：is_system 列+种子三行标 true+Delete 守卫（Update 拦截面审计批补）；渲染转义 = **渠道→转义族映射**（`channelEscapes`：uip/webhook=纯文本不转义[UIP 契约到手按实际正文格式重映射此表]、email_html 及未知渠道=HTML 转义 fail-safe）。**H-2 前瞻（2026-10-27 已拍）**：dingtalk 第三族（markdown 不转义）+独立 adapter 已立项——公司钉钉为封装 API，`ChannelSender` 端口即通用渠道接口，钉钉/飞书/企微各自实现；UIP 契约门控不阻 dingtalk（台账 H 组）。+ **值级转义**（仅转义替换进正文的变量值，模板自身文本原样）。
+当前MessageDispatcher只持单个UIP sender；模板channel与sender不符会落failed，不能称双adapter路由已完成。UIP StubMode由server.mode是否release推导，无独立stub配置键：开发态返回成功并日志记录，release缺endpoint返回92004；即使给endpoint，真实HTTP发送仍未实现，不能将桩sent解释为企业渠道已送达。
 
-### A.5 订阅规则与触发链路（B6-5）
+Send失败当前落failed并进程内直调NotifyDeadLetter告警；没有持久重试队列或自动重发。多adapter路由/钉钉首发/第三转义族归H-2，UIP映射/delivery契约归D-1，仍受原授权和供给门控。
 
-- **B6-4 收件人来源增补（2026-10-23 对话设计批——升级催办场景依赖；2026-10-23 批 3 对表 F-3-4/F-3-5 解析规则拍死）**：第一档 `field` 引用（assignee/creator）之外增补 **`supervisor`** 来源（`recipient_type` 第四枚举值——下条列式口径）。**解析规则拍死三句**：①组织选取 = `user_orgs.is_primary=true` 的组织，无则 `joined_at` 最早一条，**多组织不广播**（user_orgs 多对多且 is_primary 无唯一约束——000001:115-121，不定义即实施期各写一套）；②收件人 = 该组织内持有**拍定 org 管理角色码**的用户（`user_orgs ⋈ user_roles ⋈ roles` 两跳；角色码 **B10-4 前拍**——现角色体系若无 org_admin/org_owner 则种子）；③**不沿部门 ltree 继承**（000012:36 口径——上级部门管理员收不到下级升级通知，边界显式接受）。~~「org_roles 表既有」~~ 勘误：`org_roles(org_id, role_id)` = 组织↔角色绑定、**不含人**（000012:30-35），取人须两跳非单表直查。实现 = 解析器第四分支（org 查询+缓存），不新增表（成本假设仍成立）。**目标态登记（挂 M-HR 前置）**：业界"上级"从不由组织成员关系推导（ServiceNow `user.manager` / Jira SM 目录 manager 属性 / Workday 显式汇报线——组织管理员是权限角色非汇报关系）；`users.manager_id` 显式汇报线随 HR 同步回灌后，supervisor 解析改 **`manager_id` 优先、org 管理员推导降 fallback**——防 B10-4 把推导误作终局。
-**⚠ 2026-10-24 所有者拍板修订（B10-4 开工前——dd §31 通则落实例）**：解析顺序终局 = **工单级人工指定（`tickets.escalation_supervisor_id`——Create/Assign 可填可改）> `users.manager_id`（M-HR 后，人工未指定时）> 缺席（不推导不广播）**。上列三句中的"org 管理角色码推导"档**作废**（台账 E-1 建议值销账——组织管理员是权限角色非汇报关系，10-23 目标态注"防把推导误作终局"本次直接落终局）；通则 =「人工指定为基线，HR 直属上级为进阶（人工优先）」——后续所有"找上级/找责任人"场景同构适用（dd §31）。
-- **订阅配置表（⚠ 建议新增轻表 `message_rules`，启动批设计）**：`(id, type_code, event, template_code, recipients_spec JSONB, enabled, version 乐观锁——对齐 notification_configs CAS 全仓惯例)`——收件人 spec 第一档 = `[{"source":"field","key":"assignee"},{"source":"fixed","users":[…]}]`（§5.1）；**实现形态注（2026-10-23 批 3 对表 F-3-8——承认列式）**：实落为 `recipient_type VARCHAR(32)` 枚举（assignee/creator/fixed，supervisor 作第四值）+ `fixed_recipients TEXT`（000054:30-31）——单来源规则枚举列够用（业界惯例：spec JSONB 在「一条规则多来源组合」时才值回票价）；spec 模型**登记触发驱动**（出现 ≥2 来源组合需求时再上），本条与 11 号 B6-4 行以列式为实现口径、spec 保留为演进形态；**域无关**：type_code 换 biz_type 即 phase6 复用（rules 表天然域无关；列名落 DDL 时取 `biz_type` 与 message_log 对齐——工单域非工单事件[如 ops.cron_failed 类]订阅键届时随二期/phase6 需求写死，2026-10-20 评审回声批注）；
-- **引用完整性双向守卫（三层，2026-10-16 评审批采纳）**：①**模板保存**——引用 ⊆ 所绑 rules 的 (biz_type,event) 字典并集，越界拦截/告警（原只有删除守卫——改正文静默破坏既有规则要到下次触发才以 failed 暴露；与 S1 影响分析同件）；②**规则保存**——模板动态字段引用 ⊆ 该 type_code 的 field_meta ∪ 内置 ∪ 时间类，**软告警不拦截**（field_meta 类型私有，(biz_type,event) 粒度不足以表达类型维度——粗校验①兜底+细告警②提示）；③**渲染时四象限**（A.4，运行时兜底）；守卫拦截/告警与模板·规则管理操作审计留痕随批（对齐 settings PUT 变更审计先例——11 号 B6-3 行同源）；
-- **触发链**：HookRegistry.Dispatch → TicketNotifyHook（查 message_rules 命中）→ 渲染（A.4）→ 收件人解析 → ChannelSender.Send（异步 goroutine）→ message_log 落行；发送失败不回滚工单事务（事务早已提交，结构上不可能回滚——emit-after-commit 的免费收益）；**emit 单点锚=统一转换执行入口 commit-后回调（2026-10-19 P0-2 修正，原 2026-10-16 评审批表述作废）**：原表述「Dispatch 挂接锚定状态机咽喉 AssertTransition 单点」**技术上不成立**——AssertTransition=tx.Begin 前纯校验（service.go:352 vs :357 实证），作锚=事务前派发（回滚也发通知）且 created/cc_added 不经它；修正后锚=B3-1 首件 `POST /tickets/transition` 的 commit-后回调（单一咽喉覆盖全路径的**意图保留**，挂点从事务前移到事务后）；**过渡态显式化（2026-10-19 三轮回声）**：B6-5（W5–7.5）远早于 B3-1（W13–15）——S6 一期收口前 status 类事件 emit=Close/Assign 服务层 commit 后**显式 emit 两处**（拍板点① a 案本意），B3-1 端点收敛后归一、临时代码随收敛删除；**非 transition 事件 emit 点枚举钉死（2026-10-19 二轮回声补）**：transition 类事件统一走执行入口回调；`ticket.created`=Create 服务 commit 后、`ticket.cc_added`=B10-1 抄送落库 commit 后各自显式 emit（两处不经转换咽喉——防实施期「挂哪」开放问题）；**事件常量归属与命名映射（P1-21 采纳，2026-10-19）**：DomainEvent Action 常量单一来源=`internal/pkg/domainevent`（repository 层可引——事件名非服务私有）；`ticket_events.action`（bare 值审计惯例，service 包 Event* 常量随迁上移）与 DomainEvent.Action（点前缀订阅键）映射函数同包收口——顺带消灭 repository 层事件名字面量（ticket_repo:345 `'deleted'` 即此类，根因=常量居 service 包 repository 不可 import）；
-- 人读编号（拍板点 2 随批）：`tickets` 加 `human_key VARCHAR(30) UNIQUE`，Create 时 `TK-yyyymmdd-NNNN`（按日序列，UNIQUE 冲突重试 ≤3）；存量单 NULL——模板变量解析时 NULL 回退展示 id（`#123`）。**✅ 已落（2026-10-23 f055c60，迁移 000057 + `internal/pkg/humankey` 前缀注册表生成器——phase6 RISK- 同件复用）**。
-- **收件人解析实施注（2026-10-23 拍板 A 落地）**：`resolveRecipientsFromRule` **消费 message_rules 的 recipient_type/fixed_recipients 列**（assignee→payload.to_assignee / creator→payload.creator（持久created_by快照，actor仅作操作者） / fixed→DDL 列表）——修复前旁路 DDL 硬编码 switch（收件人列为装饰性）；**created 删硬编码"不送自通知"特判**（原实现擅自发明产品决策且使 created 种子模板成死场景）——走规则驱动，种子规则不含 created=开箱零通知（06 号 §0 原则），配 creator/fixed 档规则后真实生效；**未指派单关闭**=assignee 档解析空→静默不通知（b65 未指派子测钉此行为）。
+<a id="a4-模板渲染器b6-3"></a>
+<a id="a4"></a>
 
-### A.6 API 面（通知中心页面族，自 S4 迁入）
+### A.4 当前渲染与已拍增强目标
 
-| 方法/路径 | 权限 | 用途 |
-|-----------|------|------|
-| POST `/api/v1/notifications/templates`·`/templates/update`·`/templates/delete` + GET 列表（**2026-10-16 外审修正：原 PUT 违 §3-1 改 house style**——code 入 body） | 通知配置管理权限（对齐 notification_configs 既有码） | 模板 CRUD + 删除守卫（被 rules 引用 → 拦截，与 S1 影响分析同件） |
-| POST `/api/v1/notifications/templates/preview` | 同上 | 模板干跑渲染（body+vars 样例 → 渲染结果，零落库——A.8.1 测试数据预览；复用 A.4 Render 零新渲染逻辑，2026-10-16 业界核验批新增设计行）**→ H-6 已立项**（2026-10-27 通知能力增强批，含变量选择器 picker 与前端预览面板；动态字段值注入 H-3③a 为预览出真值的前置） |
-| GET `/api/v1/notifications/variables`（query: biz_type+event） | 同上 | **变量字典树**（键+人读标签——A.8.1 变量选择器/A.8.2 字段引用下拉数据源；工单域与 S1 field_meta 同源；phase6 risk 自供同款，2026-10-16 新增设计行）；**查询粒度（评审批 P2-1）**：模板页无 event 上下文→按 biz_type 取各 event 并集（超集）展示；规则保存按精确 (biz_type,event)+类型维度（动态字段 ⊆ 该 type_code field_meta，软告警——A.5 守卫②） |
-| GET `/api/v1/notifications/logs` | 同上 | message_log 列表（PageData §3-6） |
-| GET/POST `/api/v1/notifications/rules`、启停 | 同上 | 订阅规则管理 |
+当前使用`internal/pkg/msgrender`的`RenderQuadrantEscaped`，只单遍替换点路径占位符，不执行if/loop/函数、不二次展开。渠道转义由channelEscapes映射：uip/webhook为现行纯文本，未知/HTML走HTML fail-safe；dingtalk/markdown第三族尚在H-2，不把旧三族示意当已落代码。
 
-二期（B6-7）：`GET /api/v1/notifications/inbox`（PageData）+ `POST /read`（单条/全部）+ 未读数并入 S10 角标 sections。
+渲染四象限为：内置键缺失拒发、动态字段键缺失跳过并warn、键存在但空值为空串并warn、正常值替换。**当前warn只进slog**；渲染拒发在Send前返回，不能承诺必有failed行。message_log只有发送后的sent/failed及错渠道failed，不存在warned状态或持久化warning字段。
 
-### A.7 验收补充（在 §10 基础上）
+`MessageTemplateHandler.BuiltinTemplateVars/Variables`当前只返回25个内置键，包含creator与ops容量键；`buildEventVars`从事件快照组装，ticket.creator与actor分开。模板保存按内置白名单校验，动态键目标不代表真实字段值已注入。
 
-- 事件面：第二订阅者挂载演示（phase6 前向验收的实现路径——mock hook 验证）；订阅者 panic 不影响主链与其他订阅者（recover 负向）；事务回滚零派发；
-- 节流：同单 60s 内连续翻转 → 仅首发通知落 message_log；
-- 渲染注入与字典校验负向：字段值含 `{{evt}}`/`<script>`/`[x](http://evil)` → 单遍替换不执行 + HTML 渠道转义断言 + markdown 渠道元字符转义后不渲染为链接（A.4 三族，2026-10-16 扩）；模板引用字典外变量 → 规则保存时拦截 + 渲染缺键**分档断言**（A.4 粒度错配注两档）：**内置键缺失 = 拒发**（模板 bug）/ **动态字段缺失 = skip 占位符 + message_log 警告**（类型错配，不判失败）——"不静默空串"仅指内置档（变量字典批 2026-10-16；分档对齐 2026-10-16 外审尾巴修复）；
-- 缺值与守卫负向（2026-10-16 评审批）：①模板引用的动态字段在工单 custom_data 无值 → 空串渲染 + log warned + 状态非 failed（不拒发——与「键缺失 skip」分别断言）；②收件人字段空 → 跳过该收件人（A.8.2 语义），与①独立用例；③模板追加某规则字典外占位符 → 保存拦截（改守卫——删除守卫已有）；④field_key 含中文/点的字段 → 字典供 `ticket.fields.f_<ID>` slug path 渲染正常（P1-1 字符集隔离）；
-- 两态桩：stub=true 全链绿 / stub=false 未配置 → 10007 类"未配置"错误码（errcode 随批登记）——**虚标防线**；
-- 域无关：mock risk 通知（biz_type=risk）走全链成功，ticket 表零改动。
+**已拍未实施，保留设计约束**：H-3按(biz_type,event)供变量树，S1字段用`ticket.fields.f_<字段ID>`隔离中文/点key，补时间类与动态值注入；H-6 picker点击插入与preview。跨类型共享模板仍须区分缺键与空值，细粒度规则字段软告警/引用完整性增强随该批；条件段落/完整模板引擎仍不预建。当前不能声称模板作者已有动态picker或时间变量可用。
 
-### A.8 通知中心页面族 UI 详设（实施级，2026-10-16 补——此前页面级细节仅有归属句，四页 + 铃铛对表业界落定）
+<a id="a5-订阅规则与触发链路b6-5"></a>
+<a id="a5"></a>
+
+### A.5 当前规则、触发与收件人
+
+外发主链为HookRegistry提交后Dispatch → TicketNotifyHook薄适配 → MessageDispatcher → 按biz_type+event_action查启用规则 → 模板/渲染 → 收件人 → opt-out → 60s节流 → sender → sent/failed。无规则即不通知；notify动作template_code可覆盖规则默认模板，但规则仍是开关。
+
+规则是列式单来源，recipient_type四档：assignee读to_assignee、creator读工单creator快照、fixed读固定列表、cc读cc_users；ticket创建者不回退actor，ops的creator沿既有责任人actor语义。supervisor不是第五或第四规则枚举：TimeoutScanner从处理人/人工指定上级构造cc_users，一条cc规则触达目标。HR manager优先链中的进阶尚未接；组织管理员推导已作废。
+
+Create、Assign、Close、Transition、CC和公开评论等各在实际提交后发事件；公开评论不带正文，内部备注/Delete仍只保留审计，不擅增公开触发。不能写“AssertTransition内发”或“所有入口已统一成单点”来掩盖真实边界。
+
+模板系统种子不可更新/删除，任何规则引用（含禁用）阻删；NOT EXISTS条件删除加000061 FK兜底并发引用。rules有CAS version，陈旧409。多来源recipients_spec、动态字段精确软告警/更多跨域owner解析仍按H-1/H-3/H-5目标，不是当前表字段。
+
+inbox是另一条DomainHook消费者，固定词表/title/link与收件人集合单独实现；G-7+G-29①才负责接规则和偏好。全局actor排除已决定维持窄白名单，不能再记作待所有者批准。
+
+人读编号已由000057和`humankey.Generator`交付；旧“建议随批、否则链接-only”是历史方案。
+
+<a id="a6-api-面通知中心页面族自-s4-迁入"></a>
+<a id="a6"></a>
+
+### A.6 当前API与未来端点
+
+真实路径与权限注册见`internal/router/router.go`的`New`；管理读写走通知配置页面/按钮权限，本人端点走自服务，不能用同一“通知管理”权限概括两者。
+
+| 方法/路径 | 当前能力 |
+|---|---|
+| GET/POST `/api/v1/message-templates`；POST `/update`、`/delete`后缀 | 模板列表/创建/更新/删除，种子只读与版本校验 |
+| GET/POST `/api/v1/message-rules`；POST `/api/v1/message-rules/delete` | 规则列表/upsert/删除，四档收件人与事件词表 |
+| GET `/api/v1/message-logs` | PageData发送日志；status只支持sent/failed |
+| GET `/api/v1/ticket-types/:code/fields/variables` | 自服务，只返25内置键；当前不按code加载动态字段 |
+| GET/POST `/api/v1/me/notification-optouts` | 认证userID本人偏好，不接受他人归属参数 |
+| GET `/api/v1/notifications/inbox` | 本人分页，可仅未读 |
+| POST `/api/v1/notifications/read` | 本人单条已读；非本人404 |
+| POST `/api/v1/notifications/read-all` | 本人全部已读 |
+| GET `/api/v1/badges` | 登录态sections.todo/unread，定义见S10 |
+
+`/notifications/templates|variables|logs|rules`不是当前管理路由。H-6拟议`POST /message-templates/preview`尚未实现；事件元数据读取端点也未批准，A.9只登记改进方向，不发明路径。
+
+<a id="a7-验收补充在-10-基础上"></a>
+<a id="a7"></a>
+
+### A.7 当前验收边界
+
+- 事件面验证第二订阅者、recover隔离、提交失败不派发、Drain闭闸；仍不由此得到崩溃恢复保证。
+- 外发验证规则/收件人/creator与actor、opt-out、节流和两态桩；开发桩成功不等于外部送达，release无endpoint应为92004。
+- 四象限与单遍替换由渲染测试证明；警告当前只slog，动态字段真实值/picker/preview未实现路径不得标验收通过。
+- inbox验证本人数据隔离、已读/未读、固定词表、入站标题单遍替换、updated/commented去自噪；尚未接外发rules/偏好。
+- 最新固定门禁与原失败范围见顶部报告入口；本轮文档校正不复用旧绿宣称已完成新门禁。
+
+<a id="a8-通知中心页面族-ui-详设实施级2026-10-16-补此前页面级细节仅有归属句四页--铃铛对表业界落定"></a>
+<a id="a8"></a>
+
+### A.8 通知中心页面族 UI 已拍目标与现况边界（实施级，2026-10-16 补——此前页面级细节仅有归属句，四页 + 铃铛对表业界落定）
+
+> **状态边界（2026-11-08校准）**：本节保留原已拍UI目标。当前已实现模板/规则管理与消息中心，实际API接线/有界100模板选择/两状态待办看A.9；变量picker、preview、日志失败聚合等未交付目标不能因出现在本节就标完成。下面“将/应”按目标阅读，当前API以A.6为准。
 
 > **文档归属纪律（2026-10-16 确认）**：功能规格/页面设计 SSOT 集中主仓 `docs/`（先例 phase3/12-frontend、phase4/01-frontend-design——标题即"zhuzhao-ui 工程设计"亦坐主仓）；zhuzhao-ui 仓 docs 只放工程规范（frontend-standard/testing-standard），ui 仓只承载实现产物（组件/E2E spec/测试）。主仓管"页面该长什么样、为什么"，ui 仓管"实现成了什么样"。
 > **业界对表（2026-10-16 核验）**：模板编辑=Novu 渠道级编辑器+云短信控制台变量约束；收件人=Jira Automation Send notification picker；发送记录=Novu activity feed；铃铛=GitLab To-dos/GitHub Notifications——均为通行交互，对表即可不重新发明。
@@ -289,13 +306,15 @@ func Render(tpl string, vars map[string]string, channel string) (string, error)
 
 ---
 
+<a id="a9"></a>
+
 ### A.9 前端清欠与事件词表登记（RR-DOC-01）
 
 既有UI提交 `6a95fd2a` 的四文件修复此前只有提交正文，未回填模块登记；本节补齐事实与剩余边界，不重写或拆分已推历史。
 
 - **M-2管理面API收口**：UI `src/api/message/index.ts` 的 `listMessageTemplatesApi` 等八函数承载模板CRUD、规则列表/upsert/删除、日志分页；`src/views/system/notification/index.vue` 使用这些封装。相关生成schema仍有`responses: never`缺口，当前手写类型不是完整codegen接线，后续补响应注解时再切换，不能写“全部类型漂移已有编译期守卫”。模板选项固定取首100条，属于当前有界选择面，不等于无限量全取；增长后需扩搜索/分页。
 - **M-4待办分页**：UI `src/views/message/center/index.vue` 的 `fetchTop` 与 `todosQuery` 按`assignee=me`分别取`assigned`/`in_progress`两源，用同一页大小分段拉前K条，再按精确int64 ID倒序归并切20条显示。排除已关闭单、不在50条静默截断；这是既定两状态待办口径，不宣称覆盖未来全部可配置状态，亦非跨分页请求的快照一致性保证。
-- **richtext降级项**：原报告跨工单泄漏P0判断不成立，`AppView`以`route.fullPath`分实例；`6a95fd2a`的源指纹修复只覆盖非空同单更新。清空/移除与乱序/A→B→A残留已由RR-UI-01补齐，当前生产入口是详情页的`useRenderedRichtext`，合同与完整门禁见[05号§6](05-s5-object-storage-richmedia.md)和[本轮复验报告](../../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。
+- **richtext降级项**：原报告跨工单泄漏P0判断不成立，`AppView`以`route.fullPath`分实例；`6a95fd2a`的源指纹修复只覆盖非空同单更新。清空/移除与乱序/A→B→A残留已由RR-UI-01补齐，当前生产入口是详情页的`useRenderedRichtext`，合同与完整门禁见[05号§6](05-s5-object-storage-richmedia.md)和[本轮复验报告](../review/reports/zhuzhao-report-followup-2026-11-08.md)。
 - **m-2事件词表**：`notification/index.vue` 的 `EVENT_OPTIONS`仍手维护，后端权威为`internal/service/message_admin_service.go`的`validEventActions`，不是模板变量的25键字典。本轮发现漏`ops.storage_usage_high`选项并补齐，完整集合由UI跨仓契约守卫核对。没有事件元数据读取端点；旧注释“07号§3.4件18”实际指向visible_when，已改指本节。读取端点仅登记为后续消除手维护的改进，路径/权限/实现批次尚未批准，不把拟议`/message-events`写成已存在API。
 
 ### 本节变更说明
@@ -306,6 +325,7 @@ RR-DOC-01补登记与锚点，并在同类核对中补现有后端事件选项�
 
 | 日期 | 变更 |
 |---|---|
+| 2026-11-08 | 文档整理：事件/端口真实签名、实际路由/数据表、单UIP桩与独立inbox、warn日志边界和H/G未实施目标分层，补当前两路链路图；不改业务代码。 |
 | 2026-11-08 | A.9补6a95fd2a的M-2/M-4/richtext降级项与事件元数据边界，纠正件18悬空引用；补现有storage_usage_high选项与全集合守卫，结果见RR-DOC-01复验 |
 | 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实（P4-2 本体/事件面缺口）；含二期站内消息中心（2026-10-13 翻案）；未新增决策 |
 | 2026-10-15 | 公约对表批：§5.4 message_log 管理页列表补 PageData 形态注（standards §3-6） |

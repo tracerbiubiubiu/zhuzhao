@@ -1,5 +1,8 @@
 # 01 · 前端工程设计（zhuzhao-ui 初版）
 
+> **适用范围（2026-11-08整理）**：本页保存UI跨端工程设计，当前实现入口在zhuzhao-ui/docs；原目录树、form-create、三态不可达、无事件轴、BK18待做均有后续演进，不当现行限制。首页待办assigned/in_progress与导航角标非终态是不同集合，B08两条不能相互覆盖。E000001凭据只允许既定globalSetup幂等例外流，人工/agent使用专属账号；dev终态按runbook。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 2026-11-06 ECO-B08角标导航：NavbarBadge待办按后端非终态口径，传assignee=me及exclude_statuses=closed,rejected；不能套用首页assigned/in_progress枚举漏掉自定义状态。列表/导出同过滤，缓存激活时恢复显式深链；本轮联合固定验证待收口。
 
 > 2026-11-06 ECO-B08修复：工作台“我的待办”卡以处理人=本人且状态assigned/in_progress统计，导航须传 `assignee=me&statuses=assigned,in_progress`，列表/导出同一集合；单纯assignee=me会混入已关闭项。显式深链每次激活缓存页时恢复对应筛选，普通无query页签可保留筛选；点击卡具备键盘焦点及Enter触发。前后端联合验证待完成，独立codex分支未合main。
@@ -30,6 +33,8 @@
 | 质量门禁 | vue-tsc + ESLint + Prettier / Vitest / Playwright | ✅ 定案（2026-09-21 随计划终确） | 见 §7；与 Go 门禁分仓各跑 |
 
 **明确不做**：SSR/Nuxt（管理端无 SEO/首屏诉求）、微前端（§2.1 五拍板①）、移动端/响应式（12-frontend §6 既有口径）、Storybook/视觉回归测试/浏览器兼容矩阵（内部管理系统过重，02 §5.3 处置 #11）。**i18n 不在「不做」列**——升格为可选项：P4-W3（system 域）收口后视进度接入（默认做，[02 §5.4](./02-implementation-plan.md)）。
+
+> **现行校准（2026-11-08）**：下方为原设计树，实际W2落定采用store/modules与e2e等路径；现行目录以zhuzhao-ui源码/docs为准，不按草图重新迁动实现。
 
 ## 2. 目录结构（单仓单 SPA）
 
@@ -145,6 +150,8 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 - **XSS 基线**：全站禁 `v-html`（例外须评审并 sanitize）；AT/RT 存 localStorage 的风险与 B7 cookie 演进绑定，TokenStorage 抽象保证一步迁移；
 - **错误边界**：`app.config.errorHandler` 全局兜底（上报 console + 友好页）；路由级 403/404 独立页面；**错误上报服务（Sentry/GlitchTip 类）触发驱动**（02 §5.3 处置 #10：对外可访问或用户成规模再接，errorHandler 是接入门槛最低的挂点）；
 - **接口粒度不设防前端**：前端显隐只是体验层，真实鉴权在后端三层（L1 Casbin 为准）——前端权限码仅用于渲染决策，不得视为安全边界（与「按钮码不走 Casbin」的既有口径一致，07-menu）。
+
+> **现行校准（2026-11-08）**：E2E下方“首跑固定测试密码”只解释原globalSetup既定幂等流；当前E000001终态恒按runbook，人工/agent不得另开改密路径，多账号验证用专属E000002+。
 
 ## 7. 工程化与门禁（「前端验收口径待定」的建议答案）
 

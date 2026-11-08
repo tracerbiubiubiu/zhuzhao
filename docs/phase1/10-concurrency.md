@@ -1,5 +1,8 @@
 # 10 - 并发与事务性（concurrency）
 
+> **适用范围（2026-11-08整理）**：这是并发设计历史；RT的GETDEL+SET草图已被校验JTI/密码纪元的Lua轮换取代，不能复制简图恢复旧逻辑。AssignMenus事务中不得再经pool取连接，沿当前tx读取；真实事务方法与单连接回归优先于旧伪码。Watcher仍为部署多实例时触发，文档存在不代表已实现。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **横切关注点**，贯穿 Step 5+ 所有写路径。AssignMenus / 用户创建 / 组织移动等 **必读**；里程碑与顺序见 [README §2](./README.md#2-实施顺序)。
 
 ---
@@ -7,6 +10,8 @@
 ## Phase 1 必须实现
 
 Phase 1 是单实例部署，以下是在单实例环境下也必须正确处理的并发和事务问题：
+
+> **现行校准（2026-11-08）**：旧AssignMenus伪码持tx后又调repo/pool只表达事务意图；实际实现须同tx读取，禁止事务内再次借池连接。
 
 ### DB 事务（必须实现）
 
@@ -78,6 +83,8 @@ func New(...) (*casbin.SyncedEnforcer, func(), error) {
     return enforcer, func() { enforcer.StopAutoLoadPolicy() }, nil
 }
 ```
+
+> **现行校准（2026-11-08）**：下方GETDEL+SET只是历史简化流程，不校验完整JTI/纪元，已被auth_service当前Lua轮换替代。
 
 ### Redis 原子操作（必须实现）
 

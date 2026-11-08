@@ -3,3 +3,9 @@
 
 # 每日审计报告与基线：体积随时间增长且每日变动，纳入上下文会打断 COPY . . 层缓存
 /audit-reports/
+
+# Local references and process output; formal documents live in docs/
+/doc/
+/deliverables/
+/outputs/
+/.codex/

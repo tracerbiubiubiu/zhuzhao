@@ -1,3 +1,29 @@
+# Phase 1：已完成的认证鉴权基础阶段
+
+> 2026-11-08整理：本页先给当前阅读入口，下面保留原阶段说明/修订作为历史依据。本阶段交付双令牌、L1路由鉴权、用户/角色/组织/菜单与审计基础；后续资源级、文件凭证和安全修订已在对应模块继续演进。
+
+## 阅读顺序与边界
+
+1. [00-pre-coding-decisions.md](00-pre-coding-decisions.md)
+2. [01-infra.md](01-infra.md)
+3. [02-auth.md](02-auth.md)
+4. [03-authz.md](03-authz.md)
+5. [04-user.md](04-user.md)
+6. [05-role.md](05-role.md)
+7. [06-organization.md](06-organization.md)
+8. [07-menu.md](07-menu.md)
+9. [08-audit.md](08-audit.md)
+10. [09-middleware.md](09-middleware.md)
+11. [10-concurrency.md](10-concurrency.md)
+12. [11-code-review.md](11-code-review.md)
+13. [12-phase1-acceptance-report.md](12-phase1-acceptance-report.md)
+
+当前模块接口看 [modules](../modules/README.md)，工程规则看 [standards](../standards.md)，操作看 [运维](../ops/README.md)。能力状态与迁移编号查 [项目控制台](../review/11-project-control.md)；当前业务段排期查 [Phase5](../phase5/README.md)。新批次仍需满足自身前置与门禁，不能从历史已完成推导所有未来能力已启用。
+
+## 原阶段说明与修订记录
+
+以下保留原时点的目标、结果与决策；旧分支名、数量、待办与凭据样例不覆盖现行约定。
+
 # Phase 1 实现计划：认证鉴权框架
 
 > **核心目标**：为后续所有服务搭好认证鉴权框架。Phase 1 不做业务模块（工单等），聚焦于认证、鉴权、基础管理。

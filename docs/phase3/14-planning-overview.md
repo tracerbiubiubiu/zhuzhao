@@ -1,5 +1,8 @@
 # 14 - Phase 3 规划整理（现行主链版）
 
+> **适用范围（2026-11-08整理）**：本页保留09月规划索引快照，不维护第二份当前主链。旧数字“剩余M3联调/M-A”已被当月收官结果覆盖；10-09后工单排期以Phase5/11与review/11为入口，不再经同样陈旧的13号循环推断现状。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **定位**：§21–§25 全部拍板后的 **Phase 3 规划现状整理稿**——把散落在 design-decisions（§21–§25）、13-implementation-plan、00-startup-checklist、phase3/README 里的规划信息归拢成一份可读的现状视图。**本文档是索引/视图，不是第二 SSOT**；每节的权威出处均已标注。
 > **状态**：规划整理（2026-09-02；2026-09-03 同步 §25 + 外部集成 16 号）。**SSOT** = [design-decisions §21–§25](../design/design-decisions.md)（决策）+ [13-implementation-plan](./13-implementation-plan.md) §1（排期）。
 > **⚠ 2026-10-09 增补注**：M-UAA 已立项（dd §30，[17-uaa-integration](./17-uaa-integration.md)）——原 M-SSO 并入其件 1；工单「暂缓」表述已被 dd §29 翻案取代。**本视图以下为 2026-09 收口期快照**，现行主链以 [13 号](./13-implementation-plan.md) 为准。
@@ -9,7 +12,7 @@
 
 ## 〇、规划现状一句话
 
-> **✅ 2026-09-15 收口（口径 A）**：项目内工程已收口——M-E ✅ / M-A ✅ / M-HR 预留即可；M-SSO/M-Mig 🚦 外部前置待触发。终验四档 acceptance FAIL=0 + 四仓全门禁绿（[收官报告](../../deliverables/software-company/phase3-closure-report-2026-09-15.md)）。
+> **✅ 2026-09-15 收口（口径 A）**：项目内工程已收口——M-E ✅ / M-A ✅ / M-HR 预留即可；M-SSO/M-Mig 🚦 外部前置待触发。终验四档 acceptance FAIL=0 + 四仓全门禁绿（[收官报告](../review/reports/phase3-closure-report-2026-09-15.md)）。
 
 **工单自研暂缓（内部引擎优先，自研兜底）**：项目将迁移公司内部并对接内部工单平台/引擎，Phase 2 工单现状封版（仅保 BK-20 数据安全修复）。Phase 3 主线改为**通用能力 + 内网迁移**：
 

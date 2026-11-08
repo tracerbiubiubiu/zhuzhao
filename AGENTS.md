@@ -20,7 +20,7 @@ make swag              # 重新生成 Swagger
 
 **门禁纪律**：不得把未通过 `make acceptance` 的改动标记为"完成"；无法运行门禁时必须如实说明原因与影响。
 
-**测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/runbook.md §4 台账](docs/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
+**测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/ops/runbook.md §4 台账](docs/ops/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
 
 ## 铁律：每次代码改动必须附带"变更评审说明"
 
@@ -79,5 +79,5 @@ make swag              # 重新生成 Swagger
 - 提交前 `git status` 核对文件归属；提交后 `git show --stat` 复核文件数。
 - rebase / amend / reset 为会话独占操作——执行前确认 origin 无新提交、索引无他人 staged 内容。
 - push 前 `git fetch` + 窗口差集核对（§12-9 push 前置三件）；多会话并行期间由单一会话执行推送。
-- 新会话开工第一步 `make hooks`（当前worktree安装三钩：pre-commit 在途显影 / commit-msg 消息规则+跨主题重题拦截 / pre-push 真实新增窗口；CI另按事件SHA检查）；两会以上并行时收尾在 [runbook §7 在途台账](docs/runbook.md) 落一行，后继会话开工先读。固定启用基线只豁免已推历史，显式历史审计仍严格，见 standards §12-9。
+- 新会话开工第一步 `make hooks`（当前worktree安装三钩：pre-commit 在途显影 / commit-msg 消息规则+跨主题重题拦截 / pre-push 真实新增窗口；CI另按事件SHA检查）；两会以上并行时收尾在 [runbook §7 在途台账](docs/ops/runbook.md) 落一行，后继会话开工先读。固定启用基线只豁免已推历史，显式历史审计仍严格，见 standards §12-9。
 - 权威成文：[docs/standards.md](docs/standards.md) §12-10（路径提交条 + zz-commit 执行工具 / 机械守卫条 / 会间交接注 / 改史前 HEAD 归属核查）。

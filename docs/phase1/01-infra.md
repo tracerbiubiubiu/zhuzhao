@@ -1,5 +1,8 @@
 # 01 - 基础设施（infra）
 
+> **适用范围（2026-11-08整理）**：种子admin123仅为原始初始化语境；开发测试E000001终态及允许例外以runbook台账为准，人工/agent多账号测试使用专属E000002+。下方MaxIdleConns→MinConns映射已由utils v0.4.2移除，当前连接池按共享库Config的真实字段配置；Step 1待补清单不是今天的缺口。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > Step 1，无依赖，所有模块的基座。
 
 ---
@@ -100,6 +103,8 @@ zhuzhao-utils/redis/               # ← 2026-09 公共包抽取（原 internal/
 | **请求带 context** | Repository/Service 用 `ctx` 传递超时/取消，禁止 `context.Background()` 贯穿 HTTP 链路 |
 | **Ready 探针** | `/health/ready` 对 PG/Redis 各 `Ping` 一次；**不**把驱动错误原文返回客户端 |
 | **可观测** | PG DSN 建议带 `application_name=zhuzhao`（便于 `pg_stat_activity`）；Phase 3 再暴露 pool metrics |
+
+> **现行校准（2026-11-08）**：下方为当时的连接池设计；utils v0.4.2已撤销MaxIdleConns误映射MinConns，当前不再照该旧对应关系设置。实际值按utils postgres.Config及本仓配置映射核对。
 
 #### PostgreSQL（`pgxpool`）
 

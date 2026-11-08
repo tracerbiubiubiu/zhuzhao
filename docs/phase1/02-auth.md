@@ -1,5 +1,8 @@
 # 02 - 认证模块（auth）
 
+> **适用范围（2026-11-08整理）**：当前认证按B02纪元修订、auth_service.go的issueTokenPair/Refresh及middleware.JWT执行；Claims简图不是当前完整字段。内部服务已用utils aksk，后文X-AK/nonce/api_credentials是尚未实施的外部M2M设计；compat仅是限定迁移窗口。文件cookie当前桥接同款access JWT，详见文末现行校准。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 3**，依赖 Step 2（user repo）。  
 > `login` / `refresh` 为**公开路由**（M2）；`logout` / `password/update` 的 **AuthService 在本 Step**，Handler 挂在 JWT 组（**Step 4** 后可测）。
 
@@ -268,6 +271,8 @@ SELECT id, password, ... FROM users
 
 管理端找人：`GET /users?employee_no=`（精确 0/1 条）或 `?username=`（模糊）。Phase 3 可扩展 `(user_domain, domain_account)` 联邦登录。
 
+> **现行校准（2026-11-08）**：下面是早期简图，未展示当前AccessClaims.Pwe等字段；当前签发与消费须保留AT/RT同一密码纪元快照。
+
 ### JWT Claims 设计（Phase 1 极简）
 
 ```go
@@ -296,6 +301,8 @@ Phase 1 不在 JWT 中存角色/权限信息（保持无状态，权限走 Casbi
 | `lock:login:{employee_no}` | 登录失败计数 | 15min |
 | `devices:{userId}` | 设备列表（SET，Phase 2） | 持久（跟随用户） |
 | `perm:user:{userId}` | 权限缓存（工单跑通后按需） | 30min |
+
+<a id="管理员重置密码-首次登录改密"></a>
 
 ### 管理员重置密码 + 首次登录强制改密
 
@@ -350,6 +357,8 @@ Phase 1 不在 JWT 中存角色/权限信息（保持无状态，权限走 Casbi
 - 重置后吊销目标用户全部会话（`revokeUserSessions`：删全部 RT + `user:disabled` 拦截旧 AT）
 - superadmin 重置密码操作全部记入审计日志
 - 临时密码不落库明文，只存 bcrypt hash
+
+> **现行校准（2026-11-08）**：本节旧X-AK/nonce/凭据表草案不是内部协议。内部AK/SK已在utils落地；外部凭据管理面仍未实现，存量compat只按后补有限迁移决定挂载。
 
 ### 服务间认证（M2M）：Phase 1 不做
 
@@ -840,5 +849,7 @@ internal/repository/user/           # 密码验证依赖
 - ✅ **登录限流**：Phase 1 用 Redis Lua（INCR+EXPIRE 原子），阈值 15min/5 次。
 - ✅ **Redis 故障**：鉴权链路 fail-close（503）。
 - ✅ **会话吊销**：禁用/删除用户写 `user:disabled:{userId}`。
+
+> **现行校准（2026-11-08）**：以下10-16补注为已被10-19形态B取代的历史方案：实际file_session值为同款access JWT，FileAuth在无Authorization时桥接Bearer进入既有JWT/黑名单/密码纪元链；header和cookie并存时header优先、cookie忽略，不算mixed-auth。原HMAC uid+exp与“只等exp”边界不再适用，见phase5/05的A.11及internal/middleware/fileauth.go的FileAuth/SetFileSessionCookie。
 
 > **📌 补注（2026-10-16，phase5 S5 拍板点 #8——第二凭证面登记）**：文件读取通道新增旁路 cookie 凭证 `file_session`（`HttpOnly; SameSite=Lax; Path=/api/v1/files`，TTL 对齐 access token；HMAC 签名 uid+exp）——因 `<img>` 等浏览器原生资源加载发不出 Authorization header，files 代理路由认证序 = header 优先 → cookie 回退；`hasMixedAuth` 并存语义维持 400。cookie 不承载刷新能力，泄漏最坏后果 = 只读拉文件。设计 SSOT = [phase5/05 号附录 A.11](../phase5/05-s5-object-storage-richmedia.md)，实现细节随 S5-B5-2 落码。业界锚点 = GitHub/GitLab 应用内私有内容的 cookie 门禁形态。

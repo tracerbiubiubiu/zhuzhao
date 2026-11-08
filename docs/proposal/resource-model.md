@@ -14,6 +14,9 @@
 
 ## 1. 设计目标
 
+> **实现与示例的边界**：`Resource`/`Registry` 已落地；本篇大量代码是早期教学示意，不是当前源码镜像。当前生产自注册业务 Resource 是工单（`ticket.NewTicketService`），另有通用 builtin 构件；User/Role/Org/MenuResource 并未因这里举例就全部注册。现行接口见 `internal/pkg/resource/registry.go`，工单判定见 `internal/service/ticket/resource.go`。
+
+
 ### 1.1 核心场景
 
 通用办公管理后台，每个部门/虚拟组织有对应权限，权限管理达到资源级检查。每种服务（用户、组织、角色、Casbin 策略、工单等）都看作一种"资源"，每种资源的通用能力抽象为接口，各自实现并统一注册。
@@ -44,6 +47,9 @@
 ## 2. 资源接口设计
 
 ### 2.1 核心接口
+
+> 当前 `Filter` 有 `Unscoped bool`：显式豁免才可无 WHERE；零值过滤并非全量权限。Registry 还挂接判定审计。以下早期接口片段省略这些后续守卫，不能原样替换当前实现。
+
 
 ```go
 // internal/pkg/resource/resource.go
@@ -148,6 +154,9 @@ func (r *registry) GetFilter(ctx context.Context, code string, userID int64, act
 ---
 
 ## 3. 资源实现示例
+
+> **安全勘误**：下列 UserResource 未落地，工单片段仅表达接口形态。创建人/处理人命中可见性不等于任意 action 放行；当前必须先过 L2 可见性，再按 `canOperate` 做 L3 动作/状态检查。不可复制示例中的“属主直接返回 true”作为删除、流转或更新授权。
+
 
 ### 3.1 简单资源：用户资源（代码内联判断）
 
@@ -325,6 +334,9 @@ Wire 按依赖图自动确定初始化顺序。资源注册表（`NewRegistry`�
 
 ## 5. 每资源独立 Enforcer
 
+> **备选，非现行部署**：当前未为工单建立独立 Casbin Enforcer/专属策略表。是否演进按 [DD §25.4](../design/design-decisions.md#254-rebacpbac-不演进触发器见-11-authz-5) 的既定触发器评估；本节候选模型不构成开工批准。
+
+
 ### 5.1 策略爆炸问题
 
 ```
@@ -423,6 +435,9 @@ CREATE TABLE casbin_rule_ticket (
 
 ### 6.2 列表查询流程
 
+> **错误处理勘误**：图中的 `filter, _ := ...` 省略错误并不安全。当前列表入口传播 `GetFilter` 错误，仓储对既无谓词又无显式 `Unscoped` 的请求拒绝执行；新调用方不得照抄忽略错误后查全量。工单列表与导出当前共享过滤构造，其他资源的护栏泛化仍按后续阶段推进。
+
+
 ```
 请求 GET /api/v1/tickets?page=1&size=20
   │
@@ -483,6 +498,9 @@ Casbin 策略表（`casbin_rule`）是一个独立的表，由管理员通过管
 策略同步在**写操作后触发**，不在请求路径上。所以请求时的 Casbin 鉴权只依赖 `casbin_rule` 表，不依赖任何 Service。
 
 ### 7.4 管理场景的鉴权边界：路由级 vs 资源级
+
+> **范围限定**：下文“路由级足够”只解释不必给每个管理对象另建 Resource，不能理解为所有管理写操作仅需 L1。当前组织委托、角色 priority、防提权、系统资源/最后超管保护和事务约束仍由各 Service 检查；旧 Menu/UserResource 表与“当前”称谓是方案期分析。实际边界见 [组织](../modules/organization.md)、[鉴权](../modules/authz.md)。
+
 
 用户提出的关键问题：新建用户、修改用户绑定的角色，这些操作怎么管控？
 
@@ -634,6 +652,9 @@ POST /api/v1/users/delete
 ---
 
 ## 9. 分阶段实施
+
+> 以下为原计划，不是交付打勾表。已实现的工单 Resource/列表 fail-close、未实现的其他示例 Resource，以及触发驱动的独立 Enforcer 应分别判断；不能据 Phase 编号推定完成。
+
 
 ### Phase 1
 

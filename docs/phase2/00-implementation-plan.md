@@ -1,5 +1,8 @@
 # 00 - Phase 2 实施总计划（Execution Plan）
 
+> **适用范围（2026-11-08整理）**：Phase2已收官，未勾选的Step0/1和2b收口是旧计划状态，不重新立项。当前工程流程按standards/所有者分支要求；迁移编号只看review/11，storage旧占位号和旧dev流程无现行分配效力。BK-13/14已实施；附件由Phase5 S5承接，HR/auth-enhance按各自后续状态。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **定位**：六份 PRD（[01](./01-auth-enhance.md) / [02](./02-authz-resource.md) / [03](./03-org-enhance.md) / [04](./04-org-delegation.md) / [09](./09-ticket.md) / [10](./10-storage.md)）回答「做什么」；本文回答「**怎么执行**」——编码前拍板、里程碑门禁、任务分解、批次与分支、流程规范、节奏与风险。  
 > 组织方式对齐 [phase1/README §2–§4](../phase1/README.md) 与 [phase1/00-pre-coding-decisions.md](../phase1/00-pre-coding-decisions.md)。  
 > 创建日期：2026-08-19。输入：[phase1/12 号验收报告](../phase1/12-phase1-acceptance-report.md)（27/27 通过、修复已合入、G-1/G-2 待 2a Step 0 收尾）。
@@ -37,7 +40,7 @@
 | 20012（`ErrDeviceNotFound`）+ 20013（密码策略） | Step 7 | [01-auth-enhance](./01-auth-enhance.md) |
 | 50008–50010 | Step 8 | [04-org-delegation §5](./04-org-delegation.md) |
 
-均同步写入 `errcode.go` + [api/errcode.md](../api/errcode.md)，勿改号。
+均同步写入 `errcode.go` + [docs/api/errcode.md](../api/errcode.md)，勿改号。
 
 ### P2-D5：验收脚本分段
 
@@ -392,7 +395,7 @@ Step 0→1→2→3 → Step 4   →    Step 5                 →    Step 6 ∥ 
 | 2026-08-31（生态调研） | Duke1616 生态调研（eflow/ecmdb-web/eiam/etask）：G1+G2 方案具体化，§9 登记 **BK-18**（类型/字段/模板管理闭环，IW1 后批次）；10 号 §4.8 补实地调研修正（驳回回退硬骨头/workflow_definitions 版本快照/撤回设计缺失/网关条件勿用裸 SQL）；B1 增研究吸收项（撤回 WITHDRAWING 栅栏/快照/审批人策略模型 Assignee{rule,values} 解 min_level）；B9 补参考指针（Casbin Watcher 移植 eiam、Asynq 模式仿 etask） |
 | 2026-08-31（性能审计） | 外评核实「角色展开每请求双查」（casbin.go:46 + ticket service.go:52 / org_service.go:37；ctx 中 roles 无 service 消费方）；§9 登记 **BK-17**（方案 A：request context 透传缓存，签名/测试零改动，随 IW1 修复） |
 | 2026-08-31（并发审计） | 工单模块并发/多实例审计：并发防护逐项验证在位（乐观锁/守卫/FOR SHARE/竞态双测试）；多实例就绪——无进程内状态、共享层全在 Redis/DB（Lua 限流、advisory lock、DB 时间戳），唯一缺口 Casbin Watcher 维持 Phase 3 B9；§9 登记 **BK-16**（Delete RowsAffected 审计脏点，随 IW1 修复） |
-| 2026-08-31（代码级审计） | **以代码为准的第二轮审计**：BK-7 两半项均已在代码落地（priority 400 + page 钳制回显）→ 关闭并同步 11 §8/检查单（删 B8）；testutil 迁移清单缺 000002/000007 系刻意排除纯数据 seed（DDL 16 个全齐，非缺口）；非测试代码 TODO/FIXME 零命中、无请求路径 panic、关键错误码与 api/errcode.md 一致、swagger 含 2c 端点；CC1/CC2/CC3/P0/MC2/MC3/BK-1/BK-2/BK-3/BK-15 修复声明逐一代码复核属实 |
+| 2026-08-31（代码级审计） | **以代码为准的第二轮审计**：BK-7 两半项均已在代码落地（priority 400 + page 钳制回显）→ 关闭并同步 11 §8/检查单（删 B8）；testutil 迁移清单缺 000002/000007 系刻意排除纯数据 seed（DDL 16 个全齐，非缺口）；非测试代码 TODO/FIXME 零命中、无请求路径 panic、关键错误码与 docs/api/errcode.md 一致、swagger 含 2c 端点；CC1/CC2/CC3/P0/MC2/MC3/BK-1/BK-2/BK-3/BK-15 修复声明逐一代码复核属实 |
 | 2026-08-31（审计） | 完整性审计：BK-1..15 全量复核，**BK-4 行漏关修正**（常量化已落地）；review/10 C1–C4 逐条核验（C1 驳回维持/C2 已修/C4 真开放→11 §8 A1②、C3→B10）；09 合集抽查回注（F-01/02/03/18 已修、F-31④/F-32 入随手项） |
 | 2026-08-31（夜二） | §9 登记 **BK-15** 并即时修复：删除 `UpdateAssignedTo` 死包装（currentStatus 参数零使用、全仓零调用方）；合并 Delete / UpdateAssignedToTx 新旧叠注释，更正删单权限（2c 委托可删，非 admin only）与 FK 行为（comments/relations CASCADE、events SET NULL）描述 |
 | 2026-09-03（BK-20 实施） | **BK-20 落地**：`OrgRepo.Delete` / `DeleteVgWithOwnerCleanup` 同事务加未结工单计数守卫（`status <> 'closed'`）+ `ErrOrgHasOpenTickets`（50013→409，errcode.md 登记）+ TestBK20 集成测试（未结 409 / 结单后删 200）+ acceptance D6 段 3 断言；现有删组织用例核对无冲突。工单封版期的数据安全修复（§23），全门禁绿。插曲：acceptance 首跑 3 FAIL——dev 服务（:33333）为陈旧二进制，重编译重启后全绿（陈旧进程故障模式再现，已记 [[验收脚本教训]] 同类） |

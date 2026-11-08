@@ -205,7 +205,7 @@ type errcodeRegistryRow struct {
 
 func readErrcodeRegistry(t *testing.T) map[int]errcodeRegistryRow {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(repoRoot(t), "api", "errcode.md"))
+	b, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "api", "errcode.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,8 @@
 # 00 · Phase 4 规划素材总盘点（规划输入，非计划）
 
+> **适用范围（2026-11-08整理）**：这是09月规划输入盘点，许多“新立项/待做”已由Phase4/5完成，不重新打开。Phase3收口是工程口径，不表示Watcher/HA所有能力已实现；旧迁移号与ReBAC六条早期口径不作现行分配/触发清单。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **文档定位**：Phase 4 首个文档。汇总截至 2026-09-18 全库散落的待办/建议/触发类登记，作为 Phase 4 定计划时的**唯一盘点入口**。计划本身（主轴拍板、批次排期、编号分配）待所有者拍板后在本目录另立文档。
 >
 > **盘点口径**：登记点 85 处 → 去重后独立事项约 55–60 项 → 其中真正开放的活跃项约 30 项，其余为「翻案/触发条件」挂起项。代码内 `internal/`+`cmd/` 零 TODO/FIXME（phase3/00 §4 既有结论仍成立），待办全部在文档。
@@ -26,10 +29,10 @@
 | `docs/phase3/01/02/03/06/07/09/11/12/15` | 各子能力文档内嵌🚦触发项（多实例/HA/审计/安全/平台/分离/前端/脚本平台） | 子能力设计源 |
 | `docs/phase2/01-auth-enhance.md` / `10-storage.md` / `11-authz-architecture-review.md` | IW2 两件、ReBAC 触发表、PG RLS 预案、scope 枚举映射表 | Phase 2 遗留 |
 | `docs/proposal/hr-directory-sync.md` §3.2/§4.3 | HR 三拍板（离职在途工单/部门撤销级联/跨部门权限分配） | 仅此处登记 |
-| `docs/VISION.md` §17 | 供应商协作场景（唯一登记在 VISION 的边界外场景） | 边界外立项入口 |
+| `docs/vision.md` §17 | 供应商协作场景（唯一登记在 VISION 的边界外场景） | 边界外立项入口 |
 | `docs/ops/runbook.md` §4 | 四条「登记不修等触发」观察项 | 运营侧唯一定点 |
-| `deliverables/software-company/phase3-closure-report-2026-09-15.md` §五 | 收官口径遗留（含 **taskrunner PG 备份口径随 M4——仅此一处登记**） | 收官权威 |
-| `deliverables/software-company/zhuzhao-code-review-2026-09-11.md` | P2-2/P2-14 等代码级建议（**无 BK 编号，最易丢失**） | 待核实采纳状态 |
+| `docs/review/reports/phase3-closure-report-2026-09-15.md` §五 | 收官口径遗留（含 **taskrunner PG 备份口径随 M4——仅此一处登记**） | 收官权威 |
+| `docs/review/reports/zhuzhao-code-review-2026-09-11.md` | P2-2/P2-14 等代码级建议（**无 BK 编号，最易丢失**） | 待核实采纳状态 |
 | 2026-09-18 gin-vue-admin 借鉴核验 | 产品完整线新增批（§2.1 主轴①） | 本轮新产 |
 | 2026-09-21 菜单 CRUD 业界对标核验 | 菜单词表只读化批（§2.4 主轴④）+ 管理面重建触发（§3 信号组 C） | 本轮新产 |
 | 2026-09-21 前端工程架构咨询（仓格局/模板/部署形态） | 前端工程架构五拍板（§2.1 主轴①） | 本轮新产 |

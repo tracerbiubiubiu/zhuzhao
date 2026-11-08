@@ -1,84 +1,22 @@
 # zhuzhao
 
-> **定位（2026-09-03，§23 重定位后）**：IAM 内核 + 统一网关 + 通用能力底座（事件/审计/组织/HR）。工单自研已恢复主线（§23 于 2026-10-09 经 §29 翻案——phase5 底座强化已交付、phase6 风险联动在册，决策见 [design-decisions §23/§29](docs/design/design-decisions.md)）；taskrunner/activelist 为独立部署服务，经 zhuzhao 网关接入（权限架构定版见 §25）。
-> 仓库名与 module path 的正式命名合并到内网迁移时执行（M-Mig，[13 号 §1](docs/phase3/13-implementation-plan.md)）——现只注定位不改库。
->
-> **Phase 4 收官（2026-09-29）**：前端消费面全线交付（[zhuzhao-ui](https://github.com/tracerbiubiubiu/zhuzhao-ui)，E2E 18 spec 打真实栈）+穿插池点名五件+P2 小件四件套+cron 收归——完成定义四条全绿终验见 [02 号 §3.2](docs/phase4/02-implementation-plan.md)。
+Go 模块化单体，提供 IAM、三层鉴权、工单和统一网关；UI、taskrunner、activelist 独立维护与部署，utils 为公共库。当前能力与后续方案请从 [文档入口](docs/README.md) 和 [项目控制台](docs/review/11-project-control.md) 区分。
 
-zhuzhao 是 zhuzhao 生态的主仓库：Go（Gin + PostgreSQL + Casbin + Redis + Wire）模块化单体，对外是生态唯一入口（统一网关），对内承载 IAM 与通用能力。
+## 开始使用
 
-## 核心能力
-
-| 域 | 能力 |
-|---|---|
-| IAM | 用户 / 角色 / 组织 / 菜单 / 认证（AT+RT 双令牌、登录失败锁定）/ 请求级与业务审计 |
-| 三层鉴权 | L1 路由级（Casbin）→ L2 数据范围（内置策略库 + Resource 注册表）→ L3 动作矩阵 |
-| 统一网关 | `/al/*` 反代 activelist（AK/SK 出站签名 + X-Operator 身份断言）、`/api/v1/tasks|jobs|runs` 任务管理代理（E-④） |
-| 内网回调 | `POST /internal/jobs/callback`（AK/SK 验签——taskrunner 任务执行入口，幂等栅栏 + 动作注册表） |
-| 可观测 | 结构化访问日志（operator / auth / caller 归因）、审计归档（超期导出 JSONL） |
-| 平台服务（P4） | 通知通道（webhook 配置化+死信告警）/ 字典（业务枚举运行时化）/ 登录验证码（开关默认关）/ PAT 个人凭据（Bearer 直发）/ panic 聚合 + 路由对账 + `/metrics` / 审计响应体摘要 / 审计归档 cron 进程内收归（advisory lock） |
-
-## 生态
-
-| 项目 | 角色 |
-|---|---|
-| [zhuzhao-utils](https://github.com/tracerbiubiubiu/zhuzhao-utils) | 公共库 10 包（crypto / errcode / jwt / logger / aksk / response / postgres / redis / jsonutil / validate），当前 v0.4.1 |
-| [taskrunner](https://github.com/tracerbiubiubiu/taskrunner) | 事件/任务总线：调度、重试、死信、`job_runs` 记录（与 zhuzhao AK/SK 互信） |
-| [activelist](https://github.com/tracerbiubiubiu/activelist) | 动态数据模型薄层：类型注册 / Schema 演进 / 数据 CRUD / 导入导出 |
-
-生态工程公约（API 设计 / 目录结构 / 迁移 / 安全基线 / 测试）SSOT：[docs/standards.md](docs/standards.md)。
-
-## 快速开始
+先按 [开发指南](docs/guides/development.md) 准备 SDK、确认环境归属，再执行：
 
 ```sh
-# 本地开发依赖（保留原开发卷；应用进程在宿主启动）
+make hooks
 make docker-dev-up
 make migrate-up
-make dev  # 端口占用即拒启；不自动kill其它进程
+make dev
 ```
 
-- 端点：`/api/v1/*`（业务 API，JWT）、`/al/*`（activelist 反代）、`/internal/jobs/callback`（内网回调，默认关）、`/health/live`、`/health/ready`；
-- AL/TR/UI宿主进程需分别启动；三组Compose辅助脚本、既有project/数据卷与显式部署迁移见 [启动指南](deployments/README.md)。账号纪律见 [runbook §4](docs/runbook.md)。
-- 运维两套栈的区分、env 注入与常见故障：[docs/ops/runbook.md](docs/ops/runbook.md)。
+以上只启动主仓依赖和主应用。UI / 上游服务、生产与测试 Compose、密钥和显式迁移顺序见 [部署指南](docs/ops/deployment.md)；测试账号唯一台账与故障处理见 [运行手册](docs/ops/runbook.md)。
 
-## 开发与门禁
+## 开发与交付
 
-```sh
-make tools-install     # 固定版本Wire/Swag CLI，工具依赖与业务模块隔离
-make wire              # 再生Wire装配，默认按需安装固定工具
-make lint              # go vet + gofmt 漂移检查
-make test-unit         # 单元测试（-race -count=1）
-make test-integration  # 集成测试（testcontainers 真 PG，-tags integration，-p 1）
-make test-cover        # 覆盖率报告
-make acceptance        # 【门禁】四档验收链 phase1 → 2a → 2b → 2c（须标准环境，见 runbook §3）
-make migrate-up        # 应用迁移（up/down 成对，编号全局唯一）
-make swag              # 重新生成 Swagger（docs/docs.go）
-make guard             # 架构守护测试（go/ast 分层/命名静态断言）
-```
+修改遵循 [工程公约](docs/standards.md) 与根 [协作协议](AGENTS.md)，同步模块文档和控制台。常用检查为 `make lint`、`make test-unit`、`make test-integration`、`make test-cover`、`make acceptance`；生成用 `make wire` / `make swag`。完整前置、环境隔离和失败口径见开发指南。
 
-Go SDK最低版本以`go.mod`为准；生成工具另需Python3，默认缓存到被Git/Docker忽略的`.codex/tools/`。工具入口不隐式下载SDK；可用`GO=/path/to/go make tools-install`显式选择。其它Go目标仍须将该SDK的`bin`放在本次命令的PATH中。工具私有依赖不写入业务`go.mod/go.sum`；`WIRE_BIN`/`SWAG_BIN`覆盖仍校验固定模块、版本、校验和及编译平台。
-
-CI复用原Make入口，执行lint、Wire/Swagger新鲜度、build、单测race及完整集成；四档acceptance与迁移往返按纪律在自有隔离环境执行。
-
-## 文档
-
-[docs/README.md](docs/README.md) 为文档树索引（modules / phase1-3 / review / adr / design / ops）。重点：
-
-- [docs/standards.md](docs/standards.md) —— 生态工程公约 SSOT（API 设计 / 工程结构 / 数据迁移 / 安全基线 / 测试约定）
-- [docs/design/design-decisions.md](docs/design/design-decisions.md) —— 演进中的设计拍板（权限架构 §25 / 工单 §23 已翻案 §29）
-- [docs/phase3/16-external-integration.md](docs/phase3/16-external-integration.md) —— 外部集成 SSOT（16 号：基线 §9 / taskrunner 对齐清单）
-- [docs/review/11-project-control.md](docs/review/11-project-control.md) —— 能力总览（能力矩阵 / 健康状态 / 遗留问题）
-- [docs/api/errcode.md](docs/api/errcode.md) —— 业务错误码登记表
-- [docs/ops/runbook.md](docs/ops/runbook.md) —— 运维手册（两套栈速查 / 故障处置 / 故障演练复现）
-
-## 提交检查
-
-首次在当前工作树运行 `make hooks`（需Python3），安装本仓三钩，不依赖兄弟仓绝对路径。`make commit-lint`检查新增窗口并保留Swagger检查，`make test-commit-lint`验证规则/窗口反例；显式`make commit-lint RANGE=HEAD~20`仍为严格历史审计。CI独立检查事件中的push/PR准确SHA，固定启用基线之前的历史不追溯，所有新增merge同样要规范主题与正文。规则与多工作树安装边界见[standards §12-9](docs/standards.md)，本轮跨仓复验见[RR-GIT-01](deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)。
-
-## License
-
-[MIT](LICENSE)
-
-## 致谢
-
-本项目的设计借鉴与参考过众多开源项目（协议蓝本 / 能力映射蓝本 / 反面对照驱动修正），集中登记见 [docs/acknowledgments.md](docs/acknowledgments.md)——借设计不借代码，出处可溯源。
+五仓文档各放本仓 `docs/`，结构与维护约定见 [文档规则](docs/documentation.md)。正式报告在 `docs/review/reports/`，本地参考、执行卡和原始证据不进入 Git / Docker 上下文。

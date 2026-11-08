@@ -1,11 +1,17 @@
-# 02 — P5-S2 流程状态图可视化设计器（设计稿）
+# 02 — P5-S2 流程状态图设计器（已交付合同与后续边界）
 
-> **段属性**：基线段（phase5 收口对象）。**建议实施序**：S6 错峰衔接（S5→S1 之后，S6 一期收口后进本段——单人串行）；后端零改动。
+## 当前状态与阅读顺序
+
+LogicFlow编辑、mapper往返、BFS自动布局、本地坐标与warning级lint已交付。先看配置保存一致性和邻接表合同，再看UI/引擎分界；旧选型/无画布基线只说明历史。当前图更新/undo-redo修复见B20报告，完整门禁与部署以最新收据为准。
+
+UI `src/components/FlowGraphDesigner/mapper.ts`的`toGraph/fromGraph/positionsOf`承接协议，`layout.ts`的`autoLayout`用BFS，`lint.ts`的`lintGraph/stuckStates`给告警。流程仍为人工触发FSM，自动排他路由是Phase6 R0未做能力。UI现行指南见[入口](../../../zhuzhao-ui/docs/README.md)。
+
+> **段属性**：基线段（phase5 收口对象）。**建议实施序**：S6 错峰衔接（S5→S1 之后，S6 一期收口后进本段——单人串行）；初始UX范围无迁移，后续图校验/CAS有后端修复。
 > **状态**：🔵 **B2-1→B2-4 全批交付（2026-10-24，ui 70e51e77+5414ee79）——待所有者走查翻 ✅**（走查入口见 [11 号 §0 S2 行](./11-implementation-plan.md)；真机走查记录见本稿变更记录 2026-10-24 行）。
 > **量级**：1–2 周。**迁移**：零。
 > **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。范围/边界总纲 = [README §2 P5-S2](./README.md)；选型预置与分层要求 = dd §27（2026-10-08 所有者确认）。
 
-> 2026-11-07 B20当前行为：`FlowGraphDesigner.ensureLf`监听实际graph:updated并保持invalid写入幂等；覆盖JSON↔画布重复load后的真实键盘undo/redo。History.add可因重复快照跳过history:change，不能把其当图更新保证。原完整页面候选8绿/恢复旧监听8稳定红，最终41 E2E通过；证据见[B20报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)，部署与准确CI另核。
+> 2026-11-07 B20当前行为：`FlowGraphDesigner.ensureLf`监听实际graph:updated并保持invalid写入幂等；覆盖JSON↔画布重复load后的真实键盘undo/redo。History.add可因重复快照跳过history:change，不能把其当图更新保证。原完整页面候选8绿/恢复旧监听8稳定红，最终41 E2E通过；证据见[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)，部署与准确CI另核。
 
 ## 1. 定位与由来
 
@@ -15,9 +21,9 @@
 
 `type_admin.go` 的 `UpdateTicketType` 对单边 patch 使用**该类型持久化的另一半图**校验；默认图仅用于新建缺省，不用于补齐已有类型。图或 `transition_meta` 修改在一次读取的快照上预检，写入使用同一父类型版本 CAS。客户端 `version` 仍可选；显式版本必须先等于本次读取的父快照（旧版本或未来版本均返回 409），省略时服务端带入快照版本，预检后其他请求改变类型则返回既有 409，不会组合两个各自合法、合并后非法的半图。普通属性 patch 保留现有兼容路径。
 
-`type_graph_consistency_integration_test.go` 覆盖持久自定义图的正反单边修改、可选版本，以及两路无版本半图交错；边界仍是端点存在性，不新增可达性或孤立节点的强制 lint。修复仅在独立 codex 候选分支，联合完整门禁/部署待验证。
+`type_graph_consistency_integration_test.go` 覆盖持久自定义图的正反单边修改、可选版本，以及两路无版本半图交错；边界仍是端点存在性，不新增可达性或孤立节点的强制 lint。该句原为候选时点；修复已入[B06最终联合复验](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)和[最新followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)固定源范围，未合main/生产边界另核。
 
-## 2. 现状基线（代码级锚点，2026-10-15 核实）
+## 2. 2026-10-15历史基线（后续交付见当前状态）
 
 | 项 | 现状 | 锚点 |
 |----|------|------|
@@ -27,7 +33,7 @@
 | 管理端 API | 类型 CRUD（states/transitions 可写）+ 乐观锁，管理端点组在位 | `internal/router/router.go:363-377` |
 | 前端 | ticket/type 页 states/transitions = JSON 源码模式 + 模板按钮 | zhuzhao-ui `views/ticket/type/index.vue` |
 
-## 3. 目标形态与范围
+## 3. 已交付范围与后续扩展（原设计沿革）
 
 ### 3.1 画布选型（启动首件）
 
@@ -39,7 +45,7 @@
 
 - states/transitions 画布化：节点=状态、连线=合法转换，产物序列化回现有 transitions JSONB，**后端零改动**；中文化与交互打磨计入量级。
 - **分层要求**：画布层（LogicFlow/vue-flow 封装+交互）与 schema 适配层（transitions 映射器）**分离**——任务域将来若立流程设计器可复用画布层、只换适配器。
-- **界注（2026-10-19 外审 P1-2）**：本段画布范围=states/transitions 邻接表编辑+后端零改动——**transition_meta 独立列（S3a：condition/validator/post_actions）的编辑不在本段**（独立列经独立端点，画布序列化只回 transitions JSONB 结构上不可达）；S3a B3-1 交付类型管理页 meta 配置面后，画布二期可扩展（触发驱动）。
+- **界注（2026-10-19 外审 P1-2）**：本段画布范围=states/transitions 邻接表编辑+后端零改动——**transition_meta 独立列（S3a：condition/validator/post_actions）的编辑不在本段**（独立列由类型更新合同维护，画布序列化只回 transitions JSONB 结构上不可达）；S3a后端已接受meta；UI当前只编辑state timeout/escalation并透传from>to键，转换roles/validator/post_actions编辑面仍归Phase6 B21，不能宣称已交付。
 - **引擎与数据模型不合并**：工单流程 = 人触发的实体状态图，任务流程 = 完成事件驱动的执行编排，**不同构**——任务侧编排维持 [phase3/16](../phase3/16-external-integration.md) 红线（不做通用流程引擎；轻编排 = zhuzhao 回调串联、重编排 = 外部 DAG [phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) GPL 法务前置），**不得为复用而把两者捏成"通用流程模块"**。
 
 ### 3.3 可选校验增强批（纯增量、向后兼容）
@@ -113,15 +119,15 @@ zhuzhao-ui/
   src/components/FlowGraphDesigner/     # 画布层/适配层分离（§3.2 纪律）
     index.vue                           #   壳：LogicFlow 容器 + 工具栏（加状态/连线/删除/保存）
     mapper.ts                           #   唯一适配层：邻接表 ↔ LogicFlow graphData 纯函数（单测承重）
-    nodes/StateNode.ts                  #   自定义节点（状态名 + 终态/起始态语义样式）
+    nodes/stateNode.ts                  #   自定义节点（状态名 + 终态/起始态语义样式）
     lint.ts                             #   前端图 lint：可达性 BFS/孤立节点/无出边死锁（B2-4）
   src/views/ticket/type/index.vue       # 画布模式 tab 与 JSON 源码模式共存（同一 Pinia store 单一数据源）
 ```
 
-- 随行件（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）：壳层 `FlowGraphDesigner/index.vue` 数据经 props/emit，不直连工单 Pinia store——为 phase10 playbook 设计器复用画布层预留；不越本稿"不合并通用流程模块"红线。
+- 随行件（2026-10-20 规划研究回灌，依据 docs/proposal/secops-platform/08-phase5-adjustments.md）：壳层 `FlowGraphDesigner/index.vue` 数据经 props/emit，不直连工单 Pinia store——为 phase10 playbook 设计器复用画布层预留；不越本稿"不合并通用流程模块"红线。
 
-- **后端零改动**兑现：产物序列化回既有 `PUT /ticket-types/:code`（states/transitions + version CAS），无新端点/迁移。
-- **节点坐标不入库（⚠ 设计决策）**：transitions JSONB 无 x/y，布局数据是**本地视图偏好**——存 localStorage（按 type_code），重开无缓存时 dagre 自动布局；不为此加 type 级 layout 列（守住"后端零改动"承诺，多端打开各自动布局可接受）。
+- **后端零改动**兑现：产物序列化回既有 `POST /api/v1/ticket-types/update`（code入body）（states/transitions + version CAS），无新端点/迁移。
+- **节点坐标不入库（⚠ 设计决策）**：transitions JSONB 无 x/y，布局数据是**本地视图偏好**——存 localStorage（按 type_code），重开无缓存时BFS自动布局（`layout.ts`的`autoLayout`，替代初始dagre建议）；不为此加 type 级 layout 列（守住"后端零改动"承诺，多端打开各自动布局可接受）。
 
 ### A.3 映射器契约（mapper.ts，往返幂等承重）
 
@@ -137,7 +143,7 @@ fromGraph(g: GraphData): { states: string[]; transitions: Record<string,string[]
 ### A.4 改图在途单告警（B2-3，必做件实现口径）
 
 - 链路：保存前 → `GET /tickets?type_code=X&status=S` 逐状态拉 total（既有能力，**零后端改动**）→ 新图 states 集合不含的在途状态 → 命中则弹确认框（列出受影响状态与单量，"仍要保存/取消"）；
-- 兜底安全网：告警被绕过（API 直调）时 `AssertTransition` 照旧拒绝——**不产生僵死脏数据，告警纯体验层**；
+- 兜底安全网：告警被绕过（API 直调）时 `AssertTransition` 照旧拒绝——**只能拒绝非法边执行，不能保证无存量工单滞留；warning确认保存仍可能留旧状态工单，告警纯体验层**；
 - ⚠ 可选增强（启动批拍）：后端聚合端点 `GET /ticket-types/:code/inflight-summary` 一次返回分布（前端 6 次请求并 1 次），量级 +0.5 天，非必做。
 
 ### A.5 lint 增强（B2-4，可选批）

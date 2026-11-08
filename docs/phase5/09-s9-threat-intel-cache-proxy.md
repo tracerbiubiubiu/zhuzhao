@@ -1,4 +1,10 @@
-# 09 — P5-S9 威胁情报缓存代理（设计稿——概要登记，细节启动批定）
+# 09 — P5-S9 威胁情报缓存代理（已交付机制与上游边界）
+
+## 当前状态与阅读顺序
+
+缓存归一键、TTL双档、singleflight、stale降级、clean404缓存与Provider桩/HTTP适配已交付；源真实契约未到不虚标真实查询。先读缓存/失败边界，再读API/适配合同，最后按变更记录追溯实现偏差。`internal/pkg/threatintel/service.go`与`threatintel.go`是现行机制和端口，旧`internal/pkg/apicache`仅是复用建议路径。
+
+上游QPS令牌桶未随首版实现，不能把附录rate.Limiter建议当当前限流保证；平台HTTP路由限流和按key singleflight也不等价于全局上游QPS预算。B06-F10单飞错误结果修复已在最终联合复验范围，旧候选段须按报告时点读，合main/部署另核。
 
 > **段属性**：基线段（phase5 收口对象）；**建议实施序**：靠后（无内部消费方依赖，仅 phase6 R1 前置）。
 > **量级**：≈ 1 周（缓存表 + 查询代理 + TTL 管理）。**迁移**：有（`intel_cache` 表族；编号启动时对账）。
@@ -8,7 +14,7 @@
 
 对**已有威胁情报 web 应用做能力补全**（**应用本体不动**）——解决其每日/每小时查询配额限制。技术形态 = **外部限流 API 的缓存代理**（通用件），威胁情报是**首个消费者**；**消费方 = phase6 风险模块 R1**（风险事件情报源之一）。
 
-随行件（2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）：缓存机制层（键归一化 / TTL per type / singleflight / stale 降级）独立为通用包（如 `internal/pkg/apicache`），情报为首个消费者；表名 / 端口名 / API / 权限码保持情报语义不变。第二消费者 = 资产平台查询门面的读穿缓存（phase6/7）。
+随行件（2026-10-20 规划研究回灌，依据 docs/proposal/secops-platform/08-phase5-adjustments.md）：缓存机制复用设计（键归一化/TTL/singleflight/stale）拟在第二消费者出现时抽通用包（如`internal/pkg/apicache`，当前未有此包），情报为首个消费者；表名 / 端口名 / API / 权限码保持情报语义不变。第二消费者 = 资产平台查询门面的读穿缓存（phase6/7）。
 
 **归属判定**：所有者口径"phase5 = 通用能力，phase6 = 业务能力"——本件是通用缓存代理，威胁情报仅为首个消费者，故归 phase5。
 
@@ -27,7 +33,7 @@
 ## 4. 依赖与端口
 
 - **上游 API 契约**（查询接口/认证/限流数值）**由企业方提供**；调用凭据入配置管理（config 化禁硬编码——README §6 总纪律③）。
-- 查询走 **`ThreatIntelProvider` 端口**（Query(type,value)）——接口 + 通用 HTTP 实现 + config 挂点，§24 SSOProvider 同款预留模式：**契约到位填配置即用**；本件整体即 ACL（防腐层）典型：外部模型不得渗入域模型（README §6 总纪律①）。
+- 查询走 **`ThreatIntelProvider` 端口**（Query(type,value)）——接口 + 通用 HTTP 实现 + config 挂点，§24 SSOProvider 同款预留模式：**端口/通用HTTP骨架已备，真实契约到位仍需核字段映射、认证和限流并验证**；本件整体即 ACL（防腐层）典型：外部模型不得渗入域模型（README §6 总纪律①）。
 
 ## 5. 启动拍板点
 
@@ -116,7 +122,7 @@ Query(type, value) →
 
 - **单飞**（singleflight）：同 key 并发未命中只放一个回源（`golang.org/x/sync/singleflight`——防缓存击穿放大上游配额消耗，本件存在的意义即保护上游配额）；
 - **上游 404（查无记录）= 正常结果入缓存（2026-10-16 评审批深审项 D）**：clean 答案同样 INSERT 缓存（TTL 内免打上游——保护配额即本件存在意义）；错误（5xx/网络）≠查无，前者不缓存走失败链；「404 vs 200+空结果」形态随真实契约对表（mapUpstreamResponse 同点改）；
-- 上游限流自留量：**`golang.org/x/time/rate.Limiter`**（标准扩展件，勿自写——config QPS 上限，缺省 1 QPS 保守起步），超桶请求直接走降级路径。
+- **未来上游限流自留量（首版已延期，非当前保证）**：建议`golang.org/x/time/rate.Limiter`（标准扩展件，勿自写——config QPS 上限，缺省 1 QPS 保守起步），超桶请求直接走降级路径。
 
 ### A.4 API 契约
 

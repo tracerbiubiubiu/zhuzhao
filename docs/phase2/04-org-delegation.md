@@ -1,5 +1,8 @@
 # 04 - 组织内委托（org-delegation，Phase 2c）
 
+> **适用范围（2026-11-08整理）**：当前组织委托路由使用selfService组并在业务层做细分权限/目标判断，不是初始菜单码绑定草图。B09明确显式owner数组独立于过期成员关系；project_isolated与scope配置已实施。删除/不可见语义按当前OrgDelegation与工单Resource判定，旧矩阵破折号不能理解成任意绕过L2。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 8–10**（正文 §6 编号：8=org-delegation 成员分级、9=Authorize、10=集成验收；09-ticket §0 引用的"Step 9"即此处 Step 9），依赖 Phase **2b-core + 2b-org** 验收（虚拟组、`ticket_scope`、TicketResource group/all 过滤；HR Sync 属 2b-ext 延后，非前置）。  
 > 设计背景见 [03-org-enhance §组织负责人](./03-org-enhance.md#组织负责人与组内分级你描述的场景)；**本文档为 2c 实现 SSOT**。
 
@@ -32,6 +35,8 @@
 Step 8（成员分级）与 Step 9（Authorize）**强耦合**：D7–D9 同时需要 `org_member_role` 与资源 Authorize；拆成两个 phase 会出现「能任命 admin 但不能管工单」的半交付状态。2c 仅 3 个 Step，体量可控，**保持 2c 单节点**。
 
 ---
+
+<a id="1-前置条件2b-必须已验收"></a>
 
 ## 1. 前置条件（2b-core + 2b-org 必须已验收）
 
@@ -308,7 +313,7 @@ migrations/0000xx_org_delegation.up.sql
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 | D5；admin 删 admin |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 | 非 owner 调用 SetMemberRole / SetOwners（非全局） |
 
-> 写入 `internal/pkg/errcode/errcode.go` 与 [api/errcode.md](../api/errcode.md)；**勿改号**。
+> 写入 `internal/pkg/errcode/errcode.go` 与 [docs/api/errcode.md](../api/errcode.md)；**勿改号**。
 
 ---
 

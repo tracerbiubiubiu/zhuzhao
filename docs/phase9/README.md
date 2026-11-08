@@ -1,6 +1,8 @@
 # Phase 9 — 处置闭环深化 + 自研编排引擎 MVP（总纲）
 
-> **文档定位**：phase9 规划总纲（2026-10-29 建档）——**已拍决策汇编 + 范围索引**，蒸馏自愿景稿 [07-phased-plan §4.4](../../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md) 与 D 系拍板。细化设计稿随立项批拆建。
+> **阅读顺序**：先核状态与上一阶段出口，再看核心切片、可滑补全、外部输入和DoD。Phase9仍为规划总纲，“已拍”表示范围决定，未立项/未实施；细化稿须在前置输入到位后另立，不用当前代码名或示意API冒充已可用能力。
+
+> **文档定位**：phase9 规划总纲（2026-10-29 建档）——**已拍决策汇编 + 范围索引**，蒸馏自愿景稿 [07-phased-plan §4.4](../proposal/secops-platform/07-phased-plan.md) 与 D 系拍板。细化设计稿随立项批拆建。
 > **状态 = 规划期（未立项未排期）**——立项前置 = phase8 收口 + X4 值班表载体输入。
 > **量级口径**：8–12 周（07 号 §3 原估 8–11 周；D25 校准——A5 引擎 MVP 4–6 周、阶段口径 8–12 周）。**Stage 2 起点**（D1 既定排期：引擎 MVP → phase10 迁移与 SOAR 退役）。
 
@@ -29,7 +31,9 @@
 6. **自研轻 DAG 引擎 MVP**（03-A5）：六节点（action/script/approval/wait/branch/parallel）+ WorkflowEngine Port；**先承载平台自有巡检/处置链**（如 到期扫描→建单→通知→超时升级），**不碰 SOAR 现有 playbook**。
 7. **outbox 事件持久化**（台账 C-20 收口批）：工作流推进 at-least-once 的前置件，本阶段正式落地（03-A3）。
 
-## 4. 补全切片（可滑）
+## 4. 补全切片（可滑，不含outbox）
+
+outbox是核心⑦和引擎工作流推进at-least-once的前置件，不能滑到引擎之后；若引擎提前，outbox只可同批或更早前移。
 
 定期报告（F7）· 到期扫描作业族（F8）· 批量操作泛化（F15）· ATT&CK 标签（F16）· outbox（若引擎提前可前移）。
 

@@ -1,208 +1,52 @@
-# 实施路线图（Roadmap）
+# 实施路线图
 
-> 各阶段实施总览，每阶段的核心目标、模块清单和能力边界。
->
-> 创建日期：2026-08-12
+> 2026-11-08 导航校准。本页只维护阶段目标、承接关系和状态入口，不复制段稿的完整排期、债务或接口表。具体实现看[项目控制台](review/11-project-control.md)，批准范围看各阶段 README 与最新裁决。
 
----
+## 1. 已交付阶段
 
-## 总览
+| 阶段 | 交付主线 | 现在怎样阅读 |
+|---|---|---|
+| [Phase 1](phase1/README.md) | IAM、认证、路由 RBAC、用户/角色/组织/菜单、同步审计 | 历史阶段设计；菜单写 API 等已由后继阶段退役，以模块说明为现状 |
+| [Phase 2](phase2/README.md) | 工单 MVP、资源授权、组织 scope/虚拟组、组内委托 | 2b-ext 多设备 UI/密码策略/HR 等并非全部交付；附件由 Phase 5 S5 承接 |
+| [Phase 3](phase3/README.md) | 通用能力、taskrunner/activelist 集成与运维基础 | 项目内工程已收口；HR真实同步、内网迁移/UAA及生产高可用按各自前置处理 |
+| [Phase 4](phase4/README.md) | UI 消费面、平台补强与部署 | 已收口的阶段记录，当前 UI 使用其仓 docs；旧测试计数是当时基线 |
 
-```
-Phase 1：最小可用                    Phase 2：业务可用（工单）           Phase 3：通用能力底座（项目内工程已收口）
-┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
-│ 认证鉴权框架             │     │ 资源级鉴权 + 工单        │     │ 生产加固类能力按需取用    │
-│ · 登录 / 双 Token        │────▶│ · 资源级鉴权（ltree）    │────▶│ · 可观测性（Metrics 等） │
-│ · 登录限流 / 会话吊销    │     │ · 虚拟组 / scope         │     │ · 安全增强（按需）       │
-│ · 路由级 RBAC            │     │ · 对象存储 + 工单        │     │ · 运维工具（按需）       │
-│ · 用户/角色/菜单/组织    │     │ · 多设备 UI / 密码策略   │     │ · 单体多副本（按需升档） │
-│ · 同步审计               │     │ · 工单业务能力（设计就绪，Phase 3 实现） │     │ ⛔ 微服务拆分（无需求）  │
-│                           │     │                           │     │ · M-E 事件/任务总线 ✅   │
-│                           │     │                           │     │ · M-A/M-HR/M-Mig（按需）│
-└─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
-   单实例 Docker Compose            单实例 Docker Compose            单实例 / 单体多副本（按需）
-```
+工单自研在早期曾暂缓，2026-10-09经设计决策§29恢复。不能把旧 Phase 3 暂缓表读成今天仍不做工单。同样，主仓当前没有原 L1 轮询消费者或 Asynq 事件总线：事实在事务内落 `ticket_events`，分发为进程内 HookRegistry，可靠重放升级是后续 outbox；独立 taskrunner 使用 Asynq 执行任务，两者职责分开。
 
----
+## 2. Phase 5：通用能力底座与当前维护
 
-## Phase 1：最小可用
+[阶段总纲](phase5/README.md) → [实施记录](phase5/11-implementation-plan.md) → [统一债务台账](phase5/s6-s5-debt-ledger.md)。
 
-**核心目标**：为后续所有服务搭好认证鉴权框架。
+| 段 | 能力 | 交付边界 |
+|---|---|---|
+| S1/S2 | 表单与状态图配置 | 已有可视化面；转换级完整编辑等余项查债务台账 |
+| S3 | Conditions/Validators、自动分派、动作框架 | S3a已落；审批/S3b按场景触发 |
+| S4 | 任务配置体验 | 既有单服务动作目录；跨服务目录和任务数据面是后续批准工作 |
+| S5 | 对象存储、头像/附件/富文本 | RustFS兼容链与资源授权已落，存储演进需专项验收 |
+| S6/S10 | 消息模板/规则、inbox、协作与提醒 | 真实外部渠道契约、通知增强和观察模式须按各自前置核实 |
+| S7/S8 | AI助手与数据大屏 | 已登记后续方向，不能因“十段”统称就宣称已实现 |
+| S9 | 威胁情报缓存代理 | 通用缓存/回源框架已落，真实上游契约需接入验证 |
 
-| 模块 | 核心能力 | 文档 |
-|------|---------|------|
-| 基础设施 | DB 迁移、配置、Wire DI、优雅关闭、健康检查 | [phase1/01-infra.md](./phase1/01-infra.md) |
-| 认证 | 登录、双 Token、RT 轮换、登出、黑名单、登录限流、会话吊销 | [phase1/02-auth.md](./phase1/02-auth.md) |
-| 鉴权 | 路由级 Casbin RBAC、ResourceRegistry 空接口 | [phase1/03-authz.md](./phase1/03-authz.md) |
-| 用户 | CRUD、启用禁用、密码修改、角色绑定、超管保护 | [phase1/04-user.md](./phase1/04-user.md) |
-| 角色 | CRUD、菜单分配、Casbin 策略同步 | [phase1/05-role.md](./phase1/05-role.md) |
-| 组织 | 树形 CRUD、ltree 路径、用户关联 | [phase1/06-organization.md](./phase1/06-organization.md) |
-| 菜单 | CRUD、菜单树、权限码、前端数据 | [phase1/07-menu.md](./phase1/07-menu.md) |
-| 审计日志 | 操作日志中间件、同步写入、登录审计 | [phase1/08-audit.md](./phase1/08-audit.md) |
-| 中间件 | JWT（含 fail-close）、Casbin、gin-contrib CORS/RequestID/slog、安全头 | [phase1/09-middleware.md](./phase1/09-middleware.md) |
-| 并发与事务 | DB 事务、SyncedEnforcer、Redis 原子操作、乐观锁 | [phase1/10-concurrency.md](./phase1/10-concurrency.md) |
+Phase 5 维护分支为 `phase5`，尚未合 main；已通过审计的实现、共享运行产物和当前文档候选分别记账。[日期报告](review/reports/README.md)保留当次结果，本轮整理后的门禁另列，不复用旧结果。
 
-**部署形态**：单实例 Docker Compose（PG + Redis + App）——**默认验收拓扑**；同一套代码可通过配置/编排扩展为多副本、PG Cluster、Redis Sentinel（[design-decisions §18](./design/design-decisions.md#18-部署与代码解耦一套代码多种部署)）。
+## 3. Phase 6：已批准后续能力，按顺序启动
 
-**验收标准**：主路径 + 对抗路径（限流、会话吊销、最后一个 superadmin、Redis 503），见 [phase1/README.md](./phase1/README.md) §1.3。Phase 1 **不做**部门数据隔离。
+[Phase 6 总纲](phase6/README.md)定义风险汇聚台账、评估处置、工单联动与报表。引擎 v2、工单完善批等启动前置已批准；[类型创建授权草案](phase6/09-ticket-type-visibility.md)仍有待拍项。状态、波次和未定约束以该阶段现行文件为准。
 
-**Step 7–9 CRUD 补全**：角色/菜单/组织写 API 属于 Phase 1 交付（见 [phase1/README §2.4](./phase1/README.md#24-step-79-crud-补全计划)）。组织 CRUD 是 Phase 2b 的前置依赖；角色/菜单 CRUD 主路径可依赖种子数据，但管理端完整能力需在 Phase 1 收尾完成。
+所有者当前顺序为 **Phase 5 合 main → 基于 main 启动后续批**。文档整理不代表已经创建 Phase 6 开发分支或实现风险域；不在本页再维护另一套容易漂移的人日估算。
 
----
+## 4. Phase 7–11：未来方向
 
-## Phase 2：业务可用
+[Phase 7](phase7/README.md)接入扩源与自动化地基 → [Phase 8](phase8/README.md)自动化能力中心 → [Phase 9](phase9/README.md)处置闭环及自研编排 MVP。更远 Stage 3/智能面方向保留在[安全运营平台规划](proposal/secops-platform/README.md)。
 
-**核心目标**：资源级鉴权 + 工单。仍为模块化单体，不拆 IAM。
+这些文件包含已拍原则、研究和待立项范围，不是当前功能清单。不为尚未立项的 Phase 10/11 创建空目录；真实立项时再建 README 与具体设计。
 
-**子阶段**：**2a**（Registry + 工单 MVP）→ **2b**（组织 scope/虚拟组/HR + 附件）→ **2c**（组织内委托：owner + 组内 admin/member）。详见 [phase2/README.md](./phase2/README.md) §0。
+## 5. 规划与实现发生冲突时
 
-| 子阶段 | 模块 | 核心能力 | 文档 |
-|--------|------|---------|------|
-| **2a** | 资源级鉴权 + 工单 MVP | Registry、属主、assigned 过滤、工单 CRUD+状态机 | [phase2/02-authz-resource.md](./phase2/02-authz-resource.md)、[09-ticket.md](./phase2/09-ticket.md) |
-| **2b-core** | 工单可见性本体 | 策略 B 透明读 + `ticket_visibility`（✅ Step 4 已交付） | [09-ticket §2b](./phase2/09-ticket.md) |
-| **2b-org** | 组织增强 | 虚拟组/scope、BFS 三源、临时成员（✅ Step 5 已交付）；HR 目录同步延后 | [phase2/03](./phase2/03-org-enhance.md)、[09-ticket §2b](./phase2/09-ticket.md) |
-| **2b-ext** | 外延（延后/按需） | 附件、多设备 UI、密码策略、HR 目录同步 | [10-storage](./phase2/10-storage.md)、[01-auth-enhance](./phase2/01-auth-enhance.md) |
-| **2c** | 组织内委托 | owner、org_member_role、组内防提权、工单 Authorize | [phase2/04-org-delegation.md](./phase2/04-org-delegation.md) |
+先查最新批准裁决和当前实现证据，明确是“旧设计被替代”“能力未实现”还是“实现偏离已拍范围”，再更新对应权威页。本路线图只回填状态与入口，避免用改文案悄悄批准新行为。
 
-**部署形态**：单实例 Docker Compose
+## 变更记录
 
-**明确后移（暂缓，无近期计划）**：RS256、~~AK/SK~~（**2026-09-03 已部分实现**：内部服务间 AK/SK HMAC 签名——utils `aksk`；外部 M2M 凭据管理面仍 🚦，见 phase3/09）、缓存平台、审计异步、每资源 Enforcer、微服务拆分（gRPC/IAM 独立/CQRS）→ 未来有真实需求时再评估。
-
----
-
-## Phase 3：通用能力底座 + 内网迁移（重定位后主线）
-
-> **✅ 收口（2026-09-15，口径 A）**：**项目内工程已收口**——M-E（taskrunner）✅ 全收官（容器化部署+回调链联调+周期归档）、M-A（activelist）✅ 全收官（网关化+双栈部署+收尾四件）、M-HR 按拍板=预留接口即可；M-SSO / M-Mig 🚦 外部前置待触发（进内网/迁移窗口）。终验：四档 acceptance FAIL=0 + 四仓全门禁绿；见 [收官报告](../deliverables/software-company/phase3-closure-report-2026-09-15.md)。
->
-> **✅ 翻案注记（2026-10-09，design-decisions §29）**：§23 已翻案——工单自研恢复为主线（工单/风险业务线由 phase5 底座/phase6 风险模块承接）；**M-UAA 已立项**（公司统一权限平台对接，[phase3/17](./phase3/17-uaa-integration.md)——SSO+MQ 权限数据面，触发已达成）。
-> **⚠ 重定位（2026-09-02，design-decisions §23；本节下文为 2026-08-25 暂缓期原文，保留作参考）**：工单自研暂缓（对接内部平台）、Phase 2 封版；**Phase 3 现行主链 = M0 → M-E 事件/任务总线（taskrunner）→ M-A activelist → M-HR → M-SSO🚦 → M-Mig**，排期与里程碑见 [phase3/13](./phase3/13-implementation-plan.md) / [14](./phase3/14-planning-overview.md)；生产加固类（可观测/多实例/HA）降 🚦 随部署形态。
->
-> **决策（2026-08-25，历史）**：当前没有微服务需求，Phase 3 整体暂缓，暂不排期。
-> 优先把单体服务（Phase 1 认证鉴权 + Phase 2 工单业务能力）做扎实、跑稳，再视真实需求决定是否启动 Phase 3。
-> 微服务拆分（gRPC / IAM 独立 / CQRS 等）不在近期计划内，详见 [phase3/11-deployment-split.md](./phase3/11-deployment-split.md) 档位 1（单体多副本）为默认形态。
-
-**核心目标（暂缓期间的方向，非执行项）**：单体服务上的可观测性、可运维性、数据安全。
-
-| 模块 | 核心能力 | 状态 |
-|------|---------|------|
-| 可观测性 | Prometheus Metrics、Grafana、OpenTelemetry | 暂缓（[phase3/01-observability.md](./phase3/01-observability.md) 已编写，按需取用） |
-| 多实例部署 | Casbin Watcher、跨实例事件广播、分布式锁 | 暂缓（单体多副本按需，非必须） |
-| 审计日志 L2 | Redis List 队列，进程崩溃不丢 | 暂缓 |
-| 事件驱动（L1 事件源） | PostgreSQL `ticket_events` 轮询（长期稳态） | 设计就绪（[ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md)）；`ticket_events` 表 Phase 2a 已建（审计用），L1 机制（event_type/processed 列 + 轮询消费者 + 分布式锁）Phase 3 启动时实现 |
-| 异步任务执行器 | Asynq（复用现有 Redis，覆盖审批触发事件 + 预置定时任务） | 设计就绪（[ADR-002](./adr/ADR-002-asynq-async-task-executor.md)）；Phase 3 启动时引入（Phase 2a 无异步业务） |
-| 消息通知中心 | 站内通知 + 邮件 SMTP，由 Asynq worker 异步发送（订阅 `ticket_events` 各事件；也是审批/SLA 违约的下游副作用） | 设计就绪（[ADR-002 场景 D](./adr/ADR-002-asynq-async-task-executor.md) + [10-ticket-business §3](./phase3/10-ticket-business.md#3-通知服务站内--邮件)；用户明确后续基于 Asynq 集成，实现时机待定） |
-| 事件驱动（L2 升级） | PostgreSQL Outbox + Asynq worker 多消费者 | 暂缓 |
-| 微服务拆分 | gRPC、IAM 独立、API Gateway、RS256+JWKS | **不做**（无需求，推迟到未来按需） |
-| 高可用 | PG Cluster、Redis Sentinel、Nginx 负载均衡 | 暂缓（单实例 Docker Compose 先用） |
-| 安全增强 | 异地登录检测、验证码、密码过期、API 限流 | 暂缓（部分可在 Phase 2 顺带做） |
-| 平台增强 | 缓存体系、AK/SK（有调用方时） | 暂缓（无 M2M 调用方） |
-| 运维工具 | Swagger CI、DB 迁移 CI、集成测试自动化 | 部分可在 Phase 2 顺带做 |
-
-**部署形态（当前默认）**：单实例 Docker Compose（PG + Redis + App）。有高可用需求时直接升档位 1（单体多副本 + Nginx），不引入服务拆分。
-
----
-
-## 外部能力集成：activelist（独立服务，已定 ADR-003）+ taskrunner（M-E）
-
-> 详见 [ADR-003-activelist-integration-form](./adr/ADR-003-activelist-integration-form.md)（镜像；**SSOT = activelist 仓库 `docs/ADR-003-integration-contract.md`**）；taskrunner 设计 SSOT = taskrunner 仓库 `docs/taskrunner.md`。**zhuzhao 侧配套细排见 [phase3/16-external-integration](./phase3/16-external-integration.md)**。
-
-- **activelist 形态（2026-09-03 收敛 + M-A 重定位）**：activelist = **独立仓库独立实现的动态数据模型薄层**（`github.com/tracerbiubiubiu/activelist`；~~C2' 同仓库 `internal/activelist/` 包~~ 已被取代）——类型注册 / Schema 演进（方案 D：单一当前版本）/ 动态字段校验 / 数据 CRUD / 存储（PG **独立数据库**、每类型表 + `data` JSONB、id 自增、乐观锁、软删保留、导入幂等=**全量替换**）；**用户侧零权限 + 服务间 AK/SK 验签**，仅经 zhuzhao 网关对外（反代 + 身份断言 = **明文 X-Operator 入 AK/SK 签名覆盖**，2026-09-03 拍板；design-decisions §25.2 修订注）；进程 3→1（仅 apiserver）；与其他里程碑**无链式依赖**。
-- **taskrunner 形态（2026-09-03 定稿，M-E）**：事件/任务总线——独立仓库 + 独立部署 + 独立 Redis + 独立 DB；zhuzhao 作网关（发起/下发/按需查），预置动作 = 回调 zhuzhao 内网端点（业务 handler 在 zhuzhao）；taskrunner 自维护 `job_runs`，`request_id` 关联跨查。
-- **事件（2026-09-03 收敛）**：~~activelist 变更事件落 L1 `ticket_events`~~ **事件归 zhuzhao**——zhuzhao 调 activelist 成功后在业务操作点**显式发布**（M-E taskrunner 形态承接）；activelist 不感知事件、不再实现 Change Stream。
-- **审计（2026-09-03 收敛）**：~~两层审计（activelist 业务层自脱敏 accesslog）~~ **审计归 zhuzhao**——activelist 写接口返回变更后完整文档，zhuzhao 侧记录（落点机制 ⚠️ 待拍板）；activelist 只记技术/运行日志；`X-Request-ID` 贯穿两层。
-- **共享 utils**：✅ **已完成（zhuzhao-utils v0.1.0，2026-09-03）**——9 包（logger/postgres/errcode 等）已抽取并 pin；resource 按 §25.3 拍板留 zhuzhao 不抽；**`aksk` 包已落地**（服务间 HMAC 签名，2026-09-03，16 号 §9 基线）。
-- **排期（2026-09-02 §23.2）**：**M-A（activelist 独立实现）**为 Phase 3 现行主链一段（M0 → M-E → **M-A** → M-HR → M-SSO🚦 → M-Mig，见 [phase3/13](./phase3/13-implementation-plan.md)）；~~「Phase 3 启动后 L1+Asynq 就绪」依赖口径已废~~——M-A 无链式依赖，前置 = ~~共享 utils~~ ✅ + **批次 B 网关化**（§25.5：反代核心/身份断言/限流/menu_apis/审计跳 body，~1 周）。**HR 目录同步已升主链 M-HR**（~~属 Phase 2b~~，2026-09-02）。
-- **与"微服务拆分"决策的关系**：activelist / taskrunner 均为**外部引入的独立能力模块**（独立仓库/库/数据库），不是把 zhuzhao 内部拆出去；与"无微服务拆分需求"不冲突，单列本条。
-- **zhuzhao 侧待办**：批次 B 网关化（= 原 E13 泛化：`app/service/proxy/` + `SetForwardHeaders` + Restrict 资源 `activelist` + accesslog 跳过 body）+ D3 审计实现（✅ 落点已拍板，SSOT=ADR-003「审计落点机制」专节：client 封装层 + `activelist_audit_log` 表；D1–D5 对照见 [16 号](./phase3/16-external-integration.md)）。
-- **启用条件**：对接数据（如封禁 IP 列表、动态活动列表）需要经 zhuzhao 统一鉴权对外暴露时（事件订阅已移交 zhuzhao 侧显式发布）。
-
-**子阶段**：Phase 3 未排期；工单**主链路**（CRUD / 状态机）已在 Phase 2a 实现，**工单模板、工单关联已前移 Phase 2a（迁移 000015/000016）；SLA/通知/审批流/分派/报表仍属 Phase 3（暂缓，设计就绪）**（见 [phase2/README.md](./phase2/README.md)），生产加固类能力按需取用 phase3 文档，**不拆 3a/3b**。
-
----
-
-## Phase 4（已收口）与 Phase 5（十段全清·收口中，`phase5` 分支——2026-10-27 全景审计口径）/ Phase 6（已立项转执行态，设计稿 00–09 号）
-
-> **Phase 4 = 前端 zhuzhao-ui 落地主轴 + 后端穿插增强**（2026-09-21 定稿，不展开于本图——批次排期 SSOT = [phase4/02-implementation-plan](./phase4/02-implementation-plan.md)，总盘点 = [phase4/00](./phase4/00-planning-inventory.md)）。**✅ 已收口（2026-09/10）**：批次总览七件（W0–W5 六波 + P4-9 部署件）+ 穿插池五件（通知/字典/导出/验证码/P2 小件）+ PAT 加成交付，phase4 分支已合回 main。
->
-> **Phase 5 = 前端可视化配置与通用能力底座线**（2026-10-08 立项登记，[design-decisions §27](./design/design-decisions.md)；定位随 S5–S10 底座段归入而扩展——所有者口径：**phase5 = 通用能力，phase6 = 业务能力**）：把工单域与任务域的配置面从手填/JSON 源码兜底升级为前端可视化/人性化，并补齐对象存储富媒体、消息通知与情报缓存底座。**生产目标 = 公司内网，对接场景全部预留接口**（Port+Adapter+config，清单见 [phase5/README §6](./phase5/README.md)）。范围/边界/量级 SSOT = [phase5/README.md](./phase5/README.md)；**前置已满足**（Phase 4 已收口）；**✅ 排期已拍并两轮演进（2026-10-15 拍 Wave 序；2026-10-19 S3a 升格排期：W0 → S5 → S1 → S6 一期 → S2 → S10 → S4 → S9 → **S3a 语义引擎[W13–15]** → S6 二期，一期收口 ≈12–13 周/含二期+引擎 ≈16–17 周；存储后端拍定 RustFS[原 MinIO]）**；十段设计稿 01–10 号（七基线段稿含附录 A 实施级详设）+ 实施计划 11 号（✅ 批准转执行态）齐备，均在 `phase5` 分支（2026-10-15 起——详细计划与实施均在分支内，完成定义全绿后合回 main）；拍板台账 36 项全闭环（2026-10-17 MD 库+2026-10-19 S3a 升格）。
-
-| 段 | 内容 | 性质 | 前置 |
-|----|------|------|------|
-| P5-S1 | 动态表单可视化设计器与字段自动化（12-frontend 阶段2 转正；字段 schema 存储不变；推荐自研设计器 sortablejs+属性面板，form-create designer 作 spike 对照；+ 字段计算/提交时联动——白名单 Go 侧求值器为 S1/S3 公共件） | 纯前端 + 求值器后端件 | 前置已满足 |
-| P5-S2 | 工单流程状态图可视化设计器（states/transitions 画布化；transitions JSONB 不变；现成画布组件 LogicFlow/vue-flow spike 拍板，bpmn.js 排除） | 纯前端为主 | 前置已满足 |
-| P5-S3 | 流程运行语义配置化（转换级 Conditions/Validators+自动分派+动作库框架，蓝本 = [phase3/10](./phase3/10-ticket-business.md)+easy-workflow 对照开发） | 后端为主（**S3a 已升格排期段**——2026-10-19 W13–15 纳入收官；S3b 触发驱动） | S3b（审批流）等首个真实审批场景 |
-| P5-S4 | 管理面配置人性化（taskrunner 任务面：cron 构造器/动作下拉选名 + 创建时预校验/params 按 schema 渲染表单） | 前端为主 + 动作元数据小批 | 前置已满足（元数据面衔接 taskrunner.md「能力目录」定稿方案；**跨服务目录已拍提入 phase6——2026-10-29，全量三步+utils SDK 同批**，S4 单服务读面是否切目录源随实现批拍） |
-| P5-S5 | 对象存储底座与富媒体（**RustFS** 预签名——2026-10-16 拍定，原 MinIO：头像上传/工单附件/富文本字段类型） | 后端底座 + 前端上传面 | 前置已满足（存储底座收编 [phase2/10](./phase2/10-storage.md)/IW2 现成设计实施；富文本字段类型为新增设计） |
-| P5-S6 | 消息通知（企业统一消息平台渠道[全渠道单接口]/消息模板·内容与人员参数化/工单状态流转触发/发送记录；通知配置页自 S4 迁入=通知中心页面族） | 后端为主 + 页面 | 前置已满足（P4-2 通知通道能力延伸，非 §23 翻案） |
-| P5-S7 | AI 助手（平台内对话；长线=AI 协助业务，示例=风险定性分析/自动下发工单——概要登记，形态未定参考 fastclaw） | 概要登记 | LLM 供给与形态启动批拍板（AI 代操作须收敛操作者权限+留痕） |
-| P5-S8 | 数据大屏（只读展示层） | 🚦 触发驱动后置 | 业务数据积累 + 明确受众（所有者明示后置） |
-| P5-S9 | 威胁情报缓存代理（对已有情报应用做能力补全：TTL 7/30 天缓存库，查询先缓存后回源） | 后端为主（通用件） | 前置已满足（上游 API 契约由企业方提供；消费方 = phase6 风险模块 R1 情报源） |
-| P5-S10 | 工单协作与提醒（抄送[手动/节点/按级别规则]/用户标签/待办角标/节点级超时+逾期分级通知/工单审计导出+BK-21——2026-10-09 场景差距分析产出） | 后端为主 + 前端 | 前置已满足（S6 交付后做：抄送与超时通知依赖消息模块） |
-
-### Phase 6：风险管理模块（2026-10-08 立项；**已立项转执行态——六组拍板闭环、启动段 00/06 号批准，2026-10-27/28；合 main 暂缓待 phase5 测试收口**；[design-decisions §28](./design/design-decisions.md)）
-
-> **首个真正的业务模块**：面向内部风险管理团队的软件/系统类技术风险闭环——多数据源汇聚风险单（指纹去重）→ 评估分级 → 派生整改工单（复用工单模块）→ 消息通知 → 工单终态联动风险单关闭。**硬前置 = Phase 5 收口（S1/S2/S6+S10）**；**BK-21 护栏泛化随批**（新资源接 L2）。SSOT = [phase6/README.md](./phase6/README.md)。四段：R1 汇聚台账 / R2 评估分级（四大处置策略+风险接受单） / R3 处置联动 / R4 报表；**收口后扩展批 R5 事件响应台账（D30——攻防演练/护网事件承载，双层时间线+战役分组聚合复盘，~2–3 周；X9 已销——按正常节奏）**；MVP ≈ 4–6 周。**（2026-10-28 级联补注：启动段 [phase6/00 号](./phase6/00-flow-engine-v2.md) 引擎 v2 + [06 号](./phase6/06-ticket-completeness.md) 工单完善批已批准、[07 号](./phase6/07-backlog-and-triggers.md) 挂账/触发总索引已建——本行「未排期/4–6 周」系初估，现行量级与拍板 SSOT = [phase6/05 号 §6.8 T1](./phase6/05-launch-batch.md)（R1 开工前 ≈7–8 周/整体 ≈13–16 周）；roadmap 本段其余细节以 phase6/README 为准。）****
-
-### Phase 7–11：安全运营平台后续阶段（研究稿，未立项）
-
-> 定位 = 接入扩源 → 自动化能力中心 → 处置闭环与编排引擎 MVP → SOAR playbook 迁回 → 智能面（门控）。**phase7/8/9 总纲已蒸馏 docs/**（2026-10-29 建档：`docs/phase7/`、`docs/phase8/`、`docs/phase9/` 各 README——已拍决策汇编+范围索引，未立项；细化设计随各阶段立项批）——完整形态/切片/出口标准/时间线源头 = [deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md](../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md)（研究稿，D 系拍板状态见其 README）；docs 内 phase7/8 引用：phase5 README §6 端口表与 phase6 07 号指向该稿；债台账 C-21 已于 2026-10-27 升格 C-21+（任务数据面），**不再等 phase7/8**。立项时建 docs/phaseN/ 并回灌本段；deliverables 归位 docs/ 见债台账 L-1。
-
----
-
-## 预留扩展（按需启用）
-
-| 能力 | 预留点 | 启用条件 |
-|------|--------|----------|
-| 多租户 | tenant_id + Casbin 模型 | 有多客户需求时 |
-| 第三方登录 | oauth_provider + oauth_id | 接 SSO/OAuth 时 |
-| 消息队列（Kafka） | 审计日志通道可替换 | 日志量大或需重放时 |
-| K8s 部署 | Docker Compose 可平滑迁移 | 团队有 K8s 运维能力时 |
-| 密码过期策略 | users 表无额外字段 | 合规要求时 |
-
----
-
-## 文档体系总览
-
-```
-docs/
-├── design/                     # 架构设计（高层）
-│   ├── architecture.md         # 总体架构文档
-│   ├── design-decisions.md     # 设计决策记录
-│   └── system-comparison.md    # 新旧系统对比
-├── proposal/                   # 方案提案（详细）
-│   ├── overview.md             # 总览
-│   ├── auth-design.md          # 认证设计
-│   ├── resource-model.md       # 资源模型
-│   ├── data-init.md            # 数据初始化
-│   └── deployment-evolution.md # 部署演进
-├── modules/                    # 模块设计（跨阶段）
-│   ├── auth.md / authz.md / user.md / role.md
-│   ├── organization.md / menu.md / audit.md
-│   ├── middleware.md / ticket.md
-├── phase1/                     # Phase 1 详细实现计划
-│   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   ├── 01-infra.md ~ 10-concurrency.md
-├── phase2/                     # Phase 2 详细实现计划
-│   ├── README.md               # 大纲 + 边界 + 实施顺序
-│   └── 01-auth-enhance ~ 04-org-delegation + 09-ticket + 10-storage（Phase 2 全套已编写）
-├── phase3/                     # 生产加固能力（暂缓，按需取用）
-│   ├── README.md               # 大纲 + 边界 + 实施顺序（暂缓说明）
-│   ├── 01-observability.md     # 已编写
-│   ├── 10-ticket-business.md   # 已编写（工单业务能力闭环 SSOT）
-│   ├── 11-deployment-split.md  # 已编写（部署级分离方案）
-│   └── 02–09 已编写（能力域/阶段文档，2026-09 起陆续完成；按需启用）
-├── phase4/                     # Phase 4 前端落地（✅ 已收口：00 盘点/01 前端设计/02 实施计划/03 场景矩阵）
-├── phase5/                     # Phase 5 十段全清·收口中（通用能力底座线——phase5 分支，待合 main）
-├── phase6/                     # Phase 6 风险管理模块（段级稿 00–09 号；已立项转执行态——00/06 已批准、09 草案待拍、合 main 暂缓待 phase5 测试收口）
-├── roadmap.md                  # 本文：跨阶段总览
-├── api/                        # API 文档
-├── ops/                        # 运维文档
-└── adr/                        # 架构决策记录
-```
-
-**文档层级关系**：
-- `design/` — 为什么这样设计（决策与权衡）
-- `proposal/` — 具体方案是什么（详细提案）
-- `modules/` — 模块完整设计（跨阶段的完整形态）
-- `phase1/` `phase2/` `phase3/` `phase4/` `phase5/` — 每阶段做什么（分阶段实施计划）
-- `roadmap.md` — 各阶段总览（本文）
+| 日期 | 变更 |
+|---|---|
+| 2026-11-08 | 合并重复阶段/目录树/旧暂缓表，保留阶段承接与未交付边界；旧完整路线图留 Git 历史及本地参考。 |

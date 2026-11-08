@@ -1,7 +1,10 @@
 # Phase 1 编码前决策对照表
 
-> 开写正式实现前，对 **文档已定、骨架代码未对齐** 的两处契约做拍板对照。  
-> SSOT：`architecture.md` §16/§17、`api/errcode.md` §5、`proposal/data-init.md` menu_apis。  
+> **适用范围（2026-11-08整理）**：这是Phase 1编码前决定，表中未建表/未接线等状态属于当时基线；当前结构、依赖和接口以模块文档及源码为准，旧示意不是复制入口。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
+> 开写正式实现前，对 **文档已定、骨架代码未对齐** 的两处契约做拍板对照。
+> SSOT：`architecture.md` §16/§17、`docs/api/errcode.md` §5、`proposal/data-init.md` menu_apis。
 > 创建日期：2026-08-14
 
 ---
@@ -161,11 +164,11 @@ ErrCannotRemoveLastSuperadmin = New(30006, "不能移除最后一个超级管理
 
 ## 推荐阅读顺序（开写前）
 
-1. [00-pre-coding-decisions.md](./00-pre-coding-decisions.md) — 决策 1–4 均已关闭  
-2. [README.md](./README.md) §1.3 + **§2.3 里程碑** — 按 M1→M7 推进，勿死跟旧线性 6→7→8→9  
-3. [../api/errcode.md](../api/errcode.md) — code 清单  
-4. [../proposal/data-init.md](../proposal/data-init.md) — menu_apis、种子  
-5. 按批次打开 `01`~`10` 对应文档；**10-concurrency** 在 Step 5+ 写 AssignMenus 时必读  
+1. [00-pre-coding-decisions.md](./00-pre-coding-decisions.md) — 决策 1–4 均已关闭
+2. [README.md](./README.md) §1.3 + **§2.3 里程碑** — 按 M1→M7 推进，勿死跟旧线性 6→7→8→9
+3. [../api/errcode.md](../api/errcode.md) — code 清单
+4. [../proposal/data-init.md](../proposal/data-init.md) — menu_apis、种子
+5. 按批次打开 `01`~`10` 对应文档；**10-concurrency** 在 Step 5+ 写 AssignMenus 时必读
 
 ---
 

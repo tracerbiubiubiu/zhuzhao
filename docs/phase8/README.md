@@ -1,6 +1,8 @@
 # Phase 8 — 自动化能力中心 = SOAR 能力迁移（总纲）
 
-> **文档定位**：phase8 规划总纲（2026-10-29 建档）——**已拍决策汇编 + 范围索引**，蒸馏自愿景稿 [07-phased-plan §4.3](../../deliverables/software-company/secops-platform-vision-2026-10/07-phased-plan.md) 与 D 系拍板。细化设计稿随立项批拆建。
+> **阅读顺序**：先核状态与上一阶段出口，再看核心切片、可滑补全、外部输入和DoD。Phase8仍为规划总纲，“已拍”表示范围决定，未立项/未实施；细化稿须在前置输入到位后另立，不用当前代码名或示意API冒充已可用能力。
+
+> **文档定位**：phase8 规划总纲（2026-10-29 建档）——**已拍决策汇编 + 范围索引**，蒸馏自愿景稿 [07-phased-plan §4.3](../proposal/secops-platform/07-phased-plan.md) 与 D 系拍板。细化设计稿随立项批拆建。
 > **状态 = 规划期（未立项未排期）**——立项前置 = phase7 收口 + X3/X6/X7 输入。
 > **量级口径**：6–9 周（07 号 §3；原 8–11 周去掉 DAG MVP 加 SOAR 集成）。
 
@@ -24,7 +26,7 @@
 1. **脚本契约 + sandbox-runner**：脚本契约已定稿（愿景稿 05 号，拍板 S1–S8——manifest / JSON Schema I/O / 日志工件分离 / secret 注入 / 退出码语义）；sandbox-runner 第一档隔离（03-A2；D28 出站白名单/回调超时/出站代理 + dispatch·report 协议/长任务租约）。
 2. **脚本库管理面**：上传 / 审批工单 / 版本 / 预构建 / 运行历史（审批链 ticket_type = X7 立项拍）。
 3. **预定义任务目录**：SOAR 现有 apps/actions 按使用频率逐个迁为 `actions(kind=connector|script)`，各带 JSON Schema I/O；迁移期两边并存能力以谁为准逐个拍（04-§4.4）。
-4. **SOAR 双向集成**：入 = SOAR 以 service account 调 `/v1/action-invocations` 执行平台 Action、结果经出站 webhook 或轮询取回；出 = `soar.playbook.run` 连接器动作触发 SOAR playbook；SOAR 产出经统一接入层回流为事件。
+4. **SOAR 双向集成**：入 = SOAR拟以service account调用示意端点`/v1/action-invocations`（当前未实现，实施时按GET/POST与标识入body公约定最终路径） 执行平台 Action、结果经出站 webhook 或轮询取回；出 = `soar.playbook.run` 连接器动作触发 SOAR playbook；SOAR 产出经统一接入层回流为事件。
 5. **工单动作面板（F6）+ 自助任务门（F18）**：处置人不离工单页跑富化/处置，表单由 schema 生成。
 6. **声明式 HTTP 连接器通用件**（04-§4.9）+ **凭据管理面（F13）**。
 7. **job_runs.result 摘要列 + 拉取契约**（C-21+/附录 B——任务结果留存的历史挂账在此收口）。
@@ -36,7 +38,7 @@
 
 ## 5. 边界与纪律
 
-- **脚本内调用其它 Action 默认不开**（防隐式编排）——组合由编排层（Stage 1 = SOAR）负责；SDK `zh.actions.invoke()` 受 `platformAccess` 白名单约束。
+- **脚本内调用其它 Action 默认不开**（防隐式编排）——组合由编排层（Stage 1 = SOAR）负责；规划SDK名`zh.actions.invoke()`（当前不可调用）受 `platformAccess` 白名单约束。
 - **自研 DAG 引擎 / playbook 设计器不做**——Stage 2 既定排期（phase9 引擎 MVP → phase10 迁移退役，D1），非触发驱动。
 
 ## 6. 外部输入（阻塞精估）

@@ -1,5 +1,7 @@
 # 跨项目借鉴复核：Duke1616/ecmdb（2026-08-26）
 
+> **历史档案（2026-11-08整理）**：本篇保留原审查时点、发现编号、原建议及撤回/复验过程，不是当前待办清单。后续状态见[项目控制台](../11-project-control.md)，档案之间的承接关系见[历史索引](README.md)。原“当前/唯一执行依据”均限定于文内注明的历史基线。
+
 > 目的：全面复核 `github.com/Duke1616/ecmdb`（CMDB+工单一体化，Go+MongoDB，RBAC/IAM/工作流/定时/告警均来自外部库 eiam/easy-workflow/etask/ealert），对比 zhuzhao 当前模块，找出**值得借鉴**的点。
 > 工作流引擎部分单独见 `phase3/10-ticket-business.md §4.8`。
 > 结论先行：**ecmdb 在 IAM/组织/审计/中间件 四块弱于 zhuzhao（它把 RBAC 全委托给 eiam、用物理删除、无脱敏审计）；zhuzhao 自研的 Casbin+ResourceRegistry+ltree+软删+脱敏审计 更成熟。可借鉴点集中在 zhuzhao 尚未建或待增强的领域。**

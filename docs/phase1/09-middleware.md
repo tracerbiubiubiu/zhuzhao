@@ -1,5 +1,8 @@
 # 09 - 中间件模块（middleware）
 
+> **适用范围（2026-11-08整理）**：当前RequestID/AccessLogger为本仓自写，旧gin-contrib请求ID示例已不适用；自服务按注册标签而非路径白名单。JWT需执行B02纪元安全判定；旧authed组直接挂users示意没有Casbin，不能作为业务路由模板。当前组合以internal/router/router.go和middleware源码为准。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 4**（JWT 链）+ **Step 5**（Casbin 链，见 [03-authz](./03-authz.md)）共同构成鉴权中间件。  
 > 本文档含 JWT / Casbin **完整伪代码**；实施时分两 Step 交付，见 [README §2.1](./README.md#21-主线step-15必须串行)。
 
@@ -56,6 +59,8 @@ Step 4 完成后：可测 login / refresh / JWT 401；受保护路由有 Token �
 ---
 
 ## 核心设计思路
+
+> **现行校准（2026-11-08）**：下面为早期示意；业务路由必须进入实际biz/Casbin组，users只挂authed的简图不可复制。selfService按标签注册，JWT需密码纪元校验。
 
 ### 中间件链路
 
@@ -229,6 +234,8 @@ type RoleFetcher interface {
     FetchRoleCodes(ctx context.Context, userID int64) ([]string, error)
 }
 ```
+
+> **现行校准（2026-11-08）**：此标题及下面示例保留原选型，不是当前依赖。实际internal/middleware/logger.go的RequestID/AccessLogger自写并按reqid注入request context，勿据“无需自写”恢复旧实现。
 
 ### RequestID（gin-contrib/requestid）
 

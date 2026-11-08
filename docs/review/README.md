@@ -1,33 +1,27 @@
-# review/ — 审查记录
+# 审查与项目控制
 
-本目录三层结构；长期审计方法与时点报告分开维护：
+本目录把当前控制、审查方法和固定时点证据分开，避免从旧流水推导现状。维护规则见[文档维护约定](../documentation.md)。
 
-- [首次五仓全面审计总报告（2026-11-06）](../../deliverables/software-company/zhuzhao-ecosystem-full-audit-2026-11-06.md)：设计演进/实现/关键实践与二次验证收口，7P0/39P1在该固定窗口关闭；当时Go漏洞扫描NOT_RUN。11-07的安全补证/修复及保留test承接见B16/B17，main/生产仍未承接。下列分批进度保留历史证据，当前以各报告最终节及控制台为准。
+## 从这里开始
 
-- [audit-playbook.md](./audit-playbook.md) — **可复用全面审计指南**：设计→实现→关键实践，跨仓、前端功能/交互/视觉、七阶段、证据与报告模板；每次审计另建执行卡，不在指南保存当次基线或结论。
-- 正式发现：[B02 认证撤权/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b02-auth-revocation-2026-11-04.md)、[B05 验收脚本隔离/P1·P2](../../deliverables/software-company/zhuzhao-ecosystem-audit-b05-acceptance-isolation-2026-11-04.md)，保留基线、代码锚点与必要验证结论；B02 由 `10f3f94`、B05 由 `4de9070` 固定快照独立复验在代码层关闭（完整 hash 与失败/成功证据见报告末节），常驻 app 部署状态另计。
-- [B09 临时成员过期/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b09-membership-expiry-2026-11-05.md)：原业务快照连续三轮确认过期委托缺口，已由 `d2ab771` 固定提交独立复验在代码层关闭；test app已承接最终dc3，未合main/生产。
-- [B06 存储并发与事务冲突](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)：实物误删P0两项、额度P1、既有BK11残留P1；`d07f560` / `475b7ac` 固定提交代码复验关闭，test已承接最终dc3，主线/生产待承接，保留失败轮与边界。
-- [B06 流程/提醒/调度续批](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)：P0快照、提醒/调度/通知身份/情报单飞等F05–F10已固定联合12401aa全量门禁关闭；F11–F20及其后笔同类也已在最终dc3完整门禁关闭，早前RustFS初始化失败轮保留。
-- [B07 兄弟服务与公共库](../../deliverables/software-company/zhuzhao-ecosystem-audit-b07-sibling-services-2026-11-06.md)：十一项已证实发现，含两项既有panic债去重、网关413与生产探针；AL/TR固定复验及test升级分列，utils读错Close已正式pin到主仓bd05/AL60e候选、最终dc3/AL60联合门禁通过，AL静默覆盖按P0。
-- [B08 前端功能、交互与视觉](../../deliverables/software-company/zhuzhao-ecosystem-audit-b08-frontend-experience-2026-11-06.md)：十四项功能/交互/视觉发现，原14项限定范围复验关闭；c9/dc3/AL60/TR eb3六件与41首过及Chrome最终通过，原失败/HTTP429与全站认证边界保留，视觉与全量认证边界分列。
-- [B10 现行文档对账](../../deliverables/software-company/zhuzhao-ecosystem-audit-b10-document-alignment-2026-11-06.md)：五组设计/导航事实校准，含菜单及工单L1速查P1失真；历史留存，L-5主体未销账。
-- [B11 当前L1全角色/全路由矩阵](../../deliverables/software-company/zhuzhao-ecosystem-audit-b11-permission-matrix-2026-11-06.md)：19主体八轮共25840矩阵请求/5440交叉，差异0；权限行数与端点数、L1到达与业务成功分别计，不替代L2/L3。
-- [B12 错误码登记与守卫](../../deliverables/software-company/zhuzhao-ecosystem-audit-b12-error-contract-2026-11-06.md)：77当前定义补全、双向测试与四类稳定变异，最终dc3完整门禁通过。
-- [B13 环境恢复与真实Chrome](../../deliverables/software-company/zhuzhao-ecosystem-audit-b13-environment-chrome-2026-11-06.md)：dev保卷恢复、测试准确镜像/端口及专属浏览器走查，启动修复与未覆盖边界分列。
-- [B14 资料写覆盖安全状态/P0](../../deliverables/software-company/zhuzhao-ecosystem-audit-b14-user-security-state-2026-11-06.md)：原两类各八轮、两资料入口修复32场/稳定变异及原生TestMain复验；最终dc3完整门禁通过并已test承接，未合main/生产。
-- [B15 接口/工具/迁移边界](../../deliverables/software-company/zhuzhao-ecosystem-audit-b15-contract-migration-boundaries-2026-11-06.md)：存储ID/Wire入口/定制引用回滚前置/W5限流节奏四P2记账；撤销模板及MIG-S04运行P1候选，不把静态线索计作当前越权。
-- [B16/B17 Phase5五仓安全验证与修复](../../deliverables/software-company/zhuzhao-ecosystem-audit-b16-security-validation-2026-11-07.md)：56→10分支完整归档，四source/三新ELF复扫仅未消费OpenPGP模块提示，配置与Go依赖修复及CI/253/81/96次版本守卫变异通过；保留test已Go1.26.10，原生dev/main/生产未切，不称绝对零漏洞。
-- 本地执行卡、过程报告、日志和快照默认存 `.codex/audits/<轮次>/`，不受 Git 跟踪或进入 Docker 上下文；当前轮为 `ECO-20261104`。共享索引不链接未纳管文件。
+- [项目控制台](11-project-control.md)：当前能力矩阵、健康状态、81对迁移地图及历史分流出处。每次改动后回填；当前开放债再进入Phase5/6台账。
+- [全面审计指南](audit-playbook.md)：可复用的范围、覆盖、证据与复验方法。每次审计另建本地执行卡，不把当前基线写成永久方法。
+- [BK11死锁复盘与dbtx决议](13-bk11-pool-deadlock-2026-10-26.md)：根因/修复历史与已批准ticket试点共存；试点尚未实施，保留原路径供设计引用。
 
-- **顶层（活文档+近期快照）**：
-  - [11-project-control.md](./11-project-control.md) — 项目控制台**活文档**：能力矩阵 / 健康状态（遗留问题 SSOT，§6）/ Phase 3 前置随行分类（§8）/ 迁移地图。**每次改动后回填**（AGENTS.md 铁律），引用惯例 = 直接按路径 `docs/review/11-project-control.md`。
-  - [12-b13-permission-matrix-2026-09-26.md](./12-b13-permission-matrix-2026-09-26.md) — B13 权限覆盖矩阵 point-in-time 快照（79 端点/8 盲区定性/IAM 四平面边界）——W1 词表终态基线，词表再动时新生一份而非改旧。
-  - [14-b13-permission-matrix-2026-10-26.md](./14-b13-permission-matrix-2026-10-26.md) — B13 权限覆盖矩阵复审（phase5 终态 point-in-time：123 menu_apis 绑定+45 豁免全量对账——通过；B-19 销账件）。
-  - [13-bk11-pool-deadlock-2026-10-26.md](./13-bk11-pool-deadlock-2026-10-26.md) — BK11 连接池死锁复盘（三层根因/已交付修复 `039aca6`/业界三档对照/彻底方案 dbtx 连接解析待拍板）——事务窗口嵌套池取类缺陷的 SSOT。
+## 正式报告
 
-- **[archive/](./archive/)**：Phase 1–2 历史快照（00–10 共 13 篇）——各阶段系统性审查/验收/文档体系审查报告，发现与处置已全部闭环（闭环证据见 [11 §6](./11-project-control.md)）。编号即时间序，04 有两篇系同期各自成文的历史现状（维持不重排）。
+本轮目录整理与验证见[五仓文档归位记录](reports/documentation-reorganization-2026-11-08.md)；旧审计结论按各自冻结时点保留。
 
-- **后续新报告**：带日期戳的定期审计（`NN-topic-YYYY-MM-DD.md`）直接放顶层；闭环后移入 archive/。
+[reports/README.md](reports/README.md)完整索引41篇正式报告。追本轮修复先读[11-08复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27最终收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，再按需要读[11-06全量总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及分批原证据。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号。
 
-引用本文目录：[docs/README.md](../README.md) §review。
+报告保留原hash、失败、NOT_RUN、变异验证与运行边界；固定窗口通过不等于main/生产已承接。12/14权限矩阵已归reports，仍保留point-in-time性质；当前L1全角色/路由验证以B11所述窗口为准。
+
+## 历史档案与规划来源
+
+[archive/README.md](archive/README.md)收录原Phase1/2审查12篇，以及旧overview、执行计划和从控制台抽离的日期流水。合并报告可能是已删除原稿的唯一证据，保留发现编号、误报裁定与后继关系，不按日期批量删除。
+
+[安全运营平台规划](../proposal/secops-platform/README.md)的10篇资料含已拍决策与未来能力设计，属于proposal来源；当前实施状态回到各phase README。历史报告与未来方案承担不同职责。
+
+## 材料归属
+
+正式报告进入reports；原始执行卡、日志、截图、快照和临时探针只放ignored `.codex/audits/<轮次>/`。共享索引链接纳管内容，本机原始材料按报告说明恢复，不把本机路径当他人可用入口。

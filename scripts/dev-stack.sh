@@ -85,7 +85,7 @@ up() {
   compose "${AROOT}" "${APROJECT}" "${AFILE}" up -d --wait --wait-timeout "${WAIT_TIMEOUT}" postgres
   echo "── ③ taskrunner 容器部署栈（${TPROJECT}，仅内网）──"
   compose "${TROOT}" "${TPROJECT}" "${TFILE}" up -d --wait --wait-timeout "${WAIT_TIMEOUT}"
-  echo "✅ 三组 Compose 资源就绪；宿主 app/AL/taskrunner/vite 与回调链另行检查（deployments/README.md）"
+  echo "✅ 三组 Compose 资源就绪；宿主 app/AL/taskrunner/vite 与回调链另行检查（docs/ops/deployment.md）"
 }
 down() {
   compose "${TROOT}" "${TPROJECT}" "${TFILE}" down

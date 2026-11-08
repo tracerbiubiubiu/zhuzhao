@@ -1,12 +1,14 @@
 # 06 — P6-R0b 工单完善批（设计稿）
 
+> **阅读状态（2026-11-08）**：本文的✅/“已拍”表示设计确认，不表示风险域或流程v2已经实现。本轮只校准文档；执行仍须Phase5检查/审计/修复收口，经后续授权合main并核验整合基线，再从main切Phase6。入口与分工见[阶段总纲](README.md)，执行顺序与量级总账见[05号](05-launch-batch.md)。
+
 > **文档定位**：段级设计稿（2026-10-27 建档）——**工单三方对标批**（ficus-oa / eflow+etask / zhuzhao 代码级 14 维度盘点）产出。**状态 = 已批准（2026-10-27 所有者）——批范围 B 档**：件 1–10（件 2 并入 [00 号](00-flow-engine-v2.md) B0-2 后本批九件（+第五组件 14+件 16=B 档十一件——§7 拍板 1 口径）；件 11 归 [04 号](04-r4-metrics-reports.md) 拍板 3、件 12 留 S3b 对表）；与 00 号**交错**执行（拍板 4）。候选件 13–15 与剩余拍板点见 §7。件 17–18 随 phase6 执行（§3.18/3.19）；**件 19–22（2026-11-03 增——工单表单易用性组，§3.20–3.23）随立项拍波次（§6 B4 草案行）**；**件 23（2026-11-04 增——详情页整页改版，§3.24）随立项拍波次**。总纲与拍板状态 = [README](README.md)。
 > **立项由来**（2026-10-27 所有者「按建议先改文档」）：三方对比判定 zhuzhao 工单在**权限/表单/通知/并发工程**四项领先两参考系，差距集中在 12 件低成本完善件（单件 0.5–2 天）——本批把工单从「基座可用」补到「比较完善」；结构性差距（会签/或签/认领等**任务行语义族**）归 S3b 触发驱动不入本批（两参考系同样缺加签/委托/假期代理，非门槛项）。
 > **量级**：B 档十一件 ≈ **10.5–12.5 天**单人工（三波 §6 直加上界 13.5——B2 波前后端可交叠取紧界；件 2 已移 B0-2；件 14 于 2026-10-27 第五组入批；件 16 本地草稿 2026-10-28 增）。件 19–23（2026-11-03/04 增）≈ **7–9 天**未计入 B 档——随立项拍波次（§6 B4 草案行）。
 
 ## 1. 定位与一句话
 
-十二件小批、零新引擎：**1 件 R3 硬前置**（转换时字段采集——L3 处理人无字段编辑权缺口的解法）+ **4 件体验件**（运行态只读图/四视角/催办/字段类型）+ **4 件工程件**（events payload/类型包导入导出/转办/撤回）+ **3 件集成件**（webhook adapter/固定统计/组织级分派）；全部复用既有设施（transition_meta/exprcalc/S6 链/BK-21 三件套/000062 cc 表），与 00 号互为邻接（件 9 依赖 B0-4 条件词表）。
+本稿从最初十二件扩展为1–23号登记集合，**件号不等于本批范围**：B档十一件（件2移B0-2、14/16补入）是已批准核心；11归R4、12归S3b；17/18随Phase6；19–23的候选版式/波次/代拍方向仍等入口评审。全部复用既有设施，不新造任务行语义引擎，硬依赖按§6/§7执行。
 
 ## 2. 现状基线（代码级锚点，2026-10-27 盘点）
 
@@ -21,9 +23,9 @@
 - **处理人不能转办**：L3 assign=scope 主管(+委托)——ficus DelegateTask/eflow Transfer 均为处理人自办动作。
 - **物理删断审计链**：Delete 事务+deleted 事件，FK SET NULL 随库存活但 ticket_id 失联。
 - **零聚合统计端点**（[04 号](04-r4-metrics-reports.md) §2 勘查实证同源）。
-- **组织级分派仅日志**：`dispatch_service.go` :62「phase6 资产路由场景再扩」。
+- **组织级分派仅日志**：`internal/service/ticket/dispatch_service.go`的`DispatchService.OnAfterCreate`「phase6 资产路由场景再扩」。
 
-## 3. 范围条目（P1 十二件）
+## 3. 逐项设计（1–23号；批准、触发与候选以头注/§7分组为准）
 
 ### 3.1 件 1 转换时字段采集（R3 硬前置，~2–3 天）
 
@@ -44,7 +46,7 @@
 
 ### 3.4 件 4 手动催办（~1 天，登记升格）
 
-- `POST /tickets/urge`（body: ticket_id——standards §3 POST URL 不携业务信息）→ emit `ticket.urged`（事件词表 13→14）→ S6 规则种子（收件人=assignee）；**60s 同单同人节流复用** notifyThrottle 键径；授权=创建人∨抄送人∨admin（处理人不催自己）。
+- `POST /tickets/urge`（body: ticket_id——standards §3 POST URL 不携业务信息）→ emit `ticket.urged`（实施时以validEventActions实际集合为基线增加键，不沿用历史数量）→ S6 规则种子（收件人=assignee）；**60s 同单同人节流复用** notifyThrottle 键径；授权=创建人∨抄送人∨admin（处理人不催自己）。
 - [phase5/10 号](../phase5/10-s10-ticket-collaboration.md) 登记的「手动=即时单发、自动=水位多轮」互补形态兑现；R3 场景风险 owner 催整改单为必然操作。
 
 ### 3.5 件 5 user/dept 字段类型（~1–2 天）
@@ -64,7 +66,7 @@
 
 ### 3.8 件 8 处理人转办（~1 天）
 
-- `POST /tickets/transfer`（body: ticket_id + to_user_id + comment?）——L3 判定=**当前处理人**(+)，目标须同 scope 可见；复用 Assign 写事务（assigned_to 更新+事件）；`ticket.transferred` 入事件词表（与 urged 同批 13→14→15 或合并一次迁移）。
+- `POST /tickets/transfer`（body: ticket_id + to_user_id + comment?）——L3 判定=**当前处理人**(+)，目标须同 scope 可见；复用 Assign 写事务（assigned_to 更新+事件）；`ticket.transferred` 入事件词表（与urged按实际键集合统一入表并跑全键契约守卫，不按旧13/14/15计数验收）。
 - 蓝本：ficus DelegateTask（防重复委托）/ eflow Transfer。**L3 判定与目标校验同步补 target user active 校验**（补强④，随件 5 同批）。
 
 ### 3.9 件 9 发起人撤回（~0.5–1 天，纯配置+谓词）
@@ -84,7 +86,7 @@
 
 ### 3.12 件 12 组织级分派落点（**B 档不含**——留 S3b 对表再拍；建议案 A 维持）
 
-- 现状 target_user=nil 仅日志（`dispatch_service.go` :62）。**案 A（建议）=派 target_org 部门负责人**（依赖 Week 0 HR mock 部门负责人轴，零新表）；案 B=候选池+认领（tickets 加 assigned_org 列+`POST /tickets/claim`+「待认领」视图，ficus ClaimNodeTask 蓝本）——B 与 S3b 任务行模型同族，建议留 S3b 一并。
+- 现状 target_user=nil 仅日志（`internal/service/ticket/dispatch_service.go`的`DispatchService.OnAfterCreate`）。**案 A（建议）=派 target_org 部门负责人**（依赖 Week 0 HR mock 部门负责人轴，零新表）；案 B=候选池+认领（tickets 加 assigned_org 列+`POST /tickets/claim`+「待认领」视图，ficus ClaimNodeTask 蓝本）——B 与 S3b 任务行模型同族，建议留 S3b 一并。
 
 ### 3.13 候选件 13 邮件 SMTP ChannelSender adapter（~1 天；**2026-10-27 降为触发驱动**——H-2 钉钉 adapter 承担个人到达）
 
@@ -220,6 +222,18 @@
 ## 10. 验收口径（能力语言，走查式）
 
 处理人在 in_progress→pending_verify 转换对话框填必填「整改措施」并随转换同事务落库、驳回边要求必填说明；创建人撤回未受理单成功、已受理被拒且理由可读；处理人转办同 scope 同事后留痕可查；详情页流程图当前态高亮+已走边点亮；四视角 tab 与 cc_me 筛选计数与 badges/消息中心一致；owner 手动催办后处理人站内收到、60s 内重复催办被节流；详情时间线可见字段级变更 diff；dev 导出类型包在 prod dry-run 报冲突后按策略导入成功；webhook 规则配置后外部端点收到合法 HMAC 签名事件；（若拍件 11）统计端点行集与列表同筛选可见集一致（L2 不旁路）；（件 19–22 拍入批后）管理员以纯下拉/点选配置分组·显隐·公式零手写表达式、设计器整页三栏各自内滚、发起页 col_span 多列随宽幅容器生效、radio/rating/file 经 HTTP 保存成功（件 22 复现测试转绿）；（件 23 拍入批后）处理人在详情页主按钮一眼识别动词动作、管理动作收「更多操作」物理分离、双栏各自内滚零页面滚动、附件写钮按 capabilities fail-closed、SLA 剩余/超时态可见。
+
+
+## 整理保留的历史文本（2026-11-08）
+
+<details>
+<summary>展开查看被现行说明取代的旧估算、候选与时点口径</summary>
+
+以下仅用于追溯，不是当前实施合同；有效说明与待定约束以正文标注为准。原有日期变更记录继续保留。
+
+> 十二件小批、零新引擎：**1 件 R3 硬前置**（转换时字段采集——L3 处理人无字段编辑权缺口的解法）+ **4 件体验件**（运行态只读图/四视角/催办/字段类型）+ **4 件工程件**（events payload/类型包导入导出/转办/撤回）+ **3 件集成件**（webhook adapter/固定统计/组织级分派）；全部复用既有设施（transition_meta/exprcalc/S6 链/BK-21 三件套/000062 cc 表），与 00 号互为邻接（件 9 依赖 B0-4 条件词表）。
+
+</details>
 
 ## 变更记录
 

@@ -1,5 +1,8 @@
 # 12 - Phase 1 实现核验与验收报告 + Phase 2 衔接分析
 
+> **适用范围（2026-11-08整理）**：本报告保留注明日期/分支的27条验收及交接结果，不代表2026-11-08重新执行门禁。Registry stub、无lint、文档未齐等是当时状态；当前结果须查本次精确HEAD收据，旧种子GET+POST语义已被B案取代。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 核验日期：2026-08-19  
 > 核验分支：`feature/step-1-infra`（含 6 个修复提交 8be8205..d54bda6，工作区干净）  
 > 方法：全量阅读 docs/（design / modules / api / proposal / phase1 / phase2 / phase3 / roadmap）后，以 [phase1/README §1.3](./README.md#13-验收标准) 的 27 个验收用例 + 10 份模块计划为基准，逐项比对 `internal/`、`migrations/`、`scripts/`、`deployments/` 实现代码；含 git 考古（对关键设计做提交历史溯源）。  

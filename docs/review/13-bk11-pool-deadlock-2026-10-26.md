@@ -1,8 +1,10 @@
 # 13 — BK11 连接池死锁复盘 — 事务窗口嵌套池取的根因、修复与彻底方案（2026-10-26）
 
-> **2026-11-06 ECO-B06 复验**：§8既有P2-1 `resolveClosedOrMissing` 残留已在独立分支提交 `475b7ac896c94f9c7ef29d27236feff1eb1269e9`，复用两个零行写入口传入的 `rowExec`。池满与自身事务状态三类断言原各8/8红、修复八轮绿，移除复用各8/8红；固定归档的lint/单元/完整集成/覆盖率、原样253/0/0和81对往返均通过，代码层关闭。主线/常驻部署待承接；dbtx传播器、负向守卫、推广与请求deadline仍独立待实施。完整失败/成功证据见[B06报告](../../deliverables/software-company/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。
+> **2026-11-06 ECO-B06 复验**：§8既有P2-1 `resolveClosedOrMissing` 残留已在独立分支提交 `475b7ac896c94f9c7ef29d27236feff1eb1269e9`，复用两个零行写入口传入的 `rowExec`。池满与自身事务状态三类断言原各8/8红、修复八轮绿，移除复用各8/8红；固定归档的lint/单元/完整集成/覆盖率、原样253/0/0和81对往返均通过，代码层关闭。主线/常驻部署待承接；dbtx传播器、负向守卫、推广与请求deadline仍独立待实施。完整失败/成功证据见[B06报告](reports/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)。
 
-> **文档定位**：point-in-time 复盘报告——`TestBK11_CreateVsMoveHammer` CI 挂死（10-24 起 15 run 挂 7 笔）的完整证据链、三层根因、已交付修复（`039aca6`，CI 绿）与彻底方案登记（连接解析跟随 ctx，**待拍板**）。
+> **当前阅读入口**：先读§8决策状态。B06/B23的具体q/ctx复用已关闭；通用dbtx、推广和deadline边界仍独立。运行承接看[项目控制台](11-project-control.md)，原日期段的“待承接”不反写成后来部署证据。
+
+> **文档定位**：历史复盘 + 有效设计决议——`TestBK11_CreateVsMoveHammer` CI 挂死（10-24 起 15 run 挂 7 笔）的完整证据链、三层根因、已交付修复（`039aca6`，CI 绿）与彻底方案登记（连接解析跟随ctx，**ticket域试点已批准、尚未实施**）。
 > **影响面定性**：不止 CI flake——生产 4 核部署 ≥4 并发 Create 同样可永久挂死，属真实并发缺陷，CI 率先照出。
 > **⚠ 订正（2026-10-27 全景审计 A-5，对称验证确认）**：上处及 `039aca6`/`a91da0f` 两笔 message 的「4 核/4 并发中招」表述沿自当时错误前提——真实边界由**池容量**决定：生产 `MaxOpenConns` 默认 25（`config.applyDefaults`，config.go:203；yaml 显式同值），中招条件 = **事务窗口内并发 > MaxConns(25)**（核数不影响池上限）。CI 复现依赖 testutil 钉 4；后续容量评估一律以 MaxConns 为基线，勿再引「4 核=4 池」口径。
 > **同日关联**：新增 CI 环境差坑一条——pgxpool 默认池随核数漂移致池类死锁本地永不复现（机理 §3.3，对冲 = §4 testutil 钉 4，坑注记随本复盘在案）；hotfix 已随 `039aca6` 合入 phase5。
@@ -49,7 +51,7 @@
 - **根治面**：两处池调用提到 `Begin` 前——与既有 `applyFetches/validateCustomData/applyFormulas` 三个 pre-tx schema 读同规；`nextval` 本非事务性（回滚烧号语义不变），事务内保留 human_key 写行 UPDATE——原子性不变，repo 层零改动。
 - **测试加固**：testutil 池显式 `MaxConns=4`（本地与 CI 同为最严格口径，同类回归本地即暴露）；BK11 锤击每轮 30s 兜底超时（回归以带定位的失败浮出，不再吃满 CI 时限）。
 - **验证**：先红（钉 4+未修代码 2m30s 挂死复现）后绿（同条件 `-count=5` 全绿 7.7s，40 次锤击交错全过）；全包 integration `-count=1` 23 包 ok；unit/gofmt/build/vet ✓；CI run `40301487450` 一次转绿（1m46s，恢复正常时长即证明挂死消除）。
-- 修复后全仓事务窗口启发式扫描：无残留池调用。
+- 当次修复后的启发式扫描未发现残留；此结论只限该轮扫描。后来Update及`resolveClosedOrMissing`同类残留见变更记录与B06，不能将当时负面确认当全仓永久保证。
 
 ## 5. 修复评估：正确的最小解，但只堵住第一层
 
@@ -101,7 +103,7 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 
 ### 7.4 边界（三条）
 
-①事务内真需独立连接 → `context.WithoutValue(ctx, txKey{})` 显式逃逸（当前无此模式）；②auto-join ≠ 鼓励——意外读拉长持锁，Warn 盯住+CI 零 Warn 断言；③并发 goroutine 各自 `Begin` 持各自派生 ctx，天然互不串事务（BK11 三并发 Create 语义不变）。
+①事务内真需独立连接：原稿`context.WithoutValue(ctx, txKey{})`仅是伪代码，**Go标准库不存在`context.WithoutValue`**，本仓也没有同名实现。若试点遇到此消费者，须在项目侧显式定义逃逸能力并核连接预算；当前无此模式、没有可调用的逃逸API；②auto-join ≠ 鼓励——意外读拉长持锁，Warn 盯住+CI 零 Warn 断言；③并发 goroutine 各自 `Begin` 持各自派生 ctx，天然互不串事务（BK11 三并发 Create 语义不变）。
 
 ### 7.5 自研不引库理由
 
@@ -118,7 +120,7 @@ func (d *DB) QueryRow(ctx, sql, args...) Row {
 | 项 | 状态 |
 |----|------|
 | hotfix + 测试钉池 + 锤击超时（`039aca6`） | ✅ 已合，CI 绿 |
-| 彻底方案 dbtx 连接解析（§7） | ✅ **试点批已拍（2026-10-28 所有者）**：dbtx 包 + ticket 域切换 + BK11 负向测试（故意事务内调池读——断言不挂死且 Warn 在案）+ 全量集成回归 + **resolveClosedOrMissing tx 化（2026-11-01 审计 P2-1——UpdateStatusTx/UpdateAssignedToTx 零行路径在事务窗口内走池，BK11 同型最后一处残留，随试点同修）**，~0.5–1 天；排期 = phase5 走查后小批或 phase6 启动批随行（Week 0 动 ticket 域顺手，随行登记 = [phase6/05 号](../phase6/05-launch-batch.md) §3）；批 2 推广批（19 repo + standards 成文）待试点结论 |
+| 彻底方案 dbtx 连接解析（§7） | ✅ **试点批已拍（2026-10-28 所有者）**：dbtx 包 + ticket 域切换 + BK11 负向测试（故意事务内调池读——断言不挂死且 Warn 在案）+ 全量集成回归 + 原并入项`resolveClosedOrMissing`已由B06的`475b7ac`独立复验关闭，不再作为传播器试点的未实施工作，~0.5–1 天；排期 = phase5 走查后小批或 phase6 启动批随行（Week 0 动 ticket 域顺手，随行登记 = [phase6/05 号](../phase6/05-launch-batch.md) §3）；批 2 推广批（19 repo + standards 成文）待试点结论 |
 | 请求级 deadline 中间件（§7.6 批3） | ⬜ 未单独拍——随试点批实施时顺带评估（~半天独立小件，互补非替代） |
 | humankey 计数行表化（消每日 SEQUENCE 目录膨胀，顺带可进事务） | ⬜ 挂账，随下次动 humankey 顺带 |
 | fileFieldKeys 类型 schema 读进程内缓存（§6 观察——热路径省一次 DB 往返、消一个嵌套风险点） | ⬜ 挂账，随 dbtx 推广批评估或独立小件 |

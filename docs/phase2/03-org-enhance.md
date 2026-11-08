@@ -1,5 +1,8 @@
 # 03 - 组织增强（org-enhance，Phase 2b-org）
 
+> **适用范围（2026-11-08整理）**：现行组织以is_virtual布尔表示虚拟组，旧org_type=4是迁移前设计；project_isolated已实施，不再是未来枚举。HR三规则和Job仍属规划，move代理测试不是HR同步验收。B09过期成员失去派生权、显式owner保有独立权源的后补约束保留。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 虚拟组、组织 scope、组织角色、BFS 三源角色、临时成员。与 HR 目录同步同批落地 Schema，详见 [proposal/hr-directory-sync.md](../proposal/hr-directory-sync.md)。
 > **2026-08-26 调整**：本文档归属 **2b-org**（与 2b-core 工单可见性并行）；HR 目录同步降为 **2b-ext 延后**（见 P2-D7）。
 

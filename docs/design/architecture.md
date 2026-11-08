@@ -6,6 +6,26 @@
 
 ---
 
+## 阅读导览与请求边界
+
+第一次接手先读§1.3五仓边界，再读§3分层和§4权限；定位问题时从实际路由进入模块，避免把§15选型候选或旧阶段样例当成依赖清单。
+
+```mermaid
+flowchart LR
+    UI[zhuzhao-ui 浏览器控制台] --> Z[zhuzhao 网关与 IAM / 工单]
+    Z --> PG[(主应用 PostgreSQL)]
+    Z --> R[(主应用 Redis)]
+    Z --> S3[对象存储]
+    Z -->|AK/SK| AL[activelist 独立服务与数据库]
+    Z -->|AK/SK| TR[taskrunner 独立服务与执行后端]
+    TR -->|签名回调| Z
+    Z -.编译依赖.-> U[zhuzhao-utils 公共 Go 库]
+    AL -.编译依赖.-> U
+    TR -.编译依赖.-> U
+```
+
+图中调用方向不表示跨库事务：上游重试、领域事件与审计各有自己的可靠性边界。普通请求在主仓走全局中间件 → 身份认证 → L1路由鉴权 → Service的L2/L3资源规则 → Repository；自服务、M2M和代理组的差异见[中间件导读](../modules/middleware.md)。
+
 ## 目录
 
 - [1. 项目概述](#1-项目概述)
@@ -40,11 +60,11 @@
 | 功能 | 说明 |
 |------|------|
 | 用户登录 | 账号密码登录，双 Token 签发 |
-| 认证 | Token 校验、无感刷新、登出、多设备管理 |
+| 认证 | Token 校验、无感刷新、登出、多设备会话（设备管理 UI 尚未交付） |
 | 路由级鉴权 | 基于 RBAC，校验角色对 API 接口的访问权限 |
 | 资源级鉴权 | 基于 ltree 组织关系查询 + 属主判断，校验对具体资源的操作权限 |
 | 动态路由 | 接口返回权限树，驱动前端菜单和按钮渲染 |
-| 组织架构 | 实体组织 + 虚拟组（项目组），权限沿组织树继承 |
+| 组织架构 | 实体组织 + 虚拟组（项目组），数据范围/委托与平台角色来源分别计算 |
 | 审计日志 | 记录操作/安全行为；实际查询条件以AuditListQuery与handler为准 |
 | 多租户 | 预留多租户扩展能力 |
 
@@ -415,7 +435,7 @@ Wire Injector (wire.go)
 |------------|----------|------|
 | `Recovery` | 全局 | Panic 恢复 |
 | `Logger` | 全局 | 请求日志 |
-| `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled` + 改密地板 `user:at_min_iat`（AT.iat < 地板即 401，2026-11-01 P1-D；三键同趟 pipeline，Redis 故障 503——GET 缺键 redis.Nil 不算故障，bb4760c） |
+| `JWT` | 需认证路由 | Token 解析 + 黑名单 + `user:disabled` + 改密地板 `user:at_min_iat`（AT.iat < 地板即 401，2026-11-01 P1-D；四项同趟 pipeline（另含 `user:pw_epoch` 密码纪元），Redis 故障 503——GET 缺键 redis.Nil 不算故障，bb4760c） |
 | `Casbin` | 需鉴权路由 | 路由级 RBAC（RoleFetcher 查角色） |
 | `Audit` | 需审计路由 | 操作记录 |
 | `RateLimit` | 登录等公开路由 | 登录失败锁在AuthService（Lua）；受保护API与公开认证路由已有Redis RateLimit中间件 |
@@ -433,7 +453,7 @@ Wire Injector (wire.go)
 | 消息 | 提交后DomainEvent分别交TicketNotifyHook/MessageDispatcher及InboxService；前者rules→模板→变量/偏好/节流→sender→message_log，后者独立落notifications。两条消费链不互相证明可靠投递，inbox也不是已配置的外发渠道；真实UIP/IM与变量/类型化路由尾款仍按H组。 |
 | 任务/清单/情报 | 工单spawn_task或控制台经TaskrunnerService提交签名请求；执行/重试/死信在taskrunner，回调由主仓jobs注册表消费。AL提供schema化清单数据，经/al反代；S9是主仓PG TTL缓存+外部Provider端口。当前未具备任意SSH/脚本包/DAG、完整任务结果映射或风险R1台账。 |
 
-这些链路由app/providers与NewApp装配；具体能力与缺口见[工单模块§3.4/§6](../modules/ticket.md)、[Phase5各段](../phase5/README.md)与[债台账H组/C-21+](../phase5/S6-S5-debt-ledger.md)。源码证据分别为storage_handler.go的PresignUpload/Confirm/ProxyDownload、ticket/dispatcher.go的MessageDispatcher.Dispatch、ticket/inbox_service.go的InboxService.OnDomainEvent、taskrunner_service.go的TaskrunnerService.Submit及gateway.Registry.Mount（均为本文件996c167基线，前文有固定链接）。
+这些链路由app/providers与NewApp装配；具体能力与缺口见[工单模块§3.4/§6](../modules/ticket.md)、[Phase5各段](../phase5/README.md)与[债台账H组/C-21+](../phase5/s6-s5-debt-ledger.md)。源码证据分别为storage_handler.go的PresignUpload/Confirm/ProxyDownload、ticket/dispatcher.go的MessageDispatcher.Dispatch、ticket/inbox_service.go的InboxService.OnDomainEvent、taskrunner_service.go的TaskrunnerService.Submit及gateway.Registry.Mount（均为本文件996c167基线，前文有固定链接）。
 
 ## 4. 鉴权体系设计
 
@@ -800,7 +820,7 @@ m = g(r.tenant, r.sub, p.sub) && \
 | 系统菜单 | 首页 + 系统管理（用户 / 角色 / 菜单 / 组织）及 `menu_apis` |
 | Casbin | `p, role::superadmin, *, *` 与 `p, role::admin, *, *` |
 
-E000001密码终态恒为admin12345，测试账号/复原操作唯一权威为[runbook §4](../runbook.md)，不得用本节历史种子表改号。模块级字段语义与API行为见[`modules/`](../modules/)目录。
+E000001密码终态恒为admin12345，测试账号/复原操作唯一权威为[runbook §4](../ops/runbook.md)，不得用本节历史种子表改号。模块级字段语义与API行为见[`modules/`](../modules/)目录。
 
 ---
 
@@ -812,7 +832,7 @@ E000001密码终态恒为admin12345，测试账号/复原操作唯一权威为[r
 
 主仓Go HTTP应用依赖PG/Redis，按功能接S3兼容对象存储、taskrunner和activelist；UI独立构建。单体与兄弟服务的独立部署是两种边界，不能把taskrunner存在写成IAM/工单已微服务化。
 
-开发/测试/生产的配置与卷分开；基线`configs/config.yaml`不为本地态改写，拓扑差异走env/编排。端口唯一对账源为[port-allocation.md](../ops/port-allocation.md)，操作步骤见[runbook](../runbook.md)。`make dev`/dev-stack、主仓compose与兄弟compose是实际入口，本页不维护第二份可执行YAML，避免旧5432/Redis无密码/初始化SQL等样例被误用。
+开发/测试/生产的配置与卷分开；基线`configs/config.yaml`不为本地态改写，拓扑差异走env/编排。端口唯一对账源为[port-allocation.md](../ops/port-allocation.md)，操作步骤见[runbook](../ops/runbook.md)。`make dev`/dev-stack、主仓compose与兄弟compose是实际入口，本页不维护第二份可执行YAML，避免旧5432/Redis无密码/初始化SQL等样例被误用。
 
 证据：[internal/config/config.go 的 `Load`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/config/config.go)；[internal/app/providers.go 的 `provideGateway / providePostgres / provideRedis`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/app/providers.go)；[Makefile（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/Makefile)、[dev-stack.sh（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/scripts/dev-stack.sh)。
 
@@ -864,7 +884,7 @@ E000001密码终态恒为admin12345，测试账号/复原操作唯一权威为[r
 
 inbox消费后落notifications，外发记message_log，二者均不把上游总线升级成at-least-once。未来R3风险联动规划对账，C-20 Outbox按高一致性/跨进程消费触发；taskrunner的Asynq重试属于任务域。
 
-证据：[internal/pkg/domainevent/registry.go 的 `HookRegistry.Dispatch / Drain`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/registry.go)；[internal/service/ticket/service.go 的 `Service.emitTicketEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)；[Phase5 C-20](../phase5/S6-S5-debt-ledger.md)、[Phase6 R3](../phase6/03-r3-ticket-linkage.md)。
+证据：[internal/pkg/domainevent/registry.go 的 `HookRegistry.Dispatch / Drain`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/registry.go)；[internal/service/ticket/service.go 的 `Service.emitTicketEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)；[Phase5 C-20](../phase5/s6-s5-debt-ledger.md)、[Phase6 R3](../phase6/03-r3-ticket-linkage.md)。
 
 ### 12.6 缓存策略（历史方案，未实施）
 
@@ -910,7 +930,7 @@ inbox消费后落notifications，外发记message_log，二者均不把上游总
 **SQL 注入防护要点**：
 
 1. **pgx 参数化查询**——所有 SQL 必须使用 `$1, $2` 占位符，pgx 会自动做类型转义
-2. **禁止 `fmt.Sprintf` 拼接 SQL**——包括 WHERE 条件、ORDER BY、LIMIT 等
+2. **禁止把未信任输入拼成 SQL 语法**——值使用参数；动态表名、列名、排序标识符只允许已验证白名单。静态片段或已验证标识符的组合不等于允许拼入用户值
 3. **列表过滤的 WHERE 子句**——资源级列表过滤生成 WHERE 时，字段名用白名单校验，值用参数化传入
 4. **ltree 路径查询**——组织树路径查询也必须参数化，`org_path @> $1`
 5. **动态 SQL 场景**——如必须动态拼接表名/列名，必须用白名单校验，不允许直接拼用户输入
@@ -1107,7 +1127,7 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 ### 16.1 统一响应格式
 
 > **SSOT**：[`api/response.md`](../api/response.md)（Envelope 字段、成功/失败/分页、实现约束、例外）。  
-> **错误码**：[`api/errcode.md`](../api/errcode.md)。
+> **错误码**：[`docs/api/errcode.md`](../api/errcode.md)。
 
 所有 JSON API 返回：
 
@@ -1131,7 +1151,7 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 ### 16.2 错误码设计
 
-> **完整错误码清单以 [`api/errcode.md`](../api/errcode.md) 为准。** 以下仅做概览。
+> **完整错误码清单以 [`docs/api/errcode.md`](../api/errcode.md) 为准。** 以下仅做概览。
 
 错误码按模块分段（0=成功，10000 通用，20000 认证，30000 用户，40000 角色，50000 组织，60000 菜单，70000 鉴权，80000 审计）。
 
@@ -1246,7 +1266,7 @@ GET /api/v1/audit/logs按Casbin路由授权查询；同步审计写与判定日�
 | 2026-11当前Phase5 | 全生态审计、分批修复、门禁、文档/分支收口 | 本文件不是main已合或生产已部署声明 |
 | Phase6与后续 | 风险R1–R4及后续业务/连接器/编排等按各阶段稿规划 | **Phase5先收口并经授权合main，再从main切Phase6**；批准规划不是已建表/API，也不自动启动远期阶段 |
 
-当前能力取本文件前述源码与11号；阶段历史原稿保留于[phase1](../phase1/README.md)/[phase2](../phase2/README.md)/[phase3](../phase3/README.md)/[phase4](../phase4/README.md)/[phase5](../phase5/README.md)，未实现项与接续边界取[Phase5债台账](../phase5/S6-S5-debt-ledger.md)、[Phase6 README §5与07索引](../phase6/README.md)、[roadmap](../roadmap.md)。
+当前能力取本文件前述源码与11号；阶段历史原稿保留于[phase1](../phase1/README.md)/[phase2](../phase2/README.md)/[phase3](../phase3/README.md)/[phase4](../phase4/README.md)/[phase5](../phase5/README.md)，未实现项与接续边界取[Phase5债台账](../phase5/s6-s5-debt-ledger.md)、[Phase6 README §5与07索引](../phase6/README.md)、[roadmap](../roadmap.md)。
 
 ---
 

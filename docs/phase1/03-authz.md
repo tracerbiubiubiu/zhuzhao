@@ -1,5 +1,8 @@
 # 03 - 鉴权模块（authz）
 
+> **适用范围（2026-11-08整理）**：本文保留Phase 1的L1设计；“仅查user_roles/Registry为空”是阶段快照，当前角色有BFS三源、工单已接资源级判断。Registry接口草图不代替internal/pkg/resource的Resource/Registry实际签名；自服务标签与三层边界见模块文档。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 5**，依赖 Step 4（JWT 已挂载）。Casbin 中间件 + PG adapter + 自服务白名单 + ResourceRegistry 空接口。  
 > JWT 部分见 [09-middleware §Step 4 vs Step 5](./09-middleware.md#step-4-vs-step-5-分工)。
 

@@ -1,5 +1,8 @@
 # 09 - 工单模块（ticket，Phase 2a + 2b）
 
+> **适用范围（2026-11-08整理）**：这是Phase2蓝本与后补安全说明。project_isolated已由000017/IW1实施；原页面全写SQL已被B案替代。内部备注权限与读取同用note授权：创建人/处理人、有效组织委托及全局管理员可进入，普通透明读旁观者不因此获内部备注。当前流转/事件/附件见Phase5，未来审批和关系解除不因这里有设计就视作实现。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 2（2a MVP）** + **Step 4（2b-core scope 升级）** + **Step 9（2c Authorize，见 [04-org-delegation](./04-org-delegation.md)）**。  
 > 模块完整设计见 [modules/ticket.md](../modules/ticket.md)；**本文档为 phase2 实现 SSOT**。
 
@@ -280,6 +283,10 @@ ON CONFLICT DO NOTHING;
 - **Get 不可见**：404 + `ErrTicketNotFound`（**90001**——决策收口，便于客户端区分模块；**已于 2a Step 2 写入 `errcode.go`（L98），勿改号**）
 - **Update**：创建人或处理人；否则 403 + 70001
 
+> **现行校准（2026-11-08）**：本小节future/project_isolated与仅transparent CHECK是2b-core当时的切片。后续IW1/000017已放开隔离值及L2委托轴，现行配置不是future。
+
+<a id="52-phase-2b-scope-升级-部门内读写分离策略-b默认"></a>
+
 ### 5.2 Phase 2b — scope 升级 + 部门内「读/写分离」（策略 B，默认）
 
 > **部门内默认（策略 B）**：同一**实体部门**子树下，虚拟组 **兄弟节点之间可读不可改**——读扩大到实体锚点，写仍绑工单所属虚拟组。  
@@ -373,6 +380,8 @@ return Filter{
 ### 5.3 Phase 2c
 
 CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9)。**GetFilter 不变**（L2 已在 2b 策略 B 定稿；D11 验收读/写分离）。
+
+> **现行校准（2026-11-08）**：表内“note随透明读扩大/待实现”是旧稿漂移。当前Resource.canOperate的note分支允许创建/处理人及有效组织委托，全局管理员按入口规则；ListComments复用note授权判定内部可见，普通透明读旁观者仍只能公开回复。
 
 ### 5.4 全生命周期 × 三层鉴权对照表
 

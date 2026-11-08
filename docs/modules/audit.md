@@ -1,261 +1,52 @@
-# 审计日志模块设计
+# 审计：操作记录、权限判定与归档
 
-> 模块代码（目标路径）：`internal/service/audit/` + `internal/middleware/audit.go` + `internal/handler/audit/`
->
-> 旧系统参考：`doc/module-assessment-2026-08/accesslog.md`
->
-> **Phase 1 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**：仅 `audit_logs` 单表 + 同步写入 + `GET /api/v1/audit/logs`。下文 `access_logs` 与异步流程为 **Phase 3a+** 完整形态预留。
+> 当前实现说明，2026-11-08 校准。HTTP 操作审计与资源权限判定日志有不同写入链路和丢失边界；排查时先确定要找哪一种。历史方案见 [Phase 1 审计](../phase1/08-audit.md) 与 [Phase 3 审计 L2](../phase3/03-audit-l2.md)。
 
----
+## 1. HTTP 操作审计
 
-## 1. 模块定位
+`internal/middleware/audit.go` 的 `AuditLog` 在受保护路由中包住 Casbin 和 Handler。它读取并还原请求体，等待业务完成，先 Flush 响应，再通过 `AuditLogger.Insert` 同步入库 `audit_logs`。登录结果由认证服务单独记录，不能假设公开登录路由经过了该中间件。
 
-**横切基础设施模块**。记录用户操作行为和 HTTP 请求日志，支持审计追溯。
+写入使用 `context.WithoutCancel` 加独立 3 秒超时，客户端断连不会直接取消写入；失败只记应用日志，不改变已经返回的业务结果。因此“业务成功”不等于“审计必定入库”。`GET /api/v1/audit/logs` 提供管理查询；按工号检索保留对软删用户历史的解析。
 
-与其他模块的关系：
-- 作为中间件挂载到需审计的路由
-- 不依赖业务 Service（纯写入）
+### 请求体与响应摘要
 
----
+`maskSensitive` 先解析完整 JSON，再递归遍历嵌套对象和数组，按大小写不敏感规则遮蔽密码、secret、token 及 `*_token` 等字段，最后截断至 2 KiB 加标记。非对象或非法 JSON 保存长度占位，不把原文落库。不要复制“先截断再解析，失败原样保存”的旧伪代码。
 
-## 2. 数据模型
+响应摘要最多捕获 512 B，并由摘要逻辑脱敏。配置的反代前缀跳过请求体和响应体捕获，仍写操作元数据，避免破坏流式传输。规则由代码和测试维护，不存在旧方案所列的任意 `audit.sensitive_fields` 动态配置能力。
 
-### 2.1 访问日志（HTTP 请求记录，Phase 3a+）
+## 2. 资源权限判定日志
 
-> Phase 1 不建此表；Phase 1 操作审计统一写入 §2.2 `audit_logs`。
+`internal/pkg/audit/policyeval.go` 的 `PolicyEvalWriter` 接收资源鉴权结果，写入 `policy_evaluation_logs`，不是 HTTP 审计的异步替代实现。
 
-```sql
-CREATE TABLE access_logs (
-    id          BIGSERIAL PRIMARY KEY,
-    trace_id    VARCHAR(50) NOT NULL,       -- 请求链路 ID
-    user_id     VARCHAR(50),                -- 操作用户
-    method      VARCHAR(10) NOT NULL,       -- HTTP 方法
-    path        VARCHAR(500) NOT NULL,      -- 请求路径
-    status_code INT NOT NULL,               -- 响应状态码
-    duration_ms INT NOT NULL,               -- 耗时（毫秒；2026-09-16 对齐 standards §6 统一命名，原 cost_ms）
-    request_body TEXT,                      -- 请求体（截断 + 脱敏，4KB）
-    ip          VARCHAR(50),                -- 客户端 IP
-    user_agent  VARCHAR(200),               -- User-Agent
-    action      VARCHAR(100),               -- 操作名称（如 list_users）
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_access_logs_user ON access_logs(user_id, created_at DESC);
-CREATE INDEX idx_access_logs_created ON access_logs(created_at DESC);
+```mermaid
+flowchart TD
+    A[资源鉴权 hook] --> B[有界内存 channel]
+    B --> C[Redis List]
+    C --> D[processing List]
+    D --> E[批量写 PostgreSQL]
+    E --> F[确认后移除 processing 项]
 ```
 
-### 2.2 操作审计日志（Phase 1 SSOT）
+判定日志采用已拍板的 fail-open：channel 满或推送 Redis 失败时可丢行并告警，不能阻断业务鉴权。进程崩溃会丢尚未推送的内存记录；已进入 Redis List / processing 的记录可继续消费，持久性仍取决于 Redis 实际持久化与备份配置。数据库失败保留 processing 待重试；退出需先等待 writer，再关 Redis。
 
-> **Phase 1 DDL 以 [phase1/08-audit.md](../phase1/08-audit.md) 为准**。下方旧设计草图保留仅作跨阶段参考，**Phase 1 编码勿用**。
+例如一次工单读取可能同时产生 HTTP 操作记录和资源判定记录。前者回答“谁请求了什么、返回什么”，后者解释“资源动作为什么获准或拒绝”；两表不能相互替代，也不能用其中一张的数量证明另一条链路无丢失。
 
-<details>
-<summary>旧版 DDL 草图（已废弃，Phase 3a+ 可能拆 access_logs 时再参考）</summary>
+## 3. 先归档，再删除
 
-```sql
--- 旧版草图：action/resource/detail 取向
-CREATE TABLE audit_logs_old (
-    id          BIGSERIAL PRIMARY KEY,
-    trace_id    VARCHAR(50) NOT NULL,
-    user_id     VARCHAR(50) NOT NULL,
-    action      VARCHAR(100) NOT NULL,
-    resource    VARCHAR(50),
-    resource_id VARCHAR(50),
-    detail      JSONB,
-    ip          VARCHAR(50),
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-```
-</details>
+`internal/service/audit_archive.go` 的 `AuditArchiveJob.Handle` 每次对两张审计表各处理一个有界批次：读取超期行 → 写 JSONL → Sync 成功 → 删除同批 ID。单表失败继续尝试另一表，最终返回错误供调度侧观察或重试。
 
-**Phase 1 实际 DDL**（权威，见 [phase1/08-audit.md](../phase1/08-audit.md)）：
+文件已写、数据库未删时崩溃，重跑可能重复导出；归档消费者应按原记录标识去重。默认库内保留期 180 天、文件保留期 395 天，实际以配置为准。归档目录在构造时解析为绝对路径，必须挂持久卷并纳入备份；容器临时文件不构成长期保存。
 
-```sql
-CREATE TABLE audit_logs (
-    id           BIGSERIAL PRIMARY KEY,
-    user_id      BIGINT,                     -- 操作人（NULL=未认证）
-    username     VARCHAR(50),                -- 操作人用户名（冗余，便于查询）
-    method       VARCHAR(10) NOT NULL,
-    path         VARCHAR(500) NOT NULL,
-    status_code  INT NOT NULL,
-    duration     BIGINT NOT NULL,            -- 毫秒
-    ip           VARCHAR(50),
-    user_agent   VARCHAR(500),
-    request_body TEXT,                       -- 脱敏后
-    created_at   TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_audit_user_time ON audit_logs(user_id, created_at DESC);
-CREATE INDEX idx_audit_path_time ON audit_logs(path, created_at DESC);
-```
+进程内 cron 与 taskrunner 旧回调二选一启用，切换见 [cron 迁移说明](../ops/cron-migration.md)。不要另加裸 `DELETE` 定时器跳过导出。恢复见 [备份手册](../ops/backup.md)。
 
----
+## 4. 历史边界与验证
 
-## 3. 接口定义
+独立 `access_logs` 表、actionRegistry 和通用“HTTP channel 异步写入”是旧方案候选，不是当前已交付能力。当前表结构以实际迁移和 [迁移地图](../review/11-project-control.md) 为准，不再复制第二套 DDL。
 
-```go
-type AuditService interface {
-    // 记录访问日志（中间件自动调用）
-    LogAccess(ctx context.Context, log AccessLog) error
+验证入口包括 `internal/middleware/audit_nested_redaction_test.go` 的嵌套脱敏测试、`internal/service/audit_archive_integration_test.go` 的归档故障与重入测试、`internal/pkg/audit/policyeval_test.go` 的 writer 生命周期测试。新增敏感字段须同时核请求与响应路径。
 
-    // 记录操作审计（Service 层手动调用）
-    LogAction(ctx context.Context, log AuditLog) error
+## 变更记录
 
-    // 查询（管理接口）
-    QueryAccessLogs(ctx context.Context, query AccessLogQuery) ([]*AccessLog, int64, error)
-    QueryAuditLogs(ctx context.Context, query AuditLogQuery) ([]*AuditLog, int64, error)
-}
-```
-
----
-
-## 4. 核心流程
-
-### 4.1 Phase 1 同步写入
-
-> 权威说明见 [phase1/08-audit.md](../phase1/08-audit.md)。Phase 1 仅 `audit_logs` 单表，无 `access_logs`。
-
-```
-请求 → Audit 中间件
-  │  c.Next() 完成后：
-  │  ① c.Writer.Flush() 先把响应送达客户端（D2-12——net/http 在整个中间件链
-  │     返回后才 flush，不主动 Flush 时 DB 抖动会拖慢响应尾延迟）
-  │  ② 记录：user_id, method, path, status_code, duration, request_body(脱敏)
-  │     - 脱敏：递归（嵌套对象/数组）+ 大小写不敏感 + 非法 JSON 落 <binary len=N> 占位（D2-19）
-  │     - 截断：入库上限 2KB + `<truncated>` 标记（D2-08，防未认证路径灌大行）
-  │  ③ 同步 INSERT audit_logs（WithoutCancel + 3s 独立超时，客户端断连不丢审计；
-  │     失败只记应用日志，不影响业务响应；登录路径 LogLogin 同语义，D2-04）
-  └── 返回
-```
-
-查询：`GET /api/v1/audit/logs`（分页 + 筛选；按工号筛选走含软删用户解析——软删用户的历史审计可查，D2-27）。
-
-### 4.2 异步写入流程（Phase 3a：channel + Redis List L2）
-
-```
-请求 → Audit 中间件
-  │  记录：trace_id, user_id, method, path, status_code, cost, request_body(脱敏)
-  │  → channel（缓冲 1024）
-  │
-  → 立即返回（不阻塞请求）
-  │
-  → 异步 worker goroutine
-     → 批量写入 PostgreSQL（每 100 条或每 5 秒）
-     → channel 满时降级：同步写入 + 告警
-```
-
-### 4.3 action 推导（借鉴旧系统 actionRegistry）
-
-旧系统通过 `accesslog.RegisterAction(method, fullPath, action)` 注册路由→动作映射。
-
-**新框架方案**：用 route 注解或 map 注册。
-
-```go
-// 启动时注册
-var actionRegistry = map[string]string{} // "POST:/api/users/delete" → "delete_user"
-
-func RegisterAction(method, path, action string) {
-    actionRegistry[method+":"+path] = action
-}
-
-// 中间件中推导
-func deriveAction(method, path string) string {
-    // 1. 精确匹配
-    if action, ok := actionRegistry[method+":"+path]; ok {
-        return action
-    }
-    // 2. 模糊匹配（从 route pattern 推导）
-    // ...
-    return method + ":" + path
-}
-```
-
-### 4.4 敏感字段脱敏（借鉴旧系统）
-
-```yaml
-# configs/config.yaml
-audit:
-  sensitive_fields:
-    - password
-    - token
-    - secret
-    - private_key
-    - access_key
-    - secret_key
-  max_body_length: 4096
-```
-
-```go
-func sanitizeBody(body []byte, maxLen int, sensitiveFields []string) string {
-    if len(body) > maxLen {
-        body = body[:maxLen]
-    }
-
-    var data map[string]interface{}
-    if err := json.Unmarshal(body, &data); err != nil {
-        return string(body)
-    }
-
-    for _, field := range sensitiveFields {
-        if _, ok := data[field]; ok {
-            data[field] = "***"
-        }
-    }
-
-    result, _ := json.Marshal(data)
-    return string(result)
-}
-```
-
----
-
-## 5. 日志清理
-
-PostgreSQL 不支持 TTL 索引，使用定时任务：
-
-```sql
--- cron: 每天 03:00 执行
-DELETE FROM access_logs WHERE created_at < NOW() - INTERVAL '90 days';
-DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '180 days';
-
--- 或使用分区表（大数据量时）
--- CREATE TABLE access_logs_2026_08 PARTITION OF access_logs
---   FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
--- DROP TABLE access_logs_2026_01;  -- 删除旧分区
-```
-
----
-
-## 6. 旧系统借鉴
-
-| 设计 | 决策 | 理由 |
-|------|------|------|
-| 异步写入 + channel | Phase 3a 采用 | Phase 1 同步写 DB，保证不丢；Phase 2 不做审计异步 |
-| channel 满降级 | Phase 3a 采用 | 同步写入 + 告警 |
-| actionRegistry 推导 | ✅ 直接采用 | 比 method:path 更可读 |
-| 敏感字段脱敏 | ✅ 直接采用 | 安全要求 |
-| 请求体截断（4KB） | ✅ 直接采用 | 防止大 body 撑爆日志 |
-| trace_id 传播 | ✅ 直接采用 | 链路追踪 |
-| MongoDB TTL 自动清理 | ❌ 改为 cron DELETE | 数据库不同 |
-| MongoWriteSyncer | ❌ 不需要 | slog + PostgreSQL 直接写 |
-| 每服务独立日志集合 | ❌ 统一表 | 简化管理 |
-
----
-
-## 7. 分阶段实施
-
-### Phase 1
-
-- 操作日志中间件（**同步**写入 `audit_logs`）
-- `GET /api/v1/audit/logs` 查询接口
-- 登录成功/失败单独写审计（公开路由不走 AuditLog 中间件）
-- 基本字段 + 敏感字段脱敏（trace_id / request_id 于 Phase 3a 观测性落地——
-  B4-6 修订：Phase 1 的 audit_logs DDL 无此两列，request_id 记录于应用日志；
-  本行原描述与 phase1/08-audit.md SSOT 矛盾）
-
-### Phase 2
-
-- **不做**审计异步（与 [phase2/README §1.5](../phase2/README.md#15-不做什么整个-phase-2) 一致）
-
-### Phase 3a
-
-- channel + Redis List L2 异步（接口不变）
-- `access_logs` 访问日志表（若与操作审计拆分）
+| 日期 | 变更 |
+|---|---|
+| 2026-11-08 | 拆清 HTTP / 判定日志两条链；移除不安全脱敏、裸删除示例和绝不丢承诺，补归档边界。 |

@@ -12,6 +12,9 @@
 
 ## 1. 认证方案（AuthN）
 
+> **现行校准**：本篇保存双 Token 与分层鉴权的方案来源。当前 JWT claim/设备 RT 键以 [认证模块](../modules/auth.md) 和 `AuthService.issueTokenPair` 为准；AT 还检查黑名单、禁用、改密地板和密码纪元，Redis 异常 fail-close。设备元数据管理、`devices:{uid}` 集合和 `perm:user` 权限缓存未因以下流程图出现而视为已交付。
+
+
 ### 1.1 双 Token 机制
 
 | 维度 | 方案 |
@@ -46,7 +49,7 @@
   → 校验密码（bcrypt）
   → 签发 AT + RT
   → RT 存 Redis: refresh:{userId}:{deviceId}
-  → 设备列表 SADD: devices:{userId}
+  → [原预案、未实施] 设备列表 SADD: devices:{userId}（当前使用按设备 RT 存储）
   → 返回 {accessToken, refreshToken}
 
 刷新：
@@ -191,7 +194,7 @@ Casbin 策略表是独立数据源（`casbin_rule` 表），中间件层只读�
 
 ### 3.1 实体组织（Phase 1）
 
-Phase 1 仅实体组织树（`org_type` 1=公司 / 2=部门 / 3=小组）。成员关系走 `user_orgs`（用户 ↔ 组织，无组织级角色继承）。
+原 Phase 1 使用 `org_type` 枚举；迁移 000019 后当前模型以 `is_virtual=false` 表示实体组织，层级由 path 表达。成员关系走 `user_orgs`（用户 ↔ 组织，无组织级角色继承）。
 
 完整建表 SQL 见 phase1 文档；此处只保留 ltree 查询示例：
 
@@ -208,7 +211,7 @@ SELECT * FROM organizations WHERE parent_id = (SELECT id FROM organizations WHER
 
 ### 3.2 虚拟组（Phase 2b）
 
-Phase 1 **不建**独立 `virtual_groups` 表。虚拟组在 Phase 2b 以 `organizations.org_type = 4`（`source=local`）实现，详见 [organization 模块 §2.2](../modules/organization.md#22-虚拟组与组织角色phase-2b) 与 [hr-directory-sync.md](./hr-directory-sync.md)。
+Phase 1 **不建**独立 `virtual_groups` 表。虚拟组现以 `organizations.is_virtual=true`（本地来源）实现，原 `org_type=4` 已由 000019 收敛，详见 [organization 当前模型](../modules/organization.md#2-当前模型) 与 [hr-directory-sync.md](./hr-directory-sync.md)。
 
 ### 3.3 组织角色继承（Phase 2b）
 
@@ -254,6 +257,9 @@ GET /api/v1/user/permissions → 权限码列表（按钮权限码 + 路由权�
 ---
 
 ## 5. 审计日志
+
+> **现行边界**：HTTP 操作审计仍走同步 `audit_logs` 写入；L2 `PolicyEvalWriter` 是独立的权限判定日志链，不是把全部 HTTP 审计改成异步。下文 Redis 异步图、`audit.sensitive_fields` YAML 和清理 SQL 为早期示例，不能当作已存在的配置或操作步骤。当前脱敏、保留、归档调度以 [审计模块](../modules/audit.md) 及 [运行手册](../ops/runbook.md) 为准。
+
 
 > **Phase 1**：同步写入 PostgreSQL（见 [phase1/08-audit.md](../phase1/08-audit.md)）。  
 > **Phase 3**：Redis List L2 异步方案（Phase 2 不做审计异步，见 [phase2/README §1.5](../phase2/README.md)）。
@@ -330,6 +336,9 @@ DELETE FROM access_logs WHERE created_at < NOW() - INTERVAL '90 days';
 
 ### 6.2 配置安全
 
+> 以下 `${VAR}` 仅表达敏感值应外置的设计意图，不承诺 Viper 会自动展开任意 YAML 占位符；当前环境变量绑定与配置键须核 `internal/config/config.go` 和部署说明。
+
+
 ```yaml
 # 敏感配置通过环境变量注入
 database:
@@ -343,6 +352,9 @@ redis:
 ---
 
 ## 7. 分阶段实施
+
+> 以下保留最初分期。Phase 3 的“整体暂缓”不是当前总状态；工单自研已恢复（DD §29），独立能力服务已交付，SSO/HR/审批完整件仍须按各自入口确认。旧 gRPC 路线已由 HTTP+JSON 基线覆盖，不据本表新开工。
+
 
 ### Phase 1：最小可用
 

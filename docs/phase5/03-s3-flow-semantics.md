@@ -1,6 +1,14 @@
-# 03 — P5-S3 流程运行语义配置化（S3a/S3b）（设计稿）
+# 03 — P5-S3 流程运行语义（S3a已交付／S3b触发后置）
 
-> **2026-11-06 并发语义补强（ECO-B06-F05）**：Transition/Close/Assign 的鉴权、状态图与 condition/validator 预检不能只靠旧状态 CAS 保鲜。提交事务先以同一 tx 对类型定义取共享锁并核对 version，再锁工单并核对所有持久字段（展示姓名回填不参与）；任一预检快照变化则 409 要求重读，直到提交持锁。可防同状态改优先级/custom_data/处理人时旧 validator 或旧 assignee 权限继续生效，也避免在事务内重调池版角色/组织查询引入 BK11。该保证针对本张工单和类型快照；不宣称对独立角色/组织关系提供跨表原子撤权。独立分支修复验证中，未部署、未合 main。
+## 当前能力与阅读顺序
+
+S3a已交付转换roles/validator、available查询、自动分派规则和动作注册表。先看本节和§3现行合同，再看S3b及演进设计；旧“无事件/硬编码/无自动分派”矩阵是设计前基线，不是今天的现状。
+
+`internal/service/ticket/transition_service.go`的`Transition`在事务内锁快照/写状态，**commit后**发领域事件并调用`ActionRegistry.RunPostActions`；失败不回滚转换。cc/reassign的服务操作为后续独立事务，当前没有生产者outbox或通用自动补偿队列。`durable_submit`说明下游提交持久凭证与幂等，并不凭声明获得至少一次生产投递。
+
+S3b任务行审批仍待真实场景；定义快照、自动路由、Close/Assign生命周期统一、B8结果映射/B20输入映射/B21配置UI仍按Phase6待实施。风险接受的已拍简化形态为owner发起＋risk:manage确认，不等于S3b已做。
+
+> **2026-11-06 并发语义补强（ECO-B06-F05）**：Transition/Close/Assign 的鉴权、状态图与 condition/validator 预检不能只靠旧状态 CAS 保鲜。提交事务先以同一 tx 对类型定义取共享锁并核对 version，再锁工单并核对所有持久字段（展示姓名回填不参与）；任一预检快照变化则 409 要求重读，直到提交持锁。可防同状态改优先级/custom_data/处理人时旧 validator 或旧 assignee 权限继续生效，也避免在事务内重调池版角色/组织查询引入 BK11。该保证针对本张工单和类型快照；不宣称对独立角色/组织关系提供跨表原子撤权。该句原为独立候选时点；当前已纳入[B06最终联合复验](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)和[最新followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)固定源，未合main/生产边界另核。
 
 > **段属性**：**S3a 已升格排期段（2026-10-19 所有者拍「升」，原条件段）——W13–15 实施、纳入 phase5 收官**（升格论据=事件驱动统一模型+phase6 前核心引擎目标，见附录演进路线 gap1）；S3b 审批流**等首个真实审批场景**再启动（无消费者不建引擎——easy-workflow 教训），**不计入 phase5 收口**。
 > **量级**：S3a ≈ 2 周（转换级语义 + 分派 + 动作库框架；**assignment_rules 一表**——transition_meta 列复用 S10 B10-4 已建[2026-10-19 结构修正，零新 DDL]，原"零新表或轻表"措辞修正）；S3b 待场景（workflow_* 表族，DDL 蓝本现成）。
@@ -8,11 +16,11 @@
 
 ## 1. 定位与由来
 
-工单动作语义现状**代码硬编码**：Close/Assign/Update 各端点方法内按三层鉴权 + 属主/委托判定，状态变更经 `AssertTransition`（`internal/service/ticket/service.go:330/:390/:432`，2026-10-15 核实在位）。目标形态 = **转换级配置**：谁能触发哪个转换（角色/属主/处理人）、转换前置条件、自动分派规则、审批节点（S3b）。
+2026-10-15设计前的工单动作语义**代码硬编码**：Close/Assign/Update 各端点方法内按三层鉴权 + 属主/委托判定，状态变更经 `AssertTransition`（`internal/service/ticket/service.go:330/:390/:432`，2026-10-15 核实在位）。目标形态 = **转换级配置**：谁能触发哪个转换（角色/属主/处理人）、转换前置条件、自动分派规则、审批节点（S3b）。
 
 §23（2026-09-02 工单自研暂缓）已于 2026-10-09 翻案（dd §29：内部平台二开对接成本高、自研更适配、工单流程中心是平台重点）——**S3 开工本身即翻案动作，翻案已完成，本段是其排期落位**；未翻案前的"零投入"状态终止。SLA 引擎**不建**（S10 轻量版为准——§29 原文为方向性定论「不做完整引擎」一句；细分边界=设计推演非逐条拍板，触发信号在案 [10 号 §5](./10-s10-ticket-collaboration.md)，2026-10-19 溯源修正）。
 
-## 2. 现状基线（代码级锚点，2026-10-15 核实）
+## 2. 2026-10-15历史基线（非当前能力矩阵）
 
 | 项 | 现状 | 锚点 |
 |----|------|------|
@@ -24,17 +32,17 @@
 
 ## 3. S3a：转换级语义 + 自动分派 + 动作库框架（≈2 周）
 
-> **时点决策与后插代价评估（2026-10-16，所有者问询"phase6 前要不要升级引擎"后定——维持条件段，方案 A+C）**：phase6 MVP **不需要** S3a（硬前置不含；核心链路逐环有落点——派生工单=S1 预填/复核流程=S2 状态图配置/终态联动关险单=S6 共享事件面/超期催办=S10）。**后插代价已评估为小且可预算**：S3a 本质是**叠加式语义层**而非推翻式重构——① 数据零迁移（transitions JSONB meta 扩展，配置空=行为不变，存量单零感知）；② 引擎改造=`AssertTransition` 叠加校验（端点级判定保留、更严叠加），非重写；③ 周边全部在位或已留缝（S1 求值器公共件 / S6 B6-1 事件面对表 / S2 画布适配层分离）。**唯一真实代价 = 绕行债**：phase6 期间撞墙需求**不绕行、记账等 S3a**（人工流程顶滞后期 ≈2 周），**禁**另造状态/另开端点/service 层硬编码特殊判断——绕行实现才是 S3a 到来时真正要清理的不可控成本。~~显式触发信号 = phase6 R3 出现首个转换级权限真实需求~~（**2026-10-19 所有者拍「升」：触发信号不再等待——S3a 升格 W13–15 排期**，论据=事件驱动统一模型[转派动作需同步事务内通道]+phase6 R3 复核态权限为明牌需求，见附录「事件驱动统一模型」与「phase6 前核心引擎目标态」两节；次序靠后项[分派/网关条件]随排期一并实施）；S3a 启动时与 B6-1 事件面按 **DomainEvent/DomainHook** 形态对表（[11 号 §2.4](./11-implementation-plan.md) 已钉——2026-10-16 拍板点 S6#4：通用命名，原 TicketHooks 称谓废止）。
+> **当前排期结论**：2026-10-19已将S3a升格为Phase5收口段，现已交付；旧A+C“Phase6无需S3a”被该决定及后续R0硬前置覆盖。保留DomainEvent/DomainHook共用事件面和“不绕行另造状态”的纪律，未来能力按Phase6段稿执行。
 
 ### 3.1 转换级语义（Conditions/Validators）
 
-- **谁能触发哪个转换**的配置化：转换声明触发者范围（角色/属主/处理人）+ 前置条件，落 transitions JSONB meta 扩展。
+- **谁能触发哪个转换**的配置化：转换声明触发者范围（角色/属主/处理人）+ 前置条件，落独立`ticket_types.transition_meta`列（state级与from>to键共存）。
 - **架构约束（不可绕）**：权限判定必须落**策略层**——类型级策略数据 + fail-closed，经既有三层鉴权/Registry 形态接入；**禁止业务层手写绕过**（AGENTS 约定；§25 平台策略库"事实在 DB/语义在代码"分界随翻案批重审）。
 - 转换条件表达式 = **与 S1 共用白名单 Go 侧求值器**（expr 预置；禁 SQL 下放——easy-workflow 反面教材）。
 
 ### 3.2 自动分派规则
 
-蓝本 = phase3/10 §5 `assignment_rules` 表 + 规则匹配引擎（`OnAfterCreate` Hook 按优先级遍历，首个命中执行分派，走 `TicketService.Assign` 不绕鉴权）。**五项决议既定（2026-08-31 拍板）**：① keyword=LIKE 包含不分词；② 同优先级按 id 升序 tie-break；③ target_user 必须属于 target_org（写侧校验）；④ 无命中兜底保持 open + 写 `dispatch_missed` 事件；⑤ **分派失败不回滚创建**（Hook 捕获 + 事件 + 异步补偿）。迁移编号启动时按 11 号 §4 对账（A2 规则）。
+蓝本 = phase3/10 §5 `assignment_rules` 表 + 规则匹配引擎（`OnAfterCreate` Hook 按优先级遍历，首个命中执行分派，配置管理期授权，执行经`assignAsSystem`系统通道，事件actor保留规则创建者归因）。**五项决议既定（2026-08-31 拍板）**：① keyword=LIKE 包含不分词；② 同优先级按 id 升序 tie-break；③ target_user 必须属于 target_org（写侧校验）；④ 无命中兜底保持 open + 写 `dispatch_missed` 事件；⑤ **分派失败不回滚创建**（Hook记录/事件；不宣称当前存在通用异步补偿队列）。迁移编号启动时按 11 号 §4 对账（A2 规则）。
 
 ### 3.3 动作库框架（Post-function 形态）
 
@@ -56,7 +64,7 @@
 - **蓝本全套现成**（phase3/10 §4）：`BranchedStateEngine`（状态机内核）+ `ApprovalTaskLayer`（人工任务层 claim/submit）两层分离；`workflow_definitions/instances/node_states/records/tasks` 五表 DDL（§4.3）；`CanApproveNode` 契约骨架与调用顺序铁律（L1→解析 Req→L2→L3，§4.5）；`WhatCanIDo` 任务可操作查询；驳回/回退语义（target=prev/origin + 自由驳回 BFS + 会签 batch_code，§4.5(2)）。
 - **7-0 设计期五决议（2026-08-31 拍板，随批生效）**：①审批人策略 = `Assignee{rule,values}`（**弃 min_level**——users 无 level 列）；②模板-流程绑定类型 1:1 默认 + 模板 nullable 覆盖；③发起人撤回 = WITHDRAWING 栅栏模式；④**版本/发布快照**（编辑版/发布版分离，Deploy 锁快照，运行时按实例版本取——原地改 definition 禁止，防在途漂移）；⑤signal 双写分离。
 - **easy-workflow 借鉴核验闭环（2026-10-08 代码级复核）**：§4.2 十二项借鉴点全部证实、四条避坑点（MySQL CTE/表达式拼 SQL/反射事件/引擎内嵌身份）全部被其真实缺陷证实——**借设计不引库**（MIT 但零测试/裸 map 竞争/改定义即在途漂移），无新增借鉴项。
-- **当前风险接受**：审批需求第一档 = superadmin/owner 确认制（phase6 风险接受单同口径）；S3b 落地后可升级。**触发时点 = 首个真实审批场景出现**（残留开放项，dd §29）。
+- **当前风险接受**：已拍的风险接受第一档=owner发起、风险团队risk:manage确认（默认制衡开，详Phase6 R2）；S3b 落地后可升级。**触发时点 = 首个真实审批场景出现**（残留开放项，dd §29）。
 - **S3b 实施换算注（2026-10-15 公约对表）**：蓝本成文于 2026-08-25（早于 standards §3 API 公约建纲 2026-09-07），蓝本内端点形态（如 §4.7 `PUT /workflows/:code`）**实施时按公约新端点口径换算**（POST + 标识/动作入 body，§3-1/§3-2）——照抄即违公约。
 
 ## 5. 启动拍板点
@@ -102,7 +110,7 @@
 
 ## 附录 A：S3a 详细技术设计（实施级，2026-10-19 补——升格排期后按排期段标准补齐，05 号样板深度）
 
-### A.1 转换级语义：Jira transition 四段对表 + meta 结构
+### A.1 转换级语义：本系统转换三阶段对表 + meta 结构
 
 **Jira workflow transition 四段解剖（20 年业界共识）——S3a 三能力精确对齐**：
 
@@ -121,11 +129,11 @@
 ALTER TABLE ticket_types ADD COLUMN IF NOT EXISTS transition_meta JSONB DEFAULT '{}';
 -- 转换级键 = "from>to"（定位）；值 = condition/validator/post_actions 三段
 -- {"in_progress>pending_verify": {"roles": ["assignee","org_admin"],
---   "condition": "priority == 'P1'", "post_actions": ["notify","cc_team","reassign"]}}
+--   "validator": "priority == 'P1'", "post_actions": [{"name":"notify"}]}}
 -- 缺省 = 既有行为（零破坏）；存储与 transitions 邻接表分列——01 号 A.2 同款决策
 ```
 
-`post_actions` 元素允许字符串或 `{ "name": "...", "params": {...} }` 对象形态（B3-3 随行件——2026-10-20 规划研究回灌，依据 deliverables/software-company/secops-platform-vision-2026-10/08-phase5-adjustments.md）。
+`post_actions` 元素允许字符串或 `{ "name": "...", "params": {...} }` 对象形态（B3-3 随行件——2026-10-20 规划研究回灌，依据 docs/proposal/secops-platform/08-phase5-adjustments.md）。
 
 - **可用转换查询**：`GET /tickets/:id/transitions/available`（Jira condition 语义=按当前用户过滤——前端按钮渲染依据；服务端 AssertTransition 仍为 fail-closed 兜底，前端过滤仅 UX）；
 - **求值器**：expr 与 S1 共用（编译缓存/沙箱/函数白名单——01 号 A.3 同款），字段上下文=custom_data+内置字段。**condition 类型扩展触发登记（2026-10-19 外审）**：首批=roles/属主/处理人三类（phase6 R3 复核态=属主类，够用）；字段值条件（Jira field-valued condition）由 validator=expr 覆盖数据侧，condition 面的字段值形态出现诉求再扩（触发登记勿预建）。**字段引用约定（2026-10-19 外审补 P2-5）**：内置字段=标识符直引（priority == 'P1'）；**动态字段=map 索引形式 custom_data["字段名"]**（expr 支持字符串索引——中文/含点 key 不作标识符，规避解析失败与内建冲突）；与 S6 变量字典 slug 约定的统一对表随 B3-1（两处引用同一字段语义须一致）。
@@ -145,7 +153,7 @@ CREATE TABLE assignment_rules (
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_assignment_rules_type ON assignment_rules (type_code, priority);
--- OnAfterCreate Hook：按 priority 遍历→首个命中执行分派（走 Assign 不绕鉴权）；
+-- OnAfterCreate Hook：按 priority 遍历→首个命中执行分派（配置期授权、执行走assignAsSystem并保留规则创建者actor）；
 -- 无命中保持 open+dispatch_missed 事件（决议④）；失败不回滚创建（决议⑤）
 -- 管理面（2026-10-19 外审 P3-9 补）：规则 CRUD 管理端点+页面归 B3-2（类型管理页族扩展；
 --   权限沿用类型管理权限——零新码），随 B3-2 验收「规则配置→命中→自动分派」全链
@@ -153,26 +161,23 @@ CREATE INDEX idx_assignment_rules_type ON assignment_rules (type_code, priority)
 --   （custom_data 条件选组）出现诉求再扩（触发登记勿预建，Jira component 路由同源形态）
 ```
 
-### A.3 动作库框架（Post-function 形态）
+### A.3 当前动作库契约与失败边界
+
+`internal/service/ticket/actions.go`的真实接口为：
 
 ```go
 type TransitionAction interface {
-    Name() string                                    // 注册键（编译期——反射反面）
-    Execute(ctx context.Context, ev domainevent.DomainEvent, t *model.Ticket) error
+    Name() string
+    Delivery() DeliverySemantics
+    Execute(ctx context.Context, ac ActionContext) error
 }
-// internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go / spawn_task.go
-//   （首批四动作——2026-10-24 spawn_task 升首批：owner 场景「下发即起任务」实证）
-// 一致性声明（动作接口随行件）：Delivery() DeliverySemantics——
-//   at_most_once（通知类：丢可补发）| durable_submit（spawn_task 类：taskrunner
-//   持久化凭证落 DB，事件重投=重复提交被回调幂等栅栏挡——at-least-once+幂等消费）；
-//   两类不得共用投递语义（框架按声明选择重试/审计策略）
-// 注册：app.go 装配 actionRegistry.Register(name, NewXxxAction(...))——重复名 panic
-// 失败语义：不回滚转换（Hook 捕获 + Dispatch DomainEvent{BizType:"ops", Action:"ops.action_failed"}
-//   [payload=动作名/工单/错误——消费方=ops 告警规则(S6 规则面配置)] + 异步补偿队列——分派决议⑤同款）
-//   补偿事件命名定案（2026-10-19 外审 P2-6：原三缺[名/消费方/内容]补齐）
 ```
 
-可选方法 `ParamsSchema() json.RawMessage`：返回动作参数的 JSON Schema（nil 合法）；`Execute` 签名不变（B3-3 随行件，2026-10-20 回灌）。
+`ActionRegistry.Register(action)`重复时返回error，由装配层处理fail-fast；动作实现集中在`internal/service/ticket/actions_builtin.go`，不是旧拟定actions/子目录。`ActionContext`含工单、from/to、actor、params与可选事件，**没有调用方tx参数**。
+
+`RunPostActions`在转换commit后逐项执行，维护ctx链深、recover panic并记录/发ops.action_failed。notify/cc/reassign为当前at_most_once声明，spawn_task为durable_submit下游提交；声明本身不切换重试队列。失败不回滚转换，也不保证已存在持久补偿队列；其future可靠投递由outbox阶段另行实现。
+
+ParamsSchema/schema驱动UI是规划能力，不是当前TransitionAction必有方法。代码中的旧首注若提“转换事务内”不改变实际执行边界；以`transition_service.go`的`Transition`调用顺序和本接口为准。
 
 ### A.4 easy-workflow 对照开发法（所有者提议"参考修改补强"的操作化——不 fork 不 import）
 
@@ -189,7 +194,7 @@ type TransitionAction interface {
 
 ### A.5 验收补充（在 §8 基础上）
 
-- Jira 四段：condition 不满足 → available 端点不含该转换 + AssertTransition 拒（双重）；validator 表达式 false → 400 带字段名；post-action 失败 → 转换成功+补偿事件（不回滚断言）；
+- 本系统三阶段：condition 不满足 → available 端点不含该转换 + AssertTransition 拒（双重）；validator 表达式 false → 400 带字段名；post-action 失败 → 转换成功+补偿事件（不回滚断言）；
 - meta 往返：**B3-1 配置面**（类型管理页扩展——S2 画布范围不含 meta 编辑，见下方界注）配置 meta → 保存 → 回显一致；无 meta 存量类型零行为变化（零破坏断言）；
 - 分派：规则命中自动分派（决议①–⑤逐条）；keyword 注入负向（LIKE 通配符转义）；
 - 求值器沙箱负向（与 01 号 A.6 同款）。
@@ -223,7 +228,7 @@ type TransitionAction interface {
 
 > **定位**：S2/S3/S6/S10/SLA 各段能力统一到「工单引擎」主线——**现状处于哪个阶段、每级演进的触发事件、量级预估**，一张图收口。触发事件为立项开关（照单触发勿再推演）；各能力的详细设计归各自段稿（本文只做演进视角汇总）。业界参照系 = Jira（workflow→Automation→JSM）/ ServiceNow（Flow→SLA 引擎）——两家演进史与本阶梯同构。
 
-### 引擎能力矩阵（六能力域 × 现状/已排期/触发驱动）
+### 历史引擎能力矩阵（2026-10-16设计快照，非当前交付表）
 
 | 能力域 | 现状（已交付） | 下一态（✅ 已排期） | 再下一态（⏸ 触发驱动） | 远期（🚫 不规划） |
 |--------|---------------|---------------------|------------------------|-------------------|
@@ -248,14 +253,16 @@ type TransitionAction interface {
 | **升级链 escalation** | 超时自动转派诉求（人工处理跟不上量）——**2026-10-27 注：B0-4 自动路由词表含时间谓词后，本级 = 条件路由的配置形态（超期布尔→转派边），不再独立立项，见 [phase6/00 号 §3.3](../phase6/00-flow-engine-v2.md)** | ~1 周（**与 S3a 动作库天然结合**：ops.cron_failed/超时 DomainEvent → 动作库「转派」动作——不独立建链） | 本文件 §3.3 + [10 号附录 A.5](./10-s10-ticket-collaboration.md) |
 | ~~**表单条件显隐**（交互层联动）~~ **✅ 已交付销账（2026-10-28 核对——能力三层全落：`field_meta.visible_when` 表达式[保存期语法校验] + 渲染端 watch 联动 + G2 提交时跳过隐藏字段[required 不校验/值不写入——防绕过]，S1 B1-6 批 1/3 交付）** | ~~业务方提出「选了 A 才填 B」类联动诉求~~ | ~~≈2–3 天~~ | 01 号 §3.3 / service.go:274 / create/index.vue:73 |
 | **多源内容采集**（微信公众号等订阅/推送源） | ✅ **业务意图已声明（2026-10-19 所有者）**——桥接方案拍板即立项 | MVP ≈1–1.5 周（轮询桥接+HTML 消毒+入库列表+通知复用；图片转存+全文检索 +1 周） | **归属 phase6 新段**（09 号不迁移——查询代理 pull ≠ 推送采集 push 两形态）；形态=**通用数据录入接口**：统一信封（source/type/payload）+按源 schema 注册校验（防「通用=无 schema」dump 陷阱）+服务间 AK/SK HMAC 鉴权[standards §4]+raw 报文留档（对账/重放）+DomainEvent 出站；前置=桥接方案+phase5 S5/B6-1/S4 底座（W13 前全齐）；拉取侧 http-pull / db-pull / file-pull + `ingest_sources` 水位表（推 / 拉皆备——所有者 2026-10-20；2026-10-20 回灌） | [09 号 §6 留口注](./09-s9-threat-intel-cache-proxy.md) |
-| **定义快照版本化**（编辑版/发布版分离、deploy 锁快照、在途单钉创建时版本；范围含字段与否待 00 号拍板 5） | ✅ **已立项（2026-10-27 所有者拍 phase6/00 号拍板点 1）——启动段 B0-3** | 3–5 天 | [phase6/00 号 §3.2](../phase6/00-flow-engine-v2.md) |
+| **定义快照版本化**（编辑版/发布版分离、deploy 锁快照、在途单钉创建时版本；范围已拍含字段，B0-3仍未实施） | ✅ **已立项（2026-10-27 所有者拍 phase6/00 号拍板点 1）——启动段 B0-3** | 5.5–7.5天（含字段快照，当前量级见Phase6总账） | [phase6/00 号 §3.2](../phase6/00-flow-engine-v2.md) |
 | **自动路由**（出边条件命中自动流转；系统字段/时间谓词词表 + 默认边/互斥/无命中三语义——升级链形态由此吞并） | ✅ **已立项（同上）——B0-4，硬约束 B0-3 先行** | ~1 周 | [phase6/00 号 §3.3](../phase6/00-flow-engine-v2.md) |
 | **转换时字段采集**（transition_meta 边级 `fields_on_transition` + `comment_required`——L3 处理人无字段编辑权缺口的解法，2026-10-27 三方对标登记） | phase6 R3 复核态联调前（**硬前置**） | ~2–3 天 | [phase6/06 号](../phase6/06-ticket-completeness.md) 件 1 |
 | **运行态只读图**（详情页流程图当前态高亮+已走路径点亮） | 风险 owner 跟踪整改单场景（phase6 R3） | 1–2 天（前端为主 + trail 端点 0.5 天） | [phase6/06 号](../phase6/06-ticket-completeness.md) 件 2 |
 | **状态级字段权限矩阵**（state×field editable/required/hidden） | R3 复核态需「某字段仅处理人常驻可编辑」（转换窗采集不覆盖的常驻编辑） | 2–3 天 | [phase6/06 号](../phase6/06-ticket-completeness.md) §4 |
 | **软删替代物理删** | 合规保留期/审计回放诉求（现物理删后 ticket_events.ticket_id SET NULL 断链） | ~1–2 天 | [phase6/06 号](../phase6/06-ticket-completeness.md) §4 |
 
-### 事件驱动统一模型（2026-10-19 所有者架构提议采纳——引擎扩展的统一形态）
+### 事件驱动统一模型（设计边界与演进，未全部实施）
+
+当前post-action形态为commit后独立调用，不能据下方“同步/强一致”设计语句推断与转换同事务；扫描器和未来动作的事务归属须各自实施验证。
 
 **提议**：工单状态变化触发 DomainEvent，**通知/升级转派/计划任务统一为事件的消费者或生产者**——业界收敛形态（Jira Automation trigger→condition→action / ServiceNow Flow / Salesforce Platform Events；Jira 自己即从分散 notification scheme+listener 演进到统一 Automation）。**底座已就位**：DomainEvent（BizType 路由）+ message_rules（事件→动作规则表）+ S3a 动作库——提议实质 = DomainEvent 从「通知触发器」升格为「全引擎统一扩展模型」：新能力=新订阅者，内核零改动。
 
@@ -301,6 +308,41 @@ type TransitionAction interface {
 
 ---
 
+
+## 整理保留的历史文本（2026-11-08）
+
+<details>
+<summary>展开查看旧基线、拟定路径与已被当前合同取代的文字</summary>
+
+下列仅作原决策/估算追溯，不可直接实施；正文当前状态、源码符号与未做边界为准。
+
+> > **时点决策与后插代价评估（2026-10-16，所有者问询"phase6 前要不要升级引擎"后定——维持条件段，方案 A+C）**：phase6 MVP **不需要** S3a（硬前置不含；核心链路逐环有落点——派生工单=S1 预填/复核流程=S2 状态图配置/终态联动关险单=S6 共享事件面/超期催办=S10）。**后插代价已评估为小且可预算**：S3a 本质是**叠加式语义层**而非推翻式重构——① 数据零迁移（transitions JSONB meta 扩展，配置空=行为不变，存量单零感知）；② 引擎改造=`AssertTransition` 叠加校验（端点级判定保留、更严叠加），非重写；③ 周边全部在位或已留缝（S1 求值器公共件 / S6 B6-1 事件面对表 / S2 画布适配层分离）。**唯一真实代价 = 绕行债**：phase6 期间撞墙需求**不绕行、记账等 S3a**（人工流程顶滞后期 ≈2 周），**禁**另造状态/另开端点/service 层硬编码特殊判断——绕行实现才是 S3a 到来时真正要清理的不可控成本。~~显式触发信号 = phase6 R3 出现首个转换级权限真实需求~~（**2026-10-19 所有者拍「升」：触发信号不再等待——S3a 升格 W13–15 排期**，论据=事件驱动统一模型[转派动作需同步事务内通道]+phase6 R3 复核态权限为明牌需求，见附录「事件驱动统一模型」与「phase6 前核心引擎目标态」两节；次序靠后项[分派/网关条件]随排期一并实施）；S3a 启动时与 B6-1 事件面按 **DomainEvent/DomainHook** 形态对表（[11 号 §2.4](./11-implementation-plan.md) 已钉——2026-10-16 拍板点 S6#4：通用命名，原 TicketHooks 称谓废止）。
+
+> ### A.3 动作库框架（Post-function 形态）
+>
+> ```go
+> type TransitionAction interface {
+>     Name() string                                    // 注册键（编译期——反射反面）
+>     Execute(ctx context.Context, ev domainevent.DomainEvent, t *model.Ticket) error
+> }
+> // internal/service/ticket/actions/：notify.go(S6) / cc.go(S10) / reassign.go / spawn_task.go
+> //   （首批四动作——2026-10-24 spawn_task 升首批：owner 场景「下发即起任务」实证）
+> // 一致性声明（动作接口随行件）：Delivery() DeliverySemantics——
+> //   at_most_once（通知类：丢可补发）| durable_submit（spawn_task 类：taskrunner
+> //   持久化凭证落 DB，事件重投=重复提交被回调幂等栅栏挡——at-least-once+幂等消费）；
+> //   两类不得共用投递语义（框架按声明选择重试/审计策略）
+> // 注册：app.go 装配 actionRegistry.Register(name, NewXxxAction(...))——重复名 panic
+> // 失败语义：不回滚转换（Hook 捕获 + Dispatch DomainEvent{BizType:"ops", Action:"ops.action_failed"}
+> //   [payload=动作名/工单/错误——消费方=ops 告警规则(S6 规则面配置)] + 异步补偿队列——分派决议⑤同款）
+> //   补偿事件命名定案（2026-10-19 外审 P2-6：原三缺[名/消费方/内容]补齐）
+> ```
+>
+> 可选方法 `ParamsSchema() json.RawMessage`：返回动作参数的 JSON Schema（nil 合法）；`Execute` 签名不变（B3-3 随行件，2026-10-20 回灌）。
+>
+>
+
+</details>
+
 ## 变更记录
 
 2026-11-06 ECO-B06-F05：提交事务锁定并核对类型版本与工单持久快照；Transition/Close/Assign 三路同源，过期预检以409重读拒绝，不把旧处理人或旧字段值带入实际写入。专项、变异和常规门禁按独立修复批记录，部署状态另计。
@@ -317,7 +359,7 @@ type TransitionAction interface {
 | 2026-10-19 | **SLA 边界溯源修正批（随 10 号同款）**：§1「SLA 引擎不建（dd §29 定论）」修正——§29 原文仅方向性一句，细分边界=设计推演；触发信号在案 10 号 §5 |
 | 2026-10-19 | **事件驱动统一模型+phase6 前核心引擎目标批（所有者架构提议：状态变化触发事件，通知/升级转派/计划任务统一为事件消费者或生产者）**：03 号演进路线新增两节——①**事件驱动统一模型**（业界收敛形态 Jira Automation 同构；三分架构=通知走 S6 规则面 at-most-once/转派走 S3a 动作库同步事务内/扫描器=事件生产者——一致性等级显式分层；防蔓延两条=代码注册为主不做全可配+循环触发防护注记）②**phase6 前核心引擎目标态**（gap 两项：S3a 升格 ~2 周+SLA 层 0.5 0.5–1 天≈15 周达成；S3b 维持触发驱动不构成缺口；**决策项=所有者：S3a 是否升格排期**） |
 | 2026-10-19 | **S3a 升格排期批（所有者拍「升」）**：头注段属性（条件段→排期段 W13–15、纳入 phase5 收官；S3b 维持触发驱动）/§1 溯源修正联动/§3 头注时点决策更新（触发信号不再等待——A+C 方案被升格决策取代，绕行禁令 W13 前仍有效）/附录演进路线矩阵与触发总表与 gap 表三处 S3a 状态翻 ✅已排期 |
-| 2026-10-19 | **S3a 附录 A 详细技术设计批（升格排期后按排期段标准补齐——05 号样板深度）**：A.1 **Jira transition 四段对表**（condition=转换级权限/validator=前置条件/post-function=动作库——20 年业界解剖照表设计不漏项）+ transitions_meta 独立列（对齐 01 号 A.2 方案 b）+ available 端点（前端过滤 UX+服务端兜底双重）/A.2 assignment_rules DDL（五决议既定）/A.3 动作库框架（TransitionAction 编译期注册+失败不回滚）/A.4 **easy-workflow 对照开发法**（所有者提议"参考修改补强"的操作化——fork 改造≈2–3 周四层重写>对照自研 2 周，参考实现=免费错题本）/A.5 验收补充 |
+| 2026-10-19 | **S3a 附录 A 详细技术设计批（升格排期后按排期段标准补齐——05 号样板深度）**：A.1 **本系统转换三阶段对表**（condition=转换级权限/validator=前置条件/post-function=动作库——20 年业界解剖照表设计不漏项）+ transitions_meta 独立列（对齐 01 号 A.2 方案 b）+ available 端点（前端过滤 UX+服务端兜底双重）/A.2 assignment_rules DDL（五决议既定）/A.3 动作库框架（TransitionAction 编译期注册+失败不回滚）/A.4 **easy-workflow 对照开发法**（所有者提议"参考修改补强"的操作化——fork 改造≈2–3 周四层重写>对照自研 2 周，参考实现=免费错题本）/A.5 验收补充 |
 | 2026-10-19 | **引擎独立性评估批（所有者问"工单引擎是否拆独立仓库"）**：附录 A.6 新增——**现在不拆**（判据=跨仓消费方≥2，项目第三次同判据同答案：FormDesigner/utils/本次同构）；引擎耦合面四条（策略库/DomainEvent 订阅者/assignment_rules 表依赖/动作库业务语义——拆=连带重写）；演化期纪律（三波演进跨仓同步负收益，modular monolith 内部领域隔离=既定架构「画边界非拆」）；**拆分触发信号三条**（第二消费方/部署独立/团队拆分）+phase5 准备（引擎件聚类纪律+域间禁表直查） |
 | 2026-10-19 | **S3a 详设外审深修批（外审 P1×3+P2×4+P3×2 全修）**：**P1-1 升级链一致性自相矛盾修法拍定**=转派由超时扫描器事务内直调（扫描批事务=强一致通道）+DomainEvent 仅通知面+outbox 备选登记（事件驱动统一模型节裁定）；**P1-2 meta 配置面归 B3-1**（类型管理页扩展——02 号画布范围结构性不覆盖独立列+A.5 验收主语改 B3-1+A.5 加界注）；**P1-3 通知双通道分工**=流转通知收敛走 S6 规则面（notify 动作降无规则兜底——§3.3 修正）；P2-4 框架补两触发形态（转换后/事件订阅——事务边界随触发方）；P2-5 expr 字段引用约定（内置=标识符直引/动态=map 索引+与 S6 slug 统一随 B3-1）；P2-6 补偿事件定案（ops.action_failed+消费方 ops 告警规则+payload）；P2-7 循环防护落点补 B3-3；P3-9 assignment_rules 管理面归 B3-2；03 号 A.7 界注+变更记录批行 |
 | 2026-10-19 | **边界工具化时机前移批（随 11 号同款，所有者拍「按建议修改」）**：A.6 画边界补强两件拆开排——工具化前移 W1 开工首件（CI 自第一行代码生效）/engine 子包化维持随 B3-1（顺手零成本） |
@@ -334,6 +376,6 @@ type TransitionAction interface {
 | 2026-10-19 | **W1 开工首件落地批（① 架构依赖规则工具化 ✅——A.6 拍板执行）**：A.6 补落地状态注——以自研 guard 扩展两条断言落地（pkg 禁反向依赖业务层[admincli 豁免] + service 域间横向隔离[根包↔子包互禁 import，DomainEvent/Port 解耦]）；未引 golangci-lint 工具链（CI test job 天然包含、零新增依赖）；正向+金丝雀负向+lint 三验证过；「engine 不 import 业务外依赖」专属禁单维持随 B3-1（详录 11 号同批变更记录） |
 | 2026-10-25 | **B3-2 管理页孤岛补路由（E2E 补齐批核出）**：分派规则页 `views/ticket/rules/index.vue`（ui 45a72256，name=ticket_assignment_rules）落成时**无菜单种子**——无动态路由/无侧栏入口/viewNames 守卫单向（只查种子→页面）不报，用户不可达三日无人察觉；**迁移 000073** 补 ticket_manage 下页面行（path /tickets/rules，权限沿用 ticket:type:manage）+ 四端点再绑本页（000070 挂类型配置页的绑定不动——按页单独分配时 L1 自洽）+ **000074** 绑 admin+superadmin（000031 惯例）；ui 侧补 viewNames **反向守卫**（每个 views/**/index.vue 须 ∈ 种子页 ∪ routes.ts 常量路由）先红后绿。A.2「管理面归 B3-2」句自此才真正成立 |
 | 2026-10-25 | **二程：规则页两缺陷 + L1 越权修复（E2E 写 spec 核出）**：①规则页 `orgOptions` 为 IIFE 快照（orgTreeQuery 在途时 data 为 undefined → 永久空选项）——**冷加载下 UI 建不了任何规则**（目标组织必填无可选项；仅其他页预热缓存后偶然可用）→ 改 computed；②**L1 越权（P1）**：000070 把 /assignment-rules 三写端点挂 ticket_type_manage **页面行**（000073 照抄）——违反 W1 B 案「页面=读 API、写端点挂按钮」（000018 `ticket_type_write_btn` 同域先例）→ viewer/operator 预设只绑页面即持三写 casbin，viewer POST 实测 **400 过 L1 非 403**（可建/停/删自动分派规则）→ **迁移 000075**：新按钮行 `ticket_assignment_rules_write_btn` 承载三写（权限码沿用 ticket:type:manage，绑 admin+superadmin）+ 两页面行摘除三写 + 非管理角色三写 casbin 清除（enforcer 内存由下一次 AssignMenus 收敛）；ui 规则页 el-switch 补 v-permission；E2E p5-s3a-rules 钉 viewer 列表 200/三写 403；③available **按人过滤**实证：bare assigned（无处理人）仅 open 可达，in_progress 须处理人——设计如此，p5-s3a-transition 据此断言。A.2 管理面句补注：写端点落按钮行 |
-| 2026-10-26 | **外审 v4 修复批（S3a 域四条）**：①**自动分派执行身份**：新增 `Service.AssignAsSystem`——鉴权在规则创建期以 ticket:type:manage 行使，执行期不再以 rule.CreatedBy 过 L2/L3（修前非该单可操作人建的规则 403→仅 Warn+dispatch_missed，自动分派在跨组织/非 admin 管理员场景静默失效）；状态机/条件/事务/事件全链不变，事件 actor=规则创建者供归因。§3.2「走 Assign 不绕鉴权」句修正为「鉴权前置到规则创建期，执行走系统身份」。②**post_actions 链深真实现**：depth 经 ctx 透传（Transition 读 `actionDepth(ctx)`，动作以 depth+1 执行），动作内再触发转换即被 maxDepth=3 截断并 Warn——修前调用方恒传 0、无递归载体，A.3「链深限制」为假守卫（审计 #3；递归单测修前栈溢出）。③**SLA due 刻入事务**：`sla_due_at` 与 UpdateStatusTx 同事务写，无 meta/无配置显式 NULL（修前 commit 后裸 Exec 吞错、toMeta=nil 不清）。④**规则 keyword LIKE 转义**：`\ % _` 字面匹配 + `ESCAPE`（修前 keyword=`%` 全量命中）；大小写敏感维持 LIKE 原语义（改 ILIKE 待拍）。**登记（#19）**：`SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作=「以他人身份写工单」的**委托放大点**——配置面受 ticket:type:manage 控制，但 post_actions 作者即可借任意创建人身份写该单；评审新动作时按此口径审视 |
+| 2026-10-26 | **外审 v4 修复批（S3a 域四条）**：①**自动分派执行身份**：新增 `Service.AssignAsSystem`——鉴权在规则创建期以 ticket:type:manage 行使，执行期不再以 rule.CreatedBy 过 L2/L3（修前非该单可操作人建的规则 403→仅 Warn+dispatch_missed，自动分派在跨组织/非 admin 管理员场景静默失效）；状态机/条件/事务/事件全链不变，事件 actor=规则创建者供归因。§3.2「配置期授权、执行走assignAsSystem并保留规则创建者actor」句修正为「鉴权前置到规则创建期，执行走系统身份」。②**post_actions 链深真实现**：depth 经 ctx 透传（Transition 读 `actionDepth(ctx)`，动作以 depth+1 执行），动作内再触发转换即被 maxDepth=3 截断并 Warn——修前调用方恒传 0、无递归载体，A.3「链深限制」为假守卫（审计 #3；递归单测修前栈溢出）。③**SLA due 刻入事务**：`sla_due_at` 与 UpdateStatusTx 同事务写，无 meta/无配置显式 NULL（修前 commit 后裸 Exec 吞错、toMeta=nil 不清）。④**规则 keyword LIKE 转义**：`\ % _` 字面匹配 + `ESCAPE`（修前 keyword=`%` 全量命中）；大小写敏感维持 LIKE 原语义（改 ILIKE 待拍）。**登记（#19）**：`SystemAsCreator` 以工单创建人身份执行 cc/reassign 写动作=「以他人身份写工单」的**委托放大点**——配置面受 ticket:type:manage 控制，但 post_actions 作者即可借任意创建人身份写该单；评审新动作时按此口径审视 |
 | 2026-10-26 | **spawn_task 入参映射与转换级配置面缺口登记（所有者问询「工单节点选触发任务队列+从工单字段选入参」核出，代码级三件——实现零改动）**：①**工单字段→入参映射未实现**：`actions_builtin.go:161` 注释声称 params 支持 `{"from":"ticket.field"}` 简单取数，实现仅原样 marshal 提交（ticket 包 grep 仅注释一处）——现仅静态 params，event/result 全量映射维持 B3-3 后批；②**转换级 meta 无前端配置面**：ui 类型编辑弹窗 transition_meta 表单化只覆盖 B10-4 state 级（超时/催办），condition/validator/post_actions（B3-1 转换级 "from>to" 键）无任何编辑 UI——仅可直调 API 配置（02 号界注：画布不含 meta 列编辑，画布二期触发驱动）；③**丢配置 footgun（P1）**：ui `loadMetaFromRow` 把转换级键当 state 行加载（timeout=undefined），保存时命中「引用已删状态」分支**静默丢弃**（type/index.vue serializeMeta）——API 侧配好的转换级 meta 会被一次 UI 保存清掉；修复方向 = load/serialize 双侧保留未知键形（"a>b" 含 ">" 即原样透传），随转换级配置面批（=phase6 启动批随行，2026-10-26 拍板不立 phase5 二期——债台账 A-6/B-20/B-21/B-8 同批）或先行 hotfix（建议随 phase5 走查批） |
 | 2026-11-01 | **审计修复批 A（三虚标收口）**：①human_key 读回修复（repo 列曾建而未读——导出「编号」列恒空/事件回退数字 id，见 review/11 批次行）；②reassign 语义修正——「creator 恒有 assign 面」表述不成立（canOperate(assign) 不含 isCreator），SystemAsCreator 场景改走 assignAsSystem（G-32 委托放大族并账；非 admin 创建者 TestB33 回归锚）；③CreateJob fail-fast 探针 action→action_id 契约字段修复（曾恒空永不生效）——04 号 §A.2 声称自本批成立 |

@@ -43,14 +43,14 @@
 1. **方法仅 GET / POST**——PUT / DELETE / PATCH 不引入；**立法理由（2026-10-15 补记，防再议）**：资源语义由路径 + 权限码（`resource:verb`）承载，方法仅承载「幂等读 / 非幂等写」二分——引入 PUT/DELETE 不新增表达力，只摊薄「写操作必须过鉴权/审计」这一 HTTP 层结构性不变量；方法面变更为全生态破坏性契约变更（网关匹配 / menu_apis 绑定 / 前端请求封装 / 存量端点全量对账），内部平台 + 前端唯一消费方语境下无对应收益（对外公开放 API 的自描述诉求不存在，gRPC-Gateway/GraphQL 全 POST 同款先例）；**辖域界定（2026-10-15 所有者拍板）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
 3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
-4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 api/errcode.md 对账）；
+4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 docs/api/errcode.md 对账）；
 5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；**zhuzhao 侧 `/api/v1/tasks` 组的 `/cancel`·`/retry` 为该豁免契约的镜像路由（透传 taskrunner，2026-10-15 补登记）**；**activelist 数据域 `/:typeName/:id/update`·`/:id/delete`「URL 标识 + 动词段」同条豁免（2026-10-15 清欠批补登记）**——先于 C10 整改批的存量形态、与已上线 ui 消费契约耦合，对端 implementation-plan §4 头部注记在册，整改范围不追溯；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**。**特例在册（2026-10-15 全仓审计立约）**：activelist 列表端点为 keyset 游标分页且 `next_cursor` 进响应信封——动态表百万行量级下 offset 深翻页不可用、zhuzhao-ui cursorPager 已消费该契约；属 offset+total 形态不适用的领域特例，新端点勿援引。时间线备查（2026-10-15 git 考古）：keyset 设计 09-03（activelist `47e3644`）早于公约建纲 09-07（`c4e30b4`——建纲版本条仅要求"必须分页+钳制+确定性排序键"，keyset 实现对当时条款合规）；禁止性扩写 09-09（`f854e35` 三仓信封收敛批）晚于实现 09-08（activelist `dad1b12`）一天且未对存量对账——禁止性条款为既成实现环境后写，非先在约束。建档日期口径注：头注「建档 2026-09-04」与 git 首笔落库 09-07（`c4e30b4`）并存，本文档时间线采用后者（git 实证口径）；
 7. **int64 ID 一律字符串序列化**（`json:",string"`）——规避 JS Number 精度丢失；
 8. **时间统一 RFC3339**（传输）+ TIMESTAMPTZ（存储）——容器 TZ 统一（§4）；
-9. **新增错误码必须登记 api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
-10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
-11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；**存量协议兼容层豁免（2026-10-13）**：utils `aksk/compat` 为本条登记在册的唯一例外（承接存量 `x-auth-*` 调用方，独立重实现而非自研中间件复辟）——只挂专用路由组、不与 `aksk.GinMiddleware` 混挂，存量调用方迁移完成后整包删除（[02-auth §存量迁移翻案追记](./phase1/02-auth.md)）；
+9. **新增错误码必须登记 docs/api/errcode.md**，编号沿用既有分段，不私造新段；**跨服务（taskrunner/activelist 等）自有错误码使用跨服务段 100000–109999**（activelist=100000–100999、taskrunner=101000–101999 预留；通用语义错误复用 10000 段现有码）——经网关/代理对外暴露前完成映射，6 位码与 zhuzhao 域内 5 位码数值可区分。**段位现状（2026-09-15 四仓审计对账）**：activelist 段已启用；taskrunner 段**预留未启用**（错误量级小，走 typed error + 通用段，见第 10 条，启用属触发驱动）；
+10. **错误定义三形态与选择标准**（2026-09-15 审计定版）——按业务码量级三选一：① 码较多（≥5 个）：errcode 集中定义（zhuzhao 模式：`ErrXxx = util.New(码, "中文文案")` + docs/api/errcode.md 登记）；② 需结构化 detail 上下文：apperr 结构体模式（activelist 模式：`Error{HTTP, Code string, Msg, Detail}`，detail 按键序折叠进 message——信封四字段约束下的既定解法；将 detail 升为信封字段仍须走破坏性变更评审）；③ 错误极少（<5 个）：typed error + `errors.As` 映射 + 复用 10000 通用段（taskrunner 模式）。**统一的是选择标准与纪律，不强制统一实现**；
+11. **错误码引用纪律**：响应/映射处码值一律引用 errcode 常量（如 `errcode.ErrInvalidParams.Code`），**禁止内联码值字面量**（与 docs/api/errcode.md 对账的前提，第 4 条文案纪律同理）；**服务端验签中间件不得各仓自研**——一律 `utils aksk.GinMiddleware` + `response.AKSKFail()`（2026-09-16 服务间验签统一批：统一信封 + 分档中文文案，归因键 caller/operator 由中间件统一写入，失败现场落 `Verifier.Logger`；aksk 包自带的零依赖默认响应 `{code,message,detail}` 仅限生态外独立使用，**detail 豁免就此撤销**）；**归因键消费方一律引用常量 `aksk.ContextKeyCaller/ContextKeyOperator`（v0.4.1），禁裸字符串**——键名漂移必须编译期可见（2026-09-16 三仓常量化批）；**存量协议兼容层豁免（2026-10-13）**：utils `aksk/compat` 为本条登记在册的唯一例外（承接存量 `x-auth-*` 调用方，独立重实现而非自研中间件复辟）——只挂专用路由组、不与 `aksk.GinMiddleware` 混挂，存量调用方迁移完成后整包删除（[02-auth §存量迁移翻案追记](./phase1/02-auth.md)）；
 12. **字段格式补充（2026-10-01 四仓联合验证批）**：① **date-only 业务字段传输 `YYYY-MM-DD`**（如工单自定义字段 date——后端 `time.Parse("2006-01-02")` 硬校验），不适用第 8 条 RFC3339；发送侧须按字面格式产出（前端曾以 datetime 控件直发 ISO 时间恒 400，实测教训入册）；② **ID 数组元素与标量同规**——发送侧一律字符串（第 7 条）；`jsonutil.Int64Slice` 双形态兼容仅为**收方宽容**，不构成发送 number 的许可（存量 `.map(Number)` 属违反本公约的欠账）。
 13. **500/内部错误必须留痕（2026-10-12 首例驱动：首页统计卡 `GET /tickets` 瞬时 500 事后无迹可查）**——① 未分类错误（非业务码）由 zhuzhao `writeServiceError` 中枢统一落 ERROR（`request_id/path/err` 明细，service error without http mapping 同规格）；② 服务源头**禁止吞错不落直接返回 ErrInternal**（存量零容忍：notification list 为首例补修；新增即审计项）；③ panic 不占本条——既有 Recovery 中间件口径（slog 堆栈 + PanicSink 指纹聚合落库 + 指标计数）；④ 前端/反代错误体归口各端点（blob 错误体解析属前端请求层职责，zhuzhao-ui 请求层已实现）。
 14. **JSON 序列化形态公约（2026-10-14 三仓契约审计批立约；审计明细随 zhuzhao deliverables）**——① **同概念唯一 wire 形态**：同一业务概念在列表/详情/请求/响应各面编码必须一致（反面在册：taskrunner params 转义字符串 vs JobView 原生对象双形态——升级为 ui 协同决策项收敛）；② **「无值」按语义分组单表达**：关系指针类（`parent_id` 等文档拍板形态）出 `null`，回填/enrich 类（`*_name/*_no/last_*`）值类型 + `omitempty`（空即字段消失）——同组字段禁混两形态（反面在册：Ticket 回填四字段、Role.ParentID 偏离方已修）；③ **bool 恒出、数组恒不 null**：`false` 不得被 omitempty 吞（反面：Field.Sensitive 已修），空数组出 `[]`（`jsonutil.Int64Slice` nil 亦编 `[]`）；④ **零值有语义的数值禁 omitempty**（attempts/count/duration 类，反面：死信载荷 Attempts 已修）；⑤ **写响应回显规范化后的持久值**（Create/PATCH 响应与后续 GET 必一致，反面：relation_type 已修）；⑥ **PATCH 显式设计 null 语义**——指针/RawMessage 字段对显式 `null` 必须拒绝或明示忽略，禁直通落库（反面：taskrunner params 已修为 400）；⑦ 出站 int64 ID 恒 `,string`/`Int64Slice`（含分页游标/回显数组，反面：after_id、role_ids 已修）。**新增跨 HTTP 字段先对表本条**。
@@ -66,7 +66,7 @@
 | 依赖注入 | google/wire（装配收敛于 `internal/app`） |
 | 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
 | **命名约定** | 文件名 snake_case（repository=`<域>_repo.go`、handler=`<域>_handler.go`）；package 名小写单词与目录同名；构造函数 `NewXxx`（包内单主类型可裸 `New`），wire provider `provideXxx`；接口定义放**消费方**（最小接口）+ `var _ Interface = (*Impl)(nil)` 断言；sentinel error 命名 `ErrXxx`、消息带包名前缀小写英文（`"store: job_run not found"`）；常量就近定义于使用包（不设集中 consts 文件），导出 CamelCase / 非导出 camelCase，禁 SCREAMING_SNAKE（2026-09-15 四仓审计将事实惯例升格成文） |
-| 优雅启停 | 信号处理 + 依赖关闭顺序；**防孤儿进程**（重启先杀端口占用） |
+| 优雅启停 | 信号处理 + 依赖关闭顺序；**防孤儿进程**（先核监听进程归属，只停止本会话所有的目标进程；占用不明时拒启，禁止按端口杀他人服务） |
 | 门禁 | 统一 Makefile：`lint`（vet + gofmt）/ `test` / `build`；zhuzhao 另有 `test-integration`（-race -p 1）与 `acceptance` 四档链；**前端仓（zhuzhao-ui）另立六件门禁**（lint/typecheck/test/audit/build/test:e2e——E2E 打真实五栈不用 stub，规格见 phase4/01 号 §7），分仓各跑互不掺和 |
 | 健康检查 | **zhuzhao**：`/health/live`（存活）+ `/health/ready`（检 PG/Redis 硬依赖）；**子服务（taskrunner / activelist）**：`/healthz` + `/readyz`（检各自硬依赖：Redis/PG） |
 | 时区 | 容器固定 `TZ=Asia/Shanghai` |
@@ -79,7 +79,7 @@
 
 ## 5. 公共包（zhuzhao-utils）
 
-- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本：v0.4.2（当前各仓 pin，2026-10-14 打标）**——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正、**v0.4.2**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件+出站 Transport，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）+ jsonutil.Int64Slice 补 MarshalJSON（发送侧 ID 数组一律字符串）+ jwt ParseRefreshToken 过期错误 ErrTokenExpired 哨兵 + postgres 移除 MaxIdleConns 口径误映射；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
+- 清单：crypto / errcode / jsonutil / jwt / logger / postgres / redis / response / validate / aksk / aksk/compat（**11 包**）；**版本以各消费者go.mod为准**（2026-11-08核对：主仓/activelist pin v0.4.4-0.20261106080630-cd759a040245，taskrunner仍v0.4.2；历史v0.4.2发布内容如下，不代表五仓同步升级）——v0.2.0 含 aksk、v0.3.0 含 RefreshClaims.Pwe、v0.4.0 验签统一批（AKSKFail/归因收编/Verifier.Logger）、v0.4.1 归因键常量 + AKSKFail 文案修正、**v0.4.2**：aksk/compat 存量协议兼容层（签名+验签+gin 中间件+出站 Transport，独立重实现、零新依赖、与内部 aksk 零耦合，见 [02-auth §存量迁移翻案追记](./phase1/02-auth.md)）+ jsonutil.Int64Slice 补 MarshalJSON（发送侧 ID 数组一律字符串）+ jwt ParseRefreshToken 过期错误 ErrTokenExpired 哨兵 + postgres 移除 MaxIdleConns 口径误映射；各仓 pin 去 replace（临时 replace 仅限联调窗口）；
 - **抽取边界：只抽无数据依赖的纯工具**——绑定 zhuzhao 库 schema 的构件（如策略谓词）不进 utils（design-decisions §25.3）；
 - 版本策略：语义化版本，发版后各仓 pin（去 replace）；临时 replace 仅限联调窗口；
 - **新增第三方依赖必须说明理由与替代方案**（go.mod 铁律）；公共能力优先沉淀进 zhuzhao-utils 而非各仓自引。
@@ -165,7 +165,7 @@
 
 1. **提交**：中文提交、分批提交（一个逻辑批次一个 commit）、**先验收后提交**（全门禁绿才可提交）、push 单独指示；
 2. **变更评审说明**：任何 `internal/ migrations/ configs/ cmd/ docs/` 改动附带三节——改动摘要 / 影响面 / 验证证据；未跑门禁必须如实说明；
-3. **文档体系规范**：docs 树 = `modules/`（能力文档）/ `phase1-3/`（阶段计划）/ `review/`（评审发现）/ `adr/`（重大架构决策）/ `design/`（设计推演与细节）/ `proposal/`（提案），顺序编号 + README 索引。**分工**：ADR = 重大不可逆架构决策（事件机制/任务执行器/集成形态），design-decisions = 演进中的设计细节拍板（编号顺延不回收），modules = 能力的长期文档。每个 SSOT 文档必须带**变更记录表**；**文档断言必须能与代码对账**（状态以代码为准）；**必要正式时点报告**（需长期追溯的审计结论/决策）各仓统一 `deliverables/`，命名 `<topic-kebab>-<YYYY-MM-DD>.md`（2026-10-03 统一）。**Codex 过程材料默认不纳管**（2026-11-04 所有者指定）：执行卡、阅读清单、进度、过程报告、原始日志/截图/快照/临时探针放本地 `.codex/`，由 `.gitignore` 与 `.dockerignore` 排除；不以提交代码为由连带提交这些材料，索引只链接纳管文件；
+3. **文档体系规范（2026-11-08 所有者指定）**：五仓各自以 `docs/` 为唯一人工文档维护根，分类、命名、目录入口、内容状态与迁移检查见[文档维护约定](documentation.md)。通用分类为 `guides/`、`design/`、`api/`、`ops/`、`review/`；主仓保留有实际内容的 `modules/`、`adr/`、`proposal/`、`phase1` 至 `phase9`，不为兄弟仓建立空目录。ADR记重大架构决策，design-decisions保留演进拍板（编号不回收），modules解释长期能力；每份SSOT含变更记录，断言与实际代码/迁移对账。**必要正式时点报告**统一为 `docs/review/reports/`、命名 `<topic-kebab>-<YYYY-MM-DD>.md`，历史报告保留冻结事实与后续回链。根README/AGENTS及法律文件保留入口/协议用途；原`doc/`保持本地参考，旧`deliverables/`、`outputs/`不再是受控入口。**过程材料不纳管**：执行卡、阅读清单、进度、过程报告及原日志/截图/快照/临时探针放本地`.codex/`等目录，Git/Docker同时忽略；停止跟踪前保留必要原件和处置依据，索引只链接纳管文件；
 4. **编号 namespace**：W（Wave）/ IW（独立窗口）/ BK（backlog）/ E/D（16 号配套）/ P（待拍板）/ F/C/AB（各评审文档本地）——引用前必查归属；
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
 6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增。**改 wire 形态（字段类型/omitempty/指针化/序列化行为）五点必查（2026-10-14 契约审计批立约，三例在册：MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾）**——① 消费端 Go struct（grep 四仓字段名）② 测试侧镜像解码 struct ③ swagger 表达（数组 ID 字段带 `swaggertype:"array,string"`，CI 有 swagger 新鲜度守卫）④ zhuzhao-ui codegen 触发 ⑤ 文档口径（含「待发/已发」类措辞）；
@@ -207,14 +207,14 @@
    - **发现分级与处置时限**：P1 设计缺口 = 对应批次启动批前必须落档 / P2 级联残留 = 随下一文档批 / P3 登记项 = 触发驱动；发现编号标注报告来源（A-1/B-3 式）可回溯；
    - **外审截断规则（辖域分流，2026-10-19 立——双钻复盘产出）**：外审两类勿混辖——①**规划抛光轮**（对已收敛文档的再审计，10-09 收口教训辖域）：开工前声明终止条件，本轮发现全为 P2/P3 或措辞记账级即终轮、剩余只记账不深修——判定锚=发现**性质**（结构性错误 vs 措辞精度）非轮次序数；②**实施期设计核验**（随批外审）：**不适用截断**，按上行分级处置执行（P0 随批修 / P1 随段启动批 / P2·P3 记账）——2026-10-19 P0×4（timeout 三方矛盾/执行端点缺失）即实施期外审高价值实证，截断若混辖必误伤；
    - **触发时机**：phase 启动批 / 里程碑收口 / 所有者问询 / 外部依赖变化（兄弟仓发版/上游契约变更）；
-   - **产出归档**：按 §12-3 入 deliverables/ 时点报告；检查结论（含"未发现"）同样留痕；
+   - **产出归档**：按 §12-3 入 docs/review/reports/ 时点报告；检查结论（含"未发现"）同样留痕；
    - **分级修复闭环（2026-11-04 增补）**：确认的 P0 先固化证据、登记并尽快开独立修复批，不等全面扫描结束；P1 随当前模块/批次收口后按根因与同类路径组织修复，已有启动前置时限仍须满足；P2/P3 统一记账按依赖与触发排期。设计取舍先裁定再实施。**审计窗口冻结，修复与复验另钉完整提交窗口**；有修复提交只记「待复验」，原复现、同类/边界与必要门禁复核后才关闭，发布/部署状态另列。单纯审计不改实现、不跑验收；进入已授权修复批后按正常开发门禁和显式路径提交，push 仍单独指示。原报告保留时点事实，复验另档并回链控制台/债台账，不用 commit message 或环境冒烟代替关闭证据。具体执行方式见 [审计指南 §7.1](review/audit-playbook.md#71-授权修复批与审计并行)。
    - **并行会话收尾互检**（fe720e1/c293f06 两次写冲突实证）：并行会话提交前必须回读自己写入的行仍在（grep 校验本批次锚点词），发现被覆写立即重做并最小窗口提交。
    - **历史操作前必查 HEAD 归属（2026-10-28 立——dcf005c amend 吞并实证）**：`amend`/`rebase`/`reset` 等任何改史操作前，必须核对 HEAD 是**本会话末笔**（`git log --format='%h %ad %s' -1` 对照本会话最后提交主题与时间戳）——共享工作树上并行会话随时可能在头顶落笔，HEAD 非本会话所出时 amend 会吞并他人提交对象（内容卷入己方树、双方披露错位）；非本会话所出 = 停手，改走普通新提交（不改史零风险）。改写待推送历史（重题等）只在树静窗口做（push 前链式改写即此纪律的应用形态）。
    - **提交只带本批路径+禁 `add -A`（2026-10-28 立——1418f33 索引互扫实证）**：并行会话共享同一索引，他人 staged 的文件会被己方 `git commit`（全索引快照）扫入；提交一律显式路径（`git add <files>` + `git commit`，或 `git commit -- <paths>`），提交后 `git show --stat` 回核文件集=本批清单（与 §12-9 披露一致性条款联动）。**执行工具（2026-10-30 增——所有者拍「组合一」）**：`scripts/zz-commit.sh <msgfile> <paths>...`（`--amend` 同语义）四步校验——①只 `add` 声明路径；②**暂存集 ⊆ 声明集硬校验**（不等即拒——他人 staged 内容混入即暴露；钩子不知「声明集」，此硬判定唯包装器可做，与下行机械守卫条的在途显影软信号互补）；③pathspec 提交（`--only` 语义）；④自动 `show --stat` 回核。等价裸形态 `git commit -F msg -- <paths>` 仍合规。
-   - **会间交接注（2026-10-28 立——三起同类事故后成文）**：两会以上并行时，各会话**收尾**在 [runbook §7 在途台账](runbook.md) 落一行（会话主题/在途文件/未推送笔数/时间），收口清行；**后继会话开工先读台账**——fe720e1 覆写/1418f33 索引互扫/dcf005c amend 吞并三起事故的共同根因都是「不知道对方在途」。
+   - **会间交接注（2026-10-28 立——三起同类事故后成文）**：两会以上并行时，各会话**收尾**在 [runbook §7 在途台账](ops/runbook.md) 落一行（会话主题/在途文件/未推送笔数/时间），收口清行；**后继会话开工先读台账**——fe720e1 覆写/1418f33 索引互扫/dcf005c amend 吞并三起事故的共同根因都是「不知道对方在途」。
    - **机械守卫（2026-10-28立，2026-11-08 RR-GIT-01补齐）**：`.githooks/` 三钩，Go仓`make hooks`/UI`pnpm hooks`按§12-9只安装当前worktree，**新环境/新会话开工第一步**。①`pre-commit`=在途显影与>15文件宽面提示；②`commit-msg`先检查消息规则，再保留跨主题纯重题amend拦截（暂存树==HEAD树且新旧type(scope)不同即阻断；`ZCODE_ALLOW_RETITLE=1`仅豁免重题保护，不豁免消息规则）；③`pre-push`按Git提供的每ref旧/新OID检查新增窗口。CI另按事件SHA兜底，均不替代显式路径提交与`git show --stat`归属复核。
-   - **并发回归测试须过变异验证（2026-10-21 立——F-B1 变异验证实证）**：`-race` 全绿 ≠ 测试能抓 bug——竞态测试不触发该交错则一行不报。并发回归测试收口前须做变异验证：临时移除修复 → 连跑 ≥8 次 → 须**稳定变红**方可信为守卫；时绿时红 = 假守卫，靠**加轮数**（而非加并发数，受集成连接池约束）堆命中率直至稳定红。实证：F-B1 单轮 3 并发漏守率 25%（6 红/2 绿）→ 串行 6 轮后 8/8 全红（详见 deliverables/software-company/zhuzhao-batch-audit-2026-10-21.md §七）。
+   - **并发回归测试须过变异验证（2026-10-21 立——F-B1 变异验证实证）**：`-race` 全绿 ≠ 测试能抓 bug——竞态测试不触发该交错则一行不报。并发回归测试收口前须做变异验证：临时移除修复 → 连跑 ≥8 次 → 须**稳定变红**方可信为守卫；时绿时红 = 假守卫，靠**加轮数**（而非加并发数，受集成连接池约束）堆命中率直至稳定红。实证：F-B1 单轮 3 并发漏守率 25%（6 红/2 绿）→ 串行 6 轮后 8/8 全红（详见 docs/review/reports/zhuzhao-batch-audit-2026-10-21.md §七）。
 
 ## 13. SSOT 索引
 
@@ -224,9 +224,9 @@
 | 权限架构（PDP/PEP、网关、策略库、ReBAC 触发器） | design-decisions §25 |
 | 软删组织委托语义 / SoD / Phase 3 重定位 / SSO | design-decisions §21 / §20 / §22–24 |
 | 服务实例基线（允许差异、taskrunner 对齐清单 C 系列） | phase3/16 号 §9 |
-| taskrunner 设计 / API / job_runs | taskrunner 仓库 docs/taskrunner.md |
-| activelist 契约 / 存储模型 | activelist 仓库 docs/ADR-003-integration-contract.md |
-| 排期（里程碑/人日/主链） | phase3/13 号 §1 |
+| taskrunner 设计 / API / job_runs | taskrunner 仓库 docs/design/taskrunner.md |
+| activelist 契约 / 存储模型 | activelist 仓库 docs/adr/adr-003-integration-contract.md |
+| 当前阶段与后续排期 | roadmap.md → phase5/README.md、phase6/README.md（phase3/13保留历史里程碑） |
 | 事件机制 / Asynq | ADR-001 / ADR-002 |
 | 工单（§29 翻案后主线——模块文档回填登记 L-5；对接参考存档） | phase2/09、phase3/10、phase5/03 |
 | 前端工程设计（技术栈/壳层/契约消费面/门禁） | phase4/01 号 |
@@ -240,10 +240,10 @@
 
 > **立法（2026-10-28 所有者拍板，gap-audit P1-7 落定）**：进程内事件面是 S6/S3a/phase6-R3/任务链多域共用基础设施——公约层 SSOT 在本节，机制细节锚 [phase5/06 号](phase5/06-s6-message-notification.md)（S6=第一消费者）；新消费者（含跨进程）一律遵本节约。**§13 索引行同步。**
 
-1. **发布时机**：emit 一律在业务事务 **commit 之后**（commit 前崩溃=事件不发生；commit 后崩溃=事件已发——进程内 **at-most-once** 已拍，勿在文档另立口径）。
+1. **发布时机**：emit 一律在确认业务事务 **commit 之后**；commit 成功到 emit/消费完成之间崩溃仍可能漏发或未完成，不能承诺“commit 后事件必已发送”。当前进程内 **at-most-once** 不变，可靠重放升级另走 C-20 outbox。
 2. **订阅两层**：代码级 `HookRegistry.Subscribe(bizType, name, handler)`（消费逻辑）+ 配置级 message_rules（外发路由）——两层各管各的，禁止用规则面承载业务逻辑。
 3. **优雅退出**：Shutdown 走 `Drain`（closed 闸——Drain 后拒收残发，happens-before 保证；预算 8s）。并发细节终修=G-30，勿回退实现。
-4. **消费者义务**：at-most-once 下消费者无需幂等；**升级 at-least-once 的唯一正路 = C-20 outbox**（台账在档）——届时消费者幂等化（inbox unique(event_id,user_id) 形态）为前置。
+4. **消费者义务**：当前总线不提供 outbox 重放，因此尚无事件重放去重协议；消费者自身的并发、重复业务请求与外部副作用仍需按业务规则处理；**升级 at-least-once 的唯一正路 = C-20 outbox**（台账在档）——届时消费者幂等化（inbox unique(event_id,user_id) 形态）为前置。
 5. **禁止硬编码直调**：跨域消费（如风险关闭联动）必须走订阅钩子——把消费方逻辑焊进生产方 service = 破坏领域隔离（phase6 §3 拍板），评审拦截。
 6. **新域消费者随批三件**：①本节清点表加行 ②装配进 boot 期望订阅集 ③守卫测试（boot 断言——R1/G-5 装配遗漏族的结构性解，随 phase6 Week 0 落地）。
 7. **升级信号三条**（任一出现→重评 outbox/C-20）：跨进程消费者出现 /「丢一条即事故」级消费者出现 / 需要重放。
@@ -257,11 +257,13 @@
 | 生产 | 工单生命周期（Create/Update/Assign/Close/Transition/cc；标签与内部备注不发布DomainEvent） | `internal/service/ticket/service.go` 的 `emitEvent`（审计修复分支为 `emitTicketEvent`） |
 | 生产 | timeout 扫描 / cron 失败 / 动作失败 / 存储用量越限 | 各 cron/ops emit 点 |
 
-> 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](../deliverables/software-company/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
+> 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
 
 ## 变更记录
 
-2026-11-08：§12-9落RR-GIT-01五仓同源消息/窗口门禁、固定启用基线、worktree安装与未承接main兼容；明确既有≤50按摘要计数；新增merge无主题例外。主仓保留Swagger及WARN分层，修生成失败误绿。状态与测试见[复验报告](../deliverables/software-company/zhuzhao-report-followup-2026-11-08.md)，不沿历史违例改史。
+2026-11-08文档整理：§12-3按所有者选择改为五仓各自docs/、统一分类与命名；正式报告归review/reports，本地参考与过程材料保持Git/Docker忽略。原deliverables落点为历史口径，迁移映射与验证随本批收口记录。
+
+2026-11-08：§12-9落RR-GIT-01五仓同源消息/窗口门禁、固定启用基线、worktree安装与未承接main兼容；明确既有≤50按摘要计数；新增merge无主题例外。主仓保留Swagger及WARN分层，修生成失败误绿。状态与测试见[复验报告](review/reports/zhuzhao-report-followup-2026-11-08.md)，不沿历史违例改史。
 
 | 日期 | 变更 |
 |---|---|
@@ -276,7 +278,7 @@
 | 2026-10-12 | 500 留痕纪律：§3 增第 13 条——未分类错误中枢落 ERROR（writeServiceError，request_id/path/err）+服务源头禁吞错（notification list 首例补修）；panic 既有 Recovery+PanicSink 口径注记。驱动=首页统计卡瞬时 500 事后无迹可查 |
 | 2026-10-13 | 存量协议兼容层批：§3-11 验签条款增 `aksk/compat` 唯一登记豁免（只挂专用路由组、迁移后整包删除——02-auth §存量迁移翻案追记）；§5 utils 清单 10→11 包（aksk/compat，v0.4.2 待发）。驱动=存量 `x-auth-*` 调用方兼容口子（capabilities 对账见 compat 包注释） |
 | 2026-10-13 | 借鉴出处纪律建档：§13 SSOT 索引增 acknowledgments.md 行——借鉴/参考项目集中致谢与溯源，新借鉴随批登记（借设计不借代码/无 LICENSE 禁拷码/公司内部参考不入页） |
-| 2026-10-14 | JSON 契约审计批：§3 增第 14 条「JSON 序列化形态公约」（同概念同形态/无值分组单表达/bool 恒出数组不 null/零值语义数值禁 omitempty/写响应回显规范化/PATCH null 语义/出站 ID 恒 string）——三仓审计驱动（zhuzhao/activelist/taskrunner + utils Int64Slice MarshalJSON 补齐），修复随各仓同日提交，审计明细见 deliverables/json-contract-audit-2026-10-14.md |
+| 2026-10-14 | JSON 契约审计批：§3 增第 14 条「JSON 序列化形态公约」（同概念同形态/无值分组单表达/bool 恒出数组不 null/零值语义数值禁 omitempty/写响应回显规范化/PATCH null 语义/出站 ID 恒 string）——三仓审计驱动（zhuzhao/activelist/taskrunner + utils Int64Slice MarshalJSON 补齐），修复随各仓同日提交，审计明细见 docs/review/reports/json-contract-audit-2026-10-14.md |
 | 2026-10-14 | 审计循环机制化收口：§12-6 跨仓契约变更增「wire 形态五点必查」清单（MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾三例驱动）；zhuzhao ci.yml 增 swagger 新鲜度守卫（make swag 同款命令 + git diff --exit-code，swag v1.16.4 钉版）——/compat/echo 注解漏生成首例驱动 |
 | 2026-10-15 | 全仓公约审计批：§3-5 补 zhuzhao tasks cancel/retry 镜像段登记；§3-6 立 activelist keyset 游标特例（百万行 offset 不可用，ui cursorPager 消费中，新端点勿援引）；§4 分层禁令判定口径成文（stdlib 类型引用不判违/handler 引 filter 结构体走架构测试白名单）；§8 建 taskrunner 基线豁免登记（schema 内嵌+状态机表）；§12-8 立 CI 红窗纪律五点（10-14 四例 CI 失败归因驱动） |
 | 2026-10-15 | 清欠批：§3-5 补 activelist 数据域 `/:id/update`·`/:id/delete` URL 标识+动词段豁免登记（存量形态不追溯）——至此字面违约仅剩在册特例三类；utils BK-25 六件 main 直提清零（tag 不动随 v0.4.3 收编，详见 review/11 §8 BK-25 行） |
@@ -292,7 +294,7 @@
 | 2026-10-20 | §12-9 增**push 前置三件**（push 闸门完整形态）+同日细则二条：①commit-lint 全绿 ②功能批次验收/审计状态明确——已收口/已审计/所有者明示直推+**功能批机械判定**（窗口内提交触及 internal/migrations/configs/cmd 即功能批、混合从功能面，纯 docs/scripts 豁免）③窗口核对——待推送集合=已检查集合+**报告钉窗口端点**（形如 origin/<branch>..HEAD @ \<hash\>，push 时核差集）；commit 照常批批走不冻结（本地可塑），push 才是统一检查闸门 |
 | 2026-10-21 | §3-15 立「周期任务归属」公约（D18 调度分工口径成文防漂——五批审计收口批随批补录；phase5/10 号 S10 cron 行同口径注记在册） |
 | 2026-10-21 | §9 增**并发回归测试纪律 + 并发测试形态**两行——F-B1/F-A1 先例驱动：每个并发竞态 bug 修复必附回归测试；`-race` 只抓测试实际触发的交错（开着≠安全）；栅栏同步+少量 N（3–5）优于大 N 排队超时；构件级确定性守卫优于概率性端到端 |
-| 2026-10-21 | §12-10 增**并发回归测试须过变异验证**一条——F-B1 变异验证实证驱动：`-race` 全绿≠测试能抓 bug；临时移除修复连跑 ≥8 次须**稳定变红**方为真守卫，时绿时红=假守卫靠**加轮数**堆命中率（实证：单轮 3 并发漏守 25%→串行 6 轮 8/8 全红）。与 §9 并发回归测试纪律互补（§9 管"要有回归测试及其形态"，本条管"测试本身有效性验证"）；详见 deliverables/software-company/zhuzhao-batch-audit-2026-10-21.md §七 |
+| 2026-10-21 | §12-10 增**并发回归测试须过变异验证**一条——F-B1 变异验证实证驱动：`-race` 全绿≠测试能抓 bug；临时移除修复连跑 ≥8 次须**稳定变红**方为真守卫，时绿时红=假守卫靠**加轮数**堆命中率（实证：单轮 3 并发漏守 25%→串行 6 轮 8/8 全红）。与 §9 并发回归测试纪律互补（§9 管"要有回归测试及其形态"，本条管"测试本身有效性验证"）；详见 docs/review/reports/zhuzhao-batch-audit-2026-10-21.md §七 |
 | 2026-10-22 | §12-9 ⑤ commit-lint 增**窗口级 swagger 新鲜度检查**（rule 5）——触及 internal/model/handler 的窗口本地重跑 swag 后 docs 生成物须零漂移（对齐 CI lint 形态、防线由 push 后红窗**前移至 push 决策点**）；红窗三次实证 f6a9cd7/c59f30b/4fa17e1 均为「注解/模型改了、生成物没进 paths」。同批：F-B2 悬空编号落档 + AssignMenus 并发回归测试补课（变异验证 8/8 红——§12-10 公约首例应用） |
 | 2026-10-23 | §12-9 增**披露一致性**子条（v3 审计实证四次同型错位后成文）：提交正文改动摘要与实际文件集必须一致——声称「XX 同步」则该文件必须在 `git show --stat` 集中；代提交归属错位须正文显式声明；动因=dc9acd7「review/11 同步」声称落空+33b42a7/b101cc6 归属错位+b743c7f 未含 errors.go。同日 §12-9 ⑤ commit-lint 增**规则 ⑤ 纯空正文检测**（f3e321d——第 3 行起非空行数=0 即违例，守住三节必附底线；实证 c5296a7/f780e8b 漏网被抓、有正文提交零误报） |
 | 2026-10-26 | §4 增端口分配纪律条（端口权威=ops/port-allocation.md；先查表再取号；冲突走 env 覆盖） |
@@ -309,6 +311,5 @@
 | 2026-11-02 | **§12-10 `scripts/zz-commit.sh --amend` 修复**（b9c3762：amend 变量赋值后未传给 git commit，--amend 形态静默退化为叠加同名新提交——6bd56ad 实证；此前用过 --amend 的笔须回看是否叠加而非替换）；**兄弟仓对齐现状登记**（11-02 四仓审计）：taskrunner/activelist/utils 均无 commit-lint/.githooks/make hooks、近 20 笔主题 >50 字 12/13/9 笔；ui 无主题行规则成文——10-30 立约的「兄弟仓修复批」待开；本批先在四仓 README/AGENTS 落 §12-9 指针对齐口径 |
 | 2026-11-04 | §12-9 补修复正文三节、发现 Refs 与提交后 hash 追溯（模板归审计指南）；§12-10 补分级修复、冻结审计窗口及复验/发布状态分列；commit-lint 规则⑨以 WARN 检查三节，fix 无 scope 同类扫描补齐，原硬门禁/存量不追溯不变。 |
 | 2026-11-04 | 所有者指定 Codex 本地材料归 `.codex/` 并从 Git/Docker 排除；§12-3 区分长期规范/必要正式发现与一般过程文档，不再默认全量纳管日志、执行卡和快照。 |
-
 | 2026-11-06 | B10事实校准：生产清单不再冒称标签发DomainEvent；公开回复原漏线与独立修复承接分列，at-most-once边界不变 |
 | 2026-11-07 | §12-7明确本轮Phase5审计收尾：主仓/UI候选已合流实际phase5，三个Go兄弟使用Phase5用途短分支；旧heads完整archive refs/bundle后清理，分支推送与正式发布分列。按所有者新顺序，Phase5合main后才从main切Phase6，不准备main PR，取代提前切分支例外；非main修复仍遵门禁与推送三前置。 |

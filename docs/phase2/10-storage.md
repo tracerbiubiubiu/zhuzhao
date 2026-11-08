@@ -1,5 +1,8 @@
 # 10 - 文件存储（storage，Phase 2b）
 
+> **适用范围（2026-11-08整理）**：本文是已被Phase5 S5收编的历史蓝本，实际RustFS、MIME白名单、确认/下载/头像凭证与参数以S5及源码为准；正文旧MinIO、text/前缀和头像profile写法不是当前调用教程。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 6**，依赖 Phase 2a（工单 MVP 可不带附件运行）；与 Step 7（auth-enhance）可并行。  
 > 用户头像、工单附件共用同一 storage 模块，见 [phase1/04-user §头像](../phase1/04-user.md#头像avatar)。
 

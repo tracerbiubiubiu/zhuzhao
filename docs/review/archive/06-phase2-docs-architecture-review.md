@@ -1,5 +1,7 @@
 # Phase 2 文档体系架构审查报告
 
+> **历史档案（2026-11-08整理）**：本篇保留原审查时点、发现编号、原建议及撤回/复验过程，不是当前待办清单。后续状态见[项目控制台](../11-project-control.md)，档案之间的承接关系见[历史索引](README.md)。原“当前/唯一执行依据”均限定于文内注明的历史基线。
+
 > 审查视角：资深后端开发 / 系统架构设计 / 微服务架构师
 > 审查对象：`docs/` 全量文档（VISION、roadmap、README、phase1、phase2×6 PRD、phase3、api、design、modules、ops、proposal、adr）
 > 审查日期：2026-08-27

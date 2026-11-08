@@ -6,11 +6,18 @@
 
 > 内部 IT/运维工单系统，作为框架的第一个业务模块，验证三层鉴权体系的资源级权限能力。
 >
-> **现况校准（2026-11-07，L-5）**：本文现行实现证据基线为 `996c167`（Phase5分支），不是main/生产部署声明。工单自研已在2026-10-09翻案，S1/S2/S3a/S5/S6/S10相应能力已落码，当前继续Phase5审计与修复；Phase6须待Phase5经授权合main后再从main切出。§5/§8明确标出的引擎Port与多级审批是历史设计，未据此宣称实现。阶段/债务SSOT分别为[11号](../review/11-project-control.md)、[Phase5台账](../phase5/S6-S5-debt-ledger.md)、[Phase6边界](../phase6/README.md)。
+> **现况校准（2026-11-07，L-5）**：本文现行实现证据基线为 `996c167`（Phase5分支），不是main/生产部署声明。工单自研已在2026-10-09翻案，S1/S2/S3a/S5/S6/S10相应能力已落码，当前继续Phase5审计与修复；Phase6须待Phase5经授权合main后再从main切出。§5/§8明确标出的引擎Port与多级审批是历史设计，未据此宣称实现。阶段/债务SSOT分别为[11号](../review/11-project-control.md)、[Phase5台账](../phase5/s6-s5-debt-ledger.md)、[Phase6边界](../phase6/README.md)。
 >
 > 创建日期：2026-08-12
 
 ---
+
+
+## 阅读入口与适用范围
+
+先读§2的L1/L2/L3与scope边界，再看§3.4当前能力、§4实际入口和§6事件可靠性；§3早期DDL、§5/§8引擎原型均已标为历史，不是现行迁移或可调用接口。近期L-5校准的固定源码链接保留原证据基线；新HEAD/运行环境须再看[项目控制台](../review/11-project-control.md)及[最新followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)。
+
+当前新增校准仅涉及状态图示与outbox计划：单status邻接表支持多出边和回路，不支持多token并行/人工审批任务行；outbox当前未实现，但已是Phase9引擎的核心前置，不再只记无归属触发项。
 
 ## 1. 模块定位
 
@@ -139,7 +146,7 @@ func (r *TicketRepo) List(ctx context.Context, filter TicketFilter) ([]Ticket, i
 | **L3 写** | **update 默认仅创建人**；close 为处理人/创建人；**工单所属虚拟组** admin/owner（2c）可管本组 |
 | **强隔离** | 实体设 `project_isolated` → L2 回退为仅直接 org + `ticket_scope`（旧行为） |
 
-实现 SSOT：[phase2/09-ticket.md §5.2](../phase2/09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认)、[03-org-enhance](../phase2/03-org-enhance.md#权限)。
+实现 SSOT：[phase2/09-ticket.md §5.2](../phase2/09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认)、[03-org-enhance](../phase2/03-org-enhance.md#权限)。
 
 ---
 
@@ -282,32 +289,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 
 当前`StateMachine`从`ticket_types.transitions`邻接表校验边；每张工单只有一个当前status，支持配置的不同后继与回路，不等于多token并行/会签工作流。下面保留Phase2默认示例，实际边以该类型配置为准；Phase5可视化状态图编辑器保存的仍是同一组states/transitions及meta。
 
-```
-                    ┌─────────┐
-          submit    │  open   │
-               ───▶ │         │
-                    └────┬────┘
-                         │ assign
-                         ▼
-                  ┌─────────────┐
-                  │  assigned   │
-                  └──────┬──────┘
-                         │ start processing
-                         ▼
-                  ┌──────────────┐
-            ┌────│ in_progress  │────┐
-            │    └──────────────┘    │
-            │ resolve               │ reject
-            ▼                       ▼
-  ┌──────────────────┐      ┌──────────┐
-  │ pending_verify   │      │ rejected │
-  └────────┬─────────┘      └──────────┘
-           │ verify ok         ▲
-           ▼                   │ reject
-    ┌─────────┐               │
-    │ closed  │───────────────┘
-    └─────────┘  reopen (可选)
-```
+原ASCII简图曾把closed回退箭头画到rejected，与下方邻接表不符，现以邻接表为唯一示例：**closed/rejected均可回open，pending_verify可回in_progress**。这只说明默认配置边，不代表任意用户均可触发；实际还须经过L1/L2/L3与condition/validator。
 
 合法状态转换定义：
 
@@ -575,7 +557,7 @@ type StateController interface {
 - 引擎不持有用户身份，所有 `actor` 都是本地 user_id
 - 引擎不知道 `org_path`/`ticket_visibility`/`ReadAnchorPaths` 等鉴权概念
 
-这样无论将来换成什么引擎，鉴权体系都不用动——这是应对"引擎替换"的唯一正确姿势。远程引擎的完整集成契约见 §8.5。
+这样无论将来换成什么引擎，鉴权体系都不用动——这是本项目拟保持的引擎替换边界，不能外推为所有产品唯一实现方式。远程引擎的完整集成契约见 §8.5。
 
 ---
 
@@ -593,11 +575,11 @@ type StateController interface {
 |---|---|
 | L0 channel | 早期设想，Phase2a未实现当时描述的分发；当前使用HookRegistry goroutine |
 | L1 ticket_events轮询+processed+分布式锁 | ADR历史备选，未落码，不是Phase5稳态 |
-| L2 Outbox/Asynq事件消费者 | 未实施。C-20按触发条件评估Outbox；taskrunner已用Asynq执行任务，不等于主仓领域事件已持久化 |
+| L2 Outbox/Asynq事件消费者 | 未实施。C-20已按既有决策归Phase9引擎前置（可随引擎提前而前移，不能后滑）；taskrunner已用Asynq执行任务，不等于主仓领域事件已持久化 |
 
-未来风险联动不能继承“通知可以丢”的容忍度；Phase6 R3规划终态对账，Outbox升级仍按C-20决策。本批不实现或承诺这些能力。
+未来风险联动不能继承“通知可以丢”的容忍度；Phase6 R3规划终态对账，Outbox已在[Phase9核心⑦](../phase9/README.md)规划为引擎前置，若引擎提前须同批或更早落地；当前仍未实施。本批不实现或承诺这些能力。
 
-证据：[internal/pkg/domainevent/event.go 的 `DomainEvent / Action`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/event.go)；[internal/pkg/domainevent/registry.go 的 `HookRegistry.Dispatch / Drain`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/registry.go)；[internal/service/ticket/service.go 的 `Service.emitTicketEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/dispatcher.go 的 `MessageDispatcher.Dispatch`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/dispatcher.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.SetEventRegistry / OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)；[internal/app/app.go 的 `App.Shutdown`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/app/app.go)；历史依据保留[ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)/[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)。
+证据：[internal/pkg/domainevent/event.go 的 `DomainEvent / Action`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/event.go)；[internal/pkg/domainevent/registry.go 的 `HookRegistry.Dispatch / Drain`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/pkg/domainevent/registry.go)；[internal/service/ticket/service.go 的 `Service.emitTicketEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/service.go)；[internal/service/ticket/dispatcher.go 的 `MessageDispatcher.Dispatch`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/dispatcher.go)；[internal/service/ticket/inbox_service.go 的 `InboxService.SetEventRegistry / OnDomainEvent`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/inbox_service.go)；[internal/app/app.go 的 `App.Shutdown`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/app/app.go)；历史依据保留[ADR-001](../adr/adr-001-event-mechanism-l1-steady-state.md)/[ADR-002](../adr/adr-002-asynq-async-task-executor.md)。
 
 ## 7. 分阶段实施
 
@@ -612,7 +594,7 @@ type StateController interface {
 | 当前Phase5审计修复 | 仍在phase5分支收口设计/代码/门禁与债务，main未合 | 以11号最新时点与各批固定验证报告为准，不将代码落地等同生产部署 |
 | Phase6+ | 风险R1–R4、工单完善06号、挂账索引07号；更远阶段为路线规划 | **先Phase5收口→经授权合main→从main切Phase6**；不把已批准规划当作当前API/表/任务 |
 
-历史设计入口：[Phase2工单](../phase2/09-ticket.md)、[Phase3业务深化旧设计](../phase3/10-ticket-business.md)；现行实现/规划分别对齐[Phase5](../phase5/README.md)、[挂账台账](../phase5/S6-S5-debt-ledger.md)、[Phase6 README §5边界与07号索引](../phase6/README.md)。
+历史设计入口：[Phase2工单](../phase2/09-ticket.md)、[Phase3业务深化旧设计](../phase3/10-ticket-business.md)；现行实现/规划分别对齐[Phase5](../phase5/README.md)、[挂账台账](../phase5/s6-s5-debt-ledger.md)、[Phase6 README §5边界与07号索引](../phase6/README.md)。
 
 ## 8. 关键设计决策
 
@@ -670,7 +652,7 @@ easy-workflow（MIT 许可）作为自写 `BranchedStateEngine` 的设计参考�
 <a id="84-为什么-phase-2a-不引入工作流引擎"></a>
 ### 8.4 为什么Phase2a不引入工作流引擎（历史升级方案）
 
-Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 map 就能表达。引入 Temporal 等工作流引擎属于过度设计。
+历史稿称“线性”不精确：Phase2a也是单status状态图，默认配置含分支和回路，一个邻接map能表达；它缺的是并行token/会签任务行，不是任何分支都不支持。引入 Temporal 等工作流引擎属于过度设计。
 
 **2026-08历史升级路径（当前未实施）**（[phase3/10-ticket-business.md](../phase3/10-ticket-business.md)）：当时拟在变更类工单出现多级审批/会签场景时首选自研`BranchedStateEngine`，注册到`TicketEngine` Port。两个类型都尚未实现；后续S3b须重新核场景与实施边界，不能把该设想当Phase5现况。
 
@@ -702,11 +684,11 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 | 引擎能力 | 用/禁 | 说明 |
 |---|---|---|
 | 状态机定义/流转 | ✅ 用 | 引引擎的价值 |
-| 网关/会签/分支 | ✅ 用 | 线性机做不了的部分 |
+| 自动网关/会签任务行 | ✅ 未来按契约用 | 当前单status图可有人工分支，但无多token会签任务行 |
 | 产出审批条件（ApprovalRequirement） | ✅ 用 | 只作**建议**，传给我们，L2/L3 裁决 |
 | **claim/complete 任务** | ❌ **禁用** | 必须改走我们的 `POST /api/v1/tickets/<动作>（ID放body）` 走三层鉴权 |
 | **用户体系** | ❌ **禁用** | 引擎不能持有用户身份，所有 actor 都是我们映射过去的本地 user_id |
-| **权限判断** | ❌ **禁用** | 引擎不知道 `org_path`/`ticket_visibility`/`ReadAnchorPaths`，这些概念见 [09-ticket §5.2](../phase2/09-ticket.md#52-phase-2b-scope-升级-部门内读写分离策略-b默认) |
+| **权限判断** | ❌ **禁用** | 引擎不知道 `org_path`/`ticket_visibility`/`ReadAnchorPaths`，这些概念见 [09-ticket §5.2](../phase2/09-ticket.md#52-phase-2b--scope-升级--部门内读写分离策略-b默认) |
 
 **集成边界**：引擎只是"状态机 + 审批条件建议器"。所有"用户能不能 claim/complete"的判断，必须在 `TicketService` 走 L1/L2/L3（见 §2.2）。引擎产出的 `Task` 只带 `ApprovalRequirement`（审批任职条件，如 `approver_role`/`org_scope`），**不产出具体用户 ID**；具体"当前用户能否认领"由 `ApprovalTaskLayer` 调 `StateController`（内部走 L2/L3 属主规则）做最终裁决（见 §5.6）。
 
@@ -727,9 +709,9 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 
 | 触发信号 | 阈值 | 含义 |
 |---|---|---|
-| 需要分支/会签的工单类型数 | ≥ 2 | 线性状态机表达不下 |
+| 需要任务行审批/会签的工单类型数 | ≥ 2 | 历史评估阈值；人工多出边本身不触发替换 |
 | 单流程平均节点数 | > 8 | map 可读性下降 |
-| 并行审批路径数 | ≥ 1 | 线性机无并行能力 |
+| 并行审批路径数 | ≥ 1 | 当前单status机无多token并行能力 |
 | 跨流程驳回场景 | 出现 | 需要自由驳回 |
 
 > 注：旧方案首选手写BranchedStateEngine，但当前没有实现；S3b与第三方引入须重核真实场景，第三方方案还需满足§8.5契约。
@@ -737,11 +719,11 @@ Phase 2a 的状态机是线性的（6 状态 + 几条转换规则），一个 ma
 <a id="85-404-vs-403-的安全语义"></a>
 ### 8.7 404 vs 403 的安全语义
 
-资源不可见时返回 **404** 而非 403，防止信息泄露（攻击者无法通过 403 推断资源存在）。这是业界标准做法（Freshdesk 文档原文："The ticket is either not there or you don't have permission"）。
+资源不可见时返回 **404** 而非 403，防止信息泄露（攻击者无法通过 403 推断资源存在）。这是本项目资源读取的既定隐藏策略；动作已可见但不可操作时仍返回403，完整边界见§2.2，不用单一第三方文案证明所有系统行为。
 
 ### 8.8 事件驱动为何独立设计
 
-工单、ops及未来业务域共享`domainevent`，一次变更多订阅者，业务域不硬编码未来risk消费者。历史ADR的L0/L1/L2命名保留作方案沿革；当前交付语义、可靠性限制与Outbox触发条件统一见§6，不能将旧轮询方案当现行架构。
+工单、ops及未来业务域共享`domainevent`，一次变更多订阅者，业务域不硬编码未来risk消费者。历史ADR的L0/L1/L2命名保留作方案沿革；当前交付语义、可靠性限制与Outbox已拍排期统一见§6，不能将旧轮询方案当现行架构。
 
 
 > 跨服务事件传播（Redis Streams / Kafka）随微服务拆分推迟，不在近期范围。

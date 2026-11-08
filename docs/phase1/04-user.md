@@ -1,5 +1,8 @@
 # 04 - 用户模块（user）
 
+> **适用范围（2026-11-08整理）**：用户资料更新当前保留B14安全边界：不能用旧快照回写status/must_change_password；头像专用写与资料写共享CAS。HR同步/SSO为设计及外部前置，不能据本页原Phase2计划宣称交付；头像存储已由Phase5 S5承接，原MinIO阶段例不再是部署入口。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 2**（repo）+ **Step 6**（service/handler）。  
 > 硬依赖 Step 1（infra）、Step 5（authz）。**组织绑定（6b）另需 Step 9**，见 [README §2.2](./README.md#22-step-5-之后可并行)。
 
@@ -102,6 +105,8 @@ CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_accoun
       AND deleted_at IS NULL;
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 ```
+
+<a id="身份标识字段工号-登录名-域账号"></a>
 
 ### 身份标识字段（工号 / 登录名 / 域账号）
 

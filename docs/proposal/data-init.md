@@ -24,6 +24,9 @@
 
 ## 2. 初始化分层
 
+> **现行承接**：显式迁移与幂等种子原则继续有效；本篇 SQL、Makefile、旧工具名均是方案期示例。实际迁移已推进至 000081，编号以 [总控迁移地图](../review/11-project-control.md) 为准，执行入口看 [运行手册](../ops/runbook.md)。App 启动不会代办显式迁移/绑定种子；权限目录与页面写绑定守卫会 fail-fast，不能套用示例中的一律 Warn。
+
+
 初始化分为三个层次，职责和执行时机不同：
 
 ```
@@ -61,6 +64,9 @@ migrations/
 
 ### 3.2 迁移命令
 
+> **历史示例，勿直接执行下列旧 DSN / down / force**。当前目标参数与显式迁移顺序以仓库 Makefile 和运行手册为准；本次文档整理不产生数据库变更。
+
+
 ```makefile
 # Makefile
 migrate-up:
@@ -84,7 +90,7 @@ migrate-force:
 | `menus` | `menu_type`（1 目录 / 2 页面 / 3 按钮）、`permission` | [07-menu](../phase1/07-menu.md) |
 | `casbin_rule` | Casbin PG adapter 策略表 | [03-authz §Casbin Adapter](../phase1/03-authz.md#casbin-adapter) |
 
-Go `model.Role` 须含 `Priority`、`DeletedAt`；`model.UserOrg` Phase 1 **不含** `RoleID`（见 [modules/user.md §关联表](../modules/user.md#关联表)）。
+Go `model.Role` 须含 `Priority`、`DeletedAt`；`model.UserOrg` Phase 1 **不含** `RoleID`（见 [用户模块当前数据模型](../modules/user.md#2-数据模型)）。
 
 ### 3.4 与旧系统的差异
 
@@ -99,6 +105,9 @@ Go `model.Role` 须含 `Priority`、`DeletedAt`；`model.UserOrg` Phase 1 **不�
 ---
 
 ## 4. 种子数据设计
+
+> **示例边界**：下面角色/密码占位 SQL 展示幂等原则，不是可重放的当前种子全集。运行用实际版本化 `migrations/`；E000001 的密码与允许收敛入口遵守运行手册台账，禁止为验证本文示例修改种子号。
+
 
 ### 4.1 幂等性原则
 
@@ -311,6 +320,9 @@ DELETE FROM roles WHERE is_system = true;
 
 ## 5. 运行时 Sync
 
+> **安全例外（现行）**：非安全元数据刷新可按原策略降级；`NewApp` 的 `AuditRouteCatalog` / `AuditPageWriteBindings` 查询失败或不一致必须拒启。下文旧通用 Sync 示例的“不阻塞启动”不覆盖权限目录完整性。
+
+
 ### 5.1 启动流程
 
 ```
@@ -329,7 +341,7 @@ App.Run()
 1. **保留审计字段**：`created_at`、`created_by` 永远不覆盖。upsert 只更新业务字段。
 2. **desired-state 模式**：对比期望状态与实际状态，只更新差异部分。
 3. **系统资源标记**：`is_system = true` 的记录在 Sync 中受保护，不被删除。
-4. **失败不阻塞**：Sync 失败仅 Warn 日志，不阻塞启动（业务可用性优先）。
+4. **失败按安全级别处理**：非安全刷新可 Warn，权限目录/页面写绑定检查失败必须拒启（见 §5 现行安全例外）。
 
 ### 5.3 Casbin 策略同步
 
@@ -379,6 +391,8 @@ make dev
 ---
 
 ## 6. 初始化操作手册
+
+> **历史步骤，已退役为操作入口**：以下包含旧密码、响应字段及全卷重置命令，只用于理解当时初始化链，不得照抄执行。当前使用 [运行手册](../ops/runbook.md)，测试使用本轮专属环境与账号；禁止删除共享卷或为示例变更 E000001。
 
 ### 6.1 首次部署
 
@@ -452,5 +466,5 @@ SELECT username, created_at, created_by FROM users WHERE username = 'admin';
 2. **种子数据用 `ON CONFLICT DO NOTHING`**：不覆盖已有记录
 3. **运行时 Sync 保留审计字段**：`created_at`/`created_by` 永远不覆盖
 4. **系统资源不删除**：`is_system = true` 的记录在 Sync 中不被清理
-5. **Sync 失败不阻塞启动**：仅 Warn 日志
+5. **权限完整性检查 fail-fast**：旧 Sync 示例的 Warn 仅适用于非安全刷新
 6. **Casbin 策略增量 diff**：不全量清空重建，避免鉴权空窗

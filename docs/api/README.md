@@ -1,26 +1,10 @@
-# API 文档
+# API 契约入口
 
-后端接口契约，供实现与前后端联调。**后端以本文档目录为 SSOT，前端按此对齐。**
+前后端联调先读[响应封装](response.md)，再查[错误码登记](errcode.md)。错误码登记已统一至本目录，没有根 `api/` 的第二份权威。
 
-## 文档
+- 业务响应为 `{code,message,data,request_id}`，成功code为0；业务分支结合HTTP状态和code判断。
+- 常规出口由utils response与主仓错误映射维护。鉴权/限流、流式下载、健康检查等特殊出口按实际契约核对，不能套一条响应示例覆盖全部HTTP。
+- `make swag` 根据Handler注解生成 `docs/docs.go`、`docs/swagger.json`、`docs/swagger.yaml`；运行时入口为 `/swagger/*`。生成物不手改，路径供Go导入和UI codegen使用。
+- 生产路由注册以 `internal/router/router.go` 的 `New` 为准；架构页路由表用于导览，新增/退役接口同时更新注解、契约和对应模块。
 
-| 文档 | 说明 | 优先级 |
-|------|------|--------|
-| **[response.md](./response.md)** | **HTTP 响应体 Envelope**（`code` / `message` / `data` / `request_id`） | 必读 |
-| [errcode.md](../../api/errcode.md) | 业务错误码分段、HTTP 映射与对外契约（**唯一权威**——docs/api/errcode.md 已归并为指针，L-6） | 必读 |
-| [../design/architecture.md](../design/architecture.md) §17 | API 路由总表 | 联调时 |
-
-## 后端约定摘要
-
-- 统一 JSON：`{ "code": 0, "message": "success", "data": {}, "request_id": "..." }`
-- 成功：`code === 0`；失败：`data === null`，`code !== 0`
-- 字段名用 **`message`**，不是 `msg`
-- 业务分支看 **body.code**，HTTP 状态仅辅助
-- 实现出口：`zhuzhao-utils/response`（2026-09 公共包抽取：原 `internal/pkg/response` 已迁出并删除；禁止 Handler 裸 `c.JSON` 业务结构）
-
-## 文档来源
-
-- **RESTful API**：Phase 1 后期可由 `swag` 从代码注解生成 OpenAPI（字段须与 response.md 一致）
-  - 生成命令：`make swag`（见根目录 Makefile）
-  - 运行时：`/swagger/*`
-- **非 RESTful 接口**（WebSocket、gRPC 等）：手写文档放在此目录
+本目录是查阅契约，开发操作见[开发指南](../guides/development.md)，权限设计见[权限地图](../modules/authz.md)。尚未提供的gRPC/WebSocket不因旧草图存在而视为支持。

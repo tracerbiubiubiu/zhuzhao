@@ -17,7 +17,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/admincli"
 )
 
-// runResetPassword break-glass 子命令（docs/runbook.md §1）：交互/参数层——
+// runResetPassword break-glass 子命令（docs/ops/runbook.md §1）：交互/参数层——
 // 录密与确认在此完成，核心语义在 internal/pkg/admincli（进门禁测试覆盖）。
 func runResetPassword(args []string) error {
 	fs := flag.NewFlagSet("reset-password", flag.ContinueOnError)

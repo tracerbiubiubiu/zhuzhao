@@ -1,5 +1,7 @@
 # 鉴权模块设计
 
+> 当前阅读顺序：先看§0文档地图和§2.3业务保护，再看资源授权；标注Phase 1流程、缓存/Watcher与末尾阶段清单属历史设计或后续候选。实际注册仅工单；Builtin示例中的tasks表是演示，需真实模块表与schema守卫后才能使用。
+
 > 模块代码：`internal/middleware/casbin.go` + `internal/pkg/resource/` + 各 Service 的 Resource 实现
 >
 > 旧系统参考：`doc/module-assessment-2026-08/authorizor.md` + `restrict.md` + `resource.md` + `interaction-auth-chain.md`
@@ -22,7 +24,7 @@
 | **模块详设**（怎么实现） | 本文 + [phase2/02-authz-resource.md](../phase2/02-authz-resource.md) + [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) + [phase2/03-org-enhance.md](../phase2/03-org-enhance.md) | L1/L2/L3 详设、ScopeResolver/TicketResource、组织委托轴、组织可见性开关 |
 | **执行与在册**（做到哪/欠什么） | [review/11-project-control.md](../review/11-project-control.md) §2/§6/§8 + [phase2/00 §9](../phase2/00-implementation-plan.md) + [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) | 权限模型速查、健康状态（BK-19~22）、遗留分类、backlog 详情、启动检查单 |
 | **Phase 3 权限配套** | [phase3/16-external-integration.md](../phase3/16-external-integration.md) §9 + [phase3/09-platform.md](../phase3/09-platform.md) + [phase3/02-multi-instance.md](../phase3/02-multi-instance.md) + [phase3/03-audit-l2.md](../phase3/03-audit-l2.md) + [phase3/13 §1](../phase3/13-implementation-plan.md) | 外部服务统一基线（AK/SK+断言）、批次 A/B 前置、L1 缓存、AK/SK 平台凭据、Casbin Watcher、判定日志/归档、主链排期 |
-| **专项散节** | [ADR-003](../adr/ADR-003-activelist-integration-form.md)（activelist 零权限边界）、[phase1/05-role.md](../phase1/05-role.md)（角色 priority 与权限继承模型，§角色 priority 与权限继承模型）＋ [design/rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)（parent_id 继承与级联）、[phase1/02-auth.md](../phase1/02-auth.md)（认证详设）、[design/architecture.md §4](../design/architecture.md)（总体架构中的权限位） | 按需 |
+| **专项散节** | [ADR-003](../adr/adr-003-activelist-integration-form.md)（activelist 零权限边界）、[phase1/05-role.md](../phase1/05-role.md)（角色 priority 与权限继承模型，§角色 priority 与权限继承模型）＋ [design/rbac-inheritance-and-cascade.md](../design/rbac-inheritance-and-cascade.md)（parent_id 继承与级联）、[phase1/02-auth.md](../phase1/02-auth.md)（认证详设）、[design/architecture.md §4](../design/architecture.md)（总体架构中的权限位） | 按需 |
 
 ### 0.2 按目的取用
 
@@ -123,6 +125,8 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 - superadmin/admin bypass 在 **matcher** 中完成，不在 Go 代码里硬编码循环
 - Phase 1 **无** Redis `perm:user:{userId}` 缓存
 
+<a id="221-自服务路由业界做法-本项目决策"></a>
+
 ### 2.2.1 自服务路由（业界做法 + 本项目决策）
 
 **业界常见做法**（IAM / 后台管理系统）可归纳为三类：
@@ -175,8 +179,8 @@ func CasbinMiddleware(enforcer *casbin.SyncedEnforcer, fetcher RoleFetcher) gin.
 |------|----------|------|------|
 | 重置密码 | `UserService.ResetPassword` | `actorP < targetP`（严格更强）；影子超管用户对 admin **404** | 403 + 30005 |
 | 分配角色 | `UserService.SetRoles` | `actorP < targetP`；待分配角色 `priority >= actorP`（不能分 superadmin） | 403 + 30009 |
-| 改/删/禁用用户 | `UserService.Update/Delete/SetStatus` | `actorP < targetP`；`is_system` 保护；不能删最后 superadmin | 403 / 404 |
-| 改角色菜单 | `RoleService.AssignMenus` | admin **不能**改 `superadmin` 角色的菜单 | 403 |
+| 改/删/禁用用户 | `UserService.Update/Delete/UpdateStatus` | `actorP < targetP`；`is_system` 保护；不能删最后 superadmin | 403 / 404 |
+| 改角色菜单 | `RBACService.AssignMenus` | admin **不能**改 `superadmin` 角色的菜单 | 403 |
 | 删改系统资源 | `Role/Menu/Org Service` | `is_system=true` 时 admin 拒绝 | 403 |
 | 列表/详情「看不见」 | `UserRepo.List` / `RoleRepo.List` / `GetByID` | 非 superadmin：**过滤** superadmin 角色及绑定用户 | 列表不含 / 详情 **404** |
 
@@ -250,7 +254,7 @@ ok, err := s.registry.Authorize(ctx, "ticket", resource.AuthorizeRequest{
 
 ```go
 // 模块 wire/启动处——模块的全部权限代码
-reg.Register(resource.Builtin("task", resource.PolicyOrgMember))  // ⚠ 示例：M-E 接线形态——实际未接线（S-2 库就绪待接线，生产 Registry 现仅注册 ticket Resource）；首个 L2 消费方出现时按此形态接
+reg.Register(resource.Builtin("task", resource.OrgMember("tasks")))  // ⚠ 示例：M-E 接线形态——实际未接线（S-2 库就绪待接线，生产 Registry 现仅注册 ticket Resource）；首个 L2 消费方出现时按此形态接
 ```
 
 **设计与边界**：
@@ -275,7 +279,7 @@ reg.Register(resource.Builtin("task", resource.PolicyOrgMember))  // ⚠ 示例�
 
 ---
 
-## 5. 分阶段实施
+## 5. 分阶段实施（历史范围，不作当前完成清单）
 
 ### Phase 1
 
@@ -289,7 +293,7 @@ reg.Register(resource.Builtin("task", resource.PolicyOrgMember))  // ⚠ 示例�
 ### Phase 2
 
 - BFS 三源合并
-- OrgResource + ltree 关系
+- 原拟 OrgResource + ltree 关系；**未按此形态交付**，当前仅工单注册 Resource，组织委托由 OrgDelegationService 实现
 - 列表过滤（GetFilter → SQL WHERE）
 - 代码内联资源级鉴权（不上独立 Enforcer）
 

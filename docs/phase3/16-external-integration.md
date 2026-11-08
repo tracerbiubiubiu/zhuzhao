@@ -1,5 +1,8 @@
 # 16 - 外部服务集成配套：taskrunner / activelist（zhuzhao 侧能力清单与实施细排）
 
+> **适用范围（2026-11-08整理）**：跨仓现行合同以各属主docs为准；本页E/D/P/C实施台账含历史基线。当前taskrunner固定配置回调、dept仅筛选、终败notifier已可选实现且入口/internal/notify/dead-letter，无/monitor。AL字段/筛选/revision与审计边界按其当前契约；顶部11-06候选待门禁不表示本次收口结果。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 2026-11-06 ECO-B07-F10 消费者候选：主仓与 activelist 的独立修复分支 pin `zhuzhao-utils v0.4.4-0.20261106080630-cd759a040245`（远端提交 `cd759a0402455731f805ba507bf8401447e00e29`，包含既有 Reader 错误分档与本次 Transport 读失败关闭原 Body）。Go 正常解析不可变 pseudo-version，并由 go.sum / `go mod verify` 验证；无 replace/GOWORK/本地包替代，无新增库。主仓实际消费者为 `internal/gateway/gateway.go` 的 `buildMount`；taskrunner 仅直接调用 `aksk.Sign`，未消费 Transport，维持 v0.4.2。依赖升级避免复制签名/Body 生命周期实现。该候选不代表 utils main/tag 或消费者主线/部署已发布，联合门禁待承接；activelist 对账见其 ADR-003。
 
 > 2026-11-06 ECO-B07-F06网关错误分档：维持既有1MiB浏览器入口上限；本地MaxBytesReader超限须返回413/10001且不访问上游，不能误报502/上游不可用。未知Content-Length同样按实际读取限体；真正上游连接故障仍502/10008。直连AL运维大导入独立，不放宽此前拍板。候选专项/变异八轮已过，最新固定联合门禁与运行回归待完成。
