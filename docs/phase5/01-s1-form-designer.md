@@ -56,7 +56,7 @@ P4-W4 深水区降级决策（设计器复杂度超预期即降级）实际交�
     - **A 路 form-create designer v3.5.0 对称验证**（/tmp scratch + 浏览器实测）：①**regex pattern 经 JSON 往返丢失**（RegExp → `{}`——判据点名的「regex 校验」实测即损，最重一项）②richtext=内置 HTML 富文本编辑器，与我方 MD 存储+goldmark 渲染 SSOT **语义冲突** ③tips 需映射原生 div（非 input，双向识别需约定）④field 默认 uniqueId 随机串（需自定义面板强制命名）⑤field_meta（formula/validation 元数据面）无对应物（需自定义属性组件）⑥裁剪面：默认 40 组件全量透出、menu 定制 prop 未生效（裁剪入口有学习成本）、**v3.5.0 内置 AI 助理面板**（内网部署需评估关闭与外联面）⑦内部字段污染（_fc_id/_fc_drag_tag/name/display/hidden 需适配层剥除）⑧HTML5 DnD 自动化不可驱动（E2E 须走 setRule 程序化）；可用面=setRule/getRule 程序化往返成功（API 六方法）。**结论：8 类型中 6 个字段级近无损，但 regex 往返丢+richtext 语义断+两元数据面全缺——非「接近无损」**；
     - **B 路 sortablejs 自研可点原型**（[prototypes/s1-form-designer.html](./prototypes/s1-form-designer.html)——单文件 vanilla JS ≈400 行 + sortablejs 44KB 内联，浏览器亲点验证；内联 vendor = Sortable **1.14.0**、MIT 头保留——与 ui 仓实现版 1.15.7 版本差无碍原型用途，2026-10-22 修复批注）：8 类型添加/拖拽排序/选中-属性面板联动/required/选项编辑/**regex 语法即时校验**（错则面板即报）/公式占位（B1-3 预留）/预览切换/**序列化 ticket_type_fields 形态且 regex 字符串无损往返**（与 A 路丢失实锤成对照）/导入回放双向一致——主交互流全通。**结论：自研交互补齐成本可控（原型即批次①壳的雏形），佐证维持自研**；原型交付所有者亲点定属性面板信息架构（双钻 Develop 侧用户验证）。
   - **可点原型扩展（2026-10-19 双钻复盘立约）**：B1-1 首日 spike（选型对称验证）之外，同批追加半天**交互流可点原型**——假数据把「拖入七类型 → 逐类型属性面板填写 → 预览切换 → schema 序列化」主交互流亲手点一遍（不接后端，所有者即第一个用户），再定属性面板信息架构——UX 手感面的答案在「用起来」里，文档论证与外审均查不出「别扭」（双钻 Develop 侧用户验证型发散；与上行「交互打磨列入批次①验收」同源，把验收前移到设计定稿前）。
-- **后端存储不变**：产物仍是 `ticket_type_fields` 字段 schema；字段类型仍限七种；`validateFieldInputs`/G2 schema 校验维持。
+- **后端存储不变**：产物仍是 `ticket_type_fields` 字段 schema；字段类型随 B1-6 扩为十一种（2026-11-09 勘误——原「仍限七种」为设计期表述，以 §2 表与 `validFieldTypes` 为准）；`validateFieldInputs`/G2 schema 校验维持。
 - 现 ticket/type 页表格模式保留为**专家模式/兜底**，不拆除（phase4/02 降级决策形态直接复用）。
 
 ### 3.2 select/multi_select 选项引用字典（P4-3 衔接）+ 人员自动补全
