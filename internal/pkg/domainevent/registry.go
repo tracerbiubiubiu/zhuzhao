@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sort"
 	"sync"
 )
@@ -102,7 +103,7 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 				if rec := recover(); rec != nil {
 					r.logger.Error("DomainHook subscriber panicked",
 						"biz_type", ev.BizType, "action", ev.Action, "biz_id", ev.BizID,
-						"panic", rec)
+						"panic", rec, "stack", string(debug.Stack()))
 				}
 			}()
 			hook.OnDomainEvent(ctx, ev)

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"sync"
@@ -175,6 +176,12 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 			defer func() {
 				if p := recover(); p != nil {
 					err = fmt.Errorf("action panic: %v", p)
+					// 栈只进日志（error/ops.action_failed 载荷保持短文案）：只记 panic 值
+					// 无法定位动作内部的出错点——与 middleware.Recovery 同口径。
+					if logger != nil {
+						logger.Error("action panicked", slog.String("action", ref.Name),
+							slog.Any("panic", p), slog.String("stack", string(debug.Stack())))
+					}
 				}
 			}()
 			return a.Execute(actCtx, ac)

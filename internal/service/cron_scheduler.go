@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -191,7 +192,8 @@ func (s *CronScheduler) runLocked(ctx context.Context) (ran bool, err error) {
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
-				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r))
+				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r),
+					slog.String("stack", string(debug.Stack())))
 				err = errPanic
 			}
 		}()

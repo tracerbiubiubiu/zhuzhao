@@ -88,3 +88,7 @@ jobs:
           go-version-file: go.mod
           check-latest: false
       - run: make test-integration
+        env:
+          # Ryuk 仅服务本地开发（回收漏清理的容器）。CI runner 用完即焚、无泄漏面，
+          # 但跨测试包复用 Ryuk 的等待环节曾因 60s 超时假红（run 42482794825，11-08）——直接禁用。
+          TESTCONTAINERS_RYUK_DISABLED: "true"

@@ -4,8 +4,10 @@
 package domainevent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -59,6 +61,36 @@ func TestHookRegistry_MultiSubscriber(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, int32(5), count.Load(), "5 个订阅者各自收到（多订阅者面）")
 }
+
+// 2026-11-09：订阅者 panic 恢复须记栈（与 middleware.Recovery 同口径）。
+func TestHookRegistry_PanicLogsStack(t *testing.T) {
+	var buf lockedBuf
+	r := NewHookRegistry(slog.New(slog.NewJSONHandler(&buf, nil)))
+	r.Subscribe(BizTicket, "stack.panic", HookFunc(func(_ context.Context, _ DomainEvent) {
+		panic("subscriber blew up")
+	}))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, Action: TicketClosed, BizID: "3", Timestamp: time.Now()})
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	require.NoError(t, r.Drain(ctx), "Drain 等在途订阅者结束——recover 日志此时已写完")
+
+	out := buf.String()
+	assert.Contains(t, out, `"stack":`, "panic 恢复日志须带 stack 字段")
+	assert.Contains(t, out, "TestHookRegistry_PanicLogsStack", "栈须定位到 panic 的订阅者")
+}
+
+// lockedBuf 并发安全的日志捕获（recover 在订阅者/调度 goroutine 内写，测试 goroutine 读）。
+type lockedBuf struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuf) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+func (l *lockedBuf) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
 
 func TestHookRegistry_RecoverIsolation(t *testing.T) {
 	r := NewHookRegistry(nil)

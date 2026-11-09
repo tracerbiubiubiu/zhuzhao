@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
@@ -100,7 +101,7 @@ func (r *MessageRuleRepo) GetByAction(ctx context.Context, bizType, eventAction 
 		bizType, eventAction).Scan(
 		&rule.ID, &rule.BizType, &rule.EventAction, &rule.TemplateCode, &rule.RecipientType,
 		&rule.FixedRecipients, &rule.Enabled, &rule.Version, &rule.CreatedBy, &rule.CreatedAt, &rule.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil // 无规则=不通知（非错误）
 	}
 	if err != nil {

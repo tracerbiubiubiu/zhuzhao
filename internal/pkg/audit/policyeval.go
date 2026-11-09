@@ -14,6 +14,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -212,7 +213,7 @@ func (w *PolicyEvalWriter) flushOnce(ctx context.Context) {
 		// List → processing（LMOVE 原子搬移：崩溃时不丢——行在 processing 持久）
 		for i := 0; i < w.cfg.BatchSize; i++ {
 			if err := w.rdb.LMove(ctx, w.cfg.RedisKey, w.cfg.ProcessingKey, "LEFT", "RIGHT").Err(); err != nil {
-				if err != goredis.Nil {
+				if !errors.Is(err, goredis.Nil) {
 					w.logger.Warn("policy_eval: lmove failed, retry next tick", slog.Any("err", err))
 				}
 				break

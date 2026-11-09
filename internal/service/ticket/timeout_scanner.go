@@ -15,6 +15,7 @@ package ticket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -237,7 +238,7 @@ func (s *TimeoutScanner) shouldRemind(ctx context.Context, ticketID int64, state
 	err := s.db.QueryRow(ctx,
 		`SELECT reminder_count, last_reminder_at FROM ticket_reminders WHERE ticket_id = $1 AND state = $2`,
 		ticketID, state).Scan(&count, &last)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return 1, true, nil
 	}
 	if err != nil {

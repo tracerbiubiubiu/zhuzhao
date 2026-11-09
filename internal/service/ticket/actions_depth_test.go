@@ -1,8 +1,10 @@
 package ticket
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -75,4 +77,24 @@ func TestRunPostActions_PanicRecovered(t *testing.T) {
 	assert.Equal(t, domainevent.ActionOpsActionFailed, got.Action)
 	assert.Equal(t, "boom", got.Payload["action"])
 	assert.Contains(t, got.Payload["error"], "action panic: kaboom")
+}
+
+// 2026-11-09：panic 恢复须记栈——只记 panic 值无法定位动作内部的出错点
+// （与 middleware.Recovery 同口径）；栈只进日志，ops.action_failed 载荷保持短文案。
+func TestRunPostActions_PanicLogsStack(t *testing.T) {
+	reg := NewActionRegistry()
+	require.NoError(t, reg.Register(boomAction{}))
+	var got *domainevent.DomainEvent
+	reg.SetEmitter(func(ev domainevent.DomainEvent) { cp := ev; got = &cp })
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, nil))
+	tm := &TransitionMeta{PostActions: []json.RawMessage{json.RawMessage(`{"name":"boom"}`)}}
+
+	reg.RunPostActions(context.Background(), logger, tm, ActionContext{Ticket: &model.Ticket{ID: 7}, ActorID: 9}, 0)
+
+	out := buf.String()
+	assert.Contains(t, out, `"stack":`, "panic 恢复日志须带 stack 字段")
+	assert.Contains(t, out, "boomAction.Execute", "栈须定位到 panic 发生的动作内部")
+	require.NotNil(t, got)
+	assert.NotContains(t, got.Payload["error"], "goroutine", "栈不得进入 ops.action_failed 载荷")
 }

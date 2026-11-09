@@ -6,9 +6,12 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -93,14 +96,32 @@ func TestCronScheduler_RunRecordsStatus(t *testing.T) {
 	})
 
 	t.Run("panic 路径：进程存活且末次错误为 panic 语义", func(t *testing.T) {
-		s := service.NewCronScheduler(testPool, "t-cron-panic-"+uniqueSuffix(), &cronPanicJob{}, 50*time.Millisecond, nil)
+		var buf lockedBuf
+		logger := slog.New(slog.NewJSONHandler(&buf, nil))
+		s := service.NewCronScheduler(testPool, "t-cron-panic-"+uniqueSuffix(), &cronPanicJob{}, 50*time.Millisecond, logger)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		go s.Run(ctx) // 若 panic 兜底失效，本测试进程直接退出——测试本身即断言
 		st := waitStatus(t, s, func(x service.CronStatus) bool { return !x.LastFailureAt.IsZero() })
 		assert.Equal(t, "job panicked (see error log)", st.LastError)
+		// 2026-11-09：「see error log」须真能定位——错误日志带栈且指到 panic 的 job
+		assert.Contains(t, buf.String(), `"stack":`, "cron panic 日志须带 stack 字段")
+		assert.Contains(t, buf.String(), "cronPanicJob", "栈须定位到 panic 的 job")
 	})
 }
+
+// lockedBuf 并发安全的日志捕获（recover 在订阅者/调度 goroutine 内写，测试 goroutine 读）。
+type lockedBuf struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuf) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+func (l *lockedBuf) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
 
 // TestCronScheduler_AdvisoryLockExclusion 同名双调度器互斥：慢任务（300ms）+
 // 快 tick（50ms）跑 1.2s——advisory lock 生效则并发在飞恒 ≤1、零交叠。

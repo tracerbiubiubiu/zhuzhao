@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -39,7 +40,7 @@ func (r *MessageTemplateRepo) GetByCode(ctx context.Context, code string) (*mode
 		`SELECT id, code, name, channel, biz_type, subject, body, variable_schema,
 			enabled, is_system, version, created_by, created_at, updated_at
 		 FROM message_templates WHERE code = $1 AND enabled = true`, code))
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errcode.ErrMsgTplNotFound
 	}
 	return t, err
@@ -99,7 +100,7 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 	var isSys bool
 	if err := r.db.QueryRow(ctx,
 		`SELECT is_system FROM message_templates WHERE code = $1`, t.Code).Scan(&isSys); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errcode.ErrMsgTplNotFound
 		}
 		return err
@@ -133,7 +134,7 @@ func (r *MessageTemplateRepo) Delete(ctx context.Context, code string) error {
 	var isSys bool
 	if err := r.db.QueryRow(ctx,
 		`SELECT is_system FROM message_templates WHERE code = $1`, code).Scan(&isSys); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errcode.ErrMsgTplNotFound
 		}
 		return err

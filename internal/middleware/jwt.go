@@ -161,7 +161,7 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 				c.Abort()
 				return
 			}
-		} else if err != redis.Nil {
+		} else if !errors.Is(err, redis.Nil) {
 			response.ServiceUnavailable(c)
 			c.Abort()
 			return

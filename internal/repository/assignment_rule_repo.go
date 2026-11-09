@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -88,7 +89,7 @@ func (r *AssignmentRuleRepo) MatchOnCreate(ctx context.Context, typeCode, title 
 		LIMIT 1`, typeCode, title).Scan(
 		&a.ID, &a.TypeCode, &a.Priority, &a.Keyword, &a.TargetOrg,
 		&a.TargetUser, &a.Enabled, &a.CreatedBy, &a.CreatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
