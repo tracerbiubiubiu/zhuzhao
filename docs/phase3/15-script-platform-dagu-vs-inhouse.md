@@ -7,7 +7,7 @@
 > 目标：M-E「自定义脚本任务」（上传 shell/python 脚本，定时/手动运行，管理/历史/日志）选「现成平台集成」还是「自研」做决策支撑。
 > ⚠️ 待拍板点已标注，由项目所有者决定。
 
-> **🔻 收敛声明（2026-09-03，SSOT = [13](./13-implementation-plan.md) M-E 行 + taskrunner 仓库 `docs/taskrunner.md`）**：M-E 已从「任务平台」收敛为**事件/任务总线**（taskrunner）——**脚本任务（上传 python/shell）暂不需要，降级 🚦 按需再启**；核心 = Asynq 异步触发**预置动作**（回调 zhuzhao 内网端点，代码注册 handler，非用户上传脚本）。本文档保留为**按需再启时的选型参考**（届时重读 §2–§6）。本次收敛后，仅「脚本任务」这一个子能力是否用现成平台需要决策；事件/任务总线本体 = Asynq（ADR-002），不引入任何平台。
+> **🔻 收敛声明（2026-09-03，SSOT = [13](./13-implementation-plan.md) M-E 行 + taskrunner 仓库 `docs/design/taskrunner.md`，原 `docs/taskrunner.md`）**：M-E 已从「任务平台」收敛为**事件/任务总线**（taskrunner）——**脚本任务（上传 python/shell）暂不需要，降级 🚦 按需再启**；核心 = Asynq 异步触发**预置动作**（回调 zhuzhao 内网端点，代码注册 handler，非用户上传脚本）。本文档保留为**按需再启时的选型参考**（届时重读 §2–§6）。本次收敛后，仅「脚本任务」这一个子能力是否用现成平台需要决策；事件/任务总线本体 = Asynq（ADR-002），不引入任何平台。
 
 ---
 

@@ -102,3 +102,10 @@ runbook登记B03实际migrate镜像拉取与宿主CLI版本差异、固定工具
 主354/AL44/TR43个Go/go.mod/go.sum条目及实际ELF逐项匹配既有构建receipt，本轮复用已核产物，不冒称重新构建。753文件冻结快照自身前后零漂移；canonical仅四份授权Markdown有本批修改与结果回填，脚本/配置/迁移/业务源未变，不宣称整个工作树与冻结副本逐字相同。8容器及私有卷/网络精确回收，既有容器增删改为0；integration的临时Ryuk自动退出，无手工清理。本轮收据以`gates/main/results.json`、`gates/main/cleanup-post-reaper.json`、`gates/acceptance/final-summary.json`及`cleanup-final.json`为准，冻结后文档差异另记，不覆盖原时点manifest。
 
 本轮未重复UI门禁、安全扫描、生产部署或异地灾备演练，原结果仍属于各自固定时点。最终路径提交后的消息窗口、五仓候选恢复和本轮日志补充包结果另存本轮ignored收据；未push所以没有本轮远端CI结论。
+## 第四批 RR-HY-01：恢复记栈/哨兵比较/遮蔽与钉迁移/CI Ryuk（2026-11-09）
+
+- **触发**：所有者「修复」指令，收口 11-08 两轮复核的全部遗留：RunPostActions 等 recover 只记值不记栈、九处哨兵错误等值比较、ui 五处变量遮蔽、pnpm12 已不读的 package.json `pnpm.overrides`（内含写死 1.16.1 的降级钉）、三处跨仓重组旧路径、`make lint` 的 GO= 用法未成文、CI Ryuk 复用等待假红（run 42482794825 attempt1）。
+- **修复**：主仓三处 recover +`debug.Stack()`（error/事件载荷保持短文案，栈只进日志）并迁九处哨兵比较至 `errors.Is`（middleware/policyeval/captcha 三处 redis.Nil、repository 四处与 timeout_scanner 一处 pgx.ErrNoRows）；phase3/15 taskrunner 文档路径与 AGENTS `make lint GO=` 用法；CI test-integration 设 `TESTCONTAINERS_RYUK_DISABLED=true`。ui 五处遮蔽改名（page→pageNo 等）并删失效钉，follow-redirects `^1.16.2` 迁入 `pnpm-workspace.yaml` overrides（锁文件同步 +1 行）；global-setup 路径改 `docs/ops/runbook.md`。taskrunner `e2e` 入 `.PHONY`；activelist CI 同设 Ryuk 禁用；utils `LoginLockIsBlocked` 迁 `errors.Is` 并加包装 `redis.Nil` 回归（先红后绿实证）。
+- **同类扫描**：主仓 recover 记栈三处全覆盖（middleware 本就有）；哨兵比较全仓清零（pgx.ErrNoRows 其余 39 处本就是 errors.Is）；Makefile 空目标/`.PHONY` 缺失五仓扫毕；ui `no-shadow` 显式开启后全仓 5 处全修、复扫零；主仓其余两处 recover（cron/job 193、domainevent 102）同批。
+- **验证**：主仓 vet/unit 全绿、三新测（PanicLogsStack×2、CronScheduler panic 子测扩展）与回归先红后绿实证；定向集成（CronScheduler+词表）绿。ui typecheck/lint/test（31 文件 241 用例）与 `pnpm audit --prod` 全绿、no-shadow 复扫零。utils redis 包定向绿（含新测）。activelist/taskrunner 为 CI-only 改动（YAML/Makefile），本地跑通其 `test-commit-policy`。
+- **验证（补）**：主仓 `make lint`（GO=go1.26.10）与全量 unit 绿；`TESTCONTAINERS_RYUK_DISABLED=true` 下全量 integration 绿（即 CI 新形态预演）；E2E 定向两条（消息中心全链用 `waitUserRateBudget`、首页冒烟用 `primaryButtonStates`）于共享 33333 栈各 1 passed。三兄弟仓 vet+test+policy 全绿（taskrunner 8/activelist 8/utils 10 包）。
