@@ -128,6 +128,7 @@ COMMIT;
 | agent_s2（agent 专属） | E800001 | `Agt1#2610x` | agent 会话 UI 走查专属（admin 角色；2026-10-24 S2 画布走查建号——E000002 台账密码已脱靶且属所有者自管，按 §4.2#2 新建 E8 段） | agent 自管；所有者可随时禁用 |
 | agent_eco_chrome（仅独立 test 栈） | E800006 | 同 E800001 的公开测试口令 | 2026-11-06 ECO-B13 真实 Chrome 走查专属 admin；仅 `zhuzhao_test` 主库，未写入 dev/生产 | agent 自管；所有者可随时禁用，不由 E2E global-setup 接管 |
 | agent_eco_e2e_admin（test临时准备号，已回收） | E800007 | 原E800001公开测试值；回收时未改口令 | 2026-11-06原样E2E替换身份准备：因套件固定seed用户名/组织，已禁用软删、角色清空、58个RT清除及纪元推进；不复用，证据属ECO-B08 | 已回收；E000001/E800006未变 |
+| p5_accept_a（验收甲）/ p5_accept_b（验收乙） | E800002 / E800003 | `P5Accept#2611x` | 2026-11-09 phase5 验收专用（[phase5/12 号](../phase5/12-scenarios-and-tests.md) R0-2 建，角色=P5验收成员 id 311、组织=「P5验收组」id 1227）：甲入组（member/assigned）任处理人/角标/消息中心视角，乙不入组任局外人（L2 不可见/抄送可见不可改）视角。E000002 台账密码已脱靶且属所有者自管，故按 §4.2#2 用 E8 段 | 验收期 agent 自管；走查收尾随测试数据一并处置（保留或禁用由所有者拍板） |
 | e2e_operator / e2e_viewer | E2E9020 / E2E9030 | `E2eOper#2609` / `E2eView#2609` | Playwright E2E 专属（global-setup 幂等建号） | 仅 `zhuzhao-ui/e2e/global-setup.ts` |
 | S1 演练号 | E2E 段随建 | global-setup 派发 | 强制改密流程演练（每轮重置，无常态） | 同上 |
 
@@ -234,9 +235,13 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 5. **验证环境存疑即重跑**：acceptance 出现「断言值与响应体自相矛盾」「时序相关偶发红」时，先疑环境（另一会在写同一栈）再疑代码——NOPE999 锁污染/T7是已确认的环境案例；不能据此把所有失败都归环境，保留原失败并核源码与响应。
 6. **并行会话在途台账**（2026-10-28 立——standards §12-10「会间交接注」登记处）：两会以上并行时，各会话收尾在下表落一行、收口清行；后继会话开工先读。三起立法实证：fe720e1（文档行覆写）/1418f33（staged 索引互扫）/dcf005c（amend 吞并他人提交）。
 
-   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
-   |---|---|---|---|
-   | 五仓文档二次复核（root统筹） | 文档/静态/本地门禁已收口，私有验收栈已回收；仅root负责本轮提交/推送，精确窗口见交付收据 | 收尾按实际Git窗口核对 | 2026-11-08 |
+  | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
+  |---|---|---|---|
+  | 五仓文档二次复核（root统筹） | 文档/静态/本地门禁已收口，私有验收栈已回收；仅root负责本轮提交/推送，精确窗口见交付收据 | 收尾按实际Git窗口核对 | 2026-11-08 |
+  | phase5 验收走查（[phase5/12 号](../phase5/12-scenarios-and-tests.md)，agent 执行中） | docs/phase5/12-scenarios-and-tests.md（新档）+ docs/ops/runbook.md §4 台账行 + docs/phase6/07-backlog-and-triggers.md §3.4 三行 | 随走查收尾批一次提交 | 2026-11-09 |
+  | Phase 5 交付缺陷修正 | 主仓 G2、UI 字段配置与导入、两仓文档。四档和 UI 六件使用独立栈，临时容器、卷和网络已回收 | 本地工作树待提交 | 2026-11-10 |
+
+2026-11-10 共享资源事件与启停登记（验收走查会话）：①**zt 测试栈 11-09 停、11-10 复起**——11-09 按 root「清理不必要测试环境」指令 `docker stop` 九容器（未删，卷/配置原样），未及时落本台账致并行会话四档受阻；11-10 `docker start` 原样拉起（33334/48081，九容器全 Up）——**纪律补课：共享栈启停须即日落本台账**，恢复优先 `docker start` 现有容器（绕开 `zhuzhao_test` 正式 compose 与 `zz-preserve-phase5` 接管模板的同名互斥，二者归属裁决留 root：日常启停走 start/stop，正式 compose 仅重建用，接管模板维持 root-gated）；②**dev 库漂移清理**：`incident.impact_scope` required 11-03 被实验会话置 true（审计 10:13–10:45 fields/replace）致四档建单 10001——经 root 授权已改回 `required=false`（**字段本身保留**，原实验其余字段零触碰；验收同款建单复现通过后删除验证单）；根修建议=实验一律自建前缀类型（如 `p5_*`），禁改共享类型（12 号 §5.2 后续登记）。
 
 2026-11-08提交检查安装（RR-GIT-01）：Go四仓在当前目标工作树运行`make hooks`，UI运行`pnpm hooks`，需要Python3；installer仅设置当前worktree的相对`.githooks`，保留common配置供尚未承接的main使用，不手动把所有仓统一指向主仓绝对路径。消息在commit-msg检查，pre-push/CI再按真实新增窗口检查存库文本。固定`commit-policy-baseline`只豁免其祖先，不自动前移；显式历史审计不豁免。新增merge也须规范主题与正文；规则、缺对象处置与遗留外仓钩子兼容见standards §12-9。主仓`make test-commit-lint`与兄弟/ UI相应入口验证反例，不能以空待推窗口代替检查器测试。
 
