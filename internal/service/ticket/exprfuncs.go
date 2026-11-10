@@ -13,12 +13,22 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
-type dictQuerierKey struct{}
+type dictLookupKey struct{}
+
+type dictLookupScope struct {
+	querier         repository.RowQuerier
+	includeDisabled bool
+}
 
 // withDictQuerier 仅在本轮求值绑定已有读通道（Update=tx，前置校验=pool）。
 // 派生上下文不传给事件、worker 或下一事务。
 func withDictQuerier(ctx context.Context, q repository.RowQuerier) context.Context {
-	return context.WithValue(ctx, dictQuerierKey{}, q)
+	return context.WithValue(ctx, dictLookupKey{}, dictLookupScope{querier: q})
+}
+
+// withFormulaDictLookup 只在重算公式时解析停用项，保持显隐与转换校验的原有语义。
+func withFormulaDictLookup(ctx context.Context, q repository.RowQuerier) context.Context {
+	return context.WithValue(ctx, dictLookupKey{}, dictLookupScope{querier: q, includeDisabled: true})
 }
 
 // RegisterExprDictLookup 注册进程级函数定义；请求/事务读通道仅在求值时传入。
@@ -37,14 +47,14 @@ func RegisterExprDictLookup(pool *pgxpool.Pool) {
 		if !ok1 || !ok2 {
 			return nil, fmt.Errorf("lookup_dict 两参均须字符串")
 		}
-		// 取名称不看启停（RR-HY-02 口径：停用只禁新选，存量值的显示与公式仍可解析；
-		// 新选停用值由 G2 成员校验拦截）。硬删除项无从解析，仍报未命中。
+		scope, hasScope := ctx.Value(dictLookupKey{}).(dictLookupScope)
 		q := repository.RowQuerier(pool)
-		if current, ok := ctx.Value(dictQuerierKey{}).(repository.RowQuerier); ok {
-			q = current
+		if hasScope {
+			q = scope.querier
 		}
 		rows, err := q.Query(ctx,
-			`SELECT label FROM dict_items WHERE type_code=$1 AND code=$2`, typeCode, itemCode)
+			`SELECT label FROM dict_items WHERE type_code=$1 AND code=$2 AND (enabled OR $3)`,
+			typeCode, itemCode, scope.includeDisabled)
 		if err == nil {
 			// Match QueryRow.Scan: finish the read and inspect its final error
 			// before returning the label, including cancellation during Close.

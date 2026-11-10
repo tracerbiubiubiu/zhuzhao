@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
 // hyType 建类型并配置字段（choice 选项字段 + 可选 formula 字段）。
@@ -117,6 +118,73 @@ func TestLegacyOptionValues_OnlyNewSelectionsBlocked(t *testing.T) {
 		var cd map[string]any
 		require.NoError(t, json.Unmarshal(got.CustomData, &cd))
 		require.Equal(t, "a", cd["label"], "停用项名称仍可解析（g14Dict 的 label=code）")
+	})
+
+	t.Run("停用项名称仅供公式解析，既有显隐口径不变", func(t *testing.T) {
+		ref := g14Dict(t, "a", "b")
+		dict, _ := dictOptionReference(ref)
+		formula := fmt.Sprintf(`lookup_dict(%q, choice)`, dict)
+		code := hyType(t, svc, "select", ref, formula)
+		visible, err := json.Marshal(map[string]string{"visible_when": formula + ` == "a"`})
+		require.NoError(t, err)
+		formulaMeta, err := json.Marshal(map[string]string{"formula": formula})
+		require.NoError(t, err)
+		_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{
+			{FieldKey: "choice", FieldLabel: "选择", FieldType: "select", FieldOptions: ref},
+			{FieldKey: "note", FieldLabel: "备注", FieldType: "input", FieldMeta: visible},
+			{FieldKey: "label", FieldLabel: "名称", FieldType: "input", FieldMeta: formulaMeta},
+		}})
+		require.NoError(t, err)
+		id := newTicket(t, code, `{"choice":"a","note":"保留"}`)
+		_, err = testPool.Exec(ctx, `UPDATE dict_items SET enabled=false,label='已停用' WHERE type_code=$1 AND code='a'`, dict)
+		require.NoError(t, err)
+		require.NoError(t, hyPatch(ctx, svc, id, actor, `{}`))
+		got, err := svc.Get(ctx, id, actor)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"choice":"a","note":"保留","label":"已停用"}`, string(got.CustomData))
+	})
+
+	t.Run("最后一项或整个字典停用均只允许延续已有值", func(t *testing.T) {
+		for _, tt := range []struct{ kind, old, other string }{
+			{"select", `{"choice":"a"}`, `{"choice":"disabled"}`},
+			{"radio", `{"choice":"a"}`, `{"choice":"disabled"}`},
+			{"multi_select", `{"choice":["a"]}`, `{"choice":["a","disabled"]}`},
+		} {
+			t.Run(tt.kind, func(t *testing.T) {
+				ref := g14Dict(t, "a")
+				dict, _ := dictOptionReference(ref)
+				code := hyType(t, svc, tt.kind, ref, "")
+				id := newTicket(t, code, tt.old)
+				assertDisabled := func() {
+					t.Helper()
+					require.NoError(t, hyPatch(ctx, svc, id, actor, tt.old))
+					requireErrCode(t, hyPatch(ctx, svc, id, actor, tt.other), errcode.ErrInvalidParams.Code)
+					_, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "新单", OrgID: org,
+						CustomData: json.RawMessage(tt.old)}, actor)
+					requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+				}
+				hyDisable(t, ref, "a")
+				assertDisabled()
+				_, err := testPool.Exec(ctx, `UPDATE dict_items SET enabled=true WHERE type_code=$1 AND code='a'`, dict)
+				require.NoError(t, err)
+				_, err = testPool.Exec(ctx, `UPDATE dict_types SET enabled=false WHERE code=$1`, dict)
+				require.NoError(t, err)
+				assertDisabled()
+			})
+		}
+	})
+
+	t.Run("旧未知键的数组元素不能放行后来配置的单选值", func(t *testing.T) {
+		code := "hytype_" + uniqueSuffix()
+		_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "存量未知键"})
+		require.NoError(t, err)
+		id := newTicket(t, code, `{"choice":["legacy"]}`)
+		_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{
+			{FieldKey: "choice", FieldLabel: "选择", FieldType: "select", FieldOptions: json.RawMessage(`["new"]`)},
+		}})
+		require.NoError(t, err)
+		requireErrCode(t, hyPatch(ctx, svc, id, actor, `{"choice":"legacy"}`), errcode.ErrInvalidParams.Code)
+		require.NoError(t, hyPatch(ctx, svc, id, actor, `{"choice":"new"}`))
 	})
 
 	t.Run("建单仍按启用项全量校验（新单无存量值）", func(t *testing.T) {

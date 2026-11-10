@@ -113,7 +113,7 @@ func TestDictSelect_SubmitRealValue(t *testing.T) {
 	// 建字典类型 + 项
 	dictSvc := service.NewDictService(repository.NewDictRepo(testPool), nil)
 	dcode := "dsv" + uniqueSuffix()
-	err := dictSvc.CreateType(ctx, &model.DictType{Code: dcode, Name: "严重级别"})
+	err := dictSvc.CreateType(ctx, &model.DictType{Code: dcode, Name: "严重级别", Enabled: true})
 	require.NoError(t, err)
 	err = dictSvc.CreateItem(ctx, &model.DictItem{TypeCode: dcode, Code: "high", Label: "高危", SortOrder: 1, Enabled: true})
 	require.NoError(t, err)

@@ -295,9 +295,7 @@ func checkFieldLock(old []*model.TicketTypeField, neu []model.TicketTypeField) e
 }
 
 // checkDictCodesExist B1-7 批2（三路F-B-8 收口）：字典引用保存期存在性校验——
-// 码不存在的字典在运行期 expandDictOptions 展开为空集（校验跳过=旁路），
-// 保存期前置拦截。只查存在不查启用：运行期按 dict_items.enabled 展开（类型
-// 停用不构成旁路），与 expandDictOptions 语义对齐。
+// 保存期允许引用已停用的字典，运行期其启用集为空，存量选项仍可原样保留。
 func (s *Service) checkDictCodesExist(ctx context.Context, fields []model.TicketTypeField) error {
 	for i := range fields {
 		f := &fields[i]
@@ -320,7 +318,7 @@ func (s *Service) checkDictCodesExist(ctx context.Context, fields []model.Ticket
 		}
 		if !exists {
 			return errcode.New(errcode.ErrInvalidParams.Code,
-				fmt.Sprintf("字段 %q 引用的字典 %q 不存在——保存被拒（运行期空集=校验旁路）", f.FieldKey, code))
+				fmt.Sprintf("字段 %q 引用的字典 %q 不存在", f.FieldKey, code))
 		}
 	}
 	return nil
@@ -361,26 +359,19 @@ func (s *Service) softFieldWarnings(ctx context.Context, code string, old []*mod
 				softs = append(softs, softRef{o.FieldKey, "options 影响无法评估——字典读取或选项解析失败，请核对在途单旧值"})
 				continue
 			}
-			// G2 的空集表示不限制取值；有限集改为空集放宽，空集改为有限集才是新增约束。
-			if len(newVals) == 0 {
-				continue
-			}
-			if len(oldVals) == 0 {
-				softs = append(softs, softRef{o.FieldKey, "options 新增约束——原选项集不限制取值，现在仅允许有限选项"})
-			} else {
-				nv := map[string]bool{}
+			// 显式空集不允许新选。nil 只用于无选项约束的旧配置或运行时读取失败。
+			if oldVals == nil && newVals != nil {
+				softs = append(softs, softRef{o.FieldKey, "options 新增约束——原选项集不限制取值，现在仅允许配置的选项"})
+			} else if newVals != nil && len(oldVals) > 0 {
+				newSet := make(map[string]bool, len(newVals))
 				for _, v := range newVals {
-					nv[v] = true
+					newSet[v] = true
 				}
-				narrowed := false
 				for _, v := range oldVals {
-					if !nv[v] {
-						narrowed = true
+					if !newSet[v] {
+						softs = append(softs, softRef{o.FieldKey, "options 收窄——在途单保留旧取值（编辑时可原样保留），但不可再新选"})
 						break
 					}
-				}
-				if narrowed {
-					softs = append(softs, softRef{o.FieldKey, "options 收窄——在途单保留旧取值（编辑时可原样保留、名称照常显示），但不可再新选"})
 				}
 			}
 		}
@@ -764,17 +755,12 @@ func optionValues(raw json.RawMessage) ([]string, error) {
 // 但整体体量封顶防跨请求累加膨胀（TOAST/备份放大）；与 RichtextMaxBytes 同族。
 const CustomDataMaxBytes = 64 << 10
 
-// expandDictOptions 将 field_options 中的 "dict:<code>" 引用展开为该字典
-// 启用项的 code 值集（F-B-2 修复——select 校验须对真实字典项校验而非字面量）。
-// 非 dict 引用原样返回；字典码不存在与 DB 查询故障两臂均返回空集 []
-// （fail-open——校验侧 len==0 即跳过，"无选项不校验"语义。P1-1 修复
-// 2026-10-22：错误臂原返回原文，经 optionValues 成字面量单选项 → 一切
-// 合法 select 值被 400 拒，fail-closed 实效与 fail-open 意图相反；码不
-// 存在臂由保存期字典码存在性校验收口[B1-7]，运行期空集仅为兜底）。
+// expandDictOptions 展开字典的启用选项。成功读到空集返回 []（无值可新选）。
+// 读取故障返回 nil，保留 G2 不把读取故障升级为成员校验错误的策略。
 func (s *Service) expandDictOptions(ctx context.Context, q repository.RowQuerier, raw json.RawMessage) json.RawMessage {
 	expanded, err := s.expandDictOptionsStrict(ctx, q, raw)
 	if err != nil {
-		return json.RawMessage("[]") // G2 既定故障策略：无选项限制，不把解析/查询故障升级为 HTTP 硬拒绝。
+		return nil
 	}
 	return expanded
 }
@@ -795,7 +781,9 @@ func (s *Service) expandDictOptionsStrict(ctx context.Context, q repository.RowQ
 		return raw, nil
 	}
 	rows, err := q.Query(ctx,
-		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled = true ORDER BY sort_order`, code)
+		`SELECT code FROM dict_items WHERE type_code = $1 AND enabled
+		  AND EXISTS (SELECT 1 FROM dict_types WHERE code = $1 AND enabled)
+		  ORDER BY sort_order`, code)
 	if err != nil {
 		return nil, err
 	}
@@ -818,18 +806,9 @@ func (s *Service) expandDictOptionsStrict(ctx context.Context, q repository.RowQ
 	return json.RawMessage(b), nil
 }
 
-// validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
-// 仅校验 schema 已知键（未知键放行，向前兼容）；模板预填发生在合并后的 customData 上。
-// validateCustomData G2：按类型字段 schema 校验 custom_data（required/类型/regex）。
-// B1-6 批1 起返回剔除隐藏字段后的 custom_data（visible_when=false 的字段 required
-// 不校验、值剔除不写入——防绕过；无剔除时原样返回零重编码）。
-// validateCustomData G2 提交期校验（q=取数通道：Create 前置传池 s.db；Update 锁内窗口传 tx——
-// BK11 同类防嵌套：池读在事务持连期间取第 2 连接，N≥MaxConns 并发即自闭环死锁）。
-// validateCustomData 校验 custom_data。legacy=该工单变更前的 custom_data
-// （Update 传入；Create/无存量场景传 nil）——停用/移除的选项只禁新选：值与存量
-// 一致（select/radio 单值相等；multi_select 元素⊆旧元素∪启用集）即视为存量延续，
-// 跳过成员校验（RR-HY-02 口径，2026-11-10 所有者拍「与业界一致」）。其余校验
-// （格式/正则/required/可见性）不受 legacy 影响。
+// validateCustomData 在同一 schema 与显隐快照下校验输入、剔除隐藏字段并重算可见公式。
+// legacy 是 Update 从行锁内读取的旧 custom_data，仅允许已有选项值延续。
+// Create 使用池，Update 复用事务连接。未知字段沿用前向兼容策略。
 func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage, legacy json.RawMessage) (json.RawMessage, error) {
 	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
 	if len(customData) > CustomDataMaxBytes {
@@ -847,30 +826,18 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 	if err := json.Unmarshal(customData, &data); err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 	}
-	// 存量值放行集：键 → 旧值元素集（select/radio 单值；multi_select 列表）。
-	var legacyByField map[string][]string
+	var old map[string]json.RawMessage
 	if len(legacy) > 0 {
-		var old map[string]json.RawMessage
 		if err := json.Unmarshal(legacy, &old); err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "存量 custom_data 须为 JSON 对象")
-		}
-		legacyByField = make(map[string][]string, len(old))
-		for k, v := range old {
-			var sv string
-			if err := json.Unmarshal(v, &sv); err == nil {
-				legacyByField[k] = []string{sv}
-				continue
-			}
-			var arr []string
-			if err := json.Unmarshal(v, &arr); err == nil {
-				legacyByField[k] = arr
-			}
 		}
 	}
 	// B1-6 批1 条件显隐（01 号 §5 翻案）：G2 提交时跳过隐藏字段。求值 env=提交
 	// 快照值；求值失败/非布尔结果视为可见（保守=校验更严，不静默放行隐藏值）。
 	hidden := map[string]bool{}
 	var envData map[string]any
+	var envErr error
+	var formulas []*model.TicketTypeField
 	for _, f := range fields {
 		vw := visibleWhenOf(f.FieldMeta)
 		if vw == "" {
@@ -878,7 +845,7 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 		}
 		if envData == nil {
 			envData = map[string]any{}
-			_ = json.Unmarshal(customData, &envData)
+			envErr = json.Unmarshal(customData, &envData)
 		}
 		v, err := exprcalc.EvalFormula(vw, exprcalc.EvalEnv{Fields: envData, Context: withDictQuerier(ctx, q)})
 		if err != nil {
@@ -941,41 +908,98 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 		}
 		raw, present := data[f.FieldKey]
 		isEmpty := !present || len(raw) == 0 || string(raw) == "null" || string(raw) == `""`
-		// F-B-4 外审 P1 修复（2026-10-22）：formula 字段跳过 required 校验——
-		// 服务端 applyFormulas 会重算写入值，required 检查在空值时误拒
-		//（修复前：required formula 字段 + 用户不填 → 400"必填" → 类型死锁）
-		isFormula := false
-		if len(f.FieldMeta) > 0 {
-			var m struct {
-				Formula string `json:"formula"`
-			}
-			_ = json.Unmarshal(f.FieldMeta, &m)
-			isFormula = m.Formula != ""
+		// 可见公式由服务器写入，不要求请求提供初始值。
+		if formulaOf(f.FieldMeta) != "" {
+			formulas = append(formulas, f)
+			continue // 请求预览值与旧结果均由服务端产物替换，校验产物本身。
 		}
-		if f.Required && isEmpty && !isFormula {
+		if f.Required && isEmpty {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code,
 				fmt.Sprintf("字段 %q（%s）为必填", f.FieldKey, f.FieldLabel))
 		}
-		// 空值跳过类型校验（formula 字段空值亦然——required 已豁免，值由
-		// applyFormulas 算入；P2-6 清理 2026-10-22：原三重连判第三支不可达）
 		if isEmpty {
 			continue
 		}
-		if err := validateFieldValue(f, raw, legacyByField[f.FieldKey]); err != nil {
+		if err := validateFieldValue(f, raw, legacyOptionValues(f.FieldType, old[f.FieldKey])); err != nil {
 			return nil, err
 		}
 	}
-	if len(hidden) > 0 {
-		for k := range hidden {
-			delete(data, k)
-		}
-		b, err := json.Marshal(data)
-		if err != nil {
-			return nil, errcode.ErrInternal
-		}
-		return json.RawMessage(b), nil
+	if len(hidden) == 0 && len(formulas) == 0 {
+		return customData, nil
 	}
-	return customData, nil
+	if len(formulas) > 0 {
+		if envData == nil {
+			envErr = json.Unmarshal(customData, &envData)
+		}
+		if envErr != nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 含无法求值的字段")
+		}
+	}
+	for k := range hidden {
+		delete(data, k)
+		delete(envData, k)
+	}
+	if len(formulas) > 0 && data != nil {
+		if err := applyFormulas(withFormulaDictLookup(ctx, q), formulas, data, envData); err != nil {
+			return nil, err
+		}
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil, errcode.ErrInternal
+	}
+	if len(b) > CustomDataMaxBytes {
+		return nil, errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("custom_data 超过 %d KiB 上限", CustomDataMaxBytes>>10))
+	}
+	return json.RawMessage(b), nil
+}
+
+// applyFormulas 只写回公式产物，其他字段保留原 JSON 值。
+func applyFormulas(ctx context.Context, fields []*model.TicketTypeField, data map[string]json.RawMessage, envData map[string]any) error {
+	schema := make([]exprcalc.FormulaField, 0, len(fields))
+	for _, f := range fields {
+		schema = append(schema, exprcalc.FormulaField{Key: f.FieldKey, Formula: formulaOf(f.FieldMeta), Type: f.FieldType})
+	}
+	out, err := exprcalc.ApplyFormulasContext(ctx, schema, envData)
+	if err != nil {
+		return errcode.New(errcode.ErrInvalidParams.Code, err.Error())
+	}
+	for _, f := range fields {
+		value, present := out[f.FieldKey]
+		if f.Required && (!present || value == nil || value == "") {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("字段 %q（%s）为必填", f.FieldKey, f.FieldLabel))
+		}
+		if !present {
+			continue
+		}
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return errcode.ErrInternal
+		}
+		if err := validateFieldValue(f, raw, nil); err != nil {
+			return err
+		}
+		data[f.FieldKey] = raw
+	}
+	return nil
+}
+
+func legacyOptionValues(fieldType string, raw json.RawMessage) []string {
+	switch fieldType {
+	case "select", "radio":
+		var value string
+		if err := json.Unmarshal(raw, &value); err == nil && value != "" {
+			return []string{value}
+		}
+	case "multi_select":
+		var values []string
+		if err := json.Unmarshal(raw, &values); err == nil {
+			return values
+		}
+	}
+	return nil
 }
 
 // validateFieldValue 单字段类型/选项/正则校验。allowed=存量放行值集（nil/空=无
@@ -1016,7 +1040,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage, allowed [
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为字符串选项", f.FieldKey))
 		}
 		values, _ := optionValues(f.FieldOptions)
-		if len(values) > 0 && !contains(values, sv) && !contains(allowed, sv) {
+		if values != nil && !contains(values, sv) && !contains(allowed, sv) {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 取值 %q 不在选项内", f.FieldKey, sv))
 		}
 	case "file": // B1-6 批1：object_key 数组（形态校验；required/MIME 在 validateCustomData）
@@ -1035,7 +1059,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage, allowed [
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为字符串数组", f.FieldKey))
 		}
 		values, _ := optionValues(f.FieldOptions)
-		if len(values) > 0 {
+		if values != nil {
 			for _, v := range arr {
 				if !contains(values, v) && !contains(allowed, v) {
 					return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 取值 %q 不在选项内", f.FieldKey, v))

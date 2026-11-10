@@ -96,16 +96,25 @@ func TestG14_ChoiceSetWarnings(t *testing.T) {
 		{"static to dictionary", "select", json.RawMessage(`["a","b"]`), one, "收窄"},
 		{"dictionary to static", "multi_select", a, json.RawMessage(`["a"]`), "收窄"},
 		{"dictionary add only", "select", a, all, ""},
-		{"dictionary to unrestricted", "radio", a, empty, ""},
-		{"static to unrestricted", "select", json.RawMessage(`["a"]`), empty, ""},
-		{"unrestricted to static", "select", empty, json.RawMessage(`["a"]`), "新增约束"},
-		{"unrestricted to dictionary", "multi_select", empty, one, "新增约束"},
-		{"both unrestricted", "radio", empty, empty2, ""},
+		{"dictionary to empty", "radio", a, empty, "收窄"},
+		{"static to empty", "select", json.RawMessage(`["a"]`), empty, "收窄"},
+		{"empty to static", "select", empty, json.RawMessage(`["a"]`), ""},
+		{"empty to dictionary", "multi_select", empty, one, ""},
+		{"both empty", "radio", empty, empty2, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			code := g14Type(t, svc, tt.kind, tt.old)
+			initial := tt.old
+			if string(initial) == string(empty) {
+				initial = json.RawMessage(`["a"]`)
+			}
+			code := g14Type(t, svc, tt.kind, initial)
 			g14InFlight(t, svc, actor, code, tt.kind)
+			if string(initial) != string(tt.old) {
+				// 存量值在选项集收窄前创建。空集已不允许创建该选项。
+				_, err := svc.ReplaceTicketTypeFields(context.Background(), code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{{FieldKey: "choice", FieldLabel: "旧选项", FieldType: tt.kind, FieldOptions: tt.old}}})
+				require.NoError(t, err)
+			}
 			ws, err := svc.ReplaceTicketTypeFields(context.Background(), code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{{FieldKey: "choice", FieldLabel: "更新选项", FieldType: tt.kind, FieldOptions: tt.neu}}})
 			require.NoError(t, err, "提示不能阻断合法配置保存")
 			if tt.warning == "" {
@@ -231,7 +240,7 @@ func TestG14_DictStreamErrorsRemainFailOpen(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			out := svc.expandDictOptions(context.Background(), g14FaultQuery{tt.query}, ref)
-			assert.JSONEq(t, `[]`, string(out), "G2 仍按既定故障策略返回不限制空集，不得留下部分允许集")
+			assert.Nil(t, out, "G2 仍按既定故障策略跳过成员校验，不得留下部分允许集")
 		})
 	}
 }

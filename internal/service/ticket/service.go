@@ -17,7 +17,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/humankey"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
@@ -288,15 +287,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
 	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
 	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
-	// B1-6 批1：validateCustomData 返回剔除隐藏字段后的 custom_data（visible_when
-	// =false 的字段 required 不校验、值不写入——防绕过）
-	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData, nil) // Create：无存量
-	if err != nil {
-		return nil, err
-	}
-	// B1-3 formula 重算（A.3 提交链落点）：校验后、写前——formula 字段一律
-	// 服务端重算覆盖（前端预览值不可信，篡改负向必测 01 §8）
-	customData, err = s.applyFormulas(ctx, s.db, req.TypeCode, customData)
+	// 同一 G2 schema/显隐快照内剔除隐藏字段、重算公式并校验落库值。
+	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -539,46 +531,6 @@ func (s *Service) applyFetches(ctx context.Context, typeCode string, customData 
 	return json.RawMessage(b)
 }
 
-// applyFormulas B1-3 提交链 formula 重算（A.3）：从 field_meta 组装投影 →
-// exprcalc.ApplyFormulas 重算覆盖。custom_data 为 json.RawMessage——解码→重算→重编码。
-// applyFormulas formula 重算（q=取数通道：Create 前置传池 s.db；Update 锁内窗口传 tx——
-// BK11 同类防嵌套，池读在事务持连期间会取第 2 连接，N≥MaxConns 并发自闭环死锁）。
-func (s *Service) applyFormulas(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
-	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, q, typeCode)
-	if err != nil || len(fields) == 0 {
-		return customData, err // 无字段即无 formula——透传
-	}
-	var schema []exprcalc.FormulaField
-	for _, f := range fields {
-		if len(f.FieldMeta) == 0 {
-			continue
-		}
-		var meta struct {
-			Formula string `json:"formula"`
-		}
-		if err := json.Unmarshal(f.FieldMeta, &meta); err != nil || meta.Formula == "" {
-			continue
-		}
-		schema = append(schema, exprcalc.FormulaField{Key: f.FieldKey, Formula: meta.Formula, Type: f.FieldType})
-	}
-	if len(schema) == 0 {
-		return customData, nil
-	}
-	var data map[string]any
-	if err := json.Unmarshal(customData, &data); err != nil || data == nil {
-		return customData, nil // 空/非法对象——G2 已拦
-	}
-	out, err := exprcalc.ApplyFormulasContext(withDictQuerier(ctx, q), schema, data)
-	if err != nil {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
-	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return nil, errcode.ErrInternal
-	}
-	return json.RawMessage(b), nil
-}
-
 // richtextFieldKeys 抽取 custom_data 中 richtext 字段 MD 的内嵌图 object_key
 // （2026-11-03 贴图落绑批——Create 进料侧；解析=ExtractFileRefs 与渲染同口径）。
 func (s *Service) richtextFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
@@ -715,13 +667,8 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		if err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
-		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base) // Update：旧 custom_data=存量放行集
-		if err != nil {
-			return nil, err
-		}
-		// B1-3 formula 重算（同 Create 链——校验后、写前）；走 tx 连接（BK11 同类：
-		// 修前池读在事务持连期间取第 2 连接，6 并发×MaxConns=4 即自闭环死锁——锤击锚实证）
-		merged, err = s.applyFormulas(ctx, tx, ticket.TypeCode, merged)
+		// 使用当前事务及锁内旧值完成 G2 校验和公式重算，避免嵌套池读。
+		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base)
 		if err != nil {
 			return nil, err
 		}

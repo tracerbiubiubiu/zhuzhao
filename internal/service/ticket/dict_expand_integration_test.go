@@ -1,10 +1,6 @@
 //go:build integration
 
-// P1-1 回归（2026-10-22 全量核查报告）：expandDictOptions 两失败臂语义钉死——
-// 字典码不存在与 DB 查询故障均须返回空集 []（真 fail-open：下游 optionValues
-// len==0 即跳过校验，"无选项不校验"）。修复前 DB 故障臂返回原文
-// ["dict:<code>"]——经 optionValues 变字面量单选项，一切合法 select 值被
-// 400 拒（fail-closed 实效与注释 fail-open 意图相反）。先红（DB 故障臂）后绿。
+// 字典查询成功但无启用项时返回 []。读取故障返回 nil，维持原有 fail-open 策略。
 package ticket
 
 import (
@@ -17,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExpandDictOptions_FailOpenArms(t *testing.T) {
+func TestExpandDictOptions_EmptyAndUnavailable(t *testing.T) {
 	ctx := context.Background()
 	svc := &Service{} // 取数执行器显式传入，事务内调用方必须传tx
 
@@ -47,16 +43,16 @@ func TestExpandDictOptions_FailOpenArms(t *testing.T) {
 		assert.JSONEq(t, `["a1","a2"]`, string(out))
 	})
 
-	t.Run("码不存在→空集（跳过校验语义）", func(t *testing.T) {
+	t.Run("码不存在→空集（无值可新选）", func(t *testing.T) {
 		out := svc.expandDictOptions(ctx, testPool, json.RawMessage(`["dict:nope_`+uniqueSuffix()+`"]`))
 		assert.JSONEq(t, `[]`, string(out))
 	})
 
-	t.Run("DB 故障→空集（P1-1 修复锚——修复前返回原文即红）", func(t *testing.T) {
+	t.Run("DB 故障→nil（跳过成员校验）", func(t *testing.T) {
 		p2, err := pgxpool.New(ctx, testPool.Config().ConnString())
 		require.NoError(t, err)
 		p2.Close() // 已关闭 pool：Query 返回 closed 错误——真实 DB 故障臂
 		out := svc.expandDictOptions(ctx, p2, dictRef)
-		assert.JSONEq(t, `[]`, string(out))
+		assert.Nil(t, out)
 	})
 }
