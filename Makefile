@@ -1,4 +1,4 @@
-.PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint test-commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
+.PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint guard-roundtrip test-commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
 
 APP_NAME=zhuzhao
 BUILD_DIR=bin

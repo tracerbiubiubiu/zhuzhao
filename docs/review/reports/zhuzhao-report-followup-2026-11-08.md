@@ -106,6 +106,14 @@ runbook登记B03实际migrate镜像拉取与宿主CLI版本差异、固定工具
 
 - **触发**：所有者「修复」指令，收口 11-08 两轮复核的全部遗留：RunPostActions 等 recover 只记值不记栈、九处哨兵错误等值比较、ui 五处变量遮蔽、pnpm12 已不读的 package.json `pnpm.overrides`（内含写死 1.16.1 的降级钉）、三处跨仓重组旧路径、`make lint` 的 GO= 用法未成文、CI Ryuk 复用等待假红（run 42482794825 attempt1）。
 - **修复**：主仓三处 recover +`debug.Stack()`（error/事件载荷保持短文案，栈只进日志）并迁九处哨兵比较至 `errors.Is`（middleware/policyeval/captcha 三处 redis.Nil、repository 四处与 timeout_scanner 一处 pgx.ErrNoRows）；phase3/15 taskrunner 文档路径与 AGENTS `make lint GO=` 用法；CI test-integration 设 `TESTCONTAINERS_RYUK_DISABLED=true`。ui 五处遮蔽改名（page→pageNo 等）并删失效钉，follow-redirects `^1.16.2` 迁入 `pnpm-workspace.yaml` overrides（锁文件同步 +1 行）；global-setup 路径改 `docs/ops/runbook.md`。taskrunner `e2e` 入 `.PHONY`；activelist CI 同设 Ryuk 禁用；utils `LoginLockIsBlocked` 迁 `errors.Is` 并加包装 `redis.Nil` 回归（先红后绿实证）。
-- **同类扫描**：主仓 recover 记栈三处全覆盖（middleware 本就有）；哨兵比较全仓清零（pgx.ErrNoRows 其余 39 处本就是 errors.Is）；Makefile 空目标/`.PHONY` 缺失五仓扫毕；ui `no-shadow` 显式开启后全仓 5 处全修、复扫零；主仓其余两处 recover（cron/job 193、domainevent 102）同批。
-- **验证**：主仓 vet/unit 全绿、三新测（PanicLogsStack×2、CronScheduler panic 子测扩展）与回归先红后绿实证；定向集成（CronScheduler+词表）绿。ui typecheck/lint/test（31 文件 241 用例）与 `pnpm audit --prod` 全绿、no-shadow 复扫零。utils redis 包定向绿（含新测）。activelist/taskrunner 为 CI-only 改动（YAML/Makefile），本地跑通其 `test-commit-policy`。
+- **同类扫描**：主仓 recover 记栈三处全覆盖（middleware 本就有）；哨兵比较全仓清零（pgx.ErrNoRows 其余 39 处本就是 errors.Is）；Makefile 空目标/`.PHONY` 缺失五仓扫毕（主仓 guard-roundtrip 当时未列入本批，随 RR-HY-03 补齐）；ui `no-shadow` 显式开启后全仓 5 处全修、复扫零；主仓其余两处 recover（cron/job 193、domainevent 102）同批。
+- **验证（2026-11-10 勘误）**：主仓 vet/unit 全绿、三新测（PanicLogsStack×2、CronScheduler panic 子测扩展）与回归先红后绿实证；定向集成实跑范围=CronScheduler 子测（原文误带「词表」——词表验证在 RR-DOC-01 的 ui 侧与本批 dict service 测试）。ui typecheck/lint/test（31 文件 241 用例）与 `pnpm audit --prod` 全绿、no-shadow 复扫零。utils redis 包定向绿（含新测）。activelist/taskrunner 为 CI-only 改动（YAML/Makefile），本地跑通其 `test-commit-policy`。
 - **验证（补）**：主仓 `make lint`（GO=go1.26.10）与全量 unit 绿；`TESTCONTAINERS_RYUK_DISABLED=true` 下全量 integration 绿（即 CI 新形态预演）；E2E 定向两条（消息中心全链用 `waitUserRateBudget`、首页冒烟用 `primaryButtonStates`）于共享 33333 栈各 1 passed。三兄弟仓 vet+test+policy 全绿（taskrunner 8/activelist 8/utils 10 包）。
+
+## 第五批 RR-HY-02/03：选项存量放行与数据载体四分法（2026-11-10）
+
+- **触发**：所有者问「字典与活动列表能力是否重叠」——只读调研结论不重复（字典=枚举/选项，活动列表=业务清单数据），并核出两处真缺陷：停用/移除选项后存量工单改单 400；活动列表导入无全量替换警示。
+- **口径（所有者拍）**：停用/移除的选项只禁新选、存量值放行（含静态选项同路径）；与 Salesforce/ServiceNow/Jira 一致。
+- **修复**：主仓 `validateCustomData/validateFieldValue` 加存量放行集（Update 传旧 custom_data；Create 仍全量校验）+ `lookup_dict` 去启用过滤（显示/公式可解析，新选由 G2 拦）+ B26 软提示文案同步；消费端点 `GET /user/dicts/:code/items` 支持 `include_disabled=true`（显示面）；ui 详情页 label 解析含停用项、字典页删除确认劝停用；ui 活动列表导入强确认与真实行数提示（RR-HY-01 追加）。
+- **落档**：数据载体四分法（常量/字典/域表/活动列表）=design-decisions §32；standards §13 索引行；phase6 README 级别载体行勘误标注；台账 G-14 注字典写侧合同已落。
+- **验证**：新集成测 TestLegacyOptionValues 五子测修前红/修后绿（dict 单选/静态 radio/multi_select/lookup_dict/建单仍拒）；全量 unit+integration 绿；make lint（GO=）绿零 swagger 漂移；ui typecheck/lint/test 与 p4-dict+s8-create E2E 绿。
