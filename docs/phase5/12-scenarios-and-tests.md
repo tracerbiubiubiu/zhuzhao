@@ -159,7 +159,7 @@ R1-2 要拖入的 12 个字段：
 | # | 谁 | 操作 | 预期 | 后端核验 | 结果 |
 |---|---|---|---|---|---|
 | R6-1 | 所有者 | E000001 打开 T1 | 转换按钮按当前状态出现（如「→ 进行中」） | `/transitions/available` | ⬜ |
-| R6-2 | agent | API 合并配置（保留 R5-8 的超时配置）：`assigned>in_progress` = 仅处理人可执行 + 转换后抄送验收乙；`in_progress>closed` = 校验 `priority == 1` | 保存成功 | `transition_meta` | ⬜ |
+| R6-2 | agent | API 合并配置（保留 R5-8 的超时配置）：`assigned>in_progress` = 仅处理人可执行 + 转换后抄送验收乙；`in_progress>closed` = 校验 `priority == 1` | 保存成功 | ✅ version 16：三键共存（assigned 超时段/转换级 roles+post_actions cc→乙 2282/validator priority==1）——同列两形键（状态级+from>to）并存实证 | ✅ |
 | R6-3 | 所有者 + agent | 验收乙打开 T1（被抄送可见、状态已分派） | 看不到「→ 进行中」；agent 用乙的 token 直调转换 → 403 | — | ⬜ |
 | R6-4 | 所有者 | 验收甲打开 T3 →「→ 进行中」 | 状态变进行中；乙被自动加入 T3 抄送 | `ticket_cc` 新行（转换后动作） | ⬜ |
 | R6-5 | 所有者 | 验收乙看工单列表 | 出现 T3 | — | ⬜ |
