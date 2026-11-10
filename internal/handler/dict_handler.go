@@ -113,9 +113,10 @@ func (h *DictHandler) ListItems(c *gin.Context) {
 	response.OK(c, resp)
 }
 
-// EnabledItems GET /dicts/:code/items（消费面——仅启用项，type 停用返回空）
+// EnabledItems GET /dicts/:code/items（消费面——默认仅启用项，type 停用返回空；
+// include_disabled=true 返回含停用项——存量工单回显名称/编辑回显旧值用，RR-HY-02）
 func (h *DictHandler) EnabledItems(c *gin.Context) {
-	items, err := h.dictService.EnabledItemsByCode(c.Request.Context(), c.Param("code"))
+	items, err := h.dictService.ItemsForConsumer(c.Request.Context(), c.Param("code"), c.Query("include_disabled") == "true")
 	if err != nil {
 		writeServiceError(c, err)
 		return

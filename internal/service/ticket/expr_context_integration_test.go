@@ -77,7 +77,9 @@ func TestExprLookup_ReadCompletionError(t *testing.T) {
 	value, err := exprcalc.EvalFormula(fmt.Sprintf(`lookup_dict(%q, "item")`, code), exprcalc.EvalEnv{Context: withDictQuerier(ctx, q)})
 	require.Error(t, err)
 	assert.Nil(t, value)
-	assert.Contains(t, err.Error(), "未命中启用项")
+	// RR-HY-02：lookup_dict 改为不看启停（停用只禁新选、显示/公式仍可解析）——
+	// 未命中文案由「未命中启用项」改为「未命中字典项」
+	assert.Contains(t, err.Error(), "未命中字典项")
 	require.NotNil(t, q.rows)
 	assert.True(t, q.rows.closed)
 }

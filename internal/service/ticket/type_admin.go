@@ -380,7 +380,7 @@ func (s *Service) softFieldWarnings(ctx context.Context, code string, old []*mod
 					}
 				}
 				if narrowed {
-					softs = append(softs, softRef{o.FieldKey, "options 收窄——在途单中的旧取值编辑时将不符新选项集"})
+					softs = append(softs, softRef{o.FieldKey, "options 收窄——在途单保留旧取值（编辑时可原样保留、名称照常显示），但不可再新选"})
 				}
 			}
 		}
@@ -825,7 +825,12 @@ func (s *Service) expandDictOptionsStrict(ctx context.Context, q repository.RowQ
 // 不校验、值剔除不写入——防绕过；无剔除时原样返回零重编码）。
 // validateCustomData G2 提交期校验（q=取数通道：Create 前置传池 s.db；Update 锁内窗口传 tx——
 // BK11 同类防嵌套：池读在事务持连期间取第 2 连接，N≥MaxConns 并发即自闭环死锁）。
-func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage) (json.RawMessage, error) {
+// validateCustomData 校验 custom_data。legacy=该工单变更前的 custom_data
+// （Update 传入；Create/无存量场景传 nil）——停用/移除的选项只禁新选：值与存量
+// 一致（select/radio 单值相等；multi_select 元素⊆旧元素∪启用集）即视为存量延续，
+// 跳过成员校验（RR-HY-02 口径，2026-11-10 所有者拍「与业界一致」）。其余校验
+// （格式/正则/required/可见性）不受 legacy 影响。
+func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage, legacy json.RawMessage) (json.RawMessage, error) {
 	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
 	if len(customData) > CustomDataMaxBytes {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code,
@@ -841,6 +846,26 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 	var data map[string]json.RawMessage
 	if err := json.Unmarshal(customData, &data); err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
+	}
+	// 存量值放行集：键 → 旧值元素集（select/radio 单值；multi_select 列表）。
+	var legacyByField map[string][]string
+	if len(legacy) > 0 {
+		var old map[string]json.RawMessage
+		if err := json.Unmarshal(legacy, &old); err != nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "存量 custom_data 须为 JSON 对象")
+		}
+		legacyByField = make(map[string][]string, len(old))
+		for k, v := range old {
+			var sv string
+			if err := json.Unmarshal(v, &sv); err == nil {
+				legacyByField[k] = []string{sv}
+				continue
+			}
+			var arr []string
+			if err := json.Unmarshal(v, &arr); err == nil {
+				legacyByField[k] = arr
+			}
+		}
 	}
 	// B1-6 批1 条件显隐（01 号 §5 翻案）：G2 提交时跳过隐藏字段。求值 env=提交
 	// 快照值；求值失败/非布尔结果视为可见（保守=校验更严，不静默放行隐藏值）。
@@ -936,7 +961,7 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 		if isEmpty {
 			continue
 		}
-		if err := validateFieldValue(f, raw); err != nil {
+		if err := validateFieldValue(f, raw, legacyByField[f.FieldKey]); err != nil {
 			return nil, err
 		}
 	}
@@ -953,8 +978,10 @@ func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerie
 	return customData, nil
 }
 
-// validateFieldValue 单字段类型/选项/正则校验
-func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
+// validateFieldValue 单字段类型/选项/正则校验。allowed=存量放行值集（nil/空=无
+// 存量延续）：select/radio 值∈allowed 即视为存量延续跳过成员校验（其余校验照常）；
+// multi_select 元素 ⊆ 旧元素∪选项集（旧元素放行、全新元素仍须在选项内）。
+func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage, allowed []string) error {
 	switch f.FieldType {
 	case "input", "textarea":
 		var sv string
@@ -989,7 +1016,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 须为字符串选项", f.FieldKey))
 		}
 		values, _ := optionValues(f.FieldOptions)
-		if len(values) > 0 && !contains(values, sv) {
+		if len(values) > 0 && !contains(values, sv) && !contains(allowed, sv) {
 			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 取值 %q 不在选项内", f.FieldKey, sv))
 		}
 	case "file": // B1-6 批1：object_key 数组（形态校验；required/MIME 在 validateCustomData）
@@ -1010,7 +1037,7 @@ func validateFieldValue(f *model.TicketTypeField, raw json.RawMessage) error {
 		values, _ := optionValues(f.FieldOptions)
 		if len(values) > 0 {
 			for _, v := range arr {
-				if !contains(values, v) {
+				if !contains(values, v) && !contains(allowed, v) {
 					return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("字段 %q 取值 %q 不在选项内", f.FieldKey, v))
 				}
 			}

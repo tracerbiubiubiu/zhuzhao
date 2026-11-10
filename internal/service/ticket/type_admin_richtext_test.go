@@ -26,11 +26,11 @@ func TestValidateFieldValue_Richtext(t *testing.T) {
 
 	t.Run("合法 MD 字符串放行（含稳定 URL 图片引用）", func(t *testing.T) {
 		raw := json.RawMessage(`"# 标题\n\n![img](/api/v1/files/tickets/2026/10/x.png)\n\n- 列表"`)
-		require.NoError(t, validateFieldValue(f, raw))
+		require.NoError(t, validateFieldValue(f, raw, nil))
 	})
 
 	t.Run("非字符串拒 400", func(t *testing.T) {
-		err := validateFieldValue(f, json.RawMessage(`{"md":"x"}`))
+		err := validateFieldValue(f, json.RawMessage(`{"md":"x"}`), nil)
 		var e *errcode.Error
 		require.ErrorAs(t, err, &e)
 		assert.Equal(t, errcode.ErrInvalidParams.Code, e.Code)
@@ -38,10 +38,10 @@ func TestValidateFieldValue_Richtext(t *testing.T) {
 
 	t.Run("恰到上限放行、超一字节拒", func(t *testing.T) {
 		okRaw, _ := json.Marshal(strings.Repeat("a", RichtextMaxBytes))
-		require.NoError(t, validateFieldValue(f, okRaw))
+		require.NoError(t, validateFieldValue(f, okRaw, nil))
 
 		bigRaw, _ := json.Marshal(strings.Repeat("a", RichtextMaxBytes+1))
-		err := validateFieldValue(f, bigRaw)
+		err := validateFieldValue(f, bigRaw, nil)
 		var e *errcode.Error
 		require.ErrorAs(t, err, &e)
 		assert.Equal(t, errcode.ErrInvalidParams.Code, e.Code)
@@ -50,7 +50,7 @@ func TestValidateFieldValue_Richtext(t *testing.T) {
 
 	t.Run("validate_regex 对 richtext 同样生效", func(t *testing.T) {
 		fr := &model.TicketTypeField{FieldKey: "body", FieldType: "richtext", ValidateRegex: `^#\s`}
-		require.NoError(t, validateFieldValue(fr, json.RawMessage(`"# ok"`)))
-		require.Error(t, validateFieldValue(fr, json.RawMessage(`"no heading"`)))
+		require.NoError(t, validateFieldValue(fr, json.RawMessage(`"# ok"`), nil))
+		require.Error(t, validateFieldValue(fr, json.RawMessage(`"no heading"`), nil))
 	})
 }

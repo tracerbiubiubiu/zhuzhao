@@ -286,7 +286,7 @@ func TestG14_OneConnection(t *testing.T) {
 	emptyBefore := pool.Stat().EmptyAcquireCount()
 	expanded := low.expandDictOptions(ctx, tx, ref)
 	assert.JSONEq(t, `["a","b"]`, string(expanded))
-	_, err = low.validateCustomData(ctx, tx, code, json.RawMessage(`{"choice":"outside"}`))
+	_, err = low.validateCustomData(ctx, tx, code, json.RawMessage(`{"choice":"outside"}`), nil)
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 	require.NoError(t, ctx.Err())
 	assert.Equal(t, emptyBefore, pool.Stat().EmptyAcquireCount(), "事务内字典/schema读只能复用传入tx")

@@ -290,7 +290,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
 	// B1-6 批1：validateCustomData 返回剔除隐藏字段后的 custom_data（visible_when
 	// =false 的字段 required 不校验、值不写入——防绕过）
-	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData)
+	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData, nil) // Create：无存量
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +715,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		if err != nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
-		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged)
+		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base) // Update：旧 custom_data=存量放行集
 		if err != nil {
 			return nil, err
 		}

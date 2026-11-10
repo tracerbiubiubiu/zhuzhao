@@ -64,3 +64,38 @@ func TestDictDeleteGuard_TypeInUse(t *testing.T) {
 		assert.NoError(t, svc.DeleteType(ctx, code))
 	})
 }
+
+// RR-HY-02（2026-11-10）：消费端点默认仅启用项；include_disabled 显示面含停用项
+// （存量工单回显名称/编辑回显旧值用），类型停用两种口径都返回空。
+func TestDictConsumerItems_IncludeDisabled(t *testing.T) {
+	ctx := context.Background()
+	svc := service.NewDictService(repository.NewDictRepo(testPool), nil)
+	code := "dc" + uniqueSuffix()
+	require.NoError(t, svc.CreateType(ctx, &model.DictType{Code: code, Name: "显示面", Enabled: true}))
+	defer func() { _ = svc.DeleteType(ctx, code) }()
+	require.NoError(t, svc.CreateItem(ctx, &model.DictItem{TypeCode: code, Code: "on", Label: "启用项", SortOrder: 1, Enabled: true}))
+	require.NoError(t, svc.CreateItem(ctx, &model.DictItem{TypeCode: code, Code: "off", Label: "停用项", SortOrder: 2, Enabled: true}))
+	_, err := testPool.Exec(ctx, `UPDATE dict_items SET enabled=false WHERE type_code=$1 AND code='off'`, code)
+	require.NoError(t, err)
+
+	codes := func(items []*model.DictItem) []string {
+		out := []string{}
+		for _, it := range items {
+			out = append(out, it.Code)
+		}
+		return out
+	}
+	enabled, err := svc.ItemsForConsumer(ctx, code, false)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"on"}, codes(enabled), "默认仅启用项（新选面）")
+	all, err := svc.ItemsForConsumer(ctx, code, true)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"on", "off"}, codes(all), "显示面含停用项且带 enabled=false 标记")
+	assert.False(t, all[1].Enabled)
+
+	_, err = testPool.Exec(ctx, `UPDATE dict_types SET enabled=false WHERE code=$1`, code)
+	require.NoError(t, err)
+	none, err := svc.ItemsForConsumer(ctx, code, true)
+	require.NoError(t, err)
+	assert.Empty(t, none, "类型停用=整个字典下线，显示面同样返回空")
+}

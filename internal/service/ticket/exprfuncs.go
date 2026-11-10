@@ -37,12 +37,14 @@ func RegisterExprDictLookup(pool *pgxpool.Pool) {
 		if !ok1 || !ok2 {
 			return nil, fmt.Errorf("lookup_dict 两参均须字符串")
 		}
+		// 取名称不看启停（RR-HY-02 口径：停用只禁新选，存量值的显示与公式仍可解析；
+		// 新选停用值由 G2 成员校验拦截）。硬删除项无从解析，仍报未命中。
 		q := repository.RowQuerier(pool)
 		if current, ok := ctx.Value(dictQuerierKey{}).(repository.RowQuerier); ok {
 			q = current
 		}
 		rows, err := q.Query(ctx,
-			`SELECT label FROM dict_items WHERE type_code=$1 AND code=$2 AND enabled=true`, typeCode, itemCode)
+			`SELECT label FROM dict_items WHERE type_code=$1 AND code=$2`, typeCode, itemCode)
 		if err == nil {
 			// Match QueryRow.Scan: finish the read and inspect its final error
 			// before returning the label, including cancellation during Close.
@@ -54,6 +56,6 @@ func RegisterExprDictLookup(pool *pgxpool.Pool) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("lookup_dict(%q, %q) 未命中启用项", typeCode, itemCode)
+		return nil, fmt.Errorf("lookup_dict(%q, %q) 未命中字典项", typeCode, itemCode)
 	}, new(func(context.Context, string, string) (string, error)))
 }
