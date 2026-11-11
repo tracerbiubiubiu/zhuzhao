@@ -53,3 +53,5 @@ Phase5合并已完成；当前代码基线见控制台，本轮规划在独立co
 |---|---|
 | 2026-11-08 | 五仓按各自 docs 维护，重写任务入口并区分当前/未来/历史；阶段目录和 Swagger 消费路径保留。 |
 | 2026-11-11 | 同步本阶段工作区收尾与问题移交入口，后续阶段设计作为全项目重规划输入。 |
+
+全项目后续重规划从[路线图](roadmap.md)→[渐进演进方案](design/project-evolution-strategy.md)→[能力承接审计](review/roadmap-capability-continuity.md)→唯一总账阅读，Phase6仅是近期一段。

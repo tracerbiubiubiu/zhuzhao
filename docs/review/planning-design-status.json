@@ -7,10 +7,10 @@
     "boundary_contract_or_disposition": "已明确范围、写主、依赖/窗口与退出，远期详设未全部完成"
   },
   "summary": {
-    "boundary_and_page_inventory": 2,
-    "boundary_contract_or_disposition": 32,
+    "detailed_contract_candidate": 28,
+    "boundary_contract_or_disposition": 36,
     "component_contract_and_representative_prototype": 5,
-    "detailed_contract_candidate": 28
+    "boundary_and_page_inventory": 2
   },
   "work_items": [
     {
@@ -507,7 +507,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -523,7 +524,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -539,7 +541,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/schedule-recovery-policy.md",
-        "docs/design/cross-repo-execution-contract.md"
+        "docs/design/cross-repo-execution-contract.md",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -555,7 +558,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -694,7 +698,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -710,7 +715,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -742,7 +748,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -790,7 +797,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -822,7 +830,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -838,7 +847,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -870,7 +880,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -902,7 +913,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -918,7 +930,8 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1048,6 +1061,66 @@
         "P6.1出口以三项具体样本分别裁决；获准增量须独立详设/估算与P6.E子窗口，不以同名包代销"
       ],
       "next_design_gate": "P6.1出口裁决/P6.E获准增量开工前"
+    },
+    {
+      "work_item": "U08",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/project-evolution-strategy.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "按最薄场景冻结DTO/CLI/权限与故障用例，后续增强不自动纳入首期"
+      ],
+      "next_design_gate": "P7对应包开工前"
+    },
+    {
+      "work_item": "I05",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/project-evolution-strategy.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "按最薄场景冻结DTO/CLI/权限与故障用例，后续增强不自动纳入首期"
+      ],
+      "next_design_gate": "P7对应包开工前"
+    },
+    {
+      "work_item": "D17",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/project-evolution-strategy.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "按最薄场景冻结DTO/CLI/权限与故障用例，后续增强不自动纳入首期"
+      ],
+      "next_design_gate": "P7对应包开工前"
+    },
+    {
+      "work_item": "D18",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/project-evolution-strategy.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "按最薄场景冻结DTO/CLI/权限与故障用例，后续增强不自动纳入首期"
+      ],
+      "next_design_gate": "P7对应包开工前"
     }
   ]
 }

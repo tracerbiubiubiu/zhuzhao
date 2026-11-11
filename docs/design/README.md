@@ -32,3 +32,5 @@
 - [规划收口与审计步骤](../review/planning-closeout.md)：哪些已审、哪些是候选/边界、哪些需要owner，不能把全部工作包当全部详设已完成。
 
 [定时任务恢复详设](schedule-recovery-policy.md)细化按任务策略、模板默认、queued过期、episode预算、历史数据/版本、预览与恢复操作；当前未实现，业务超限处置按决策册确认。
+
+[全项目渐进演进](project-evolution-strategy.md)说明原6–9及更远能力怎样承接、简化/外接、分期及增强；[连续性审计](../review/roadmap-capability-continuity.md)逐来源追溯，不默删业务效果。

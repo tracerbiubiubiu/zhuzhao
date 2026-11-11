@@ -26,10 +26,12 @@
 
 正式报告进入reports；原始执行卡、日志、截图、快照和临时探针只放ignored `.codex/audits/<轮次>/`。共享索引链接纳管内容，本机原始材料按报告说明恢复，不把本机路径当他人可用入口。
 
-## Phase6前重规划
+## 全项目路线重规划
 
-[正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责67包与全部来源处置，旧台账保留追溯。
+[正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责71包与全部来源处置，旧台账保留追溯。
 
 [审计/详设收口](planning-closeout.md)给当前五步位置；[逐包设计深度](planning-design-status.json)与[所有者决策](planning-decisions.json)区分候选/边界、确认/未决，不再将规划落档等同全部详细设计完成。
 
-[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前67包/501来源/149依赖，旧报告数量保持原时点。
+[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前71包/510来源/174依赖，旧报告数量保持原时点。
+
+[原规划能力连续性](roadmap-capability-continuity.md)与其JSON保留169条来源原子的价值/问题/更小路径/新波次；主读[全项目路线](../roadmap.md)和[渐进演进](../design/project-evolution-strategy.md)，不把Phase6近期切片当整个路线。

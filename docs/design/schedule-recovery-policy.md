@@ -109,3 +109,8 @@ C03/P6.0交稳定时隙/receipt/基础版本接缝、三策略合同与合成参
 设计借鉴（仅公开模式，未上传内部资料）：[APScheduler错失/合并](https://apscheduler.readthedocs.io/en/stable/userguide.html#missed-job-executions-and-coalescing)、[Quartz CronTrigger](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)、[Kubernetes迟到与并发分离](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)。本项目的恢复episode/权限/预算是自身业务合同，不声称这些产品默认值与本文相同，也不要求引入它们。
 
 同日确认：默认追加上传/主动删除、必需本地转派原子与独立后继、按任务配置方向及超限hold已记决策册。EXE-D03不再待答，本文表中技术数值仍可在G04实测/模板配置时校准。
+
+
+## I05单次与统一视图的后继范围
+
+本页C03/I03细化周期时隙与恢复，不表示已覆盖一次性/延迟。I05/P7增加once/due_at、服务端确认时刻固化delay、IANA时区澄清及单个稳定发生次，复用I03的queued门控/取消/unknown和I02权限。单次只有一个待执行发生次，不套多时隙逐次回补；过期/grant失效须明确hold或skip，恢复不重新起算N分钟。维护/TR统一只读总览保持写主分开，不能产生第二调度器。最薄范围与依赖见[全项目演进](project-evolution-strategy.md)及唯一总账；字段/API仍未实施。

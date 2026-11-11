@@ -139,13 +139,14 @@
     },
     {
       "id": "ENG-D01b",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "G03启用前",
       "recommendation": "采用本提交独立文档/离线原型验证档：完整差异+严格准入/排除+当前SHA适用检查；混合/规则/运行输入变化回普通完整门禁。旧运行收据只标原来源，不先建设复杂24h全输入收据复用",
       "alternatives": "继续所有批次原完整门禁；或后续另行建设完整输入闭包的runtime收据复用，均不把旧结果改标新SHA实际执行",
-      "impact_or_safe_fallback": "未决维持现行完整门禁；新档须显式修订协议并验证错分反例后启用。本批含UI AGENTS/测试指南变更，不自动归纯文档档",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；G03同步协作规则/白名单/CI并验证错分反例后启用。当前完整门禁继续执行，本批不追溯豁免；旧收据不改标新SHA",
       "design_ref": "docs/design/engineering-execution-design.md",
-      "owner_feedback": "未请求或获得批准；2026-11-11补可审阅的六条简化候选，仍不生效"
+      "owner_feedback": "2026-11-11：明确选择“采用分档门禁（推荐）”；随后请求说明与现状差异，不视为撤销该选择",
+      "decision": "采用分档门禁：严格白名单普通文档、本地离线原型、普通完整档；治理规则及混合/未知影响改动走完整档"
     },
     {
       "id": "ENG-D02",
@@ -233,6 +234,13 @@
       "design_ref": "docs/design/schedule-recovery-policy.md",
       "owner_feedback": "2026-11-11：所有者明确选择“暂停并保留余项，等待处理”",
       "decision": "逐次补齐超过配置时间窗或次数上限时暂停并保留余项，等待用户处理；不得自动丢弃"
+    },
+    {
+      "id": "O10",
+      "state": "owner_confirmed",
+      "decision": "基于现有规模与原6–9规划，尽可能承接并扩展优化；重规划6–9及更远路线，问题设计可建议替代，采用适合当下的渐进演进",
+      "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现",
+      "implementation": "planned_not_implemented"
     }
   ]
 }
