@@ -6,10 +6,10 @@
 
 > **用途**：从能力矩阵、迁移地图和健康状态掌握当前项目；改动后同步本页。原逐日流水见[历史记录](archive/project-control-history-2026-11-08.md)，不再与当前摘要混排。
 
-## 当前摘要（2026-11-08）
+## 当前摘要（2026-11-11）
 
-- **工作边界**：主仓/UI在实际phase5维护，三个Go兄弟在codex/phase5-audit复验，现有dev/test已承接B27注明的Go1.26.10产物；11-08后续UI/提交规范修复的本地验证见[followup](reports/zhuzhao-report-followup-2026-11-08.md)。首次文档候选已推且五仓CI通过，本轮二次复核内容/静态/必要本地门禁也已收口，精确提交和远端窗口另核。main/生产未承接，不提前启动Phase6。
-- **测试与证据**：原样四档acceptance **253/0/0**（124+68+26+35），81对迁移往返另计；Go覆盖率20.4%。首次整理的固定快照、超时与复验见[首次记录](reports/documentation-reorganization-2026-11-08.md)。本轮二次复核重新通过253/0/0与81往返、UI241单测/41E2E、主仓与兄弟原Make目标；缓存命中、TR默认未覆盖专项及当前来源见[二次记录](reports/documentation-recheck-2026-11-08.md)。
+- **工作边界**。Phase 5 阶段交付、文档、工作区与资源收尾已确认，源代码保存在主仓/UI phase5 及三个 Go 兄弟 audit 分支。剩余问题移交 Phase 6，全项目重新设计规划待后续开展。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
+- **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
 - **追溯入口**：[B27最终运行与安全收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md) → [11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)；首次全量覆盖与固定基线见[11-06总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)。原失败、NOT_RUN、旧HEAD及未部署表述保留其时点含义。
@@ -230,6 +230,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-11 Phase 5 已收尾
+
+阶段交付与当前工作区清理已完成，13 组余项及待验记录保持移交状态。清理 10 个测试容器、5 个空网络、5 个验证镜像、1 个空卷、45 项临时产物和 51 处隔离缓存。三库备份和原测试数据卷保留，当前 6 个 dev 容器及原生服务健康。完整证据在本机 `.codex/audits/phase5-final-closeout-20261111/`，后续进入全项目重规划。
 
 ### 2026-11-11 Phase 5 收尾整理与后续重规划
 

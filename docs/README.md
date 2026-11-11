@@ -23,7 +23,7 @@
 
 ## 阶段导航
 
-> **2026-11-11 当前安排**。Phase 5 完成工作区、文档、验证及提交推送收尾，剩余问题保留记录并移交 Phase 6。收尾后将对全项目重新设计规划，既有后续阶段方案、接口、波次和估算作为输入。当前交接见 [Phase 5 验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)。
+> **2026-11-11 当前状态**。Phase 5 阶段交付与工作区收尾已确认，剩余问题和待验记录已移交 Phase 6。后续进行全项目重新设计规划，既有后续阶段方案、接口、波次和估算作为输入。交付、资源清理实际终态和最终收据见 [Phase 5 验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理) 与 [运行手册](ops/runbook.md)。
 
 [Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是当前维护分支对应的能力与债务入口。[Phase 6](phase6/README.md) 保留既有设计与待办，供 Phase 5 收尾后的全项目重规划；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
 
