@@ -268,7 +268,7 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限"
       ],
       "next_design_gate": "P6.1开工前"
     },
@@ -468,7 +468,7 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "UX03情报历史布局/回填与重查仍待owner；真实Vue/Provider响应、并发与错误、窄屏/暗色/原生缩放尚未验"
+        "UX03方向已确认；首期本机元数据/明确重查，跨端历史在TI接入窗口独立评审；真实Vue/Provider响应、并发与错误、窄屏/暗色/原生缩放尚未验"
       ],
       "next_design_gate": "P6.3开工前"
     },

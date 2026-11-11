@@ -114,26 +114,32 @@
     },
     {
       "id": "B06",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D06 离职业务自动处置启用前",
       "recommendation": "安全禁用即时执行；工作项进可见交接清单，有已批准继任映射才自动转，其余保持状态+待交接",
       "alternatives": "全部回池；全部指定上级；全部人工逐项转",
-      "impact_or_safe_fallback": "无映射、继任者失效或复杂拆分/重建步骤不满足领域合同则保持明确待交接；不猜上级/回池/复制角色；安全禁用不等待。原创建人/历史不改，局部失败不伪装整案完成。",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；映射不授接管权限，无映射/失效或复杂拆分重建不满足领域合同则保留待交接；账号安全动作不等待，失败逐项可恢复，历史创建人不改",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
       "review_class": "business_default_before_automatic_handover",
-      "question_context": "甲离职，已有管理员批准的甲→乙继任映射，乙当前active且逐项范围/资格有效：按映射自动逐项交接，还是映射仅作建议、每项再确认？"
+      "question_context": "甲离职，已有管理员批准的甲→乙继任映射，乙当前active且逐项范围/资格有效：按映射自动逐项交接，还是映射仅作建议、每项再确认？",
+      "decision": "离职先立即禁用/撤会话；对管理员已批准的继任映射，逐项复验接管者active/范围/资格和实例版本后自动交接；无映射或无法合法直接交接的项保留待交接，不猜上级或回池，不改原创建人历史",
+      "owner_feedback": "2026-11-12：用户明确选择“批准映射后自动交接（推荐）”，接受账号立即停用、合法直接交接自动转、其余保留待交接的自包含例子",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "B07",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D06 撤部 apply 启用前",
       "recommendation": "使用已批准接管部门；预览确认权限/祖先委托影响后保留虚拟组ID及经审核绑定迁挂，在途按清单接管；无批准目标待处理，历史归属快照不重写",
       "alternatives": "所有虚拟组和在途项均逐项由管理者确认，不批量应用接管方案",
-      "impact_or_safe_fallback": "迁挂可能改变live可见范围，须在plan中明示批准；无合法目标不猜最近祖先、不复制原部门角色给接管部门，不改created_by或历史原归属",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；plan明示live权限影响并复验版本，不猜最近祖先、不复制原部门角色、不改历史；无合法目标保留待处理，实际接管名单/plan存储属于配置和实现评审",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
       "superseded_recommendation": "旧候选为最近合法祖先上挂，未获所有者批准；现改批准接管目标优先，祖先仅作候选",
       "question_context": "部门A撤销并已有批准的B接管关系：先确认影响plan后批量迁挂虚拟组/交接在途，还是冻结原锚逐组逐项处理？",
-      "review_class": "business_default_before_department_retirement_apply"
+      "review_class": "business_default_before_department_retirement_apply",
+      "decision": "撤部已有批准接管部门时，先预览虚拟组/在途项/live权限变化，管理者确认plan后批量迁挂与交接；保留历史归属，不将原部门角色直接复制给接管部门；无合法目标保持待处理",
+      "owner_feedback": "2026-11-12：用户明确选择“预览确认方案后批量交接（推荐）”，接受已有批准接管关系、历史保持、不复制原部门角色及无目标待处理边界",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "B08",
@@ -218,13 +224,16 @@
     },
     {
       "id": "UX03",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "U05冻结前",
       "recommendation": "桌面历史左/结果右；点历史仅回填，显式重新查询；首期本机元数据",
       "alternatives": "点击历史立即发查询，或要求跨端历史快照",
-      "impact_or_safe_fallback": "跨端持久历史另估且需供给/保留决策",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；本机元数据不等于审计或历史结果快照，500条为已有技术上限而非新增业务SLA；跨端历史独立评审/估算，不作为首期硬前置；保留真实Provider/并发/窄屏等验证",
       "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-      "review_class": "representative_prototype_preference_before_product_switch"
+      "review_class": "representative_prototype_preference_before_product_switch",
+      "decision": "桌面情报页采用左最近查询、右输入/当前结果；选择历史只回填，明确重查才调用接口；首期按用户隔离本机查询记录，结果显示本次获取时间，不冒充历史快照；跨端历史在接入TI服务时评审",
+      "owner_feedback": "2026-11-12：用户明确选择“左右栏，回填后明确重查（推荐）”；问题同时说明本机记录/当前结果时间/跨端评审边界，方向已确认",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "P-RESOURCE",
