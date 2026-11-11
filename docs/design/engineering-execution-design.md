@@ -46,7 +46,7 @@
 - `extension_receipts` 仅公开合成扩展 ID/合同摘要/回执摘要/签发环境/有效期；私有源码 SHA、真实路由和凭据仅内网清单。公开记录可用不透明制品摘要关联，不能为了“完整矩阵”上传内部源码或配置。
 - `evidence`（job/run/source SHA、suite、用例分母/执行/skip/retry、首次失败、mock/contract/real 类别、结果、日志摘要、cleanup）；`waivers`（精确 case/advisory、理由、风险、责任者、到期、补证项），空泛“已验收”字符串不合格。
 
-PR 读取 base 的已接受组合，以本 PR event SHA 替换当前仓并明确登记其他候选提交；生成新 combination_id。CI 校验所有 revision 可获取且不可漂移。跨仓未推提交的本地证据只能是 local receipt，不能伪装远端通过。产品源码未变的后续文档候选可复用同一 runtime 收据，前提构建输入逐字节摘要相同、套件/环境/期限适用且文档检查在新 SHA 跑；完整 commit SHA 仍记录二者，不能移花接木。
+PR 读取 base 的已接受组合，以本 PR event SHA 替换当前仓并明确登记其他候选提交；生成新 combination_id。CI 校验所有 revision 可获取且不可漂移。跨仓未推提交的本地证据只能是 local receipt，不能伪装远端通过。文档候选的验证政策仍属ENG-D01b待决，优先候选见本页独立文档验证档；若以后另建runtime收据复用，仍必须证明受控输入/套件/环境/期限适用、记录原producer和目标SHA，不能移花接木。
 
 ### 作业集合和资源预算
 
@@ -61,7 +61,7 @@ PR 读取 base 的已接受组合，以本 PR event SHA 替换当前仓并明确
 - `full-stack`：每个可交付候选组合必须跑原样主仓 `make acceptance` 四档全链、迁移 up/down 与 schema 漂移核验，以及 UI 六件等价链和全部现有真实 E2E；各 owner 独立，可共享只读镜像缓存，不共享数据库/账号/端口。超出公共 runner 能力时，由维护者调度隔离 runner，回执绑定组合、实际二进制摘要和 suite 原脚本摘要；`quality-gate` 验该回执，不能只手填绿色。此前本轮 253 acceptance/81 迁移、UI 42 E2E 的结果只作原实现基线，未来数目按实际 suite 清单，不硬编码为永久分母。
 - `scheduled-risk`：每周完整组合＋漏洞扫描＋长 fuzz，每月恢复/升级回退样本（G05 负责真实恢复能力）。PR 短 fuzz 与变更域性能 smoke 由 G04 接入；定时绿不能替代新候选真实门禁。
 
-PR cheap/contract 必跑；完整门禁可由同 SHA 的组合回执供给。仅文档变更是否允许按受控构建输入复用旧运行回执属于 ENG-D01 的维护政策，一旦采用仍须保持 AGENTS 明示门禁要求，不能通过路径规则暗中豁免。真正源配置/迁移/fixture/spec 变化一律新跑。合入后 main 重新跑 cheap/contract 并确认合入树与候选组合相符；不同树重新生成候选。
+PR cheap/contract 必跑；完整门禁可由同 SHA 的组合回执供给。仅文档变更采用独立验证档还是继续全门禁属于ENG-D01b维护政策；旧回执复用另有更高输入证明成本，不作为首选。采用新档前须明确修订AGENTS等对应条文，不能通过路径规则暗中豁免。真正源配置/迁移/fixture/spec 变化一律新跑。合入后 main 重新跑 cheap/contract 并确认合入树与候选组合相符；不同树重新生成候选。
 
 ### 自行打包的版本与内网离线制品
 
@@ -179,13 +179,28 @@ C04.1 DBTX试点及故障分类；C04.2 org_roles两侧锁/历史处置；C04.3�
 
 C05.1 响应来源/错误码兼容及 UI 集中清理；C05.2 跨标签代际/迟到响应；C05.3 真栈账户撤权与不误退管理员。出口：A标签停用甲、甲B/C标签下一请求/恢复即清理；管理员停用乙返回业务错误仍在自己的会话；旧refresh在重新登录后返回不能复活旧用户；瞬时503、普通403、强制改密均不被误清；清会话后菜单、页签、query cache 无残留。mock 覆盖全部时序，真栈保留 backend+浏览器至少一条完整链。
 
+## ENG-D01b：纯文档验证档候选（未批准、未生效）
+
+现行AGENTS/standards仍要求适用的完整门禁。本节是供所有者审阅的规则变更方案，**不追认当前候选免测，也不将旧253/42收据改标新SHA通过**。建议首先建立“本提交独立文档验证档”，而不是为跳过一次测试先建设全SDK/浏览器/环境闭包和24小时收据续用系统。运行收据的真实来源/失败链继续保留；制品交付的G03/G05来源约束不因此删除。
+
+1. **按完整候选差异分类**：记录base/head/实际checkout tree与全部路径、增删改名/模式，不能只看最后一笔commit、commit type或GitHub可能截断的路径列表。文件不明、消费关系不明或混合变化默认普通档；不能由PR自己提交一个pass标记决定。
+2. **文档档准入**：首版精确白名单候选为五仓`README.md`、`docs/README.md`，以及主仓`docs/review/planning-{backlog.md,backlog.json,closeout.md,decisions.json,design-status.json,document-scope.json,source-map.json}`。仅说明/导航/计划且未被代码/测试/embed/生成器消费后准入；设计稿/正式报告须逐文件登记已审配置清单，不凭目录自动准入。新增/变更白名单本身走普通档。规划JSON须校验ID/映射/依赖/投影；不把`docs/**`、`.md`扩展名作为全局免测规则。
+3. **明确排除**：AGENTS、standards、现行开发/安全/操作/测试/发布规则；Swagger/OpenAPI/生成schema与`docs/docs.go`；运行示例/fixtures/testdata、源码/SQL/config/.env/deploy、依赖锁/工具/脚本/workflow/hook/Makefile等变化均回普通档。当前整批规划还含UI AGENTS/测试指南等修改，不能仅凭本节存在把整批宣称为纯文档档。
+4. **离线原型单列**：首个精确对象为UI的`docs/design/prototypes/lifecycle-workspace.html`，脚本/资源也须逐项声明；在普通文档检查之外验脚本语法、修改旅程的交互/角色/窄屏/错误态与截图、无意外服务请求；它证明本地样板，不证明Vue/后端/E2E。生产运行时引用了原型/资源，或无法确认隔离，则回普通档。
+5. **每个候选重新验证**：适用的diff/链接/片段/围栏、JSON/投影、来源/状态、符号锚点、脱敏和路径归属检查均绑定本候选。结论写`mode=document|prototype|ordinary`及实际命令、范围、失败/skip/限制。文档档表示本次文档证据通过，不表示本次运行了integration/acceptance/E2E或新功能已验收；旧运行结果始终标原来源。
+6. **统一必需门禁**：未来quality-gate始终创建，按分类核对该档所有必跑结果与适用理由；缺失、取消、应跑而skipped不得放行。普通档继续现有门禁。改规则本身先以普通档验证错分反例，再同步主仓AGENTS/standards、UI AGENTS/testing和兄弟仓指南对应条文后启用；本节不直接改变远端保护/CI或现有纪律。
+
+反例至少包括：`docs/docs.go`与swagger伪装文档、改AGENTS/测试指南、Markdown被embed/测试读取、新增未登记文件、同PR混进Go/SQL/lock改动、变更当前API语义却标新功能已完成、整个必需workflow被paths过滤跳过。原型文案改动可按影响选择检查，不把旧36张截图冒充本次全量重验。分类实现仍归G03，本文没有新增工具或workflow。
+
+GitHub官方说明：顶层路径过滤跳过workflow可能令required check持续Pending，job级条件跳过则又有不同语义，因此应保留常驻聚合门禁并验证本档实际结果。[路径过滤](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore)、[required checks排障](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)。选择独立文档档而非复杂收据复用是本项目的工程建议，不是GitHub替本项目批准豁免。
+
 ## 依赖、决策与交付边界
 
 实施顺序：G01→G02/G03；C01/C02/C03 可在独立 worktree 并行，C04依赖C01，G04依赖G03，G06依赖G01，C05依赖G04；R01依赖C03/C04并先于D10/D12/A02等不可丢消费者。以上遵从总账，不新加第二套排期。G03扩展矩阵与根扩展设计联调，不将稳定公共适配层与私有providerSDK绑成一包。
 
 需所有者确认的工作流/业务决策只有以下两项（未拍板时不得切换相应行为，但可完成其余实现设计）：
 
-- **ENG-D01a（G02）已确认**：五仓统一PR、single-maintainer可合，G02落规则与保护；紧急bypass另记操作者与后补期限。**ENG-D01b（G03）未决**：受控输入完全相同的文档候选是否可复用仍有效运行收据，需要同时修订AGENTS明示规则。未决保持每批现行完整门禁，不暗中增加文档豁免；决定窗口G03启用前。
+- **ENG-D01a（G02）已确认**：五仓统一PR、single-maintainer可合，G02落规则与保护；紧急bypass另记操作者与后补期限。**ENG-D01b（G03）未决**：是否采用上节纯文档/离线原型独立验证档，需要同时修订AGENTS等明示规则；旧运行收据不改标当前SHA，也不先实现复杂复用系统。未决保持每批现行完整门禁，不暗中增加文档豁免；决定窗口G03启用前。
 - **ENG-D02（C02）已确认**：file上传默认追加，B加入后A保留；字段移除不自动删附件，误传由用户明确移除/删除。已建单显式删除保护仍引用对象；正文图片引用按对应用途处理，不把file与richtext的删除通路混为同一实现。C02/U03编码前按此冻结引用元数据和操作文案，自动解除不是当前采用方案。
 
 跨仓执行的业务取舍见伴随页 EXE-D01（reassign 提交语义）与 EXE-D02（cron错失策略），根控制台统一收录。其他技术选型是本页推荐方案，实施者只需在 PR 证明合同，不要求所有者替工程决策。

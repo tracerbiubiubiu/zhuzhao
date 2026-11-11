@@ -141,10 +141,11 @@
       "id": "ENG-D01b",
       "state": "owner_pending",
       "decision_due": "G03启用前",
-      "recommendation": "文档候选仅在受控输入完全相同且回执仍有效时复用运行证据，并显式修订规则",
-      "alternatives": "继续每批完整门禁",
-      "impact_or_safe_fallback": "未决维持现行完整门禁，不能暗中豁免",
-      "design_ref": "docs/design/engineering-execution-design.md"
+      "recommendation": "采用本提交独立文档/离线原型验证档：完整差异+严格准入/排除+当前SHA适用检查；混合/规则/运行输入变化回普通完整门禁。旧运行收据只标原来源，不先建设复杂24h全输入收据复用",
+      "alternatives": "继续所有批次原完整门禁；或后续另行建设完整输入闭包的runtime收据复用，均不把旧结果改标新SHA实际执行",
+      "impact_or_safe_fallback": "未决维持现行完整门禁；新档须显式修订协议并验证错分反例后启用。本批含UI AGENTS/测试指南变更，不自动归纯文档档",
+      "design_ref": "docs/design/engineering-execution-design.md",
+      "owner_feedback": "未请求或获得批准；2026-11-11补可审阅的六条简化候选，仍不生效"
     },
     {
       "id": "ENG-D02",

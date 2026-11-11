@@ -8,9 +8,10 @@
 
 ## 当前摘要（2026-11-11）
 
-- **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划首轮及本批详设已在独立codex分支落档，功能尚未实施。当前审计步骤3/详设候选，非全部设计完成；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
+- **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划首轮及本批详设已在独立codex分支落档，功能尚未实施。当前审计步骤3/详设候选与4/增量复核；旧待答字样已集中收敛到决策登记，非全部设计完成；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
 - **问答确认与细化**：ENG-D02默认追加上传/保留旧文件、用户明确删除，EXE-D01按本地业务不变量同事务/独立后继异步均已确认。C03/I03按任务错失策略已细化[恢复合同](../design/schedule-recovery-policy.md)，数值仍候选，超限hold已获EXE-D03确认；C03基础6–10日/I03完整恢复8–12日；见[决策册](planning-decisions.json)。
+- **文档验证政策候选**：ENG-D01b补纯文档/离线原型独立验证档，规则与混合变更回普通档；现行全门禁尚未豁免，未修改CI/保护或AGENTS。见[工程施工](../design/engineering-execution-design.md)。
 - **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险派单简化建议待确认。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
 - **组织赋角补核**：虚拟组可复用org_roles；现有角色展开尚未按组织status/deleted_at过滤，停组不等于已撤派生L1。C04/D06统一生命周期撤权与回归，详见[领域合同](../design/business-lifecycle-contracts.md)；未在本批修源码。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
