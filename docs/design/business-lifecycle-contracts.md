@@ -177,10 +177,10 @@ read_policy 候选 enum 为 `inherit`、`participants_only`、`role_restricted`�
 | CC | 保留当前 | 已确认可见/评论，仍过入口码 | 已确认可见/评论，仍过入口码 | 否 |
 | 当前 role_codes 命中 | 当前规则决定 | 不因角色扩大 | 可见 | 否 |
 | 组织透明读/委托 | 保留当前 | 新类型默认相关人员范围已确认 | 类型切换须显式预览，非默认扩大 | 否 |
-| `ticket_scope=all` | 保留当前 | 推荐不扩大，待 B03 | 推荐不扩大，待 B03 | 否 |
+| `ticket_scope=all` | 保留当前 | 已确认不越过类型范围 | 已确认不越过类型范围 | 否 |
 | global admin/superadmin | 当前全域例外 | 同当前 | 同当前 | 仅原有管理动作，不跳业务制衡 |
 
-读可见允许 read/comment（仍过现有入口码），不自动允许 update/assign/delete/participant-manage。推荐新增 `ticket:participant:manage` **按钮码**（目标，非现有码），管理 API 绑定按钮，不挂页面写，不扩大现有唯一 pageWriteAllow。谁被授予此按钮、是否允许 creator 自助邀请是 B04 业务选择。CC 的现行 selfService 路由保留既有语义，普通 participant 用独立管理写入口及 role 精确判定，不能把既有 `ticket_cc` 所有 role 混作 CC。
+读可见允许 read/comment（仍过现有入口码），不自动允许 update/assign/delete/participant-manage。推荐新增 `ticket:participant:manage` **按钮码**（目标，非现有码），管理 API 绑定按钮，不挂页面写，不扩大现有唯一 pageWriteAllow。B04已确认由有独立授权的业务管理者管理，creator不因创建身份自动获邀请权。CC可保留现行路由形状，但新增/移除他人的写操作也必须执行同一管理资格，不能借selfService分组绕过；本人退出另按既有语义评估，领域桥只同步具名受管项。普通 participant 用独立管理写入口及 role 精确判定，不能把既有 `ticket_cc` 所有 role 混作 CC。
 
 BK-21 技术顺序：先抽共用可见性谓词/参数输入，再在其内部按 type policy 分组，列表、详情、导出、计数、四视角、关联入口、首页同源。逻辑为 `global_exception OR (policy=inherit AND old_branches) OR (policy=restricted AND restricted_branches)`；不能最后拼一个 `OR scope_all/cc` 逃出 policy 分组。静态 SQL 模板+绑定参数，角色/路径不拼接 SQL。
 
@@ -188,7 +188,7 @@ BK-21 技术顺序：先抽共用可见性谓词/参数输入，再在其内部�
 
 Jira将项目访问权限与单张work item的可见性限制分开，能访问项目不等于能打开项目内每张票；这是可参考的分层模式，不要求本项目复制其完整security scheme或实例级安全等级。[Atlassian官方说明](https://support.atlassian.com/jira-cloud-administration/docs/create-a-new-work-item-security-scheme-and-security-levels/)
 
-本项目先按类型配置固定查看范围，复用已有三层授权，不加is_sensitive标记、通用ABAC引擎或单票override。已有普通类型沿用现有组织/委托范围；新类型默认相关人员；确需团队共享用相关人员＋指定角色。B03只决定普通scope=all是否穿透这一范围：推荐不穿透，否则刚确认的参与人默认会对该群体失效。系统级admin/superadmin既有例外另列，不将Jira的管理员规则等同本项目。此必要性属于本项目设计判断，B03仍待owner确认。
+本项目先按类型配置固定查看范围，复用已有三层授权，不加is_sensitive标记、通用ABAC引擎或单票override。已有普通类型沿用现有组织/委托范围；新类型默认相关人员；确需团队共享用相关人员＋指定角色。B03已确认普通scope=all不穿透这一范围，避免参与人默认对该群体失效。系统级admin/superadmin既有例外另列，不将Jira的管理员规则等同本项目。此必要性属于本项目设计判断，方向已确认但代码尚未实现。
 
 ### 5.3 参与人与创建 API 目标
 
@@ -200,6 +200,16 @@ Jira将项目访问权限与单张work item的可见性限制分开，能访问�
 | `ticket.create.v1` · **现有** `POST /api/v1/tickets` | 兼容旧字段，增量预览期望版本 | L1 创建权∩类型创建策略∩目标 org 分支∩启用身份∩已发布类型；任一失败无票/无后动作 |
 
 主仓 `Service.Create` 已有“本人任一组织与目标 org 同分支，或既有全局组织管理权”的创建约束，此处先保留，不擅自改为可向任意组织建单。`creation-options` 不返回被禁止类型名称用作列表线索；不能用 ListTicketTypes 管理列表直接当创建菜单。新写接口 `created_by` 恒由可信上下文/专用领域桥确定，普通 REST/Agent 不可代填。
+
+### 5.4 虚拟风险组怎样取得业务能力
+
+组织是人员归属/资源锚点，角色承载功能权限，两者通过现有 `org_roles` 绑定。虚拟组织不影响赋角：`RoleRepo.GetEffectiveRoleCodes` 从有效直接成员关系取得组织角色，再展开角色继承；它不沿HR部门树自动继承父部门角色。组织角色带来的是L1能力，风险主锚/副锚/owner及状态规则仍独立执行，不能以“已进风险组”替代全部授权。成员过期或移除撤去此来源，若仍有直接角色或别组角色等其它合法来源，不应声称全部权限均消失。
+
+B05补充候选：若风险组全员都承担风险管理职责，可将现有风险管理业务角色绑定该虚拟组，统一获得风险录入、管理和受限派单能力，无须逐人额外授通用建票权或新增派单专属角色。若有只读/旁观成员，不能给全组绑定宽管理角色再指望给个只读角色抵消；应仅将管理角色授予获准人员/职责组，其他成员用只读角色。资源仍归风险组，派出的整改票可按批准映射进入业务组织，不因成员来自多个实体部门就允许任意目标组织。
+
+当前R1矩阵保持：手工录入风险为 `risk:manage` 加主锚范围；单条派单为该码加主锚或当前owner；批量仍限主锚，无owner不派。角色从风险组或其它批准来源取得，不能让“owner身份”单独跳过L1。上述角色配置方案待所有者确认，不是本轮已经赋角。
+
+术语需区分：旧R1/R3所称“风险事件”通常是风险台账记录 `risk_item`，不是工单；D14的攻击/应急安全事件是另一个协作对象，接SOC事件ID与结果，不另造SOC。两类都可复用组织/角色机制，但不因同属风险组就自动授予事件模块全部能力。所有者本次提问的具体含义正在确认，先不新增事件权限码或改变既有矩阵。[按组/角色授予权限的业界参照](https://support.atlassian.com/jira-cloud-administration/docs/grant-or-revoke-permissions-in-a-scheme/)。
 
 类型策略变更须 plan 展示旧/新可见数量、创建影响及受管领域 owner 是否失去通路，管理员确认后 CAS 应用；影响预览需类型管理和相应数据范围，不向普通不可见票返回诊断细节。撤权立即影响后续读取/导出/检索/通知；浏览器缓存和搜索缓存失效，不能等实例升版。策略和参与人变更审计留 reason，现有参与不被无声清空。
 
@@ -388,7 +398,9 @@ deadline 默认自然日按 level policy 带出，`init_deadline` 保存首次�
 
 派单 plan 返回逐项可选、阻断、owner/风险 revision、目标类型发布引用、候选同 owner 在办单。apply 在 group 锁和逐项风险锁下复验，已有 active link 返回原票作为幂等成功；合法追加也锁目标票和链接集合 revision，竞争剩余名额时重新分组，不越过20。一次 group 的建票/links/风险状态/双域事件/CC intent 同事务；bulk 以 group 为原子单元，响应逐 risk 成败，允许修复后只重试失败项，不留“空壳票+无链接”。
 
-专用 `risk.dispatch.v1` 用例可将 `created_by` 设为已核当前 owner，`operator_user_id` 始终是真实操作者；通用 ticket.create 不接受任意 `created_by`。桥同时验证风险操作权、目标 org/类型批准的领域创建范围；owner 不具有普通新建权限时，也不通过假扮 owner 重跑通用 REST 绕过 L1，而由受限领域命令执行**已声明的系统职责**并审计实际人和业务主体。其授权范围与角色授予属 B05，未批准不得擅开跨域代建。
+B05简化候选：`risk.dispatch.v1` 是用例/operation_id，**不新增同名权限码或一套派单角色**。复用已批准的 `risk:manage` 与资源范围：单条仍为主锚管理者或当前owner，批量仍为主锚管理者，不能因owner可派自己的风险就扩大批量范围。界面只有“派发整改工单”；可用目标由受管配置限制为整改类型/组织/模板，类型须启用且已发布，字段/G2/公式、附件归属、初态和active owner等沿用工单领域规则。建议此入口不额外要求通用 `ticket:create`；普通自由建单仍执行原创建权限及类型/组织约束，查看权限不自动允许派单。用户正在确认此简化方案，不能把解释问题视为批准。
+
+领域用例保留R3已批准的 `created_by=已核当前owner`、`operator_user_id=真实操作者`，无owner拒派；两种身份分别审计。普通REST/Agent不可任意传 `created_by` 或 `skip_auth`。实施应抽取共享创建校验与受限可信创建上下文，不能只以owner身份调用现有 `Service.Create`，因为该函数以actor派生创建人及组织检查；也不能为省事跳过类型和组织边界。未决不擅启扩大后的领域创建范围。
 
 `risk_owner` 是 domain-managed user 字段，由桥维护为当前 active link 共同 owner；普通编辑/fetch/Agent 不能改。owner 交接时，先按被改风险锁与 link revision 处理：若一张票全部 active risks 同步移给同一新人，可原子更新受管字段/参与者并审计；若只转移其中部分，**detach 这些风险并让其进入待重新派单/交接**，保留旧票历史和剩余风险当前 owner，不把整票复核权送给新 owner。必要新票由授权交接者确认后派，不自动把历史 creator 改掉。旧 creator 的历史读权依 D03已批准策略仍可能保留，不能靠改 owner 假称已完全撤回旧作者阅读。
 
@@ -403,6 +415,10 @@ deadline 默认自然日按 level policy 带出，`init_deadline` 保存首次�
 票终态和持久 `risk-resolution` intent 同事务，风险消费按 `(ticket_id,ticket_revision,link_id,resolution_version)` 幂等。当前仍同库可由事务协调当次落实双域事实；若采用提交后消费，UI 明确 pending，不将票提交成功等同风险已关闭。R01 扫描未应用 intent、未结 link 和票终态差异，使用原始结论快照恢复，不能只猜最终 ticket status。风险被人工先关闭只通知工单，不自动关闭工单；迟到旧结果若 risk revision/owner/link 已变，进入 conflict 待人工，不复活/覆盖新生命周期。
 
 物理删除不是风险产品操作；风险/链接/历史保留。现有管理员物理删票仍可能发生，桥必须保留不可变 ticket_ref/human_key/definition/结论审计快照及 deleted 引用（或受保护引用拒删），不能仅依赖 FK SET NULL 丢失来源。选择内部墓碑形式是技术实现，不对外暴露级联表结构。
+
+### B05业界参照与简化理由
+
+DefectDojo支持在发现页手动推送或按配置推送到Jira，也支持多个发现形成一张工单；其集成配置限定映射，连接账号仍需目标Jira的创建/更新权限。[DefectDojo开源版官方说明](https://docs.defectdojo.com/connectors/os_jira/os__jira_guide/)；Jira常规建单要求Create work items权限，[Atlassian官方说明](https://support.atlassian.com/jira-software-cloud/docs/create-a-work-item-and-a-subtask/)。这些例子说明业务派单入口与目标建单授权需协调，并不证明本项目必须复制两套用户角色。基于本平台同域建单与已有风险职责，选择复用风险权限、在共享工单用例限制目标范围是本项目设计建议。
 
 ## 9. D15：跨域事件、受权通知与扩展消费
 
@@ -461,9 +477,9 @@ HTTP REST、MCP、SDK和内部 extension 共用同一用例/查询授权。catal
 |---|---|---|---|
 | B01 · 已确认，D03实施 | 存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认 | 所有旧类型统一 participants_only；或新旧都 inherit | 统一收紧会立即影响老单/委托/报表；都 inherit 较宽。已确认新默认/旧兼容，收紧旧类型单独预览 |
 | B02 · 已确认，D03实施 | CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权 | CC 不突破受限策略，仅显式 participant 可见 | 后者使“抄送”与“可打开”分离，风险owner桥需显式 participant。已确认CC读/评论方向，R3 owner通路仍按具名领域桥和授予合同落地 |
-| B03 · D03 受限策略启用前 | `ticket_scope=all` 不突破 participants_only/role_restricted；global admin既有例外保留 | 将 scope=all 设为全类型通用可见 | 后者让受限类型对 all-scope 用户失去限制。未决仅继承类型沿用原行为 |
-| B04 · D03 参与写入口开通前 | `ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner | creator 可邀请其候选范围内人员；或只有全局管理员可管 | 前者增加分享面，后者加重日常管理；都需收件人范围/域受管项不可删。未决普通参与人写入口关闭，既有 CC 语义不顺手扩大 |
-| B05 · D03/P6.2 派单启用前 | 普通创建保留当前组织分支限制；每类型显式创建角色策略；risk.dispatch授给已批准risk:manage主锚/owner职责，由专用命令在批准目标范围代建，不能任意created_by | 类型读角色即可创建；或风险owner还必须单独具备通用ticket:create才能派单 | 前者扩大创建面；后者降低代建范围但可能使已拍owner派单不可用。未决不启用新的跨域系统代建范围，mock记录阻断，不能假扮owner |
+| B03 · 已确认，D03实施 | `ticket_scope=all` 不突破 participants_only/role_restricted；global admin既有例外保留 | 将 scope=all 设为全类型通用可见 | 已确认普通all-scope不穿透；已有inherit行为保持，系统级管理员既有例外保留 |
+| B04 · 已确认，D03实施 | `ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner | creator 可邀请其候选范围内人员；或只有全局管理员可管 | 已确认独立授权的业务管理者管理，普通creator不自动获得邀请权；收件人范围和域受管项保护仍需校验，既有CC写也受该政策约束 |
+| B05 · D03/P6.2 派单启用前 | 复用risk:manage与既有单条/批量范围；不另设派单角色，不额外要求通用ticket:create；受限领域用例仅向已配置整改类型/组织建单，复用工单校验与真实操作者审计 | 风险owner还必须单独具备通用ticket:create才能派单 | 用户询问必要性和业界后，已提出简化候选、尚待确认；未决不启扩大领域创建范围，不假扮owner或开放任意类型/组织 |
 | B06 · D06 离职业务自动处置启用前 | 安全禁用即时执行；工作项进可见交接清单，有已批准继任映射才自动转，其余保持状态+待交接 | 全部回池；全部指定上级；全部人工逐项转 | 回池丢当前处理节奏，上级不一定合格；人工延迟较高。未决不自动回退业务状态/猜继任人，但绝不阻塞禁用和告警 |
 | B07 · D06 撤部 apply 启用前 | 虚拟组上挂最近合法存续实体祖先但预览权限变化；在途业务显式接管；历史保留原组织展示/独立历史分组，不默默并入新部门统计 | 全部保留旧锚待人工；或将全部在途与历史一并转新部门 | 自动上挂可能扩大祖先委托，整体转历史会改报表；未决只禁新建并保留节点/历史ID，提供plan，不做破坏性撤部推广 |
 | B08 · D15 首条生产风险通知启用前 | 保留已确认的高级别上溯抄送；冻结源五级到平台四档阈值、组织锚点/负责人、汇总时区/时刻、临期窗与静默例外 | 频次按四档候选、全即时或分层汇总；不是重问要不要负责人抄送 | 未决先交合同/mock，首条生产规则不启用；无合法负责人有显式待办，不猜人/广播/静默少发 |

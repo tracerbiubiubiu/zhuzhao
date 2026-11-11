@@ -73,38 +73,42 @@
       "decision_due": "D03 受限策略启用前",
       "recommendation": "CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权",
       "alternatives": "CC 不突破受限策略，仅显式 participant 可见",
-      "impact_or_safe_fallback": "方向已确认但未实现新类型策略；收件/参与授予仍受B04候选范围和当前权限限制",
+      "impact_or_safe_fallback": "方向已确认但未实现新类型策略；收件/参与授予仍受B04已确认的管理资格与候选人员范围和当前权限限制",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
       "decision": "合法抄送在受限类型中可查看/评论，不附赠转派、修改字段或转换状态权；现有入口权限和独立操作条件仍检查",
       "owner_feedback": "2026-11-11：所有者明确选择“抄送后可查看和评论，不附送处理权”"
     },
     {
       "id": "B03",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D03 受限策略启用前",
       "recommendation": "普通ticket_scope=all不越过已设置的participants_only/role_restricted类型查看范围；admin/superadmin保留既有例外。UI称查看范围，不新增敏感标签权限体系",
       "alternatives": "普通scope=all绕过类型查看范围；会使新类型仅参与人对该群体不成立",
-      "impact_or_safe_fallback": "未决不将新类型策略和scope=all穿透行为写成已批准；已有inherit类型行为保留",
+      "impact_or_safe_fallback": "方向已确认、尚未实现；D03统一过滤器和所有读出口验证，已有 inherit 类型保持原范围",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
-      "owner_feedback": "2026-11-11：询问“敏感类型限制”含义、是否专门字段和业界/必要性。已明确是类型查看范围read_policy，不是is_sensitive/新数据分级，尚未批准普通scope=all的穿透与否"
+      "owner_feedback": "2026-11-11：明确选择“不越过类型查看范围（推荐）”",
+      "decision": "普通 ticket_scope=all 不越过类型查看范围；系统级 admin/superadmin 保留既有例外，不新增 is_sensitive 字段"
     },
     {
       "id": "B04",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D03 参与写入口开通前",
       "recommendation": "`ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner",
       "alternatives": "creator 可邀请其候选范围内人员；或只有全局管理员可管",
-      "impact_or_safe_fallback": "前者增加分享面，后者加重日常管理；都需收件人范围/域受管项不可删。未决普通参与人写入口关闭，既有 CC 语义不顺手扩大",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "impact_or_safe_fallback": "方向已确认、尚未实现；现有CC写入口也须执行同一管理资格，不以selfService分组绕过；具名领域桥仅管理受管参与者",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "由有独立授权的业务管理者管理参与人和抄送；创建人不因创建身份自动获得邀请权",
+      "owner_feedback": "2026-11-11：明确选择“有独立授权的业务管理者管理（推荐）”"
     },
     {
       "id": "B05",
       "state": "owner_pending",
       "decision_due": "D03/P6.2 派单启用前",
-      "recommendation": "普通创建保留当前组织分支限制；每类型显式创建角色策略；risk.dispatch授给已批准risk:manage主锚/owner职责，由专用命令在批准目标范围代建，不能任意created_by",
-      "alternatives": "类型读角色即可创建；或风险owner还必须单独具备通用ticket:create才能派单",
-      "impact_or_safe_fallback": "前者扩大创建面；后者降低代建范围但可能使已拍owner派单不可用。未决不启用新的跨域系统代建范围，mock记录阻断，不能假扮owner",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "recommendation": "复用已有 risk:manage 和风险资源范围，不另设派单角色或 risk.dispatch 权限码；单条沿用主锚或当前owner、批量沿用主锚管理范围；受限领域用例复用工单校验，仅向配置好的整改类型/组织派单，不额外要求通用 ticket:create；可通过现有org_roles向虚拟风险组绑定业务角色，若全组含旁观者只授获准人员/职责组，避免并集角色无法用只读抵消",
+      "alternatives": "风险派单还必须额外有通用 ticket:create；一般新建工单仍保持自身权限与类型/组织约束",
+      "impact_or_safe_fallback": "risk.dispatch.v1是operation_id而非新增权限码；真实操作者与业务创建人分记，不客户端传任意created_by；未决不擅启扩大后的领域创建范围",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准"
     },
     {
       "id": "B06",

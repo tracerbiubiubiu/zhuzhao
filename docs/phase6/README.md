@@ -1,5 +1,6 @@
 # Phase6 — 风险闭环、可信底座与全站体验
 
+近期施工候选、首批PR切片及准确验证出口见[实施交接候选](implementation-handoff.md)；本轮未启动功能实现。
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../review/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
 ## 1. 阶段目的
@@ -29,7 +30,7 @@
 - [06工单完善](06-ticket-completeness.md)：26件设计逐项映射总账；已修只回归；旧B1–B4按当前依赖重排。
 - [07来源索引](07-backlog-and-triggers.md)：历史触发/遗留来源，现行排期见总账和source-map，不再以“触发未到”无限悬挂。
 - [08首页](08-home-workbench.md)：U01先修安全默认落点，U02样板与U06推广；全员首页不等于全员工单读权。
-- [09类型策略](09-ticket-type-visibility.md)：D03详设；P1–P5的语义默认仍需实施前明确，页面只挂GET/写挂按钮的规则优先，不能默增例外。
+- [09类型策略](09-ticket-type-visibility.md)：D03详设；P1–P5的已决项以[决策登记](../review/planning-decisions.json)为准，剩余合同在对应包实施前冻结，页面只挂GET/写挂按钮的规则优先，不能默增例外。
 
 ## 4. mock、外部契约与AI
 
