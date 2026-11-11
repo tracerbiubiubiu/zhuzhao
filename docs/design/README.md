@@ -24,3 +24,9 @@
 - [AI能力与领域Agent](ai-capabilities.md)：已有模型API、外部与本地领域Agent双轨、MCP、受权知识、skill与运行合同。
 - [五仓工程治理](engineering-governance.md)：worktree、CI、mock分层、测试、目录和发布。
 - [排期总账](../review/planning-backlog.md)：跨仓唯一工作项、依赖与条件项处置。
+
+## 详设候选与新增边界
+
+- [工程施工](engineering-execution-design.md)、[跨仓执行](cross-repo-execution-contract.md)、[业务生命周期](business-lifecycle-contracts.md)与[AI调用](ai-invocation-contract.md)。
+- [私有扩展兼容](extension-compatibility.md)、[内网adapter迁移](intranet-adapter-migration.md)、[设备目录与人工入口](device-module-contract.md)、[版本现代化](dependency-modernization.md)。
+- [规划收口与审计步骤](../review/planning-closeout.md)：哪些已审、哪些是候选/边界、哪些需要owner，不能把全部工作包当全部详设已完成。

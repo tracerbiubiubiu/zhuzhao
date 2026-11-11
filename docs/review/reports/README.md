@@ -8,6 +8,9 @@
 
 ## 最新收口与总报告
 
+- [Phase6前详设与新增要求复核（2026-11-11）](pre-phase6-design-deepening-2026-11-11.md)
+- [Phase5后首轮全项目重规划（2026-11-11）](pre-phase6-replanning-2026-11-11.md)
+
 - [五仓文档原始要求二次复核（2026-11-08）](documentation-recheck-2026-11-08.md)
 - [五仓文档归位与内容校准（2026-11-08，首次整理验证）](documentation-reorganization-2026-11-08.md)
 

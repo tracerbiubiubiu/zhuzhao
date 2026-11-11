@@ -166,3 +166,5 @@ Temporal 对确定性 workflow 与非确定性 Activity 的区分可供合同设
 - **Temporal 确定性与 Activity**：采纳把模型和外部副作用隔离为有记录步骤、定义版本与恢复兼容；只借鉴恢复原则，不默认引入引擎或重建其替代品。[官方定义](https://docs.temporal.io/workflow-definition)
 - **微软 RAG 文档级权限模式**：采纳查询时授权与权限同步的合同要求；向既有知识服务核验能力，自定义 IAM 的 live 授权仍由本平台执行。不自建重复索引，不把 Azure preview 写为依赖。[文档权限概览](https://learn.microsoft.com/azure/search/search-document-level-access-overview)
 - **OWASP 过度代理风险**：采纳最小工具能力、最小权限、危险动作确认、监控与测试；不声称提示词过滤可以根除注入，也不增加与本项目无关的大型合规建设。[OWASP Excessive Agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)
+
+具体A01/A02逻辑操作、schema/精确确认/receipt/错误与有界运行合同见[AI调用详设候选](ai-invocation-contract.md)；后期实际SDK/提供方/状态存储按各包窗口冻结，非全部已完成。

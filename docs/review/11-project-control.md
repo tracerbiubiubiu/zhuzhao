@@ -8,7 +8,7 @@
 
 ## 当前摘要（2026-11-11）
 
-- **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划已在独立codex分支落档，功能尚未实施。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
+- **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划首轮及本批详设已在独立codex分支落档，功能尚未实施。当前审计步骤3/详设候选，非全部设计完成；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
@@ -30,6 +30,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **Phase6前规划/详设** | 66包/501来源/144依赖；28详设候选+5组件原型+2逐页范围+31边界/处置；私有扩展/内网adapter、无SSO设备和版本升级已入账 | 📋 设计评审，owner部分待决；实现均未交付 | [收口](planning-closeout.md)、[增量复核](reports/pre-phase6-design-deepening-2026-11-11.md) |
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
 | **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；61包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |

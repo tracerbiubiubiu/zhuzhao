@@ -1,0 +1,1037 @@
+{
+  "date": "2026-11-11",
+  "levels": {
+    "detailed_contract_candidate": "已写数据/状态/授权/并发/恢复/验收的详设候选，未全冻结也未实施",
+    "component_contract_and_representative_prototype": "组件/旅程合同与离线代表样板，非全站成品",
+    "boundary_and_page_inventory": "全站范围/逐页审查，具体施工仍待详设",
+    "boundary_contract_or_disposition": "已明确范围、写主、依赖/窗口与退出，远期详设未全部完成"
+  },
+  "summary": {
+    "boundary_and_page_inventory": 2,
+    "boundary_contract_or_disposition": 31,
+    "component_contract_and_representative_prototype": 5,
+    "detailed_contract_candidate": 28
+  },
+  "work_items": [
+    {
+      "work_item": "G01",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "G02",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "G03",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "G04",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "G05",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "G06",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "C01",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "C02",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "C03",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md",
+        "docs/design/cross-repo-execution-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0合同窗口"
+    },
+    {
+      "work_item": "C04",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "C05",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D01",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D02",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D03",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D04",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D05",
+      "wave": "P6.3",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "D06",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "D07",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.2开工前"
+    },
+    {
+      "work_item": "D08",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.2开工前"
+    },
+    {
+      "work_item": "D09",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.2开工前"
+    },
+    {
+      "work_item": "D10",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.2开工前"
+    },
+    {
+      "work_item": "D11",
+      "wave": "P6.3",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "D12",
+      "wave": "P6.3",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "D13",
+      "wave": "P6.E",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.E开工前"
+    },
+    {
+      "work_item": "D14",
+      "wave": "P6.E",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.E开工前"
+    },
+    {
+      "work_item": "U01",
+      "wave": "P6.0",
+      "design_depth": "component_contract_and_representative_prototype",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "视觉/交互选择待owner；Vue/暗色/真实权限/原生缩放与全站迁移未验"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "U02",
+      "wave": "P6.1",
+      "design_depth": "component_contract_and_representative_prototype",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "视觉/交互选择待owner；Vue/暗色/真实权限/原生缩放与全站迁移未验"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "U03",
+      "wave": "P6.3",
+      "design_depth": "component_contract_and_representative_prototype",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "视觉/交互选择待owner；Vue/暗色/真实权限/原生缩放与全站迁移未验"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "U04",
+      "wave": "P6.3",
+      "design_depth": "boundary_and_page_inventory",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "配置设计器/系统管理/AL/消息等逐页生产组件详设及真实状态接线，代表原型不能覆盖全部页"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "U05",
+      "wave": "P6.3",
+      "design_depth": "component_contract_and_representative_prototype",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "视觉/交互选择待owner；Vue/暗色/真实权限/原生缩放与全站迁移未验"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "U06",
+      "wave": "P6.3",
+      "design_depth": "boundary_and_page_inventory",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "配置设计器/系统管理/AL/消息等逐页生产组件详设及真实状态接线，代表原型不能覆盖全部页"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "U07",
+      "wave": "P6.1",
+      "design_depth": "component_contract_and_representative_prototype",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "视觉/交互选择待owner；Vue/暗色/真实权限/原生缩放与全站迁移未验"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "I01",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "I02",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "I03",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "I04",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "A01",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0合同窗口"
+    },
+    {
+      "work_item": "A02",
+      "wave": "P6.3",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "A03",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.0合同窗口"
+    },
+    {
+      "work_item": "A04",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "A05",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "A06",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "A07",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/ai-capabilities.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "R01",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md",
+        "docs/design/cross-repo-execution-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "R02",
+      "wave": "P9",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P9开工前"
+    },
+    {
+      "work_item": "R03",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "R04",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "R05",
+      "wave": "P9",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P9开工前"
+    },
+    {
+      "work_item": "R06",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "R07",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "E01",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "E02",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "E03",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "E04",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "E05",
+      "wave": "P10",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P10开工前"
+    },
+    {
+      "work_item": "E06",
+      "wave": "P8",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P8开工前"
+    },
+    {
+      "work_item": "E07",
+      "wave": "P9",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P9开工前"
+    },
+    {
+      "work_item": "E08",
+      "wave": "P9",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P9开工前"
+    },
+    {
+      "work_item": "E09",
+      "wave": "P7",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P7开工前"
+    },
+    {
+      "work_item": "D15",
+      "wave": "P6.2",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.2开工前"
+    },
+    {
+      "work_item": "D16",
+      "wave": "P6.3",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/platform-evolution.md",
+        "docs/review/planning-backlog.json"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+      ],
+      "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "G07A",
+      "wave": "P6.0",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/dependency-modernization.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0开工前"
+    },
+    {
+      "work_item": "G07B",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/dependency-modernization.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "X01",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/extension-compatibility.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.0合同窗口"
+    },
+    {
+      "work_item": "X02",
+      "wave": "P6.1",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/intranet-adapter-migration.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.1开工前"
+    },
+    {
+      "work_item": "X03",
+      "wave": "P6.3",
+      "design_depth": "detailed_contract_candidate",
+      "design_refs": [
+        "docs/design/device-module-contract.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+      ],
+      "next_design_gate": "P6.3开工前"
+    }
+  ]
+}

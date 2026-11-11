@@ -28,7 +28,7 @@
 
 ## G02：main 合入纪律与例外
 
-目标为五仓统一 PR 合入 main、禁止 force push/delete、要求最新目标分支组合检查、解决 review conversation；默认不要求第二位维护者批准，当前单维护者仍能合入。是否正式替换 UI 等仓“低风险直提 main”的维护方式是决策 ENG-D01，不能由执行脚本悄悄改变。
+所有者已确认五仓统一 PR 合入 main、允许单维护者在检查通过后自行合入。目标禁止 force push/delete、要求最新目标分支组合检查、解决 review conversation，不强制第二位维护者批准。本轮记录ENG-D01a已定方向，G02实施时显式同步 UI 等仓“低风险直提 main”的旧规则及远端保护，当前尚未执行这些设置变更。
 
 启用顺序：先在普通 PR 实跑下节 jobs，记录准确 check 名称和产出 GitHub App；再设置 main required checks 为唯一聚合 `quality-gate`（指定 Actions App 来源），保护 force push/delete 与管理员绕过；最后用一个故意失败 PR 证明不能合入、一个全绿 PR 证明可合入。required job 始终创建；路径分流在 job 内计算，不在整个必需 workflow 顶层用 paths 过滤。`quality-gate` 使用 always 执行并检查每项结果与清单：缺失/取消/应跑而 skipped 都失败，真正不适用要有机器可判的理由。GitHub 把 skipped job 视作成功，故不能只依赖平台绿灯。[GitHub checks 语义](https://docs.github.com/en/pull-requests/reference/status-checks)、[过滤陷阱](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)。
 
@@ -73,9 +73,9 @@ PR cheap/contract 必跑；完整门禁可由同 SHA 的组合回执供给。仅
 
 ### 公共和内网两套执行环境，同一合同
 
-最小发布矩阵按有界支持窗口执行，不作无限组合爆炸：core N/N−1 × extension SDK/contract 当前/前一支持代 × 私有 adapter N/N−1 × feed 当前/前一支持代；只裁剪 manifest 明确不支持的组合，不因难跑删格。公开 CI 跑每格合成 consumer/provider；内网 CI 用同一合同 case IDs 跑实际 adapter、真实 HR/风险提供方的最小读取与受控回写，再签发清单回执。私有 SDK 不进 core go.mod/node 依赖，真实 provider SDK 漂移只在独立 connector 内消化。
+最小发布矩阵按有界支持窗口执行，不作无限组合爆炸：core N/N−1 × extension SDK/contract 当前/前一支持代 × 私有 adapter N/N−1 × feed 当前/前一支持代；只裁剪 manifest 明确不支持的组合，不因难跑删格。公开 CI 跑每格合成 consumer/provider；内网 CI 用同一合同 case IDs 跑实际 adapter、真实HR/风险提供方已启用capability的适用读取/回传方向，再签发清单回执。私有 SDK 不进 core go.mod/node 依赖，真实 provider SDK 漂移只在独立 connector 内消化。
 
-每格至少验证出站/入站两向、游标提交与断点续拉、乱序/重复/重放去重、身份映射/撤权、超时/限流/部分失败、撤销/停用、N→N−1 回退。合成 mock 不是一次性替身：开发、展示、大数据量、错误态持续使用；contract 检测 fixture/schema 漂移；real 证明网络、凭据、权限和真实语义。没有真实 API 契约/沙箱的格标 `real_pending`，可完成设计/公开契约施工，不能批准生产切换。
+每格按已启用capability验证适用方向、游标提交与断点续拉、乱序/重复/重放去重、身份映射/撤权、超时/限流/部分失败、撤销/停用和声明支持的回退。只读HR/CMDB源不要求开放回写；有回传的提供方分别验证取数/回写授权与receipt，不以单向通过代替另一方向。当前未正式部署可协调替换旧组合，不能因此省略数据/在途盘点。合成 mock 不是一次性替身：开发、展示、大数据量、错误态持续使用；contract 检测 fixture/schema 漂移；real 证明网络、凭据、权限和真实语义。没有真实 API 契约/沙箱的格标 `real_pending`，可完成设计/公开契约施工，不能批准生产切换。
 
 扩展 manifest 引用根页定义的 schema/注册/导航/路由字段；本页另要求 receipt 含 `schema_version`、发布/兼容范围、提供者来源 digest、授权 scope/主体、出入站目标 allowlist 的摘要、资源预算/timeout、撤销版本和 last-known-good 版本。过期/未知 schema 主版本/已撤销/越权能力/不支持的组合拒绝启用；断路器按扩展隔离，单个扩展坏不得令主平台启动失败，**核心强依赖**才 fail-fast。撤销应关闭新调用，已发命令进入可对账状态；不能把未知外部效果标取消成功。核心升级 expand→合同验证→小流量→收据→切换，回退时保留新写事实与 intent，不做破坏性 schema down；若 N−1 不识别已启用能力则先停该能力和新提交，维持兼容适配层完成在途，不能硬降并丢事实。
 
@@ -143,7 +143,9 @@ deadline 采用**试点命令的显式预算**：建议普通写 10 秒、锁等
 
 资源护栏复用 `internal/pkg/resource/registry.go` 的 `Registry.Authorize/GetFilter`、`ticket.Resource.canOperate` 与 repository 空 filter 拒绝机制。新资源缺注册/未知 action/空列表过滤均拒绝；导出必须走与列表同一 parser、L1/L2 filter 和字段策略，不因后台任务或 AI 发起就绕开。`internal/router/router.go` 的 ticket export 既有链作为回归样本，B案页面GET/按钮写、路由目录对账守卫不撤。系统自动化改用显式受限服务主体与意图授权快照，ActorID 只归因不是授权凭据。
 
-C04.1 DBTX 试点及故障分类；C04.2 org_roles 两侧锁/历史处置；C04.3 资源与导出负例及 deadline。出口：第二步 audit/intent 插入失败整笔回滚；池饱和不死锁；并发删组织/绑角色只有合法串行结果；未知 action/export 无 scope 不返数据；取消/commit断链不伪称未提交。R01 在此事务入口可用后接入，不扩大成分布式事务。
+C04.4明确承接领域合同`AuthorizeForMutation`：IAM撤权与本地高风险写共享授权守卫。首期建议全局policy epoch共享守卫加主体epoch，业务写取共享锁并核当前策略，停用/撤角色/权限/组织归属改变的IAM事务取相应排他锁、增epoch；统一锁序为policy/主体排序→执行claim（如有）→领域group→资源ID。所有影响权限的写入口必须列入覆盖表，遗漏不得关账；先全局小粒度试点正确性，再按G04压测证据细化，不把授权缓存当原子守卫。外部系统撤权仍按I02合同，不能靠本地锁保证跨系统即时性。
+
+C04.1 DBTX试点及故障分类；C04.2 org_roles两侧锁/历史处置；C04.3资源与导出负例及deadline；C04.4授权epoch与撤权竞争。出口：第二步audit/intent插入失败整笔回滚；池饱和不死锁；并发删组织/绑角色只有合法串行结果；未知action/export无scope不返数据；撤权先提交后旧授权业务不能提交，业务先持守卫提交则撤权等待并阻止后续写；取消/commit断链不伪称未提交。R01/D03在此事务与授权入口可用后接入，不扩大成分布式事务。
 
 ## C05：撤销会话的前后端合同
 
@@ -163,7 +165,7 @@ C05.1 响应来源/错误码兼容及 UI 集中清理；C05.2 跨标签代际/�
 
 需所有者确认的工作流/业务决策只有以下两项（未拍板时不得切换相应行为，但可完成其余实现设计）：
 
-- **ENG-D01（G02/G03）**：推荐五仓统一 PR、single-maintainer 可合、紧急一次性 bypass；受控输入完全相同的文档候选是否可复用仍有效运行收据，需要同时修订 AGENTS 明示规则。备选维持每批完整运行、不允许文档复用，安全性相同而耗时更高；维持直推则无法提供同等合入前 required checks。决定窗口 G02 启用前。
+- **ENG-D01a（G02）已确认**：五仓统一PR、single-maintainer可合，G02落规则与保护；紧急bypass另记操作者与后补期限。**ENG-D01b（G03）未决**：受控输入完全相同的文档候选是否可复用仍有效运行收据，需要同时修订AGENTS明示规则。未决保持每批现行完整门禁，不暗中增加文档豁免；决定窗口G03启用前。
 - **ENG-D02（C02）**：推荐移除 file/richtext 字段引用只改字段，不自动删已绑定附件；显式删除拒绝仍引用对象。备选加引用来源关系、精确自动解链并按策略GC，界面更自动但迁移/恢复复杂。决定窗口 C02 编码前；大量现有对象不会因本页生效被删除。
 
 跨仓执行的业务取舍见伴随页 EXE-D01（reassign 提交语义）与 EXE-D02（cron错失策略），根控制台统一收录。其他技术选型是本页推荐方案，实施者只需在 PR 证明合同，不要求所有者替工程决策。

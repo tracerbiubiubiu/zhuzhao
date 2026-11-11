@@ -1,0 +1,204 @@
+{
+  "date": "2026-11-11",
+  "meaning": "确认仅代表方向/策略，不代表代码或远端设置已实施；待决只阻塞对应写政策/承诺，可独立完成技术与mock工作。",
+  "decisions": [
+    {
+      "id": "O01",
+      "state": "owner_confirmed",
+      "decision": "平台聚焦数据聚合和安全全生命周期；专业平台优先取数/协同，不造大而全替代品",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O02",
+      "state": "owner_confirmed",
+      "decision": "大量mock长期保留；mock、合同和真实证据分别验收",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O03",
+      "state": "owner_confirmed",
+      "decision": "只调用已有大模型API；内网仅内部服务，不做模型部署/训练",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O04",
+      "state": "owner_confirmed",
+      "decision": "支持已有Agent接入与基于本平台特有能力的领域Agent双轨",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O05",
+      "state": "owner_confirmed",
+      "decision": "内部功能与真实供应商接口应通过可替换私有adapter/扩展接入，核心持续更新",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O06",
+      "state": "owner_confirmed",
+      "decision": "设备多厂商无SSO；首期目录、状态和人工登录管理入口，不做自动登录实施",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O07",
+      "state": "owner_confirmed",
+      "decision": "取消与公司旧运行版本对齐，允许自行打包受支持组件",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O08",
+      "state": "owner_confirmed",
+      "decision": "当前未正式部署，可协调替换旧合同；不设本轮建议的6个月保留承诺",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "ENG-D01a",
+      "state": "owner_confirmed",
+      "decision": "五仓统一PR，允许单维护者在必需检查通过后自行合入",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B01",
+      "state": "owner_pending",
+      "decision_due": "D03 开工前",
+      "recommendation": "存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认",
+      "alternatives": "所有旧类型统一 participants_only；或新旧都 inherit",
+      "impact_or_safe_fallback": "统一收紧会立即影响老单/委托/报表；都 inherit 较宽。未决保持存量 inherit，新受限策略不默认启用",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B02",
+      "state": "owner_pending",
+      "decision_due": "D03 受限策略启用前",
+      "recommendation": "CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权",
+      "alternatives": "CC 不突破受限策略，仅显式 participant 可见",
+      "impact_or_safe_fallback": "后者使“抄送”与“可打开”分离，风险owner桥需显式 participant。未决不得假定 CC 能解决 R3 当前 owner 通路",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B03",
+      "state": "owner_pending",
+      "decision_due": "D03 受限策略启用前",
+      "recommendation": "`ticket_scope=all` 不突破 participants_only/role_restricted；global admin既有例外保留",
+      "alternatives": "将 scope=all 设为全类型通用可见",
+      "impact_or_safe_fallback": "后者让受限类型对 all-scope 用户失去限制。未决仅继承类型沿用原行为",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B04",
+      "state": "owner_pending",
+      "decision_due": "D03 参与写入口开通前",
+      "recommendation": "`ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner",
+      "alternatives": "creator 可邀请其候选范围内人员；或只有全局管理员可管",
+      "impact_or_safe_fallback": "前者增加分享面，后者加重日常管理；都需收件人范围/域受管项不可删。未决普通参与人写入口关闭，既有 CC 语义不顺手扩大",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B05",
+      "state": "owner_pending",
+      "decision_due": "D03/P6.2 派单启用前",
+      "recommendation": "普通创建保留当前组织分支限制；每类型显式创建角色策略；risk.dispatch授给已批准risk:manage主锚/owner职责，由专用命令在批准目标范围代建，不能任意created_by",
+      "alternatives": "类型读角色即可创建；或风险owner还必须单独具备通用ticket:create才能派单",
+      "impact_or_safe_fallback": "前者扩大创建面；后者降低代建范围但可能使已拍owner派单不可用。未决不启用新的跨域系统代建范围，mock记录阻断，不能假扮owner",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B06",
+      "state": "owner_pending",
+      "decision_due": "D06 离职业务自动处置启用前",
+      "recommendation": "安全禁用即时执行；工作项进可见交接清单，有已批准继任映射才自动转，其余保持状态+待交接",
+      "alternatives": "全部回池；全部指定上级；全部人工逐项转",
+      "impact_or_safe_fallback": "回池丢当前处理节奏，上级不一定合格；人工延迟较高。未决不自动回退业务状态/猜继任人，但绝不阻塞禁用和告警",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B07",
+      "state": "owner_pending",
+      "decision_due": "D06 撤部 apply 启用前",
+      "recommendation": "虚拟组上挂最近合法存续实体祖先但预览权限变化；在途业务显式接管；历史保留原组织展示/独立历史分组，不默默并入新部门统计",
+      "alternatives": "全部保留旧锚待人工；或将全部在途与历史一并转新部门",
+      "impact_or_safe_fallback": "自动上挂可能扩大祖先委托，整体转历史会改报表；未决只禁新建并保留节点/历史ID，提供plan，不做破坏性撤部推广",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "B08",
+      "state": "owner_pending",
+      "decision_due": "D15 首条生产风险通知启用前",
+      "recommendation": "采用§9.2四档候选；补定汇总时区/时刻、临期窗口、额外负责人和静默例外",
+      "alternatives": "四档全即时；或全部每日汇总（接受/交接待办仍即时）",
+      "impact_or_safe_fallback": "全即时噪声较多，全汇总延迟高风险提示；未决先完成可验证合同与mock，不静默以例子充生产策略",
+      "design_ref": "docs/design/business-lifecycle-contracts.md"
+    },
+    {
+      "id": "ENG-D01b",
+      "state": "owner_pending",
+      "decision_due": "G03启用前",
+      "recommendation": "文档候选仅在受控输入完全相同且回执仍有效时复用运行证据，并显式修订规则",
+      "alternatives": "继续每批完整门禁",
+      "impact_or_safe_fallback": "未决维持现行完整门禁，不能暗中豁免",
+      "design_ref": "docs/design/engineering-execution-design.md"
+    },
+    {
+      "id": "ENG-D02",
+      "state": "owner_pending",
+      "decision_due": "C02编码前",
+      "recommendation": "移除字段引用只改字段，不自动删已绑定附件；显式删仍被当前引用的对象报冲突",
+      "alternatives": "增加来源引用表，精确自动解链/GC",
+      "impact_or_safe_fallback": "未决不做自动删除，不以文档操作存量对象",
+      "design_ref": "docs/design/engineering-execution-design.md"
+    },
+    {
+      "id": "EXE-D01",
+      "state": "owner_pending",
+      "decision_due": "R01/C04编码前",
+      "recommendation": "转换同事务写转派intent，转换成功后显示转派待处理/失败；不回滚源转换",
+      "alternatives": "转派与状态变更同事务，任一失败整笔失败",
+      "impact_or_safe_fallback": "未决不改变既有用户成功含义，不开放新可靠承诺",
+      "design_ref": "docs/design/cross-repo-execution-contract.md"
+    },
+    {
+      "id": "EXE-D02",
+      "state": "owner_pending",
+      "decision_due": "C03切换前",
+      "recommendation": "宕机错失计划最多补一次并记录跳过区间，显式UTC/已核实际时区",
+      "alternatives": "有界catch-up或全部跳过",
+      "impact_or_safe_fallback": "不默默改变已有计划时间/副作用；新策略切换前等待确认",
+      "design_ref": "docs/design/cross-repo-execution-contract.md"
+    },
+    {
+      "id": "UX01",
+      "state": "owner_pending",
+      "decision_due": "U02规范冻结前",
+      "recommendation": "推荐单侧栏+身份顶栏，不默认占页签/页脚高度",
+      "alternatives": "保留旧布局作为默认",
+      "impact_or_safe_fallback": "离线原型为候选，不删现有四布局",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+    },
+    {
+      "id": "UX02",
+      "state": "owner_pending",
+      "decision_due": "U02首页数据合同冻结前",
+      "recommendation": "首页主口径本人负责且非终态，包含自定义非终态；分卡失败不归零",
+      "alternatives": "沿用旧固定状态/全局态势口径",
+      "impact_or_safe_fallback": "首页修复安全落点可先做，未定统计不冒充全量事实",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+    },
+    {
+      "id": "UX03",
+      "state": "owner_pending",
+      "decision_due": "U05冻结前",
+      "recommendation": "桌面历史左/结果右；点历史仅回填，显式重新查询；首期本机元数据",
+      "alternatives": "点击历史立即发查询，或要求跨端历史快照",
+      "impact_or_safe_fallback": "跨端持久历史另估且需供给/保留决策",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+    },
+    {
+      "id": "P-RESOURCE",
+      "state": "owner_pending",
+      "decision_due": "规划验收/实际T0前",
+      "recommendation": "先P6.0/P6.1底座，再风险核心与只读AI；设备薄模块P6.3",
+      "alternatives": "按实际业务优先级调整独立包",
+      "impact_or_safe_fallback": "未定T0/投入不承诺日历；不以Agent并行推算无限产能",
+      "design_ref": "docs/design/platform-evolution.md"
+    }
+  ]
+}

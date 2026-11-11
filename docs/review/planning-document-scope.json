@@ -273,4 +273,26 @@
     {"repo": "zhuzhao-utils", "path": "docs/ops/README.md", "sha256": "324d502cf0833258cb907453ea091ad61351067a258a3e4ec829bcd2a5be6e2b", "lines": 3, "review_role": "operational_context"},
     {"repo": "zhuzhao-utils", "path": "docs/ops/releases.md", "sha256": "00ad9d3ebcb7d99541ea7cec9c19814d439919a1655d5ad8539777ab6e87b77f", "lines": 23, "review_role": "operational_context"}
   ]
+,
+  "design_deepening_supplement": {
+    "date": "2026-11-11",
+    "note": "原基线库存/hash保持原时点；下列仅新增设计材料，不声称全部历史文档又全文重读。",
+    "refs": [
+      "docs/design/engineering-execution-design.md",
+      "docs/design/cross-repo-execution-contract.md",
+      "docs/design/business-lifecycle-contracts.md",
+      "docs/design/ai-invocation-contract.md",
+      "docs/design/extension-compatibility.md",
+      "docs/design/intranet-adapter-migration.md",
+      "docs/design/device-module-contract.md",
+      "docs/design/dependency-modernization.md",
+      "docs/review/planning-closeout.md",
+      "docs/review/planning-design-status.json",
+      "docs/review/planning-decisions.json",
+      "docs/review/reports/pre-phase6-design-deepening-2026-11-11.md",
+      "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "../zhuzhao-ui/docs/design/prototypes/README.md",
+      "../zhuzhao-ui/docs/design/prototypes/lifecycle-workspace.html"
+    ]
+  }
 }

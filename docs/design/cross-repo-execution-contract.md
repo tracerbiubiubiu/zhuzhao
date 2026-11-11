@@ -37,6 +37,8 @@ task_id 是同一业务执行的稳定身份；delivery_id/execution_id 是每�
 
 现有 `jobs.Handler.Handle` 不能自动升级成事务安全。建议新增内部 `Execute(ctx, ExecutionContext) → ExecutionResult,error` 适配接口，Context提供稳定operation_id/claim_generation/受限主体，不让handler自行从请求拿数据库连接或伪造success。原handler显式标 legacy；逐个盘点可重入性后包适配器。transactional动作由领域service在同tx写业务、审计、receipt；不得先提交效果再补“同事务”的注释。涉及外部网络不可持DB行锁等待；先落操作意图，再按下游幂等/查询合同执行。
 
+transactional效果凭证对`(owner_service, operation_id)`唯一，action_version/params_digest为同键一致性断言，不以换版本绕过同操作去重。副作用事务依次取得授权守卫、execution claim行锁、领域锁，锁内复验claim_generation/当前权限，再写效果与receipt并提交；续租/新代认领也必须竞争同claim行，不能在旧效果事务仍持锁时越过它。查不到未提交receipt只说明尚不可见，不证明旧事务无效果；新认领须等待旧事务终结并锁内复核唯一receipt/代次。外部observable查询的not_found或最终一致空结果同样不是无效果证明；只有提供方可核验的终态未执行/撤销凭证，且旧请求已不可能迟到生效，才允许重新发非幂等请求，否则保持unknown/人工处置。
+
 ### 认领和完成
 
 认领先核服务授权、动作/params/版本/subject快照，再用条件更新取得 generation。DB错误或缺必要凭证不发副作用，TR相应MarkRunning失败也不得继续调用。凭证缺失的旧残留进入隔离对账队列，人工按来源决定补录或丢弃；不能以兼容历史为名默认无账执行。
@@ -64,15 +66,15 @@ v2请求除现有body外增 `protocol_version=2`、`delivery_id`、`operation_id
 - 409：快照不一致/业务明确拒绝且确认无效果等不可重试，stable reason区分；401/403服务凭据/授权错误隔离告警，不当普通业务retry；404未知动作版本进入配置失败。
 - 429/503：临时不可用，可退避查询；无完成凭证不能回200。无效/截断/未知schema响应即protocol_error，不默认为成功；结果体有大小上限。
 
-v1客户端不认识202，故主仓对v1 running/unknown用503并明确非完成，绝不202。v2 TR在调用v1主仓时保留旧HTTP兼容，但不得把已知running业务体认作完成；升级阶段只允许旧安全动作，未知新动作不开放。必须执行四格 core N/N−1 × TR N/N−1 回归，含真实旧client的任意2xx逻辑，不用新mock替它证明。
+v1客户端不认识202，故主仓对v1 running/unknown用503并明确非完成，绝不202。真实旧core只有task_id/status响应，没有新receipt/status查询；v2 TR调用该格时只能标`legacy_observed`并保留旧队列投影，不能声称持久业务完成。已知running/unknown不认完成，不开放新自动动作。严格receipt模式必须配有receipt/status能力的core，否则manifest拒绝启用。确需混合运行时执行四格core N/N−1 × TR N/N−1回归，含真实旧client任意2xx逻辑与上述受限/拒绝结果，不要求不可能的旧端receipt；当前未正式部署可选择五仓协调替换，不建设长期v1桥。
 
-TR保持 `job_runs` 现有status与execution fence，目标新增独立 `business_outcome/accounting_state/receipt_id` 和必要 `reconciling` delivery状态；UI不再把队列succeeded等同领域完成。callback Client改返回结构化outcome；worker只有持久receipt可写succeeded。Finish失败时不丢弃凭证，返回可重试的记账错误，下次先向status查询；query完成不再发新副作用。Redis retry budget耗尽只意味着delivery/dead_letter，不把领域outcome_unknown改failed_no_effect。对已证实receipt的重试可只补账，日志记录“业务已完成、记账待收敛”。
+TR保持 `job_runs` 现有status与execution fence，目标新增独立 `business_outcome/accounting_state/receipt_id` 和必要 `reconciling` delivery状态；UI不再把队列succeeded等同领域完成。callback Client改返回结构化outcome；严格模式worker只有持久receipt可写业务succeeded；legacy格的队列succeeded只可对应business_outcome=legacy_observed，不享新保证。Finish失败时不丢弃凭证，返回可重试的记账错误，下次先向status查询；query完成不再发新副作用。Redis retry budget耗尽只意味着delivery/dead_letter，不把领域outcome_unknown改failed_no_effect。对已证实receipt的重试可只补账，日志记录“业务已完成、记账待收敛”。
 
 ### 升级/回退
 
 1. additive DB与只读状态投影先部署，旧列保留；清点现有running/failed，不能将历史succeeded无凭证伪造为新receipt。历史终态标legacy_observed，保留原证据来源。
-2. 先升级TR v2能力和管理读端，保持v1回调默认；其DB不可用不执行、Finish失败不吞、解析完成凭证的新规则先对合成/安全动作启用。随后升级主仓v2，按allowlist切动作，剩余legacy明确限制。
-3. 在途任务固定协议/action_version；支持N/N−1的适配层保留到在途全部清零且至少一发布支持窗口结束。切换后不能让旧TR执行v2任务；manifest拒绝这一组合，而非强迫所有私有adapter改代码。
+2. 当前未正式部署，推荐清点开发在途后五仓协调替换，只需候选组合和必要开发数据恢复；若实际需要混合升级，先部署core的receipt/status兼容能力，再升级TR严格模式。新TR对真正旧core仅legacy_observed且禁新自动动作，不能凭allowlist凭空补出receipt。
+3. 在途任务固定协议/action_version；确有混合消费者时适配层保留到其在途清零且约定迁移窗口结束，本轮不设6个月保留。切换后不能让旧TR执行v2任务；manifest拒绝这一组合，而非强迫所有私有adapter改代码。
 4. 回退先停新提交，保留兼容reader/worker完成已接收任务；未理解unknown/receipt的新状态不能交给旧worker自动执行。数据库expand不做破坏性down；不支持安全回退的动作保持禁用并按operation_id对账。v1用503会耗尽旧TR预算，必须把此后delivery失败与业务待核实并列展示。
 
 以上新增错误/字段/权限在实现PR同步Swagger/三仓合同测试，旧客户端未知可选字段可忽略，新增必需能力必须协商；禁止重定义原“成功”的字段含义却沿用原协议号。

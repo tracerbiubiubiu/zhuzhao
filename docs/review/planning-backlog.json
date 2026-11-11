@@ -52,7 +52,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "G02",
@@ -67,7 +70,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "G03",
@@ -86,6 +92,9 @@
       "scope": [
         "五仓准确组合/生成物/持续检查/隔离验收",
         "P1-7域事件期望订阅集启动/测试守卫：缺装配显式失败，未实现不能仅以文档约定销账"
+      ],
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
       ]
     },
     {
@@ -101,7 +110,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "G05",
@@ -116,7 +128,11 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "scope": [
+        "持续依赖更新PR、SBOM/签名/离线制品与发布恢复机制",
+        "G07A/G07B承接本次工具链与数据组件升级增量，本包不重复计其调查/升级工作量"
+      ]
     },
     {
       "id": "G06",
@@ -135,6 +151,9 @@
       "scope": [
         "目录职责、新仓模板、机械公共规则与SSOT链接",
         "重大决策ADR覆盖、长文按职责归位、Q5历史注记及L组余项逐项裁决；已完成搬树不重做"
+      ],
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
       ]
     },
     {
@@ -148,7 +167,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "C02",
@@ -161,7 +183,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "C03",
@@ -174,25 +199,32 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md",
+        "docs/design/cross-repo-execution-contract.md"
+      ]
     },
     {
       "id": "C04",
       "title": "事务边界、组织删除与授权护栏",
       "wave": "P6.1",
       "owner": "zhuzhao/领域",
-      "estimate_engineering_days": "3–5",
+      "estimate_engineering_days": "5–8",
       "dependencies": [
         "C01"
       ],
-      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。",
+      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。；撤权先提交时旧授权不能继续提交，守卫锁序与影响权限入口覆盖可查。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "scope": [
-        "dbtx工单域试点、组织删除残留与资源护栏",
-        "请求deadline按试点范围评估，采用/不采用有理由"
+        "ticket DBTX试点/池与事务预算、org_roles删除两侧锁、L2默认拒绝",
+        "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争"
+      ],
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
       ]
     },
     {
@@ -208,7 +240,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/engineering-execution-design.md"
+      ]
     },
     {
       "id": "D01",
@@ -224,7 +259,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ]
     },
     {
       "id": "D02",
@@ -245,6 +283,9 @@
         "转换时字段采集/证据与按单capabilities",
         "user字段与field:<user字段>的当前执行者资格/目标存在active校验，覆盖risk_owner复核；不是完整自动路由",
         "转办/撤回与SLA四入口基本收敛；入态失败回滚与同状态改派单独验证"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     },
     {
@@ -266,6 +307,9 @@
         "旧类型可见集兼容、参与人/cc分离、role code有效角色三源",
         "加参与人当前推荐显式按钮授权，覆盖预期业务受众；不新增页面写例外",
         "诊断：普通主体对不可见/不存在同形，不泄露成员；逐策略影响只给受权管理预览且审计"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     },
     {
@@ -287,6 +331,9 @@
         "字段元素/选项/长度/旧列宽与服务端求值同源",
         "user/dept以string ID解析、存在/有效/范围校验；D06供目录mock",
         "字典硬删后的公式兼容与保存反馈仍开放；禁链不放松，旧警告修复只回归"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     },
     {
@@ -318,7 +365,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ]
     },
     {
       "id": "D07",
@@ -328,7 +378,8 @@
       "estimate_engineering_days": "3–5",
       "dependencies": [
         "D04",
-        "D06"
+        "D06",
+        "X02"
       ],
       "acceptance": "白名单参数/超时/限流/审计；mock与真实共用Port；失败可手填、来源和陈旧可见，不复制CMDB。",
       "state": "planned_not_implemented",
@@ -338,6 +389,9 @@
       "scope": [
         "prefill端点/多参映射/超时限流审计/外部HTTP白名单",
         "前端运行时auto_fill及三档错误反馈与人工可改一起交付，未包含在旧后端四件估算中的部分明确计入本包与U03联调"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     },
     {
@@ -361,6 +415,9 @@
         "源身份/稳定事实键/风险周期、重复/乱序/回归与有界快照",
         "风险域端点L1/L2/L3矩阵（非D03工单策略的替代），与D09/D10共验",
         "规则化自动建单只消费可信专业结论与明确规则，D10处理本地闭环，扩大自动路由等D16"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     },
     {
@@ -377,7 +434,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ]
     },
     {
       "id": "D10",
@@ -395,7 +455,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ]
     },
     {
       "id": "D11",
@@ -488,7 +551,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ]
     },
     {
       "id": "U02",
@@ -503,7 +569,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ]
     },
     {
       "id": "U03",
@@ -525,6 +594,9 @@
         "四视角、编号、组合/反选筛选、批量添加标签与逐项权限",
         "本地草稿/离开保护；watcher自助关注与cc授予分别定义",
         "评论编辑/删除、动态列、批量操作、评价分别在本包入口做保留/接入/退出裁决；确需本地的限定功能在P6.3交付，不成通用服务台扩张"
+      ],
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
       ]
     },
     {
@@ -547,6 +619,9 @@
         "件19–25的结构化属性/独立工作区/预览/旧数据兼容及冲突恢复",
         "类型克隆复用发布与配置包校验，不复制另一套定义语义",
         "form-create类运行渲染器选型在本包开工决策：优先复用当前渲染资产/成熟库的有限能力，不引通用低代码平台"
+      ],
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
       ]
     },
     {
@@ -562,7 +637,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ]
     },
     {
       "id": "U06",
@@ -584,6 +662,9 @@
         "跨域首页/27页全站迁移和通用管理反馈",
         "任务控制台分类两栏、执行页参数/历史/结果、定义分权、AL深链与日志引用；D12负责结果合同，I02负责执行资格",
         "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现"
+      ],
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
       ]
     },
     {
@@ -600,7 +681,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ]
     },
     {
       "id": "I01",
@@ -689,7 +773,11 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/ai-capabilities.md"
+      ]
     },
     {
       "id": "A02",
@@ -707,7 +795,11 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/ai-capabilities.md"
+      ]
     },
     {
       "id": "A03",
@@ -813,6 +905,10 @@
         "业务提交后的待执行意图与消费者幂等/期限对账",
         "reassign动作失败的可见性、可靠补偿/明确同步语义，G6不得仅改注释自关",
         "自动联动、结果写回、真人确认写入的操作凭证与恢复"
+      ],
+      "design_refs": [
+        "docs/design/engineering-execution-design.md",
+        "docs/design/cross-repo-execution-contract.md"
       ]
     },
     {
@@ -1048,7 +1144,7 @@
     },
     {
       "id": "E07",
-      "title": "插件边界与服务拆分评估",
+      "title": "服务拆分与扩展边界运行复评",
       "wave": "P9",
       "owner": "五仓/架构",
       "estimate_engineering_days": "2–4",
@@ -1063,7 +1159,11 @@
       "disposition": "按明确窗口完成接入/建设/退出裁决",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "decision_inputs": "现有实现、业务场景和提供方契约/供给证据；不以前述实施依赖全部完成作为早期决策前提",
-      "delivery_rule": "早期窗口交付范围/供给裁决；获准的增量按本包wave及dependencies交付；退出或接入结论可提前关决策，真实验收另列"
+      "delivery_rule": "早期窗口交付范围/供给裁决；获准的增量按本包wave及dependencies交付；退出或接入结论可提前关决策，真实验收另列",
+      "scope": [
+        "X01/X02已前置最小接缝；本包只评估运行后的数据所有权/独立发布/隔离与服务拆分",
+        "不把内网接入所需adapter延至P9，不承诺全面微服务化"
+      ]
     },
     {
       "id": "E08",
@@ -1120,7 +1220,10 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "只计该包增量；D11/D01不重复计本包范围"
+      "estimate_scope": "只计该包增量；D11/D01不重复计本包范围",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ]
     },
     {
       "id": "D16",
@@ -1140,6 +1243,125 @@
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "只计该包增量；D11/D01不重复计本包范围"
+    },
+    {
+      "id": "G07A",
+      "title": "受支持工具链、Node与基础镜像升级",
+      "wave": "P6.0",
+      "owner": "五仓/工具链维护",
+      "estimate_engineering_days": "3–5",
+      "dependencies": [
+        "G03"
+      ],
+      "acceptance": "Go补丁/主线分批；Node退出20候选26LTS；manifest/CI/Docker/lockfile/生成工具一致，固定摘要与原门禁通过。",
+      "scope": [
+        "取消公司版本对齐约束，先处理EOL Node/Go补丁/OS镜像",
+        "现有依赖先在目标运行时验证，业务依赖major单独小批，不整体盲升"
+      ],
+      "state": "planned_not_implemented",
+      "decision_due": "本波开工前",
+      "disposition": "受约束实施",
+      "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
+      "design_refs": [
+        "docs/design/dependency-modernization.md"
+      ]
+    },
+    {
+      "id": "G07B",
+      "title": "PG、Redis与存储组件升级组合演练",
+      "wave": "P6.1",
+      "owner": "五仓/数据运维",
+      "estimate_engineering_days": "5–9",
+      "dependencies": [
+        "G03",
+        "G07A"
+      ],
+      "acceptance": "PG15到18副本迁移/ltree及恢复验证；Redis6.2经受支持中间线到8.2候选，队列/会话/TTL/持久化可对账；数据回退不换旧镜像假回滚。",
+      "scope": [
+        "P6.1交候选组合与迁移副本/恢复演练；首次生产前按当时精确补丁真实切换",
+        "RustFS/rclone/migrate/RedisInsight供给与漏洞调查，确需产品更换另估，不在本包重造对象存储"
+      ],
+      "state": "planned_not_implemented",
+      "decision_due": "本波开工前",
+      "disposition": "受约束实施",
+      "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
+      "design_refs": [
+        "docs/design/dependency-modernization.md"
+      ]
+    },
+    {
+      "id": "X01",
+      "title": "公共能力与私有扩展的稳定接缝",
+      "wave": "P6.1",
+      "owner": "zhuzhao+ui/平台合同",
+      "estimate_engineering_days": "8–12",
+      "dependencies": [
+        "G03",
+        "G06",
+        "C04"
+      ],
+      "acceptance": "P6.0定合同；受信manifest登记/撤销、精确网关/L1目录、同步用户身份/逐请求授权、受控导航通过参考扩展；添加模块无核心源码差异。",
+      "scope": [
+        "P6.1最小同步身份与能力/API合同；后台grant仍归I02",
+        "当前未正式部署可协调替换旧合同；正式消费者登记后再定迁移窗口",
+        "首期受信独立应用导航，不默认任意remote JS/通用微前端或Go动态plugin"
+      ],
+      "state": "planned_not_implemented",
+      "decision_due": "P6.0冻结合同；本包开工前复估/确认适用业务策略",
+      "disposition": "受约束实施",
+      "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
+      "design_refs": [
+        "docs/design/extension-compatibility.md"
+      ]
+    },
+    {
+      "id": "X02",
+      "title": "mock与内网私有connector的迁移合同及参考实现",
+      "wave": "P6.1",
+      "owner": "zhuzhao/集成+私有connector",
+      "estimate_engineering_days": "5–8",
+      "dependencies": [
+        "X01",
+        "D06"
+      ],
+      "acceptance": "mock/参考connector同例；source+entity_kind+external_id身份、可信freshness、持久outbox/ACK水位、影子导入/单writer切换与回退明确；真实提供方逐能力待验。",
+      "scope": [
+        "只计公共feed与一个合成参考connector，HR/风险领域行为仍计D06/D08",
+        "真实SDK/URL/凭据/厂商字段位于独立私有仓；P7 I04/E01逐提供方另估/联调，不把框架完成当全量迁移"
+      ],
+      "state": "planned_not_implemented",
+      "decision_due": "本波开工前",
+      "disposition": "受约束实施",
+      "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
+      "design_refs": [
+        "docs/design/intranet-adapter-migration.md"
+      ]
+    },
+    {
+      "id": "X03",
+      "title": "私有设备目录、状态看板与人工登录入口",
+      "wave": "P6.3",
+      "owner": "私有扩展+ui/设备聚合",
+      "estimate_engineering_days": "4–7",
+      "dependencies": [
+        "X01",
+        "X02",
+        "U02"
+      ],
+      "acceptance": "多厂商无SSO下目录/状态/新鲜度/受权打开管理页；默认设备侧人工登录；参考扩展独立交付，计数/导出/入口逐项授权。",
+      "scope": [
+        "首期薄模块及一个合成来源；不复制CMDB/NMS/PAM，不托管密码/远程会话",
+        "P7真实CMDB/状态源核验、按提供方拆有限子包；辅助登录不属本轮实施，供给/收益不足明确维持人工入口"
+      ],
+      "state": "planned_not_implemented",
+      "decision_due": "本波开工前",
+      "disposition": "受约束实施",
+      "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
+      "design_refs": [
+        "docs/design/device-module-contract.md"
+      ]
     }
-  ]
+  ],
+  "design_status_ref": "planning-design-status.json",
+  "decisions_ref": "planning-decisions.json"
 }
