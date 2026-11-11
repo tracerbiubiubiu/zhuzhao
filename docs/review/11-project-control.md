@@ -12,6 +12,7 @@
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
 - **问答确认与细化**：ENG-D02默认追加上传/保留旧文件、用户明确删除，EXE-D01按本地业务不变量同事务/独立后继异步均已确认。C03/I03按任务错失策略已细化[恢复合同](../design/schedule-recovery-policy.md)，数值仍候选，超限hold已获EXE-D03确认；C03基础6–10日/I03完整恢复8–12日；见[决策册](planning-decisions.json)。
 - **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险派单简化建议待确认。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
+- **组织赋角补核**：虚拟组可复用org_roles；现有角色展开尚未按组织status/deleted_at过滤，停组不等于已撤派生L1。C04/D06统一生命周期撤权与回归，详见[领域合同](../design/business-lifecycle-contracts.md)；未在本批修源码。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
 - **追溯入口**：[B27最终运行与安全收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md) → [11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)；首次全量覆盖与固定基线见[11-06总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)。原失败、NOT_RUN、旧HEAD及未部署表述保留其时点含义。
