@@ -81,15 +81,27 @@ TR保持 `job_runs` 现有status与execution fence，目标新增独立 `busines
 
 ## C03 稳定 cron occurrence
 
-目标每次计划触发有 `occurrence_key=(job_id,schedule_revision,scheduled_for_utc)`；task_id采用该键的固定namespace UUID或等价无碰撞稳定编码，数据库UNIQUE仍为最终守卫。`schedule_revision`只在cron/spec/timezone/启停重新排期等调度语义改变时递增；params/action变更用definition_revision并在认领时冻结快照，不能重写已起occurrence。manual trigger保持调用者operation_id，不与cron时隙碰撞。
+目标每次计划触发有 `occurrence_key=(job_id,schedule_revision,scheduled_for_utc)`；task_id采用该键的固定namespace UUID或等价无碰撞稳定编码，数据库UNIQUE仍为最终守卫。`schedule_revision`只在cron/spec/timezone或显式重排时间线时递增；普通停启/改补发策略仅改政策修订，不能创建新逻辑时隙身份。params/action用具有生效时间的definition_revision，按目标时隙选择并冻结快照，不能重写已起occurrence。manual trigger保持调用者operation_id，不与cron时隙碰撞。
 
-TR repository新增 `ClaimDueOccurrence(now, limit)`：PG短事务按due行 `FOR UPDATE SKIP LOCKED`；验证definition_revision，取**当前持久next_run**为scheduled_for，插入pending job_runs和payload快照、写occurrence行/唯一键、条件推进next_run后同事务commit；之后才向Redis enqueue。Redis失败沿既有queued=0 reclaim恢复，不重新创造task_id。推进next_run失败导致整个事务回滚，下次还是同一键。SQLite开发模式用单写事务/条件更新提供相同唯一合同，不使用其不支持的PG锁语法；多副本生产首选PG。PostgreSQL明确SKIP LOCKED适用于队列表而不提供通用一致读：[官方SELECT文档](https://www.postgresql.org/docs/current/sql-select.html)。
+TR repository新增 `ClaimDueOccurrence(now, limit)`：PG短事务按due行`FOR UPDATE SKIP LOCKED`，从当前持久next_run与政策/定义生效历史生成有界selected/skipped/deferred时隙计划，而非固定选最早一个。合并选真实最新遗漏时隙，逐次补选本批明确时隙；原子插入选中的pending job_runs/occurrence/参数快照、跳过区间回执与恢复批次预算，条件推进游标后commit，之后才向Redis enqueue。游标不越过未持久化的deferred范围；若另存恢复水位也须同事务可重建，不能清空旧积压。枚举/事务预算不足时暂停/延后，不猜最新时隙。Redis失败沿既有queued=0 reclaim恢复，不重新创造task_id。推进失败整笔回滚，下次仍使用同一时隙键。SQLite开发模式用单写事务/条件更新提供相同唯一合同，不使用其不支持的PG锁语法；多副本生产首选PG。PostgreSQL明确SKIP LOCKED适用于队列表而不提供通用一致读：[官方SELECT文档](https://www.postgresql.org/docs/current/sql-select.html)。
 
-默认建议保留现有“宕机后最多补一次”体验：保留最早持久due slot起一个occurrence，next_run推进到now之后第一个slot；跳过数量和区间进审计/指标，不能把now作为新slot重复补。timezone默认存显式UTC；已有未标时区定义按部署实际时区盘点后冻结，禁止升级时默默随主机时区变。DST按UTC instant唯一，两次同墙钟时间可有两个UTC slot；默认UTC不受DST影响。时钟回退不撤销已记录slot，向前跳按misfire策略处理。catch_up_all暂不开放，避免停机后把专业平台请求打爆；是否改变错失策略见EXE-D02。
+**按2026-11-11所有者反馈修订候选**：不同任务需要不同补发方式，创建/编辑计划时提供`misfire_policy`，不再建议全平台固定“最多补一次”。三种有界策略为：
+
+- `skip`：超过正常迟到容忍时间的历史时隙不补，从下一次正常计划继续；例如过时的会议提醒。普通tick轮询导致的短暂迟到不等于错失，必须有显式grace/迟到阈值。
+- `coalesce_latest`：将符合窗口的遗漏时隙合并为一次，选**真实最新遗漏时隙**作为scheduled_for，适合刷新当前设备/风险状态；其它被合并时隙记录原因，不能使用恢复时的now伪造新时隙。此候选替换旧稿“补最早一次”，不是已批准存量切换。
+- `catch_up_bounded`：逐个回补符合窗口且尚未物化的时隙，适合按业务日生成历史报表。配置最大回补年龄、每次恢复积压的总数量、每批数量、并发/顺序和速率；限额不能每tick归零。超限余项明确暂停待处理或按已审策略跳过并留回执，不能无限补或静默丢。
+
+计划保存策略/配置版本，并展示预计补发次数/范围；可选项受Action能力与权限限制，不允许把不支持历史数据/不具幂等效果的动作强行设逐次回补。无选项值的新计划需显式采用模板推荐并展示，不能以全局隐藏默认替用户决定。旧计划先清点并保留原行为，切换前预览范围和影响；系统维护类扫描按当前状态收敛，不套成逐日重发旧提醒。
+
+回补传scheduled_for、业务时区和数据区间。比如补11月8日日报，必须读取11月8日可回溯数据；数据不存在就报告无法回补，不能查今天现状冒充历史。跨Action/params修改时按明确生效版本历史取对应快照；缺少旧版本则要求回补预览并批准指定版本，不能默用最新参数。补发只处理遗漏时隙；已有failed/unknown任务分别走原ID的执行重试/对账，不再造一次效果。当前授权/grant仍复验，过期授权不会因补发恢复。
+
+改策略仅改变调度政策修订，不单凭递增schedule_revision让已执行逻辑时隙再次取得新身份。cron/timezone变更与启停需明确cutover barrier和新起点，旧积压保留原身份/快照；跨旧新revision的已物化时隙登记映射或明确不重叠范围，手动回补另有精确区间/幂等预览。timezone存显式值，UI可选Asia/Shanghai等IANA时区；已有未标时区按实际部署盘点冻结。DST按UTC instant唯一，时钟回退不撤销历史，向前跳按本计划策略处理。
+
+业界依据：APScheduler按任务/计划配置coalescing、误点宽限和并发，Quartz CronTrigger也提供不同misfire策略；Kubernetes将迟到期限与并发策略分开。这些作为合同设计参考，不是引入这些引擎的决定。[APScheduler](https://apscheduler.readthedocs.io/en/stable/userguide.html#missed-job-executions-and-coalescing)、[Quartz](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)、[Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 
 迁移时停止旧cronloop、记录cutover barrier与每job原next_run、导入schedule_revision=1，再启新loop；旧随机task_id仅有可证明slot映射时建立关联，不能凭创建时间粗猜去重。开始新loop前查询barrier附近旧job_runs并对账，无法确认的slot人工确认/按保守跳过记录，避免新旧两套调度同时起任务。重新启用job生成新调度revision并从明确起点计算，disable不删除历史occurrence。
 
-C03实施切片：C03.1 状态/协议/错误与能力矩阵；C03.2 主仓receipt/lease与逐动作effect_mode；C03.3 TR结构化完成、记账与status对账；C03.4 cron原子occurrence及切换演练。总账4–7日只覆盖首批既有动作与有界合同，不含为未知专业平台发明幂等API；缺下游能力的动作留manual_only，不因此无限延期C03本身。
+C03实施切片：C03.1 状态/协议/错误与能力矩阵；C03.2 主仓receipt/lease与逐动作effect_mode；C03.3 TR结构化完成、记账与status对账；C03.4 cron原子occurrence、按任务补发策略/预算与切换演练。范围扩大后粗估6–10日，只覆盖首批既有动作与有界合同，不含为未知专业平台发明幂等API；缺下游能力的动作留manual_only，不因此无限延期C03本身。
 
 C03反例出口必须同时通过：两个并发callback只有一个效果；running重复不使TR成功；效果已提交/响应丢失与MarkSucceeded失败均不重复效果且可收敛；lease过期旧writer不能覆新代；DB claim失败零调用；unknown不能普通retry；Finish失败先query补账；cron双副本/推进失败/Redis不可用/重启/时区边界同slot一任务；旧client真实现不会因202把未完成认成功；取消未知不假绿。分别保存mock时序、contract四格和真实PG+Redis+HTTP证据。
 
@@ -129,9 +141,13 @@ effect已经发生而本平台暂记未知时，主平台不自动反向调用�
 
 ### reassign 的明确业务取舍
 
-现有转换commit后另事务reassign，失败不回滚且可能不重试。推荐 EXE-D01：保持“转换成功即源事实成功”的兼容体验，但同转换事务写reassign intent；界面明确“转换成功，转派待处理/失败待处置”，不可报整笔全部成功。执行前绑定期望assignment版本/目标状态；目标已由人改派则冲突待核实，不用重试覆盖新决定。后置任务与转派分别展示receipt。
+现有`Transition`提交后才经`RunPostActions → ReassignAction.Execute → assignAsSystem`另开事务转派，失败不回滚且可能不重试；但`Assign → assignAuthorized`本来就把处理人、open→assigned状态及事件放同一PG事务。两者写同一本地tickets表，没有必须异步的技术理由。前稿将全部reassign推荐异步过宽，现改为按业务不变量给owner举例确认：
 
-备选将reassign纳入同一transition事务，转派失败则转换也失败；更强一致但改变用户业务行为、锁顺序和已有post_action期望，需所有者明确批准。**不能只把Delivery枚举改成durable就关账**。本轮设计不替所有者选择业务失败的含义；决定窗口R01编码前，默认不改生产行为。与C04试点复用transactional执行能力，避免再造一套内部事务框架。
+- **必须同时成立的本地变更**：例如“提交复核”定义为状态进入待复核且复核人改为乙，乙停用/不合法或写失败时整笔失败，保留旧状态/处理人，不产生后继消息意图。候选采用同一短事务内状态+本地转派+审计，抽取接受现有tx的内部用例，不能直接嵌套调用自行开事务的Assign。
+- **已成立事实的独立后继**：本地提交/指派成功后通知乙、同步专业平台等，在同一源事务写intent，提交后可靠异步；失败显示通知/同步待处理并重试/对账，不撤销本地已经成立的事实。只有业务明确允许“状态先成立、稍后再分工”的可选转派，才采用转换成功+转派独立待处理，并以assignment revision防重试覆盖新的人工作业。
+- **外部结果是完成前提**：先进入执行中/待回执，异步调用专业平台；确认结果后再本地同事务推进状态/责任。不能持PG事务等待网络，也不能把请求已发当业务已完成。
+
+不新增一个让普通用户随意切“同步/异步”的开关；由用例/转换定义声明哪些是必需本地变更、哪些是独立后继，发布前校验并给owner可理解的成功含义。EXE-D01仍待owner根据示例确认，现状不因本页修改而改变。上述范围与C04/R01复用事务/receipt，不重造流程引擎。[PostgreSQL原子事务](https://www.postgresql.org/docs/current/tutorial-transactions.html)、[Camunda事务边界示例](https://docs.camunda.org/manual/7.24/user-guide/process-engine/transactions-in-processes/)、[Transactional Outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
 
 ### 首批迁移与可验收切片
 
@@ -143,8 +159,8 @@ R01反例出口：源事务回滚无intent；业务commit后进程被kill仍最�
 
 ## 决策清单、实施依赖与审查出口
 
-- **EXE-D01（R01/C04）**：reassign推荐持久异步、转换不回滚并显式展示待处理；备选同事务失败整个转换。影响用户成功含义、UI状态与配置兼容，R01编码前决定。
-- **EXE-D02（C03）**：cron错失推荐保留“最多补一次且记录跳过slot”，默认UTC；备选有界catch-up（需最大补发数/窗口/速率）或全部跳过。影响停机恢复业务工作量，C03切换前决定；不因未决就让随机task_id继续充当新设计。
+- **EXE-D01（R01/C04）**：修正前稿一概异步建议；必需本地状态+转派推荐同事务，独立后继可靠异步，外部完成前提用待回执。owner要求先给例子，尚未批准最终业务语义。
+- **EXE-D02（C03）**：owner提出按任务配置，已修订候选为skip/coalesce_latest/catch_up_bounded，独立设迟到/范围/数量/并发/速率；不再要求全平台选一种。默认/能力允许集与旧计划切换仍需示例验证，不能将提问当作全部细节已批准。
 
 技术推荐不另抛所有者：状态/receipt、单调fence、稳定occurrence、DB先持久化、unknown先对账、additive协议、私有adapter独立验收按本文实施。真正下游API幂等/查询/取消能力未知须列connector合同差距，默认manual_only/关闭自动执行，不用“以后系统接好再说”无限挂账。
 

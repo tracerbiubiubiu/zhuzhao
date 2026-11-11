@@ -10,6 +10,7 @@
 
 - **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划首轮及本批详设已在独立codex分支落档，功能尚未实施。当前审计步骤3/详设候选，非全部设计完成；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
+- **问答候选更新**：C03按任务配置错失策略，粗估6–10日；附件补同对象引用例子，转派推荐改按业务不变量划事务。所有者仅提出问题/方向，具体成功语义未批准；见[决策册](planning-decisions.json)。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
 - **追溯入口**：[B27最终运行与安全收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md) → [11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)；首次全量覆盖与固定基线见[11-06总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)。原失败、NOT_RUN、旧HEAD及未部署表述保留其时点含义。

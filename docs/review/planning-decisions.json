@@ -144,25 +144,28 @@
       "recommendation": "移除字段引用只改字段，不自动删已绑定附件；显式删仍被当前引用的对象报冲突",
       "alternatives": "增加来源引用表，精确自动解链/GC",
       "impact_or_safe_fallback": "未决不做自动删除，不以文档操作存量对象",
-      "design_ref": "docs/design/engineering-execution-design.md"
+      "design_ref": "docs/design/engineering-execution-design.md",
+      "owner_feedback": "2026-11-11：要求先举例，目前未确认附件删除策略；工程C02已补同一对象/两个字段/附件列表例子"
     },
     {
       "id": "EXE-D01",
       "state": "owner_pending",
       "decision_due": "R01/C04编码前",
-      "recommendation": "转换同事务写转派intent，转换成功后显示转派待处理/失败；不回滚源转换",
-      "alternatives": "转派与状态变更同事务，任一失败整笔失败",
-      "impact_or_safe_fallback": "未决不改变既有用户成功含义，不开放新可靠承诺",
-      "design_ref": "docs/design/cross-repo-execution-contract.md"
+      "recommendation": "按业务不变量：必需本地状态+处理人同事务；独立通知/外部同步同事务落意图后可靠异步；外部完成前提先待回执再推进",
+      "alternatives": "业务明确允许状态先成立、后续再分工时，可选转派独立跟踪；不做普通用户可随意切同步/异步的开关",
+      "impact_or_safe_fallback": "用户未确认前不改变既有运行行为；当前Transition后转派仍两事务，此候选不等于已实现",
+      "design_ref": "docs/design/cross-repo-execution-contract.md",
+      "owner_feedback": "2026-11-11：要求举例和业界策略，尚未确认成功含义。原先一概异步推荐已纠正"
     },
     {
       "id": "EXE-D02",
       "state": "owner_pending",
       "decision_due": "C03切换前",
-      "recommendation": "宕机错失计划最多补一次并记录跳过区间，显式UTC/已核实际时区",
-      "alternatives": "有界catch-up或全部跳过",
-      "impact_or_safe_fallback": "不默默改变已有计划时间/副作用；新策略切换前等待确认",
-      "design_ref": "docs/design/cross-repo-execution-contract.md"
+      "recommendation": "创建/编辑计划按任务选择skip/coalesce_latest/catch_up_bounded；独立设grace、回补范围/总量/每批/并发/速率，受Action历史能力和当前授权限制",
+      "alternatives": "任务按时效与历史数据能力选择，不能全平台固定一种；不开放无界回补",
+      "impact_or_safe_fallback": "未定具体模板默认/预算和存量切换时先保留原行为；历史数据不可回溯不伪造旧日报；已有失败/unknown走原任务重试/对账",
+      "design_ref": "docs/design/cross-repo-execution-contract.md",
+      "owner_feedback": "2026-11-11：认为部分任务补一次、部分应补全，提出创建时让用户按任务选择，要求业界依据；不视为所有默认/预算均已批准"
     },
     {
       "id": "UX01",

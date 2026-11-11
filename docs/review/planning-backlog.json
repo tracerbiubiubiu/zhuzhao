@@ -195,9 +195,9 @@
       "title": "回调业务成功、记账与计划时隙",
       "wave": "P6.0",
       "owner": "zhuzhao+taskrunner/执行",
-      "estimate_engineering_days": "4–7",
+      "estimate_engineering_days": "6–10",
       "dependencies": [],
-      "acceptance": "running重放不被视为业务完成；执行/投递/终态分离；稳定时隙键防重复触发，远端未知可对账。",
+      "acceptance": "running重放不被视为业务完成；稳定时隙/receipt与unknown对账；每计划错失策略和预算可选可预览，历史区间/版本正确，补发与失败重试分开且不重复副作用。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -205,6 +205,11 @@
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/design/cross-repo-execution-contract.md"
+      ],
+      "scope": [
+        "完成/受理/记账/未知效果的receipt与重试对账、稳定occurrence及切换",
+        "按任务选择错失策略skip/coalesce_latest/catch_up_bounded；迟到阈值、历史区间/参数生效版本、总量/每批/并发/速率和超限处置，UI创建/编辑预览",
+        "只补未物化时隙，已有failed/unknown走原执行重试/对账；改策略/停启不靠revision再造同一逻辑时隙"
       ]
     },
     {
