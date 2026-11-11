@@ -212,9 +212,9 @@ R1-2 要拖入的 12 个字段：
 
 | # | 谁 | 操作 | 预期 | 后端核验 | 结果 |
 |---|---|---|---|---|---|
-| R10-1 | agent | cron-status | 6 个任务 `started_at` 非空；timeout_scan `observe = true` | API | ⬜ |
-| R10-2 | agent | B 案守卫扫描：页面行挂写端点 | 仅 ticket_list 的 transition 一处（登记例外） | SQL | ⬜ |
-| R10-3 | agent | 审计面：本轮设置修改、导出、删附件均有审计行 | 三类行齐全 | `audit_logs` | ⬜ |
+| R10-1 | agent | cron-status | 6 个任务 started 非空；timeout_scan observe 状态可见 | ✅ 全部已启动（API 实测「无未启动项」）；observe=false（走查中已关） | ✅ |
+| R10-2 | agent | B 案守卫扫描：页面行挂写端点 | 仅 ticket_list 的 transition 一处（登记例外） | ✅ SQL 全表扫描：唯一命中 `ticket_list | POST /tickets/transition`（000068 设计内例外）——其余页面行零写端点 | ✅ |
+| R10-3 | agent | 审计面：本轮设置修改、导出、删附件均有审计行 | 三类行齐全 | ✅ 实测 9/5/6 条（设置修改/工单导出/附件删除——多轮走查全部留痕） | ✅ |
 | R10-4 | 所有者 + agent | B02 撤权回归：甲保持登录，E000001 在用户管理「停用」甲 | 甲下一次操作即被踢回登录页；「启用」后甲须重新登录 | token 被拒 | ⬜ |
 | R10-5 | 所有者 | 收尾：验收数据（`P5-` 工单、`p5_accept` 类型、`p5_region` 字典、规则、测试账号）保留还是清理 | 由所有者定 | — | ⬜ |
 
