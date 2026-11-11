@@ -139,18 +139,20 @@
       "title": "目录、新仓模板与规范同步",
       "wave": "P6.1",
       "owner": "五仓/架构",
-      "estimate_engineering_days": "2–4",
+      "estimate_engineering_days": "3–5",
       "dependencies": [
         "G01"
       ],
-      "acceptance": "公共机械规则单源版本化同步，业务规范各仓归属明确；模板不生成空模块，差异可检查。",
+      "acceptance": "公共机械规则单源版本化同步，业务规范各仓归属明确；模板不生成空模块，差异可检查。；五仓实际文件按语言profile检查并能拒绝对应格式/解析反例，现有工具不重复建设。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "scope": [
         "目录职责、新仓模板、机械公共规则与SSOT链接",
-        "重大决策ADR覆盖、长文按职责归位、Q5历史注记及L组余项逐项裁决；已完成搬树不重做"
+        "重大决策ADR覆盖、长文按职责归位、Q5历史注记及L组余项逐项裁决；已完成搬树不重做",
+        "按Go、UI TS/Vue/Less/CSS、Shell/Python、YAML/JSON/Markdown/Make的profile固定格式/质量检查、版本/hash与例外；只改动文件先启用，不全仓格式重写",
+        "当前zz-commit包装器仅主仓存在；G01硬化后由G06同步适用仓，未同步用等价显式路径提交"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md"
@@ -992,7 +994,7 @@
       "dependencies": [
         "I01"
       ],
-      "acceptance": "并发unique、破坏性schema兼容、主仓受权查询/字段范围、全量导入快照与恢复、大小预算/错误脱敏和探针分别验收；不造资产或风险权威。",
+      "acceptance": "并发unique、破坏性schema兼容、主仓受权查询/字段范围、全量导入快照与恢复、大小预算/错误脱敏和探针分别验收；不造资产或风险权威。；明确EOF/尾随及replace世代反例，预算跨网关/服务/解析/存储各层一致。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -1002,7 +1004,9 @@
         "破坏性schema变更预检、旧记录兼容",
         "主仓操作资格/类型与字段允许集；AL不宣称已有行级IAM，Agent不直持内部SK",
         "全量替换预览/确认/备份或恢复点/失败不丢旧集",
-        "错误不泄露DB详情，按现有运维栈补探针/指标；通用发布灾备与依赖治理分别由E09/G05计价"
+        "错误不泄露DB详情，按现有运维栈补探针/指标；通用发布灾备与依赖治理分别由E09/G05计价",
+        "CMP-R02先重核当前main；EOF完整消费、尾随垃圾/多顶层JSON拒绝且不写；全量replace后旧revision/ETag世代不可复活，已修仅保回归",
+        "跨层1MiB网关/16MiB直连等当前限制、解析行/字段/解压/临时盘/事务预算分别验；不把配置包导入替代AL运行数据"
       ]
     },
     {
@@ -1223,6 +1227,10 @@
       "estimate_scope": "只计该包增量；D11/D01不重复计本包范围",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
+      ],
+      "scope": [
+        "保留已确认高级别风险沿组织树抄送一级部门负责人；源五级到平台四级的触发阈值/频次等配置在B08冻结，不重问是否需要该能力",
+        "解析当前有效且受权负责人；无负责人或无资源资格记recipient_unresolved/recipient_unauthorized，禁止广播/猜人，不绕三层授权"
       ]
     },
     {
@@ -1359,6 +1367,35 @@
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
         "docs/design/device-module-contract.md"
+      ]
+    },
+    {
+      "id": "E10",
+      "title": "人工台账迁移导入与跨指纹合并处置",
+      "wave": "P6.E",
+      "owner": "zhuzhao+ui/领域迁移",
+      "estimate_engineering_days": "2–4",
+      "dependencies": [
+        "D01",
+        "D03",
+        "D08",
+        "D10",
+        "X02"
+      ],
+      "acceptance": "P6.1出口逐项决定风险Excel导入、工单业务导入、跨指纹人工合并的接入/有限工具/退出；分别交范围、样本、风险/权限和子估算，获准增量在P6.E固定子窗口验收。",
+      "state": "planned_not_implemented",
+      "decision_due": "P6.1出口；不等待后续实施依赖完成才调查/决策",
+      "disposition": "按明确窗口完成接入/建设/退出裁决",
+      "estimate_scope": "仅三项用例/现有供给/数据风险裁决与有限合成验证，不含完整通用导入或合并产品；获准建设必须逐项给独立估算，不能用2–4日包办实施。",
+      "decision_inputs": "是否有真实存量迁移、Excel模板/字段/量级、来源ID与重复策略、并单业务示例及权限；缺失不猜，按固定出口明确退出本轮候选或保留已排子包",
+      "delivery_rule": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现",
+      "scope": [
+        "风险Excel：模板/校验/逐行报告、来源命名空间与snapshot完整性、数据去重/回放；可经私有迁移工具转标准feed，但模板/报告要明确交付或退出",
+        "工单业务导入：调用工单用例，类型发布版本、逐行L1/L2/L3、creator/owner/附件白名单、幂等/部分成功恢复；不归D05配置包或U03批量标签",
+        "跨指纹人工merge：主从/merged_into回链、不同owner和活动links冲突、来源后续归属、接受结论/计数/审计及补偿；不以同指纹去重/N:1关联代替"
+      ],
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
       ]
     }
   ],

@@ -30,7 +30,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **Phase6前规划/详设** | 66包/501来源/144依赖；28详设候选+5组件原型+2逐页范围+31边界/处置；私有扩展/内网adapter、无SSO设备和版本升级已入账 | 📋 设计评审，owner部分待决；实现均未交付 | [收口](planning-closeout.md)、[增量复核](reports/pre-phase6-design-deepening-2026-11-11.md) |
+| **Phase6前规划/详设** | 67包/501来源/149依赖；28详设候选+5组件原型+2逐页范围+32边界/处置；私有扩展/内网adapter、无SSO设备和版本升级已入账 | 📋 设计评审，owner部分待决；实现均未交付 | [收口](planning-closeout.md)、[需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md) |
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
 | **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；61包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |

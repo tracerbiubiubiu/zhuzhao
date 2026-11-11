@@ -8,7 +8,7 @@
   },
   "summary": {
     "boundary_and_page_inventory": 2,
-    "boundary_contract_or_disposition": 31,
+    "boundary_contract_or_disposition": 32,
     "component_contract_and_representative_prototype": 5,
     "detailed_contract_candidate": 28
   },
@@ -1032,6 +1032,21 @@
         "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
       ],
       "next_design_gate": "P6.3开工前"
+    },
+    {
+      "work_item": "E10",
+      "wave": "P6.E",
+      "design_depth": "boundary_contract_or_disposition",
+      "design_refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "owner_policy": "see_planning_decisions",
+      "api_schema_frozen": false,
+      "remaining": [
+        "P6.1出口以三项具体样本分别裁决；获准增量须独立详设/估算与P6.E子窗口，不以同名包代销"
+      ],
+      "next_design_gate": "P6.1出口裁决/P6.E获准增量开工前"
     }
   ]
 }

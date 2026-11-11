@@ -28,6 +28,8 @@
 
 ## Phase6前重规划
 
-[正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责66包与全部来源处置，旧台账保留追溯。
+[正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责67包与全部来源处置，旧台账保留追溯。
 
 [审计/详设收口](planning-closeout.md)给当前五步位置；[逐包设计深度](planning-design-status.json)与[所有者决策](planning-decisions.json)区分候选/边界、确认/未决，不再将规划落档等同全部详细设计完成。
+
+[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前67包/501来源/149依赖，旧报告数量保持原时点。

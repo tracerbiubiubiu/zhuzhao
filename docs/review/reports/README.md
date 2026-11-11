@@ -8,6 +8,8 @@
 
 ## 最新收口与总报告
 
+- [原始需求到现行计划的闭环审计（2026-11-11）](pre-phase6-requirements-audit-2026-11-11.md)
+
 - [Phase6前详设与新增要求复核（2026-11-11）](pre-phase6-design-deepening-2026-11-11.md)
 - [Phase5后首轮全项目重规划（2026-11-11）](pre-phase6-replanning-2026-11-11.md)
 

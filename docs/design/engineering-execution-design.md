@@ -6,7 +6,7 @@
 
 ## 已有底座及本次差距
 
-- 五仓已有 `.githooks/`、`scripts/commit-policy.py`、`scripts/zz-commit.sh`；主仓 `Makefile` 的 `lint`、`test-unit`、`test-integration`、`test-cover` 与四档 `acceptance` 已存在。主仓 `.github/workflows/ci.yml` 的 `commit-policy/lint/test/test-integration` 已跑 main/PR；不得重新建设一套同名业务测试。主仓 `lint` 已验 Swagger，CI 已验 Wire 新鲜度。
+- 五仓已有 `.githooks/`、`scripts/commit-policy.py` 和显式路径提交协议；`scripts/zz-commit.sh` **仅主仓存在**，其余四仓当前用等价 `git commit -F msg -- <paths>`，不能宣称包装器已同步。主仓 `Makefile` 的 `lint`、`test-unit`、`test-integration`、`test-cover` 与四档 `acceptance` 已存在。主仓 `.github/workflows/ci.yml` 的 `commit-policy/lint/test/test-integration` 已跑 main/PR；不得重新建设一套同名业务测试。主仓 `lint` 已验 Swagger，CI 已验 Wire 新鲜度。
 - 主仓 `.github/workflows/go-security.yml` 的 `source-evidence` 仍限定旧 phase5 分支及扫描脚本路径，兄弟 SHA 为历史固定值；并不代表 main 每次改动有漏洞门禁。UI `.github/workflows/ci.yml` 在 shell 内直接插入 `github.head_ref`，且按“同名兄弟分支，否则 main”选 Swagger 源；这不是可复现的五仓候选组合。UI CI 有 lint/typecheck/build/audit/test，真实 E2E 仍在独立交付链。
 - 本轮只读 GitHub 设置快照中，五仓 main 未保护、无 required checks/ruleset；secret scanning/push protection 已开启，vulnerability alerts/Dependabot 未开启。这是 2026-11-11 时点事实，实施 G02 前必须再读远端，不能凭文稿宣称已经改变。
 - 主仓 `internal/pkg/exprcalc/exprcalc.go` 的 `Identifiers` 按函数**名称**全局排除标识符；`ApplyFormulasContext` 将原输入直接作为公式环境。`internal/service/ticket/service.go` 的 `Create` 已收集文件字段并同事务绑定，`Update` 只把 `req.Attachments` 交给 `bindAttachmentsTx`，未同规处理修改后的 file 字段。
@@ -22,7 +22,7 @@
 
 运行栈不得使用共享 dev/zt 的 PG/Redis/卷/测试账号；单独 Redis 实例优于只换 DB 编号。容器、网络、卷必须有 owner label，绑定 loopback 端口。既有 acceptance/globalSetup 种子账号例外只限该私有栈，其余人工场景用专属账号。启动和停止各保存共享资源指纹（ID、image、start time、mount/labels），停止只按本次清单与匹配标签操作；owner 不符即拒绝。禁止全局 `docker system prune`、按模糊名称删除和“先抢默认端口再说”。
 
-**提交与恢复。** 提交前比较 `git diff --name-only`、staged 集合与允许路径，后用现有 `zz-commit.sh` 显式路径提交并核 `git show --stat`；hooks 不能代替 worktree。集成者按提交 SHA cherry-pick，冲突时核实归属，不把另一任务工作区打包提交。任务中断保留清单/日志/首次失败；恢复先核 owner 与实际进程，不重置他人工作区。清理证据最后写 `cleanup_complete`，漏项必须逐项列为运行资源未收尾。
+**提交与恢复。** 提交前比较 `git diff --name-only`、staged 集合与允许路径，主仓用现有 `zz-commit.sh`，其余四仓先用等价显式路径形态，随后核 `git show --stat`。G01补包装器精确集合/路径边界，G06将通过反例的版本同步给适用仓；未同步不能调用不存在的脚本。hooks不能代替worktree。集成者按提交SHA cherry-pick，冲突时核实归属，不把另一任务工作区打包提交。任务中断保留清单/日志/首次失败；恢复先核owner与实际进程，不重置他人工作区。清理证据最后写cleanup_complete，漏项必须逐项列为运行资源未收尾。
 
 **实施切片。** G01.1 定清单 JSON Schema 与本地创建/验所属检查；G01.2 为现有 acceptance/UI runner 提供参数化私有 profile（保留原命令入口）；G01.3 精确清理与崩溃接管演练。出口：两任务并发修改同名路径、提交及测试互不卷入；故意写错 owner/占用端口/清理共享卷均被拒绝；kill runner 后仅凭清单可查明并清理本任务资源。
 
@@ -103,6 +103,22 @@ G04 第一批目标和预算均为建议实施参数：
 新仓 profile 必选 `go-service/go-library/ui/contract/private-connector`：共同必需 README、AGENTS、LICENSE/贡献与安全报告入口、docs/design/guides/ops/review 按实际材料建立、CI、hooks/commit script、依赖锁、合成配置示例/secret reference 说明、支持版本/维护人/生命周期、兼容 manifest 和 contract fixtures。service 增 `cmd/internal/config/ops` 实际入口与健康/关闭/迁移（有持久库才要 migrations）；library 公共包在根层、禁止业务表与服务编排；ui 保留集中请求/生成类型/路由/测试；contract 可只含 schema/fixtures/验证器，不强塞 Go；private connector 独立服务和私有运行说明，不 import core internal、直写 core 库或复制权限判定。没代码/没职责的目录不建。
 
 ADR 记录跨仓授权、可靠交接、扩展版本、provider切换、破坏性迁移等重大选择；保留 supersedes 链。文档链接/符号与合同 digest 检查随 PR；Q5 历史注记与 L 组未决在 G06 固定窗口逐项采纳/替代/退出，入口指回唯一总账。已完成目录搬迁不重演；新增仓先用一张“谁拥有数据/权限/恢复、为何不是模块”的开仓卡，通过具体交付证明独立边界。
+
+### G06语言与机械文件profile
+
+当前四Go仓的Makefile均已有gofmt/vet；UI的`eslint.config.mjs`使用skipFormatting、只匹配src的TS/Vue逻辑，package.json无formatter检查命令。因此“已有lint”不能证明五仓代码排版/样式一致。跨语言一致指相同命名/边界/错误/文档原则与可重复检查，不强迫Go和Vue使用相同缩进。
+
+| profile | 推荐规范与检查 | 边界与实施出口 |
+|---|---|---|
+| Go（主仓/TR/AL/utils） | 保留gofmt与vet，按各自最低/推荐Go版本执行；新增目录遵现有包命名与依赖方向 | 不为统一名义换另一套formatter；生成物由钉版本生成器核新鲜度，手写与生成分开 |
+| UI TS/JS/Vue | 保留ESLint/vue-tsc；G06新增钉版本的独立Prettier格式检查，候选2空格、单引号、无分号；在本批改动文件先启用 | 核ESLint排除项逐项原因，不将种子TSX长期排除自动扩大；不把类型检查当组件/授权测试，不顺手全仓格式重写 |
+| UI Less/CSS/Vue样式 | 同一formatter管格式；语义引用U02的tokens/状态/布局规范，新写样式优先token而非复制色号 | 先检查改动文件及少量token硬编码反例；只有重复实际缺陷才增样式lint规则，不先引一套无使用者的样式平台 |
+| Shell/Python公共脚本 | 按shebang选sh -n/bash -n；Python AST/编译语法检查使用隔离cache，现有提交策略黑盒继续执行；LF/UTF-8/末尾换行，Python4空格，shell沿现有脚本约定 | 语法通过不证明安全；owner/路径/恶意输入反例归G01/G02，不执行刚下载的policy脚本。格式化工具另经收益验证，不一次新增多套依赖 |
+| YAML/JSON/Markdown/Make | YAML/JSON解析+schema/目录来源检查；工作流注入/权限归G02；Markdown本地链接/围栏/符号；Make recipe保留tab | 同步EditorConfig按文件类型；JSON/代码生成清单保留自己的canonical序列化，不用全局formatter破坏hash或制造巨diff；配置解析不等于真实环境生效 |
+
+Prettier仅作为推荐开发依赖，实施前核目标Node兼容和准确版本，不声称当前已装。采用独立格式检查与现有质量lint分工，避免双重格式规则冲突，参见[官方说明](https://prettier.io/docs/integrating-with-linters)。本轮未新增依赖或格式化源码。
+
+bundle记录profile名称/版本、配置hash和例外理由/复核窗口；每仓公布fmt-check/lint/docs-check等实际入口。CI读取真实diff按适用profile检查，新仓必须有一个应通过与一个应拒绝的最小例子；不能靠复制同名配置证明生效。G06/P6.1出口是五仓真实文件各跑适用检查并拒绝故意格式/解析/边界反例；新增profile与规范仍由同一SSOT维护。
 
 ## C01：表达式引用、作用域与输入隔离
 

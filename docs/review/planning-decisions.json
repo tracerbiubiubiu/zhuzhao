@@ -123,9 +123,9 @@
       "id": "B08",
       "state": "owner_pending",
       "decision_due": "D15 首条生产风险通知启用前",
-      "recommendation": "采用§9.2四档候选；补定汇总时区/时刻、临期窗口、额外负责人和静默例外",
-      "alternatives": "四档全即时；或全部每日汇总（接受/交接待办仍即时）",
-      "impact_or_safe_fallback": "全即时噪声较多，全汇总延迟高风险提示；未决先完成可验证合同与mock，不静默以例子充生产策略",
+      "recommendation": "保留已确认高级别风险上溯抄送；冻结源五级到平台四档触发阈值、受影响组织锚点/负责人集合、汇总时区/时刻、临期窗与静默例外",
+      "alternatives": "频次可按四档候选、全即时或分层汇总；不是重问是否需要已确认的负责人抄送",
+      "impact_or_safe_fallback": "未决可完成合同/mock；首条生产规则不启用。负责人未解析/无资源资格有显式待办，不广播/猜人，不静默将应抄送降为可选",
       "design_ref": "docs/design/business-lifecycle-contracts.md"
     },
     {
@@ -194,11 +194,18 @@
     {
       "id": "P-RESOURCE",
       "state": "owner_pending",
-      "decision_due": "规划验收/实际T0前",
+      "decision_due": "实际实施启动前，不阻塞本轮文档审阅",
       "recommendation": "先P6.0/P6.1底座，再风险核心与只读AI；设备薄模块P6.3",
       "alternatives": "按实际业务优先级调整独立包",
-      "impact_or_safe_fallback": "未定T0/投入不承诺日历；不以Agent并行推算无限产能",
+      "impact_or_safe_fallback": "未定T0/投入不承诺日历，文档审阅仍可进行；不以Agent并行推算无限产能",
       "design_ref": "docs/design/platform-evolution.md"
+    },
+    {
+      "id": "O09",
+      "state": "owner_confirmed",
+      "decision": "保留高级别风险沿组织树抄送一级部门负责人能力；触发级别映射/频次/时区等配置仍由B08冻结",
+      "source": "docs/phase6/01-r1-ingest-ledger.md §3.1 与07触发目录P1-6，2026-11-02所有者已确认场景",
+      "implementation": "planned_not_implemented"
     }
   ]
 }
