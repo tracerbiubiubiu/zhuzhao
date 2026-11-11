@@ -1,235 +1,53 @@
-# 文档目录
+# zhuzhao 文档入口
 
-> 本项目所有文档的组织入口。按文档类型分目录存放。
+先按任务选择入口。本文档树区分**当前实现、已批准后续方案、历史时点记录**；“已拍板”不等于已落码，“历史门禁通过”不等于当前候选通过。
 
-> **📌 先读 [VISION.md](./VISION.md)**：产品定义、MVP 边界铁律、阶段归属裁决依据与文档修改纪律。任何"某能力放哪个阶段"的争论以此为准。
+## 第一次接手
 
-## Git 分支策略
+1. 读 [产品边界](vision.md)，知道系统负责什么。
+2. 读 [架构导览](design/architecture.md)，理解五仓、三层鉴权与可靠性边界。
+3. 按 [开发指南](guides/development.md) 准备工具和隔离环境。
+4. 查 [项目控制台](review/11-project-control.md) 的能力矩阵、健康状态和迁移地图，再进入具体模块。
 
-| 分支 | 用途 |
-|------|------|
-| **`dev`** | 唯一集成主线；文档 SSOT；代码 PR 合入目标 |
-| **`feature/step-N-*`** | Phase 1 短生命周期实现分支（从 `dev` 切出，合入后删除） |
+## 按任务找文档
 
-`docs/phase1/` 等为**文档目录**，与 Git 分支无关。详见 [phase1/README.md §Git 分支策略](./phase1/README.md#git-分支策略)。
+| 任务 | 入口 | 内容边界 |
+|---|---|---|
+| 本地开发、生成、测试 | [guides/](guides/README.md) | 可操作步骤及预期结果 |
+| 理解模块 | [modules/](modules/README.md) | 当前调用链、数据与权限 |
+| 理解架构与决策 | [design/](design/README.md)、[adr/](adr/README.md) | 架构解释；ADR 保留采纳/替代/实施状态 |
+| 查 API | [api/](api/README.md) | 响应封装、错误码登记、Swagger |
+| 部署、备份、故障处理 | [ops/](ops/README.md) | 操作手册；测试账号唯一台账在 runbook §4 |
+| 当前状态、审计证据 | [review/](review/README.md) | 控制台、方法、正式日期报告和必要历史 |
+| 查阶段设计/后续计划 | [路线图](roadmap.md)、[proposal/](proposal/README.md) | 阶段范围与设计，不能直接当作完成证明 |
 
-## 目录结构
+## 阶段导航
 
-```
-docs/
-├── README.md                        # 本文件，文档索引
-├── VISION.md                        # 产品定义与 MVP 边界（范围裁决锚点，必读）
-├── roadmap.md                       # 三阶段实施路线图总览
-├── standards.md                     # 工程公约 SSOT（代码/API/迁移/安全公约；AGENTS.md 引用，zhuzhao/taskrunner/activelist 全生态适用）
-├── acknowledgments.md               # 致谢与借鉴出处（借鉴/参考项目集中登记；新借鉴随批登记）
-├── docs.go / swagger.json / swagger.yaml  # ⚙️ swag 生成物（make swag 输出，勿手改）
-│
-├── design/                          # 框架设计文档（技术架构层面）
-│   ├── architecture.md              # 系统架构（What：系统是什么）
-│   ├── design-decisions.md          # 设计决策（Why：为什么这么选）
-│   ├── rbac-inheritance-and-cascade.md  # RBAC 继承与级联（Phase 2b+ 备忘 SSOT）
-│   └── system-comparison.md         # 现有系统对比分析
-│
-├── proposal/                        # 综合方案文档（业务+技术整合）
-│   ├── overview.md                  # 方案总览：目标、场景、架构全景
-│   ├── auth-design.md               # 认证鉴权方案：AuthN + AuthZ 完整设计
-│   ├── data-init.md                 # 数据初始化与幂等性方案
-│   ├── resource-model.md            # 资源抽象与自注册机制方案
-│   ├── hr-directory-sync.md         # HR 目录同步与虚拟组挂载方案
-│   └── deployment-evolution.md      # 部署演进：单体 → 微服务化路径
-│
-├── modules/                         # 模块级设计文档（各模块完整设计，跨阶段）
-│   ├── README.md                    # 模块索引与依赖关系
-│   ├── auth.md                      # 认证模块：登录、双Token、RT轮换
-│   ├── user.md                      # 用户模块：CRUD、密码、角色绑定
-│   ├── role.md                      # 角色模块：CRUD、菜单分配、策略同步
-│   ├── organization.md              # 组织模块：ltree树形、成员、虚拟组
-│   ├── menu.md                      # 菜单模块：三类型、API绑定、前端权限
-│   ├── authz.md                     # 鉴权模块：路由级Casbin + 资源级Registry
-│   ├── audit.md                     # 审计模块：操作审计（Phase 1 同步写 DB）
-│   ├── middleware.md                # 中间件模块：JWT、CORS、限流、安全头
-│   └── ticket.md                    # 工单模块：类型配置、状态机、权限模型
-│
-├── phase1/                          # Phase 1：最小可用（认证鉴权框架）
-│   ├── README.md                    # 大纲 + 边界 + 实施顺序 + 测试策略
-│   ├── 01-infra.md                  # 基础设施
-│   ├── 02-auth.md                   # 认证（登录限流、会话吊销；AK/SK 仅方案保留）
-│   ├── 03-authz.md                  # 鉴权（路由级 + Registry 空接口）
-│   ├── 04-user.md                   # 用户
-│   ├── 05-role.md                   # 角色
-│   ├── 06-organization.md           # 组织
-│   ├── 07-menu.md                   # 菜单
-│   ├── 08-audit.md                  # 审计日志 + 应用日志规划
-│   ├── 09-middleware.md             # 中间件
-│   └── 10-concurrency.md            # 并发与事务
-│
-├── phase2/                          # Phase 2：业务可用（工单 + 组织增强 + 委托）
-│   ├── README.md                    # 大纲 + 边界 + 实施顺序（2a/2b/2c）
-│   ├── 01-auth-enhance.md           # 2b：设备管理、密码复杂度
-│   ├── 02-authz-resource.md         # 2a：ResourceRegistry + assigned
-│   ├── 03-org-enhance.md            # 2b：虚拟组、scope、HR 同步
-│   ├── 04-org-delegation.md         # 2c：owner、组内分级、Authorize
-│   ├── 09-ticket.md                 # 2a/2b：工单 MVP + scope 升级
-│   └── 10-storage.md                # 2b：MinIO 预签名、附件
-│
-├── phase3/                          # Phase 3（重定位后）：通用能力底座 + 内网迁移（M-E taskrunner / M-A activelist / M-HR / M-UAA🚦 / M-Mig）
-│   ├── README.md                    # 大纲 + 边界 + 实施顺序（索引含 00–17 全量）
-│   ├── 00-startup-checklist.md      # 启动检查单（唯一检查入口）
-│   ├── 01~09、11、14、15 号          # 可观测性/多实例/审计L2/HA/安全/运维/平台/部署分离/规划视图/脚本平台调研（多随 M1 🚦 或对接参考）
-│   ├── 10-ticket-business.md        # 工单业务能力（已转对接参考，§23）
-│   ├── 12-frontend.md               # 前端规格（参考）
-│   ├── 13-implementation-plan.md    # 执行计划（排期 SSOT：现行主链里程碑/人日/依赖）
-│   ├── 16-external-integration.md   # 外部服务集成配套（taskrunner/activelist 的 zhuzhao 侧能力清单）
-│   └── 17-uaa-integration.md        # M-UAA：公司统一权限平台对接（已立项待内网启动）
-│
-├── phase4/                          # Phase 4：前端 zhuzhao-ui 落地主轴（00 盘点/01 前端设计/02 实施计划/03 场景矩阵；✅ 已收口）
-├── phase5/                          # Phase 5：前端可视化配置与通用能力底座线（十段，规划草案未排期；SSOT = phase5/README.md）
-├── phase6/                          # Phase 6：风险管理模块（规划草案，未排期；硬前置=phase5 S1/S2/S6+S10；SSOT = phase6/README.md）
-│
-├── review/                          # 审查记录（00–10 = Phase 1/2 历史快照；11 = 活文档·项目控制台）
-├── api/                             # API 契约（后端 SSOT）
-│   ├── response.md                  # 响应体 Envelope
-│   └── errcode.md                   # 业务错误码
-│
-├── ops/                             # 运维文档
-│   ├── deployment.md                # 部署指南
-│   └── runbook.md                   # 故障处置与运维手册（真实事故+演练四项沉淀）
-│
-└── adr/                             # 架构决策记录（ADR）
-    ├── README.md                    # ADR 索引与模板说明
-    ├── ADR-001-event-mechanism-l1-steady-state.md  # L1 长期稳态
-    ├── ADR-002-asynq-async-task-executor.md        # Asynq 异步任务执行器
-    └── ADR-003-activelist-integration-form.md      # activelist 集成形态
-```
+> **2026-11-11 当前状态**。Phase 5 阶段交付与工作区收尾已确认，剩余问题和待验记录已移交 Phase 6。后续进行全项目重新设计规划，既有后续阶段方案、接口、波次和估算作为输入。交付、资源清理实际终态和最终收据见 [Phase 5 验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理) 与 [运行手册](ops/runbook.md)。
 
-## 文档分类说明
+[Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是当前维护分支对应的能力与债务入口。[Phase 6](phase6/README.md) 保留既有设计与待办，供 Phase 5 收尾后的全项目重规划；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
 
-### design/ — 框架设计文档
+当前工作分支不能从目录名推断。Phase 5 维护在 `phase5`，三个 Go 兄弟审计候选在各自 `codex/phase5-audit`；合 main、发布和下一阶段启动遵循所有者安排，文档整理不改变分支发布策略。
 
-项目"设计阶段"产出的技术架构文档，描述系统结构、决策推理和实施步骤。
+## 五仓各自维护，结构统一
 
-| 文档 | 定位 | 读者 |
-|------|------|------|
-| `architecture.md` | 系统全貌：模块边界、数据库 schema、API 总表、分阶段计划 | 所有开发者 |
-| `design-decisions.md` | 决策推理：方案对比、Q&A 讨论、故障场景分析 | 架构 review |
-| `rbac-inheritance-and-cascade.md` | RBAC 继承、业界对照、删改级联矩阵（**Phase 1 不实现**） | 架构 review |
-| `system-comparison.md` | 现有系统审计对比：旧系统 vs 新框架的差异与决策 | 架构 review |
+- **zhuzhao**：IAM、工单、权限、网关和主应用运维，本树为权威。
+- **zhuzhao-ui**：[UI 文档](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/phase5/docs)，维护前端开发、组件、测试和发布。
+- **zhuzhao-utils**：[公共库文档](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/codex/phase5-audit/docs)，维护包契约、使用和版本纪律。
+- **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/codex/phase5-audit/docs)，维护执行、调度、回调和服务部署。
+- **activelist**：[动态数据服务文档](https://github.com/tracerbiubiubiu/activelist/tree/codex/phase5-audit/docs)，维护当前 PostgreSQL 模型、Schema、CRUD/导入和部署。
 
-### proposal/ — 综合方案文档（2026-08 方案期产物，状态见各文件头横幅）
+链接指向对应工作分支，准确提交与工作区状态以各仓 Git 及本轮收据为准。跨仓只引用契约，不复制整份实现说明。
 
-> 状态口径：**已实现**（被 phase1/2 交付取代，留作设计溯源）/ **活跃**（仍是现行设计的 SSOT 或被 phase3 引用）/ **参考**（演进/对照素材）。
+## 维护规则
 
-结合业务场景和旧系统经验整理的完整方案设计。与 `design/` 的区别：
-- `design/` 关注"框架怎么搭"（技术视角）
-- `proposal/` 关注"业务怎么做"（方案视角，含场景、流程、演进路径）
+[工程公约](standards.md) 管代码/API/权限/迁移与协作；[文档维护规则](documentation.md) 管分类、命名、状态、链接和迁移；[致谢](acknowledgments.md) 记录设计参考。根 `AGENTS.md` 是协作协议。
 
-| 文档 | 定位 | 内容 |
-|------|------|------|
-| `overview.md` | 方案总览 | 目标系统、典型场景、架构全景图、技术选型汇总 |
-| `auth-design.md` | 认证鉴权方案 | AuthN（双 Token）+ AuthZ（分层鉴权 + 资源抽象）完整设计 |
-| `data-init.md` | 数据初始化方案 | 迁移分层、种子数据幂等、运行时 Sync 安全规则 |
-| `resource-model.md` | 资源模型方案 | 资源接口抽象、自注册机制、每资源独立 Enforcer |
-| `hr-directory-sync.md` | HR 目录同步 | 实体/虚拟组、move 级联、与 owner 边界 |
-| `deployment-evolution.md` | 部署演进方案 | 单体底座 → IAM 独立部署 → 微服务化路径 |
+正式报告放 `review/reports/`，必要旧设计放 `review/archive/`；`doc/` 保持本地参考，执行卡、原始日志、截图与临时输出放 ignored `.codex/` 等目录。Swagger 的 `docs.go`、`swagger.json`、`swagger.yaml` 保留现有生成路径，勿手改。
 
-### modules/ — 模块级设计文档
+## 变更记录
 
-每个核心模块的详细设计，包含数据模型、接口定义、核心流程、旧系统借鉴、分阶段实施。
-
-| 文档 | 模块 | 核心职责 |
-|------|------|---------|
-| `auth.md` | 认证 | 登录、双 Token、RT 轮换、登出、多设备 |
-| `user.md` | 用户 | CRUD、密码管理、角色绑定 |
-| `role.md` | 角色 | CRUD、菜单分配、Casbin 策略同步 |
-| `organization.md` | 组织 | ltree 树形、成员管理、组织角色 |
-| `menu.md` | 菜单 | 三类型、API 绑定、前端权限 |
-| `authz.md` | 鉴权 | 路由级 Casbin + 资源级 ResourceRegistry |
-| `audit.md` | 审计 | 操作审计、日志查询（Phase 1 同步写入 DB） |
-| `middleware.md` | 中间件 | JWT、CORS、限流、安全头 |
-| `ticket.md` | 工单 | 类型配置、状态机、权限模型 |
-
-> `modules/` 描述每个模块的**完整形态**（跨阶段），`phase1/` `phase2/` `phase3/` 描述每阶段**做什么**。编码、主键、分阶段边界以 phase 计划与 roadmap 为准。
-
-### phase1/ phase2/ phase3/ — 分阶段实现计划
-
-三阶段实施计划，每阶段一个目录，含 README 大纲和各模块详细计划。
-
-| 阶段 | 目标 | 部署形态 |
-|------|------|---------|
-| [phase1/](./phase1/README.md) | 最小可用：认证鉴权框架 | 单实例 Docker Compose |
-| [phase2/](./phase2/README.md) | 业务可用：2a 工单 MVP → 2b 组织 scope + 附件 → 2c 组内委托 | 单实例 Docker Compose |
-| [phase3/](./phase3/README.md) | 重定位后（§23）：通用能力底座 + 内网迁移——M-E 事件/任务总线（taskrunner）/ M-A activelist / M-HR / M-UAA🚦 / M-Mig；生产加固类随 M1 🚦 | 单实例起步，多实例随触发 |
-
-### roadmap.md — 三阶段总览
-
-跨阶段的全景视图，一页看清三阶段的核心目标、模块清单和部署形态。详见 [roadmap.md](./roadmap.md)。
-
-### api/ — API 契约
-
-后端 JSON API 的权威约定；前端按此对齐。
-
-| 文档 | 内容 |
-|------|------|
-| [api/response.md](./api/response.md) | 响应体 `{ code, message, data, request_id }` |
-| [api/errcode.md](./api/errcode.md) | 错误码与 HTTP 映射 |
-
-Phase 1 后期可用 `swag` 生成 OpenAPI，字段须与 response.md 一致。
-
-### ops/ — 运维文档
-
-部署、配置、监控、故障处理等"上线后"所需的文档。
-
-| 文档 | 内容 | 产出时机 |
-|------|------|---------|
-| `deployment.md` | 环境要求、配置项说明、部署步骤、Docker/K8s 配置 | Phase 1 |
-| `runbook.md` | 常见故障现象、排查步骤、应急操作（superadmin 密码恢复 break-glass/故障演练结论/备份 PITR 要点） | ✅ 已建（2026-10-12，随 break-glass 批补 Phase 3 欠账） |
-
-### review/ — 审查记录（00–10 历史快照 / 11 活文档）
-
-| 文件 | 定位 | 状态 |
-|------|------|------|
-| `00–04` | Phase 1 系统性审查：计划/发现/修复/复核（注：`04` 两篇——ecmdb 跨项目学习与 phase1 综合验收——同期各自成文，编号重号为历史现状，维持不重排） | 历史快照（发现已闭环，详见 11 §6） |
-| `05–09` | 文档体系审查 / Phase 2 文档架构审查 / 综合审查 / 终复核 / 合并发现 | 历史快照（处置见 11 §8） |
-| `10` | Phase 2 综合验收（C1–C4 处置、门禁基线） | 历史快照 |
-| `11` | **项目控制台**：能力矩阵 / 健康状态（遗留问题 SSOT §6）/ Phase 3 前置随行分类（§8）/ 迁移地图——**每次改动后回填** | **活文档** |
-
-### adr/ — 架构决策记录
-
-轻量级的决策日志，每个 ADR 记录一个独立的架构决策。
-
-与 `design-decisions.md` 的区别：
-- `design-decisions.md`：讨论过程的完整记录（含方案对比、推理细节）
-- `adr/`：决策的最终结论摘要，编号管理，便于追溯
-
-已采纳的 ADR：
-
-| ADR | 决策 | 状态 |
-|-----|------|------|
-| [ADR-001](./adr/ADR-001-event-mechanism-l1-steady-state.md) | L1（`ticket_events` 轮询）作为事件源长期稳态，Asynq 不替代事件源 | 已采纳 |
-| [ADR-002](./adr/ADR-002-asynq-async-task-executor.md) | 引入 Asynq 作为异步任务执行器，与 L1 职责互补 | 已采纳 |
-| [ADR-003](./adr/ADR-003-activelist-integration-form.md) | activelist 作为独立服务集成形态 | 已采纳 |
-
-## 文档规范
-
-### 命名
-
-- 全小写，连字符分隔：`deployment-guide.md` 而非 `DeploymentGuide.md`
-- 语义优先：`architecture.md` 而非 `doc1.md`
-
-### 关联引用
-
-文档间引用使用相对路径：
-
-```markdown
-详见 [设计决策](./design/design-decisions.md#1-jwt-无状态策略与权限缓存)。
-```
-
-### 更新时机
-
-| 文档 | 更新时机 |
-|------|---------|
-| `design/architecture.md` | 架构变更时（新增模块、调整边界） |
-| `design/design-decisions.md` | 每次有新的设计讨论 |
-| `proposal/*` | 方案级设计变更时 |
-| `api/` | 接口变更时 |
-| `ops/` | 部署配置变更、新增故障案例时 |
+| 日期 | 变更 |
+|---|---|
+| 2026-11-08 | 五仓按各自 docs 维护，重写任务入口并区分当前/未来/历史；阶段目录和 Swagger 消费路径保留。 |
+| 2026-11-11 | 同步本阶段工作区收尾与问题移交入口，后续阶段设计作为全项目重规划输入。 |

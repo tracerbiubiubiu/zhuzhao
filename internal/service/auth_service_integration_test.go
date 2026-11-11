@@ -5,6 +5,8 @@ package service_test
 import (
 	"context"
 	"fmt"
+
+	"strconv"
 	"testing"
 	"time"
 
@@ -57,16 +59,26 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 
-	refreshed, err := authSvc.Refresh(ctx, pair.RefreshToken)
+	refreshed, err := authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
-	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
+	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
 	// 槽位已推进到新 RT，旧 RT 重现 = 重放信号（RT-1）→ 20015
 	assert.Equal(t, errcode.ErrRefreshTokenReplayed.Code, biz.Code)
+
+	// C-5 观测先行（2026-10-27 拍板）：重放命中须落审计行——此前仅 401 可见、DB 零证据
+	logs, lerr := auditSvc.List(ctx, repository.AuditListQuery{
+		Page: 1, PageSize: 10, Path: "/api/v1/auth/refresh",
+	}, "")
+	require.NoError(t, lerr)
+	require.Len(t, logs.List, 1, "重放命中恰落一行 RT-1 审计")
+	assert.Equal(t, 401, logs.List[0].StatusCode)
+	assert.Contains(t, logs.List[0].RequestBody, "20015")
+	assert.Equal(t, "admin", logs.List[0].Username)
 
 	require.NoError(t, authSvc.Logout(ctx, refreshed.AccessToken, "dev-1"))
 
@@ -130,13 +142,13 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	require.Equal(t, "1", n)
 
 	// 新 RT（新纪元）正常刷新
-	refreshed, err := authSvc.Refresh(ctx, newPair.RefreshToken)
+	refreshed, err := authSvc.Refresh(ctx, newPair.RefreshToken, "", "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
 	// 旧 RT（pwe=0）刷新 → 纪元比对不一致 → 401 + 20014（密码已修改）
 	// （单槽语义副作用：该次消费同时清掉 dev-1 槽位，属 02-auth 既定盗用信号设计）
-	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
+	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
@@ -147,7 +159,7 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 		EmployeeNo: "E000001", Password: "NewPass456", DeviceID: "dev-2",
 	}, "127.0.0.1", "test-agent")
 	require.NoError(t, err)
-	_, err = authSvc.Refresh(ctx, relogin.RefreshToken)
+	_, err = authSvc.Refresh(ctx, relogin.RefreshToken, "", "")
 	require.NoError(t, err)
 }
 
@@ -220,4 +232,45 @@ func TestAuthService_UpdatePasswordSameRejected(t *testing.T) {
 	got, err := repo.FindByID(ctx, user.ID)
 	require.NoError(t, err)
 	assert.True(t, crypto.CheckPassword("oldpass123", got.Password), "相同密码不应触发实际改密")
+}
+
+// P1-D 回归（2026-11-01 审计）：自服务改密写 at_min_iat 地板——其他设备旧 AT 即时
+// 失效的地基（拒答比对逻辑见 middleware.TestJWT_ATMinIATFloor；本测锁「写地板」契约）。
+func TestAuthService_UpdatePasswordWritesATFloor(t *testing.T) {
+	resetAuthTables(t)
+	ctx := context.Background()
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	t.Cleanup(mr.Close)
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
+	repo := repository.NewUserRepo(testPool)
+	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
+	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
+
+	hash, err := crypto.HashPassword("oldpass123")
+	require.NoError(t, err)
+	user := &model.User{Username: "floor_user", EmployeeNo: "E621001", Password: hash, Status: 1}
+	require.NoError(t, repo.Create(ctx, user))
+
+	pair1, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-"}, "127.0.0.1", "test")
+	require.NoError(t, err)
+	pair2, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-"}, "127.0.0.1", "test")
+	require.NoError(t, err)
+
+	newPair, err := authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "newpass456", pair1.AccessToken, "dev-1")
+	require.NoError(t, err)
+	require.NotEmpty(t, newPair.AccessToken, "改密后重签新对")
+
+	floorStr, err := rdb.Get(ctx, fmt.Sprintf("user:at_min_iat:%d", user.ID)).Result()
+	require.NoError(t, err, "改密必须写入地板键")
+	floor, err := strconv.ParseInt(floorStr, 10, 64)
+	require.NoError(t, err)
+	assert.InDelta(t, time.Now().Unix(), floor, 5, "地板≈改密时刻（pair1/pair2 的 iat 早于地板 → 即时失效）")
+	ttl, err := rdb.TTL(ctx, fmt.Sprintf("user:at_min_iat:%d", user.ID)).Result()
+	require.NoError(t, err)
+	assert.True(t, ttl > 25*time.Minute, "地板 TTL≈AccessTTL+60s（自然过期零残留）")
+	_ = pair2
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,37 +11,45 @@ import (
 )
 
 // pwEpochKey 密码纪元键（C3）：改密/重置/禁用/删除等全量吊销事件 INCR——
-// 旧 RT 携带旧纪元值，Refresh 比对不一致即拒，封死「吊销三步非原子 × 并发
-// Refresh」的 TOCTOU 窗口（原 SCAN+DEL 时序竞态）。键无 TTL：Redis 丢失纪元
-// ⊆ 丢失全部 refresh 键（同为内存态），不构成额外回退面。
+// AT/RT 均携带签发纪元，JWT/Refresh 与当前值不符即拒。键无 TTL，需随
+// 会话 Redis 持久化；若纪元丢失，仍未过期的纪元 0 AT 可能重新有效，
+// 灾难恢复须同时轮换 JWT secret 或等待旧 AT 全过期，不能称 Redis 丢失无回退面。
 func pwEpochKey(userID int64) string {
 	return fmt.Sprintf("user:pw_epoch:%d", userID)
 }
 
-// bumpUserPwEpoch 密码纪元 +1（全量吊销事件统一调用；错误上抛随吊销重试补偿）。
-func bumpUserPwEpoch(ctx context.Context, rdb *goredis.Client, userID int64) error {
-	return rdb.Incr(ctx, pwEpochKey(userID)).Err()
-}
-
-// currentUserPwEpoch 读当前密码纪元；键不存在 = 0（旧令牌无 pwe 字段解析为 0，
-// 平滑兼容），Redis 异常按 0 处理（fail 行为由调用方其余 Redis 依赖决定）。
-func currentUserPwEpoch(ctx context.Context, rdb *goredis.Client, userID int64) int64 {
+// currentUserPwEpoch 只有缺键才视为旧纪元 0；错误/损坏不可回退为 0。
+func currentUserPwEpoch(ctx context.Context, rdb *goredis.Client, userID int64) (int64, error) {
 	n, err := rdb.Get(ctx, pwEpochKey(userID)).Int64()
-	if err != nil || n < 0 {
-		return 0
+	if errors.Is(err, goredis.Nil) {
+		return 0, nil
 	}
-	return n
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("invalid password epoch")
+	}
+	return n, nil
 }
 
 func revokeUserSessions(ctx context.Context, rdb *goredis.Client, userID int64, accessTTL time.Duration) error {
+	_, err := revokeUserSessionsWithEpoch(ctx, rdb, userID, accessTTL)
+	return err
+}
+
+// revokeUserSessionsWithEpoch 返回本次 INCR 的值，不能在返回后重读并借用另一笔撤销的纪元。
+func revokeUserSessionsWithEpoch(ctx context.Context, rdb *goredis.Client, userID int64, accessTTL time.Duration) (int64, error) {
 	disabledKey := fmt.Sprintf("user:disabled:%d", userID)
 	if err := rdb.Set(ctx, disabledKey, "1", accessTTL).Err(); err != nil {
-		return fmt.Errorf("set user disabled: %w", err)
+		return 0, fmt.Errorf("set user disabled: %w", err)
 	}
-	// C3：纪元 +1——此后任何携带旧纪元的 RT（含并发 Refresh 在 DEL 前取走、
-	// DEL 后才 Set 的幸存者）在下一次 Refresh 时纪元比对即失败
-	if err := bumpUserPwEpoch(ctx, rdb, userID); err != nil {
-		return fmt.Errorf("bump pw epoch: %w", err)
+	epoch, err := rdb.Incr(ctx, pwEpochKey(userID)).Result()
+	if err != nil {
+		return 0, fmt.Errorf("bump pw epoch: %w", err)
+	}
+	if epoch <= 0 {
+		return 0, fmt.Errorf("invalid password epoch after increment")
 	}
 	pattern := fmt.Sprintf("refresh:%d:*", userID)
 	iter := rdb.Scan(ctx, 0, pattern, 100).Iterator()
@@ -49,14 +58,24 @@ func revokeUserSessions(ctx context.Context, rdb *goredis.Client, userID int64, 
 		keys = append(keys, iter.Val())
 	}
 	if err := iter.Err(); err != nil {
-		return fmt.Errorf("scan refresh keys: %w", err)
+		return 0, fmt.Errorf("scan refresh keys: %w", err)
 	}
 	if len(keys) > 0 {
 		if err := rdb.Del(ctx, keys...).Err(); err != nil {
-			return fmt.Errorf("del refresh keys: %w", err)
+			return 0, fmt.Errorf("del refresh keys: %w", err)
 		}
 	}
-	return nil
+	return epoch, nil
+}
+
+// clearUserDisabledAtEpoch 只允许本次认证的纪元清标记，避免在途登录/改密清掉后来撤销。
+func clearUserDisabledAtEpoch(ctx context.Context, rdb *goredis.Client, userID, epoch int64) (bool, error) {
+	n, err := rdb.Eval(ctx, `
+local current = redis.call('GET', KEYS[1]) or '0'
+if current ~= ARGV[1] then return 0 end
+redis.call('DEL', KEYS[2])
+return 1`, []string{pwEpochKey(userID), fmt.Sprintf("user:disabled:%d", userID)}, fmt.Sprint(epoch)).Int64()
+	return n == 1, err
 }
 
 func clearUserDisabled(ctx context.Context, rdb *goredis.Client, userID int64) error {
@@ -70,6 +89,11 @@ func clearUserDisabled(ctx context.Context, rdb *goredis.Client, userID int64) e
 // （对账 SQL：SELECT id,username,status FROM users WHERE status=0 /
 // audit_logs 中 reconcile=revive 的补吊销操作），仍向上返回错误（503）。
 func revokeUserSessionsWithRetry(ctx context.Context, rdb *goredis.Client, userID int64, accessTTL time.Duration) error {
+	_, err := revokeUserSessionsWithRetryEpoch(ctx, rdb, userID, accessTTL)
+	return err
+}
+
+func revokeUserSessionsWithRetryEpoch(ctx context.Context, rdb *goredis.Client, userID int64, accessTTL time.Duration) (int64, error) {
 	const attempts = 3
 	var lastErr error
 	for i := 0; i < attempts; i++ {
@@ -79,16 +103,18 @@ func revokeUserSessionsWithRetry(ctx context.Context, rdb *goredis.Client, userI
 			case <-time.After(time.Duration(i) * 100 * time.Millisecond):
 			case <-ctx.Done():
 				slog.Error("session revoke aborted by ctx, reconcile required", "user_id", userID, "tag", "reconcile", "err", ctx.Err())
-				return ctx.Err()
+				return 0, ctx.Err()
 			}
 		}
-		if lastErr = revokeUserSessions(ctx, rdb, userID, accessTTL); lastErr == nil {
-			return nil
+		epoch, err := revokeUserSessionsWithEpoch(ctx, rdb, userID, accessTTL)
+		lastErr = err
+		if err == nil {
+			return epoch, nil
 		}
 	}
 	slog.Error("session revoke failed after retries; DB committed but sessions alive, reconcile required",
 		"user_id", userID, "tag", "reconcile", "err", lastErr)
-	return lastErr
+	return 0, lastErr
 }
 
 // RevokeUserSessionsWithRetry 导出包装（break-glass admincli 复用）。语义与内部版

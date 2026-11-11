@@ -1,5 +1,8 @@
 # 现有系统 vs 新框架对比分析
 
+> **历史来源边界（2026-11-08整理）**：本文保留2026-08-11迁移讨论，文中“现有系统”特指当时MongoDB旧实现，“新框架”多为当时PG草案；✅表示当时决策，不证明当前实现。技术版本、行数、外部产品行为与待讨论问题未经本轮全量重验。`doc/module-assessment-2026-08/`为本地参考，不是随仓交付材料。
+> 当前架构先读[architecture](architecture.md)，已交付IAM/级联见[RBAC说明](rbac-inheritance-and-cascade.md)和各模块；阶段状态见[项目控制台](../review/11-project-control.md)。Redis权限缓存、Watcher、多资源Enforcer/外部PDP和RS256迁移等仍按当前代码及有效ADR判定，不能把本稿旧设想写成已实现；org_type=4已由000019收敛为is_virtual。
+
 > 基于 `doc/module-assessment-2026-08/` 42 份文档的审计结果，逐项对比现有 zhuzhao 系统与新框架设计，记录结论和决策。
 >
 > 审计日期：2026-08-11
@@ -100,7 +103,7 @@
 
 ---
 
-## 待讨论点详细清单
+## 历史待讨论清单（以2026-08-11为时点）
 
 ### #1 数据库选型：MongoDB vs PostgreSQL
 
@@ -152,7 +155,7 @@
 - 权限缓存 `perm:user:{userId}`：**Phase 3**，Phase 1 路由鉴权查 `user_roles` + Casbin
 
 **需要讨论的点**：
-- RSA vs HS256：现有系统用 RSA 4096，密钥管理更重但安全性更高（公钥可分发给其他服务验签）。新框架 Phase 1 用 HS256；Phase 3+ 微服务化可改 RS256。
+- RSA vs HS256：现有系统用 RSA 4096，密钥分发形态不同（公钥可分发给其他服务验签；不据算法名断言所有部署都更安全）。新框架 Phase 1 用 HS256；Phase 3+ 微服务化可改 RS256。
 - AT 有效期：现有 5min（极短）vs Phase 1 **30min**。Phase 1 权限不入 JWT、无 Redis 权限缓存，30min 为已定方案。
 - rtoken 存储：MongoDB（持久化）vs Redis（内存）。现有系统用 MongoDB 持久化 rtoken，Redis 重启不丢；新框架用 Redis，重启可能丢（需要 AOF 持久化）。
 - DeleteUser 吊销问题：现有系统的已知 bug（`RemoveByUid` no-op），新框架怎么解决？方案：DeleteUser 时遍历该用户所有 AT 加入黑名单，或者用 `user:disabled:{userId}` 标记 + JWT 中间件检查。
@@ -422,7 +425,7 @@
 
 ---
 
-## A 组综合讨论结论（2026-08-11）
+## A组当时决策结论（2026-08-11，当前落地需核现行文档）
 
 ### 总体判断
 
@@ -490,7 +493,7 @@ CREATE TABLE restrict_grants (
 
 **核心转变**：从"所有鉴权在一个项目做"改为"分层鉴权 + 资源级下放"。
 
-**业界标准**（OWASP / NIST / Cerbos / AuthZed 一致推荐）：
+**当时讨论采用的分层示意**（未在本轮逐一核验第三方规范，不作为“上述机构一致推荐”的证明）：
 
 ```
 请求 → API Gateway（PEP-1：粗粒度）

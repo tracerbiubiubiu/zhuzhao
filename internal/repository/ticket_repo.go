@@ -20,7 +20,9 @@ import (
 
 const ticketSelectColumns = `
 	id, type_code, title, COALESCE(description, '') AS description, priority, status,
-	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at, created_at, updated_at`
+	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
+	status_changed_at, escalation_supervisor_id, created_at, updated_at,
+	COALESCE(human_key, '') AS human_key`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -40,13 +42,13 @@ func (r *TicketRepo) Create(ctx context.Context, t *model.Ticket) error {
 // CreateTx 事务内创建工单
 func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10)
-		RETURNING id, created_at, updated_at`
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11)
+		RETURNING id, created_at, updated_at, status_changed_at`
 	err := exec.QueryRow(ctx, q,
 		t.TypeCode, t.Title, t.Description, t.Priority, t.Status,
-		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData,
-	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
+		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor,
+	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
@@ -80,23 +82,9 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	}
 	page, pageSize := NormalizePage(q.Page, q.PageSize)
 
-	// 拼接 WHERE：scope filter + 业务筛选（业务条件抽 ticketListConds 供单测）
-	var conds []string
-	var args []any
-	if filter.Where != "" {
-		args = append(args, filter.Args...)
-		conds = append(conds, filter.Where)
-	}
-	// argOffset：scope filter（$1..$n）已占用的占位符数——业务条件必须从 n+1 起编，
-	// 否则与 scope 占位符冲突 → PG 绑定错误 → 非 admin 任意筛选 500（2026-10-12 多账号
-	// 实测发现：viewer/operator 列表筛选与工作台统计卡全 500，admin Unscoped 不受影响）
-	bizConds, bizArgs := ticketListConds(q, len(args))
-	conds = append(conds, bizConds...)
-	args = append(args, bizArgs...)
-	where := ""
-	if len(conds) > 0 {
-		where = " WHERE " + joinConds(conds)
-	}
+	// 拼接 WHERE：scope filter + 业务筛选——BK-21 同源件（S10 B10-5）：
+	// buildTicketWhere 为 List/Export 两路共用（代码级同一构造函数，可见性不漂移）
+	where, args := buildTicketWhere(filter, q)
 
 	// count
 	var total int64
@@ -121,6 +109,65 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	return tickets, total, nil
 }
 
+// buildTicketWhere List/Export 共用的 WHERE 构造（BK-21：导出与列表代码级同源，
+// cc 特例支/三轴自动一致——验收断言「导出行数 = 同筛选列表 total」锚定本同源性）。
+func buildTicketWhere(filter resource.Filter, q model.TicketListQuery) (string, []any) {
+	var conds []string
+	var args []any
+	if filter.Where != "" {
+		args = append(args, filter.Args...)
+		conds = append(conds, filter.Where)
+	}
+	// argOffset：scope filter（$1..$n）已占用的占位符数——业务条件必须从 n+1 起编，
+	// 否则与 scope 占位符冲突 → PG 绑定错误 → 非 admin 任意筛选 500（2026-10-12 多账号
+	// 实测发现：viewer/operator 列表筛选与工作台统计卡全 500，admin Unscoped 不受影响）
+	bizConds, bizArgs := ticketListConds(q, len(args))
+	conds = append(conds, bizConds...)
+	args = append(args, bizArgs...)
+	if len(conds) == 0 {
+		return "", args
+	}
+	return " WHERE " + joinConds(conds), args
+}
+
+// CountByFilter 导出行数（钳制判定 + BK-21 行数一致断言数据源）——与 List 同 buildTicketWhere。
+func (r *TicketRepo) CountByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery) (int64, error) {
+	if filter.Where == "" && !filter.Unscoped {
+		return 0, fmt.Errorf("ticket count: missing scope filter (IW4 fail-closed 哨兵)")
+	}
+	where, args := buildTicketWhere(filter, q)
+	var total int64
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM tickets`+where, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count tickets: %w", err)
+	}
+	return total, nil
+}
+
+// StreamRowsByFilter 导出取行：无分页逐行回调，service出口校验实际行数并可提前返回错误。
+// 工作表由handler增量编码，完成后显式Flush收尾。
+func (r *TicketRepo) StreamRowsByFilter(ctx context.Context, filter resource.Filter, q model.TicketListQuery, fn func(*model.Ticket) error) error {
+	if filter.Where == "" && !filter.Unscoped {
+		return fmt.Errorf("ticket export: missing scope filter (IW4 fail-closed 哨兵)")
+	}
+	where, args := buildTicketWhere(filter, q)
+	rows, err := r.db.Query(ctx,
+		`SELECT`+ticketSelectColumns+` FROM tickets`+where+` ORDER BY id DESC`, args...)
+	if err != nil {
+		return fmt.Errorf("export tickets: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		t, err := scanTicketCollectableRow(rows)
+		if err != nil {
+			return fmt.Errorf("collect export row: %w", err)
+		}
+		if err := fn(t); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
 // ticketListConds 业务筛选条件拼装（scope 之外）：argOffset = scope filter 已占用的
 // 占位符数，$n 从 offset+1 起编与合并后 args 严格同序（零 DB 纯函数测覆盖 offset 0/非 0）
 func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
@@ -137,6 +184,12 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	}
 	if q.Status != "" {
 		conds = append(conds, "status = "+next(q.Status))
+	}
+	if len(q.Statuses) > 0 {
+		conds = append(conds, "status = ANY("+next(q.Statuses)+"::text[])")
+	}
+	if len(q.ExcludeStatuses) > 0 {
+		conds = append(conds, "NOT (status = ANY("+next(q.ExcludeStatuses)+"::text[]))")
 	}
 	if q.Priority != nil {
 		conds = append(conds, "priority = "+next(*q.Priority))
@@ -156,6 +209,10 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 		} else {
 			conds = append(conds, fmt.Sprintf("title ILIKE %s ESCAPE '\\'", kw))
 		}
+	}
+	// 标签筛选（S10 B10-2）：可见性由外层 GetFilter 管线约束——标签不旁路 L2
+	if q.Tag != "" {
+		conds = append(conds, "EXISTS (SELECT 1 FROM tags tg WHERE tg.entity_type = 'ticket' AND tg.entity_id = tickets.id AND tg.tag = "+next(q.Tag)+")")
 	}
 	// 创建时间闭开区间（handler 已把 date 解析为 UTC 边界，to=次日 00:00）
 	if q.CreatedFromAt != nil {
@@ -247,26 +304,74 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 
 // Update 全量更新工单标题/描述/优先级（非事务入口；全字段非 nil = 整行覆盖语义保留）
 func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
-	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority)
+	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority, nil)
 	t.UpdatedAt = updatedAt
 	return err
+}
+
+// FieldImpact 每字段在途使用计数（B1-5 随行件——全量替换前的变更代价提示）。
+// 在途 = status NOT IN ('closed','rejected')；使用 = custom_data 含该键。
+func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[string]int, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT f.field_key, COUNT(t.id)
+		FROM ticket_type_fields f
+		LEFT JOIN tickets t
+			ON t.type_code = f.type_code
+			AND t.status NOT IN ('closed', 'rejected')
+			AND t.custom_data ? f.field_key
+		WHERE f.type_code = $1
+		GROUP BY f.field_key`, typeCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var key string
+		var n int
+		if err := rows.Scan(&key, &n); err != nil {
+			return nil, err
+		}
+		out[key] = n
+	}
+	return out, rows.Err()
+}
+
+// LockCustomDataTx 行锁内读 custom_data 新鲜基线（分批审计 F-B1 修复 2026-10-21）：
+// custom_data patch 此前基于事务外 GetByID 的基线在 Go 层合并后整列写回——两个并发
+// Update 各持过期基线合并，后写者丢前写者键。本方法在更新事务内 FOR UPDATE 取基线
+// （锁持至提交，同单更新串行化），合并与 G2 校验仍先行于写。0 行=已关闭（并发 close，
+// BK-3 同款定性）→ ErrTicketAlreadyClosed。
+func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketID int64) ([]byte, error) {
+	var cd []byte
+	err := exec.QueryRow(ctx,
+		`SELECT custom_data FROM tickets WHERE id=$1 AND status <> 'closed' FOR UPDATE`, ticketID).Scan(&cd)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrTicketAlreadyClosed
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lock ticket custom_data: %w", err)
+	}
+	return cd, nil
 }
 
 // UpdateTx 事务内字段级更新工单（BK-3：WHERE status<>'closed' 条件更新——
 // 消除「读后写」TOCTOU，并发 close 后本更新命中 0 行 → 90004；
 // W4 十六批 Med：COALESCE 字段级更新——nil 字段不落 SET 覆盖，
-// 两个并发 Update 各改不同字段不再互相冲掉）
-func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int) (time.Time, error) {
+// 两个并发 Update 各改不同字段不再互相冲掉。
+// B5-4：+customData（nil 不覆盖；合并后的完整 JSONB——合并与 G2 重校验在 service 层）
+func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int, customData []byte) (time.Time, error) {
 	const q = `
 		UPDATE tickets SET
 			title = COALESCE($2, title),
 			description = COALESCE($3, description),
 			priority = COALESCE($4, priority),
+			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
 		WHERE id = $1 AND status <> 'closed'
 		RETURNING updated_at`
 	var updatedAt time.Time
-	err := exec.QueryRow(ctx, q, id, title, description, priority).Scan(&updatedAt)
+	err := exec.QueryRow(ctx, q, id, title, description, priority, customData).Scan(&updatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return time.Time{}, errcode.ErrTicketAlreadyClosed
@@ -276,10 +381,11 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 	return updatedAt, nil
 }
 
-// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004
-func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, id int64) error {
+// resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004。
+// 复用写入执行器：事务内不能再次向池取连接，且定性必须能看见事务自身写入。
+func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, exec rowExec, id int64) error {
 	var status string
-	err := r.db.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
+	err := exec.QueryRow(ctx, `SELECT status FROM tickets WHERE id = $1`, id).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errcode.ErrTicketNotFound
 	}
@@ -303,14 +409,16 @@ func (r *TicketRepo) UpdateStatus(ctx context.Context, id int64, fromStatus, toS
 // 并发 Close 双写不再产生 closed→closed 脏事件；Close+Assign 竞态不再把 closed
 // 工单复活为 assigned）。0 行 = 状态已漂移或工单不存在，由 resolveClosedOrMissing 定性。
 func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64, fromStatus, toStatus string) error {
+	// B10-4（E-2 拍定 a 案）：repo 层唯一状态写咽喉——status_changed_at 同语句
+	// 同事务写入（零漂移窗口；存量路径与 S3a B3-1 转换端点全经此）
 	tag, err := exec.Exec(ctx,
-		`UPDATE tickets SET status = $3, updated_at = NOW() WHERE id = $1 AND status = $2`,
+		`UPDATE tickets SET status = $3, updated_at = NOW(), status_changed_at = NOW() WHERE id = $1 AND status = $2`,
 		id, fromStatus, toStatus)
 	if err != nil {
 		return fmt.Errorf("update ticket status: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }
@@ -325,10 +433,14 @@ func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id in
 		return fmt.Errorf("update assigned_to: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return r.resolveClosedOrMissing(ctx, id)
+		return r.resolveClosedOrMissing(ctx, exec, id)
 	}
 	return nil
 }
+
+// eventActionDeleted ticket_events.action 受控枚举值（F-S6-2-4 字面量提常量）。
+// 注：与 domainevent.Action（"ticket.deleted" 点路径）异名空间——此为事件表 action 列词表。
+const eventActionDeleted = "deleted"
 
 // Delete 物理删除工单。删除权限：全局 admin bypass + 2c 组织委托（org owner/admin、
 // ancestor owner，见 04 §4.2）。关联表处理：ticket_comments / ticket_relations 由
@@ -342,8 +454,8 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, 'deleted', NULLIF($3, ''))`,
-		id, actorUserID, reqid.From(ctx)); err != nil {
+		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, $4, NULLIF($3, ''))`,
+		id, actorUserID, reqid.From(ctx), eventActionDeleted); err != nil {
 		// 23503 = 工单已不存在（重复/并发删除）→ 404，且无事件残留（BK-16 修正）
 		if ec := MapForeignKeyViolation(err); ec != nil {
 			return errcode.ErrTicketNotFound
@@ -448,9 +560,9 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE code = $1`, code).Scan(
-		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt,
 	)
 	if err != nil {
@@ -466,7 +578,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -474,7 +586,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	defer rows.Close()
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
-		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -486,10 +598,26 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	return types, nil
 }
 
-// ListTicketTypeFields 查询工单类型字段定义
+// ListTicketTypeFields 查询工单类型字段定义（池连接——仅限事务窗口外使用）。
 func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
+	return listTicketTypeFields(ctx, r.db, typeCode)
+}
+
+// RowQuerier 流式读抽象（Query 多行）——pgx.Tx 与 *pgxpool.Pool 均满足。
+// 用途=事务窗口内复用读方法（BK11：事务持连期间再向池取连=嵌套获取，N≥MaxConns 并发即自闭环
+// 死锁——Create 修复 039aca6，Update 2026-10-27 随批：validate/apply 走 Tx 变体）。
+type RowQuerier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// ListTicketTypeFieldsTx 事务内读字段定义（Update 锁内 G2 校验/formula 重算用——与池版同列同序）。
+func (r *TicketRepo) ListTicketTypeFieldsTx(ctx context.Context, q RowQuerier, typeCode string) ([]*model.TicketTypeField, error) {
+	return listTicketTypeFields(ctx, q, typeCode)
+}
+
+func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string) ([]*model.TicketTypeField, error) {
+	rows, err := q.Query(ctx, `
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket type fields: %w", err)
@@ -497,7 +625,7 @@ func (r *TicketRepo) ListTicketTypeFields(ctx context.Context, typeCode string) 
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -641,7 +769,8 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 	err := row.Scan(
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
-		&t.CreatedAt, &t.UpdatedAt,
+		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
+		&t.HumanKey, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
 	)
 	if err != nil {
 		return nil, err
@@ -698,27 +827,28 @@ func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) 
 // P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
 // 谓词 AND version = $7，命中才写，且恒有 SET version = version + 1。
 // 0 行（ErrNoRows）再定性：类型不存在 → 90003；存在但 version 不匹配 → 409 冲突。
-func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
+func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions, transitionMeta json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
 	q := `
 		UPDATE ticket_types SET
 			name = COALESCE($2, name),
 			description = COALESCE($3, description),
 			states = COALESCE($4, states),
 			transitions = COALESCE($5, transitions),
-			is_active = COALESCE($6, is_active),
+			transition_meta = COALESCE($6, transition_meta),
+			is_active = COALESCE($7, is_active),
 			version = version + 1
 		WHERE code = $1`
-	args := []any{code, name, description, states, transitions, isActive}
+	args := []any{code, name, description, states, transitions, transitionMeta, isActive}
 	if version != nil {
-		q += ` AND version = $7`
+		q += ` AND version = $8`
 		args = append(args, *version)
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at`
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
-		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -747,7 +877,7 @@ func (r *TicketRepo) resolveTypeVersionMiss(ctx context.Context, code string, ve
 	return errcode.ErrConcurrentModification
 }
 
-// DeleteTicketType 删除类型（有工单禁删；字段随类型一并删除）
+// DeleteTicketType 删除类型（有工单/模板引用禁删；字段随类型一并删除）
 func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -761,6 +891,15 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 	}
 	if cnt > 0 {
 		return errcode.ErrConflict // 有工单禁删，走停用
+	}
+	// 模板引用预检：ticket_templates.type_code FK 无级联，漏检则删除时 23503 裸 500
+	// （与工单禁删同语义移为友好路径）
+	var tplCnt int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM ticket_templates WHERE type_code = $1`, code).Scan(&tplCnt); err != nil {
+		return fmt.Errorf("count templates by type: %w", err)
+	}
+	if tplCnt > 0 {
+		return errcode.ErrConflict // 有模板引用禁删，先清理模板
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
 		return fmt.Errorf("delete type fields: %w", err)
@@ -822,9 +961,9 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 		f := &fields[i]
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO ticket_type_fields
-				(type_code, field_key, field_label, field_type, field_options, required, validate_regex, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8)`,
-			code, f.FieldKey, f.FieldLabel, f.FieldType, f.FieldOptions, f.Required, f.ValidateRegex, f.SortOrder); err != nil {
+				(type_code, field_key, field_label, field_type, field_options, field_meta, required, validate_regex, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9)`,
+			code, f.FieldKey, f.FieldLabel, f.FieldType, f.FieldOptions, f.FieldMeta, f.Required, f.ValidateRegex, f.SortOrder); err != nil {
 			return fmt.Errorf("insert type field %s: %w", f.FieldKey, err)
 		}
 	}
@@ -838,7 +977,7 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 // ListTicketTypeFieldsAll 管理端全量读取（与只读版同列，含 validate_regex）
 func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, required, COALESCE(validate_regex, ''), sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list type fields: %w", err)
@@ -846,7 +985,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -858,7 +997,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -866,7 +1005,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	defer rows.Close()
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
-		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions,
+		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
 			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -957,4 +1096,16 @@ func (r *TicketRepo) DeleteTicketTemplate(ctx context.Context, code string) erro
 		return errcode.ErrNotFound
 	}
 	return nil
+}
+
+// UpdateEscalationSupervisorTx 事务内更新催办上级·人工指定（S10 B10-4——dd §31
+// 基线档；幻影用户 FK 23503 → 400）。
+func (r *TicketRepo) UpdateEscalationSupervisorTx(ctx context.Context, exec rowExec, id int64, supervisorID int64) error {
+	_, err := exec.Exec(ctx,
+		`UPDATE tickets SET escalation_supervisor_id = $2, updated_at = NOW() WHERE id = $1`,
+		id, supervisorID)
+	if ec := MapForeignKeyViolation(err); ec != nil {
+		return errcode.New(ec.Code, "催办上级用户不存在")
+	}
+	return err
 }

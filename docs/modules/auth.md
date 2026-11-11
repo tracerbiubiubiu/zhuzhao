@@ -1,279 +1,73 @@
-# 认证模块设计
+# 认证模块
 
-> 模块代码（目标路径，见 [architecture §3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)）：`internal/service/auth/`、`internal/handler/auth/`；JWT 公共件已抽 **zhuzhao-utils/jwt**（2026-09 公共包抽取，原 `internal/pkg/jwt` 已删除）
->
-> 旧系统参考：`doc/module-assessment-2026-08/authenticator.md`
-
----
+> 状态：当前实现说明。完整请求字段以生成的 Swagger 和 `internal/model/auth.go` 为准；旧阶段设计见 [Phase 1 认证稿](../phase1/02-auth.md)，设备管理、SSO 等未交付项见 [认证增强](../phase2/01-auth-enhance.md)。
 
 ## 1. 模块定位
 
-**核心底座模块**。认证入口，负责用户登录、JWT 签发/验证/刷新/吊销、暴力破解防护。
+认证回答“请求是谁发出的、凭证现在是否有效”。它不决定用户能操作哪张工单；后续路由与资源权限分别由 [鉴权模块](authz.md) 执行。
 
-与其他模块的关系：
-- 依赖 `user` 模块验证密码
-- 依赖 `middleware` 提供 JWT 中间件
-- 签发的 AT 被 `authz` 模块用于鉴权
-
----
+主要实现是 `internal/service/auth_service.go` 的 `AuthService.Login / Refresh / Logout / UpdatePassword`，以及 `internal/middleware/jwt.go` 的 `JWT`。JWT 的签发和验签算法在公共库中，账号状态与会话撤销规则仍由主仓负责。
 
 ## 2. 认证安全原则
 
-> **凭证互斥、非法请求处理、日志/审计**：SSOT 为 [phase1/02-auth.md §凭证优先级与混用规则](../phase1/02-auth.md#凭证优先级与混用规则) 与 [§非法认证请求的处理](../phase1/02-auth.md#非法认证请求的处理实现必读)。架构摘要见 [architecture.md §5.4](../design/architecture.md#非法与混用凭证authn-拒绝原则)。
+AT 是访问令牌，默认有效期 30 分钟；RT 是刷新令牌，默认有效期 7 天，实际值取配置。JWT 保存身份和安全纪元，不保存用户的角色、菜单或组织权限，因此角色变更不需要等 AT 到期。
 
-| 原则 | Phase 1 |
-|------|---------|
-| 密码仅用于 `/auth/login`（`employee_no` + password） | ✅ |
-| 业务 API 仅 Bearer JWT | ✅ |
-| JWT 与 AK/SK 互斥（混用 400/20008） | 预留检测；M2M 未启用 |
-| AuthN 失败 Abort，不进 Casbin | ✅ 中间件实现 |
-| 鉴权链 Redis 故障 503 | ✅ fail-close |
-| AK 验签失败 / 重放写 Warn + 可选 audit | M2M 上线后 |
+普通用户链支持 AT 与独立生命周期的 PAT。服务间 AK/SK 使用另一条路由链；混用凭证按认证规则拒绝，不能把内部签名入口当作浏览器登录接口。
 
----
+Redis 参与黑名单、账号禁用、密码纪元与刷新槽位检查。真实 Redis 错误会拒绝请求，不能根据“JWT 可离线验签”推导 Redis 故障时仍可访问业务。
 
 ## 3. 数据模型
 
 ### 3.1 Redis 存储结构
 
-```
-# RT 存储（每设备独立）
-refresh:{userId}:{deviceId} → {rtValue, deviceInfo, createdAt}
-TTL: 7d
-
-# AT 黑名单
-blacklist:at:{jti} → 1
-TTL: AT 剩余有效期
-
-# 用户禁用/删除后即时吊销（JWT 中间件检查）
-user:disabled:{userId} → 1
-TTL: AT TTL（30min，覆盖已签发 AT）
-
-# 设备列表
-devices:{userId} → SET {deviceId1, deviceId2, ...}
-
-# 登录限流（Phase 1：Lua LoginLocker，15min/5 次）
-lock:login:{employee_no} → failCount（TTL 15min）
-TTL: 15min
-
-# 权限缓存（Phase 3 / 按需，Phase 1 不使用）
-# perm:user:{userId} → {roles, org_id, permissions}
-# TTL: 30min
-```
+- `refresh:{uid}:{device_id}` 保存当前 RT 的哈希，同一用户每设备一个槽位；没有已实现的 `devices:*` 设备目录。
+- `blacklist:at:{jti}` 吊销单个 AT，过期时间覆盖该令牌的剩余有效期。
+- `user:disabled:{uid}` 表示账号停用，`user:pw_epoch:{uid}` 是单调密码纪元。
+- `user:at_min_iat:{uid}` 是兼容时间地板；同秒新旧凭证还必须依靠纪元区分。
+- `lock:login:{employee_no}` 是登录失败锁，默认15分钟窗口内允许5次失败，第6次起进入锁定分支（以消费者pin的LoginLocker实现为准）。
 
 ### 3.2 JWT Payload
 
-```json
-{
-  "uid": "1",
-  "username": "admin",
-  "jti": "a1b2c3d4e5f6",
-  "mcp": false,
-  "exp": 1234567890,
-  "iat": 1234560890
-}
-```
+AT 包含 `uid`、`username`、`jti`、`mcp`、`pwe`、`typ=access` 和时间声明；RT 包含设备标识、`pwe`、`typ=refresh` 等。Go 用户 ID 是 int64，对外 JSON 的 `uid` 为字符串。这里列语义，不复制公共库全部 Claims 类型。
 
-Claims 字段以 [phase1/02-auth.md](../phase1/02-auth.md) 为准：`uid`（int64）、`username`、`jti`、`mcp`（must_change_password）。AT TTL **30 分钟**，不是 2 小时。
-
----
+`mcp` 表示必须先改密码，`pwe` 表示签发时的密码纪元。它们分别解决首次改密和已撤销凭证再次使用的问题。
 
 ## 4. 接口定义
 
-```go
-type AuthService interface {
-    // 登录
-    Login(ctx context.Context, req LoginRequest) (*TokenPair, error)
+现有入口为 POST `/api/v1/auth/login`、`refresh`、`logout`、`password/update`，以及 GET `/api/v1/auth/captcha`。完整路径、参数和返回结构见 Swagger；令牌对使用 `access_token`、`refresh_token` 等实际字段，不能照旧草图使用 camelCase。
 
-    // 刷新 Token（RT 轮换）
-    Refresh(ctx context.Context, rt string) (*TokenPair, error)
-
-    // 登出
-    Logout(ctx context.Context, at string) error
-
-    // 踢出设备
-    KickDevice(ctx context.Context, userID int64, deviceID string) error
-
-    // 查询设备列表
-    ListDevices(ctx context.Context, userID int64) ([]DeviceInfo, error)
-}
-
-type LoginRequest struct {
-    EmployeeNo string
-    Password   string
-    DeviceID   string  // 可选，不传则生成
-    DeviceInfo string // UA / IP
-}
-
-type TokenPair struct {
-    AccessToken  string
-    RefreshToken string
-    ExpiresIn    int64 // AT 过期秒数
-}
-```
-
----
+设备列表、踢设备管理面、SSO、RS256/JWKS 不是这些入口已经附带的能力；是否实施由有效阶段计划决定。
 
 ## 5. 核心流程
 
 ### 5.1 登录流程
 
-```
-POST /api/v1/auth/login {employee_no, password, device_id?}
-
-0. 入参约束（D2-01/D2-22）
-   → employee_no ≤50、device_id ≤64 且字符白名单 [a-zA-Z0-9_-]
-     （防超大键灌爆 Redis maxmemory / 键不可读）
-
-1. 登录限流检查
-   → Redis: lock:login:{employee_no}
-   → 已锁定？返回 429
-
-2. 查询用户
-   → userRepo.FindByEmployeeNo(employee_no)
-   → 不存在或无工号？dummy bcrypt 比对（B4-1：拉平时延防定时侧信道枚举）+ 计入失败计数，
-     返回 401（与密码错误相同响应，防枚举）
-
-3. 检查用户状态（实现顺序：状态检查先于密码验证，比原设计更严格——
-   禁用账号无法通过密码探测，且禁用也计入失败计数）
-   → user.Status != 1？dummy bcrypt 比对（D2-20：与不存在分支对齐，
-     防禁用工号枚举）+ 返回 401（与密码错误相同文案，防枚举；见 phase1/02-auth）
-
-4. 验证密码
-   → bcrypt.Compare(password, user.PasswordHash)
-   → 失败？Eval LoginLocker Lua（INCR+EXPIRE 原子）；达阈值 → 429
-   → count > 5？返回 429
-
-5. 签发 Token
-   → AT: JWT(uid + username + jti + mcp), TTL=30min，HS256
-   → RT: JWT(uid + deviceId), TTL=7d
-
-6. 存储（Phase 1 现状——D2-49①：无 devices 集合、RT value 为裸 hash，
-   devices:{userId} 集合与设备元数据随 Phase 2b Step 7 首任务落地）
-   → Redis SET refresh:{userId}:{deviceId} = sha256(rt), TTL=7d
-
-7. 清除登录限流
-   → Redis DEL lock:login:{employee_no}
-
-8. 返回 {accessToken, refreshToken, expiresIn}
-```
-
-> **B4-1 注**：上述流程已按实现修订（原 5.1 写「3 验证密码 → 4 检查状态」，实际实现为状态检查在前）；以 `internal/service/auth_service.go` Login 为准。
+校验入参和启用的验证码策略，检查失败锁，再校验账号状态与密码，签发绑定当前纪元的 AT/RT，并将 RT 哈希写入该设备槽。不存在、密码错误及登录时禁用的账号对外使用统一认证失败语义，减少用户枚举。
 
 ### 5.2 RT 轮换流程
 
-```
-POST /api/v1/auth/refresh {refreshToken}
+先验签、检查类型和账号，再由 `consumeRefreshLua` 原子消费槽位并读取纪元。只有匹配当前槽位和纪元的 RT 能签发下一对令牌；空槽、旧纪元、旧 RT 重放分别按实际错误码返回。
 
-1. 验证 RT（解析/签名/过期）
-   → 失败？返回 401 + 20004（登录已过期，请重新登录）
-
-2. 会话仍有效（禁用/删除兜底，见 §5.4）
-   → EXISTS user:disabled:{userId} 或 users.status=禁用
-   → 401 + 20004，不签发新 Token（防枚举，与 RT 失效同一对外语义）
-
-3. 原子消费（Lua consumeRefreshLua：GETDEL 槽位 + GET pw_epoch 双取）
-   → 消费时刻三态校验：
-     · 纪元 != claims.pwe（改密/重置，C3）→ 401 + 20014（密码已修改）
-     · 槽位为空（登出/吊销/并发落败先于成功者 SET）→ 401 + 20004
-     · 槽位非空但 hash 不符（旧 RT 重放，RT-1）→ 401 + 20015
-
-4. 签发新 Token 对（新 RT 绑定消费时刻纪元）
-   → 新 AT + 新 RT
-
-5. 返回 {accessToken, refreshToken, expiresIn}
-```
-
-**并发刷新防护**：Lua 原子 GETDEL。两个并发请求用同一 RT 刷新，只有第一个成功，落败者返回 401 + 20004 或 20015（时序决定，见 [phase1/02-auth.md §RT 轮换流程](../phase1/02-auth.md#rt-轮换流程)）。
+同一 RT 的并发刷新不允许两次成功。旧 RT 迟到重放还可能使当前设备槽失效，这是现行安全取舍，不存在已启用的宽限窗口。实现见 `AuthService.Refresh`。
 
 ### 5.3 登出流程
 
-```
-POST /api/v1/auth/logout {device_id /* W0b 起必填——空值曾静默删 default 槽，真实设备 RT 残留 */}
-Authorization: Bearer {accessToken}
-
-1. 解析 AT，提取 jti
-2. Redis SET blacklist:at:{jti} = 1, TTL = AT 剩余有效期
-3. Redis DEL refresh:{userId}:{deviceId}
-4. Redis SREM devices:{userId} = deviceId
-5. 返回 200
-```
+调用方提供当前 AT 与必填的 `device_id`；服务吊销当前 AT 并删除该设备 RT 槽位。它不操作不存在的设备集合，也不等于注销所有设备。
 
 ### 5.4 DeleteUser 级联吊销
 
-旧系统已知问题：DeleteUser 时 Redis `RemoveByUid` 是 no-op，AT 靠 TTL 自然失效。
+禁用、删除和重置密码由用户用例在数据库变更后触发会话撤销。密码纪元使旧 AT/RT 不会因新登录清理禁用标记而复活。数据库、Redis 与 HTTP 审计不是同一个原子事务，失败应按错误和审计记录排查，不擅自清空安全键。
 
-**新框架方案**：
+## 6. 登录安全与排查
 
-```
-DeleteUser / 禁用用户 时：
-  1. 查 Redis: devices:{userId} → 获取所有 deviceId（若有）
-  2. 遍历 deviceId，DEL refresh:{userId}:{deviceId}；或 SCAN + DEL refresh:{userId}:*
-  3. DEL devices:{userId}（Phase 2）
-  4. SET user:disabled:{userId} = 1, TTL = AT TTL（30min）
-  5. AT：JWT 中间件检查 user:disabled → 403 + 30003
-  6. RT：Refresh 内 RT 不存在 → 401 + 20004；兜底再查 user:disabled/DB status → 401 + 20004
-```
+看到 429 时先区分请求速率限制和登录失败锁；看到 503 时先核 Redis 等依赖。改密后旧令牌返回 401 是预期撤销行为，不能通过清键恢复旧会话。
 
----
+人工联调使用专属测试账号。E000001 的终态和允许操作仅以 [runbook](../ops/runbook.md) 为准，不使用文档示例私改种子号。
 
-## 6. 登录安全（借鉴旧系统 LoginLocker）
+## 7. 演进依据
 
-### 6.1 限流策略
+[架构说明的认证部分](../design/architecture.md#5-认证与-token-机制)解释整体边界；[认证增强](../phase2/01-auth-enhance.md)记录后续设计，批准设计不等于已经具备相应 API。
 
-| 配置项 | 值 | 说明 |
-|--------|---|------|
-| 最大失败次数 | 5 | 连续 5 次密码错误 |
-| 锁定时长 | 15min | 锁定期间拒绝登录 |
-| 计数窗口 | 15min | 失败计数 TTL |
-| Redis 故障 | fail-close | 返回 503 |
+## 8. 变更记录
 
-### 6.2 Phase 1 实现：Lua LoginLocker
-
-`INCR` + 首次 `EXPIRE` 在 **一条 Lua 脚本**中原子完成；达 5 次返回 429。脚本见 [phase1/02-auth.md §登录限流](../phase1/02-auth.md#登录限流phase-1-必须)。Redis 故障 **fail-close**（503）。
-
-```go
-// 失败路径：Eval(loginLockScript, []string{key}, windowSec, maxFail)
-// 成功路径：Del(lock:login:{employee_no})
-```
-
----
-
-## 7. 旧系统借鉴
-
-| 设计 | 决策 | 理由 |
-|------|------|------|
-| LoginLocker Lua 原子脚本 | ✅ Phase 1 采用 | INCR+EXPIRE 原子，消除竞态 |
-| fail-close 策略 | ✅ 直接采用 | 鉴权链路 Redis 故障返回 503 |
-| 防用户枚举 | ✅ 直接采用 | 不泄露用户是否存在 |
-| RSA 4096 签名 | ❌ Phase 1 HS256；RS256+JWKS 后移 Phase 3 | 单体对称最简，拆服务再用非对称 |
-| RT 存 MongoDB | ❌ 改用 Redis | 减少依赖，Redis + AOF 持久化足够 |
-| AT 5min | ❌ 改用 30min | Phase 1 无权限缓存，30min 平衡安全与体验 |
-| DeleteUser RemoveByUid no-op | ❌ Phase 1 修复 | `user:disabled:{userId}` + 删全部 RT |
-| first_login 改密 | ✅ Phase 1 | `must_change_password` + JWT `mcp` |
-
----
-
-## 8. 分阶段实施
-
-### Phase 1
-
-- 账号密码登录 + 双 Token 签发（AT 30min HS256）
-- RT 存 Redis + `GETDEL` 轮换
-- 登出 + AT 黑名单
-- JWT 中间件（验证 + 黑名单 + `user:disabled`，Redis 故障 503）
-- 登录限流（Lua LoginLocker，15min/5 次）
-- 登录成功/失败写审计
-- `must_change_password` 强制改密
-- 禁用/删除用户后吊销会话
-
-### Phase 2
-
-- 多设备管理 UI（设备列表 + 踢出）— 见 [phase2/01-auth-enhance.md](../phase2/01-auth-enhance.md)
-- 密码复杂度策略 — 同上
-
-### Phase 3
-
-- 异地登录检测
-- CAPTCHA 验证码
-- RS256 + JWKS（拆服务时）
+- 2026-11-08：合并当前认证链说明，校准 RT 哈希槽、密码纪元、字段命名及设备管理的未实现边界；旧草图保留于阶段设计和 Git 历史。

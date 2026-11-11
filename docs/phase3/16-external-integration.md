@@ -1,7 +1,14 @@
 # 16 - 外部服务集成配套：taskrunner / activelist（zhuzhao 侧能力清单与实施细排）
 
+> **适用范围（2026-11-08整理）**：跨仓现行合同以各属主docs为准；本页E/D/P/C实施台账含历史基线。当前taskrunner固定配置回调、dept仅筛选、终败notifier已可选实现且入口/internal/notify/dead-letter，无/monitor。AL字段/筛选/revision与审计边界按其当前契约；顶部11-06候选待门禁不表示本次收口结果。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
+> 2026-11-06 ECO-B07-F10 消费者候选：主仓与 activelist 的独立修复分支 pin `zhuzhao-utils v0.4.4-0.20261106080630-cd759a040245`（远端提交 `cd759a0402455731f805ba507bf8401447e00e29`，包含既有 Reader 错误分档与本次 Transport 读失败关闭原 Body）。Go 正常解析不可变 pseudo-version，并由 go.sum / `go mod verify` 验证；无 replace/GOWORK/本地包替代，无新增库。主仓实际消费者为 `internal/gateway/gateway.go` 的 `buildMount`；taskrunner 仅直接调用 `aksk.Sign`，未消费 Transport，维持 v0.4.2。依赖升级避免复制签名/Body 生命周期实现。该候选不代表 utils main/tag 或消费者主线/部署已发布，联合门禁待承接；activelist 对账见其 ADR-003。
+
+> 2026-11-06 ECO-B07-F06网关错误分档：维持既有1MiB浏览器入口上限；本地MaxBytesReader超限须返回413/10001且不访问上游，不能误报502/上游不可用。未知Content-Length同样按实际读取限体；真正上游连接故障仍502/10008。直连AL运维大导入独立，不放宽此前拍板。候选专项/变异八轮已过，最新固定联合门禁与运行回归待完成。
+
 > **定位**：M-E（taskrunner）与 M-A（activelist）的契约已于 2026-09-03 在**外部独立仓库**定稿。本文把「**zhuzhao 需要提供什么能力**」归拢为：契约要点摘要 + 代码现状对照 + 能力清单（M-E 线 / M-A 线）+ 里程碑对齐 + 迁移/权限码规划 + 待拍板项——供 zhuzhao 侧排期与实现，防跨仓库工作项遗漏。
-> **契约 SSOT**：taskrunner = taskrunner 仓库 `docs/taskrunner.md`（配套清单 `docs/zhuzhao-integration.md`）；activelist = activelist 仓库 `docs/ADR-003-integration-contract.md`。**排期 SSOT 仍为 [13-implementation-plan](./13-implementation-plan.md) §1**；权限前置 SSOT = [design-decisions §25.5](../design/design-decisions.md)。
+> **现行属主入口（2026-11-08路径整理）**：taskrunner的[运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/taskrunner.md)、[HTTP与回调契约](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/api/contract.md)、[zhuzhao集成清单](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/zhuzhao-integration.md)；activelist的[集成ADR](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/adr/adr-003-integration-contract.md)、[HTTP契约](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/contract.md)与[数据契约](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/data-contract.md)。这些是当前候选分支链接，不能据此推断已合main。**原阶段排期来源为 [13-implementation-plan](./13-implementation-plan.md) §1**；权限前置来源为 [design-decisions §25.5](../design/design-decisions.md)，当前能力/启动条件仍先查顶部总控。
 > **状态**：已编写（2026-09-03，基于两仓库契约文档 + zhuzhao 全仓代码盘点）。**编号约定**：本文 E1–E6（taskrunner 配套，对齐 zhuzhao-integration §2 编号）、D1–D5（activelist 能力需求，与 ADR-003 SSOT 同名同义）、P1–P7（待拍板）均**仅在本文范围内引用**。
 
 ---
@@ -141,8 +148,8 @@ zhuzhao 地基已有大半（三层鉴权链 / RequestID / `audit_logs` / L1 `ti
 
 | 主题 | SSOT | 本文角色 |
 |---|---|---|
-| taskrunner 设计 / API / job_runs | taskrunner 仓库 `docs/taskrunner.md` | 摘要 + zhuzhao 侧展开 |
-| activelist 契约 / 存储模型 | activelist 仓库 `docs/ADR-003-integration-contract.md` | 摘要 + zhuzhao 侧展开 |
+| taskrunner 设计 / API / job_runs | taskrunner仓[运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/taskrunner.md) / [HTTP与回调契约](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/api/contract.md) | 摘要 + zhuzhao侧展开；跨仓接入查其[集成清单](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/zhuzhao-integration.md) |
+| activelist 契约 / 存储模型 | activelist仓[集成ADR](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/adr/adr-003-integration-contract.md) / [HTTP](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/contract.md) / [数据契约](https://github.com/tracerbiubiubiu/activelist/blob/codex/phase5-audit/docs/api/data-contract.md) | 摘要 + zhuzhao侧展开 |
 | 排期（里程碑 / 人日 / 主链顺序） | [13 号](./13-implementation-plan.md) §1 | 细排参考（M-E/M-A 行引用本文） |
 | 权限前置（批次 A/B/C） | design-decisions §25.5 | 引用 |
 | 平台策略库设计 | [authz.md §3.1](../modules/authz.md) | 引用 |

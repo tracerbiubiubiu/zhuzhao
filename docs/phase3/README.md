@@ -1,6 +1,35 @@
+# Phase 3：通用能力工程收口与触发方案
+
+> 2026-11-08整理：本页先给当前阅读入口，下面保留原阶段说明/修订作为历史依据。09-15项目内M-E/M-A工程收口，HR接口未落码；M1观测/Watcher/HA仍按部署触发，UAA为已立项未实施。10-09工单自研已恢复，当前业务排期由Phase5承接，下面多轮暂缓/翻案文字按日期解释。
+
+## 阅读顺序与边界
+
+1. [00-startup-checklist.md](00-startup-checklist.md)
+2. [03-audit-l2.md](03-audit-l2.md)
+3. [16-external-integration.md](16-external-integration.md)
+4. [17-uaa-integration.md](17-uaa-integration.md)
+5. [10-ticket-business.md](10-ticket-business.md)
+6. [12-frontend.md](12-frontend.md)
+7. [01-observability.md](01-observability.md)
+8. [02-multi-instance.md](02-multi-instance.md)
+9. [06-ha.md](06-ha.md)
+10. [07-security-enhance.md](07-security-enhance.md)
+11. [08-ops.md](08-ops.md)
+12. [09-platform.md](09-platform.md)
+13. [11-deployment-split.md](11-deployment-split.md)
+14. [13-implementation-plan.md](13-implementation-plan.md)
+15. [14-planning-overview.md](14-planning-overview.md)
+16. [15-script-platform-dagu-vs-inhouse.md](15-script-platform-dagu-vs-inhouse.md)
+
+当前模块接口看 [modules](../modules/README.md)，工程规则看 [standards](../standards.md)，操作看 [运维](../ops/README.md)。能力状态与迁移编号查 [项目控制台](../review/11-project-control.md)；当前业务段排期查 [Phase5](../phase5/README.md)。新批次仍需满足自身前置与门禁，不能从历史已完成推导所有未来能力已启用。
+
+## 原阶段说明与修订记录
+
+以下保留原时点的目标、结果与决策；旧分支名、数量、待办与凭据样例不覆盖现行约定。
+
 # Phase 3 实现计划（重定位后：通用能力底座 + 内网迁移）
 
-> **✅ 收口（2026-09-15，口径 A）**：Phase 3 **项目内工程已收口**——M-E（taskrunner）✅ 全收官、M-A（activelist）✅ 全收官、M-HR 按拍板=预留接口即可；M-SSO / M-Mig 🚦 **外部前置待触发**（进内网/迁移窗口），非工程项。终验：四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；证据索引见 [收官报告](../../deliverables/software-company/phase3-closure-report-2026-09-15.md)。本文件其余内容转为 🚦 参考设计。
+> **✅ 收口（2026-09-15，口径 A）**：Phase 3 **项目内工程已收口**——M-E（taskrunner）✅ 全收官、M-A（activelist）✅ 全收官、M-HR 按拍板=预留接口即可；M-SSO / M-Mig 🚦 **外部前置待触发**（进内网/迁移窗口），非工程项。终验：四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；证据索引见 [收官报告](../review/reports/phase3-closure-report-2026-09-15.md)。本文件其余内容转为 🚦 参考设计。
 >
 > **🚦 启动入口**：启动 Phase 3 前先过 [00-startup-checklist.md](./00-startup-checklist.md)——A/B/W 全量清单 + 决策清单 + 检查顺序（2026-08-31 建档，启动时先刷新状态）。
 
@@ -69,7 +98,7 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 | 运维工具 | [ops](./08-ops.md) | Swagger CI、迁移 CI、集成测试自动化 + [ops/deployment](../ops/deployment.md) | 已编写（2026-09-02） |
 | **工单业务能力** | [ticket-business](./10-ticket-business.md) | **SLA 计时/违约告警、站内通知、邮件通知、多级审批流（手写 BranchedStateEngine）、自动分派规则、工单报表**（进程内实现，事件用 L1 机制） | 本修订新增 |
 | **前端工程**（2026-08-31 已确认） | [12-frontend](./12-frontend.md) | 动态表单渲染器、工单类型/字段/模板管理页、审批人配置页、审批操作页（范式参考 ecmdb-web：Vue3 + Element Plus + schema-form 两段路径） | 已编写（2026-08-31） |
-| **外部能力集成** | [16-external-integration](./16-external-integration.md)（契约 SSOT：taskrunner / activelist 两仓库文档；[ADR-003](../adr/ADR-003-activelist-integration-form.md) 为镜像） | **taskrunner**（事件/任务总线，M-E，独立仓库+独立部署）+ **activelist**（动态数据模型薄层，M-A，独立实现：独立库+独立数据库+无用户认证/服务间 AK/SK 验签）；zhuzhao 侧前置 = ~~批次 A 策略库~~ **降级触发驱动（校准）** / 批次 B 网关化（design-decisions §25.5） | **已决策（2026-09-03 定稿）**；zhuzhao 侧配套见 16 号 |
+| **外部能力集成** | [16-external-integration](./16-external-integration.md)（契约 SSOT：taskrunner / activelist 两仓库文档；[ADR-003](../adr/adr-003-activelist-integration-form.md) 为镜像） | **taskrunner**（事件/任务总线，M-E，独立仓库+独立部署）+ **activelist**（动态数据模型薄层，M-A，独立实现：独立库+独立数据库+无用户认证/服务间 AK/SK 验签）；zhuzhao 侧前置 = ~~批次 A 策略库~~ **降级触发驱动（校准）** / 批次 B 网关化（design-decisions §25.5） | **已决策（2026-09-03 定稿）**；zhuzhao 侧配套见 16 号 |
 
 > **工单业务能力实现方式**：Phase 3 不依赖 L2 Outbox，采用 [ticket.md §6](../modules/ticket.md#6-事件驱动集成概要) 定义的三档事件机制中的 **L1**（DB 持久化 + 轮询补偿 + 分布式锁，长期稳态见 ADR-001）+ Asynq（ADR-002），保证进程崩溃不丢、多实例不重复消费。L2 升级时业务逻辑不变，只换调度器。
 
@@ -77,7 +106,7 @@ Phase 3 在以下任一条件出现时评估启动（不要求全部满足）：
 
 | 类别 | 模块 | 核心能力 | 文档 |
 |------|------|---------|------|
-| 事件驱动升级 | [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) | L1 → L2 升级：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列（方案见 ADR-001/002，原 04-event-driven.md 未单独成篇） | 已决策（ADR） |
+| 事件驱动升级 | [ADR-001](../adr/adr-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/adr-002-asynq-async-task-executor.md) | L1 → L2 升级：PostgreSQL Outbox + Asynq 可靠事件分发 + 异步任务队列（方案见 ADR-001/002，原 04-event-driven.md 未单独成篇） | 已决策（ADR） |
 | 平台增强 | [platform](./09-platform.md) | 权限/菜单缓存跨实例失效、AK/SK（有调用方时）（🚦 触发条件驱动） | 已编写（2026-09-02） |
 
 > **微服务拆分（microservice）当前不做**：05-microservice（参考文档**无文件未入库**，2026-09-09 断链盘点去链）。按 2026-08-25 决策，当前没有微服务需求，**整体推迟到未来有真实多团队/M2M 需求时再评估**，不排入 Phase 3。部署级分离（同二进制不同配置启动）作为后续验证手段，见 [11-deployment-split.md](./11-deployment-split.md)。
@@ -121,6 +150,8 @@ Docker Compose 建议用 **profile**（如 `observability`）拉起 Prometheus/G
 ## 2. 实施顺序（暂缓参考）
 
 > 以下顺序仅作能力归类参考，Phase 3 整体未排期。工单**主链路**（CRUD / 状态机 / 模板 / 关联，Step 7 主体）已在 Phase 2a/2b 实现；**SLA/通知/审批流/分派/报表（Step 7 子任务 7a–7e）仍属 Phase 3（暂缓，设计就绪）**；其余步骤按需取用。
+
+<a id="21-phase-3先上生产--工单业务能力闭环"></a>
 
 ### 2.1 Phase 3（先上生产 + 工单业务能力闭环）— 暂缓参考
 
@@ -171,7 +202,7 @@ Phase 2b 验收通过（2c 建议并行或前置完成）
 > **工单模板/关联已前移到 Phase 2a**（2026-08-25）：`ticket_templates`（迁移 000015）和 `ticket_relations`（迁移 000016）因纯 DB 无事件依赖前移到 2a Step 2，见 [phase2/09-ticket.md §2](../phase2/09-ticket.md)。Step 7 子任务相应精简。
 ```
 
-> **Step 7 与基础设施 Step 1–6 可并行**：工单业务能力的事件机制用 L1（DB 持久化 + 轮询）；**L1 事件消费**在多实例部署后需复用 Step 2 的分布式锁防重，但 **SLA 定时扫描由 Asynq Scheduler 单点调度，无需自写锁**（[ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）。建议 Step 7 在 Step 2 之后启动，或接受单实例先跑通。
+> **Step 7 与基础设施 Step 1–6 可并行**：工单业务能力的事件机制用 L1（DB 持久化 + 轮询）；**L1 事件消费**在多实例部署后需复用 Step 2 的分布式锁防重，但 **SLA 定时扫描由 Asynq Scheduler 单点调度，无需自写锁**（[ADR-002](../adr/adr-002-asynq-async-task-executor.md)）。建议 Step 7 在 Step 2 之后启动，或接受单实例先跑通。
 
 ### 2.2 Phase 3（事件基础设施升级 + 平台增强）— 暂缓参考
 
@@ -197,7 +228,7 @@ Phase 3 主能力稳定运行
 | 6 | 原 3a | ops | Phase 2 | [08-ops.md](./08-ops.md) |
 | 7 | 原 3a | **ticket-business** | Phase 2c + Step 2 | [10-ticket-business.md](./10-ticket-business.md) |
 | 8 | 原 3a | 生产验收 | Step 1–7 | 本文档 §3.1 |
-| 9 | 原 3b | event-driven | Phase 3 稳定 | [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) |
+| 9 | 原 3b | event-driven | Phase 3 稳定 | [ADR-001](../adr/adr-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/adr-002-asynq-async-task-executor.md) |
 | 10 | 原 3b | platform | 按需 | [09-platform.md](./09-platform.md) |
 | 11 | 原 3b | 验收 | Step 9–10 | 本文档 §3.2 |
 | — | 推迟 | ~~microservice~~ | Phase 3 以后按需 | 05-microservice（无文件未入库，2026-09-09 去链；推迟） |
@@ -272,7 +303,7 @@ Phase 3 主能力稳定运行
 | [01-observability.md](./01-observability.md) | 可观测性 | 已编写 |
 | [02-multi-instance.md](./02-multi-instance.md) | 多实例部署 | **已编写（2026-08-31）**：Watcher 移植方案 + MI1–5 验收 |
 | [03-audit-l2.md](./03-audit-l2.md) | 审计日志 L2（含 B11① 判定日志 + B11② 归档；写入管道待拍板） | **已编写（2026-09-02）** |
-| [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
+| [ADR-001](../adr/adr-001-event-mechanism-l1-steady-state.md) / [ADR-002](../adr/adr-002-asynq-async-task-executor.md) | 事件驱动（Phase 3+，L1→L2 升级） | 已决策（ADR，原 04-event-driven.md 未单独成篇） |
 | 05-microservice（无文件未入库，2026-09-09 去链） | 微服务拆分 | **推迟**（Phase 3+ 以后按需） |
 | [06-ha.md](./06-ha.md) | 高可用 | **已编写（2026-09-02）** |
 | [07-security-enhance.md](./07-security-enhance.md) | 安全增强 | **已编写（2026-09-02）** |

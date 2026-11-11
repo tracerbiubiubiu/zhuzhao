@@ -5,9 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
+	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,6 +34,61 @@ type CronScheduler struct {
 	name    string
 	tick    time.Duration
 	logger  *slog.Logger
+
+	// B5-5 cron 最小件（2026-10-19 收窄批落地）：上次成功/失败时间与末次错误——
+	// 数据面供 B10-4 `GET /system/cron-status` 聚合端点消费
+	mu     sync.Mutex
+	status CronStatus
+
+	// B10-4 观测面：失败回调（app 装配挂 DomainEvent{ops, ops.cron_failed}——
+	// 经 S6 规则面告警；10 号 A.5「超期扫描静默失败不可接受」收口件）。nil=无。
+	onFailure func(job string, err error)
+}
+
+// CronStatus cron 任务运行状态快照（B5-5 最小件；零值 = 尚未成功过）。
+type CronStatus struct {
+	StartedAt time.Time // 调度 goroutine 启动时刻（零值 = 已注册未启动——注册≠启动，
+	// 2026-11-01 观测批补启动实证：三 cron 注册进 cron-status 可见但
+	// goroutine 从未拉起，运行了 11 个 tick 周期零执行零失败）
+	LastSuccessAt time.Time
+	LastFailureAt time.Time
+	LastError     string // 截断 200，对齐判定日志 reason 口径
+	LastDuration  time.Duration
+}
+
+// Status 返回运行状态快照（并发安全）。
+func (s *CronScheduler) Status() CronStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.status
+}
+
+func (s *CronScheduler) recordSuccess(d time.Duration) {
+	s.mu.Lock()
+	s.status.LastSuccessAt = time.Now()
+	s.status.LastDuration = d
+	s.mu.Unlock()
+}
+
+// SetOnFailure 装配期挂失败回调（非并发安全——仅启动期）。
+func (s *CronScheduler) SetOnFailure(fn func(job string, err error)) { s.onFailure = fn }
+
+func (s *CronScheduler) recordFailure(err error) {
+	msg := ""
+	if err != nil {
+		if len(err.Error()) > 200 {
+			msg = err.Error()[:200]
+		} else {
+			msg = err.Error()
+		}
+	}
+	s.mu.Lock()
+	s.status.LastFailureAt = time.Now()
+	s.status.LastError = msg
+	s.mu.Unlock()
+	if s.onFailure != nil {
+		s.onFailure(s.name, err) // 事件派发 at-most-once 异步——回调内自带隔离
+	}
 }
 
 // ReentrantJob B-1 修法 d：可重入契约升格为接口约束（从 audit_archive 的
@@ -52,6 +112,9 @@ func NewCronScheduler(pool *pgxpool.Pool, name string, job ReentrantJob, tick ti
 
 // Run 阻塞循环（App 生命周期内；ctx 取消即退出）
 func (s *CronScheduler) Run(ctx context.Context) {
+	s.mu.Lock()
+	s.status.StartedAt = time.Now()
+	s.mu.Unlock()
 	s.logger.Info("cron scheduler started", slog.String("job", s.name), slog.Duration("tick", s.tick))
 	t := time.NewTicker(s.tick)
 	defer t.Stop()
@@ -66,35 +129,82 @@ func (s *CronScheduler) Run(ctx context.Context) {
 }
 
 func (s *CronScheduler) tickOnce(ctx context.Context) {
+	if ctx.Err() != nil {
+		return // a ready ticker must not start a new attempt during shutdown
+	}
 	// 单批有界（B-1 修法 c）——单次执行独立超时兜底（防慢查询挂住 tick 位）
 	execCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	conn, err := s.pool.Acquire(execCtx)
+	started := time.Now()
+	ran, err := s.runLocked(execCtx)
 	if err != nil {
-		s.logger.Warn("cron: acquire conn failed", slog.String("job", s.name), slog.Any("err", err))
+		s.recordFailure(err)
+		s.logger.Warn("cron: tick failed (will retry next tick)", slog.String("job", s.name), slog.Any("err", err))
 		return
 	}
-	defer conn.Release()
+	if !ran {
+		return // another instance owns the lock: ordinary contention, not failure
+	}
+	s.recordSuccess(time.Since(started))
+	s.logger.Info("cron: job done", slog.String("job", s.name), slog.Duration("took", time.Since(started)))
+}
 
-	// pg_try_advisory_lock：非阻塞——他实例在跑则本 tick 跳过
-	var ok bool
-	if err := conn.QueryRow(execCtx, "SELECT pg_try_advisory_lock($1)", s.lockKey).Scan(&ok); err != nil || !ok {
-		return
+const cronLockCleanupTimeout = 2 * time.Second
+
+// runLocked uses one dedicated session while this scheduler executes a job.
+// Holding a pool connection for the session lock would consume the budget that
+// Handle needs for its own queries (one-connection pools would always deadlock).
+// Deployment budgets must include one extra PostgreSQL connection per active
+// scheduler. Every attempt closes the session, including failed unlocks/panics.
+func (s *CronScheduler) runLocked(ctx context.Context) (ran bool, err error) {
+	conn, err := pgx.ConnectConfig(ctx, s.pool.Config().ConnConfig.Copy())
+	if err != nil {
+		return false, fmt.Errorf("cron lock connect: %w", err)
 	}
-	defer func() { _, _ = conn.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", s.lockKey) }()
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), cronLockCleanupTimeout)
+		defer cancel()
+		if closeErr := conn.Close(closeCtx); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("cron lock close: %w", closeErr))
+		}
+	}()
+
+	// pg_try_advisory_lock：非阻塞——他实例在跑则本 tick 跳过。
+	// B5-5 最小件：lock 查询失败此前静默跳过——留痕（PG 抖动时任务看似在跑
+	// 实则全跳，静默失联无迹可查；2026-10-19 收窄批修复 :82-84）
+	var ok bool
+	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", s.lockKey).Scan(&ok); err != nil {
+		return false, fmt.Errorf("cron try_lock: %w", err)
+	}
+	if !ok {
+		return false, nil
+	}
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), cronLockCleanupTimeout)
+		defer cancel()
+		if _, unlockErr := conn.Exec(unlockCtx, "SELECT pg_advisory_unlock($1)", s.lockKey); unlockErr != nil {
+			err = errors.Join(err, fmt.Errorf("cron unlock: %w", unlockErr))
+		}
+	}()
 
 	// 审计修复（2026-09-30 P2）：job panic 兜底——Run 在裸 goroutine，panic=进程退出
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
-				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r))
+				s.logger.Error("cron: job panicked", slog.String("job", s.name), slog.Any("panic", r),
+					slog.String("stack", string(debug.Stack())))
+				err = errPanic
 			}
 		}()
-		err = s.job.Handle(execCtx, nil)
+		err = s.job.Handle(ctx, nil)
 	}()
-	if err != nil {
-		// 归档类任务失败仅记日志（下个 tick 自然重试——可重入契约保证安全）
-		s.logger.Warn("cron: job failed (will retry next tick)", slog.String("job", s.name), slog.Any("err", err))
-	}
+	return true, err
 }
+
+// errPanic panic 兜底转错误语义（recordFailure 留末次错误面）
+var errPanic = &cronPanicError{}
+
+type cronPanicError struct{}
+
+func (*cronPanicError) Error() string { return "job panicked (see error log)" }

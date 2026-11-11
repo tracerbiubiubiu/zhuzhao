@@ -22,7 +22,7 @@ func (f *fakeResolver) ResolveScope(ctx context.Context, userID int64) (*Resolve
 // IW4：ticket_scope=all 的「策略性全量」必须显式携带 Unscoped，
 // 与 admin bypass 同构（零值 Filter{} 已被 repo 哨兵拒绝）。
 func TestGetFilter_AllScopeExplicitUnscoped(t *testing.T) {
-	res := NewResource(nil, &fakeResolver{scope: &ResolvedScope{AllScope: true}}, nil)
+	res := NewResource(nil, &fakeResolver{scope: &ResolvedScope{AllScope: true}}, nil, nil)
 	filter, err := res.GetFilter(context.Background(), 1, "list")
 	if err != nil {
 		t.Fatalf("GetFilter: %v", err)
@@ -40,7 +40,7 @@ func TestGetFilter_NormalScopeKeepsPredicate(t *testing.T) {
 	res := NewResource(nil, &fakeResolver{scope: &ResolvedScope{
 		AnchorPaths: []string{"corp.ent"},
 		ScopePaths:  []string{"corp.dept"},
-	}}, nil)
+	}}, nil, nil)
 	filter, err := res.GetFilter(context.Background(), 1, "list")
 	if err != nil {
 		t.Fatalf("GetFilter: %v", err)

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -90,6 +91,56 @@ func TestBizChain_ViewerDenied(t *testing.T) {
 
 	w := do(r, m, 1, http.MethodGet, "/api/v1/users")
 	assert.Equal(t, http.StatusForbidden, w.Code, "viewer 访问业务路由应被 Casbin 拒绝")
+}
+
+// S5 评审 P0-1（2026-10-20）：对象存储自服务面五端点必须挂 SelfService 标记——
+// 普通角色（viewer，无任何 casbin 策略）应过链进 handler（零值 handler panic=500 属
+// 预期）。若只挂 biz 无标记，catalogExempt 仅是启动对账豁免、运行时 Casbin 照拦 →
+// 403（评审实证：普通角色头像上传不可用）。
+func TestStorageSelfServiceChain_ViewerAllowed(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodPost, "/api/v1/storage/presign/upload"},
+		{http.MethodPost, "/api/v1/storage/avatar/bind"},
+		{http.MethodPost, "/api/v1/tickets/attachments/confirm"},
+		{http.MethodPost, "/api/v1/tickets/attachments/delete"},
+		{http.MethodGet, "/api/v1/tickets/1/attachments"},
+	} {
+		w := do(r, m, 1, tc.method, tc.path)
+		assert.NotEqual(t, http.StatusForbidden, w.Code,
+			"viewer 过 %s %s 应放行（403=SelfService 标记缺失，S5 自服务面被 Casbin 拦）", tc.method, tc.path)
+		assert.NotEqual(t, http.StatusUnauthorized, w.Code, "JWT 层不应拒绝（stub Redis 已放行）")
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "路由应存在（404=注册被误删——审计 M-6 判别力补强）")
+	}
+}
+
+// 修复验证审计 M-2（封死 P0-1 复发通道）：catalogExempt 全集逐条过 viewer 全链
+// ——豁免登记（启动对账豁免）必须伴随运行时放行（SelfService 标记/公开/专用链），
+// 任何一条 403 =「只登记豁免、忘挂标记组」同族复发。引擎无业务 handler
+// （nil→panic→500 属预期非 403），断言仅针对 L1 Casbin 拦截形态。
+func TestCatalogExempt_NotBlockedByL1(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+
+	for _, entry := range router.CatalogExemptRoutes() {
+		entry := entry
+		t.Run(entry, func(t *testing.T) {
+			parts := strings.SplitN(entry, " ", 2)
+			require.Len(t, parts, 2)
+			method, path := parts[0], parts[1]
+			require.True(t, strings.HasPrefix(path, "/api/v1/"), "豁免登记应为 /api/v1 面：%s", entry)
+			path = regexp.MustCompile(`:[a-z_]+`).ReplaceAllString(path, "1")
+			path = strings.ReplaceAll(path, "*key", "x.png")
+
+			w := do(r, m, 1, method, path)
+			assert.NotEqual(t, http.StatusForbidden, w.Code,
+				"exempt 被 L1 拦截——豁免登记未伴随运行时放行（P0-1 同族复发）")
+			// F-A2（2026-10-21 审计）：404 判别——路由被删/改名时豁免登记残留，
+			// 仅判 403 会静默绿（nil handler 路径为 500，可区分）
+			assert.NotEqual(t, http.StatusNotFound, w.Code,
+				"路由应存在（404=豁免登记指向已删/改名路由）")
+		})
+	}
 }
 
 // 零角色用户：自服务路由同样拒绝（70003 语义，自服务白名单不豁免零角色）
@@ -297,4 +348,12 @@ func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
 	assert.NotEmpty(t, auditCapture.entries, "Casbin 拒绝的 403 请求必须落审计（Audit 前置于 Casbin）")
 	assert.Equal(t, "/api/v1/users", auditCapture.entries[0].Path)
 	assert.Equal(t, http.StatusForbidden, auditCapture.entries[0].StatusCode)
+}
+
+// B1-7 批2：impact 归位管理组（01 号 §3.4 拍板——撤 SelfService 挂法，catalogExempt
+// 同步撤销后全集循环自动脱测）——无类型管理权限的登录用户 403。
+func TestFieldImpact_RequiresTypeAdmin(t *testing.T) {
+	r, m := newRouterEngine(t, map[int64][]string{1: {"viewer"}})
+	w := do(r, m, 1, http.MethodGet, "/api/v1/ticket-types/incident/fields/impact")
+	assert.Equal(t, http.StatusForbidden, w.Code, "viewer 访问 impact 应被 Casbin 拦（管理组）")
 }

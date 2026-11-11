@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -8,18 +9,21 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	ticketsvc "github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
 // TicketHandler 工单处理器
 type TicketHandler struct {
-	ticketService *ticketsvc.Service
+	ticketService   *ticketsvc.Service
+	audit           middleware.AuditLogger     // S10 B10-5 导出自审计（可选 nil——测试装配）
+	dispatchService *ticketsvc.DispatchService // S3a B3-2 分派规则管理面
 }
 
 // NewTicketHandler 创建 TicketHandler
-func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
-	return &TicketHandler{ticketService: ticketService}
+func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLogger, dispatch *ticketsvc.DispatchService) *TicketHandler {
+	return &TicketHandler{ticketService: ticketService, audit: audit, dispatchService: dispatch}
 }
 
 // List GET /api/v1/tickets
@@ -32,6 +36,8 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Param		page_size		query	int		false	"每页条数"
 //	@Param		type_code		query	string	false	"工单类型"
 //	@Param		status			query	string	false	"工单状态"
+//	@Param		statuses		query	string	false	"状态集合，逗号分隔，与status互斥（例assigned,in_progress）"
+//	@Param		exclude_statuses	query	string	false	"排除状态集合，逗号分隔，与status/statuses互斥"
 //	@Param		priority		query	int		false	"优先级（1紧急/2高/3中/4低）"
 //	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
@@ -40,13 +46,46 @@ func NewTicketHandler(ticketService *ticketsvc.Service) *TicketHandler {
 //	@Param		created_to		query	string	false	"创建日期止（YYYY-MM-DD，UTC 切日，含当日）"
 //	@Success	200			{object}	response.Response
 //	@Router		/api/v1/tickets [get]
-func (h *TicketHandler) List(c *gin.Context) {
+//
+// parseListQuery List/Export 共用的查询参数解析（S10 B10-5——BK-21 handler 级
+// 同源：导出与列表同一解析函数，筛选语义零漂移）。ok=false 时已写响应。
+func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 	// BK-7：分页归一前置到 handler（响应回显与 SQL 实际执行一致，page=0/负数不再回显原值）
 	q := model.TicketListQuery{
 		Page:     queryInt(c, "page", 1),
 		PageSize: queryInt(c, "page_size", 20),
 		TypeCode: c.Query("type_code"),
 		Status:   c.Query("status"),
+		Tag:      c.Query("tag"),
+	}
+	for _, key := range []string{"statuses", "exclude_statuses"} {
+		if raw, present := c.GetQuery(key); present {
+			if q.Status != "" || len(q.Statuses) > 0 || len(q.ExcludeStatuses) > 0 {
+				response.BadRequest(c, "status、statuses 与 exclude_statuses 不能同时传入")
+				return q, false
+			}
+			parts := strings.Split(raw, ",")
+			if len(parts) > 32 {
+				response.BadRequest(c, key+" 最多支持 32 个状态")
+				return q, false
+			}
+			seen := make(map[string]bool, len(parts))
+			for _, part := range parts {
+				status := strings.TrimSpace(part)
+				if status == "" || len([]rune(status)) > 20 {
+					response.BadRequest(c, key+" 每个状态须为 1–20 字符")
+					return q, false
+				}
+				if !seen[status] {
+					if key == "statuses" {
+						q.Statuses = append(q.Statuses, status)
+					} else {
+						q.ExcludeStatuses = append(q.ExcludeStatuses, status)
+					}
+					seen[status] = true
+				}
+			}
+		}
 	}
 	if q.Page < 1 {
 		q.Page = 1
@@ -58,7 +97,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 		v, err := strconv.Atoi(p)
 		if err != nil {
 			response.BadRequest(c, "priority 须为整数")
-			return
+			return q, false
 		}
 		q.Priority = &v
 	}
@@ -67,7 +106,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if a := c.Query("assignee"); a != "" {
 		if a != "me" {
 			response.BadRequest(c, "assignee 仅支持 me")
-			return
+			return q, false
 		}
 		uid := c.GetInt64("userID")
 		q.AssigneeID = &uid
@@ -76,7 +115,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if a := c.Query("created_by"); a != "" {
 		if a != "me" {
 			response.BadRequest(c, "created_by 仅支持 me")
-			return
+			return q, false
 		}
 		uid := c.GetInt64("userID")
 		q.CreatedBy = &uid
@@ -85,7 +124,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if kw := strings.TrimSpace(c.Query("keyword")); kw != "" {
 		if len([]rune(kw)) > 50 {
 			response.BadRequest(c, "keyword 最长 50 字符")
-			return
+			return q, false
 		}
 		q.Keyword = kw
 	}
@@ -95,7 +134,7 @@ func (h *TicketHandler) List(c *gin.Context) {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			response.BadRequest(c, "无效的 created_from 日期")
-			return
+			return q, false
 		}
 		q.CreatedFromAt = &t
 	}
@@ -103,10 +142,18 @@ func (h *TicketHandler) List(c *gin.Context) {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			response.BadRequest(c, "无效的 created_to 日期")
-			return
+			return q, false
 		}
 		next := t.AddDate(0, 0, 1)
 		q.CreatedToAt = &next
+	}
+	return q, true
+}
+
+func (h *TicketHandler) List(c *gin.Context) {
+	q, ok := parseListQuery(c)
+	if !ok {
+		return
 	}
 	if q.CreatedFromAt != nil && q.CreatedToAt != nil && !q.CreatedFromAt.Before(*q.CreatedToAt) {
 		response.BadRequest(c, "created_from 不能晚于 created_to")
@@ -186,6 +233,33 @@ func (h *TicketHandler) Update(c *gin.Context) {
 		return
 	}
 	response.OK(c, ticket)
+}
+
+// RenderRichtext POST /api/v1/tickets/richtext/render
+//
+//	@Summary	richtext 字段服务端渲染（消毒 SSOT）
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RenderRichtextRequest	true	"MD 源文本"
+//	@Success	200		{object}	response.Response{data=model.RenderRichtextResponse}
+//	@Router		/api/v1/tickets/richtext/render [post]
+func (h *TicketHandler) RenderRichtext(c *gin.Context) {
+	var in model.RenderRichtextRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if len(in.Content) > ticketsvc.RichtextMaxBytes {
+		response.BadRequest(c, fmt.Sprintf("正文超过 %d KiB 上限", ticketsvc.RichtextMaxBytes>>10))
+		return
+	}
+	html, err := ticketsvc.RenderRichtext(in.Content)
+	if err != nil {
+		response.InternalError(c, "渲染失败")
+		return
+	}
+	response.OK(c, model.RenderRichtextResponse{HTML: html})
 }
 
 // Close POST /api/v1/tickets/close
@@ -383,6 +457,24 @@ func (h *TicketHandler) ListTicketTypes(c *gin.Context) {
 	response.OK(c, gin.H{"types": types})
 }
 
+// FieldImpact godoc
+//
+//	@Summary		字段在途影响分析（全量替换前的变更代价）
+//	@Description	每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价
+//	@Tags			ticket
+//	@Produce		json
+//	@Param			code	path string true "类型编码"
+//	@Success		200	{object}	response.Response{data=map[string]int}
+//	@Router			/api/v1/ticket-types/{code}/fields/impact [get]
+func (h *TicketHandler) FieldImpact(c *gin.Context) {
+	impact, err := h.ticketService.FieldImpact(c.Request.Context(), c.Param("code"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, impact)
+}
+
 // ListTicketTypeFields GET /api/v1/ticket-types/:code/fields
 //
 //	@Summary	工单类型字段定义
@@ -495,7 +587,7 @@ func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 
 // DeleteTicketType DELETE /api/v1/ticket-types/:code
 //
-//	@Summary	删除工单类型（有工单禁删 → 409）
+//	@Summary	删除工单类型（有工单/模板引用禁删 → 409）
 //	@Tags		ticket-admin
 //	@Produce	json
 //	@Param		code	path	string	true	"类型编码"
@@ -532,7 +624,8 @@ func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), req.Code, &req); err != nil {
+	ws, err := h.ticketService.ReplaceTicketTypeFields(c.Request.Context(), req.Code, &req)
+	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -541,7 +634,26 @@ func (h *TicketHandler) ReplaceTicketTypeFields(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
+	if len(ws) > 0 {
+		// B1-7 批2 软提示：data 契约不变（仍是字段数组，ui 零改），提示走
+		// envelope.message——结构化字段随 ui 批3 再议（跨仓同窗纪律）。
+		response.OKWithMessage(c, softWarningText(ws), fields)
+		return
+	}
 	response.OK(c, fields)
+}
+
+// softWarningText 锁死守卫软提示消息（options 收窄/required 加严——在途计数）。
+func softWarningText(ws []ticketsvc.FieldSoftWarning) string {
+	parts := make([]string, 0, len(ws))
+	for _, w := range ws {
+		if w.InFlight > 0 {
+			parts = append(parts, fmt.Sprintf("%s：%s（在途 %d 单）", w.Field, w.Reason, w.InFlight))
+		} else {
+			parts = append(parts, w.Field+"："+w.Reason)
+		}
+	}
+	return "已保存（软提示）：" + strings.Join(parts, "；")
 }
 
 // CreateTicketTemplate POST /api/v1/ticket-templates
@@ -608,6 +720,270 @@ func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
 		return
 	}
 	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), req.Code); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// AddCC POST /api/v1/tickets/cc（S10 B10-1 抄送）
+//
+//	@Summary	添加工单抄送
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AddTicketCCRequest	true	"添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/cc [post]
+func (h *TicketHandler) AddCC(c *gin.Context) {
+	var req model.AddTicketCCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	rows, err := h.ticketService.AddCC(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"cc": rows})
+}
+
+// RemoveCC POST /api/v1/tickets/cc/remove
+//
+//	@Summary	移除工单抄送
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RemoveTicketCCRequest	true	"移除抄送请求（本人自摘走读可见；摘他人需 update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/cc/remove [post]
+func (h *TicketHandler) RemoveCC(c *gin.Context) {
+	var req model.RemoveTicketCCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketService.RemoveCC(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// ListCC GET /api/v1/tickets/:id/cc
+//
+//	@Summary	工单抄送列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Param		id	path	int	true	"工单 ID"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/tickets/{id}/cc [get]
+func (h *TicketHandler) ListCC(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	rows, err := h.ticketService.ListCC(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"cc": rows})
+}
+
+// AddTags POST /api/v1/tickets/tags（S10 B10-2 标签）
+//
+//	@Summary	添加工单标签
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AddTicketTagsRequest	true	"添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/tags [post]
+func (h *TicketHandler) AddTags(c *gin.Context) {
+	var req model.AddTicketTagsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误（tags ≤20 个，单个 ≤50 字符）")
+		return
+	}
+	rows, err := h.ticketService.AddTags(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"tags": rows})
+}
+
+// RemoveTag POST /api/v1/tickets/tags/remove
+//
+//	@Summary	移除工单标签
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.RemoveTicketTagRequest	true	"移除标签请求（自摘=读可见；摘他人挂的=update 权）"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/tickets/tags/remove [post]
+func (h *TicketHandler) RemoveTag(c *gin.Context) {
+	var req model.RemoveTicketTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.ticketService.RemoveTag(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// ListTags GET /api/v1/tickets/:id/tags
+//
+//	@Summary	工单标签列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Param		id	path	int	true	"工单 ID"
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/tickets/{id}/tags [get]
+func (h *TicketHandler) ListTags(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	rows, err := h.ticketService.ListTags(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"tags": rows})
+}
+
+// Transition POST /api/v1/tickets/transition（S3a B3-1——统一转换执行端点）
+//
+//	@Summary		执行工单状态转换（condition/validator 服务端判——统一入口）
+//	@Description	AssertTransition 状态机 + transition_meta from>to condition 权限门（fail-closed）+ validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned
+//	@Tags			ticket
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		model.TransitionTicketRequest	true	"转换请求"
+//	@Success		200		{object}	response.Response
+//	@Router			/api/v1/tickets/transition [post]
+func (h *TicketHandler) Transition(c *gin.Context) {
+	var req model.TransitionTicketRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	ticket, err := h.ticketService.Transition(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, ticket)
+}
+
+// ListAvailableTransitions GET /api/v1/tickets/:id/transitions/available
+//
+//	@Summary		当前用户可执行的转换列表（Jira condition 语义——按用户过滤）
+//	@Description	condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed 兜底，前端过滤仅 UX
+//	@Tags			ticket
+//	@Produce		json
+//	@Param			id	path	int	true	"工单 ID"
+//	@Success		200	{object}	response.Response
+//	@Router			/api/v1/tickets/{id}/transitions/available [get]
+func (h *TicketHandler) ListAvailableTransitions(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "无效的工单 ID")
+		return
+	}
+	transitions, err := h.ticketService.ListAvailableTransitions(c.Request.Context(), id, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"transitions": transitions})
+}
+
+// ListAssignmentRules GET /api/v1/assignment-rules（S3a B3-2——管理面）
+//
+//	@Summary	自动分派规则列表
+//	@Tags		ticket
+//	@Produce	json
+//	@Success	200	{object}	response.Response
+//	@Router		/api/v1/assignment-rules [get]
+func (h *TicketHandler) ListAssignmentRules(c *gin.Context) {
+	rules, err := h.dispatchService.ListRules(c.Request.Context())
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"rules": rules})
+}
+
+// CreateAssignmentRule POST /api/v1/assignment-rules
+//
+//	@Summary	建自动分派规则（target_user 须属 target_org——决议③写侧校验）
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.CreateAssignmentRuleRequest	true	"规则"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules [post]
+func (h *TicketHandler) CreateAssignmentRule(c *gin.Context) {
+	var req model.CreateAssignmentRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	rule, err := h.dispatchService.CreateRule(c.Request.Context(), &req, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, rule)
+}
+
+// DeleteAssignmentRule POST /api/v1/assignment-rules/delete
+//
+//	@Summary	删自动分派规则
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.AssignmentRuleIDRequest	true	"规则 ID"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules/delete [post]
+func (h *TicketHandler) DeleteAssignmentRule(c *gin.Context) {
+	var req model.AssignmentRuleIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.dispatchService.DeleteRule(c.Request.Context(), req.ID); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// UpdateAssignmentRuleEnabled POST /api/v1/assignment-rules/enabled
+//
+//	@Summary	启停自动分派规则
+//	@Tags		ticket
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		model.UpdateAssignmentRuleEnabledRequest	true	"启停"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/assignment-rules/enabled [post]
+func (h *TicketHandler) UpdateAssignmentRuleEnabled(c *gin.Context) {
+	var req model.UpdateAssignmentRuleEnabledRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := h.dispatchService.UpdateRuleEnabled(c.Request.Context(), req.ID, req.Enabled); err != nil {
 		writeServiceError(c, err)
 		return
 	}

@@ -255,7 +255,8 @@ func (r *UserRepo) List(ctx context.Context, q UserListQuery) ([]*model.User, in
 	return users, total, nil
 }
 
-// Update 更新用户资料（乐观锁 version）
+// Update 仅更新用户资料（乐观锁 version）。状态/强制改密须经专用安全写入口，
+// 不能将先前读取的快照写回：资料请求可能跨过并发禁用/重置密码的提交。
 func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 	const q = `
 		UPDATE users SET
@@ -267,12 +268,10 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 			email = NULLIF($7, ''),
 			phone = NULLIF($8, ''),
 			avatar = NULLIF($9, ''),
-			status = $10,
-			must_change_password = $11,
 			version = version + 1,
 			updated_at = NOW()
-		WHERE id = $1 AND version = $12 AND deleted_at IS NULL
-		RETURNING version, updated_at`
+		WHERE id = $1 AND version = $10 AND deleted_at IS NULL
+		RETURNING version, updated_at, status, must_change_password`
 
 	err := r.db.QueryRow(ctx, q,
 		user.ID,
@@ -284,10 +283,8 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 		user.Email,
 		user.Phone,
 		user.Avatar,
-		user.Status,
-		user.MustChangePassword,
 		user.Version,
-	).Scan(&user.Version, &user.UpdatedAt)
+	).Scan(&user.Version, &user.UpdatedAt, &user.Status, &user.MustChangePassword)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errcode.ErrConcurrentModification

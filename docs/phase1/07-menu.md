@@ -1,11 +1,16 @@
 # 07 - 菜单模块（menu）
 
+> **适用范围（2026-11-08整理）**：现行菜单词表只读：三写路由与对应CRUD用例已退役；种子迁移维护词表，角色绑定维护授权。页面行仅挂GET，写端点挂按钮；旧表列出的创建/更新/删除仅保留作阶段历史。新菜单必须补admin/superadmin绑定，并受启动/集成/acceptance的B案守卫检查。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 8**，依赖 Step 5（authz）。与 Step 7（role）**可并行**；`AssignMenus` 在 role 模块，菜单 CRUD 在本模块。  
 > **`GET /user/menus` / `GET /user/permissions` 在本 Step 交付**（里程碑 M4，见 [README §2.3](./README.md#23-里程碑验收推荐按此推进)）。
 >
 > **⚠ W1（P4-W1，2026-09-26）菜单词表只读化**：三写接口（POST /menus、/menus/update、/menus/delete）已删除——菜单行全走种子迁移（业界「词表进代码/绑定进数据」共识：Keycloak 无菜单管理、Grafana/Backstage 导航=代码）。GET 树/详情保留（角色分配 UI 数据源）。应急隐藏正确姿势=**角色解绑**（导航+权限码+Casbin 策略同事务收），非菜单删除。重建触发条件（多租户/租户自定义菜单）见 phase4/00 §3 信号组 C。B 案词表重排（页面=读 API、写 API 挂按钮行）随 000031 落地——见 §菜单-API 绑定勘误。
 
 ---
+
+> **现行校准（2026-11-08）**：本表三写路由和后文相关CRUD测试只保留原阶段设计，现已删除，不是当前可调用API。GET与角色分配保留；当前B案见modules/menu。
 
 ## 预期功能
 
@@ -43,7 +48,7 @@
 5. ~~（可选）管理员日后用 POST /menus 微调~~ **W1：登记 API 已删——name/icon/sort 调整走新种子迁移**
 ```
 
-> **不要**指望「只改前端、不调 API、不写 migration」——`GET /user/menus` 读的是 DB；没有记录就没有动态路由。登记 API 是**运维入口**，不是替代种子的主路径。
+> **不要**指望「只改前端、不调 API、不写 migration」——`GET /user/menus` 读的是 DB；没有记录就没有动态路由。登记API已随W1删除；当前词表更新走种子迁移，授权/应急隐藏走角色解绑，不再存在该运维写入口。
 
 系统内置菜单以 [data-init §4.2](../proposal/data-init.md#42-种子数据内容) 为 SSOT；本文 [§Phase 1 菜单清单](#phase-1-菜单清单前端契约) 为前后端对齐清单。
 
@@ -129,6 +134,8 @@ CREATE TABLE menu_apis (
     PRIMARY KEY (menu_id, api_path, api_method)
 );
 ```
+
+> **现行校准（2026-11-08）**：下面旧页面同时挂GET/POST的例子是原词表。现行页面只留GET、写API归按钮；新迁移依B案守卫执行，不能复制旧例扩权。
 
 ### 菜单-API 绑定与 Casbin 策略生成
 

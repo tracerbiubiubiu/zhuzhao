@@ -1,5 +1,5 @@
 #!/bin/sh
-# zhuzhao 每日物理备份循环（2026-09-14 运维补强，照抄 activelist pgbackup 已实证逻辑）：
+# zhuzhao 每日逻辑备份循环（2026-09-14 运维补强，照抄 activelist pgbackup 已实证逻辑）：
 #   - 每日 02:00 后执行一次 pg_dump -Fc（自定义压缩格式，产物 zh-*.dump）
 #   - 保留最近 RETAIN_COUNT 份，超出轮转删除（文件名含日期，按名排序即按时间序）
 #   - WAL 归档由 postgres 服务 archive_command 持续写入 /wal_archive（只读挂载于此）

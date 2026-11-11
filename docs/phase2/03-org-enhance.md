@@ -1,5 +1,8 @@
 # 03 - 组织增强（org-enhance，Phase 2b-org）
 
+> **适用范围（2026-11-08整理）**：现行组织以is_virtual布尔表示虚拟组，旧org_type=4是迁移前设计；project_isolated已实施，不再是未来枚举。HR三规则和Job仍属规划，move代理测试不是HR同步验收。B09过期成员失去派生权、显式owner保有独立权源的后补约束保留。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 虚拟组、组织 scope、组织角色、BFS 三源角色、临时成员。与 HR 目录同步同批落地 Schema，详见 [proposal/hr-directory-sync.md](../proposal/hr-directory-sync.md)。
 > **2026-08-26 调整**：本文档归属 **2b-org**（与 2b-core 工单可见性并行）；HR 目录同步降为 **2b-ext 延后**（见 P2-D7）。
 
@@ -156,6 +159,8 @@ ALTER TABLE user_orgs ADD COLUMN org_member_role VARCHAR(20) NOT NULL DEFAULT 'm
 组内任命 admin：仅 owner 或 org_member_role=owner
 组内踢人/改 member：admin 只能动 org_member_role=member 的用户
 ```
+
+**临时成员有效期（B09，2026-11-05 校准）**：所有由成员关系产生的授权须满足 `expires_at IS NULL OR expires_at > NOW()`，包括透明读、scope、组织赋角、组内委托、建单组织归属，以及新分派规则的目标成员校验。到期不等于删除数据库关系行；关系展示/清理与授权分开。`owner_user_ids` 属独立显式委托，不随成员行有效期自动撤销。回归见 `internal/service/expired_membership_integration_test.go` 的 `TestExpiredMembership_AuthorizationBoundaries` 与 `TestExpiredMembership_ExplicitOwnerRemainsIndependent`；单条与列表两侧均须覆盖。
 
 > 实体 HR 部门的「负责人」通常来自 HR 字段或本地指定；虚拟项目组的负责人 **纯 IAM 指定**。HR Job **不覆盖** `owner_user_ids` / 虚拟组 `org_member_role`。
 

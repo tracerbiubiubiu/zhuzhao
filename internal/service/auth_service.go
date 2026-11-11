@@ -18,6 +18,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -105,6 +106,16 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, err
 	}
 
+	// 先取纪元再重读凭据：不能用撤销前校验的密码签发撤销后的纪元。
+	epoch, err := currentUserPwEpoch(ctx, s.rdb, user.ID)
+	if err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	user, err = s.userRepo.FindByID(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if user.Status != 1 {
 		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
 		if lockErr != nil {
@@ -137,8 +148,10 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	if err := s.scripts.LoginLockClear(ctx, req.EmployeeNo); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	if err := clearUserDisabled(ctx, s.rdb, user.ID); err != nil {
+	if ok, err := clearUserDisabledAtEpoch(ctx, s.rdb, user.ID, epoch); err != nil {
 		return nil, errcode.ErrServiceUnavailable
+	} else if !ok {
+		return nil, errcode.ErrInvalidCredentials
 	}
 	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, ip); err != nil {
 		// B4-1：认证已通过但后续失败同样落审计（此前该分支无登录记录）
@@ -146,7 +159,7 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 
-	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID), currentUserPwEpoch(ctx, s.rdb, user.ID))
+	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID), epoch)
 	if err != nil {
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, err
@@ -169,7 +182,7 @@ return {v, e}
 `
 
 // Refresh 刷新 Token，RT 轮换
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+func (s *AuthService) Refresh(ctx context.Context, refreshToken, ip, userAgent string) (*model.TokenPair, error) {
 	claims, err := s.jwtManager.ParseRefreshToken(refreshToken)
 	if err != nil {
 		return nil, errcode.ErrRefreshTokenInvalid
@@ -207,10 +220,10 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 	epochStr, _ := vals[1].(string)
 	epoch, perr := strconv.ParseInt(epochStr, 10, 64)
 	if perr != nil || epoch < 0 {
-		epoch = 0
+		return nil, errcode.ErrServiceUnavailable
 	}
 	// 消费时刻的权威校验，三种失败态分别透出（签发绑定消费时刻纪元：若 INCR
-	// 发生在消费之后，新 RT 纪元已旧，下一次刷新必败——fail-closed，AT 由 30min TTL 兜底）：
+	// 发生在消费之后，新 RT 纪元已旧，下一次刷新必败；新 AT 也由同纪元检查即时拒绝）：
 	// ① 纪元不匹配 = 改密/重置密码后的旧 RT（正常安全动作，20014 明确告知重登）；
 	// ② 槽位为空 = 已登出/吊销/并发刷新落败（20004，自然过期语义）；
 	// ③ 槽位非空但 hash 不符 = 槽位已推进到更新的 RT，旧 RT 重现（盗用重放/
@@ -222,6 +235,13 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 	if storedHash != hashToken(refreshToken) {
+		// C-5/RT-1 观测先行（2026-10-27 拍板）：重放命中即落审计行+WARN——记录面
+		// 不设降噪前提（合法重放也留痕，三周后追查「一查便知」依赖此行）；告警面
+		// （宽限窗口/family_id）仍按台账 C-5 触发条件挂起，记录≠告警两事不互斥
+		s.auditService.LogRefreshReplay(ctx, claims.UserID, user.Username, ip, userAgent)
+		slog.Warn("auth: refresh token replay detected (RT-1)",
+			"user_id", claims.UserID, "username", user.Username, "ip", ip,
+			"request_id", reqid.From(ctx))
 		return nil, errcode.ErrRefreshTokenReplayed
 	}
 
@@ -295,27 +315,39 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 		return nil, err
 	}
 
-	// F-4 修复：改密后吊销**全部设备**会话（此前只删当前 deviceID 的 RT，
-	// 其他设备可在 168h 内继续刷新）；当前 AT 单独拉黑 jti。
+	// D2-05：改密吊销同样走重试补偿（DB 已提交、Redis 闪断时防旧会话存活）
+	epoch, err := revokeUserSessionsWithRetryEpoch(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
+	if err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	// 先完成全设备吊销，再单独拉黑当前 AT；单条黑名单写失败不能跳过纪元推进。
 	if accessToken != "" {
 		if err := s.revokeAccessToken(ctx, accessToken); err != nil {
 			return nil, err
 		}
 	}
-	// D2-05：改密吊销同样走重试补偿（DB 已提交、Redis 闪断时防旧会话存活）
-	if err := revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()); err != nil {
+	// P1-D（2026-11-01 审计）：写改密地板——其他设备旧 AT 即时失效。修前为放行新 AT
+	// 清除 disabled 键曾使旧 AT 复活；现由密码纪元严格比对兜底，同秒也不可复用。
+	// 保留兼容地板，TTL=AccessTTL+60s 自然过期；
+	// 写失败与吊销同档 fail-close。
+	if err := s.rdb.Set(ctx, fmt.Sprintf("user:at_min_iat:%d", userID), time.Now().Unix(),
+		s.jwtManager.AccessTTL()+time.Minute).Err(); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	// disabled 键会拦截刚签发的新 AT，须在重新签发前清除
-	// （密码已验证通过，旧 RT 已全部删除，其他设备旧 AT 最长 30 分钟自然过期）
-	if err := clearUserDisabled(ctx, s.rdb, userID); err != nil {
-		return nil, errcode.ErrServiceUnavailable
+	// 纪元绑定本次撤销结果；重读保证之后的重置/删除不能借用本次改密结果。
+	current, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
-
-	// 重新签发不含 mcp 标记的 Token pair
-	user.MustChangePassword = false
-	// 改密流程此处的纪元读取发生在吊销 INCR 之后（revoke 已完成）——取到新值
-	return s.issueTokenPair(ctx, user, normalizeDeviceID(deviceID), currentUserPwEpoch(ctx, s.rdb, userID))
+	if current.Password != hash || current.Status != 1 || current.MustChangePassword {
+		return nil, errcode.ErrInvalidCredentials
+	}
+	if ok, err := clearUserDisabledAtEpoch(ctx, s.rdb, userID, epoch); err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	} else if !ok {
+		return nil, errcode.ErrInvalidCredentials
+	}
+	return s.issueTokenPair(ctx, current, normalizeDeviceID(deviceID), epoch)
 }
 
 // revokeAccessToken 将 AT 加入黑名单（剩余 TTL 内失效）
@@ -339,7 +371,7 @@ func (s *AuthService) revokeAccessToken(ctx context.Context, accessToken string)
 }
 
 func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, deviceID string, pwe int64) (*model.TokenPair, error) {
-	at, _, err := s.jwtManager.GenerateAccessToken(user.ID, user.Username, user.MustChangePassword)
+	at, _, err := s.jwtManager.GenerateAccessTokenWithEpoch(user.ID, user.Username, user.MustChangePassword, pwe)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}

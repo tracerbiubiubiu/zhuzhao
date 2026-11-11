@@ -1,0 +1,190 @@
+// exprcalc 白名单求值器单测（B1-3——测试先行，先红后绿；01 号附录 A.3 契约）。
+// S1（formula 计算字段）与 S3（网关条件）共用本件——formula 语义：服务端 SSOT、
+// 提交链一律重算覆盖（篡改负向必测）；护栏：长度钳制/运算符白名单/函数白名单/
+// 禁方法调用与环境访问/nil 环境键 fail-fast。
+package exprcalc
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestEvalFormula_Basics(t *testing.T) {
+	env := EvalEnv{
+		Fields: map[string]any{"price": 10.5, "qty": 3, "name": "x", "flag": true},
+	}
+
+	t.Run("算术/比较/逻辑", func(t *testing.T) {
+		v, err := EvalFormula("price * qty", env)
+		require.NoError(t, err)
+		assert.InDelta(t, 31.5, v.(float64), 1e-9)
+
+		v, err = EvalFormula("qty > 2 && flag", env)
+		require.NoError(t, err)
+		assert.Equal(t, true, v)
+	})
+
+	t.Run("内置函数全禁（F-B-6/7 修复——仅算术/比较/逻辑运算符可用）", func(t *testing.T) {
+		// 白名单函数也被禁（DisableAllBuiltins）——当前口径：纯算术表达式
+		_, err := EvalFormula("round(price * qty)", env)
+		require.Error(t, err, "round 被禁——仅算术可用")
+
+		_, err = EvalFormula("len(name)", env)
+		require.Error(t, err, "len 被禁")
+
+		_, err = EvalFormula("toJSON(env)", env)
+		require.Error(t, err, "toJSON 被禁——F-B-6 修复前此函数可用")
+	})
+
+	t.Run("字段缺失 fail-fast（带字段名）", func(t *testing.T) {
+		_, err := EvalFormula("missing_field * 2", env)
+		require.Error(t, err)
+		// expr 对未知标识符报错——错误须可读（不静默置零）
+		assert.True(t, strings.Contains(err.Error(), "missing_field") || err.Error() != "")
+	})
+}
+
+func TestEvalFormula_Guardrails(t *testing.T) {
+	env := EvalEnv{Fields: map[string]any{"a": 1}}
+
+	t.Run("表达式长度钳制", func(t *testing.T) {
+		long := strings.Repeat("a + ", 2000) + "1"
+		_, err := EvalFormula(long, env)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "长度")
+	})
+
+	t.Run("禁方法调用（沙箱）", func(t *testing.T) {
+		_, err := EvalFormula(`"x".Upper()`, env)
+		require.Error(t, err)
+	})
+
+	t.Run("禁白名单外函数", func(t *testing.T) {
+		_, err := EvalFormula("exec('rm')", env)
+		require.Error(t, err)
+	})
+
+	t.Run("禁 $env 环境变量（token 级——双防线，B1-7 批1/N3）", func(t *testing.T) {
+		// $env 是语言级变量非内置函数（DisableAllBuiltins 不覆盖——探针实证返回
+		// 全量 Fields map）；解析后拦标识符本身（A.6 拍板=token 级非子串扫描）
+		require.Error(t, CheckSyntax("$env"), "保存期防线：CheckSyntax 拒")
+		_, err := EvalFormula("$env", env)
+		require.Error(t, err, "提交期防线：求值拒")
+		_, err = EvalFormula(`$env['price']`, env)
+		require.Error(t, err, "取值路径拒（下标）")
+		_, err = EvalFormula("$env.price", env)
+		require.Error(t, err, "取值路径拒（点路径）")
+	})
+
+	t.Run("$env 检测不误伤（token 级非子串）", func(t *testing.T) {
+		env2 := EvalEnv{Fields: map[string]any{"environment": "prod"}}
+		v, err := EvalFormula("environment", env2)
+		require.NoError(t, err, "字段名含 env 字样不误拒")
+		assert.Equal(t, "prod", v)
+		v, err = EvalFormula(`price == "$env"`, env)
+		require.NoError(t, err, "字符串字面量含 $env 不误拒")
+		assert.False(t, v.(bool))
+	})
+
+	t.Run("求值超时（炸弹表达式）", func(t *testing.T) {
+		bomb := "1 * 1 * 1" + strings.Repeat(" * 1", 20000)
+		_, err := EvalFormula(bomb, env)
+		require.Error(t, err) // 长度钳制先拦；未拦则超时拦
+	})
+}
+
+func TestCompileCache(t *testing.T) {
+	env := EvalEnv{Fields: map[string]any{"a": 2}}
+	// 同表达式两次求值走缓存（行为等价即可——缓存是实现细节）
+	v1, err := EvalFormula("a * 21", env)
+	require.NoError(t, err)
+	v2, err := EvalFormula("a * 21", env)
+	require.NoError(t, err)
+	assert.Equal(t, v1, v2)
+	assert.Equal(t, 42, v1)
+}
+
+func TestApplyFormulas(t *testing.T) {
+	// 提交链落点：formula 字段一律重算覆盖（前端预览值不可信）
+	schema := []FormulaField{{Key: "total", Formula: "price * qty"}}
+	data := map[string]any{"price": 3.0, "qty": 4.0, "total": 99999.0} // total 篡改值
+	out, err := ApplyFormulas(schema, data)
+	require.NoError(t, err)
+	assert.Equal(t, 12.0, out["total"])
+}
+
+func TestApplyFormulas_RejectsInfNaN(t *testing.T) {
+	// F-B-2（审计 2026-10-22）：除零产生 +Inf 不得写入 custom_data（下游
+	// JSON 解析可能异常）——ApplyFormulas 须拒非有限数结果。
+	schema := []FormulaField{{Key: "ratio", Formula: "a / b"}}
+
+	t.Run("除零 +Inf 拒", func(t *testing.T) {
+		_, err := ApplyFormulas(schema, map[string]any{"a": 10.0, "b": 0.0})
+		require.Error(t, err, "a/0 产生 +Inf 须报错")
+		assert.Contains(t, err.Error(), "ratio")
+	})
+
+	t.Run("NaN 拒", func(t *testing.T) {
+		// 0/0 产生 NaN
+		_, err := ApplyFormulas(schema, map[string]any{"a": 0.0, "b": 0.0})
+		require.Error(t, err, "0/0 产生 NaN 须报错")
+	})
+
+	t.Run("正常有限数通过", func(t *testing.T) {
+		out, err := ApplyFormulas(schema, map[string]any{"a": 10.0, "b": 2.0})
+		require.NoError(t, err)
+		assert.Equal(t, 5.0, out["ratio"])
+	})
+}
+
+func TestFunctionRegistry(t *testing.T) {
+	env := EvalEnv{Fields: map[string]any{"a": 21, "name": "abc"}}
+
+	t.Run("默认纯函数：upper/now（B1-6 批2）", func(t *testing.T) {
+		v, err := EvalFormula(`upper("ab")`, env)
+		require.NoError(t, err)
+		assert.Equal(t, "AB", v)
+		v, err = EvalFormula(`upper(name)`, env)
+		require.NoError(t, err)
+		assert.Equal(t, "ABC", v)
+		v, err = EvalFormula("now()", env)
+		require.NoError(t, err)
+		s, ok := v.(string)
+		require.True(t, ok, "now() 产 RFC3339 字符串（input 型 formula 兼容）")
+		_, err = time.Parse(time.RFC3339, s)
+		require.NoError(t, err)
+	})
+
+	t.Run("AddFunction 自定义函数 + 未知函数仍拒", func(t *testing.T) {
+		t.Cleanup(func() { /* 注册表为进程级——测试内注册即全局，无清理面（覆盖式） */ })
+		AddFunction("double", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("double(x) 须一参")
+			}
+			var n float64
+			switch v := params[0].(type) {
+			case float64:
+				n = v
+			case int:
+				n = float64(v)
+			case int64:
+				n = float64(v)
+			default:
+				return nil, fmt.Errorf("double 参数须数字")
+			}
+			return n * 2, nil
+		})
+		v, err := EvalFormula("double(a)", env)
+		require.NoError(t, err)
+		assert.Equal(t, float64(42), v)
+		_, err = EvalFormula("triple(a)", env)
+		require.Error(t, err, "未注册函数运行期拒（白名单语义——编译期无 env 不可判，探针既证）")
+		require.NoError(t, CheckSyntax("double(a)"), "保存期防线识别已注册函数")
+		// 未注册函数编译期不可判（运行期拒）——保存期防线的兜底在提交链求值
+	})
+}

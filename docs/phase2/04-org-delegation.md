@@ -1,5 +1,8 @@
 # 04 - 组织内委托（org-delegation，Phase 2c）
 
+> **适用范围（2026-11-08整理）**：当前组织委托路由使用selfService组并在业务层做细分权限/目标判断，不是初始菜单码绑定草图。B09明确显式owner数组独立于过期成员关系；project_isolated与scope配置已实施。删除/不可见语义按当前OrgDelegation与工单Resource判定，旧矩阵破折号不能理解成任意绕过L2。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 8–10**（正文 §6 编号：8=org-delegation 成员分级、9=Authorize、10=集成验收；09-ticket §0 引用的"Step 9"即此处 Step 9），依赖 Phase **2b-core + 2b-org** 验收（虚拟组、`ticket_scope`、TicketResource group/all 过滤；HR Sync 属 2b-ext 延后，非前置）。  
 > 设计背景见 [03-org-enhance §组织负责人](./03-org-enhance.md#组织负责人与组内分级你描述的场景)；**本文档为 2c 实现 SSOT**。
 
@@ -32,6 +35,8 @@
 Step 8（成员分级）与 Step 9（Authorize）**强耦合**：D7–D9 同时需要 `org_member_role` 与资源 Authorize；拆成两个 phase 会出现「能任命 admin 但不能管工单」的半交付状态。2c 仅 3 个 Step，体量可控，**保持 2c 单节点**。
 
 ---
+
+<a id="1-前置条件2b-必须已验收"></a>
 
 ## 1. 前置条件（2b-core + 2b-org 必须已验收）
 
@@ -71,7 +76,9 @@ CREATE INDEX idx_user_orgs_org_role ON user_orgs (org_id, org_member_role)
 | `admin` | 10 | 只能增删 **member**；不能升降 admin/owner |
 | `member` | 20 | 默认；使用资源，无成员管理权 |
 
-**EffectiveOrgPriority(user, org)** = 若 `user_id ∈ org.owner_user_ids` 则视为 `owner`（priority 1），否则取 `user_orgs.org_member_role` 对应 priority。
+**EffectiveOrgPriority(user, org)** = 若 `user_id ∈ org.owner_user_ids` 则视为 `owner`（priority 1），否则仅取有效成员行（`expires_at IS NULL OR expires_at > NOW()`）的 `org_member_role` 对应 priority；已到期的成员行不授予委托权限。
+
+> 2026-11-05 B09：成员有效期同样约束组内管理、工单单条委托与列表委托，不能仅约束透明读/scope/BFS。显式 `owner_user_ids` 是独立权源，仍按既有规则生效；撤销这类 owner 须修改 owner 列表。到期不自动删除关系行，管理端仍可查询/清理存量关系。
 
 > `owner_user_ids` 与 `org_member_role=owner` **双轨对齐**：`SetOwners` 成功时，对每个 owner 确保存在 `user_orgs` 行且 `org_member_role='owner'`（无行则 INSERT，有行则 UPDATE）。
 
@@ -246,6 +253,7 @@ EXISTS (
   WHERE uo.user_id = $user
     AND uo.org_id = T.org_id
     AND uo.org_member_role IN ('admin', 'owner')
+    AND (uo.expires_at IS NULL OR uo.expires_at > NOW())
 )
 -- 或 user_id = ANY((SELECT owner_user_ids FROM organizations WHERE id = T.org_id))
 ```
@@ -305,7 +313,7 @@ migrations/0000xx_org_delegation.up.sql
 | 50009 | `ErrCannotManageOrgMember` | 无权管理该组织成员 | 403 | D5；admin 删 admin |
 | 50010 | `ErrNotOrgOwner` | 需要组织负责人权限 | 403 | 非 owner 调用 SetMemberRole / SetOwners（非全局） |
 
-> 写入 `internal/pkg/errcode/errcode.go` 与 [api/errcode.md](../api/errcode.md)；**勿改号**。
+> 写入 `internal/pkg/errcode/errcode.go` 与 [docs/api/errcode.md](../api/errcode.md)；**勿改号**。
 
 ---
 

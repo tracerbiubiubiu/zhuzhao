@@ -1,4 +1,32 @@
 definitions:
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest:
+    properties:
+      ticket_id:
+        example: "0"
+        type: string
+      user_ids:
+        items:
+          type: string
+        maxItems: 20
+        type: array
+    required:
+    - ticket_id
+    - user_ids
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest:
+    properties:
+      tags:
+        items:
+          type: string
+        maxItems: 20
+        type: array
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - tags
+    - ticket_id
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest:
     properties:
       menu_ids:
@@ -18,6 +46,18 @@ definitions:
         description: nil = 取消分派
         example: "0"
         type: string
+      escalation_supervisor_id:
+        description: EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）
+        example: "0"
+        type: string
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest:
+    properties:
       id:
         example: "0"
         type: string
@@ -46,6 +86,37 @@ definitions:
         type: string
     required:
     - id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput:
+    properties:
+      object_key:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - object_key
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest:
+    properties:
+      enabled:
+        type: boolean
+      keyword:
+        type: string
+      priority:
+        type: integer
+      target_org:
+        example: "0"
+        type: string
+      target_user:
+        example: "0"
+        type: string
+      type_code:
+        maxLength: 50
+        type: string
+    required:
+    - target_org
+    - type_code
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateCommentRequest:
     properties:
@@ -123,11 +194,23 @@ definitions:
       assigned_to:
         example: "0"
         type: string
-      custom_data:
+      attachments:
+        description: |-
+          B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+          confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。
+          语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete
+          （内嵌图 ticket_richtext 不可经该端点删——随工单生命周期，A.7）
         items:
-          type: integer
+          type: string
         type: array
+      custom_data:
+        type: object
       description:
+        type: string
+      escalation_supervisor_id:
+        description: EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign
+          改）
+        example: "0"
         type: string
       org_id:
         example: "0"
@@ -253,6 +336,43 @@ definitions:
     required:
     - id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject:
+    properties:
+      bucket:
+        type: string
+      confirmed_at:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        example: "0"
+        type: string
+      etag:
+        type: string
+      file_name:
+        type: string
+      id:
+        example: "0"
+        type: string
+      mime_type:
+        type: string
+      object_key:
+        type: string
+      owner_id:
+        type: string
+      owner_kind:
+        description: |-
+          通用归属引用（000047 随行件）：ticket 态 confirm/建单落绑填 ticket、avatar bind 填 user；
+          NULL = 未归属（pending / *_create 悬挂态 / 存量行）。元数据面，不作判定依据。
+        type: string
+      purpose:
+        type: string
+      size_bytes:
+        example: "0"
+        type: string
+      status:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest:
     properties:
       captcha:
@@ -363,12 +483,87 @@ definitions:
       total:
         type: integer
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput:
+    properties:
+      file_name:
+        type: string
+      mime_type:
+        type: string
+      purpose:
+        type: string
+      size_bytes:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - file_name
+    - mime_type
+    - purpose
+    - size_bytes
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse:
+    properties:
+      expires_at:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      method:
+        type: string
+      object_key:
+        type: string
+      upload_url:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest:
     properties:
       refresh_token:
         type: string
     required:
     - refresh_token
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest:
+    properties:
+      ticket_id:
+        example: "0"
+        type: string
+      user_id:
+        example: "0"
+        type: string
+    required:
+    - ticket_id
+    - user_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest:
+    properties:
+      tag:
+        maxLength: 50
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - tag
+    - ticket_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest:
+    properties:
+      content:
+        example: |-
+          # 标题
+
+          - 列表
+        type: string
+    required:
+    - content
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse:
+    properties:
+      html:
+        type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.ReplaceTypeFieldsRequest:
     properties:
@@ -381,8 +576,8 @@ definitions:
         type: array
       version:
         description: |-
-          Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
-          须 > 0，否则 400。
+          Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
+          预检后配置改变返回409；非nil须>0，否则400。
         type: integer
     required:
     - code
@@ -398,6 +593,13 @@ definitions:
     required:
     - password
     - user_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest:
+    properties:
+      key:
+        type: string
+    required:
+    - key
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RoleIDRequest:
     properties:
@@ -466,6 +668,59 @@ definitions:
     required:
     - user_id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView:
+    properties:
+      default_value:
+        description: config 出厂默认（前端 恢复默认/已自定义 判定用）
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      key:
+        type: string
+      min_editor_tier:
+        description: superadmin | admin
+        type: string
+      source:
+        description: config=出厂默认 | kv=运行时覆盖
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        example: "0"
+        type: string
+      value:
+        items:
+          type: integer
+        type: array
+      version:
+        description: kv 行当前版本（回传 expected_version 用）
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView:
+    properties:
+      created_at:
+        type: string
+      file_name:
+        type: string
+      id:
+        example: "0"
+        type: string
+      mime_type:
+        type: string
+      object_key:
+        type: string
+      size_bytes:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+      uploaded_by:
+        example: "0"
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput:
     properties:
       field_key:
@@ -474,6 +729,11 @@ definitions:
       field_label:
         maxLength: 100
         type: string
+      field_meta:
+        description: B1-3 formula/extension（附录 A.2 方案 b）
+        items:
+          type: integer
+        type: array
       field_options:
         items:
           type: integer
@@ -487,6 +747,7 @@ definitions:
         - select
         - multi_select
         - tips
+        - richtext
         type: string
       required:
         type: boolean
@@ -499,6 +760,30 @@ definitions:
     - field_key
     - field_label
     - field_type
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest:
+    properties:
+      comment:
+        type: string
+      id:
+        example: "0"
+        type: string
+      to:
+        maxLength: 64
+        type: string
+    required:
+    - id
+    - to
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest:
     properties:
@@ -564,8 +849,39 @@ definitions:
     - priority
     - version
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest:
+    properties:
+      expected_version:
+        description: |-
+          ExpectedVersion F-D2 乐观锁（可选）：传 List 返回的 version——并发他人
+          已改过即 400 提示刷新；不传=服务端重读重试（兼容存量调用，last-write-wins）。
+        type: integer
+      key:
+        type: string
+      value:
+        items:
+          type: integer
+        type: array
+    required:
+    - key
+    - value
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketRequest:
     properties:
+      attachments:
+        description: |-
+          B5-4 编辑增量绑定（05 号 A.3 a 案）：悬挂 confirmed 对象（attachment_create/
+          richtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments
+          同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点
+        items:
+          type: string
+        type: array
+      custom_data:
+        description: |-
+          B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
+          值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
+          字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
+        type: object
       description:
         type: string
       id:
@@ -619,14 +935,21 @@ definitions:
         items:
           type: integer
         type: array
+      transition_meta:
+        description: |-
+          TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
+          nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
+        items:
+          type: integer
+        type: array
       transitions:
         items:
           type: integer
         type: array
       version:
         description: |-
-          Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
-          ticket_types.version 才写，否则 409。须 > 0，否则 400。
+          Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。
+          缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须>0，否则400。
         type: integer
     required:
     - code
@@ -706,6 +1029,25 @@ definitions:
     required:
     - action
     type: object
+  internal_handler.DeleteAttachmentInput:
+    properties:
+      object_key:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - object_key
+    - ticket_id
+    type: object
+  internal_handler.notificationIDReq:
+    properties:
+      id:
+        example: "0"
+        type: string
+    required:
+    - id
+    type: object
   response.Response:
     properties:
       code:
@@ -722,6 +1064,80 @@ info:
   title: zhuzhao API
   version: "1.0"
 paths:
+  /api/v1/assignment-rules:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 自动分派规则列表
+      tags:
+      - ticket
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 规则
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 建自动分派规则（target_user 须属 target_org——决议③写侧校验）
+      tags:
+      - ticket
+  /api/v1/assignment-rules/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 规则 ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删自动分派规则
+      tags:
+      - ticket
+  /api/v1/assignment-rules/enabled:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 启停
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 启停自动分派规则
+      tags:
+      - ticket
   /api/v1/audit/logs:
     get:
       consumes:
@@ -755,7 +1171,7 @@ paths:
         in: query
         name: employee_no
         type: string
-      - description: HTTP 方法（GET/POST/PUT/DELETE 等）
+      - description: HTTP 方法（单值或逗号分隔多值，如 GET,POST）
         in: query
         name: method
         type: string
@@ -867,6 +1283,18 @@ paths:
       summary: 刷新 Token
       tags:
       - auth
+  /api/v1/badges:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 待办角标聚合（sections 开放 map——前端 60s 轮询；未知 section 前端忽略）
+      tags:
+      - badge
   /api/v1/dead-letters:
     get:
       produces:
@@ -881,6 +1309,62 @@ paths:
       summary: 死信列表（运维向，配合 retry 端点闭环）
       tags:
       - tasks
+  /api/v1/files/{key}:
+    get:
+      description: '定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即
+        404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3'
+      parameters:
+      - description: 对象键（{domain}/{yyyy}/{mm}/{uuid}.{ext}）
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 对象流（ETag/nosniff/private/分型 disposition）
+          schema:
+            type: file
+        "304":
+          description: 命中 If-None-Match（零传输零审计行）
+        "404":
+          description: 91003（含 pending/非支持面/替换嫌疑同形）
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 文件代理下载（稳定 URL——头像等对象经应用投递）
+      tags:
+      - storage
+  /api/v1/intel/query:
+    get:
+      description: 外部限流 API 的缓存代理（ACL 防腐——result 上游原样透传）；配额耗尽降级返回过期缓存带 stale 标记
+      parameters:
+      - description: 情报类型（ip/domain/hash/url）
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: 查询值
+        in: query
+        name: value
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 威胁情报查询（先缓存后回源；stale=过期缓存降级标记）
+      tags:
+      - intel
   /api/v1/jobs:
     get:
       produces:
@@ -914,6 +1398,21 @@ paths:
       summary: 新建任务定义（action_id + trigger_type + cron_spec + params）
       tags:
       - jobs
+  /api/v1/jobs/actions:
+    get:
+      description: 注册动作的 id/名称/描述/参数 schema（null=未声明降级 JSON 模式）；不含运行数据
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 任务动作清单（提交选单数据源——最小读面）
+      tags:
+      - tasks
   /api/v1/jobs/trigger:
     post:
       consumes:
@@ -950,6 +1449,35 @@ paths:
       summary: 修改任务定义（cron/params/启停；生效 ≤ 下个 cron tick）
       tags:
       - jobs
+  /api/v1/me/notification-optouts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 当前用户通知退订列表（B6-4 偏好自服务）
+      tags:
+      - notification
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 设置当前用户通知退订（按 biz_type+event_action；"*" 通配同域全退）
+      tags:
+      - notification
   /api/v1/menus:
     get:
       consumes:
@@ -986,6 +1514,68 @@ paths:
       summary: 菜单详情
       tags:
       - menus
+  /api/v1/message-logs:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 发送记录列表
+      tags:
+      - message
+  /api/v1/message-rules:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 订阅规则列表
+      tags:
+      - message
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 创建/更新订阅规则
+      tags:
+      - message
+  /api/v1/message-rules/delete:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 删除订阅规则
+      tags:
+      - message
+  /api/v1/message-templates:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 消息模板列表
+      tags:
+      - message
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 创建消息模板
+      tags:
+      - message
+  /api/v1/message-templates/delete:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 删除消息模板
+      tags:
+      - message
+  /api/v1/message-templates/update:
+    post:
+      produces:
+      - application/json
+      responses: {}
+      summary: 更新消息模板
+      tags:
+      - message
   /api/v1/notifications:
     get:
       parameters:
@@ -1046,6 +1636,70 @@ paths:
       security:
       - BearerAuth: []
       summary: 删除通知配置（body 携带 code——zhuzhao 风格）
+      tags:
+      - notifications
+  /api/v1/notifications/inbox:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页
+        in: query
+        name: page_size
+        type: integer
+      - description: 仅未读
+        in: query
+        name: unread
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 站内收件箱分页（倒序；unread=true 仅未读）
+      tags:
+      - notifications
+  /api/v1/notifications/read:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 通知 ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.notificationIDReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 单条已读（幂等；非本人 404 同形）
+      tags:
+      - notifications
+  /api/v1/notifications/read-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 全部已读（批量——返回置读条数）
       tags:
       - notifications
   /api/v1/notifications/update:
@@ -1386,6 +2040,151 @@ paths:
       summary: 查执行记录（request_id 跨查即此）
       tags:
       - tasks
+  /api/v1/storage/avatar/bind:
+    post:
+      consumes:
+      - application/json
+      description: 校验对象（confirmed+本人+avatar 面，非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象
+        best-effort 删除+标 deleted）；同键重复幂等。前端渲染 src=/api/v1/files/{avatar}
+      parameters:
+      - description: 对象键
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject'
+              type: object
+        "404":
+          description: 91003（含非本人/pending/非 avatar 面防枚举同形）
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 头像回写（确认对象绑定为当前用户头像）
+      tags:
+      - storage
+  /api/v1/storage/presign/upload:
+    post:
+      consumes:
+      - application/json
+      description: 限制矩阵预检（MIME 白名单+黑名单/大小）→ 服务端生成对象键 → 签发 PUT 直传 URL。purpose 取 avatar
+        / attachment_create / richtext_create（ticket 态随附件批）
+      parameters:
+      - description: 上传声明
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse'
+              type: object
+        "400":
+          description: 91001 超限 / 91002 类型不允许 / 10003 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 对象预签名上传（返回直传 URL——Content-Type 已钉入签名）
+      tags:
+      - storage
+  /api/v1/system/cron-status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: cron 任务状态（只读——上次成功/失败/耗时；超时扫描含观察模式标记）
+      tags:
+      - system
+  /api/v1/system/settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView'
+                  type: array
+              type: object
+      summary: 设置列表（catalog 全量——含有效值/来源/编辑层级）
+      tags:
+      - system
+  /api/v1/system/settings/reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 设置键
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 恢复默认（删除运行时覆盖回出厂值；幂等）
+      tags:
+      - system
+  /api/v1/system/settings/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 键值对
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新设置（tier 分层+硬底线校验——越界 400）
+      tags:
+      - system
   /api/v1/tasks:
     post:
       consumes:
@@ -1626,6 +2425,40 @@ paths:
       summary: 工单类型字段定义
       tags:
       - ticket
+  /api/v1/ticket-types/{code}/fields/impact:
+    get:
+      description: 每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价
+      parameters:
+      - description: 类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+      summary: 字段在途影响分析（全量替换前的变更代价）
+      tags:
+      - ticket
+  /api/v1/ticket-types/{code}/fields/variables:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: 模板可用变量集（变量字典——06 号 A.6）
+      tags:
+      - message
   /api/v1/ticket-types/delete:
     post:
       parameters:
@@ -1641,7 +2474,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 删除工单类型（有工单禁删 → 409）
+      summary: 删除工单类型（有工单/模板引用禁删 → 409）
       tags:
       - ticket-admin
   /api/v1/ticket-types/fields/replace:
@@ -1717,6 +2550,14 @@ paths:
         in: query
         name: status
         type: string
+      - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
+        in: query
+        name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
+        type: string
       - description: 优先级（1紧急/2高/3中/4低）
         in: query
         name: priority
@@ -1789,6 +2630,54 @@ paths:
       summary: 工单详情
       tags:
       - ticket
+  /api/v1/tickets/{id}/attachments:
+    get:
+      description: L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单附件列表（JOIN 视图）
+      tags:
+      - storage
+  /api/v1/tickets/{id}/cc:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单抄送列表
+      tags:
+      - ticket
   /api/v1/tickets/{id}/comments:
     get:
       parameters:
@@ -1825,6 +2714,44 @@ paths:
       summary: 工单关联列表
       tags:
       - ticket
+  /api/v1/tickets/{id}/tags:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 工单标签列表
+      tags:
+      - ticket
+  /api/v1/tickets/{id}/transitions/available:
+    get:
+      description: condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed
+        兜底，前端过滤仅 UX
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 当前用户可执行的转换列表（Jira condition 语义——按用户过滤）
+      tags:
+      - ticket
   /api/v1/tickets/assign:
     post:
       consumes:
@@ -1844,6 +2771,114 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 分派工单
+      tags:
+      - ticket
+  /api/v1/tickets/attachments/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 校验归属（非本人同形 404 防枚举）与 pending 态 → 对象存储 HEAD 实测（size/类型）→ 翻 confirmed。重复
+        confirm 409
+      parameters:
+      - description: 对象键
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject'
+              type: object
+        "404":
+          description: 91003 不存在（含非本人防枚举同形）
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: 91004 已确认/已关联
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 确认上行对象（HEAD 实测→落 confirmed+etag 快照）
+      tags:
+      - storage
+  /api/v1/tickets/attachments/delete:
+    post:
+      consumes:
+      - application/json
+      description: 'L2 update 面；删关联行+对象本体 best-effort 删+标 deleted（A.4 #4）'
+      parameters:
+      - description: 工单 ID+对象键
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.DeleteAttachmentInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 91003 不存在/非绑定
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除工单附件（删关联+对象弃旧）
+      tags:
+      - storage
+  /api/v1/tickets/cc:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 添加工单抄送
+      tags:
+      - ticket
+  /api/v1/tickets/cc/remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 移除抄送请求（本人自摘走读可见；摘他人需 update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 移除工单抄送
       tags:
       - ticket
   /api/v1/tickets/close:
@@ -1909,6 +2944,63 @@ paths:
       summary: 删除工单
       tags:
       - ticket
+  /api/v1/tickets/export:
+    get:
+      parameters:
+      - description: 工单类型
+        in: query
+        name: type_code
+        type: string
+      - description: 工单状态
+        in: query
+        name: status
+        type: string
+      - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
+        in: query
+        name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
+        type: string
+      - description: 优先级
+        in: query
+        name: priority
+        type: integer
+      - description: 标签（S10 B10-2）
+        in: query
+        name: tag
+        type: string
+      - description: 处理人过滤，仅支持 me
+        in: query
+        name: assignee
+        type: string
+      - description: 创建人过滤，仅支持 me
+        in: query
+        name: created_by
+        type: string
+      - description: 标题关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 创建日期起（YYYY-MM-DD）
+        in: query
+        name: created_from
+        type: string
+      - description: 创建日期止（YYYY-MM-DD）
+        in: query
+        name: created_to
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: xlsx 附件
+          schema:
+            type: file
+      summary: 工单导出（xlsx 流式——与列表同筛选/同可见性；行数上限 5 万）
+      tags:
+      - ticket
   /api/v1/tickets/notes:
     post:
       consumes:
@@ -1949,6 +3041,97 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 建立工单关联
+      tags:
+      - ticket
+  /api/v1/tickets/richtext/render:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: MD 源文本
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse'
+              type: object
+      summary: richtext 字段服务端渲染（消毒 SSOT）
+      tags:
+      - ticket
+  /api/v1/tickets/tags:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 添加工单标签
+      tags:
+      - ticket
+  /api/v1/tickets/tags/remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 移除标签请求（自摘=读可见；摘他人挂的=update 权）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 移除工单标签
+      tags:
+      - ticket
+  /api/v1/tickets/transition:
+    post:
+      consumes:
+      - application/json
+      description: AssertTransition 状态机 + transition_meta from>to condition 权限门（fail-closed）+
+        validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned
+      parameters:
+      - description: 转换请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 执行工单状态转换（condition/validator 服务端判——统一入口）
       tags:
       - ticket
   /api/v1/tickets/update:

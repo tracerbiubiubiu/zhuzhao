@@ -1,0 +1,466 @@
+<a id="05--p5-s5-对象存储底座与富媒体rustfss3-兼容2026-10-16-后端拍定原-minio见变更记录设计稿"></a>
+
+# 05 — P5-S5 对象存储底座与富媒体：RustFS（S3 兼容；2026-10-16 后端拍定——原 MinIO，见变更记录）（实施说明与设计沿革）
+
+> **段属性**：基线段（phase5 收口对象）。**原实施序**：**第一棒（底座先行）**——S1 富文本调色板、S6 以后各富媒体消费件的依赖；顺序约束：底座 → 头像 → 附件 → 富文本。
+> **原规划量级（非当前排期）**：1.5–2 周（底座 1–2 天 → 头像 0.5–1 天 → 附件 2–3 天 → 富文本 3–5 天）+ 卷备份随行 0.5–1 天。**迁移**：有（`file_objects`/`ticket_attachments` 两表族；编号启动时按 [review/11 §4](../review/11-project-control.md) 对账，**不写死下一编号**，A2 规则）。
+> **文档定位**：段级实施说明与设计来源（2026-10-15 建档，phase5 分支）。**底座设计 SSOT = [phase2/10-storage.md](../phase2/10-storage.md)**（IW2 独立窗口收编，本段为其**实施载体**——底座只做实施不另设计；富文本字段为新增设计，不在 10 号范围）。立项 = dd §27。
+
+> 2026-11-07 B20附件体验：TicketAttachments列表加载失败保留旧内容并原位重试，不显示假空态；上传/删除已成功而刷新失败明确部分成功，不引导重复提交。切单/卸载/较早响应均受身份和序列保护，HTTP错误不重复toast；真实网络中断/重试E2E见[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。
+
+## 当前状态与阅读顺序（2026-11-08）
+
+S5已交付预签名直传、头像/附件/richtext落绑、统一代理下载、配置覆盖与四段GC；代码复验及dev/test来源看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，后续详情缓存看[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)。main/生产承接另计；首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
+
+先读A.1当前组件、A.4 API与A.7授权，再按场景看上传/下载/GC。§2是立项历史基线；原估算、选型比较和“待验”日期段保留其时点。底座蓝本来自phase2/10，本稿的后继批准及代码校准优先于旧蓝本，不能把两份不同阶段描述同时当现行合同。
+
+当前边界：UI只持久化单richtext字段草稿；整页草稿+附件恢复、正文引用解析回收、302投递等仍是目标/触发项，见相应段和[既有债台账](s6-s5-debt-ledger.md)。
+
+```mermaid
+flowchart TD
+    UI[头像/附件/RichtextField] --> API[StorageHandler 认证与资源授权]
+    API --> SVC[storage.Service + ConfigStore快照]
+    SVC --> DB[StorageRepo 元数据与绑定事务]
+    SVC --> S3[RustFS S3客户端]
+    UI -->|预签名PUT| S3
+    DB --> BIND[users.avatar / ticket_attachments]
+    READ[files稳定URL] --> API
+    GC[GC四段] --> DB
+    GC -->|条件退役后物理删除| S3
+```
+
+直传PUT/HEAD属于S3协议；平台端点仍GET/POST。文件读取走header优先、file_session cookie回退；静态菜单豁免不等于资源写权豁免。GC的avatar第四段默认观察，正文引用扫描尚未实现。
+
+## 1. 定位与由来
+
+立项时全仓无对象存储/附件能力，个人头像为URL字符串手填，七字段类型没有富文本/文件；这些是2026-10的起点，不是当前实现状态。头像、富文本、附件三类富媒体诉求**共用同一存储缺口**——对象存储作公共底座收编实施（2026-10-08 所有者指示，dd §27；**后端 2026-10-16 拍定 RustFS**——原 MinIO：官方已无开源镜像[八源拉取全败实证]且 AGPLv3，RustFS = Apache 2.0 + S3/MinIO 双兼容，镜像已拉已冒烟）。phase6 弱依赖（风险证据附件，未交付则降级外链）。
+
+<a id="2-现状基线代码级锚点2026-10-15-核实"></a>
+
+## 2. 立项基线（历史）（代码级锚点，2026-10-15 核实）
+
+| 项 | 现状 | 锚点 |
+|----|------|------|
+| 对象存储 | **全仓零实现**（file_objects/ticket_attachments/storage 模块均无，2026-10-15 grep 核实） | — |
+| 头像 | URL 字符串手填（patch 更新，max=500） | `internal/model/user.go:18`（Avatar 列）+ `internal/model/user_request.go:71`（`UpdateProfileRequest.Avatar` binding max=500） |
+| 字段类型 | 七类型白名单，无 richtext | `internal/service/ticket/type_admin.go:24` |
+| 错误码段 | 91000–91999 存储段**未占用**（[phase2/00 §9](../phase2/00-implementation-plan.md) 既有登记随批落） | docs/phase2/00 §9 |
+| compose | 无对象存储常驻服务（**RustFS + rustfs-backup 双实例草案已落 deployments 两份 compose，profile=storage 隔离默认不起——W0 工程预备 2026-10-16 落地**） | deployments/compose |
+
+<a id="3-底座10-号蓝本实施要点转录全文以-10-号为准"></a>
+
+## 3. 底座（蓝本由来与已拍边界）
+
+本节保留选型/限制展开及原批准过程。当前接口、授权与并发合同以A.1–A.7及注明的源码符号为准；标注建议、可选、升级或随未来批的能力不据此计为已实现。
+
+- **S3 兼容客户端**：开发 **RustFS**（2026-10-16 拍定）/ 生产云 OSS 仅**配置切换**非代码分支；SDK 选型预置 **minio-go v7**（对任意 S3 兼容端点工作——对 RustFS 的兼容性随 B5-1 首日 spike 实测，备选 aws-sdk-go-v2）。**后端切换依据（2026-10-16 所有者）**：MinIO 官方已无开源镜像（八源拉取全败实证）且 AGPLv3；RustFS = Apache 2.0 + S3/MinIO 双兼容（**实测 2026-10-16**：`/minio/health/live` 200、`RUSTFS_ROOT_*` 兼容 `MINIO_ROOT_*`、未签名请求 403 fail-closed）。
+- **预签名上传/下载**：前端直传，后端不扛文件流；上传流程 = 预签名 → 前端直传对象存储 → `attachments/confirm` 写元数据（服务端验证对象存在与 size）。**协议口径注（2026-10-15 公约对表，standards §3-1）**：直传环节的上行（PUT）与服务端对象探测（HEAD）均为 **S3 兼容对象存储协议层动作**（RustFS/MinIO 同构）——第三方存储既有协议、不经平台 API 面，不在「方法仅 GET/POST」公约辖域；**平台自有 API 全部 GET/POST**（presign upload/download + attachments confirm/list/delete 五端点，10 号 §4 即此形态）。
+- **CORS（2026-10-19 B5-1 前置拍板批补——外审缺口）**：浏览器直传=跨源请求（ui origin ≠ RustFS 端口），预检 OPTIONS 必须存储端放行——**CORS 落点=RustFS 服务端 env 配置（非应用 config 段；桶级 PutBucketCors 未支持——rustfs 讨论 #736）**；**✅ 判据①预验通过（2026-10-19 当日）**：配置点=env `RUSTFS_CORS_ALLOWED_ORIGINS`（S3 口；console 口另有独立变量）——显式设置后预检完整放行（allow-methods 含 PUT / allow-headers \* / **expose-headers 含 etag：浏览器可读 ETag 顺带解锁**），白名单外 Origin 零 CORS 头拦截；⚠ **不设存在反射式 CORS 风险（GHSA-x5xv-223c-8vm7）必须显式设置**（compose 草案已补默认 `http://localhost:5173`）；MinIO 兼容变量 `MINIO_API_CORS_ALLOW_ORIGIN` 实测无效。直传方案无需重审——设计级风险销账。
+- **早期配置蓝本**（当前完整字段见StorageConfig，A.2示例不是全部运行开关）：`storage:` 段（endpoint/region/bucket/AK/SK/use_ssl/上下行 TTL/`max_upload_bytes: 10MB`/`allowed_mime_prefixes`）——endpoint/凭据 config 化禁硬编码（README §6 总纪律③）。
+- **对象 key 规范**：`{domain}/{yyyy}/{mm}/{uuid}.{ext}`；**禁止客户端自选路径**（随机 UUID 防穿越）。
+- **桶与 key 布局展开（2026-10-15 所有者问询，蓝本骨架细化；现成例子 = 10 号 §2 示例）**：
+  - **单桶 + 域前缀**（10 号示例即此形态）——bucket 全局一个（config `bucket`），域前缀区分用途：`avatars/`、`tickets/`（附件与 richtext 内嵌图同域，purpose 区分）；生产云 OSS 同构切换。**多桶登记不做**：当前量级下 IAM/策略复杂度无收益。前缀命名空间预留（2026-10-20 回灌，只占名不建）：`scripts/`、`artifacts/`、`ingest/`、`exports/`。
+  - **桶策略全私有**：零公共读（含头像——下载走拍板点 1/2 结论）；访问仅两条通路 = 预签名直传（上行）+ 代理/预签名（下行）。
+  - **key 细节**：uuid4 **服务端生成**（每次预签发新 key，旧 key 不可再签——天然防覆盖）；`ext` 从签名钉死的 Content-Type 推导、**不取用户文件名**；原始文件名只落 `file_objects.file_name`（下载回显时 RFC 5987 编码防 header 注入）；**purpose↔key 前缀一致性校验**（avatar purpose 必须 `avatars/` 前缀，confirm 复核）。
+  - **桶级版本化/ILM 生命周期**：登记不做（触发驱动）——DB 元数据 + CASCADE/GC 已覆盖删除语义，桶版本化反增恢复复杂度。
+  - **孤儿对象**（预签后未 confirm）：**已定基线（2026-10-16 外审对齐——附录 A.3 修正②/A.9 按基线设计，正文统一）**：B5-1 随批轻量 GC（cron 扫 pending + `orphan_gc_days=7` KV 可调）；10 号"GC 后移"口径就此收编。
+- **上传限制矩阵展开（2026-10-15 所有者问询；建议值 = 启动批确认制）**：
+
+  | 维度 | 建议基线 | 执行点 |
+  |------|---------|--------|
+  | 大小 | 全局 10MB（10 号既定）；per-purpose 差异化可选（avatar ≤5MB / 附件 ≤10MB / richtext 内嵌图 ≤5MB） | presign 声明值预检 + **confirm HEAD 实测 content-length 比对**（直传链路后端不见字节，confirm 是尺寸防谎报的唯一强制点） |
+  | 个数 | **两档（拍板 P2 2026-10-21——内嵌图不占附件额度）**：普通附件 ≤20（仅 ticket_attachment 行计数）；richtext 内嵌图独立软限（schema meta 可配——登记触发驱动，当前不设硬限：间接界=custom_data 64KiB 总量[每图引用约 50–80B]；触发信号=贴图量级异常/磁盘水位→补 per-type 图数上限）+ 单次批量 presign ≤20（前端一轮批量框值） | presign 无计数预检（上传自由、额度在落绑卡）；**confirm/建单/编辑绑定三路径硬校验**（计数仅 ticket_attachment 行） |
+  | 类型 | **显式枚举白名单**（image/jpeg、image/png、image/webp、application/pdf、text/plain…）+ **显式黑名单 `text/html`、`image/svg+xml`**（存储型 XSS 载体）；**presign 钉 Content-Type 入签名**（客户端改类型即签名失效——直传链路类型防伪主力）；扩展名仅展示不参与判定 | presign 签名约束 + 白/黑名单校验 |
+  | 下载侧兜底 | `X-Content-Type-Options: nosniff` 恒带；`Content-Disposition` 分型——白名单 image/* **inline**（richtext 内嵌图渲染需要）+ 其余 **attachment**；文件名 RFC 5987 编码 | 代理端点响应头 |
+  | 频次/滥用 | presign/confirm 挂既有 rate_limit 桶；per-前缀 body 上限维持 16 号口径 | 中间件 |
+  | 配额 | per-user 存储配额 | 登记不做（触发驱动） |
+
+  **蓝本盲区两条（本次展开修正）**：① 10 号 `allowed_mime_prefixes` 含 `text/`——前缀白名单会放进 `text/html`（XSS 载体），改显式枚举 + 黑名单；② 直传链路后端不见字节，类型防伪不靠服务端嗅探，靠「presign 钉 Content-Type + confirm 实测尺寸 + 下载侧 nosniff/分型 disposition」三件组合。
+
+  **业界对表注（2026-10-15 核验：OWASP File Upload Cheat Sheet + AWS presigned POST 模式）**：① **presigned POST + policy 为业界标准强制点**——policy 条件含 `content-length-range`（尺寸在**存储侧**即被拦，强于 PUT + confirm 事后比对）、Content-Type 钉死、key 前缀约束；实现形态随批拍（POST policy 全家桶 vs PUT+签名钉 Content-Type+confirm 实测——功能等价，前者更强）。② OWASP 纪律对齐：扩展名 **allowlist 而非黑名单**（本矩阵白名单已隐含）、不信任客户端声明 MIME（已对齐）、随机文件名（已对齐）、**SVG 按 HTML 处理**（已黑名单）。③ 病毒扫描 / 独立域服务（cookie 隔离）：内网边界登记不做（10 号不做清单维持）。
+
+- **限制值配置化（2026-10-15 所有者提出：admin/superadmin 前端可改——拍板点 7，建议开放·分层形态）**：阈值/清单 = 事实进 DB，强制机制/硬底线 = 语义进代码（§25 分界同构）：
+  - **三层结构**：① config 文件持出厂默认（boot 兜底，总纪律③ config 化）→ ② `system_settings` KV 表存运行时覆盖（通用 KV：key/value JSONB + updated_by/updated_at——存储限制为首个消费者，**审计保留期管理端点（review/11 登记欠账）为已登记的下一个消费者**，复用同一面免二次迁移）→ ③ 管理面 UI（admin/superadmin）改 DB 层。
+  - **可配**：大小上限（全局 + per-purpose）、个数上限、MIME 白名单（**只能在代码级安全目录内收放**）、孤儿 GC 天数。
+  - **不可配（代码硬底线）**：`text/html`/`image/svg+xml` 硬拒（配置不可白名单化）、钳制天花板（如 size ≤100MB、个数 ≤100——DB 值越界服务端拒收）、限流不可关。
+  - **护栏**：管理动作挂系统管理权限族（权限码随批对表）+ 变更审计（谁/何时/旧值→新值）+ 服务端钳制校验（非法值拒收非静默修正）。
+  - **按 key 编辑层级（2026-10-15 所有者问询"superadmin 改的 admin 能否覆盖"——业界模式对表后采纳静态分层）**：每个配置 key 在**代码目录里登记最低编辑层级**（`min_editor_tier`: superadmin | admin），服务端按层级放行**写操作**（POST update）——**存储限制类 key 默认 superadmin-only**（admin 无写路径，"覆盖"结构性不存在；UI 对低层级只读展示"需超级管理员"）。业界锚点：Google Workspace「锁定设置」（超管锁定后下级置灰不可改）/ GitLab 实例默认值 + enforce 锁（下级不可覆盖）/ GPO「强制·禁止覆盖」/ Atlassian System Admin vs Admin 两级——**GitLab 演进注**：其近年部分硬锁回退为级联默认（硬锁维护成本实证），支持我们取静态分层而非运行时动态锁。**动态锁定**（超管运行时按 key 上锁/解锁+锁管理 UI）**登记触发驱动**（真实场景如多团队委托出现再升级）。
+  - 量级 +0.5–1 天（KV 表一枚迁移 + GET/POST 两端点 + 小管理页 + 钳制/审计/层级测试）。**切出口径（2026-10-16 外审对齐）**：切出时静态 config 形态先行交付，配置化以独立小批收口——**仍计入 S5 段/一期收口**，不另立段。
+- **表族**（10 号 §3 DDL 为准）：`file_objects`（bucket/object_key/file_name/mime_type/size_bytes/created_by，UNIQUE(bucket,object_key)；**+owner_kind/owner_id 两可空列**——随行件，经 ALTER 迁移 **000047** 追加（2026-10-20 实落——A2 先建先占，B5-6 顺位 000048），附录 A.3 随行件迁移段）+ `ticket_attachments`（ticket_id FK CASCADE + file_object_id FK + uploaded_by，UNIQUE(ticket_id,file_object_id)）。
+- **API 面**（10 号 §4 五端点为准）：presign upload/download + attachments confirm/list/delete——**附录 A.4 全景另含代理下载与 settings KV 两枚（2026-10-16 外审对齐措辞）**；confirm 校验 `created_by == 当前用户` 且对象未绑定。
+- **错误码**：91001 FileTooLarge / 91002 FileTypeNotAllowed / 91003 FileNotFound / 91004 AlreadyBound（区间 91000–91999）。
+- **当前删除语义**：删普通附件时解除关联并将对象标为deleted，物理删除失败由GC二扫重试；工单删除后的孤儿由confirmed反连接回收。旧蓝本“GC后移”已被S5实施及B06修复取代，正文移除richtext引用后的精确对账仍未实施。
+- **compose 增对象存储服务（RustFS + rustfs-backup 双实例草案已落 deployments 两份 compose——profile=storage 隔离默认不起，2026-10-16 工程预备批；起容器冒烟通过）**；迁移编号启动对账（A2）。
+
+## 4. 头像上传（自服务面）
+
+- profile 头像由 URL 手填改**预签名直传 + 回写对象引用**；上传组件 + 即时预览（`purpose: avatar`，10 号 §4.3 契约）。
+- **下载形态三选一（启动拍板点，README §2 选型表转推荐）**：
+  1. **后端代理下载端点（`GET /files/{key}` + 鉴权中间件）——推荐**：稳定 URL（img src 非时效链）+ 权限收口（登录态 + L2 管线）；
+  2. 预签名 GET——有时效，img src 非稳定，过期裂图；
+  3. 公共读桶——暴露面大，不取。
+
+  **业界模式对表（2026-10-15 核验）**：业界三种形态——①纯预签名（带宽卸载；但授权只在**签发时刻**、下载不过应用 = 无逐次审计/RBAC）；②后端代理（逐次 RBAC + 审计，吃带宽）；③**授权后短时效预签发 + 302 重定向**（业界折中：每次下载过鉴权留痕，签发 60s–5min TTL 预签名跳存储）。**内网带宽充裕 + L2 逐次判定 + 审计诉求 → ②为主流答案**；③登记为未来带宽压力时的升级选项，不预做。
+
+  **升级成本评估（2026-10-15，拍代理前问询"以后改 302 改动大吗"）**：**很小，≤0.5 天**——两种形态的架构完全同构（同一端点/鉴权中间件/L2 判定/审计埋点），差异仅在最后一投递段：代理 = 后端拉流转写；302 = `PresignedGet`（60s TTL）+ 302 重定向。浏览器对 `<img>`/下载自动跟随 302，**前端零改动**；响应头（nosniff/disposition）经签名参数（`response-content-*`）随预签名携带。实现要求：handler 按**投递策略缝**写（delivery 策略可替换），升级时只换一个函数。**前提注（2026-10-16 外审补遗）**：img 场景依赖拍板点 #8 的认证通道——cookie 回退落地后 `<img>` 才能到达本端点并原生跟随 302（header-only 认证下 img 直接 401，两形态都不免疫）。
+- **图片处理随行件（2026-10-16 全计划业界对标补——业界照片上传标配，缺两项）**：①**缩略图**——列表页/评论区头像走原图（10MB 上限下单张数 MB×50 张/页）=流量与渲染浪费，confirm 时生成缩略变体（实现形态随批拍：服务端生成双 key / 前端 canvas 压缩后单 key）；②**EXIF 剥离**——手机拍照 EXIF 含 GPS 定位，工单附件/头像属隐私泄露面，confirm 时剥离（Go stdlib + 轻量解码）。量级 +0.5–1 天（随 B5-2）。
+
+## 5. 工单附件（文档上传）
+
+- 10 号 `ticket_attachments` 蓝本实施（§3 API 面）+ 详情页展示/下载。
+- **权限码（✅ 已拍 2026-10-15：复用 `ticket:update` 零新码**——所有者「先不需要单独权限」；上传/删除挂 update，下载随工单读权限走 L2）。
+- **下载形态须与头像同批联拍（2026-10-09 隐藏需求核查补遗）**：10 号原文"预签名 GET 直下"存在 **L2 判定被绕过**（时效内任何持有者可下载，URL 分享即越权）且无下载审计——与"PEP 在数据处"哲学冲突、与头像拍板不一致。推荐：**统一代理端点**，或"代理为主 + 预签名仅内网短时效"并显式登记风险接受。**与 §4 头像下载形态同一决策、一次拍完，防两处结论漂移**（F5.3 联拍纪律）。
+
+## 6. 富文本字段类型（richtext，第八种——新增设计）
+
+- **详情回显缓存契约（2026-11-08 RR-UI-01）**：UI `src/views/ticket/detail/index.vue` 通过 `useRenderedRichtext.ts` 的 `useRenderedRichtext` 仅消费服务端消毒 HTML。字段清空或从 schema 移除时同步删除缓存并撤销在途请求的写入资格；内容变化以每字段独立请求身份判断结果新鲜度，覆盖同 tick 的 A→B→A，卸载后也不接纳旧响应。源字符串相等不足以证明请求仍有效；失败保持空渲染，不回退原始 HTML。后端 `Service.Update` / `mergeCustomData` 的 null 删键合同不变，当前详情编辑框没有自定义字段清空按钮，本修复覆盖 API/其它来源更新后同一详情组件刷新的路径。修复与验证状态见[本轮复验报告](../review/reports/zhuzhao-report-followup-2026-11-08.md)。
+
+- 字段类型枚举扩 `richtext`（`validateFieldInputs`/G2 schema 校验同步扩，守"只增不改"）；与 S1 设计器联动（进可选字段类型调色板，依赖本段底座先行）。**✅ 后端已落（2026-10-20 B5-4 后端二）**：三处枚举扩（`TicketTypeFieldInput` binding oneof / `validFieldTypes` / `validateFieldValue`）+ MD 源文本 **256 KiB 上限**（`richtextMaxBytes`——防 custom_data JSONB 慢性膨胀，图片禁 base64 内联为既定纪律；可随 B5-6 限制配置化入 KV）；单测钉"8 种只增不改"+ 非字符串/超上限 400 + validate_regex 同样生效。前端调色板/渲染随 ui 批。
+- **编辑器形态：Markdown vs WYSIWYG（2026-10-15 所有者倾向 MD，设计复核支持——启动批正式拍）**：
+  - **推荐 Markdown**：① 工单正文域（描述/复现步骤/结论）排版诉求 = 标题/列表/代码块/表格/图片，MD 全覆盖；② 目标用户 = 内网技术/安全团队，MD 上手零门槛；③ **存储态 = 纯文本**——体积小、可直接 ILIKE 检索、可 diff，HTML 存储则检索带标签噪声；④ **消毒面大幅缩小**——MD 渲染默认转义内嵌 HTML，渲染器白名单即消毒，vs WYSIWYG 存 HTML 需维护 allowlist sanitizer（标签/属性/URL scheme/style 全量）。
+  - WYSIWYG（Tiptap）降为对照项：非技术岗大量写单场景出现再评估；字段类型不堵死，但**存储格式本批拍定后切换有迁移成本，宁窄勿宽起步**。
+  - 选型候选（启动批 spike 半天）：Vue3 生态 MD 编辑器（md-editor-rt / bytemd / milkdown 择一），**核心验证点 = 粘贴图片直传扩展**。
+- **图片粘贴直传链路（2026-10-15 所有者问询确认）**：编辑器 paste/drop 事件 → Blob → 复用 §3 预签名通道（purpose 归工单域）→ 直传 → confirm → 编辑器插入图片链接——**图片存对象存储**，与附件同受 10MB/MIME 白名单约束；**不引入 base64 内联**（防库膨胀，既定纪律）。
+- **内嵌图片 src 硬约束：稳定 URL**——编辑器内图片若用时效预签名链接，历史工单图片**必然过期裂图**；内嵌图片 src 必须用后端代理端点（稳定 URL + 鉴权）。本条把 §4/§5「下载形态联拍」的代理端点推荐从"头像友好"升级为**编辑器内嵌图片的硬约束**（联拍时一并定）。
+- **正文渲染/消毒 SSOT 不变**：服务端渲染为 SSOT——MD 方案下 = MD 源存储 + **服务端白名单渲染**出安全 HTML 供回显（前端不自行渲染用户输入）；防存储型 XSS 口径维持，实现较 HTML allowlist 简单。**✅ 已落（2026-10-20 B5-4 后端四，所有者"继续"按建议拍定）**：选型 = **goldmark v1.8.6**（CommonMark+GFM Table；原已为本仓间接依赖、升直连）+ **bluemonday v1.0.27**（UGC 白名单；替代 blackfriday[停维护]/自写[不值]均否决——新增依赖理由随提交说明）；双保险 = goldmark 默认档**整体丢弃** MD 内嵌原始 HTML（raw HTML omitted → bluemonday 清注释）+ UGC scheme/属性白名单；相对 URL 显式放行（`/api/v1/files` 稳定 URL 硬约束）。**外链图白名单=goldmark 自定义 Image 渲染器（P4 拍板 2026-10-21：bluemonday 属性策略 OR 合并无法收紧，产出点收口）——⚠ 保险丝：渲染器注册后注册同 Kind 覆盖先注册，stableSrcImageRenderer 为全局唯一生效点，后续新增渲染器须链式委托而非覆盖（TestRenderRichtext_ImageSrcWhitelist 回归闸）**。**端点契约 = `POST /api/v1/tickets/richtext/render`**（登录态自服务——无票据访问面、纯消毒渲染；body `{content≤256KiB}` → `{html}`；A.7 存储自服务面同款形态，catalogExempt 登记）。
+- **自动保存（2026-10-16 所有者问询；同日扩评估至发起页整页与"草稿箱"必要性）**：三候选编辑器均提供 onChange/onSave 钩子——自动保存逻辑落**封装层**非编辑器本体，不影响择库。**三形态评估结论**：
+  - **① 当前字段级草稿；整页目标尚未实施**：UI `src/components/useRichtextDraft.ts`的`richtextDraftKey`以`[userId,typeCode,fieldKey]`构造隔离键，`useRichtextDraft`只保存该richtext字段内容与时间戳；无身份不持久化，旧无属主草稿只清理不迁给当前账号。提交clear后卸载不写回，切账号/类型/字段取消旧timer。发起页`RichtextField`消费此hook。原已批准的“整页标量+custom_data+附件列表草稿、恢复重confirm复用上传对象”仍是设计目标，当前没有整表单恢复链，不能标完成，也不能改回旧`type_code`单键。
+  - **② 服务端草稿箱（`ticket_drafts` 表+列表页+保留期，2–3 天）：不做默认，登记触发驱动**——触发信号 = 真实出现"跨设备/跨天填单"诉求（长审批类表单场景；业界锚点 = 宜搭/飞书审批草稿箱）。①的存在使其降级为锦上添花。
+  - **③ 工单 draft 状态态：维持不做**——动状态机默认图 + L2 可见性/S6 触发/角标计数/报表四处排除逻辑，全局涟漪远超场景强度（与批量下发"草稿态留二档"同款结论）。
+
+## 7. 对象存储备份随行件（2026-10-09 登记；2026-10-15 业界方案展开；**2026-10-16 随后端切 RustFS——工具链 mc → rclone**）
+
+PG 有 pgbackup+WAL+PITR 完整体系，对象存储（RustFS）**零备份设计**——附件丢失 = 工单证据链断裂；且对象存储**无 WAL 类事务日志可 ship，PITR 原生不可得**，RPO = 复制/镜像周期（附件场景日级可接受，显式登记不默认）。
+
+**业界方案四类（2026-10-15 核验；均为社区版 mc CLI 能力，不涉控制台裁撤面）**：
+
+| 方案 | 机制 | 优点 | 局限 |
+|------|------|------|------|
+| **服务端桶复制（`mc replicate`，active-passive）——业界首选** | MinIO 原生异步复制到目标 MinIO | 近实时 RPO；**版本历史/元数据保全**；服务端执行不占业务机 | 需目标 MinIO 实例；仅 MinIO→MinIO |
+| **`mc mirror` 定时** | 客户端单向同步，任意 S3 兼容目标（NAS MinIO/Ceph 均可） | 最轻、可断点续传、对齐既有 cron/RETAIN_COUNT 惯例 | **只同步 latest（无版本历史）**；周期性 RPO |
+| Batch Replication | 批量复制作业 | 大存量一次性迁移 | 非常态备份机制 |
+| 卷快照/停机 tar | PV 级快照 | 完整 | 一致性风险/需停机——**不取为主方案**（可作恢复演练辅助） |
+
+**落地建议（拍板点 5）**：目标实例可得 → **A = 服务端桶复制 + 双端桶版本化**（版本化防误删/勒锁，业界标配——⚠ RustFS 服务端复制能力随 B5-1 spike 验证）；单机起步期目标实例暂缺 → **B = `rclone sync` 定时（独立卷第二 RustFS 实例，镜像已拉）+ 目标桶版本化**起步（**工具随 2026-10-16 后端切换定 rclone——`rclone/rclone` 镜像已拉已验证，替代 mc mirror**；mc 对 RustFS 端点的可用性随 B5-1 spike 一并验证），登记升级触发（跨主机目标就位/量级上来切 A）。**恢复演练强制随行**（对齐 activelist pgbackup 首验+恢复演练惯例：不演练 = 没备份）——**含 DB↔对象联合场景**（旧库快照+新桶 → file_objects 引用悬空的负向演示：元数据与对象存在性对账；2026-10-16 评审批深审项 E）；目标侧保留策略沿 RETAIN_COUNT 惯例。生产云 OSS 场景 = 版本化 + 跨区域复制 + 云备份计划（配置切换形态，内网后另议）。量级 +0.5–1 天。**✅ B 形态已落（2026-10-20 B5-5）**：`rustfs-mirror` 侧车（rclone 1.75.2 钉死）主→备 `rclone sync` + `--backup-dir` 天目录轮转 + **目标桶版本化——RustFS 实测支持 PutBucketVersioning（原"随 B5-1 spike 验证"项至此落定，脚本幂等启用）**；失败留痕对齐 pgbackup 教训；**恢复演练五步实测全过**（哈希对账 24/0、损→恢字节一致、删除归档保护、DB↔对象双向对账负向——引用集以 `confirmed` 为准，pending 未上传属正常瞬态）；**RPO 显式登记 = 同步周期**（dev 1h / 生产建议日级）。cron 最小件同批：lock 查询失败留痕 + CronStatus 数据面（B10-4 端点消费）。详 docs/ops/backup.md。
+
+## 8. 启动拍板点
+
+| # | 事项 | 建议 |
+|---|------|------|
+| 1 | 头像下载形态 | ✅ **已拍（2026-10-15）**：后端代理端点——「授权后短 TTL 预签发+302」升级路径已评估：handler 投递段留策略缝，切换 ≤0.5 天（路由/鉴权/L2/审计全复用，§4） |
+| 2 | 附件下载形态 | ✅ **已拍（2026-10-15，与 #1 联拍）**：统一后端代理——预签名形态弃用（L2 绕过+无审计），302 同 #1 升级路径 |
+| 3 | 附件权限码 | ✅ **已拍（2026-10-15）**：复用 `ticket:update` 零新码——所有者「先不需要单独权限」 |
+| 4 | 富文本编辑器形态 | ✅ **已拍（2026-10-15）**：**Markdown 编辑器**——所有者确认；**库 ✅ md-editor-rt 拍定（2026-10-17 所有者「按建议」）**——原 W0 择库 spike 销账，B5-4 首日 spike 保留=粘贴直传扩展验证（bytemd/milkdown 对照留存备翻——RK-P5-5） |
+| 5 | 对象存储备份 | ✅ **已拍（2026-10-15）：直接做进 S5 必做件**——起步形态 = compose 第二 RustFS 实例（独立卷）+ **`rclone sync` 定时**（2026-10-16 随后端切 RustFS 调整，原 mc mirror；镜像已拉已验证）+ 目标桶版本化 + **恢复演练一次**；跨主机目标（灾难级）= 部署拓扑升级触发；量级 +0.5–1 天 |
+| 6 | 上传限制基线 | ✅ **已拍（2026-10-15 基线认可）**：按 §3 限制矩阵建议值；**presign 形态拍定 1b（2026-10-19 所有者「按建议」·B5-1 前置批）= PUT + Content-Type 钉签名 + confirm HEAD 实测 + etag 列快照比对**（A.3 修正③/A.4 #2/#5 三处级联）——POST policy 降增强登记（触发=滥用实测出现/spike 顺带验证成熟；论据：重放覆盖两形态皆存→etag 防御两形态皆需，POST 边际收益仅尺寸存储侧预拦，代价=端口层/A.5 链路/前端三处改+RustFS 兼容未验——PUT 为 S3 最核心操作） |
+| 7 | 限制值配置化开放 | ✅ **已拍（2026-10-15）：归属 S5 段内做**（底座批后随行/段尾，**可切出**——排期吃紧先静态 config 形态交付零返工，配置化切独立小批）；形态 = 开放·分层（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI）+ 硬底线不可配 + 按 key 编辑层级（存储限制类 superadmin-only）+ 变更审计/钳制——详录 §3 |
+| 8 | **img 认证最后一跳（2026-10-16 外审实锤缺口——已核代码）** | ✅ **已拍（2026-10-16）：Cookie 双凭证**——登录/刷新旁设 `HttpOnly; SameSite=Lax; Path=/api/v1/files` 短时效 cookie（TTL 对齐 access token），files 路由中间件 cookie 回退（header 优先）——`<img>` 原生可用、浏览器缓存/304 生效、前端零渲染改造、302 升级路径顺带解锁；与逐次审计兼容（cookie 映射用户）；tokenStorage 已预留「B7 cookie 会话演进」向。实施设计 = 附录 A.11（含验收负向三件）；业界锚点 = GitHub/GitLab 应用内 cookie 阵营（GitLab 文档原话：同源 `<img>` 自动带 session cookie 是应用内私有图片可渲染的原因）；Slack/Notion/Discord 签发时效链阵营的动机（跨服务嵌入/CDN 卸载/防公网滥用）内网语境均不存在。证据：`middleware/jwt.go` 仅读 Authorization header + ui token 在 localStorage——`<img src>` 裸请求必 401 |
+
+## 9. 边界（不做）
+
+维持 10 号"不做"清单：病毒扫描/内容审核、>100MB 分片上传、CDN 独立域名——均按需另立；云 OSS 生产替换 = 配置切换非代码分支。
+
+## 10. 影响面
+
+- **迁移**：两表族（编号对账）；**权限**：预置零新码（拍板点 3）；**配置**：`storage:` 段新增 + compose RustFS 双实例（草案已落）；**错误码**：91000–91999 段启用（91001–91004 四码随批登记 `docs/api/errcode.md`——standards §3-4 对账位）；**端口**：对象存储客户端（S3 兼容抽象即端口，README §6 清单第 7 行）。
+- **涉及文件**（10 号 §8 蓝本）：`internal/pkg/storage/`、`internal/service/storage_service.go`、`internal/service/ticket/attachment_service.go`、`internal/handler/storage_handler.go`、compose、迁移六枚（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV、000049=deleted 部分索引[双审计 F-A7]、000050=version 乐观锁[五批审计 F-D2]——审计批补两枚，「四枚」口径 2026-10-22 修复批统一）。
+- **F-D3 修复注记（2026-10-21 五批审计收口批）**：`StorageConfig` 消费方从裸共享指针切换为 `pkgstorage.ConfigStore`（`atomic.Pointer` 快照——clone→改→Store 整体替换）——①消除 settings KV 运行时覆盖（`Apply` 直接 mutate slice 头/int 字段）与并发请求读的 data race；②修复 wire 值拷贝 `&storageConfig` 与 app `&cfg.Storage` 分裂——KV 改 `orphan_gc_days` 此前到不了 GC（boot/运行时均不生效，隐藏功能缺口）。三服务（storage Service / ticket Service / settings Service）与 app GC 共享同一 `ConfigStore` 实例（wire 侧创建单例注入四处）；14 处测试构造点同批切快照。
+
+## 11. 验收口径
+
+- **场景标尺（2026-10-19 全局体检补——对齐其他段稿格式；owner 走查入口详见 [11 号 §0 S5 行](./11-implementation-plan.md)）**：传头像看即时预览 → 建带附件+富文本的工单 → 正文粘贴图不裂 → 不可见账号点附件404、可见但无写权者写附件403 → （B5-5 后）删桶演练恢复。
+- 底座/附件 API 随四档 acceptance（10 号 §7 用例 S1–S6 为底稿：预签名上行/confirm 关联/无权限 403/超限 400+91001/下载时效/头像链路）；前端上传面走 ui CI + E2E。
+- 补测：**代理下载鉴权负向**（无 L2 可见性用户拿不到对象——当前代理形态）；存储型 XSS 负向（恶意 MD 内嵌 HTML/`<script>` 经**服务端渲染**被转义/白名单过滤，前端不自行渲染用户输入）；头像直传回显链路；**粘贴图片直传**（paste → 预签名 → 链接插入 → 回显不裂图）。
+- 条件请求负向（2026-10-16 评审批深审项 B）：同 key 带 If-None-Match 二次请求 → 304 且**审计行不新增**（审计仅 200 全量投递落行——A.4 #5）；Range 头透传可用不承诺（10MB 上限下低优）。
+- 回归：既有 URL 手填头像兼容读取（存量列不破坏）。
+- **B5-1 底座验收完成注（2026-10-19 批7 收口）**：S1/S4 底座面全过——真 RustFS E2E 四场景（testcontainers）+ 四档 phase1 S5 六断言 98/0 + 2a/b/c 全绿 + 迁移往返 45 对零漂移；S2（confirm 关联工单）/S6（头像链路）随 B5-2/B5-3、S3（无 ticket 权限 403）随 B5-3 L2 接线、S5（下载时效）随 B5-2 代理端点——底座期间 403 面由 purpose 白名单（拒 ticket 态）承载。
+
+## 12. 文档衔接
+
+| 文档 | 关系 |
+|------|------|
+| [phase2/10-storage.md](../phase2/10-storage.md) | **底座设计 SSOT**（配置/DDL/API/错误码/用例全文） |
+| [review/11 §8 IW2 行](../review/11-project-control.md) | 独立窗口收编注记（本段 = 实施载体） |
+| [01-s1](./01-s1-form-designer.md) | richtext 进设计器调色板（依赖本段先行） |
+| [README §6](./README.md) | 对象存储客户端端口预留行 |
+| [06-s6](./06-s6-message-notification.md) | 无直接依赖；富媒体通知附件留二期评估 |
+
+---
+
+## 附录 A：详细技术设计（实施级，2026-10-16 补充）
+
+> 定位：把 §3–§7 的决策与 10 号蓝本整合为可直接开工的实施设计。标注 ⚠ 的是实施级设计建议（启动批确认制，不新增拍板点）；与 10 号冲突处**以本附录为准**（收编注同款纪律）。
+
+<a id="a1-模块架构与代码落点"></a>
+<a id="a1"></a>
+
+### A.1 当前模块与代码落点
+
+- `internal/pkg/storage/client.go`的`Client`包含五方法：PresignPut、PresignGet、StatObject、RemoveObject、GetObject；`minio.go`的`MinioClient`实现S3访问，后端切换受实际S3兼容性约束。
+- `internal/service/storage/service.go`的`Service`承载PresignUpload、Confirm、Download、BindAvatar；下载在`Service.Download`与`internal/handler/storage_handler.go`的`ProxyDownload`之间编排，当前没有`proxy.go/deliver302`实现。
+- `internal/repository/storage_repo.go`的`StorageRepo`管理对象/附件，`storage_avatar.go`的`BindAvatar`管理头像引用切换；ticket域的`bindAttachmentsTx`负责建单/编辑事务落绑。
+- `internal/pkg/storage/config.go`的`ConfigStore`原子发布完整快照，settings服务与GC共享同一实例；`GCJob.Handle`位于`internal/service/storage/gc.go`。
+- `internal/handler/settings_handler.go`的`SettingsHandler.List/Update/Reset`是设置管理面。数据层、对象存储协议与资源授权分开，不把存储客户端当业务权限执行器。
+
+原“四方法+单独proxy.go”的文件树是实施前草图；新增GetObject与实际文件落点以后继实现为准。302仍为带宽压力下的升级选项，未实现的函数不能写成当前扩展点。
+
+<a id="a2"></a>
+
+### A.2 config 完整结构（出厂默认；运行时覆盖见§3/A.3）
+
+```yaml
+# 凭据写法对齐项目 viper 惯例：config 内字面值 + 运行时 BindEnv/AutomaticEnv 覆盖
+# （viper 不做 ${VAR} 插值——勿照抄 compose 的 env 引用形态）；B5-1 启用时同步在
+# internal/config/config.go 新增 storage.endpoint/access_key/secret_key 的 BindEnv 行
+# （env 名对齐 compose：STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY 或显式映射到 RUSTFS_ROOT_*）
+storage:
+  enabled: false                 # 启用前配置存储端点/凭据；当前config范例需按环境启用
+  endpoint: http://rustfs:9000     # compose 服务名；dev 栈 localhost:9000
+  region: us-east-1
+  bucket: zhuzhao
+  access_key: "zhuzhao_rustfs"     # 默认（与 compose 默认值同源）
+  secret_key: "zhuzhao_rustfs_dev"
+  use_ssl: false
+  presign_upload_ttl: 15m
+  max_upload_bytes: 10485760       # 10MB 全局（KV 可覆盖，天花板 100MB 代码钳制）
+  max_attachments_per_ticket: 20
+  max_presign_batch: 20            # 前端一轮批量上传上限（=单工单上限；防滥用由 rate_limit 桶承担）
+  allowed_mime_types:              # ⚠ 显式枚举（修正 10 号 allowed_mime_prefixes 前缀白名单盲区）
+    [image/jpeg, image/png, image/webp, image/gif, application/pdf, text/plain,
+    application/zip, application/msword, application/vnd.openxmlformats-officedocument.*]
+  blocked_mime_types: [text/html, image/svg+xml]   # 硬底线：KV 不可白名单化（§3 配置化护栏）
+  inline_mime_prefixes: [image/]   # 代理下载 Content-Disposition 分型（inline vs attachment）
+  orphan_gc_days: 7                # 孤儿对象 GC 阈值（KV 可覆盖）
+```
+
+**匹配语义（2026-10-16 外审补遗，写死防歧义）**：`allowed_mime_types` 中尾缀 `.*` 的条目按**前缀匹配**（如 `application/vnd.openxmlformats-officedocument.*`）、其余条目**精确匹配**；`blocked_mime_types` 恒**精确匹配**且**优先于白名单**——执行器单函数实现，KV 运行时覆盖值同语义。
+
+<a id="a3-数据设计迁移全文级"></a>
+<a id="a3"></a>
+
+### A.3 数据设计（迁移与现行合同）
+
+实际迁移以`migrations/000045_file_objects.up.sql`、`000046_ticket_attachments.up.sql`、`000047_file_objects_owner.up.sql`、`000048_system_settings.up.sql`、`000049_file_objects_deleted_idx.up.sql`、`000050_system_settings_version.up.sql`及`000081_settings_reset_bind.up.sql`为准。下面早期DDL保留设计来源，不是替代迁移工具的当前建表脚本；编号已落地，不再按示意号重新取号。
+
+> **编号口径（2026-10-16 外审对齐补注）**：本文 DDL 注释中的 000045/000046 为 2026-10-15 对账结论（review/11 §4：000001–000044 占用），**非锁定**——取号当天按 A2 规则再对账，撞号让位整体重排（11 号 §5.9 同口径）。
+
+**迁移 000045（`file_objects`，含 ⚠ 三处对 10 号的实施级修正——①purpose 列②presign 即写 pending③etag 快照列；2026-10-20 评审回声批修正计数并补建单绑定查询面索引）**：
+
+```sql
+CREATE TABLE file_objects (
+    id          BIGSERIAL PRIMARY KEY,
+    bucket      VARCHAR(100) NOT NULL,
+    object_key  VARCHAR(500) NOT NULL,          -- {domain}/{yyyy}/{mm}/{uuid}.{ext}，服务端生成
+    purpose     VARCHAR(30)  NOT NULL,          -- ⚠ 修正①：显式 purpose 列（avatar/ticket_attachment/ticket_richtext）
+                                                --   ——purpose↔key 前缀一致性校验的查询锚点（§3 key 细节）
+    status      VARCHAR(20)  NOT NULL DEFAULT 'pending',
+                                                -- ⚠ 修正②：pending(已预签未确认)/confirmed/deleted
+                                                --   ——10 号原设计 confirm 才写库，孤儿对象（预签未 confirm）DB 无记录、GC 无从发现；
+                                                --   改 presign 即写 pending，GC 扫 status=pending AND created_at < now()-orphan_gc_days
+    file_name   VARCHAR(255) NOT NULL,          -- 原始文件名（仅回显；下载头 RFC 5987 编码防注入）
+    mime_type   VARCHAR(100) NOT NULL,          -- presign 钉入签名的类型（防谎报锚点）
+    size_bytes  BIGINT,                         -- confirm HEAD 实测回填（声明值预检存 presign 阶段）
+    etag        VARCHAR(128),                   -- ⚠ 修正③（2026-10-19 拍板 1b）：confirm 时 StatObject 回填快照——
+                                                --   代理下载 S3 If-Match 比对（≠快照→404+告警：防 presign TTL 内
+                                                --   同 URL 重放替换已 confirm 对象）+ 客户端 If-None-Match 304 数据源
+                                                --   （A.4 #5 ETag 透传零额外 stat 兑现——一列两用）
+    created_by  BIGINT NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ,
+    UNIQUE (bucket, object_key)
+);
+CREATE INDEX idx_file_objects_gc ON file_objects (status, created_at) WHERE status = 'pending';
+-- 建单前绑定落绑校验的查询面（created_by+status 复合，A.5 建单前链——迁移实有，2026-10-20 评审回声批补档）
+CREATE INDEX idx_file_objects_creator ON file_objects (created_by, status);
+```
+
+**随行件迁移——`file_objects` 追加通用归属两可空列（2026-10-20 规划研究回灌，依据 docs/proposal/secops-platform/08-phase5-adjustments.md）**：000045 已收口（740d2e9）**不改**；新迁移 `ALTER TABLE file_objects ADD COLUMN owner_kind VARCHAR(30) NULL, ADD COLUMN owner_id TEXT NULL`（down = DROP 两列），零回填、存量行 NULL 即兼容。语义：通用归属引用——工单附件填 `ticket` / 头像填 `user`（写侧随本迁移同批补），为后续 script_package / run artifact / ingest raw / export 复用，不建独立表。编号按 A2 当天对账——**已实落 000047**（2026-10-20 B5-4 后端首件：B5-6 未启动、golang-migrate 不允许事后插入更低版本，先建者必占 047，B5-6 顺位 000048）。写侧三路径同批落：ConfirmAndBind / BindCreateAttachments 翻态语句内联填 `ticket/<id>`、BindAvatar 经 `StorageRepo.BindAvatar` 在同一事务填 `user/<uid>`、回写 `users.avatar` 并退役旧键（2026-11-05 审计 B06-01 修正：用户行串行化绑定，对象行锁后重验 confirmed+本人+avatar；旧键 deleted 为终态，提交后的物理清理不会与重新绑定交错）；FileObject 出站 +`owner_kind/owner_id`（omitempty，swagger 已重生成）。
+
+**存储ID出站合同（2026-11-07 B19校准）**：按standards §3的int64约定，`FileObject.ID`（confirm/avatar bind响应）与`TicketAttachmentView.ID`（附件列表）统一为十进制JSON字符串；未直接出站的关联模型`TicketAttachment.ID`同规。数据库仍为BIGINT，不增加迁移；ticket_id、created_by、uploaded_by、size_bytes等既有字符串形态保持。上传/下载/头像/删除仍按object_key寻址，Swagger与UI生成类型同窗再生，UI存储出参实际接线该生成schema。**这是既有数值响应的wire形态修正**：旧Go客户端`id int64`须改为string或带`,string`，JS客户端保留原字符串，禁止Number/parseInt转换ID；不能宣称对旧数字消费者无感兼容。入站参数和权限判定不因该变更放宽，验证与准确提交见对应审计复验报告。
+
+**迁移 000046（`ticket_attachments`，同 10 号 §3）**：ticket_id FK CASCADE + file_object_id FK + uploaded_by + UNIQUE(ticket_id, file_object_id) + idx(ticket_id)。**richtext 内嵌图落绑语义（2026-10-20 评审 P1-3 拍板 a 案——推翻原「不建关联表」措辞）**：建单前贴图与附件同经 CreateTicket `attachments` 列表统一落绑 `ticket_attachments`（实现即此形态——B5-3 BindCreateAttachments 对 richtext_create 同样插关联行+翻 ticket_richtext），`GetBoundTicketID` 即下载 L2 锚点；图片引用同时存在于 MD 源文本（`custom_data`）。生命周期：删工单级联清关联行，对象本体由 GC/对账扫描收。**编辑已建单工单的贴图增量绑定**（UpdateTicket 扩 attachments 增量）登记随 B5-4 实施——**✅ 已落（2026-10-20 B5-4 后端三）**：`UpdateTicketRequest.attachments` 与 Create 同语义（本人/confirmed/悬挂态/未绑定；重复/超上限 400），`bindAttachmentsTx` 共用件；UpdateTx 的 UPDATE 先行持工单行锁，计数校验无 TOCTOU；绑定失败整事务回滚（字段 patch 不落）。**范围发现（同日）**：`custom_data` 建单后**无任何更新路径**（repo 仅 INSERT 列、UpdateTx 只 patch title/description/priority）——richtext **编辑流**还需 custom_data patch（含 G2 重校验 + D20 `updated` 事件 `changes[]`），系未登记新能力面而非随行件，**✅ 已拍按建议并已落（2026-10-20 所有者"继续"）**：`UpdateTicketRequest.custom_data` 增量 patch——传入键覆盖基线、值为 null 的键删除（清空字段）、合并后**整体**按类型字段 schema G2 重校验（已知键类型/required 防 null 清空；**未知键放行——向前兼容**（拍板 P5 b 案 2026-10-21：白名单化会令带杂键存量单无法保存），**总量 64KiB 封顶**防跨请求累加膨胀）、仅非终态可改（既有 Update 前提）；字段级 diff（D20 `changes[]`）随 S6 B6-1 DomainEvent 统一落地（ticket_events 无 payload 列不为此加迁移），请求体已入通用审计行。**进料侧缺口收口（2026-11-04 贴图批 97f62e2——ui 仓真浏览器实测发现）**：此前 Create 落绑进料=req.Attachments+fileFieldKeys 两路，richtext 字段 MD 内 `/files/` 引用两头不沾——悬挂对象永不落绑/翻 ticket_richtext（双 404 裂图：编辑期投递面+详情期未转正）。已补：①`ExtractFileRefs`（goldmark ast walk，与 renderImage 同口径）+`richtextFieldKeys` 并入 Create bindKeys（无效 key 400 同附件口径、外链图零进料）；②Download 投递面放行「confirmed+richtext_create+本人（CreatedBy）」——建单前编辑期预览，他人同形 404 不变，GC 兜底不变。Update 流不动（编辑工单无 custom_data UI 入口）。E2E：ui 仓 S8b 扩贴图→建单→详情图 200 全链哨兵。
+**正文移除引用后的边界**：当前richtext_create会随建单落`ticket_attachments`，因此不能继续声称“无关联表”。`StorageRepo.ListConfirmedOrphans`只回收没有附件关联的超期confirmed对象；它不解析MD正文。如果编辑去掉图片引用而关联行仍在，现有GC不会把它当孤儿。原已登记的custom_data引用集+附件关联并集对账仍属后续目标，binder接口化已由F-4-1销账。000045头注“不建关联表”是a案前历史注释，既有迁移不为改字重写。
+
+
+**B5-6 KV 表**：`system_settings`（key VARCHAR PK / value JSONB / updated_by / updated_at）——存储限制为首个消费者，审计保留期为已登记的第二个。
+
+  **F-D2 version 乐观锁（2026-10-21 五批审计收口批——迁移 000050）**：`system_settings` 追加 `version BIGINT NOT NULL DEFAULT 1`（存量行回填 1）。Update 走「读版本→条件更新 version+1」的 CAS：`expected_version` 非空时严格校验（两管理员并发改同键，后写者不再静默覆盖——400 提示刷新）；为空时服务端重读重试 ≤3 次（兼容存量调用，竞态下收敛）。`List` 回传 `version` 供前端回传 `expected_version`。**迁移 000048（原口径 000047，因 owner 随行件 2026-10-20 先建让位——A2 规则）**——S5 合计**六枚**迁移（000045=file_objects、000046=ticket_attachments、000047=owner 随行件 ALTER[已实落]、000048=B5-6 KV；2026-10-16 外审对账补齐第三枚，2026-10-20 规划研究回灌补第四枚，2026-10-21 双审计/五批审计补 000049 索引与 000050 乐观锁——「四枚」口径 2026-10-22 修复批统一）。
+
+<a id="a4-api-契约全端点信封-codemessagedatarequest_idstandards-3-3"></a>
+<a id="a4"></a>
+
+### A.4 当前API契约
+
+平台JSON端点沿用`{code,message,data,request_id}`；文件下载返回二进制。真实路由SSOT为`internal/router/router.go`的`New`。
+
+| 方法/路径 | 当前用途与授权 |
+|---|---|
+| POST `/api/v1/storage/presign/upload` | 服务端生成key、写pending、返回钉Content-Type的PUT URL；avatar/create态本人，ticket态还须资源update |
+| POST `/api/v1/tickets/attachments/confirm` | 本人pending对象经HEAD实测后确认；ticket态检查update并事务落绑，create态悬挂待建单落绑 |
+| GET `/api/v1/tickets/:id/attachments` | 资源read可见后返回关联列表；richtext与普通附件额度分档 |
+| POST `/api/v1/tickets/attachments/delete` | 资源update；解除普通附件并标deleted，richtext对象不能单独删成正文死链 |
+| GET `/api/v1/files/*key` | header优先/cookie回退；avatar登录可读，ticket态资源read，richtext_create仅已确认对象的创建人预览 |
+| POST `/api/v1/storage/avatar/bind` | 本人confirmed avatar对象原子换键；同键幂等，换键推进资料version/updated_at |
+| GET `/api/v1/system/settings` | 管理面读取设置列表，返回覆盖值与版本；不是`/:key`端点 |
+| POST `/api/v1/system/settings/update` | 按key最低编辑tier校验与CAS，存储类默认superadmin-only |
+| POST `/api/v1/system/settings/reset` | 按既定权限恢复该key的出厂覆盖语义；与Update共用写后重建串行边界 |
+| POST `/api/v1/tickets/richtext/render` | 登录态纯消毒渲染，输入content、输出安全html，不代表调用者获得某张工单读权限 |
+
+`attachment_create` 用于建单前上传，confirm 仅确认对象，工单创建事务才建立归属和附件关联。当前 confirm 对该用途附带的 `ticket_id` 不落绑，调用方不能据成功响应认定已有工单增加了附件。给已有工单加附件须使用 `ticket_attachment`，在 presign 与 confirm 两步提供目标工单并通过资源写权限校验。是否显式拒绝相互矛盾的参数见 [12 号 F23](12-scenarios-and-tests.md)，文件字段 Update 的引用与归属另以 C2 移交 Phase 6，具体处理结合全项目重规划。
+
+presign PUT/HEAD是S3协议，不改变平台GET/POST公约。下载时ETag读库快照，If-None-Match命中返回304；实际S3读用If-Match防确认后重放替换。仅ticket附件/正文图成功200投递手动落审计，avatar与304不额外落；Range不作已交付承诺。存储ID出站string与B19破坏性wire边界见A.3。
+
+<a id="a5"></a>
+
+### A.5 关键链路时序
+
+**附件上传链**（B5-3）：
+```
+前端选文件 → ① POST presign/upload（声明 purpose/ticket_id/file_name/mime/size）
+  服务端：权限+限制矩阵预检（size≤上限 / mime∈白名单∧∉黑名单）
+        → 生成 uuid key → INSERT file_objects(pending) → 签发 PUT URL（Content-Type 钉入签名）
+→ ② 前端 PUT 直传 RustFS（类型被签名钉死，改类型=签名失效 403）
+→ ③ POST attachments/confirm
+  服务端：HEAD 实测（存在/size 对全局上限比对/content-type 与签名一致——2026-10-20 评审回声批措辞收口：声明值不持久化（A.3），上限比对即防线，per-purpose 差异化随 B5-6 同用实测比对）
+        → UPDATE status=confirmed, confirmed_at → INSERT ticket_attachments → 事务提交
+失败路径：②未发生或③超时 → 对象滞留 pending → GC cron 扫描删除（A.3 修正②闭环）
+```
+
+**粘贴图片直传链**（B5-4）：编辑器 paste → Blob → ① presign(purpose=ticket_richtext) → ② PUT → ③ confirm → 编辑器插入 `![](…)`——**src 用代理端点相对路径** `/api/v1/files/tickets/…`（稳定 URL 硬约束，§6；`GET /files/*key` 为 GET 通配，与 §3-2 无涉且不与既有静态路由冲突——gin 静态 vs 通配冲突教训在案，启动批验证路由注册顺序）。
+
+**建单前上传链（2026-10-19 B5-1 前置拍板批补——draft attachment 形态）**：发起页附件/richtext 贴图发生在建单前（无 ticket_id 可声明，A.4 #2 原契约断裂）——① presign purpose 用 `*_create` 态（attachment_create / richtext_create，ticket_id 可空）→ ② PUT 直传 → ③ confirm（翻 confirmed 但**不写 ticket_attachments**，悬挂态）→ ④ 建单请求携带 object_key 列表 → CreateTicket **同事务**校验（created_by=本人 / status=confirmed / 未绑定）+ INSERT ticket_attachments；失败半挂态兜底=不 confirm 走既有 pending GC，confirm 未建单的 confirmed 悬挂对象走第三条对账扫描（A.3 已登记）。**契约变更登记（§12-6 五点查）**：CreateTicketRequest 增 attachments 字段——Go struct / 测试镜像 / swagger / codegen / 文档五点随 B5-3 批查。
+
+**下载投递策略缝**（B5-2 落地）：`proxy.go` 中 `deliver(ctx, obj, meta)` 单函数——现实现 = 流式转发；升级 = `PresignGet(60s)` + 302（响应头经 `response-content-*` 签名参数携带）。切换 ≤0.5 天、前端零改（§4 评估在案）。
+
+<a id="a6-前端组件设计zhuzhao-ui"></a>
+<a id="a6"></a>
+
+### A.6 当前前端组件
+
+`zhuzhao-ui/src/api/storage/index.ts`封装直传与绑定调用；`StorageAvatarUpload.vue`处理头像，`TicketAttachments.vue`处理详情列表/上传/删除，`RichtextField.vue`封装MD编辑器，`useRichtextDraft.ts`只保存隔离后的字段草稿。详情页`useRenderedRichtext.ts`消费服务端消毒HTML并控制清空/移除/晚响应资格。
+
+直传链为presign→PUT→confirm；Create从显式attachments、file字段与MD文件引用取进料，最终在同一建单事务落绑。字段草稿恢复不是整表单/附件恢复。单轮批量配置默认20（服务端有天花板100），不是旧草图的5；当前上传上限为全局值，per-purpose差异化只是原可选目标。
+
+richtext源单字段256KiB校验与custom_data整体64KiB限额是两层检查，实际提交还受更严格整体JSON上限；不能据单字段上限承诺总量可达256KiB。图片禁止base64内联、详情仅用服务端消毒结果不变。
+
+<a id="a7-权限矩阵"></a>
+<a id="a7"></a>
+
+### A.7 当前授权与审计
+
+| 对象面 | 上传/确认/绑定 | 列表/下载 | 删除 |
+|---|---|---|---|
+| avatar | 登录且对象创建人为本人；绑定锁用户/对象并复核状态 | 登录可读；当前users.avatar引用与回收另校验 | 换键退役旧对象，GC重试物理删除 |
+| attachment_create/richtext_create | 登录本人对象；建单时按创建授权同事务落绑 | richtext_create已确认对象仅本人预览 | 悬挂超期由GC处理 |
+| ticket_attachment | 资源update（可见性+L3动作权），本人对象确认 | 资源read | 资源update后解除关联/标deleted |
+| ticket_richtext | 同ticket_attachment；不占普通附件额度 | 资源read | 不单独删除；正文引用对账尚未实施 |
+
+`storageSelf`免静态L1业务菜单码，仍经过认证、限流与handler资源编排。`Service.AuthorizeTicketAttachment`调用`authorizeCheck(update)`，`AuthorizeTicketFileRead`调用`authorizeCheck(read)`；“登录+L2”不能解释成可读者都有写权。不可见与非本人对象按既有404同形；可见但无操作权按403。
+
+删附件和设置更新走既有管理审计，文件投递审计范围见A.4。新资源L2通用护栏仍归Phase6 Week0，不能由本段接线推成全生态泛化完成。
+
+<a id="a8"></a>
+
+### A.8 备份实施（B5-5，已拍 #5）
+
+compose 增 `rustfs-backup` 服务（独立卷第二实例，零宿主端口；**W0 工程预备草案已落**）；`rclone sync` 定时任务（**随后端切 RustFS 调整——`rclone/rclone` 镜像已拉已验证，v1.75.2**；对齐 pgbackup cron/RETAIN_COUNT 惯例；⚠ 术语修正 2026-10-19：**rclone 无 `mirror` 命令**——系 mc mirror 迁移笔误，正确命令=`sync`（单向含删除=镜像语义）；**✅ 判据⑤预验（2026-10-19）：主→备双实例全量+增量实测通（sync 仅拷新对象）**）+ 目标桶版本化开启；**恢复演练一次入 B5-5 验收**（删测试对象→sync 回灌→比对）；RPO=镜像周期显式登记于 runbook（§7）。
+
+<a id="a9"></a>
+
+### A.9 兼容与灰度
+
+- **存量头像兼容**：`users.avatar` 旧数据为外链 URL——读取侧按前缀分流（`http(s)://` 开头直显 / 否则视为 object_key 拼代理路径）；列语义不变、零迁移。
+- **灰度顺序**：B5-1 底座（无前端）→ B5-2 头像（单点自服务，炸了不伤业务）→ B5-3 附件 → B5-4 richtext（新字段类型，存量类型零影响——只增不改）。
+- **当前GC验收分层**：pending段先条件清行，0行表示并发confirm赢得对象，禁止物理删；物理删失败补deleted墓碑供二扫。工单confirmed段先锁对象、再用新SQL快照复核`ticket_attachments`；avatar段同样复核`users.avatar`且默认observe。原“TTL双窗接受GC×confirm风险”已被F-A1及B06修复取代，不再是当前取舍。回收并不包含解析MD正文引用。
+
+- **头像绑定×回收并发守卫（2026-11-05，审计 B06-01）**：`internal/repository/storage_avatar.go` 的 `BindAvatar` 先锁用户行，再锁新对象；对象状态重验、归属、新引用与旧键退役同事务提交。`MarkAvatarOrphanDeleted` 先锁对象行，再用**后一条语句的新快照**检查 `users.avatar` 引用，避免单条 UPDATE 在锁等待前取得旧快照误删已绑定对象。GC 先退役则绑定同形 404；绑定先提交则 GC 让位；并发重绑旧键必须看到 deleted 终态。观察模式默认 true 不变。回归覆盖三种确定性交错，移除修复须 ≥8 轮稳定失败。
+- **工单 confirmed 回收并发守卫（2026-11-05，审计 B06-04）**：第三段默认回收与头像第四段分开处理；`storage_repo.go` 的 `MarkDeleted` 同样先锁对象，再在新 SQL 快照下检查 `ticket_attachments`。覆盖建单/编辑绑定在 GC 旧快照之后提交的交错；关联已提交则让位，禁止把仍有工单引用的对象退役。
+- **两档额度守卫（2026-11-05，审计 B06-02）**：`storage_repo.go` 的 `ConfirmAndBind` 在工单锁之后锁定待绑对象，按其 purpose 决定是否累计普通附件额度；既有普通附件已满时 `ticket_richtext` 仍可确认，下一普通附件仍拒绝，与建单/编辑两条绑定链一致。
+
+<a id="a10"></a>
+
+### A.10 依赖与 utils 对表（2026-10-16 所有者问询；AGENTS「新增依赖须说明理由与替代方案」落档位）
+
+**结论：utils 无需为 S5/S6 补充编解码工具**——utils 收编纪律 = 跨仓公共能力（aksk/jwt/errcode/response 的消费方为三四仓），本段全部编解码点均为 zhuzhao 单仓消费（taskrunner/activelist 无文件/消息场景），进 utils 无消费方。逐项对表：
+
+| 能力点 | 出处 | 方案 | utils? |
+|--------|------|------|--------|
+| RFC 5987 文件名编码（Content-Disposition 防 header 注入） | A.3/A.4 | **stdlib `mime.FormatMediaType`**（内置 filename\* 编码），proxy 端单函数 | ✗ 单仓单点，留 `internal/service/storage/proxy.go` |
+| MD → 安全 HTML（服务端消毒 SSOT） | §6 | **✅ 已引（2026-10-20 B5-4 后端四落 `internal/service/ticket/richtext.go`——单消费方域内私有，非 pkg/mdrender；理由与替代随提交+§6 实施注）**：goldmark v1.8.6（原间接依赖升直连——Hugo 同款/CommonMark/纯 Go） | ✗ 单仓消费 |
+| HTML sanitizer（bluemonday 类 allowlist） | §6 | **✅ 已引（2026-10-20 翻案）**：bluemonday v1.0.27 UGC 白名单作双保险第二道（goldmark 默认档丢 raw HTML 后再收口 scheme/属性面；外链图白名单由 goldmark 自定义 Image 渲染器承担——P4 批）；原判"不需要"系未预见双保险需求，翻案理由详 §6 实施注 | ✗ 单仓消费 |
+| 文件类型嗅探（magic bytes/filetype 库） | §3 | **设计明确不做**——直传链路后端不见字节，类型防伪 = presign 钉 Content-Type + confirm 实测 + nosniff 三件组合（§3 修正②），嗅探无字节可嗅 | ✗ 零需求 |
+| base64（图片内联） | §6 | **明确不引入**（防库膨胀纪律），粘贴直传走 presign 通道 | ✗ 零需求 |
+| SHA-256 摘要（文件去重/指纹） | —— | 登记不做（S5 无去重设计；phase6 指纹为 risk 域内实现） | ✗ |
+| zip 解压 | §9 | 不做（zip bomb 面；zip 仅作为上传白名单类型存储） | ✗ |
+| 占位符替换 + escape（S6 模板渲染） | 06 号附录 A.4 | regexp + `html.EscapeString` stdlib 覆盖，单遍替换 | ✗ 单仓 |
+| int64 string 序列化 / 信封 / JWT / AKSK | 全仓既有 | utils `jsonutil`/`response`/`jwt`/`aksk` **已有** | ✓ 已在位 |
+
+<a id="a11"></a>
+
+### A.11 img 认证实施设计（拍板点 #8 已拍——Cookie 双凭证，2026-10-16）
+
+- **Cookie 规范（⚠ 实施级建议，启动批确认制）**：name=`file_session`；属性 `HttpOnly; SameSite=Lax; Path=/api/v1/files` + 生产 `Secure`；TTL = 与 access token 有效期对齐。
+- **✅ 形态 B 实施确认（2026-10-19 B5-2-2，偏离原「HMAC uid+exp 无状态」方案）**：cookie 值=**同款 access JWT**（FileAuth 无 header 时桥为 Bearer 走既有 JWT 链）——①登出/密码修改/会话吊销经既有黑名单链**立即失效**（原无状态方案的「cookie 保留至 exp」边界被消除——负向②由客户端语义升为服务端强保证）②零新原语（utils jwt.Manager 无需加方法，零跨仓）③桥接实现 ~20 行。代价：files 认证经 Redis 黑名单两键 pipeline（原方案零 Redis）——files 路径本就要过限流（Redis 已在链上），边际成本可忽略。
+- **签发/轮换/清除**：login 与 refresh 成功响应 `Set-Cookie`（重设即轮换）；logout 显式过期清除；密码修改换发新pair并重签文件cookie；CLI/break-glass没有浏览器HTTP响应，不能远程清除cookie，但旧access经会话吊销立即失效，浏览器后续请求仍须认证。
+- **中间件回退**：files 路由认证顺序 = Authorization header 优先（既有 API 调用不受影响）→ 无 header 时读 `file_session` cookie 验签。**header+cookie 并存非 mixed-auth**（2026-10-16 外审修正：cookie 是文件通道的旁路凭证而非替代认证——`hasMixedAuth` 维持 Bearer+AK 互斥语义不变，二者随请求共存时以 header 为准、cookie 静默忽略）。
+- **前端零改造**：`<img>`/`el-avatar`/MD 渲染器 src 直接用 `/api/v1/files/...` 相对路径（同源自动带 cookie）；axios 拦截器与 tokenStorage 无感知。
+- **安全登记**：CSRF 面 = GET 只读 + SameSite=Lax + Path 限定，评估为极小；cookie 不承载刷新能力（refresh 仍走 header 流程）——文件 cookie 泄漏最坏后果 = 只读拉文件，HttpOnly 防 JS 读取；**phase1/02-auth 补第二凭证面登记**（本批已加尾注，B5-2 实施时同步实现细节）。
+- **验收补充（叠加 A.9）**：负向三件——① cookie 过期后 `<img>` 401、重新登录恢复；② 登出后旧 cookie 立即失效（file 接口 401）；③ `Path` 限定断言（非 `/api/v1/files` 路径的请求不带该 cookie）。正向：axios API 调用（header）与 `<img>`（cookie）同端点双通道并存可用。
+
+---
+
+## 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 2026-11-08 | 文档整理：当前API/资源读写/五方法端口/四段GC/字段草稿与未实施目标分层；补真实调用图，保留原拍板与历史收据，不改代码或迁移。 |
+| 2026-11-08 | §6补RR-UI-01详情缓存合同：清空/移除撤缓存与请求资格、独立身份拦晚响应及A→B→A、卸载失效；生产十条回归与两目标各八轮变异有效，联合门禁状态见本轮复验报告，不改服务端渲染/API合同 |
+| 2026-10-15 | 建档（phase5 分支十段设计稿批）——现状锚点逐段代码核实；phase2/10 底座蓝本全量转录；未新增决策 |
+| 2026-10-15 | 公约对表批：§3 补直传协议口径注（PUT 上行/HEAD 探测 = S3 协议层动作非平台 API，不经 §3-1 辖域；平台五端点全 GET/POST）+ §10 错误码补登记位 `docs/api/errcode.md`（§3-4） |
+| 2026-10-15 | richtext 形态批（所有者问询）：编辑器倾向 Markdown（§6 复核四条收益：存储纯文本可检索/消毒面小/目标用户适配/体积）+ 粘贴图片直传链路落档 + **内嵌图片 src 稳定 URL 硬约束**（反哺拍板点 1/2 代理端点推荐）+ 服务端白名单渲染 SSOT 口径 |
+| 2026-10-15 | 存储布局与上传限制展开批（所有者问询）：§3 补桶与 key 布局（单桶+域前缀/全私有/uuid 服务端生成/purpose↔前缀校验/版本化不做/孤儿 GC）+ 上传限制矩阵（大小/个数/类型/下载侧分型/频次/配额）——**修正蓝本盲区两条**（text/ 前缀白名单放行 text/html；直传不见字节的类型防伪改三件组合）；拍板点 +6（限制基线确认） |
+| 2026-10-15 | 备份方案展开批（所有者问询）：§7 业界四类方案对比（服务端桶复制/mirror/batch/卷快照）+ 落地建议（A 复制+双端版本化为主 / B mirror 起步+升级触发 / 恢复演练强制随行 / RPO 显式登记）；拍板点 5 更新；phase2/10 补实施收编注 |
+| 2026-10-15 | **拍板批 + 业界对表批（所有者）**：#3 已拍（附件权限码复用 `ticket:update`）、#4 已拍（MD 编辑器）、#6 已拍（限制基线认可）；#1/#2 补业界三模式对表（纯预签名/代理/授权后短 TTL 预签发 302——内网+L2+审计语境代理为主流，302 登记为带宽升级选项）；§3 补业界对表注（presigned POST policy 强制点/OWASP allowlist 纪律/SVG 按 HTML）——**剩待拍：#1+#2（联拍）、#5（备份）** |
+| 2026-10-15 | 配置化批（所有者提出）：§3 限制值配置化分层形态（config 默认 + `system_settings` KV 运行时覆盖 + 管理面 UI；硬底线不可配；变更审计+钳制）；**拍板点 +7（开放与否确认）**——审计保留期管理端点（登记欠账）登记为同一 KV 面下一消费者；量级 +0.5–1 天 |
+| 2026-10-15 | 编辑层级批（所有者问询）：§3 配置化条补**按 key 编辑层级**（代码登记 min_editor_tier——存储限制类 superadmin-only，admin 无写路径；业界锚点 Google Workspace 锁定设置/GitLab enforce 锁/GPO 强制——GitLab 硬锁回退演进支持取静态分层）；动态锁定登记触发驱动 |
+| 2026-10-15 | **拍板收口批（所有者）**：✅#1/#2 已拍（统一后端代理——升级 302 成本评估 ≤0.5 天、handler 投递策略缝，§4）；#5 建议直接做进 S5（必做件：mirror 起步+版本化+演练，待确认）；#7 建议归属 S5 段内（可切出尾件，待确认）；19 项随段拍板制（所有者拍板：不整体授权，各段启动批逐段确认）——**S5 剩待拍：#5、#7 归属** |
+| 2026-10-15 | **S5 拍板清零批（所有者「按建议来」）**：✅#5 已拍（备份直接做进 S5 必做件）、✅#7 已拍（配置化归属 S5 段内可切出）——**S5 七枚拍板全部闭环**；standards §3-1 同日扩写落档（辖域界定+立法理由，phase5/05 号为首批应用例）；W0 启动待所有者人工检查文档后另令 |
+| 2026-10-16 | **详细技术设计批（附录 A，实施级——所有者要求各稿补架构/选型/DDL/API/链路细化，本稿为样板深度）**：A.1 模块架构与代码落点（端口层 4 方法收窄+Wire 装配）/A.2 config 全结构（显式枚举+黑名单+硬底线）/A.3 迁移全文级 DDL——**修正 10 号盲区第三条**（presign 即写 pending，孤儿对象 GC 才有扫描锚点；原设计 confirm 才写库=预签未确认对象 DB 无记录 GC 无从发现）+ purpose 显式列/A.4 全端点契约（六端点含代理下载与 KV）/A.5 三链路时序（上传/粘贴直传/投递策略缝）+gin 通配路由验证点/A.6 前端组件/A.7 权限矩阵+审计埋点三处/A.8 备份实施/A.9 兼容灰序+验收补充（GC 用例/类型防伪三负向/并发 confirm）——⚠ 标注项=启动批确认制，未新增拍板点 |
+| 2026-10-16 | 自动保存批（所有者问询）：§6 补分层方案——本地草稿自动保存做进 B5-4（onChange 防抖→localStorage+恢复提示+提交清稿，≈半天，业界标配）；编辑已有工单的服务端自动保存不做默认（共享实体+version 乐观锁撞锁/审计噪音/半成品暴露——触发驱动另立）；A.6 组件行同步 |
+| 2026-10-16 | 草稿评估扩批（所有者问"工单编辑页要不要草稿箱"）：§6 自动保存条升级为三形态评估——**①表单级本地草稿 ✅ 做进 B5-4 随行**（整页全字段序列化+附件 pending object_key 恢复时 re-confirm 复用已传对象，≈1 天，载体=发起页 S1 域；原字段级方案废弃升级）；②服务端草稿箱不做默认（触发驱动，信号=跨设备/跨天填单诉求）；③工单 draft 状态态维持不做（全局涟漪，与批量下发同款结论）——业界对表：Jira/GitHub/GitLab 均本地草稿无草稿箱 |
+| 2026-10-16 | 批量上传参数批（所有者问询）：§3 限制矩阵+A.2 config——单轮批量 presign 5→**20**（与单工单上限对齐；presign 接口单文件设计，batch 框前端一轮批量；防滥用主手段=rate_limit 桶）——KV 配置化范围内随调 |
+| 2026-10-16 | 依赖与 utils 对表批（所有者问询"utils 编解码工具要不要补"）：附录 A.10 新建——**utils 无需补充**（本段编解码点全为 zhuzhao 单仓消费，不满足 utils 跨仓收编纪律；RFC 5987=stdlib mime 包）；**唯一 go.mod 增量 = goldmark**（MD 消毒 SSOT——理由与替代方案按 AGENTS 纪律落档；黑名单：blackfriday 停更/gomarkdown fork）——文件嗅探/base64/zip 解压/SHA-256 去重均零需求（设计排除） |
+| 2026-10-16 | **img 认证批（外审实锤，代码级核验成立——拍板点 +8）**：`<img>` 发不出 Authorization header（jwt.go 仅读 header + ui token 在 localStorage），现设计下 B5-2 头像/B5-4 内嵌图必 401 裂图、302 路径同不免疫——**#8 推荐 Cookie 双凭证**（Path=/api/v1/files 旁路 cookie + files 路由回退；tokenStorage 已预留 B7 cookie 演进向），B5-2 前必拍；§4 升级评估补前提注/A.7 审计范围收窄（仅 attachment/richtext——头像高频渲染免审计+Cache-Control private）/A.3 登记第三条 GC（编辑时泄漏=定期对账扫描，触发驱动）/A.2 MIME 匹配语义写死（`.*` 前缀+精确+黑名单优先）/A.4 动词段对表（无需豁免——house style 同构 #5 项不成立） |
+| 2026-10-16 | **#8 拍定批（所有者）**：✅ Cookie 双凭证——业界两阵营核验落 GitHub/GitLab 应用内 cookie 主线（时效链阵营动机内网均不存在）；**附录 A.11 新建**（cookie 规范/签发轮换清除/中间件回退序/前端零改造/安全登记/验收负向三件）——**S5 八枚拍板全部闭环**；phase1/02-auth 补第二凭证面尾注 |
+| 2026-10-16 | 外审对齐批：A.3 补编号口径注（000045/000046 = 对账结论非锁定——A2 撞号让位重排）+ **B5-6 system_settings 迁移 000047 登记**（S5 合计三枚——外审计数补齐） |
+| 2026-10-16 | **第二批外审回声批（公约硬冲突优先修）**：①**A.4 #6 GET/PUT → GET+POST update（house style）**——原写法违 §3-1 且 §3-1 恰以本段为首批应用例（自指冲突，外审第 1 条）；②§3 配置化「放行 PUT/GET-PUT 两端点」措辞同步；③孤儿 GC 定位统一（正文采纳附录基线形态：B5-1 随批 GC+orphan_gc_days KV——正文/附录/A.9 三处对齐）；④「五端点」措辞补全景注（A.4 六行）；⑤A.11 hasMixedAuth 语义修正（header+cookie 并存≠mixed-auth，以 header 为准）；⑥B5-6 切出口径补「仍计一期收口」 |
+| 2026-10-16 | **全计划业界对标批（所有者）**：§4 补**图片处理随行件**（业界照片上传标配两缺口：缩略图——列表页全原图流量浪费/EXIF 剥离——GPS 隐私泄露面；confirm 时处理，随 B5-2，+0.5–1 天） |
+| 2026-10-16 | **评审批深审两项（所有者「落」并批）**：①A.4 #5 代理下载补 **ETag 透传+If-None-Match**（richtext 多图回访 304 免重传）+ **审计仅 200 全量投递落行**（304/206 不重复落——防审计写放大；Range 顺手预留）（深审项 B，≈0.25 天随 B5-2/3）；②§7 恢复演练补 **DB↔对象联合场景**（旧库+新桶引用悬空负向演示）（深审项 E） |
+| 2026-10-19 | **条件请求验收断言批（一致性尾巴修复）**：§11 补 If-None-Match → 304 且审计行不新增负向（对齐 A.4 #5 审计仅 200 落行；Range 透传可用不承诺） |
+| 2026-10-19 | **第二意见体检回声批（并行外审报告——计数 1 处）**：§10 涉及文件行「迁移两枚」→「**迁移三枚**（000045–000047 对账口径——A.3）」（对齐 B5-6 settings KV 第三枚登记） |
+| 2026-10-17 | **MD 库拍定批（所有者「md库先按你的建议来」）**：拍板点 4 库=**md-editor-rt ✅**（原择库 spike 销账；B5-4 首日 spike 收窄为粘贴直传扩展验证）；A.6 MdEditor 封装/判据行两处同步——台账 🔶 清零 |
+| 2026-10-19 | **B5-1 前置拍板批（所有者「按建议」——两会话收敛 v2）**：①**拍板点 6 presign 形态拍定 1b**（PUT+Content-Type 钉签名+confirm 实测+**etag 列快照**——A.3 修正③ etag 列/A.4 #2 confirm 回填+A.5 create 态/A.4 #5 If-Match 防重放+304 读列级联；POST policy 降增强登记[触发=滥用实测/spike 顺带验证]）②**§3 补 CORS**（外审缺口：落点=存储端配置非应用 config 段；spike 第一优先判据——RustFS 无 CORS 能力则直传方案重审）③**A.5 补建单前上传链**（draft attachment：purpose \*_create 态+建单携带 object_key 同事务落绑；CreateTicketRequest 契约变更 §12-6 五点查登记）④**A.1 落位钉死**（端口=pkg/storage 基建先例守护合规，业务各层照常） |
+| 2026-10-19 | **B5-1 spike 判据① CORS 预验批（当日顺手验——判据①销账）**：起 compose 草案容器实测——默认零 CORS 头（浏览器必拦）；`RUSTFS_CORS_ALLOWED_ORIGINS` 显式设置后预检完整放行（allow-methods 含 PUT/allow-headers \*/expose-headers 含 etag），白名单外零头拦截；MinIO 兼容变量无效；**安全公告 GHSA-x5xv-223c-8vm7（不设=反射式 CORS 风险）→ compose 草案 env 补默认值**；桶级 PutBucketCors 未支持（讨论 #736）→ 全局 env 形态；**直传方案无需重审**。健康三件复验（/health 200 + /minio/health/live 200 + 未签名 403） |
+| 2026-10-19 | **B5-1 spike 判据②③④预验批（minio-go v7.4.1 scratch 实测，B5-1 批2）**：②presign PUT 往返闭环（PUT 200 → StatObject[size+**etag=MD5 形态实得**——etag 列快照可行性再证]→presigned GET content-match）；③未签名 403（判据①批已证）；④Content-Type 钉入签名（`PresignHeader` extraHeaders 形态）——篡改 CT=text/html → **403 SignatureDoesNotMatch 存储侧拒**（限制矩阵「防谎报」锚点实证）；⑥桶复制 GetBucketReplication 读 API 通（err=nil 空配置）——**生效性深测随 B5-5**（rclone 起步形态维持）；**minio-go v7.4.1 兼容面全绿**（BucketExists/MakeBucket/PresignHeader/StatObject/PresignedGetObject——备选 aws-sdk-go-v2 维持挂账不启用） |
+| 2026-10-19 | **B5-1 spike 判据⑤预验批（批3）+ rclone 术语修正**：判据⑤ 主→备双实例（zhuzhao-rustfs→rustfs-backup，compose 内网服务名互访）`rclone sync` **全量+增量双实测通过**（首轮全量复制/次轮仅拷新对象 second.txt；rclone **v1.75.2** 实测——镜像 tag 随 B5-5 钉死）；**⚠ 术语修正：rclone 无 `mirror` 命令**（mc mirror 迁移笔误，正确命令=`sync` 单向含删除=镜像语义）——§7/A.8/拍板点 5/README/11 号正文与 compose 注释全量替换，2026-10-16 历史变更记录行留痕不改；判据⑥ GetBucketReplication 读 API 通（err=nil）维持「生效性深测随 B5-5」——**spike 六判据至此全部预验完毕，B5-1 首日 spike 提前完成** |
+| 2026-10-19 | **B5-1 底座收口批（批7）**：E2E 四场景（ec2051a）+ 四档接入（469f689）+ §11 验收完成注（S1/S4 底座面全过、S2/S3/S5/S6 各归后续批）——**B5-1 收口，B5-2 头像开工** |
+| 2026-10-19 | **B5-2 头像批落地（批 1–3：f6a9cd7 代理下载/e6c5116 swag 补/6391e6d Cookie 双凭证/本批 avatar 回写）**：①代理端点 GET /api/v1/files/*key（独立链 JWT+限流不挂通用审计——A.4 #5 收窄；同形 404 三态+If-None-Match 304+etag 作 If-Match 默认开=拍板 1b 防重放落点；端口面扩第 5 方法 GetObject——A.1 四方法收窄对代理读流系设计缺口已登记）②A.11 **形态 B 确认**（cookie=access JWT，登出吊销联动即失效——见 A.11 注记）③A.4 新增 #7 avatar/bind 行（校验三态同形 404/旧头像弃旧标 deleted/同键幂等）④缩略图+EXIF 随行件拍形态=**前端 canvas 压缩单 key**（零 Go 侧新依赖——ui 件随 B5-2 前端批） |
+| 2026-10-20 | **S5 代码评审修复批（两轮评审 P0/P1/P2 全清——05 号回声部分）**：①A.3 richtext 落绑语义拍 a 案（推翻「不建关联表」——建单贴图与附件同经 CreateTicket attachments 列表统一落绑，实现即此形态；编辑增量绑定登记随 B5-4）②A.3 标题计数修正（两处→三处）+DDL 补 idx_file_objects_creator（迁移实有）③A.5/A.9 size 措辞收口（实测对全局上限=防线，声明值不持久化）④A.4 #3 对齐实现（全量数组，分页触发驱动）⑤A.9 补 GC×confirm 竞态注记（TTL 15m+7d 双窗接受不设防）+删除口径闭环注（先标 deleted+GC 二扫收敛——代码修复批·删除口径笔）⑥A.6 MdEditor 补 attachments 隐藏域 |
+| 2026-10-20 | **规划研究回灌批（随行件，doc-only）**：§3 前缀命名空间占名（scripts/ artifacts/ ingest/ exports/）+ 表族注 owner 两列 + A.3 新增「随行件迁移」段（`file_objects` ALTER 追加 owner_kind/owner_id 两可空列——000045 已收口不改，编号按 A2 对账口径 000048，随 B5-4/B5-5 落）+ A.4 confirm 按 purpose 绑定器接口化注 + 000046 段 GC 第③条绑定器 union 注 + 迁移计数三枚→四枚；依据 docs/proposal/secops-platform/08-phase5-adjustments.md |
+| 2026-10-20 | **B5-4 后端首件：owner 随行件实落（迁移 000047）**：①A2 先建先占——B5-6 未启动且 golang-migrate 不允许事后插入更低版本，047=owner ALTER、B5-6 顺位 048（§3 表族注/§10/A.3/B5-6 段 + 11 号 §2·§5.9 + review/11 §4 口径同批改；上行"口径 000048"系回灌时预估，留痕不改）②写侧三路径：ConfirmAndBind/BindCreateAttachments 翻态语句内联填 `ticket/<id>`、BindAvatar 新 `SetObjectOwner` 填 `user/<uid>`（归属先于 users.avatar 回写）③FileObject +OwnerKind/OwnerID（omitempty 出站，swagger 重生成）+ testutil 清单同步；验证=往返门禁 2 对零漂移 + 三包集成（新增 owner 断言）+ **四档 acceptance 237/0**（107+68+27+35）+ lint/16 包单测绿；dev 库已 migrate-up v47 |
+| 2026-10-20 | **B5-4 后端二/三：richtext 第八种 + 编辑增量附件绑定**：①§6 richtext 枚举三处扩 + 256 KiB 上限（`richtextMaxBytes`，可随 B5-6 配置化）+ 单测 ②A.3 a 案登记项"UpdateTicket 扩 attachments 增量"落地（`bindAttachmentsTx` 与 Create 共用；UPDATE 先行持行锁；失败整事务回滚）③**范围发现登记**：custom_data 建单后无更新路径——richtext 编辑流需 custom_data patch（G2 重校验 + D20 changes[]），列 B5-4 拍板项（建议值：UpdateTicket 扩 custom_data 增量 patch、仅非终态可改）；验证=四档 acceptance 237/0 复跑 + ticket 包集成 + lint/单测绿 + swagger 重生成 |
+| 2026-10-20 | **B5-4 后端四：渲染 SSOT 落地 + custom_data 增量 patch（后端面收官）**：①§6 渲染选型拍定实落——goldmark v1.8.6 + bluemonday v1.0.27（双保险：默认档整体丢弃内嵌 HTML + UGC 白名单 + 相对 URL 放行）；端点 `POST /tickets/richtext/render`（§6 实施注+A.4 契约；登录态自服务+exempt）②A.3 拍板项 custom_data patch 已落（UpdateTicketRequest +custom_data；键覆盖/null 删键/G2 整体重校验/仅非终态；changes[] 随 S6 事件面）③渲染单测五场景（XSS 负向：script 丢弃/javascript·data scheme 消毒/稳定 URL 保留）+ handler 三场景 + custom_data 集成四子场景 + 四档 237/0 复跑 + 新端点真机冒烟 |
+| 2026-10-20 | **B5-5 备份随行收口**：①`rustfs-mirror` 侧车（rclone 1.75.2 钉死、profile=storage；remote 纯 env 注入）——sync 主→备 + `--backup-dir` 天目录轮转 + 目标桶版本化幂等启用（**RustFS 实测支持 PutBucketVersioning**）+ 失败留痕；②cron 最小件（lock 查询失败 Warn 留痕[原静默跳过]+`CronStatus` 数据面+panic 转失败记录——audit_archive/storage_gc 同受益，B10-4 端点消费位）；③**恢复演练五步实测全过**：check 哈希对账 24 matching/0 diff → 增量 → 损→恢字节一致 → 删除归档保护 → DB↔对象双向对账负向（引用集以 confirmed 为准）；④RPO 显式登记=同步周期（dev 1h）；backup/README 增对象存储节 + runbook §3 增行 |
+| 2026-10-21 | **五批审计 P2 三项收口批**：①F-A1 GC 一扫改「先条件清行、后删对象+墓碑走二扫」（A.9 竞态注记更新——修复前先删后清在 List 与 Remove 间撞并发 confirm 可致刚确认对象被物理删）②F-D3 `ConfigStore` 原子快照（A.1 装配链注记——消 data race + 修 wire/app 指针分裂致 KV 到不了 GC 的隐藏缺口）③F-D2 KV version 乐观锁=**迁移 000050**（B5-6 段注记——CAS + expected_version 严格校验）。验证：单测-race 16 包 / 集成-race 5 包 ok、000050 up→down→up 零漂移、lint 绿；acceptance 四档未跑（owner 侧） |
+| 2026-10-22 | **迁移计数口径统一（全量核查报告 P2-7——随修复批落）**：§6 涉及文件行与 B5-6 段两处「四枚」→**六枚 000045–000050**（000049=deleted 部分索引[双审计 F-A7]、000050=version 乐观锁[五批审计 F-D2] 实落后未随更新——与 review/11「五枚」收口口径及 11 号 §3 对齐，实际下一编号 000052）；05 号此前全文无 000049 登记一并补 |
+| 2026-11-05 | **ECO-20261104 B06 存储修复**：①头像绑定改用户/对象行锁下原子切换，头像/工单 confirmed GC 均锁后以新快照复查各自引用，覆盖 GC 赢锁、绑定赢锁及旧键 ABA；②直接 confirm 按待绑 purpose 分档，richtext 不占普通附件额度；A.3/A.9 同步。 |
+
+
+### 2026-11-06 B06-F14：多设置快照一致性补验
+
+`SettingsService.Update` 与 `Reset` 在本实例内共用互斥锁，将持久写与配置重建串行化；重建从出厂默认叠加全部有效KV覆盖，保持其它设置。重建读取失败时保留上份完整快照并向调用方返回错误；此时DB写可能已提交，需要重试或重启收敛。范围为单SettingsService实例，不承诺多副本动态配置传播。原样真实两键更新八轮出现DB显示1MiB而运行限制回退10MiB，修复/受控Reset-Update交错/重建失败证据见B06审计报告；联合完整门禁待验，未合main。
+
+
+### 2026-11-06 B06-F20：头像绑定与并发资料更新
+
+`storage_avatar.go` 的 `BindAvatar` 除原子维护归属/引用/弃旧，还在实际换键时推进同一用户资料的 `version` 与 `updated_at`；仅绑定器内部串行不足以拦住已读取旧头像的资料全量回写。资料旧读跨绑定提交后按既有 CAS 返回 409，避免成功新绑定被恢复为已 deleted/物理删除的旧键。同键重绑不推进代际，外链 URL 手填兼容不变。真实 PG 的两资料入口原各八轮失败，修复和独立 RustFS 物理 Stat/Remove 复验各八轮通过；专项不替代最终组合全量门禁，未合 main/部署。

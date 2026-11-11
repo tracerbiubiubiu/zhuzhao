@@ -19,6 +19,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,31 +38,72 @@ func (g CatalogGap) String() string {
 }
 
 // catalogExempt 自服务/公开路径精确豁免集（"METHOD PATH"）。
+
+// CatalogExemptRoutes 豁免登记全集（排序）——导出供守护测试引用
+// （SelfServiceContextKey 同款先例；修复验证审计 M-2：豁免路由须伴随
+// 运行时放行，防「只登记忘挂标记」的 P0-1 同族复发）。
+func CatalogExemptRoutes() []string {
+	out := make([]string, 0, len(catalogExempt))
+	for k := range catalogExempt {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 var catalogExempt = map[string]bool{
+	"GET /api/v1/ticket-types/:code/fields/variables": true, // B6-3 变量字典（模板编辑器读面）
+	"GET /api/v1/me/notification-optouts":             true, // B6-3 自服务偏好（登录态）
+	"POST /api/v1/me/notification-optouts":            true,
+
 	"POST /api/v1/auth/login":            true, // 认证公开端点
 	"POST /api/v1/auth/refresh":          true, // 认证公开端点
 	"GET /api/v1/auth/captcha":           true, // P4-7 验证码公开端点（匿名获取——登录前置）
 	"GET /api/v1/user/pats":              true, // P4-6 PAT 自服务（SelfService——本人凭据）
 	"GET /api/v1/user/dicts/:code/items": true, // P4-3 字典消费面（SelfService——全员业务表单选项）
-	"POST /api/v1/user/pats":             true,
-	"POST /api/v1/user/pats/delete":      true,
-	"POST /api/v1/auth/logout":           true, // 自服务（SelfService）
-	"POST /api/v1/auth/password/update":  true, // 自服务
-	"GET /api/v1/user/profile":           true, // 自服务
-	"POST /api/v1/user/profile/update":   true, // 自服务
-	"GET /api/v1/user/menus":             true, // 自服务
-	"GET /api/v1/user/permissions":       true, // 自服务
-	"GET /api/v1/user/orgs":              true, // 自服务（P4-W3「我的组织」数据源）
-	"POST /api/v1/orgs/delete":           true, // 委托语义（orgDelegated，Service 层判定）
-	"POST /api/v1/orgs/members":          true,
-	"GET /api/v1/orgs/members/list":      true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
-	"POST /api/v1/orgs/members/role":     true,
-	"POST /api/v1/orgs/members/scope":    true,
-	"GET /api/v1/orgs/roles/list":        true,
-	"POST /api/v1/orgs/roles/bind":       true,
-	"POST /api/v1/orgs/roles/delete":     true,
-	"POST /api/v1/orgs/owners":           true,
-	"POST /api/v1/orgs/members/delete":   true,
+	// phase5 S5 对象存储自服务面（05 号 A.7——五端点挂 authed 级 SelfService 标记组
+	// [router storageSelf]，ticket 态 purpose 的 ticket:update+L2 由 handler 编排层
+	// 判定——S5 评审 P0-1 修复 2026-10-20：原挂 biz 无标记致普通角色全 403）
+	"POST /api/v1/storage/presign/upload":      true,
+	"GET /api/v1/files/*key":                   true, // phase5 S5 文件代理（登录态——A.4 #5；avatar 面可见，ticket 态 handler L2）
+	"POST /api/v1/storage/avatar/bind":         true, // B5-2-3 头像回写（SelfService——本人对象）
+	"GET /api/v1/tickets/:id/attachments":      true, // B5-3 附件列表（L2 read 面——handler 判定，不可见单 404）
+	"POST /api/v1/tickets/attachments/delete":  true, // B5-3 删附件（L2 update 面）
+	"POST /api/v1/tickets/attachments/confirm": true,
+	"POST /api/v1/tickets/richtext/render":     true, // B5-4 渲染 SSOT（登录态自服务——无票据访问，纯消毒渲染）
+	// S10 B10-1 抄送（L2 read/update 面——service 层动态判定，工单操作不走静态权限码）
+	"POST /api/v1/tickets/cc":        true,
+	"POST /api/v1/tickets/cc/remove": true,
+	"GET /api/v1/tickets/:id/cc":     true,
+	// S10 B10-2 标签（L2 read/update 面——service 层动态判定；默认共享拍板点 6）
+	"POST /api/v1/tickets/tags":        true,
+	"POST /api/v1/tickets/tags/remove": true,
+	"GET /api/v1/tickets/:id/tags":     true,
+	// S6 二期 B6-7 站内消息中心（G-23 实施 000076：自数据 selfService——服务端限 recipient=self）
+	"GET /api/v1/notifications/inbox":     true,
+	"POST /api/v1/notifications/read":     true,
+	"POST /api/v1/notifications/read-all": true,
+	// S10 B10-3 角标聚合（登录态自服务——sections 内不含越权数据）
+	"GET /api/v1/badges":                true,
+	"POST /api/v1/user/pats":            true,
+	"POST /api/v1/user/pats/delete":     true,
+	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）
+	"POST /api/v1/auth/password/update": true, // 自服务
+	"GET /api/v1/user/profile":          true, // 自服务
+	"POST /api/v1/user/profile/update":  true, // 自服务
+	"GET /api/v1/user/menus":            true, // 自服务
+	"GET /api/v1/user/permissions":      true, // 自服务
+	"GET /api/v1/user/orgs":             true, // 自服务（P4-W3「我的组织」数据源）
+	"POST /api/v1/orgs/delete":          true, // 委托语义（orgDelegated，Service 层判定）
+	"POST /api/v1/orgs/members":         true,
+	"GET /api/v1/orgs/members/list":     true, // 委托语义（orgDelegated，Service 层 L3 判定——P4-W3 名册）
+	"POST /api/v1/orgs/members/role":    true,
+	"POST /api/v1/orgs/members/scope":   true,
+	"GET /api/v1/orgs/roles/list":       true,
+	"POST /api/v1/orgs/roles/bind":      true,
+	"POST /api/v1/orgs/roles/delete":    true,
+	"POST /api/v1/orgs/owners":          true,
+	"POST /api/v1/orgs/members/delete":  true,
 }
 
 func exemptPath(method, path string) bool { return catalogExempt[method+" "+path] }
@@ -154,6 +196,58 @@ func FormatGaps(gaps []CatalogGap) string {
 	var b strings.Builder
 	for _, g := range gaps {
 		b.WriteString("\n  " + g.String())
+	}
+	return b.String()
+}
+
+// pageWriteAllow W1 B 案「页面=读 API、写端点挂按钮行」的显式例外（"menu_code METHOD PATH"）。
+// 唯一在册：ticket_list ↔ POST /tickets/transition——000068 设计内（L1 与既有操作同受众，真正约束在
+// L2/L3 与按人过滤的 available）。新增例外必须带设计出处注释；禁止为省事把写端点挂回页面行——
+// 页面行进 viewer/operator 预设即连带放行写权（000070/000073 分派规则、000034/000059 字典·通知三案实证）。
+var pageWriteAllow = map[string]bool{
+	"ticket_list POST /api/v1/tickets/transition": true,
+}
+
+// PageWriteBinding 页面/目录行（menu_type≠3）上的非 GET 绑定——B 案违例候选。
+type PageWriteBinding struct {
+	MenuCode string
+	Method   string
+	Path     string
+}
+
+func (b PageWriteBinding) String() string { return b.MenuCode + " " + b.Method + " " + b.Path }
+
+// AuditPageWriteBindings B 案守卫：页面/目录行不得承载写端点（pageWriteAllow 之外）。
+// 与 BK-22 对账同址双守卫：app 层启动 fail-fast + integration 测试（CI test-integration job）。
+func AuditPageWriteBindings(ctx context.Context, q boundQuerier) ([]PageWriteBinding, error) {
+	rows, err := q.Query(ctx, `
+SELECT m.code, ma.api_method, ma.api_path
+FROM menu_apis ma JOIN menus m ON m.id = ma.menu_id
+WHERE m.menu_type <> 3 AND m.deleted_at IS NULL AND ma.api_method <> 'GET'
+ORDER BY m.code, ma.api_path, ma.api_method`)
+	if err != nil {
+		return nil, fmt.Errorf("读取页面行写绑定: %w", err)
+	}
+	defer rows.Close()
+	var out []PageWriteBinding
+	for rows.Next() {
+		var b PageWriteBinding
+		if err := rows.Scan(&b.MenuCode, &b.Method, &b.Path); err != nil {
+			return nil, fmt.Errorf("scan 页面行写绑定: %w", err)
+		}
+		if pageWriteAllow[b.String()] {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// FormatPageWriteBindings 违例清单换行缩进（启动日志/测试断言共用）。
+func FormatPageWriteBindings(vs []PageWriteBinding) string {
+	var b strings.Builder
+	for _, v := range vs {
+		b.WriteString("\n  " + v.String())
 	}
 	return b.String()
 }

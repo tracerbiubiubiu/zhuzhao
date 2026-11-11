@@ -82,12 +82,16 @@ func (r *NotificationRepo) FindByID(ctx context.Context, id int64) (*model.Notif
 
 // Create 新建（code 唯一冲突 → ErrNotificationDupCode）
 func (r *NotificationRepo) Create(ctx context.Context, c *model.NotificationConfig) error {
-	return r.db.QueryRow(ctx, `
+	err := r.db.QueryRow(ctx, `
 		INSERT INTO notification_configs (code, name, channel, webhook_url, enabled, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, version, created_at, updated_at`,
 		c.Code, c.Name, c.Channel, c.WebhookURL, c.Enabled, c.CreatedBy,
 	).Scan(&c.ID, &c.Version, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil && isPgUnique(err) {
+		return ErrNotificationDupCode
+	}
+	return err
 }
 
 // Update 乐观锁（version 不符 → ErrNotificationNotFound——语义同「已被他人变更」）

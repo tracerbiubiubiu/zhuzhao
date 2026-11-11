@@ -8,6 +8,7 @@ import (
 // Ticket 工单主表模型
 type Ticket struct {
 	ID          int64           `json:"id,string" db:"id"`
+	HumanKey    string          `json:"human_key,omitempty" db:"human_key"` // TK-yyyymmdd-NNNN
 	TypeCode    string          `json:"type_code" db:"type_code"`
 	Title       string          `json:"title" db:"title"`
 	Description string          `json:"description" db:"description"`
@@ -19,8 +20,14 @@ type Ticket struct {
 	OrgPath     string          `json:"org_path" db:"org_path"` // ltree 路径
 	CustomData  json.RawMessage `json:"custom_data,omitempty" db:"custom_data"`
 	SLADueAt    *time.Time      `json:"sla_due_at,omitempty" db:"sla_due_at"`
-	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
+	// StatusChangedAt 进入当前状态时刻（S10 B10-4——E-2 拍定 a 案：UpdateStatusTx
+	// 咽喉同写，节点停留时长数据源；存量回填=updated_at 近似）
+	StatusChangedAt *time.Time `json:"status_changed_at,omitempty" db:"status_changed_at"`
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——E-1 拍定：人工指定为
+	// 基线 > HR manager_id 为进阶[dd §31]；Create/Assign 可填可改）
+	EscalationSupervisor *int64    `json:"escalation_supervisor_id,string,omitempty" db:"escalation_supervisor_id"`
+	CreatedAt            time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at" db:"updated_at"`
 
 	// 姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
 	// users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）。
@@ -35,14 +42,38 @@ type Ticket struct {
 	AssigneeNo    string `json:"assignee_no,omitempty" db:"-"`
 }
 
+// TicketCCRow 抄送行回显（S10 B10-1——repo 层 join users 富化；
+// 「人名(工号)」结构化契约同 TicketRow 展示统一批口径：real_name 空回退 username、
+// 软删用户不回填姓名但保留 ID 行——抄送关系本身可见）。
+type TicketCCRow struct {
+	UserID     int64     `json:"user_id,string"`
+	Name       string    `json:"name,omitempty"`
+	EmployeeNo string    `json:"employee_no,omitempty"`
+	Role       string    `json:"role"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// TagRow 标签行回显（S10 B10-2——默认共享+挂载人留痕；TagRepo join users 富化，
+// 软删挂载人保留标签行不回填姓名——共享标签可溯源）。
+type TagRow struct {
+	Tag           string    `json:"tag"`
+	CreatedBy     int64     `json:"created_by,string"`
+	CreatedByName string    `json:"created_by_name,omitempty"`
+	CreatedByNo   string    `json:"created_by_no,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 // TicketType 工单类型配置
 type TicketType struct {
-	ID              int64           `json:"id,string" db:"id"`
-	Code            string          `json:"code" db:"code"`
-	Name            string          `json:"name" db:"name"`
-	Description     string          `json:"description" db:"description"`
-	States          json.RawMessage `json:"states" db:"states"`
-	Transitions     json.RawMessage `json:"transitions" db:"transitions"`
+	ID          int64           `json:"id,string" db:"id"`
+	Code        string          `json:"code" db:"code"`
+	Name        string          `json:"name" db:"name"`
+	Description string          `json:"description" db:"description"`
+	States      json.RawMessage `json:"states" db:"states"`
+	Transitions json.RawMessage `json:"transitions" db:"transitions"`
+	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation
+	// 承载；S3a 后 "from>to" 转换级键复用同列）
+	TransitionMeta  json.RawMessage `json:"transition_meta,omitempty" db:"transition_meta"`
 	DefaultSLAHours int             `json:"default_sla_hours" db:"default_sla_hours"`
 	HasCustomFields bool            `json:"has_custom_fields" db:"has_custom_fields"`
 	IsActive        bool            `json:"is_active" db:"is_active"`
@@ -59,6 +90,7 @@ type TicketTypeField struct {
 	FieldLabel    string          `json:"field_label" db:"field_label"`
 	FieldType     string          `json:"field_type" db:"field_type"`
 	FieldOptions  json.RawMessage `json:"field_options,omitempty" db:"field_options"`
+	FieldMeta     json.RawMessage `json:"field_meta,omitempty" db:"field_meta"` // B1-3 formula/extension
 	Required      bool            `json:"required" db:"required"`
 	ValidateRegex string          `json:"validate_regex,omitempty" db:"validate_regex"`
 	SortOrder     int             `json:"sort_order" db:"sort_order"`
@@ -116,4 +148,30 @@ type TicketRelation struct {
 	CreatedBy      int64      `json:"created_by,string" db:"created_by"`
 	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+}
+
+// AssignmentRule 自动分派规则（S3a B3-2——03 号附录 A.2）。
+type AssignmentRule struct {
+	ID         int64     `json:"id,string"`
+	TypeCode   string    `json:"type_code"`
+	Priority   int       `json:"priority"`
+	Keyword    string    `json:"keyword,omitempty"` // 空=不限（类型兜底）；LIKE 包含
+	TargetOrg  int64     `json:"target_org,string"`
+	TargetUser *int64    `json:"target_user,string,omitempty"` // 决议③须属 target_org；空=仅分组织
+	Enabled    bool      `json:"enabled"`
+	CreatedBy  int64     `json:"created_by,string"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// NotificationRow 站内通知行（S6 二期 B6-7——事件快照读过即完；title/link
+// 入站即渲染，读面零渲染逻辑）。
+type NotificationRow struct {
+	ID          int64      `json:"id,string"`
+	RecipientID int64      `json:"recipient_id,string"`
+	BizType     string     `json:"biz_type"`
+	BizID       *int64     `json:"biz_id,string,omitempty"`
+	Title       string     `json:"title"`
+	Link        string     `json:"link,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ReadAt      *time.Time `json:"read_at,omitempty"`
 }

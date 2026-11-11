@@ -20,15 +20,33 @@ import (
 var httpStatusByCode = map[int]int{
 	// P4 新段（审计修复 2026-09-30：原漏登记——全部断链 500+10000；2026-10-15 起键值
 	// 改引 errcode 常量——§3-11 码值引用纪律，与表内其余行同风格）
-	errcode.ErrNotificationConfigNotFound.Code:    http.StatusNotFound,   // 通知配置不存在
-	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,   // 通知配置 code 已存在
-	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest, // 不支持的通知渠道
-	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,   // 字典类型不存在/版本冲突
-	errcode.ErrDictItemNotFound.Code:              http.StatusNotFound,   // 字典项不存在/版本冲突
-	errcode.ErrPatNotFound.Code:                   http.StatusNotFound,   // PAT 不存在或已吊销
+	errcode.ErrNotificationConfigNotFound.Code:    http.StatusNotFound,            // 通知配置不存在
+	errcode.ErrNotificationCodeExists.Code:        http.StatusConflict,            // 通知配置 code 已存在
+	errcode.ErrNotificationChannelNotSupport.Code: http.StatusBadRequest,          // 不支持的通知渠道
+	errcode.ErrNotificationNotConfigured.Code:     http.StatusInternalServerError, // 92004 渠道未配置 fail-fast（台账口径 500）
+	errcode.ErrDictTypeNotFound.Code:              http.StatusNotFound,            // 字典类型不存在/版本冲突
+	errcode.ErrDictTypeInUse.Code:                 http.StatusBadRequest,          // 92304
+	// S6 B6-3 消息模板段（92500-92599——外审 F-1-4 修复）
+	errcode.ErrMsgTplNotFound.Code:         http.StatusNotFound,   // 92501
+	errcode.ErrMsgTplDupCode.Code:          http.StatusConflict,   // 92502
+	errcode.ErrMsgTplSystem.Code:           http.StatusForbidden,  // 92503
+	errcode.ErrMsgTplReferenced.Code:       http.StatusConflict,   // 92504
+	errcode.ErrMsgTplVersionConflict.Code:  http.StatusConflict,   // 92505 模板 version CAS 冲突
+	errcode.ErrMsgRuleVersionConflict.Code: http.StatusConflict,   // 92506 订阅规则 version CAS 冲突（000060）
+	errcode.ErrDictItemNotFound.Code:       http.StatusNotFound,   // 字典项不存在/版本冲突
+	errcode.ErrPatNotFound.Code:            http.StatusNotFound,   // PAT 不存在或已吊销
+	errcode.ErrFileTooLarge.Code:           http.StatusBadRequest, // 文件大小超限（phase5 S5）
+	errcode.ErrFileTypeNotAllowed.Code:     http.StatusBadRequest, // 文件类型不允许
+	errcode.ErrFileNotFound.Code:           http.StatusNotFound,   // 文件不存在（含防枚举归属遮蔽）
+	errcode.ErrFileAlreadyBound.Code:       http.StatusConflict,   // 已确认/已关联
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,
+	errcode.ErrActionNotRegistered.Code:  400, // S4 B4-1：未注册动作提交即拒（21010）
+	// S9 B9-1 情报缓存段（92600-92602——09 号 A.2）
+	errcode.ErrIntelNotConfigured.Code: 500, // 契约未配置 fail-fast（与 92004 同口径）
+	errcode.ErrIntelUpstreamQuota.Code: 503, // 配额耗尽且无缓存降级（拍板点 1 失败臂）
+	errcode.ErrIntelUpstream.Code:      502, // 上游不可用透传语义
 
 	// 401 未认证
 	errcode.ErrUnauthorized.Code: 401,

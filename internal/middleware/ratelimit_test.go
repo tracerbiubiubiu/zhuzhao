@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,8 @@ import (
 func rlSetup(t *testing.T, cfg config.RateLimitConfig) (*gin.Engine, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
+	// Lua 用 TIME 整秒补令牌；固定测试时钟，避免跨秒调度合法补桶导致假红。
+	mr.SetTime(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 	gin.SetMode(gin.ReleaseMode)
@@ -117,6 +120,7 @@ func TestRateLimit_RedisDownFailsClosed(t *testing.T) {
 // （122b9c6 的「桶隔离」修复实为 no-op：bucket 两分支恒 default，路由桶被默认流量稀释）。
 func TestRateLimit_RouteBucketIsolation(t *testing.T) {
 	mr := miniredis.RunT(t)
+	mr.SetTime(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 	gin.SetMode(gin.ReleaseMode)

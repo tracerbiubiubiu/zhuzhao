@@ -1,5 +1,8 @@
 # 04 - 用户模块（user）
 
+> **适用范围（2026-11-08整理）**：用户资料更新当前保留B14安全边界：不能用旧快照回写status/must_change_password；头像专用写与资料写共享CAS。HR同步/SSO为设计及外部前置，不能据本页原Phase2计划宣称交付；头像存储已由Phase5 S5承接，原MinIO阶段例不再是部署入口。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 2**（repo）+ **Step 6**（service/handler）。  
 > 硬依赖 Step 1（infra）、Step 5（authz）。**组织绑定（6b）另需 Step 9**，见 [README §2.2](./README.md#22-step-5-之后可并行)。
 
@@ -102,6 +105,8 @@ CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_accoun
       AND deleted_at IS NULL;
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
 ```
+
+<a id="身份标识字段工号-登录名-域账号"></a>
 
 ### 身份标识字段（工号 / 登录名 / 域账号）
 
@@ -564,6 +569,12 @@ Repository：`List(ctx, query)` 动态拼 WHERE；另提供 `FindByEmployeeNo(ct
 
 禁用/删除用户成功后必须写 `user:disabled:{userId}` 并删除该用户全部 RT（见 02-auth）。Phase 1 即实现，不是 Phase 2。
 
+### 资料写与安全状态隔离（2026-11-06，B14-F01）
+
+`internal/service/user_service.go` 的 `Update`（管理员改资料）与 `UpdateProfile`（个人资料）共享 `internal/repository/user_repo.go` 的 `Update`。该 SQL 只写资料字段、递增 `version` 并做原有 CAS；`status` 与 `must_change_password` 的先前读取值不得回写。状态由 `UpdateStatus` / `UpdateStatusTx` 修改，密码及强改标记由 `UpdatePassword` 修改（包含自服务改密、管理员重置及 break-glass 复用路径）。资料写响应经 `RETURNING` 回填当前安全状态，保持与持久值一致。
+
+并发边界：资料请求已经读取用户、管理员随后成功禁用或重置密码时，资料请求仍可保存正常资料，但须保留已提交的禁用/强改要求。禁用后新登录仍失败；重置后新登录仍须改密；旧 AT 的纪元撤销规则继续生效。永久回归 `internal/service/user_security_state_integration_test.go` 的 `TestUserSecurityState_ProfileCannotUndoAdmin` 固定真实 SQL 发送前交错，复用已有 TestMain 的 PG 并使用独立真实 Redis，覆盖两个资料入口及专用安全写、登录/JWT、资料 CAS 与写响应回显。
+
 ### 删除用户级联
 
 > 详见 [modules/user.md](../modules/user.md) §4。系统用户保护 + 事务内清理 + 事务外吊销。
@@ -594,6 +605,12 @@ func (s *userService) Delete(ctx context.Context, userID int64) error {
 ```
 
 ---
+
+### 头像绑定与资料代际（2026-11-06，B06-F20）
+
+`internal/repository/storage_avatar.go` 的 `BindAvatar` 在原用户行锁事务内切换头像键时，同时递增 `users.version` 并更新 `updated_at`。已读取旧用户的 `Update` / `UpdateProfile` 随后写入须命中既有资料 CAS，否则返回 10006/409 要求重读，不能把已退役并删除的旧头像键恢复到 `users.avatar`。重绑当前同一键不推进代际，不制造无实际变化的资料冲突；失败绑定不改变代际。外链 URL 手填的既有公开契约保持，绑定请求不新增 version 参数。
+
+永久回归 `internal/service/avatar_profile_integration_test.go` 的 `TestUserAvatarProfileCAS` 覆盖个人/管理员两资料入口，绑定跨资料旧读、两方向顺序、同键幂等及 URL/拒绑控制。原根因与 B14 安全字段所有权不同：头像本身仍是合法资料字段，须由专用绑定写与资料写共用版本协议。该独立修复的全量联合门禁另由 root 固定组合承接，未合 main/部署。
 
 ## 测试用例
 

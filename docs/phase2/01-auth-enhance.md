@@ -1,5 +1,8 @@
 # 01 - 认证增强（auth-enhance，Phase 2b）
 
+> **适用范围（2026-11-08整理）**：这是仍需独立触发的认证增强提案，不代表设备列表/元数据与复杂度已全部交付。JSON RT值、单设备踢出草图须在现行Lua/epoch链上重设计，不能绕过密码纪元；CORS/cookie按现行部署与文件读取合同，不沿用旧AllowAll前提。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 7**，可与 Step 6（storage）并行；依赖 Phase 1 认证链路（双 Token、Redis RT——**设备元数据未落地，见 §1 前置条件**）。  
 > 模块背景见 [modules/auth.md](../modules/auth.md)、[phase1/02-auth.md](../phase1/02-auth.md)。
 
@@ -160,7 +163,7 @@ func ValidatePasswordPolicy(pwd string, cfg config.PasswordPolicy) error {
 | 20012 | `ErrDeviceNotFound` | 设备不存在 | 404 |
 | 20013 | `ErrPasswordTooWeak` | 密码不符合复杂度要求 | 400 |
 
-> 写入 `errcode.go` 时勿改号；同步 [api/errcode.md](../api/errcode.md)。
+> 写入 `errcode.go` 时勿改号；同步 [docs/api/errcode.md](../api/errcode.md)。
 
 ### 3.4 与 Phase 1 关系（基线更新 2026-08-19）
 

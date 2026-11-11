@@ -67,6 +67,6 @@ const mainUsage = `zhuzhao
 
 用法:
   zhuzhao                       启动 API server（默认）
-  zhuzhao reset-password [flags]  break-glass 重置 superadmin 密码（见 docs/runbook.md §1）
+  zhuzhao reset-password [flags]  break-glass 重置 superadmin 密码（见 docs/ops/runbook.md §1）
   zhuzhao help                  显示本帮助
 `

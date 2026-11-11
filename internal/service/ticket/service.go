@@ -5,14 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/humankey"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -24,10 +31,83 @@ type Service struct {
 	registry    resource.Registry
 	roleFetcher middleware.RoleFetcher
 	delegation  OrgDelegationChecker
+	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
+	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
+	eventReg    *domainevent.HookRegistry
+	keyGen      *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
+	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
+	tagRepo     *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
+	dispatcher  *DispatchService         // S3a B3-2：自动分派（OnAfterCreate——app 装配注入）
+	actionReg   *ActionRegistry          // S3a B3-3：动作库（post_actions 消费——app 装配注入）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
 // Wire 语义保证：Registry 单例，TicketService 构造（自注册）先于 router.New。
+// SetEventRegistry B6-1：注入领域事件注册表（app 装配层调用——wire_gen 零改；
+// nil=不派发，首版装配态安全默认）。
+// SetDispatcher S3a B3-2：注入自动分派器（app 装配层调用——nil=不分派）。
+func (s *Service) SetDispatcher(d *DispatchService) *Service {
+	s.dispatcher = d
+	return s
+}
+
+// SetActionRegistry S3a B3-3：注入动作库（post_actions 消费——nil=不执行）。
+func (s *Service) SetActionRegistry(r *ActionRegistry) *Service {
+	s.actionReg = r
+	return s
+}
+
+func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
+	s.eventReg = reg
+	return s
+}
+
+// emitTicketEvent 在提交后派发，并从本次业务读取的工单快照携带创建者。
+// 消费者不回查数据库：排队期间删单仍能找到创建者，且不把操作者误当创建者。
+func (s *Service) emitTicketEvent(ticket *model.Ticket, ev domainevent.DomainEvent) {
+	if s.eventReg != nil {
+		s.eventReg.Dispatch(context.Background(), withTicketIdentity(ev, ticket.CreatedBy))
+	}
+}
+
+// withTicketIdentity 区分工单创建者与本次操作者；复制载荷防止修改其他订阅者使用的map。
+// 扫描事件没有操作者（ActorID=0），保持该语义；缺创建者时不猜测回退到actor。
+func withTicketIdentity(ev domainevent.DomainEvent, creatorID int64) domainevent.DomainEvent {
+	payload := make(domainevent.Payload, len(ev.Payload)+2)
+	for key, value := range ev.Payload {
+		payload[key] = value
+	}
+	if creatorID > 0 {
+		payload["creator"] = strconv.FormatInt(creatorID, 10)
+	}
+	if ev.ActorID > 0 {
+		payload["actor"] = strconv.FormatInt(ev.ActorID, 10)
+	}
+	ev.Payload = payload
+	return ev
+}
+
+// EmitActionNotify post_action notify 动作的事件出口（NotifyAction 专用——
+// 走与 created/assigned/closed 同一事件编排链；at-most-once 异步）。
+// 载荷键 cc_users=cc 档收件人锚点复用（resolveRecipients cc 分支）。
+func (s *Service) EmitActionNotify(ctx context.Context, ticket *model.Ticket, actorID int64, recipients, templateCode string) {
+	_ = ctx // 事件派发为异步 fire-and-forget（emitTicketEvent 内部 Dispatch 自管生命周期）
+	payload := domainevent.Payload{
+		"title": ticket.Title, "human_key": ticket.HumanKey,
+		"cc_users": recipients,
+	}
+	// S3a B3-3：动作显式指定的模板码（2026-10-26 通知面收口批生效——空=走规则/种子默认）
+	if templateCode != "" {
+		payload["template_code"] = templateCode
+	}
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketActionNotify,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorID,
+		Payload: payload,
+	})
+}
+
 func NewTicketService(
 	db *pgxpool.Pool,
 	ticketRepo *repository.TicketRepo,
@@ -35,17 +115,29 @@ func NewTicketService(
 	registry resource.Registry,
 	roleFetcher middleware.RoleFetcher,
 	delegation OrgDelegationChecker,
+	storageRepo *repository.StorageRepo,
+	storageCfg *pkgstorage.ConfigStore,
+	fetcherReg *datafetcher.Registry,
 ) *Service {
+	ccRepo := repository.NewTicketCCRepo(db)
+	tagRepo := repository.NewTagRepo(db)
 	s := &Service{
 		db:          db,
 		ticketRepo:  ticketRepo,
 		orgRepo:     orgRepo,
 		registry:    registry,
+		storageCfg:  storageCfg,
+		fetcherReg:  fetcherReg,
+		keyGen:      humankey.New(db, "TK"),
+		storageRepo: storageRepo,
 		roleFetcher: roleFetcher,
 		delegation:  delegation,
+		ccRepo:      ccRepo,
+		tagRepo:     tagRepo,
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
-	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
+	// + S10 B10-1 抄送特例支（读可见集）
+	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation, ccRepo))
 	return s
 }
 
@@ -190,8 +282,38 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 
 	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
-	if err := s.validateCustomData(ctx, req.TypeCode, customData); err != nil {
+	// B1-4 取数联动（A.4：Submit 事务内、formula 重算之前——取数结果可被
+	// formula 引用）；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
+	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
+	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
+	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
+	// 同一 G2 schema/显隐快照内剔除隐藏字段、重算公式并校验落库值。
+	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData, nil)
+	if err != nil {
 		return nil, err
+	}
+	// 池连接调用一律在 Begin 的事务窗口外（2026-10-26 BK11 CI 挂死根因修复：
+	// Create 事务内曾嵌套池取——fileFieldKeys/keyGen 各要第二个连接，与并发
+	// Move 在 4 连接池上构成池耗尽循环等待；与上方 fetch/validate/formula
+	// 的 schema 读同规，提到事务外预取）
+	fileKeys, err := s.fileFieldKeys(ctx, req.TypeCode, customData)
+	if err != nil {
+		return nil, err
+	}
+	// 贴图落绑进料（2026-11-03 批）：richtext 字段 MD 内嵌图 /files/ 引用——
+	// 与 fileKeys 同规事务外预取（池纪律同上注记）
+	richtextKeys, err := s.richtextFieldKeys(ctx, req.TypeCode, customData)
+	if err != nil {
+		return nil, err
+	}
+	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
+	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
+	var humanKey string
+	if s.keyGen != nil {
+		humanKey, err = s.keyGen.Next(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("human_key: %w", err)
+		}
 	}
 
 	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
@@ -199,14 +321,15 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// 快照必须在事务内与 Move 的 FOR UPDATE 写锁串行化后读取（BK-11 ①）：
 	// 事务外裸读会命中「读旧 path → move 级联提交 → 写入过期 org_path」竞态。
 	ticket := &model.Ticket{
-		TypeCode:    req.TypeCode,
-		Title:       req.Title,
-		Description: description,
-		Priority:    priority,
-		Status:      StatusOpen,
-		CreatedBy:   actorUserID,
-		OrgID:       req.OrgID,
-		CustomData:  customData,
+		TypeCode:             req.TypeCode,
+		Title:                req.Title,
+		Description:          description,
+		Priority:             priority,
+		Status:               StatusOpen,
+		CreatedBy:            actorUserID,
+		EscalationSupervisor: req.EscalationSupervisor,
+		OrgID:                req.OrgID,
+		CustomData:           customData,
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -231,8 +354,43 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}); err != nil {
 		return nil, err
 	}
+	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
+	// B1-6 批1：file 字段 object_key 并入落绑（01 号 §3.5 file×附件五点——
+	// custom_data 只存展示态引用，权威归属走 ticket_attachments 既有链；
+	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）——fileKeys 已在
+	// Begin 前预取（池调用禁入事务窗口，见上方注记）
+	bindKeys := append(append(append([]string{}, req.Attachments...), fileKeys...), richtextKeys...)
+	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
+		return nil, err
+	}
+	// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
+	// 同事务写行（原子性不变）
+	if ticket.HumanKey == "" && humanKey != "" {
+		ticket.HumanKey = humanKey
+		if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, humanKey, ticket.ID); err != nil {
+			return nil, fmt.Errorf("write human_key: %w", err)
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	// B6-1：工单创建事件（事务提交后派发——06 号 §5.2a 异步投递）
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketCreated,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"type_code": ticket.TypeCode, "title": ticket.Title, "status": ticket.Status,
+			"human_key": ticket.HumanKey,
+			// actor仅作操作者；creator锚由emitTicketEvent从工单快照统一注入。
+			"actor": strconv.FormatInt(actorUserID, 10),
+		},
+		Timestamp: time.Now(),
+	})
+	// S3a B3-2：OnAfterCreate 自动分派（决议⑤——失败不回滚创建；在事件 emit 后
+	// 调用=事务已提交，分派走 Assign 全链含事件）
+	if s.dispatcher != nil {
+		s.dispatcher.OnAfterCreate(ctx, ticket)
 	}
 	return ticket, nil
 }
@@ -247,19 +405,9 @@ func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.
 
 // List 工单列表（L2 行级过滤；admin bypass L2）
 func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID int64) (*model.TicketListResponse, error) {
-	var filter resource.Filter
-	roles, err := s.getRoles(ctx, actorUserID)
+	filter, err := s.resolveListFilter(ctx, actorUserID)
 	if err != nil {
-		return nil, fmt.Errorf("fetch roles: %w", err)
-	}
-	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
-		// admin bypass L2：显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝，防漏接静默全量）
-		filter = resource.Filter{Unscoped: true}
-	} else {
-		filter, err = s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	tickets, total, err := s.ticketRepo.List(ctx, filter, q)
 	if err != nil {
@@ -271,6 +419,211 @@ func (s *Service) List(ctx context.Context, q model.TicketListQuery, actorUserID
 		Page:     q.Page,
 		PageSize: q.PageSize,
 	}, nil
+}
+
+// resolveListFilter List/Export 共用的行级过滤解析（BK-21 同源 service 面）：
+// admin/superadmin 显式 Unscoped，其余走 registry.GetFilter（cc 特例支/L2 三轴同源）。
+func (s *Service) resolveListFilter(ctx context.Context, actorUserID int64) (resource.Filter, error) {
+	roles, err := s.getRoles(ctx, actorUserID)
+	if err != nil {
+		return resource.Filter{}, fmt.Errorf("fetch roles: %w", err)
+	}
+	if HasRole(roles, "admin") || HasRole(roles, "superadmin") {
+		// admin bypass L2：显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝，防漏接静默全量）
+		return resource.Filter{Unscoped: true}, nil
+	}
+	return s.registry.GetFilter(ctx, "ticket", actorUserID, "read")
+}
+
+// MaxExportRows 导出行数钳制（A.6：≈5 万——超限 400 提示收窄筛选；与审计导出挂账口径对齐）
+const MaxExportRows = 50000
+
+// ErrExportTooMany 导出超限（service 层语义码——handler 转 400）
+var ErrExportTooMany = errcode.New(errcode.ErrInvalidParams.Code, "导出行数超过上限 50000，请收窄筛选条件")
+
+// ExportStream 导出取行（S10 B10-5）：与 List 同 resolveListFilter + 同
+// buildTicketWhere（BK-21 代码级同源）。COUNT只做预检，实际流仍逐行校验5万上限；
+// 第50001行报错而非截断成功。成功返回值=实际生成行数，供导出审计使用。
+func (s *Service) ExportStream(ctx context.Context, q model.TicketListQuery, actorUserID int64, rowFn func(*model.Ticket) error) (int64, error) {
+	filter, err := s.resolveListFilter(ctx, actorUserID)
+	if err != nil {
+		return 0, err
+	}
+	total, err := s.ticketRepo.CountByFilter(ctx, filter, q)
+	if err != nil {
+		return 0, err
+	}
+	if total > MaxExportRows {
+		return total, ErrExportTooMany
+	}
+	var exported int64
+	err = s.ticketRepo.StreamRowsByFilter(ctx, filter, q, func(ticket *model.Ticket) error {
+		if exported >= MaxExportRows {
+			return ErrExportTooMany
+		}
+		if err := rowFn(ticket); err != nil {
+			return err
+		}
+		exported++
+		return nil
+	})
+	return exported, err
+}
+
+// FieldImpact B1-5 每字段在途使用计数（全量替换前的变更代价提示——软告警
+// 不阻断）。返回 = field_key → 在途工单数。
+func (s *Service) FieldImpact(ctx context.Context, typeCode string) (map[string]int, error) {
+	return s.ticketRepo.FieldImpact(ctx, typeCode)
+}
+
+// applyFetches B1-4 取数联动（A.4）：从 field_meta 组装 FetchField 投影 →
+// datafetcher.ApplyFetches 回写。失败不阻塞（A.4 失败策略）——missed 记日志。
+func (s *Service) applyFetches(ctx context.Context, typeCode string, customData json.RawMessage, actorUserID int64) json.RawMessage {
+	if s.fetcherReg == nil {
+		return customData // 无注册源——取数面未装配
+	}
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return customData
+	}
+	var schema []datafetcher.FetchField
+	for _, f := range fields {
+		if len(f.FieldMeta) == 0 {
+			continue
+		}
+		var meta struct {
+			Fetch struct {
+				Source    datafetcher.FetchSource `json:"source"`
+				TriggerBy string                  `json:"trigger_by"`
+				Mapping   map[string]string       `json:"mapping"`
+			} `json:"fetch"`
+		}
+		if err := json.Unmarshal(f.FieldMeta, &meta); err != nil || meta.Fetch.Source.Type == "" {
+			continue
+		}
+		ff := datafetcher.FetchField{
+			Key: f.FieldKey, Source: meta.Fetch.Source,
+			TriggerBy: meta.Fetch.TriggerBy, Mapping: meta.Fetch.Mapping,
+		}
+		if ff.TriggerBy == "" {
+			ff.TriggerBy = f.FieldKey
+		}
+		schema = append(schema, ff)
+	}
+	if len(schema) == 0 {
+		return customData
+	}
+	var data map[string]any
+	if err := json.Unmarshal(customData, &data); err != nil || data == nil {
+		return customData
+	}
+	out, missed, err := datafetcher.ApplyFetches(s.fetcherReg, schema, data, datafetcher.Actor{UserID: actorUserID})
+	if err != nil {
+		return customData // 取数面错误不阻塞提交
+	}
+	if len(missed) > 0 {
+		slog.Warn("ticket fetch linkage missed", "type_code", typeCode, "missed", missed)
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return customData
+	}
+	return json.RawMessage(b)
+}
+
+// richtextFieldKeys 抽取 custom_data 中 richtext 字段 MD 的内嵌图 object_key
+// （2026-11-03 贴图落绑批——Create 进料侧；解析=ExtractFileRefs 与渲染同口径）。
+func (s *Service) richtextFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return nil, err
+	}
+	hasRT := false
+	for _, f := range fields {
+		if f.FieldType == "richtext" {
+			hasRT = true
+			break
+		}
+	}
+	if !hasRT {
+		return nil, nil
+	}
+	var data map[string]any
+	if json.Unmarshal(customData, &data) != nil {
+		return nil, nil
+	}
+	var keys []string
+	for _, f := range fields {
+		if f.FieldType != "richtext" {
+			continue
+		}
+		if v, ok := data[f.FieldKey].(string); ok && v != "" {
+			keys = append(keys, ExtractFileRefs(v)...)
+		}
+	}
+	return keys, nil
+}
+
+// fileFieldKeys 收集 custom_data 中 file 字段的 object_key（B1-6 批1——落绑用）。
+func (s *Service) fileFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
+	if err != nil || len(fields) == 0 {
+		return nil, err
+	}
+	hasFile := false
+	for _, f := range fields {
+		if f.FieldType == "file" {
+			hasFile = true
+			break
+		}
+	}
+	if !hasFile {
+		return nil, nil
+	}
+	var data map[string]any
+	if json.Unmarshal(customData, &data) != nil {
+		return nil, nil
+	}
+	var keys []string
+	for _, f := range fields {
+		if f.FieldType != "file" {
+			continue
+		}
+		if arr, ok := data[f.FieldKey].([]any); ok {
+			for _, k := range arr {
+				if ks, ok := k.(string); ok && ks != "" {
+					keys = append(keys, ks)
+				}
+			}
+		}
+	}
+	return keys, nil
+}
+
+// bindAttachmentsTx 悬挂对象落绑共用件（B5-3 建单前链 + B5-4 编辑增量——05 号 A.3 a 案）：
+// attachment_create/richtext_create 悬挂 confirmed 对象在调用方事务内校验+落绑+purpose
+// 翻正式。错误映射：无效对象/重复对象/超上限 → 400（用户输入面）；其余上抛 500 面。
+func (s *Service) bindAttachmentsTx(ctx context.Context, tx pgx.Tx, ticketID, actorUserID int64, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	cfg := s.storageCfg.Load() // 快照只读（F-D3）
+	if err := s.storageRepo.BindCreateAttachments(ctx, tx, cfg.Bucket, actorUserID, ticketID, keys, cfg.MaxAttachmentsPerTicket); err != nil {
+		if errors.Is(err, repository.ErrStorageObjectNotFound) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
+		}
+		// 审计 M-3：同 key 重复出现在 attachments → UNIQUE 冲突此前未映射
+		// 落 500（用户输入面应 400）
+		if errors.Is(err, repository.ErrStorageAlreadyBound) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含重复对象")
+		}
+		if errors.Is(err, repository.ErrStorageAttachmentLimit) {
+			return errcode.New(errcode.ErrInvalidParams.Code,
+				fmt.Sprintf("工单附件数超过上限（%d）", cfg.MaxAttachmentsPerTicket))
+		}
+		return fmt.Errorf("bind attachments: %w", err)
+	}
+	return nil
 }
 
 // Update 更新工单（patch 语义）
@@ -298,8 +651,37 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority)
+	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项）：传入键覆盖、null 删键；合并后
+	// 整体 G2 重校验（含未改动字段——防基线外字段绕进、required 被 null 清空）。
+	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地，请求体已入通用审计行。
+	// F-B1（2026-10-21 分批审计）：基线改在事务内 FOR UPDATE 取新鲜值——事务外
+	// GetByID 的基线在并发 Update 下已过期，Go 合并整列写回会丢并发方键；行锁
+	// 持至提交使同单更新串行化，合并恒新鲜且 G2 校验仍先于写。
+	var customData []byte
+	if len(req.CustomData) > 0 {
+		base, err := s.ticketRepo.LockCustomDataTx(ctx, tx, req.ID)
+		if err != nil {
+			return nil, err
+		}
+		merged, err := mergeCustomData(base, req.CustomData)
+		if err != nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
+		}
+		// 使用当前事务及锁内旧值完成 G2 校验和公式重算，避免嵌套池读。
+		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base)
+		if err != nil {
+			return nil, err
+		}
+		customData = merged
+	}
+	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority, customData)
 	if err != nil {
+		return nil, err
+	}
+	// B5-4 编辑增量绑定（05 号 A.3 a 案）：编辑已建单工单时新贴图/附件（悬挂 confirmed 对象）
+	// 随保存同事务落绑——与建单同款语义。UpdateTx 的 UPDATE 已持工单行锁且先行，
+	// 计数校验无 TOCTOU 窗口（与 ConfirmAndBind 的 FOR UPDATE tickets 同序）。
+	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, req.Attachments); err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -322,8 +704,51 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if req.Priority != nil {
 		ticket.Priority = *req.Priority
 	}
+	if customData != nil {
+		ticket.CustomData = customData
+	}
 	ticket.UpdatedAt = updatedAt
+	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
+	updatedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
+	}
+	if ticket.AssignedTo != nil {
+		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: updatedPayload, Timestamp: time.Now(),
+	})
 	return ticket, nil
+}
+
+// mergeCustomData custom_data 增量 patch 合并（B5-4）：patch 须为 JSON 对象；其键覆盖基线，
+// 值为 JSON null 的键删除（清空字段）；基线为空按空对象起算。返回合并后的紧凑 JSON。
+func mergeCustomData(base, patch json.RawMessage) (json.RawMessage, error) {
+	merged := map[string]json.RawMessage{}
+	if len(base) > 0 {
+		if err := json.Unmarshal(base, &merged); err != nil {
+			return nil, err
+		}
+		if merged == nil {
+			merged = map[string]json.RawMessage{}
+		}
+	}
+	var p map[string]json.RawMessage
+	if err := json.Unmarshal(patch, &p); err != nil || p == nil {
+		return nil, fmt.Errorf("custom_data patch must be a JSON object")
+	}
+	for k, v := range p {
+		if string(v) == "null" {
+			delete(merged, k)
+			continue
+		}
+		merged[k] = v
+	}
+	return json.Marshal(merged)
 }
 
 // Close 关闭工单（状态机校验 + 事件）
@@ -352,6 +777,11 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err := sm.AssertTransition(ticket.Status, StatusClosed); err != nil {
 		return err
 	}
+	// R3 审计修复：Close 也走 condition+validator（原旁路——/close 端点绕过
+	// transition_meta 语义检查，phase6 依赖 condition 做权限时=安全漏洞）
+	if _, err := s.checkTransitionMeta(ctx, ticket, StatusClosed, actorUserID, ttype); err != nil {
+		return err
+	}
 
 	// 更新状态 + 写事件 + 可选关闭说明
 	tx, err := s.db.Begin(ctx)
@@ -360,6 +790,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 		return err
 	}
@@ -383,7 +816,29 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	// D1 审计修复：关闭=状态离开旧状态——清旧状态催办水位（与 Transition 同源；
+	// 修复前 assigned 催满→关闭→重开回 assigned 残留水位致永不催）
+	s.clearReminderWatermark(ctx, req.ID, ticket.Status)
+	// B6-5：工单关闭事件（事务提交后派发）
+	closedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"status": StatusClosed,
+	}
+	// B6-4 收件人锚点：assignee 档通知链读此键——修复前 payload 缺此键
+	// 致 closed 通知 100% 静默丢失（外审实例批发现）
+	if ticket.AssignedTo != nil {
+		closedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketClosed,
+		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
+		Payload:   closedPayload,
+		Timestamp: time.Now(),
+	})
+	return nil
 }
 
 // Assign 分派工单（2a：仅 admin bypass；2b 扩展主管 scope）
@@ -391,7 +846,46 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
 		return err
 	}
+	return s.assignAuthorized(ctx, req, actorUserID)
+}
 
+// validateAssignTargetUser 分派目标用户校验（2026-10-29 幽灵分派修复）：
+// 存在且启用（软删由 WHERE 排除；status=1 启用）。违规用 30002/30003 码+
+// 定制 message（码=语义档位，message 带目标 ID 供排障——同 ErrInvalidParams
+// 定制先例）。EscalationSupervisor 亦为用户 ID，同规则。
+func (s *Service) validateAssignTargetUser(ctx context.Context, userID int64) error {
+	var status int
+	err := s.db.QueryRow(ctx,
+		`SELECT status FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.New(errcode.ErrUserNotFound.Code,
+			fmt.Sprintf("分派目标用户不存在: %d", userID))
+	}
+	if err != nil {
+		return fmt.Errorf("query assign target user: %w", err)
+	}
+	if status != 1 {
+		return errcode.New(errcode.ErrUserDisabled.Code,
+			fmt.Sprintf("分派目标用户已禁用: %d", userID))
+	}
+	return nil
+}
+
+// assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
+// assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
+// unexport（G-32）：同包唯一调用方 DispatchService，防包外绕过鉴权直调）。
+// ⚠ 权限旁路：跳过 Assign 的 L2/L3 鉴权——调用方须已有 ticket:type:manage 语义授权
+// （鉴权已在规则创建期行使：谁能配置自动分派）。修前用 rule.CreatedBy 走 Assign，
+// 规则创建者非该单可操作人（非 admin 的管理员建的规则、跨组织）即 403→仅 Warn+
+// dispatch_missed，自动分派在真实角色分布下静默失效。
+// 状态机/条件校验/事务/事件全链与 Assign 一致；auditActor 记入事件与 ticket_events 供归因
+// （=规则创建者，与 post_actions「系统身份重放」同口径——G-32 委托放大族）。
+func (s *Service) assignAsSystem(ctx context.Context, req *model.AssignTicketRequest, auditActor int64) error {
+	return s.assignAuthorized(ctx, req, auditActor)
+}
+
+// assignAuthorized Assign 的鉴权后主体（Assign/assignAsSystem 共用）。
+func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64) error {
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
@@ -399,6 +893,21 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
 	if ticket.Status == StatusClosed {
 		return errcode.ErrTicketAlreadyClosed
+	}
+	// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写
+	// assigned_to 无校验，幽灵 assignee 可挂单（详情页处理人残缺/通知无法送达，
+	// 所有者测试复现）。取消分派（AssignedTo nil）不校验。自动分派同链受控
+	// （目标来自成员解析，成员被禁用后规则触发→响亮 400+dispatch_missed，
+	// 优于原幽灵挂单静默成功）。
+	if req.AssignedTo != nil {
+		if err := s.validateAssignTargetUser(ctx, *req.AssignedTo); err != nil {
+			return err
+		}
+	}
+	if req.EscalationSupervisor != nil {
+		if err := s.validateAssignTargetUser(ctx, *req.EscalationSupervisor); err != nil {
+			return err
+		}
 	}
 	fromAssignee := ""
 	if ticket.AssignedTo != nil {
@@ -420,6 +929,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 
 	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
 	// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
+	var transitionType *model.TicketType
 	if newStatus != ticket.Status {
 		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
 		if err != nil {
@@ -432,6 +942,11 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 		if err := sm.AssertTransition(ticket.Status, newStatus); err != nil {
 			return err
 		}
+		// R3 审计修复：Assign 状态转换时也走 condition+validator（同 Close）
+		if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
+			return err
+		}
+		transitionType = ttype
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -440,8 +955,17 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}
 	defer tx.Rollback(ctx)
 
+	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, transitionType); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 		return err
+	}
+	// B10-4：催办上级人工指定随分派事务更新（nil=保持不动；dd §31 基线档）
+	if req.EscalationSupervisor != nil {
+		if err := s.ticketRepo.UpdateEscalationSupervisorTx(ctx, tx, req.ID, *req.EscalationSupervisor); err != nil {
+			return err
+		}
 	}
 	if newStatus != ticket.Status {
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {
@@ -457,7 +981,26 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	// D1 审计修复：状态变更即离开旧状态——清旧状态催办水位（与 Transition/Close
+	// 同源三路；修复前 assigned 催满→取消分派回 open→重分派残留水位致永不催）
+	if newStatus != ticket.Status {
+		s.clearReminderWatermark(ctx, req.ID, ticket.Status)
+	}
+	// B6-1：工单分派事件（事务提交后派发）
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketAssigned,
+		BizID: strconv.FormatInt(req.ID, 10), ActorID: actorUserID,
+		Payload: domainevent.Payload{
+			"from_assignee": fromAssignee, "to_assignee": toAssignee,
+			"title": ticket.Title, "type_code": ticket.TypeCode,
+			"priority": ticket.Priority, "status": ticket.Status,
+		},
+		Timestamp: time.Now(),
+	})
+	return nil
 }
 
 // Delete 删除工单（2a：仅 admin）
@@ -473,6 +1016,12 @@ func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error
 // CreateComment 创建公开回复
 func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentRequest, actorUserID int64) (*model.TicketComment, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
+		return nil, err
+	}
+	// Capture identity/recipient facts before the write. The asynchronous consumer
+	// must not depend on a ticket that may have been deleted after this commit.
+	ticket, err := s.ticketRepo.GetByID(ctx, req.TicketID)
+	if err != nil {
 		return nil, err
 	}
 	comment := &model.TicketComment{
@@ -498,6 +1047,20 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	payload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+	}
+	if ticket.AssignedTo != nil {
+		payload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	// Public reply only: internal notes have a narrower visibility boundary and
+	// do not enter this notification path. Never publish the comment body here.
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketCommented,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: payload, Timestamp: time.Now(),
+	})
 	return comment, nil
 }
 
@@ -620,4 +1183,35 @@ func (s *Service) ListTicketTemplates(ctx context.Context) ([]*model.TicketTempl
 // GetTicketTemplate 按 code 查询工单模板
 func (s *Service) GetTicketTemplate(ctx context.Context, code string) (*model.TicketTemplate, error) {
 	return s.ticketRepo.GetTicketTemplate(ctx, code)
+}
+
+// AuthorizeTicketAttachment L2 面（B5-3）：storage 端点对 ticket 态 purpose
+// 的工单可见性判定（action=update——附件上传/确认/删除同面）。供 handler
+// 编排层结构性注入（TicketAuthorizer 接口），域间零 import。
+func (s *Service) AuthorizeTicketAttachment(ctx context.Context, userID, ticketID int64) error {
+	return s.authorizeCheck(ctx, userID, "update", strconv.FormatInt(ticketID, 10))
+}
+
+// AuthorizeTicketFileRead 附件下载/列表的 L2 读面（B5-3 批3——A.7：下载=工单
+// L2 可见性 ticket:read 管线）。与 update 面同款结构性注入。
+func (s *Service) AuthorizeTicketFileRead(ctx context.Context, userID, ticketID int64) error {
+	return s.authorizeCheck(ctx, userID, "read", strconv.FormatInt(ticketID, 10))
+}
+
+// buildChanges 工单 Update 事件载荷变更集：字段级新值 diff（无旧值比对、custom_data 不展开键级——D20 真值 diff 待台账 B-1）。
+func buildChanges(req *model.UpdateTicketRequest) []domainevent.Change {
+	var changes []domainevent.Change
+	if req.Title != nil {
+		changes = append(changes, domainevent.Change{Key: "title", NewVal: *req.Title})
+	}
+	if req.Priority != nil {
+		changes = append(changes, domainevent.Change{Key: "priority", NewVal: *req.Priority})
+	}
+	if req.Description != nil {
+		changes = append(changes, domainevent.Change{Key: "description", NewVal: *req.Description})
+	}
+	if req.CustomData != nil {
+		changes = append(changes, domainevent.Change{Key: "custom_data"})
+	}
+	return changes
 }

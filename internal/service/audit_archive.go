@@ -55,6 +55,17 @@ func NewAuditArchiveJob(repo *repository.AuditLogRepo, retentionDays, batchRows 
 	if logger == nil {
 		logger = slog.Default()
 	}
+	// 相对 out_dir 在构造时钉死为绝对（基准=进程 cwd，与运行期解析语义一致）并打
+	// 启动日志——归档 JSONL 含审计个人信息，随启动目录漂移会落错位置，且磁盘保留
+	// 期清理（cleanExpiredArchiveFiles）只扫本目录，错位产物成永久滞留
+	// （2026-11-02 taskrunner 孤儿库同类隐患治理）。
+	if abs, err := filepath.Abs(outDir); err != nil {
+		logger.Warn("audit_archive: out_dir 解析绝对路径失败，沿用原值",
+			slog.String("dir", outDir), slog.Any("err", err))
+	} else {
+		outDir = abs
+	}
+	logger.Info("audit_archive: 归档目录", slog.String("dir", outDir))
 	return &AuditArchiveJob{repo: repo, retentionDays: retentionDays, batchRows: batchRows, outDir: outDir, fileRetentionDays: fileRetentionDays, logger: logger}
 }
 

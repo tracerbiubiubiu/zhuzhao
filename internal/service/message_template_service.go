@@ -1,0 +1,120 @@
+// MessageTemplateService 消息模板管理（S6 B6-3）。
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/msgrender"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+)
+
+type MessageTemplateService struct {
+	repo *repository.MessageTemplateRepo
+}
+
+func NewMessageTemplateService(repo *repository.MessageTemplateRepo) *MessageTemplateService {
+	return &MessageTemplateService{repo: repo}
+}
+
+func (s *MessageTemplateService) List(ctx context.Context, page, pageSize int, codeLike string) ([]*model.MessageTemplate, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	return s.repo.List(ctx, page, pageSize, codeLike)
+}
+
+// supportedChannels 渠道白名单（06 号 §3——新渠道=新 adapter 后加此表）。
+var supportedChannels = map[string]bool{"uip": true, "webhook": true}
+
+// validatePlaceholders F-1-9 修复：模板引用的变量路径须 ⊆ 内置键集
+// （管理员写了不存在/不支持的变量→保存期 400——比运行时跳过更早反馈）。
+func validatePlaceholders(subject, body string) error {
+	for _, ph := range msgrender.ExtractPlaceholders(subject + " " + body) {
+		if builtinVarSet[ph] {
+			continue
+		}
+		// F3-1-3 修复：ticket.fields.* 前缀放行（S1 field_meta 动态字段源——
+		// RenderQuadrant 的「动态键 skip+warn」档设计可达；variables 端点随二期补枚举）
+		if strings.HasPrefix(ph, "ticket.fields.") {
+			continue
+		}
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("模板引用了不支持的变量 %s——可用变量见 variables 端点", ph))
+	}
+	return nil
+}
+
+// builtinVarSet 内置变量白名单（与 Variables 端点 BuiltinVars 同源——G-2 审计修复：
+// 修复前缺 reminder_count/overdue_minutes/from_status/to_status/to_assignee/
+// from_assignee/actor，管理员重存种子模板 ticket_timeout_notify 即 400）。
+// 完整面=全事件 emit 链实际可发出的键——新增事件载荷键须同步登记此处+端点。
+var builtinVarSet = map[string]bool{
+	// 基础六键（create/assign/close 全链）
+	"ticket.title": true, "ticket.type_code": true, "ticket.priority": true,
+	"ticket.status": true, "ticket.human_key": true, "ticket.link": true,
+	// 转换事件（ticket.transitioned——S3a B3-1）
+	"ticket.from_status": true, "ticket.to_status": true,
+	// 分派事件（ticket.assigned——S6 B6-5）
+	"ticket.from_assignee": true, "ticket.to_assignee": true,
+	// 抄送事件（ticket.cc_added——S10 B10-1；to_assignee 亦可作收件人锚）
+	"ticket.cc_users": true,
+	// 超时催办（ticket.timeout——S10 B10-4 扫描器 emit）
+	"ticket.reminder_count": true, "ticket.overdue_minutes": true,
+	// 到期提醒（ticket.deadline——S3a SLA0.5）
+	// deadline 载荷=title/status/human_key/to_assignee/cc_users——无独占键
+	// 操作人（创建/更新事件——S6 B6-5）
+	"ticket.actor": true, "ticket.creator": true,
+	// 运维域（ops.cron_failed——B10-4 观测面；000064 种子模板引用 last_success）
+	"event.job": true, "event.error": true, "event.last_success": true,
+	// 运维域（ops.action_failed——G-5 emit 载荷 action/error/ticket_id/actor；无种子模板，管理面可配）
+	"event.action": true, "event.ticket_id": true, "event.actor": true,
+	// 运维域（ops.storage_usage_high——C-6 观测批 000080 种子模板四键。2026-11-02 审计补：
+	// 修前重存该种子模板即 400「不支持的变量 event.level」——G-2 同型；批 A 正文称
+	// 「属批 B」而批 B 未落，本批闭环）
+	"event.level": true, "event.ratio": true, "event.usage_bytes": true, "event.capacity_bytes": true,
+}
+
+func validateChannel(channel string) error {
+	if !supportedChannels[channel] {
+		return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("channel %q 不在支持列表——新渠道须先落 adapter", channel))
+	}
+	return nil
+}
+
+func (s *MessageTemplateService) Create(ctx context.Context, t *model.MessageTemplate) error {
+	if err := validateChannel(t.Channel); err != nil {
+		return err
+	}
+	if err := validatePlaceholders(t.Subject, t.Body); err != nil {
+		return err
+	}
+	_, err := s.repo.GetByCode(ctx, t.Code)
+	if err == nil {
+		return errcode.ErrMsgTplDupCode
+	}
+	if !errors.Is(err, errcode.ErrMsgTplNotFound) {
+		return err
+	}
+	return s.repo.Create(ctx, t)
+}
+
+func (s *MessageTemplateService) Update(ctx context.Context, t *model.MessageTemplate) error {
+	// F-1-9b 修复：Update 也须校验引用⊆字典（修复前旁路——改模板正文可绕过）
+	if err := validatePlaceholders(t.Subject, t.Body); err != nil {
+		return err
+	}
+	// F-1-7 修复：Update 不校验 channel（不可变——SET 无 channel 列）
+	return s.repo.Update(ctx, t)
+}
+
+func (s *MessageTemplateService) Delete(ctx context.Context, code string) error {
+	return s.repo.Delete(ctx, code)
+}

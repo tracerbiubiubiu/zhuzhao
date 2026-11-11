@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>S1 表单设计器可点原型（B1-1 首日 spike B——假数据不接后端）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 13px/1.6 -apple-system, "PingFang SC", sans-serif; background: #f5f7fa; color: #303133; height: 100vh; display: flex; flex-direction: column; }
+  header { background: #fff; border-bottom: 1px solid #dcdfe6; padding: 8px 16px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header .spacer { flex: 1; }
+  button { padding: 4px 12px; border: 1px solid #dcdfe6; background: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.primary { background: #409eff; border-color: #409eff; color: #fff; }
+  button.on { background: #ecf5ff; border-color: #409eff; color: #409eff; }
+  main { flex: 1; display: flex; min-height: 0; }
+  .palette { width: 150px; background: #fff; border-right: 1px solid #dcdfe6; padding: 10px; }
+  .palette h3, .panel h3, .canvas h3 { font-size: 12px; color: #909399; margin-bottom: 8px; font-weight: 500; }
+  .pal-item { padding: 7px 10px; border: 1px dashed #c0c4cc; border-radius: 4px; margin-bottom: 6px; cursor: grab; background: #fafafa; user-select: none; }
+  .pal-item:hover { border-color: #409eff; color: #409eff; }
+  .canvas { flex: 1; padding: 14px; overflow: auto; }
+  .canvas-inner { background: #fff; border: 1px solid #ebeef5; border-radius: 6px; min-height: 100%; padding: 12px; }
+  .field-item { border: 1px solid #ebeef5; border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+  .field-item:hover { border-color: #c6e2ff; }
+  .field-item.sel { border-color: #409eff; box-shadow: 0 0 0 1px #409eff inset; }
+  .field-item .idx { color: #c0c4cc; font-size: 12px; width: 18px; }
+  .field-item .meta { flex: 1; }
+  .field-item .meta b { font-weight: 600; }
+  .field-item .meta .sub { color: #909399; font-size: 12px; margin-left: 8px; }
+  .field-item .tag { font-size: 11px; color: #409eff; background: #ecf5ff; border-radius: 3px; padding: 1px 6px; margin-left: 6px; }
+  .field-item .req { color: #f56c6c; font-weight: 700; }
+  .field-item .del { color: #c0c4cc; cursor: pointer; padding: 0 4px; }
+  .field-item .del:hover { color: #f56c6c; }
+  .drop-hint { border: 1px dashed #b3d8ff; border-radius: 4px; color: #a0cfff; text-align: center; padding: 26px; }
+  .panel { width: 300px; background: #fff; border-left: 1px solid #dcdfe6; padding: 12px; overflow: auto; }
+  .panel .grp { margin-bottom: 12px; }
+  .panel label { display: block; font-size: 12px; color: #606266; margin-bottom: 4px; }
+  .panel input[type=text], .panel select, .panel textarea { width: 100%; padding: 5px 8px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 13px; }
+  .panel .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .panel .err { color: #f56c6c; font-size: 12px; min-height: 16px; }
+  .opt-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .opt-row input { flex: 1; }
+  .preview-field { margin-bottom: 14px; }
+  .preview-field label { display: block; margin-bottom: 4px; font-size: 13px; }
+  .preview-field .req { color: #f56c6c; }
+  .preview-field input, .preview-field select, .preview-field textarea { width: 100%; padding: 6px 8px; border: 1px solid #dcdfe6; border-radius: 4px; }
+  .tips-box { background: #f4f4f5; border-radius: 4px; padding: 8px 10px; color: #606266; }
+  pre.schema { background: #2d2d2d; color: #e5e5e5; padding: 12px; border-radius: 6px; font-size: 12px; overflow: auto; max-height: 40vh; }
+  .toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #f0f9eb; color: #67c23a; border: 1px solid #e1f3d8; padding: 6px 16px; border-radius: 4px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>S1 表单设计器 · 可点原型</h1>
+  <span style="color:#909399;font-size:12px">B1-1 首日 spike B 产出（假数据 · 不接后端 · 2026-10-22）</span>
+  <span class="spacer"></span>
+  <button id="btn-preview">预览</button>
+  <button id="btn-schema" class="primary">Schema JSON</button>
+  <button id="btn-import">导入回放</button>
+  <button id="btn-demo">载入示例</button>
+</header>
+<main>
+  <aside class="palette">
+    <h3>字段类型（8 种）</h3>
+    <div id="palette"></div>
+  </aside>
+  <section class="canvas">
+    <div class="canvas-inner" id="canvas">
+      <div class="drop-hint">点左侧类型添加字段；拖字段卡片排序（sortablejs）</div>
+    </div>
+  </section>
+  <aside class="panel" id="panel"></aside>
+</main>
+<div class="toast" id="toast"></div>
+<script src="./vendor-sortable.min.js"></script>
+<script>
+'use strict';
+// —— 类型目录（对齐 internal/service/ticket/type_admin.go validFieldTypes 八种）——
+const TYPES = [
+  { key: 'input',       label: '单行文本',  hasKey: true  },
+  { key: 'textarea',    label: '多行文本',  hasKey: true  },
+  { key: 'number',      label: '数字',      hasKey: true  },
+  { key: 'date',        label: '日期',      hasKey: true  },
+  { key: 'select',      label: '单选下拉',  hasKey: true  },
+  { key: 'multi_select',label: '多选下拉',  hasKey: true  },
+  { key: 'tips',        label: '提示文本',  hasKey: false },
+  { key: 'richtext',    label: '富文本',    hasKey: true  },
+];
+// —— 状态：字段列表 = ticket_type_fields schema 形态（01 号 §3.4）——
+let fields = [];   // {field_key, field_label, field_type, required, field_options[], sort_order, field_meta:{validation:{regex}, formula}}
+let selected = -1; // 选中字段索引
+let seq = 1;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 1600); }
+
+// —— 物料区 ——
+$('palette').innerHTML = TYPES.map(t => `<div class="pal-item" data-type="${t.key}">${t.label}</div>`).join('');
+$('palette').addEventListener('click', e => {
+  const el = e.target.closest('.pal-item');
+  if (!el) return;
+  addField(el.dataset.type);
+});
+
+function addField(type) {
+  const t = TYPES.find(x => x.key === type);
+  const f = {
+    field_key: t.hasKey ? `field_${seq++}` : '',
+    field_label: t.label + (t.hasKey ? seq : ''),
+    field_type: type,
+    required: false,
+    field_options: (type === 'select' || type === 'multi_select') ? [{ label: '选项一', value: 'opt1' }, { label: '选项二', value: 'opt2' }] : null,
+    sort_order: fields.length + 1,
+    field_meta: { validation: {} },
+  };
+  fields.push(f);
+  selected = fields.length - 1;
+  render();
+}
+
+// —— 画布 ——
+function render() {
+  const c = $('canvas');
+  if (!fields.length) {
+    c.innerHTML = '<div class="drop-hint">点左侧类型添加字段；拖字段卡片排序（sortablejs）</div>';
+    new Sortable(c, { draggable: '.none' }); // 空态禁拖
+  } else {
+    c.innerHTML = fields.map((f, i) => fieldCard(f, i)).join('');
+    new Sortable(c, {
+      animation: 150,
+      draggable: '.field-item',
+      onEnd(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        const [m] = fields.splice(evt.oldIndex, 1);
+        fields.splice(evt.newIndex, 0, m);
+        fields.forEach((x, k) => x.sort_order = k + 1);
+        selected = evt.newIndex; render();
+      },
+    });
+  }
+  renderPanel();
+}
+
+function fieldCard(f, i) {
+  const t = TYPES.find(x => x.key === f.field_type);
+  const opts = Array.isArray(f.field_options) && f.field_options.length
+    ? `<span class="sub">${f.field_options.length} 选项</span>` : '';
+  const regex = f.field_meta && f.field_meta.validation && f.field_meta.validation.regex
+    ? `<span class="tag">regex</span>` : '';
+  const formula = f.field_meta && f.field_meta.formula
+    ? `<span class="tag">公式</span>` : '';
+  return `<div class="field-item ${i === selected ? 'sel' : ''}" data-i="${i}">
+    <span class="idx">${i + 1}</span>
+    <span class="meta"><b>${esc(f.field_label)}</b>
+      ${f.field_key ? `<span class="sub">${esc(f.field_key)}</span>` : ''}
+      <span class="sub">[${t.label}]</span>${opts}${regex}${formula}
+    </span>
+    ${f.required ? '<span class="req">*</span>' : ''}
+    <span class="del" data-del="${i}" title="删除">✕</span>
+  </div>`;
+}
+
+$('canvas').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]');
+  if (del) { fields.splice(+del.dataset.del, 1); fields.forEach((x, k) => x.sort_order = k + 1); selected = -1; render(); return; }
+  const item = e.target.closest('.field-item');
+  if (item) { selected = +item.dataset.i; render(); }
+});
+
+// —— 属性面板 ——
+function renderPanel() {
+  const p = $('panel');
+  if (selected < 0 || !fields[selected]) {
+    p.innerHTML = '<h3>属性面板</h3><div style="color:#909399">选中画布中的字段后编辑属性</div>';
+    return;
+  }
+  const f = fields[selected];
+  const t = TYPES.find(x => x.key === f.field_type);
+  const isSel = f.field_type === 'select' || f.field_type === 'multi_select';
+  const v = (f.field_meta && f.field_meta.validation) || {};
+  p.innerHTML = `
+    <h3>属性面板 · ${t.label}</h3>
+    <div class="grp"><label>字段标签（field_label）</label><input type="text" data-p="field_label" value="${esc(f.field_label)}"></div>
+    ${t.hasKey ? `<div class="grp"><label>字段键（field_key · 唯一 · ASCII）</label><input type="text" data-p="field_key" value="${esc(f.field_key)}"><div class="err" id="key-err"></div></div>` : ''}
+    <div class="grp"><label class="chk"><input type="checkbox" data-p="required" ${f.required ? 'checked' : ''}> 必填（required）</label></div>
+    ${isSel ? `<div class="grp"><label>选项（field_options · 挂字典键随 B1-2 扩）</label>
+      <div id="opts">${f.field_options.map((o, k) => optRow(o, k)).join('')}</div>
+      <button data-act="add-opt">+ 选项</button></div>` : ''}
+    ${t.hasKey ? `<div class="grp"><label>校验正则（field_meta.validation.regex）</label><input type="text" data-p="regex" value="${esc(v.regex || '')}" placeholder="如 ^\\d{1,3}$"><div class="err" id="regex-err"></div></div>` : ''}
+    ${f.field_type === 'number' || f.field_type === 'input' ? `<div class="grp"><label>计算公式（field_meta.formula · 随 B1-3 生效）</label><input type="text" data-p="formula" value="${esc((f.field_meta && f.field_meta.formula) || '')}" placeholder="如 price * qty"></div>` : ''}
+    <div class="grp" style="color:#909399;font-size:12px">sort_order = ${f.sort_order}（拖拽卡片调整）</div>
+  `;
+}
+function optRow(o, k) {
+  return `<div class="opt-row" data-opt="${k}">
+    <input type="text" data-o="label" value="${esc(o.label)}" placeholder="标签">
+    <input type="text" data-o="value" value="${esc(o.value)}" placeholder="值">
+    <span class="del" data-delopt="${k}">✕</span>
+  </div>`;
+}
+$('panel').addEventListener('input', e => {
+  const f = fields[selected]; if (!f) return;
+  const p = e.target.dataset.p;
+  if (p === 'field_label') f.field_label = e.target.value;
+  if (p === 'field_key') {
+    // 键校验：非空 ASCII slug + 唯一（G2 同款预检）
+    const val = e.target.value;
+    const ok = /^[A-Za-z][A-Za-z0-9_]*$/.test(val) && fields.every((x, k) => k === selected || x.field_key !== val);
+    $('key-err').textContent = val && !ok ? '非法或重复：字母开头 ASCII，工单内唯一' : '';
+    if (ok || !val) f.field_key = val;
+  }
+  if (p === 'required') f.required = e.target.checked;
+  if (p === 'regex') {
+    if (!e.target.value) { delete f.field_meta.validation.regex; $('regex-err').textContent = ''; }
+    else {
+      try { new RegExp(e.target.value); f.field_meta.validation.regex = e.target.value; $('regex-err').textContent = ''; }
+      catch (err) { $('regex-err').textContent = '正则语法错误：' + err.message; }
+    }
+  }
+  if (p === 'formula') { if (e.target.value) (f.field_meta = f.field_meta || {}).formula = e.target.value; else delete f.field_meta.formula; }
+  if (e.target.dataset.o) {
+    const k = +e.target.closest('[data-opt]').dataset.opt;
+    f.field_options[k][e.target.dataset.o] = e.target.value;
+  }
+  // 轻渲染：只刷新画布卡片行（不重建面板，避免输入丢焦）
+  refreshCards();
+});
+$('panel').addEventListener('click', e => {
+  if (e.target.dataset.act === 'add-opt') { fields[selected].field_options.push({ label: '', value: '' }); renderPanel(); refreshCards(); }
+  const delopt = e.target.closest('[data-delopt]');
+  if (delopt) { fields[selected].field_options.splice(+delopt.dataset.delopt, 1); renderPanel(); refreshCards(); }
+});
+function refreshCards() {
+  document.querySelectorAll('.field-item').forEach((el, i) => {
+    if (i < fields.length) el.outerHTML = fieldCard(fields[i], i);
+  });
+}
+
+// —— 序列化（ticket_type_fields 形态）——
+function toSchema() {
+  return fields.map((f, i) => ({
+    field_key: f.field_key, field_label: f.field_label, field_type: f.field_type,
+    required: !!f.required, sort_order: i + 1,
+    ...(Array.isArray(f.field_options) ? { field_options: f.field_options } : {}),
+    ...(f.field_meta && (f.field_meta.validation?.regex || f.field_meta.formula) ? { field_meta: {
+      ...(f.field_meta.validation?.regex ? { validation: { regex: f.field_meta.validation.regex } } : {}),
+      ...(f.field_meta.formula ? { formula: f.field_meta.formula } : {}),
+    } } : {}),
+  }));
+}
+
+// —— 预览（简版真渲染：生产为 12-frontend DynamicFormField 同构渲染器）——
+function previewHTML() {
+  return fields.map(f => {
+    const req = f.required ? '<span class="req">*</span>' : '';
+    if (f.field_type === 'tips') return `<div class="preview-field"><div class="tips-box">${esc(f.field_label)}</div></div>`;
+    if (f.field_type === 'richtext') return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><textarea rows="5" placeholder="（md-editor-rt · MD 编辑，图片粘贴直传）"></textarea></div>`;
+    if (f.field_type === 'textarea') return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><textarea rows="3"></textarea></div>`;
+    if (f.field_type === 'number') return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><input type="number"></div>`;
+    if (f.field_type === 'date') return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><input type="date"></div>`;
+    if (f.field_type === 'select' || f.field_type === 'multi_select') {
+      const opts = (f.field_options || []).map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+      return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><${f.field_type === 'select' ? 'select' : 'select multiple'}>${opts}</select></div>`;
+    }
+    return `<div class="preview-field"><label>${esc(f.field_label)}${req}</label><input type="text" placeholder="${f.field_meta?.validation?.regex ? '格式：' + esc(f.field_meta.validation.regex) : ''}"></div>`;
+  }).join('') || '<div class="tips-box">无字段——先添加</div>';
+}
+
+// —— 顶栏动作 ——
+let mode = 'design';
+$('btn-preview').onclick = () => {
+  mode = mode === 'design' ? 'preview' : 'design';
+  $('btn-preview').classList.toggle('on', mode === 'preview');
+  $('canvas').innerHTML = mode === 'preview' ? previewHTML() : (fields.length ? fields.map((f, i) => fieldCard(f, i)).join('') : '<div class="drop-hint">点左侧类型添加字段</div>');
+  if (mode === 'design') render(); else renderPanelBlank();
+};
+function renderPanelBlank() { $('panel').innerHTML = '<h3>属性面板</h3><div style="color:#909399">预览态不可编辑</div>'; }
+$('btn-schema').onclick = () => {
+  const c = $('canvas');
+  if (mode !== 'design') { $('btn-preview').click(); }
+  c.innerHTML = `<h3 style="font-size:12px;color:#909399;margin-bottom:8px">ticket_type_fields Schema（序列化产物）</h3><pre class="schema">${esc(JSON.stringify(toSchema(), null, 2))}</pre>`;
+  new Sortable(c, { draggable: '.none' });
+  toast('已序列化 ' + fields.length + ' 字段');
+};
+$('btn-import').onclick = () => {
+  try {
+    const raw = prompt('粘贴 Schema JSON（导入回放=双向序列化验证）', JSON.stringify(toSchema()));
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    fields = arr.map((x, i) => ({
+      field_key: x.field_key || '', field_label: x.field_label || '', field_type: x.field_type,
+      required: !!x.required, field_options: x.field_options || null, sort_order: i + 1,
+      field_meta: x.field_meta || { validation: {} },
+    }));
+    selected = -1; mode = 'design'; $('btn-preview').classList.remove('on');
+    render(); toast('导入 ' + fields.length + ' 字段（往返一致）');
+  } catch (e) { toast('导入失败：' + e.message); }
+};
+$('btn-demo').onclick = () => {
+  fields = [
+    { field_key: 'host_ip', field_label: '主机 IP', field_type: 'input', required: true, field_options: null, sort_order: 1, field_meta: { validation: { regex: '^\\d+\\.\\d+\\.\\d+\\.\\d+$' } } },
+    { field_key: 'severity', field_label: '严重级别', field_type: 'select', required: true, field_options: [{ label: '高危', value: 'high' }, { label: '中危', value: 'mid' }, { label: '低危', value: 'low' }], sort_order: 2, field_meta: { validation: {} } },
+    { field_key: 'note', field_label: '处置描述', field_type: 'richtext', required: false, field_options: null, sort_order: 3, field_meta: { validation: {} } },
+    { field_key: '', field_label: '本节仅安全组填写', field_type: 'tips', required: false, field_options: null, sort_order: 4, field_meta: { validation: {} } },
+  ];
+  seq = 5; selected = -1; mode = 'design'; $('btn-preview').classList.remove('on'); render(); toast('示例已载入（事件处置单节选）');
+};
+
+render();
+</script>
+</body>
+</html>

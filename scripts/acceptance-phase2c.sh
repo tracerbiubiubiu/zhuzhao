@@ -5,6 +5,19 @@
 # 运行前置：make docker-dev-reset && make dev（或等价部署）
 set -euo pipefail
 
+# 每次调用独立目录；子阶段只继承 TMPDIR 父目录，不共享响应/令牌文件。
+umask 077
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zz-acceptance-phase2c.XXXXXXXX")"
+cleanup() {
+  local status=$?
+  if [ -n "${REDIS:-}" ]; then docker start "$REDIS" >/dev/null 2>&1 || true; fi
+  rm -rf -- "$TMP_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
 
@@ -29,8 +42,6 @@ pass=0
 fail=0
 sectionA=0
 
-cleanup_redis() { docker start "$REDIS" >/dev/null 2>&1 || true; }
-trap cleanup_redis EXIT
 
 json_code() { python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('code') if d else '')" 2>/dev/null || echo PARSE_ERR; }
 psql_q()    { docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -qt -A -c "$1" | tr -d '\n'; }
@@ -88,11 +99,15 @@ mklogin() {
     -d "{\"employee_no\":\"$1\",\"password\":\"pass1234\"}" \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])" 2>/dev/null || true
 }
-http_of() { curl -s -o /tmp/p2c.json -w '%{http_code}' "$@"; }
-code_of() { cat /tmp/p2c.json | json_code; }
+http_of() { curl -s -o "$TMP_DIR/p2c.json" -w '%{http_code}' "$@"; }
+code_of() { cat "$TMP_DIR/p2c.json" | json_code; }
 
 # --- 环境：P(实体) > VG(虚拟组)；owner/admin/m1/m2/admin2 五用户 ---
-ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+# 最小权限用户改用运行时自建零绑定临时角色（同 2a T7 自愈化——不依赖 seed viewer 绑定态）
+RV_JSON=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"p2c_viewer_$SUF\",\"name\":\"2c 最小权限角色\",\"priority\":60}")
+ROLE_V=$(echo "$RV_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+check "create ephemeral least-priv role" "1" "$([ "$ROLE_V" != "0" ] && echo 1 || echo 0)"
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 P_ID=$(mkorg "p2c_p_$SUF" "2c P" "$ROOT_ID" false)
 VG_ID=$(mkorg "vg_2c_$SUF" "2c VG" "$P_ID" true)
@@ -132,9 +147,9 @@ D2B_RAW=$(curl -s -X POST "$BASE/orgs/members/role" -H "Authorization: Bearer $O
 check "D2 owner appoints ADM2 (0)" "0" "$(echo "$D2B_RAW" | json_code)"
 
 # --- D3 admin 调用 SetMemberRole → 50010；请求 owner → 400 ---
-D3_HTTP=$(curl -s -o /tmp/p2c_d3.json -w '%{http_code}' -X POST "$BASE/orgs/members/role" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$M2\",\"org_member_role\":\"admin\"}")
+D3_HTTP=$(curl -s -o "$TMP_DIR/p2c_d3.json" -w '%{http_code}' -X POST "$BASE/orgs/members/role" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$M2\",\"org_member_role\":\"admin\"}")
 check "D3 admin calls (403)" "403" "$D3_HTTP"
-check "D3 code=50010" "50010" "$(cat /tmp/p2c_d3.json | json_code)"
+check "D3 code=50010" "50010" "$(cat "$TMP_DIR/p2c_d3.json" | json_code)"
 check "D3 request owner → 400" "400" \
   "$(http_of -X POST "$BASE/orgs/members/role" -H "Authorization: Bearer $OWNTOK" -H 'Content-Type: application/json' \
     -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$M2\",\"org_member_role\":\"owner\"}")"
@@ -143,9 +158,9 @@ check "D3 request owner → 400" "400" \
 D4_RAW=$(curl -s -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' \
   -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$M2\"}")
 check "D4 admin removes member (0)" "0" "$(echo "$D4_RAW" | json_code)"
-D5_HTTP=$(curl -s -o /tmp/p2c_d5.json -w '%{http_code}' -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$ADM2\"}")
+D5_HTTP=$(curl -s -o "$TMP_DIR/p2c_d5.json" -w '%{http_code}' -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $ADMTOK" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG_ID\",\"user_id\":\"$ADM2\"}")
 check "D5 admin removes admin (403)" "403" "$D5_HTTP"
-cp /tmp/p2c_d5.json /tmp/p2c.json  # 供 code_of 读取
+cp "$TMP_DIR/p2c_d5.json" "$TMP_DIR/p2c.json"  # 供 code_of 读取
 check "D5 code=50009" "50009" "$(code_of)"
 
 # --- D7/D8 工单委托：m1(admin) 建?——用 owner 建单，admin（非创建人）凭委托 update/close；
@@ -165,7 +180,7 @@ check "D7 vg admin updates ticket (0)" "0" "$(echo "$D7_RAW" | json_code)"
 TK2=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $OWNTOK" -H 'Content-Type: application/json' \
   -d "{\"type_code\":\"incident\",\"title\":\"D8 工单\",\"org_id\":\"$VG_ID\"}")
 TID2=$(echo "$TK2" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
-D8_HTTP=$(curl -s -o /tmp/p2c_d8.json -w '%{http_code}' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $M3TOK" -H 'Content-Type: application/json' -d "{\"id\":\"$TID2\",\"title\":\"member cross update\"}")
+D8_HTTP=$(curl -s -o "$TMP_DIR/p2c_d8.json" -w '%{http_code}' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $M3TOK" -H 'Content-Type: application/json' -d "{\"id\":\"$TID2\",\"title\":\"member cross update\"}")
 check "D8 member updates others (403)" "403" "$D8_HTTP"
 
 # --- D9 ancestor owner：P 设 owner（复用 OWNER?需另一实体 owner 用户）---
@@ -181,7 +196,7 @@ check "D9 ancestor owner updates vg ticket (0)" "0" "$(echo "$D9_RAW" | json_cod
 # --- D6 owner 删空虚拟组：先清成员（SAT 全局），owner 删 → 200；有成员时 → 409 ---
 VG2=$(mkorg "vg_2c6_$SUF" "2c VG6" "$P_ID" true)
 G6M=$(mkuser "p2c_g6_$SUF" "C2G6$SUF" "$ROLE_V" "$VG2")
-D6_HTTP=$(curl -s -o /tmp/p2c_d6.json -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
+D6_HTTP=$(curl -s -o "$TMP_DIR/p2c_d6.json" -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
 check "D6 vg with member → 409" "409" "$D6_HTTP"
 curl -s -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"org_id\":\"$VG2\",\"user_id\":\"$G6M\"}" >/dev/null
@@ -189,10 +204,14 @@ curl -s -X POST "$BASE/orgs/members/delete" -H "Authorization: Bearer $SAT" -H '
 TK20=$(curl -s -X POST "$BASE/tickets" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"type_code\":\"incident\",\"title\":\"BK20 工单\",\"org_id\":\"$VG2\"}")
 TID20=$(echo "$TK20" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
-D6T_HTTP=$(curl -s -o /tmp/p2c_d6t.json -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
+D6T_HTTP=$(curl -s -o "$TMP_DIR/p2c_d6t.json" -w '%{http_code}' -X POST "$BASE/orgs/delete" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' -d "{\"org_id\":\"$VG2\"}")
 check "D6 vg with open ticket → 409" "409" "$D6T_HTTP"
-D6T_CODE=$(cat /tmp/p2c_d6t.json | json_code)
+D6T_CODE=$(cat "$TMP_DIR/p2c_d6t.json" | json_code)
 check "D6 vg with open ticket code=50013" "50013" "$D6T_CODE"
+# 结单前先回 open：dev 栈走查数据可能含 incident 全量命中分派规则（新单秒变 assigned——2026-10-26 实证），
+# assigned 在 incident 图不可直达 closed；open→open 的 transition 会 409 但无害（open 单直接走 close）
+curl -s -X POST "$BASE/tickets/transition" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$TID20\",\"to\":\"open\"}" >/dev/null
 curl -s -X POST "$BASE/tickets/close" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID20\",\"comment\":\"BK20 结单\"}" >/dev/null
 # SAT 设置 VG2 的 owner 为 OWNER 用户，owner 删空组

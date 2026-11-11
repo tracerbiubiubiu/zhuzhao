@@ -1,285 +1,53 @@
-# 角色模块设计
+# 角色与策略同步
 
-> 模块代码（目标路径）：`internal/service/role/` + `internal/repository/role/` + `internal/handler/role/`
->
-> 旧系统参考：`doc/module-assessment-2026-08/role.md` + `policy.md` + `interaction-casbin-sync.md`
->
-> 主键以 [phase1/05-role.md](../phase1/05-role.md) 为准（`BIGINT` + `code`）。
-
----
+> 状态：当前实现说明。实际用例由 `internal/service/rbac_service.go` 的 `RBACService` 承接；原稿中的 `RoleService` 不是当前服务类型。
 
 ## 1. 模块定位
 
-**核心底座模块**。角色管理 + Casbin 策略同步。角色是 RBAC 的核心，连接用户、菜单、API 策略。
+角色连接用户、菜单和后端 API 授权。先区分两个问题：角色决定能调用哪些接口；操作一个具体用户、角色或工单时，还要通过该用例自己的业务与资源检查。
 
-与其他模块的关系：
-- 被 `user` 引用（用户-角色绑定）
-- 依赖 `menu`（角色-菜单分配）
-- 依赖 `casbin`（策略同步）
-- Phase 2 起自注册 `RoleResource` 到 `authz` 的 ResourceRegistry
-
----
+`superadmin` 和 `admin` 在 Casbin 路由层有通配放行，但不等于 admin 可以管理同级或更强账号、修改所有系统角色。业务约束在 Service 中继续生效。
 
 ## 2. 数据模型
 
-> 完整 DDL 以 [phase1/05-role.md](../phase1/05-role.md) 为准。
+`roles` 保存 code、priority、状态、版本与可选父角色；`user_roles` 是直接赋角，`org_roles` 是组织赋角，`role_menus` 是菜单分配。Casbin 的 `casbin_rule` 是 API 策略派生结果。
 
-```sql
-CREATE TABLE roles (
-    id          BIGSERIAL PRIMARY KEY,
-    code        VARCHAR(50) NOT NULL,
-    name        VARCHAR(100) NOT NULL,
-    description TEXT,
-    priority    INT NOT NULL,                 -- 越小权限越高；业务防提权
-    status      SMALLINT NOT NULL DEFAULT 1,
-    sort_order  INT DEFAULT 0,
-    is_system   BOOLEAN DEFAULT FALSE,
-    tenant_id   BIGINT NOT NULL DEFAULT 1,
-    version     INT DEFAULT 1,
-    deleted_at  TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX idx_roles_code ON roles(code) WHERE deleted_at IS NULL;
-
-CREATE TABLE role_menus (
-    role_id     BIGINT NOT NULL REFERENCES roles(id),
-    menu_id     BIGINT NOT NULL REFERENCES menus(id),
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (role_id, menu_id)
-);
-```
-
-### Casbin 策略表
-
-由 `noho-digital/casbin-pgx-adapter`（Casbin v3）管理，策略 subject 为 `role::{code}`：
-
-```sql
-CREATE TABLE casbin_rule (
-    id    BIGSERIAL PRIMARY KEY,
-    ptype VARCHAR(10) NOT NULL,
-    v0    VARCHAR(255) NOT NULL,
-    v1    VARCHAR(255) NOT NULL,
-    v2    VARCHAR(255) DEFAULT '',
-    v3    VARCHAR(255) DEFAULT '',
-    v4    VARCHAR(255) DEFAULT '',
-    v5    VARCHAR(255) DEFAULT ''
-);
-CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (ptype, v0, v1, v2);
-```
-
----
+priority 数字越小越强。创建或变更父链时校验环、父状态和 `child.priority ≤ parent.priority`，避免弱角色通过继承强角色绕开赋角检查。实际约束见 `RBACService.validateParentLink`。
 
 ## 3. 接口定义
 
-```go
-type RoleService interface {
-    // CRUD
-    Create(ctx context.Context, req CreateRoleRequest) (*model.Role, error)
-    GetByCode(ctx context.Context, code string) (*model.Role, error)
-    // Update 为 patch 语义（D2-03/D2-17）：status/description/sort_order 指针化——
-    // 未传（nil）保持现值，显式传 0/1 才更新状态（与用户模块 B2-3 对齐）
-    Update(ctx context.Context, code string, req UpdateRoleRequest) error
-    Delete(ctx context.Context, code string) error
-    List(ctx context.Context) ([]*model.Role, error)
-    GetTree(ctx context.Context) ([]*RoleNode, error)  -- 角色继承树（Phase 2b：roles.parent_id 落地后实现，Phase 1 角色为平铺无继承）
-
-    // 菜单分配
-    AssignMenus(ctx context.Context, roleCode string, menuIDs []int64) error
-    GetMenus(ctx context.Context, roleCode string) ([]*model.Menu, error)
-
-    // Casbin 策略同步
-    SyncPolicies(ctx context.Context, roleCode string) error
-    RebuildAllPolicies(ctx context.Context) error
-}
-```
-
----
+`RBACService` 提供角色 CRUD、`AssignMenus`、菜单/策略查询及 `GetRoleCodesByUserID`。字段、版本和请求路由以 Swagger 为准；没有仅因设计了继承树就已经交付可视化树管理的承诺。
 
 ## 4. 核心流程
 
-### 4.1 Casbin 策略生成（借鉴旧系统三分类）
+### 4.1 菜单和 API 策略
 
-> 下列 `role::editor` 为**业务示例角色**（非系统种子角色），用来说明三分类策略形态。
-
-角色绑定菜单 → 菜单关联 API → 生成 Casbin 策略：
-
-```
-角色 ROLE_EDITOR 绑定菜单 [system_user, system_role]
-
-菜单 system_user (type=2, path=/system/user):
-  → route 策略: [role::editor, route:/system/user, access]
-  → 绑定的 API:
-    → /api/users, GET → API 策略: [role::editor, /api/users, GET]
-    → /api/users/:id, GET → API 策略: [role::editor, /api/users/:id, GET]
-
-菜单 system_user 下有按钮 (type=3, permission=user:create):
-  → button 策略: [role::editor, button:user:create, access]
-```
-
-**策略三分类**（借鉴旧系统）：
-
-| 策略类型 | 格式 | 用途 |
-|---------|------|------|
-| route | `[role, route:/path, access]` | 前端路由权限 |
-| button | `[role, button:perm_code, access]` | 前端按钮权限 |
-| API | `[role, /api/path, METHOD]` | 后端接口权限 |
+页面、按钮与 API 绑定由迁移维护。管理员给角色分配菜单后，后端从相关 `menu_apis` 计算 API 策略；前端的 `button:`、`route:` 权限码由菜单查询接口生成，不是另一份任意可编辑的后端策略体系。
 
 ### 4.2 策略同步流程
 
-```
-管理员修改角色-菜单绑定 → AssignMenus()
-  1. 事务内：写 role_menus 表
-  2. 事务外：SyncPolicies(roleCode)
-     → 收集角色绑定的菜单
-     → 遍历菜单 → 生成 route/button 策略
-     → 遍历菜单-API 绑定 → 生成 API 策略
-     → 增量 diff（非全量清空）
-     → Casbin RemovePolicies(toRemove) + AddPolicies(toAdd)
-  3. （Phase 3 按需）失效权限缓存：DEL perm:user:*（该角色下所有用户）
-```
+`RBACService.AssignMenus` 校验目标角色和菜单，再由 `internal/repository/role_repo.go` 的 `AssignMenus` 在同一事务修改菜单绑定与 API 策略。事务提交后刷新本实例 Casbin 内存。
 
-### 4.3 增量 diff 重建（借鉴旧系统 cmd/rebuild）
+数据库提交与内存刷新不是一个原子动作。刷新失败会重试一次并返回 `ErrPolicyReloadFailed`，表示数据库可能已经生效；调用方应读回状态并排查，不能认为整个修改已自动回滚。
 
-```go
-func (s *RoleService) RebuildAllPolicies(ctx context.Context) error {
-    // 1. 收集期望策略（从 DB 计算）
-    expected, err := s.collectAllExpectedPolicies(ctx)
+### 4.3 多实例边界
 
-    // 2. 读取当前 Casbin 策略
-    current := s.casbin.GetFilteredPolicy(0)
+当前没有已接线的 Casbin Redis Watcher。一个实例的 LoadPolicy 不会自动同步另一个实例的内存；多副本上线前应按 [多实例方案](../phase3/02-multi-instance.md) 设计和验收，不能直接把旧 Pub/Sub 草图当作现有保证。
 
-    // 3. diff
-    toAdd, toRemove := diffPolicies(current, expected)
+### 4.4 删除角色
 
-    // 4. 增量更新（非全量清空，避免鉴权空窗）
-    if len(toRemove) > 0 {
-        s.casbin.RemovePolicies(toRemove)
-    }
-    if len(toAdd) > 0 {
-        s.casbin.AddPolicies(toAdd)
-    }
-    return nil
-}
-```
-
-### 4.4 删除角色（级联）
-
-```
-POST /api/v1/roles/delete
-
-1. 系统角色保护
-   → role.is_system == true？返回 403
-
-2. 事务开始
-   → BEGIN
-
-3. 检查是否有用户绑定
-   → SELECT count(*) FROM user_roles WHERE role_id = ?
-   → > 0？返回 409（有用户绑定，不能删除）
-
-4. 删除角色-菜单绑定
-   → DELETE FROM role_menus WHERE role_id = ?
-
-5. 删除角色
-   → UPDATE roles SET deleted_at = NOW() WHERE id = ?
-   -- 或 DELETE FROM roles WHERE id = ?（如无软删除需求）
-
-6. 事务提交
-   → COMMIT
-
-7. 事务外副作用
-   → Casbin RemoveFilteredPolicy(0, "role::"+code)
-   → 失效权限缓存
-```
-
-### 4.5 超管通配策略
-
-```sql
--- superadmin + admin 通配策略（种子数据；subject 为 role::{code}）
-INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES
-  ('p', 'role::superadmin', '*', '*'),
-  ('p', 'role::admin', '*', '*')
-ON CONFLICT DO NOTHING;
-```
-
-Casbin matcher 中 `r.sub == "role::superadmin" || r.sub == "role::admin"` 直接 bypass；其余角色靠 `keyMatch2` 匹配 `p` 策略。内置角色与 superadmin/admin 业务差异见 [phase1/05-role §superadmin 与 admin](../phase1/05-role.md#superadmin-与-admin-的区别)。
-
----
+系统角色与仍有直接user_roles用户绑定的角色受到保护，不级联删除用户。当前 `ErrRoleInUse` 对外 HTTP 为 403，准确错误码登记见 [错误码](../api/errcode.md)；旧设计中的 409 不是修改现行为的依据。
 
 ## 5. 角色继承
 
-### 5.1 BFS 三源合并（借鉴旧系统）
+有效功能角色由直接角色、有效组织成员所在节点的组织角色及父角色链合并。父组织赋予的角色不会仅因组织父子关系自动授给子组织成员；数据范围沿组织树扩展是另一条规则。
 
-旧系统的角色展开有三来源：
+L1/菜单使用展开角色集；全局用户管理守卫使用直接角色。组织角色不自动升级为全局管理员，这是有意的权限边界，不应在重构时统一成“到处都取 BFS 集合”。
 
-```
-用户的有效角色 = BFS 展开三源合并：
-  1. 直接角色：user_roles 表
-  2. 组织角色：user_orgs → org_roles（**仅该组织**绑定的角色；子组织成员不继承父组织 org_roles）
-  3. 继承角色：roles.parent_id（角色继承链）
-```
+## 6. 设计依据与验证
 
-### 5.2 g 表消除（借鉴旧系统）
+[RBAC 继承与级联](../design/rbac-inheritance-and-cascade.md)解释角色来源与数据范围的区别；[鉴权模块](authz.md)说明请求链。角色变更需要检查允许、拒绝和查询隐藏三个方向，不能只确认策略表多了一行。
 
-Casbin 模型无 `[role_definition] g` 段，角色继承在中间件层 BFS 展开，不写 g 表。
+## 7. 变更记录
 
-**matcher**: `r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*")`
-
-中间件展开后的角色列表逐个 enforce，任一匹配即放行。
-
-### 5.3 Redis 权限缓存（Phase 3 / 按需）
-
-Phase 1–2 **不使用** `perm:user:{userId}`。Phase 3 多实例/热点场景可按需引入：
-
-```
-perm:user:{userId} → {
-  "roles": ["admin", "editor"],
-  "permissions": ["user:create", ...]
-}
-TTL: 30min
-```
-
----
-
-## 6. 旧系统借鉴
-
-| 设计 | 决策 | 理由 |
-|------|------|------|
-| 策略三分类（route/button/api） | ✅ 直接采用 | 比纯 API 策略更精细 |
-| 菜单-API 绑定自动生成策略 | ✅ 直接采用 | 亮点设计 |
-| g 表消除 + BFS 展开 | ✅ Phase 2b 采用 | 简化 Casbin 模型；Phase 1 仅直接角色 |
-| 增量 diff 重建（非全量清空） | ✅ Phase 1 采用 | 角色菜单变更同事务写 casbin_rule |
-| 超管通配策略 | ✅ 直接采用 | 简洁 |
-| expanded_roles 存 context | ✅ 直接采用 | 避免双倍查询 |
-| BFS 三源合并 | ⏳ Phase 2b | Phase 1 仅 user_roles 直接角色 |
-| Redis 缓存展开结果 | ⏳ Phase 3 按需 | Phase 1–2 查 DB |
-| SessionAdapter + mutex | ❌ 不采用 | PostgreSQL 不需要 |
-| LoadPolicy 全量重载 | ❌ 改为增量 | 旧系统性能瓶颈 |
-| cmd/rebuild 独立二进制 | ⚠️ 改为运行时 Sync | 简化部署 |
-| RolePresetProvider 接口 | ⏳ Phase 2 | 预设角色扩展点 |
-
----
-
-## 7. 分阶段实施
-
-### Phase 1
-
-- 角色 CRUD
-- 角色-菜单分配
-- Casbin 策略同步（从菜单-API 绑定生成）
-- 超管通配策略
-- 系统角色保护
-
-### Phase 2
-
-- BFS 三源合并（直接角色 + 组织角色 + 继承角色）
-- 策略三分类完整实现（route/button/api）
-
-### Phase 3
-
-- Redis 缓存展开结果（`perm:user:{userId}`，按需）
-- 增量 diff 重建优化（大数据量场景）
-- 角色继承可视化
-- 角色预设（RolePresetProvider）
+- 2026-11-08：以实际 RBACService 解释角色、事务与策略刷新，校准系统角色保护、删除错误码和未实施的 Watcher 边界。

@@ -1,5 +1,8 @@
 # 10 - 工单业务能力闭环（Phase 3，暂缓——设计就绪）
 
+> **适用范围（2026-11-08整理）**：自研恢复不等于恢复全部旧蓝图：现行S3a见Phase5/03，SLA仅S10轻量版，S3b仍等真实审批场景；旧ticket_sla完整引擎、审批硬交付、通知权限与L1 signal草图均按后续方案取舍。PG事务不能原子提交Redis Enqueue，§2.5旧同事务描述不具实现保证；旧Casbin ticket:id审批伪码不能代替三层资源授权。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **✅ 状态变更（2026-10-09，design-decisions §29 翻案）**：§23 翻案（内部平台二开对接成本高、自研更适配——所有者实证）——本文档**恢复为实施蓝本**（S3a 转换级语义+分派+动作库 排 phase5 基线 S1/S2/S6 交付后；S3b 审批流引擎等首个真实审批场景；SLA 引擎不建，S10 轻量版为准）。
 > **⚠ 状态变更（2026-09-02，design-decisions §23，已被 2026-10-09 翻案取代）**：工单**自研暂缓（内部引擎优先，自研兜底）**（项目将迁移公司内部、对接内部工单平台/引擎）——本文档全部设计**不再驱动开发**，整体转**对接参考与历史设计**：将来对接内部平台时的接口/事件/流程设计仍可引用本文（审批事件、Assignee 模型、撤回栅栏等）。翻案条件（恢复自研）见 §23。
 
@@ -17,7 +20,7 @@
 - [x] Phase 2a 验收：TicketResource + assigned + 状态机 + `ticket_events` 表（已交付 2026-08-28）
 - [x] Phase 2b 验收：scope group/all + 实体透明读（已交付；附件属 2b-ext 未交付，不在本能力关键路径）
 - [x] **Phase 2c 验收**：org admin/owner + ancestor owner Authorize（审批流/分派规则的属主依赖项）（已交付 2026-08-28）
-- [ ] Phase 3 Step 2 multi-instance（L1 事件消费复用分布式锁防重；SLA 扫描由 Asynq Scheduler 单点调度，无需自写锁，见 §2.3 / [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)）
+- [ ] Phase 3 Step 2 multi-instance（L1 事件消费复用分布式锁防重；SLA 扫描由 Asynq Scheduler 单点调度，无需自写锁，见 §2.3 / [ADR-002](../adr/adr-002-asynq-async-task-executor.md)）
 
 > 2c 是工单业务能力的硬前置：自动分派规则判断"分派给哪个组的 admin"、审批流的审批人候选都依赖 2c 的 Authorize 升级。
 
@@ -45,6 +48,8 @@
 > ⚠️ **编号勘误（2026-09-08）**：本节及全文的迁移编号（000017–000023）为 §23 工单封版前的**旧规划占位**，均已被实际迁移占用（000017/000018 = BK-13/BK-18，000019–000023 = is_virtual 收敛/判定日志/job_submissions/任务菜单/params 快照列，见 [phase2/README §2.4](../phase2/README.md#24-迁移编号规划自-000010-起) 与 [11 号迁移地图](../review/11-project-control.md)）；本文内嵌 DDL 的编号注释按原文保留，**工单业务启动时按 A2 规则（谁先启动谁占用，后者整体重排）分配新编号**。
 
 ---
+
+> **现行校准（2026-11-08）**：本节为完整SLA引擎旧蓝图，未随自研恢复自动采纳；当前只做Phase5 S10轻量版。尤其PG标记与Redis Enqueue无法由同一个PG事务原子提交，旧“同事务”描述须在未来实现重新设计，而非已有保证。
 
 ## 2. SLA 计时与违约告警
 
@@ -307,6 +312,8 @@ CREATE TABLE workflow_tasks (
 -- workflow_instance_history（历史归档，冗余 ticket_id 便于关联查询，借鉴 easy-workflow 双表设计）
 ```
 
+> **现行校准（2026-11-08）**：下方“Phase3硬交付”已被当前S3a/S3b分界取代：S3b等首个真实审批场景，不为凑验收实现示例审批引擎。
+
 ### 4.4 触发时机
 
 按 [ticket.md §8.6](../modules/ticket.md#86-工作流引擎升级触发信号量化表) 量化表，触发任一即从 `LinearStateEngine` 升级为 `BranchedStateEngine`：
@@ -323,6 +330,8 @@ CREATE TABLE workflow_tasks (
 - 新增 `CanApproveNode(ctx, ticketID, req json.RawMessage) (bool, error)`，位于 `TicketService` 层。
 - 内部先调 `Authorize`（L2/L3 资源级，确认用户对工单有审批动作权）→ 再解析 `req`（ApprovalRequirement JSONB）比对当前用户的角色/组织属性（`org_path`、角色表、`min_level`、`any` 组合）。
 - `StateController.IsOperatable` 的 TicketService 实现即调 `CanApproveNode`。**引擎内核零鉴权概念**。
+
+> **现行校准（2026-11-08）**：下方为未实施旧草图，Casbin ticket:id模型和L1/L2/L3命名不能替代现有路由授权→资源可见→动作判断；min_level已由后续Assignee决定弃用。未来审批要重审并对齐真实资源授权链。
 
 **`CanApproveNode` 契约骨架（文档级，Phase 3 实现前先钉死接口）**
 
@@ -421,7 +430,7 @@ func (s *TicketService) CanApproveNode(ctx context.Context, in CanApproveNodeInp
 - 若"触发事件"= 启动另一工作流实例：`BranchedStateEngine.InstanceStart` 仍是引擎内核职责，Asynq 只入队"启动任务"，不让 Asynq 变成隐式流程引擎。
 - Redis 挂了：L1 事件仍在，恢复后重放；Asynq 任务失败：Asynq 自带重试。
 
-> 此定位与 ADR-001（L1 长期稳态、Asynq 不替代事件源）一致，详见 `adr/ADR-002-asynq-async-task-executor.md`。
+> 此定位与 ADR-001（L1 长期稳态、Asynq 不替代事件源）一致，详见 `adr/adr-002-asynq-async-task-executor.md`。
 
 ### 4.7 前端配置形态（决策固化，2026-08-26）
 
@@ -587,7 +596,7 @@ CREATE INDEX idx_ticket_events_signal_unprocessed ON ticket_events(event_type, p
 - **单消费者模型**（P2-4 修复）：L1 为**单消费者**——通知服务串行处理全部副作用（通知写入 + SLA 更新 + 其他）。`processed` 标记只由通知服务写入。多订阅（通知/SLA/满意度各自独立消费）留到 L2 Outbox + Asynq，L1 不支持多消费者
 - 多实例下用分布式锁保证同一事件不被重复消费
 - 处理完成后标记 `processed = TRUE`
-- **L1 为长期稳态机制，非临时过渡**（见 [ADR-001](../adr/ADR-001-event-mechanism-l1-steady-state.md)）：`processed` 标记、分布式锁防重、双重职责(audit/signal)分离均需按产线级别实现。Kafka 仅在真实微服务拆分时才评估。Asynq 作为异步任务执行器与 L1 职责互补（见 [ADR-002](../adr/ADR-002-asynq-async-task-executor.md)），不替代事件源。
+- **L1 为长期稳态机制，非临时过渡**（见 [ADR-001](../adr/adr-001-event-mechanism-l1-steady-state.md)）：`processed` 标记、分布式锁防重、双重职责(audit/signal)分离均需按产线级别实现。Kafka 仅在真实微服务拆分时才评估。Asynq 作为异步任务执行器与 L1 职责互补（见 [ADR-002](../adr/adr-002-asynq-async-task-executor.md)），不替代事件源。
 
 ### 7.3 L2（暂缓，按需升级）
 

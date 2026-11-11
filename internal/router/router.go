@@ -32,6 +32,32 @@ type Deps struct {
 	AuditHandler  *handler.AuditHandler
 	TicketHandler *handler.TicketHandler
 
+	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
+	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
+	StorageHandler *handler.StorageHandler
+
+	// B5-6 配置化设置管理（biz 组——GET=admin 读 / POST=tier 校验在 service）
+	SettingsHandler *handler.SettingsHandler
+
+	// S6 B6-3 消息模板管理
+	MessageTemplateHandler *handler.MessageTemplateHandler
+
+	// S6 B6-6 消息管理（log 查看 + rules CRUD）
+	MessageAdminHandler     *handler.MessageAdminHandler
+	NotificationPrefHandler *handler.NotificationPrefHandler
+
+	// S10 B10-3 角标聚合（登录态自服务——sections 开放 map）
+	BadgeHandler *handler.BadgeHandler
+
+	// S10 B10-4 cron 可观测面（biz 组 L1——menu_apis 绑 audit_log 行[audit:read 码]）
+	SystemHandler *handler.SystemHandler
+
+	// S9 B9-1 情报查询（biz 组 L1——intel:query 码 000067）
+	IntelHandler *handler.IntelHandler
+
+	// S6 二期 B6-7 站内消息中心（000076 起 selfService 组——自数据无 L1 码；inbox:read 随 000078 退役）
+	InboxHandler *handler.InboxHandler
+
 	JWTManager   *jwt.Manager
 	Enforcer     *casbin.SyncedEnforcer
 	RedisClient  *redis.Client
@@ -188,6 +214,26 @@ func New(deps Deps) *gin.Engine {
 				// 认证模块（需鉴权）
 				selfService.POST("/auth/logout", deps.AuthHandler.Logout)
 				selfService.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)
+				// B5-4 richtext 渲染 SSOT（05 号 §6）：登录态自服务——无票据访问面、
+				// 纯消毒渲染（A.7 存储自服务面同款形态）
+				selfService.POST("/tickets/richtext/render", deps.TicketHandler.RenderRichtext)
+				// S10 B10-1 抄送（10 号附录 A.2）：工单操作不走静态权限码——L2/L3 在
+				// service 层动态判定（自抄送/自摘/列表=read 面；抄他人/摘他人=update 面）
+				selfService.POST("/tickets/cc", deps.TicketHandler.AddCC)
+				selfService.POST("/tickets/cc/remove", deps.TicketHandler.RemoveCC)
+				selfService.GET("/tickets/:id/cc", deps.TicketHandler.ListCC)
+				// S10 B10-2 标签（拍板点 6 默认共享无权限模型——挂/自摘/列表=read 面；
+				// 摘他人挂的=update 面；可见性随工单 L2）
+				selfService.POST("/tickets/tags", deps.TicketHandler.AddTags)
+				selfService.POST("/tickets/tags/remove", deps.TicketHandler.RemoveTag)
+				selfService.GET("/tickets/:id/tags", deps.TicketHandler.ListTags)
+				// S10 B10-3 角标聚合（登录态——A.4 sections 开放 map，phase6 零改协议并入）
+				selfService.GET("/badges", deps.BadgeHandler.List)
+				// S6 二期 B6-7 站内消息中心（G-23 实施 000076：严格自数据——服务端限 recipient=self、
+				// 非本人 404，与 /badges 同性质；铃铛对全员渲染，路由由 ui 常量路由兜底，不再走菜单 L1）
+				selfService.GET("/notifications/inbox", deps.InboxHandler.Inbox)
+				selfService.POST("/notifications/read", deps.InboxHandler.MarkRead)
+				selfService.POST("/notifications/read-all", deps.InboxHandler.MarkAllRead)
 
 				// 当前用户信息
 				userSelf := selfService.Group("/user")
@@ -207,6 +253,50 @@ func New(deps Deps) *gin.Engine {
 					// 「我的组织」自服务数据源（P4-W3：非 admin 委托者可达——users/:id/orgs 挂 biz 组不可用）
 					userSelf.GET("/orgs", deps.OrgHandler.GetMyOrgs)
 				}
+			}
+
+			// phase5 S5 文件代理（A.4 #5）：JWT+限流独立链——不挂通用审计中间件
+			//（A.4 #5 收窄：avatar 免审计、ticket 态 handler 级行随 B5-3、304 不落行）；
+			// A.11 cookie 旁路凭证随 B5-2-2 演进本组认证（header 优先→cookie 回退）
+			files := v1.Group("/files")
+			files.Use(
+				// A.11 双凭证：header 优先→file_session cookie 桥接（B5-2-2 形态 B）
+				middleware.FileAuth(middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup)),
+				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+			)
+			{
+				files.GET("/*key", deps.StorageHandler.ProxyDownload)
+			}
+
+			// S10 B10-5 工单导出（10 号 A.6）：流式响应挂 v1 级独立链（免通用审计的
+			// body/响应捕获——二进制 xlsx 摘要无值且可能非 UTF-8；导出自审计在 handler
+			// 手动落行[谁/筛选/行数]）；L1 = CasbinAuth + menu_apis 绑 ticket_list（000065）
+			ticketExport := v1.Group("")
+			ticketExport.Use(
+				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
+				middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
+			)
+			{
+				ticketExport.GET("/tickets/export", deps.TicketHandler.Export)
+			}
+
+			// phase5 S5 对象存储自服务面（05 号 A.7——S5 评审 P0-1 修复 2026-10-20）：
+			// 五端点=登录态+handler 层 L2 编排（ticket 态 purpose 走 TicketAuthorizer），
+			// 挂 SelfService 标记组（PAT/orgDelegated 同款形态）——原挂 biz 组无标记，
+			// catalogExempt 仅是启动对账豁免不产生运行时跳过，普通角色被 Casbin 全拦。
+			// authed 级 JWT+限流+审计链保留（删附件审计经通用审计中间件落行）。
+			storageSelf := authed.Group("")
+			storageSelf.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			{
+				storageSelf.POST("/storage/presign/upload", deps.StorageHandler.PresignUpload)
+				// B5-2-3：头像回写（A.4 #7 契约行——B5-2 新增）
+				storageSelf.POST("/storage/avatar/bind", deps.StorageHandler.BindAvatar)
+				// A.4 #2 confirm（ticket 态落绑；L2 在 handler 编排层判定）
+				storageSelf.POST("/tickets/attachments/confirm", deps.StorageHandler.Confirm)
+				// B5-3 批3：附件列表（L2 read）/删除（L2 update）——与 confirm 同款
+				storageSelf.GET("/tickets/:id/attachments", deps.StorageHandler.ListAttachments)
+				storageSelf.POST("/tickets/attachments/delete", deps.StorageHandler.DeleteAttachment)
 			}
 
 			// 2c 委托路由（04 §3.1「org:update 或 effective owner/admin」语义）：
@@ -297,6 +387,22 @@ func New(deps Deps) *gin.Engine {
 					audit.GET("/logs", deps.AuditHandler.ListLogs)
 				}
 
+				// S10 B10-4 cron 可观测面（10 号 A.5——只读；L1=biz 组 Casbin，
+				// menu_apis 绑 audit_log 行与审计读同码——运维观测随审计页族）
+				biz.GET("/system/cron-status", deps.SystemHandler.CronStatus)
+
+				// S9 B9-1 情报查询（biz 组 L1=intel:query 码；限流独立桶
+				// 镜像保护上游配额——A.4 双保险）
+				biz.GET("/intel/query", deps.IntelHandler.Query)
+
+				// B5-6 配置化设置管理（05 号 A.4 #6——biz 组走 CasbinAuth：
+				// GET 绑 system_setting 页面行 / POST 绑 system_setting_update 按钮行）
+				{
+					biz.GET("/system/settings", deps.SettingsHandler.List)
+					biz.POST("/system/settings/update", deps.SettingsHandler.Update)
+					biz.POST("/system/settings/reset", deps.SettingsHandler.Reset)
+				}
+
 				// 工单模块（Phase 2a）
 				// 任务管理（E-④，task:submit/read/manage；代理 taskrunner API）
 				tasks := biz.Group("/tasks")
@@ -310,6 +416,9 @@ func New(deps Deps) *gin.Engine {
 				biz.GET("/dead-letters", deps.TaskrunnerHandler.DeadLetters)
 				jobs := biz.Group("/jobs")
 				{
+					// S4 B4-1：动作清单只读端点（本地注册表直读非代理——L1=task:read
+					// 经 menu_apis 000066；operator 提交选单口径）
+					jobs.GET("/actions", deps.TaskrunnerHandler.ListActions)
 					jobs.GET("", deps.TaskrunnerHandler.ListJobs)
 					jobs.POST("", deps.TaskrunnerHandler.CreateJob)
 					jobs.POST("/update", deps.TaskrunnerHandler.UpdateJob)
@@ -348,6 +457,10 @@ func New(deps Deps) *gin.Engine {
 					tickets.GET("/:id", deps.TicketHandler.Get)
 					tickets.POST("/update", deps.TicketHandler.Update)
 					tickets.POST("/close", deps.TicketHandler.Close)
+					// S3a B3-1：统一转换执行端点 + 可用转换查询（L1=ticket:read 码受众
+					// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
+					tickets.POST("/transition", deps.TicketHandler.Transition)
+					tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
 					tickets.POST("/assign", deps.TicketHandler.Assign)
 					tickets.POST("/delete", deps.TicketHandler.Delete)
 					tickets.GET("/:id/comments", deps.TicketHandler.ListComments)
@@ -355,6 +468,8 @@ func New(deps Deps) *gin.Engine {
 					tickets.POST("/notes", deps.TicketHandler.CreateNote)
 					tickets.GET("/:id/relations", deps.TicketHandler.ListRelations)
 					tickets.POST("/relations", deps.TicketHandler.CreateRelation)
+					// phase5 S5 五端点已移 authed 级 SelfService 标记组（storageSelf，
+					// 见 files 组后）——S5 评审 P0-1：biz 无标记时普通角色被 Casbin 全拦
 				}
 
 				// 工单元数据（类型/模板）
@@ -372,9 +487,37 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.POST("/ticket-types/update", deps.TicketHandler.UpdateTicketType)
 					ticketMeta.POST("/ticket-types/delete", deps.TicketHandler.DeleteTicketType)
 					ticketMeta.POST("/ticket-types/fields/replace", deps.TicketHandler.ReplaceTicketTypeFields)
+					// B1-7 批2 归位管理组（01 号 §3.4 拍板）：锁死后破坏性告警面消亡，
+					// 仅剩新增 required/软提示两件的在途量提醒——「能改字段即可看影响」，
+					// 与 fields/replace 同组；撤 SelfService 挂法（F-D-1 方向修正）。
+					ticketMeta.GET("/ticket-types/:code/fields/impact", deps.TicketHandler.FieldImpact)
 					ticketMeta.POST("/ticket-templates", deps.TicketHandler.CreateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/update", deps.TicketHandler.UpdateTicketTemplate)
 					ticketMeta.POST("/ticket-templates/delete", deps.TicketHandler.DeleteTicketTemplate)
+
+					// S3a B3-2：自动分派规则 CRUD（类型管理页族扩展——零新码，拍板③
+					// 权限沿用 ticket:type:manage）
+					ticketMeta.GET("/assignment-rules", deps.TicketHandler.ListAssignmentRules)
+					ticketMeta.POST("/assignment-rules", deps.TicketHandler.CreateAssignmentRule)
+					ticketMeta.POST("/assignment-rules/delete", deps.TicketHandler.DeleteAssignmentRule)
+					ticketMeta.POST("/assignment-rules/enabled", deps.TicketHandler.UpdateAssignmentRuleEnabled)
+
+					// S6 B6-3 消息模板管理（通知中心页面族——自 S4 迁入）
+					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)
+					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
+					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
+					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
+
+					// S6 B6-3 增强批：用户通知偏好自服务（登录态——非管理面）
+					selfService.GET("/ticket-types/:code/fields/variables", deps.MessageTemplateHandler.Variables)
+					selfService.GET("/me/notification-optouts", deps.NotificationPrefHandler.ListOptouts)
+					selfService.POST("/me/notification-optouts", deps.NotificationPrefHandler.SetOptout)
+
+					// S6 B6-6 消息管理（发送记录 + 订阅规则）
+					ticketMeta.GET("/message-logs", deps.MessageAdminHandler.ListLogs)
+					ticketMeta.GET("/message-rules", deps.MessageAdminHandler.ListRules)
+					ticketMeta.POST("/message-rules", deps.MessageAdminHandler.UpsertRule)
+					ticketMeta.POST("/message-rules/delete", deps.MessageAdminHandler.DeleteRule)
 				}
 			}
 

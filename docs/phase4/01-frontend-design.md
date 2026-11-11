@@ -1,5 +1,12 @@
 # 01 · 前端工程设计（zhuzhao-ui 初版）
 
+> **适用范围（2026-11-08整理）**：本页保存UI跨端工程设计，当前实现入口在zhuzhao-ui/docs；原目录树、form-create、三态不可达、无事件轴、BK18待做均有后续演进，不当现行限制。首页待办assigned/in_progress与导航角标非终态是不同集合，B08两条不能相互覆盖。E000001凭据只允许既定globalSetup幂等例外流，人工/agent使用专属账号；dev终态按runbook。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
+> 2026-11-06 ECO-B08角标导航：NavbarBadge待办按后端非终态口径，传assignee=me及exclude_statuses=closed,rejected；不能套用首页assigned/in_progress枚举漏掉自定义状态。列表/导出同过滤，缓存激活时恢复显式深链；本轮联合固定验证待收口。
+
+> 2026-11-06 ECO-B08修复：工作台“我的待办”卡以处理人=本人且状态assigned/in_progress统计，导航须传 `assignee=me&statuses=assigned,in_progress`，列表/导出同一集合；单纯assignee=me会混入已关闭项。显式深链每次激活缓存页时恢复对应筛选，普通无query页签可保留筛选；点击卡具备键盘焦点及Enter触发。前后端联合验证待完成，独立codex分支未合main。
+
 > **文档定位**：zhuzhao-ui 的**工程设计文档**——架构、壳层、状态分界、页面范式、工程化与里程碑。功能规格不在本文：工单域（BK-18 前端/动态表单/审批页）以 [phase3/12-frontend](../phase3/12-frontend.md) 为规格 SSOT；动态路由与菜单契约以 [phase1/07-menu](../phase1/07-menu.md) 为准；工程架构五拍板（仓格局/底座/范例页/views/部署）以 [00 号 §2.1](./00-planning-inventory.md) 为准，本文是其展开。
 >
 > **状态基准**：2026-09-21。所有后端契约字段均经代码核验（`zhuzhao-utils/response`、`internal/model/token.go`、`internal/service/menu_service.go`、000002/22/24/25 菜单种子）。
@@ -26,6 +33,8 @@
 | 质量门禁 | vue-tsc + ESLint + Prettier / Vitest / Playwright | ✅ 定案（2026-09-21 随计划终确） | 见 §7；与 Go 门禁分仓各跑 |
 
 **明确不做**：SSR/Nuxt（管理端无 SEO/首屏诉求）、微前端（§2.1 五拍板①）、移动端/响应式（12-frontend §6 既有口径）、Storybook/视觉回归测试/浏览器兼容矩阵（内部管理系统过重，02 §5.3 处置 #11）。**i18n 不在「不做」列**——升格为可选项：P4-W3（system 域）收口后视进度接入（默认做，[02 §5.4](./02-implementation-plan.md)）。
+
+> **现行校准（2026-11-08）**：下方为原设计树，实际W2落定采用store/modules与e2e等路径；现行目录以zhuzhao-ui源码/docs为准，不按草图重新迁动实现。
 
 ## 2. 目录结构（单仓单 SPA）
 
@@ -142,6 +151,8 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 - **错误边界**：`app.config.errorHandler` 全局兜底（上报 console + 友好页）；路由级 403/404 独立页面；**错误上报服务（Sentry/GlitchTip 类）触发驱动**（02 §5.3 处置 #10：对外可访问或用户成规模再接，errorHandler 是接入门槛最低的挂点）；
 - **接口粒度不设防前端**：前端显隐只是体验层，真实鉴权在后端三层（L1 Casbin 为准）——前端权限码仅用于渲染决策，不得视为安全边界（与「按钮码不走 Casbin」的既有口径一致，07-menu）。
 
+> **现行校准（2026-11-08）**：E2E下方“首跑固定测试密码”只解释原globalSetup既定幂等流；当前E000001终态恒按runbook，人工/agent不得另开改密路径，多账号验证用专属E000002+。
+
 ## 7. 工程化与门禁（「前端验收口径待定」的建议答案）
 
 | 环节 | 工具 | 门禁口径 |
@@ -229,3 +240,10 @@ ProTable 是页面一致性的最大杠杆：**所有列表页禁止手搓 el-ta
 |---|---|
 | 建档 | 前端工程设计（技术栈/壳层/契约消费面/门禁——§13 SSOT 索引在册） |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；逐批复审留痕见文末复审表与 02 §5.5 |
+
+
+### 2026-11-06请求类型契约校准（B08-F12）
+
+`internal/model/ticket_request.go` 的Create/UpdateTicketRequest.CustomData使用RawMessage存储JSON，Swagger按底层字节误生成为number[]；生成元数据现在明确为object，对应表单字段对象与Update增量patch。生成器仍是既有swag→swagger2openapi→openapi-typescript链，不手改生成物。无字段定义的旧Create路径未全面校验JSON形状，本批不修改其运行兼容边界，也不以Swagger声明替代服务端G2校验。
+
+客户端Create/Assign请求应绑定实际生成类型，`assigned_to=null`取消分派与freeform custom_data可作有出处的窄适配；不得覆盖supervisor等已知字段的生成类型来掩盖漂移。生成类型单独改变supervisor形状后，真实调用方必须编译失败；常规正确字符串与取消分派保持通过。后端公开schema对象形状回归见 `ticket_schema_contract_test.go` 的 `TestTicketCustomDataSwaggerObject`，前端消费端另笔验证，不能把元数据修复视为已全部闭环。

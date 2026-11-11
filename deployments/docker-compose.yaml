@@ -1,3 +1,4 @@
+# 端口分配权威表：docs/ops/port-allocation.md（先查表再取号）
 # 完整部署用 compose：包含应用 + 数据库 + 缓存
 # D2-33：显式项目名（默认取目录名，与 dev compose 同目录会共享网络/卷前缀）
 name: zhuzhao
@@ -39,7 +40,7 @@ services:
       - pg_data:/var/lib/postgresql/data
       - wal_archive:/wal_archive
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -111,6 +112,100 @@ services:
       timeout: 5s
       retries: 5
 
+  # RustFS 对象存储（phase5 S5/B5-1 消费；2026-10-16 所有者拍板：MinIO → RustFS——
+  #   MinIO 官方已无开源镜像且 AGPLv3，RustFS = Apache 2.0 + S3/MinIO 兼容[实测
+  #   /minio/health/live 200、RUSTFS_ROOT_* 兼容 MINIO_ROOT_*]；镜像已拉已冒烟）。
+  #   W0 交「可起容器草案」（本次已实测起容器+/health 200/未签名 403 fail-closed），
+  #   B5-1 接 `storage:` config 段与验收 + **首日兼容验证 spike**（presign 往返/桶策略/
+  #   rclone sync 实测），test 栈随 B5-1 四档同步。
+  #   profile=storage 隔离——默认不起、不改变现栈行为：
+  #   docker compose -f deployments/docker-compose.yaml --profile storage up -d rustfs
+  #   B5-1 时移除 profiles 行转常驻（随栈自启）。
+  # 凭据经 .env 注入（RUSTFS_ROOT_*），生产务必覆盖默认值。
+  # ✅ 版本已钉死 1.0.1（2026-10-19 B5-1 批1——判据①实测版本 digest 一致；对齐 postgres:15/redis:6.2 可复现纪律）。
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    container_name: zhuzhao-rustfs
+    restart: unless-stopped
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      # S3 口 CORS（B5-1 spike 判据①实测通过 2026-10-19）：显式设置后预检完整放行
+      # （allow-methods 含 PUT / allow-headers * / expose-headers 含 etag），白名单外
+      # Origin 零 CORS 头拦截；⚠ 不设存在反射式 CORS 风险（GHSA-x5xv-223c-8vm7）
+      # 必须显式设置；桶级 PutBucketCors 未支持（rustfs 讨论 #736）——全局 env 即可
+      # （console 口另有 RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS，容器自带默认 *，独立配置）
+      # 2026-10-29 补 4000 双源：本仓 vite dev 已钉 4000（playwright webServer 同源），
+      # 5173 为历史端口保留防回退——白名单过期曾致头像直传 Failed to fetch（CORS 无 ACAO）
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4000,http://127.0.0.1:4000}
+    volumes:
+      - rustfs_data:/data
+    ports:
+      # dev 便利映射（浏览器直传需宿主机可达）；生产形态（不暴露/反代）B5-1 定
+      - "${RUSTFS_API_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      # 实测（2026-10-16）：/health 200；容器内置 curl/wget/busybox
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RustFS 备份第二实例（B5-5 消费；rclone sync 目标桶——W0 草案占位，独立卷/独立凭据）：
+  # 起步形态 = rclone sync 定时 + 目标桶版本化（05 号 §7 拍板 #5，工具随 RustFS 切
+  # rclone——镜像已拉已验证；mc 对非 MinIO 端点的可用性随 B5-1 spike 一并验证），
+  # 恢复演练强制随行。
+  rustfs-backup:
+    image: rustfs/rustfs:1.0.1
+    container_name: zhuzhao-rustfs-backup
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      RUSTFS_ROOT_USER: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
+    volumes:
+      - rustfs_backup_data:/data
+    profiles: ["storage"]
+
+  # 对象存储备份侧车（B5-5——05 号 §7 拍板 #5 B 形态）：rclone sync 主→备单向同步 +
+  # --backup-dir 删除/覆盖保护（天目录轮转，不依赖服务端版本化）；失败留痕/last-success
+  # 对齐 pgbackup 教训；恢复演练见 backup/README.md。镜像钉死 1.75.2（2026-10-19 判据⑤
+  # 实测版本——可复现纪律对齐 postgres:15/redis:6.2/rustfs:1.0.1）。RPO=同步周期
+  # （MIRROR_INTERVAL，dev 1h；附件场景日级可接受——05 号 §7 显式登记）。
+  rustfs-mirror:
+    image: rclone/rclone:1.75.2
+    container_name: zhuzhao-rustfs-mirror
+    restart: unless-stopped
+    environment:
+      RCLONE_CONFIG_SRC_TYPE: s3
+      RCLONE_CONFIG_SRC_PROVIDER: Other
+      RCLONE_CONFIG_SRC_ENDPOINT: http://rustfs:9000
+      RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
+      RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      RCLONE_CONFIG_SRC_REGION: us-east-1
+      RCLONE_CONFIG_DST_TYPE: s3
+      RCLONE_CONFIG_DST_PROVIDER: Other
+      RCLONE_CONFIG_DST_ENDPOINT: http://rustfs-backup:9000
+      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
+      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
+      RCLONE_CONFIG_DST_REGION: us-east-1
+      BUCKET: ${STORAGE_BUCKET:-zhuzhao}
+      MIRROR_INTERVAL: "${RUSTFS_MIRROR_INTERVAL:-3600}"
+      RETAIN_COUNT: "${RUSTFS_MIRROR_RETAIN_COUNT:-14}"
+      TZ: Asia/Shanghai
+    volumes:
+      - ./backup/rustfs-mirror.sh:/usr/local/bin/rustfs-mirror.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/rustfs-mirror.sh"]
+    networks:
+      - default
+    depends_on:
+      - rustfs
+      - rustfs-backup
+    profiles: ["storage"]
+
+
   app:
     build:
       context: ..
@@ -145,13 +240,18 @@ services:
       # 网关反代（批次 B/E13）：SK 须与 activelist 侧 ACTIVELIST_CALLER_ZHUZHAO_SK 同值
       GATEWAY_AK: zhuzhao
       GATEWAY_SK: ${GATEWAY_SK:?GATEWAY_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
+      # /al 上游 env 覆盖口（2026-11-02 双拓扑治理）：compose 服务名=基线；宿主 E2E 拓扑
+      #   注 http://127.0.0.1:18081——config.yaml 基线永不再手工编辑
+      GATEWAY_AL_TARGET: ${GATEWAY_AL_TARGET:-http://activelist:18081}
       # 任务代理 + 内网回调（E-④/E-②）：D 阶段起 taskrunner 容器化（deploy/compose.yaml），
       #   经共享网 zhuzhao_to_taskrunner 服务名寻址；SK 与 taskrunner 侧
       #   TASKRUNNER_CALLER_ZHUZHAO_SK / TASKRUNNER_SELF_SK 同值
-      TASKRUNNER_BASE_URL: ${TASKRUNNER_BASE_URL:-http://taskrunner:8080}
+      TASKRUNNER_BASE_URL: ${TASKRUNNER_BASE_URL:-http://taskrunner:18080}
       TASKRUNNER_SK: ${TASKRUNNER_SK:?TASKRUNNER_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:?INTERNAL_JOBS_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       TASKRUNNER_SELF_BASE_URL: ${TASKRUNNER_SELF_BASE_URL:-http://zhuzhao:33333}
+    volumes:
+      - app_archive:/app/data/archive # 审计 JSONL：容器替换后保留（out_dir 覆盖须同步挂载）
     ports:
       - "${APP_PORT:-33333}:33333"
     depends_on:
@@ -167,11 +267,11 @@ services:
           - zhuzhao # taskrunner 回调寻址 http://zhuzhao:33333
 
   # P4-9 前端部署件：nginx 静态容器（dist 随镜像构建）+ /api·/al/api 精确反代 app。
-  # build context 跨仓相对路径（../zhuzhao-ui——两仓同级 checkout 布局）；
+  # build context 相对本文件目录（../../zhuzhao-ui——两仓同级checkout布局）；
   # app 侧 APP_SERVER_TRUSTED_PROXIES 同批启用（本文件 app.environment 段）。
   ui:
     build:
-      context: ../zhuzhao-ui
+      context: ../../zhuzhao-ui
       dockerfile: deployments/Dockerfile
     image: zhuzhao-ui:latest
     container_name: zhuzhao-ui
@@ -194,7 +294,10 @@ networks:
     external: true
 
 volumes:
+  app_archive:
   pg_data:
   redis_data:
   wal_archive:
   backups:
+  rustfs_data:
+  rustfs_backup_data:

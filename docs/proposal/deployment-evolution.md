@@ -6,11 +6,14 @@
 >
 > 创建日期：2026-08-12
 >
-> **2026-08-25 决策：Phase 3 整体暂缓**——本文为**演进预案**（设计就绪、非排期承诺）；当前保持模块化单体，见 [phase3/README](../phase3/README.md) 与 roadmap。
+> **历史背景（2026-08-25）：当时 Phase 3 整体暂缓**——本文为**演进预案**（设计就绪、非排期承诺）；当前保持模块化单体，见 [phase3/README](../phase3/README.md) 与 roadmap。
 
 ---
 
 ## 1. 演进阶段总览
+
+> **阅读分层（2026-11-08）**：单体/多副本部署档位仍供参考；后半篇 IAM 独立、gRPC、CQRS、Kafka/PDP 是 2026-08 的候选蓝图，不是当前排期或已实现能力。zhuzhao 内部保持模块化单体，taskrunner/activelist 是各自独立的外部能力服务。现行边界以 [DD §25/26](../design/design-decisions.md#25-权限架构定版pdppep-分工统一网关边界与平台策略库2026-09-03-讨论定稿)、[架构](../design/architecture.md) 与 [部署手册](../ops/deployment.md) 为准；服务通信按 HTTP+JSON+AK/SK，不能按以下旧图添加 gRPC。
+
 
 ```
 Phase 1：单体底座（当前）
@@ -90,9 +93,12 @@ Phase 2 工单、资源级鉴权、对象存储仍与认证底座**同一进程*
 
 ## 4. Phase 3：IAM 独立部署
 
+> **旧候选形态，未按此实施**：本节阶段名保留便于追溯；§25/26 已重定当前边界，本节不再把拆 IAM 作为 Phase 3 必经交付。
+
+
 > 原文档将本节标为 Phase 2，已与 roadmap 对齐：拆服务属于 Phase 3。
 >
-> **通信协议**：REST 对外，gRPC 对内。详见 [design-decisions.md#13](../design/design-decisions.md#13-微服务通信协议grpc-内部-rest-外部)。
+> **通信协议**：REST 对外，gRPC 对内。详见 [design-decisions.md#13](../design/design-decisions.md#13-微服务通信协议grpc-内部--rest-外部)。
 
 ### 4.1 部署架构
 
@@ -145,7 +151,7 @@ Phase 2 工单、资源级鉴权、对象存储仍与认证底座**同一进程*
   rpc GetUserPermissions(GetUserPermissionsRequest) → PermissionsResponse
 ```
 
-> 详见 [design-decisions.md#13 微服务通信协议](../design/design-decisions.md#13-微服务通信协议grpc-内部-rest-外部)
+> 详见 [design-decisions.md#13 微服务通信协议](../design/design-decisions.md#13-微服务通信协议grpc-内部--rest-外部)
 
 ### 4.5 数据一致性
 
@@ -175,6 +181,9 @@ IAM 底座：
 ---
 
 ## 5. Phase 3 续：微服务化与 PDP
+
+> **远期比较，不是当前规格**：CQRS、消息总线、PDP、服务发现的组合没有被本轮整理批准；当前不存在按本文图示拆出的内部服务群。
+
 
 ### 5.1 部署架构
 

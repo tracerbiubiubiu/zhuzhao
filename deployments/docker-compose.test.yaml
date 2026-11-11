@@ -4,17 +4,18 @@
 # 使用方法：
 #   docker compose -f deployments/docker-compose.test.yaml up -d --build
 #   （首建含 Go/前端全量构建，约 5-10 分钟；之后走层缓存）
-#   入口 = http://localhost:4001（ui 容器）；验证：curl localhost:4001/api/health/ready
+#   入口 = http://localhost:48081（ui 容器）；验证：curl localhost:48081/api/health/ready
 #
 # 与 dev 栈（docker-compose.dev.yaml + 宿主进程）的关系：
 #   ——双形态并存。本栈=稳定回归/演示环境（独立卷、干净数据、隔离网络）；
-#     dev 栈=日常开发（vite HMR 快改）。端口全错开：ui 4001 / app 33334。
+#     dev 栈=日常开发（vite HMR 快改）。端口全错开：ui 48081 / app 33334。
 #
 # 数据：独立卷（项目名 zhuzhao_test 前缀）——全新干净态，首登 admin/admin123
 #   走强制改密流程自举（E2E globalSetup 同款链路）；与 dev 栈数据零共享。
 #
 # 口令/密钥：测试值显式内联（本文件仅测试用途；生产密钥纪律见 compose.yaml 注释）。
-# 迁移：app 启动前由 migrate 一次性服务执行（000001–000043）。
+# 迁移：app 启动前由 migrate 一次性服务执行（000001 起全量重放，全新库幂等——
+#   具体编号随 migrations/ 增长，不写死防漂移）。
 #
 # 已知边界：
 #   - 配置来自 deployments/config.test.yaml（卷挂载）——gateway target 指向本栈
@@ -36,7 +37,7 @@ services:
     volumes:
       - zt_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -56,9 +57,28 @@ services:
     networks:
       - zhuzhao_test
 
+  # phase5 S5 对象存储（B5-1 批4 骨架——presign E2E 随消费者批接入时启用；
+  # profile=storage 隔离：默认不起、test 栈现行为零变化。版本钉死与 CORS env
+  # 对齐 deployments/docker-compose.yaml 主栈草案，判据①⑤实测形态）
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    container_name: zt-rustfs
+    restart: unless-stopped
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      RUSTFS_ROOT_USER: zhuzhao_rustfs
+      RUSTFS_ROOT_PASSWORD: zhuzhao_rustfs_dev
+      # S3 口 CORS（spike 判据①实测必设——不设存在反射式 CORS 风险 GHSA-x5xv-223c-8vm7；
+      # ui 测试栈源为 5174 端口[zhuzhao-ui-test vite preview]）
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:5174
+    volumes:
+      - zt_rustfs_data:/data
+    networks:
+      - zhuzhao_test
+
   migrate:
     image: migrate/migrate:v4.17.0
-    profiles: ["migrate"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,14 +117,15 @@ services:
       GATEWAY_AK: zhuzhao
       # 三组 SK 对值（测试常量）：app↔activelist / app↔taskrunner / taskrunner→app 回调
       GATEWAY_SK: zhuzhao-test-gateway-sk
-      TASKRUNNER_BASE_URL: http://taskrunner:8080
+      TASKRUNNER_BASE_URL: http://taskrunner:18080
       TASKRUNNER_SK: zhuzhao-test-tr-sk
       INTERNAL_JOBS_SK: zhuzhao-test-internal-sk
       TASKRUNNER_SELF_BASE_URL: http://app:33333
     volumes:
       - ../deployments/config.test.yaml:/app/configs/config.yaml:ro
+      - zt_app_archive:/app/data/archive # 与生产同口径，独立于 DB/对象存储卷
     ports:
-      - "33334:33333" # 调试直连（浏览器入口走 ui 4001）
+      - "33334:33333" # 调试直连（浏览器入口走 ui 48081）
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,7 +147,7 @@ services:
     volumes:
       - zt_al_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U activelist"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U activelist"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -163,7 +184,7 @@ services:
     volumes:
       - zt_tr_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U taskrunner"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U taskrunner"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -212,7 +233,7 @@ services:
     environment:
       UPSTREAM_APP: app
     ports:
-      - "4001:80"
+      - "48081:80"
     depends_on:
       - app
     networks:
@@ -222,6 +243,8 @@ networks:
   zhuzhao_test:
 
 volumes:
+  zt_app_archive:
   zt_pgdata:
   zt_al_pgdata:
   zt_tr_pgdata:
+  zt_rustfs_data:

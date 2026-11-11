@@ -118,7 +118,7 @@ func TestAuthService_RTTampered(t *testing.T) {
 
 	rt := []byte(pair.RefreshToken)
 	rt[len(rt)-2] ^= 0x01 // 破坏签名段末字符
-	_, err = authSvc.Refresh(ctx, string(rt))
+	_, err = authSvc.Refresh(ctx, string(rt), "", "")
 	requireErrCode(t, err, errcode.ErrRefreshTokenInvalid)
 }
 
@@ -136,10 +136,10 @@ func TestAuthService_RTCrossDeviceIsolation(t *testing.T) {
 	require.NoError(t, authSvc.Logout(ctx, p1.AccessToken, "dev-1"))
 
 	// dev-1 RT 已死
-	_, err = authSvc.Refresh(ctx, p1.RefreshToken)
+	_, err = authSvc.Refresh(ctx, p1.RefreshToken, "", "")
 	requireErrCode(t, err, errcode.ErrRefreshTokenInvalid)
 	// dev-2 RT 不受影响
-	_, err = authSvc.Refresh(ctx, p2.RefreshToken)
+	_, err = authSvc.Refresh(ctx, p2.RefreshToken, "", "")
 	require.NoError(t, err, "登出 dev-1 不应影响 dev-2 的会话")
 }
 
@@ -154,7 +154,7 @@ func TestAuthService_DisabledUserRT(t *testing.T) {
 	// 模拟禁用路径写入的 disabled 标记（revokeUserSessions 语义见 session_revoke 单测）
 	mr.Set(fmt.Sprintf("user:disabled:%d", user.ID), "1")
 
-	_, err = authSvc.Refresh(ctx, pair.RefreshToken)
+	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	requireErrCode(t, err, errcode.ErrRefreshTokenInvalid)
 }
 
@@ -169,7 +169,7 @@ func TestAuthService_ConcurrentRefresh(t *testing.T) {
 	const n = 8
 	results := make(chan error, n)
 	for i := 0; i < n; i++ {
-		go func() { _, err := authSvc.Refresh(ctx, pair.RefreshToken); results <- err }()
+		go func() { _, err := authSvc.Refresh(ctx, pair.RefreshToken, "", ""); results <- err }()
 	}
 	success := 0
 	for i := 0; i < n; i++ {

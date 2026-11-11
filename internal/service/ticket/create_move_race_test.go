@@ -122,6 +122,10 @@ func TestBK11_CreateVsMoveHammer(t *testing.T) {
 			target = &aID // 奇数轮 move 回 A
 		}
 
+		// 轮次兜底超时（2026-10-26 死锁批）：Create 事务窗口曾嵌套池取与
+		// Move 构成池耗尽死锁——无 deadline 时挂到 go test 全局 20m 超时才
+		// 暴露；带 ctx 后同类回归 30s 内以失败形式定位，不再吃满 CI 时限
+		rctx, rcancel := context.WithTimeout(ctx, 30*time.Second)
 		var mu sync.Mutex
 		var ticketIDs []int64
 		var wg sync.WaitGroup
@@ -129,7 +133,7 @@ func TestBK11_CreateVsMoveHammer(t *testing.T) {
 			wg.Add(1)
 			go func(n int) {
 				defer wg.Done()
-				tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+				tk, err := svc.Create(rctx, &model.CreateTicketRequest{
 					TypeCode: "incident", Title: fmt.Sprintf("BK11 锤击 r%d-c%d", i, n), OrgID: bID,
 				}, actor)
 				require.NoError(t, err)
@@ -141,9 +145,10 @@ func TestBK11_CreateVsMoveHammer(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, orgRepo.Move(ctx, bID, target))
+			require.NoError(t, orgRepo.Move(rctx, bID, target))
 		}()
 		wg.Wait()
+		rcancel()
 
 		var finalPath string
 		require.NoError(t, testPool.QueryRow(ctx,

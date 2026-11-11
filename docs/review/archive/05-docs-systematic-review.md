@@ -1,5 +1,9 @@
 # 全文档系统性审查报告（资深后端 / 架构师视角）
 
+> **历史路径口径（2026-11-08 整理）**：审计事实、行号与文件位置按原时点名称保留；不以今天的目录迁移改写历史快照。可点击导航指向当前文档位置。
+
+> **历史档案（2026-11-08整理）**：本篇保留原审查时点、发现编号、原建议及撤回/复验过程，不是当前待办清单。后续状态见[项目控制台](../11-project-control.md)，档案之间的承接关系见[历史索引](README.md)。原“当前/唯一执行依据”均限定于文内注明的历史基线。
+
 > 审查日期：2026-08-27
 > 审查范围：`docs/` 全目录（VISION / roadmap / design / proposal / modules / phase1 / phase2 / phase3 / adr / api / ops），对照代码实现（commit `66e2c39` + 后续修正至集成测试修复提交）
 > 审查方法：多代理并行审查（目标边界 / 安全可靠性 / 流程与一致性 / 测试工程化代码对照）+ 人工交叉验证；测试与 lint 实测执行（`go vet`、`go test ./...` exit 0）
@@ -26,16 +30,16 @@
 
 **结论：合格，定义完整清晰。**
 
-- [VISION.md](../VISION.md) 明确定义「企业内部 IAM + 工单统一平台」，并以 §2「MVP 边界铁律」给出可执行的裁决规则（凡依赖 2c Authorize / 事件机制 / 审批流的一律 defer 到 Phase 3）。这种「裁决规则 + 应用示例」的写法优于多数项目纯愿望式愿景。
-- 能力排除项记载一致且充分：多租户（预留不实现）、微服务拆分（明确不做）、RS256/AK/SK（按需后移）在 [roadmap.md](../roadmap.md) 各阶段重复声明且互不矛盾。
+- [VISION.md](../../vision.md) 明确定义「企业内部 IAM + 工单统一平台」，并以 §2「MVP 边界铁律」给出可执行的裁决规则（凡依赖 2c Authorize / 事件机制 / 审批流的一律 defer 到 Phase 3）。这种「裁决规则 + 应用示例」的写法优于多数项目纯愿望式愿景。
+- 能力排除项记载一致且充分：多租户（预留不实现）、微服务拆分（明确不做）、RS256/AK/SK（按需后移）在 [roadmap.md](../../roadmap.md) 各阶段重复声明且互不矛盾。
 
 ### 问题
 
 | # | 级别 | 位置 | 问题 | 建议 |
 |---|------|------|------|------|
-| G-1 | P2 | [VISION.md §4](../VISION.md) | 「磁盘 `migrations/` 现状至 000009」已过时——000010/000015/000016 已落地并经 CLI up/down 验证 | 更新为「现状至 000016」，或将此动态信息移出 VISION（真相源指向磁盘本身更稳） |
-| G-2 | P2 | [roadmap.md:98](../roadmap.md) | 引用 `doc/soar/activelist.md` 路径不存在于 docs 树（疑为外部仓库文档或笔误） | 确认路径；若为外部文档改为链接说明，避免死链 |
-| G-3 | P2 | [VISION.md](../VISION.md) | 未提及「数据备份/恢复」属于哪个阶段的职责边界 | 在 VISION 或 ops 文档补一句归属（关联 S-2，见 §3） |
+| G-1 | P2 | [VISION.md §4](../../vision.md) | 「磁盘 `migrations/` 现状至 000009」已过时——000010/000015/000016 已落地并经 CLI up/down 验证 | 更新为「现状至 000016」，或将此动态信息移出 VISION（真相源指向磁盘本身更稳） |
+| G-2 | P2 | [roadmap.md:98](../../roadmap.md) | 引用 `doc/soar/activelist.md` 路径不存在于 docs 树（疑为外部仓库文档或笔误） | 确认路径；若为外部文档改为链接说明，避免死链 |
+| G-3 | P2 | [VISION.md](../../vision.md) | 未提及「数据备份/恢复」属于哪个阶段的职责边界 | 在 VISION 或 ops 文档补一句归属（关联 S-2，见 §3） |
 
 ---
 
@@ -43,8 +47,8 @@
 
 **结论：合格，符合业界通用实践。**
 
-- 9 个模块（auth/user/role/org/menu/authz/audit/middleware/ticket）划分与业界 IAM 产品（Keycloak/Casdoor 的领域拆分）及工单系统（Jira Service Management 的最小域）对齐；[modules/README.md](../modules/README.md) 提供了职责总表。
-- 「不负责」边界写得明确（[architecture.md L59-L72](../design/architecture.md)：不做消息推送、文件存储、前端路由），这是很多项目缺失的部分。
+- 9 个模块（auth/user/role/org/menu/authz/audit/middleware/ticket）划分与业界 IAM 产品（Keycloak/Casdoor 的领域拆分）及工单系统（Jira Service Management 的最小域）对齐；[modules/README.md](../../modules/README.md) 提供了职责总表。
+- 「不负责」边界写得明确（[architecture.md L59-L72](../../design/architecture.md)：不做消息推送、文件存储、前端路由），这是很多项目缺失的部分。
 
 ### 问题
 
@@ -60,8 +64,8 @@
 **结论：达标为主，有两处行业基线缺口。**
 
 已达标项（有设计且有代码落点）：
-- **认证**：双 Token + RT 轮换 + 吊销黑名单 + 多设备会话管理（[auth-design.md L13-L20](../proposal/auth-design.md)）；登录限流 Redis Lua + fail-close + 防用户枚举 + bcrypt 成本上限（[auth-design.md L64-L74](../proposal/auth-design.md)、[auth.md L119-L158](../modules/auth.md)）——覆盖 ASVS V2 认证核心要求。
-- **授权**：三层模型（Casbin 路由级 → 可见性 L2 → 操作权 L3）默认拒绝、合取关系（[02-authz-resource.md L59-L85](../phase2/02-authz-resource.md)）；防提权以角色 priority 为轴 + 「只能管理比自己弱的角色」校验并有专项单测——覆盖 IDOR/BOLA 与水平越权主场景（不可见资源统一 404 反枚举已在 2a 重构中落地并经集成测试验证）。
+- **认证**：双 Token + RT 轮换 + 吊销黑名单 + 多设备会话管理（[auth-design.md L13-L20](../../proposal/auth-design.md)）；登录限流 Redis Lua + fail-close + 防用户枚举 + bcrypt 成本上限（[auth-design.md L64-L74](../../proposal/auth-design.md)、[auth.md L119-L158](../../modules/auth.md)）——覆盖 ASVS V2 认证核心要求。
+- **授权**：三层模型（Casbin 路由级 → 可见性 L2 → 操作权 L3）默认拒绝、合取关系（[02-authz-resource.md L59-L85](../../phase2/02-authz-resource.md)）；防提权以角色 priority 为轴 + 「只能管理比自己弱的角色」校验并有专项单测——覆盖 IDOR/BOLA 与水平越权主场景（不可见资源统一 404 反枚举已在 2a 重构中落地并经集成测试验证）。
 - **审计**：同步审计中间件 + 登录审计 + 字段脱敏 + action 注册制。
 
 ### 缺口
@@ -69,7 +73,7 @@
 | # | 级别 | 位置 | 问题 | 建议 |
 |---|------|------|------|------|
 | S-1 | P1 | 全 docs 无对应设计 | **审计日志不可篡改性零设计**：audit 与 ticket_events 均为同库普通表，DBA/应用漏洞可直接 UPDATE/DELETE。ASVS V7 建议至少「追加写 + 定期归档」 | 低成本方案：给 audit/ticket_events 加 `BEFORE UPDATE OR DELETE` 触发器 RAISE EXCEPTION（只允许物理级维护窗口操作），Phase 3 L2 异步再考虑外置存储 |
-| S-2 | P1 | [ops/README.md](../ops/README.md) 仅空壳 | **备份恢复策略完全缺失**：单实例 Docker Compose 下 PG 数据卷无备份文档（pg_dump 周期/保留期/PITR/RPO-RTO 均无）。这是生产可用性的行业基线（即使暂缓 Phase 3，备份不该等观测性一起做） | Phase 2 内补最简版：每日 `pg_dump` cron + 异地卷挂载 + 一页恢复演练记录（Makefile 加 `backup`/`restore` 目标即可起步） |
+| S-2 | P1 | [ops/README.md](../../ops/README.md) 仅空壳 | **备份恢复策略完全缺失**：单实例 Docker Compose 下 PG 数据卷无备份文档（pg_dump 周期/保留期/PITR/RPO-RTO 均无）。这是生产可用性的行业基线（即使暂缓 Phase 3，备份不该等观测性一起做） | Phase 2 内补最简版：每日 `pg_dump` cron + 异地卷挂载 + 一页恢复演练记录（Makefile 加 `backup`/`restore` 目标即可起步） |
 | S-3 | P2 | auth-design.md | JWT 黑名单基于 Redis 单实例，Redis 故障时 fail-close 已设计（fail-safe 正确），但黑名单内存增长策略（TTL 对齐 AT 过期）未见量化描述 | 补一句 TTL 策略即可 |
 
 ---
@@ -78,7 +82,7 @@
 
 **结论：合格边缘。**
 
-- 写路径事务边界文档化良好：[10-concurrency.md](../phase1/10-concurrency.md) 列明哪些写路径必须同事务（角色菜单同步、用户角色、组织移动），且 2a 修复轮把工单状态变更 + 事件写入收进同一事务，与文档要求一致。
+- 写路径事务边界文档化良好：[10-concurrency.md](../../phase1/10-concurrency.md) 列明哪些写路径必须同事务（角色菜单同步、用户角色、组织移动），且 2a 修复轮把工单状态变更 + 事件写入收进同一事务，与文档要求一致。
 - 乐观锁（version 列）、SyncedEnforcer、Redis 原子操作均有专章。
 - Phase 1 复盘沉淀的 TOCTOU 教训（F 系列）被真实转化为后续约束，这个闭环质量高。
 

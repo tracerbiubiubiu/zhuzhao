@@ -59,22 +59,22 @@ func TestBK18_TypeCRUDAndValidation(t *testing.T) {
 	requireErrCode(t, err, errcode.ErrConflict.Code)
 
 	// ③ 字段集校验：重复 key / select 无选项 / 坏正则 → 400
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true, FieldOptions: rawJSON(`[]`)},
 		{FieldKey: "env", FieldLabel: "重复", FieldType: "input"},
 	}})
 	require.Error(t, err, "重复 field_key 应被拒")
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true},
 	}})
 	require.Error(t, err, "select 无选项应被拒")
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "biz_no", FieldLabel: "单号", FieldType: "input", ValidateRegex: "["},
 	}})
 	require.Error(t, err, "坏正则应被拒")
 
 	// ④ 合法字段集 → 替换成功 + has_custom_fields 同步
-	err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+	_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
 		{FieldKey: "env", FieldLabel: "环境", FieldType: "select", Required: true,
 			FieldOptions: rawJSON(`[{"label":"生产","value":"prod"},{"label":"测试","value":"test"}]`)},
 		{FieldKey: "biz_no", FieldLabel: "业务单号", FieldType: "input", Required: true, ValidateRegex: "^BK[0-9]{4}$", SortOrder: 20},
@@ -173,6 +173,36 @@ func TestBK18_TemplateCRUD(t *testing.T) {
 	require.NoError(t, svc.DeleteTicketTemplate(ctx, code))
 	_, err = svc.GetTicketTemplate(ctx, code)
 	require.Error(t, err)
+}
+
+// ---------- 类型删除模板引用预检：有模板禁删 → 409（修复前 FK 23503 裸 500） ----------
+
+func TestDeleteTypeWithTemplateReference(t *testing.T) {
+	svc, admin, _ := setupTicketAdmin(t)
+	ctx := context.Background()
+	code := "bk18_deltpl_" + uniqueSuffix()
+
+	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "带模板类型"})
+	require.NoError(t, err)
+
+	tplCode := code + "_tpl"
+	_, err = svc.CreateTicketTemplate(ctx, &model.CreateTicketTemplateRequest{
+		Code: tplCode, Name: "引用模板", TypeCode: code, DefaultPriority: 2, OrgID: 1,
+	}, admin)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, tplCode); err != nil {
+			t.Logf("cleanup: delete template %s: %v", tplCode, err)
+		}
+	})
+
+	// 有模板引用禁删 → 409 ErrConflict（修复前：FK 23503 裸 500）
+	err = svc.DeleteTicketType(ctx, code)
+	requireErrCode(t, err, errcode.ErrConflict.Code)
+
+	// 清掉模板后可删（预检不误伤正常路径）
+	require.NoError(t, svc.DeleteTicketTemplate(ctx, tplCode))
+	require.NoError(t, svc.DeleteTicketType(ctx, code))
 }
 
 // ---------- IW1 补：priority 刻度收敛（自由填 → 1–4 枚举） ----------

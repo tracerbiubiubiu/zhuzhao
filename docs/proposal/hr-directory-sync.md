@@ -1,17 +1,22 @@
 # HR 目录同步与虚拟组挂载
 >
-> **状态：活跃 SSOT（M-HR HR 同步设计源；§3.2/§4.3 三拍板项待 M-HR 启动确认）**
+> **状态：M-HR 目标设计源；来源字段/虚拟组已交付，完整 HR 同步未实现。HR mock+指派轴已登记 Phase 6 Week 0；§3.2/§4.3 三拍板项仍待全量件启动确认。**
 
 > 公司 HR/主数据提供「人员 + 部门」接口，IAM 定时拉取并写入本地。**虚拟组挂在实体组织下**，会随实体树 **path 级联**变化，但 **成员与权限不得被 HR 对账误伤**。
 >
 > **阶段**：Schema 与虚拟组同属 **Phase 2b**（[phase2/03-org-enhance.md](../phase2/03-org-enhance.md)）；Phase 1 仍为管理端手工 CRUD + 种子数据。
 > **2026-08-26 P2-D7 调整**：本方案的 **HR Sync Job 实现降为 2b-ext 延后**（Phase 2 组织数据以种子/手工维护）；其 Schema 已随 2b-org 落地（迁移 000012）。
 >
+> **2026-10-26 前置件登记（原呈报稿，~2–3 天；后续 Week 0 归属见下）**：M-HR 全量开工前的**接口先行件**已呈报——HR 目录 Port（§5.1 蓝图定形）+ mock 适配器（模拟组织树/人员/上级关系/离职人员）+ 最小同步通道（`source='hr'` 灌库，含 `users.manager_id` 直连上级）+ S3a 指派轴扩充（部门负责人/一级部门负责人/直接上级），全链模拟数据可开发可验收；真实 HR 契约到手=换 adapter 不返工（同 mock IdP「离线先行、真实接入=换 config」验收模式）；**不做的部分仍归 M-HR 全量件**：软删 reconcile、部门撤销 Reparent、虚拟组、hr_sync_runs、cron、HTTP 端点、§3.2/§4.3 三拍板项落地。**离职处置设计输入**：外部平台「交接三件」领域模型（名下资产清单 / 接管人 / 交接记录）供 §3.2 离职处置与风险单接管（phase6 R1）参照。**岗位（Post）属性设计输入**：M-HR 人员模型登记岗位字段——候选人解析可扩「指定岗位 / 操作人部门岗位 / 申请人部门岗位」轴（外部平台候选人类型码实证三用法）。
+>
 > 创建日期：2026-08-14
 
 ---
 
 ## 1. 背景与目标
+
+> **当前/目标分界（2026-11-08）**：迁移 000012 已增加来源/外部 ID/同步时间和临时成员字段；000019 已将 `org_type` 收敛为 `is_virtual`。当前没有完整 HR 拉取、reconcile、`hr_sync_runs`、HR cron/管理 API，`users.manager_id` 也尚非现行字段。本文 §3–5 的接口、配置、SQL 与规则是待实施目标，不能当作已部署运维入口。mock/指派轴作为 Week 0 地基的安排见 [启动批 §1.2](../phase6/05-launch-batch.md)。
+
 
 ### 1.1 典型场景
 
@@ -24,8 +29,8 @@
 
 ### 1.2 设计目标
 
-1. **实体组织（org_type 1–3）** 以 HR 为 source of truth（带 `source=hr` 标记）。
-2. **虚拟组（org_type 4）** 本地托管（`source=local`），挂在实体节点下，**不参与 HR 删库对账**。
+1. **实体组织（is_virtual=false）** 以 HR 为 source of truth（带 `source=hr` 标记）。
+2. **虚拟组（is_virtual=true）** 本地托管（`source=local`），挂在实体节点下，**不参与 HR 删库对账**。
 3. 实体部门 **移动** 时，ltree **整棵子树 path 更新**（含其下虚拟组）——这是预期行为。
 4. 实体部门 **撤销** 时，其下虚拟组走 **reparent 策略**，不丢成员、不静默删除。
 5. 用户同步 **只动 HR 主部门**；虚拟组成员、`user_roles` 不被覆盖。
@@ -40,7 +45,7 @@
 
 ## 2. 数据模型扩展（Phase 2b 迁移）
 
-在 [phase1/06-organization.md](../phase1/06-organization.md) 的 `organizations` / `users` 上增加：
+以下为 000012 的来源字段设计节选（已经落地，不要再次执行）；当前完整模型看 [组织模块](../modules/organization.md#2-当前模型) 与实际迁移。`users.external_id` 的唯一性不能从组织索引类推，见 §3.3：
 
 ```sql
 -- organizations
@@ -65,16 +70,16 @@ ALTER TABLE user_orgs ADD COLUMN expires_at TIMESTAMPTZ;
 
 ### 2.1 节点分类
 
-| 类型 | org_type | source | 谁维护 | 示例 |
+| 类型 | is_virtual | source | 谁维护（目标职责） | 示例 |
 |------|----------|--------|--------|------|
-| 种子根 | 1 | system | 迁移种子 | `root` |
-| 实体部门 | 1–3 | hr | HR Sync Job | `tech`、`root.tech` |
-| 虚拟组 | 4 | local | 管理端 IAM | `root.tech.vg_alpha` |
-| 手工实体 | 1–3 | local | 管理端（可选） | 临时项目组挂靠节点 |
+| 种子根 | false | system | 迁移种子 | `root` |
+| 实体部门 | false | hr | HR Sync Job | `tech`、`root.tech` |
+| 虚拟组 | true | local | 管理端 IAM | `root.tech.vg_alpha` |
+| 手工实体 | false | local | 管理端（可选） | 临时项目组挂靠节点 |
 
 虚拟组 **创建约束**：
 
-- `parent_id` 必须指向 `source IN ('hr','system')` 且 `org_type IN (1,2,3)` 的节点（或已 disabled 但尚未 reparent 的 hr 节点——见 §4.3）。
+- `parent_id` 必须指向 `source IN ('hr','system')` 且 `is_virtual=false` 的节点（或已 disabled 但尚未 reparent 的 hr 节点——见 §4.3）。
 - `code` 须匹配 ltree 标签 `[A-Za-z0-9_]`；建议虚拟组 `code` 以 `vg_` 前缀区分 HR 部门编码。
 
 ### 2.2 树示例
@@ -83,14 +88,14 @@ ALTER TABLE user_orgs ADD COLUMN expires_at TIMESTAMPTZ;
 root (system)
 └── tech (hr, path=root.tech)
     ├── fe (hr, path=root.tech.fe)
-    └── vg_project_alpha (local, org_type=4, path=root.tech.vg_project_alpha)
+    └── vg_project_alpha (local, is_virtual=true, path=root.tech.vg_project_alpha)
 ```
 
 ---
 
 ## 3. HR Sync Job（分域 desired-state）
 
-建议独立 Job：`cmd/sync-hr` 或 Asynq periodic task（Phase 2b），**幂等**，可手动重跑。
+原候选执行体为 `cmd/sync-hr` / Asynq periodic；这是早期选项，均未实现。当前阶段入口采用 Port + mock 先行，完整同步的执行/调度须遵守既定任务平台边界并在启动批落实施方案，不因本节列举就新增第二套调度器。幂等与可重跑目标保持。
 
 > **本节补充**：HR API **分页拉取**、**落库策略**、**定时调度**、**失败与重试** — 见 [§3.4](#34-拉取分页落库与调度) 与 [§3.5](#35-失败场景与重试)。
 
@@ -100,22 +105,22 @@ root (system)
 
 ```text
 允许 INSERT / UPDATE / SOFT-DELETE：
-  organizations WHERE source = 'hr' AND org_type IN (1,2,3)
+  organizations WHERE source = 'hr' AND is_virtual=false
 
 禁止 DELETE / UPDATE（结构）：
-  source IN ('local', 'system')  OR  org_type = 4
+  source IN ('local', 'system')  OR  is_virtual = true
 ```
 
 **规则 B — 实体移动时，子树 path 级联（含虚拟组）**
 
-与 [phase1/06-organization.md](../phase1/06-organization.md) Move 相同：凡 `path <@ old_entity_path` 的节点（含 `org_type=4`）一并更新 path。  
+与 [phase1/06-organization.md](../phase1/06-organization.md) Move 相同：凡 `path <@ old_entity_path` 的节点（含 `is_virtual=true`）一并更新 path。
 部门从 `root.tech` 调到 `root.product` 下时，`root.tech.vg_alpha` → `root.product.vg_alpha`。
 
 **规则 C — HR 撤销部门：不得硬删「其下仍有虚拟组」的节点**
 
 ```text
 HR 标记部门 D 撤销：
-  IF EXISTS 子节点 WHERE source='local' AND org_type=4：
+  IF EXISTS 子节点 WHERE source='local' AND is_virtual=true：
     → 不 DELETE D；D.status=禁用 或 D 软删但保留 id
     → 执行 §4.3 Reparent 策略
   ELSE IF 仅有 hr 子部门：
@@ -139,7 +144,7 @@ HR 标记部门 D 撤销：
 ### 3.3 幂等与对账键
 
 - 组织：`UNIQUE(source, external_id) WHERE deleted_at IS NULL`（hr 域）
-- 用户：`external_id` 同上；`employee_no` / `(user_domain, domain_account)` 为**全局唯一**（含软删，不可复用，见 [04-user §软删除](../phase1/04-user.md#软删除)）
+- 用户当前约束：`employee_no` / `(user_domain, domain_account)` 按迁移 000006 **仅活跃行唯一**（`deleted_at IS NULL`），软删后可复用，新账号的用户 ID 不同；迁移 000012 只增加 `users.external_id` 字段，**未给用户建立与组织同名义的唯一索引**。未来 HR 对账仍以稳定 `external_id` 优先，但防串号、软删恢复/重用和并发幂等须在实现前明确，不能把目标约束误写成现有数据库保证。
 - 不用「全表 DELETE 再 INSERT」；用 upsert + 软删缺失项
 - 本地 `code` 若与 HR 编码一致，**以 `external_id` 为对账主键**，`code` 可随 HR 变更而更新并重算 path（需子树级联）
 
@@ -175,6 +180,9 @@ FetchDepartmentsPage(ctx context.Context, page, pageSize int) (items []HRDepartm
 **限流**：Client 内可配置 `hr.qps` / 请求间隔，避免打爆 HR 网关。
 
 #### 3.4.2 落库：写业务表，不是只缓存 HR 响应
+
+> 缺失项 reconcile 的前提是该域完整快照已成功拉取和校验；分页失败、partial 或未知页不等于记录已离职/部门已撤销。§3.5 的跳过/重试建议不能被用来对不完整快照执行缺失软删。该保护属于既有“完整快照”语义，实现与验收须明确覆盖。
+
 
 HR 数据 **必须持久化到 PostgreSQL 业务表**（IAM 运行时只读本地库，不实时调 HR）：
 
@@ -213,8 +221,8 @@ CREATE INDEX idx_hr_sync_runs_started ON hr_sync_runs(started_at DESC);
 | 项 | 建议 |
 |----|------|
 | **调度** | Cron **每日 1 次**（如 `0 2 * * *` 凌晨 2 点，可配置 `hr.cron`） |
-| **执行体** | Phase 2b：`cmd/sync-hr` + 系统 Cron / K8s CronJob；Phase 3+ 可迁 **Asynq periodic**（与 [ADR-002 Asynq 执行器](../adr/ADR-002-asynq-async-task-executor.md) 统一） |
-| **手动触发** | 管理端 `POST /api/v1/admin/hr/sync`（superadmin，Phase 2b）或运维 CLI |
+| **执行体** | 早期候选 `cmd/sync-hr` / 系统 Cron / Asynq periodic 均未交付；实际执行体与现有任务平台对齐后在启动批定稿 |
+| **手动触发** | `POST /api/v1/admin/hr/sync` / CLI 是待实施示意，当前无此管理端点 |
 | **互斥** | 同一时刻只允许 **一个** Sync Run（Redis 分布式锁 `lock:hr_sync` 或 PG advisory lock）；Cron 触发时若已在跑则 **跳过并 Warn** |
 | **超时** | 整 Job `context` 上限（如 2h）；单页 HR 请求 timeout（如 30s） |
 
@@ -353,8 +361,8 @@ type HRSyncService interface {
 |----|---------|-----------|
 | 组织/用户来源 | 手工 + 种子 | 增加 HR Job |
 | `source` / `external_id` 字段 | 无 | 迁移增加 |
-| 虚拟组 | 无 | org_type=4 |
-| 删除组织 | 有子节点则拒绝 | 细化：`org_type=4` 子节点触发 reparent 流程 |
+| 虚拟组 | 无 | is_virtual=true |
+| 删除组织 | 有子节点则拒绝 | 细化：`is_virtual=true` 子节点触发 reparent 流程 |
 
 ### 5.3 与 `POST /users` 手工创建的分工
 
@@ -381,7 +389,7 @@ type HRSyncService interface {
                           HRSyncService（分域对账）
                  ┌──────────────────┴─────────────────────┐
                  │ 仅写 source=hr  org_type 1-3           │
-                 │ move → 子树 path 级联（含 org_type=4）   │
+                 │ move → 子树 path 级联（含 is_virtual=true）   │
                  │ 撤销 → reparent 虚拟组，不硬删           │
                  └──────────────────┬─────────────────────┘
                                     ▼

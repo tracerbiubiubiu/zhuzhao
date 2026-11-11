@@ -1,5 +1,8 @@
 # Phase 3 启动检查单（Startup Checklist）
 
+> **适用范围（2026-11-08整理）**：本表已作为09月启动检查及联调A–E快照完成；B11周期闭环已在§5E记录完成，早期“待联调”只指当时。后续前端/附件与自研恢复由Phase4/5承接；这里的旧BK/IW状态不是当前待办SSOT。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **用途**：Phase 3 启动时的**唯一检查入口**。本文件是**快照 + 索引**，不是第二 SSOT——每行都注明权威登记处，启动时先按 §1 顺序逐项核对并刷新状态，防止与各 SSOT 漂移。
 >
 > **✅ 已执行完毕（2026-09-04）**：M0 启动准备收口（A 档清零 + BK-20 已实施 + 决策面清零 + 迁移号已定）。本文件保留作历史检查入口与状态快照；现行进度见 [13-implementation-plan](./13-implementation-plan.md) §1。
@@ -105,7 +108,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 - 文档一致性：~~C-1~C-4 断链/索引~~ 已明确化为 **review/10 C1–C4**（处置见 A1②：C1 驳回维持、C2 已修、C3 → B10、C4 真开放）
 - ticket-business 设计歧义（**对话评估编号**，非本表 B 档编号）：评估-B1 SLA 暂停态 / 评估-B3 通知主管 / 评估-B6 邮件矩阵（已并入 §2.2 B1）
 - **09 合集抽查结论**：F-01/02（VISION）、F-03（activelist 链）、F-18（Redis requirepass）核实已修（历史行未回标）；F-21 → B7；F-31④/F-32 → 随手项；其余条目按批次闭环记录未逐条重验
-- **代码级复审（2026-08-31 第二轮，以代码为准）**：BK-7 两半项已在代码落地（priority→400、page 钳制回显，ticket_handler.go:43-52）→ 关闭、删 B8；testutil 迁移清单仅缺 000002/000007 纯数据 seed（刻意排除，DDL 全齐非缺口）；非测试代码零 TODO/FIXME、无请求路径 panic、关键错误码与 api/errcode.md 一致；「已修复」声明（CC1/2/3、P0、MC2/3、BK-1/2/3、BK-15、OP1）逐项代码复核属实
+- **代码级复审（2026-08-31 第二轮，以代码为准）**：BK-7 两半项已在代码落地（priority→400、page 钳制回显，ticket_handler.go:43-52）→ 关闭、删 B8；testutil 迁移清单仅缺 000002/000007 纯数据 seed（刻意排除，DDL 全齐非缺口）；非测试代码零 TODO/FIXME、无请求路径 panic、关键错误码与 docs/api/errcode.md 一致；「已修复」声明（CC1/2/3、P0、MC2/3、BK-1/2/3、BK-15、OP1）逐项代码复核属实
 - **并发/多实例审计（2026-08-31）**：工单模块无进程内可变状态、共享层全在 Redis/DB（Lua 限流、advisory lock、乐观锁、DB 时间戳）→ 可水平扩展；唯一多实例缺口 = Casbin 策略传播无 Watcher（跨模块，Phase 3 Step 2，已在 B9）；并发防护（CC1/2、BK-3/11/15、竞态双测试）逐项验证在位
 - **00 §9 BK 全量复核**：BK-1/2/3/4/6/8/10/15 已关闭（BK-4 行漏关本次修正）；开放项 BK-5/7/9/11②/12/13/14 全部已归纳于 A/B/W 档
 
@@ -115,7 +118,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 | 阶段 | 内容 | 验收口径 | 状态 |
 |------|------|----------|------|
-| **A · activelist 收尾** | CRUD 矩阵走查 / 限流真机 / pgbackup 首验 + 恢复演练 / 多副本验证 | 各项实机证据留痕 | ✅ 完成（2026-09-14）：①恢复演练=毁库前 pg_restore -l 预检→停写→清库→pg_restore 退出码 0→6 表行数逐一与基线一致→E2E code=0；②多副本=单副本 GET×10 零失败+POST 写路径到达上游+scale 3→2→2；③CRUD 矩阵=30/30 PASS（类型/数据/演进/导入导出/废弃全语义，[走查记录](../../deliverables/software-company/activelist-stage-a-walkthrough-2026-09-14.md)）；④限流真机=演示栈启用默认规则（20/40）后 50 并发锤 /al：40×200+10×429（Retry-After:1+code=10007）、1.5s 补桶恢复、跨路由桶隔离成立；附 pgbackup 事故修复（activelist 54cec15：postgres 补 restart 策略+0 字节残留重做） |
+| **A · activelist 收尾** | CRUD 矩阵走查 / 限流真机 / pgbackup 首验 + 恢复演练 / 多副本验证 | 各项实机证据留痕 | ✅ 完成（2026-09-14）：①恢复演练=毁库前 pg_restore -l 预检→停写→清库→pg_restore 退出码 0→6 表行数逐一与基线一致→E2E code=0；②多副本=单副本 GET×10 零失败+POST 写路径到达上游+scale 3→2→2；③CRUD 矩阵=30/30 PASS（类型/数据/演进/导入导出/废弃全语义，[走查记录](../review/reports/activelist-stage-a-walkthrough-2026-09-14.md)）；④限流真机=演示栈启用默认规则（20/40）后 50 并发锤 /al：40×200+10×429（Retry-After:1+code=10007）、1.5s 补桶恢复、跨路由桶隔离成立；附 pgbackup 事故修复（activelist 54cec15：postgres 补 restart 策略+0 字节残留重做） |
 | **B+C 合并 · PG 回调链回环** | taskrunner 以**直接 PG 形态**跑通回调链回环；zhuzhao↔taskrunner 全链：提交（AK/SK 出站签名 + X-Operator 归因）→ 执行 → 回调（`/internal/jobs/callback` 幂等栅栏 + job_submissions 凭证）→ 终态落库 | 全链 E2E（提交→执行→回调→终态）；悬挂回调终态 dead 复验 | ✅ 完成（2026-09-14）：全链 E2E 三侧核验（taskrunner PG 库 job_runs=succeeded + zhuzhao job_submissions=succeeded/claimed/executed + audit_archive JSONL 双文件落盘，0 字节=无超期行符合 180 天保留期）；归因 admin/X-Operator、request_id 跨库同键；dead 复验=黑洞回调→MAX_RETRY=0→dead+错误入档。**联调抓出两缺陷已修**：① 演示库静默漂移 4 版（无记账表，000026–0029 未应用→栅栏 SQL 报错）——引导 schema_migrations@25 后手工前滚（migrate 镜像拉取被阻断）；② zhuzhao 镜像非 root 无预建可写目录——audit_archive `mkdir data: permission denied` 500 + 容器日志全静默（logs 目录缺失×MultiWriter 文件先行），Dockerfile 预建 data/archive+logs 并 chown |
 | **D · 三服务 compose 拓扑** | taskrunner 部署 compose 作为**新交付物** + 三服务网络隔离验证（内部端口不对宿主暴露、仅专用网络互通）+ R5 启动可写探针负向实测 + 非 root × bind mount 预授权闭环 | 拓扑核验留痕；11 号能力矩阵刷新 | ✅ 完成（2026-09-14）：taskrunner deploy/compose.yaml+README 落仓（taskrunner+专用 PG+Redis 三服务，双 network 对齐 D5）；隔离断言=三容器零宿主端口发布（PG/Redis 仅 internal 网）+宿主 8080 不可达；R5 负向=`TASKRUNNER_LOG_DIR=/etc` → 探针拒启 fail-closed（uid 100 属主指引）；zhuzhao↔taskrunner 双向切服务名寻址（`TASKRUNNER_SELF_BASE_URL` env 绑定新增）+别名 zhuzhao/taskrunner；**容器态全链 E2E 一次通过**（submit→执行→回调→job_runs+job_submissions 双库 succeeded）；B+C 宿主进程已下线 |
 | **E · 周期归档 + 故障演练** | audit_archive 按周期（cron 定义）自动跑通——AL5/AL6 周期口径 = B11②「按周期跑通」最后闭环 + 故障演练（拍板列四项，细目启动 E 时回填本行） | AL5/AL6；演练记录回填本表 | ✅ 完成（2026-09-14，五阶段收官）：**周期化**=cron 任务定义（audit_archive，验证用每分钟→收敛为每日 02:30 `30 2 * * *`，job_id 7dc71317）首轮触发 succeeded；**AL5 真数据闭环**=预置 200 天前审计行（id 1228）被 cron run 导出至 JSONL（全字段）并从 audit_logs 删除；AL6 保留期口径由集成测试承载（180 天默认/config/params 三级）。**演练四项（细目就此回填）**：① docker kill 硬杀 taskrunner→任务 pending 存活 Redis 队列→拉起即续跑 succeeded（at-least-once；kill 属人工停止故 unless-stopped 不自动拉，编排器口径）② PG 容器 restart→healthy→新任务提交 succeeded（连接池自愈）③ dead 重驱 API（dead→pending→再执行→dead；不存在任务 10004 语义顺带验证；compose 显式化 MAX_RETRY 旋钮）④ SIGTERM→asynq graceful shutdown 全序列 0.237s 干净退出→回 healthy |
@@ -124,7 +127,7 @@ Phase 1 全模块 + Phase 2a/2b-core/2b-org/2c 四阶段已交付：`make accept
 
 | 日期 | 说明 |
 |------|------|
-| 2026-09-15（**Phase 3 收口**） | **口径 A（所有者拍板）：项目内工程收口**——M-E/M-A 全收官、M-HR 预留即可、M-SSO/M-Mig 挂外部前置；CORS B7 所有者拍板暂不动（随上线）。终验=标准环境四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；[收官报告](../../deliverables/software-company/phase3-closure-report-2026-09-15.md)。决策清单三项改「随真实部署拍板」；E 阶段（周期归档+演练四项）✅ 见 §5 |
+| 2026-09-15（**Phase 3 收口**） | **口径 A（所有者拍板）：项目内工程收口**——M-E/M-A 全收官、M-HR 预留即可、M-SSO/M-Mig 挂外部前置；CORS B7 所有者拍板暂不动（随上线）。终验=标准环境四档 acceptance（27+66+26+34）FAIL=0 + 四仓全门禁绿；[收官报告](../review/reports/phase3-closure-report-2026-09-15.md)。决策清单三项改「随真实部署拍板」；E 阶段（周期归档+演练四项）✅ 见 §5 |
 | 2026-09-14（联调收尾批） | 新增 §5 本地联调五阶段计划（09-14 预检拍板落档：A activelist 收尾 / B+C 合并 PG 回调链回环 / D 三服务 compose 拓扑 / E 周期归档+故障演练；联调只用 PG 拍板随档）；落档前置收尾 = utils b54bbab+3f16ccf 推送、16 号 M-A 行勘误；原 §5 变更记录顺延为 §6 |
 | 2026-08-31 | 初版：基于全量文档扫描（phase1/2/3 + review）归拢 A/B/W 三档 + 决策清单；基线 `c389156` |
 | 2026-08-31（A 档清零） | A1/A4/A5/A6/A7 全部完成：HC1 事件补全（TestHC1）、BK-5 反向判重（TestBK5）、TC1-Go（TestTicket_Delete_AdminSucceeds）、SoD 落 design-decisions §20、review/10 C1–C4 处置、14 号断链注记；验证：集成 13 包 `-race` 全绿、acceptance 211/0。**A 档清零 = Phase 2 收官** |

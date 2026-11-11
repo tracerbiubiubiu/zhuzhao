@@ -3,18 +3,27 @@ package model
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 )
 
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
-	TypeCode     string          `json:"type_code" binding:"required,max=50"`
-	Title        string          `json:"title" binding:"required,max=200"`
-	Description  string          `json:"description"`
-	Priority     int             `json:"priority"`
-	AssignedTo   *int64          `json:"assigned_to,string,omitempty"`
-	OrgID        int64           `json:"org_id,string" binding:"required"`
-	TemplateCode string          `json:"template_code,omitempty"` // 可选：命中模板则预填
-	CustomData   json.RawMessage `json:"custom_data,omitempty"`
+	TypeCode string `json:"type_code" binding:"required,max=50"`
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign 改）
+	EscalationSupervisor *int64          `json:"escalation_supervisor_id,string,omitempty"`
+	Title                string          `json:"title" binding:"required,max=200"`
+	Description          string          `json:"description"`
+	Priority             int             `json:"priority"`
+	AssignedTo           *int64          `json:"assigned_to,string,omitempty"`
+	OrgID                int64           `json:"org_id,string" binding:"required"`
+	TemplateCode         string          `json:"template_code,omitempty"` // 可选：命中模板则预填
+	CustomData           json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
+	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
+	// confirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。
+	// 语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete
+	//（内嵌图 ticket_richtext 不可经该端点删——随工单生命周期，A.7）
+	Attachments []string `json:"attachments,omitempty"`
 }
 
 // UpdateTicketRequest 更新工单（POST /tickets/update，id 放 body）
@@ -23,12 +32,33 @@ type UpdateTicketRequest struct {
 	Title       *string `json:"title,omitempty" binding:"omitempty,max=200"`
 	Description *string `json:"description,omitempty"`
 	Priority    *int    `json:"priority,omitempty"`
+	// B5-4 编辑增量绑定（05 号 A.3 a 案）：悬挂 confirmed 对象（attachment_create/
+	// richtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments
+	// 同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点
+	Attachments []string `json:"attachments,omitempty"`
+	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、
+	// 值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。
+	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。
+	CustomData json.RawMessage `json:"custom_data,omitempty" swaggertype:"object"`
+}
+
+// RenderRichtextRequest richtext 服务端渲染（B5-4——05 号 §6 渲染/消毒 SSOT 出站：
+// 前端不自行渲染用户输入；登录态自服务——无票据访问面，纯消毒渲染）。
+type RenderRichtextRequest struct {
+	Content string `json:"content" binding:"required" example:"# 标题\n\n- 列表"`
+}
+
+// RenderRichtextResponse 渲染产物（白名单 HTML）。
+type RenderRichtextResponse struct {
+	HTML string `json:"html"`
 }
 
 // AssignTicketRequest 分派工单（POST /tickets/assign）
 type AssignTicketRequest struct {
 	ID         int64  `json:"id,string" binding:"required"`
 	AssignedTo *int64 `json:"assigned_to,string,omitempty"` // nil = 取消分派
+	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）
+	EscalationSupervisor *int64 `json:"escalation_supervisor_id,string,omitempty"`
 }
 
 // CloseTicketRequest 关闭工单（POST /tickets/close）
@@ -75,10 +105,17 @@ type TicketListQuery struct {
 	PageSize int
 	TypeCode string
 	Status   string
-	Priority *int
+	// Statuses 可选状态集合；handler接收逗号分隔statuses，与单值status互斥。
+	Statuses []string
+	// ExcludeStatuses 排除状态集合；与status/statuses互斥，角标非终态跳转使用。
+	ExcludeStatuses []string
+	Priority        *int
 	// AssigneeID 处理人过滤（W4 P1-c）：handler 把 assignee=me 解析为当前用户 ID；
 	// 空 = 不过滤。点亮工作台待办/已办卡（01 §8-W2）
 	AssigneeID *int64
+	// Tag 标签筛选（S10 B10-2）：EXISTS tags 子查询精确匹配；可见性仍由 L2
+	// GetFilter 管线约束（标签可见性随工单——拍板点 6 口径）。空 = 不过滤
+	Tag string
 	// Keyword 标题关键字：ILIKE 子串（D2-21 转义）；纯数字时 OR 工单 ID 精确匹配
 	//（运维「粘工单号」高频动作，纯标题子串会漏）。空 = 不过滤
 	Keyword string
@@ -113,8 +150,11 @@ type UpdateTicketTypeRequest struct {
 	States      json.RawMessage `json:"states"`
 	Transitions json.RawMessage `json:"transitions"`
 	IsActive    *bool           `json:"is_active"`
-	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
-	// ticket_types.version 才写，否则 409。须 > 0，否则 400。
+	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；
+	// nil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）
+	TransitionMeta json.RawMessage `json:"transition_meta"`
+	// Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。
+	// 缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 
@@ -122,8 +162,9 @@ type UpdateTicketTypeRequest struct {
 type TicketTypeFieldInput struct {
 	FieldKey      string          `json:"field_key" binding:"required,max=50"`
 	FieldLabel    string          `json:"field_label" binding:"required,max=100"`
-	FieldType     string          `json:"field_type" binding:"required,oneof=input textarea number date select multi_select tips"`
+	FieldType     string          `json:"field_type" binding:"required,oneof=input textarea number date select multi_select tips richtext"`
 	FieldOptions  json.RawMessage `json:"field_options"`
+	FieldMeta     json.RawMessage `json:"field_meta,omitempty"` // B1-3 formula/extension（附录 A.2 方案 b）
 	Required      bool            `json:"required"`
 	ValidateRegex string          `json:"validate_regex" binding:"omitempty,max=200"`
 	SortOrder     int             `json:"sort_order"`
@@ -134,8 +175,8 @@ type ReplaceTypeFieldsRequest struct {
 	// W1（BK-18 整改）：code 从 path param 迁入 body
 	Code   string                 `json:"code" binding:"required"`
 	Fields []TicketTypeFieldInput `json:"fields"`
-	// Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。
-	// 须 > 0，否则 400。
+	// Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
+	// 预检后配置改变返回409；非nil须>0，否则400。
 	Version *int `json:"version,omitempty"`
 }
 
@@ -166,4 +207,62 @@ type UpdateTicketTemplateRequest struct {
 	// Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中
 	// ticket_templates.version 才写，否则 409。须 > 0，否则 400。
 	Version *int `json:"version,omitempty"`
+}
+
+// AddTicketCCRequest 添加抄送（S10 B10-1——POST /tickets/cc）。
+// user_ids 仅收本人=自抄送（读可见即可）；含他人=加他人（update 权）。
+// max=20 与 AddTicketTagsRequest.Tags 同口径——缺上限即单请求任意量批量 INSERT 的 DoS 面（审计 #11）。
+type AddTicketCCRequest struct {
+	TicketID int64               `json:"ticket_id,string" binding:"required"`
+	UserIDs  jsonutil.Int64Slice `json:"user_ids" binding:"required,gt=0,max=20,dive,gt=0" swaggertype:"array,string"`
+}
+
+// AddTicketTagsRequest 添加标签（S10 B10-2——POST /tickets/tags；读可见面协作动作，
+// 与评论同档：透明读可见即可协作打标——拍板点 6 默认共享无权限模型）。
+type AddTicketTagsRequest struct {
+	TicketID int64    `json:"ticket_id,string" binding:"required"`
+	Tags     []string `json:"tags" binding:"required,gt=0,max=20,dive,max=50"`
+}
+
+// RemoveTicketTagRequest 移除标签（POST /tickets/tags/remove）。
+// 自摘=读可见；摘他人挂的=update 权（与 cc 摘除对称）。
+type RemoveTicketTagRequest struct {
+	TicketID int64  `json:"ticket_id,string" binding:"required"`
+	Tag      string `json:"tag" binding:"required,max=50"`
+}
+
+// RemoveTicketCCRequest 移除抄送（POST /tickets/cc/remove）。
+// 移除本人=读可见即可；移除他人=update 权。
+type RemoveTicketCCRequest struct {
+	TicketID int64 `json:"ticket_id,string" binding:"required"`
+	UserID   int64 `json:"user_id,string" binding:"required"`
+}
+
+// TransitionTicketRequest 统一转换执行（S3a B3-1——POST /tickets/transition）。
+// to=目标状态；comment 可选说明（写评论）；condition/validator 在服务端判。
+type TransitionTicketRequest struct {
+	ID      int64  `json:"id,string" binding:"required"`
+	To      string `json:"to" binding:"required,max=64"`
+	Comment string `json:"comment,omitempty"`
+}
+
+// CreateAssignmentRuleRequest 建分派规则（S3a B3-2——管理端点）。
+type CreateAssignmentRuleRequest struct {
+	TypeCode   string `json:"type_code" binding:"required,max=50"`
+	Priority   int    `json:"priority"`
+	Keyword    string `json:"keyword,omitempty,max=100"`
+	TargetOrg  int64  `json:"target_org,string" binding:"required"`
+	TargetUser *int64 `json:"target_user,string,omitempty"`
+	Enabled    *bool  `json:"enabled,omitempty"`
+}
+
+// AssignmentRuleIDRequest 规则 ID（删/启停）。
+type AssignmentRuleIDRequest struct {
+	ID int64 `json:"id,string" binding:"required"`
+}
+
+// UpdateAssignmentRuleEnabledRequest 启停。
+type UpdateAssignmentRuleEnabledRequest struct {
+	ID      int64 `json:"id,string" binding:"required"`
+	Enabled bool  `json:"enabled"`
 }

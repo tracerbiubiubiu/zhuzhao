@@ -23,6 +23,15 @@ var (
 	sharedErr  error
 )
 
+// testPGImage testcontainers 用的 PG 镜像——ZHUZHAO_TEST_PG_IMAGE 可覆盖
+// （镜像源拉不到 alpine 变体时指向本地已有 tag，如 postgres:15；同大版本服务端语义一致）。
+func testPGImage() string {
+	if v := os.Getenv("ZHUZHAO_TEST_PG_IMAGE"); v != "" {
+		return v
+	}
+	return "postgres:15-alpine"
+}
+
 // SetupPostgresShared 全包共享一个 PG 容器（TestMain 用）。
 func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 	sharedOnce.Do(func() {
@@ -30,7 +39,7 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 		defer cancel()
 
 		container, err := postgres.Run(ctx,
-			"postgres:15-alpine",
+			testPGImage(),
 			postgres.WithDatabase("zhuzhao_test"),
 			postgres.WithUsername("zhuzhao"),
 			postgres.WithPassword("zhuzhao_test"),
@@ -51,7 +60,17 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			return
 		}
 
-		pool, err := pgxpool.New(ctx, connStr)
+		// MaxConns 显式钉 4（2026-10-26 BK11 CI 挂死批）：pgxpool 默认
+		// max(4, GOMAXPROCS) 在本地多核机上池更大，事务窗口内嵌套池取
+		// （Create→fileFieldKeys/keyGen）的池耗尽死锁本地永不复现、CI 4 核
+		// 必现窗口——钉 4 使本地与 CI 同为最严格口径，同类回归本地即暴露。
+		cfg, err := pgxpool.ParseConfig(connStr)
+		if err != nil {
+			sharedErr = err
+			return
+		}
+		cfg.MaxConns = 4
+		pool, err := pgxpool.NewWithConfig(ctx, cfg)
 		if err != nil {
 			sharedErr = err
 			return
@@ -131,6 +150,78 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			// al 域命名统一（000043，2026-10-13 并行批）+ 审计操作人快照列（000044）
 			"000043_al_domain_rename.up.sql",
 			"000044_audit_operator_snapshot.up.sql",
+			// phase5 S5 对象元数据表（000045，B5-1 批5）+ 工单附件关联（000046，B5-3 批1）
+			"000045_file_objects.up.sql",
+			"000046_ticket_attachments.up.sql",
+			// file_objects 通用归属两列（000047，B5-4 随行件——A2 取号先建占 047，B5-6 顺位 048）
+			"000047_file_objects_owner.up.sql",
+			// system_settings KV 表 + 设置管理页种子（000048，B5-6 配置化）
+			"000048_system_settings.up.sql",
+			// file_objects deleted 态部分索引（000049，S5 GC 二扫收敛扫描）
+			"000049_file_objects_deleted_idx.up.sql",
+			// ticket_type_fields field_meta JSONB（000051，S1 B1-3 formula 承载列）
+			"000051_field_meta.up.sql",
+			// B1-7 批2：impact 归位管理组的 menu_apis/casbin 绑定
+			"000052_impact_rebind_admin.up.sql",
+			// S6 B6-3: message_templates
+			"000053_message_templates.up.sql",
+			// S6 B6-6: message_log + message_rules + menu_apis
+			"000054_message_log.up.sql",
+			// S6 B6-6: message admin menu_apis
+			"000055_message_admin_apis.up.sql",
+			// S6 B6-4: notification opt-outs
+			"000056_notification_optouts.up.sql",
+			// S6 §5.3: human_key
+			"000057_human_key.up.sql",
+			// S6 B6-3 增强批: is_system
+			"000058_is_system.up.sql",
+			// S6 外审 F-2-4: message rebind
+			"000059_message_rebind.up.sql",
+			// 微批 A: message_rules version 乐观锁（审计残余③）
+			"000060_message_rules_version.up.sql",
+			// system_settings version 乐观锁列（000050，F-D2 并行审计挂起项收口）
+			"000050_system_settings_version.up.sql",
+			// v3 审计 Y-3: message_rules FK → message_templates（本清单此前漏登——
+			// 无测试断言该约束故未爆，随 000062 补齐）
+			"000061_message_rules_fk.up.sql",
+			// S10 B10-1: ticket_cc + 种子模板/规则（cc 特例支/通知链集成依赖）
+			"000062_ticket_cc.up.sql",
+			// S10 B10-2: tags 通用标签表
+			"000063_tags.up.sql",
+			// S10 B10-4: 节点超时+催办（transition_meta/status_changed_at/
+			// escalation_supervisor_id/ticket_reminders+种子+cron-status 绑定）
+			"000064_ticket_timeout.up.sql",
+			// S10 B10-5: 导出端点 menu_apis 绑定
+			"000065_ticket_export_api.up.sql",
+			// S4 B4-1: 动作清单端点 menu_apis 绑定
+			"000066_jobs_actions_api.up.sql",
+			// S9 B9-1: intel_cache 表 + intel:query 码
+			"000067_intel_cache.up.sql",
+			// S3a B3-1: 统一转换端点 menu_apis
+			"000068_transition_apis.up.sql",
+			// S3a B3-2: 自动分派规则表
+			"000069_assignment_rules.up.sql",
+			// S3a B3-2: 分派规则 CRUD 路由绑定
+			"000070_assignment_rules_api.up.sql",
+			// S3a 随窗件: SLA 层 0.5（due_at 激活+deadline 种子）
+			"000071_sla_due_at.up.sql",
+			// S6 二期 B6-7: notifications 表族+消息中心菜单/路由
+			"000072_notifications_inbox.up.sql",
+			// S3a B3-2 补遗: 分派规则管理页菜单行（孤岛页补路由）
+			"000073_assignment_rules_menu.up.sql",
+			// E2E 补齐批: phase5 三页面 role_menus 回补（admin+superadmin）
+			"000074_phase5_menus_role_bind.up.sql",
+			// E2E 补齐批二程: 分派规则写端点迁按钮行（L1 越权修复）
+			"000075_assignment_rules_write_btn.up.sql",
+			// E2E 补齐批三程: 消息中心自服务化（G-23）/ 字典·通知写端点迁按钮行（G-26）
+			"000076_message_center_selfservice.up.sql",
+			"000077_dict_notification_write_btn.up.sql",
+			// E2E 补齐批四程: 删 message_center 幽灵行（inbox:read 退役）
+			"000078_drop_message_center_menu.up.sql",
+			// 通知面收口批: notify 动作默认路由种子
+			"000079_action_notify_seed.up.sql",
+			// 观测批（2026-10-27）: 存储用量越限告警种子（C-6——fixed+空收件人，同 cron_failed 惯例）
+			"000080_storage_usage_alert_seed.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

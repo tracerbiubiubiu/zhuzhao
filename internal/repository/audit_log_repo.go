@@ -117,8 +117,10 @@ func buildAuditListWhere(q AuditListQuery) (string, []any) {
 		n++
 	}
 	if q.Method != "" {
-		parts = append(parts, fmt.Sprintf("method = $%d", n))
-		args = append(args, q.Method)
+		// 多选筛选（2026-10-28 审计走查批）：逗号分隔多值 → ANY（前端 method 多选 join；单值向后兼容）
+		methods := strings.Split(q.Method, ",")
+		parts = append(parts, fmt.Sprintf("method = ANY($%d)", n))
+		args = append(args, methods)
 		n++
 	}
 	if q.Start != nil {

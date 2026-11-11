@@ -1,5 +1,8 @@
 # 06 - 组织模块（organization）
 
+> **适用范围（2026-11-08整理）**：本文的Create/Move结构为原阶段草图；当前入口为internal/service/org_service.go的OrgService和repository OrgRepo方法。后补的全局advisory lock、事务内环检测及行锁约束优先于早期SQL简图；HR Reparent是规划，不代表HR同步作业已实现。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 9**，依赖 Step 5（authz）。与 Step 7/8 **可并行**。  
 > **`OrgService` 写路径应先于 Step 6b**（用户 `org_ids` / `POST /users/orgs`），见 [04-user §Step 6 分期](./04-user.md#step-6-分期交付)。
 
@@ -221,7 +224,6 @@ func (s *orgService) Delete(ctx context.Context, code string) error {
 ```
 
 > **Phase 2b**：若子节点含 `org_type=4` 虚拟组，HR 撤销走 Reparent（见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)）；管理端 Delete 仍默认拒绝有子节点。HR Sync 不得硬删其下仍有虚拟组的 HR 实体。
-```
 
 ---
 

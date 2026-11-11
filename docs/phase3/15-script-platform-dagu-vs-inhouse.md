@@ -1,10 +1,13 @@
 # 15 · 脚本任务平台选型调研：Dagu（现成）vs 自研（Asynq）
 
+> **适用范围（2026-11-08整理）**：这是脚本能力被降级后保留的时点选型研究；当前taskrunner只调度受控动作，不提供用户脚本平台。Dagu能力/API/版本/许可是研究时点输入，重新启动需重新核验，不按本稿自动执行PoC或引入依赖。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > 状态：调研稿（2026-09-03）｜关联：M-E 事件与任务平台（[13-implementation-plan](./13-implementation-plan.md)）、ADR-002（Asynq 执行器）、[14-planning-overview](./14-planning-overview.md)
 > 目标：M-E「自定义脚本任务」（上传 shell/python 脚本，定时/手动运行，管理/历史/日志）选「现成平台集成」还是「自研」做决策支撑。
 > ⚠️ 待拍板点已标注，由项目所有者决定。
 
-> **🔻 收敛声明（2026-09-03，SSOT = [13](./13-implementation-plan.md) M-E 行 + taskrunner 仓库 `docs/taskrunner.md`）**：M-E 已从「任务平台」收敛为**事件/任务总线**（taskrunner）——**脚本任务（上传 python/shell）暂不需要，降级 🚦 按需再启**；核心 = Asynq 异步触发**预置动作**（回调 zhuzhao 内网端点，代码注册 handler，非用户上传脚本）。本文档保留为**按需再启时的选型参考**（届时重读 §2–§6）。本次收敛后，仅「脚本任务」这一个子能力是否用现成平台需要决策；事件/任务总线本体 = Asynq（ADR-002），不引入任何平台。
+> **🔻 收敛声明（2026-09-03，SSOT = [13](./13-implementation-plan.md) M-E 行 + taskrunner 仓库 `docs/design/taskrunner.md`，原 `docs/taskrunner.md`）**：M-E 已从「任务平台」收敛为**事件/任务总线**（taskrunner）——**脚本任务（上传 python/shell）暂不需要，降级 🚦 按需再启**；核心 = Asynq 异步触发**预置动作**（回调 zhuzhao 内网端点，代码注册 handler，非用户上传脚本）。本文档保留为**按需再启时的选型参考**（届时重读 §2–§6）。本次收敛后，仅「脚本任务」这一个子能力是否用现成平台需要决策；事件/任务总线本体 = Asynq（ADR-002），不引入任何平台。
 
 ---
 

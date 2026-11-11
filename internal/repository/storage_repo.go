@@ -1,0 +1,444 @@
+package repository
+
+import (
+	"context"
+	"errors"
+	"strconv"
+
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+)
+
+// StorageRepo file_objects 元数据访问（phase5 S5 B5-1；对象本体在 RustFS）。
+// 错误形态对齐仓内范式：sentinel 由 service 映射 errcode。
+var (
+	ErrStorageObjectNotFound  = errors.New("repository: file object not found")
+	ErrStorageAlreadyBound    = errors.New("repository: file object already confirmed/bound")
+	ErrStorageAttachmentLimit = errors.New("repository: ticket attachment limit exceeded")
+)
+
+const fileObjectColumns = `id, bucket, object_key, purpose, status, file_name, mime_type, size_bytes, etag, created_by, created_at, confirmed_at, owner_kind, owner_id`
+
+type StorageRepo struct {
+	db *pgxpool.Pool
+}
+
+func NewStorageRepo(db *pgxpool.Pool) *StorageRepo {
+	return &StorageRepo{db: db}
+}
+
+// InsertPending presign 即写 pending（05 号 A.3 修正②——孤儿对象 GC 锚点）。
+func (r *StorageRepo) InsertPending(ctx context.Context, f *model.FileObject) error {
+	return r.db.QueryRow(ctx, `
+		INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at`,
+		f.Bucket, f.ObjectKey, f.Purpose, f.Status, f.FileName, f.MIMEType, f.CreatedBy,
+	).Scan(&f.ID, &f.CreatedAt)
+}
+
+// GetByObjectKey 按 (bucket, object_key) 唯一定位。
+func (r *StorageRepo) GetByObjectKey(ctx context.Context, bucket, objectKey string) (*model.FileObject, error) {
+	f := &model.FileObject{}
+	err := r.db.QueryRow(ctx,
+		"SELECT "+fileObjectColumns+" FROM file_objects WHERE bucket = $1 AND object_key = $2",
+		bucket, objectKey,
+	).Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName, &f.MIMEType,
+		&f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrStorageObjectNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+// Confirm 条件更新 pending→confirmed 并回填 HEAD 实测（size/etag——拍板 1b 列快照）。
+// 0 行受影响 = 已非 pending（重复 confirm / 已绑定）→ ErrStorageAlreadyBound 哨兵。
+func (r *StorageRepo) Confirm(ctx context.Context, id int64, sizeBytes int64, etag string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE file_objects
+		SET status = 'confirmed', size_bytes = $2, etag = $3, confirmed_at = NOW()
+		WHERE id = $1 AND status = 'pending'`,
+		id, sizeBytes, etag)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageAlreadyBound
+	}
+	return nil
+}
+
+// ListExpiredPending 孤儿 GC 候选（05 号 A.3 修正②——部分索引 idx_file_objects_gc 命中；
+// limit 单批有界，ReentrantJob 收敛语义：一轮清不完下轮续）。
+func (r *StorageRepo) ListExpiredPending(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects
+		WHERE bucket = $1 AND status = 'pending' AND created_at < $2
+		ORDER BY id LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRowIfPending GC pending 路径物理清行（条件删除 pending 态）。
+// 返回是否实际删除——false = 已被并发 confirm 翻态让位（F-A1 修复 2026-10-21：
+// 调用方据此跳过对象物理删，修复前「先删对象后清行」存在把并发刚 confirm 的
+// 对象物理删掉的数据丢失窗口）。A.9「对象与行均消失」终态。
+func (r *StorageRepo) DeleteRowIfPending(ctx context.Context, id int64) (bool, error) {
+	tag, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1 AND status = 'pending'`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// InsertDeletedTombstone F-A1 兜底（2026-10-21）：一扫已条件清行后对象物理删
+// 失败时补插 deleted 墓碑行——交二扫重试（否则行已删、对象残留成无扫描覆盖
+// 的泄漏）。ON CONFLICT DO NOTHING：与二扫/并发路径竞态时让位。
+func (r *StorageRepo) InsertDeletedTombstone(ctx context.Context, f *model.FileObject) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type,
+		                          size_bytes, etag, created_by, created_at, confirmed_at, owner_kind, owner_id)
+		VALUES ($1,$2,$3,'deleted',$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		ON CONFLICT (bucket, object_key) DO NOTHING`,
+		f.Bucket, f.ObjectKey, f.Purpose, f.FileName, f.MIMEType,
+		f.SizeBytes, f.ETag, f.CreatedBy, f.CreatedAt, f.ConfirmedAt, f.OwnerKind, f.OwnerID)
+	return err
+}
+
+// ListDeleted 二扫候选：删附件/弃旧流程 best-effort 物理删失败后的 deleted 行
+// （对象残留）——重删成功后行物理清除（S5 评审 P2-1：修复前 deleted 态无任何
+// 扫描覆盖 = 对象永久无主泄漏）。重试语义无时间窗，ORDER BY id 单批有界收敛。
+func (r *StorageRepo) ListDeleted(ctx context.Context, bucket string, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects
+		WHERE bucket = $1 AND status = 'deleted'
+		ORDER BY id LIMIT $2`, bucket, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRowById 二扫路径物理清行（deleted 为终态无并发翻态，无条件删；
+// FK 撞残留关联行时报错由调用方 Warn 留待下轮自愈）。
+func (r *StorageRepo) DeleteRowById(ctx context.Context, id int64) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM file_objects WHERE id = $1`, id)
+	return err
+}
+
+// ConfirmAndBind ticket 态确认并落绑（repo 内单事务：同单行锁串行化并发绑定 +
+// 附件数计数校验（05 号 §3 个数上限执行点）+ 条件翻 confirmed + INSERT
+// ticket_attachments + purpose 归一；UNIQUE 冲突/非 pending →
+// ErrStorageAlreadyBound；超上限 → ErrStorageAttachmentLimit）。B5-3 批2；
+// 并发加固 + 计数校验 2026-10-20（S5 评审 P1）。
+func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uploadedBy int64, sizeBytes int64, etag string, maxCount int) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 同单行锁：串行化并发 confirm 绑定同一工单（否则计数校验有 TOCTOU 窗口——
+	// 两个并发各见 N-1 均过校验则 N+1 超限）。锁序：tickets → file_objects 恒定。
+	var lockID int64
+	if err := tx.QueryRow(ctx, `SELECT id FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&lockID); err != nil {
+		return err
+	}
+	// 与建单/编辑绑定同口径：先锁待绑对象，仅普通附件占用附件额度。
+	// 已有普通附件满额时，richtext 内嵌图仍允许确认（独立软限）。
+	var purpose string
+	if err := tx.QueryRow(ctx, `SELECT purpose FROM file_objects WHERE id=$1 FOR UPDATE`, fileID).Scan(&purpose); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrStorageAlreadyBound
+		}
+		return err
+	}
+	if purpose != "ticket_richtext" && maxCount > 0 {
+		var n int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*) FROM ticket_attachments ta
+			JOIN file_objects fo ON fo.id = ta.file_object_id
+			WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
+			return err
+		}
+		if n+1 > maxCount {
+			return ErrStorageAttachmentLimit
+		}
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE file_objects SET status='confirmed', size_bytes=$2, etag=$3, confirmed_at=NOW(),
+		       owner_kind=$4, owner_id=$5
+		WHERE id=$1 AND status='pending'`, fileID, sizeBytes, etag, model.FileOwnerTicket, strconv.FormatInt(ticketID, 10))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageAlreadyBound
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by)
+		VALUES ($1, $2, $3)`, ticketID, fileID, uploadedBy); err != nil {
+		if isPgUnique(err) {
+			return ErrStorageAlreadyBound
+		}
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// BindCreateAttachments 建单前绑定（A.5 建单前链）：悬挂 confirmed 对象批量
+// 计数校验+加锁校验+落绑+purpose 翻正式态。校验失败返回 ErrStorageObjectNotFound
+// （对象不存在/非本人/非 confirmed/悬挂态不符/已被并发他单绑定——建单方参数错，
+// service 统一映射 400；仅 pgx.ErrNoRows 转哨兵，DB 故障原样上抛走 500 面
+// ——S5 评审 P2-2）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
+// 并发加固 + 计数校验 + bucket 条件 2026-10-20（S5 评审 P1/D1-3）。
+func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, bucket string, userID, ticketID int64, keys []string, maxCount int) error {
+	// 附件数计数（建单路径执行点）：本次 keys 与已有合计不超上限（重复键由 UNIQUE 兜底——审计 M-7 措辞对齐）
+	// 附件数计数（建单路径执行点）：仅 ticket_attachment 行/键计入——richtext
+	// 内嵌图独立软限不占额（05 §3 两档口径，拍板 P2 2026-10-21）；混合列表中
+	// richtext 键的额度判定移入循环 formal 分档处
+	var n int
+	if err := exec.QueryRow(ctx, `
+		SELECT count(*) FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE ta.ticket_id=$1 AND fo.purpose <> 'ticket_richtext'`, ticketID).Scan(&n); err != nil {
+		return err
+	}
+	for _, key := range keys {
+		var id int64
+		var purpose string
+		var createdBy int64
+		var status string
+		// FOR UPDATE：对象行锁串行化并发建单——后到事务阻塞至此单提交后重读，
+		// purpose 已翻正式态 → switch default 拒绝（修复前双双落绑）
+		err := exec.QueryRow(ctx, `
+			SELECT id, purpose, created_by, status FROM file_objects
+			WHERE bucket=$1 AND object_key=$2 FOR UPDATE`, bucket, key).
+			Scan(&id, &purpose, &createdBy, &status)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrStorageObjectNotFound
+			}
+			return err
+		}
+		if createdBy != userID || status != "confirmed" || purpose == "" {
+			return ErrStorageObjectNotFound
+		}
+		formal := ""
+		switch purpose {
+		case "attachment_create":
+			formal = "ticket_attachment"
+			// 仅附件键占额（richtext 键独立软限不占——拍板 P2 2026-10-21）
+			n++
+			if maxCount > 0 && n > maxCount {
+				return ErrStorageAttachmentLimit
+			}
+		case "richtext_create":
+			formal = "ticket_richtext"
+		default:
+			return ErrStorageObjectNotFound // 非悬挂态对象不可建单落绑
+		}
+		if _, err := exec.Exec(ctx, `
+			INSERT INTO ticket_attachments (ticket_id, file_object_id, uploaded_by)
+			VALUES ($1, $2, $3)`, ticketID, id, userID); err != nil {
+			if isPgUnique(err) {
+				return ErrStorageAlreadyBound
+			}
+			return err
+		}
+		tag, err := exec.Exec(ctx, `
+			UPDATE file_objects SET purpose=$3, owner_kind=$4, owner_id=$5 WHERE id=$1 AND purpose=$2`,
+			id, purpose, formal, model.FileOwnerTicket, strconv.FormatInt(ticketID, 10))
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			// 并发兜底（锁异常路径）：对象已被翻正式态，拒绝本单落绑
+			return ErrStorageObjectNotFound
+		}
+	}
+	return nil
+}
+
+// ListAttachmentsByTicket 附件列表视图（JOIN file_objects——B5-3 批3）。
+func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT ta.id, ta.ticket_id, fo.object_key, fo.file_name, fo.mime_type, fo.size_bytes, ta.uploaded_by, ta.created_at
+		FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE ta.ticket_id = $1 ORDER BY ta.id`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.TicketAttachmentView{}
+	for rows.Next() {
+		v := &model.TicketAttachmentView{}
+		if err := rows.Scan(&v.ID, &v.TicketID, &v.ObjectKey, &v.FileName, &v.MIMEType, &v.SizeBytes, &v.UploadedBy, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// GetBoundTicketID 对象绑定的工单（无绑定 → ErrStorageObjectNotFound；
+// 下载面 L2 判定锚点——B5-3 批3。bucket 条件 + 非 ErrNoRows 错误上抛
+// ——S5 评审 P2-2/D1-3 健壮性批 2026-10-20：原裸查跨桶命中、DB 故障吞成 404）。
+func (r *StorageRepo) GetBoundTicketID(ctx context.Context, bucket, objectKey string) (int64, error) {
+	var ticketID int64
+	err := r.db.QueryRow(ctx, `
+		SELECT ta.ticket_id FROM ticket_attachments ta
+		JOIN file_objects fo ON fo.id = ta.file_object_id
+		WHERE fo.bucket = $1 AND fo.object_key = $2 LIMIT 1`, bucket, objectKey).Scan(&ticketID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrStorageObjectNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	return ticketID, nil
+}
+
+// UnlinkAttachment 删关联行（0 行 → ErrStorageObjectNotFound；bucket 条件
+// 与 (bucket,object_key) 唯一键对齐——S5 评审 D1-3 健壮性批）。
+func (r *StorageRepo) UnlinkAttachment(ctx context.Context, bucket string, ticketID int64, objectKey string) error {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM ticket_attachments
+		WHERE ticket_id = $1 AND file_object_id = (SELECT id FROM file_objects WHERE bucket = $2 AND object_key = $3)`,
+		ticketID, bucket, objectKey)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStorageObjectNotFound
+	}
+	return nil
+}
+
+// MarkObjectDeleted 对象弃旧标 deleted（附件删除路径专用——审计 M-5：补 bucket
+// 与 purpose 双条件，防多桶/key 碰撞误标他域对象；avatar 弃旧走 BindAvatar）。
+func (r *StorageRepo) MarkObjectDeleted(ctx context.Context, bucket, objectKey string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE file_objects SET status = 'deleted'
+		WHERE bucket = $1 AND object_key = $2
+		  AND purpose IN ('ticket_attachment', 'ticket_richtext')`, bucket, objectKey)
+	return err
+}
+
+// ListConfirmedOrphans F-4-4 外审修复：反连接——confirmed + 工单域 + 无关联行 + 超期。
+// 覆盖建单前悬挂（binding 永不到来）+ 删单后残留（CASCADE 清行但对象未删）。
+func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects f
+		WHERE f.status = 'confirmed'
+			AND f.bucket = $1
+			AND f.purpose IN ('ticket_attachment', 'ticket_richtext', 'attachment_create', 'richtext_create')
+			AND f.confirmed_at < $2
+			AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
+		ORDER BY f.id
+		LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// ListConfirmedAvatarOrphans G-3（2026-10-27 观测批）：confirmed + avatar purpose +
+// 无 users.avatar 引用 + 超期——abandoned-upload reaper 查询面。「是否已绑定」
+// 是应用层知识（users.avatar 存对象键），S3 lifecycle 规则做不了这一层。
+func (r *StorageRepo) ListConfirmedAvatarOrphans(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+fileObjectColumns+` FROM file_objects f
+		WHERE f.status = 'confirmed'
+			AND f.bucket = $1
+			AND f.purpose = 'avatar'
+			AND f.confirmed_at < $2
+			AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar = f.object_key)
+		ORDER BY f.id
+		LIMIT $3`, bucket, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.FileObject{}
+	for rows.Next() {
+		f := &model.FileObject{}
+		if err := rows.Scan(&f.ID, &f.Bucket, &f.ObjectKey, &f.Purpose, &f.Status, &f.FileName,
+			&f.MIMEType, &f.SizeBytes, &f.ETag, &f.CreatedBy, &f.CreatedAt, &f.ConfirmedAt, &f.OwnerKind, &f.OwnerID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// MarkDeleted 软删 confirmed 工单孤儿（第三段 GC 前置）。先锁对象行，再以
+// 新语句复查关联；单条 UPDATE 在等待 BindCreateAttachments 时取得的旧快照
+// 看不到其刚提交的 ticket_attachments，仍会误删在用对象（B06-04）。
+func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+	var lockID int64
+	err = tx.QueryRow(ctx, `SELECT id FROM file_objects WHERE id=$1 FOR UPDATE`, id).Scan(&lockID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	tag, err := tx.Exec(ctx, `
+		UPDATE file_objects SET status='deleted'
+		WHERE id=$1 AND status='confirmed'
+		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = file_objects.id)`, id)
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}

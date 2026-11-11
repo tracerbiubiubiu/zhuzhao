@@ -5,6 +5,19 @@
 # 运行前置：make docker-dev-reset && make dev（或等价部署）
 set -euo pipefail
 
+# 每次调用独立目录；子阶段只继承 TMPDIR 父目录，不共享响应/令牌文件。
+umask 077
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zz-acceptance-phase2b.XXXXXXXX")"
+cleanup() {
+  local status=$?
+  if [ -n "${REDIS:-}" ]; then docker start "$REDIS" >/dev/null 2>&1 || true; fi
+  rm -rf -- "$TMP_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
 
@@ -28,10 +41,6 @@ pass=0
 fail=0
 sectionA=0
 
-cleanup_redis() {
-  docker start "$REDIS" >/dev/null 2>&1 || true
-}
-trap cleanup_redis EXIT
 
 json_code() { python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('code') if d else '')" 2>/dev/null || echo PARSE_ERR; }
 psql_q()    { docker exec "$PG" psql -U "$PG_USER" -d "$PG_DB" -qt -A -c "$1" | tr -d '\n'; }
@@ -128,22 +137,22 @@ TID=$(echo "$TK" | python3 -c "import sys,json; print((json.load(sys.stdin).get(
 check "vb create ticket in vg_b" "1" "$([ "$TID" != "0" ] && echo 1 || echo 0)"
 
 check "R9 va read vg_b ticket (200)" "200" \
-  "$(curl -s -o /tmp/p2b.json -w '%{http_code}' "$BASE/tickets/$TID" -H "Authorization: Bearer $VAT")"
-check "R9 code=0" "0" "$(cat /tmp/p2b.json | json_code)"
+  "$(curl -s -o "$TMP_DIR/p2b.json" -w '%{http_code}' "$BASE/tickets/$TID" -H "Authorization: Bearer $VAT")"
+check "R9 code=0" "0" "$(cat "$TMP_DIR/p2b.json" | json_code)"
 VA_BODY="{\"id\":\"$TID\",\"title\":\"R10 rename\"}"
-curl -s -o /tmp/p2b.json -w 'R10_HTTP=%{http_code}\n' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "$VA_BODY" >&2
-R10=$(cat /tmp/p2b.json | json_code)
+curl -s -o "$TMP_DIR/p2b.json" -w 'R10_HTTP=%{http_code}\n' -X POST "$BASE/tickets/update" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "$VA_BODY" >&2
+R10=$(cat "$TMP_DIR/p2b.json" | json_code)
 check "R10 va update vg_b ticket (403+70001)" "70001" "$R10"
 VA_COMMENT=$(curl -s -X POST "$BASE/tickets/comments" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"ticket_id\":\"$TID\",\"content\":\"va 公开回复\"}")
 check "va comment allowed (0)" "0" "$(echo "$VA_COMMENT" | json_code)"
-NOTE_HTTP=$(curl -s -o /tmp/p2b_note.json -w '%{http_code}' -X POST "$BASE/tickets/notes" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"ticket_id\":\"$TID\",\"content\":\"va 备注\"}")
+NOTE_HTTP=$(curl -s -o "$TMP_DIR/p2b_note.json" -w '%{http_code}' -X POST "$BASE/tickets/notes" -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' -d "{\"ticket_id\":\"$TID\",\"content\":\"va 备注\"}")
 check "va note denied (403)" "403" "$NOTE_HTTP"
 
 # --- scope=group 主管：sup 挂 P（assigned），SQL 升 group 后可分派子树工单 ---
 SUP_ID=$(mkuser "p2b_sup_$SUF" "B2SP$SUF" "$ROLE_O" "$P_ID")
 SUP=$(mklogin "B2SP$SUF" "pass1234")
 check "supervisor login" "1" "$([ -n "$SUP" ] && echo 1 || echo 0)"
-SUP_BEFORE=$(curl -s -o /tmp/p2b_sup.json -w '%{http_code}' -X POST "$BASE/tickets/assign" -H "Authorization: Bearer $SUP" -H 'Content-Type: application/json' -d "{\"id\":\"$TID\",\"assigned_to\":\"$VB_ID\"}")
+SUP_BEFORE=$(curl -s -o "$TMP_DIR/p2b_sup.json" -w '%{http_code}' -X POST "$BASE/tickets/assign" -H "Authorization: Bearer $SUP" -H 'Content-Type: application/json' -d "{\"id\":\"$TID\",\"assigned_to\":\"$VB_ID\"}")
 check "supervisor assign before scope (403)" "403" "$SUP_BEFORE"
 psql_q "UPDATE user_orgs SET ticket_scope='group' WHERE user_id=$SUP_ID AND org_id=$P_ID" >/dev/null
 SUP_AFTER_RAW=$(curl -s -X POST "$BASE/tickets/assign" -H "Authorization: Bearer $SUP" -H 'Content-Type: application/json' -d "{\"id\":\"$TID\",\"assigned_to\":\"$VB_ID\"}")

@@ -18,9 +18,11 @@ make migrate-up        # 应用迁移
 make swag              # 重新生成 Swagger
 ```
 
+**Go 工具链**：`go.mod` 钉 Go 1.26.10，`scripts/go-tool.py`（lint/swag/wire 经它调工具）不自动下载 SDK——本机 Go 低于该版本时 `make lint` 直接报错，用 `GO=` 指定已有工具链，例：`make lint GO=$(go env GOMODCACHE)/golang.org/toolchain@v0.0.1-go1.26.10.darwin-arm64/bin/go`（缓存里没有就先在仓内执行一次 `go version`，`GOTOOLCHAIN=auto` 会拉取）。
+
 **门禁纪律**：不得把未通过 `make acceptance` 的改动标记为"完成"；无法运行门禁时必须如实说明原因与影响。
 
-**测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/runbook.md §4 台账](docs/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
+**测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/ops/runbook.md §4 台账](docs/ops/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
 
 ## 铁律：每次代码改动必须附带"变更评审说明"
 
@@ -36,11 +38,14 @@ make swag              # 重新生成 Swagger
 
 - 每个迁移 **up/down 成对**；编号**全局唯一**，新迁移前先核对 `migrations/` 实际占用 + **权威编号表 = [docs/review/11-project-control.md §4 迁移地图](docs/review/11-project-control.md)**（`docs/phase2/README.md §2.4` 已于 2026-10-12 退役逐号维护、改为指向该表），**禁止编号冲突**。
 - 修改已有表语义必须说明对存量数据的兼容处理。
+- **菜单/权限种子（W1 B 案，2026-10-25 守卫化）**：新菜单页迁移必带 `role_menus` 绑 admin+superadmin（000031 惯例，否则 GetUserMenus 不可见）；**页面行（menu_type≠3）只挂 GET，写端点一律挂按钮行**——违反即三道守卫全红：app 启动 fail-fast（`router.AuditPageWriteBindings`）+ `TestCatalogPageRows_NoWriteBindings`（CI test-integration）+ acceptance phase1 `D2 B案`；例外须带设计出处登记 `pageWriteAllow`（当前唯一：ticket_list transition，000068）。身份作用域数据（如 inbox）走 selfService 组 + ui 常量路由，不走菜单授权。
+- **回滚耦合（2026-10-26 外审 #7）**：000075/000076/000077 的 down 会把写端点回挂页面行，而 B 案启动 fail-fast 会拒启——**回滚到 v74 及以下必须同批回退到 45dcb25 之前的代码**（或先摘守卫），禁止只回滚 DB 不回滚代码；runbook §6 有操作序。
 - 变更后必须 `make migrate-up` 并跑相关 acceptance。
 
 ## 代码约定
 
 - **工程公约 SSOT = [docs/standards.md](docs/standards.md)**（适用 zhuzhao/taskrunner/activelist 全生态）：API 设计（仅 GET/POST、POST URL 不携带业务信息）、服务间 AK/SK HMAC、Wire 分层、公共包边界、可观测性、权限架构、迁移规范、安全基线——**新端点/新服务/新迁移先对表，不在对话里逐次重申**。
+- **文档锚点书写规范（2026-10-28）**：段稿/文档引用代码一律「文件路径 + 符号名」（如 `resource.go` 的 `canOperate`），行号仅作辅助——代码移动即行号腐化；段稿更新时旧行号锚点随之改符号锚点。
 - 遵循现有分层：`handler → service → repository`，工单在 `internal/service/ticket/`（领域隔离，为未来拆分准备）。
 - 权限判定统一走三层鉴权，不在业务层手写绕过。
 - 错误处理用 `internal/pkg/errcode`（已升格 zhuzhao-utils），DB 错误经 `pgerr.go` 映射，禁止 raw 500 泄漏内部细节。
@@ -67,3 +72,14 @@ make swag              # 重新生成 Swagger
 - 剩余开放项均为 B 档随行（随 Phase 3 对应子能力）或独立窗口（附件 / auth-enhance / HR 同步按需启动），见 11 §8
 
 > 最新验证结果以 `docs/review/` 为准；修复后回填状态。
+
+## 多会话并发协议（2026-10-30）
+
+同一工作树可能有多个 AI 会话并行工作——**git 索引无归属概念**，索引污染已两次实证（dfa69c9 整批卷入 / 1418f33 卷走他人提交）。规则：
+
+- 提交一律走 `scripts/zz-commit.sh`（或等价 `git commit -F msg -- <paths>` 显式路径形态）；**禁止 `git add -A`、`git commit -a`、无路径的裸 `git commit`**。
+- 提交前 `git status` 核对文件归属；提交后 `git show --stat` 复核文件数。
+- rebase / amend / reset 为会话独占操作——执行前确认 origin 无新提交、索引无他人 staged 内容。
+- push 前 `git fetch` + 窗口差集核对（§12-9 push 前置三件）；多会话并行期间由单一会话执行推送。
+- 新会话开工第一步 `make hooks`（当前worktree安装三钩：pre-commit 在途显影 / commit-msg 消息规则+跨主题重题拦截 / pre-push 真实新增窗口；CI另按事件SHA检查）；两会以上并行时收尾在 [runbook §7 在途台账](docs/ops/runbook.md) 落一行，后继会话开工先读。固定启用基线只豁免已推历史，显式历史审计仍严格，见 standards §12-9。
+- 权威成文：[docs/standards.md](docs/standards.md) §12-10（路径提交条 + zz-commit 执行工具 / 机械守卫条 / 会间交接注 / 改史前 HEAD 归属核查）。

@@ -85,6 +85,7 @@ func (r *OrgRepo) IsMember(ctx context.Context, orgID, userID int64) (bool, erro
 			SELECT 1 FROM user_orgs uo
 			INNER JOIN organizations o ON o.id = uo.org_id
 			WHERE uo.org_id = $1 AND uo.user_id = $2 AND o.deleted_at IS NULL
+			  AND (uo.expires_at IS NULL OR uo.expires_at > NOW())
 		)`, orgID, userID).Scan(&exists)
 	return exists, err
 }
@@ -101,6 +102,7 @@ func (r *OrgRepo) IsInOrgBranch(ctx context.Context, orgID, userID int64) (bool,
 			JOIN organizations mo ON mo.id = m.org_id AND mo.deleted_at IS NULL
 			CROSS JOIN organizations t
 			WHERE m.user_id = $1 AND t.id = $2 AND t.deleted_at IS NULL
+			  AND (m.expires_at IS NULL OR m.expires_at > NOW())
 			  AND (mo.path <@ t.path OR t.path <@ mo.path)
 		)`, userID, orgID).Scan(&ok)
 	if err != nil {

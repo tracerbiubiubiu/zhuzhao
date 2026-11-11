@@ -1,3 +1,25 @@
+# Phase 2：已完成的资源授权与工单阶段
+
+> 2026-11-08整理：本页先给当前阅读入口，下面保留原阶段说明/修订作为历史依据。本阶段2a/2b-core/2b-org/2c已交付；附件后来由Phase5 S5承接，HR/auth-enhance按各自后续状态，不能将旧ext计划并算本阶段已实现。迁移编号唯一权威为review/11。
+
+## 阅读顺序与边界
+
+1. [00-implementation-plan.md](00-implementation-plan.md)
+2. [02-authz-resource.md](02-authz-resource.md)
+3. [09-ticket.md](09-ticket.md)
+4. [03-org-enhance.md](03-org-enhance.md)
+5. [04-org-delegation.md](04-org-delegation.md)
+6. [01-auth-enhance.md](01-auth-enhance.md)
+7. [10-storage.md](10-storage.md)
+8. [11-authz-architecture-review.md](11-authz-architecture-review.md)
+9. [14-phase2-plan-review-and-remediation.md](14-phase2-plan-review-and-remediation.md)
+
+当前模块接口看 [modules](../modules/README.md)，工程规则看 [standards](../standards.md)，操作看 [运维](../ops/README.md)。能力状态与迁移编号查 [项目控制台](../review/11-project-control.md)；当前业务段排期查 [Phase5](../phase5/README.md)。新批次仍需满足自身前置与门禁，不能从历史已完成推导所有未来能力已启用。
+
+## 原阶段说明与修订记录
+
+以下保留原时点的目标、结果与决策；旧分支名、数量、待办与凭据样例不覆盖现行约定。
+
 # Phase 2 实现计划：业务可用
 
 > **核心目标**：让第一个业务模块（工单）带着资源级权限跑起来。安全底线（登录限流、会话吊销）已在 Phase 1 完成，Phase 2 不再堆平台能力。

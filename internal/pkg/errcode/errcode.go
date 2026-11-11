@@ -107,16 +107,46 @@ var (
 	ErrTicketAlreadyClosed     = util.New(90004, "工单已关闭")
 )
 
-// 通知模块 92000-92999（91000-91999 为附件预留段——02 号 IW2，勿占）
+// 对象存储 91000-91999（phase5 S5——02 号 IW2 预留段启用，B5-1 批6；语义=10 号 §10）
+var (
+	// S4 B4-1：任务动作 fail-fast（未注册动作提交即拒——原回调期 404 后置收口）
+	ErrActionNotRegistered = util.New(21010, "动作未注册")
+	// S9 B9-1 情报缓存段（92600-92602）
+	ErrIntelNotConfigured = util.New(92600, "情报上游未配置（intel.upstream.endpoint）")
+	ErrIntelUpstreamQuota = util.New(92601, "情报上游配额耗尽（无可用缓存）")
+	ErrIntelUpstream      = util.New(92602, "情报上游不可用")
+	ErrFileTooLarge       = util.New(91001, "文件大小超过限制")
+	ErrFileTypeNotAllowed = util.New(91002, "文件类型不允许")
+	ErrFileNotFound       = util.New(91003, "文件不存在")
+	ErrFileAlreadyBound   = util.New(91004, "文件已关联其它资源")
+)
+
+// 通知模块 92000-92999（91000-91999 已由对象存储段启用——见上）
 var (
 	ErrNotificationConfigNotFound    = util.New(92001, "通知配置不存在")
 	ErrNotificationCodeExists        = util.New(92002, "通知配置 code 已存在")
-	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道（首版仅 webhook）")
+	ErrNotificationChannelNotSupport = util.New(92003, "不支持的通知渠道")
+	ErrNotificationNotConfigured     = util.New(92004, "通知渠道未配置（生产态 fail-fast）")
+)
+
+// ── 消息模板段 92500-92599（S6 B6-3——外审 F-1-4 修复：从 repository 上提，
+//
+//	避免与 92000 通知段撞码）──
+var (
+	ErrMsgTplNotFound        = util.New(92501, "消息模板不存在")
+	ErrMsgTplDupCode         = util.New(92502, "模板 code 已存在")
+	ErrMsgTplSystem          = util.New(92503, "系统模板不可修改或删除")
+	ErrMsgTplReferenced      = util.New(92504, "模板被订阅规则引用中，不可删除")
+	ErrMsgTplVersionConflict = util.New(92505, "模板版本冲突——请刷新后重试")
+	// ErrMsgRuleVersionConflict 订阅规则 version CAS 冲突（微批 A——000060 乐观锁；
+	// 对齐 92505 模板同款语义：并发编辑后写者 409 提示刷新，不静默覆盖）
+	ErrMsgRuleVersionConflict = util.New(92506, "订阅规则版本冲突——请刷新后重试")
 )
 
 // 字典模块 92300-92399（P4-3）
 var (
 	ErrDictTypeNotFound = util.New(92301, "字典类型不存在或版本冲突")
+	ErrDictTypeInUse    = util.New(92304, "字典类型被字段引用中，不可删除")
 	ErrDictItemNotFound = util.New(92302, "字典项不存在或版本冲突")
 )
 

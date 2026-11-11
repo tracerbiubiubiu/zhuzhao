@@ -4,6 +4,19 @@
 # 运行前置：make docker-dev-reset && make dev（或等价部署），确保服务监听 BASE_URL
 set -euo pipefail
 
+# 每次调用独立目录；子阶段只继承 TMPDIR 父目录，不共享响应/令牌文件。
+umask 077
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zz-acceptance-phase2a.XXXXXXXX")"
+cleanup() {
+  local status=$?
+  if [ -n "${REDIS:-}" ]; then docker start "$REDIS" >/dev/null 2>&1 || true; fi
+  rm -rf -- "$TMP_DIR"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 BASE="${BASE_URL:-http://localhost:33333/api/v1}"
 HEALTH="${HEALTH_URL:-http://localhost:33333/health/ready}"
 
@@ -31,10 +44,6 @@ pass=0
 fail=0
 skip=0
 
-cleanup_redis() {
-  docker start "$REDIS" >/dev/null 2>&1 || true
-}
-trap cleanup_redis EXIT
 
 # --- 辅助函数（与 acceptance-phase1.sh 保持一致）---
 json_code()   { python3 -c "import sys,json; print(json.load(sys.stdin).get('code',''))"; }
@@ -102,11 +111,12 @@ check "ticket menus(11)" "11" "$TM"
 TT=$(psql_q "SELECT COUNT(*) FROM ticket_types WHERE code IN ('incident','request')")
 check "ticket types(2)" "2" "$TT"
 
-# W1（词表重排）：ticket_list 页面行=8 GET（读入口）+000042 补授 /orgs GET=9；写路由挂按钮行
+# W1（词表重排）：ticket_list 页面行=8 GET（读入口）+000042 补授 /orgs GET=9
+# +S10 B10-5 导出 GET /tickets/export GET=10 +S3a B3-1 available GET=11（000068 绑定）；写路由挂按钮行
 MA_GET=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.code = 'ticket_list' AND ma.api_method = 'GET'")
-check "ticket 页面 GET(9)" "9" "$MA_GET"
+check "ticket 页面 GET(11)" "11" "$MA_GET"
 MA_BTN=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.parent_id = (SELECT id FROM menus WHERE code='ticket_list') AND ma.api_method != 'GET'")
@@ -146,7 +156,7 @@ SA=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
 check "sa login" "0" "$(echo "$SA" | json_code)"
 SAT=$(echo "$SA" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
 
-# --- 预创建：组织 + 用户 A(创建者) + 用户 B(处理人) + 用户 V(viewer, 无 ticket 权限)
+# --- 预创建：组织 + 用户 A(创建者) + 用户 B(处理人) + 用户 V（零绑定临时角色，无 ticket 权限）
 ROOT_ID=$(psql_q "SELECT id FROM organizations WHERE parent_id IS NULL ORDER BY id LIMIT 1")
 [ -z "$ROOT_ID" ] && echo "WARN: no root org found, cannot create sub-org" >&2 && ROOT_ID=1
 
@@ -177,8 +187,14 @@ make_user() {
     -d "$payload")
   echo "$resp" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))"
 }
-# role 4 = viewer (seed), role 3 = operator, role 2 = admin
-ROLE_V=$(psql_q "SELECT id FROM roles WHERE code='viewer'")
+# T7 自愈化（2026-10-26）：改用本次运行自建的**零绑定临时角色**，不再依赖 seed
+# viewer 保持零绑定——后者可能被任何会话的功能实验合法修改（曾致 T7 假红：
+# 页面行绑定=GET 200/POST 403）。零 role_menus 即 T7 全部前提；残留行随 reset 清。
+RV_CODE="p2a_viewer_$$"
+RV_JSON=$(curl -s -X POST "$BASE/roles" -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"$RV_CODE\",\"name\":\"2a T7 无权限角色\",\"priority\":60}")
+ROLE_V=$(echo "$RV_JSON" | python3 -c "import sys,json; print((json.load(sys.stdin).get('data') or {}).get('id','0'))")
+check "create ephemeral no-perm role" "1" "$([ "$ROLE_V" != "0" ] && echo 1 || echo 0)"
 ROLE_O=$(psql_q "SELECT id FROM roles WHERE code='operator'")
 # 模拟管理员授权流程（对齐 Phase 1 #27 模式）：给 operator 绑定工单页面菜单 →
 # 页面菜单含全部 17 条 ticket menu_apis（W1 词表：8 GET 读 + 8 写挂按钮；000042 补 /orgs GET=1），
@@ -276,9 +292,9 @@ check "T2 A list excludes TID_B (他人创建, 自己未被分派)" "1" "$(echo 
 # ========================================================================
 # T3 / R4 / README §1.1-3: 不可见工单详情 → 404（90001，而非 403）
 # ========================================================================
-R4=$(curl -s -o /tmp/p2a.json -w "%{http_code}" \
+R4=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" \
   "$BASE/tickets/$TID_B" -H "Authorization: Bearer $AAT")
-R4C=$(cat /tmp/p2a.json | json_code)
+R4C=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T3 A读B 工单 http=404" "404" "$R4"
 check "T3 A读B 工单 code=90001" "90001" "$R4C"
 
@@ -307,18 +323,18 @@ AS=$(curl -s -X POST "$BASE/tickets/assign" \
 check "admin assigns B's ticket to A" "0" "$(echo "$AS" | json_code)"
 
 # A 对 B 的工单（已被分派=可见）做 DELETE：canOperate(delete)=false（即使可见也非属主/处理人能做）
-R6_DEL=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/delete" \
+R6_DEL=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/delete" \
   -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_B\"}")
-R6C=$(cat /tmp/p2a.json | json_code)
+R6C=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "R6 A 删除分派给自己但非创建的工单 http=403" "403" "$R6_DEL"
 check "R6 code=70001 (ErrNoPermission)" "70001" "$R6C"
 
 # 同样测试 assign 动作（A 自己不能分派他人）
-R6_ASS=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/assign" \
+R6_ASS=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/assign" \
   -H "Authorization: Bearer $AAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_A\",\"assigned_to\":\"$BID\"}")
-R6A=$(cat /tmp/p2a.json | json_code)
+R6A=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "R6 A assign A's ticket http=403" "403" "$R6_ASS"
 check "R6 assign code=70001" "70001" "$R6A"
 
@@ -341,10 +357,10 @@ check "T5 event assigned row" "1" "$T5_EV"
 # T6: 非法 transition → 400 + 90002
 # 种子 transitions：assigned 只能到 in_progress 或 open，不能直接 closed
 # ========================================================================
-CLOSE_BAD=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets/close" \
+CLOSE_BAD=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets/close" \
   -H "Authorization: Bearer $SAT" -H 'Content-Type: application/json' \
   -d "{\"id\":\"$TID_A\"}")
-T6C_HTTP=$(cat /tmp/p2a.json | json_code)
+T6C_HTTP=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T6 assigned→closed http=400" "400" "$CLOSE_BAD"
 check "T6 assigned→closed code=90002" "90002" "$T6C_HTTP"
 
@@ -364,18 +380,18 @@ CMT=$(psql_q "SELECT COUNT(*) FROM ticket_comments WHERE ticket_id=$TID_A AND is
 check "close comment saved" "1" "$CMT"
 
 # ========================================================================
-# T7 / R8: 无 ticket:list 路由权限（viewer 角色，未绑定 ticket_list 菜单）→ 403 + 70001
+# T7 / R8: 无 ticket:list 路由权限（p2a_viewer_* 零绑定临时角色）→ 403 + 70001
 # ========================================================================
-T7=$(curl -s -o /tmp/p2a.json -w "%{http_code}" "$BASE/tickets" \
+T7=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" "$BASE/tickets" \
   -H "Authorization: Bearer $VAT")
-T7C_HTTP=$(cat /tmp/p2a.json | json_code)
+T7C_HTTP=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T7 viewer GET tickets http=403" "403" "$T7"
 check "T7 viewer GET tickets code=70001" "70001" "$T7C_HTTP"
 # 同样验证 POST /tickets 也被 Casbin L1 拦
-T7P=$(curl -s -o /tmp/p2a.json -w "%{http_code}" -X POST "$BASE/tickets" \
+T7P=$(curl -s -o "$TMP_DIR/p2a.json" -w "%{http_code}" -X POST "$BASE/tickets" \
   -H "Authorization: Bearer $VAT" -H 'Content-Type: application/json' \
   -d "{\"type_code\":\"incident\",\"title\":\"viewer 不应能建\",\"priority\":3,\"org_id\":\"$TECH_ID\"}")
-T7PC=$(cat /tmp/p2a.json | json_code)
+T7PC=$(cat "$TMP_DIR/p2a.json" | json_code)
 check "T7 viewer POST tickets http=403" "403" "$T7P"
 check "T7 viewer POST code=70001" "70001" "$T7PC"
 

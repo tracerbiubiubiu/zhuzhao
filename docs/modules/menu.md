@@ -1,230 +1,46 @@
-# 菜单模块设计
+# 菜单：界面入口如何连接到 API 权限
 
-> 模块代码（实际路径，W1 回标）：`internal/service/menu_service.go` + `internal/repository/menu_repo.go` + `internal/handler/menu_handler.go`（扁平文件制）
->
-> 旧系统参考：`doc/module-assessment-2026-08/menu.md` + `dynamic-routing-research.md`
->
-> 主键以 [phase1/07-menu.md](../phase1/07-menu.md) 为准（`BIGINT` + `code`）。
+> 当前实现说明，2026-11-08 校准。菜单词表与 `menu_apis` 通过迁移维护；生产不开放菜单 CRUD / API 绑定。角色菜单分配仍可运行时进行。历史写接口设计见 [Phase 1 菜单](../phase1/07-menu.md)。
 
----
+## 1. 三种节点，各有职责
 
-## 1. 模块定位
+`menus` 中目录为 type=1、页面为 type=2、按钮为 type=3。页面节点提供路由与组件元数据，按钮节点提供操作权限码。菜单记录不包含 Vue 组件；新增页面需 UI 实现、菜单迁移及角色绑定同时到位。
 
-**核心底座配套模块**。菜单管理 + 前端权限数据源。菜单是动态路由的核心，连接角色和 API 策略。
+读取入口包括 `GET /api/v1/menus`、`GET /api/v1/menus/:id`、`GET /api/v1/user/menus`、`GET /api/v1/user/permissions`，以 `internal/router/router.go` 的 `New` 为实际注册权威。`MenuService.Update` 等遗留方法存在不代表生产路由开放写入。
 
-> **菜单 ≠ 前端页面**：`menus` 表存路由/按钮**元数据**；Vue 组件在前端仓库。系统内置项由 **migration 种子** 写入；`POST /menus` 供管理员在「菜单管理」页**登记**增补项。见 [phase1/07-menu §菜单从哪里来](../phase1/07-menu.md#菜单从哪里来种子-sql-vs-登记-api)。
+## 2. 从角色到菜单树
 
-与其他模块的关系：
-- 被 `role` 引用（角色-菜单分配）
-- 菜单-API 绑定是 Casbin API 策略的来源
-- 为前端提供菜单树和权限码
+`internal/service/menu_service.go` 的 `GetUserMenus` 查有效角色 ID，取角色绑定菜单，补齐祖先，再过滤按钮、隐藏项并组树。祖先补齐解决“勾了子页面但父目录缺失”的展示问题，不会授予兄弟页面或写权限。
 
----
+管理员菜单树同样依赖 `role_menus`，没有自动出现所有页面的特例。内置菜单迁移必须给 admin、superadmin 绑定，否则 API 可访问也可能没有导航入口。
 
-## 2. 数据模型
+`GetUserPermissions` 返回 `button:<permission>` 和 `route:<path>`。admin / superadmin 有全量目录权限码展开特例，普通角色按绑定计算。UI 用这些码决定交互，服务端仍独立鉴权；隐藏按钮不构成安全边界。
 
-> 完整 DDL 见 [phase1/07-menu.md](../phase1/07-menu.md)。
+## 3. 从绑定到路由鉴权
 
-```sql
-CREATE TABLE menus (
-    id          BIGSERIAL PRIMARY KEY,
-    parent_id   BIGINT REFERENCES menus(id),
-    code        VARCHAR(50) NOT NULL,
-    name        VARCHAR(100) NOT NULL,
-    menu_type   SMALLINT NOT NULL,
-    path        VARCHAR(200),
-    component   VARCHAR(200),
-    icon        VARCHAR(100),
-    permission  VARCHAR(100),
-    sort_order  INT DEFAULT 0,
-    visible     BOOLEAN DEFAULT TRUE,
-    is_system   BOOLEAN DEFAULT FALSE,
-    version     INT DEFAULT 1,
-    deleted_at  TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_menus_parent ON menus(parent_id) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX idx_menus_code ON menus(code) WHERE deleted_at IS NULL;
+```mermaid
+flowchart LR
+    A[role_menus 角色分配] --> C[角色 API 策略]
+    B[menu_apis 迁移词表] --> C
+    C --> D[casbin_rule]
+    D --> E[Casbin 路由检查]
+    A --> F[用户菜单与权限码]
+    F --> G[UI 导航和按钮]
 ```
 
-### 菜单-API 绑定
+`internal/service/rbac_service.go` 的 `AssignMenus` 在事务内更新角色菜单和策略，提交后重载 Enforcer。数据库已提交而重载失败会明确返回错误，不能把失败响应理解为已回滚。继承与资源授权见 [角色](role.md) 和 [权限地图](authz.md)。
 
-操作类 API 路径不含 `:id`（id 放 POST body），须完整写入 `menu_apis` 供 Casbin 策略生成：
+## 4. 新增页面的核对顺序
 
-```sql
-CREATE TABLE menu_apis (
-    menu_id     BIGINT NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
-    api_path    VARCHAR(200) NOT NULL,
-    api_method  VARCHAR(10) NOT NULL,
-    PRIMARY KEY (menu_id, api_path, api_method)
-);
-```
+1. 先确定页面、读接口和操作按钮。
+2. 迁移写入页面/按钮并给 admin、superadmin 绑定；编号先查 [迁移地图](../review/11-project-control.md)。
+3. 页面行只绑定 GET，写端点绑定按钮行。现有 ticket_list transition 例外须保留设计出处与允许表登记。
+4. 启动守卫 `AuditPageWriteBindings`、目录集成测试及 acceptance Phase 1 D2 共同验证，不能靠文档声明豁免。
 
----
+inbox 等身份自服务能力走自服务路由与 UI 常量入口，无需硬塞菜单授权。回滚 000075–000077 存在代码/数据库守卫耦合，操作前查 [运行手册](../ops/runbook.md)。
 
-## 3. 接口定义
+## 变更记录
 
-```go
-type MenuService interface {
-    // CRUD
-    Create(ctx context.Context, req CreateMenuRequest) (*model.Menu, error)
-    // Update 为 patch 语义（D2-17）：path/component/icon/permission/sort_order 指针化——
-    // 未传（nil）保持现值（原全量覆盖零值穿透：未传 component/icon 即被清空）
-    Update(ctx context.Context, code string, req UpdateMenuRequest) error
-    Delete(ctx context.Context, code string) error
-    GetByCode(ctx context.Context, code string) (*model.Menu, error)
-    // GetTree 管理端完整菜单树：model.Menu 递归嵌套 Children（db:"-"），含按钮节点
-    // （角色分配菜单需勾选按钮）。Phase 1 实现：internal/service/menu_service.go buildMenuTree。
-    GetTree(ctx context.Context) ([]model.Menu, error)
-
-    // API 绑定
-    BindAPIs(ctx context.Context, menuCode string, apis []APIRef) error
-    GetAPIs(ctx context.Context, menuCode string) ([]APIRef, error)
-
-    // 前端权限数据
-    // 用户侧菜单树（不含按钮）。Phase 1 实际方法名为 GetUserMenus（internal/service/menu_service.go）。
-    GetUserMenuTree(ctx context.Context, userID int64) ([]model.Menu, error)
-    GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
-}
-```
-
----
-
-## 4. 核心流程
-
-### 4.1 菜单类型层级约束（借鉴旧系统）
-
-```
-目录(type=1) → 可包含 目录(1) + 菜单(2)
-菜单(type=2) → 可包含 按钮(3)
-按钮(type=3) → 不可有子节点
-```
-
-创建/更新菜单时校验类型层级。
-
-**类型必要字段（B4-4）**：页面(type=2)必有 `path`（动态路由注册）、按钮(type=3)必有 `permission`（权限码下发）——缺失返回 400，防止「树里有节点、权限码里无路由」的矛盾数据。
-
-### 4.2 前端菜单树构建
-
-```
-GET /api/v1/user/menus
-
-1. 获取用户角色（Phase 1 仅 `user_roles` 直接角色；Phase 2b 起 BFS 三源展开）
-   → roles = ["admin", "editor"]
-
-2. 查角色绑定的菜单
-   → SELECT menu_id FROM role_menus
-     WHERE role_id IN (SELECT id FROM roles WHERE code = ANY($1))
-
-3. 查菜单详情（仅 menu_type=1 和 menu_type=2，不含按钮）
-   → SELECT * FROM menus
-     WHERE id IN (...) AND menu_type IN (1, 2) AND visible = true AND deleted_at IS NULL
-     ORDER BY sort_order
-
-4. 构建树结构（递归或迭代）
-   → 根据 parent_id 组装树
-
-5. 返回菜单树
-```
-
-### 4.3 权限码查询
-
-```
-GET /api/v1/user/permissions
-
-1. 获取用户角色
-2. 查角色绑定的菜单
-3. 查菜单中的按钮权限码
-   → SELECT permission FROM menus
-     WHERE id IN (...) AND menu_type = 3 AND permission <> '' AND deleted_at IS NULL
-4. 合并 route 权限码
-   → 菜单 type=1/2 的 path → "route:" + path
-5. 返回权限码列表
-   → ["button:user:create", "button:user:delete", "route:/system/user", ...]
-```
-
-### 4.4 删除菜单（级联，借鉴旧系统）
-
-```
-POST /api/v1/menus/delete
-
-1. 系统菜单保护
-   → menu.is_system == true？返回 403
-
-2. 检查子菜单
-   → 有子菜单？返回 409（需先删子菜单）
-   -- 或递归删除子树（看需求）
-
-3. 事务开始
-   → BEGIN
-
-4. 删除菜单-API 绑定
-   → DELETE FROM menu_apis WHERE menu_id = ?
-
-5. 删除角色-菜单绑定
-   → DELETE FROM role_menus WHERE menu_id = ?
-
-6. 软删除菜单
-   → UPDATE menus SET deleted_at = NOW() WHERE id = ?
-
-7. 事务提交
-
-8. 事务外副作用
-   → 触发绑定该菜单的所有角色 SyncPolicies（Casbin 策略更新）
-   → 失效权限缓存
-```
-
-### 4.5 菜单-API 绑定 → Casbin 策略
-
-菜单绑定 API 后，触发角色策略同步：
-
-```
-角色绑定菜单 → 菜单绑定 API → Casbin 策略
-  role_menus         menu_apis          casbin_rule
-  ──────────         ─────────          ───────────
-  editor → user_menu  user_menu → /api/users, GET  →  [editor, /api/users, GET]
-                       user_menu → /api/users, POST →  [editor, /api/users, POST]
-```
-
----
-
-## 5. 旧系统借鉴
-
-| 设计 | 决策 | 理由 |
-|------|------|------|
-| 三类型（目录/菜单/按钮） | ✅ 直接采用 | 前端标准模式 |
-| 类型层级约束 | ✅ 直接采用 | 防止错误嵌套 |
-| 菜单-API 绑定 | ✅ 直接采用 | 亮点设计，自动生成策略 |
-| 权限码三分类（route/button/api） | ✅ 直接采用 | 精细控制 |
-| syncSystemMenus desired-state | ✅ 改为 migration 种子数据 | 更简单 |
-| IsSystem 保护 | ✅ 直接采用 | 系统菜单不可删 |
-| 前端字段（component/icon/sort/visible） | ✅ 直接采用 | 前端渲染需要 |
-| swagger 驱动 API 同步 | ✅ Phase 2a Step 0 | 需要 swag 集成（[00 §3 Step 0](../phase2/00-implementation-plan.md) 承接：`make swag` + handler 注解） |
-
----
-
-## 6. 分阶段实施
-
-### Phase 1
-
-- 菜单 CRUD（含类型层级约束）
-- 菜单树查询
-- 角色-菜单分配
-- 前端菜单树接口（/user/menus）
-- 权限码接口（/user/permissions）
-- 系统菜单保护
-- **Phase 1 菜单清单（目录 + 页面 + 按钮）** — 见 [07-menu §Phase 1 菜单清单](../phase1/07-menu.md#phase-1-菜单清单前端契约)；种子 SQL 须含按钮行
-
-### Phase 2
-
-- 菜单-API 绑定
-- Casbin 策略自动同步
-| swagger 驱动 API 同步 |
-| 删除菜单级联（角色策略更新） |
-
-### Phase 3
-
-- 菜单缓存（Redis）
-| 菜单主题/多租户菜单 |
+| 日期 | 变更 |
+|---|---|
+| 2026-11-08 | 用当前只读能力替换退役 CRUD 草图；补管理员导航绑定、祖先补齐、策略事务和 B 案顺序。 |

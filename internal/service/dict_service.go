@@ -58,6 +58,16 @@ func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
 }
 
 func (s *DictService) DeleteType(ctx context.Context, code string) error {
+	// B1-2 删除守卫（拍板点④）：被 ticket_type_fields 的 `dict:<code>` 引用时拒删
+	//（先守卫后删——误删即全部引用字段选项悬空；项删除不拦=运营高频动作）
+	inUse, err := s.repo.HasFieldDictRef(ctx, code)
+	if err != nil {
+		s.logger.Error("dict guard scan field refs", "err", err)
+		return errcode.ErrInternal
+	}
+	if inUse {
+		return errcode.ErrDictTypeInUse
+	}
 	if err := s.repo.DeleteTypeByCode(ctx, code); err != nil {
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
 			return errcode.ErrDictTypeNotFound
@@ -81,6 +91,25 @@ func (s *DictService) ListItems(ctx context.Context, page, pageSize int, typeCod
 		return nil, errcode.ErrInternal
 	}
 	return &model.DictItemListResponse{List: list, Total: total, Page: page, PageSize: pageSize}, nil
+}
+
+// ItemsForConsumer 消费入口：includeDisabled=true 走显示面（含停用），否则仅启用。
+func (s *DictService) ItemsForConsumer(ctx context.Context, code string, includeDisabled bool) ([]*model.DictItem, error) {
+	if includeDisabled {
+		return s.ItemsByCodeIncludingDisabled(ctx, code)
+	}
+	return s.EnabledItemsByCode(ctx, code)
+}
+
+// ItemsByCodeIncludingDisabled 显示面（RR-HY-02）：含停用项——存量工单回显名称、
+// 编辑回显旧值用；新建/改选仍只允许启用项（前端以 enabled 标记禁选）。
+func (s *DictService) ItemsByCodeIncludingDisabled(ctx context.Context, code string) ([]*model.DictItem, error) {
+	items, err := s.repo.ListItemsByCodeIncludingDisabled(ctx, code)
+	if err != nil {
+		s.logger.Error("dict items including disabled", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	return items, nil
 }
 
 // EnabledItemsByCode 消费面（业务表单选项等）：按 type 拉取启用项（type 停用返回空）

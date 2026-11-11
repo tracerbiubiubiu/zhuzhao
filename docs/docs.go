@@ -15,6 +15,122 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/assignment-rules": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "自动分派规则列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "建自动分派规则（target_user 须属 target_org——决议③写侧校验）",
+                "parameters": [
+                    {
+                        "description": "规则",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/assignment-rules/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "删自动分派规则",
+                "parameters": [
+                    {
+                        "description": "规则 ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/assignment-rules/enabled": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "启停自动分派规则",
+                "parameters": [
+                    {
+                        "description": "启停",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/audit/logs": {
             "get": {
                 "security": [
@@ -77,7 +193,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "HTTP 方法（GET/POST/PUT/DELETE 等）",
+                        "description": "HTTP 方法（单值或逗号分隔多值，如 GET,POST）",
                         "name": "method",
                         "in": "query"
                     }
@@ -243,6 +359,25 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/badges": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badge"
+                ],
+                "summary": "待办角标聚合（sections 开放 map——前端 60s 轮询；未知 section 前端忽略）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dead-letters": {
             "get": {
                 "security": [
@@ -260,6 +395,91 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/{key}": {
+            "get": {
+                "description": "定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即 404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "文件代理下载（稳定 URL——头像等对象经应用投递）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "对象键（{domain}/{yyyy}/{mm}/{uuid}.{ext}）",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "对象流（ETag/nosniff/private/分型 disposition）",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "304": {
+                        "description": "命中 If-None-Match（零传输零审计行）"
+                    },
+                    "404": {
+                        "description": "91003（含 pending/非支持面/替换嫌疑同形）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/intel/query": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "外部限流 API 的缓存代理（ACL 防腐——result 上游原样透传）；配额耗尽降级返回过期缓存带 stale 标记",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "intel"
+                ],
+                "summary": "威胁情报查询（先缓存后回源；stale=过期缓存降级标记）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "情报类型（ip/domain/hash/url）",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "查询值",
+                        "name": "value",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -315,6 +535,31 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "cron_spec 非法等",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/jobs/actions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "注册动作的 id/名称/描述/参数 schema（null=未声明降级 JSON 模式）；不含运行数据",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "任务动作清单（提交选单数据源——最小读面）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -382,6 +627,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/notification-optouts": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification"
+                ],
+                "summary": "当前用户通知退订列表（B6-4 偏好自服务）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification"
+                ],
+                "summary": "设置当前用户通知退订（按 biz_type+event_action；\"*\" 通配同域全退）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/menus": {
             "get": {
                 "security": [
@@ -440,6 +730,98 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/message-logs": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "发送记录列表",
+                "responses": {}
+            }
+        },
+        "/api/v1/message-rules": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "订阅规则列表",
+                "responses": {}
+            },
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "创建/更新订阅规则",
+                "responses": {}
+            }
+        },
+        "/api/v1/message-rules/delete": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "删除订阅规则",
+                "responses": {}
+            }
+        },
+        "/api/v1/message-templates": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "消息模板列表",
+                "responses": {}
+            },
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "创建消息模板",
+                "responses": {}
+            }
+        },
+        "/api/v1/message-templates/delete": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "删除消息模板",
+                "responses": {}
+            }
+        },
+        "/api/v1/message-templates/update": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "更新消息模板",
+                "responses": {}
             }
         },
         "/api/v1/notifications": {
@@ -534,6 +916,112 @@ const docTemplate = `{
                     "notifications"
                 ],
                 "summary": "删除通知配置（body 携带 code——zhuzhao 风格）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/inbox": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "站内收件箱分页（倒序；unread=true 仅未读）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "仅未读",
+                        "name": "unread",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "单条已读（幂等；非本人 404 同形）",
+                "parameters": [
+                    {
+                        "description": "通知 ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.notificationIDReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/read-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "全部已读（批量——返回置读条数）",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1096,6 +1584,241 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/storage/avatar/bind": {
+            "post": {
+                "description": "校验对象（confirmed+本人+avatar 面，非皆同形 404）→ users.avatar 落对象键 → 旧头像弃旧（对象 best-effort 删除+标 deleted）；同键重复幂等。前端渲染 src=/api/v1/files/{avatar}",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "头像回写（确认对象绑定为当前用户头像）",
+                "parameters": [
+                    {
+                        "description": "对象键",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "91003（含非本人/pending/非 avatar 面防枚举同形）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/storage/presign/upload": {
+            "post": {
+                "description": "限制矩阵预检（MIME 白名单+黑名单/大小）→ 服务端生成对象键 → 签发 PUT 直传 URL。purpose 取 avatar / attachment_create / richtext_create（ticket 态随附件批）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "对象预签名上传（返回直传 URL——Content-Type 已钉入签名）",
+                "parameters": [
+                    {
+                        "description": "上传声明",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "91001 超限 / 91002 类型不允许 / 10003 参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/system/cron-status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "cron 任务状态（只读——上次成功/失败/耗时；超时扫描含观察模式标记）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/system/settings": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "设置列表（catalog 全量——含有效值/来源/编辑层级）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/system/settings/reset": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "恢复默认（删除运行时覆盖回出厂值；幂等）",
+                "parameters": [
+                    {
+                        "description": "设置键",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/system/settings/update": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "更新设置（tier 分层+硬底线校验——越界 400）",
+                "parameters": [
+                    {
+                        "description": "键值对",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks": {
             "post": {
                 "security": [
@@ -1456,7 +2179,7 @@ const docTemplate = `{
                 "tags": [
                     "ticket-admin"
                 ],
-                "summary": "删除工单类型（有工单禁删 → 409）",
+                "summary": "删除工单类型（有工单/模板引用禁删 → 409）",
                 "parameters": [
                     {
                         "type": "string",
@@ -1584,6 +2307,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ticket-types/{code}/fields/impact": {
+            "get": {
+                "description": "每字段在途工单使用计数（非终态单 custom_data 含该键）——被删字段的在途数即变更代价",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "字段在途影响分析（全量替换前的变更代价）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/{code}/fields/variables": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "模板可用变量集（变量字典——06 号 A.6）",
+                "responses": {}
+            }
+        },
         "/api/v1/tickets": {
             "get": {
                 "consumes": [
@@ -1619,6 +2398,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工单状态",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态集合，逗号分隔，与status互斥（例assigned,in_progress）",
+                        "name": "statuses",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排除状态集合，逗号分隔，与status/statuses互斥",
+                        "name": "exclude_statuses",
                         "in": "query"
                     },
                     {
@@ -1732,6 +2523,176 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/attachments/confirm": {
+            "post": {
+                "description": "校验归属（非本人同形 404 防枚举）与 pending 态 → 对象存储 HEAD 实测（size/类型）→ 翻 confirmed。重复 confirm 409",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "确认上行对象（HEAD 实测→落 confirmed+etag 快照）",
+                "parameters": [
+                    {
+                        "description": "对象键",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "91003 不存在（含非本人防枚举同形）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "91004 已确认/已关联",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/attachments/delete": {
+            "post": {
+                "description": "L2 update 面；删关联行+对象本体 best-effort 删+标 deleted（A.4 #4）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "删除工单附件（删关联+对象弃旧）",
+                "parameters": [
+                    {
+                        "description": "工单 ID+对象键",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DeleteAttachmentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "91003 不存在/非绑定",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/cc": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "添加工单抄送",
+                "parameters": [
+                    {
+                        "description": "添加抄送请求（user_ids 仅本人=自抄送走读可见；含他人=需 update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/cc/remove": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "移除工单抄送",
+                "parameters": [
+                    {
+                        "description": "移除抄送请求（本人自摘走读可见；摘他人需 update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/close": {
             "post": {
                 "consumes": [
@@ -1831,6 +2792,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/export": {
+            "get": {
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单导出（xlsx 流式——与列表同筛选/同可见性；行数上限 5 万）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单类型",
+                        "name": "type_code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "工单状态",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态集合，逗号分隔，与status互斥（例assigned,in_progress）",
+                        "name": "statuses",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排除状态集合，逗号分隔，与status/statuses互斥",
+                        "name": "exclude_statuses",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "优先级",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "标签（S10 B10-2）",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "处理人过滤，仅支持 me",
+                        "name": "assignee",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建人过滤，仅支持 me",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "标题关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期起（YYYY-MM-DD）",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期止（YYYY-MM-DD）",
+                        "name": "created_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "xlsx 附件",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/notes": {
             "post": {
                 "consumes": [
@@ -1884,6 +2932,151 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateRelationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/richtext/render": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "richtext 字段服务端渲染（消毒 SSOT）",
+                "parameters": [
+                    {
+                        "description": "MD 源文本",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/tags": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "添加工单标签",
+                "parameters": [
+                    {
+                        "description": "添加标签请求（读可见面协作动作——默认共享；单次 ≤20 个/单个 ≤50 字符）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/tags/remove": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "移除工单标签",
+                "parameters": [
+                    {
+                        "description": "移除标签请求（自摘=读可见；摘他人挂的=update 权）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/transition": {
+            "post": {
+                "description": "AssertTransition 状态机 + transition_meta from\u003eto condition 权限门（fail-closed）+ validator expr 前置条件；单事务执行+commit 后 emit ticket.transitioned",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "执行工单状态转换（condition/validator 服务端判——统一入口）",
+                "parameters": [
+                    {
+                        "description": "转换请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest"
                         }
                     }
                 ],
@@ -1958,6 +3151,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/{id}/attachments": {
+            "get": {
+                "description": "L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "工单附件列表（JOIN 视图）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/cc": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单抄送列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/{id}/comments": {
             "get": {
                 "produces": [
@@ -1995,6 +3266,63 @@ const docTemplate = `{
                     "ticket"
                 ],
                 "summary": "工单关联列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/tags": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单标签列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/transitions/available": {
+            "get": {
+                "description": "condition 不满足的转换不出现；服务端 AssertTransition+condition 为 fail-closed 兜底，前端过滤仅 UX",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "当前用户可执行的转换列表（Jira condition 语义——按用户过滤）",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2643,6 +3971,46 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketCCRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "user_ids"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "user_ids": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AddTicketTagsRequest": {
+            "type": "object",
+            "required": [
+                "tags",
+                "ticket_id"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest": {
             "type": "object",
             "required": [
@@ -2673,6 +4041,23 @@ const docTemplate = `{
                     "type": "string",
                     "example": "0"
                 },
+                "escalation_supervisor_id": {
+                    "description": "EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；nil=保持不动）",
+                    "type": "string",
+                    "example": "0"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignmentRuleIDRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
                 "id": {
                     "type": "string",
                     "example": "0"
@@ -2709,6 +4094,51 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.ConfirmFileInput": {
+            "type": "object",
+            "required": [
+                "object_key"
+            ],
+            "properties": {
+                "object_key": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateAssignmentRuleRequest": {
+            "type": "object",
+            "required": [
+                "target_org",
+                "type_code"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "keyword": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "target_org": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "target_user": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "type_code": {
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },
@@ -2817,14 +4247,23 @@ const docTemplate = `{
                     "type": "string",
                     "example": "0"
                 },
-                "custom_data": {
+                "attachments": {
+                    "description": "B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂\nconfirmed 对象键列表，Create 同事务校验+落绑 ticket_attachments。\n语义=增量落绑（只增不删）：解除绑定走 POST /tickets/attachments/delete\n（内嵌图 ticket_richtext 不可经该端点删——随工单生命周期，A.7）",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
+                },
+                "custom_data": {
+                    "type": "object"
                 },
                 "description": {
                     "type": "string"
+                },
+                "escalation_supervisor_id": {
+                    "description": "EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign 改）",
+                    "type": "string",
+                    "example": "0"
                 },
                 "org_id": {
                     "type": "string",
@@ -2995,6 +4434,57 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.FileObject": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "confirmed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "etag": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "object_key": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "owner_kind": {
+                    "description": "通用归属引用（000047 随行件）：ticket 态 confirm/建单落绑填 ticket、avatar bind 填 user；\nNULL = 未归属（pending / *_create 悬挂态 / 存量行）。元数据面，不作判定依据。",
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest": {
             "type": "object",
             "required": [
@@ -3146,6 +4636,57 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadInput": {
+            "type": "object",
+            "required": [
+                "file_name",
+                "mime_type",
+                "purpose",
+                "size_bytes"
+            ],
+            "properties": {
+                "file_name": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PresignUploadResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "method": {
+                    "type": "string"
+                },
+                "object_key": {
+                    "type": "string"
+                },
+                "upload_url": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest": {
             "type": "object",
             "required": [
@@ -3153,6 +4694,60 @@ const docTemplate = `{
             ],
             "properties": {
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketCCRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "user_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RemoveTicketTagRequest": {
+            "type": "object",
+            "required": [
+                "tag",
+                "ticket_id"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "# 标题\n\n- 列表"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RenderRichtextResponse": {
+            "type": "object",
+            "properties": {
+                "html": {
                     "type": "string"
                 }
             }
@@ -3174,7 +4769,7 @@ const docTemplate = `{
                     }
                 },
                 "version": {
-                    "description": "Version 可选乐观锁：以父类型 ticket_types.version 做 CAS；nil = 不做 CAS。\n须 \u003e 0，否则 400。",
+                    "description": "Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。\n预检后配置改变返回409；非nil须\u003e0，否则400。",
                     "type": "integer"
                 }
             }
@@ -3193,6 +4788,17 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.ResetSettingRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "key": {
+                    "type": "string"
                 }
             }
         },
@@ -3293,6 +4899,82 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.SettingView": {
+            "type": "object",
+            "properties": {
+                "default_value": {
+                    "description": "config 出厂默认（前端 恢复默认/已自定义 判定用）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "min_editor_tier": {
+                    "description": "superadmin | admin",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "config=出厂默认 | kv=运行时覆盖",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "version": {
+                    "description": "kv 行当前版本（回传 expected_version 用）",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "object_key": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "uploaded_by": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput": {
             "type": "object",
             "required": [
@@ -3309,6 +4991,13 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
+                "field_meta": {
+                    "description": "B1-3 formula/extension（附录 A.2 方案 b）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "field_options": {
                     "type": "array",
                     "items": {
@@ -3324,7 +5013,8 @@ const docTemplate = `{
                         "date",
                         "select",
                         "multi_select",
-                        "tips"
+                        "tips",
+                        "richtext"
                     ]
                 },
                 "required": {
@@ -3336,6 +5026,41 @@ const docTemplate = `{
                 "validate_regex": {
                     "type": "string",
                     "maxLength": 200
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "to"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "to": {
+                    "type": "string",
+                    "maxLength": 64
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateAssignmentRuleEnabledRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },
@@ -3426,12 +5151,45 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateSettingRequest": {
+            "type": "object",
+            "required": [
+                "key",
+                "value"
+            ],
+            "properties": {
+                "expected_version": {
+                    "description": "ExpectedVersion F-D2 乐观锁（可选）：传 List 返回的 version——并发他人\n已改过即 400 提示刷新；不传=服务端重读重试（兼容存量调用，last-write-wins）。",
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateTicketRequest": {
             "type": "object",
             "required": [
                 "id"
             ],
             "properties": {
+                "attachments": {
+                    "description": "B5-4 编辑增量绑定（05 号 A.3 a 案）：悬挂 confirmed 对象（attachment_create/\nrichtext_create）键列表，随保存同事务落绑——与 CreateTicketRequest.Attachments\n同语义（本人/confirmed/悬挂态/未绑定，超上限 400）；删附件走 attachments/delete 端点",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "custom_data": {
+                    "description": "B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项 2026-10-20）：仅传入键覆盖基线、\n值为 null 的键删除（清空字段）；合并后整体按类型字段 schema G2 重校验；仅非终态可改。\n字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地——请求体已入通用审计行。",
+                    "type": "object"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -3506,6 +5264,13 @@ const docTemplate = `{
                         "type": "integer"
                     }
                 },
+                "transition_meta": {
+                    "description": "TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation；\nnil=不动，非空 JSON 对象=全量替换；服务端 validateTransitionMeta 校验）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "transitions": {
                     "type": "array",
                     "items": {
@@ -3513,7 +5278,7 @@ const docTemplate = `{
                     }
                 },
                 "version": {
-                    "description": "Version 可选乐观锁：nil = 不做 CAS（保持旧 patch 行为）；非 nil = 命中\nticket_types.version 才写，否则 409。须 \u003e 0，否则 400。",
+                    "description": "Version 为可选客户端期望版本；非nil须命中ticket_types.version，否则409。\n缺省时图/meta写由服务端快照CAS；普通属性patch兼容原路径。须\u003e0，否则400。",
                     "type": "integer"
                 }
             }
@@ -3622,6 +5387,34 @@ const docTemplate = `{
                 },
                 "timeout_secs": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.DeleteAttachmentInput": {
+            "type": "object",
+            "required": [
+                "object_key",
+                "ticket_id"
+            ],
+            "properties": {
+                "object_key": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.notificationIDReq": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },

@@ -1,5 +1,8 @@
 # 02 - 资源级鉴权（authz-resource，Phase 2a）
 
+> **适用范围（2026-11-08整理）**：保留assigned→scope→委托的阶段差异；当前project_isolated已由IW1落地，R11/R12未来标记仅为原阶段。资源故障应500而不是不可见404，确定性不可见404；接口签名与构造参数以resource.Resource/Registry及工单Resource源码为准。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 1**，依赖 Phase 1 验收（Casbin 路由级 RBAC + ResourceRegistry 空接口）。  
 > 完整资源抽象见 [proposal/resource-model.md](../proposal/resource-model.md)；**本文档为 2a 实现 SSOT**。
 

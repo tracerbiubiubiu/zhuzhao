@@ -14,6 +14,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	orgdeleg "github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -41,10 +42,12 @@ func setupTicket2a(t *testing.T) (*Service, int64, int64, int64, stubRoleFetcher
 	ticketRepo := repository.NewTicketRepo(testPool)
 	orgRepo := repository.NewOrgRepo(testPool)
 	reg := resource.NewRegistry()
-	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool)))
+	reg.Register(NewResource(ticketRepo, NewPgxScopeResolver(testPool), orgdeleg.NewOrgDelegationService(testPool), repository.NewTicketCCRepo(testPool)))
 
 	roles := stubRoleFetcher{}
-	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool))
+	stgCfg := &pkgstorage.StorageConfig{}
+	stgCfg.ApplyDefaults()
+	svc := NewTicketService(testPool, ticketRepo, orgRepo, reg, roles, orgdeleg.NewOrgDelegationService(testPool), repository.NewStorageRepo(testPool), pkgstorage.NewConfigStore(stgCfg), nil)
 
 	// 预取 root org id（seedMinimal 已建）
 	var rootID int64

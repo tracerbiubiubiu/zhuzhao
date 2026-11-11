@@ -1,5 +1,8 @@
 # 05 - 角色模块（role）
 
+> **适用范围（2026-11-08整理）**：当前赋菜单以页面读API、按钮写API的B案词表为准；下方页面同时绑定GET/POST仅是原Phase1种子形态。能力面展开角色与用户管理直接角色守卫仍是不同权源，继承单调child.priority≤parent.priority保留；初始admin123不是当前开发测试台账。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 7**，依赖 Step 5（authz）。与 Step 8/9 **可并行**（AssignMenus 使用 Step 1 种子 `menu_apis`）。
 
 ---
@@ -246,6 +249,9 @@ WHERE deleted_at IS NULL
 ```
 Phase 2b 有效角色 = 直接 ∪ 所在组织的 org_roles ∪ parent 角色链
 
+Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独立
+```
+
 > ⚠️ **角色来源双轨语义（P1-1，2026-08-31 确认并锁定，TestBK12_DirectVsExpanded）**：
 > **能力面（L1/菜单可见性）= 展开集**（直接 ∪ 组织绑定 ∪ 继承链，`GetEffectiveRoleCodes`）；
 > **管理守卫（user 模块防提权）= 仅直接角色**（`GetRoles`，`INNER JOIN user_roles`）。
@@ -255,8 +261,7 @@ Phase 2b 有效角色 = 直接 ∪ 所在组织的 org_roles ∪ parent 角色�
 > 角色继承（parent_id）默认不启用（写侧随 BK-12 已备，触发条件：角色能力打包诉求）。
 >
 > ⚠️ **继承 × 等级规则（2026-08-31 拍板；同日方向修正，随 BK-12 角色管理写侧落地）**：BFS 为**绑子得父**（子权限 ⊇ 父权限），设置 `roles.parent_id` 时校验 **`child.priority ≤ parent.priority`（子不弱于父）**——只允许强子继承弱父（增益、无提权）；放行弱子继承强父即纯提权旁路（admin 可经 `child.parent = 高级角色` 绕过 `ensureRolePriorityAllowed` 的赋角防线）。此前 parent_id 无写侧入口（BK-12 同族缺口），规则为潜伏态；实现时另需校验环（A→B→A）与软删/禁用父角色。
-Phase 2b 数据可见  = ltree scope（group/all/assigned），与 org_roles 独立
-```
+
 
 #### 种子用户
 

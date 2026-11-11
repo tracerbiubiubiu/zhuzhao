@@ -17,7 +17,7 @@ services:
     volumes:
       - dev_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zhuzhao"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,6 +40,58 @@ services:
       timeout: 5s
       retries: 5
 
+  # RustFS 对象存储（phase5 S5/B5-1 开发依赖；2026-10-16 所有者拍板 MinIO → RustFS——
+  #   Apache 2.0 + S3/MinIO 兼容，镜像已拉已冒烟；W0 工程预备草案）：
+  #   profile=storage 隔离——默认不起（不拉镜像时不破坏现栈 up -d）：
+  #   docker compose -f deployments/docker-compose.dev.yaml --profile storage up -d rustfs
+  #   B5-1 时移除 profiles 行转常驻依赖；config.yaml `storage.endpoint` 对 localhost:9000。
+  #   ✅ 版本已钉死 1.0.1（2026-10-19 B5-1 批1——判据①实测版本，digest 与 latest 一致）。
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    container_name: zhuzhao-dev-rustfs
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      RUSTFS_ROOT_USER: zhuzhao_rustfs
+      RUSTFS_ROOT_PASSWORD: zhuzhao_rustfs_dev
+      # S3 口 CORS（判据①实测必设——不设存在反射式风险 GHSA-x5xv-223c-8vm7；
+      # zhuzhao-ui vite dev 已钉 4000（2026-10-29 同步主栈 compose——5173 为历史端口
+      # 保留防回退，白名单过期曾致头像直传 Failed to fetch）
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:4000,http://127.0.0.1:4000
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - dev_rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 可视（2026-11-02 口径拍板：中间件控制台一律外部化——只挂外部工具，不内嵌
+  #   业务应用；profile=tools 隔离，默认不起）：
+  #   docker compose -f deployments/docker-compose.dev.yaml --profile tools up -d redisinsight
+  #   打开 http://localhost:5540 → Add Database 手输 host=redis port=6379
+  #   password=zhuzhao_dev（不做 env 预配置——v1 的 REDIS_HOSTS 在 3.8.0 bundle
+  #   零引用已实证废弃，v3 预配置走 RI_PRE_SETUP_DATABASES_PATH 挂 JSON 且预配置
+  #   库 UI 不可编辑，dev 工具不值得）。
+  #   asynqmon 不挂的原因（2026-11-02 实证三连）：官方 hibiken/asynqmon 停更 3 年+
+  #   无 arm64 镜像 + 不兼容本仓 taskrunner 的 asynq v0.26 队列格式（issue #302），
+  #   社区 fork 无发布镜像；队列深查现状=zhuzhao-ui jobs/死信三 Tab + redis-cli
+  #   --scan --pattern 'asynq:{jobs}:*'；未来需要时给 taskrunner 加 Inspector 只读
+  #   端点（它已内置 asynq.Inspector 实例，小批可落）。
+  redisinsight:
+    image: redis/redisinsight:3.8.0   # 版本钉死对齐 rustfs 判据①惯例
+    container_name: zhuzhao-dev-redisinsight
+    profiles: ["tools"]
+    ports:
+      - "5540:5540"
+    volumes:
+      - dev_redisinsight_data:/data
+
 volumes:
   dev_pg_data:
   dev_redis_data:
+  dev_rustfs_data:
+  dev_redisinsight_data:

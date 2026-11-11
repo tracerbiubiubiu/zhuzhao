@@ -3,10 +3,14 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/viper"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 )
 
 // Config 全局配置
@@ -33,6 +37,58 @@ type Config struct {
 	// P4-7 登录验证码（顶层平面键；enabled=false dev/E2E 默认——登录契约零变化）
 	CaptchaEnabled bool   `mapstructure:"captcha_enabled"`
 	CaptchaTTL     string `mapstructure:"captcha_ttl"`
+
+	// phase5 S5 对象存储（05 号 A.2；enabled=false 默认零现栈影响——批4 骨架先行，
+	// 消费者随 B5-1 后续批接入）
+	Storage storage.StorageConfig `mapstructure:"storage"`
+
+	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化：契约到手填值即切
+	// 生产态；微批 A 修复审计 P1-3「Endpoint 无配置入口」）
+	Notification NotificationConfig `mapstructure:"notification"`
+	// Tickets 工单域内务配置（S10 B10-4——超时扫描骑 CronScheduler，D18 维护型口径）
+	Tickets TicketsConfig `mapstructure:"tickets"`
+	// Intel 威胁情报缓存代理（S9 B9-1——09 号附录 A.2/A.3）
+	Intel IntelConfig `mapstructure:"intel"`
+}
+
+// NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
+type NotificationConfig struct {
+	UIP UIPConfig `mapstructure:"uip"`
+	// VolumeWarnPerHour 小时发送量 WARN 阈值（C-16——2026-10-27 观测批；批量导入
+	// 场景投递全成功零死信，死信告警抓不住「成功的骚扰」）。0=关（默认代码态；
+	// configs/config.yaml 随批给 500）；超限仅 WARN 日志不走 S6 通知闭环——
+	// 通知系统自身故障时其告警通道同时失效，日志面才自守
+	VolumeWarnPerHour int `mapstructure:"volume_warn_per_hour"`
+}
+
+// IntelConfig 情报缓存代理配置。
+type IntelConfig struct {
+	Upstream threatintel.Config `mapstructure:"upstream"`
+	// TTL 类型级缓存时长（如 ip: 168h / hash: 720h——7/30 天双档；缺省 7 天）
+	TTL map[string]string `mapstructure:"ttl"`
+	// QPS 上游自留量限流（缺省 1——保守起步保护配额；0=禁用）
+	QPS float64 `mapstructure:"qps"`
+	// QueryRatePerMin 平台侧查询端点限流（次/分；缺省 60）
+	QueryRatePerMin int `mapstructure:"query_rate_per_min"`
+}
+
+// TicketsConfig 工单域内务（S10 B10-4 节点超时）。
+type TicketsConfig struct {
+	// TimeoutScanEnabled 超时扫描任务开关（默认开——扫描只发事件，无 meta 配置
+	// 的类型零成本跳过；关闭=不装配）
+	TimeoutScanEnabled bool `mapstructure:"timeout_scan_enabled"`
+	// TimeoutScanTick 扫描周期（默认 5m——10 号 A.5）
+	TimeoutScanTick string `mapstructure:"timeout_scan_tick"`
+	// TimeoutObserve 观察模式（默认 true=发布安全默认：存量 status_changed_at 为
+	// updated_at 近似回填，首轮可能误报——观察确认后关闭才实际发送；cron-status 可见）
+	TimeoutObserve bool `mapstructure:"timeout_observe"`
+}
+
+// UIPConfig 统一消息平台（UIP）adapter 配置（A.3：endpoint config 化——
+// 真实契约到手只改映射层 mapToUIP 并扩鉴权头字段，配置面不动；
+// 鉴权头字段待契约定形后补——勿超前引用）。
+type UIPConfig struct {
+	Endpoint string `mapstructure:"endpoint"` // UIP 端点（空=开发态桩；生产态空→92004 fail-fast）
 }
 
 // RateLimitConfig API 级限流（07 §2）：令牌桶 user_id/ClientIP 双键，Redis Lua。
@@ -263,6 +319,7 @@ func Load(path string) (*Config, error) {
 
 	// 环境变量绑定（AutomaticEnv 对 nested key 不自动映射，需显式 BindEnv）
 	viper.BindEnv("server.mode", "APP_SERVER_MODE")
+	viper.BindEnv("server.port", "APP_PORT") // 端口分配表 33334 第二实例机制(APP_PORT=33334 make dev)
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
@@ -285,6 +342,29 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("captcha_enabled", false)
 	viper.BindEnv("captcha_ttl", "APP_CAPTCHA_TTL")
 	viper.SetDefault("captcha_ttl", "5m")
+	// phase5 S5 对象存储（05 号 A.2——env 名对齐部署侧 STORAGE_*；slice 项走 config.yaml）
+	viper.BindEnv("storage.enabled", "STORAGE_ENABLED")
+	viper.BindEnv("storage.endpoint", "STORAGE_ENDPOINT")
+	viper.BindEnv("storage.access_key", "STORAGE_ACCESS_KEY")
+	viper.BindEnv("storage.secret_key", "STORAGE_SECRET_KEY")
+	// A.11「生产 Secure」：文件通道 cookie Secure 属性（HTTPS 网关置 true——S5 评审 P2-4）
+	viper.BindEnv("storage.file_cookie_secure", "STORAGE_FILE_COOKIE_SECURE")
+	// phase5 S6 UIP 渠道（06 号 §3/A.3——endpoint config 化；契约到手填值切生产态）
+	viper.BindEnv("notification.uip.endpoint", "NOTIFICATION_UIP_ENDPOINT")
+	viper.SetDefault("notification.uip.endpoint", "")
+	// S10 B10-4 超时扫描（observe 默认 true——E-2 拍定缓解①，dev/release 同默认）
+	viper.SetDefault("tickets.timeout_scan_enabled", true)
+	viper.SetDefault("tickets.timeout_scan_tick", "5m")
+	viper.SetDefault("tickets.timeout_observe", true)
+	// S9 B9-1 情报缓存（stub 默认 true——契约未到桩先行防虚标；TTL 7/30 天双档）
+	viper.SetDefault("intel.upstream.stub", true)
+	viper.SetDefault("intel.upstream.endpoint", "")
+	viper.SetDefault("intel.ttl.ip", "168h")
+	viper.SetDefault("intel.ttl.domain", "168h")
+	viper.SetDefault("intel.ttl.hash", "720h")
+	viper.SetDefault("intel.ttl.url", "168h")
+	viper.SetDefault("intel.qps", 1.0)
+	viper.SetDefault("intel.query_rate_per_min", 60)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -304,6 +384,7 @@ func Load(path string) (*Config, error) {
 
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
+	cfg.Storage.ApplyDefaults()
 
 	if cfg.Audit.Archive.RetentionDays <= 0 {
 		cfg.Audit.Archive.RetentionDays = 180
@@ -313,6 +394,17 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Audit.Archive.OutDir == "" {
 		cfg.Audit.Archive.OutDir = "data/archive"
+	}
+
+	// 网关 /al 上游 target env 覆盖（2026-11-02 双拓扑免改文件治理）：compose 服务名/
+	// 宿主回环随环境注入，基线文件不再手工编辑（此前本地态曾两度泄漏入库：1d4d36c）。
+	// slice 元素 viper BindEnv 不可达，走后处理；仅命中 /al 前缀，其余上游不受影响。
+	if alTarget := os.Getenv("GATEWAY_AL_TARGET"); alTarget != "" {
+		for i := range cfg.Gateway.Upstreams {
+			if cfg.Gateway.Upstreams[i].Prefix == "/al" {
+				cfg.Gateway.Upstreams[i].Target = alTarget
+			}
+		}
 	}
 
 	// internal_jobs AK 缺省归一化（默认值属 Load 职责；SK 强制属 Validate）

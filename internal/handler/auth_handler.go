@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -15,10 +17,13 @@ import (
 // AuthHandler 认证处理器
 type AuthHandler struct {
 	authService *service.AuthService
+	// fileCookieSecure 文件通道 cookie Secure 属性（A.11「生产 Secure」——
+	// storage.file_cookie_secure 配置注入，S5 评审 P2-4）
+	fileCookieSecure bool
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService *service.AuthService, fileCookieSecure bool) *AuthHandler {
+	return &AuthHandler{authService: authService, fileCookieSecure: fileCookieSecure}
 }
 
 // Login 登录
@@ -42,6 +47,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	// A.11 文件通道旁路凭证（B5-2-2 形态 B：值=access JWT，登出/吊销联动即失效）
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn, h.fileCookieSecure)
 	response.OK(c, pair)
 }
 
@@ -61,11 +68,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	pair, err := h.authService.Refresh(c.Request.Context(), req.RefreshToken)
+	pair, err := h.authService.Refresh(c.Request.Context(), req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		writeAuthError(c, err)
 		return
 	}
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn, h.fileCookieSecure)
 	response.OK(c, pair)
 }
 
@@ -102,6 +110,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	middleware.ClearFileSessionCookie(c)
 	response.OK(c, nil)
 }
 
@@ -126,6 +135,8 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		writeAuthError(c, err)
 		return
 	}
+	// 密码修改换发新 token 对——文件 cookie 随旧 access 同步清除后重签
+	middleware.SetFileSessionCookie(c, pair.AccessToken, pair.ExpiresIn, h.fileCookieSecure)
 	response.OK(c, pair)
 }
 

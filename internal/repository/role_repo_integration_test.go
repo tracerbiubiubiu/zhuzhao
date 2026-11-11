@@ -4,6 +4,7 @@ package repository_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -172,4 +173,71 @@ func TestRoleRepo_AssignMenus_OrgsReadSurvivesRebuild(t *testing.T) {
 		WHERE ptype = 'p' AND v0 = 'role::orgs_replay'
 		  AND v1 = '/api/v1/orgs' AND v2 = 'GET'`).Scan(&count))
 	assert.Equal(t, 0, count, "来源行删除后重放不得再发放 /orgs GET")
+}
+
+// F-B2 并发回归（2026-10-21 编号落档）：两个管理员并发重绑同一角色，
+// DELETE ALL + INSERT ALL 无锁时两事务交错 → 终态为两意图 UNION（互毁）。
+// 修复 = 30ff6c8 AssignMenus 事务内 roles 行 FOR UPDATE（串行化 DELETE→INSERT）。
+// 断言：串行 rounds 轮，每轮终态 role_menus 必须恰为某一次输入的完整单集
+// （非混合）——§12-10 变异验证公约同款构件级守卫。
+func TestRoleRepo_AssignMenus_ConcurrentNoMix(t *testing.T) {
+	resetUsers(t)
+	ctx := context.Background()
+	roleRepo := repository.NewRoleRepo(testPool)
+	menuRepo := repository.NewMenuRepo(testPool)
+
+	roleID := insertRole(t, "assign_race", 40, 1, false)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, roleID)
+		_, _ = testPool.Exec(ctx, `DELETE FROM casbin_rule WHERE v0 = 'role::assign_race'`)
+		_, _ = testPool.Exec(ctx, `DELETE FROM roles WHERE id = $1`, roleID)
+	})
+
+	// 两个不相交菜单集：A = ticket_type_manage（共享夹具），B = 任一其他活跃菜单
+	var menuA, menuB int64
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT id FROM menus WHERE code = 'ticket_type_manage' AND deleted_at IS NULL`).Scan(&menuA))
+	require.NoError(t, testPool.QueryRow(ctx,
+		`SELECT id FROM menus WHERE deleted_at IS NULL AND id <> $1 ORDER BY id LIMIT 1`, menuA).Scan(&menuB))
+	apisA, err := menuRepo.ListMenuAPIsByMenuIDs(ctx, []int64{menuA})
+	require.NoError(t, err)
+	apisB, err := menuRepo.ListMenuAPIsByMenuIDs(ctx, []int64{menuB})
+	require.NoError(t, err)
+
+	// 交错命中是概率事件——串行多轮堆命中率（§12-10：靠轮数非并发数）
+	const rounds = 4
+	for round := 0; round < rounds; round++ {
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		errs := make(chan error, 2)
+		for _, assign := range []struct {
+			menuIDs []int64
+			apis    []*model.MenuAPI
+		}{{[]int64{menuA}, apisA}, {[]int64{menuB}, apisB}} {
+			wg.Add(1)
+			go func(mIDs []int64, mAPIs []*model.MenuAPI) {
+				defer wg.Done()
+				<-start
+				errs <- roleRepo.AssignMenus(ctx, &model.Role{ID: roleID, Code: "assign_race"}, mIDs, mAPIs)
+			}(assign.menuIDs, assign.apis)
+		}
+		close(start)
+		wg.Wait()
+		require.NoError(t, <-errs, "round %d assign A 不应失败", round)
+		require.NoError(t, <-errs, "round %d assign B 不应失败", round)
+
+		// 终态判定：恰为 {menuA} 或 {menuB} 之一（单元素）——出现两元素混合 = 交错命中
+		var ids []int64
+		rows, err := testPool.Query(ctx, `SELECT menu_id FROM role_menus WHERE role_id = $1 ORDER BY menu_id`, roleID)
+		require.NoError(t, err)
+		for rows.Next() {
+			var id int64
+			require.NoError(t, rows.Scan(&id))
+			ids = append(ids, id)
+		}
+		require.NoError(t, rows.Err())
+		isA := len(ids) == 1 && ids[0] == menuA
+		isB := len(ids) == 1 && ids[0] == menuB
+		assert.True(t, isA || isB, "round %d 终态 %v 为混合集——DELETE/INSERT 交错（F-B2 回归）", round, ids)
+	}
 }

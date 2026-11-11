@@ -1,320 +1,58 @@
-# 用户模块设计
+# 用户模块
 
-> 模块代码（目标路径）：`internal/service/user/` + `internal/repository/user/` + `internal/handler/user/`（[§3.5](../design/architecture.md#35-领域模块目录约定单仓可拆分)）
->
-> 旧系统参考：`doc/module-assessment-2026-08/user.md`
->
-> **主键与分阶段以 [phase1/04-user.md](../phase1/04-user.md) 为准**（`BIGINT`/`int64`，JSON `,string`）。
-
----
+> 状态：当前实现说明。模型见 `internal/model/user.go` 的 `User`，用例见 `internal/service/user_service.go` 的 `UserService`。历史实现计划见 [Phase 1 用户稿](../phase1/04-user.md)。
 
 ## 1. 模块定位
 
-**核心底座模块**。用户身份管理，是认证和鉴权的主体数据源。管理用户 CRUD、密码、角色绑定、状态。
+用户模块维护本地身份资料、账号状态、密码与角色绑定。认证模块消费它的身份数据，组织成员写入则统一委托 `OrgService`；不要在用户仓储中再实现一套组织授权规则。
 
-与其他模块的关系：
-- 为 `auth` 提供密码验证
-- 依赖 `role` 管理用户角色
-- 依赖 `organization` 管理用户组织归属
-- Phase 2 起自注册 `UserResource` 到 `authz` 的 ResourceRegistry（Phase 1 为空接口）
-
----
+全局管理权限由直接角色及 priority 守卫判断。用户管理当前没有另行注册 `UserResource`；不能把旧接口草图当作已启用的通用资源过滤。
 
 ## 2. 数据模型
 
-```sql
-CREATE TABLE users (
-    id          BIGSERIAL PRIMARY KEY,
-    username    VARCHAR(50) NOT NULL,            -- 资料/显示名；可重复；非账密登录键
-    employee_no VARCHAR(50),                   -- 工号（可空，有值全局唯一；软删即释放、可复用）
-    domain_account VARCHAR(100),               -- 域账号（与 user_domain 成对唯一；软删即释放、可复用）
-    user_domain VARCHAR(255),                  -- 所在域
-    password    VARCHAR(100) NOT NULL,       -- bcrypt hash
-    real_name   VARCHAR(100),
-    email       VARCHAR(100),
-    phone       VARCHAR(20),
-    avatar      VARCHAR(500),              -- 头像 URL，非二进制；上传见 phase2/storage
-    status      SMALLINT DEFAULT 1,          -- 1=启用 0=禁用
-    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
-    is_system   BOOLEAN DEFAULT FALSE,
-    created_by  VARCHAR(50),                 -- 审计字段，不覆盖
-    created_at  TIMESTAMPTZ DEFAULT NOW(),   -- 审计字段，不覆盖
-    updated_at  TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ                  -- 软删除
-);
+`username` 用于资料展示，可重复，不是账密登录键；登录键是 `employee_no`。迁移 000006 对非空工号及域账号组合使用活跃行部分唯一索引（deleted_at IS NULL）；软删记录不再占用唯一键，数据库允许新用户复用。复用标识不等于恢复原用户ID，HR对账和历史审计必须区分两者。
 
-CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_status ON users(status) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX idx_users_employee_no ON users(employee_no)
-    WHERE deleted_at IS NULL AND employee_no IS NOT NULL AND employee_no <> '';
-CREATE UNIQUE INDEX idx_users_domain_account ON users(user_domain, domain_account)
-    WHERE deleted_at IS NULL
-      AND domain_account IS NOT NULL AND domain_account <> ''
-      AND user_domain IS NOT NULL AND user_domain <> '';
-```
+`users` 保存账号状态、强制改密标记、资料和版本。密码不序列化到 JSON，ID 为字符串。角色绑定在 `user_roles`，组织绑定在 `user_orgs`；完整列与索引查看实际迁移，不在此维护第二份建表 SQL。
 
-### 关联表
-
-```sql
--- 用户-角色（多对多；一用户可绑多个角色，权限并集，业务分级取 EffectivePriority = min(priority)）
-CREATE TABLE user_roles (
-    user_id     BIGINT REFERENCES users(id),
-    role_id     BIGINT REFERENCES roles(id),
-    PRIMARY KEY (user_id, role_id)
-);
-```
-
-> Phase 1 通过 `POST /api/v1/users/roles` 分配，`role_ids` 为数组，事务内先删后插（全量覆盖）。路由鉴权 OR、业务分级用 `roles.priority`（越小越强），见 [phase1/03-authz §用户多角色](../phase1/03-authz.md#用户多角色phase-1)、[phase1/04-user §多角色与有效 priority](../phase1/04-user.md#多角色与有效-priority)。
-
-```sql
--- 用户-组织（多对多）。Phase 1 主键不含 role_id（可空列进主键会导致重复入组）
-CREATE TABLE user_orgs (
-    user_id     BIGINT REFERENCES users(id),
-    org_id      BIGINT REFERENCES organizations(id),
-    is_primary  BOOLEAN DEFAULT FALSE,
-    joined_at   TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, org_id)
-);
-```
-
-> **Go model 对齐**：Phase 1 `UserOrg` **不得**含 `RoleID` 字段；组织内角色 / `org_member_role` 在 Phase 2c 迁移后另加。骨架若已有 `role_id` tag，Step 1 迁移前删除，避免与 DDL 漂移。
-
----
+头像当前由对象存储上传/绑定链路提供，并非只有“手填 URL”能力。资料更新不能回写旧读取得到的禁用状态、强制改密状态或头像代际，相关回归记录见 [当前健康状态](../review/11-project-control.md#6-当前健康状态遗留问题追踪)。
 
 ## 3. 接口定义
 
-```go
-type UserService interface {
-    // CRUD
-    Create(ctx context.Context, req CreateUserRequest) (*model.User, error)
-    GetByID(ctx context.Context, id int64) (*model.User, error)
-    GetByUsername(ctx context.Context, username string) (*model.User, error) // 列表/管理：模糊或精确
-    FindByEmployeeNo(ctx context.Context, employeeNo string) (*model.User, error) // 登录：工号精确（repo 层，未删除用户）
-    // D2-27：含软删用户的工号查询——审计按工号筛选须覆盖历史
-    //（软删用户的历史审计可查，原 404）；使用侧见 modules/audit.md
-    FindByEmployeeNoIncludeDeleted(ctx context.Context, employeeNo string) (*model.User, error)
-    // Update patch 语义（B2-3）：请求字段指针化——未传不动、空串显式清空；
-    // username 不可改（Phase 2 再定改名流程）。实际签名带 actorUserID（防提权校验）
-    Update(ctx context.Context, req *UpdateUserRequest, actorUserID int64) (*model.User, error)
-    Delete(ctx context.Context, id int64, actorUserID int64) error
-    List(ctx context.Context, query UserListQuery) ([]*model.User, int64, error)
+CRUD、状态、管理员重置密码和角色分配由 `UserService.Create / Update / Delete / UpdateStatus / ResetPassword / SetRoles` 等用例承接。当前资料入口是 `GetProfile / UpdateProfile`；自服务改密码由 `AuthService.UpdatePassword` 处理。
 
-    // 密码
-    UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) // 验旧密码 + 新旧不同校验（B2-2）+ 吊销全部会话
-    ResetPassword(ctx context.Context, req ResetPasswordRequest, actorUserID int64) error // 管理员重置
-
-    // 状态
-    UpdateStatus(ctx context.Context, req UpdateUserStatusRequest, actorUserID int64) error
-
-    // 角色绑定
-    SetRoles(ctx context.Context, req SetUserRolesRequest, actorUserID int64) error
-    GetRoles(ctx context.Context, userID int64) ([]*model.Role, error)
-
-    // 组织绑定（写逻辑 SSOT 在 OrgService，见 modules/organization.md）
-    SetUserOrgs(ctx context.Context, req SetUserOrgsRequest, actorUserID int64) error
-    GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error)
-}
-```
-
-> **GetUserOrgs 可见性设计确认（D2-44⑤）**：任意持 `user:read` 类权限的管理端用户可查询**任意用户**的组织归属（`ensureVisible` 仅拦截以 superadmin 用户为目标的查询）。管理端（IAM 控制台）语境下组织归属非个人隐私字段，属运营必需信息，Phase 1 有意不做按组织范围的收窄；若未来对外开放 API（非管理端前端），须先引入 L2 组织关系校验。
-
-> **注**：本节为设计骨架；接口签名以 [`phase1/04-user.md`](../phase1/04-user.md)（SSOT）与 `internal/service/user_service.go` 实现为准。B2-3 起 Update/UpdateProfile 均为 patch 语义。
-
----
+准确请求字段和 POST 路由查 Swagger。更新是 patch 语义：未传保持原值，允许清空的字段以显式空值表达；版本冲突应重新读取，不用旧快照反复覆盖。
 
 ## 4. 核心流程
 
 ### 4.1 创建用户
 
-```
-POST /api/v1/users {username, password, real_name, ...}
-
-1. 密码强度校验（PasswordValidator）
-   → 长度 ≥ 8，4 种字符类，bcrypt 72 字节上限
-
-2. 工号唯一性检查（若提供 employee_no；**仅活跃记录**，软删工号即释放、可复用——见 phase1/04-user §唯一性与软删除）
-   → SELECT * FROM users WHERE employee_no = ? AND deleted_at IS NULL AND employee_no IS NOT NULL AND employee_no <> ''
-   → Phase 2b：若已存在 source=hr → 409，提示走重置密码/赋角色，勿重复开户
-   → **不调 HR API**（见 04-user §创建时要不要校验 HR）
-
-3. bcrypt 哈希
-   → bcrypt.GenerateFromPassword(password, 12)
-
-4. 插入
-   → INSERT INTO users (username, password, ...) VALUES (...)
-
-5. 返回用户信息（不含 password；含 `id` string 与 `employee_no`，见 [phase1/04-user §API 响应字段](../phase1/04-user.md#api-响应字段前端契约)）
-```
+先校验请求、操作者可赋予的角色和标识唯一性，再计算密码哈希，在事务内创建用户及初始角色/组织关系。手工创建不会调用真实 HR 接口。HR 同步目前仍是独立的后续能力，不能从 `source` 字段存在推导已经接入。
 
 ### 4.2 删除用户（级联）
 
-```
-POST /api/v1/users/delete
-
-1. 系统用户保护
-   → user.is_system == true？返回 403
-
-2. 事务开始
-   → BEGIN
-
-3. 软删除用户
-   → UPDATE users SET deleted_at = NOW() WHERE id = ?
-
-4. 删除角色绑定
-   → DELETE FROM user_roles WHERE user_id = ?
-
-5. 删除组织绑定
-   → DELETE FROM user_orgs WHERE user_id = ?
-
-6. 事务提交
-   → COMMIT
-
-7. 事务外副作用（Phase 1）
-   → SET user:disabled:{userId}，DEL 全部 refresh:{userId}:*
-   → DEL lock:login:{employee_no}
-```
+先检查目标可管理性、系统账号、自我删除与最后一个有效 superadmin 等约束，再软删除并处理绑定关系，随后撤销会话。删除不会静默删除工单，也不自动代表名下事项已交接；活跃唯一键会释放，新建同工号仍是另一用户ID。
 
 ### 4.3 设置用户角色
 
-旧系统已知问题：`SetUserRoles` 用 delete-all → insert-all 无事务保护。
-
-**新框架方案**：用 PostgreSQL 事务。
-
-```go
-func (s *UserService) SetRoles(ctx context.Context, userID int64, roleIDs []int64) error {
-    return s.db.BeginTxFunc(ctx, func(tx pgx.Tx) error {
-        // 事务内删除旧角色
-        if _, err := tx.Exec(ctx, "DELETE FROM user_roles WHERE user_id = $1", userID); err != nil {
-            return err
-        }
-        // 事务内插入新角色
-        for _, roleID := range roleIDs {
-            if _, err := tx.Exec(ctx,
-                "INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                userID, roleID); err != nil {
-                return err
-            }
-        }
-        return nil
-    })
-}
-```
-
-> Phase 3 引入 `perm:user:{userId}` 缓存后，SetRoles 成功再 `DEL` 该 key。
+`SetRoles` 全量覆盖直接角色绑定，数据库变更有事务保护。业务防提权使用直接角色的有效 priority；角色派生出的组织权限不能反过来当作全局账号管理权。
 
 ### 4.4 列表查询
 
-**Phase 1**：仅路由级 Casbin，有 `GET /users` 权限即可见全部未删除用户。
+列表受路由权限、查询参数和 superadmin 隐藏规则约束。普通管理端列表没有“默认只看本部门员工”的承诺。工号精确过滤与用户名模糊过滤是不同用途，不能把同名资料字段当唯一身份。
 
-**Query 筛选**（见 [phase1/04-user §列表筛选](../phase1/04-user.md#列表筛选)）：
+## 5. 密码安全
 
-| 参数 | 匹配 | 结果 |
-|------|------|------|
-| `username` | 模糊 | 0~N，不要求唯一 |
-| `employee_no` | 精确 | 0 或 1 |
+当前请求约束与公共库 bcrypt 实现是准确依据。旧稿中的 `PasswordValidator` 四字符类、密码历史和到期策略不是现有完整策略的证明。
 
-```go
-type UserListQuery struct {
-    Page       int
-    PageSize   int
-    Username   string // ILIKE 模糊
-    EmployeeNo string // 精确
-    RoleCode   string
-    Status     *int
-}
-```
+改密与重置会更新安全状态并撤销旧会话。superadmin 应急恢复使用受执行权限控制的 CLI，流程、审计与失败处置见 [runbook](../ops/runbook.md)；人工测试使用专属账号。
 
-**Phase 2+**（资源级过滤示例）：
+## 6. 验证与排查
 
-```
-GET /api/v1/users?page=1&size=20
+修改资料、停用账号、角色分配和改密需要分别验证，不能用一次资料保存成功推导安全状态正确。典型排查顺序是：确认目标身份与版本，查看具体业务错误码，再按 request_id 查询审计；不要将内部数据库诊断直接返回前端。
 
-1. 路由级 Casbin 通过
-2. registry.GetFilter(ctx, "user", userID, "read")
-3. SELECT ... WHERE deleted_at IS NULL AND (filter.Where) ...
-```
+## 7. 相关设计与变更记录
 
----
-
-## 5. 密码安全（借鉴旧系统 PasswordValidator）
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| MinLength | 8 | 最小长度 |
-| RequireUpper | true | 需大写字母 |
-| RequireLower | true | 需小写字母 |
-| RequireDigit | true | 需数字 |
-| RequireSpecial | true | 需特殊字符 |
-| SpecialChars | `!@#$%^&*` | 特殊字符集 |
-| BcryptMaxLen | 72 | bcrypt 算法上限 |
-
-```go
-type PasswordValidator struct {
-    MinLength      int
-    RequireUpper   bool
-    RequireLower   bool
-    RequireDigit   bool
-    RequireSpecial bool
-    SpecialChars   string
-}
-
-func (v *PasswordValidator) Validate(password string) error {
-    if len(password) > 72 {
-        return ErrPasswordTooLong
-    }
-    if len(password) < v.MinLength {
-        return ErrPasswordTooShort
-    }
-    // 检查字符复杂度...
-    return nil
-}
-```
-
----
-
-## 6. 旧系统借鉴
-
-| 设计 | 决策 | 理由 |
-|------|------|------|
-| PasswordValidator 4 种字符复杂度 | ✅ 直接采用 | 成熟设计 |
-| bcrypt 72 字节上限 | ✅ 直接采用 | 算法限制 |
-| CreateUser 密码校验 + 唯一性检查 | ✅ 直接采用 | 标准流程 |
-| SetUserRoles delete-all→insert-all 无事务 | ❌ 修复 | 用 PostgreSQL 事务 |
-| ListUsers 合并 restrict 数据级过滤 | ✅ 改为 ResourceRegistry.GetFilter | 统一接口 |
-| 13 个依赖注入 | ⚠️ 精简 | 用窄接口（ISP）减少依赖 |
-| 窄接口（UserMenuService 等） | ✅ 采用 | 接口隔离原则 |
-| first_login 标记 | ✅ Phase 1 | `must_change_password` + JWT `mcp` |
-| 软删除 | ✅ 采用 | 保留审计数据 |
-| 最后一个 superadmin 保护 | ✅ Phase 1 | 不可禁用/删除/降级最后一个超管 |
-
----
-
-## 7. 分阶段实施
-
-### Phase 1
-
-- 用户 CRUD（含软删除）
-- 密码管理（bcrypt + 修改；复杂度策略可简化）
-- 用户-角色绑定（事务）
-- 用户-组织绑定：`OrgService.SetUserOrgs` / `AddMember`；API 为 `POST /users/orgs`（全量）、`POST /orgs/members`（单条增删）、创建用户 `org_ids`；读 `GET /users/:id/orgs`
-- 工号唯一性检查（username 可重复）
-- 系统用户保护（`is_system`）+ 最后一个 superadmin 保护
-- 禁用/删除后吊销会话（`user:disabled` + 删全部 RT）
-- `must_change_password` 强制改密
-- **头像**：`avatar` 字段预留 + API 透传 URL；**不上传**（Phase 2b storage）
-- Phase 1 **不做**列表的组织范围数据过滤
-
-### Phase 2
-
-- 组织内角色 / 临时成员有效期（`user_orgs.expires_at`）
-- **HR 用户同步**：仅更新 `source=hr` 用户与 **主部门**（`user_orgs.is_primary=true, source=hr`）；不覆盖虚拟组绑定与 `user_roles`（见 [hr-directory-sync.md](../proposal/hr-directory-sync.md)）
-- 列表查询资源级过滤（GetFilter）
-- 用户导入导出
-- **头像上传**（预签名 + 对象存储，更新 `users.avatar`）
-- 密码复杂度完整策略
-
-### Phase 3
-
-- 密码历史（不能重复使用最近 N 次密码）
-- 密码过期策略
-- 第三方登录预留（OAuth2/OIDC 字段）
+- [组织模块](organization.md)：成员、主组织、虚拟组与委托的写侧边界。
+- [角色模块](role.md)：直接角色、展开角色与 priority。
+- [HR 同步方案](../proposal/hr-directory-sync.md)：未实施同步的设计及待定项。
+- 2026-11-08：移除重复且过时的 DDL/接口草图，校准软删唯一性、当前头像能力、密码策略及管理权限说明。

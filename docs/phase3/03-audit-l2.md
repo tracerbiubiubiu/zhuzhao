@@ -1,5 +1,8 @@
 # Phase 3 · 审计日志 L2（audit-l2）
 
+> **适用范围（2026-11-08整理）**：当前只判定日志走异步Redis管道，主audit_logs仍同步写。policyeval.go明确：channel满、Redis push失败、尚未入Redis时崩溃都可能丢；只有已持久化List/processing可恢复，不能称端到端零丢。D2已在P4定案fail-open+丢弃计数，B11①②和周期联调已完成；旧断链矩阵是实施前快照。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **定位**：审计管道从 Phase 1 的「中间件同步写 audit_logs」升级为 **L2（Redis List 缓冲，进程崩溃不丢）**，并补齐两块治理缺口：**B11① L2/L3 策略评估日志**（补 L2 拒绝无留痕盲区）、**B11② 审计归档**（大表治理，先建表必先有归档）。
 > **Wave 归属**：~~W1（Step 3）~~ **B11① 可与 M-E 合并实施（价值独立于多实例）；B11② 实施随 M-E 事件/任务总线（taskrunner）首个预置动作**（~~Asynq 任务平台~~ 2026-09-03 M-E 收敛为事件/任务总线；zhuzhao 侧配套落位见 [16 号 §3 E-③](./16-external-integration.md)，对齐 taskrunner M3）。
 > **状态**：**已编写（2026-09-02，替换原占位）**。写入管道等决策点保留为 ⚠️ 待拍板。
@@ -20,6 +23,8 @@
 ---
 
 ## 2. 审计管道 L2（Redis List 缓冲）
+
+> **现行校准（2026-11-08）**：“进程崩溃不丢”只覆盖已入Redis List/processing的记录。channel中未持久化、满丢弃及Redis push失败仍fail-open；这与P4明确采纳的丢弃计数/WARN一致，不升级为零丢承诺。
 
 ### 2.1 目标
 
@@ -98,6 +103,8 @@ CREATE INDEX idx_pel_created ON policy_evaluation_logs(created_at);
 
 - 埋点写入随 §2 管道（L2 writer），与业务同事务解耦、不阻塞。
 - ⚠️ **失败容忍**：写失败默认 fail-open 吞错不阻断鉴权（参考 go-wind-admin），与 §7 拍板一致。
+
+> **现行校准（2026-11-08）**：下面矩阵是实施前断链盘点；随后09-04已接ctx/三表列/跨服务头，当前代码与各服务契约优先，不重开全部断链。
 
 ### 3.4 全链路 request_id 关联（2026-09-03 核查登记；目标 = 日志全链路可追溯）
 

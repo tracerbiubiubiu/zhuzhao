@@ -1,5 +1,7 @@
 # 09 · 审查问题合集（最终版）
 
+> **历史档案（2026-11-08整理）**：本篇保留原审查时点、发现编号、原建议及撤回/复验过程，不是当前待办清单。后续状态见[项目控制台](../11-project-control.md)，档案之间的承接关系见[历史索引](README.md)。原“当前/唯一执行依据”均限定于文内注明的历史基线。
+
 > **定位**：对 `05/06/07/08` 四份审查报告 + 两轮去重验证（原 `09-findings-consolidated-and-verified.md` 与本文 v1.0）的**最终合并问题合集**，为唯一执行依据。前序五份报告保留为档案，不再修改。
 > **验证基线**：HEAD `ebb5635`（2026-08-28 复核）。每条均经磁盘/代码实测取证。
 > **来源对照**：05=`05-docs-systematic-review`，06=`06-phase2-docs-architecture-review`，07=`07-comprehensive-docs-review`，08=`08-final-recheck`，C=`09-consolidated-findings v1.0`（已并入本文后删除）。

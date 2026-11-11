@@ -10,14 +10,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/tracerbiubiubiu/zhuzhao/internal/testutil"
 )
 
 func TestCatalogDiscovery_RealRoutesRealMenuAPIs(t *testing.T) {
-	pool, cleanup, err := testutil.SetupPostgresShared()
-	require.NoError(t, err)
-	t.Cleanup(cleanup)
+	pool := testPool // 生命周期归 TestMain（main_integration_test.go）
 
 	engine := New(Deps{DBPool: pool}) // handler/中间件依赖可 nil——注册期不解引用
 
@@ -38,4 +34,15 @@ func TestCatalogDiscovery_RealRoutesRealMenuAPIs(t *testing.T) {
 		}
 	}
 	require.Empty(t, dead, "存在死策略（menu_apis 指向不存在路由）——修 seed 或删行（清单见 GAP 日志）")
+}
+
+// B 案守卫（E2E 补齐批四程）：页面/目录行（menu_type≠3）不得承载非 GET 绑定——写端点一律挂按钮行，
+// 例外须带设计出处登记 pageWriteAllow（当前唯一：ticket_list transition，000068）。
+// 根因史：000070/000073 把分派规则三写挂页面行→viewer 预设即可建/停/删规则（000075 修）；
+// 000034/000059 字典×6/通知×8 同病（000077 修）——约定靠人记不住，改为启动 fail-fast + 本测试双守卫。
+func TestCatalogPageRows_NoWriteBindings(t *testing.T) {
+	viol, err := AuditPageWriteBindings(context.Background(), testPool)
+	require.NoError(t, err)
+	require.Empty(t, viol, "B 案违例：页面/目录行承载写端点——迁按钮行（000075/000077 同款）或带设计出处登记 pageWriteAllow：%s",
+		FormatPageWriteBindings(viol))
 }

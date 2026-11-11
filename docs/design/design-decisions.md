@@ -3,7 +3,8 @@
 > 本文档记录架构设计中各决策点的推理过程、方案对比和细节讨论。
 > 架构层面的结论见 [architecture.md](./architecture.md)，本文档聚焦"为什么这么选"和"细节怎么处理"。
 >
-> **阶段编号以 [`roadmap.md`](../roadmap.md) 为准。** 下文部分段落仍写「Phase 2 微服务化 / RS256 / gRPC」，语义上对应 **Phase 3（拆服务）**；Phase 2 是单体进程内的工单，不换 RS256、不拆 IAM。
+> **阅读口径（2026-11-08 校准）**：本文是有日期的决策日志，不是逐节都代表当前实现的规格书。§1–19 主要保存 2026-08 方案推理；旧文中的「当前」「Phase 2 微服务化」按当时语境阅读，不能仅改阶段编号就当作现行排期。部署与权限边界看 §25/26，工单自研恢复看 §29，完整状态看 [总控](../review/11-project-control.md)、[路线图](../roadmap.md) 与对应模块。§27/28 的立项量级、字段和零实现判断也是各自登记日快照；后续状态以 Phase 5/6 入口为准。
+> **三个易混点**：当前请求认证依赖 Redis 四键检查（§2.4）；utils 已抽取，resource 留本仓（§4）；内部 IAM/工单未按旧 gRPC 蓝图拆服务（§13/25/26）。文中伪代码说明取舍，不作为现行可复制实现。
 
 ## 目录
 
@@ -15,14 +16,29 @@
 - [6. 资源抽象与自注册机制](#6-资源抽象与自注册机制)
 - [7. 系统重启与数据初始化幂等性](#7-系统重启与数据初始化幂等性)
 - [8. Casbin 策略爆炸：每资源独立 Enforcer](#8-casbin-策略爆炸每资源独立-enforcer)
-- [9. JWT 签名算法：HS256 → RS256 演进](#9-jwt-签名算法hs256-rs256-演进)
+- [9. JWT 签名算法：HS256 → RS256 演进](#9-jwt-签名算法hs256--rs256-演进)
 - [10. Casbin PostgreSQL Adapter 选型](#10-casbin-postgresql-adapter-选型)
 - [11. 数据库高可用：PostgreSQL Cluster vs MongoDB 副本集](#11-数据库高可用postgresql-cluster-vs-mongodb-副本集)
 - [12. ReBAC 引擎选型：自研 vs OpenFGA vs SpiceDB](#12-rebac-引擎选型自研-vs-openfga-vs-spicedb)
-- [13. 微服务通信协议：gRPC 内部 + REST 外部](#13-微服务通信协议grpc-内部-rest-外部)
+- [13. 微服务通信协议：gRPC 内部 + REST 外部](#13-微服务通信协议grpc-内部--rest-外部)
 - [14. 待讨论事项](#14-待讨论事项)
+- [15. 工单系统选型：自研 vs 现成产品](#15-工单系统选型自研-vs-现成产品)
+- [16. 事件驱动方案：Outbox + Asynq](#16-事件驱动方案outbox--asynq)
+- [17. 参考项目借鉴清单](#17-参考项目借鉴清单)
 - [18. 部署与代码解耦：一套代码多种部署](#18-部署与代码解耦一套代码多种部署)
 - [19. RBAC 继承与级联（业界参考）](#19-rbac-继承与级联业界参考)
+- [20. 职责分离（SoD）延后决策](#20-职责分离sod延后决策)
+- [21. 软删组织与遗留工单的委托语义](#21-软删组织与遗留工单的委托语义)
+- [22. Phase 3 执行结构修订（2026-09-02 所有者拍板）](#22-phase-3-执行结构修订2026-09-02-所有者拍板)
+- [23. Phase 3 重定位：工单自研暂缓（内部引擎优先，自研兜底），通用能力 + 内网迁移主线（2026-09-02 所有者拍板）](#23-phase-3-重定位工单自研暂缓内部引擎优先自研兜底通用能力--内网迁移主线2026-09-02-所有者拍板)
+- [24. 公司 SSO 对接：OAuth2.0 授权码模式，预留接口版（2026-09-02 所有者拍板）](#24-公司-sso-对接oauth20-授权码模式预留接口版2026-09-02-所有者拍板)
+- [25. 权限架构定版：PDP/PEP 分工、统一网关边界与平台策略库（2026-09-03 讨论定稿）](#25-权限架构定版pdppep-分工统一网关边界与平台策略库2026-09-03-讨论定稿)
+- [26. IAM 演进路径、注册原则与支撑边界（2026-09-08 评估；三步走与四墙为助手建议，待所有者确认）](#26-iam-演进路径注册原则与支撑边界2026-09-08-评估三步走与四墙为助手建议待所有者确认)
+- [27. Phase 5 立项登记：前端可视化配置线（2026-10-08 所有者指示，规划草案）](#27-phase-5-立项登记前端可视化配置线2026-10-08-所有者指示规划草案)
+- [28. Phase 6 立项登记：风险管理模块（2026-10-08 所有者提出；已立项转执行态 2026-10-27/28——六组拍板闭环、00/06 号批准，SSOT = phase6/README·05 §6·07 号，本条存立项时点史实）](#28-phase-6-立项登记风险管理模块2026-10-08-所有者提出已立项转执行态-2026-10-2728六组拍板闭环0006-号批准ssot--phase6readme05-607-号本条存立项时点史实)
+- [29. §23 翻案：工单自研恢复为主线（2026-10-09 所有者拍板）](#29-23-翻案工单自研恢复为主线2026-10-09-所有者拍板)
+- [30. M-UAA 立项：公司统一权限平台对接（2026-10-09，公司《岗位权限治理指南》为依据）](#30-m-uaa-立项公司统一权限平台对接2026-10-09公司岗位权限治理指南为依据)
+- [31. 「找上级/找责任人」来源通则：人工指定为基线，HR 直属上级为进阶（2026-10-24 所有者拍板）](#31-找上级找责任人来源通则人工指定为基线hr-直属上级为进阶2026-10-24-所有者拍板)
 
 ---
 
@@ -47,7 +63,7 @@ JWT 签发后不可变，如果把角色、权限信息塞进 payload，管理�
 JWT 只存身份标识，权限信息走 Redis 缓存：
 
 ```
-JWT payload（Phase 1 实际字段）:
+JWT payload（早期 Phase 1 示意，现行含 typ/pwe 等字段见 modules/auth）:
 {
   "uid": 1,
   "username": "admin",
@@ -84,7 +100,7 @@ TTL: 30min
 
 ### 1.6 实施阶段
 
-**Phase 1（当前）**：JWT 只存身份（`uid`、`username`、`jti`、`mcp`）；路由级鉴权由 Casbin 中间件 + `RoleFetcher` 查 `user_roles`（直接角色，**无 Redis 权限缓存**）。角色/菜单变更后，用户下次请求即读到 DB 最新数据（或等 AT 过期后 refresh）。
+**Phase 1 原始实现**：JWT 不携带角色/权限，直接角色由 `RoleFetcher` 每请求查库；角色绑定变更不需等 AT 过期。**当前已扩至 BFS 三源角色合并**（直接角色、直接所属组织角色、角色父链），仍无 `perm:user` 权限缓存；菜单/策略变更按现有策略重载流程生效。现行签发与四键检查见 [认证模块](../modules/auth.md)，角色边界见 [鉴权模块](../modules/authz.md)。
 
 **Phase 2b**：扩展 BFS 三源角色合并（组织角色、继承）。
 
@@ -96,7 +112,7 @@ TTL: 30min
 
 ### 2.1 问题背景
 
-Redis 存储了 RT、AT 黑名单、设备列表、权限缓存、登录限流计数等数据。Redis 重启后这些数据是否丢失？用户是否需要重新登录？
+当前 Redis 存储 RT、AT 黑名单、禁用/改密吊销状态与登录限流等；下文设备列表、权限缓存为早期预案，未作为当前已实现能力。Redis 重启后这些数据是否丢失？用户是否需要重新登录？
 
 ### 2.2 持久化策略
 
@@ -125,9 +141,16 @@ aof-use-rdb-preamble yes
 | AT 黑名单 `blacklist:at:{jti}` | 已登出的 AT 短暂可用（最多到 AT 过期 **30min**） | 低 |
 | 设备列表 `devices:{userId}` | 多设备管理暂时不可用，重新登录后重建 | 低 |
 | 权限缓存 `perm:user:{userId}` | **无影响**，cache miss 自动查 DB 回填 | 无 |
-| 登录限流 `lock:login:{employee_no}` | 被锁定的工号短暂不可登录 | 低（最多到自然解锁） |
+| 登录限流 `lock:login:{employee_no}` | 计数/锁丢失会削弱原有限流，不能理解为继续锁定 | 按恢复窗口评估 |
 
 ### 2.4 是否所有用户需要重新登录
+
+**不能仅按 JWT 尚未过期来判断。** `internal/middleware/jwt.go` 的 `JWT` 在签名、类型、过期校验后，逐请求检查 `blacklist:at:{jti}`、`user:disabled:{uid}`、`user:at_min_iat:{uid}`、`user:pw_epoch:{uid}`；Redis 命令异常返回 503，采用 fail-close。密码纪元还与 token 的 `pwe` 比较，防止重新登录清禁用键后旧 AT 复活。
+
+Redis 恢复且吊销状态完整时，仍有效的会话可以按原规则继续；RT 丢失会使刷新失败。若持久化恢复丢了黑名单/密码纪元等安全状态，不能只用“缓存 miss 查 DB”解释，也不能推断只影响刷新用户。实际恢复与会话处置须核对丢失的数据类型，见 [认证模块](../modules/auth.md) 与 [运行手册](../ops/runbook.md)。
+
+<details>
+<summary>早期估算（已被上述实现校正，不作为恢复承诺）</summary>
 
 **不需要。** AT 是无状态 JWT，校验只依赖签名和过期时间，不依赖 Redis。
 
@@ -138,6 +161,8 @@ aof-use-rdb-preamble yes
 - 这 30 秒内 AT 过期需刷新的用户 ≈ 1000 × (30s / 30min) ≈ **17 人**
 - 仅这 17 人中 RT 在丢失窗口内的才需要重新登录
 
+</details>
+
 ### 2.5 Redis 降级策略
 
 **鉴权链路（JWT 黑名单、`user:disabled`、登录限流）采用 fail-close**：Redis 查询失败返回 **503**，禁止 fail-open 放行。
@@ -145,7 +170,7 @@ aof-use-rdb-preamble yes
 | 功能 | Redis 不可用时的行为 | 策略 |
 |------|---------------------|------|
 | AT 签名校验 | 正常（不依赖 Redis） | — |
-| 黑名单 / `user:disabled` | **503** | fail-close（Phase 1 已定） |
+| 黑名单 / `user:disabled` / `user:at_min_iat` / `user:pw_epoch` | **503**（Redis 命令异常） | fail-close；缺键另按纪元兼容规则判定 |
 | 登录限流 | **503** 或拒绝登录 | fail-close |
 | 权限缓存（Phase 3） | 降级为查 DB | 功能正常，性能下降 |
 | RT 刷新 | 失败，需重新登录 | 无法降级 |
@@ -190,6 +215,9 @@ aof-use-rdb-preamble yes
 ---
 
 ## 4. 通用工具包是否独立项目
+
+> **现行状态**：本节保留最初“先内置”的推理；随后已完成独立 `zhuzhao-utils` 抽取，各仓按各自 `go.mod` 固定版本消费，不以库 HEAD 代替版本证明。`internal/pkg/resource` 绑定本仓身份与业务数据，按 §25.3 留在 zhuzhao；早期临时 `replace` 不是现行交付要求。
+
 
 ### 4.1 问题背景
 
@@ -329,6 +357,9 @@ API Gateway:
 ---
 
 ## 6. 资源抽象与自注册机制
+
+> **实现边界**：接口/Registry 已落地，生产中自注册的业务 Resource 是工单；下列 User/Role/Org/MenuResource 属原设计示例，不代表都已注册。当前 `Filter` 还包含显式 `Unscoped`，空过滤不得默认为全量；单对象判定遵循 L1 ∧ L2 ∧ L3，不能把示例中的属主判断当作任意写操作放行。源码锚点：`internal/pkg/resource/registry.go` 的 `Resource`/`Filter`，`internal/service/ticket/service.go` 的 `NewTicketService` 与 `resource.go` 的 `Authorize`/`canOperate`。
+
 
 ### 6.1 问题背景
 
@@ -552,7 +583,7 @@ ON CONFLICT (user_id, role_id) DO NOTHING;
 1. **保留审计字段**：`created_at`、`created_by` 永远不覆盖。upsert 只更新业务字段。
 2. **desired-state 模式**：对比期望状态与实际状态，只更新差异部分。
 3. **系统资源标记**：`is_system = true` 的记录在 Sync 中受保护，不被删除。
-4. **失败不阻塞**：Sync 失败仅 Warn 日志，不阻塞启动（业务可用性优先）。
+4. **按安全级别决定失败行为**：一般非安全性刷新可 Warn；权限目录与绑定完整性失败必须阻止启动。当前 `internal/app/app.go` 的 `NewApp` 执行 `AuditRouteCatalog` 与 `AuditPageWriteBindings`，查询失败或发现缺口均返回错误。不得用本节早期 Role Sync 伪代码绕过这些守卫。
 
 ```go
 // 伪代码：安全的 Sync 实现
@@ -584,11 +615,14 @@ func (s *RoleService) Sync(ctx context.Context) error {
 2. **种子数据用 `ON CONFLICT DO NOTHING`**：不覆盖已有记录
 3. **运行时 Sync 保留审计字段**：`created_at`/`created_by` 永远不覆盖
 4. **系统资源不删除**：`is_system = true` 的记录在 Sync 中不被清理
-5. **Sync 失败不阻塞启动**：仅 Warn 日志
+5. **安全目录校验 fail-fast**：非安全刷新才可按既有策略 Warn；迁移与种子仍显式执行，不由 App 启动代办
 
 ---
 
 ## 8. Casbin 策略爆炸：每资源独立 Enforcer
+
+> **效力限定**：本节为备选机制，不是已建的多 Enforcer 架构。当前工单仍用领域代码 + SQL，ReBAC/PBAC 的演进触发按 §25.4；“需要可配置策略”只是评估输入，不自动批准新增引擎或表。§8.6 的独立表与 §10.4 的共表过滤是当时两种候选，不是同时存在的当前 schema。
+
 
 ### 8.1 问题背景
 
@@ -701,6 +735,8 @@ func (r *TicketResource) Authorize(ctx, req) (bool, error) {
 5. **避免策略爆炸**——不在单个 enforcer 中塞所有资源级策略
 
 ---
+
+<a id="9-jwt-签名算法hs256-rs256-演进"></a>
 
 ## 9. JWT 签名算法：HS256 → RS256 演进
 
@@ -854,7 +890,7 @@ CREATE TABLE casbin_rule (
 ### 11.4 选 PostgreSQL 的理由
 
 1. **ltree 不可替代**——组织树是本系统核心能力。PG ltree 一条 SQL 做层级查询/祖先判断；MongoDB 无等价物，需物化路径 + 应用层递归。
-2. **强 ACID 事务**——user、user_roles、user_orgs 多表关联更新需原子性。MongoDB 4.0+ 支持多文档事务但有性能开销和 16MB 限制。
+2. **强 ACID 事务**——user、user_roles、user_orgs 多表关联更新需原子性。MongoDB 支持多文档事务；本项目选择 PG 依赖现有关系模型、约束和技术栈，不以“Mongo 只能异步”作为依据。旧 16MB 总事务限制说法的勘误见本节下方。
 3. **资源级列表过滤**——"查出当前用户能看到的所有工单"用 PG 直接 `WHERE org_path @> user_org_path`；MongoDB 需先查路径再 `$in` 查询，多一轮交互。
 4. **数据完整性**——外键、唯一约束、CHECK 约束由 DB 保证；MongoDB 依赖应用层。
 5. **Casbin Adapter 兼容**——`noho-digital/casbin-pgx-adapter` 兼容 Casbin v3 + pgx v5（详见 §10）。
@@ -862,11 +898,14 @@ CREATE TABLE casbin_rule (
 
 ### 11.5 MongoDB 的优势及应对
 
+> **2026-11-08 技术勘误**：`ADD COLUMN` 不能概括为零阻塞；PostgreSQL `ALTER TABLE` 默认申请 `ACCESS EXCLUSIVE` 锁，即使常量/非易变默认值加列不重写表，也可能等待并阻塞并发。MongoDB 副本集支持多文档事务；16MB 是 BSON 文档/单 oplog 条目的限制，不是当前通用事务总量限制；默认约一分钟的事务时限可配置。原选型不变，依据改为项目实际约束，而非错误能力比较。来源：[PostgreSQL ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html)、[MongoDB 事务生产注意事项](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/)。
+
+
 | MongoDB 优势 | 严重程度 | PG 应对方案 |
 |-------------|---------|-----------|
 | TTL 索引自动过期日志 | 低 | PG 分区表（`pg_partman`）或定时清理 cron |
 | 副本集高可用更简单 | 低 | 云托管 PG Cluster 的 VIP 方案对办公后台 QPS 足够 |
-| Schema 灵活加字段快 | 低 | PG 加列（`ALTER TABLE ADD COLUMN`）也是零阻塞操作 |
+| Schema 灵活加字段快 | 低 | PG 部分加列可避免重写，但仍需表锁；须按具体 DDL 与负载安排窗口 |
 | 旧系统已有 MongoDB 经验 | 中 | PG 生态成熟，学习曲线平缓 |
 
 ### 11.6 PG Cluster 高可用说明
@@ -998,7 +1037,12 @@ type remoteAuthorizer struct {
 
 ---
 
+<a id="13-微服务通信协议grpc-内部-rest-外部"></a>
+
 ## 13. 微服务通信协议：gRPC 内部 + REST 外部
+
+> **历史方案，已被覆盖**：本节标题和性能比较保留当时方案来源，不表示本项目已采用或仍计划按 Phase 3 引入 gRPC、Kafka、CQRS。2026-09-03 基线改为 HTTP + JSON + AK/SK HMAC；zhuzhao 内部 IAM/工单保持模块化单体，外部 taskrunner/activelist 独立部署。现行边界见 §25/26 与 [工程公约](../standards.md)。
+
 
 ### 13.1 业界共识（2026）
 
@@ -1124,6 +1168,9 @@ type remoteUserQueryService struct {
 
 ## 16. 事件驱动方案：Outbox + Asynq
 
+> **原分期备忘**：本节记录最初候选路线，不是落地清单。zhuzhao 当前领域事件面是进程内 `HookRegistry`，未因 taskrunner 使用 Asynq 就获得本仓 Outbox/Relay；任务执行、领域事件与审计判定日志是不同链路。现行解释见 [Phase 5 S6](../phase5/06-s6-message-notification.md)。
+
+
 ### 决策：分阶段引入，Phase 1 用进程内事件，Phase 2 引入 Outbox + Asynq
 
 **方案选型对比**：
@@ -1233,6 +1280,9 @@ type remoteUserQueryService struct {
 
 ## 19. RBAC 继承与级联（业界参考）
 
+> **阶段状态校准**：下文“Phase 1 不实现”是最初范围；BFS 三源角色合并、`org_roles` 与 scope 后续已交付，并非仍待 Phase 2b。级联语义以链接专文和当前组织/鉴权模块为准。
+
+
 > **Phase 1 不实现**——本节与专文均为**设计备忘**，避免 Phase 1 误做 BFS / org_roles / 数据 scope。
 
 复杂场景（父部门角色是否继承、删组织是否踢人、删角色是否级联删用户）在 AD、Keycloak、AWS IAM、若依等产品中**结论并不相同**，但成熟方案共同点是：
@@ -1315,6 +1365,17 @@ type remoteUserQueryService struct {
 5. **登出**：zhuzhao 侧 revoke 照旧；与公司平台的单点登出（SLO）联动 = 可选项，迁移时按平台能力拍板。
 6. **审计**：登录事件加 `method`（sso/local）。
 
+**影响面**：新增 2 端点（`/auth/sso/login`、`/auth/sso/callback`）+ SSOProvider 接口 + config SSO 段 + 登录审计字段；JWT 中间件/RT/三层鉴权/会话管理零改动。前端仅登录页加企业账号入口（前端后置策略下的最小例外）。
+
+**与 HR 同步分工**：SSO 管「认证」（你是谁、凭证有效性——离职后公司侧自动拒登）；HR 同步管「账号数据」（建号/组织/禁用与会话吊销）。对账键一致，互为校验。排位 **M-SSO**（13 号），与 M-HR 相邻。
+
+**§24 补充（2026-09-02 所有者确认）：字段适配层**——公司 IdP 的流程虽为标准授权码模式，但**消息字段不保证与标准 userinfo 一致**（命名/嵌套/自定义字段）。故 `Identity` 结构由 zhuzhao 侧定义为稳定最小契约（external_id / employee_no / domain_account / display_name / email），「公司报文 → Identity」的翻译收敛在 OAuth2.0 adapter 内部实现（差异大时支持字段映射配置），登录服务与身份映射只消费 `Identity`、不感知公司字段差异——adapter 是唯一的字段差异吸收点，公司接入信息到位后只改这一个文件。
+
+**§24 补充（2026-09-02）：账密通道保留范围**——传统账密登录**保留**，但按账号来源分域：`superadmin` 与 `source=local` 用户保留账密（应急通道：SSO 故障/网络隔离时管理员仍可进入；服务/外部协作者类本地账号）；**`source=hr` 用户 SSO 上线后默认禁用账密**（HR 同步的密码为占位值，放行即绕过公司 MFA/密码策略形成安全旁路）——config 开关 `auth.local_password_for_hr`（默认 false）。SSO 未上线的过渡期不受影响（现状全账密）。
+
+**§24 补充（2026-10-12）：break-glass 密码恢复已实物化**——「应急通道」不止于账密保留：superadmin 密码丢失且无其他超管时的恢复路径已落码为 `zhuzhao reset-password` 子命令（凭容器执行权授权，不走 HTTP；复用管理端重置语义[bcrypt+强制改密+全端会话吊销]+审计留痕），操作流程与手工 SQL 兜底见 [runbook §1](../ops/runbook.md)。
+
+
 ## 25. 权限架构定版：PDP/PEP 分工、统一网关边界与平台策略库（2026-09-03 讨论定稿）
 
 **背景**：§23 重定位后主链为 M-E（taskrunner，独立仓库+独立部署）+ M-A（activelist，用户侧零权限薄层——服务间 AK/SK 验签，§9 基线）；zhuzhao 定位为**统一对外网关**（§13 M-E 拍板已含「zhuzhao 作网关：鉴权/编排/业务审计」）。本节定版权限侧结论，作为 M-E/M-A 权限前置的 SSOT。
@@ -1357,15 +1418,6 @@ type remoteUserQueryService struct {
 
 **不做**：PDP 回调接口、策略配置进 DB/管理面（无消费方）、跨库判定、提前多实例（随 M1 触发条件）。
 
-**影响面**：新增 2 端点（`/auth/sso/login`、`/auth/sso/callback`）+ SSOProvider 接口 + config SSO 段 + 登录审计字段；JWT 中间件/RT/三层鉴权/会话管理零改动。前端仅登录页加企业账号入口（前端后置策略下的最小例外）。
-
-**与 HR 同步分工**：SSO 管「认证」（你是谁、凭证有效性——离职后公司侧自动拒登）；HR 同步管「账号数据」（建号/组织/禁用与会话吊销）。对账键一致，互为校验。排位 **M-SSO**（13 号），与 M-HR 相邻。
-
-**§24 补充（2026-09-02 所有者确认）：字段适配层**——公司 IdP 的流程虽为标准授权码模式，但**消息字段不保证与标准 userinfo 一致**（命名/嵌套/自定义字段）。故 `Identity` 结构由 zhuzhao 侧定义为稳定最小契约（external_id / employee_no / domain_account / display_name / email），「公司报文 → Identity」的翻译收敛在 OAuth2.0 adapter 内部实现（差异大时支持字段映射配置），登录服务与身份映射只消费 `Identity`、不感知公司字段差异——adapter 是唯一的字段差异吸收点，公司接入信息到位后只改这一个文件。
-
-**§24 补充（2026-09-02）：账密通道保留范围**——传统账密登录**保留**，但按账号来源分域：`superadmin` 与 `source=local` 用户保留账密（应急通道：SSO 故障/网络隔离时管理员仍可进入；服务/外部协作者类本地账号）；**`source=hr` 用户 SSO 上线后默认禁用账密**（HR 同步的密码为占位值，放行即绕过公司 MFA/密码策略形成安全旁路）——config 开关 `auth.local_password_for_hr`（默认 false）。SSO 未上线的过渡期不受影响（现状全账密）。
-
-**§24 补充（2026-10-12）：break-glass 密码恢复已实物化**——「应急通道」不止于账密保留：superadmin 密码丢失且无其他超管时的恢复路径已落码为 `zhuzhao reset-password` 子命令（凭容器执行权授权，不走 HTTP；复用管理端重置语义[bcrypt+强制改密+全端会话吊销]+审计留痕），操作流程与手工 SQL 兜底见 [runbook §1](../runbook.md)。
 
 ---
 
@@ -1410,15 +1462,6 @@ type remoteUserQueryService struct {
 
 **结论**：到「星型拓扑 + 单信任域 + ≤10 服务 + 每服务行级自治」整段，现设计**就是终态形态本身**（权限平面分工/注册协议/服务基线自 §25 定版起按终态规格施工），不存在中途推翻断层；四墙各有信号与预制件，无提前拆墙项。
 
-### 26.6 任务回调与外部集成口径（2026-09-22 所有者拍板，Phase 4 十七/十八批）
-
-**一句话**：内部仅服务端定址 push（W0 拒用户级 callback_url）；外部集成 poll-first（读 API+PAT）；登记式 code webhook 与 egress 按触发；不实现 push+pull 双执行引擎。
-
-- **内部执行单路径**：taskrunner 完成后 POST 服务端配置的固定回调（zhuzhao self_base_url+/internal/jobs/callback，action 分发）；两仓四口（zhuzhao Submit / taskrunner POST tasks·POST jobs·PATCH jobs）不再接受 callback_url，传非空即 400（fail-fast——忽略会让调用方以为地址生效）；jobs 列保留、运行时读侧覆盖为配置地址。与 K8s Job/Airflow 同构：编排器与执行器同信任域，不靠提交参数 URL 收尾。
-- **外部五档决策树**（00 号雷达 ⓪–④）：⓪内部新服务=配置 action→base URL 映射（非 code）；①拉模式首选（PAT+GET task/runs——读 API 即消费方式，零新增出站）；②code 预注册（必须实时+URL 可登记才做，payload=通知型 task_id/status/run_id、业务细节走 GET，webhook 不当 RPC）；③egress proxy 沙箱（Smokescreen 形态）；④网络层出站控制。
-- **与 §16 号 E 线关系**：「执行结果只经查询接口获取，不对外推送」=不对业务方随意 POST，不取消内部 callback；回调 at-least-once+幂等在 zhuzhao（单路径更易保证）。
-- **任务读范围**：共享作业队列（task:read=全量，viewer 保留）；「只看我提交的」=UI 筛选（仅 ListRuns 加 submitted_by）非权限裁剪。
-
 ### 26.5 配套登记（2026-09-08）
 
 - 权限码命名公约（resource:verb，资源:动词；原文「verb-on-resource」顺序笔误，2026-09-09 勘误——现行约定以种子数据与 standards §7 为准）+ menu_apis 声明式申报原则 → standards §7 第 7 条；
@@ -1429,12 +1472,21 @@ type remoteUserQueryService struct {
 - 路由↔menu_apis 一致性对账 = **BK-22**（随批次 B）＋ 在线用户管理面（触发驱动随手项；触发条件 = 强制下线/会话审计诉求或 M-UAA 多端会话管理）→ review/11 §8 B14/随手项。
 - RuoYi-Go 双项目借鉴核验（Kun-GitHub / lostvip-com，2026-09-08，代码级）：两项目 L2 数据权限一为 fail-open 半成品、一为纯 UI 摆设——反向印证 L2 服务端强制 + fail-closed 路线；data_scope 仅借「自定义部门集」需求形态（实现走锚点授予表，勿抄角色派——与 BK-14 冲突）。
 
+### 26.6 任务回调与外部集成口径（2026-09-22 所有者拍板，Phase 4 十七/十八批）
+
+**一句话**：内部仅服务端定址 push（W0 拒用户级 callback_url）；外部集成 poll-first（读 API+PAT）；登记式 code webhook 与 egress 按触发；不实现 push+pull 双执行引擎。
+
+- **内部执行单路径**：taskrunner 完成后 POST 服务端配置的固定回调（zhuzhao self_base_url+/internal/jobs/callback，action 分发）；两仓四口（zhuzhao Submit / taskrunner POST tasks·POST jobs·PATCH jobs）不再接受 callback_url，传非空即 400（fail-fast——忽略会让调用方以为地址生效）；jobs 列保留、运行时读侧覆盖为配置地址。与 K8s Job/Airflow 同构：编排器与执行器同信任域，不靠提交参数 URL 收尾。
+- **外部五档决策树**（00 号雷达 ⓪–④）：⓪内部新服务=配置 action→base URL 映射（非 code）；①拉模式首选（PAT+GET task/runs——读 API 即消费方式，零新增出站）；②code 预注册（必须实时+URL 可登记才做，payload=通知型 task_id/status/run_id、业务细节走 GET，webhook 不当 RPC）；③egress proxy 沙箱（Smokescreen 形态）；④网络层出站控制。
+- **与 §16 号 E 线关系**：「执行结果只经查询接口获取，不对外推送」=不对业务方随意 POST，不取消内部 callback；回调 at-least-once+幂等在 zhuzhao（单路径更易保证）。
+- **任务读范围**：共享作业队列（task:read=全量，viewer 保留）；「只看我提交的」=UI 筛选（仅 ListRuns 加 submitted_by）非权限裁剪。
+
 ## 27. Phase 5 立项登记：前端可视化配置线（2026-10-08 所有者指示，规划草案）
 
 **一句话**：工单域 + 任务域配置面前端可视化/人性化——表单设计器（S1）+ 流程状态图设计器（S2）先行（纯前端、存储零迁移），流程运行语义配置化（S3，**已解冻**——dd §29 翻案后拆 S3a/S3b，S3a 排 phase5 基线交付后、phase6 前），管理面配置人性化（S4：taskrunner 任务面 cron 构造器/动作下拉/params schema 化；通知渠道配置页已迁 S6）与对象存储底座富媒体（S5：MinIO 预签名/头像上传/工单附件/富文本字段，IW2 现成设计收编实施）同批登记。Phase 5 未排期（前置已随 P4 收口满足），待所有者拍板。
 
 - **由来（旧→新）**：P4-W4 深水区降级决策（设计器复杂度超预期即降级 JSON 源码模式）实际交付了兜底形态（ticket/type 页 states/transitions=JSON 源码、字段=表格全量替换）；12-frontend「阶段 2（远期可选）form-create 设计器」随之悬置。所有者 2026-10-08 指示：表单与运行流程都要能在前端自定义配置——设计器由"批内深水区风险项"升格为**独立 Phase 5 规划**。
-- **S4 追加（2026-10-08 同日指示）**：taskrunner 任务面（task_center 四 Tab 已交付但 action_id/cron_spec/params 全手填）纳入人性化演进——cron 构造器（`cron_spec` 存储不变）、动作下拉（zhuzhao `jobs.Registry` 暴露元数据读端点 + 创建时 fail-fast 预校验，替代回调时才 404）、params 按动作 schema 渲染动态表单（与 S1 渲染器同构）。动作元数据面与 taskrunner.md「能力目录」定稿方案（2026-09-15，实现后置）共用注册元数据；S4 只做单服务读面 + UX，**不提前触发**跨服务目录自注册。
+- **S4 追加（2026-10-08 同日指示）**：taskrunner 任务面（task_center 四 Tab 已交付但 action_id/cron_spec/params 全手填）纳入人性化演进——cron 构造器（`cron_spec` 存储不变）、动作下拉（zhuzhao `jobs.Registry` 暴露元数据读端点 + 创建时 fail-fast 预校验，替代回调时才 404）、params 按动作 schema 渲染动态表单（与 S1 渲染器同构）。动作元数据面与 taskrunner.md「能力目录」定稿方案（2026-09-15，实现后置）共用注册元数据；S4 只做单服务读面 + UX，**不提前触发**跨服务目录自注册（**2026-10-29 注：跨服务目录已拍板提前提入 phase6**——范围=动作路由目录/全量三步/utils SDK 同批，三闸门触发条件关闭；S4 读面数据源是否切目录随实现批拍，SSOT=taskrunner.md §4）。
 - **S5 追加（2026-10-08 同日第三轮指示）**：头像上传（`users.avatar` URL 手填 → 预签名直传）/工单富文本字段类型（richtext，第八种；正文服务端 HTML 消毒为 SSOT 防存储型 XSS）/工单附件（文档上传）纳入 Phase 5，**MinIO 对象存储为公共底座——phase2/10 号存储设计（IW2 登记）收编为实施载体**：预签名上下行/`file_objects`/`ticket_attachments`/MIME 白名单均为现成设计，底座只做实施不另设计（富文本字段类型为新增设计，richtext 不在 10 号范围内）；errcode 91000–91999 段随批规划。
 - **触发项盘点收编（2026-10-08，P4 收口后对账）**：A 组触发/穿插候选逐件对照 02 号 §5.1 核实——字典（P4-3）/验证码（P4-7）/导出（P4-4，al 域）/PAT（P4-6）**已随 P4 交付，不重复立项**（S1 仅补"select 选项引用字典键"衔接，`/dicts`+`/dict-items` 端点已核）；**通知渠道配置页（P4-2 本体已交付、页面"触发驱动后补"）收编进 S4**（000033 菜单 visible=false 过渡态+管理 API 四端点代码已核）；per-前缀 body 上限（16 号）/auth-enhance 设备管理（IW2 剩余件）维持触发驱动不收编。phase5 硬前置（Phase 4 收口）随 P4 收口**已满足**。**S1 口径校准（同日验证批）**：W4 实际交付为**自研七类型轻量渲染器**（package.json 无 form-create 依赖，库引入决策顺延至设计器批——create/index.vue 头注释）——S1 启动首件 = 设计器选型拍板，**推荐自研设计器**（sortablejs 拖拽+属性面板，产物即 field schema 零映射），form-create designer 作 spike 对照（rules/options 组件树 JSON 与规范化 schema 不同构，需双向映射+面板裁剪，模型税大于成熟度收益）。**S2 选型具体化（同日）**：现成拖拽画布组件不自研——候选 LogicFlow/vue-flow（MIT，启动批同一 PoC spike 后拍板），AntV X6 备选，bpmn.js 排除（BPMN 模型不匹配）；状态=节点/转换=边与 transitions JSONB 天然同构。
 - **S6 追加 + 通知页迁移（2026-10-08 同日第四轮指示）**：**消息通知模块立项（S6）**——企业统一消息平台（邮件/钉钉全渠道单接口，通道抽象仅新增渠道类型、零 SDK 直连）+ 消息模板（`message_templates`；服务端占位符替换渲染防模板注入，模板声明变量清单）+ 人员/内容参数化（收件人第一档=工单字段引用+固定人员，角色/组织解析第二档；解析归业务侧、平台只收最终收件人）+ 工单状态流转触发（挂接机制 emit vs ticket_events 消费面为启动拍板点——后者需补 processed 列迁移，P4-2 交付时未含）+ 发送记录（`message_log`+死信告警复用）。**定位 = P4-2 通知通道的能力延伸（§23 暂缓清单中"通知"随 P4-2 事实上解封，本段延续；SLA/审批/分派/报表维持暂缓）**；站内通知不取。**S4 的通知渠道配置页迁入 S6**（通知中心页面族归一段：渠道配置+模板+发送记录），S4 回归 taskrunner 任务面。量级 1.5–2 周，迁移 `message_templates`/`message_log`（编号启动时对账，**不在此写死下一编号**——取号前以 [review/11 §4 迁移地图](../review/11-project-control.md) 为权威对账位；2026-10-13 校正：原写「下一编号 000041」已被 orgs 读放开两连占用）。
@@ -1448,7 +1500,9 @@ type remoteUserQueryService struct {
 
 **站内消息中心翻案（2026-10-13 所有者提出右上角铃铛需求）**：~~站内通知不取~~（2026-10-08/09 两次拍板，理由=「触达已由统一消息平台覆盖」）——所有者描述铃铛需求（待办提醒/弹出/点击跳转/已读未读/消息中心页）后翻案。**翻案依据：原口径否决的是「触达通道」，铃铛实际要的是「站内聚合工作面」**（还有什么没处理+哪些新事件+深链直达）——钉钉/邮件覆盖不了该场景，两者互补非替代。**设计定性（结合业界：GitHub bell/Jira 通知中心）**：①消息中心是**事件系统的消费者**，架构上= S6 channel 抽象新增「站内 inbox」通道 + notifications 表族（recipient/payload 深链/created_at）+ per-user 已读状态（行级 read_at 第一档/全部已读批量/未读数聚合端点复用 S10 角标端点扩 sections）+ 保留策略（N 天封顶，复用 message_log 经验）——**挂 S6 二期**（触发/模板/收件人解析全是 S6 一期资产，inbox 只加通道+读面；硬依赖 S6 一期，绕开则成第二套触发/去重/保留的假消息系统）；量级 +1.5–2 周（S6 总账 3–4 周，phase5 总账 9–13 → 11–15 周）。②**待办与消息语义分离**（业界地基）：待办=状态派生（已办自动消失，无已读概念），消息=事件快照（读过即完）——铃铛 UI 第一档双 tab（通知/待办）合并入口，数据模型分开。③实时通道分期：S10 角标 60s 轮询（一期既有）→ 站内消息 SSE（二期，单向推送内部够用，WebSocket 过度）→ 浏览器原生 Notification 弹窗（可选增强件，登记不承诺）。④**phase6 硬前置维持 S6 一期口径不变**（风险台账不依赖消息中心）。phase5/README S6/S10 段已同步修订。
 
-## 28. Phase 6 立项登记：风险管理模块（2026-10-08 所有者提出，规划草案）
+- **启动批拍板追记（2026-10-15/16——VISION §4 级联本条，明细以 phase5 文档为准）**：①**排期已拍**（Wave 序：W0 → S5 → S1 → S6 一期 → S2 → S10 → S4 → S9 → S6 二期；一期收口 ≈12–13 周/含二期 ≈14–15 周；`phase5` 分支承载）；②**W0 前置拍板**：S1 设计器=自研（sortablejs）、S2 画布=LogicFlow 优先、MD 编辑器=Markdown（库 md-editor-rt 建议、B5-4 spike 终定）；③**S5 八枚段内拍板闭环**：下载形态=统一后端代理（302 升级缝）/附件权限码=复用 `ticket:update`/限制基线+配置化开放·分层（`system_settings` KV+按 key 编辑层级，硬底线不可配）/备份=mirror 起步+双端版本化+恢复演练/**img 认证=Cookie 双凭证**（`file_session` Path=/api/v1/files 旁路——`<img>` 无法携带 Authorization header 的外审实锤）；④**S3a 显式触发信号**=phase6 R3 首个转换级权限需求（方案 A+C）；⑤**standards §3-1 扩写**（第三方协议方法辖域界定+仅 GET/POST 立法理由，phase5 S5 为首批应用例）；⑥**两轮外审（并行会话）实锤修复**：img 认证缺口/S1 `field_meta` 新列（迁移一枚 ALTER）/事件面命名待钉（DomainEvent 候选，B6-1）/S10 时间源缺口（`status_changed_at` 新列）/迁移计数对齐（S5 三枚 000045–000047、S6 ≥3 段）——11 号台账全景 35 项（闭环 12/开放 23）。
+
+## 28. Phase 6 立项登记：风险管理模块（2026-10-08 所有者提出；已立项转执行态 2026-10-27/28——六组拍板闭环、00/06 号批准，SSOT = phase6/README·05 §6·07 号，本条存立项时点史实）
 
 **一句话**：首个真正的业务模块——面向企业内部风险管理团队的**软件/系统类技术风险**闭环：多数据源汇聚风险单（指纹去重）→ 评估分级（手动级别起步 + **四大处置策略：整改/接受[审批+有效期+到期重审]/转移/规避**）→ 派生**风险整改工单**（复用工单模块：字段/流程/指派，phase5 S1/S2 交付后具备条件）→ S6 消息通知驱动 → **工单终态联动风险单关闭**（复核态可选，默认自动关）。**Phase 6 排期必然后于 Phase 5**（硬前置 = S1/S2/S6+S10 交付）。未排期。
 
@@ -1461,7 +1515,7 @@ type remoteUserQueryService struct {
 **一句话**：§23（2026-09-02"迁移后对接公司内部工单平台、自研暂缓"）**翻案**——翻案条件（"公司内部平台无法承接工单诉求"）经所有者实证成立：内部工单平台为二开系统、对接成本高，且自研更适配本平台（工单是主线、phase6 风险闭环完全建立在自研工单上）。工单自研恢复为主线；S3 解冻拆 S3a/S3b；SLA 引擎不建（S10 轻量版为准）。
 
 - **翻案实证（所有者 2026-10-09 原话归纳）**：①内部工单平台为二开系统、对接麻烦；②自研"还能更加适配这个平台"；③工单流程中心是平台重点、大部分事项由工单推动——§23 冻结理由与现定位全面相悖。
-- **S3 解冻拆两段（避免"引擎建好没消费者"——easy-workflow 式教训）**：**S3a 转换级语义层**=Conditions/Validators（谁能触发哪个转换的配置化，现为硬编码）+自动分派（assignment_rules）+动作库框架（取数回写/通知/抄送/提交任务）——风控场景直接受益；**依赖链显式：排 phase5 基线 S1/S2/S6 交付后、phase6 前**。**S3b 审批流引擎**=BranchedStateEngine+ApprovalTaskLayer+workflow_* 表族（多级审批/会签/驳回），**等首个真实审批场景**再启动（当前风险接受单=确认制，无消费者不建引擎）；基于既有 DB 基建（sqlx/pgx 封装）自写，蓝图=phase3/10 §4.2 映射表+easy-workflow 参考实现核验在册（batch_code/prev_node_id 双轨/事件解析角色三件套借鉴、四硬伤避开）。
+- **S3 解冻拆两段（避免"引擎建好没消费者"——easy-workflow 式教训）**：**S3a 转换级语义层**=Conditions/Validators（谁能触发哪个转换的配置化，现为硬编码）+自动分派（assignment_rules）+动作库框架（取数回写/通知/抄送/提交任务）——风控场景直接受益；**依赖链显式：排 phase5 基线 S1/S2/S6 交付后、phase6 前**。**S3b 审批流引擎**=BranchedStateEngine+ApprovalTaskLayer+workflow_* 表族（多级审批/会签/驳回），**等首个真实审批场景**再启动（当前风险接受单=确认制，无消费者不建引擎）；基于既有 DB 基建（sqlx/pgx 封装）自写，蓝图=phase3/10 §4.2 映射表+easy-workflow 参考实现核验在册（batch_code/prev_node_id 双轨/事件解析角色三件套借鉴、四硬伤避开）。**S3b 立项输入（2026-10-26 外部平台勘查）**：审批语义蓝本=**「任务行展开」**——引擎只持图状态（每实例一份节点状态落库、重启可恢复），「一行=节点×办理人」任务行表承载会签/或签/抢单/委托，节点放行=行聚合判定（有等待即停/全完成=会签/任一完成=或签）；候选人解析=类型码+变量码体系（部门负责人/直接上级/一级部门负责人——依赖 M-HR 数据，mock 先行件已呈报）；退回目标办理人取**历史流水**（变量类候选人按当前人重解析会错人）、撤回三条件、流转前静态探测防死循环+条件全假显式报错不静默办结。**两条外部实证坑进设计注记**：①流程版本化必须快照图正文（对方版本表只存元数据→切版本不恢复图）；②克隆流程改写图标识防与源流程共用引擎图被后写覆盖。
 - **SLA 引擎不建**：S10 轻量版（meta timeout+cron 扫描+按级别通知）精确覆盖"节点停留超时+按级别通知"场景；完整 SLA（计时/暂停/恢复/升级链）等"服务承诺管理"诉求出现再升级。
 - **事件面定论（吸收 §27 事件面条目）**：进程内显式订阅钩子（事件类型化/多订阅者/recover 隔离/事务提交后派发），随 S6 交付——S6/phase6-R3 风险关单/进状态设 timeout 基准/任务链四个消费者共享；语义澄清：超时 cron 轮询非事件订阅者、"进状态设 timeout 基准"为订阅点；**高一致性消费者（风险关单）失败由对账扫描补偿**（非仅 slog，phase6 R3 设计项）。
 - **环境定论**：phase4 业务验收完成前 phase5 不开工（不并行），accept/dev 双栈方案取消；审计归档 `cron_enabled` 默认 false 的部署坑保留为启动/部署拍板项（与并行议题无关）。
@@ -1479,3 +1533,34 @@ type remoteUserQueryService struct {
 - **与 §29 的关系**：§29 翻案使工单自研恢复为主线——M-UAA 是其身份与权限治理基础设施（不涉及工单业务能力，与 S3a/S3b 正交）。
 - **落档纪律**：公司平台名/联系人/内网 URL/队列命名/VHOST **不落本仓**（standards §1.1）；契约细节以公司指南原文为准，实现者内网可查。
 - **残留开放项**：契约四问（token 形态/JWKS·introspect/PDP/SLO）；PERNR 账号字段结构（是否含组织锚点字段）；UAA 能力评估 spike（1–2 天，内网后第一步）；外部协作者账号形态（随场景触发）。
+
+## 31. 「找上级/找责任人」来源通则：人工指定为基线，HR 直属上级为进阶（2026-10-24 所有者拍板）
+
+**背景**：S10 B10-4 超时催办的"supervisor 收件人"来源拍板（台账 E-1）时，所有者给出使用场景定调并**上升为通则**：后续很多"找上级/找责任人"场景同构适用。
+
+**通则**：
+- **基线 = 人工指定**：发起/处理节点时人工填写（可改）——工单域首个应用 = Create/Assign 请求携带催办通知对象（`escalation_supervisor_id`，工单级覆盖类型级默认）；
+- **进阶 = HR 接口自动取直属上级**（`users.manager_id` 汇报线——挂 M-HR 前置，随 HR 同步回灌），**人工已指定则以人工为准**（可人工修改 = 人工值优先、不回退覆盖）；
+- **不做组织角色推导**：原 E-1"种子 org_admin/org_owner 角色码推导上级"方案**作废**——组织管理员是权限角色非汇报关系（业界 ServiceNow `user.manager`/Jira SM 目录 manager/Workday 显式汇报线同证；06 号 A.5 目标态注 2026-10-23 已预警"防把推导误作终局"，本次拍板直接落终局形态）。
+
+**适用范围**：通知收件人（催办/升级类）、审批人候选、任何"责任人上级"语义的场景。工单域 supervisor 解析顺序 = **工单人工指定 > `users.manager_id` > 缺席（不推导不广播）**。
+
+**关联**：[phase5/10 号 §3.4](../phase5/10-s10-ticket-collaboration.md)（B10-4 实施载体）、[phase5/06 号 A.5](../phase5/06-s6-message-notification.md)（解析规则修正）、台账 E-1 销账。
+
+## 32. 数据载体四分法：常量/字典/域表/活动列表的选型边界（2026-11-10 所有者拍「与业界一致」口径后落档）
+
+**背景**：字典（P4-3）与活动列表页面形态相近（双栏类型/条目），多次被问"能力是否重叠"。结论：**不重复**——字典回答"某字段允许填哪些值"（枚举），活动列表回答"业务要处理的清单数据本身"（记录）。业界同构：Salesforce picklist vs 自定义对象记录、ServiceNow choice list vs 自定义表、Jira 字段选项 vs Assets。
+
+**判定顺序（新需求要"一个列表"时依次问）**：
+1. 代码按值分支（时限/升级/统计口径）→ **Go 常量**。例：风险级别四档（02 号拍板 1——档位全局固定，类型差异由映射规则承载）。
+2. 字段可选值、运营维护、几十项以内 → **字典**（P4-3）。例：工单自定义字段选项（`dict:<code>`）、任务分类 task_category（设计稿）。
+3. 条目需关联人/组织等实体 → **本域建表**。例：轻量系统台账 `systems(code,name,owner_user_id)`（phase6 01 号 P0-5）。
+4. 业务处理的清单数据、量大（可达百万行）、需导入导出/软删恢复 → **活动列表**。例：封禁 IP、资产/指标清单、任务输入输出数据（C-21+）。
+
+**边界细则（RR-HY-02 同批）**：
+- 静态选项移除或字典项停用后，存量单可延续已有值。字典成功查到空启用集时也禁止新选，字典整类停用按空集处理。查询故障继续沿用运行期降级策略。
+- 启用的字典类型内，详情可回显停用项名称。字段公式可解析仍存在的停用项，显隐与流程转换保持只查启用项的规则。硬删除后名称只能退回原编码，仍引用该项的公式可能因未命中而阻止自定义字段保存。日常运维优先停用。
+- 禁止把活动列表数据同步进字典充当选项；"从大清单里选值"应做**引用型字段（远程搜索）**，数据源走 DataFetcher `activelist` 源类型（源类型已登记、registry 随首源接入激活，phase6 03 号 §3.3）。
+- 环境晋级：字典是配置依赖（目标侧按 code 只读校验，晋级提案 §引言），活动列表是运行数据（不随配置包晋级）。
+
+**关联**：[phase5/01 号 §3.2](../phase5/01-s1-form-designer.md)（字典引用与存量放行实现）、[phase6/01 号 P0-5](../phase6/01-r1-ingest-ledger.md)（系统台账）、[phase6/README](../phase6/README.md)（活动列表定位）、RR-HY-02/03（followup 报告第五批）。

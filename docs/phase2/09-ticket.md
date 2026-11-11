@@ -1,5 +1,8 @@
 # 09 - 工单模块（ticket，Phase 2a + 2b）
 
+> **适用范围（2026-11-08整理）**：这是Phase2蓝本与后补安全说明。project_isolated已由000017/IW1实施；原页面全写SQL已被B案替代。内部备注权限与读取同用note授权：创建人/处理人、有效组织委托及全局管理员可进入，普通透明读旁观者不因此获内部备注。当前流转/事件/附件见Phase5，未来审批和关系解除不因这里有设计就视作实现。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **Step 2（2a MVP）** + **Step 4（2b-core scope 升级）** + **Step 9（2c Authorize，见 [04-org-delegation](./04-org-delegation.md)）**。  
 > 模块完整设计见 [modules/ticket.md](../modules/ticket.md)；**本文档为 phase2 实现 SSOT**。
 
@@ -111,6 +114,9 @@ CREATE INDEX IF NOT EXISTS idx_ticket_relations_target ON ticket_relations(targe
 **priority 刻度（2026-08-31 收敛，IW1 后随 BK-18）**：`1紧急 / 2高 / 3中 / 4低`（`0` = 未传，归一为 3）。Create/Update 与模板 `default_priority` 三路径统一强制校验，越界 → 400；沿用 SMALLINT 列型，扩刻度不改表。
 
 **组织 move 级联**（[P2-D1](./00-implementation-plan.md) 已拍板方案 A）：`POST /orgs/move` 更新组织子树 ltree path 时，同一事务内级联改写存量工单 `tickets.org_path`——`UPDATE tickets SET org_path = new_path || subpath(org_path, nlevel(old_path)) WHERE org_path <@ old_path`。不处理则 2b scope=group 静默漏单（旧工单从主管列表消失）。落地：2a Step 2 建表同批扩展 `OrgService.Move` + Step 4（2b-core）回归测试（move 后 scope 过滤仍正确）。
+
+
+> **关联域演进登记（2026-10-29 所有者，登记级不排期）**：①**多跳链式视图/关系图面板（加分功能）**——语义基线：关联=成对边、无传递性（A↔B↔C 链天然存在，各单详情只渲染直接边，Jira link 同构）；形态=详情页关联卡的**链式面板**：沿边遍历（默认 2 跳可展开）+环检测+L2 不可见节点占位；实现分解=**前端逐跳拉取**（getTicketRelations BFS，零后端，≈1–2 天）或后端聚合端点（一跳全链，+1 天）；触发=链式排查场景（事件链/依赖链）真实出现时随批。②**解除关联端点缺口（待拍板）**——后端现仅 List/Create（router.go:468-469），关联一经建立不可撤销（UI 无解除按钮、API 无端点）；`ticket_relations.deleted_at` 软删列已备（列表按软删过滤），补齐=`POST /tickets/relations/remove`（软删+Create 同款 L2/ticket:relation，零迁移）+ui 解除按钮，≈1–1.5 天。③已落（2026-10-29 ui 关联体验批）：已建关联 #id 快跳+搜索候选「查看」新标签+关联入口远程搜索下拉（ui 0ddf5117/1288253e）。
 
 ### Phase 2b 增量
 
@@ -277,6 +283,10 @@ ON CONFLICT DO NOTHING;
 - **Get 不可见**：404 + `ErrTicketNotFound`（**90001**——决策收口，便于客户端区分模块；**已于 2a Step 2 写入 `errcode.go`（L98），勿改号**）
 - **Update**：创建人或处理人；否则 403 + 70001
 
+> **现行校准（2026-11-08）**：本小节future/project_isolated与仅transparent CHECK是2b-core当时的切片。后续IW1/000017已放开隔离值及L2委托轴，现行配置不是future。
+
+<a id="52-phase-2b-scope-升级-部门内读写分离策略-b默认"></a>
+
 ### 5.2 Phase 2b — scope 升级 + 部门内「读/写分离」（策略 B，默认）
 
 > **部门内默认（策略 B）**：同一**实体部门**子树下，虚拟组 **兄弟节点之间可读不可改**——读扩大到实体锚点，写仍绑工单所属虚拟组。  
@@ -370,6 +380,8 @@ return Filter{
 ### 5.3 Phase 2c
 
 CheckOwner 扩展：见 [04-org-delegation §4](./04-org-delegation.md#4-authorize-升级step-9)。**GetFilter 不变**（L2 已在 2b 策略 B 定稿；D11 验收读/写分离）。
+
+> **现行校准（2026-11-08）**：表内“note随透明读扩大/待实现”是旧稿漂移。当前Resource.canOperate的note分支允许创建/处理人及有效组织委托，全局管理员按入口规则；ListComments复用note授权判定内部可见，普通透明读旁观者仍只能公开回复。
 
 ### 5.4 全生命周期 × 三层鉴权对照表
 
@@ -494,7 +506,7 @@ POST /api/v1/tickets
 |---|------|------|
 | T8 | scope=group 用户列表 | 含子 org 工单。✅ 已覆盖（Step 5）：`TestB2Org_ScopeSupervisorAndAll`（Get/List）+ phase2b 脚本主管分派 |
 | T9 | vg_a member、策略 B | **可读** vg_b 工单；**不可 update** vg_b（403） |
-| T10 | expires_at 过期成员 | 失去该 org 透明读与 scope 路径。✅ 已覆盖（Step 5）：`TestB2Org_ExpiredMemberLosesAnchor` + BFS 过期隔离 |
+| T10 | expires_at 过期成员 | 失去由该成员关系授予的透明读/scope/组内委托。Step 5 的 `TestB2Org_ExpiredMemberLosesAnchor` + BFS 只覆盖前两类；2026-11-05 B09 补 `TestExpiredMembership_AuthorizationBoundaries`，覆盖 admin/owner 成员过期后的单条读写、列表、名册/移员与建单归属判定；显式 owner 数组的独立权源保留正向对照。 |
 | T11 | 附件 confirm | 见 storage S1–S2 |
 | T12 | 实体 `project_isolated`（**future，移出 2b-core 验收**） | vg_a member **不可读** vg_b（404） |
 | T13 | vg_a admin 改 vg_a 内他人工单 | 2c：**200**；2b：403（非创建人） |
@@ -552,3 +564,4 @@ migrations/0000xx_ticket_menu.up.sql   # 可选：菜单与 Casbin
 |---|---|
 | 建档 | 工单模块完整设计（Phase 2 交付蓝本；2026-09-02 §23 封版转对接参考，phase3/10 为业务侧续篇） |
 | 2026-10-15 | 补建本表（§12-3 SSOT 变更记录表纪律对账，全仓公约审计批）；完整历史见 git log |
+| 2026-10-29 | **§2 关联域演进登记（所有者问询「链式关联/加错取消/搜索看详情」核出）**：①多跳链式视图/关系图面板登记为加分功能（触发驱动——链式排查场景出现时随批；前端逐跳 ≈1–2 天/后端聚合 +1 天）；②解除关联端点缺口登记待拍板（现仅 List/Create 不可撤销；软删列已备，补齐 ≈1–1.5 天）；③关联体验三小件已落 ui（#id 快跳/候选查看/远程搜索下拉——ui 0ddf5117/1288253e） |

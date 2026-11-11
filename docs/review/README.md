@@ -1,13 +1,27 @@
-# review/ — 审查记录
+# 审查与项目控制
 
-本目录三层结构：
+本目录把当前控制、审查方法和固定时点证据分开，避免从旧流水推导现状。维护规则见[文档维护约定](../documentation.md)。
 
-- **顶层（活文档+近期快照）**：
-  - [11-project-control.md](./11-project-control.md) — 项目控制台**活文档**：能力矩阵 / 健康状态（遗留问题 SSOT，§6）/ Phase 3 前置随行分类（§8）/ 迁移地图。**每次改动后回填**（AGENTS.md 铁律），引用惯例 = 直接按路径 `docs/review/11-project-control.md`。
-  - [12-b13-permission-matrix-2026-09-26.md](./12-b13-permission-matrix-2026-09-26.md) — B13 权限覆盖矩阵 point-in-time 快照（79 端点/8 盲区定性/IAM 四平面边界）——W1 词表终态基线，词表再动时新生一份而非改旧。
+## 从这里开始
 
-- **[archive/](./archive/)**：Phase 1–2 历史快照（00–10 共 13 篇）——各阶段系统性审查/验收/文档体系审查报告，发现与处置已全部闭环（闭环证据见 [11 §6](./11-project-control.md)）。编号即时间序，04 有两篇系同期各自成文的历史现状（维持不重排）。
+- [项目控制台](11-project-control.md)：当前能力矩阵、健康状态、81对迁移地图及历史分流出处。每次改动后回填；当前开放债再进入Phase5/6台账。
+- [全面审计指南](audit-playbook.md)：可复用的范围、覆盖、证据与复验方法。每次审计另建本地执行卡，不把当前基线写成永久方法。
+- [BK11死锁复盘与dbtx决议](13-bk11-pool-deadlock-2026-10-26.md)：根因/修复历史与已批准ticket试点共存；试点尚未实施，保留原路径供设计引用。
 
-- **后续新报告**：带日期戳的定期审计（`NN-topic-YYYY-MM-DD.md`）直接放顶层；闭环后移入 archive/。
+## 正式报告
 
-引用本文目录：[docs/README.md](../README.md) §review。
+首次目录整理与验证见[五仓文档归位记录](reports/documentation-reorganization-2026-11-08.md)，按原始要求再次核对的遗漏、修正与范围见[二次复核记录](reports/documentation-recheck-2026-11-08.md)；旧审计结论按各自冻结时点保留。
+
+[reports/README.md](reports/README.md)索引全部正式报告。追代码修复先读[11-08复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27最终收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，再按需要读[11-06全量总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及分批原证据。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号。
+
+报告保留原hash、失败、NOT_RUN、变异验证与运行边界；固定窗口通过不等于main/生产已承接。12/14权限矩阵已归reports，仍保留point-in-time性质；当前L1全角色/路由验证以B11所述窗口为准。
+
+## 历史档案与规划来源
+
+[archive/README.md](archive/README.md)收录原Phase1/2审查12篇，以及旧overview、执行计划和从控制台抽离的日期流水。合并报告可能是已删除原稿的唯一证据，保留发现编号、误报裁定与后继关系，不按日期批量删除。
+
+[安全运营平台规划](../proposal/secops-platform/README.md)的10篇资料含已拍决策与未来能力设计，属于proposal来源；当前实施状态回到各phase README。历史报告与未来方案承担不同职责。
+
+## 材料归属
+
+正式报告进入reports；原始执行卡、日志、截图、快照和临时探针只放ignored `.codex/audits/<轮次>/`。共享索引链接纳管内容，本机原始材料按报告说明恢复，不把本机路径当他人可用入口。

@@ -87,6 +87,23 @@ func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType) error {
 }
 
 // DeleteTypeByCode 按 code 删（items FK ON DELETE CASCADE 随删）
+// HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫——01 号 §3.2
+// 拍板点④"补删除守卫"）。引用形态 = ticket_type_fields.field_options JSONB 数组
+// 元素精确等于 "dict:<code>"（jsonb_array_elements_text 精确匹配，非 LIKE 模糊）。
+func (r *DictRepo) HasFieldDictRef(ctx context.Context, code string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM ticket_type_fields f,
+			jsonb_array_elements_text(f.field_options) e
+			WHERE e = 'dict:' || $1
+		)`, code).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func (r *DictRepo) DeleteTypeByCode(ctx context.Context, code string) error {
 	tag, err := r.db.Exec(ctx, "DELETE FROM dict_types WHERE code = $1", code)
 	if err != nil {
@@ -121,6 +138,28 @@ func (r *DictRepo) ListItems(ctx context.Context, page, pageSize int, typeCode s
 		out = append(out, &it)
 	}
 	return out, total, rows.Err()
+}
+
+// ListItemsByCodeIncludingDisabled 显示面（RR-HY-02）：含停用项（停用项在详情/
+// 编辑回显名称用），type 停用仍返回空——type 级开关是"整个字典下线"语义。
+func (r *DictRepo) ListItemsByCodeIncludingDisabled(ctx context.Context, code string) ([]*model.DictItem, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT `+dictItemColumns+` FROM dict_items
+		WHERE type_code = $1 AND EXISTS (SELECT 1 FROM dict_types t WHERE t.code = $1 AND t.enabled)
+		ORDER BY sort_order, code`, code)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*model.DictItem{}
+	for rows.Next() {
+		var it model.DictItem
+		if err := rows.Scan(&it.ID, &it.TypeCode, &it.Code, &it.Label, &it.SortOrder, &it.Enabled, &it.Remark, &it.Version, &it.CreatedAt, &it.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, &it)
+	}
+	return out, rows.Err()
 }
 
 // ListEnabledItemsByCode 消费面：按 type 拉取启用项（sort+code 序）——type 停用时返回空

@@ -1,5 +1,8 @@
 # 11 - 部署级分离方案（工单独立服务演进路径）
 
+> **适用范围（2026-11-08整理）**：这是冻结的参考演进方案，APP_MODULES模块选择启动没有实现；Wire编译期装配不等于运行时可选Provider。独立taskrunner/activelist不走同二进制拆部署路线，默认推荐不代表当前已多副本。
+> 当前能力状态见 [项目控制台](../review/11-project-control.md)，操作入口见 [运维](../ops/README.md)。以下阶段设计、原失败和后补决定按各自日期保留，不表示本轮重新执行了测试。
+
 > **定位**：工单模块独立成服务的演进路径，按"代码不拆、部署先拆"原则分三档推进。微服务拆分（gRPC/CQRS/独立仓）推迟到 Phase 3+ 以后，本文档聚焦部署级分离。  
 > **对应**：[phase3/README §1.3](./README.md#13-不做什么)、[deployment-evolution.md](../proposal/deployment-evolution.md)。  
 > 创建日期：2026-08-25。

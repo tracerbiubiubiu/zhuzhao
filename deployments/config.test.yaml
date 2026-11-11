@@ -67,11 +67,13 @@ audit:
     out_dir: "data/archive"
     file_retention_days: 395
 
-# 文件存储（Phase 2 启用）
+# 文件存储（Phase 5 S5 启用；对象存储后端 RustFS 拍定，S3 兼容）
+# 凭据写法对齐项目 viper 惯例：config 内字面值 + 运行时 BindEnv/AutomaticEnv 覆盖
+# （viper 不做 ${VAR} 插值——勿照抄 env 引用形态；B5-1 启用时按 05 号附录 A.2 对表）
 # storage:
-#   endpoint: "localhost:9000"     # MinIO / S3 兼容
-#   access_key: "minioadmin"
-#   secret_key: "minioadmin"
+#   endpoint: "localhost:9000"     # RustFS / S3 兼容端点
+#   access_key: "zhuzhao_rustfs"   # test 默认（与 compose.test.yaml 启用时同源）
+#   secret_key: "zhuzhao_rustfs_dev"
 #   bucket: "zhuzhao"
 #   region: "us-east-1"
 #   use_ssl: false
@@ -100,7 +102,7 @@ gateway:
   sk: dev-gateway-sk          # dev 默认；生产经 GATEWAY_SK env 覆盖，不入库不入 git
   upstreams:
     - prefix: /al            # 网关暴露前缀（前端经 /al/api/v1/... 访问 activelist）
-      target: http://activelist:8080  # compose 服务名（测试栈内网 DNS）
+      target: http://activelist:18081  # compose 服务名@分配表 18081（测试栈内网 DNS）
       strip_prefix: true     # /al/api/v1/x → 上游 /api/v1/x
       disabled: false        # Restrict 资源开关：true 时该上游一律 503+10008（维护/紧急停用，不向未授权者泄露状态）
 
@@ -115,3 +117,25 @@ rate_limit:
     burst: 40
   # routes 按需启用更严规则（示例）：
   #   /api/v1/auth/login: { rps: 3, burst: 5 }
+
+# phase5 S5 对象存储（对齐 configs/config.yaml 段；endpoint=compose 服务名）。
+# 默认 disabled——ui E2E 消费时随 rustfs profile 一起翻 env：
+# STORAGE_ENABLED=true（app 服务 env 已预留接线注释，见 docker-compose.test.yaml）。
+storage:
+  file_cookie_secure: false      # 文件通道 cookie Secure 属性（HTTPS 网关前置置 true——A.11/审计 M-4）
+  enabled: false
+  endpoint: http://rustfs:9000
+  region: us-east-1
+  bucket: zhuzhao
+  access_key: "zhuzhao_rustfs"
+  secret_key: "zhuzhao_rustfs_dev"
+  use_ssl: false
+  presign_upload_ttl: 15m
+  max_upload_bytes: 10485760
+  max_attachments_per_ticket: 20
+  max_presign_batch: 20
+  allowed_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf,
+    text/plain, application/zip, application/msword, application/vnd.openxmlformats-officedocument.*]
+  blocked_mime_types: [text/html, image/svg+xml]
+  inline_mime_prefixes: [image/]
+  orphan_gc_days: 7
