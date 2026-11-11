@@ -42,7 +42,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
-| **跨环境配置晋级** | 已发布工单类型、流程、字段和模板的配置包，含审批绑定、版本化发布和补偿 | 规划，未实施。Phase6 B3 件 7 承接，首次生产配置晋级前验收 | [配置晋级方案](../proposal/config-promotion.md)、[件 7](../phase6/06-ticket-completeness.md#37-件-7-类型定义包导入导出) |
+| **跨环境配置晋级** | 已发布工单类型、流程、字段和模板的配置包，含审批绑定、版本化发布和补偿 | 提案，未实施。原件 7 登记保留为重规划输入，确认实施后在首次生产配置晋级前验收 | [配置晋级方案](../proposal/config-promotion.md)、[件 7](../phase6/06-ticket-completeness.md#37-件-7-类型定义包导入导出) |
 | **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
@@ -61,7 +61,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **break-glass 应急通道（admincli）** | `zhuzhao reset-password` 子命令：superadmin 密码恢复（目标校验须持启用 superadmin 角色 + 复用 HTTP 侧重置语义[bcrypt+must_change_password+全端会话吊销] + 禁用连带启用 + audit_logs 落行 method='CLI'）；同二进制子命令分发零镜像改动；流程与兜底 SQL 见 `docs/ops/runbook.md` §1 | ✅ 2026-10-12（集成 4 用例常态门禁 + dev 栈演练） | `cmd/server/reset_password.go` `internal/pkg/admincli/` `internal/service/session_revoke.go` |
 | **前端控制台 zhuzhao-ui（P4-W2–W5+P4-9）** | **全线交付（2026-09-29 收官）**：壳层四件+登录/强制改密/个人中心+暗色主题+CI+codegen；system 四页+工单全域+al/task/audit 三域+P4-9 部署件；E2E 19 spec/21 用例打真五栈；单测 15 文件/115 用例；四轮审计 31 项全部清账 | ✅ P4-W2–W5+P4-9 全交付（2026-09-29）；审计修复链 2026-10-03 终态 | `../zhuzhao-ui` |
 | **对象存储与富媒体（P5-S5）** | storage.Client 抽象（minio-go）+ file_objects/ticket_attachments 表族 + 头像/附件/富文本字段 + 软删 GC 四段（pending/deleted/反连接回收/avatar reaper observe） | ✅ 既有能力已交付；2026-11-08 RR-UI-01：UI bebfe523详情缓存清空/移除与异步身份修复已原gate/253/81复验 | `internal/service/storage/` `migrations/000045–000050`；[B06报告](reports/zhuzhao-ecosystem-audit-b06-storage-transactions-2026-11-05.md)；[本轮复验](reports/zhuzhao-report-followup-2026-11-08.md) |
-| **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7）。公式同名绕过与求值输入隔离在 11-11 收尾复核升为合并前 C1，仍待修复。 | `internal/service/ticket/` `migrations/000051/000052`；[Phase6 件 26](../phase6/06-ticket-completeness.md#327-件-26-公式引用校验与提交重算) |
+| **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7）。公式同名绕过与求值输入隔离作为 C1 移交 Phase 6，保留 P1 复核优先级。 | `internal/service/ticket/` `migrations/000051/000052`；[Phase6 件 26](../phase6/06-ticket-completeness.md#327-件-26-公式引用校验与提交重算) |
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 既有能力已交付；2026-11-08 RR-DOC-01：UI14事件选项/跨仓集合守卫及A.9登记已原gate复验 | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061`；[06号A.9](../phase5/06-s6-message-notification.md) |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |
 | **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24（ 待走查） | zhuzhao-ui（02 号附录 A） |
@@ -231,16 +231,16 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
-### 2026-11-11 Phase 5 收尾整理
+### 2026-11-11 Phase 5 收尾整理与后续重规划
 
-- 所有者已完成一轮前端初验，[12 号](../phase5/12-scenarios-and-tests.md) 修复表格、重算步骤结果并给出合并前修复与 Phase 6 承接。自动复验固定快照为主仓 0707e9c6、UI 3833ca2c，253/81 与 UI 244/42 通过。后续配置 29d78a69 固化超时发送，发送与观察模式另有定向测试，不冒称同一 SHA。
-- 合并前正确性项及关闭用例统一见 12 号 §8.1，包含件 26 公式同名绕过、文件字段更新归属、回调假成功等现存问题。代码仍待后续修复批，不能以自动门禁通过或文档推送关闭。
-- Phase 6 的布局、ACL、筛选与活动流等增强留原计划入口，待定方案继续待定。F11 配置包读写兼容与 F12 历史列宽分别有启用前条件。配置晋级提案与既有本地文档本轮纳入显式路径提交，工作区和远端状态在 runbook 回填。
+- 所有者已完成一轮前端初验，[12 号](../phase5/12-scenarios-and-tests.md) 保留 97 步的历史结果、自动补证和未验边界。自动复验固定快照主仓 0707e9c6、UI 3833ca2c 的 253/81 与 UI 244/42 通过，后续配置 29d78a69 的超时观察及发送模式另有定向证据。上一轮文档提交 ba02a8de 的远端 lint、单测、覆盖率、全量集成和提交规范检查通过。
+- 按所有者后续指示，前次 13 组代码修复条件统一移交 Phase 6。C1 公式、C2 文件引用与归属、C3 回调响应及记账保留 P1 优先级，当前范围、后续核验线索和触发条件见 12 号 §8.2。延期项保持未修状态，C2 尚未证实越权下载，C3 需分别考虑实际执行成功、在途重放与记账失败。
+- 本阶段先收口工作区、内容、文档位置及提交推送。五仓 8 个已注册工作区和 10 个本地分支的遗漏、脏文件及远端可达性已核对。Phase 5 收尾后进行全项目重新设计规划，旧接口、波次、方案和估算作为输入；配置晋级提案保留 proposal 位置，实施前再确认完整契约。
 
 ### 2026-11-10 Phase 5 走查修正
 
 - 工单建单和自定义字段更新统一显隐与公式求值的字段快照。隐藏公式不执行，计算产物校验必填、类型、正则和最终大小。字典成功返回空启用集时只允许延续旧值，字段公式和显隐或流转的停用项查询分开。
-- 字段配置只有成功加载当前版本与字段后才允许提交。设计和专家模式共享草稿，保留已有 MIME 白名单、静态选项值和未编辑元数据。流程编辑保留状态级 SLA，建单、分派与其他状态入口的截止时间收敛仍未修，本轮归合并前 K2。
+- 字段配置只有成功加载当前版本与字段后才允许提交。设计和专家模式共享草稿，保留已有 MIME 白名单、静态选项值和未编辑元数据。流程编辑保留状态级 SLA，建单、分派与其他状态入口的截止时间收敛仍未修，按后续指示作为 K2 移交 Phase 6。
 - 发起页切换类型时立即隔离旧字段，详情按当前工单与类型归属读取数据。活动列表全量替换确认绑定当前内容，过期或失败的文件读取不能提交旧内容。
 - 本地修复快照通过主仓 lint、单测和全量竞态集成、四档 253 条验收和 81 对迁移往返。默认单测覆盖率按一位小数为 20.3%。UI 六件门禁通过，含 244 条单测和 42 条 E2E。走查缺陷记录与验收通过分列。硬删字典项后的公式兼容、文件字段更新绑定、回调成功状态等剩余问题继续登记。阶段决策仍按 [Phase 6 总纲](../phase6/README.md) 执行。
 

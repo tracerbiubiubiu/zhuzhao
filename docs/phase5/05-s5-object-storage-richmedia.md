@@ -306,7 +306,7 @@ CREATE INDEX idx_file_objects_creator ON file_objects (created_by, status);
 | POST `/api/v1/system/settings/reset` | 按既定权限恢复该key的出厂覆盖语义；与Update共用写后重建串行边界 |
 | POST `/api/v1/tickets/richtext/render` | 登录态纯消毒渲染，输入content、输出安全html，不代表调用者获得某张工单读权限 |
 
-`attachment_create` 用于建单前上传，confirm 仅确认对象，工单创建事务才建立归属和附件关联。当前 confirm 对该用途附带的 `ticket_id` 不落绑，调用方不能据成功响应认定已有工单增加了附件。给已有工单加附件须使用 `ticket_attachment`，在 presign 与 confirm 两步提供目标工单并通过资源写权限校验。是否显式拒绝相互矛盾的参数见 [12 号 F23](12-scenarios-and-tests.md)，文件字段 Update 的绑定正确性另由合并前 C2 处理。
+`attachment_create` 用于建单前上传，confirm 仅确认对象，工单创建事务才建立归属和附件关联。当前 confirm 对该用途附带的 `ticket_id` 不落绑，调用方不能据成功响应认定已有工单增加了附件。给已有工单加附件须使用 `ticket_attachment`，在 presign 与 confirm 两步提供目标工单并通过资源写权限校验。是否显式拒绝相互矛盾的参数见 [12 号 F23](12-scenarios-and-tests.md)，文件字段 Update 的引用与归属另以 C2 移交 Phase 6，具体处理结合全项目重规划。
 
 presign PUT/HEAD是S3协议，不改变平台GET/POST公约。下载时ETag读库快照，If-None-Match命中返回304；实际S3读用If-Match防确认后重放替换。仅ticket附件/正文图成功200投递手动落审计，avatar与304不额外落；Range不作已交付承诺。存储ID出站string与B19破坏性wire边界见A.3。
 

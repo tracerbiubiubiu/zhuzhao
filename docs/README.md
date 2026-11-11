@@ -23,7 +23,9 @@
 
 ## 阶段导航
 
-[Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是当前维护分支对应的能力与债务入口。[Phase 6](phase6/README.md) 含已批准后续工作及待定项；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
+> **2026-11-11 当前安排**。Phase 5 完成工作区、文档、验证及提交推送收尾，剩余问题保留记录并移交 Phase 6。收尾后将对全项目重新设计规划，既有后续阶段方案、接口、波次和估算作为输入。当前交接见 [Phase 5 验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)。
+
+[Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是当前维护分支对应的能力与债务入口。[Phase 6](phase6/README.md) 保留既有设计与待办，供 Phase 5 收尾后的全项目重规划；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
 
 当前工作分支不能从目录名推断。Phase 5 维护在 `phase5`，三个 Go 兄弟审计候选在各自 `codex/phase5-audit`；合 main、发布和下一阶段启动遵循所有者安排，文档整理不改变分支发布策略。
 
@@ -35,7 +37,7 @@
 - **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/codex/phase5-audit/docs)，维护执行、调度、回调和服务部署。
 - **activelist**：[动态数据服务文档](https://github.com/tracerbiubiubiu/activelist/tree/codex/phase5-audit/docs)，维护当前 PostgreSQL 模型、Schema、CRUD/导入和部署。
 
-链接指向对应工作分支；本地候选尚未推送的新增路径，以本地各仓 `docs/README.md` 为准。跨仓只引用契约，不复制整份实现说明。
+链接指向对应工作分支，准确提交与工作区状态以各仓 Git 及本轮收据为准。跨仓只引用契约，不复制整份实现说明。
 
 ## 维护规则
 
@@ -48,3 +50,4 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-11-08 | 五仓按各自 docs 维护，重写任务入口并区分当前/未来/历史；阶段目录和 Swagger 消费路径保留。 |
+| 2026-11-11 | 同步本阶段工作区收尾与问题移交入口，后续阶段设计作为全项目重规划输入。 |
