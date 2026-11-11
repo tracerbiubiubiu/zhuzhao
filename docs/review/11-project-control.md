@@ -15,7 +15,7 @@
 - **交接决策准备（2026-11-12）**：B06按批准继任映射自动交接、B07按已确认接管plan迁挂的默认值仍待owner；无映射不猜上级/祖先，历史不重写。只修规划候选，未执行HR同步或权限迁移。
 - **全路线与渐进承接**：O10确认以现有规模尽可能承接、优化扩展原6–9及更远能力；[169条连续性审计](roadmap-capability-continuity.md)补U08/I05/D17/D18等有限出口，主入口为[全项目路线](../roadmap.md)。
 - **分档门禁方向已确认**：ENG-D01b采用文档/离线原型/完整档，规则与混合变更走完整档；G03同步并验证后启用，现行规则尚未改变。本轮五仓完整门禁已补验。见[工程施工](../design/engineering-execution-design.md)。
-- **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险派单简化建议待确认。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
+- **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险组职责/受限派单方案已确认：获授权管理者派已配置类型/组织，只读不能派单，不额外授通用建票权；SOC事件另按职责。风险权限/桥尚未实现。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
 - **组织赋角补核**：虚拟组可复用org_roles；现有角色展开尚未按组织status/deleted_at过滤，停组不等于已撤派生L1。C04/D06统一生命周期撤权与回归，详见[领域合同](../design/business-lifecycle-contracts.md)；未在本批修源码。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。

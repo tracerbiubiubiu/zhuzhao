@@ -102,13 +102,15 @@
     },
     {
       "id": "B05",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D03/P6.2 派单启用前",
-      "recommendation": "复用已有 risk:manage 和风险资源范围，不另设派单角色或 risk.dispatch 权限码；单条沿用主锚或当前owner、批量沿用主锚管理范围；受限领域用例复用工单校验，仅向配置好的整改类型/组织派单，不额外要求通用 ticket:create；可通过现有org_roles向虚拟风险组绑定业务角色，若全组含旁观者只授获准人员/职责组，避免并集角色无法用只读抵消",
+      "recommendation": "沿用原风险设计的 risk:manage 和风险资源范围，不另设派单角色或 risk.dispatch 权限码；单条沿用主锚或当前owner、批量沿用主锚管理范围；受限领域用例复用工单校验，仅向配置好的整改类型/组织派单，不额外要求通用 ticket:create；可通过现有org_roles向虚拟风险组绑定业务角色，若全组含旁观者只授获准人员/职责组，避免并集角色无法用只读抵消",
       "alternatives": "风险派单还必须额外有通用 ticket:create；一般新建工单仍保持自身权限与类型/组织约束",
-      "impact_or_safe_fallback": "risk.dispatch.v1是operation_id而非新增权限码；真实操作者与业务创建人分记，不客户端传任意created_by；未决不擅启扩大后的领域创建范围",
+      "impact_or_safe_fallback": "方向已确认、尚未实施。risk.dispatch.v1是operation_id，不另设派单权限码/角色；risk:read/risk:manage为风险设计中的计划权限，现有org_roles机制可复用；单条主锚/owner、批量主锚及类型/组织校验保留，业务创建人与真实操作者分记，普通REST/Agent不能传任意created_by或skip_auth。实际角色名单、目标映射在启用前配置并验证",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
-      "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准"
+      "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准；2026-11-12：用户对具备上述具体范围、只读限制及SOC事件分工的自包含问题明确选择“采用这套职责方案（推荐）”，B05方向已确认",
+      "decision": "虚拟风险组中获授权的管理成员可在职责范围内录入/管理风险，并向已配置部门/工单类型派发整改工单，不额外要求通用ticket:create；只读成员不能派单。攻击/应急安全事件接SOC，按事件职责另行授权，不因入风险组自动得到全部事件能力",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "B06",
