@@ -10,7 +10,7 @@
 
 - **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。本轮重规划以原6–9功能为基线覆盖全部后续路线与新增能力，Phase6只是近期切片；首轮及本批详设已在独立codex分支落档，功能尚未实施。当前审计步骤3/详设候选与4/增量复核；旧待答字样已集中收敛到决策登记，非全部设计完成；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
-- **问答确认与细化**：ENG-D02默认追加上传/保留旧文件、用户明确删除，EXE-D01按本地业务不变量同事务/独立后继异步均已确认。C03/I03按任务错失策略已细化[恢复合同](../design/schedule-recovery-policy.md)，数值仍候选，超限hold已获EXE-D03确认；C03基础6–10日/I03完整恢复8–12日；见[决策册](planning-decisions.json)。
+- **问答确认与细化**：ENG-D02默认追加上传/保留旧文件、用户明确删除，EXE-D01按本地业务不变量同事务/独立后继异步均已确认。C03/I03按任务错失策略已细化[恢复合同](../design/schedule-recovery-policy.md)，数值仍候选，超限hold已获EXE-D03确认；C03基础6–10日/I03恢复与跨仓观测9–15日，粗估以总账为准；见[决策册](planning-decisions.json)。
 - **首页口径候选（2026-11-12）**：UX02补甲处理/乙复核反例，推荐按当前处理/复核责任统计并与列表同源；原R3未保证改assigned_to，不能仅按分派漏掉复核人。仍待确认/未实现，见[领域合同](../design/business-lifecycle-contracts.md)。
 - **交接决策准备（2026-11-12）**：B06按批准继任映射自动交接、B07按已确认接管plan迁挂的默认值仍待owner；无映射不猜上级/祖先，历史不重写。只修规划候选，未执行HR同步或权限迁移。
 - **全路线与渐进承接**：O10确认以现有规模尽可能承接、优化扩展原6–9及更远能力；[169条连续性审计](roadmap-capability-continuity.md)补U08/I05/D17/D18等有限出口，主入口为[全项目路线](../roadmap.md)。
@@ -40,7 +40,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **全项目路线重规划/详设** | 71包/510来源/174依赖；28详设候选+5组件原型+2逐页范围+36边界/处置；私有扩展/内网adapter、无SSO设备和版本升级已入账 | 📋 设计评审，owner部分待决；实现均未交付 | [收口](planning-closeout.md)、[需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md) |
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
-| **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；61包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |
+| **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；当前71包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
