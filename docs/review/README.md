@@ -28,6 +28,8 @@
 
 ## 全项目路线重规划
 
+[全会话研究深度核验](reports/concern-depth-verification-2026-11-12.md)回读32条真实用户输入，逐点核65项；51项实质规划、10项部分深入、4项合理后置。[逐点证据](focus-depth-verification.json)给短原话、来源及尚不足的具体维度，不以纳入/排期代替研究。
+
 [正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责71包与全部来源处置，旧台账保留追溯。
 
 [审计/详设收口](planning-closeout.md)给当前五步位置；[逐包设计深度](planning-design-status.json)与[所有者决策](planning-decisions.json)区分候选/边界、确认/未决，不再将规划落档等同全部详细设计完成。

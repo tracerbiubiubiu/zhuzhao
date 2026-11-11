@@ -156,7 +156,7 @@
 
 ### ENG-20 插拔按端口与能力包演进，服务拆分由证据决策
 
-事实：主仓 `internal/pkg/jobs.Registry`、gateway.Registry、AI/DataFetcher等已有端口/注册表；jobs.Registry新增handler仍需发版，gateway.New装配后不可变，不是任意运行时热插拔。`docs/phase3/11-deployment-split.md` 明确APP_MODULES未实现，Wire不等于运行时可选Provider。TR/AL已是独立服务，不经同二进制模块启动路线。
+事实（2026-11-12核验纠正现状措辞）：主仓已有 `internal/pkg/jobs.Registry`、gateway.Registry和DataFetcher注册表；原句“AI/DataFetcher等已有”不准确，AI/LLMProvider仍未实现（同报告PROD-07）。jobs.Registry新增handler仍需发版，gateway.New装配后不可变，不是任意运行时热插拔。`docs/phase3/11-deployment-split.md` 明确APP_MODULES未实现，Wire不等于运行时可选Provider。TR/AL已是独立服务，不经同二进制模块启动路线。原句及核验边界见[研究深度核验](concern-depth-verification-2026-11-12.md)。
 
 当前处置：E07，详细合同见工程治理和该仓平台集成文档；估算只计主总账一次。
 
