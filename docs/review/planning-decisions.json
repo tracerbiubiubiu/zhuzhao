@@ -189,24 +189,30 @@
     },
     {
       "id": "UX01",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "U02规范冻结前",
       "recommendation": "推荐单侧栏+身份顶栏，不默认占页签/页脚高度",
       "alternatives": "保留旧布局作为默认",
-      "impact_or_safe_fallback": "离线原型为候选，不删现有四布局",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；旧四布局的兼容/退出细节在U02实施评审明确，本次不删除布局或更换组件库",
       "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-      "review_class": "representative_prototype_preference_before_product_switch"
+      "review_class": "representative_prototype_preference_before_product_switch",
+      "decision": "默认采用单侧栏和身份顶栏，页签/页脚不默认占首屏；保留Vue、Element Plus及品牌资产，先统一布局/间距/操作位置，再逐页迁移",
+      "owner_feedback": "2026-11-12：用户询问建议后，对明确列出的UX01/UX02两项推荐回复“可以”；仅确认这两项方向，不扩为UX03、旧布局删除或全部规划验收",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "UX02",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "U02首页数据合同冻结前",
       "recommendation": "首页以当前由本人处理或复核的非终态责任待办为主；普通处理按分派，R3明确待复核阶段按当前有效risk_owner；同票去重，发起/抄送不自动算责任",
       "alternatives": "首页主数改为本人发起/负责/抄送的全部相关未结束工单，并明确标为相关总览而非待办",
-      "impact_or_safe_fallback": "推荐未批准；计数/点击列表/角标须同源责任谓词，不能拿can_transition或管理员可操作范围代替实际责任。U02先普通分支，D10复核上线同批补领域分支；无权对象不泄露，已可见责任被配置阻断有明确反馈",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；计数/点击列表/角标须同源责任谓词，不能拿can_transition或管理员可操作范围代替实际责任。U02先普通分支，D10复核上线同批补领域分支；无权对象不泄露，已可见责任被配置阻断有明确反馈；不为统计自动改派",
       "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
       "review_class": "business_metric_before_home_data_contract_freeze",
-      "question_context": "甲处理乙复核，提交后assigned_to仍可能是甲：乙应出现复核待办，甲不再算当前处理责任；不为首页统计自动改派"
+      "question_context": "甲处理乙复核，提交后assigned_to仍可能是甲：乙应出现复核待办，甲不再算当前处理责任；不为首页统计自动改派",
+      "decision": "首页工单主数按当前由本人处理或明确复核的非终态责任，同票去重并区分处理/复核原因；发起/CC不自动计待办，相关记录可另查；任务与消息按权限保留，全局态势另设受权视图",
+      "owner_feedback": "2026-11-12：用户对UX01/UX02建议回复“可以”；同意先修入口、再统一普通责任待办，D10/R3上线同批补复核责任，不为首页统计建立通用待办平台",
+      "implementation": "planned_not_implemented"
     },
     {
       "id": "UX03",
