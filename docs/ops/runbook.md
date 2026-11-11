@@ -141,8 +141,8 @@ COMMIT;
 
 ### 4.3 节点超时催办观察模式（S10 B10-4——上线后必关）
 
-> **催办通知默认只记日志不发送**（`tickets.timeout_observe: true`——存量数据回填近似值防误报）。
-> dev 栈重启后按以下步骤确认并关闭：
+> **当前提交基线（2026-11-11）**。`29d78a69` 已将 `configs/config.yaml` 的 `tickets.timeout_observe` 固化为 false。存量迁移或新环境首次开启前，仍可显式设 true 观察候选并对账，再关闭观察启用发送。按实际配置来源、环境变量和构建核对生效值，不能凭提交默认推断现有进程状态。
+> 首次接入存量数据或重新开启观察时按以下步骤核对。已关闭观察的环境直接核对第 4 步。
 
 1. `GET /api/v1/system/cron-status`（admin）→ 确认 `timeout_scan` 任务存在且 `observe: true`；**顺带核每个任务 `started_at` 非空**（空=已注册未启动——2026-11-01 观测批三 cron 曾注册未拉起、11 个 tick 零执行；f51cd4c 后此字段即「注册≠启动」探测点）
 2. 等首个扫描周期（默认 5 分钟）→ 查服务端日志 `timeout_scan: overdue candidate (observe, not sent)` 确认无误报
@@ -237,9 +237,10 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
-  | 五仓文档二次复核（root统筹） | 文档/静态/本地门禁已收口，私有验收栈已回收；仅root负责本轮提交/推送，精确窗口见交付收据 | 收尾按实际Git窗口核对 | 2026-11-08 |
-  | phase5 验收走查（[phase5/12 号](../phase5/12-scenarios-and-tests.md)，agent 执行中） | docs/phase5/12-scenarios-and-tests.md（新档）+ docs/ops/runbook.md §4 台账行 + docs/phase6/07-backlog-and-triggers.md §3.4 三行 | 随走查收尾批一次提交 | 2026-11-09 |
-  | Phase 5 交付缺陷修正 | 主仓 G2、UI 字段配置与导入、两仓文档。四档和 UI 六件使用独立栈，临时容器、卷和网络已回收 | 本地工作树待提交 | 2026-11-10 |
+  | Phase 5 后续修复交接（尚未开工） | 当前剩余为 12 号 §8.1 的代码修复及 §7 补证，本文档整理不构成代码在途占用。本轮提交、推送与 CI 按各仓准确 SHA 收据核对 | 实时 Git 窗口为准 | 2026-11-11 |
+
+2026-11-11 交接校准。11-08 文档与 11-10 代码修复均已有提交，旧「工作树待提交」与「新档待建」在途行撤下。11-11 自动复验的私有栈已回收，当前共享 dev/zt、验收账号和数据保留。文档整理、提交清单与远端 CI 收据保存在本机 ignored `.codex/audits/phase5-docs-closeout-20261111/`，本行仅保留后续工作交接。P5 数据处置仅作保留建议，未执行删除或共享卷重置。已记录但尚未修复的问题见 [12 号 §8.1](../phase5/12-scenarios-and-tests.md#81-合并主线前必须闭环)。
+
 
 2026-11-10 共享资源事件与启停登记（验收走查会话）：①**zt 测试栈 11-09 停、11-10 复起**——11-09 按 root「清理不必要测试环境」指令 `docker stop` 九容器（未删，卷/配置原样），未及时落本台账致并行会话四档受阻；11-10 `docker start` 原样拉起（33334/48081，九容器全 Up）——**纪律补课：共享栈启停须即日落本台账**，恢复优先 `docker start` 现有容器（绕开 `zhuzhao_test` 正式 compose 与 `zz-preserve-phase5` 接管模板的同名互斥，二者归属裁决留 root：日常启停走 start/stop，正式 compose 仅重建用，接管模板维持 root-gated）；②**dev 库漂移清理**：`incident.impact_scope` required 11-03 被实验会话置 true（审计 10:13–10:45 fields/replace）致四档建单 10001——经 root 授权已改回 `required=false`（**字段本身保留**，原实验其余字段零触碰；验收同款建单复现通过后删除验证单）；根修建议=实验一律自建前缀类型（如 `p5_*`），禁改共享类型（12 号 §5.2 后续登记）。
 

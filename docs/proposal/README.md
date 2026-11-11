@@ -10,6 +10,7 @@
 | [resource-model](resource-model.md) | Resource/Registry 已落地；其他资源和独立 Enforcer 是示例或备选 | [鉴权](../modules/authz.md)、实际工单 Resource |
 | [deployment-evolution](deployment-evolution.md) | 部署档位参考与早期拆分备忘 | [现行架构](../design/architecture.md)、[部署](../ops/deployment.md) |
 | [hr-directory-sync](hr-directory-sync.md) | M-HR 目标设计；来源字段已具备，完整同步未交付 | [Phase 6 启动批](../phase6/05-launch-batch.md)；未决项保留在原文 |
+| [config-promotion](config-promotion.md) | 测试→生产的配置包契约，首版范围与排期已确认，待实施 | [Phase6 B3 件 7](../phase6/06-ticket-completeness.md#37-件-7-类型定义包导入导出)、[数据初始化](data-init.md)（迁移通道） |
 | [secops-platform](secops-platform/README.md) | 安全流程平台愿景与已拍决策来源；不代表全部已交付 | 按各篇状态进入 Phase 6–9 |
 
 操作排障从 `docs/ops/` 进入；历史时点证据从 [review](../review/README.md) 进入。批准新范围仍遵循 VISION 与决策日志的级联纪律。
