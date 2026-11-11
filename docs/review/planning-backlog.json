@@ -466,6 +466,9 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
+      ],
+      "scope": [
+        "待复核按当前risk_owner给首页责任投影；旧处理人不混当前行动待办，不为计数顺手自动改派，复用同源权限/去重"
       ]
     },
     {
@@ -580,6 +583,9 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "scope": [
+        "首页责任主数候选包含当前处理与R3明确点名复核；服务端计数/列表/角标同源，不以可操作资格冒充责任；D10上线同批补复核分支"
       ]
     },
     {

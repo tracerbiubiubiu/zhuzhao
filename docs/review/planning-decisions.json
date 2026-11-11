@@ -201,11 +201,12 @@
       "id": "UX02",
       "state": "owner_pending",
       "decision_due": "U02首页数据合同冻结前",
-      "recommendation": "首页主口径本人负责且非终态，包含自定义非终态；分卡失败不归零",
-      "alternatives": "沿用旧固定状态/全局态势口径",
-      "impact_or_safe_fallback": "首页修复安全落点可先做，未定统计不冒充全量事实",
+      "recommendation": "首页以当前由本人处理或复核的非终态责任待办为主；普通处理按分派，R3明确待复核阶段按当前有效risk_owner；同票去重，发起/抄送不自动算责任",
+      "alternatives": "首页主数改为本人发起/负责/抄送的全部相关未结束工单，并明确标为相关总览而非待办",
+      "impact_or_safe_fallback": "推荐未批准；计数/点击列表/角标须同源责任谓词，不能拿can_transition或管理员可操作范围代替实际责任。U02先普通分支，D10复核上线同批补领域分支；无权对象不泄露，已可见责任被配置阻断有明确反馈",
       "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-      "review_class": "business_metric_before_home_data_contract_freeze"
+      "review_class": "business_metric_before_home_data_contract_freeze",
+      "question_context": "甲处理乙复核，提交后assigned_to仍可能是甲：乙应出现复核待办，甲不再算当前处理责任；不为首页统计自动改派"
     },
     {
       "id": "UX03",
