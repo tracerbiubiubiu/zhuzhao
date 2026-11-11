@@ -1,10 +1,14 @@
 # 09 — 类型级可见性策略（设计稿）
 
+> **2026-11-11现行排期**：本稿保留详细设计和历史裁决；范围、依赖、估算与条件项以[新路线](../roadmap.md)、[去重总账](../review/planning-backlog.md)和[平台边界](../design/platform-evolution.md)为准。旧“合main待办/整包前置/触发未到不排期/所有代拍等切phase6”不再是当前执行顺序；未定语义在对应工作包开工前确认，不能据此认为代码已实现。
+
 > **阅读状态（2026-11-08）**：本文的✅/“已拍”表示设计确认，不表示风险域或流程v2已经实现。本轮只校准文档；执行仍须Phase5检查/审计/修复收口，经后续授权合main并核验整合基线，再从main切Phase6。入口与分工见[阶段总纲](README.md)，执行顺序与量级总账见[05号](05-launch-batch.md)。
 
 > **文档定位**：段级设计稿（2026-11-03 建档）——承接 [phase3/10 §10](../phase3/10-ticket-business.md) 类型级可见性策略蓝本（2026-09-20 翻案重启点登记）与 [phase5/10 §3.1](../phase5/10-s10-ticket-collaboration.md) 对表项（「两批谁先启动谁对表」——本批即后启动方，建档即触发销账义务，随登记批执行）。**状态 = 方向已定（2026-11-09 所有者确认入 phase6 完成，执行排期后定）；代拍项 P1–P5 维持搁置至 phase6 入口一并拍**：完整实施计划已过仓库级事实校验（§11 校验基线），拍板点 P1–P5 建议已记；**拍板前不动代码与迁移**。**拍板时机（2026-11-03 所有者令）**：代拍项搁置至真正进入 phase6（切 `phase6` 分支后、开工前）一并拍——在此之前本稿仅作记录载体，不阻任何在途批。
 > **量级**：W1 主仓 5.5 天 + W2 ui 仓 1.5 天 + W3 测试门禁 1.5 天 ≈ **8.5 天两仓**（原提案 ≈5 天；增量 = 谓词分组重写 / role 三源判定 / 抄送面隔离 / @ 提及移出）。
 > **本稿与原提案五差异**（2026-11-03 修订版定稿）：①迁移默认值 participant-only、**同脚本回填存量 inherit**（阻断项 A 修法）；②role 判定改「role code + `GetEffectiveRoleCodes` 三源」；③件 4 剔除 @ 提及（入不做清单）；④L2 谓词改「策略分组」而非 JOIN（`buildTicketWhere` 无 JOIN 位）；⑤量级 5 → 8.5 天。
+
+> **D03当前建议**：加参与人采用显式按钮授权b案并覆盖预期受众；a案仅历史备选。普通诊断对不可见/不存在同形、不泄露参与人，管理影响预览须单独授权与审计。尚未改迁移或pageWriteAllow。
 
 ## 1. 策略语义矩阵（实施批必须写死）
 
@@ -29,7 +33,7 @@
 |---|---|
 | `ticket_types.visibility_policy` | `JSONB NOT NULL DEFAULT '{"policy":"participant-only"}'`，**同脚本内 `UPDATE ... SET = '{"policy":"inherit"}'` 回填存量**（阻断项 A 的修法），新类型走 DEFAULT |
 | `tickets.visibility_override` | `JSONB NULL`，留缝不启用（phase3/10 §10.1 设计稿口径一致，Jira per-issue level 同构） |
-| **端点绑定种子（并入同对）** | 两只读 GET 挂页面行：`why-not-visible` → ticket_list 页面行（同受众先例 = 000065 导出绑定「查询类 GET 与列表同码同页面」）；影响预览 → 类型管理页（照 `FieldImpact` 先例）。**加参与人 POST 绑定二选一（实现期定、登记出处）**：**a 案（建议）**= 并入既有 `pageWriteAllow` 例外登记（ticket_list 族第二例；先例 = transition/000068「与既有 /tickets/close 等同受众——L3 属主面 + condition 细粒度服务端判」，AGENTS 现口径「唯一例外」随之改双例）；**b 案** = 详情页新增按钮行（000031 role_menus 绑 admin+superadmin 惯例）。a 案受众同类、少一行菜单种子 |
+| **端点绑定种子（并入同对）** | 两只读 GET 挂页面行：`why-not-visible` → ticket_list 页面行（同受众先例 = 000065 导出绑定「查询类 GET 与列表同码同页面」）；影响预览 → 类型管理页（照 `FieldImpact` 先例）。**加参与人 POST 绑定二选一（实现期定、登记出处）**：**a 案（历史备选，不作当前推荐）**= 并入既有 `pageWriteAllow` 例外登记（ticket_list 族第二例；先例 = transition/000068「与既有 /tickets/close 等同受众——L3 属主面 + condition 细粒度服务端判」，AGENTS 现口径「唯一例外」随之改双例）；**b 案（当前推荐）** = 详情页新增按钮行，明确预期业务受众的授权并验证其可达性，不能只给admin/superadmin种子后漏掉合法操作者。维持页面只读，不增加pageWriteAllow例外 |
 | 索引 | 无需新增：`ticket_cc` 的 `UNIQUE(ticket_id,user_id,role)` 前缀覆盖 participant EXISTS；`tickets` 已有 `idx_tickets_type_status(type_code,status)` 支持分组分支；`user_roles` PK 支持角色反查 |
 | down | 删两列 + 删绑定种子行；因回填在 up 内且 down 不回写类型策略，注释声明「down 仅回结构、策略语义丢失由代码回退兜底」。000075/76/77 型回滚耦合陷阱不适用（无写端点回挂页面行的 B 案对撞） |
 | 编号核对 | 2026-11-03基线末位000081，当时000082可用；review/11缺行/81对162文件/下一编号勘误已于11-04先行，不再等待本批。新迁移编号在真正实施前重新核地图和目录，不长期占号。 |
@@ -43,7 +47,7 @@
 | 3 | L2 双路径 | 每请求现查 type→policy 映射，按策略分组生成 `type_code = ANY($n)` 分支 + 相关子查询（`buildTicketWhere` 无 JOIN 位——相关子查询形态）；`Authorize` 同分派；**org 锚点透明读 / 委托轴 / ticket_scope=all 在非 inherit 策略下逐条条件化**（阻断项 D） | 1.5 |
 | 4 | participants 维护点 | Create 写发起人、assignee 变更同步、显式「加参与人」端点（绑定方案见 §2 a/b 案）；**@ 提及移出本批**（不做清单）；与 `ticket_events` 同事务（依赖 [06 号](06-ticket-completeness.md) 件 1——转换主路径事件行补齐同批） | 1 |
 | 5 | 抄送面隔离 | `TicketCCRepo.ListByTicket` 加 `role='cc'` 过滤（阻断项 C——现实现无 role 过滤，未来 participant 行会漏进抄送面；`IsCC` 已带 role='cc' 不动）；`AddCC` 返回值随之干净 | 0.5 |
-| 6 | 两个只读端点 | `why-not-visible`（逐分支解释）+ 影响预览（照 `FieldImpact` 先例）；**按 W1 B 案挂页面行（仅 GET）+ 审计留痕** | 0.5 |
+| 6 | 两个只读端点 | `why-not-visible`仅给当前主体对已受权对象的安全说明，不可见/不存在同形且不泄露成员；逐分支/可见集影响限受权管理预览并审计（照 `FieldImpact` 先例）；**按 W1 B 案挂页面行（仅 GET）+ 审计留痕** | 0.5 |
 
 ## 4. 前端（W2，ui 仓 ≈ 1.5 天）
 

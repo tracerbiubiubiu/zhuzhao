@@ -1,5 +1,7 @@
 # zhuzhao 文档入口
 
+> **2026-11-11现行入口**：Phase5已整合五仓main，后续以[新路线](roadmap.md)、[平台演进](design/platform-evolution.md)、[AI设计](design/ai-capabilities.md)及[排期总账](review/planning-backlog.md)为准；原阶段规划保留细节与历史，未开始功能实施。
+
 先按任务选择入口。本文档树区分**当前实现、已批准后续方案、历史时点记录**；“已拍板”不等于已落码，“历史门禁通过”不等于当前候选通过。
 
 ## 第一次接手
@@ -25,19 +27,19 @@
 
 > **2026-11-11 当前状态**。Phase 5 阶段交付与工作区收尾已确认，剩余问题和待验记录已移交 Phase 6。后续进行全项目重新设计规划，既有后续阶段方案、接口、波次和估算作为输入。交付、资源清理实际终态和最终收据见 [Phase 5 验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理) 与 [运行手册](ops/runbook.md)。
 
-[Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是当前维护分支对应的能力与债务入口。[Phase 6](phase6/README.md) 保留既有设计与待办，供 Phase 5 收尾后的全项目重规划；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
+[Phase 1](phase1/README.md) → [Phase 2](phase2/README.md) → [Phase 3](phase3/README.md) → [Phase 4](phase4/README.md) 是已交付阶段的设计与记录；[Phase 5](phase5/README.md) 是已合main的能力与历史债务入口。[Phase 6](phase6/README.md) 保留既有设计与待办，供 Phase 5 收尾后的全项目重规划；[Phase 7](phase7/README.md)、[Phase 8](phase8/README.md)、[Phase 9](phase9/README.md) 为未来方向，立项状态以各自页头为准。
 
-当前工作分支不能从目录名推断。Phase 5 维护在 `phase5`，三个 Go 兄弟审计候选在各自 `codex/phase5-audit`；合 main、发布和下一阶段启动遵循所有者安排，文档整理不改变分支发布策略。
+Phase5合并已完成；当前代码基线见控制台，本轮规划在独立codex分支审阅。生产发布与后续功能启动另按对应验收记录，不从目录名推断。
 
 ## 五仓各自维护，结构统一
 
 - **zhuzhao**：IAM、工单、权限、网关和主应用运维，本树为权威。
-- **zhuzhao-ui**：[UI 文档](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/phase5/docs)，维护前端开发、组件、测试和发布。
-- **zhuzhao-utils**：[公共库文档](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/codex/phase5-audit/docs)，维护包契约、使用和版本纪律。
-- **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/codex/phase5-audit/docs)，维护执行、调度、回调和服务部署。
-- **activelist**：[动态数据服务文档](https://github.com/tracerbiubiubiu/activelist/tree/codex/phase5-audit/docs)，维护当前 PostgreSQL 模型、Schema、CRUD/导入和部署。
+- **zhuzhao-ui**：[UI 文档](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/main/docs)，维护前端开发、组件、测试和发布。
+- **zhuzhao-utils**：[公共库文档](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/main/docs)，维护包契约、使用和版本纪律。
+- **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护执行、调度、回调和服务部署。
+- **activelist**：[动态数据服务文档](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护当前 PostgreSQL 模型、Schema、CRUD/导入和部署。
 
-链接指向对应工作分支，准确提交与工作区状态以各仓 Git 及本轮收据为准。跨仓只引用契约，不复制整份实现说明。
+链接指向已整合的main，准确提交与工作区状态以各仓 Git 及本轮收据为准。跨仓只引用契约，不复制整份实现说明。
 
 ## 维护规则
 

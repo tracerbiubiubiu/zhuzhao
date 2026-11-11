@@ -8,7 +8,7 @@
 
 ## 当前摘要（2026-11-11）
 
-- **工作边界**。Phase 5 阶段交付、文档、工作区与资源收尾已确认，源代码保存在主仓/UI phase5 及三个 Go 兄弟 audit 分支。剩余问题移交 Phase 6，全项目重新设计规划待后续开展。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
+- **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。全项目重规划已在独立codex分支落档，功能尚未实施。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
 - **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
@@ -31,7 +31,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
-| **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；main尚未承接 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
+| **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
+| **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；61包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
@@ -231,6 +232,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
+### 2026-11-11 Phase6前重规划
+
+专业供给优先、mock保留、模型仅既有API和领域Agent双轨已落[现行设计](../design/platform-evolution.md)；61包/494来源的实施与接入或退出见[总账](planning-backlog.md)。C1–C3保持开放并重锚P6.0；R01可靠意图先于不可丢消费者。全站27页有设计迁移清单，尚未改造；通用DAG、模型部署、重复专业平台及强制SOAR迁回退出默认路线。本轮现有实现回归已通过：主仓lint/233单测/531含integration测试、253验收与81对往返；UI244单测/42真实E2E。默认tag单测覆盖率20.4%，仅作当前口径记录，不宣称因文档改动改善。当前没有新增API/权限/迁移或风险/AI实现。验证与未覆盖见[本轮报告](reports/pre-phase6-replanning-2026-11-11.md)。
+
 ### 2026-11-11 Phase 5 已收尾
 
 阶段交付与当前工作区清理已完成，13 组余项及待验记录保持移交状态。清理 10 个测试容器、5 个空网络、5 个验证镜像、1 个空卷、45 项临时产物和 51 处隔离缓存。三库备份和原测试数据卷保留，当前 6 个 dev 容器及原生服务健康。完整证据在本机 `.codex/audits/phase5-final-closeout-20261111/`，后续进入全项目重规划。
@@ -353,7 +358,9 @@ Phase5当前收口与main/生产承接看顶部和§6；Phase6实际启动须遵
 |------|------|
 | [12-b13-permission-matrix-2026-09-26.md](reports/12-b13-permission-matrix-2026-09-26.md) | ✅ point-in-time 快照：79 端点×三层全对账；8 项盲区/不对称定性（审计/用户/组织读=管理面全局视图设计内；orgs update 不对称注记；users/orgs 建议 W3 后补 org 侧校验）；BK-21 泛化未到触发点；IAM 四平面边界清单（§26.1 输入交付） |
 
-## 8. 遗留问题分类：Phase 3 前置 vs 随行（2026-08-31 整理；2026-09-01 增补 B11/IW4）
+## 8. 遗留问题分类：Phase 3 前置 vs 随行（历史来源）
+
+以下保留历史分类与关闭依据，不再承担现行排期；所有仍开放项与触发条件已在[总账](planning-backlog.md)及来源映射重锚，不能据旧“随手/按需”无限搁置。
 
 > **历史分流（2026-08-31至09-02）**：本节保留当时「下一步」清单及后来处置出处，**不是当前全部开放债清单**；B3等后继已由Phase5交付，不能因下表仍保留原计划而重开。当前状态先看§6，再看Phase5/6权威台账。本节当时将事项归入两档：**A 档 = Phase 3 启动前/启动时完成**（门禁与拍板，不做会让启动本身踩坑）；**B 档 = 随 Phase 3 对应子能力一起**（提前做无收益）。代码级 backlog 详情见 [phase2/00 §9](../phase2/00-implementation-plan.md)。**Phase 3 启动时从 [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) 进入检查流程**（本节 + §6 是其数据源）。
 >

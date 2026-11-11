@@ -17,3 +17,10 @@
 以“打开并操作一张工单”为例：浏览器先经主仓认证和路由鉴权，再由工单 Service 判断可见性与动作权限，最后通过 Repository 读写 PostgreSQL。附件、任务和通知各有独立调用或提交后处理，不因工单事务成功就全部成功。
 
 按[中间件](../modules/middleware.md) → [工单权限与动作](../modules/ticket.md) → 对应阶段稿的当前摘要阅读。排查失败时先确定发生在哪一段，再查该段的日志和错误码；服务之间的边界见[架构总览](architecture.md)。
+
+## Phase5之后的现行演进
+
+- [平台边界与演进](platform-evolution.md)：专业供给、数据写主、三类流程、插件与拆分。
+- [AI能力与领域Agent](ai-capabilities.md)：已有模型API、外部与本地领域Agent双轨、MCP、受权知识、skill与运行合同。
+- [五仓工程治理](engineering-governance.md)：worktree、CI、mock分层、测试、目录和发布。
+- [排期总账](../review/planning-backlog.md)：跨仓唯一工作项、依赖与条件项处置。
