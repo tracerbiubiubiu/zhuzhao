@@ -116,17 +116,22 @@
       "decision_due": "D06 离职业务自动处置启用前",
       "recommendation": "安全禁用即时执行；工作项进可见交接清单，有已批准继任映射才自动转，其余保持状态+待交接",
       "alternatives": "全部回池；全部指定上级；全部人工逐项转",
-      "impact_or_safe_fallback": "回池丢当前处理节奏，上级不一定合格；人工延迟较高。未决不自动回退业务状态/猜继任人，但绝不阻塞禁用和告警",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "impact_or_safe_fallback": "无映射、继任者失效或复杂拆分/重建步骤不满足领域合同则保持明确待交接；不猜上级/回池/复制角色；安全禁用不等待。原创建人/历史不改，局部失败不伪装整案完成。",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "review_class": "business_default_before_automatic_handover",
+      "question_context": "甲离职，已有管理员批准的甲→乙继任映射，乙当前active且逐项范围/资格有效：按映射自动逐项交接，还是映射仅作建议、每项再确认？"
     },
     {
       "id": "B07",
       "state": "owner_pending",
       "decision_due": "D06 撤部 apply 启用前",
-      "recommendation": "虚拟组上挂最近合法存续实体祖先但预览权限变化；在途业务显式接管；历史保留原组织展示/独立历史分组，不默默并入新部门统计",
-      "alternatives": "全部保留旧锚待人工；或将全部在途与历史一并转新部门",
-      "impact_or_safe_fallback": "自动上挂可能扩大祖先委托，整体转历史会改报表；未决只禁新建并保留节点/历史ID，提供plan，不做破坏性撤部推广",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "recommendation": "使用已批准接管部门；预览确认权限/祖先委托影响后保留虚拟组ID及经审核绑定迁挂，在途按清单接管；无批准目标待处理，历史归属快照不重写",
+      "alternatives": "所有虚拟组和在途项均逐项由管理者确认，不批量应用接管方案",
+      "impact_or_safe_fallback": "迁挂可能改变live可见范围，须在plan中明示批准；无合法目标不猜最近祖先、不复制原部门角色给接管部门，不改created_by或历史原归属",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "superseded_recommendation": "旧候选为最近合法祖先上挂，未获所有者批准；现改批准接管目标优先，祖先仅作候选",
+      "question_context": "部门A撤销并已有批准的B接管关系：先确认影响plan后批量迁挂虚拟组/交接在途，还是冻结原锚逐组逐项处理？",
+      "review_class": "business_default_before_department_retirement_apply"
     },
     {
       "id": "B08",
@@ -135,7 +140,8 @@
       "recommendation": "保留已确认高级别风险上溯抄送；冻结源五级到平台四档触发阈值、受影响组织锚点/负责人集合、汇总时区/时刻、临期窗与静默例外",
       "alternatives": "频次可按四档候选、全即时或分层汇总；不是重问是否需要已确认的负责人抄送",
       "impact_or_safe_fallback": "未决可完成合同/mock；首条生产规则不启用。负责人未解析/无资源资格有显式待办，不广播/猜人，不静默将应抄送降为可选",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "review_class": "provider_configuration_before_first_real_notification"
     },
     {
       "id": "ENG-D01b",
@@ -188,7 +194,8 @@
       "recommendation": "推荐单侧栏+身份顶栏，不默认占页签/页脚高度",
       "alternatives": "保留旧布局作为默认",
       "impact_or_safe_fallback": "离线原型为候选，不删现有四布局",
-      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "representative_prototype_preference_before_product_switch"
     },
     {
       "id": "UX02",
@@ -197,7 +204,8 @@
       "recommendation": "首页主口径本人负责且非终态，包含自定义非终态；分卡失败不归零",
       "alternatives": "沿用旧固定状态/全局态势口径",
       "impact_or_safe_fallback": "首页修复安全落点可先做，未定统计不冒充全量事实",
-      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "business_metric_before_home_data_contract_freeze"
     },
     {
       "id": "UX03",
@@ -206,7 +214,8 @@
       "recommendation": "桌面历史左/结果右；点历史仅回填，显式重新查询；首期本机元数据",
       "alternatives": "点击历史立即发查询，或要求跨端历史快照",
       "impact_or_safe_fallback": "跨端持久历史另估且需供给/保留决策",
-      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "representative_prototype_preference_before_product_switch"
     },
     {
       "id": "P-RESOURCE",
@@ -215,7 +224,8 @@
       "recommendation": "先P6.0/P6.1底座，再风险核心与只读AI；设备薄模块P6.3",
       "alternatives": "按实际业务优先级调整独立包",
       "impact_or_safe_fallback": "未定T0/投入不承诺日历，文档审阅仍可进行；不以Agent并行推算无限产能",
-      "design_ref": "docs/design/platform-evolution.md"
+      "design_ref": "docs/design/platform-evolution.md",
+      "review_class": "implementation_start_binding_not_document_review_blocker"
     },
     {
       "id": "O09",
@@ -242,5 +252,6 @@
       "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现",
       "implementation": "planned_not_implemented"
     }
-  ]
+  ],
+  "last_updated": "2026-11-12"
 }
