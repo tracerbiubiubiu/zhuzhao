@@ -197,19 +197,20 @@
       "owner": "zhuzhao+taskrunner/执行",
       "estimate_engineering_days": "6–10",
       "dependencies": [],
-      "acceptance": "running重放不被视为业务完成；稳定时隙/receipt与unknown对账；每计划错失策略和预算可选可预览，历史区间/版本正确，补发与失败重试分开且不重复副作用。",
+      "acceptance": "running重放不被视为业务完成；稳定时隙/receipt与unknown对账；三策略/版本/预算合同及参考案例明确，完整恢复留I03，不以设计或mock证明已上线。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/cross-repo-execution-contract.md"
+        "docs/design/cross-repo-execution-contract.md",
+        "docs/design/schedule-recovery-policy.md"
       ],
       "scope": [
-        "完成/受理/记账/未知效果的receipt与重试对账、稳定occurrence及切换",
-        "按任务选择错失策略skip/coalesce_latest/catch_up_bounded；迟到阈值、历史区间/参数生效版本、总量/每批/并发/速率和超限处置，UI创建/编辑预览",
-        "只补未物化时隙，已有failed/unknown走原执行重试/对账；改策略/停启不靠revision再造同一逻辑时隙"
+        "完成/受理/记账/未知效果的receipt与重试对账、稳定occurrence/基础版本及切换",
+        "按任务选择skip/coalesce_latest/catch_up_bounded的合同、预算/历史版本/队列时效与合成参考；完整恢复执行/操作/UI由I03/P7交付，不以合同代实现",
+        "补发与失败/unknown重试分开；策略/停启不靠换revision再造逻辑时隙，现有运行切换需明确受支持语义"
       ]
     },
     {
@@ -600,7 +601,8 @@
       "scope": [
         "四视角、编号、组合/反选筛选、批量添加标签与逐项权限",
         "本地草稿/离开保护；watcher自助关注与cc授予分别定义",
-        "评论编辑/删除、动态列、批量操作、评价分别在本包入口做保留/接入/退出裁决；确需本地的限定功能在P6.3交付，不成通用服务台扩张"
+        "评论编辑/删除、动态列、批量操作、评价分别在本包入口做保留/接入/退出裁决；确需本地的限定功能在P6.3交付，不成通用服务台扩张",
+        "文件字段/附件上传默认追加，支持一次多选、逐项结果与重复key去重；用户主动移除/删除，单文件/工单额度取后端合同，不混成每字段固定上限"
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
@@ -668,7 +670,8 @@
       "scope": [
         "跨域首页/27页全站迁移和通用管理反馈",
         "任务控制台分类两栏、执行页参数/历史/结果、定义分权、AL深链与日志引用；D12负责结果合同，I02负责执行资格",
-        "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现"
+        "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现",
+        "P6.3改现有任务页面；新增三策略恢复表单/控制台随I03/P7真实接线，后端不支持的字段不生成可保存假控件"
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
@@ -731,17 +734,27 @@
       "title": "执行生命周期、调度与跨仓观测",
       "wave": "P7",
       "owner": "taskrunner+主仓+ui/执行",
-      "estimate_engineering_days": "4–7",
+      "estimate_engineering_days": "8–12",
       "dependencies": [
         "C03",
         "D12",
         "I01"
       ],
-      "acceptance": "继承已修成功/时隙合同，增租约/取消/预算/追踪与状态投影；不把accept/2xx当完成。",
+      "acceptance": "三策略及完整恢复控制台真实接线；时隙/业务幂等、queued门控、持久预算/公平/超限hold、当前授权与停启迁移分别有反例；不把accept/2xx或next_run推进当完成。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "扩项后8–12日，计C03基础以外的恢复实现/操作/UI和原I03增量；真实提供方等待单列，不重复计基础合同",
+      "design_refs": [
+        "docs/design/schedule-recovery-policy.md",
+        "docs/design/cross-repo-execution-contract.md"
+      ],
+      "scope": [
+        "继承C03成功/时隙/版本基础，不重复计价",
+        "按任务三策略实际执行、episode/cutoff/admitted_count、queued时效与容量/开始速率、历史业务幂等、超限hold、停启/CAS及迁移",
+        "受权preview/恢复resume/stop/扩大范围/明确跳过和UI控制台；代人无人值守与I02联合验收",
+        "租约/取消/预算/trace/状态投影，mock/contract/真实PG+Redis关键故障链"
+      ]
     },
     {
       "id": "I04",

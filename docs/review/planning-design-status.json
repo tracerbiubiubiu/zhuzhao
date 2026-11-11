@@ -140,7 +140,8 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/cross-repo-execution-contract.md"
+        "docs/design/cross-repo-execution-contract.md",
+        "docs/design/schedule-recovery-policy.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -537,8 +538,8 @@
       "wave": "P7",
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
-        "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/design/schedule-recovery-policy.md",
+        "docs/design/cross-repo-execution-contract.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",

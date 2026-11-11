@@ -30,3 +30,5 @@
 - [工程施工](engineering-execution-design.md)、[跨仓执行](cross-repo-execution-contract.md)、[业务生命周期](business-lifecycle-contracts.md)与[AI调用](ai-invocation-contract.md)。
 - [私有扩展兼容](extension-compatibility.md)、[内网adapter迁移](intranet-adapter-migration.md)、[设备目录与人工入口](device-module-contract.md)、[版本现代化](dependency-modernization.md)。
 - [规划收口与审计步骤](../review/planning-closeout.md)：哪些已审、哪些是候选/边界、哪些需要owner，不能把全部工作包当全部详设已完成。
+
+[定时任务恢复详设](schedule-recovery-policy.md)细化按任务策略、模板默认、queued过期、episode预算、历史数据/版本、预览与恢复操作；当前未实现，业务超限处置按决策册确认。

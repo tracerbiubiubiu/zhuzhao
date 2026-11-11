@@ -162,6 +162,8 @@ capabilities 只在对象已可见后生成，缺字段一律不显示写入口�
 
 目标类型 live 策略分别为 `read_policy`、`create_policy`、`participant_policy`，各含稳定 `role_codes`、`policy_revision`、变更人/时间。既有 `visibility_policy` 若实施可作为 read_policy 存储名，不强求重命名。**不预建实例 visibility_override**；真实例外须独立审批设计，不能留一列空白万能旁路。
 
+面向用户统一称“查看范围”，前次问答中的“敏感类型”只是举例用词，不是is_sensitive字段或新的敏感等级体系。当前TicketType/迁移尚无这些类型查看字段；这是D03目标设计。UI选项为“沿用现有范围”“仅相关人员”“相关人员＋指定角色”。后者包含相关人员/合法CC，并非只有指定角色。标签、颜色或风险级别不自动改变权限。
+
 read_policy 候选 enum 为 `inherit`、`participants_only`、`role_restricted`。create_policy 候选为 `inherit`、`role_restricted`、`disabled`，仍与用户可创建组织范围求交。participant_policy 表达“谁可增删普通参与者/CC，哪些具名领域用例可同步其受管参与者”；不是给第三方任意 actor 列表一个管理员执行口。
 
 角色引用技术选择为**稳定 code**，不存环境特有 role ID；有效角色集合统一解析直接角色、组织角色与已定义继承。不存在/停用 role 不匹配，不回退 inherit。类型/角色 code 创建后不可改，显示名可改；role 删除须做策略引用预检。全局管理员既有例外仅在过 L1 后适用，风险接受等业务制衡另验。
@@ -172,15 +174,21 @@ read_policy 候选 enum 为 `inherit`、`participants_only`、`role_restricted`�
 |---|---|---|---|---|
 | creator / assignee | 保留当前 | 可见 | 可见 | 否；按具体 L3 |
 | 显式普通 participant | 新增精确读分支 | 可见 | 可见 | 否；field 资格仍独立 |
-| CC | 保留当前 | 推荐可见，待 B02 | 推荐可见，待 B02 | 否 |
+| CC | 保留当前 | 已确认可见/评论，仍过入口码 | 已确认可见/评论，仍过入口码 | 否 |
 | 当前 role_codes 命中 | 当前规则决定 | 不因角色扩大 | 可见 | 否 |
-| 组织透明读/委托 | 保留当前 | 推荐不扩大，待 B01 | 推荐不扩大，待 B01 | 否 |
+| 组织透明读/委托 | 保留当前 | 新类型默认相关人员范围已确认 | 类型切换须显式预览，非默认扩大 | 否 |
 | `ticket_scope=all` | 保留当前 | 推荐不扩大，待 B03 | 推荐不扩大，待 B03 | 否 |
 | global admin/superadmin | 当前全域例外 | 同当前 | 同当前 | 仅原有管理动作，不跳业务制衡 |
 
 读可见允许 read/comment（仍过现有入口码），不自动允许 update/assign/delete/participant-manage。推荐新增 `ticket:participant:manage` **按钮码**（目标，非现有码），管理 API 绑定按钮，不挂页面写，不扩大现有唯一 pageWriteAllow。谁被授予此按钮、是否允许 creator 自助邀请是 B04 业务选择。CC 的现行 selfService 路由保留既有语义，普通 participant 用独立管理写入口及 role 精确判定，不能把既有 `ticket_cc` 所有 role 混作 CC。
 
 BK-21 技术顺序：先抽共用可见性谓词/参数输入，再在其内部按 type policy 分组，列表、详情、导出、计数、四视角、关联入口、首页同源。逻辑为 `global_exception OR (policy=inherit AND old_branches) OR (policy=restricted AND restricted_branches)`；不能最后拼一个 `OR scope_all/cc` 逃出 policy 分组。静态 SQL 模板+绑定参数，角色/路径不拼接 SQL。
+
+### 查看范围的必要性与B03说明
+
+Jira将项目访问权限与单张work item的可见性限制分开，能访问项目不等于能打开项目内每张票；这是可参考的分层模式，不要求本项目复制其完整security scheme或实例级安全等级。[Atlassian官方说明](https://support.atlassian.com/jira-cloud-administration/docs/create-a-new-work-item-security-scheme-and-security-levels/)
+
+本项目先按类型配置固定查看范围，复用已有三层授权，不加is_sensitive标记、通用ABAC引擎或单票override。已有普通类型沿用现有组织/委托范围；新类型默认相关人员；确需团队共享用相关人员＋指定角色。B03只决定普通scope=all是否穿透这一范围：推荐不穿透，否则刚确认的参与人默认会对该群体失效。系统级admin/superadmin既有例外另列，不将Jira的管理员规则等同本项目。此必要性属于本项目设计判断，B03仍待owner确认。
 
 ### 5.3 参与人与创建 API 目标
 
@@ -451,8 +459,8 @@ HTTP REST、MCP、SDK和内部 extension 共用同一用例/查询授权。catal
 
 | ID / 决策截止 | 推荐默认 | 可选方案 | 可观察后果 / 不决时的安全边界 |
 |---|---|---|---|
-| B01 · D03 开工前 | 存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认 | 所有旧类型统一 participants_only；或新旧都 inherit | 统一收紧会立即影响老单/委托/报表；都 inherit 较宽。未决保持存量 inherit，新受限策略不默认启用 |
-| B02 · D03 受限策略启用前 | CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权 | CC 不突破受限策略，仅显式 participant 可见 | 后者使“抄送”与“可打开”分离，风险owner桥需显式 participant。未决不得假定 CC 能解决 R3 当前 owner 通路 |
+| B01 · 已确认，D03实施 | 存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认 | 所有旧类型统一 participants_only；或新旧都 inherit | 统一收紧会立即影响老单/委托/报表；都 inherit 较宽。已确认新默认/旧兼容，收紧旧类型单独预览 |
+| B02 · 已确认，D03实施 | CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权 | CC 不突破受限策略，仅显式 participant 可见 | 后者使“抄送”与“可打开”分离，风险owner桥需显式 participant。已确认CC读/评论方向，R3 owner通路仍按具名领域桥和授予合同落地 |
 | B03 · D03 受限策略启用前 | `ticket_scope=all` 不突破 participants_only/role_restricted；global admin既有例外保留 | 将 scope=all 设为全类型通用可见 | 后者让受限类型对 all-scope 用户失去限制。未决仅继承类型沿用原行为 |
 | B04 · D03 参与写入口开通前 | `ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner | creator 可邀请其候选范围内人员；或只有全局管理员可管 | 前者增加分享面，后者加重日常管理；都需收件人范围/域受管项不可删。未决普通参与人写入口关闭，既有 CC 语义不顺手扩大 |
 | B05 · D03/P6.2 派单启用前 | 普通创建保留当前组织分支限制；每类型显式创建角色策略；risk.dispatch授给已批准risk:manage主锚/owner职责，由专用命令在批准目标范围代建，不能任意created_by | 类型读角色即可创建；或风险owner还必须单独具备通用ticket:create才能派单 | 前者扩大创建面；后者降低代建范围但可能使已拍owner派单不可用。未决不启用新的跨域系统代建范围，mock记录阻断，不能假扮owner |

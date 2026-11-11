@@ -99,9 +99,9 @@ TR repository新增 `ClaimDueOccurrence(now, limit)`：PG短事务按due行`FOR 
 
 业界依据：APScheduler按任务/计划配置coalescing、误点宽限和并发，Quartz CronTrigger也提供不同misfire策略；Kubernetes将迟到期限与并发策略分开。这些作为合同设计参考，不是引入这些引擎的决定。[APScheduler](https://apscheduler.readthedocs.io/en/stable/userguide.html#missed-job-executions-and-coalescing)、[Quartz](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)、[Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 
-迁移时停止旧cronloop、记录cutover barrier与每job原next_run、导入schedule_revision=1，再启新loop；旧随机task_id仅有可证明slot映射时建立关联，不能凭创建时间粗猜去重。开始新loop前查询barrier附近旧job_runs并对账，无法确认的slot人工确认/按保守跳过记录，避免新旧两套调度同时起任务。重新启用job生成新调度revision并从明确起点计算，disable不删除历史occurrence。
+迁移时停止旧cronloop、记录cutover barrier与每job原next_run、导入schedule_revision=1，再启新loop；旧随机task_id仅有可证明slot映射时建立关联，不能凭创建时间粗猜去重。开始新loop前查询barrier附近旧job_runs并对账，无法确认的slot人工确认/按保守跳过记录，避免新旧两套调度同时起任务。普通重新启用保持原时间线身份，按原策略预览暂停区间；只有显式重排才以cutover创建新时间线并处理重叠，disable不删除历史occurrence。
 
-C03实施切片：C03.1 状态/协议/错误与能力矩阵；C03.2 主仓receipt/lease与逐动作effect_mode；C03.3 TR结构化完成、记账与status对账；C03.4 cron原子occurrence、按任务补发策略/预算与切换演练。范围扩大后粗估6–10日，只覆盖首批既有动作与有界合同，不含为未知专业平台发明幂等API；缺下游能力的动作留manual_only，不因此无限延期C03本身。
+C03实施切片：C03.1 状态/协议/错误与能力矩阵；C03.2 主仓receipt/lease与逐动作effect_mode；C03.3 TR结构化完成、记账与status对账；C03.4 cron原子occurrence、按任务策略/预算合同与切换演练；完整三策略/恢复控制台按I03/P7交付，不以C03合同通过宣称已上线。粗估6–10日，只覆盖首批既有动作与基础合同，不含为未知专业平台发明幂等API；缺下游能力的动作留manual_only，不因此无限延期C03本身。
 
 C03反例出口必须同时通过：两个并发callback只有一个效果；running重复不使TR成功；效果已提交/响应丢失与MarkSucceeded失败均不重复效果且可收敛；lease过期旧writer不能覆新代；DB claim失败零调用；unknown不能普通retry；Finish失败先query补账；cron双副本/推进失败/Redis不可用/重启/时区边界同slot一任务；旧client真实现不会因202把未完成认成功；取消未知不假绿。分别保存mock时序、contract四格和真实PG+Redis+HTTP证据。
 
@@ -147,7 +147,7 @@ effect已经发生而本平台暂记未知时，主平台不自动反向调用�
 - **已成立事实的独立后继**：本地提交/指派成功后通知乙、同步专业平台等，在同一源事务写intent，提交后可靠异步；失败显示通知/同步待处理并重试/对账，不撤销本地已经成立的事实。只有业务明确允许“状态先成立、稍后再分工”的可选转派，才采用转换成功+转派独立待处理，并以assignment revision防重试覆盖新的人工作业。
 - **外部结果是完成前提**：先进入执行中/待回执，异步调用专业平台；确认结果后再本地同事务推进状态/责任。不能持PG事务等待网络，也不能把请求已发当业务已完成。
 
-不新增一个让普通用户随意切“同步/异步”的开关；由用例/转换定义声明哪些是必需本地变更、哪些是独立后继，发布前校验并给owner可理解的成功含义。EXE-D01仍待owner根据示例确认，现状不因本页修改而改变。上述范围与C04/R01复用事务/receipt，不重造流程引擎。[PostgreSQL原子事务](https://www.postgresql.org/docs/current/tutorial-transactions.html)、[Camunda事务边界示例](https://docs.camunda.org/manual/7.24/user-guide/process-engine/transactions-in-processes/)、[Transactional Outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+不新增一个让普通用户随意切“同步/异步”的开关；由用例/转换定义声明哪些是必需本地变更、哪些是独立后继，发布前校验并给owner可理解的成功含义。EXE-D01已获所有者认可，现状不因本页修改而改变，仍须C04/R01实现与验收。上述范围与C04/R01复用事务/receipt，不重造流程引擎。[PostgreSQL原子事务](https://www.postgresql.org/docs/current/tutorial-transactions.html)、[Camunda事务边界示例](https://docs.camunda.org/manual/7.24/user-guide/process-engine/transactions-in-processes/)、[Transactional Outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
 
 ### 首批迁移与可验收切片
 
@@ -159,7 +159,7 @@ R01反例出口：源事务回滚无intent；业务commit后进程被kill仍最�
 
 ## 决策清单、实施依赖与审查出口
 
-- **EXE-D01（R01/C04）**：修正前稿一概异步建议；必需本地状态+转派推荐同事务，独立后继可靠异步，外部完成前提用待回执。owner要求先给例子，尚未批准最终业务语义。
+- **EXE-D01（R01/C04）**：修正前稿一概异步建议；必需本地状态+转派推荐同事务，独立后继可靠异步，外部完成前提用待回执。owner已认可修正后的推荐，实施前按用例列明必需本地变更与独立后继。
 - **EXE-D02（C03）**：owner提出按任务配置，已修订候选为skip/coalesce_latest/catch_up_bounded，独立设迟到/范围/数量/并发/速率；不再要求全平台选一种。默认/能力允许集与旧计划切换仍需示例验证，不能将提问当作全部细节已批准。
 
 技术推荐不另抛所有者：状态/receipt、单调fence、稳定occurrence、DB先持久化、unknown先对账、additive协议、私有adapter独立验收按本文实施。真正下游API幂等/查询/取消能力未知须列connector合同差距，默认manual_only/关闭自动执行，不用“以后系统接好再说”无限挂账。
@@ -167,3 +167,5 @@ R01反例出口：源事务回滚无intent；业务commit后进程被kill仍最�
 依赖为C03先定义完成/重放合同，C04提供同事务入口，R01最小闭环先于D10/D12/A02等不可丢消费者。G03持有组合manifest与core N/N−1×TR/adapter N/N−1×协议版本矩阵；内网provider仅API方式接入、凭据与出站目标受控，不涉及模型训练部署。结果仅白名单业务数据；事件仅支撑本平台安全生命周期，不扩展成SOC/CMDB/TIP/SOAR的第二套实现。
 
 设计自审出口：逐条核认领/持久效果/HTTP/队列账本/业务结果五个时点；把每个“成功”追到receipt，unknown逐条有发现/期限/操作；新旧四格可升级可停可回退；运行参数有预算且能隔离故障；每个建议时态明确，不以旧验收证明新机制。实现时按两页case拆PR并更新实际源码/契约/总账，本文不宣称任何新路由、表、能力已启用。
+
+按任务错失策略的字段、首版模板数值、episode/queued时效、实时仲裁、预览/权限/迁移与验收已细化至[调度恢复详设](schedule-recovery-policy.md)。本页的schedule_revision在该页称schedule_generation，均指时间线代际，不与policy_revision混用。超限余项hold已由EXE-D03确认，保留待处理范围，不静默丢失；具体技术默认值仍为可调模板。

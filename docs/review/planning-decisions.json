@@ -58,30 +58,35 @@
     },
     {
       "id": "B01",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D03 开工前",
       "recommendation": "存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认",
       "alternatives": "所有旧类型统一 participants_only；或新旧都 inherit",
-      "impact_or_safe_fallback": "统一收紧会立即影响老单/委托/报表；都 inherit 较宽。未决保持存量 inherit，新受限策略不默认启用",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "impact_or_safe_fallback": "方向已确认但未实现；既有数据不因本规划批静默收紧，策略改变仍须L1/L2/L3与预览/CAS",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "新工单类型默认participants_only；已有类型保持inherit现有范围，收紧既有类型单独预览确认",
+      "owner_feedback": "2026-11-11：所有者明确选择“新类型仅参与人，已有类型保持原范围”"
     },
     {
       "id": "B02",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "D03 受限策略启用前",
       "recommendation": "CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权",
       "alternatives": "CC 不突破受限策略，仅显式 participant 可见",
-      "impact_or_safe_fallback": "后者使“抄送”与“可打开”分离，风险owner桥需显式 participant。未决不得假定 CC 能解决 R3 当前 owner 通路",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "impact_or_safe_fallback": "方向已确认但未实现新类型策略；收件/参与授予仍受B04候选范围和当前权限限制",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "合法抄送在受限类型中可查看/评论，不附赠转派、修改字段或转换状态权；现有入口权限和独立操作条件仍检查",
+      "owner_feedback": "2026-11-11：所有者明确选择“抄送后可查看和评论，不附送处理权”"
     },
     {
       "id": "B03",
       "state": "owner_pending",
       "decision_due": "D03 受限策略启用前",
-      "recommendation": "`ticket_scope=all` 不突破 participants_only/role_restricted；global admin既有例外保留",
-      "alternatives": "将 scope=all 设为全类型通用可见",
-      "impact_or_safe_fallback": "后者让受限类型对 all-scope 用户失去限制。未决仅继承类型沿用原行为",
-      "design_ref": "docs/design/business-lifecycle-contracts.md"
+      "recommendation": "普通ticket_scope=all不越过已设置的participants_only/role_restricted类型查看范围；admin/superadmin保留既有例外。UI称查看范围，不新增敏感标签权限体系",
+      "alternatives": "普通scope=all绕过类型查看范围；会使新类型仅参与人对该群体不成立",
+      "impact_or_safe_fallback": "未决不将新类型策略和scope=all穿透行为写成已批准；已有inherit类型行为保留",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "owner_feedback": "2026-11-11：询问“敏感类型限制”含义、是否专门字段和业界/必要性。已明确是类型查看范围read_policy，不是is_sensitive/新数据分级，尚未批准普通scope=all的穿透与否"
     },
     {
       "id": "B04",
@@ -139,33 +144,36 @@
     },
     {
       "id": "ENG-D02",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "C02编码前",
       "recommendation": "移除字段引用只改字段，不自动删已绑定附件；显式删仍被当前引用的对象报冲突",
-      "alternatives": "增加来源引用表，精确自动解链/GC",
-      "impact_or_safe_fallback": "未决不做自动删除，不以文档操作存量对象",
+      "alternatives": "历史未采用：无人引用后自动解除绑定/回收；当前明确为追加、保留与用户主动删除",
+      "impact_or_safe_fallback": "方向已确认，仍未实现；建单前移除为不纳入本次提交，已建单删除须防仍被字段/正文引用造成断链",
       "design_ref": "docs/design/engineering-execution-design.md",
-      "owner_feedback": "2026-11-11：要求先举例，目前未确认附件删除策略；工程C02已补同一对象/两个字段/附件列表例子"
+      "owner_feedback": "2026-11-11：先明确选择“保留A，由用户明确删除”；随后纠正正常上传B应追加B，非默认替换A。文件指自定义文件上传字段，不是仓库Markdown文档",
+      "decision": "工单文件上传默认追加：上传B后A继续保留；从字段移除引用不自动删附件，A误传由用户明确移除/删除；已建单显式删除遵引用保护"
     },
     {
       "id": "EXE-D01",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "R01/C04编码前",
       "recommendation": "按业务不变量：必需本地状态+处理人同事务；独立通知/外部同步同事务落意图后可靠异步；外部完成前提先待回执再推进",
       "alternatives": "业务明确允许状态先成立、后续再分工时，可选转派独立跟踪；不做普通用户可随意切同步/异步的开关",
-      "impact_or_safe_fallback": "用户未确认前不改变既有运行行为；当前Transition后转派仍两事务，此候选不等于已实现",
+      "impact_or_safe_fallback": "业务方向已确认，当前Transition仍是旧运行行为；C04/R01实施时同步用例分类、预检、审计/意图与失败反例",
       "design_ref": "docs/design/cross-repo-execution-contract.md",
-      "owner_feedback": "2026-11-11：要求举例和业界策略，尚未确认成功含义。原先一概异步推荐已纠正"
+      "owner_feedback": "2026-11-11：用户对上述修正后的推荐明确回复“你的推荐没问题”",
+      "decision": "必需的本地状态与处理人变更同事务；独立通知/外部同步同事务落意图后可靠异步；外部结果为完成前提时先待回执，再推进"
     },
     {
       "id": "EXE-D02",
-      "state": "owner_pending",
+      "state": "owner_confirmed",
       "decision_due": "C03切换前",
-      "recommendation": "创建/编辑计划按任务选择skip/coalesce_latest/catch_up_bounded；独立设grace、回补范围/总量/每批/并发/速率，受Action历史能力和当前授权限制",
+      "recommendation": "按任务选择三策略，采用新详设的模板/限额/服务端预览，源历史/权限/时隙幂等与旧计划切换分别校验；普通默认值随G04实测校准",
       "alternatives": "任务按时效与历史数据能力选择，不能全平台固定一种；不开放无界回补",
       "impact_or_safe_fallback": "未定具体模板默认/预算和存量切换时先保留原行为；历史数据不可回溯不伪造旧日报；已有失败/unknown走原任务重试/对账",
-      "design_ref": "docs/design/cross-repo-execution-contract.md",
-      "owner_feedback": "2026-11-11：认为部分任务补一次、部分应补全，提出创建时让用户按任务选择，要求业界依据；不视为所有默认/预算均已批准"
+      "design_ref": "docs/design/schedule-recovery-policy.md",
+      "owner_feedback": "2026-11-11：所有者提出有的补一次、有的逐次补，在创建时让用户选择，并明确要求细化；按此方向完成恢复详设，具体技术数值不冒充所有者逐项批准",
+      "decision": "按任务选择错失策略，创建/编辑时明确展示；三策略与字段/恢复批次/预览已细化，模板数值仍是实现可调候选，不是owner批准的生产SLA"
     },
     {
       "id": "UX01",
@@ -209,6 +217,17 @@
       "decision": "保留高级别风险沿组织树抄送一级部门负责人能力；触发级别映射/频次/时区等配置仍由B08冻结",
       "source": "docs/phase6/01-r1-ingest-ledger.md §3.1 与07触发目录P1-6，2026-11-02所有者已确认场景",
       "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "EXE-D03",
+      "state": "owner_confirmed",
+      "decision_due": "C03恢复策略冻结前",
+      "recommendation": "逐次补齐超出回补年龄/累计准入额度/恢复窗口时暂停，保留准确余项并提示，用户可授权扩大范围或明确跳过",
+      "alternatives": "本轮未采用自动跳过超限余项",
+      "impact_or_safe_fallback": "已确认；扩大范围/预算或明确跳过须有权操作与回执，不能因tick/重启重置额度",
+      "design_ref": "docs/design/schedule-recovery-policy.md",
+      "owner_feedback": "2026-11-11：所有者明确选择“暂停并保留余项，等待处理”",
+      "decision": "逐次补齐超过配置时间窗或次数上限时暂停并保留余项，等待用户处理；不得自动丢弃"
     }
   ]
 }
