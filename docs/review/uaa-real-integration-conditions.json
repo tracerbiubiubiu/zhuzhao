@@ -64,7 +64,7 @@
       "condition": "条件数据范围",
       "owner": "权限治理方/业务方",
       "required_evidence": "至少一种实际组织范围可映射现有org/scope；其余公司强制纳管属性及本地业务范围关系逐项列明",
-      "unlocks": "PB06/RB05",
+      "unlocks": "RB05及真实范围激活；PB06公共合成实现不受外部条件阻塞",
       "boundary": "基线只有一种薄映射；新增必选语义必须补齐和复估后才企业激活，不以本预算忽略公司要求",
       "state": "not_verified",
       "private_configuration_only": true
@@ -84,7 +84,7 @@
       "condition": "撤权新鲜度与故障判定",
       "owner": "权限治理方/实施方",
       "required_evidence": "明确最大撤权传播、可证明新鲜度的心跳/对账或其他机制及失联判定；不能把没有业务消息直接判成故障",
-      "unlocks": "PB07/RB07",
+      "unlocks": "RB07及真实新鲜度政策激活；PB07公共合成实现不受外部条件阻塞",
       "boundary": "未确认政策前真实纳管激活不放行；独立模式不查UAA",
       "state": "not_verified",
       "private_configuration_only": true
