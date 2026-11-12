@@ -34,6 +34,8 @@
 
 [审计/详设收口](planning-closeout.md)给当前五步位置；[逐包设计深度](planning-design-status.json)与[所有者决策](planning-decisions.json)区分候选/边界、确认/未决，不再将规划落档等同全部详细设计完成。
 
-[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前71包/510来源/174依赖，旧报告数量保持原时点。
+[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前71包/511来源，依赖以总账的完整包/子出口语义核对，旧报告数量保持原时点。
 
 [原规划能力连续性](roadmap-capability-continuity.md)与其JSON保留169条来源原子的价值/问题/更小路径/新波次；主读[全项目路线](../roadmap.md)和[渐进演进](../design/project-evolution-strategy.md)，不把Phase6近期切片当整个路线。
+
+[新旧对照](roadmap-change-comparison-2026-11-12.md)先说明变化；[新版执行排期](execution-schedule.md)给13个发布切片、首批PR及子出口依赖。[本轮补研究](reports/near-term-research-and-schedule-2026-11-12.md)记录FD01/02/04/05新增证据，[八组状态](research-supplement-status.json)保留尚未补齐的FD03/06/07/08窗口，不将有排期当作研究完成。

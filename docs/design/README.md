@@ -34,3 +34,5 @@
 [定时任务恢复详设](schedule-recovery-policy.md)细化按任务策略、模板默认、queued过期、episode预算、历史数据/版本、预览与恢复操作；当前未实现，业务超限处置按决策册确认。
 
 [全项目渐进演进](project-evolution-strategy.md)说明原6–9及更远能力怎样承接、简化/外接、分期及增强；[连续性审计](../review/roadmap-capability-continuity.md)逐来源追溯，不默删业务效果。
+
+2026-11-12补研究：[当前模块事务/边界](current-module-boundaries.md)、[MCP首批合同](mcp-first-contract.md)及[Schema样本](mcp-first-contract.schema.json)、[定时AI确认组合](scheduled-ai-confirmation.md)。新旧取舍和实施先后见[路线对照](../review/roadmap-change-comparison-2026-11-12.md)与[执行排期](../review/execution-schedule.md)，未将全部远期详设或真实接口视为已完成。

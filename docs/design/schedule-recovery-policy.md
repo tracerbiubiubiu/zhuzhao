@@ -104,7 +104,7 @@ create/update/recover-confirm绑定preview/hash、实际主体、授权引用、
 
 验收至少覆盖：30秒正常迟到；上述三策略；同一最新时隙不被“正常+补发”双建；已有pending时效/认领竞争；失败/unknown不复制；固定cutoff与重启预算；总量超限余项保留；Redis/PG提交断链；历史日界/DST/无历史数据；参数/时区/CAS/停启切换；撤权和过期grant；积压公平/worker隔离；超枚举预算不猜数；批准扩大范围仍沿原身份。单元/合同/PG+Redis真实小栈分层验，不以文档例子代替实现证据。
 
-C03/P6.0交稳定时隙/receipt/基础版本接缝、三策略合同与合成参考案例，实际任务保持已明确的受支持语义；不以合同通过声明三策略已上线。I03/P7交三策略完整执行、恢复episode/预算/worker准入、preview/恢复操作与UI接线，并配合I02持续grant、运维观测/专业平台场景。C03粗估6–10日不包办完整恢复控制台，I03扩项粗估8–12日；共享基础只计一次。未知提供方不能自动开放回补，先mock/contract、真实另验；不把所有高级功能反过来挡住第一条可验证调度链。当前没有新增表、API、worker字段或任务策略控件，旧运行行为未改变。
+C03/P6.0交稳定时隙/receipt/基础版本接缝、三策略合同与合成参考案例，实际任务保持已明确的受支持语义；不以合同通过声明三策略已上线。I03/P7交三策略完整执行、恢复episode/预算/worker准入、preview/恢复操作与UI接线，并配合I02持续grant、运维观测/专业平台场景。C03粗估6–10日不包办完整恢复控制台，I03扩项粗估9–15日（2026-11-12统一总账，替代早期8–12日）；共享基础只计一次。未知提供方不能自动开放回补，先mock/contract、真实另验；不把所有高级功能反过来挡住第一条可验证调度链。当前没有新增表、API、worker字段或任务策略控件，旧运行行为未改变。
 
 设计借鉴（仅公开模式，未上传内部资料）：[APScheduler错失/合并](https://apscheduler.readthedocs.io/en/stable/userguide.html#missed-job-executions-and-coalescing)、[Quartz CronTrigger](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)、[Kubernetes迟到与并发分离](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)。本项目的恢复episode/权限/预算是自身业务合同，不声称这些产品默认值与本文相同，也不要求引入它们。
 

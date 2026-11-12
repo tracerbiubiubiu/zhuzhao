@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-12",
+  "baseline_report": "docs/review/reports/concern-depth-verification-2026-11-12.md",
+  "semantics": "原65点深度核验保留时点；本表记录其后补研究，不将设计候选当运行验证",
+  "items": [
+    {
+      "id": "FD01",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/design/current-module-boundaries.md"
+      ],
+      "result": "16项实际依赖/事务/写主裁定；保留必要同库协作，近期无需全仓接口化或拆服务",
+      "remaining": "采纳受控例外须G06同步架构SSOT和守卫；实际改动按包运行验证"
+    },
+    {
+      "id": "FD02",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/review/legacy-trigger-disposition.md",
+        "docs/review/legacy-trigger-disposition.json"
+      ],
+      "result": "119实际来源逐条理由/证据/窗口；纠正错归属及混合项窗口，业务功能取消0",
+      "remaining": "逐包准确功能切片与真实提供方仍需开工核验；调查不等于实现销账"
+    },
+    {
+      "id": "FD03",
+      "state": "scheduled_before_implementation",
+      "evidence": [
+        "docs/review/execution-schedule.md"
+      ],
+      "due": "P7代表场景比较；A05/P8开工前",
+      "remaining": "平台特有样例对比确定性步骤/企业Agent/有限host；工具、审批、效果、恢复和预算"
+    },
+    {
+      "id": "FD04",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/design/scheduled-ai-confirmation.md"
+      ],
+      "result": "离线、确认过期、跨时隙积压、修改/撤权/取消组合；三类授权及三时间分开",
+      "remaining": "I02/I03/A04准确DTO/持久化与持续写业务准入、时效参数及运行验证"
+    },
+    {
+      "id": "FD05",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/design/mcp-first-contract.md",
+        "docs/design/mcp-first-contract.schema.json"
+      ],
+      "result": "首批两只读发布+一只读消费，OAuth/本地IAM/无企业AS路径；P7/P8边界已一致化",
+      "remaining": "实际SDK依赖/AS组件和登录桥、MCP/OAuth互操作、P7有限写适配及真实企业组合均未验证"
+    },
+    {
+      "id": "FD06",
+      "state": "scheduled_before_implementation",
+      "evidence": [
+        "docs/review/execution-schedule.md"
+      ],
+      "due": "FD03选样后；A07/P8开工前",
+      "remaining": "可信skill样包、输入/输出/评测、加载/撤销/升级与暂停恢复兼容例"
+    },
+    {
+      "id": "FD07",
+      "state": "first_group_real_baseline_delivered_more_pages_required",
+      "evidence": [
+        "docs/review/execution-schedule.md",
+        "../zhuzhao-ui/docs/design/frontend-pages.json",
+        "docs/review/reports/frontend-first-baseline-2026-11-12.md"
+      ],
+      "due": "U01复现；U02/U07样板；U03–U06逐页改造前",
+      "remaining": "其余页面/角色/亮暗/视口/错误/长内容；情报历史/结果；键盘/缩放/屏幕阅读器；U06粗估再校准",
+      "result": "24合格图；Logo404/代表色对不足/规则TDZ实测；全站未完成，情报只空态，UI依赖未逐字节冻结"
+    },
+    {
+      "id": "FD08",
+      "state": "scheduled_before_implementation",
+      "evidence": [
+        "docs/review/execution-schedule.md"
+      ],
+      "due": "D14/P6.E编码前",
+      "remaining": "SOC专业写主与本地协作职责×动作×范围/撤销矩阵及正反例"
+    }
+  ],
+  "new_business_implementation_claimed": false,
+  "all_focus_points_deeply_researched": false
+}

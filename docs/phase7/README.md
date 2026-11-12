@@ -12,6 +12,8 @@ A03是协议适配，不把全部HTTP端点导成MCP工具；A04先展示时区�
 
 ## 2. 原能力承接与分步交付
 
+2026-11-12已统一MCP消费窗口：A03-R/P7先两项只读发布及一项外部只读消费，A03-W在精确批准/receipt门后交有限确认写适配，P8扩企业Agent/逐主体ACL/缓存/长任务。候选Schema/OAuth和无企业AS开发路径见[首批合同](../design/mcp-first-contract.md)；mock/contract不等于真实AS/企业联通。实施先后与复估见[执行排期](../review/execution-schedule.md)。
+
 先I01/I02目录与受权导出、主体/撤销/轮换，再U08用Schema表单一次运行和工单动作回贴；A03/A04是MCP/自然语言新增入口，不替代手动任务。I01必须交同一Action版本的OpenAPI/Schema出口，当前管理API Swagger不等于动态Action导出。
 
 I03交周期恢复及队列/延迟/失败/held/trace与告警，I05另交once/指定时刻/delay和维护CronScheduler/TR统一只读总览。保持调度单主，不以周期cron临时禁用模拟单次。永久run/执行日志保留，容量/临时副本治理与删历史分开。

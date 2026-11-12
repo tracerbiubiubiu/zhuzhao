@@ -4,7 +4,7 @@
 
 主线为**数据聚合与安全全生命周期管控**。专业发现/研判/执行取已有SOC、CMDB、TI、SOAR等供给；平台负责受权入口、责任、流程、结果与证据。模型只调已有API，内网仅内部服务；mock长期保留。既可接企业Agent，也可围绕本平台特有业务运行有限领域Agent。
 
-[唯一总账](review/planning-backlog.md)维护71包、510来源、依赖与粗估；[能力连续性](review/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。
+[唯一总账](review/planning-backlog.md)维护71包、511来源、依赖与粗估；[能力连续性](review/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。
 
 ## 1. 现有底座怎样继续使用
 
@@ -57,6 +57,8 @@ E08推荐改的是默认自研DAG、全量迁回并退役SOAR的旧技术路线�
 后续围绕真实闭环数据、私有扩展升级反馈、能力复用和Agent评测继续演进。AI已从P6.2开始，不等到旧Phase11；不预定通用市场、多租户SaaS、K8s/Kafka或全面微服务。不为远期名词创建空仓/空模块。
 
 ## 7. 排期与调整规则
+
+新版执行顺序、首批PR和完整包/子出口依赖见[执行排期](review/execution-schedule.md)，新旧比较见[路线对照](review/roadmap-change-comparison-2026-11-12.md)。G02启保护等G03-Q；查询/发现分别等X02-Q/F，不等完整导航宿主；P7 MCP同时有读发布/消费，有限确认写在后继门，P8扩增强。
 
 T0/投入未定，当前为带依赖/归属/粗估/出口的波次排期，不能将工作日上限相加承诺上线。各包明确最薄首期、真实待验及增强条件；后期包的准确DTO/Schema在开工前冻结，不要求今天设计所有未来细节。
 

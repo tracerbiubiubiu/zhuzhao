@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11",
+  "date": "2026-11-12",
   "implementation_status": "documentation_only",
   "schedule_basis": "有依赖的实施波次；T0/实际投入未定，不承诺日历日期；每波开工按本包范围复估。",
   "waves": {
@@ -73,7 +73,11 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/engineering-execution-design.md"
-      ]
+      ],
+      "milestone_dependencies": [
+        "G03-Q"
+      ],
+      "activation_rule": "准备可先行；实际启用required保护前须G03-Q交接，再用失败PR/通过PR验证；不等待G03其它增强，不形成反向依赖"
     },
     {
       "id": "G03",
@@ -95,6 +99,24 @@
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md"
+      ],
+      "milestones": [
+        {
+          "id": "G03-Q",
+          "estimate_engineering_days": "1–2",
+          "dependencies": [],
+          "acceptance": "PR/main始终创建准确quality-gate，绑定check/App；真失败和真通过候选可核",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "G03-C",
+          "estimate_engineering_days": "2–3",
+          "dependencies": [
+            "G03-Q"
+          ],
+          "acceptance": "固定五仓组合、私有运行入口和定期扫描完整交付",
+          "state": "planned_not_implemented"
+        }
       ]
     },
     {
@@ -155,7 +177,8 @@
         "当前zz-commit包装器仅主仓存在；G01硬化后由G06同步适用仓，未同步用等价显式路径提交"
       ],
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/current-module-boundaries.md"
       ]
     },
     {
@@ -232,7 +255,8 @@
         "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争"
       ],
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/current-module-boundaries.md"
       ]
     },
     {
@@ -376,7 +400,8 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
-      ]
+      ],
+      "real_activation_rule": "领域mock可先交；真实HR feed启用前须X02-F和对应E01提供方验收，不要求独立应用导航宿主，不允许私有SDK/直库耦合"
     },
     {
       "id": "D07",
@@ -386,8 +411,7 @@
       "estimate_engineering_days": "3–5",
       "dependencies": [
         "D04",
-        "D06",
-        "X02"
+        "D06"
       ],
       "acceptance": "白名单参数/超时/限流/审计；mock与真实共用Port；失败可手填、来源和陈旧可见，不复制CMDB。",
       "state": "planned_not_implemented",
@@ -400,6 +424,9 @@
       ],
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
+      ],
+      "milestone_dependencies": [
+        "X02-Q"
       ]
     },
     {
@@ -426,6 +453,9 @@
       ],
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
+      ],
+      "milestone_dependencies": [
+        "X02-F"
       ]
     },
     {
@@ -513,20 +543,39 @@
       "title": "本地流程指标与报表投影",
       "wave": "P6.E",
       "owner": "zhuzhao+ui/产品数据",
-      "estimate_engineering_days": "3–5",
+      "estimate_engineering_days": "4–7",
       "dependencies": [
         "D08",
         "D09",
         "D10"
       ],
-      "acceptance": "仅本平台可证明的生命周期指标；每日快照及授权范围可解释，SOC统计取来源，不自建分析引擎。",
+      "acceptance": "仅本平台可证明的生命周期指标；每日快照及授权范围可解释，SOC统计取来源，不自建分析引擎。 有界risk_id实体投影逐关联授权，不把风险管理权扩张为任意工单读权，SOC事件主事实留D14。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_scope": "原指标/快照3–5日，有限实体引用投影1–2日，合计4–7日；不含全域事件湖/专业SOC分析。开工按实际查询/权限预算校准。",
       "scope": [
-        "本地生命周期指标、可授权历史快照与来源投影",
-        "跨模块指标目录、AL类型条数和任务定义调用数；实现分别由R06/I03提供事实，不造通用BI或统计DSL"
+        "本平台可证明的生命周期指标/每日快照，不自建SOC分析引擎",
+        "P6-T033受权risk_id实体投影，引用本地风险/工单/任务/通知事实；SOC事件时间线归D14"
+      ],
+      "milestones": [
+        {
+          "id": "D13-M",
+          "estimate_engineering_days": "3–5",
+          "dependencies": [],
+          "acceptance": "本地指标/每日快照，范围与口径可解释",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "D13-T",
+          "estimate_engineering_days": "1–2",
+          "dependencies": [
+            "D11",
+            "D12"
+          ],
+          "acceptance": "risk_id有界时间线逐关联授权，隐藏无权正文/计数/存在性；来源和分页/查询预算明确",
+          "state": "planned_not_implemented"
+        }
       ]
     },
     {
@@ -572,20 +621,23 @@
       "title": "视觉tokens与共用页面交互",
       "wave": "P6.1",
       "owner": "ui/设计前端",
-      "estimate_engineering_days": "3–5",
+      "estimate_engineering_days": "4–6",
       "dependencies": [
         "U01"
       ],
-      "acceptance": "冻结首页信息架构、8次列表取数的聚合/权限门控与错误不归零样板；字号/行高/间距/主次操作/卡头/筛选同一合同。",
+      "acceptance": "冻结首页信息架构、8次列表取数的聚合/权限门控与错误不归零样板；字号/行高/间距/主次操作/卡头/筛选同一合同。 BL-FE-003冷加载无TDZ，异步规则返回/重排和卸载有真实行为回归；UI errorHandler捕获的console error不能因无uncaught pageerror被忽略。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_scope": "原tokens/交互合同3–5日，加BL-FE-003初始化修复及真实异步返回回归1日，合计4–6；全站页面成本仍在U06开工前逐组校准。",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/review/reports/frontend-first-baseline-2026-11-12.md"
       ],
       "scope": [
-        "首页责任主数已确认包含当前处理与R3明确点名复核；服务端计数/列表/角标同源，不以可操作资格冒充责任；D10上线同批补复核分支"
+        "首页责任主数已确认包含当前处理与R3明确点名复核；服务端计数/列表/角标同源，不以可操作资格冒充责任；D10上线同批补复核分支",
+        "P6-T045在本包判断菜单/页面/工单号快速查找入口的价值和受权查询合同；获选有限入口归U06，不归报告E04",
+        "BL-FE-003：P6.1开工先修rulesQuery声明前注册watch getter的初始化错误，U06迁移前回归；不借机重写全站hook"
       ]
     },
     {
@@ -672,12 +724,13 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_scope": "4–7日仍为逐页迁移的初轮粗估，尚未经过27页真实视觉基线校准；Cmd+K等获选增量在U02出口单列切片复估，不声称免费包含或默认取消。",
       "scope": [
         "跨域首页/27页全站迁移和通用管理反馈",
         "任务控制台分类两栏、执行页参数/历史/结果、定义分权、AL深链与日志引用；D12负责结果合同，I02负责执行资格",
         "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现",
-        "P6.3改现有任务页面；新增三策略恢复表单/控制台随I03/P7真实接线，后端不支持的字段不生成可保存假控件"
+        "P6.3改现有任务页面；新增三策略恢复表单/控制台随I03/P7真实接线，后端不支持的字段不生成可保存假控件",
+        "承接P6-T045获选的Cmd+K/快速查找入口；菜单/页面按现有可见集，工单号实时授权，不预载全站数据"
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
@@ -740,7 +793,7 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_scope": "4–7日为平台主体/grant/凭据引用管理粗估；真实AS/本地登录同意桥与提供方适配在对应E01子窗另列范围/复估，不默认包含通用AS建设。",
       "scope": [
         "自主主体/代人grant、精确目标/输入/有效期与归因",
         "最薄管理入口或受审配置发布，owner/状态/secretRef与轮换重叠窗有收据；优先既有秘密设施，不造Vault"
@@ -852,17 +905,48 @@
       "title": "MCP对外工具与外部MCP消费",
       "wave": "P7",
       "owner": "zhuzhao+utils/AI集成",
-      "estimate_engineering_days": "4–7",
+      "estimate_engineering_days": "9–14",
       "dependencies": [
         "I01",
         "I02",
         "A01"
       ],
-      "acceptance": "钉协议/客户端兼容矩阵；工具白名单，身份范围及受权结果；不把HTTP菜单逐路由直接导成工具。",
+      "acceptance": "发布和消费同在P7最薄合同；工具/schema白名单、逐工具L1/领域授权、OAuth资源/audience/撤销、Origin/出站负例可验。有限写须精确批准/幂等receipt；真实AS/企业组合另验。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "只读发布/消费与标准AS测试fixture7–11日；P7后继有限确认写适配2–3日。I01/I02/A02已交的业务逻辑不重复计；不含生产AS建设/登录桥、企业等待或P8增强。",
+      "scope": [
+        "P7首批两个工单只读发布工具及一个合成外部只读消费，固定规范/SDK/HTTP/OAuth profile",
+        "P7后继仅在平台受信精确批准、receipt和实时授权门全部满足后适配有限确认写；否则保持未放行",
+        "P8扩真实企业Agent/逐主体ACL、复杂兼容、缓存/长任务/skill；不把外部消费整体推迟P8"
+      ],
+      "milestones": [
+        {
+          "id": "A03-R",
+          "estimate_engineering_days": "7–11",
+          "dependencies": [],
+          "acceptance": "两只读发布+一只读消费及协议/OAuth正反例，mock/contract与真实AS门分开",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "A03-W",
+          "estimate_engineering_days": "2–3",
+          "dependencies": [
+            "A03-R",
+            "A02",
+            "C04",
+            "R01"
+          ],
+          "acceptance": "受信平台精确批准引用+同操作receipt；不支持确认协议则深链，远端写不放行",
+          "state": "planned_not_implemented"
+        }
+      ],
+      "design_refs": [
+        "docs/design/mcp-first-contract.md",
+        "docs/design/mcp-first-contract.schema.json",
+        "docs/design/ai-invocation-contract.md"
+      ]
     },
     {
       "id": "A04",
@@ -880,7 +964,12 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "design_refs": [
+        "docs/design/scheduled-ai-confirmation.md",
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/schedule-recovery-policy.md"
+      ]
     },
     {
       "id": "A05",
@@ -1438,7 +1527,26 @@
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
-        "docs/design/extension-compatibility.md"
+        "docs/design/extension-compatibility.md",
+        "docs/design/current-module-boundaries.md"
+      ],
+      "milestones": [
+        {
+          "id": "X01-C",
+          "estimate_engineering_days": "2–3",
+          "dependencies": [],
+          "acceptance": "稳定connector DTO/版本、source/query_ref、受权范围、可信服务身份、出站与停用合同及正反例",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "X01-H",
+          "estimate_engineering_days": "6–9",
+          "dependencies": [
+            "X01-C"
+          ],
+          "acceptance": "声明包、精确网关/目录、同步用户身份与受控导航；新参考模块无核心源码差异",
+          "state": "planned_not_implemented"
+        }
       ]
     },
     {
@@ -1448,7 +1556,6 @@
       "owner": "zhuzhao/集成+私有connector",
       "estimate_engineering_days": "5–8",
       "dependencies": [
-        "X01",
         "D06"
       ],
       "acceptance": "mock/参考connector同例；source+entity_kind+external_id身份、可信freshness、持久outbox/ACK水位、影子导入/单writer切换与回退明确；真实提供方逐能力待验。",
@@ -1461,7 +1568,27 @@
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
-        "docs/design/intranet-adapter-migration.md"
+        "docs/design/intranet-adapter-migration.md",
+        "docs/design/current-module-boundaries.md"
+      ],
+      "milestone_dependencies": [
+        "X01-C"
+      ],
+      "milestones": [
+        {
+          "id": "X02-Q",
+          "estimate_engineering_days": "2–3",
+          "dependencies": [],
+          "acceptance": "独立合成HTTP查询connector与mock同例，换endpoint不改核心；超时/越权/漂移负例拒绝",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "X02-F",
+          "estimate_engineering_days": "3–5",
+          "dependencies": [],
+          "acceptance": "目录/发现feed稳定身份、完整快照、持久batch/ACK/水位及重启回放参考纵切",
+          "state": "planned_not_implemented"
+        }
       ]
     },
     {
@@ -1627,5 +1754,11 @@
   "design_status_ref": "planning-design-status.json",
   "decisions_ref": "planning-decisions.json",
   "scope_rule": "基于现有规模和原6–9业务价值，尽可能承接、渐进优化扩展；技术形式可推荐替代，旧条件/建议不自动必做，调查不冒充功能交付。",
-  "continuity_ref": "docs/review/roadmap-capability-continuity.json"
+  "continuity_ref": "docs/review/roadmap-capability-continuity.json",
+  "dependency_semantics": {
+    "dependencies": "列表项为完整包完成依赖",
+    "milestone_dependencies": "列表项为指定子出口完成依赖，不能以文档存在销账",
+    "milestones": "子出口继承所属包的外部依赖；完整包须全部子出口完成",
+    "estimate_rule": "子出口是原包估算分解，不另加总；共享逻辑只计一次"
+  }
 }

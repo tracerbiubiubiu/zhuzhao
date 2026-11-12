@@ -97,7 +97,7 @@ MCP 通用客户端的 HTTP 授权按当时适用的 MCP/OAuth 规范实现并�
 
 长任务先把 invocation 查询、授权取结果和取消能力做稳；客户端支持时再映射 MCP Tasks 扩展，不要求首批所有客户端都支持。MCP transport cancel、runtime cancel request 与外部副作用已取消不是同一事实。[Tasks 扩展](https://modelcontextprotocol.io/extensions/tasks/overview)
 
-**窗口：P6.0（A01/A03前置合同） 定合同与兼容范围；P7/A03–A04 交首个只读 MCP server 和受控写工具；P8/A05–A07 按企业服务契约接 Agent/MCP client，并评估 Tasks/Skills 扩展。** 供内部 UI 的第一条自然语言查询可直接调用同一能力层，不必等待通用 MCP 客户端接入全部完成。
+**窗口：P6.0定最小身份/能力合同；P7/A03-R同时交两个只读发布工具和一个外部只读消费样本，A03-W在精确批准/receipt门后交有限确认写适配；P8/A05–A07扩真实企业Agent、逐主体ACL/缓存、长任务及Tasks/Skills。** 不再将外部MCP消费整体后移P8。准确首批工具、Schema、SDK/transport、OAuth与本地IAM路径见[首批合同](mcp-first-contract.md)及[受控样本](mcp-first-contract.schema.json)；当前只是设计候选，未做协议联调。内部UI第一条查询仍可直接消费同一能力层。
 
 ## 4. RAG 与 skill：优先复用供给，保留实时权限
 

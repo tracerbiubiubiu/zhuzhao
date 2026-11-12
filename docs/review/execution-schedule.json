@@ -1,0 +1,248 @@
+{
+  "date": "2026-11-12",
+  "status": "reviewable_execution_candidate_not_implementation_authorization",
+  "estimate_source": "docs/review/planning-backlog.json",
+  "change_comparison_ref": "docs/review/roadmap-change-comparison-2026-11-12.md",
+  "calendar": null,
+  "resource_binding": "P-RESOURCE before implementation start",
+  "assumptions": [
+    "工日为范围粗估的工程投入，不是对实际交付日历的承诺",
+    "一个集成负责人；仅当文件、数据、环境和合同可隔离时开并行任务",
+    "组是审阅和发布切片，实际准入逐包检查dependencies，不强制等待整个前组",
+    "mock长期保留；real提供方等待单列，不伪装mock成功",
+    "未实施新业务、远端保护或运行组件升级"
+  ],
+  "release_slices": [
+    {
+      "id": "S01",
+      "name": "隔离、有效检查与安全入口",
+      "wave": "P6.0",
+      "items": [
+        "G01",
+        "G03",
+        "G02",
+        "U01"
+      ],
+      "exit": "独立任务不混提交/清理；CI故障反例有效后启主线约束；普通和空业务菜单用户有安全落点"
+    },
+    {
+      "id": "S02",
+      "name": "正确性与受支持构建组合",
+      "wave": "P6.0",
+      "items": [
+        "C01",
+        "C02",
+        "C03",
+        "G07A"
+      ],
+      "exit": "公式/文件引用反例、业务receipt与稳定发生次可验；工具链小批升级与生成物/镜像绑定"
+    },
+    {
+      "id": "S03",
+      "name": "授权、定义与领域一致性",
+      "wave": "P6.1",
+      "items": [
+        "C04",
+        "D01",
+        "D04",
+        "D02",
+        "D03",
+        "D06",
+        "R01"
+      ],
+      "exit": "发布钉版、转换采集/可见范围及HR生命周期可验；不可丢后继先落持久意图"
+    },
+    {
+      "id": "S04",
+      "name": "扩展、体验样板与数据组件",
+      "wave": "P6.1",
+      "items": [
+        "G04",
+        "G06",
+        "C05",
+        "U02",
+        "U07",
+        "G07B",
+        "X01",
+        "X02"
+      ],
+      "exit": "公共/私有接缝与参考connector同例；真实页面样板有基线；升级副本和恢复可核"
+    },
+    {
+      "id": "S05",
+      "name": "风险首链与受权查询",
+      "wave": "P6.2",
+      "items": [
+        "D07",
+        "D08",
+        "D15",
+        "D09",
+        "D10",
+        "A01"
+      ],
+      "exit": "mock发现到评估/接受、N:1整改和复测闭环；查询限实时权限，真实通知启用前绑定B08"
+    },
+    {
+      "id": "S06",
+      "name": "工单、结果、配置与受控写入",
+      "wave": "P6.3",
+      "items": [
+        "D05",
+        "D11",
+        "D12",
+        "D16",
+        "U03",
+        "U04",
+        "U05",
+        "U06",
+        "A02",
+        "X03"
+      ],
+      "exit": "批量标签/筛选/情报左右栏及逐页体验；任务结果/配置晋级可验；确认建单与设备人工入口独立验收"
+    },
+    {
+      "id": "S07",
+      "name": "本地指标与SOC薄协作",
+      "wave": "P6.E",
+      "items": [
+        "D13",
+        "D14",
+        "E10"
+      ],
+      "exit": "本地生命周期投影可信；SOC主事实与本地职责分开；选定导入/合并增量有逐项回执"
+    },
+    {
+      "id": "S08",
+      "name": "Action、身份、恢复与手动消费",
+      "wave": "P7",
+      "items": [
+        "I01",
+        "I02",
+        "I03",
+        "I05",
+        "U08",
+        "A03",
+        "A04"
+      ],
+      "exit": "同一受权能力可由表单/MCP/NL消费，调度恢复和持续grant可核；P7同时有最薄外部MCP只读消费"
+    },
+    {
+      "id": "S09",
+      "name": "专业源、平台治理与实际就绪",
+      "wave": "P7",
+      "items": [
+        "G05",
+        "I04",
+        "R06",
+        "R07",
+        "E01",
+        "E02",
+        "E09",
+        "D17",
+        "D18"
+      ],
+      "exit": "逐provider真实待验；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
+    },
+    {
+      "id": "S10",
+      "name": "专业执行与领域智能",
+      "wave": "P8",
+      "items": [
+        "R03",
+        "R04",
+        "A05",
+        "A06",
+        "A07"
+      ],
+      "exit": "专业执行双向链与Agent/知识/skill有限场景，配置不赋权；未知效果先对账"
+    },
+    {
+      "id": "S11",
+      "name": "固定报告、通报与选定协作",
+      "wave": "P8",
+      "items": [
+        "E03",
+        "E04",
+        "E06"
+      ],
+      "exit": "固定周/月Word/PDF及分发回执、外部通报分责和可审回复，选定轻审批/日历场景"
+    },
+    {
+      "id": "S12",
+      "name": "持久闭环、接管与架构复评",
+      "wave": "P9",
+      "items": [
+        "R02",
+        "R05",
+        "E07",
+        "E08"
+      ],
+      "exit": "免搬运链、主备接管和证据可恢复；依据代表链裁定协同实现，不默删旧业务效果"
+    },
+    {
+      "id": "S13",
+      "name": "经裁定的更远增量",
+      "wave": "P10",
+      "items": [
+        "E05"
+      ],
+      "exit": "P7出口先逐项裁定保留/接入/退出，获准增量P10子窗实施，不默认建设Office/供应商门户"
+    }
+  ],
+  "supplement_refs": [
+    "docs/design/current-module-boundaries.md",
+    "docs/review/legacy-trigger-disposition.json",
+    "docs/design/mcp-first-contract.md",
+    "docs/design/scheduled-ai-confirmation.md"
+  ],
+  "remaining_design_gates": [
+    {
+      "id": "FD03",
+      "due": "P7代表场景比较；A05/P8开工前",
+      "exit": "同一领域样例比较确定性步骤、企业Agent与本地有限host，证明增量价值"
+    },
+    {
+      "id": "FD06",
+      "due": "FD03选样后；A07/P8开工前",
+      "exit": "可信skill包/输入输出/评测与暂停后升级/撤销兼容例"
+    },
+    {
+      "id": "FD07",
+      "due": "U01复现；U02/U07样板；U03–U06逐页改造前",
+      "exit": "实际Vue页面、角色、亮暗/视口、实际字体尺寸及长内容状态，逐页截图/问题或保留理由",
+      "delivered": "6个代表当前状态×2主题×2视口共24合格图，完整依赖未逐字节冻结，全站仍部分",
+      "evidence_ref": "docs/review/reports/frontend-first-baseline-2026-11-12.md"
+    },
+    {
+      "id": "FD08",
+      "due": "D14/P6.E编码前",
+      "exit": "SOC写主与本地协作角色×动作×范围/撤销矩阵及正反例"
+    }
+  ],
+  "estimate_changes": [
+    {
+      "item": "D13",
+      "before": "3–5",
+      "after": "4–7",
+      "reason": "指标/快照3–5，加risk_id有界受权实体投影1–2；SOC时间线仍归D14"
+    },
+    {
+      "item": "A03",
+      "before": "4–7",
+      "after": "9–14",
+      "reason": "读发布/消费7–11；P7有限确认写2–3；前置业务/生产AS/企业等待不重复或隐含计入"
+    },
+    {
+      "item": "U06",
+      "before": "4–7",
+      "after": "4–7 provisional",
+      "reason": "缺27页真实视觉基线；新增快速查找获选增量在U02出口另复估，不能免费吞范围"
+    },
+    {
+      "item": "U02",
+      "before": "3–5",
+      "after": "4–6",
+      "reason": "BL-FE-003规则页初始化修复+异步返回回归增加1日，P6.1开工先修"
+    }
+  ]
+}
