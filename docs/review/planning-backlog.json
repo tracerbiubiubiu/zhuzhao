@@ -1244,7 +1244,7 @@
           ],
           "estimate_engineering_days": null,
           "estimate_status": "契约冻结后与D06/X01/X02逐功能扣重再估；当前未计价",
-          "acceptance": "公共认证/账号及授权投影port与合成IdP/feed可运行；认证成功不自动授权、错误audience/state/回调、重复/乱序/截断快照、撤权/条件回调及多实例失效有负例；公共代码不含公司字段/SDK/地址。复用子出口按功能逐项绑定，不等D06全包，不由I02非人身份代替。",
+          "acceptance": "公共认证/账号及授权投影port与合成IdP/feed可运行；认证成功不自动授权、错误audience/state/回调、重复/乱序/截断快照、撤权/条件回调及多实例失效有负例；公共代码不含公司字段/SDK/地址。复用子出口按功能逐项绑定，不等D06全包，不由I02非人身份代替。 双模式独立验收：无UAA配置/adapter/MQ仍可启动并使用原账号、角色、菜单授权与权限管理；同一核心候选另验企业adapter纳管/非纳管边界，故障不自动切回本地放权。",
           "state": "planned_not_implemented"
         },
         {
