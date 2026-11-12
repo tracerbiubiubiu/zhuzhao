@@ -7,7 +7,7 @@
     22
   ],
   "external_wait_days": null,
-  "wait_rule": "工程日可估，申请/审批/放通/提供方修复和排队不可假设已完成；实际开始=max(公共P交付,技术条件齐备,业务批准与联调窗口)。未就绪时继续其他ready任务。",
+  "wait_rule": "按阶段解锁：P及测试应用/网络/契约/专属测试权限满足后可联调；R内生成影子报告、私有制品/runbook和真实测试证据；正式apply前再核实际差异批准、正式资源/窗口与公共生产门。各阶段等待分别登记，自己的产物不是开工前置；其他ready任务继续。",
   "conditions": [
     {
       "id": "R01",
@@ -17,17 +17,21 @@
       "unlocks": "RB01/RB02",
       "boundary": "不满足只阻断真实认证激活；不默认改用不安全流程",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R02",
       "condition": "测试与正式环境资源",
       "owner": "平台方/网络与中间件",
-      "required_evidence": "测试联调及正式目标的网络/DNS/CA、秘密引用、上报通道和三类下发队列绑定可用",
-      "unlocks": "RB02/RB03/RO01",
+      "required_evidence": "进入测试时提供测试网络/DNS/CA、秘密引用、上报和三类下发通道；正式目标的相同资源在正式apply前就绪，生产未开好不阻测试侧联调。",
+      "unlocks": "测试侧RB02/RB03；正式资源只解锁正式apply",
       "boundary": "申请/放通/源端开通为日历等待，不计本项目工程日",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R03",
@@ -37,87 +41,117 @@
       "unlocks": "RB03/RB05",
       "boundary": "没有可信版本/完整性及当前事实替代核验时不得缺失清空或上线；需差异变更估算",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R04",
       "condition": "稳定资源注册与授权测试",
       "owner": "权限治理方/实施方",
-      "required_evidence": "核心/扩展目录可注册并确认；专属合成或获准测试身份可授予/撤回，含只读/管理/停用和管理员同名保护负例",
-      "unlocks": "RB04/RB07",
+      "required_evidence": "提供测试授权、登记/确认资源目录的权限和接口、专属测试身份及可授予/撤回角色；实际目录注册确认及测试报告由RB04/RB07产出。",
+      "unlocks": "RB04/RB07测试；实际目录建立在对应产出后验收",
       "boundary": "不能使用普通业务员工/默认超管随意试验或以接通MQ代替权限生效",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R05",
       "condition": "身份及字段权威",
       "owner": "目录/HR与权限治理方",
-      "required_evidence": "HR人员组织、UAA应用账号/受管授权、本地安全限制分工和稳定身份映射可核；兼岗/回聘/改号与冲突项有清单",
+      "required_evidence": "提供HR/UAA/本地字段写主规则、稳定身份样本和待映射清单；真实匹配/冲突报告由RB06影子阶段产出，不要求事先已有报告。",
       "unlocks": "RB01/RB05/RB06",
       "boundary": "不按相同工号或邮箱直接并号；真实冲突清洗超基线时单列批次",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R06",
       "condition": "条件数据范围",
       "owner": "权限治理方/业务方",
-      "required_evidence": "至少一种实际组织范围可映射现有org/scope；其余公司强制纳管属性及本地业务范围关系逐项列明",
-      "unlocks": "RB05及真实范围激活；PB06公共合成实现不受外部条件阻塞",
+      "required_evidence": "提供至少一种组织范围的字段/语义与其余强制属性清单供PB06/RB05核验；实际验证结果是项目产出，不是联调开始前已有的证据。",
+      "unlocks": [
+        "RB05真实范围核验",
+        "企业真实属性激活"
+      ],
       "boundary": "基线只有一种薄映射；新增必选语义必须补齐和复估后才企业激活，不以本预算忽略公司要求",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false,
+      "public_reference_items": [
+        "PB06"
+      ]
     },
     {
       "id": "R07",
       "condition": "审批回调与配置回传",
       "owner": "权限治理/数据接收方",
-      "required_evidence": "条件审批关联的成功/失败回调、幂等、配置字段/频次/接收方与成功定义可验，或有明确不适用记录",
+      "required_evidence": "提供条件审批回调/配置回传的接口契约、字段/频次/成功定义，或明确不适用；实际互通和回调验收由R内完成。",
       "unlocks": "RB04/RB07",
       "boundary": "broker ACK不等于授权已生效，回调失败不得重复业务变更",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R08",
       "condition": "撤权新鲜度与故障判定",
       "owner": "权限治理方/实施方",
       "required_evidence": "明确最大撤权传播、可证明新鲜度的心跳/对账或其他机制及失联判定；不能把没有业务消息直接判成故障",
-      "unlocks": "RB07及真实新鲜度政策激活；PB07公共合成实现不受外部条件阻塞",
+      "unlocks": [
+        "RB07真实新鲜度核验",
+        "企业真实政策激活"
+      ],
       "boundary": "未确认政策前真实纳管激活不放行；独立模式不查UAA",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false,
+      "public_reference_items": [
+        "PB07"
+      ]
     },
     {
       "id": "R09",
       "condition": "接管和应急批准",
       "owner": "业务所有者/运维",
-      "required_evidence": "实际身份/授权差异清单、试点白名单、切换窗口、操作责任、受控恢复与退出方案批准",
-      "unlocks": "RB06/RU01/RO01",
+      "required_evidence": "进入测试只需试点/测试使用授权；RB06生成真实身份/授权差异后批准具体映射，正式apply前批准操作窗口、应急/退出方案。",
+      "unlocks": "测试权限解锁shadow；实际清单批准只解锁RB06正式apply，不阻shadow生成",
       "boundary": "只确认具体清单和允许选择的业务效果，不重复询问既定双模式原则",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R10",
       "condition": "私有制品与公共生产门",
       "owner": "实施方/运维",
-      "required_evidence": "私有adapter/配置/秘密可部署，实际版本/环境备份恢复/TLS边界/故障可见满足既有G05/E09适用门",
-      "unlocks": "RO01/企业正式激活",
+      "required_evidence": "提供可用的私有运行目标、制品/秘密配置权限和已选环境要求；RO01生成私有adapter制品/profile/runbook。正式apply前再验当前候选的G05/E09适用公共门，不要求项目自己尚未生成的制品先存在。",
+      "unlocks": "RO01准备；公共生产门和实际制品验收解锁正式apply",
       "boundary": "R工程链通过不能代替生产就绪；通用制品/恢复原包不在R重复收费",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     },
     {
       "id": "R11",
       "condition": "提供方联调与正式申请窗口",
       "owner": "提供方/维护者",
-      "required_evidence": "一次正常测试验证、一次正式小批切换及其观察/故障恢复窗口可预约，缺陷和审批有明确处理方",
+      "required_evidence": "先预约测试联调协作及源端问题处理方；正式切换/观察窗口可后置到apply前确认，不要求测试开工前已有全部正式批准。",
       "unlocks": "R整体",
       "boundary": "外部源端修复/审批等待单独登记，不能默认为零日历等待或阻塞全部公共后续",
       "state": "not_verified",
-      "private_configuration_only": true
+      "private_configuration_only": true,
+      "stage_rule": "以entry_and_activation_stages区分输入、项目产出、正式切换前批准；本条不把R自身产物当作开工前提。",
+      "blocks_public_implementation": false
     }
   ],
   "owner_scenarios": [
@@ -160,7 +194,8 @@
       "recommended": "只允许事先批准的本地应急管理员经受控入口恢复配置、核对状态；有启停责任、有效期和审计，不自动向普通员工开放密码。",
       "confirmation_needed": "批准实际应急账号/允许操作/启停责任与有效期；如还希望应急人员临时授业务权限，需单列业务范围和增量，不能默认由应急恢复入口提供。",
       "estimate_boundary": "本报价含受控恢复及演练，未包含通用审批/PAM或任意临时企业授权产品。",
-      "state": "provider_constraints_then_owner_review"
+      "state": "provider_constraints_then_owner_review",
+      "enforcement_boundary": "恢复用途由后端具名操作/权限或受审CLI限制，不能只靠UI隐藏或操作纪律；不附赠修改业务授权的能力。"
     }
   ],
   "resource_binding": {
@@ -169,5 +204,65 @@
     "enterprise_target_date": null,
     "default_scheduling_scenario": "1有效席位×每周5工程日，仅作参考；2席位是独立交付成立后的对照，不是已批准投入"
   },
-  "privacy": "公开会话和仓库不收内部地址、秘密、真实报文或人员名单；由内网实施方核验并保留去敏回执。"
+  "privacy": "公开会话和仓库不收内部地址、秘密、真实报文或人员名单；由内网实施方核验并保留去敏回执。",
+  "entry_and_activation_stages": [
+    {
+      "id": "R-test-entry",
+      "requires_external": [
+        "R01测试应用及协议材料",
+        "R02测试网络/凭据/队列",
+        "R03三feed输入合同",
+        "R04测试授权/资源登记能力",
+        "R05身份与权威规则材料",
+        "R07回调/回传合同或不适用记录",
+        "R11测试协作窗口"
+      ],
+      "requires_project": [
+        "E01-UAA-P公共功能出口"
+      ],
+      "does_not_require": [
+        "RB06尚未生成的实际差异报告",
+        "RO01尚未生成的私有制品/runbook",
+        "正式生产资源或最终切换批准"
+      ]
+    },
+    {
+      "id": "R-build-and-shadow",
+      "project_outputs": [
+        "实际adapter/目录注册/字段及范围核验",
+        "影子身份和授权差异报告（RB06）",
+        "私有制品、profile与runbook实例（RO01）",
+        "真实后端/浏览器撤权与失败恢复测试证据"
+      ],
+      "external_checks": [
+        "R06实际必选范围合同",
+        "R08新鲜度/故障政策"
+      ],
+      "rule": "测试/影子阶段不正式修改生产身份授权；实际差异清单在生成后审查。"
+    },
+    {
+      "id": "R-pre-apply-checkpoint",
+      "requires": [
+        "真实测试验收证据通过",
+        "影子差异和试点映射批准",
+        "正式目标资源/操作窗口可用",
+        "应急/退出方案和公开生产门的适用项通过"
+      ],
+      "precedes": "正式小批apply",
+      "does_not_require": [
+        "正式apply后的观察/回执收口"
+      ],
+      "budget_rule": "检查、正式切换和观察仍在R13–22内，不再加一次整场演练。"
+    },
+    {
+      "id": "R-apply-and-closeout",
+      "requires": [
+        "R-pre-apply-checkpoint"
+      ],
+      "project_outputs": [
+        "正式小批切换/回执、观察对账、私有报告和退出证据"
+      ],
+      "rule": "R整体收口在此阶段完成；不得用该后置收口反向阻塞正式apply。"
+    }
+  ]
 }

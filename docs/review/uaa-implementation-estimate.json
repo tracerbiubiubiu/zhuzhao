@@ -277,7 +277,8 @@
         ]
       }
     ],
-    "joint_evidence_rule": "RB07验治理事实/receipt，RO01验制品配置/操作步骤；同一演练共用取证，不双算整场"
+    "joint_evidence_rule": "RB07验治理事实/receipt，RO01验制品配置/操作步骤；同一演练共用取证，不双算整场",
+    "stage_rule": "测试进入、R内实现/影子产出、正式apply前检查、apply后观察收口分开；pre_apply不要求后置收口，R13–22已含全部阶段，外部等待分阶段登记。"
   },
   "reuse_ownership": [
     {

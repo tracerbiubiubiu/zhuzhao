@@ -1279,13 +1279,13 @@
             "E01-UAA-P"
           ],
           "activation_prerequisites": [
-            "资源目录注册与批准映射完成",
-            "对应提供方私有合同/账号及环境可用",
-            "影子对账和受控切换/撤权/失败恢复证据通过"
+            "测试进入：P及测试应用/网络/契约/专属测试权限",
+            "正式apply前：真实测试证据、已生成影子差异批准、正式资源/窗口、应急退出与公共生产门",
+            "R内部产出：adapter/私有制品/runbook/影子报告不作为R测试开工前置"
           ],
           "estimate_engineering_days": "13–22",
           "estimate_status": "已按测试联调＋正式目标、一次正常验证和正式小批切换条件补估；技术/审批/窗口齐备后投入，不含外部等待或额外范围",
-          "acceptance": "私有connector完成真实统一登录、三类权限数据面/条件能力及要求的回传；目录/账号/绑定/数据条件映射经批准，真实撤权/断网/对账/会话与恢复演练通过。公司UAA纳管企业模式首次正式激活硬门；风险或HR等其他provider的real不可代验，mock/contract不得标为real成功。 最小双模式前端真实来源/纳管写限制及拒写反馈、私有安装/切换/退出runbook和演练在正式激活前完成；U06视觉迁移不阻断此最小交付。",
+          "acceptance": "私有connector完成真实统一登录、三类权限数据面/条件能力及要求的回传；目录/账号/绑定/数据条件映射经批准，真实撤权/断网/对账/会话与恢复演练通过。公司UAA纳管企业模式首次正式激活硬门；风险或HR等其他provider的real不可代验，mock/contract不得标为real成功。 最小双模式前端真实来源/纳管写限制及拒写反馈、私有安装/切换/退出runbook和演练在正式激活前完成；U06视觉迁移不阻断此最小交付。 正式apply前要求R.pre_apply检查点通过；切换后观察另属R整体收口，不倒置为apply前提。测试侧联调不等最终正式批准。",
           "state": "planned_not_implemented",
           "delivery_scope": [
             "私有真实公司协议/身份/权限及条件数据范围/回传映射与批准记录",
@@ -1293,7 +1293,26 @@
             "私有配置与制品安装、接管预览/切换/退出runbook实例及演练，企业正式激活前交付；内部配置不入公共仓"
           ],
           "estimate_wbs_ref": "docs/review/uaa-implementation-estimate.json#/R/wbs",
-          "external_conditions_ref": "docs/review/uaa-real-integration-conditions.json"
+          "external_conditions_ref": "docs/review/uaa-real-integration-conditions.json",
+          "activation_checkpoints": {
+            "pre_apply": {
+              "requires": [
+                "真实测试验收",
+                "影子差异与试点映射批准",
+                "正式资源与切换窗口",
+                "适用公共生产门和应急退出方案"
+              ],
+              "before": "正式小批apply",
+              "not_required_before_apply": [
+                "切换后观察与R整体收口"
+              ]
+            },
+            "closeout": {
+              "after": "正式小批apply",
+              "evidence": "观察/对账/回执及私有报告，仍计R13–22内"
+            }
+          },
+          "activation_rule": "公司纳管企业模式正式apply前要求R.pre_apply检查点通过；R整体收口另含切换后观察，不能倒置为apply前置。测试进入不等待R自身生成的差异报告或制品。"
         }
       ],
       "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json"
@@ -1927,7 +1946,12 @@
       "additional_required_milestone": "E01-UAA-R",
       "requires_common_production_gate": true,
       "independent_mode_rule": "完整独立部署不等待UAA-R/企业凭据或E01父包全部完成；企业接入待办仍保留，不能标成已实现或取消。",
-      "state": "planned_evidence_gate_not_accepted"
+      "state": "planned_evidence_gate_not_accepted",
+      "additional_required_checkpoint": {
+        "milestone": "E01-UAA-R",
+        "checkpoint": "pre_apply"
+      },
+      "milestone_reference_semantics": "additional_required_milestone是承载包追溯；本门检查其pre_apply，不要求切换后的R整体收口先完成。"
     }
   }
 }
