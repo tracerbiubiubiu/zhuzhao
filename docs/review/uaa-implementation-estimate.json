@@ -1,0 +1,435 @@
+{
+  "date": "2026-11-12",
+  "status": "bounded_engineering_estimate_candidate_not_implementation_or_business_policy_approval",
+  "basis_core": "ce280185818c1def7f54a21dedbb85055cb38e91",
+  "basis_ui": "da171f4ff07b6161e4e37e3553c63d90f4bb3cf9",
+  "unit": "工程日：设计、实现、各项负例、评审和正常修正的有效投入；不是自然日，也不由agent数量直接换算",
+  "ownership_rule": "本文件是本轮UAA增量估算唯一注册表；总账只引用其C/P/R，派生排期只读冻结提交，不重新分类或改写既有账目",
+  "baseline_profile": {
+    "application_count": 1,
+    "authentication_profile": "一套确认的授权码/profile路线；C出口核验安全能力，不并做OAuth/OIDC/SAML三套",
+    "feeds": [
+      "账号",
+      "用户角色集合",
+      "角色资源集合"
+    ],
+    "data_scope": "一种现有组织org/scope family薄映射与只读摘要；公司要求其他属性时必须变更补齐后才真实激活，不能忽略强制项",
+    "core_topology": "单核心实例；本进程策略重载/失败/会话失效，多实例启用前专项另计",
+    "frontend": "现有login/users/roles/menus四页的最小功能，保留Vue/Element Plus，无全站视觉重做或在线菜单CRUD",
+    "environments": "一套测试联调环境＋一套正式启用目标；正式目标已含在R，不作为额外环境收费",
+    "migration": "已批准且无复杂冲突的身份映射、保留本地ID和历史；大规模历史清洗不含",
+    "normal_cycles": "一次正常测试验证、一次正式小批切换及对应恢复/退出演练；正常修正含在区间内"
+  },
+  "C": {
+    "milestone": "E01-UAA-C",
+    "engineering_days": [
+      2,
+      3
+    ],
+    "scope": "尚待实施前冻结的公共schema/来源管辖/资源键与合成候选矩阵，不重复计本次审计写作，不等待真实映射批准"
+  },
+  "P": {
+    "milestone": "E01-UAA-P",
+    "engineering_days": [
+      25,
+      39
+    ],
+    "completion_dependencies": [
+      "E01-UAA-C",
+      "C04",
+      "X02-F"
+    ],
+    "preparation_rule": "C/C04之后可准备认证/来源/前端；完整投影、整链与P验收必须等X02-F，其既有依赖带入D06/X01-C，不等X01-H或X02-Q",
+    "wbs": [
+      {
+        "id": "PB01",
+        "owner_area": "后端",
+        "deliverable": "认证端口与合成IdP",
+        "engineering_days": [
+          3,
+          4
+        ],
+        "scope_and_reuse": "一套授权码/profile、state/PKCE/回调重放、身份校验后签本地会话；复用现有JWT/RT，不开发IdP或MCP AS"
+      },
+      {
+        "id": "PB02",
+        "owner_area": "后端",
+        "deliverable": "身份与授权来源模型、模式metadata",
+        "engineering_days": [
+          3,
+          4
+        ],
+        "scope_and_reuse": "来源模型/迁移、纳管和非纳管写边界、管理员映射保护及前端允许操作/同步摘要；复用D06身份和C04守卫"
+      },
+      {
+        "id": "PB03",
+        "owner_area": "后端",
+        "deliverable": "资源目录导出与差异",
+        "engineering_days": [
+          1,
+          2
+        ],
+        "scope_and_reuse": "稳定键、页面/按钮/API关系和注册确认；复用catalog/B案及X01-C，不重建扩展宿主"
+      },
+      {
+        "id": "PB04",
+        "owner_area": "后端",
+        "deliverable": "账号feed领域应用",
+        "engineering_days": [
+          1,
+          2
+        ],
+        "scope_and_reuse": "来源绑定、状态交集和停用会话失效；复用D06建号/组织生命周期命令"
+      },
+      {
+        "id": "PB05",
+        "owner_area": "后端",
+        "deliverable": "两类授权集合与三源闭合",
+        "engineering_days": [
+          3,
+          4
+        ],
+        "scope_and_reuse": "用户角色/角色资源分别按作用域完整替换、直接/组织/继承来源重算及内置管理员负例"
+      },
+      {
+        "id": "PB06",
+        "owner_area": "后端",
+        "deliverable": "一种组织范围薄映射与配置导出",
+        "engineering_days": [
+          1,
+          2
+        ],
+        "scope_and_reuse": "中央范围到现有org/scope、最小配置回传与只读摘要；不构造新ABAC编辑器"
+      },
+      {
+        "id": "PB07",
+        "owner_area": "后端",
+        "deliverable": "生效receipt、新鲜度与恢复接线",
+        "engineering_days": [
+          2,
+          3
+        ],
+        "scope_and_reuse": "提交到策略重载/会话失效/回调完成状态；复用X02-F持久收件/去重/ACK/回放，首期单实例"
+      },
+      {
+        "id": "PB08",
+        "owner_area": "后端",
+        "deliverable": "后端双模式整链验收与交付复核",
+        "engineering_days": [
+          2,
+          4
+        ],
+        "scope_and_reuse": "无UAA完整本地链、合成三feed、截断/空集/重放/撤权失败、迁移往返及适用门禁；不重计各项单位负例"
+      },
+      {
+        "id": "PU01",
+        "owner_area": "前端",
+        "deliverable": "双模式登录与回调",
+        "engineering_days": [
+          2,
+          3
+        ],
+        "scope_and_reuse": "后端登录方式metadata、受控企业入口/回调/安全落点及失败反馈，保留本地登录"
+      },
+      {
+        "id": "PU02",
+        "owner_area": "前端",
+        "deliverable": "三页来源与写边界",
+        "engineering_days": [
+          2,
+          3
+        ],
+        "scope_and_reuse": "users/roles/menus来源与同步、纳管只读、非纳管可写及混合替换拒写；无第五管理页或在线菜单CRUD"
+      },
+      {
+        "id": "PU03",
+        "owner_area": "前端",
+        "deliverable": "真实Vue/浏览器双模式回归",
+        "engineering_days": [
+          1,
+          2
+        ],
+        "scope_and_reuse": "登录、混合来源、写入绕过、撤权清路由/缓存及评审修正；复用原E2E框架"
+      },
+      {
+        "id": "PO01",
+        "owner_area": "运维",
+        "deliverable": "公开profile/runbook及合成演练",
+        "engineering_days": [
+          2,
+          3
+        ],
+        "scope_and_reuse": "无UAA独立启动、接管/切换/故障/退出模板和一次合成演练；不重计G05/E09通用恢复"
+      },
+      {
+        "id": "PC01",
+        "owner_area": "CI",
+        "deliverable": "双模式用例实接线",
+        "engineering_days": [
+          1,
+          2
+        ],
+        "scope_and_reuse": "接入G01/G03已有隔离与质量聚合，企业用例在P交付后接入；不让G03等待P形成环"
+      },
+      {
+        "id": "PQ01",
+        "owner_area": "质量",
+        "deliverable": "风险选择与独立证据复核",
+        "engineering_days": [
+          1,
+          1
+        ],
+        "scope_and_reuse": "固定1日用于覆盖选择、独立回读和矩阵回填；不是把24.5隐式四舍五入；复用既有用例"
+      }
+    ]
+  },
+  "R": {
+    "milestone": "E01-UAA-R",
+    "engineering_days": [
+      13,
+      22
+    ],
+    "completion_dependencies": [
+      "E01-UAA-P"
+    ],
+    "external_condition_ref": "docs/review/uaa-real-integration-conditions.json",
+    "external_wait_days": null,
+    "wbs": [
+      {
+        "id": "RB01",
+        "owner_area": "后端",
+        "deliverable": "实际契约与私有映射清单",
+        "engineering_days": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "RB02",
+        "owner_area": "后端",
+        "deliverable": "真实认证adapter/身份/注销",
+        "engineering_days": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "RB03",
+        "owner_area": "后端",
+        "deliverable": "企业MQ三feed传输与字段映射",
+        "engineering_days": [
+          2,
+          3
+        ]
+      },
+      {
+        "id": "RB04",
+        "owner_area": "后端",
+        "deliverable": "目录上报/条件审批回调/配置回传",
+        "engineering_days": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "RB05",
+        "owner_area": "后端",
+        "deliverable": "版本/全量/空集及一种组织范围核验",
+        "engineering_days": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "RB06",
+        "owner_area": "后端",
+        "deliverable": "影子匹配、小范围切换与对账",
+        "engineering_days": [
+          2,
+          3
+        ]
+      },
+      {
+        "id": "RB07",
+        "owner_area": "后端",
+        "deliverable": "真实撤权/断网/重放恢复与验收",
+        "engineering_days": [
+          2,
+          3
+        ]
+      },
+      {
+        "id": "RU01",
+        "owner_area": "前端",
+        "deliverable": "真实来源登录/纳管拒写/撤权浏览器验收",
+        "engineering_days": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "RO01",
+        "owner_area": "运维",
+        "deliverable": "私有配置/制品、接管与退出演练实例",
+        "engineering_days": [
+          2,
+          3
+        ]
+      }
+    ],
+    "joint_evidence_rule": "RB07验治理事实/receipt，RO01验制品配置/操作步骤；同一演练共用取证，不双算整场"
+  },
+  "reuse_ownership": [
+    {
+      "owner": "C04",
+      "already_budgeted": "IAM policy/主体epoch守卫和通用撤权竞争基础",
+      "P_increment": "新投影/接管入口接线与UAA反例，仅P计"
+    },
+    {
+      "owner": "D06",
+      "already_budgeted": "稳定人员/组织身份与生命周期命令",
+      "P_increment": "企业账号/身份绑定和来源管辖，不再造人员目录"
+    },
+    {
+      "owner": "X01-C",
+      "already_budgeted": "公共资源/服务身份合同",
+      "P_increment": "UAA资源导出差异，不建设整个manifest宿主"
+    },
+    {
+      "owner": "X02-F",
+      "already_budgeted": "持久收件/完整性/ACK/去重/回放公共框架",
+      "P_increment": "三类治理集合及生效receipt；共享成果没交则P不能按已复用验收"
+    },
+    {
+      "owner": "G03/G04",
+      "already_budgeted": "通用隔离矩阵、聚合、风险/覆盖口径",
+      "P_increment": "PC01/PQ01仅计企业用例接线与一次质量复核；G03不等待未来P用例完成"
+    },
+    {
+      "owner": "U02/U06",
+      "already_budgeted": "组件规范、全站视觉样式推广",
+      "P_increment": "四页最小模式功能仅PU01–03计；U06不重算"
+    },
+    {
+      "owner": "G05/E09",
+      "already_budgeted": "通用制品/生产拓扑/备份恢复",
+      "P_increment": "UAA专用profile和操作runbook；正式激活仍另过公共生产门"
+    }
+  ],
+  "planning_totals": {
+    "original_71_package_engineering_days": [
+      273,
+      468
+    ],
+    "G07A_B_historical_locally_validated_not_repeated": [
+      8,
+      14
+    ],
+    "remaining_69_existing_packages": [
+      265,
+      454
+    ],
+    "remaining_plus_C_P": [
+      292,
+      496
+    ],
+    "conditional_R_addition": [
+      13,
+      22
+    ],
+    "remaining_including_C_P_R": [
+      305,
+      518
+    ],
+    "version_PR_CI_main_closeout_capacity_allowance": [
+      1,
+      2
+    ],
+    "with_closeout_allowance_public": [
+      293,
+      498
+    ],
+    "with_closeout_allowance_and_R": [
+      306,
+      520
+    ],
+    "sum_rule": "旧父包只计一次，常规子出口是分解；E01基价3–6是其他provider，不含C/P/R；G07历史开发不再派单。维护收尾1–2是单独容量预留，不算UAA净增，不重做历史开发。"
+  },
+  "existing_non_uaa_qualifications": [
+    {
+      "ref": "I04",
+      "qualification": "现4–8只含首adapter；第二类源仍是既有提供方范围资格条件，本轮不新增或重写预算"
+    },
+    {
+      "ref": "A03/I02/E01",
+      "qualification": "生产MCP AS/登录桥在原计划中单独核验；不属于本轮UAA网页登录或P/R报价，不能用UAA接通冒充MCP生产身份已交付"
+    },
+    {
+      "ref": "U06",
+      "qualification": "原4–7为逐页粗估，Cmd+K等获选增量仍在原窗口校准；本轮只补四页UAA最小功能，不顺带批准或预算全站搜索"
+    },
+    {
+      "ref": "其他provider/远期包",
+      "qualification": "各包按已列有限代表场景计，更多厂商、协议、知识源和复杂执行器不成为无限范围承诺"
+    }
+  ],
+  "estimate_change_triggers": [
+    {
+      "trigger": "基线之外增加同协议/合同/制品的一套环境",
+      "conditional_increment_days": [
+        1,
+        2
+      ],
+      "note": "测试＋正式目标已含，不能重复收费"
+    },
+    {
+      "trigger": "新增普通管理页",
+      "conditional_UI_days_per_page": [
+        1,
+        2
+      ],
+      "note": "不属于四页基线，实际scope批准后再加入"
+    },
+    {
+      "trigger": "额外只读属性摘要",
+      "conditional_UI_days_per_family": [
+        0,
+        0.5
+      ],
+      "note": "仅标签/映射；新的数据执行语义需单独设计估算"
+    },
+    {
+      "trigger": "额外范围编辑控件族",
+      "conditional_UI_days_per_family": [
+        2,
+        4
+      ],
+      "note": "后端执行语义另估，不以UI价格冒充全栈价格"
+    },
+    {
+      "trigger": "额外已批准历史迁移/恢复批次",
+      "conditional_ops_days_per_batch": [
+        1,
+        2
+      ],
+      "note": "后端复杂冲突清洗另估；不能删号重建省工"
+    },
+    {
+      "trigger": "新认证协议/IdP/应用、强多实例时效、缺少可信全量或版本、公司要求额外必选属性",
+      "action": "暂停相应真实激活，先冻结差异与新增scope后变更估算；不自动扩大本轮已报价基线或忽略公司要求"
+    }
+  ],
+  "resource_assumptions": {
+    "owner_resource_answer": "pending",
+    "primary_effective_seats": 1,
+    "alternative_effective_seats": 2,
+    "engineering_days_per_seat_week": 5,
+    "T0": null,
+    "calendar_dates_bound": false,
+    "rule": "仅用于可复核相对排程；不把多个agent直接折为有效独立席位；需实际隔离、评审和可交付容量"
+  },
+  "verification": {
+    "arithmetic_passed": true,
+    "runtime_or_real_uaa_accepted": false
+  }
+}
