@@ -1,6 +1,6 @@
 # 工具链、依赖与运行组件现代化
 
-日期：2026-11-11。状态：G07升级计划，未修改go.mod、lockfile、镜像或运行中的服务。所有者已取消“与公司现有版本保持一致”的前提；自行打包与内网分发允许采用受支持版本，具体候选仍须组合验收。
+日期：2026-11-12。状态：所有者要求将G07A/G07B提前为Phase6业务开工前的维护批次，五仓独立工作树候选已完成本地实现与验证，尚未合入main或替换共享服务/原数据卷。所有者已取消“与公司现有版本保持一致”的前提；自行打包与内网分发允许采用受支持版本，具体候选仍须组合验收。
 
 ## 1. 当前钉点与推荐目标
 
@@ -8,17 +8,17 @@
 
 | 对象 | 仓库现状 | 推荐处理/候选 | 窗口 |
 |---|---|---|---|
-| Go服务/公共库 | 四仓go.mod=1.26.10；三服务构建镜像同钉点 | 先1.26.11补丁；服务评估1.27.4。utils最低编译版本与服务推荐版本分别维护，非必要不同时抬最低版本 | G07A/P6.0 |
-| Node/UI工具 | .nvmrc20.19.0、engine>=20.19、镜像node:20-alpine；@types/node26.2.0 | 推荐26 LTS当前补丁（本次核验26.13.0）；若依赖阻塞可临时24 LTS，须有解决期限。nvmrc/engine/CI/Docker/类型测试一起更新 | G07A/P6.0 |
-| pnpm/Vite/Vue/TS等 | pnpm12.3.4、Vite8.3.4、Vue3.5.43；其余按lockfile | 先验证现有组合在目标Node；保留lockfile，扫描并分小批升级，不把全部依赖强行升major | G07A/P6.0，后续G05 |
-| PostgreSQL | dev/test/三服务组合postgres:15浮动major，ltree等扩展 | 先明确15当前补丁+digest；目标18受支持补丁（本次官方表18.6），独立副本迁移演练后切换。不追19RC | G07B/P6.1，真实切换在首次生产前 |
-| Redis | redis:6.2-alpine，供会话/限流/缓存及TR/Asynq | 先固定6.2受支持补丁；候选8.2 extended线当前补丁，先经受支持7.x中间线演练。客户端/Asynq/脚本/ACL一起验证；许可证核验单列 | G07B/P6.1，真实切换在首次生产前 |
-| OS/Web镜像 | core/AL Alpine3.20、TR3.21；UI nginx1.27-alpine | 查当前受支持稳定线、平台架构与CVE，独立固定patch+digest；不凭同为Alpine推定相同CA/libc | G07A/P6.0 |
-| 对象/备份/迁移工具 | RustFS1.0.1、rclone1.75.2、migrate4.17.0；开发RedisInsight3.8.0 | 建立版本/许可/漏洞清单，先验证现行功能与恢复，再选受支持候选；不因新版本号直接变更存储产品 | G07B调查/P6.1；G05恢复演练/P7 |
+| Go服务/公共库 | 四仓go.mod=1.26.10；三服务构建镜像同钉点 | 三服务1.27.4；utils最低1.26.11、推荐toolchain1.27.4，双SDK验证；不因服务升级强抬公共库语言线 | G07A/业务开工前 |
+| Node/UI工具 | .nvmrc20.19.0、engine>=20.19、镜像node:20-alpine；@types/node26.2.0 | 推荐26 LTS当前补丁（本次核验26.13.1）；若依赖阻塞可临时24 LTS，须有解决期限。nvmrc/engine/CI/Docker/类型测试一起更新 | G07A/业务开工前 |
+| pnpm/Vite/Vue/TS等 | pnpm12.3.4、Vite8.3.4、Vue3.5.43；其余按lockfile | 先验证现有组合在目标Node；保留lockfile，扫描并分小批升级，不把全部依赖强行升major | G07A/业务开工前，后续G05 |
+| PostgreSQL | dev/test/三服务组合postgres:15浮动major，ltree等扩展 | 先明确15当前补丁+digest；目标18受支持补丁（本次官方表18.6），独立副本迁移演练后切换。不追19RC | G07B/业务开工前副本验证；实际环境另行受控切换 |
+| Redis | redis:6.2-alpine，供会话/限流/缓存及TR/Asynq | 先固定6.2受支持补丁；候选8.2 extended线当前补丁，先经受支持7.x中间线演练。客户端/Asynq/脚本/ACL一起验证；许可证核验单列 | G07B/业务开工前副本验证；实际环境另行受控切换 |
+| OS/Web镜像 | core/AL Alpine3.20、TR3.21；UI nginx1.27-alpine | 查当前受支持稳定线、平台架构与CVE，独立固定patch+digest；不凭同为Alpine推定相同CA/libc | G07A/业务开工前 |
+| 对象/备份/迁移工具 | RustFS1.0.1、rclone1.75.2、migrate4.17.0；开发RedisInsight3.8.0 | 建立版本/许可/漏洞清单，先验证现行功能与恢复，再选受支持候选；不因新版本号直接变更存储产品 | G07B/业务开工前实际组件与副本恢复；G05仍交可复用发布机制 |
 
 Go官方当日稳定线为1.27.4与1.26.11，支持最近两条主线；补丁和主线更新分批执行。[Go下载](https://go.dev/dl/)、[发布政策/历史](https://go.dev/doc/devel/release)
 
-Node20已于2026-04-30退出支持；官方26.13.0在2026-10-28转LTS，支持计划至2029-04。推荐26是本项目维护期判断，不能以engine最低声明证明所有依赖已兼容。[Node发布计划](https://github.com/nodejs/Release/blob/main/schedule.json)、[26.13.0发布说明](https://nodejs.org/en/blog/release/v26.13.0)
+Node20已于2026-04-30退出支持；官方26.13.0在2026-10-28转LTS，支持计划至2029-04。11月10日已发布安全补丁26.13.1，本轮采用该补丁。推荐26是本项目维护期判断，不能以engine最低声明证明所有依赖已兼容。[Node发布计划](https://github.com/nodejs/Release/blob/main/schedule.json)、[26.13.0发布说明](https://nodejs.org/en/blog/release/v26.13.0)
 
 PG15官方支持至2027-11，18至2030-11；支持表当日仍列18.6为稳定最新major，19为RC信息。采用18是减少短期再次major迁移的建议，不是现有驱动/扩展已验收结论。[PG版本政策](https://www.postgresql.org/support/versioning/)
 
@@ -34,7 +34,7 @@ G07A建立生态运行/构建版本清单，分别列最低兼容版本、推荐
 
 ## 3. 分批升级与验证
 
-G07A先处理EOL Node、Go安全补丁与基础镜像；先运行现有lockfile的lint/typecheck/unit/build/audit/E2E，再单独处理真正不兼容依赖。Go lint/swag/wire等生成工具需兼容目标SDK，重生成diff必须解释，不能用格式/生成巨diff夹带业务变化。每个候选在独立worktree和私有栈验证，不替换共享开发容器。
+G07A先处理EOL Node、Go安全补丁与基础镜像；本轮用户已明确前置G07B，不再等待P6.1。工具链、依赖与数据库按子步骤分别留证，仍不把数据迁移和应用DDL变更混成一次不可定位的操作。先运行现有lockfile的lint/typecheck/unit/build/audit/E2E，再单独处理真正不兼容依赖。Go lint/swag/wire等生成工具需兼容目标SDK，重生成diff必须解释，不能用格式/生成巨diff夹带业务变化。每个候选在独立worktree和私有栈验证，不替换共享开发容器。
 
 G07B以同一生产形状的脱敏/合成副本建立PG与Redis升级组合：pgx/ltree/迁移81对及后续、锁/事务/CAS、AL动态DDL/导入、TR/Asynq队列与cron、会话撤销/RT轮换、Lua脚本/TTL/限流全部覆盖。覆盖现有make acceptance、各仓检查与真实UI关键旅程；只跑“服务能启动”不足以放行。
 
@@ -55,3 +55,19 @@ Redis先盘点哪些是可重建缓存、哪些是会话、队列/计划和幂�
 许可证/发行条件是具体升级包需核验的输入，尤其Redis跨版本以及运行组件的社区/商业版区别；本规划不作法律结论，也不默认替换Valkey等另一产品。若确有分发限制，另开有限选型包，对命令/Asynq/持久化兼容实测后决定，不把“Redis兼容”当作现成替换证明。
 
 每月补丁/依赖调查、严重可达漏洞紧急处理、季度受支持版本复核纳入G05；开工者对精确版本再次核验。当前版本维护从P6.0启动，不再整体等P7，也不因公司版本不同而永久挂账。
+
+
+## 6. 本轮实际组合与交付口径（2026-11-12）
+
+完整OCI index、Linux amd64/arm64 manifest摘要及核验日期见[component-lock.json](../../deployments/component-lock.json)，原生依赖仍以各仓go.mod/go.sum和UI lockfile为准。当前候选为Go1.27.4、Node26.13.1 LTS、PostgreSQL18.6-trixie、Redis8.2.11、Alpine3.24.4、Nginx1.30.6、RustFS1.0.5、rclone1.76.0、migrate4.20.1；RedisInsight仍为当前3.8.0，补固定digest。
+
+主仓`make lint`中的`check-component-versions.py`校验OCI组合、编译器、部署及真实测试夹具的一致性。生成器Wire0.7.0仍为上游版本；Swag CLI升到1.16.6，与已用运行库对齐，继续核验sumdb、编译器和平台，未关闭来源检查。GitHub Actions更新为官方固定commit，托管runner满足新Node24运行时；远端实际事件结果须待PR，不以本地YAML检查冒充。
+
+服务保留已公开可下载的utils依赖pin；本轮没有公共API变更，不制造跨仓未推SHA依赖。utils自身推荐/最低SDK与服务真实依赖图分开测试，不能把服务测试称为已消费新utils提交。生产代码不借版本升级实施Phase6新能力；mock数据、合同和真实接口分层保持。
+
+PostgreSQL18挂载父目录`/var/lib/postgresql`，PG/Redis新版本使用新命名卷，旧卷保留。新卷为空不代表升级完成；存量必须先备份、恢复、校验，再切换入口。具体副本、停写、回退和结果见[数据契约](component-upgrade-data-contract.md)。本轮验证栈自有且隔离，默认dev/test服务、系统Go/Node、账号和旧数据没有自动切换。
+
+TypeScript7需要OpenAPI生成依赖链同步支持，暂保留5.9.3；Cropper2有组件API变化，留给已排期的个人资料改造。每项延后均需注明理由、影响与窗口，不能称全部依赖已升至最大major。实际结果以本轮交付记录为准；验证未通过前不将G07标记完成。
+
+
+工具实际执行目标已改为受控重包：migrate4.20.1只编PostgreSQL/file，rclone1.76.0保留工具能力并固定crypto0.59，两者用Go1.27.4保留符号、模块清单与许可证。上游OCI摘要只作比较，不能把其stripped JSON扫描退出0当安全通过；新Compose构建和CI见`deployments/tools/`及`helper-tools.yml`。[本轮记录](../review/reports/version-modernization-2026-11-12.md)汇总真实main/ELF text扫描和81迁移、备份恢复结果。

@@ -3,14 +3,16 @@
 > 命令默认从**主仓根目录**开始；下面显式 `cd deployments` 后才使用省略 `-f` 的 Compose。配置与 Dockerfile 仍在 `deployments/`，文档迁移不移动部署文件。先按 [runbook §7](runbook.md) 确认资源归属，本页命令用于已确认的目标环境。
 > 容器部署使用 `deployments/docker-compose.yaml`；宿主开发使用 dev Compose 依赖加四个宿主进程。`scripts/dev-stack.sh` 不代表完整宿主联调已就绪。上游独立部署细节由各自 `docs/ops/deployment.md` 维护。
 
-## 〇、开发依赖与宿主应用（B13，2026-11-06）
+## 〇、开发依赖与宿主应用（2026-11-12版本维护对齐）
+
+已有PG15/Redis6.2环境先执行[数据升级契约](../design/component-upgrade-data-contract.md)，禁止直接用下面的`up`把新空卷当成升级。旧卷保留，但当前PG18/Redis8模板已经改用新卷；同project不代表同一数据源。
 
 常用宿主开发形态：主仓 PG/Redis（5432/6379）、activelist PG（15432）；应用为主仓 `make dev`（33333）、AL `make build` 后宿主进程（18081）、SQLite taskrunner 宿主进程（18080），以及 UI `pnpm dev`（4000）。各仓配置/密钥按各自文档注入，环境差异走 env，不改 `configs/config.yaml` 基线。E000001 终态与改密权限以 [runbook §4](runbook.md) 为准。
 
 ```sh
-# 只准备主仓开发PG/Redis；原卷保持 zhuzhao-dev_dev_pg_data/dev_redis_data
+# 仅在全新环境或已恢复校验的新卷上运行；PG18/Redis8使用dev_pg18_data/dev_redis82_data
 make docker-dev-up
-# AL依赖保留原默认project=deploy和deploy_pgdata，不自动更名换空库
+# AL仍用project=deploy，但PG18卷改为deploy_pgdata18；原deploy_pgdata不能直接挂给PG18
 (cd ../activelist && docker compose -p deploy -f deploy/compose.dev.yaml up -d --wait postgres)
 # 迁移由操作者显式执行，再分别按各仓文档起宿主应用
 make migrate-up
@@ -21,7 +23,7 @@ make dev  # 端口已被监听时拒启并显示归属；需要并行实例可AP
 
 脚本要求Docker Compose v2（支持`up --wait`），全部配置/归属预检在任何资源变更前完成；main/AL/TR任一失败均非0，保留已成功启动的资源供检查，不回退主仓生产compose、不自动回滚或删卷。`down`按TR→AL→main停止，`reset`=down后up，**均不删数据卷或共享外部网络**；`make docker-dev-reset`是另一条显式删卷命令，不能当无损重启使用。
 
-三组显式project默认分别为`zhuzhao-dev` / `deploy` / `taskrunner`，保留既有数据源；`COMPOSE_PROJECT_NAME`全局值不能覆盖这些显式参数。可用`ZHUZHAO_DEV_PROJECT` / `ACTIVELIST_DEV_PROJECT` / `TASKRUNNER_PROJECT`指定其它、互不相同的project，或`ACTIVELIST_DIR` / `TASKRUNNER_DIR`指定同级布局之外的仓路径，`DEV_STACK_WAIT_TIMEOUT`为健康等待秒数（默认90）。**改project会改默认卷名**：已有固定容器归属或同project的Compose来源不匹配时脚本拒绝接管，先由所有者核对标签/卷与备份迁移，不自动改名、清理或换库。
+三组显式project默认分别为`zhuzhao-dev` / `deploy` / `taskrunner`；版本维护已更换PG/Redis新卷名，须单独完成数据迁移，不能承诺沿用旧数据源；`COMPOSE_PROJECT_NAME`全局值不能覆盖这些显式参数。可用`ZHUZHAO_DEV_PROJECT` / `ACTIVELIST_DEV_PROJECT` / `TASKRUNNER_PROJECT`指定其它、互不相同的project，或`ACTIVELIST_DIR` / `TASKRUNNER_DIR`指定同级布局之外的仓路径，`DEV_STACK_WAIT_TIMEOUT`为健康等待秒数（默认90）。**改project会改默认卷名**：已有固定容器归属或同project的Compose来源不匹配时脚本拒绝接管，先由所有者核对标签/卷与备份迁移，不自动改名、清理或换库。
 
 离线回归：`make test-dev-stack`，仅shell/Python命令桩，不访问真实Docker或服务。本批尚未用此候选脚本做真实启停/完整acceptance；实机恢复记录与候选脚本验收分别记账。
 
@@ -34,12 +36,13 @@ cd deployments
 # PG/Redis虽有dev兜底，生产必须配置强值；不要向已有.env盲目追加不同口令。
 docker compose up -d --wait postgres redis
 # migrate带profile，普通up不会自动运行；先明确应用迁移再起app
+docker compose --profile migrate build migrate
 docker compose --profile migrate run --rm migrate
 docker compose up -d --build app pgbackup ui
 # 验证：curl http://127.0.0.1:${APP_PORT:-33333}/health/ready
 ```
 
-- `migrate` 服务需显式profile/run（migrate/migrate v4.17，完成即退），普通`up`不含它；app依赖PG/Redis healthy，不会代执行迁移。
+- `migrate` 服务需显式profile/run（受控Go1.27.4重包的migrate4.20.1/PostgreSQL专用镜像，完成即退），普通`up`不含它；app依赖PG/Redis healthy，不会代执行迁移。
 - `ui` = 前端控制台（nginx 静态 + `/api`·`/al/api` 精确反代 app；构建上下文相对本目录跨仓 `../../zhuzhao-ui`——**两仓同级 checkout**）。
 - `APP_SERVER_TRUSTED_PROXIES`（默认 `172.16.0.0/12`）：经 ui 反代后 ClientIP 还原依赖此配置，空值=限流桶全站共享。
 
@@ -59,6 +62,7 @@ cd ../../taskrunner/deploy && docker compose up -d --build
 # ④ zhuzhao 栈最后起（app 已配置挂接两共享网；taskrunner 回调经别名 http://zhuzhao:33333）
 cd ../../zhuzhao/deployments
 docker compose up -d --wait postgres redis
+docker compose --profile migrate build migrate
 docker compose --profile migrate run --rm migrate
 docker compose up -d --build app pgbackup ui
 ```
@@ -70,6 +74,7 @@ docker compose up -d --build app pgbackup ui
 ```sh
 cd deployments
 docker compose -f docker-compose.test.yaml up -d --wait postgres redis activelist-pg taskrunner-pg
+docker compose -f docker-compose.test.yaml build migrate
 docker compose -f docker-compose.test.yaml run --rm migrate
 # 逐项确认上一步退出0、schema clean；上游服务自身迁移/绑定种子成功后再核 ready
 docker compose -f docker-compose.test.yaml up -d --build activelist taskrunner app ui
@@ -80,7 +85,7 @@ docker compose -f docker-compose.test.yaml up -d --build activelist taskrunner a
 ```
 
 - **组成**：默认 8 个常驻服务，加 migrate 一次性任务；storage profile 另起 RustFS。包括主 PG/Redis/app、AL PG/服务、TR PG/服务和 ui；独立网 `zhuzhao_test`、独立卷 `zt_*` 前缀，入口 ui 48081 / app 直连 33334。
-- **数据**：首次才是全新态，后续保留原卷。测试自举只走批准的 acceptance/globalSetup 幂等流；不得为重新演示而清共享数据。
+- **数据**：当前PG18卷为`zt_pg18data/zt_al_pg18data/zt_tr_pg18data`；旧`zt_*pgdata`保留作迁移来源，已有环境先恢复校验并切换。升级完成后继续复用新版本卷。测试自举只走批准的 acceptance/globalSetup 幂等流；不得为重新演示而清共享数据。
 - **配置**：`deployments/config.test.yaml` 卷挂载 app，地址、存储及 cron 等可能有环境差异；核实实际文件、Env 与运行产物，不假设只差一个 gateway target。
 - **徽标**：ui 构建参数 `VITE_APP_ENV=测试环境`——登录页环境徽标显式标注，防与生产混淆；
 - **E2E**：默认目标和身份准备以 UI 测试指南及脚本为准；切换目标须同时核 baseURL、账号/库归属和依赖，单改 URL 不等于完整隔离。

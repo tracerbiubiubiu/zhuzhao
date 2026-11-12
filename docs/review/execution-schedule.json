@@ -244,5 +244,17 @@
       "after": "4–6",
       "reason": "BL-FE-003规则页初始化修复+异步返回回归增加1日，P6.1开工先修"
     }
-  ]
+  ],
+  "pre_business_maintenance": {
+    "work_items": [
+      "G07A",
+      "G07B"
+    ],
+    "status": "locally_validated_pending_pr_main",
+    "owner_direction_date": "2026-11-12",
+    "rule": "提前于S01业务开工；原S02/S04归属仅保留估算追溯，后续不得重复派单/计工。G03分档未实施，本次仍跑原全门禁。",
+    "shared_runtime_switch": "not_performed",
+    "validation_ref": "docs/review/reports/version-modernization-2026-11-12.md",
+    "do_not_repeat_future_coding_estimate": true
+  }
 }

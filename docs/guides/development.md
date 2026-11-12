@@ -2,7 +2,7 @@
 
 ## 1. 先确认工具与数据归属
 
-Go 版本下限以根 `go.mod` 为准。当前安全修复基线为 Go 1.26.10；本机系统 Go 可能较旧，运行命令前明确选择 SDK。生成器另外需要 Python 3，固定工具安装到 ignored `.codex/tools/`，不写入业务依赖。
+Go 版本下限以根 `go.mod` 为准。当前编译基线为 Go 1.27.4；本机系统 Go 可能较旧，运行命令前明确选择 SDK。生成器另外需要 Python 3，固定工具安装到 ignored `.codex/tools/`，不写入业务依赖。
 
 ```sh
 make hooks

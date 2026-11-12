@@ -1,3 +1,5 @@
+# Historical Phase5 cross-repository evidence: sibling revisions intentionally remain fixed.
+# Current candidates are scanned by each repository ci.yml; this workflow is not the new combination gate.
 name: Go security evidence (not a security approval)
 
 on:
@@ -28,19 +30,19 @@ jobs:
           - module: zhuzhao
             repository: tracerbiubiubiu/zhuzhao
             revision: ""
-            go: 1.26.10
+            go: 1.27.4
           - module: activelist
             repository: tracerbiubiubiu/activelist
             revision: db6a17bb686f09287d8793d1a3f98783bcc2e09d
-            go: 1.26.10
+            go: 1.27.4
           - module: taskrunner
             repository: tracerbiubiubiu/taskrunner
             revision: 1e31e3e95dc442b8384f3582cfc2850bd57d260b
-            go: 1.26.10
+            go: 1.27.4
           - module: zhuzhao-utils
             repository: tracerbiubiubiu/zhuzhao-utils
             revision: 563785a83ce2aeb12c5f2b65c42defb58a48c331
-            go: 1.26.10
+            go: 1.27.4
     env:
       GOWORK: "off"
       GOTOOLCHAIN: local
@@ -51,18 +53,18 @@ jobs:
       SOURCE_REVISION: ${{ matrix.revision || github.sha }}
       MODULE_PATH: github.com/${{ matrix.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ matrix.repository }}
           ref: ${{ env.SOURCE_REVISION }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
           cache: false
@@ -123,7 +125,7 @@ jobs:
             --output "$EVIDENCE/result.json"
       - name: Preserve raw evidence even on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: go-source-${{ matrix.module }}-${{ github.sha }}
           path: evidence/
@@ -142,14 +144,14 @@ jobs:
       GOPRIVATE: ""
       GOPROXY: https://proxy.golang.org
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.10
+          go-version: 1.27.4
           cache: false
       - name: Offline parser false-green regression
         run: python3 control/scripts/test-parse-govulncheck.py
@@ -173,13 +175,13 @@ jobs:
           (cd "$GITHUB_WORKSPACE/evidence" && sha256sum govulncheck > govulncheck.sha256)
           python3 control/scripts/parse-govulncheck.py verify-tool \
             --module-json evidence/tool-module.json --build-info evidence/tool-build-info.txt \
-            --binary "$TOOL" --expected-go go1.26.10 --expected-goos darwin --expected-goarch arm64 \
+            --binary "$TOOL" --expected-go go1.27.4 --expected-goos darwin --expected-goarch arm64 \
             --output evidence/tool-proof.json
           printf '%s\n' 'Official fixed scanner artifact only; the three real ELF scans remain a separate local task.' \
             >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve scanner and provenance even on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: govulncheck-v1.4.0-darwin-arm64-${{ github.sha }}
           path: evidence/

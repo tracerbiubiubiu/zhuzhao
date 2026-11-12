@@ -36,3 +36,6 @@
 [全项目渐进演进](project-evolution-strategy.md)说明原6–9及更远能力怎样承接、简化/外接、分期及增强；[连续性审计](../review/roadmap-capability-continuity.md)逐来源追溯，不默删业务效果。
 
 2026-11-12补研究：[当前模块事务/边界](current-module-boundaries.md)、[MCP首批合同](mcp-first-contract.md)及[Schema样本](mcp-first-contract.schema.json)、[定时AI确认组合](scheduled-ai-confirmation.md)。新旧取舍和实施先后见[路线对照](../review/roadmap-change-comparison-2026-11-12.md)与[执行排期](../review/execution-schedule.md)，未将全部远期详设或真实接口视为已完成。
+
+
+[组件升级与数据恢复契约](component-upgrade-data-contract.md)补充业务开工前G07A/G07B的实际组合、停写/校验/回退要求；两个运维工具使用固定官方源码受控重包，见[工具目录](../../deployments/tools/README.md)。

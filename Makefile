@@ -51,6 +51,7 @@ wire:
 	$(GO_TOOL) wire ./internal/app/
 
 lint:
+	python3 scripts/check-component-versions.py
 	go vet ./...
 	python3 scripts/check-gofmt.py
 	@# swagger 新鲜度（红窗第三/四例同族收口 2026-10-22——struct/注释改动必随批

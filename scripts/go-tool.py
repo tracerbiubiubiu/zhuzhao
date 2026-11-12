@@ -14,9 +14,9 @@ ROOT = Path(__file__).resolve().parent.parent
 TOOLS = {
     "wire": ("github.com/google/wire", "github.com/google/wire/cmd/wire", "v0.7.0",
              "h1:JxUKI6+CVBgCO2WToKy/nQk0sS+amI9z9EjVmdaocj4="),
-    # CLI version follows the existing CI generator, independently of the runtime library.
-    "swag": ("github.com/swaggo/swag", "github.com/swaggo/swag/cmd/swag", "v1.16.4",
-             "h1:clWJtd9LStiG3VeijiCfOVODP6VpHtKdQy9ELFG3s1A="),
+    # CLI and runtime library are pinned explicitly; installer verifies module sum and compiler.
+    "swag": ("github.com/swaggo/swag", "github.com/swaggo/swag/cmd/swag", "v1.16.6",
+             "h1:qBNcx53ZaX+M5dxVyTrgQ0PJ/ACK+NzhwcbieTt+9yI="),
 }
 
 

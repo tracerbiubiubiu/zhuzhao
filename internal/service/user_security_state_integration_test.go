@@ -58,7 +58,7 @@ func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
 	defer cancel()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image: "redis:7-alpine", ExposedPorts: []string{"6379/tcp"},
+			Image: "redis:8.2.11-alpine3.22@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95", ExposedPorts: []string{"6379/tcp"},
 			Labels:     map[string]string{"audit.owner": "ECO-20261104-B14", "zhuzhao.test": "user-security-state"},
 			WaitingFor: wait.ForListeningPort("6379/tcp"),
 		}, Started: true,

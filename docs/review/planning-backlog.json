@@ -1,6 +1,6 @@
 {
   "date": "2026-11-12",
-  "implementation_status": "documentation_only",
+  "implementation_status": "business_not_started; G07A/G07B locally_validated_pending_PR_main",
   "schedule_basis": "有依赖的实施波次；T0/实际投入未定，不承诺日历日期；每波开工按本包范围复估。",
   "waves": {
     "P6.0": {
@@ -95,7 +95,8 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "scope": [
         "五仓准确组合/生成物/持续检查/隔离验收",
-        "P1-7域事件期望订阅集启动/测试守卫：缺装配显式失败，未实现不能仅以文档约定销账"
+        "P1-7域事件期望订阅集启动/测试守卫：缺装配显式失败，未实现不能仅以文档约定销账",
+        "将工作流静态检查及PR分支名作为数据传递的脚本回归纳入门禁；本轮注入接线已修，不以修复代替G03整体交付"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md"
@@ -1466,21 +1467,26 @@
       "wave": "P6.0",
       "owner": "五仓/工具链维护",
       "estimate_engineering_days": "3–5",
-      "dependencies": [
-        "G03"
-      ],
+      "dependencies": [],
       "acceptance": "Go补丁/主线分批；Node退出20候选26LTS；manifest/CI/Docker/lockfile/生成工具一致，固定摘要与原门禁通过。",
       "scope": [
         "取消公司版本对齐约束，先处理EOL Node/Go补丁/OS镜像",
         "现有依赖先在目标运行时验证，业务依赖major单独小批，不整体盲升"
       ],
-      "state": "planned_not_implemented",
+      "state": "locally_validated_pending_pr_main",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
         "docs/design/dependency-modernization.md"
-      ]
+      ],
+      "execution_window": "before_phase6_business",
+      "execution_priority_basis": "所有者2026-11-12要求开工前先完成工具链/容器/数据组件升级；既有全门禁与五仓隔离工作树执行，G03分档策略仍未启用。",
+      "previous_dependencies": [
+        "G03"
+      ],
+      "validation_ref": "docs/review/reports/version-modernization-2026-11-12.md",
+      "shared_runtime_switch": "not_performed"
     },
     {
       "id": "G07B",
@@ -1489,21 +1495,28 @@
       "owner": "五仓/数据运维",
       "estimate_engineering_days": "5–9",
       "dependencies": [
-        "G03",
         "G07A"
       ],
       "acceptance": "PG15到18副本迁移/ltree及恢复验证；Redis6.2经受支持中间线到8.2候选，队列/会话/TTL/持久化可对账；数据回退不换旧镜像假回滚。",
       "scope": [
-        "P6.1交候选组合与迁移副本/恢复演练；首次生产前按当时精确补丁真实切换",
+        "业务开工前交实际升级组合、数据副本迁移与恢复；共享环境/首次生产另经停写、恢复校验与受控切换。",
         "RustFS/rclone/migrate/RedisInsight供给与漏洞调查，确需产品更换另估，不在本包重造对象存储"
       ],
-      "state": "planned_not_implemented",
+      "state": "locally_validated_pending_pr_main",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
         "docs/design/dependency-modernization.md"
-      ]
+      ],
+      "execution_window": "before_phase6_business",
+      "execution_priority_basis": "所有者2026-11-12要求开工前先完成工具链/容器/数据组件升级；既有全门禁与五仓隔离工作树执行，G03分档策略仍未启用。",
+      "previous_dependencies": [
+        "G03",
+        "G07A"
+      ],
+      "validation_ref": "docs/review/reports/version-modernization-2026-11-12.md",
+      "shared_runtime_switch": "not_performed"
     },
     {
       "id": "X01",

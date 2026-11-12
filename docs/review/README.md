@@ -39,3 +39,8 @@
 [原规划能力连续性](roadmap-capability-continuity.md)与其JSON保留169条来源原子的价值/问题/更小路径/新波次；主读[全项目路线](../roadmap.md)和[渐进演进](../design/project-evolution-strategy.md)，不把Phase6近期切片当整个路线。
 
 [新旧对照](roadmap-change-comparison-2026-11-12.md)先说明变化；[新版执行排期](execution-schedule.md)给13个发布切片、首批PR及子出口依赖。[本轮补研究](reports/near-term-research-and-schedule-2026-11-12.md)记录FD01/02/04/05新增证据，[八组状态](research-supplement-status.json)保留尚未补齐的FD03/06/07/08窗口，不将有排期当作研究完成。
+
+
+## 开工前版本维护
+
+[版本维护记录](reports/version-modernization-2026-11-12.md)汇总G07A/G07B前置的五仓源码/镜像/数据验证、首次失败与未执行边界；[组件清单](../../deployments/component-lock.json)与[恢复契约](../design/component-upgrade-data-contract.md)是实际版本与数据切换入口。

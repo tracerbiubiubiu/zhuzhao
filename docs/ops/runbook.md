@@ -319,3 +319,9 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 启动顺序为PG/Redis/S3就绪→AL/TR→main→UI；本机运行闭包只使用已验证的不可变镜像、同字节RO配置快照与原卷/网络，build上下文不从兄弟canonical main误取代码。5PG真实TCP/SQL与schema、归档33333权限和SQLite2/290已独立核验。已作停写后的独立5PG+SQLite备份，跨库非原子，不自动恢复覆盖数据；原卷、旧产物和未知owner资源保留。
 
 所有原生Go服务实际1.26.10，SDK只在ignored项目缓存、系统Go1.26.6/全局PATH没有替换；本地新编译须显式选可信1.26.10 SDK。Node仍22.14，整体Go1.27与Node24/26 LTS升级等Phase5合main后另批。E000001两栈只读bcrypt核验为既定终态且mcp=false，本次没有使用其登录/改密；Chrome只用既有E800006会话。
+
+
+2026-11-12版本维护本地候选收口（非共享栈占用）：所有者取消公司云数据库版本约束，五仓独立`codex/prephase6-version-upgrade`工作树已验证Go1.27.4/Node26.13.1、PG18/Redis8及组件组合。原开发容器、旧卷、原main工作树与系统SDK未切换；新PG/Redis空卷不能当迁移完成。先按`docs/design/component-upgrade-data-contract.md`完成备份恢复/校验，再按实际环境批准的窗口切换；本轮候选、完整门禁与恢复结果见版本维护交付记录，旧Phase5收据不证明新组合。
+
+
+2026-11-12补记：所有者已自行更新brew基础Go1.27.4、nvm Node26.13.1，已在仓外以基础二进制确认，不是模块自动切SDK的结果。本轮工作使用独立固定SDK验收，未代改包管理配置。版本候选、原门禁与数据恢复收据见[维护记录](../review/reports/version-modernization-2026-11-12.md)；共享旧环境/原卷没有自动切换。
