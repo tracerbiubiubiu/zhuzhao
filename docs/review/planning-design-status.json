@@ -48,30 +48,34 @@
       "wave": "P6.0",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "无UAA独立回归与企业合成adapter同一核心组合；公司秘密不入CI，接线/P用例不重计，超原估算复估。"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0；双模式公共交付时追加组合接线"
     },
     {
       "work_item": "G04",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "中央撤权或投影过期且AS/grant有效的反例，各入口按包回归；独立模式不检查UAA。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1；UAA公共及后继AI渠道启用时"
     },
     {
       "work_item": "G05",
@@ -79,15 +83,17 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "首发制品/恢复机制与E09公共门前移；不以UAA-R替生产就绪，不机械等待全部P7。"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P7全包；适用首发硬项在实际首次生产前前移"
     },
     {
       "work_item": "G06",
@@ -156,15 +162,17 @@
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前"
     },
     {
       "work_item": "C05",
@@ -262,15 +270,17 @@
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限"
+        "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
+        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C"
     },
     {
       "work_item": "D07",
@@ -418,16 +428,18 @@
       "design_depth": "component_contract_and_representative_prototype",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-        "docs/review/reports/frontend-first-baseline-2026-11-12.md"
+        "docs/review/reports/frontend-first-baseline-2026-11-12.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "UX01/UX02已确认；准确首页数据合同/组件实现仍在开工前冻结，Vue/暗色/真实权限/原生缩放及全站迁移未验；R3复核分支随D10同批",
-        "BL-FE-003尚未修复；首组真实DOM已采，仍需更多页面/状态与字体fallback/交互验证"
+        "BL-FE-003尚未修复；首组真实DOM已采，仍需更多页面/状态与字体fallback/交互验证",
+        "UAA最小登录/治理UI归E01-UAA-P/R激活前交，U02给组件/视觉约束，不隐含吞入原tokens估算。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1原样板窗口"
     },
     {
       "work_item": "U03",
@@ -479,15 +491,17 @@
       "wave": "P6.3",
       "design_depth": "boundary_and_page_inventory",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "配置设计器/系统管理/AL/消息等逐页生产组件详设及真实状态接线，代表原型不能覆盖全部页"
+        "配置设计器/系统管理/AL/消息等逐页生产组件详设及真实状态接线，代表原型不能覆盖全部页",
+        "登录及纳管/非纳管安全接线提前归P/R，不在U06重复计价。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3全站视觉；企业最小链不等本包"
     },
     {
       "work_item": "U07",
@@ -813,10 +827,9 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
-        "E01-UAA-C/P/R: C freezes public ownership rules and synthetic mappings; P delivers public ports and mocks; R verifies private mappings, approvals, revocation and export before first intranet release. P/R unpriced pending deduplication."
+        "C冻结公共规则和合成矩阵，P交双模式及最小前端/运维，R核真实批准；P/R未计价待扣重，不等同生产就绪。"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "C/P6.0；P/P6.1验收依C04；R/企业首次激活前；其他provider沿P7"
     },
     {
       "work_item": "E02",
@@ -941,15 +954,17 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "实际版本/环境验恢复/TLS边界及故障可见；企业再附R，独立不等公司资源。"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P7全包；公共生产硬门在任何模式首次生产前"
     },
     {
       "work_item": "D15",
@@ -1027,30 +1042,34 @@
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/extension-compatibility.md"
+        "docs/design/extension-compatibility.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "扩展来源和撤权继承UAA合同，独立模式不要求企业配置；私有服务仍做本域鉴权。"
       ],
-      "next_design_gate": "P6.0合同窗口"
+      "next_design_gate": "P6.0合同；身份/授权部分先过E01-UAA-C"
     },
     {
       "work_item": "X02",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/intranet-adapter-migration.md"
+        "docs/design/intranet-adapter-migration.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "企业三feed与目录feed按来源/集合独立；真实未知不阻塞合成connector，adapter不直写核心库。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1；X02-F身份/授权部分先过E01-UAA-C"
     },
     {
       "work_item": "X03",
@@ -1154,8 +1173,9 @@
     "contract_ref": "docs/design/uaa-governance-integration.md",
     "C": "planning_revision_only_not_frozen_or_implemented",
     "P": "not_implemented_not_priced",
-    "R": "not_connected_not_accepted_not_priced",
-    "first_intranet_release_gate": true,
-    "mock_preserved": true
+    "R": "not_connected_not_accepted_not_priced; only_for_uaa_governed_enterprise_activation",
+    "mock_preserved": true,
+    "first_uaa_governed_enterprise_activation_gate": true,
+    "independent_mode_requires_uaa": false
   }
 }

@@ -47,4 +47,8 @@
 
 ## 企业UAA接入重核
 
-[现行UAA合同](../design/uaa-governance-integration.md)将公司指南转为去敏的身份/资源/角色/数据范围/撤权要求；E01-UAA-C/P/R已纳入总账，mock保留，真实接入是首次内网正式上线的独立门。文档核对不代表完整设计冻结或真实集成验收通过。
+[现行UAA合同](../design/uaa-governance-integration.md)将公司指南转为去敏的身份/资源/角色/数据范围/撤权要求；E01-UAA-C/P/R已纳入总账，mock保留，真实接入是公司UAA纳管的企业模式首次正式激活的独立门。文档核对不代表完整设计冻结或真实集成验收通过。
+
+## UAA与完整双模式后的全路线再审
+
+[再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)及[逐项记录](uaa-dual-mode-review.json)区分UAA前基线与上一双模式候选，修订8组跨授权/AI/前端/生产/排期问题；仍71包/13切片，新增投入未齐、日期未绑定。决策册现31项：28方向确认、B08/P-RESOURCE待绑定、UAA-P01先核公司约束再审业务取舍；不重复询问已确认原则。

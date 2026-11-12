@@ -180,6 +180,8 @@ MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`�
 
 这里**不假定企业AS已经存在或可用**：
 
+公司UAA的网页登录与岗位权限治理按[UAA合同](uaa-governance-integration.md)接入；其能完成网页登录不等于天然满足本页MCP AS的客户端登记、PKCE、resource/audience及撤销合同。若拟复用同一公司组件，仍须独立核验发行者、用途和互操作，不能直接透传网页登录token；不能满足时只阻断该真实MCP HTTP profile，不阻断完整独立平台或既有表单/REST。
+
 1. P7 mock/contract使用仅监听回环地址的专用**测试AS夹具**，拥有独立issuer、合成用户、固定测试client/redirect和测试密钥，以已维护的测试组件或受限协议fixture覆盖code/PKCE/resource/scope/expiry及撤销负例。它是测试夹具，不是生产AS；不能靠固定任意Bearer字符串冒充走通OAuth。
 2. 真正HTTP放行必须接入经验证的AS。企业AS可用且满足合同则接；否则以**独立、成熟OAuth AS组件＋本地IAM登录/同意桥**作为独立部署的推荐路径，不自行从JWT工具库拼一个生产AS。选定组件/固定制品、登录桥互操作和部署成本在I02/A03实施切片内单列，不假称已经有现成AS或“只改endpoint”。
 3. 若生产环境既无可用AS、又不采用独立AS，该profile保持关闭，核心表单/REST继续用原认证运行；允许关mock/contract出口，真实MCP放行保持pending。后续取得AS的输入/验收条件与具体提供方记录在E01，不把整个A01或核心平台停工，也不改用HMAC冒名过门。
@@ -192,7 +194,7 @@ MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`�
 2. AS进行用户认证/逐client同意，发MCP专用access token。企业AS主体经**已批准的`(issuer,subject)→local_user_id`绑定**解析；不按同名/邮箱自动并号。首次绑定需有可信本地登录或管理员证明，客户端不能提交local_user_id选择他人身份。
 3. 独立AS没有公司身份时，浏览器走本地IAM登录桥：登录仍用已有账号/会话；桥只向AS签发一次性、短期、限定audience和OAuth request/client的登录证明，不把浏览器AT/RT/PAT或密码给MCP client。桥校验state/PKCE请求关联并展示client、目标resource、scope及到期；它只证明用户认证与本次同意，不给AS直接读取工单的能力。登录桥是I02待实现安全用例，不能把现有SSOProvider（本平台消费IdP）误认为已经支持反向AS登录。
 4. 资源服务器验证token签名或受认证introspection、固定issuer、**audience精确等于此MCP resource**、有效期、scope、client绑定和撤销状态；拒绝ID token、发给REST/另一个MCP的token、本地`zpat_*`和X-AK身份混用。SDK`auth.RequireBearerToken`只提供承载，`TokenVerifier`内的这些校验和业务绑定不能省略。[固定SDK认证接口](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/auth/auth.go)
-5. 解析得到actor后按当前本地active/删除/安全状态和I02 grant复验；禁用用户、撤回client同意或grant后下一次请求拒绝。JWT自包含token有效期不等于允许延迟撤权；首版每请求查询AS grant/introspection及本地授权权威，不能确认时失败关闭，缓存只做同请求复用，不延长撤销期。
+5. 解析得到actor后按当前本地active/删除/安全状态和I02 grant复验；企业纳管能力还须检查UAA授权投影及已批准的新鲜度政策，独立模式不读取UAA状态。禁用用户、撤回当前业务授权/client同意或grant后下一次请求拒绝。JWT自包含token有效期不等于允许延迟撤权；首版每请求查询AS grant/introspection及本地授权权威，不能确认时失败关闭，缓存只做同请求复用，不延长撤销期；这不要求逐请求远程查询UAA。
 6. `tools/list`按当前scope、当前用户业务GET路由资格、server/场景允许集过滤并排序；scope充分但本地权限已撤销仍不可见。`tools/call`再次做同一检查，再以服务端actor调用`Service.List/Get`。客户端缓存目录、readOnly注解、上次连接及自报clientInfo都不赋权。结果/批准handle每次查所有者和当前范围，不是持有handle即可访问。
 7. 结果只回传当前可见投影，审计关联client登记ID、issuer/subject的去敏引用、local actor、工具/schema摘要、输入摘要、request/trace、判断结果及数据源；不记完整token、敏感标题/正文或模型思维链。
 
@@ -251,7 +253,7 @@ P7最薄交付须证明，而不是仅实现SDK示例：
 
 1. **协议合同**：固定规范/SDK/client，`server/discover`、tools/list分页与允许集、两个发布工具的正反Schema、JSON/SSE结果与取消、必需元数据、头/body漂移、未知版本/工具、超限、非法输出分别留回执。不宣告未实现的resources/prompts/sampling/elicitation/Tasks能力。
 2. **本地AS链**：两个合成人物和两个client分别完成发现→code/PKCE/resource→token→核心身份绑定→工具调用；验证错误aud/issuer、过期/撤销、假subject、state错/重放、redirect漂移、混用PAT/HMAC、Origin/Host攻击及授权服务失联。mock只替AS/提供方，不替核心L1/L2。
-3. **业务权限**：同一主体经表单/REST与MCP结果行范围一致；跨组织和类型查看范围、CC不扩处理权、list后撤权/get被拒、计数/正文/链接不泄漏；用专属合成账号，不动E000001。
+3. **业务权限**：同一主体经表单/REST与MCP结果行范围一致；跨组织和类型查看范围、CC不扩处理权、list后撤权/get被拒、计数/正文/链接不泄漏；复用[跨入口反例](ai-invocation-contract.md#41-跨入口的合成撤权与新鲜度反例)，证明AS令牌/scope/grant有效但中央投影已撤权或超阈值时受管调用被拒，独立模式不因缺UAA被拒；用专属合成账号，不动E000001。
 4. **消费链**：U08→I01 Query→登记外部MCP→规范化来源/结果；验证发现分页限额、额外工具不启用、schema漂移暂停、SSRF/重定向阻断、错误/无权≠查无、注入文本不执行、取消/超时/并发不串用户、全局缓存不被误用。
 5. **企业放行门**：实际AS发行者/客户端登记/资源值/token类型与撤销方式核验；主体映射、数据区/出站/TLS/代理、提供方集合ACL/Schema/配额/取消、去敏真实样本与业务效果分别验。一个真实client＋一个真实工具成立才登记该组合real通过，不泛称全部MCP客户端兼容。无真实条件时明确`mock/contract ready, real pending`。
 

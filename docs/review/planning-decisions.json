@@ -110,7 +110,8 @@
       "design_ref": "docs/design/business-lifecycle-contracts.md",
       "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准；2026-11-12：用户对具备上述具体范围、只读限制及SOC事件分工的自包含问题明确选择“采用这套职责方案（推荐）”，B05方向已确认",
       "decision": "虚拟风险组中获授权的管理成员可在职责范围内录入/管理风险，并向已配置部门/工单类型派发整改工单，不额外要求通用ticket:create；只读成员不能派单。攻击/应急安全事件接SOC，按事件职责另行授权，不因入风险组自动得到全部事件能力",
-      "implementation": "planned_not_implemented"
+      "implementation": "planned_not_implemented",
+      "enterprise_integration_note": "业务职责不变；实际授予经当前模式允许的管辖入口，企业受管能力不经本地org_roles/继承补回未经认可的授权。"
     },
     {
       "id": "B06",
@@ -243,7 +244,12 @@
       "alternatives": "按实际业务优先级调整独立包",
       "impact_or_safe_fallback": "未定T0/投入不承诺日历，文档审阅仍可进行；不以Agent并行推算无限产能",
       "design_ref": "docs/design/platform-evolution.md",
-      "review_class": "implementation_start_binding_not_document_review_blocker"
+      "review_class": "implementation_start_binding_not_document_review_blocker",
+      "required_inputs": [
+        "实际投入/维护者复核容量",
+        "T0及可用时间",
+        "首发运行模式和预期企业激活窗口，仅为排期绑定，不重问双模式原则"
+      ]
     },
     {
       "id": "O09",
@@ -269,7 +275,38 @@
       "decision": "基于现有规模与原6–9规划，尽可能承接并扩展优化；重规划6–9及更远路线，问题设计可建议替代，采用适合当下的渐进演进",
       "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现",
       "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O11",
+      "state": "owner_confirmed",
+      "decision": "公司UAA纳管的企业模式对接统一认证及权限治理；企业协议/字段由私有adapter隔离，首次企业正式激活前独立验收。",
+      "owner_feedback": "2026-11-12：所有者提供本地权限治理指南并强调满足公司UAA对接。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O12",
+      "state": "owner_confirmed",
+      "decision": "长期正式支持完整独立模式：不接UAA时原账号、角色、菜单授权及权限管理可用；迁移后经adapter接企业模式，两种模式共用公共核心，mock保留。",
+      "owner_feedback": "2026-11-12：所有者明确要求原IAM独立运行、迁移后对接、两种模式均需设计。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "UAA-P01",
+      "state": "provider_constraints_then_owner_review",
+      "decision_due": "公司UAA纳管的企业模式首次正式激活前；公共规则/mock不等待真实批准",
+      "review_class": "business_availability_and_authority_transition",
+      "recommendation": "实施方先核公司强制政策与提供方能力，再给具体接管映射、授权新鲜度/失联可用范围、应急账号/本地登录例外及退出接管场景；所有者确认可选业务影响。技术字段、SDK、PKCE、MQ格式由实施方核验。",
+      "impact_or_safe_fallback": "未决只阻断对应企业激活/例外授权，不阻断独立模式、公共合同和mock；不默认永久旧权限或自动切本地放权。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented"
     }
   ],
-  "last_updated": "2026-11-12"
+  "last_updated": "2026-11-12",
+  "confirmation_summary": {
+    "owner_confirmed": 28,
+    "owner_pending": 2,
+    "provider_constraints_then_owner_review": 1
+  }
 }

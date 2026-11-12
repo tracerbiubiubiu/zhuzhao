@@ -11,7 +11,7 @@
     "组是审阅和发布切片，实际准入逐包检查dependencies，不强制等待整个前组",
     "mock长期保留；real提供方等待单列，不伪装mock成功",
     "未实施新业务、远端保护或运行组件升级",
-    "公司UAA为首次内网上线硬条件；E01-UAA-C/P/R跨阶段独立准入，C新增2–3日，P/R未计价，原切片区间不含UAA追加且不构成整体总工期"
+    "公司UAA为公司UAA纳管企业模式首次正式激活硬条件；E01-UAA-C/P/R跨阶段独立准入，C新增2–3日，P/R未计价，原切片区间不含UAA追加且不构成整体总工期"
   ],
   "release_slices": [
     {
@@ -142,7 +142,7 @@
         "D17",
         "D18"
       ],
-      "exit": "逐provider真实待验；UAA真实放行另为首次内网硬出口且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
+      "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
     },
     {
       "id": "S10",
@@ -251,6 +251,12 @@
       "before": "UAA隐含映射到E01，缺具名范围/价格",
       "after": "原E01其他provider3–6日保留；UAA-C新增2–3日；P/R未计价",
       "reason": "UAA是统一认证及权限治理，不是单一登录桥；旧M-UAA15–24日仅历史粗估。契约后扣除D06/X01/X02逐项复用再估，当前无完整总工期。"
+    },
+    {
+      "item": "双模式CI/质量和最小UI/runbook",
+      "before": "未明确接线/质量和最小前端/运维手册计价归属",
+      "after": "P/R最小UI/runbook纳入未计价复估；G03/G04新增接线/质量在C出口复估，U06不重算最小UI",
+      "reason": "P用例、G03接线、G04质量口径、U06后续视觉各计一次，不免费吞入原区间。"
     }
   ],
   "pre_business_maintenance": {
@@ -271,21 +277,23 @@
       "milestone": "E01-UAA-C",
       "window": "P6.0；D06/X01-C/X02-F的身份授权部分开工前",
       "estimate_engineering_days": "2–3 additional",
-      "gate": "冻结来源/资源code/数据属性条件合同，不阻塞无关mock业务"
+      "gate": "冻结公共管理权/资源code/数据属性条件规则和合成候选矩阵；真实映射值/批准R前核验，不阻塞无关mock"
     },
     {
       "parent_work_item": "E01",
       "milestone": "E01-UAA-P",
-      "window": "P6.1；合同冻结后逐功能绑定D06/X01/X02复用出口",
+      "window": "P6.1；C后可准备合同/mock；权限写入/撤权出口验收须C04完整包，不等D06全包",
       "estimate_engineering_days": null,
-      "gate": "公共port与mock登录/投影正反例，不等D06全包且不虚称real"
+      "gate": "公共port及双模式验收、最小登录/来源与写限制前端和公开安装/切换/退出runbook；复用C04，不等待U06全站视觉"
     },
     {
       "parent_work_item": "E01",
       "milestone": "E01-UAA-R",
-      "window": "P6.1起具备供给即可启动；首次内网上线前必须通过",
+      "window": "P6.1起具备供给即可启动；公司UAA纳管企业模式首次正式激活前必须通过",
       "estimate_engineering_days": null,
-      "gate": "私有真实UAA及批准目录/映射/撤权对账上线验收；不可由其他provider替代"
+      "gate": "私有真实UAA、批准映射、最小UI和安装/切换/退出演练；企业正式激活前通过，独立部署不等待；另须公共生产硬出口"
     }
-  ]
+  ],
+  "release_gates_ref": "docs/review/planning-backlog.json#/release_gates",
+  "release_gate_semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持71父包/13子出口。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。"
 }

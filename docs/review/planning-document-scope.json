@@ -294,5 +294,13 @@
       "../zhuzhao-ui/docs/design/prototypes/README.md",
       "../zhuzhao-ui/docs/design/prototypes/lifecycle-workspace.html"
     ]
+  },
+  "followup_reviews": [
+  {
+    "id": "UAA-DUAL-MODE-20261112",
+    "report_ref": "docs/review/reports/uaa-dual-mode-roadmap-review-2026-11-12.md",
+    "coverage_ref": "docs/review/uaa-dual-mode-review.json",
+    "scope": "原库存仍为固定时点，新增UAA/双模式及当前路线交叉复核以本报告/逐项证据为准，不以旧文件hash代表当前全文审读。"
   }
+]
 }

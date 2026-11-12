@@ -56,7 +56,7 @@
 ### 2.3 事务、并发与重放
 
 - 同主仓数据库的业务变更、领域历史、待交付 intent 使用同一事务；工单与风险跨域用显式用例端口/事务协调，禁止直接互调对方 repository。未来若服务拆分，则由持久命令+收据+对账保持最终一致，不承诺跨库原子提交。
-- 本地高风险写的授权通过 `AuthorizeForMutation` 用例在事务中复验 actor 有效状态、live policy/参与关系和授权 epoch；C04 须给 IAM 撤权与业务提交一个共同的 epoch/授权守卫锁顺序，使撤权先提交后旧决定不能继续提交。不能仅在 handler 外读一次缓存、进事务后盲信。未来外部授权不承诺跨系统即时原子撤权，必须按 I02 的有效期/撤销合同与回执处理，不暗示本地锁能锁住提供方。
+- 本地高风险写的授权通过 `AuthorizeForMutation` 用例在事务中复验 actor 有效状态、live policy/参与关系和授权 epoch；C04 须给 IAM 撤权与业务提交一个共同的 epoch/授权守卫锁顺序，使撤权先提交后旧决定不能继续提交。企业adapter提交的受管角色、菜单/API绑定及数据范围变更也须使用同一守卫和失效路径，不能作为同步后台任务绕开；独立模式继续由本地IAM变更驱动该守卫。不能仅在 handler 外读一次缓存、进事务后盲信。未来外部授权不承诺跨系统即时原子撤权，必须按 I02 的有效期/撤销合同与回执处理，不暗示本地锁能锁住提供方。
 - 写接口支持 `Idempotency-Key`；作用域为调用主体、`operation_id`、资源和业务意图。相同 key+规范化请求 hash 重放首次收据；相同 key 不同 hash 返回 409。认证/当前可见性失效时不得泄露旧响应，也不得重新执行已提交副作用。幂等记录保留覆盖调用方重试/业务恢复窗口，按 I01/I03 统一政策配置，不在本文随意定 TTL。
 - 新高风险写入要求 `expected_revision`。旧现行 REST DTO 暂保留无此字段兼容，由服务端锁定后进行状态及谓词 CAS；这种兼容只能防写交错，不能声称已防旧客户端的陈旧编辑。UI/SDK 分阶段补传，废弃前要有消费者清单和观测。
 - 外部查询、模型、网络发送不持有工单/风险行锁。先在请求预算内求建议，再开短事务复验定义、revision、授权、引用和业务谓词；要求权威来源值的字段只能使用平台验证的引用/取数收据，不能拿客户端回传值代替。
@@ -294,8 +294,8 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 ### 7.2 写主、映射与发布
 
 - `(provider_ref,entity_kind,external_id)` 维护外部身份到本地 ID 的唯一绑定及 source revision，组织/用户活跃关系按此防并发串号。employee_no/domain 可辅助**发现冲突**，不自动把两个人合并；外部 ID 重用/复职必须显式核实身份世代，不能仅同工号就继承旧账号权限。现有用户外部 ID 未有该唯一数据库保证，迁移前先扫重复/冲突，隔离疑似记录。
-- HR写人员真实姓名、主部门、manager、岗位和来源生命周期等provider-owned字段；企业模式另按[UAA合同](uaa-governance-integration.md)划分账号、受管角色/资源和条件数据属性写主，本地IAM不能覆盖中央分配结果。独立模式保留本地账号/角色管理；企业模式本地保留非受管业务授权、虚拟组/临时成员及安全封禁，受管能力不能借组织或继承绕过撤权。同步不能重启本地已封禁账号；有效可登录条件为 source active ∩ local active ∩账户安全条件。当前单 `users.status` 的来源/本地状态拆分是目标，须数据迁移说明，不能直接拿 active HR 事件覆盖 status=0。
-- 人工兜底不直接改 provider 原始事实。`DirectoryOverride` 记录 field/value/reason/actor/expiry/source_baseline；有效展示值可采用 override，权限锚点/禁用态不得被 override 静默放宽。HR 明确 active/terminated 状态优先决定源生命周期，角色仍以本地批准为准。
+- HR写人员真实姓名、主部门、manager、岗位和来源生命周期等provider-owned字段；企业模式另按[UAA合同](uaa-governance-integration.md)划分账号、受管角色/资源和条件数据属性写主，本地IAM不能覆盖中央分配结果。独立模式保留本地账号/角色管理；企业模式本地保留非受管业务授权、虚拟组/临时成员及安全封禁，受管能力不能借组织或继承绕过撤权。同步不能重启本地已封禁账号；有效可登录性取本地active、账户安全条件及**该账号已登记且适用的权威来源约束**的交集。HR与UAA均参与时，任一路active不能解除另一路或本地安全停用；独立本地账号不因缺少HR/UAA投影、新鲜度或企业网络而被拒登。当前单 `users.status` 的来源/本地状态拆分是目标，须数据迁移说明，不能直接拿 active HR 事件覆盖 status=0。
+- 人工兜底不直接改 provider 原始事实。`DirectoryOverride` 记录 field/value/reason/actor/expiry/source_baseline；有效展示值可采用 override，权限锚点/禁用态不得被 override 静默放宽。HR明确active/terminated状态只决定其管辖的来源生命周期，不授角色；独立模式的角色由本地批准，企业模式按UAA与本地各自管辖来源批准，不能借override改写中央受管授权。
 - 先完整 stage/验证组织，再应用无环父树；随后用户/manager 解析。manager 可能晚到：引用保留 unresolved，不报“已找到上级”，后续事件/重跑补解；负责人需 active，目标层级无负责人时返回 unavailable 不无限向上广播。
 - 批处理状态：`staging→validated→applying→succeeded/partial/failed`，另有 `rejected`（合同/基线不符）。整 domain/scope 只有完整校验后才允许 absence reconcile；任一页失败/重复页冲突/父树环/大量异常缺失先停缺失处理，保留上次成功基线。partial 的正常 upsert 可保留并逐项报结果，**不得**顺带对缺失者禁用/撤部。
 - 同 provider/scope 一次一个 apply，持久 run_id/基线/阶段水位，lease 失效不能并发推广同一批。短事务按完整顶层子树更新，失败子树回滚并标 partial；已提交子树不回滚为“全没发生”。reconcile 完成后才推进成功 baseline/cursor；同批重放返回原收据。

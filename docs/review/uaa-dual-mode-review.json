@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-12",
+  "report_ref": "docs/review/reports/uaa-dual-mode-roadmap-review-2026-11-12.md",
+  "baselines": {
+    "pre_uaa_core": "b74d3efdc1472c649a582ebfd01444b93cec8455",
+    "previous_dual_mode_core": "bcb3441e9740964f36edfd503fc151ba54fe568e",
+    "ui": "315292b7fa191081524ab330bb5bd133af49b9af"
+  },
+  "scope": {
+    "parent_packages": 71,
+    "child_milestones": 13,
+    "release_slices": 13,
+    "existing_source_entries": 511,
+    "legacy_sources": 119,
+    "original_continuity_atoms": 169,
+    "method": "全部结构/字段扫描和来源连续性核对；精读受影响身份/授权、AI/扩展、前端、生产接缝。不等于全部未来API/DDL详设已完成。"
+  },
+  "findings": [
+    {
+      "id": "UM01",
+      "area": "C公共规则与真实批准的边界",
+      "previous_issue": "旧排期C批准映射阻塞mock",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/review/execution-schedule.md",
+        "docs/review/roadmap-change-comparison-2026-11-12.md"
+      ],
+      "delivery_window": "C/P6.0；真实值及批准R激活前",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM02",
+      "area": "按模式区分公共生产与企业UAA门",
+      "previous_issue": "按网络位置一刀切；R可能被误当生产就绪",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/review/planning-backlog.json",
+        "docs/design/uaa-governance-integration.md"
+      ],
+      "delivery_window": "任何正式首发前公共门；纳管企业首次激活前追加R",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM03",
+      "area": "身份和授权来源一致性",
+      "previous_issue": "DirectoryOverride全本地批准；本地账号错误依赖UAA状态",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/design/business-lifecycle-contracts.md"
+      ],
+      "delivery_window": "D06/P：仅适用已登记来源，独立模式不查UAA",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM04",
+      "area": "投影接管复用授权守卫",
+      "previous_issue": "P新增治理写入口没绑定共同guard",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/review/planning-backlog.json",
+        "docs/design/engineering-execution-design.md"
+      ],
+      "delivery_window": "P验收依C04；准备可并行",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM05",
+      "area": "AI/MCP/后台/扩展持续授权",
+      "previous_issue": "AS或grant有效时中央撤权/过期反例缺显式承接",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/design/ai-invocation-contract.md",
+        "docs/design/mcp-first-contract.md",
+        "docs/design/scheduled-ai-confirmation.md"
+      ],
+      "delivery_window": "P基础反例；各渠道启用前复用，不反向阻塞P",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM06",
+      "area": "双模式最小前端和运维",
+      "previous_issue": "泛U06视觉包掩盖早期登录与纳管读写接线",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "../zhuzhao-ui/docs/design/frontend-pages.json",
+        "docs/review/planning-backlog.json"
+      ],
+      "delivery_window": "P/R真实激活前；U06后继视觉不重计",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM07",
+      "area": "决策/设计门/阶段入口同步",
+      "previous_issue": "新确认漏入决策册，E01仍P7才设计",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/review/planning-decisions.json",
+        "docs/review/planning-design-status.json",
+        "docs/phase6/README.md",
+        "docs/phase7/README.md",
+        "docs/phase6/implementation-handoff.md"
+      ],
+      "delivery_window": "31决策：28确认/2待绑定/1先核提供方再审政策",
+      "business_implementation_verified": false
+    },
+    {
+      "id": "UM08",
+      "area": "双模式质量与估算归属",
+      "previous_issue": "回归和接线新增量没有明确计价边界",
+      "state": "planning_scope_reconciled",
+      "refs": [
+        "docs/review/planning-backlog.json",
+        "docs/review/execution-schedule.json"
+      ],
+      "delivery_window": "C出口扣重复估；P/R和超原范围CI未计价",
+      "business_implementation_verified": false
+    }
+  ],
+  "owner_participation": {
+    "confirmed_not_reasked": [
+      "O11",
+      "O12",
+      "existing_mock_adapter_model_device_risk_ticket_policies"
+    ],
+    "before_calendar_and_start": [
+      "P-RESOURCE"
+    ],
+    "before_first_real_risk_notification": [
+      "B08"
+    ],
+    "before_governed_enterprise_activation": [
+      "UAA-P01"
+    ],
+    "provider_technical_validation": "实施方先核协议/身份/字段/feed/数据属性/回调及MCP AS能力，不逐项请所有者选择技术参数。"
+  },
+  "estimate_status": {
+    "C_initial_increment_days": "2–3",
+    "P": null,
+    "R": null,
+    "shared_frontend_ci_ops": "C出口逐项扣重复用；超原范围复估，不静默免费吞入",
+    "calendar": null,
+    "overall_total_complete": false
+  },
+  "verification": {
+    "status": "static_consistency_passed_implementation_pending",
+    "runtime_or_schema_changed": false,
+    "acceptance_run": false,
+    "ui_gate_run": false,
+    "real_uaa_connected": false,
+    "all_future_api_ddl_frozen": false,
+    "expanded_graph_nodes": 84,
+    "expanded_graph_edges": 225,
+    "dag": true,
+    "core_markdown_files": 226,
+    "ui_markdown_files": 32,
+    "local_links": 3563,
+    "path_anchor_fence_issues": 0,
+    "original_rows_hash_verified": 116,
+    "continuity_atoms_unchanged": 169,
+    "decision_counts": {
+      "owner_confirmed": 28,
+      "owner_pending": 2,
+      "provider_constraints_then_owner_review": 1
+    },
+    "evidence_location": "ignored .codex/audits/uaa-dual-mode-global-review-20261112/"
+  }
+}

@@ -88,7 +88,7 @@
       "dependencies": [
         "G01"
       ],
-      "acceptance": "main/PR运行安全扫描；组合清单钉SHA；完整acceptance/E2E有可重复隔离入口和失败证据。",
+      "acceptance": "main/PR运行安全扫描；组合清单钉SHA；完整acceptance/E2E有可重复隔离入口和失败证据。 同一核心双模式回归接线与失败可见；P用例未实现时不伪造该项绿色证据。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -96,7 +96,8 @@
       "scope": [
         "五仓准确组合/生成物/持续检查/隔离验收",
         "P1-7域事件期望订阅集启动/测试守卫：缺装配显式失败，未实现不能仅以文档约定销账",
-        "将工作流静态检查及PR分支名作为数据传递的脚本回归纳入门禁；本轮注入接线已修，不以修复代替G03整体交付"
+        "将工作流静态检查及PR分支名作为数据传递的脚本回归纳入门禁；本轮注入接线已修，不以修复代替G03整体交付",
+        "提供同一核心候选的独立模式/合成企业模式CI矩阵、隔离配置与失败证据接入机制；P用例可运行时接入，不因框架先交就虚标UAA通过"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md"
@@ -118,6 +119,9 @@
           "acceptance": "固定五仓组合、私有运行入口和定期扫描完整交付",
           "state": "planned_not_implemented"
         }
+      ],
+      "estimate_notes": [
+        "E01-UAA-C出口复估双模式CI接线是否超原3–5日；保留数值仅为基线，不表示免费包含增量。P负责用例、G03负责接线，各计一次。"
       ]
     },
     {
@@ -129,13 +133,19 @@
       "dependencies": [
         "G03"
       ],
-      "acceptance": "鉴权负例、并发、幂等、表达式/签名/导入边界可回归；短fuzz与定时长跑分开，覆盖率按口径发布。",
+      "acceptance": "鉴权负例、并发、幂等、表达式/签名/导入边界可回归；短fuzz与定时长跑分开，覆盖率按口径发布。 双模式用例与撤权/来源边界纳入质量口径，复用P用例不重复计价。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/engineering-execution-design.md"
+      ],
+      "scope": [
+        "复用P的双模式用例形成无UAA本地管理、纳管/非纳管写边界及撤权竞争风险回归；G04只计质量选择/覆盖口径，不重复开发P用例"
+      ],
+      "estimate_notes": [
+        "E01-UAA-C出口复估双模式质量接入是否超原4–7日；保留基线不等于新增已计价，P/G03/G04分别绑定用例、CI接线、质量审查。"
       ]
     },
     {
@@ -253,7 +263,8 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "scope": [
         "ticket DBTX试点/池与事务预算、org_roles删除两侧锁、L2默认拒绝",
-        "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争"
+        "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争",
+        "UAA账号/角色/资源投影、同步撤权及模式接管新增权限写入口纳入同一IAM policy/主体epoch与锁序清单；P复用guard，不另建一套"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md",
@@ -739,7 +750,8 @@
         "任务控制台分类两栏、执行页参数/历史/结果、定义分权、AL深链与日志引用；D12负责结果合同，I02负责执行资格",
         "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现",
         "P6.3改现有任务页面；新增三策略恢复表单/控制台随I03/P7真实接线，后端不支持的字段不生成可保存假控件",
-        "承接P6-T045获选的Cmd+K/快速查找入口；菜单/页面按现有可见集，工单号实时授权，不预载全站数据"
+        "承接P6-T045获选的Cmd+K/快速查找入口；菜单/页面按现有可见集，工单号实时授权，不预载全站数据",
+        "UAA双模式最小登录/管理写限制与反馈在E01-UAA-P/R交付并计价；U06仅后续全站视觉迁移和样式推广，不重复收取最小UI投入"
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
@@ -1208,13 +1220,13 @@
         "A01",
         "I02"
       ],
-      "acceptance": "其他provider自P6.1逐项列合同/owner/私有connector/真实子窗，P7至少一条real纵切；UAA另经E01-UAA-C/P/R，P6.0先定合同、P6.1公共port和mock、真实接入自P6.1可前移且首次内网上线前必过，不能由风险或HR的real替代；长期保留mock。",
+      "acceptance": "其他provider自P6.1逐项列合同/owner/私有connector/真实子窗，P7至少一条real纵切；UAA另经E01-UAA-C/P/R，P6.0先定合同、P6.1公共port和mock、真实接入自P6.1可前移且公司UAA纳管企业模式首次正式激活前必过，不能由风险或HR的real替代；长期保留mock。",
       "state": "planned_not_implemented",
-      "decision_due": "E01-UAA-C在P6.0；P在P6.1；R自P6.1具备合同后启动且首次内网上线前；其他provider P6.1出口起逐项核实/P7复核",
+      "decision_due": "E01-UAA-C在P6.0；P在P6.1；R自P6.1具备合同后启动且公司UAA纳管企业模式首次正式激活前；其他provider P6.1出口起逐项核实/P7复核",
       "disposition": "按明确窗口完成接入/建设/退出裁决",
-      "estimate_scope": "原3–6日仅保留其他provider基础验证范围；UAA为追加范围，C另列2–3日初始粗估，P/R待契约后与D06/X01/X02拆重复估且当前未计价。旧M-UAA15–24日为未扣复用的历史粗估，不计入原3–6日、不直接相加；不含提供方等待，不能声称已有整体总工期。",
+      "estimate_scope": "原3–6日仅保留其他provider基础验证范围；UAA为追加范围，C另列2–3日初始粗估，P/R待契约后与D06/X01/X02拆重复估且当前未计价。旧M-UAA15–24日为未扣复用的历史粗估，不计入原3–6日、不直接相加；不含提供方等待，不能声称已有整体总工期。 P/R复估包含最小双模式前端和安装/切换/退出runbook；C04守卫、G03接线、G04质量、U06后续视觉逐项扣重，新增CI/质量接入是否超原估算在C出口复核。",
       "decision_inputs": "现有实现、业务场景和提供方契约/供给证据；不以前述实施依赖全部完成作为早期决策前提",
-      "delivery_rule": "其他provider调查不等于接入完成；UAA合同、公共mock及私有真实接入分别验收，R是首次内网上线硬出口，可提前于P7，不被其他real替代。真实未知字段只阻塞对应real激活，mock不删；父E01的P7标签不能机械推迟其跨阶段子出口。",
+      "delivery_rule": "其他provider调查不等于接入完成；UAA合同、公共mock及私有真实接入分别验收，R是公司UAA纳管企业模式首次正式激活硬出口，可提前于P7，不被其他real替代。真实未知字段只阻塞对应real激活，mock不删；父E01的P7标签不能机械推迟其跨阶段子出口。",
       "design_refs": [
         "docs/design/project-evolution-strategy.md",
         "docs/design/uaa-governance-integration.md"
@@ -1240,16 +1252,24 @@
           "wave": "P6.1",
           "inherit_parent_dependencies": false,
           "dependencies": [
-            "E01-UAA-C"
+            "E01-UAA-C",
+            "C04"
           ],
           "estimate_engineering_days": null,
-          "estimate_status": "契约冻结后与D06/X01/X02逐功能扣重再估；当前未计价",
-          "acceptance": "公共认证/账号及授权投影port与合成IdP/feed可运行；认证成功不自动授权、错误audience/state/回调、重复/乱序/截断快照、撤权/条件回调及多实例失效有负例；公共代码不含公司字段/SDK/地址。复用子出口按功能逐项绑定，不等D06全包，不由I02非人身份代替。 双模式独立验收：无UAA配置/adapter/MQ仍可启动并使用原账号、角色、菜单授权与权限管理；同一核心候选另验企业adapter纳管/非纳管边界，故障不自动切回本地放权。",
-          "state": "planned_not_implemented"
+          "estimate_status": "契约冻结后与D06/X01/X02逐功能扣重再估；当前未计价；包含最小双模式UI/runbook并与C04/G03/G04/U06拆重",
+          "acceptance": "公共认证/账号及授权投影port与合成IdP/feed可运行；认证成功不自动授权、错误audience/state/回调、重复/乱序/截断快照、撤权/条件回调及已选拓扑策略失效有负例；公共代码不含公司字段/SDK/地址。复用子出口按功能逐项绑定，不等D06全包，不由I02非人身份代替。 双模式独立验收：无UAA配置/adapter/MQ仍可启动并使用原账号、角色、菜单授权与权限管理；同一核心候选另验企业adapter纳管/非纳管边界，故障不自动切回本地放权。 P权限写入/撤权出口验收依C04；最小双模式前端须支持可用登录入口、授权来源只读解释、非纳管本地可写和后端拒写反馈；安装/切换/受控退出runbook同批交付，不等待U06全站视觉。 首期单副本验本进程策略重载/失效失败和会话，正式启用多副本前追加跨实例收敛专项，不前置未选HA。",
+          "state": "planned_not_implemented",
+          "activation_rule": "合同和mock准备可在C后与C04并行；P权限写入/撤权出口完成验收前须C04完整包通过，复用其IAM policy/主体epoch共同守卫，不新造微出口或等待D06全包。",
+          "delivery_scope": [
+            "公共治理端口、来源投影、目录和合成IdP/feed及双模式验收用例；实际权限写入口复用C04共同守卫",
+            "最小双模式前端：独立本地登录/管理可用；企业纳管对象只读及来源/同步异常解释、非纳管对象按本地权限可写；后端拒绝越权写并反馈",
+            "公开去敏安装/配置选择/接管预览/切换/停用/受控退出runbook模板；无UAA配置也可完整独立部署",
+            "P拥有验收用例，G03接CI矩阵，G04负责质量选择/覆盖口径，各计一次；最小UI在P/R复估，U06只计后续视觉迁移"
+          ]
         },
         {
           "id": "E01-UAA-R",
-          "wave": "P6.1起；首次内网上线前",
+          "wave": "P6.1起；公司UAA纳管企业模式首次正式激活前",
           "inherit_parent_dependencies": false,
           "dependencies": [
             "E01-UAA-P"
@@ -1260,9 +1280,14 @@
             "影子对账和受控切换/撤权/失败恢复证据通过"
           ],
           "estimate_engineering_days": null,
-          "estimate_status": "私有合同/供给确认后扣复用单列估算，含源端语义联调；当前未计价，等待单列",
-          "acceptance": "私有connector完成真实统一登录、三类权限数据面/条件能力及要求的回传；目录/账号/绑定/数据条件映射经批准，真实撤权/断网/对账/会话与恢复演练通过。首次内网上线硬门；风险或HR等其他provider的real不可代验，mock/contract不得标为real成功。",
-          "state": "planned_not_implemented"
+          "estimate_status": "私有合同/供给确认后扣复用单列估算，含源端语义联调；当前未计价，等待单列；包含最小双模式UI/runbook并与C04/G03/G04/U06拆重",
+          "acceptance": "私有connector完成真实统一登录、三类权限数据面/条件能力及要求的回传；目录/账号/绑定/数据条件映射经批准，真实撤权/断网/对账/会话与恢复演练通过。公司UAA纳管企业模式首次正式激活硬门；风险或HR等其他provider的real不可代验，mock/contract不得标为real成功。 最小双模式前端真实来源/纳管写限制及拒写反馈、私有安装/切换/退出runbook和演练在正式激活前完成；U06视觉迁移不阻断此最小交付。",
+          "state": "planned_not_implemented",
+          "delivery_scope": [
+            "私有真实公司协议/身份/权限及条件数据范围/回传映射与批准记录",
+            "真实来源展示、纳管只读/非纳管可写及后端拒写反馈；复用P最小UI，不重算U06全站视觉",
+            "私有配置与制品安装、接管预览/切换/退出runbook实例及演练，企业正式激活前交付；内部配置不入公共仓"
+          ]
         }
       ]
     },
@@ -1853,6 +1878,38 @@
     "additional_uaa_c_engineering_days": "2–3",
     "additional_uaa_p_engineering_days": null,
     "additional_uaa_r_engineering_days": null,
-    "rule": "E01-UAA-P/R未计价；历史15–24日不可无扣重复用相加。切片区间沿用已计价基线，均不是含UAA追加的整体承诺。"
+    "rule": "E01-UAA-P/R未计价；历史15–24日不可无扣重复用相加。切片区间沿用已计价基线，均不是含UAA追加的整体承诺。",
+    "additional_ci_quality_engineering_days": null,
+    "additional_ci_quality_status": "E01-UAA-C出口复核G03/G04新增接线/质量范围是否超原基线；当前未计价，不默认零增量",
+    "p_r_scope": "含最小双模式前端和安装/切换/受控退出runbook；C04守卫、G03接线、G04质量及U06后续视觉各计一次"
+  },
+  "release_gates": {
+    "semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持71父包/13子出口。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
+    "common_production": {
+      "applies_to": [
+        "正式独立部署",
+        "公司UAA纳管企业模式正式部署"
+      ],
+      "scope_carriers": [
+        "G05",
+        "E09"
+      ],
+      "due": "任何实际首次生产发布前；后续按变更和已选拓扑复核",
+      "checklist": [
+        "已选拓扑的TLS/网络边界/认证会话/秘密配置实测，不用开发默认值证明生产就绪",
+        "发布核心/adapter/镜像组合、配置来源和版本固定，迁移兼容与部署回执可核",
+        "备份恢复/发布回退及适用归档或镜像链路有实证，故障可见且有接管责任；不适用项有依据",
+        "按已选拓扑验证撤权收敛与调度单主；允许单副本，不强制建设未选HA"
+      ],
+      "state": "planned_evidence_gate_not_accepted",
+      "estimate_rule": "复用G05/E09已列机制及接线范围，仅前移首发适用硬项并拆分复估，不双算整包或自动扩建。"
+    },
+    "company_uaa_activation": {
+      "applies_to": "公司UAA纳管企业模式首次正式激活，不按所在网络一刀切",
+      "additional_required_milestone": "E01-UAA-R",
+      "requires_common_production_gate": true,
+      "independent_mode_rule": "完整独立部署不等待UAA-R/企业凭据或E01父包全部完成；企业接入待办仍保留，不能标成已实现或取消。",
+      "state": "planned_evidence_gate_not_accepted"
+    }
   }
 }

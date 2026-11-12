@@ -1067,9 +1067,9 @@
 
 - 原文：[docs/phase6/07-backlog-and-triggers.md](../phase6/07-backlog-and-triggers.md) / ### 3.5 外部依赖类 / D-2 M-UAA; 内网启动
 - 理由：UAA同时管理认证与受管权限；公共规则可先定，真实映射与批准在联调激活前核验，不等待迁移当天。
-- 当前条件：E01-UAA-C在P6.0冻结公共管理权/编码/撤权及合成矩阵，P在P6.1交公共port与mock，R从P6.1联调且首次内网上线前必过；其他real不能替代。
+- 当前条件：E01-UAA-C在P6.0冻结公共管理权/编码/撤权及合成矩阵，P在P6.1交公共port与mock，R从P6.1联调且公司UAA纳管的企业模式首次正式激活前必过；其他real不能替代。
 - 现存证据：[17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / UAA contract (2026-11-12)，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §7：DirectorySync与离职/撤部; [project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开
-- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口; UAA跨P6.0/P6.1/首次内网上线前；其他P7)
+- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且公司UAA纳管的企业模式首次正式激活前；其他provider沿原窗口; UAA跨P6.0/P6.1/公司UAA纳管的企业模式首次正式激活前；其他P7)
 - 支持/决策关联：D06,X01,X02；共享部分逐项扣重，I02非人主体不替代企业用户接入。
 - 出口与未决：中央管辖授权与本地非受管授权区分；通用数据属性满足条件时中央管范围值，本地执行L2/L3；三源撤权、活跃会话和故障新鲜度可验，不自动退回本地放权。真实提供方/参数/配置未定时按窗口复核，不称取消或完成。
 
@@ -1180,11 +1180,11 @@
 
 - 原文：[docs/review/planning-source-map.json](planning-source-map.json) / entries[source_id=CONT-ENG-06]; 跨行审计补登记; P6-T009,P6-T056,P6-T059,P6-T060,P6-T061,P6-T108,P6-T109
 - 理由：这是后来追加的跨行审计承接，不是原表第117个触发；指出“核契约就把功能关账”不合理，真实接入效果必须有逐provider交付。
-- 当前条件：其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为首次内网上线硬出口，不能用其他real代验。C新增2–3日，P/R未计价待拆重复估。
+- 当前条件：其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为企业模式首次正式激活硬出口，不能用其他real代验。C新增2–3日，P/R未计价待拆重复估。
 - 现存证据：[project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开; [platform-evolution.md](../../docs/design/platform-evolution.md) / §1/2/4/5/7：专业写主、可靠交接和按窗口冻结; [hr-directory-sync.md](../../docs/proposal/hr-directory-sync.md) / 规范化目录/完整性/增量/离职撤部旧方案与新合同优先级; [17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / UAA contract (2026-11-12)，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §9：事件/通知最小合同及B08阈值配置
-- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口; UAA跨P6.0/P6.1/首次内网上线前；其他P7)
+- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且公司UAA纳管的企业模式首次正式激活前；其他provider沿原窗口; UAA跨P6.0/P6.1/公司UAA纳管的企业模式首次正式激活前；其他P7)
 - 支持/决策关联：X02,D06,D11；不是本源新增独立交付，不重复计价。
-- 出口与未决：mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。UAA真实验收必须单列且早于首次内网上线，不因别的provider成功关闭。真实提供方/参数/配置未定时按窗口复核，不称取消或完成。
+- 出口与未决：mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。UAA真实验收必须单列且早于企业模式首次正式激活上线，不因别的provider成功关闭。真实提供方/参数/配置未定时按窗口复核，不称取消或完成。
 
 ## 来源归属同步与开工范围冻结事项
 
