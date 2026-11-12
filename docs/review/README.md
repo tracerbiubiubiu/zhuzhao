@@ -44,3 +44,7 @@
 ## 开工前版本维护
 
 [版本维护记录](reports/version-modernization-2026-11-12.md)汇总G07A/G07B前置的五仓源码/镜像/数据验证、首次失败与未执行边界；[组件清单](../../deployments/component-lock.json)与[恢复契约](../design/component-upgrade-data-contract.md)是实际版本与数据切换入口。
+
+## 企业UAA接入重核
+
+[现行UAA合同](../design/uaa-governance-integration.md)将公司指南转为去敏的身份/资源/角色/数据范围/撤权要求；E01-UAA-C/P/R已纳入总账，mock保留，真实接入是首次内网正式上线的独立门。文档核对不代表完整设计冻结或真实集成验收通过。

@@ -1066,12 +1066,12 @@
 **P6-T108 · D-2 M-UAA — 保留**
 
 - 原文：[docs/phase6/07-backlog-and-triggers.md](../phase6/07-backlog-and-triggers.md) / ### 3.5 外部依赖类 / D-2 M-UAA; 内网启动
-- 理由：内网身份契约的real确需提供方，但角色壳/映射/会话撤销与本地L2/L3边界可先定，不必等迁移当天。
-- 当前条件：E01/P6.1列UAA claims/身份稳定键/角色映射/禁用与失败策略，D06/I02先mock，P7真实子包。
-- 现存证据：[17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / 统一身份/角色壳接入，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §7：DirectorySync与离职/撤部; [project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开
-- 承接与窗口：E01 (P6.1出口起逐项核契约，P7出口首次真实验证复核; P7)
-- 支持/决策关联：I02；不是本源新增独立交付，不重复计价。
-- 出口与未决：登录同步不抹本地合法权源、失效身份拒绝、L2/L3不交给UAA；公司平台不可用不降级放权。；真实提供方/参数/配置未定时仍按窗口复核，不称取消或完成。
+- 理由：UAA同时管理认证与受管权限；公共规则可先定，真实映射与批准在联调激活前核验，不等待迁移当天。
+- 当前条件：E01-UAA-C在P6.0冻结公共管理权/编码/撤权及合成矩阵，P在P6.1交公共port与mock，R从P6.1联调且首次内网上线前必过；其他real不能替代。
+- 现存证据：[17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / UAA contract (2026-11-12)，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §7：DirectorySync与离职/撤部; [project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开
+- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口; UAA跨P6.0/P6.1/首次内网上线前；其他P7)
+- 支持/决策关联：D06,X01,X02；共享部分逐项扣重，I02非人主体不替代企业用户接入。
+- 出口与未决：中央管辖授权与本地非受管授权区分；通用数据属性满足条件时中央管范围值，本地执行L2/L3；三源撤权、活跃会话和故障新鲜度可验，不自动退回本地放权。真实提供方/参数/配置未定时按窗口复核，不称取消或完成。
 
 **P6-T109 · M-HR（manager_id 轴/离职处置） — 改写**
 
@@ -1180,11 +1180,11 @@
 
 - 原文：[docs/review/planning-source-map.json](planning-source-map.json) / entries[source_id=CONT-ENG-06]; 跨行审计补登记; P6-T009,P6-T056,P6-T059,P6-T060,P6-T061,P6-T108,P6-T109
 - 理由：这是后来追加的跨行审计承接，不是原表第117个触发；指出“核契约就把功能关账”不合理，真实接入效果必须有逐provider交付。
-- 当前条件：E01从P6.1列漏扫/HR/UAA/SMTP/UIP/delivery提供方、合同、owner与子估算/窗口；P7具备合同至少一real纵切，其余在P7出口及首次相应生产放行前复核。
-- 现存证据：[project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开; [platform-evolution.md](../../docs/design/platform-evolution.md) / §1/2/4/5/7：专业写主、可靠交接和按窗口冻结; [hr-directory-sync.md](../../docs/proposal/hr-directory-sync.md) / 规范化目录/完整性/增量/离职撤部旧方案与新合同优先级; [17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / 统一身份/角色壳接入，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §9：事件/通知最小合同及B08阈值配置
-- 承接与窗口：E01 (P6.1出口起逐项核契约，P7出口首次真实验证复核; P7)
+- 当前条件：其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为首次内网上线硬出口，不能用其他real代验。C新增2–3日，P/R未计价待拆重复估。
+- 现存证据：[project-evolution-strategy.md](../../docs/design/project-evolution-strategy.md) / §1–8：保留业务效果、薄实现、先决策与后交付分开; [platform-evolution.md](../../docs/design/platform-evolution.md) / §1/2/4/5/7：专业写主、可靠交接和按窗口冻结; [hr-directory-sync.md](../../docs/proposal/hr-directory-sync.md) / 规范化目录/完整性/增量/离职撤部旧方案与新合同优先级; [17-uaa-integration.md](../../docs/phase3/17-uaa-integration.md) / UAA contract (2026-11-12)，L2/L3仍由数据属主执行; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §9：事件/通知最小合同及B08阈值配置
+- 承接与窗口: E01 (UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口; UAA跨P6.0/P6.1/首次内网上线前；其他P7)
 - 支持/决策关联：X02,D06,D11；不是本源新增独立交付，不重复计价。
-- 出口与未决：mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。；真实提供方/参数/配置未定时仍按窗口复核，不称取消或完成。
+- 出口与未决：mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。UAA真实验收必须单列且早于首次内网上线，不因别的provider成功关闭。真实提供方/参数/配置未定时按窗口复核，不称取消或完成。
 
 ## 来源归属同步与开工范围冻结事项
 

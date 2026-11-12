@@ -39,3 +39,5 @@
 
 
 [组件升级与数据恢复契约](component-upgrade-data-contract.md)补充业务开工前G07A/G07B的实际组合、停写/校验/回退要求；两个运维工具使用固定官方源码受控重包，见[工具目录](../../deployments/tools/README.md)。
+
+[UAA认证与权限治理接入](uaa-governance-integration.md)为2026-11-12指南重核后的现行合同：中央管辖边界、条件数据属性、三源撤权、mock/私有adapter和首次内网正式上线门；旧17号及决策§24/§30已同步，尚未真实接入。

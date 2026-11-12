@@ -806,13 +806,15 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "E01-UAA-C/P/R: C freezes public ownership rules and synthetic mappings; P delivers public ports and mocks; R verifies private mappings, approvals, revocation and export before first intranet release. P/R unpriced pending deduplication."
       ],
       "next_design_gate": "P7开工前"
     },
@@ -1147,5 +1149,13 @@
       "G07B"
     ],
     "business_implementation": "not_started"
+  },
+  "uaa_provider_status": {
+    "contract_ref": "docs/design/uaa-governance-integration.md",
+    "C": "planning_revision_only_not_frozen_or_implemented",
+    "P": "not_implemented_not_priced",
+    "R": "not_connected_not_accepted_not_priced",
+    "first_intranet_release_gate": true,
+    "mock_preserved": true
   }
 }

@@ -8841,15 +8841,16 @@
       "mapped_source_state_before_review": "open_or_partial",
       "disposition": "retain",
       "disposition_scope": "原需求或安全约束继续保留，给固定决策与交付窗口",
-      "rationale": "内网身份契约的real确需提供方，但角色壳/映射/会话撤销与本地L2/L3边界可先定，不必等迁移当天。",
-      "bounded_current_condition": "E01/P6.1列UAA claims/身份稳定键/角色映射/禁用与失败策略，D06/I02先mock，P7真实子包。",
+      "rationale": "UAA同时管理认证与受管权限；公共规则可先定，真实映射与批准在联调激活前核验，不等待迁移当天。",
+      "bounded_current_condition": "E01-UAA-C在P6.0冻结公共管理权/编码/撤权及合成矩阵，P在P6.1交公共port与mock，R从P6.1联调且首次内网上线前必过；其他real不能替代。",
       "existing_evidence": [
         {
           "repo": "zhuzhao",
           "path": "docs/phase3/17-uaa-integration.md",
           "section_or_symbol": "统一身份/角色壳接入，L2/L3仍由数据属主执行",
           "kind": "substantive_existing_design_or_report",
-          "runtime_retested": false
+          "runtime_retested": false,
+          "section": "2026-11-12修订：统一认证/资源治理，中央范围配置与本地执行区分"
         },
         {
           "repo": "zhuzhao",
@@ -8874,9 +8875,9 @@
       "decision_and_delivery_windows": [
         {
           "work_item": "E01",
-          "decision_checkpoint": "P6.1出口起逐项核契约，P7出口首次真实验证复核",
-          "delivery_wave": "P7",
-          "delivery_condition": "调查不等于接入完成，保留provider须有子交付/估算/窗口；未知接口只阻塞该real放行"
+          "decision_checkpoint": "UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口",
+          "delivery_wave": "UAA跨P6.0/P6.1/首次内网上线前；其他P7",
+          "delivery_condition": "C冻结公共规则而不等待真实值或审批；P交公共mock，R交真实UAA证据；当前P/R未计价，不被其他real替代。"
         }
       ],
       "row_specific_window_override": null,
@@ -8886,26 +8887,29 @@
         "business_function_canceled": false,
         "approval_boundary": "不重开已明确的owner原则；如拟取消业务效果、扩大自动副作用/可见范围或改生产角色授予，另列具体变更供owner审阅"
       },
-      "acceptance_before_claiming_resolution": "登录同步不抹本地合法权源、失效身份拒绝、L2/L3不交给UAA；公司平台不可用不降级放权。",
+      "acceptance_before_claiming_resolution": "中央管辖授权与本地非受管授权区分；通用数据属性满足条件时中央管范围值，本地执行L2/L3；三源撤权、活跃会话和故障新鲜度可验，不自动退回本地放权。",
       "implementation_completion_claimed": false,
       "relevant_work_item_links_including_existing": [
         "E01",
-        "I02"
+        "D06",
+        "X01",
+        "X02"
       ],
       "proposed_delivery_carriers": [
         "E01"
       ],
       "supporting_or_decision_links_not_separate_delivery": [
-        "I02"
+        "D06",
+        "X01",
+        "X02"
       ],
-      "supporting_package_windows": [
-        {
-          "work_item": "I02",
-          "decision_checkpoint": "本波开工前",
-          "delivery_wave": "P7",
-          "delivery_condition": "bounded scope; supporting links are not double counted"
-        }
-      ]
+      "supporting_package_windows": [],
+      "required_delivery_milestones": [
+        "E01-UAA-C",
+        "E01-UAA-P",
+        "E01-UAA-R"
+      ],
+      "current_design_ref": "docs/design/uaa-governance-integration.md"
     },
     {
       "source_id": "P6-T109",
@@ -9794,7 +9798,7 @@
       "disposition": "rewrite",
       "disposition_scope": "保留已点名业务效果，补明确职责/决策/交付；不是新增第117–119原表项",
       "rationale": "这是后来追加的跨行审计承接，不是原表第117个触发；指出“核契约就把功能关账”不合理，真实接入效果必须有逐provider交付。",
-      "bounded_current_condition": "E01从P6.1列漏扫/HR/UAA/SMTP/UIP/delivery提供方、合同、owner与子估算/窗口；P7具备合同至少一real纵切，其余在P7出口及首次相应生产放行前复核。",
+      "bounded_current_condition": "其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为首次内网上线硬出口，不能用其他real代验。C新增2–3日，P/R未计价待拆重复估。",
       "existing_evidence": [
         {
           "repo": "zhuzhao",
@@ -9822,7 +9826,8 @@
           "path": "docs/phase3/17-uaa-integration.md",
           "section_or_symbol": "统一身份/角色壳接入，L2/L3仍由数据属主执行",
           "kind": "substantive_existing_design_or_report",
-          "runtime_retested": false
+          "runtime_retested": false,
+          "section": "2026-11-12修订：统一认证/资源治理，中央范围配置与本地执行区分"
         },
         {
           "repo": "zhuzhao",
@@ -9840,9 +9845,9 @@
       "decision_and_delivery_windows": [
         {
           "work_item": "E01",
-          "decision_checkpoint": "P6.1出口起逐项核契约，P7出口首次真实验证复核",
-          "delivery_wave": "P7",
-          "delivery_condition": "调查不等于接入完成，保留provider须有子交付/估算/窗口；未知接口只阻塞该real放行"
+          "decision_checkpoint": "UAA-C/P6.0；P/P6.1；R/P6.1起联调且首次内网上线前；其他provider沿原窗口",
+          "delivery_wave": "UAA跨P6.0/P6.1/首次内网上线前；其他P7",
+          "delivery_condition": "C冻结公共规则而不等待真实值或审批；P交公共mock，R交真实UAA证据；当前P/R未计价，不被其他real替代。"
         }
       ],
       "unresolved_not_canceled": {
@@ -9851,7 +9856,7 @@
         "implementation_details": "实际provider/参数/子估算仍在对应窗口冻结，未决不作取消",
         "approval_boundary": "不扩大真实角色/自动动作授权；拟取消业务效果须列明影响供审阅"
       },
-      "acceptance_before_claiming_resolution": "mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。",
+      "acceptance_before_claiming_resolution": "mock/contract/real分别报；每provider须保留具体功能效果与失败/恢复回执，未知API不降mock成功，不以E01调查完成代销接入。 UAA真实验收必须单列且早于首次内网上线，不因别的provider成功关闭。",
       "implementation_completion_claimed": false,
       "relevant_work_item_links_including_existing": [
         "E01",
@@ -9886,7 +9891,13 @@
           "delivery_wave": "P6.3",
           "delivery_condition": "bounded scope; supporting links are not double counted"
         }
-      ]
+      ],
+      "required_delivery_milestones": [
+        "E01-UAA-C",
+        "E01-UAA-P",
+        "E01-UAA-R"
+      ],
+      "current_design_ref": "docs/design/uaa-governance-integration.md"
     }
   ],
   "integration_changes": [

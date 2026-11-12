@@ -394,15 +394,23 @@
       "dependencies": [
         "C04"
       ],
-      "acceptance": "HR目录mock可重复覆盖manager/离职/撤部/乱序；本地人工兜底与真实权威字段区分。",
+      "acceptance": "HR目录mock可重复覆盖manager/离职/撤部/乱序；本地人工兜底与真实权威字段区分。 身份/授权部分先过E01-UAA-C，HR人员/组织事实与UAA账号/授权权威分离，不让HR字段获得管理员权限。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/uaa-governance-integration.md"
       ],
-      "real_activation_rule": "领域mock可先交；真实HR feed启用前须X02-F和对应E01提供方验收，不要求独立应用导航宿主，不允许私有SDK/直库耦合"
+      "real_activation_rule": "领域mock可先交；真实HR feed启用前须X02-F和对应E01提供方验收，不要求独立应用导航宿主，不允许私有SDK/直库耦合",
+      "scoped_milestone_dependencies": [
+        {
+          "milestone": "E01-UAA-C",
+          "scope": "身份/授权来源、稳定资源code及数据属性条件治理合同部分开工前完成；不阻塞无关mock业务",
+          "activation_rule": "真实未知字段只阻塞对应real激活；不得先实现与已冻结权威边界冲突的同步或授权逻辑"
+        }
+      ]
     },
     {
       "id": "D07",
@@ -1190,7 +1198,7 @@
     },
     {
       "id": "E01",
-      "title": "真实身份、目录、通知及模型契约验证",
+      "title": "真实身份、目录、通知及模型契约验证（含具名UAA出口）",
       "wave": "P7",
       "owner": "主仓+外部对接/集成",
       "estimate_engineering_days": "3–6",
@@ -1200,15 +1208,62 @@
         "A01",
         "I02"
       ],
-      "acceptance": "P6.1起逐provider列合同/owner/私有connector/真实验收子窗；P7至少一条具备合同的real纵切，其余明确待验与复核窗，长期保留mock。",
+      "acceptance": "其他provider自P6.1逐项列合同/owner/私有connector/真实子窗，P7至少一条real纵切；UAA另经E01-UAA-C/P/R，P6.0先定合同、P6.1公共port和mock、真实接入自P6.1可前移且首次内网上线前必过，不能由风险或HR的real替代；长期保留mock。",
       "state": "planned_not_implemented",
-      "decision_due": "P6.1出口起逐项核契约，P7出口首次真实验证复核",
+      "decision_due": "E01-UAA-C在P6.0；P在P6.1；R自P6.1具备合同后启动且首次内网上线前；其他provider P6.1出口起逐项核实/P7复核",
       "disposition": "按明确窗口完成接入/建设/退出裁决",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_scope": "原3–6日仅保留其他provider基础验证范围；UAA为追加范围，C另列2–3日初始粗估，P/R待契约后与D06/X01/X02拆重复估且当前未计价。旧M-UAA15–24日为未扣复用的历史粗估，不计入原3–6日、不直接相加；不含提供方等待，不能声称已有整体总工期。",
       "decision_inputs": "现有实现、业务场景和提供方契约/供给证据；不以前述实施依赖全部完成作为早期决策前提",
-      "delivery_rule": "调查不等于接入完成，保留provider须有子交付/估算/窗口；未知接口只阻塞该real放行",
+      "delivery_rule": "其他provider调查不等于接入完成；UAA合同、公共mock及私有真实接入分别验收，R是首次内网上线硬出口，可提前于P7，不被其他real替代。真实未知字段只阻塞对应real激活，mock不删；父E01的P7标签不能机械推迟其跨阶段子出口。",
       "design_refs": [
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/design/uaa-governance-integration.md"
+      ],
+      "scope": [
+        "原3–6日：其他provider基本合同核验及一条具备供给的真实纵切，不吞入UAA追加工作",
+        "UAA-C/P/R分别交合同、公共端口+合成验收、私有实现+真实上线证据；中央账号/授权、本地资源判定及HR事实各有权威来源",
+        "公共代码的来源标记/投影/撤权及多实例失效仍待实施，不隐含为I02或现有3–6日已覆盖；逐子包拆复用和追加估算"
+      ],
+      "milestones": [
+        {
+          "id": "E01-UAA-C",
+          "wave": "P6.0",
+          "inherit_parent_dependencies": false,
+          "dependencies": [],
+          "estimate_engineering_days": "2–3",
+          "estimate_relation": "新增初始粗估；不在E01原3–6日内",
+          "acceptance": "冻结认证/账号/HR/角色资源绑定/数据属性条件的公共管理权规则与合成候选矩阵；稳定namespaced资源code及映射规则；三类feed、幂等/完整性、requestId条件回调、撤权/断网/对账及私有隔离边界有正反例合同。真实映射值、外部能力及批准在R激活前核验，不等待这些才冻结公共规则或开发mock；不表示公共port或真实UAA已实现。",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "E01-UAA-P",
+          "wave": "P6.1",
+          "inherit_parent_dependencies": false,
+          "dependencies": [
+            "E01-UAA-C"
+          ],
+          "estimate_engineering_days": null,
+          "estimate_status": "契约冻结后与D06/X01/X02逐功能扣重再估；当前未计价",
+          "acceptance": "公共认证/账号及授权投影port与合成IdP/feed可运行；认证成功不自动授权、错误audience/state/回调、重复/乱序/截断快照、撤权/条件回调及多实例失效有负例；公共代码不含公司字段/SDK/地址。复用子出口按功能逐项绑定，不等D06全包，不由I02非人身份代替。",
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "E01-UAA-R",
+          "wave": "P6.1起；首次内网上线前",
+          "inherit_parent_dependencies": false,
+          "dependencies": [
+            "E01-UAA-P"
+          ],
+          "activation_prerequisites": [
+            "资源目录注册与批准映射完成",
+            "对应提供方私有合同/账号及环境可用",
+            "影子对账和受控切换/撤权/失败恢复证据通过"
+          ],
+          "estimate_engineering_days": null,
+          "estimate_status": "私有合同/供给确认后扣复用单列估算，含源端语义联调；当前未计价，等待单列",
+          "acceptance": "私有connector完成真实统一登录、三类权限数据面/条件能力及要求的回传；目录/账号/绑定/数据条件映射经批准，真实撤权/断网/对账/会话与恢复演练通过。首次内网上线硬门；风险或HR等其他provider的real不可代验，mock/contract不得标为real成功。",
+          "state": "planned_not_implemented"
+        }
       ]
     },
     {
@@ -1541,15 +1596,23 @@
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
         "docs/design/extension-compatibility.md",
-        "docs/design/current-module-boundaries.md"
+        "docs/design/current-module-boundaries.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "milestones": [
         {
           "id": "X01-C",
           "estimate_engineering_days": "2–3",
           "dependencies": [],
-          "acceptance": "稳定connector DTO/版本、source/query_ref、受权范围、可信服务身份、出站与停用合同及正反例",
-          "state": "planned_not_implemented"
+          "acceptance": "稳定connector DTO/版本、source/query_ref、受权范围、可信服务身份、出站与停用合同及正反例；身份/授权合同部分先过E01-UAA-C，UAA私有字段及SDK不进入核心。",
+          "state": "planned_not_implemented",
+          "scoped_milestone_dependencies": [
+            {
+              "milestone": "E01-UAA-C",
+              "scope": "身份/授权来源、稳定资源code及数据属性条件治理合同部分开工前完成；不阻塞无关mock业务",
+              "activation_rule": "真实未知字段只阻塞对应real激活；不得先实现与已冻结权威边界冲突的同步或授权逻辑"
+            }
+          ]
         },
         {
           "id": "X01-H",
@@ -1582,7 +1645,8 @@
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
       "design_refs": [
         "docs/design/intranet-adapter-migration.md",
-        "docs/design/current-module-boundaries.md"
+        "docs/design/current-module-boundaries.md",
+        "docs/design/uaa-governance-integration.md"
       ],
       "milestone_dependencies": [
         "X01-C"
@@ -1599,8 +1663,15 @@
           "id": "X02-F",
           "estimate_engineering_days": "3–5",
           "dependencies": [],
-          "acceptance": "目录/发现feed稳定身份、完整快照、持久batch/ACK/水位及重启回放参考纵切",
-          "state": "planned_not_implemented"
+          "acceptance": "目录/发现feed稳定身份、完整快照、持久batch/ACK/水位及重启回放参考纵切；身份/授权合同部分先过E01-UAA-C，UAA私有字段及SDK不进入核心。",
+          "state": "planned_not_implemented",
+          "scoped_milestone_dependencies": [
+            {
+              "milestone": "E01-UAA-C",
+              "scope": "身份/授权来源、稳定资源code及数据属性条件治理合同部分开工前完成；不阻塞无关mock业务",
+              "activation_rule": "真实未知字段只阻塞对应real激活；不得先实现与已冻结权威边界冲突的同步或授权逻辑"
+            }
+          ]
         }
       ]
     },
@@ -1771,7 +1842,17 @@
   "dependency_semantics": {
     "dependencies": "列表项为完整包完成依赖",
     "milestone_dependencies": "列表项为指定子出口完成依赖，不能以文档存在销账",
-    "milestones": "子出口继承所属包的外部依赖；完整包须全部子出口完成",
-    "estimate_rule": "子出口是原包估算分解，不另加总；共享逻辑只计一次"
+    "milestones": "子出口默认继承所属包外部依赖；完整包须全部子出口完成。E01-UAA-*显式inherit_parent_dependencies=false，按各出口dependencies独立准入，避免P6.0合同被P7父依赖阻塞或形成环。",
+    "estimate_rule": "常规子出口是原包估算分解，不另加总。E01-UAA-*为显式新增范围：C另列2–3日初始粗估，P/R待契约后扣除D06/X01/X02复用再估；不包含在E01原3–6日或切片区间内，不存在已计价的整体总工期。共享逻辑只计一次。",
+    "scoped_milestone_dependencies": "仅约束scope所述部分；不阻塞同包无关mock业务。不得据此绕过对应真实能力激活或上线门。"
+  },
+  "uaa_estimate_completeness": {
+    "complete": false,
+    "parent_work_items": 71,
+    "baseline_e01_engineering_days": "3–6",
+    "additional_uaa_c_engineering_days": "2–3",
+    "additional_uaa_p_engineering_days": null,
+    "additional_uaa_r_engineering_days": null,
+    "rule": "E01-UAA-P/R未计价；历史15–24日不可无扣重复用相加。切片区间沿用已计价基线，均不是含UAA追加的整体承诺。"
   }
 }
