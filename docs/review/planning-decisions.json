@@ -392,9 +392,9 @@
     "scope": "原34条正式决策口径；F004/Q01–Q06方向及OBS补充政策在后继索引分层记录，不据此称全部后继事项闭环"
   },
   "active_work_boundary": {
-    "updated_on": "2026-11-13",
+    "updated_on": "2026-11-14",
     "owner_instruction": "不急开发，还有一些场景没交代完；先完成本次设计落档、提交。",
-    "current_delivery": "confirmed_design_supplement_and_offline_UAA_contract_mock",
+    "current_delivery": "foundation_first_boundary_and_schedule_revision",
     "scenario_collection": "still_in_progress",
     "T0_status": "not_started",
     "implementation_authorized": false,
@@ -408,10 +408,10 @@
       "main_integration",
       "remote_push"
     ],
-    "interpretation": "本次确认11组已展示方向，并要求公开实践UAA离线mock和统一日志审计设计；不启动平台业务实现，不需导出公司文档，真实政策/企业激活及新增范围净估另分列。",
-    "latest_supplement_ref": "docs/review/planning-followups.json#F006-directions-uaa-mock-observability",
+    "interpretation": "先现有基础入网开发试验，再稳定adapter接缝并逐期增强；原业务方向和安全/测试前提保留，未开始平台业务实现，不能把长期全量排程当基础版工期。",
+    "latest_supplement_ref": "docs/review/planning-followups.json#F008-foundation-first-boundaries",
     "reference_mock_authorized": true,
-    "latest_owner_source": "01a1d580-680f-7db0-8df1-4083012156b1"
+    "latest_owner_source": "01a1d5a4-57e4-7a73-b421-5a85a2331d4e"
   },
   "supplementary_policy_registry": "docs/review/planning-followups.json"
 }

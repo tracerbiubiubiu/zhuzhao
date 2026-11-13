@@ -1057,7 +1057,8 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/extension-compatibility.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/design/foundation-release-boundaries.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1066,7 +1067,12 @@
         "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
         "扩展来源和撤权继承UAA合同，独立模式不要求企业配置；私有服务仍做本域鉴权。"
       ],
-      "next_design_gate": "P6.0合同；身份/授权部分先过E01-UAA-C"
+      "next_design_gate": "P6.0合同；身份/授权部分先过E01-UAA-C",
+      "delivery_slices": {
+        "X01-C": "P6.0合同2–3日",
+        "X01-B": "P6.1基础配置式登记/身份/授权/导航/停用3–4日",
+        "X01-H": "P7完整宿主治理3–5日，不挡B1"
+      }
     },
     {
       "work_item": "X02",
@@ -1074,7 +1080,8 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/intranet-adapter-migration.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/design/foundation-release-boundaries.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1083,7 +1090,11 @@
         "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
         "企业三feed与目录feed按来源/集合独立；真实未知不阻塞合成connector，adapter不直写核心库。"
       ],
-      "next_design_gate": "P6.1；X02-F身份/授权部分先过E01-UAA-C"
+      "next_design_gate": "P6.1；X02-F身份/授权部分先过E01-UAA-C",
+      "delivery_slices": {
+        "X02-Q": "P6.1 query，独立依X01-C，不继承完整D06/feed",
+        "X02-F": "P6.1按所选同步方向交付来源/水位/当前授权，保留适用前置"
+      }
     },
     {
       "work_item": "X03",
@@ -1354,5 +1365,7 @@
   ],
   "historical_uaa_estimate_ref": "docs/review/uaa-implementation-estimate.json",
   "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
-  "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json"
+  "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json",
+  "latest_delivery_boundary_ref": "docs/design/foundation-release-boundaries.md",
+  "latest_delivery_boundary_date": "2026-11-14"
 }

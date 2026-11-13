@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-13",
+  "date": "2026-11-14",
   "purpose": "跟踪整会话审计固定U63窗口之后的新增输入/确认；不改写历史审计来源/证据，不冒用原闭环证明新答复已核验。",
   "previous_audit": {
     "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
@@ -296,6 +296,58 @@
         "state": "awaiting_owner_answer"
       },
       "approval_boundary": "本答复只批准审计读取用途分权，不视为已回答同批另一条写失败政策，也不绑定真实审计名单/生产保留期"
+    },
+    {
+      "id": "F008-foundation-first-boundaries",
+      "source": {
+        "message_id": "01a1d5a4-57e4-7a73-b421-5a85a2331d4e",
+        "kind": "explicit_delivery_principle_and_stage_boundary_review",
+        "summary": "先有基础能力、带进内网再写私有adapter并持续演进；常见/常用/必然场景要覆盖，低概率复杂场景不必一次想全或对标最完整产品"
+      },
+      "owner_confirmed_principle": "缩小首批开放组合并逐期增强；现有业务尽可能承接，已启用组合的数据/安全/测试义务保持",
+      "design_ref": "docs/design/foundation-release-boundaries.md",
+      "delivery_exits": {
+        "B0": "现有Phase5固定组合打包入网开发试验；不是生产或真实企业接入验收",
+        "B1": "本地IAM和基础业务、首页、1个HTTP query adapter及1个参考私有应用真实接缝；配置式接入/重启/停用，不改核心接厂商特例",
+        "later": "风险人工闭环→常用体验/任务回贴/设备→固定统计→逐provider/API→选定AI与协同→实际规模和持久自动化→真实需求增强"
+      },
+      "bounded_schedule_changes": [
+        "X01原8–12拆C2–3/B3–4/H3–5，H治理增强归P7；父价与既有ID保留",
+        "X02-Q不继承D06/feed前置；X03只依基础接缝/查询/U02",
+        "公共主参考先基础与风险首链，再完整UAA-P；选定R就绪的对照按企业分支安排，不批准实际激活",
+        "E10有限调查可与mock风险实现并行，仍在早期P6.1窗口和真实迁移前裁决，不造全阶段串行门"
+      ],
+      "unchanged": [
+        "B/UX/K2和已确认十一组业务方向",
+        "独立IAM/长期mock/私有隔离/公司UAA纳管真实激活门",
+        "原测试先行与当前完整门禁",
+        "C01/C02当前数据正确性、当前授权及不可丢动作的持久交接",
+        "两IAM写的本地审计失败回滚仍待答"
+      ],
+      "late_refinement_windows": [
+        "P7所选手动运行/真实provider开工前拆I03基础运行与完整回补台、E01按读写性质的消费依赖",
+        "A05/A06/A07所选场景开工前拆查询/身份/ACL/恢复子出口；现整包依赖本轮不盲删",
+        "首次承诺第二支持代际前扩兼容矩阵；选择多实例前验相应一致性，不预建所有形态"
+      ],
+      "pricing_boundary": "长期76包工程量不等于B0/B1工期；所选基础目标/真实祖先联合工日仅旧已计价范围，F004/OBS所需新增纵切在B1开工前净估，增强在对应包开工前补估；不宣称所有后续范围已计价或节省原总价",
+      "implementation_state": "planning_and_schedule_only_not_business_implementation",
+      "remote_mutations": false,
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_AND_SCHEDULE_NOT_PRODUCT_EXIT",
+        "report": "docs/review/reports/foundation-boundaries-2026-11-14.md",
+        "schedule_regressions": 31,
+        "closure_regressions_retained": 19,
+        "core_acceptance": {
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_roundtrip_pairs": 81,
+          "zero_drift": true
+        },
+        "core_native": "swag wire lint unit integration cover build passed; Go inputs unchanged",
+        "private_adapter_product_exit": "not_implemented_or_verified",
+        "historical_receipts_preserved": true
+      }
     }
   ]
 }

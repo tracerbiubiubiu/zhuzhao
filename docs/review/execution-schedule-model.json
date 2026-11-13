@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-13",
+  "date": "2026-11-14",
   "scope": "Cost and scheduling decomposition only; no runtime migration is claimed",
   "original_parent_ids": [
     "G01",
@@ -225,7 +225,7 @@
         "CE02-L-P61",
         "E10"
       ],
-      "exit": "公共/私有接缝与参考connector同例；真实页面样板有基线；升级副本和恢复可核；E10仅调查/裁决在本出口完成，已确认风险Excel条件承接与获选建设单独定价"
+      "exit": "配置后重启的基础公共/私有接缝X01-C/B与查询/同步参考connector分开验收；完整声明包/CLI及热切增强X01-H在S09，不阻塞X03；页面样板有基线；E10仅有限调查/裁决在本出口完成，获选建设另估"
     },
     {
       "id": "S05",
@@ -309,7 +309,8 @@
         "CE04",
         "CE05",
         "CE02-L-P7",
-        "LS05"
+        "LS05",
+        "X01-H"
       ],
       "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
     },
@@ -505,12 +506,48 @@
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference"
   },
-  "priority_policy": "maintenance; S01/S02; UAA-C and public P ancestors; conditional R if selected; ready work by release rank then remaining critical chain and stable ID",
+  "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
   "external_waiting_refs": [
     "docs/review/uaa-real-integration-conditions.json",
     "docs/review/planning-scope-estimates.json#/items/LS05",
     "docs/review/planning-scope-estimates.json#/items/LS06"
   ],
-  "not_implementation": true
+  "not_implementation": true,
+  "delivery_priority_groups": {
+    "foundation": {
+      "targets": [
+        "U01",
+        "U02",
+        "C02",
+        "X01-B",
+        "X02-Q"
+      ],
+      "priority": 0
+    },
+    "pre_risk_investigation": {
+      "targets": [
+        "E10"
+      ],
+      "priority": 2.25
+    },
+    "risk_first_chain": {
+      "targets": [
+        "D10",
+        "D15"
+      ],
+      "priority": 2.5
+    },
+    "enterprise_when_selected_ready": {
+      "targets": [
+        "E01-UAA-P",
+        "E01-UAA-R"
+      ],
+      "priority": 2.125
+    },
+    "public_uaa_positive_tasks": {
+      "priority": 7.5,
+      "window": "公开主参考在基础/风险首链及P6.E优先工作之后、P7正任务之前；仍保留P6.1起可施工的明确合同/验收窗口，不代表真实激活"
+    }
+  }
 }

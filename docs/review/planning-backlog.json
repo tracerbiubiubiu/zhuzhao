@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13",
+  "date": "2026-11-14",
   "implementation_status": "business_not_started; G07A/G07B locally_validated_pending_PR_main",
   "schedule_basis": "原71+CE5=76父包；LS六项为额外范围任务，RP六项替换旧价。1席×每周5工程日，T0相对排程；真实等待另列，设计落档不是开工/部署指令。",
   "waves": {
@@ -1663,11 +1663,12 @@
         "G06",
         "C04"
       ],
-      "acceptance": "P6.0定合同；受信manifest登记/撤销、精确网关/L1目录、同步用户身份/逐请求授权、受控导航通过参考扩展；添加模块无核心源码差异。",
+      "acceptance": "P6.0定合同；P6.1交配置后重启生效的受信私有应用/API身份/导航/禁用纵切，添加模块无核心源码差异；完整声明包/CLI及原子热切增强归X01-H/P7。",
       "scope": [
         "P6.1最小同步身份与能力/API合同；后台grant仍归I02",
         "当前未正式部署可协调替换旧合同；正式消费者登记后再定迁移窗口",
-        "首期受信独立应用导航，不默认任意remote JS/通用微前端或Go动态plugin"
+        "首期受信独立应用导航，不默认任意remote JS/通用微前端或Go动态plugin",
+        "X01-C2–3、X01-B3–4、X01-H3–5分解原8–12日；基础接缝不等完整管理CLI/热切换，增强不取消也不重复计价"
       ],
       "state": "planned_not_implemented",
       "decision_due": "P6.0冻结合同；本包开工前复估/确认适用业务策略",
@@ -1694,13 +1695,24 @@
           ]
         },
         {
-          "id": "X01-H",
-          "estimate_engineering_days": "6–9",
+          "id": "X01-B",
+          "wave": "P6.1",
+          "estimate_engineering_days": "3–4",
           "dependencies": [
             "X01-C"
           ],
-          "acceptance": "声明包、精确网关/目录、同步用户身份与受控导航；新参考模块无核心源码差异",
+          "acceptance": "受信配置登记后重启生效：精确API/路由/L1目录、同步用户身份与逐请求授权、受控独立应用导航和禁用；参考私有模块无核心源码差异，不开放任意反代/remote JS",
           "state": "planned_not_implemented"
+        },
+        {
+          "id": "X01-H",
+          "estimate_engineering_days": "3–5",
+          "dependencies": [
+            "X01-B"
+          ],
+          "acceptance": "在基础接缝之上交完整声明包管理CLI、受审apply及原子活动配置/热切换恢复等增强；依赖冲突、部分失败和回退可审，不阻塞基础私有模块接入",
+          "state": "planned_not_implemented",
+          "wave": "P7"
         }
       ]
     },
@@ -1713,10 +1725,11 @@
       "dependencies": [
         "D06"
       ],
-      "acceptance": "mock/参考connector同例；source+entity_kind+external_id身份、可信freshness、持久outbox/ACK水位、影子导入/单writer切换与回退明确；真实提供方逐能力待验。",
+      "acceptance": "mock/参考connector同例；source+entity_kind+external_id身份、可信freshness、持久接收/提交ACK水位或所需可靠缓冲、影子导入/单writer切换与回退明确；真实提供方逐能力待验。",
       "scope": [
         "只计公共feed与一个合成参考connector，HR/风险领域行为仍计D06/D08",
-        "真实SDK/URL/凭据/厂商字段位于独立私有仓；P7 I04/E01逐提供方另估/联调，不把框架完成当全量迁移"
+        "真实SDK/URL/凭据/厂商字段位于独立私有仓；P7 I04/E01逐提供方另估/联调，不把框架完成当全量迁移",
+        "X02-Q按自身X01-C依赖独立交付；X02-F继续继承D06/X01-C及身份授权合同所需UAA-C，查询不等待feed"
       ],
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
@@ -1734,9 +1747,12 @@
         {
           "id": "X02-Q",
           "estimate_engineering_days": "2–3",
-          "dependencies": [],
-          "acceptance": "独立合成HTTP查询connector与mock同例，换endpoint不改核心；超时/越权/漂移负例拒绝",
-          "state": "planned_not_implemented"
+          "dependencies": [
+            "X01-C"
+          ],
+          "acceptance": "独立合成HTTP查询connector与mock同例，换endpoint不改核心；来源/受权范围/超时/越权/漂移负例拒绝，不依赖HR生命周期或feed实施",
+          "state": "planned_not_implemented",
+          "inherit_parent_dependencies": false
         },
         {
           "id": "X02-F",
@@ -1761,14 +1777,15 @@
       "owner": "私有扩展+ui/设备聚合",
       "estimate_engineering_days": "4–7",
       "dependencies": [
-        "X01",
-        "X02",
-        "U02"
+        "U02",
+        "X01-B",
+        "X02-Q"
       ],
       "acceptance": "多厂商无SSO下目录/状态/新鲜度/受权打开管理页；默认设备侧人工登录；参考扩展独立交付，计数/导出/入口逐项授权。",
       "scope": [
         "首期薄模块及一个合成来源；不复制CMDB/NMS/PAM，不托管密码/远程会话",
-        "P7真实CMDB/状态源核验、按提供方拆有限子包；辅助登录不属本轮实施，供给/收益不足明确维持人工入口"
+        "P7真实CMDB/状态源核验、按提供方拆有限子包；辅助登录不属本轮实施，供给/收益不足明确维持人工入口",
+        "首期只读设备纵切使用基础受信宿主和查询adapter，不等待X01-H完整管理增强或X02-F同步feed；私有资源范围、计数/导出/深链授权照常验收"
       ],
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
@@ -2092,7 +2109,7 @@
   "dependency_semantics": {
     "dependencies": "列表项为完整包完成依赖",
     "milestone_dependencies": "列表项为指定子出口完成依赖，不能以文档存在销账",
-    "milestones": "子出口默认继承所属包外部依赖；完整包须全部子出口完成。E01-UAA-*显式inherit_parent_dependencies=false，按各出口dependencies独立准入，避免P6.0合同被P7父依赖阻塞或形成环。",
+    "milestones": "子出口默认继承所属包外部依赖；完整包须全部子出口完成。E01-UAA-*、CE02及X02-Q显式inherit_parent_dependencies=false按自身依赖准入；X02-Q只需X01-C，X02-F保留D06和适用UAA-C。X01-C/B先交基础，X01-H/P7增强不阻塞引用B的消费者。",
     "estimate_rule": "常规子出口是原包分解，不另加总；E01-UAA-C/P/R为独立新增范围2–3/25–39/13–22。E01原3–6不含这些增量；P完成依X02-F以兑现共享收件/ACK/回放复用。外部等待另列，维护收尾容量预留不混入UAA。 CE02-S/D/L的6–9/5–8/9–13分解20–30父价；L四波迁移不另加出口或价格。",
     "scoped_milestone_dependencies": "仅约束scope所述部分；不阻塞同包无关mock业务。不得据此绕过对应真实能力激活或上线门。"
   },
@@ -2120,7 +2137,7 @@
     "rule": "C/P/R只在UAA注册表计一次，E01旧基价仅其他provider；该次UAA补估不改历史71包价，后继RP六项替价与CE/LS净增由补齐册另列并合并当前76包排程。P含最小UI/运维/CI质量，R只真实差额。新强制画像必须变更补齐，不以基线忽略公司要求。"
   },
   "release_gates": {
-    "semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持76父包/16子出口；LS六项不增加父包。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
+    "semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持76父包/17子出口；LS六项不增加父包。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
     "common_production": {
       "applies_to": [
         "正式独立部署",

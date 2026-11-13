@@ -4,6 +4,8 @@
 
 ## 从这里开始
 
+- **先理解交付边界**：[基础版与逐期演进](../design/foundation-release-boundaries.md)是2026-11-14最新范围说明：先现有底座试验、再真实扩展接缝；完整长期排程不是首批工期。[本轮复核](reports/foundation-boundaries-2026-11-14.md)说明依赖修正和未完成项。
+
 - **核逐次要求是否处理**：原截至F003的65条输入/93点保留在[全会话再核](conversation-reaudit.md)及[矩阵](conversation-reaudit.json)，后继见[续源索引](planning-followups.json)。F006明确确认F004五组及Q01–Q06方向，新增公开UAA mock和统一日志审计；F005公开资产/测试资源前提保持。旧窗口不自动覆盖新输入，方向/样例不等于产品或真实激活。
 - **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)、[剩余决策议程](owner-decision-agenda.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。议程Q01–Q06方向已确认，Q07–Q13及生产实参按窗口绑定，不把13阅读组当新增门禁。
 - **查已实现能力与开放债**：读[项目控制台](11-project-control.md)的能力矩阵、健康状态和迁移地图，再进入对应模块。
@@ -37,7 +39,7 @@
 
 [现行UAA合同](../design/uaa-governance-integration.md)负责完整本地IAM与私有adapter企业模式、来源管理权及撤权边界。E01-UAA-C/P/R各有公共合同、公共实现和条件真实出口；mock长期保留，真实企业激活单独验收，尚未接通不影响独立模式。
 
-F006要求公司文档不可导出时先用公开实践和既有规划，[离线合成mock](../design/examples/uaa-reference-mock/README.md)保存可复验规范化合同，不实现真实IdP/MQ或替代产品P。统一运行日志、可信业务审计与领域事实的分工/缺口/分期见[日志审计设计](../design/unified-observability-audit.md)，其新增范围不能默塞旧G/I/UAA预算；[后继净估册](post-baseline-scope-estimates.json)登记OBS22–33日候选、F004未完净估及P6.0开工前整合窗口，不把旧基线加局部增量当完整新总价。
+F006要求公司文档不可导出时先用公开实践和既有规划，[离线合成mock](../design/examples/uaa-reference-mock/README.md)保存可复验规范化合同，不实现真实IdP/MQ或替代产品P。统一运行日志、可信业务审计与领域事实的分工/缺口/分期见[日志审计设计](../design/unified-observability-audit.md)，其新增范围不能默塞旧G/I/UAA预算；[后继净估册](post-baseline-scope-estimates.json)登记OBS22–33日候选、F004未完净估；B1所选新增范围在B1开工前整合，增强按对应包开工窗口处理，不把旧基线加局部增量当完整新总价。
 
 ## UAA与完整双模式后的全路线再审
 

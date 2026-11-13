@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "date": "2026-11-13",
+  "date": "2026-11-14",
   "status": "bounded_followup_estimates_not_integrated_into_baseline_schedule",
   "source_followups": [
     "F006-directions-uaa-mock-observability",
-    "F007-audit-policy-confirmations"
+    "F007-audit-policy-confirmations",
+    "F008-foundation-first-boundaries"
   ],
   "baseline": {
     "backlog": "docs/review/planning-backlog.json",
@@ -170,19 +171,20 @@
     "state": "owner_confirmed_directions_actual_config_and_net_estimate_pending",
     "ref": "docs/design/ticket-operations-supplement.md",
     "net_days": null,
-    "integration_due": "P6.0开工前先对已确认有限切片净估并与OBS扣重；具体事实/字段在D02/D03相应开工前，其他按具名窗口冻结"
+    "integration_due": "B1/风险纵切开工前净估该批所需；其余按D/E/OBS具名窗口冻结，不一次规划所有增强"
   },
   "integration_rule": {
-    "due": "P6.0开工前",
+    "due": "B1开工前只整合该批所需基础纵切；增强在对应包开工前补净估/依赖，沿各具名窗口交付",
     "owner": "项目集成者",
     "required_outputs": [
-      "F004/OBS统一扣重",
-      "正式父/子依赖与分期验收",
-      "仓内排程复算和无环/单席资源槽验证"
+      "已选基础范围与F004/OBS扣重",
+      "基础与增强各自的依赖/验收出口",
+      "当前所选纵切排程复算；不要求先冻结所有未来场景"
     ],
     "baseline_dag_changed": false,
     "full_latest_scope_priced": false,
-    "do_not_claim": "不得将旧公共394–656直接加OBS22–33称新完整总价；尚有F004净估/实参，等待另列"
+    "do_not_claim": "不得将旧公共394–656直接加OBS22–33称新完整总价；尚有F004净估/实参，等待另列",
+    "baseline_dag_changed_scope": "false仅指OBS/F004新增细项尚未并入76包价格/DAG；F008已实际拆X01-B并调整旧基线依赖/顺序"
   },
   "policy_state": {
     "audit_read_scope": "owner_confirmed_separate_business_history_and_dedicated_audit",
@@ -194,5 +196,12 @@
     "product_UAA_P_25_39_scope": "unchanged_not_implemented"
   },
   "design_ref": "docs/design/unified-observability-audit.md",
-  "implementation_state": "planned_not_implemented"
+  "implementation_state": "planned_not_implemented",
+  "latest_boundary_ref": "docs/design/foundation-release-boundaries.md",
+  "latest_boundary_source": "F008-foundation-first-boundaries",
+  "release_selection": {
+    "B0": "既有底座开发试验不以完整OBS新增实现为前置",
+    "B1": "已选基础敏感面、本地可信事实和受权分页/原页薄接线；开工前对所选净增细项拆估并入DAG",
+    "enhancement": "异步大导出/快照artifact、外送与多worker随实际用途/拓扑在对应包开工前拆估；现22–33是完整候选范围，非B1价格"
+  }
 }

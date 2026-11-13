@@ -1,5 +1,7 @@
 # 全项目路线重规划、详设与交接状态
 
+> **2026-11-14基础先行调整**：先读[基础版与各期边界](../design/foundation-release-boundaries.md)。B0可先用现有底座入网开发试验；B1交最小本地业务与真实扩展接缝。已拆X01-B/后继H、解开只读Q与完整feed/HR前置、把完整UAA公共实现移出公共参考的首批优先链。保留真实激活门及数据/安全/测试义务；新范围未实现，长程总价不等于基础版价。具体变更及验证见[本轮报告](reports/foundation-boundaries-2026-11-14.md)。
+
 > **F006当前边界**：所有者已明确确认F004五组及Q01–Q06六组方向，实际配置和新增净估继续按具名窗口处理。UAA先以[离线公共mock](../design/examples/uaa-reference-mock/README.md)承接，真实企业材料留内网；[统一日志审计](../design/unified-observability-audit.md)补分期和扣重。原已计价排程是有界基线，不自动包干新范围；五仓README/社区资产已本地验证，测试栈可重建，品牌/托管/发布及产品实施仍分列。
 
 > **来源与复核截止**：[全会话再审](conversation-reaudit.md)保留65条/93点截止，后继确认见[续源索引](planning-followups.json)；[决策议程](owner-decision-agenda.md)现将Q01–Q06已定方向与Q07–Q13实际输入窗分列。旧U63及下列历史记录保留时点，不倒写新批准。E10调查前移P6.1、获选功能P6.E另估；参考模型红绿不表示平台业务已接线。
@@ -10,7 +12,7 @@
 
 本轮补全站27路由及真实Vue样板、18模块逐操作库存和三链Schema/SQL反例、Agent/skill/SOC可执行参考样例及官方MCP SDK互操作。独立交叉审查进一步发现并修正知识来源批准后失效、MCP登录桥最小同意UI归属、统一PR与旧直推条款冲突。它们是本轮设计/规则与参考模型的修正，产品共同runtime及真实企业组合仍未实现。
 
-原71父包/13子出口保留为历史基线，当前正式范围为76父包、16子出口及6个LS附加子任务；净增CE52–80、LS34–56、六包复估净差16–24。完整数字与依赖只读[净估册](planning-scope-estimates.json)、[总账](planning-backlog.json)及[仓内派生排程](execution-schedule.md)，不再用旧未计价日窗。1席×5工程日/周是规划产能，T0未启动，没有严格日期承诺，真实provider等待另列。
+原71父包/13子出口保留为历史基线，当前正式范围为76父包、17子出口及6个LS附加子任务；净增CE52–80、LS34–56、六包复估净差16–24。完整数字与依赖只读[净估册](planning-scope-estimates.json)、[总账](planning-backlog.json)及[仓内派生排程](execution-schedule.md)，不再用旧未计价日窗。1席×5工程日/周是规划产能，T0未启动，没有严格日期承诺，真实provider等待另列。
 
 本轮完成声明须以[六组闭环与证据](planning-closure.json)及独立终审为准；全门禁绿色后才提交。分档仍未启用，远端保护/PR合入/发版/共享切换未由文档动作完成。mock、完整独立IAM、UAA私有adapter、专业供给优先、设备人工登录以及原测试先行原则继续有效。
 

@@ -242,11 +242,23 @@ def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
             for dep in nodes[x]['dependencies']:
                 if dep not in seen:seen.add(dep);walk(dep)
         walk(k);return seen
-    for k in ancestors('E01-UAA-P')|{'E01-UAA-P'}:
-        nodes[k]['priority']=min(nodes[k]['priority'],3)
-    nodes['E01-UAA-C']['priority']=2.5
+    priorities=model['delivery_priority_groups']
+    for node in nodes.values():
+        if node['effort_category']=='uaa_public':
+            node['priority']=priorities['public_uaa_positive_tasks']['priority']
+    def promote(group):
+        for target in group['targets']:
+            if target not in nodes:
+                raise ValueError('unknown delivery priority target: '+target)
+            for k in ancestors(target)|{target}:
+                nodes[k]['priority']=min(nodes[k]['priority'],group['priority'])
+    promote(priorities['foundation'])
+    promote(priorities['pre_risk_investigation'])
+    promote(priorities['risk_first_chain'])
     if include_r:
-        nodes['UAA-R-ENGINEERING']['priority']=3.5
+        # Ready enterprise engineering is a distinct, selected capacity scenario.
+        # Priority does not satisfy any real pre-apply or production evidence gate.
+        promote(priorities['enterprise_when_selected_ready'])
     if reserve:
         nodes['MAINTENANCE-CLOSEOUT']['priority']=-1
     categories={cat:summed(n['days'] for n in nodes.values() if n['effort_category']==cat) for cat in sorted({n['effort_category'] for n in nodes.values()})}
@@ -262,12 +274,21 @@ def calculate(repo):
     blobs={p:(repo/p).read_bytes() for p in paths}
     backlog,model,scope,uaa,conditions=[json.loads(blobs[p]) for p in paths]
     graph,milestones=source_graph(backlog)
-    result=dict(date='2026-11-13',status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='locally_validated_pending_pr_main',do_not_repeat_future_coding_estimate=True),release_gates_ref='docs/review/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/review/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
+    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='locally_validated_pending_pr_main',do_not_repeat_future_coding_estimate=True),release_gates_ref='docs/review/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/review/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
+    result['delivery_scope_boundaries']=dict(foundation_targets=model['delivery_priority_groups']['foundation']['targets'],risk_first_chain_targets=model['delivery_priority_groups']['risk_first_chain']['targets'],effort_rule='Each delivery exit reports the union of its named targets and actual dependencies. Shared ancestors overlap; do not add the exit efforts.',long_horizon_totals_are_not_foundation_duration=True,baseline_scope_only=True,post_baseline_supplements_not_merged=['F004 newly selected details pending net estimate','OBS01–03 separately priced candidate supplement'],supplement_ref='docs/review/post-baseline-scope-estimates.json',production_or_enterprise_activation_approved=False)
     for include_r in (False,True):
         key='with_conditional_R_ready' if include_r else 'public_R_pending'
         scenario=dict(conditional_R_selected=include_r,profiles={})
         for reserve in (False,True):
             nodes,categories,total=build_model(backlog,model,scope,uaa,include_r,reserve)
+            def closure(targets):
+                selected=set(targets)
+                pending=list(targets)
+                while pending:
+                    for dependency in nodes[pending.pop()]['dependencies']:
+                        if dependency not in selected:
+                            selected.add(dependency);pending.append(dependency)
+                return selected
             profile=dict(total_effort_range=list(total),category_effort={k:list(v) for k,v in categories.items()},model_nodes=len(nodes),positive_tasks=sum(n['days']!=(0,0) for n in nodes.values()),resources={})
             for seats in (1,2):
                 runs=[run_scheduler(nodes,seats,i) for i in (0,1)]
@@ -280,12 +301,14 @@ def calculate(repo):
                 ordered.sort(key=lambda x:(x['start_endpoint_days'][0],x['finish_endpoint_days'][0],x['id']))
                 ms={k:window(k) for k in ['E01-UAA-C','E01-UAA-P','X02-F','CE01','CE02-S','CE02-D','D12','CE02-L']+(['E01-UAA-R'] if include_r else [])}
                 profile['resources'][str(seats)]=dict(endpoint_makespans=[r['makespan_workdays'] for r in runs],critical_path_lower_bounds=[r['critical_path_lower_bound'] for r in runs],release_slices=slices,phases=phases,milestones=ms,ordered_tasks=ordered,resource_records={k:r['records'] for k,r in zip(['low','high'],runs)},formal_production_or_enterprise_activation=None,checks=dict(known_dependencies=True,dag=True,precedence=True,capacity_no_overlap=True,effort_sum=True,parent_child_deduplicated=True,single_seat_sum_equals_makespan=seats==1))
+                profile['resources'][str(seats)]['delivery_exits']={name:dict(targets=model['delivery_priority_groups'][name]['targets'],**group(closure(model['delivery_priority_groups'][name]['targets']))) for name in ['foundation','risk_first_chain']}
             scenario['profiles']['with_maintenance_reserve' if reserve else 'without_maintenance_reserve']=profile
         result['scenarios'][key]=scenario
     result['bounded_effort_totals']={key:scenario['profiles']['without_maintenance_reserve']['total_effort_range'] for key,scenario in result['scenarios'].items()}
     result['source_input_sha256']['scripts/calculate-planning-schedule.py']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     result['scope_estimate_registry']='docs/review/planning-scope-estimates.json'
     result['no_unpriced_required_increment']=scope['all_required_supplements_priced']
+    result['no_unpriced_required_increment_scope']='priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price'
     return result
 
 
@@ -311,12 +334,14 @@ def day_window(value):
 
 
 def render_schedule(result):
+    structure=result['source_structure']
     lines=[
         '# 后续完整排程 — 既有能力、互通与遗漏范围的有界重排',
-        '', '日期：2026-11-13。本文件由仓内计算器生成；设计/计价候选，T0未启动，不是开发或部署指令。',
+        '', f"日期：{result['date']}。本文件由仓内计算器生成；设计/计价候选，T0未启动，不是开发或部署指令。",
         '', '## 范围、来源与复现', '',
-        '原71父包完整承接，正式纳入CE五项后为76父包、16正式子出口、6项LS额外范围任务、13发布切片。',
+        f"原71父包完整承接，正式纳入CE五项后为{structure['parents']}父包、{structure['official_child_milestones']}正式子出口、{structure['additional_scope_tasks']}项LS额外范围任务、{structure['release_slices']}发布切片。",
         'LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。',
+        '本页长程总量只覆盖76包既有计价基线，不是基础版B0/B1工期，也未合并F004新增未净估细项及OBS候选补充；后继范围见[补充册](post-baseline-scope-estimates.json)。',
         '六项RP替换原基价，不能替换后又把净差额再加一次。',
         '数字源为[净增册](planning-scope-estimates.json)、[UAA估算](uaa-implementation-estimate.json)和[总账](planning-backlog.json)。',
         '切片、UAA接线及分阶段迁移配额见[排程模型](execution-schedule-model.json)；逐任务/资源槽/输入哈希见[JSON](execution-schedule.json)。',
@@ -338,7 +363,7 @@ def render_schedule(result):
         '主参考1个有效研发席位，每周5工程日；2席仅独立交付能力具备时对比，不等于两个agent。',
         '实际开工日记T0，D0是开工时点、DN是累计N个有效工作日结束；没有硬自然日截止。',
         '每项低/高输入分别跑一次排程；下文“低 / 高”不是置信区间或任意混合耗时的保证上界。',
-        '维护先行、S01/S02优先，随后保护UAA公共基础及其真实共享依赖；其余ready任务按切片和剩余关键链稳定排序。',
+        '维护先行，优先基础U01/U02/C02/X01-B/X02-Q及真实祖先；保留S01/S02安全工作与E10有限调查窗口，再交D10/D15风险首链。公开参考的UAA P正任务优先级7.5，在P6.E优先工作后/P7正任务前仍有明确窗口；选定且外部就绪的企业对照在基础后优先P/R，不代表实际激活获批。其余ready任务按切片和剩余关键链稳定排序。',
         '阶段不是全串行大门；日窗可交错。单席总工期等于所选工日和；双席逐槽验证不重叠。',
         '', '## 全部13发布切片', '',
         '以下含CE/LS及RP替换后的净范围，剔除已做G07；UAA独立增量与维护单列，不塞进S09的E01旧基价。', '']
@@ -346,6 +371,11 @@ def render_schedule(result):
     alt={x['id']:x for x in public['2']['release_slices']}
     for row in public['1']['release_slices']:
         lines += [f"- **{row['id']} {row['wave']} {row['name']}**：{format_pair(row['effort'])}工程日；1席{day_window(row)}；2席{day_window(alt[row['id']])}。"]
+    lines += ['', '## 基础目标与风险首链的独立出口', '',
+        '以下只按具名目标及真实祖先计算联合范围；两组共享依赖，工日不能相加，日窗也不代表批准生产或企业模式激活。基础目标不是等待全部远期76包完成。']
+    for name,label in [('foundation','基础接缝/首页与附件正确性'),('risk_first_chain','风险首链')]:
+        row=public['1']['delivery_exits'][name];other=public['2']['delivery_exits'][name]
+        lines.append(f"- **{label}**（{', '.join(row['targets'])}）：含真实祖先{format_pair(row['effort'])}工程日；1席{day_window(row)}；2席{day_window(other)}。")
     lines += ['', '## 按Phase汇总的工程窗', '',
         '本节按任务实际所属Phase汇总，含跨阶段UAA C/P与CE02-L配额；不把CE02父包全部20–30日塞进P6.1。', '']
     for phase,row in public['1']['phases'].items():
@@ -360,6 +390,7 @@ def render_schedule(result):
         'L内部配额为P6.1 2–3、P6.3 3–4、P7 2–3、P9 2–3日，随IAM/组织、工单/通知/情报/AL、Action/MCP/适配、持久闭环分批迁移。',
         '新增或触及模块当批接入，P9只是存量最终库存/旁路验收；当前候选能力runtime_verified均不能因已排程变为true。',
         'D12只依CE02-D可靠入口，不反依I01；I01/I02/I03消费D12。CE03/04/05在P7，LS01–04在P6.3，LS05/06在P7。',
+        'X01-C2–3/X01-B3–4/X01-H3–5仍合计原8–12日；B为配置后重启的受信接缝，H在S09/P7交完整管理增强。X02-Q独立依X01-C，不等D06/feed；X03只依U02、X01-B和X02-Q，资源授权不因此削弱。',
         '', '## UAA在现有13切片中的跨阶段硬出口', '',
         '公共范围保留mock/contract，不因公司资源未到而阻断独立IAM和公共开发；真实成功不能由合成用例代验。',
         'UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内部才产出影子差异、私有制品/runbook。',
@@ -383,10 +414,13 @@ def render_schedule(result):
 
 
 def render_backlog(backlog):
+    parents=len(backlog['work_items'])
+    children=sum(len(x.get('milestones',[])) for x in backlog['work_items'])
     lines=['# 全项目排期总账 — 既有能力与新增范围的唯一任务入口','',
-        '日期：2026-11-13。76父包、16正式子出口、6项LS额外子范围，13发布切片；原71包完整保留，CE五项正式纳入。',
+        f"日期：{backlog['date']}。{parents}父包、{children}正式子出口、6项LS额外子范围，13发布切片；原71包完整保留，CE五项正式纳入。",
         '唯一净增数字源为[估算注册表](planning-scope-estimates.json)，相对日窗见[完整排程](execution-schedule.md)，算法/分解见[模型](execution-schedule-model.json)。',
         '1有效席位×每周5工程日，T0未启动、无硬日期；计价/排程不是业务开发或部署授权。',
+        '本总账长程工日不是基础版B0/B1工期；基础目标与风险首链在完整排程单列。F004新增细项/OBS后继补充尚未合并，不把旧总额冒称完整新路线总价。',
         '', '## 读取规则与质量继承','',
         '尽可能承接现有功能、渐进优化扩展，专业平台能力优先取数与受权调用，保留大量合成mock。',
         '当前批继续standards §11测试先行、正负/边界/权限先红后绿，独立审查和完整门禁；不以规划存在当作准确设计已冻结。',
@@ -411,7 +445,8 @@ def render_backlog(backlog):
     for row in backlog['additional_scope_tasks']:
         lines.append(f"- `{row['id']}` {row['title']}，归{row['owner_package']}，{row['wave']}，{format_pair(row['net_days'])}净增日；依赖`{', '.join(row['dependencies'])}`。")
     lines += ['', '## 依赖、发布与确认窗口','',
-        '完整包依赖与具名子出口依赖分开；子出口默认继承父外部依赖，E01-UAA与CE02出口显式按自身依赖准入。',
+        '完整包依赖与具名子出口依赖分开；子出口默认继承父外部依赖，E01-UAA、CE02及X02-Q出口显式按自身依赖准入。',
+        'X01-C/B交基础合同与重启生效接缝，X01-H在P7交完整管理增强，仍分解原8–12日；X02-Q只依X01-C，X02-F继续验真实feed安全前提；X03不等H/feed，仍验私有资源权限。',
         'D12链A依CE02-D，不依I01；CE02-D不依D12/I01，避免调用统一形成反向环。',
         'CE02-L存量迁移按P6.1/P6.3/P7/P9逐模块推进，最终P9库存收口；本轮候选映射不等于已迁移。',
         '普通公开/独立部署不等公司UAA或任何真实provider；首次生产仍过G05/E09适用硬证据。',

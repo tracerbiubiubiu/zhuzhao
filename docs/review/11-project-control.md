@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **基础先行（2026-11-14）**：[交付边界](../design/foundation-release-boundaries.md)明确B0现有底座入网开发试验、B1本地业务和一个query adapter/参考私有应用接缝，后续按实际使用增强。完整UAA、插件治理、全站改造和多实例均非B1统一前置；实际企业激活仍验公司要求。机器依赖/优先级已同步，76父包原总工程量保持，不能当基础版报价；F004/OBS所选基础增量在B1开工前补净估，其余在对应实施窗口细化。[本轮核验](reports/foundation-boundaries-2026-11-14.md)只交设计与排程，没有开发或启用。
+
 > **后继F006确认与新增要求（2026-11-13）**：所有者明确确认F004五组＋Q01–Q06六组已展示方向；[工单运营](../design/ticket-operations-supplement.md)、[议程](owner-decision-agenda.md)已分开方向与实参。UAA先交[公开合成mock](../design/examples/uaa-reference-mock/README.md)，公司文档不可导出不阻公共准备；真实认证/接管仍待内网验收。[统一日志审计](../design/unified-observability-audit.md)补既有slog/HTTP审计与领域事实的缺口、分期和扣重，产品机制未因此实现。新增范围不默含旧总价，OBS有界22–33日候选及F004净估出口见[后继估算册](post-baseline-scope-estimates.json)，准确来源见[后继索引](planning-followups.json)，本轮交付/验证见[报告](reports/uaa-reference-and-audit-design-2026-11-13.md)。
 
 > **F004/F005实际交付边界**：F004五组方向已于F006确认，实际配置/新增净估和正式排程整合仍未全部闭环。F005五仓中英文README/社区资产已本地验证，不等于远端发布、在线体验或品牌确定。现有项目测试栈/卷可按授权重建；原65条/93点审计保持其截止。真实AL敏感数据提前启用前先交所需最小权限纵切并计价/排程，不将X03私有mock无条件绑整个R06。
@@ -14,7 +16,7 @@
 - 当前实现看下方能力矩阵/健康状态，再进入[模块说明](../modules/README.md)；未来范围和价格进入[总账](planning-backlog.md)及[互通增量](capability-interconnect-supplement.md)。
 - 固定时点证据和方法从[review入口](README.md)查阅；文档整理历史摘要已后置，不能用旧快照证明本轮运行已验收。
 
-## 当前摘要（2026-11-13）
+## 当前摘要（2026-11-14）
 
 - **整会话补齐复核（2026-11-13）**：62条用户原话＋1明确目标、93核对点已逐条追溯；六组实际缺口按[对账](user-requirements-reconciliation.md)补研究/合同/净估/验证，独立反例修正知识引用失效、MCP桥归属和PR规则漂移。[闭环册](planning-closure.json)绑定实际证据，不用条目数证明完成；未实现的业务和真实激活仍分列。
 
@@ -29,7 +31,7 @@
 
 - **本次仅提交设计阶段快照（2026-11-13所有者最新指令）**：仍有场景待补充，当前不急开发；设计/补估/参考排期继续作为可追加的文档基线。单席产能口径保留但T0未启动，本轮不执行开发、共享环境切换、主线集成或远端推送。文档静态核验不等于业务或真实UAA验收。
 
-- **单席相对排期已按所有者口径更新（2026-11-13）**：1有效席位×每周5工程日、尽快启动、无严格截止，实际开工日记T0。[完整排期](execution-schedule.md)保留原71父包，当前含CE共76父包/16正式子出口、LS6附加任务及13切片；UAA公共实现25–39、条件真实增量13–22，真实进入/产出/pre_apply/收口分阶段。预算与日窗静态一致不表示业务或真实接入验收；F004新增细项尚未全部计价，资源原则不再待问。
+- **单席相对排期已按所有者口径更新（2026-11-13）**：1有效席位×每周5工程日、尽快启动、无严格截止，实际开工日记T0。[完整排期](execution-schedule.md)保留原71父包，当前含CE共76父包/17正式子出口、LS6附加任务及13切片；UAA公共实现25–39、条件真实增量13–22，真实进入/产出/pre_apply/收口分阶段。预算与日窗静态一致不表示业务或真实接入验收；F004新增细项尚未全部计价，资源原则不再待问。
 
 - **UAA与双模式估算**：C2–3/P25–39/R13–22保持，R真实供给/等待单列；P共享X02-F和最小UI/运维已扣重。LS06另计MCP既有AS与主体/同意桥，不混淆UAA网页登录。完整独立IAM不等企业R；当前公共/企业UAA业务接线仍未实现。
 
@@ -38,7 +40,7 @@
 - **UAA指南重核（2026-11-12）**：公司接入含统一认证及权限治理，现行[合同](../design/uaa-governance-integration.md)修正旧“全部本地自管/零影响/换配置”承诺。正式支持完整独立模式与私有adapter企业模式：独立模式保留原账号/角色/菜单授权及权限管理，不依赖UAA配置/MQ；企业受管范围按来源接管，双模式分别验收。E01-UAA-C/P/R分别前置身份授权合同、公共mock实现及真实联调，公司UAA纳管的企业模式首次正式激活必须单独验收；三源授权/多实例撤权未实现，真实契约和新增投入待对应出口核验/复估。公司原文及真实信息不入仓。
 
 - **真实前端首组（2026-11-12）**：24图命中6个代表状态×亮暗×两视口，复现普通Logo→404、亮色代表文案/表头低对比及规则页4次初始化console error。新增BL-FE-003→U02，粗估4–6日、P6.1开工先修，未修复；[首组报告](reports/frontend-first-baseline-2026-11-12.md)保留4轮过程/依赖限制和未覆盖。FD07仍部分，未全站验收。
-- **当前排期与研究**：[执行排期](execution-schedule.md)由仓内模型与唯一估算源复算；76父包/16正式子出口及LS6附加任务；1席×5工程日、T0未启动。FD03/06/08参考模型、FD07全27路由/真实Vue样板与FD05真实SDK回环已补，细节及真实边界见[后继状态](research-supplement-status.json)。
+- **当前排期与研究**：[执行排期](execution-schedule.md)由仓内模型与唯一估算源复算；76父包/17正式子出口及LS6附加任务；1席×5工程日、T0未启动。FD03/06/08参考模型、FD07全27路由/真实Vue样板与FD05真实SDK回环已补，细节及真实边界见[后继状态](research-supplement-status.json)。
 - **截至前32条的研究深度核验（2026-11-12）**：回读32条真实用户输入，65核对原子中51项有实质规划、10项部分深入、4项合理后置。规划纳入与材料交付不等于全部等深研究；当前耦合、旧触发合理性、全站视觉、领域Agent/NL计划/MCP/skill及事件职责授权的8组补研究见[深度报告](reports/concern-depth-verification-2026-11-12.md)与[逐点证据](focus-depth-verification.json)。未实施新功能或重开已决原则。
 - **工作边界**。Phase5已于2026-11-11验收收尾并整合五仓main；代码基线主仓5c0e248d/UI73a18d39/TR340c7a6/AL93ecbcb/utils b027089。本轮重规划以原6–9功能为基线覆盖全部后续路线与新增能力，Phase6只是近期切片；首轮及本批详设已在独立codex分支落档，功能尚未实施。本轮审计/全路线编制、决策回填与规划交接收口；未来逐包详设未全部冻结，功能均未实施；[收口状态](planning-closeout.md)区分五步与逐包成熟度。资源清理终态见 [12 号 §8.4](../phase5/12-scenarios-and-tests.md#84-环境数据与工作区收口2026-11-11-已完成)。
 - **测试与证据**。11-11 固定快照四档 253/0/0、81 对迁移往返及 UI 244 单测/42 E2E 通过，范围和旧代码对照见 [12 号 §7](../phase5/12-scenarios-and-tests.md#7-结果汇总2026-11-11-收尾复核)。主仓 114762d1 与 UI 3833ca2c 准确提交 CI 已成功，关闭状态文档的最终提交另留收据。清理后开发主应用、UI 与两上游健康检查通过。
@@ -71,15 +73,16 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
 | **公开展示与新场景续源** | 五仓中英README、合成截图、贡献/问题/PR入口；F004五组和Q01–Q06方向后继明确确认 | 📋 文档/社区资产已本地验证；真实在线演示/品牌/远端元数据待发布准备，业务方向不等于配置/新增净估/实现完成 | [展示方案](../guides/open-source-presentation.md)、[新场景](../design/ticket-operations-supplement.md)、[后继索引](planning-followups.json) |
 | **关注点研究深度** | 原62用户消息＋1目标→93核对，后继3条续源；全站、逐操作、Agent/skill/SOC/MCP及本轮跨步骤复验 | 📋 有界设计审计及逐点复核；F006已确认11组方向，Q07–Q13与生产实参按窗口绑定，未来业务/真实接入仍按包验收 | [当前复验](conversation-reaudit.md)、[固定对账](user-requirements-reconciliation.md)、[研究后继](research-supplement-status.json) |
 | **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收；未合入main/切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
-| **全项目路线重规划/详设** | 当前76父包/16子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/UAA-P01待具体启用场景确认；B09人工协作政策已确认待D14实施 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
+| **全项目路线重规划/详设** | 当前76父包/17子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/UAA-P01待具体启用场景确认；B09人工协作政策已确认待D14实施 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
 | **全能力互通/统一调用** | 同一能力所有入口进同一应用用例；库存/精确Schema、授权/幂等/receipt、源水位/订阅/预算/恢复与最小UI | 📋 设计与参考模型已验证；158候选共同runtime仍未实现，三链各有真实出口 | [能力合同](../design/capability-invocation-contract.md)、[三链详设](../design/capability-interconnect-detail.md)、[库存](../design/capability-operation-catalog.md) |
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |
 | **单维护者质量闭环** | 原测试先行/变异/真实门禁，短卡、原话动作证据与独立审查；planning-check本地/CI接线 | 📋 脚本有有效红绿及反例；当前完整门禁通过，远端required checks/分档未启用，G01–G06其他机制仍按包实施 | [standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)、[闭环册](planning-closure.json) |
-| **公司UAA接入** | 已有JWT/RT、本地三层鉴权、停用/会话吊销；尚无SSOProvider、企业三路MQ/投影或完整来源撤权 | 📋 E01-UAA-C/P/R已具名排期；C/P/R均未实施/未真实验收，内网首发独立硬门 | [现行UAA合同](../design/uaa-governance-integration.md)、[17号](../phase3/17-uaa-integration.md) |
+| **公司UAA接入** | 已有JWT/RT、本地三层鉴权、停用/会话吊销；尚无SSOProvider、企业三路MQ/投影或完整来源撤权 | 📋 E01-UAA-C/P/R已具名排期；C/P/R均未实施/未真实验收；真实企业激活独立硬门，不挡获准的独立模式入网开发试验 | [现行UAA合同](../design/uaa-governance-integration.md)、[17号](../phase3/17-uaa-integration.md) |
 | **文档维护** | 五仓各自docs统一分类；当前/目标/历史按角色导航，页头分效力；三个Go兄弟仓根协作入口引用同一公约 | ✅ 11-08归位及二次复核保留；11-13轻整理另作静态/引用与事实对账，不代表G06自动化或运行门禁已实施；旧失败/未覆盖仍按报告时点 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
 | **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站及遗留处置 | 📋 当前76包路线与分层设计；业务实现/全站改造/真实提供方另验 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[对账](user-requirements-reconciliation.md) |
