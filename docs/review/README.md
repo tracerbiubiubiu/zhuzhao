@@ -71,3 +71,6 @@
 ## 2026-11-13整会话补齐入口
 
 [原话对账](user-requirements-reconciliation.md)说明此前哪些确实不足及本次补法；[闭环机器册](planning-closure.json)绑定来源、六组动作、证据和必需检查。[净估注册表](planning-scope-estimates.json)补CE/LS及既有包复估；[独立审查](reports/design-gap-independent-review-2026-11-13.md)保留实际反例、修订和独立资格边界。最终完整门禁与提交以当批准确输入/结果为准，不能从这些入口存在推断已全绿。
+
+
+[审计窗口后的确认](planning-followups.json)承接原U63快照以后的明确答复；F001-B09已确认人工本地协作/自动暂停，原审计证据不扩写成覆盖后续全部消息。

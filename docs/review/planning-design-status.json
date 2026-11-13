@@ -407,7 +407,7 @@
       "api_schema_frozen": false,
       "remaining": [
         "本轮已交精确候选Schema与可执行参考模型/反例；产品DTO/DDL/真实提供方、完整当前批测试及多实例/恢复实现按本包开工窗冻结验证，不把模型称企业联调。",
-        "SOC来源缺口时人工新增本地协作待B09场景确认，默认关闭；真实SOC依I04实际供给条件。"
+        "B09已确认：来源陈旧下获授权协调者显式确认并填理由后可人工本地协作，自动派单暂停；产品接线/当前授权及来源标记仍须实现，真实SOC依I04供给条件。"
       ],
       "next_design_gate": "P6.E开工前",
       "reference_audit_state": "bounded_reference_executed_not_product_implementation"

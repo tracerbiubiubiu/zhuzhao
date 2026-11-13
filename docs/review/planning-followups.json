@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "purpose": "跟踪整会话审计固定U63窗口之后的新增输入/确认；不改写历史审计来源/证据，不冒用原闭环证明新答复已核验。",
+  "previous_audit": {
+    "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
+    "source_cutoff": "U63",
+    "ref": "docs/review/planning-closure.json"
+  },
+  "followups": [
+    {
+      "id": "F001-B09",
+      "source": {
+        "message_id": "01a1d4c1-9740-75f3-a331-f86fcb20b850",
+        "kind": "explicit_user_question_reply",
+        "question_item_id": "[\"request_user_input_async\",\"call_07322fd526d54132a76ae7dc2dd6fce6\",0]",
+        "answer": "允许确认后手工协作，自动派单暂停（推荐）"
+      },
+      "decision_id": "B09",
+      "decision_state": "owner_confirmed",
+      "design_ref": "docs/design/soc-collaboration-authorization.md",
+      "implementation_state": "planned_not_implemented",
+      "estimate_impact": "D14原7–11日/P6.E已含人工来源缺口确认/配置/反馈；无增量、无排程或依赖变化",
+      "required_conditions": [
+        "当前主体/职责/目标范围和授权新鲜度有效",
+        "用户明确确认数据陈旧且填写理由",
+        "只能人工创建已配置范围内的本地协作；保留来源revision/理由/真实操作者审计",
+        "自动依据旧状态派单暂停",
+        "不授专业封禁/隔离权；不伪造SOC事实或绕UAA授权"
+      ],
+      "validation": {
+        "state": "verified_design_followup",
+        "existing_behavior_cases": [
+          "S37",
+          "S38",
+          "S39",
+          "S40"
+        ],
+        "product_runtime_tests": "PASS: full existing main-product gates; not implementation or real SOC proof",
+        "independent_delta_review": "PASS",
+        "scope": "政策文档后继；未改产品代码、Schema/fixtures、API、权限、迁移、费用或排程",
+        "reference_behavior": "PASS:137 behavior,7 mutations,76 positive/9 negative schema; S37-S40 plus7 independent policy boundaries",
+        "source_verification": "PASS: exact public message ID, decoded question item ID, and answer compared to read_thread",
+        "historical_audit_preserved": true,
+        "cost_and_schedule_unchanged": true,
+        "full_main_gates": [
+          {
+            "name": "script-unit",
+            "exit": 0
+          },
+          {
+            "name": "swag",
+            "exit": 0
+          },
+          {
+            "name": "wire",
+            "exit": 0
+          },
+          {
+            "name": "lint",
+            "exit": 0
+          },
+          {
+            "name": "test-unit",
+            "exit": 0
+          },
+          {
+            "name": "test-integration",
+            "exit": 0
+          },
+          {
+            "name": "test-cover",
+            "exit": 0
+          },
+          {
+            "name": "build",
+            "exit": 0
+          }
+        ],
+        "acceptance": {
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_roundtrip_pairs": 81
+        },
+        "source_inputs_unchanged": true,
+        "planning_checks": "PASS:19 closure tests,19 schedule tests,and derived --check",
+        "document_checks": "PASS: five-repo links/anchors/fences/JSON and diff",
+        "cleanup": {
+          "owned_resources_remaining": 0,
+          "protected_containers_unchanged": 29
+        },
+        "first_tool_setup": "Redundant fresh pinned-tool installation interrupted; exact previously verified pinned swag/wire cache reused, original setup log preserved; no assertions changed",
+        "local_raw_evidence": ".codex/audits/soc-B09-confirmation-20261113/",
+        "real_SOC_integration": "NOT_RUN_NOT_IMPLEMENTED"
+      }
+    }
+  ]
+}

@@ -238,6 +238,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
   | Phase6前五仓重规划 | 五仓独立`codex/pre-phase6-replanning`工作区，仅文档/受控清单；root集成，子审查按仓归属；共享main保持只读。当前无功能实现、远端设置变更或生产发布 | 未推送；提交状态以实时Git为准 | 2026-11-11 |
+  | B09来源陈旧下人工协作确认 | 主仓`codex/capability-interconnect-design`窄文档后继；root唯一写入/显式路径提交，子审查只读。F001来源、策略与当前入口已同步，无在途路径/索引占用；专属验收资源已精确回收，29原容器指纹不变 | 只本地提交，不推送/合main；准确提交见Git | 2026-11-13 |
 
 2026-11-13能力互通设计交接：五仓各自隔离的`codex/capability-interconnect-design`基于上一设计/版本候选，仅改docs；子审查按文件归属编辑，root为唯一提交者。本轮只本地提交，不推送/合main/启业务开发或切共享栈；补充方向和未计价范围见[增量册](../review/capability-interconnect-supplement.md)。本轮结束后无文档路径/索引在途占用；后继仍核实时Git，不提交其他会话文件。运行门禁和真实集成不由文档核对代验。
 

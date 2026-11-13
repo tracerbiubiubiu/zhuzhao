@@ -49,6 +49,8 @@
 
 ---
 
+**B09后继确认（2026-11-13）**：SOC状态暂不可刷新时，当前仍获授权的协调者确认陈旧并填写理由后可以手工本地协作；自动派单暂停，专业封禁/隔离权及UAA授权边界不变。仅政策落档，D14仍7–11日/P6.E，未实现/启用；来源和验收见[后继索引](planning-followups.json)。此前整会话审计固定截至U63，后继答复不冒用其原始来源覆盖证明。
+
 ## 0. 项目一句话
 
 Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC → 资源级 ltree scope → 属主/委托）+ 资源级工单业务，单实例 Docker Compose（PG + Redis）部署，文档驱动开发（docs/ 与代码强同步）。
@@ -65,7 +67,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 |------|------|------|-------------|
 | **关注点研究深度** | 整会话62用户消息＋1目标→93核对；全站、逐操作与Agent/skill/SOC/MCP样例补齐 | 📋 本轮有界审计/候选证据与独立反例已补；未来业务/真实接入仍按包验收 | [对账](user-requirements-reconciliation.md)、[研究后继](research-supplement-status.json)、[独立审查](reports/design-gap-independent-review-2026-11-13.md) |
 | **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收；未合入main/切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
-| **全项目路线重规划/详设** | 当前76父包/16子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/B09/UAA-P01待具体启用场景确认 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
+| **全项目路线重规划/详设** | 当前76父包/16子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/UAA-P01待具体启用场景确认；B09人工协作政策已确认待D14实施 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
 | **全能力互通/统一调用** | 同一能力所有入口进同一应用用例；库存/精确Schema、授权/幂等/receipt、源水位/订阅/预算/恢复与最小UI | 📋 设计与参考模型已验证；158候选共同runtime仍未实现，三链各有真实出口 | [能力合同](../design/capability-invocation-contract.md)、[三链详设](../design/capability-interconnect-detail.md)、[库存](../design/capability-operation-catalog.md) |
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |
 | **单维护者质量闭环** | 原测试先行/变异/真实门禁，短卡、原话动作证据与独立审查；planning-check本地/CI接线 | 📋 脚本有有效红绿及反例；当前完整门禁通过，远端required checks/分档未启用，G01–G06其他机制仍按包实施 | [standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)、[闭环册](planning-closure.json) |
