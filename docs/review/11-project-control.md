@@ -1,12 +1,16 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-08文档二次复核**：按原始要求重核迁移消费者、内容一致性、现行状态、示例前置与阅读体验，修正初轮遗漏并补说明；本轮验证进度与覆盖边界见[二次复核记录](reports/documentation-recheck-2026-11-08.md)。无业务代码、配置、依赖或迁移变化。
->
-> **首次归位快照**：原225份文档逐项审读/处置，当轮274份Markdown、2532处本地引用检查零问题，11张图解析渲染通过；初红、默认skip及当时未推送边界保留在[首次整理记录](reports/documentation-reorganization-2026-11-08.md)。随后按所有者指令推送17笔，五仓精确HEAD CI通过；本轮二次复核另判，未合main或更新共享运行服务。维护约定见[documentation.md](../documentation.md)。
+> **用途**：核当前能力、迁移与开放债；改动后回填。**权威**：准确源码/运行收据及对应合同，设计与实现状态分列；旧流水见[历史记录](archive/project-control-history-2026-11-08.md)。本页不是所有者日常逐篇阅读清单。
 
-> **用途**：从能力矩阵、迁移地图和健康状态掌握当前项目；改动后同步本页。原逐日流水见[历史记录](archive/project-control-history-2026-11-08.md)，不再与当前摘要混排。
+## 阅读入口
+
+- 所有者先读[规划收口](planning-closeout.md)、[模块设计深度](planning-closeout.md#各phase和模块细化到哪里)与[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
+- 当前实现看下方能力矩阵/健康状态，再进入[模块说明](../modules/README.md)；未来范围和价格进入[总账](planning-backlog.md)及[互通增量](capability-interconnect-supplement.md)。
+- 固定时点证据和方法从[review入口](README.md)查阅；文档整理历史摘要已后置，不能用旧快照证明本轮运行已验收。
 
 ## 当前摘要（2026-11-13）
+
+- **文档入口轻整理**：五仓按当前实现/目标设计/运行验证/历史分流，新写或触及页头分设计与实施状态，补三个Go兄弟仓的简短AGENTS及主仓SSOT指针。主仓入口和当前总账资源说明校准为规划产能已确认、T0未启动；原71包/依赖/价格/排程及冻结来源不变。只改导航、效力与协作入口，未搬目录、改仓名或启用G06工具/分档门禁。
 
 - **测试先行与单维护者质量继承**：回核standards §9/§11/§12、审计及UI测试指南，保留原五步、当前批全量正/负/边界/权限先红后绿、并发至少8次稳定红验牙、完整门禁和准确候选。补有效红例、测试/CI削弱显影、独立验证及[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)，不新增平行质量平台或自动启分档。详见[现行公约](../standards.md#11-开发工作流先框架--先测试--分批实现)和[单维护者闭环](../design/engineering-governance.md#单维护者的最小质量闭环)。
 - **详设深度按模块分列**：[收口概览](planning-closeout.md#各phase和模块细化到哪里)从机器表投影原71包：P6有28详设/5组件原型/2逐页范围/7边界，P7有2详设/14边界，P8–P10为边界；总计30/5/2/34。已补数据/状态/候选接口/授权/并发/恢复细节，但旧Phase原稿未全部逐篇重写，准确DTO/DDL/测试与真实Provider待编码窗口；CE五项骨架单列，不能以规划落档直接开工。
@@ -34,7 +38,7 @@
 - **首页方向已确认（2026-11-12）**：UX01默认单侧栏+身份顶栏、页签/页脚不默认占首屏；UX02按当前处理/明确复核责任统计，与列表/角标同源去重，发起/CC不自动计，任务/消息按权限保留。原R3未保证改assigned_to，不为统计自动改派；U01先入口、U02普通责任、D10同批复核。UX01–03方向均已确认但未实现；UX03采用左右栏、选历史回填后明确重查，首期本机记录/当前结果时间，跨端历史TI接入时评审；见[领域合同](../design/business-lifecycle-contracts.md)。
 - **交接默认已确认（2026-11-12）**：B06按批准继任映射逐项复验后自动交接；B07预览确认接管plan后批量迁挂。无映射/目标或不能合法直接转则待处理，不猜上级/祖先、不复制原部门角色，历史不重写。仅方向落档，未执行HR同步或权限迁移。
 - **全路线与渐进承接**：O10确认以现有规模尽可能承接、优化扩展原6–9及更远能力；[169条连续性审计](roadmap-capability-continuity.md)补U08/I05/D17/D18等有限出口，主入口为[全项目路线](../roadmap.md)。
-- **分档门禁方向已确认**：ENG-D01b采用文档/离线原型/完整档，规则与混合变更走完整档；G03同步并验证后启用，现行规则尚未改变。本轮五仓完整门禁已补验。见[工程施工](../design/engineering-execution-design.md)。
+- **分档门禁方向已确认**：ENG-D01b采用文档/离线原型/完整档，规则与混合变更走完整档；G03同步并验证后启用，现行规则尚未改变。此前固定候选验证按[11-11重规划报告](reports/pre-phase6-replanning-2026-11-11.md)及各报告窗口解读；本次文档轻整理仅静态核对，未重跑完整业务门禁。实施门见[工程施工](../design/engineering-execution-design.md)。
 - **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险组职责/受限派单方案已确认：获授权管理者派已配置类型/组织，只读不能派单，不额外授通用建票权；SOC事件另按职责。风险权限/桥尚未实现。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
 - **组织赋角补核**：虚拟组可复用org_roles；现有角色展开尚未按组织status/deleted_at过滤，停组不等于已撤派生L1。C04/D06统一生命周期撤权与回归，详见[领域合同](../design/business-lifecycle-contracts.md)；未在本批修源码。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
@@ -64,7 +68,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |
 | **单维护者质量闭环** | 原测试先行/红绿/变异/真实门禁继承，短审阅卡、独立验证、测试/CI规则变更显影与分模块深度入口 | 📋 原纪律保留并补执行说明；G01–G06新机制仍待实施；本轮为文档静态核对，未启required checks或分档、未重跑业务验收 | [standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)、[短卡](../phase6/implementation-handoff.md#单维护者短审阅卡)、[深度概览](planning-closeout.md#各phase和模块细化到哪里) |
 | **公司UAA接入** | 已有JWT/RT、本地三层鉴权、停用/会话吊销；尚无SSOProvider、企业三路MQ/投影或完整来源撤权 | 📋 E01-UAA-C/P/R已具名排期；C/P/R均未实施/未真实验收，内网首发独立硬门 | [现行UAA合同](../design/uaa-governance-integration.md)、[17号](../phase3/17-uaa-integration.md) |
-| **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
+| **文档维护** | 五仓各自docs统一分类；当前/目标/历史按角色导航，页头分效力；三个Go兄弟仓根协作入口引用同一公约 | ✅ 11-08归位及二次复核保留；11-13轻整理另作静态/引用与事实对账，不代表G06自动化或运行门禁已实施；旧失败/未覆盖仍按报告时点 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
 | **后续重规划** | 五仓工程/目录/模块、专业供给、AI双轨、全站设计与全部遗留去向 | 📋 规划已落档；当前71包尚未实施，真实提供方与视觉待验分列 | [路线](../roadmap.md)、[总账](planning-backlog.md)、[报告](reports/pre-phase6-replanning-2026-11-11.md) |
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
@@ -368,6 +372,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **并发-P3-1** | Create 事务窗口嵌套池取死锁：`fileFieldKeys`/`keyGen.Next` 在 `Begin` 后再向连接池要第二个连接，锤击（3 Create+1 Move）在 4 连接池（pgxpool 默认 `max(4,GOMAXPROCS)`——CI 4 核即 4、本地多核 ≥8 永不复现）构成池耗尽循环等待——2026-10-24 起 CI 15 run 挂 7 笔（`TestBK11_CreateVsMoveHammer` 20m 挂死签名）；**生产 4 核部署 ≥4 并发 Create 同样可永久挂死**（B1-6 批1 `50f40a5`/S6 补遗 `f055c60` 两批引入嵌套点） | ✅ **已修复（Create=2026-10-26 `039aca6`；Update 同类残留=2026-10-27 随批）**：Create 两池调用提事务外 + testutil 池钉 4 + 锤击 30s 兜底（先红后绿）；**Update 残留**（`validateCustomData`/`applyFormulas` 在锁内窗口走池读——6 并发×MaxConns=4 自闭环死锁，外审核出+锤击实证 round 0 即挂）同批修：repo 增 `RowQuerier`+`ListTicketTypeFieldsTx`（pgx.Tx/池双满足），两 helper 接取数通道参数（Create 传池/Update 传 tx），`TestBK11_UpdateHammer` 先红（ctx deadline）后绿（0.12s）；复盘 SSOT = [13 号](./13-bk11-pool-deadlock-2026-10-26.md)。**后续状态**：dbtx ticket域试点已于2026-10-28批准、传播器与推广仍未实施；请求deadline未单独批准，随试点评估；humankey表化/schema缓存仍挂账。`resolveClosedOrMissing`及表达式q/ctx残留已由B06/B23独立修复，不能把它们继续计为未修或扩称传播器已落。有效决议见[13号§8](./13-bk11-pool-deadlock-2026-10-26.md#8-决策状态)。 |
 
 ---
+
+## 文档整理历史快照
+
+> **2026-11-08文档二次复核**：按原始要求重核迁移消费者、内容一致性、现行状态、示例前置与阅读体验，修正初轮遗漏并补说明；本轮验证进度与覆盖边界见[二次复核记录](reports/documentation-recheck-2026-11-08.md)。无业务代码、配置、依赖或迁移变化。
+
+> **首次归位快照**：原225份文档逐项审读/处置，当轮274份Markdown、2532处本地引用检查零问题，11张图解析渲染通过；初红、默认skip及当时未推送边界保留在[首次整理记录](reports/documentation-reorganization-2026-11-08.md)。随后按所有者指令推送17笔，五仓精确HEAD CI通过；本轮二次复核另判，未合main或更新共享运行服务。维护约定见[documentation.md](../documentation.md)。
 
 ## 7. 文档导航（docs/ 体系）
 

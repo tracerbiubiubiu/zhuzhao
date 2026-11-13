@@ -1,7 +1,7 @@
 {
   "date": "2026-11-12",
   "implementation_status": "business_not_started; G07A/G07B locally_validated_pending_PR_main",
-  "schedule_basis": "有依赖的实施波次；T0/实际投入未定，不承诺日历日期；每波开工按本包范围复估。",
+  "schedule_basis": "有依赖的实施波次；2026-11-13已确认1有效席位×每周5工程日规划产能，实际T0未启动且无严格截止；资源权威见docs/review/execution-schedule.json#/resource_assumptions，每波开工按本包范围复估。CE五项增量仍未计价，不将旧日窗当已含新增范围。",
   "waves": {
     "P6.0": {
       "name": "阶段实施入口",

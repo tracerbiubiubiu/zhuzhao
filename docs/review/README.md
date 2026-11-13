@@ -1,60 +1,67 @@
 # 审查与项目控制
 
-本目录把当前控制、审查方法和固定时点证据分开，避免从旧流水推导现状。维护规则见[文档维护约定](../documentation.md)。
+> **用途**：区分当前控制/规划、审查方法和固定证据；本页仅作导航。**权威**：各机器台账、领域合同及准确候选收据；历史报告不承担当前状态。维护规则见[文档约定](../documentation.md)。
 
 ## 从这里开始
 
-- [项目控制台](11-project-control.md)：当前能力矩阵、健康状态、81对迁移地图及历史分流出处。每次改动后回填；当前开放债与历史来源的现行去向进入[排期总账](planning-backlog.md)。
-- [全面审计指南](audit-playbook.md)：可复用的范围、覆盖、证据与复验方法。每次审计另建本地执行卡，不把当前基线写成永久方法。
-- [BK11死锁复盘与dbtx决议](13-bk11-pool-deadlock-2026-10-26.md)：根因/修复历史与已批准ticket试点共存；试点尚未实施，保留原路径供设计引用。
-
-## 正式报告
-
-首次目录整理与验证见[五仓文档归位记录](reports/documentation-reorganization-2026-11-08.md)，按原始要求再次核对的遗漏、修正与范围见[二次复核记录](reports/documentation-recheck-2026-11-08.md)；旧审计结论按各自冻结时点保留。
-
-[reports/README.md](reports/README.md)索引全部正式报告。追代码修复先读[11-08复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27最终收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，再按需要读[11-06全量总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及分批原证据。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号。
-
-报告保留原hash、失败、NOT_RUN、变异验证与运行边界；固定窗口通过不等于main/生产已承接。12/14权限矩阵已归reports，仍保留point-in-time性质；当前L1全角色/路由验证以B11所述窗口为准。
-
-## 历史档案与规划来源
-
-[archive/README.md](archive/README.md)收录原Phase1/2审查12篇，以及旧overview、执行计划和从控制台抽离的日期流水。合并报告可能是已删除原稿的唯一证据，保留发现编号、误报裁定与后继关系，不按日期批量删除。
-
-[安全运营平台规划](../proposal/secops-platform/README.md)的10篇资料含已拍决策与未来能力设计，属于proposal来源；当前实施状态回到各phase README。历史报告与未来方案承担不同职责。
-
-## 材料归属
-
-正式报告进入reports；原始执行卡、日志、截图、快照和临时探针只放ignored `.codex/audits/<轮次>/`。共享索引链接纳管内容，本机原始材料按报告说明恢复，不把本机路径当他人可用入口。
+- **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
+- **查已实现能力与开放债**：读[项目控制台](11-project-control.md)的能力矩阵、健康状态和迁移地图，再进入对应模块。
+- **查后续范围/先后/新增差额**：读[总账](planning-backlog.md)、[执行排期](execution-schedule.md)与[互通增量](capability-interconnect-supplement.md)。业务T0未启动；旧已计价范围不自动包含新五项骨架。
+- **复核一个结论**：按下方审查方法与准确时点报告找证据，不需从全部历史流水推导当前状态。
 
 ## 全项目路线重规划
 
-[2026-11-13互通/一致性增量](capability-interconnect-supplement.md)回应全能力外部API、共同调用通道、工单任务结果、AL双向自动链、MCP和全栈一致性；5个新增骨架未实现/未复估。原71包/13切片数字保留补充前基线，不能称已覆盖本次新增范围。
+### 人读结论与实施交接
 
-[全会话研究深度核验](reports/concern-depth-verification-2026-11-12.md)回读32条真实用户输入，逐点核65项；51项实质规划、10项部分深入、4项合理后置。[逐点证据](focus-depth-verification.json)给短原话、来源及尚不足的具体维度，不以纳入/排期代替研究。
+- [全项目路线](../roadmap.md)、[渐进演进](../design/project-evolution-strategy.md)、[新旧对照](roadmap-change-comparison-2026-11-12.md)：说明承接、范围和次序变化。
+- [设计/交接状态](planning-closeout.md)、[总账摘要](planning-backlog.md)、[13切片已计价排期](execution-schedule.md)：说明可审候选与剩余冻结窗口，不等于全部详设或实施完成。
+- [能力互通/一致性增量](capability-interconnect-supplement.md)：三条代表链、共同执行路径、全栈一致性及新增未计价范围。
 
-[正式审查报告](reports/pre-phase6-replanning-2026-11-11.md)给基线、发现、研究取舍和验证限制；[总账](planning-backlog.md)及其JSON/source-map负责71包与全部来源处置，旧台账保留追溯。
+### 机器权威与来源追溯
 
-[审计/详设收口](planning-closeout.md)给当前五步位置；[逐包设计深度](planning-design-status.json)与[所有者决策](planning-decisions.json)区分候选/边界、确认/未决，不再将规划落档等同全部详细设计完成。
+- [工作包JSON](planning-backlog.json)：唯一工作包/依赖/既有粗估；[设计深度](planning-design-status.json)、[所有者决策](planning-decisions.json)分别负责成熟度和政策状态。
+- [来源映射](planning-source-map.json)、[文档范围](planning-document-scope.json)及[能力连续性](roadmap-capability-continuity.md)/[逐原子JSON](roadmap-capability-continuity.json)：追溯旧模块价值及处置，来源数不等于独立功能数。
+- [关注点深度](focus-depth-verification.json)、[补研究窗口](research-supplement-status.json)：区分已深入、部分研究和合理后置，不用有排期替代研究完成。
+- [排程JSON](execution-schedule.json)、[互通增量JSON](capability-interconnect-supplement.json)：前者绑定冻结输入与已确认规划产能，后者保留新范围的未估状态。机器文件供校验/工具使用，日常阅读优先Markdown结论。
 
-[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)记录逐项承接与本轮纠漏；当前71包/511来源，依赖以总账的完整包/子出口语义核对，旧报告数量保持原时点。
+### 规划过程与核验出处
 
-[原规划能力连续性](roadmap-capability-continuity.md)与其JSON保留169条来源原子的价值/问题/更小路径/新波次；主读[全项目路线](../roadmap.md)和[渐进演进](../design/project-evolution-strategy.md)，不把Phase6近期切片当整个路线。
-
-[新旧对照](roadmap-change-comparison-2026-11-12.md)先说明变化；[新版执行排期](execution-schedule.md)给13个发布切片、首批PR及子出口依赖。[本轮补研究](reports/near-term-research-and-schedule-2026-11-12.md)记录FD01/02/04/05新增证据，[八组状态](research-supplement-status.json)保留尚未补齐的FD03/06/07/08窗口，不将有排期当作研究完成。
-
+[正式重规划审查](reports/pre-phase6-replanning-2026-11-11.md)、[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)、[全会话深度核验](reports/concern-depth-verification-2026-11-12.md)和[补研究/排期记录](reports/near-term-research-and-schedule-2026-11-12.md)保留各轮来源、证据和限制；数量/状态按当时冻结窗口理解，当前结论回到上方权威入口。
 
 ## 开工前版本维护
 
-[版本维护记录](reports/version-modernization-2026-11-12.md)汇总G07A/G07B前置的五仓源码/镜像/数据验证、首次失败与未执行边界；[组件清单](../../deployments/component-lock.json)与[恢复契约](../design/component-upgrade-data-contract.md)是实际版本与数据切换入口。
+[维护记录](reports/version-modernization-2026-11-12.md)汇总G07A/B隔离候选、数据恢复、首次失败与未执行边界；[组件清单](../../deployments/component-lock.json)和[恢复契约](../design/component-upgrade-data-contract.md)给版本/数据切换入口。本地候选验证不等于main或共享环境已切换。
 
 ## 企业UAA接入重核
 
-[现行UAA合同](../design/uaa-governance-integration.md)将公司指南转为去敏的身份/资源/角色/数据范围/撤权要求；E01-UAA-C/P/R已纳入总账，mock保留，真实接入是公司UAA纳管的企业模式首次正式激活的独立门。文档核对不代表完整设计冻结或真实集成验收通过。
+[现行UAA合同](../design/uaa-governance-integration.md)负责完整本地IAM与私有adapter企业模式、来源管理权及撤权边界。E01-UAA-C/P/R各有公共合同、公共实现和条件真实出口；mock长期保留，真实企业激活单独验收，尚未接通不影响独立模式。
 
 ## UAA与完整双模式后的全路线再审
 
-[再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)及[逐项记录](uaa-dual-mode-review.json)区分UAA前基线与上一双模式候选，修订8组跨授权/AI/前端/生产/排期问题；其当轮未计价状态已由UAA补估取代。决策册现33项：31方向确认（含单席相对排程及O13/O14互通/一致性方向）、B08待实际配置、UAA-P01先核公司约束再审业务取舍；不重复询问已确认原则。
+[再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)和[逐项记录](uaa-dual-mode-review.json)保留当轮跨授权/AI/前端/生产/排期问题；后继[UAA补估](uaa-implementation-estimate.md)/[唯一数字注册表](uaa-implementation-estimate.json)补齐有界工程量，[真实条件](uaa-real-integration-conditions.md)/[条件JSON](uaa-real-integration-conditions.json)给进入、产出、pre_apply、收口和具体业务确认场景。
 
-[UAA补估与共享扣重](uaa-implementation-estimate.md)已给C/P/R的2–3/25–39/13–22工程日，真实条件与具体确认场景单列；完整排期从冻结规范快照生成，资源已按2026-11-13确认的单席/每周5日绑定，T0取实际开工日且无严格截止，不把参考窗口当实际生产日期。
+当前决策数量/未决项以决策册为准；资源以排程resource_assumptions和已确认问答为准。历史“P/R未计价、投入未绑定”不覆盖后继补估；新增互通范围仍另列未计价，不混入UAA旧数字。
 
-2026-11-13已按确认的单席/每周5日给[完整相对排期](execution-schedule.md)；UAA[补估明细](uaa-implementation-estimate.md)及[真实条件和具体确认场景](uaa-real-integration-conditions.md)分别审阅，工程量、外部等待与正式切换门不混记。
+## 审查方法
+
+- [全面审计指南](audit-playbook.md)：范围、覆盖、证据、复验与收口；每轮执行卡另建本地，不将当前基线写成永久方法。
+- [BK11死锁复盘与dbtx决议](13-bk11-pool-deadlock-2026-10-26.md)：历史根因/修复与尚未实施的ticket试点分列。
+- [真实前端首组](reports/frontend-first-baseline-2026-11-12.md)：实际观察、失败过程和未覆盖范围，不代表全站验收。
+
+## 正式报告
+
+[reports/README.md](reports/README.md)索引固定时点报告。文档归位及复核见[首次整理](reports/documentation-reorganization-2026-11-08.md)和[二次复核](reports/documentation-recheck-2026-11-08.md)；代码收尾从[11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)、[B27收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)进入，需要时再读[11-06全量报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及原分批证据。
+
+报告保留原hash、失败、NOT_RUN、变异和运行边界；12/14权限矩阵已归reports，仍为固定时点材料。B17并入B16、B22并入B18、B06为两份续批，不造空文件凑号，也不将旧绿色改成本轮验收。
+
+## 历史档案与规划来源
+
+[archive/README.md](archive/README.md)保留原Phase1/2审查、旧overview/计划及控制台历史；合并报告可能是原发现的唯一证据，不按日期批量删除。[安全运营平台规划](../proposal/secops-platform/README.md)保留已拍决策与未来提案来源，适用/替代关系回到现行合同/阶段入口。
+
+## 材料归属
+
+正式报告进reports；原始执行卡、日志、截图、快照和临时探针只在ignored本地目录。共享索引只链接纳管内容，不把本机原材料路径当他人可用入口。当前规划仍保留原文件位置，本轮只分清导航；将来若迁入planning目录，须同批核消费者、引用和冻结来源，历史输入不回写。
+
+## 变更记录
+
+- 2026-11-13：将当前结论和机器权威前置，方法/固定报告/历史后置；保留原文件及独有出处，减少重复计数和日期追加式摘要。
