@@ -144,13 +144,21 @@ class ToolEnvironment:
 
     def apply(self, plan, approval, lose_response=False):
         self.record_call("risk.dispatch.apply")
-        self.recheck(plan, approval)
         ledger = json.loads(self.ledger.read_text())
         operation_id = plan["operation_id"]
         if operation_id in ledger:
-            if ledger[operation_id]["plan_hash"] != digest(plan):
+            record = ledger[operation_id]
+            if self.mutant != "ignore_apply_plan_binding" and record["plan_hash"] != digest(plan):
                 raise Stop("denied")
-            return ledger[operation_id]
+            if self.mutant == "revalidate_completed_operation":
+                self.recheck(plan, approval)
+            if self.mutant == "ignore_apply_replay_authorization":
+                return record
+            # A completed effect is a read, even when replay enters through apply.
+            # Current read authority still applies; old execution approval/knowledge
+            # no longer controls whether the already committed status can be read.
+            return self.current_receipt_projection(record)
+        self.recheck(plan, approval)
         receipt = {"operation_id": operation_id, "plan_hash": digest(plan), "effect_id": "demo-ticket-created-1", "actor": self.data["actor"], "target_org": plan["target_org"]}
         # A single atomic JSON record models one business transaction; it does not validate PG transactions.
         ledger[operation_id] = receipt
@@ -162,6 +170,9 @@ class ToolEnvironment:
     def receipt(self, plan):
         self.record_call("operation.receipt")
         record = json.loads(self.ledger.read_text())[plan["operation_id"]]
+        return self.current_receipt_projection(record)
+
+    def current_receipt_projection(self, record):
         if self.mutant != "ignore_receipt_authorization":
             if (self.data["scope_change"] or record["actor"] != self.data["actor"]
                     or not json.loads(self.effect_access_file.read_text())["visible"]
@@ -238,7 +249,42 @@ def run_agent(case, mode, mutant=None):
                 env.data["scope_change"] = False
             if mutant == "ignore_exact_approval":
                 approval["plan_hash"] = digest(plan)
-            if env.data["action"] in {"receipt_knowledge_revoked", "receipt_actor_changed", "receipt_effect_revoked"}:
+            if env.data["action"].startswith("apply_replay_"):
+                # Exercise the write/execute replay route, not only the dedicated receipt read.
+                # The first command has already committed before any authority/approval change.
+                env.apply(plan, approval)
+                action = env.data["action"]
+                if action in {"apply_replay_effect_revoked", "apply_replay_effect_revoked_after_restore"}:
+                    atomic_json(env.effect_access_file, {"visible": False})
+                elif action in {"apply_replay_knowledge_revoked", "apply_replay_knowledge_version_changed", "apply_replay_knowledge_digest_changed"}:
+                    current = json.loads(env.knowledge_file.read_text())
+                    if action == "apply_replay_knowledge_revoked":
+                        current["knowledge-public"]["visible"] = False
+                    elif action == "apply_replay_knowledge_version_changed":
+                        current["knowledge-public"]["version"] = "k8"
+                    else:
+                        current["knowledge-public"]["digest"] = hashlib.sha256(b"Changed after committed effect").hexdigest()
+                    atomic_json(env.knowledge_file, current)
+                elif action == "apply_replay_approval_expired":
+                    env.data["now"] = approval["expires_at"] + 1
+                elif action == "apply_replay_actor_changed":
+                    env.data["actor"] = "demo-other-user"
+                elif action == "apply_replay_scope_changed":
+                    env.data["scope_change"] = True
+                elif action == "apply_replay_target_scope_revoked":
+                    env.data["orgs"] = ["org-b"]
+                if action != "apply_replay_effect_revoked":
+                    saved = json.loads(env.checkpoint.read_text())
+                    restored = ToolEnvironment(env.data, folder, mutant)
+                    restored.drafts = list(saved["plan"]["risk_revisions"])
+                    restored.existing = saved["existing_risk_ids"]
+                    restored.refs = saved["plan"]["knowledge_refs"]
+                    plan = saved["plan"]
+                    env = restored
+                if action == "apply_replay_plan_changed":
+                    plan["target_org"] = "org-b"
+                receipt_result = env.apply(plan, approval)
+            elif env.data["action"] in {"receipt_knowledge_revoked", "receipt_actor_changed", "receipt_effect_revoked"}:
                 env.apply(plan, approval)
                 if env.data["action"] == "receipt_knowledge_revoked":
                     current = json.loads(env.knowledge_file.read_text())
@@ -453,6 +499,9 @@ def main():
         ("ignore_revocation", "agent"), ("ignore_exact_approval", "agent"),
         ("ignore_epoch", "soc"), ("risk_group_implies_event", "soc"), ("ignore_underlying_acl", "soc"),
         ("ignore_knowledge_recheck", "agent"), ("ignore_receipt_authorization", "agent"),
+        ("ignore_apply_replay_authorization", "agent"),
+        ("ignore_apply_plan_binding", "agent"),
+        ("revalidate_completed_operation", "agent"),
     ]:
         caught = []
         cases = fixtures["agent_cases"] if suite == "agent" else fixtures["soc_cases"]

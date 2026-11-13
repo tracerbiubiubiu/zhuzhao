@@ -52,6 +52,6 @@ A01先查询已有受权工单/情报与后续风险，不执行自由SQL。A02�
 
 新增私有设备X03在P6.3交付合成薄模块，首期已确认目录/状态/人工登录入口；真实供给P7逐项验。扩展/内网适配、工具链与PG/Redis候选升级详见[规划收口](../review/planning-closeout.md)，设计深度和owner待决不等于功能交付。
 
-E10在P6.1出口对风险Excel、业务工单导入、跨指纹人工merge分别裁决，获准增量P6.E按子估算/子窗口交付；旧触发不以D08/U03包名代销。最新逐项核对见[需求闭环审计](../review/reports/pre-phase6-requirements-audit-2026-11-11.md)。
+E10在P6.1出口对风险Excel核已确认需求的实际触发/形态，对业务工单导入、跨指纹人工merge核条件候选范围；获准增量P6.E按子估算/子窗口交付。Excel条件未满足不等于取消已确认效果，旧触发不以D08/U03包名代销。最新逐项核对见[需求闭环审计](../review/reports/pre-phase6-requirements-audit-2026-11-11.md)。
 
 本阶段仅是[全项目新路线](../roadmap.md)的近期切片。原6–9及更远价值的承接、简化/替代、分期见[连续性审计](../review/roadmap-capability-continuity.md)；完整删状态迁移CLI由D18/P7承接，不能以D01最小迁移冒称全覆盖。

@@ -199,10 +199,15 @@
     }
   ],
   "resource_binding": {
-    "question_pending": true,
+    "question_pending": false,
+    "capacity_confirmed": true,
+    "capacity_decision_ref": "planning-decisions.json",
+    "capacity_decision_id": "P-RESOURCE",
+    "effective_seats": 1,
+    "engineering_days_per_week": 5,
     "T0": null,
     "enterprise_target_date": null,
-    "default_scheduling_scenario": "1有效席位×每周5工程日，仅作参考；2席位是独立交付成立后的对照，不是已批准投入"
+    "default_scheduling_scenario": "已确认1有效席位×每周5工程日作为相对排期产能；T0尚未启动、企业启用日期未绑定且无严格截止。2席位仅作产能对照，不是已批准投入；本次设计落档不构成开工或企业激活指令。"
   },
   "privacy": "公开会话和仓库不收内部地址、秘密、真实报文或人员名单；由内网实施方核验并保留去敏回执。",
   "entry_and_activation_stages": [

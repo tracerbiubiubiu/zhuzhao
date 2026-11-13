@@ -262,7 +262,7 @@ fetch 统一目标配置为 `{source_ref, query_ref, params, mapping}`；旧 `{s
 
 对内网扩展发布的是带版本 DTO 的查询用例，而非 Go `DataFetcher`、`internal/model` 或 repository。目标 Query 请求为 `query_ref,parameters,resource_context,request_id`，调用方身份由认证确定；响应为 `status,records,source_ref,source_revision,observed_at,quality,warnings`，记录字段按 query_ref 允许集裁剪。普通用户无权自行切换成 service identity；服务查询要有明确受限数据集授权，`X-Operator` 仅归因不授予权限。
 
-首批 query_ref：`directory.user.resolve.v1`（稳定人员映射/启用态）、`directory.org-head.resolve.v1`（直接/指定层级负责人）、`asset.owner.resolve.v1`（CMDB 资产引用/owner 建议/受影响 org）、`intel.conclusion.lookup.v1`（已有情报结论及引用）。具体 HTTP 封装与注册接缝由平台扩展合同维护，不能因本文命名就声称入口已实现。
+首批 query_ref：`directory.user.resolve.v1`（稳定人员映射/启用态）、`directory.org-head.resolve.v1`（直接/指定层级负责人）、`asset.owner.resolve.v1`（CMDB 资产引用/owner 建议/受影响 org）、`intel.conclusion.lookup.v1`（已有情报结论及引用）。这些是连接器版本化query_ref；其中情报别名显式映射共同目录的`capability_id=intel.conclusion.lookup, contract_version=1`，不另造第二能力ID，也不与现有intel.query缓存路径混同。具体 HTTP 封装与注册接缝由平台扩展合同维护，不能因本文命名就声称入口已实现。
 
 CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner_external_ref`、`org_external_ref`、`observed_at`、深链和可展示快照。平台只做身份/组织解析与必要缓存；未知或歧义 owner 返回 unresolved，不按同名人工匹配。人工临时系统映射带 `origin=local_override`、责任人/理由/有效期，与真实 CMDB reference 分开；查询恢复不覆盖工单已确认的人工建议值，也不改变本地 risk owner，后者必须走改派命令。
 
@@ -534,7 +534,7 @@ P4“角色 code vs ID”和 P5“BK-21 顺序”已在 §5 给出技术推荐�
 
 ## 13. E10：人工迁移导入与跨指纹合并的有限处置
 
-三项旧挂账不是D05配置包导入、U03批量标签、同指纹去重或N:1整改关联的同义词。E10在**P6.1出口**分别给出范围/供给/价值裁决与合成样本，获准的有限增量在**P6.E**按独立子估算/子窗口验收；没有真实存量迁移或同事件多指纹场景时，可以明确退出本轮候选并说明重开所需证据，不能继续写“首诉求触发”而没有本次结论。该调查不依赖D08/D10已实施，后续增量写入才依赖领域合同。
+三项旧挂账不是D05配置包导入、U03批量标签、同指纹去重或N:1整改关联的同义词。**风险Excel是已确认但条件实施的需求**（连续性条目P6-MIG-01），P6.1核真实存量/模板/量级、条件是否满足及交付形态，不重新把该效果当作未批准愿望；条件未满足可记本批未触发，取消既定效果须另给影响并取得确认。工单业务导入和跨指纹merge仍属条件候选。E10在**P6.1出口**分别给出范围/供给/价值裁决与合成样本，获准的有限增量在**P6.E**按独立子估算/子窗口验收；没有真实存量迁移或同事件多指纹场景时，明确本批处置和重开证据，不能继续写“首诉求触发”而没有本次结论。该调查不依赖D08/D10已实施，后续增量写入才依赖领域合同。
 
 | 子项 | 候选最小形态与合同 | 不能代销的验收/退出证据 |
 |---|---|---|

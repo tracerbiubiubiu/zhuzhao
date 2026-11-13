@@ -1002,8 +1002,9 @@
         {
           "work_item": "E10",
           "decision_checkpoint": "P6.1出口；不等待后续实施依赖完成才调查/决策",
-          "delivery_wave": "P6.E",
-          "delivery_condition": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现"
+          "delivery_wave": "P6.1",
+          "delivery_condition": "已计2–4日仅调查/条件核验与裁决，在P6.1出口完成，不等待D08/D10实现；风险Excel保留已确认条件效果；获选实际导入/merge在P6.E另估逐项验收。",
+          "conditional_implementation_wave": "P6.E"
         },
         {
           "work_item": "D08",
@@ -2185,8 +2186,9 @@
         {
           "work_item": "E10",
           "decision_checkpoint": "P6.1出口；不等待后续实施依赖完成才调查/决策",
-          "delivery_wave": "P6.E",
-          "delivery_condition": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现"
+          "delivery_wave": "P6.1",
+          "delivery_condition": "已计2–4日仅调查/条件核验与裁决，在P6.1出口完成，不等待D08/D10实现；风险Excel保留已确认条件效果；获选实际导入/merge在P6.E另估逐项验收。",
+          "conditional_implementation_wave": "P6.E"
         },
         {
           "work_item": "D08",
@@ -3649,8 +3651,9 @@
         {
           "work_item": "E10",
           "decision_checkpoint": "P6.1出口；不等待后续实施依赖完成才调查/决策",
-          "delivery_wave": "P6.E",
-          "delivery_condition": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现"
+          "delivery_wave": "P6.1",
+          "delivery_condition": "已计2–4日仅调查/条件核验与裁决，在P6.1出口完成，不等待D08/D10实现；风险Excel保留已确认条件效果；获选实际导入/merge在P6.E另估逐项验收。",
+          "conditional_implementation_wave": "P6.E"
         },
         {
           "work_item": "D08",

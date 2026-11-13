@@ -31,7 +31,7 @@
       ],
       "due": "P7代表场景比较；A05/P8开工前",
       "remaining": "A05产品宿主与真实提供方按P8实现；样例未证明动态host优于确定性步骤，不预建通用Agent平台",
-      "result": "25场景×3路径75检查；真实脚本恢复与外部adapter序列化/有界本地host合成比较；含知识撤权/版本/digest与最小receipt反例，未调用真实模型/企业Agent"
+      "result": "35场景×3路径105检查；合成脚本恢复与外部adapter序列化/有界本地host比较；追加apply重放当前读权/最小receipt且不重执行的交叉反例，旧75检查范围保留；未调用真实模型/企业Agent"
     },
     {
       "id": "FD04",
@@ -90,7 +90,9 @@
   "all_focus_points_deeply_researched": false,
   "bounded_audit_supplements_executed": true,
   "limitations": "FD03/05/06/08为可执行参考模型和SDK样例；FD07为全路由合成夹具+真实组件审查，不是全部产品实现/真实内网联调。远期细节仍逐包冻结，所有结论需最终独立审查。",
-  "reference_model_total": "137行为（75 Agent/16 skill/46 SOC），7守卫变异，76正9负Schema；具体证明边界见样例",
+  "reference_model_total": "167行为（105 Agent/16 skill/46 SOC），10守卫变异，86正9负Schema；另有32组独立apply重放交叉检查；具体证明边界见样例",
+  "prior_reference_model_total": "137行为/7变异/76正9负Schema仅证明前一固定窗口；本轮新增30行为与3变异、10正Schema不倒写进旧报告。",
+  "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
   "bounded_supplement_review_complete": true,
   "all_future_focus_details_equally_frozen": false
 }

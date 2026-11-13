@@ -1,6 +1,6 @@
 # 全项目能力承接与渐进演进方案
 
-> **2026-11-13增补**：[统一能力合同](capability-invocation-contract.md)与[全栈一致性](ecosystem-consistency-contract.md)成为后续新增/触及能力的共同方向；不要求一次改造全部存量。先工单任务结果，再AL受权任务/源变化订阅，后扩Agent和复杂协同，均逐链验收。[5项增量](../review/capability-interconnect-supplement.md)尚未复估，原路线成本不能冒充已含新范围。
+> **2026-11-13增补**：[统一能力合同](capability-invocation-contract.md)与[全栈一致性](ecosystem-consistency-contract.md)成为后续新增/触及能力的共同方向；不要求一次改造全部存量。先工单任务结果，再AL受权任务/源变化订阅，后扩Agent和复杂协同，均逐链验收。[5项增量](../review/capability-interconnect-supplement.md)已按有限代表范围净估52–80工程日，并与LS及既有包替价扣重进入[现行净估与排期](../review/planning-scope-estimates.json)；不是全部未来厂商或未知场景的包干价。
 
 日期：2026-11-11。状态：全项目路线方案，尚未实施。承接现有五仓main和原Phase6–9/更远规划，融合AI、内网扩展、设备及工程治理。所有者明确要求尽可能承接原业务价值，同时允许纠正不合理设计，以适合当前规模的增量演进推进。主路线见[roadmap](../roadmap.md)，包/依赖/粗估以[总账](../review/planning-backlog.md)为唯一来源，逐来源承接见[连续性审计](../review/roadmap-capability-continuity.md)。
 
@@ -86,4 +86,4 @@ E09将首次生产硬出口、已选拓扑和可选优化分开：可先单副�
 
 完整独立模式与企业adapter模式长期共用公共核心，见[现行UAA合同](uaa-governance-integration.md)。P6.0冻结公共规则/合成矩阵，P6.1公共实现与双模式最小前端/运维，真实企业R自P6.1联调并在纳管企业模式首次正式激活前通过；独立产品不等待公司资源。任一模式首发都要过适用公共生产硬门，企业再追加R；G05/E09首发硬项可按真实上线窗口前移，不以全部P7完成为默认前提。
 
-三类流程、风险/SOC分责、Agent双轨、RAG/skill、设备人工入口及渐进拆分继续原安排。UAA只改变受管身份/授权来源与接入验收，不能顺势扩成新的SOC/IAM审批产品；也不撤销原有业务价值。公共实现与真实联调当前未计价，C出口逐项扣除D06/X01/X02、前端和CI复用后复估，原切片区间不能作为完整总工期。
+三类流程、风险/SOC分责、Agent双轨、RAG/skill、设备人工入口及渐进拆分继续原安排。UAA只改变受管身份/授权来源与接入验收，不能顺势扩成新的SOC/IAM审批产品；也不撤销原有业务价值。UAA已完成有界补估：C2–3、公共P25–39、真实R13–22工程日，复用及最小前端/运维边界见[UAA估算](../review/uaa-implementation-estimate.md)。当前完整总量和依赖以[派生排期](../review/execution-schedule.md)为准，真实提供方等待另列；未来获选条件功能仍须子估，不再引用补估前的旧切片区间。

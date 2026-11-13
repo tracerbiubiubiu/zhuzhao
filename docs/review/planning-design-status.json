@@ -423,7 +423,7 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "UX01默认壳层与UX02责任口径已确认；本包先修安全落点/Logo/空业务菜单，真实Vue路由/权限回归尚未验，不能因方向确认标实现完成"
+        "UX01默认壳层与UX02责任口径已确认；真实Vue现态路由/权限呈现已有全站基线审计，不等于U01修复。安全落点/Logo/空业务菜单仍待产品改造及改后真实路由/后端权限回归，不能因方向确认或现态审查标实现完成"
       ],
       "next_design_gate": "P6.0开工前"
     },
@@ -488,7 +488,7 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "UX03方向已确认；首期本机元数据/明确重查，跨端历史在TI接入窗口独立评审；真实Vue/Provider响应、并发与错误、窄屏/暗色/原生缩放尚未验"
+        "UX03方向已确认；真实Vue现态与合成响应、窄屏/亮暗/原生缩放已列全站审计证据；首期本机元数据/明确重查的产品改造、真实Provider响应及改后并发/错误/权限回归仍未验。跨端历史在TI接入窗口独立评审，不把现态样例审查当新功能完成"
       ],
       "next_design_gate": "P6.3开工前"
     },
@@ -1102,7 +1102,7 @@
     },
     {
       "work_item": "E10",
-      "wave": "P6.E",
+      "wave": "P6.1",
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md"
@@ -1111,9 +1111,9 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "P6.1出口以三项具体样本分别裁决；获准增量须独立详设/估算与P6.E子窗口，不以同名包代销"
+        "已计2–4日仅调查/触发核验与裁决，应在P6.1出口完成，不等待D08/D10实施；风险Excel保留已确认条件需求。获选实际导入/merge在P6.E另估、逐项验收，未选整套产品不计入当前包干。"
       ],
-      "next_design_gate": "P6.1出口裁决/P6.E获准增量开工前"
+      "next_design_gate": "P6.1出口；获选实际建设在P6.E独立子窗"
     },
     {
       "work_item": "U08",
@@ -1352,5 +1352,7 @@
       "next_design_gate": "P7开工前"
     }
   ],
-  "historical_uaa_estimate_ref": "docs/review/uaa-implementation-estimate.json"
+  "historical_uaa_estimate_ref": "docs/review/uaa-implementation-estimate.json",
+  "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
+  "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json"
 }

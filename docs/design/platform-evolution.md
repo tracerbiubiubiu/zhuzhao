@@ -1,6 +1,6 @@
 # 平台边界与演进设计
 
-> **2026-11-13共同接缝**：[能力互通](capability-invocation-contract.md)规定所有产品能力逐步外部API化、内部逻辑通道与三种执行profile；[一致性合同](ecosystem-consistency-contract.md)覆盖命名/目录/文档/API/消息/流程/视觉及验证。领域状态和专业供给边界继续保留，不因互通另建万能引擎。[增量分期](../review/capability-interconnect-supplement.md)区分愿景、近期骨架和未计价范围。
+> **2026-11-13共同接缝**：[能力互通](capability-invocation-contract.md)规定所有产品能力逐步外部API化、内部逻辑通道与三种执行profile；[一致性合同](ecosystem-consistency-contract.md)覆盖命名/目录/文档/API/消息/流程/视觉及验证。领域状态和专业供给边界继续保留，不因互通另建万能引擎。[增量分期](../review/capability-interconnect-supplement.md)与[三链详设](capability-interconnect-detail.md)已有有界准确候选、样例和净估，纳入[现行排程](../review/execution-schedule.md)；未来额外场景与真实容量仍逐包细化，不把代表样例当产品实现或真实接入。
 
 日期：2026-11-11。状态：本轮授权的规划修订；本文描述目标合同，未实施能力仍以[控制台](../review/11-project-control.md)和[总账](../review/planning-backlog.md)为准。现状架构见[architecture](architecture.md)。
 

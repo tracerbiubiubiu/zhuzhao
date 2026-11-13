@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **本轮全会话复验（2026-11-13）**：[65条用户输入/93点当前矩阵](conversation-reaudit.md)续上旧U63截止，修正计价/状态/产能及E10调查窗口；[13组剩余议程](owner-decision-agenda.md)全部保持未批准候选/未来实参。B09保持已确认，产品业务与真实内网尚未实施；参考模型apply重放当前读权已补新增交叉反例。
+
 > **用途**：核当前能力、迁移与开放债；改动后回填。**权威**：准确源码/运行收据及对应合同，设计与实现状态分列；旧流水见[历史记录](archive/project-control-history-2026-11-08.md)。本页不是所有者日常逐篇阅读清单。
 
 ## 阅读入口
@@ -65,7 +67,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **关注点研究深度** | 整会话62用户消息＋1目标→93核对；全站、逐操作与Agent/skill/SOC/MCP样例补齐 | 📋 本轮有界审计/候选证据与独立反例已补；未来业务/真实接入仍按包验收 | [对账](user-requirements-reconciliation.md)、[研究后继](research-supplement-status.json)、[独立审查](reports/design-gap-independent-review-2026-11-13.md) |
+| **关注点研究深度** | 原62用户消息＋1目标→93核对，后继3条续源；全站、逐操作、Agent/skill/SOC/MCP及本轮跨步骤复验 | 📋 有界设计审计及当前逐点复核；未来业务/真实接入仍按包验收，13组议程未获新批准 | [当前复验](conversation-reaudit.md)、[固定对账](user-requirements-reconciliation.md)、[研究后继](research-supplement-status.json) |
 | **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收；未合入main/切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
 | **全项目路线重规划/详设** | 当前76父包/16子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/UAA-P01待具体启用场景确认；B09人工协作政策已确认待D14实施 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
 | **全能力互通/统一调用** | 同一能力所有入口进同一应用用例；库存/精确Schema、授权/幂等/receipt、源水位/订阅/预算/恢复与最小UI | 📋 设计与参考模型已验证；158候选共同runtime仍未实现，三链各有真实出口 | [能力合同](../design/capability-invocation-contract.md)、[三链详设](../design/capability-interconnect-detail.md)、[库存](../design/capability-operation-catalog.md) |

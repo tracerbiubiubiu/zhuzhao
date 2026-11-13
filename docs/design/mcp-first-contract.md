@@ -40,7 +40,7 @@ P7组合至少固定“本仓adapter构建摘要＋SDK1.8.0＋规范2026-07-28�
 
 - `zhuzhao_ticket_list_v1`：映射I01只读工单列表用例，L1按既有列表GET，领域`Service.List`按当前actor注入范围。默认只查“处理人=我”；`assignee=visible`只去掉处理人条件，绝不去掉可见范围。首版不提供时间解析/动态排序/跨页聚合参数；自然语言澄清在A01完成后给这个工具确定参数。
 - `zhuzhao_ticket_get_v1`：映射同一`Service.Get`，L1按详情GET，L2逐票。`ticket_id`必须可解析为正int64；不能从字符串拼出任意路径。返回正文纯文本投影、来源/取数时刻及平台相对链接；内部备注、附件、任意custom_data不默认进入模型。
-- `mock_intel_lookup_v1`：是P7消费侧的**合成外部server工具名**，本地能力为`intel.conclusion.lookup.v1`、沿用`intel:query`。真实提供方可能使用不同名称/权限，须私有adapter显式映射。不得把这个mock名称当成已确认的企业接口。
+- `mock_intel_lookup_v1`：是P7消费侧的**合成外部server工具名**，本地候选为`capability_id=intel.conclusion.lookup, contract_version=1`，登记于[共同能力库存](capability-operation-catalog.json)，沿用`intel:query`。它与既有`intel.query`的全局缓存路径分开；旧连接器query_ref可保留显式别名映射，不形成另一能力ID。真实提供方可能使用不同名称/权限，须私有adapter显式映射。不得把这个mock名称当成已确认的企业接口。
 
 输入是JSON Schema2020-12的封闭对象，不接收`actor_id`、角色、组织范围、token、endpoint、SQL或任意URL。工具描述的readOnly等注解只帮助呈现，工具目录的受信配置与实时授权才决定能否执行。输出提供`outputSchema`并验证`structuredContent`，文本文块仅为受权摘要，不额外放出比结构化对象更多的数据。[官方工具合同](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 
@@ -212,7 +212,7 @@ MCP Bearer不转发到SOAR、模型或外部MCP。外部工具用自己的AS/tok
 
 ## 6. P7消费外部工具的完整最薄旅程
 
-使用合成、已批准共享集合`mock-shared-intel`：有`intel:query`的用户在U08选择`intel.conclusion.lookup.v1`，输入`{"indicator_type":"domain","value":"indicator.example"}`，平台调用登记的`mock_intel_lookup_v1`，返回来源/版本/取数时刻与明确结论。首版无需LLM；A01/领域Agent以后消费同一Query。
+使用合成、已批准共享集合`mock-shared-intel`：有`intel:query`的用户在U08选择候选`intel.conclusion.lookup`的合同版本`1`，输入`{"indicator_type":"domain","value":"indicator.example"}`，平台调用登记的`mock_intel_lookup_v1`，返回来源/版本/取数时刻与明确结论。首版无需LLM；A01/领域Agent以后消费同一Query。
 
 ### 6.1 连接声明与发现
 

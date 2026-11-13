@@ -94,6 +94,41 @@
         "local_raw_evidence": ".codex/audits/soc-B09-confirmation-20261113/",
         "real_SOC_integration": "NOT_RUN_NOT_IMPLEMENTED"
       }
+    },
+    {
+      "id": "F002-remaining-decisions",
+      "source": {
+        "message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
+        "kind": "user_request",
+        "summary": "一次列清剩余事项、具体场景、建议和遗漏状态，先确认而不开发"
+      },
+      "decision_state": "no_new_owner_answer",
+      "agenda_ref": "docs/review/owner-decision-agenda.json",
+      "implementation_state": "not_started",
+      "approval_boundary": "Q01–Q13为助手候选，不是所有者批准；B08/UAA-P01状态不变。",
+      "validation": {
+        "state": "verified_current_design_audit",
+        "audit_ref": "docs/review/conversation-reaudit.json",
+        "owner_recommendations_approved": false,
+        "business_implementation_started": false
+      }
+    },
+    {
+      "id": "F003-conversation-reaudit",
+      "source": {
+        "message_id": "01a1d4f3-151f-76f2-a149-eb1a7596925d",
+        "kind": "user_request",
+        "summary": "再验证所有会话要点全部审计并落档"
+      },
+      "audit_ref": "docs/review/conversation-reaudit.json",
+      "implementation_state": "no_business_development",
+      "approval_boundary": "允许审计/文档及审计参考反例修正；不视为Q01–Q13批准、业务开工、push或main合入。",
+      "validation": {
+        "state": "verified_current_design_audit",
+        "audit_ref": "docs/review/conversation-reaudit.json",
+        "owner_recommendations_approved": false,
+        "business_implementation_started": false
+      }
     }
   ]
 }

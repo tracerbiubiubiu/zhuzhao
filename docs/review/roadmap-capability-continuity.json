@@ -3411,10 +3411,11 @@
         "E10"
       ],
       "current_waves": [
+        "P6.1",
         "P6.E"
       ],
       "current_disposition": "conditional_value_review_with_named_window",
-      "first_delivery_rule": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现",
+      "first_delivery_rule": "E10已计2–4日调查/条件核验在P6.1出口完成；风险Excel按已确认条件承接，工单导入/merge为条件候选；获选实际建设P6.E按独立子估算验收，不以调查销实现。",
       "phasing_recommendation": "先按E10/P6.E的最薄范围；增强及条件取舍在P6.1出口；不等待后续实施依赖完成才调查/决策明确，不将旧提案自动升级必做",
       "next_decision_windows": [
         "P6.1出口；不等待后续实施依赖完成才调查/决策"
@@ -3450,10 +3451,11 @@
         "E10"
       ],
       "current_waves": [
+        "P6.1",
         "P6.E"
       ],
       "current_disposition": "conditional_value_review_with_named_window",
-      "first_delivery_rule": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现",
+      "first_delivery_rule": "E10已计2–4日调查/条件核验在P6.1出口完成；风险Excel按已确认条件承接，工单导入/merge为条件候选；获选实际建设P6.E按独立子估算验收，不以调查销实现。",
       "phasing_recommendation": "先按E10/P6.E的最薄范围；增强及条件取舍在P6.1出口；不等待后续实施依赖完成才调查/决策明确，不将旧提案自动升级必做",
       "next_decision_windows": [
         "P6.1出口；不等待后续实施依赖完成才调查/决策"
@@ -3489,10 +3491,11 @@
         "E10"
       ],
       "current_waves": [
+        "P6.1",
         "P6.E"
       ],
       "current_disposition": "conditional_value_review_with_named_window",
-      "first_delivery_rule": "P6.1出口决定，P6.E在依赖满足后交获准有限增量；不把本包裁决完成当作导入/merge功能实现",
+      "first_delivery_rule": "E10已计2–4日调查/条件核验在P6.1出口完成；风险Excel按已确认条件承接，工单导入/merge为条件候选；获选实际建设P6.E按独立子估算验收，不以调查销实现。",
       "phasing_recommendation": "先按E10/P6.E的最薄范围；增强及条件取舍在P6.1出口；不等待后续实施依赖完成才调查/决策明确，不将旧提案自动升级必做",
       "next_decision_windows": [
         "P6.1出口；不等待后续实施依赖完成才调查/决策"

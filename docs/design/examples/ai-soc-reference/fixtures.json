@@ -901,6 +901,347 @@
         ],
         "receipt_result": null
       }
+    },
+    {
+      "id": "A26",
+      "description": "write endpoint replay after target read permission is revoked in the same environment",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_effect_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A27",
+      "description": "write endpoint replay after target read permission is revoked and checkpoint restored",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_effect_revoked_after_restore",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A28",
+      "description": "committed effect replay after knowledge ACL withdrawal returns only current-readable minimum receipt",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_knowledge_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "receipt_result": {
+          "operation_id": "demo-operation-1",
+          "status": "committed",
+          "effect_id": "demo-ticket-created-1"
+        },
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "knowledge_refs": []
+      }
+    },
+    {
+      "id": "A29",
+      "description": "committed effect replay after original execution approval expires does not execute again",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_approval_expired",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "receipt_result": {
+          "operation_id": "demo-operation-1",
+          "status": "committed",
+          "effect_id": "demo-ticket-created-1"
+        },
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A30",
+      "description": "same operation with changed target plan must conflict even after the effect committed",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_plan_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A31",
+      "description": "another actor cannot replay the original operation on its write endpoint",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_actor_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "knowledge_refs": []
+      }
+    },
+    {
+      "id": "A32",
+      "description": "current operation scope withdrawal denies write endpoint replay without a new effect",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_scope_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A33",
+      "description": "target leaves current organization scope before write endpoint replay",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_target_scope_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "receipt_result": null,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "knowledge_refs": []
+      }
+    },
+    {
+      "id": "A34",
+      "description": "committed effect replay after knowledge version changes reads minimum receipt only",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_knowledge_version_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "receipt_result": {
+          "operation_id": "demo-operation-1",
+          "status": "committed",
+          "effect_id": "demo-ticket-created-1"
+        },
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "knowledge_refs": []
+      }
+    },
+    {
+      "id": "A35",
+      "description": "committed effect replay after knowledge content changes reads minimum receipt only",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "apply_replay_knowledge_digest_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "receipt_result": {
+          "operation_id": "demo-operation-1",
+          "status": "committed",
+          "effect_id": "demo-ticket-created-1"
+        },
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "knowledge_refs": []
+      }
     }
   ],
   "skill_cases": [

@@ -46,7 +46,7 @@ P8 开工前用同一组模型适配、工具授权、暂停确认、恢复不�
 - **独立 Python/TS 组件路径**：LangGraph/LangChain 有现成 Agent 与持久化/暂停恢复能力，适合确实超出固定应用步骤的领域 host；代价是新增语言、依赖与受控运行进程。恢复会重进节点，节点内已发生的副作用仍需平台幂等，不能因框架有 checkpoint 就删除业务凭证。[官方中断 API](https://reference.langchain.com/python/langgraph/types/interrupt)、[官方图 API](https://github.com/langchain-ai/docs/blob/main/src/oss/langgraph/graph-api.mdx)
 - **确定性应用步骤路径**：P6/P7 的只读查询、草案生成和确认后提交，直接复用现有模型 Provider、业务门面和 TR 即可，不为了这些固定切片引入完整 Agent runtime。此路径仍须版本、错误/幂等、权限和最小等待状态，不以“简单”豁免质量约束。
 
-**2026-11-13后继补研**：已按[领域Agent代表场景](domain-agent-reference-scenario.md)运行确定性步骤、企业Agent协议stub、有限host模型三条路径；25个同场景/反例各跑三次，使用相同授权、批准和效果守卫。后继独立审查补A20–A25的知识来源撤权/版本/digest与receipt当前权限窗口，原57条不包含这18条新增回归。当前固定摘要/草案首选确定性步骤，保留A05/A07双轨及有限host范围。没有调用真实模型/企业Agent或安装实际Agent框架，不能声称任何SDK/厂商已适配；真实质量/配额/取消/登录仍归接入门。候选名称不是新增依赖清单。
+**2026-11-13后继补研**：已按[领域Agent代表场景](domain-agent-reference-scenario.md)运行确定性步骤、企业Agent协议stub、有限host模型三条路径；当前35个场景×3为105个Agent检查，另有skill/SOC检查。先前A20–A25补知识来源撤权/版本/digest与receipt当前权限；本次A26–A35再补apply入口重放旧效果的当前读权/最小投影和不重复执行，旧57/75条不冒称包含后继竞争窗口。当前固定摘要/草案首选确定性步骤，保留A05/A07双轨及有限host范围。没有调用真实模型/企业Agent或安装实际Agent框架，不能声称任何SDK/厂商已适配；真实质量/配额/取消/登录仍归接入门。候选名称不是新增依赖清单。
 
 ## 2. 自然语言查询、建单和计划任务的三个独立切片
 
@@ -97,7 +97,7 @@ MCP 通用客户端的 HTTP 授权按当时适用的 MCP/OAuth 规范实现并�
 
 长任务先把 invocation 查询、授权取结果和取消能力做稳；客户端支持时再映射 MCP Tasks 扩展，不要求首批所有客户端都支持。MCP transport cancel、runtime cancel request 与外部副作用已取消不是同一事实。[Tasks 扩展](https://modelcontextprotocol.io/extensions/tasks/overview)
 
-**窗口：P6.0定最小身份/能力合同；P7/A03-R同时交两个只读发布工具和一个外部只读消费样本，A03-W在精确批准/receipt门后交有限确认写适配；P8/A05–A07扩真实企业Agent、逐主体ACL/缓存、长任务及Tasks/Skills。** 不再将外部MCP消费整体后移P8。准确首批工具、Schema、SDK/transport、OAuth与本地IAM路径见[首批合同](mcp-first-contract.md)及[受控样本](mcp-first-contract.schema.json)；当前只是设计候选，未做协议联调。内部UI第一条查询仍可直接消费同一能力层。
+**窗口：P6.0定最小身份/能力合同；P7/A03-R同时交两个只读发布工具和一个外部只读消费样本，A03-W在精确批准/receipt门后交有限确认写适配；P8/A05–A07扩真实企业Agent、逐主体ACL/缓存、长任务及Tasks/Skills。** 不再将外部MCP消费整体后移P8。准确首批工具、Schema、SDK/transport、OAuth与本地IAM路径见[首批合同](mcp-first-contract.md)及[受控样本](mcp-first-contract.schema.json)。官方SDK的合成HTTP回环互操作已有独立参考证据；产品能力、真实企业AS/本地身份桥和真实专业提供方联调仍未完成，不能将两种验证混写成全部未验或全部已接通。内部UI第一条查询仍可直接消费同一能力层。
 
 ## 4. RAG 与 skill：优先复用供给，保留实时权限
 

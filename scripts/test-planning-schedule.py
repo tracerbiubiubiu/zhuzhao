@@ -145,6 +145,41 @@ class RepositoryModelTests(unittest.TestCase):
         self.assertNotIn('UAA-R-ENGINEERING',nodes)
         for n in nodes.values():self.assertNotIn('UAA_TEST_ENTRY_INPUT_READY',n['dependencies'])
 
+    def test_e10_investigation_has_early_scope_and_no_late_risk_dependency(self):
+        item=next(x for x in self.backlog['work_items'] if x['id']=='E10')
+        self.assertEqual(item['wave'],'P6.1')
+        self.assertEqual(m.pair(item['estimate_engineering_days']),(2,4))
+        self.assertEqual(set(item['dependencies']),{'D01','D03','X02'})
+        nodes,_,_=self.build()
+        self.assertEqual(nodes['E10']['slice'],'S04')
+        required=set()
+        def ancestors(k):
+            for dependency in nodes[k]['dependencies']:
+                if dependency not in required:
+                    required.add(dependency);ancestors(dependency)
+        ancestors('E10')
+        self.assertTrue({'D01','D03','X02'}<=required)
+        self.assertFalse({'D08','D10'}&required)
+        # The priced investigation can complete with later risk implementation absent.
+        isolated={k:v for k,v in nodes.items() if k in required|{'E10'}}
+        for endpoint in [0,1]:
+            self.assertGreater(m.run_scheduler(isolated,1,endpoint)['records']['E10']['finish'],0)
+
+    def test_e10_investigation_completes_within_p61_before_late_risk_implementation(self):
+        for include_r in [False,True]:
+            for reserve in [False,True]:
+                nodes,_,_=self.build(include_r,reserve)
+                for seats in [1,2]:
+                    for endpoint in [0,1]:
+                        run=m.run_scheduler(nodes,seats,endpoint)
+                        records=run['records'];finish=records['E10']['finish']
+                        other_p61_exit=max(records[k]['finish'] for k,n in nodes.items() if n['wave']=='P6.1' and k!='E10')
+                        # E10 may be the final P6.1 task; it must enter that phase's
+                        # active window, rather than waiting behind later risk work.
+                        self.assertLessEqual(records['E10']['start'],other_p61_exit)
+                        self.assertLessEqual(finish,records['D08']['start'])
+                        self.assertLessEqual(finish,records['D10']['start'])
+
     def test_complete_calculation_and_serialization_are_deterministic(self):
         a=m.calculate(ROOT);b=m.calculate(ROOT);self.assertEqual(a,b)
         encoded=m.dump_schedule(a);self.assertEqual(json.loads(encoded),a)

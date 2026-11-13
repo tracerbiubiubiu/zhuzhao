@@ -68,7 +68,7 @@ AL旧`/al/api/v1/...`仍是已有绑定；迁移到共同受权AL用例时，leg
 
 ## 5. 缺失产品家族与验证边界
 
-风险、HR同步、UAA企业adapter/切换、设备、LLM/Agent/MCP、通用capability runtime、AL效果receipt、AL源feed、受控订阅和跨入口预算分别在JSON`future_or_missing_capability_families`，全部有原载体及当前missing，不列成现有API。AI样例的risk.query/ticket.linked.query/knowledge.query/risk.dispatch.preview/apply/operation.receipt版本另列，均是候选名。
+风险、HR同步、UAA企业adapter/切换、设备、LLM/Agent/MCP、通用capability runtime、AL效果receipt、AL源feed、受控订阅和跨入口预算分别在JSON`future_or_missing_capability_families`，全部有原载体及当前missing，不列成现有API。AI样例的risk.query/ticket.linked.query/knowledge.query/risk.dispatch.preview/apply/operation.receipt版本另列，均是候选名。外部MCP共享情报消费统一登记候选`intel.conclusion.lookup`、合同版本`1`；它不与当前`intel.query`缓存路径合并，也不计入158项现有映射的已实现数量。
 
 本次实际运行：三仓router构造枚举、全生产Go AST解析、handler→service/helper映射、非HTTP声明逐项裁定、UI调用匹配和来源路径/符号/哈希核对。**未运行现行业务数据库路径/跨仓副作用/多实例故障链，不把库存和schema通过写成当前实现正确或未来三链验收通过**。目标三链、精确Schema、合成正反例、净增预算与运行验收矩阵见[互通详设](capability-interconnect-detail.md)。
 

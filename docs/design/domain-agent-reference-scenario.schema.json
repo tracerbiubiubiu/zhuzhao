@@ -84,7 +84,17 @@
             "knowledge_digest_changed",
             "receipt_knowledge_revoked",
             "receipt_actor_changed",
-            "receipt_effect_revoked"
+            "receipt_effect_revoked",
+            "apply_replay_effect_revoked",
+            "apply_replay_effect_revoked_after_restore",
+            "apply_replay_knowledge_revoked",
+            "apply_replay_approval_expired",
+            "apply_replay_plan_changed",
+            "apply_replay_actor_changed",
+            "apply_replay_scope_changed",
+            "apply_replay_target_scope_revoked",
+            "apply_replay_knowledge_version_changed",
+            "apply_replay_knowledge_digest_changed"
           ]
         },
         "scope_change": {

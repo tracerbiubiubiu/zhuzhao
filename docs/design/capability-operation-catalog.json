@@ -15485,6 +15485,13 @@
   ],
   "planned_canonical_ids": [
     {
+      "capability_id": "intel.conclusion.lookup",
+      "contract_version": "1",
+      "status": "planned_not_current_api_or_runtime_registration",
+      "design_ref": "docs/design/mcp-first-contract.md",
+      "boundary": "首批受审共享情报集合的外部MCP消费；不是既有intel.query全局缓存路径，不新增当前已实现能力计数。"
+    },
+    {
       "capability_id": "risk.query",
       "contract_version": "1",
       "status": "planned_not_current_api_or_runtime_registration"

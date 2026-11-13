@@ -141,7 +141,7 @@
 - 理由：有存量迁移才需要导入工具，但“首次诉求”会无限等待；风险Excel与标准feed有不同交付。
 - 当前条件：E10在P6.1明确模板/量级/来源命名空间与重复策略；可由私有一次性工具转feed，模板和行报告仍需交或明确未选原因。
 - 现存证据：[business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §13 E10：风险Excel/工单业务导入/跨指纹merge分别裁决; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §8：专业来源、周期、处置与N:1整改单
-- 承接与窗口：E10 (P6.1出口；不等待后续实施依赖完成才调查/决策; P6.E); D08 (本波开工前; P6.2); X02 (本波开工前; P6.1)
+- 承接与窗口：E10 (P6.1出口调查/条件核验；不等待后续实施依赖; P6.1；获选实际建设P6.E另估); D08 (本波开工前; P6.2); X02 (本波开工前; P6.1)
 - 出口与未决：逐行错误/重复/完整快照/部分成功/断点重放；获选有限增量P6.E独立估算，不以API替代Excel效果。；真实提供方/参数/配置未定时仍按窗口复核，不称取消或完成。
 
 **P6-T013 · 评分模型/级别映射规则 — 专业替代**
@@ -275,7 +275,7 @@
 - 理由：工单业务批量导入与配置包、批量标签不同；泛“触发”没有样本/权限/回滚依据。
 - 当前条件：E10/P6.1取固定类型发布版、允许字段与creator/owner/附件白名单，逐行调用工单用例；P6.E获选有限CLI或页。
 - 现存证据：[business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §13 E10：风险Excel/工单业务导入/跨指纹merge分别裁决; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §3：发布/实例钉版/预检/同名最小迁版; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §5：类型查看/创建/参与管理和风险组职责
-- 承接与窗口：E10 (P6.1出口；不等待后续实施依赖完成才调查/决策; P6.E); D08 (本波开工前; P6.2); U03 (本波开工前; P6.3); X02 (本波开工前; P6.1)
+- 承接与窗口：E10 (P6.1出口调查/条件核验；不等待后续实施依赖; P6.1；获选实际建设P6.E另估); D08 (本波开工前; P6.2); U03 (本波开工前; P6.3); X02 (本波开工前; P6.1)
 - 出口与未决：非法身份/旧schema/部分成功/重复行/响应丢失重放；必须有每行receipt，不直接写表。；真实提供方/参数/配置未定时仍按窗口复核，不称取消或完成。
 
 **P6-T027 · 每日敞口快照表 — 保留**
@@ -447,7 +447,7 @@
 - 理由：多指纹同事件是合理人工合并场景，但“业界标配”与首次诉求都不足以默认数据合并。
 - 当前条件：E10/P6.1取不同owner/活动链接/接受结论冲突样本，P6.E只交获准的主从回链与逐项补偿。
 - 现存证据：[business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §13 E10：风险Excel/工单业务导入/跨指纹merge分别裁决; [business-lifecycle-contracts.md](../../docs/design/business-lifecycle-contracts.md) / §8：专业来源、周期、处置与N:1整改单
-- 承接与窗口：E10 (P6.1出口；不等待后续实施依赖完成才调查/决策; P6.E); D08 (本波开工前; P6.2); X02 (本波开工前; P6.1)
+- 承接与窗口：E10 (P6.1出口调查/条件核验；不等待后续实施依赖; P6.1；获选实际建设P6.E另估); D08 (本波开工前; P6.2); X02 (本波开工前; P6.1)
 - 出口与未决：merged_into保留双方ID/审计，来源后续归属、统计与活动票不丢；不以N:1整改单代替merge。；真实提供方/参数/配置未定时仍按窗口复核，不称取消或完成。
 
 **P6-T045 · 全局命令面板（Cmd+K——搜菜单/页面/工单号直达跳转） — 改写**
