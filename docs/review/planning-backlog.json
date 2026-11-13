@@ -1,7 +1,7 @@
 {
-  "date": "2026-11-12",
+  "date": "2026-11-13",
   "implementation_status": "business_not_started; G07A/G07B locally_validated_pending_PR_main",
-  "schedule_basis": "有依赖的实施波次；2026-11-13已确认1有效席位×每周5工程日规划产能，实际T0未启动且无严格截止；资源权威见docs/review/execution-schedule.json#/resource_assumptions，每波开工按本包范围复估。CE五项增量仍未计价，不将旧日窗当已含新增范围。",
+  "schedule_basis": "原71+CE5=76父包；LS六项为额外范围任务，RP六项替换旧价。1席×每周5工程日，T0相对排程；真实等待另列，设计落档不是开工/部署指令。",
   "waves": {
     "P6.0": {
       "name": "阶段实施入口",
@@ -556,7 +556,11 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "milestone_dependencies": [
+        "CE02-D"
+      ],
+      "invocation_dependency_rule": "链A只依CE02-D；I01/I02/I03消费D12，禁止为统一调用反依I01形成环。"
     },
     {
       "id": "D13",
@@ -603,7 +607,10 @@
       "title": "事件响应协作与战役证据视图",
       "wave": "P6.E",
       "owner": "zhuzhao+ui/应急协作",
-      "estimate_engineering_days": "5–8",
+      "estimate_engineering_days": [
+        7,
+        11
+      ],
       "dependencies": [
         "D10",
         "D13"
@@ -618,7 +625,8 @@
         "时间窗总览→单事件本地/来源证据时间线，actor可筛；自动记录与战后补录分别标识，外部未接动作明确覆盖缺口",
         "岗位任务分解/应急工单/受权IOC富化/按活动导出复盘，复用D10/D13及专业服务",
         "战时避免重复录入，原每动作≤5秒/≤2点击作为待实测任务目标；MTTD缺起点不计算"
-      ]
+      ],
+      "estimate_adjustment_ref": "RP-D14"
     },
     {
       "id": "U01",
@@ -641,7 +649,10 @@
       "title": "视觉tokens与共用页面交互",
       "wave": "P6.1",
       "owner": "ui/设计前端",
-      "estimate_engineering_days": "4–6",
+      "estimate_engineering_days": [
+        6,
+        9
+      ],
       "dependencies": [
         "U01"
       ],
@@ -658,7 +669,8 @@
         "首页责任主数已确认包含当前处理与R3明确点名复核；服务端计数/列表/角标同源，不以可操作资格冒充责任；D10上线同批补复核分支",
         "P6-T045在本包判断菜单/页面/工单号快速查找入口的价值和受权查询合同；获选有限入口归U06，不归报告E04",
         "BL-FE-003：P6.1开工先修rulesQuery声明前注册watch getter的初始化错误，U06迁移前回归；不借机重写全站hook"
-      ]
+      ],
+      "estimate_adjustment_ref": "RP-U02"
     },
     {
       "id": "U03",
@@ -734,7 +746,10 @@
       "title": "首页、任务、AL、消息与系统管理全站迁移",
       "wave": "P6.3",
       "owner": "ui+主仓/管理前端",
-      "estimate_engineering_days": "4–7",
+      "estimate_engineering_days": [
+        12,
+        19
+      ],
       "dependencies": [
         "U02",
         "D11",
@@ -744,7 +759,7 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "4–7日仍为逐页迁移的初轮粗估，尚未经过27页真实视觉基线校准；Cmd+K等获选增量在U02出口单列切片复估，不声称免费包含或默认取消。",
+      "estimate_scope": "27路由全站审查后复估12–19日，限21个既有页面（其余由U03/U04/U05承接）；CmdK另LS03，字段ACL/typed检索/diff、UAA和CE新UI分别扣重，不免费吞入。",
       "scope": [
         "跨域首页/27页全站迁移和通用管理反馈",
         "任务控制台分类两栏、执行页参数/历史/结果、定义分权、AL深链与日志引用；D12负责结果合同，I02负责执行资格",
@@ -755,14 +770,18 @@
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
-      ]
+      ],
+      "estimate_adjustment_ref": "RP-U06"
     },
     {
       "id": "U07",
       "title": "角色旅程、视觉与可访问性验收",
       "wave": "P6.1",
       "owner": "ui/质量",
-      "estimate_engineering_days": "2–4",
+      "estimate_engineering_days": [
+        3,
+        5
+      ],
       "dependencies": [
         "G04",
         "U02"
@@ -774,7 +793,8 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
-      ]
+      ],
+      "estimate_adjustment_ref": "RP-U07"
     },
     {
       "id": "I01",
@@ -997,7 +1017,10 @@
       "title": "双轨智能体配置与平台领域Agent",
       "wave": "P8",
       "owner": "zhuzhao+ui/AI产品",
-      "estimate_engineering_days": "4–7",
+      "estimate_engineering_days": [
+        5,
+        8
+      ],
       "dependencies": [
         "A03",
         "A04"
@@ -1006,7 +1029,8 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_adjustment_ref": "RP-A05"
     },
     {
       "id": "A06",
@@ -1030,7 +1054,10 @@
       "title": "领域Agent有界运行、skill与评测",
       "wave": "P8",
       "owner": "zhuzhao+taskrunner+ui/AI运行",
-      "estimate_engineering_days": "5–8",
+      "estimate_engineering_days": [
+        7,
+        12
+      ],
       "dependencies": [
         "A05",
         "A06",
@@ -1041,7 +1068,8 @@
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
-      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验"
+      "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
+      "estimate_adjustment_ref": "RP-A07"
     },
     {
       "id": "R01",
@@ -1884,6 +1912,179 @@
       "design_refs": [
         "docs/design/project-evolution-strategy.md"
       ]
+    },
+    {
+      "id": "CE01",
+      "title": "全能力库存与统一合同骨架",
+      "wave": "P6.1",
+      "dependencies": [
+        "C04"
+      ],
+      "estimate_engineering_days": [
+        3,
+        5
+      ],
+      "state": "planned_not_implemented",
+      "acceptance": "核心/插件能力家族盘点，静态/动态ID、命令/事件/结果及通知消费、对外API/写主/授权/完成语义及现状成熟度明确；准确DTO在编码前冻结。",
+      "owner": "跨仓/能力集成",
+      "decision_due": "当前批开工前冻结",
+      "disposition": "净增已计价候选，未实施",
+      "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE01",
+      "design_refs": [
+        "docs/design/capability-invocation-contract.md",
+        "docs/design/capability-interconnect-detail.md"
+      ]
+    },
+    {
+      "id": "CE02",
+      "title": "最小共同调用门面与跨入口接线",
+      "wave": "P6.1–P9",
+      "dependencies": [],
+      "estimate_engineering_days": [
+        20,
+        30
+      ],
+      "state": "planned_not_implemented",
+      "acceptance": "同一能力/合同版本的HTTP、内部、手动、工单、计划/事件及MCP入口必须汇入同一登记应用层执行入口和领域实现，共用参数/当前授权/幂等/并发/适用预算/记录/结果；验实际路径和效果，不是仅格式统一、万能RPC或所有调用排TR。",
+      "owner": "跨仓/能力集成",
+      "decision_due": "当前批开工前冻结",
+      "disposition": "净增已计价候选，未实施",
+      "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE02",
+      "design_refs": [
+        "docs/design/capability-invocation-contract.md",
+        "docs/design/capability-interconnect-detail.md"
+      ],
+      "milestones": [
+        {
+          "id": "CE02-S",
+          "wave": "P6.1",
+          "estimate_engineering_days": [
+            6,
+            9
+          ],
+          "dependencies": [
+            "CE01",
+            "C04",
+            "X01-C"
+          ],
+          "acceptance": "同步共同入口，领域/事务/当前授权与参数无旁路",
+          "inherit_parent_dependencies": false,
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "CE02-D",
+          "wave": "P6.3",
+          "estimate_engineering_days": [
+            5,
+            8
+          ],
+          "dependencies": [
+            "CE02-S",
+            "C03",
+            "R01"
+          ],
+          "acceptance": "可靠阶段/稳定身份与效果收据，不递归提交；链A由D12交展示",
+          "inherit_parent_dependencies": false,
+          "state": "planned_not_implemented"
+        },
+        {
+          "id": "CE02-L",
+          "wave": "P9",
+          "estimate_engineering_days": [
+            9,
+            13
+          ],
+          "dependencies": [
+            "CE02-D",
+            "I01",
+            "R07"
+          ],
+          "acceptance": "158当前映射逐模块迁移并有触及/消费者前门，分批工程量而非P9最后一次重写",
+          "inherit_parent_dependencies": false,
+          "state": "planned_not_implemented"
+        }
+      ]
+    },
+    {
+      "id": "CE03",
+      "title": "AL受权数据能力与任务adapter",
+      "wave": "P7",
+      "dependencies": [
+        "CE02-D",
+        "I01",
+        "I02",
+        "I03",
+        "R06",
+        "CE05"
+      ],
+      "estimate_engineering_days": [
+        9,
+        14
+      ],
+      "state": "planned_not_implemented",
+      "acceptance": "选定AL操作的目标/字段/revision/幂等/结果和持续授权；TR不直库，不以全量replace代patch，不靠dept/actor授写权。",
+      "owner": "跨仓/能力集成",
+      "decision_due": "当前批开工前冻结",
+      "disposition": "净增已计价候选，未实施",
+      "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE03",
+      "design_refs": [
+        "docs/design/capability-invocation-contract.md",
+        "docs/design/capability-interconnect-detail.md"
+      ]
+    },
+    {
+      "id": "CE04",
+      "title": "AL源变化事实与受控订阅到任务",
+      "wave": "P7",
+      "dependencies": [
+        "CE03",
+        "CE05",
+        "R01"
+      ],
+      "estimate_engineering_days": [
+        13,
+        20
+      ],
+      "state": "planned_not_implemented",
+      "acceptance": "AL全部支持写入口源事务事实/完整feed，含有界import批次；平台按event+订阅版本幂等触发任务，重复/乱序/回放/写回循环有反例。",
+      "owner": "跨仓/能力集成",
+      "decision_due": "当前批开工前冻结",
+      "disposition": "净增已计价候选，未实施",
+      "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE04",
+      "design_refs": [
+        "docs/design/capability-invocation-contract.md",
+        "docs/design/capability-interconnect-detail.md"
+      ]
+    },
+    {
+      "id": "CE05",
+      "title": "跨入口准入、反压和因果预算",
+      "wave": "P7",
+      "dependencies": [
+        "CE02-D",
+        "I02",
+        "I03",
+        "G04"
+      ],
+      "estimate_engineering_days": [
+        7,
+        11
+      ],
+      "state": "planned_not_implemented",
+      "acceptance": "HTTP/本地/定时/订阅/MCP同一逻辑预算，按能力/主体/provider限速和并发；超限可拒绝或held，可信root/causation和深度/步数/fanout防回环。",
+      "owner": "跨仓/能力集成",
+      "decision_due": "当前批开工前冻结",
+      "disposition": "净增已计价候选，未实施",
+      "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE05",
+      "design_refs": [
+        "docs/design/capability-invocation-contract.md",
+        "docs/design/capability-interconnect-detail.md"
+      ]
     }
   ],
   "design_status_ref": "planning-design-status.json",
@@ -1894,7 +2095,7 @@
     "dependencies": "列表项为完整包完成依赖",
     "milestone_dependencies": "列表项为指定子出口完成依赖，不能以文档存在销账",
     "milestones": "子出口默认继承所属包外部依赖；完整包须全部子出口完成。E01-UAA-*显式inherit_parent_dependencies=false，按各出口dependencies独立准入，避免P6.0合同被P7父依赖阻塞或形成环。",
-    "estimate_rule": "常规子出口是原包分解，不另加总；E01-UAA-C/P/R为独立新增范围2–3/25–39/13–22。E01原3–6不含这些增量；P完成依X02-F以兑现共享收件/ACK/回放复用。外部等待另列，维护收尾容量预留不混入UAA。",
+    "estimate_rule": "常规子出口是原包分解，不另加总；E01-UAA-C/P/R为独立新增范围2–3/25–39/13–22。E01原3–6不含这些增量；P完成依X02-F以兑现共享收件/ACK/回放复用。外部等待另列，维护收尾容量预留不混入UAA。 CE02-S/D/L的6–9/5–8/9–13分解20–30父价；L四波迁移不另加出口或价格。",
     "scoped_milestone_dependencies": "仅约束scope所述部分；不阻塞同包无关mock业务。不得据此绕过对应真实能力激活或上线门。"
   },
   "uaa_estimate_completeness": {
@@ -1918,10 +2119,10 @@
       64
     ],
     "external_wait_days": null,
-    "rule": "原71包预算保持；E01基价只计其他provider，C/P/R增量只算一次。P已含CI/质量/最小UI/公开运维，R只计真实差额；新画像或强制额外能力走明确变更，不以基线数字忽略公司要求。"
+    "rule": "C/P/R只在UAA注册表计一次，E01旧基价仅其他provider；该次UAA补估不改历史71包价，后继RP六项替价与CE/LS净增由补齐册另列并合并当前76包排程。P含最小UI/运维/CI质量，R只真实差额。新强制画像必须变更补齐，不以基线忽略公司要求。"
   },
   "release_gates": {
-    "semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持71父包/13子出口。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
+    "semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持76父包/16子出口；LS六项不增加父包。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
     "common_production": {
       "applies_to": [
         "正式独立部署",
@@ -1958,11 +2159,328 @@
     {
       "id": "CAPABILITY-INTERCONNECT-20261113",
       "ref": "docs/review/capability-interconnect-supplement.json",
-      "contract_ref": "docs/design/capability-invocation-contract.md",
-      "additional_outline_items": 5,
-      "estimated": false,
-      "old_71_package_prices_unchanged": true,
-      "rule": "本次增量不在原71包/UAA冻结总量中；各包承接关系只作复用和窗口，不能以原预算包干新增能力。"
+      "additional_parent_items": 5,
+      "estimated": true,
+      "estimate_registry_ref": "docs/review/planning-scope-estimates.json",
+      "rule": "原71完整保留；RP替换，CE/LS净增，不对已完成审计重复计未来工日。"
+    }
+  ],
+  "scope_estimate_registry": "docs/review/planning-scope-estimates.json",
+  "schedule_model_ref": "docs/review/execution-schedule-model.json",
+  "additional_scope_tasks": [
+    {
+      "id": "LS01",
+      "title": "常驻状态×字段×角色ACL",
+      "owner_package": "D04",
+      "source_ids": [
+        "P6-T065",
+        "P6-T100"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        11,
+        17
+      ],
+      "dependencies": [
+        "C04",
+        "D01",
+        "D03",
+        "D04",
+        "U02"
+      ],
+      "wbs": [
+        {
+          "name": "固定决策表/有效角色与当前策略",
+          "days": [
+            4,
+            6
+          ]
+        },
+        {
+          "name": "全部读写/检索/导出/历史/公式投影",
+          "days": [
+            3,
+            5
+          ]
+        },
+        {
+          "name": "管理表与影响预览",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "授权/缓存/撤权及兼容反例",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "D04字段schema/collect_fields/visible_when原价",
+        "C04三层/epoch底座",
+        "U02通用组件"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS02",
+      "title": "类型化custom_data检索首组",
+      "owner_package": "U03",
+      "source_ids": [
+        "P6-T019"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        5,
+        9
+      ],
+      "dependencies": [
+        "LS01",
+        "D04",
+        "U02"
+      ],
+      "wbs": [
+        {
+          "name": "可信schema类型谓词/JSONB索引",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "列表/计数/导出同源授权",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "字段/操作符筛选控件",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "空值/权限/预算与性能反例",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "U03普通组合筛选与视觉壳",
+        "C04资源权限",
+        "LS01字段读权"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS03",
+      "title": "Cmd+K最薄受权入口",
+      "owner_package": "U06",
+      "source_ids": [
+        "P6-T045"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        3,
+        4
+      ],
+      "dependencies": [
+        "U01",
+        "U02",
+        "D03"
+      ],
+      "wbs": [
+        {
+          "name": "当前菜单索引与工单号受权查询",
+          "days": [
+            1,
+            1
+          ]
+        },
+        {
+          "name": "可关闭入口/快捷键/焦点及窄屏",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "越权/输入法/键盘回归",
+          "days": [
+            1,
+            1
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "U02导航/组件",
+        "U06既有页面视觉迁移",
+        "任意全文检索不在范围"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS04",
+      "title": "字段真值diff及受权活动投影",
+      "owner_package": "D02",
+      "source_ids": [
+        "P6-T103"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "D02",
+        "LS01"
+      ],
+      "wbs": [
+        {
+          "name": "稳定字段ID/真值diff合同与投影",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "同事务事实写入与只读接线",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "失败/版本/敏感字段反例",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "D02转换采集/capabilities基础",
+        "U03通用活动流UI",
+        "R01可靠交接",
+        "D12任务结果"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS05",
+      "title": "I04第二类专业来源代表adapter",
+      "owner_package": "I04",
+      "source_ids": [
+        "I04-two-representative-sources"
+      ],
+      "wave": "P7",
+      "net_days": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "I04",
+        "X02-F"
+      ],
+      "wbs": [
+        {
+          "name": "第二schema/身份/增量语义映射",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "隔离/修复预览/受控回放接线",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "双源合同/恢复/最小反馈验收",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "I04首adapter4–8日",
+        "X02公共stage/ACK/身份/游标",
+        "专业检测/未知更多厂商"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "real_condition": "真实提供方协议/测试身份及权限具备；先合成供给，真实差异扩大时单独变更估算",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS06",
+      "title": "MCP生产既有AS接入及登录主体桥",
+      "owner_package": "A03",
+      "source_ids": [
+        "A03-production-AS"
+      ],
+      "wave": "P7",
+      "net_days": [
+        8,
+        13
+      ],
+      "dependencies": [
+        "A03-R",
+        "C04",
+        "X01-C"
+      ],
+      "wbs": [
+        {
+          "name": "既有标准OAuth AS/资源发现及最小登录同意呈现（client/resource/scope/到期）",
+          "days": [
+            3,
+            5
+          ]
+        },
+        {
+          "name": "主体映射/当前授权与撤权",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "PKCE/audience/注册/SSRF互操作反例",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "最小配置/运维与启用反馈",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "A03-R/W工具/transport协议适配9–14日",
+        "I01/I02领域能力/批准",
+        "UAA网页登录C/P/R",
+        "不自建/部署通用AS平台"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "real_condition": "可用标准OAuth AS及注册/测试条件；无真实供给时保留未激活，不影响完整独立IAM",
+      "kind": "additional_existing_scope"
     }
   ]
 }

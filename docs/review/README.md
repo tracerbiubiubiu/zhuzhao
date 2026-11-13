@@ -16,13 +16,13 @@
 
 - [全项目路线](../roadmap.md)、[渐进演进](../design/project-evolution-strategy.md)、[新旧对照](roadmap-change-comparison-2026-11-12.md)：说明承接、范围和次序变化。
 - [设计/交接状态](planning-closeout.md)、[总账摘要](planning-backlog.md)、[13切片已计价排期](execution-schedule.md)：说明可审候选与剩余冻结窗口，不等于全部详设或实施完成。
-- [能力互通/一致性增量](capability-interconnect-supplement.md)：三条代表链、共同执行路径、全栈一致性及新增未计价范围。
+- [能力互通/一致性增量](capability-interconnect-supplement.md)：三条代表链、共同执行路径、全栈一致性及新增净估范围。
 
 ### 机器权威与来源追溯
 
 - [工作包JSON](planning-backlog.json)：唯一工作包/依赖/既有粗估；[设计深度](planning-design-status.json)、[所有者决策](planning-decisions.json)分别负责成熟度和政策状态。
 - [来源映射](planning-source-map.json)、[文档范围](planning-document-scope.json)及[能力连续性](roadmap-capability-continuity.md)/[逐原子JSON](roadmap-capability-continuity.json)：追溯旧模块价值及处置，来源数不等于独立功能数。
-- [原始要求对账](user-requirements-reconciliation.json)负责截至本轮61条消息的来源/证据索引；[旧32条关注点深度](focus-depth-verification.json)、[补研究窗口](research-supplement-status.json)保留其原截止和后继，不用有排期替代研究完成。
+- [原始要求对账](user-requirements-reconciliation.json)负责截至本轮62条用户消息＋1明确目标的来源/证据索引；[旧32条关注点深度](focus-depth-verification.json)、[补研究窗口](research-supplement-status.json)保留其原截止和后继，不用有排期替代研究完成。
 - [排程JSON](execution-schedule.json)、[互通增量JSON](capability-interconnect-supplement.json)：前者绑定冻结输入与已确认规划产能，后者保留新范围的未估状态。机器文件供校验/工具使用，日常阅读优先Markdown结论。
 
 ### 规划过程与核验出处
@@ -41,7 +41,7 @@
 
 [再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)和[逐项记录](uaa-dual-mode-review.json)保留当轮跨授权/AI/前端/生产/排期问题；后继[UAA补估](uaa-implementation-estimate.md)/[唯一数字注册表](uaa-implementation-estimate.json)补齐有界工程量，[真实条件](uaa-real-integration-conditions.md)/[条件JSON](uaa-real-integration-conditions.json)给进入、产出、pre_apply、收口和具体业务确认场景。
 
-当前决策数量/未决项以决策册为准；资源以排程resource_assumptions和已确认问答为准。历史“P/R未计价、投入未绑定”不覆盖后继补估；新增互通范围仍另列未计价，不混入UAA旧数字。
+当前决策数量/未决项以决策册为准；资源以排程resource_assumptions和已确认问答为准。历史“P/R未计价、投入未绑定”不覆盖后继补估；新增互通/旧子范围及六项基价复估由净估册扣重并入当前排程，不混进历史UAA数字。
 
 ## 审查方法
 
@@ -66,3 +66,8 @@
 ## 变更记录
 
 - 2026-11-13：将当前结论和机器权威前置，方法/固定报告/历史后置；保留原文件及独有出处，减少重复计数和日期追加式摘要。
+
+
+## 2026-11-13整会话补齐入口
+
+[原话对账](user-requirements-reconciliation.md)说明此前哪些确实不足及本次补法；[闭环机器册](planning-closure.json)绑定来源、六组动作、证据和必需检查。[净估注册表](planning-scope-estimates.json)补CE/LS及既有包复估；[独立审查](reports/design-gap-independent-review-2026-11-13.md)保留实际反例、修订和独立资格边界。最终完整门禁与提交以当批准确输入/结果为准，不能从这些入口存在推断已全绿。

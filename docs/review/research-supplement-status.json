@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-12",
+  "date": "2026-11-13",
   "baseline_report": "docs/review/reports/concern-depth-verification-2026-11-12.md",
   "semantics": "原65点深度核验保留时点；本表记录其后补研究，不将设计候选当运行验证",
   "items": [
@@ -24,12 +24,14 @@
     },
     {
       "id": "FD03",
-      "state": "scheduled_before_implementation",
+      "state": "reference_comparison_executed",
       "evidence": [
-        "docs/review/execution-schedule.md"
+        "docs/design/domain-agent-reference-scenario.md",
+        "docs/design/examples/ai-soc-reference/README.md"
       ],
       "due": "P7代表场景比较；A05/P8开工前",
-      "remaining": "平台特有样例对比确定性步骤/企业Agent/有限host；工具、审批、效果、恢复和预算"
+      "remaining": "A05产品宿主与真实提供方按P8实现；样例未证明动态host优于确定性步骤，不预建通用Agent平台",
+      "result": "25场景×3路径75检查；真实脚本恢复与外部adapter序列化/有界本地host合成比较；含知识撤权/版本/digest与最小receipt反例，未调用真实模型/企业Agent"
     },
     {
       "id": "FD04",
@@ -42,45 +44,53 @@
     },
     {
       "id": "FD05",
-      "state": "planning_supplement_delivered",
+      "state": "official_sdk_loopback_interop_executed",
       "evidence": [
         "docs/design/mcp-first-contract.md",
-        "docs/design/mcp-first-contract.schema.json"
+        "docs/design/examples/mcp-sdk-interop/report.json"
       ],
-      "result": "首批两只读发布+一只读消费，OAuth/本地IAM/无企业AS路径；P7/P8边界已一致化",
-      "remaining": "实际SDK依赖/AS组件和登录桥、MCP/OAuth互操作、P7有限写适配及真实企业组合均未验证"
+      "result": "官方SDK1.8.0真实HTTP/JSON/SSE，33叶含14语义负例，普通/race通过；AS/IAM/grant合成",
+      "remaining": "A03-R/W产品接线、LS06既有AS主体桥、真实企业组合与多实例预算待对应实施门"
     },
     {
       "id": "FD06",
-      "state": "scheduled_before_implementation",
+      "state": "trusted_reference_package_executed",
       "evidence": [
-        "docs/review/execution-schedule.md"
+        "docs/design/skill-reference-package.md",
+        "docs/design/examples/ai-soc-reference/README.md"
       ],
       "due": "FD03选样后；A07/P8开工前",
-      "remaining": "可信skill样包、输入/输出/评测、加载/撤销/升级与暂停恢复兼容例"
+      "remaining": "A07产品生命周期与真实Agent提供方按P8实施，不把合成评测称生产运行",
+      "result": "可信SKILL样包及固定摘要/版本/加载/撤销/恢复16行为检查；无脚本和市场"
     },
     {
       "id": "FD07",
-      "state": "first_group_real_baseline_delivered_more_pages_required",
+      "state": "full_route_review_and_real_vue_sample_executed",
       "evidence": [
-        "docs/review/execution-schedule.md",
-        "../zhuzhao-ui/docs/design/frontend-pages.json",
-        "docs/review/reports/frontend-first-baseline-2026-11-12.md"
+        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
       ],
       "due": "U01复现；U02/U07样板；U03–U06逐页改造前",
-      "remaining": "其余页面/角色/亮暗/视口/错误/长内容；情报历史/结果；键盘/缩放/屏幕阅读器；U06粗估再校准",
-      "result": "24合格图；Logo404/代表色对不足/规则TDZ实测；全站未完成，情报只空态，UI依赖未逐字节冻结"
+      "remaining": "U01–U07按逐页验收改产品；U02/U06/U07复估6–9/12–19/3–5日；本次不是全站成品或完整可访问性认证",
+      "result": "27路由243基础/27原生200%缩放/54语义/24次级面；14问题；6真实Vue样板断言；权限呈现问题不冒称后端越权"
     },
     {
       "id": "FD08",
-      "state": "scheduled_before_implementation",
+      "state": "authorization_matrix_and_negative_model_executed",
       "evidence": [
-        "docs/review/execution-schedule.md"
+        "docs/design/soc-collaboration-authorization.md",
+        "docs/design/examples/ai-soc-reference/README.md"
       ],
       "due": "D14/P6.E编码前",
-      "remaining": "SOC专业写主与本地协作职责×动作×范围/撤销矩阵及正反例"
+      "remaining": "D14产品实现/真实SOC联调；来源失联时人工创建本地协作的owner选择待确认，默认关闭",
+      "result": "职责×动作×范围/撤销与46行为检查；隐藏/不存在引用同输出，先裁权再计数；SOC专业动作不复制"
     }
   ],
   "new_business_implementation_claimed": false,
-  "all_focus_points_deeply_researched": false
+  "all_focus_points_deeply_researched": false,
+  "bounded_audit_supplements_executed": true,
+  "limitations": "FD03/05/06/08为可执行参考模型和SDK样例；FD07为全路由合成夹具+真实组件审查，不是全部产品实现/真实内网联调。远期细节仍逐包冻结，所有结论需最终独立审查。",
+  "reference_model_total": "137行为（75 Agent/16 skill/46 SOC），7守卫变异，76正9负Schema；具体证明边界见样例",
+  "bounded_supplement_review_complete": true,
+  "all_future_focus_details_equally_frozen": false
 }

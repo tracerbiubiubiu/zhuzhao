@@ -4,7 +4,7 @@
   "basis_core": "ce280185818c1def7f54a21dedbb85055cb38e91",
   "basis_ui": "da171f4ff07b6161e4e37e3553c63d90f4bb3cf9",
   "unit": "工程日：设计、实现、各项负例、评审和正常修正的有效投入；不是自然日，也不由agent数量直接换算",
-  "ownership_rule": "本文件是本轮UAA增量估算唯一注册表；总账只引用其C/P/R，派生排期只读冻结提交，不重新分类或改写既有账目",
+  "ownership_rule": "本文件是UAA有限增量C/P/R唯一价格源；planning_totals为UAA补估时71包历史基线，非含CE/LS/RP的当前总量。最新排程按本表与净增册的受控输入SHA仓内派生，不能重复计父子或重写历史预算。",
   "baseline_profile": {
     "application_count": 1,
     "authentication_profile": "一套确认的授权码/profile路线；C出口核验安全能力，不并做OAuth/OIDC/SAML三套",
@@ -432,5 +432,6 @@
   "verification": {
     "arithmetic_passed": true,
     "runtime_or_real_uaa_accepted": false
-  }
+  },
+  "latest_full_scope_schedule_ref": "docs/review/execution-schedule.json"
 }

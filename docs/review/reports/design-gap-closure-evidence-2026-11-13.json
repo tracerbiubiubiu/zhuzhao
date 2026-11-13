@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "status": "verified_bounded_audit_precommit_evidence_snapshot",
+  "binding": {
+    "source_count": 63,
+    "source_cutoff": "U63",
+    "source_registry_sha256": "aac0c10fbd9d9df0d94a822c62a93a8cdc5f9cd5e94369e9b93087d24b4745f1",
+    "estimate_registry_sha256": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981"
+  },
+  "scope": "Bounded design audit and existing-product runtime gates; no new business implementation, all-future freeze, real-enterprise integration or deployment proof",
+  "checks": {
+    "source-coverage": {
+      "id": "source-coverage",
+      "result": "PASS",
+      "summary": "All original public source IDs accounted for; counts do not prove semantics",
+      "turns": 52,
+      "user_messages": 62,
+      "public_assistant_messages": 247,
+      "source_entries": 63,
+      "goal_directives": 1,
+      "check_points": 93
+    },
+    "documents": {
+      "id": "documents",
+      "result": "PASS",
+      "summary": "Five-repo local links, anchors, fences, JSON and diff checks",
+      "counts": {
+        "markdown": 349,
+        "local_links": 4211,
+        "anchor_links": 404,
+        "baseline_link_issues": 0,
+        "json": 46
+      }
+    },
+    "contracts": {
+      "id": "contracts",
+      "result": "PASS",
+      "summary": "Actual operation inventory and executable reference models; not new product runtime or real providers",
+      "catalog": {
+        "modules": 18,
+        "gin_bindings": 176,
+        "service_declarations": 298,
+        "source_Go_files": 218,
+        "UI_HTTP_calls": 135,
+        "candidate_capability_mappings": 158,
+        "common_runtime_verified": 0
+      },
+      "reference_checks": {
+        "AI_SOC_skill_behavior": 137,
+        "guard_mutations": 7,
+        "schema_positive": 76,
+        "schema_negative": 9,
+        "MCP_SDK_leaf_tests": 33,
+        "MCP_semantic_negatives": 14,
+        "MCP_normal_and_race": "PASS",
+        "capability_schema_cases": 49,
+        "canonical_cases": 6,
+        "frozen_hash_cases": 3,
+        "strict_JSON_cases": 6,
+        "semantic_cases": 27,
+        "PG_candidate_experiment": 8,
+        "PG_note": "Earlier isolated SQL experiment during this bounded audit; not AL service paths; later read-only verifier does not run PG"
+      }
+    },
+    "schedule": {
+      "id": "schedule",
+      "result": "PASS",
+      "summary": "19 behavior/model tests and repository-local --check; original71 parents/13 exits retained; all endpoint resource receipts checked",
+      "parents": 76,
+      "official_child_milestones": 16,
+      "additional_scope_tasks": 6,
+      "release_slices": 13,
+      "net_increment": [
+        102,
+        160
+      ],
+      "public_effort": [
+        394,
+        656
+      ],
+      "with_conditional_R": [
+        407,
+        678
+      ],
+      "maintenance_reserve": [
+        1,
+        2
+      ],
+      "one_effective_seat_weekly_days": 5,
+      "T0_started": false,
+      "external_wait_days": null
+    },
+    "independent-review": {
+      "id": "independent-review",
+      "result": "PASS",
+      "summary": "Independent original-input and frozen semantic/candidate evidence review passed; final status/binding refresh receives a separate metadata recheck.",
+      "report": "docs/review/reports/design-gap-independent-review-2026-11-13.json",
+      "selector": "second_pass.result"
+    },
+    "runtime-core": {
+      "id": "runtime-core",
+      "result": "PASS",
+      "summary": "Current product Go/config/migrations/acceptance inputs bound to immutable source-identical images; new planning commands checked separately",
+      "native_phases": [
+        {
+          "name": "script-unit",
+          "exit": 0,
+          "seconds": 0.5
+        },
+        {
+          "name": "swag",
+          "exit": 0,
+          "seconds": 283.94
+        },
+        {
+          "name": "wire",
+          "exit": 0,
+          "seconds": 34.44
+        },
+        {
+          "name": "lint",
+          "exit": 0,
+          "seconds": 8.24
+        },
+        {
+          "name": "test-unit",
+          "exit": 0,
+          "seconds": 39.12
+        },
+        {
+          "name": "test-integration",
+          "exit": 0,
+          "seconds": 587.07
+        },
+        {
+          "name": "test-cover",
+          "exit": 0,
+          "seconds": 43.92
+        },
+        {
+          "name": "build",
+          "exit": 0,
+          "seconds": 4.34
+        }
+      ],
+      "acceptance": [
+        {
+          "name": "migrate-up",
+          "exit": 0,
+          "seconds": 0.08,
+          "pass": 0,
+          "fail": 0,
+          "skip": 0,
+          "roundtrip_zero_drift": false
+        },
+        {
+          "name": "acceptance",
+          "exit": 0,
+          "seconds": 49.56,
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "roundtrip_zero_drift": true
+        }
+      ],
+      "coverage": {
+        "result": "PASS",
+        "profile": "make test-cover: race, default tags, ./internal/...",
+        "covered_statements": 2034,
+        "total_statements": 10108,
+        "coverage_percent": 20.1,
+        "profile_sha256": "6d0c8a1f4b13e699108221ecf12cdd75bada9ea784565998989a2e8458642c2c",
+        "scope": "not integration/acceptance/browser or new Python/reference modules; no production change claimed"
+      },
+      "post_run_input_delta": {
+        "result": "PASS",
+        "changed_bound_inputs": [
+          "Makefile"
+        ],
+        "only_change": "Makefile planning-check adds two independently checked Python planning commands; no change to existing runtime gate recipes",
+        "prior_Makefile_reconstructed_sha_matches": true,
+        "product_Go_config_migrations_acceptance_inputs_unchanged": true,
+        "nested_reference_modules": "separately executed, not claimed covered by product ./..."
+      }
+    },
+    "runtime-ui": {
+      "id": "runtime-ui",
+      "result": "PASS",
+      "summary": "Six full gates, production Nginx and real isolated backend/PG/Redis/object store; original42 specs unchanged",
+      "versions": {
+        "node": "v26.13.1",
+        "pnpm": "12.18.0"
+      },
+      "phases": [
+        {
+          "name": "lint",
+          "exit": 0,
+          "seconds": 2.41
+        },
+        {
+          "name": "typecheck",
+          "exit": 0,
+          "seconds": 4.8
+        },
+        {
+          "name": "test",
+          "exit": 0,
+          "seconds": 1.69
+        },
+        {
+          "name": "audit-prod",
+          "exit": 0,
+          "seconds": 3.17
+        },
+        {
+          "name": "build",
+          "exit": 0,
+          "seconds": 2.8
+        },
+        {
+          "name": "e2e",
+          "exit": 0,
+          "seconds": 166.34
+        }
+      ],
+      "E2E": {
+        "startTime": "2026-11-13T10:43:33.667Z",
+        "duration": 166001.302,
+        "expected": 42,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "source_inputs_unchanged": true,
+      "limitations": [
+        "Optional legacy SQLite diagnostic prints missing DB under PG topology; not asserted as a SQLite effect check"
+      ]
+    },
+    "runtime-activelist": {
+      "id": "runtime-activelist",
+      "result": "PASS",
+      "summary": "Native required gates plus isolated real-provider tests; normal provider-absent unit skips not presented as real coverage",
+      "gates": [
+        {
+          "repo": "activelist",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 0.92
+        },
+        {
+          "repo": "activelist",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.37
+        },
+        {
+          "repo": "activelist",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 2.92
+        },
+        {
+          "repo": "activelist",
+          "gate": "integration-race",
+          "command": [
+            "go",
+            "test",
+            "-tags",
+            "integration",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 125.77
+        }
+      ],
+      "inputs_unchanged": true,
+      "details": "Real PG integration/race"
+    },
+    "runtime-taskrunner": {
+      "id": "runtime-taskrunner",
+      "result": "PASS",
+      "summary": "Native required gates plus isolated real-provider tests; normal provider-absent unit skips not presented as real coverage",
+      "gates": [
+        {
+          "repo": "taskrunner",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 0.96
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.41
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 3.93
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "pg-redis-race",
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 19.14
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "e2e-cron",
+          "command": [
+            "make",
+            "e2e"
+          ],
+          "exit": 0,
+          "seconds": 112.46
+        }
+      ],
+      "inputs_unchanged": true,
+      "details": "Real PG/Redis race and cron E2E19/0"
+    },
+    "runtime-utils": {
+      "id": "runtime-utils",
+      "result": "PASS",
+      "summary": "Native required gates plus isolated real-provider tests; normal provider-absent unit skips not presented as real coverage",
+      "gates": [
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 14.84
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.55
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 0.71
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "race",
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 22.4
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 8.93
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.26
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 0.67
+        }
+      ],
+      "inputs_unchanged": true,
+      "details": "Race and minimum Go1.26.11/recommended1.27.4"
+    }
+  },
+  "raw_receipt_digests": {
+    "source-coverage-result.json": "d7a440163e8bac34f9cd10f4a86283b69e69270e899c4ecb03e823bc7ca31bf4",
+    "documents-result.json": "426447dcd5a282a7b224b8e0efff951feb7dbab06860f06db4d4925fa7fa26b0",
+    "contracts-result.json": "3e6483d73114fd845c11310e04386dfdbc7252f6f2539f42aaf3aa70e11a0674",
+    "core-native-result.json": "61a45acaeebc8d626646a13c11423c2758f35abbaf2cae217aa2f601fd23f195",
+    "core-acceptance-result.json": "dca7d2167e70f4ba1fa9e27defd2ec7fb7d895fbeb63381bc28a6ec8e2ba0394",
+    "ui-runtime-result.json": "8dc7d02a1c431a62e7af2da1ec6959a85875c06f15e04e50048f11bab9e24cb2",
+    "sibling-result.json": "169bac179a58892ce7b33e3f734c141c8340ec0814acf2b4be5cf6d8a4ac4869",
+    "final-runtime-input-binding.json": "971628edc8263b02bec3fb7732526bafe2a41e0385c38b54f6e33c721de3d5ea",
+    "cleanup-result.json": "42192f370505e2bf288dc073540535607addb08a771d6fad56d8a93d6fd5b774"
+  },
+  "raw_location": "Local ignored audit evidence; no raw private guide, tokens or credentials in this capsule",
+  "cleanup": {
+    "result": "PASS",
+    "owner": "zz-design-close-20261113-49c30ff8",
+    "protected_count": 29,
+    "protected_fingerprints_unchanged": true,
+    "changed_protected_ids": [],
+    "remaining_owned_resources": {
+      "container": [],
+      "volume": [],
+      "network": []
+    },
+    "only_synthetic_owned_resources_removed": true
+  },
+  "first_failures_preserved": [
+    "Nginx cached wrong DNS before initial backend migration recovery; first E2E run interrupted",
+    "Browser S3 hostname/proxy mapping:40 passed,2 failed",
+    "S3 CORS omitted UI origin:40 passed,2 failed",
+    "Ignored route probe scanned by gofmt: AL lint failed",
+    "TR isolated PG role and unresolved Compose password: connection/authentication failed before PG test writes"
+  ],
+  "no_assertions_weakened_for_runtime_green": true,
+  "no_remote_mutation": true,
+  "structural_guard_not_semantic_or_forgery_proof": true,
+  "planning_guard_test_count": 19,
+  "planning_schedule_test_count": 19,
+  "semantic_candidate_frozen_before_final_metadata": true
+}

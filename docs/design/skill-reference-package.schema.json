@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:zhuzhao:design:skill-reference:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "name",
+    "version",
+    "publisher",
+    "release_state",
+    "contract_version",
+    "required_capabilities",
+    "files",
+    "scripts_allowed",
+    "network_execution_allowed",
+    "resume_policy",
+    "trust_note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "name": {
+      "const": "risk-remediation-brief"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "publisher": {
+      "const": "demo-trusted-repo"
+    },
+    "release_state": {
+      "enum": [
+        "draft",
+        "published",
+        "retired"
+      ]
+    },
+    "contract_version": {
+      "const": "1"
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "risk.query",
+          "ticket.linked.query",
+          "knowledge.query",
+          "risk.dispatch.preview"
+        ]
+      },
+      "uniqueItems": true,
+      "maxItems": 50,
+      "minItems": 1
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "SKILL.md"
+      ],
+      "properties": {
+        "SKILL.md": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "scripts_allowed": {
+      "const": false
+    },
+    "network_execution_allowed": {
+      "const": false
+    },
+    "resume_policy": {
+      "const": "pinned_digest_only"
+    },
+    "trust_note": {
+      "type": "string",
+      "maxLength": 500
+    }
+  }
+}

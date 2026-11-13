@@ -1,6 +1,6 @@
 # 全项目路线图：承接、扩充与渐进演进
 
-> **2026-11-13方向补充**：所有核心/可插拔产品能力逐步提供受权外部API，内部共用逻辑调用与结果/事件合同；MCP适配同一能力。P6先共同接缝与工单任务结果，P7补AL命令/源变化订阅和跨入口预算，P8/9扩专业协同。代码到视觉的一致性按共同规则渐进收敛。详见[调用合同](design/capability-invocation-contract.md)、[一致性合同](design/ecosystem-consistency-contract.md)及[新增范围](review/capability-interconnect-supplement.md)；旧71包工日不含本次5项增量，未启动开发。
+> **2026-11-13方向补充**：所有核心/可插拔产品能力逐步提供受权外部API，内部共用逻辑调用与结果/事件合同；MCP适配同一能力。P6先共同接缝与工单任务结果，P7补AL命令/源变化订阅和跨入口预算，P8/9扩专业协同。代码到视觉的一致性按共同规则渐进收敛。详见[调用合同](design/capability-invocation-contract.md)、[一致性合同](design/ecosystem-consistency-contract.md)及[新增范围](review/capability-interconnect-supplement.md)；旧71包是历史基线；当前总账纳入CE五项、旧子范围及基价复估，仍未启动业务开发。
 
 
 > 2026-11-12所有者调整：G07A/G07B提前为Phase6业务开工前的版本维护批次，独立五仓工作树执行原全门禁和数据恢复演练；不再等待原S02/S04窗口。原包ID/估算归属留作追溯，不重复派单计工。G03分档和业务功能均未因此视为已实现；共享旧栈/原卷没有自动切换。
@@ -9,7 +9,7 @@
 
 主线为**数据聚合与安全全生命周期管控**。专业发现/研判/执行取已有SOC、CMDB、TI、SOAR等供给；平台负责受权入口、责任、流程、结果与证据。模型只调已有API，内网仅内部服务；mock长期保留。既可接企业Agent，也可围绕本平台特有业务运行有限领域Agent。
 
-[唯一总账](review/planning-backlog.md)维护71包、511来源、依赖与粗估；[能力连续性](review/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。
+[唯一总账](review/planning-backlog.md)维护当前76父包、原511来源与新增范围、依赖和净估；[能力连续性](review/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。
 
 ## 1. 现有底座怎样继续使用
 
@@ -71,6 +71,6 @@ E08推荐改的是默认自研DAG、全量迁回并退役SOAR的旧技术路线�
 
 新版执行顺序、首批PR和完整包/子出口依赖见[执行排期](review/execution-schedule.md)，新旧比较见[路线对照](review/roadmap-change-comparison-2026-11-12.md)。G02启保护等G03-Q；查询/发现分别等X02-Q/F，不等完整导航宿主；P7 MCP同时有读发布/消费，有限确认写在后继门，P8扩增强。
 
-投入已按单席/每周5工程日规划，T0尚未启动且无严格截止；当前已计价基线及本次未计价增量分列，不能将旧工作日或周次当新增范围的上线承诺。各包明确最薄首期、真实待验及增强条件；后期包的准确DTO/Schema在开工前冻结，不要求今天设计所有未来细节。
+投入已按单席/每周5工程日规划，T0尚未启动且无严格截止；历史已计价基线与本次净增分列并合并生成当前完整排程，不能将旧工作日或周次当新增范围的上线承诺。各包明确最薄首期、真实待验及增强条件；后期包的准确DTO/Schema在开工前冻结，不要求今天设计所有未来细节。
 
 先补可用链和正确性，再扩体验/提供方/自动化；改动按实际风险和现行门禁验证。分档门禁方向已确认，G03同步规则/验证分类后启用。主线统一PR方向已确认，尚未操作远端保护。任何取舍同步总账、来源、阶段和控制台，当前审计/待决见[规划收口](review/planning-closeout.md)。

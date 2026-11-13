@@ -1,6 +1,6 @@
 {
   "date": "2026-11-13",
-  "status": "design_outline_additive_scope_not_implementation_authorization",
+  "status": "detailed_candidate_and_reference_models_executed_not_business_implementation",
   "contract_ref": "docs/design/capability-invocation-contract.md",
   "consistency_ref": "docs/design/ecosystem-consistency-contract.md",
   "baseline": {
@@ -14,96 +14,112 @@
   },
   "vision": "所有核心/可插拔产品能力可受权对外消费，内部共用逻辑调用/结果/事件合同并可组合；全栈一致性逐步落地，不要求一步到位。",
   "capability_family_inventory": {
-    "depth": "family_outline_not_endpoint_complete",
+    "depth": "current_route_service_operation_snapshot_enumerated_future_missing_separate",
     "families": [
       {
         "family": "IAM/组织/授权",
         "current_boundary": "本地已有API；统一描述与来源合同待补",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "工单定义/实例/流转",
         "current_boundary": "现有用例保留；任务结果关联待D12/CE02",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "风险生命周期",
         "current_boundary": "原P6.2计划，按职责范围接门面",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "任务定义/调度/执行",
         "current_boundary": "TR API已有；C03/I02/I03完成与授权待实现",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "任务结果/工件",
         "current_boundary": "D12已规划，未形成全链展示和白名单回写",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "活动列表Schema/数据",
         "current_boundary": "CRUD/CAS/import已有；CE03/04补任务与源事实",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "附件控制",
         "current_boundary": "沿授权与结果引用，不把大字节流强包统一JSON",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "通知/消息",
         "current_boundary": "通知投递不代替业务完成",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "查询/报告/导出",
         "current_boundary": "受权结果/分页/摘要与引用",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "专业能力/连接器",
         "current_boundary": "外部仍写主，不复制专业引擎",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "私有扩展",
         "current_boundary": "同一准入/主体/版本/结果，本域授权留属主",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       },
       {
         "family": "AI/MCP/Agent/skill",
         "current_boundary": "协议与配置消费选定能力，不另授执行权",
-        "enumeration_complete": false
+        "enumeration_complete": true,
+        "enumeration_semantics": "当前生产快照或明确future_missing，不表示未来全部API已冻结"
       }
     ],
-    "next_gate": "CE01按实际API/Service/插件补逐项责任与成熟度，不以家族行数冒充全部能力已盘点。"
+    "next_gate": "源码/注册/消费者变更时核完整集合差异；158候选映射逐模块迁移，共同runtime仍0。",
+    "catalog_ref": "docs/design/capability-operation-catalog.json"
   },
   "new_scope_items": [
     {
       "id": "CE01",
       "title": "全能力库存与统一合同骨架",
-      "wave": "P6.0",
-      "dependencies": [],
+      "wave": "P6.1",
+      "dependencies": [
+        "C04"
+      ],
       "existing_carriers": [
         "G06",
         "X01-C",
         "I01"
       ],
       "acceptance": "核心/插件能力家族盘点，静态/动态ID、命令/事件/结果及通知消费、对外API/写主/授权/完成语义及现状成熟度明确；准确DTO在编码前冻结。",
-      "state": "design_outline_not_implemented",
-      "estimate_engineering_days": null,
-      "pricing_state": "new_scope_not_priced",
-      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+      "state": "detailed_candidate_not_implemented",
+      "estimate_engineering_days": [
+        3,
+        5
+      ],
+      "pricing_state": "net_priced_candidate",
+      "pricing_rule": "净增实现/最小UI/运维/测试；扣除原包及本次已完成研究，唯一数字源为planning-scope-estimates.json",
+      "detail_ref": "docs/design/capability-interconnect-detail.md"
     },
     {
       "id": "CE02",
       "title": "最小共同调用门面与跨入口接线",
-      "wave": "P6.1",
-      "dependencies": [
-        "CE02-S",
-        "CE02-D"
-      ],
+      "wave": "P6.1–P9",
+      "dependencies": [],
       "existing_carriers": [
         "C03",
         "C04",
@@ -117,32 +133,60 @@
         "async_stages": "提交绑定能力版本/目标/规范参数/主体/稳定操作及预算；worker进入执行阶段复验当前授权/状态/期限和额度，不回到新任务提交入口递归创建任务；合法重投/退避/held恢复保留原身份，已有效果查原receipt且复验读取权限。",
         "transaction_and_budget": "同步同事务窄Port复用事务/上下文，不另开独立提交、不HTTP回环、不重复入口扣取；attempt/provider速率/inflight仍按阶段取有效额度。",
         "version_and_implementation": "受控用例可选登记provider adapter，语义需兼容；队列恢复不静默换最新版，未知/不兼容版本拒绝。",
-        "scope_rule": "新增/触及能力随批接入；存量按清单迁移。本次澄清不新增范围编号或修改旧价，CE02增量仍待扣重复估。"
+        "scope_rule": "新增/触及能力随批接入，存量有独立9–13日分阶段迁移配额，首个非HTTP消费者前接等价受控路径；CE02-S/D/L合计20–30。"
       },
       "milestones": [
         {
           "id": "CE02-S",
+          "wave": "P6.1",
+          "estimate_engineering_days": [
+            6,
+            9
+          ],
           "dependencies": [
             "CE01",
             "C04",
             "X01-C"
           ],
-          "acceptance": "同步/查询门面与HTTP/内部映射汇入同一登记用例；同事务上下文复用，当前权限/参数/错误一致并验无旁路、无半套提交、无重复入口扣取。"
+          "acceptance": "同步共同入口，领域/事务/当前授权与参数无旁路"
         },
         {
           "id": "CE02-D",
+          "wave": "P6.3",
+          "estimate_engineering_days": [
+            5,
+            8
+          ],
           "dependencies": [
             "CE02-S",
             "C03",
             "R01"
           ],
-          "acceptance": "可靠意图、稳定操作ID、最小操作/任务关联及受理/完成receipt；worker同能力执行阶段复验授权/状态/版本/期限与额度，不递归创建新任务、不静默换版本或重复效果；合法重投/退避/held恢复保留原身份；完整结果schema、取回、工单展示/写回仍由D12交付，不依完整I01。"
+          "acceptance": "可靠阶段/稳定身份与效果收据，不递归提交；链A由D12交展示"
+        },
+        {
+          "id": "CE02-L",
+          "wave": "P9",
+          "estimate_engineering_days": [
+            9,
+            13
+          ],
+          "dependencies": [
+            "CE02-D",
+            "I01",
+            "R07"
+          ],
+          "acceptance": "158当前映射逐模块迁移并有触及/消费者前门，分批工程量而非P9最后一次重写"
         }
       ],
-      "state": "design_outline_not_implemented",
-      "estimate_engineering_days": null,
-      "pricing_state": "new_scope_not_priced",
-      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+      "state": "detailed_candidate_not_implemented",
+      "estimate_engineering_days": [
+        20,
+        30
+      ],
+      "pricing_state": "net_priced_candidate",
+      "pricing_rule": "净增实现/最小UI/运维/测试；扣除原包及本次已完成研究，唯一数字源为planning-scope-estimates.json",
+      "detail_ref": "docs/design/capability-interconnect-detail.md"
     },
     {
       "id": "CE03",
@@ -152,7 +196,9 @@
         "CE02-D",
         "I01",
         "I02",
-        "R06"
+        "I03",
+        "R06",
+        "CE05"
       ],
       "existing_carriers": [
         "R06",
@@ -160,10 +206,14 @@
         "I02"
       ],
       "acceptance": "选定AL操作的目标/字段/revision/幂等/结果和持续授权；TR不直库，不以全量replace代patch，不靠dept/actor授写权。",
-      "state": "design_outline_not_implemented",
-      "estimate_engineering_days": null,
-      "pricing_state": "new_scope_not_priced",
-      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+      "state": "detailed_candidate_not_implemented",
+      "estimate_engineering_days": [
+        9,
+        14
+      ],
+      "pricing_state": "net_priced_candidate",
+      "pricing_rule": "净增实现/最小UI/运维/测试；扣除原包及本次已完成研究，唯一数字源为planning-scope-estimates.json",
+      "detail_ref": "docs/design/capability-interconnect-detail.md"
     },
     {
       "id": "CE04",
@@ -181,15 +231,19 @@
       ],
       "acceptance": "AL全部支持写入口源事务事实/完整feed，含有界import批次；平台按event+订阅版本幂等触发任务，重复/乱序/回放/写回循环有反例。",
       "preparation_rule": "源事实格式和覆盖清单可并行准备；自动触发启用前须CE03授权及CE05准入/防循环。",
-      "state": "design_outline_not_implemented",
-      "estimate_engineering_days": null,
-      "pricing_state": "new_scope_not_priced",
-      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+      "state": "detailed_candidate_not_implemented",
+      "estimate_engineering_days": [
+        13,
+        20
+      ],
+      "pricing_state": "net_priced_candidate",
+      "pricing_rule": "净增实现/最小UI/运维/测试；扣除原包及本次已完成研究，唯一数字源为planning-scope-estimates.json",
+      "detail_ref": "docs/design/capability-interconnect-detail.md"
     },
     {
       "id": "CE05",
       "title": "跨入口准入、反压和因果预算",
-      "wave": "P7，后续按实测增强",
+      "wave": "P7",
       "dependencies": [
         "CE02-D",
         "I02",
@@ -203,10 +257,14 @@
         "G04"
       ],
       "acceptance": "HTTP/本地/定时/订阅/MCP同一逻辑预算，按能力/主体/provider限速和并发；超限可拒绝或held，可信root/causation和深度/步数/fanout防回环。",
-      "state": "design_outline_not_implemented",
-      "estimate_engineering_days": null,
-      "pricing_state": "new_scope_not_priced",
-      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+      "state": "detailed_candidate_not_implemented",
+      "estimate_engineering_days": [
+        7,
+        11
+      ],
+      "pricing_state": "net_priced_candidate",
+      "pricing_rule": "净增实现/最小UI/运维/测试；扣除原包及本次已完成研究，唯一数字源为planning-scope-estimates.json",
+      "detail_ref": "docs/design/capability-interconnect-detail.md"
     }
   ],
   "representative_chains": [
@@ -289,32 +347,48 @@
     },
     {
       "scope": "新增AL自动写或事件任务循环",
-      "required_milestones": ["CE05"],
+      "required_milestones": [
+        "CE05"
+      ],
       "gate": "共享准入/队列及可信因果预算实际验收后启用；只读合同/mock准备不受阻。"
     }
   ],
   "compatibility_rule": "静态capability_id+contract_version、OpenAPI operationId、动态operation_id/invocation_id分开；旧action_id/wire映射登记，不直接改历史字段/数据。",
   "estimate_and_schedule_impact": {
-    "existing_parent_estimates_changed": false,
+    "existing_parent_estimates_changed": true,
     "new_scope_count": 5,
-    "new_scope_estimated": false,
-    "old_execution_schedule_status": "priced_baseline_before_this_supplement",
-    "rule": "旧UAA和71包冻结数字保留为补充前已计价基线；新增范围在开工门复估并重新生成排期，不沿用旧总量冒充已含。",
-    "blocking_scope": "仅新统一通道/AL自动链启用的增量门，不阻独立旧正确性修复或无关mock。"
+    "new_scope_estimated": true,
+    "old_execution_schedule_status": "historical_before_current_repriced_model",
+    "rule": "原71包及UAA基线作为历史保留；新76父包＋LS净增＋6项基价复估由当前总账/仓内生成器统一派生，不能重复计父子或RP净差额。",
+    "blocking_scope": "仅新统一通道/AL自动链启用的增量门，不阻独立旧正确性修复或无关mock。",
+    "CE_net_days": [
+      52,
+      80
+    ],
+    "other_LS_net_days": [
+      34,
+      56
+    ],
+    "existing_reprice_net_days": [
+      16,
+      24
+    ]
   },
   "remaining_design_windows": [
-    "逐操作能力库存与legacy字段映射",
-    "AL单条/批量/删除/恢复/Schema事件及订阅粒度",
-    "订阅创建/改版/停启生效水位与回放政策、谓词取事件时值或当前值",
-    "AL目标/字段与持续授权",
-    "共享准入/因果预算数值与退化",
-    "准确DTO/迁移/工序和增量估算"
+    "各实施切片具体DDL/迁移编号/锁序源码、CI配置与当前批先红后绿；候选DTO已具精确Schema和正反例",
+    "各能力数值profile按压测及已选拓扑校准；多实例在实际启用前故障验证",
+    "真实提供方合同/身份/权限/增量删除/限额与启用证据，mock继续保留",
+    "P8/P9更复杂宿主/协同仍按各自有限范围逐包深化，不声称所有远期细节已冻结"
   ],
   "work_boundary": {
     "T0_started": false,
     "business_implementation_started": false,
     "owner_scenarios_still_in_progress": true,
     "all_future_details_frozen": false,
-    "runtime_acceptance": false
-  }
+    "runtime_acceptance": false,
+    "reference_contract_models_executed": true
+  },
+  "detail_ref": "docs/design/capability-interconnect-detail.md",
+  "catalog_ref": "docs/design/capability-operation-catalog.json",
+  "estimate_registry_ref": "docs/review/planning-scope-estimates.json"
 }

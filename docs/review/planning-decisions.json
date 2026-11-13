@@ -325,12 +325,23 @@
       "design_ref": "docs/design/ecosystem-consistency-contract.md",
       "owner_feedback": "2026-11-13所有者强调项目可用但需精致，允许粗范围、后续细化和持续演进。",
       "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B09",
+      "state": "owner_pending",
+      "decision_due": "D14人工来源缺口协作入口启用前",
+      "question_context": "SOC暂时不能刷新事件，但当前用户权限仍正常。是否允许具备事件协调职责者确认陈旧并填理由后手工创建催补证据等本地协作任务；不执行封禁隔离，自动按旧状态派单暂停？",
+      "recommendation": "可允许人工明确确认后的本地协作；自动化继续held；正式采用前等待owner答案",
+      "impact_or_safe_fallback": "问题已提出，未答不当批准。manual_source_gap_enabled默认false；模型同时验证开/关分支，不阻其他设计/独立平台。",
+      "design_ref": "docs/design/soc-collaboration-authorization.md",
+      "implementation": "planned_not_implemented",
+      "estimate_rule": "D14现有7–11有限范围含显式配置/陈旧确认/held反馈，非第二份专业SOC或新增预算"
     }
   ],
   "last_updated": "2026-11-13",
   "confirmation_summary": {
     "owner_confirmed": 31,
-    "owner_pending": 1,
+    "owner_pending": 2,
     "provider_constraints_then_owner_review": 1
   },
   "active_work_boundary": {

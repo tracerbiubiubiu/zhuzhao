@@ -2,7 +2,7 @@
 
 > 2026-11-13补充：[共同能力调用合同](capability-invocation-contract.md)是HTTP/本地/MCP的同一逻辑接缝；本页只适配选定能力。每个入口发布前须有覆盖本能力/主体/目标的有界超时、大小、速率和inflight profile，纳入共同预算；先复用现有机制，不要求只读MCP等待完整CE05/I03。新增共享队列/自动循环按CE05启用门验收，不能因协议适配绕过限额。最小接线及新增范围见[增量册](../review/capability-interconnect-supplement.md)，原A03数字不自动包干新增能力。
 
-日期：2026-11-12。状态：**FD05本次新增补研／A03与I01/I02的设计候选，未实现、未运行协议测试**。它不追改2026-11-11基线的研究深度，不自动批准新的AS部署或扩展所有工具。当前范围/估算由[总账](../review/planning-backlog.md)维护；本页拆分已同步[AI总纲](ai-capabilities.md)、[阶段入口](../phase7/README.md)和[执行排期](../review/execution-schedule.md)，仍是候选而非实现收据。
+日期：2026-11-13。状态：**FD05设计候选与官方SDK回环互操作样例已验证；产品实现、真实AS和企业组合未验证**。它不追改2026-11-11基线的研究深度，不自动批准新的AS部署或扩展所有工具。当前范围/估算由[总账](../review/planning-backlog.md)维护；本页拆分已同步[AI总纲](ai-capabilities.md)、[阶段入口](../phase7/README.md)和[执行排期](../review/execution-schedule.md)，仍是候选而非实现收据。
 
 ## 1. 本次作出的最小选择
 
@@ -26,13 +26,13 @@
 
 ## 3. 协议、SDK和transport候选固定下来
 
-本次在线核到的规范是**MCP 2026-07-28**。SDK候选固定为官方Go SDK **v1.8.0**：官方发布页存在该tag，兼容表把v1.7.0+列为支持此版规范，tag的`go.mod`要求Go1.25.0，低于主仓现有Go1.26.10。这里仅选择实施基线，尚未改`go.mod`、下载/验sum、扫描依赖或做互操作；实际开始时若因安全修复换版本，更新精确组合与收据，不使用浮动`latest`。[官方发布](https://github.com/modelcontextprotocol/go-sdk/releases/tag/v1.8.0)、[兼容表](https://github.com/modelcontextprotocol/go-sdk#version-compatibility)、[固定tag依赖](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/go.mod)
+本次在线核到的规范是**MCP 2026-07-28**。SDK候选固定为官方Go SDK **v1.8.0**：官方发布页存在该tag，兼容表把v1.7.0+列为支持此版规范，tag的`go.mod`要求Go1.25.0，低于当前候选主仓Go1.27.4。独立研究module已固定`go.mod/go.sum`并实际执行SDK互操作；产品`go.mod/go.sum`未改变，也未据此宣称产品依赖扫描或企业组合通过；实际开始时若因安全修复换版本，更新精确组合与收据，不使用浮动`latest`。[官方发布](https://github.com/modelcontextprotocol/go-sdk/releases/tag/v1.8.0)、[兼容表](https://github.com/modelcontextprotocol/go-sdk#version-compatibility)、[固定tag依赖](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/go.mod)
 
 P7默认只有一个Streamable HTTP profile：2026-07-28、HTTPS、单个`/mcp` POST端点、只读同步结果；服务端先发JSON，客户端同时能处理JSON和请求级SSE。**此版每请求携带protocolVersion/clientCapabilities，不做旧版`initialize`会话，不以Mcp-Session-Id保存用户权限**；GET/DELETE不作为MCP业务操作支持。协议元数据/必需镜像头交SDK编码与校验，不能把`Mcp-Name`头当未经body校验的授权事实。[规范transport](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)、[协议基础](https://modelcontextprotocol.io/specification/2026-07-28/basic/index)
 
-已核固定tag源码的`StreamableHTTPOptions`有`Stateless`、`JSONResponse`、`MaxRequestBodyBytes`和`PropagateRequestCancellation`；实施候选分别为true、true、64KiB、true，关闭旧会话兼容调试开关。它的跨源保护需要显式包装，不能因采用SDK就假设安全默认已全开。client显式使用空能力集，避免SDK历史默认宣告roots；不设置sampling/elicitation处理器，不接受外部工具诱导主机读文件或二次调用模型。[固定transport源码](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/streamable.go)、[固定client源码](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/client.go)
+已核固定tag源码的`StreamableHTTPOptions`有`Stateless`、`JSONResponse`、`MaxRequestBodyBytes`和`PropagateRequestCancellation`；实施候选分别为true、true、64KiB、true，关闭旧会话兼容调试开关。它的跨源保护需要显式包装，不能因采用SDK就假设安全默认已全开。client必须显式使用`Capabilities: &mcp.ClientCapabilities{}`及`MultiRoundTrip: &mcp.MultiRoundTripOptions{Disabled: true}`。前者避免历史默认roots，后者关闭SDK默认自动多轮；只给空能力集不足以关闭MRTR。不设置sampling/elicitation处理器，收到`input-required`立即拒绝继续执行，不接受外部工具诱导主机读文件或二次调用模型。[固定transport源码](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/streamable.go)、[固定client源码](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/client.go)
 
-P7组合至少固定“本仓adapter构建摘要＋SDK1.8.0＋规范2026-07-28＋参考Go client构建摘要＋测试AS配置摘要”。不用SDK宣称支持的全部旧版作为本项目支持承诺。2025-11-25或其它客户端若确需接入，P8增加独立兼容profile与同样的负例；首版收到不支持版本按规范返回支持集合，不静默降级为无认证的旧SSE。协议版本、工具主版本、schema摘要、核心程序版本和授权状态分别记录。
+P7组合至少固定“本仓adapter构建摘要＋SDK1.8.0＋规范2026-07-28＋参考Go client构建摘要＋测试AS配置摘要”。不用SDK宣称支持的全部旧版作为本项目支持承诺。2025-11-25或其它客户端若确需接入，P8增加独立兼容profile与同样的负例；本profile未知现代版本返回HTTP400及-32022/支持集合；固定SDK对旧版未知日期header走HTTP400纯文本分支，不能承诺所有未知旧日期都返回该JSON错误。两者均拒绝执行，不静默降级为无认证的旧SSE。协议版本、工具主版本、schema摘要、核心程序版本和授权状态分别记录。
 
 ## 4. 首批工具与Schema
 
@@ -170,7 +170,7 @@ P7组合至少固定“本仓adapter构建摘要＋SDK1.8.0＋规范2026-07-28�
 }
 ```
 
-MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`和不超范围的`content`，成功`isError=false`。[受控Schema bundle](mcp-first-contract.schema.json)含三个工具完整inputSchema/outputSchema、7个有效及10个无效Schema样本，以及14个尚未执行的语义负例；实施可从该文件生成工具声明，不依赖ignored收据。字符串格式还需在Go中核int64范围和业务约束，Schema通过不代表授权/协议互操作已通过。
+MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`和不超范围的`content`，成功`isError=false`。[受控Schema bundle](mcp-first-contract.schema.json)含三个工具完整inputSchema/outputSchema、7个有效及10个无效Schema样本，以及14个语义负例（历史字段名`semantic_cases_not_executed`保留为原始输入，2026-11-13的独立样例已执行，产品验收仍待实现）；实施可从该文件生成工具声明，不依赖ignored收据。字符串格式还需在Go中核int64范围和业务约束，Schema通过不代表授权/协议互操作已通过。
 
 ## 5. HTTP身份、授权及无需企业AS的开发路径
 
@@ -185,7 +185,7 @@ MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`�
 公司UAA的网页登录与岗位权限治理按[UAA合同](uaa-governance-integration.md)接入；其能完成网页登录不等于天然满足本页MCP AS的客户端登记、PKCE、resource/audience及撤销合同。若拟复用同一公司组件，仍须独立核验发行者、用途和互操作，不能直接透传网页登录token；不能满足时只阻断该真实MCP HTTP profile，不阻断完整独立平台或既有表单/REST。
 
 1. P7 mock/contract使用仅监听回环地址的专用**测试AS夹具**，拥有独立issuer、合成用户、固定测试client/redirect和测试密钥，以已维护的测试组件或受限协议fixture覆盖code/PKCE/resource/scope/expiry及撤销负例。它是测试夹具，不是生产AS；不能靠固定任意Bearer字符串冒充走通OAuth。
-2. 真正HTTP放行必须接入经验证的AS。企业AS可用且满足合同则接；否则以**独立、成熟OAuth AS组件＋本地IAM登录/同意桥**作为独立部署的推荐路径，不自行从JWT工具库拼一个生产AS。选定组件/固定制品、登录桥互操作和部署成本在I02/A03实施切片内单列，不假称已经有现成AS或“只改endpoint”。
+2. 真正HTTP放行必须接入经验证的AS。企业AS可用且满足合同则接；否则可接**独立环境已有的成熟OAuth AS＋本地IAM登录/同意桥**，不自行从JWT工具库拼一个生产AS。生产既有AS适配/主体桥/最小运维按[LS06](legacy-scope-completion.md#5-专业接口与mcp身份的已知未估部分)另估8–13日；不含新建或部署通用AS，不假称已经有现成AS或“只改endpoint”。没有满足条件的供给时保持profile关闭。
 3. 若生产环境既无可用AS、又不采用独立AS，该profile保持关闭，核心表单/REST继续用原认证运行；允许关mock/contract出口，真实MCP放行保持pending。后续取得AS的输入/验收条件与具体提供方记录在E01，不把整个A01或核心平台停工，也不改用HMAC冒名过门。
 
 开发fixture与生产AS替换共享同一资源服务器验证/核心授权路径，只有issuer/token verifier和身份绑定输入不同。测试AS不能授予合成用户不存在的核心角色。正式采用哪一个AS实现尚未核验；这是明确的提供方组件选择，不再悬置“到底使用OAuth还是复用JWT”的架构取舍。
@@ -194,7 +194,7 @@ MCP返回时放入`resultType="complete"`、`structuredContent=<上述对象>`�
 
 1. client向`/mcp`请求，缺token时返回401及Protected Resource Metadata位置；元数据声明canonical resource，例如合成`https://mcp.example.invalid/mcp`及唯一允许issuer。客户端核元数据后按预登记信息与AS发起code＋PKCE，authorization和token两步都带同一个resource。
 2. AS进行用户认证/逐client同意，发MCP专用access token。企业AS主体经**已批准的`(issuer,subject)→local_user_id`绑定**解析；不按同名/邮箱自动并号。首次绑定需有可信本地登录或管理员证明，客户端不能提交local_user_id选择他人身份。
-3. 独立AS没有公司身份时，浏览器走本地IAM登录桥：登录仍用已有账号/会话；桥只向AS签发一次性、短期、限定audience和OAuth request/client的登录证明，不把浏览器AT/RT/PAT或密码给MCP client。桥校验state/PKCE请求关联并展示client、目标resource、scope及到期；它只证明用户认证与本次同意，不给AS直接读取工单的能力。登录桥是I02待实现安全用例，不能把现有SSOProvider（本平台消费IdP）误认为已经支持反向AS登录。
+3. 独立AS没有公司身份时，浏览器走本地IAM登录桥：登录仍用已有账号/会话；桥只向AS签发一次性、短期、限定audience和OAuth request/client的登录证明，不把浏览器AT/RT/PAT或密码给MCP client。桥校验state/PKCE请求关联并展示client、目标resource、scope及到期；它只证明用户认证与本次同意，不给AS直接读取工单的能力。登录/同意桥由LS06待实现切片交付，复用I02主体/委托合同，不能把现有SSOProvider（本平台消费IdP）误认为已经支持反向AS登录。
 4. 资源服务器验证token签名或受认证introspection、固定issuer、**audience精确等于此MCP resource**、有效期、scope、client绑定和撤销状态；拒绝ID token、发给REST/另一个MCP的token、本地`zpat_*`和X-AK身份混用。SDK`auth.RequireBearerToken`只提供承载，`TokenVerifier`内的这些校验和业务绑定不能省略。[固定SDK认证接口](https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/auth/auth.go)
 5. 解析得到actor后按当前本地active/删除/安全状态和I02 grant复验；企业纳管能力还须检查UAA授权投影及已批准的新鲜度政策，独立模式不读取UAA状态。禁用用户、撤回当前业务授权/client同意或grant后下一次请求拒绝。JWT自包含token有效期不等于允许延迟撤权；首版每请求查询AS grant/introspection及本地授权权威，不能确认时失败关闭，缓存只做同请求复用，不延长撤销期；这不要求逐请求远程查询UAA。
 6. `tools/list`按当前scope、当前用户业务GET路由资格、server/场景允许集过滤并排序；scope充分但本地权限已撤销仍不可见。`tools/call`再次做同一检查，再以服务端actor调用`Service.List/Get`。客户端缓存目录、readOnly注解、上次连接及自报clientInfo都不赋权。结果/批准handle每次查所有者和当前范围，不是持有handle即可访问。
@@ -261,4 +261,8 @@ P7最薄交付须证明，而不是仅实现SDK示例：
 
 P8增强以已证明的P7合同为基线，逐项增加实际企业Agent、用户授权/ACL、更多数据集合、缓存、长任务/Tasks、skill分发和写工具；每项重新登记工具版本/批准政策与兼容范围，不把P7当前两读工具的通过扩张成增强已验收。异步/长任务不能仅因工具HTTP200或SSE结束就当业务完成，仍走[I03/R01跨仓合同](cross-repo-execution-contract.md)。
 
-本次完成的是FD05补研正文、受控工具候选Schema和合成回执例的静态自检：使用UI已有Ajv6.15.0验证本Schema所用的draft-07/2020-12共有关键词子集，6个Schema及17个正反样本均符合预期；这不是完整2020-12、MCP或OAuth conformance，14个语义负例未执行。未运行AS、MCP server/client、conformance、真实企业接口或任何业务门禁；没有模型/内部资料上传，没有新增依赖/配置/权限码/路由/迁移或启动实现。准确AS组件与真实企业配置仍待实施选定，但身份方向、无AS开发方式、首发只读边界、P7/P8消费范围及负例已不再只是一句“开工再冻结”。
+2026-11-13已完成[仓内可复跑SDK样例](examples/mcp-sdk-interop/README.md)：官方Go SDK v1.8.0、真实oauth2客户端与loopback HTTP，10个顶层/33个叶用例，覆盖全部14语义负例；普通与`-race`均通过。实际核JSON/SSE、无initialize、resultType、版本错误分支、当前撤权/响应前复验、用户2/连接8并发拒绝与释放、取消及64KiB/256KiB预算。6个Schema及17个静态样本也保留。第一次将旧日期错误误当现代JSON分支的断言失败已保留并依据固定SDK纠正，不是产品缺陷修复或TDD红证据。
+
+样例的AS、主体映射、L1/L2/I02与限流器均为合成的单进程参考实现；没有接入核心真实IAM、多实例共享预算、真实AS、企业MCP或模型。因此不能把33叶/`-race`称为产品或协议全量conformance。固定SDK许可处于MIT向Apache-2.0过渡，不能简写成任选双许可；摘要、原文来源及哈希见[受控报告](examples/mcp-sdk-interop/report.json)。生产选型和分发须按固定制品重新核依赖、漏洞、完整许可与真实授权组合。
+
+产品未新增依赖、配置、权限码、路由或迁移。真实AS能力/测试身份/主体映射/撤权供给仍是LS06及E01的启用门，不阻完整独立IAM与长期mock。上述研究证明候选可以被具体测试，不能替代A03-R/W、LS06和共同生产门的实际交付。

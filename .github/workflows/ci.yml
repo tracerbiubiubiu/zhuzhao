@@ -34,6 +34,8 @@ jobs:
         run: python3 scripts/test-acceptance-isolation.py
       - name: 开发编排隔离回归检查
         run: python3 scripts/test-dev-stack.py
+      - name: 规划来源与虚假收口反例检查
+        run: make planning-check
       - name: 生成工具入口与回滚预检反例检查
         run: |
           python3 scripts/test-go-tool.py

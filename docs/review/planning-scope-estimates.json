@@ -1,0 +1,851 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "status": "bounded_net_estimate_candidate_independently_reviewed",
+  "purpose": "本表是已识别CE/旧漏估及既有包复估的唯一净增量注册表；基线范围与本次新增分列，WBS及复用扣重可核；并非所有未来提供方的无限包干。",
+  "baseline": {
+    "estimate_commit": "a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
+    "public_remaining": [
+      292,
+      496
+    ],
+    "with_conditional_uaa_R": [
+      305,
+      518
+    ],
+    "maintenance_reserve": [
+      1,
+      2
+    ],
+    "old_71_parent_work_items": true
+  },
+  "unit": "有效工程日；含实现、最小接线、测试、审阅及正常修正；不含外部等待",
+  "items": [
+    {
+      "id": "LS01",
+      "title": "常驻状态×字段×角色ACL",
+      "owner_package": "D04",
+      "source_ids": [
+        "P6-T065",
+        "P6-T100"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        11,
+        17
+      ],
+      "dependencies": [
+        "C04",
+        "D01",
+        "D03",
+        "D04",
+        "U02"
+      ],
+      "wbs": [
+        {
+          "name": "固定决策表/有效角色与当前策略",
+          "days": [
+            4,
+            6
+          ]
+        },
+        {
+          "name": "全部读写/检索/导出/历史/公式投影",
+          "days": [
+            3,
+            5
+          ]
+        },
+        {
+          "name": "管理表与影响预览",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "授权/缓存/撤权及兼容反例",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "D04字段schema/collect_fields/visible_when原价",
+        "C04三层/epoch底座",
+        "U02通用组件"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS02",
+      "title": "类型化custom_data检索首组",
+      "owner_package": "U03",
+      "source_ids": [
+        "P6-T019"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        5,
+        9
+      ],
+      "dependencies": [
+        "LS01",
+        "D04",
+        "U02"
+      ],
+      "wbs": [
+        {
+          "name": "可信schema类型谓词/JSONB索引",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "列表/计数/导出同源授权",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "字段/操作符筛选控件",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "空值/权限/预算与性能反例",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "U03普通组合筛选与视觉壳",
+        "C04资源权限",
+        "LS01字段读权"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS03",
+      "title": "Cmd+K最薄受权入口",
+      "owner_package": "U06",
+      "source_ids": [
+        "P6-T045"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        3,
+        4
+      ],
+      "dependencies": [
+        "U01",
+        "U02",
+        "D03"
+      ],
+      "wbs": [
+        {
+          "name": "当前菜单索引与工单号受权查询",
+          "days": [
+            1,
+            1
+          ]
+        },
+        {
+          "name": "可关闭入口/快捷键/焦点及窄屏",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "越权/输入法/键盘回归",
+          "days": [
+            1,
+            1
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "U02导航/组件",
+        "U06既有页面视觉迁移",
+        "任意全文检索不在范围"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS04",
+      "title": "字段真值diff及受权活动投影",
+      "owner_package": "D02",
+      "source_ids": [
+        "P6-T103"
+      ],
+      "wave": "P6.3",
+      "net_days": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "D02",
+        "LS01"
+      ],
+      "wbs": [
+        {
+          "name": "稳定字段ID/真值diff合同与投影",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "同事务事实写入与只读接线",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "失败/版本/敏感字段反例",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "D02转换采集/capabilities基础",
+        "U03通用活动流UI",
+        "R01可靠交接",
+        "D12任务结果"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS05",
+      "title": "I04第二类专业来源代表adapter",
+      "owner_package": "I04",
+      "source_ids": [
+        "I04-two-representative-sources"
+      ],
+      "wave": "P7",
+      "net_days": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "I04",
+        "X02-F"
+      ],
+      "wbs": [
+        {
+          "name": "第二schema/身份/增量语义映射",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "隔离/修复预览/受控回放接线",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "双源合同/恢复/最小反馈验收",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "I04首adapter4–8日",
+        "X02公共stage/ACK/身份/游标",
+        "专业检测/未知更多厂商"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "real_condition": "真实提供方协议/测试身份及权限具备；先合成供给，真实差异扩大时单独变更估算",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "LS06",
+      "title": "MCP生产既有AS接入及登录主体桥",
+      "owner_package": "A03",
+      "source_ids": [
+        "A03-production-AS"
+      ],
+      "wave": "P7",
+      "net_days": [
+        8,
+        13
+      ],
+      "dependencies": [
+        "A03-R",
+        "C04",
+        "X01-C"
+      ],
+      "wbs": [
+        {
+          "name": "既有标准OAuth AS/资源发现及最小登录同意呈现（client/resource/scope/到期）",
+          "days": [
+            3,
+            5
+          ]
+        },
+        {
+          "name": "主体映射/当前授权与撤权",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "PKCE/audience/注册/SSRF互操作反例",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "最小配置/运维与启用反馈",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "A03-R/W工具/transport协议适配9–14日",
+        "I01/I02领域能力/批准",
+        "UAA网页登录C/P/R",
+        "不自建/部署通用AS平台"
+      ],
+      "scope_ref": "docs/design/legacy-scope-completion.md",
+      "real_condition": "可用标准OAuth AS及注册/测试条件；无真实供给时保留未激活，不影响完整独立IAM",
+      "kind": "additional_existing_scope"
+    },
+    {
+      "id": "CE01",
+      "kind": "new_capability_scope",
+      "title": "可执行能力描述与入口映射",
+      "owner_package": "CE01",
+      "wave": "P6.1",
+      "net_days": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "C04"
+      ],
+      "wbs": [
+        {
+          "name": "描述/版本/写主注册",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "产品入口映射与机械一致",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "缺项/例外/回归守卫",
+          "days": [
+            1,
+            1
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "原C03/C04/R01/X01/X02/I01/I02/I03/R06范围",
+        "本轮库存/设计模型已执行的研究工作",
+        "旧子范围LS01–LS06",
+        "通用IAM/broker/工作流/专业平台建设"
+      ],
+      "scope_ref": "docs/design/capability-interconnect-detail.md",
+      "price_status": "candidate_after_operation_inventory",
+      "source_ids": [
+        "U53/U54"
+      ]
+    },
+    {
+      "id": "CE02",
+      "kind": "new_capability_scope",
+      "title": "共同调用接缝及存量逐模块迁移",
+      "owner_package": "CE02",
+      "wave": "P6.1–P9",
+      "net_days": [
+        20,
+        30
+      ],
+      "dependencies": [
+        "CE01"
+      ],
+      "wbs": [
+        {
+          "name": "CE02-S同步共同入口",
+          "days": [
+            6,
+            9
+          ]
+        },
+        {
+          "name": "CE02-D可靠入口与工单结果纵切",
+          "days": [
+            5,
+            8
+          ]
+        },
+        {
+          "name": "CE02-L存量产品入口分阶段迁移",
+          "days": [
+            9,
+            13
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "原C03/C04/R01/X01/X02/I01/I02/I03/R06范围",
+        "本轮库存/设计模型已执行的研究工作",
+        "旧子范围LS01–LS06",
+        "通用IAM/broker/工作流/专业平台建设"
+      ],
+      "scope_ref": "docs/design/capability-interconnect-detail.md",
+      "price_status": "candidate_after_operation_inventory",
+      "source_ids": [
+        "U53/U54"
+      ]
+    },
+    {
+      "id": "CE03",
+      "kind": "new_capability_scope",
+      "title": "受权AL命令/任务adapter与效果凭证",
+      "owner_package": "CE03",
+      "wave": "P7",
+      "net_days": [
+        9,
+        14
+      ],
+      "dependencies": [
+        "CE02-D",
+        "I01",
+        "I02",
+        "I03",
+        "R06",
+        "CE05"
+      ],
+      "wbs": [
+        {
+          "name": "受权任务adapter",
+          "days": [
+            3,
+            4
+          ]
+        },
+        {
+          "name": "AL操作效果receipt",
+          "days": [
+            3,
+            4
+          ]
+        },
+        {
+          "name": "最小UI",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "接线/恢复验收",
+          "days": [
+            2,
+            4
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "原C03/C04/R01/X01/X02/I01/I02/I03/R06范围",
+        "本轮库存/设计模型已执行的研究工作",
+        "旧子范围LS01–LS06",
+        "通用IAM/broker/工作流/专业平台建设"
+      ],
+      "scope_ref": "docs/design/capability-interconnect-detail.md",
+      "price_status": "candidate_after_operation_inventory",
+      "source_ids": [
+        "U53/U54"
+      ]
+    },
+    {
+      "id": "CE04",
+      "kind": "new_capability_scope",
+      "title": "AL源事实/订阅水位与变更触发",
+      "owner_package": "CE04",
+      "wave": "P7",
+      "net_days": [
+        13,
+        20
+      ],
+      "dependencies": [
+        "CE03",
+        "CE05",
+        "R01"
+      ],
+      "wbs": [
+        {
+          "name": "AL源事务事实",
+          "days": [
+            5,
+            7
+          ]
+        },
+        {
+          "name": "持久订阅/水位",
+          "days": [
+            4,
+            6
+          ]
+        },
+        {
+          "name": "最小UI",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "故障/批次回放验收",
+          "days": [
+            3,
+            5
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "原C03/C04/R01/X01/X02/I01/I02/I03/R06范围",
+        "本轮库存/设计模型已执行的研究工作",
+        "旧子范围LS01–LS06",
+        "通用IAM/broker/工作流/专业平台建设"
+      ],
+      "scope_ref": "docs/design/capability-interconnect-detail.md",
+      "price_status": "candidate_after_operation_inventory",
+      "source_ids": [
+        "P6-T063"
+      ]
+    },
+    {
+      "id": "CE05",
+      "kind": "new_capability_scope",
+      "title": "跨入口准入与因果预算",
+      "owner_package": "CE05",
+      "wave": "P7",
+      "net_days": [
+        7,
+        11
+      ],
+      "dependencies": [
+        "CE02-D",
+        "I02",
+        "I03",
+        "G04"
+      ],
+      "wbs": [
+        {
+          "name": "共享准入",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "因果预算",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "name": "held/预算反馈",
+          "days": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "多实例反压/运维验收",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ],
+      "reuse_excluded": [
+        "原C03/C04/R01/X01/X02/I01/I02/I03/R06范围",
+        "本轮库存/设计模型已执行的研究工作",
+        "旧子范围LS01–LS06",
+        "通用IAM/broker/工作流/专业平台建设"
+      ],
+      "scope_ref": "docs/design/capability-interconnect-detail.md",
+      "price_status": "candidate_after_operation_inventory",
+      "source_ids": [
+        "U53/U54"
+      ]
+    },
+    {
+      "id": "RP-A05",
+      "kind": "reprice_existing_base",
+      "title": "A05现有有界范围复估",
+      "owner_package": "A05",
+      "baseline_days": [
+        4,
+        7
+      ],
+      "replacement_days": [
+        5,
+        8
+      ],
+      "net_days": [
+        1,
+        1
+      ],
+      "scope_ref": "docs/design/domain-agent-reference-scenario.md",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RP-A07",
+      "kind": "reprice_existing_base",
+      "title": "A07现有有界范围复估",
+      "owner_package": "A07",
+      "baseline_days": [
+        5,
+        8
+      ],
+      "replacement_days": [
+        7,
+        12
+      ],
+      "net_days": [
+        2,
+        4
+      ],
+      "scope_ref": "docs/design/skill-reference-package.md",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RP-D14",
+      "kind": "reprice_existing_base",
+      "title": "D14现有有界范围复估",
+      "owner_package": "D14",
+      "baseline_days": [
+        5,
+        8
+      ],
+      "replacement_days": [
+        7,
+        11
+      ],
+      "net_days": [
+        2,
+        3
+      ],
+      "scope_ref": "docs/design/soc-collaboration-authorization.md",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RP-U02",
+      "kind": "reprice_existing_base",
+      "title": "U02现有有界范围复估",
+      "owner_package": "U02",
+      "baseline_days": [
+        4,
+        6
+      ],
+      "replacement_days": [
+        6,
+        9
+      ],
+      "net_days": [
+        2,
+        3
+      ],
+      "scope_ref": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RP-U06",
+      "kind": "reprice_existing_base",
+      "title": "U06现有有界范围复估",
+      "owner_package": "U06",
+      "baseline_days": [
+        4,
+        7
+      ],
+      "replacement_days": [
+        12,
+        19
+      ],
+      "net_days": [
+        8,
+        12
+      ],
+      "scope_ref": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            8,
+            12
+          ]
+        }
+      ]
+    },
+    {
+      "id": "RP-U07",
+      "kind": "reprice_existing_base",
+      "title": "U07现有有界范围复估",
+      "owner_package": "U07",
+      "baseline_days": [
+        2,
+        4
+      ],
+      "replacement_days": [
+        3,
+        5
+      ],
+      "net_days": [
+        1,
+        1
+      ],
+      "scope_ref": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+      "reuse_excluded": [
+        "真实提供方等待",
+        "其他单列CE/LS/UAA净增",
+        "本轮已经完成的审计/原型工作"
+      ],
+      "wave": "沿原owner包",
+      "dependencies": [],
+      "wbs": [
+        {
+          "name": "由逐场景/逐页交付分解形成的包价替换差额，非新功能重复计价",
+          "days": [
+            1,
+            1
+          ]
+        }
+      ]
+    }
+  ],
+  "all_required_supplements_priced": true,
+  "no_new_business_implementation_claimed": true,
+  "net_increment_total": [
+    102,
+    160
+  ],
+  "conditional_unselected_scope": [
+    {
+      "owner_package": "E05",
+      "decision_window": "P7出口",
+      "implementation_window": "P10有限子窗口",
+      "baseline_scope": "原4–8日仅供给/价值/保留期裁决及有限adapter；Office/供应商门户/服务端草稿等未选整套产品不在当前基线",
+      "pricing_rule": "逐选项形成具体供给/用例/验收后独立估算，不把未选范围宣称已开发或零成本"
+    },
+    {
+      "owner_package": "E10",
+      "decision_window": "P6.1出口",
+      "implementation_window": "P6.E有限子窗口",
+      "baseline_scope": "原2–4日仅风险Excel/业务工单导入/跨指纹merge三项的用例/供给/权限数据风险裁决与有限合成验证",
+      "pricing_rule": "实际获准建设按三项分别估算和排日窗；不能用该2–4日包办通用导入或合并产品"
+    }
+  ],
+  "verification": {
+    "wbs_sums_equal_net": true,
+    "CE04_contains_AL_producer_T063_once": true,
+    "D13_already_repriced_not_duplicated": true,
+    "public_min_UI_ops_and_recovery_tests_included_for_new_scope": true,
+    "real_provider_waiting_excluded": true,
+    "all_future_details_or_business_implementation_claimed": false,
+    "independent_scope_and_dedup_review": "PASS"
+  }
+}

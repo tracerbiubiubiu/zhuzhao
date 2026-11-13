@@ -1,0 +1,297 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:zhuzhao:design:domain-agent-reference:1",
+  "title": "Synthetic reference model contracts; not published HTTP API",
+  "definitions": {
+    "reference_run_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor",
+        "orgs",
+        "auth_epoch",
+        "config_version",
+        "contract_version",
+        "skill_version",
+        "max_tools",
+        "now",
+        "approval_expires",
+        "approval",
+        "action",
+        "scope_change",
+        "source_available",
+        "knowledge_available",
+        "data_profile"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "orgs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "uniqueItems": true,
+          "maxItems": 50
+        },
+        "auth_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config_version": {
+          "const": "cfg-1"
+        },
+        "contract_version": {
+          "const": "1"
+        },
+        "skill_version": {
+          "const": "1.0.0"
+        },
+        "max_tools": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "now": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approval_expires": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approval": {
+          "type": "boolean"
+        },
+        "action": {
+          "enum": [
+            "none",
+            "plan_changed",
+            "risk_revision_changed",
+            "lost_response",
+            "duplicate_confirmation",
+            "cancelled",
+            "injected_tool",
+            "config_retired",
+            "resume_after_apply",
+            "knowledge_acl_revoked",
+            "knowledge_version_changed",
+            "knowledge_digest_changed",
+            "receipt_knowledge_revoked",
+            "receipt_actor_changed",
+            "receipt_effect_revoked"
+          ]
+        },
+        "scope_change": {
+          "type": "boolean"
+        },
+        "source_available": {
+          "type": "boolean"
+        },
+        "knowledge_available": {
+          "type": "boolean"
+        },
+        "data_profile": {
+          "enum": [
+            "one_missing",
+            "same_owner_missing",
+            "different_owner_missing",
+            "over_limit"
+          ]
+        }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor",
+        "auth_epoch",
+        "config_version",
+        "contract_version",
+        "skill_version",
+        "definition_ref",
+        "target_org",
+        "risk_revisions",
+        "knowledge_refs",
+        "operation_id"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "auth_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "contract_version": {
+          "const": "1"
+        },
+        "skill_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "definition_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "target_org": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "risk_revisions": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 20,
+          "patternProperties": {
+            "^risk-[a-z0-9-]+$": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "knowledge_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/knowledge_ref"
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 50
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor",
+        "plan_hash",
+        "config_version",
+        "expires_at"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "plan_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "config_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "plan",
+        "plan_hash",
+        "existing_risk_ids"
+      ],
+      "properties": {
+        "state": {
+          "const": "awaiting_approval"
+        },
+        "plan": {
+          "$ref": "#/definitions/proposal"
+        },
+        "plan_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "existing_risk_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "uniqueItems": true,
+          "maxItems": 50
+        }
+      }
+    },
+    "knowledge_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "receipt_read_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "status",
+        "effect_id"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "const": "committed"
+        },
+        "effect_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    }
+  }
+}

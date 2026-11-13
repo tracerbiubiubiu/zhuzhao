@@ -24,7 +24,7 @@
 
 ## 阶段导航
 
-**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA为已计价基线，[互通五项增量](review/capability-interconnect-supplement.md)尚未复估，不能把旧日窗当已含新增范围。
+**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA保留历史基线；互通CE、旧子范围与既有包复估已进入[净估注册表](review/planning-scope-estimates.json)，完整相对排程与独立复核在本轮同步。产品实现和真实激活分开。
 
 [Phase1](phase1/README.md) → [Phase2](phase2/README.md) → [Phase3](phase3/README.md) → [Phase4](phase4/README.md)为已交付阶段的设计与记录；[Phase5](phase5/README.md)保留已合main的能力和债务出处。[Phase6](phase6/README.md)是近期可信底座/风险/体验切片，[Phase7](phase7/README.md)承接受控能力与专业集成，[Phase8](phase8/README.md)承接领域Agent/专业执行，[Phase9](phase9/README.md)承接持久协同；P10及更远候选见路线图，不为目录完整性建立空阶段稿。
 
@@ -56,4 +56,4 @@
 | 2026-11-11 | 同步Phase5收尾和问题移交，后续原稿作为重规划输入。 |
 | 2026-11-13 | 按所有者/开发/运维审计重排阅读路径，校准阶段/资源与未计价增量，明确候选和main入口。 |
 
-全项目后续重规划主读[路线图](roadmap.md) → [渐进演进](design/project-evolution-strategy.md) → [能力承接审计](review/roadmap-capability-continuity.md) → 唯一总账；Phase6仅为近期一段。比较方案变化读[路线对照](review/roadmap-change-comparison-2026-11-12.md)，查看已计价先后读[执行排期](review/execution-schedule.md)，再合并尚未计价增量。
+全项目后续重规划主读[路线图](roadmap.md) → [渐进演进](design/project-evolution-strategy.md) → [能力承接审计](review/roadmap-capability-continuity.md) → 唯一总账；Phase6仅为近期一段。比较方案变化读[路线对照](review/roadmap-change-comparison-2026-11-12.md)，查看已计价先后读[执行排期](review/execution-schedule.md)，当前完整范围同时包含CE、旧漏估子范围与既有包复估；历史日窗不作为新承诺。

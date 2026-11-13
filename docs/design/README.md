@@ -42,7 +42,13 @@
 | 设备薄模块 | [设备合同](device-module-contract.md) | 目录/状态/人工入口；不承诺异构设备SSO |
 | 版本与数据升级 | [版本现代化](dependency-modernization.md)、[恢复契约](component-upgrade-data-contract.md) | 准确制品/数据组合、停写/恢复和回退边界；[工具说明](../../deployments/tools/README.md) |
 
-[规划收口](../review/planning-closeout.md)区分详设候选、组件原型、逐页范围和边界；不是全部远期API/DDL已冻结。[新旧对照](../review/roadmap-change-comparison-2026-11-12.md)解释取舍，[执行排期](../review/execution-schedule.md)给已计价基线，[UAA补估](../review/uaa-implementation-estimate.md)负责独立数字源；新五项互通仍未复估，不把文件存在当可开工/已验收。
+[规划收口](../review/planning-closeout.md)区分详设候选、组件原型、逐页范围和边界；不是全部远期API/DDL已冻结。[新旧对照](../review/roadmap-change-comparison-2026-11-12.md)解释取舍，[执行排期](../review/execution-schedule.md)给已计价基线，[UAA补估](../review/uaa-implementation-estimate.md)负责独立数字源；CE及旧子范围已扣重复估，当前完整排程另见[净增注册表](../review/planning-scope-estimates.json)；有研究证据不等于产品已经实现。
+
+## 本轮补齐的可检查材料
+
+- [逐操作库存](capability-operation-catalog.md)、[三链精确合同](capability-interconnect-detail.md)/[Schema](capability-interconnect-detail.schema.json)：现态枚举、目标消息/水位/授权/恢复和最小UI运维分开。
+- [旧子范围](legacy-scope-completion.md)：字段ACL、类型化检索、CmdK、真值diff、第二专业源及生产MCP身份桥。
+- [领域Agent比较](domain-agent-reference-scenario.md)、[skill样包](skill-reference-package.md)、[SOC职责](soc-collaboration-authorization.md)及[可执行样例](examples/README.md)：合成模型与真实SDK证据分别说明，不冒称企业接通。
 
 ## 变更记录
 

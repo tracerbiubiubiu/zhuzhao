@@ -1,0 +1,2909 @@
+{
+  "schema_version": "1",
+  "data_scope": "synthetic_only",
+  "agent_cases": [
+    {
+      "id": "A01",
+      "description": "normal",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A02",
+      "description": "read-only preview",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": false,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "awaiting_approval",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A03",
+      "description": "withdrawn user authorization",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": true,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A04",
+      "description": "expired exact approval",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 111,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A05",
+      "description": "plan changed after approval",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "plan_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A06",
+      "description": "risk revision advanced",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "risk_revision_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A07",
+      "description": "apply committed then response lost",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "lost_response",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A08",
+      "description": "duplicate confirmation",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "duplicate_confirmation",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A09",
+      "description": "cancel before execution",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "cancelled",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "cancelled",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A10",
+      "description": "provider output attempts nonallowlisted tool",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "injected_tool",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 0,
+        "draft_risk_ids": [],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A11",
+      "description": "tool budget exhausted",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 2,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "budget_exhausted",
+        "effects": 0,
+        "draft_risk_ids": [],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A12",
+      "description": "resume pinned config unavailable",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "config_retired",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "draft_risk_ids": [],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A13",
+      "description": "risk source unavailable",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": false,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "degraded",
+        "effects": 0,
+        "draft_risk_ids": [],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A14",
+      "description": "knowledge provider lacks subject ACL; no validated draft is published",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": false,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "draft_risk_ids": [],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A15",
+      "description": "foreign org is absent from query",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A16",
+      "description": "checkpoint resume uses same operation",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "resume_after_apply",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a"
+        ],
+        "existing_risk_ids": [
+          "risk-b"
+        ],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A17",
+      "description": "same-owner risks form one bounded preview",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "same_owner_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "draft_risk_ids": [
+          "risk-a",
+          "risk-b"
+        ],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A18",
+      "description": "different owners require separate plans",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "different_owner_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-a",
+          "risk-b"
+        ],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A19",
+      "description": "more than twenty risks must be split before approval",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "none",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "over_limit"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "draft_risk_ids": [
+          "risk-01",
+          "risk-02",
+          "risk-03",
+          "risk-04",
+          "risk-05",
+          "risk-06",
+          "risk-07",
+          "risk-08",
+          "risk-09",
+          "risk-10",
+          "risk-11",
+          "risk-12",
+          "risk-13",
+          "risk-14",
+          "risk-15",
+          "risk-16",
+          "risk-17",
+          "risk-18",
+          "risk-19",
+          "risk-20",
+          "risk-21"
+        ],
+        "existing_risk_ids": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ]
+      }
+    },
+    {
+      "id": "A20",
+      "description": "knowledge ACL withdrawn after preview, before apply",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "knowledge_acl_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "knowledge_refs": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": null
+      }
+    },
+    {
+      "id": "A21",
+      "description": "knowledge source version changes after preview, before apply",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "knowledge_version_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "knowledge_refs": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": null
+      }
+    },
+    {
+      "id": "A22",
+      "description": "knowledge content changes under the same version after preview, before apply",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "knowledge_digest_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "held",
+        "effects": 0,
+        "knowledge_refs": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": null
+      }
+    },
+    {
+      "id": "A23",
+      "description": "committed operation receipt after knowledge withdrawal and checkpoint reload",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "receipt_knowledge_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "succeeded",
+        "effects": 1,
+        "knowledge_refs": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": {
+          "operation_id": "demo-operation-1",
+          "status": "committed",
+          "effect_id": "demo-ticket-created-1"
+        }
+      }
+    },
+    {
+      "id": "A24",
+      "description": "another actor must not use the original plan to read a committed receipt",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "receipt_actor_changed",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "knowledge_refs": [],
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": null
+      }
+    },
+    {
+      "id": "A25",
+      "description": "receipt target no longer visible to the original actor",
+      "input": {
+        "actor": "demo-risk-manager",
+        "orgs": [
+          "org-a"
+        ],
+        "auth_epoch": 7,
+        "config_version": "cfg-1",
+        "contract_version": "1",
+        "skill_version": "1.0.0",
+        "max_tools": 6,
+        "now": 100,
+        "approval_expires": 110,
+        "approval": true,
+        "action": "receipt_effect_revoked",
+        "scope_change": false,
+        "source_available": true,
+        "knowledge_available": true,
+        "data_profile": "one_missing"
+      },
+      "expected": {
+        "state": "denied",
+        "effects": 1,
+        "forbidden_refs": [
+          "risk-hidden",
+          "knowledge-secret"
+        ],
+        "receipt_result": null
+      }
+    }
+  ],
+  "skill_cases": [
+    {
+      "id": "K01",
+      "operation": "load",
+      "variant": "valid",
+      "expected": "loaded"
+    },
+    {
+      "id": "K02",
+      "operation": "load",
+      "variant": "tampered_bytes",
+      "expected": "reject_digest"
+    },
+    {
+      "id": "K03",
+      "operation": "load",
+      "variant": "untrusted_publisher",
+      "expected": "reject_trust"
+    },
+    {
+      "id": "K04",
+      "operation": "load",
+      "variant": "revoked",
+      "expected": "reject_revoked"
+    },
+    {
+      "id": "K05",
+      "operation": "resume",
+      "variant": "same_digest",
+      "expected": "resumed"
+    },
+    {
+      "id": "K06",
+      "operation": "resume",
+      "variant": "compatible_patch_available",
+      "expected": "resumed_pinned"
+    },
+    {
+      "id": "K07",
+      "operation": "resume",
+      "variant": "missing_pinned_version",
+      "expected": "hold_version"
+    },
+    {
+      "id": "K08",
+      "operation": "resume",
+      "variant": "breaking_input_contract",
+      "expected": "hold_contract"
+    },
+    {
+      "id": "K09",
+      "operation": "resume",
+      "variant": "revoked_after_pause",
+      "expected": "reject_revoked"
+    },
+    {
+      "id": "K10",
+      "operation": "tool",
+      "variant": "allowed_tools_escalation",
+      "expected": "deny_tool"
+    },
+    {
+      "id": "K11",
+      "operation": "load",
+      "variant": "path_escape",
+      "expected": "reject_path"
+    },
+    {
+      "id": "K12",
+      "operation": "load",
+      "variant": "executable_asset",
+      "expected": "reject_executable"
+    },
+    {
+      "id": "K13",
+      "operation": "resume",
+      "variant": "actor_revoked",
+      "expected": "reject_actor"
+    },
+    {
+      "id": "K14",
+      "operation": "resume",
+      "variant": "new_plan_old_approval",
+      "expected": "reject_approval"
+    },
+    {
+      "id": "K15",
+      "operation": "knowledge",
+      "variant": "foreign_acl_reference",
+      "expected": "deny_reference"
+    },
+    {
+      "id": "K16",
+      "operation": "knowledge",
+      "variant": "global_service_account_only",
+      "expected": "hold_provider"
+    }
+  ],
+  "soc_cases": [
+    {
+      "id": "S01",
+      "subject": {
+        "roles": [
+          "risk:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "risk_manager"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S02",
+      "subject": {
+        "roles": [
+          "risk:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "risk_manager"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S03",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S04",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S05",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S06",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S07",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S08",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "manage_members",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S09",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "export",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S10",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:export"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "exporter"
+      },
+      "action": "export",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S11",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-b",
+        "org": "org-b",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S12",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-b",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S13",
+      "subject": {
+        "roles": [
+          "system:admin"
+        ],
+        "orgs": [],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "system_admin"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S14",
+      "subject": {
+        "roles": [
+          "system:admin"
+        ],
+        "orgs": [],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "system_admin"
+      },
+      "action": "modify_source_verdict",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S15",
+      "subject": {
+        "roles": [
+          "source:ingest"
+        ],
+        "orgs": [],
+        "cases": [],
+        "provider": "mock-soc-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "adapter"
+      },
+      "action": "ingest_source",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S16",
+      "subject": {
+        "roles": [
+          "source:ingest"
+        ],
+        "orgs": [],
+        "cases": [],
+        "provider": "mock-soc-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "adapter"
+      },
+      "action": "manage_members",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S17",
+      "subject": {
+        "roles": [
+          "source:ingest"
+        ],
+        "orgs": [],
+        "cases": [],
+        "provider": "mock-soc-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "adapter"
+      },
+      "action": "ingest_source",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-b",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S18",
+      "subject": {
+        "roles": [
+          "source:ingest"
+        ],
+        "orgs": [],
+        "cases": [],
+        "provider": "mock-soc-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "adapter"
+      },
+      "action": "ingest_source",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 10,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "ignore_stale"
+    },
+    {
+      "id": "S19",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow_stale"
+    },
+    {
+      "id": "S20",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "hold_source"
+    },
+    {
+      "id": "S21",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S22",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader"
+      },
+      "action": "read_evidence",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S23",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:export"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "exporter"
+      },
+      "action": "export",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S24",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "agent"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S25",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": false,
+        "kind": "agent"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S26",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 8,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S27",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": false,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "append_local_note",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S28",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "manage_members",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 3,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "conflict"
+    },
+    {
+      "id": "S29",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader"
+      },
+      "action": "read_case",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S30",
+      "subject": {
+        "roles": [
+          "risk:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S31",
+      "subject": {
+        "roles": [
+          "source:ingest"
+        ],
+        "orgs": [],
+        "cases": [],
+        "provider": "mock-soc-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "adapter"
+      },
+      "action": "ingest_source",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 11,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "ignore_stale"
+    },
+    {
+      "id": "S32",
+      "subject": {
+        "roles": [
+          "system:admin"
+        ],
+        "orgs": [],
+        "cases": [],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "system_admin"
+      },
+      "action": "invoke_soc_action",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S33",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "complete_duty_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "duty": "duty-b",
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S34",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "duty": "duty-a",
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "responder"
+      },
+      "action": "complete_duty_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "duty": "duty-a",
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S35",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "set_local_status",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "allow"
+    },
+    {
+      "id": "S36",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "modify_source_verdict",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S37",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "manual",
+        "source_gap_ack": true,
+        "source_gap_reason": "demo authorized local coordination while SOC source is unavailable",
+        "manual_source_gap_enabled": true
+      },
+      "expected": "allow_local_stale"
+    },
+    {
+      "id": "S38",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "manual",
+        "source_gap_ack": true,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": true
+      },
+      "expected": "hold_source"
+    },
+    {
+      "id": "S39",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": false,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "manual",
+        "source_gap_ack": true,
+        "source_gap_reason": "demo acknowledged source gap",
+        "manual_source_gap_enabled": true
+      },
+      "expected": "deny"
+    },
+    {
+      "id": "S40",
+      "subject": {
+        "roles": [
+          "incident:read",
+          "incident:collaborate",
+          "incident:manage"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "coordinator"
+      },
+      "action": "assign_task",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": false,
+        "underlying_visible": true,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "manual",
+        "source_gap_ack": true,
+        "source_gap_reason": "demo authorized local coordination while SOC source is unavailable",
+        "manual_source_gap_enabled": false
+      },
+      "expected": "hold_source"
+    },
+    {
+      "id": "S41",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": []
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [
+          {
+            "id": "evidence-public",
+            "visible": true
+          }
+        ],
+        "known_source_gap": false
+      },
+      "expected": {
+        "visible_refs": [
+          "evidence-public"
+        ],
+        "visible_count": 1,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": null
+      }
+    },
+    {
+      "id": "S42",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": []
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [
+          {
+            "id": "evidence-public",
+            "visible": true
+          },
+          {
+            "id": "evidence-secret-1",
+            "visible": false
+          },
+          {
+            "id": "evidence-secret-2",
+            "visible": false
+          }
+        ],
+        "known_source_gap": false
+      },
+      "expected": {
+        "visible_refs": [
+          "evidence-public"
+        ],
+        "visible_count": 1,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": null
+      }
+    },
+    {
+      "id": "S43",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": []
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [
+          {
+            "id": "evidence-secret-1",
+            "visible": false
+          }
+        ],
+        "known_source_gap": false
+      },
+      "expected": {
+        "visible_refs": [],
+        "visible_count": 0,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": null
+      }
+    },
+    {
+      "id": "S44",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": [
+          "mock-soc-a"
+        ]
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [
+          {
+            "id": "evidence-public",
+            "visible": true
+          }
+        ],
+        "known_source_gap": true
+      },
+      "expected": {
+        "visible_refs": [
+          "evidence-public"
+        ],
+        "visible_count": 1,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": {
+          "provider": "mock-soc-a",
+          "status": "delayed"
+        }
+      }
+    },
+    {
+      "id": "S45",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": []
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [
+          {
+            "id": "evidence-public",
+            "visible": true
+          }
+        ],
+        "known_source_gap": true
+      },
+      "expected": {
+        "visible_refs": [
+          "evidence-public"
+        ],
+        "visible_count": 1,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": null
+      }
+    },
+    {
+      "id": "S46",
+      "subject": {
+        "roles": [
+          "incident:read"
+        ],
+        "orgs": [
+          "org-a"
+        ],
+        "cases": [
+          "case-a"
+        ],
+        "epoch": 7,
+        "active": true,
+        "grant": true,
+        "kind": "reader",
+        "source_coverage": []
+      },
+      "action": "view_projection",
+      "case": {
+        "id": "case-a",
+        "org": "org-a",
+        "provider": "mock-soc-a",
+        "revision": 4,
+        "classification": "internal",
+        "source_fresh": true,
+        "underlying_visible": false,
+        "target_org": "org-a",
+        "expected_epoch": 7,
+        "scope_version": 2,
+        "expected_scope_version": 2,
+        "source_revision": 12,
+        "last_source_revision": 11,
+        "assignment_origin": "source_rule",
+        "source_gap_ack": false,
+        "source_gap_reason": "",
+        "manual_source_gap_enabled": false,
+        "projection_refs": [],
+        "known_source_gap": false
+      },
+      "expected": {
+        "visible_refs": [],
+        "visible_count": 0,
+        "notice": "结果按当前权限范围展示",
+        "source_coverage": null
+      }
+    }
+  ]
+}

@@ -46,7 +46,7 @@ P8 开工前用同一组模型适配、工具授权、暂停确认、恢复不�
 - **独立 Python/TS 组件路径**：LangGraph/LangChain 有现成 Agent 与持久化/暂停恢复能力，适合确实超出固定应用步骤的领域 host；代价是新增语言、依赖与受控运行进程。恢复会重进节点，节点内已发生的副作用仍需平台幂等，不能因框架有 checkpoint 就删除业务凭证。[官方中断 API](https://reference.langchain.com/python/langgraph/types/interrupt)、[官方图 API](https://github.com/langchain-ai/docs/blob/main/src/oss/langgraph/graph-api.mdx)
 - **确定性应用步骤路径**：P6/P7 的只读查询、草案生成和确认后提交，直接复用现有模型 Provider、业务门面和 TR 即可，不为了这些固定切片引入完整 Agent runtime。此路径仍须版本、错误/幂等、权限和最小等待状态，不以“简单”豁免质量约束。
 
-本轮没有跑三种方案原型，也未核企业 Agent 具体合同，因此不宣称任何框架已适配通过。选择应证明复用收益大于依赖/运维成本；候选名称是研究输入，不是新增依赖清单。
+**2026-11-13后继补研**：已按[领域Agent代表场景](domain-agent-reference-scenario.md)运行确定性步骤、企业Agent协议stub、有限host模型三条路径；25个同场景/反例各跑三次，使用相同授权、批准和效果守卫。后继独立审查补A20–A25的知识来源撤权/版本/digest与receipt当前权限窗口，原57条不包含这18条新增回归。当前固定摘要/草案首选确定性步骤，保留A05/A07双轨及有限host范围。没有调用真实模型/企业Agent或安装实际Agent框架，不能声称任何SDK/厂商已适配；真实质量/配额/取消/登录仍归接入门。候选名称不是新增依赖清单。
 
 ## 2. 自然语言查询、建单和计划任务的三个独立切片
 
@@ -121,7 +121,9 @@ skill 记录来源、owner、版本摘要、兼容性、评测、发布/停用�
 
 MCP Skills 扩展是可选分发/发现方式，不代替版本、信任和执行权限。按实际客户端需求决定是否接，不为协议完整度而建设目录市场。[Skills Over MCP 官方说明](https://modelcontextprotocol.io/community/working-groups/skills-over-mcp)
 
-**窗口：P7/A03–A04 冻结领域 skill 最小格式；P8/A05–A07 随领域 Agent 接入可信 skill 与测试。** 公共 marketplace、自动安装、自我修改、通用技能编排明确退出默认路线。
+**2026-11-13后继补研**：[可信skill样包及恢复合同](skill-reference-package.md)已补完整SKILL.md/manifest、输入输出、来源/digest/钉版、撤销/升级/暂停恢复及16个合成行为例；[SOC职责矩阵](soc-collaboration-authorization.md)补事件协作授权和46个合成反例。两者不是产品loader或真实SOC接通证据。
+
+**窗口：P7/A03–A04 复核实际能力目录/知识供给，P8/A05–A07 实现可信 skill 与产品回归。** 研究样包不再挂为未开始；真实SDK/知识ACL与撤销传播仍按接入门验证。公共 marketplace、自动安装、自我修改、通用技能编排明确退出默认路线。
 
 ## 5. 工单流程、专业编排与 Agent 流程如何统一
 

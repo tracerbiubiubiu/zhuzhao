@@ -9,3 +9,7 @@
 /deliverables/
 /outputs/
 /.codex/
+
+# Local Python verification bytecode
+__pycache__/
+*.py[cod]

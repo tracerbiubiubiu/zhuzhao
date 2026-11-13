@@ -73,6 +73,13 @@ test-commit-lint:
 hooks:
 	scripts/install-git-hooks.sh
 
+# 只核规划收口的结构/证据矛盾，不替代语义审查或完整运行门禁。
+planning-check:
+	python3 scripts/test-planning-closure.py
+	python3 scripts/check-planning-closure.py
+	python3 scripts/test-planning-schedule.py
+	python3 scripts/calculate-planning-schedule.py --check
+
 # EC2：DSN 外置（可用环境变量或命令行覆盖：make migrate-up MIGRATE_DSN=...）
 MIGRATE_DSN ?= postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable
 

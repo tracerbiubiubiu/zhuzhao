@@ -1,6 +1,6 @@
 # Phase7 — 受控能力与专业平台协同
 
-> **2026-11-13互通增量**：沿P6共同接缝扩I01目录，CE03在R06选定授权/并发合同后接AL受权任务adapter；CE04补AL源事务事实、受控订阅→TR任务，自动链按CE05准入/因果预算启用，三链各有最小UI与结果/恢复反馈。简单变化触发不拖至P9，MCP只薄适配同一能力。来源、批量粒度与未计价边界见[增量册](../review/capability-interconnect-supplement.md)；不以旧R06/I01/U06预算包干。
+> **2026-11-13互通增量**：沿P6共同接缝扩I01目录，CE03在R06选定授权/并发合同后接AL受权任务adapter；CE04补AL源事务事实、受控订阅→TR任务，自动链按CE05准入/因果预算启用，三链各有最小UI与结果/恢复反馈。简单变化触发不拖至P9，MCP只薄适配同一能力。来源、批量粒度及计价边界见[增量册](../review/capability-interconnect-supplement.md)；不以旧R06/I01/U06预算包干。
 
 > 2026-11-11重规划；尚未实施。本阶段消费Phase6可信业务合同，不再按旧“扩源数量+未来AI占位”组织。唯一排期与估算见[总账](../review/planning-backlog.md)，边界见[平台演进](../design/platform-evolution.md)。
 
