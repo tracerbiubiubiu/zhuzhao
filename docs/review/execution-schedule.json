@@ -7418,6 +7418,15 @@
     "reproduction": "repository-local ignored .codex/audits/uaa-estimated-schedule-20261112/calculate-schedule.py --source-ref a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
     "runtime_acceptance_claimed": false
   },
+  "active_work_boundary": {
+    "updated_on": "2026-11-13",
+    "delivery": "local_design_snapshot_only",
+    "scenario_collection": "still_in_progress",
+    "T0_status": "not_started",
+    "implementation_authorized": false,
+    "owner_instruction": "仍有场景未补完，先设计落档提交，不急开发。",
+    "decision_ref": "docs/review/planning-decisions.json#/active_work_boundary"
+  },
   "primary_relative_weeks": {
     "S01": {
       "start": [

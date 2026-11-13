@@ -1,5 +1,7 @@
 # 后续完整排期候选——UAA估算补齐版
 
+> **2026-11-13最新边界**：当前仅提交已讨论设计的阶段快照，所有者仍补充场景；T0未启动。单席/每周5日是参考产能，本页不构成业务开发、共享环境切换或主线集成的开工指令。
+
 日期：2026-11-13。范围为原Phase6–9及更远的有限交付，仍为71父包、13子出口和13发布切片。此页是工程量和相对排程候选，未启动全部未来功能，也不表示实现或真实接入已验收。
 
 **冻结输入**：`a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe`；UAA增量唯一数字源为[估算注册表](uaa-implementation-estimate.json)，SHA-256=`58e9a3e89d45cb804b6a7ee3aebaa496efdbbb1a152abf60d7c09070fa446481`，Git blob=`6609ad6e8b7aa0c8d322c3e694c7b0535423d664`。既有范围/预算来自同提交[总账](planning-backlog.json)，条件来自[真实接入条件册](uaa-real-integration-conditions.json)。[派生JSON](execution-schedule.json)保留每项顺序、资源槽和输入hash；后续更新须重新读取冻结来源，不在排期中独立改价。

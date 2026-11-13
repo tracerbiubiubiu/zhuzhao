@@ -254,7 +254,8 @@
       "scheduling_assumptions_ref": "docs/review/execution-schedule.json#/resource_assumptions",
       "decision": "按1个有效研发席位、每周5个工程日编排；尽快启动，无严格截止，实际开工日记T0，采用大致相对排期。",
       "owner_feedback": "2026-11-13：用户选择“先按1个有效研发席位、每周5个工程日编排”；开工/企业日期回复“尽快，但实际上没必要真正有严格时间，大概就行”。",
-      "confirmation_boundary": "确认的是相对排程资源与时间口径，不等于批准全部远期包实现或生产激活。"
+      "confirmation_boundary": "确认的是相对排程资源与时间口径，不等于批准全部远期包实现或生产激活。",
+      "latest_activation_boundary": "2026-11-13用户仍补场景，当前只提交设计快照；单席/每周5日为参考产能，T0未启动，不构成开工指令。"
     },
     {
       "id": "O09",
@@ -315,5 +316,24 @@
     "owner_confirmed": 29,
     "owner_pending": 1,
     "provider_constraints_then_owner_review": 1
+  },
+  "active_work_boundary": {
+    "updated_on": "2026-11-13",
+    "owner_instruction": "不急开发，还有一些场景没交代完；先完成本次设计落档、提交。",
+    "current_delivery": "local_commit_of_discussed_design_snapshot",
+    "scenario_collection": "still_in_progress",
+    "T0_status": "not_started",
+    "implementation_authorized": false,
+    "confirmed_capacity_retained": {
+      "effective_seats": 1,
+      "engineering_days_per_week": 5
+    },
+    "not_performed": [
+      "business_implementation",
+      "shared_environment_switch",
+      "main_integration",
+      "remote_push"
+    ],
+    "interpretation": "既定原则与有界估算保留；本次文档提交不自动批准全部未来功能，不因排期写尽快而启动开发。"
   }
 }
