@@ -1191,5 +1191,16 @@
     "T0": "actual_start_asap",
     "hard_deadline": null,
     "ref": "docs/review/execution-schedule.json#/resource_assumptions"
-  }
+  },
+  "design_supplements": [
+    {
+      "ref": "docs/review/capability-interconnect-supplement.json",
+      "depth": "vision_and_contract_outline",
+      "new_items": 5,
+      "api_schema_frozen": false,
+      "implemented": false,
+      "priced": false,
+      "original_71_status_levels_unchanged": true
+    }
+  ]
 }

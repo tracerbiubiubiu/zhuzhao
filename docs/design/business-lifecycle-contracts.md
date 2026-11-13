@@ -57,7 +57,7 @@
 
 - 同主仓数据库的业务变更、领域历史、待交付 intent 使用同一事务；工单与风险跨域用显式用例端口/事务协调，禁止直接互调对方 repository。未来若服务拆分，则由持久命令+收据+对账保持最终一致，不承诺跨库原子提交。
 - 本地高风险写的授权通过 `AuthorizeForMutation` 用例在事务中复验 actor 有效状态、live policy/参与关系和授权 epoch；C04 须给 IAM 撤权与业务提交一个共同的 epoch/授权守卫锁顺序，使撤权先提交后旧决定不能继续提交。企业adapter提交的受管角色、菜单/API绑定及数据范围变更也须使用同一守卫和失效路径，不能作为同步后台任务绕开；独立模式继续由本地IAM变更驱动该守卫。不能仅在 handler 外读一次缓存、进事务后盲信。未来外部授权不承诺跨系统即时原子撤权，必须按 I02 的有效期/撤销合同与回执处理，不暗示本地锁能锁住提供方。
-- 写接口支持 `Idempotency-Key`；作用域为调用主体、`operation_id`、资源和业务意图。相同 key+规范化请求 hash 重放首次收据；相同 key 不同 hash 返回 409。认证/当前可见性失效时不得泄露旧响应，也不得重新执行已提交副作用。幂等记录保留覆盖调用方重试/业务恢复窗口，按 I01/I03 统一政策配置，不在本文随意定 TTL。
+- 写接口支持 `Idempotency-Key`；由可信入口按调用主体/写主命名空间将其映射为稳定动态 `operation_id`，并绑定能力/合同版本、目标资源和规范化请求hash。重试返回首次收据；同一操作号换能力、版本、目标或参数均须拒绝，不能换静态能力名绕过去重。下列表格中的用例名称是能力定义别名，不是动态操作号。认证/当前可见性失效时不得泄露旧响应，也不得重新执行已提交副作用。幂等记录保留覆盖调用方重试/业务恢复窗口，按 I01/I03 统一政策配置，不在本文随意定 TTL。
 - 新高风险写入要求 `expected_revision`。旧现行 REST DTO 暂保留无此字段兼容，由服务端锁定后进行状态及谓词 CAS；这种兼容只能防写交错，不能声称已防旧客户端的陈旧编辑。UI/SDK 分阶段补传，废弃前要有消费者清单和观测。
 - 外部查询、模型、网络发送不持有工单/风险行锁。先在请求预算内求建议，再开短事务复验定义、revision、授权、引用和业务谓词；要求权威来源值的字段只能使用平台验证的引用/取数收据，不能拿客户端回传值代替。
 - 锁顺序固定：先按稳定 key 排序取得本次需要的授权守卫，再取业务 group 锁，随后风险 ID、工单 ID、链接 ID 升序锁定。同域亦按资源 ID 升序；IAM 撤权在其短事务内只更新授权与 intent，业务交接提交后处理，不反向先拿业务锁再抢授权锁。任何路径都遵守同一顺序；唯一约束是最终防线，不以一次预查询代替。死锁/序列化失败只作有上限内部重试，业务冲突返回调用方。
@@ -80,9 +80,9 @@
 
 ### 3.2 目标 API 和原子发布
 
-现有 `POST /api/v1/ticket-types/update` 和 `/ticket-types/fields/replace` 在 D01 切换后用于编辑草稿，现有 `version` 仍指草稿 CAS。**当前它们修改 live 配置，切换为草稿是可见管理行为变化**，必须随管理 UI/工具同批升级并给保存结果明确 `published=false/current_published_version`；登记管理端消费者、通知切换窗口，不对外声称是完全无语义变化的接口升级。不得用“兼容”偷偷自动 deploy，否则绕过已拍发布与预检。一般业务/内网 adapter 的 ticket API 不受这种管理工作流切换影响；若存在不能升级的旧配置客户端，先保留只读/显式拒绝写并给升级提示，不能让它误认已发布。新增以下**候选业务路由**，catalog 的稳定 operation ID 映射真实路由，不要求旧客户端转用通用 invoke：
+现有 `POST /api/v1/ticket-types/update` 和 `/ticket-types/fields/replace` 在 D01 切换后用于编辑草稿，现有 `version` 仍指草稿 CAS。**当前它们修改 live 配置，切换为草稿是可见管理行为变化**，必须随管理 UI/工具同批升级并给保存结果明确 `published=false/current_published_version`；登记管理端消费者、通知切换窗口，不对外声称是完全无语义变化的接口升级。不得用“兼容”偷偷自动 deploy，否则绕过已拍发布与预检。一般业务/内网 adapter 的 ticket API 不受这种管理工作流切换影响；若存在不能升级的旧配置客户端，先保留只读/显式拒绝写并给升级提示，不能让它误认已发布。新增以下**候选业务路由**，catalog 的静态 capability_id/contract_version 及 OpenAPI operationId 映射真实路由，不要求旧客户端转用通用 invoke：
 
-| operation_id / 路由 | 输入要点 | 输出要点 / 权限 |
+| 能力定义别名 / 候选路由 | 输入要点 | 输出要点 / 权限 |
 |---|---|---|
 | `ticket.definition.preflight.v1` · `POST /api/v1/ticket-types/deploy/plan` | `code, expected_draft_revision, expected_published_version` | `plan_id, canonical_hash, diff, reference_revisions, in_flight_by_version, errors, warnings`；`ticket:type:manage` |
 | `ticket.definition.deploy.v1` · `POST /api/v1/ticket-types/deploy` | `plan_id, code, expected_draft_revision, expected_published_version, acknowledged_warning_ids` + 幂等 key | `changed, definition_version, definition_hash, draft_revision`；同管理授权，写按钮绑定 |
@@ -200,7 +200,7 @@ Jira将项目访问权限与单张work item的可见性限制分开，能访问�
 
 ### 5.3 参与人与创建 API 目标
 
-| operation_id / 路由 | 输入/输出 | 不变量 |
+| 能力定义别名 / 候选路由 | 输入/输出 | 不变量 |
 |---|---|---|
 | `ticket.participants.list.v1` · `GET /api/v1/tickets/:id/participants` | 仅可见票，返回 `user_ref, role, origin, can_remove` | 历史失效用户可回显，不能当 active 候选 |
 | `ticket.participants.change.v1` · `POST /api/v1/tickets/participants/change` | `ticket_id, expected_revision, add/remove user_ids` | L1 按钮+该票管理资格；新增 active；域受管项普通调用不可删；唯一 `(ticket_id,user_id,role)`；审计和 revision 同事务 |
@@ -247,7 +247,7 @@ field schema 保留现有稳定 key/类型；schema format 与业务 definition 
 
 ### 6.2 目标求值与 prefill 接口
 
-| operation_id / 候选路由 | 输入 | 输出和约束 |
+| 能力定义别名 / 候选路由 | 输入 | 输出和约束 |
 |---|---|---|
 | `ticket.fields.evaluate.v1` · `POST /api/v1/tickets/fields/evaluate` | 新建：`type_code,definition_version,org_id,values`；已有：`ticket_id,expected_revision,values` | `definition_ref,visible_keys,computed_values,validation_errors,dependency_states,evaluation_id`；无持久业务写；新建须可创建，已有须可见且只求被允许输入的字段；限制大小/表达式/查询次数 |
 | `ticket.fields.prefill.v1` · `POST /api/v1/tickets/fields/prefill` | 同上上下文 + `fetch_rule_id,values,input_generation` | `suggested_values,source_ref,observed_at,status=ok/not_found/unavailable,echoed_input_generation`；不接受任意 URL/SQL/sourceConfig/secret；受同一源及字段白名单 |
@@ -383,7 +383,7 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 
 风险公共 DTO/命令使用 R1 已规划的 `/api/v1/risk-items` 路由族，以下均为待实现合同：
 
-| operation_id / 路由 | 请求字段 | 响应字段 |
+| 能力定义别名 / 候选路由 | 请求字段 | 响应字段 |
 |---|---|---|
 | `risk.get.v1` · `GET /risk-items/:id` | 路径 ID；正常认证 | `id,human_key,revision,status,closure_kind,owner_ref,org_ref,affected_org_ref,level,source_severity,deadline,acceptance_summary,source_refs,authorized_ticket_links,viewer_capabilities`；来源和关联对象逐项重验，隐藏不可读的深链 |
 | `risk.assess.v1` · `POST /risk-items/assess` | `id,expected_revision,level,assessment_note,treatment,deadline?` | 实际 risk revision/状态、level/deadline、event receipt；changed/unchanged可区分 |
@@ -408,7 +408,7 @@ deadline 默认自然日按 level policy 带出，`init_deadline` 保存首次�
 
 派单 plan 返回逐项可选、阻断、owner/风险 revision、目标类型发布引用、候选同 owner 在办单。apply 在 group 锁和逐项风险锁下复验，已有 active link 返回原票作为幂等成功；合法追加也锁目标票和链接集合 revision，竞争剩余名额时重新分组，不越过20。一次 group 的建票/links/风险状态/双域事件/CC intent 同事务；bulk 以 group 为原子单元，响应逐 risk 成败，允许修复后只重试失败项，不留“空壳票+无链接”。
 
-B05简化方案已确认：`risk.dispatch.v1` 是用例/operation_id，**不新增同名权限码或一套派单角色**。沿用风险设计中 `risk:manage` 与资源范围：单条仍为主锚管理者或当前owner，批量仍为主锚管理者，不能因owner可派自己的风险就扩大批量范围。界面只有“派发整改工单”；可用目标由受管配置限制为整改类型/组织/模板，类型须启用且已发布，字段/G2/公式、附件归属、初态和active owner等沿用工单领域规则。此受限入口不额外要求通用 `ticket:create`；普通自由建单仍执行原创建权限及类型/组织约束，查看权限不自动允许派单。方向已确认，风险权限/领域桥及真实配置尚未实施。
+B05简化方案已确认：`risk.dispatch.v1`表示用例/能力定义别名，后续映射capability_id/contract_version；不再混称动态operation_id，**不新增同名权限码或一套派单角色**。沿用风险设计中`risk:manage`及资源范围：单条仍为主锚管理者或当前owner，批量仍为主锚管理者，不因owner资格扩大批量范围。界面仍为“派发整改工单”，只向配置好的整改类型/组织/模板提交，复用类型发布、字段/G2/公式、附件、初态和active owner校验。该受限入口不额外要求通用`ticket:create`，普通建单保持自身权限，查看不自动授派单。方向及业务效果不变，能力/领域桥仍未实现。
 
 领域用例保留R3已批准的 `created_by=已核当前owner`、`operator_user_id=真实操作者`，无owner拒派；两种身份分别审计。普通REST/Agent不可任意传 `created_by` 或 `skip_auth`。实施应抽取共享创建校验与受限可信创建上下文，不能只以owner身份调用现有 `Service.Create`，因为该函数以actor派生创建人及组织检查；也不能为省事跳过类型和组织边界。B05确认不开放任意创建范围，启用前须验证目标映射与上述反例。
 
@@ -445,7 +445,7 @@ DefectDojo支持在发现页手动推送或按配置推送到Jira，也支持多
 | `risk.owner.changed.v1`、`risk.assessed.v1`、`risk.acceptance.*.v1`、`risk.state.changed.v1` | 风险域 | 双向协同/通知；每次 follow-up 用 public API 重验，不直接访问风险表 |
 | `risk.ticket.link.changed.v1`、`risk.resolution.applied.v1` | 风险工单桥 | 准确双域对账和证据；link revision/结果版本用于去重，不猜票终态 |
 
-HTTP REST、MCP、SDK和内部 extension 共用同一用例/查询授权。catalog 只将稳定 operation_id/capability_ref 绑定真实路由/门面，不另造万能 RPC，不要求旧 REST 客户端改调用。私有扩展只能用公开 DTO/版本化事件/受权 Query，禁止依赖 Go internal/model/repo、数据库表、ltree或反射序列化内部对象。业务 definition_version 的新增不会改 protocol_major；新流程状态和字段按实例 definition/schema 解析，旧 adapter 可忽略未知可选字段、只操作其声明支持的业务 capability。
+HTTP REST、MCP、SDK和内部extension共用同一用例/查询授权。catalog用静态capability_id/contract_version及API定义映射绑定真实门面，动态operation_id保留效果幂等语义，见[共同调用合同](capability-invocation-contract.md)。不另造万能RPC或强改旧REST调用。私有扩展只用公开DTO/事件/受权Query，不依赖Go internal/model/repo、核心表或ltree；定义版本与协议主版本分开，旧adapter只操作其支持的业务能力。
 
 持久订阅/投递权限撤销后终止后续消息和补发；事件含的数据不能比订阅主体受权 Query 更宽。事件可只给资源 ref，由消费时重新取数；修订授权后旧签名 payload 不能当读许可。平台升级由平台维护兼容映射，私有 HR/source SDK 与 URL 不进入公共主仓。通用扩展/内网迁移的安装、注册和版本兼容方案由对应平台设计维护，本文只定义领域不变量。
 

@@ -20,6 +20,7 @@
 
 ## Phase5之后的现行演进
 
+- [能力互通与统一调用](capability-invocation-contract.md)、[生态一致性](ecosystem-consistency-contract.md)：2026-11-13新增最终愿景、代表链与渐进共同合同；[增量分期](../review/capability-interconnect-supplement.md)明确5个未计价骨架，不冒称原排期已覆盖。
 - [平台边界与演进](platform-evolution.md)：专业供给、数据写主、三类流程、插件与拆分。
 - [AI能力与领域Agent](ai-capabilities.md)：已有模型API、外部与本地领域Agent双轨、MCP、受权知识、skill与运行合同。
 - [五仓工程治理](engineering-governance.md)：worktree、CI、mock分层、测试、目录和发布。

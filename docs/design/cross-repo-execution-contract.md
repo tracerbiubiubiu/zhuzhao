@@ -2,6 +2,8 @@
 
 日期：2026-11-11。状态：**C03/R01 待实施详细设计**。与[工程施工设计](engineering-execution-design.md)共同承接[唯一总账](../review/planning-backlog.md)；不新增 Phase、不另算一份工期、不预占迁移编号。本文建议的类型/字段/路由全部明确属于目标，现有符号以“现状”段列明。
 
+**2026-11-13互通补充**：[共同能力调用合同](capability-invocation-contract.md)将本页执行/可靠交接接缝推广到各入口，区分静态能力与动态operation/invocation。AL源变化、任务adapter、订阅和跨入口准入属于[单列增量](../review/capability-interconnect-supplement.md)，未包含在本页原C03/R01估算中；原任务/receipt语义继续有效。
+
 边界：zhuzhao 拥有本平台领域事实、授权、操作意图和业务效果；taskrunner 拥有有界胶水任务的调度、投递、取消/重试与执行账本；外部专业平台拥有自身工作流/资产/告警/情报事实。taskrunner 不是通用 SOAR，AL 不是业务操作权威或事件湖，utils 不承载领域表。外部 Agent、领域 Agent、内网 connector 均只通过[稳定扩展合同](extension-compatibility.md)和[适配迁移合同](intranet-adapter-migration.md)消费本页，不 import 主仓 internal/直写其库。
 
 ## C03 实际链路与不能混写的四种事实

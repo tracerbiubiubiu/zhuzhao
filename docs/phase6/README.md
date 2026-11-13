@@ -1,5 +1,7 @@
 # Phase6 — 风险闭环、可信底座与全站体验
 
+> **2026-11-13调用/一致性补充**：CE01在P6.0列能力/共同词表；CE02在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../review/capability-interconnect-supplement.md)；新增范围未计价，仍未开工。
+
 近期施工候选、首批PR切片及准确验证出口见[实施交接候选](implementation-handoff.md)；本轮未启动功能实现。
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../review/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 

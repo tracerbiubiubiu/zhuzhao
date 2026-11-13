@@ -16,7 +16,7 @@
 |---|---|---|
 | ModelConnection | connection_id、alias、provider_kind、endpoint_ref、secret_ref、data_zone、模型ID、capability set、timeout/并发/配额、config_revision | GPU/部署/训练配置、明文密钥 |
 | ScenarioDefinition | scene_id、不可变版本、可信模板摘要、输入/输出schema、Query/Action允许集、模型能力、预算/确认政策 | 任意用户上传的可执行脚本 |
-| ToolDefinition | capability_id、合同版本、operation_id、参数schema、read/write、资源范围、幂等/效果查询能力、结果schema | 在model参数里自报角色/权限 |
+| ToolDefinition | 静态capability_id/contract_version、可选OpenAPI operationId映射、参数schema、read/write、资源范围、幂等/效果查询能力、结果schema | 在定义中用动态operation_id标能力；在model参数里自报角色/权限 |
 | Invocation | invocation_id、场景版本、actor/delegation、数据区、资源范围、计划hash、状态、结果引用、预算事实、trace | 可复用的浏览器token、无期限管理员权限 |
 
 同一个生成端口可由企业模型网关/原生API/兼容API adapter实现。首期只依赖生成与结构化输出；不支持工具调用则仅允许固定只读摘要，不能通过解析自由文本放开任意工具。内网data_zone强制只路由内部服务，fallback必须在同一数据区与能力要求内；连接故障不能转发外部模型求成功。
@@ -37,7 +37,9 @@
 | `invocation.get/result/cancel` | invocation引用、当前主体 | 受权状态/结果；取消请求与效果已取消分别表达 |
 | `ai.schedule.preview/confirm` | 结构化schedule、动作/目标、批准政策 | 仅A04/I02/I03后开放，持续grant与TR定义/时隙receipt；非A02功能 |
 
-通用关联字段用request_id/trace_id、invocation_id、plan_id、operation_id、TR task/execution/delivery ID各自职责，不拿一次HTTP request_id当跨重试幂等身份。请求写侧严格schema；不能从任意JSON键映射业务字段。API版本、场景发布版本、工单definition版本、实例revision和授权epoch分别保存。
+通用关联字段按[共同调用词典](capability-invocation-contract.md#3-先消除同名异义)分工：operation_id标业务意图/跨重试效果，invocation_id标逻辑调用运行，同调用重投保持；request_id/trace_id、plan_id、TR task/execution/delivery各有职责，不能混用HTTP请求号。请求严格schema，不从任意JSON键映射业务字段；API/场景/工单定义/实例revision和授权epoch分别保存。
+
+本页Invocation是场景的顶层逻辑调用；其中每次工具调用有自己的invocation_id并关联parent/root，工具重投保留原调用号，新的计划步骤不能复用前一步调用号。场景运行、工具调用和业务效果可以关联，不能因此共用一个去重身份。
 
 Query catalog首期只列工单列表/详情/允许聚合与已就绪风险查询，响应按原资源权限过滤；capability说明应明确排序/时区/分页/最大行数/是否完整。跨页合计必须用受权聚合接口或明确“当前页”，不能让模型把前20行当总体。无访问权与来源不可用分别返回，无法确认的数据回答“不足”，不得给出假造计数。
 

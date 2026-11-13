@@ -118,12 +118,14 @@
 
 ### MB11 AL拥有自己的Schema、动态表与replace事务
 
-源码与合同锚点：[activelist/internal/service/type_service.go · TypeService.Register/Evolve](../../../activelist/internal/service/type_service.go)；[activelist/internal/service/data_service.go · DataService.Insert/Update/Import](../../../activelist/internal/service/data_service.go)；[zhuzhao/internal/router/router.go · New网关挂载链](../../internal/router/router.go)；[zhuzhao/internal/gateway/gateway.go · Registry.Mount](../../internal/gateway/gateway.go)。
+源码与合同锚点：[activelist/internal/service/type_service.go · TypeService.Register/Evolve](../../../activelist/internal/service/type_service.go)；[activelist/internal/service/data_service.go · DataService.Insert/Update/SoftDelete/Restore/Import](../../../activelist/internal/service/data_service.go)；[zhuzhao/internal/router/router.go · New网关挂载链](../../internal/router/router.go)；[zhuzhao/internal/gateway/gateway.go · Registry.Mount](../../internal/gateway/gateway.go)；[AL平台集成合同 · §4–6目标写能力/变更源](../../../activelist/docs/design/platform-integration.md)；[统一能力调用合同](capability-invocation-contract.md)。
 
-- **证据与现状**：activelist的`TypeService.Register`同tx写meta、动态表与history；`Evolve`使用version CAS和history。`DataService.Insert/Update/Import`拥有本库tx，Import锁类型动态表、删除旧内容、分批解析插入并更新序列后commit。主仓`gateway.Registry.Mount`经过JWT、Casbin、身份断言和AK/SK；AL侧验签，operator用于归因，没有用户角色/资源权限模型。
-- **理由与风险**：AL已有独立交付和数据机制边界，不需要再合回主仓。全量replace是AL清单语义，不是配置晋级、风险迁移或HR同步；借其导入能力直接装本地领域正本会绕开领域约束。网关L1也不能自动提供AL任意行/字段的L2政策。
-- **处置与窗口**：保留薄清单/映射职责；D07/P6.2的受权查询与R06/P7的字段/行范围、导入EOF/世代/预算使用主仓领域门面或明确受信过滤合同，AL不复制IAM。风险、身份、证据正本不放动态表；跨库写永不承诺同tx。
-- **验收**：未授权类型/列/行不由网关反代泄露；replace途中失败旧集合完整，成功后旧revision/ETag不复活；尾随/多顶层JSON、重复键、序列、schema竞争及预算一致分别验。已有AL真PG测试保留，本次未运行或推断所有目标已通过。
+- **证据与现状**：activelist的`TypeService.Register`同tx写meta、动态表与history；`Evolve`使用version CAS和history。`DataService.Insert/Update/SoftDelete/Restore/Import`拥有本库tx，Import锁类型动态表、删除旧内容、分批解析插入并更新序列后commit。主仓`gateway.Registry.Mount`经过JWT、Casbin、身份断言和AK/SK；AL侧验签，operator用于归因，没有用户角色/资源权限模型。当前没有持久变更outbox/feed或订阅触发任务实现，也没有统一业务效果去重receipt；现有CRUD和网关不能当作互通闭环证明。
+- **理由与风险**：AL已有独立交付和数据机制边界，不需要再合回主仓。全量replace是AL清单语义，不是配置晋级、风险迁移、HR同步或普通patch/upsert；借其导入能力直接装本地领域正本会绕开领域约束。网关L1也不能自动提供AL任意行/字段的L2政策。仅在网关成功后发事件，会漏直接服务写、任务写、导入和提交后崩溃；当前全局revision的分配顺序不能代替提交完整性游标。
+- **变更源边界（2026-11-13目标）**：AL作为写主，在各产品写事务内持久最小变更凭证/outbox，或提供等价完整且可恢复的feed，覆盖Insert/Update/SoftDelete/Restore/Import。普通文档事实与有界import批次/manifest分开；不能提交后只查当前表来重建已经被删除/replace的旧变化。主仓持久收件并统一管理订阅、权限、路由和任务反应，AL不依赖TR、不复制IAM或另建第二事件总线。旧ADR-003的“AL不感知事件”保留历史但须以后继合同校准，不据其排除源事实责任。
+- **受控调用边界**：定时任务由TR唯一业务调度，经主仓当前授权/持续grant、类型/行/字段与风险检查后调用AL公开写能力；AL拥有CAS、实际效果幂等和本库提交，主仓拥有调用及交接收据。对外API和内部逻辑门面复用同一受权能力，核心同域短事务无需绕HTTP；`capability_id/contract_version`、业务效果`operation_id`、逻辑调用`invocation_id`、单次`delivery_id`分别记账，既有wire经版本化映射承接。本轮未修改实现或协议。
+- **处置与窗口**：保留薄清单/映射职责；D07/P6.2的受权查询与R06/P7的字段/行范围、导入EOF/世代/预算使用主仓领域门面或明确受信过滤合同，AL不复制IAM。风险、身份、证据正本不放动态表；跨库写永不承诺同tx。AL源事实、受控写adapter与统一订阅→任务是P7新增增量，须单列子交付并复估，不默认为原R06 5–8日或I01预算已包含；当前设计快照T0未启动。
+- **验收**：未授权类型/列/行不由网关反代泄露；replace途中失败旧集合完整，成功后旧revision/ETag不复活；尾随/多顶层JSON、重复键、序列、schema竞争及预算一致分别验。新增链须验五类写入口、提交后kill、ACK前kill、重复/迟到/乱序、no-op、import有界交接、撤权、效果重试和写回循环的持久hold；收件成功不等于任务完成。多副本启用前补认领/fence及重复消费者反例。已有AL真PG测试保留，本次未运行或推断所有目标已通过。
 
 ## 尚未实现的领域与接缝
 

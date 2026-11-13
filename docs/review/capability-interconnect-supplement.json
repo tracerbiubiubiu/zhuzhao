@@ -1,0 +1,312 @@
+{
+  "date": "2026-11-13",
+  "status": "design_outline_additive_scope_not_implementation_authorization",
+  "contract_ref": "docs/design/capability-invocation-contract.md",
+  "consistency_ref": "docs/design/ecosystem-consistency-contract.md",
+  "baseline": {
+    "core": "683724881acb83b530c410755b8268e2c8840825",
+    "ui": "da171f4ff07b6161e4e37e3553c63d90f4bb3cf9",
+    "priced_source_commit": "a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
+    "existing_priced_parent_packages": 71,
+    "existing_source_entries": 511,
+    "existing_slices": 13,
+    "current_numbers_do_not_include_new_scope": true
+  },
+  "vision": "所有核心/可插拔产品能力可受权对外消费，内部共用逻辑调用/结果/事件合同并可组合；全栈一致性逐步落地，不要求一步到位。",
+  "capability_family_inventory": {
+    "depth": "family_outline_not_endpoint_complete",
+    "families": [
+      {
+        "family": "IAM/组织/授权",
+        "current_boundary": "本地已有API；统一描述与来源合同待补",
+        "enumeration_complete": false
+      },
+      {
+        "family": "工单定义/实例/流转",
+        "current_boundary": "现有用例保留；任务结果关联待D12/CE02",
+        "enumeration_complete": false
+      },
+      {
+        "family": "风险生命周期",
+        "current_boundary": "原P6.2计划，按职责范围接门面",
+        "enumeration_complete": false
+      },
+      {
+        "family": "任务定义/调度/执行",
+        "current_boundary": "TR API已有；C03/I02/I03完成与授权待实现",
+        "enumeration_complete": false
+      },
+      {
+        "family": "任务结果/工件",
+        "current_boundary": "D12已规划，未形成全链展示和白名单回写",
+        "enumeration_complete": false
+      },
+      {
+        "family": "活动列表Schema/数据",
+        "current_boundary": "CRUD/CAS/import已有；CE03/04补任务与源事实",
+        "enumeration_complete": false
+      },
+      {
+        "family": "附件控制",
+        "current_boundary": "沿授权与结果引用，不把大字节流强包统一JSON",
+        "enumeration_complete": false
+      },
+      {
+        "family": "通知/消息",
+        "current_boundary": "通知投递不代替业务完成",
+        "enumeration_complete": false
+      },
+      {
+        "family": "查询/报告/导出",
+        "current_boundary": "受权结果/分页/摘要与引用",
+        "enumeration_complete": false
+      },
+      {
+        "family": "专业能力/连接器",
+        "current_boundary": "外部仍写主，不复制专业引擎",
+        "enumeration_complete": false
+      },
+      {
+        "family": "私有扩展",
+        "current_boundary": "同一准入/主体/版本/结果，本域授权留属主",
+        "enumeration_complete": false
+      },
+      {
+        "family": "AI/MCP/Agent/skill",
+        "current_boundary": "协议与配置消费选定能力，不另授执行权",
+        "enumeration_complete": false
+      }
+    ],
+    "next_gate": "CE01按实际API/Service/插件补逐项责任与成熟度，不以家族行数冒充全部能力已盘点。"
+  },
+  "new_scope_items": [
+    {
+      "id": "CE01",
+      "title": "全能力库存与统一合同骨架",
+      "wave": "P6.0",
+      "dependencies": [],
+      "existing_carriers": [
+        "G06",
+        "X01-C",
+        "I01"
+      ],
+      "acceptance": "核心/插件能力家族盘点，静态/动态ID、命令/事件/结果及通知消费、对外API/写主/授权/完成语义及现状成熟度明确；准确DTO在编码前冻结。",
+      "state": "design_outline_not_implemented",
+      "estimate_engineering_days": null,
+      "pricing_state": "new_scope_not_priced",
+      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+    },
+    {
+      "id": "CE02",
+      "title": "最小共同调用门面与跨入口接线",
+      "wave": "P6.1",
+      "dependencies": [
+        "CE02-S",
+        "CE02-D"
+      ],
+      "existing_carriers": [
+        "C03",
+        "C04",
+        "R01",
+        "X01-C"
+      ],
+      "acceptance": "进程内Port、受控HTTP、异步适配共用逻辑合同和当前授权/幂等/结果；不是万能RPC或所有调用排TR。",
+      "milestones": [
+        {
+          "id": "CE02-S",
+          "dependencies": [
+            "CE01",
+            "C04",
+            "X01-C"
+          ],
+          "acceptance": "同步/查询门面、既有HTTP映射及参数/错误/主体一致。"
+        },
+        {
+          "id": "CE02-D",
+          "dependencies": [
+            "CE02-S",
+            "C03",
+            "R01"
+          ],
+          "acceptance": "可靠意图、稳定操作ID、最小操作/任务关联及受理/完成receipt语义；完整结果schema、取回、工单展示/写回仍由D12交付，不依完整I01。"
+        }
+      ],
+      "state": "design_outline_not_implemented",
+      "estimate_engineering_days": null,
+      "pricing_state": "new_scope_not_priced",
+      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+    },
+    {
+      "id": "CE03",
+      "title": "AL受权数据能力与任务adapter",
+      "wave": "P7",
+      "dependencies": [
+        "CE02-D",
+        "I01",
+        "I02",
+        "R06"
+      ],
+      "existing_carriers": [
+        "R06",
+        "I01",
+        "I02"
+      ],
+      "acceptance": "选定AL操作的目标/字段/revision/幂等/结果和持续授权；TR不直库，不以全量replace代patch，不靠dept/actor授写权。",
+      "state": "design_outline_not_implemented",
+      "estimate_engineering_days": null,
+      "pricing_state": "new_scope_not_priced",
+      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+    },
+    {
+      "id": "CE04",
+      "title": "AL源变化事实与受控订阅到任务",
+      "wave": "P7",
+      "dependencies": [
+        "CE03",
+        "CE05",
+        "R01"
+      ],
+      "existing_carriers": [
+        "R06",
+        "R01",
+        "I03"
+      ],
+      "acceptance": "AL全部支持写入口源事务事实/完整feed，含有界import批次；平台按event+订阅版本幂等触发任务，重复/乱序/回放/写回循环有反例。",
+      "preparation_rule": "源事实格式和覆盖清单可并行准备；自动触发启用前须CE03授权及CE05准入/防循环。",
+      "state": "design_outline_not_implemented",
+      "estimate_engineering_days": null,
+      "pricing_state": "new_scope_not_priced",
+      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+    },
+    {
+      "id": "CE05",
+      "title": "跨入口准入、反压和因果预算",
+      "wave": "P7，后续按实测增强",
+      "dependencies": [
+        "CE02-D",
+        "I02",
+        "I03",
+        "G04"
+      ],
+      "existing_carriers": [
+        "C03",
+        "R01",
+        "I03",
+        "G04"
+      ],
+      "acceptance": "HTTP/本地/定时/订阅/MCP同一逻辑预算，按能力/主体/provider限速和并发；超限可拒绝或held，可信root/causation和深度/步数/fanout防回环。",
+      "state": "design_outline_not_implemented",
+      "estimate_engineering_days": null,
+      "pricing_state": "new_scope_not_priced",
+      "pricing_rule": "原包只作承接/复用出处，不表示新增实现已包含；编码排程前按新范围扣重复估。"
+    }
+  ],
+  "representative_chains": [
+    {
+      "id": "CHAIN-A",
+      "scenario": "工单节点→任务→结果展示/受权回写",
+      "existing_delivery": "D12",
+      "target_gate_dependencies": [
+        "D12",
+        "CE02-D"
+      ],
+      "state": "submission_exists_result_loop_not_implemented",
+      "scope_change": "原目标承接；统一通道增量归CE02，不让D12反依完整I01。"
+    },
+    {
+      "id": "CHAIN-B",
+      "scenario": "定时任务→受权AL数据更新",
+      "target_gate_dependencies": [
+        "CE03",
+        "C03",
+        "I02",
+        "I03",
+        "CE05"
+      ],
+      "state": "schedule_and_AL_CRUD_exist_adapter_and_grant_loop_missing",
+      "scope_change": "新增任务adapter/效果合同不在原R06预算自动包含。"
+    },
+    {
+      "id": "CHAIN-C",
+      "scenario": "AL变化→订阅→任务→结果",
+      "target_gate_dependencies": [
+        "CE04"
+      ],
+      "state": "AL_source_fact_missing",
+      "scope_change": "新增源事务事实、订阅/循环防护，AL不承担业务编排。"
+    }
+  ],
+  "consistency_delivery_carriers": {
+    "code_naming_directories_docs": [
+      "G06",
+      "G03",
+      "R07"
+    ],
+    "api_messages_invocation": [
+      "CE01",
+      "CE02",
+      "C03",
+      "R01",
+      "I01"
+    ],
+    "admission_concurrency": [
+      "CE05",
+      "C04",
+      "G04",
+      "I03"
+    ],
+    "frontend": [
+      "U02",
+      "U07",
+      "U03",
+      "U04",
+      "U05",
+      "U06"
+    ]
+  },
+  "mcp_rule": "A03复用同一能力/当前授权/receipt；默认不把所有能力发布为tool，逐项映射验收，MCP AS门保留。",
+  "minimum_ui_same_batch": {
+    "rule": "新增能力随业务同批交触发/配置、权限、运行/unknown/失败、结果和恢复入口；可复用既有页或受权深链。CE新增UI工作在增量复估中计价，不自动吞入旧U06。",
+    "chain_ownership": {
+      "CHAIN-A": "D12+CE02，工单任务关联/状态/结果及合法回写反馈",
+      "CHAIN-B": "CE03+I03，计划/目标/字段配置、发生次/效果/held与恢复反馈",
+      "CHAIN-C": "CE04+CE05，订阅启停/版本、来源变化、触发/抑制原因、积压/恢复入口"
+    }
+  },
+  "entry_enablement_constraints": [
+    {
+      "scope": "各新增API/本地/MCP入口",
+      "required_contract": "CE01",
+      "gate": "发布前冻结本能力适用的大小/deadline/速率/inflight profile及观测，进入共同预算；优先已有机制，不要求只读MCP等待完整CE05/I03。"
+    },
+    {
+      "scope": "新增AL自动写或事件任务循环",
+      "required_milestones": ["CE05"],
+      "gate": "共享准入/队列及可信因果预算实际验收后启用；只读合同/mock准备不受阻。"
+    }
+  ],
+  "compatibility_rule": "静态capability_id+contract_version、OpenAPI operationId、动态operation_id/invocation_id分开；旧action_id/wire映射登记，不直接改历史字段/数据。",
+  "estimate_and_schedule_impact": {
+    "existing_parent_estimates_changed": false,
+    "new_scope_count": 5,
+    "new_scope_estimated": false,
+    "old_execution_schedule_status": "priced_baseline_before_this_supplement",
+    "rule": "旧UAA和71包冻结数字保留为补充前已计价基线；新增范围在开工门复估并重新生成排期，不沿用旧总量冒充已含。",
+    "blocking_scope": "仅新统一通道/AL自动链启用的增量门，不阻独立旧正确性修复或无关mock。"
+  },
+  "remaining_design_windows": [
+    "逐操作能力库存与legacy字段映射",
+    "AL单条/批量/删除/恢复/Schema事件及订阅粒度",
+    "订阅创建/改版/停启生效水位与回放政策、谓词取事件时值或当前值",
+    "AL目标/字段与持续授权",
+    "共享准入/因果预算数值与退化",
+    "准确DTO/迁移/工序和增量估算"
+  ],
+  "work_boundary": {
+    "T0_started": false,
+    "business_implementation_started": false,
+    "owner_scenarios_still_in_progress": true,
+    "all_future_details_frozen": false,
+    "runtime_acceptance": false
+  }
+}

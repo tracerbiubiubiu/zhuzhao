@@ -1,12 +1,12 @@
 # 五仓工程治理与目录演进计划
 
-日期：2026-11-11。状态：规划已落档，配置和代码变更尚未实施；本轮没有开启远端保护或修改CI。工作项编号、依赖、工作量与窗口以[总账](../review/planning-backlog.md)为唯一排期。
+日期：2026-11-11；2026-11-13补一致性与能力互通边界。状态：规划已落档，新增治理配置和代码机制尚未实施；本轮没有开启远端保护或修改CI。工作项编号、依赖、工作量与窗口以[总账](../review/planning-backlog.md)为唯一排期。统一内容、允许差异和验证出口见[生态一致性合同](ecosystem-consistency-contract.md)，本页不另建一份规范全集。
 
 ## 1. 基线判断
 
 五仓已有同核提交策略、三钩、离线反例、CI事件窗口检查；主仓已有分层/权限/秘密守卫、Swagger/Wire检查、单测和集成；UI已有lint/typecheck/build/audit/Vitest；兄弟Go仓已有race与部分真PG链路。继续保留这些能力。
 
-本轮五仓GitHub只读API实证：main未受保护，required checks为空，rulesets为空；secret scanning/push protection均启用；vulnerability alerts与Dependabot security updates关闭。主仓完整acceptance和UI Playwright没有作为现有CI自动链路执行；主仓安全工作流仍偏向旧阶段分支/历史revision。源码证据分别位于各仓`.github/workflows/`、`scripts/commit-policy.py`、`.githooks/`；这是一份时点审查，后续启用必须另留准确配置收据。
+2026-11-11五仓GitHub只读API实证：main未受保护，required checks为空，rulesets为空；secret scanning/push protection均启用；vulnerability alerts与Dependabot security updates关闭。该时点主仓完整acceptance和UI Playwright没有作为现有CI自动链路执行，主仓安全工作流仍偏向旧阶段分支/历史revision。源码证据分别位于各仓`.github/workflows/`、`scripts/commit-policy.py`、`.githooks/`；这是历史快照，不代表2026-11-13重查远端设置，后续启用必须另留准确配置收据。
 
 ## 2. 并行协作：隔离先行
 
@@ -42,6 +42,8 @@ G04/P6.1先建立风险—测试对应表：鉴权拒绝/可见集一致、事�
 
 U07同时排视觉样例、DOM交互、基础键盘与对比度；关键真实栈仍验证L1/L2/L3、迁移、存储和跨服务链路。视觉基线不能以“有合规诉求才做”无限挂账。
 
+统一调用的门禁按[能力调用合同](capability-invocation-contract.md)补同用例跨入口反例：页面、工单节点、计划、活动数据触发、Agent/MCP和私有扩展不能各自复制权限/幂等逻辑。选择最薄真实闭环，再测重复/迟到、commit后kill、结果写回失败、撤权与双实例；不是给所有消费者一次配置就宣称可靠。现有低一致性Hook与R01可靠交接分层，审计表不充当outbox。新增数据触发/回写范围、运行并发/流控和最小UI若超出现包，进入总账增量，不隐含在G04/G06/U06旧估算中。
+
 ## 5. 供应链、发布与运维
 
 G07A/P6.0先升级受支持工具链/Node与基础镜像，G07B/P6.1交PG/Redis等候选组合与恢复演练，取消公司旧版本对齐，见[版本现代化](dependency-modernization.md)。G05/P7补持续受控依赖更新PR、SBOM/制品来源、固定镜像/运行制品、最小CI权限和发版兼容矩阵；保留已有秘密扫描，补依赖告警，不自动合并升级。外部脚本/skill也要版本、来源、依赖锁和批准，运行期不任意下载执行。
@@ -63,6 +65,14 @@ G07A/P6.0先升级受支持工具链/Node与基础镜像，G07B/P6.1交PG/Redis�
 
 G06/P6.1交付一个轻量模板及版本清单：提交策略等机械公共文件以一个维护源和摘要同步，生成差异PR；规范正文以主仓SSOT引用，不复制整篇。各仓保留语言适配与必要例外登记，CI检查版本漂移、链接、生成物和关键依赖方向。初期可由脚本同步或固定revision reusable workflow实现；不为此立刻改monorepo或新建治理服务。
 
+### 6.1 一致性是有范围的合同
+
+[生态一致性矩阵](ecosystem-consistency-contract.md#2-一致性矩阵)逐项覆盖代码/命名、目录/文档、API、消息、调用、流程和视觉。机械层细化仍以[工程施工G06](engineering-execution-design.md#g06仓库规格与规则同步)为准：Go保留gofmt/vet，UI在现有ESLint/vue-tsc之外按改动文件渐进引入钉版本formatter，其他文件按profile做解析/语法与来源检查；不为统一做全仓排版重写或强制同构。当前G06 bundle/lock、EditorConfig和UI独立fmt检查仍未落地，“已有lint”不能作为全部排版/命名规则已受控的证据。
+
+领域payload、状态机、专业平台原报文和不同页面任务允许差异；统一的是公开语义和受控映射。静态能力用`capability_id + contract_version`，HTTP定义用OpenAPI `operationId`元数据；动态业务效果幂等用`operation_id`，一次逻辑调用用`invocation_id`，传输请求/投递尝试另外标识。不得以同一个字段兼任能力名和运行幂等键，也不能每次HTTP重试新建逻辑调用。
+
+前端沿用现有tokens、Element Plus、ProTable和FilterBar增强，U02/U07先做真实Vue样板/视觉与交互底座，再由U03–U06逐页推广；不是新建设计系统。每个新增业务能力的最小按钮、权限反馈、状态、结果和恢复入口与能力同批，不能留给U06事后补齐。格式/token静态检查、截图与真实角色旅程分别给证据，lint不证明配色、布局或全站一致性。
+
 新领域按职责小步归位；工单领域现有隔离可复用，IAM扁平文件不是必须先重排的缺陷。跨域只能调用明确用例/查询端口，不能为目录美观先大量搬文件。新增仓库先写独立交付理由和数据/协议边界，模型/MCP/RAG名词本身不是建仓理由。
 
 ## 7. 验收与未决
@@ -70,3 +80,7 @@ G06/P6.1交付一个轻量模板及版本清单：提交策略等机械公共文
 各包在总账规定窗口交付具体反例和收据；五仓组合、hooks实际安装、required checks生效、真实提供方验证、故障恢复分别验。自动化只能证明已编码的约定；设计审查、权限与产品任务仍需实质评审。
 
 尚需实施前确认的技术选项：组合清单格式、完整门禁触发频率、UI mock实现、测试阈值、产物签名与发布方式。每项归G02–G06相应开工窗口，默认优先现有工具的最小扩展，不新增整个平台。
+
+## 变更记录
+
+- 2026-11-13：补生态一致性合同入口、适用差异/机械证据边界、静态与动态标识分工、前端与业务同批接线及跨入口可靠性检查；保留既有工作包权威总账，不把新增范围默算进原估算。

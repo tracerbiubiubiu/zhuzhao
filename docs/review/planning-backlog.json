@@ -1953,5 +1953,16 @@
       },
       "milestone_reference_semantics": "additional_required_milestone是承载包追溯；本门检查其pre_apply，不要求切换后的R整体收口先完成。"
     }
-  }
+  },
+  "design_supplements": [
+    {
+      "id": "CAPABILITY-INTERCONNECT-20261113",
+      "ref": "docs/review/capability-interconnect-supplement.json",
+      "contract_ref": "docs/design/capability-invocation-contract.md",
+      "additional_outline_items": 5,
+      "estimated": false,
+      "old_71_package_prices_unchanged": true,
+      "rule": "本次增量不在原71包/UAA冻结总量中；各包承接关系只作复用和窗口，不能以原预算包干新增能力。"
+    }
+  ]
 }

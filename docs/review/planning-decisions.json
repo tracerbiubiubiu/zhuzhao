@@ -106,7 +106,7 @@
       "decision_due": "D03/P6.2 派单启用前",
       "recommendation": "沿用原风险设计的 risk:manage 和风险资源范围，不另设派单角色或 risk.dispatch 权限码；单条沿用主锚或当前owner、批量沿用主锚管理范围；受限领域用例复用工单校验，仅向配置好的整改类型/组织派单，不额外要求通用 ticket:create；可通过现有org_roles向虚拟风险组绑定业务角色，若全组含旁观者只授获准人员/职责组，避免并集角色无法用只读抵消",
       "alternatives": "风险派单还必须额外有通用 ticket:create；一般新建工单仍保持自身权限与类型/组织约束",
-      "impact_or_safe_fallback": "方向已确认、尚未实施。risk.dispatch.v1是operation_id，不另设派单权限码/角色；risk:read/risk:manage为风险设计中的计划权限，现有org_roles机制可复用；单条主锚/owner、批量主锚及类型/组织校验保留，业务创建人与真实操作者分记，普通REST/Agent不能传任意created_by或skip_auth。实际角色名单、目标映射在启用前配置并验证",
+      "impact_or_safe_fallback": "方向已确认、尚未实施。risk.dispatch.v1是能力定义别名（静态capability_id/contract_version），不是动态operation_id，不另设派单权限码/角色；risk:read/risk:manage为风险设计中的计划权限，现有org_roles机制可复用；单条主锚/owner、批量主锚及类型/组织校验保留，业务创建人与真实操作者分记，普通REST/Agent不能传任意created_by或skip_auth。实际角色名单、目标映射在启用前配置并验证",
       "design_ref": "docs/design/business-lifecycle-contracts.md",
       "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准；2026-11-12：用户对具备上述具体范围、只读限制及SOC事件分工的自包含问题明确选择“采用这套职责方案（推荐）”，B05方向已确认",
       "decision": "虚拟风险组中获授权的管理成员可在职责范围内录入/管理风险，并向已配置部门/工单类型派发整改工单，不额外要求通用ticket:create；只读成员不能派单。攻击/应急安全事件接SOC，按事件职责另行授权，不因入风险组自动得到全部事件能力",
@@ -279,7 +279,7 @@
       "id": "O10",
       "state": "owner_confirmed",
       "decision": "基于现有规模与原6–9规划，尽可能承接并扩展优化；重规划6–9及更远路线，问题设计可建议替代，采用适合当下的渐进演进",
-      "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现",
+      "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现；2026-11-13再次明确最终愿景/逐步细化，允许实施前发现并补充具体问题。",
       "implementation": "planned_not_implemented"
     },
     {
@@ -309,11 +309,27 @@
       "implementation": "planned_not_implemented",
       "concrete_scenarios_ref": "docs/review/uaa-real-integration-conditions.json#/owner_scenarios",
       "confirmation_boundary": "实际接管差异清单、公司许可窗口内的故障读写倾向、指定应急恢复用途；均未因估算而批准。影子报告由R先生成再审批，不作为测试进入前置。"
+    },
+    {
+      "id": "O13",
+      "state": "owner_confirmed",
+      "decision": "核心及可插拔产品能力均应有受权对外接口和内部共同逻辑调用通道，可组合工单、调度、AL与结果，后续MCP复用同一能力；不把自由调用解释为绕过授权。",
+      "design_ref": "docs/design/capability-invocation-contract.md",
+      "owner_feedback": "2026-11-13所有者提出三条代表闭环和全能力对外/内部统一通道目标。",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O14",
+      "state": "owner_confirmed",
+      "decision": "一致性覆盖代码/命名/文档目录/API/消息/调用/流程/前端视觉，设最终愿景并渐进靠近；并发/多实例/异步/流控先定骨架再按场景细化，不追求一步到位。",
+      "design_ref": "docs/design/ecosystem-consistency-contract.md",
+      "owner_feedback": "2026-11-13所有者强调项目可用但需精致，允许粗范围、后续细化和持续演进。",
+      "implementation": "planned_not_implemented"
     }
   ],
   "last_updated": "2026-11-13",
   "confirmation_summary": {
-    "owner_confirmed": 29,
+    "owner_confirmed": 31,
     "owner_pending": 1,
     "provider_constraints_then_owner_review": 1
   },
@@ -334,6 +350,7 @@
       "main_integration",
       "remote_push"
     ],
-    "interpretation": "既定原则与有界估算保留；本次文档提交不自动批准全部未来功能，不因排期写尽快而启动开发。"
+    "interpretation": "既定原则与有界估算保留；本次文档提交不自动批准全部未来功能，不因排期写尽快而启动开发。",
+    "latest_supplement_ref": "docs/review/capability-interconnect-supplement.json"
   }
 }

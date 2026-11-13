@@ -1,5 +1,7 @@
 # 全项目能力承接与渐进演进方案
 
+> **2026-11-13增补**：[统一能力合同](capability-invocation-contract.md)与[全栈一致性](ecosystem-consistency-contract.md)成为后续新增/触及能力的共同方向；不要求一次改造全部存量。先工单任务结果，再AL受权任务/源变化订阅，后扩Agent和复杂协同，均逐链验收。[5项增量](../review/capability-interconnect-supplement.md)尚未复估，原路线成本不能冒充已含新范围。
+
 日期：2026-11-11。状态：全项目路线方案，尚未实施。承接现有五仓main和原Phase6–9/更远规划，融合AI、内网扩展、设备及工程治理。所有者明确要求尽可能承接原业务价值，同时允许纠正不合理设计，以适合当前规模的增量演进推进。主路线见[roadmap](../roadmap.md)，包/依赖/粗估以[总账](../review/planning-backlog.md)为唯一来源，逐来源承接见[连续性审计](../review/roadmap-capability-continuity.md)。
 
 ## 1. 怎样选择，而不是重新造平台

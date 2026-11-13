@@ -40,9 +40,9 @@
 
 ## 3. API 设计约定
 
-1. **方法仅 GET / POST**——PUT / DELETE / PATCH 不引入；**立法理由（2026-10-15 补记，防再议）**：资源语义由路径 + 权限码（`resource:verb`）承载，方法仅承载「幂等读 / 非幂等写」二分——引入 PUT/DELETE 不新增表达力，只摊薄「写操作必须过鉴权/审计」这一 HTTP 层结构性不变量；方法面变更为全生态破坏性契约变更（网关匹配 / menu_apis 绑定 / 前端请求封装 / 存量端点全量对账），内部平台 + 前端唯一消费方语境下无对应收益（对外公开放 API 的自描述诉求不存在，gRPC-Gateway/GraphQL 全 POST 同款先例）；**辖域界定（2026-10-15 所有者拍板）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
+1. **方法仅 GET / POST**——平台自有 API 继续保留现有方法、路由和权限绑定约定，不引入 PUT / DELETE / PATCH；资源与动作语义由路径、权限码（`resource:verb`）和版本化合同共同描述。**2026-11-13范围校准**：消费方包含前端、内部扩展、任务、其他系统及后续MCP适配器，原“前端唯一消费方、无外部API自描述诉求”的理由不再适用；所有产品能力均应有受权、可发现的对外合同，并通过统一调用接缝进入同一领域用例，详见[能力调用合同](design/capability-invocation-contract.md)。保留GET/POST是既有生态兼容和迁移成本的选择，不限制OpenAPI/schema、机器调用或幂等动作；是否可重试、是否产生副作用由用例合同声明，不能只从POST推断。方法面调整仍须对网关、menu_apis、SDK/前端封装及存量端点统一评审。**辖域界定（2026-10-15 所有者拍板，继续有效）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
-3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
+3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码，是否可重试依错误/效果合同判断，不能一概按“4xx不重试、5xx可重试”：429可按限额/退避恢复，写入超时/5xx若效果未知，已接操作凭证的用例须用原`operation_id`查询/对账；尚无凭证的历史写入保留`request_id`并按用例核查，不能暗示没有副作用或直接整笔重试。状态码不证明可以安全重复写；**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
 4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 docs/api/errcode.md 对账）；
 5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；**zhuzhao 侧 `/api/v1/tasks` 组的 `/cancel`·`/retry` 为该豁免契约的镜像路由（透传 taskrunner，2026-10-15 补登记）**；**activelist 数据域 `/:typeName/:id/update`·`/:id/delete`「URL 标识 + 动词段」同条豁免（2026-10-15 清欠批补登记）**——先于 C10 整改批的存量形态、与已上线 ui 消费契约耦合，对端 implementation-plan §4 头部注记在册，整改范围不追溯；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**。**特例在册（2026-10-15 全仓审计立约）**：activelist 列表端点为 keyset 游标分页且 `next_cursor` 进响应信封——动态表百万行量级下 offset 深翻页不可用、zhuzhao-ui cursorPager 已消费该契约；属 offset+total 形态不适用的领域特例，新端点勿援引。时间线备查（2026-10-15 git 考古）：keyset 设计 09-03（activelist `47e3644`）早于公约建纲 09-07（`c4e30b4`——建纲版本条仅要求"必须分页+钳制+确定性排序键"，keyset 实现对当时条款合规）；禁止性扩写 09-09（`f854e35` 三仓信封收敛批）晚于实现 09-08（activelist `dad1b12`）一天且未对存量对账——禁止性条款为既成实现环境后写，非先在约束。建档日期口径注：头注「建档 2026-09-04」与 git 首笔落库 09-07（`c4e30b4`）并存，本文档时间线采用后者（git 实证口径）；
@@ -57,12 +57,14 @@
 
 15. **周期任务归属（D18 调度分工口径，2026-10-20 双审计立约 / 2026-10-21 补录）**——进程内 CronScheduler（zhuzhao `cron_scheduler.go`）**仅承接平台维护型扫描**：超期 / 到期 / 终态对账 / GC 这类需同进程 DB 事务、单实例 advisory lock 的内务任务；**业务任务、脚本、连接器拉取、及一切需要重试·死信·审计·UI 可见的周期工作一律 taskrunner**。判据=任务性质而非大小：属业务域或需独立可观测/重试语义 → taskrunner；属平台自身维护且需与业务写同事务 → 进程内。护栏：新增周期任务先对表本条（归属歧义=评审必问）；CronScheduler 不再承接业务任务（存量无违例——audit_archive/GC/timeout_scan 三任务均维护型）。
 
-## 4. 工程结构与代码组织（所有服务同规格）
+## 4. 工程结构与代码组织（Go服务基线）
+
+以下为Go服务的共同职责与既有骨架，不要求五仓及后续仓库物理同构。公共库、UI、contract/private-connector按[G06仓库profile](design/engineering-execution-design.md#g06仓库规格与规则同步)采用适用规则；有实际职责才建目录。跨语言共同语义、允许差异和验证见[生态一致性合同](design/ecosystem-consistency-contract.md)，不因本节标题批量搬现有模块。
 
 | 项 | 约定 |
 |---|---|
 | 分层 | handler → service → repository（handler 禁 DB、service 禁 HTTP、repository 禁外层依赖）。**判定口径（2026-10-15 审计成文）**：禁令禁的是能力越界（handler 触 DB 连接、service 发 HTTP、repository 依赖上层）——非越界用途的 stdlib 类型引用（如 `http.MaxBytesError` 判型、`sql.NullTime` 扫描）不判违；handler 引 repository 查询 filter 结构体属灰区，以 `architecture_test.go` 白名单制管理 |
-| 目录结构 | 各服务同构骨架：`cmd/<server>/` 入口、`internal/app/`（wire 装配）、`internal/handler|service|repository|model|middleware/`、`internal/pkg/`（服务内公共构件，**升格 zhuzhao-utils 的候选区**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致 |
+| 目录结构 | Go服务既有骨架：`cmd/<server>/`入口、`internal/app/`（wire装配）、`internal/`内的handler/service/repository/model/middleware职责、`internal/pkg/`（服务内纯机制构件，**升格zhuzhao-utils须满足§5边界**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致，具体目录仅在实际需要时建立；领域隔离布局可随模块演进 |
 | 依赖注入 | google/wire（装配收敛于 `internal/app`） |
 | 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
 | **命名约定** | 文件名 snake_case（repository=`<域>_repo.go`、handler=`<域>_handler.go`）；package 名小写单词与目录同名；构造函数 `NewXxx`（包内单主类型可裸 `New`），wire provider `provideXxx`；接口定义放**消费方**（最小接口）+ `var _ Interface = (*Impl)(nil)` 断言；sentinel error 命名 `ErrXxx`、消息带包名前缀小写英文（`"store: job_run not found"`）；常量就近定义于使用包（不设集中 consts 文件），导出 CamelCase / 非导出 camelCase，禁 SCREAMING_SNAKE（2026-09-15 四仓审计将事实惯例升格成文） |
@@ -222,7 +224,9 @@
 
 | 主题 | 权威文档 |
 |---|---|
-| 进程内事件面公约（DomainEvent / at-most-once / Drain） | standards §14（机制细节：phase5/06 号）
+| 进程内事件面与可靠消息适用边界 | standards §14；不可丢后继：[跨仓执行合同 R01](design/cross-repo-execution-contract.md#r01-最小-durable-intent-先于自动化消费者) |
+| 生态一致性：统一内容、允许差异与验证 | [生态一致性合同](design/ecosystem-consistency-contract.md) |
+| 产品能力目录、统一调用及关联标识 | [能力调用合同](design/capability-invocation-contract.md) |
 | 权限架构（PDP/PEP、网关、策略库、ReBAC 触发器） | design-decisions §25 |
 | 软删组织委托语义 / SoD / Phase 3 重定位 / SSO | design-decisions §21 / §20 / §22–24 |
 | 服务实例基线（允许差异、taskrunner 对齐清单 C 系列） | phase3/16 号 §9 |
@@ -241,15 +245,15 @@
 
 ## 14. 进程内事件面公约（DomainEvent——全生态）
 
-> **立法（2026-10-28 所有者拍板，gap-audit P1-7 落定）**：进程内事件面是 S6/S3a/phase6-R3/任务链多域共用基础设施——公约层 SSOT 在本节，机制细节锚 [phase5/06 号](phase5/06-s6-message-notification.md)（S6=第一消费者）；新消费者（含跨进程）一律遵本节约。**§13 索引行同步。**
+> **立法与范围校准**：2026-10-28确立的进程内事件机制继续保留，机制细节见[phase5/06号](phase5/06-s6-message-notification.md)。2026-11-13明确其仅适用于允许丢失、无需重放的进程内Hook；不能将“含跨进程一律遵本节”的旧表述解释为跨仓自动化也可at-most-once。不可丢业务后继遵[跨仓执行合同R01](design/cross-repo-execution-contract.md#r01-最小-durable-intent-先于自动化消费者)，调用入口及标识遵[能力调用合同](design/capability-invocation-contract.md)。这是设计边界调整，R01尚未实现。
 
-1. **发布时机**：emit 一律在确认业务事务 **commit 之后**；commit 成功到 emit/消费完成之间崩溃仍可能漏发或未完成，不能承诺“commit 后事件必已发送”。当前进程内 **at-most-once** 不变，可靠重放升级另走 C-20 outbox。
-2. **订阅两层**：代码级 `HookRegistry.Subscribe(bizType, name, handler)`（消费逻辑）+ 配置级 message_rules（外发路由）——两层各管各的，禁止用规则面承载业务逻辑。
-3. **优雅退出**：Shutdown 走 `Drain`（closed 闸——Drain 后拒收残发，happens-before 保证；预算 8s）。并发细节终修=G-30，勿回退实现。
-4. **消费者义务**：当前总线不提供 outbox 重放，因此尚无事件重放去重协议；消费者自身的并发、重复业务请求与外部副作用仍需按业务规则处理；**升级 at-least-once 的唯一正路 = C-20 outbox**（台账在档）——届时消费者幂等化（inbox unique(event_id,user_id) 形态）为前置。
-5. **禁止硬编码直调**：跨域消费（如风险关闭联动）必须走订阅钩子——把消费方逻辑焊进生产方 service = 破坏领域隔离（phase6 §3 拍板），评审拦截。
-6. **新域消费者随批三件**：①本节清点表加行 ②装配进 boot 期望订阅集 ③守卫测试（boot 断言——R1/G-5 装配遗漏族的结构性解，随 phase6 Week 0 落地）。
-7. **升级信号三条**（任一出现→重评 outbox/C-20）：跨进程消费者出现 /「丢一条即事故」级消费者出现 / 需要重放。
+1. **低一致性进程内Hook**：`HookRegistry`仍在确认业务事务**commit之后**派发。commit成功到emit/消费完成之间崩溃可能漏发或未完成；现状是**at-most-once、无可靠重放**，不承诺“业务提交后通知必达”。现有`ticket_events`审计记录也不等于outbox。
+2. **订阅与通知规则分层**：代码级`HookRegistry.Subscribe(bizType, name, handler)`承载本地消费，配置级message_rules承载外发通知路由，禁止把业务编排塞进通知规则。命令是要求受权能力执行，事件是已发生事实，通知是面向人的呈现/送达；不能收到任意事件payload就执行其中的动作或脚本。
+3. **优雅退出**：本地Hook的Shutdown继续走`Drain`（closed闸——Drain后拒收残发，happens-before保证；预算8s）；并发细节终修=G-30，勿回退实现。Drain不提供跨实例持久化、宕机恢复或恰好一次副作用保证。
+4. **不可丢后继**：需要跨实例恢复、重放，或丢失会破坏业务闭环的消费者，在启用前进入R01可靠目录。源事实/命令intent须与源业务在**同一事务**持久化，commit后由受控派发器投递；逐消费者去重、业务`operation_id`幂等、重试/未知效果对账与终止状态共同验收。跨进程这一条件要求先判断可靠性，不能直接套用本地Hook；也不为所有提示类通知强制建立可靠队列。
+5. **领域隔离**：事件订阅和显式用例/查询Port都是允许的接缝。生产方不得直接拼装消费方repository、表或私有状态机；同步必需本地变更由清楚的用例/事务所有者协调，独立后继按可靠性选择Hook或R01。不能为避免“直调”而把本需原子完成的变更改成可丢事件。
+6. **新消费者随批登记与守卫**：登记领域、用途、可靠性、消费身份、幂等/错误/恢复责任及真实装配位置。本地订阅列入下表和boot期望集合；可靠消费者列入R01目录。G03计划补装配遗漏反例与boot守卫，只有实现并验证后才算机械门禁，不由本节文字证明当前已生效。
+7. **可靠机制的实施前置**：旧C-20是历史可靠重放需求的来源，具体范围与排期归R01，不承诺一次转换全部emit。D10/D12/A02等不可丢消费者不得在所需源事务、receipt与恢复反例通过前启用；外部事件平台可替换投递目的地，但不能省略源事务的durable intent。
 
 **消费方清点（2026-10-28 时点——以代码 grep 为准，新消费者随批更新）**：
 
@@ -263,6 +267,8 @@
 > 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
 
 ## 变更记录
+
+2026-11-13能力互通与一致性设计：§3-1去除“前端唯一消费/无外部API诉求”的过期前提，保留GET/POST兼容；§3-3重试判断改依错误/效果合同、保留原信封；§4限定Go服务基线并回链适用profile；§14区分现有低一致性Hook与待实施R01可靠消息；§13补统一能力调用和生态一致性合同入口。本批仅修订设计，不宣称目录、可靠投递或全站一致性已实现。
 
 2026-11-08文档整理：§12-3按所有者选择改为五仓各自docs/、统一分类与命名；正式报告归review/reports，本地参考与过程材料保持Git/Docker忽略。原deliverables落点为历史口径，迁移映射与验证随本批收口记录。
 

@@ -1,6 +1,6 @@
 {
   "date": "2026-11-13",
-  "status": "bounded_effort_and_T0_reference_schedule_candidate_not_implementation_authorization",
+  "status": "priced_baseline_before_unpriced_capability_interconnect_supplement",
   "estimate_source": "docs/review/planning-backlog.json (existing budgets); docs/review/uaa-implementation-estimate.json (sole UAA increment registry)",
   "change_comparison_ref": "docs/review/roadmap-change-comparison-2026-11-12.md",
   "calendar": null,
@@ -7576,5 +7576,12 @@
         25
       ]
     }
+  },
+  "unpriced_design_supplement": {
+    "ref": "docs/review/capability-interconnect-supplement.json",
+    "additional_outline_items": 5,
+    "included_in_current_totals": false,
+    "new_scope_delivery_dates_bound": false,
+    "rule": "保留本次补充前已计价排程；增量复估后重新生成，不把原工日/周次称为已覆盖新愿景。"
   }
 }

@@ -1,5 +1,7 @@
 # Phase8 — 领域智能体与既有能力消费
 
+> **2026-11-13承接原则**：Agent、SOAR及报告继续消费[共同能力调用合同](../design/capability-invocation-contract.md)，共用当前授权、操作/结果与适用预算；新增入口不另写一套业务实现。继承[生态一致性](../design/ecosystem-consistency-contract.md)，按真实场景扩展，不要求现在冻结全部远期schema或改造全部存量。
+
 > 2026-11-11重规划；尚未实施。模型仅调用已有服务；大量mock保留。专业平台优先，领域Agent限本平台特有业务。唯一工作项与估算见[总账](../review/planning-backlog.md)。
 
 ## 1. 双轨智能体
