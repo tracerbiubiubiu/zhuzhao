@@ -143,9 +143,28 @@
       "pricing_state": "new_details_require_bounded_reestimate_at_named_gates",
       "pending_questions": [
         "设备登录信息首期是否仅地址与可选账号，还是另接专业凭据平台",
-        "类型业务管理员是否继续遵守类型范围，需全量时显式授权"
+        "是否在指定类型查看策略中显式配置业务管理职责的实例读取/统计范围（含所管组织内未参与票），经授权和影响预览；既有B01/B03默认保持"
       ],
-      "approval_boundary": "本条为随手场景/建议请求，责任人笔误按后半句候选理解；未把助手轮询/指标/管理员方案或两个未答问题视为批准。已有B/UX/K2继续有效。"
+      "approval_boundary": "本条为随手场景/建议请求，责任人笔误按后半句候选理解；未把助手轮询/指标/管理员方案或两个未答问题视为批准。已有B/UX/K2继续有效。",
+      "research_state": "current_source_audit_and_official_practice_comparison_documented_not_real_provider_validation",
+      "policy_candidates_to_freeze": [
+        "已有owner直派；共享同质池轮询或按类型认领的选择、无候选和超时处理",
+        "类型业务管理员的作用组织/实例范围与可补充字段白名单；不天然绕过类型查看策略",
+        "接单与开始是否合并、首组响应/节点/闭环指标和暂停重开口径；K2保持",
+        "逐流程事件及责任/复核/知会通知矩阵；既定强制通知不受普通偏好覆盖"
+      ],
+      "latest_verification": {
+        "date": "2026-11-13",
+        "scope": "F004/F005 recent concerns; existing audit cutoff and approved B/UX/K2 preserved",
+        "industry_refs_recorded_in_design": true,
+        "business_choices_fully_confirmed": false,
+        "new_details_net_estimate_and_schedule_integrated": false,
+        "AL_sensitive_real_enablement": "Before early real sensitive AL data, extract required minimum permission slice, estimate and link dependencies; otherwise synthetic/disabled. X03 private mock not unconditionally blocked by all R06.",
+        "AL_read_and_statistics": "Signed actor is not row/field ACL; current signature omits URL query and List has no total. Trusted filtered read and bounded authorized aggregates require named contracts and net estimates.",
+        "F005_boundary": "Five-repo local README/community delivery verified; brand, remote metadata, hosted demo and release not implied.",
+        "milestone_freeze": "Freeze minimum durable milestone facts and net estimate before corresponding D02 write implementation; first metric projection semantics by P6.1 exit, not facts after writes ship.",
+        "data_policy_editing": "Schema editing does not grant data-policy administration; sensitive logs/filter/group/cache/download paths require current authorization and redaction."
+      }
     },
     {
       "id": "F005-public-readmes-and-test-resources",
