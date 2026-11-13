@@ -110,7 +110,15 @@
         "R01",
         "X01-C"
       ],
-      "acceptance": "进程内Port、受控HTTP、异步适配共用逻辑合同和当前授权/幂等/结果；不是万能RPC或所有调用排TR。",
+      "acceptance": "同一能力/合同版本的HTTP、内部、手动、工单、计划/事件及MCP入口必须汇入同一登记应用层执行入口和领域实现，共用参数/当前授权/幂等/并发/适用预算/记录/结果；验实际路径和效果，不是仅格式统一、万能RPC或所有调用排TR。",
+      "execution_path_constraint": {
+        "contract_ref": "docs/design/capability-invocation-contract.md#21-同一能力只有一套受控执行路径",
+        "adapters": "只处理协议、认证/可信上下文、规范化及响应映射，不复制业务逻辑、不直库或对内部调用免检；不同主体按各自当前权限。",
+        "async_stages": "提交绑定能力版本/目标/规范参数/主体/稳定操作及预算；worker进入执行阶段复验当前授权/状态/期限和额度，不回到新任务提交入口递归创建任务；合法重投/退避/held恢复保留原身份，已有效果查原receipt且复验读取权限。",
+        "transaction_and_budget": "同步同事务窄Port复用事务/上下文，不另开独立提交、不HTTP回环、不重复入口扣取；attempt/provider速率/inflight仍按阶段取有效额度。",
+        "version_and_implementation": "受控用例可选登记provider adapter，语义需兼容；队列恢复不静默换最新版，未知/不兼容版本拒绝。",
+        "scope_rule": "新增/触及能力随批接入；存量按清单迁移。本次澄清不新增范围编号或修改旧价，CE02增量仍待扣重复估。"
+      },
       "milestones": [
         {
           "id": "CE02-S",
@@ -119,7 +127,7 @@
             "C04",
             "X01-C"
           ],
-          "acceptance": "同步/查询门面、既有HTTP映射及参数/错误/主体一致。"
+          "acceptance": "同步/查询门面与HTTP/内部映射汇入同一登记用例；同事务上下文复用，当前权限/参数/错误一致并验无旁路、无半套提交、无重复入口扣取。"
         },
         {
           "id": "CE02-D",
@@ -128,7 +136,7 @@
             "C03",
             "R01"
           ],
-          "acceptance": "可靠意图、稳定操作ID、最小操作/任务关联及受理/完成receipt语义；完整结果schema、取回、工单展示/写回仍由D12交付，不依完整I01。"
+          "acceptance": "可靠意图、稳定操作ID、最小操作/任务关联及受理/完成receipt；worker同能力执行阶段复验授权/状态/版本/期限与额度，不递归创建新任务、不静默换版本或重复效果；合法重投/退避/held恢复保留原身份；完整结果schema、取回、工单展示/写回仍由D12交付，不依完整I01。"
         }
       ],
       "state": "design_outline_not_implemented",

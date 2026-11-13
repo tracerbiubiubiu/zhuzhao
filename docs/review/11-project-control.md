@@ -8,6 +8,8 @@
 
 ## 当前摘要（2026-11-13）
 
+- **共同执行路径约束已明确**：同一能力/合同版本的API、内部、手动、工单、计划/事件及MCP入口必须进入同一受控应用层执行入口和领域实现；同步本地直接调用，异步提交/执行分阶段且执行前复验当前授权。不得复制业务实现、绕过权限或因换入口重置预算。见[调用合同§2.1–2.3](../design/capability-invocation-contract.md#21-同一能力只有一套受控执行路径)；属于CE02/O13澄清，仍未实现/复估，原包数和排期不变。
+
 - **能力互通与一致性新增愿景**：所有核心/可插拔产品能力逐步具备受权外部API与共同逻辑调用合同；工单→任务→结果、计划→AL更新、AL变化→任务三链分别验收。新增[能力合同](../design/capability-invocation-contract.md)、[一致性合同](../design/ecosystem-consistency-contract.md)及[5项增量](capability-interconnect-supplement.md)；修正静态能力/动态操作混用和AL源事实责任。当前为骨架设计，未实现/未复估；原71包/UAA数字是补充前已计价基线，不能称已覆盖新增范围。O13/O14明确方向已回填，仍待更多场景。
 
 - **本次仅提交设计阶段快照（2026-11-13所有者最新指令）**：仍有场景待补充，当前不急开发；设计/补估/参考排期继续作为可追加的文档基线。单席产能口径保留但T0未启动，本轮不执行开发、共享环境切换、主线集成或远端推送。文档静态核验不等于业务或真实UAA验收。
@@ -55,7 +57,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **关注点研究深度** | 32条用户输入→65核对原子；51实质规划/10部分深入/4合理后置，8组明确补研究出口 | 📋 深度核验及四组候选补研究与首组真实UI基线已交；全站等四组仍按门深化，未全量等深 | [核验报告](reports/concern-depth-verification-2026-11-12.md)、[逐点证据](focus-depth-verification.json) |
 | **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收；未合入main/切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
 | **全项目路线重规划/详设** | 原71包/511来源及包/子出口依赖；30详设候选+5组件原型+2逐页范围+34边界/处置；本次互通另列5个未计价骨架 | 📋 设计阶段快照，所有者仍补场景；31项方向确认、B08实际配置及UAA-P01公司约束后方案留窗；T0未启动，业务实现未交付；G07维护见上行 | [收口](planning-closeout.md)、[增量册](capability-interconnect-supplement.md) |
-| **全能力互通/统一调用** | 核心/插件受权API、共同逻辑门面、三类执行profile、标识/消息/结果及AL源事实归属；三条代表链与MCP同能力适配 | 📋 目标/合同骨架已落档，逐操作库存/准确schema/阈值/新增估算待相应窗口；现有任务提交与AL CRUD不等于全链已实现 | [能力合同](../design/capability-invocation-contract.md)、[ADR-005](../adr/adr-005-capability-invocation-and-source-facts.md) |
+| **全能力互通/统一调用** | 核心/插件受权API与共同逻辑门面；同一能力的所有入口必须进入同一登记执行路径；三类执行profile、标识/消息/结果及AL源事实归属 | 📋 目标/合同骨架及CE02跨入口验收约束已落档，逐操作库存/准确schema/阈值/新增估算待相应窗口；现有任务提交与AL CRUD不等于全链已实现 | [能力合同](../design/capability-invocation-contract.md)、[ADR-005](../adr/adr-005-capability-invocation-and-source-facts.md) |
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |
 | **公司UAA接入** | 已有JWT/RT、本地三层鉴权、停用/会话吊销；尚无SSOProvider、企业三路MQ/投影或完整来源撤权 | 📋 E01-UAA-C/P/R已具名排期；C/P/R均未实施/未真实验收，内网首发独立硬门 | [现行UAA合同](../design/uaa-governance-integration.md)、[17号](../phase3/17-uaa-integration.md) |
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
