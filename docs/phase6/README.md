@@ -1,5 +1,7 @@
 # Phase6 — 风险闭环、可信底座与全站体验
 
+> **当前首版目标**：所有者已确认2027年1月试用、2月1日前风险/工单/TR/AL/消息联动及三层权限/UAA可用。[阶梯与日期可行性](first-usable-release-plan.md)取代按Phase整包串行交付的读法；[变化对照](../review/core-release-change-comparison.md)分既有复用、必补和增强。真实接入未定、单席可行性未证，未启动开发。
+
 > **2026-11-14基础先行修订**：[基础版边界](../design/foundation-release-boundaries.md)将现有底座入网试验B0、最小可扩展基础B1和后续业务增强分开。下表是能力分组，不能把整个P6.1全部完成当P6.2或入网前置。B1先X01-B配置式接缝/X02-Q参考查询；完整X01-H与全UAA-P不挡独立基础，真实企业激活仍验对应UAA硬门。新增业务最小UI随批，U06整包推广和高级配置台不挡业务。
 
 > **2026-11-13调用/一致性补充**：CE01静态准备可先行，授权相关实现归P6.1；CE02-S在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../review/capability-interconnect-supplement.md)；新增范围已由[净估注册表](../review/planning-scope-estimates.json)扣重计价，存量共同路径迁移按S/D/L跨阶段交付，仍未开工。

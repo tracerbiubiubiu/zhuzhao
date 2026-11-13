@@ -309,6 +309,7 @@ def calculate(repo):
     result['scope_estimate_registry']='docs/review/planning-scope-estimates.json'
     result['no_unpriced_required_increment']=scope['all_required_supplements_priced']
     result['no_unpriced_required_increment_scope']='priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price'
+    result['dated_core_release_target_ref']=model['dated_core_release_target_ref']
     return result
 
 
@@ -342,6 +343,7 @@ def render_schedule(result):
         f"原71父包完整承接，正式纳入CE五项后为{structure['parents']}父包、{structure['official_child_milestones']}正式子出口、{structure['additional_scope_tasks']}项LS额外范围任务、{structure['release_slices']}发布切片。",
         'LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。',
         '本页长程总量只覆盖76包既有计价基线，不是基础版B0/B1工期，也未合并F004新增未净估细项及OBS候选补充；后继范围见[补充册](post-baseline-scope-estimates.json)。',
+        '首个核心可用版已定1月试用/2027年2月1日前，见[首版阶梯](../phase6/first-usable-release-plan.md)和[变化对照](core-release-change-comparison.md)；本页旧基线日窗不证明该日期可达，核心链联合净估/实际产能与真实条件仍待冻结。',
         '六项RP替换原基价，不能替换后又把净差额再加一次。',
         '数字源为[净增册](planning-scope-estimates.json)、[UAA估算](uaa-implementation-estimate.json)和[总账](planning-backlog.json)。',
         '切片、UAA接线及分阶段迁移配额见[排程模型](execution-schedule-model.json)；逐任务/资源槽/输入哈希见[JSON](execution-schedule.json)。',
@@ -361,7 +363,7 @@ def render_schedule(result):
         'U02/U06/UI新功能、CE与LS各按净增册扣重，不把完整前端或新增调用层误算作旧价免费附送。',
         '', '## 资源与时间含义', '',
         '主参考1个有效研发席位，每周5工程日；2席仅独立交付能力具备时对比，不等于两个agent。',
-        '实际开工日记T0，D0是开工时点、DN是累计N个有效工作日结束；没有硬自然日截止。',
+        '实际开工日记T0，D0是开工时点、DN是累计N个有效工作日结束；本页长期相对窗不证明首版固定目标可行，首版另见[阶梯与试用](../phase6/first-usable-release-plan.md)。',
         '每项低/高输入分别跑一次排程；下文“低 / 高”不是置信区间或任意混合耗时的保证上界。',
         '维护先行，优先基础U01/U02/C02/X01-B/X02-Q及真实祖先；保留S01/S02安全工作与E10有限调查窗口，再交D10/D15风险首链。公开参考的UAA P正任务优先级7.5，在P6.E优先工作后/P7正任务前仍有明确窗口；选定且外部就绪的企业对照在基础后优先P/R，不代表实际激活获批。其余ready任务按切片和剩余关键链稳定排序。',
         '阶段不是全串行大门；日窗可交错。单席总工期等于所选工日和；双席逐槽验证不重叠。',
@@ -419,7 +421,7 @@ def render_backlog(backlog):
     lines=['# 全项目排期总账 — 既有能力与新增范围的唯一任务入口','',
         f"日期：{backlog['date']}。{parents}父包、{children}正式子出口、6项LS额外子范围，13发布切片；原71包完整保留，CE五项正式纳入。",
         '唯一净增数字源为[估算注册表](planning-scope-estimates.json)，相对日窗见[完整排程](execution-schedule.md)，算法/分解见[模型](execution-schedule-model.json)。',
-        '1有效席位×每周5工程日，T0未启动、无硬日期；计价/排程不是业务开发或部署授权。',
+        '1有效席位×每周5工程日，T0未启动；首版已确认1月试用/2027年2月1日前，目标及可行性见[首版阶梯](../phase6/first-usable-release-plan.md)。本页是长期参考，不是该日期已可兑现的排程或开发授权。',
         '本总账长程工日不是基础版B0/B1工期；基础目标与风险首链在完整排程单列。F004新增细项/OBS后继补充尚未合并，不把旧总额冒称完整新路线总价。',
         '', '## 读取规则与质量继承','',
         '尽可能承接现有功能、渐进优化扩展，专业平台能力优先取数与受权调用，保留大量合成mock。',

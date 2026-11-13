@@ -1,5 +1,7 @@
 # 全项目路线重规划、详设与交接状态
 
+> **最新首版边界/日期**：[首版阶梯](../phase6/first-usable-release-plan.md)及[变化对照](core-release-change-comparison.md)承接后继明确目标：2027年1月试用、2月1日前核心业务联动及三层/UAA；原无严格日期仅保留长期路线语境。旧长期排程未据此证明按期可行，真实UAA/消息联调时间未定；B0/B1不等于目标达标版。
+
 > **2026-11-14基础先行调整**：先读[基础版与各期边界](../design/foundation-release-boundaries.md)。B0可先用现有底座入网开发试验；B1交最小本地业务与真实扩展接缝。已拆X01-B/后继H、解开只读Q与完整feed/HR前置、把完整UAA公共实现移出公共参考的首批优先链。保留真实激活门及数据/安全/测试义务；新范围未实现，长程总价不等于基础版价。具体变更及验证见[本轮报告](reports/foundation-boundaries-2026-11-14.md)。
 
 > **F006当前边界**：所有者已明确确认F004五组及Q01–Q06六组方向，实际配置和新增净估继续按具名窗口处理。UAA先以[离线公共mock](../design/examples/uaa-reference-mock/README.md)承接，真实企业材料留内网；[统一日志审计](../design/unified-observability-audit.md)补分期和扣重。原已计价排程是有界基线，不自动包干新范围；五仓README/社区资产已本地验证，测试栈可重建，品牌/托管/发布及产品实施仍分列。

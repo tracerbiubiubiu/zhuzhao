@@ -394,7 +394,7 @@
   "active_work_boundary": {
     "updated_on": "2026-11-14",
     "owner_instruction": "不急开发，还有一些场景没交代完；先完成本次设计落档、提交。",
-    "current_delivery": "foundation_first_boundary_and_schedule_revision",
+    "current_delivery": "dated_core_release_scope_interface_recheck_and_before_after_design",
     "scenario_collection": "still_in_progress",
     "T0_status": "not_started",
     "implementation_authorized": false,
@@ -408,10 +408,17 @@
       "main_integration",
       "remote_push"
     ],
-    "interpretation": "先现有基础入网开发试验，再稳定adapter接缝并逐期增强；原业务方向和安全/测试前提保留，未开始平台业务实现，不能把长期全量排程当基础版工期。",
-    "latest_supplement_ref": "docs/review/planning-followups.json#F008-foundation-first-boundaries",
+    "interpretation": "保留基础先行；首版必有核心四模块/消息联动和三层/UAA。已有补强与稳定adapter升级要可对照/可验。当前继续设计落档，未启动研发；固定首版日期覆盖原长期无严格日期的读法。",
+    "latest_supplement_ref": "docs/review/planning-followups.json#F010-basic-change-comparison-and-adapter-upgrade",
     "reference_mock_authorized": true,
-    "latest_owner_source": "01a1d5a4-57e4-7a73-b421-5a85a2331d4e"
+    "latest_owner_source": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87",
+    "confirmed_core_release_target": {
+      "ready_before": "2027-02-01",
+      "trial_month": "2027-01",
+      "effective_seats": 1,
+      "feasibility": "not_demonstrated",
+      "real_uaa_and_message_test_time": "unknown"
+    }
   },
   "supplementary_policy_registry": "docs/review/planning-followups.json"
 }

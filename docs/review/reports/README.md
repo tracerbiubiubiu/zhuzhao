@@ -1,5 +1,9 @@
 # 正式审查与验证报告
 
+- [首版阶梯、变化对照与内网升级复核](first-usable-release-design-2026-11-14.md)：本轮实际交付、接口缺口、基础/增强边界、兼容升级和日期/净估限制。
+
+- 首版定向复核：[四链/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层与UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI与试用](core-release-ui-trial-plan-2026-11-14.md)。所有者日常先读[阶梯](../../phase6/first-usable-release-plan.md)和[变化对照](../core-release-change-comparison.md)。
+
 - [基础先行与各期边界复核](foundation-boundaries-2026-11-14.md)：分开现有底座入网试验、最小扩展基础版和后继增强，修正依赖/排程；原全量预算不冒充基础版估价。
 
 - [十一组确认、UAA离线mock与统一日志审计](uaa-reference-and-audit-design-2026-11-13.md)：F006/F007准确边界、57行为/16变异/50独立探针和本轮主仓门禁；新增净价不冒充完整重排。

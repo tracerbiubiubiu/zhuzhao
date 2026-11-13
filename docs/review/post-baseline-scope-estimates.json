@@ -203,5 +203,7 @@
     "B0": "既有底座开发试验不以完整OBS新增实现为前置",
     "B1": "已选基础敏感面、本地可信事实和受权分页/原页薄接线；开工前对所选净增细项拆估并入DAG",
     "enhancement": "异步大导出/快照artifact、外送与多worker随实际用途/拓扑在对应包开工前拆估；现22–33是完整候选范围，非B1价格"
-  }
+  },
+  "dated_core_release_ref": "docs/review/first-usable-release-target.json",
+  "dated_core_release_pricing_boundary": "首版选定固定业务画像要与旧D/U/CE/UAA及F004/OBS联合扣重；当前保守视图和UI视图不是新净总价，缩范围不等于按期已证"
 }

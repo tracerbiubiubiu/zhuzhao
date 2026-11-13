@@ -2497,5 +2497,7 @@
       "real_condition": "可用标准OAuth AS及注册/测试条件；无真实供给时保留未激活，不影响完整独立IAM",
       "kind": "additional_existing_scope"
     }
-  ]
+  ],
+  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
+  "dated_core_release_boundary": "长期76包保留；首版目标是风险/工单/TR/AL/消息和三层/UAA有限联动，需联合净估后派发，不把旧日窗当2月承诺"
 }

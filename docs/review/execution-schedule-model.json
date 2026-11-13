@@ -504,7 +504,8 @@
     "rule": "仅用于可复核相对排程；不把多个agent直接折为有效独立席位；需实际隔离、评审和可交付容量",
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
-    "calendar_status": "relative_schedule_by_owner_preference"
+    "calendar_status": "relative_schedule_by_owner_preference",
+    "core_target_note": "首版已确认2027-02-01前、1月试用；本模型是既有长期相对排程，不证明固定目标可行；一席保留，实际T0未启动"
   },
   "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
@@ -549,5 +550,6 @@
       "priority": 7.5,
       "window": "公开主参考在基础/风险首链及P6.E优先工作之后、P7正任务之前；仍保留P6.1起可施工的明确合同/验收窗口，不代表真实激活"
     }
-  }
+  },
+  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json"
 }

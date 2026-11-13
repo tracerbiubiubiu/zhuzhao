@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "status": "owner_target_confirmed_scope_selected_feasibility_unproven_not_implementation_authorization",
+  "plan_ref": "docs/phase6/first-usable-release-plan.md",
+  "comparison_ref": "docs/review/core-release-change-comparison.md",
+  "owner_sources": {
+    "core_scope_and_deadline": "01a1d5c7-a70c-73b0-b0cd-06769bf011b1",
+    "deadline_confirmation": "01a1d5c9-7c34-7990-a208-06e40526d476",
+    "real_intranet_conditions_unset": "01a1d5cd-5353-7aa2-bf98-3f67e6a1e946",
+    "basic_vs_enhancement_and_adapter_upgrade": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87"
+  },
+  "target": {
+    "ready_before": "2027-02-01",
+    "trial_month": "2027-01",
+    "preferred_trial_start_candidate": "2027-01-11",
+    "latest_two_week_trial_start_candidate": "2027-01-18",
+    "actual_T0": null,
+    "calendar_scenario_start": "2026-11-16",
+    "dates_are_target_windows_not_a_feasible_dispatch_schedule": true
+  },
+  "resource": {
+    "confirmed_effective_seats": 1,
+    "engineering_days_per_week": 5,
+    "capacity_change_confirmed": false,
+    "parallel_agents_are_not_effective_seats": true,
+    "weekday_ceiling": 55,
+    "holidays_and_unavailability_deducted": false,
+    "preferred_build_days": 40,
+    "preferred_trial_days": 15,
+    "latest_build_days": 45,
+    "latest_trial_days": 10,
+    "maintenance_closeout_within_capacity_days": [
+      1,
+      2
+    ]
+  },
+  "must_have": [
+    "风险域和风险到整改工单人工闭环",
+    "既有工单及所选派单/证据/复核",
+    "工单→taskrunner→原任务结果/activelist受权更新",
+    "activelist变化→受权TR后继任务；仅消息/刷新不代验",
+    "普通业务消息真实HTTP adapter公共合同和合成服务验收；公司实测单列",
+    "完整本地三层L1/L2/L3与UAA纳管账号/角色/菜单按钮API/适用范围的双模式公共实现",
+    "当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI",
+    "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收"
+  ],
+  "selected_profile_candidate": "少量固定动作/一风险来源或人工输入/一整改类型/一AL结构字段组/一变化订阅/一HTTP渠道，实际业务绑定实施前确认",
+  "after_core": [
+    "AI/RAG/skill/MCP产品化",
+    "高级仪表盘",
+    "设备模块扩展",
+    "完整插件治理/动态市场",
+    "完整规则编辑器和通用调度恢复台",
+    "多实例/微服务"
+  ],
+  "ready_states": {
+    "public_product": "真实核心服务/PG/Redis/浏览器和合成外部服务覆盖首版链；不是离线UAA模型绿",
+    "company_managed": "额外真实UAA及消息协议、纳管/撤权/资源范围/审批和适用公司准入通过；未知条件不能以mock顶替",
+    "real_uaa_test_available_on": null,
+    "real_message_test_available_on": null,
+    "external_waiting_days": null,
+    "unknown_waiting_is_not_zero": true
+  },
+  "estimate_views": {
+    "unit": "engineering_days_not_calendar_promises",
+    "UAA_C_P_reference": [
+      27,
+      42
+    ],
+    "UAA_R_reference": [
+      13,
+      22
+    ],
+    "other_thin_UI_reference": [
+      16,
+      26
+    ],
+    "partial_disjoint_C_P_plus_non_UAA_UI": [
+      43,
+      68
+    ],
+    "partial_sum_is_not_release_total": true,
+    "other_core_backend_candidate": [
+      59,
+      91
+    ],
+    "conditional_non_UAA_backend_plus_UI": [
+      75,
+      117
+    ],
+    "backend_UI_scope_alignment_and_UAA_shared_dedup_required": true,
+    "full_release_net_days": null,
+    "price_registry_unchanged": true,
+    "do_not_add_views_to_76_parent_baseline": true,
+    "conservative_backend_candidate_scope_note": "59–91为较宽保守画像，不是不可缩减最低；部分formula/全import/feed/HR/配置泛化可在受控范围后移，实际子估待收敛",
+    "conditional_non_UAA_backend_plus_UI_scope_note": "75–117仅报告原保守画像假设匹配时的条件算术，非最新收窄画像净价，不可直接再加UAA"
+  },
+  "feasibility": {
+    "single_seat_deadline_committed": false,
+    "target_risk": "所选完整链的低/高工作量与共享前置未联合净估；既有估价不足支持40–45实现日承诺，真实联调时间未定",
+    "recommended_next": "按首条组合冻结可派发切片、联合扣重/关键路径及实际产能，早期小批实测校准；保留试用窗口，不删必需权限或链路换日期"
+  },
+  "contract_upgrade": {
+    "internal_model_is_external_contract": false,
+    "private_code_must_modify_core": false,
+    "old_reference_adapter_new_core_test_required": true,
+    "arbitrary_future_pull_zero_change_guaranteed": false,
+    "breaking_changes": "显式新合同/兼容映射或协调迁移；保留未正式部署可协调替换的既有决定，无凭空长期支持期限"
+  },
+  "current_gate_policy": "现行完整适用门禁和TDD保留；分档未启用",
+  "implementation_started": false,
+  "selected_profile_guard_candidate": {
+    "status": "proposed_requires_actual_business_binding_not_implemented",
+    "ticket_definition": "fixed_reviewed_flow_and_basic_fields; version/hash_or_server_freeze_guard; formula/general_schema_edit_not_enabled_in_selected_profile",
+    "AL_monitored_type": "ordinary_insert_update_and_selected_event; replace_import_destructive_schema_rejected_server_side_until_supported; other_types_existing_features_retained",
+    "event_delivery": "one durable source_outbox_to_core_inbox_ACK push; not full paginated_multi_consumer_stream_platform",
+    "HR": "local_directory_and_approved_mapping_before_general_HR_sync",
+    "must_keep": [
+      "L1_L2_L3",
+      "evidence_lifecycle",
+      "current_mutation_authority",
+      "idempotence",
+      "durable_handoff_and_recovery",
+      "AL_to_TR_followup",
+      "visible_failures"
+    ],
+    "when_actual_first_case_requires_more": "include_matching_correctness_contract_and_reestimate_before_enablement"
+  }
+}

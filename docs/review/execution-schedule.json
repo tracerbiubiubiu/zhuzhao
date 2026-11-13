@@ -4,12 +4,12 @@
   "calendar": null,
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "c59c74dcddb53d4abbed8b3b90e69359a532f01b0646e83d1f21efe48a54e3c8",
-    "docs/review/execution-schedule-model.json": "7b2f46266bf92837646ba3fbc6d673ac9f26e0d2b489ddee53373646f4a211f5",
+    "docs/review/planning-backlog.json": "4158fe9664e045176a5d25e11194726e85b04f401836cf34cb1aeee2ae650f0b",
+    "docs/review/execution-schedule-model.json": "6ea52efcc808178a9b3ea0982c692745b0881b9b550c0aa7b7bbe64034259544",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "scripts/calculate-planning-schedule.py": "a254f58a210ea524874f60dc974c924b0b7feb430897130f9281bec732747922"
+    "scripts/calculate-planning-schedule.py": "2c5d733eed55852add5ed6d204bcd2d414592a9ba1d53759b611abd4f2feb2cd"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -21,7 +21,8 @@
     "rule": "仅用于可复核相对排程；不把多个agent直接折为有效独立席位；需实际隔离、评审和可交付容量",
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
-    "calendar_status": "relative_schedule_by_owner_preference"
+    "calendar_status": "relative_schedule_by_owner_preference",
+    "core_target_note": "首版已确认2027-02-01前、1月试用；本模型是既有长期相对排程，不证明固定目标可行；一席保留，实际T0未启动"
   },
   "source_structure": {
     "parents": 76,
@@ -4653,5 +4654,6 @@
   },
   "scope_estimate_registry": "docs/review/planning-scope-estimates.json",
   "no_unpriced_required_increment": true,
-  "no_unpriced_required_increment_scope": "priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price"
+  "no_unpriced_required_increment_scope": "priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price",
+  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json"
 }

@@ -1,5 +1,7 @@
 # 架构与设计解释
 
+> 首版业务范围和旧新变化先看[首版阶梯](../phase6/first-usable-release-plan.md)、[变化对照](../review/core-release-change-comparison.md)；稳定adapter升级合同沿本目录的扩展/迁移设计，不靠修改核心内部模型实现私有对接。
+
 近期先读[基础版与每期交付边界](foundation-release-boundaries.md)：现有底座可入网试验、最小adapter/私有应用接缝优先，完整企业治理和高阶增强按启用能力验收；当前说明不代表这些接缝已实现。
 
 后继F004的主责、范围派单、业务管理员、时长度量、通知和AL/设备/仪表盘权限见[工单运营补充](ticket-operations-supplement.md)：F006已确认五组方向，实际配置与新增净估仍按窗口处理。F006另确认Q01–Q06方向，要求[UAA离线mock](examples/uaa-reference-mock/README.md)及[统一日志审计设计](unified-observability-audit.md)；不要求导出公司原文，不表示产品或真实接入已经完成。

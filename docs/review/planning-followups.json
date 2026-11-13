@@ -348,6 +348,82 @@
         "private_adapter_product_exit": "not_implemented_or_verified",
         "historical_receipts_preserved": true
       }
+    },
+    {
+      "id": "F009-dated-core-usable-release",
+      "source": {
+        "message_ids": [
+          "01a1d5c7-a70c-73b0-b0cd-06769bf011b1",
+          "01a1d5c9-7c34-7990-a208-06e40526d476",
+          "01a1d5cd-5353-7aa2-bf98-3f67e6a1e946"
+        ],
+        "summary": "明确1月试用/2027-02-01前可用；风险/工单/taskrunner/activelist/消息联动及三层+UAA统管必须，AI/高级仪表盘后置；真实内网联调时间未定"
+      },
+      "target_ref": "docs/review/first-usable-release-target.json",
+      "design_ref": "docs/phase6/first-usable-release-plan.md",
+      "owner_target_confirmed": true,
+      "existing_capacity_retained": 1,
+      "single_seat_feasible_commitment": false,
+      "real_intranet_waiting": null,
+      "changes": "B0/B1仅早期过程出口；新首版覆盖核心链/权限与试用反馈，不按Phase整包先后；现有端口/真实缺口已专项重核",
+      "not_claimed": [
+        "业务实现",
+        "真实UAA或消息联通",
+        "完整新scope净价/可行日期排程",
+        "自动扩容有效席位"
+      ],
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_RECHECK_NOT_BUSINESS_DELIVERY",
+        "report": "docs/review/reports/first-usable-release-design-2026-11-14.md",
+        "scope": "source/current-path recheck; fixed release boundary and before-after; contract upgrade design; no new runtime proven",
+        "planning_tests": {
+          "closure": 19,
+          "schedule": 31,
+          "derived_check": "PASS"
+        },
+        "core_regression": {
+          "acceptance_pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_pairs_zero_drift": 81,
+          "native": "swag/wire/lint/unit/integration/cover/build PASS"
+        },
+        "unresolved": "首版联合净估/可兑现关键路径、实际独立产能和真实UAA/消息联调时点；新增功能尚未实现"
+      }
+    },
+    {
+      "id": "F010-basic-change-comparison-and-adapter-upgrade",
+      "source": {
+        "message_id": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87",
+        "summary": "集中说明以前/现在/收益/业界缺点；基础必需补齐、加分逐步；核心更新时私有adapter小改或不改继续用"
+      },
+      "design_ref": "docs/review/core-release-change-comparison.md",
+      "integration_refs": [
+        "docs/design/extension-compatibility.md",
+        "docs/design/intranet-adapter-migration.md"
+      ],
+      "interpretation": "行业实践作为适用机制依据，不是照搬最完整平台；公共wire/语义与内部model/DB分离，当前受支持合同内验旧参考adapter×新core，明确破坏性升级/转换和私有配置隔离",
+      "owner_direction_confirmed": true,
+      "arbitrary_future_pull_zero_change_guaranteed": false,
+      "business_implementation": false,
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_RECHECK_NOT_BUSINESS_DELIVERY",
+        "report": "docs/review/reports/first-usable-release-design-2026-11-14.md",
+        "scope": "source/current-path recheck; fixed release boundary and before-after; contract upgrade design; no new runtime proven",
+        "planning_tests": {
+          "closure": 19,
+          "schedule": 31,
+          "derived_check": "PASS"
+        },
+        "core_regression": {
+          "acceptance_pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_pairs_zero_drift": 81,
+          "native": "swag/wire/lint/unit/integration/cover/build PASS"
+        },
+        "unresolved": "首版联合净估/可兑现关键路径、实际独立产能和真实UAA/消息联调时点；新增功能尚未实现"
+      }
     }
   ]
 }

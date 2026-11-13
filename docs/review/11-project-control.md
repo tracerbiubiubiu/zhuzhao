@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **当前首版目标与变化入口**：2027年1月试用、2月1日前核心可用，必含风险/工单/taskrunner/activelist/消息联动、三层权限和UAA治理。[首版阶梯](../phase6/first-usable-release-plan.md)说明退出条件及单席/真实接入风险；[旧→新/基础→增强对照](core-release-change-comparison.md)说明补强原因和状态。现有接口重核发现真实消息发送、风险域和跨模块结果/AL变化接线仍有实际缺口；不是已开发完成。
+
 > **基础先行（2026-11-14）**：[交付边界](../design/foundation-release-boundaries.md)明确B0现有底座入网开发试验、B1本地业务和一个query adapter/参考私有应用接缝，后续按实际使用增强。完整UAA、插件治理、全站改造和多实例均非B1统一前置；实际企业激活仍验公司要求。机器依赖/优先级已同步，76父包原总工程量保持，不能当基础版报价；F004/OBS所选基础增量在B1开工前补净估，其余在对应实施窗口细化。[本轮核验](reports/foundation-boundaries-2026-11-14.md)只交设计与排程，没有开发或启用。
 
 > **后继F006确认与新增要求（2026-11-13）**：所有者明确确认F004五组＋Q01–Q06六组已展示方向；[工单运营](../design/ticket-operations-supplement.md)、[议程](owner-decision-agenda.md)已分开方向与实参。UAA先交[公开合成mock](../design/examples/uaa-reference-mock/README.md)，公司文档不可导出不阻公共准备；真实认证/接管仍待内网验收。[统一日志审计](../design/unified-observability-audit.md)补既有slog/HTTP审计与领域事实的缺口、分期和扣重，产品机制未因此实现。新增范围不默含旧总价，OBS有界22–33日候选及F004净估出口见[后继估算册](post-baseline-scope-estimates.json)，准确来源见[后继索引](planning-followups.json)，本轮交付/验证见[报告](reports/uaa-reference-and-audit-design-2026-11-13.md)。
@@ -73,6 +75,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；本地三层/UAA双模式；旧adapter×新core合同回归 | 📋 1月试用/2月1日前为已确认目标；已重核实际接口，范围与阶梯候选落档；一席按期未证、真实联调时间未定，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[变化对照](core-release-change-comparison.md)、[目标JSON](first-usable-release-target.json) |
 | **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
 | **公开展示与新场景续源** | 五仓中英README、合成截图、贡献/问题/PR入口；F004五组和Q01–Q06方向后继明确确认 | 📋 文档/社区资产已本地验证；真实在线演示/品牌/远端元数据待发布准备，业务方向不等于配置/新增净估/实现完成 | [展示方案](../guides/open-source-presentation.md)、[新场景](../design/ticket-operations-supplement.md)、[后继索引](planning-followups.json) |
