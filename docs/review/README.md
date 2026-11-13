@@ -51,4 +51,8 @@
 
 ## UAA与完整双模式后的全路线再审
 
-[再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)及[逐项记录](uaa-dual-mode-review.json)区分UAA前基线与上一双模式候选，修订8组跨授权/AI/前端/生产/排期问题；仍71包/13切片，新增投入未齐、日期未绑定。决策册现31项：28方向确认、B08/P-RESOURCE待绑定、UAA-P01先核公司约束再审业务取舍；不重复询问已确认原则。
+[再审报告](reports/uaa-dual-mode-roadmap-review-2026-11-12.md)及[逐项记录](uaa-dual-mode-review.json)区分UAA前基线与上一双模式候选，修订8组跨授权/AI/前端/生产/排期问题；仍71包/13切片，新增投入未齐、日期未绑定。决策册现31项：29方向确认（含2026-11-13单席相对排程）、B08待实际配置、UAA-P01先核公司约束再审业务取舍；不重复询问已确认原则。
+
+[UAA补估与共享扣重](uaa-implementation-estimate.md)已给C/P/R的2–3/25–39/13–22工程日，真实条件与具体确认场景单列；完整排期从冻结规范快照生成，资源已按2026-11-13确认的单席/每周5日绑定，T0取实际开工日且无严格截止，不把参考窗口当实际生产日期。
+
+2026-11-13已按确认的单席/每周5日给[完整相对排期](execution-schedule.md)；UAA[补估明细](uaa-implementation-estimate.md)及[真实条件和具体确认场景](uaa-real-integration-conditions.md)分别审阅，工程量、外部等待与正式切换门不混记。

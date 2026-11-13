@@ -238,8 +238,8 @@
     },
     {
       "id": "P-RESOURCE",
-      "state": "owner_pending",
-      "decision_due": "实际实施启动前，不阻塞本轮文档审阅",
+      "state": "owner_confirmed",
+      "decision_due": "相对排程口径已确认；实际开工日记T0，不再为严格自然日截止阻塞规划。",
       "recommendation": "先P6.0/P6.1底座，再风险核心与只读AI；设备薄模块P6.3",
       "alternatives": "按实际业务优先级调整独立包",
       "impact_or_safe_fallback": "未定T0/投入不承诺日历，文档审阅仍可进行；不以Agent并行推算无限产能",
@@ -249,7 +249,12 @@
         "实际投入/维护者复核容量",
         "T0及可用时间",
         "首发运行模式和预期企业激活窗口，仅为排期绑定，不重问双模式原则"
-      ]
+      ],
+      "question_state": "answered_2026_11_13",
+      "scheduling_assumptions_ref": "docs/review/execution-schedule.json#/resource_assumptions",
+      "decision": "按1个有效研发席位、每周5个工程日编排；尽快启动，无严格截止，实际开工日记T0，采用大致相对排期。",
+      "owner_feedback": "2026-11-13：用户选择“先按1个有效研发席位、每周5个工程日编排”；开工/企业日期回复“尽快，但实际上没必要真正有严格时间，大概就行”。",
+      "confirmation_boundary": "确认的是相对排程资源与时间口径，不等于批准全部远期包实现或生产激活。"
     },
     {
       "id": "O09",
@@ -300,13 +305,15 @@
       "recommendation": "实施方先核公司强制政策与提供方能力，再给具体接管映射、授权新鲜度/失联可用范围、应急账号/本地登录例外及退出接管场景；所有者确认可选业务影响。技术字段、SDK、PKCE、MQ格式由实施方核验。",
       "impact_or_safe_fallback": "未决只阻断对应企业激活/例外授权，不阻断独立模式、公共合同和mock；不默认永久旧权限或自动切本地放权。",
       "design_ref": "docs/design/uaa-governance-integration.md",
-      "implementation": "planned_not_implemented"
+      "implementation": "planned_not_implemented",
+      "concrete_scenarios_ref": "docs/review/uaa-real-integration-conditions.json#/owner_scenarios",
+      "confirmation_boundary": "实际接管差异清单、公司许可窗口内的故障读写倾向、指定应急恢复用途；均未因估算而批准。影子报告由R先生成再审批，不作为测试进入前置。"
     }
   ],
-  "last_updated": "2026-11-12",
+  "last_updated": "2026-11-13",
   "confirmation_summary": {
-    "owner_confirmed": 28,
-    "owner_pending": 2,
+    "owner_confirmed": 29,
+    "owner_pending": 1,
     "provider_constraints_then_owner_review": 1
   }
 }

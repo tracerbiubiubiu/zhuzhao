@@ -1,17 +1,21 @@
 {
-  "date": "2026-11-12",
-  "status": "reviewable_execution_candidate_not_implementation_authorization",
-  "estimate_source": "docs/review/planning-backlog.json",
+  "date": "2026-11-13",
+  "status": "bounded_effort_and_T0_reference_schedule_candidate_not_implementation_authorization",
+  "estimate_source": "docs/review/planning-backlog.json (existing budgets); docs/review/uaa-implementation-estimate.json (sole UAA increment registry)",
   "change_comparison_ref": "docs/review/roadmap-change-comparison-2026-11-12.md",
   "calendar": null,
-  "resource_binding": "P-RESOURCE before implementation start",
+  "resource_binding": "Owner confirmed 1 effective seat x 5 engineering days/week; start ASAP, relative T0, no hard deadline; 2 seats comparison only",
   "assumptions": [
-    "工日为范围粗估的工程投入，不是对实际交付日历的承诺",
-    "一个集成负责人；仅当文件、数据、环境和合同可隔离时开并行任务",
-    "组是审阅和发布切片，实际准入逐包检查dependencies，不强制等待整个前组",
-    "mock长期保留；real提供方等待单列，不伪装mock成功",
-    "未实施新业务、远端保护或运行组件升级",
-    "公司UAA为公司UAA纳管企业模式首次正式激活硬条件；E01-UAA-C/P/R跨阶段独立准入，C新增2–3日，P/R未计价，原切片区间不含UAA追加且不构成整体总工期"
+    "工日包含设计/实现/负例/评审与正常修正，不是自然日；资源场景不是按agent数量换算。",
+    "完整有界范围为原69包有限交付＋UAA C/P；R13–22为具名真实条件预算。既有非UAA资格条件只披露，不借本轮重写旧预算。",
+    "G07A/B历史开发8–14已本地验证，不再排未来开发；PR/CI/main收尾1–2为一次容量预留，单列且不算UAA净增。",
+    "日窗是全低输入/全高输入两个可复核端点情景，不是置信区间，也不保证覆盖任意混合耗时或供应方等待。",
+    "主参考含维护收尾预留，优先保护S01/S02，再交C和UAA基础lane；各任务仍须实际依赖/环境/文件隔离成立。",
+    "P按WBS因果拆开准备、共享feed应用、真实整链/浏览器回归和CI；公共整链与验收须X02-F，继承D06/X01-C而不等待X01-H或X02-Q。",
+    "R未具备测试进入条件时不占公共路线工时；条件参考假设测试输入及时到位，R自产影子报告/私有制品后再满足pre_apply批准，所有外部lag均为0参考，不是假定自产物T0已存在。",
+    "R完整收口在正式apply/观察后，不能以该后置收口反向阻塞自己的apply；正式激活仍需pre_apply与公共生产门，不承诺某个功能完成日就是生产日。",
+    "G05/E09保持原预算；首发硬项可在既有预算内前移，本版不凭空创建未定价拆分或要求全部P7提前完成。",
+    "mock长期保留，独立产品不等待公司凭据或R；其他provider和远期包仍遵原有限代表范围及真实激活资格。"
   ],
   "release_slices": [
     {
@@ -24,7 +28,55 @@
         "G02",
         "U01"
       ],
-      "exit": "独立任务不混提交/清理；CI故障反例有效后启主线约束；普通和空业务菜单用户有安全落点"
+      "exit": "独立任务不混提交/清理；CI故障反例有效后启主线约束；普通和空业务菜单用户有安全落点",
+      "existing_remaining_engineering_days": [
+        7,
+        13
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            8,
+            15
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            8,
+            15
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            6,
+            11
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            6,
+            11
+          ]
+        }
+      }
     },
     {
       "id": "S02",
@@ -36,7 +88,57 @@
         "C03",
         "G07A"
       ],
-      "exit": "公式/文件引用反例、业务receipt与稳定发生次可验；工具链小批升级与生成物/镜像绑定"
+      "exit": "公式/文件引用反例、业务receipt与稳定发生次可验；工具链小批升级与生成物/镜像绑定",
+      "existing_remaining_engineering_days": [
+        11,
+        19
+      ],
+      "historical_work_not_rescheduled": [
+        "G07A"
+      ],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            8,
+            15
+          ],
+          "finish_endpoint_days": [
+            19,
+            34
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            8,
+            15
+          ],
+          "finish_endpoint_days": [
+            19,
+            34
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            2,
+            5
+          ],
+          "finish_endpoint_days": [
+            11,
+            20
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            2,
+            5
+          ],
+          "finish_endpoint_days": [
+            11,
+            20
+          ]
+        }
+      }
     },
     {
       "id": "S03",
@@ -51,7 +153,55 @@
         "D06",
         "R01"
       ],
-      "exit": "发布钉版、转换采集/可见范围及HR生命周期可验；不可丢后继先落持久意图"
+      "exit": "发布钉版、转换采集/可见范围及HR生命周期可验；不可丢后继先落持久意图",
+      "existing_remaining_engineering_days": [
+        29,
+        47
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            21,
+            37
+          ],
+          "finish_endpoint_days": [
+            83,
+            136
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            21,
+            37
+          ],
+          "finish_endpoint_days": [
+            96,
+            158
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            11,
+            19
+          ],
+          "finish_endpoint_days": [
+            44,
+            73
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            11,
+            19
+          ],
+          "finish_endpoint_days": [
+            47,
+            78
+          ]
+        }
+      }
     },
     {
       "id": "S04",
@@ -67,7 +217,57 @@
         "X01",
         "X02"
       ],
-      "exit": "公共/私有接缝与参考connector同例；真实页面样板有基线；升级副本和恢复可核"
+      "exit": "公共/私有接缝与参考connector同例；真实页面样板有基线；升级副本和恢复可核",
+      "existing_remaining_engineering_days": [
+        28,
+        46
+      ],
+      "historical_work_not_rescheduled": [
+        "G07B"
+      ],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            26,
+            45
+          ],
+          "finish_endpoint_days": [
+            103,
+            169
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            26,
+            45
+          ],
+          "finish_endpoint_days": [
+            116,
+            191
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            11,
+            20
+          ],
+          "finish_endpoint_days": [
+            52,
+            87
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            11,
+            20
+          ],
+          "finish_endpoint_days": [
+            61,
+            97
+          ]
+        }
+      }
     },
     {
       "id": "S05",
@@ -81,7 +281,55 @@
         "D10",
         "A01"
       ],
-      "exit": "mock发现到评估/接受、N:1整改和复测闭环；查询限实时权限，真实通知启用前绑定B08"
+      "exit": "mock发现到评估/接受、N:1整改和复测闭环；查询限实时权限，真实通知启用前绑定B08",
+      "existing_remaining_engineering_days": [
+        23,
+        38
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            103,
+            169
+          ],
+          "finish_endpoint_days": [
+            126,
+            207
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            116,
+            191
+          ],
+          "finish_endpoint_days": [
+            139,
+            229
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            52,
+            84
+          ],
+          "finish_endpoint_days": [
+            72,
+            116
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            56,
+            96
+          ],
+          "finish_endpoint_days": [
+            76,
+            128
+          ]
+        }
+      }
     },
     {
       "id": "S06",
@@ -99,7 +347,55 @@
         "A02",
         "X03"
       ],
-      "exit": "批量标签/筛选/情报左右栏及逐页体验；任务结果/配置晋级可验；确认建单与设备人工入口独立验收"
+      "exit": "批量标签/筛选/情报左右栏及逐页体验；任务结果/配置晋级可验；确认建单与设备人工入口独立验收",
+      "existing_remaining_engineering_days": [
+        36,
+        63
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            126,
+            207
+          ],
+          "finish_endpoint_days": [
+            162,
+            270
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            139,
+            229
+          ],
+          "finish_endpoint_days": [
+            175,
+            292
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            52,
+            87
+          ],
+          "finish_endpoint_days": [
+            82,
+            136
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            64,
+            97
+          ],
+          "finish_endpoint_days": [
+            88,
+            147
+          ]
+        }
+      }
     },
     {
       "id": "S07",
@@ -110,7 +406,55 @@
         "D14",
         "E10"
       ],
-      "exit": "本地生命周期投影可信；SOC主事实与本地职责分开；选定导入/合并增量有逐项回执"
+      "exit": "本地生命周期投影可信；SOC主事实与本地职责分开；选定导入/合并增量有逐项回执",
+      "existing_remaining_engineering_days": [
+        11,
+        19
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            162,
+            270
+          ],
+          "finish_endpoint_days": [
+            173,
+            289
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            175,
+            292
+          ],
+          "finish_endpoint_days": [
+            186,
+            311
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            81,
+            136
+          ],
+          "finish_endpoint_days": [
+            89,
+            149
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            88,
+            147
+          ],
+          "finish_endpoint_days": [
+            96,
+            160
+          ]
+        }
+      }
     },
     {
       "id": "S08",
@@ -125,7 +469,55 @@
         "A03",
         "A04"
       ],
-      "exit": "同一受权能力可由表单/MCP/NL消费，调度恢复和持续grant可核；P7同时有最薄外部MCP只读消费"
+      "exit": "同一受权能力可由表单/MCP/NL消费，调度恢复和持续grant可核；P7同时有最薄外部MCP只读消费",
+      "existing_remaining_engineering_days": [
+        38,
+        64
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            173,
+            289
+          ],
+          "finish_endpoint_days": [
+            211,
+            353
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            186,
+            311
+          ],
+          "finish_endpoint_days": [
+            224,
+            375
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            85,
+            142
+          ],
+          "finish_endpoint_days": [
+            111,
+            187
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            91,
+            153
+          ],
+          "finish_endpoint_days": [
+            117,
+            198
+          ]
+        }
+      }
     },
     {
       "id": "S09",
@@ -142,7 +534,55 @@
         "D17",
         "D18"
       ],
-      "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
+      "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核",
+      "existing_remaining_engineering_days": [
+        30,
+        54
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            211,
+            353
+          ],
+          "finish_endpoint_days": [
+            241,
+            407
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            224,
+            375
+          ],
+          "finish_endpoint_days": [
+            254,
+            429
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            89,
+            149
+          ],
+          "finish_endpoint_days": [
+            121,
+            205
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            96,
+            160
+          ],
+          "finish_endpoint_days": [
+            128,
+            216
+          ]
+        }
+      }
     },
     {
       "id": "S10",
@@ -155,7 +595,55 @@
         "A06",
         "A07"
       ],
-      "exit": "专业执行双向链与Agent/知识/skill有限场景，配置不赋权；未知效果先对账"
+      "exit": "专业执行双向链与Agent/知识/skill有限场景，配置不赋权；未知效果先对账",
+      "existing_remaining_engineering_days": [
+        20,
+        34
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            241,
+            407
+          ],
+          "finish_endpoint_days": [
+            261,
+            441
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            254,
+            429
+          ],
+          "finish_endpoint_days": [
+            274,
+            463
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            121,
+            204
+          ],
+          "finish_endpoint_days": [
+            133,
+            225
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            127,
+            215
+          ],
+          "finish_endpoint_days": [
+            140,
+            236
+          ]
+        }
+      }
     },
     {
       "id": "S11",
@@ -166,7 +654,55 @@
         "E04",
         "E06"
       ],
-      "exit": "固定周/月Word/PDF及分发回执、外部通报分责和可审回复，选定轻审批/日历场景"
+      "exit": "固定周/月Word/PDF及分发回执、外部通报分责和可审回复，选定轻审批/日历场景",
+      "existing_remaining_engineering_days": [
+        14,
+        25
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            261,
+            441
+          ],
+          "finish_endpoint_days": [
+            275,
+            466
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            274,
+            463
+          ],
+          "finish_endpoint_days": [
+            288,
+            488
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            129,
+            218
+          ],
+          "finish_endpoint_days": [
+            138,
+            234
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            135,
+            229
+          ],
+          "finish_endpoint_days": [
+            145,
+            245
+          ]
+        }
+      }
     },
     {
       "id": "S12",
@@ -178,7 +714,55 @@
         "E07",
         "E08"
       ],
-      "exit": "免搬运链、主备接管和证据可恢复；依据代表链裁定协同实现，不默删旧业务效果"
+      "exit": "免搬运链、主备接管和证据可恢复；依据代表链裁定协同实现，不默删旧业务效果",
+      "existing_remaining_engineering_days": [
+        14,
+        24
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            275,
+            466
+          ],
+          "finish_endpoint_days": [
+            289,
+            490
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            288,
+            488
+          ],
+          "finish_endpoint_days": [
+            302,
+            512
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            138,
+            234
+          ],
+          "finish_endpoint_days": [
+            148,
+            251
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            144,
+            245
+          ],
+          "finish_endpoint_days": [
+            154,
+            262
+          ]
+        }
+      }
     },
     {
       "id": "S13",
@@ -187,7 +771,55 @@
       "items": [
         "E05"
       ],
-      "exit": "P7出口先逐项裁定保留/接入/退出，获准增量P10子窗实施，不默认建设Office/供应商门户"
+      "exit": "P7出口先逐项裁定保留/接入/退出，获准增量P10子窗实施，不默认建设Office/供应商门户",
+      "existing_remaining_engineering_days": [
+        4,
+        8
+      ],
+      "historical_work_not_rescheduled": [],
+      "uaa_overlay_included_in_slice_effort": false,
+      "reference_windows": {
+        "public_R_pending_1_seats": {
+          "start_endpoint_days": [
+            289,
+            490
+          ],
+          "finish_endpoint_days": [
+            293,
+            498
+          ]
+        },
+        "R_no_external_lag_1_seats": {
+          "start_endpoint_days": [
+            302,
+            512
+          ],
+          "finish_endpoint_days": [
+            306,
+            520
+          ]
+        },
+        "public_R_pending_2_seats": {
+          "start_endpoint_days": [
+            140,
+            237
+          ],
+          "finish_endpoint_days": [
+            144,
+            245
+          ]
+        },
+        "R_no_external_lag_2_seats": {
+          "start_endpoint_days": [
+            147,
+            248
+          ],
+          "finish_endpoint_days": [
+            151,
+            256
+          ]
+        }
+      }
     }
   ],
   "supplement_refs": [
@@ -195,7 +827,9 @@
     "docs/review/legacy-trigger-disposition.json",
     "docs/design/mcp-first-contract.md",
     "docs/design/scheduled-ai-confirmation.md",
-    "docs/design/uaa-governance-integration.md"
+    "docs/design/uaa-governance-integration.md",
+    "docs/review/uaa-implementation-estimate.json",
+    "docs/review/uaa-real-integration-conditions.json"
   ],
   "remaining_design_gates": [
     {
@@ -249,8 +883,8 @@
     {
       "item": "E01-UAA-C/P/R",
       "before": "UAA隐含映射到E01，缺具名范围/价格",
-      "after": "原E01其他provider3–6日保留；UAA-C新增2–3日；P/R未计价",
-      "reason": "UAA是统一认证及权限治理，不是单一登录桥；旧M-UAA15–24日仅历史粗估。契约后扣除D06/X01/X02逐项复用再估，当前无完整总工期。"
+      "after": "C2–3；P25–39（后台16–25/前端5–8/运维2–3/CI1–2/质量1）；R13–22具名条件预算，外部等待单列",
+      "reason": "以冻结UAA注册表补齐此前未计价范围；旧父包基价和已有非UAA资格条件不变，维护收尾预留独立。"
     },
     {
       "item": "双模式CI/质量和最小UI/runbook",
@@ -276,24 +910,6662 @@
       "parent_work_item": "E01",
       "milestone": "E01-UAA-C",
       "window": "P6.0；D06/X01-C/X02-F的身份授权部分开工前",
-      "estimate_engineering_days": "2–3 additional",
-      "gate": "冻结公共管理权/资源code/数据属性条件规则和合成候选矩阵；真实映射值/批准R前核验，不阻塞无关mock"
+      "estimate_engineering_days": "2–3",
+      "gate": "冻结公共管理权/资源code/数据属性条件规则和合成候选矩阵；真实映射值/批准R前核验，不阻塞无关mock",
+      "engineering_days": [
+        2,
+        3
+      ],
+      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json#/C",
+      "functional_reference_days": {
+        "1": [
+          21,
+          37
+        ],
+        "2": [
+          11,
+          19
+        ]
+      }
     },
     {
       "parent_work_item": "E01",
       "milestone": "E01-UAA-P",
-      "window": "P6.1；C后可准备合同/mock；权限写入/撤权出口验收须C04完整包，不等D06全包",
-      "estimate_engineering_days": null,
-      "gate": "公共port及双模式验收、最小登录/来源与写限制前端和公开安装/切换/退出runbook；复用C04，不等待U06全站视觉"
+      "window": "P6.1；C/C04后可准备；完整投影/整链验收依X02-F，含D06/X01-C共享成果，不等X01-H/X02-Q",
+      "estimate_engineering_days": "25–39",
+      "gate": "公共port及双模式验收、最小登录/来源与写限制前端和公开安装/切换/退出runbook；复用C04，不等待U06全站视觉",
+      "engineering_days": [
+        25,
+        39
+      ],
+      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json#/P",
+      "functional_reference_days": {
+        "1": [
+          63,
+          103
+        ],
+        "2": [
+          37,
+          60
+        ]
+      }
     },
     {
       "parent_work_item": "E01",
       "milestone": "E01-UAA-R",
-      "window": "P6.1起具备供给即可启动；公司UAA纳管企业模式首次正式激活前必须通过",
-      "estimate_engineering_days": null,
-      "gate": "私有真实UAA、批准映射、最小UI和安装/切换/退出演练；企业正式激活前通过，独立部署不等待；另须公共生产硬出口"
+      "window": "公共P后具备测试进入条件即可联调；内部按build/shadow→pre_apply→apply/closeout分阶段，13–22不含各阶段外部等待",
+      "estimate_engineering_days": "13–22",
+      "gate": "私有真实UAA、批准映射、最小UI和安装/切换/退出演练；企业正式激活前通过，独立部署不等待；另须公共生产硬出口",
+      "engineering_days": [
+        13,
+        22
+      ],
+      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json#/R",
+      "functional_reference_days": {
+        "1": [
+          76,
+          125
+        ],
+        "2": [
+          50,
+          82
+        ]
+      },
+      "reference_semantics": "表中R日为整个工程收口参考；正式apply在内部pre_apply后，不能要求apply后的完整收口先于apply。",
+      "condition_ref": "docs/review/uaa-real-integration-conditions.json#/entry_and_activation_stages"
     }
   ],
   "release_gates_ref": "docs/review/planning-backlog.json#/release_gates",
-  "release_gate_semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持71父包/13子出口。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。"
+  "release_gate_semantics": "按部署模式和启用能力检查的条件证据门，不是新增工作包/子出口或完整包依赖；保持71父包/13子出口。首发早于P7时只前移G05/E09适用硬项，不机械等待全部P7或I03，不以调查或UAA-R替代生产就绪。",
+  "source_estimate_commit": "a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
+  "source_estimate_registry": {
+    "path": "docs/review/uaa-implementation-estimate.json",
+    "sha256": "58e9a3e89d45cb804b6a7ee3aebaa496efdbbb1a152abf60d7c09070fa446481",
+    "git_blob": "6609ad6e8b7aa0c8d322c3e694c7b0535423d664"
+  },
+  "source_input_sha256": {
+    "docs/review/planning-backlog.json": "222fd2dae0ddf1d2829b51ff47c57b7b802dcfe33982cd43d7a7a14c69a9c56f",
+    "docs/review/execution-schedule.json": "1b8bef18d3dcf658bc9deda6c46d5c28f23d90c3dc3c3571972d2a524f7930c6",
+    "docs/review/uaa-implementation-estimate.json": "58e9a3e89d45cb804b6a7ee3aebaa496efdbbb1a152abf60d7c09070fa446481",
+    "docs/review/uaa-real-integration-conditions.json": "468d7f9897f3d8e0cbcca7f8ea60d67362cebf4d8d90532be0a0d1d7e7f22665"
+  },
+  "bounded_effort_totals": {
+    "original_71_package_engineering_days": [
+      273,
+      468
+    ],
+    "G07A_B_historical_locally_validated_not_repeated": [
+      8,
+      14
+    ],
+    "remaining_69_existing_packages": [
+      265,
+      454
+    ],
+    "remaining_plus_C_P": [
+      292,
+      496
+    ],
+    "conditional_R_addition": [
+      13,
+      22
+    ],
+    "remaining_including_C_P_R": [
+      305,
+      518
+    ],
+    "version_PR_CI_main_closeout_capacity_allowance": [
+      1,
+      2
+    ],
+    "with_closeout_allowance_public": [
+      293,
+      498
+    ],
+    "with_closeout_allowance_and_R": [
+      306,
+      520
+    ],
+    "sum_rule": "旧父包只计一次，常规子出口是分解；E01基价3–6是其他provider，不含C/P/R；G07历史开发不再派单。维护收尾1–2是单独容量预留，不算UAA净增，不重做历史开发。"
+  },
+  "resource_assumptions": {
+    "owner_resource_answer": "owner_confirmed",
+    "primary_effective_seats": 1,
+    "alternative_effective_seats": 2,
+    "engineering_days_per_seat_week": 5,
+    "T0": null,
+    "calendar_dates_bound": false,
+    "rule": "仅用于可复核相对排程；不把多个agent直接折为有效独立席位；需实际隔离、评审和可交付容量",
+    "confirmed_on": "2026-11-13",
+    "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
+    "calendar_status": "relative_schedule_by_owner_preference"
+  },
+  "resource_binding_source": {
+    "kind": "owner_message",
+    "date": "2026-11-13",
+    "answer": "先按1个有效研发席位、每周5个工程日；尽快，不必严格时间，大概即可。"
+  },
+  "existing_non_uaa_qualifications": [
+    {
+      "ref": "I04",
+      "qualification": "现4–8只含首adapter；第二类源仍是既有提供方范围资格条件，本轮不新增或重写预算"
+    },
+    {
+      "ref": "A03/I02/E01",
+      "qualification": "生产MCP AS/登录桥在原计划中单独核验；不属于本轮UAA网页登录或P/R报价，不能用UAA接通冒充MCP生产身份已交付"
+    },
+    {
+      "ref": "U06",
+      "qualification": "原4–7为逐页粗估，Cmd+K等获选增量仍在原窗口校准；本轮只补四页UAA最小功能，不顺带批准或预算全站搜索"
+    },
+    {
+      "ref": "其他provider/远期包",
+      "qualification": "各包按已列有限代表场景计，更多厂商、协议、知识源和复杂执行器不成为无限范围承诺"
+    }
+  ],
+  "scheduling_task_catalog": [
+    {
+      "id": "AUDIT-MAINTENANCE-CLOSEOUT",
+      "owner_package": "maintenance",
+      "effort_category": "maintenance_capacity_reserve",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [],
+      "display_id": "维护收尾预留"
+    },
+    {
+      "id": "G01",
+      "owner_package": "G01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "G01"
+    },
+    {
+      "id": "G03-Q",
+      "owner_package": "G03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G01"
+      ],
+      "display_id": "G03-Q"
+    },
+    {
+      "id": "G03-C",
+      "owner_package": "G03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G01",
+        "G03-Q"
+      ],
+      "display_id": "G03-C"
+    },
+    {
+      "id": "U01",
+      "owner_package": "U01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        1,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "U01"
+    },
+    {
+      "id": "G02",
+      "owner_package": "G02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G01",
+        "G03-Q"
+      ],
+      "display_id": "G02"
+    },
+    {
+      "id": "C01",
+      "owner_package": "C01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "C01"
+    },
+    {
+      "id": "C03",
+      "owner_package": "C03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        6,
+        10
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "C03"
+    },
+    {
+      "id": "C02",
+      "owner_package": "C02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "C02"
+    },
+    {
+      "id": "E01-UAA-C",
+      "owner_package": "E01",
+      "effort_category": "uaa_contract",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "E01-UAA-C"
+    },
+    {
+      "id": "C04",
+      "owner_package": "C04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C01"
+      ],
+      "display_id": "C04"
+    },
+    {
+      "id": "G06",
+      "owner_package": "G06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G01"
+      ],
+      "display_id": "G06"
+    },
+    {
+      "id": "D06",
+      "owner_package": "D06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "E01-UAA-C"
+      ],
+      "display_id": "D06"
+    },
+    {
+      "id": "X01-C",
+      "owner_package": "X01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "E01-UAA-C",
+        "G03",
+        "G06"
+      ],
+      "display_id": "X01-C"
+    },
+    {
+      "id": "X02-F",
+      "owner_package": "X02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D06",
+        "E01-UAA-C",
+        "X01-C"
+      ],
+      "display_id": "X02-F"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB02",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        3,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "D06",
+        "E01-UAA-C"
+      ],
+      "display_id": "PB02"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB03",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB02",
+        "X01-C"
+      ],
+      "display_id": "PB03"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB01",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        3,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "E01-UAA-C"
+      ],
+      "display_id": "PB01"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB05",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        3,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB02",
+        "AUDIT-UAA-P-PB03",
+        "X02-F"
+      ],
+      "display_id": "PB05"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB04",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB02",
+        "X02-F"
+      ],
+      "display_id": "PB04"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB06",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB02",
+        "X02-F"
+      ],
+      "display_id": "PB06"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB07",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB01",
+        "AUDIT-UAA-P-PB04",
+        "AUDIT-UAA-P-PB05",
+        "AUDIT-UAA-P-PB06"
+      ],
+      "display_id": "PB07"
+    },
+    {
+      "id": "AUDIT-UAA-P-PB08",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB01",
+        "AUDIT-UAA-P-PB02",
+        "AUDIT-UAA-P-PB03",
+        "AUDIT-UAA-P-PB04",
+        "AUDIT-UAA-P-PB05",
+        "AUDIT-UAA-P-PB06",
+        "AUDIT-UAA-P-PB07"
+      ],
+      "display_id": "PB08"
+    },
+    {
+      "id": "AUDIT-UAA-P-PU01",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "E01-UAA-C"
+      ],
+      "display_id": "PU01"
+    },
+    {
+      "id": "AUDIT-UAA-P-PU02",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "E01-UAA-C"
+      ],
+      "display_id": "PU02"
+    },
+    {
+      "id": "AUDIT-UAA-P-PO01",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB08",
+        "AUDIT-UAA-P-PU01",
+        "AUDIT-UAA-P-PU02"
+      ],
+      "display_id": "PO01"
+    },
+    {
+      "id": "AUDIT-UAA-P-PU03",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB08",
+        "AUDIT-UAA-P-PU01",
+        "AUDIT-UAA-P-PU02"
+      ],
+      "display_id": "PU03"
+    },
+    {
+      "id": "AUDIT-UAA-P-PC01",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PB08",
+        "AUDIT-UAA-P-PO01",
+        "AUDIT-UAA-P-PU03"
+      ],
+      "display_id": "PC01"
+    },
+    {
+      "id": "AUDIT-UAA-P-PQ01",
+      "owner_package": "E01",
+      "effort_category": "uaa_public",
+      "estimate": [
+        1,
+        1
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "AUDIT-UAA-P-PC01"
+      ],
+      "display_id": "PQ01"
+    },
+    {
+      "id": "D01",
+      "owner_package": "D01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        7,
+        11
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C01",
+        "C04"
+      ],
+      "display_id": "D01"
+    },
+    {
+      "id": "D04",
+      "owner_package": "D04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C01",
+        "D01"
+      ],
+      "display_id": "D04"
+    },
+    {
+      "id": "D02",
+      "owner_package": "D02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D04"
+      ],
+      "display_id": "D02"
+    },
+    {
+      "id": "R01",
+      "owner_package": "R01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C03",
+        "C04"
+      ],
+      "display_id": "R01"
+    },
+    {
+      "id": "D03",
+      "owner_package": "D03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "D02"
+      ],
+      "display_id": "D03"
+    },
+    {
+      "id": "X02-Q",
+      "owner_package": "X02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D06",
+        "X01-C"
+      ],
+      "display_id": "X02-Q"
+    },
+    {
+      "id": "U02",
+      "owner_package": "U02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "U01"
+      ],
+      "display_id": "U02"
+    },
+    {
+      "id": "X01-H",
+      "owner_package": "X01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        6,
+        9
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "G03",
+        "G06",
+        "X01-C"
+      ],
+      "display_id": "X01-H"
+    },
+    {
+      "id": "G04",
+      "owner_package": "G04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G03"
+      ],
+      "display_id": "G04"
+    },
+    {
+      "id": "C05",
+      "owner_package": "C05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G04"
+      ],
+      "display_id": "C05"
+    },
+    {
+      "id": "U07",
+      "owner_package": "U07",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G04",
+        "U02"
+      ],
+      "display_id": "U07"
+    },
+    {
+      "id": "D07",
+      "owner_package": "D07",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D04",
+        "D06",
+        "X02-Q"
+      ],
+      "display_id": "D07"
+    },
+    {
+      "id": "D08",
+      "owner_package": "D08",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        7,
+        10
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D03",
+        "D06",
+        "D07",
+        "X02-F"
+      ],
+      "display_id": "D08"
+    },
+    {
+      "id": "A01",
+      "owner_package": "A01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D03",
+        "D07",
+        "U02"
+      ],
+      "display_id": "A01"
+    },
+    {
+      "id": "D15",
+      "owner_package": "D15",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D06",
+        "D08",
+        "R01"
+      ],
+      "display_id": "D15"
+    },
+    {
+      "id": "D09",
+      "owner_package": "D09",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D08",
+        "D15"
+      ],
+      "display_id": "D09"
+    },
+    {
+      "id": "D10",
+      "owner_package": "D10",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D02",
+        "D08",
+        "D09",
+        "R01"
+      ],
+      "display_id": "D10"
+    },
+    {
+      "id": "D12",
+      "owner_package": "D12",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C03",
+        "D02",
+        "R01"
+      ],
+      "display_id": "D12"
+    },
+    {
+      "id": "A02",
+      "owner_package": "A02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "A01",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D02",
+        "R01"
+      ],
+      "display_id": "A02"
+    },
+    {
+      "id": "D11",
+      "owner_package": "D11",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D02"
+      ],
+      "display_id": "D11"
+    },
+    {
+      "id": "U06",
+      "owner_package": "U06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D11",
+        "D12",
+        "U02"
+      ],
+      "display_id": "U06"
+    },
+    {
+      "id": "U04",
+      "owner_package": "U04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D04",
+        "U02"
+      ],
+      "display_id": "U04"
+    },
+    {
+      "id": "D05",
+      "owner_package": "D05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D04"
+      ],
+      "display_id": "D05"
+    },
+    {
+      "id": "U03",
+      "owner_package": "U03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D02",
+        "D03",
+        "U02"
+      ],
+      "display_id": "U03"
+    },
+    {
+      "id": "X03",
+      "owner_package": "X03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "U02",
+        "X01",
+        "X02"
+      ],
+      "display_id": "X03"
+    },
+    {
+      "id": "D16",
+      "owner_package": "D16",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D02",
+        "D04",
+        "D06",
+        "R01"
+      ],
+      "display_id": "D16"
+    },
+    {
+      "id": "U05",
+      "owner_package": "U05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "U02"
+      ],
+      "display_id": "U05"
+    },
+    {
+      "id": "D13-M",
+      "owner_package": "D13",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D08",
+        "D09",
+        "D10"
+      ],
+      "display_id": "D13-M"
+    },
+    {
+      "id": "D13-T",
+      "owner_package": "D13",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        1,
+        2
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D12"
+      ],
+      "display_id": "D13-T"
+    },
+    {
+      "id": "D14",
+      "owner_package": "D14",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D10",
+        "D13"
+      ],
+      "display_id": "D14"
+    },
+    {
+      "id": "E10",
+      "owner_package": "E10",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D01",
+        "D03",
+        "D08",
+        "D10",
+        "X02"
+      ],
+      "display_id": "E10"
+    },
+    {
+      "id": "I01",
+      "owner_package": "I01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        9
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C03",
+        "D01",
+        "D12"
+      ],
+      "display_id": "I01"
+    },
+    {
+      "id": "I02",
+      "owner_package": "I02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D03",
+        "I01"
+      ],
+      "display_id": "I02"
+    },
+    {
+      "id": "I03",
+      "owner_package": "I03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        9,
+        15
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C03",
+        "D12",
+        "I01",
+        "I02"
+      ],
+      "display_id": "I03"
+    },
+    {
+      "id": "A03-R",
+      "owner_package": "A03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        7,
+        11
+      ],
+      "dependencies": [
+        "A01",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I01",
+        "I02"
+      ],
+      "display_id": "A03-R"
+    },
+    {
+      "id": "I05",
+      "owner_package": "I05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C03",
+        "I02",
+        "I03"
+      ],
+      "display_id": "I05"
+    },
+    {
+      "id": "A04",
+      "owner_package": "A04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "A02",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I02",
+        "I03",
+        "I05"
+      ],
+      "display_id": "A04"
+    },
+    {
+      "id": "A03-W",
+      "owner_package": "A03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "A01",
+        "A02",
+        "A03-R",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "I01",
+        "I02",
+        "R01"
+      ],
+      "display_id": "A03-W"
+    },
+    {
+      "id": "U08",
+      "owner_package": "U08",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D12",
+        "I01",
+        "I02",
+        "I03",
+        "U02"
+      ],
+      "display_id": "U08"
+    },
+    {
+      "id": "I04",
+      "owner_package": "I04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D07",
+        "D08",
+        "I01"
+      ],
+      "display_id": "I04"
+    },
+    {
+      "id": "D17",
+      "owner_package": "D17",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D08",
+        "D10",
+        "D11",
+        "D15",
+        "I04",
+        "R01"
+      ],
+      "display_id": "D17"
+    },
+    {
+      "id": "G05",
+      "owner_package": "G05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G03"
+      ],
+      "display_id": "G05"
+    },
+    {
+      "id": "R06",
+      "owner_package": "R06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I01"
+      ],
+      "display_id": "R06"
+    },
+    {
+      "id": "D18",
+      "owner_package": "D18",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C04",
+        "D01",
+        "D04"
+      ],
+      "display_id": "D18"
+    },
+    {
+      "id": "E01-BASE",
+      "owner_package": "E01",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "A01",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D06",
+        "D11",
+        "I02"
+      ],
+      "display_id": "E01原基价"
+    },
+    {
+      "id": "E09",
+      "owner_package": "E09",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G05",
+        "I03"
+      ],
+      "display_id": "E09"
+    },
+    {
+      "id": "E02",
+      "owner_package": "E02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C02",
+        "G05"
+      ],
+      "display_id": "E02"
+    },
+    {
+      "id": "R07",
+      "owner_package": "R07",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G06",
+        "I01"
+      ],
+      "display_id": "R07"
+    },
+    {
+      "id": "R04",
+      "owner_package": "R04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I02",
+        "I03",
+        "I04"
+      ],
+      "display_id": "R04"
+    },
+    {
+      "id": "A05",
+      "owner_package": "A05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "A03",
+        "A04",
+        "AUDIT-MAINTENANCE-CLOSEOUT"
+      ],
+      "display_id": "A05"
+    },
+    {
+      "id": "A06",
+      "owner_package": "A06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        5
+      ],
+      "dependencies": [
+        "A05",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I02",
+        "I04"
+      ],
+      "display_id": "A06"
+    },
+    {
+      "id": "A07",
+      "owner_package": "A07",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "A05",
+        "A06",
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I03",
+        "R01"
+      ],
+      "display_id": "A07"
+    },
+    {
+      "id": "R03",
+      "owner_package": "R03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I01",
+        "I02",
+        "I03"
+      ],
+      "display_id": "R03"
+    },
+    {
+      "id": "E04",
+      "owner_package": "E04",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        6,
+        10
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D11",
+        "D13",
+        "I03",
+        "U06"
+      ],
+      "display_id": "E04"
+    },
+    {
+      "id": "E06",
+      "owner_package": "E06",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        5,
+        9
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D11",
+        "D14",
+        "I04"
+      ],
+      "display_id": "E06"
+    },
+    {
+      "id": "E03",
+      "owner_package": "E03",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        3,
+        6
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "C05",
+        "D09",
+        "R04"
+      ],
+      "display_id": "E03"
+    },
+    {
+      "id": "R02",
+      "owner_package": "R02",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        6,
+        10
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D17",
+        "I02",
+        "I03",
+        "R01",
+        "R04"
+      ],
+      "display_id": "R02"
+    },
+    {
+      "id": "R05",
+      "owner_package": "R05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        7
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D11",
+        "D14",
+        "R02"
+      ],
+      "display_id": "R05"
+    },
+    {
+      "id": "E07",
+      "owner_package": "E07",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        4
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "G06",
+        "I01",
+        "R02"
+      ],
+      "display_id": "E07"
+    },
+    {
+      "id": "E08",
+      "owner_package": "E08",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        2,
+        3
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "I04",
+        "R04"
+      ],
+      "display_id": "E08"
+    },
+    {
+      "id": "E05",
+      "owner_package": "E05",
+      "effort_category": "existing_remaining",
+      "estimate": [
+        4,
+        8
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "D03",
+        "I04",
+        "R04"
+      ],
+      "display_id": "E05"
+    },
+    {
+      "id": "AUDIT-UAA-R-ENGINEERING",
+      "owner_package": "E01",
+      "effort_category": "uaa_real",
+      "estimate": [
+        13,
+        22
+      ],
+      "dependencies": [
+        "AUDIT-MAINTENANCE-CLOSEOUT",
+        "E01-UAA-P"
+      ],
+      "display_id": "RB01–07/RU01/RO01"
+    }
+  ],
+  "reference_schedules": {
+    "public_R_pending_1_seats": {
+      "selected_effort_engineering_days": [
+        293,
+        498
+      ],
+      "makespan_endpoint_workdays": [
+        293,
+        498
+      ],
+      "milestones": {
+        "C_public_contract": [
+          21,
+          37
+        ],
+        "P_public_dual_mode_functional": [
+          63,
+          103
+        ],
+        "X02_F_shared_feed": [
+          38,
+          64
+        ],
+        "all_selected_engineering_scope": [
+          293,
+          498
+        ],
+        "formal_production_or_enterprise_activation": null,
+        "formal_activation_note": "R-pre-apply-checkpoint occurs within the R block before formal apply; its exact day is not separately priced. Final R closeout follows apply/observation and is not a prerequisite for its own apply. Mode-specific approval and the applicable common production gate still apply; no formal activation date is asserted."
+      },
+      "ordered_tasks": [
+        {
+          "id": "AUDIT-MAINTENANCE-CLOSEOUT",
+          "start_endpoint_days": [
+            0,
+            0
+          ],
+          "finish_endpoint_days": [
+            1,
+            2
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            3,
+            5
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G03-Q",
+          "start_endpoint_days": [
+            3,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            7
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G03-C",
+          "start_endpoint_days": [
+            4,
+            7
+          ],
+          "finish_endpoint_days": [
+            6,
+            10
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U01",
+          "start_endpoint_days": [
+            6,
+            10
+          ],
+          "finish_endpoint_days": [
+            7,
+            13
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G02",
+          "start_endpoint_days": [
+            7,
+            13
+          ],
+          "finish_endpoint_days": [
+            8,
+            15
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C01",
+          "start_endpoint_days": [
+            8,
+            15
+          ],
+          "finish_endpoint_days": [
+            10,
+            19
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C03",
+          "start_endpoint_days": [
+            10,
+            19
+          ],
+          "finish_endpoint_days": [
+            16,
+            29
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C02",
+          "start_endpoint_days": [
+            16,
+            29
+          ],
+          "finish_endpoint_days": [
+            19,
+            34
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E01-UAA-C",
+          "start_endpoint_days": [
+            19,
+            34
+          ],
+          "finish_endpoint_days": [
+            21,
+            37
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C04",
+          "start_endpoint_days": [
+            21,
+            37
+          ],
+          "finish_endpoint_days": [
+            26,
+            45
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G06",
+          "start_endpoint_days": [
+            26,
+            45
+          ],
+          "finish_endpoint_days": [
+            29,
+            50
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D06",
+          "start_endpoint_days": [
+            29,
+            50
+          ],
+          "finish_endpoint_days": [
+            33,
+            56
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-C",
+          "start_endpoint_days": [
+            33,
+            56
+          ],
+          "finish_endpoint_days": [
+            35,
+            59
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-F",
+          "start_endpoint_days": [
+            35,
+            59
+          ],
+          "finish_endpoint_days": [
+            38,
+            64
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB02",
+          "start_endpoint_days": [
+            38,
+            64
+          ],
+          "finish_endpoint_days": [
+            41,
+            68
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB03",
+          "start_endpoint_days": [
+            41,
+            68
+          ],
+          "finish_endpoint_days": [
+            42,
+            70
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB01",
+          "start_endpoint_days": [
+            42,
+            70
+          ],
+          "finish_endpoint_days": [
+            45,
+            74
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB05",
+          "start_endpoint_days": [
+            45,
+            74
+          ],
+          "finish_endpoint_days": [
+            48,
+            78
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB04",
+          "start_endpoint_days": [
+            48,
+            78
+          ],
+          "finish_endpoint_days": [
+            49,
+            80
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB06",
+          "start_endpoint_days": [
+            49,
+            80
+          ],
+          "finish_endpoint_days": [
+            50,
+            82
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB07",
+          "start_endpoint_days": [
+            50,
+            82
+          ],
+          "finish_endpoint_days": [
+            52,
+            85
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB08",
+          "start_endpoint_days": [
+            52,
+            85
+          ],
+          "finish_endpoint_days": [
+            54,
+            89
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU01",
+          "start_endpoint_days": [
+            54,
+            89
+          ],
+          "finish_endpoint_days": [
+            56,
+            92
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU02",
+          "start_endpoint_days": [
+            56,
+            92
+          ],
+          "finish_endpoint_days": [
+            58,
+            95
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PO01",
+          "start_endpoint_days": [
+            58,
+            95
+          ],
+          "finish_endpoint_days": [
+            60,
+            98
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU03",
+          "start_endpoint_days": [
+            60,
+            98
+          ],
+          "finish_endpoint_days": [
+            61,
+            100
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PC01",
+          "start_endpoint_days": [
+            61,
+            100
+          ],
+          "finish_endpoint_days": [
+            62,
+            102
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PQ01",
+          "start_endpoint_days": [
+            62,
+            102
+          ],
+          "finish_endpoint_days": [
+            63,
+            103
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D01",
+          "start_endpoint_days": [
+            63,
+            103
+          ],
+          "finish_endpoint_days": [
+            70,
+            114
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D04",
+          "start_endpoint_days": [
+            70,
+            114
+          ],
+          "finish_endpoint_days": [
+            73,
+            119
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D02",
+          "start_endpoint_days": [
+            73,
+            119
+          ],
+          "finish_endpoint_days": [
+            76,
+            124
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R01",
+          "start_endpoint_days": [
+            76,
+            124
+          ],
+          "finish_endpoint_days": [
+            79,
+            129
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D03",
+          "start_endpoint_days": [
+            79,
+            129
+          ],
+          "finish_endpoint_days": [
+            83,
+            136
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-Q",
+          "start_endpoint_days": [
+            83,
+            136
+          ],
+          "finish_endpoint_days": [
+            85,
+            139
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U02",
+          "start_endpoint_days": [
+            85,
+            139
+          ],
+          "finish_endpoint_days": [
+            89,
+            145
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-H",
+          "start_endpoint_days": [
+            89,
+            152
+          ],
+          "finish_endpoint_days": [
+            95,
+            161
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G04",
+          "start_endpoint_days": [
+            95,
+            145
+          ],
+          "finish_endpoint_days": [
+            99,
+            152
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C05",
+          "start_endpoint_days": [
+            99,
+            161
+          ],
+          "finish_endpoint_days": [
+            101,
+            165
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U07",
+          "start_endpoint_days": [
+            101,
+            165
+          ],
+          "finish_endpoint_days": [
+            103,
+            169
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D07",
+          "start_endpoint_days": [
+            103,
+            169
+          ],
+          "finish_endpoint_days": [
+            106,
+            174
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D08",
+          "start_endpoint_days": [
+            106,
+            174
+          ],
+          "finish_endpoint_days": [
+            113,
+            184
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A01",
+          "start_endpoint_days": [
+            113,
+            186
+          ],
+          "finish_endpoint_days": [
+            116,
+            192
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D15",
+          "start_endpoint_days": [
+            116,
+            184
+          ],
+          "finish_endpoint_days": [
+            117,
+            186
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D09",
+          "start_endpoint_days": [
+            117,
+            192
+          ],
+          "finish_endpoint_days": [
+            121,
+            199
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D10",
+          "start_endpoint_days": [
+            121,
+            199
+          ],
+          "finish_endpoint_days": [
+            126,
+            207
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D12",
+          "start_endpoint_days": [
+            126,
+            207
+          ],
+          "finish_endpoint_days": [
+            130,
+            214
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A02",
+          "start_endpoint_days": [
+            130,
+            214
+          ],
+          "finish_endpoint_days": [
+            133,
+            219
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D11",
+          "start_endpoint_days": [
+            133,
+            219
+          ],
+          "finish_endpoint_days": [
+            136,
+            225
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U06",
+          "start_endpoint_days": [
+            136,
+            225
+          ],
+          "finish_endpoint_days": [
+            140,
+            232
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U04",
+          "start_endpoint_days": [
+            140,
+            232
+          ],
+          "finish_endpoint_days": [
+            145,
+            240
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D05",
+          "start_endpoint_days": [
+            145,
+            240
+          ],
+          "finish_endpoint_days": [
+            149,
+            247
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U03",
+          "start_endpoint_days": [
+            149,
+            247
+          ],
+          "finish_endpoint_days": [
+            153,
+            254
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X03",
+          "start_endpoint_days": [
+            153,
+            254
+          ],
+          "finish_endpoint_days": [
+            157,
+            261
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D16",
+          "start_endpoint_days": [
+            157,
+            261
+          ],
+          "finish_endpoint_days": [
+            160,
+            266
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U05",
+          "start_endpoint_days": [
+            160,
+            266
+          ],
+          "finish_endpoint_days": [
+            162,
+            270
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-M",
+          "start_endpoint_days": [
+            162,
+            270
+          ],
+          "finish_endpoint_days": [
+            165,
+            275
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-T",
+          "start_endpoint_days": [
+            165,
+            275
+          ],
+          "finish_endpoint_days": [
+            166,
+            277
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D14",
+          "start_endpoint_days": [
+            166,
+            277
+          ],
+          "finish_endpoint_days": [
+            171,
+            285
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E10",
+          "start_endpoint_days": [
+            171,
+            285
+          ],
+          "finish_endpoint_days": [
+            173,
+            289
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I01",
+          "start_endpoint_days": [
+            173,
+            289
+          ],
+          "finish_endpoint_days": [
+            178,
+            298
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I02",
+          "start_endpoint_days": [
+            178,
+            298
+          ],
+          "finish_endpoint_days": [
+            182,
+            305
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I03",
+          "start_endpoint_days": [
+            182,
+            305
+          ],
+          "finish_endpoint_days": [
+            191,
+            320
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A03-R",
+          "start_endpoint_days": [
+            191,
+            320
+          ],
+          "finish_endpoint_days": [
+            198,
+            331
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I05",
+          "start_endpoint_days": [
+            198,
+            331
+          ],
+          "finish_endpoint_days": [
+            202,
+            338
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A04",
+          "start_endpoint_days": [
+            202,
+            338
+          ],
+          "finish_endpoint_days": [
+            206,
+            345
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A03-W",
+          "start_endpoint_days": [
+            206,
+            345
+          ],
+          "finish_endpoint_days": [
+            208,
+            348
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U08",
+          "start_endpoint_days": [
+            208,
+            348
+          ],
+          "finish_endpoint_days": [
+            211,
+            353
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I04",
+          "start_endpoint_days": [
+            211,
+            353
+          ],
+          "finish_endpoint_days": [
+            215,
+            361
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D17",
+          "start_endpoint_days": [
+            215,
+            361
+          ],
+          "finish_endpoint_days": [
+            219,
+            368
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G05",
+          "start_endpoint_days": [
+            219,
+            368
+          ],
+          "finish_endpoint_days": [
+            223,
+            375
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R06",
+          "start_endpoint_days": [
+            223,
+            375
+          ],
+          "finish_endpoint_days": [
+            228,
+            383
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D18",
+          "start_endpoint_days": [
+            228,
+            389
+          ],
+          "finish_endpoint_days": [
+            231,
+            394
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E01-BASE",
+          "start_endpoint_days": [
+            231,
+            383
+          ],
+          "finish_endpoint_days": [
+            234,
+            389
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E09",
+          "start_endpoint_days": [
+            234,
+            394
+          ],
+          "finish_endpoint_days": [
+            237,
+            399
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E02",
+          "start_endpoint_days": [
+            237,
+            399
+          ],
+          "finish_endpoint_days": [
+            239,
+            403
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R07",
+          "start_endpoint_days": [
+            239,
+            403
+          ],
+          "finish_endpoint_days": [
+            241,
+            407
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R04",
+          "start_endpoint_days": [
+            241,
+            407
+          ],
+          "finish_endpoint_days": [
+            244,
+            413
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A05",
+          "start_endpoint_days": [
+            244,
+            413
+          ],
+          "finish_endpoint_days": [
+            248,
+            420
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A06",
+          "start_endpoint_days": [
+            248,
+            420
+          ],
+          "finish_endpoint_days": [
+            251,
+            425
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A07",
+          "start_endpoint_days": [
+            251,
+            425
+          ],
+          "finish_endpoint_days": [
+            256,
+            433
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R03",
+          "start_endpoint_days": [
+            256,
+            433
+          ],
+          "finish_endpoint_days": [
+            261,
+            441
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E04",
+          "start_endpoint_days": [
+            261,
+            441
+          ],
+          "finish_endpoint_days": [
+            267,
+            451
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E06",
+          "start_endpoint_days": [
+            267,
+            451
+          ],
+          "finish_endpoint_days": [
+            272,
+            460
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E03",
+          "start_endpoint_days": [
+            272,
+            460
+          ],
+          "finish_endpoint_days": [
+            275,
+            466
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R02",
+          "start_endpoint_days": [
+            275,
+            466
+          ],
+          "finish_endpoint_days": [
+            281,
+            476
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R05",
+          "start_endpoint_days": [
+            281,
+            476
+          ],
+          "finish_endpoint_days": [
+            285,
+            483
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E07",
+          "start_endpoint_days": [
+            285,
+            483
+          ],
+          "finish_endpoint_days": [
+            287,
+            487
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E08",
+          "start_endpoint_days": [
+            287,
+            487
+          ],
+          "finish_endpoint_days": [
+            289,
+            490
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E05",
+          "start_endpoint_days": [
+            289,
+            490
+          ],
+          "finish_endpoint_days": [
+            293,
+            498
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        }
+      ],
+      "checks": {
+        "dag": true,
+        "known_dependencies": true,
+        "precedence": true,
+        "capacity_no_overlap": true,
+        "effort_sum": true,
+        "single_seat_sum_equals_makespan": true,
+        "parents_and_children_not_double_counted": true
+      }
+    },
+    "public_R_pending_2_seats": {
+      "selected_effort_engineering_days": [
+        293,
+        498
+      ],
+      "makespan_endpoint_workdays": [
+        148,
+        251
+      ],
+      "milestones": {
+        "C_public_contract": [
+          11,
+          19
+        ],
+        "P_public_dual_mode_functional": [
+          37,
+          60
+        ],
+        "X02_F_shared_feed": [
+          23,
+          38
+        ],
+        "all_selected_engineering_scope": [
+          148,
+          251
+        ],
+        "formal_production_or_enterprise_activation": null,
+        "formal_activation_note": "R-pre-apply-checkpoint occurs within the R block before formal apply; its exact day is not separately priced. Final R closeout follows apply/observation and is not a prerequisite for its own apply. Mode-specific approval and the applicable common production gate still apply; no formal activation date is asserted."
+      },
+      "ordered_tasks": [
+        {
+          "id": "AUDIT-MAINTENANCE-CLOSEOUT",
+          "start_endpoint_days": [
+            0,
+            0
+          ],
+          "finish_endpoint_days": [
+            1,
+            2
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            2,
+            5
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            3,
+            5
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C01",
+          "start_endpoint_days": [
+            2,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            9
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G03-Q",
+          "start_endpoint_days": [
+            3,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            7
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G02",
+          "start_endpoint_days": [
+            4,
+            9
+          ],
+          "finish_endpoint_days": [
+            5,
+            11
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G03-C",
+          "start_endpoint_days": [
+            4,
+            7
+          ],
+          "finish_endpoint_days": [
+            6,
+            10
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C03",
+          "start_endpoint_days": [
+            5,
+            10
+          ],
+          "finish_endpoint_days": [
+            11,
+            20
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "C02",
+          "start_endpoint_days": [
+            6,
+            11
+          ],
+          "finish_endpoint_days": [
+            9,
+            16
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E01-UAA-C",
+          "start_endpoint_days": [
+            9,
+            16
+          ],
+          "finish_endpoint_days": [
+            11,
+            19
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "G06",
+          "start_endpoint_days": [
+            11,
+            20
+          ],
+          "finish_endpoint_days": [
+            14,
+            25
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "C04",
+          "start_endpoint_days": [
+            11,
+            19
+          ],
+          "finish_endpoint_days": [
+            16,
+            27
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PU01",
+          "start_endpoint_days": [
+            14,
+            25
+          ],
+          "finish_endpoint_days": [
+            16,
+            28
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-C",
+          "start_endpoint_days": [
+            16,
+            28
+          ],
+          "finish_endpoint_days": [
+            18,
+            31
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D06",
+          "start_endpoint_days": [
+            16,
+            27
+          ],
+          "finish_endpoint_days": [
+            20,
+            33
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB01",
+          "start_endpoint_days": [
+            18,
+            31
+          ],
+          "finish_endpoint_days": [
+            21,
+            35
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-F",
+          "start_endpoint_days": [
+            20,
+            33
+          ],
+          "finish_endpoint_days": [
+            23,
+            38
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB02",
+          "start_endpoint_days": [
+            21,
+            35
+          ],
+          "finish_endpoint_days": [
+            24,
+            39
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU02",
+          "start_endpoint_days": [
+            23,
+            38
+          ],
+          "finish_endpoint_days": [
+            25,
+            41
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB03",
+          "start_endpoint_days": [
+            24,
+            39
+          ],
+          "finish_endpoint_days": [
+            25,
+            41
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB04",
+          "start_endpoint_days": [
+            25,
+            41
+          ],
+          "finish_endpoint_days": [
+            26,
+            43
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB05",
+          "start_endpoint_days": [
+            25,
+            41
+          ],
+          "finish_endpoint_days": [
+            28,
+            45
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB06",
+          "start_endpoint_days": [
+            26,
+            43
+          ],
+          "finish_endpoint_days": [
+            27,
+            45
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D01",
+          "start_endpoint_days": [
+            27,
+            45
+          ],
+          "finish_endpoint_days": [
+            34,
+            56
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB07",
+          "start_endpoint_days": [
+            28,
+            45
+          ],
+          "finish_endpoint_days": [
+            30,
+            48
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB08",
+          "start_endpoint_days": [
+            30,
+            48
+          ],
+          "finish_endpoint_days": [
+            32,
+            52
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PO01",
+          "start_endpoint_days": [
+            32,
+            52
+          ],
+          "finish_endpoint_days": [
+            34,
+            55
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU03",
+          "start_endpoint_days": [
+            34,
+            55
+          ],
+          "finish_endpoint_days": [
+            35,
+            57
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D04",
+          "start_endpoint_days": [
+            34,
+            56
+          ],
+          "finish_endpoint_days": [
+            37,
+            61
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PC01",
+          "start_endpoint_days": [
+            35,
+            57
+          ],
+          "finish_endpoint_days": [
+            36,
+            59
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PQ01",
+          "start_endpoint_days": [
+            36,
+            59
+          ],
+          "finish_endpoint_days": [
+            37,
+            60
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D02",
+          "start_endpoint_days": [
+            37,
+            61
+          ],
+          "finish_endpoint_days": [
+            40,
+            66
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "R01",
+          "start_endpoint_days": [
+            37,
+            60
+          ],
+          "finish_endpoint_days": [
+            40,
+            65
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-Q",
+          "start_endpoint_days": [
+            40,
+            65
+          ],
+          "finish_endpoint_days": [
+            42,
+            68
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D03",
+          "start_endpoint_days": [
+            40,
+            66
+          ],
+          "finish_endpoint_days": [
+            44,
+            73
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U02",
+          "start_endpoint_days": [
+            42,
+            68
+          ],
+          "finish_endpoint_days": [
+            46,
+            74
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-H",
+          "start_endpoint_days": [
+            44,
+            74
+          ],
+          "finish_endpoint_days": [
+            50,
+            83
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G04",
+          "start_endpoint_days": [
+            46,
+            73
+          ],
+          "finish_endpoint_days": [
+            50,
+            80
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "C05",
+          "start_endpoint_days": [
+            50,
+            80
+          ],
+          "finish_endpoint_days": [
+            52,
+            84
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U07",
+          "start_endpoint_days": [
+            50,
+            83
+          ],
+          "finish_endpoint_days": [
+            52,
+            87
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D07",
+          "start_endpoint_days": [
+            52,
+            84
+          ],
+          "finish_endpoint_days": [
+            55,
+            89
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D12",
+          "start_endpoint_days": [
+            52,
+            87
+          ],
+          "finish_endpoint_days": [
+            56,
+            94
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D08",
+          "start_endpoint_days": [
+            55,
+            89
+          ],
+          "finish_endpoint_days": [
+            62,
+            99
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A01",
+          "start_endpoint_days": [
+            56,
+            94
+          ],
+          "finish_endpoint_days": [
+            59,
+            100
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A02",
+          "start_endpoint_days": [
+            59,
+            100
+          ],
+          "finish_endpoint_days": [
+            62,
+            105
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D15",
+          "start_endpoint_days": [
+            62,
+            99
+          ],
+          "finish_endpoint_days": [
+            63,
+            101
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D11",
+          "start_endpoint_days": [
+            62,
+            105
+          ],
+          "finish_endpoint_days": [
+            65,
+            111
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D09",
+          "start_endpoint_days": [
+            63,
+            101
+          ],
+          "finish_endpoint_days": [
+            67,
+            108
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U06",
+          "start_endpoint_days": [
+            65,
+            111
+          ],
+          "finish_endpoint_days": [
+            69,
+            118
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D10",
+          "start_endpoint_days": [
+            67,
+            108
+          ],
+          "finish_endpoint_days": [
+            72,
+            116
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U04",
+          "start_endpoint_days": [
+            69,
+            116
+          ],
+          "finish_endpoint_days": [
+            74,
+            124
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D05",
+          "start_endpoint_days": [
+            72,
+            118
+          ],
+          "finish_endpoint_days": [
+            76,
+            125
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U03",
+          "start_endpoint_days": [
+            74,
+            124
+          ],
+          "finish_endpoint_days": [
+            78,
+            131
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "X03",
+          "start_endpoint_days": [
+            76,
+            125
+          ],
+          "finish_endpoint_days": [
+            80,
+            132
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D16",
+          "start_endpoint_days": [
+            78,
+            131
+          ],
+          "finish_endpoint_days": [
+            81,
+            136
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "U05",
+          "start_endpoint_days": [
+            80,
+            132
+          ],
+          "finish_endpoint_days": [
+            82,
+            136
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-M",
+          "start_endpoint_days": [
+            81,
+            136
+          ],
+          "finish_endpoint_days": [
+            84,
+            141
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-T",
+          "start_endpoint_days": [
+            82,
+            136
+          ],
+          "finish_endpoint_days": [
+            83,
+            138
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E10",
+          "start_endpoint_days": [
+            83,
+            138
+          ],
+          "finish_endpoint_days": [
+            85,
+            142
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D14",
+          "start_endpoint_days": [
+            84,
+            141
+          ],
+          "finish_endpoint_days": [
+            89,
+            149
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I01",
+          "start_endpoint_days": [
+            85,
+            142
+          ],
+          "finish_endpoint_days": [
+            90,
+            151
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "G05",
+          "start_endpoint_days": [
+            89,
+            149
+          ],
+          "finish_endpoint_days": [
+            93,
+            156
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I02",
+          "start_endpoint_days": [
+            90,
+            151
+          ],
+          "finish_endpoint_days": [
+            94,
+            158
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "I04",
+          "start_endpoint_days": [
+            93,
+            156
+          ],
+          "finish_endpoint_days": [
+            97,
+            164
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I03",
+          "start_endpoint_days": [
+            94,
+            158
+          ],
+          "finish_endpoint_days": [
+            103,
+            173
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A03-R",
+          "start_endpoint_days": [
+            97,
+            164
+          ],
+          "finish_endpoint_days": [
+            104,
+            175
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I05",
+          "start_endpoint_days": [
+            103,
+            173
+          ],
+          "finish_endpoint_days": [
+            107,
+            180
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A03-W",
+          "start_endpoint_days": [
+            104,
+            175
+          ],
+          "finish_endpoint_days": [
+            106,
+            178
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "U08",
+          "start_endpoint_days": [
+            106,
+            178
+          ],
+          "finish_endpoint_days": [
+            109,
+            183
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A04",
+          "start_endpoint_days": [
+            107,
+            180
+          ],
+          "finish_endpoint_days": [
+            111,
+            187
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D17",
+          "start_endpoint_days": [
+            109,
+            183
+          ],
+          "finish_endpoint_days": [
+            113,
+            190
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R06",
+          "start_endpoint_days": [
+            111,
+            187
+          ],
+          "finish_endpoint_days": [
+            116,
+            195
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D18",
+          "start_endpoint_days": [
+            113,
+            195
+          ],
+          "finish_endpoint_days": [
+            116,
+            200
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "E01-BASE",
+          "start_endpoint_days": [
+            116,
+            190
+          ],
+          "finish_endpoint_days": [
+            119,
+            196
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E09",
+          "start_endpoint_days": [
+            116,
+            196
+          ],
+          "finish_endpoint_days": [
+            119,
+            201
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E02",
+          "start_endpoint_days": [
+            119,
+            200
+          ],
+          "finish_endpoint_days": [
+            121,
+            204
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "R07",
+          "start_endpoint_days": [
+            119,
+            201
+          ],
+          "finish_endpoint_days": [
+            121,
+            205
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R04",
+          "start_endpoint_days": [
+            121,
+            204
+          ],
+          "finish_endpoint_days": [
+            124,
+            210
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A05",
+          "start_endpoint_days": [
+            121,
+            205
+          ],
+          "finish_endpoint_days": [
+            125,
+            212
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R03",
+          "start_endpoint_days": [
+            124,
+            210
+          ],
+          "finish_endpoint_days": [
+            129,
+            218
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A06",
+          "start_endpoint_days": [
+            125,
+            212
+          ],
+          "finish_endpoint_days": [
+            128,
+            217
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A07",
+          "start_endpoint_days": [
+            128,
+            217
+          ],
+          "finish_endpoint_days": [
+            133,
+            225
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E04",
+          "start_endpoint_days": [
+            129,
+            218
+          ],
+          "finish_endpoint_days": [
+            135,
+            228
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E06",
+          "start_endpoint_days": [
+            133,
+            225
+          ],
+          "finish_endpoint_days": [
+            138,
+            234
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E03",
+          "start_endpoint_days": [
+            135,
+            228
+          ],
+          "finish_endpoint_days": [
+            138,
+            234
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E08",
+          "start_endpoint_days": [
+            138,
+            234
+          ],
+          "finish_endpoint_days": [
+            140,
+            237
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "R02",
+          "start_endpoint_days": [
+            138,
+            234
+          ],
+          "finish_endpoint_days": [
+            144,
+            244
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E05",
+          "start_endpoint_days": [
+            140,
+            237
+          ],
+          "finish_endpoint_days": [
+            144,
+            245
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "E07",
+          "start_endpoint_days": [
+            144,
+            245
+          ],
+          "finish_endpoint_days": [
+            146,
+            249
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "R05",
+          "start_endpoint_days": [
+            144,
+            244
+          ],
+          "finish_endpoint_days": [
+            148,
+            251
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        }
+      ],
+      "checks": {
+        "dag": true,
+        "known_dependencies": true,
+        "precedence": true,
+        "capacity_no_overlap": true,
+        "effort_sum": true,
+        "single_seat_sum_equals_makespan": false,
+        "parents_and_children_not_double_counted": true
+      }
+    },
+    "R_no_external_lag_1_seats": {
+      "selected_effort_engineering_days": [
+        306,
+        520
+      ],
+      "makespan_endpoint_workdays": [
+        306,
+        520
+      ],
+      "milestones": {
+        "C_public_contract": [
+          21,
+          37
+        ],
+        "P_public_dual_mode_functional": [
+          63,
+          103
+        ],
+        "X02_F_shared_feed": [
+          38,
+          64
+        ],
+        "all_selected_engineering_scope": [
+          306,
+          520
+        ],
+        "formal_production_or_enterprise_activation": null,
+        "formal_activation_note": "R-pre-apply-checkpoint occurs within the R block before formal apply; its exact day is not separately priced. Final R closeout follows apply/observation and is not a prerequisite for its own apply. Mode-specific approval and the applicable common production gate still apply; no formal activation date is asserted.",
+        "R_enterprise_uaa_engineering_closeout_reference": [
+          76,
+          125
+        ]
+      },
+      "ordered_tasks": [
+        {
+          "id": "AUDIT-MAINTENANCE-CLOSEOUT",
+          "start_endpoint_days": [
+            0,
+            0
+          ],
+          "finish_endpoint_days": [
+            1,
+            2
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            3,
+            5
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G03-Q",
+          "start_endpoint_days": [
+            3,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            7
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G03-C",
+          "start_endpoint_days": [
+            4,
+            7
+          ],
+          "finish_endpoint_days": [
+            6,
+            10
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U01",
+          "start_endpoint_days": [
+            6,
+            10
+          ],
+          "finish_endpoint_days": [
+            7,
+            13
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G02",
+          "start_endpoint_days": [
+            7,
+            13
+          ],
+          "finish_endpoint_days": [
+            8,
+            15
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C01",
+          "start_endpoint_days": [
+            8,
+            15
+          ],
+          "finish_endpoint_days": [
+            10,
+            19
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C03",
+          "start_endpoint_days": [
+            10,
+            19
+          ],
+          "finish_endpoint_days": [
+            16,
+            29
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C02",
+          "start_endpoint_days": [
+            16,
+            29
+          ],
+          "finish_endpoint_days": [
+            19,
+            34
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E01-UAA-C",
+          "start_endpoint_days": [
+            19,
+            34
+          ],
+          "finish_endpoint_days": [
+            21,
+            37
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C04",
+          "start_endpoint_days": [
+            21,
+            37
+          ],
+          "finish_endpoint_days": [
+            26,
+            45
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G06",
+          "start_endpoint_days": [
+            26,
+            45
+          ],
+          "finish_endpoint_days": [
+            29,
+            50
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D06",
+          "start_endpoint_days": [
+            29,
+            50
+          ],
+          "finish_endpoint_days": [
+            33,
+            56
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-C",
+          "start_endpoint_days": [
+            33,
+            56
+          ],
+          "finish_endpoint_days": [
+            35,
+            59
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-F",
+          "start_endpoint_days": [
+            35,
+            59
+          ],
+          "finish_endpoint_days": [
+            38,
+            64
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB02",
+          "start_endpoint_days": [
+            38,
+            64
+          ],
+          "finish_endpoint_days": [
+            41,
+            68
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB03",
+          "start_endpoint_days": [
+            41,
+            68
+          ],
+          "finish_endpoint_days": [
+            42,
+            70
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB01",
+          "start_endpoint_days": [
+            42,
+            70
+          ],
+          "finish_endpoint_days": [
+            45,
+            74
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB05",
+          "start_endpoint_days": [
+            45,
+            74
+          ],
+          "finish_endpoint_days": [
+            48,
+            78
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB04",
+          "start_endpoint_days": [
+            48,
+            78
+          ],
+          "finish_endpoint_days": [
+            49,
+            80
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB06",
+          "start_endpoint_days": [
+            49,
+            80
+          ],
+          "finish_endpoint_days": [
+            50,
+            82
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB07",
+          "start_endpoint_days": [
+            50,
+            82
+          ],
+          "finish_endpoint_days": [
+            52,
+            85
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB08",
+          "start_endpoint_days": [
+            52,
+            85
+          ],
+          "finish_endpoint_days": [
+            54,
+            89
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU01",
+          "start_endpoint_days": [
+            54,
+            89
+          ],
+          "finish_endpoint_days": [
+            56,
+            92
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU02",
+          "start_endpoint_days": [
+            56,
+            92
+          ],
+          "finish_endpoint_days": [
+            58,
+            95
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PO01",
+          "start_endpoint_days": [
+            58,
+            95
+          ],
+          "finish_endpoint_days": [
+            60,
+            98
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU03",
+          "start_endpoint_days": [
+            60,
+            98
+          ],
+          "finish_endpoint_days": [
+            61,
+            100
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PC01",
+          "start_endpoint_days": [
+            61,
+            100
+          ],
+          "finish_endpoint_days": [
+            62,
+            102
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PQ01",
+          "start_endpoint_days": [
+            62,
+            102
+          ],
+          "finish_endpoint_days": [
+            63,
+            103
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-R-ENGINEERING",
+          "start_endpoint_days": [
+            63,
+            103
+          ],
+          "finish_endpoint_days": [
+            76,
+            125
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D01",
+          "start_endpoint_days": [
+            76,
+            125
+          ],
+          "finish_endpoint_days": [
+            83,
+            136
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D04",
+          "start_endpoint_days": [
+            83,
+            136
+          ],
+          "finish_endpoint_days": [
+            86,
+            141
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D02",
+          "start_endpoint_days": [
+            86,
+            141
+          ],
+          "finish_endpoint_days": [
+            89,
+            146
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R01",
+          "start_endpoint_days": [
+            89,
+            146
+          ],
+          "finish_endpoint_days": [
+            92,
+            151
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D03",
+          "start_endpoint_days": [
+            92,
+            151
+          ],
+          "finish_endpoint_days": [
+            96,
+            158
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-Q",
+          "start_endpoint_days": [
+            96,
+            158
+          ],
+          "finish_endpoint_days": [
+            98,
+            161
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U02",
+          "start_endpoint_days": [
+            98,
+            161
+          ],
+          "finish_endpoint_days": [
+            102,
+            167
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-H",
+          "start_endpoint_days": [
+            102,
+            174
+          ],
+          "finish_endpoint_days": [
+            108,
+            183
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G04",
+          "start_endpoint_days": [
+            108,
+            167
+          ],
+          "finish_endpoint_days": [
+            112,
+            174
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C05",
+          "start_endpoint_days": [
+            112,
+            183
+          ],
+          "finish_endpoint_days": [
+            114,
+            187
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U07",
+          "start_endpoint_days": [
+            114,
+            187
+          ],
+          "finish_endpoint_days": [
+            116,
+            191
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D07",
+          "start_endpoint_days": [
+            116,
+            191
+          ],
+          "finish_endpoint_days": [
+            119,
+            196
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D08",
+          "start_endpoint_days": [
+            119,
+            196
+          ],
+          "finish_endpoint_days": [
+            126,
+            206
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A01",
+          "start_endpoint_days": [
+            126,
+            208
+          ],
+          "finish_endpoint_days": [
+            129,
+            214
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D15",
+          "start_endpoint_days": [
+            129,
+            206
+          ],
+          "finish_endpoint_days": [
+            130,
+            208
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D09",
+          "start_endpoint_days": [
+            130,
+            214
+          ],
+          "finish_endpoint_days": [
+            134,
+            221
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D10",
+          "start_endpoint_days": [
+            134,
+            221
+          ],
+          "finish_endpoint_days": [
+            139,
+            229
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D12",
+          "start_endpoint_days": [
+            139,
+            229
+          ],
+          "finish_endpoint_days": [
+            143,
+            236
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A02",
+          "start_endpoint_days": [
+            143,
+            236
+          ],
+          "finish_endpoint_days": [
+            146,
+            241
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D11",
+          "start_endpoint_days": [
+            146,
+            241
+          ],
+          "finish_endpoint_days": [
+            149,
+            247
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U06",
+          "start_endpoint_days": [
+            149,
+            247
+          ],
+          "finish_endpoint_days": [
+            153,
+            254
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U04",
+          "start_endpoint_days": [
+            153,
+            254
+          ],
+          "finish_endpoint_days": [
+            158,
+            262
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D05",
+          "start_endpoint_days": [
+            158,
+            262
+          ],
+          "finish_endpoint_days": [
+            162,
+            269
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U03",
+          "start_endpoint_days": [
+            162,
+            269
+          ],
+          "finish_endpoint_days": [
+            166,
+            276
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "X03",
+          "start_endpoint_days": [
+            166,
+            276
+          ],
+          "finish_endpoint_days": [
+            170,
+            283
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D16",
+          "start_endpoint_days": [
+            170,
+            283
+          ],
+          "finish_endpoint_days": [
+            173,
+            288
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U05",
+          "start_endpoint_days": [
+            173,
+            288
+          ],
+          "finish_endpoint_days": [
+            175,
+            292
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-M",
+          "start_endpoint_days": [
+            175,
+            292
+          ],
+          "finish_endpoint_days": [
+            178,
+            297
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-T",
+          "start_endpoint_days": [
+            178,
+            297
+          ],
+          "finish_endpoint_days": [
+            179,
+            299
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D14",
+          "start_endpoint_days": [
+            179,
+            299
+          ],
+          "finish_endpoint_days": [
+            184,
+            307
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E10",
+          "start_endpoint_days": [
+            184,
+            307
+          ],
+          "finish_endpoint_days": [
+            186,
+            311
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I01",
+          "start_endpoint_days": [
+            186,
+            311
+          ],
+          "finish_endpoint_days": [
+            191,
+            320
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I02",
+          "start_endpoint_days": [
+            191,
+            320
+          ],
+          "finish_endpoint_days": [
+            195,
+            327
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I03",
+          "start_endpoint_days": [
+            195,
+            327
+          ],
+          "finish_endpoint_days": [
+            204,
+            342
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A03-R",
+          "start_endpoint_days": [
+            204,
+            342
+          ],
+          "finish_endpoint_days": [
+            211,
+            353
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I05",
+          "start_endpoint_days": [
+            211,
+            353
+          ],
+          "finish_endpoint_days": [
+            215,
+            360
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A04",
+          "start_endpoint_days": [
+            215,
+            360
+          ],
+          "finish_endpoint_days": [
+            219,
+            367
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A03-W",
+          "start_endpoint_days": [
+            219,
+            367
+          ],
+          "finish_endpoint_days": [
+            221,
+            370
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U08",
+          "start_endpoint_days": [
+            221,
+            370
+          ],
+          "finish_endpoint_days": [
+            224,
+            375
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I04",
+          "start_endpoint_days": [
+            224,
+            375
+          ],
+          "finish_endpoint_days": [
+            228,
+            383
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D17",
+          "start_endpoint_days": [
+            228,
+            383
+          ],
+          "finish_endpoint_days": [
+            232,
+            390
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G05",
+          "start_endpoint_days": [
+            232,
+            390
+          ],
+          "finish_endpoint_days": [
+            236,
+            397
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R06",
+          "start_endpoint_days": [
+            236,
+            397
+          ],
+          "finish_endpoint_days": [
+            241,
+            405
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D18",
+          "start_endpoint_days": [
+            241,
+            411
+          ],
+          "finish_endpoint_days": [
+            244,
+            416
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E01-BASE",
+          "start_endpoint_days": [
+            244,
+            405
+          ],
+          "finish_endpoint_days": [
+            247,
+            411
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E09",
+          "start_endpoint_days": [
+            247,
+            416
+          ],
+          "finish_endpoint_days": [
+            250,
+            421
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E02",
+          "start_endpoint_days": [
+            250,
+            421
+          ],
+          "finish_endpoint_days": [
+            252,
+            425
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R07",
+          "start_endpoint_days": [
+            252,
+            425
+          ],
+          "finish_endpoint_days": [
+            254,
+            429
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R04",
+          "start_endpoint_days": [
+            254,
+            429
+          ],
+          "finish_endpoint_days": [
+            257,
+            435
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A05",
+          "start_endpoint_days": [
+            257,
+            435
+          ],
+          "finish_endpoint_days": [
+            261,
+            442
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A06",
+          "start_endpoint_days": [
+            261,
+            442
+          ],
+          "finish_endpoint_days": [
+            264,
+            447
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "A07",
+          "start_endpoint_days": [
+            264,
+            447
+          ],
+          "finish_endpoint_days": [
+            269,
+            455
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R03",
+          "start_endpoint_days": [
+            269,
+            455
+          ],
+          "finish_endpoint_days": [
+            274,
+            463
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E04",
+          "start_endpoint_days": [
+            274,
+            463
+          ],
+          "finish_endpoint_days": [
+            280,
+            473
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E06",
+          "start_endpoint_days": [
+            280,
+            473
+          ],
+          "finish_endpoint_days": [
+            285,
+            482
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E03",
+          "start_endpoint_days": [
+            285,
+            482
+          ],
+          "finish_endpoint_days": [
+            288,
+            488
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R02",
+          "start_endpoint_days": [
+            288,
+            488
+          ],
+          "finish_endpoint_days": [
+            294,
+            498
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R05",
+          "start_endpoint_days": [
+            294,
+            498
+          ],
+          "finish_endpoint_days": [
+            298,
+            505
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E07",
+          "start_endpoint_days": [
+            298,
+            505
+          ],
+          "finish_endpoint_days": [
+            300,
+            509
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E08",
+          "start_endpoint_days": [
+            300,
+            509
+          ],
+          "finish_endpoint_days": [
+            302,
+            512
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E05",
+          "start_endpoint_days": [
+            302,
+            512
+          ],
+          "finish_endpoint_days": [
+            306,
+            520
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        }
+      ],
+      "checks": {
+        "dag": true,
+        "known_dependencies": true,
+        "precedence": true,
+        "capacity_no_overlap": true,
+        "effort_sum": true,
+        "single_seat_sum_equals_makespan": true,
+        "parents_and_children_not_double_counted": true
+      }
+    },
+    "R_no_external_lag_2_seats": {
+      "selected_effort_engineering_days": [
+        306,
+        520
+      ],
+      "makespan_endpoint_workdays": [
+        154,
+        262
+      ],
+      "milestones": {
+        "C_public_contract": [
+          11,
+          19
+        ],
+        "P_public_dual_mode_functional": [
+          37,
+          60
+        ],
+        "X02_F_shared_feed": [
+          23,
+          38
+        ],
+        "all_selected_engineering_scope": [
+          154,
+          262
+        ],
+        "formal_production_or_enterprise_activation": null,
+        "formal_activation_note": "R-pre-apply-checkpoint occurs within the R block before formal apply; its exact day is not separately priced. Final R closeout follows apply/observation and is not a prerequisite for its own apply. Mode-specific approval and the applicable common production gate still apply; no formal activation date is asserted.",
+        "R_enterprise_uaa_engineering_closeout_reference": [
+          50,
+          82
+        ]
+      },
+      "ordered_tasks": [
+        {
+          "id": "AUDIT-MAINTENANCE-CLOSEOUT",
+          "start_endpoint_days": [
+            0,
+            0
+          ],
+          "finish_endpoint_days": [
+            1,
+            2
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "U01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            2,
+            5
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G01",
+          "start_endpoint_days": [
+            1,
+            2
+          ],
+          "finish_endpoint_days": [
+            3,
+            5
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C01",
+          "start_endpoint_days": [
+            2,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            9
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G03-Q",
+          "start_endpoint_days": [
+            3,
+            5
+          ],
+          "finish_endpoint_days": [
+            4,
+            7
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "G02",
+          "start_endpoint_days": [
+            4,
+            9
+          ],
+          "finish_endpoint_days": [
+            5,
+            11
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "G03-C",
+          "start_endpoint_days": [
+            4,
+            7
+          ],
+          "finish_endpoint_days": [
+            6,
+            10
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "C03",
+          "start_endpoint_days": [
+            5,
+            10
+          ],
+          "finish_endpoint_days": [
+            11,
+            20
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "C02",
+          "start_endpoint_days": [
+            6,
+            11
+          ],
+          "finish_endpoint_days": [
+            9,
+            16
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E01-UAA-C",
+          "start_endpoint_days": [
+            9,
+            16
+          ],
+          "finish_endpoint_days": [
+            11,
+            19
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "G06",
+          "start_endpoint_days": [
+            11,
+            20
+          ],
+          "finish_endpoint_days": [
+            14,
+            25
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "C04",
+          "start_endpoint_days": [
+            11,
+            19
+          ],
+          "finish_endpoint_days": [
+            16,
+            27
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PU01",
+          "start_endpoint_days": [
+            14,
+            25
+          ],
+          "finish_endpoint_days": [
+            16,
+            28
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X01-C",
+          "start_endpoint_days": [
+            16,
+            28
+          ],
+          "finish_endpoint_days": [
+            18,
+            31
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D06",
+          "start_endpoint_days": [
+            16,
+            27
+          ],
+          "finish_endpoint_days": [
+            20,
+            33
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB01",
+          "start_endpoint_days": [
+            18,
+            31
+          ],
+          "finish_endpoint_days": [
+            21,
+            35
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "X02-F",
+          "start_endpoint_days": [
+            20,
+            33
+          ],
+          "finish_endpoint_days": [
+            23,
+            38
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB02",
+          "start_endpoint_days": [
+            21,
+            35
+          ],
+          "finish_endpoint_days": [
+            24,
+            39
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU02",
+          "start_endpoint_days": [
+            23,
+            38
+          ],
+          "finish_endpoint_days": [
+            25,
+            41
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB03",
+          "start_endpoint_days": [
+            24,
+            39
+          ],
+          "finish_endpoint_days": [
+            25,
+            41
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB04",
+          "start_endpoint_days": [
+            25,
+            41
+          ],
+          "finish_endpoint_days": [
+            26,
+            43
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB05",
+          "start_endpoint_days": [
+            25,
+            41
+          ],
+          "finish_endpoint_days": [
+            28,
+            45
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB06",
+          "start_endpoint_days": [
+            26,
+            43
+          ],
+          "finish_endpoint_days": [
+            27,
+            45
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D01",
+          "start_endpoint_days": [
+            27,
+            45
+          ],
+          "finish_endpoint_days": [
+            34,
+            56
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PB07",
+          "start_endpoint_days": [
+            28,
+            45
+          ],
+          "finish_endpoint_days": [
+            30,
+            48
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PB08",
+          "start_endpoint_days": [
+            30,
+            48
+          ],
+          "finish_endpoint_days": [
+            32,
+            52
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PO01",
+          "start_endpoint_days": [
+            32,
+            52
+          ],
+          "finish_endpoint_days": [
+            34,
+            55
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PU03",
+          "start_endpoint_days": [
+            34,
+            55
+          ],
+          "finish_endpoint_days": [
+            35,
+            57
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D04",
+          "start_endpoint_days": [
+            34,
+            56
+          ],
+          "finish_endpoint_days": [
+            37,
+            61
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-P-PC01",
+          "start_endpoint_days": [
+            35,
+            57
+          ],
+          "finish_endpoint_days": [
+            36,
+            59
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "AUDIT-UAA-P-PQ01",
+          "start_endpoint_days": [
+            36,
+            59
+          ],
+          "finish_endpoint_days": [
+            37,
+            60
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D02",
+          "start_endpoint_days": [
+            37,
+            61
+          ],
+          "finish_endpoint_days": [
+            40,
+            66
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "AUDIT-UAA-R-ENGINEERING",
+          "start_endpoint_days": [
+            37,
+            60
+          ],
+          "finish_endpoint_days": [
+            50,
+            82
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "R01",
+          "start_endpoint_days": [
+            40,
+            66
+          ],
+          "finish_endpoint_days": [
+            43,
+            71
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D03",
+          "start_endpoint_days": [
+            43,
+            71
+          ],
+          "finish_endpoint_days": [
+            47,
+            78
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "X02-Q",
+          "start_endpoint_days": [
+            47,
+            78
+          ],
+          "finish_endpoint_days": [
+            49,
+            81
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "U02",
+          "start_endpoint_days": [
+            49,
+            81
+          ],
+          "finish_endpoint_days": [
+            53,
+            87
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "X01-H",
+          "start_endpoint_days": [
+            50,
+            87
+          ],
+          "finish_endpoint_days": [
+            56,
+            96
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "G04",
+          "start_endpoint_days": [
+            53,
+            82
+          ],
+          "finish_endpoint_days": [
+            57,
+            89
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D07",
+          "start_endpoint_days": [
+            56,
+            96
+          ],
+          "finish_endpoint_days": [
+            59,
+            101
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "C05",
+          "start_endpoint_days": [
+            57,
+            89
+          ],
+          "finish_endpoint_days": [
+            59,
+            93
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "U07",
+          "start_endpoint_days": [
+            59,
+            93
+          ],
+          "finish_endpoint_days": [
+            61,
+            97
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D08",
+          "start_endpoint_days": [
+            59,
+            101
+          ],
+          "finish_endpoint_days": [
+            66,
+            111
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "A01",
+          "start_endpoint_days": [
+            61,
+            104
+          ],
+          "finish_endpoint_days": [
+            64,
+            110
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D12",
+          "start_endpoint_days": [
+            64,
+            97
+          ],
+          "finish_endpoint_days": [
+            68,
+            104
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D15",
+          "start_endpoint_days": [
+            66,
+            111
+          ],
+          "finish_endpoint_days": [
+            67,
+            113
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D09",
+          "start_endpoint_days": [
+            67,
+            113
+          ],
+          "finish_endpoint_days": [
+            71,
+            120
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "A02",
+          "start_endpoint_days": [
+            68,
+            110
+          ],
+          "finish_endpoint_days": [
+            71,
+            115
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D11",
+          "start_endpoint_days": [
+            71,
+            115
+          ],
+          "finish_endpoint_days": [
+            74,
+            121
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D10",
+          "start_endpoint_days": [
+            71,
+            120
+          ],
+          "finish_endpoint_days": [
+            76,
+            128
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U06",
+          "start_endpoint_days": [
+            74,
+            121
+          ],
+          "finish_endpoint_days": [
+            78,
+            128
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "U04",
+          "start_endpoint_days": [
+            76,
+            128
+          ],
+          "finish_endpoint_days": [
+            81,
+            136
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "D05",
+          "start_endpoint_days": [
+            78,
+            128
+          ],
+          "finish_endpoint_days": [
+            82,
+            135
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "U03",
+          "start_endpoint_days": [
+            81,
+            135
+          ],
+          "finish_endpoint_days": [
+            85,
+            142
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "X03",
+          "start_endpoint_days": [
+            82,
+            136
+          ],
+          "finish_endpoint_days": [
+            86,
+            143
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D16",
+          "start_endpoint_days": [
+            85,
+            142
+          ],
+          "finish_endpoint_days": [
+            88,
+            147
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "U05",
+          "start_endpoint_days": [
+            86,
+            143
+          ],
+          "finish_endpoint_days": [
+            88,
+            147
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "D13-T",
+          "start_endpoint_days": [
+            88,
+            147
+          ],
+          "finish_endpoint_days": [
+            89,
+            149
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D13-M",
+          "start_endpoint_days": [
+            88,
+            147
+          ],
+          "finish_endpoint_days": [
+            91,
+            152
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E10",
+          "start_endpoint_days": [
+            89,
+            149
+          ],
+          "finish_endpoint_days": [
+            91,
+            153
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "D14",
+          "start_endpoint_days": [
+            91,
+            152
+          ],
+          "finish_endpoint_days": [
+            96,
+            160
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "I01",
+          "start_endpoint_days": [
+            91,
+            153
+          ],
+          "finish_endpoint_days": [
+            96,
+            162
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "I02",
+          "start_endpoint_days": [
+            96,
+            162
+          ],
+          "finish_endpoint_days": [
+            100,
+            169
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "I04",
+          "start_endpoint_days": [
+            96,
+            167
+          ],
+          "finish_endpoint_days": [
+            100,
+            175
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A03-R",
+          "start_endpoint_days": [
+            100,
+            175
+          ],
+          "finish_endpoint_days": [
+            107,
+            186
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I03",
+          "start_endpoint_days": [
+            100,
+            169
+          ],
+          "finish_endpoint_days": [
+            109,
+            184
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A03-W",
+          "start_endpoint_days": [
+            107,
+            186
+          ],
+          "finish_endpoint_days": [
+            109,
+            189
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "U08",
+          "start_endpoint_days": [
+            109,
+            189
+          ],
+          "finish_endpoint_days": [
+            112,
+            194
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "I05",
+          "start_endpoint_days": [
+            109,
+            184
+          ],
+          "finish_endpoint_days": [
+            113,
+            191
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D17",
+          "start_endpoint_days": [
+            112,
+            194
+          ],
+          "finish_endpoint_days": [
+            116,
+            201
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A04",
+          "start_endpoint_days": [
+            113,
+            191
+          ],
+          "finish_endpoint_days": [
+            117,
+            198
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "G05",
+          "start_endpoint_days": [
+            116,
+            160
+          ],
+          "finish_endpoint_days": [
+            120,
+            167
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R06",
+          "start_endpoint_days": [
+            117,
+            198
+          ],
+          "finish_endpoint_days": [
+            122,
+            206
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "D18",
+          "start_endpoint_days": [
+            120,
+            206
+          ],
+          "finish_endpoint_days": [
+            123,
+            211
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "E01-BASE",
+          "start_endpoint_days": [
+            122,
+            201
+          ],
+          "finish_endpoint_days": [
+            125,
+            207
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E09",
+          "start_endpoint_days": [
+            123,
+            207
+          ],
+          "finish_endpoint_days": [
+            126,
+            212
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E02",
+          "start_endpoint_days": [
+            125,
+            211
+          ],
+          "finish_endpoint_days": [
+            127,
+            215
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "R07",
+          "start_endpoint_days": [
+            126,
+            212
+          ],
+          "finish_endpoint_days": [
+            128,
+            216
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R04",
+          "start_endpoint_days": [
+            127,
+            215
+          ],
+          "finish_endpoint_days": [
+            130,
+            221
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A05",
+          "start_endpoint_days": [
+            128,
+            216
+          ],
+          "finish_endpoint_days": [
+            132,
+            223
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "R03",
+          "start_endpoint_days": [
+            130,
+            221
+          ],
+          "finish_endpoint_days": [
+            135,
+            229
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "A06",
+          "start_endpoint_days": [
+            132,
+            223
+          ],
+          "finish_endpoint_days": [
+            135,
+            228
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "A07",
+          "start_endpoint_days": [
+            135,
+            228
+          ],
+          "finish_endpoint_days": [
+            140,
+            236
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E04",
+          "start_endpoint_days": [
+            135,
+            229
+          ],
+          "finish_endpoint_days": [
+            141,
+            239
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "E06",
+          "start_endpoint_days": [
+            140,
+            236
+          ],
+          "finish_endpoint_days": [
+            145,
+            245
+          ],
+          "slot_low": 1,
+          "slot_high": 1
+        },
+        {
+          "id": "E03",
+          "start_endpoint_days": [
+            141,
+            239
+          ],
+          "finish_endpoint_days": [
+            144,
+            245
+          ],
+          "slot_low": 2,
+          "slot_high": 2
+        },
+        {
+          "id": "R02",
+          "start_endpoint_days": [
+            144,
+            245
+          ],
+          "finish_endpoint_days": [
+            150,
+            255
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E08",
+          "start_endpoint_days": [
+            145,
+            245
+          ],
+          "finish_endpoint_days": [
+            147,
+            248
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "E05",
+          "start_endpoint_days": [
+            147,
+            248
+          ],
+          "finish_endpoint_days": [
+            151,
+            256
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        },
+        {
+          "id": "R05",
+          "start_endpoint_days": [
+            150,
+            255
+          ],
+          "finish_endpoint_days": [
+            154,
+            262
+          ],
+          "slot_low": 2,
+          "slot_high": 1
+        },
+        {
+          "id": "E07",
+          "start_endpoint_days": [
+            151,
+            256
+          ],
+          "finish_endpoint_days": [
+            153,
+            260
+          ],
+          "slot_low": 1,
+          "slot_high": 2
+        }
+      ],
+      "checks": {
+        "dag": true,
+        "known_dependencies": true,
+        "precedence": true,
+        "capacity_no_overlap": true,
+        "effort_sum": true,
+        "single_seat_sum_equals_makespan": false,
+        "parents_and_children_not_double_counted": true
+      }
+    }
+  },
+  "without_maintenance_reserve_summaries": {
+    "public_baseline_R_pending": {
+      "effort": [
+        292,
+        496
+      ],
+      "makespan_endpoint_workdays": {
+        "1": [
+          292,
+          496
+        ],
+        "2": [
+          147,
+          249
+        ]
+      }
+    },
+    "with_conditional_R_ready": {
+      "effort": [
+        305,
+        518
+      ],
+      "makespan_endpoint_workdays": {
+        "1": [
+          305,
+          518
+        ],
+        "2": [
+          153,
+          260
+        ]
+      }
+    }
+  },
+  "reference_algorithm": {
+    "kind": "deterministic list scheduling on frozen dependencies",
+    "priorities": [
+      "维护收尾预留",
+      "S01/S02先行",
+      "C合同",
+      "UAA公共基础lane及祖先",
+      "R测试输入到位时的条件工程lane",
+      "其余ready任务按发布优先级与剩余关键链"
+    ],
+    "atomic_R_rule": "R为整合联调批次，内部阶段依条件册，不为pre_apply伪造单独天数。",
+    "audit_task_ids": "AUDIT-*仅排程分组，不新增正式工作包或子出口；普通子出口替代父价，E01-BASE单列旧其他provider基价，C/P/R独立overlay。",
+    "validation": [
+      "所有引用/依赖无环",
+      "父子不重复计价",
+      "总工作量与唯一注册表相等",
+      "每个依赖完成后才开工",
+      "任一资源槽不重叠",
+      "单席工作期等于总投入",
+      "R待条件不阻断公共路线"
+    ],
+    "reproduction": "repository-local ignored .codex/audits/uaa-estimated-schedule-20261112/calculate-schedule.py --source-ref a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
+    "runtime_acceptance_claimed": false
+  },
+  "primary_relative_weeks": {
+    "S01": {
+      "start": [
+        1,
+        1
+      ],
+      "finish": [
+        2,
+        3
+      ]
+    },
+    "S02": {
+      "start": [
+        2,
+        4
+      ],
+      "finish": [
+        4,
+        7
+      ]
+    },
+    "S03": {
+      "start": [
+        5,
+        8
+      ],
+      "finish": [
+        17,
+        28
+      ]
+    },
+    "S04": {
+      "start": [
+        6,
+        10
+      ],
+      "finish": [
+        21,
+        34
+      ]
+    },
+    "S05": {
+      "start": [
+        21,
+        34
+      ],
+      "finish": [
+        26,
+        42
+      ]
+    },
+    "S06": {
+      "start": [
+        26,
+        42
+      ],
+      "finish": [
+        33,
+        54
+      ]
+    },
+    "S07": {
+      "start": [
+        33,
+        55
+      ],
+      "finish": [
+        35,
+        58
+      ]
+    },
+    "S08": {
+      "start": [
+        35,
+        58
+      ],
+      "finish": [
+        43,
+        71
+      ]
+    },
+    "S09": {
+      "start": [
+        43,
+        71
+      ],
+      "finish": [
+        49,
+        82
+      ]
+    },
+    "S10": {
+      "start": [
+        49,
+        82
+      ],
+      "finish": [
+        53,
+        89
+      ]
+    },
+    "S11": {
+      "start": [
+        53,
+        89
+      ],
+      "finish": [
+        55,
+        94
+      ]
+    },
+    "S12": {
+      "start": [
+        56,
+        94
+      ],
+      "finish": [
+        58,
+        98
+      ]
+    },
+    "S13": {
+      "start": [
+        58,
+        99
+      ],
+      "finish": [
+        59,
+        100
+      ]
+    },
+    "C_public_contract": {
+      "finish": [
+        5,
+        8
+      ]
+    },
+    "P_public_dual_mode_functional": {
+      "finish": [
+        13,
+        21
+      ]
+    },
+    "R_enterprise_uaa_engineering_closeout_reference": {
+      "finish": [
+        16,
+        25
+      ]
+    }
+  }
 }

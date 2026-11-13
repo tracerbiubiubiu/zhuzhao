@@ -8909,7 +8909,8 @@
         "E01-UAA-P",
         "E01-UAA-R"
       ],
-      "current_design_ref": "docs/design/uaa-governance-integration.md"
+      "current_design_ref": "docs/design/uaa-governance-integration.md",
+      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json"
     },
     {
       "source_id": "P6-T109",
@@ -9798,7 +9799,7 @@
       "disposition": "rewrite",
       "disposition_scope": "保留已点名业务效果，补明确职责/决策/交付；不是新增第117–119原表项",
       "rationale": "这是后来追加的跨行审计承接，不是原表第117个触发；指出“核契约就把功能关账”不合理，真实接入效果必须有逐provider交付。",
-      "bounded_current_condition": "其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为企业模式首次正式激活硬出口，不能用其他real代验。C新增2–3日，P/R未计价待拆重复估。",
+      "bounded_current_condition": "其他provider从P6.1核合同并P7至少一real；UAA另有C/P/R跨阶段窗口，R为企业模式首次正式激活硬出口，不能用其他real代验。C新增2–3日，P/R依唯一注册表已补估，真实范围变化另复核。",
       "existing_evidence": [
         {
           "repo": "zhuzhao",
@@ -9897,7 +9898,8 @@
         "E01-UAA-P",
         "E01-UAA-R"
       ],
-      "current_design_ref": "docs/design/uaa-governance-integration.md"
+      "current_design_ref": "docs/design/uaa-governance-integration.md",
+      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json"
     }
   ],
   "integration_changes": [
