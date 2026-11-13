@@ -4,7 +4,7 @@
 
 ## 从这里开始
 
-- **核逐次要求是否处理**：先读[当前全会话再核](conversation-reaudit.md)及[93点当前复核矩阵](conversation-reaudit.json)，再查[固定原始对账](user-requirements-reconciliation.md)。当前覆盖65条用户输入及后继来源，旧32条/原U63窗口不自动覆盖后续；消息有去向不等于详设、实现或真实启用完成。
+- **核逐次要求是否处理**：原截至F003的65条输入/93点见[全会话再核](conversation-reaudit.md)及[矩阵](conversation-reaudit.json)，后继F004工单运营与F005公开展示/测试资源前提见[续源索引](planning-followups.json)、[新场景](../design/ticket-operations-supplement.md)和[展示方案](../guides/open-source-presentation.md)。旧窗口不自动覆盖之后输入；消息有去向不等于详设、实现或真实启用完成。
 - **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)、[剩余决策议程](owner-decision-agenda.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。议程13组仍是建议，不增加正式已确认项。
 - **查已实现能力与开放债**：读[项目控制台](11-project-control.md)的能力矩阵、健康状态和迁移地图，再进入对应模块。
 - **查后续范围/先后/新增差额**：读[总账](planning-backlog.md)、[执行排期](execution-schedule.md)与[互通增量](capability-interconnect-supplement.md)。业务T0未启动；CE五项已按有限范围计价，旧价和当前总价均不包干全部未来场景。

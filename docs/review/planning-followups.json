@@ -129,6 +129,50 @@
         "owner_recommendations_approved": false,
         "business_implementation_started": false
       }
+    },
+    {
+      "id": "F004-ticket-operations",
+      "source": {
+        "message_id": "01a1d516-482d-7dc0-b071-f807cd0176e2",
+        "kind": "user_scenario_and_request_for_advice",
+        "summary": "主责/知会、范围派单、业务管理员干预、响应与处置指标、逐流程通知、AL/设备权限和按职责仪表盘"
+      },
+      "design_ref": "docs/design/ticket-operations-supplement.md",
+      "decision_state": "new_recommendations_not_owner_approved",
+      "implementation_state": "not_started",
+      "pricing_state": "new_details_require_bounded_reestimate_at_named_gates",
+      "pending_questions": [
+        "设备登录信息首期是否仅地址与可选账号，还是另接专业凭据平台",
+        "类型业务管理员是否继续遵守类型范围，需全量时显式授权"
+      ],
+      "approval_boundary": "本条为随手场景/建议请求，责任人笔误按后半句候选理解；未把助手轮询/指标/管理员方案或两个未答问题视为批准。已有B/UX/K2继续有效。"
+    },
+    {
+      "id": "F005-public-readmes-and-test-resources",
+      "source": {
+        "message_id": "01a1d521-9c6d-75e3-9f16-611e66643c0c",
+        "kind": "explicit_document_work_and_precondition_correction",
+        "summary": "现有开发栈和卷全为测试可重建；重核工程/目录方案、命名建议、五仓README/英文和开源传播建议"
+      },
+      "confirmed_resource_precondition": "本项目现有测试栈/卷允许精确重建，不要求保留或先迁移测试数据；不涉及无关资源/生产；本次README不需要先删除旧栈。",
+      "authorized_work": [
+        "五仓中英文README",
+        "合成展示素材",
+        "上手/贡献与问题PR入口",
+        "工程方案索引与命名/传播建议",
+        "明确本条与F004候选的状态边界"
+      ],
+      "implementation_state": "documentation_and_community_assets_only",
+      "scope_boundary": "没有批准F004业务候选、Q01–Q13、新品牌、远端重命名、生产部署或向他人发消息；旧当前栈保护是当时动作，不作为本项目测试卷永久保留要求。",
+      "design_ref": "docs/guides/open-source-presentation.md",
+      "validation": {
+        "state": "verified_local_document_and_community_asset_delivery",
+        "report_ref": "docs/review/reports/readme-refresh-2026-11-13.md",
+        "five_repo_runtime_gates": "PASS_existing_product_not_new_business",
+        "readme_command_smoke": "PASS_fresh_owned_core_DB_and_exact_utils_release_example",
+        "remote_publication": "NOT_DONE",
+        "F004_and_prior_agenda_approvals": "UNCHANGED_PENDING"
+      }
     }
   ]
 }

@@ -1,5 +1,7 @@
 # 开发与操作指南
 
+面向开源访客的说明从[主仓README](../../README.md)进入；维护公开入口、命名和社区准备见[开源展示指南](open-source-presentation.md)。参与代码或文档贡献见[贡献指南](../contributing.md)。
+
 从 [开发指南](development.md) 开始：准备工具 → 确认环境归属 → 依赖与迁移 → 启动 → 验证。需要部署容器、恢复数据或处置账号时转 [运维入口](../ops/README.md)。
 
 指南说明“怎么做”；模块内部原理见 [模块导读](../modules/README.md)，API 返回约定见 [契约入口](../api/README.md)。前端、任务服务和动态数据服务的本仓步骤分别由其自身 docs 维护。

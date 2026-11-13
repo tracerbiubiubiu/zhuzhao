@@ -5,7 +5,7 @@
 
 ## 〇、开发依赖与宿主应用（2026-11-12版本维护对齐）
 
-已有PG15/Redis6.2环境先执行[数据升级契约](../design/component-upgrade-data-contract.md)，禁止直接用下面的`up`把新空卷当成升级。旧卷保留，但当前PG18/Redis8模板已经改用新卷；同project不代表同一数据源。
+**2026-11-13现行前提**：所有者确认现有开发栈/数据卷均为可丢弃测试环境，可按项目精确重建，再在空库执行迁移，不要求保留旧测试数据。PG18/Redis8模板使用新卷，同project不代表同一数据源；重建要核清Compose声明及旧遗留卷，不把空库称作存量迁移成功。只有需要保留数据的目标环境才须先执行[数据升级契约](../design/component-upgrade-data-contract.md)；生产及其他项目不在本次测试重建授权内。
 
 常用宿主开发形态：主仓 PG/Redis（5432/6379）、activelist PG（15432）；应用为主仓 `make dev`（33333）、AL `make build` 后宿主进程（18081）、SQLite taskrunner 宿主进程（18080），以及 UI `pnpm dev`（4000）。各仓配置/密钥按各自文档注入，环境差异走 env，不改 `configs/config.yaml` 基线。E000001 终态与改密权限以 [runbook §4](runbook.md) 为准。
 
