@@ -1,6 +1,6 @@
 # 架构与设计解释
 
-后继F004的主责、范围派单、业务管理员、时长度量、通知和AL/设备/仪表盘权限见[工单运营补充](ticket-operations-supplement.md)：这是待确认/补估的新场景，不据公开README更新推定业务策略已经批准。
+后继F004的主责、范围派单、业务管理员、时长度量、通知和AL/设备/仪表盘权限见[工单运营补充](ticket-operations-supplement.md)：F006已确认五组方向，实际配置与新增净估仍按窗口处理。F006另确认Q01–Q06方向，要求[UAA离线mock](examples/uaa-reference-mock/README.md)及[统一日志审计设计](unified-observability-audit.md)；不要求导出公司原文，不表示产品或真实接入已经完成。
 
 > **用途**：定位当前架构解释、目标设计及后继决策。**状态**：各文档分别标注设计/实施/验证状态；本索引不证明能力已交付。**权威**：当前事实查[模块](../modules/README.md)/[控制台](../review/11-project-control.md)，目标合同按下方归属引用。
 
@@ -40,6 +40,7 @@
 | 工单、风险、人员生命周期 | [业务生命周期](business-lifecycle-contracts.md) | 定义/实例/权限、事务和候选接口；准确DTO/迁移按批冻结 |
 | 私有模块和内网数据接入 | [扩展兼容](extension-compatibility.md)、[adapter迁移](intranet-adapter-migration.md) | manifest/支持组合、写主/来源和所选真实provider |
 | 企业统一认证 | [UAA治理/双模式](uaa-governance-integration.md) | 独立与企业分别验、来源/撤权、最小UI/运维和真实激活条件 |
+| 统一日志与业务审计 | [日志审计合同](unified-observability-audit.md)、[standards §6](../standards.md#6-可观测性) | 可信上下文、敏感值/日志权限、本地持久与跨仓交接、查询/归档、实际多实例反例；不把trace当业务成功 |
 | AI/MCP与计划确认 | [AI调用](ai-invocation-contract.md)、[MCP首批](mcp-first-contract.md)/[Schema样本](mcp-first-contract.schema.json)、[定时AI确认](scheduled-ai-confirmation.md) | 精确批准/grant、数据ACL、协议/SDK互操作及适用预算 |
 | 设备薄模块 | [设备合同](device-module-contract.md) | 目录/状态/人工入口；不承诺异构设备SSO |
 | 版本与数据升级 | [版本现代化](dependency-modernization.md)、[恢复契约](component-upgrade-data-contract.md) | 准确制品/数据组合、停写/恢复和回退边界；[工具说明](../../deployments/tools/README.md) |

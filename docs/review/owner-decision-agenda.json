@@ -1,107 +1,224 @@
 {
   "schema_version": 1,
   "date": "2026-11-13",
-  "purpose": "当前剩余决策、条件候选和未来实际配置的阅读议程；不新增13个正式决策或开工门禁，不替代已有决策册。",
+  "purpose": "已确认方向与剩余真实配置的阅读议程；Q01–Q06及F004五组方向已有准确公开确认，不新增11个正式决策或开工门禁，不替代决策册。",
   "source": {
     "request_user_message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
     "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af706bb724487d0b73dbd0396f8e894",
-    "latest_user_message_id": "01a1d4f3-151f-76f2-a149-eb1a7596925d",
-    "latest_user_action": "只要求再核验、落档；未回答或批准上一轮建议"
+    "latest_user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+    "latest_user_action": "明确按建议确认上一条五组及本条前六组方向；真实材料后和公开前事项未批准，未授权启动业务实现。",
+    "confirmed_recommendation_public_assistant_message_ids": [
+      "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+      "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+    ],
+    "direction_confirmation": {
+      "date": "2026-11-13",
+      "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+      "scope_text": "现在需要确认的按你建议看起来就不错包括上条5个和现在6个",
+      "ticket_operations_recommendation_message_id": "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+      "agenda_recommendation_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48",
+      "boundary": "只承接实际公开final中的五组和六组建议；原议程中未展示的附加参数不因本次答复自动获批。"
+    }
   },
   "formal_decisions_ref": "planning-decisions.json",
   "counts": {
-    "formal_decisions": 34,
-    "owner_confirmed": 32,
-    "formal_open_groups": 2,
+    "formal_groups_still_needing_real_binding": 2,
     "agenda_groups": 13,
-    "direction_candidates": 6,
+    "direction_confirmed_groups": 6,
+    "direction_candidates": 0,
+    "ticket_operations_confirmed_groups": 5,
+    "latest_user_confirmed_direction_groups": 11,
     "real_input_windows": 7
   },
-  "approval_boundary": "B09已经明确确认；本议程Q01–Q13全部尚未逐项批准。独立/企业双模式、mock、专业供给优先、批量标签等已有原则继续生效；不能把新审计指令当作业务取舍或实施授权。",
+  "approval_boundary": "本次明确确认F004五组和Q01–Q06六组方向。B08模板方向、UAA-S02/S03倾向和用途已确认，但真实映射/名单/参数及企业激活未批准；Q07–Q13保持待材料或实际改名前确认。B/UX/K2及mock、独立模式等既定原则继续有效。本次不启动业务开发，不改变价格/DAG或代替实际授权。",
   "items": [
     {
       "id": "Q01",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "风险通知模板 · B08",
       "scenario": "同一天新增很多风险；一个风险由安全组维护，却影响研发和运维两个部门。",
-      "recommendation": "紧急/高档创建或升档即时站内通知，中/低每日汇总，首次超期即时；同类自动提醒每日最多一次。指派、交接、接受待办和决定即时；人工催办维持独立60秒节流。建议平台紧急/高档触发一级负责人抄送，按受影响的实体部门上溯，多部门分别解析后去重；必须具有当前资源资格。建议模板：Asia/Shanghai 09:00汇总，提前3天和1天临期提醒，紧急/高档即时站内消息不静默。",
-      "timing": "现在确认模板；实际源级别映射和负责人清单在第一条生产通知前核验。",
-      "boundary": "高级别风险抄送一级负责人已确认，不重新问要不要。时间、临期窗及平台档位阈值在本清单中仍是建议。源五级映射不能凭空编造；缺合法收件人留下待配置事项。",
+      "recommendation": "已确认紧急/高风险即时通知，中/低风险每日汇总，临期提前3天和1天提醒，同类自动提醒每日最多一次；高级别风险抄送负责人沿用既有确认。",
+      "timing": "方向不再待问；实际源级别映射、组织/负责人集合和运行配置在第一条生产通知启用前核验绑定。",
+      "boundary": "方向确认不是首条生产通知启用批准。源映射和真实负责人不能猜；收件人仍须当前资源资格，缺合法收件人留下待配置事项。人工催办沿用原独立节流，不因本次确认被改写。",
       "source": "business-lifecycle-contracts.md §9.2；planning-decisions.json B08/O09",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
       "formal_decision_ids": [
         "B08"
-      ]
+      ],
+      "confirmed_policy": [
+        "紧急/高风险即时通知，中/低风险每日汇总",
+        "临期提前3天、1天提醒",
+        "同类自动提醒每日最多一次",
+        "高级别风险抄送负责人保持既有确认，不重新问是否建设"
+      ],
+      "remaining_inputs": [
+        "实际源五级到平台四档的映射及负责人抄送触发范围",
+        "受影响组织锚点、当前合格负责人集合与多部门去重",
+        "每日汇总时区/时刻、必要静默例外和具体渠道/模板配置"
+      ],
+      "unconfirmed_additional_candidates": [
+        "旧议程的Asia/Shanghai 09:00汇总未在本次final展示，仍是候选",
+        "首次超期即时、紧急/高即时通知一律不静默等旧附加规则未由本次答复自动批准"
+      ],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q02",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "UAA权限同步故障 · UAA-S02",
       "scenario": "用户仍登录，但已确认企业权限同步故障，此时想查风险并派整改单。",
-      "recommendation": "先暂停受管写操作；公司允许且仍能证明授权新鲜度时，仅保留该窗口内获准只读。窗口到期或无法证明新鲜度即停止受管能力。",
-      "timing": "现在选可用性倾向；具体期限及故障判定等公司R08条件核验后绑定。",
-      "boundary": "不改变独立模式。文档的30分钟只是例子，不是生产SLA。SOC数据陈旧时允许手工协作的B09不能绕过UAA授权失效。",
+      "recommendation": "已确认暂停受管写操作；公司允许且仍能证明授权有效时，暂时保留获准只读；独立模式保持原有能力。",
+      "timing": "不再重问可用性倾向；公司R08条件核验后，在企业正式激活前绑定故障判定、新鲜度窗口和具体动作。",
+      "boundary": "公司更严格的要求优先；无法证明有效性或窗口到期停止受管能力，不永久沿用旧授权。SOC来源陈旧可手工协作的B09不能绕过UAA授权失效，企业激活仍须真实验收。",
       "source": "uaa-real-integration-conditions.json owner_scenarios UAA-S02/R08",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
       "formal_decision_ids": [
         "UAA-P01"
-      ]
+      ],
+      "confirmed_policy": [
+        "权限同步故障先暂停受管写操作",
+        "只在公司允许且能证明授权有效时暂留获准只读",
+        "独立模式原有能力不受这一企业故障策略改变"
+      ],
+      "remaining_inputs": [
+        "公司最大撤权/授权新鲜度要求与可证明的故障判定",
+        "窗口内允许的只读动作和到期行为",
+        "真实企业激活配置及验证结果"
+      ],
+      "unconfirmed_additional_candidates": [
+        "30分钟仅为旧说明例子，不是本次批准的生产窗口"
+      ],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q03",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "UAA故障的维护恢复入口 · UAA-S03",
       "scenario": "企业认证故障，普通员工无法登录；维护者需要修连接配置和核对同步状态。",
-      "recommendation": "如公司允许，给事先批准的具名维护者提供受限后台操作或CLI，仅用于恢复配置、检查和对账，带有效期、启停责任与审计。",
-      "timing": "现在确认用途边界；实际账号、操作、期限和责任人在企业激活前批准。",
-      "boundary": "不自动向所有员工开放本地密码登录，不因维护身份附送派单等业务权；扩大到业务应急授权必须另给具体方案和估算。",
+      "recommendation": "已确认事先授权的维护者可经受限后台或CLI修复配置、检查同步及对账；实际账号、期限和操作清单在企业模式启用前确定。",
+      "timing": "不再重问恢复用途方向；企业激活前按公司约束批准实际账号、允许操作、有效期及启停责任。",
+      "boundary": "不自动向所有员工开放本地密码登录，不因维护身份附送派单或修改业务授权的能力；恢复限制须后端/受审CLI实施。扩大到业务应急授权另给具体方案和增量。",
       "source": "uaa-real-integration-conditions.json owner_scenarios UAA-S03",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
       "formal_decision_ids": [
         "UAA-P01"
-      ]
+      ],
+      "confirmed_policy": [
+        "只给事先授权的维护者提供受限恢复入口",
+        "用途限修配置、查同步和对账",
+        "实际账号、期限和允许操作清单在企业启用前确定"
+      ],
+      "remaining_inputs": [
+        "公司允许的应急恢复方式",
+        "具名维护者与账号清单",
+        "受控操作清单、有效期、启停责任和审计/演练记录"
+      ],
+      "unconfirmed_additional_candidates": [],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q04",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "旧数据迁移与跨指纹合并 · E10",
       "scenario": "已有风险Excel或旧工单需要迁移；两个来源用不同指纹报告同一风险。",
-      "recommendation": "风险Excel承接已确认的条件需求：有真实存量时优先固定模板、逐行校验报告及一次性私有迁移工具。旧工单导入先确认是否要迁在途事项和哪些历史；没有实际迁移诉求则不进入首批。跨指纹先保留关联、不要自动吞并；确有人工合并需求时给主从、状态、owner、工单冲突与源再报归属的预览。",
-      "timing": "P6.1出口逐项裁决；获准实施在P6.E，以独立子估算/子窗口验收。",
-      "boundary": "需要你提供的是有无存量、量级及一两个冲突场景的文字说明。E10的2–4日只覆盖调查、样本及子估，不能算三套产品已实现或完整计价。Excel效果不能被普通feed接口冒充。",
+      "recommendation": "已确认真实内网风险Excel/旧工单迁入采用固定模板和逐行校验方向；跨来源疑似重复风险先关联，人工合并须预览冲突。实际是否有存量及迁入范围仍待材料。",
+      "timing": "P6.1出口核真实存量、范围和子估；获选有限实施在P6.E以独立子窗口验收。",
+      "boundary": "这里指真实内网业务存量，不是已获准重建的测试库/卷。风险Excel既有条件需求继续承接，不能用普通feed冒充；E10的2–4日只计调查/样本/子估，获选功能仍需独立净估。",
       "source": "business-lifecycle-contracts.md §13；continuity P6-MIG-01/02/03；backlog E10",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
-      "formal_decision_ids": []
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
+      "formal_decision_ids": [],
+      "confirmed_policy": [
+        "真实业务迁入采用固定模板和逐行校验",
+        "跨来源疑似重复风险先关联，不自动吞并",
+        "人工合并先预览状态、责任及关联工单等冲突"
+      ],
+      "remaining_inputs": [
+        "内网是否确有风险Excel或旧工单存量及大致量级",
+        "需迁入的在途事项、历史范围、字段/来源标识与样本",
+        "一两个跨来源同风险及状态/owner/工单冲突案例"
+      ],
+      "unconfirmed_additional_candidates": [
+        "未确认实际已有存量、全部历史迁入、无界自动合并或三套完整产品实现"
+      ],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q05",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "工单条件小件 · U03/E05",
       "scenario": "用户发错普通评论想修改或撤回；管理员想批量转派或关闭；业务提出完单评分。",
-      "recommendation": "评论允许作者编辑自己的普通评论并保留版本；撤回留下记录，原内容按受权审计和保留规则处理，不静默抹掉证据。批量标签继续按必交范围；后续优先批量分派，批量关闭须有真实需求、预览及逐项结果。评价先确认受众、指标用途和后续动作，没有用途不进首批。",
-      "timing": "现在可定方向；U03/P6.3开工前冻结有限范围，超过现有薄包的部分补子估。",
-      "boundary": "这些是旧条件候选，不是本会话已批准全部实施的功能。类型克隆、创建范围等已承接项不借此重新打开；动态列和组件细节由实施者负责。",
+      "recommendation": "已确认作者可修改普通评论并保留版本，撤回留下记录；批量分派优先，批量关闭需预览和逐项结果；完单评分先明确用途。批量标签仍按已定必交范围。",
+      "timing": "方向不再待问；U03/P6.3开工前冻结有限操作、可见性/保留规则与净增范围，超出现有薄包补子估。",
+      "boundary": "当前确认不等于所有条件小件整包立即实现或完整计价。类型克隆、创建范围和批量标签等原承接项保持；评论历史读取仍走当前资源/字段权限。",
       "source": "continuity P6-OPT-07/FUT-F15；planning-backlog.json U03",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
-      "formal_decision_ids": []
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
+      "formal_decision_ids": [],
+      "confirmed_policy": [
+        "作者修改普通评论须保留版本；撤回留痕",
+        "批量分派优先，批量关闭具备预览和逐项结果",
+        "完单评分先明确受众、用途和后续动作，不直接建设",
+        "批量标签沿用既有必交，不重新确认"
+      ],
+      "remaining_inputs": [
+        "评论版本/撤回原内容的受权审计及实际保留规则",
+        "批量分派/关闭的实际使用场景、对象范围和失败处置",
+        "评分是否存在明确用途及获选有限效果"
+      ],
+      "unconfirmed_additional_candidates": [
+        "未批准无痕删除证据、无预览批量关闭或没有用途的完整评分产品"
+      ],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q06",
-      "group": "现在可定方向",
+      "group": "已确认方向，按窗口绑定",
       "title": "更远的工单协作候选 · E05",
       "scenario": "用户希望换设备继续草稿、在线预览Office、一个表单填多台设备，或者让供应商直接进入系统。",
-      "recommendation": "首批继续本地草稿与授权下载；Office优先复用专业预览；供应商协作先由内部责任人承接；应用开通等优先已有审批平台。服务端草稿、重复明细/组合模板、外部门户、业务删除恢复都保留具体候选，等真实缺口再选择，暂不直接建设整套产品。",
-      "timing": "现在可确认薄路径；P7出口逐项价值/供给裁决，获准增量在P10独立估算和交付。",
-      "boundary": "E05的4–8日只覆盖裁决/有限adapter，不覆盖所有产品。延期候选不等于已实现，也不擅自取消原有必需业务效果；票据保留期限和恢复窗口等真实政策另列。",
+      "recommendation": "已确认首期本地草稿和授权下载；Office预览复用专业服务，供应商协作先由内部人员承接。跨端草稿、重复明细、外部门户、业务删除恢复待真实场景后选具体增量。",
+      "timing": "薄路径方向不再待问；P7出口逐项核价值/供给，获选增量在P10独立估算和交付。",
+      "boundary": "E05的4–8日仍只覆盖裁决/有限adapter，不覆盖全部产品。保留原必需业务效果，不因选择薄路径擅自取消；真实Provider、账号/目标名单和新增成本须按窗口核验。",
       "source": "planning-backlog E05；project-evolution-strategy.md §7",
-      "state": "recommendation_unconfirmed",
-      "approval_state": "not_approved_by_owner",
-      "formal_decision_ids": []
+      "state": "owner_confirmed_direction_pending_binding",
+      "approval_state": "owner_confirmed_direction_only",
+      "formal_decision_ids": [],
+      "confirmed_policy": [
+        "首期保持本地草稿和授权下载",
+        "Office预览优先复用专业服务",
+        "供应商协作先由内部人员承接",
+        "跨端草稿/重复明细/外部门户/业务恢复按真实场景选择增量"
+      ],
+      "remaining_inputs": [
+        "专业预览供给与获准展示内容",
+        "跨端、重复明细、外部协作和恢复的真实缺口/受众",
+        "获选范围、保留/恢复政策及有限子估"
+      ],
+      "unconfirmed_additional_candidates": [
+        "未批准全部远期产品立即建设、外部供应商直接开放或具体恢复窗口"
+      ],
+      "approval_source": {
+        "user_message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "recommendation_public_assistant_message_id": "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+      }
     },
     {
       "id": "Q07",
@@ -196,5 +313,6 @@
       "approval_state": "not_approved_by_owner",
       "formal_decision_ids": []
     }
-  ]
+  ],
+  "formal_decision_count_source": "planning-decisions.json#/decisions"
 }

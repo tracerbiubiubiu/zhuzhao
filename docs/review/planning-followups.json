@@ -138,33 +138,63 @@
         "summary": "主责/知会、范围派单、业务管理员干预、响应与处置指标、逐流程通知、AL/设备权限和按职责仪表盘"
       },
       "design_ref": "docs/design/ticket-operations-supplement.md",
-      "decision_state": "new_recommendations_not_owner_approved",
+      "decision_state": "owner_confirmed_five_directions_actual_configuration_pending",
       "implementation_state": "not_started",
       "pricing_state": "new_details_require_bounded_reestimate_at_named_gates",
-      "pending_questions": [
-        "设备登录信息首期是否仅地址与可选账号，还是另接专业凭据平台",
-        "是否在指定类型查看策略中显式配置业务管理职责的实例读取/统计范围（含所管组织内未参与票），经授权和影响预览；既有B01/B03默认保持"
-      ],
-      "approval_boundary": "本条为随手场景/建议请求，责任人笔误按后半句候选理解；未把助手轮询/指标/管理员方案或两个未答问题视为批准。已有B/UX/K2继续有效。",
+      "pending_questions": [],
+      "approval_boundary": "本次后继明确批准五组已展示方向；实际名单/类型字段/阈值、完整净估和实施未因此完成。此前F004/F005未批准的时点保留历史；本次不重新询问B/UX/K2原则。",
       "research_state": "current_source_audit_and_official_practice_comparison_documented_not_real_provider_validation",
-      "policy_candidates_to_freeze": [
-        "已有owner直派；共享同质池轮询或按类型认领的选择、无候选和超时处理",
-        "类型业务管理员的作用组织/实例范围与可补充字段白名单；不天然绕过类型查看策略",
-        "接单与开始是否合并、首组响应/节点/闭环指标和暂停重开口径；K2保持",
-        "逐流程事件及责任/复核/知会通知矩阵；既定强制通知不受普通偏好覆盖"
-      ],
       "latest_verification": {
         "date": "2026-11-13",
         "scope": "F004/F005 recent concerns; existing audit cutoff and approved B/UX/K2 preserved",
         "industry_refs_recorded_in_design": true,
-        "business_choices_fully_confirmed": false,
         "new_details_net_estimate_and_schedule_integrated": false,
         "AL_sensitive_real_enablement": "Before early real sensitive AL data, extract required minimum permission slice, estimate and link dependencies; otherwise synthetic/disabled. X03 private mock not unconditionally blocked by all R06.",
         "AL_read_and_statistics": "Signed actor is not row/field ACL; current signature omits URL query and List has no total. Trusted filtered read and bounded authorized aggregates require named contracts and net estimates.",
-        "F005_boundary": "Five-repo local README/community delivery verified; brand, remote metadata, hosted demo and release not implied.",
+        "F005_boundary": "F005本地文档交付仍已验证；F004五组在本次F006独立确认，非由F005推定；品牌/远端/托管/发布仍未批准。",
         "milestone_freeze": "Freeze minimum durable milestone facts and net estimate before corresponding D02 write implementation; first metric projection semantics by P6.1 exit, not facts after writes ship.",
-        "data_policy_editing": "Schema editing does not grant data-policy administration; sensitive logs/filter/group/cache/download paths require current authorization and redaction."
-      }
+        "data_policy_editing": "Schema editing does not grant data-policy administration; sensitive logs/filter/group/cache/download paths require current authorization and redaction.",
+        "business_directions_confirmed": true,
+        "all_implementation_configuration_bound": false,
+        "confirmation_source": "01a1d580-680f-7db0-8df1-4083012156b1"
+      },
+      "direction_confirmation_source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ]
+      },
+      "approved_directions": [
+        {
+          "id": "F004-01",
+          "summary": "唯一当前责任人、多人知会；owner直派，共享同质池默认轮询，特定类型允许主动认领；无合格对象保留待处理"
+        },
+        {
+          "id": "F004-02",
+          "summary": "指定类型查看策略显式配置所管组织的实例读取/统计及业务管理范围；补描述和获权字段、留痕；不天然越过B03"
+        },
+        {
+          "id": "F004-03",
+          "summary": "简单流程一键接单并开始；分列首次接单响应、节点驻留、处理历时、整单闭环；K2不变"
+        },
+        {
+          "id": "F004-04",
+          "summary": "逐流程通知；待处理给责任人、复核给复核人、知会默认关键结果；既定强制风险通知保留"
+        },
+        {
+          "id": "F004-05",
+          "summary": "设备首期管理地址与必要可选用户名、按权限展示、人工登录；集中凭据需求另接专业平台"
+        }
+      ],
+      "implementation_configuration_windows": [
+        "D03/LS01开工前：指定类型、组织、管理主体、实例与字段动作范围，策略预览与独立授权；UX02个人待办不扩大",
+        "D02相应写路径开工前：最小持久里程碑与净估；P6.1出口前冻结第一组指标投影和暂停/重开口径",
+        "E03/P6.3裁决：哪些类型轮询或认领、合格候选、无人/超时处置及近期或原P8交付净估",
+        "D11/P6.3开工前：有限事件/流程、普通关键结果及渠道配置；既定强制风险通知不受偏好覆盖",
+        "X03/真实敏感数据启用前：可选账号字段、谁能看/打开、最小type/row/field纵切与受权统计净估"
+      ]
     },
     {
       "id": "F005-public-readmes-and-test-resources",
@@ -192,6 +222,80 @@
         "remote_publication": "NOT_DONE",
         "F004_and_prior_agenda_approvals": "UNCHANGED_PENDING"
       }
+    },
+    {
+      "id": "F006-directions-uaa-mock-observability",
+      "source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ],
+        "quote": "现在需要确认的按你建议看起来就不错包括上条5个和现在6个，另外与uaa 的对接在内网，相关文档可能没法直接导出来，但是这里我希望你先按其他的业界实践结合我之前的那个规划，先mock一下。另外我发现之前好像没有提但是十分重要的一点，那就是统一的日志，审计能力。"
+      },
+      "confirmed_direction_groups": {
+        "F004": 5,
+        "agenda_Q01_Q06": 6,
+        "total": 11
+      },
+      "approval_boundary": "批准实际展示的十一组方向；未展示的09:00/时区/首次超期值、真实名单/公司政策/全量未来产品/公开托管仍不推定获准。",
+      "UAA_mock": {
+        "scope": "offline synthetic public contract reference; reuse dual-mode and C/P/R plan",
+        "company_documents_required_now": false,
+        "company_protocol_assumed": false,
+        "product_integration_implemented": false,
+        "real_integration_passed": false,
+        "reference_ref": "docs/design/examples/uaa-reference-mock/README.md",
+        "state": "verified_bounded_offline_reference_not_product_integration",
+        "verification": {
+          "fixed_behaviors_passed": 57,
+          "guard_mutations_caught": 16,
+          "independent_handwritten_cases_passed": 50,
+          "network_or_enterprise_calls": 0,
+          "product_implementation_claimed": false,
+          "historical_red_and_expectation_correction_preserved": true
+        }
+      },
+      "unified_logging_audit": {
+        "requirement_state": "owner_requested_design_and_planning",
+        "design_ref": "docs/design/unified-observability-audit.md",
+        "implementation_state": "planned_not_implemented",
+        "estimate_boundary": "新增有限底座与旧I03/R01/D02/UAA/E09扣重；本轮设计/样例不冒充全五仓运行收口",
+        "estimate_ref": "docs/review/post-baseline-scope-estimates.json",
+        "net_candidate_engineering_days": [
+          22,
+          33
+        ]
+      },
+      "remaining": "Q07–Q13实际材料/新品牌及公开准备继续待对应窗口；F004具体配置和新增净估未全部完成",
+      "validation": {
+        "state": "verified_direction_records_offline_reference_and_bounded_design",
+        "report_ref": "docs/review/reports/uaa-reference-and-audit-design-2026-11-13.md",
+        "historical_source_and_price_cutoffs_preserved": true,
+        "new_business_implementation": false,
+        "remote_mutations": false,
+        "core_existing_product_gates": "PASS: native stages plus253/0/0 acceptance and81 migration pairs; not new UAA or audit implementation",
+        "schedule_effect": "only refreshed UAA condition source digest; effort/DAG/slots unchanged; new F004/OBS integration pending named window"
+      }
+    },
+    {
+      "id": "F007-audit-policy-confirmations",
+      "source": {
+        "message_id": "01a1d590-a47d-7032-9d46-7f9b6cb80500",
+        "kind": "explicit_user_question_reply",
+        "question_item_id": "[\"request_user_input_async\",\"call_3d4523d0a42041ab9dc1874c62fe1cd1\",1]",
+        "answer": "业务历史与专门审计职责分开授权（推荐）"
+      },
+      "confirmed_policy": "业务管理员只看获权对象业务历史；专门审计职责可在明确范围内跨模块检索/导出，真实名单与保留天数部署前绑定",
+      "implementation_state": "planned_not_implemented",
+      "design_ref": "docs/design/unified-observability-audit.md",
+      "still_pending_question": {
+        "question_item_id": "[\"request_user_input_async\",\"call_3d4523d0a42041ab9dc1874c62fe1cd1\",0]",
+        "subject": "两IAM高风险修改本地必需审计失败是否同事务回滚；外部collector失败不阻本地已提交事实",
+        "state": "awaiting_owner_answer"
+      },
+      "approval_boundary": "本答复只批准审计读取用途分权，不视为已回答同批另一条写失败政策，也不绑定真实审计名单/生产保留期"
     }
   ]
 }

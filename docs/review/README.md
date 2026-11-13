@@ -4,8 +4,8 @@
 
 ## 从这里开始
 
-- **核逐次要求是否处理**：原截至F003的65条输入/93点见[全会话再核](conversation-reaudit.md)及[矩阵](conversation-reaudit.json)，后继F004工单运营与F005公开展示/测试资源前提见[续源索引](planning-followups.json)、[新场景](../design/ticket-operations-supplement.md)和[展示方案](../guides/open-source-presentation.md)。旧窗口不自动覆盖之后输入；消息有去向不等于详设、实现或真实启用完成。
-- **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)、[剩余决策议程](owner-decision-agenda.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。议程13组仍是建议，不增加正式已确认项。
+- **核逐次要求是否处理**：原截至F003的65条输入/93点保留在[全会话再核](conversation-reaudit.md)及[矩阵](conversation-reaudit.json)，后继见[续源索引](planning-followups.json)。F006明确确认F004五组及Q01–Q06方向，新增公开UAA mock和统一日志审计；F005公开资产/测试资源前提保持。旧窗口不自动覆盖新输入，方向/样例不等于产品或真实激活。
+- **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)、[剩余决策议程](owner-decision-agenda.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。议程Q01–Q06方向已确认，Q07–Q13及生产实参按窗口绑定，不把13阅读组当新增门禁。
 - **查已实现能力与开放债**：读[项目控制台](11-project-control.md)的能力矩阵、健康状态和迁移地图，再进入对应模块。
 - **查后续范围/先后/新增差额**：读[总账](planning-backlog.md)、[执行排期](execution-schedule.md)与[互通增量](capability-interconnect-supplement.md)。业务T0未启动；CE五项已按有限范围计价，旧价和当前总价均不包干全部未来场景。
 - **复核一个结论**：按下方审查方法与准确时点报告找证据，不需从全部历史流水推导当前状态。
@@ -36,6 +36,8 @@
 ## 企业UAA接入重核
 
 [现行UAA合同](../design/uaa-governance-integration.md)负责完整本地IAM与私有adapter企业模式、来源管理权及撤权边界。E01-UAA-C/P/R各有公共合同、公共实现和条件真实出口；mock长期保留，真实企业激活单独验收，尚未接通不影响独立模式。
+
+F006要求公司文档不可导出时先用公开实践和既有规划，[离线合成mock](../design/examples/uaa-reference-mock/README.md)保存可复验规范化合同，不实现真实IdP/MQ或替代产品P。统一运行日志、可信业务审计与领域事实的分工/缺口/分期见[日志审计设计](../design/unified-observability-audit.md)，其新增范围不能默塞旧G/I/UAA预算；[后继净估册](post-baseline-scope-estimates.json)登记OBS22–33日候选、F004未完净估及P6.0开工前整合窗口，不把旧基线加局部增量当完整新总价。
 
 ## UAA与完整双模式后的全路线再审
 

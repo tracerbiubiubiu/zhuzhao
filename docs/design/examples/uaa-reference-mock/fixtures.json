@@ -1,0 +1,4541 @@
+{
+  "scope": "synthetic_only_single_source",
+  "profile": {
+    "application": "demo-app",
+    "source": "mock-uaa",
+    "managed": [
+      "ticket.list",
+      "ticket.create"
+    ],
+    "local_permissions": {
+      "person-a": [
+        "ticket.list",
+        "ticket.create",
+        "profile.self"
+      ],
+      "person-b": [
+        "profile.self"
+      ]
+    },
+    "local_active": {
+      "person-a": true,
+      "person-b": true
+    },
+    "mapping": {
+      "subject-a": "person-a",
+      "subject-b": "person-b"
+    },
+    "now": 100,
+    "freshness_window": 10,
+    "last_verified": 100,
+    "outage_policy": "read_only_within_window",
+    "recovery_operator": "operator-demo",
+    "recovery_until": 110,
+    "exit_approved": false,
+    "local_credentials_ready": false,
+    "capability_metadata": {
+      "ticket.list": {
+        "effect": "read"
+      },
+      "ticket.create": {
+        "effect": "write"
+      },
+      "profile.self": {
+        "effect": "read"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "U01",
+      "name": "standalone without UAA config keeps local capabilities",
+      "steps": [
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U02",
+      "name": "unapproved takeover does not change mode",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": false,
+          "expect": "needs_approval"
+        },
+        {
+          "op": "mode",
+          "expect": "standalone"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U03",
+      "name": "enterprise projected read permitted but old local managed write is not",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U04",
+      "name": "complete empty user roles removes central rights not restored by local bindings",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-empty-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U05",
+      "name": "complete empty role resources removes capability",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-empty-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "resources": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U06",
+      "name": "incomplete collection cannot imply full empty revoke",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-truncated",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": false,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "reject_incomplete"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U07",
+      "name": "same event replays without a second policy revision",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "duplicate"
+        },
+        {
+          "op": "revisions_equal",
+          "expect": true
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U08",
+      "name": "same event id different payload conflicts",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": false
+            }
+          },
+          "expect": "reject_event_conflict"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U09",
+      "name": "late account state cannot resurrect disabled identity",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-stop",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "active": false
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-late-active",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "ignore_stale"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_disabled"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U10",
+      "name": "equal source version with conflicting value is isolated",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-conflicting-version",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": false
+            }
+          },
+          "expect": "reject_version_conflict"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U11",
+      "name": "other source cannot overwrite managed state",
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "other-source",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_source"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U12",
+      "name": "caller authority is separate from event body",
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_context",
+          "caller": "untrusted"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U13",
+      "name": "application boundary is enforced",
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "other-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_source"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U14",
+      "name": "invalid revision is rejected before state change",
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 0,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_envelope"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U15",
+      "name": "roles received before account/resources wait and later become effective",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "held_dependency"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "held_dependency"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U16",
+      "name": "unknown role cannot keep old managed permission silently",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-unknown-role",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-missing"
+              ]
+            }
+          },
+          "expect": "held_dependency"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "held_sync"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U17",
+      "name": "external role resource cannot create built-in admin semantics",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-built-in",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "superadmin"
+              ]
+            }
+          },
+          "expect": "reject_resource"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U18",
+      "name": "account disable denies immediately before policy reload",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-stop-immediate",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "active": false
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_disabled"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U19",
+      "name": "central active cannot lift local security disable",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "local_active": {
+              "person-a": false,
+              "person-b": true
+            }
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_disabled"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U20",
+      "name": "database acceptance is not effective receipt before projection",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-roles",
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-roles",
+          "expect": "effective"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U21",
+      "name": "policy reload failure leaves pending and blocks old execution",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-reader-create",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list",
+                "ticket.create"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "success": false,
+          "expect": "pending_reload"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "held_sync"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U22",
+      "name": "no business messages is not an outage before freshness expires",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "advance",
+          "seconds": 5,
+          "expect": "advanced"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U23",
+      "name": "expired source freshness is not infinite cached authority",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "advance",
+          "seconds": 11,
+          "expect": "advanced"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "held_stale"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U24",
+      "name": "explicit outage profile allows current read but pauses managed write",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-add-create",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list",
+                "ticket.create"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "outage",
+          "expect": "outage_marked"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "held_outage_write"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U25",
+      "name": "old token or grant does not revive revoked current projection",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-revoked",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "token_valid": true,
+          "grant_valid": true,
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U26",
+      "name": "trusted freshness proof may recover time but cannot grant revoked rights",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-none",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "advance",
+          "seconds": 11,
+          "expect": "advanced"
+        },
+        {
+          "op": "heartbeat",
+          "expect": "verified"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U27",
+      "name": "non-managed local profile capability survives managed read-only takeover",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "profile.self",
+          "expect": "allow"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U28",
+      "name": "recovery operator can inspect but cannot grant business permission",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "recovery",
+          "action": "inspect",
+          "expect": "recovery_allowed"
+        },
+        {
+          "op": "recovery",
+          "action": "grant_roles",
+          "expect": "deny_recovery_action"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U29",
+      "name": "ordinary employee and expired recovery entry are denied",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "recovery",
+          "caller": "person-a",
+          "action": "inspect",
+          "expect": "deny_recovery"
+        },
+        {
+          "op": "advance",
+          "seconds": 11,
+          "expect": "advanced"
+        },
+        {
+          "op": "recovery",
+          "action": "inspect",
+          "expect": "deny_recovery"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U30",
+      "name": "unapproved exit cannot open standalone password fallback",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_plan"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U31",
+      "name": "approved exit requires reviewed local permission baseline and keeps identity without resurrecting old grant",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_local_credentials"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "local_credentials_ready": true
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_baseline"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "662705d328f4aa09957899cd0a849d1e2db60848779901735584925880f21615"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "standalone"
+        },
+        {
+          "op": "history_owner",
+          "expect": "person-a"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "allow"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "write": true,
+          "expect": "deny_authorization"
+        },
+        {
+          "op": "restart",
+          "expect": "restored"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U32",
+      "name": "unknown secret field is rejected and never copied to audit",
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            },
+            "secret": "DO_NOT_LOG_SYNTHETIC_TOKEN"
+          },
+          "expect": "reject_envelope"
+        }
+      ],
+      "profile_overrides": {},
+      "forbidden_output": [
+        "DO_NOT_LOG_SYNTHETIC_TOKEN",
+        "password",
+        "access_token"
+      ]
+    },
+    {
+      "id": "U33",
+      "name": "serialized restart preserves receipt versions and current revocation",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-restart-empty",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "restart",
+          "expect": "restored"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "duplicate"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U34",
+      "name": "ordinary actor cannot read governance receipt",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "receipt",
+          "caller": "person-a",
+          "event_id": "event-roles",
+          "expect": "not_found"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U35",
+      "name": "invalid token or withdrawn grant still denies otherwise permitted read",
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "token_valid": false,
+          "expect": "deny_authorization"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "grant_valid": false,
+          "expect": "deny_authorization"
+        }
+      ],
+      "profile_overrides": {}
+    },
+    {
+      "id": "U36",
+      "name": "unapplied superseded feed must never report effective",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-superseding",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "roles": []
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-roles",
+          "expect": "superseded"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-roles",
+          "expect": "superseded"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-superseding",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "deny_authorization"
+        }
+      ]
+    },
+    {
+      "id": "U37",
+      "name": "same version same payload transport alias follows original receipt state",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-role-alias",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "duplicate"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-role-alias",
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "receipt",
+          "event_id": "event-role-alias",
+          "expect": "effective"
+        }
+      ]
+    },
+    {
+      "id": "U38",
+      "name": "audit attributes requester separately from target without raw payload",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "authorize",
+          "user": "person-b",
+          "capability": "ticket.list",
+          "expect": "deny_disabled"
+        },
+        {
+          "op": "audit_attribution",
+          "expect": {
+            "actor_ref": "person-b",
+            "target_ref": "ticket.list",
+            "action": "authorize",
+            "result": "deny_disabled"
+          }
+        },
+        {
+          "op": "audit_request_id",
+          "expect": true
+        }
+      ]
+    },
+    {
+      "id": "U39",
+      "name": "exit approval and credentials alone cannot restore pre-takeover local grants",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_baseline"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "deny_authorization"
+        }
+      ]
+    },
+    {
+      "id": "U40",
+      "name": "exit local permission content must match approved digest",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "662705d328f4aa09957899cd0a849d1e2db60848779901735584925880f21615"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self",
+                  "ticket.create"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            }
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "reject_exit_approval"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U41",
+      "name": "new source policy revision invalidates exit preview",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "662705d328f4aa09957899cd0a849d1e2db60848779901735584925880f21615"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources-2",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 2,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_repreview"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U42",
+      "name": "local baseline drift invalidates exit preview",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "662705d328f4aa09957899cd0a849d1e2db60848779901735584925880f21615"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "local_permissions": {
+              "person-a": [
+                "profile.self"
+              ],
+              "person-b": [
+                "profile.self"
+              ]
+            }
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_repreview"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U43",
+      "name": "identity mapping drift invalidates exit preview",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "662705d328f4aa09957899cd0a849d1e2db60848779901735584925880f21615"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "mapping": {
+              "subject-a": "person-b",
+              "subject-b": "person-a"
+            }
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "needs_exit_repreview"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U44",
+      "name": "explicit newly approved local grant can be applied on exit",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self",
+                  "ticket.create"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "c2b860417004cf7023063d0bd4b9628cbea585aee4fefb9b55be5353502858fc"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "standalone"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U45",
+      "name": "exit plan rejects unknown local subject",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ],
+                "phantom": [
+                  "ticket.list"
+                ]
+              }
+            },
+            "exit_plan_approval": "bf3d95fd2f1785a5496d4a1dcfebb58e98c3e04850782440fe6e6b7178a9655c"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "reject_exit_plan"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U46",
+      "name": "exit plan rejects unregistered capability",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "exit_approved": true,
+            "local_credentials_ready": true,
+            "exit_plan": {
+              "identity_mapping": {
+                "subject-a": "person-a",
+                "subject-b": "person-b"
+              },
+              "policy_revision": 3,
+              "baseline_local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "ticket.create",
+                  "profile.self"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              },
+              "local_permissions": {
+                "person-a": [
+                  "ticket.list",
+                  "profile.self",
+                  "superadmin.all"
+                ],
+                "person-b": [
+                  "profile.self"
+                ]
+              }
+            },
+            "exit_plan_approval": "ee2170f1ebe21280651e0f590f850eefc6322b1d7b24a3414f44fa26719969df"
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "exit",
+          "expect": "reject_exit_plan"
+        },
+        {
+          "op": "mode",
+          "expect": "enterprise"
+        }
+      ]
+    },
+    {
+      "id": "U47",
+      "name": "trusted capability metadata detects write despite omitted flag",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list",
+                "ticket.create"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "outage",
+          "expect": "outage_marked"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "held_outage_write"
+        }
+      ]
+    },
+    {
+      "id": "U48",
+      "name": "trusted capability metadata detects write despite false caller flag",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list",
+                "ticket.create"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "outage",
+          "expect": "outage_marked"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "held_outage_write",
+          "write": false
+        }
+      ]
+    },
+    {
+      "id": "U49",
+      "name": "caller true write flag cannot reclassify registered read",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "outage",
+          "expect": "outage_marked"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "write": true,
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U50",
+      "name": "disabled connector cannot refresh stale authority or clear outage",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "activate",
+          "approved": true,
+          "expect": "enterprise"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "account",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-resources",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "role_resources",
+            "subject": "role-reader",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "resources": [
+                "ticket.list"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-roles",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": "user_roles",
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "roles": [
+                "role-reader"
+              ]
+            }
+          },
+          "expect": "committed_pending_effect"
+        },
+        {
+          "op": "apply_policy",
+          "expect": "effective"
+        },
+        {
+          "op": "outage",
+          "expect": "outage_marked"
+        },
+        {
+          "op": "advance",
+          "seconds": 11,
+          "expect": "advanced"
+        },
+        {
+          "op": "set_control",
+          "values": {
+            "connector_enabled": false
+          },
+          "expect": "configured"
+        },
+        {
+          "op": "heartbeat",
+          "verified": true,
+          "expect": "reject_context"
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.list",
+          "expect": "held_stale"
+        }
+      ]
+    },
+    {
+      "id": "U51",
+      "name": "non-object JSON envelope rejected without state mutation 51",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": null,
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U52",
+      "name": "non-object JSON envelope rejected without state mutation 52",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": [],
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U53",
+      "name": "non-object JSON envelope rejected without state mutation 53",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": "not-an-object",
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U54",
+      "name": "non-object JSON envelope rejected without state mutation 54",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": 7,
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        },
+        {
+          "op": "authorize",
+          "user": "person-a",
+          "capability": "ticket.create",
+          "expect": "allow"
+        }
+      ]
+    },
+    {
+      "id": "U55",
+      "name": "non-string kind rejected without TypeError 55",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": [],
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        }
+      ]
+    },
+    {
+      "id": "U56",
+      "name": "non-string kind rejected without TypeError 56",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": {},
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        }
+      ]
+    },
+    {
+      "id": "U57",
+      "name": "non-string kind rejected without TypeError 57",
+      "profile_overrides": {},
+      "steps": [
+        {
+          "op": "feed",
+          "event": {
+            "event_id": "event-account",
+            "application": "demo-app",
+            "source": "mock-uaa",
+            "kind": [
+              "account"
+            ],
+            "subject": "subject-a",
+            "revision": 1,
+            "complete": true,
+            "payload": {
+              "active": true
+            }
+          },
+          "expect": "reject_envelope"
+        },
+        {
+          "op": "state_summary",
+          "expect": {
+            "policy_revision": 0,
+            "desired": 0,
+            "receipts": 0,
+            "seen": 0,
+            "mode": "standalone"
+          }
+        }
+      ]
+    }
+  ]
+}

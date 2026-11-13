@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "status": "bounded_followup_estimates_not_integrated_into_baseline_schedule",
+  "source_followups": [
+    "F006-directions-uaa-mock-observability",
+    "F007-audit-policy-confirmations"
+  ],
+  "baseline": {
+    "backlog": "docs/review/planning-backlog.json",
+    "schedule": "docs/review/execution-schedule.json",
+    "priced_source_cutoff": "F003_and_prior_bounded_CE_LS_RP_scope",
+    "parents": 76,
+    "public_engineering_days": [
+      394,
+      656
+    ],
+    "conditional_UAA_R_engineering_days": [
+      407,
+      678
+    ],
+    "maintenance_separate_days": [
+      1,
+      2
+    ]
+  },
+  "unit": "net engineering days including finite design implementation tests review minimal UI ops; provider waiting excluded",
+  "items": [
+    {
+      "id": "OBS01",
+      "wave": "P6.0",
+      "net_days": [
+        4,
+        6
+      ],
+      "scope": "共同日志审计profile；三Go入口query/body/error脱敏与ID/归因边界；logger失败/预算与运维profile",
+      "wbs": [
+        {
+          "title": "profile/映射",
+          "days": [
+            1,
+            1
+          ]
+        },
+        {
+          "title": "三服务敏感面和可信ID",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "title": "失败/预算反例和运维",
+          "days": [
+            1,
+            2
+          ]
+        }
+      ],
+      "dependencies_or_gates": "G01隔离后可做；不等待CE/企业UAA；首次真实敏感入口前具备适用保护",
+      "reuses_excludes": [
+        "CE01能力/身份词典",
+        "G04一般测试框架",
+        "G06格式规范",
+        "I03执行trace/metrics"
+      ]
+    },
+    {
+      "id": "OBS02",
+      "wave": "P6.1",
+      "net_days": [
+        10,
+        15
+      ],
+      "scope": "两IAM命令SetRoles/AssignMenus的可信审计纵切，受权查询/导出和既有audit页薄接线",
+      "wbs": [
+        {
+          "title": "audit row/迁移/投影",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "title": "两命令具体安全语义/接入点",
+          "days": [
+            3,
+            4
+          ]
+        },
+        {
+          "title": "受权查询导出与薄UI",
+          "days": [
+            3,
+            5
+          ]
+        },
+        {
+          "title": "故障恢复/runbook",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ],
+      "dependencies_or_gates": "复用C04实际事务纪律；所选命令强审计失败政策须先确认；不等全部CE02-L",
+      "reuses_excludes": [
+        "C04 DBTX/事务审计公共机制与锁序",
+        "现有业务事务和最后superadmin保护",
+        "CE02调用记录/幂等/receipt",
+        "D02工单事实",
+        "R01 outbox",
+        "U02/U06全站视觉"
+      ]
+    },
+    {
+      "id": "OBS03",
+      "wave": "P7",
+      "net_days": [
+        8,
+        12
+      ],
+      "scope": "一core/TR/callback链、AL一个受权写及合成UAA/Agent/私有引用；一个可选外送profile，判定管道多worker和选定归档恢复",
+      "wbs": [
+        {
+          "title": "日志外送profile/故障接线",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "title": "既有事实审计投影",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "title": "判定多worker/归档manifest恢复",
+          "days": [
+            2,
+            3
+          ]
+        },
+        {
+          "title": "去重重启故障验收",
+          "days": [
+            2,
+            3
+          ]
+        }
+      ],
+      "dependencies_or_gates": "适用R01/I02/I03/R06/CE03链实际就绪；多worker保护先于该管道多实例正式启用；I03不反依OBS03",
+      "reuses_excludes": [
+        "I03已价trace/metrics/恢复UI",
+        "R01和CE02-D/CE03事务/源事实",
+        "UAA P/R及I02主体/grant",
+        "D11/D12/D13业务功能",
+        "R03永久执行证据供给",
+        "G05备份机制/E09完整拓扑灾备"
+      ]
+    }
+  ],
+  "priced_net_increment": [
+    22,
+    33
+  ],
+  "F004_five_directions": {
+    "state": "owner_confirmed_directions_actual_config_and_net_estimate_pending",
+    "ref": "docs/design/ticket-operations-supplement.md",
+    "net_days": null,
+    "integration_due": "P6.0开工前先对已确认有限切片净估并与OBS扣重；具体事实/字段在D02/D03相应开工前，其他按具名窗口冻结"
+  },
+  "integration_rule": {
+    "due": "P6.0开工前",
+    "owner": "项目集成者",
+    "required_outputs": [
+      "F004/OBS统一扣重",
+      "正式父/子依赖与分期验收",
+      "仓内排程复算和无环/单席资源槽验证"
+    ],
+    "baseline_dag_changed": false,
+    "full_latest_scope_priced": false,
+    "do_not_claim": "不得将旧公共394–656直接加OBS22–33称新完整总价；尚有F004净估/实参，等待另列"
+  },
+  "policy_state": {
+    "audit_read_scope": "owner_confirmed_separate_business_history_and_dedicated_audit",
+    "two_IAM_write_audit_failure": "awaiting_owner_answer"
+  },
+  "reference_mock": {
+    "ref": "docs/design/examples/uaa-reference-mock/README.md",
+    "already_performed_design_research": "not_charged_again",
+    "product_UAA_P_25_39_scope": "unchanged_not_implemented"
+  },
+  "design_ref": "docs/design/unified-observability-audit.md",
+  "implementation_state": "planned_not_implemented"
+}

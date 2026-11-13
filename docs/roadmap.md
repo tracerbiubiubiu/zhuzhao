@@ -1,5 +1,7 @@
 # 全项目路线图：承接、扩充与渐进演进
 
+> **F006后继确认与横切能力**：F004五组工单运营方向与Q01–Q06方向已明确确认，实际配置/增量估算仍按窗口冻结。公司文档不能导出时先交[UAA离线合成mock](design/examples/uaa-reference-mock/README.md)，企业真实接管留内网验证。[统一日志审计](design/unified-observability-audit.md)沿OBS01/P6.0基础契约与敏感日志、OBS02/P6.1最小可信审计、OBS03/P7跨仓可靠关联渐进交付；复用slog/PG及既有外部采集能力，不自建日志分析平台。当前生成排程是补充前有界基线，新范围先扣重再在P6.0开工前整合，不能把方向确认当全量实施或旧价包干。
+
 > **2026-11-13方向补充**：所有核心/可插拔产品能力逐步提供受权外部API，内部共用逻辑调用与结果/事件合同；MCP适配同一能力。P6先共同接缝与工单任务结果，P7补AL命令/源变化订阅和跨入口预算，P8/9扩专业协同。代码到视觉的一致性按共同规则渐进收敛。详见[调用合同](design/capability-invocation-contract.md)、[一致性合同](design/ecosystem-consistency-contract.md)及[新增范围](review/capability-interconnect-supplement.md)；旧71包是历史基线；当前总账纳入CE五项、旧子范围及基价复估，仍未启动业务开发。
 
 
