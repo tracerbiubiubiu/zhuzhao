@@ -23,6 +23,39 @@
 
 “30包详设候选”不表示每包所有端点、DDL与测试已经写完，更不表示实现可以不经开工评审。逐包剩余项和下次设计冻结窗口在机器状态表；P7/P8的实际提供方、MCP/Agent SDK、持续grant、知识ACL等详设不能靠现在写一份理想通用接口假称全部完成。
 
+## 各Phase和模块细化到哪里
+
+本次完成全路线与模块承接审计，并对近期关键模块补充实现相关细节，不只有大方向。**原Phase分模块稿没有全部逐篇重写**：保留为设计来源，现行阶段README、共同合同与总账说明适用/替代关系。下表只是[设计深度机器表](planning-design-status.json)原71包的按Phase投影，不新增状态权威，也不把局部深入自动升级为整包详设。
+
+| 原71包投影 | 包数 | 详设候选 | 组件合同/代表原型 | 逐页范围 | 边界/处置合同 |
+|---|---:|---:|---:|---:|---:|
+| P6（含P6.E） | 42 | 28 | 5 | 2 | 7 |
+| P7 | 16 | 2 | 0 | 0 | 14 |
+| P8 | 8 | 0 | 0 | 0 | 8 |
+| P9 | 4 | 0 | 0 | 0 | 4 |
+| P10 | 1 | 0 | 0 | 0 | 1 |
+| 合计 | 71 | 30 | 5 | 2 | 34 |
+
+新增CE01–CE05仍在[互通增量册](capability-interconnect-supplement.md)单列为合同骨架/未计价，不并入原71成熟度。G07A/B的本地版本维护验证是实现状态的单独覆盖，不表示业务波次已开工。
+
+可以直接阅读的“有细节”例子：
+
+- [业务生命周期](../design/business-lifecycle-contracts.md)：草稿/发布/实例字段、定义version/hash、候选plan/apply接口、CAS/409/幂等及同事务审计；类型查看范围、参与/CC、受限派单；HR离职/撤部；风险指纹/周期、状态机、锁内防重和N:1逐项结论。
+- [工程施工](../design/engineering-execution-design.md)与[跨仓执行](../design/cross-repo-execution-contract.md)：首批切片、事务/锁序、文件引用绑定/GC互斥、claim/lease/fence、running/unknown/receipt及提交断链/重复结果等反例。
+- [调度恢复](../design/schedule-recovery-policy.md)：三种错失策略、表单字段、episode/queued期限、开始速率、超限hold及恢复例；具体数值仍为候选，不是批准的SLA。D12/I03有专项细节，但整包仍按机器表的边界成熟度处理。
+- [扩展兼容](../design/extension-compatibility.md)、[UAA双模式](../design/uaa-governance-integration.md)、[MCP首批](../design/mcp-first-contract.md)：manifest/来源/受控路由与兼容、登录条件校验/三feed/撤权收敛及切换、首批工具/schema与身份时序；不代表准确接口和真实提供方已经验收。
+- UI[施工合同](../../../zhuzhao-ui/docs/design/frontend-implementation-contract.md)及[页面清单](../../../zhuzhao-ui/docs/design/frontend-pages.json)：组件/旅程、六视图离线代表原型与27页迁移范围；U04/U06仍主要是逐页范围，不是全站Vue成品。
+
+P8/P9等后包的具体框架、状态存储、提供方接口、复杂协同schema以及各包完整DTO/DDL/测试与代码切片，仍按各自开工窗口细化。原规划承接有[511条来源处置](planning-source-map.json)、[169条功能来源原子](roadmap-capability-continuity.json)及[71包总账](planning-backlog.json)三层追溯；条目有复述/交叉，不是同数独立功能，也不能据此宣称所有旧原文/端点都已等深详审。
+
+每个模块/切片编码前须回读其原Phase来源和现行后继，核清本批范围及必要前置，冻结对应业务/接口/迁移/权限和测试预期，再按[standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)全量测试先行、跑红、实现到绿。尚未定的业务分支继续按窗口确认；“已进总账/有详设候选”不能代替此开工出口。
+
+## 单维护者质量建议怎样承接
+
+2026-11-13讨论中需要长期执行的内容已归回[standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)、[工程治理](../design/engineering-governance.md#单维护者的最小质量闭环)、工程施工G04及[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)，UI测试指南回链同一规则。测试先行、权限负例、回归/并发变异、真实栈、全绿交付和准确候选/失败披露全部保留；只补单人AI协作的证据和阅读方式，不以更多报告增加owner负担。
+
+原71包的范围/估算/依赖、CE五项增量未计价状态及T0未启动边界保持。required checks和分档门禁尚未因本次文档同步启用；高风险定向人工技术复核为建议，不增加所有PR的第二位批准人。
+
 ## 已确定的原则与本轮新确认
 
 平台聚焦数据聚合与安全全生命周期；不替代已有SOC/SIEM、SOAR、CMDB、情报、企业Agent/知识系统。保留大量mock，调用已有模型API，内网仅内部模型，支持外部Agent接入及本平台有限领域Agent。内部业务/SDK/字段通过独立私有扩展/connector接入，核心维护稳定公共能力。

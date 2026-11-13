@@ -8,6 +8,9 @@
 
 ## 当前摘要（2026-11-13）
 
+- **测试先行与单维护者质量继承**：回核standards §9/§11/§12、审计及UI测试指南，保留原五步、当前批全量正/负/边界/权限先红后绿、并发至少8次稳定红验牙、完整门禁和准确候选。补有效红例、测试/CI削弱显影、独立验证及[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)，不新增平行质量平台或自动启分档。详见[现行公约](../standards.md#11-开发工作流先框架--先测试--分批实现)和[单维护者闭环](../design/engineering-governance.md#单维护者的最小质量闭环)。
+- **详设深度按模块分列**：[收口概览](planning-closeout.md#各phase和模块细化到哪里)从机器表投影原71包：P6有28详设/5组件原型/2逐页范围/7边界，P7有2详设/14边界，P8–P10为边界；总计30/5/2/34。已补数据/状态/候选接口/授权/并发/恢复细节，但旧Phase原稿未全部逐篇重写，准确DTO/DDL/测试与真实Provider待编码窗口；CE五项骨架单列，不能以规划落档直接开工。
+
 - **共同执行路径约束已明确**：同一能力/合同版本的API、内部、手动、工单、计划/事件及MCP入口必须进入同一受控应用层执行入口和领域实现；同步本地直接调用，异步提交/执行分阶段且执行前复验当前授权。不得复制业务实现、绕过权限或因换入口重置预算。见[调用合同§2.1–2.3](../design/capability-invocation-contract.md#21-同一能力只有一套受控执行路径)；属于CE02/O13澄清，仍未实现/复估，原包数和排期不变。
 
 - **能力互通与一致性新增愿景**：所有核心/可插拔产品能力逐步具备受权外部API与共同逻辑调用合同；工单→任务→结果、计划→AL更新、AL变化→任务三链分别验收。新增[能力合同](../design/capability-invocation-contract.md)、[一致性合同](../design/ecosystem-consistency-contract.md)及[5项增量](capability-interconnect-supplement.md)；修正静态能力/动态操作混用和AL源事实责任。当前为骨架设计，未实现/未复估；原71包/UAA数字是补充前已计价基线，不能称已覆盖新增范围。O13/O14明确方向已回填，仍待更多场景。
@@ -59,6 +62,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **全项目路线重规划/详设** | 原71包/511来源及包/子出口依赖；30详设候选+5组件原型+2逐页范围+34边界/处置；本次互通另列5个未计价骨架 | 📋 设计阶段快照，所有者仍补场景；31项方向确认、B08实际配置及UAA-P01公司约束后方案留窗；T0未启动，业务实现未交付；G07维护见上行 | [收口](planning-closeout.md)、[增量册](capability-interconnect-supplement.md) |
 | **全能力互通/统一调用** | 核心/插件受权API与共同逻辑门面；同一能力的所有入口必须进入同一登记执行路径；三类执行profile、标识/消息/结果及AL源事实归属 | 📋 目标/合同骨架及CE02跨入口验收约束已落档，逐操作库存/准确schema/阈值/新增估算待相应窗口；现有任务提交与AL CRUD不等于全链已实现 | [能力合同](../design/capability-invocation-contract.md)、[ADR-005](../adr/adr-005-capability-invocation-and-source-facts.md) |
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |
+| **单维护者质量闭环** | 原测试先行/红绿/变异/真实门禁继承，短审阅卡、独立验证、测试/CI规则变更显影与分模块深度入口 | 📋 原纪律保留并补执行说明；G01–G06新机制仍待实施；本轮为文档静态核对，未启required checks或分档、未重跑业务验收 | [standards §11](../standards.md#11-开发工作流先框架--先测试--分批实现)、[短卡](../phase6/implementation-handoff.md#单维护者短审阅卡)、[深度概览](planning-closeout.md#各phase和模块细化到哪里) |
 | **公司UAA接入** | 已有JWT/RT、本地三层鉴权、停用/会话吊销；尚无SSOProvider、企业三路MQ/投影或完整来源撤权 | 📋 E01-UAA-C/P/R已具名排期；C/P/R均未实施/未真实验收，内网首发独立硬门 | [现行UAA合同](../design/uaa-governance-integration.md)、[17号](../phase3/17-uaa-integration.md) |
 | **文档维护** | 五仓各自docs统一分类、正式报告与规划归位、历史与当前状态分层；补查行内路径、示例前置与图示 | ✅ 2026-11-08首次整理及二次复核内容/静态/必要本地门禁收口；历史失败、缓存命中和未覆盖专项如实分列 | [维护约定](../documentation.md)、[二次复核](reports/documentation-recheck-2026-11-08.md)、[review索引](README.md) |
 | **提交规范门禁** | 五仓同源消息规则、逐ref pre-push、CI事件精确窗口、worktree安装与固定历史基线 | ✅ 2026-11-08本地五仓各42反例通过；首次文档候选五仓已推且对应CI全绿，本轮新修订另核；五仓main已承接Phase5；本轮规划另审 | `scripts/commit-policy.py`、`.githooks/`、各仓CI；[RR-GIT-01](reports/zhuzhao-report-followup-2026-11-08.md) |
