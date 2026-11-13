@@ -4,6 +4,7 @@
 
 ## 从这里开始
 
+- **核逐次要求是否处理**：先读[原始要求对账与未完边界](user-requirements-reconciliation.md)，按需展开[逐点JSON](user-requirements-reconciliation.json)。旧32条核验不代表之后全部补充；消息有去向不等于检查/详设/实现完成。
 - **看这次进度、详设深度和待决**：先读[规划收口](planning-closeout.md)与[按Phase深度概览](planning-closeout.md#各phase和模块细化到哪里)，交付时读[三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
 - **查已实现能力与开放债**：读[项目控制台](11-project-control.md)的能力矩阵、健康状态和迁移地图，再进入对应模块。
 - **查后续范围/先后/新增差额**：读[总账](planning-backlog.md)、[执行排期](execution-schedule.md)与[互通增量](capability-interconnect-supplement.md)。业务T0未启动；旧已计价范围不自动包含新五项骨架。
@@ -21,12 +22,12 @@
 
 - [工作包JSON](planning-backlog.json)：唯一工作包/依赖/既有粗估；[设计深度](planning-design-status.json)、[所有者决策](planning-decisions.json)分别负责成熟度和政策状态。
 - [来源映射](planning-source-map.json)、[文档范围](planning-document-scope.json)及[能力连续性](roadmap-capability-continuity.md)/[逐原子JSON](roadmap-capability-continuity.json)：追溯旧模块价值及处置，来源数不等于独立功能数。
-- [关注点深度](focus-depth-verification.json)、[补研究窗口](research-supplement-status.json)：区分已深入、部分研究和合理后置，不用有排期替代研究完成。
+- [原始要求对账](user-requirements-reconciliation.json)负责截至本轮61条消息的来源/证据索引；[旧32条关注点深度](focus-depth-verification.json)、[补研究窗口](research-supplement-status.json)保留其原截止和后继，不用有排期替代研究完成。
 - [排程JSON](execution-schedule.json)、[互通增量JSON](capability-interconnect-supplement.json)：前者绑定冻结输入与已确认规划产能，后者保留新范围的未估状态。机器文件供校验/工具使用，日常阅读优先Markdown结论。
 
 ### 规划过程与核验出处
 
-[正式重规划审查](reports/pre-phase6-replanning-2026-11-11.md)、[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)、[全会话深度核验](reports/concern-depth-verification-2026-11-12.md)和[补研究/排期记录](reports/near-term-research-and-schedule-2026-11-12.md)保留各轮来源、证据和限制；数量/状态按当时冻结窗口理解，当前结论回到上方权威入口。
+[正式重规划审查](reports/pre-phase6-replanning-2026-11-11.md)、[原始需求闭环审计](reports/pre-phase6-requirements-audit-2026-11-11.md)、[截至32条的深度核验](reports/concern-depth-verification-2026-11-12.md)和[补研究/排期记录](reports/near-term-research-and-schedule-2026-11-12.md)保留各轮来源、证据和限制；数量/状态按当时冻结窗口理解，当前结论回到上方权威入口。
 
 ## 开工前版本维护
 
