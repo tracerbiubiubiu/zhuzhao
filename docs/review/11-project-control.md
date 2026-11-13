@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **本日收尾与模块入口**：今天七条来源已逐点对账；发现最近“转模块细化/context收敛”只在口头，本轮补[六条接缝＋权限/UAA交接](../phase6/module-design-handoff.md)。[收尾报告](reports/daily-closeout-2026-11-14.md)分清已落档、仍待DTO/DDL/净估及真实联调、提交发布和清理。当前五仓候选已建立草稿PR；旧“未推”是各历史时点，未自动合main/发版或启动业务开发。
+
 > **当前首版目标与变化入口**：2027年1月试用、2月1日前核心可用，必含风险/工单/taskrunner/activelist/消息联动、三层权限和UAA治理。[首版阶梯](../phase6/first-usable-release-plan.md)说明退出条件及单席/真实接入风险；[旧→新/基础→增强对照](core-release-change-comparison.md)说明补强原因和状态。现有接口重核发现真实消息发送、风险域和跨模块结果/AL变化接线仍有实际缺口；不是已开发完成。
 
 > **基础先行（2026-11-14）**：[交付边界](../design/foundation-release-boundaries.md)明确B0现有底座入网开发试验、B1本地业务和一个query adapter/参考私有应用接缝，后续按实际使用增强。完整UAA、插件治理、全站改造和多实例均非B1统一前置；实际企业激活仍验公司要求。机器依赖/优先级已同步，76父包原总工程量保持，不能当基础版报价；F004/OBS所选基础增量在B1开工前补净估，其余在对应实施窗口细化。[本轮核验](reports/foundation-boundaries-2026-11-14.md)只交设计与排程，没有开发或启用。
@@ -75,6 +77,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **按模块详设与今日收尾** | 六边联合合同、权限/UAA首包和每包六交付物；最小上下文及逐点来源；五仓候选发布/旧分支可恢复清理 | 📋 设计交接就绪；准确模块DTO/DDL/净估仍待后续包，业务未开发；Git/CI实际终态按收尾收据，不用文档自述代验 | [模块交接](../phase6/module-design-handoff.md)、[今日收尾](reports/daily-closeout-2026-11-14.md) |
 | **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；本地三层/UAA双模式；旧adapter×新core合同回归 | 📋 1月试用/2月1日前为已确认目标；已重核实际接口，范围与阶梯候选落档；一席按期未证、真实联调时间未定，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[变化对照](core-release-change-comparison.md)、[目标JSON](first-usable-release-target.json) |
 | **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |

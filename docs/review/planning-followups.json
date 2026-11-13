@@ -424,6 +424,59 @@
         },
         "unresolved": "首版联合净估/可兑现关键路径、实际独立产能和真实UAA/消息联调时点；新增功能尚未实现"
       }
+    },
+    {
+      "id": "F011-module-design-entry-and-context",
+      "source": {
+        "message_id": "01a1d5e2-cb3d-7380-b5de-bbb41f62bdaa",
+        "summary": "何时从总体审计进入按模块详设、减少重复上下文/token；先想清模块互调"
+      },
+      "design_ref": "docs/phase6/module-design-handoff.md",
+      "delivery": "六条首版接缝、权限/UAA首包输入/状态/用例矩阵/DTO与DDL冻结清单、后续波次和每模块六交付物；限定读共同摘要/本模块/相邻接缝，具体冲突再查历史",
+      "state": "design_handoff_ready_module_DTO_DDL_and_net_estimate_not_frozen",
+      "business_implementation_authorized": false,
+      "token_savings_percentage_claimed": false,
+      "keeps": [
+        "L1_L2_L3",
+        "UAA_and_independent_modes",
+        "CC_read_and_comment_without_handling_power",
+        "zero_grant_safe_landing",
+        "server_side_rejection_of_unsupported_monitored_AL_writes",
+        "TDD_and_current_full_applicable_gates"
+      ],
+      "validation": {
+        "state": "PASS_DESIGN_HANDOFF_NOT_IMPLEMENTATION",
+        "ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+        "exact_module_DTO_DDL_done": false,
+        "token_reduction_measured": false,
+        "existing_quality_obligations_retained": true
+      }
+    },
+    {
+      "id": "F012-daily-reconciliation-publication-cleanup",
+      "source": {
+        "message_id": "01a1d5e5-7ecd-7c80-ade9-b0f79482660e",
+        "summary": "逐条回查今日多事项避免遗漏；清理工作区、提交推送、查主仓待发布分支"
+      },
+      "report_ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+      "authorization": {
+        "publish_current_candidate_branches": true,
+        "create_reviewable_PRs_under_existing_PR_policy": true,
+        "cleanup_verified_superseded_branches_and_owned_worktrees_with_backup": true,
+        "merge_main_or_release": false
+      },
+      "scope_note": "先前仅本地提交/未推送是历史时点；本次授权五仓候选发布。整分支含继承版本升级/CI/部署，不描述为纯文档；Phase5已合main，后续候选待PR评审",
+      "state": "requirements_reconciled_candidate_branches_draft_PRs_created_and_verified_old_worktrees_cleaned",
+      "unresolved_business_work_remains_explicit": true,
+      "validation_ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+      "result_boundaries": {
+        "old_worktrees_removed": 19,
+        "old_local_heads_removed": 19,
+        "old_merged_remote_heads_removed": 3,
+        "preserved_main_and_candidate_worktrees": 10,
+        "main_merged_or_release": false,
+        "final_delivery_remote_SHA_and_CI": "verified_separately_in_final_receipts_not_claimed_by_this_ledger"
+      }
     }
   ]
 }

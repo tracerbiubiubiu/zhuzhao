@@ -1367,5 +1367,12 @@
   "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
   "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json",
   "latest_delivery_boundary_ref": "docs/design/foundation-release-boundaries.md",
-  "latest_delivery_boundary_date": "2026-11-14"
+  "latest_delivery_boundary_date": "2026-11-14",
+  "module_refinement_entry": {
+    "ref": "docs/phase6/module-design-handoff.md",
+    "source_followup": "F011-module-design-entry-and-context",
+    "state": "handoff_ready_not_all_module_design_frozen",
+    "first_pack": "permissions_UAA_with_six_edge_joint_contract",
+    "existing_item_maturity_not_reclassified": true
+  }
 }
