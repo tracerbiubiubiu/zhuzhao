@@ -1268,10 +1268,12 @@
     }
   ],
   "maintenance_implementation_status": {
-    "locally_validated_pending_pr_main": [
+    "locally_validated_source_changes": [
       "G07A",
       "G07B"
     ],
+    "main_integration": "included_in_owner_approved_five_PR_sync; actual_result_in_PR_merge_records",
+    "shared_environment_switch": "not_performed",
     "business_implementation": "not_started"
   },
   "uaa_provider_status": {
@@ -1392,5 +1394,16 @@
     "future_production_data_preserved": true,
     "implemented": false,
     "original_76_parent_maturity_and_prices_not_reclassified": true
+  },
+  "mainline_readiness_review": {
+    "ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
+    "source_followup": "F014-mainline-plan-and-validated-upgrade-sync",
+    "key_module_coverage": "no_blocking_omission_identified",
+    "large_phase_split": "no_substantive_conflict_identified",
+    "future_module_details": "not_all_frozen; named_confirmation_windows_retained",
+    "schedule": "adjustable_reference_not_a_commitment",
+    "approved_source_scope": "latest_plan_and_already_validated_runtime_upgrade",
+    "business_implementation_authorized": false,
+    "deployment_authorized": false
   }
 }

@@ -39,6 +39,10 @@
 
 [维护记录](reports/version-modernization-2026-11-12.md)汇总G07A/B隔离候选、数据恢复、首次失败与未执行边界；[组件清单](../../deployments/component-lock.json)和[恢复契约](../design/component-upgrade-data-contract.md)给版本/数据切换入口。本地候选验证不等于main或共享环境已切换。
 
+## 本轮主线同步复核
+
+[关键特性与阶段复核](reports/plan-mainline-readiness-2026-11-14.md)确认未发现阻塞级遗漏，列明模块详设确认窗口。所有者已明确五仓规划和此前验证升级一起经PR同步main；排期继续参考，不要求先冻结全部远期细节。准确合入和main CI以PR/提交记录为准，不以文档宣称已部署。
+
 ## 企业UAA接入重核
 
 [现行UAA合同](../design/uaa-governance-integration.md)负责完整本地IAM与私有adapter企业模式、来源管理权及撤权边界。E01-UAA-C/P/R各有公共合同、公共实现和条件真实出口；mock长期保留，真实企业激活单独验收，尚未接通不影响独立模式。

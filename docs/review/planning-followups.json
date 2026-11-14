@@ -542,6 +542,43 @@
         "F009",
         "F012"
       ]
+    },
+    {
+      "id": "F014-mainline-plan-and-validated-upgrade-sync",
+      "date": "2026-11-14",
+      "source": {
+        "request_excerpt": "先检查一下是否还有遗漏；待确认可以在详细设计中说明；关键特性/模块没有遗漏，大阶段拆分没有问题则同步最新计划至主线；当前排期只是参考，后续还会调整。",
+        "merge_scope_question": "实际五仓草稿PR含规划及此前已验证Go/Node/PG/Redis、容器、依赖和CI升级，整批会改变主线运行栈。",
+        "explicit_owner_scope_answer": "规划与已验证升级一起合入（推荐）",
+        "source_kind": "current_conversation_owner_instruction_and_async_reply",
+        "message_ids": "not_captured_in_this_registry; original public wording retained"
+      },
+      "report_ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
+      "scope_review": "no_blocking_key_module_omission_or_substantive_phase_conflict_identified; not_all_future_details_complete",
+      "authorization": {
+        "merge_latest_plan_and_validated_upgrade_via_five_PRs": true,
+        "fast_forward_local_main_after_remote_merge": true,
+        "business_implementation": false,
+        "deployment_or_shared_runtime_switch": false,
+        "rename_repositories_or_change_branch_protection": false
+      },
+      "schedule_policy": "engineering-day ranges and date windows remain adjustable references; do not force deadlines, reprice the entire roadmap, or require all future details to close before syncing",
+      "details_deferred_to_named_module_windows": [
+        "实际流程字段/动作/订阅与角色组织/认领池、通知矩阵和指标暂停重开",
+        "消息HTTP真实合同及窗口；UAA协议、身份/权限映射与接管/退出批准",
+        "生产环境人员/目标、审计名单和保留期；两IAM强审计失败策略在新增试点启用前确认",
+        "逐包准确DTO/DDL/锁序/恢复入口及实际增量补估；远期提供方/复杂协同/拆分条件"
+      ],
+      "prior_confirmed_policies_and_original_capabilities_retained": true,
+      "state": "scope_phase_review_passed_main_integration_approved",
+      "PRs": {
+        "zhuzhao": "https://github.com/tracerbiubiubiu/zhuzhao/pull/1",
+        "zhuzhao-ui": "https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/1",
+        "activelist": "https://github.com/tracerbiubiubiu/activelist/pull/1",
+        "taskrunner": "https://github.com/tracerbiubiubiu/taskrunner/pull/2",
+        "zhuzhao-utils": "https://github.com/tracerbiubiubiu/zhuzhao-utils/pull/1"
+      },
+      "actual_integration_and_exact_head_CI_results": "recorded by the PR merge commits and separate final delivery receipts; approval here is not a fabricated merged result"
     }
   ]
 }

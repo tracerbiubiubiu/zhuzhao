@@ -1,6 +1,6 @@
 {
   "date": "2026-11-14",
-  "implementation_status": "business_not_started; G07A/G07B locally_validated_pending_PR_main",
+  "implementation_status": "business_not_started; G07A/G07B locally_validated_source_changes_in_owner_approved_main_sync",
   "schedule_basis": "原71+CE5=76父包；LS六项为额外范围任务，RP六项替换旧价。1席×每周5工程日，T0相对排程；真实等待另列，设计落档不是开工/部署指令。",
   "waves": {
     "P6.0": {
@@ -1607,7 +1607,7 @@
         "取消公司版本对齐约束，先处理EOL Node/Go补丁/OS镜像",
         "现有依赖先在目标运行时验证，业务依赖major单独小批，不整体盲升"
       ],
-      "state": "locally_validated_pending_pr_main",
+      "state": "locally_validated_source_changes",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
@@ -1620,7 +1620,8 @@
         "G03"
       ],
       "validation_ref": "docs/review/reports/version-modernization-2026-11-12.md",
-      "shared_runtime_switch": "not_performed"
+      "shared_runtime_switch": "not_performed",
+      "main_integration": "included_in_owner_approved_five_PR_sync; actual_result_in_PR_merge_records"
     },
     {
       "id": "G07B",
@@ -1636,7 +1637,7 @@
         "业务开工前交实际升级组合、数据副本迁移与恢复；共享环境/首次生产另经停写、恢复校验与受控切换。",
         "RustFS/rclone/migrate/RedisInsight供给与漏洞调查，确需产品更换另估，不在本包重造对象存储"
       ],
-      "state": "locally_validated_pending_pr_main",
+      "state": "locally_validated_source_changes",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "增量粗估；不含真实提供方等待/逐厂商接入；不与既有领域或G05重复计价",
@@ -1650,7 +1651,8 @@
         "G07A"
       ],
       "validation_ref": "docs/review/reports/version-modernization-2026-11-12.md",
-      "shared_runtime_switch": "not_performed"
+      "shared_runtime_switch": "not_performed",
+      "main_integration": "included_in_owner_approved_five_PR_sync; actual_result_in_PR_merge_records"
     },
     {
       "id": "X01",
@@ -2499,5 +2501,6 @@
     }
   ],
   "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
-  "dated_core_release_boundary": "长期76包保留；首版目标是风险/工单/TR/AL/消息和三层/UAA有限联动，需联合净估后派发，不把旧日窗当2月承诺"
+  "dated_core_release_boundary": "长期76包保留；当前首版本地正式核心含风险/工单/TR/AL/真实HTTP消息及完整本地三层，UAA-C接缝先留、完整P/R后继；已有联合净估候选但未冻结派发，排期和日期仅参考，不强迫按期交不可用版本",
+  "mainline_sync_followup_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync"
 }

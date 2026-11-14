@@ -393,9 +393,9 @@
   },
   "active_work_boundary": {
     "updated_on": "2026-11-14",
-    "owner_instruction": "不急开发，还有一些场景没交代完；先完成本次设计落档、提交。",
-    "current_delivery": "local_first_core_quality_plan_net_estimate_and_module_handoff",
-    "scenario_collection": "still_in_progress",
+    "owner_instruction": "核关键模块/大阶段，无阻塞遗漏则同步主线；排期参考，细节在模块详设确认。已明确包含此前验证的升级。",
+    "current_delivery": "reviewed_plan_and_validated_upgrade_mainline_integration",
+    "scenario_collection": "future_details_continue_in_module_design",
     "T0_status": "not_started",
     "implementation_authorized": false,
     "confirmed_capacity_retained": {
@@ -405,12 +405,12 @@
     "not_performed": [
       "business_implementation",
       "shared_environment_switch",
-      "main_integration"
+      "production_deployment"
     ],
-    "interpretation": "公司已允许本地账号正式运行，但本轮仍仅设计/补估/提交候选；质量优先，完整UAA后继。授权不自动开始业务实现/部署/合main。",
-    "latest_supplement_ref": "docs/review/planning-followups.json#F013-local-first-quality-and-UAA-later",
+    "interpretation": "本轮允许五仓既有规划及已验证运行栈升级经PR合main、更新本地主线；不启动Phase6业务实现、真实接入或部署。关键范围和阶段复核通过即可同步，不以全部细节/日期冻结作为前置。",
+    "latest_supplement_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
     "reference_mock_authorized": true,
-    "latest_owner_source": "01a1d8a5-8edc-78a0-b7cf-1cf838c4e897",
+    "latest_owner_source": "F014 owner request and explicit merge-scope reply",
     "confirmed_core_release_target": {
       "ready_before": null,
       "aspirational_trial_month": "2027-01",
@@ -426,7 +426,10 @@
       "real_uaa_and_message_test_time": "unknown_separate_conditions"
     },
     "publication_authorized": true,
-    "publication_state": "candidate_branches_and_draft_PRs_created_followup_commits_use_same_PR"
+    "publication_state": "five_PR_main_integration_authorized_after_required_checks",
+    "main_integration_authorized": true,
+    "main_integration_status": "approved_via_five_reviewed_PRs; actual_merge_and_main_CI_are_separate_receipts",
+    "schedule_is_adjustable_reference": true
   },
   "supplementary_policy_registry": "docs/review/planning-followups.json"
 }

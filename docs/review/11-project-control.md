@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-14 F014 主线同步与本轮复核**：[关键模块与阶段复核](reports/plan-mainline-readiness-2026-11-14.md)未发现阻塞级遗漏或实质阶段冲突；待确认留逐模块详设。所有者明确批准五仓规划＋此前已验证升级一起经PR合main，实际集成及CI以各PR/准确提交记录为准。排期仅作可调整参考；未启动新业务开发、部署或共享栈切换。
+
 > **本日收尾与模块入口**：今天七条来源已逐点对账；发现最近“转模块细化/context收敛”只在口头，本轮补[六条接缝＋权限/UAA交接](../phase6/module-design-handoff.md)。[收尾报告](reports/daily-closeout-2026-11-14.md)分清已落档、仍待DTO/DDL/净估及真实联调、提交发布和清理。当前五仓候选已建立草稿PR；旧“未推”是各历史时点，未自动合main/发版或启动业务开发。
 
 > **F013首版本地正式先行／质量优先**：公司允许先用本地账号正式运行；风险/工单/TR/AL/消息与完整本地三层权限先交，UAA-C来源/稳定合同先留、完整P/R核心稳定后交。1月试用为争取窗口，不勉强原2月1日日期。[阶梯](../phase6/first-usable-release-plan.md)与[68–104工程日净估候选](local-core-release-estimate.json)分清正式本地/纳管出口、已含试用修正及外部条件；[变化对照](core-release-change-comparison.md)承接原功能。实际业务接线仍未开发，完整新增Phase6不等于首版本地核心。
@@ -85,7 +87,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
 | **公开展示与新场景续源** | 五仓中英README、合成截图、贡献/问题/PR入口；F004五组和Q01–Q06方向后继明确确认 | 📋 文档/社区资产已本地验证；真实在线演示/品牌/远端元数据待发布准备，业务方向不等于配置/新增净估/实现完成 | [展示方案](../guides/open-source-presentation.md)、[新场景](../design/ticket-operations-supplement.md)、[后继索引](planning-followups.json) |
 | **关注点研究深度** | 原62用户消息＋1目标→93核对，后继3条续源；全站、逐操作、Agent/skill/SOC/MCP及本轮跨步骤复验 | 📋 有界设计审计及逐点复核；F006已确认11组方向，Q07–Q13与生产实参按窗口绑定，未来业务/真实接入仍按包验收 | [当前复验](conversation-reaudit.md)、[固定对账](user-requirements-reconciliation.md)、[研究后继](research-supplement-status.json) |
-| **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收；未合入main/切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
+| **开工前版本维护** | 五仓隔离升级候选：Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11；部署/CI/夹具/锁文件同步，数据恢复独立演练 | ✅ 本地版本候选已验收，本轮已获准随五仓PR同步main；准确集成见PR，未切换共享栈或上线 | [维护记录](reports/version-modernization-2026-11-12.md)、[升级组合](../design/dependency-modernization.md)、[数据契约](../design/component-upgrade-data-contract.md) |
 | **全项目路线重规划/详设** | 当前76父包/17子出口、原511来源及新增范围；CE/LS/复估扣重后完整相对排程 | 📋 T0未启动；详设深度分列，远期准确API/DDL逐包冻结；B08/UAA-P01待具体启用场景确认；B09人工协作政策已确认待D14实施 | [收口](planning-closeout.md)、[净估](planning-scope-estimates.json)、[排期](execution-schedule.md) |
 | **全能力互通/统一调用** | 同一能力所有入口进同一应用用例；库存/精确Schema、授权/幂等/receipt、源水位/订阅/预算/恢复与最小UI | 📋 设计与参考模型已验证；158候选共同runtime仍未实现，三链各有真实出口 | [能力合同](../design/capability-invocation-contract.md)、[三链详设](../design/capability-interconnect-detail.md)、[库存](../design/capability-operation-catalog.md) |
 | **生态一致性** | 代码/命名/目录/文档/API/消息/流程/视觉矩阵，明确允许差异、权威源与机械/真实验证；新增能力最小UI同批 | 📋 共同合同已落档；G06 bundle/formatter、全站token推广和跨入口真实旅程未实施，不以规则文档代替精致度验收 | [一致性合同](../design/ecosystem-consistency-contract.md)、[工程治理](../design/engineering-governance.md) |

@@ -4,12 +4,12 @@
   "calendar": null,
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "4158fe9664e045176a5d25e11194726e85b04f401836cf34cb1aeee2ae650f0b",
+    "docs/review/planning-backlog.json": "b21d4244fe79e444d8fc7ee8b2e06bcb6e999ab80f6f8dea1b89f18e1d978499",
     "docs/review/execution-schedule-model.json": "34da7ca9770ba4c296a5267e95c0e4a249555286019c07dce7300806b4ad9176",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "scripts/calculate-planning-schedule.py": "de7c3caa3123f2b45ffc40f611b7720cf03f53737d692128c92dd5ce0b555811"
+    "scripts/calculate-planning-schedule.py": "c204be38aab97d66cc8006ed8803b90d219692a7614b6d589761965b85a5bb2c"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -4595,7 +4595,7 @@
   ],
   "pre_business_maintenance": {
     "work_items": ["G07A", "G07B"],
-    "status": "locally_validated_pending_pr_main",
+    "status": "locally_validated_source_changes; owner_approved_PR_main_sync; see_PR_records_for_actual_result",
     "do_not_repeat_future_coding_estimate": true
   },
   "release_gates_ref": "docs/review/planning-backlog.json#/release_gates",
