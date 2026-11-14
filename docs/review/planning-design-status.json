@@ -220,14 +220,17 @@
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/design/uaa-governance-integration.md",
-        "docs/phase6/foundation-iam-module-detail.md"
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。"
+        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。",
+        "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
+        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
       "module_detail_status": {
@@ -243,13 +246,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/phase6/foundation-iam-module-detail.md"
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
@@ -309,13 +314,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/phase6/ticket-module-detail.md"
+        "docs/phase6/ticket-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "AUTH-01组织scope/委托生命周期与AUTH-04现有ticket_relations双端当前read过滤；撤CC后不可回对端ID及关系元数据，正式使用前转产品回归。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
@@ -377,7 +384,8 @@
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
         "docs/design/uaa-governance-integration.md",
-        "docs/phase6/foundation-iam-module-detail.md"
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -385,7 +393,8 @@
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
-        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。"
+        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
+        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。"
       ],
       "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
       "module_detail_status": {
@@ -514,13 +523,15 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/phase6/task-activelist-message-detail.md"
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "首个敏感任务profile启用时，旧GetTask/ListRuns/ListJobs/Cancel/Retry/Trigger/DeadLetters及artifact/logs与新receipt同受当前资源权限；批准的非敏感共享profile保留。"
       ],
       "next_design_gate": "P6.3开工前",
       "module_detail_status": {
@@ -776,13 +787,15 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "接入新敏感任务前核D12/CE03存量入口权限迁移，不能把旧共享队列视为通用对象授权。"
       ],
       "next_design_gate": "P7开工前"
     },
@@ -1493,14 +1506,16 @@
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
-        "docs/phase6/task-activelist-message-detail.md"
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "AUTH-02维护action明确执行主体/受控保留期，AUTH-06 Job/消息规则created_by由可信context产生；旧入口最小修复不等完整CE03。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
       "module_detail_status": {
@@ -1540,13 +1555,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "本地核心已取的敏感子出口同步迁移旧TR任务读写/结果入口，先过滤后分页/total；整包仍P7，不延迟AUTH-02维护职责修复。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
     },
@@ -1844,5 +1861,33 @@
     ],
     "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
     "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md"
+  },
+  "authorization_review": {
+    "date": "2026-11-15",
+    "ref": "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+    "source_main": "aa7451739bcecdea5afe288d2b7e19f39b55f142",
+    "state": "audit_complete_product_findings_open",
+    "current_finding_groups": 6,
+    "current_p1": [
+      "AUTH-01",
+      "AUTH-02",
+      "AUTH-07"
+    ],
+    "current_p2": [
+      "AUTH-03",
+      "AUTH-04",
+      "AUTH-06"
+    ],
+    "conditional_hardening": [
+      "AUTH-05"
+    ],
+    "product_fixes_implemented": false,
+    "estimate_status": "no_new_top_level_scope_or_price; itemized_overlap_and_subestimate_required_before_implementation",
+    "existing_planned_limits": [
+      "C04 policy reload/revision across processes",
+      "C05 DB commit versus Redis revoke recovery",
+      "D03 new type/participants/field policies"
+    ],
+    "scope_policy": "keep_local_IAM_three_layers_and_UAA_adapter; no_new_authorization_engine"
   }
 }

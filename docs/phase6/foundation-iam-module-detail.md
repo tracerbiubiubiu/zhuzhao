@@ -68,6 +68,17 @@ C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及
 
 数据库连接池 max/min/lifetime、请求总 deadline、事务/statement/lock timeout 使用有界配置；初值以现有部署及隔离压测为依据，记录排队/持锁耗时，不凭空承诺生产 QPS。pool 上限为1的试点回归必须仍可完成，用来检出同 tx 内偷借第二连接；等待池或锁超预算在未提交时明确503/可恢复冲突，先回滚再重试。禁止长导出/HTTP等占授权守卫，分页导出每块重验当前权限并可中断。
 
+### 3.3 现状缺陷先修与真实重读（2026-11-15专项后继）
+
+[权限专项](../review/reports/authorization-design-implementation-review-2026-11-15.md)确认的 AUTH-01/03/07 在当前 main 仍开放，不等真实 UAA/HR 才处理。C04/D06 先补这些最小修复，不能以本页已有方向或普通门禁绿替代产品反例：
+
+- 组织 `status=0` 停止该来源的 L1角色、菜单和 L2 scope/委托；其它直接/组织/参与来源仍独立有效。group/all、透明读、本组和祖先owner路径一并验。BK-20软删组织的已结票档案例外是另一政策，保留登记，不能顺手批量改变。
+- `RoleRepo.ListRoleIDsByUserID` 与 `GetEffectiveRoleCodes` 使用同一有效角色语义，启用子→停用父不再下发父菜单/按钮；接口403与菜单消失分别断言。用户管理用直接角色判断可授档位的独立语义不随展示修复改变。
+- 组织任职管理不等于IAM赋角权。`BindOrgRole/UnbindOrgRole` 不得复用任意`org:%`判定；首个小修候选以现行内置系统级管理者为界，所有获准主体（含admin）均按直接角色复用现有canAssignRole可授档位、目标状态并锁内复验；不能只限admin却仍容许其授更强custom角色。解绑另验可管理目标；未来委托赋角也不放宽此界。只授org:create的普通角色不能把更强custom角色绑到自己所在组织；系统角色禁绑保护仍保留。其它全局组织动作逐项映射现有功能码，owner/admin本组织职责与全局权限分开；是否保留额外全局委托角色在本包实施前确认，不延迟提权修复。
+- `RBACService.GetRoleCodesByUserID` 会命中请求context缓存。守卫后使用显式fresh/DBTX读取端口，在同事务查当前直接/组织/继承角色和账号/组织状态，不能复用守卫前`RolesFromContext`结果；普通同请求展示缓存可保留。
+
+小修也需后端真实路由及三源撤权反例，首版正式使用前完成；C04后续守卫试点仍按§3.2渐进，不因发现具体SQL缺陷扩大成全仓授权平台。服务端归因字段由可信context产生，浏览器不能在任务/消息新建中自填created_by；具体旧任务动作维护边界见[任务详设§8.2](task-activelist-message-detail.md#82-存量任务入口与维护动作的接线门)。
+
 ## 4. C05：账号、AT/RT/PAT 与停用恢复
 
 保留现有密码纪元、iat 地板、Redis Lua 和 fail-closed，不能将 authorization revision 冒充 password epoch。账号停用、角色剥夺与会话销毁分别表达：业务授权守卫立即以数据库当前状态/代际拒绝相关调用，后台持久 intent 继续撤 Redis 会话；PAT 也必须检查同一有效账号和当前权限，不只验证哈希。
@@ -75,6 +86,8 @@ C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及
 禁用提交后 Redis 超时返回“账号已停用、会话清理待恢复”，不能返回“停用失败”诱发反复新操作，也不把已禁用状态回滚为 active。`Login`、`Refresh`、PAT 和 worker 准入均核 DB 状态及未完成的安全撤销屏障；**重新启用不自动清除未完成撤销**，须确认目标撤销已完成并按新 epoch 签发，避免旧 AT 复活。恢复 worker 重投原 intent，按期望状态/epoch CAS；较旧的 enable/clear 不能覆盖较新的 disable。密码修改的旧会话失效、同秒新旧 token、并发 Refresh、Redis 丢 key/不可用沿已有测试继续覆盖。
 
 首版本地模式关闭 UAA adapter、UAA 网络不可达仍完整保留本地登录、用户/角色/菜单管理。完整 UAA-P 后才追加认证交换及中央纳管策略；OIDC 仅是参考 profile，不假定公司使用 OIDC。若采用它，adapter 按 [OIDC ID Token 验证](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)及 [OAuth 安全实践](https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1)验证 issuer/audience/签名/时效/nonce、code flow 与 PKCE，核心只收规范化已验证身份；认证通过不等于获得 L1/L2/L3。
+
+PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错误，不能把故障注入夸成正常签发可预测；仍应随C05去掉`generateSecret`固定回退。若可注入生成器返回错误，必须零落库/零secret回包，不改PAT独立生命周期政策。
 
 ## 5. D06 与 UAA-C：来源、目录和组织生命周期
 
@@ -166,6 +179,11 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 | FND-11 | DBTX第二步 history/intent 插入失败；pool=1；commit响应断开 | 同事务零半套，不偷第二连接，未知提交查原receipt不重做 |
 | FND-12 | 两真实事务 barrier：Org.Delete vs BindOrgRole/成员写 | 仅合法串行结果：已有绑定拒删，已删组织拒绑；无孤儿授权/半套清理 |
 | FND-13 | 给票A加CC/改查看策略，同时读无关票B | A按新L2事实判定，B无Casbin重载/全站503；真正L1策略变化仍触发代际检查 |
+| FND-14 | 停用实际组织；direct/org/inherited及本组/祖先委托、group/all/透明读 | 组织来源跨L1/L2/L3停止，列表/菜单/计数/导出一致；其它独立合法来源不误撤，BK-20另测 |
+| FND-15 | 启用child→停用parent；UI菜单/权限码与真实Casbin路由 | 父角色投影消失且接口拒绝，不能只测后端403 |
+| FND-16 | 仅org:create的custom60→selfService绑custom5；admin10→custom5；合法弱角色对照 | 两种越权均拒且零副作用，合法弱业务角色可按资格绑定；系统角色禁绑不回退，owner不自动获IAM授予权 |
+| FND-17 | middleware已缓存允许角色，取得守卫前另一事务撤权 | 锁内fresh读取不命中旧context；不得以“再次调用RoleFetcher”替代真正重读 |
+| FND-18 | 正常PAT与自定义失败随机Reader（条件性加固） | 正常签发不同；注入失败拒签、零落库；不冒称默认Reader故障可利用 |
 
 测试先写业务正/负/边界/权限全部预期，目标行为有效红后实现；并发变异按standards至少8次稳定红验牙。首版本地验真实PG/Redis、双事务竞争、单实例重启/恢复、UI普通/管理员/CC/只读旅程及完整适用门禁；真正启用同服务多副本前再做两实例策略/租约/配额故障注入，不能把完整HA验收强塞单实例首发。当前表格是测试设计，不是已运行结果。真实公司UAA、HR和消息合同分列real待验；本地正式出口不等UAA。
 

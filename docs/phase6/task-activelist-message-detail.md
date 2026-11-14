@@ -230,6 +230,21 @@ cursor是不透明有界分页引用，绑定类型/generation、规范查询has
 
 计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。该接口批开工前对TD03/TD04、CE03及F004逐项扣重，未含必要接线补子估；未启用的大导出/复杂筛选不计首版。当前68–104日仍是候选，本文不宣称这次澄清已证明零净增或确定节省天数。
 
+### 8.2 存量任务入口与维护动作的接线门
+
+2026-11-15[权限专项](../review/reports/authorization-design-implementation-review-2026-11-15.md)确认：旧共享队列全可见是phase3/16 E-⑤的已定非敏感profile，不直接称当前IDOR；但接入受限风险/工单/AL数据后，以下旧入口须随D12及CE03本地子出口受保护，不能只建设新的operation/receipt接口。
+
+| 现有入口/消费者 | 当前启用所需边界 |
+| --- | --- |
+| `TaskrunnerHandler.GetTask/ListRuns/ListJobs/DeadLetters`及后继artifact/日志 | 以真实业务锚或批准的非敏感共享profile决定范围，先过滤再分页/total，参数/结果/错误按字段投影；submitted_by筛选不是授权 |
+| `CreateJob/UpdateJob/Trigger/Submit/Cancel/Retry` | 当前动作资格＋对象职责；提交、重跑、定时触发和执行均重验；只知道task/job ID不增加操作权 |
+| `JobsCallbackService.Execute`与系统cron | 服务验签不等于原actor/固定后台主体有业务权；维护action另有限定主体，回调仍执行动作策略与受控参数验证 |
+| 新建Job、`MessageAdminHandler.UpsertRule`及后继归因消费 | 核心从可信context写created_by/operator，不透传浏览器声明；TR明确服务合同，历史导入另外受控 |
+
+AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，将旧行移至JSONL并从在线表删除。最小修复不等CE03整包：维护action按系统/审计维护职责拒绝普通业务任务，保留期覆盖受控；查询action列表不能视为授执行权。具名反例`MaintenanceAction_BusinessSubmitDenied/RetryRechecksOriginalAction/SystemCronAllowed/RetentionOverrideControlled`，同时验服务配置正常、审计读403的用户仍不得借tasks入口维护审计。AUTH-06补`JobCreatedBy_ServerOwned/MessageRuleCreatedBy_ServerOwned`，对照HTTP审计真实actor未丢失；不凭伪造created_by构建“我的任务”权限。
+
+首批只保护实际启用敏感能力与上述当前维护越界，不重写所有非敏感TR业务，也不引入万能invoke或第二个权限引擎；未具安全接线的敏感旧深链服务端拒绝。AUTH问题仍是开放缺陷，本页仅修设计，不能据此声称已拦截。
+
 ## 9. 测试先行用例与交付出口
 
 下面是实施时必须先红后绿的具名预期，**本次没有执行这些未来产品测试**。每个用例记录当前候选五仓组合与真实效果；并发缺陷按standards移除修复后至少8次稳定红验证，不能因加timeout/skip掩盖错误。
