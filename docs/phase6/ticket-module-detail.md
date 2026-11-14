@@ -199,6 +199,8 @@ diff函数接收锁内旧真值与规范化/G2/服务端公式/领域更新后�
 | U06 | 按27页清单逐页迁现有首页/任务/AL/消息/系统管理；新增业务薄UI归其业务批 | 所有适用页面涵盖初读/刷新、成功空/筛选空、无权/撤权、失败重试、长文本、键盘、当前版本；改共用组件不等于全部页面已关闭 |
 | U07 | 代表真实组件/页面和角色旅程基线；视觉/键盘/焦点/状态/权限请求及console异常验收 | 不只断pageerror；Vue errorHandler/console error也失败；对比度、聚焦、状态播报与真实栈关键链路同时核 |
 
+U06系统管理用户页的当前安全修复须前移随C04交，不等待全站外观：角色/组织弹窗加载失败或pending不许整体保存；甲/乙迟到响应绑定目标和请求世代，组织失败不能沿用甲的选择。当前真实SFC函数已复现该问题，[第二轮复验](../review/reports/permission-boundary-recheck-2026-11-15.md)区分script替身证据与待补真实浏览器回归。加入`UserRoleEditor_LoadFailureNoReplacement/UserOrgEditor_LateResponseBoundToTarget`，不是只给按钮加loading。
+
 个人首页候选 `GET /api/v1/workbench/summary` 仅在权限内返回domain小块 `{state:ok/unavailable,as_of,stale,counts,filter}`；无资格domain省略，服务端不查询，前端也不补发越权列表。已有消息/PAT自服务独立可用。工单主数=当前处理或具名领域复核的非终态票去重，原因分别展示；甲提交给乙复核但assigned_to仍甲时，乙计复核，甲不计当前处理，不改assigned_to凑数。类型运营视图须独立职责＋组织范围，卡片点击携同口径filter；`can_transition`或admin可操作范围不能代替“由我负责”。
 
 所有资源页请求键包含 `user/authorization_epoch/resource/filters/definition` 的适用部分，写回和撤权使相关缓存失效；选择、自动保存、订阅和迟到结果核当前上下文。结果先到旧票不回贴新票，换账号不显示前一人的历史/选择。统计刷新失败标上次时间，不能把unknown/null当0；计数/列表暂不一致须显示as_of并可刷新，而非承诺跨HTTP读取事务完全同刻。

@@ -155,7 +155,11 @@ F23 `attachment_create + ticket_id` 矛盾参数先观测调用量并在响应�
 
 C02.1 盘点旧 orphan/跨单引用、接口用途合同；C02.2 锁内 ref reconciliation 同规 Create/Update；C02.3 删除引用保护、GC竞争及 F23 兼容期。出口：伪 key、错用途、别人暂存、他单正式对象、并发双绑、最后一个字段失败、超额度、保留别人上传的本单附件、清字段保留附件、显式删仍引用对象、GC/回滚均有真实 PG/存储证据；下载权限负例保留。
 
+第二轮另补头像和metadata边界：旧avatar退役须当前用户合法归属，不能因profile任意key引用就删除他人confirmed未绑定对象；保留合法外链兼容。删除附件先核`bucket/ticket_id/key`当前关联，再给richtext用途提示，非法关联与未知同形404，合法本单richtext仍原400。具名`Avatar_RetireOnlyOwnedOldKey/Attachment_ForeignPurposeNotObservable`，已绑定他人头像/跨票下载/他人暂存绑定正确对照仍须通过；不要夸大成已证明可枚举或读取他人内容。
+
 ## C04：事务试点、组织删除与默认拒绝
+
+2026-11-15[第二轮现状复验](../review/reports/permission-boundary-recheck-2026-11-15.md)补三个具体授权编辑出口：角色直接绑定回显不能用三源展开（否则保存固化派生grant）；组织集合保留项不能DELETE重插丢任职角色/scope；UI整体替换须当前目标加载成功，失败/pending/迟到响应零误POST。归C04/D06与实际薄UI，优先于正式使用；不因下面DBTX仍为窄试点而把这些本地IAM正确性推至完整UAA。
 
 试点只覆盖 `ticket.Service.Create/Update/Transition` 及其直接 repo 调用。建议主仓内部 `DBTX` 接口包含 Query/QueryRow/Exec，显式参数传递；`WithinTx(ctx, pool, fn)` 管 begin/rollback/commit，仅返回提交后可发出的效果摘要。不得把 tx 塞任意 context、在 repo 自动猜 pool/tx、自动嵌套事务或泛化到 utils 的业务接口。utils 仅在三个服务都证实需要同一种纯机制后考虑下沉；本次不做全仓重写。
 

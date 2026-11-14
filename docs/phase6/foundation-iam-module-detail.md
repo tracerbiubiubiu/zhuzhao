@@ -79,6 +79,14 @@ C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及
 
 小修也需后端真实路由及三源撤权反例，首版正式使用前完成；C04后续守卫试点仍按§3.2渐进，不因发现具体SQL缺陷扩大成全仓授权平台。服务端归因字段由可信context产生，浏览器不能在任务/消息新建中自填created_by；具体旧任务动作维护边界见[任务详设§8.2](task-activelist-message-detail.md#82-存量任务入口与维护动作的接线门)。
 
+### 3.4 授权编辑的来源与往返（第二轮现状复验）
+
+[第二轮复验](../review/reports/permission-boundary-recheck-2026-11-15.md)新增RECHECK-01/02/03，当前产品仍未修。必须区分三种查询：**直接绑定编辑值、有效三源角色/菜单、用于IAM管理档位的有效直接角色**。`GetUserRoleIDs`作为直接授予编辑出口不能复用effective展开；原样保存不把组织/继承角色固化direct，也不丢弃尚有绑定但停用的角色；失效绑定只读保留不授予当前操作者新增高档位角色的权力，写侧仍守原档位/来源约束。组织/继承及未来UAA受管来源只读展示，不转为local写；现有role_ids wire可按正确语义修复，不要求先建全来源管理台。
+
+`SetUserOrgsTx`的集合替换改为同事务差量：保留相同org的角色、scope、来源、时效及joined_at，is_primary仍按既有primary_org_id输入语义更新，不借差量修改缺省/null含义；新增按默认、移除按已准写主及现有owner双轨清理。旧Phase1 DELETE重插实现目前会把admin/group重置member/assigned，不能将仅修改组织ID集合等同重设全部任职属性；具体角色/scope仍走原专用命令。
+
+用户角色/组织等整体替换编辑器必须先绑定当前user_id＋请求世代的成功快照。打开新目标先清旧草稿；pending/error时按钮与submit一起拒绝，显示重试；迟到响应不盖新目标，不能用空数组/前一用户的选择替代加载失败。成功后显式清空仍允许。上述是C04及薄UI/U06的当前数据正确性修复，不等全站视觉改造或真实UAA。
+
 ## 4. C05：账号、AT/RT/PAT 与停用恢复
 
 保留现有密码纪元、iat 地板、Redis Lua 和 fail-closed，不能将 authorization revision 冒充 password epoch。账号停用、角色剥夺与会话销毁分别表达：业务授权守卫立即以数据库当前状态/代际拒绝相关调用，后台持久 intent 继续撤 Redis 会话；PAT 也必须检查同一有效账号和当前权限，不只验证哈希。
@@ -184,6 +192,9 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 | FND-16 | 仅org:create的custom60→selfService绑custom5；admin10→custom5；合法弱角色对照 | 两种越权均拒且零副作用，合法弱业务角色可按资格绑定；系统角色禁绑不回退，owner不自动获IAM授予权 |
 | FND-17 | middleware已缓存允许角色，取得守卫前另一事务撤权 | 锁内fresh读取不命中旧context；不得以“再次调用RoleFetcher”替代真正重读 |
 | FND-18 | 正常PAT与自定义失败随机Reader（条件性加固） | 正常签发不同；注入失败拒签、零落库；不冒称默认Reader故障可利用 |
+| FND-19 | 角色编辑GET→相同POST→撤组织/父边；含停用直接角色 | 零新增direct来源，合法绑定不丢；撤派生后无固化权限，直接/有效/IAM档位视图分轨 |
+| FND-20 | 相同org_ids/primary原样保存，已有admin/group及其它任职属性 | 保留项属性不被默认覆盖，新增/移除仍正确且同事务 |
+| FND-21 | 角色读取pending/error；组织甲慢乙快/乙失败；提交按钮和函数 | 当前成功快照前零POST，迟到不串目标；成功读取后明确清空仍合法 |
 
 测试先写业务正/负/边界/权限全部预期，目标行为有效红后实现；并发变异按standards至少8次稳定红验牙。首版本地验真实PG/Redis、双事务竞争、单实例重启/恢复、UI普通/管理员/CC/只读旅程及完整适用门禁；真正启用同服务多副本前再做两实例策略/租约/配额故障注入，不能把完整HA验收强塞单实例首发。当前表格是测试设计，不是已运行结果。真实公司UAA、HR和消息合同分列real待验；本地正式出口不等UAA。
 

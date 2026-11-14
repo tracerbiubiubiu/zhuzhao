@@ -90,7 +90,8 @@
         "docs/design/engineering-execution-design.md",
         "docs/design/uaa-governance-integration.md",
         "docs/phase6/foundation-iam-module-detail.md",
-        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -99,7 +100,8 @@
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "中央撤权或投影过期且AS/grant有效的反例，各入口按包回归；独立模式不检查UAA。",
         "本轮P-PQ01固定1日计覆盖选择/独立回读/证据回填；原质量基线4–7不因本轮再次加价。",
-        "首个消费者有deadline/大小/provider速率和inflight/批量积压硬限及恢复指标；全共享预算/多副本/新broker在对应启用窗。"
+        "首个消费者有deadline/大小/provider速率和inflight/批量积压硬限及恢复指标；全共享预算/多副本/新broker在对应启用窗。",
+        "新确认探针与目标安全回归分开：role GET/POST来源保持、任职属性往返、UI慢/失败/换目标、avatar归属、附件用途；不用重复8轮错误前提给TR retry假阳性背书。"
       ],
       "next_design_gate": "P6.1；UAA公共及后继AI渠道启用时",
       "module_detail_status": {
@@ -177,13 +179,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/phase6/foundation-iam-module-detail.md"
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "RECHECK-04/05补头像旧对象退役合法归属与附件先关联后用途提示；条件性/低影响边界随现有对象生命周期收口，已绑定他人头像和跨票读控制保留。"
       ],
       "next_design_gate": "P6.0开工前",
       "module_detail_status": {
@@ -227,7 +231,8 @@
         "docs/design/engineering-execution-design.md",
         "docs/design/uaa-governance-integration.md",
         "docs/phase6/foundation-iam-module-detail.md",
-        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -236,7 +241,8 @@
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。",
         "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
-        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。"
+        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
+        "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
       "module_detail_status": {
@@ -391,7 +397,8 @@
         "docs/design/business-lifecycle-contracts.md",
         "docs/design/uaa-governance-integration.md",
         "docs/phase6/foundation-iam-module-detail.md",
-        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -400,7 +407,8 @@
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
         "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
-        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。"
+        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。",
+        "RECHECK-03：相同组织集合保存不隐式重设role/scope/source/expiry/joined_at；新增/移除按单写主及owner清理，HR/UAA未接也先修本地往返。"
       ],
       "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
       "module_detail_status": {
@@ -727,7 +735,8 @@
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
         "docs/design/uaa-governance-integration.md",
         "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
-        "docs/phase6/ticket-module-detail.md"
+        "docs/phase6/ticket-module-detail.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -735,7 +744,8 @@
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "全站范围及逐页观察/改造/验收已补；实际21既有页按12–19日迁移，改后逐页运行回归，不用报告代替成品。",
-        "工单/配置5页及情报页由U03/U04/U05，CmdK/LS及UAA/CE新增UI另计。"
+        "工单/配置5页及情报页由U03/U04/U05，CmdK/LS及UAA/CE新增UI另计。",
+        "RECHECK-02系统用户授权编辑安全子出口随C04前移：loading/error零POST、迟到不串目标；全站视觉整包窗口不变，需真实浏览器故障/延迟回归。"
       ],
       "next_design_gate": "P6.3全站视觉；企业最小链不等本包",
       "reference_audit_state": "bounded_reference_executed_not_product_implementation",
@@ -1916,7 +1926,9 @@
       "C05 DB commit versus Redis revoke recovery",
       "D03 new type/participants/field policies"
     ],
-    "scope_policy": "keep_local_IAM_three_layers_and_UAA_adapter; no_new_authorization_engine"
+    "scope_policy": "keep_local_IAM_three_layers_and_UAA_adapter; no_new_authorization_engine",
+    "followup_ref": "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+    "count_scope": "original AUTH batch only; follow-up RECHECK findings are separate, not closed"
   },
   "core_interaction_review": {
     "date": "2026-11-15",
@@ -1944,5 +1956,29 @@
       "estimate_changed": false
     },
     "existing_auth_findings_remain_open": true
+  },
+  "permission_boundary_recheck": {
+    "date": "2026-11-15",
+    "ref": "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+    "source_main": "aa7451739bcecdea5afe288d2b7e19f39b55f142",
+    "design_basis": "d1219aa3",
+    "state": "audit_complete_new_findings_open",
+    "major_findings": [
+      "RECHECK-01",
+      "RECHECK-02",
+      "RECHECK-03"
+    ],
+    "conditional_resource_boundary": [
+      "RECHECK-04"
+    ],
+    "low_impact_metadata_boundary": [
+      "RECHECK-05"
+    ],
+    "rejected_retry_candidate": "pinned Asynq RunTask retains retry count; fake Inspector probe omitted delivery context",
+    "existing_AUTH_and_C03_findings_remain_open": true,
+    "product_fixes_implemented": false,
+    "new_top_level_packages": 0,
+    "estimate_changed": false,
+    "subestimate_required_before_implementation": true
   }
 }

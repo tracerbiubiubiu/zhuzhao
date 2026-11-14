@@ -1,5 +1,7 @@
 # 鉴权模块设计
 
+> **2026-11-15后继复验（仍未修产品）**：[第二轮权限/资源边界](../review/reports/permission-boundary-recheck-2026-11-15.md)补角色编辑来源固化、加载/目标错配、任职属性往返及两个窄资源边界。下方原AUTH批次6组只代表原批，新增RECHECK状态看控制台§6和[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验)；普通门禁绿不关闭这些问题。
+
 > **2026-11-15现状专项（缺陷未修）**：[权限设计→实现→规划复核](../review/reports/authorization-design-implementation-review-2026-11-15.md)在main确认组织赋角提权、停组授权未撤、业务任务触发审计维护等6组当前问题，另列PAT条件性加固。现有三层架构保留；[底座§3.3](../phase6/foundation-iam-module-detail.md#33-现状缺陷先修与真实重读2026-11-15专项后继)及[任务§8.2](../phase6/task-activelist-message-detail.md#82-存量任务入口与维护动作的接线门)列最小修复/存量入口门。下方历史已实施表不表示这些问题已关闭；当前状态看控制台§6。
 
 > **2026-11-12企业接入校准（未实现）**：[UAA认证与权限治理合同](../design/uaa-governance-integration.md)区分中央身份/受管授权与本地三层执行。现有授权能力不等于已接UAA；企业模式、来源追踪、三路同步与多实例撤权需E01-UAA-C/P/R建设验收。mock和独立开发入口保留，旧“鉴权零改动/换配置即可”不作当前保证。
