@@ -261,6 +261,10 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 2026-11-08提交检查安装（RR-GIT-01）：Go四仓在当前目标工作树运行`make hooks`，UI运行`pnpm hooks`，需要Python3；installer仅设置当前worktree的相对`.githooks`，保留common配置供尚未承接的main使用，不手动把所有仓统一指向主仓绝对路径。消息在commit-msg检查，pre-push/CI再按真实新增窗口检查存库文本。固定`commit-policy-baseline`只豁免其祖先，不自动前移；显式历史审计不豁免。新增merge也须规范主题与正文；规则、缺对象处置与遗留外仓钩子兼容见standards §12-9。主仓`make test-commit-lint`与兄弟/ UI相应入口验证反例，不能以空待推窗口代替检查器测试。
 
+2026-11-14 PR合入执行补注：GitHub默认的`Merge pull request ...`标题违反现行规范，服务端生成的merge不经过本地commit-msg钩子。先准备完整规范主题、空行及非空正文，用`python3 scripts/commit-policy.py message --raw <完整消息文件>`校验；再以同一主题和正文文件调用`gh pr merge <PR> --merge --match-head-commit <已检查的完整SHA> --subject <已校验主题> --body-file <正文文件>`。合入后核实际merge消息、主线tree及准确main CI，不能由PR头CI绿推断新merge消息也合规。
+
+本次utils、activelist、taskrunner、UI首笔合入使用默认标题，四笔历史消息违规和失败CI保留；逐仓集成后记记录准确SHA及失败来源。后继规范PR只验证当前新增窗口和当前main，不代表历史违规已消除；不改固定baseline、不豁免merge、不重写主线。产品输入与已验候选相同，未切换运行栈或数据卷。
+
 2026-11-07后续工具链安排（所有者明确）：Go1.27、Node24/26 LTS的整体升级，须等Phase5先合入main后，再基于main独立实施与验证；当前Phase5不提前切换。已完成的Go1.26.10安全修复继续保留。本机系统Go仍1.26.6；原生1.26.10已按官方toolchain模块/开启sumdb验证取得，仅保存在ignored `.codex`，未改全局PATH或系统安装。执行本地命令时显式选择已验证SDK；工具CLI的`GO`覆盖不替代其它Make目标所需的PATH设置。早先“SDK获取失败”段是历史时点，不再作为当前状态。
 
 2026-11-08依赖引用保护：主仓与activelist的utils pin为`v0.4.4-0.20261106080630-cd759a040245`，所需提交完整值`cd759a0402455731f805ba507bf8401447e00e29`。清理保护项为utils远端`refs/heads/codex/phase5-audit`；本轮保持现有pin与引用，不新增tag。删除/改写承载引用前，须从消费者实际go.mod重新清点全部pin，并实时确认每个提交仍由拟保留的远端分支/tag可达；用独立临时模块缓存验证精确版本下载、sum及源码一致，不清共享缓存。只有新的长期远端引用已存在且验证完成后才能解除旧引用保护，正式发布仍按main/tag流程另批。pseudo-version固定commit，不随分支前移；代理曾命中、go.sum或本机bundle均不代替长期源码托管。[Go模块引用规则](https://go.dev/ref/mod#pseudo-versions)与[官方代理保留边界](https://proxy.golang.org/#faq)为依据，本轮结果见[followup](../review/reports/zhuzhao-report-followup-2026-11-08.md#收口复核与交付候选2026-11-08)。
