@@ -1287,11 +1287,11 @@
   },
   "estimate_status_ref": "docs/review/planning-scope-estimates.json",
   "resource_binding_status": {
-    "state": "owner_confirmed_relative_schedule",
+    "state": "one_seat_confirmed_actual_T0_not_started_quality_first",
     "confirmed_on": "2026-11-13",
     "effective_seats": 1,
     "engineering_days_per_week": 5,
-    "T0": "actual_start_asap",
+    "T0": null,
     "hard_deadline": null,
     "ref": "docs/review/execution-schedule.json#/resource_assumptions"
   },
@@ -1366,13 +1366,31 @@
   "historical_uaa_estimate_ref": "docs/review/uaa-implementation-estimate.json",
   "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
   "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json",
-  "latest_delivery_boundary_ref": "docs/design/foundation-release-boundaries.md",
+  "latest_delivery_boundary_ref": "docs/phase6/first-usable-release-plan.md",
   "latest_delivery_boundary_date": "2026-11-14",
   "module_refinement_entry": {
     "ref": "docs/phase6/module-design-handoff.md",
-    "source_followup": "F011-module-design-entry-and-context",
+    "source_followup": "F013-local-first-quality-and-UAA-later",
     "state": "handoff_ready_not_all_module_design_frozen",
-    "first_pack": "permissions_UAA_with_six_edge_joint_contract",
-    "existing_item_maturity_not_reclassified": true
+    "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_later",
+    "existing_item_maturity_not_reclassified": true,
+    "net_estimate_candidate_ref": "docs/review/local-core-release-estimate.json",
+    "full_UAA_P_R_not_local_core_formal_gate": true
+  },
+  "local_core_release_view": {
+    "ref": "docs/phase6/first-usable-release-plan.md",
+    "target_ref": "docs/review/first-usable-release-target.json",
+    "estimate_ref": "docs/review/local-core-release-estimate.json",
+    "candidate_days": [
+      68,
+      104
+    ],
+    "formal_local_accounts_allowed": true,
+    "UAA_C_early_full_P_R_later": true,
+    "core_real_message_not_deferred": true,
+    "January_trial_aspiration_not_forced_deadline": true,
+    "future_production_data_preserved": true,
+    "implemented": false,
+    "original_76_parent_maturity_and_prices_not_reclassified": true
   }
 }

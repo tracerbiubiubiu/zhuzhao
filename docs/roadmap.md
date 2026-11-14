@@ -1,6 +1,6 @@
 # 全项目路线图：承接、扩充与渐进演进
 
-> **首版固定目标（后继确认）**：2027年1月试用、2月1日前核心可用；以[首版阶梯](phase6/first-usable-release-plan.md)及[旧→新对照](review/core-release-change-comparison.md)锁风险/工单/TR/AL/消息和三层/UAA。AI及高级仪表盘后继。长期76包参考不是这个日期的可行排程；单席与真实联调未定的风险已单列，尚未承诺按期实现。
+> **首版后继修订（质量优先）**：公司允许本地账号先正式运行；风险/工单/TR/AL/消息和完整本地三层权限先交，完整UAA P/R在核心稳定后交，UAA-C接缝先留。1月试用为争取窗口，原2月1日硬目标及1月11/18候选不再约束。见[首版阶梯](phase6/first-usable-release-plan.md)、[净估候选68–104工程日](review/local-core-release-estimate.json)及[变化对照](review/core-release-change-comparison.md)。长期76包参考不等于首版排程；AI等后继，未启动业务开发。
 
 > **2026-11-14基础先行**：[基础版边界](design/foundation-release-boundaries.md)区分现有底座入网试验B0、最小可扩展基础B1与后续各期。B1先一条query adapter及一个参考私有应用，采用受审配置/重启；完整UAA-P、宿主管理CLI、全部页面与高阶观测不作统一前置。常用功能先可用，增强按实际使用继续交；阶段能力分组不再被理解为全包串行总门。当前未启动业务实现。
 
@@ -25,7 +25,7 @@ Phase1–4已交IAM、资源级工单、通用服务和UI基础；Phase5已验�
 
 ## 2. 新Phase6：把现有底座变成可信业务闭环
 
-**新增企业UAA硬条件（2026-11-12）**：[现行合同](design/uaa-governance-integration.md)要求认证及受管权限治理，E01-UAA-C在P6.0交公共来源/编码/撤权规则，P在P6.1交公共端口及mock，R从P6.1开真实联调并在公司UAA纳管企业模式首次正式激活前通过；不能机械等P7或被其他provider替代。本轮已补估C2–3、P25–39、R13–22工程日，当前完整有限基线与资源场景见[注册表](review/uaa-implementation-estimate.json)和更新排期；外部等待及既有非UAA范围资格条件另列。业务路线延续、mock保留；本次不是UAA已接通。
+**新增企业UAA硬条件（2026-11-12）**：[现行合同](design/uaa-governance-integration.md)要求认证及受管权限治理，E01-UAA-C在P6.0交公共来源/编码/撤权规则，P在P6.1归属公共端口及mock，R具备供给可准备并在公司UAA纳管企业模式首次正式激活前通过；当前首版本地正式优先，完整P/R核心稳定后投入，不因Phase归属强制提前，也不以其它provider代验。本轮已补估C2–3、P25–39、R13–22工程日，当前完整有限基线与资源场景见[注册表](review/uaa-implementation-estimate.json)和更新排期；外部等待及既有非UAA范围资格条件另列。业务路线延续、mock保留；本次不是UAA已接通。
 
 **两个正式运行模式分别验收**：独立模式保留原有账号/角色/菜单授权和权限管理，不等待公司UAA、私有adapter或R。C仅冻结公共规则与合成候选矩阵；真实映射及批准R前核验。P合同/mock准备可并行，完整投影/撤权出口验收须C04和X02-F实际共享能力通过（含其D06/X01-C依赖）；最小双模式前端与安装/切换/受控退出runbook随P/R交付，不等U06全站视觉。P负责用例，G03接CI，G04负责质量口径，新增接线/质量净量已在P计一次，原包预算不被本轮重新分类。
 

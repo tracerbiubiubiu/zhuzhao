@@ -505,7 +505,7 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "首版已确认2027-02-01前、1月试用；本模型是既有长期相对排程，不证明固定目标可行；一席保留，实际T0未启动"
+    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R核心稳定后交。本模型是旧长期相对排程，不等于首版净估DAG或整Phase6日期承诺；一席保留，实际T0未启动"
   },
   "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
@@ -551,5 +551,7 @@
       "window": "公开主参考在基础/风险首链及P6.E优先工作之后、P7正任务之前；仍保留P6.1起可施工的明确合同/验收窗口，不代表真实激活"
     }
   },
-  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json"
+  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
+  "local_core_net_estimate_ref": "docs/review/local-core-release-estimate.json",
+  "local_core_view_note": "separate subset allocation/net estimate for quality-first local formal core; this long-horizon DAG is not the new first-core sequence or a January commitment; applicable G05/E09 sub-exits pulled before formal local production"
 }

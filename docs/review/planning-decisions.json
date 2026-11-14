@@ -383,7 +383,7 @@
       }
     }
   ],
-  "last_updated": "2026-11-13",
+  "last_updated": "2026-11-14",
   "confirmation_summary": {
     "owner_confirmed": 32,
     "owner_pending": 1,
@@ -394,7 +394,7 @@
   "active_work_boundary": {
     "updated_on": "2026-11-14",
     "owner_instruction": "不急开发，还有一些场景没交代完；先完成本次设计落档、提交。",
-    "current_delivery": "module_design_entry_and_daily_reconciliation_publication_cleanup",
+    "current_delivery": "local_first_core_quality_plan_net_estimate_and_module_handoff",
     "scenario_collection": "still_in_progress",
     "T0_status": "not_started",
     "implementation_authorized": false,
@@ -407,16 +407,23 @@
       "shared_environment_switch",
       "main_integration"
     ],
-    "interpretation": "推进模块设计交接并对今日要求逐点收尾；本轮新增提交/推送/草稿PR与可恢复清理授权，不自动合main/发版/启动业务开发或切共享环境。",
-    "latest_supplement_ref": "docs/review/planning-followups.json#F012-daily-reconciliation-publication-cleanup",
+    "interpretation": "公司已允许本地账号正式运行，但本轮仍仅设计/补估/提交候选；质量优先，完整UAA后继。授权不自动开始业务实现/部署/合main。",
+    "latest_supplement_ref": "docs/review/planning-followups.json#F013-local-first-quality-and-UAA-later",
     "reference_mock_authorized": true,
-    "latest_owner_source": "01a1d5e5-7ecd-7c80-ade9-b0f79482660e",
+    "latest_owner_source": "01a1d8a5-8edc-78a0-b7cf-1cf838c4e897",
     "confirmed_core_release_target": {
-      "ready_before": "2027-02-01",
-      "trial_month": "2027-01",
+      "ready_before": null,
+      "aspirational_trial_month": "2027-01",
+      "quality_over_calendar": true,
+      "formal_local_accounts_allowed": true,
+      "full_UAA_P_R_after_core": true,
       "effective_seats": 1,
-      "feasibility": "not_demonstrated",
-      "real_uaa_and_message_test_time": "unknown"
+      "net_estimate_candidate_days": [
+        68,
+        104
+      ],
+      "estimate_ref": "docs/review/local-core-release-estimate.json",
+      "real_uaa_and_message_test_time": "unknown_separate_conditions"
     },
     "publication_authorized": true,
     "publication_state": "candidate_branches_and_draft_PRs_created_followup_commits_use_same_PR"

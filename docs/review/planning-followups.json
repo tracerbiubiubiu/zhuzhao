@@ -477,6 +477,71 @@
         "main_merged_or_release": false,
         "final_delivery_remote_SHA_and_CI": "verified_separately_in_final_receipts_not_claimed_by_this_ledger"
       }
+    },
+    {
+      "id": "F013-local-first-quality-and-UAA-later",
+      "sources": [
+        {
+          "message_id": "01a1d612-2ae5-7042-b808-98e8069eb1d9",
+          "summary": "偏向1月核心功能后接UAA、约两个月联调；也接受年后联调情形"
+        },
+        {
+          "message_id": "01a1d89f-4428-72f2-8af6-9ce6e75794f3",
+          "summary": "公司允许本地账号先正式运行；需判断新增范围能否像旧计划1月完成，不是要求强行日期"
+        },
+        {
+          "message_id": "01a1d8a5-8edc-78a0-b7cf-1cf838c4e897",
+          "summary": "质量和内网实际可用优先，按最适合计划，不为排期勉强"
+        }
+      ],
+      "plan_ref": "docs/phase6/first-usable-release-plan.md",
+      "target_ref": "docs/review/first-usable-release-target.json",
+      "estimate_ref": "docs/review/local-core-release-estimate.json",
+      "report_ref": "docs/review/reports/local-first-core-feasibility-2026-11-14.md",
+      "interpretation": [
+        "本地核心正式版与UAA纳管正式版分开；前者仍须完整本地三层权限、真实业务/消息及生产门",
+        "核心先留UAA-C身份/来源/稳定合同接缝，完整P/R后继，UAA不缩为纯SSO",
+        "消息HTTP映射和实测仍在核心；真实等待未知单列，不默认为0",
+        "原1月试用/2月1日硬目标及1月11/18候选改为争取窗口，优先可用和试用修正",
+        "本地生产数据/账号/权限与在途效果不能按当前测试卷可重建处理，UAA影子映射批准后接管",
+        "逐模块详设/切片校准，不重新全盘审计或一次冻结远期DTO"
+      ],
+      "state": "documented_bounded_net_estimate_independently_reviewed_not_calendar_commitment",
+      "estimate_summary": {
+        "raw_days": [
+          67.5,
+          103.5
+        ],
+        "display_days": [
+          68,
+          104
+        ],
+        "effective_weeks": [
+          13.5,
+          20.7
+        ],
+        "confidence": "medium-low",
+        "UAA_C_included": true,
+        "full_UAA_P_R_excluded": true,
+        "not_added_to_original_76_parent_budget": true
+      },
+      "not_performed": [
+        "business_implementation",
+        "actual_deployment",
+        "real_UAA_or_company_message_integration",
+        "main_merge_or_release"
+      ],
+      "remaining_bindings": [
+        "actual business flow/type/fields/actions/AL subscription",
+        "company message HTTP contract/test conditions",
+        "production target/operator",
+        "IAM strong-audit failure policy"
+      ],
+      "supersedes_only_current_timing_and_full_UAA_core_precondition": true,
+      "prior_source_history_preserved": [
+        "F009",
+        "F012"
+      ]
     }
   ]
 }

@@ -2,6 +2,8 @@
 
 - [2026-11-14要求对账与工作区收尾](daily-closeout-2026-11-14.md)：七条公开输入、模块交接补漏、分支谱系、五仓草稿PR及可恢复清理。
 
+- [本地核心先正式、UAA后继的可行性](local-first-core-feasibility-2026-11-14.md)：F013质量优先、旧范围比较、68–104工程日净估候选；取代前述日期及完整UAA先行读法，不是正式进度承诺。
+
 - [首版阶梯、变化对照与内网升级复核](first-usable-release-design-2026-11-14.md)：本轮实际交付、接口缺口、基础/增强边界、兼容升级和日期/净估限制。
 
 - 首版定向复核：[四链/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层与UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI与试用](core-release-ui-trial-plan-2026-11-14.md)。所有者日常先读[阶梯](../../phase6/first-usable-release-plan.md)和[变化对照](../core-release-change-comparison.md)。

@@ -1,23 +1,37 @@
 {
   "schema_version": 1,
   "date": "2026-11-14",
-  "status": "owner_target_confirmed_scope_selected_feasibility_unproven_not_implementation_authorization",
+  "status": "quality_first_local_formal_core_then_UAA_bounded_estimate_candidate_not_implementation_authorization",
   "plan_ref": "docs/phase6/first-usable-release-plan.md",
   "comparison_ref": "docs/review/core-release-change-comparison.md",
   "owner_sources": {
     "core_scope_and_deadline": "01a1d5c7-a70c-73b0-b0cd-06769bf011b1",
     "deadline_confirmation": "01a1d5c9-7c34-7990-a208-06e40526d476",
     "real_intranet_conditions_unset": "01a1d5cd-5353-7aa2-bf98-3f67e6a1e946",
-    "basic_vs_enhancement_and_adapter_upgrade": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87"
+    "basic_vs_enhancement_and_adapter_upgrade": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87",
+    "later_UAA_timing": "01a1d612-2ae5-7042-b808-98e8069eb1d9",
+    "local_accounts_formal_allowed_and_feasibility_question": "01a1d89f-4428-72f2-8af6-9ce6e75794f3",
+    "quality_over_January": "01a1d8a5-8edc-78a0-b7cf-1cf838c4e897"
   },
   "target": {
-    "ready_before": "2027-02-01",
+    "ready_before": null,
     "trial_month": "2027-01",
-    "preferred_trial_start_candidate": "2027-01-11",
-    "latest_two_week_trial_start_candidate": "2027-01-18",
+    "preferred_trial_start_candidate": null,
+    "latest_two_week_trial_start_candidate": null,
     "actual_T0": null,
     "calendar_scenario_start": "2026-11-16",
-    "dates_are_target_windows_not_a_feasible_dispatch_schedule": true
+    "dates_are_target_windows_not_a_feasible_dispatch_schedule": true,
+    "January_is_aspiration_not_deadline": true,
+    "local_core_formal_exit": "mandatory usable business journey and applicable production gates; not a forced calendar date",
+    "UAA_follows_core": "full P/R after core stabilizes; roughly two months is aspiration not committed duration",
+    "superseded_target": {
+      "ready_before": "2027-02-01",
+      "trial_start_candidates": [
+        "2027-01-11",
+        "2027-01-18"
+      ],
+      "reason": "owner local formal permission and quality-first later clarification"
+    }
   },
   "resource": {
     "confirmed_effective_seats": 1,
@@ -26,27 +40,26 @@
     "parallel_agents_are_not_effective_seats": true,
     "weekday_ceiling": 55,
     "holidays_and_unavailability_deducted": false,
-    "preferred_build_days": 40,
-    "preferred_trial_days": 15,
-    "latest_build_days": 45,
-    "latest_trial_days": 10,
     "maintenance_closeout_within_capacity_days": [
       1,
       2
-    ]
+    ],
+    "weekday_ceiling_context": "hypothetical 2026-11-16 to 2027-01-29 only, not available capacity for promised completion"
   },
   "must_have": [
-    "风险域和风险到整改工单人工闭环",
-    "既有工单及所选派单/证据/复核",
+    "风险域和风险到整改工单人工闭环，逐风险责任/证据/复核和有界N:1",
+    "既有工单及所选派单/证据/复核，工单列表有限多选加标签",
     "工单→taskrunner→原任务结果/activelist受权更新",
-    "activelist变化→受权TR后继任务；仅消息/刷新不代验",
-    "普通业务消息真实HTTP adapter公共合同和合成服务验收；公司实测单列",
-    "完整本地三层L1/L2/L3与UAA纳管账号/角色/菜单按钮API/适用范围的双模式公共实现",
+    "activelist变化→获权TR后继任务；仅消息/刷新不代验",
+    "公共HTTP sender及一条实际公司消息映射/实测，明确受理与送达；真实条件未知不代验",
+    "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继",
     "当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI",
-    "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收"
+    "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收",
+    "首次本地正式生产适用制品/漏洞/运行配置/备份恢复/回退与故障接管证据"
   ],
   "selected_profile_candidate": "少量固定动作/一风险来源或人工输入/一整改类型/一AL结构字段组/一变化订阅/一HTTP渠道，实际业务绑定实施前确认",
   "after_core": [
+    "完整UAA公共P/私有R及受管模式真实接管，仍含账号/角色/菜单按钮API/适用范围治理",
     "AI/RAG/skill/MCP产品化",
     "高级仪表盘",
     "设备模块扩展",
@@ -55,12 +68,14 @@
     "多实例/微服务"
   ],
   "ready_states": {
-    "public_product": "真实核心服务/PG/Redis/浏览器和合成外部服务覆盖首版链；不是离线UAA模型绿",
-    "company_managed": "额外真实UAA及消息协议、纳管/撤权/资源范围/审批和适用公司准入通过；未知条件不能以mock顶替",
+    "public_product": "real core/PG/Redis/browser plus synthetic provider prove public contract; not sufficient alone for actual company message delivery",
+    "company_managed": "after formal-local core add actual UAA authentication/three feeds/scope/revocation/source takeover and approved switch; cannot substitute pure SSO or mock",
     "real_uaa_test_available_on": null,
     "real_message_test_available_on": null,
     "external_waiting_days": null,
-    "unknown_waiting_is_not_zero": true
+    "unknown_waiting_is_not_zero": true,
+    "formal_local": "company allows local accounts for formal operation; real mandatory core journey/local L1 L2 L3/message and applicable production gates pass; complete UAA P/R not required",
+    "real_UAA_window": "not fixed; owner prefers after core, possibly February-March but no committed dates"
   },
   "estimate_views": {
     "unit": "engineering_days_not_calendar_promises",
@@ -89,24 +104,50 @@
       75,
       117
     ],
-    "backend_UI_scope_alignment_and_UAA_shared_dedup_required": true,
-    "full_release_net_days": null,
+    "backend_UI_scope_alignment_and_UAA_shared_dedup_required": false,
+    "full_release_net_days": [
+      68,
+      104
+    ],
     "price_registry_unchanged": true,
     "do_not_add_views_to_76_parent_baseline": true,
     "conservative_backend_candidate_scope_note": "59–91为较宽保守画像，不是不可缩减最低；部分formula/全import/feed/HR/配置泛化可在受控范围后移，实际子估待收敛",
-    "conditional_non_UAA_backend_plus_UI_scope_note": "75–117仅报告原保守画像假设匹配时的条件算术，非最新收窄画像净价，不可直接再加UAA"
+    "conditional_non_UAA_backend_plus_UI_scope_note": "75–117仅报告原保守画像假设匹配时的条件算术，非最新收窄画像净价，不可直接再加UAA",
+    "historical_views_are_not_current_core_net_price": true,
+    "historical_scope_note": "C/P+UI43–68 and conservative backend59–91/UI75–117 remain historical scoped views, not proof against the changed local-first target and not additive",
+    "local_core_net_ref": "docs/review/local-core-release-estimate.json",
+    "full_release_net_status": "bounded_local_core_candidate_medium_low_confidence_not_calendar_commitment",
+    "full_UAA_P_R_in_current_core_net": false,
+    "UAA_C_in_current_core_net": true,
+    "current_joint_scope_and_shared_allocation_reviewed": true,
+    "UAA_P_R_reference_after_C": [
+      38,
+      61
+    ],
+    "UAA_P_R_later_reestimate_rule": "deduct actual shared delivery once; reserve core support capacity; external waiting separate"
   },
   "feasibility": {
     "single_seat_deadline_committed": false,
-    "target_risk": "所选完整链的低/高工作量与共享前置未联合净估；既有估价不足支持40–45实现日承诺，真实联调时间未定",
-    "recommended_next": "按首条组合冻结可派发切片、联合扣重/关键路径及实际产能，早期小批实测校准；保留试用窗口，不删必需权限或链路换日期"
+    "target_risk": "bounded raw67.5–103.5 days exceeds55 nominal weekdays before February under hypothetical Nov16 T0; no promise January formal completion; actual T0/holidays/message/first-case fit unknown",
+    "recommended_next": "progress module by module and show risk→ticket early; aim January trial if actual throughput permits; formal usable core after all mandatory gates, no permission/chain/data reductions for date",
+    "calibrate_at": "first local authorization/interface pack and risk→ticket actual design/TDD/implementation/review throughput",
+    "effective_weeks_candidate": [
+      13.5,
+      20.7
+    ],
+    "late_trial_and_fix_days_already_in_total": [
+      10,
+      14.5
+    ]
   },
   "contract_upgrade": {
     "internal_model_is_external_contract": false,
     "private_code_must_modify_core": false,
     "old_reference_adapter_new_core_test_required": true,
     "arbitrary_future_pull_zero_change_guaranteed": false,
-    "breaking_changes": "显式新合同/兼容映射或协调迁移；保留未正式部署可协调替换的既有决定，无凭空长期支持期限"
+    "breaking_changes": "显式新合同/兼容映射或协调迁移；保留未正式部署可协调替换的既有决定，无凭空长期支持期限",
+    "first_formal_consumer_starts_compatibility_obligation": true,
+    "production_UAA_transition": "preserve user IDs and ownership/risk/tickets/attachments/audit/receipts/unfinished intents/inflight tasks; approved shadow mapping, no reset/recreate"
   },
   "current_gate_policy": "现行完整适用门禁和TDD保留；分档未启用",
   "implementation_started": false,
@@ -130,10 +171,12 @@
   "module_design_handoff_ref": "docs/phase6/module-design-handoff.md",
   "design_progress": {
     "stage": "module_refinement_entry",
-    "first_pack": "cross_module_six_edges_and_authorization_UAA_handoff",
+    "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_module_later",
     "module_exact_DTO_DDL_frozen": false,
     "full_release_net_estimate_frozen": false,
     "business_implementation_started": false,
-    "context_policy": "common_summary_module_authority_neighbor_contract_and_changed_symbols; inspect_history_on_specific_conflict"
+    "context_policy": "common_summary_module_authority_neighbor_contract_and_changed_symbols; inspect_history_on_specific_conflict",
+    "bounded_local_core_net_candidate_available": true,
+    "source_followup": "F013-local-first-quality-and-UAA-later"
   }
 }

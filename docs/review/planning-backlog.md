@@ -2,7 +2,7 @@
 
 日期：2026-11-14。76父包、17正式子出口、6项LS额外子范围，13发布切片；原71包完整保留，CE五项正式纳入。
 唯一净增数字源为[估算注册表](planning-scope-estimates.json)，相对日窗见[完整排程](execution-schedule.md)，算法/分解见[模型](execution-schedule-model.json)。
-1有效席位×每周5工程日，T0未启动；首版已确认1月试用/2027年2月1日前，目标及可行性见[首版阶梯](../phase6/first-usable-release-plan.md)。本页是长期参考，不是该日期已可兑现的排程或开发授权。
+1有效席位×每周5工程日，T0未启动；本地账号可先正式运行，质量优先，1月试用为争取窗口，完整UAA P/R后继。当前首版[阶梯](../phase6/first-usable-release-plan.md)/[68–104日净估候选](local-core-release-estimate.json)与本页长期参考分列，不是整Phase6完成承诺或开发授权。
 本总账长程工日不是基础版B0/B1工期；基础目标与风险首链在完整排程单列。F004新增细项/OBS后继补充尚未合并，不把旧总额冒称完整新路线总价。
 
 ## 读取规则与质量继承
