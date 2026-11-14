@@ -92,7 +92,8 @@
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -103,7 +104,8 @@
         "本轮P-PQ01固定1日计覆盖选择/独立回读/证据回填；原质量基线4–7不因本轮再次加价。",
         "首个消费者有deadline/大小/provider速率和inflight/批量积压硬限及恢复指标；全共享预算/多副本/新broker在对应启用窗。",
         "新确认探针与目标安全回归分开：role GET/POST来源保持、任职属性往返、UI慢/失败/换目标、avatar归属、附件用途；不用重复8轮错误前提给TR retry假阳性背书。",
-        "HIER-01–12作为随模块启用的有界TDD场景；先红后绿，复用既有FND/AUTH/RECHECK，不预写所有未来产品或另造权限引擎。"
+        "HIER-01–12作为随模块启用的有界TDD场景；先红后绿，复用既有FND/AUTH/RECHECK，不预写所有未来产品或另造权限引擎。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1；UAA公共及后继AI渠道启用时",
       "module_detail_status": {
@@ -114,6 +116,11 @@
       },
       "hierarchy_scenarios": [
         "HIER-01–12 as activated by owner module"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-07"
       ]
     },
     {
@@ -238,7 +245,8 @@
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -249,7 +257,8 @@
         "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
         "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
         "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。",
-        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。"
+        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
       "module_detail_status": {
@@ -268,6 +277,13 @@
         "HIER-08",
         "HIER-09",
         "HIER-11"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01",
+        "AUTH-GAP-02",
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-06"
       ]
     },
     {
@@ -277,14 +293,16 @@
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/phase6/foundation-iam-module-detail.md",
-        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。"
+        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
@@ -292,7 +310,10 @@
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
+      ]
     },
     {
       "work_item": "D01",
@@ -346,7 +367,8 @@
         "docs/design/business-lifecycle-contracts.md",
         "docs/phase6/ticket-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -354,7 +376,8 @@
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "AUTH-01组织scope/委托生命周期与AUTH-04现有ticket_relations双端当前read过滤；撤CC后不可回对端ID及关系元数据，正式使用前转产品回归。",
-        "HIER-02/05/10：多任职scope、透明读/虚拟组挂载与类型参与策略相交，group/all/ancestor owner不越类型；普通只读不附动作权。"
+        "HIER-02/05/10：多任职scope、透明读/虚拟组挂载与类型参与策略相交，group/all/ancestor owner不越类型；普通只读不附动作权。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
@@ -367,6 +390,10 @@
         "HIER-02",
         "HIER-05",
         "HIER-10"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03",
+        "AUTH-GAP-04"
       ]
     },
     {
@@ -424,7 +451,8 @@
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -435,7 +463,8 @@
         "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
         "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。",
         "RECHECK-03：相同组织集合保存不隐式重设role/scope/source/expiry/joined_at；新增/移除按单写主及owner清理，HR/UAA未接也先修本地往返。",
-        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。"
+        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
       "module_detail_status": {
@@ -448,6 +477,9 @@
         "HIER-03",
         "HIER-04",
         "HIER-12"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
       ]
     },
     {
@@ -478,13 +510,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/phase6/risk-module-detail.md"
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.2开工前",
       "module_detail_status": {
@@ -492,7 +526,10 @@
         "ref": "docs/phase6/risk-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D09",
@@ -500,13 +537,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/phase6/risk-module-detail.md"
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.2开工前",
       "module_detail_status": {
@@ -514,7 +553,10 @@
         "ref": "docs/phase6/risk-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D10",
@@ -522,14 +564,16 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/phase6/risk-module-detail.md"
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "UX02责任口径已确认，R3上线同批接复核投影与计数/列表/角标同源反例，不推迟到U06或未来通用待办"
+        "UX02责任口径已确认，R3上线同批接复核投影与计数/列表/角标同源反例，不推迟到U06或未来通用待办",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.2开工前",
       "module_detail_status": {
@@ -537,7 +581,10 @@
         "ref": "docs/phase6/risk-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D11",
@@ -546,13 +593,15 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/phase6/ticket-module-detail.md"
+        "docs/phase6/ticket-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.3开工前",
       "module_detail_status": {
@@ -560,7 +609,10 @@
         "ref": "docs/phase6/ticket-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D12",
@@ -571,7 +623,8 @@
         "docs/review/planning-backlog.json",
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
-        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -579,7 +632,8 @@
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "首个敏感任务profile启用时，旧GetTask/ListRuns/ListJobs/Cancel/Retry/Trigger/DeadLetters及artifact/logs与新receipt同受当前资源权限；批准的非敏感共享profile保留。",
-        "旧callback实际是执行请求，不是结果通知；分执行/结果投影接口和原receipt状态，不能按任意2xx回贴成功。"
+        "旧callback实际是执行请求，不是结果通知；分执行/结果投影接口和原receipt状态，不能按任意2xx回贴成功。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.3开工前",
       "module_detail_status": {
@@ -587,7 +641,10 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D13",
@@ -1117,15 +1174,20 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P7开工前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "R07",
@@ -1262,15 +1324,20 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P9开工前"
+      "next_design_gate": "P9开工前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-07"
+      ]
     },
     {
       "work_item": "E08",
@@ -1297,16 +1364,23 @@
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
-        "实际版本/环境验恢复/TLS边界及故障可见；企业再附R，独立不等公司资源。"
+        "实际版本/环境验恢复/TLS边界及故障可见；企业再附R，独立不等公司资源。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P7全包；公共生产硬门在任何模式首次生产前"
+      "next_design_gate": "P7全包；公共生产硬门在任何模式首次生产前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-05",
+        "AUTH-GAP-06",
+        "AUTH-GAP-07"
+      ]
     },
     {
       "work_item": "D15",
@@ -1572,7 +1646,8 @@
         "docs/design/capability-interconnect-detail.md",
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
-        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1581,7 +1656,8 @@
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
         "AUTH-02维护action明确执行主体/受控保留期，AUTH-06 Job/消息规则created_by由可信context产生；旧入口最小修复不等完整CE03。",
-        "核心专项确认调用统一是逻辑用例归属而非万能HTTP/callback；共用schema/身份/关联和限额，逐能力迁移实际入口。"
+        "核心专项确认调用统一是逻辑用例归属而非万能HTTP/callback；共用schema/身份/关联和限额，逐能力迁移实际入口。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
       "module_detail_status": {
@@ -1589,7 +1665,10 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ]
     },
     {
       "work_item": "CE02",
@@ -1599,7 +1678,8 @@
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
         "docs/phase6/task-activelist-message-detail.md",
-        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1607,7 +1687,8 @@
       "remaining": [
         "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
-        "按共同合同§2.4/2.5接线；结果投影失败不重做效果，已受理不等于完成；C03现状风险不开旧捷径给内部入口。"
+        "按共同合同§2.4/2.5接线；结果投影失败不重做效果，已受理不等于完成；C03现状风险不开旧捷径给内部入口。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
       "module_detail_status": {
@@ -1615,7 +1696,10 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ]
     },
     {
       "work_item": "CE03",
@@ -2054,5 +2138,25 @@
     "price_numbers_changed": false,
     "subestimate_overlap_check_required": true,
     "runtime_verified": false
+  },
+  "authorization_gap_closure": {
+    "date": "2026-11-15",
+    "ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+    "backlog_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+    "state": "seven_actions_scheduled_product_gaps_open",
+    "action_ids": [
+      "AUTH-GAP-01",
+      "AUTH-GAP-02",
+      "AUTH-GAP-03",
+      "AUTH-GAP-04",
+      "AUTH-GAP-05",
+      "AUTH-GAP-06",
+      "AUTH-GAP-07"
+    ],
+    "no_new_parent_packages": true,
+    "price_numbers_changed": false,
+    "subestimate_overlap_check_required": true,
+    "runtime_verified": false,
+    "engine_migration_approved": false
   }
 }

@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-15权限差距入计划**：[AUTH-GAP-01–07](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)把本项目必须补齐的正确性/共同路径/集合一致、独立预期与有限解释，以及性能/多实例证据、引擎必要性复评绑定既有包和窗口。补机器动作索引、首版本地WBS与交接出口；不另建通用权限产品、不换引擎、不新增父包。子估须扣重，原工日仍候选，不用“已有归属”承诺免费；所有产品缺陷与真实证据状态仍开放。
+
 > **2026-11-15权限模型复评**：[RBAC/ABAC/ReBAC/PBAC与成熟工具](../design/authorization-model-and-engine-choice.md)确认三层为检查职责，当前是角色＋关系/属性混合授权。建议首版保留Casbin＋领域资源策略，优先修来源/撤权与多出口一致；修正旧“PBAC/ReBAC不演进、OPA不生成SQL、集中PDP不可能、零迁移成本”等论证。Cerbos/OPA/Cedar及OpenFGA/SpiceDB按真实成本有界评估；未新增加引擎、WBS/工期、产品修复或owner选型批准。
 
 > **2026-11-15层级设计落档**：[组织/角色/菜单/数据范围§8](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)固定12项代表场景，分清单父树/继承、全局功能角色与目标组任职、菜单导航、scope/类型交集和多来源撤权。P6.1 C04/D03/D06主责，本地首版及必要薄UI取实际出口，完整U06和UAA-P/R后继；HIER-D01父节点停用传播在C04详设前确认。只改设计/计划，未修AUTH/RECHECK、未实现新权限语义或增加父包/工期承诺。
@@ -99,6 +101,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **权限差距补齐计划** | AUTH-GAP-01–07：来源/撤权、共同入口、对象与集合、独立预期/有限解释、性能与多副本证据、固定窗口复评 | 📋 已分工/排窗口，未实施或实测补齐；多数为已有包验收细化，开工扣重拆子估；实际引擎PoC/迁移另估，不纳入首版前置 | [动作与边界](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)、[底座§3.7](../phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织)、[总账](planning-backlog.json) |
 | **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
 | **权限层级场景合同** | 组织树/单父角色链/菜单导航/数据范围、多组织任职、来源/生命周期的HIER-01–12 | 📋 设计及P6.1实施归属已补；场景未全部实现/验收，HIER-D01父停用传播待C04详设确认，原缺陷开放 | [层级合同](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)、[底座§3.5](../phase6/foundation-iam-module-detail.md#35-层级组合的首版出口与分工) |
 | **授权编辑与资源边界后继** | 直接/有效角色分轨、编辑目标/加载状态、任职属性往返、对象退役/关联检查顺序 | 🔶 RECHECK-01/02/03开放，04条件性/05低影响；尚未修产品，原样保存不是隐式重授权/重置职责 | [第二轮报告](reports/permission-boundary-recheck-2026-11-15.md)、[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验) |
