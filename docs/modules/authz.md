@@ -1,5 +1,7 @@
 # 鉴权模块设计
 
+> **2026-11-12企业接入校准（未实现）**：[UAA认证与权限治理合同](../design/uaa-governance-integration.md)区分中央身份/受管授权与本地三层执行。现有授权能力不等于已接UAA；企业模式、来源追踪、三路同步与多实例撤权需E01-UAA-C/P/R建设验收。mock和独立开发入口保留，旧“鉴权零改动/换配置即可”不作当前保证。
+
 > 当前阅读顺序：先看§0文档地图和§2.3业务保护，再看资源授权；标注Phase 1流程、缓存/Watcher与末尾阶段清单属历史设计或后续候选。实际注册仅工单；Builtin示例中的tasks表是演示，需真实模块表与schema守卫后才能使用。
 
 > 模块代码：`internal/middleware/casbin.go` + `internal/pkg/resource/` + 各 Service 的 Resource 实现

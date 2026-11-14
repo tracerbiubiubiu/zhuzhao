@@ -1,0 +1,98 @@
+{
+  "date": "2026-11-13",
+  "baseline_report": "docs/review/reports/concern-depth-verification-2026-11-12.md",
+  "semantics": "原65点深度核验保留时点；本表记录其后补研究，不将设计候选当运行验证",
+  "items": [
+    {
+      "id": "FD01",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/design/current-module-boundaries.md"
+      ],
+      "result": "16项实际依赖/事务/写主裁定；保留必要同库协作，近期无需全仓接口化或拆服务",
+      "remaining": "采纳受控例外须G06同步架构SSOT和守卫；实际改动按包运行验证"
+    },
+    {
+      "id": "FD02",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/review/legacy-trigger-disposition.md",
+        "docs/review/legacy-trigger-disposition.json"
+      ],
+      "result": "119实际来源逐条理由/证据/窗口；纠正错归属及混合项窗口，业务功能取消0",
+      "remaining": "逐包准确功能切片与真实提供方仍需开工核验；调查不等于实现销账"
+    },
+    {
+      "id": "FD03",
+      "state": "reference_comparison_executed",
+      "evidence": [
+        "docs/design/domain-agent-reference-scenario.md",
+        "docs/design/examples/ai-soc-reference/README.md"
+      ],
+      "due": "P7代表场景比较；A05/P8开工前",
+      "remaining": "A05产品宿主与真实提供方按P8实现；样例未证明动态host优于确定性步骤，不预建通用Agent平台",
+      "result": "35场景×3路径105检查；合成脚本恢复与外部adapter序列化/有界本地host比较；追加apply重放当前读权/最小receipt且不重执行的交叉反例，旧75检查范围保留；未调用真实模型/企业Agent"
+    },
+    {
+      "id": "FD04",
+      "state": "planning_supplement_delivered",
+      "evidence": [
+        "docs/design/scheduled-ai-confirmation.md"
+      ],
+      "result": "离线、确认过期、跨时隙积压、修改/撤权/取消组合；三类授权及三时间分开",
+      "remaining": "I02/I03/A04准确DTO/持久化与持续写业务准入、时效参数及运行验证"
+    },
+    {
+      "id": "FD05",
+      "state": "official_sdk_loopback_interop_executed",
+      "evidence": [
+        "docs/design/mcp-first-contract.md",
+        "docs/design/examples/mcp-sdk-interop/report.json"
+      ],
+      "result": "官方SDK1.8.0真实HTTP/JSON/SSE，33叶含14语义负例，普通/race通过；AS/IAM/grant合成",
+      "remaining": "A03-R/W产品接线、LS06既有AS主体桥、真实企业组合与多实例预算待对应实施门"
+    },
+    {
+      "id": "FD06",
+      "state": "trusted_reference_package_executed",
+      "evidence": [
+        "docs/design/skill-reference-package.md",
+        "docs/design/examples/ai-soc-reference/README.md"
+      ],
+      "due": "FD03选样后；A07/P8开工前",
+      "remaining": "A07产品生命周期与真实Agent提供方按P8实施，不把合成评测称生产运行",
+      "result": "可信SKILL样包及固定摘要/版本/加载/撤销/恢复16行为检查；无脚本和市场"
+    },
+    {
+      "id": "FD07",
+      "state": "full_route_review_and_real_vue_sample_executed",
+      "evidence": [
+        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+      ],
+      "due": "U01复现；U02/U07样板；U03–U06逐页改造前",
+      "remaining": "U01–U07按逐页验收改产品；U02/U06/U07复估6–9/12–19/3–5日；本次不是全站成品或完整可访问性认证",
+      "result": "27路由243基础/27原生200%缩放/54语义/24次级面；14问题；6真实Vue样板断言；权限呈现问题不冒称后端越权"
+    },
+    {
+      "id": "FD08",
+      "state": "authorization_matrix_and_negative_model_executed",
+      "evidence": [
+        "docs/design/soc-collaboration-authorization.md",
+        "docs/design/examples/ai-soc-reference/README.md"
+      ],
+      "due": "D14/P6.E编码前",
+      "remaining": "D14产品实现/真实SOC联调；B09人工本地协作已确认，启用前验证显式陈旧确认/理由/当前授权与自动派单暂停，不再等待同一业务选择。",
+      "result": "职责×动作×范围/撤销与46行为检查；隐藏/不存在引用同输出，先裁权再计数；SOC专业动作不复制"
+    }
+  ],
+  "new_business_implementation_claimed": false,
+  "all_focus_points_deeply_researched": false,
+  "bounded_audit_supplements_executed": true,
+  "limitations": "FD03/05/06/08为可执行参考模型和SDK样例；FD07为全路由合成夹具+真实组件审查，不是全部产品实现/真实内网联调。远期细节仍逐包冻结，所有结论需最终独立审查。",
+  "reference_model_total": "167行为（105 Agent/16 skill/46 SOC），10守卫变异，86正9负Schema；另有32组独立apply重放交叉检查；具体证明边界见样例",
+  "prior_reference_model_total": "137行为/7变异/76正9负Schema仅证明前一固定窗口；本轮新增30行为与3变异、10正Schema不倒写进旧报告。",
+  "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
+  "bounded_supplement_review_complete": true,
+  "all_future_focus_details_equally_frozen": false
+}

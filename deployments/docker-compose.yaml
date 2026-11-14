@@ -1,3 +1,5 @@
+# 2026-11-12 版本升级：PG18/Redis8 使用新卷；已有环境必须先备份恢复并受控切换。
+# 禁止直接 up 后把新空库当作旧库升级成功；步骤见 docs/design/component-upgrade-data-contract.md。
 # 端口分配权威表：docs/ops/port-allocation.md（先查表再取号）
 # 完整部署用 compose：包含应用 + 数据库 + 缓存
 # D2-33：显式项目名（默认取目录名，与 dev compose 同目录会共享网络/卷前缀）
@@ -5,11 +7,12 @@ name: zhuzhao
 # 使用方法：
 #   1. 先构建镜像：docker build -t zhuzhao:latest -f deployments/Dockerfile .
 #   2. 启动：docker compose -f deployments/docker-compose.yaml up -d
-#   3. 执行迁移（D2-33：app 镜像不含 migrate 二进制，用官方镜像跑一次性容器；
+#   3. 先构建迁移工具：docker compose -f deployments/docker-compose.yaml --profile migrate build migrate
+#   4. 执行迁移（D2-33：app 镜像不含 migrate 二进制，用官方镜像跑一次性容器；
 #      PG 默认不暴露宿主机端口，走 compose 内网 zhuzhao_default）：
 #      docker run --rm --network zhuzhao_default \
 #        -v "$PWD/migrations:/migrations" \
-#        migrate/migrate:v4.17.0 \
+#        zhuzhao-migrate:4.20.1-go1.27.4 \
 #        -path=/migrations \
 #        -database "postgres://zhuzhao:${POSTGRES_PASSWORD:-zhuzhao_dev}@postgres:5432/zhuzhao?sslmode=disable" up
 #      （或临时打开 postgres 的 ports 映射后走宿主机 make migrate-up）
@@ -18,7 +21,7 @@ name: zhuzhao
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
     container_name: zhuzhao-postgres
     restart: unless-stopped
     environment:
@@ -27,18 +30,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
       TZ: Asia/Shanghai
     # WAL 归档（2026-09-14 运维补强，对齐 activelist）：pgbackup 侧车只读共享
-    # wal_archive 卷作 PITR 原料；archive_timeout=300s 空闲也切段
+    # wal18_archive 卷作 PITR 原料；archive_timeout=300s 空闲也切段
     command:
       - postgres
       - -c
       - archive_mode=on
       - -c
-      - archive_command=test ! -f /wal_archive/%f && cp %p /wal_archive/%f
+      - archive_command=test ! -f /wal18_archive/%f && cp %p /wal18_archive/%f
       - -c
       - archive_timeout=300s
     volumes:
-      - pg_data:/var/lib/postgresql/data
-      - wal_archive:/wal_archive
+      - pg18_data:/var/lib/postgresql
+      - wal18_archive:/wal18_archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
@@ -54,7 +57,7 @@ services:
   # 借 postgres 镜像的 pg_dump 客户端（与库同版本），不跑数据库。恢复步骤见
   # backup/README.md。
   pgbackup:
-    image: postgres:15
+    image: postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
     container_name: zhuzhao-pgbackup
     restart: unless-stopped
     environment:
@@ -68,7 +71,7 @@ services:
     volumes:
       - backups:/backups
       - ./backup/backup.sh:/usr/local/bin/backup.sh:ro
-      - wal_archive:/wal_archive:ro
+      - wal18_archive:/wal18_archive:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh"]
     networks:
       - default
@@ -78,9 +81,10 @@ services:
 
   # 迁移一次性服务（2026-09-14 固化，治「演示库静默漂移」）：
   #   docker compose -f deployments/docker-compose.yaml --profile migrate up migrate
-  # 首次需拉取 migrate/migrate 镜像（离线环境预 docker pull）。
+  # 先按本目录tools/migrate源码锁构建工具镜像；离线运行导入同一验收制品，不使用上游全驱动包。
   migrate:
-    image: migrate/migrate:v4.17.0
+    build: ./tools/migrate
+    image: zhuzhao-migrate:4.20.1-go1.27.4
     profiles: ["migrate"]
     depends_on:
       postgres:
@@ -96,13 +100,13 @@ services:
       - up
 
   redis:
-    image: redis:6.2-alpine
+    image: redis:8.2.11-alpine3.22@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
     container_name: zhuzhao-redis
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-zhuzhao_dev}   # 生产务必经 .env 覆盖为强密码
     volumes:
-      - redis_data:/data
+      - redis82_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf:ro
     # F-18：requirepass 经命令行注入（redis.conf 不支持环境变量插值）
     command: ["sh", "-c", "redis-server /etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
@@ -122,9 +126,9 @@ services:
   #   docker compose -f deployments/docker-compose.yaml --profile storage up -d rustfs
   #   B5-1 时移除 profiles 行转常驻（随栈自启）。
   # 凭据经 .env 注入（RUSTFS_ROOT_*），生产务必覆盖默认值。
-  # ✅ 版本已钉死 1.0.1（2026-10-19 B5-1 批1——判据①实测版本 digest 一致；对齐 postgres:15/redis:6.2 可复现纪律）。
+  # 版本与多架构摘要见 component-lock.json；旧存储副本验证见数据升级契约。
   rustfs:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74
     container_name: zhuzhao-rustfs
     restart: unless-stopped
     profiles: ["storage"]
@@ -158,7 +162,7 @@ services:
   # rclone——镜像已拉已验证；mc 对非 MinIO 端点的可用性随 B5-1 spike 一并验证），
   # 恢复演练强制随行。
   rustfs-backup:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74
     container_name: zhuzhao-rustfs-backup
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
@@ -172,10 +176,11 @@ services:
   # 对象存储备份侧车（B5-5——05 号 §7 拍板 #5 B 形态）：rclone sync 主→备单向同步 +
   # --backup-dir 删除/覆盖保护（天目录轮转，不依赖服务端版本化）；失败留痕/last-success
   # 对齐 pgbackup 教训；恢复演练见 backup/README.md。镜像钉死 1.75.2（2026-10-19 判据⑤
-  # 实测版本——可复现纪律对齐 postgres:15/redis:6.2/rustfs:1.0.1）。RPO=同步周期
+  # 版本与多架构摘要见 component-lock.json）。RPO=同步周期
   # （MIRROR_INTERVAL，dev 1h；附件场景日级可接受——05 号 §7 显式登记）。
   rustfs-mirror:
-    image: rclone/rclone:1.75.2
+    build: ./tools/rclone
+    image: zhuzhao-rclone:1.76.0-go1.27.4
     container_name: zhuzhao-rustfs-mirror
     restart: unless-stopped
     environment:
@@ -295,9 +300,9 @@ networks:
 
 volumes:
   app_archive:
-  pg_data:
-  redis_data:
-  wal_archive:
+  pg18_data:
+  redis82_data:
+  wal18_archive:
   backups:
   rustfs_data:
   rustfs_backup_data:

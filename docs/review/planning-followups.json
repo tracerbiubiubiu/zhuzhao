@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "purpose": "跟踪整会话审计固定U63窗口之后的新增输入/确认；不改写历史审计来源/证据，不冒用原闭环证明新答复已核验。",
+  "previous_audit": {
+    "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
+    "source_cutoff": "U63",
+    "ref": "docs/review/planning-closure.json"
+  },
+  "followups": [
+    {
+      "id": "F001-B09",
+      "source": {
+        "message_id": "01a1d4c1-9740-75f3-a331-f86fcb20b850",
+        "kind": "explicit_user_question_reply",
+        "question_item_id": "[\"request_user_input_async\",\"call_07322fd526d54132a76ae7dc2dd6fce6\",0]",
+        "answer": "允许确认后手工协作，自动派单暂停（推荐）"
+      },
+      "decision_id": "B09",
+      "decision_state": "owner_confirmed",
+      "design_ref": "docs/design/soc-collaboration-authorization.md",
+      "implementation_state": "planned_not_implemented",
+      "estimate_impact": "D14原7–11日/P6.E已含人工来源缺口确认/配置/反馈；无增量、无排程或依赖变化",
+      "required_conditions": [
+        "当前主体/职责/目标范围和授权新鲜度有效",
+        "用户明确确认数据陈旧且填写理由",
+        "只能人工创建已配置范围内的本地协作；保留来源revision/理由/真实操作者审计",
+        "自动依据旧状态派单暂停",
+        "不授专业封禁/隔离权；不伪造SOC事实或绕UAA授权"
+      ],
+      "validation": {
+        "state": "verified_design_followup",
+        "existing_behavior_cases": [
+          "S37",
+          "S38",
+          "S39",
+          "S40"
+        ],
+        "product_runtime_tests": "PASS: full existing main-product gates; not implementation or real SOC proof",
+        "independent_delta_review": "PASS",
+        "scope": "政策文档后继；未改产品代码、Schema/fixtures、API、权限、迁移、费用或排程",
+        "reference_behavior": "PASS:137 behavior,7 mutations,76 positive/9 negative schema; S37-S40 plus7 independent policy boundaries",
+        "source_verification": "PASS: exact public message ID, decoded question item ID, and answer compared to read_thread",
+        "historical_audit_preserved": true,
+        "cost_and_schedule_unchanged": true,
+        "full_main_gates": [
+          {
+            "name": "script-unit",
+            "exit": 0
+          },
+          {
+            "name": "swag",
+            "exit": 0
+          },
+          {
+            "name": "wire",
+            "exit": 0
+          },
+          {
+            "name": "lint",
+            "exit": 0
+          },
+          {
+            "name": "test-unit",
+            "exit": 0
+          },
+          {
+            "name": "test-integration",
+            "exit": 0
+          },
+          {
+            "name": "test-cover",
+            "exit": 0
+          },
+          {
+            "name": "build",
+            "exit": 0
+          }
+        ],
+        "acceptance": {
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_roundtrip_pairs": 81
+        },
+        "source_inputs_unchanged": true,
+        "planning_checks": "PASS:19 closure tests,19 schedule tests,and derived --check",
+        "document_checks": "PASS: five-repo links/anchors/fences/JSON and diff",
+        "cleanup": {
+          "owned_resources_remaining": 0,
+          "protected_containers_unchanged": 29
+        },
+        "first_tool_setup": "Redundant fresh pinned-tool installation interrupted; exact previously verified pinned swag/wire cache reused, original setup log preserved; no assertions changed",
+        "local_raw_evidence": ".codex/audits/soc-B09-confirmation-20261113/",
+        "real_SOC_integration": "NOT_RUN_NOT_IMPLEMENTED"
+      }
+    },
+    {
+      "id": "F002-remaining-decisions",
+      "source": {
+        "message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
+        "kind": "user_request",
+        "summary": "一次列清剩余事项、具体场景、建议和遗漏状态，先确认而不开发"
+      },
+      "decision_state": "no_new_owner_answer",
+      "agenda_ref": "docs/review/owner-decision-agenda.json",
+      "implementation_state": "not_started",
+      "approval_boundary": "Q01–Q13为助手候选，不是所有者批准；B08/UAA-P01状态不变。",
+      "validation": {
+        "state": "verified_current_design_audit",
+        "audit_ref": "docs/review/conversation-reaudit.json",
+        "owner_recommendations_approved": false,
+        "business_implementation_started": false
+      }
+    },
+    {
+      "id": "F003-conversation-reaudit",
+      "source": {
+        "message_id": "01a1d4f3-151f-76f2-a149-eb1a7596925d",
+        "kind": "user_request",
+        "summary": "再验证所有会话要点全部审计并落档"
+      },
+      "audit_ref": "docs/review/conversation-reaudit.json",
+      "implementation_state": "no_business_development",
+      "approval_boundary": "允许审计/文档及审计参考反例修正；不视为Q01–Q13批准、业务开工、push或main合入。",
+      "validation": {
+        "state": "verified_current_design_audit",
+        "audit_ref": "docs/review/conversation-reaudit.json",
+        "owner_recommendations_approved": false,
+        "business_implementation_started": false
+      }
+    },
+    {
+      "id": "F004-ticket-operations",
+      "source": {
+        "message_id": "01a1d516-482d-7dc0-b071-f807cd0176e2",
+        "kind": "user_scenario_and_request_for_advice",
+        "summary": "主责/知会、范围派单、业务管理员干预、响应与处置指标、逐流程通知、AL/设备权限和按职责仪表盘"
+      },
+      "design_ref": "docs/design/ticket-operations-supplement.md",
+      "decision_state": "owner_confirmed_five_directions_actual_configuration_pending",
+      "implementation_state": "not_started",
+      "pricing_state": "new_details_require_bounded_reestimate_at_named_gates",
+      "pending_questions": [],
+      "approval_boundary": "本次后继明确批准五组已展示方向；实际名单/类型字段/阈值、完整净估和实施未因此完成。此前F004/F005未批准的时点保留历史；本次不重新询问B/UX/K2原则。",
+      "research_state": "current_source_audit_and_official_practice_comparison_documented_not_real_provider_validation",
+      "latest_verification": {
+        "date": "2026-11-13",
+        "scope": "F004/F005 recent concerns; existing audit cutoff and approved B/UX/K2 preserved",
+        "industry_refs_recorded_in_design": true,
+        "new_details_net_estimate_and_schedule_integrated": false,
+        "AL_sensitive_real_enablement": "Before early real sensitive AL data, extract required minimum permission slice, estimate and link dependencies; otherwise synthetic/disabled. X03 private mock not unconditionally blocked by all R06.",
+        "AL_read_and_statistics": "Signed actor is not row/field ACL; current signature omits URL query and List has no total. Trusted filtered read and bounded authorized aggregates require named contracts and net estimates.",
+        "F005_boundary": "F005本地文档交付仍已验证；F004五组在本次F006独立确认，非由F005推定；品牌/远端/托管/发布仍未批准。",
+        "milestone_freeze": "Freeze minimum durable milestone facts and net estimate before corresponding D02 write implementation; first metric projection semantics by P6.1 exit, not facts after writes ship.",
+        "data_policy_editing": "Schema editing does not grant data-policy administration; sensitive logs/filter/group/cache/download paths require current authorization and redaction.",
+        "business_directions_confirmed": true,
+        "all_implementation_configuration_bound": false,
+        "confirmation_source": "01a1d580-680f-7db0-8df1-4083012156b1"
+      },
+      "direction_confirmation_source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ]
+      },
+      "approved_directions": [
+        {
+          "id": "F004-01",
+          "summary": "唯一当前责任人、多人知会；owner直派，共享同质池默认轮询，特定类型允许主动认领；无合格对象保留待处理"
+        },
+        {
+          "id": "F004-02",
+          "summary": "指定类型查看策略显式配置所管组织的实例读取/统计及业务管理范围；补描述和获权字段、留痕；不天然越过B03"
+        },
+        {
+          "id": "F004-03",
+          "summary": "简单流程一键接单并开始；分列首次接单响应、节点驻留、处理历时、整单闭环；K2不变"
+        },
+        {
+          "id": "F004-04",
+          "summary": "逐流程通知；待处理给责任人、复核给复核人、知会默认关键结果；既定强制风险通知保留"
+        },
+        {
+          "id": "F004-05",
+          "summary": "设备首期管理地址与必要可选用户名、按权限展示、人工登录；集中凭据需求另接专业平台"
+        }
+      ],
+      "implementation_configuration_windows": [
+        "D03/LS01开工前：指定类型、组织、管理主体、实例与字段动作范围，策略预览与独立授权；UX02个人待办不扩大",
+        "D02相应写路径开工前：最小持久里程碑与净估；P6.1出口前冻结第一组指标投影和暂停/重开口径",
+        "E03/P6.3裁决：哪些类型轮询或认领、合格候选、无人/超时处置及近期或原P8交付净估",
+        "D11/P6.3开工前：有限事件/流程、普通关键结果及渠道配置；既定强制风险通知不受偏好覆盖",
+        "X03/真实敏感数据启用前：可选账号字段、谁能看/打开、最小type/row/field纵切与受权统计净估"
+      ]
+    },
+    {
+      "id": "F005-public-readmes-and-test-resources",
+      "source": {
+        "message_id": "01a1d521-9c6d-75e3-9f16-611e66643c0c",
+        "kind": "explicit_document_work_and_precondition_correction",
+        "summary": "现有开发栈和卷全为测试可重建；重核工程/目录方案、命名建议、五仓README/英文和开源传播建议"
+      },
+      "confirmed_resource_precondition": "本项目现有测试栈/卷允许精确重建，不要求保留或先迁移测试数据；不涉及无关资源/生产；本次README不需要先删除旧栈。",
+      "authorized_work": [
+        "五仓中英文README",
+        "合成展示素材",
+        "上手/贡献与问题PR入口",
+        "工程方案索引与命名/传播建议",
+        "明确本条与F004候选的状态边界"
+      ],
+      "implementation_state": "documentation_and_community_assets_only",
+      "scope_boundary": "没有批准F004业务候选、Q01–Q13、新品牌、远端重命名、生产部署或向他人发消息；旧当前栈保护是当时动作，不作为本项目测试卷永久保留要求。",
+      "design_ref": "docs/guides/open-source-presentation.md",
+      "validation": {
+        "state": "verified_local_document_and_community_asset_delivery",
+        "report_ref": "docs/review/reports/readme-refresh-2026-11-13.md",
+        "five_repo_runtime_gates": "PASS_existing_product_not_new_business",
+        "readme_command_smoke": "PASS_fresh_owned_core_DB_and_exact_utils_release_example",
+        "remote_publication": "NOT_DONE",
+        "F004_and_prior_agenda_approvals": "UNCHANGED_PENDING"
+      }
+    },
+    {
+      "id": "F006-directions-uaa-mock-observability",
+      "source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ],
+        "quote": "现在需要确认的按你建议看起来就不错包括上条5个和现在6个，另外与uaa 的对接在内网，相关文档可能没法直接导出来，但是这里我希望你先按其他的业界实践结合我之前的那个规划，先mock一下。另外我发现之前好像没有提但是十分重要的一点，那就是统一的日志，审计能力。"
+      },
+      "confirmed_direction_groups": {
+        "F004": 5,
+        "agenda_Q01_Q06": 6,
+        "total": 11
+      },
+      "approval_boundary": "批准实际展示的十一组方向；未展示的09:00/时区/首次超期值、真实名单/公司政策/全量未来产品/公开托管仍不推定获准。",
+      "UAA_mock": {
+        "scope": "offline synthetic public contract reference; reuse dual-mode and C/P/R plan",
+        "company_documents_required_now": false,
+        "company_protocol_assumed": false,
+        "product_integration_implemented": false,
+        "real_integration_passed": false,
+        "reference_ref": "docs/design/examples/uaa-reference-mock/README.md",
+        "state": "verified_bounded_offline_reference_not_product_integration",
+        "verification": {
+          "fixed_behaviors_passed": 57,
+          "guard_mutations_caught": 16,
+          "independent_handwritten_cases_passed": 50,
+          "network_or_enterprise_calls": 0,
+          "product_implementation_claimed": false,
+          "historical_red_and_expectation_correction_preserved": true
+        }
+      },
+      "unified_logging_audit": {
+        "requirement_state": "owner_requested_design_and_planning",
+        "design_ref": "docs/design/unified-observability-audit.md",
+        "implementation_state": "planned_not_implemented",
+        "estimate_boundary": "新增有限底座与旧I03/R01/D02/UAA/E09扣重；本轮设计/样例不冒充全五仓运行收口",
+        "estimate_ref": "docs/review/post-baseline-scope-estimates.json",
+        "net_candidate_engineering_days": [
+          22,
+          33
+        ]
+      },
+      "remaining": "Q07–Q13实际材料/新品牌及公开准备继续待对应窗口；F004具体配置和新增净估未全部完成",
+      "validation": {
+        "state": "verified_direction_records_offline_reference_and_bounded_design",
+        "report_ref": "docs/review/reports/uaa-reference-and-audit-design-2026-11-13.md",
+        "historical_source_and_price_cutoffs_preserved": true,
+        "new_business_implementation": false,
+        "remote_mutations": false,
+        "core_existing_product_gates": "PASS: native stages plus253/0/0 acceptance and81 migration pairs; not new UAA or audit implementation",
+        "schedule_effect": "only refreshed UAA condition source digest; effort/DAG/slots unchanged; new F004/OBS integration pending named window"
+      }
+    },
+    {
+      "id": "F007-audit-policy-confirmations",
+      "source": {
+        "message_id": "01a1d590-a47d-7032-9d46-7f9b6cb80500",
+        "kind": "explicit_user_question_reply",
+        "question_item_id": "[\"request_user_input_async\",\"call_3d4523d0a42041ab9dc1874c62fe1cd1\",1]",
+        "answer": "业务历史与专门审计职责分开授权（推荐）"
+      },
+      "confirmed_policy": "业务管理员只看获权对象业务历史；专门审计职责可在明确范围内跨模块检索/导出，真实名单与保留天数部署前绑定",
+      "implementation_state": "planned_not_implemented",
+      "design_ref": "docs/design/unified-observability-audit.md",
+      "still_pending_question": {
+        "question_item_id": "[\"request_user_input_async\",\"call_3d4523d0a42041ab9dc1874c62fe1cd1\",0]",
+        "subject": "两IAM高风险修改本地必需审计失败是否同事务回滚；外部collector失败不阻本地已提交事实",
+        "state": "awaiting_owner_answer"
+      },
+      "approval_boundary": "本答复只批准审计读取用途分权，不视为已回答同批另一条写失败政策，也不绑定真实审计名单/生产保留期"
+    },
+    {
+      "id": "F008-foundation-first-boundaries",
+      "source": {
+        "message_id": "01a1d5a4-57e4-7a73-b421-5a85a2331d4e",
+        "kind": "explicit_delivery_principle_and_stage_boundary_review",
+        "summary": "先有基础能力、带进内网再写私有adapter并持续演进；常见/常用/必然场景要覆盖，低概率复杂场景不必一次想全或对标最完整产品"
+      },
+      "owner_confirmed_principle": "缩小首批开放组合并逐期增强；现有业务尽可能承接，已启用组合的数据/安全/测试义务保持",
+      "design_ref": "docs/design/foundation-release-boundaries.md",
+      "delivery_exits": {
+        "B0": "现有Phase5固定组合打包入网开发试验；不是生产或真实企业接入验收",
+        "B1": "本地IAM和基础业务、首页、1个HTTP query adapter及1个参考私有应用真实接缝；配置式接入/重启/停用，不改核心接厂商特例",
+        "later": "风险人工闭环→常用体验/任务回贴/设备→固定统计→逐provider/API→选定AI与协同→实际规模和持久自动化→真实需求增强"
+      },
+      "bounded_schedule_changes": [
+        "X01原8–12拆C2–3/B3–4/H3–5，H治理增强归P7；父价与既有ID保留",
+        "X02-Q不继承D06/feed前置；X03只依基础接缝/查询/U02",
+        "公共主参考先基础与风险首链，再完整UAA-P；选定R就绪的对照按企业分支安排，不批准实际激活",
+        "E10有限调查可与mock风险实现并行，仍在早期P6.1窗口和真实迁移前裁决，不造全阶段串行门"
+      ],
+      "unchanged": [
+        "B/UX/K2和已确认十一组业务方向",
+        "独立IAM/长期mock/私有隔离/公司UAA纳管真实激活门",
+        "原测试先行与当前完整门禁",
+        "C01/C02当前数据正确性、当前授权及不可丢动作的持久交接",
+        "两IAM写的本地审计失败回滚仍待答"
+      ],
+      "late_refinement_windows": [
+        "P7所选手动运行/真实provider开工前拆I03基础运行与完整回补台、E01按读写性质的消费依赖",
+        "A05/A06/A07所选场景开工前拆查询/身份/ACL/恢复子出口；现整包依赖本轮不盲删",
+        "首次承诺第二支持代际前扩兼容矩阵；选择多实例前验相应一致性，不预建所有形态"
+      ],
+      "pricing_boundary": "长期76包工程量不等于B0/B1工期；所选基础目标/真实祖先联合工日仅旧已计价范围，F004/OBS所需新增纵切在B1开工前净估，增强在对应包开工前补估；不宣称所有后续范围已计价或节省原总价",
+      "implementation_state": "planning_and_schedule_only_not_business_implementation",
+      "remote_mutations": false,
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_AND_SCHEDULE_NOT_PRODUCT_EXIT",
+        "report": "docs/review/reports/foundation-boundaries-2026-11-14.md",
+        "schedule_regressions": 31,
+        "closure_regressions_retained": 19,
+        "core_acceptance": {
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_roundtrip_pairs": 81,
+          "zero_drift": true
+        },
+        "core_native": "swag wire lint unit integration cover build passed; Go inputs unchanged",
+        "private_adapter_product_exit": "not_implemented_or_verified",
+        "historical_receipts_preserved": true
+      }
+    },
+    {
+      "id": "F009-dated-core-usable-release",
+      "source": {
+        "message_ids": [
+          "01a1d5c7-a70c-73b0-b0cd-06769bf011b1",
+          "01a1d5c9-7c34-7990-a208-06e40526d476",
+          "01a1d5cd-5353-7aa2-bf98-3f67e6a1e946"
+        ],
+        "summary": "明确1月试用/2027-02-01前可用；风险/工单/taskrunner/activelist/消息联动及三层+UAA统管必须，AI/高级仪表盘后置；真实内网联调时间未定"
+      },
+      "target_ref": "docs/review/first-usable-release-target.json",
+      "design_ref": "docs/phase6/first-usable-release-plan.md",
+      "owner_target_confirmed": true,
+      "existing_capacity_retained": 1,
+      "single_seat_feasible_commitment": false,
+      "real_intranet_waiting": null,
+      "changes": "B0/B1仅早期过程出口；新首版覆盖核心链/权限与试用反馈，不按Phase整包先后；现有端口/真实缺口已专项重核",
+      "not_claimed": [
+        "业务实现",
+        "真实UAA或消息联通",
+        "完整新scope净价/可行日期排程",
+        "自动扩容有效席位"
+      ],
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_RECHECK_NOT_BUSINESS_DELIVERY",
+        "report": "docs/review/reports/first-usable-release-design-2026-11-14.md",
+        "scope": "source/current-path recheck; fixed release boundary and before-after; contract upgrade design; no new runtime proven",
+        "planning_tests": {
+          "closure": 19,
+          "schedule": 31,
+          "derived_check": "PASS"
+        },
+        "core_regression": {
+          "acceptance_pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_pairs_zero_drift": 81,
+          "native": "swag/wire/lint/unit/integration/cover/build PASS"
+        },
+        "unresolved": "首版联合净估/可兑现关键路径、实际独立产能和真实UAA/消息联调时点；新增功能尚未实现"
+      }
+    },
+    {
+      "id": "F010-basic-change-comparison-and-adapter-upgrade",
+      "source": {
+        "message_id": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87",
+        "summary": "集中说明以前/现在/收益/业界缺点；基础必需补齐、加分逐步；核心更新时私有adapter小改或不改继续用"
+      },
+      "design_ref": "docs/review/core-release-change-comparison.md",
+      "integration_refs": [
+        "docs/design/extension-compatibility.md",
+        "docs/design/intranet-adapter-migration.md"
+      ],
+      "interpretation": "行业实践作为适用机制依据，不是照搬最完整平台；公共wire/语义与内部model/DB分离，当前受支持合同内验旧参考adapter×新core，明确破坏性升级/转换和私有配置隔离",
+      "owner_direction_confirmed": true,
+      "arbitrary_future_pull_zero_change_guaranteed": false,
+      "business_implementation": false,
+      "validation": {
+        "state": "PASS_BOUNDED_DESIGN_RECHECK_NOT_BUSINESS_DELIVERY",
+        "report": "docs/review/reports/first-usable-release-design-2026-11-14.md",
+        "scope": "source/current-path recheck; fixed release boundary and before-after; contract upgrade design; no new runtime proven",
+        "planning_tests": {
+          "closure": 19,
+          "schedule": 31,
+          "derived_check": "PASS"
+        },
+        "core_regression": {
+          "acceptance_pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_pairs_zero_drift": 81,
+          "native": "swag/wire/lint/unit/integration/cover/build PASS"
+        },
+        "unresolved": "首版联合净估/可兑现关键路径、实际独立产能和真实UAA/消息联调时点；新增功能尚未实现"
+      }
+    },
+    {
+      "id": "F011-module-design-entry-and-context",
+      "source": {
+        "message_id": "01a1d5e2-cb3d-7380-b5de-bbb41f62bdaa",
+        "summary": "何时从总体审计进入按模块详设、减少重复上下文/token；先想清模块互调"
+      },
+      "design_ref": "docs/phase6/module-design-handoff.md",
+      "delivery": "六条首版接缝、权限/UAA首包输入/状态/用例矩阵/DTO与DDL冻结清单、后续波次和每模块六交付物；限定读共同摘要/本模块/相邻接缝，具体冲突再查历史",
+      "state": "design_handoff_ready_module_DTO_DDL_and_net_estimate_not_frozen",
+      "business_implementation_authorized": false,
+      "token_savings_percentage_claimed": false,
+      "keeps": [
+        "L1_L2_L3",
+        "UAA_and_independent_modes",
+        "CC_read_and_comment_without_handling_power",
+        "zero_grant_safe_landing",
+        "server_side_rejection_of_unsupported_monitored_AL_writes",
+        "TDD_and_current_full_applicable_gates"
+      ],
+      "validation": {
+        "state": "PASS_DESIGN_HANDOFF_NOT_IMPLEMENTATION",
+        "ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+        "exact_module_DTO_DDL_done": false,
+        "token_reduction_measured": false,
+        "existing_quality_obligations_retained": true
+      }
+    },
+    {
+      "id": "F012-daily-reconciliation-publication-cleanup",
+      "source": {
+        "message_id": "01a1d5e5-7ecd-7c80-ade9-b0f79482660e",
+        "summary": "逐条回查今日多事项避免遗漏；清理工作区、提交推送、查主仓待发布分支"
+      },
+      "report_ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+      "authorization": {
+        "publish_current_candidate_branches": true,
+        "create_reviewable_PRs_under_existing_PR_policy": true,
+        "cleanup_verified_superseded_branches_and_owned_worktrees_with_backup": true,
+        "merge_main_or_release": false
+      },
+      "scope_note": "先前仅本地提交/未推送是历史时点；本次授权五仓候选发布。整分支含继承版本升级/CI/部署，不描述为纯文档；Phase5已合main，后续候选待PR评审",
+      "state": "requirements_reconciled_candidate_branches_draft_PRs_created_and_verified_old_worktrees_cleaned",
+      "unresolved_business_work_remains_explicit": true,
+      "validation_ref": "docs/review/reports/daily-closeout-2026-11-14.md",
+      "result_boundaries": {
+        "old_worktrees_removed": 19,
+        "old_local_heads_removed": 19,
+        "old_merged_remote_heads_removed": 3,
+        "preserved_main_and_candidate_worktrees": 10,
+        "main_merged_or_release": false,
+        "final_delivery_remote_SHA_and_CI": "verified_separately_in_final_receipts_not_claimed_by_this_ledger"
+      }
+    },
+    {
+      "id": "F013-local-first-quality-and-UAA-later",
+      "sources": [
+        {
+          "message_id": "01a1d612-2ae5-7042-b808-98e8069eb1d9",
+          "summary": "偏向1月核心功能后接UAA、约两个月联调；也接受年后联调情形"
+        },
+        {
+          "message_id": "01a1d89f-4428-72f2-8af6-9ce6e75794f3",
+          "summary": "公司允许本地账号先正式运行；需判断新增范围能否像旧计划1月完成，不是要求强行日期"
+        },
+        {
+          "message_id": "01a1d8a5-8edc-78a0-b7cf-1cf838c4e897",
+          "summary": "质量和内网实际可用优先，按最适合计划，不为排期勉强"
+        }
+      ],
+      "plan_ref": "docs/phase6/first-usable-release-plan.md",
+      "target_ref": "docs/review/first-usable-release-target.json",
+      "estimate_ref": "docs/review/local-core-release-estimate.json",
+      "report_ref": "docs/review/reports/local-first-core-feasibility-2026-11-14.md",
+      "interpretation": [
+        "本地核心正式版与UAA纳管正式版分开；前者仍须完整本地三层权限、真实业务/消息及生产门",
+        "核心先留UAA-C身份/来源/稳定合同接缝，完整P/R后继，UAA不缩为纯SSO",
+        "消息HTTP映射和实测仍在核心；真实等待未知单列，不默认为0",
+        "原1月试用/2月1日硬目标及1月11/18候选改为争取窗口，优先可用和试用修正",
+        "本地生产数据/账号/权限与在途效果不能按当前测试卷可重建处理，UAA影子映射批准后接管",
+        "逐模块详设/切片校准，不重新全盘审计或一次冻结远期DTO"
+      ],
+      "state": "documented_bounded_net_estimate_independently_reviewed_not_calendar_commitment",
+      "estimate_summary": {
+        "raw_days": [
+          67.5,
+          103.5
+        ],
+        "display_days": [
+          68,
+          104
+        ],
+        "effective_weeks": [
+          13.5,
+          20.7
+        ],
+        "confidence": "medium-low",
+        "UAA_C_included": true,
+        "full_UAA_P_R_excluded": true,
+        "not_added_to_original_76_parent_budget": true
+      },
+      "not_performed": [
+        "business_implementation",
+        "actual_deployment",
+        "real_UAA_or_company_message_integration",
+        "main_merge_or_release"
+      ],
+      "remaining_bindings": [
+        "actual business flow/type/fields/actions/AL subscription",
+        "company message HTTP contract/test conditions",
+        "production target/operator",
+        "IAM strong-audit failure policy"
+      ],
+      "supersedes_only_current_timing_and_full_UAA_core_precondition": true,
+      "prior_source_history_preserved": [
+        "F009",
+        "F012"
+      ]
+    },
+    {
+      "id": "F014-mainline-plan-and-validated-upgrade-sync",
+      "date": "2026-11-14",
+      "source": {
+        "request_excerpt": "先检查一下是否还有遗漏；待确认可以在详细设计中说明；关键特性/模块没有遗漏，大阶段拆分没有问题则同步最新计划至主线；当前排期只是参考，后续还会调整。",
+        "merge_scope_question": "实际五仓草稿PR含规划及此前已验证Go/Node/PG/Redis、容器、依赖和CI升级，整批会改变主线运行栈。",
+        "explicit_owner_scope_answer": "规划与已验证升级一起合入（推荐）",
+        "source_kind": "current_conversation_owner_instruction_and_async_reply",
+        "message_ids": "not_captured_in_this_registry; original public wording retained"
+      },
+      "report_ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
+      "scope_review": "no_blocking_key_module_omission_or_substantive_phase_conflict_identified; not_all_future_details_complete",
+      "authorization": {
+        "merge_latest_plan_and_validated_upgrade_via_five_PRs": true,
+        "fast_forward_local_main_after_remote_merge": true,
+        "business_implementation": false,
+        "deployment_or_shared_runtime_switch": false,
+        "rename_repositories_or_change_branch_protection": false
+      },
+      "schedule_policy": "engineering-day ranges and date windows remain adjustable references; do not force deadlines, reprice the entire roadmap, or require all future details to close before syncing",
+      "details_deferred_to_named_module_windows": [
+        "实际流程字段/动作/订阅与角色组织/认领池、通知矩阵和指标暂停重开",
+        "消息HTTP真实合同及窗口；UAA协议、身份/权限映射与接管/退出批准",
+        "生产环境人员/目标、审计名单和保留期；两IAM强审计失败策略在新增试点启用前确认",
+        "逐包准确DTO/DDL/锁序/恢复入口及实际增量补估；远期提供方/复杂协同/拆分条件"
+      ],
+      "prior_confirmed_policies_and_original_capabilities_retained": true,
+      "state": "scope_phase_review_passed_main_integration_approved",
+      "PRs": {
+        "zhuzhao": "https://github.com/tracerbiubiubiu/zhuzhao/pull/1",
+        "zhuzhao-ui": "https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/1",
+        "activelist": "https://github.com/tracerbiubiubiu/activelist/pull/1",
+        "taskrunner": "https://github.com/tracerbiubiubiu/taskrunner/pull/2",
+        "zhuzhao-utils": "https://github.com/tracerbiubiubiu/zhuzhao-utils/pull/1"
+      },
+      "actual_integration_and_exact_head_CI_results": "recorded by the PR merge commits and separate final delivery receipts; approval here is not a fabricated merged result"
+    }
+  ]
+}

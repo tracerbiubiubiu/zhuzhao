@@ -1,0 +1,416 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "source_registry": "docs/review/user-requirements-reconciliation.json",
+  "source_count": 63,
+  "source_cutoff": "U63",
+  "estimate_registry": "docs/review/planning-scope-estimates.json",
+  "scope": "Bounded whole-conversation design-audit closure; all future implementation, provider activation and complete future API freeze excluded.",
+  "claims": {
+    "audit_complete": true,
+    "full_latest_scope_priced": true,
+    "all_future_details_frozen": false,
+    "business_implemented": false,
+    "real_integration_passed": false
+  },
+  "actions": [
+    {
+      "id": "M01",
+      "title": "全站前端审计/代表Vue与逐页方案",
+      "state": "verified",
+      "requirement_ids": [
+        "R041",
+        "R042",
+        "R043",
+        "R044",
+        "R045",
+        "R046",
+        "R047",
+        "R048",
+        "R049",
+        "R050",
+        "R051",
+        "R090",
+        "R091"
+      ],
+      "owner": "ui-reviewer",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "documents",
+          "result_key": "checks.documents",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "contracts",
+          "result_key": "checks.contracts",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "independent-review",
+          "result_key": "checks.independent-review",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    },
+    {
+      "id": "M02",
+      "title": "全模块/逐操作与统一通道准确候选",
+      "state": "verified",
+      "requirement_ids": [
+        "R007",
+        "R015",
+        "R016",
+        "R017",
+        "R018",
+        "R019",
+        "R077",
+        "R078",
+        "R079",
+        "R080",
+        "R081",
+        "R082",
+        "R083",
+        "R084",
+        "R085",
+        "R086"
+      ],
+      "owner": "module-reviewer",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "contracts",
+          "result_key": "checks.contracts",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "independent-review",
+          "result_key": "checks.independent-review",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    },
+    {
+      "id": "M03",
+      "title": "领域Agent/skill/SOC职责与已有前提复核",
+      "state": "verified",
+      "requirement_ids": [
+        "R021",
+        "R022",
+        "R023",
+        "R024",
+        "R025",
+        "R026",
+        "R027",
+        "R028",
+        "R029",
+        "R030",
+        "R031",
+        "R032",
+        "R033",
+        "R056",
+        "R057",
+        "R058",
+        "R059",
+        "R060",
+        "R061",
+        "R062",
+        "R063",
+        "R068",
+        "R069",
+        "R070",
+        "R071",
+        "R072",
+        "R074",
+        "R087"
+      ],
+      "owner": "ai-soc-reviewer",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "contracts",
+          "result_key": "checks.contracts",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "independent-review",
+          "result_key": "checks.independent-review",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    },
+    {
+      "id": "M04",
+      "title": "旧子范围/CE补估及完整排程",
+      "state": "verified",
+      "requirement_ids": [
+        "R011",
+        "R012",
+        "R037",
+        "R065",
+        "R066",
+        "R067",
+        "R073",
+        "R075"
+      ],
+      "owner": "root/integrator",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "schedule",
+          "result_key": "checks.schedule",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "independent-review",
+          "result_key": "checks.independent-review",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    },
+    {
+      "id": "M05",
+      "title": "现行门禁补验与防遗漏机械检查",
+      "state": "verified",
+      "requirement_ids": [
+        "R001",
+        "R002",
+        "R003",
+        "R004",
+        "R005",
+        "R013",
+        "R014",
+        "R020",
+        "R038",
+        "R039",
+        "R040",
+        "R052",
+        "R053",
+        "R054",
+        "R055",
+        "R088",
+        "R089"
+      ],
+      "owner": "root/integrator",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "documents",
+          "result_key": "checks.documents",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "runtime-core",
+          "result_key": "checks.runtime-core",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "runtime-ui",
+          "result_key": "checks.runtime-ui",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "runtime-activelist",
+          "result_key": "checks.runtime-activelist",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "runtime-taskrunner",
+          "result_key": "checks.runtime-taskrunner",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "runtime-utils",
+          "result_key": "checks.runtime-utils",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    },
+    {
+      "id": "M06",
+      "title": "原话履约/完成口径/文档漂移与独立终审",
+      "state": "verified",
+      "requirement_ids": [
+        "R006",
+        "R008",
+        "R009",
+        "R010",
+        "R034",
+        "R035",
+        "R036",
+        "R064",
+        "R076",
+        "R092",
+        "R093"
+      ],
+      "owner": "root/integrator",
+      "exit": "完成原话要求的具体核查/候选与实际证据后独立复验，不以窗口登记作完成",
+      "evidence": [
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "source-coverage",
+          "result_key": "checks.source-coverage",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "documents",
+          "result_key": "checks.documents",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        },
+        {
+          "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+          "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+          "check_id": "independent-review",
+          "result_key": "checks.independent-review",
+          "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "source-coverage",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "source-coverage",
+        "result_key": "checks.source-coverage",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "documents",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "documents",
+        "result_key": "checks.documents",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "contracts",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "contracts",
+        "result_key": "checks.contracts",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "schedule",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "schedule",
+        "result_key": "checks.schedule",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "independent-review",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "independent-review",
+        "result_key": "checks.independent-review",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "runtime-core",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "runtime-core",
+        "result_key": "checks.runtime-core",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "runtime-ui",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "runtime-ui",
+        "result_key": "checks.runtime-ui",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "runtime-activelist",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "runtime-activelist",
+        "result_key": "checks.runtime-activelist",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "runtime-taskrunner",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "runtime-taskrunner",
+        "result_key": "checks.runtime-taskrunner",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    },
+    {
+      "id": "runtime-utils",
+      "result": "PASS",
+      "evidence": {
+        "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+        "sha256": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "check_id": "runtime-utils",
+        "result_key": "checks.runtime-utils",
+        "scope": "bounded_audit_and_existing_runtime_not_real_provider"
+      }
+    }
+  ],
+  "limitations": "机械检查只拦结构/证据矛盾，语义拆解与证据充分性必须独立回读原话/源码/实际输出；分档未启用，完整门禁仍有效"
+}

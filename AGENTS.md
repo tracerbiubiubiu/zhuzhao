@@ -18,7 +18,7 @@ make migrate-up        # 应用迁移
 make swag              # 重新生成 Swagger
 ```
 
-**Go 工具链**：`go.mod` 钉 Go 1.26.10，`scripts/go-tool.py`（lint/swag/wire 经它调工具）不自动下载 SDK——本机 Go 低于该版本时 `make lint` 直接报错，用 `GO=` 指定已有工具链，例：`make lint GO=$(go env GOMODCACHE)/golang.org/toolchain@v0.0.1-go1.26.10.darwin-arm64/bin/go`（缓存里没有就先在仓内执行一次 `go version`，`GOTOOLCHAIN=auto` 会拉取）。
+**Go 工具链**：`go.mod` 钉 Go 1.27.4，`scripts/go-tool.py`（lint/swag/wire 经它调工具）不自动下载 SDK——本机 Go 低于该版本时 `make lint` 直接报错，用 `GO=` 指定已有工具链，例：`make lint GO=$(go env GOMODCACHE)/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/bin/go`（缓存里没有就先在仓内执行一次 `go version`，`GOTOOLCHAIN=auto` 会拉取）。
 
 **门禁纪律**：不得把未通过 `make acceptance` 的改动标记为"完成"；无法运行门禁时必须如实说明原因与影响。
 

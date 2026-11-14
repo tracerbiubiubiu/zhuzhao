@@ -24,12 +24,12 @@ var (
 )
 
 // testPGImage testcontainers 用的 PG 镜像——ZHUZHAO_TEST_PG_IMAGE 可覆盖
-// （镜像源拉不到 alpine 变体时指向本地已有 tag，如 postgres:15；同大版本服务端语义一致）。
+// （仅用于显式测试矩阵；默认与部署使用同一 PG18 镜像和多架构 digest）。
 func testPGImage() string {
 	if v := os.Getenv("ZHUZHAO_TEST_PG_IMAGE"); v != "" {
 		return v
 	}
-	return "postgres:15-alpine"
+	return "postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42"
 }
 
 // SetupPostgresShared 全包共享一个 PG 容器（TestMain 用）。
@@ -47,6 +47,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 				wait.ForLog("database system is ready to accept connections").
 					WithOccurrence(2).
 					WithStartupTimeout(3*time.Minute),
+				// Docker Desktop may publish the mapped port after the second ready log.
+				wait.ForListeningPort("5432/tcp"),
 			),
 		)
 		if err != nil {

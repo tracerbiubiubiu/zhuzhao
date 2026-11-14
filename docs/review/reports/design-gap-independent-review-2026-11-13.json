@@ -1,0 +1,1161 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "status": "FRONT_AND_SECOND_PASS_BOUNDED_AUDIT_REVIEWED_FINAL_METADATA_VERIFIED",
+  "scope": {
+    "public_turns_read": 52,
+    "user_messages_read": 62,
+    "assistant_public_messages_read": 247,
+    "normalized_requirement_points_read": 93,
+    "themes": 29,
+    "independent_theme_count": 27,
+    "self_authored_theme_exclusions": [
+      "G08",
+      "G26"
+    ],
+    "source_mode": "完整公开用户/assistant原话逐段读；既有履约复盘/93点作为索引，非状态复用",
+    "privacy": "不复制原始会话、隐藏推理或公司指南，只有去敏结论",
+    "schedule_final_integration_reviewed": false,
+    "batch_full_gates_reviewed": false,
+    "all_project_or_product_acceptance_claimed": false
+  },
+  "source_inputs": [
+    {
+      "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+      "retention": "ignored local only"
+    },
+    {
+      "path": ".codex/audits/full-conversation-readback-20261113/fulfillment-review.json",
+      "retention": "ignored local only"
+    },
+    {
+      "path": "docs/review/user-requirements-reconciliation.json"
+    }
+  ],
+  "checks": [
+    {
+      "id": "CK-UI-SOURCE",
+      "result": "PASS",
+      "count": 27,
+      "meaning": "逐页源码SHA与当前实际文件一致"
+    },
+    {
+      "id": "CK-UI-EVIDENCE",
+      "result": "PASS",
+      "count": 297,
+      "meaning": "脚本/收据/截图存在且SHA匹配，不证明真实后台或所有组合已验"
+    },
+    {
+      "id": "CK-MCP-TEST",
+      "result": "PASS",
+      "command": "env GOMAXPROCS=2 GOFLAGS=-p=2 GOMEMLIMIT=768MiB go test -mod=readonly -count=1 -timeout=90s ./...",
+      "cwd": "docs/design/examples/mcp-sdk-interop",
+      "meaning": "独立受控module普通测试；真实AS/IAM和产品未验，race由作者收据另报"
+    },
+    {
+      "id": "CK-ESTIMATE",
+      "result": "PASS",
+      "net_increment_total": [
+        102,
+        160
+      ],
+      "meaning": "各项WBS净和与总额一致；最后单席排程尚未复核"
+    },
+    {
+      "id": "CK-KNOWLEDGE-COUNTEREXAMPLE",
+      "result": "FOUND_GAP",
+      "new_effects": 1,
+      "meaning": "候选设计模型的批准后证据失效缺口，不是现有产品漏洞"
+    },
+    {
+      "id": "CK-AI-REFERENCE-RERUN",
+      "result": "PASS",
+      "behavior_checks": 137,
+      "mutations": 7,
+      "schema_positive": 76,
+      "schema_negative": 9,
+      "meaning": "独立复跑去敏合成模型，不是产品/真实AS/知识/模型验收"
+    },
+    {
+      "id": "CK-AI-INDEPENDENT-COUNTEREXAMPLES",
+      "result": "PASS",
+      "count": 7,
+      "meaning": "独立编排跨checkpoint来源失效及receipt最小投影/读撤权，不引用作者PASS作为预期"
+    },
+    {
+      "id": "CK-LS06-OWNER-UI",
+      "result": "PASS",
+      "meaning": "桥由LS06交付、I02复用合同，最小同意呈现和8–13净价一致"
+    },
+    {
+      "id": "CK-ACTIVE-POLICY-SYNCHRONIZATION",
+      "result": "PASS",
+      "effective_entry_files_scanned": 32,
+      "superseded_or_history_matches": 7,
+      "unresolved_matches": 0,
+      "meaning": "统一PR已决策略不再与当前规则正文冲突；远端保护未启用"
+    }
+  ],
+  "themes": [
+    {
+      "id": "G01",
+      "title": "平台定位与专业平台复用",
+      "source_refs": [
+        "U01",
+        "U04",
+        "U05"
+      ],
+      "independently_reviewed": true,
+      "result": "聚合/生命周期与专业写主保持；SOC本地协作没有扩成研判或执行器。",
+      "evidence": [
+        {
+          "path": "docs/vision.md"
+        },
+        {
+          "path": "docs/design/platform-evolution.md"
+        },
+        {
+          "path": "docs/design/soc-collaboration-authorization.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G02",
+      "title": "长期mock与模型调用边界",
+      "source_refs": [
+        "U02",
+        "U03"
+      ],
+      "independently_reviewed": true,
+      "result": "mock为长期正式前提；内网仅内部模型/只调用已有API，不含模型部署。",
+      "evidence": [
+        {
+          "path": "docs/design/ai-capabilities.md"
+        },
+        {
+          "path": "docs/design/ai-invocation-contract.md"
+        },
+        {
+          "path": "../zhuzhao-ui/AGENTS.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G03",
+      "title": "自然语言查数、建工单和计划任务",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "查数、确认建单、持续授权计划分开；离线/过期/积压有合同与窗，真实运行尚未实现。",
+      "evidence": [
+        {
+          "path": "docs/design/ai-invocation-contract.md"
+        },
+        {
+          "path": "docs/design/scheduled-ai-confirmation.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G04",
+      "title": "外部Agent与平台领域Agent双轨",
+      "source_refs": [
+        "U05"
+      ],
+      "independently_reviewed": true,
+      "result": "同任务三路径对照有可执行设计模型；确定性首旅程不取消领域Agent双轨；IR01批准后证据失效已补并独立复验。",
+      "evidence": [
+        {
+          "path": "docs/design/domain-agent-reference-scenario.md"
+        },
+        {
+          "path": "docs/design/examples/ai-soc-reference/verify.py"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_AND_REFERENCE_FIX_REVALIDATED"
+    },
+    {
+      "id": "G05",
+      "title": "MCP发布、消费与身份衔接",
+      "source_refs": [
+        "U01",
+        "U53"
+      ],
+      "independently_reviewed": true,
+      "result": "官方SDK受控module实际互操作可复跑，生产AS另有LS06有限净价与关闭门；IR02工作归属及最小同意UI已统一且独立核读。",
+      "evidence": [
+        {
+          "path": "docs/design/mcp-first-contract.md"
+        },
+        {
+          "path": "docs/design/examples/mcp-sdk-interop/report.json"
+        },
+        {
+          "path": "docs/design/examples/mcp-sdk-interop/interop_test.go"
+        },
+        {
+          "path": "docs/design/legacy-scope-completion.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_AND_OWNERSHIP_CLARIFIED"
+    },
+    {
+      "id": "G06",
+      "title": "RAG与skill",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "完整可信样包/版本恢复/无脚本范围已交；IR01跨步引用失效已补并独立复验。",
+      "evidence": [
+        {
+          "path": "docs/design/skill-reference-package.md"
+        },
+        {
+          "path": "docs/design/examples/ai-soc-reference/skills/risk-remediation-brief/manifest.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_AND_REFERENCE_FIX_REVALIDATED"
+    },
+    {
+      "id": "G07",
+      "title": "工作流、工单流程与Agent流程统一",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "共能力/身份/批准/关联与观察语义，各FSM保持单writer；复杂协同明确后期窗口。",
+      "evidence": [
+        {
+          "path": "docs/design/ai-capabilities.md"
+        },
+        {
+          "path": "docs/design/project-evolution-strategy.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G08",
+      "title": "各模块设计、耦合与微服务演进",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": false,
+      "result": "本审查者参与该产物编写，不给予独立通过；需其他审查者检查逐模块和全操作分母。",
+      "evidence": [
+        {
+          "path": "docs/design/current-module-boundaries.md"
+        },
+        {
+          "path": "docs/design/capability-operation-catalog.json"
+        }
+      ],
+      "verdict": "EXCLUDED_SELF_AUTHORED"
+    },
+    {
+      "id": "G09",
+      "title": "私有插件、内网adapter与升级解耦",
+      "source_refs": [
+        "U09",
+        "U10",
+        "U14",
+        "U43"
+      ],
+      "independently_reviewed": true,
+      "result": "公共Port与私有connector分开，不直写core、不import internal，旧版本永不修改未被承诺；真实跨版本待实现门。",
+      "evidence": [
+        {
+          "path": "docs/design/extension-compatibility.md"
+        },
+        {
+          "path": "docs/design/intranet-adapter-migration.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G10",
+      "title": "设备目录、状态看板与人工登录",
+      "source_refs": [
+        "U11",
+        "U12",
+        "U13",
+        "U14"
+      ],
+      "independently_reviewed": true,
+      "result": "无SSO、人工入口/目录/状态保持；薄模块P6.3与真实源P7分开，不把跳转称免密。",
+      "evidence": [
+        {
+          "path": "docs/design/device-module-contract.md"
+        },
+        {
+          "path": "docs/review/planning-backlog.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G11",
+      "title": "五仓工程化、CI与统一PR",
+      "source_refs": [
+        "U01",
+        "U14",
+        "U24",
+        "U25"
+      ],
+      "independently_reviewed": true,
+      "result": "PR单维护者、分档生效条件/错分反例/真实check先于保护有明确设计；远端机制不冒称已启用。 IR03规则正文已同步，并完成全五仓32有效入口扫描核读。",
+      "evidence": [
+        {
+          "path": "docs/design/engineering-execution-design.md"
+        },
+        {
+          "path": "docs/design/engineering-governance.md"
+        },
+        {
+          "path": "docs/standards.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_AND_ACTIVE_RULE_SYNCHRONIZATION_REVIEWED"
+    },
+    {
+      "id": "G12",
+      "title": "并行agent串提交与环境隔离",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "独立worktree/索引和资源隔离有实际采用；pathspec不能隔同文件作者行的限制已明确；精确工具守卫属于G01实施。",
+      "evidence": [
+        {
+          "path": "docs/design/engineering-execution-design.md"
+        },
+        {
+          "path": "scripts/zz-commit.sh"
+        },
+        {
+          "path": "docs/standards.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G13",
+      "title": "覆盖率、fuzz及正规工程缺陷",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "按风险矩阵/分母/五性质目标/预算评估，未强制全仓80%；实际fuzz和性能基线仍在有价G04内。",
+      "evidence": [
+        {
+          "path": "docs/design/engineering-execution-design.md"
+        },
+        {
+          "path": "Makefile"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G14",
+      "title": "目录、代码、命名与全栈一致性",
+      "source_refs": [
+        "U01",
+        "U53"
+      ],
+      "independently_reviewed": true,
+      "result": "各层SSOT/适用profile/例外和机械/行为验证已明确，统一语义不要求Go/UI/库物理同构。 IR03规则正文已同步，并完成全五仓32有效入口扫描核读。",
+      "evidence": [
+        {
+          "path": "docs/design/ecosystem-consistency-contract.md"
+        },
+        {
+          "path": "docs/documentation.md"
+        },
+        {
+          "path": "docs/design/engineering-execution-design.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_AND_ACTIVE_RULE_SYNCHRONIZATION_REVIEWED"
+    },
+    {
+      "id": "G15",
+      "title": "全站前端重新检查与规划",
+      "source_refs": [
+        "U01"
+      ],
+      "independently_reviewed": true,
+      "result": "27路由×具名矩阵与native缩放/AX/键盘及逐页方案实质补齐；297来源hash匹配，不等于真实后台/读屏/写动作已验。",
+      "evidence": [
+        {
+          "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json"
+        },
+        {
+          "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G16",
+      "title": "首页、卡头、创建入口、批量标签、筛选与情报",
+      "source_refs": [
+        "U01",
+        "U28",
+        "U29",
+        "U31"
+      ],
+      "independently_reviewed": true,
+      "result": "点名Logo/卡头/新建/批标签/筛选/情报均有真实观察和逐页验收；历史回填重查与责任首页确认未变。",
+      "evidence": [
+        {
+          "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        },
+        {
+          "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G17",
+      "title": "附件追加、多选与显式删除",
+      "source_refs": [
+        "U15",
+        "U16",
+        "U17",
+        "U18"
+      ],
+      "independently_reviewed": true,
+      "result": "追加A/B与手动删/引用保护保持，文件上传不是仓库Markdown；已有多key能力没有全报成新建。",
+      "evidence": [
+        {
+          "path": "docs/design/engineering-execution-design.md"
+        },
+        {
+          "path": "docs/design/business-lifecycle-contracts.md"
+        },
+        {
+          "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G18",
+      "title": "漏跑恢复与转派失败语义",
+      "source_refs": [
+        "U15",
+        "U16",
+        "U20"
+      ],
+      "independently_reviewed": true,
+      "result": "补漏/重试/unknown分开，三策略/超限保留与本地状态责任同事务/独立后继异步均保持。",
+      "evidence": [
+        {
+          "path": "docs/design/schedule-recovery-policy.md"
+        },
+        {
+          "path": "docs/design/cross-repo-execution-contract.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G19",
+      "title": "工单可见性、风险组与安全事件权限",
+      "source_refs": [
+        "U21",
+        "U22",
+        "U23",
+        "U30"
+      ],
+      "independently_reviewed": true,
+      "result": "新旧可见范围、CC只读评、普通all不越类型、风险组受限派单保持；新增SOC矩阵有候选码和合成反例。",
+      "evidence": [
+        {
+          "path": "docs/design/business-lifecycle-contracts.md"
+        },
+        {
+          "path": "docs/design/soc-collaboration-authorization.md"
+        },
+        {
+          "path": "docs/review/planning-decisions.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G20",
+      "title": "离职与撤部交接",
+      "source_refs": [
+        "U32"
+      ],
+      "independently_reviewed": true,
+      "result": "立即停用与合法批准映射交接分开；撤部预览/批量plan、不复制旧角色和不改历史保持。",
+      "evidence": [
+        {
+          "path": "docs/design/business-lifecycle-contracts.md"
+        },
+        {
+          "path": "docs/review/planning-decisions.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G21",
+      "title": "原6–9及更远路线、比较资料与原功能承接",
+      "source_refs": [
+        "U01",
+        "U26",
+        "U27",
+        "U36",
+        "U38"
+      ],
+      "independently_reviewed": true,
+      "result": "169功能来源与26工单效果的承接仍在；旧条件项不自动必做，LS补明确效果未发现新的实质取消。",
+      "evidence": [
+        {
+          "path": "docs/review/roadmap-capability-continuity.json"
+        },
+        {
+          "path": "docs/review/roadmap-change-comparison-2026-11-12.md"
+        },
+        {
+          "path": "docs/design/legacy-scope-completion.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G22",
+      "title": "触发条件合理性、全部挂账及排期完整性",
+      "source_refs": [
+        "U01",
+        "U36",
+        "U44"
+      ],
+      "independently_reviewed": true,
+      "result": "119来源有理由/窗口；LS补字段ACL/typed/CmdK/diff与I04第二代表源；E05/E10保留未选状态和实施复估窗口。",
+      "evidence": [
+        {
+          "path": "docs/review/legacy-trigger-disposition.json"
+        },
+        {
+          "path": "docs/design/legacy-scope-completion.md"
+        },
+        {
+          "path": "docs/review/planning-scope-estimates.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G23",
+      "title": "组件、工具链、容器和数据版本升级",
+      "source_refs": [
+        "U11",
+        "U39",
+        "U40",
+        "U41",
+        "U42"
+      ],
+      "independently_reviewed": true,
+      "result": "既有版本候选源码/工具基线与恢复报告可核；main/共享环境/远端制品未切不算本设计遗漏。",
+      "evidence": [
+        {
+          "path": "docs/review/reports/version-modernization-2026-11-12.md"
+        },
+        {
+          "path": "go.mod"
+        },
+        {
+          "path": "../zhuzhao-ui/.nvmrc"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G24",
+      "title": "UAA指南、隐私、独立IAM与私有企业模式",
+      "source_refs": [
+        "U45",
+        "U46",
+        "U47"
+      ],
+      "independently_reviewed": true,
+      "result": "独立IAM长期正式支持，企业adapter/受管权限/双模式及真实激活门明确；本次回读设计/样本未见公司原文，没有重审私有指南或全Git历史。",
+      "evidence": [
+        {
+          "path": "docs/design/uaa-governance-integration.md"
+        },
+        {
+          "path": "docs/review/uaa-real-integration-conditions.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G25",
+      "title": "UAA补估、完整相对排期、真实条件与确认场景",
+      "source_refs": [
+        "U48",
+        "U49",
+        "U50"
+      ],
+      "independently_reviewed": true,
+      "result": "UAA C/P/R边界和真实条件/确认场景明确，单席×5日/T0未启动保持；最新完整排程本分段不判。",
+      "evidence": [
+        {
+          "path": "docs/review/uaa-implementation-estimate.md"
+        },
+        {
+          "path": "docs/review/planning-scope-estimates.json"
+        },
+        {
+          "path": "docs/review/uaa-real-integration-conditions.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    },
+    {
+      "id": "G26",
+      "title": "所有能力外部API、同一路径与三链互通",
+      "source_refs": [
+        "U53",
+        "U54",
+        "U55"
+      ],
+      "independently_reviewed": false,
+      "result": "本审查者编写精确CE详设/样本，独立资格排除；这里只核净增登记的有限范围/扣重，不独立宣布三链通过。",
+      "evidence": [
+        {
+          "path": "docs/design/capability-interconnect-detail.md"
+        },
+        {
+          "path": "docs/design/capability-interconnect-detail.schema.json"
+        }
+      ],
+      "verdict": "EXCLUDED_SELF_AUTHORED"
+    },
+    {
+      "id": "G27",
+      "title": "单人AI质量与测试先行、旧规则效力",
+      "source_refs": [
+        "U56",
+        "U57"
+      ],
+      "independently_reviewed": true,
+      "result": "原五步/全量当前范围测试先红/并发至少8次变异及真实栈保留；整批现行完整门禁待根集成者最终核验。 IR03规则正文已同步，并完成全五仓32有效入口扫描核读。",
+      "evidence": [
+        {
+          "path": "docs/standards.md"
+        },
+        {
+          "path": "docs/phase6/implementation-handoff.md"
+        },
+        {
+          "path": "docs/design/engineering-governance.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_AND_ACTIVE_RULE_SYNCHRONIZATION_REVIEWED"
+    },
+    {
+      "id": "G28",
+      "title": "文档格式/种类/目录与五仓新名字",
+      "source_refs": [
+        "U58",
+        "U59",
+        "U60"
+      ],
+      "independently_reviewed": true,
+      "result": "格式/载体/状态效力和读者入口已有轻整理；新名字未选且改名延期符合授权，不误做批量目录迁移。 IR03规则正文已同步，并完成全五仓32有效入口扫描核读。",
+      "evidence": [
+        {
+          "path": "docs/documentation.md"
+        },
+        {
+          "path": "docs/README.md"
+        },
+        {
+          "path": "docs/design/examples/README.md"
+        },
+        {
+          "path": "../activelist/AGENTS.md"
+        },
+        {
+          "path": "../taskrunner/AGENTS.md"
+        },
+        {
+          "path": "../zhuzhao-utils/AGENTS.md"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_AND_ACTIVE_RULE_SYNCHRONIZATION_REVIEWED"
+    },
+    {
+      "id": "G29",
+      "title": "审计阶段、所有者参与与完整自审承诺",
+      "source_refs": [
+        "U01",
+        "U06",
+        "U07",
+        "U08",
+        "U19",
+        "U28",
+        "U29",
+        "U33",
+        "U34",
+        "U35",
+        "U37",
+        "U38",
+        "U51",
+        "U52",
+        "U61",
+        "U62"
+      ],
+      "independently_reviewed": true,
+      "result": "历史过满完成口径明确纠正；93点账本不能单独当履约证明。最后当前摘要/排程/门禁/提交尚须后半收口。",
+      "evidence": [
+        {
+          "path": "docs/phase6/implementation-handoff.md"
+        },
+        {
+          "path": "docs/review/user-requirements-reconciliation.json"
+        },
+        {
+          "path": "docs/review/planning-closure.json"
+        }
+      ],
+      "verdict": "DESIGN_SCOPE_ADDRESSED_WITH_STATED_IMPLEMENTATION_GATES"
+    }
+  ],
+  "findings": [
+    {
+      "id": "IR01",
+      "priority": "P2",
+      "kind": "reference_contract_and_behavior_mismatch_not_product_vulnerability",
+      "status": "RESOLVED_IN_REFERENCE_MODEL_INDEPENDENTLY_REVALIDATED",
+      "themes": [
+        "G04",
+        "G06"
+      ],
+      "evidence": [
+        {
+          "path": "docs/design/domain-agent-reference-scenario.md",
+          "symbol_or_section": "§1/§2/§5"
+        },
+        {
+          "path": "docs/design/examples/ai-soc-reference/verify.py",
+          "symbol_or_section": "ToolEnvironment.prepare/recheck/apply"
+        },
+        {
+          "path": "docs/design/skill-reference-package.md",
+          "symbol_or_section": "§5"
+        }
+      ],
+      "observed": "首轮plan知识引用仅ID；preview后将knowledge_available设false，apply仍提交一个效果；未绑定知识version/digest。",
+      "required_fix": "绑定引用版本/digest，批准后再验当前引用资格/版本，失效held且无新效果；原效果receipt按当前业务权限最小投影，不带出撤销知识或plan。",
+      "initial_counterexample_local": ".codex/audits/design-independent-review-20261113/ai-extra-counterexamples.json",
+      "verification": "独立重跑137业务模型检查、7变异、85个Schema样本；另7反例跨checkpoint重建环境核供给/ACL/version/digest失效held0效果、撤知识后最小既有效果投影、异主体/目标不可见拒读。非产品或真实知识平台验收。",
+      "fixed_source_sha256": "5012f65cb13e7d77e0c8a3d1c3c889e37f2f397b50f114fd1ca26499ebe30ddf",
+      "local_revalidation": ".codex/audits/design-independent-review-20261113/ai-extra-revalidation.json"
+    },
+    {
+      "id": "IR02",
+      "priority": "P3",
+      "kind": "scope_owner_and_minimum_UI_clarity",
+      "status": "RESOLVED_DOCUMENT_SCOPE_INDEPENDENTLY_VERIFIED",
+      "themes": [
+        "G05"
+      ],
+      "evidence": [
+        {
+          "path": "docs/design/mcp-first-contract.md",
+          "symbol_or_section": "§5.2步骤3"
+        },
+        {
+          "path": "docs/review/planning-scope-estimates.json",
+          "symbol_or_section": "items[id=LS06]"
+        }
+      ],
+      "observed": "旧句把登录桥归I02，新净价LS06承接生产AS/主体桥；最小同意呈现需在同一有限WBS内显式归属。",
+      "required_fix": "LS06实现桥/client-resource-scope-expiry同意呈现，I02仅复用主体/委托合同，消除双重依赖或漏UI；不重复报价。",
+      "verification": "已独立核mcp-first-contract §5.2归LS06实现并复用I02；LS06 WBS明列client/resource/scope/到期同意呈现，净8–13与原3–5子项未重复增加；legacy-scope-completion同步。"
+    },
+    {
+      "id": "IR03",
+      "priority": "P2",
+      "kind": "active_policy_conflicts_with_confirmed_PR_decision",
+      "status": "RESOLVED_ACTIVE_RULES_INDEPENDENTLY_VERIFIED",
+      "themes": [
+        "G11",
+        "G14",
+        "G27",
+        "G28"
+      ],
+      "found_by": "根集成者先发现UI AGENTS旧直推；本独立审查继续发现standards与UI contributing现行正文残留。",
+      "evidence": [
+        {
+          "path": "../zhuzhao-ui/AGENTS.md",
+          "symbol_or_section": "提交规范/分支与合入，旧HEAD及修订工作树对照"
+        },
+        {
+          "path": "docs/standards.md",
+          "symbol_or_section": "§12第7条维护态/跨仓分支正文"
+        },
+        {
+          "path": "../zhuzhao-ui/docs/contributing.md",
+          "symbol_or_section": "分支与工作区"
+        }
+      ],
+      "observed": "用户已明确五仓统一PR/单维护者；UI AGENTS现已原位修复，但standards现行正文仍允许小批直推main，UI贡献指南仍写小批main集成和Phase5在phase5。",
+      "required_fix": "同步当前规则为统一短分支PR、适用检查绿后单维护者合入；旧Phase4/5拓扑只作已被替代历史，不以文档声称远端保护已启用，不扩push/deploy授权。",
+      "verification": "UI AGENTS、standards §12第7条和UI contributing已原位同步；旧Phase5顺序明标历史已main。全五仓32有效入口/指南扫描，7匹配均明确取代或日期历史，未发现残留现行直推冲突。未启远端保护或扩大push/deploy授权。",
+      "local_revalidation": ".codex/audits/design-independent-review-20261113/policy-source-recheck.json"
+    }
+  ],
+  "historical_claim_corrections": [
+    {
+      "turns": [
+        2,
+        16,
+        23,
+        30,
+        41
+      ],
+      "correction": "此前完成/仅剩开工的说法不能扩成所有审计已履行；T24/51承认的既存欠项不归因于后续新增要求。",
+      "current_rule": "限定具体已交设计证据与尚待实现/真实激活/后期详设出口，不用包数或链接数替代。"
+    }
+  ],
+  "remaining_review": [
+    "本前半三项发现已分别关闭有限设计/规则范围；最后摘要/排程/完整门禁由后半审查",
+    "其他审查者独立审能力库存/三链CE自编文件",
+    "最后完整排程/依赖展开无环/单席资源及所有旧新范围去重",
+    "最终93点当前摘要/控制台/索引状态同步",
+    "现行适用完整门禁/初轮失败/资源清理/提交路径归属"
+  ],
+  "no_new_confirmed_business_removal_found": true,
+  "not_a_missing_design_by_itself": [
+    "保留长期mock且真实profile未激活",
+    "已有专业平台真实契约/凭据/网络等待",
+    "明确窗口内的远期准确SDK/DDL/容量",
+    "所有者要求延期的改名/物理目录迁移",
+    "已计价G01–G06业务实施尚未启动"
+  ],
+  "summary": {
+    "assigned_front_half_open_findings": 0,
+    "resolved_findings": 3,
+    "full_review_complete": false,
+    "new_owner_confirmation_needed_by_these_fixes": false
+  },
+  "second_pass": {
+    "result": "PASS",
+    "status": "FROZEN_SUBSTANCE_AND_FINAL_METADATA_REVIEWED",
+    "date": "2026-11-13",
+    "reviewer": "independent schedule/integration/catalog reviewer",
+    "authorization": "root explicit candidate freeze; only independent report MD/JSON writable; no commit/push performed",
+    "independent_scope": {
+      "closes_front_reviewer_self_authored_exclusions": [
+        "G08",
+        "G26"
+      ],
+      "self_authored_AI_SOC_MCP_implementation_excluded": true,
+      "AI_SOC_MCP_independent_qualification_from_front_pass": true,
+      "source_scope": "62 original public user messages plus explicit active goal, current93-point and six-action reconciliation; full assistant readback belongs to first pass"
+    },
+    "frozen_input_sha256": {
+      "docs/review/user-requirements-reconciliation.json": "4e3d1362e747831879973429dd31936e86642aff9d75fcc81cd09f053cf32d68",
+      "docs/review/planning-backlog.json": "60f51b8efc441bf25d184267a73d78371b6a4586fa70b4b08c9b312b6ae53642",
+      "docs/review/planning-scope-estimates.json": "1a61b3a7c16cefa3e044e305ba141c87614e1dbfb0c2ad591b286cc9cb593fce",
+      "docs/review/execution-schedule-model.json": "a71231875411cbafa11868630862623536477d40bbbd3143b9baff3835a46dab",
+      "docs/review/execution-schedule.json": "084a37d46996bf0510c980883c0516246fa2131f4ec3b583227541a755136756",
+      "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
+      "docs/review/uaa-real-integration-conditions.json": "468d7f9897f3d8e0cbcca7f8ea60d67362cebf4d8d90532be0a0d1d7e7f22665",
+      "scripts/check-planning-closure.py": "c2b4da8c82b511043e546d885e9be83a75d9c7313ee57a1fa5c6a2192894951f",
+      "scripts/test-planning-closure.py": "0956279f1cde75fd0240c63a35af31f2ec41095182221ba58453a0304f679df0",
+      "scripts/calculate-planning-schedule.py": "1f3beb6ac6c45eecfe23b0d20f67bdb7d608b8d6ed46c0d5bdbf78df64185cbe",
+      "scripts/test-planning-schedule.py": "123b4b0fe102cd489995ce350e3d9741e647e007cfde6c3fddfaf1014fd64a7f",
+      "docs/design/capability-operation-catalog.json": "b7702b3b943c6d3f91c377e241b2da158c593222d4f826fe1e493f9e8b5e599b",
+      "docs/design/capability-interconnect-detail.schema.json": "0b7d0ea995a3874e54f9612afbdc529f7ed6498a031b44a9a442a07b15d1c216",
+      "docs/design/examples/capability-reference/verify.cjs": "93ae5ba19fb438e37bf4fea0038e2b8b42fed5c5fc37a3925846fb9c6e17f0a8",
+      "docs/design/examples/capability-reference/verify_semantics.py": "7ef452fefa051b358b694a1c760c5c424d494fb5b9ba6059569f111998eb9684",
+      "docs/review/reports/design-gap-closure-evidence-2026-11-13.json": "d5e724ca529fa094ade666df318d65e76136ff7008487c3f65843be704881d6c",
+      ".gitignore": "a9c7e97898b10edb36cf30832e01f35560b46e49d54549329afdddc2d09ec6a9",
+      ".dockerignore": "efbd02c75cea88c55ba5c115df38ec8cfaf67ad3d03147aaa96f55f76d2addcf"
+    },
+    "checks": [
+      {
+        "id": "SP01-SOURCE-ACTIONS",
+        "result": "PASS",
+        "source_entries": 63,
+        "public_user_messages": 62,
+        "explicit_goal_directives": 1,
+        "requirement_points": 93,
+        "actions": 6,
+        "source_requirement_backlinks_symmetric": true,
+        "all_requirements_mapped": true,
+        "meaning": "独立交叉读取原始公开用户要求/当前93点；不冒称重读全部247助手回复，后者由前半段独立审查覆盖。"
+      },
+      {
+        "id": "SP02-ORIGINAL-SCOPE",
+        "result": "PASS",
+        "baseline_commit": "a8aa0e3dc51a88a4c49adfc9323397c2d4c169fe",
+        "original_parents": 71,
+        "original_child_exits": 13,
+        "current_parents": 76,
+        "new_parents": [
+          "CE01",
+          "CE02",
+          "CE03",
+          "CE04",
+          "CE05"
+        ],
+        "title_acceptance_design_ref_retention_differences": [],
+        "meaning": "直接git show冻结旧总账；旧标题相同、原验收正文保留、设计引用为子集；LS补受权字段/typed检索/CmdK/diff/第二源/AS桥。不是用ID数证明全部语义无差。"
+      },
+      {
+        "id": "SP03-PRICE-SCHEDULE",
+        "result": "PASS",
+        "original_effort": [
+          273,
+          468
+        ],
+        "completed_historical": [
+          8,
+          14
+        ],
+        "LS": [
+          34,
+          56
+        ],
+        "CE": [
+          52,
+          80
+        ],
+        "RP_net": [
+          16,
+          24
+        ],
+        "increment": [
+          102,
+          160
+        ],
+        "public_effort": [
+          394,
+          656
+        ],
+        "conditional_R_effort": [
+          407,
+          678
+        ],
+        "maintenance": [
+          1,
+          2
+        ],
+        "uaa_C_P_R": [
+          [
+            2,
+            3
+          ],
+          [
+            25,
+            39
+          ],
+          [
+            13,
+            22
+          ]
+        ],
+        "parent_child_and_replacement_double_charge": false,
+        "behavioral_tests": 19,
+        "independent_endpoint_resource_checks": 16,
+        "dag_and_resource_slot_checks": true,
+        "markdown_matches_generated_json": true,
+        "meaning": "独立重算净和/WBS，另逐条核4配置×2席×2端点的全部record、DAG、依赖、时长、资源不重叠及1席总和；T0未启动，等待不折工日。"
+      },
+      {
+        "id": "SP04-UAA-BOUNDARIES",
+        "result": "PASS",
+        "independent_local_IAM_preserved": true,
+        "private_adapter_boundary_preserved": true,
+        "real_entry_apply_and_post_apply_stages_separate": true,
+        "C_P_R_and_shared_work_counted_once": true,
+        "real_UAA_integration": "NOT_RUN",
+        "meaning": "无UAA本地账号/角色/菜单/权限完整可用；公司管辖数据权源与三feed/撤权按C/P/R；真实网络/账号/协议和三具体批准仍为激活条件。"
+      },
+      {
+        "id": "SP05-OPERATION-INVENTORY",
+        "result": "PASS",
+        "source_files_and_sha_checked": 218,
+        "service_declarations_independently_matched": 298,
+        "saved_actual_Gin_bindings_matched": 176,
+        "modules": 18,
+        "UI_HTTP_bindings": 135,
+        "mapped_product_capabilities": 158,
+        "runtime_common_path_verified": 0,
+        "fresh_independent_Gin_construction": "NOT_RERUN",
+        "meaning": "独立核全部实际文件集合/SHA与声明集合、当前模块/能力分区及已保存真实Routes集合；抽读写主/资格/非HTTP例外。没有以库存绿声称实际业务或共同runtime已验。"
+      },
+      {
+        "id": "SP06-THREE-CHAIN-REFERENCE",
+        "result": "PASS",
+        "schema_cases": 49,
+        "canonical_properties": 6,
+        "frozen_command_hash_checks": 3,
+        "raw_JSON_cases": 6,
+        "semantic_cases": 27,
+        "independent_additional_cross_cases": 6,
+        "deliberate_mutation_failures": 3,
+        "schema_bytes_unchanged": true,
+        "PG_8_experiment": "AUTHOR_RECEIPT_REVIEWED_NOT_RERUN",
+        "meaning": "只读重跑；实际发现执行重放旧record未验读权，新增S25–27后修正；移除守卫恰三失败，另验actor停用/无读权且hash冲突的六组合均无record/无新效果。仍非真实三链/多实例实现。"
+      },
+      {
+        "id": "SP07-COMPLETION-GUARD",
+        "result": "PASS",
+        "behavioral_tests": 19,
+        "independent_post_fix_negative_probes": 4,
+        "false_positive_reproduced_before_fix": true,
+        "identity_selector_input_binding_checked": true,
+        "draft_structural_pass_is_not_completion": true,
+        "meaning": "重复requirement、孤立source、错check身份/通用PASS、动作相关证据不足及无依据业务/全未来冻结声明已补守卫；来源/估算内容漂移会失效。只能拦结构性矛盾，不证明语义或防恶意伪造。"
+      },
+      {
+        "id": "SP08-RUNTIME-EVIDENCE",
+        "result": "PASS",
+        "raw_receipt_sha_checked": 9,
+        "core_native_and_acceptance_phase_exits_zero": true,
+        "core_acceptance_passed": 253,
+        "migration_pairs_zero_drift": 81,
+        "core_coverage_profile": {
+          "covered": 2034,
+          "total": 10108,
+          "percent": 20.1,
+          "scope": "default-tags race internal packages only; not integration/browser/reference model coverage"
+        },
+        "UI_unit_tests_passed": 244,
+        "UI_E2E_passed": 42,
+        "UI_E2E_skipped": 0,
+        "sibling_real_PG_Redis_race_and_TR_cron_19_0_checked": true,
+        "utils_minimum_and_recommended_checked": true,
+        "core_inputs_captured": 526,
+        "unchanged_core_inputs_excluding_Makefile": 525,
+        "Makefile_old_hash_exactly_reconstructed": true,
+        "UI_inputs_unchanged": 247,
+        "meaning": "读实际阶段回执及原始日志；检查实际输入哈希、失败重试保留和专属runtime拓扑。门禁由集成者运行，本审查核原始证据，不冒称自己再跑全部runtime；不是公司接口/生产验收。"
+      },
+      {
+        "id": "SP09-CLEANUP-POLICY-DOCS",
+        "result": "PASS",
+        "protected_containers_independently_fingerprinted": 29,
+        "protected_changed": 0,
+        "owned_remaining_containers_volumes_networks": [
+          0,
+          0,
+          0
+        ],
+        "unified_PR_current_policy_consistent": true,
+        "tiered_gate_activation": "NOT_ENABLED",
+        "rename": "NOT_STARTED_OWNER_NAME_PENDING",
+        "python_generated_artifacts_excluded": true,
+        "meaning": "实际docker只读查自有资源清零并逐容器指纹比较；现行完整门禁/测试先行保持，旧直推已标历史；新增ignore只挡Python生成物，不改runtime recipe。"
+      },
+      {
+        "id": "SP10-FINAL-STATE-BOUNDARY",
+        "result": "PASS",
+        "meaning": "Final row-level current states and prior_review_snapshot verified; 6 actions verified/10 PASS, audit_complete true; all future freeze/business implementation/enterprise real integration false. Approved metadata and 4211-link count refresh do not alter scope, prices or runtime recipes."
+      }
+    ],
+    "findings": [
+      {
+        "id": "IR04",
+        "status": "FIXED_AND_INDEPENDENTLY_REVALIDATED",
+        "summary": "Completion guard accepted duplicate requirements, unconsumed source, generic PASS reuse and unsupported implementation claims.",
+        "before": "Temporary fixture/in-memory probes actually returned no errors.",
+        "after": "19 guard tests and four independent mutation probes reject; capsule selectors bind check identity and source/estimate SHA."
+      },
+      {
+        "id": "IR05",
+        "status": "FIXED_AND_INDEPENDENTLY_REVALIDATED",
+        "summary": "Execution endpoint replay could return succeeded/held/unknown record after read permission withdrawal.",
+        "before": "Independent cross-condition probe returned original receipt despite read_allowed=false.",
+        "after": "S25–27 deny; all27 oracle cases plus six independent cross cases pass; guard removal yields exactly three failures.",
+        "product_vulnerability_claimed": false
+      },
+      {
+        "id": "IR06",
+        "status": "FIXED_AND_INDEPENDENTLY_REVALIDATED",
+        "summary": "CE02-L old P7–P9 wording and UAA historic baseline read as current conflicted with new four-phase/current net schedule.",
+        "after": "L now P6.1/P6.3/P7/P9 and explicit S/D exclusion; UAA old292–496/305–518 marked historical and links current394–656/407–678."
+      }
+    ],
+    "verification_commands": [
+      "python3 scripts/test-planning-closure.py",
+      "python3 scripts/test-planning-schedule.py",
+      "python3 scripts/calculate-planning-schedule.py --check",
+      "node docs/design/examples/capability-reference/verify.cjs",
+      "python3 docs/design/examples/capability-reference/verify_semantics.py --disable-replay-read-guard (expected nonzero/three failures)",
+      "independent in-memory source/backlink/evidence SHA, 16 endpoint record checks, raw runtime log/input/coverage and Docker fingerprint inspection"
+    ],
+    "limitations": [
+      "This is bounded audit/design closeout, not full future detail freeze, new business implementation, real company integration, remote CI activation or deployment.",
+      "Current schema/oracle and saved route/source proof do not prove production multi-instance semantics or all business paths.",
+      "No second independent PG experiment or entire runtime rerun; actual root-run logs and exact input bindings were inspected.",
+      "Existing AI/SOC/MCP implementations authored by this reviewer do not receive self-issued independent qualification; front reviewer independent evidence remains the authority.",
+      "Final status/binding refresh was independently rechecked and passed; local commit/push/integration is separate and not claimed by this report."
+    ],
+    "final_metadata_recheck": {
+      "result": "PASS",
+      "scope": "Only approved status/binding/doc-count refresh since substantive candidate freeze; no new feature/price/architecture change.",
+      "source_entries": 63,
+      "requirement_points": 93,
+      "actions_verified": 6,
+      "named_checks_PASS": 10,
+      "audit_complete": true,
+      "product_implemented": false,
+      "all_future_details_frozen": false,
+      "real_integration_passed": false,
+      "OA01_through_07": "bounded_design_audit_verified",
+      "OA08_through_12": "future implementation/provider/detail/version integration/owner naming retained",
+      "row_level_current_readbacks_refreshed": true,
+      "prior_descriptions_retained_as_history": true,
+      "net_increment": [
+        102,
+        160
+      ],
+      "public_effort": [
+        394,
+        656
+      ],
+      "conditional_R_effort": [
+        407,
+        678
+      ],
+      "documents": {
+        "markdown": 349,
+        "local_links": 4211,
+        "anchor_links": 404,
+        "baseline_link_issues": 0,
+        "json": 46
+      },
+      "raw_receipt_hashes_rechecked": 9,
+      "latest_metadata_sha256": {
+        "docs/review/user-requirements-reconciliation.json": "aac0c10fbd9d9df0d94a822c62a93a8cdc5f9cd5e94369e9b93087d24b4745f1",
+        "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
+        "docs/review/execution-schedule.json": "46787cc1bdcc90dc844eeb0153e2cba47e50197bd21513f9444eaf36f5636269",
+        "docs/review/reports/design-gap-closure-evidence-2026-11-13.json": "1f276dbb02b1499c4c1292472ea58c25dee7991002bb58c7aee75f4e1c2697d8",
+        "docs/review/planning-closure.json": "3c337421012420749430d92613daa43b754abae0858026a12bfe47deb8c7da80"
+      },
+      "make_planning_check": "PASS:19 closure tests + actual closure validator +19 schedule tests + calculator --check",
+      "commit_or_push_performed_by_reviewer": false
+    }
+  },
+  "front_pass_status": "REVIEWED_FRONT_HALF_PASSED_WITH_EXPLICIT_EXCLUSIONS_FINAL_INTEGRATION_PENDING"
+}

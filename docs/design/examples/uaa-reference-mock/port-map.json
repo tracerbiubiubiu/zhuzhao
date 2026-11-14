@@ -1,0 +1,93 @@
+{
+  "schema_version": "1",
+  "status": "candidate_normalized_ports_reference_only",
+  "not_runtime_routes": true,
+  "scope": {
+    "application": "demo-app",
+    "source": "mock-uaa",
+    "managed_capabilities": ["ticket.list", "ticket.create"],
+    "nonmanaged_local_capabilities": ["profile.self"],
+    "trusted_capability_metadata": {
+      "ticket.list": {"effect": "read"},
+      "ticket.create": {"effect": "write"},
+      "profile.self": {"effect": "read"}
+    },
+    "caller_write_flag_is_authority": false,
+    "company_protocol_confirmed": false,
+    "network_calls": 0
+  },
+  "ports": [
+    {
+      "id": "validated_identity",
+      "implemented_in_reference": false,
+      "candidate_input": ["issuer", "subject", "authentication_time", "session_correlation"],
+      "identity_key": ["issuer", "subject"],
+      "rules": ["protocol adapter validates issuer/audience/signature/nonce/time before this port", "mapped active local account and ready authorization projection before local session", "no automatic account merge by email, display name or mutable employee alias", "no JIT authority inferred from claims"],
+      "candidate_provider": "one chosen auth-code profile with PKCE S256; actual enterprise protocol remains unconfirmed"
+    },
+    {
+      "id": "account_state",
+      "implemented_in_reference": true,
+      "kind": "account",
+      "subject": "mapped external subject",
+      "payload_example": {"active": false},
+      "effect": "local disable cannot be reversed by central active; central disable denies before projection"
+    },
+    {
+      "id": "user_role_set",
+      "implemented_in_reference": true,
+      "kind": "user_roles",
+      "subject": "mapped external subject",
+      "payload_example": {"roles": []},
+      "effect": "proven complete empty set revokes managed roles; unknown dependencies remain held"
+    },
+    {
+      "id": "role_resource_set",
+      "implemented_in_reference": true,
+      "kind": "role_resources",
+      "subject": "external role identifier",
+      "payload_example": {"resources": ["ticket.list"]},
+      "effect": "registered managed resources only; no external role becomes built-in superadmin"
+    }
+  ],
+  "feed_envelope": {
+    "fields": ["event_id", "application", "source", "kind", "subject", "revision", "complete", "payload"],
+    "closed_fields": true,
+    "source_version_scope": ["kind", "subject"],
+    "revision": "positive integer from source, not arrival time",
+    "complete": "synthetic producer attestation for one object/set; not inferred from SCIM pagination",
+    "caller_context": "authenticated adapter identity supplied out of band; fixture string is harness authority only",
+    "receipt_states": ["committed_pending_effect", "held_dependency", "effective", "superseded", "ignore_stale"],
+    "duplicate_receipt": "same event/content is idempotent; equal source revision/content with a new transport event ID aliases original receipt; conflicting content rejects"
+  },
+  "test_controls_not_public_api": ["activate.approved", "feed.caller", "authorize.token_valid", "authorize.grant_valid", "apply_policy.success", "heartbeat.verified", "recovery.caller", "exit_plan", "exit_plan_approval", "set_control", "advance", "restart"],
+  "exit_contract": {
+    "approval_of_exit_is_not_approval_of_old_grants": true,
+    "plan_fields": ["identity_mapping", "policy_revision", "baseline_local_permissions", "local_permissions"],
+    "approval_binding": "SHA256 of canonical JSON plan using sort_keys and compact separators; trusted harness approval only, not an approval service",
+    "current_rechecks": ["identity mapping unchanged", "source policy revision unchanged", "local permission baseline unchanged", "all local subjects known and capabilities registered"],
+    "effect": "replace local permissions with explicitly approved mapping only; no automatic restoration of pre-takeover grants",
+    "no_plan": "needs_exit_baseline, remain enterprise"
+  },
+  "optional_scim_mapping": {
+    "mandatory": false,
+    "wire_implemented": false,
+    "use": "optional directory adapter for selected user/group facts; no requirement to implement a general SCIM server",
+    "identity": "SCIM id/externalId and OIDC issuer+subject require an explicit approved mapping; never assume equality",
+    "governance": "role/resource vocabulary, source version, authoritative completeness and effect acknowledgement need a separate provider contract",
+    "pagination": "RFC7644 pagination is not a stable snapshot; list metadata does not prove absence/deletion",
+    "transport": "SCIM HTTP methods remain inside adapter; these ports do not change the core GET/POST API convention"
+  },
+  "audit": {
+    "fixed_projection": ["schema_version", "audit_id", "request_id", "action", "result", "mode", "source_ref", "policy_revision", "actor_ref", "target_ref", "source_event_ref"],
+    "source_event_ref": "short SHA256 projection, not raw message body",
+    "never_log": ["authorization_code", "state", "nonce", "code_verifier", "access_token", "refresh_token", "id_token", "password", "secret", "raw_headers", "raw_message", "full_claims"],
+    "production_pending": ["cross-service correlation", "full event attribution", "durable audit and access control", "redaction before access/error logs", "outbox and delivery receipts", "retention and integrity"]
+  },
+  "official_sources": [
+    "https://openid.net/specs/openid-connect-core-1_0.html",
+    "https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1",
+    "https://www.rfc-editor.org/rfc/rfc7643.html#section-4.1.2",
+    "https://www.rfc-editor.org/rfc/rfc7644.html#section-3.4.2.4"
+  ]
+}

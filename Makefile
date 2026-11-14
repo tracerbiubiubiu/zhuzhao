@@ -51,6 +51,7 @@ wire:
 	$(GO_TOOL) wire ./internal/app/
 
 lint:
+	python3 scripts/check-component-versions.py
 	go vet ./...
 	python3 scripts/check-gofmt.py
 	@# swagger 新鲜度（红窗第三/四例同族收口 2026-10-22——struct/注释改动必随批
@@ -71,6 +72,13 @@ test-commit-lint:
 
 hooks:
 	scripts/install-git-hooks.sh
+
+# 只核规划收口的结构/证据矛盾，不替代语义审查或完整运行门禁。
+planning-check:
+	python3 scripts/test-planning-closure.py
+	python3 scripts/check-planning-closure.py
+	python3 scripts/test-planning-schedule.py
+	python3 scripts/calculate-planning-schedule.py --check
 
 # EC2：DSN 外置（可用环境变量或命令行覆盖：make migrate-up MIGRATE_DSN=...）
 MIGRATE_DSN ?= postgres://zhuzhao:zhuzhao_dev@localhost:5432/zhuzhao?sslmode=disable

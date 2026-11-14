@@ -1,5 +1,5 @@
-# 最小质量网（09 合集批次三）：lint + 单测。验收脚本需 Docker/Compose，
-# 仍按本地验收纪律（make acceptance-2a/2b/2c）人工执行。
+# 当前源码：lint/单测/集成及固定扫描器。四档验收仍需私有完整生态栈，
+# 交付前按本地 make acceptance 纪律执行；CI 绿不替代组合验收。
 name: ci
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: 提交规则与窗口反例检查
@@ -27,21 +27,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: 安全证据解析器负向检查
         run: python3 scripts/test-parse-govulncheck.py
       - name: 验收隔离回归检查
         run: python3 scripts/test-acceptance-isolation.py
       - name: 开发编排隔离回归检查
         run: python3 scripts/test-dev-stack.py
+      - name: 规划来源与虚假收口反例检查
+        run: make planning-check
       - name: 生成工具入口与回滚预检反例检查
         run: |
           python3 scripts/test-go-tool.py
           python3 scripts/test-migration-template-preflight.py
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           check-latest: false
+      - name: 版本一致性与反例检查
+        run: python3 scripts/test-component-versions.py
       - name: Go格式检查源码边界回归
         run: python3 scripts/test-check-gofmt.py
       # 原 Makefile lint 包含 vet、gofmt 与 Swagger 新鲜度，CI 复用同一入口。
@@ -58,8 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15 # 对齐 activelist/taskrunner 挂起兜底口径
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           check-latest: false
@@ -67,7 +71,7 @@ jobs:
       - run: make test-cover
       - name: 保存覆盖率证据
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: go-coverage
           path: |
@@ -82,8 +86,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           check-latest: false
@@ -92,3 +96,55 @@ jobs:
           # Ryuk 仅服务本地开发（回收漏清理的容器）。CI runner 用完即焚、无泄漏面，
           # 但跨测试包复用 Ryuk 的等待环节曾因 60s 超时假红（run 42482794825，11-08）——直接禁用。
           TESTCONTAINERS_RYUK_DISABLED: "true"
+
+  security-current:
+    name: Current source and Linux binary vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: "off"
+      GOSUMDB: sum.golang.org
+      GOFLAGS: -mod=readonly
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          check-latest: false
+      - name: Install pinned official scanner and bind current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/source-sha.txt
+          go version > evidence/compiler.txt
+          go mod verify
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          go version -m "$(go env GOPATH)/bin/govulncheck" > evidence/scanner-build.txt
+          go build -trimpath -o evidence/zhuzhao ./cmd/server
+          go version -m evidence/zhuzhao > evidence/binary-build.txt
+          sha256sum evidence/zhuzhao > evidence/binary.sha256
+      # Text mode deliberately preserves nonzero findings; JSON mode always exits zero.
+      - name: Scan current production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$(go env GOPATH)/bin/govulncheck" -mode=source -scan=symbol -test -tags=integration ./... > evidence/source.txt 2> evidence/source.stderr
+      - name: Scan actual Linux binary
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$(go env GOPATH)/bin/govulncheck" -mode=binary -scan=symbol evidence/zhuzhao > evidence/binary.txt 2> evidence/binary.stderr
+      - name: Preserve exact scan inputs and findings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: current-security-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 30

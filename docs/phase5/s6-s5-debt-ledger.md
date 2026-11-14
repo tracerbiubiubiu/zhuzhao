@@ -1,5 +1,7 @@
 # Phase 5 挂账统一台账（开放项与关闭追溯）
 
+> **2026-11-11承接终态**：五仓Phase5已整合main。本页保留开放项与关闭的来源历史；现行实施/接入/退出窗口统一在[规划总账](../review/planning-backlog.md)和[逐项来源映射](../review/planning-source-map.json)。已修仅回归，部分已修不等于整条关闭；条件项不再无期限等待。旧行“main未承接”仅指原记录时点。
+
 > **当前读法（2026-11-08）**：本页从 10-23 建档持续增补，表内保留原发现、已拍方向、关闭证据及历史估算，**不能按总行数计算当前开放债**。代码验证、运行承接、main整合/生产发布分别判定；当前能力/迁移/环境边界见[项目控制台](../review/11-project-control.md)，固定修复与运行证据见[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08 followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)。工作区与文档的本轮验证另留准确提交收据，历史门禁保留各自固定快照。
 
 > **B-11/G-3/L-6 承接校准**：头像绑定/退役终态、锁后新快照和资料更新共享 version 的修复已由联合差异进入当前 Phase5 候选；`internal/repository/storage_avatar.go` 的 `StorageRepo.BindAvatar` / `MarkAvatarOrphanDeleted` 是当前代码锚。B27 已核本机 dev/test 的所述后端产物，**不再笼统写成当前只有 test、当前候选待承接**；main/生产仍未承接。原 `d07f560` / `1550bbf` / `4da89fa` 是独立修复来源，不冒称它们已成为当前 HEAD 的祖先；历史联合与原红/修绿范围仍见对应报告。L-6 的内容补齐和本轮权威路径迁移也分别记录。

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "name": "risk-remediation-brief",
+  "version": "1.0.0",
+  "publisher": "demo-trusted-repo",
+  "release_state": "published",
+  "contract_version": "1",
+  "required_capabilities": [
+    "risk.query",
+    "ticket.linked.query",
+    "knowledge.query",
+    "risk.dispatch.preview"
+  ],
+  "files": {
+    "SKILL.md": "a2c937b99070513c408b2a867c8700c58607569541ca8a494700d63d9ba693a5"
+  },
+  "scripts_allowed": false,
+  "network_execution_allowed": false,
+  "resume_policy": "pinned_digest_only",
+  "trust_note": "A source-controlled approved digest is the prototype trust anchor; this is not an assertion of a real publisher signature."
+}

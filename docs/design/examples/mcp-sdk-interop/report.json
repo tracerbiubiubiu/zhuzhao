@@ -1,0 +1,185 @@
+{
+  "scope": "official_go_sdk_loopback_reference_not_product_or_corporate_integration",
+  "protocol": "2026-07-28",
+  "sdk": "github.com/modelcontextprotocol/go-sdk v1.8.0",
+  "go": "go version go1.27.4 darwin/arm64",
+  "top_level_tests": 10,
+  "leaf_tests": 33,
+  "semantic_negative_cases": 14,
+  "pass": true,
+  "race_pass": true,
+  "source_files": [
+    {
+      "relative_path": "mcp/streamable.go",
+      "sha256": "d5bc530e72bcde8a44d139105bb28d0a56c2534a8912b8fe8b37a3b0f2cdcb60",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/streamable.go"
+    },
+    {
+      "relative_path": "mcp/streamable_client.go",
+      "sha256": "04f390c1e88c24d3310c1cb2359c0e2e1c6b580a20f694eef9c77d5efa1e1710",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/streamable_client.go"
+    },
+    {
+      "relative_path": "mcp/client.go",
+      "sha256": "3002b9126558416d9f2a64cd6f6750cd612122707fd8789895286ed5c094e59c",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/client.go"
+    },
+    {
+      "relative_path": "mcp/server.go",
+      "sha256": "336ece58363ac561a61238243377cc9da3660c2c6282b99adb27b530a1aafc2e",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/server.go"
+    },
+    {
+      "relative_path": "mcp/mrtr.go",
+      "sha256": "fb00012db6346b19153d9f620e85643c82c992641ac3458407088cd2c12c91fb",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/mcp/mrtr.go"
+    },
+    {
+      "relative_path": "auth/auth.go",
+      "sha256": "3a210d35ecb463bd528f380a000265770db04527610a4c43dbf55e1ca3aafe41",
+      "fixed_tag_url": "https://raw.githubusercontent.com/modelcontextprotocol/go-sdk/v1.8.0/auth/auth.go"
+    }
+  ],
+  "synthetic_components": [
+    "OAuth authorization server including fixture login, authorization-code registry and token introspection",
+    "local active/L1/scope/grant authority model, not core IAM/UAA",
+    "two scoped ticket projections and one external intel provider",
+    "inflight limiter and response recheck reference adapter"
+  ],
+  "not_covered": [
+    "real company AS/UAA/SOC/model/Agent provider",
+    "real core Service.List/Get and IAM integration",
+    "multi-instance shared limiter or distributed revocation consistency",
+    "production SSRF/DNS/TLS/load/capacity and release workflow",
+    "full OAuth conformance and user consent UI",
+    "profile retry/backoff mapping beyond rejection and cancellation"
+  ],
+  "behavior_findings": [
+    "Per-request version and non-nil empty capabilities accepted without initialize or session identifier.",
+    "JSON and SSE responses observed; GET/DELETE denied on stateless endpoint.",
+    "Modern complete result carries resultType=complete; input-required returned directly and rejected with MRTR disabled.",
+    "Unknown future modern version -> HTTP400/-32022 with supported set; unknown old header -> legacy HTTP400 plain text.",
+    "SDK opts.Capabilities=nil defaults roots; explicit empty set is required for this profile.",
+    "SDK opts.MultiRoundTrip=nil enables automatic handling; explicit Disabled:true is required for this profile."
+  ],
+  "leaf_names": [
+    "TestPublishJSONAndSSE/true",
+    "TestPublishJSONAndSSE/false",
+    "TestSemanticCasesAll14/WRONG_AUDIENCE",
+    "TestSemanticCasesAll14/LOCAL_AT_OR_PAT",
+    "TestSemanticCasesAll14/SCOPE_WITHOUT_L1",
+    "TestSemanticCasesAll14/CROSS_ORG_GET",
+    "TestSemanticCasesAll14/AS_OR_CORE_AUTH_DOWN",
+    "TestSemanticCasesAll14/INPUT_ID_INT64_RANGE",
+    "TestSemanticCasesAll14/TOTAL_INT64_RANGE",
+    "TestSemanticCasesAll14/SCHEMA_DIGEST_DRIFT",
+    "TestSemanticCasesAll14/PRIVATE_DATA_WITH_SHARED_CACHE",
+    "TestSemanticCasesAll14/OVERSIZE_RESULT",
+    "TestSemanticCasesAll14/CONFIRM_WITHOUT_APPROVAL",
+    "TestSemanticCasesAll14/OAUTH_STATE_REPLAY",
+    "TestSemanticCasesAll14/ORIGIN_REBIND",
+    "TestSemanticCasesAll14/REMOTE_UNAUTHORIZED",
+    "TestExternalReadSuccess",
+    "TestProtocolGuards/unsupported_version",
+    "TestProtocolGuards/missing_capabilities",
+    "TestProtocolGuards/header_body_mismatch",
+    "TestNoAutomaticSamplingOrElicitation/sampling",
+    "TestNoAutomaticSamplingOrElicitation/elicitation",
+    "TestCancellationReachesHandler",
+    "TestBearerIdentityFailures/revoked",
+    "TestBearerIdentityFailures/expired",
+    "TestBearerIdentityFailures/wrong_issuer",
+    "TestBearerIdentityFailures/unknown_subject",
+    "TestBearerIdentityFailures/unknown_client",
+    "TestBearerIdentityFailures/insufficient_scope",
+    "TestAuthorizationWithdrawnBeforeResponse",
+    "TestInflightBudgets/false",
+    "TestInflightBudgets/true",
+    "TestProtectedResourceMetadataAndLegacyBoundary"
+  ],
+  "initial_assertion_correction": {
+    "original_input": "MCP-Protocol-Version=1900-01-01 and request _meta protocolVersion=1900-01-01",
+    "original_expectation": "HTTP 400 with JSON-RPC -32022",
+    "observed": "HTTP 400 plain-text legacy precheck; no tool executed",
+    "reason": "Fixed SDK streamable.go rejects unknown header revisions earlier than 2026-07-28 before modern body validation.",
+    "final_assertions": [
+      "2099-01-01 -> HTTP400 / JSON-RPC -32022 and supported-version data",
+      "1900-01-01 -> HTTP400 legacy plain text; no tool executed"
+    ],
+    "product_code_change": false
+  },
+  "reproduction_directory": "docs/design/examples/mcp-sdk-interop",
+  "run_commands": [
+    "env GOMAXPROCS=2 GOFLAGS=-p=2 GOMEMLIMIT=768MiB go test -mod=readonly -count=1 -timeout=90s -v ./...",
+    "env GOMAXPROCS=2 GOFLAGS=-p=2 GOMEMLIMIT=768MiB go test -mod=readonly -race -count=1 -timeout=90s -v ./..."
+  ],
+  "permission_check": {
+    "allowed_write_paths": [
+      "docs/design/examples/mcp-sdk-interop/",
+      "docs/design/examples/README.md"
+    ],
+    "product_module_or_dependencies_modified": false,
+    "corporate_endpoints_or_private_data_used": false,
+    "commit_or_push_performed": false
+  },
+  "direct_dependency_licenses": [
+    {
+      "module": "github.com/modelcontextprotocol/go-sdk",
+      "version": "v1.8.0",
+      "license": "Apache-2.0 for new/relicensed contributions; MIT for unrelicensed historical contributions; documentation excluding specifications CC-BY-4.0 (transition notice)",
+      "license_sha256": "af679003d933f045393a6a029f43da113f9ae364eac651d9ae268392985580f5",
+      "source_url": "https://github.com/modelcontextprotocol/go-sdk/blob/v1.8.0/LICENSE",
+      "freely_selectable_dual_license": false
+    },
+    {
+      "module": "github.com/google/jsonschema-go",
+      "version": "v0.4.3",
+      "license": "MIT",
+      "license_sha256": "2d56c53449691d85d9aea245eb8dac12713e9075d70d5557b82ae1e94805b357",
+      "source_url": "https://github.com/google/jsonschema-go/blob/v0.4.3/LICENSE"
+    },
+    {
+      "module": "golang.org/x/oauth2",
+      "version": "v0.35.0",
+      "license": "BSD-3-Clause",
+      "license_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "source_url": "https://raw.githubusercontent.com/golang/oauth2/v0.35.0/LICENSE"
+    }
+  ],
+  "new_location_retest": "passed",
+  "license_scope": "Fixed direct-module LICENSE inspection; no claim of full redistribution/legal compliance audit.",
+  "reproduction_artifacts": [
+    {
+      "repository_path": "docs/design/examples/mcp-sdk-interop/interop_test.go",
+      "sha256": "4fec5006a1cc24409a451f50830cbce7e9f1d4cd6e71f0c04116e8c42f9cf3dd"
+    },
+    {
+      "repository_path": "docs/design/examples/mcp-sdk-interop/go.mod",
+      "sha256": "636451b80caeac7ce6f5d3167a613fe8f0c486b5850726150578336996269e04"
+    },
+    {
+      "repository_path": "docs/design/examples/mcp-sdk-interop/go.sum",
+      "sha256": "6184efde48a3053a9ac99d80aa3709071979585108b182ef17463500fa0be91f"
+    },
+    {
+      "repository_path": "docs/design/examples/mcp-sdk-interop/README.md",
+      "sha256": "431b70ca8702117a85a9ac44eb0d37a1d56d3f1291a9b97881a7b30a34b7d786"
+    },
+    {
+      "repository_path": "docs/design/mcp-first-contract.schema.json",
+      "sha256": "26df354b11eadeaacc5dde057cb0c1aeb7dff60c973c13d581e452e12d8af707"
+    }
+  ],
+  "execution_evidence": {
+    "plain": "ignored local audit mcp-interop-20261113/published-location/test-output.log",
+    "race": "ignored local audit mcp-interop-20261113/published-location/race-output.log",
+    "plain_output_sha256": "4f8c074486782a67b21aaf3c56bfcd71e4e3dc04726ae21de8c336619e0be301",
+    "race_output_sha256": "c2615fbf642ee3104a7978a69d2d424dc636ec89c73ee503468ebcf83cd2b6a5",
+    "generated_http_hosts_or_tokens_in_report": false
+  },
+  "dependency_rationale": {
+    "github.com/modelcontextprotocol/go-sdk": "Use official client/server transport and result handling instead of handwritten JSON-RPC simulation.",
+    "github.com/google/jsonschema-go": "Resolve and validate candidate input/output schemas instead of only testing individual field assertions.",
+    "golang.org/x/oauth2": "Execute real local HTTP authorization-code/PKCE exchange instead of directly inserting access tokens."
+  }
+}

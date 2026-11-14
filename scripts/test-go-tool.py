@@ -18,8 +18,8 @@ REAL_MAKE = shutil.which("make")
 PINS = {
     "wire": ["github.com/google/wire", "github.com/google/wire/cmd/wire", "v0.7.0",
              "h1:JxUKI6+CVBgCO2WToKy/nQk0sS+amI9z9EjVmdaocj4="],
-    "swag": ["github.com/swaggo/swag", "github.com/swaggo/swag/cmd/swag", "v1.16.4",
-             "h1:clWJtd9LStiG3VeijiCfOVODP6VpHtKdQy9ELFG3s1A="],
+    "swag": ["github.com/swaggo/swag", "github.com/swaggo/swag/cmd/swag", "v1.16.6",
+             "h1:qBNcx53ZaX+M5dxVyTrgQ0PJ/ACK+NzhwcbieTt+9yI="],
 }
 GO_STUB = r'''
 import json, os, sys, time

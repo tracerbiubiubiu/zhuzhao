@@ -1,5 +1,7 @@
 # 认证模块
 
+> **2026-11-12企业接入校准（未实现）**：[UAA认证与权限治理合同](../design/uaa-governance-integration.md)区分中央身份/受管授权与本地三层执行。现有认证能力不等于已接UAA；企业模式、来源追踪、三路同步与多实例撤权需E01-UAA-C/P/R建设验收。mock和独立开发入口保留，旧“鉴权零改动/换配置即可”不作当前保证。
+
 > 状态：当前实现说明。完整请求字段以生成的 Swagger 和 `internal/model/auth.go` 为准；旧阶段设计见 [Phase 1 认证稿](../phase1/02-auth.md)，设备管理、SSO 等未交付项见 [认证增强](../phase2/01-auth-enhance.md)。
 
 ## 1. 模块定位

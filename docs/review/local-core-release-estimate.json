@@ -1,0 +1,951 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-14",
+  "status": "bounded_local_core_net_estimate_candidate_not_calendar_commitment",
+  "scope_owner_policy": "local-first formal operation allowed; quality and usability take precedence over January target; full UAA P/R follow core",
+  "source_followup": "F013-local-first-quality-and-UAA-later",
+  "basis_commit": "ac6b060bf4892c03c5e7ade2b5e5fd792d91dad9",
+  "basis_method": "read actual source/ports/tests; reuse existing product; count shared mechanism once and each domain adapter/effect once; no duration inferred from deadline",
+  "unit": "effective engineering days including finite remaining design TDD implementation domain tests review and normal correction",
+  "confidence": "medium-low_before_first_module_actuals",
+  "groups": [
+    {
+      "id": "S",
+      "title": "共享本地权限、可靠调用与基础保护",
+      "days": [
+        12,
+        19
+      ],
+      "wbs": [
+        {
+          "id": "S1",
+          "days": [
+            5,
+            8
+          ],
+          "deliverable": "含UAA-C合同2–3日和本地授权/事务护栏3–5日：本批可信主体、稳定资源/source边界；所选高风险写与本地IAM撤权在事务内复验，共用epoch/守卫锁序；策略重载/会话失效失败持久待恢复并收紧，单实例启动重载可验证",
+          "source_refs": [
+            "internal/service/user_service.go#UserService.SetRoles",
+            "internal/service/rbac_service.go#RBACService.AssignMenus",
+            "internal/service/ticket/resource.go#canOperate",
+            "internal/repository/ticket_repo.go#CreateTx"
+          ],
+          "excludes": "风险/AL本域行字段与动作策略由R2/TD3计；完整HR/企业投影后移；已有审计写作不收费",
+          "tests": "授权先判后撤权再提交、撤权先提交旧决定拒写、DB提交后LoadPolicy/会话失效失败不留无限旧权、直接/组织/继承源不复活、锁序和事务回滚；不将已有三层冒称这些反例已实现"
+        },
+        {
+          "id": "S2",
+          "days": [
+            4,
+            6
+          ],
+          "deliverable": "仅核心侧共用operation/同号同参、可靠intent投递与receipt关联/恢复基础；固定少量能力，不建通用引擎",
+          "source_refs": [
+            "internal/repository/job_submission_repo.go#ClaimCallbackRow",
+            "internal/service/jobs_callback.go#JobsCallbackService.Execute",
+            "internal/pkg/domainevent/registry.go#HookRegistry"
+          ],
+          "excludes": "AL本库效果receipt、AL源outbox/核心AL订阅inbox、消息业务记录及各域接线分别在TD/AD/MH计；Hook不冒充持久队列"
+        },
+        {
+          "id": "S3",
+          "days": [
+            3,
+            5
+          ],
+          "deliverable": "本批附件归属/引用保护、必要日志去敏/关联及工单固定配置服务端守卫",
+          "source_refs": [
+            "internal/service/ticket/service.go#bindAttachmentsTx",
+            "internal/service/ticket/attachment_bind_integration_test.go",
+            "internal/middleware/audit.go#AuditLog"
+          ],
+          "excludes": "AL监控类型限制在TD4；通用公式框架/全配置迁版/全域OBS新平台后移，实际必需则具名补估；两IAM强审计失败政策仍待答"
+        }
+      ],
+      "allocation_refs": [
+        "C02/C04/R01适用子范围",
+        "CE01/CE02本批共同机制",
+        "E01-UAA-C合同",
+        "OBS本批最低保护"
+      ]
+    },
+    {
+      "id": "RISK",
+      "title": "风险到整改人工闭环",
+      "days": [
+        11.0,
+        17.0
+      ],
+      "wbs": [
+        {
+          "id": "R1",
+          "days": [
+            3,
+            4.5
+          ],
+          "scope": "Freeze thin DTO/state/schema, paired migrations/indexes, risk/append-only history/source-key model and repository; manual creation plus one normalized ingest use case, idempotency/version/regression handling, basic list/detail/count. Adapt human key format if approved RISK-year-six-digit format is retained.",
+          "reuse": [
+            "internal/pkg/humankey/humankey.go: New/Generator.Next (mechanism only)",
+            "internal/repository/ticket_repo.go: CreateTx/List/CreateEventTx (patterns, not existing risk implementation)",
+            "internal/model/ticket_request.go: pagination/request patterns"
+          ],
+          "tests": "Migration round-trip and model/repo cases for same operation replay, same source revision conflict, stale source update, genuine post-close recurrence and bounded fields.",
+          "package_allocation": "Selected D08 and source part of D06/X02-F; excludes HR/feed platform, real source adapter and query/prefill D07."
+        },
+        {
+          "id": "R2",
+          "days": [
+            2,
+            3
+          ],
+          "scope": "Register risk resource and risk read/manage L1 menu/button/API seeds; L2 risk-team anchor + affected-org read-only + owner; L3 action/current owner/review separation; filtered list/detail/count and selected relation reads use same policy.",
+          "reuse": [
+            "internal/pkg/resource/registry.go: Registry.Register/Authorize/GetFilter",
+            "internal/service/ticket/resource.go: Resource.Authorize/GetFilter/canOperate (existing ticket policy pattern)",
+            "internal/service/ticket/authz_resource_integration_test.go: TestTicket_R4_InvisibleReturns404/TestTicket_R6_VisibleNotOwner_403 (fixture patterns)"
+          ],
+          "tests": "Risk manager, processor, read-only, CC, unrelated same-org user; no count/existence leakage, direct POST denial, revoked actor cannot dispatch/review.",
+          "package_allocation": "Risk-specific D08/D09 and applicable D03 output; no entire D03 type-visibility overhaul or shared epoch/lock framework."
+        },
+        {
+          "id": "R3",
+          "days": [
+            1.5,
+            2.5
+          ],
+          "scope": "Finite evaluate/treat/accept/reassign/deadline actions with CAS and append-only business history, accepted-expiry review/reopen check and role separation; produce recipient/domain payload for selected notifications.",
+          "reuse": [
+            "internal/repository/user_repo.go and org_repo.go (existing local people/org lookup)",
+            "internal/service/ticket/transition_service.go: Service.Transition (transaction/CAS pattern)",
+            "internal/service/ticket/timeout_scanner.go (existing scan/lock pattern only; risk scanner is new)"
+          ],
+          "tests": "Illegal transitions, missing/inactive owner, acceptance without confirmation authority, due-date/expiry behavior and concurrent responsibility change; no privileged implicit auto-assignment.",
+          "package_allocation": "Selected D09/D15; excludes organization lifecycle sync, flexible notification preference editor and general SLA/calendar."
+        },
+        {
+          "id": "R4",
+          "days": [
+            3,
+            4.5
+          ],
+          "scope": "Restricted risk dispatch use case, fixed type/target/field mapping, stable operation and N:1 link uniqueness; share existing ticket validation and transactional writes while preserving narrow risk-specific creation authority. Commit ticket/link/intent atomically or with explicit durable recoverable state; partial assignment is visible and recoverable.",
+          "reuse": [
+            "internal/service/ticket/service.go: Service.Create/Assign",
+            "internal/repository/ticket_repo.go: CreateTx/CreateEventTx/UpdateAssignedToTx",
+            "internal/service/ticket/dispatch_service.go: DispatchService.OnAfterCreate"
+          ],
+          "tests": "Concurrent dispatch once, same-owner grouping, different-owner denial, no owner denial, target type/org permission, link failure rollback, retry after response loss and current authorization change.",
+          "package_allocation": "Selected D10/D02 and local D01 consumption; does not reprice complete D01/D04. Existing Create owns a transaction and enforces actor org membership, so restricted composition is real work, not a zero-cost call or grant of general ticket:create."
+        },
+        {
+          "id": "R5",
+          "days": [
+            1.5,
+            2.5
+          ],
+          "scope": "Per-risk review/conclusion and evidence references against actual linked ticket state, revocation-safe visibility, local result/close reconciliation, correct cancel/accept/regression behavior and pending/failure projection. A ticket terminal state does not close every linked risk automatically.",
+          "reuse": [
+            "internal/service/ticket/service.go: Service.Get/AuthorizeTicketFileRead",
+            "internal/service/ticket/transition_service.go: Service.Transition",
+            "internal/service/ticket/attachment_bind_integration_test.go: TestCreate_TicketAttachmentBind/TestUpdate_TicketAttachmentIncrement (existing evidence foundation)"
+          ],
+          "tests": "Different risk conclusions on one ticket, closed-ticket replay, revoked reviewer, hidden ticket/attachment, failed local projection recovery; risk role does not grant arbitrary ticket processing/read scope.",
+          "package_allocation": "Remaining selected D10/D15 transaction/domain wiring; shared reliable-delivery infrastructure and message adapter remain external single-count items."
+        }
+      ],
+      "allocation_refs": [
+        "D08/D09/D10/D15和所需D02/D03子范围"
+      ]
+    },
+    {
+      "id": "TD",
+      "name": "ticket_to_TR_result_and_authorized_AL_write",
+      "days": [
+        11,
+        16
+      ],
+      "wbs": [
+        {
+          "id": "TD01",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Freeze selected typed Action/input/result projection; fixed ticket/node/run association and domain migration fields; bounded mapping and action registration",
+          "excludes": "common operation identity/state schema and global authorization mechanism"
+        },
+        {
+          "id": "TD02",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Write selected task intent in ticket transaction, bind stable task ID, adapt submit/callback and original-task lookup to common operation/receipt, monotonically project original node result and visible queued/running/failed/held/unknown state",
+          "excludes": "generic intent worker and generic recovery framework; only ticket/job domain integration"
+        },
+        {
+          "id": "TD03",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Core backend typed AL port/client and selected read/write projection; enforce current row/field/target qualification through root authorization interface on submit, execution and result reads",
+          "excludes": "building shared IAM or general AL policy editor"
+        },
+        {
+          "id": "TD04",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "AL-local effect receipt integration in same transaction as selected CAS update, same operation lookup and fixed type/profile/generation checks; protect monitored type across direct signed API and schema/import/delete/restore entrances",
+          "excludes": "root generic receipt rules; this row alone owns monitored-type restrictive guards reused by AD"
+        },
+        {
+          "id": "TD05",
+          "days": [
+            3,
+            4
+          ],
+          "deliverable": "Domain PG/HTTP/TR integration cases: lost submit/response, duplicate and differing payload, CAS conflict, revocation, old result, interrupted effect/projection, restart, unauthorized row/field and bypass attempts",
+          "excludes": "final end-to-end/browser suite and full shared common regression"
+        }
+      ],
+      "reuse": [
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/ticket/actions_builtin.go",
+          "symbols": [
+            "SpawnTaskAction.Execute",
+            "TaskSubmitter"
+          ],
+          "real_limit": "currently serializes params, discards submit response, exposes no stable task_id and does not implement documented from:ticket.field mapping"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/ticket/actions.go",
+          "symbols": [
+            "ActionRegistry.RunPostActions"
+          ],
+          "real_limit": "runs after ticket commit in memory; failures only log/emit; delivery enum is not durable ticket intent"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/taskrunner_service.go",
+          "symbols": [
+            "TaskrunnerService.Submit",
+            "TaskrunnerService.GetTask"
+          ],
+          "real_limit": "signed submit/query available; submit voucher written after remote acceptance and failure only logged"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/jobs_callback.go",
+          "symbols": [
+            "JobsCallbackService.Execute",
+            "paramsSemanticEqual"
+          ],
+          "real_limit": "snapshot guard/fence exist; running returns idempotent 2xx and success-ledger failure only logs; not business receipt/projection recovery"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/repository/job_submission_repo.go",
+          "symbols": [
+            "ClaimCallbackRow",
+            "MarkSucceeded",
+            "MarkFailed"
+          ],
+          "real_limit": "10-minute stale-claim/fence is reusable but effect must still be operation-idempotent"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/pkg/jobs/registry.go",
+          "symbols": [
+            "Registry.Register",
+            "Handler"
+          ],
+          "real_limit": "registry exists but provideJobsRegistry currently registers only audit_archive"
+        },
+        {
+          "repo": "taskrunner",
+          "file": "internal/service/submit.go",
+          "symbols": [
+            "Service.Submit",
+            "buildEnqueueOpts"
+          ],
+          "real_limit": "DB-first InsertPending + Asynq idempotent task ID and reclaim already exist; current existing-task branch does not compare payload"
+        },
+        {
+          "repo": "taskrunner",
+          "file": "internal/service/reclaim.go",
+          "symbols": [
+            "ReclaimLoop"
+          ],
+          "real_limit": "queue recovery reused, not rebuilt"
+        },
+        {
+          "repo": "taskrunner",
+          "file": "internal/callback/client.go",
+          "symbols": [
+            "Client.Do"
+          ],
+          "real_limit": "HMAC callback/timeout/HTTP error classes reused; error-only callback does not carry typed business result"
+        },
+        {
+          "repo": "activelist",
+          "file": "internal/service/data_service.go",
+          "symbols": [
+            "DataService.Insert",
+            "DataService.Update",
+            "DataService.Get",
+            "DataService.List",
+            "gateType",
+            "mergeData"
+          ],
+          "real_limit": "transactions/schema validation/version checks exist; row/field authorization and operation receipt absent"
+        },
+        {
+          "repo": "activelist",
+          "file": "internal/repository/data.go",
+          "symbols": [
+            "GetDocForUpdate",
+            "UpdateDocData",
+            "InsertDoc"
+          ],
+          "real_limit": "lock/CAS/global durable revision sequence reused"
+        },
+        {
+          "repo": "activelist",
+          "file": "internal/service/type_service.go",
+          "symbols": [
+            "TypeService.Evolve",
+            "TypeService.Deprecate"
+          ],
+          "real_limit": "monitored-type profile guards must also cover schema lifecycle"
+        }
+      ],
+      "title": "ticket_to_TR_result_and_authorized_AL_write",
+      "allocation_refs": [
+        "C03/D12/I01/I02/R06/CE02-D/CE03所选接线"
+      ]
+    },
+    {
+      "id": "AD",
+      "name": "AL_change_to_authorized_readonly_TR_followup",
+      "days": [
+        9,
+        13
+      ],
+      "wbs": [
+        {
+          "id": "AD01",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "AL source-outbox DDL and same-transaction capture for allowed insert/update; selected-field diff/noop suppression, stable event/revision/profile/generation/cause; preserve facts on source crash",
+          "excludes": "TD AL effect receipt/CAS and all monitored-type route guards"
+        },
+        {
+          "id": "AD02",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "One signed push dispatcher, bounded attempts/backoff, durable ACK progress/retention and restart recovery; backpressure and pending/failure visibility",
+          "excludes": "multi-consumer feed, paging/resync platform and generic reusable transport marketplace"
+        },
+        {
+          "id": "AD03",
+          "days": [
+            3,
+            4
+          ],
+          "deliverable": "Core durable event inbox/dedup and commit-before-ACK; one fixed versioned subscription, current-grant validation and derived shared intent; one actual read-only AL verification Action; causal/loop suppression",
+          "excludes": "shared operation/intent engine, TD submission/callback/result implementation and arbitrary rule editor"
+        },
+        {
+          "id": "AD04",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Domain service integration cases: source commit-before-push crash, ACK loss, duplicate/concurrent delivery, old generation/revision, noop, authorization revocation, restart/backlog and bounded capacity; prove one followup effect",
+          "excludes": "retesting TD effect transaction/receipt or final all-chain acceptance"
+        }
+      ],
+      "reuse": [
+        {
+          "repo": "activelist",
+          "file": "internal/service/data_service.go",
+          "symbols": [
+            "DataService.Insert",
+            "DataService.Update"
+          ],
+          "real_limit": "only reuse selected write transaction hooks; currently no source change outbox"
+        },
+        {
+          "repo": "activelist",
+          "file": "internal/repository/data.go",
+          "symbols": [
+            "Document.Version",
+            "UpdateDocData",
+            "InsertDoc"
+          ],
+          "real_limit": "durable revision reused; update currently writes a new revision even with equivalent merged values, so selected-event noop semantics must be explicit"
+        },
+        {
+          "repo": "activelist",
+          "file": "internal/middleware/middleware.go",
+          "symbols": [
+            "AKSKAuth"
+          ],
+          "real_limit": "transport service authentication reused; not row/field grant"
+        },
+        {
+          "repo": "taskrunner",
+          "file": "internal/service/submit.go",
+          "symbols": [
+            "Service.Submit"
+          ],
+          "real_limit": "reuse TD-bound task transport and scheduler; no second queue system"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/pkg/jobs/registry.go",
+          "symbols": [
+            "Registry.Register",
+            "Handler"
+          ],
+          "real_limit": "one read-only followup registration, no general Action product"
+        }
+      ],
+      "title": "AL_change_to_authorized_readonly_TR_followup",
+      "allocation_refs": [
+        "CE04/CE05所选数据变化"
+      ]
+    },
+    {
+      "id": "MH",
+      "name": "one_HTTP_message_channel",
+      "days": [
+        7,
+        11
+      ],
+      "wbs": [
+        {
+          "id": "MH01",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Versioned public HTTP contract, synthetic real HTTP fixture, authentication/field map boundary, business-code/acceptance-query adapter and reviewed config/assembly",
+          "excludes": "company private-field verification, external waiting and additional channel/provider"
+        },
+        {
+          "id": "MH02",
+          "days": [
+            1,
+            2
+          ],
+          "deliverable": "At send/execute and message-read time, recheck current recipient authorization and apply minimum authorized field projection/redaction to the owner/candidate notification facts supplied by the risk/ticket domain, using root IAM/evidence interfaces",
+          "excludes": "Risk R3 owns owner/responsibility resolution and minimum notification-candidate facts; do not reimplement or charge that risk-domain resolution here. Common IAM and unlimited notification policy/editor are excluded."
+        },
+        {
+          "id": "MH03",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Connect domain event/recipient/template snapshot to shared reliable intent, message idempotency key and accepted receipt, unknown/held, restart-safe continuation/reconciliation",
+          "excludes": "common outbox/intent/retry engine and universal receipt state mechanism"
+        },
+        {
+          "id": "MH04",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "Backend-only message log/inbox status persistence/projection and status APIs plus bounded domain cases for failure/response loss/duplicates/revocation; preserve committed business and expose pending/failed/unknown",
+          "excludes": "No UI rendering, page/component work, browser E2E, or final common regression; the UI estimate separately owns its 0.5–1 day message status presentation item."
+        }
+      ],
+      "reuse": [
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/ticket/dispatcher.go",
+          "symbols": [
+            "MessageDispatcher.Dispatch"
+          ],
+          "real_limit": "rules/template/render/preference usable; in-memory throttle, send-before-log, ignored log insert failure and at-most-once path need domain integration"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/ticket/notify_hook.go",
+          "symbols": [
+            "resolveRecipientsFromRule"
+          ],
+          "real_limit": "recipient derivation reused but current authorization/projected fields need checking"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/pkg/msgrender/renderer.go",
+          "symbols": [
+            "RenderQuadrantEscaped"
+          ],
+          "real_limit": "four-quadrant escaped template render reused; no new template renderer"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/repository/message_log_repo.go",
+          "symbols": [
+            "MessageLogRepo.Insert",
+            "MessageLogRepo.List"
+          ],
+          "real_limit": "existing record storage reused; persistent pending/unknown/receipt transitions needed"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/service/ticket/inbox_service.go",
+          "symbols": [
+            "InboxService"
+          ],
+          "real_limit": "existing inbox storage/read routes reused; current permission projection remains domain work"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/pkg/channelsender/port.go",
+          "symbols": [
+            "ChannelSender",
+            "Message",
+            "UIPStubSender.Send"
+          ],
+          "real_limit": "Send(error) has no idempotency/receipt; real endpoint still returns unimplemented"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/app/app.go",
+          "symbols": [
+            "NewApp"
+          ],
+          "real_limit": "currently assembles UIPStubSender, so real ordinary-message adapter does not exist"
+        },
+        {
+          "repo": "zhuzhao",
+          "file": "internal/pkg/webhook/client.go",
+          "symbols": [
+            "Client.Post"
+          ],
+          "real_limit": "existing dead-letter webhook is not ordinary-message receipt adapter"
+        }
+      ],
+      "external_semantics": "If provider has neither idempotency nor receipt/query proof, timeout is unknown/held for reconciliation; no blind resend and no claimed delivered/read status.",
+      "title": "one_HTTP_message_channel",
+      "allocation_refs": [
+        "D11/E01普通HTTP消息所选接线"
+      ]
+    },
+    {
+      "id": "MR",
+      "title": "所选公司消息HTTP真实映射与验证",
+      "days": [
+        2,
+        3
+      ],
+      "wbs": [
+        {
+          "id": "MR1",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "在内网对一条既定HTTP协议画像做字段/收件人/鉴权/业务码映射与配置，执行一次真实受理/失败/重复/超时验证及正常修正，保留回执；外部等待不当零工日",
+          "source_refs": [
+            "internal/pkg/channelsender/port.go#ChannelSender",
+            "docs/review/uaa-real-integration-conditions.json"
+          ],
+          "excludes": "MH01只交公共sender/合成服务/规范HTTP装配；多渠道/额外SDK/公司合同外功能另具名估算；本项不重写公共意图和日志UI"
+        }
+      ],
+      "allocation_refs": [
+        "E01/D11所选私有消息绑定增量，不是UAA-R"
+      ]
+    },
+    {
+      "id": "UI",
+      "title": "最小业务UI、批量标签与浏览器旅程",
+      "days": [
+        10.5,
+        16.5
+      ],
+      "wbs": [
+        {
+          "id": "U1",
+          "days": [
+            0.5,
+            1
+          ],
+          "scope": "Typed risk APIs and bounded routes/menu landing; ordinary/zero-menu local account safe navigation; touched-page loading/error/forbidden feedback.",
+          "reuse": [
+            "zhuzhao-ui/src/api/ticket/index.ts",
+            "zhuzhao-ui/src/views/ticket/list/index.vue: ProTable/usePermission",
+            "zhuzhao-ui/e2e/s2-home-smoke.spec.ts"
+          ],
+          "package_allocation": "Selected U01/U02/U07; no full homepage aggregation or visual tokens migration."
+        },
+        {
+          "id": "U2",
+          "days": [
+            3,
+            4
+          ],
+          "scope": "Risk list/detail, basic filter/create, evaluation/acceptance/responsibility/deadline dialogs, current history and source labels; plain Element Plus layouts with loading/empty/error/no-right behavior.",
+          "reuse": [
+            "zhuzhao-ui/src/components/ProTable/index.vue",
+            "zhuzhao-ui/src/components/UserPicker/index.vue",
+            "zhuzhao-ui/src/views/ticket/detail/index.vue: useQuery/customValue",
+            "zhuzhao-ui/src/views/ticket/create/index.vue: handleSubmit"
+          ],
+          "package_allocation": "Thin frontend allocation of D08/D09 and U02/U07. No charts, trees, dashboards, risk Excel import, field designer or complete risk operations desk."
+        },
+        {
+          "id": "U3",
+          "days": [
+            0.5,
+            1
+          ],
+          "scope": "Restricted dispatch/grouped risk preview, ticket link and per-risk review/accept/reject dialogs with partial/pending/conflict messages. The shared display/form patterns come from U2.",
+          "reuse": [
+            "zhuzhao-ui/src/components/UserPicker/index.vue",
+            "zhuzhao-ui/src/views/ticket/detail/index.vue: relation and assignment dialogs"
+          ],
+          "package_allocation": "Thin D10 frontend; no arbitrary general ticket creation or N:M association editor."
+        },
+        {
+          "id": "U4",
+          "days": [
+            1.5,
+            2.5
+          ],
+          "scope": "Original ticket shows required fixed evidence/transition fields, source risks and original-node task operation/receipt summary with queued/running/failed/held/unknown/effect-complete versus projection-pending. Re-read/poll local result without global task permissions.",
+          "reuse": [
+            "zhuzhao-ui/src/views/ticket/detail/index.vue: availableTransitionsQuery/doTransition",
+            "zhuzhao-ui/src/components/TicketAttachments.vue",
+            "zhuzhao-ui/src/api/task/index.ts: RUN_STATUS/getTaskApi (format examples only; existing global task API is not assumed safe to grant)"
+          ],
+          "package_allocation": "Selected D02/D12/U03 frontend plus CE result display; excludes bulk tags, U04 designer and new standalone TR detail page. Backend per-ticket authorized result endpoint priced by execution owner."
+        },
+        {
+          "id": "U5",
+          "days": [
+            0.5,
+            1
+          ],
+          "scope": "Existing AL data page consumes supported-operation/capability flags, suppresses prohibited monitor-type controls, shows selected operation/result/next-task pending or failure and refresh link; retain existing CAS input/error behavior.",
+          "reuse": [
+            "zhuzhao-ui/src/views/al/data/index.vue: openEdit/submitForm/buildDataBody",
+            "zhuzhao-ui/src/api/al/index.ts",
+            "zhuzhao-ui/e2e/w5-al-pages.spec.ts"
+          ],
+          "package_allocation": "Thin U06/CE03/CE04 display only. Server enforcement, AL row/field policy and source feed are backend items; no AL table redesign or rule configuration UI."
+        },
+        {
+          "id": "U6",
+          "days": [
+            0.5,
+            1
+          ],
+          "scope": "Business page message pending/failed/accepted summary and existing send-log status labels/detail; distinguish accepted from delivered. Reuse notifications/deep links and show fetch failure rather than zero success.",
+          "reuse": [
+            "zhuzhao-ui/src/views/message/center/index.vue: openItem/refresh",
+            "zhuzhao-ui/src/views/system/notification/index.vue: sending logs/status",
+            "zhuzhao-ui/src/api/message/index.ts: listMessageLogsApi"
+          ],
+          "package_allocation": "Thin D11/D15/U06 allocation; sender/provider adapter, durable delivery and safe recipient projection are not frontend work."
+        },
+        {
+          "id": "U7",
+          "days": [
+            2,
+            3
+          ],
+          "scope": "Author and stabilize new browser journey across risk/real ticket/receipt/AL/message with dedicated ordinary roles; loading/empty/forbidden/conflict/late result/message failure, account switch and key keyboard/200%-zoom checks on touched screens. No UAA login matrix.",
+          "reuse": [
+            "zhuzhao-ui/e2e/helpers.ts and ui.ts",
+            "zhuzhao-ui/e2e/s10-ticket-detail.spec.ts",
+            "zhuzhao-ui/e2e/p5-s3a-transition.spec.ts",
+            "zhuzhao-ui/e2e/fe3-viewer-readonly.spec.ts",
+            "zhuzhao-ui/e2e/p5-s6-message-center.spec.ts"
+          ],
+          "package_allocation": "Selected U07 and touched-feature browser verification. Do not charge these same browser cases again in whole-system joint acceptance; service-level fault injection is elsewhere."
+        },
+        {
+          "id": "U8",
+          "days": [
+            2,
+            3
+          ],
+          "scope": "Ticket-list multi-select add-tags, retaining the already-confirmed common operation. Extend ProTable opt-in selection, use selected IDs across pages within a bounded current query, then invoke the existing single-ticket add-tags API per ID with per-item outcomes. No new general batch engine.",
+          "sub_wbs": [
+            {
+              "scope": "Opt-in ProTable row selection and ticket-page selected-ID state/count, explicit cross-page behavior, deselect/clear and filter/account invalidation. Existing callers default unchanged.",
+              "days": [
+                0.5,
+                1
+              ]
+            },
+            {
+              "scope": "Batch add-tags dialog, trim/dedup and existing 20-tags/50-character limits, bounded serial or small-concurrency per-ID requests, progress and success/failed/not-attempted summary; retry failed IDs without rolling back successful ones.",
+              "days": [
+                0.75,
+                1
+              ]
+            },
+            {
+              "scope": "Component/page/browser cases and normal correction: cross-page selected IDs, repeated tags/retry idempotency, partial failure after access withdrawal, read-visible non-update role allowed, invalid tags, stale user/query change; verify non-selection ProTable consumers stay unchanged.",
+              "days": [
+                0.75,
+                1
+              ]
+            }
+          ],
+          "reuse": [
+            "internal/service/ticket/tag_service.go: Service.AddTags calls authorizeCheck(read); RemoveTag alone requires update when removing another author's tag",
+            "internal/repository/tag_repo.go: TagRepo.AddTags uses UNIQUE(entity_type,entity_id,tag) ON CONFLICT DO NOTHING",
+            "internal/router/router.go: selfService.POST(/tickets/tags) already registered; no new permission code",
+            "internal/model/ticket_request.go: AddTicketTagsRequest tags count <=20 and each <=50 characters",
+            "internal/service/ticket/tag_integration_test.go: TestB102_Tags covers cleaning/idempotency, read-visible CC collaboration and invisible 404",
+            "zhuzhao-ui/src/api/ticket/index.ts: addTicketTagsApi",
+            "zhuzhao-ui/src/views/ticket/list/index.vue: existing toolbar and tag filter; no existing selection implementation",
+            "zhuzhao-ui/src/components/ProTable/index.vue: rowKey=id, exposed state and paginated useCrud; no existing selection prop/event/column",
+            "zhuzhao-ui/e2e/p5-s10-cc-tags.spec.ts: existing detail-tag/filter fixture and assertions"
+          ],
+          "constraints": [
+            "Authorization remains read-visible collaboration. Do not add ticket:update permission or gate this action on update; no mass removal or other-author tag governance in this row.",
+            "Each selected ID is still authorized by current backend AddTags on its request. Stale/non-visible/deleted IDs receive existing denied/not-found outcomes and do not expose data.",
+            "Cross-page selection is by explicit IDs; show exact selection count and bound its maximum before implementation. A candidate limit of 100 is a design default for review, not an existing backend guarantee or an approved new business restriction.",
+            "Do not implement select-all-matching-results, server-side batch transactions, full CSV import, task queue or generic batch processing platform.",
+            "Partial success is intentional and visible. Cancellation stops unsent calls, not completed adds. Retry uses identical tag set/IDs and existing idempotency; changing query/account clears selection and prevents stale response rendering.",
+            "This row contains its own new tag/selection tests; U7 must not charge these same browser cases again."
+          ],
+          "package_allocation": "Selected U03 common multi-select tags scope plus the minimum optional ProTable component extension. Backend API/repository/idempotency are existing and cost zero new backend implementation here; relevant old regression execution remains in root gate time.",
+          "excluded": "Generic bulk editor, multi-action workflow, tag permissions redesign, batch removal, all-filtered-row selection and all-station U06.",
+          "confidence": "Medium: current AddTags behavior and frontend gaps are directly observed; range includes normal component integration/review correction. Scope growth beyond finite explicitly selected IDs requires a new estimate."
+        }
+      ],
+      "allocation_refs": [
+        "U01/U02/U03/U07和D12/CE显示子范围",
+        "工单列表批量标签保留，不带全站U06"
+      ]
+    },
+    {
+      "id": "RELEASE",
+      "title": "联合回归与本地账号正式部署准备",
+      "days": [
+        5,
+        8
+      ],
+      "wbs": [
+        {
+          "id": "Q1",
+          "days": [
+            2,
+            3
+          ],
+          "deliverable": "整合精确五仓组合、非重复跨域故障/权限/恢复反例、独立评审和适用门禁",
+          "source_refs": [
+            "docs/phase6/implementation-handoff.md",
+            "docs/standards.md"
+          ],
+          "excludes": "各域专用case、UI浏览器case已在各包，只计整合与额外接缝组合"
+        },
+        {
+          "id": "Q2",
+          "days": [
+            3,
+            5
+          ],
+          "deliverable": "复用已验升级制品/备份工具，核固定制品来源、SBOM和整镜像漏洞、单目标离线运行包、TLS/秘密/会话与网络边界；新业务迁移/恢复与回退、故障接管责任、安装runbook和本地正式验收；含原维护合main收尾1–2日所需部分",
+          "source_refs": [
+            "deployments/component-lock.json",
+            "docs/review/reports/version-modernization-2026-11-12.md",
+            "docs/design/component-upgrade-data-contract.md"
+          ],
+          "excludes": "不重做Go/Node/PG/Redis升级；不承诺全HA/PITR；外部审批/放通/等待不算工程日；真实消息映射单列MR，不藏在此包"
+        }
+      ],
+      "allocation_refs": [
+        "G03/G04/G05/E09适用最小正式门",
+        "原维护收尾预留归本包一次"
+      ]
+    }
+  ],
+  "totals": {
+    "raw_days": [
+      67.5,
+      103.5
+    ],
+    "rounded_display_days": [
+      68,
+      104
+    ],
+    "effective_weeks_at_5_days": [
+      13.5,
+      20.7
+    ],
+    "before_joint_release_raw_days": [
+      62.5,
+      95.5
+    ],
+    "core_trial_and_normal_fix_included": true,
+    "full_UAA_P_R_excluded": true,
+    "UAA_C_is_in_S1_not_added_again": true
+  },
+  "capacity": {
+    "effective_seats": 1,
+    "engineering_days_per_week": 5,
+    "actual_T0": null,
+    "scenario_start_only": "2026-11-16",
+    "weekdays_before_2027_02_01": 55,
+    "holidays_and_unavailability_deducted": false,
+    "nominal_date_endpoints_only": [
+      "2027-02-17",
+      "2027-04-08"
+    ],
+    "date_endpoints_are_not_promises": true,
+    "multiple_agents_not_multiple_seats": true
+  },
+  "trial_policy": {
+    "incremental_trial": "risk-to-ticket first, then TR/AL/message; do not wait for all code before showing real roles",
+    "stabilization_window": "末尾约2–3个有效周由已价正常修正及RELEASE构成，核心逐步试用可更早开始，不能继续塞新范围",
+    "not_an_extra_blanket_fee": "normal correction and domain/browser cases already priced in rows; new owner scope changes priced separately",
+    "formal_local_exit": "core mandatory journey and applicable production gates pass; current UAA is not a formal-local precondition",
+    "late_normal_correction_allocations": [
+      {
+        "from": "RISK",
+        "days": [
+          1,
+          1.5
+        ]
+      },
+      {
+        "from": "TD",
+        "days": [
+          1,
+          1
+        ]
+      },
+      {
+        "from": "AD",
+        "days": [
+          0.5,
+          1
+        ]
+      },
+      {
+        "from": "MH",
+        "days": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "from": "MR",
+        "days": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "from": "UI",
+        "days": [
+          1.5,
+          2
+        ]
+      }
+    ],
+    "late_correction_days_included": [
+      5,
+      6.5
+    ],
+    "release_days_included": [
+      5,
+      8
+    ],
+    "late_phase_combined_days_included": [
+      10,
+      14.5
+    ],
+    "not_added_to_total": true
+  },
+  "profile": {
+    "risk": "manual/one normalized source; risk cycle/responsibility/remediation/individual review with bounded N:1",
+    "ticket": "fixed reviewed flow/basic fields and evidence; current type visibility/CC/assignee policies; list batch tags included",
+    "task_AL": "fixed authorized AL result write then actual read-only AL follow-up; ordinary insert/update on one monitored type; CAS/current authority/receipt/durable push retained",
+    "message": "one HTTP protocol adapter/profile and inbox/send states; real intranet testing still a condition, not mock delivery",
+    "scope_guard": "no hidden stripping of required existing abilities for date; validate representative real use first; unsupported automatic/import/schema paths server rejected or implement the necessary contract and reestimate",
+    "existing_capabilities": "retain existing IAM/ticket/TR/AL/notification base; do not rebuild queues, common tables or UI library"
+  },
+  "dedup": {
+    "global_76_parent_budget": "allocation/replacement view only; do not add this total to long-range original parent totals",
+    "risk_notification": "R3 produces owner and candidate business facts; MH2 rechecks delivery-time permission and redacts payload",
+    "message_UI": "MH4 backend projection/API/cases; UI group owns actual frontend",
+    "AL_write_and_change": "TD owns AL auth/effect receipt/guards; AD reuses them and owns source facts/subscription only",
+    "shared_and_domain": "S owns common core mechanism; RISK/TD/AD/MH each own business adapters/transactions and their own targeted cases",
+    "UI_U8": "batch tag tests not re-counted in UI U7",
+    "release": "Q1 does not rewrite or recharge the same domain/browser cases"
+  },
+  "exclusions": [
+    "full UAA public P/private R, enterprise SSO/feed/governance UI and actual switch",
+    "new professional provider adapters beyond selected normalized source/HTTP profile",
+    "all-source ingestion, full HR sync, general schema/workflow editors and migration platform",
+    "all-site U06 redesign, AI/RAG/skill/MCP productization, advanced dashboards and device expansion",
+    "multiple instances/microservices/general DAG/multi-consumer event platform",
+    "external approvals/network/provider waiting, actual large legacy migration"
+  ],
+  "conditional_dependencies": [
+    "message provider contract and real test window",
+    "selected real business profile/type/org/fields/actions/recipients",
+    "production runtime access/TLS/secrets/backup target and operator availability",
+    "owner audit-failure policy before enabling the new strong-audit pilot"
+  ],
+  "UAA_followup": {
+    "C_contract": [
+      2,
+      3
+    ],
+    "old_public_P": [
+      25,
+      39
+    ],
+    "old_real_R": [
+      13,
+      22
+    ],
+    "P_R_reference_after_C": [
+      38,
+      61
+    ],
+    "calendar_two_months": "owner aspiration, not verified duration; net deduct actual reusable IAM/intent/UI work once and reserve core maintenance capacity",
+    "actual_real_conditions": "not fixed; local operation may proceed while enterprise governance remains unactivated"
+  },
+  "next_calibration": "freeze first permissions/interface module and risk-to-ticket slice; compare actual design/implementation/review throughput before replacing candidate range with a committed short schedule; do not require all future DTO/DDL now",
+  "review_adjustments": {
+    "initial_candidate_raw": [
+      62.5,
+      95.5
+    ],
+    "initial_display": [
+      63,
+      96
+    ],
+    "findings_fixed": [
+      "S1明确当前撤权/epoch锁序与reload/session失败收紧，并分出合同与实现工作",
+      "RELEASE明确SBOM/整镜像/离线供给/会话网络/回退接管，复用但不假定已完成",
+      "MR单列一条公司HTTP真实映射/验证，不把等待或未知字段默认免费",
+      "末尾稳定期预算从已价域正常修正+RELEASE分配，不额外重复加"
+    ],
+    "old_parent_and_UAA_price_registries_unchanged": true,
+    "revised_range_is_still_candidate_not_forced_deadline": true
+  }
+}

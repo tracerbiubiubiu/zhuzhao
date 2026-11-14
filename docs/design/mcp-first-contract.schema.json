@@ -1,0 +1,1115 @@
+{
+  "bundle_version": "1.0.0",
+  "date": "2026-11-12",
+  "status": "design_candidate_not_implemented",
+  "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+  "meaning": "选择tool与input/outputSchema校验；本文件为合同bundle，不把其根当某一工具请求。readOnly注解不授权。",
+  "protocol_version": "2026-07-28",
+  "sdk_candidate": "github.com/modelcontextprotocol/go-sdk@v1.8.0",
+  "tools": [
+    {
+      "name": "zhuzhao_ticket_list_v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assignee": {
+            "enum": [
+              "me",
+              "visible"
+            ],
+            "default": "me"
+          },
+          "type_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "keyword": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "required": [],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "ok"
+              },
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        "human_key": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "status": {
+                          "type": "string",
+                          "maxLength": 20
+                        },
+                        "priority": {
+                          "type": "integer"
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "link": {
+                          "type": "string",
+                          "pattern": "^/tickets/[1-9][0-9]{0,18}$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "human_key",
+                        "title",
+                        "status",
+                        "priority",
+                        "updated_at",
+                        "link"
+                      ]
+                    }
+                  },
+                  "total": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]{0,18})$"
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "page_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                  },
+                  "order": {
+                    "const": "id_desc"
+                  },
+                  "consistency": {
+                    "const": "live_non_snapshot"
+                  },
+                  "complete": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "items",
+                  "total",
+                  "page",
+                  "page_size",
+                  "order",
+                  "consistency",
+                  "complete"
+                ]
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "error"
+              },
+              "data": {
+                "type": "null"
+              },
+              "error": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "integer",
+                    "enum": [
+                      10001,
+                      10004,
+                      10008,
+                      70001,
+                      92601,
+                      92602
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ]
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      },
+      "title": "查询当前可见工单",
+      "description": "限定工单只读查询；默认处理人为我，visible仍受当前主体范围过滤；非快照分页。"
+    },
+    {
+      "name": "zhuzhao_ticket_get_v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "ok"
+              },
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "ticket": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "human_key": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "status": {
+                        "type": "string",
+                        "maxLength": 20
+                      },
+                      "priority": {
+                        "type": "integer"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "link": {
+                        "type": "string",
+                        "pattern": "^/tickets/[1-9][0-9]{0,18}$"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "human_key",
+                      "title",
+                      "status",
+                      "priority",
+                      "updated_at",
+                      "link"
+                    ]
+                  },
+                  "description_text": {
+                    "type": "string",
+                    "maxLength": 8000
+                  },
+                  "description_truncated": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "ticket",
+                  "description_text",
+                  "description_truncated"
+                ]
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "error"
+              },
+              "data": {
+                "type": "null"
+              },
+              "error": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "integer",
+                    "enum": [
+                      10001,
+                      10004,
+                      10008,
+                      70001,
+                      92601,
+                      92602
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ]
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      },
+      "title": "查看一张可见工单",
+      "description": "逐票重新授权，返回受限纯文本投影；不含内部备注或附件。"
+    },
+    {
+      "name": "mock_intel_lookup_v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "indicator_type": {
+            "enum": [
+              "ip",
+              "domain",
+              "hash"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "indicator_type",
+          "value"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "ok"
+              },
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "indicator_type": {
+                    "enum": [
+                      "ip",
+                      "domain",
+                      "hash"
+                    ]
+                  },
+                  "normalized_value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "verdict": {
+                    "enum": [
+                      "malicious",
+                      "suspicious",
+                      "not_found",
+                      "unknown"
+                    ]
+                  },
+                  "source_record_ref": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "source_revision": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "fetched_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "stale": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "indicator_type",
+                  "normalized_value",
+                  "verdict",
+                  "source_record_ref",
+                  "source_revision",
+                  "fetched_at",
+                  "stale"
+                ]
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "contract_version": {
+                "const": "1.0.0"
+              },
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "warnings": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "status": {
+                "const": "error"
+              },
+              "data": {
+                "type": "null"
+              },
+              "error": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "integer",
+                    "enum": [
+                      10001,
+                      10004,
+                      10008,
+                      70001,
+                      92601,
+                      92602
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ]
+              }
+            },
+            "required": [
+              "contract_version",
+              "request_id",
+              "source_ref",
+              "observed_at",
+              "warnings",
+              "status",
+              "data",
+              "error"
+            ]
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      },
+      "title": "合成外部共享情报查询",
+      "description": "P7消费侧合成工具，只查批准共享集合；未知与查无不代表安全。"
+    }
+  ],
+  "schema_cases": [
+    {
+      "id": "LIST_OK",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "input",
+      "value": {},
+      "expected_schema_valid": true,
+      "reason": "默认值由adapter确定性补充"
+    },
+    {
+      "id": "LIST_OUT_OK",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "zhuzhao-core",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [
+          "实时分页不是跨页快照"
+        ],
+        "status": "ok",
+        "data": {
+          "items": [
+            {
+              "id": "90001",
+              "human_key": "TK-DEMO-001",
+              "title": "合成整改核对",
+              "status": "open",
+              "priority": 2,
+              "updated_at": "2026-11-12T02:55:00Z",
+              "link": "/tickets/90001"
+            }
+          ],
+          "total": "1",
+          "page": 1,
+          "page_size": 20,
+          "order": "id_desc",
+          "consistency": "live_non_snapshot",
+          "complete": true
+        },
+        "error": null
+      },
+      "expected_schema_valid": true,
+      "reason": "total为十进制字符串"
+    },
+    {
+      "id": "GET_OK",
+      "tool": "zhuzhao_ticket_get_v1",
+      "side": "input",
+      "value": {
+        "ticket_id": "90001"
+      },
+      "expected_schema_valid": true,
+      "reason": "ID字符串"
+    },
+    {
+      "id": "GET_OUT_OK",
+      "tool": "zhuzhao_ticket_get_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "zhuzhao-core",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "ok",
+        "data": {
+          "ticket": {
+            "id": "90001",
+            "human_key": "TK-DEMO-001",
+            "title": "合成整改核对",
+            "status": "open",
+            "priority": 2,
+            "updated_at": "2026-11-12T02:55:00Z",
+            "link": "/tickets/90001"
+          },
+          "description_text": "仅为合成正文。",
+          "description_truncated": false
+        },
+        "error": null
+      },
+      "expected_schema_valid": true,
+      "reason": "纯文本投影"
+    },
+    {
+      "id": "REMOTE_OK",
+      "tool": "mock_intel_lookup_v1",
+      "side": "input",
+      "value": {
+        "indicator_type": "domain",
+        "value": "indicator.example"
+      },
+      "expected_schema_valid": true,
+      "reason": "共享合成查询"
+    },
+    {
+      "id": "REMOTE_OUT_OK",
+      "tool": "mock_intel_lookup_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "mock-shared-intel",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "ok",
+        "data": {
+          "indicator_type": "domain",
+          "normalized_value": "indicator.example",
+          "verdict": "not_found",
+          "source_record_ref": "",
+          "source_revision": "sample-1",
+          "fetched_at": "2026-11-12T03:00:00Z",
+          "stale": false
+        },
+        "error": null
+      },
+      "expected_schema_valid": true,
+      "reason": "查无不代表安全"
+    },
+    {
+      "id": "REMOTE_ERROR_OK",
+      "tool": "mock_intel_lookup_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "mock-shared-intel",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "error",
+        "data": null,
+        "error": {
+          "code": 92602,
+          "message": "来源暂不可用",
+          "retryable": true
+        }
+      },
+      "expected_schema_valid": true,
+      "reason": "错误也符合outputSchema"
+    },
+    {
+      "id": "NO_ACTOR_INJECTION",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "input",
+      "value": {
+        "actor_id": "90002"
+      },
+      "expected_schema_valid": false,
+      "reason": "封闭输入不接受身份"
+    },
+    {
+      "id": "PAGE_BUDGET",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "input",
+      "value": {
+        "page_size": 51
+      },
+      "expected_schema_valid": false,
+      "reason": "超单页工具预算"
+    },
+    {
+      "id": "NO_NUMERIC_ID",
+      "tool": "zhuzhao_ticket_get_v1",
+      "side": "input",
+      "value": {
+        "ticket_id": 90001
+      },
+      "expected_schema_valid": false,
+      "reason": "拒绝数字ID而非经过float转换"
+    },
+    {
+      "id": "NO_PATH_ID",
+      "tool": "zhuzhao_ticket_get_v1",
+      "side": "input",
+      "value": {
+        "ticket_id": "../90001"
+      },
+      "expected_schema_valid": false,
+      "reason": "ID不能携带路径"
+    },
+    {
+      "id": "NO_NUMERIC_TOTAL",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "zhuzhao-core",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [
+          "实时分页不是跨页快照"
+        ],
+        "status": "ok",
+        "data": {
+          "items": [
+            {
+              "id": "90001",
+              "human_key": "TK-DEMO-001",
+              "title": "合成整改核对",
+              "status": "open",
+              "priority": 2,
+              "updated_at": "2026-11-12T02:55:00Z",
+              "link": "/tickets/90001"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20,
+          "order": "id_desc",
+          "consistency": "live_non_snapshot",
+          "complete": true
+        },
+        "error": null
+      },
+      "expected_schema_valid": false,
+      "reason": "int64 string合同"
+    },
+    {
+      "id": "NO_EXTRA_FIELDS",
+      "tool": "zhuzhao_ticket_get_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "zhuzhao-core",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "ok",
+        "data": {
+          "ticket": {
+            "id": "90001",
+            "human_key": "TK-DEMO-001",
+            "title": "合成整改核对",
+            "status": "open",
+            "priority": 2,
+            "updated_at": "2026-11-12T02:55:00Z",
+            "link": "/tickets/90001",
+            "org_path": "r.secret"
+          },
+          "description_text": "仅为合成正文。",
+          "description_truncated": false
+        },
+        "error": null
+      },
+      "expected_schema_valid": false,
+      "reason": "不返回未声明的组织字段"
+    },
+    {
+      "id": "NO_URL_TOOL",
+      "tool": "mock_intel_lookup_v1",
+      "side": "input",
+      "value": {
+        "indicator_type": "url",
+        "value": "https://example.invalid"
+      },
+      "expected_schema_valid": false,
+      "reason": "本profile不开放URL指标"
+    },
+    {
+      "id": "NO_INVENTED_VERDICT",
+      "tool": "mock_intel_lookup_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "mock-shared-intel",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "ok",
+        "data": {
+          "indicator_type": "domain",
+          "normalized_value": "indicator.example",
+          "verdict": "safe",
+          "source_record_ref": "",
+          "source_revision": "sample-1",
+          "fetched_at": "2026-11-12T03:00:00Z",
+          "stale": false
+        },
+        "error": null
+      },
+      "expected_schema_valid": false,
+      "reason": "不以查无创造安全结论"
+    },
+    {
+      "id": "NO_ERROR_EMPTY_SUCCESS",
+      "tool": "mock_intel_lookup_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "mock-shared-intel",
+        "observed_at": "2026-11-12T03:00:00Z",
+        "warnings": [],
+        "status": "error",
+        "data": {},
+        "error": {
+          "code": 92602,
+          "message": "来源暂不可用",
+          "retryable": true
+        }
+      },
+      "expected_schema_valid": false,
+      "reason": "error分支data必须null"
+    },
+    {
+      "id": "TIMESTAMP_FORMAT",
+      "tool": "zhuzhao_ticket_list_v1",
+      "side": "output",
+      "value": {
+        "contract_version": "1.0.0",
+        "request_id": "sample-query-01",
+        "source_ref": "zhuzhao-core",
+        "observed_at": "yesterday",
+        "warnings": [
+          "实时分页不是跨页快照"
+        ],
+        "status": "ok",
+        "data": {
+          "items": [
+            {
+              "id": "90001",
+              "human_key": "TK-DEMO-001",
+              "title": "合成整改核对",
+              "status": "open",
+              "priority": 2,
+              "updated_at": "2026-11-12T02:55:00Z",
+              "link": "/tickets/90001"
+            }
+          ],
+          "total": "1",
+          "page": 1,
+          "page_size": 20,
+          "order": "id_desc",
+          "consistency": "live_non_snapshot",
+          "complete": true
+        },
+        "error": null
+      },
+      "expected_schema_valid": false,
+      "reason": "RFC3339"
+    }
+  ],
+  "semantic_cases_not_executed": [
+    {
+      "id": "WRONG_AUDIENCE",
+      "input": "有效签名但aud是其它REST或MCP",
+      "expected": "401，工具调用计数0"
+    },
+    {
+      "id": "LOCAL_AT_OR_PAT",
+      "input": "核心AT/PAT或单独X-AK进入/mcp",
+      "expected": "401，不当OAuth token"
+    },
+    {
+      "id": "SCOPE_WITHOUT_L1",
+      "input": "token含ticket:list而当前核心路由授权已撤",
+      "expected": "list不暴露工具；call拒绝；不读行"
+    },
+    {
+      "id": "CROSS_ORG_GET",
+      "input": "已知但当前不可见ticket_id",
+      "expected": "10004，与不存在相同；审计保真实拒绝原因"
+    },
+    {
+      "id": "AS_OR_CORE_AUTH_DOWN",
+      "input": "无法确认AS grant或本地active/授权",
+      "expected": "失败关闭，不凭旧连接/缓存放行"
+    },
+    {
+      "id": "INPUT_ID_INT64_RANGE",
+      "input": "格式匹配但超9223372036854775807",
+      "expected": "10001，不能溢出或转换float"
+    },
+    {
+      "id": "TOTAL_INT64_RANGE",
+      "input": "输出total格式匹配但超int64",
+      "expected": "输出合同错误，不回传模型"
+    },
+    {
+      "id": "SCHEMA_DIGEST_DRIFT",
+      "input": "remote同名工具schema变化",
+      "expected": "暂停映射，不调用；保留去敏差异"
+    },
+    {
+      "id": "PRIVATE_DATA_WITH_SHARED_CACHE",
+      "input": "外部逐主体ACL结果进入S9全局缓存",
+      "expected": "拒绝配置；首版外部Query不缓存"
+    },
+    {
+      "id": "OVERSIZE_RESULT",
+      "input": "本次结果超过256KiB",
+      "expected": "10001要求减page_size/收窄；不截JSON、不截行后跳页"
+    },
+    {
+      "id": "CONFIRM_WITHOUT_APPROVAL",
+      "input": "模型/elicitation accept声称已批准建单",
+      "expected": "首批不存在写工具；不创建票"
+    },
+    {
+      "id": "OAUTH_STATE_REPLAY",
+      "input": "state错、跨client/resource或二次消费",
+      "expected": "回调拒绝，不换token"
+    },
+    {
+      "id": "ORIGIN_REBIND",
+      "input": "不允许Origin或回环Host漂移",
+      "expected": "403，无工具调用"
+    },
+    {
+      "id": "REMOTE_UNAUTHORIZED",
+      "input": "上游拒绝集合权限",
+      "expected": "失败而非not_found/空列表"
+    }
+  ]
+}

@@ -40,9 +40,9 @@
 
 ## 3. API 设计约定
 
-1. **方法仅 GET / POST**——PUT / DELETE / PATCH 不引入；**立法理由（2026-10-15 补记，防再议）**：资源语义由路径 + 权限码（`resource:verb`）承载，方法仅承载「幂等读 / 非幂等写」二分——引入 PUT/DELETE 不新增表达力，只摊薄「写操作必须过鉴权/审计」这一 HTTP 层结构性不变量；方法面变更为全生态破坏性契约变更（网关匹配 / menu_apis 绑定 / 前端请求封装 / 存量端点全量对账），内部平台 + 前端唯一消费方语境下无对应收益（对外公开放 API 的自描述诉求不存在，gRPC-Gateway/GraphQL 全 POST 同款先例）；**辖域界定（2026-10-15 所有者拍板）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
+1. **方法仅 GET / POST**——平台自有 API 继续保留现有方法、路由和权限绑定约定，不引入 PUT / DELETE / PATCH；资源与动作语义由路径、权限码（`resource:verb`）和版本化合同共同描述。**2026-11-13范围校准**：消费方包含前端、内部扩展、任务、其他系统及后续MCP适配器，原“前端唯一消费方、无外部API自描述诉求”的理由不再适用；所有产品能力均应有受权、可发现的对外合同，并通过统一调用接缝进入同一领域用例，详见[能力调用合同](design/capability-invocation-contract.md)。保留GET/POST是既有生态兼容和迁移成本的选择，不限制OpenAPI/schema、机器调用或幂等动作；是否可重试、是否产生副作用由用例合同声明，不能只从POST推断。方法面调整仍须对网关、menu_apis、SDK/前端封装及存量端点统一评审。**辖域界定（2026-10-15 所有者拍板，继续有效）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
-3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码（4xx 不可重试 / 5xx 可重试），**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
+3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码，是否可重试依错误/效果合同判断，不能一概按“4xx不重试、5xx可重试”：429可按限额/退避恢复，写入超时/5xx若效果未知，已接操作凭证的用例须用原`operation_id`查询/对账；尚无凭证的历史写入保留`request_id`并按用例核查，不能暗示没有副作用或直接整笔重试。状态码不证明可以安全重复写；**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
 4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 docs/api/errcode.md 对账）；
 5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；**zhuzhao 侧 `/api/v1/tasks` 组的 `/cancel`·`/retry` 为该豁免契约的镜像路由（透传 taskrunner，2026-10-15 补登记）**；**activelist 数据域 `/:typeName/:id/update`·`/:id/delete`「URL 标识 + 动词段」同条豁免（2026-10-15 清欠批补登记）**——先于 C10 整改批的存量形态、与已上线 ui 消费契约耦合，对端 implementation-plan §4 头部注记在册，整改范围不追溯；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**。**特例在册（2026-10-15 全仓审计立约）**：activelist 列表端点为 keyset 游标分页且 `next_cursor` 进响应信封——动态表百万行量级下 offset 深翻页不可用、zhuzhao-ui cursorPager 已消费该契约；属 offset+total 形态不适用的领域特例，新端点勿援引。时间线备查（2026-10-15 git 考古）：keyset 设计 09-03（activelist `47e3644`）早于公约建纲 09-07（`c4e30b4`——建纲版本条仅要求"必须分页+钳制+确定性排序键"，keyset 实现对当时条款合规）；禁止性扩写 09-09（`f854e35` 三仓信封收敛批）晚于实现 09-08（activelist `dad1b12`）一天且未对存量对账——禁止性条款为既成实现环境后写，非先在约束。建档日期口径注：头注「建档 2026-09-04」与 git 首笔落库 09-07（`c4e30b4`）并存，本文档时间线采用后者（git 实证口径）；
@@ -57,12 +57,14 @@
 
 15. **周期任务归属（D18 调度分工口径，2026-10-20 双审计立约 / 2026-10-21 补录）**——进程内 CronScheduler（zhuzhao `cron_scheduler.go`）**仅承接平台维护型扫描**：超期 / 到期 / 终态对账 / GC 这类需同进程 DB 事务、单实例 advisory lock 的内务任务；**业务任务、脚本、连接器拉取、及一切需要重试·死信·审计·UI 可见的周期工作一律 taskrunner**。判据=任务性质而非大小：属业务域或需独立可观测/重试语义 → taskrunner；属平台自身维护且需与业务写同事务 → 进程内。护栏：新增周期任务先对表本条（归属歧义=评审必问）；CronScheduler 不再承接业务任务（存量无违例——audit_archive/GC/timeout_scan 三任务均维护型）。
 
-## 4. 工程结构与代码组织（所有服务同规格）
+## 4. 工程结构与代码组织（Go服务基线）
+
+以下为Go服务的共同职责与既有骨架，不要求五仓及后续仓库物理同构。公共库、UI、contract/private-connector按[G06仓库profile](design/engineering-execution-design.md#g06仓库规格与规则同步)采用适用规则；有实际职责才建目录。跨语言共同语义、允许差异和验证见[生态一致性合同](design/ecosystem-consistency-contract.md)，不因本节标题批量搬现有模块。
 
 | 项 | 约定 |
 |---|---|
 | 分层 | handler → service → repository（handler 禁 DB、service 禁 HTTP、repository 禁外层依赖）。**判定口径（2026-10-15 审计成文）**：禁令禁的是能力越界（handler 触 DB 连接、service 发 HTTP、repository 依赖上层）——非越界用途的 stdlib 类型引用（如 `http.MaxBytesError` 判型、`sql.NullTime` 扫描）不判违；handler 引 repository 查询 filter 结构体属灰区，以 `architecture_test.go` 白名单制管理 |
-| 目录结构 | 各服务同构骨架：`cmd/<server>/` 入口、`internal/app/`（wire 装配）、`internal/handler|service|repository|model|middleware/`、`internal/pkg/`（服务内公共构件，**升格 zhuzhao-utils 的候选区**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致 |
+| 目录结构 | Go服务既有骨架：`cmd/<server>/`入口、`internal/app/`（wire装配）、`internal/`内的handler/service/repository/model/middleware职责、`internal/pkg/`（服务内纯机制构件，**升格zhuzhao-utils须满足§5边界**）、`configs/ migrations/ scripts/ docs/`；同名目录跨服务职责一致，具体目录仅在实际需要时建立；领域隔离布局可随模块演进 |
 | 依赖注入 | google/wire（装配收敛于 `internal/app`） |
 | 配置 | yaml + env BindEnv 覆盖（viper；env 前缀各服务自定：`APP_`/`TASKRUNNER_*`/`ACTIVELIST_*`）；敏感值（SK/密码）env 注入不入库不入 git；`${VAR}` 插值展开为可选增强（activelist 已实现，非强制） |
 | **命名约定** | 文件名 snake_case（repository=`<域>_repo.go`、handler=`<域>_handler.go`）；package 名小写单词与目录同名；构造函数 `NewXxx`（包内单主类型可裸 `New`），wire provider `provideXxx`；接口定义放**消费方**（最小接口）+ `var _ Interface = (*Impl)(nil)` 断言；sentinel error 命名 `ErrXxx`、消息带包名前缀小写英文（`"store: job_run not found"`）；常量就近定义于使用包（不设集中 consts 文件），导出 CamelCase / 非导出 camelCase，禁 SCREAMING_SNAKE（2026-09-15 四仓审计将事实惯例升格成文） |
@@ -88,15 +90,26 @@
 
 | 项 | 约定 |
 |---|---|
-| request_id | `X-Request-ID` 头进出全程透传；zhuzhao 生成（`req-`+32hex）→ 透传下游 → 回调带回；与业务 body 内 request_id 同键关联（job_runs / trace_id） |
+| request_id | `X-Request-ID` 头进出全程透传；zhuzhao 生成（`req-`+32hex）→ 透传下游 → 回调带回；与既有业务request_id及旧trace_id显式映射。旧trace_id不因此成为W3C trace/span身份，也不作为业务效果幂等键 |
 | 访问日志 | 统一中间件出口，每请求一行，行名统一 `access`；**标准字段**：method/path/query/status/duration_ms/request_id/operator/auth/caller（仅服务间验签场景）/ip；**`auth` 身份平面**（jwt/aksk/none，2026-09-16 归因口径拍板）：operator=谁在操作（username→签名透传 X-Operator→anonymous），auth=以什么形式接入——两维分列避免「未登录人类」与「服务动作」语义混叠，M-UAA 后 auth 可细分为 jwt:local/jwt:sso；**适用范围：仅多身份平面服务（zhuzhao 网关/IAM）需要 `auth`，单平面子服务（taskrunner/activelist 纯 AK/SK）可省略**；`caller` 三仓恒出（无验签场景空串占位，行结构稳定供 ES 索引）；耗时字段统一 `duration_ms`（2026-09-15 统一：zhuzhao 原 `latency`、taskrunner 原 `cost_ms` 已改名）；query 超 4KB 截断；网关对 proxy 路由**跳 body** |
-| 审计 | **审计正本全在 zhuzhao**：请求级（audit_logs，脱敏+截断）+ 登录显式审计 + 业务操作点显式发布；服务自身零业务语义日志 |
+| 审计 | 已有主仓请求级audit_logs、显式登录审计和部分业务操作点；统一业务审计查询/治理归主仓，来源服务仍拥有本域事实及可靠交接凭据。原“服务零业务语义日志”不禁止来源持久执行/数据变更事实，也不允许服务猜主仓业务结论。跨入口可信审计与跨仓汇集尚待OBS实施 |
 | 判定日志 | L2/L3 判定落 `policy_evaluation_logs`（B11①，E-① 已实施）；归档超期导出 JSONL 后删行（B11②/E-③，保留期 180 天可配置） |
 | 日志框架 | utils `logger`（slog + lumberjack，JSON Lines，字段稳定命名供 ES 演进） |
 
+**2026-11-13统一日志审计补充（新增设计、存量待实施）**：准确现状、字段profile、写入/查询权限、失败与保留策略、净增及出口归[统一日志审计合同](design/unified-observability-audit.md)，跨仓一致性见[矩阵](design/ecosystem-consistency-contract.md)。上表已有访问日志字段和截断不证明存量已完成敏感值脱敏、可信归因或跨实例可靠投递。
+
+- 运行诊断日志、可信业务审计、领域事件/执行历史分别承担排障、责任留痕和业务事实；HTTP 200、trace或审计表不能代替业务receipt、outbox和状态机。
+- 页面/API、内部、工单、计划、事件、Agent/MCP与私有adapter进入同一受控用例时，沿同一可信上下文记录；服务身份、实际操作者、代表的主体和来源分别归因，未验证头部不能作为已认证操作者。
+- 日志只允许必要字段，先按schema/字段白名单脱敏再截断；code、token、密码、私钥、cookie、原始公司报文与无权字段不进入普通query/body/error日志。OBS01处理已有query/body记录缺口；新增入口不能以4KiB截断替代保密。
+- 对**已批准纳入原子强审计的操作**，成功审计随本地业务写同事务持久化；两IAM试点的写失败回滚政策仍待所有者答复，不能从本条推定批准。跨服务由写主保存事实/交接凭据后受控汇集；外部采集不可达不应丢失本地必需证据，也不能变成无界排队。普通日志/trace可按预算丢弃或采样并显影，获准强审计不得因此采样掉。
+- 审计查询、导出、关联跳转和保留管理分别授权；类型业务管理权与个人待办不自动取得全平台运维日志或审计权。持久审计的范围与导出沿当前授权，变更留痕；追踪信息不附送资源读取权。
+- 既定永久执行记录、判定日志既有归档与未来生产保留政策分开；统一采集不偷偷删除原运行历史。独立模式不依赖企业日志平台、外部collector或企业UAA才能启动。实现继续先冻结预期、取得目标红例再转绿，验脱敏、伪造身份、审计失败、跨入口及多实例恢复反例。
+
 ## 7. 权限架构（SSOT：design-decisions §25；三层详设：authz.md）
 
-1. **PDP/PEP 分工**：身份/角色/组织关系**集中一份**（zhuzhao 库）；行级策略**归属主自治**；行级 PEP 必然在数据处——网关只做认证 + 路由级授权 + 身份断言透传，**不做行级判定**；
+> **2026-11-12企业治理补充（目标、未实现）**：本地三层判定不代表所有分配都由本地管理；企业模式的账号/受管角色和绑定、条件纳管数据范围按[UAA合同](design/uaa-governance-integration.md)确定写主。目录语义由核心/扩展所有者维护，中央结果写入受限本地投影；直接/组织/继承的有效来源和会话/策略撤销均须验证。独立/mock模式保留，本地应急不自动放开公司认证或中央管辖授权。
+
+1. **PDP/PEP 分工**：独立模式的身份/角色/组织管理与企业模式的本地执行投影**集中一份**（zhuzhao库；企业受管分配权威仍在中央，不建设第二个分配写主）；行级策略**归属主自治**；行级 PEP 必然在数据处——网关只做认证 + 路由级授权 + 身份断言透传，**不做行级判定**；
 2. **三层**：L1 路由级（Casbin，policy=角色×path×method）→ L2 数据范围（策略库 builtin 或手写 Resource，Registry 统一接缝）→ L3 动作矩阵；
 3. **平台策略库**（触发驱动）：`org-member`/`owner-only`/`role-gated` 三内置 + `Builtin()` 一行注册；**适用前提 = 资源表在 zhuzhao 库**；跨库资源走参数级组装（E-⑤ 模式）；
 4. **Q5 禁令**：L2/L3 判定每请求实时查询，**不缓存**；任何缓存提案必须连同失效级联方案评审；
@@ -153,6 +166,15 @@
 4. **分批实现**：按设计分小批填肉到绿，**每批结束保持全门禁可过、主干可交付**，不留跨批次的半成品；
 5. **小步快跑提交**：一个逻辑批次一个 commit（中文提交信息 + 验证证据），**禁止一次提交大段代码**——提交粒度以「可独立 review」为锚点（参照 b4cfe96：16 文件为量级感知上限）。
 
+**2026-11-13单维护者/AI协作补充：上述五步继续有效，不以“AI生成快、独立审查或门禁绿”替代测试先行。** “决策清零”和“用例全量”针对当前获准实施的模块/逻辑批及必要前置：先冻结其业务预期与正向、负向、边界、权限拒绝用例，再实现；远期Phase仍按设计窗口深化，后续新增行为须先补设计与红用例。尚未写出可检验预期的部分不得以“已有规划”直接编码。
+
+- **红的含义**：先确认测试因目标业务行为缺失/错误而失败；缺依赖、语法/编译、数据库不可用或夹具错误不算有效红例。缺陷修复先复现旧错误，再修复到绿；新扫描/运行时守卫按适用规则做变异验牙，§9及§12-10的并发回归/至少8次稳定红纪律保留。
+- **红绿证据与提交**：红→绿发生在隔离工作树，保留输入、候选、命令/退出码和关键断言；不要求先提交失败测试。每笔提交仍遵本节及§12全门禁绿、文档回填和三节说明，禁止把红测试单独合入main或用skip掩盖。
+- **预期独立于实现**：测试预期来自已确认业务合同；未经明确业务理由，不得删断言、加skip、降低阈值或改预期来迁就实现。合理需求变化可以调整测试，但须说明前后业务语义，并将测试/fixture、CI、阈值、豁免及协作规则变更在评审说明中单列。生成类型或schema一致不代替真实效果验证。
+- **小批与审查**：一个可独立验收的行为为一批，包含关联测试和必要接线；无关重构/升级分开。实现与新上下文审查分别消费需求/合同、实际diff及原始证据，审查者不能只复述作者摘要。每次复验绑定准确源码/运行组合；多agent同意不作为安全保证。三节说明可用一页短卡呈现，字段和样例归[实施交接](phase6/implementation-handoff.md#单维护者短审阅卡)，不新增平行长报告。
+- **测试分层及启用边界**：大量合成mock、contract与real分列，关键真实授权/数据/服务链仍须实证。分档门禁不改变代码变更测试先行原则；G03及协作规则未同步并验证前，现行完整门禁仍适用。政策/工作流/测试spec或fixture与混合改动不能借普通文档白名单豁免；AI建议、纯文档检查及旧SHA绿色均不替代新候选验收。
+- **原话与完成声明**：新增要求、纠正及确认先回填来源索引，简短同意绑定明确前文；交付分别报告审计/设计成熟度、范围计价、实现、运行与部署。每轮收口先从原始输入和实际产物独立回查，再运行`make planning-check`检查来源截止与遗漏/重复映射、未完动作、检查身份及来源/估算摘要绑定、缺证据/NOT_RUN、未计价增量与mock/real矛盾。该检查只拦结构性虚假收口，不能自动判断原话是否被正确拆解或证据内容是否充分；真实语义仍须新上下文审阅。检查通过不得替代本节及§12的完整门禁，也不意味着分档机制已启用。
+
 **配套纪律（本项目实测教训）**：
 
 - 收口/替换类操作用 grep 全量清点对账，**不凭记忆宣告完成**（setupD9 漏网教训）；机械批量替换（sed）后必须全量 grep 残留并逐行核对（多行 VALUES 曾被吞括号）；
@@ -169,8 +191,9 @@
 4. **编号 namespace**：W（Wave）/ IW（独立窗口）/ BK（backlog）/ E/D（16 号配套）/ P（待拍板）/ F/C/AB（各评审文档本地）——引用前必查归属；
 5. **触发条件驱动**：暂缓 ≠ 搁置——未命中的能力不提前实现，触发器写清（冻结的工单模块同此纪律）；
 6. **跨仓库契约变更**：先改契约文档（双方仓库同步）→ 再改代码；契约冻结（联调开始）后变更成本陡增。**改 wire 形态（字段类型/omitempty/指针化/序列化行为）五点必查（2026-10-14 契约审计批立约，三例在册：MaxIdleConns 跨仓破坏/A5 镜像 struct/schema.d.ts 三方矛盾）**——① 消费端 Go struct（grep 四仓字段名）② 测试侧镜像解码 struct ③ swagger 表达（数组 ID 字段带 `swaggertype:"array,string"`，CI 有 swagger 新鲜度守卫）④ zhuzhao-ui codegen 触发 ⑤ 文档口径（含「待发/已发」类措辞）；
-7. **分支与版本**：功能分支开发（如 `feature/phase-2`），合入前全门禁；zhuzhao-utils 语义化版本，发版后各仓 pin。**维护态分支口径（2026-09-16 拍板，方案 a 后收敛）**：四仓 **main 单主干**——小批改动直接提交 main 推送（CI 即门禁）；隔离需求出现时（如 M-UAA）开短命功能分支，合入 main 后即删（远端+本地），不留阶段名常驻分支。**跨仓 phase 分支对齐（2026-10-19 立约——随 zhuzhao phase5 切分支触发）**：兄弟仓（utils/taskrunner/activelist/**zhuzhao-ui**）**默认不随主仓切同名 phase 分支**——预期改动 ≤1–2 小批时直接 main 直提（本款既有口径）；**跨仓改动必须互引登记**（zhuzhao 批次说明引兄弟仓批次号、反向亦然——防漂移；先例：04 号 §4 引 taskrunner.md 能力目录、9563c66 挂账引 taskrunner CallbackURL 清理）；某 phase 期间兄弟仓预期**多批联动**时，可选切同名分支随主仓收官节奏合并、合后即删（短命原则不变）。utils 发版 = main 打 tag，**零分支动作**；消费仓 pin 升级各一笔。盘点依据（2026-10-19 四仓盘点）：phase5 期间 **zhuzhao-ui = 多批联动档**（S1/S2/S4/S5/S6 五段前端件全落 ui 仓——**切同名 `phase5` 分支**）、taskrunner ≤1–2 小批（CallbackURL 清理/Inspector 端点均挂账触发驱动）、utils/activelist 零改动预期。
-   - **Phase5审计收尾特定顺序（2026-11-07 所有者）**：主仓、zhuzhao-ui 的已验收审计候选已正常合流至各自实际 `phase5`，后续修复直接基于该阶段分支；taskrunner、activelist、zhuzhao-utils 没有常驻phase5，继续使用Phase5用途的 `codex/phase5-audit`。旧来源分支经逐项审核、完整archive ref和bundle备份后移出本地heads，固定hash及工作树目录保留，详B16报告。当前任务仅Phase5检查、审计、修改及工作区收尾，不合main、不准备main PR、不提前创建Phase6。后续须先将Phase5按授权整合进main、核验五仓承接基线，再从main切Phase6；10-28允许从phase5先切的例外被取代。分支push不自动要求tag/正式release，utils现有不可变pseudo-version继续供本轮验证，正式main/tag发布按既有规则另定。
+7. **分支与版本（2026-11-13按所有者确认更新）**：五仓以main为稳定主线，全部改动使用短分支经PR合入，完整适用检查通过后允许单维护者自行合入；取代旧“小批直接main”和兄弟仓≤1–2批直提豁免。独立写任务使用独立worktree/运行环境；跨仓改动互引批次及准确消费者组合，不强制兄弟仓常驻同名phase分支。阶段集成分支只按已确认需要设置，合流和删除按实际授权执行。zhuzhao-utils按语义化版本另行发tag，消费者各自pin；合main不等于发版或部署。远端保护/required checks须G02/G03实际配置与故障反例证明，不由本条文字宣称生效；默认不自动push、合main、release或切共享环境。
+
+   - **历史顺序记录，已由Phase5五仓main承接完成（2026-11-07原指令）**：主仓、zhuzhao-ui 的已验收审计候选已正常合流至各自实际 `phase5`，后续修复直接基于该阶段分支；taskrunner、activelist、zhuzhao-utils 没有常驻phase5，继续使用Phase5用途的 `codex/phase5-audit`。旧来源分支经逐项审核、完整archive ref和bundle备份后移出本地heads，固定hash及工作树目录保留，详B16报告。该时点任务仅Phase5检查、审计、修改及工作区收尾，不合main、不准备main PR、不提前创建Phase6；这是历史顺序，不覆盖当前统一PR政策。后续须先将Phase5按授权整合进main、核验五仓承接基线，再从main切Phase6；10-28允许从phase5先切的例外被取代。分支push不自动要求tag/正式release，utils现有不可变pseudo-version继续供本轮验证，正式main/tag发布按既有规则另定。
 
 8. **CI 红窗纪律（2026-10-14 立约，10 月四例归因驱动）**——main 单主干下 CI 红窗即主干破损：① **push 后验绿再收工**：push 会话必须确认本轮 run 结论（`gh run list` / Actions 页）才算交付闭环——push 不是终点，绿了才是（§12-1「先验收后提交」的自然延伸）；② **红窗禁叠新批**：发现红先归因修复，修复提交信息引用失败 run 并注根因分类（契约未同步 / 门禁漏跑 / 依赖环境 / flaky）——分类积累方能识别真 flaky；③ **同 HEAD 重跑即绿 = 疑似 flaky**：登记后排查，禁止无归因 re-run 当修复；④ **拆笔不破主干**（细化 §11-4）：同批拆多笔时每笔独立可过门禁，类型/契约类双侧变更（类型定义 + 发送侧）禁拆笔；⑤ **跨仓契约变更双仓同窗推送**（§12-6 配套）：生产端先推、消费端后推的窗口期必致消费端红窗，契约批两仓提交齐再一起推。
 
@@ -220,7 +243,9 @@
 
 | 主题 | 权威文档 |
 |---|---|
-| 进程内事件面公约（DomainEvent / at-most-once / Drain） | standards §14（机制细节：phase5/06 号）
+| 进程内事件面与可靠消息适用边界 | standards §14；不可丢后继：[跨仓执行合同 R01](design/cross-repo-execution-contract.md#r01-最小-durable-intent-先于自动化消费者) |
+| 生态一致性：统一内容、允许差异与验证 | [生态一致性合同](design/ecosystem-consistency-contract.md) |
+| 产品能力目录、统一调用及关联标识 | [能力调用合同](design/capability-invocation-contract.md) |
 | 权限架构（PDP/PEP、网关、策略库、ReBAC 触发器） | design-decisions §25 |
 | 软删组织委托语义 / SoD / Phase 3 重定位 / SSO | design-decisions §21 / §20 / §22–24 |
 | 服务实例基线（允许差异、taskrunner 对齐清单 C 系列） | phase3/16 号 §9 |
@@ -239,15 +264,15 @@
 
 ## 14. 进程内事件面公约（DomainEvent——全生态）
 
-> **立法（2026-10-28 所有者拍板，gap-audit P1-7 落定）**：进程内事件面是 S6/S3a/phase6-R3/任务链多域共用基础设施——公约层 SSOT 在本节，机制细节锚 [phase5/06 号](phase5/06-s6-message-notification.md)（S6=第一消费者）；新消费者（含跨进程）一律遵本节约。**§13 索引行同步。**
+> **立法与范围校准**：2026-10-28确立的进程内事件机制继续保留，机制细节见[phase5/06号](phase5/06-s6-message-notification.md)。2026-11-13明确其仅适用于允许丢失、无需重放的进程内Hook；不能将“含跨进程一律遵本节”的旧表述解释为跨仓自动化也可at-most-once。不可丢业务后继遵[跨仓执行合同R01](design/cross-repo-execution-contract.md#r01-最小-durable-intent-先于自动化消费者)，调用入口及标识遵[能力调用合同](design/capability-invocation-contract.md)。这是设计边界调整，R01尚未实现。
 
-1. **发布时机**：emit 一律在确认业务事务 **commit 之后**；commit 成功到 emit/消费完成之间崩溃仍可能漏发或未完成，不能承诺“commit 后事件必已发送”。当前进程内 **at-most-once** 不变，可靠重放升级另走 C-20 outbox。
-2. **订阅两层**：代码级 `HookRegistry.Subscribe(bizType, name, handler)`（消费逻辑）+ 配置级 message_rules（外发路由）——两层各管各的，禁止用规则面承载业务逻辑。
-3. **优雅退出**：Shutdown 走 `Drain`（closed 闸——Drain 后拒收残发，happens-before 保证；预算 8s）。并发细节终修=G-30，勿回退实现。
-4. **消费者义务**：当前总线不提供 outbox 重放，因此尚无事件重放去重协议；消费者自身的并发、重复业务请求与外部副作用仍需按业务规则处理；**升级 at-least-once 的唯一正路 = C-20 outbox**（台账在档）——届时消费者幂等化（inbox unique(event_id,user_id) 形态）为前置。
-5. **禁止硬编码直调**：跨域消费（如风险关闭联动）必须走订阅钩子——把消费方逻辑焊进生产方 service = 破坏领域隔离（phase6 §3 拍板），评审拦截。
-6. **新域消费者随批三件**：①本节清点表加行 ②装配进 boot 期望订阅集 ③守卫测试（boot 断言——R1/G-5 装配遗漏族的结构性解，随 phase6 Week 0 落地）。
-7. **升级信号三条**（任一出现→重评 outbox/C-20）：跨进程消费者出现 /「丢一条即事故」级消费者出现 / 需要重放。
+1. **低一致性进程内Hook**：`HookRegistry`仍在确认业务事务**commit之后**派发。commit成功到emit/消费完成之间崩溃可能漏发或未完成；现状是**at-most-once、无可靠重放**，不承诺“业务提交后通知必达”。现有`ticket_events`审计记录也不等于outbox。
+2. **订阅与通知规则分层**：代码级`HookRegistry.Subscribe(bizType, name, handler)`承载本地消费，配置级message_rules承载外发通知路由，禁止把业务编排塞进通知规则。命令是要求受权能力执行，事件是已发生事实，通知是面向人的呈现/送达；不能收到任意事件payload就执行其中的动作或脚本。
+3. **优雅退出**：本地Hook的Shutdown继续走`Drain`（closed闸——Drain后拒收残发，happens-before保证；预算8s）；并发细节终修=G-30，勿回退实现。Drain不提供跨实例持久化、宕机恢复或恰好一次副作用保证。
+4. **不可丢后继**：需要跨实例恢复、重放，或丢失会破坏业务闭环的消费者，在启用前进入R01可靠目录。源事实/命令intent须与源业务在**同一事务**持久化，commit后由受控派发器投递；逐消费者去重、业务`operation_id`幂等、重试/未知效果对账与终止状态共同验收。跨进程这一条件要求先判断可靠性，不能直接套用本地Hook；也不为所有提示类通知强制建立可靠队列。
+5. **领域隔离**：事件订阅和显式用例/查询Port都是允许的接缝。生产方不得直接拼装消费方repository、表或私有状态机；同步必需本地变更由清楚的用例/事务所有者协调，独立后继按可靠性选择Hook或R01。不能为避免“直调”而把本需原子完成的变更改成可丢事件。
+6. **新消费者随批登记与守卫**：登记领域、用途、可靠性、消费身份、幂等/错误/恢复责任及真实装配位置。本地订阅列入下表和boot期望集合；可靠消费者列入R01目录。G03计划补装配遗漏反例与boot守卫，只有实现并验证后才算机械门禁，不由本节文字证明当前已生效。
+7. **可靠机制的实施前置**：旧C-20是历史可靠重放需求的来源，具体范围与排期归R01，不承诺一次转换全部emit。D10/D12/A02等不可丢消费者不得在所需源事务、receipt与恢复反例通过前启用；外部事件平台可替换投递目的地，但不能省略源事务的durable intent。
 
 **消费方清点（2026-10-28 时点——以代码 grep 为准，新消费者随批更新）**：
 
@@ -261,6 +286,10 @@
 > 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
 
 ## 变更记录
+
+2026-11-13单维护者质量控制：保留§11原五步及§9/§12全部测试、并发变异、门禁/证据纪律，补当前批全量测试的范围、有效红例、全绿后提交、测试/门禁变更显影及短审阅卡；不启用分档门禁或修改远端保护，不新增实现范围。
+
+2026-11-13能力互通与一致性设计：§3-1去除“前端唯一消费/无外部API诉求”的过期前提，保留GET/POST兼容；§3-3重试判断改依错误/效果合同、保留原信封；§4限定Go服务基线并回链适用profile；§14区分现有低一致性Hook与待实施R01可靠消息；§13补统一能力调用和生态一致性合同入口。本批仅修订设计，不宣称目录、可靠投递或全站一致性已实现。
 
 2026-11-08文档整理：§12-3按所有者选择改为五仓各自docs/、统一分类与命名；正式报告归review/reports，本地参考与过程材料保持Git/Docker忽略。原deliverables落点为历史口径，迁移映射与验证随本批收口记录。
 

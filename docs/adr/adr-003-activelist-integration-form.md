@@ -1,5 +1,7 @@
 # ADR-003: activelist 集成形态 —— 独立服务 + 统一 PG + 事件总线对接（非事务耦合）
 
+> **2026-11-13后继设计修订**：所有者新增“所有支持写入口的AL变化可可靠触发任务”目标。[ADR-005](adr-005-capability-invocation-and-source-facts.md)限域校准源事实责任：AL写事务产最小凭证/完整feed，主仓管理订阅/权限/任务路由。下文“调用成功后发事件、AL不感知事件”保留历史语境，不能作为当前新增目标的完整性保证；独立服务/库和薄平台定位保留，目标未实施。
+
 > **当前效力与镜像边界（2026-11-08）**：本篇保留 2026-08/09 的原决策、覆盖过程和时点表格，供追溯，不是当前集成契约镜像。独立服务、独立 PG 数据库、zhuzhao 统一网关，以及签名保护的 `X-Operator` 边界继续有效；旧正文的“网关尚未实现”“D2 未开始”、事件/快照方案与待抽包状态均不能直接当作当前状态。
 >
 > **已落地**：网关反代与 API 级鉴权/请求审计已实现（`internal/gateway/`、`internal/router/router.go`、`internal/app/app.go` 的 `NewApp`；[DD §25.5](../design/design-decisions.md#255-前置功能清单2026-09-04-校准批次-a-降级触发驱动) 与 [Phase 3 集成](../phase3/16-external-integration.md)）；utils 已独立，`resource` 绑定本仓权限域而留本仓。网关 proxy 跳过 body，不能以 HTTP 请求审计冒充变更前后完整文档快照。

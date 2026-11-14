@@ -1,10 +1,12 @@
+# 2026-11-12 版本升级：PG18/Redis8 使用新卷；已有环境必须先备份恢复并受控切换。
+# 禁止直接 up 后把新空库当作旧库升级成功；步骤见 docs/design/component-upgrade-data-contract.md。
 # ═══ 测试环境统一栈（单文件全组件）═══════════════════════════════════════
 # 一条命令拉起全套：PG×3 + Redis + app + activelist + taskrunner + ui（nginx 静态+双反代）
 #
 # 使用方法：
 #   docker compose -f deployments/docker-compose.test.yaml up -d --build
 #   （首建含 Go/前端全量构建，约 5-10 分钟；之后走层缓存）
-#   入口 = http://localhost:48081（ui 容器）；验证：curl localhost:48081/api/health/ready
+#   入口 = http://localhost:48081（ui 容器）；验证：curl localhost:33334/health/ready（后端）；curl localhost:48081/（UI）
 #
 # 与 dev 栈（docker-compose.dev.yaml + 宿主进程）的关系：
 #   ——双形态并存。本栈=稳定回归/演示环境（独立卷、干净数据、隔离网络）；
@@ -26,7 +28,7 @@ name: zhuzhao_test
 services:
   # ── zhuzhao 主库 ──
   postgres:
-    image: postgres:15
+    image: postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
     container_name: zt-postgres
     restart: unless-stopped
     environment:
@@ -35,7 +37,7 @@ services:
       POSTGRES_PASSWORD: zhuzhao_test
       TZ: Asia/Shanghai
     volumes:
-      - zt_pgdata:/var/lib/postgresql/data
+      - zt_pg18data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U zhuzhao"]
       interval: 5s
@@ -45,7 +47,7 @@ services:
       - zhuzhao_test
 
   redis:
-    image: redis:6.2-alpine
+    image: redis:8.2.11-alpine3.22@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
     container_name: zt-redis
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "zhuzhao_test"]
@@ -61,7 +63,7 @@ services:
   # profile=storage 隔离：默认不起、test 栈现行为零变化。版本钉死与 CORS env
   # 对齐 deployments/docker-compose.yaml 主栈草案，判据①⑤实测形态）
   rustfs:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74
     container_name: zt-rustfs
     restart: unless-stopped
     profiles: ["storage"]
@@ -78,7 +80,8 @@ services:
       - zhuzhao_test
 
   migrate:
-    image: migrate/migrate:v4.17.0
+    build: ./tools/migrate
+    image: zhuzhao-migrate:4.20.1-go1.27.4
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,7 +139,7 @@ services:
 
   # ── activelist（独立 PG + 服务；M-A6 验签对 GATEWAY_SK 同值）──
   activelist-pg:
-    image: postgres:15
+    image: postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
     container_name: zt-al-postgres
     restart: unless-stopped
     environment:
@@ -145,7 +148,7 @@ services:
       POSTGRES_PASSWORD: zhuzhao_test_al
       TZ: Asia/Shanghai
     volumes:
-      - zt_al_pgdata:/var/lib/postgresql/data
+      - zt_al_pg18data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U activelist"]
       interval: 5s
@@ -173,7 +176,7 @@ services:
 
   # ── taskrunner（PG 形态 C7 + asynq 共用 redis DB1）──
   taskrunner-pg:
-    image: postgres:15
+    image: postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
     container_name: zt-tr-postgres
     restart: unless-stopped
     environment:
@@ -182,7 +185,7 @@ services:
       POSTGRES_PASSWORD: zhuzhao_test_tr
       TZ: Asia/Shanghai
     volumes:
-      - zt_tr_pgdata:/var/lib/postgresql/data
+      - zt_tr_pg18data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U taskrunner"]
       interval: 5s
@@ -244,7 +247,7 @@ networks:
 
 volumes:
   zt_app_archive:
-  zt_pgdata:
-  zt_al_pgdata:
-  zt_tr_pgdata:
+  zt_pg18data:
+  zt_al_pg18data:
+  zt_tr_pg18data:
   zt_rustfs_data:

@@ -1,0 +1,435 @@
+{
+  "date": "2026-11-11",
+  "meaning": "确认仅代表方向/策略，不代表代码或远端设置已实施；待决只阻塞对应写政策/承诺，可独立完成技术与mock工作。",
+  "decisions": [
+    {
+      "id": "O01",
+      "state": "owner_confirmed",
+      "decision": "平台聚焦数据聚合和安全全生命周期；专业平台优先取数/协同，不造大而全替代品",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O02",
+      "state": "owner_confirmed",
+      "decision": "大量mock长期保留；mock、合同和真实证据分别验收",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O03",
+      "state": "owner_confirmed",
+      "decision": "只调用已有大模型API；内网仅内部服务，不做模型部署/训练",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O04",
+      "state": "owner_confirmed",
+      "decision": "支持已有Agent接入与基于本平台特有能力的领域Agent双轨",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O05",
+      "state": "owner_confirmed",
+      "decision": "内部功能与真实供应商接口应通过可替换私有adapter/扩展接入，核心持续更新",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O06",
+      "state": "owner_confirmed",
+      "decision": "设备多厂商无SSO；首期目录、状态和人工登录管理入口，不做自动登录实施",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O07",
+      "state": "owner_confirmed",
+      "decision": "取消与公司旧运行版本对齐，允许自行打包受支持组件",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O08",
+      "state": "owner_confirmed",
+      "decision": "当前未正式部署，可协调替换旧合同；不设本轮建议的6个月保留承诺",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "ENG-D01a",
+      "state": "owner_confirmed",
+      "decision": "五仓统一PR，允许单维护者在必需检查通过后自行合入",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B01",
+      "state": "owner_confirmed",
+      "decision_due": "D03 开工前",
+      "recommendation": "存量类型回填 `inherit` 保持当前可见集；新类型默认 participants_only，明确提示管理员；收紧旧类型单独预览确认",
+      "alternatives": "所有旧类型统一 participants_only；或新旧都 inherit",
+      "impact_or_safe_fallback": "方向已确认但未实现；既有数据不因本规划批静默收紧，策略改变仍须L1/L2/L3与预览/CAS",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "新工单类型默认participants_only；已有类型保持inherit现有范围，收紧既有类型单独预览确认",
+      "owner_feedback": "2026-11-11：所有者明确选择“新类型仅参与人，已有类型保持原范围”"
+    },
+    {
+      "id": "B02",
+      "state": "owner_confirmed",
+      "decision_due": "D03 受限策略启用前",
+      "recommendation": "CC 在受限类型中仍可见/评论，普通 participant 同样只读+评论；不附送写权",
+      "alternatives": "CC 不突破受限策略，仅显式 participant 可见",
+      "impact_or_safe_fallback": "方向已确认但未实现新类型策略；收件/参与授予仍受B04已确认的管理资格与候选人员范围和当前权限限制",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "合法抄送在受限类型中可查看/评论，不附赠转派、修改字段或转换状态权；现有入口权限和独立操作条件仍检查",
+      "owner_feedback": "2026-11-11：所有者明确选择“抄送后可查看和评论，不附送处理权”"
+    },
+    {
+      "id": "B03",
+      "state": "owner_confirmed",
+      "decision_due": "D03 受限策略启用前",
+      "recommendation": "普通ticket_scope=all不越过已设置的participants_only/role_restricted类型查看范围；admin/superadmin保留既有例外。UI称查看范围，不新增敏感标签权限体系",
+      "alternatives": "普通scope=all绕过类型查看范围；会使新类型仅参与人对该群体不成立",
+      "impact_or_safe_fallback": "方向已确认、尚未实现；D03统一过滤器和所有读出口验证，已有 inherit 类型保持原范围",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "owner_feedback": "2026-11-11：明确选择“不越过类型查看范围（推荐）”",
+      "decision": "普通 ticket_scope=all 不越过类型查看范围；系统级 admin/superadmin 保留既有例外，不新增 is_sensitive 字段"
+    },
+    {
+      "id": "B04",
+      "state": "owner_confirmed",
+      "decision_due": "D03 参与写入口开通前",
+      "recommendation": "`ticket:participant:manage` 按钮授给获准业务管理者；creator 不因创建身份自动获邀请权；领域桥可按具名合同同步受管 owner",
+      "alternatives": "creator 可邀请其候选范围内人员；或只有全局管理员可管",
+      "impact_or_safe_fallback": "方向已确认、尚未实现；现有CC写入口也须执行同一管理资格，不以selfService分组绕过；具名领域桥仅管理受管参与者",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "decision": "由有独立授权的业务管理者管理参与人和抄送；创建人不因创建身份自动获得邀请权",
+      "owner_feedback": "2026-11-11：明确选择“有独立授权的业务管理者管理（推荐）”"
+    },
+    {
+      "id": "B05",
+      "state": "owner_confirmed",
+      "decision_due": "D03/P6.2 派单启用前",
+      "recommendation": "沿用原风险设计的 risk:manage 和风险资源范围，不另设派单角色或 risk.dispatch 权限码；单条沿用主锚或当前owner、批量沿用主锚管理范围；受限领域用例复用工单校验，仅向配置好的整改类型/组织派单，不额外要求通用 ticket:create；可通过现有org_roles向虚拟风险组绑定业务角色，若全组含旁观者只授获准人员/职责组，避免并集角色无法用只读抵消",
+      "alternatives": "风险派单还必须额外有通用 ticket:create；一般新建工单仍保持自身权限与类型/组织约束",
+      "impact_or_safe_fallback": "方向已确认、尚未实施。risk.dispatch.v1是能力定义别名（静态capability_id/contract_version），不是动态operation_id，不另设派单权限码/角色；risk:read/risk:manage为风险设计中的计划权限，现有org_roles机制可复用；单条主锚/owner、批量主锚及类型/组织校验保留，业务创建人与真实操作者分记，普通REST/Agent不能传任意created_by或skip_auth。实际角色名单、目标映射在启用前配置并验证",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "owner_feedback": "2026-11-11：询问是否有必要划分及业界做法。已解释操作边界与权限配置可分开，提供DefectDojo/Jira参照；此问答不是批准，简化方案待确认；随后补问虚拟风险组是否取得风险工单创建权及风险事件权限，现已补组织赋角与risk_item/incident术语区分，尚未将追问作为批准；2026-11-12：用户对具备上述具体范围、只读限制及SOC事件分工的自包含问题明确选择“采用这套职责方案（推荐）”，B05方向已确认",
+      "decision": "虚拟风险组中获授权的管理成员可在职责范围内录入/管理风险，并向已配置部门/工单类型派发整改工单，不额外要求通用ticket:create；只读成员不能派单。攻击/应急安全事件接SOC，按事件职责另行授权，不因入风险组自动得到全部事件能力",
+      "implementation": "planned_not_implemented",
+      "enterprise_integration_note": "业务职责不变；实际授予经当前模式允许的管辖入口，企业受管能力不经本地org_roles/继承补回未经认可的授权。"
+    },
+    {
+      "id": "B06",
+      "state": "owner_confirmed",
+      "decision_due": "D06 离职业务自动处置启用前",
+      "recommendation": "安全禁用即时执行；工作项进可见交接清单，有已批准继任映射才自动转，其余保持状态+待交接",
+      "alternatives": "全部回池；全部指定上级；全部人工逐项转",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；映射不授接管权限，无映射/失效或复杂拆分重建不满足领域合同则保留待交接；账号安全动作不等待，失败逐项可恢复，历史创建人不改",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "review_class": "business_default_before_automatic_handover",
+      "question_context": "甲离职，已有管理员批准的甲→乙继任映射，乙当前active且逐项范围/资格有效：按映射自动逐项交接，还是映射仅作建议、每项再确认？",
+      "decision": "离职先立即禁用/撤会话；对管理员已批准的继任映射，逐项复验接管者active/范围/资格和实例版本后自动交接；无映射或无法合法直接交接的项保留待交接，不猜上级或回池，不改原创建人历史",
+      "owner_feedback": "2026-11-12：用户明确选择“批准映射后自动交接（推荐）”，接受账号立即停用、合法直接交接自动转、其余保留待交接的自包含例子",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B07",
+      "state": "owner_confirmed",
+      "decision_due": "D06 撤部 apply 启用前",
+      "recommendation": "使用已批准接管部门；预览确认权限/祖先委托影响后保留虚拟组ID及经审核绑定迁挂，在途按清单接管；无批准目标待处理，历史归属快照不重写",
+      "alternatives": "所有虚拟组和在途项均逐项由管理者确认，不批量应用接管方案",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；plan明示live权限影响并复验版本，不猜最近祖先、不复制原部门角色、不改历史；无合法目标保留待处理，实际接管名单/plan存储属于配置和实现评审",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "superseded_recommendation": "旧候选为最近合法祖先上挂，未获所有者批准；现改批准接管目标优先，祖先仅作候选",
+      "question_context": "部门A撤销并已有批准的B接管关系：先确认影响plan后批量迁挂虚拟组/交接在途，还是冻结原锚逐组逐项处理？",
+      "review_class": "business_default_before_department_retirement_apply",
+      "decision": "撤部已有批准接管部门时，先预览虚拟组/在途项/live权限变化，管理者确认plan后批量迁挂与交接；保留历史归属，不将原部门角色直接复制给接管部门；无合法目标保持待处理",
+      "owner_feedback": "2026-11-12：用户明确选择“预览确认方案后批量交接（推荐）”，接受已有批准接管关系、历史保持、不复制原部门角色及无目标待处理边界",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B08",
+      "state": "owner_pending",
+      "decision_due": "D15 首条生产风险通知启用前",
+      "recommendation": "已确认紧急/高即时、中低每日汇总、临期3/1天及同类自动提醒每日最多一次；高级别负责人抄送保持。生产前绑定真实源级别/组织/收件人及汇总时区时刻，未展示附加值不借此次批准。",
+      "alternatives": "频次可按四档候选、全即时或分层汇总；不是重问是否需要已确认的负责人抄送",
+      "impact_or_safe_fallback": "未决可完成合同/mock；首条生产规则不启用。负责人未解析/无资源资格有显式待办，不广播/猜人，不静默将应抄送降为可选",
+      "design_ref": "docs/design/business-lifecycle-contracts.md",
+      "review_class": "provider_configuration_before_first_real_notification",
+      "direction_state": "owner_confirmed_displayed_template",
+      "direction_confirmation_source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ]
+      },
+      "confirmed_policy": {
+        "critical_high": "immediate",
+        "medium_low": "daily_digest",
+        "predue_days": [
+          3,
+          1
+        ],
+        "same_kind_automatic_reminder_max_per_day": 1,
+        "leader_cc": "existing_confirmed_obligation_retained"
+      },
+      "pending_binding": [
+        "source-level mapping/thresholds",
+        "affected organizations and authorized recipients",
+        "digest timezone/time",
+        "silence exceptions",
+        "additional first-overdue policy if selected"
+      ]
+    },
+    {
+      "id": "ENG-D01b",
+      "state": "owner_confirmed",
+      "decision_due": "G03启用前",
+      "recommendation": "采用本提交独立文档/离线原型验证档：完整差异+严格准入/排除+当前SHA适用检查；混合/规则/运行输入变化回普通完整门禁。旧运行收据只标原来源，不先建设复杂24h全输入收据复用",
+      "alternatives": "继续所有批次原完整门禁；或后续另行建设完整输入闭包的runtime收据复用，均不把旧结果改标新SHA实际执行",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；G03同步协作规则/白名单/CI并验证错分反例后启用。当前完整门禁继续执行，本批不追溯豁免；旧收据不改标新SHA",
+      "design_ref": "docs/design/engineering-execution-design.md",
+      "owner_feedback": "2026-11-11：明确选择“采用分档门禁（推荐）”；随后请求说明与现状差异，不视为撤销该选择",
+      "decision": "采用分档门禁：严格白名单普通文档、本地离线原型、普通完整档；治理规则及混合/未知影响改动走完整档"
+    },
+    {
+      "id": "ENG-D02",
+      "state": "owner_confirmed",
+      "decision_due": "C02编码前",
+      "recommendation": "移除字段引用只改字段，不自动删已绑定附件；显式删仍被当前引用的对象报冲突",
+      "alternatives": "历史未采用：无人引用后自动解除绑定/回收；当前明确为追加、保留与用户主动删除",
+      "impact_or_safe_fallback": "方向已确认，仍未实现；建单前移除为不纳入本次提交，已建单删除须防仍被字段/正文引用造成断链",
+      "design_ref": "docs/design/engineering-execution-design.md",
+      "owner_feedback": "2026-11-11：先明确选择“保留A，由用户明确删除”；随后纠正正常上传B应追加B，非默认替换A。文件指自定义文件上传字段，不是仓库Markdown文档",
+      "decision": "工单文件上传默认追加：上传B后A继续保留；从字段移除引用不自动删附件，A误传由用户明确移除/删除；已建单显式删除遵引用保护"
+    },
+    {
+      "id": "EXE-D01",
+      "state": "owner_confirmed",
+      "decision_due": "R01/C04编码前",
+      "recommendation": "按业务不变量：必需本地状态+处理人同事务；独立通知/外部同步同事务落意图后可靠异步；外部完成前提先待回执再推进",
+      "alternatives": "业务明确允许状态先成立、后续再分工时，可选转派独立跟踪；不做普通用户可随意切同步/异步的开关",
+      "impact_or_safe_fallback": "业务方向已确认，当前Transition仍是旧运行行为；C04/R01实施时同步用例分类、预检、审计/意图与失败反例",
+      "design_ref": "docs/design/cross-repo-execution-contract.md",
+      "owner_feedback": "2026-11-11：用户对上述修正后的推荐明确回复“你的推荐没问题”",
+      "decision": "必需的本地状态与处理人变更同事务；独立通知/外部同步同事务落意图后可靠异步；外部结果为完成前提时先待回执，再推进"
+    },
+    {
+      "id": "EXE-D02",
+      "state": "owner_confirmed",
+      "decision_due": "C03切换前",
+      "recommendation": "按任务选择三策略，采用新详设的模板/限额/服务端预览，源历史/权限/时隙幂等与旧计划切换分别校验；普通默认值随G04实测校准",
+      "alternatives": "任务按时效与历史数据能力选择，不能全平台固定一种；不开放无界回补",
+      "impact_or_safe_fallback": "未定具体模板默认/预算和存量切换时先保留原行为；历史数据不可回溯不伪造旧日报；已有失败/unknown走原任务重试/对账",
+      "design_ref": "docs/design/schedule-recovery-policy.md",
+      "owner_feedback": "2026-11-11：所有者提出有的补一次、有的逐次补，在创建时让用户选择，并明确要求细化；按此方向完成恢复详设，具体技术数值不冒充所有者逐项批准",
+      "decision": "按任务选择错失策略，创建/编辑时明确展示；三策略与字段/恢复批次/预览已细化，模板数值仍是实现可调候选，不是owner批准的生产SLA"
+    },
+    {
+      "id": "UX01",
+      "state": "owner_confirmed",
+      "decision_due": "U02规范冻结前",
+      "recommendation": "推荐单侧栏+身份顶栏，不默认占页签/页脚高度",
+      "alternatives": "保留旧布局作为默认",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；旧四布局的兼容/退出细节在U02实施评审明确，本次不删除布局或更换组件库",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "representative_prototype_preference_before_product_switch",
+      "decision": "默认采用单侧栏和身份顶栏，页签/页脚不默认占首屏；保留Vue、Element Plus及品牌资产，先统一布局/间距/操作位置，再逐页迁移",
+      "owner_feedback": "2026-11-12：用户询问建议后，对明确列出的UX01/UX02两项推荐回复“可以”；仅确认这两项方向，不扩为UX03、旧布局删除或全部规划验收",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "UX02",
+      "state": "owner_confirmed",
+      "decision_due": "U02首页数据合同冻结前",
+      "recommendation": "首页以当前由本人处理或复核的非终态责任待办为主；普通处理按分派，R3明确待复核阶段按当前有效risk_owner；同票去重，发起/抄送不自动算责任",
+      "alternatives": "首页主数改为本人发起/负责/抄送的全部相关未结束工单，并明确标为相关总览而非待办",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；计数/点击列表/角标须同源责任谓词，不能拿can_transition或管理员可操作范围代替实际责任。U02先普通分支，D10复核上线同批补领域分支；无权对象不泄露，已可见责任被配置阻断有明确反馈；不为统计自动改派",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "business_metric_before_home_data_contract_freeze",
+      "question_context": "甲处理乙复核，提交后assigned_to仍可能是甲：乙应出现复核待办，甲不再算当前处理责任；不为首页统计自动改派",
+      "decision": "首页工单主数按当前由本人处理或明确复核的非终态责任，同票去重并区分处理/复核原因；发起/CC不自动计待办，相关记录可另查；任务与消息按权限保留，全局态势另设受权视图",
+      "owner_feedback": "2026-11-12：用户对UX01/UX02建议回复“可以”；同意先修入口、再统一普通责任待办，D10/R3上线同批补复核责任，不为首页统计建立通用待办平台",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "UX03",
+      "state": "owner_confirmed",
+      "decision_due": "U05冻结前",
+      "recommendation": "桌面历史左/结果右；点历史仅回填，显式重新查询；首期本机元数据",
+      "alternatives": "点击历史立即发查询，或要求跨端历史快照",
+      "impact_or_safe_fallback": "方向已确认、尚未实施；本机元数据不等于审计或历史结果快照，500条为已有技术上限而非新增业务SLA；跨端历史独立评审/估算，不作为首期硬前置；保留真实Provider/并发/窄屏等验证",
+      "design_ref": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+      "review_class": "representative_prototype_preference_before_product_switch",
+      "decision": "桌面情报页采用左最近查询、右输入/当前结果；选择历史只回填，明确重查才调用接口；首期按用户隔离本机查询记录，结果显示本次获取时间，不冒充历史快照；跨端历史在接入TI服务时评审",
+      "owner_feedback": "2026-11-12：用户明确选择“左右栏，回填后明确重查（推荐）”；问题同时说明本机记录/当前结果时间/跨端评审边界，方向已确认",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "P-RESOURCE",
+      "state": "owner_confirmed",
+      "decision_due": "相对排程口径已确认；实际开工日记T0，不再为严格自然日截止阻塞规划。",
+      "recommendation": "先P6.0/P6.1底座，再风险核心与只读AI；设备薄模块P6.3",
+      "alternatives": "按实际业务优先级调整独立包",
+      "impact_or_safe_fallback": "未定T0/投入不承诺日历，文档审阅仍可进行；不以Agent并行推算无限产能",
+      "design_ref": "docs/design/platform-evolution.md",
+      "review_class": "implementation_start_binding_not_document_review_blocker",
+      "required_inputs": [
+        "实际投入/维护者复核容量",
+        "T0及可用时间",
+        "首发运行模式和预期企业激活窗口，仅为排期绑定，不重问双模式原则"
+      ],
+      "question_state": "answered_2026_11_13",
+      "scheduling_assumptions_ref": "docs/review/execution-schedule.json#/resource_assumptions",
+      "decision": "按1个有效研发席位、每周5个工程日编排；尽快启动，无严格截止，实际开工日记T0，采用大致相对排期。",
+      "owner_feedback": "2026-11-13：用户选择“先按1个有效研发席位、每周5个工程日编排”；开工/企业日期回复“尽快，但实际上没必要真正有严格时间，大概就行”。",
+      "confirmation_boundary": "确认的是相对排程资源与时间口径，不等于批准全部远期包实现或生产激活。",
+      "latest_activation_boundary": "2026-11-13用户仍补场景，当前只提交设计快照；单席/每周5日为参考产能，T0未启动，不构成开工指令。"
+    },
+    {
+      "id": "O09",
+      "state": "owner_confirmed",
+      "decision": "保留高级别风险沿组织树抄送一级部门负责人能力；触发级别映射/频次/时区等配置仍由B08冻结",
+      "source": "docs/phase6/01-r1-ingest-ledger.md §3.1 与07触发目录P1-6，2026-11-02所有者已确认场景",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "EXE-D03",
+      "state": "owner_confirmed",
+      "decision_due": "C03恢复策略冻结前",
+      "recommendation": "逐次补齐超出回补年龄/累计准入额度/恢复窗口时暂停，保留准确余项并提示，用户可授权扩大范围或明确跳过",
+      "alternatives": "本轮未采用自动跳过超限余项",
+      "impact_or_safe_fallback": "已确认；扩大范围/预算或明确跳过须有权操作与回执，不能因tick/重启重置额度",
+      "design_ref": "docs/design/schedule-recovery-policy.md",
+      "owner_feedback": "2026-11-11：所有者明确选择“暂停并保留余项，等待处理”",
+      "decision": "逐次补齐超过配置时间窗或次数上限时暂停并保留余项，等待用户处理；不得自动丢弃"
+    },
+    {
+      "id": "O10",
+      "state": "owner_confirmed",
+      "decision": "基于现有规模与原6–9规划，尽可能承接并扩展优化；重规划6–9及更远路线，问题设计可建议替代，采用适合当下的渐进演进",
+      "owner_feedback": "2026-11-11：两次明确全项目范围和尽可能承接/不一步到位；不等于批准所有旧愿望或新包实现；2026-11-13再次明确最终愿景/逐步细化，允许实施前发现并补充具体问题。",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O11",
+      "state": "owner_confirmed",
+      "decision": "公司UAA纳管的企业模式对接统一认证及权限治理；企业协议/字段由私有adapter隔离，首次企业正式激活前独立验收。",
+      "owner_feedback": "2026-11-12：所有者提供本地权限治理指南并强调满足公司UAA对接。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O12",
+      "state": "owner_confirmed",
+      "decision": "长期正式支持完整独立模式：不接UAA时原账号、角色、菜单授权及权限管理可用；迁移后经adapter接企业模式，两种模式共用公共核心，mock保留。",
+      "owner_feedback": "2026-11-12：所有者明确要求原IAM独立运行、迁移后对接、两种模式均需设计。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "UAA-P01",
+      "state": "provider_constraints_then_owner_review",
+      "decision_due": "公司UAA纳管的企业模式首次正式激活前；公共规则/mock不等待真实批准",
+      "review_class": "business_availability_and_authority_transition",
+      "recommendation": "失联可用性与受限维护用途方向已确认。实施方按公开实践和既有合同交合成mock；真实接管清单、公司强制规则、新鲜度期限、应急实参与退出接管方案仍先核实际约束再审，不重复询问已确认方向。",
+      "impact_or_safe_fallback": "未决只阻断对应企业激活/例外授权，不阻断独立模式、公共合同和mock；不默认永久旧权限或自动切本地放权。",
+      "design_ref": "docs/design/uaa-governance-integration.md",
+      "implementation": "planned_not_implemented",
+      "concrete_scenarios_ref": "docs/review/uaa-real-integration-conditions.json#/owner_scenarios",
+      "confirmation_boundary": "实际接管差异清单、公司许可窗口内的故障读写倾向、指定应急恢复用途；均未因估算而批准。影子报告由R先生成再审批，不作为测试进入前置。",
+      "direction_confirmation_source": {
+        "message_id": "01a1d580-680f-7db0-8df1-4083012156b1",
+        "kind": "explicit_approval_of_eleven_displayed_directions_and_new_mock_logging_request",
+        "approved_recommendation_message_ids": [
+          "msg_04430d70ad3046a3016af7243ccf5c87d0ba77f37e4f84358f",
+          "msg_04430d70ad3046a3016af729d2adc487d0a45333e0150d9d48"
+        ]
+      },
+      "confirmed_directions": {
+        "UAA-S02": "暂停受管写；公司允许且能证明授权有效时暂留获准只读；具体窗口待公司规则，独立模式保持",
+        "UAA-S03": "事先批准维护者的受限后台/CLI，仅修配置/查同步/对账；实际账号、期限、操作企业激活前确定"
+      }
+    },
+    {
+      "id": "O13",
+      "state": "owner_confirmed",
+      "decision": "核心及可插拔产品能力均应有受权对外接口和内部共同逻辑调用通道，可组合工单、调度、AL与结果，后续MCP复用同一能力；同一能力的接口/内部、手动/工单等触发必须汇入同一受控应用层执行入口和领域实现，不仅统一格式，不把自由调用解释为绕过授权。",
+      "design_ref": "docs/design/capability-invocation-contract.md",
+      "owner_feedback": "2026-11-13所有者提出三条代表闭环和全能力对外/内部统一通道目标；随后强调接口与内部、工单与手动均走同一条路，获解释同步本地/异步交接均汇入同一能力执行路径后明确要求落档。",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "O14",
+      "state": "owner_confirmed",
+      "decision": "一致性覆盖代码/命名/文档目录/API/消息/调用/流程/前端视觉，设最终愿景并渐进靠近；并发/多实例/异步/流控先定骨架再按场景细化，不追求一步到位。",
+      "design_ref": "docs/design/ecosystem-consistency-contract.md",
+      "owner_feedback": "2026-11-13所有者强调项目可用但需精致，允许粗范围、后续细化和持续演进。",
+      "implementation": "planned_not_implemented"
+    },
+    {
+      "id": "B09",
+      "state": "owner_confirmed",
+      "decision_due": "业务选择已确认；D14启用前验证当前授权、来源陈旧提示/理由与自动派单暂停",
+      "question_context": "SOC暂时不能刷新事件，但当前用户权限仍正常。是否允许具备事件协调职责者确认陈旧并填理由后手工创建催补证据等本地协作任务；不执行封禁隔离，自动按旧状态派单暂停？",
+      "recommendation": "采用已确认的有条件人工本地协作；自动化保持held，来源恢复后按当前事实/权限和原操作身份对账，不自动补发旧状态派单。",
+      "impact_or_safe_fallback": "这是D14设计政策确认，未启用现有产品功能。manual_source_gap_enabled只能由服务端受控配置；D14实现后按本政策开放合规人工路径，配置关闭/缺确认/缺理由/权限失效仍拒绝或held。来源确认不能绕过UAA/授权失效、目标范围或幂等，不能伪造SOC新鲜状态。",
+      "design_ref": "docs/design/soc-collaboration-authorization.md",
+      "implementation": "planned_not_implemented",
+      "estimate_rule": "D14现有7–11有限范围含显式配置/陈旧确认/held反馈，非第二份专业SOC或新增预算",
+      "decision": "SOC不能刷新状态而用户当前权限仍有效时，获授权事件协调者确认数据陈旧并填写理由后，可以在配置范围内手工创建本地协作任务；自动依据旧状态派单暂停，不增加隔离、封禁等专业处置权。",
+      "owner_feedback": "2026-11-13：所有者明确选择“允许确认后手工协作，自动派单暂停（推荐）”。",
+      "owner_feedback_source": {
+        "message_id": "01a1d4c1-9740-75f3-a331-f86fcb20b850",
+        "question_item_id": "[\"request_user_input_async\",\"call_07322fd526d54132a76ae7dc2dd6fce6\",0]",
+        "followup_id": "F001-B09"
+      }
+    }
+  ],
+  "last_updated": "2026-11-14",
+  "confirmation_summary": {
+    "owner_confirmed": 32,
+    "owner_pending": 1,
+    "provider_constraints_then_owner_review": 1,
+    "direction_confirmed_in_open_groups": 2,
+    "scope": "原34条正式决策口径；F004/Q01–Q06方向及OBS补充政策在后继索引分层记录，不据此称全部后继事项闭环"
+  },
+  "active_work_boundary": {
+    "updated_on": "2026-11-14",
+    "owner_instruction": "核关键模块/大阶段，无阻塞遗漏则同步主线；排期参考，细节在模块详设确认。已明确包含此前验证的升级。",
+    "current_delivery": "reviewed_plan_and_validated_upgrade_mainline_integration",
+    "scenario_collection": "future_details_continue_in_module_design",
+    "T0_status": "not_started",
+    "implementation_authorized": false,
+    "confirmed_capacity_retained": {
+      "effective_seats": 1,
+      "engineering_days_per_week": 5
+    },
+    "not_performed": [
+      "business_implementation",
+      "shared_environment_switch",
+      "production_deployment"
+    ],
+    "interpretation": "本轮允许五仓既有规划及已验证运行栈升级经PR合main、更新本地主线；不启动Phase6业务实现、真实接入或部署。关键范围和阶段复核通过即可同步，不以全部细节/日期冻结作为前置。",
+    "latest_supplement_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
+    "reference_mock_authorized": true,
+    "latest_owner_source": "F014 owner request and explicit merge-scope reply",
+    "confirmed_core_release_target": {
+      "ready_before": null,
+      "aspirational_trial_month": "2027-01",
+      "quality_over_calendar": true,
+      "formal_local_accounts_allowed": true,
+      "full_UAA_P_R_after_core": true,
+      "effective_seats": 1,
+      "net_estimate_candidate_days": [
+        68,
+        104
+      ],
+      "estimate_ref": "docs/review/local-core-release-estimate.json",
+      "real_uaa_and_message_test_time": "unknown_separate_conditions"
+    },
+    "publication_authorized": true,
+    "publication_state": "five_PR_main_integration_authorized_after_required_checks",
+    "main_integration_authorized": true,
+    "main_integration_status": "approved_via_five_reviewed_PRs; actual_merge_and_main_CI_are_separate_receipts",
+    "schedule_is_adjustable_reference": true
+  },
+  "supplementary_policy_registry": "docs/review/planning-followups.json"
+}

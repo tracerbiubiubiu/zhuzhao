@@ -1,0 +1,4386 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "purpose": "全部会话要点的当前有界再核，原始截止与后继输入分列；不是全部未来代码/部署认证。",
+  "base_commit": "68d64ead894956bb399715df546ebec9209dd427",
+  "scope": {
+    "thread_id": "01a1c96b-a037-71b0-a7a3-4b1d474f1d0b",
+    "first_user_message_id": "01a1c96b-b0da-7252-8e02-9db9d320b621",
+    "through_user_message_id": "01a1d4f3-151f-76f2-a149-eb1a7596925d",
+    "read_thread_pages": 6,
+    "has_more": false,
+    "turns_including_current": 56,
+    "user_message_count": 65,
+    "public_assistant_message_count": 278,
+    "completed_public_assistant_messages_reviewed": 277,
+    "active_opening_commentary_excluded": 1,
+    "original_requirement_check_points": 93,
+    "new_user_inputs": 3,
+    "old_non_message_goal_directive_retained_as_history": "U63; not counted as an additional user message",
+    "raw_public_snapshot_sha256": "797deed5f13bf012ab3d3c0a0d542a4b8b6c38209aae947c96b43f63ee956acd",
+    "privacy": "只提交去敏归纳/真实公开消息ID/哈希；完整公开文本留本地ignored，不提交隐藏推理、工具输出或公司指南。"
+  },
+  "coverage": {
+    "all_current_user_messages_mapped": true,
+    "unmapped_user_messages": 0,
+    "original_93_points_reviewed": 93,
+    "unreviewed_original_points": 0,
+    "current_matrix_does_not_rewrite_original_cutoff": true,
+    "old_user_and_assistant_texts_unchanged": true,
+    "new_completed_assistant_messages_reviewed": 30
+  },
+  "claims": {
+    "bounded_audit_and_document_sync_verified": true,
+    "all_future_details_frozen": false,
+    "business_implemented": false,
+    "real_integration_passed": false,
+    "new_owner_policy_approvals": false,
+    "T0_started": false
+  },
+  "source_rows": [
+    {
+      "message_id": "01a1c96b-b0da-7252-8e02-9db9d320b621",
+      "source_ref": "U01",
+      "text_sha256": "76e23171844d35cca02544ddd8664507b8c3d512a91eda6286d22ebef86fbd1b",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c971-6c91-7e00-be37-6704baff551d",
+      "source_ref": "U02",
+      "text_sha256": "32e48d19db4ac0877aa873b9afdc5ab8c7331b5bc7b9296d9e56dea3d3952862",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c973-fe6a-79e2-afe2-102cd03e65d4",
+      "source_ref": "U03",
+      "text_sha256": "3a806b6351cfb4b9b7016450c4750328bef45837aed8c3ce7fa0a96e9996753e",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c97b-49c6-7722-994d-e50e1fe3fdea",
+      "source_ref": "U04",
+      "text_sha256": "5d1c14fdfecf85cdb1440b4210b38e2ad5d51de3dad6370ac3d560f609f20d8f",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c97d-ee79-7402-9dcb-92f5aba1381e",
+      "source_ref": "U05",
+      "text_sha256": "96182968a92d589caaaba4ccc9957a7ff23308313e40cee5cba917cc31a88cc2",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9bd-7c16-7721-9263-4d1dcd8698b1",
+      "source_ref": "U06",
+      "text_sha256": "9948d169e3583766200993da921ca30fa96e60b5f0616556d6b5333341f6302c",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9c2-6fae-7e50-9d5b-a37f6c66c815",
+      "source_ref": "U07",
+      "text_sha256": "51f2ca0ee3c2512b5f80b432680da00360c52665b3244eb75dd0fc4916e692ce",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9c5-9725-7f63-a85c-9eff8c47e6c9",
+      "source_ref": "U08",
+      "text_sha256": "46acbfeb86dac5fbd33375b40b3e437e8b2c470e4bba6be923675c64a984dbc8",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9ca-a683-7951-a313-20a22c940d01",
+      "source_ref": "U09",
+      "text_sha256": "9dee26a5e88247d2fa639e0b062cc04fbe0e307da684b454475f9067f28d5566",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9cd-20c3-78e2-8973-27f01f907e31",
+      "source_ref": "U10",
+      "text_sha256": "7a97757394cc2574388b73c361e2e1d009089340e7989a4693800f5077477734",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9d8-688e-7662-9458-1a9c3e150868",
+      "source_ref": "U11",
+      "text_sha256": "58b6fc00e51ee19e04d6436f139f056f9742c92040f0bdfa3c861f89188545b9",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9dd-a7ab-7142-9c00-ea258ebb8b8d",
+      "source_ref": "U12",
+      "text_sha256": "5d2df22cf52716216101620ed7471fe3fa244ba1531d4cc386cb5fb501d69000",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9e1-bb5b-7d13-b2dd-053ace297ff2",
+      "source_ref": "U13",
+      "text_sha256": "720d4dba2ad778aa3cc03908e7c5db0ea7df8cbf5b9251f419b8502f3ab8215c",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38",
+      "source_ref": "U14",
+      "text_sha256": "db354f0e0065e11e2e44fbf1cf339c943ff57d65fa314327b1bd0ea21698ac50",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1ca90-eea6-7231-a2da-5d3156f0852b",
+      "source_ref": "U15",
+      "text_sha256": "361225dfed693531c4522bbf689c6100e92151ff7ff39b8d33a6f7b34f75dd12",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1caa1-1acd-7aa0-8b49-ab72a344eee1",
+      "source_ref": "U16",
+      "text_sha256": "269c221e28be1af86d843e8c36fb645b5d410cd8e2344385198eb253da2c8be3",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1caa2-5f69-7de2-8379-5c0f503e69ee",
+      "source_ref": "U17",
+      "text_sha256": "b5c97f72a30be80300cf89e554d46015cf42893b6a8098477eb98e160f69354d",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1caa2-e0de-7152-a83f-ff4696d3ea39",
+      "source_ref": "U18",
+      "text_sha256": "e27c9ae3bf6e87c1ba2f346c2fa6c9f33806514c1790e09ef605c0db74cfc4df",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1caaa-e777-7711-bd42-9885bc8a210d",
+      "source_ref": "U19",
+      "text_sha256": "1d63812cdbe214d7d03056c4c6538930673ad5efc3a4ea96d4ab22cc68dd117a",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cab4-fcc9-7601-9736-092e01ddbef8",
+      "source_ref": "U20",
+      "text_sha256": "c3e7902bc8385da88d17e0c0d3d5994767ccfe6dad81d8cec2b4cf68907b2fc9",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1caba-8dfd-75a2-a63f-443639a4911f",
+      "source_ref": "U21",
+      "text_sha256": "5e3febafe40c14f93e19ebd828a5425d00ac4dfe2d5d4475229fe03373caeebb",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cacc-ad48-7a52-a5e5-25a0f208fa0f",
+      "source_ref": "U22",
+      "text_sha256": "d7c5847246eab9650b1e4577d705ab4dbdbcc08be571347e3064eeaf4efc95f5",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cae6-7544-7863-bd2c-1cc4efdeb0e2",
+      "source_ref": "U23",
+      "text_sha256": "493b3fe9f9df6d4e6302110a5b644aa54b3734e361f8af1a58c8239f0d7bb045",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb10-3f9b-7833-8f8d-dd038e9bce25",
+      "source_ref": "U24",
+      "text_sha256": "c29a236de86aa2c065381636bf9e66a07b982512ba9d5f2cf4326fca4329fc23",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb13-6358-7d50-b9a1-968fc65825fc",
+      "source_ref": "U25",
+      "text_sha256": "92f2ef9a223524bc0f035496d1295622780b557afeeb9dfb8d9887cea536c61d",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb1f-51b5-7932-b8ac-2f845f6fb776",
+      "source_ref": "U26",
+      "text_sha256": "fd8267d3f3e34599adcac8a236725b6c501ca2183fe25f65b97468d47e5e2ab2",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb27-cbc0-7f22-b028-ee854661924e",
+      "source_ref": "U27",
+      "text_sha256": "93fb854c7c8285bc38f45b124ccdc480030a89a8b1a5169b4478a9902628d210",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb99-646c-7373-996d-c5a9891d6dc2",
+      "source_ref": "U28",
+      "text_sha256": "9be484806529d0f1b14011712c0c75b3eda2619169f24306f93fc0576c256ce9",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cb9a-92a5-73a1-8ddd-f17b09c73123",
+      "source_ref": "U29",
+      "text_sha256": "0ef5c86fab94f13a7b7d54aa531ceb5d586cd9ebee98198ad975df3852da824a",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cbad-8dd9-7ed2-9717-2c33603ff97d",
+      "source_ref": "U30",
+      "text_sha256": "0f97e30eed832bb4f4fb6ffb7fd500be0b441a9e32be280f8df077d3b5e36c89",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cbb6-7e02-7da2-b272-4b258fe279b7",
+      "source_ref": "U31",
+      "text_sha256": "3d7587823ba76381f44e92ab5e00dd7ed36a44b07908b5cd61c599cc212c01cd",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cbb7-eb0f-79c1-bc82-341e12ee0810",
+      "source_ref": "U32",
+      "text_sha256": "c649d53772641ea6dec4a5c6e22cb3848d8064a00951fad6aad60e0fdbba3e7f",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cd89-ed0b-73f1-acb7-d44e00372968",
+      "source_ref": "U33",
+      "text_sha256": "e2e97c76f8a9fe11bcf4f278ccad9884429ec39d933632bfe18565980e3db62e",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cd90-c509-78b3-a78f-78dc88c73994",
+      "source_ref": "U34",
+      "text_sha256": "f5cf0f97267f5599a902d85a4acc84832db1ae377b304654111247bfd2bffb63",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cd94-3d16-71f1-91b4-c56954ae58ae",
+      "source_ref": "U35",
+      "text_sha256": "b251363490c35a3a719a5555d49e30b7e10806a626bb2a040776416ac322fc6c",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cd97-2fe4-73e2-9b1f-e5ad9a235cb7",
+      "source_ref": "U36",
+      "text_sha256": "24c2c026972b8ab01d9f398fe1ae7bd651d43c13b3ed2a962ad54e55d097ec05",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1ce43-f15e-7a33-88ba-44b785c79fb2",
+      "source_ref": "U37",
+      "text_sha256": "aca86653015020fb57db57d1e5d9fede10292fe5ef813814e2849986280efac8",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1ce45-c4c8-74a3-ab0b-eba06055ca8d",
+      "source_ref": "U38",
+      "text_sha256": "9cbe4e35b020fdc404509fb4b0a9859b303437be8a8bf4fc6212a331a1dc7454",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1ce4c-26fc-7302-949e-53334ca2ae08",
+      "source_ref": "U39",
+      "text_sha256": "7586a30f70e1ddc29888fc2d99ee7db52ce65cc8e9c8adcc5addfa14304aac00",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cea8-4c01-7ff2-97a6-0bd24078498c",
+      "source_ref": "U40",
+      "text_sha256": "4f1985be520565eb18abe132471e75b7aae963387aeed8a8096e56c39add9b91",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cea9-a14f-7f50-bda8-c1a743c1aafa",
+      "source_ref": "U41",
+      "text_sha256": "d351a6d2d6a7b6df6357283537fb8e9e70f800ce7dff8248362becc677c7fe39",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cec5-7026-79f1-8540-8d555f3b71c1",
+      "source_ref": "U42",
+      "text_sha256": "03bff8e7dd8f554faf73912a64cb5dc4fb3f4e144ffa65cb27b90cef9f29ba96",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cefe-f2da-7f30-8b36-5c554a41e805",
+      "source_ref": "U43",
+      "text_sha256": "282abd053dceda34c1204b59cbc1dea051b15f75daa828f70ee2af231277eae6",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cf12-34fc-74b3-bcf0-729ddd93ffb6",
+      "source_ref": "U44",
+      "text_sha256": "340fd1279010906c0b35547e6dba0ba4a694d987e8a2fe9ae721befdf1567546",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cf14-29ba-77c2-a914-6385d132da4b",
+      "source_ref": "U45",
+      "text_sha256": "49b3d6d127d7b235784978f72b782845a408684e2e486039acd3314f7b289853",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cf44-49f0-7ea3-b712-a21eae0d5cb1",
+      "source_ref": "U46",
+      "text_sha256": "b9342acc6ed705badd111f930a96ea66c00b98741b47301ed34023e3a9c1c72d",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cf7e-c0bd-7793-a8a2-ab798a21e36e",
+      "source_ref": "U47",
+      "text_sha256": "14e84997b256fd040ba8e9bcca67fe21918395fb0b9c84edff7d47f370f4446b",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1cfaa-8d81-7272-8e00-73a1436a2d1e",
+      "source_ref": "U48",
+      "text_sha256": "5aea2fcda7cccc9a0707c55cc261413ce2345eb3dcbc2b13b77fb7f8d3a332f3",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d252-4d27-7fd3-b159-8d412ddd0a81",
+      "source_ref": "U49",
+      "text_sha256": "b00c59c094e6d6020fba16ae74db0a78fbbc2920cdb9c264c4b6f26f2dbdc2ac",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3aa-f58a-7eb3-8da9-07923ff824e6",
+      "source_ref": "U50",
+      "text_sha256": "790ce365c093c6985803e513abf11eb5c5a24ed1164a5eab7e78c80f94642969",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3b6-ee6a-7250-82cd-c0763cc03fa3",
+      "source_ref": "U51",
+      "text_sha256": "3f4e8d78a967e0ee1640de463ef76284d25ee084e2cd464c7153ec98da283117",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3b8-a22c-7a42-a27d-c9d8ec6eda8f",
+      "source_ref": "U52",
+      "text_sha256": "dffa8dd23a002685ddad116a2ec1e289f820e25d022d913c5c767cf0a2f3bbd9",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3bd-106f-7052-bcb3-66047f3ec1f7",
+      "source_ref": "U53",
+      "text_sha256": "42a232144b714dc0c634e391e7e43a3d5d3d96de6e4d4872a9201bb59640902f",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3eb-878a-7bd1-a12e-ccceb2e2e63a",
+      "source_ref": "U54",
+      "text_sha256": "2d41a4b43f2d4b04c0bd85d5d1faf69b57594c0db63f0f1a1e8faa68e79f1dce",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3ed-659a-73f3-96d5-7adf13176f8e",
+      "source_ref": "U55",
+      "text_sha256": "7f114b14b3811639094571c3b78fbaf83d003bca8a8e44bcd41f8d75bbb69f84",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3f1-cd1f-7293-9398-a805ae31ac32",
+      "source_ref": "U56",
+      "text_sha256": "6574096de3f717a998f5b125ea258a0c9158e331a9cfaf8426bc63a456904812",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d3f9-b841-7c90-87bd-9516d824a255",
+      "source_ref": "U57",
+      "text_sha256": "9ad9141d7405fb3779d2a79b125bb59bc6a25241fb06748d1f3e6875df384491",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d402-6c70-7a02-84dc-98f22d3a7cc2",
+      "source_ref": "U58",
+      "text_sha256": "8330b0e5df01557bad5732ea6d53d767adcb1237c5972e5c0cac72484f23dc22",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d40b-5558-7072-924d-2c84ddf97e54",
+      "source_ref": "U59",
+      "text_sha256": "33311c96c8559bbf5b7256eb92df87af4176ab34a530fe4dd0cb546ae21c5f03",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d40c-81c0-71e0-9b60-a3c36e509244",
+      "source_ref": "U60",
+      "text_sha256": "e7c382f6cfbc10d926e49553ed71158931eca0bd00a3221f90a9c57aa78c8864",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d41e-03db-7671-a4b2-6b53edd0a154",
+      "source_ref": "U61",
+      "text_sha256": "75ec0948bf3cc52533a8d980bd82e1e038e4060955077f320a34eb28f26c9d30",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d433-0cc3-77f0-b6c8-80fb7313fd3a",
+      "source_ref": "U62",
+      "text_sha256": "8bb14a916fef5aa1f35e420e849dee76add3b3a73b5ed3d7f06c44878d9df84a",
+      "disposition_ref": "user-requirements-reconciliation.json"
+    },
+    {
+      "message_id": "01a1d4c1-9740-75f3-a331-f86fcb20b850",
+      "source_ref": "F001-B09",
+      "text_sha256": "5c85f979fa04908194bab850f45efffbea0ba3a2c0ff9c8a529e2c7038f46391",
+      "disposition_ref": "planning-followups.json"
+    },
+    {
+      "message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
+      "source_ref": "F002-remaining-decisions",
+      "text_sha256": "6e5c423b4bfc51c3ddafc06fdcdfc8b6ea1b637b95dc098a3d38c2a2a4fe17b8",
+      "disposition_ref": "planning-followups.json"
+    },
+    {
+      "message_id": "01a1d4f3-151f-76f2-a149-eb1a7596925d",
+      "source_ref": "F003-conversation-reaudit",
+      "text_sha256": "8572e7ce226ed4c172b5fe627f88c94199856b22a7d4351d747b5c7adabd2c61",
+      "disposition_ref": "planning-followups.json"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R001",
+      "requirement": "五仓工程化、CI及自动检查缺口",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§1–§4；现行页头"
+            },
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G02/G03"
+            },
+            {
+              "path": ".github/workflows/ci.yml",
+              "section_or_selector": "jobs.lint：make planning-check；现有静态/单元/integration"
+            },
+            {
+              "path": "Makefile",
+              "section_or_selector": "planning-check"
+            }
+          ],
+          "finding": "实际审计与具体治理候选具备；规划检查已接CI，完整acceptance/真实E2E自动CI及远端保护仍未启用。工程治理页头“本轮未改CI”与实际候选矛盾。",
+          "review_snapshot_state": "bounded_engineering_audit_delivered_partial_guard_implemented",
+          "remaining": "校准页头，区分新增有界规划检查与尚未实施G02/G03；后续实际启用并验证required checks。"
+        }
+      ],
+      "current_remaining": "G03需实跑确定check名称、固定组合/准确SHA、错分/skipped拒绝与隔离真实栈证据；不能把现有CI等同完整保障。"
+    },
+    {
+      "id": "R002",
+      "requirement": "并行agent误带他人修改提交及同文件隔离",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G01"
+            },
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§2"
+            },
+            {
+              "path": "scripts/zz-commit.sh",
+              "section_or_selector": "paths/staged子串检查、按空白展开pathspec"
+            }
+          ],
+          "finding": "独立worktree/短分支/单集成者及运行资源归属已设计；pathspec无法区分同文件作者行；现包装器子串/空白限制仍在。",
+          "review_snapshot_state": "audit_and_isolation_strategy_delivered_tool_hardening_pending",
+          "remaining": "G01精确路径集合/空格边界及同文件双任务演练，G06按仓同步；不把协议文档当工具已加固。"
+        }
+      ],
+      "current_remaining": "G01加固路径精确成员/空格等边界，做两任务同文件隔离演练；G06同步兄弟仓，现有hooks仅兜底。"
+    },
+    {
+      "id": "R003",
+      "requirement": "正规项目差距，不能只回答用户举例",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§3–§7"
+            },
+            {
+              "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+              "section_or_selector": "ENG-02/04/06/07/08/19/20"
+            }
+          ],
+          "finding": "已审查供应链、制品、发布恢复、CI权限、组合验收及单维护者工作法，超出覆盖率/fuzz举例。",
+          "review_snapshot_state": "bounded_professional_engineering_gap_audit_delivered",
+          "remaining": "G05/E09真实生产制品、备份恢复及具体形态硬出口；本次不是成熟度认证。"
+        }
+      ],
+      "current_remaining": "G05/E09仍需真实制品、可恢复备份、生产配置/回退证据；这是有界审计，不是任一成熟度认证。"
+    },
+    {
+      "id": "R004",
+      "requirement": "测试覆盖率的现态、口径与改进价值",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "Makefile",
+              "section_or_selector": "test-unit/test-integration/test-cover"
+            },
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G04：分层覆盖与风险矩阵"
+            },
+            {
+              "path": "docs/review/reports/design-gap-closure-evidence-2026-11-13.json",
+              "section_or_selector": "本轮20.1%默认tag/race/internal语句口径"
+            }
+          ],
+          "finding": "20.1%（2034/10108）与旧20.4/20.2保留测量边界，不合成五仓/integration/E2E覆盖或宣称改善。",
+          "review_snapshot_state": "coverage_assessment_delivered_improvement_not_implemented",
+          "remaining": "G04风险—测试矩阵、失败支路及独立分母基线；先测再定阈值。"
+        }
+      ],
+      "current_remaining": "G04继续按风险—测试矩阵及unit/integration/合同/旅程各自分母改进，先测再定阈值；本轮设计补齐不等于产品测试覆盖已经充足。"
+    },
+    {
+      "id": "R005",
+      "requirement": "关键节点fuzz的必要性、目标与预算",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G04五个目标/性质/短长预算/corpus"
+            },
+            {
+              "path": "internal",
+              "section_or_selector": "只读搜索顶层func Fuzz"
+            },
+            {
+              "path": "../activelist/internal",
+              "section_or_selector": "只读搜索顶层func Fuzz"
+            },
+            {
+              "path": "../taskrunner/internal",
+              "section_or_selector": "只读搜索顶层func Fuzz"
+            },
+            {
+              "path": "../zhuzhao-utils",
+              "section_or_selector": "只读搜索顶层func Fuzz"
+            }
+          ],
+          "finding": "产品Go范围未找到顶层Fuzz入口；五目标性质、预算、corpus与PG事务另验已有评估。",
+          "review_snapshot_state": "fuzz_necessity_and_scope_audited_continuous_fuzz_pending",
+          "remaining": "按G04窗口编写真实targets/corpus并验牙；不把未来目标名称当现成测试。"
+        }
+      ],
+      "current_remaining": "实际写target/corpus并验证性质和预算；未实现的analyzer/occurrence key不能先称有fuzz证明；真实PG原子性另做定向集成。"
+    },
+    {
+      "id": "R006",
+      "requirement": "项目定位、设定和边界清晰度",
+      "original_source_refs": [
+        "U01",
+        "U04"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "primary-review",
+          "evidence": [
+            {
+              "path": "docs/vision.md",
+              "section_or_selector": "现行平台定位声明"
+            },
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§1–§3"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§1/§8"
+            }
+          ],
+          "finding": "产品定位、写主与专业供给边界明确，保留长期mock及独立IAM，不将专业平台复刻为本地功能。",
+          "review_snapshot_state": "verified_bounded_design_audit_not_product_implementation",
+          "remaining": "未来业务实施和提供方真实字段/权限仍逐包核验。"
+        }
+      ],
+      "current_remaining": "按所选模块冻结准确合同、同步边界守卫并验证；实际拆服务须先取独立发布/容量/隔离证据。"
+    },
+    {
+      "id": "R007",
+      "requirement": "逐模块深入检查现有能力与设计边界",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "primary-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-operation-catalog.json",
+              "section_or_selector": "summary/source_file_manifest/operations/capabilities"
+            },
+            {
+              "path": "docs/design/current-module-boundaries.md",
+              "section_or_selector": "16项边界裁定与静态审计限界"
+            }
+          ],
+          "finding": "独立逐文件SHA复核218个生产Go来源与模块/路由/服务/UI调用库存；18模块/176绑定/158候选的分母不因新增planned名改变。",
+          "review_snapshot_state": "verified_bounded_design_audit_not_product_implementation",
+          "remaining": "全部共同runtime仍为未实现，不能将库存审计当新API验收。"
+        }
+      ],
+      "current_remaining": "现有领域实现保留，CE01/CE02-S/D/L按P6.1至P9逐模块迁移并运行；新消费者前不能开旁路。"
+    },
+    {
+      "id": "R008",
+      "requirement": "整体目标、优先级与后续规划清晰度",
+      "original_source_refs": [
+        "U01",
+        "U26",
+        "U27"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "primary-review",
+          "evidence": [
+            {
+              "path": "docs/roadmap.md",
+              "section_or_selector": "P6–P10与长期范围"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§1–§8"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "items/范围与当前波次"
+            }
+          ],
+          "finding": "路线以原6–9及更远价值承接；76父包/16出口/LS/13切片及条件候选有明确出处。当前演进页的旧计价句已纠正。",
+          "review_snapshot_state": "verified_bounded_design_audit_not_product_implementation",
+          "remaining": "远期准确DTO/DDL及运行验证按各包冻结，不宣称所有未来细节本轮完成。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。"
+    },
+    {
+      "id": "R009",
+      "requirement": "Ficus及其它项目比较是否实质用于本轮",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "primary-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-source-map.json",
+              "section_or_selector": "entries[source_id starts CMP/HIST]"
+            },
+            {
+              "path": "docs/review/roadmap-capability-continuity.json",
+              "section_or_selector": "records"
+            },
+            {
+              "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+              "section_or_selector": "§2历史输入与§3取舍"
+            }
+          ],
+          "finding": "对照实际30条CMP、81条HIST映射和169条连续性记录核承接；参考项目结论影响了来源控制、共享底座/领域边界、渐进流程与专业供给优先，不将旧建议等同owner批准。",
+          "review_snapshot_state": "verified_bounded_design_audit_not_product_implementation",
+          "remaining": "参考项目真实接口/运行环境未在本轮核验，不据对比报告声称真实集成可用。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。"
+    },
+    {
+      "id": "R010",
+      "requirement": "执行后自行审计、证据与不确定项披露",
+      "original_source_refs": [
+        "U01",
+        "U06"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "primary-review",
+          "evidence": [
+            {
+              "path": "docs/review/conversation-reaudit.json",
+              "section_or_selector": "requirements/issues/verification"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "F001–F003"
+            },
+            {
+              "path": "docs/review/owner-decision-agenda.json",
+              "section_or_selector": "13组未批准状态"
+            }
+          ],
+          "finding": "三路独立主题复核与根逐源/承诺/实际证据复核共同覆盖93点；本轮发现的新反例和排程冲突已保留首红并修正，不把先前PASS扩写为绝对无遗漏。",
+          "review_snapshot_state": "verified_bounded_design_audit_not_product_implementation",
+          "remaining": "审计本身不能证明新产品功能、真实内网或所有未来场景已完成。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    },
+    {
+      "id": "R011",
+      "requirement": "旧触发条件和挂账描述本身是否合理",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/legacy-trigger-disposition.json",
+              "section_or_selector": "119旧来源理由/证据/窗口"
+            },
+            {
+              "path": "docs/design/legacy-scope-completion.md",
+              "section_or_selector": "LS01–LS04"
+            },
+            {
+              "path": "docs/review/planning-scope-estimates.json",
+              "section_or_selector": "LS01–LS06；CE04含T063一次"
+            }
+          ],
+          "finding": "旧触发合理性及漏估子范围已实质补齐；字段ACL/typed检索/CmdK/真值diff已补价，AL producer仅CE04计一次。",
+          "review_snapshot_state": "bounded_legacy_disposition_and_required_supplement_pricing_delivered",
+          "remaining": "各包实现/真实提供方验收；条件候选按窗口裁决，不能调查代替获准功能交付。"
+        },
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U01触发合理性/全部挂账排期及U48完整排期要求"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§13 E10调查不依D08/D10"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "E10.decision_due与dependencies/wave"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "E10在public_R_pending/with_maintenance_reserve/resources/1/ordered_tasks"
+            }
+          ],
+          "finding": "补充审查发现：E10的2–4日只计调查/裁决且承诺P6.1出口，但完整调度却依D08/D10并排P6.E（D225–227 / D369–373），晚于P6.1出口D117/D190。结构DAG/算术PASS不会发现这种语义截止冲突。",
+          "review_snapshot_state": "大部分触发已有固定裁定/总价；E10为本轮真缺口待修",
+          "remaining": "在总价不重复增加前提下前移已计调查劳动；获选真实导入/merge实施仍另估P6.E。原确认条件需求/建议候选必须分开，不以调查完成代功能交付。"
+        }
+      ],
+      "current_remaining": "逐包实现/真实提供方与未选条件按固定窗口验收；LS与CE净价已进入完整排程，不再把已补的范围留作未估；原可选E05/E10逐项裁决后另估获选整套建设。"
+    },
+    {
+      "id": "R012",
+      "requirement": "全部挂账排期，不能无限触发后再说",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "work_items及additional_scope_tasks"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "完整派生范围/所有依赖/资源槽"
+            },
+            {
+              "path": "docs/review/planning-scope-estimates.json",
+              "section_or_selector": "conditional_unselected_scope"
+            }
+          ],
+          "finding": "已登记挂账具有具体裁决或实施窗口，不无限等待触发。E05/E10目前包价不包含全部未选产品。",
+          "review_snapshot_state": "registered_scope_has_windows_bounded_schedule_delivered",
+          "remaining": "按窗口关闭候选裁决，选中整套建设后给独立子估/子窗；远期准确合同按开工门深化。"
+        },
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U01触发合理性/全部挂账排期及U48完整排期要求"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§13 E10调查不依D08/D10"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "E10.decision_due与dependencies/wave"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "E10在public_R_pending/with_maintenance_reserve/resources/1/ordered_tasks"
+            }
+          ],
+          "finding": "补充审查发现：E10的2–4日只计调查/裁决且承诺P6.1出口，但完整调度却依D08/D10并排P6.E（D225–227 / D369–373），晚于P6.1出口D117/D190。结构DAG/算术PASS不会发现这种语义截止冲突。",
+          "review_snapshot_state": "大部分触发已有固定裁定/总价；E10为本轮真缺口待修",
+          "remaining": "在总价不重复增加前提下前移已计调查劳动；获选真实导入/merge实施仍另估P6.E。原确认条件需求/建议候选必须分开，不以调查完成代功能交付。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。"
+    },
+    {
+      "id": "R013",
+      "requirement": "五仓目录缺少哪些必要目录或模块",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§6目录profile"
+            },
+            {
+              "path": "docs/documentation.md",
+              "section_or_selector": "§1–§3"
+            },
+            {
+              "path": "README.md",
+              "section_or_selector": "五仓职责/实际根目录"
+            },
+            {
+              "path": "../activelist/README.md",
+              "section_or_selector": "Go服务职责及deploy"
+            },
+            {
+              "path": "../taskrunner/README.md",
+              "section_or_selector": "Go服务职责及deploy"
+            },
+            {
+              "path": "../zhuzhao-utils/README.md",
+              "section_or_selector": "纯公共包结构"
+            }
+          ],
+          "finding": "实际主仓/UI用deployments，AL/TR用deploy，utils无服务cmd/业务迁移；已解释按职责profile，不为整齐建空目录。",
+          "review_snapshot_state": "five_repo_directory_assessment_delivered",
+          "remaining": "G06按消费者核目录统一/脚本/Compose挂载，物理迁移未实施。"
+        }
+      ],
+      "current_remaining": "G06按服务/前端/库profile补适用必要目录及例外；迁移目录命名要同批核脚本/Compose/挂载，不批量搬旧文档。"
+    },
+    {
+      "id": "R014",
+      "requirement": "五仓及新增仓目录/文档/代码风格一致性",
+      "original_source_refs": [
+        "U01",
+        "U58",
+        "U60"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G06及语言/机械文件profile"
+            },
+            {
+              "path": "docs/standards.md",
+              "section_or_selector": "§4及生态SSOT"
+            },
+            {
+              "path": "../zhuzhao-ui/eslint.config.mjs",
+              "section_or_selector": "skipFormatting"
+            },
+            {
+              "path": "../zhuzhao-ui/package.json",
+              "section_or_selector": "无独立formatter检查命令"
+            }
+          ],
+          "finding": "共同profile、版本bundle/lock与豁免有设计；UI仍跳格式规则，不能把lint绿当一致性全部机械生效。",
+          "review_snapshot_state": "consistency_policy_delivered_formatter_bundle_pending",
+          "remaining": "G06实现bundle/摘要漂移与适用formatter；不制造全仓无关格式diff。"
+        }
+      ],
+      "current_remaining": "G06钉版本规则源/bundle/lock与豁免，逐改动文件格式化并验证新增仓消费；本地lint绿不等于命名/文档/视觉全一致。"
+    },
+    {
+      "id": "R015",
+      "requirement": "现有模块实际耦合与架构调整必要性",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/current-module-boundaries.md",
+              "section_or_selector": "MB01–16；后继完整库存"
+            },
+            {
+              "path": "docs/design/capability-operation-catalog.md",
+              "section_or_selector": "§1–3；18模块及非HTTP处置"
+            },
+            {
+              "path": "internal/service/ticket/actions_builtin.go",
+              "section_or_selector": "SpawnTaskAction.Execute"
+            },
+            {
+              "path": "internal/pkg/domainevent/registry.go",
+              "section_or_selector": "HookRegistry.Dispatch"
+            }
+          ],
+          "finding": "实际边界核验保留IAM/附件必要同库事务；当前SpawnTaskAction丢弃Submit回包、Hook是goroutine，不能当作可靠后继或结果链已实现。逐操作清点补了定向审计分母。",
+          "review_snapshot_state": "current_source_and_target_boundary_audited",
+          "remaining": "C04/R01与CE02-S/D/L按包迁移并运行；不得用目录隔离破坏既有事务。"
+        }
+      ],
+      "current_remaining": "现有领域实现保留，CE01/CE02-S/D/L按P6.1至P9逐模块迁移并运行；新消费者前不能开旁路。"
+    },
+    {
+      "id": "R016",
+      "requirement": "服务拆分与微服务的渐进演进条件",
+      "original_source_refs": [
+        "U01",
+        "U27"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§6可插拔与服务拆分"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§1、§6 E07、§8"
+            }
+          ],
+          "finding": "先模块化单体与写主隔离；拆分由独立发布、容量、故障隔离、安全和维护证据驱动，未预设微服务/K8s/Kafka。",
+          "review_snapshot_state": "gradual_evolution_contract_documented",
+          "remaining": "E07按P8取证/P9裁定；不拆也须结论/复核窗，真实拆分另验远程一致性、迁移与回退。"
+        }
+      ],
+      "current_remaining": "按所选模块冻结准确合同、同步边界守卫并验证；实际拆服务须先取独立发布/容量/隔离证据。"
+    },
+    {
+      "id": "R017",
+      "requirement": "内部模块可插拔，尽量不改主仓",
+      "original_source_refs": [
+        "U09"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/extension-compatibility.md",
+              "section_or_selector": "§1当前接点、§2四类扩展、§3 X01-C/H、§4身份"
+            },
+            {
+              "path": "internal/app/wire.go",
+              "section_or_selector": "InitializeApp"
+            }
+          ],
+          "finding": "公开核心仍编译装配；私有服务/独立存储、声明注册、导航和受控网关是X01目标，未声称当前零改核心插件。核心自有模块仍属核心发布。",
+          "review_snapshot_state": "substantive_extension_design_not_runtime",
+          "remaining": "X01参考扩展无核心差异安装/禁用及失败回退、伪主体/路径负例；X02/X03真实纵切尚未实施。"
+        }
+      ],
+      "current_remaining": "参考扩展/真实connector、跨版本回执及提供方合同未实施或真实验证。"
+    },
+    {
+      "id": "R018",
+      "requirement": "核心升级与旧私有消费者接口稳定/适配责任",
+      "original_source_refs": [
+        "U09",
+        "U14"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/extension-compatibility.md",
+              "section_or_selector": "§5合同版本；§6部署前后兼容矩阵"
+            }
+          ],
+          "finding": "已承接U09稳定私有消费者目标及U14部署前可协调替换纠正，明确未采纳六个月/两次发布承诺。正式基线以后同主版本语义兼容，安全例外可审。",
+          "review_snapshot_state": "compatibility_policy_documented",
+          "remaining": "正式消费者/支持窗口登记；旧扩展对新核心等语义/错误/授权/完成矩阵仍待产品实现和真实回执。"
+        }
+      ],
+      "current_remaining": "参考扩展/真实connector、跨版本回执及提供方合同未实施或真实验证。"
+    },
+    {
+      "id": "R019",
+      "requirement": "mock迁入内网：HR/风险adapter隔离真实内部代码",
+      "original_source_refs": [
+        "U10",
+        "U43"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "公共Port、mock/http_query/http_feed、私有适配、切换与回退"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§2.1/§6.3/§7"
+            },
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U02/U10/U43原话"
+            }
+          ],
+          "finding": "mock作为长期产品开发/验证方式保留；公共DTO与私有协议分开，真实失败不得伪装mock成功；部署前可协调替换旧合同，不据此承诺永不适配。",
+          "review_snapshot_state": "设计覆盖，公共/私有边界清楚，非真实connector已接通",
+          "remaining": "X01/X02参考模块、实际来源稳定ID/分页/排序/墓碑/权限及跨版本合同仍按实施窗口；不能导入内部repository或公司SDK到公共核心。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "§1–3、§4 HR、§5风险、§6切换、§7参考connector"
+            }
+          ],
+          "finding": "私有SDK/字段/地址/凭据留内网，公共feed保稳定身份/来源版本；持久stage先于checkpoint、核心commit后ACK、只读shadow后试点/回退，不是stub开关切换。",
+          "review_snapshot_state": "substantive_migration_contract_documented",
+          "remaining": "X02-Q/F参考HTTP和feed恢复；真实HR/风险先选一条可联调供给，另一条仍mock；逐源语义/映射/限额待核。"
+        }
+      ],
+      "current_remaining": "参考扩展/真实connector、跨版本回执及提供方合同未实施或真实验证。"
+    },
+    {
+      "id": "R020",
+      "requirement": "大量mock接口长期保留",
+      "original_source_refs": [
+        "U02",
+        "U03"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "公共Port、mock/http_query/http_feed、私有适配、切换与回退"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§2.1/§6.3/§7"
+            },
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U02/U10/U43原话"
+            }
+          ],
+          "finding": "mock作为长期产品开发/验证方式保留；公共DTO与私有协议分开，真实失败不得伪装mock成功；部署前可协调替换旧合同，不据此承诺永不适配。",
+          "review_snapshot_state": "设计覆盖，公共/私有边界清楚，非真实connector已接通",
+          "remaining": "X01/X02参考模块、实际来源稳定ID/分页/排序/墓碑/权限及跨版本合同仍按实施窗口；不能导入内部repository或公司SDK到公共核心。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§1保留前提"
+            },
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "页头、§1、§6/7"
+            }
+          ],
+          "finding": "大量mock是长期模式，同端口同套合成合同；真实失效不静默回mock成功，真实待验仅挡对应真实放行。",
+          "review_snapshot_state": "owner_boundary_preserved",
+          "remaining": "各包mock/contract/real分层持续维护，真实接通后也不删mock；不能把样例当真实供给。"
+        }
+      ],
+      "current_remaining": "参考扩展/真实connector、跨版本回执及提供方合同未实施或真实验证。"
+    },
+    {
+      "id": "R021",
+      "requirement": "已有模型API接入，内网仅内部模型，无模型部署",
+      "original_source_refs": [
+        "U03"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§1.1"
+            },
+            {
+              "path": "docs/design/ai-invocation-contract.md",
+              "section_or_selector": "§2 Provider/数据区"
+            }
+          ],
+          "finding": "模型只调用既有API，兼容API只是adapter选项；内网不向外部fallback，不建设训练/部署/GPU或embedding服务。",
+          "review_snapshot_state": "owner_boundary_preserved_in_design",
+          "remaining": "真实Provider能力、结构化输出/usage/配额和数据区需实际核验；A01产品接线未实现。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R022",
+      "requirement": "智能体配置与已有Agent/平台接入",
+      "original_source_refs": [
+        "U01",
+        "U05"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§1.2/1.4"
+            },
+            {
+              "path": "docs/design/ai-invocation-contract.md",
+              "section_or_selector": "§2对象、§4身份、§5外部run"
+            }
+          ],
+          "finding": "Agent接入配置与外部Agent定义/运行图分开，发布钉版本、可变alias风险、配置不授执行权；未复制企业builder。",
+          "review_snapshot_state": "configuration_lifecycle_candidate_documented",
+          "remaining": "A05真实Agent合同/SDK、发布和最小UI未实现；企业平台拥有的checkpoint/取消语义须核验，不根据stub推定。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R023",
+      "requirement": "基于平台特有能力自建领域Agent",
+      "original_source_refs": [
+        "U05"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/domain-agent-reference-scenario.md",
+              "section_or_selector": "§1–6"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/verify.py",
+              "section_or_selector": "fixed_steps/enterprise_stub/bounded_host/ToolEnvironment"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/fixtures.json",
+              "section_or_selector": "A01–A35"
+            }
+          ],
+          "finding": "同一风险整改草案三路径同权限/批准/效果；固定步骤先行，保留平台特有有限host双轨，不自建通用Agent平台。本轮补apply重放读权21条首红后修正，105条Agent检查绿。",
+          "review_snapshot_state": "executable_reference_with_new_replay_gap_fixed",
+          "remaining": "A05/A07产品、真实模型/企业Agent/框架和质量评测仍未实现；文件checkpoint不证明PG或多实例。"
+        }
+      ],
+      "current_remaining": "A05/A06/A07产品实现与真实既有模型/知识/Agent供给按P8；不把合成host视为已接模型或自建通用平台。"
+    },
+    {
+      "id": "R024",
+      "requirement": "自然语言查数据",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§2.1"
+            },
+            {
+              "path": "docs/design/ai-invocation-contract.md",
+              "section_or_selector": "§1 A01、§3 Query catalog、§7"
+            }
+          ],
+          "finding": "自然语言仅形成受限QueryPlan，服务端当前授权注入；计数/分页完整性/来源不足有合同，禁止text-to-SQL与全局管理员后过滤。",
+          "review_snapshot_state": "substantive_query_contract_not_product",
+          "remaining": "实际语言澄清/参数黄金集、受权查询DTO和真实模型输出质量待A01；合成host不证明自然语言准确率。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R025",
+      "requirement": "自然语言下发工单",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§2.2"
+            },
+            {
+              "path": "docs/design/ai-invocation-contract.md",
+              "section_or_selector": "§1 A02、§3逻辑operations、§4精确确认"
+            }
+          ],
+          "finding": "草案、确定性preview与精确确认后创建分开；actor/目标/schema/revision/hash/期限绑定、同key同效果和unknown先查回执。",
+          "review_snapshot_state": "substantive_creation_contract_not_product",
+          "remaining": "A02同真实工单用例接线、界面和当前撤权/重复确认/响应丢失测试未实施；风险代表样例不替代通用建单产品测试。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R026",
+      "requirement": "自然语言计划任务的完整用户旅程",
+      "original_source_refs": [
+        "U01",
+        "U15",
+        "U16"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§2.3"
+            },
+            {
+              "path": "docs/design/scheduled-ai-confirmation.md",
+              "section_or_selector": "三种授权、三个时间、四组合场景及验收"
+            }
+          ],
+          "finding": "保存计划、逐次确认、持续grant分开；离线/跨时隙/逐日补齐/超限保留/修改/取消/unknown有具体合同，TR唯一调度。",
+          "review_snapshot_state": "documented_scheduled_AI_scenarios_not_executable_product",
+          "remaining": "A04/I02/I03精确DTO/持久等待与PG+Redis竞争未实施；持续自动写场景/限额须到相应窗口具体化，不把创建计划当永久批准。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R027",
+      "requirement": "MCP接口改造与能力暴露/消费边界",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/mcp-first-contract.md",
+              "section_or_selector": "§1–8"
+            },
+            {
+              "path": "docs/design/examples/mcp-sdk-interop/interop_test.go",
+              "section_or_selector": "10顶层/33叶；14语义负例"
+            },
+            {
+              "path": "docs/design/examples/mcp-sdk-interop/report.json",
+              "section_or_selector": "reproduction_artifacts/execution_evidence"
+            }
+          ],
+          "finding": "两只读发布和一只读消费、JSON/SSE、版本/能力、禁sampling/elicitation/MRTR、合成AS与当前权限负例有真实SDK回环收据；本轮只读核五个artifact SHA均匹配，未重跑SDK。AI总纲尚有未做协议联调旧泛化句。",
+          "review_snapshot_state": "official_SDK_reference_verified_prior_receipt_product_pending",
+          "remaining": "产品AS/IAM/同意桥/真实Provider、出站TLS/DNS/多实例与CI仍未验证；修正AI总纲时态，并统一外部消费本地canonical能力ID。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R028",
+      "requirement": "RAG的接入方式与已有知识平台复用",
+      "original_source_refs": [
+        "U01",
+        "U05"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§4.1"
+            },
+            {
+              "path": "docs/design/skill-reference-package.md",
+              "section_or_selector": "§5"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/verify.py",
+              "section_or_selector": "current_knowledge_refs/recheck"
+            }
+          ],
+          "finding": "RAG复用已有知识API；按主体ACL与固定id/version/digest，展示/执行再授权，无法按主体裁剪时只批准共享集合或深链；无自建索引默认。已提交业务最小状态与知识内容权限分开。",
+          "review_snapshot_state": "knowledge_boundary_and_synthetic_recheck_documented",
+          "remaining": "真实来源ACL/版本/撤销传播/缓存失效与相关性黄金集待A06；没有逐主体能力时不得用全局账号加prompt隔离。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R029",
+      "requirement": "skill的角色、版本和执行权限边界",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/skill-reference-package.md",
+              "section_or_selector": "§1–7"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/skills/risk-remediation-brief/",
+              "section_or_selector": "SKILL.md/manifest/README"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/verify.py",
+              "section_or_selector": "load_skill_contract/run_skill"
+            }
+          ],
+          "finding": "可信样包/输入输出/版本digest/加载撤销恢复/兼容正反例实际存在，16例未改且全绿；allowed-tools不是授权，不执行下载脚本或建市场。",
+          "review_snapshot_state": "trusted_skill_executable_reference_verified",
+          "remaining": "产品loader、真实制品信任/签名/离线分发、SDK和多实例撤销仍待G05/X02/A07；合成信任锚不冒称供应商签名。"
+        }
+      ],
+      "current_remaining": "A05/A06/A07产品实现与真实既有模型/知识/Agent供给按P8；不把合成host视为已接模型或自建通用平台。"
+    },
+    {
+      "id": "R030",
+      "requirement": "工作流、Agent流程、工单流程能否统一",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§5"
+            },
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§4"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§6"
+            }
+          ],
+          "finding": "统一能力/身份/证据/设计系统和运行关联，保留工单FSM、TR执行、专业SOAR、Agent决策各自写主；一链一个编排与动作重试主，不强行万能图/状态机。",
+          "review_snapshot_state": "flow_unification_boundary_documented",
+          "remaining": "P7供给比较/P9 E08有限持久协同，原动作/等待/批准/条件/并行效果保留；取消业务效果须显式评审，不能用调查销交付。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R031",
+      "requirement": "AI原生演进能承接现有底座而非AI页面孤岛",
+      "original_source_refs": [
+        "U01",
+        "U27"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ai-capabilities.md",
+              "section_or_selector": "§2、§3、§5、§6"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§3 U08/I01；§5"
+            }
+          ],
+          "finding": "AI消费既有受权Query/Action、工单/TR及可靠执行；手动表单仍保留，非AI页面孤岛、不新造业务正本。",
+          "review_snapshot_state": "AI_native_evolution_route_documented",
+          "remaining": "A/I/CE产品路径逐波接线，真实质量与反馈度量待首个用户旅程；未把AI方向批准成任意自动副作用。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R032",
+      "requirement": "数据聚合与安全全生命周期，专业平台优先不造大而全",
+      "original_source_refs": [
+        "U04",
+        "U05"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/vision.md",
+              "section_or_selector": "平台定位"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§1.2专业数据写主"
+            },
+            {
+              "path": "docs/design/soc-collaboration-authorization.md",
+              "section_or_selector": "§1/§8"
+            }
+          ],
+          "finding": "定位为专业事实聚合与本地生命周期；SOC专业研判、CMDB权威及专业处置不自建替代；D14薄协作不是SOC。",
+          "review_snapshot_state": "方向及有限设计已覆盖",
+          "remaining": "真实专业接口/授权和数据时效尚需各源验证；不能把本地协作模型称为专业检测/处置平台。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§1、§2供给与写主表"
+            },
+            {
+              "path": "docs/design/soc-collaboration-authorization.md",
+              "section_or_selector": "§1三种事实、§3动作矩阵"
+            }
+          ],
+          "finding": "聚合与安全生命周期为核心；SOC/CMDB/TIP/SOAR/知识专业事实和执行留源平台，本地只持必要责任/整改/证据/受权引用。",
+          "review_snapshot_state": "owner_professional_reuse_boundary_preserved",
+          "remaining": "逐功能真实API缺口先核，不默认自建替代；领域Agent只在平台特有组合有界自建。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R033",
+      "requirement": "已有专业供给与未知真实API的核验边界",
+      "original_source_refs": [
+        "U05"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/platform-evolution.md",
+              "section_or_selector": "§2"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§3–7"
+            },
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "§6/7"
+            }
+          ],
+          "finding": "用户只确认供给类别存在，未确认每个具体API/协议/ACL/限额；缺真实接口保留mock/契约出口和逐provider窗口，不销真实待验。",
+          "review_snapshot_state": "provider_categories_known_contracts_unverified",
+          "remaining": "E01/I04等逐供给真实条件/薄实现/子估算与回传证据；不要求公开给内部地址/秘密。"
+        }
+      ],
+      "current_remaining": "产品SDK/DTO、真实模型/知识/Agent/SOC授权/配额与黄金集按对应A/I/E包实施；FD03/FD06有限参考样例已经完成，不能再称样例缺失，也不能把它们叫真实企业接通。"
+    },
+    {
+      "id": "R034",
+      "requirement": "内部设备台账模块边界，不重复CMDB",
+      "original_source_refs": [
+        "U11",
+        "U14"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/device-module-contract.md",
+              "section_or_selector": "§1/§2/§5"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "X03"
+            }
+          ],
+          "finding": "设备首期是私有薄目录/看板与人工入口，CMDB为权威，不做第二CMDB/NMS/PAM。",
+          "review_snapshot_state": "已批准首期方向，目标设计/估算已落；未实施",
+          "remaining": "X03/P6.3薄模块和一个合成源；真实CMDB字段/状态源及单厂商工作量P7逐源核验另估。"
+        }
+      ],
+      "current_remaining": "X03只估薄模块及合成来源；真实来源字段、厂商适配和状态语义另核另估，未连设备。"
+    },
+    {
+      "id": "R035",
+      "requirement": "设备状态大屏/仪表盘与来源时效",
+      "original_source_refs": [
+        "U11"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/device-module-contract.md",
+              "section_or_selector": "§2 StatusObservation及授权统计"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "设备投影与管理入口"
+            }
+          ],
+          "finding": "健康、异常、未知、陈旧分开，来源/observed_at/分母与范围可见；不以打开HTTP200证明设备健康，大屏为受限只读。",
+          "review_snapshot_state": "设计覆盖，仪表盘尚未成为产品",
+          "remaining": "状态源、新鲜度、真实设备范围与计数/导出同权验收；无源时明确未知，不自建扫描探针补假数据。"
+        }
+      ],
+      "current_remaining": "X03只估薄模块及合成来源；真实来源字段、厂商适配和状态语义另核另估，未连设备。"
+    },
+    {
+      "id": "R036",
+      "requirement": "多厂商设备无SSO，首期目录/人工登录入口",
+      "original_source_refs": [
+        "U11",
+        "U12",
+        "U13",
+        "U14"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/device-module-contract.md",
+              "section_or_selector": "§3/§4"
+            },
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U13纠正及U14明确选择人工登录"
+            }
+          ],
+          "finding": "明确设备来自多厂商、无SSO保证；L0人工登录为首期，入口回执不叫登录成功；自动代填/专业PAM为另选范围。",
+          "review_snapshot_state": "原纠正已兑现至合同；非设备SSO已交付",
+          "remaining": "真实设备目标/证书/访问权逐项验证；不存密码/cookie，不核心反代所有设备Web流量。"
+        }
+      ],
+      "current_remaining": "X03只估薄模块及合成来源；真实来源字段、厂商适配和状态语义另核另估，未连设备。"
+    },
+    {
+      "id": "R037",
+      "requirement": "Go/Node/PG/Redis/容器/开源组件升级，自行打包不再公司对齐",
+      "original_source_refs": [
+        "U11",
+        "U39",
+        "U40",
+        "U41",
+        "U42"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "go.mod",
+              "section_or_selector": "go 1.27.4"
+            },
+            {
+              "path": "../activelist/go.mod",
+              "section_or_selector": "go 1.27.4"
+            },
+            {
+              "path": "../taskrunner/go.mod",
+              "section_or_selector": "go 1.27.4"
+            },
+            {
+              "path": "../zhuzhao-utils/go.mod",
+              "section_or_selector": "最低1.26.11，toolchain1.27.4"
+            },
+            {
+              "path": "../zhuzhao-ui/.nvmrc",
+              "section_or_selector": "26.13.1"
+            },
+            {
+              "path": "../zhuzhao-ui/package.json",
+              "section_or_selector": "Node/pnpm engines与packageManager"
+            },
+            {
+              "path": "deployments/component-lock.json",
+              "section_or_selector": "PG18.6/Redis8.2.11等固定组合"
+            },
+            {
+              "path": "docs/review/reports/version-modernization-2026-11-12.md",
+              "section_or_selector": "维护结果/恢复/平台限制"
+            }
+          ],
+          "finding": "五仓本地升级候选实际存在并有具名历史验证；utils最低线与推荐线分开。未切共享环境，不重问已确认升级方向。",
+          "review_snapshot_state": "local_version_candidate_delivered_not_main_or_shared_switch",
+          "remaining": "PR/main与真实环境切换、amd64实跑/正式制品/生产恢复按维护报告后继门；本轮未重复重门禁。"
+        }
+      ],
+      "current_remaining": "主线集成、真实环境切换、平台架构/生产制品与恢复等按维护报告的未验窗口推进；不因本地门禁通过销掉未来生产门。"
+    },
+    {
+      "id": "R038",
+      "requirement": "未正式部署，可协调替换旧合同，不背六个月兼容承诺",
+      "original_source_refs": [
+        "U14"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/extension-compatibility.md",
+              "section_or_selector": "§6部署前/后支持边界"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "新旧组合/回滚/迁移"
+            }
+          ],
+          "finding": "部署前可协调替换，六个月承诺未采用；稳定公共合同与私有adapter隔离保留。",
+          "review_snapshot_state": "confirmed_compatibility_principle_documented",
+          "remaining": "实际跨版本参考扩展/connector、在途盘点和部署后支持矩阵按X01/X02等实施。"
+        }
+      ],
+      "current_remaining": "参考扩展/真实connector、跨版本回执及提供方合同未实施或真实验证。"
+    },
+    {
+      "id": "R039",
+      "requirement": "五仓统一PR，允许单维护者检查后合入",
+      "original_source_refs": [
+        "U14"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/standards.md",
+              "section_or_selector": "§12第7条统一PR/单维护者"
+            },
+            {
+              "path": "../zhuzhao-ui/AGENTS.md",
+              "section_or_selector": "分支与合入"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/contributing.md",
+              "section_or_selector": "分支与工作区"
+            },
+            {
+              "path": "../activelist/AGENTS.md",
+              "section_or_selector": "交付与边界"
+            },
+            {
+              "path": "../taskrunner/AGENTS.md",
+              "section_or_selector": "交付与边界"
+            },
+            {
+              "path": "../zhuzhao-utils/AGENTS.md",
+              "section_or_selector": "交付与边界"
+            },
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§1具名11-13远端只读收据"
+            }
+          ],
+          "finding": "现行规则已统一PR，旧Phase4/5豁免明确取代；远端保护只引用具名时点，未用本地规则证明已启用。",
+          "review_snapshot_state": "confirmed_PR_rule_synced_remote_enforcement_pending",
+          "remaining": "G02/G03实际required checks配置及失败/绿PR反例；本轮未重查或变更远端设置。"
+        }
+      ],
+      "current_remaining": "G02先与G03真实check对应再配置强制规则，并验证失败PR拒合/绿PR可合；本轮未改远端。"
+    },
+    {
+      "id": "R040",
+      "requirement": "分档门禁相对现状的区别、排除项和生效窗口",
+      "original_source_refs": [
+        "U24",
+        "U25"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "ENG-D01b六条准入/排除/错分"
+            },
+            {
+              "path": "AGENTS.md",
+              "section_or_selector": "现行完整acceptance纪律"
+            },
+            {
+              "path": "docs/standards.md",
+              "section_or_selector": "§11分档启用边界"
+            }
+          ],
+          "finding": "普通文档/原型/完整档的差别、白名单和未知/混合改动回完整档明确；未提前豁免现行门禁。",
+          "review_snapshot_state": "tiered_gate_design_confirmed_not_activated",
+          "remaining": "G03同步实现分类与quality-gate并验证错分/应跑未跑拒绝后启用。"
+        }
+      ],
+      "current_remaining": "G03同步AGENTS/规则和quality-gate，再证明恶意/边界分类拒绝、应跑未跑不可绿；现行完整门禁不能提前豁免。"
+    },
+    {
+      "id": "R041",
+      "requirement": "全站前端重规划，不能限于点名页面",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "counts/pages/limits"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-pages.json",
+              "section_or_selector": "27页full_audit"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "U01–U07"
+            }
+          ],
+          "finding": "全27路由真实Vue合成状态基线已执行，243基础/27原生200%/54语义/24次级面，14发现均有逐页动作/验收；不是只查首条列出的几页。",
+          "review_snapshot_state": "有限全站设计审计已交；产品改造未交",
+          "remaining": "全部产品页面依U01–U07实施后再验；真实后端角色/资源权限、Provider、全部弹层/时序/画布组合未由基线穷举。"
+        }
+      ],
+      "current_remaining": "U01–U07改产品并逐页回归；当前缺陷未因报告修复，也不把前端权限呈现问题称后端API越权。"
+    },
+    {
+      "id": "R042",
+      "requirement": "普通用户默认首页、Logo404与安全落点",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "FE-FULL-01/02及targeted_cases"
+            },
+            {
+              "path": "../zhuzhao-ui/src/components/Logo/index.vue",
+              "section_or_selector": "RouterLink到根"
+            },
+            {
+              "path": "../zhuzhao-ui/src/router/index.ts",
+              "section_or_selector": "根redirect/home"
+            }
+          ],
+          "finding": "已实际复现无home/空菜单点Logo到404，及无ticket资格仍8次请求；安全默认页与按能力取数已设计；不声称定位原用户账号唯一根因。",
+          "review_snapshot_state": "现态问题有证据，U01/U02修复未实施",
+          "remaining": "改后空菜单、无home、撤权、刷新/关标签、无工单资格及真实服务授权回归。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R043",
+      "requirement": "各页新建主操作位置一致",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "FE-FULL-04及27页redesign"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "PageHeader/SectionHeader"
+            }
+          ],
+          "finding": "页面主操作、区块操作、批量条/行操作已有统一层级与逐页迁移，而非强迫所有功能同一位置。",
+          "review_snapshot_state": "设计与现态核查已交",
+          "remaining": "U02基础与各消费页实际接入、窄屏/焦点/读取资格复验。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R044",
+      "requirement": "卡头说明一致、去除灰色长工程文案",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "FE-FULL-04"
+            },
+            {
+              "path": "../zhuzhao-ui/src/views/ticket/rules/index.vue",
+              "section_or_selector": "规则卡头priority/keyword/target_user等仍在"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "SectionHeader/帮助层级"
+            }
+          ],
+          "finding": "灰色长工程说明真实存在，业务短摘要/规则数与可访问帮助已有方案；诊断key保留在真实专家场景。",
+          "review_snapshot_state": "已审且有改造方案，未改产品文案",
+          "remaining": "U02/U04/U06实施并看整页，不用替换一个字符串当全站完成。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R045",
+      "requirement": "工单列表多选批量标签",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U01明确要求工单列表多选标签"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "工单批量标签API/权限接线草案"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "FE-FULL-06/代表Vue组合"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "U03.scope第一项"
+            }
+          ],
+          "finding": "批量添加标签是明确必交，未降为旧条件候选；本页显式选择、逐资源授权、部分失败/unknown收据已定义；现产品只有单票API/无选择列。",
+          "review_snapshot_state": "必交设计已覆盖，真实Vue本地回执组合已验；生产批量能力未实现",
+          "remaining": "U03/P6.3实现API/上限/幂等/权限与逐项重试，改后真实栈验证；批量移除/分派/关闭不借此自动全批准。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R046",
+      "requirement": "搜索/筛选/展开的视觉与语义统一",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "FE-FULL-05/页面状态"
+            },
+            {
+              "path": "../zhuzhao-ui/src/components/FilterBar/index.vue",
+              "section_or_selector": "controlEls/applyCollapse，无aria-expanded/controls"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "FilterBar/ProTable合同"
+            }
+          ],
+          "finding": "现有折叠按DOM序号，生效条件隐藏、维度无名等已审；目标draft/applied、chips、明确展开/清除及列表/导出同源。",
+          "review_snapshot_state": "当前缺口与统一设计已交，目标组件未改",
+          "remaining": "各页控制绑定、URL/缓存/导出状态一致、键盘/暗窄及真实请求竞态回归。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R047",
+      "requirement": "情报历史左右栏、回填后明确重查、当前结果/本机记录",
+      "original_source_refs": [
+        "U01",
+        "U31"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U31自包含确认"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "情报主从工作区"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "intel及supplemental_intel_states"
+            }
+          ],
+          "finding": "左右栏、历史只回填、明确重查已确认；首期本机按用户元数据非历史结果快照；已补真实Vue结果、空对象/stale与原生缩放基线。",
+          "review_snapshot_state": "方向已批、设计/现态审查已交；生产历史改造未实施",
+          "remaining": "U05接真实产品与Provider；跨端历史另窗，不把当前结果冒称过去结果，补并发/失败/权限回归。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R048",
+      "requirement": "全站配色、字体字号、间距比例和密度",
+      "original_source_refs": [
+        "U01"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+              "section_or_selector": "counts/FE-FULL-08/09/11/12及semantics"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "单一推荐视觉体系"
+            }
+          ],
+          "finding": "字体/字号/间距/亮暗/比例非只数学token；已有270张分组看图、实际计算颜色候选和AX/Tab/原生200%；明确document无溢出不等可用。",
+          "review_snapshot_state": "全站有限视觉审计已交，非WCAG认证或全部新UI通过",
+          "remaining": "U02/U06实施中校准；真实触屏/原生读屏及320/1366/1920全部组合不在本轮通过范围。"
+        }
+      ],
+      "current_remaining": "U01–U07改产品并逐页回归；当前缺陷未因报告修复，也不把前端权限呈现问题称后端API越权。"
+    },
+    {
+      "id": "R049",
+      "requirement": "默认单侧栏+身份顶栏，页签页脚不占默认首屏",
+      "original_source_refs": [
+        "U28",
+        "U29"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "turn18/turn19：U28建议两项，U29可以"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "所有者已确认UX01"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "U02"
+            }
+          ],
+          "finding": "可以只确认单侧栏/身份顶栏方向及首页责任，不自动授权删四布局；页签/页脚不占默认首屏。",
+          "review_snapshot_state": "方向已批准，壳层未实现",
+          "remaining": "U02提出旧布局兼容/退出细节并实施；不换组件库或借短同意批准更多建议。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R050",
+      "requirement": "首页当前处理/复核责任，甲乙责任切换与去重",
+      "original_source_refs": [
+        "U28",
+        "U29"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "turn18甲处理乙复核例/U29"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "首页责任投影§4.3之后"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "U02及D10.scope"
+            }
+          ],
+          "finding": "普通处理与明确risk_owner复核区分，当前责任、列表/角标同源去重；不把can_transition、creator或CC等同待办，不为统计自动改派。",
+          "review_snapshot_state": "方向已批，分批责任投影合同已交",
+          "remaining": "U02普通分支、D10/R3同批复核投影实际实现；接口/真实计数深链尚未交。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R051",
+      "requirement": "首页任务与消息按权限保留，全局态势另视图",
+      "original_source_refs": [
+        "U28",
+        "U29"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "turn18首页任务/消息及独立全局态势建议/U29"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "首页/任务卡"
+            }
+          ],
+          "finding": "按权限保留个人任务与消息，全局态势是另有权视图，不把首页变成只剩工单或专业SOC大屏。",
+          "review_snapshot_state": "方向与样板覆盖，未接新生产聚合",
+          "remaining": "U02/U06及任务能力包接线；失败不归零，无权不发请求。"
+        }
+      ],
+      "current_remaining": "U01–U07按逐页候选修改产品，改后再跑视觉/角色/键盘与真实栈门禁；报告与样板已交，未来产品改造/完整可访问性认证未交。"
+    },
+    {
+      "id": "R052",
+      "requirement": "文件字段上传追加B保留A，手动删A，多选及Markdown澄清",
+      "original_source_refs": [
+        "U15",
+        "U16",
+        "U17",
+        "U18"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U16–U18澄清与追加纠正"
+            },
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "C02/ENG-D02"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "文件上传追加与主动删除"
+            },
+            {
+              "path": "../zhuzhao-ui/src/views/ticket/create/index.vue",
+              "section_or_selector": "onFileChange读取input.files?.[0]"
+            }
+          ],
+          "finding": "明确指工单自定义file上传而非仓库.md；B默认追加且保留A，显式删除与引用保护分开；现附件区多选不等于字段一次多选已做。",
+          "review_snapshot_state": "业务取舍已批，C02/U03目标清楚；产品保护与字段多选未全实现",
+          "remaining": "引用绑定/删除保护、批量逐项结果、额度/并发/GC/重投按C02/U03验证。"
+        }
+      ],
+      "current_remaining": "准确接口/表结构/参数及当前实现改造、并发/崩溃/重投验证尚未执行；不将候选阈值当SLA。"
+    },
+    {
+      "id": "R053",
+      "requirement": "定时任务可选错失策略并充分细化",
+      "original_source_refs": [
+        "U15",
+        "U16"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U15/U16按任务选择、U20超限暂停明确答复"
+            },
+            {
+              "path": "docs/design/schedule-recovery-policy.md",
+              "section_or_selector": "§2–§7：skip/coalesce_latest/catch_up_bounded、episode、overflow_policy、preview"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "定时任务表单分层"
+            }
+          ],
+          "finding": "不是固定一律补一次；创建/编辑按Action允许集选策略，区别迟到/漏触发/失败重试/unknown；超限余项持久hold、待授权扩范围或明确跳过。",
+          "review_snapshot_state": "已确认方向且细节合同已交，调度新策略未实现",
+          "remaining": "C03/I03实现时锁定DTO/默认模板/时区/旧计划cutover、历史源能力、预算/速率/多实例与真实恢复反例；数值不是已批SLA。"
+        }
+      ],
+      "current_remaining": "准确接口/表结构/参数及当前实现改造、并发/崩溃/重投验证尚未执行；不将候选阈值当SLA。"
+    },
+    {
+      "id": "R054",
+      "requirement": "逐次补齐超限暂停并保留余项",
+      "original_source_refs": [
+        "U20"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U15/U16按任务选择、U20超限暂停明确答复"
+            },
+            {
+              "path": "docs/design/schedule-recovery-policy.md",
+              "section_or_selector": "§2–§7：skip/coalesce_latest/catch_up_bounded、episode、overflow_policy、preview"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "定时任务表单分层"
+            }
+          ],
+          "finding": "不是固定一律补一次；创建/编辑按Action允许集选策略，区别迟到/漏触发/失败重试/unknown；超限余项持久hold、待授权扩范围或明确跳过。",
+          "review_snapshot_state": "已确认方向且细节合同已交，调度新策略未实现",
+          "remaining": "C03/I03实现时锁定DTO/默认模板/时区/旧计划cutover、历史源能力、预算/速率/多实例与真实恢复反例；数值不是已批SLA。"
+        }
+      ],
+      "current_remaining": "准确接口/表结构/参数及当前实现改造、并发/崩溃/重投验证尚未执行；不将候选阈值当SLA。"
+    },
+    {
+      "id": "R055",
+      "requirement": "状态转换/转派成功含义，本地事务与异步后继",
+      "original_source_refs": [
+        "U15",
+        "U16"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "turn9助手先修正为本地必需状态+处理人同事务；随后U16第3项认可"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "reassign明确业务取舍"
+            },
+            {
+              "path": "internal/service/ticket/transition_service.go",
+              "section_or_selector": "Transition提交后RunPostActions当前行为"
+            }
+          ],
+          "finding": "原始确认绑定的是修正后的分类，不能回到最早一概异步建议：必需本地变更原子成功，独立后继可靠异步，外部完成前提先待回执。",
+          "review_snapshot_state": "认可来源与合同一致，当前旧运行差距明确",
+          "remaining": "C04/R01抽tx用例、intent/receipt与失败恢复，未因设计改写旧post_action行为。"
+        }
+      ],
+      "current_remaining": "准确接口/表结构/参数及当前实现改造、并发/崩溃/重投验证尚未执行；不将候选阈值当SLA。"
+    },
+    {
+      "id": "R056",
+      "requirement": "新工单类型仅参与人、旧类型保留范围",
+      "original_source_refs": [
+        "U21"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U21第一项明确选择"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§5.1/5.2及B01"
+            }
+          ],
+          "finding": "新类型默认相关人员，旧类型inherit保留现有范围；收紧旧类型须预览，不另设敏感开关。",
+          "review_snapshot_state": "业务方向已批准，D03目标非现有字段",
+          "remaining": "D03种子、迁移和列表/详情/导出/计数同谓词与存量兼容实证。"
+        }
+      ],
+      "current_remaining": "D03及风险/事件领域的产品权限种子、同源读写谓词与真实正反例仍按包实施；已确认B01–B05不重问，SOC真实接口与B09失联人工入口待各自激活门。"
+    },
+    {
+      "id": "R057",
+      "requirement": "抄送仅查看评论，不附送处理权",
+      "original_source_refs": [
+        "U21"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U21第二项明确选择"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§5.2矩阵/§4.3 capabilities/B02"
+            }
+          ],
+          "finding": "合法CC读/评论但不附送处理、分派、改字段或状态；入口权限与后端动作仍独立核。",
+          "review_snapshot_state": "已批准目标；现能力未被报告扩大",
+          "remaining": "D03各协作入口按当前资格校验，不能仅前端隐藏或把ticket_cc全部role当普通CC。"
+        }
+      ],
+      "current_remaining": "D03及风险/事件领域的产品权限种子、同源读写谓词与真实正反例仍按包实施；已确认B01–B05不重问，SOC真实接口与B09失联人工入口待各自激活门。"
+    },
+    {
+      "id": "R058",
+      "requirement": "all数据范围不越类型限制，不另造敏感字段",
+      "original_source_refs": [
+        "U21",
+        "U22"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U22第一项确认；U21第三项是询问而非独立批准"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "查看范围必要性/B03"
+            }
+          ],
+          "finding": "scope=all不能越类型查看范围，系统级既有例外单列；不新增is_sensitive通用等级/ABAC产品。",
+          "review_snapshot_state": "明确确认与候选字段一致，未实现",
+          "remaining": "D03分组谓词避免OR scope_all/cc逃逸，跨所有读取入口/真实账号验证。"
+        }
+      ],
+      "current_remaining": "D03及风险/事件领域的产品权限种子、同源读写谓词与真实正反例仍按包实施；已确认B01–B05不重问，SOC真实接口与B09失联人工入口待各自激活门。"
+    },
+    {
+      "id": "R059",
+      "requirement": "独立授权业务管理者管理参与人/抄送",
+      "original_source_refs": [
+        "U22"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U22第二项明确选择"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§5.2/5.3/B04"
+            }
+          ],
+          "finding": "有独立授权业务管理者管理参与/CC，创建人不自动有邀请权；按钮码是未来目标。",
+          "review_snapshot_state": "业务已批准、API与迁移未落码",
+          "remaining": "D03权限注册、预览/CAS/active候选、域受管参与保护和后端拒绝路径。"
+        }
+      ],
+      "current_remaining": "D03及风险/事件领域的产品权限种子、同源读写谓词与真实正反例仍按包实施；已确认B01–B05不重问，SOC真实接口与B09失联人工入口待各自激活门。"
+    },
+    {
+      "id": "R060",
+      "requirement": "虚拟风险组管理/录入/受限派单，不额外通用建单权",
+      "original_source_refs": [
+        "U22",
+        "U23",
+        "U30"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U23追问不是批准，U30职责方案明确确认"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§5.4/§8.4/B05"
+            },
+            {
+              "path": "internal/repository/role_repo.go",
+              "section_or_selector": "GetEffectiveRoleCodes组织角色展开"
+            }
+          ],
+          "finding": "虚拟组通过org_roles获L1职责，仍过风险范围与状态；risk:manage可向配置类型/组织派单，不再叠通用ticket:create；只读不能派单。停组织派生权当前还有代码差距。",
+          "review_snapshot_state": "方向已批；组织角色资产可复用，风险桥/撤权修正未实现",
+          "remaining": "C04/D06组织停用派生权撤销及D03/D08/D10受限领域桥、实际名单/目标映射与三层反例。"
+        }
+      ],
+      "current_remaining": "D03及风险/事件领域的产品权限种子、同源读写谓词与真实正反例仍按包实施；已确认B01–B05不重问，SOC真实接口与B09失联人工入口待各自激活门。"
+    },
+    {
+      "id": "R061",
+      "requirement": "风险记录与攻击应急事件区别，SOC事件职责授权",
+      "original_source_refs": [
+        "U23",
+        "U30"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U30风险与攻击/应急SOC职责分开"
+            },
+            {
+              "path": ".codex/audits/conversation-reaudit-20261113/public-dialogue.json",
+              "section_or_selector": "turn54 B09用户明确答复id01a1d4c1-9740-75f3-a331-f86fcb20b850"
+            },
+            {
+              "path": "docs/design/soc-collaboration-authorization.md",
+              "section_or_selector": "§1–§6/§7 S01–S46"
+            }
+          ],
+          "finding": "risk_item与SOC事件专业事实/本地case分开；风险组不自动得事件权限。B09只在当前权限有效、协调者确认陈旧+理由后手工本地协作；自动派单暂停，不增隔离封禁、不绕UAA。",
+          "review_snapshot_state": "职责/Schema/有限参考模型已交；B09后继已明确批准，非真实SOC已通",
+          "remaining": "D14产品及真实SOC授权/水位/共享分类验收仍未实现；冻结93点中B09待确认是先前时点，应由当前overlay覆盖，不能倒写历史。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/soc-collaboration-authorization.md",
+              "section_or_selector": "§1–8、B09后继"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/fixtures.json",
+              "section_or_selector": "S01–S46，尤其S37–S46"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "F001-B09"
+            }
+          ],
+          "finding": "风险虚拟组管理不自动授事件职责，专业研判/封禁留SOC，本地协作按资格×实例/引用范围。46例含撤权/接管/陈旧人工确认与自动hold/隐藏存在性裁剪。本轮SOC夹具与原46例未变且绿。B09已确认，旧U63对账pending保留历史。",
+          "review_snapshot_state": "authorization_matrix_reference_verified_B09_confirmed_not_implemented",
+          "remaining": "D14实现/权限种子/真实SOC稳定身份、分类、时效与撤回合同；人工确认不豁免UAA授权新鲜度。"
+        }
+      ],
+      "current_remaining": "B09已后继确认；D14产品/真实SOC仍未实施，来源陈旧确认不能绕过当前授权。",
+      "followup_refs": [
+        "F001-B09"
+      ]
+    },
+    {
+      "id": "R062",
+      "requirement": "离职批准映射后自动逐项交接，安全禁用先行",
+      "original_source_refs": [
+        "U32"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U32离职映射自包含确认"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§7.3/§7.5/B06"
+            }
+          ],
+          "finding": "先禁登录撤会话，再按已批准继任映射自动逐项合法交接；不重问每项，缺映射/失效/越权保留待交接；不抹creator历史或复职抢回。",
+          "review_snapshot_state": "默认策略已批准且详设覆盖，真实映射/产品交接未执行",
+          "remaining": "D06持久security intent、HandoverCase清单、部分失败/重启补扫、真实HR状态和权限验证。"
+        }
+      ],
+      "current_remaining": "实际人员/组织映射、plan、逐业务清单与撤权/批次恢复尚未实现或验收。"
+    },
+    {
+      "id": "R063",
+      "requirement": "撤部预览确认plan后批量接管，历史/权限保护",
+      "original_source_refs": [
+        "U32"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U32撤部plan自包含确认"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§7.4/§7.5/B07"
+            }
+          ],
+          "finding": "先预览虚拟组/在途项/live权限并批准具体plan后批量迁挂，保留历史与组ID，不复制原部门org_roles或猜祖先。",
+          "review_snapshot_state": "默认策略已批；具体plan批准与apply未发生",
+          "remaining": "D06准确接管锚、路径/权限变化、CAS/部分恢复与无合法目标待处理验收。"
+        }
+      ],
+      "current_remaining": "实际人员/组织映射、plan、逐业务清单与撤权/批次恢复尚未实现或验收。"
+    },
+    {
+      "id": "R064",
+      "requirement": "审计阶段、当前完成程度及owner何时参与",
+      "original_source_refs": [
+        "U06",
+        "U07",
+        "U08",
+        "U19",
+        "U34",
+        "U35",
+        "U37",
+        "U50",
+        "U51"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-closeout.md",
+              "section_or_selector": "现行摘要及历史五步快照"
+            },
+            {
+              "path": "docs/review/planning-decisions.json",
+              "section_or_selector": "已确认/待条件/active_work_boundary"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "F001-B09"
+            }
+          ],
+          "finding": "审计步骤与产品波次、已决方向与实际激活批准分开；当前只做再核，不自动开工。册内两组待闭环不等于全部未来业务选择。",
+          "review_snapshot_state": "audit_completion_boundary_and_participation_windows_documented",
+          "remaining": "新当前overlay说明本次再核；将真实配置/条件池与上轮尚未批准建议保持分开。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    },
+    {
+      "id": "R065",
+      "requirement": "原6/7/8/9及更远功能承接、优化扩展与适合规模的渐进路线",
+      "original_source_refs": [
+        "U01",
+        "U26",
+        "U27",
+        "U02",
+        "U33",
+        "U38",
+        "U57"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/roadmap.md",
+              "section_or_selector": "全P6–P10及更远路线"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§1–§8及双模式补充"
+            },
+            {
+              "path": "docs/review/roadmap-capability-continuity.json",
+              "section_or_selector": "169来源及原26工单效果"
+            }
+          ],
+          "finding": "保留原价值、允许纠错/专业替代和渐进范围；未见新确认取消既定效果。现行演进页仍有过期未计价句。",
+          "review_snapshot_state": "bounded_route_continuity_audited_current_summary_fix_required",
+          "remaining": "校准CE/UAA计价现态；远期准确设计与真正业务取消需对应证据/审阅。"
+        },
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U26/U27承接原6–9及更远且可纠正设计"
+            },
+            {
+              "path": "docs/review/roadmap-capability-continuity.json",
+              "section_or_selector": "P6-MIG-01/FUT-F15及旧条件来源"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "原71+CE5；U03条件小件；E10"
+            }
+          ],
+          "finding": "功能承接与技术形式可重审；评论改删/评价/批量关闭仍是条件候选，批量标签不降格。风险Excel是已确认条件需求，当前混合表述需显式区分；E10调查日窗还有真实冲突。",
+          "review_snapshot_state": "承接设计已有实质产物；发现E10排程缺口，不能以总账存在宣称所有窗口一致",
+          "remaining": "不借最新1–13推荐升格候选；确认触发/实际增量另估，修正E10前后窗矛盾。"
+        }
+      ],
+      "current_remaining": "逐包回读原始效果与后继合同；全部远期DTO/DDL/测试未冻结。新范围不能假定已含旧价。"
+    },
+    {
+      "id": "R066",
+      "requirement": "新旧路线差异与Phase6改动幅度",
+      "original_source_refs": [
+        "U36",
+        "U38"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/roadmap-change-comparison-2026-11-12.md",
+              "section_or_selector": "2026-11-13整会话补齐后的再变化"
+            },
+            {
+              "path": "docs/review/user-requirements-reconciliation.json",
+              "section_or_selector": "requirements[id=R066].remaining"
+            }
+          ],
+          "finding": "对照末节已有CE/LS/RP102–160与新总额；旧93记录remaining仍说CE新排程差异待回填，当前读法需后继覆盖。",
+          "review_snapshot_state": "comparison_successor_delivered_old_remaining_requires_overlay",
+          "remaining": "在新current overlay关闭已完成回填，保留原截止与原prior快照，不倒写旧证据。"
+        }
+      ],
+      "current_remaining": "CE/LS/RP的新旧差异已在现行对照和总排程回填；本轮E10调查前移P6.1，单席总价/总工期不变。未来选定范围再按变更估算。"
+    },
+    {
+      "id": "R067",
+      "requirement": "包含新增需求的完整最新排期",
+      "original_source_refs": [
+        "U36",
+        "U44",
+        "U48"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-scope-estimates.json",
+              "section_or_selector": "各项WBS/net与conditional_unselected_scope"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "6输入摘要、8情景/席位成本与resource_records"
+            },
+            {
+              "path": "docs/review/execution-schedule-model.json",
+              "section_or_selector": "父子/分解/迁移配额"
+            },
+            {
+              "path": "docs/review/execution-schedule.md",
+              "section_or_selector": "完整金额/波次/条件"
+            }
+          ],
+          "finding": "实际WBS净和102–160、所有6输入hash吻合；公共394–656、含条件R407–678、维护另1–2。只读复算8组合成本、依赖和资源槽无冲突。",
+          "review_snapshot_state": "complete_bounded_scope_priced_and_schedule_consistent",
+          "remaining": "真实等待单列；E05/E10未选整套不在当前价格；T0未启动，无严格生产日期承诺。"
+        },
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U01触发合理性/全部挂账排期及U48完整排期要求"
+            },
+            {
+              "path": "docs/design/business-lifecycle-contracts.md",
+              "section_or_selector": "§13 E10调查不依D08/D10"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "E10.decision_due与dependencies/wave"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "E10在public_R_pending/with_maintenance_reserve/resources/1/ordered_tasks"
+            }
+          ],
+          "finding": "补充审查发现：E10的2–4日只计调查/裁决且承诺P6.1出口，但完整调度却依D08/D10并排P6.E（D225–227 / D369–373），晚于P6.1出口D117/D190。结构DAG/算术PASS不会发现这种语义截止冲突。",
+          "review_snapshot_state": "大部分触发已有固定裁定/总价；E10为本轮真缺口待修",
+          "remaining": "在总价不重复增加前提下前移已计调查劳动；获选真实导入/merge实施仍另估P6.E。原确认条件需求/建议候选必须分开，不以调查完成代功能交付。"
+        }
+      ],
+      "current_remaining": "当前E10调查已归P6.1/S04，无D08/D10实施前置；获选实际建设P6.E另估。总工程价及8组总工期保持，外部等待另列。"
+    },
+    {
+      "id": "R068",
+      "requirement": "UAA指南要求与认证/菜单角色治理的区别",
+      "original_source_refs": [
+        "U45"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U45指南要求与为何菜单/角色也需治理"
+            },
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "§1/§2/§3"
+            }
+          ],
+          "finding": "认证与岗位授权治理分开；稳定资源code、三feed、数据属性写主、批准回传有具体处置，本地仍执行三层资源/业务限制；不是把菜单交中央渲染。",
+          "review_snapshot_state": "指南抽象映射/设计覆盖，非私有协议已核验",
+          "remaining": "真实协议/主键/纳管属性/枚举/完整性仍须C/P/R验证，不能以公开设计取代企业要求。"
+        }
+      ],
+      "current_remaining": "真实公司协议/接管边界尚待提供方核验，不称企业接入已可用。"
+    },
+    {
+      "id": "R069",
+      "requirement": "公司资料去敏且不得传播",
+      "original_source_refs": [
+        "U45"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U45明确公司数据不传播"
+            },
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "资料边界/§4私有adapter/§8"
+            },
+            {
+              "path": "AGENTS.md",
+              "section_or_selector": "公司信息隔离基线"
+            }
+          ],
+          "finding": "本轮读取的受控设计只用通用治理抽象，未复述私有公司名/地址；私有SDK/凭据/字段不进入公共核心或mock。",
+          "review_snapshot_state": "公开资料处理边界覆盖；本次只读审查未读取/上传私人指南原文",
+          "remaining": "不把本次文档抽查称全Git历史秘密扫描；真实报文/回执继续私有留存，仅回填去敏结论。"
+        }
+      ],
+      "current_remaining": "后续真实合同和回执须继续私有保存，仅回填去敏结论；不宣称对全Git历史做过秘密扫描。"
+    },
+    {
+      "id": "R070",
+      "requirement": "不接UAA仍完整保留本地账号角色菜单权限",
+      "original_source_refs": [
+        "U46"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U46独立与企业双模式必须都支持"
+            },
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "§5 两种正式模式/双模式验收"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "独立模式与企业统一认证最小接线"
+            }
+          ],
+          "finding": "无UAA配置、私有adapter/MQ或企业网络仍保留本地登录/IAM/赋角/菜单分配/权限；独立不是开发或应急。现菜单是只读目录/迁移维护，不虚构在线CRUD。",
+          "review_snapshot_state": "双模式完整设计与最小UI边界已交，公共UAA未实施",
+          "remaining": "P同一核心验独立完整链与合成企业纳管，R真实接管/退出；企业故障不自动切本地放权。"
+        }
+      ],
+      "current_remaining": "双模式准确配置、迁移/切换/撤权测试尚未实现。"
+    },
+    {
+      "id": "R071",
+      "requirement": "内网UAA通过私有adapter与公共核心解耦",
+      "original_source_refs": [
+        "U45",
+        "U46"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U09/U10/U45/U46"
+            },
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "§4认证/目录/账号/授权/条件与回执端口"
+            },
+            {
+              "path": "docs/design/intranet-adapter-migration.md",
+              "section_or_selector": "稳定DTO/私有协议边界"
+            }
+          ],
+          "finding": "公司协议/SDK/MQ/字段在私有adapter，核心验来源管辖后经领域提交；不直写库、不接受adapter整份Casbin规则，不为内网建核心分叉。",
+          "review_snapshot_state": "公共/私有边界明确，非现成adapter产品",
+          "remaining": "稳定资源键/DTO版本、停用撤权、来源批次与核心升级组合要真实合同和跨版本验证。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "§3权源、§4公共/私有、§5模式、§6/7验收"
+            },
+            {
+              "path": "docs/design/extension-compatibility.md",
+              "section_or_selector": "§8"
+            }
+          ],
+          "finding": "UAA公司字段/SDK和真实消息留私有adapter，公共核心拥有受来源约束的投影用例/授权失效，不允许直改角色表/Casbin；独立完整IAM长期保留。",
+          "review_snapshot_state": "dual_mode_private_adapter_contract_documented",
+          "remaining": "公共P产品和私有R真实接入/升级矩阵未实现；S01等真实差异要先生成再批准，不让自己的产物成为联调前置。"
+        }
+      ],
+      "current_remaining": "真实adapter及核心升级的跨版本证据尚未实现；真实指南核验不等于SDK可插即用。"
+    },
+    {
+      "id": "R072",
+      "requirement": "UAA双模式后全路线冲突遗漏及相较前版变化",
+      "original_source_refs": [
+        "U47"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U47要求双模式后全路线/排期再核"
+            },
+            {
+              "path": "docs/review/uaa-dual-mode-review.json",
+              "section_or_selector": "逐项复核"
+            },
+            {
+              "path": "docs/design/uaa-governance-integration.md",
+              "section_or_selector": "§6/§7"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "76父包/16子出口/CE/LS/RP及R独立情景"
+            }
+          ],
+          "finding": "双模式相关依赖、计价与模式生产门都有实质复核；本轮再次发现UAA父包数和UI状态漂移，主审已在审查期间修正。",
+          "review_snapshot_state": "有界路线复核已交，现行计数/状态本轮修正；仍有E10非UAA窗口矛盾",
+          "remaining": "真实接管政策/字段与正式配置待核，不能以公共排程或R整体收口替代pre_apply实际批准。"
+        }
+      ],
+      "current_remaining": "产品公共UAA/私有adapter及真实联调仍按E01-UAA-C/P/R实现；完整独立IAM不等公司R。CE/LS本轮库存与估算已补，不能再留作未完成审计。"
+    },
+    {
+      "id": "R073",
+      "requirement": "UAA公共实现、最小前端、运维接线补估",
+      "original_source_refs": [
+        "U48"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/uaa-implementation-estimate.json",
+              "section_or_selector": "C/P/R有限画像与复用扣重"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "E01-UAA-C/P/R独立出口"
+            }
+          ],
+          "finding": "C2–3、P25–39、R13–22已含相应最小UI/运维/CI/质量；正式目标与正常切换观察在R，不再叠加原15–24。",
+          "review_snapshot_state": "bounded_UAA_public_UI_ops_and_real_scope_priced",
+          "remaining": "真实供给/接管/失联/应急激活仍按条件；选定画像之外增量另估，不当作真实联调通过。"
+        },
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/uaa-implementation-estimate.json",
+              "section_or_selector": "C2–3/P25–39/R13–22及P后台/最小UI/运维/CI/质量WBS"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "E01-UAA-C/P/R"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+              "section_or_selector": "最小功能与U06视觉去重"
+            }
+          ],
+          "finding": "公共实现、四页最小UI、运维和CI/质量不再漏估；UAA不等已有JWT，P/R与U06/CE/LS各计一次。",
+          "review_snapshot_state": "有限估算已交，非UAA实现/真实联调通过",
+          "remaining": "准确DTO/DDL/协议/切换runbook仍按出口实施；企业新增必选语义超画像须复估，不能忽略指南。"
+        }
+      ],
+      "current_remaining": "只是冻结有界工程价，非真实联调通过；不含后来CE全部增量。"
+    },
+    {
+      "id": "R074",
+      "requirement": "真实内网联调条件单列并给具体确认场景",
+      "original_source_refs": [
+        "U48"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/uaa-real-integration-conditions.json",
+              "section_or_selector": "conditions/owner_scenarios/entry_and_activation_stages/resource_binding"
+            },
+            {
+              "path": ".codex/audits/conversation-reaudit-20261113/public-dialogue.json",
+              "section_or_selector": "turn55事项2/3/7是建议或未来实际批准，turn56非答复"
+            }
+          ],
+          "finding": "测试进入、R内部产物、正式apply前批准、apply后观察分层；S01映射差异/S02新鲜度故障/S03恢复入口场景明确。产能question_pending本轮已改false。",
+          "review_snapshot_state": "真实条件与具体确认情景已交；B08/UAA-P01仍待对应业务/提供方决策",
+          "remaining": "真实资源、协议、映射、新鲜度阈值及应急账号/操作名单按真实窗口批准；1–13建议未被本轮用户批准。"
+        }
+      ],
+      "current_remaining": "真实接管对象、失联新鲜度与应急入口政策须提供方核验后以具体方案确认。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    },
+    {
+      "id": "R075",
+      "requirement": "单席每周5工程日、尽快但不要求严格日期",
+      "original_source_refs": [
+        "U49"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-decisions.json",
+              "section_or_selector": "P-RESOURCE；active_work_boundary"
+            },
+            {
+              "path": "docs/review/execution-schedule.json",
+              "section_or_selector": "resource_assumptions"
+            },
+            {
+              "path": "docs/review/uaa-real-integration-conditions.json",
+              "section_or_selector": "resource_binding"
+            }
+          ],
+          "finding": "主决策与排程已确认1有效席位×5日，但UAA条件JSON仍question_pending=true并未明确1席已批准，与当前事实不一致。",
+          "review_snapshot_state": "capacity_confirmed_document_drift_requires_fix",
+          "remaining": "只修实际T0/企业日期尚未绑定与产能已确认的区分；该输入变化后重生成排程摘要，不重问产能或改工程量。"
+        }
+      ],
+      "current_remaining": "1席×每周5工程日已确认；真实T0和企业启用日期尚未绑定，不重新询问已确认产能，不因本轮审计自动开工。"
+    },
+    {
+      "id": "R076",
+      "requirement": "先设计落档和本地提交、不急业务开发",
+      "original_source_refs": [
+        "U52",
+        "U55"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-decisions.json",
+              "section_or_selector": "active_work_boundary"
+            },
+            {
+              "path": "docs/phase6/implementation-handoff.md",
+              "section_or_selector": "所有者最新边界/当前交付"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "F001-B09实施未开展"
+            }
+          ],
+          "finding": "只设计/审计落档、不急业务开发继续有效；版本维护和防遗漏检查是具名有限工作，不代表Phase6业务开工。",
+          "review_snapshot_state": "design_only_boundary_preserved",
+          "remaining": "新建议不当批准；本轮不push/main/部署/改名或切共享环境。"
+        }
+      ],
+      "current_remaining": "本次对账仍属文档审计；无push/合main/部署/正式改名授权扩张。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    },
+    {
+      "id": "R077",
+      "requirement": "核心及可插拔产品能力都提供受权外部接口",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-invocation-contract.md",
+              "section_or_selector": "§1–3"
+            },
+            {
+              "path": "docs/design/capability-operation-catalog.md",
+              "section_or_selector": "§1–3"
+            },
+            {
+              "path": "docs/design/current-module-boundaries.md",
+              "section_or_selector": "MB16及后继"
+            }
+          ],
+          "finding": "全部可复用产品能力有受权外部接口是渐进愿景；158设计映射/受控例外区分维护/纯机制/内部事务，不滥开放repo、凭据或审计伪造。当前未有通用runtime注册。",
+          "review_snapshot_state": "current_inventory_and_gradual_API_contract_audited",
+          "remaining": "CE01与CE02-L随P6.1/P6.3/P7/P9迁移；新非HTTP消费者前必须同资格/同领域实现；未把三演示等于全部已通。"
+        }
+      ],
+      "current_remaining": "现有领域实现保留，CE01/CE02-S/D/L按P6.1至P9逐模块迁移并运行；新消费者前不能开旁路。"
+    },
+    {
+      "id": "R078",
+      "requirement": "API/内部/手动/工单/计划/事件同一受控业务执行路径",
+      "original_source_refs": [
+        "U53",
+        "U54",
+        "U55"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-invocation-contract.md",
+              "section_or_selector": "§2.1–2.3"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§2、§6/7"
+            },
+            {
+              "path": "docs/design/examples/capability-reference/verify_semantics.py",
+              "section_or_selector": "decide existing record read guard"
+            },
+            {
+              "path": "docs/design/examples/ai-soc-reference/verify.py",
+              "section_or_selector": "ToolEnvironment.apply/current_receipt_projection"
+            }
+          ],
+          "finding": "共同路径定义实质包含参数/当前授权/事务/幂等/预算，不只是同格式；发现AI参考apply重放漏读权，独立首红21后修复最小receipt，防其与共同oracle产生行为分叉。",
+          "review_snapshot_state": "precise_reference_contract_plus_actual_gap_fixed",
+          "remaining": "真实HTTP/内部/手动/工单/任务产品路径仍未迁移；需代码归属与效果/拒绝/撤权证据，不能仅Schema通过。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R079",
+      "requirement": "工单节点配置任务且完成结果展示于工单",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "business-ui-independent-review",
+          "evidence": [
+            {
+              "path": ".codex/audits/full-conversation-readback-20261113/public-dialogue.json",
+              "section_or_selector": "U53工单节点任务与结果显示"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "CHAIN-A/CE02-D"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "accepted/running/completed/unknown及receipt"
+            },
+            {
+              "path": "docs/review/planning-backlog.json",
+              "section_or_selector": "D12.milestone_dependencies=CE02-D"
+            }
+          ],
+          "finding": "工单状态与异步运行事实分开，结果展示/合法回写需当前授权/版本和收据；D12依CE02-D而不反依I01，避免统一通道倒置环。",
+          "review_snapshot_state": "调用/结果设计及参考验证已交，产品端到端链A未实现",
+          "remaining": "D12准确结果DTO/工单字段白名单/取回与真实TR交付仍须按包实现验收。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§3链A"
+            },
+            {
+              "path": "internal/service/ticket/actions_builtin.go",
+              "section_or_selector": "SpawnTaskAction.Execute"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "C03及R01"
+            }
+          ],
+          "finding": "节点版本/operation/意图/TR/结果投影和最小票UI有准确合同；结果展示、字段写回、推进状态分开；当前SpawnTaskAction只提交并丢回包，目标未实现。",
+          "review_snapshot_state": "chain_A_precise_design_not_product",
+          "remaining": "CE02-D/D12运行commit前后kill、回包丢失/迟到/换版/投影失败只补投影；无I01反向循环硬前置。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R080",
+      "requirement": "定时任务受权调用并更新活动列表",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§4链B"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.schema.json",
+              "section_or_selector": "alExecutionRequest/admissionClaims/patch相关定义"
+            }
+          ],
+          "finding": "选定AL有界标量patch、generation/revision、核心当前授权与短期签名准入、AL本库receipt/CAS/事实同事务；TR不直写AL，未知先查原operation。",
+          "review_snapshot_state": "chain_B_precise_design_not_product",
+          "remaining": "CE03依R06/I01/I02及自动启用I03/CE05；真实AL收据/跨仓撤权/字段权限/超时故障和最小UI未实现。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R081",
+      "requirement": "活动列表变更可回调触发任务",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§5.1/5.2链C"
+            },
+            {
+              "path": "docs/design/examples/capability-reference/pg-candidate-result.json",
+              "section_or_selector": "8项独立SQL收据"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.schema.json",
+              "section_or_selector": "source fact/feed/ACK/subscription相关定义"
+            }
+          ],
+          "finding": "AL五写入口目标源事实、每type事务head完整水位、先持久stage再ACK、规则版本区间/event-time字段、replace摘要manifest/因果防重有精确合同；不把nextval当提交水位。",
+          "review_snapshot_state": "chain_C_precise_design_and_historical_SQL_reference_not_product",
+          "remaining": "CE04生产者和订阅真正实现/源五写入口kill/保留期失效/回放/换版/多实例待验；源ACK不是任务成功。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R082",
+      "requirement": "任务调度、消息、数据通道检查并选适合方案",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-invocation-contract.md",
+              "section_or_selector": "§3/4"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "四事实、C03稳定发生次、R01源意图/ACK"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§2–6"
+            }
+          ],
+          "finding": "command/event/result/notification分别完成语义；TR唯一业务调度、主仓维护cron不迁移，源事实/执行/投递各一重试主，不新broker/统一库/万能调度。",
+          "review_snapshot_state": "message_and_scheduling_boundary_precisely_documented",
+          "remaining": "当前Hook/TR有基础不等可靠三链；C03/R01/I03/CE各产品出口仍需真实恢复验证。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R083",
+      "requirement": "新增共同能力后续可薄封装MCP",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-invocation-contract.md",
+              "section_or_selector": "§7"
+            },
+            {
+              "path": "docs/design/mcp-first-contract.md",
+              "section_or_selector": "§4/6 capability映射、§8验证边界"
+            },
+            {
+              "path": "docs/design/examples/mcp-sdk-interop/report.json",
+              "section_or_selector": "33叶/14负例与人工AS范围"
+            }
+          ],
+          "finding": "MCP薄映射选定同用例，API可用不自动全部发布MCP；本轮发现外部消费候选intel.conclusion.lookup.v1未按canonical目录分version登记，需纠正命名而不扩大供给。",
+          "review_snapshot_state": "thin_mapping_design_with_canonical_registration_correction_needed",
+          "remaining": "A03/LS06产品AS和真实主体/同意桥；新能力逐成熟度发布并验同权限/预算，不恢复旧全局缓存混源。"
+        }
+      ],
+      "current_remaining": "A03及LS06产品接线/既有AS/主体与同意桥按P7，真实企业条件单列；新能力只薄映射同一受控用例。"
+    },
+    {
+      "id": "R084",
+      "requirement": "代码/命名/目录/文档/API/消息/调用/流程/视觉一致",
+      "original_source_refs": [
+        "U53",
+        "U58",
+        "U60"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ecosystem-consistency-contract.md",
+              "section_or_selector": "一致性矩阵/词表/验收"
+            },
+            {
+              "path": "docs/design/engineering-execution-design.md",
+              "section_or_selector": "G06语言profile"
+            },
+            {
+              "path": "docs/design/capability-operation-catalog.json",
+              "section_or_selector": "逐操作/例外候选库存"
+            }
+          ],
+          "finding": "代码到视觉的权威/允许差异/验证窗口已列；不强迫同目录/同消息字节或同FSM，不把格式统一当执行同路。",
+          "review_snapshot_state": "consistency_audit_and_contract_delivered_runtime_migration_pending",
+          "remaining": "G06 bundle/formatter、tokens推广与共同路径实际迁移按包；本审查者自编能力文件不以此取得独立整体验收资格。"
+        },
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/ecosystem-consistency-contract.md",
+              "section_or_selector": "§2矩阵、§3术语、§4跨入口"
+            },
+            {
+              "path": "docs/design/capability-operation-catalog.md",
+              "section_or_selector": "完整快照与受控例外"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "准确DTO及规范化"
+            }
+          ],
+          "finding": "代码到视觉统一SSOT/语义与允许差异，目录不强求同树、消息不强求同字节、共享JSON/身份/版本有准确定义。实际发现几处总纲状态/候选ID漂移须同步，机械闭环并未阻止全部语义漂移。",
+          "review_snapshot_state": "consistency_contract_with_observed_document_drift",
+          "remaining": "G06 bundle/formatter、真实路径迁移及UI token推广待实施；本轮纠正现行时态/映射，历史时点不篡改。"
+        }
+      ],
+      "current_remaining": "G06规则bundle/formatter、全站token与共同路径实际迁移仍按包实施，机械证据检查不能代替实际精致度验收。"
+    },
+    {
+      "id": "R085",
+      "requirement": "并发与多实例必须纳入设计",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§6并发/共享预算/claim/fence；§7真实验收"
+            },
+            {
+              "path": "docs/design/cross-repo-execution-contract.md",
+              "section_or_selector": "C03 claim/lease/fence与效果凭证"
+            }
+          ],
+          "finding": "本地短事务、网络不持锁、效果receipt/CAS、共享root CAS/Redis配额和旧worker fencing有设计下限；首期单副本可行但不是已验多副本。",
+          "review_snapshot_state": "precise_concurrency_design_reference_only",
+          "remaining": "双真实worker/共享设施/kill和旧fence拒绝/撤权收敛必须在实际多实例启用前验；单文件模型/SQL实验不能替代。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R086",
+      "requirement": "明确哪些异步、准入/流控/反压/循环预算",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§6 profile、过载和运维"
+            },
+            {
+              "path": "docs/design/capability-invocation-contract.md",
+              "section_or_selector": "§2.2、§6"
+            }
+          ],
+          "finding": "短本库查询/写同步，长外部/可靠后继异步；逻辑操作与attempt/provider额度分开，429/held/停拉不ACK/源事务事实失败回滚与可信因果root防回环有具体策略。",
+          "review_snapshot_state": "bounded_admission_design_not_measured_SLA",
+          "remaining": "选定profile是合成起点，真实容量/源规模/保留/延迟需对应窗口测量；普通只读不机械依赖全CE05，但也不能无界。"
+        }
+      ],
+      "current_remaining": "按CE02-S/D/L、D12和CE03/04/05实现；阈值按压测/拓扑校准，真实跨仓故障/多实例/自动链启用前运行验收；净价已列，不再称未估。"
+    },
+    {
+      "id": "R087",
+      "requirement": "最终愿景保持方向、按范围逐步细化",
+      "original_source_refs": [
+        "U53"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "ai-architecture-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/capability-interconnect-supplement.md",
+              "section_or_selector": "愿景/近期/后继分层"
+            },
+            {
+              "path": "docs/design/capability-interconnect-detail.md",
+              "section_or_selector": "§1、§8"
+            },
+            {
+              "path": "docs/design/project-evolution-strategy.md",
+              "section_or_selector": "§1、§7/8"
+            }
+          ],
+          "finding": "承接原能力并按真实规模渐进，代表切片准确定义而未假装所有未来参数冻结；后置有包、依赖和窗口，不用愿景掩盖当期漏估。",
+          "review_snapshot_state": "owner_gradual_evolution_principle_preserved",
+          "remaining": "继续按实际使用/提供方/原型证据细化；上一轮1–13建议未获批准，不据其新建产品/改已定默认。"
+        }
+      ],
+      "current_remaining": "合理后置须有责任/窗口/出口，不能用渐进原则掩盖当期审计或补估缺口。"
+    },
+    {
+      "id": "R088",
+      "requirement": "单人AI开发质量保障和公开实践",
+      "original_source_refs": [
+        "U56",
+        "U57"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/design/engineering-governance.md",
+              "section_or_selector": "§7单维护者最小质量闭环"
+            },
+            {
+              "path": "docs/phase6/implementation-handoff.md",
+              "section_or_selector": "单维护者短审阅卡"
+            },
+            {
+              "path": "docs/standards.md",
+              "section_or_selector": "§11独立预期/小批/证据"
+            }
+          ],
+          "finding": "单人质量建议已归回已有规则：小批行为、短卡、独立预期和新上下文审查、失败显影、有限高风险技术复核；未新增形式第二人审批。",
+          "review_snapshot_state": "quality_strategy_documented_not_all_controls_activated",
+          "remaining": "持续逃逸缺陷/返工/flaky/验收积压/恢复基线及实际G01–G06措施后继实施。"
+        }
+      ],
+      "current_remaining": "政策已补不代表保障自动生效；逃逸缺陷/返工/验收积压等持续质量基线未建立。"
+    },
+    {
+      "id": "R089",
+      "requirement": "原测试先行与已有原则持续有效",
+      "original_source_refs": [
+        "U57"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/standards.md",
+              "section_or_selector": "§11原五步及11-13补充；§9/§12并发回退至少8次"
+            },
+            {
+              "path": "../activelist/AGENTS.md",
+              "section_or_selector": "测试先行/回归"
+            },
+            {
+              "path": "../taskrunner/AGENTS.md",
+              "section_or_selector": "测试先行/回归"
+            },
+            {
+              "path": "../zhuzhao-utils/AGENTS.md",
+              "section_or_selector": "测试先行/回归"
+            },
+            {
+              "path": "../zhuzhao-ui/AGENTS.md",
+              "section_or_selector": "原测试与真实栈门禁"
+            }
+          ],
+          "finding": "测试先行原五步保留；红必须因目标行为，不能是环境/编译失败，绿后提交、真实栈及至少8次并发变异未被AI审查/文档档替代。",
+          "review_snapshot_state": "prior_testing_principles_preserved",
+          "remaining": "未来实现逐批先冻结/写全测试/取得真实红绿；本轮未重跑产品重门禁。"
+        }
+      ],
+      "current_remaining": "未来实现须给真实红证据和适用完整门禁；环境/编译失败不算行为红；本轮文档非产品验收。"
+    },
+    {
+      "id": "R090",
+      "requirement": "文档格式、类型、目录是否调整并先做轻整理",
+      "original_source_refs": [
+        "U58",
+        "U60"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/documentation.md",
+              "section_or_selector": "§1–§5：分类/短页头/载体/权威/迁移"
+            },
+            {
+              "path": "docs/README.md",
+              "section_or_selector": "所有者/开发/运维阅读入口"
+            },
+            {
+              "path": "../zhuzhao-ui/docs/README.md",
+              "section_or_selector": "UI导航"
+            },
+            {
+              "path": "../activelist/AGENTS.md",
+              "section_or_selector": "新简短入口"
+            },
+            {
+              "path": "../taskrunner/AGENTS.md",
+              "section_or_selector": "新简短入口"
+            },
+            {
+              "path": "../zhuzhao-utils/AGENTS.md",
+              "section_or_selector": "新简短入口"
+            }
+          ],
+          "finding": "轻整理与入口已交；Markdown/JSON/Schema/生成物/原型职责及设计/实施状态分列。未把目录物理搬迁或全旧稿重写当已完成。",
+          "review_snapshot_state": "authorized_light_document_reorganization_delivered",
+          "remaining": "G06生成/漂移工具与deploy目录迁移仍待适用窗口，不因完整性制造空文件。"
+        }
+      ],
+      "current_remaining": "没有逐篇重写所有旧稿或物理搬迁planning；生成/漂移检查与deploy目录迁移仍待G06。"
+    },
+    {
+      "id": "R091",
+      "requirement": "主仓和兄弟仓新命名、gh改名能力及延期",
+      "original_source_refs": [
+        "U58",
+        "U59",
+        "U60"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/documentation.md",
+              "section_or_selector": "仓库名称与改名边界"
+            },
+            {
+              "path": "docs/review/planning-decisions.json",
+              "section_or_selector": "不扩展当前动作边界"
+            }
+          ],
+          "finding": "已承接平台名也更换的意向和统一产品族建议；名称未选，未改名；旧gh ADMIN收据未冒充本轮新查询。",
+          "review_snapshot_state": "naming_recommendation_recorded_rename_deferred",
+          "remaining": "所有者选品牌/五仓映射后维护者清点module/import/remote/镜像/下游；运行卷/API独立评估，实际操作前核权限。"
+        }
+      ],
+      "current_remaining": "新产品名及五仓映射待选择；本轮未执行rename、未重新核gh认证/管理权限。实际改名前核最新认证/仓库管理权限及remote、module/import、CI/镜像/品牌与消费者；运行卷另评估。"
+    },
+    {
+      "id": "R092",
+      "requirement": "持续逐原话核查覆盖，纠正已纳入等于已处理",
+      "original_source_refs": [
+        "U01",
+        "U33",
+        "U57",
+        "U61",
+        "U62"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/user-requirements-reconciliation.json",
+              "section_or_selector": "固定U63/93点来源"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "固定截止之后的F001-B09"
+            },
+            {
+              "path": ".codex/audits/conversation-reaudit-20261113/public-dialogue.json",
+              "section_or_selector": "T53–T56新增公开原话"
+            }
+          ],
+          "finding": "旧52turn/62用户/247助手共309公开条目逐ID文本在新版不变；新版56turn/65用户/278助手已回读。T55仅问清单，T56仅再核，不批准1–13。",
+          "review_snapshot_state": "full_public_readback_and_cutoff_integrity_verified_new_overlay_needed",
+          "remaining": "本轮记录新增核验与当前纠正，不修改旧93截止或把来源计数等于充分履约；B09只按其明确范围确认。"
+        }
+      ],
+      "current_remaining": "本轮源截止已续至65条用户输入；原93点保持历史窗口，Q01–Q13未批准。后续新消息需继续续源，不能拿本轮截止证明未来输入已审。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    },
+    {
+      "id": "R093",
+      "requirement": "按完整复盘补齐遗漏动作并落档、逐项验证、最后提交和建立防遗漏机制",
+      "original_source_refs": [
+        "U63"
+      ],
+      "original_snapshot_ref": "user-requirements-reconciliation.json",
+      "audit_state": "verified_bounded_audit",
+      "product_state": "unchanged_see_work_item_not_implied_by_audit",
+      "reviews": [
+        {
+          "reviewer": "engineering-independent-review",
+          "evidence": [
+            {
+              "path": "docs/review/planning-closure.json",
+              "section_or_selector": "旧六组闭环/准确检查身份与限制"
+            },
+            {
+              "path": "docs/review/reports/design-gap-closure-2026-11-13.md",
+              "section_or_selector": "旧有界补齐和提交"
+            },
+            {
+              "path": "docs/review/planning-followups.json",
+              "section_or_selector": "后继确认与门禁窗口"
+            },
+            {
+              "path": "docs/review/reports/design-gap-independent-review-2026-11-13.json",
+              "section_or_selector": "有界独立发现和排除项"
+            }
+          ],
+          "finding": "旧审计补齐及本地提交有实物，本次再核发现当前摘要漂移；不能拿closure PASS替代语义或用旧门禁说本轮新跑。",
+          "review_snapshot_state": "prior_bounded_closure_exists_current_reaudit_not_yet_finalized",
+          "remaining": "根集成者修当前口径并登记overlay/本轮证据；不扩大到业务实现、真实激活、push/main/部署。"
+        }
+      ],
+      "current_remaining": "本轮93点及后继输入已实际复核落档，当前审计退出以verification准确结果为准；产品/真实接入另按包验收。",
+      "followup_refs": [
+        "F002-remaining-decisions",
+        "F003-conversation-reaudit"
+      ]
+    }
+  ],
+  "assistant_delta_review": [
+    {
+      "message_id": "msg_04430d70ad3046a3016af6d682b89487d0a370f7a530006b9f",
+      "text_sha256": "87ac47a32f3c3d55716b47eee9c5c3ca9397420a1fa86bb63b4d1c314d409f17",
+      "characters": 141,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6d75ef97887d087f08363c2858b29",
+      "text_sha256": "7b1e3e6bed6afbd25f150c0034a80771cae9515a93ff8bb800e4aa85906b7886",
+      "characters": 175,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6d99b2cec87d087e668b70f70f6af",
+      "text_sha256": "5d343f5a3b6998da7f22ca7759a640efb9ab0c4b173efac300812fc666ed09b8",
+      "characters": 252,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6d9ccaddc87d0be213f95d4939ac5",
+      "text_sha256": "39b25e331e12c69c4a68001ede8f97bc1568d80c10af1ad46b9572f62f08eeeb",
+      "characters": 2622,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6da358e9487d0852cd66aad028c56",
+      "text_sha256": "7c1b520ba4a2d93f0a8f58175e3e1b8733ac21ce24f91e3b805c412bd9ca5595",
+      "characters": 142,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6db29bde887d0bbc3bff00183cb3b",
+      "text_sha256": "6be28ba5825a1d341dde414962fe979564ef85a8ac941727f52df37a74c5d730",
+      "characters": 133,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "call_07322fd526d54132a76ae7dc2dd6fce6",
+      "text_sha256": "de2ac74b5508f5b987bae46b5822e62410654390ac27f965ebecda69409bb607",
+      "characters": 165,
+      "review_state": "question_later_explicitly_answered_as_B09",
+      "evidence": [
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6e1f6576487d0ad19212ec4aca708",
+      "text_sha256": "38d01d2b4bf002bdf2ae3664ebff48efb9dd4be324f207b394bf3c1a9a612b1a",
+      "characters": 180,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6e60a77a487d0a225b40ab59ecdf8",
+      "text_sha256": "d9b9d2db867756d5c4e0a297db90ff206405cfd37816793c8415ba142f637ec5",
+      "characters": 83,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6e69e78d487d08eb77f63a5896889",
+      "text_sha256": "1076b3eb446b9fa31e9fc0f108aac0f05727a94a0ff627b37fc3f33565cdd4be",
+      "characters": 113,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6e7e6229c87d0bb54367a943b1de9",
+      "text_sha256": "16958332dfc2cfca0aad112344c6ee94318f1bdbb7991bc36af9438bc7b7fd43",
+      "characters": 120,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6ea0ca07c87d0a5c911122579a502",
+      "text_sha256": "aad458d53eee6c6df6fb112e9df2cbf875164d89e4a6051cb5358efd3e4cfd87",
+      "characters": 109,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6ea19e02087d0bd0947a592a930f8",
+      "text_sha256": "cf70e941992fe8b14b0ea4401a4ef32143b8d72b14ed28128b2376897742475d",
+      "characters": 90,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6eb36429487d08f0ea939c888f83a",
+      "text_sha256": "7814bac223447ceb244374e80f9edf0c00095e37ef43f50ff7a5e0215f56aeb1",
+      "characters": 102,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6efa54c7087d09850608ec8cc2833",
+      "text_sha256": "8f0ac5630ed2f79a5e9e39929ded81d67eb52412d3a83211f5f71d6ed9fad7d9",
+      "characters": 110,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6f1e05b6887d0b4c692e4062509dd",
+      "text_sha256": "3093eacbea6e40300dbb151232c05a4611934b532ce8c68b5c7e866e67891ae2",
+      "characters": 93,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6f334e61087d08c88cdacfd2812a9",
+      "text_sha256": "10b4b354e4fe5a835897786aa1de795a71d31211c82eb8b151a53fb13ab511bf",
+      "characters": 90,
+      "review_state": "prior_bounded_delivery_valid_but_global_document_sync_claim_was_overbroad",
+      "evidence": [
+        "docs/review/conversation-reaudit.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6f3e35e0087d0955219ad67f0c1f8",
+      "text_sha256": "f79aef5d3f3a6cfd1b7932e2a2607c3108cadf9841727cb285fdbe9f02c01496",
+      "characters": 60,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6f44c492c87d093707f091eef66d1",
+      "text_sha256": "2fc5485c3732ff410a703adea06d63f13b36304f63c5796248c4ad33156fe135",
+      "characters": 724,
+      "review_state": "prior_bounded_delivery_valid_but_global_document_sync_claim_was_overbroad",
+      "evidence": [
+        "docs/review/conversation-reaudit.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6fa4d33f087d0b1c1bdde84c5cc86",
+      "text_sha256": "c27b558b1b50c79a6ac8e35f47270e377a628c2cb30ec1488ff9bdbd139794d6",
+      "characters": 88,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6fc0944b087d09363fcef4d332ac1",
+      "text_sha256": "fcef9fab5ebff2c4323bc66a17161e97212b5fbd4f6e8647c27dd3aeb7835021",
+      "characters": 90,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6fd59f6b887d08d3c8f530e665dbf",
+      "text_sha256": "e3603bb559ebbadad601cd5c1282ff560108d7f1afcf70af5b69fdefa0d8b7b7",
+      "characters": 64,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af6ff59175887d0bc4d817b0247f29e",
+      "text_sha256": "4277ab14db5b6fe64ce7de45094547d3ecd3ad967053efdd6e309282df663de8",
+      "characters": 73,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af700a798c887d0abde930852692136",
+      "text_sha256": "83517b27e65eb243a6a015a3f92a30b7b447bd5f10b742f832298e4b44c00300",
+      "characters": 53,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af700e1f33c87d0a3f929708d95adbc",
+      "text_sha256": "1ab3179ace5050cac53036a7d894fe693ec2ce6c52b4cd02e49f2ab4f4455206",
+      "characters": 157,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af701396ffc87d08e661516cfb74b83",
+      "text_sha256": "71882b2fd901c4e3e21eea71b8a01ab8aba3bde03d9f5ab9058b97798a50d615",
+      "characters": 78,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af70377ba0487d085aef86e41eda521",
+      "text_sha256": "116ad99d1c155f844c881857f605ee27e6db212965ea24ad329a9adea6e8f276",
+      "characters": 152,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af703fd5e2c87d08ab196e8ad694e99",
+      "text_sha256": "3bdeb054137eaa9d40db816dc2f3b1e09b88a38eced3d94fe6087d018d5d7b78",
+      "characters": 116,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af706948d6c87d0a10c332b06111b83",
+      "text_sha256": "4f1418dc8b8c177932637c781668ee8bc3ececfb49efb4c1dcb8197faf16eec9",
+      "characters": 154,
+      "review_state": "checked_against_actual_artifacts_with_historical_scope",
+      "evidence": [
+        "docs/review/reports/design-gap-closure-2026-11-13.md",
+        "docs/review/planning-followups.json"
+      ]
+    },
+    {
+      "message_id": "msg_04430d70ad3046a3016af706bb724487d0b73dbd0396f8e894",
+      "text_sha256": "97fda3512046536c8a1b952132b5952ba28af6348628a344809da176230d3feb",
+      "characters": 3119,
+      "review_state": "recommendations_only_now_documented_no_owner_approval",
+      "evidence": [
+        "docs/review/owner-decision-agenda.json"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "SYNC01",
+      "finding": "现行能力/演进页仍称CE或UAA未计价/仅骨架",
+      "resolution_paths": [
+        "docs/design/project-evolution-strategy.md",
+        "docs/design/platform-evolution.md",
+        "docs/design/capability-invocation-contract.md"
+      ],
+      "resolution": "回链已计价有限范围和三链准确候选，保留产品/未来容量未实施边界",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SYNC02",
+      "finding": "已确认单席产能仍标待确认",
+      "resolution_paths": [
+        "docs/review/uaa-real-integration-conditions.json"
+      ],
+      "resolution": "确认产能字段同步；T0/企业日期继续未绑定；排程输入摘要重生",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SYNC03",
+      "finding": "工程治理泛称本轮未改CI",
+      "resolution_paths": [
+        "docs/design/engineering-governance.md"
+      ],
+      "resolution": "区分已接planning-check与尚未全面实施G02/G03/远端保护/分档",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SYNC04",
+      "finding": "UAA现行正文仍为71父包",
+      "resolution_paths": [
+        "docs/design/uaa-governance-integration.md"
+      ],
+      "resolution": "当前76父包/16出口，原71明确作历史基线",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SYNC05",
+      "finding": "Vue现态基线审计与改后/真实Provider待验混写",
+      "resolution_paths": [
+        "docs/review/planning-design-status.json"
+      ],
+      "resolution": "U01/U05分别记录已审基线和未来产品改造真实验收",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SCOPE01",
+      "finding": "风险Excel已确认条件需求被泛化为重新决定是否建设",
+      "resolution_paths": [
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/review/planning-backlog.json",
+        "docs/phase6/README.md"
+      ],
+      "resolution": "核触发/交付形态，条件未满足不取消效果；工单导入/merge继续条件候选",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "SCHED01",
+      "finding": "E10已计调查在P6.1截止后才排到P6.E",
+      "resolution_paths": [
+        "docs/review/planning-backlog.json",
+        "docs/review/execution-schedule-model.json",
+        "scripts/test-planning-schedule.py",
+        "docs/review/roadmap-capability-continuity.json",
+        "docs/review/legacy-trigger-disposition.json"
+      ],
+      "resolution": "已计2–4日归P6.1/S04并移除D08/D10实施依赖；实际建设仍P6.E另估；保存2条首红及21条绿",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "NAME01",
+      "finding": "MCP消费逻辑名未登记共同canonical ID",
+      "resolution_paths": [
+        "docs/design/mcp-first-contract.md",
+        "docs/design/capability-operation-catalog.json"
+      ],
+      "resolution": "登记planned intel.conclusion.lookup/contract_version=1；连接器旧query_ref显式映射，不并入现有intel.query缓存路径",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "REF01",
+      "finding": "apply重放已有操作漏当前效果读权且返回内部ledger",
+      "resolution_paths": [
+        "docs/design/examples/ai-soc-reference/verify.py",
+        "docs/design/examples/ai-soc-reference/fixtures.json"
+      ],
+      "resolution": "先核plan绑定，再用当前主体/范围/目标读权投影最小receipt；不重做已提交效果；十新场景三路径首红21后修绿",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "TRACE01",
+      "finding": "上一轮13组建议只在聊天/Canvas，后继请求未续源",
+      "resolution_paths": [
+        "docs/review/owner-decision-agenda.json",
+        "docs/review/planning-followups.json"
+      ],
+      "resolution": "落Q01–Q13候选与F002/F003，全部保留未批准，B09单独保持已确认",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    },
+    {
+      "id": "TRACE02",
+      "finding": "原R066等remaining固定快照容易误当当前状态",
+      "resolution_paths": [
+        "docs/review/conversation-reaudit.json"
+      ],
+      "resolution": "用当前逐点overlay修正，不倒写原63来源/93点及历史PASS",
+      "state": "resolved_and_verified_in_this_bounded_audit"
+    }
+  ],
+  "owner_decisions": {
+    "formal_ref": "planning-decisions.json",
+    "formal_total": 34,
+    "owner_confirmed": 32,
+    "open_groups": [
+      "B08",
+      "UAA-P01"
+    ],
+    "agenda_ref": "owner-decision-agenda.json",
+    "all_13_agenda_groups_unapproved": true,
+    "B09": "owner_confirmed_followup_F001"
+  },
+  "historical_evidence_boundary": "原planning-closure/knowledge回归/历史报告保持原输入和原结果，不冒充本轮新样例/新排程。planning-check原固定闭环结构不替代本轮逐源语义审查。",
+  "verification": {
+    "state": "verified_bounded_audit_not_product_delivery",
+    "source": "PASS:65 actual user IDs/body hashes, original309 public texts identical;93 original audit points and30 new completed assistant messages reviewed",
+    "independent_review_artifacts": [
+      {
+        "file": "engineering-independent-review.json",
+        "sha256": "496d7abdaea60edecbbceee03a4d65d3ab639b6bdfd39d7d897ff54df4d75dfc",
+        "requirements": 27
+      },
+      {
+        "file": "business-ui-independent-review.json",
+        "sha256": "1856e242cef72b3c0ee96e8d8249dc4c7c77b309af89405e98d997cf0bcc861b",
+        "requirements": 41
+      },
+      {
+        "file": "ai-architecture-independent-review.json",
+        "sha256": "728fd98d1fcdd60a0f696e38760cdb70316e02f6f0e7f0f22e4557cb0eb086bf",
+        "requirements": 32
+      },
+      {
+        "file": "primary-review.json",
+        "sha256": "92b292c22ee49c61b1af7c1081263c1b5ebdd9c889490064e6b277dd01d59ea0",
+        "requirements": 5
+      }
+    ],
+    "final_independent_semantic_review": "PASS: no blocking findings; factual post-verification metadata check follows without widening scope",
+    "current_runtime_receipts": {
+      "result": "PASS",
+      "phases": [
+        {
+          "name": "script-unit",
+          "exit": 0,
+          "seconds": 0.86
+        },
+        {
+          "name": "swag",
+          "exit": 0,
+          "seconds": 2.61
+        },
+        {
+          "name": "wire",
+          "exit": 0,
+          "seconds": 5.65
+        },
+        {
+          "name": "lint",
+          "exit": 0,
+          "seconds": 2.35
+        },
+        {
+          "name": "test-unit",
+          "exit": 0,
+          "seconds": 30.04
+        },
+        {
+          "name": "test-integration",
+          "exit": 0,
+          "seconds": 563.57
+        },
+        {
+          "name": "test-cover",
+          "exit": 0,
+          "seconds": 6.46
+        },
+        {
+          "name": "build",
+          "exit": 0,
+          "seconds": 4.29
+        }
+      ],
+      "runtime_source_inputs_unchanged": true,
+      "acceptance": {
+        "name": "acceptance",
+        "exit": 0,
+        "seconds": 46.7,
+        "pass": 253,
+        "fail": 0,
+        "skip": 0,
+        "roundtrip_zero_drift": true
+      },
+      "scope": "Existing main product full gates, not proof of new business or real providers"
+    },
+    "planning_checks": {
+      "result": "PASS",
+      "closure_tests": 19,
+      "schedule_tests": 21,
+      "derived_schedule_check": "PASS",
+      "historical_capsule_and_price_registry_unchanged": true
+    },
+    "reference_checks": {
+      "result": "PASS",
+      "behavior": {
+        "agent": 105,
+        "skill": 16,
+        "soc": 46
+      },
+      "total_behavior": 167,
+      "mutations": 10,
+      "schema_positive": 86,
+      "schema_negative": 9,
+      "independent_extra_combinations": 32,
+      "repeat_runs": 8,
+      "repeat_parallel_processes": 4,
+      "runtime_concurrency_proof": false
+    },
+    "documents": {
+      "markdown": 351,
+      "local_links": 4246,
+      "anchor_links": 404,
+      "baseline_link_issues": 0,
+      "json": 49
+    },
+    "cleanup": {
+      "result": "PASS",
+      "owner": "zz-reaudit-20261113-955970bf",
+      "owned_resources_remaining": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "protected_containers": 29,
+      "protected_fingerprint_changes": []
+    },
+    "real_enterprise_and_model_calls": "NOT_RUN_NOT_IMPLEMENTED",
+    "remote_mutation": "NONE",
+    "raw_receipt_sha256": {
+      "source-comparison-result.json": "81918c92266f38eab5da58c66d318ffde10e15036ea246476faa3d5f449c0ed2",
+      "documents-result.json": "37f1202c85d70ae5b3cdcb10188c350ff05ae0b82c50cafb0697df643c8f3fe6",
+      "runtime/core-native-result.json": "37faa1bcf6219f3e62168b51fbec1829a1c82f333f75a1211ff5112fbea916af",
+      "runtime/core-acceptance-result.json": "399d7dd9bf7f93c8ca4fc07d4b0dd45b1eee67617f0e4c7d5864dbce47d46a66",
+      "runtime/cleanup-result.json": "019ca10638a03db6a93bd7139f67528272c03afc3fc91fa243bd5d8282624a15",
+      "current-reference-result.json": "73bf05f0da20d74cef9e48285e61e5447bc19ea4b8f4d47d0406e39d3c855298",
+      "schema-result.json": "6a0bb95e7506c0619ebe0c81118cb21bc1d7e2769413a3444b6add21c063ad67",
+      "repeat-reference-result.json": "89e2712cf01087ec17b6f944e15f9562f21e9bcbab8eb64fcc140ba6dcbd1f6f",
+      "independent-ai-replay-review.json": "986852d0de5334b5246750f4c9ad0368e933cbf9f1cb9e9391b9b784936b4d87",
+      "ai-replay/verification-summary.json": "841fb4ed46970ca553d824f99701e40f11042338586a161e024fa947f7eba160",
+      "e10-schedule/schedule-delta.json": "27e9ed3626a3ec5d186a4367afc271a5cd4e481544a49a355fa370be140561f4",
+      "final-independent-review.json": "0feedb37d9491a384e5a5f0f253ad1f686cac7de9cd5996b7412fa123bb8232c",
+      "first-check-failures.json": "bbf128d974cab6943054897c7084be80c1c56d3dbe2e9f1177754ba96df70ca5"
+    },
+    "local_raw_evidence": ".codex/audits/conversation-reaudit-20261113/",
+    "limitations": [
+      "Whole-current-conversation coverage, not every unrelated account chat.",
+      "Public source/action checks plus semantic review do not prove all future requirements or all code paths correct.",
+      "Original frozen planning-check evidence is preserved; this current overlay has separate fresh source/document/reference/schedule evidence."
+    ]
+  },
+  "local_raw_evidence": ".codex/audits/conversation-reaudit-20261113/"
+}

@@ -226,6 +226,8 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
+2026-11-14 本日收尾（交接，不代表生产发布）：五仓保留main及codex/capability-interconnect-design候选，以[七条输入对账](../review/reports/daily-closeout-2026-11-14.md)核实际PR/远端和旧分支清理；[模块首包](../phase6/module-design-handoff.md)承接下一阶段。旧工作树重要ignored内容与历史SHA已本地备份，原main及当前候选证据/日常环境保留；合main、业务开发和真实企业激活未自动执行。
+
 > 来源=两会并行开发当周的三次互相干扰事故：端口互杀（互相 `make dev` 杀对方服务）/ Redis 于验收中途被重启 / **T7 假红**（一会的 viewer 角色页面绑定实验污染另一会的验收断言）。
 
 1. **端口分治**：33333=标准 dev 实例；33334 历史用于实验二实例，但当前由独立 `zhuzhao_test` 占用，禁止再裸起 `APP_PORT=33334 make dev`。实验须在端口表另取未占用端口，并隔离数据库/Redis；只换 HTTP 端口不构成数据隔离。不抢不杀其他会话进程，验收另守下条独占纪律。
@@ -237,7 +239,14 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
-  | 当前无阶段在途占用 | Phase 5 交付与资源收尾完成，余项及待验已移交 Phase 6。后续开工按实时 Git 与资源归属重新核对 | 以实时 Git 为准 | 2026-11-11 |
+  | Phase6前五仓重规划 | 五仓独立`codex/pre-phase6-replanning`工作区，仅文档/受控清单；root集成，子审查按仓归属；共享main保持只读。当前无功能实现、远端设置变更或生产发布 | 未推送；提交状态以实时Git为准 | 2026-11-11 |
+  | B09来源陈旧下人工协作确认 | 主仓`codex/capability-interconnect-design`窄文档后继；root唯一写入/显式路径提交，子审查只读。F001来源、策略与当前入口已同步，无在途路径/索引占用；专属验收资源已精确回收，29原容器指纹不变 | 只本地提交，不推送/合main；准确提交见Git | 2026-11-13 |
+  | F013本地正式先行与质量排期 | 主仓候选同分支；估算/交接子编辑已归还路径，root唯一集成提交/推送，独审只读。无其它会话索引占用；未启动业务实现、部署或改共享资源 | 续用已授权草稿PR；准确提交/远端/CI以Git及收据为准 | 2026-11-14 |
+  | F014规划与已验升级合主线 | 子编辑已归还报告路径，root唯一提交/推送及PR集成，独审只读；无其它路径/索引占用。所有者已确认五仓规划与已验证升级一起合main，业务开发/部署/共享栈切换仍不在范围 | 各PR及准确SHA/CI记录实际合入，现有排期仅参考 | 2026-11-14 |
+
+2026-11-13能力互通设计交接：五仓各自隔离的`codex/capability-interconnect-design`基于上一设计/版本候选，仅改docs；子审查按文件归属编辑，root为唯一提交者。本轮只本地提交，不推送/合main/启业务开发或切共享栈；补充方向和未计价范围见[增量册](../review/capability-interconnect-supplement.md)。本轮结束后无文档路径/索引在途占用；后继仍核实时Git，不提交其他会话文件。运行门禁和真实集成不由文档核对代验。
+
+2026-11-13改名前文档整理交接（非在途占用）：继续在五仓隔离候选分支按文件归属处理导航、页头效力和三个Go兄弟仓AGENTS，root单一集成/路径提交；源文件与历史证据路径保留。只校准当前总账资源说明，价格/依赖/排程及冻结hash不改；静态核对不替代运行验收。文档交接后释放路径占用，新产品/仓库名称、module/import、运行资源及物理目录迁移另行处理；未推送、合main或启动业务开发。
 
 2026-11-11 前次交接快照（运行终态由下方正式收尾段更新）。11-08 文档与 11-10 代码修复均已有提交，旧「工作树待提交」与「新档待建」在途行撤下。当时 11-11 自动复验的私有栈已回收，共享 dev/zt、验收账号和数据保留。文档整理、提交清单与远端 CI 收据保存在本机 ignored `.codex/audits/phase5-docs-closeout-20261111/`，本行仅保留后续工作交接。P5 数据处置仅作保留建议，未执行删除或共享卷重置。已记录但尚未修复的问题见 [12 号 §8.2](../phase5/12-scenarios-and-tests.md#82-phase-6-统一重规划与问题移交)。
 
@@ -251,6 +260,10 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 2026-11-10 共享资源事件与启停登记（验收走查会话）：①**zt 测试栈 11-09 停、11-10 复起**——11-09 按 root「清理不必要测试环境」指令 `docker stop` 九容器（未删，卷/配置原样），未及时落本台账致并行会话四档受阻；11-10 `docker start` 原样拉起（33334/48081，九容器全 Up）——**纪律补课：共享栈启停须即日落本台账**，恢复优先 `docker start` 现有容器（绕开 `zhuzhao_test` 正式 compose 与 `zz-preserve-phase5` 接管模板的同名互斥，二者归属裁决留 root：日常启停走 start/stop，正式 compose 仅重建用，接管模板维持 root-gated）；②**dev 库漂移清理**：`incident.impact_scope` required 11-03 被实验会话置 true（审计 10:13–10:45 fields/replace）致四档建单 10001——经 root 授权已改回 `required=false`（**字段本身保留**，原实验其余字段零触碰；验收同款建单复现通过后删除验证单）；根修建议=实验一律自建前缀类型（如 `p5_*`），禁改共享类型（12 号 §5.2 后续登记）。
 
 2026-11-08提交检查安装（RR-GIT-01）：Go四仓在当前目标工作树运行`make hooks`，UI运行`pnpm hooks`，需要Python3；installer仅设置当前worktree的相对`.githooks`，保留common配置供尚未承接的main使用，不手动把所有仓统一指向主仓绝对路径。消息在commit-msg检查，pre-push/CI再按真实新增窗口检查存库文本。固定`commit-policy-baseline`只豁免其祖先，不自动前移；显式历史审计不豁免。新增merge也须规范主题与正文；规则、缺对象处置与遗留外仓钩子兼容见standards §12-9。主仓`make test-commit-lint`与兄弟/ UI相应入口验证反例，不能以空待推窗口代替检查器测试。
+
+2026-11-14 PR合入执行补注：GitHub默认的`Merge pull request ...`标题违反现行规范，服务端生成的merge不经过本地commit-msg钩子。先准备完整规范主题、空行及非空正文，用`python3 scripts/commit-policy.py message --raw <完整消息文件>`校验；再以同一主题和正文文件调用`gh pr merge <PR> --merge --match-head-commit <已检查的完整SHA> --subject <已校验主题> --body-file <正文文件>`。合入后核实际merge消息、主线tree及准确main CI，不能由PR头CI绿推断新merge消息也合规。
+
+本次utils、activelist、taskrunner、UI首笔合入使用默认标题，四笔历史消息违规和失败CI保留；逐仓集成后记记录准确SHA及失败来源。后继规范PR只验证当前新增窗口和当前main，不代表历史违规已消除；不改固定baseline、不豁免merge、不重写主线。产品输入与已验候选相同，未切换运行栈或数据卷。
 
 2026-11-07后续工具链安排（所有者明确）：Go1.27、Node24/26 LTS的整体升级，须等Phase5先合入main后，再基于main独立实施与验证；当前Phase5不提前切换。已完成的Go1.26.10安全修复继续保留。本机系统Go仍1.26.6；原生1.26.10已按官方toolchain模块/开启sumdb验证取得，仅保存在ignored `.codex`，未改全局PATH或系统安装。执行本地命令时显式选择已验证SDK；工具CLI的`GO`覆盖不替代其它Make目标所需的PATH设置。早先“SDK获取失败”段是历史时点，不再作为当前状态。
 
@@ -319,3 +332,9 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 启动顺序为PG/Redis/S3就绪→AL/TR→main→UI；本机运行闭包只使用已验证的不可变镜像、同字节RO配置快照与原卷/网络，build上下文不从兄弟canonical main误取代码。5PG真实TCP/SQL与schema、归档33333权限和SQLite2/290已独立核验。已作停写后的独立5PG+SQLite备份，跨库非原子，不自动恢复覆盖数据；原卷、旧产物和未知owner资源保留。
 
 所有原生Go服务实际1.26.10，SDK只在ignored项目缓存、系统Go1.26.6/全局PATH没有替换；本地新编译须显式选可信1.26.10 SDK。Node仍22.14，整体Go1.27与Node24/26 LTS升级等Phase5合main后另批。E000001两栈只读bcrypt核验为既定终态且mcp=false，本次没有使用其登录/改密；Chrome只用既有E800006会话。
+
+
+2026-11-12版本维护本地候选收口（非共享栈占用）：所有者取消公司云数据库版本约束，五仓独立`codex/prephase6-version-upgrade`工作树已验证Go1.27.4/Node26.13.1、PG18/Redis8及组件组合。原开发容器、旧卷、原main工作树与系统SDK未切换；新PG/Redis空卷不能当迁移完成。先按`docs/design/component-upgrade-data-contract.md`完成备份恢复/校验，再按实际环境批准的窗口切换；本轮候选、完整门禁与恢复结果见版本维护交付记录，旧Phase5收据不证明新组合。
+
+
+2026-11-12补记：所有者已自行更新brew基础Go1.27.4、nvm Node26.13.1，已在仓外以基础二进制确认，不是模块自动切SDK的结果。本轮工作使用独立固定SDK验收，未代改包管理配置。版本候选、原门禁与数据恢复收据见[维护记录](../review/reports/version-modernization-2026-11-12.md)；共享旧环境/原卷没有自动切换。

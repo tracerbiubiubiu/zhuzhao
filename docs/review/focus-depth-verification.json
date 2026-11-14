@@ -1,0 +1,4201 @@
+{
+  "date": "2026-11-12",
+  "objective": "核验原始及会话补充关注点是否实质深入研究，而非仅被纳入计划",
+  "baseline_planning_heads": {
+    "zhuzhao": "b2d7f099ce00318e549db708456775888bf7603c",
+    "zhuzhao-ui": "1fc697d5043358797302037e27ff26c3d9545cb6",
+    "taskrunner": "44f6b6449bb968d48c68a19fc03c029d7ae07e86",
+    "activelist": "a34d66031d49411661ce738dee16177226e99708",
+    "zhuzhao-utils": "e2cf85a1916a1485f7e031c3b87575c14c003fac"
+  },
+  "source_scope": {
+    "thread_id": "01a1c96b-a037-71b0-a7a3-4b1d474f1d0b",
+    "real_user_messages": 32,
+    "read_thread_pages": 3,
+    "has_more": false,
+    "all_user_messages_represented": true,
+    "short_approval_context_verified": true,
+    "automatic_goal_messages_excluded": true
+  },
+  "meaning": "65为核对原子，不是65项独立功能；补充与重申保留。deep_planning仅表示实质规划研究，不等于实现、生产全站验证或全部未来详设。",
+  "rubric": {
+    "deep_planning": "现状/供给及边界有证据，说明选型理由，给出具体首期/失败、权限或恢复合同及实施验收出口；非仅包名或排期。",
+    "partial": "有实质内容，但缺关键研究维度、完整样例或存在未解冲突。",
+    "justified_deferred": "已有可审边界/窗口，剩余需真实提供方或运行条件；未知提供方不能掩盖可本地完成的研究。"
+  },
+  "all_concerns_deeply_researched": false,
+  "coverage_vs_depth": "65点均有承接，未发现完全没有提及者；承接或来源映射不等于深入。",
+  "additional_wording_correction": {
+    "id": "DOC01",
+    "original": "pre-phase6-replanning ENG-20: AI/DataFetcher等已有端口/注册表",
+    "correction": "已有DataFetcher/jobs/gateway注册，AI Provider/LLMProvider未实现",
+    "basis": "当前源码及同报告PROD-07/S7状态",
+    "timing": "本次核验纠正，保留原文字与基线，不回称原研究已正确"
+  },
+  "derived_check_excluded_from_user_count": "PROD-07的AI未配置/禁用运行模式是额外可运维性建议，不在原话65点分母；不把不部署模型误读为没有模型时启动。",
+  "runtime_validation": "本次未启动服务或重跑旧测试；旧253验收/42E2E不证明深研覆盖。",
+  "privacy": "完整会话和审查过程只存ignored本地证据，受控文件仅保留短引与证据定位。",
+  "summary": {
+    "deep_planning": 51,
+    "partial": 10,
+    "justified_deferred": 4
+  },
+  "gap_families": [
+    {
+      "id": "FD01",
+      "focus_ids": [
+        "C07",
+        "C15"
+      ],
+      "title": "当前模块耦合缺事实与逐项裁定",
+      "evidence": "ticket.Service持OrgRepo/StorageRepo，UserService持RoleRepo，OrgRepo.Move写工单/模板；架构§3.5.4禁止类似跨域仓储依赖。",
+      "missing": "缺实际依赖、共享写表/事务及保留、例外或窄端口的逐项理由；这些耦合不自动是bug，P9拆分复评不能替代当前检查。",
+      "next_artifact": "模块×调用/共享写表清单，关联源符号和事务所有者；逐项给保留/例外/隔离与最小改动。",
+      "recommended_window": "当前可补；最迟P6.0边界冻结及G06/X01改边界前",
+      "existing_packages": [
+        "G06",
+        "X01",
+        "E07"
+      ]
+    },
+    {
+      "id": "FD02",
+      "focus_ids": [
+        "C11"
+      ],
+      "title": "旧触发项逐条合理性证据不足",
+      "evidence": "119条P6-T/触发索引均有去向；169连续性原子中仅3条直接来自07触发索引。映射字段不含逐条合理性结论。",
+      "missing": "包名、波次或总行数不能证明每条旧触发描述均深入复核；这不等于断言其它116条从未读过。",
+      "next_artifact": "按119条去重回读原文，给保留/改写/专业替代/退出理由、证据与决策/交付窗口；同源允许共用理由。",
+      "recommended_window": "当前可补；最迟对应P6.1/P6.3裁决窗口前",
+      "existing_packages": [
+        "E01",
+        "E02",
+        "E03",
+        "E04",
+        "E05",
+        "E06",
+        "E07",
+        "E08",
+        "E09",
+        "E10"
+      ]
+    },
+    {
+      "id": "FD03",
+      "focus_ids": [
+        "C23"
+      ],
+      "title": "领域Agent缺具体必要性与完整代表样例",
+      "evidence": "已有双轨配置、host/预算/确认/恢复边界和多种复用路径，但未用同一业务场景比较。",
+      "missing": "缺证明必须Agent循环而非固定步骤的首场景，缺输入/工具/暂停/结果/恢复样例；未知模型API不阻塞本地场景研究。",
+      "next_artifact": "一个合成平台独有场景，对比外部Agent、固定步骤和本地host，给工具序列、成本、终止与恢复样例。",
+      "recommended_window": "P7比较时，先于A05/A07的P8范围冻结",
+      "existing_packages": [
+        "A05",
+        "A07"
+      ]
+    },
+    {
+      "id": "FD04",
+      "focus_ids": [
+        "C26"
+      ],
+      "title": "自然语言计划与逐次确认未贯通",
+      "evidence": "调度恢复已细；原型定时生成待确认草案，A04又要持续grant。",
+      "missing": "离线、确认逾期、多个时隙积压、计划/权限改变、动作TTL与misfire/取消尚无完整衔接样例。",
+      "next_artifact": "同一计划跨多个时隙的确认/过期/撤权/积压/取消状态表、回执与界面反馈，区分草案和已授权无人值守执行。",
+      "recommended_window": "A04/I02/I03合同冻结前，可先用合成数据",
+      "existing_packages": [
+        "A04",
+        "I02",
+        "I03"
+      ]
+    },
+    {
+      "id": "FD05",
+      "focus_ids": [
+        "C27"
+      ],
+      "title": "MCP首工具、授权衔接与消费窗口不足",
+      "evidence": "规范/SDK引用有效，已有协议adapter与授权交集原则；总账A03/P7含外部消费，AI总纲§3把client放P8。",
+      "missing": "缺首工具I/O/错误/transport与SDK-client组合、适用授权服务到现有IAM的具体取舍；外部消费缺代表工具且窗口冲突。",
+      "next_artifact": "发布及被消费工具各一份合同/合成兼容例，明确授权路径，统一P7/P8范围后复估。",
+      "recommended_window": "P6.0最小合同冻结前明确授权路径，P7/A03开工前统一范围",
+      "existing_packages": [
+        "A03",
+        "I01",
+        "I02",
+        "A05"
+      ]
+    },
+    {
+      "id": "FD06",
+      "focus_ids": [
+        "C29"
+      ],
+      "title": "skill缺可信样包与暂停运行兼容例",
+      "evidence": "已有来源、版本、信任、允许工具和skill不赋权原则。",
+      "missing": "缺实际样包、输入输出/资产/评测，加载冲突、撤销升级对暂停run的影响只留到后期。",
+      "next_artifact": "一个版本化领域skill样包及输入/预期输出/工具，覆盖加载、撤销、升级和恢复。",
+      "recommended_window": "领域Agent场景选定后，A07/P8开工前",
+      "existing_packages": [
+        "A07"
+      ]
+    },
+    {
+      "id": "FD07",
+      "focus_ids": [
+        "C41",
+        "C48"
+      ],
+      "title": "全站视觉研究仍为静态初审与代表样板",
+      "evidence": "27路由有静态清单；六类HTML样板中四类对应现存home/list/detail/intel，另两类为未来Agent/设备；亮色tokens/声明对比度不等于生产全站实测。",
+      "missing": "配置/树/任务/AL/登录等未有同等页级视觉研究，缺真实亮暗/字体/字号/比例/密度、长内容和交互状态证据。",
+      "next_artifact": "27视图及共享组件的角色×亮暗×视口/缩放×状态走查；逐页截图、实际样式尺寸、问题或保留理由及目标映射。",
+      "recommended_window": "U01复现入口，U02/U07建真实基线，U06改各页前补对应研究",
+      "existing_packages": [
+        "U01",
+        "U02",
+        "U06",
+        "U07"
+      ]
+    },
+    {
+      "id": "FD08",
+      "focus_ids": [
+        "C61"
+      ],
+      "title": "SOC事件本地协作职责授权缺矩阵",
+      "evidence": "风险记录/整改票/SOC攻击应急事件已区分；B05不因入组授予全部事件能力，D14主要仍为范围与供给。",
+      "missing": "缺本地事件协作角色×动作×数据范围/参与/撤权矩阵；SOC研判供给不替代本地操作授权。",
+      "next_artifact": "薄事件协作矩阵及正反例，分清引用、协作更新、指派、结案和回传与专业写主，不造第二SOC。",
+      "recommended_window": "D14/P6.E开工前，可先不依赖真实SOC地址",
+      "existing_packages": [
+        "D14",
+        "D03",
+        "C04"
+      ]
+    }
+  ],
+  "concerns": [
+    {
+      "id": "C01",
+      "focus": "五仓工程化、CI及自动检查缺口",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "整个五个仓的工程化",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-01"
+      ],
+      "verdict_reason": "逐仓区分现有工具与缺口：Go lint/race/集成、UI lint/typecheck/build/audit/unit、主仓Swagger/Wire已存在；acceptance/E2E未接持续CI。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "已有底座及本次差距；G02；G03候选manifest/作业集合和资源预算",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-governance.md",
+          "section_or_symbol": "§1基线判断、§3 CI与合入、§7验收与未决",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "jobs.commit-policy/lint/test/test-integration",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": ".github/workflows/go-security.yml",
+          "section_or_symbol": "on.push、source-evidence.matrix历史revision",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "Resolve sibling zhuzhao ref、lint、test",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "taskrunner",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "test单测/PG+Redis真实依赖档",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "activelist",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "test unit/integration",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "test vet/gofmt/race",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/engineering-github-settings.json",
+          "section_or_symbol": "五仓main/protection/rulesets/workflow_permissions/security_and_analysis",
+          "support": "",
+          "evidence_scope": "existing_ignored_receipt"
+        }
+      ],
+      "what_was_researched": [
+        "逐仓区分现有工具与缺口：Go lint/race/集成、UI lint/typecheck/build/audit/unit、主仓Swagger/Wire已存在；acceptance/E2E未接持续CI。",
+        "具体发现UI分支名shell插值、同名兄弟分支fallback、旧阶段漏洞扫描、远端未保护；不是重新造同名测试。",
+        "G03给精确SHA/工具链/镜像/迁移/合同/运行分母清单、常驻quality-gate、应跑却skipped拒绝、各job预算、fork最低权限及隔离full-stack回执。"
+      ],
+      "limits_or_unverified": [
+        "所有新机制尚未实施；远端设置以2026-11-11既有快照为限，本轮未重新联网读GitHub配置。",
+        "准确check名称须先实跑后再设置required；未来真实失败PR/绿PR及组合runner仍待G02/G03验收。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C02",
+      "focus": "并行agent误带他人修改提交及同文件隔离",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "顺手提交",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-02"
+      ],
+      "verdict_reason": "明确同一工作树同文件的他人行无法靠显式路径提交隔离，hooks只是兜底；采用一任务一branch/worktree和单一集成者。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G01任务、工作树与运行资源独占",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-governance.md",
+          "section_or_symbol": "§2并行协作：隔离先行",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "scripts/zz-commit.sh",
+          "section_or_symbol": "staged集合子串校验、paths字符串、pathspec提交",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "ENG-01路径工具不能区分同文件作者",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G01/P6.0、G06/P6.1",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "明确同一工作树同文件的他人行无法靠显式路径提交隔离，hooks只是兜底；采用一任务一branch/worktree和单一集成者。",
+        "清单包含允许写路径、各仓base/branch/worktree和资源owner，运行栈也隔离PG/Redis/账号/端口/对象前缀。",
+        "识别worktree仍共享refs/部分配置；改史独占、故障接管与精确清理分别验；首批失败例含错owner、占端口、误清共享卷。",
+        "正文准确承认zz-commit.sh仅主仓存在，另外四仓当前用等价显式路径形态；G01硬化精确成员/空格等边界，G06再同步。"
+      ],
+      "limits_or_unverified": [
+        "本轮未在临时仓动态重现wrapper边界或多任务并行；方案已具可执行反例，但G01实现与两任务同文件演练尚未发生。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C03",
+      "focus": "正规项目差距，不能只回答用户举例",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "整个项目和正规项目比",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-03"
+      ],
+      "verdict_reason": "研究范围覆盖服务端main约束、漏洞治理、不可变依赖/Action/镜像、SBOM/制品来源、组合发布、离线包、最小CI权限、回滚恢复、测试证据口径和缺失fuzz/benchmark。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "ENG-02/04/06/07/08/19/20",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-governance.md",
+          "section_or_symbol": "§3合入、§4测试、§5供应链/发布/运维、§6目录",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G03离线制品及候选组合、G06各仓profile",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§8 E09生产硬出口",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G05/P7、E09/P7及首次生产前出口",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "研究范围覆盖服务端main约束、漏洞治理、不可变依赖/Action/镜像、SBOM/制品来源、组合发布、离线包、最小CI权限、回滚恢复、测试证据口径和缺失fuzz/benchmark。",
+        "区分单维护者实际情况与形式上第二人审批；区分单副本可恢复首期与HA/微服务可选项；保留已有秘密扫描。",
+        "供应链和发布以真实产物/恢复证据验收，TLS/cookie/CORS/归档镜像失败可见与可选优化分列，不以本地绿灯证明生产就绪。"
+      ],
+      "limits_or_unverified": [
+        "这是一轮有边界的工程审计，不是逐条覆盖任一行业成熟度模型的认证；生产环境未给定，E09真实配置/恢复仍未验证。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C04",
+      "focus": "测试覆盖率的现态、口径与改进价值",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "测试覆盖率",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-04"
+      ],
+      "verdict_reason": "核实20.4%仅主仓默认tag internal语句覆盖率，不含integration/UI/E2E；未包装成全项目覆盖率或提升。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G04 mock、正确性测试与第一批fuzz；C01/C02/C04/C05出口",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "Makefile",
+          "section_or_symbol": "test-unit/test-integration/test-cover",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "vitest.config.ts",
+          "section_or_symbol": "test.environment=node、include、setupFiles",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "playwright.config.ts",
+          "section_or_symbol": "workers=1/retries=1/reuseExistingServer=true",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/validation/final-candidate/core/coverage-functions.txt",
+          "section_or_symbol": "total(statements)=20.4%；Identifiers等默认tag路径为0",
+          "support": "",
+          "evidence_scope": "existing_ignored_receipt"
+        }
+      ],
+      "what_was_researched": [
+        "核实20.4%仅主仓默认tag internal语句覆盖率，不含integration/UI/E2E；未包装成全项目覆盖率或提升。",
+        "提出按unit/integration/关键合同/浏览器旅程独立分母和失败支路；不以全仓80%与实现镜像测试堆数字。",
+        "已针对公式同名/注入、文件绑定/GC/回滚、撤权迟到刷新、事务/资源默认拒绝、执行回执给具体反例；组件mock和真实栈分别保留。",
+        "阈值采两轮基线后定，先测合法最坏输入、列表/并发patch/队列排空等P95/内存/连接等待，回归20%进入解释。"
+      ],
+      "limits_or_unverified": [
+        "尚无覆盖全部模块的风险—测试矩阵和integration覆盖率合并测量；这是G04明确产物，当前具体高风险案例已经足以支撑所选渐进测试建议。",
+        "既有coverage收据只证明原候选默认tag覆盖率，本轮未重跑或扩大其含义。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C05",
+      "focus": "关键节点fuzz的必要性、目标与预算",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "关键节点的fuzz",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-05"
+      ],
+      "verdict_reason": "明确选FuzzExprReferences、FuzzAKSKCanonical、FuzzFieldSchema、FuzzImportRows、FuzzOccurrenceKey，针对实际高风险纯逻辑；不每样本开库。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G04五个首批target、性质、PR/每周预算、corpus保留",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "ENG-07四Go仓无顶层Fuzz/Benchmark",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": "aksk/aksk.go",
+          "section_or_symbol": "Sign、Verifier",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/pkg/exprcalc/exprcalc.go",
+          "section_or_symbol": "Identifiers、ApplyFormulasContext",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G04/P6.1",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "明确选FuzzExprReferences、FuzzAKSKCanonical、FuzzFieldSchema、FuzzImportRows、FuzzOccurrenceKey，针对实际高风险纯逻辑；不每样本开库。",
+        "性质含篡改拒绝、作用域/注入不改变公式结果、原map不变、稳定时隙键；不假设当前AKSK已经签query或nonce一次消费。",
+        "PR每目标20秒/总100秒、每周各10分钟、parallel=2；失败样本/seed/Go版本/复现命令保留，普通go test跑corpus。",
+        "并发/恢复用确定性屏障和故障点，真实PG原子性用定向集成，和fuzz职责分开。"
+      ],
+      "limits_or_unverified": [
+        "新analyzer与occurrence key尚未实现，不能声称现在已有这些fuzz或性质已通过；预算为建议参数，实施时需验证能否稳定运行。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C06",
+      "focus": "项目定位、设定和边界清晰度",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1c97b-49c6-7722-994d-e50e1fe3fdea"
+      ],
+      "quote": "项目的设定，边界等是否划分清楚",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-01",
+        "PROD-03",
+        "PROD-04"
+      ],
+      "verdict_reason": "定位/五仓写主与现行调用链有实质核查，未来模块不是现成插件。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/vision.md",
+          "section_or_symbol": "现行补充、§1.0平台定位声明",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§1首要目标、§2能力供给与数据写主",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1怎样选择、§4/P7与§6/P9代表链",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/architecture.md",
+          "section_or_symbol": "§1.3、§3.1–3.7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§3五仓与领域边界",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§2–6",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§2–5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": "docs/api/platform-contracts.md",
+          "section_or_symbol": "§1–5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/app/providers.go",
+          "section_or_symbol": "现行装配",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/pkg/domainevent/registry.go",
+          "section_or_symbol": "现行派发",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§6可插拔与服务拆分",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/architecture.md",
+          "section_or_symbol": "§3.5跨域调用/拆分规则、§3.6生命周期",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/extension-compatibility.md",
+          "section_or_symbol": "§2四种扩展、§3接缝、§7排期",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/gateway/gateway.go",
+          "section_or_symbol": "现行静态网关",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "从结论级汇聚、有界快照、责任/整改/复测/接受/事件协作/证据界定平台内沿，明确不做原始日志湖与专业执行器。",
+        "逐类明确专业事实与本地处置事实写主，规定来源、时效、未解析、删除/撤权及人工兜底冲突；代表链为告警→风险→工单→任务→结论回源。",
+        "选配置/现有底座→领域用例→稳定adapter→确证独立发布或隔离后才拆服务，首期P6风险mock闭环，P7扩源，P9跨平台恢复。",
+        "现状不是只按仓名划界：文档将当前源码装配、工单/对象/消息/任务/AL/情报的数据流与未来能力分开。",
+        "分别列handler/service/repository、Wire、ResourceRegistry和后台生命周期，不用万能Service替代三类职责；标出TR执行事实与业务完成、事件留痕与可靠投递的不同。",
+        "对AL缺行权限、unique软查、replace导入和utils签名不授予用户授权均有具体限制与后续出口。",
+        "保留模块化单体，以数据写主/领域端口/显式装配先降耦合，独立发布、故障隔离、容量或安全边界成立才拆服务；不预置IAM拆分/K8s/Kafka。",
+        "区分内部编译期模块与进程外私有扩展，说明现有Wire、gateway.Registry和资源注册并非运行时插件。",
+        "取舍Go动态plugin与进程外HTTP，列工具链/依赖耦合代价；X01/X02提前P6.1，E07在P8出口取证、P9形成不拆或拆的明确决定。"
+      ],
+      "limits_or_unverified": [
+        "本地风险与事件新能力仍未实现；真实供给字段、权限和闭环收益没有实证。",
+        "全生命周期是跨波次交付目标，不能把定位清楚解释为全生命周期已交付。",
+        "本核验抽读关键调用链，不等于每个源码文件逐行审计；旧文档996c167源码固定链接不是当前HEAD的运行证明。",
+        "未来I01/I02等仍未有全部精准协议。",
+        "没有实际运行指标支持现在拆某个服务，文档也没有声称已有；热更新、独立发布及跨进程恢复未验证。"
+      ],
+      "supplement_research": [
+        "无需为重证定位另造研究；逐源真实能力核验留各包。",
+        "当前规划边界的研究已足够明确，实施按各模块具体合同复验。",
+        "拆分时机不确定是合理的有证据决策窗口；不需当前凭空选微服务。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C07",
+      "focus": "逐模块深入检查现有能力与设计边界",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "然后深入各个模块",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C07"
+      ],
+      "verdict_reason": "现有五仓写主/注册表/关键事务、授权与跨仓失败链有源码证据，关键合同进入详设；但库存不是全文语义审读，源码范围明确是定向关键链。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "§2",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/architecture.md",
+          "section_or_symbol": "§3.2–3.5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-document-scope.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "现有五仓写主/注册表/关键事务、授权与跨仓失败链有源码证据，关键合同进入详设；但库存不是全文语义审读，源码范围明确是定向关键链。"
+      ],
+      "limits_or_unverified": [
+        "未见逐模块实际出入依赖/跨域仓储/共享表/生命周期边界的核验清单，不能声称所有模块等深研究。"
+      ],
+      "supplement_research": [
+        "补一份按模块的事实依赖与例外清单；与C15同一缺口，不要求现在拆服务。"
+      ],
+      "gap_id": "FD01",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C08",
+      "focus": "整体目标、优先级与后续规划清晰度",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1cb1f-51b5-7932-b8ac-2f845f6fb776",
+        "01a1cb27-cbc0-7f22-b028-ee854661924e"
+      ],
+      "quote": "整体大的目标，规划是否清晰",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C08"
+      ],
+      "verdict_reason": "路线从原阶段修订为P6.0–P10及更远，保专业供给/领域闭环；先薄旅程、依赖/责任/出口/粗估与独立决策窗口一致。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/roadmap.md",
+          "section_or_symbol": "§1–7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1–8",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "路线从原阶段修订为P6.0–P10及更远，保专业供给/领域闭环；先薄旅程、依赖/责任/出口/粗估与独立决策窗口一致。"
+      ],
+      "limits_or_unverified": [
+        "T0/人员未定，只能给相对窗口；后期准确DTO/Schema未冻结，不是已实现。"
+      ],
+      "supplement_research": [
+        "当前无需因T0未知重复全局规划；实施启动复估。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C09",
+      "focus": "Ficus及其它项目比较是否实质用于本轮",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "结合之前对ficus与其他项目等对比",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C09"
+      ],
+      "verdict_reason": "来源映射30项旧比较和81条决策并有实质取舍：AL导入世代/EOF、最小发布/实例迁版、手动能力运行、一次性/双源总览、固定报告与通报、复杂DAG/SOAR替代均有具体业务出口。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-source-map.json",
+          "section_or_symbol": "CMP-30/HIST-81 entries",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/roadmap-capability-continuity.json",
+          "section_or_symbol": "169 records",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-requirements-audit-2026-11-11.md",
+          "section_or_symbol": "§3/§5/§7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "来源映射30项旧比较和81条决策并有实质取舍：AL导入世代/EOF、最小发布/实例迁版、手动能力运行、一次性/双源总览、固定报告与通报、复杂DAG/SOAR替代均有具体业务出口。"
+      ],
+      "limits_or_unverified": [
+        "本次仅回读这些输入及现行承接，未重跑Ficus缺失Java父包或真实企业集成；169含复述不能当169功能。"
+      ],
+      "supplement_research": [
+        "保留历史报告验证限制，不把旧问题直接算现行漏洞。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C10",
+      "focus": "执行后自行审计、证据与不确定项披露",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1c9bd-7c16-7721-9263-4d1dcd8698b1"
+      ],
+      "quote": "执行完后我需要你自行审计",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C10"
+      ],
+      "verdict_reason": "有独立多路复核、逐项原需求回查、结构/运行证据与真实待验分层；后期详设深度与限制有明示。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-requirements-audit-2026-11-11.md",
+          "section_or_symbol": "§2/§5–12",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-design-status.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-closeout.md",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "有独立多路复核、逐项原需求回查、结构/运行证据与真实待验分层；后期详设深度与限制有明示。"
+      ],
+      "limits_or_unverified": [
+        "此前交付自审证明材料交付，不自动证明所有关注点同等深入；本次重新按原话核深度而非复述旧结论。"
+      ],
+      "supplement_research": [
+        "本次报告须保留不充分结论，不能用旧门禁绿灯关闭研究缺口。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C11",
+      "focus": "旧触发条件和挂账描述本身是否合理",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "先看描述是否合理",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C11"
+      ],
+      "verdict_reason": "源触发原意保留，并为E01–E10设置早期裁决/后续交付窗口；E10三项和固定报告/通报等曾被泛化的来源已实质纠正。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/phase6/07-backlog-and-triggers.md",
+          "section_or_symbol": "§3",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-source-map.json",
+          "section_or_symbol": "119 P6-T/trigger entries",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/roadmap-capability-continuity.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "§4",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "源触发原意保留，并为E01–E10设置早期裁决/后续交付窗口；E10三项和固定报告/通报等曾被泛化的来源已实质纠正。"
+      ],
+      "limits_or_unverified": [
+        "119触发来源均有归属，但该映射本身没有逐条合理性理由；169连续性行仅3条直接来自07索引。不能以总账去向推定每一条旧触发描述都经过同等深入合理性复核。"
+      ],
+      "supplement_research": [
+        "按119条去重给保留/改写/外部替代/退出理由及来源正文锚点；本次不冒称未读部分已合理。"
+      ],
+      "gap_id": "FD02",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C12",
+      "focus": "全部挂账排期，不能无限触发后再说",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "全部需要进行排期",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C12"
+      ],
+      "verdict_reason": "当前挂账有主/关联包、波次、责任、粗估和验收出口，E类把决策窗与实现窗分开；调查不能替代保留功能交付，退出需说明影响。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-source-map.json",
+          "section_or_symbol": "P6-T entries",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "§3–5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/roadmap-capability-continuity.md",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "当前挂账有主/关联包、波次、责任、粗估和验收出口，E类把决策窗与实现窗分开；调查不能替代保留功能交付，退出需说明影响。"
+      ],
+      "limits_or_unverified": [
+        "排期是包/里程碑层级，不是承诺日历或所有子项实施已定；合理性深度不足另列C11。"
+      ],
+      "supplement_research": [
+        "不再无限触发；实际启动绑定资源/T0，逐provider与选定增量拆子交付。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C13",
+      "focus": "五仓目录缺少哪些必要目录或模块",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "整个五个仓的目录结构",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-07"
+      ],
+      "verdict_reason": "先核实service/UI/library实际职责，承认TR启动内嵌迁移、utils根包、deploy与deployments差异，避免机械补空目录。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "ENG-19实际目录/迁移方式差异",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-governance.md",
+          "section_or_symbol": "§6目录与新仓一致性",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G06仓库规格与规则同步",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/documentation.md",
+          "section_or_symbol": "§1–5各仓docs职责/命名/消费者/历史边界",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/engineering-inventory.json",
+          "section_or_symbol": "各仓root_dirs、github_files、Go/UI测试库存",
+          "support": "",
+          "evidence_scope": "existing_ignored_receipt"
+        }
+      ],
+      "what_was_researched": [
+        "先核实service/UI/library实际职责，承认TR启动内嵌迁移、utils根包、deploy与deployments差异，避免机械补空目录。",
+        "列共同必要资产、Go服务/库/UI以及未来contract/private-connector profiles；新仓先写独立交付理由和写主/权限/恢复边界。",
+        "文档五仓各自拥有、主仓SSOT链接、ADR supersedes、真实docs目录README和符号/消费者检查；已有搬迁不重复计工。"
+      ],
+      "limits_or_unverified": [
+        "模板、缺项机械检查及各profile应过/应拒样本待G06/P6.1实施；现有目录有内容不等于所有未来组件已建。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C14",
+      "focus": "五仓及新增仓目录/文档/代码风格一致性",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "代码风格等等一致性",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-08"
+      ],
+      "verdict_reason": "明确现有四Go仓gofmt/vet并不意味着UI已有formatter；实际UI skipFormatting与排除项已经核。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G06 policy-bundle.lock；G06语言与机械文件profile",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/standards.md",
+          "section_or_symbol": "§4语言/依赖方向/命名，生态SSOT",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "eslint.config.mjs",
+          "section_or_symbol": "skipFormatting、files、ignores",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "package.json",
+          "section_or_symbol": "现有lint/typecheck/scripts无formatter",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G06/P6.1及五仓真实文件反例出口",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "明确现有四Go仓gofmt/vet并不意味着UI已有formatter；实际UI skipFormatting与排除项已经核。",
+        "单源版本化bundle包含upstream SHA/bundle版本/每文件hash/profile/例外，下载临时验digest、展示diff、显式路径PR更新，不执行未审远端脚本。",
+        "Go保留gofmt；TS/Vue采用独立钉版本Prettier候选，与ESLint分工；Less/CSS格式与token语义分开；Shell/Python最低语法/LF/UTF8；YAML/JSON/Markdown/Make有各自解析和生成序列化规则。",
+        "只在改动文件先启用，不全仓大格式化；新增profile须应过/应拒例子，CI验证实际文件而非仅复制同名配置。"
+      ],
+      "limits_or_unverified": [
+        "Prettier精确版本/Node兼容及bundle脚本尚未落地，属于已明确的G06冻结/实施出口；不据此说已一致或全部自动检查已生效。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C15",
+      "focus": "现有模块实际耦合与架构调整必要性",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "各个功能模块是否存在耦合",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-09"
+      ],
+      "verdict_reason": "五仓职责、领域数据写主、流程各自权威、private connector禁止直库已明确。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§3五仓/模块写主、§6先消除跨域直查直写",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/architecture.md",
+          "section_or_symbol": "§3.2/3.3职责和依赖方向；§3.5.4跨域调用规则",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/reports/pre-phase6-replanning-2026-11-11.md",
+          "section_or_symbol": "ENG-20注册表不是运行时热插拔",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/ticket/service.go",
+          "section_or_symbol": "Service.orgRepo/storageRepo、middleware.RoleFetcher，storageRepo注释称域间数据层共享",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/user_service.go",
+          "section_or_symbol": "UserService.roleRepo及Create/Update读取RoleRepo",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/org_service.go",
+          "section_or_symbol": "OrgService.userRepo",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/repository/org_repo.go",
+          "section_or_symbol": "OrgRepo.Move直接更新tickets/ticket_templates",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/modules/organization.md",
+          "section_or_symbol": "组织移动当前级联实现",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "C02/C04局部事务与数据访问修复；G06未来依赖方向检查",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "五仓职责、领域数据写主、流程各自权威、private connector禁止直库已明确。",
+        "已深入核实若干具体结构：gateway装配后不可变、jobs新增需发版、APP_MODULES未实现、Wire不等于可选provider；X01稳定接缝前置。",
+        "C02/C04为附件和事务设计了局部正确性合同；没有把全面微服务化作为必要改造。"
+      ],
+      "limits_or_unverified": [
+        "仍缺当前各模块实际依赖/跨域SQL/共享事务与中间件反向依赖清单，以及逐项“有意保留/例外/改用窄接口”的取舍。",
+        "反例：architecture §3.5.4禁止跨域直接import仓储，ticket.Service却明确持OrgRepo/StorageRepo且注释称数据层共享；OrgRepo.Move直接改工单/模板已在模块说明如实记载，但未见本轮对该耦合是必要事务还是需隔离的裁定。",
+        "这些事实不自动是bug，也不要求立即抽接口/拆服务；不足在“用户要求的当前耦合核查”尚未得到实质完整回答。E07运行后拆分评估不能代替现在可静态完成的边界核查。"
+      ],
+      "supplement_research": [],
+      "gap_id": "FD01",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C16",
+      "focus": "服务拆分与微服务的渐进演进条件",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1cb27-cbc0-7f22-b028-ee854661924e"
+      ],
+      "quote": "微服务的演进策略",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "justified_deferred",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-10"
+      ],
+      "verdict_reason": "以独立发布、故障隔离、扩缩容、安全/维护职责实际证据触发拆分；先端口/写主/显式装配和生命周期，再远程协议/幂等/迁移恢复。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§6可插拔与服务拆分",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1怎样选择；§6 E07运行证据裁决；§8增量出口",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/proposal/deployment-evolution.md",
+          "section_or_symbol": "页首现行裁决、§1阅读分层、§4/5历史候选",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "E07 P8出口初评/P9出口定案，X01前置P6.1",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "以独立发布、故障隔离、扩缩容、安全/维护职责实际证据触发拆分；先端口/写主/显式装配和生命周期，再远程协议/幂等/迁移恢复。",
+        "明确IAM/gRPC/Kafka/CQRS/K8s旧蓝图不是必达；模块化单体与长期SOAR共存都是有效终态。",
+        "实际私有接入所需接缝不随服务拆分一起拖到P9：X01/X02在P6.1先做；后期E07有固定复核/定案窗口且不拆也需结论。"
+      ],
+      "limits_or_unverified": [
+        "尚未选择具体应拆服务或给远程调用容量阈值；在未有独立发布/容量/故障实证的现状下合理后置。",
+        "这项合理后置不豁免ENG-09指出的现状静态耦合审查。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C17",
+      "focus": "内部模块可插拔，尽量不改主仓",
+      "source_message_ids": [
+        "01a1c9ca-a683-7951-a313-20a22c940d01"
+      ],
+      "quote": "最好不要动主仓的代码",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-18",
+        "PROD-04"
+      ],
+      "verdict_reason": "四类扩展、manifest/目录归属/同步身份/受控网关/失败与验收已具体。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/extension-compatibility.md",
+          "section_or_symbol": "§1现状、§2四种扩展、§3一次性接缝、§4授权、§7出口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/app/wire.go",
+          "section_or_symbol": "现行编译装配",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/router/catalog.go",
+          "section_or_symbol": "当前路由守卫",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/store/modules/permissionRoutes.ts",
+          "section_or_symbol": "构建视图解析",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§6可插拔与服务拆分",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/architecture.md",
+          "section_or_symbol": "§3.5跨域调用/拆分规则、§3.6生命周期",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/extension-compatibility.md",
+          "section_or_symbol": "§2四种扩展、§3接缝、§7排期",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/gateway/gateway.go",
+          "section_or_symbol": "现行静态网关",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "针对现有Wire/静态路由/SQL目录/UI构建耦合，明确先一次性建设manifest/受控网关/导航/同步身份/兼容检查，而非声称当前已有插件。",
+        "声明包到字段组级别，CLI校验签名/命名空间/依赖/路由冲突→diff→CAS同事务目录/审计→活动配置；跨进程失败保留旧版本并对账。",
+        "目录来源归属与卸载只撤自己绑定，B案/L1/L2/L3不豁免；扩展独立存储/迁移，身份不能自报user_id，失联敏感操作拒绝。",
+        "UI先受信独立应用/新窗口，避免为同壳先建任意远程JS；X03参考设备是具体验证载体。",
+        "保留模块化单体，以数据写主/领域端口/显式装配先降耦合，独立发布、故障隔离、容量或安全边界成立才拆服务；不预置IAM拆分/K8s/Kafka。",
+        "区分内部编译期模块与进程外私有扩展，说明现有Wire、gateway.Registry和资源注册并非运行时插件。",
+        "取舍Go动态plugin与进程外HTTP，列工具链/依赖耦合代价；X01/X02提前P6.1，E07在P8出口取证、P9形成不拆或拆的明确决定。"
+      ],
+      "limits_or_unverified": [
+        "尚无manifest管理器/参考扩展/跨版本回执或真实身份交换；核心不需要改的承诺仅限未来接缝覆盖的合同。",
+        "未来新增核心业务语义仍可能合理修改核心，文档已明确不是任意功能永久零改动。",
+        "没有实际运行指标支持现在拆某个服务，文档也没有声称已有；热更新、独立发布及跨进程恢复未验证。"
+      ],
+      "supplement_research": [
+        "当前目标合同、取舍与失败反例已足够进入实现评审；准确路由/Schema在X01冻结。",
+        "拆分时机不确定是合理的有证据决策窗口；不需当前凭空选微服务。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C18",
+      "focus": "核心升级与旧私有消费者接口稳定/适配责任",
+      "source_message_ids": [
+        "01a1c9ca-a683-7951-a313-20a22c940d01",
+        "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38"
+      ],
+      "quote": "不管是新版本还是旧版本，接口都不变",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-19"
+      ],
+      "verdict_reason": "语义兼容及消费者矩阵有边界，无任意未来永不变承诺。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/extension-compatibility.md",
+          "section_or_symbol": "§1承诺边界、§5版本、§6部署前后矩阵",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": "docs/api/platform-contracts.md",
+          "section_or_symbol": "§4公共版本/消费者写主",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/cross-repo-execution-contract.md",
+          "section_or_symbol": "新旧组合与legacy_observed限制",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "分别处理镜像、HTTP/事件合同、schema修订、工单定义、授权epoch，检查默认值/枚举/时间/分页/错误/幂等/完成语义，不靠OpenAPI diff。",
+        "同主版本语义兼容、破坏变更新主版本/受控迁移，明确安全漏洞不保留、adapter不能自动猜新语义。",
+        "旧扩展×新核心、当前扩展、最低合同、mock/真实connector矩阵；支持窗口包含更多消费者就多测，不用N/N−1代替实际支持承诺。",
+        "旧core不支持receipt的新TR组合明确限制为legacy_observed，不假称四格都具同一保证。"
+      ],
+      "limits_or_unverified": [
+        "当前无正式内网消费者清单或真实兼容矩阵结果；兼容是目标承诺而非已保证任何未来版本。",
+        "§4“任何缓存不延长撤销”需实现采用逐请求授权或权威检查才能成立，不能仅靠有签名头宣称做到。"
+      ],
+      "supplement_research": [
+        "未发现现行文档仍许诺任意未来零改/永久不变；后续每次发布按登记支持范围验证。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C19",
+      "focus": "mock迁入内网：HR/风险adapter隔离真实内部代码",
+      "source_message_ids": [
+        "01a1c9cd-20c3-78e2-8973-27f01f907e31"
+      ],
+      "quote": "内部代码和这个项目出现耦合",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-21"
+      ],
+      "verdict_reason": "稳定实体身份、可信freshness、持久批次/ACK水位、HR/风险写主及影子切换/回退详细。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/intranet-adapter-migration.md",
+          "section_or_symbol": "§1–7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§6.3 Query、§7 DirectorySync DTO/状态、§8发现来源",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/pkg/threatintel/threatintel.go",
+          "section_or_symbol": "现状与当前隔离限度",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "公共核心领域Port→私有connector→真实SDK/地址/字段/凭据；同规范化合同/同合成测试，私有不导internal或直写核心库。",
+        "source/entity_kind/external_id身份，工号非永久键；可信freshness/乱序/ID世代/未知枚举隔离，不用received_at伪装源新事实。",
+        "每跳独立游标与唯一writer，先持久化可重投批次再推进源checkpoint，核心业务+接收回执提交后ACK；全量完整性不等同单页complete。",
+        "HR来源与本地安全状态分开、组织先行/冲突映射、停用先撤权/业务待交接；发现事实与本地risk episode分开，上游closed不关闭本地。",
+        "合同→共同合成→只读影子→有限试点→单writer水位切换→回退/对账，真实能力逐源放行，回mock不能掩盖丢数据。"
+      ],
+      "limits_or_unverified": [
+        "真实provider合同/SDK/目录分页与身份排序仍未知；当前情报HTTP映射还在核心且原样透传，HR未有完整可替换同步，不能把目标设计误当现况。",
+        "真实联调只能内网；当前不验证真实字段或发送内部数据。"
+      ],
+      "supplement_research": [
+        "通用迁移设计已具体；真实HR/发现子包只能待合法合同到位后映射验证。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C20",
+      "focus": "大量mock接口长期保留",
+      "source_message_ids": [
+        "01a1c971-6c91-7e00-be37-6704baff551d",
+        "01a1c973-fe6a-79e2-afe2-102cd03e65d4"
+      ],
+      "quote": "大量的mock接口",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-22"
+      ],
+      "verdict_reason": "长期mock和mock/contract/real证据分层已进入各仓正文。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§1保留前提",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/intranet-adapter-migration.md",
+          "section_or_symbol": "开头、§1共同契约、§6/§7逐源验证",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§6评测与mock分层",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§7验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§6验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": "docs/api/platform-contracts.md",
+          "section_or_symbol": "§6验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "明确真实接口上线后仍不删除mock；mock只替换供给行为，不绕过授权/状态机/事务/幂等。",
+        "分离mock、contract、real，列重复/乱序/网络限流/漂移/撤权/恶意文档/unknown/取消等具体合成反例。",
+        "真实提供方未知只阻塞对应real放行，保留合同待验与复核窗口，不能mock成功即接入完成。"
+      ],
+      "limits_or_unverified": [
+        "未来mock黄金集、参考connector/host尚未实现；现有少量StubProvider并不覆盖全部未来场景。"
+      ],
+      "supplement_research": [
+        "保留政策与验证用途有实质规划，具体fixture随实现交付。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C21",
+      "focus": "已有模型API接入，内网仅内部模型，无模型部署",
+      "source_message_ids": [
+        "01a1c973-fe6a-79e2-afe2-102cd03e65d4"
+      ],
+      "quote": "调用已有大模型的能力就行",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-06"
+      ],
+      "verdict_reason": "只调已有API、不建设模型部署与内网仅内部服务已具体；额外no-AI可运维性检查PROD-07不属于此原话。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§1.1模型连接",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§2Provider与数据区、§5预算、§7分层验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "六类页级合同→领域Agent配置、试用与计划确认",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "模型连接最小字段、能力声明、secretRef、数据区、超时/并发/用量上限与版本留证具体化。",
+        "比较企业网关/兼容API/原生HTTP或SDK，不假定所有内网模型OpenAI-compatible；无tool能力只读摘要，内网故障不得向外网fallback。",
+        "出站数据裁剪、同数据区fallback、DNS/重定向/允许目的地、模型标识未知与usage estimated/unknown等失败边界明确；排除GPU/部署/训练。"
+      ],
+      "limits_or_unverified": [
+        "没有真实内部模型能力、限流、输出/流式合同或实测；适配通过仍pending。"
+      ],
+      "supplement_research": [
+        "通用Provider设计已足；真实模型合同需要在内网核验，不应伪造。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C22",
+      "focus": "智能体配置与已有Agent/平台接入",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1c97d-ee79-7402-9dcb-92f5aba1381e"
+      ],
+      "quote": "智能体配置",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "justified_deferred",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-12"
+      ],
+      "verdict_reason": "通用配置生命周期/外部version引用/run与权限边界已定义；实际企业Agent接口未知，真实映射可延期。不能据此掩盖C23本地场景缺口。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§1.2接入配置/版本/alias风险、§1.4候选比较",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§2对象、§4身份、§5外部run与unknown、§7真实待验",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§5/R04与A05",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "已经给出external Agent/version引用、I/O schema、允许上下文/工具、委托/确认/预算/留存、外部run ID、状态/取消/unknown对账等需要核的合同。",
+        "明确外部提示/运行图/checkpoint属主在提供方，mutable alias不得假定稳定、限制自动写。"
+      ],
+      "limits_or_unverified": [
+        "用户确认的是平台类别存在，未给真实API/版本/权限/联调环境；本轮无法凭空完成真实provider映射和互操作。",
+        "该延期只覆盖真实供给未知，不涵盖本地Agent产品场景或通用合同缺口。"
+      ],
+      "supplement_research": [
+        "准备去敏合同问题与同一合成样例即可；不为拿真实内部接口外传资料。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C23",
+      "focus": "基于平台特有能力自建领域Agent",
+      "source_message_ids": [
+        "01a1c97d-ee79-7402-9dcb-92f5aba1381e"
+      ],
+      "quote": "自建智能体",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-11"
+      ],
+      "verdict_reason": "有限host边界与候选比较存在，但缺需Agent而非固定步骤的首期代表样本及工具/暂停恢复合同。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§1.2–1.4、§5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§1后期领域host、§5恢复、§7剩余",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/phase8/README.md",
+          "section_or_symbol": "§1双轨、§5出口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "双轨配置与权限",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/prototypes/lifecycle-workspace.html",
+          "section_or_symbol": "双轨类型选择与固定计划演示",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "两个轨道的配置/运行真相分开；领域host只管受权上下文、有限模型/工具循环、预算、批准和最小恢复，不建通用builder。",
+        "对比企业Agent API、Go ADK、LangGraph独立进程、确定性应用步骤；提到ADK genai类型耦合/跨语言运维、checkpoint不能替代业务幂等。",
+        "预算候选8步/5分钟/连续失败2次、单推进主、step/receipt/checkpoint、取消与unknown、发布配置不授执行权等明确。"
+      ],
+      "limits_or_unverified": [
+        "尚没有一条能证明“平台特有且确需Agent循环”的具体首期输入/工具序列/输出与失败恢复样本；列举汇总/草案/计划也可由已选确定性步骤完成。",
+        "三路径没有基于同一场景的成本/能力比较结果，本轮明确未跑原型；实际host接口/状态存储/暂停恢复兼容与配置发布合同全部后置。",
+        "UI只有类型切换与合成固定预览，不证明两轨语义或本地域运行已设计闭环。"
+      ],
+      "supplement_research": [
+        "选一个本平台独有的风险→证据→可确认整改场景，同题比较固定步骤与有限host，写明为何要Agent、最小工具Schema、暂停/恢复样例和升级失败边界。真实企业合同另作待验。"
+      ],
+      "gap_id": "FD03",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C24",
+      "focus": "自然语言查数据",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "查数据等",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-08"
+      ],
+      "verdict_reason": "只读Query计划、范围注入、分页聚合、未知/不可用/无权与证据已有具体合同。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§2.1",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§1/A01、§3Query catalog、§5/§7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§6.3公共Query",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§4统一IAM查询",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "首场景为本人负责未关闭高优先级工单/IOC查询；模型只选Query/schema内参数，服务器注入范围，明确拒绝生产SQL和任意URL。",
+        "query.preview/execute、允许资源/字段/过滤/排序/分页/聚合/时区/行数边界和证据链接可追踪。",
+        "跨页合计不能用前20行冒充总体，无权、空、来源不可用、未知字段/歧义/输出非法分别处理；AL须先补受权查询前置，不得P6绕过P7/R06。"
+      ],
+      "limits_or_unverified": [
+        "尚无实际Query schema/黄金集与质量阈值，未证明模型准确性；风险查询仅在已就绪后提供。"
+      ],
+      "supplement_research": [
+        "场景与关键正确性/越权反例已实质研究；精准Schema/语义阈值属于实现基线。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C25",
+      "focus": "自然语言下发工单",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "自然语言下发工单",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-09"
+      ],
+      "verdict_reason": "草案→确定性校验→精确批准→同用例幂等建单已具体。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§2.2",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§1/A02、§3逻辑operations、§4精确确认",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/cross-repo-execution-contract.md",
+          "section_or_symbol": "R01可靠意图/receipt",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "AI结构化计划与确认",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "需求→字段草稿/澄清→按发布类型/schema确定性校验→展示目标与后继影响→真人确认→同工单用例提交；不为AI新造工单draft状态。",
+        "批准绑定actor、类型/参数/目标/定义版本/hash/有效期，变更或撤权重预览；同key同命令原receipt、同key异命令冲突，响应丢失先查。",
+        "A02明确只当次交互，不把当前会话token交模型/外部Agent，不开放无人值守；R01先于不可丢后继。"
+      ],
+      "limits_or_unverified": [
+        "未实现preview存储、业务receipt或UI，实际DTO/DDL、有效期参数与并发事务需实施；旧253验收不证明AI建单。"
+      ],
+      "supplement_research": [
+        "规划深度已有可实现候选，不必为验证研究先写代码。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C26",
+      "focus": "自然语言计划任务的完整用户旅程",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1ca90-eea6-7231-a2da-5d3156f0852b",
+        "01a1caa1-1acd-7aa0-8b49-ab72a344eee1"
+      ],
+      "quote": "实现计划任务",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-10"
+      ],
+      "verdict_reason": "NL计划与TR调度均有内容，但逐次确认/用户离线/过期和连续时隙积压未贯通。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§2.3计划任务",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§3/schedule.preview/confirm、§4默认逐次确认、§5等待/取消",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/schedule-recovery-policy.md",
+          "section_or_symbol": "§4–8",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/prototypes/lifecycle-workspace.html",
+          "section_or_symbol": "agent函数中的合成计划示例",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "已研究自然语言歧义、时区/开始结束/未来时隙、次数/预算/停止条件、唯一TR调度与每次复验grant。",
+        "底层三类misfire、episode预算、held余项、queued TTL/取消竞争/恢复均有详细正文；样板刻意改成每次生成待确认草案、每次建单前再确认。"
+      ],
+      "limits_or_unverified": [
+        "逐次确认与持续任务还未形成完整状态衔接样例：用户离线/确认逾期、连续几个时隙都生成待确认草案、审批期间计划/权限变化、下个时隙到达时合并/保留/过期，以及批准后动作TTL如何算，现正文没有明确规则。",
+        "无人值守允许集/批准策略和grant详情仍仅列A04/I02开工再定；不能用调度器恢复设计证明AI确认全旅程已完成。"
+      ],
+      "supplement_research": [
+        "先补一条“每工作日查询→草案→用户离线后恢复确认/跳过”的端到端合成事件表，明确confirmation与occurrence的关联/超时/取消；不依赖真实模型。"
+      ],
+      "gap_id": "FD04",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C27",
+      "focus": "MCP接口改造与能力暴露/消费边界",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "mcp接口改造计划",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-13",
+        "PROD-14"
+      ],
+      "verdict_reason": "官方研究存在，但首工具及身份/AS集成选择、外部MCP消费样本和P7/P8范围仍需补。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§3 MCP/Action/身份委托、§7官方依据",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§3协议adapter、§4授权、§7尚无conformance",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-design-status.json",
+          "section_or_symbol": "A03 boundary_contract_or_disposition",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§3外部MCP client和P8窗口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "A03/P7标题与出口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "path": "docs/api/platform-contracts.md",
+          "section_or_symbol": "§3协议adapter/凭据不得透传",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "已研究MCP是独立协议adapter而非REST全导出；Action有定义/策略/路由/结果，tools发现与调用共用策略并实时复验。",
+        "区分JWT/HMAC与MCP HTTP OAuth、audience/resource/scope、注解不可信、结果受权与Tasks可选；明确取消请求不等于外部效果取消。",
+        "已有一手规范与Go SDK版本兼容研究，本次独立打开官方2026-07-28规范与SDK兼容表确认其存在。",
+        "提到管理外部server地址、身份、允许工具、版本和出站，外部输出不可信且统一工具门面、凭据不能透传。"
+      ],
+      "limits_or_unverified": [
+        "没有固定首工具的MCP I/O schema/错误映射、支持客户端/SDK/transport组合与conformance样例。",
+        "更关键的集成选择未做完：复用企业授权服务器、建设本平台OAuth AS或限定预登记客户端的方案，如何衔接现有JWT/IAM的token audience/授权与撤销，没有具体取舍，只有“按适用规范实现”。",
+        "A03总账P7同时含外部消费，而总纲§3把MCP client放P8，范围/窗口待一致。",
+        "没有一条消费外部MCP的最薄业务旅程或代表工具，无法检验外部tool schema变化、发现列表变更、授权过期、分页/大结果、外部写效果unknown、停止后在途回执等如何落地。",
+        "具体client profile与OAuth合同仍未来冻结；P7/P8窗口不一致。",
+        "不能把对外MCP server已有设计自动视为外部消费同样深入。"
+      ],
+      "supplement_research": [
+        "补一个只读工单Query工具的真实协议合同与身份时序，明确AS归属/客户端登记/撤销/错误；不需要内部provider即可做。",
+        "先选只读情报/知识类合成MCP server作为消费样本，写出发现→允许集→调用→来源引用→错误/撤权/版本变化合同，并统一排期。"
+      ],
+      "gap_id": "FD05",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C28",
+      "focus": "RAG的接入方式与已有知识平台复用",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1c97d-ee79-7402-9dcb-92f5aba1381e"
+      ],
+      "quote": "rag",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "justified_deferred",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-15"
+      ],
+      "verdict_reason": "已有知识服务优先、实时ACL/删除/引用/共享集替代已充分；真实provider专属ACL/引用能力未知。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§4.1 RAG接入既有知识平台",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§6知识、§7验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§4知识输送约束",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "区分实时业务Query与非结构化知识检索，比较既有API、受权深链/批准共享集和本地索引例外；默认不重建解析/embedding/向量库/rerank平台。",
+        "明确按谁过滤、来源删除/撤权、source/version、缓存再授权、引用当前可见、派生摘要继承分类与注入风险。",
+        "全局服务账号不能支持跨组织检索时先限共享集或深链；AL无行权限不能默认全索引。"
+      ],
+      "limits_or_unverified": [
+        "真实知识API的ACL映射/撤销时效、source/version、数据区与配额未知，无法证明真正受权检索可用；也没有实际检索黄金集。",
+        "本条判断通用合同/替代取舍已充分，provider专属字段与真实质量允许延期；不等于知识产品实现或全部详设完成。"
+      ],
+      "supplement_research": [
+        "通用政策无须再重复；取得内网去敏能力声明后核ACL/引用/撤销失败语义并跑合成与real分层。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C29",
+      "focus": "skill的角色、版本和执行权限边界",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "skill",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-16"
+      ],
+      "verdict_reason": "安全/版本边界存在，但无本平台skill样包、加载/兼容/停用与暂停run例子。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§4.2 skill、§7官方格式",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§6知识/skill",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/phase8/README.md",
+          "section_or_symbol": "§1/§5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "选可信版本库指令/引用资产，记录owner/版本摘要/兼容/依赖/评测/启停；allowed-tools不授权。",
+        "脚本优先外部专业runner，禁止主进程执行公共下载包；Skills over MCP只为分发发现，不建市场、自修改或自动安装。"
+      ],
+      "limits_or_unverified": [
+        "未见一份本平台可信领域skill的最小样包、具体输入/预期输出/引用资产/工具兼容与评测样例。",
+        "skill最小格式、host加载/冲突优先级、依赖升级/撤销对已暂停run的影响以及发布失败回退，均只有字段/边界或后期冻结说明。"
+      ],
+      "supplement_research": [
+        "做一个不含代码执行的合成风险整改skill样例，同一工具授权下演示加载、引用、版本升级/停用与暂停run；这不依赖内部知识API。"
+      ],
+      "gap_id": "FD06",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C30",
+      "focus": "工作流、Agent流程、工单流程能否统一",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "工作流，智能体流程，工单流程，是否可以统一",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-17"
+      ],
+      "verdict_reason": "共享能力/身份/运行关联而保FSM/专业编排/Agent不同语义的答案及替代取舍清晰。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§5三类语义与取舍",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§4流程统一与§5可靠性",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§6代表协同链",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/cross-repo-execution-contract.md",
+          "section_or_symbol": "C03/R01运行与效果写主",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "明确回答统一能力/身份/批准/输入输出/错误/run关联/受权结果及呈现，保留业务FSM、确定性专业编排和有限Agent的不同状态真相。",
+        "对旧万能画布/双执行语义与独立SOAR/有限协调比较，选择共享设计系统/能力合同/运行视图，不默认同引擎或合表。",
+        "提出工单触发workflow/Agent，Agent只能建议业务写；每链单编排/单重试主、已完成副作用receipt、防重复恢复与批准失效；Temporal仅借鉴确定性/Activity边界。",
+        "P6冻结词表、P8有限host、P9代表链及有限并行汇合，复杂DAG需证实缺口。"
+      ],
+      "limits_or_unverified": [
+        "没有三引擎真实互操作或运行迁移/取消测试；P9实施不能以这条规划判断替代跨引擎协议细化。",
+        "具体Agent首期和确认积压缺口仍见PROD-10/11；不影响“是否应强行统一引擎”的已有研究答案。"
+      ],
+      "supplement_research": [
+        "方向与语义取舍已有实质研究；真实专业合同/Agent样本后再细化互操作。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C31",
+      "focus": "AI原生演进能承接现有底座而非AI页面孤岛",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1cb27-cbc0-7f22-b028-ee854661924e"
+      ],
+      "quote": "ai原生",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-05",
+        "PROD-23"
+      ],
+      "verdict_reason": "承接IAM/工单/调度/手工表单并前移A01/A02，不是AI聊天孤岛；后期专题不足单列。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§2三个切片、§3Action合同、§5三种流程",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§3/U08、I01、§5/A05–A07",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/roadmap.md",
+          "section_or_symbol": "§2–5",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/phase5/07-s7-ai-assistant.md",
+          "section_or_symbol": "现状声明、§5预留接口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/roadmap.md",
+          "section_or_symbol": "§1–7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1–8，尤U08/R03/R04/R02",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/roadmap-capability-continuity.md",
+          "section_or_symbol": "来源原子承接/建议替代与拟退出",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§4旧DAG/§6拆分",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "将现有受权查询/工单/任务/消息/专业平台作为工具底座，新增连接/能力/计划/运行证据；明确没有现成LLMProvider、MCP、RAG或host。",
+        "将模型建议、确定性业务校验与授权执行拆开，手动Schema表单与普通HTTP入口保留。",
+        "P6.2只读查询、P6.3真人确认建单、P7协议/持续任务、P8双轨Agent；不是全部推到旧Phase11，也不是为每个AI名词建仓。",
+        "路线不是Phase6加AI清单：P6正确性/闭环、P7手动能力/集成/运行、P8专业执行/报告/Agent、P9持久协同/接管、P10候选；手动入口不被AI替代。",
+        "保留既有业务价值与旧实现方式分开，专业供给或有限状态替代DAG并保动作/批准/等待/并行等效果；需取消业务项另列成本/影响审阅。",
+        "以代表旅程先交付，未知provider逐源待验；不编T0日历/容量/收益，按实际独立发布与恢复证据演进。"
+      ],
+      "limits_or_unverified": [
+        "AI是架构/路线设计，没有模型调用或质量黄金集；后期Agent/MCP详设还不完整，见独立partial项。",
+        "本项只核产品/AI/adapter范围的渐进主线，不代替本轮另一分工逐条核完510来源。",
+        "后期包多数仍是边界合同；全路线方向已经编制不等于所有功能深度设计完成。"
+      ],
+      "supplement_research": [
+        "主方向已有实质取舍；具体后期缺口单列，不能用本条总体通过覆盖它们。",
+        "主线有明确取舍与旅程；后期专题不足应按本报告partial项补研究，不能总体宣称“全部深入完”。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C32",
+      "focus": "数据聚合与安全全生命周期，专业平台优先不造大而全",
+      "source_message_ids": [
+        "01a1c97b-49c6-7722-994d-e50e1fe3fdea",
+        "01a1c97d-ee79-7402-9dcb-92f5aba1381e"
+      ],
+      "quote": "数据聚合和安全全生命周期",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-01",
+        "PROD-02"
+      ],
+      "verdict_reason": "按专业写主和本地生命周期分界，保留具体消费/协作旅程，抑制大而全。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/vision.md",
+          "section_or_symbol": "现行补充、§1.0平台定位声明",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§1首要目标、§2能力供给与数据写主",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1怎样选择、§4/P7与§6/P9代表链",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§2供给与写主表、§4流程统一、§6可插拔",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§3/U08、§5/R03/R04/E04/E06、§6/R02/R05",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§1、§6",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§1、§4",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "从结论级汇聚、有界快照、责任/整改/复测/接受/事件协作/证据界定平台内沿，明确不做原始日志湖与专业执行器。",
+        "逐类明确专业事实与本地处置事实写主，规定来源、时效、未解析、删除/撤权及人工兜底冲突；代表链为告警→风险→工单→任务→结论回源。",
+        "选配置/现有底座→领域用例→稳定adapter→确证独立发布或隔离后才拆服务，首期P6风险mock闭环，P7扩源，P9跨平台恢复。",
+        "逐类比较本地自建、受权调用、投影/缓存和深链；明确取消默认自建DAG/市场、退役SOAR、TIP/IOC权威账本、CMDB/知识索引等旧方向。",
+        "不是只写禁止清单：保留手动能力表单、专业workflow双向调用、脚本制品发布消费、报告、通报回复和值班接管等最薄可用旅程，并区分调查和功能交付。",
+        "TR只持调度/执行事实，AL只持清单，专业事实不通过多存一份变成本地权威。"
+      ],
+      "limits_or_unverified": [
+        "本地风险与事件新能力仍未实现；真实供给字段、权限和闭环收益没有实证。",
+        "全生命周期是跨波次交付目标，不能把定位清楚解释为全生命周期已交付。",
+        "具体专业平台合同与可用能力尚未知，专业供给能否满足每条保留旅程未验证。",
+        "E08后续仍需以代表链完成外部供给与有限协调的实证比较；当前不是已证明可替换所有旧自研功能。"
+      ],
+      "supplement_research": [
+        "无需为重证定位另造研究；逐源真实能力核验留各包。",
+        "边界已有实质研究；具体供给验证合理分期。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C33",
+      "focus": "已有专业供给与未知真实API的核验边界",
+      "source_message_ids": [
+        "01a1c97d-ee79-7402-9dcb-92f5aba1381e"
+      ],
+      "quote": "这些其实都有",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "justified_deferred",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-02",
+        "PROD-12",
+        "PROD-15",
+        "PROD-21"
+      ],
+      "verdict_reason": "类别存在不等于合同可用；逐provider真实待验与mock/contract继续开发边界明确，真实接口不外传。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/platform-evolution.md",
+          "section_or_symbol": "§2供给与写主表、§4流程统一、§6可插拔",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§3/U08、§5/R03/R04/E04/E06、§6/R02/R05",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§1、§6",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§1、§4",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§1.2接入配置/版本/alias风险、§1.4候选比较",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§2对象、§4身份、§5外部run与unknown、§7真实待验",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§5/R04与A05",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-capabilities.md",
+          "section_or_symbol": "§4.1 RAG接入既有知识平台",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/ai-invocation-contract.md",
+          "section_or_symbol": "§6知识、§7验收",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "activelist",
+          "path": "docs/design/platform-integration.md",
+          "section_or_symbol": "§4知识输送约束",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/intranet-adapter-migration.md",
+          "section_or_symbol": "§1–7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§6.3 Query、§7 DirectorySync DTO/状态、§8发现来源",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/pkg/threatintel/threatintel.go",
+          "section_or_symbol": "现状与当前隔离限度",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "逐类比较本地自建、受权调用、投影/缓存和深链；明确取消默认自建DAG/市场、退役SOAR、TIP/IOC权威账本、CMDB/知识索引等旧方向。",
+        "不是只写禁止清单：保留手动能力表单、专业workflow双向调用、脚本制品发布消费、报告、通报回复和值班接管等最薄可用旅程，并区分调查和功能交付。",
+        "TR只持调度/执行事实，AL只持清单，专业事实不通过多存一份变成本地权威。",
+        "已经给出external Agent/version引用、I/O schema、允许上下文/工具、委托/确认/预算/留存、外部run ID、状态/取消/unknown对账等需要核的合同。",
+        "明确外部提示/运行图/checkpoint属主在提供方，mutable alias不得假定稳定、限制自动写。",
+        "区分实时业务Query与非结构化知识检索，比较既有API、受权深链/批准共享集和本地索引例外；默认不重建解析/embedding/向量库/rerank平台。",
+        "明确按谁过滤、来源删除/撤权、source/version、缓存再授权、引用当前可见、派生摘要继承分类与注入风险。",
+        "全局服务账号不能支持跨组织检索时先限共享集或深链；AL无行权限不能默认全索引。",
+        "公共核心领域Port→私有connector→真实SDK/地址/字段/凭据；同规范化合同/同合成测试，私有不导internal或直写核心库。",
+        "source/entity_kind/external_id身份，工号非永久键；可信freshness/乱序/ID世代/未知枚举隔离，不用received_at伪装源新事实。",
+        "每跳独立游标与唯一writer，先持久化可重投批次再推进源checkpoint，核心业务+接收回执提交后ACK；全量完整性不等同单页complete。",
+        "HR来源与本地安全状态分开、组织先行/冲突映射、停用先撤权/业务待交接；发现事实与本地risk episode分开，上游closed不关闭本地。",
+        "合同→共同合成→只读影子→有限试点→单writer水位切换→回退/对账，真实能力逐源放行，回mock不能掩盖丢数据。"
+      ],
+      "limits_or_unverified": [
+        "具体专业平台合同与可用能力尚未知，专业供给能否满足每条保留旅程未验证。",
+        "E08后续仍需以代表链完成外部供给与有限协调的实证比较；当前不是已证明可替换所有旧自研功能。",
+        "用户确认的是平台类别存在，未给真实API/版本/权限/联调环境；本轮无法凭空完成真实provider映射和互操作。",
+        "该延期只覆盖真实供给未知，不涵盖本地Agent产品场景或通用合同缺口。",
+        "真实知识API的ACL映射/撤销时效、source/version、数据区与配额未知，无法证明真正受权检索可用；也没有实际检索黄金集。",
+        "本条判断通用合同/替代取舍已充分，provider专属字段与真实质量允许延期；不等于知识产品实现或全部详设完成。",
+        "真实provider合同/SDK/目录分页与身份排序仍未知；当前情报HTTP映射还在核心且原样透传，HR未有完整可替换同步，不能把目标设计误当现况。",
+        "真实联调只能内网；当前不验证真实字段或发送内部数据。"
+      ],
+      "supplement_research": [
+        "边界已有实质研究；具体供给验证合理分期。",
+        "准备去敏合同问题与同一合成样例即可；不为拿真实内部接口外传资料。",
+        "通用政策无须再重复；取得内网去敏能力声明后核ACL/引用/撤销失败语义并跑合成与real分层。",
+        "通用迁移设计已具体；真实HR/发现子包只能待合法合同到位后映射验证。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C34",
+      "focus": "内部设备台账模块边界，不重复CMDB",
+      "source_message_ids": [
+        "01a1c9d8-688e-7662-9458-1a9c3e150868",
+        "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38"
+      ],
+      "quote": "内部的设备台帐管理",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-15"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/device-module-contract.md",
+          "section_or_symbol": "§1/2/5",
+          "support": "来源CMDB/状态观察/入口能力/回执模型、首期私有薄模块与真实供应分开",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "设备投影与管理入口",
+          "support": "健康与新鲜度分离、大屏独立只读scope/会话、统计深链同授权",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "不复制CMDB/NMS/PAM；无状态源显示未知/人工来源时间，不拿HTTP200当健康",
+        "设备稳定引用、observed/received/stale、分母与刷新错误；大屏隐藏管理入口与敏感定位",
+        "薄模块一合成源与逐厂商真实接入分估，不让设备实现侵入主仓"
+      ],
+      "limits_or_unverified": [
+        "真实CMDB/监控API、来源频率/字段/设备范围仍未知；合成状态不证明真实可用",
+        "没有生产设备页或逐设备登录证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C35",
+      "focus": "设备状态大屏/仪表盘与来源时效",
+      "source_message_ids": [
+        "01a1c9d8-688e-7662-9458-1a9c3e150868"
+      ],
+      "quote": "设备大屏/仪表盘展示一下设备状态",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-15"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/device-module-contract.md",
+          "section_or_symbol": "§1/2/5",
+          "support": "来源CMDB/状态观察/入口能力/回执模型、首期私有薄模块与真实供应分开",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "设备投影与管理入口",
+          "support": "健康与新鲜度分离、大屏独立只读scope/会话、统计深链同授权",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "不复制CMDB/NMS/PAM；无状态源显示未知/人工来源时间，不拿HTTP200当健康",
+        "设备稳定引用、observed/received/stale、分母与刷新错误；大屏隐藏管理入口与敏感定位",
+        "薄模块一合成源与逐厂商真实接入分估，不让设备实现侵入主仓"
+      ],
+      "limits_or_unverified": [
+        "真实CMDB/监控API、来源频率/字段/设备范围仍未知；合成状态不证明真实可用",
+        "没有生产设备页或逐设备登录证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C36",
+      "focus": "多厂商设备无SSO，首期目录/人工登录入口",
+      "source_message_ids": [
+        "01a1c9d8-688e-7662-9458-1a9c3e150868",
+        "01a1c9dd-a7ab-7142-9c00-ea258ebb8b8d",
+        "01a1c9e1-bb5b-7d13-b2dd-053ace297ff2",
+        "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38"
+      ],
+      "quote": "根本没有所谓的sso单点登录",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-16",
+        "UIB-17"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/device-module-contract.md",
+          "section_or_symbol": "§3/4",
+          "support": "明确纠正早期SSO假设，L0/L1/L2分层与POST打开复验/允许地址/短回执",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "设备投影与管理入口",
+          "support": "查看不等于打开，打开不等于目标登录；无目标显示未配置，不泄露地址",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/device-module-contract.md",
+          "section_or_symbol": "§3/5",
+          "support": "给出RemoteApp/VirtualApp/脚本填充参考及型号/固件/方式兼容清单，首期不立自动登录包",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "首期打开厂商页后人工账号/MFA/验证码；不托管密码、反代所有厂商页面或绕过认证",
+        "预配置HTTPS/主机端口allowlist、阻javascript/userinfo/凭据query，noopener/noreferrer、目标网络说明",
+        "普通直链只记启动请求，目标设备自行授权，不伪造登录成功/会话审计",
+        "真实异构认证、MFA/验证码/动态DOM/固件变化限制已分析；只有专业平台逐版本验证可暴露verified_provider",
+        "首期用户已选L0，P7评估供给/收益，无供给明确维持L0并关闭候选，不挂未来SSO"
+      ],
+      "limits_or_unverified": [
+        "真实网络/证书、地址配置与设备登录仍未逐厂商验证；真实终端入口未实施",
+        "未核真实PAM/堡垒机许可证/API和厂商清单，故不能承诺自动登录；此缺口不妨碍首期人工入口"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C37",
+      "focus": "Go/Node/PG/Redis/容器/开源组件升级，自行打包不再公司对齐",
+      "source_message_ids": [
+        "01a1c9d8-688e-7662-9458-1a9c3e150868"
+      ],
+      "quote": "该升级的都可以升级",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-11"
+      ],
+      "verdict_reason": "明确取消公司旧版本对齐，也不再整体等P7；G07A优先EOL Node、Go安全补丁/基础镜像，G07B单列PG/Redis/存储组合。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/dependency-modernization.md",
+          "section_or_symbol": "§1候选与官方支持周期、§2单源版本、§3分批矩阵、§4数据真实回退、§5离线分发",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G03自行打包版本与离线制品",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G07A/P6.0、G07B/P6.1、G05持续机制",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "deployments/Dockerfile",
+          "section_or_symbol": "Go1.26.10/Alpine3.20",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "deployments/docker-compose.dev.yaml",
+          "section_or_symbol": "PG15、Redis6.2浮动tag及旧对齐注释",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "taskrunner",
+          "path": ".github/workflows/ci.yml",
+          "section_or_symbol": "CI Redis7而deploy仍Redis6.2",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": ".nvmrc",
+          "section_or_symbol": "20.19.0",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "deployments/Dockerfile",
+          "section_or_symbol": "node20/nginx1.27-alpine",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "明确取消公司旧版本对齐，也不再整体等P7；G07A优先EOL Node、Go安全补丁/基础镜像，G07B单列PG/Redis/存储组合。",
+        "对Go补丁/主线和utils最低版本、Node26LTS/临时24退路、PG15→18、Redis6.2经7.x→8.2候选给具体取舍；当前精确patch须开工重核。",
+        "验证包含生成工具、lockfile、ltree/AL动态DDL/81对迁移、TR/Asynq/cron、会话/RT/Lua/TTL/ACL；PG不旧镜像挂新卷，Redis区分缓存与任务/会话证据。",
+        "离线包含OCI digest、Go/npm缓存、浏览器/字体、SBOM/许可/来源/签名，断网验装配；Redis发行许可不作未经核验法律结论，不默认替换产品。"
+      ],
+      "limits_or_unverified": [
+        "未升级/inspect任何实际运行容器；RustFS/rclone/migrate/RedisInsight等的具体新候选及许可证/漏洞调查留G07B，准确镜像digest和平台实际可用性待施工。",
+        "恢复RPO/停机预算/新写对账仍须真实副本演练；这些后置有明确出口，不等同只写“以后升级”。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C38",
+      "focus": "未正式部署，可协调替换旧合同，不背六个月兼容承诺",
+      "source_message_ids": [
+        "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38"
+      ],
+      "quote": "因为还没正式部署，可以直接换掉",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "product_ai_adapter",
+      "review_ids": [
+        "PROD-20"
+      ],
+      "verdict_reason": "当前可协调替换且明确退出6个月/两次发布承诺，仍盘点数据和在途。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/extension-compatibility.md",
+          "section_or_symbol": "§6部署前替换与部署后兼容验证",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/cross-repo-execution-contract.md",
+          "section_or_symbol": "新旧组合、回滚与迁移",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-closeout.md",
+          "section_or_symbol": "已确定原则与交付边界",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "明确撤销本轮曾建议6个月/两次稳定发布承诺；协调替换同步五仓、mock/SDK/生成物/文档，不为不存在正式消费者造长期桥接。",
+        "仍盘点开发数据、私有使用者和在途，发现依赖则协调切换；首次正式交付后登记消费者与最低基线，按实际给迁移窗。"
+      ],
+      "limits_or_unverified": [
+        "尚未运行协调替换或迁移；不能凭未部署就假定完全没有在途/消费者。"
+      ],
+      "supplement_research": [
+        "用户修正已准确进入合同；无需再问同一兼容期限。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C39",
+      "focus": "五仓统一PR，允许单维护者检查后合入",
+      "source_message_ids": [
+        "01a1c9f3-ef23-7e52-ac16-5e46d82a8f38"
+      ],
+      "quote": "统一PR，允许单维护者合入",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-12"
+      ],
+      "verdict_reason": "保留明确用户批准为owner_confirmed，统一五仓PR，单维护者全绿可自行合入，不制造第二人形式审批。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "G02 main合入纪律与例外；ENG-D01a",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-decisions.json",
+          "section_or_symbol": "ENG-D01a owner_confirmed",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/standards.md",
+          "section_or_symbol": "§12-7旧小批直main规则",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "AGENTS.md",
+          "section_or_symbol": "当前低风险main/六件门禁纪律",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.md",
+          "section_or_symbol": "G02/P6.0",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "保留明确用户批准为owner_confirmed，统一五仓PR，单维护者全绿可自行合入，不制造第二人形式审批。",
+        "先实跑job、记录check/App，再设置quality-gate required、禁止force/delete和处理管理员绕过；失败PR不能合/全绿可合要真实反例。",
+        "紧急仍PR，单次bypass限定仓主/原因/SHA/缺失门禁/24小时补证/回退；设置导出可恢复。",
+        "准确承认旧直推规则和远端未改变，在G02实施时一并迁移，避免把新设计当已生效。"
+      ],
+      "limits_or_unverified": [
+        "远端保护/required check/规则同步尚未实施；本轮仅核既有时点快照，不能声称现在GitHub已限制直推。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C40",
+      "focus": "分档门禁相对现状的区别、排除项和生效窗口",
+      "source_message_ids": [
+        "01a1cb10-3f9b-7833-8f8d-dd038e9bce25",
+        "01a1cb13-6358-7d50-b9a1-968fc65825fc"
+      ],
+      "quote": "分档门禁 和现在比有什么区别",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "engineering",
+      "review_ids": [
+        "ENG-13"
+      ],
+      "verdict_reason": "与当前区别清楚：当前主仓要求完整acceptance/UI六件；目标按完整候选差异分普通文档、本地离线原型、普通完整三档，混合/未知/治理规则/运行输入回完整档。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "ENG-D01b：分档门禁合同六条及错分反例",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "AGENTS.md",
+          "section_or_symbol": "现行门禁纪律：make acceptance",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "AGENTS.md",
+          "section_or_symbol": "现行前端六件门禁",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-decisions.json",
+          "section_or_symbol": "ENG-D01b owner_confirmed；尚未启用",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-closeout.md",
+          "section_or_symbol": "启用前完整门禁；旧收据只标原来源",
+          "support": "",
+          "evidence_scope": "existing_controlled"
+        }
+      ],
+      "what_was_researched": [
+        "与当前区别清楚：当前主仓要求完整acceptance/UI六件；目标按完整候选差异分普通文档、本地离线原型、普通完整三档，混合/未知/治理规则/运行输入回完整档。",
+        "文档是逐文件白名单且需证明无代码/test/embed消费，不能docs/**或.md全免；规划JSON校验ID/投影/依赖，白名单自己变化走完整档。",
+        "离线原型单独语法/交互/角色/窄屏/错误/截图及无意外请求；不证明Vue/后端/E2E。",
+        "当前SHA重验适用文档证据、常驻quality-gate验证分档实际结果；skipped/缺失/取消不绿，不把旧253/42改标新SHA。",
+        "列docs/docs.go、Swagger、AGENTS/测试指南、embed Markdown、未登记文件、混入Go/SQL/lock、workflow paths跳过等反例；同步规则和CI并验反例后才启用。"
+      ],
+      "limits_or_unverified": [
+        "分类器、白名单最终注册、CI/AGENTS/standards同步尚未实施；用户批准是方向，不是当前候选追溯免测。"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C41",
+      "focus": "全站前端重规划，不能限于点名页面",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "整个项目的前端进行重新设计规划",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-10",
+        "UIB-11"
+      ],
+      "verdict_reason": "Substantive research present, but required full-site current visual/task dimension or concrete event authority contract remains incomplete.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-08/09/10/11",
+          "support": "有useCrud错误未消费、首页失败归零、消息空态、div点击、未保存保护与树/Picker差异的具体静态调查",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "StateFeedback/组件合同/全站实施映射",
+          "support": "规定idle/loading/ready/empty/filtered-empty/error/stale/forbidden及逐页验收",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/ProTable/index.vue",
+          "section_or_symbol": "props/template/请求失败注释",
+          "support": "当前请求失败仍全局toast+空态，无统一dataState消费",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/TicketAttachments.vue",
+          "section_or_symbol": "refresh/onUpload/onDelete",
+          "support": "附件已有原位重试/写成功刷新失败/请求序列，正向资产可保留",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-pages.json",
+          "section_or_symbol": "coverage/pages/shared/future_business_journeys",
+          "support": "27路由+9共享组+4未来入口已盘点，每个现有页均static_reviewed_runtime_pending",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-10/11/批次与排期",
+          "support": "非点名的字典/AL/树/Picker/Profile/复杂配置确有静态问题和建议",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "六类页级合同",
+          "support": "代表为home/tickets/detail/intel/agent/devices，后两类并非已有生产路由",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "把成功空/筛选空/初读失败/已有数据刷新失败/写成功读失败分开，给恢复动作",
+        "按钮可见性来自能力，服务端最终判；弹层焦点/键盘/拖拽替代、未保存保护有共用合同",
+        "并非只改点名问题；读过的非点名模块有分页截断、人员搜索竞态、Profile清空语义、AL导入风险等具体内容",
+        "未来P7/P8/P9消费旅程分包，未用U06代销所有新业务UI"
+      ],
+      "limits_or_unverified": [
+        "27页JSON主要是三个左右的验收目标，没有各页所有读写子面的当前状态矩阵、权限角色矩阵与失败恢复任务记录",
+        "代表原型角色if判断和正常/loading/empty/error不足以验证生产撤权、部分写失败、乱序、草稿隔离",
+        "静态发现真实且有深度，但全站这一整体结论仍不可升为全部深入实测完成",
+        "27是文件清点数，完整原型只覆盖4种当前生产页类型+2种未来页；至少23个其余现有路由未有同级页级原型或生产视觉记录",
+        "缺完整生产视觉/任务证据目录；用户要求的全站重新研究不能仅由清单完整、每页有验收句、总账排期证明",
+        "现有记录已坦承限制，但限制本身并不使全站研究完成"
+      ],
+      "supplement_research": [
+        "给每页列数据面/动作面→能力→首次/刷新/部分失败→合法下一步，补未覆盖复杂页的合成异常旅程",
+        "生产真实角色核L1/L2/L3、账号切换/撤权/并发和写后刷新失败；明确哪些现有行为可保留。",
+        "补未覆盖页的现态截图/具体问题/保留项/方案理由与关键任务状态，尤其登录改密、IAM树、任务/AL、通知/设置和类型字段流程设计器。"
+      ],
+      "gap_id": "FD07",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C42",
+      "focus": "普通用户默认首页、Logo404与安全落点",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "左上角图标显示页面不存在",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-01"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-01/02",
+          "support": "逐层追溯Logo→根重定向→动态菜单，并明确真实用户实例尚未复现",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/Logo/index.vue",
+          "section_or_symbol": "RouterLink to=\"/\"",
+          "support": "当前Logo仍固定根地址",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/router/index.ts",
+          "section_or_symbol": "constantRouterMap",
+          "support": "根redirect /home、children无常驻home",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/menu_service.go",
+          "section_or_symbol": "MenuService.GetUserMenus",
+          "support": "无有效角色返回空；非空由role_menus求菜单",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "e2e/global-setup.ts",
+          "section_or_symbol": "viewerMenuIds/operatorMenuIds",
+          "support": "测试角色主动绑定home，旧绿测试不能排除未绑home故障",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "给出条件性根因链而非仅登记404；公共工作台作为身份自服务入口，safeLanding覆盖登录/Logo/403/404/关全部页签",
+        "明确公共可达不扩大业务读权；权限未加载不发请求，无菜单保留身份/消息，角色撤销清缓存",
+        "给出无角色、空菜单、继承角色、撤权等正反验收"
+      ],
+      "limits_or_unverified": [
+        "没有真实用户故障账号复现，不能确定其唯一根因；无角色时后端SelfService行为尚待实施核对",
+        "离线原型的安全落点不能证明生产Vue路由已修"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C43",
+      "focus": "各页新建主操作位置一致",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "各种新建的位置不一致",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-02"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-03",
+          "support": "对比工单/用户/分派规则/活动类型/通知/字典的实际动作位置",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "PageHeader与SectionHeader/工单列表",
+          "support": "规定title、primaryAction、能力输入、action输出与布局例外",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/ticket/rules/index.vue",
+          "section_or_symbol": "工具行模板",
+          "support": "规则页说明+计数左、新建右，与ProTable toolbar路径不同",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "不是全站强套一卡一头；区分页面主操作、区块主操作、批量动作与行操作",
+        "页面主操作标题末端，筛选下一层；主从区块动作就近；权限决定是否出现"
+      ],
+      "limits_or_unverified": [
+        "只有代表页原型，配置/树/字典等页还没有相同深度的实际视觉迁移证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C44",
+      "focus": "卡头说明一致、去除灰色长工程文案",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "灰色的提示文字",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-03"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-03",
+          "support": "逐项指出priority/keyword/target_user/target_org/open、LIKE、决议编号等并给业务语言替换",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/ticket/rules/index.vue",
+          "section_or_symbol": "工具行/target_user表单提示",
+          "support": "当前仍出现用户逐字指出的长说明及决议③",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/system/notification/index.vue",
+          "section_or_symbol": "模板/规则工具行",
+          "support": "同类params.template实现说明确实存在",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "替代文案为按优先级匹配后分派；详细边界进入可聚焦帮助/专家诊断",
+        "区分业务使用者与需要技术标识的诊断使用者，保留必要信息而非一律删解释"
+      ],
+      "limits_or_unverified": [
+        "现有生产页面文案未改，未测实际灰字计算对比度；不能凭text-gray类判每处视觉违规"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C45",
+      "focus": "工单列表多选批量标签",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "工单列表应该支持多选打标签",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-04"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-05",
+          "support": "核当前无选择列、单票API、read协作授权，提出本页显式选与逐项结果",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "ProTable与批量动作条/工单批量标签的API与权限接线草案",
+          "support": "有请求、候选上限50票、逐项outcome与unknown恢复合同",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/ticket/tag_service.go",
+          "section_or_symbol": "Service.AddTags/RemoveTag",
+          "support": "当前添加走read，自摘/摘他人权限不同",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/ProTable/index.vue",
+          "section_or_symbol": "props/defineExpose/template",
+          "support": "当前仍未暴露selection合同",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux/prototype-verification.json",
+          "section_or_symbol": "bulk tags touch exactly two selected string IDs",
+          "support": "已有离线两项选择与重复标签检查",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "明确本页/全选半选/切筛选换页清选择/string ID；不默认跨页或全筛选暗选",
+        "服务端逐票授权，添加不偷升为update；不可见/不存在同形；保留标签原创建者",
+        "逐项added/unchanged/unavailable/retryable/unknown，unknown先查回执、失败单重试；整批不伪原子"
+      ],
+      "limits_or_unverified": [
+        "离线只有成功/无变化，部分失败/撤权/unknown/网络中断还未生产接线",
+        "批量端点、压测上限与实际API尚未定版；批量移除另立子能力"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C46",
+      "focus": "搜索/筛选/展开的视觉与语义统一",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "搜索，筛选，包括与之关联的展开",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-05"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-04",
+          "support": "核DOM序号隐藏、深链条件不可见、缺aria关系，给即时/显式应用取舍",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/FilterBar/index.vue",
+          "section_or_symbol": "controlEls/applyCollapse/切换按钮",
+          "support": "当前按前K子元素display隐藏，无applied计数/chips/aria-expanded",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "FilterBar",
+          "support": "fields/draftModel/appliedModel/expanded/applyMode输入输出、清单条件与URL同源",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux/prototype-verification.json",
+          "section_or_symbol": "collapsed filters keep active conditions visible",
+          "support": "离线交互已覆盖折叠后chips保留",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "2–3常用条件+更多筛选N，chips常驻、单清与全清；折叠只改变呈现",
+        "昂贵条件可显式应用、普通条件防抖即时，取消旧请求；URL/keepalive/导出/列表共用模型"
+      ],
+      "limits_or_unverified": [
+        "工单原型成功不覆盖所有FilterBar消费者；生产Vue、复杂条件未接线"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C47",
+      "focus": "情报历史左右栏、回填后明确重查、当前结果/本机记录",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1cbb6-7e02-7da2-b272-4b258fe279b7"
+      ],
+      "quote": "左右栏，回填后明确重查",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-06",
+        "UIB-07"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-06",
+          "support": "比较tabs低成本/左右栏反复查询/列表抽屉长历史管理，给宽窄屏和任务取舍",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "情报主从工作区",
+          "support": "桌面主从、窄屏收纳、请求key/迟到结果、领域摘要与高级JSON合同",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux-home-review/ux03-intel-select-requery-1440x900.png",
+          "section_or_symbol": "image inspected this round",
+          "support": "实际看到左历史/右输入及准备重查的原有离线PNG",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/intel/query/index.vue",
+          "section_or_symbol": "historyKey/loadHistory/recordHistory/query",
+          "support": "当前按employee_no保存成功查询元数据、限500条，无结果快照；累计实际为保留数组长",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux-home-review/home-review-verification.json",
+          "section_or_symbol": "TI history remains select-only-fill with explicit current query",
+          "support": "既有离线检查成功但无真实服务",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "当前localStorage语义先于版式；选择理由与替代成本清楚",
+        "没有Provider评分时未提供，不凭通用JSON发明威胁结论；复制有按钮与反馈",
+        "不把本机记录当跨端审计或组织指标；500是现态技术上限而非新承诺",
+        "选历史只填值/类型，显式重新查询才调用；绑定请求key避免旧请求覆盖；缓存/来源观测时间独立"
+      ],
+      "limits_or_unverified": [
+        "只对离线合成主从做过任务检查；真实Provider长结果、窄屏触屏/暗色/并发尚未测",
+        "公开设计系统资料存在引用，本轮不重新核其最新版本",
+        "生产页仍tabs+分组历史，重设计未落地；跨端历史供给/保留/隐私细节待接入窗口",
+        "实际Provider错误与乱序未验证，原型只生成合成结果"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C48",
+      "focus": "全站配色、字体字号、间距比例和密度",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621"
+      ],
+      "quote": "整个字体字号",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-08",
+        "UIB-09"
+      ],
+      "verdict_reason": "Substantive research present, but required full-site current visual/task dimension or concrete event authority contract remains incomplete.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-07",
+          "support": "有主题资产核对、27页gray词法次数77与字号散落示例，明确非视觉缺陷计数",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "单一推荐视觉体系",
+          "support": "有完整亮色token、字号/行高及声明色对亮度计算；明确非全站渲染合规",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/common/styles/src/var.css",
+          "section_or_symbol": "html:root/html:root.dark/Tag与主按钮覆盖",
+          "support": "当前已具备亮暗tokens与部分对比修正",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-redesign.md",
+          "section_or_symbol": "FE-PRE-07/10/11",
+          "support": "指出壳层60+38+50高占用、字典42%等实际比例问题，给任务分型",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "宽度与比例/控件与密度/本阶段实测与限制",
+          "support": "有216侧栏、详情300、历史280等候选及四视口/半视口代理说明",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/system/dict/index.vue",
+          "section_or_symbol": "dict-pane/template",
+          "support": "生产仍w42%且类型/项page_size100",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux/prototype-verification.json",
+          "section_or_symbol": "six views at four viewport sizes",
+          "support": "只有离线六类布局测量，不是27个生产页",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "已有色系/组件库不是空白；建议复用并补语义tokens，正文/表格/辅助/标题层级",
+        "声明颜色对计算与真实computed色分开；禁止只依色相表达状态",
+        "区分表格满幅、表单可读宽、主从上下限、复杂设计器独立空间；密度不缩正文",
+        "原型实际多行行高74.5/66.5不冒报CSS目标54/40，200%代理不冒报真实浏览器缩放"
+      ],
+      "limits_or_unverified": [
+        "缺全站生产元素实际computed前景/背景、字体fallback、字重/行高/中文长内容的逐页测量",
+        "只有六视图离线亮色样板，不能证明登录/树/表单/复杂设计器/暗色整体审美与可读性已深入实测",
+        "77字符串计数和token表不能代替用户要求的全站现状视觉检查",
+        "未见生产27页可用高度、列截断、弹层/侧栏、双树/宽表/长表单的逐页尺寸与任务测量",
+        "原生200%缩放、真实EP控件、窄屏触屏、暗色仍待验；四种旧布局退出未细化",
+        "给一套推荐比例是目标方案，不能说明全站现状比例已深核"
+      ],
+      "supplement_research": [
+        "补生产既有27视图及关键共享组件的亮暗截图与实际样式抽样，按页面标问题/保留理由/目标映射",
+        "测中文/英文/数字/长标识与禁用、危险、选中、悬停、焦点状态，记录真实渲染证据，不能仅复述token。",
+        "补配置/树/主从/长表单/任务多Tab等非代表页的生产尺寸与长内容样本，定位实际裁切/空白/滚动问题",
+        "验证原生缩放下底部提交/错误定位可达及密度切换前后信息层级。"
+      ],
+      "gap_id": "FD07",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C49",
+      "focus": "默认单侧栏+身份顶栏，页签页脚不占默认首屏",
+      "source_message_ids": [
+        "01a1cb99-646c-7373-996d-c5a9891d6dc2",
+        "01a1cb9a-92a5-73a1-8ddd-f17b09c73123"
+      ],
+      "quote": "可以",
+      "basis": "user_message_or_confirmed_proposal",
+      "approval_context": "short-approval-context.json: msg_04430d70ad3046a3016af4a2508c9487d08d6ea33afbb4f5b9",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-12"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "单一推荐视觉体系/信息架构和入口合同/UX01",
+          "support": "单左导航+身份顶栏、页签页脚不默认占首屏，复用Vue/EP/品牌渐进迁移",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/layout/Layout.vue",
+          "section_or_symbol": "layout计算/四布局分支/TagsView",
+          "support": "当前保留四布局且常驻TagsView，未实施目标",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux-home-review/ux01-three-domain-home-1440x900.png",
+          "section_or_symbol": "image inspected this round",
+          "support": "已实际看现有离线单侧栏/身份顶栏PNG",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "说明导航、身份、业务内容职责和可用高度理由，不先重写SPA；内网扩展遵同一受权导航",
+        "保留旧布局退出为单独方案，不把默认方向确认当删除四布局批准"
+      ],
+      "limits_or_unverified": [
+        "目前为离线壳层，EP集成/旧布局兼容退出具体步骤仍未冻结；字体/比例最终技术值待校准"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C50",
+      "focus": "首页当前处理/复核责任，甲乙责任切换与去重",
+      "source_message_ids": [
+        "01a1cb99-646c-7373-996d-c5a9891d6dc2",
+        "01a1cb9a-92a5-73a1-8ddd-f17b09c73123"
+      ],
+      "quote": "可以",
+      "basis": "user_message_or_confirmed_proposal",
+      "approval_context": "short-approval-context.json: msg_04430d70ad3046a3016af4a2508c9487d08d6ea33afbb4f5b9",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-13"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§4 首页责任投影",
+          "support": "明确assigned_to不保证改变，R3待复核用当前有效risk_owner；给甲乙/关闭/owner交接/临时阻断反例",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "公共工作台",
+          "support": "计数/点击列表/角标同源，责任不同于can_transition或creator/CC/管理员操作范围",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/Home/index.vue",
+          "section_or_symbol": "onMounted/meQueries",
+          "support": "当前仍assigned+in_progress两态按assignee=me计数",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "甲提交乙复核不靠顺手自动改派；非终态元数据与自定义状态一致，旧处理人可跟踪但不算当前行动",
+        "可见责任被配置阻断仍计并提示，无权对象隐藏；当前owner交接后责任变化同源",
+        "分步先普通责任、R3上线同批补复核，不等通用审批引擎"
+      ],
+      "limits_or_unverified": [
+        "后端投影DTO/统一谓词尚未实施/冻结；现有3条原型全是普通处理，标签需复核不等于验证甲乙不同身份",
+        "没有生产甲乙复核/owner交接/计数列表角标一致实测，不能把离线12组检查当该分支证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C51",
+      "focus": "首页任务与消息按权限保留，全局态势另视图",
+      "source_message_ids": [
+        "01a1cb99-646c-7373-996d-c5a9891d6dc2",
+        "01a1cb9a-92a5-73a1-8ddd-f17b09c73123"
+      ],
+      "quote": "可以",
+      "basis": "user_message_or_confirmed_proposal",
+      "approval_context": "short-approval-context.json: msg_04430d70ad3046a3016af4a2508c9487d08d6ea33afbb4f5b9",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-14"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "公共工作台",
+          "support": "工单/任务/消息三域；task:read门控、submitted_by=me在途/失败执行记录，消息身份自服务",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux-home-review/home-review-verification.json",
+          "section_or_symbol": "member lacks task-read/task click/empty menu",
+          "support": "普通角色两卡等分、任务角色三卡、本地任务过滤意图、空菜单消息检查",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        },
+        {
+          "repo": "external_reference",
+          "path": "/Users/bujibuji/code/src/github.com/tracerbiubiubiu/zhuzhao/.codex/audits/pre-phase6-replanning-20261111/design-deepening/ux-home-review/ux01-three-domain-home-1440x900.png",
+          "section_or_symbol": "image inspected this round",
+          "support": "现有截图三域保留，非原早版仅工单数字卡",
+          "evidence_scope": "pre_existing_receipt_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "任务不是定义数/全员执行数，权限不足整卡隐藏且不发请求，剩余卡自动等分",
+        "普通无业务菜单仍有个人消息，管理员全局态势为独立有权视图；失败不冒充0"
+      ],
+      "limits_or_unverified": [
+        "任务卡点击只打开本地合成记录、没有真实task API；消息/任务跨域真实接线和响应时效未验"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C52",
+      "focus": "文件字段上传追加B保留A，手动删A，多选及Markdown澄清",
+      "source_message_ids": [
+        "01a1ca90-eea6-7231-a2da-5d3156f0852b",
+        "01a1caa1-1acd-7aa0-8b49-ab72a344eee1",
+        "01a1caa2-5f69-7de2-8379-5c0f503e69ee",
+        "01a1caa2-e0de-7152-a83f-ff4696d3ea39"
+      ],
+      "quote": "正常的上传b就是在列表上再加b",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-18",
+        "UIB-19"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "C02/ENG-D02",
+          "support": "明确默认追加B，引用去重、逐项上传错误和手动删除",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "文件上传的追加与主动删除",
+          "support": "澄清字段已有追加但选择只单个，附件区multiple已存在，不误报全缺",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/views/ticket/create/index.vue",
+          "section_or_symbol": "handleFileUpload/file上传input",
+          "support": "input.files[0]、成功setFileKeys([...old,key])、无multiple",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "src/components/TicketAttachments.vue",
+          "section_or_symbol": "el-upload/onUpload",
+          "support": "已有multiple且每项上传后刷新；写成功刷新失败有独立反馈",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/engineering-execution-design.md",
+          "section_or_symbol": "C02",
+          "support": "对象一份/字段与附件两个入口；ReconcileTicketFileRefsTx、引用保护、用途/归属/GC锁竞争",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/ticket/service.go",
+          "section_or_symbol": "Create bindKeys/Update req.Attachments",
+          "support": "Create收file/richtext，Update仍仅req.Attachments",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/storage/service.go",
+          "section_or_symbol": "DeleteTicketAttachment",
+          "support": "现保护ticket_richtext，file引用完整保护仍未实现",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "区分已存在的追加逻辑与需补的一次多选；对象key去重，不以文件名猜归属",
+        "单次/工单额度取后端，不自造每字段固定上限；成功项保留、失败项单独重试",
+        "自定义file控件不是仓库.md；正文Markdown/富文本引用URL与物理对象删除分开",
+        "建单前移除不纳入提交/GC暂存；已建单从字段移除不自动删除，显式删除仍被引用则409并给位置",
+        "新增仅合法confirmed暂存/本单对象，拒他人/外单/错用途；同事务字段/关系/owner/events，GC不删已绑定"
+      ],
+      "limits_or_unverified": [
+        "一次多选字段UI、并发/额度/逐项回执尚未接线；目前生产只读详情无file编辑",
+        "无完整多选失败/提交回滚真实证据",
+        "现有file编辑与引用删除保护缺口仍在；新接口/迁移与旧orphan盘点待C02实施",
+        "richtext图片用途有独立生命周期，尚不能把所有文件通路视为已统一实现"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C53",
+      "focus": "定时任务可选错失策略并充分细化",
+      "source_message_ids": [
+        "01a1ca90-eea6-7231-a2da-5d3156f0852b",
+        "01a1caa1-1acd-7aa0-8b49-ab72a344eee1"
+      ],
+      "quote": "在创建定时任务的时候应该加一个选项",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-20",
+        "UIB-21"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/schedule-recovery-policy.md",
+          "section_or_symbol": "§1–4/§8",
+          "support": "从当前至多补一次改为skip/latest/bounded准确语义、适用任务与UI字段",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "internal/service/cron.go",
+          "section_or_symbol": "Loop.FireDue",
+          "support": "当前随机taskID提交一次，再从now算next_run；没有策略",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao-ui",
+          "path": "docs/design/frontend-implementation-contract.md",
+          "section_or_symbol": "定时任务表单分层",
+          "support": "先Action/参数→频率/时区→允许策略，服务端preview后保存",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/schedule-recovery-policy.md",
+          "section_or_symbol": "§2/4–8",
+          "support": "IANA/DST/业务日、稳定occurrence、episode与cutoff、budget/容量/start-rate、停启/CAS/preview细节",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "taskrunner",
+          "path": "internal/service/task_service.go",
+          "section_or_symbol": "UpdateJob",
+          "support": "当前描述/参数变更仍重算next_run，无目标的CAS/独立版本",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "正常迟到/漏建时隙/已建未开始/执行失败未知四类分开，不能用回补复制业务效果",
+        "skip适过时提醒、latest适当前同步、bounded适可回溯日报，Action限制允许集而非人人任意无限补",
+        "给Quartz/APScheduler/K8s模式参照而非引入调度产品；技术默认明确非owner业务SLA",
+        "时隙幂等与业务产物幂等分开；DST两个UTC时隙可能同日报产物，领域receipt去重",
+        "admitted_count持久准入消耗且重启不重置，batch_size/并发/速率/累计额度分离；queued抢占与supersede用互斥/CAS",
+        "schedule_generation/definition/policy分版本、旧参数快照、缺历史held_definition；暂停恢复不重排身份",
+        "预览hash/expiry/revision主体绑定，正常队列容量与4:1轮转只是推荐需验证；unknown保留对账"
+      ],
+      "limits_or_unverified": [
+        "当前无策略字段/发生次表/控件，旧行为未改变；真实Action可回溯能力/幂等和参数版本仍待逐个验",
+        "技术限额/公平性尚无基准实测，尚无新schema/API/worker实现；Action历史/授权需I02联验",
+        "本文恢复实现8–12日与总账I03 9–15日是总账另加观测1–3日，并非可用旧估算包办全部功能"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C54",
+      "focus": "逐次补齐超限暂停并保留余项",
+      "source_message_ids": [
+        "01a1cab4-fcc9-7601-9736-092e01ddbef8"
+      ],
+      "quote": "暂停并保留余项",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-22"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/schedule-recovery-policy.md",
+          "section_or_symbol": "§4 overflow_policy/§5/§6/§7",
+          "support": "held状态、未决范围、扩大预算同episode/CAS、resume/stop/approve_skip权限与回执",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "总量、超龄、恢复窗口耗尽不静默删除；held不算completed，完成需逐项终态或明确skip/coalesce收据",
+        "停止仅新准入+可证明未开始hold，running/unknown继续执行/对账；恢复沿原ID、原预算",
+        "扩大范围预览→授权确认→CAS修订，不换episode绕额度；三组计数不相加"
+      ],
+      "limits_or_unverified": [
+        "没有生产恢复控制台/持久episode，参数推荐值未G04实测；超限余项真实保留和断电恢复待实施"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C55",
+      "focus": "状态转换/转派成功含义，本地事务与异步后继",
+      "source_message_ids": [
+        "01a1ca90-eea6-7231-a2da-5d3156f0852b",
+        "01a1caa1-1acd-7aa0-8b49-ab72a344eee1"
+      ],
+      "quote": "举个例子说明，最好再附上业界的策略",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-23"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/cross-repo-execution-contract.md",
+          "section_or_symbol": "reassign 的明确业务取舍",
+          "support": "明确纠正一概异步为本地必需原子/独立后继/外部前提三档，给例子和参照",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/ticket/transition_service.go",
+          "section_or_symbol": "Service.Transition commit后RunPostActions",
+          "support": "现状提交状态再后动作，失败不回滚",
+          "evidence_scope": "independently_rechecked_current_source"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/service/ticket/actions_builtin.go",
+          "section_or_symbol": "ReassignAction.Execute",
+          "support": "现转派另调assignAsSystem/Assign，而非同tx",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "必需本地状态+责任一起成立则同一短PG事务，目标停用/写失败整体失败；抽接受tx用例不嵌套Assign",
+        "通知/同步独立后继源事务写intent，失败可见持久重试；只有允许状态先成才异步转派且revision防覆盖",
+        "外部结果前提用执行中/待回执，不持PG锁等网络、不把已发送当完成；不设普通用户同步异步万能开关"
+      ],
+      "limits_or_unverified": [
+        "源代码仍旧实现，必须逐转换列本地不变量；R01 intent/poller/回执和同tx用例待实现",
+        "EXE-D01认可不是各具体转换定义已发布或已通过故障注入"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C56",
+      "focus": "新工单类型仅参与人、旧类型保留范围",
+      "source_message_ids": [
+        "01a1caba-8dfd-75a2-a63f-443639a4911f"
+      ],
+      "quote": "新类型仅参与人，已有类型保持原范围",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-24"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.1/5.2/§10 B01",
+          "support": "read/create/participant三策略分离，inherit与participants_only/role_restricted，旧回填兼容与收紧预览",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "面向用户叫查看范围，不增is_sensitive或单票万能override；类型策略live不随定义快照冻结",
+        "旧类型inherit保持现可见集，新类型participants_only；改旧先plan可见/创建/领域owner影响→确认CAS",
+        "角色用稳定code、有效三源继承；停用/不存在角色不回退inherit，列表详情搜索导出计数同谓词"
+      ],
+      "limits_or_unverified": [
+        "当前TicketType/迁移无这些字段；目标路由/存量回填/前后可见集尚未实测"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C57",
+      "focus": "抄送仅查看评论，不附送处理权",
+      "source_message_ids": [
+        "01a1caba-8dfd-75a2-a63f-443639a4911f"
+      ],
+      "quote": "抄送后可查看和评论",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-25"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.2授权矩阵/§4.3 capabilities/§10 B02",
+          "support": "CC读评仍过入口L1，参与人/CC不附update/assign/delete/附件写权",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "read/comment与处理动作、attach capability分开，CC不能借身份获得转换/字段/管理资格",
+        "普通participant与CC角色精确区分，领域owner具名同步受管参与不混普通CC"
+      ],
+      "limits_or_unverified": [
+        "受限类型和参与管理尚未实现；旧CC路由保留但他人增删需独立管理资格尚待改造",
+        "没有真实受限票CC评论成功且改字段/转派失败的生产证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C58",
+      "focus": "all数据范围不越类型限制，不另造敏感字段",
+      "source_message_ids": [
+        "01a1caba-8dfd-75a2-a63f-443639a4911f",
+        "01a1cacc-ad48-7a52-a5e5-25a0f208fa0f"
+      ],
+      "quote": "不越过类型查看范围",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-26"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.2 BK-21/查看范围必要性与B03说明",
+          "support": "有分组谓词逻辑和Jira项目权限/票可见性层次参照；系统级例外独立",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "global_exception OR inherit旧分支 OR restricted受限分支，禁止末尾OR scope_all/cc逃出type组",
+        "解释类型范围必要性且不照搬Jira完整security scheme；不加敏感字段或通用ABAC",
+        "系统级admin原例外保留，但风险接受等业务制衡不跳"
+      ],
+      "limits_or_unverified": [
+        "真实SQL谓词抽取及所有读取入口同源仍待实施；没有all-scope跨受限票的当前新策略运行反例"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C59",
+      "focus": "独立授权业务管理者管理参与人/抄送",
+      "source_message_ids": [
+        "01a1cacc-ad48-7a52-a5e5-25a0f208fa0f"
+      ],
+      "quote": "有独立授权的业务管理者管理",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-27"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.2/5.3/§10 B04",
+          "support": "ticket:participant:manage按钮、新participants list/change、active候选/CAS/受管项保护与审计",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "creator不自动邀请；按钮权限不挂页面写，不靠selfService绕管理资格",
+        "每票范围+当前管理资格+active人；领域受管项普通不可删，revision/双边审计同tx",
+        "不可见票不返回成员/why-not-visible探测信息，合法本人退出另评估"
+      ],
+      "limits_or_unverified": [
+        "按钮码/候选API均目标，不是现有已授角色；实际人员名单和生产接收范围需启用前配置",
+        "具体管理UI只在合同层，无生产交互/候选搜索结果验证"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C60",
+      "focus": "虚拟风险组管理/录入/受限派单，不额外通用建单权",
+      "source_message_ids": [
+        "01a1cacc-ad48-7a52-a5e5-25a0f208fa0f",
+        "01a1cae6-7544-7863-bd2c-1cc4efdeb0e2",
+        "01a1cbad-8dd9-7ed2-9717-2c33603ff97d"
+      ],
+      "quote": "采用这套职责方案",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-28"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.4/§8.4/B05业界参照/§10 B05",
+          "support": "现org_roles机制与管理/只读、单条/批量范围、配置目标派单和SOC职责分开",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "internal/repository/role_repo.go",
+          "section_or_symbol": "RoleRepo.GetEffectiveRoleCodes",
+          "support": "组织角色种子无organizations状态/deleted过滤，文档没有冒称停组织已撤所有派生权",
+          "evidence_scope": "independently_rechecked_current_source"
+        }
+      ],
+      "what_was_researched": [
+        "risk:manage+主锚/当前owner的单条与批量主锚规则保留；不要求通用ticket:create、不再新派单角色，不冒用owner",
+        "风险组全员管理才组绑宽角色；有旁观成员须精确授予，不能只读角色抵消管理；多实体部门不意味着任意目标",
+        "旧风险事件risk_item与攻击/应急事件区分，后者接SOC ID/结果并单独职责授权；不自造SOC",
+        "停组派生角色现状缺口交C04/D06，保留独立权源与历史读取，不夸为已证任意越权"
+      ],
+      "limits_or_unverified": [
+        "risk:read/manage仍规划，角色名单/类型组织映射/具体SOC接口和事件权限码未实施或真实验证",
+        "组停用/删除授权展开修复与用户其他权源的回归尚未运行"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C61",
+      "focus": "风险记录与攻击应急事件区别，SOC事件职责授权",
+      "source_message_ids": [
+        "01a1cae6-7544-7863-bd2c-1cc4efdeb0e2",
+        "01a1cbad-8dd9-7ed2-9717-2c33603ff97d"
+      ],
+      "quote": "风险事件呢",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "partial",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-31"
+      ],
+      "verdict_reason": "Substantive research present, but required full-site current visual/task dimension or concrete event authority contract remains incomplete.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§5.4 风险事件术语段/B05",
+          "support": "明确risk_item不是攻击/应急事件；SOC为专业写主，不因风险组成员自动获得事件模块全部能力",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-backlog.json",
+          "section_or_symbol": "work_items D14",
+          "support": "有SOC ID/时间线/证据/岗位工单与导出范围、P6.E窗口；仅总账范围，不是具体事件授权合同",
+          "evidence_scope": "pre_existing_ledger_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "边界研究有实质：区分旧文档风险记录和攻击事件，不另建SOC；引用SOC事件/战役ID、专业研判与动作结果，保留本地协作事实。",
+        "D14不是完全遗漏：时间窗→单事件时间线、actor筛选、自动与补录标识、覆盖缺口、岗位任务/应急工单/受权IOC/活动导出均有范围。"
+      ],
+      "limits_or_unverified": [
+        "风险组risk:manage的L1×主锚/owner规则已细化，但事件一侧仍只说按事件职责另行授权；未见相当深度的事件读/录入/协作管理/岗位派单/导出动作矩阵、虚拟组授予关系、跨组范围或撤权/接管反例。",
+        "D14条目和已批准分工只能证明方向/排期，不能独立证明用户风险事件权限追问已按与风险同等深度研究；尚无具体event DTO/状态/真实SOC合同。"
+      ],
+      "supplement_research": [
+        "在D14窗口补一张最小职责×资源范围×动作矩阵，说明风险组授权与事件职责是否共角色/独立授予，以及只读/协作/管理/派单/导出如何限制。",
+        "用同属风险组但非该事件岗位、事件接管/撤权、SOC来源不可用/权限失效的合成反例验证；无需因此重问已批准SOC边界或自造SOC。"
+      ],
+      "gap_id": "FD08",
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C62",
+      "focus": "离职批准映射后自动逐项交接，安全禁用先行",
+      "source_message_ids": [
+        "01a1cbb7-eb0f-79c1-bc82-341e12ee0810"
+      ],
+      "quote": "批准映射后自动交接",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-29"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§7.1–7.3/7.5/§10 B06",
+          "support": "HR来源完整性/身份映射与HandoverCase、即时禁用及已批准映射自动逐项交接",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "安全停用不等交接，撤会话失败revocation_pending+持久intent；旧AT不能无条件放行，写事务重验active/epoch",
+        "盘点工单/risk owner/接受复核/manager等；原owner/assignee不置空抹史、created_by不改",
+        "批准映射不是授予权限；逐项active/范围/实例revision校验，可合法直转自动，缺映射/不合法保状态待交接；复杂拆分转人工",
+        "事件+周期补扫补崩溃清单，通知失败不回滚停用，复职不抢回已交接事项"
+      ],
+      "limits_or_unverified": [
+        "真实HR身份/离职语义、映射批准记录/管理UI、业务逐项inventory接口与自动执行均未实施",
+        "映射本身尚未具象为实际人员方案；没有生产禁用旧AT/部分交接/重跑证据"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C63",
+      "focus": "撤部预览确认plan后批量接管，历史/权限保护",
+      "source_message_ids": [
+        "01a1cbb7-eb0f-79c1-bc82-341e12ee0810"
+      ],
+      "quote": "预览确认方案后批量交接",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "frontend_business",
+      "review_ids": [
+        "UIB-30"
+      ],
+      "verdict_reason": "Source-aware substantive design, boundaries/recovery and acceptance/window are present; implementation and real validation remain separate.",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/business-lifecycle-contracts.md",
+          "section_or_symbol": "§7.4/7.5/§10 B07",
+          "support": "预览虚拟组/成员/org_roles/工单风险/负责人/可见性/接管锚点，确认后批量迁挂",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/proposal/hr-directory-sync.md",
+          "section_or_symbol": "§4.3",
+          "support": "旧最近HR祖先上挂只是候选，已由新合同改为批准接管优先",
+          "evidence_scope": "pre_existing_plan_read_this_round"
+        }
+      ],
+      "what_was_researched": [
+        "不猜祖先不硬删，无目标待处理；虚拟组ID与经审成员/角色留存，不复制原实体部门org_roles给接管部门",
+        "路径/祖先委托/scope变化在同plan明示，历史原归属快照不重写，live授权按新锚点",
+        "已撤组织禁止新创建目标，历史仍合法可查；root/system不可退役，partial快照不能误撤部"
+      ],
+      "limits_or_unverified": [
+        "只是策略合同，实际受影响部门/新旧可见集和管理锚存储选择尚未形成具体plan；apply未实施",
+        "尚无逐项冲突/部分成功批次恢复UI或真实HR撤部验收，不能把方向批准当具体plan批准"
+      ],
+      "supplement_research": [],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C64",
+      "focus": "审计阶段、当前完成程度及owner何时参与",
+      "source_message_ids": [
+        "01a1c9bd-7c16-7721-9263-4d1dcd8698b1",
+        "01a1c9c2-6fae-7e50-9d5b-a37f6c66c815",
+        "01a1c9c5-9725-7f63-a85c-9eff8c47e6c9",
+        "01a1caaa-e777-7711-bd42-9885bc8a210d"
+      ],
+      "quote": "需要我参与的部分，是现在就进行还是在哪个阶段",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C64"
+      ],
+      "verdict_reason": "审计五步与产品阶段分开，26方向确认/2启用配置后置；部分设计候选与未来冻结窗口、owner参与时点明确。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-closeout.md",
+          "section_or_symbol": "五步/参与窗口",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-decisions.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/planning-design-status.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "审计五步与产品阶段分开，26方向确认/2启用配置后置；部分设计候选与未来冻结窗口、owner参与时点明确。"
+      ],
+      "limits_or_unverified": [
+        "全部未来详设/功能/全站实测未完成；材料交付不能作总体验收完成的替代。"
+      ],
+      "supplement_research": [
+        "只在对应选择/实际启用窗口请求参与。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    },
+    {
+      "id": "C65",
+      "focus": "原6/7/8/9及更远功能承接、优化扩展与适合规模的渐进路线",
+      "source_message_ids": [
+        "01a1c96b-b0da-7252-8e02-9db9d320b621",
+        "01a1cb1f-51b5-7932-b8ac-2f845f6fb776",
+        "01a1cb27-cbc0-7f22-b028-ee854661924e",
+        "01a1c971-6c91-7e00-be37-6704baff551d"
+      ],
+      "quote": "尽可能的承接，从原有能力扩展，优化，演进",
+      "basis": "user_message_or_confirmed_proposal",
+      "research_depth": "deep_planning",
+      "reviewer": "root_roadmap_history",
+      "review_ids": [
+        "ROOT-C65"
+      ],
+      "verdict_reason": "169来源原子保原业务效果/批准性质，允许更小实现/专业供给替代；新增AI与原手动/任务/工单入口共底座，先风险闭环再扩协同，不以AI消灭旧功能或默认重建大平台。",
+      "existing_evidence": [
+        {
+          "repo": "zhuzhao",
+          "path": "docs/roadmap.md",
+          "section_or_symbol": "§1–7",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/design/project-evolution-strategy.md",
+          "section_or_symbol": "§1–8",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        },
+        {
+          "repo": "zhuzhao",
+          "path": "docs/review/roadmap-capability-continuity.json",
+          "section_or_symbol": "",
+          "support": "",
+          "evidence_scope": "existing_source_or_design_read_this_recheck"
+        }
+      ],
+      "what_was_researched": [
+        "169来源原子保原业务效果/批准性质，允许更小实现/专业供给替代；新增AI与原手动/任务/工单入口共底座，先风险闭环再扩协同，不以AI消灭旧功能或默认重建大平台。"
+      ],
+      "limits_or_unverified": [
+        "设计与供给裁决按窗口渐进；仍有远期产品详研不足，不因总体路线承接充分而覆盖其缺口。"
+      ],
+      "supplement_research": [
+        "维持渐进原则；本次局部深度发现列入独立补研究清单。"
+      ],
+      "gap_id": null,
+      "implementation_completion_claimed": false
+    }
+  ]
+}

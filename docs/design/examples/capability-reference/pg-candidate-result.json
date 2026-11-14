@@ -1,0 +1,55 @@
+{
+  "case_count": 8,
+  "cases": [
+    {
+      "id": "serialized_commit_watermark",
+      "pass": true,
+      "detail": "before_commit_visible=0,cursors=[1 2]"
+    },
+    {
+      "id": "rollback_has_no_effect_or_fact",
+      "pass": true,
+      "detail": "doc,receipt,event,head rollback together"
+    },
+    {
+      "id": "same_key_same_input_replays_receipt",
+      "pass": true,
+      "detail": "stored receipt returned without reapplying old expected revision"
+    },
+    {
+      "id": "same_key_different_input_rejected",
+      "pass": true,
+      "detail": "conflict leaves no new event/effect"
+    },
+    {
+      "id": "noop_receipt_without_changed_event",
+      "pass": true,
+      "detail": "success receipt,no document revision/event cursor bump"
+    },
+    {
+      "id": "concurrent_duplicate_one_effect",
+      "pass": true,
+      "detail": "16 concurrent requests; one effect and one source fact"
+    },
+    {
+      "id": "subscription_stage_dedup",
+      "pass": true,
+      "detail": "subscription/version/event/action unique"
+    },
+    {
+      "id": "counterexample_plain_sequence_is_not_commit_watermark",
+      "pass": true,
+      "detail": "plain nextval: consumer can ACK2 before1 commits, then cursor>2 misses1; proposed serialized stream head avoids this"
+    }
+  ],
+  "database": "ce_review_20261113_module_audit",
+  "passed": true,
+  "scope": "minimal candidate SQL experiment; not production implementation or business acceptance",
+  "cleanup_initial_note": "database dropped by coordinator after this process",
+  "cleanup_verified": {
+    "database_dropped": true,
+    "pg_database_matching_count": 0,
+    "business_database_modified": false
+  },
+  "reproduction_scope": "historical minimal candidate SQL experiment; not run by read-only verifier and not rerun for receipt-read model fix"
+}

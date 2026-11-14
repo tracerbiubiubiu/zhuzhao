@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "checked_utc": "2026-11-12T05:55:24.603690+00:00",
+  "purpose": "Verified multi-architecture image combination; Go and npm dependencies remain in their native lockfiles.",
+  "images": {
+    "postgres18": {
+      "repository": "library/postgres",
+      "tag": "18.6-trixie",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:e923a22ac074261dd73970c57edf659475bf0497cb9456f17d98ed7cdd3ca913",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:a8a18afebc8b2b529112c931f193151b712e566b7a49563dc0f328d51f652087",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "postgres:18.6-trixie@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42"
+    },
+    "redis8": {
+      "repository": "library/redis",
+      "tag": "8.2.11-alpine3.22",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:a18fce2f705d9782ccf6968f8dd94fa04566ff97e10a8d322ad72645243e4c0c",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:068059571000c7720e7ac30564c0ca307d930165c3f55bf2cf1f93d01e258473",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "redis:8.2.11-alpine3.22@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95"
+    },
+    "golang": {
+      "repository": "library/golang",
+      "tag": "1.27.4-alpine3.24",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:ea30e25680a5470bac02b08bb0e0a735fb75bd0ab7d431b9b95ee0abef362586",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:e8e55b7bf3a0faeba720580aa7e4acc04d516e424a5b275eee4f55e98f28dffd",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "golang:1.27.4-alpine3.24@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf"
+    },
+    "alpine": {
+      "repository": "library/alpine",
+      "tag": "3.24.4",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:0f49f331d9212aff11b932863be4eb01cdf962969aa86dab7d1ee21ac6f5f52b",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:1829893486be257df5049ab3b7fc95afbd0fc09d89803cbc580bda1ba5386b29",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf"
+    },
+    "node": {
+      "repository": "library/node",
+      "tag": "26.13.1-alpine3.24",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:a90bda2938f2b57112d94ee2e3722c5346efca76e4a034042b5223197567a16c",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:5b1cae3b6a917e4c6ee860d8eb5bd77655e75f13964c061f8755ccbc29e64312",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "node:26.13.1-alpine3.24@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5"
+    },
+    "nginx": {
+      "repository": "library/nginx",
+      "tag": "1.30.6-alpine3.24",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:bb8f722b4be005fcd7827816a136ab779fd40185d85b5171be915cc7fc0575c7",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:564a09935b00f058ca1b28c742169ba817499baa0479807bf7f373fe2804fbf7",
+          "variant": "v8"
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "nginx:1.30.6-alpine3.24@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+    },
+    "rustfs": {
+      "repository": "rustfs/rustfs",
+      "tag": "1.0.5",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:ecbf4480ae142703b50e5fe7e73c2c3472a270fa73d26ff62419bbc8929679c4",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:a90f35dd3ae66441726e13be6f7c2c8bc54c8b233d55b37acdb70bba06400919",
+          "variant": null
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "rustfs/rustfs:1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74"
+    },
+    "rclone": {
+      "repository": "rclone/rclone",
+      "tag": "1.76.0",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:075cf0e4e0f623996646cfb8a434c71cb4fcfe75bbbe27ccbb296ca04a7cd260",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:fbcca19e4dc192f6a12169a7e033e713877e07abca796928bbed27d2a334c8e0",
+          "variant": null
+        }
+      },
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466",
+      "usage": "upstream comparison artifact only; execution uses the source-locked local tool build below"
+    },
+    "migrate": {
+      "repository": "migrate/migrate",
+      "tag": "v4.20.1",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c4daa743275a22e0c5be7",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:f0b80769739bb6eb9ef13d14aba79e9567d821fa79f6075eac958adf1a9bd3cf",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:c7d4b1cfa3265932c864cdc3c47d58121dff1c66e8c57b1eb50a4f343452c109",
+          "variant": null
+        }
+      },
+      "media_type": "application/vnd.docker.distribution.manifest.list.v2+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "migrate/migrate:v4.20.1@sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c4daa743275a22e0c5be7",
+      "usage": "upstream comparison artifact only; execution uses the source-locked local tool build below"
+    },
+    "redisinsight": {
+      "repository": "redis/redisinsight",
+      "tag": "3.8.0",
+      "registry": "registry-1.docker.io",
+      "index_digest": "sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84",
+      "platforms": {
+        "amd64": {
+          "digest": "sha256:0131987fd5fefe3828ed33666f9742bd071b729f5a95cf923c593c14a8995c2c",
+          "variant": null
+        },
+        "arm64": {
+          "digest": "sha256:c5727416132f2b318a4b1ba8f7ab374c54844839fc42b13455d8edc2ac7b89e2",
+          "variant": null
+        }
+      },
+      "media_type": "application/vnd.docker.distribution.manifest.list.v2+json",
+      "both_linux_arches_present": true,
+      "manifest_content_verified": true,
+      "pin": "redis/redisinsight:3.8.0@sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84"
+    }
+  },
+  "local_tool_builds": {
+    "migrate": {
+      "image": "zhuzhao-migrate:4.20.1-go1.27.4",
+      "build_context": "deployments/tools/migrate",
+      "source_module": "github.com/golang-migrate/migrate/v4",
+      "source_version": "v4.20.1",
+      "main_package": "github.com/golang-migrate/migrate/v4/cmd/migrate",
+      "build_tags": [
+        "postgres"
+      ],
+      "go_sdk": "1.27.4",
+      "symbol_policy": "retain symbols; source and actual ELF text scans must succeed"
+    },
+    "rclone": {
+      "image": "zhuzhao-rclone:1.76.0-go1.27.4",
+      "build_context": "deployments/tools/rclone",
+      "source_module": "github.com/rclone/rclone",
+      "source_version": "v1.76.0",
+      "main_package": "github.com/rclone/rclone",
+      "build_tags": [],
+      "go_sdk": "1.27.4",
+      "symbol_policy": "retain symbols; source and actual ELF text scans must succeed"
+    }
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "date": "2026-11-13",
+  "scope": "synthetic reference model regression, not a product vulnerability fix or real provider test",
+  "finding": "Previously plan knowledge_refs only held IDs; apply did not re-read current knowledge ACL/version/content, receipt did not enforce current actor and target resource projection.",
+  "old_coverage_limit": "Original 57 Agent and 16 skill cases did not cover knowledge mutation after preview. New six cases are additions, not retroactive claims about old coverage.",
+  "unchanged_expected_fixtures_sha256": "21c550d6e5e47037f787e5dbd1ae4cd46c32d584ae7767544474ca65f6763e5e",
+  "red_instrumented_model_sha256": "1ddb98e0acd85a3bfc249ee386412dae19508cc7e77f1987c4becf7a17d1ba56",
+  "red_instrumentation": "Add current synthetic knowledge source and scenario transitions without authorization/provenance guards; independently declared expectations stayed byte-identical for green.",
+  "red_failures": 18,
+  "red_breakdown": {
+    "invalid_knowledge_new_effects": 9,
+    "unauthorized_receipt_success": 6,
+    "stale_reference_or_nonminimal_receipt": 3
+  },
+  "red_observations": [
+    {
+      "case": "A20",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A21",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A22",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A23",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "succeeded",
+      "expected_effects": 1
+    },
+    {
+      "case": "A24",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    },
+    {
+      "case": "A25",
+      "strategy": "fixed_steps",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    },
+    {
+      "case": "A20",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A21",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A22",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A23",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "succeeded",
+      "expected_effects": 1
+    },
+    {
+      "case": "A24",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    },
+    {
+      "case": "A25",
+      "strategy": "enterprise_agent_stub",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    },
+    {
+      "case": "A20",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A21",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A22",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": false,
+      "expected_state": "held",
+      "expected_effects": 0
+    },
+    {
+      "case": "A23",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "succeeded",
+      "expected_effects": 1
+    },
+    {
+      "case": "A24",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    },
+    {
+      "case": "A25",
+      "strategy": "bounded_host_model",
+      "actual_state": "succeeded",
+      "actual_effects": 1,
+      "knowledge_refs_returned": [
+        "knowledge-public"
+      ],
+      "receipt_plan_hash_disclosed": true,
+      "expected_state": "denied",
+      "expected_effects": 1
+    }
+  ],
+  "green_counts": {
+    "agent": 75,
+    "skill": 16,
+    "soc": 46
+  },
+  "green_failures": 0,
+  "mutations": [
+    {
+      "mutant": "ignore_revocation",
+      "caught_by": [
+        "A03"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "ignore_exact_approval",
+      "caught_by": [
+        "A05"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "ignore_epoch",
+      "caught_by": [
+        "S26"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "risk_group_implies_event",
+      "caught_by": [
+        "S01",
+        "S02",
+        "S30"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "ignore_underlying_acl",
+      "caught_by": [
+        "S22",
+        "S23",
+        "S42",
+        "S43"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "ignore_knowledge_recheck",
+      "caught_by": [
+        "A20",
+        "A21",
+        "A22"
+      ],
+      "pass": true
+    },
+    {
+      "mutant": "ignore_receipt_authorization",
+      "caught_by": [
+        "A24",
+        "A25"
+      ],
+      "pass": true
+    }
+  ],
+  "schema_samples": {
+    "schema_positive_samples": 76,
+    "schema_negative_samples": 9,
+    "real_network_calls": 0
+  },
+  "new_cases": [
+    "A20 knowledge ACL revoked after preview",
+    "A21 knowledge version changed after preview",
+    "A22 same version content digest changed after preview",
+    "A23 committed receipt after knowledge revocation and checkpoint restore, minimum status only",
+    "A24 receipt actor changed after effect",
+    "A25 receipt target authorization revoked before environment restore"
+  ],
+  "final_model_sha256": "5012f65cb13e7d77e0c8a3d1c3c889e37f2f397b50f114fd1ca26499ebe30ddf",
+  "fixed_reference_shape": {
+    "id": "knowledge-public",
+    "version": "k7",
+    "digest": "SHA256 of exact source content"
+  },
+  "receipt_projection": [
+    "operation_id",
+    "status",
+    "effect_id"
+  ],
+  "receipt_recheck": "Current operation actor/scope and target read authority, read from current state; knowledge withdrawal alone does not erase legitimately readable completed effect state.",
+  "not_covered": [
+    "actual knowledge provider ACL/version guarantee or content attestation",
+    "real model or enterprise Agent execution",
+    "product IAM/grant or resource filtering integration",
+    "distributed authorization races or provider changes during commit"
+  ],
+  "commands": [
+    "python3 docs/design/examples/ai-soc-reference/verify.py --output .codex/audits/ai-soc-design-20261113/prototype-results.json",
+    "node docs/design/examples/ai-soc-reference/validate-schemas.cjs ../zhuzhao-ui/node_modules/.pnpm/ajv@6.15.0/node_modules/ajv"
+  ],
+  "raw_red_evidence": "Ignored local audit knowledge-red-before-guards.json/.log and instrumented source snapshot; no corporate data."
+}

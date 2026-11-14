@@ -1,17 +1,19 @@
-# zhuzhao 备份与恢复（2026-09-14 运维补强，M-A6/activelist 同款模式）
+# zhuzhao 备份与恢复（2026-11-12版本维护对齐）
 
 > 本页命令从主仓根目录执行。策略表描述部署模板与演练能力，不证明某台机器已启用备份；先检查实际 Compose、挂载、归档配置、最近成功日志及可恢复性。恢复优先在独立实例验证，覆盖原库只在确认目标、备份和停写窗口后进行。
 
 ## 策略
 
+当前模板为PG18，归档路径`/wal18_archive`、逻辑卷`wal18_archive`（默认project下实际名为`zhuzhao_wal18_archive`，以Mounts为准）。PG15原卷/归档不能作为PG18物理基备/WAL使用。先从备份元信息确认主版本，不能仅看当前容器名；逻辑跨major恢复与回退见[数据契约](../design/component-upgrade-data-contract.md)。本轮仅证明新版本逻辑恢复及单段WAL归档，完整PITR仍属G05首次生产硬门。
+
 | 层 | 机制 | 频率 | 保留 |
 |---|------|------|------|
 | 逻辑备份 | `pg_dump -Fc`（pgbackup 侧车，每日 02:00） | 每日 | 14 份（`RETAIN_COUNT` 可调） |
-| 增量 | WAL 归档（postgres `archive_mode=on`，`archive_timeout=300s`） | 持续 | 随 `wal_archive` 卷 |
+| 增量 | WAL 归档（postgres `archive_mode=on`，`archive_timeout=300s`） | 持续 | 随 `wal18_archive` 卷 |
 | 对象存储 | `rclone sync` 主→备（rustfs-mirror 侧车，phase5 S5/B5-5） | `MIRROR_INTERVAL`（dev 1h；**RPO=周期**，附件场景日级可接受——显式登记不默认） | `--backup-dir` 天目录 14 个（`RETAIN_COUNT`）+ 目标桶**版本化**（RustFS 实测支持） |
 | 审计 JSONL | `audit_archive` 导出目录的专属卷；单独离线备份 | 按实际归档/备份窗口执行，本批不新增调度 | 本地文件按 mtime 保留 395 天（默认）；离线副本另行登记保留/销毁策略 |
 
-备份卷：`backups`（pg_dump 产物 zh-*.dump）、`wal_archive`（WAL 归档，pgbackup 只读挂载）。
+备份卷：`backups`（pg_dump 产物 zh-*.dump）、`wal18_archive`（WAL 归档，pgbackup 只读挂载）。
 
 ## 审计 JSONL 持久化与离线恢复（2026-11-07）
 
@@ -127,25 +129,14 @@ docker compose -f deployments/docker-compose.yaml start app
 > 回放**（activelist 侧 backup/README.md 的蓝本同此误，已同步勘误）。
 > 物理基备做法：
 
-以下是 **2026-09-14 演练轮廓，不是可直接复制的完整恢复脚本**。先取得完整物理基备及连续 WAL，校验目标 PostgreSQL 主版本，复制到全新、独立、无写流量的数据目录；在副本中准备 `recovery.signal`、`restore_command` 和目标时刻，并核对实际 postgres UID/GID、目录权限与表空间。禁止把仍在写入的原 PGDATA 挂给恢复实例。设置细节见 [PostgreSQL 15 官方 PITR 手册](https://www.postgresql.org/docs/15/continuous-archiving.html)。
+当前PG18的PITR准备顺序如下，**不是已交付的自动恢复脚本**：
 
-```sh
-# 1. 物理基备（容器内本地执行，落 wal_archive 同盘卷或临时目录）
-docker exec zhuzhao-postgres pg_basebackup -D /tmp/base -Fp -Xs -P -U zhuzhao
+1. 从物理基备元信息确认`PG_VERSION=18`、源集群system identifier、timeline和起止LSN，验证完整基备和连续WAL链；镜像使用[组件清单](../../deployments/component-lock.json)中相同主版本的固定PG制品。旧PG15物理备份必须用匹配PG15镜像恢复，不能挂给PG18。
+2. 在独立恢复实例/新卷准备完整基备，PG18镜像挂载父目录`/var/lib/postgresql`，其实际PGDATA为`/var/lib/postgresql/18/docker`。不挂仍在写入的原PGDATA，不用当前生产容器代替恢复实例。
+3. 在副本配置`recovery.signal`、只读WAL来源、`restore_command='cp /wal18_archive/%f %p'`、目标时刻和恢复结束行为；核对实际UID/GID、表空间、目录权限及准确归档卷，不复用PG15的旧`wal_archive`卷。
+4. 隔离启动后观察WAL连续回放与目标时刻，核业务行/LSN及目标前后边界，再制定停写与受控切换方案；未到达目标不能标成功。完整basebackup+WAL链演练须另交G05收据。
 
-# 2. 目标时刻前的变更照常发生（WAL 由 archive_command 持续归档）
-
-# 3. 临时实例回放到目标时刻（挂同一 wal_archive 卷）
-docker run -d --name zh-pitr --network zhuzhao_default \
-  -v zhuzhao_wal_archive:/wal_archive:ro -v <基备目录>:/var/lib/postgresql/data \
-  -e POSTGRES_PASSWORD=dummy postgres:15 \
-  postgres -c restore_command='cp /wal_archive/%f %p' \
-           -c recovery_target_time='2026-09-14 18:00:00+08' \
-           -c recovery_target_action='promote'
-
-# 4. 若报「recovery ended before configured recovery target was reached」：
-#    目标时刻落在当前【部分段】（未归档）——活库 pg_switch_wal() 强制切段后重启临时实例
-```
+设置以[PostgreSQL18官方PITR手册](https://www.postgresql.org/docs/18/continuous-archiving.html)为准。下列2026-09-14结果只属当时PG15演练，保留证据含义，不将其旧镜像/路径命令混作当前PG18操作入口。
 
 > 实测（2026-09-14）：T1 插行→基备→T2 插行，回放至 T1/T2 之间目标时刻——
 > T1 行在、T2 行不在，`recovery stopping before commit … <T2 时刻>` 精确命中。
@@ -156,14 +147,14 @@ docker run -d --name zh-pitr --network zhuzhao_default \
 
 - 备份失败**不静默**：pgbackup 日志可见（`docker compose logs pgbackup`）；失败当日每 10 分钟自动重试、失败日不轮转、成功才标记当日完成；
 - **常见失败根因**：postgres 未运行（pg_dump 报 `could not translate host name "postgres"`）——postgres 已配 `restart: unless-stopped` 自愈；手工停库则备份持续重试失败直至库恢复，属预期；
-- `backups` / `wal_archive` 卷建议纳入宿主机级外部备份（卷快照/同步），防单机盘损；
+- `backups` / `wal18_archive` 卷建议纳入宿主机级外部备份（卷快照/同步），防单机盘损；
 - 保留期调整：`RETAIN_COUNT`（份数，默认 14）。
 
 ## 对象存储备份与恢复（B5-5，2026-10-20）
 
 ### 形态
 
-`rustfs-mirror` 侧车（`rclone/rclone:1.75.2` 钉死，`--profile storage` 随 rustfs 同启）：
+`rustfs-mirror`侧车使用[受控rclone1.76.0/Go1.27.4镜像](../../deployments/tools/rclone/README.md)，由当前Compose构建；`--profile storage`随RustFS同启。上游旧镜像仅保留比较记录：
 `rclone sync` 主实例桶 → `rustfs-backup` 备实例桶 + **双 重删除保护**——① `--backup-dir` 归档前缀
 （被覆盖/删除对象移入 `backup-archive/<桶>-<日期>/`，天目录按名序轮转保留 `RETAIN_COUNT` 个）；
 ② 目标桶**版本化**（RustFS 实测支持 `PutBucketVersioning`，脚本启动幂等启用——失败仅 WARN

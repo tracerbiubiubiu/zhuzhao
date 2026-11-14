@@ -1,0 +1,200 @@
+# Both helper images are rebuilt from their controlled module locks; G03 tiers are not active.
+name: Helper tools source and image security
+on:
+  push:
+    branches: [dev, main, phase5, "feature/**", "codex/**"]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: helper-tools-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  helper-security:
+    name: ${{ matrix.tool }} source and actual Docker ELF
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      # rclone retains all upstream backends; keep its compilation/scan resource budget bounded.
+      max-parallel: 1
+      matrix:
+        include:
+          - tool: migrate
+            module: github.com/golang-migrate/migrate/v4
+            version: v4.20.1
+            package: github.com/golang-migrate/migrate/v4/cmd/migrate
+            repository: https://github.com/golang-migrate/migrate
+            tags: postgres
+          - tool: rclone
+            module: github.com/rclone/rclone
+            version: v1.76.0
+            package: github.com/rclone/rclone
+            repository: https://github.com/rclone/rclone
+            tags: ""
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: "off"
+      GOSUMDB: sum.golang.org
+      GONOSUMDB: ""
+      GOPRIVATE: ""
+      GOPROXY: https://proxy.golang.org,direct
+      GOFLAGS: -mod=readonly -p=2
+      GOOS: linux
+      GOARCH: amd64
+      CGO_ENABLED: "0"
+      GOMAXPROCS: "2"
+      GOMEMLIMIT: 768MiB
+      DOCKER_BUILDKIT: "1"
+      TOOL_NAME: ${{ matrix.tool }}
+      TOOL_CONTEXT: deployments/tools/${{ matrix.tool }}
+      UPSTREAM_MODULE: ${{ matrix.module }}
+      UPSTREAM_VERSION: ${{ matrix.version }}
+      UPSTREAM_PACKAGE: ${{ matrix.package }}
+      UPSTREAM_REPOSITORY: ${{ matrix.repository }}
+      BUILD_TAGS: ${{ matrix.tags }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.4
+          check-latest: false
+          cache-dependency-path: deployments/tools/${{ matrix.tool }}/go.sum
+      - name: Bind controlled locks and actual upstream source
+        id: provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EVIDENCE="$GITHUB_WORKSPACE/evidence/$TOOL_NAME"
+          export SCANNER="$RUNNER_TEMP/helper-tool-scanner/govulncheck"
+          export CONTAINER_ID_FILE="$RUNNER_TEMP/helper-tool-container.cid"
+          mkdir -p "$EVIDENCE"
+          printf 'EVIDENCE=%s\nSCANNER=%s\nCONTAINER_ID_FILE=%s\n' "$EVIDENCE" "$SCANNER" "$CONTAINER_ID_FILE" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$EVIDENCE/control-source-sha.txt"
+          go version > "$EVIDENCE/compiler.txt"
+          go env -json GOOS GOARCH CGO_ENABLED GOTOOLCHAIN GOWORK GOFLAGS > "$EVIDENCE/go-env.json"
+          cp "$TOOL_CONTEXT/go.mod" "$TOOL_CONTEXT/go.sum" "$TOOL_CONTEXT/Dockerfile" "$EVIDENCE/"
+          sha256sum "$TOOL_CONTEXT/go.mod" "$TOOL_CONTEXT/go.sum" "$TOOL_CONTEXT/Dockerfile" > "$EVIDENCE/controlled-inputs.sha256"
+          cd "$TOOL_CONTEXT"
+          go mod download -json "$UPSTREAM_MODULE@$UPSTREAM_VERSION" > "$EVIDENCE/upstream-download.json" 2> "$EVIDENCE/upstream-download.stderr"
+          go list -m -json "$UPSTREAM_MODULE" > "$EVIDENCE/selected-module.json" 2> "$EVIDENCE/selected-module.stderr"
+          go list -tags="$BUILD_TAGS" -deps -json "$UPSTREAM_PACKAGE" > "$EVIDENCE/source-packages.json" 2> "$EVIDENCE/source-packages.stderr"
+          go mod verify > "$EVIDENCE/module-verify.txt" 2>&1
+          python3 - <<'PYTHON'
+          import json, os, pathlib, re
+          evidence = pathlib.Path(os.environ['EVIDENCE'])
+          downloaded = json.loads((evidence / 'upstream-download.json').read_text())
+          selected = json.loads((evidence / 'selected-module.json').read_text())
+          for record in (downloaded, selected):
+              assert record['Path'] == os.environ['UPSTREAM_MODULE'], 'upstream module differs'
+              assert record['Version'] == os.environ['UPSTREAM_VERSION'], 'upstream version differs'
+              assert not record.get('Replace') and not record.get('Error'), 'unsupported source replacement/error'
+          assert downloaded['Sum'] == selected['Sum'], 'selected and downloaded source sums differ'
+          origin = downloaded['Origin']
+          assert origin['VCS'] == 'git', 'missing Git source provenance'
+          assert origin['URL'].removesuffix('.git') == os.environ['UPSTREAM_REPOSITORY'], 'upstream repository differs'
+          assert origin['Ref'] == 'refs/tags/' + os.environ['UPSTREAM_VERSION'], 'upstream tag differs'
+          assert re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', origin['Hash']), 'missing actual upstream source SHA'
+          (evidence / 'upstream-source-sha.txt').write_text(origin['Hash'] + '\n')
+          (evidence / 'resource-budget.json').write_text(json.dumps({key: os.environ[key] for key in ('GOMAXPROCS', 'GOMEMLIMIT', 'GOFLAGS')}, indent=2) + '\n')
+          PYTHON
+          cd "$GITHUB_WORKSPACE"
+          git diff --exit-code -- "$TOOL_CONTEXT/go.mod" "$TOOL_CONTEXT/go.sum" "$TOOL_CONTEXT/Dockerfile"
+      - name: Install and record fixed official scanner
+        id: scanner
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$SCANNER")"
+          go mod download -json golang.org/x/vuln@v1.9.0 > "$EVIDENCE/scanner-download.json" 2> "$EVIDENCE/scanner-download.stderr"
+          GOBIN="$(dirname "$SCANNER")" go install golang.org/x/vuln/cmd/govulncheck@v1.9.0 > "$EVIDENCE/scanner-install.stdout" 2> "$EVIDENCE/scanner-install.stderr"
+          "$SCANNER" -version > "$EVIDENCE/scanner-version.txt"
+          go version -m "$SCANNER" > "$EVIDENCE/scanner-build-info.txt"
+          sha256sum "$SCANNER" > "$EVIDENCE/scanner.sha256"
+      - name: Build exact Dockerfile and extract its actual ELF
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="zhuzhao-helper-$TOOL_NAME:ci-$GITHUB_SHA"
+          printf '%s\n' "$image" > "$EVIDENCE/image-reference.txt"
+          docker version > "$EVIDENCE/docker-version.txt"
+          docker build --pull --platform linux/amd64 --progress=plain \
+            --build-arg "GOPROXY=$GOPROXY" -t "$image" \
+            -f "$TOOL_CONTEXT/Dockerfile" "$TOOL_CONTEXT" 2>&1 | tee "$EVIDENCE/docker-build.log"
+          docker image inspect "$image" > "$EVIDENCE/image-inspect.json"
+          docker create --cidfile "$CONTAINER_ID_FILE" "$image" > "$EVIDENCE/container-id.txt"
+          container_id="$(cat "$CONTAINER_ID_FILE")"
+          docker cp "$container_id:/usr/local/bin/$TOOL_NAME" "$EVIDENCE/$TOOL_NAME"
+          docker cp "$container_id:/usr/share/doc/$TOOL_NAME" "$EVIDENCE/image-docs"
+          go version -m "$EVIDENCE/$TOOL_NAME" > "$EVIDENCE/actual-elf-build-info.txt"
+          sha256sum "$EVIDENCE/$TOOL_NAME" > "$EVIDENCE/actual-elf.sha256"
+          python3 - <<'PYTHON'
+          import json, os, pathlib
+          evidence = pathlib.Path(os.environ['EVIDENCE'])
+          binary = evidence / os.environ['TOOL_NAME']
+          with binary.open('rb') as file:
+              assert file.read(4) == b'\x7fELF', 'extracted image executable is not ELF'
+          lines = (evidence / 'actual-elf-build-info.txt').read_text().splitlines()
+          assert lines[0].endswith(': go1.27.4'), 'image compiler differs'
+          fields = [line.strip().split() for line in lines[1:]]
+          selected = json.loads((evidence / 'selected-module.json').read_text())
+          required = [['path', os.environ['UPSTREAM_PACKAGE']],
+                      ['mod', os.environ['UPSTREAM_MODULE'], os.environ['UPSTREAM_VERSION'], selected['Sum']],
+                      ['build', 'CGO_ENABLED=0'], ['build', 'GOOS=linux'], ['build', 'GOARCH=amd64']]
+          if os.environ['BUILD_TAGS']:
+              required.append(['build', '-tags=' + os.environ['BUILD_TAGS']])
+          assert all(row in fields for row in required), 'actual ELF source/platform/tags differ'
+          assert not any(row and row[0] == '=>' for row in fields), 'actual ELF has unrecorded replacements'
+          PYTHON
+      # JSON output deliberately avoided: govulncheck JSON exits zero even for vulnerabilities.
+      - name: Scan only the real upstream main source
+        if: ${{ !cancelled() && steps.provenance.outcome == 'success' && steps.scanner.outcome == 'success' }}
+        shell: bash
+        working-directory: deployments/tools/${{ matrix.tool }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "govulncheck -mode=source -scan=symbol -test=false -tags=$BUILD_TAGS $UPSTREAM_PACKAGE" > "$EVIDENCE/source-command.txt"
+          scan_exit=0
+          "$SCANNER" -mode=source -scan=symbol -test=false -tags="$BUILD_TAGS" "$UPSTREAM_PACKAGE" > "$EVIDENCE/source.txt" 2> "$EVIDENCE/source.stderr" || scan_exit=$?
+          printf '%s\n' "$scan_exit" > "$EVIDENCE/source.exit"
+          exit "$scan_exit"
+      - name: Scan the ELF copied from the actual image
+        if: ${{ !cancelled() && steps.image.outcome == 'success' && steps.scanner.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "govulncheck -mode=binary -scan=symbol $EVIDENCE/$TOOL_NAME" > "$EVIDENCE/binary-command.txt"
+          scan_exit=0
+          "$SCANNER" -mode=binary -scan=symbol "$EVIDENCE/$TOOL_NAME" > "$EVIDENCE/binary.txt" 2> "$EVIDENCE/binary.stderr" || scan_exit=$?
+          printf '%s\n' "$scan_exit" > "$EVIDENCE/binary.exit"
+          exit "$scan_exit"
+      - name: Check inputs remained unchanged
+        if: ${{ !cancelled() && steps.provenance.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check "$EVIDENCE/controlled-inputs.sha256" > "$EVIDENCE/input-recheck.txt" 2>&1
+          git diff --exit-code -- "$TOOL_CONTEXT/go.mod" "$TOOL_CONTEXT/go.sum" "$TOOL_CONTEXT/Dockerfile"
+      - name: Remove only this job container
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id_file="$RUNNER_TEMP/helper-tool-container.cid"
+          if [[ -s "$container_id_file" ]]; then
+            container_id="$(cat "$container_id_file")"
+            [[ "$container_id" =~ ^[a-f0-9]{64}$ ]]
+            docker rm -f "$container_id"
+          fi
+      - name: Preserve logs, source provenance and actual ELF
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: helper-${{ matrix.tool }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 30

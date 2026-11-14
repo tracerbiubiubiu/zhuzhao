@@ -1,0 +1,641 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-13",
+  "scope": "Five-repository public README/community assets and explicit late-input disposition; no business feature or remote publication.",
+  "status": "verified_local_five_repo_readme_and_document_delivery_not_published",
+  "sources": {
+    "F004": {
+      "message_id": "01a1d516-482d-7dc0-b071-f807cd0176e2",
+      "state": "business_candidates_not_approved_or_implemented",
+      "ref": "docs/design/ticket-operations-supplement.md"
+    },
+    "F005": {
+      "message_id": "01a1d521-9c6d-75e3-9f16-611e66643c0c",
+      "state": "authorized_readme_work_and_disposable_test_resource_precondition",
+      "ref": "docs/guides/open-source-presentation.md"
+    },
+    "total_user_inputs_accounted_after_previous_cutoff": 67,
+    "previous_65_point_audit_window_preserved": true,
+    "full_original_conversation_not_reexported_to_public_repo": true
+  },
+  "delivered": {
+    "readmes": 10,
+    "bilingual_repositories": 5,
+    "public_synthetic_vue_screenshots": 2,
+    "issue_forms": 10,
+    "pr_templates": 5,
+    "main_contributing_guide": true,
+    "engineering_directory_and_naming_plan_index": true,
+    "business_note_followup_recorded": true
+  },
+  "asset_checks": [
+    {
+      "path": "docs/assets/ticket-detail.png",
+      "sha256": "7143853be65388e39f3d7135bdca8769a7a3cbaae30eb8e383b935a22c13ddfa",
+      "bytes": 109632,
+      "synthetic": true,
+      "byte_identical_to_reviewed_source": true
+    },
+    {
+      "path": "docs/assets/ticket-list.png",
+      "sha256": "46763595d59e1890bb2ac0f448dee91ed1c9d0fd72e82c3be24717ea2e1db67e",
+      "bytes": 89666,
+      "synthetic": true,
+      "byte_identical_to_reviewed_source": true
+    }
+  ],
+  "state_boundaries": {
+    "new_business_started": false,
+    "F004_policy_approved": false,
+    "Q01_to_Q13_approved": false,
+    "actual_repo_or_module_rename": false,
+    "public_hosted_demo_created": false,
+    "remote_about_topics_or_branch_settings_written": false,
+    "releases_published": false,
+    "external_messages_sent": false,
+    "old_project_test_resources_must_be_preserved": false,
+    "old_shared_test_stack_deleted_in_this_round": false,
+    "all_future_scope_already_priced": false,
+    "cold_start_or_star_conversion_guaranteed": false
+  },
+  "new_test_resource_policy": "Current project dev/test stack and volumes may be recreated without preserving test data; verify exact project/inflight ownership. This does not authorize unrelated resources or production deletion. This README batch only cleaned its own fresh fixtures.",
+  "validation": {
+    "core_native": {
+      "result": "PASS",
+      "phases": [
+        {
+          "name": "script-unit",
+          "exit": 0,
+          "seconds": 0.88
+        },
+        {
+          "name": "swag",
+          "exit": 0,
+          "seconds": 2.61
+        },
+        {
+          "name": "wire",
+          "exit": 0,
+          "seconds": 5.61
+        },
+        {
+          "name": "lint",
+          "exit": 0,
+          "seconds": 2.56
+        },
+        {
+          "name": "test-unit",
+          "exit": 0,
+          "seconds": 32.32
+        },
+        {
+          "name": "test-integration",
+          "exit": 0,
+          "seconds": 588.32
+        },
+        {
+          "name": "test-cover",
+          "exit": 0,
+          "seconds": 6.41
+        },
+        {
+          "name": "build",
+          "exit": 0,
+          "seconds": 4.53
+        }
+      ],
+      "production_test_inputs_unchanged": true,
+      "runtime_scope": "current Go source/test/config/migrations; planning Python and document contracts verified independently"
+    },
+    "acceptance": {
+      "name": "acceptance",
+      "exit": 0,
+      "seconds": 43.44,
+      "pass": 253,
+      "fail": 0,
+      "skip": 0,
+      "roundtrip_zero_drift": true
+    },
+    "ui": {
+      "result": "PASS",
+      "versions": {
+        "node": "v26.13.1",
+        "pnpm": "12.18.0"
+      },
+      "phases": [
+        {
+          "name": "lint",
+          "exit": 0,
+          "seconds": 2.66
+        },
+        {
+          "name": "typecheck",
+          "exit": 0,
+          "seconds": 4.85
+        },
+        {
+          "name": "test",
+          "exit": 0,
+          "seconds": 1.65
+        },
+        {
+          "name": "audit-prod",
+          "exit": 0,
+          "seconds": 3.47
+        },
+        {
+          "name": "build",
+          "exit": 0,
+          "seconds": 2.65
+        },
+        {
+          "name": "e2e",
+          "exit": 0,
+          "seconds": 169.62
+        }
+      ],
+      "inputs_unchanged": true,
+      "e2e_stats": {
+        "startTime": "2026-11-13T13:58:31.605Z",
+        "duration": 168997.37999999998,
+        "expected": 42,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "owner": "zz-readme-20261113-41f64e82",
+      "ports": {
+        "ui": 63133,
+        "app": 63132
+      },
+      "topology": "native six commands; unchanged original specs/global-setup/workers/retries; production Nginx on owned isolated stack",
+      "config_variation": "Only testDir/setup absolute paths, dedicated backend/browser endpoints, Docker host resolution, and ignored reporter/output destinations; no Vite webServer because the owned Nginx serves the product build"
+    },
+    "siblings": {
+      "result": "PASS",
+      "gates": [
+        {
+          "repo": "activelist",
+          "gate": "hooks",
+          "command": [
+            "make",
+            "hooks"
+          ],
+          "exit": 0,
+          "seconds": 0.07,
+          "log": "sibling-activelist-hooks.log"
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "hooks",
+          "command": [
+            "make",
+            "hooks"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": "sibling-taskrunner-hooks.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "hooks",
+          "command": [
+            "make",
+            "hooks"
+          ],
+          "exit": 0,
+          "seconds": 0.06,
+          "log": "sibling-zhuzhao-utils-hooks.log"
+        },
+        {
+          "repo": "activelist",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 1.9,
+          "log": "sibling-activelist-lint.log"
+        },
+        {
+          "repo": "activelist",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 5.11,
+          "log": "sibling-activelist-test.log"
+        },
+        {
+          "repo": "activelist",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 2.48,
+          "log": "sibling-activelist-build.log"
+        },
+        {
+          "repo": "activelist",
+          "gate": "integration-race",
+          "command": [
+            "go",
+            "test",
+            "-tags",
+            "integration",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 126.0,
+          "log": "sibling-activelist-integration-race.log",
+          "test_case_results": {
+            "pass": 196
+          },
+          "skipped_tests": []
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 1.0,
+          "log": "sibling-taskrunner-lint.log"
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 5.75,
+          "log": "sibling-taskrunner-test.log"
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 3.77,
+          "log": "sibling-taskrunner-build.log"
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "pg-redis-race",
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 17.32,
+          "log": "sibling-taskrunner-pg-redis-race.log",
+          "test_case_results": {
+            "pass": 135,
+            "skip": 2
+          },
+          "skipped_tests": [
+            "github.com/tracerbiubiubiu/taskrunner/internal/notify.TestNotifierPanicChild",
+            "github.com/tracerbiubiubiu/taskrunner/internal/service.TestBackgroundPanicChild"
+          ]
+        },
+        {
+          "repo": "taskrunner",
+          "gate": "e2e-cron",
+          "command": [
+            "make",
+            "e2e"
+          ],
+          "exit": 0,
+          "seconds": 135.44,
+          "log": "sibling-taskrunner-e2e-cron.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 7.53,
+          "log": "sibling-zhuzhao-utils-lint.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.27,
+          "log": "sibling-zhuzhao-utils-test.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 0.15,
+          "log": "sibling-zhuzhao-utils-build.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "race",
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-json",
+            "./..."
+          ],
+          "exit": 0,
+          "seconds": 21.99,
+          "log": "sibling-zhuzhao-utils-race.log",
+          "test_case_results": {
+            "pass": 142
+          },
+          "skipped_tests": []
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-version",
+          "command": [
+            "go",
+            "version"
+          ],
+          "exit": 0,
+          "seconds": 0.06,
+          "log": "sibling-zhuzhao-utils-minimum-version.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-lint",
+          "command": [
+            "make",
+            "lint"
+          ],
+          "exit": 0,
+          "seconds": 1.37,
+          "log": "sibling-zhuzhao-utils-minimum-lint.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-test",
+          "command": [
+            "make",
+            "test"
+          ],
+          "exit": 0,
+          "seconds": 0.27,
+          "log": "sibling-zhuzhao-utils-minimum-test.log"
+        },
+        {
+          "repo": "zhuzhao-utils",
+          "gate": "minimum-build",
+          "command": [
+            "make",
+            "build"
+          ],
+          "exit": 0,
+          "seconds": 0.19,
+          "log": "sibling-zhuzhao-utils-minimum-build.log"
+        }
+      ],
+      "inputs_unchanged": true,
+      "unit_without_provider_skips": "Plain make test may skip external-provider tests; separate real PG/Redis and AL integration JSON include exact case counts/skips.",
+      "testcontainers_scope": "Original AL Testcontainers labels/Terminate kept unchanged per root approval; no test injection.",
+      "extra_resources": "sibling-extra-resources.json; root performs final cleanup after all gates.",
+      "cron_e2e": {
+        "pass": 19,
+        "fail": 0,
+        "storage": "original SQLite E2E, real dedicated Redis and HTTP; real PG separately verified in pg-redis-race",
+        "resource_creation_only_metadata_wrapper": true,
+        "source_and_assertions_unchanged": true
+      },
+      "toolchains": {
+        "recommended": "go version go1.27.4 darwin/arm64",
+        "minimum": "go version go1.26.11 darwin/arm64"
+      },
+      "cleanup_handoff": {
+        "root_owns_final_cleanup": true,
+        "extra_resources_ref": "sibling-extra-resources.json",
+        "AL_testcontainers_created": 41,
+        "AL_testcontainers_remaining": [],
+        "E2E_created_containers": [
+          "taskrunner-e2e-redis-taskrunner-e2e.PnrgNa"
+        ],
+        "E2E_containers_remaining": [],
+        "remaining_owned_redis": "See sibling-extra-resources.json; leave for root final verified cleanup."
+      },
+      "skip_explanation": {
+        "taskrunner_pg_redis_race_skip_count": 2,
+        "names": [
+          "internal/notify.TestNotifierPanicChild",
+          "internal/service.TestBackgroundPanicChild"
+        ],
+        "reason": "Top-level subprocess helper deliberately calls t.Skip when child-only env flag absent. Parent panic regression tests passed; no PG/Redis-required test skipped.",
+        "evidence": [
+          "../taskrunner/internal/notify/panic_test.go TestNotifierPanicChild",
+          "../taskrunner/internal/service/panic_test.go TestBackgroundPanicChild"
+        ]
+      }
+    },
+    "readme_fresh_db_smoke": {
+      "result": "PASS",
+      "commands": [
+        "make migrate-up (fresh owned DB through MIGRATE_DSN)",
+        "make dev (owned PG/Redis/HTTP port overrides)",
+        "curl --fail /health/ready"
+      ],
+      "health_ready": true,
+      "isolated_fresh_database": true,
+      "database_removed": true,
+      "own_process_group_stopped": true,
+      "SDK_and_image_caches_present": true,
+      "elapsed_including_cached_compile_seconds": 5.43,
+      "not_a_5_second_cold_install_claim": true,
+      "existing_shared_test_stack_changed": false
+    },
+    "readme_static": {
+      "result": "PASS",
+      "readmes": 10,
+      "shell_blocks": 26,
+      "issue_forms": 10,
+      "pr_templates": 5
+    },
+    "local_render": {
+      "result": "PASS",
+      "rows": [
+        {
+          "language": "zh",
+          "local_product_image": {
+            "width": 1440,
+            "height": 900
+          },
+          "heading": "zhuzhao",
+          "source": "local Markdown render; not exact GitHub CSS"
+        },
+        {
+          "language": "en",
+          "local_product_image": {
+            "width": 1440,
+            "height": 900
+          },
+          "heading": "zhuzhao",
+          "source": "local Markdown render; not exact GitHub CSS"
+        }
+      ],
+      "remote_images_not_fetched": true
+    },
+    "content_review": "PASS_AFTER_OWNER_FIXES",
+    "scope_review": "NO_BLOCKING_SCOPE_FINDING",
+    "documents": {
+      "result": "PASS",
+      "scope": "all controlled/current-untracked Markdown links/anchors/fences andJSON across five repos; historical pre-existing link issues disclosed, not claimed fixed",
+      "counts": {
+        "markdown": 366,
+        "local_links": 4406,
+        "anchor_links": 407,
+        "baseline_link_issues": 0,
+        "json": 50
+      },
+      "errors": []
+    },
+    "planning_check": "PASS:19 closure tests,21 schedule tests,and derived --check",
+    "cleanup": {
+      "result": "PASS",
+      "owner": "zz-readme-20261113-41f64e82",
+      "owned_resources_remaining": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "protected_containers": 29,
+      "protected_fingerprint_changes": []
+    }
+  },
+  "independent_findings": {
+    "utils_example_original_command": "go get root module before adding aksk import produced missing gin go.sum in a fresh module",
+    "fix": "Pin go get github.com/tracerbiubiubiu/zhuzhao-utils/aksk@v0.4.3; independent exact-order fresh-module run passes with signature verified, no hidden tidy/replace",
+    "prerequisites": "Added Git/curl to main and explicit Compose v2 toAL",
+    "metric_example": "Explicit5min initial unassigned segment retained; no business metric policy approved"
+  },
+  "remaining_public_launch_work": [
+    "Choose brand and review repo/module/image/consumer migration before actual rename",
+    "Apply reviewed About/topics and create brand-aligned social preview",
+    "Select and verify private security reporting channel before publishing SECURITY policy",
+    "Freeze and price a bounded clean demo package/hosted read-only demo at public-launch preparation",
+    "Publish only verified releases/use-case material and review real user feedback"
+  ],
+  "candidate_files": {
+    "zhuzhao": {
+      "base_commit": "7647599c9ecfbd03b711ffa706b9bc74015f4edf",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "README.en.md",
+        "README.md",
+        "docs/assets/README.md",
+        "docs/assets/ticket-detail.png",
+        "docs/assets/ticket-list.png",
+        "docs/contributing.md",
+        "docs/design/README.md",
+        "docs/design/component-upgrade-data-contract.md",
+        "docs/design/ticket-operations-supplement.md",
+        "docs/documentation.md",
+        "docs/guides/README.md",
+        "docs/guides/development.md",
+        "docs/guides/open-source-presentation.md",
+        "docs/ops/deployment.md",
+        "docs/review/11-project-control.md",
+        "docs/review/README.md",
+        "docs/review/planning-closeout.md",
+        "docs/review/planning-followups.json",
+        "docs/review/reports/README.md",
+        "docs/review/reports/readme-refresh-2026-11-13.json",
+        "docs/review/reports/readme-refresh-2026-11-13.md"
+      ]
+    },
+    "zhuzhao-ui": {
+      "base_commit": "573648d75ef4afb89c0ec8b90ff0cad4cfdd10fb",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "README.en.md",
+        "README.md"
+      ]
+    },
+    "activelist": {
+      "base_commit": "92f425c3db775991fc8c48fbf9995e19b2ab6187",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "README.en.md",
+        "README.md"
+      ]
+    },
+    "taskrunner": {
+      "base_commit": "25ff6a742b1a5a46f86d5e3cdd105202828c84b5",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "README.en.md",
+        "README.md"
+      ]
+    },
+    "zhuzhao-utils": {
+      "base_commit": "77b3fe8c35c4ed5e627a86ac4ef9b82896a19c46",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "README.en.md",
+        "README.md"
+      ]
+    }
+  },
+  "raw_receipt_sha256": {
+    "runtime/core-native-result.json": "339ad8cb05ffe3f9c22aaf51052ec26d270e198746aa56d3c99a6197542f05b9",
+    "runtime/core-acceptance-result.json": "98140ec744859cbb7f5e5dc2e4638c86406472062c57402e920e0bc09e51c143",
+    "runtime/ui-runtime-result.json": "801d02255c5ce9f06787da9bedb7b12ef4d6c1c219063c3034b0b01265624f3a",
+    "runtime/ui-build-served-comparison.json": "7c46a447935bacaf61a170c44508e59d887c93bb5f3c2b302ebdb6b99067ac29",
+    "runtime/sibling-result.json": "7f0b18f2b2e9e1d22b6a86e9b49f2afbdf1c17c8b116bb4dbf9bc48bd0a6e20c",
+    "runtime/cleanup-result.json": "f482d910ac6e1e37468a074b406b6634cda5e57e864885eb1972eb31c500523e",
+    "runtime/readme-core-smoke-result.json": "ea4d6c3152fc857856ae7eacea716e9dfa69d21314c5a11cf7df505b58d5aa45",
+    "readme-static-result.json": "6c730d58b4851de3c0665cd9d6ffe3c63a46e103bbb94da6fda6888cd2a329e3",
+    "readme-render-result.json": "e6a182c53381744238d82d3da851cd3286a4474ca227c8c8f50b3234115a42e9",
+    "readme-independent-content-review.json": "c521494c3dec9b394a1df3015278a7145d82cddbc1e6d320c72726032c2fae93",
+    "final-scope-review.json": "48269299aee1878ccaba6db28619bc447601c90199548080e45bd593c9a1f05f",
+    "engineering-community-review.json": "4db4006a5c0812dad6d074a2dfef9dc4fae3a4d9f204f5a33db7265da9a191ae"
+  },
+  "raw_evidence_location": ".codex/audits/readme-refresh-20261113/",
+  "historical_evidence_rule": "Earlier reports keep their original inputs and results. Current local gates are not remote CI, production rollout or new feature proof."
+}

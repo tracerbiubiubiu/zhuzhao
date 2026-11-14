@@ -154,7 +154,7 @@ if [ -n "${changed_api}" ]; then
         fi
     fi
     if [ -z "${swag_bin}" ]; then
-        echo "[WARN] swagger gate skipped: swag CLI not found (go install github.com/swaggo/swag/cmd/swag@v1.16.4)"
+        echo "[WARN] swagger gate skipped: swag CLI not found (go install github.com/swaggo/swag/cmd/swag@v1.16.6)"
     else
         if ! "${swag_bin}" init -g cmd/server/main.go -o docs --parseDependency --parseInternal >/dev/null 2>&1; then
             echo "[FAIL] swagger gate: generator failed"

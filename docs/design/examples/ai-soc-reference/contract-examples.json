@@ -1,0 +1,60 @@
+{
+  "proposal": {
+    "actor": "demo-risk-manager",
+    "auth_epoch": 7,
+    "config_version": "cfg-1",
+    "contract_version": "1",
+    "skill_version": "1.0.0",
+    "definition_ref": "demo-remediation@4",
+    "target_org": "org-a",
+    "risk_revisions": {
+      "risk-a": 17
+    },
+    "knowledge_refs": [
+      {
+        "id": "knowledge-public",
+        "version": "k7",
+        "digest": "cd1730dfa2ebdd3e5bc46c31d5bedaf317bb91aec5d1d1fec178f09342e24e68"
+      }
+    ],
+    "operation_id": "demo-operation-1"
+  },
+  "approval": {
+    "actor": "demo-risk-manager",
+    "plan_hash": "b0b2bc33adef2d5abc6b572f2dca7d125bf1b6b8a68463ac65996b0e7f33b2b6",
+    "config_version": "cfg-1",
+    "expires_at": 110
+  },
+  "checkpoint": {
+    "state": "awaiting_approval",
+    "plan": {
+      "actor": "demo-risk-manager",
+      "auth_epoch": 7,
+      "config_version": "cfg-1",
+      "contract_version": "1",
+      "skill_version": "1.0.0",
+      "definition_ref": "demo-remediation@4",
+      "target_org": "org-a",
+      "risk_revisions": {
+        "risk-a": 17
+      },
+      "knowledge_refs": [
+        {
+          "id": "knowledge-public",
+          "version": "k7",
+          "digest": "cd1730dfa2ebdd3e5bc46c31d5bedaf317bb91aec5d1d1fec178f09342e24e68"
+        }
+      ],
+      "operation_id": "demo-operation-1"
+    },
+    "plan_hash": "b0b2bc33adef2d5abc6b572f2dca7d125bf1b6b8a68463ac65996b0e7f33b2b6",
+    "existing_risk_ids": [
+      "risk-b"
+    ]
+  },
+  "receipt_read_result": {
+    "operation_id": "demo-operation-1",
+    "status": "committed",
+    "effect_id": "demo-ticket-created-1"
+  }
+}

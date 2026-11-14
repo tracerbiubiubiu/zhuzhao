@@ -2,7 +2,7 @@
 # 使用方法：docker build -t zhuzhao:latest -f deployments/Dockerfile .
 
 # === Stage 1: build ===
-FROM golang:1.26.10-alpine AS builder
+FROM golang:1.27.4-alpine3.24@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS builder
 
 # 国内镜像源加速（apk + Go proxy）
 RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories && \
@@ -19,10 +19,12 @@ RUN go mod download
 COPY . .
 
 # 编译（CGO 禁用，纯静态二进制）
+ARG GOFLAGS
+ARG GOMAXPROCS
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /zhuzhao ./cmd/server
 
 # === Stage 2: runtime ===
-FROM alpine:3.20
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories && \
     apk add --no-cache ca-certificates tzdata && \
