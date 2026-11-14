@@ -1810,7 +1810,7 @@
         },
         "values": {
           "type": "object",
-          "minProperties": 1,
+          "minProperties": 0,
           "maxProperties": 32,
           "additionalProperties": {
             "type": [
@@ -5085,6 +5085,66 @@
         "causal_reentry": "deny_same_rule_in_root"
       },
       "expected_valid": false
+    },
+    {
+      "id": "receipt_al_read_empty_optional_projection",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {},
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "receipt_al_read_explicit_null_projection",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": null
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": true
     }
   ],
   "examples": [
@@ -8640,6 +8700,335 @@
         "registered_source": "urn:zhuzhao:activelist:synthetic"
       },
       "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_optional_field_absent_success",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "1",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {},
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "1"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.created.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "1",
+            "changed_fields": [
+              "name"
+            ],
+            "event_values": {
+              "name": "synthetic device"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "allow_read",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_optional_field_explicit_null_success",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "2",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": null
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "1"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.created.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "1",
+            "changed_fields": [
+              "name"
+            ],
+            "event_values": {
+              "name": "synthetic device"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "allow_read",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_empty_projection_does_not_bypass_authorization",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "1",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {},
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "1"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": false,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.created.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "1",
+            "changed_fields": [
+              "name"
+            ],
+            "event_values": {
+              "name": "synthetic device"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "held_revoked",
       "expected_additional_effects": 0
     }
   ]

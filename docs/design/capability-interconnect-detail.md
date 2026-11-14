@@ -90,7 +90,7 @@ noop保存成功receipt，但不增加文档revision/变更cursor、不触发业
 
 get的订阅动作是专用分支：target_from_event=true，target固定owner/resource_type及已登记type_name/generation，**不含静态resource_id**；document_id从本条event.data.document_id构造完整command，再逐行验当前权限。input_mapping只接受指定document_id/generation/source_event_id指针、固定类型及fields常量数组；数组仅在该get分支有效，原update/report映射不变。类型/世代不一致、静态目标混用、伪字段数组和无权事件文档均不得变成另一个目标的合法调用。只读后继既不写AL也不推进工单，不用强制关联票来迁就旧Schema枚举。
 
-`alReadResult`明确observation_owner=zhuzhao、data_owner=activelist，含目标、queried_at、当前document_revision、受权values与可选source_event_id/source_event_revision；事件ID/revision成对。结果≤32KiB，只含请求且当前获准字段；当前数据可能比事件版本新，不能说是当时历史快照。同世代结果revision落后于触发事实时暂停核对，不能把陈旧副本当复核已完成。成功receipt只有query_result而无effect，非成功也不携可误认为成功的query_result；原写/报告receipt仍强制effect且禁query_result。
+`alReadResult`明确observation_owner=zhuzhao、data_owner=activelist，含目标、queried_at、当前document_revision、受权values与可选source_event_id/source_event_revision；事件ID/revision成对。结果≤32KiB，只含请求且当前获准字段；源记录存在但所选可选字段均未设置时，`values={}`是合法成功；缺键表示未设置，显式`null`保持为`null`，不能为满足最少字段数伪造值。记录不存在仍按404处理，当前无读资格仍拒绝，不得用空投影掩盖无权或依赖错误。当前数据可能比事件版本新，不能说是当时历史快照。同世代结果revision落后于触发事实时暂停核对，不能把陈旧副本当复核已完成。成功receipt只有query_result而无effect，非成功也不携可误认为成功的query_result；原写/报告receipt仍强制effect且禁query_result。
 
 同operation重放返回原queried_at/观察结果并复验当前行/字段读权；显式刷新另建operation关联原运行。Schema证明形状，语义oracle另外核目标/事件/收据绑定、字段投影与字节预算，二者均不证明产品服务已实现。参考命令、红绿与变异范围见[只读验证说明](examples/capability-reference/README.md)。本补全归既有本地AD与CE接线范围，未增加新业务家族、通用查询引擎或另一份价格。
 
