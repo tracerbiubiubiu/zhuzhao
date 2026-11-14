@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "levels": {
     "detailed_contract_candidate": "已写数据/状态/授权/并发/恢复/验收的详设候选，未全冻结也未实施",
     "component_contract_and_representative_prototype": "组件/旅程合同与离线代表样板，非全站成品",
@@ -1096,15 +1096,18 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P6.3出口先完成范围/供给裁决；P7实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.3出口"
     },
     {
       "work_item": "E03",
@@ -1113,15 +1116,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.3出口"
     },
     {
       "work_item": "E04",
@@ -1130,15 +1136,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.E出口"
     },
     {
       "work_item": "E05",
@@ -1163,15 +1172,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.E出口"
     },
     {
       "work_item": "E07",
@@ -1615,7 +1627,7 @@
   ],
   "scope_counts": {
     "parent_work_items": 76,
-    "official_child_milestones": 16,
+    "official_child_milestones": 17,
     "legacy_additional_scope_tasks": 6,
     "release_slices": 13
   },
@@ -1791,6 +1803,46 @@
     "implementation_authorized": false,
     "all_business_implemented": false,
     "all_real_provider_contracts_frozen": false,
-    "scope_and_estimate_registries_unchanged": true
+    "scope_and_estimate_registries_unchanged": true,
+    "reviewed_date": "2026-11-15",
+    "parent_count_is_not_all_supplemental_scope": true,
+    "supplemental_phase6_exits": [
+      {
+        "id": "OBS01",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
+        "state": "detailed_contract_candidate_not_implemented",
+        "local_core_selection": "S3 needed redaction/correlation only; full profile at its chosen slice"
+      },
+      {
+        "id": "OBS02",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
+        "state": "detailed_contract_candidate_owner_failure_policy_pending",
+        "local_core_selection": "existing authorized history/necessary facts; complete extra audit slice not automatic first-release gate"
+      }
+    ],
+    "early_decision_gates": [
+      {
+        "id": "E02",
+        "decision_due": "P6.3出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E03",
+        "decision_due": "P6.3出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E04",
+        "decision_due": "P6.E出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E06",
+        "decision_due": "P6.E出口",
+        "implementation_remains_later": true
+      }
+    ],
+    "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
+    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md"
   }
 }

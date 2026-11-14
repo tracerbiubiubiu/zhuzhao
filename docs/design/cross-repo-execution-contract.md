@@ -39,7 +39,9 @@ task_id 是同一业务执行的稳定身份；delivery_id/execution_id 是每�
 
 现有 `jobs.Handler.Handle` 不能自动升级成事务安全。建议新增内部 `Execute(ctx, ExecutionContext) → ExecutionResult,error` 适配接口，Context提供稳定operation_id/claim_generation/受限主体，不让handler自行从请求拿数据库连接或伪造success。原handler显式标 legacy；逐个盘点可重入性后包适配器。transactional动作由领域service在同tx写业务、审计、receipt；不得先提交效果再补“同事务”的注释。涉及外部网络不可持DB行锁等待；先落操作意图，再按下游幂等/查询合同执行。
 
-transactional效果凭证对`(owner_service, operation_id)`唯一，action_version/params_digest为同键一致性断言，不以换版本绕过同操作去重。副作用事务依次取得授权守卫、execution claim行锁、领域锁，锁内复验claim_generation/当前权限，再写效果与receipt并提交；续租/新代认领也必须竞争同claim行，不能在旧效果事务仍持锁时越过它。查不到未提交receipt只说明尚不可见，不证明旧事务无效果；新认领须等待旧事务终结并锁内复核唯一receipt/代次。外部observable查询的not_found或最终一致空结果同样不是无效果证明；只有提供方可核验的终态未执行/撤销凭证，且旧请求已不可能迟到生效，才允许重新发非幂等请求，否则保持unknown/人工处置。
+transactional效果凭证对`(owner_service, operation_id)`唯一，action_version/params_digest为同键一致性断言，不以换版本绕过同操作去重。**统一2026-11-15锁序**：claim/续租先在独立短事务完成，不持claim行锁等待业务锁或网络；效果事务取授权守卫→group→risk→ticket→link/node等领域行（各集合排序），最后条件锁/更新执行claim的generation、lease和receipt。若fence/当前权限/有效期不符，效果、领域历史与receipt整笔回滚。续租/新代认领只锁执行行，不反向索取领域锁；同一逻辑执行复用一套claim/fence。查不到未提交receipt只说明尚不可见，不证明旧事务无效果；新代进入效果事务后仍核唯一receipt，不能因取得新lease就重做未知效果。外部observable查询的not_found或最终一致空结果同样不是无效果证明；只有提供方可核验的终态未执行/撤销凭证，且旧请求已不可能迟到生效，才允许重新发非幂等请求，否则保持unknown/人工处置。以双callback+领域桥两真实事务闩测试锁序与旧fence全回滚，不只静态检查文句。
+
+这里原callback执行lease120s/30s是legacy动作的候选默认；登记能力可以选择[能力profile](capability-interconnect-detail.md)的execution lease30s/10s，但仍复用该执行行，不能叠两套claim。具体run在创建时钉所选profile，配置变更不改在途run。R01投递delivery lease120s/30s属于另一条投递记录，AL admission≤30s仅是外部准入期限，三者不混用。上述均为设计候选，不改现运行配置。
 
 ### 认领和完成
 

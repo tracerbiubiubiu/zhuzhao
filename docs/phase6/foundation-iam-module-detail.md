@@ -34,27 +34,29 @@ L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及�
 
 ## 3. C04：共同授权守卫与多实例
 
-首版采用**一个数据库授权代际行**，而非分布式锁服务：候选 `authorization_control(id=1, revision bigint NOT NULL CHECK revision>=0)`。本地业务量尚小，先以简单正确的全局策略变更屏障换取可证明撤权；普通业务共享锁可并行，只有授权变化排他。后续观测锁等待后再按资源/组织分片，不能在首版暗做全套权限平台。
+首版采用**一个数据库授权守卫行**，而非分布式锁服务：候选 `authorization_control(id=1, revision bigint NOT NULL CHECK revision>=0)`。它承载短事务撤权屏障，`revision`仅表示需要同步的**L1 Casbin策略代际**，不是所有资源变化的全局版本。普通业务共享锁可并行，授权变化排他；后续观测锁等待后再按资源/组织分片，不在首版暗做全套权限平台。
 
-1. 事务开始前按动作选择锁模式：普通受权读/写取该行 `FOR SHARE`；会改变有效权限的 IAM、组织任职/继承/数据范围、类型查看策略、参与/CC 管理取 `FOR UPDATE`。**禁止先共享后升级**。批量拆有界事务，但每批独立复验。
-2. 取得守卫后读取 revision；每进程使用不可变的 `(enforcer, applied_revision)` 对。只有 applied_revision 与 DB revision 相等，才可使用该策略实例；否则先结束本次事务、触发重载并返回可恢复的 `POLICY_NOT_READY`，不得在持锁期间请求网络或把旧策略当准。
-3. L1 走该 revision 的统一 PDP；L2/L3 从同一短事务的当前账号、组织、scope、参与及业务状态求值。写主锁业务行、核 expected_revision，再写效果、领域历史、必要 intent。守卫保持到 commit，避免“撤权已提交而旧允许决定随后仍提交”。外部调用只在提交后做。
-4. 改权事务在排他守卫下复验操作者资格，保留最后 superadmin/种子号保护；更新所有适用直接/组织/继承来源、增加 revision，并同事务插入恢复 intent。提交释放锁后才重载/撤会话；旧内存实例因代际不等不能继续放行。
+1. 事务开始前按动作选择锁模式：普通受权读/写取该行 `FOR SHARE`；会改变有效权限的IAM、组织任职/继承/数据范围、类型查看策略、参与/CC管理取`FOR UPDATE`。Assign/Transfer或风险owner交接若改变既有职责/可见集，也按改权动作选择排他模式，不能因来源改为派生事实而漏守卫。**禁止先共享后升级**。批量拆有界事务，但每批独立复验。
+2. 取得守卫后读取L1 revision；每进程使用不可变的 `(enforcer, applied_revision)` 对。只有 applied_revision 与 DB revision 相等，才可使用该策略实例；否则先结束本次事务、触发重载并返回可恢复的 `POLICY_NOT_READY`，不得在持锁期间请求网络或把旧策略当准。`AuthorizationDecision.policy_revision`仅标L1视图，不能证明L2/L3已判断。
+3. L1走该revision的统一PDP，当前有效角色按直接/组织/继承来源重新求值，JWT中的旧角色不是授权真值；L2/L3从同一短事务的当前账号、组织、scope、参与及业务状态求值。写主锁业务行、核expected_revision，再写效果、领域历史、必要intent。守卫保持到commit，避免“撤权已提交而旧允许决定随后仍提交”。外部调用只在提交后做。
+4. 改权事务在排他守卫下复验操作者资格，保留最后 superadmin/种子号保护；更新适用直接/组织/继承来源。**只有实际改变L1策略或其有效角色映射的操作**推进L1 revision并写policy_reload intent；会话安全变化按需写session_revoke intent。参与/CC、类型查看范围等只改L2/L3事实时更新其资源/策略revision，仍在同一守卫内提交并从当前数据库判断，**不触发全站LoadPolicy**。提交释放锁后才做对应恢复；不得为了省重载继续信旧L2缓存。
 5. loader 使用**只读 REPEATABLE READ 事务**在同一数据库快照读取全部策略与 revision，校验后原子替换整个 pair；不能用多条 READ COMMITTED 查询拼出旧策略+新 revision。加载中又有新代际则允许安装旧 pair，但后续请求比较不等仍拒绝并再次加载。不能先置新 revision 再慢慢改原 enforcer。启动没有可证 pair 时受保护接口未就绪，健康存活与业务就绪分开。
 
 固定锁序为授权守卫 → 来源/业务 group → 风险 ID → 工单 ID → 其它关联 ID（各集合排序），遵[生命周期合同](../design/business-lifecycle-contracts.md)。无反向先业务后 IAM，禁止持业务锁 HTTP。PG 死锁/序列化故障仅在未产生外部效果且相同 operation 下有界重试；业务冲突交调用者刷新。事务使用 READ COMMITTED 并在取锁后读当前事实，不依赖事务开始前缓存。
 
 本设计是采用 [PostgreSQL 行锁及一致锁序](https://www.postgresql.org/docs/18/explicit-locking.html)的项目选择。借鉴 [OPA 状态模型](https://www.openpolicyagent.org/docs/management-status)区分“策略接收/存储”和“激活”，**继续使用现有 Casbin**；不引入 OPA 服务或以心跳代替代际检查。所有启用入口（含 PAT、worker、代理、批量和查询）接该公共守卫是开通前置；遗漏入口不得凭 L1 中间件已存在放行。
 
+策略副本同步与本地资源事实分别处理也符合[Casbin watcher职责](https://casbin.apache.org/docs/watchers/)；这里选择数据库代际检查，不因此引入新的watcher组件。短期ref采用[Redis到期键](https://redis.io/docs/latest/commands/expire/)只承担可丢的请求上下文，绝不替代持久效果凭证。
+
 ### 3.1 逻辑数据与恢复所有者
 
 | 候选实体 | 约束/索引 | 写主与用途 |
 | --- | --- | --- |
-| authorization_control | 单行主键；revision 单调 | IAM 共同屏障；不可被私有 adapter 写 |
+| authorization_control | 单行主键；L1策略revision单调 | 共同事务屏障；L2/L3变化不推进Casbin代际；不可被私有 adapter 写 |
 | iam_change_receipts | UNIQUE(caller_namespace, idempotency_key)；绑定 canonical_hash；target+created_at 索引 | IAM 原业务事务保存提交事实/当前 receipt revision |
 | authorization_effect_intents | UNIQUE(operation_id, effect_kind, target_id, desired_revision)；(state,next_attempt_at)索引；lease_owner/until/fence | 复用 R01 worker 机制；一个 effect 一个重试主，过期 fence 不更新新执行 |
-| identity_source_bindings | UNIQUE(source_id,entity_kind,external_id,identity_generation)；本地 ID 索引 | D06 目录映射；issuer+subject 映射在 UAA-P 增补，不用邮箱作主键 |
-| governance_ownership | UNIQUE(application,resource_key,scope_key)；revision/source/allowed_write_port | 本地先登记 local，P/R 批次切批准范围的单一写主 |
+| identity_source_bindings | UNIQUE(source_id,entity_kind,external_id,identity_generation)；本地 ID 索引 | 启用实际D06目录feed时建设所需映射；issuer+subject映射在UAA-P增补。人工local账号/风险不以完整HR映射表为前置 |
+| governance_ownership | UNIQUE(application,resource_key,scope_key)；revision/source/allowed_write_port | 完整受管投影表在P/R建设；本地先以既有来源字段和受审配置登记local写主，不先建全UAA治理库 |
 
 表名是逻辑建议，实施前与已有 job submission/审计表对表复用，不复制第二套 outbox；迁移 up/down 成对、编号当天从迁移地图领取。初始代际为 0，对现有本地来源显式回填；回滚新增约束前停止新入口并处理在途 intent，不能删除正式历史以求 down 通过。
 
@@ -105,6 +107,36 @@ SetRoles、AssignMenus 的“本地审计失败同事务回滚”仍是**待所�
 
 薄 UI 同批展示本地/纳管来源、当前可写性、DB 已提交但运行时待生效、失败原因及获权重试/查询入口。普通业务管理员只能看受权对象历史；专门审计人员才能在指定范围跨模块检索/导出，导出自身留痕、大小有界、撤权停止后续读取。授权屏障异常、reload/revoke oldest age、失败次数、版本差距、拒绝原因只用有界标签；用户 ID 不作指标标签。首期保留天数/容量与真实审计名单在首次正式运行前确认，不编造合规要求。
 
+### 6.1 OBS补充出口与首版本地保护
+
+OBS01(P6.0)/OBS02(P6.1)位于[补充范围册](../review/post-baseline-scope-estimates.json)，**不在44个P6父包分母内**。本地核心S3先交已计价的敏感日志去除、可信request/operation/actor关联和必要本地事实；这不等于完整OBS01/02已实现，也不把OBS01–03完整22–33日追加到首版。完整跨仓外送、异步大导出、多worker判定管道与冷归档仍按原OBS03/P7或实际启用窗展开。
+
+OBS01逐入口清单沿[统一日志合同§2/5](../design/unified-observability-audit.md)：core的AuditLog/body读取、AL查询/导入错误、TR回调/任务参数分别做允许字段投影、敏感值去除、字节预算及失败计数；不把截断当脱敏。缺采集器时可用受控stdout/既有本地审计，诊断采样不采掉领域事实。请求过大、非JSON/嵌套secret、CRLF、读body失败/handler仍可读、logger写盘或collector断开均有具名反例，三仓只对其实际敏感面接线，不造新logger平台。
+
+完整OBS02的**准确候选**如下，只有本批启用对应审计读/写时建设，不强制本地核心先建审计总控台：
+
+```text
+AuditFactV1 = {record_id: ID, event_name: RegisteredAuditEvent,
+  occurred_at: Timestamp, observed_at: Timestamp, producer: string,
+  actor: {principal_id: ID?, service_id: string?, operator_user_id: ID?},
+  resource: ResourceRef, scope: {kind: org|platform, org_id: ID?},
+  outcome: domain_committed|runtime_effective|denied|failed,
+  request_id: string?, operation_id: string?, source_event_id: string?,
+  policy_revision: UInt64String?, diff: AllowedAuditDiff, reason: string?}
+AuditQueryV1 = {start: Timestamp, end: Timestamp, event_name: string?,
+  actor_id: ID?, resource_type: string?, resource_id: ID?, outcome: string?,
+  operation_id: string?, cursor: string?, limit: int}
+AuditPageV1 = {items: AuthorizedAuditFact[], next_cursor: string?, as_of: Timestamp}
+```
+
+查询候选固定为 `GET /api/v1/audit/facts`，Query字段使用有界query参数，不收客户端授权条件。导出候选 `POST /api/v1/audit/facts/export` 绑定独立按钮；body为同Query及固定允许列。不改旧`/audit/logs`请求诊断记录的含义，新领域成功事实不能伪造一条HTTP200日志替代。最小逻辑`security_audit_facts(record_id PK,event_name,occurred_at,observed_at,producer,actor_ref,resource_type/resource_id,scope_kind/org_id,outcome,operation_id/source_event_id,payload jsonb)`，索引(scope_kind,org_id,observed_at,record_id)、(operation_id)、(resource_type,resource_id,record_id)。对非空原事实使用稳定`(producer,source_event_id,event_name,resource_type,resource_id,outcome)`唯一键；不同生效阶段分别追加，不update旧成功事实。复用原领域事件+只读投影能达到同语义时优先复用，逻辑实体不强制多造表。
+
+服务端从当前专门审计职责生成scope/字段谓词，**先过滤再分页/计数/导出**；客户端org/actor筛选只能收窄。历史fact保存发生时合法组织锚，读取按当前获准审计组织集合相交，不因actor已调岗按其现部门重归历史；平台级IAM事实须明确platform审计资格，不能给普通部门管理员。业务管理员查对象历史仍核当前对象/字段权，不自动得到跨模块audit查询。cursor绑定查询hash和当前授权，不是可移用的授权凭据；分页为普通历史列表，不用ID游标宣称可靠事件feed/全局提交顺序。
+
+最小受权分页/受限导出复用既有audit页，起始窗口≤31日、limit≤100、同步导出≤1000条为可收紧技术候选；超限明确要求缩范围，不截断后冒称完整。CSV只输出白名单标量、做表格公式注入防护；不导出body/token/任意payload。大导出/快照artifact只有真实需要时按原异步方案接入，不作基础门。查询/导出只记安全访问元数据，避免审计递归；失败不回显不可见记录ID或全文。
+
+两IAM试点经owner批准后才把成功AuditFact与业务同事务；拒绝/失败事实不是成功补写，collector失联由已存本地事实恢复。`TestAuditFacts_ScopeBeforeCountExport`、`TestAuditFacts_OrgMoveAndPlatformScope`、`TestAuditFacts_CursorRevokeAndCSV`、`TestAuditFacts_AtomicCommitAndDuplicate`分别验当前职责/字段与范围、历史组织锚、scope变更/导出预算、业务回滚和原事实去重。本段是详细候选，真实人员/保留参数、迁移号与产品红绿仍在OBS02启用前落实。
+
 ## 7. 工程与一致性切片
 
 G01 任务 manifest 至少含 task_id、owner、base_sha、allowed_paths、worktree、runtime_owner、ports、db/redis/storage namespace、cleanup_allowlist；先装 hooks，再以显式路径提交，单会话推送。目录模板沿[文档约定](../documentation.md)，G06 用模板版本/同步检查维护共性，不从主仓复制带业务权限的 utils；新仓不造空目录。
@@ -117,7 +149,7 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 
 ## 8. 实施切片、TDD 与验收证据
 
-先共同 Context/守卫/receipt，再接本地 IAM、目录生命周期及实际业务入口；同批薄 UI，随后全链角色验收。P/R 只在自身窗口完整实现，不因公共 C 已写就宣称企业联调完成。
+先共同 Context/守卫/receipt，再接本地 IAM 及实际业务入口；目录生命周期按所启用feed交付，不让完整HR/UAA表阻塞人工风险。薄UI随批，随后全链角色验收。P/R只在自身窗口完整实现，不因公共C已写就宣称企业联调完成。
 
 | 用例 ID | 可复现输入/故障 | 必须断言 |
 | --- | --- | --- |
@@ -133,11 +165,13 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 | FND-10 | 错 owner 清理/混入索引/必需 job skip 或取消 | 精确清理拒绝，提交归属可核；门禁不被空 success 代替 |
 | FND-11 | DBTX第二步 history/intent 插入失败；pool=1；commit响应断开 | 同事务零半套，不偷第二连接，未知提交查原receipt不重做 |
 | FND-12 | 两真实事务 barrier：Org.Delete vs BindOrgRole/成员写 | 仅合法串行结果：已有绑定拒删，已删组织拒绑；无孤儿授权/半套清理 |
+| FND-13 | 给票A加CC/改查看策略，同时读无关票B | A按新L2事实判定，B无Casbin重载/全站503；真正L1策略变化仍触发代际检查 |
 
-测试先写业务正/负/边界/权限全部预期，目标行为有效红后实现；并发变异按 standards 至少 8 次稳定红验牙。最终需真实 PG/Redis、两进程故障注入、UI 普通/管理员/CC/只读旅程以及适用完整门禁；当前表格是测试设计，不能当已运行结果。真实公司 UAA、HR 和消息合同分列 real 待验；本地正式出口不等 UAA。
+测试先写业务正/负/边界/权限全部预期，目标行为有效红后实现；并发变异按standards至少8次稳定红验牙。首版本地验真实PG/Redis、双事务竞争、单实例重启/恢复、UI普通/管理员/CC/只读旅程及完整适用门禁；真正启用同服务多副本前再做两实例策略/租约/配额故障注入，不能把完整HA验收强塞单实例首发。当前表格是测试设计，不是已运行结果。真实公司UAA、HR和消息合同分列real待验；本地正式出口不等UAA。
 
 ## 9. 决策和变更记录
 
 现在需 owner 决定的是 §6 两类 IAM 操作的本地强审计失败政策；本轮已给具体场景，不重新询问已定 B01–B07、mock、设备人工登录或本地先正式。真实用户映射/通知配置、接管/退出计划及保留参数在相应启用前确认；不影响无关模块详设。
 
 - 2026-11-14：按实际主线补三层共同守卫、代际/会话恢复、D06 typed 输入和逐项交接、UAA-C/P/R 分界、统一审计试点及工程出口。逻辑表未建、迁移未领号，估算仍按原包扣重。
+- 2026-11-15：将事务屏障与L1策略副本同步区分，去掉资源级变化引起的全站重载；明确身份/治理表按实际feed与P/R创建，补日志审计补充出口与首版所选最小保护的区别。

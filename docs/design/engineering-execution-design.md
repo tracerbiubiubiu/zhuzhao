@@ -167,7 +167,7 @@ deadline 采用**试点命令的显式预算**：建议普通写 10 秒、锁等
 
 资源护栏复用 `internal/pkg/resource/registry.go` 的 `Registry.Authorize/GetFilter`、`ticket.Resource.canOperate` 与 repository 空 filter 拒绝机制。新资源缺注册/未知 action/空列表过滤均拒绝；导出必须走与列表同一 parser、L1/L2 filter 和字段策略，不因后台任务或 AI 发起就绕开。`internal/router/router.go` 的 ticket export 既有链作为回归样本，B案页面GET/按钮写、路由目录对账守卫不撤。系统自动化改用显式受限服务主体与意图授权快照，ActorID 只归因不是授权凭据。
 
-C04.4明确承接领域合同`AuthorizeForMutation`：IAM撤权与本地高风险写共享授权守卫。首期建议全局policy epoch共享守卫加主体epoch，业务写取共享锁并核当前策略，停用/撤角色/权限/组织归属改变的IAM事务取相应排他锁、增epoch；统一锁序为policy/主体排序→执行claim（如有）→领域group→资源ID。所有影响权限的写入口必须列入覆盖表，包含企业adapter的账号/角色/资源投影、模式接管、应急变更及退出；这些入口复用同一IAM守卫，遗漏不得关账；先全局小粒度试点正确性，再按G04压测证据细化，不把授权缓存当原子守卫。企业中央撤权送达/新鲜度先按UAA合同，落本地投影的变更必须参与C04守卫；对其他外部执行系统的主体/grant撤权仍按I02合同，不能靠本地锁保证跨系统即时性。
+C04.4明确承接领域合同`AuthorizeForMutation`：IAM撤权与本地高风险写共享授权守卫。2026-11-15按[模块合同](../phase6/foundation-iam-module-detail.md#3-c04共同授权守卫与多实例)收敛为一个短事务guard，L1策略代际与L2/L3资源revision分开，不预建全局加主体两套epoch。普通业务取共享锁、授权变化取排他锁；只有实际改变Casbin策略或其缓存角色映射才增加L1 revision/重载，CC与类型可见性按当前DB谓词和资源revision判断，不引起全站reload。效果事务唯一锁序为guard→领域group→risk/ticket/link等资源ID（各集合排序）→最后执行fence/receipt条件写；claim/续租另用独立短事务，只锁执行行、不反取领域锁。所有影响权限的入口均列覆盖表，包含后续企业投影、接管/应急/退出，启用时复用此守卫，不因未来入口未实现阻塞无关本地业务。先以正确性试点和G04测量决定后续分片；不以缓存作原子守卫，也不靠本地锁承诺跨系统即时撤权。
 
 C04.1 DBTX试点及故障分类；C04.2 org_roles两侧锁/历史处置；C04.3资源与导出负例及deadline；C04.4授权epoch与撤权竞争。出口：第二步audit/intent插入失败整笔回滚；池饱和不死锁；并发删组织/绑角色只有合法串行结果；未知action/export无scope不返数据；撤权先提交后旧授权业务不能提交，业务先持守卫提交则撤权等待并阻止后续写；取消/commit断链不伪称未提交。R01/D03在此事务与授权入口可用后接入，不扩大成分布式事务。
 

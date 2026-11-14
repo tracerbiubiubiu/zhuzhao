@@ -36,7 +36,9 @@ ExtensionAdmission = {principal_id: ID, audience: extension_id,
 
 调用服务先验 HMAC/受信服务身份，再验证当前真实用户会话与 audience/路由；服务凭据不代表用户授权。首个同步用户调用采用**核心逐请求授权回调**：扩展收到经可信网关构造的受限请求引用，在执行前向核心验证该引用与当前主体/资源/字段；引用短期、一次请求绑定、不可在另一路由/对象复用。核心只签发已登记 capability/audience，不把用户 AT 或管理员密钥交给扩展/浏览器。准确签名字段复用既有 HMAC/未来 admission 合同，不能另编浏览器自报 user_id。
 
-受限 request_ref 是核心生成的高熵 opaque 引用，服务端只存 hash，候选记录绑定当前主体/会话、audience、规范化方法与路由、capability/version、resource、payload_hash、允许字段、expires_at 和适用的固定 operation_id。只有登记的目标扩展服务能经 HMAC 回调核验；缺失/过期/错服务/错目标/异参拒绝。回调每次重验当前主体、L1 及登记在核心的组织/字段范围，返回上列 Admission；核心拥有的资源仍完整核其 L2/L3，**私有设备等资源的实际行属性只由私有属主核 L2/L3**，不假称核心知道私有库内容。它不是可离线重复使用的长期凭证。读取请求可在同一短期限重取当前许可；写请求重投同 ref 必须保留同 operation、由领域幂等返回原 receipt，不把 nonce 被读过等同业务已执行。首版仅启用已有同步调用场景，不能借该引用发起新的后台写。
+受限 request_ref 是核心生成的高熵 opaque 引用，服务端只存 hash，候选记录绑定当前主体/会话、audience、规范化方法与路由、capability/version、resource、payload_hash、允许字段、expires_at 和适用的固定 operation_id。**它只用于私有应用的代用户请求**；纯取数connector由核心先完成本地授权，再经受限服务端口查询，不创建用户交换ref。只读ref先复用现有Redis短TTL存储（候选30秒），不新增PG历史表/outbox/永久receipt；丢key/重启后旧ref拒绝，用户重发新读取即可。写效果的operation/receipt仍由领域持久化，不能因ref过期换号重做。
+
+只有登记的目标扩展服务能经HMAC回调核验；缺失/过期/错服务/错目标/异参拒绝。回调每次重验当前主体、L1及登记在核心的组织/字段范围，返回上列Admission；核心拥有的资源仍完整核其L2/L3，**私有设备等资源的实际行属性只由私有属主核L2/L3**，不假称核心知道私有库内容。读取请求可在同一短期限重取当前许可；写请求重投同ref保留同operation，不把ref被读取等同业务已执行。现有HMAC只有时间窗且URL query未入签，不声称已有nonce防重；鉴权参数全部放签名body，短时ref及其绑定由服务端核验，不能改信X-Operator或普通query。首版不另造JWT/授权服务器，也不授予新的后台写。
 
 公共核心做 L1，私有资源所有者仍做自己的行/字段和动作 L2/L3，不能只依菜单可见。首版不缓存正向用户授权以换可用性；回调失联拒绝受保护操作、显示依赖不可用。该逐请求接缝不授予后台持续写；无人值守必须等 I02。借鉴 [Backstage 服务身份与代用户身份分离](https://backstage.io/docs/auth/service-to-service-auth/)及[资源属主执行条件](https://backstage.io/docs/permissions/concepts/)，不照搬其插件运行框架。
 
@@ -163,3 +165,4 @@ Plan = {actor_id: ID, operation_id: string, canonical_command: TicketCreateComma
 无需再问是否保留 mock、本地 IAM、私有隔离、设备人工登录或模型只 API。具体公司 source/mapping、允许网络、真实模型能力/配额、设备可见组织/入口维护者在各自真实启用前确认；无源显示 unknown，不让缺厂商资料阻塞公共接口详设。涉及扩大实际业务范围/写权限/数据出区时给具体用户场景再确认，不把技术默认值变成业务批准。
 
 - 2026-11-14：补 X01 基础同步身份接缝、X02 查询与 feed 区分、设备 DTO/计数/入口控制、A01/A02准确候选和异常/TDD。核心净估、远期 AI/设备实施波次不变，复用机制不重复计价。
+- 2026-11-15：用户身份交换只限私有应用，源query不套此协议；短时只读ref不建永久表。保留在线当前授权，不用不完整HMAC头替代权限。

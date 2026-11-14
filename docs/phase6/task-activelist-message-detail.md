@@ -128,6 +128,8 @@ ALReadResult = {observation_owner:"zhuzhao", data_owner:"activelist",
 
 目标与params一致；fields去重、存在于schema且由当前授权允许。source_event_id若有必须用不可变subscription/operation绑定的source组成(source,id)核该条持久inbox及目标，不能跨来源全局搜event_id取第一条；事件revision只来自原事实。values只含获准标量、总量≤32KiB，不读全行再把秘密写日志；generation变化则held并提示核配置，不悄然把旧任务套入新类型世代。查询结果是queried_at时的当前document_revision，source_event_revision仅说明触发时版本，两者可不同，绝不冒称历史快照。
 
+源记录存在且所选可选字段均未设置时，`values={}`合法；缺键表示未设置，显式null保留，不能为满足Schema把缺键伪造为null。记录不存在仍404，无权仍拒绝/held，依赖失败不能返回空成功；空投影不是权限过滤的替代。
+
 成功由core保存同operation的只读观察结果，receipt必须带query_result且**禁止effect**；observation_owner=zhuzhao表示本地观察凭证写主，data_owner=activelist表示源数据写主，不要求AL增加只读写效果receipt，也不增加AL数据revision/outbox。其它原写/报告成功receipt仍必须effect、禁止query_result，不能借get分支放宽。重复同operation先重验当前行/字段读权后返回原结果及原queried_at，不偷偷更新成新查询；需要刷新时显式新operation关联原运行。撤权后旧结果不再可读。对get增加的schema分支、语义校验及无票用例是原AD实际只读后继的必要接线，归已价AD/CE迁移切片；不顺手扩成list/自由query/MCP全量导出。
 
 get订阅动作采用专用target_from_event=true：只固定已登记的AL类型/generation与owner/resource_type，document_id从本条持久SourceFact取得，逐行执行当前授权，不能静态绑第一行后拿它套全部事件。静态resource_id与target_from_event混用拒绝；input_mapping仅支持type_name固定值、document_id/generation/source_event_id的指定event pointer及fields字段名常量数组。数组只在get的fields分支有效，不扩宽原update映射；错误类型/世代/事件目标、不获权行、伪字段数组均拒绝或held。
@@ -176,11 +178,11 @@ HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收
 
 业务定时只由TR负责；核心现有CronScheduler只承载本库有界维护/intent轮询，不接另一套业务cron。C03先交稳定occurrence与原子推进；三种错失策略的完整episode、开始准入、恢复操作/UI归[调度恢复详设](../design/schedule-recovery-policy.md)I03。首版选定计划必须显式保存实际支持的策略；未实现选项服务端拒绝而非表单能选却无行为。重复效果对账与漏建时隙补发永远分开；同slot重投不换task/operation，未知效果不因回补重新产生。
 
-技术profile复用原合同候选，不另外发明互相冲突的全局值：R01 dispatcher批50、并发2、网络10秒、delivery lease120秒/心跳30秒；能力attempt默认30秒，能力worker lease30秒/10秒续约；AL准入最长30秒；消息发送沿现有5秒初值。**这三个lease属于不同层，不能拿intent lease当AL执行授权期限。** 默认重试5秒起、抖动、最高5分钟/最多20次且不超过24小时投递期限；业务命令expires_at更早时以其为准，过期held不新增效果。参数是待压测的初值，不是已实测容量/SLA。
+技术profile复用原合同候选，不另外发明互相冲突的全局值：R01 dispatcher批50、并发2、网络10秒、delivery lease120秒/心跳30秒；能力attempt默认30秒，登记能力execution lease30秒/10秒续约；AL准入最长30秒；消息发送沿现有5秒初值。C03 legacy callback执行默认120秒/30秒不是另一条必建租约：同一登记能力callback只用所选profile的一套execution claim/fence，run钉版，不能同时叠加legacy claim和能力worker claim。**投递lease、唯一执行lease和准入期限分层，不能拿intent lease当AL授权期限。** 默认重试5秒起、抖动、最高5分钟/最多20次且不超过24小时投递期限；业务命令expires_at更早时以其为准，过期held不新增效果。参数是待压测的初值，不是已实测容量/SLA。
 
-同operation只记一次逻辑准入，每个真实attempt仍记provider start/并发和费用。共享Redis原子限流按service/grant、provider/capability、订阅/root分别控制，本地semaphore仅补充；缺共享配额时新增自动写fail closed并持久held，对账/已确认结果投影走独立有限配额。一个provider断网不能耗尽主站请求池；claim后无令牌就持久延后并释放worker，不把排队等令牌记业务失败重试。
+同operation只记一次逻辑准入，每个真实attempt仍记provider start/并发和费用。**首版单实例/单订阅/单动作**先复用队列有界worker、每提供方限流、总deadline和积压硬门，不建设service/grant/root多维预算引擎；真实提供方限额须实际执行，限额依赖不可证明时受影响自动写held，不猜可用配额。一个provider断网不能耗尽主站请求池；claim后无令牌就持久延后并释放worker，不把排队等令牌记业务失败重试。多worker/持续grant或真实扇出启用时，再以共享Redis原子配额验其新增维度与抢占；不能把单进程semaphore宣称多实例安全。
 
-根预算沿共同合同深度8/步骤64/扇出16/900秒的候选上限，首版规则实际只1动作；压测前不承诺这些最大值同时可用。inbox/outbox/每订阅积压和总字节分别有硬上限及提前报警。outbox空间不足且不能安全归档时，拒绝并回滚新的监控AL写；不能数据提交后丢事件。core收件压力不ACK，源继续保留；容量硬门不能以丢消息维持假健康。
+共同合同的深度8/步骤64/扇出16/900秒是后续允许profile上界；**首版只允许一次订阅派生（rule_path最多1项）和一个只读后继**，保留同一root、真实parent/depth及事件去重，不能把协议depth清零或将整个root限成≤1。这样工单→TR→AL写→AL事件→TR只读后继仍合法；固定批准链静态有界，不为尚未开放的DAG建设通用预算执行器。inbox/outbox/每订阅积压和总字节仍有硬上限及提前报警。outbox空间不足且不能安全归档时，拒绝并回滚新的监控AL写；不能数据提交后丢事件。core收件压力不ACK，源继续保留；容量硬门不能以丢消息维持假健康。
 
 支持多实例的claim、fence、幂等唯一键、quota和授权守卫必须跨实例共享，禁止内存互斥当唯一保证。首版本地可运行单副本；启两副本前必须以两个真实进程/实例验抢占、停机、旧fence和共享限流，不因单机goroutine测试绿宣称HA。优雅关闭停止新claim，有限drain，剩余由持久记录/租约找回；不能把SIGKILL等价于取消效果。
 
@@ -195,6 +197,38 @@ HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收
 配置启动fail-fast核协议/动作版本、固定目标、服务授权、能力白名单、监控类型受支持入口、生产secret、receipt查询及保留窗。未知receipt/未终结operation不按普通TTL清除；任务执行历史/必要执行证据沿既有永久约定，源投递临时副本与普通运行日志可按各自批准策略归档，不能借ACK/日志轮转删永久证据。备份恢复要包含operation/receipt、outbox/inbox、规则版本及在途关联，而非仅业务表。
 
 日志/审计复用[统一合同](../design/unified-observability-audit.md)：request→operation→intent→TR task/occurrence/attempt→AL effect/event→消息delivery可追溯；事实、拒绝、尝试及记账分别记录，业务历史与专门审计授权分开。秘密、公司原始报文、完整文档/任意error片段不入普通日志；trace采样不采掉receipt/事实。指标至少有pending最老年龄、unknown/held/过期量、投递/回调/投影延迟、CAS冲突、撤权拒绝、source gap、quota等待、应发/抑制/accepted/delivered/failed、各provider故障；标签不含用户/票号等高基数标识。
+
+### 8.1 首个AL类型的用户读取合同
+
+任务get/update接好权限不代表原列表安全。首版所选受保护类型的list、筛选、metadata和确需的count也必须走同一受权应用用例，**不能继续走旧裸wildcard代理**。其它不在本次启用范围的敏感入口（尤其export）在服务端拒绝；公开非敏感旧类型按既有批准范围保留，不因本条退役全部AL功能。
+
+```text
+ALListQueryV1 = {type_name: string, generation: UIntString,
+  fields: FieldName[1..32], filters: [{field: FieldName, op: eq|in, value: Scalar|Scalar[]}],
+  sort: {field: FieldName, direction: asc|desc}?, limit: int, cursor: string?}
+ALAuthorizedReadV1 = {query_kind: list|count|metadata, query: ALListQueryV1,
+  authorization: {principal_id: ID, scope_ref: string, policy_revision: UIntString,
+    audience: "activelist", purpose: "authorized_read",
+    type_name: string, generation: UIntString, allowed_fields: FieldName[],
+    scope_kind: none|constrained|whole_type_approved,
+    row_constraints: [{field: RegisteredScopeField, allowed_values: Scalar[]}],
+    query_hash: SHA256, valid_until: Timestamp}}
+ALListPageV1 = {items: AuthorizedDocument[], next_cursor: string?, has_more: bool,
+  as_of: Timestamp, generation: UIntString}
+ALCountV1 = {count: int, as_of: Timestamp, query_hash: SHA256}
+```
+
+这是同步QueryPort的候选接线，不向任务command枚举顺手增加list/自由query，也不保存每个GET的永久operation。核心从当前主体/L1/L2/L3计算row_constraints与allowed_fields；filters只是用户额外收窄，AL以AND求交。字段/作用域字段、可用运算符由所选类型profile登记，值绑定SQL参数，不接受用户SQL/JSONPath。`scope_kind=none`明确空页/计数0；constrained必须有非空可信条件、allowed_fields非空且请求字段为其子集，缺失/非法拒绝；whole_type_approved只来自显式批准profile，不从空条件推导。排序字段必须可读且加稳定document_id次序；首档limit≤100、条件≤10、in值≤50为可收紧候选。
+
+RegisteredScopeField由受信属主/profile维护，是domain授权锚；普通insert/update不能自报或改写该组织/归属值，创建由可信服务根据获准目标设置，授权迁移走独立受审入口，缺失/非法锚默认不可见。否则即使row_constraints可信，也可能过滤一条用户自行篡改的归属。首组eq/in只对profile明确的非空标量及类型执行（0与false不混同）；缺键/null等未支持筛选明确拒绝，不偷做无保护cast。metadata中的类型清单同样只列获权类型/字段；metadata不收行filters/cursor/sort，count不收cursor/sort，避免多种解释。
+
+核心→AL用固定候选 `POST /internal/data/query` 的**签名body**携完整query/authorization/query_hash；仅登记核心服务可发且AL重新核所有绑定。现有HMAC未覆盖URL query，不能把权限scope或过滤器放query后声称已签名，也不从X-Operator取权。浏览器旧GET参数由网关规范化，不能作为可信授权片段原样透传。授权准入期限沿现有短时约束，发送前复验；有权请求在跨网传输中的有界失效窗口明确保留，不承诺分布式瞬时撤权。
+
+cursor是不透明有界分页引用，绑定类型/generation、规范查询hash、服务器scope/字段及排序基线；当前权限收紧则重验并拒绝旧cursor/要求重查，不放宽范围。源接口只给数组/无total时页面用has_more/next，不从已下载几页伪造总量；确需总量才在同一范围/谓词用count用例，不能先全量下载再过滤。metadata只返回当前可读字段和获准动作，不暴露隐藏列名/样本/全库总数。无数据返回空页；授权依赖失败503、无权拒绝，不能空成功。export启用前补同一谓词/字段、预算和撤权检查，未接时服务端拒绝，UI不显示已支持。
+
+具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这个selected profile归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
+
+计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。该接口批开工前对TD03/TD04、CE03及F004逐项扣重，未含必要接线补子估；未启用的大导出/复杂筛选不计首版。当前68–104日仍是候选，本文不宣称这次澄清已证明零净增或确定节省天数。
 
 ## 9. 测试先行用例与交付出口
 
@@ -217,13 +251,13 @@ HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收
 15. `TestSubscription_CutoverAndPause`：规则W前后各归唯一版本，发布崩溃无半激活；暂停继续收件不执行，恢复超限保留余项。
 16. `TestSubscription_EventTimeNotCurrentValue`：后改当前AL值不改变原事实过滤；当前查询明确时间/版本，缺projection字段不误命中。
 17. `TestSubscription_ActualReadOnlyFollowup`：真实AL insert/update→inbox→TR get任务→受控查询结果，**无关联工单也成功**；核当前值/事件版本不同、同号重放和字段权限，无AL回写/状态推进，撤权held。
-18. `TestCausalRoot_ReentryAndBudget`：重复事件/root伪造/同rule重入/超深度扇出拒绝，原事实和抑制原因仍可查。
+18. `TestCausalRoot_ReentryAndBudget`：首版验事件去重、继承真实root/parent/depth、最多一次订阅派生及只读后继，工单→AL写→后继链不被误拦；启用更宽profile时再验重入/深度扇出预算，原事实和抑制原因仍可查。
 19. `TestCron_DualScannerAtomicOccurrence`：两扫描器/推进失败/Redis故障/时区边界同slot一个task，回补不复制已有unknown。
 20. `TestMessage_RecipientCurrentScope`：owner/CC/负责人/只读成员及撤权分别验字段投影；无映射不广播，A→B→A保留三次真实语义；旧未发A项不改寄B，replacement按新稳定身份关联原项。
 21. `TestMessage_IntentPreferenceAndPreview`：业务commit后kill仍有应发；opt-out/免打扰/节流/强制类别各留原因；预览零发送，测试仅批准目标。
 22. `TestMessage_AcceptedNotDelivered`、`...TimeoutUnknown`：无送达协议不造delivered；已受理超时先query/同幂等键同冻结payload，无幂等无查询则hold；模板/owner变更不改变unknown的原目标/正文。
 23. `TestMessage_ProviderCallbackOutOfOrder`：重复/乱序回执不倒退状态，鉴权/映射/429/503分类及有界退避可解释。
-24. `TestQuota_TwoWorkersNoBurst`与`TestRecovery_BackupIncludesReceipts`：双实例共享配额、依赖故障隔离、容量拒写/不ACK，以及备份恢复后无重复效果。
+24. `TestQuota_TwoWorkersNoBurst`与`TestRecovery_BackupIncludesReceipts`：首版先验提供方限额、故障隔离、容量拒写/不ACK和恢复后无重复效果；实际启用双实例前再验共享配额，两者不混成全套HA首发门。
 25. `TestAccess_AllReadSurfacesAndAdapterCompatibility`：列表/total/详情/附件/结果/日志/导出/消息均不越范围，旧参考adapter×新core遵相同合同，未知版本显式拒绝。
 
 出口按三个层级分别留证：mock用于可控时序与提供方错误；contract核严格JSON/签名/HTTP状态/新旧组合；真实PG/Redis/HTTP/浏览器核事务、双进程、效果计数与恢复。离线Schema样例只证明其约束覆盖的形状/语义，不证明实际服务链已运行。主仓完整适用make门禁及UI六项、TR真实投递/cron、AL真实PG回归按实际代码触及执行；不能以本次文档检查替代未来实现验收。

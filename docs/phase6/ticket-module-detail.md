@@ -95,10 +95,10 @@ type TicketView = {
 | `ticket_events` 增量 | `event_id,cycle_no,visit_no,payload,operation_id,definition_version,aggregate_revision`；`UNIQUE(ticket_id,aggregate_revision,event_kind,event_ordinal)`；`(ticket_id,created_at,event_id)` 分页 | 与状态/字段/参与写同事务；新事件可重放，旧无payload事件不补造；file/richtext 记键/受权引用，正文不进事件镜像 |
 | `ticket_state_visits` | `ticket_id,cycle_no,visit_no,state,definition_version,entered_at,exited_at`；PK `(ticket_id,visit_no)`；每票未离态最多一行；`exited_at>=entered_at` | 统一入态核创建/结束区间；同状态转派不新增 visit；终态驻留不计办理时长；重开开始新 cycle 但 visit_no 继续递增 |
 | `ticket_milestones` | `ticket_id,cycle_no,kind,occurrence_key,occurred_at,actor_id,event_id`；唯一 `(ticket_id,cycle_no,kind,occurrence_key)`；kind 固定 `accepted/processing_started/result_submitted/business_closed` | 首次接单 occurrence_key 固定 `first`；节点办理点绑定 visit；提交/重开保留原事件，指标能区分首次与后续周期；不保存可被业务管理员任改的人工时间 |
-| `ticket_member_sources` | `(ticket_id,user_id,role,origin,source_key)` 唯一，role 仅 participant/cc；origin=`manual/creator/assignee/risk_review`；`(ticket_id,user_id,role)` 索引 | 作为 `ticket_cc` 有效成员投影的来源；只删某源，不把仍被其它源授予的人移除。现有 cc 行回填 manual，creator/assignee 从当前事实建源 |
+| `ticket_member_sources` | `(ticket_id,user_id,role,origin,source_key)` 唯一，role 仅 participant/cc；持久origin为manual及获准domain（如risk_review）；`(ticket_id,user_id,role)` 索引 | 只保存不能从权威字段推导的独立授予；现有cc回填manual。creator/assignee从当前CreatedBy/AssignedTo计算，不复制成需同步的来源行 |
 | 发布/迁版/晋级 plan | plan id、类型/目标/包hash、各基线revision、选中票及revision、警告确认、审批者/到期时间、结果receipt引用 | 复用 D05 的受控计划模型和共同 operation 记录，不再建第二套通用任务/receipt/outbox表；plan过期或基线变化409 |
 
-成员来源表只在 D03 所需最小来源实现；不提前引入通用关系授权引擎。同一人既是手工参与人又是风险复核人，风险交接只移除旧 risk_review 源，仍可因手工来源可见；保留这条来源时不再拥有已经转出的领域复核权。本人退出自己manual CC可保留既有读可见退出入口，但domain/强制来源不能借此移除，也不把普通退订应用到强制风险通知；新增自己CC仍遵B04，不借selfService绕过。
+成员来源表只在D03所需最小来源实现；不提前引入通用关系授权引擎。creator/assignee可以作为API里的只读虚拟origin展示，权威仍是票字段，不再增加Assign/Transfer/回填时的第二份同步。同一人既是手工参与人又是风险复核人，风险交接只移除旧risk_review源，仍可因手工来源可见；保留读来源不保留已经转出的复核权。本人退出自己manual CC可保留既有读可见退出入口，但domain/强制来源不能借此移除，也不把普通退订应用到强制风险通知；新增自己CC仍遵B04，不借selfService绕过。
 
 所有迁移 up/down 成对。扩列、初版定义、批量回填、校验、读写切换、非空/外键分步交；迁移可幂等恢复。down 前停新写、导出新增快照/历史、验证目标旧代码能读，不能删掉已有新定义后让旧单静默读最新版。新增历史事实启用后回退代码只保留其数据，不凭空恢复原来的 live 语义。实际物理拆分/SQL及编号在代码批按迁移地图复核。
 
@@ -240,7 +240,7 @@ diff函数接收锁内旧真值与规范化/G2/服务端公式/领域更新后�
 仍需绑定但**不阻无关设计**：
 
 1. 首个真实类型/组织/业务管理员/字段白名单、risk owner映射与消息收件对象：在该用例启用前用实际例子核验，不重问B01–B05既定默认。首版仍可用合成mock。
-2. E03哪些类型采用轮询或认领、合格池与超时/升级目标：原窗口评审；未选则继续固定合法主责，不假设队列已实现，也不为赶日期丢功能。
+2. E03哪些类型采用轮询或认领、合格池与超时/升级目标：**P6.3出口完成范围裁决**，后继实施仍按E03/P8及实际获准子窗；不能将“后期实现”误当“到P8才问”。未选则继续固定合法主责，不假设队列已实现，也不为赶日期丢功能。
 3. 四类时长首组展示、自然历时外的工作日历/暂停：事实写入先按本页保全，D13投影前确认真正指标；未配置工作日历不假算工作时长。
 4. B08生产通知级别映射/组织锚点/汇总时区时刻与强制对象、真实HTTP消息联调：首条对应真实渠道前确认。两IAM高风险写的审计失败政策仍由权限/审计包单列，不能由本页代答。
 
@@ -249,3 +249,4 @@ diff函数接收锁内旧真值与规范化/G2/服务端公式/领域更新后�
 ## 变更记录
 
 - 2026-11-14：按现行main定向补齐工单定义/实例/权限/字段/成员来源/里程碑的数据与事务合同、异常恢复、UI逐包行为和TDD出口；纠正旧pending决策、字段命名及batch API推荐。保持有限核心先交与完整P6后续范围，未实施产品。
+- 2026-11-15：参与来源仅持久独立授予，creator/assignee直接用现有权威事实；明确E03的P6.3早期裁决，不提前实施后包。
