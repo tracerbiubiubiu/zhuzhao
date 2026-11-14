@@ -59,7 +59,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 - AL`operation_receipts`：`UNIQUE(owner_service,operation_id)`，保存input_hash、主体/授权绑定、目标generation、effect/noop、document_revision和receipt。原operation同号重放先看已提交receipt，再决定是否检查旧expected_revision，不能重复成功后因旧CAS返回冲突。
 - AL`change_streams`：stream_id唯一，type_name/generation、committed_cursor、状态和单一consumer_id。`change_outbox`：event_id主键，`UNIQUE(stream_id,cursor)`及稳定source/id唯一，规范payload/hash、递送状态/fence/next_attempt。每监控类型源写先锁stream head，再锁文档，源事实、数据和receipt同tx；不直接用nextval当“之前都已提交”的水位。
 - 核心`source_inbox`：`UNIQUE(source,event_id)`，另存stream/cursor/payload_hash、received_at和stage_commit_ref。`subscription_versions`冻结规则/目标/映射/grant及start_after/end_at；`subscription_actions`以`UNIQUE(source,event_id,subscription_id,rule_version,action_index)`去重，关联派生operation与held/suppression原因。持久inbox接收不等于动作成功。
-- 消息`notification_deliveries`：以`(source_event_id,rule_version,recipient_user_id,channel,semantic_key)`唯一，保存template/version、recipient_spec/version、当前目标映射引用、应发/实发状态及provider_receipt；发送attempt单独记录，不能靠发送后查message_log去重。已有message_log保留为兼容读投影，sent旧行标legacy语义，不补造真实送达凭证。
+- 消息`notification_deliveries`：以`(source,source_event_id,rule_id,rule_version,recipient_user_id,channel,semantic_key)`唯一；source与event_id一起定位原事实，rule_id与version定位规则，不依赖semantic_key暗含这些身份。保存template/version、recipient_spec/version、当前目标映射引用、应发/实发状态及provider_receipt；发送attempt单独记录，不能靠发送后查message_log去重。已有message_log保留为兼容读投影，sent旧行标legacy语义，不补造真实送达凭证。重复同来源/事实/规则不重发，不同来源同id或不同规则同version不互吞；显式replacement保留原delivery及独立受控替代身份。
 
 锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→虚拟组→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
 
@@ -161,7 +161,7 @@ get订阅动作采用专用target_from_event=true：只固定已登记的AL类�
 ```text
 SendRequestV1 = {delivery_id, idempotency_key, channel_profile_ref,
   recipient_ref, template_version, subject, body, business_ref,
-  source_event_id, operation_id, expires_at}
+  source_event_ref:{source,event_id}, rule_id, rule_version, operation_id, expires_at}
 SendReceiptV1 = {delivery_id, state:"accepted"|"delivered"|"rejected"|"unknown",
   provider_receipt_ref?, observed_at, retry_class, safe_reason_code?}
 HTTPMessagePort.Send(ctx, SendRequestV1) -> SendReceiptV1 | TransportError
@@ -280,6 +280,8 @@ AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，
 切片归属避免重价：C03拥有回调/receipt/稳定slot；R01拥有共有意图/poller/对账；CE01拥有能力登记，CE02-S/D拥有共同准入/操作关联，D12拥有原票结果与受控映射；AL事务效果及首版源/订阅消费分别归本地TD/AD子范围，D15拥有风险收件职责/矩阵，MH拥有公共HTTP与消息状态，MR仅一条真实私有公司映射。UI实现/浏览器用例归既有UI分项，RELEASE只计额外跨域回归和部署恢复，不再把同一测试/机制算一遍。完整I03/D11/多消费者源/更多channel或新能力是后续已有包或需明确增量，不由“详设”自动扩首版本地报价。
 
 ## 10. 待绑定场景与官方实践取舍
+
+2026-11-15[核心交互专项](../review/reports/core-interaction-architecture-review-2026-11-15.md)补`Delivery_SourceNamespaceAndRuleIdentity`（两来源同id、两规则同version、同pair重复）及`WebhookTransportError_QuerySecretRedacted`反例。现存站内信只按recipient筛选/total，标题快照尚未接当前对象/字段授权；新受限业务启用前，列表/深链/预览都要接本页投影策略，不能只保护未来新通知页。保留历史收件/发送事实，撤权不继续回显旧敏感正文；未迁移历史通知的原语义单列，不冒称已重授权。死信Webhook单独url字段脱敏不代表error链已脱敏，Go url.Error亦可携带完整URL；只用合成秘密作回归，不记录真实配置。
 
 当前无需所有者逐字段选技术方案；以下只阻断实际启用项：
 

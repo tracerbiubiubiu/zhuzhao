@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-15核心交互专项**：[统一调用/回调/队列/审计/私有扩展复核](reports/core-interaction-architecture-review-2026-11-15.md)确认现有C03完成/幂等/cron风险仍待修，消息inbox存量读面与Webhook error去敏须纳入接线。补事件source＋rule身份、跨库撤权边界、HMAC真实保证及整包/首版出口说明；首版复用TR/Redis队列＋本库可靠意图，不增broker/万能callback/完整插件宿主。只修设计，未实施业务或改原报价。
+
 > **2026-11-15权限专项**：[现状/实现/计划复核](reports/authorization-design-implementation-review-2026-11-15.md)确认6组当前问题、另有PAT条件性加固；组织赋角提权、停组仍授权、业务任务可触发审计维护为优先修复项。这里只补设计和开放状态，未修产品；三层架构、本地/UAA双模式保留。C04/C05/D03/D06及任务适用子出口增加具体反例/旧入口门，当前源码完整门禁绿不覆盖这些安全反例，也不代表首次正式启用条件已满足。
 
 > **2026-11-15详设再复核**：[遗漏与复杂度结论](reports/phase6-design-recheck-2026-11-15.md)补AL常规读取/合法空投影、父包外OBS01/02及E02/E03/E04/E06本期决策门，统一工程/跨仓执行锁序。将L1策略重载与L2资源变化分开，私有只读ref不建永久表，creator/assignee从现有权威字段计算，完整治理/多维预算/HA不挡单实例首发。44父包覆盖只是一个分母，当前补充出口另在[详设入口](../phase6/module-detail-index.md)及机器表列明；未改产品、迁移、净估或排程，真实配置/原审计政策待决不被代拍。
@@ -91,6 +93,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **核心交互接缝** | HTTP/内部/任务/事件同领域用例；执行请求/事实ACK/结果/送达/授权查询分工；审计与私有合同 | 📋 总体方向保留，C03/R01/CE首版切片及消息/扩展仍待实施；本轮反例与设计纠正不等于可用产品 | [核心专项](reports/core-interaction-architecture-review-2026-11-15.md)、[共同合同§2](../design/capability-invocation-contract.md#2-一个逻辑通道三种执行方式) |
 | **权限专项开放项** | 本地IAM/三源角色、组织赋角、工单外围读取、任务维护职责/归因；对照统一调用及UAA计划 | 🔶 AUTH-01/02/03/04/06/07开放，AUTH-05条件性加固；6组当前问题含3组P1，未修产品，正式启用前按§6收口 | [专项报告](reports/authorization-design-implementation-review-2026-11-15.md)、[底座§3.3](../phase6/foundation-iam-module-detail.md#33-现状缺陷先修与真实重读2026-11-15专项后继) |
 | **Phase6模块详设** | 六边、五个模块的typed DTO/逻辑DDL、状态/当前权限、异常恢复、薄UI/TDD；44父包及LS01–04映射 | 📋 详细候选已落档并交叉审查；准确OpenAPI/迁移/真实映射/产品验收按实施批交付，新业务未开发；Git/运行状态不由文档自述代验 | [详设入口](../phase6/module-detail-index.md)、[机器成熟度](planning-design-status.json)、[原模块交接](../phase6/module-design-handoff.md) |
 | **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；完整本地三层与UAA-C接缝；旧adapter×新core合同回归 | 📋 公司允许本地先正式；质量优先，1月试用仅争取。净估候选68–104日，完整UAA P/R后继；实际业务/消息和生产门未验，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[净估](local-core-release-estimate.json)、[目标JSON](first-usable-release-target.json) |
@@ -305,6 +308,14 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-15核心调用、可靠交接与私有接缝（开放）
+
+- C03既有六类现状风险经临时SQLite/HTTP/纯JSON探针各8轮确认：同号异参、双cron、claim失败执行、Finish失败仍nil、任意2xx/429语义、大整数舍入。仍属原C03待修，不因已有Redis队列改成完成；严格新业务启用前过原receipt/当前权限/occurrence出口。
+- 存量Inbox只按recipient返回标题/total，未接新受限对象当前权限；不是无条件把个人收件历史报为IDOR，D15/C04/OBS迁移须保护当前内容并保留收件事实。NotifyDeadLetter原样error可重新记录query秘密，合成无网络探针已复现，挂OBS01具名去敏修复；未声称真实凭据曾泄漏。
+- 设计已纠正通知唯一键source/event＋rule_id/version，私有读准入/在途撤权的非原子边界，standards的HMAC时间窗/Operator保证，以及P7整包不能遮住首版AL→TR子出口。旧adapter回归与外置配置按S1/MH01/Q1/Q2实施前扣重细化，完整导航/插件治理仍后继；不冒充原净估已全包新子范围。
+
+依据、代码符号、正确控制/限制和各包最小门见[核心专项](reports/core-interaction-architecture-review-2026-11-15.md)。产品源码/迁移未改，不与下方权限缺陷混成修复收口；当前standards文字改正不代表签名wire已升级。
 
 ### 2026-11-15权限控制专项（开放，非修复收口）
 

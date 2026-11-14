@@ -44,9 +44,13 @@ ExtensionAdmission = {principal_id: ID, audience: extension_id,
 
 首个私有设备 profile 选择有限组织集合：核心受审策略给出当前 org_set（最多256个本地 org ID，空集无权；超限显式拒绝/重新定 profile，不能放宽为全量），私有服务核设备权威 owner_org_ref 属于该集合及请求字段在交集内。all_approved 必须有明确独立授权，缺组织/未知映射默认不可见；当前动作再验入口配置和职责。私有源行属性失去可证明新鲜度时拒绝敏感入口，不由旧组织缓存扩大范围。scope_constraints 与 request_ref/当前 policy_revision 绑定，每请求获取；它不免除私有服务对象级校验。
 
+**跨服务撤权边界**：request_ref的短TTL只约束请求上下文寿命，不是正向授权缓存/许可租约。每次调用及分页/续流边界回核心重验，依赖不可证明则停止新受保护读取；私有属主在自己的事务核当前行/字段资格。核心撤权事务与私有库之间没有分布式原子提交：已获准并开始的一次有界短读可能在撤权后返回，已输出字节不能收回；首版以请求deadline/页大小和禁止长期正向缓存约束在途范围，不持核心锁跨HTTP等待。长流在下一个重验点拒绝继续、取消本地剩余读取，不假称零延迟全网撤销。private写/不可逆动作须另有operation、写主效果凭证和准入/撤权合同，不能借这条只读接缝开放。EXT-03应验证撤权分别发生在准入前、准入后及两页之间，准确记录决策/读取时点；具体deadline在首个profile启用前实测冻结，不另造分布式锁服务。
+
 HTTP、UI 网关、内部用例调用和后续 MCP 都使用静态 capability_id/contract_version 映射同一应用用例，operation_id 标一次动态效果。外部 REST 可保留业务端点，不要求一切变成 `/invoke`，内部也不必 localhost HTTP。代理只匹配登记方法/规范化模板，剔除客户端伪造敏感头，拒绝双重编码穿越、重复鉴权头、未知上游和超大 body。网络/重定向/目的地由配置约束；不将这个网关变成通用出站代理。
 
 ## 3. X02-Q：先可替换查询，再有状态 feed
+
+配置/装配也属于交付：当前`cmd/server/main.go`的`run`固定加载相对`configs/config.yaml`，`internal/config/config.go`的`Load`虽接受路径、当前Config却无扩展合同字段，不能说已支持配置式插件。首个消费者须交受控外置配置入口或部署只读挂载、明确schema/校验/DI/client及endpoint/profile替换与禁用的实际测试；私有配置/secret留checkout外，不要求新增CLI flag与挂载两套机制。所选公共Port/schema在该批冻结，不把伪DTO当已生成SDK。
 
 ```text
 QueryRequestV1 = {query_id: RegisteredKey, contract_version: "1",

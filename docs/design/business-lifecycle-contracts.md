@@ -436,7 +436,7 @@ DefectDojo支持在发现页手动推送或按配置推送到Jira，也支持多
 
 ### 9.1 稳定事件封套与权威归属
 
-事件目标公共封套为 `event_id,event_type,schema_version,aggregate_ref,aggregate_revision,occurred_at,actor_ref,operator_ref,correlation_id,causation_id,payload,visibility_ref`。投递至少一次；消费者按 event_id 去重，按 aggregate revision 防回退，不依赖跨对象全局顺序。payload 增加可选字段不迫使旧订阅者升级；新终态/新结论是语义变更，需 capability 协商或新事件版本，未知 enum 不允许默认当成功。
+事件目标公共封套为 `source,event_id,event_type,schema_version,aggregate_ref,aggregate_revision,occurred_at,actor_ref,operator_ref,correlation_id,causation_id,payload,visibility_ref`。稳定事实身份为`EventRef=(source,event_id)`；source是登记的生产方/来源实例命名空间，接入端从受信通道核绑定，不接受任意body改源。可靠路径投递至少一次，消费者以该pair加自身规则/用途去重；旧进程内Hook仍at-most-once，不因本段变可靠。按aggregate revision防回退，不依赖跨对象全局顺序。payload增加可选字段不迫使旧订阅者升级；新终态/新结论是语义变更，需capability协商或新事件版本，未知enum不能默认成功。通知delivery另含rule_id/version，不能让不同规则同version或不同来源同event_id互相吞消息；见[任务/消息详设](../phase6/task-activelist-message-detail.md)。
 
 | 事件族 / 公共消费面 | 写主 | 允许用途和限制 |
 |---|---|---|
