@@ -45,6 +45,8 @@
 
 所有新 DTO 中的资源 ID 为十进制字符串，时间为带时区 RFC3339，空引用为 `null`，业务稳定键为有命名空间的字符串。字段显示名、工号、组织路径、外部人名都不是用户身份。输入未知的控制字段不得静默生效；`custom_data` 保留现有允许未知业务键的兼容口径，但未知键永不成为执行资格、授权锚点或脚本。
 
+**2026-11-14 模块详设统一 wire**：本批新增领域 DTO 的 `revision/expected_revision/draft_revision/definition_version/policy_revision` 采用非负或按语义正的十进制字符串（存储不超过 PG bigint 上限），避免 JavaScript 64 位精度损失。旧现行接口 `version` 和历史稿的 number 示例保留兼容；接入适配只接受安全整数再规范化，超限拒绝，不能先经浮点舍入后转字符串。已锁 reference Schema 的 `rule_version` 等小范围配置序号继续按其明确 integer 契约，不借此全局改旧 wire。定义哈希/签名始终对各已声明版本的规范化形式计算，不能由数值/字符串混用造成同一操作异参误判。
+
 ### 2.2 授权和调用上下文
 
 调用上下文由网关/认证层构造：`principal_id/principal_kind`、`operator_user_id`（真实人，可空）、`request_id`、`correlation_id`、`delegation_ref`（未来 I02，当前交互可空）。客户端不得自填可信 actor、`created_by`、主 org、系统标记或审批结果。AK/SK 证明调用方身份，不直接授予人或资源权限。
