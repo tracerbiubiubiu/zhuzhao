@@ -1,11 +1,11 @@
 {
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "status": "fully_priced_bounded_candidate_not_implemented",
   "calendar": null,
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "b21d4244fe79e444d8fc7ee8b2e06bcb6e999ab80f6f8dea1b89f18e1d978499",
-    "docs/review/execution-schedule-model.json": "34da7ca9770ba4c296a5267e95c0e4a249555286019c07dce7300806b4ad9176",
+    "docs/review/planning-backlog.json": "8a3675b3788a954b7b481617c981d8fd007649e26b6596e47929322a81eddf06",
+    "docs/review/execution-schedule-model.json": "0e81e2ffc57a9e74385f2ec15aa91ec6082216259b98d3a1e229ad3f3dcb6636",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",

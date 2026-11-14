@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "scope": "Cost and scheduling decomposition only; no runtime migration is claimed",
   "original_parent_ids": [
     "G01",
