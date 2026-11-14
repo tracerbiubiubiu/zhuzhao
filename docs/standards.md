@@ -107,13 +107,15 @@
 
 ## 7. 权限架构（SSOT：design-decisions §25；三层详设：authz.md）
 
+> **2026-11-15模型复评**：[权限模型与引擎选择](design/authorization-model-and-engine-choice.md)区分RBAC/ABAC/ReBAC、PBAC治理和L1/L2/L3检查职责。首版继续现有Casbin＋领域资源策略，旧“ReBAC/PBAC不演进”“行级决策逻辑不可能集中”等绝对论证退役；不等于批准外置引擎迁移或放宽当前授权边界。
+
 > **2026-11-12企业治理补充（目标、未实现）**：本地三层判定不代表所有分配都由本地管理；企业模式的账号/受管角色和绑定、条件纳管数据范围按[UAA合同](design/uaa-governance-integration.md)确定写主。目录语义由核心/扩展所有者维护，中央结果写入受限本地投影；直接/组织/继承的有效来源和会话/策略撤销均须验证。独立/mock模式保留，本地应急不自动放开公司认证或中央管辖授权。
 
-1. **PDP/PEP 分工**：独立模式的身份/角色/组织管理与企业模式的本地执行投影**集中一份**（zhuzhao库；企业受管分配权威仍在中央，不建设第二个分配写主）；行级策略**归属主自治**；行级 PEP 必然在数据处——网关只做认证 + 路由级授权 + 身份断言透传，**不做行级判定**；
-2. **三层**：L1 路由级（Casbin，policy=角色×path×method）→ L2 数据范围（策略库 builtin 或手写 Resource，Registry 统一接缝）→ L3 动作矩阵；
+1. **PDP/PEP 分工**：独立模式的身份/角色/组织管理与企业模式的本地执行投影**集中一份**（zhuzhao库；企业受管分配权威仍在中央，不建设第二个分配写主）；资源所属模块负责落实对象检查/查询过滤，策略决策可进程内，也可在后继评估集中引擎。**本项目当前网关**做认证、路由级授权和身份断言透传，不承担全部对象判定；不能据此推断业界不支持集中PDP；
+2. **三层**：L1 功能资格（当前HTTP由Casbin角色×path×method执行）→ L2 对象/数据范围（builtin或领域Resource，Registry接缝）→ L3 对目标的动作授权。是检查职责，不是与RBAC/ABAC/ReBAC竞争的模型；状态/证据等业务不变量仍由领域执行。共同用例补强按C04/CE及能力合同实施，未接入口不能视为已经受同一守卫；
 3. **平台策略库**（触发驱动）：`org-member`/`owner-only`/`role-gated` 三内置 + `Builtin()` 一行注册；**适用前提 = 资源表在 zhuzhao 库**；跨库资源走参数级组装（E-⑤ 模式）；
 4. **Q5 禁令**：L2/L3 判定每请求实时查询，**不缓存**；任何缓存提案必须连同失效级联方案评审；
-5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经~~ResourceAuthorizer~~ **resource.Resource/Registry 接缝**（`internal/pkg/resource/registry.go`，Authorize/GetFilter——⚠ 2026-09-22 虚标审计勘误：全仓无 ResourceAuthorizer 类型，实际接缝为此，L1 不动）；
+5. **引擎按实际成本评估**：首版保留Casbin＋领域策略，不自建通用图/策略语言；PBAC可与角色、属性和关系规则共存。规则复用/独立治理困难时比较Cerbos/OPA/Cedar，关系复用/跨域查询困难时比较OpenFGA/SpiceDB；参见[模型复评§6](design/authorization-model-and-engine-choice.md#6-分阶段处理保持既有核心排期)，旧11-authz §5为历史参考，不是排他的门槛。实际接缝是`resource.Resource/Registry`的`Authorize/GetFilter`，SQL过滤及事实同步仍有迁移成本，不承诺仅换实现零返工；
 6. 角色自定义全链（角色 CRUD / AssignMenus / org_roles 组织赋角 / BFS 三源展开）为平台本职，所有服务共用。
 7. **权限码命名与注册**：码 = `resource:verb`（K8s verb 规范同款，禁复合码）；服务 API 的码↔路由绑定一律迁移申报（声明式，与代码同版本，design-decisions §26.2），运行时只开放菜单/角色绑定管理，**不开放 API 绑定编辑**。
    - 存量例外注记（2026-09-09 对码盘点；2026-09-11 泛化）：**层级子资源三段形（`resource:subresource:verb`）按同口径允许**——适用 `ticket:type:manage`（000018，早于本公约）及 activelist 权限面四码 `activelist:type:read|manage`、`activelist:data:write|read`（000024）——语义为层级子资源而非复合动词，保留不改（改码 = 破坏既有角色绑定）；`role::superadmin` / `role::admin` 为 Casbin 角色名命名空间，非权限码，不在本公约范围。

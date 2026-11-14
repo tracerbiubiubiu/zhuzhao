@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-15权限模型复评**：[RBAC/ABAC/ReBAC/PBAC与成熟工具](../design/authorization-model-and-engine-choice.md)确认三层为检查职责，当前是角色＋关系/属性混合授权。建议首版保留Casbin＋领域资源策略，优先修来源/撤权与多出口一致；修正旧“PBAC/ReBAC不演进、OPA不生成SQL、集中PDP不可能、零迁移成本”等论证。Cerbos/OPA/Cedar及OpenFGA/SpiceDB按真实成本有界评估；未新增加引擎、WBS/工期、产品修复或owner选型批准。
+
 > **2026-11-15层级设计落档**：[组织/角色/菜单/数据范围§8](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)固定12项代表场景，分清单父树/继承、全局功能角色与目标组任职、菜单导航、scope/类型交集和多来源撤权。P6.1 C04/D03/D06主责，本地首版及必要薄UI取实际出口，完整U06和UAA-P/R后继；HIER-D01父节点停用传播在C04详设前确认。只改设计/计划，未修AUTH/RECHECK、未实现新权限语义或增加父包/工期承诺。
 
 > **2026-11-15第二轮边界复验**：[后继报告](reports/permission-boundary-recheck-2026-11-15.md)新增3组主要现状问题：角色编辑将派生授权固化direct、角色/组织编辑未绑定加载成功及目标、组织归属原样保存重置任职；另列头像旧键归属和附件用途侧信道两个窄边界。均未修产品；原AUTH/C03开放项保持。C04/C02/D06与薄UI补具名回归，人工重试错误前提已排除，不靠确认探针PASS扩大发现数。
@@ -97,6 +99,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
 | **权限层级场景合同** | 组织树/单父角色链/菜单导航/数据范围、多组织任职、来源/生命周期的HIER-01–12 | 📋 设计及P6.1实施归属已补；场景未全部实现/验收，HIER-D01父停用传播待C04详设确认，原缺陷开放 | [层级合同](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)、[底座§3.5](../phase6/foundation-iam-module-detail.md#35-层级组合的首版出口与分工) |
 | **授权编辑与资源边界后继** | 直接/有效角色分轨、编辑目标/加载状态、任职属性往返、对象退役/关联检查顺序 | 🔶 RECHECK-01/02/03开放，04条件性/05低影响；尚未修产品，原样保存不是隐式重授权/重置职责 | [第二轮报告](reports/permission-boundary-recheck-2026-11-15.md)、[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验) |
 | **核心交互接缝** | HTTP/内部/任务/事件同领域用例；执行请求/事实ACK/结果/送达/授权查询分工；审计与私有合同 | 📋 总体方向保留，C03/R01/CE首版切片及消息/扩展仍待实施；本轮反例与设计纠正不等于可用产品 | [核心专项](reports/core-interaction-architecture-review-2026-11-15.md)、[共同合同§2](../design/capability-invocation-contract.md#2-一个逻辑通道三种执行方式) |

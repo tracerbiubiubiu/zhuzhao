@@ -93,6 +93,12 @@ C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及
 
 首版本地S1先交实际启用规则及薄IAM正确性，D03/D06随其业务批交适用场景，不等完整U06/HR/UAA；HIER-07/08/11复用FND-03/14–16/19–21及既有AUTH/RECHECK反例，不重复建设。父节点停用对子树传播HIER-D01是C04详设前待确认政策，先保持独立切片推进。§8.4的阶段/净估边界和当前未实现状态同步总账，未将完整树编辑器或来源管理台塞入S1。
 
+### 3.6 模型复用与引擎选择边界
+
+按[模型复评](../design/authorization-model-and-engine-choice.md)，本期继续Casbin＋领域Resource/PG范围，不将L1/L2/L3误作与RBAC/ABAC/ReBAC竞争的模型。复用现有机制，先统一可信输入、直接/有效来源、对象/列表语义及共同用例检查；菜单/路由是稳定能力的执行/展示映射，内部与worker不能只靠HTTP中间件授权。业务状态和证据不变量仍在领域执行。
+
+PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不新增通用DSL、规则分发/版本库或外置PDP。后续重复规则/独立治理或跨对象关系出现时，可按模型复评做Cerbos/OPA/Cedar或OpenFGA/SpiceDB的单资源对照；须另定范围/净估，不暗含进C04。当前缺陷、HIER-D01待决及三层授权新鲜度要求均保留。
+
 ## 4. C05：账号、AT/RT/PAT 与停用恢复
 
 保留现有密码纪元、iat 地板、Redis Lua 和 fail-closed，不能将 authorization revision 冒充 password epoch。账号停用、角色剥夺与会话销毁分别表达：业务授权守卫立即以数据库当前状态/代际拒绝相关调用，后台持久 intent 继续撤 Redis 会话；PAT 也必须检查同一有效账号和当前权限，不只验证哈希。

@@ -249,6 +249,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
   | 核心交互架构专项 | 同一独立主仓候选，root唯一tracked编辑/显式路径提交，三分工只读与ignored SQLite/HTTP/内存PG夹具探针；调用/队列/审计/扩展结论见[报告](../review/reports/core-interaction-architecture-review-2026-11-15.md)。产品未改，缺陷及旧C03仍开放；基线及精确资源回收按本轮ignored收据 | 仅本地设计提交，未推送/合main/部署；子探针已关闭，无其它路径/索引占用；正式配置/真实契约按启用窗 | 2026-11-15 |
   | 第二轮权限/关键边界复验 | root唯一tracked文档编辑；独占PG、真实SFC函数/替身API及资源正负对照证据在canonical ignored审计区，未写共享数据；新增3组主要/2窄边界见[报告](../review/reports/permission-boundary-recheck-2026-11-15.md)。固定Asynq源码排除retry错误前提，既有AUTH/C03仍开放；主仓新253/81及资源清理按本轮收据 | 仅本地设计提交，未推送/合main/部署；无他会文件/索引占用，main产品不变；待实施修复及子估不被文档关闭 | 2026-11-15 |
   | 层级权限场景与阶段补充 | root唯一tracked编辑/显式路径提交，阶段映射与新文案经只读复核；[HIER-01–12](../design/rbac-inheritance-and-cascade.md#83-首版代表场景测试设计不是已通过清单)归C04/D03/D06及薄UI，HIER-D01待该模块详设确认。同步总账/生成排程，76父包/依赖/工日/相对窗不变；只改文档，复用上一轮同runtime源码253/81证据，未新跑HIER产品用例或重启环境 | 仅本地设计提交，未推送/合main/实施；本轮规划/链接检查在ignored审计区，无其它路径或索引占用，既有缺陷未关闭 | 2026-11-15 |
+  | 权限模型与PBAC/ReBAC复评 | root唯一tracked编辑，现状与开源实践两路只读研究；[模型选择](../design/authorization-model-and-engine-choice.md)及SSOT纠正旧绝对论证。当前Casbin/领域策略保留，未引入新引擎或运行产品探针；不占用/重启共享容器 | 仅本地设计提交，未推送/合main；现有缺陷、HIER-D01待决及工期不变，无他会文件/索引占用 | 2026-11-15 |
 
 **2026-11-14开发/测试运行后继（当前本机状态）**：所有者在清理容器时另行批准停止旧版本并重建开发、测试环境。本轮以五仓已合main的代码重新构建三项Go服务及测试镜像，实际运行Go1.27.4、Node26.13.1、PG18.6、Redis8.2.11、RustFS1.0.5，测试UI使用nginx1.30.6；没有实施新Phase6业务或公司内网接线。此前“共享栈未切换/原六容器保留”均为各自历史时点，此后按本段和实时资源清单判断。
 
