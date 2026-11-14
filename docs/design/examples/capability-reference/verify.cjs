@@ -89,18 +89,25 @@ const hashChecks = schema["x-validation-cases"].filter(test => test.expected_val
     : test.value.kind === "al_execution_request" ? test.value.command : null;
   return command && command.principal ? [{ id: test.id, pass: inputHash(command) === command.canonical_input_hash }] : [];
 });
+const readShapes = schema["x-read-semantic-cases"].map(test => {
+  const { command, receipt, source_fact: fact } = test.input;
+  return { id: test.id, pass: validate(command) && validate(receipt) && (!fact || validate(fact))
+    && inputHash(command) === command.canonical_input_hash };
+});
 const semantic = spawnSync(process.env.PYTHON || "python3", [path.join(__dirname, "verify_semantics.py")], { encoding: "utf8" });
 let semanticSummary;
 try { semanticSummary = JSON.parse(semantic.stdout); }
 catch { throw new Error(`Python verifier did not return a report: ${semantic.error || semantic.stderr}`); }
 const unchanged = fs.readFileSync(schemaPath).equals(before);
-const failures = [...rows, ...canonicalCases, ...hashChecks].filter(test => !test.pass);
+const failures = [...rows, ...canonicalCases, ...hashChecks, ...readShapes].filter(test => !test.pass);
 console.log(JSON.stringify({
   schema_cases: rows.length, schema_passed: rows.filter(test => test.pass).length,
   schema_positive: schema["x-validation-cases"].filter(test => test.expected_valid).length,
   schema_negative: schema["x-validation-cases"].filter(test => !test.expected_valid).length,
   canonical_cases: canonicalCases.length, canonical_passed: canonicalCases.filter(test => test.pass).length,
   frozen_command_hash_checks: hashChecks, semantic: semanticSummary,
+  read_binding_shape_and_hash_cases: readShapes.length,
+  read_binding_shape_and_hash_passed: readShapes.filter(test => test.pass).length,
   schema_unchanged: unchanged, schema_sha256: sha256(before), failures,
   proof_scope: "Read-only selected candidate contracts, not business implementation, PG, provider or multi-instance acceptance.",
 }, null, 2));

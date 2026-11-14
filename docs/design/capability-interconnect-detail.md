@@ -2,6 +2,8 @@
 
 > 日期：2026-11-13。承接[共同调用合同](capability-invocation-contract.md)、[当前模块边界](current-module-boundaries.md)与[逐操作库存](capability-operation-catalog.md)。本页冻结可实现、可估价的首批合同和反例；**没有实现共同runtime、AL效果收据/变更源或三链联调**。未来工作不是一次性总线改造：现有领域实现继续承担业务，HTTP、内部、任务、扩展及选定MCP只是调用入口。总排期与状态仍由[规划总账](../review/planning-backlog.md)拥有。
 
+> **2026-11-14模块细化**：[任务/AL/消息详设](../phase6/task-activelist-message-detail.md)规定首版本地只开放一个监控类型的insert/update、单源push→持久inbox/ACK和独立只读AL后继，不把本页更宽的多消费者feed/Import/删除恢复源前置。已有`activelist.document.get@1`补入本页Schema：独立于工单、只读观察结果与写效果分支分开；这是原AD实际只读后继的必要合同补全，不增加通用query/list能力或产品实现声明。
+
 ## 1. 本期明确什么，哪些能力仍按窗口进入
 
 本次把“所有能力自由调用”收敛为：所有可复用产品操作有受权接口与明确写主；同一操作的所有入口必须进入同一个应用用例，执行相同的参数、权限、事务、幂等与额度规则。不会为了统一将本地调用绕HTTP，也不会把鉴权谓词、事务内部步骤、审计伪造、任意SQL或worker claim变成产品工具。现有158个去重产品能力映射与每个受控例外均列在[机器库存](capability-operation-catalog.json)，不是只验三个示例便宣称全覆盖。
@@ -22,7 +24,7 @@ CE02分S同步共同路径、D持久执行阶段、L现有库存逐模块迁移�
 
 规范输入hash取`capability_id/contract_version/target/params`与主体类型、ID、可选delegation引用、定义hash的规范JSON投影。entrypoint、transport、时间戳、fence和request ID不改变业务效果；原授权引用和因果root另由不可变操作记录绑定，后续请求不能借改root重置预算。服务端重新计算hash，不信任客户端摘要。遵循[RFC8785](https://www.rfc-editor.org/rfc/rfc8785)的确定编码思路，本切片只收安全整数、标量与有界对象：拒绝重复键、第二个顶层值、尾随垃圾、NaN、未配对代理项和超安全整数；不做Unicode归一化。金额、超范围整数、日期等要有明确字符串类型，不能默默浮点舍入。target与params中的ticket/document/type/generation必须语义一致；JSON Schema本身不能证明授权、跨字段相等或hash正确。
 
-receipt状态限定accepted/queued/running/succeeded/failed/cancel_requested/canceled/unknown/held，带单调revision。succeeded必须有写主effect/资源版本或受控artifact引用；noop可成功但没有changed事实。failed必须有“未产生效果/已确认失败”的证据；网络超时、租约丢失不等同failed。unknown只允许对原operation查询/对账；cancel_requested只有确认未生效或已按合同撤销，才成为canceled。结果投影用operation＋receipt revision CAS，旧attempt/旧回执不能覆盖新结果。receipt查询也走当前资源可见性，撤权后不能靠猜operation读取旧内容。同一operation从执行/写端点重放时也要独立检查当前读资格；即使执行资格仍有效，旧succeeded/held/unknown记录不可读时统一not_found、不返回旧内容且不新增效果，不允许改新key来回避拒读。
+receipt状态限定accepted/queued/running/succeeded/failed/cancel_requested/canceled/unknown/held，带单调revision。写操作/报告succeeded必须有写主effect/资源版本或受控artifact引用，禁止query_result；noop可成功但没有changed事实。只读`activelist.document.get@1`成功必须有query_result、禁止effect，core持久保存观察结果，不伪造AL写效果或增加AL revision/outbox。failed必须有“未产生效果/已确认失败”的证据；网络超时、租约丢失不等同failed。unknown只允许对原operation查询/对账；cancel_requested只有确认未生效或已按合同撤销，才成为canceled。结果投影用operation＋receipt revision CAS，旧attempt/旧回执不能覆盖新结果。receipt查询也走当前资源可见性，撤权后不能靠猜operation读取旧内容。同一operation从执行/写端点重放时也要独立检查当前读资格；即使执行资格仍有效，旧succeeded/held/unknown记录不可读时统一not_found、不返回旧内容且不新增效果，不允许改新key来回避拒读。
 
 候选对外面：领域GET/POST端点保留；新增`GET /api/v1/operations/receipt?operation_id=...`读受权收据。普通写走具名POST和body，内部通过相同typed application port。无任意`/invoke`万能后门，MCP也只发布审核后的descriptor，认证/凭据/维护机制不会自动成为工具。operation.receipt是该读能力的候选ID，不表示现在已有该API。
 
@@ -81,6 +83,16 @@ noop保存成功receipt，但不增加文档revision/变更cursor、不触发业
 事件派生operation按`op_evt_`＋SHA256(规范化source、event_id、subscription_id、rule_version、action_index)生成；同事实重投不能触发第二效果。root预算/父operation继承可信源记录，不能在每一跳重新开root。默认同规则在同root中不得重入；A写AL→B触发→又写同AL时，即使新event_id也会因规则路径/预算被hold。source事实仍保存，抑制原因、动作与待处理都可观察，不因为防循环而吞掉真实数据变化。
 
 最小前端是订阅列表/版本、目标与映射表单、发布校验与水位、暂停、hold原因、积压预览和显式回放；source健康/延迟可在运维页查看。源ACK管理不得以“重试任务”名义前移游标。候选schema限制每订阅最多16流、4动作；重复action_index、交叉字段不一致与目标Schema映射由语义验证器拦截，不仅靠JSON形状。
+
+### 5.3 首版本地的独立AL只读后继
+
+现有库存`activelist.document.get@1`对应AL `DataService.Get`，新增的是当前授权共同路径、异步观察receipt及规则接线，不是重建AL查询。`alReadInput`包含type_name/document_id/generation、1–32个去重字段名和可选source_event_id，不需要ticket_id/node_run_id。普通获权查询可无事件；订阅运行必须绑定原持久source/id事实和本条目标。source由不可变subscription/operation来源绑定恢复，不能只凭一个event_id跨来源查第一条。
+
+get的订阅动作是专用分支：target_from_event=true，target固定owner/resource_type及已登记type_name/generation，**不含静态resource_id**；document_id从本条event.data.document_id构造完整command，再逐行验当前权限。input_mapping只接受指定document_id/generation/source_event_id指针、固定类型及fields常量数组；数组仅在该get分支有效，原update/report映射不变。类型/世代不一致、静态目标混用、伪字段数组和无权事件文档均不得变成另一个目标的合法调用。只读后继既不写AL也不推进工单，不用强制关联票来迁就旧Schema枚举。
+
+`alReadResult`明确observation_owner=zhuzhao、data_owner=activelist，含目标、queried_at、当前document_revision、受权values与可选source_event_id/source_event_revision；事件ID/revision成对。结果≤32KiB，只含请求且当前获准字段；当前数据可能比事件版本新，不能说是当时历史快照。同世代结果revision落后于触发事实时暂停核对，不能把陈旧副本当复核已完成。成功receipt只有query_result而无effect，非成功也不携可误认为成功的query_result；原写/报告receipt仍强制effect且禁query_result。
+
+同operation重放返回原queried_at/观察结果并复验当前行/字段读权；显式刷新另建operation关联原运行。Schema证明形状，语义oracle另外核目标/事件/收据绑定、字段投影与字节预算，二者均不证明产品服务已实现。参考命令、红绿与变异范围见[只读验证说明](examples/capability-reference/README.md)。本补全归既有本地AD与CE接线范围，未增加新业务家族、通用查询引擎或另一份价格。
 
 ## 6. 并发、多实例、异步与预算的可实现下限
 

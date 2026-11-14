@@ -215,7 +215,8 @@
         "capability_id": {
           "enum": [
             "ticket.evidence.report.generate",
-            "activelist.document.update"
+            "activelist.document.update",
+            "activelist.document.get"
           ]
         },
         "contract_version": {
@@ -340,6 +341,39 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "capability_id": {
+                "const": "activelist.document.get"
+              }
+            },
+            "required": [
+              "capability_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "$ref": "#/definitions/alReadInput"
+              },
+              "target": {
+                "properties": {
+                  "owner": {
+                    "const": "activelist"
+                  },
+                  "resource_type": {
+                    "const": "activelist_document"
+                  }
+                },
+                "required": [
+                  "type_name",
+                  "generation"
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -437,7 +471,8 @@
         "capability_id": {
           "enum": [
             "ticket.evidence.report.generate",
-            "activelist.document.update"
+            "activelist.document.update",
+            "activelist.document.get"
           ]
         },
         "contract_version": {
@@ -514,6 +549,9 @@
         "failure_evidence_ref": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "query_result": {
+          "$ref": "#/definitions/alReadResult"
         }
       },
       "required": [
@@ -536,10 +574,16 @@
             "properties": {
               "status": {
                 "const": "succeeded"
+              },
+              "capability_id": {
+                "not": {
+                  "const": "activelist.document.get"
+                }
               }
             },
             "required": [
-              "status"
+              "status",
+              "capability_id"
             ]
           },
           "then": {
@@ -654,6 +698,44 @@
               "retry_class": {
                 "const": "none"
               }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "capability_id": {
+                "const": "activelist.document.get"
+              },
+              "status": {
+                "const": "succeeded"
+              }
+            },
+            "required": [
+              "capability_id",
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "query_result"
+            ],
+            "not": {
+              "required": [
+                "effect"
+              ]
+            },
+            "properties": {
+              "retry_class": {
+                "const": "none"
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "query_result"
+              ]
             }
           }
         }
@@ -1041,42 +1123,158 @@
           "minItems": 1,
           "maxItems": 4,
           "items": {
-            "type": "object",
-            "properties": {
-              "action_index": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 3
-              },
-              "capability_id": {
-                "enum": [
-                  "ticket.evidence.report.generate",
-                  "activelist.document.update"
-                ]
-              },
-              "contract_version": {
-                "const": "1"
-              },
-              "target": {
-                "$ref": "#/definitions/target"
-              },
-              "input_mapping": {
+            "oneOf": [
+              {
                 "type": "object",
-                "minProperties": 1,
-                "maxProperties": 32,
-                "additionalProperties": {
-                  "$ref": "#/definitions/mappingRule"
-                }
+                "properties": {
+                  "action_index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                  },
+                  "capability_id": {
+                    "enum": [
+                      "ticket.evidence.report.generate",
+                      "activelist.document.update"
+                    ]
+                  },
+                  "contract_version": {
+                    "const": "1"
+                  },
+                  "target": {
+                    "$ref": "#/definitions/target"
+                  },
+                  "input_mapping": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 32,
+                    "additionalProperties": {
+                      "$ref": "#/definitions/mappingRule"
+                    }
+                  }
+                },
+                "required": [
+                  "action_index",
+                  "capability_id",
+                  "contract_version",
+                  "target",
+                  "input_mapping"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action_index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                  },
+                  "capability_id": {
+                    "const": "activelist.document.get"
+                  },
+                  "contract_version": {
+                    "const": "1"
+                  },
+                  "target_from_event": {
+                    "const": true
+                  },
+                  "target": {
+                    "$ref": "#/definitions/alReadSubscriptionTarget"
+                  },
+                  "input_mapping": {
+                    "type": "object",
+                    "properties": {
+                      "type_name": {
+                        "type": "object",
+                        "properties": {
+                          "constant": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]{0,62}$"
+                          }
+                        },
+                        "required": [
+                          "constant"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "document_id": {
+                        "type": "object",
+                        "properties": {
+                          "event_pointer": {
+                            "const": "/data/document_id"
+                          }
+                        },
+                        "required": [
+                          "event_pointer"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "generation": {
+                        "type": "object",
+                        "properties": {
+                          "event_pointer": {
+                            "const": "/data/generation"
+                          }
+                        },
+                        "required": [
+                          "event_pointer"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "fields": {
+                        "type": "object",
+                        "properties": {
+                          "constant": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 32,
+                            "uniqueItems": true,
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_]{0,62}$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "constant"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "source_event_id": {
+                        "type": "object",
+                        "properties": {
+                          "event_pointer": {
+                            "const": "/id"
+                          }
+                        },
+                        "required": [
+                          "event_pointer"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type_name",
+                      "document_id",
+                      "generation",
+                      "fields",
+                      "source_event_id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "action_index",
+                  "capability_id",
+                  "contract_version",
+                  "target_from_event",
+                  "target",
+                  "input_mapping"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "action_index",
-              "capability_id",
-              "contract_version",
-              "target",
-              "input_mapping"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "replay_policy": {
@@ -1540,6 +1738,165 @@
         "kind",
         "command",
         "admission"
+      ],
+      "additionalProperties": false
+    },
+    "alReadInput": {
+      "type": "object",
+      "properties": {
+        "type_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,62}$"
+        },
+        "document_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "generation": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,62}$"
+          }
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        }
+      },
+      "required": [
+        "type_name",
+        "document_id",
+        "generation",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "alReadResult": {
+      "type": "object",
+      "properties": {
+        "observation_owner": {
+          "const": "zhuzhao"
+        },
+        "data_owner": {
+          "const": "activelist"
+        },
+        "type_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,62}$"
+        },
+        "document_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "generation": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "document_revision": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "queried_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "values": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 32,
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer",
+              "boolean",
+              "null"
+            ],
+            "maxLength": 1024,
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,62}$"
+          }
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "source_event_revision": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "observation_owner",
+        "data_owner",
+        "type_name",
+        "document_id",
+        "generation",
+        "document_revision",
+        "queried_at",
+        "values"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "source_event_id"
+            ]
+          },
+          "then": {
+            "required": [
+              "source_event_revision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "source_event_revision"
+            ]
+          },
+          "then": {
+            "required": [
+              "source_event_id"
+            ]
+          }
+        }
+      ]
+    },
+    "alReadSubscriptionTarget": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "const": "activelist"
+        },
+        "resource_type": {
+          "const": "activelist_document"
+        },
+        "type_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,62}$"
+        },
+        "generation": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "owner",
+        "resource_type",
+        "type_name",
+        "generation"
       ],
       "additionalProperties": false
     }
@@ -3346,6 +3703,1388 @@
           "expires_at": "2026-11-13T10:00:30Z"
         }
       }
+    },
+    {
+      "id": "command_al_read_no_ticket",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "receipt_al_read_observation",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "subscription_al_read_dynamic_document",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "1",
+            "target_from_event": true,
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "descriptor_al_read",
+      "value": {
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "owner": "zhuzhao",
+        "kind": "query",
+        "entries": [
+          "http",
+          "internal",
+          "schedule",
+          "subscription"
+        ],
+        "http_bindings": [
+          {
+            "method": "POST",
+            "path": "/al/api/v1/data/:typeName/:id/update",
+            "role": "legacy_alias"
+          }
+        ],
+        "authorization_profile": "core.al_read.v1",
+        "input_schema_ref": "#/definitions/alReadInput",
+        "output_schema_ref": "#/definitions/receipt",
+        "executor_ref": "core.ALQueries.Get -> AL.DataService.Get",
+        "idempotency": "read_only",
+        "status": "candidate",
+        "mcp_exposure": "not_published"
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "command_al_read_manual",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000002",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "149046bdb4212555ad1e5ba4fa122e14938545e83ebf4fbeec94356b5158be77",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ]
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "http"
+      },
+      "expected_valid": true
+    },
+    {
+      "id": "al_read_missing_fields",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_empty_fields",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_duplicate_fields",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status",
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_over_field_limit",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "field_0",
+            "field_1",
+            "field_2",
+            "field_3",
+            "field_4",
+            "field_5",
+            "field_6",
+            "field_7",
+            "field_8",
+            "field_9",
+            "field_10",
+            "field_11",
+            "field_12",
+            "field_13",
+            "field_14",
+            "field_15",
+            "field_16",
+            "field_17",
+            "field_18",
+            "field_19",
+            "field_20",
+            "field_21",
+            "field_22",
+            "field_23",
+            "field_24",
+            "field_25",
+            "field_26",
+            "field_27",
+            "field_28",
+            "field_29",
+            "field_30",
+            "field_31",
+            "field_32"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_unknown_version",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "2",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_wrong_target_owner",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "zhuzhao",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_rejects_patch",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "type_name": "device_status",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001",
+          "patch": {
+            "status": "changed"
+          }
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_query_without_type_target",
+      "value": {
+        "schema_version": "1",
+        "kind": "command",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "principal": {
+          "subject_type": "service",
+          "subject_id": "al-review-service",
+          "authorization_ref": "auth-demo-000000001",
+          "authorization_revision": "7"
+        },
+        "target": {
+          "owner": "activelist",
+          "resource_type": "activelist_document",
+          "resource_id": "1001",
+          "generation": "7"
+        },
+        "params": {
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "fields": [
+            "status"
+          ],
+          "source_event_id": "event-demo-00000001"
+        },
+        "causality": {
+          "root_id": "root-demo-000000001",
+          "root_budget_ref": "budget-demo-0000001",
+          "depth": 0,
+          "rule_path": []
+        },
+        "submitted_at": "2026-11-13T10:00:00Z",
+        "expires_at": "2026-11-13T10:15:00Z",
+        "entrypoint": "subscription"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_receipt_forbids_write_effect",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        },
+        "effect": {
+          "effect_id": "effect-demo-0000001",
+          "owner": "activelist",
+          "resource_id": "1001",
+          "revision": "43",
+          "generation": "7",
+          "no_op": false
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_receipt_requires_query_result",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_pending_forbids_query_result",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "queued",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_observation_owner_not_AL",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "activelist",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_data_owner_not_core",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "zhuzhao",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_result_rejects_nested_values",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": {
+              "secret": "nested"
+            }
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_result_over_field_limit",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "field_0": "x",
+            "field_1": "x",
+            "field_2": "x",
+            "field_3": "x",
+            "field_4": "x",
+            "field_5": "x",
+            "field_6": "x",
+            "field_7": "x",
+            "field_8": "x",
+            "field_9": "x",
+            "field_10": "x",
+            "field_11": "x",
+            "field_12": "x",
+            "field_13": "x",
+            "field_14": "x",
+            "field_15": "x",
+            "field_16": "x",
+            "field_17": "x",
+            "field_18": "x",
+            "field_19": "x",
+            "field_20": "x",
+            "field_21": "x",
+            "field_22": "x",
+            "field_23": "x",
+            "field_24": "x",
+            "field_25": "x",
+            "field_26": "x",
+            "field_27": "x",
+            "field_28": "x",
+            "field_29": "x",
+            "field_30": "x",
+            "field_31": "x",
+            "field_32": "x"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_result_event_requires_revision",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-al-read-00000001",
+        "invocation_id": "inv-al-read-0000001",
+        "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+        "capability_id": "activelist.document.get",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_write_receipt_rejects_query_result",
+      "value": {
+        "schema_version": "1",
+        "kind": "receipt",
+        "operation_id": "op-demo-0000000001",
+        "invocation_id": "inv-demo-000000001",
+        "canonical_input_hash": "a87db27127eee5cb2b638224ec1055108458d31e053d469874095b365baadc19",
+        "capability_id": "activelist.document.update",
+        "contract_version": "1",
+        "status": "succeeded",
+        "revision": "3",
+        "observed_at": "2026-11-13T10:00:01Z",
+        "effect": {
+          "effect_id": "effect-demo-0000001",
+          "owner": "activelist",
+          "resource_id": "1001",
+          "revision": "43",
+          "generation": "7",
+          "no_op": false
+        },
+        "retry_class": "none",
+        "query_result": {
+          "observation_owner": "zhuzhao",
+          "data_owner": "activelist",
+          "type_name": "device_status",
+          "document_id": "1001",
+          "generation": "7",
+          "document_revision": "44",
+          "queried_at": "2026-11-13T10:00:05Z",
+          "values": {
+            "status": "verified"
+          },
+          "source_event_id": "event-demo-00000001",
+          "source_event_revision": "43"
+        }
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_subscription_no_static_document_mix",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "1",
+            "target_from_event": true,
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7",
+              "resource_id": "1001"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_subscription_rejects_fake_field_array",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "1",
+            "target_from_event": true,
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status",
+                  {
+                    "secret": "x"
+                  }
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_subscription_wrong_event_document_mapping",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "1",
+            "target_from_event": true,
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/operation_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_subscription_wrong_owner",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "1",
+            "target_from_event": true,
+            "target": {
+              "owner": "zhuzhao",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_read_subscription_unknown_version",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.get",
+            "contract_version": "2",
+            "target_from_event": true,
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              },
+              "source_event_id": {
+                "event_pointer": "/id"
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_write_subscription_forbids_dynamic_target",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.update",
+            "contract_version": "1",
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "resource_id": "1001",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "expected_revision": {
+                "event_pointer": "/data/document_revision"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "patch": {
+                "constant": {
+                  "status": "verified"
+                }
+              }
+            },
+            "target_from_event": true
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "al_write_subscription_forbids_field_array",
+      "value": {
+        "schema_version": "1",
+        "subscription_id": "subscription-demo-001",
+        "rule_version": 1,
+        "state": "active",
+        "grant_ref": "grant-demo-00000001",
+        "watermarks": [
+          {
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "stream_id": "stream-demo-000001",
+            "start_after": "0"
+          }
+        ],
+        "filter": {
+          "basis": "event_metadata_and_event_time_projection",
+          "event_types": [
+            "al.document.updated.v1"
+          ],
+          "changed_fields_any": [
+            "status"
+          ],
+          "event_value_equals": {
+            "status": "healthy"
+          }
+        },
+        "actions": [
+          {
+            "action_index": 0,
+            "capability_id": "activelist.document.update",
+            "contract_version": "1",
+            "target": {
+              "owner": "activelist",
+              "resource_type": "activelist_document",
+              "resource_id": "1001",
+              "type_name": "device_status",
+              "generation": "7"
+            },
+            "input_mapping": {
+              "type_name": {
+                "constant": "device_status"
+              },
+              "document_id": {
+                "event_pointer": "/data/document_id"
+              },
+              "expected_revision": {
+                "event_pointer": "/data/document_revision"
+              },
+              "generation": {
+                "event_pointer": "/data/generation"
+              },
+              "patch": {
+                "constant": {
+                  "status": "verified"
+                }
+              },
+              "fields": {
+                "constant": [
+                  "status"
+                ]
+              }
+            }
+          }
+        ],
+        "replay_policy": "hold_until_preview",
+        "replace_policy": "hold_pending",
+        "causal_reentry": "deny_same_rule_in_root"
+      },
+      "expected_valid": false
     }
   ],
   "examples": [
@@ -3668,6 +5407,161 @@
         "issued_at": "2026-11-13T10:00:00Z",
         "expires_at": "2026-11-13T10:00:30Z"
       }
+    },
+    {
+      "capability_id": "activelist.document.get",
+      "contract_version": "1",
+      "owner": "zhuzhao",
+      "kind": "query",
+      "entries": [
+        "http",
+        "internal",
+        "schedule",
+        "subscription"
+      ],
+      "http_bindings": [
+        {
+          "method": "POST",
+          "path": "/al/api/v1/data/:typeName/:id/update",
+          "role": "legacy_alias"
+        }
+      ],
+      "authorization_profile": "core.al_read.v1",
+      "input_schema_ref": "#/definitions/alReadInput",
+      "output_schema_ref": "#/definitions/receipt",
+      "executor_ref": "core.ALQueries.Get -> AL.DataService.Get",
+      "idempotency": "read_only",
+      "status": "candidate",
+      "mcp_exposure": "not_published"
+    },
+    {
+      "schema_version": "1",
+      "kind": "command",
+      "operation_id": "op-al-read-00000001",
+      "invocation_id": "inv-al-read-0000001",
+      "capability_id": "activelist.document.get",
+      "contract_version": "1",
+      "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+      "principal": {
+        "subject_type": "service",
+        "subject_id": "al-review-service",
+        "authorization_ref": "auth-demo-000000001",
+        "authorization_revision": "7"
+      },
+      "target": {
+        "owner": "activelist",
+        "resource_type": "activelist_document",
+        "resource_id": "1001",
+        "type_name": "device_status",
+        "generation": "7"
+      },
+      "params": {
+        "type_name": "device_status",
+        "document_id": "1001",
+        "generation": "7",
+        "fields": [
+          "status"
+        ],
+        "source_event_id": "event-demo-00000001"
+      },
+      "causality": {
+        "root_id": "root-demo-000000001",
+        "root_budget_ref": "budget-demo-0000001",
+        "depth": 0,
+        "rule_path": []
+      },
+      "submitted_at": "2026-11-13T10:00:00Z",
+      "expires_at": "2026-11-13T10:15:00Z",
+      "entrypoint": "subscription"
+    },
+    {
+      "schema_version": "1",
+      "kind": "receipt",
+      "operation_id": "op-al-read-00000001",
+      "invocation_id": "inv-al-read-0000001",
+      "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+      "capability_id": "activelist.document.get",
+      "contract_version": "1",
+      "status": "succeeded",
+      "revision": "3",
+      "observed_at": "2026-11-13T10:00:01Z",
+      "retry_class": "none",
+      "query_result": {
+        "observation_owner": "zhuzhao",
+        "data_owner": "activelist",
+        "type_name": "device_status",
+        "document_id": "1001",
+        "generation": "7",
+        "document_revision": "44",
+        "queried_at": "2026-11-13T10:00:05Z",
+        "values": {
+          "status": "verified"
+        },
+        "source_event_id": "event-demo-00000001",
+        "source_event_revision": "43"
+      }
+    },
+    {
+      "schema_version": "1",
+      "subscription_id": "subscription-demo-001",
+      "rule_version": 1,
+      "state": "active",
+      "grant_ref": "grant-demo-00000001",
+      "watermarks": [
+        {
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "stream_id": "stream-demo-000001",
+          "start_after": "0"
+        }
+      ],
+      "filter": {
+        "basis": "event_metadata_and_event_time_projection",
+        "event_types": [
+          "al.document.updated.v1"
+        ],
+        "changed_fields_any": [
+          "status"
+        ],
+        "event_value_equals": {
+          "status": "healthy"
+        }
+      },
+      "actions": [
+        {
+          "action_index": 0,
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "target_from_event": true,
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "input_mapping": {
+            "type_name": {
+              "constant": "device_status"
+            },
+            "document_id": {
+              "event_pointer": "/data/document_id"
+            },
+            "generation": {
+              "event_pointer": "/data/generation"
+            },
+            "fields": {
+              "constant": [
+                "status"
+              ]
+            },
+            "source_event_id": {
+              "event_pointer": "/id"
+            }
+          }
+        }
+      ],
+      "replay_policy": "hold_until_preview",
+      "replace_policy": "hold_pending",
+      "causal_reentry": "deny_same_rule_in_root"
     }
   ],
   "x-raw-json-cases": [
@@ -4491,6 +6385,2262 @@
       "expected_decision": "not_found",
       "expected_additional_effects": 0,
       "expected_returns_existing_record": false
+    }
+  ],
+  "x-read-semantic-cases": [
+    {
+      "id": "read_independent_of_ticket",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "allow_read",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_target_document_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "0aa6956c8c2b2ffbd6437f4fb8aa1f4fa0ed81aedfff56deae4ba6c8f618f6b0",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1002",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "0aa6956c8c2b2ffbd6437f4fb8aa1f4fa0ed81aedfff56deae4ba6c8f618f6b0",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_target_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_target_type_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "43deb487f5e05ffd141b7cbee63912ab1a8691c2aeda72fcc8469845f8f799ec",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "other_type",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "43deb487f5e05ffd141b7cbee63912ab1a8691c2aeda72fcc8469845f8f799ec",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_target_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_target_generation_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "7ac4bc38db9e417c1c8b887987e5a2000b575bf8e36d838a9cbe36520e53c568",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "8"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "7ac4bc38db9e417c1c8b887987e5a2000b575bf8e36d838a9cbe36520e53c568",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_target_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_ungranted_requested_field",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "name"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_requested_fields",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_event_document_not_authorized",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": false,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "held_revoked",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_event_type_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "other_type/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_event_generation_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "8",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_event_id_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-other-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_field_disclosure",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified",
+              "secret": "hidden"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_result_fields",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_target_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1002",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_result_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_event_revision_forged",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "42"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_older_than_trigger",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "42",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_stale_observation",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_operation_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-other-0000000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_receipt_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_hash_mismatch",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_receipt_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_result_utf8_budget",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "f31f8d2f20121ad04314396c11af2603ff14cdddc34e6336174ca3dfadeb7c7a",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "field_0",
+              "field_1",
+              "field_2",
+              "field_3",
+              "field_4",
+              "field_5",
+              "field_6",
+              "field_7",
+              "field_8",
+              "field_9",
+              "field_10",
+              "field_11",
+              "field_12",
+              "field_13",
+              "field_14",
+              "field_15",
+              "field_16",
+              "field_17",
+              "field_18",
+              "field_19",
+              "field_20",
+              "field_21",
+              "field_22",
+              "field_23",
+              "field_24",
+              "field_25",
+              "field_26",
+              "field_27",
+              "field_28",
+              "field_29",
+              "field_30",
+              "field_31"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "f31f8d2f20121ad04314396c11af2603ff14cdddc34e6336174ca3dfadeb7c7a",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "field_0": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_1": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_2": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_3": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_4": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_5": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_6": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_7": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_8": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_9": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_10": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_11": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_12": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_13": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_14": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_15": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_16": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_17": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_18": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_19": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_20": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_21": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_22": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_23": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_24": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_25": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_26": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_27": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_28": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_29": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_30": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测",
+              "field_31": "测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测测"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "field_0",
+          "field_1",
+          "field_2",
+          "field_3",
+          "field_4",
+          "field_5",
+          "field_6",
+          "field_7",
+          "field_8",
+          "field_9",
+          "field_10",
+          "field_11",
+          "field_12",
+          "field_13",
+          "field_14",
+          "field_15",
+          "field_16",
+          "field_17",
+          "field_18",
+          "field_19",
+          "field_20",
+          "field_21",
+          "field_22",
+          "field_23",
+          "field_24",
+          "field_25",
+          "field_26",
+          "field_27",
+          "field_28",
+          "field_29",
+          "field_30",
+          "field_31"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_result_budget",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_manual_without_event_or_ticket",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000002",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "149046bdb4212555ad1e5ba4fa122e14938545e83ebf4fbeec94356b5158be77",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ]
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "http"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000002",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "149046bdb4212555ad1e5ba4fa122e14938545e83ebf4fbeec94356b5158be77",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            }
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": null,
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "allow_read",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_second_event_document_not_static_first_row",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "567589a3566638c096eb513316e39c2cc56b378c3c006690331b5d60da864508",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1002",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1002",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "567589a3566638c096eb513316e39c2cc56b378c3c006690331b5d60da864508",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1002",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1002",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1002",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "allow_read",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_manual_result_cannot_claim_unbound_event",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000002",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "149046bdb4212555ad1e5ba4fa122e14938545e83ebf4fbeec94356b5158be77",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ]
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "http"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000002",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "149046bdb4212555ad1e5ba4fa122e14938545e83ebf4fbeec94356b5158be77",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": null,
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
+    },
+    {
+      "id": "read_same_event_id_wrong_bound_source",
+      "input": {
+        "command": {
+          "schema_version": "1",
+          "kind": "command",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "principal": {
+            "subject_type": "service",
+            "subject_id": "al-review-service",
+            "authorization_ref": "auth-demo-000000001",
+            "authorization_revision": "7"
+          },
+          "target": {
+            "owner": "activelist",
+            "resource_type": "activelist_document",
+            "resource_id": "1001",
+            "type_name": "device_status",
+            "generation": "7"
+          },
+          "params": {
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "fields": [
+              "status"
+            ],
+            "source_event_id": "event-demo-00000001"
+          },
+          "causality": {
+            "root_id": "root-demo-000000001",
+            "root_budget_ref": "budget-demo-0000001",
+            "depth": 0,
+            "rule_path": []
+          },
+          "submitted_at": "2026-11-13T10:00:00Z",
+          "expires_at": "2026-11-13T10:15:00Z",
+          "entrypoint": "subscription"
+        },
+        "receipt": {
+          "schema_version": "1",
+          "kind": "receipt",
+          "operation_id": "op-al-read-00000001",
+          "invocation_id": "inv-al-read-0000001",
+          "canonical_input_hash": "827087ccbbe21bd51abd8390179ed1e3ca89a118dfb1931dd4faf97d3dc818c5",
+          "capability_id": "activelist.document.get",
+          "contract_version": "1",
+          "status": "succeeded",
+          "revision": "3",
+          "observed_at": "2026-11-13T10:00:01Z",
+          "retry_class": "none",
+          "query_result": {
+            "observation_owner": "zhuzhao",
+            "data_owner": "activelist",
+            "type_name": "device_status",
+            "document_id": "1001",
+            "generation": "7",
+            "document_revision": "44",
+            "queried_at": "2026-11-13T10:00:05Z",
+            "values": {
+              "status": "verified"
+            },
+            "source_event_id": "event-demo-00000001",
+            "source_event_revision": "43"
+          }
+        },
+        "allowed_fields": [
+          "status"
+        ],
+        "actor_active": true,
+        "read_allowed": true,
+        "source_fact": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:other_source",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "registered_type": "device_status",
+        "registered_generation": "7",
+        "registered_source": "urn:zhuzhao:activelist:synthetic"
+      },
+      "expected_decision": "reject_event_binding",
+      "expected_additional_effects": 0
     }
   ]
 }
