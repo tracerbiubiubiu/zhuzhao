@@ -1,5 +1,7 @@
 # 架构与设计解释
 
+> **Phase6模块详设后继**：[模块入口](../phase6/module-detail-index.md)将本目录共同合同具体落到五个模块；本目录仍管理跨阶段语义，准确实现/真实提供方验收不由候选文档替代。
+
 > 首版业务范围和旧新变化先看[首版阶梯](../phase6/first-usable-release-plan.md)、[变化对照](../review/core-release-change-comparison.md)；稳定adapter升级合同沿本目录的扩展/迁移设计，不靠修改核心内部模型实现私有对接。
 
 近期先读[基础版与每期交付边界](foundation-release-boundaries.md)：现有底座可入网试验、最小adapter/私有应用接缝优先，完整企业治理和高阶增强按启用能力验收；当前说明不代表这些接缝已实现。

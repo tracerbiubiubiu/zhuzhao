@@ -1,5 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-14 Phase6模块详细设计**：[五模块入口与变化](../phase6/module-detail-index.md)将现行44个P6父包（含两项已交维护）、LS01–LS04及首版本地前移子出口逐项映射。补typed DTO/逻辑DDL、事务/当前三层授权、正常异常/恢复、薄UI与具名TDD，修旧稿可见性待拍、风险指纹/复核、批量标签等冲突；无票AL只读后继补严格参考Schema。设计成熟度以[机器表](planning-design-status.json)最新后继为准；未实现新业务、未领迁移号、未改净估或实施波次。准确产品/真实公司契约仍按各模块启用门验，不以候选文件或离线例子代实现。
+
 > **2026-11-14升级后main再次核验**：[五仓复核](reports/main-verification-2026-11-14.md)对账已授权合入候选、当前17项CI及本地完整门禁；补测发现TR真实E2E的40秒预算不足，以及`TaskService.RetryTask`队列pending/active竞态误报500。后继按既有409合同修正、补双状态等待/有界夹具与真实Redis回归，并将TR真实投递/cron纳入CI；原失败和修复红证据分开保留，最终提交/门禁以PR/main准确记录为准。主仓默认标签覆盖率20.2%；utils仍按已验pin消费，后续G05/R07升级及Redis包装hook启用前置见报告。没有因此实施新Phase6业务、UAA或真实消息接线。
 
 > **2026-11-14本机运行环境后继**：所有者另行批准回收旧容器并重建新版开发/测试环境；实际运行Go1.27.4/Node26.13.1、PG18.6/Redis8.2.11/RustFS1.0.5，dev4000/API33333、test48081/API33334。两套各253验收/81对迁移往返、开发UI42 E2E及两套各18项AL/TR回调/附件实链补验通过；dev/test新卷隔离，原66卷保留。23个临时演练及6个旧环境容器已回收，详见[runbook §7](../ops/runbook.md)。本批只更新运行承接和运维交接，不新增功能/迁移/权限，也不是生产或真实UAA/UIP接入；下方此前“未切共享栈”保留原授权时点含义。
@@ -85,7 +87,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **按模块详设与今日收尾** | 六边联合合同、权限/UAA首包和每包六交付物；最小上下文及逐点来源；五仓候选发布/旧分支可恢复清理 | 📋 设计交接就绪；准确模块DTO/DDL/净估仍待后续包，业务未开发；Git/CI实际终态按收尾收据，不用文档自述代验 | [模块交接](../phase6/module-design-handoff.md)、[今日收尾](reports/daily-closeout-2026-11-14.md) |
+| **Phase6模块详设** | 六边、五个模块的typed DTO/逻辑DDL、状态/当前权限、异常恢复、薄UI/TDD；44父包及LS01–04映射 | 📋 详细候选已落档并交叉审查；准确OpenAPI/迁移/真实映射/产品验收按实施批交付，新业务未开发；Git/运行状态不由文档自述代验 | [详设入口](../phase6/module-detail-index.md)、[机器成熟度](planning-design-status.json)、[原模块交接](../phase6/module-design-handoff.md) |
 | **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；完整本地三层与UAA-C接缝；旧adapter×新core合同回归 | 📋 公司允许本地先正式；质量优先，1月试用仅争取。净估候选68–104日，完整UAA P/R后继；实际业务/消息和生产门未验，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[净估](local-core-release-estimate.json)、[目标JSON](first-usable-release-target.json) |
 | **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
