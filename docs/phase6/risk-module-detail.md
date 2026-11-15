@@ -237,6 +237,8 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 
 ## 13. 公共reference v1：两风险的完整纵切
 
+本节的序列/观察投影已有[可序列化向量及Schema](../design/examples/capability-reference/module-profile-vectors.json)，固定摘要见[参考manifest](../design/examples/capability-reference/module-reference-manifest.json)。它只验选定形状；本节角色/派单/关闭回归的时序和当前权限仍须产品独立预期，不冒称10个跨模块样例已执行完整风险旅程。
+
 本段是完全合成的可复用测试输入/逐步预期，**不是实际公司映射或已运行产品**；风险模型/HTTP尚无实现。source_ref=ref-risk-v1、mapping_ref=ref-risk-mapping-v1，稳定source_item_key=finding-A/B；family scope=source_ref、canonical_key=source_item_key、key_schema_version=1，不随标题/IP/备注改键。source_sequence为规范无符号十进制串，核心拒符号/小数/指数/前导零；adapter仅证明源等价语义后归一化。比较按长度/同长字典序，不经JS number；observed_at为实际再次观察时刻。较大序号但观察仍在关闭checkpoint前，只更新适用传输事实，不建新cycle或改处置终态。
 
 仅合成五档映射5→urgent/1、4→high/2、3→medium/3、2/1→low/4，未知held，不代替B08生产映射。EvidenceRef统一provider/external_id/version?对象；生命周期旧字符串例已校准，不能同一版本时而字符串时而对象。新wire用urgent，critical只为历史词。原始源digest、规范化payload_hash、mapper版本分别保留，不能把adapter重新编码当来源新结论。

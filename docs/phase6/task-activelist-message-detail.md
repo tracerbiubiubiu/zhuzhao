@@ -18,6 +18,8 @@
 
 ## 2. 写主、类型与共同调用路径
 
+2026-11-15补[准确源码接线](interconnect-source-wiring.md)：一次DI装配、Transition事务内TxPlan、旧callback桥/任务卡、AL边界握手与普通写来源、公共消息mock绑定及站内逐消费者切换。以下DTO和恢复规则仍为权威共同合同，该接线页不声称新端口已实现。
+
 核心独占工单/风险事实、授权、节点运行和结果投影；TR独占调度、投递、attempt和执行账本；AL独占文档、generation/revision、该写的效果receipt与源事实；消息用例独占应发/发送状态，私有HTTP adapter只做公司协议转换。各仓不跨库写，不把领域表放入utils。
 
 HTTP、按钮、工单、计划与订阅先经可信ContextFactory，再进入同一已登记application port，最后进入原领域service/repository。内部调用直接走typed接口，不绕本机HTTP、不重复开启operation或另扣逻辑预算；外部协议adapter负责序列化和认证。短查询/本库短写同步，外部长调用及不可丢后继持久异步，无万能`/invoke`、任意SQL/URL或脚本入口。
@@ -42,7 +44,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
   receipt: CapabilityReceipt) -> {applied: boolean, current_receipt_revision: UIntString}
 ```
 
-`TrustedContext`只能由已认证入口或持久受限授权构造；外部JSON中的principal只作绑定输入，不能自行授信。`OperationID`等格式、整数以十进制字符串传输、时间和大小上限沿原Schema。`operation_id`是稳定效果身份，`invocation_id`是逻辑调用，`event.source+id`是已发生事实，`task_id`是TR稳定任务，`occurrence_id`是计划时隙，`delivery_id/execution_id/attempt/fence`区分每次投递与认领；request_id只用于追踪。
+`TrustedContext`只能由已认证入口或持久受限授权构造；外部JSON中的principal只作绑定输入，不能自行授信。OperationID等格式、64位资源ID/revision/fence的十进制字符串、时间和大小沿各自Schema；有界页码/计数及明确为integer的rule_version不机械改字符串。`operation_id`是稳定效果身份，`invocation_id`是逻辑调用，`event.source+id`是已发生事实，`task_id`是TR稳定任务，`occurrence_id`是计划时隙，`delivery_id/execution_id/attempt/fence`区分每次投递与认领；request_id只用于追踪。
 
 同号重放先验当前读资格，再比较规范输入hash、主体/授权与原绑定；同号异参409，原记录不可读则not_found且不新增效果。客户端传hash不作真值。先按Schema严格解码，再校验跨字段相等、能力/版本、目标字段白名单、期限和当前权限；shape通过不证明语义或授权。仍用现有errcode映射，实施时登记符号码，不在设计里抢数字编号：invalid_input=400、未认证=401、无功能/动作资格=403、不可见对象=404、版本/同号异参=409、准入限额=429、依赖暂不可用=503；可能已经生效的网络错误必须显示unknown，不能仅靠HTTP500表示“可重做”。
 
@@ -61,7 +63,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 - 核心`source_inbox`：`UNIQUE(source,event_id)`，另存stream/cursor/payload_hash、received_at和stage_commit_ref。`subscription_versions`冻结规则/目标/映射/grant及start_after/end_at；`subscription_actions`以`UNIQUE(source,event_id,subscription_id,rule_version,action_index)`去重，关联派生operation与held/suppression原因。持久inbox接收不等于动作成功。
 - 消息`notification_deliveries`：以`(source,source_event_id,rule_id,rule_version,recipient_user_id,channel,semantic_key)`唯一；source与event_id一起定位原事实，rule_id与version定位规则，不依赖semantic_key暗含这些身份。保存template/version、recipient_spec/version、当前目标映射引用、应发/实发状态及provider_receipt；发送attempt单独记录，不能靠发送后查message_log去重。已有message_log保留为兼容读投影，sent旧行标legacy语义，不补造真实送达凭证。重复同来源/事实/规则不重发，不同来源同id或不同规则同version不互吞；显式replacement保留原delivery及独立受控替代身份。
 
-锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→虚拟组→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
+锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→组织/所钉定义→group/family稳定键→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
 
 存量兼容：旧job_submissions/status/message_log列继续可读；无法证明的历史成功只标legacy_observed。切换按consumer停旧Hook/旧直接spawn路径后启新意图，影子阶段只产不投，避免双发。回退先停新副作用，兼容reader/对账worker保留到在途收敛；不down删除unknown/receipt或正式历史，不让不理解新状态的旧worker接手自动执行。
 
@@ -159,13 +161,15 @@ get订阅动作采用专用target_from_event=true：只固定已登记的AL类�
 保留当前`ChannelSender.Send(ctx, Message) error`的旧适配，不直接破坏现消费者；新可靠路径增加独立有类型扩展端口，旧nil error不能被桥接成真实送达：
 
 ```text
-SendRequestV1 = {delivery_id, idempotency_key, channel_profile_ref,
+SendRequestV1 = {schema_version:"1", delivery_id, idempotency_key, channel_profile_ref, payload_sha256,
   recipient_ref, template_version, subject, body, business_ref,
   source_event_ref:{source,event_id}, rule_id, rule_version, operation_id, expires_at}
-SendReceiptV1 = {delivery_id, state:"accepted"|"delivered"|"rejected"|"unknown",
+SendReceiptV1 = {schema_version:"1", delivery_id, channel_profile_ref, payload_sha256,
+  state:"accepted"|"delivered"|"rejected"|"unknown",
   provider_receipt_ref?, observed_at, retry_class, safe_reason_code?}
 HTTPMessagePort.Send(ctx, SendRequestV1) -> SendReceiptV1 | TransportError
-HTTPMessagePort.Query(ctx, delivery_id, provider_receipt_ref?) -> SendReceiptV1 | Unsupported
+QueryRequestV1 = {schema_version:"1", delivery_id, channel_profile_ref, provider_receipt_ref?}
+HTTPMessagePort.Query(ctx, QueryRequestV1) -> SendReceiptV1 | Unsupported
 ```
 
 HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收件人/字段/状态映射由私有adapter/profile实现，凭据只用secret引用，不入业务参数/日志。公共实现包含TLS校验、固定出站目标/允许重定向策略（默认拒绝跨目标）、超时、响应大小和schema验证、受控错误脱敏、mock profile；不让工单参数指定URL/headers。内网可以只更换adapter/config，核心不导入公司SDK/internal model。

@@ -103,6 +103,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **互通/消息/OBS/页面族接线** | DI/TxPlan/callback/任务卡、AL边界握手/来源、HTTP消息/站内独立切换、日志允许投影/审计归档、首页外八组页面卡与四张早门卡 | 📋 源映射设计候选；20个模块/消息shape与payload hash、UAA57/16参考复跑通过，非产品验收；净估整合及全范围交叉核对继续 | [互通施工](../phase6/interconnect-source-wiring.md)、[页面卡](../phase6/frontend-page-family-detail.md)、[早门卡](../phase6/early-disposition-cards.md)、[统一审计](../design/unified-observability-audit.md) |
 | **表达式/文件准确接线** | C01固定AST/一次服务端显隐快照/输入隔离/旧配置扫描，C02同规引用/存量孤儿/删除保护/头像及上传世代；五仓CI源映射 | 📋 C01-01–10/C02-01–08/ENG-01–08为待实现预期，独立只读复核；不增加引用表/preview服务，不改业务/工作流/原排期 | [正确性与工程施工](../design/engineering-execution-design.md)、[详设状态](planning-design-status.json) |
 | **权限首批收口** | A角色编辑、B有效来源/成员差量、C写方/策略pair/强审计/旧wire，以及任务维护资格/归因源映射；C05安全代际/秘密编码/claims与公共IAM形状候选 | 📋 未实现；A4–6/B4–7/C12–19/C056–10/任务4–7为待扣重毛估。公共参考143形状通过但非产品门禁；新业务待答集中，不重问F017；全版净价未更新 | [第一包](../phase6/iam-first-batch-design.md)、[底座](../phase6/foundation-iam-module-detail.md)、[集中议程](owner-decision-agenda.json) |
 | **工单/风险/适配器准确接缝** | 旧响应兼容、候选选人/CC来源、合成风险序列与真实操作者建票；单装配/查询scope/UAA双模式、设备人工入口和单查询工具 | 📋 源映射设计候选，公共向量继续补；TICKET-D01与TASK-D01集中待确认，真实公司绑定/运行产品未验；不新增认证引擎或专业处置平台 | [工单](../phase6/ticket-module-detail.md)、[风险](../phase6/risk-module-detail.md)、[扩展](../phase6/extension-ai-module-detail.md) |

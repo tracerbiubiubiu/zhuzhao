@@ -1,0 +1,165 @@
+{
+  "reference_version": "1",
+  "purpose": "Public synthetic HTTP mock candidate shapes only; no company wire, credentials, server or product implementation.",
+  "sources": [
+    "docs/phase6/task-activelist-message-detail.md: §6.2 SendRequestV1/SendReceiptV1",
+    "docs/phase6/interconnect-source-wiring.md: §7 public HTTP mock",
+    "docs/design/capability-interconnect-detail.md: canonical input subset",
+    "docs/design/capability-interconnect-detail.schema.json: operation identity and retry_class"
+  ],
+  "reference_expectations": [
+    "Schema checks candidate shapes only. Signature verification, current authorization, target allowlists, UTF-8 byte budgets and actual HTTP behavior require implementation tests.",
+    "The fixed POST routes below are metadata, not a running mock server or mandatory company adapter URLs. Query selectors belong in the signed body; its receipt must match the locally frozen delivery/profile/payload hash.",
+    "Hash only the 12 hash_reference.projection_fields from the first frozen SendRequest. Use deterministic sorted-key JSON and UTF-8, preserve exact subject/body, reject duplicate keys and lone surrogates, never trim or normalize Unicode. Exclude schema_version wrapper, payload_sha256, idempotency_key, signatures and attempt/transport data. Schema cannot recompute or prove this hash.",
+    "SEND-FROZEN-PAYLOAD includes a composed subject character, decomposed body character, newline and trailing space. Its hash is externally recomputed; changing profile, recipient or content requires an independent authorized replacement delivery.",
+    "The provider fixture must retain (profile,idempotency_key): same payload returns the original receipt; different payload returns 409 without another effect. No vector or shape validation proves that storage or idempotency behavior.",
+    "Accept-then-disconnect, query after core restart, unsupported-query profiles and unknown quarantine need a real fixture/process journey. Transport failure after possible acceptance means unknown, never confirmed no effect.",
+    "Callbacks deduplicate by trusted provider source plus provider_event_id and CAS local revision after delivery/profile/hash binding. Wrong bindings or unknown providers are quarantined; late accepted cannot regress delivered. These are reference expectations, not schema-proven cross-field equality, event deduplication or state-machine tests.",
+    "Only accepted/delivered/rejected/unknown are public receipt states; delivered requires real provider evidence. Legacy nil error or sent is not delivery proof. retry_class uses the existing common enum; valid shapes do not authorize retry or prove a state/retry combination.",
+    "rule_version is a positive safe integer, matching existing rule-version DTOs; 64-bit IDs/revisions retain their own string contracts. This selected mock does not redefine the subscription DTO."
+  ],
+  "transport_metadata": {"send": {"method": "POST", "path": "/v1/messages/send", "body_definition": "SendRequestV1", "response_definition": "SendReceiptV1"}, "query": {"method": "POST", "path": "/v1/messages/query", "body_definition": "QueryRequestV1", "response_definition": "SendReceiptV1"}, "async_receipt": {"method": "POST", "path": "/internal/messages/receipts", "body_definition": "AsyncReceiptV1"}},
+  "hash_reference": {"case_id": "SEND-FROZEN-PAYLOAD", "projection_fields": ["delivery_id", "channel_profile_ref", "recipient_ref", "template_version", "subject", "body", "business_ref", "source_event_ref", "rule_id", "rule_version", "operation_id", "expires_at"], "sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342"},
+  "cases": [
+    {
+      "id": "SEND-FROZEN-PAYLOAD", "definition": "SendRequestV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "idempotency_key": "idem-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "recipient_ref": "ref-recipient-A-v1",
+        "template_version": "ref-template-v1",
+        "subject": "Synthetic message é",
+        "body": "Synthetic é payload.\nKeep trailing space: ",
+        "business_ref": "ref-ticket-0001",
+        "source_event_ref": {"source": "ref-events-v1", "event_id": "event-msg-demo-0001"},
+        "rule_id": "rule-msg-demo-0001",
+        "rule_version": 1,
+        "operation_id": "op-msg-demo-000001",
+        "expires_at": "2026-11-15T02:00:00Z",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342"
+      }
+    },
+    {
+      "id": "QUERY-SIGNED-BODY", "definition": "QueryRequestV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "provider_receipt_ref": "ref-provider-receipt-A"
+      }
+    },
+    {
+      "id": "RECEIPT-ACCEPTED", "definition": "SendReceiptV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "accepted",
+        "provider_receipt_ref": "ref-provider-receipt-A",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "none"
+      }
+    },
+    {
+      "id": "RECEIPT-REJECTED", "definition": "SendReceiptV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "rejected",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "none",
+        "safe_reason_code": "recipient_invalid"
+      }
+    },
+    {
+      "id": "RECEIPT-UNKNOWN", "definition": "SendReceiptV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "unknown",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "reconcile_only",
+        "safe_reason_code": "acceptance_unconfirmed"
+      }
+    },
+    {
+      "id": "ASYNC-DELIVERED", "definition": "AsyncReceiptV1", "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "delivered",
+        "provider_receipt_ref": "ref-provider-receipt-A",
+        "observed_at": "2026-11-15T01:00:03Z",
+        "retry_class": "none",
+        "provider_event_id": "ref-provider-event-delivered-A"
+      }
+    },
+    {
+      "id": "SEND-TRANSPORT-INJECTION", "definition": "SendRequestV1", "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "idempotency_key": "idem-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "recipient_ref": "ref-recipient-A-v1",
+        "template_version": "ref-template-v1",
+        "subject": "Synthetic message é",
+        "body": "Synthetic é payload.\nKeep trailing space: ",
+        "business_ref": "ref-ticket-0001",
+        "source_event_ref": {"source": "ref-events-v1", "event_id": "event-msg-demo-0001"},
+        "rule_id": "rule-msg-demo-0001",
+        "rule_version": 1,
+        "operation_id": "op-msg-demo-000001",
+        "expires_at": "2026-11-15T02:00:00Z",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "target_url": "https://example.invalid/not-configurable"
+      }
+    },
+    {
+      "id": "RECEIPT-MISSING-BINDING", "definition": "SendReceiptV1", "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "state": "accepted",
+        "provider_receipt_ref": "ref-provider-receipt-A",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "none"
+      }
+    },
+    {
+      "id": "RECEIPT-LEGACY-SENT", "definition": "SendReceiptV1", "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "sent",
+        "provider_receipt_ref": "ref-provider-receipt-A",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "none"
+      }
+    },
+    {
+      "id": "ASYNC-MISSING-EVENT-ID", "definition": "AsyncReceiptV1", "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-msg-demo-0001",
+        "channel_profile_ref": "ref-http-message-v1",
+        "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342",
+        "state": "delivered",
+        "provider_receipt_ref": "ref-provider-receipt-A",
+        "observed_at": "2026-11-15T01:00:01Z",
+        "retry_class": "none"
+      }
+    }
+  ]
+}

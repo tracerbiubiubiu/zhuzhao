@@ -243,7 +243,8 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "C04",
@@ -647,7 +648,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-03"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "D12",
@@ -679,7 +681,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-03"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "D13",
@@ -885,7 +888,8 @@
       "hierarchy_scenarios": [
         "HIER-09",
         "HIER-11"
-      ]
+      ],
+      "page_family_cards_ref": "docs/phase6/frontend-page-family-detail.md"
     },
     {
       "work_item": "U07",
@@ -1135,7 +1139,8 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "R02",
@@ -1276,7 +1281,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P7实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.3出口"
+      "decision_gate": "P6.3出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E03",
@@ -1296,7 +1302,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.3出口"
+      "decision_gate": "P6.3出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E04",
@@ -1316,7 +1323,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.E出口"
+      "decision_gate": "P6.E出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E05",
@@ -1352,7 +1360,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.E出口"
+      "decision_gate": "P6.E出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E07",
@@ -1737,7 +1746,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-02"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "CE03",
@@ -1757,7 +1767,8 @@
         "本地核心已取的敏感子出口同步迁移旧TR任务读写/结果入口，先过滤后分页/total；整包仍P7，不延迟AUTH-02维护职责修复。",
         "P7整包不遮首版本地已前移链B选定子出口，core/AL各管本库receipt和当前权限；不开任意私有后台写。"
       ],
-      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
+      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "CE04",
@@ -2040,22 +2051,26 @@
       {
         "id": "E02",
         "decision_due": "P6.3出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E03",
         "decision_due": "P6.3出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E04",
         "decision_due": "P6.E出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E06",
         "decision_due": "P6.E出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       }
     ],
     "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
@@ -2103,58 +2118,79 @@
         {
           "id": "TICKET",
           "ref": "docs/phase6/ticket-module-detail.md",
-          "state": "source_mapped_candidate_reference_vectors_pending",
-          "remaining": "实际wire/声明漂移/草稿发布/候选人/CC角色源/四片验收已核，TICKET-D01集中待答；公共可序列化向量后续统一补，产品与真实数据未验。"
+          "state": "source_mapped_wire_and_slice_candidate",
+          "remaining": "Legacy wire, candidate eligibility query, member-source identity and four implementation slices mapped; TICKET-D01 stays deferred, runtime unverified.",
+          "source_mapped_ref": "docs/phase6/ticket-module-detail.md"
         },
         {
           "id": "RISK",
           "ref": "docs/phase6/risk-module-detail.md",
-          "state": "source_mapped_reference_candidate_vectors_pending",
-          "remaining": "两风险合成source/稳定键/比较器/角色/可信票桥/逐项恢复已核；公开JSON向量待统一补，真实来源/生产映射与产品验收沿原窗口。"
+          "state": "source_mapped_candidate_with_reference_projection",
+          "remaining": "Synthetic source, trusted dispatch and recovery mapped; JSON covers order/time projection only, not full risk behavior or company mappings.",
+          "source_mapped_ref": "docs/phase6/risk-module-detail.md"
         },
         {
           "id": "INTERCONNECT",
           "ref": "docs/phase6/task-activelist-message-detail.md",
-          "state": "existing_contract_reused_pending_wire_mapping",
-          "remaining": "复用C03/R01/AL效果与事实合同，配准旧接口/回调/Hook切换及一个AL监控参考类型。"
+          "state": "source_mapped_composition_and_cutover_candidate",
+          "remaining": "DI/TxPlan/callback/task view/boundary/native origin and per-consumer cutover mapped; actual HTTP/transaction/process acceptance remains.",
+          "source_mapped_ref": "docs/phase6/interconnect-source-wiring.md"
         },
         {
           "id": "MESSAGE",
           "ref": "docs/phase6/task-activelist-message-detail.md",
-          "state": "existing_contract_reused_pending_reference_http",
-          "remaining": "补公共HTTP参考载荷、错误/回执与当前站内信投影接线，不等待公司私有报文。"
+          "state": "source_mapped_http_reference_and_inbox_candidate",
+          "remaining": "10 synthetic shapes and payload hash verified; no actual HTTP server, provider acceptance, dedup or recovery proof.",
+          "source_mapped_ref": "docs/phase6/interconnect-source-wiring.md#7-消息http公共mock的绑定"
         },
         {
           "id": "ADAPTER_UAA",
           "ref": "docs/phase6/extension-ai-module-detail.md",
-          "state": "single_assembly_and_public_query_candidate_vectors_pending",
-          "remaining": "只读挂载装配、签名Query显式scope、私有应用ref/UAA双模式已核；精确参考Schema/摘要/旧adapter真实HTTP向量后续补，真实UAA仍待内网条件。"
+          "state": "source_mapped_assembly_and_reference_candidate",
+          "remaining": "Single assembly, explicit scoped query, UAA independent/enterprise modes and reference manifest mapped; generated product config/SDK and real UAA conditions remain implementation exits.",
+          "source_mapped_ref": "docs/phase6/extension-ai-module-detail.md"
         },
         {
           "id": "DEVICE_AI",
           "ref": "docs/phase6/extension-ai-module-detail.md",
-          "state": "bounded_reference_profiles_candidate_vectors_pending",
-          "remaining": "设备人工入口/状态、单ticket.list工具与真人confirm已核；公开向量待补，实际设备/模型/数据区沿Q07/Q08/Q12绑定。"
+          "state": "bounded_source_mapped_reference_candidate",
+          "remaining": "Manual entry/status and fixed ticket.list profile serialized; runtime permissions, device/model choices and A02 confirmation remain implementation/real-input exits.",
+          "source_mapped_ref": "docs/phase6/extension-ai-module-detail.md"
         },
         {
           "id": "ENGINEERING_OBS",
           "ref": "docs/phase6/foundation-iam-module-detail.md",
-          "state": "actual_five_repo_gate_map_added_OBS_projection_remaining",
-          "remaining": "逐五仓脚本/工作流/check和OBS敏感入口给接线、隔离/恢复证据出口；远端配置不执行。",
-          "source_mapped_ref": "docs/design/engineering-execution-design.md"
+          "state": "source_mapped_gates_log_audit_archive_candidate",
+          "remaining": "Five-repo gates and selected logging/audit/archive projections mapped; remote enforcement, real retention/topology and product acceptance not executed.",
+          "source_mapped_ref": "docs/design/unified-observability-audit.md"
         },
         {
           "id": "UI",
           "ref": "docs/phase6/ticket-module-detail.md",
-          "state": "existing_contract_reused_pending_page_family_cards",
-          "remaining": "按八种实际页面族补权限/数据/加载空错/主动作/响应式/键盘施工卡，复用代表样板。"
+          "state": "source_mapped_page_family_cards_candidate",
+          "remaining": "Eight remaining page groups reuse home/tokens/route inventory; source-specific data, failure, permission and keyboard contracts mapped, not UI implementation or browser proof.",
+          "source_mapped_ref": "docs/phase6/frontend-page-family-detail.md"
         },
         {
           "id": "FUTURE_BOUNDARIES",
           "ref": "docs/phase6/module-detail-index.md",
-          "state": "existing_boundaries_reused_pending_decision_cards",
-          "remaining": "E02/03/04/06补本期取舍卡；其余远期父包按原阶段边界，不提前冻结全部SQL/DTO。"
+          "state": "early_disposition_cards_and_existing_boundaries_mapped",
+          "remaining": "Four early gates cover their source leaves including E03 auth enhancements; 25 later parents retain stage boundaries, no premature SQL/API freeze.",
+          "source_mapped_ref": "docs/phase6/early-disposition-cards.md"
         }
+      ],
+      "reference_manifest_ref": "docs/design/examples/capability-reference/module-reference-manifest.json",
+      "selected_reference_proof": {
+        "module_shapes": 10,
+        "message_shapes": 10,
+        "uaa_behavior_cases": 57,
+        "uaa_mutations": 16,
+        "message_hash_cross_checked": "Node and Python",
+        "product_runtime_verified": false
+      },
+      "remaining_design_work": [
+        "Integrate deduplicated IAM/C05 allocation into the first-core numeric source and current navigation.",
+        "Perform final whole-scope cross-check against 76 parents, 44 P6 parents, LS01-04, OBS01/02, named exits and early gates; do not treat link coverage as semantic proof."
       ]
     }
   },

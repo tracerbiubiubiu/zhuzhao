@@ -1,0 +1,124 @@
+{
+  "reference_version": "1",
+  "purpose": "Public synthetic candidate shapes only; no real intranet wire or product implementation is frozen.",
+  "sources": [
+    "docs/phase6/extension-ai-module-detail.md: QueryRequestV1/QueryPageV1/QueryFailure, DeviceView, §8.1/§8.2",
+    "docs/phase6/risk-module-detail.md: §13",
+    "docs/design/business-lifecycle-contracts.md: FindingObservationV1, §8.1/§8.2",
+    "internal/model/ticket_request.go: TicketListQuery"
+  ],
+  "reference_expectations": [
+    "Schema validates selected reference shapes only. Current authorization, organization intersection, field projection, cursor binding, endpoint policy and live HTTP behavior require implementation tests.",
+    "QueryRequest is the connector-bound request after core authorization: owner_org_refs is explicit, unique and bounded to 1..256 IDs; an empty intersection returns locally without an outbound call. IDs never establish authorization.",
+    "QueryPage empty success and QueryFailure are separate union branches. complete does not prove a full snapshot or permit absence deletion; source failure must not fall back to mock.",
+    "Device observed_at=null means no observation. Unknown can also carry a real observation time; no universal unknown/null equivalence or stale threshold is invented.",
+    "AI ToolInput fields here select only id/human_key/status. Reference time uses the existing AIQueryResponse.sources[].observed_at envelope, not an invented row field. Missing type or unavailable open state requires needs_input, not a broader query.",
+    "Risk observations are arrival-ordered, not sequence-sorted. Canonical unsigned decimal strings compare by length then lexical order; the schema checks syntax, never this comparison or checkpoint chronology.",
+    "RISK-ARRIVAL: late-high has the larger sequence but observed_at precedes closed_checkpoint.observed_at. It may update applicable transport facts, but must neither create a generation nor change the closed disposition. old-low cannot overwrite a newer source projection.",
+    "RISK-ARRIVAL numeric sequence order is old-low then late-high. These are reference expectations, not executable schema proofs; no JS number conversion is allowed."
+  ],
+  "cases": [
+    {
+      "id": "QUERY-BOUNDED",
+      "definition": "AssetQueryRequest",
+      "expected_valid": true,
+      "value": {
+        "query_id": "reference.asset.list", "contract_version": "1", "source_id": "ref-assets-v1",
+        "parameters": {"owner_org_refs": ["91001"], "status": ["unknown", "down"]},
+        "limit": 50, "requested_fields": ["device_id", "owner_org_ref", "status", "observed_at", "stale"]
+      }
+    },
+    {
+      "id": "QUERY-MISSING-SCOPE-AND-OVERREACH",
+      "definition": "AssetQueryRequest",
+      "expected_valid": false,
+      "value": {
+        "query_id": "reference.asset.list", "contract_version": "1", "source_id": "ref-assets-v1",
+        "parameters": {}, "limit": 51, "requested_fields": ["login_username_hint"]
+      }
+    },
+    {
+      "id": "QUERY-EMPTY-SUCCESS",
+      "definition": "AssetQueryResult",
+      "expected_valid": true,
+      "value": {
+        "items": [], "complete": true, "source_id": "ref-assets-v1",
+        "observed_at": "2026-11-14T01:00:00Z", "fetched_at": "2026-11-14T01:00:01Z",
+        "mapping_version": "ref-assets-mapping-v1", "warnings": []
+      }
+    },
+    {
+      "id": "QUERY-SOURCE-ERROR",
+      "definition": "AssetQueryResult",
+      "expected_valid": true,
+      "value": {"reason": "source_unavailable"}
+    },
+    {
+      "id": "DEVICE-NO-OBSERVATION",
+      "definition": "FirstDeviceView",
+      "expected_valid": true,
+      "value": {
+        "device_id": "93001", "source_ref": {"provider": "ref-assets-v1", "external_id": "device-A"},
+        "name": "Synthetic device A", "owner_org_ref": "91001", "category": "reference",
+        "status": "unknown", "observed_at": null, "stale": false, "can_open": false
+      }
+    },
+    {
+      "id": "DEVICE-USERNAME-AND-SECRET-REJECTED",
+      "definition": "FirstDeviceView",
+      "expected_valid": false,
+      "value": {
+        "device_id": "93001", "source_ref": {"provider": "ref-assets-v1", "external_id": "device-A"},
+        "name": "Synthetic device A", "category": "reference", "status": "unknown",
+        "observed_at": null, "stale": false, "can_open": false,
+        "login_username_hint": "synthetic-example", "secret": "NOT-A-CREDENTIAL"
+      }
+    },
+    {
+      "id": "AI-FIXED-TICKET-LIST",
+      "definition": "TicketListToolProposal",
+      "expected_valid": true,
+      "value": {
+        "query_id": "ticket.list", "contract_version": "1",
+        "parameters": {"type_code": "ref_risk_remediation", "status": "open", "page": 1,
+          "page_size": 20, "requested_fields": ["id", "human_key", "status"]}
+      }
+    },
+    {
+      "id": "AI-MISSING-TYPE-AND-UNTRUSTED-SCOPE",
+      "definition": "TicketListToolProposal",
+      "expected_valid": false,
+      "value": {
+        "query_id": "ticket.list", "contract_version": "1",
+        "parameters": {"status": "closed", "page": 1, "page_size": 21, "requested_fields": ["id"],
+          "actor_id": "92001", "scope": "all", "sql": "SELECT synthetic_only"}
+      }
+    },
+    {
+      "id": "RISK-ARRIVAL",
+      "definition": "RiskArrivalReference",
+      "expected_valid": true,
+      "value": {
+        "closed_checkpoint": {"source_sequence": "9007199254740992", "observed_at": "2026-11-14T01:00:00Z"},
+        "observations": [
+          {"source_ref": "ref-risk-v1", "source_item_key": "finding-A", "event_id": "late-high",
+            "source_sequence": "9007199254740993", "observed_at": "2026-11-14T00:00:00Z",
+            "observation_kind": "observed", "mapping_ref": "ref-risk-mapping-v1"},
+          {"source_ref": "ref-risk-v1", "source_item_key": "finding-A", "event_id": "old-low",
+            "source_sequence": "9", "observed_at": "2026-11-13T01:00:00Z",
+            "observation_kind": "observed", "mapping_ref": "ref-risk-mapping-v1"}
+        ]
+      }
+    },
+    {
+      "id": "RISK-NONCANONICAL-SEQUENCE",
+      "definition": "RiskObservationReference",
+      "expected_valid": false,
+      "value": {
+        "source_ref": "ref-risk-v1", "source_item_key": "finding-A", "event_id": "bad-leading-zero",
+        "source_sequence": "09", "observed_at": "2026-11-14T02:00:00Z",
+        "observation_kind": "observed", "mapping_ref": "ref-risk-mapping-v1"
+      }
+    }
+  ]
+}

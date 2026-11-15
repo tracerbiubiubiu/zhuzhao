@@ -172,6 +172,8 @@ ExtensionConfigV1在§2骨架补齐：manifest_version、artifact_digest、maint
 
 固定公共query profile=`synthetic.asset-directory.v1`、query_id=reference.asset.list、contract_version="1"（@1仅简写）。QueryPort.Query(trusted_context,QueryRequestV1)→QueryPageV1<AssetDirectoryItem>|QueryFailure；参数仅owner_org_refs可选ID集及status可选healthy/degraded/down/unknown集合，过滤只能收窄当前获权范围，排序device_id ASC，limit≤50、字段白名单。items仅device_id/name/owner_org_ref/category/status/observed_at/stale目录子集，不带入口/用户名提示/秘密。
 
+参考profile进一步定limit为1..50整数、requested_fields为上述7字段的非空去重子集；出站owner_org_refs为1..256个规范正十进制ID，当前交集为空则本地空返回、不发空scope。每页最多50项，行字段仍是请求及当前许可投影。合成[Schema/10个向量](../design/examples/capability-reference/module-profile-vectors.json)补Query、设备、AI和风险排序投影，准确Schema/摘要及复跑边界见[参考说明](../design/examples/capability-reference/README.md)，不是公司协议或产品测试。
+
 公共HTTP选签名POST /v1/query，仅服务间effect=read传输，不作页面写绑定/万能invoke。body沿QueryRequestV1，核心将当前获权组织∩用户可选过滤**强制写入parameters.owner_org_refs**；用户可省略筛选不等connector可缺范围。空集本地返回空不出站；connector拒缺失范围，按权威行组织过滤，消费方再验行/字段，不仅声称PDP已准。参数/cursor/fields一并入签名正文，caller白名单/profile受审，纯源不接浏览器actor。
 
 200仅QueryPage成功/明确partial，400输入、403源拒权、409合同/cursor变更、429配额、503源不可用；空集合与错误分开，QueryFailure不透传厂商报文。cursor绑定source/query版本/参数/排序/当前scope/assembly revision，撤权/换源拒旧cursor；无稳定快照只逐页观察，组织映射不可证的行不能默认归入允许范围。
@@ -189,6 +191,8 @@ UAA-C矩阵含稳定资源键、capability/version、本地主体ID、来源、�
 设备沿同一asset-directory参考读目录/状态；entry_key/revision/enabled/endpoint_ref/allowed_scheme_host_port/network_hint/maintainer_ref/last_verified_at由私有本地补充写主维护，不覆盖CMDB属性。状态profile声明stale_after及unknown/stale原因；无观测observed_at=null，不由管理页200推健康。首批login_username_hint不返回，需要时按专门字段权另开；无SSO、凭据保存/PAM或自动代填。参考验无权入口403/换版409、恶意scheme/host/port/redirect拒绝、计数与明细相同scope、launch只记请求不记登录成功。
 
 AI复用authorized-work-items.v1，首个tool仅ticket.list、contract_version="1"，示例为“列出我有权查看、状态open的工单”。ToolInput仅type_code/status=open/page/page_size≤20及允许读字段，不接用户/组织scope/URL/SQL；由adapter映射当前TicketListQuery并走原GetFilter。它是可见列表，不把assignee=me当风险复核待办。缺类型或类型无open则needs_input，模型不能扩大到其它query/动作；首次输出限定获权id/human_key/status/引用时间，partial不回答全平台总量。
+
+该选定工具的page为正整数，page_size为1..20，requested_fields是id/human_key/status的非空去重子集；引用时间复用AIQueryResponse.sources[].observed_at，不另发明行字段。设备首期DeviceView的ID/entry_version用规范正十进制字符串；can_open=true必须有entry_version，打开时仍核当前配置/权限。unknown不必等于无观测，observed_at=null仅表示无观测，不能据此编造健康或时效。
 
 ModelConnection/ScenarioDefinition/ToolDefinition补schema摘要/模板摘要/结构化能力与字段投影，内网profile只解析内部已有API，无外网fallback；只会文本且不支持所需结构化提议的连接拒此tool场景。先用固定合成proposal/结果/越权反例，实际模型黄金集与延迟在选定后测，不承诺100%语义正确。A02继续同计划固定operation的草稿→确定性preview→当前真人confirm，计划/定义/目标漂移重预览，不为本profile先上MCP/后台自治。
 

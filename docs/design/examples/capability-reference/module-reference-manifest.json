@@ -1,0 +1,102 @@
+{
+  "schema_version": "1",
+  "reference_only": true,
+  "runtime_assembly_config": false,
+  "product_runtime_verified": false,
+  "company_wire_frozen": false,
+  "profiles": [
+    {
+      "id": "synthetic.asset-directory.v1",
+      "query_id": "reference.asset.list",
+      "contract_version": "1",
+      "effect": "read",
+      "transport": "signed POST /v1/query",
+      "vectors": "module-profile-vectors.json",
+      "schema": "module-profile-vectors.schema.json"
+    },
+    {
+      "id": "reference.device.manual.v1",
+      "effect": "read",
+      "vectors": "module-profile-vectors.json",
+      "schema": "module-profile-vectors.schema.json"
+    },
+    {
+      "id": "authorized-work-items.v1",
+      "query_id": "ticket.list",
+      "contract_version": "1",
+      "effect": "read",
+      "vectors": "module-profile-vectors.json",
+      "schema": "module-profile-vectors.schema.json"
+    },
+    {
+      "id": "ref-risk-v1",
+      "projection_only": true,
+      "vectors": "module-profile-vectors.json",
+      "schema": "module-profile-vectors.schema.json"
+    },
+    {
+      "id": "ref-http-message-v1",
+      "effect": "external_delivery",
+      "vectors": "message-http-vectors.json",
+      "schema": "message-http-vectors.schema.json"
+    },
+    {
+      "id": "uaa.reference.v1",
+      "model": "../uaa-reference-mock/uaa_mock.py",
+      "port_map": "../uaa-reference-mock/port-map.json",
+      "existing_behavior_cases": 57,
+      "existing_guard_mutations": 16,
+      "network_calls": 0
+    }
+  ],
+  "shape_verification": [
+    {
+      "name": "module-profile-vectors",
+      "cases": 10,
+      "positive": 6,
+      "negative": 4,
+      "schema_sha256": "3ce4b44d8d449abae35ffdd825301d1bdab3fa6764ad6ad3a5bd5b6b8986bacf",
+      "vectors_sha256": "f111e5cafc4858912e799be8800bb10273042d25d844783e016046b521481ad5"
+    },
+    {
+      "name": "message-http-vectors",
+      "cases": 10,
+      "positive": 6,
+      "negative": 4,
+      "schema_sha256": "98820a60f2071c5f63f19da3cdfde62ec4ab4d604ca8feaccffd6b6f80073b89",
+      "vectors_sha256": "46f2529404fdfac14a242adb23ce6b73dcde8156b157e4c73b9de1fb6345bc1e",
+      "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342"
+    }
+  ],
+  "files": [
+    {
+      "path": "module-profile-vectors.schema.json",
+      "sha256": "3ce4b44d8d449abae35ffdd825301d1bdab3fa6764ad6ad3a5bd5b6b8986bacf"
+    },
+    {
+      "path": "module-profile-vectors.json",
+      "sha256": "f111e5cafc4858912e799be8800bb10273042d25d844783e016046b521481ad5"
+    },
+    {
+      "path": "message-http-vectors.schema.json",
+      "sha256": "98820a60f2071c5f63f19da3cdfde62ec4ab4d604ca8feaccffd6b6f80073b89"
+    },
+    {
+      "path": "message-http-vectors.json",
+      "sha256": "46f2529404fdfac14a242adb23ce6b73dcde8156b157e4c73b9de1fb6345bc1e"
+    },
+    {
+      "path": "c05-secret-binding-vector.json",
+      "sha256": "2bf29e12b4cc4eaa94fe0edd11d23e26ebe4f00e08216062ad0ee028db5c2ade"
+    },
+    {
+      "path": "../uaa-reference-mock/port-map.json",
+      "sha256": "601122e3f359fd70f4dca64a3f2b461dda186b79c8b6baea7872dee6a8a7c77a"
+    },
+    {
+      "path": "../uaa-reference-mock/fixtures.json",
+      "sha256": "04bb088acd0b397358a86e065324775d8340cb6dd96864c908d1736dd7f5a2f0"
+    }
+  ],
+  "upgrade_evidence_boundary": "Reference shapes and hashes do not prove executable old-adapter/new-core compatibility. Product artifacts, manifests and real HTTP contract tests are implementation exits."
+}

@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/zhuzhao/module-profile-vectors-v1.schema.json",
+  "title": "Selected public synthetic module reference vectors",
+  "description": "Candidate projections, not complete product DTOs or a real intranet protocol. Validate each case.value against its named definition; expected-invalid examples remain serializable in the document envelope.",
+  "$ref": "#/definitions/VectorDocument",
+  "definitions": {
+    "Text": {"type": "string", "minLength": 1},
+    "ID": {"type": "string", "pattern": "^[1-9][0-9]*$", "not": {"pattern": "[^0-9]"}},
+    "UnsignedDecimal": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$", "not": {"pattern": "[^0-9]"}},
+    "Timestamp": {"type": "string", "format": "date-time"},
+    "NullableTimestamp": {"anyOf": [{"$ref": "#/definitions/Timestamp"}, {"type": "null"}]},
+    "DeviceStatus": {"enum": ["healthy", "degraded", "down", "unknown"]},
+    "AssetField": {"enum": ["device_id", "name", "owner_org_ref", "category", "status", "observed_at", "stale"]},
+    "ExternalRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "external_id"],
+      "properties": {
+        "provider": {"$ref": "#/definitions/Text"},
+        "external_id": {"$ref": "#/definitions/Text"}
+      }
+    },
+    "AssetQueryRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["query_id", "contract_version", "source_id", "parameters", "limit", "requested_fields"],
+      "properties": {
+        "query_id": {"const": "reference.asset.list"},
+        "contract_version": {"const": "1"},
+        "source_id": {"$ref": "#/definitions/Text"},
+        "parameters": {
+          "type": "object", "additionalProperties": false,
+          "required": ["owner_org_refs"],
+          "properties": {
+            "owner_org_refs": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/definitions/ID"}},
+            "status": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/DeviceStatus"}}
+          }
+        },
+        "cursor": {"$ref": "#/definitions/Text"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+        "requested_fields": {"type": "array", "minItems": 1, "maxItems": 7, "uniqueItems": true, "items": {"$ref": "#/definitions/AssetField"}}
+      }
+    },
+    "AssetDirectoryItem": {
+      "description": "A requested-field projection; no username, entry or secret fields. Projection correctness and row scope need runtime checks.",
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "device_id": {"$ref": "#/definitions/ID"},
+        "name": {"type": "string"},
+        "owner_org_ref": {"$ref": "#/definitions/ID"},
+        "category": {"type": "string"},
+        "status": {"$ref": "#/definitions/DeviceStatus"},
+        "observed_at": {"$ref": "#/definitions/NullableTimestamp"},
+        "stale": {"type": "boolean"}
+      }
+    },
+    "AssetQueryPage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["items", "complete", "source_id", "observed_at", "fetched_at", "mapping_version", "warnings"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 50, "items": {"$ref": "#/definitions/AssetDirectoryItem"}},
+        "next_cursor": {"$ref": "#/definitions/Text"},
+        "complete": {"type": "boolean"},
+        "source_id": {"$ref": "#/definitions/Text"},
+        "observed_at": {"$ref": "#/definitions/Timestamp"},
+        "fetched_at": {"$ref": "#/definitions/Timestamp"},
+        "source_revision": {"$ref": "#/definitions/Text"},
+        "mapping_version": {"$ref": "#/definitions/Text"},
+        "warnings": {"type": "array", "items": {"$ref": "#/definitions/Text"}}
+      }
+    },
+    "QueryFailure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": {"enum": ["invalid_input", "not_authorized", "source_unavailable", "source_stale", "unknown_enum", "contract_mismatch", "quota"]},
+        "retry_after_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "AssetQueryResult": {
+      "oneOf": [{"$ref": "#/definitions/AssetQueryPage"}, {"$ref": "#/definitions/QueryFailure"}]
+    },
+    "FirstDeviceView": {
+      "description": "First-profile DeviceView; §8.2 excludes the later optional login_username_hint.",
+      "type": "object", "additionalProperties": false,
+      "required": ["device_id", "source_ref", "name", "category", "status", "observed_at", "stale", "can_open"],
+      "if": {"properties": {"can_open": {"const": true}}, "required": ["can_open"]},
+      "then": {"required": ["entry_version"]},
+      "properties": {
+        "device_id": {"$ref": "#/definitions/ID"},
+        "source_ref": {"$ref": "#/definitions/ExternalRef"},
+        "name": {"type": "string"},
+        "vendor": {"type": "string"}, "model": {"type": "string"},
+        "owner_org_ref": {"anyOf": [{"$ref": "#/definitions/ID"}, {"type": "null"}]},
+        "category": {"type": "string"},
+        "status": {"$ref": "#/definitions/DeviceStatus"},
+        "observed_at": {"$ref": "#/definitions/NullableTimestamp"},
+        "stale": {"type": "boolean"}, "can_open": {"type": "boolean"},
+        "entry_version": {"$ref": "#/definitions/ID"}
+      }
+    },
+    "TicketListToolProposal": {
+      "description": "Selected fixed tool/version plus ToolInput, not a generic QueryProposal schema or a copy of all TicketListQuery filters.",
+      "type": "object", "additionalProperties": false,
+      "required": ["query_id", "contract_version", "parameters"],
+      "properties": {
+        "query_id": {"const": "ticket.list"}, "contract_version": {"const": "1"},
+        "parameters": {
+          "type": "object", "additionalProperties": false,
+          "required": ["type_code", "status", "page", "page_size", "requested_fields"],
+          "properties": {
+            "type_code": {"$ref": "#/definitions/Text"}, "status": {"const": "open"},
+            "page": {"type": "integer", "minimum": 1},
+            "page_size": {"type": "integer", "minimum": 1, "maximum": 20},
+            "requested_fields": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["id", "human_key", "status"]}}
+          }
+        }
+      }
+    },
+    "RiskObservationReference": {
+      "description": "Identity/order/time projection of §13's synthetic source, not the complete FindingObservationV1 schema. Arrival order, source hash conflicts and freshness are external expectations.",
+      "type": "object", "additionalProperties": false,
+      "required": ["source_ref", "source_item_key", "event_id", "source_sequence", "observed_at", "observation_kind", "mapping_ref"],
+      "properties": {
+        "source_ref": {"const": "ref-risk-v1"},
+        "source_item_key": {"enum": ["finding-A", "finding-B"]},
+        "event_id": {"$ref": "#/definitions/Text"},
+        "source_sequence": {"$ref": "#/definitions/UnsignedDecimal"},
+        "observed_at": {"$ref": "#/definitions/Timestamp"},
+        "observation_kind": {"enum": ["observed", "withdrawn", "deleted"]},
+        "mapping_ref": {"const": "ref-risk-mapping-v1"}
+      }
+    },
+    "RiskArrivalReference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["closed_checkpoint", "observations"],
+      "properties": {
+        "closed_checkpoint": {
+          "type": "object", "additionalProperties": false,
+          "required": ["source_sequence", "observed_at"],
+          "properties": {
+            "source_sequence": {"$ref": "#/definitions/UnsignedDecimal"},
+            "observed_at": {"$ref": "#/definitions/Timestamp"}
+          }
+        },
+        "observations": {"type": "array", "items": {"$ref": "#/definitions/RiskObservationReference"}}
+      }
+    },
+    "VectorCase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["definition", "id", "expected_valid", "value"],
+      "properties": {
+        "definition": {"enum": ["AssetQueryRequest", "AssetQueryResult", "FirstDeviceView", "TicketListToolProposal", "RiskArrivalReference", "RiskObservationReference"]},
+        "id": {"$ref": "#/definitions/Text"},
+        "expected_valid": {"type": "boolean"},
+        "value": {"description": "Intentionally unconstrained here: select case.definition separately, including for expected-invalid values."}
+      }
+    },
+    "VectorDocument": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reference_version", "purpose", "sources", "reference_expectations", "cases"],
+      "properties": {
+        "reference_version": {"const": "1"}, "purpose": {"$ref": "#/definitions/Text"},
+        "sources": {"type": "array", "items": {"$ref": "#/definitions/Text"}},
+        "reference_expectations": {"type": "array", "items": {"$ref": "#/definitions/Text"}},
+        "cases": {"type": "array", "minItems": 6, "maxItems": 10, "items": {"$ref": "#/definitions/VectorCase"}}
+      }
+    }
+  }
+}

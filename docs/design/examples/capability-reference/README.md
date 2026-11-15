@@ -28,6 +28,36 @@ IAM不变量仍须实施C批独立证明：集合与ETag同快照、pending效�
 
 [C05秘密绑定向量](c05-secret-binding-vector.json)只使用合成口令及零测试key，封闭消息编码与HMAC已分别由Python/Node独立重算一致；它不由verify.cjs自动覆盖，也不证明运行key托管/轮换或改密链。该文件不可作为运行配置、账号资料或日志样板使用。
 
+## 公共模块与HTTP消息的选定参考
+
+2026-11-15新增[模块向量](module-profile-vectors.json)/[Schema](module-profile-vectors.schema.json)与[消息向量](message-http-vectors.json)/[Schema](message-http-vectors.schema.json)，各10例（6正4反）；[参考manifest](module-reference-manifest.json)记录profile、文件摘要和验证边界。模块覆盖有界Query、首期设备无凭据投影、单ticket.list工具及风险序列/观察投影；消息固定send/query/异步回执形状，并有12字段payload hash正例。两者各在空Schema上抓到4个反例后收紧，根会话独立复跑20/20；消息Unicode/换行/末尾空格载荷由Node/Python独立重算相同478字节/hash。
+
+这些文件**不被原verify.cjs自动执行**，用现有AJV可单独复跑：
+
+```bash
+AJV_MODULE=/path/to/existing/ajv node <<'JS'
+const fs = require('node:fs');
+const p = 'docs/design/examples/capability-reference/';
+const m = process.env.AJV_MODULE;
+if (require(m + '/package.json').version !== '6.15.0') throw Error('AJV version');
+const Ajv = require(m);
+for (const name of ['module-profile-vectors', 'message-http-vectors']) {
+  const s = JSON.parse(fs.readFileSync(p + name + '.schema.json'));
+  const d = JSON.parse(fs.readFileSync(p + name + '.json'));
+  const a = new Ajv({allErrors: true, format: 'full'});
+  if (!a.validateSchema(s)) throw Error(name + ': schema');
+  a.addSchema(s);
+  if (!a.getSchema(s.$id)(d)) throw Error(name + ': envelope');
+  for (const c of d.cases)
+    if (a.getSchema(s.$id + '#/definitions/' + c.definition)(c.value) !== c.expected_valid)
+      throw Error(name + ': ' + c.id);
+  console.log(name + ': ' + d.cases.length + ' PASS');
+}
+JS
+```
+
+命令只验shape；hash正例另按message向量的hash_reference.projection_fields规范化重算。manifest是参考索引，不是可装载运行配置，也不证明旧adapter×新core兼容已经实现。当前权限、sequence比较/关闭checkpoint、跨字段匹配、回执去重/CAS、先受理再断连及重启查询仍属产品验收。原[UAA离线参考](../uaa-reference-mock/README.md)57行为/16去守卫亦已重跑通过，网络/企业调用0；它不是OIDC/SCIM服务或真实UAA联调。公司字段、地址、密钥及运行制品不在这些公开合成文件中。
+
 ## 独立AL只读后继的必要补全
 
 2026-11-14补`activelist.document.get@1`，复用已有AL查询能力，支持没有工单的实际AL→TR只读后继。get成功用core保存的query_result，observation_owner与AL data_owner分开，禁止伪造写effect；原update/report成功仍必须effect。get订阅只支持受控target_from_event、登记类型/世代与字段名常量数组，原update映射没有因此放宽。
