@@ -267,7 +267,7 @@ AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，
 
 **原定义读取是新增窄接线，不是现成功能**：当前主仓client只有ListJobs，TR HTTP也没有单job GET，不能靠分页列表恰好找到就声称可靠。拟补TR属主的`GET /v1/jobs/:job_id`与核心client内部GetJob port，复用TR repository的单条读取/JobView，经现AK/SK及受信caller保护；不新开核心前端绕权限读接口。核心只在原L1/职责检查允许的用例内部取配置用于判定，读取失败关闭，raw参数不下发无权用户。读到的定义/params需绑定后续准入快照，最终执行仍核该绑定与当前资格；跨网络GET本身不能锁住后来的TR修改，这个版本/快照接缝复用C03，不在窄修复中伪称已有跨库事务。
 
-**保留期边界**：`internal/service/audit_archive.go`的`archiveParams/Handle`当前正值可覆盖配置；修复后普通业务输入不得降低或任意覆盖保留期。默认沿已受审服务配置；零/缺省、负数、类型错误及超界分别按原兼容与严格参数预期验证。若允许运维临时覆盖，须有独立受权入口、批准值/有效窗及审计，不复用普通task params。实际允许的维护主体及是否保留人工覆盖汇入待确认，不在本轮猜生产保留天数。在线归档与归档文件清理是两种保留配置，不能只限制其中一个或让外部任务传出目录/表名。
+**保留期边界**：`internal/service/audit_archive.go`的`archiveParams/Handle`当前正值可覆盖配置；修复后普通业务输入不得降低或任意覆盖保留期。默认沿已受审服务配置；零/缺省、负数、类型错误及超界分别按原兼容与严格参数预期验证。F019已确认保留独立授权的人工维护入口；临时覆盖另验批准值、有效窗、理由与审计，不复用普通task params。实际维护主体、允许参数/期限及生产保留值仍须在开通前绑定，未绑定不得启用覆盖。在线归档与文件清理是两种保留配置，不能只限制其中一个或让外部任务传任意目录/表名。
 
 **归因合同**：主仓浏览器入口接受旧created_by字段也不采用它，可信actor在Service边界传入；新消息规则的created_by取当前主体，更新保留原creator，实际modifier记本次操作，不重写历史归属。`internal/service/message_admin_service.go`的`UpsertRule`现ON CONFLICT分支本就不改created_by，修复须保持CAS/version与此语义。内部调用亦显式提供可信上下文，不能只在handler补字段后仍留Service旁路。
 
@@ -277,7 +277,9 @@ TR `internal/handler/server.go`的`Deps.createJob`目前body.created_by优先于
 
 可复用主仓`internal/handler/taskrunner_handler_test.go`的`TestTaskrunnerHandler_CreateJobFailFast/TestTaskrunnerHandler_BadRequest/TestTaskrunnerHandler_ProxyPassthrough`、`internal/service/taskrunner_service_integration_test.go`的`TestTaskrunnerServiceSubmitRecordsVoucher`、`internal/service/message_rule_version_integration_test.go`的`TestMessageRule_VersionCAS`；这些目前不证明动作授权。TR `internal/handler/server_test.go`的`TestCreateJobCreatedByFallback`明确断言body优先，实施须先说明合同纠正，再补有效红例，不能把当前绿色当可信归因。授权拒绝须真实HTTP＋PG审计行/下游调用数对照，最终Handler入口单独测；两种证据不能互代。
 
-**待集中确认TASK-D01**：例如已具系统管理权的人临时把在线保留期从180天降为30天排障，是否允许通过TR手动发起？建议首批保留固定系统cron，人工维护仅独立受权、带理由和受控值；普通业务任务始终禁止。也可保留经批准的维护TR job，但需绑定明确后台主体和定义版本。该选择只阻塞维护人工/额外后台开通，不阻塞业务任务越界修复、可信归因、默认cron或其它模块设计；当前不执行任何归档/删行。
+**已确认TASK-D01（F019）**：保留受控人工维护，临时覆盖单独授权。固定系统cron继续；人工入口仅向独立获授权的维护者开放，默认使用配置。临时缩短等覆盖必须命中批准值/范围、有效期、理由和审计；普通task:submit等业务资格不自动成为维护权。若启用额外TR维护job，仍绑定批准后台主体与定义版本；不能用body自报批准或actor="system"取权。具体入口在对应模块批落实，不据此立即建设完整维护界面/审批平台，不执行归档或删除。确切答复与问题来源见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
+
+TASK-03的待实现预期补：受权人工按配置执行；临时批准合法且有效时仅准许批准值，缺批准/过期/超界/伪造引用均零删除；拒绝不改变默认cron。该政策已定，不等于原越界缺陷已修。
 
 ## 9. 测试先行用例与交付出口
 

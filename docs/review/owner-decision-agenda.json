@@ -318,50 +318,76 @@
   "module_detail_followup": {
     "date": "2026-11-15",
     "source_followup": "F018-module-detail-continuation",
-    "state": "collecting_for_consolidated_owner_review",
-    "boundary": "此组为后继详设的集中待确认，不改原13组确认来源/计数，也不将建议视为批准；仅阻塞实际依赖项。Q07至Q12真实输入继续沿原窗口，不重复造决策。",
+    "state": "owner_confirmed_policies_implementation_and_real_bindings_pending",
+    "boundary": "三项模块政策已有明确答复；原13组确认来源/计数不改，Q07至Q12真实输入及各增强逐项选择仍沿原窗口。确认不代表业务实现、真实参数绑定、远端发布或全部增强获批。",
     "items": [
       {
         "id": "TASK-D01",
         "title": "维护动作的人工入口与保留期临时覆盖",
         "scenario": "系统管理者排障，希望临时把在线审计保留期从180天降为30天，经TR手动执行归档；普通业务用户仍只能发业务任务。数字仅举例，不是生产值。",
         "recommendation": "默认保留固定系统cron；如需人工维护，用独立受权、带理由与受控值的入口，不使用普通task参数覆盖。额外维护TR job须绑定批准后台主体与定义版本。",
-        "state": "pending_consolidated_owner_review",
+        "state": "owner_confirmed_not_implemented",
         "affected_items": [
           "AUTH-02",
           "C04",
           "OBS02"
         ],
-        "blocks": "只阻塞人工覆盖/额外后台维护开通，不阻塞越界修复、可信归因或默认cron设计。",
-        "design_ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因"
+        "blocks": "人工入口/临时覆盖开通仍需批准具体维护主体、参数范围与有效窗；不阻越界修复、默认cron或其它模块。",
+        "design_ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因",
+        "approval_state": "owner_confirmed_policy_only",
+        "answer": "保留受控人工维护，临时覆盖单独授权（推荐）",
+        "decision": "保留独立授权的人工维护入口，默认按受审配置执行；普通业务任务参数不能降低或任意覆盖保留期。临时覆盖须独立授权、批准值、有效期、理由和审计；若启用额外TR维护任务须绑定批准后台主体和任务定义版本。此答复不代表立即开发全部维护界面或执行归档/删除。",
+        "owner_feedback_source": {
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",0]",
+          "followup_id": "F019-module-detail-owner-decisions"
+        },
+        "confirmed_on": "2026-11-15"
       },
       {
         "id": "TICKET-D01",
         "title": "已有inherit类型的旧自抄送入口过渡",
         "scenario": "用户仍有ticket:read入口权，原先因部门L2范围读票并自行CC；调离后manual CC会保留独立读源。是否继续给已有inherit类型的旧自加接口兼容例外？",
         "recommendation": "今后新增包括自加均统一独立管理资格；已有合法CC不自动撤，保留本人退出manual CC但不能移除domain/强制来源。新类型邀请规则不重问。",
-        "state": "pending_consolidated_owner_review",
+        "state": "owner_confirmed_not_implemented",
         "affected_items": [
           "D03",
           "LS01"
         ],
-        "blocks": "仅旧cc自加/自退路由的过渡，不阻新参与人管理/候选查询或其它模块；CC从不绕过L1。",
-        "design_ref": "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片"
+        "blocks": "政策已定；准确旧路由/权限种子/来源迁移及真实名单按D03实施批验收，不重问新类型邀请规则。",
+        "design_ref": "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片",
+        "approval_state": "owner_confirmed_policy_only",
+        "answer": "统一新增规则，保留已有合法关系（推荐）",
+        "decision": "今后所有新增抄送（含自己）均执行独立参与人管理授权，不为旧inherit类型保留无管理资格的自加例外。已有合法关系不自动撤，本人可退出自己的manual CC，不能删除domain/强制来源；保留关系仍须当前L1及本票查看规则，不附送处理权。",
+        "owner_feedback_source": {
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",1]",
+          "followup_id": "F019-module-detail-owner-decisions"
+        },
+        "confirmed_on": "2026-11-15"
       },
       {
         "id": "E03-AUTH-D01",
         "title": "认证增强逐项取舍，非C05基础安全补强",
         "scenario": "普通用户希望查看/结束自己的设备会话，管理员希望查看在线用户或解锁登录；另有可选本地密码策略用途。这些不是设备台帐，也不是C05安全代际已经交付的完整会话产品。",
         "recommendation": "先交C05基础安全链；P6.3根据实际用途对本人设备会话、可选密码策略、管理员在线/解锁分别保留、接入或退出，获选部分P8实施前冻结。企业受管凭据遵UAA权威矩阵，不提供本地绕过。",
-        "state": "pending_consolidated_owner_review",
+        "state": "owner_confirmed_not_implemented",
         "affected_items": [
           "E03"
         ],
         "decision_due": "P6.3出口；获选P8实施前冻结",
-        "blocks": "仅阻相关认证增强新增子范围；不扩大Q10已有确认、不阻C05修复或其它模块。",
-        "design_ref": "docs/phase6/early-disposition-cards.md#2-e03分派日历轻审批与认证增强"
+        "blocks": "只确认基础先行和增强按需后置；各增强具体用途/供给/获选范围仍按P6.3至P8窗口裁决。",
+        "design_ref": "docs/phase6/early-disposition-cards.md#2-e03分派日历轻审批与认证增强",
+        "approval_state": "owner_confirmed_policy_only",
+        "answer": "基础先行，增强按需后置（推荐）",
+        "decision": "停用、改密撤销旧会话等基础安全先交；本人登录设备查看/下线、可配置密码策略、管理员在线用户/登录失败解锁为按需增强，核心链完成后逐项选择，P6.3裁决、获选部分P8实施前冻结。未批准全部增强；企业受管凭据遵UAA权威矩阵，不开放本地绕过。",
+        "owner_feedback_source": {
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",2]",
+          "followup_id": "F019-module-detail-owner-decisions"
+        },
+        "confirmed_on": "2026-11-15"
       }
     ],
-    "pending_candidate_count": 3
+    "pending_candidate_count": 0,
+    "confirmed_policy_count": 3,
+    "latest_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
   }
 }

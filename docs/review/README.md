@@ -1,6 +1,6 @@
 # 审查与项目控制
 
-- **本轮设计收口**：[模块细化与待答/实施出口](reports/module-detail-refinement-closeout-2026-11-15.md)、[模块入口](../phase6/module-detail-index.md)及[净分配](iam-net-allocation-2026-11-15.md)。F018仍只在本地独立分支，不代表业务实现、推送合并或部署；11月14日[分支/发布/清理记录](reports/daily-closeout-2026-11-14.md)保留其当时事实。
+- **本轮设计收口**：[模块细化与待答/实施出口](reports/module-detail-refinement-closeout-2026-11-15.md)、[模块入口](../phase6/module-detail-index.md)及[净分配](iam-net-allocation-2026-11-15.md)。F019已确认3项后继政策，本批待答归零，真实配置/增强逐项选择仍按原窗口。F018/F019仅本地独立分支，不代表业务实现、推送合并或部署；11月14日[分支/发布/清理记录](reports/daily-closeout-2026-11-14.md)保留当时事实。
 
 - **首版先读这两份**：[阶梯/本地正式先行与试用](../phase6/first-usable-release-plan.md)和[以前→现在/基础→增强对照](core-release-change-comparison.md)。公司允许本地账号先正式，完整UAA后继、质量优先；[首版净估候选](local-core-release-estimate.json)及[源码可行性报告](reports/local-first-core-feasibility-2026-11-14.md)供核数，1月是争取窗口。原始报告保留时点，不要求所有者逐篇读。
 

@@ -100,7 +100,7 @@ action_id首批为只读标识，写以definition_version＋to定位。新发布
 | `ticket_member_sources` | `(ticket_id,user_id,role,origin,source_key)` 唯一，role 仅 participant/cc；持久origin为manual及获准domain（如risk_review）；`(ticket_id,user_id,role)` 索引 | 只保存不能从权威字段推导的独立授予；现有cc回填manual。creator/assignee从当前CreatedBy/AssignedTo计算，不复制成需同步的来源行 |
 | 发布/迁版/晋级 plan | plan id、类型/目标/包hash、各基线revision、选中票及revision、警告确认、审批者/到期时间、结果receipt引用 | 复用 D05 的受控计划模型和共同 operation 记录，不再建第二套通用任务/receipt/outbox表；plan过期或基线变化409 |
 
-成员来源表只在D03最小实现，不引通用关系引擎。manual的source_key固定manual，各user/role只有一个手动来源；domain用风险link等可信稳定key，public add/remove不自报origin，remove仅manual。creator/assignee仅只读虚拟origin，权威仍票字段。同一人手工参与＋risk_review，交接只撤对应risk源，其它源保留但不保已转出的复核权；来源投影不暴露隐藏risk ID/数量。本人退出manual CC可保旧读可见退出，domain/强制来源不可借退订删；新类型自加CC沿B04，已有inherit旧自加例外/过渡只列TICKET-D01，不自动撤现有合法绑定。
+成员来源表只在D03最小实现，不引通用关系引擎。manual的source_key固定manual，各user/role只有一个手动来源；domain用风险link等可信稳定key，public add/remove不自报origin，remove仅manual。creator/assignee仅只读虚拟origin，权威仍票字段。同一人手工参与＋risk_review，交接只撤对应risk源，其它源保留但不保已转出的复核权；来源投影不暴露隐藏risk ID/数量。TICKET-D01已由F019确认：今后所有新增CC含自加均需独立管理授权，旧inherit无自加例外；已有合法绑定不自动撤。本人仅退自己manual CC，不删domain/强制来源，退出后按剩余有效来源重新求权；所有读取仍核当前L1和本票查看规则，保留CC不等于永久可读。
 
 所有迁移 up/down 成对。扩列、初版定义、批量回填、校验、读写切换、非空/外键分步交；迁移可幂等恢复。down 前停新写、导出新增快照/历史、验证目标旧代码能读，不能删掉已有新定义后让旧单静默读最新版。新增历史事实启用后回退代码只保留其数据，不凭空恢复原来的 live 语义。实际物理拆分/SQL及编号在代码批按迁移地图复核。
 
@@ -258,7 +258,9 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 实施仍四个可独立验收片：T1定义端口→扩列/幂等初版回填/零悬挂→读写切换→约束及草稿UI；T2转换核/采集/accept/transfer及薄详情；T3类型策略/参与来源/独立管理/候选Query；T4 evaluate/prefill与责任summary。先验证旧单钉版/发布重放/缺定义降级禁写，继而原子字段/状态/事件/intent和并发一成；再验all-scope不穿透/来源撤销/列表计数导出同源；最后迟到预填/无权不发请求/未知不变0及复核责任去重。全部沿本页既有具名TDD与原包扣重，不另造父包/双规则核。
 
-**集中待确认TICKET-D01**：已有inherit类型合法读者保留ticket:read，自抄送后原L2组织来源撤销，manual CC仍为独立读源；是否给这类旧自加入口保兼容例外？建议今后含自加均统一独立管理资格、允许退出manual CC但不删domain，现有合法绑定不自动撤。只影响旧路由过渡，不重问新类型邀人管理/CC只读评论/创建者无自动邀请权；失去L1时CC不绕过校验。
+**已确认TICKET-D01（F019）**：统一新增规则，保留已有合法关系。旧inherit类型也不保留“仅因可见便自行加CC”的例外；今后新增含自己均验独立参与人管理授权。既有合法manual CC保留，原组织读源撤销后该独立来源仍按当前类型/L1规则求值；本人可退出自己manual CC，不删domain/强制来源，失去L1时仍拒读。不重问新类型邀人管理、CC只读评论或创建者无自动邀请权；确切答复见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
+
+`Participants_SourceRevocation`补旧合法CC原组织源撤销后仍按当前策略可读、L1撤销拒读、新无管理权自加拒绝、本人退出不误删domain四组预期；这些是待实现验收，不以本次确认关闭旧路由问题。
 
 ## 8. 开工冻结、运维和待绑定
 

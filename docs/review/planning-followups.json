@@ -726,6 +726,49 @@
       "scope_prices_schedule": "首版子范围净分配已整合IAM/AL读取为95–148有效日候选；76父包长期价/DAG不机械叠加，未新增日历或开发授权。",
       "closeout_ref": "docs/review/reports/module-detail-refinement-closeout-2026-11-15.md",
       "owner_deferred_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup"
+    },
+    {
+      "id": "F019-module-detail-owner-decisions",
+      "date": "2026-11-15",
+      "source": {
+        "kind": "explicit_owner_question_replies",
+        "question_call_id": "call_22fed6dfa46d4f7095c30b5212252e02"
+      },
+      "design_ref": "docs/phase6/module-detail-index.md",
+      "decisions": [
+        {
+          "id": "TASK-D01",
+          "state": "owner_confirmed_not_implemented",
+          "question_context": "维护任务：例如管理员要手动归档审计记录，是否保留独立授权的人工维护入口，默认按配置运行；临时覆盖保留期须另有批准值、有效期、理由和审计，普通任务参数不能覆盖？这项只定边界，不代表立即开发全部维护界面。",
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",0]",
+          "answer": "保留受控人工维护，临时覆盖单独授权（推荐）",
+          "rule": "保留独立授权的人工维护入口，默认按受审配置执行；普通业务任务参数不能降低或任意覆盖保留期。临时覆盖须独立授权、批准值、有效期、理由和审计；若启用额外TR维护任务须绑定批准后台主体和任务定义版本。此答复不代表立即开发全部维护界面或执行归档/删除。"
+        },
+        {
+          "id": "TICKET-D01",
+          "state": "owner_confirmed_not_implemented",
+          "question_context": "旧工单自抄送：某用户原本因部门权限能看票，给自己加抄送后，调离部门仍可能靠抄送关系继续看。是否今后新增抄送（包括自己）都需独立管理授权；已有合法关系保留，本人可退出手工抄送，但仍须通过当前功能权限，不能删除系统维护的强制关系？",
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",1]",
+          "answer": "统一新增规则，保留已有合法关系（推荐）",
+          "rule": "今后所有新增抄送（含自己）均执行独立参与人管理授权，不为旧inherit类型保留无管理资格的自加例外。已有合法关系不自动撤，本人可退出自己的manual CC，不能删除domain/强制来源；保留关系仍须当前L1及本票查看规则，不附送处理权。"
+        },
+        {
+          "id": "E03-AUTH-D01",
+          "state": "owner_confirmed_not_implemented",
+          "question_context": "认证增强的分期：停用、改密撤销旧会话等基础安全先交；“查看并下线自己的登录设备、可配置密码策略、管理员在线用户与登录失败解锁”先作为按需增强，核心链完成后逐项选择，是否采用？企业受管凭据仍服从UAA，不开放本地绕过。",
+          "question_item_id": "[\"request_user_input_async\",\"call_22fed6dfa46d4f7095c30b5212252e02\",2]",
+          "answer": "基础先行，增强按需后置（推荐）",
+          "rule": "停用、改密撤销旧会话等基础安全先交；本人登录设备查看/下线、可配置密码策略、管理员在线用户/登录失败解锁为按需增强，核心链完成后逐项选择，P6.3裁决、获选部分P8实施前冻结。未批准全部增强；企业受管凭据遵UAA权威矩阵，不开放本地绕过。"
+        }
+      ],
+      "authorization": {
+        "documentation_refinement_and_local_commits": true,
+        "business_code_changes": false,
+        "push_merge_deploy": false
+      },
+      "implementation_state": "not_implemented",
+      "scope_prices_schedule": "沿既有包/阶段落实三项政策，不增加父包或改变DAG/当前95–148净估候选；具体人工维护入口及获选增强在原窗口定实现并扣重补估，不据此免费包办完整维护UI或全部增强。",
+      "historical_34_formal_decisions_unchanged": true
     }
   ]
 }

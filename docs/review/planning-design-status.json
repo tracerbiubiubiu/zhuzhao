@@ -400,7 +400,7 @@
       "api_schema_frozen": false,
       "remaining": [
         "类型策略/参与来源/独立管理/按purpose选人及CC role精确读已源映射，manual由server定，源唯一键与有效投影已统一。",
-        "仅TICKET-D01旧inherit自抄送过渡待集中确认；实际名单/范围和产品门禁未验。"
+        "TICKET-D01旧inherit自加/自退政策已由F019确认；实际名单、权限种子、准确路由/迁移及产品门禁未验。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
@@ -421,7 +421,8 @@
       "authorization_gap_actions": [
         "AUTH-GAP-03",
         "AUTH-GAP-04"
-      ]
+      ],
+      "owner_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "D04",
@@ -1303,7 +1304,8 @@
       ],
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
       "decision_gate": "P6.3出口",
-      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md",
+      "phasing_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "E04",
@@ -2077,7 +2079,7 @@
     "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md",
     "continuous_refinement": {
       "source_followup": "F018-module-detail-continuation",
-      "state": "bounded_design_refinement_complete_owner_and_implementation_exits_deferred",
+      "state": "bounded_design_refinement_complete_current_owner_policies_confirmed",
       "review_standard_ref": "docs/phase6/module-design-handoff.md",
       "owner_pending_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup",
       "scope_note": "核本期各模块真实接线及六项交付；未来边界/本期裁决按原窗口，生成实现产物和真实provider输入不假装已完成。",
@@ -2119,7 +2121,7 @@
           "id": "TICKET",
           "ref": "docs/phase6/ticket-module-detail.md",
           "state": "source_mapped_wire_and_slice_candidate",
-          "remaining": "Legacy wire, candidate eligibility query, member-source identity and four implementation slices mapped; TICKET-D01 stays deferred, runtime unverified.",
+          "remaining": "Legacy wire, eligibility query and member-source identity mapped; TICKET-D01 confirmed through F019, implementation and runtime acceptance remain.",
           "source_mapped_ref": "docs/phase6/ticket-module-detail.md"
         },
         {
@@ -2190,11 +2192,7 @@
       },
       "remaining_design_work": [],
       "final_scope_review_ref": "docs/review/reports/module-detail-refinement-closeout-2026-11-15.md",
-      "owner_deferred_ids": [
-        "TASK-D01",
-        "TICKET-D01",
-        "E03-AUTH-D01"
-      ],
+      "owner_deferred_ids": [],
       "implementation_exits_not_design_omissions": [
         "Generated OpenAPI/DDL/SDK/runtime wiring and source-controlled product tests per slice.",
         "Actual company/provider/type/org/key/retention/topology inputs at existing windows.",
@@ -2207,7 +2205,13 @@
         "migration_roundtrip_pairs": 81,
         "runtime_unchanged": true,
         "does_not_verify_new_design": true
-      }
+      },
+      "owner_confirmed_policy_ids": [
+        "TASK-D01",
+        "TICKET-D01",
+        "E03-AUTH-D01"
+      ],
+      "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
     },
     "global_parent_scope_prices_and_dag_unchanged": true,
     "local_core_net_allocation_updated": true
@@ -2459,7 +2463,7 @@
       },
       {
         "id": "IAM-TASK",
-        "state": "source_mapped_contract_candidate_with_owner_window",
+        "state": "source_mapped_contract_candidate_owner_policy_confirmed_not_implemented",
         "ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因",
         "case_ids": [
           "TASK-01",
@@ -2469,9 +2473,11 @@
           "TASK-05",
           "TASK-06"
         ],
-        "owner_pending": [
+        "owner_pending": [],
+        "owner_confirmed": [
           "TASK-D01"
-        ]
+        ],
+        "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
       },
       {
         "id": "C05",

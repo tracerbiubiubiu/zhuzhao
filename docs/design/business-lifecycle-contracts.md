@@ -190,7 +190,7 @@ read_policy 候选 enum 为 `inherit`、`participants_only`、`role_restricted`�
 | `ticket_scope=all` | 保留当前 | 已确认不越过类型范围 | 已确认不越过类型范围 | 否 |
 | global admin/superadmin | 当前全域例外 | 同当前 | 同当前 | 仅原有管理动作，不跳业务制衡 |
 
-读可见允许 read/comment（仍过现有入口码），不自动允许 update/assign/delete/participant-manage。推荐新增 `ticket:participant:manage` **按钮码**（目标，非现有码），管理 API 绑定按钮，不挂页面写，不扩大现有唯一 pageWriteAllow。B04已确认由有独立授权的业务管理者管理，creator不因创建身份自动获邀请权。CC可保留现行路由形状，但新增/移除他人的写操作也必须执行同一管理资格，不能借selfService分组绕过；本人退出另按既有语义评估，领域桥只同步具名受管项。普通 participant 用独立管理写入口及 role 精确判定，不能把既有 `ticket_cc` 所有 role 混作 CC。
+读可见允许 read/comment（仍过现有入口码），不自动允许 update/assign/delete/participant-manage。推荐新增 `ticket:participant:manage` **按钮码**（目标，非现有码），管理 API 绑定按钮，不挂页面写，不扩大现有唯一 pageWriteAllow。B04已确认由有独立授权的业务管理者管理，creator不因创建身份自动获邀请权。CC可保留现行路由形状，但F019/TICKET-D01已确认今后所有新增（含自己）及移除他人均执行独立管理资格，不为旧inherit保留无资格自加例外，不能借selfService分组绕过。既有合法关系不自动撤，仍核当前L1/类型查看规则；本人可退自己的manual CC，不删domain/强制来源。领域桥只同步具名受管项；普通participant独立管理、按role精确判定，不能混读既有ticket_cc所有role。
 
 BK-21 技术顺序：先抽共用可见性谓词/参数输入，再在其内部按 type policy 分组，列表、详情、导出、计数、四视角、关联入口、首页同源。逻辑为 `global_exception OR (policy=inherit AND old_branches) OR (policy=restricted AND restricted_branches)`；不能最后拼一个 `OR scope_all/cc` 逃出 policy 分组。静态 SQL 模板+绑定参数，角色/路径不拼接 SQL。
 
