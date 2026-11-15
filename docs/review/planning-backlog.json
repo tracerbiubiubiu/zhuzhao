@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "implementation_status": "business_not_started; G07A/G07B locally_validated_source_changes_in_owner_approved_main_sync",
   "schedule_basis": "原71+CE5=76父包；LS六项为额外范围任务，RP六项替换旧价。1席×每周5工程日，T0相对排程；真实等待另列，设计落档不是开工/部署指令。",
   "waves": {
@@ -133,19 +133,32 @@
       "dependencies": [
         "G03"
       ],
-      "acceptance": "鉴权负例、并发、幂等、表达式/签名/导入边界可回归；短fuzz与定时长跑分开，覆盖率按口径发布。 双模式用例与撤权/来源边界纳入质量口径，复用P用例不重复计价。",
+      "acceptance": "鉴权负例、并发、幂等、表达式/签名/导入边界可回归；短fuzz与定时长跑分开，覆盖率按口径发布。 双模式用例与撤权/来源边界纳入质量口径，复用P用例不重复计价。 层级场景区分现状/目标/owner待决，适用切片有真实权限/事务与UI故障证据。 AUTH-GAP-04/AUTH-GAP-05/AUTH-GAP-07交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "scope": [
-        "复用P的双模式用例形成无UAA本地管理、纳管/非纳管写边界及撤权竞争风险回归；G04只计质量选择/覆盖口径，不重复开发P用例"
+        "复用P的双模式用例形成无UAA本地管理、纳管/非纳管写边界及撤权竞争风险回归；G04只计质量选择/覆盖口径，不重复开发P用例",
+        "HIER-01–12作为随模块启用的有界TDD场景；先红后绿，复用既有FND/AUTH/RECHECK，不预写所有未来产品或另造权限引擎。",
+        "AUTH-GAP-04/05/07：有限独立预期/规则变更关联、代表规模权限基线及试用后引擎必要性复评；领域case不重复开发，不造权限测试DSL或默认建PoC。"
       ],
       "estimate_notes": [
-        "原4–7日保留通用风险/覆盖基线；P的覆盖选择/独立回读/矩阵回填固定1日在P-PQ01计，复用用例，不重复开发。"
+        "原4–7日保留通用风险/覆盖基线；P的覆盖选择/独立回读/矩阵回填固定1日在P-PQ01计，复用用例，不重复开发。",
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
+      ],
+      "hierarchy_scenarios": [
+        "HIER-01–12 as activated by owner module"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-07"
       ]
     },
     {
@@ -256,7 +269,7 @@
       "dependencies": [
         "C01"
       ],
-      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。；撤权先提交时旧授权不能继续提交，守卫锁序与影响权限入口覆盖可查。",
+      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。；撤权先提交时旧授权不能继续提交，守卫锁序与影响权限入口覆盖可查。 HIER层级组合与既有FND/AUTH/RECHECK反例复用；所选本地首版及薄IAM必须先验，不等完整U06/HR/UAA；HIER-D01按具名窗口确认。 AUTH-GAP-01/AUTH-GAP-02/AUTH-GAP-04/AUTH-GAP-05/AUTH-GAP-06交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -264,11 +277,36 @@
       "scope": [
         "ticket DBTX试点/池与事务预算、org_roles删除两侧锁、L2默认拒绝",
         "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争",
-        "UAA账号/角色/资源投影、同步撤权及模式接管新增权限写入口纳入同一IAM policy/主体epoch与锁序清单；P复用guard，不另建一套"
+        "UAA账号/角色/资源投影、同步撤权及模式接管新增权限写入口纳入同一IAM policy/主体epoch与锁序清单；P复用guard，不另建一套",
+        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
+        "AUTH-GAP-01/02/04/05：当前事实与撤权、共同用例、独立预期/安全reason及所选权限性能证据，复用原FND/HIER/AUTH/RECHECK；不建通用策略平台。"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/current-module-boundaries.md"
+        "docs/design/current-module-boundaries.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "hierarchy_scenarios": [
+        "HIER-01",
+        "HIER-02",
+        "HIER-04",
+        "HIER-05",
+        "HIER-06",
+        "HIER-07",
+        "HIER-08",
+        "HIER-09",
+        "HIER-11"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01",
+        "AUTH-GAP-02",
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-06"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -280,13 +318,23 @@
       "dependencies": [
         "G04"
       ],
-      "acceptance": "F38停用/撤销链前后端一致；多标签迟到刷新与设备管理分别评估；不误清管理员当前会话。",
+      "acceptance": "F38停用/撤销链前后端一致；多标签迟到刷新与设备管理分别评估；不误清管理员当前会话。 AUTH-GAP-01交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
+      ],
+      "scope": [
+        "AUTH-GAP-01：会话/账号停用与授权来源撤销分别闭合，失败恢复不复活旧资格，复用现有反例。"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -342,7 +390,7 @@
         "C04",
         "D02"
       ],
-      "acceptance": "旧类型可见集兼容；列表/详情/导出/计数同策略，写按钮独立授权；只读角色不自动有创建权。",
+      "acceptance": "旧类型可见集兼容；列表/详情/导出/计数同策略，写按钮独立授权；只读角色不自动有创建权。 HIER-02/05/10同域列表/详情/计数/导出及适用任务入口一致。 AUTH-GAP-03/AUTH-GAP-04交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -350,10 +398,26 @@
       "scope": [
         "旧类型可见集兼容、参与人/cc分离、role code有效角色三源",
         "加参与人当前推荐显式按钮授权，覆盖预期业务受众；不新增页面写例外",
-        "诊断：普通主体对不可见/不存在同形，不泄露成员；逐策略影响只给受权管理预览且审计"
+        "诊断：普通主体对不可见/不存在同形，不泄露成员；逐策略影响只给受权管理预览且审计",
+        "HIER-02/05/10：多任职scope、透明读/虚拟组挂载与类型参与策略相交，group/all/ancestor owner不越类型；普通只读不附动作权。",
+        "AUTH-GAP-03/04：独立预期数据验证详情与List/Count/Search/Export/字段投影和分页一致；普通不可见同形，受权诊断有界。"
       ],
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "hierarchy_scenarios": [
+        "HIER-02",
+        "HIER-05",
+        "HIER-10"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03",
+        "AUTH-GAP-04"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -405,14 +469,16 @@
       "dependencies": [
         "C04"
       ],
-      "acceptance": "HR目录mock可重复覆盖manager/离职/撤部/乱序；本地人工兜底与真实权威字段区分。 身份/授权部分先过E01-UAA-C，HR人员/组织事实与UAA账号/授权权威分离，不让HR字段获得管理员权限。",
+      "acceptance": "HR目录mock可重复覆盖manager/离职/撤部/乱序；本地人工兜底与真实权威字段区分。 身份/授权部分先过E01-UAA-C，HR人员/组织事实与UAA账号/授权权威分离，不让HR字段获得管理员权限。 HIER-03/04/12合成样本覆盖来源/任职/迁挂，真实feed仍按原激活门。 AUTH-GAP-01交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "real_activation_rule": "领域mock可先交；真实HR feed启用前须X02-F和对应E01提供方验收，不要求独立应用导航宿主，不允许私有SDK/直库耦合",
       "scoped_milestone_dependencies": [
@@ -421,6 +487,21 @@
           "scope": "身份/授权来源、稳定资源code及数据属性条件治理合同部分开工前完成；不阻塞无关mock业务",
           "activation_rule": "真实未知字段只阻塞对应real激活；不得先实现与已冻结权威边界冲突的同步或授权逻辑"
         }
+      ],
+      "scope": [
+        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。",
+        "AUTH-GAP-01：来源失效/任职属性保留和多源撤权复用现状修复；本地mock与完整UAA P/R按各自出口。"
+      ],
+      "hierarchy_scenarios": [
+        "HIER-03",
+        "HIER-04",
+        "HIER-12"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -461,7 +542,7 @@
         "D06",
         "D07"
       ],
-      "acceptance": "mock发现重复/乱序/等时/回归不误建；稳定源事实与风险周期分开，只存结论和有界证据。 首条风险通知在D15完成后才启用，接入基础可先验证。",
+      "acceptance": "mock发现重复/乱序/等时/回归不误建；稳定源事实与风险周期分开，只存结论和有界证据。 首条风险通知在D15完成后才启用，接入基础可先验证。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -469,13 +550,21 @@
       "scope": [
         "源身份/稳定事实键/风险周期、重复/乱序/回归与有界快照",
         "风险域端点L1/L2/L3矩阵（非D03工单策略的替代），与D09/D10共验",
-        "规则化自动建单只消费可信专业结论与明确规则，D10处理本地闭环，扩大自动路由等D16"
+        "规则化自动建单只消费可信专业结论与明确规则，D10处理本地闭环，扩大自动路由等D16",
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
       ],
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "milestone_dependencies": [
         "X02-F"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -488,13 +577,23 @@
         "D08",
         "D15"
       ],
-      "acceptance": "外部严重性与本地处置优先级分开；接受申请有个人入口和制衡，owner/版本/截止可对账。",
+      "acceptance": "外部严重性与本地处置优先级分开；接受申请有个人入口和制衡，owner/版本/截止可对账。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "scope": [
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -509,16 +608,24 @@
         "D09",
         "R01"
       ],
-      "acceptance": "逐风险结论/证据/复测与单风险离组交接正确；事务后失败有持久待办或可重建对账。",
+      "acceptance": "逐风险结论/证据/复测与单风险离组交接正确；事务后失败有持久待办或可重建对账。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "scope": [
-        "待复核按当前risk_owner给首页责任投影；旧处理人不混当前行动待办，不为计数顺手自动改派，复用同源权限/去重"
+        "待复核按当前risk_owner给首页责任投影；旧处理人不混当前行动待办，不为计数顺手自动改派，复用同源权限/去重",
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -530,7 +637,7 @@
       "dependencies": [
         "D02"
       ],
-      "acceptance": "H1–H4/H6、B22/G7/G29一次计价；H5/P1-6最小风险通知已由D15先交。按收件人语义去重，预览与测试发送分开，predue/digest有受控时钟与偏好/去重回归。",
+      "acceptance": "H1–H4/H6、B22/G7/G29一次计价；H5/P1-6最小风险通知已由D15先交。按收件人语义去重，预览与测试发送分开，predue/digest有受控时钟与偏好/去重回归。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -538,7 +645,17 @@
       "scope": [
         "type_code精确/通配回退、变量字典、渠道adapter与预览/测试发送",
         "收件人spec版本化、免打扰/opt-out、改派A→B→A与应发实发对账",
-        "临期predue和每日digest按本地到期扫描/TR业务时隙分工，偏好/聚合/重复/错过与取消有验收；不造第二调度器"
+        "临期predue和每日digest按本地到期扫描/TR业务时隙分工，偏好/聚合/重复/错过与取消有验收；不造第二调度器",
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "design_refs": [
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -552,7 +669,7 @@
         "D02",
         "R01"
       ],
-      "acceptance": "C21+/B8/B20共用结果合同；终态权威、摘要/对象预算、白名单写回、失败对账明确。",
+      "acceptance": "C21+/B8/B20共用结果合同；终态权威、摘要/对象预算、白名单写回、失败对账明确。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -560,7 +677,19 @@
       "milestone_dependencies": [
         "CE02-D"
       ],
-      "invocation_dependency_rule": "链A只依CE02-D；I01/I02/I03消费D12，禁止为统一调用反依I01形成环。"
+      "invocation_dependency_rule": "链A只依CE02-D；I01/I02/I03消费D12，禁止为统一调用反依I01形成环。",
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "design_refs": [
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "scope": [
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
+      ]
     },
     {
       "id": "D13",
@@ -755,7 +884,7 @@
         "D11",
         "D12"
       ],
-      "acceptance": "首页跨域工作台及27页逐项迁移；请求按能力门控、失败不显示0；创建/人员/设置反馈/头像/品牌/状态统一，专业数据注明来源深链。",
+      "acceptance": "首页跨域工作台及27页逐项迁移；请求按能力门控、失败不显示0；创建/人员/设置反馈/头像/品牌/状态统一，专业数据注明来源深链。 HIER必要薄UI已在业务批接线，U06只验全站推广/一致性及其本包新增行为，避免重复计价。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -766,12 +895,18 @@
         "旧收起态保留，hover flyout在U02样板窗口决定，未选不冒充已实现",
         "P6.3改现有任务页面；新增三策略恢复表单/控制台随I03/P7真实接线，后端不支持的字段不生成可保存假控件",
         "承接P6-T045获选的Cmd+K/快速查找入口；菜单/页面按现有可见集，工单号实时授权，不预载全站数据",
-        "UAA双模式最小登录/管理写限制与反馈在E01-UAA-P/R交付并计价；U06仅后续全站视觉迁移和样式推广，不重复收取最小UI投入"
+        "UAA双模式最小登录/管理写限制与反馈在E01-UAA-P/R交付并计价；U06仅后续全站视觉迁移和样式推广，不重复收取最小UI投入",
+        "HIER-09/11必要薄IAM反馈随C04/D03/D06安全子出口前移；既有系统管理页/树形展示的全站视觉迁移仍本包，不吞完整来源台或UAA P/R最小UI。"
       ],
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/design/rbac-inheritance-and-cascade.md"
       ],
-      "estimate_adjustment_ref": "RP-U06"
+      "estimate_adjustment_ref": "RP-U06",
+      "hierarchy_scenarios": [
+        "HIER-09",
+        "HIER-11"
+      ]
     },
     {
       "id": "U07",
@@ -1205,7 +1340,7 @@
       "dependencies": [
         "I01"
       ],
-      "acceptance": "并发unique、破坏性schema兼容、主仓受权查询/字段范围、全量导入快照与恢复、大小预算/错误脱敏和探针分别验收；不造资产或风险权威。；明确EOF/尾随及replace世代反例，预算跨网关/服务/解析/存储各层一致。",
+      "acceptance": "并发unique、破坏性schema兼容、主仓受权查询/字段范围、全量导入快照与恢复、大小预算/错误脱敏和探针分别验收；不造资产或风险权威。；明确EOF/尾随及replace世代反例，预算跨网关/服务/解析/存储各层一致。 AUTH-GAP-03交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -1217,7 +1352,17 @@
         "全量替换预览/确认/备份或恢复点/失败不丢旧集",
         "错误不泄露DB详情，按现有运维栈补探针/指标；通用发布灾备与依赖治理分别由E09/G05计价",
         "CMP-R02先重核当前main；EOF完整消费、尾随垃圾/多顶层JSON拒绝且不写；全量replace后旧revision/ETag世代不可复活，已修仅保回归",
-        "跨层1MiB网关/16MiB直连等当前限制、解析行/字段/解压/临时盘/事务预算分别验；不把配置包导入替代AL运行数据"
+        "跨层1MiB网关/16MiB直连等当前限制、解析行/字段/解压/临时盘/事务预算分别验；不把配置包导入替代AL运行数据",
+        "AUTH-GAP-03：本域实际集合/详情、字段/关联出口共用当前授权；按所选资源/功能成对验，不免费扩展未启用功能。"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ],
+      "design_refs": [
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -1488,7 +1633,7 @@
         "I01",
         "R02"
       ],
-      "acceptance": "模块接口/数据写主/生命周期先清楚；按独立发布/扩缩容/故障证据决定是否拆分，无证据保留模块化单体。",
+      "acceptance": "模块接口/数据写主/生命周期先清楚；按独立发布/扩缩容/故障证据决定是否拆分，无证据保留模块化单体。 AUTH-GAP-07交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "P8出口完成初评，P9出口结合运行证据形成拆分裁决",
       "disposition": "按明确窗口完成接入/建设/退出裁决",
@@ -1497,7 +1642,17 @@
       "delivery_rule": "早期窗口交付范围/供给裁决；获准的增量按本包wave及dependencies交付；退出或接入结论可提前关决策，真实验收另列",
       "scope": [
         "X01/X02已前置最小接缝；本包只评估运行后的数据所有权/独立发布/隔离与服务拆分",
-        "不把内网接入所需adapter延至P9，不承诺全面微服务化"
+        "不把内网接入所需adapter延至P9，不承诺全面微服务化",
+        "AUTH-GAP-07：承接P6.3/P7引擎必要性裁决，P8/P9结合运行证据复核边界；仅评估记录，实际单资源PoC/迁移不在原服务拆分2–4日内。"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-07"
+      ],
+      "design_refs": [
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -1536,7 +1691,7 @@
         "G05",
         "I03"
       ],
-      "acceptance": "P6.3分首次上线硬出口/已选拓扑/可选优化；P7及首次生产前交TLS/边界、备份恢复与归档/镜像故障可见，首期允许单副本。",
+      "acceptance": "P6.3分首次上线硬出口/已选拓扑/可选优化；P7及首次生产前交TLS/边界、备份恢复与归档/镜像故障可见，首期允许单副本。 AUTH-GAP-05/AUTH-GAP-06/AUTH-GAP-07交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "P6.3出口建立缺口，P7出口复核",
       "disposition": "已选生产形态硬出口必交，拓扑按实际选择",
@@ -1546,10 +1701,20 @@
       "scope": [
         "上线硬出口须配置/演练或已证等效控制，不能调查结案；G05提供机制，本包计具体形态接线",
         "先单副本+可恢复备份，实际选多副本时在切换前交撤权一致性/单主专项",
-        "容量/非root/只读等条件项逐项留依据/出口，可选优化不冒充当前硬前置"
+        "容量/非root/只读等条件项逐项留依据/出口，可选优化不冒充当前硬前置",
+        "AUTH-GAP-05/06/07：首次正式前所选形态性能/恢复证据；P6.3缺口、P7拓扑/引擎必要性裁决；双副本启用前专项，不吞任意HA或实际引擎PoC。"
       ],
       "design_refs": [
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-05",
+        "AUTH-GAP-06",
+        "AUTH-GAP-07"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -1942,7 +2107,7 @@
         5
       ],
       "state": "planned_not_implemented",
-      "acceptance": "核心/插件能力家族盘点，静态/动态ID、命令/事件/结果及通知消费、对外API/写主/授权/完成语义及现状成熟度明确；准确DTO在编码前冻结。",
+      "acceptance": "核心/插件能力家族盘点，静态/动态ID、命令/事件/结果及通知消费、对外API/写主/授权/完成语义及现状成熟度明确；准确DTO在编码前冻结。 AUTH-GAP-02交适用证据；未实现/未测项不以文档关闭。",
       "owner": "跨仓/能力集成",
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
@@ -1950,7 +2115,17 @@
       "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE01",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ],
+      "scope": [
+        "AUTH-GAP-02：登记能力/版本、实际入口、当前授权用例及legacy例外/证据；不以目录存在代验接线。"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -1963,7 +2138,7 @@
         30
       ],
       "state": "planned_not_implemented",
-      "acceptance": "同一能力/合同版本的HTTP、内部、手动、工单、计划/事件及MCP入口必须汇入同一登记应用层执行入口和领域实现，共用参数/当前授权/幂等/并发/适用预算/记录/结果；验实际路径和效果，不是仅格式统一、万能RPC或所有调用排TR。",
+      "acceptance": "同一能力/合同版本的HTTP、内部、手动、工单、计划/事件及MCP入口必须汇入同一登记应用层执行入口和领域实现，共用参数/当前授权/幂等/并发/适用预算/记录/结果；验实际路径和效果，不是仅格式统一、万能RPC或所有调用排TR。 AUTH-GAP-02交适用证据；未实现/未测项不以文档关闭。",
       "owner": "跨仓/能力集成",
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
@@ -1971,7 +2146,8 @@
       "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE02",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "milestones": [
         {
@@ -2022,6 +2198,15 @@
           "inherit_parent_dependencies": false,
           "state": "planned_not_implemented"
         }
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ],
+      "scope": [
+        "AUTH-GAP-02：S/D/L按实际入口启用前接同一资格/领域规则，首版只取所消费路径；新MCP/后台入口不得旁路。"
+      ],
+      "estimate_notes": [
+        "AUTH-GAP为已有范围/证据细化，编码前按实际子任务与原WBS扣重；归属不证明原价足够，净增先更新候选；不含通用引擎/实际PoC。"
       ]
     },
     {
@@ -2154,7 +2339,9 @@
         "已选拓扑的TLS/网络边界/认证会话/秘密配置实测，不用开发默认值证明生产就绪",
         "发布核心/adapter/镜像组合、配置来源和版本固定，迁移兼容与部署回执可核",
         "备份恢复/发布回退及适用归档或镜像链路有实证，故障可见且有接管责任；不适用项有依据",
-        "按已选拓扑验证撤权收敛与调度单主；允许单副本，不强制建设未选HA"
+        "按已选拓扑验证撤权收敛与调度单主；允许单副本，不强制建设未选HA",
+        "按实际启用模块验HIER层级场景及既有AUTH/RECHECK：直接/组织/继承来源、菜单与数据/动作边界；父组织停用传播HIER-D01在相关入口前确认或受控拒绝，真实HR/UAA不作本地前置。",
+        "按AUTH-GAP-01–05验证实际启用的授权来源/入口/集合与有限解释及代表负载；单实例验本进程失败恢复，多副本专项只在实际启用前完成；文档/普通门禁绿不代具名反例。"
       ],
       "state": "planned_evidence_gate_not_accepted",
       "estimate_rule": "复用G05/E09已列机制及接线范围，仅前移首发适用硬项并拆分复估，不双算整包或自动扩建。"
@@ -2502,5 +2689,208 @@
   ],
   "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
   "dated_core_release_boundary": "长期76包保留；当前首版本地正式核心含风险/工单/TR/AL/真实HTTP消息及完整本地三层，UAA-C接缝先留、完整P/R后继；已有联合净估候选但未冻结派发，排期和日期仅参考，不强迫按期交不可用版本",
-  "mainline_sync_followup_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync"
+  "mainline_sync_followup_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
+  "hierarchy_permission_supplement_ref": "docs/design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选",
+  "authorization_gap_closure": {
+    "date": "2026-11-15",
+    "source_followup": "F016-authorization-gap-closure-plan",
+    "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+    "state": "design_and_plan_recorded_product_gaps_open",
+    "actions": [
+      {
+        "id": "AUTH-GAP-01",
+        "title": "来源与撤权闭合",
+        "owner_packages": [
+          "C04",
+          "C05",
+          "D06"
+        ],
+        "local_core_wbs": [
+          "S1"
+        ],
+        "required_before": "P6.1及首版本地S1和各域实际启用前；UAA来源由P/R后继",
+        "activation_scope": "actually_enabled_resources_and_entry_points",
+        "acceptance": [
+          "复用FND/HIER/AUTH/RECHECK，修停组/父角色失效、直接与有效编辑、任职往返及授予边界",
+          "撤一路保留其它合法来源；撤权先提交后旧决定不能继续提交；失败恢复不复活旧权"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_scope_acceptance_detail",
+        "estimate_status": "deduplicated_subestimate_required_before_implementation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false
+      },
+      {
+        "id": "AUTH-GAP-02",
+        "title": "多入口同规则",
+        "owner_packages": [
+          "CE01",
+          "CE02",
+          "C04"
+        ],
+        "local_core_wbs": [
+          "S1",
+          "S2",
+          "TD05"
+        ],
+        "required_before": "首版实际消费入口启用前；其余按CE02-S/D/L与实际启用批，不等P9一次迁移",
+        "activation_scope": "actually_enabled_resources_and_entry_points",
+        "acceptance": [
+          "CE01列能力/版本、HTTP内部worker等入口、共同用例和legacy例外，CE02实际接线",
+          "同一资格有允许/拒绝/依赖故障对照，PAT/HMAC认证不替代动作资格；新入口不得开旁路"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_scope_acceptance_detail",
+        "estimate_status": "deduplicated_subestimate_required_before_implementation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false
+      },
+      {
+        "id": "AUTH-GAP-03",
+        "title": "对象与集合语义一致",
+        "owner_packages": [
+          "D03",
+          "D08",
+          "D09",
+          "D10",
+          "D11",
+          "D12",
+          "R06"
+        ],
+        "local_core_wbs": [
+          "S1",
+          "R2",
+          "TD03",
+          "TD05",
+          "MH02"
+        ],
+        "required_before": "首版各域实际读写出口前；完整字段ACL等后继随原LS01等包",
+        "activation_scope": "actually_enabled_resources_and_entry_points",
+        "acceptance": [
+          "同一有限数据集对详情可见集与List/Count/Search/Export、字段和关联投影独立断言，先过滤再分页并覆盖第二页",
+          "来源/状态变化后各已用出口按当前事实收敛；未启用出口明确拒绝，不能以未开发为由留可达旁路"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_domain_scope_acceptance_detail",
+        "estimate_status": "deduplicated_subestimate_required_before_implementation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false
+      },
+      {
+        "id": "AUTH-GAP-04",
+        "title": "独立预期、回归与安全解释",
+        "owner_packages": [
+          "C04",
+          "D03",
+          "G04"
+        ],
+        "local_core_wbs": [
+          "S1",
+          "S3",
+          "TD05",
+          "Q1"
+        ],
+        "required_before": "随每个授权规则/入口变更批交，必要薄UI同批；完整U06/OBS增强后继",
+        "activation_scope": "actually_enabled_resources_and_entry_points",
+        "acceptance": [
+          "复用FND/HIER/AUTH/RECHECK及领域ID，记录主体/来源/对象/动作/独立预期/适用入口/真实测试符号，预期不由被测函数生成",
+          "遵既有先红后绿和并发8轮；规则变化关联已有用例，G04只做风险选择/覆盖，不重复开发领域case",
+          "安全reason及request/operation引用可定位；普通不可见/不存在同形，受权管理区分直接/有效来源，不建任意ID权限探测器或通用why图"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_scope_acceptance_detail",
+        "estimate_status": "deduplicated_subestimate_required_before_implementation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false
+      },
+      {
+        "id": "AUTH-GAP-05",
+        "title": "单实例权限性能基线",
+        "owner_packages": [
+          "G04",
+          "C04",
+          "E09"
+        ],
+        "local_core_wbs": [
+          "Q1",
+          "Q2"
+        ],
+        "required_before": "模块开工定代表画像/预算，本地正式前交所选单实例证据；不机械等完整P7/I03",
+        "activation_scope": "actually_enabled_resources_and_entry_points",
+        "acceptance": [
+          "记录代表/合成数据量、角色组织扇出、并发、查询数、列表过滤耗时、守卫等待/持锁和连接池占用",
+          "当前无同条件性能差值；实测不足再拆优化净估，不提前引缓存/分片平台"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_quality_and_selected_production_gate",
+        "estimate_status": "deduplicated_subestimate_required_before_implementation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false
+      },
+      {
+        "id": "AUTH-GAP-06",
+        "title": "多实例授权一致性证据",
+        "owner_packages": [
+          "C04",
+          "E09"
+        ],
+        "local_core_wbs": [],
+        "required_before": "P6.3建立所选拓扑缺口，P7出口复核；真正启双副本前完成，P/R按适用拓扑消费",
+        "activation_scope": "selected_multi_instance_topology",
+        "acceptance": [
+          "双副本启用前验证策略代际落后、重载失败、撤权竞争、重启/恢复及旧副本拒绝",
+          "单实例首发仍验本进程失效/恢复，不提前建设HA；拓扑选择时核专项子估"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "existing_conditional_topology_gate",
+        "estimate_status": "topology_subestimate_before_activation",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false,
+        "blocks_single_instance_local_formal_release": false
+      },
+      {
+        "id": "AUTH-GAP-07",
+        "title": "外置引擎必要性复评",
+        "owner_packages": [
+          "G04",
+          "E09",
+          "E07"
+        ],
+        "local_core_wbs": [],
+        "required_before": "本地首次试用反馈一次；P6.3出口登记、P7出口裁决；P8/P9 E07运行复评继续承接",
+        "activation_scope": "bounded_review_checkpoint_only",
+        "acceptance": [
+          "使用重复规则/查询/独立治理或关系复用的实际证据，具名记录保留当前或提出单资源验证，未命中也形成继续保留的裁决",
+          "实际PoC另选一个资源、一类主要问题、一个候选；同预期、集合过滤、撤权/业务提交、故障、延迟和维护成本对照",
+          "这里仅排复评决策；实际PoC/迁移须另立净估与依赖并更新总账后启动，不暗含C04/E07原价或同时部署两类引擎"
+        ],
+        "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+        "detail_ref": "docs/phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织",
+        "estimate_relation": "review_checkpoint_only_no_engine_work_priced",
+        "estimate_status": "actual_poc_requires_separate_estimate",
+        "implementation_state": "planned_not_implemented",
+        "runtime_verified": false,
+        "blocks_local_formal_release": false
+      }
+    ],
+    "current_engine": "existing_Casbin_plus_domain_Resource_and_PostgreSQL",
+    "no_new_parent_packages": true,
+    "price_numbers_changed": false,
+    "estimate_rule": "归包不等于零工期或原价足够；开工逐项与原WBS/测试扣重拆子估，有净增先改总账和首版候选。当前仅细化既有交付，实际引擎PoC/迁移未纳入已价范围。",
+    "excluded_generic_product_scope": [
+      "通用策略DSL/运行时编辑器",
+      "任意关系图与全资源授权搜索",
+      "独立PDP集群/完整分发控制面/另一套IAM"
+    ],
+    "preserved_owner_decisions": [
+      "HIER-D01及原模块审计政策仍按原窗口待决"
+    ],
+    "runtime_verified": false
+  }
 }

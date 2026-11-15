@@ -6,6 +6,8 @@
 > **阅读口径（2026-11-08 校准）**：本文是有日期的决策日志，不是逐节都代表当前实现的规格书。§1–19 主要保存 2026-08 方案推理；旧文中的「当前」「Phase 2 微服务化」按当时语境阅读，不能仅改阶段编号就当作现行排期。部署与权限边界看 §25/26，工单自研恢复看 §29，完整状态看 [总控](../review/11-project-control.md)、[路线图](../roadmap.md) 与对应模块。§27/28 的立项量级、字段和零实现判断也是各自登记日快照；后续状态以 Phase 5/6 入口为准。
 > **三个易混点**：当前请求认证依赖 Redis 四键检查（§2.4）；utils 已抽取，resource 留本仓（§4）；内部 IAM/工单未按旧 gRPC 蓝图拆服务（§13/25/26）。文中伪代码说明取舍，不作为现行可复制实现。
 
+> **2026-11-15权限模型后继**：[当前模型与引擎复评](authorization-model-and-engine-choice.md)按实际代码和官方资料重核RBAC/ABAC/ReBAC/PBAC。首版继续Casbin＋领域策略，但退役§12/25/26中“不演进/集中PDP不可能/换实现零成本/服务数决定终态”的绝对论证。下面保留有日期的选型史，不能仅据旧评分快照否决后继方案；真实权限缺陷未因此修复。
+
 ## 目录
 
 - [1. JWT 无状态策略与权限缓存](#1-jwt-无状态策略与权限缓存)
@@ -931,7 +933,7 @@ CREATE TABLE casbin_rule (
 
 ### 12.2 当前"自研"方案的真实定位
 
-当前方案做的是**一条 SQL 查询**，不是 ReBAC 引擎。示例使用 **`resource_owners` 泛化表（Phase 2b 可选）**；Phase **2a 工单**直接用 `tickets.org_id/org_path`（见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）。
+以下是早期**组织树关系SQL**示例，不是通用ReBAC引擎。2026-11-15实际授权已包含三源角色、组织委托、创建人/处理人/CC与数据范围，不能再概括为“一条SQL”。示例使用 **`resource_owners` 泛化表（当时可选稿）**；实际工单直接用自身字段（见 [phase2/02-authz-resource.md](../phase2/02-authz-resource.md)）。
 
 ```sql
 -- 用户 → 所属组织 → ltree 路径遍历 → 是否到达资源所属组织
@@ -945,17 +947,18 @@ SELECT EXISTS (
 ) AS has_access;
 ```
 
-它**没有**：关系图存储与遍历、任意深度关系链解析、一致性保证、通用 schema 定义语言。
+它没有通用关系图模型、任意关系链求值器或策略DSL；同库查询/事务有自身一致性语义，不能写成“没有一致性保证”。当前实现缺口与后继事务守卫分别见[模型复评§3](authorization-model-and-engine-choice.md#3-现有系统的价值与差距)及底座详设。
 
 ### 12.3 业界开源 ReBAC 引擎（2026）
 
-Google Zanzibar 论文的开源实现已成熟：
+关系引擎有可直接评估的开源实现；下表于2026-11-15去掉未经本项目验证的客户规模/成熟度排名：
 
-| 引擎 | 背景 | 特点 | 生产案例 |
-|------|------|------|---------|
-| **SpiceDB** (AuthZed) | 最忠实于 Zanzibar | gRPC 优先、ZedToken 一致性、Caveats 条件权限 | OpenAI ChatGPT Enterprise（百亿级关系） |
-| **OpenFGA** (Auth0/Okta → CNCF) | CNCF 毕业 | REST 优先、DSL 可读、多语言 SDK | Okta 生态 |
-| **Permify** | 开发者友好 | YAML schema、内置数据过滤、可视化 | 中小团队 |
+| 引擎 | 本轮核实的特点 | 证据与边界 |
+|------|----------------|------------|
+| **SpiceDB** | 关系模型、Caveats、ZedToken与查询新鲜度选项 | [官方一致性](https://authzed.com/docs/spicedb/concepts/consistency)；不以客户规模或“最忠实”定胜负 |
+| **OpenFGA** | 关系模型、Conditions、HTTP/gRPC API与SDK | [官方架构](https://github.com/openfga/openfga/blob/main/docs/architecture/architecture.md)；[CNCF当前为孵化项目](https://www.cncf.io/projects/openfga/)，旧“毕业”错误 |
+
+本轮也比较Casbin/Cerbos/OPA/Cedar；不是关系引擎二选一，详见[当前复评](authorization-model-and-engine-choice.md)。
 
 核心模型是 **relationship tuple**：
 
@@ -975,14 +978,16 @@ group:engineering —member—→ user:bob
 | 组织树关系遍历 | ✅ ltree SQL | ✅ 原生支持 |
 | 虚拟组成员关系 | ❌ 需额外 SQL | ✅ relationship tuple |
 | 资源属主判断 | ✅ 代码内联 | ✅ `owner` relation |
-| 任意深度关系链 | ❌ 只支持组织树 | ✅ 任意关系图 |
-| 列表过滤 | ❌ 手写 SQL WHERE | ✅ `ListObjects` API |
-| 多资源类型扩展 | ❌ 每种资源手写 | ✅ schema 定义 |
-| 一致性保证 | ❌ 无 | ✅ ZedToken/Zookie |
+| 多跳关系 | 当前专用SQL/代码，未建通用求值器 | 模型可表达多跳，但有求值/深度/规模约束，不承诺无限图 |
+| 列表过滤 | SQL谓词与业务条件在分页前组合 | 关系对象查询还需与业务库搜索/排序/计数组合，不是自动SQL替代 |
+| 多资源类型扩展 | 领域Resource/共享原语，仍需接入验证 | schema仍需建模、事实供给及查询集成 |
+| 一致性保证 | 同库查询/事务；现有撤权及提交窗口仍待补强 | 引擎各有协议；OpenFGA一致性选项不是SpiceDB ZedToken，均不自动跨业务库原子提交 |
 | 运维复杂度 | 低（只有 PG） | 中（独立服务部署） |
 | 新依赖 | 无 | 独立服务 + 数据存储 |
 
 ### 12.5 决策：分阶段演进
+
+> 下列Phase1/2与数量阈值保留原选型史，现行按[模型复评§6](authorization-model-and-engine-choice.md#6-分阶段处理保持既有核心排期)。当前不迁移不等于永久不迁移；规则治理和列表语义反复复制也可触发比较，无需达到特定资源/关系数量。
 
 **Phase 1：代码内联 + ltree SQL（零新依赖）**
 
@@ -1003,9 +1008,11 @@ group:engineering —member—→ user:bob
 
 **选型倾向**：
 - **OpenFGA**——CNCF 项目、REST 优先、Go SDK 完善、社区活跃，适合优先评估
-- **SpiceDB**——如果需要 Zanzibar 级一致性保证（ZedToken）或百亿级关系
+- **SpiceDB**——当需要按授权修订点选择查询新鲜度时具体评估，不将“百亿级关系”作为资格门槛；也不据此推断其它引擎无一致性能力
 
 ### 12.6 Phase 1 到 Phase 2 的迁移路径
+
+> 下方remote伪代码仅保留接缝意图。实际`GetFilter`返回SQL；迁移仍需改事实同步、列表组合和一致性机制，不承诺调用方完全无感或无沉没成本。
 
 Phase 1 的代码设计为未来迁移预留：
 
@@ -1374,8 +1381,8 @@ type remoteUserQueryService struct {
 
 ### 25.1 PDP/PEP 分工（NIST 框架）
 
-- **PDP（规则定义）**：身份/角色/组织关系**集中一份**（zhuzhao：users/roles/user_orgs/org_roles + Casbin policy）；行级策略**按领域分布**（资源属主管自己数据的行规则；activelist 用户侧零权限薄层可零权限代码——网关权限码挡住+数据组内全可见）。
-- **PEP（判定执行）**：API 级在**网关**（CasbinAuth 中间件，对反代路由同样生效）；**行级必然在数据处**——行级判定等价于给属主查询加 WHERE，网关看不到属主库的行，**逻辑上不可能集中**。业界铁律：Google Zanzibar 的 Docs/Drive 内嵌 stub 自行发起 Check、K8s RBAC 在各 API server 执行、AWS IAM 策略集中但各服务是自己的 PEP、OPA bundle 集中分发 enforcement 分布执行——**没有任何系统把行级 PEP 放进网关**（Kong/Envoy+ext_authz 也只做认证+路由级）。
+- **PDP（策略决策）**：回答主体能否对对象执行动作；可以进程内，也可以集中引擎。当前身份/授权投影集中在zhuzhao，领域策略由资源模块负责，企业受管写主仍以UAA合同为准。旧activelist数据组全可见是历史接入范围，不覆盖后来R06敏感数据目标。
+- **PEP（执行决定）**：当前API入口有CasbinAuth，对象操作/列表查询仍须由资源所属模块落实检查和过滤。靠近数据执行不等于决策逻辑无法集中，也不排除网关调用对象级PDP；本项目当前不把全部领域判定塞入网关。旧“逻辑上不可能/没有任何系统”缺乏依据，退役；参考[Backstage资源条件下推](https://backstage.io/docs/permissions/plugin-authors/04-authorizing-access-to-paginated-data/)及[当前模型复评](authorization-model-and-engine-choice.md)。
 - **落地分工**：身份集中（外部服务不建 users/roles 表）＋ 行级归属主 + 网关用集中身份库管 API 级。「每个服务一套角色库」是把行级策略误当全套。
 
 ### 25.2 统一网关边界（zhuzhao）
@@ -1398,7 +1405,7 @@ type remoteUserQueryService struct {
 
 ### 25.4 ReBAC/PBAC 不演进（触发器见 11-authz §5）
 
-2026-09-03 评估：网关化/taskrunner/activelist 三场景**无一构成演进触发**——网关=路由级 RBAC（Casbin 已满足）；taskrunner=成员 EXISTS；activelist=行级自治（Zanzibar 系恰要求关系集中注册，与独立库决策正面冲突）。授权关系是树形（ltree），PG+SQL 判定有一致性/索引/可测试优势。命中 11-authz §5 触发器时演进 =「换 L2/L3 判定后端」（ResourceAuthorizer 接缝），L1 Casbin 不动；届时 OpenFGA（API 友好）与 SpiceDB（一致性选项多）二选一。
+**2026-09-03原结论保留标题供历史引用；2026-11-15后继改为“首版不迁移，按真实成本重评”**。当前PG/领域策略具备查询组合和维护成本优势，但集中授权关系可与独立业务库共存，不存在正面架构冲突。PBAC是策略表达/管理方式，可与角色和关系共用。规则治理、重复语义、跨对象关系、统一可见查询均可触发比较，不只接受旧触发表的成链/CEL信号。候选包括Casbin现有能力、Cerbos/OPA/Cedar与OpenFGA/SpiceDB，现有SQL接缝不能抹掉迁移成本。完整依据及有界评估见[模型复评§4–6](authorization-model-and-engine-choice.md#4-成熟工具如何选)，当前未批准引擎迁移。
 
 ### 25.5 前置功能清单（2026-09-04 校准：批次 A 降级触发驱动）
 
@@ -1419,8 +1426,8 @@ type remoteUserQueryService struct {
 
 ### 26.1 部署形态：不拆独立 IAM 服务，三步走
 
-- **Q5 推论（硬约束）**：L2/L3 每请求实时查询禁缓存——身份库若拆成远程服务，行级判定变热路径 RPC 或被迫缓存（违反 Q5），且 IAM 可用性耦合全站。**可拆的是认证/签发/策略管理平面，身份关系数据与行级判定永远跟数据同进程**（业界同构：K8s RBAC 在各 API server 执行、AWS 策略集中但各服务是自己的 PEP）。
-- **三步走（触发驱动，无专项工期）**：
+- **2026-11-15修正**：Q5约束当前授权新鲜度和缓存评审，不推出“身份关系与判定永远同进程”。远程PDP可选，但须承担时延、不可用、事实同步及撤权/提交一致性；进程内策略库也可独立治理。当前无独立IAM/PDP部署的首版需求，按[模型复评](authorization-model-and-engine-choice.md)逐步验证。
+- **历史三步走（当时建议，原迁工单/改名窗口已非当前实施承诺）**：
   ① **现在**：单体内画清 IAM 平面边界（身份平面 users/roles/orgs/rbac/resource registry vs 资源平面），包结构可辨识即可，doc/包注释级 ~半天；
   ② **M-SSO/M-HR 启动时**：认证平面独立（token 签发/验签 + JWKS 公钥分发）——§24 红线「SSO 只换认证不动鉴权」天然支持此切分；HR 同步使身份库成为同步枢纽，身份写路径收口到统一入口（为抽取做的最重要预整理）；
   ③ **M-Mig 窗口**：进内网 + 工单迁走 + 仓库改名（已定版合并执行）时，部署级拆分一次到位——届时 zhuzhao ≈ 网关+IAM+HR，「拆 IAM」≈改名换部署形态，手术最廉。
@@ -1436,8 +1443,8 @@ type remoteUserQueryService struct {
 
 ### 26.3 L2/L3 谓词归属与身份供给（两态接口的结构必然性）
 
-- **两态接口**：单对象判定 = `Resource.Authorize`（任意 Go 函数，领域逻辑不受限）；列表判定 = `GetFilter`（SQL 谓词）。列表**必须**谓词是结构必然：分页/计数须下推 DB（回调即全表进内存）、谓词可与业务条件组合、ltree GiST 索引依赖谓词形态。业界印证：PG RLS 即谓词；Oso data filtering（策略→SQL）是其官方承认的最难特性；SpiceDB/OpenFGA 只能返回 ID 集合（LookupResources）为公认规模短板。
-- **固定策略 = Builtin 库**（org-member/owner-only/role-gated，语义进代码）：换 DSL/YAML 策略文件的收益仅「运行时可配」（触发表 #3 未命中），代价 = 引擎依赖 + ltree 谓词表达不了 + 失编译期检查。
+- **两态接口**：当前单对象用`Resource.Authorize`，列表用`GetFilter` SQL谓词，保证权限与业务条件在分页/计数前组合。外置引擎可返回条件计划或可见对象集合，但仍须设计与数据源的组合、分页及总数；不预断它们必然无法扩展。当前SQL接缝不等于通用引擎可无感替换。
+- **固定策略 = Builtin/领域Resource**：当前语义随代码发布合适；DSL/YAML的收益也可能是审查、解释和跨模块复用，不限于运行时可配。Casbin/Cerbos/OPA/Cedar的表达与SQL下推范围各异，必须验证现有ltree/关联查询；不再用“表达不了/没有编译检查”一概否决，详见[模型复评§4](authorization-model-and-engine-choice.md#4-成熟工具如何选)。
 - **谓词不下沉 IAM 三理由**：①依赖方向——谓词读业务数据，IAM 写业务策略 = 平台依赖业务倒置；②策略的家=数据的家（§25.3）——表迁走策略随行，模块为干净抽取单元；③领域知识局部性——集中则 IAM 反向 import 全部业务。
 - **模块不接用户数据**：身份经两条路到达判定——ctx 透传（userID + `RolesFromContext`）+ 窄接口注入（`ScopeResolver`/`OrgDelegationChecker`/Membership 闭包，Wire 装配）；全仓唯身份域模块读 users/roles/orgs 表。业界同构：Spring Security/Pundit 均注入 Principal + 窄查询。
 
@@ -1452,7 +1459,7 @@ type remoteUserQueryService struct {
 
 > 引用注记（2026-09-09）：11-authz §5 触发表源表无编号列，本文 #N 均为行序引用；本墙信号横跨 #1（跨资源关系链）与 #5（统一 PDP/语义漂移）两条——原仅标 #5 系引用不完整，已补 #1 并改为名称引用。若后续对触发表增删行，须同步核对 §26.3（#3）与本表引用。
 
-**结论**：到「星型拓扑 + 单信任域 + ≤10 服务 + 每服务行级自治」整段，现设计**就是终态形态本身**（权限平面分工/注册协议/服务基线自 §25 定版起按终态规格施工），不存在中途推翻断层；四墙各有信号与预制件，无提前拆墙项。
+**2026-11-15结论修正**：当前模块化单体/少量独立执行服务可继续使用现有边界，但服务数量不能证明“终态”或未来无返工。四墙是历史风险提示；规则重复、关系与查询成本、真实组织治理需求和可运维性决定何时重评。阶段以现行Phase6计划及[模型复评§6](authorization-model-and-engine-choice.md#6-分阶段处理保持既有核心排期)为准。
 
 ### 26.5 配套登记（2026-09-08）
 

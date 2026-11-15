@@ -101,6 +101,10 @@ OBS01同时覆盖主仓`AuditLog`的`io.ReadAll`有限内存及原body重放语�
 
 ## 6. 审计可靠性、并发和存储预算
 
+**审计接缝的两种适配不混用（2026-11-15）**：本地必要事实由内部typed AuditFactWriter接原业务service持有的DBTX，同事务写受控事件；外送collector/export adapter只读已持久事实并按稳定producer/event身份投递。审计外送失败不重做业务，Hook/新MQ不替代本地原子事实。私有扩展可报其自己拥有的事实，但生产方由服务凭据/目录绑定、event类型/字段白名单及归因来源受检，不能伪造核心“授权已生效/工单已提交”。不公开普通用户可任填actor/outcome的万能audit写API；两IAM强审计失败政策仍待原问题确认，不因定义Port而自动启用。
+
+OBS01增加具体旧入口`NotificationService.NotifyDeadLetter`：脱敏url字段同时仍原样记录error，`webhook.Client.Post`返回的`url.Error`可能再包含query秘密。只记安全reason/允许错误类别，对整条error链做同等去敏，不能只调用一次maskURL就视为完成。OBS02/D15的当前资源投影亦须覆盖既有`InboxService.Inbox`的标题快照、list/total/角标，不只覆盖未来audit页面；保留历史收件事实与当前可见内容的区分。合成反例及边界见[核心专项](../review/reports/core-interaction-architecture-review-2026-11-15.md)，未证明真实公司凭据曾外泄或真实渠道已接通。
+
 本地强审计最低合同：同事务业务成功事实与audit row共享commit；失败不留假成功。事实ID/版本/允许diff/actor由服务构造；当前授权锁序与C04一致。提交响应丢失/commit结果未知按operation/领域receipt查询，不重复执行业务以“补审计”；幂等重放可记录读取尝试，但原成功事实不换号。
 
 外送现有采集/审计平台时，本地durable row或原可靠outbox是来源，ACK只推进该副本水位。外送重试按`producer + event_id`去重，原始发生时间与观察时间分开；不能先推进checkpoint再保存数据，不能通过collector的2xx证明业务效果。I03/R01/CE已有传递主不变，OBS只增加审计投影和受控输出。

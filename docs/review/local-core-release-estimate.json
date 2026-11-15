@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "status": "bounded_local_core_net_estimate_candidate_not_calendar_commitment",
   "scope_owner_policy": "local-first formal operation allowed; quality and usability take precedence over January target; full UAA P/R follow core",
   "source_followup": "F013-local-first-quality-and-UAA-later",
@@ -31,7 +31,15 @@
             "internal/repository/ticket_repo.go#CreateTx"
           ],
           "excludes": "风险/AL本域行字段与动作策略由R2/TD3计；完整HR/企业投影后移；已有审计写作不收费",
-          "tests": "授权先判后撤权再提交、撤权先提交旧决定拒写、DB提交后LoadPolicy/会话失效失败不留无限旧权、直接/组织/继承源不复活、锁序和事务回滚；不将已有三层冒称这些反例已实现"
+          "tests": "授权先判后撤权再提交、撤权先提交旧决定拒写、DB提交后LoadPolicy/会话失效失败不留无限旧权、直接/组织/继承源不复活、锁序和事务回滚；不将已有三层冒称这些反例已实现",
+          "authorization_gap_actions": [
+            "AUTH-GAP-01",
+            "AUTH-GAP-02",
+            "AUTH-GAP-03",
+            "AUTH-GAP-04"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "S2",
@@ -45,7 +53,12 @@
             "internal/service/jobs_callback.go#JobsCallbackService.Execute",
             "internal/pkg/domainevent/registry.go#HookRegistry"
           ],
-          "excludes": "AL本库效果receipt、AL源outbox/核心AL订阅inbox、消息业务记录及各域接线分别在TD/AD/MH计；Hook不冒充持久队列"
+          "excludes": "AL本库效果receipt、AL源outbox/核心AL订阅inbox、消息业务记录及各域接线分别在TD/AD/MH计；Hook不冒充持久队列",
+          "authorization_gap_actions": [
+            "AUTH-GAP-02"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "S3",
@@ -59,7 +72,12 @@
             "internal/service/ticket/attachment_bind_integration_test.go",
             "internal/middleware/audit.go#AuditLog"
           ],
-          "excludes": "AL监控类型限制在TD4；通用公式框架/全配置迁版/全域OBS新平台后移，实际必需则具名补估；两IAM强审计失败政策仍待答"
+          "excludes": "AL监控类型限制在TD4；通用公式框架/全配置迁版/全域OBS新平台后移，实际必需则具名补估；两IAM强审计失败政策仍待答",
+          "authorization_gap_actions": [
+            "AUTH-GAP-04"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         }
       ],
       "allocation_refs": [
@@ -105,7 +123,12 @@
             "internal/service/ticket/authz_resource_integration_test.go: TestTicket_R4_InvisibleReturns404/TestTicket_R6_VisibleNotOwner_403 (fixture patterns)"
           ],
           "tests": "Risk manager, processor, read-only, CC, unrelated same-org user; no count/existence leakage, direct POST denial, revoked actor cannot dispatch/review.",
-          "package_allocation": "Risk-specific D08/D09 and applicable D03 output; no entire D03 type-visibility overhaul or shared epoch/lock framework."
+          "package_allocation": "Risk-specific D08/D09 and applicable D03 output; no entire D03 type-visibility overhaul or shared epoch/lock framework.",
+          "authorization_gap_actions": [
+            "AUTH-GAP-03"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "R3",
@@ -190,7 +213,12 @@
             3
           ],
           "deliverable": "Core backend typed AL port/client and selected read/write projection; enforce current row/field/target qualification through root authorization interface on submit, execution and result reads",
-          "excludes": "building shared IAM or general AL policy editor"
+          "excludes": "building shared IAM or general AL policy editor",
+          "authorization_gap_actions": [
+            "AUTH-GAP-03"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "TD04",
@@ -208,7 +236,14 @@
             4
           ],
           "deliverable": "Domain PG/HTTP/TR integration cases: lost submit/response, duplicate and differing payload, CAS conflict, revocation, old result, interrupted effect/projection, restart, unauthorized row/field and bypass attempts",
-          "excludes": "final end-to-end/browser suite and full shared common regression"
+          "excludes": "final end-to-end/browser suite and full shared common regression",
+          "authorization_gap_actions": [
+            "AUTH-GAP-02",
+            "AUTH-GAP-03",
+            "AUTH-GAP-04"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         }
       ],
       "reuse": [
@@ -449,7 +484,12 @@
             2
           ],
           "deliverable": "At send/execute and message-read time, recheck current recipient authorization and apply minimum authorized field projection/redaction to the owner/candidate notification facts supplied by the risk/ticket domain, using root IAM/evidence interfaces",
-          "excludes": "Risk R3 owns owner/responsibility resolution and minimum notification-candidate facts; do not reimplement or charge that risk-domain resolution here. Common IAM and unlimited notification policy/editor are excluded."
+          "excludes": "Risk R3 owns owner/responsibility resolution and minimum notification-candidate facts; do not reimplement or charge that risk-domain resolution here. Common IAM and unlimited notification policy/editor are excluded.",
+          "authorization_gap_actions": [
+            "AUTH-GAP-03"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "MH03",
@@ -757,7 +797,13 @@
             "docs/phase6/implementation-handoff.md",
             "docs/standards.md"
           ],
-          "excludes": "各域专用case、UI浏览器case已在各包，只计整合与额外接缝组合"
+          "excludes": "各域专用case、UI浏览器case已在各包，只计整合与额外接缝组合",
+          "authorization_gap_actions": [
+            "AUTH-GAP-04",
+            "AUTH-GAP-05"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         },
         {
           "id": "Q2",
@@ -771,7 +817,12 @@
             "docs/review/reports/version-modernization-2026-11-12.md",
             "docs/design/component-upgrade-data-contract.md"
           ],
-          "excludes": "不重做Go/Node/PG/Redis升级；不承诺全HA/PITR；外部审批/放通/等待不算工程日；真实消息映射单列MR，不藏在此包"
+          "excludes": "不重做Go/Node/PG/Redis升级；不承诺全HA/PITR；外部审批/放通/等待不算工程日；真实消息映射单列MR，不藏在此包",
+          "authorization_gap_actions": [
+            "AUTH-GAP-05"
+          ],
+          "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
         }
       ],
       "allocation_refs": [
@@ -947,5 +998,23 @@
     ],
     "old_parent_and_UAA_price_registries_unchanged": true,
     "revised_range_is_still_candidate_not_forced_deadline": true
+  },
+  "authorization_gap_binding": {
+    "ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+    "source_followup": "F016-authorization-gap-closure-plan",
+    "required_actions": [
+      "AUTH-GAP-01",
+      "AUTH-GAP-02",
+      "AUTH-GAP-03",
+      "AUTH-GAP-04",
+      "AUTH-GAP-05"
+    ],
+    "later_actions": {
+      "AUTH-GAP-06": "before actual multi-replica activation; single-instance failure/recovery remains required",
+      "AUTH-GAP-07": "first trial feedback and P6.3/P7 decision; actual engine work separately estimated"
+    },
+    "price_numbers_changed": false,
+    "estimate_status": "existing_candidate_requires_deduplicated_module_subestimates",
+    "rule": "S1/各域/薄UI/G04/E09按已消费范围扣重；Q1只整合接缝。原68–104仍候选，有净增先改账，不称新增动作免费或已实现。"
   }
 }

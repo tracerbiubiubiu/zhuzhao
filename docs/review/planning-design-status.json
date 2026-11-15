@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13",
+  "date": "2026-11-15",
   "levels": {
     "detailed_contract_candidate": "已写数据/状态/授权/并发/恢复/验收的详设候选，未全冻结也未实施",
     "component_contract_and_representative_prototype": "组件/旅程合同与离线代表样板，非全站成品",
@@ -7,10 +7,8 @@
     "boundary_contract_or_disposition": "已明确范围、写主、依赖/窗口与退出，远期详设未全部完成"
   },
   "summary": {
-    "detailed_contract_candidate": 38,
-    "boundary_contract_or_disposition": 31,
-    "component_contract_and_representative_prototype": 5,
-    "boundary_and_page_inventory": 2
+    "detailed_contract_candidate": 51,
+    "boundary_contract_or_disposition": 25
   },
   "work_items": [
     {
@@ -18,30 +16,44 @@
       "wave": "P6.0",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "G02",
       "wave": "P6.0",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "G03",
@@ -49,17 +61,26 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "无UAA独立回归与企业合成adapter同一核心组合；公司秘密不入CI，接线/P用例不重计，超原估算复估。",
-        "本轮企业用例实接线1–2日在P-PC01计；G03先交框架，P企业用例pending不阻G03完成，也不伪报UAA通过。"
+        "本轮企业用例实接线1–2日在P-PC01计；G03先交框架，P企业用例pending不阻G03完成，也不伪报UAA通过。",
+        "装配守卫须核实际可靠consumer与来源，不把Hook/ticket_events当已建outbox；所选旧参考消费者对新core运行，不只核伪DTO。"
       ],
-      "next_design_gate": "P6.0；双模式公共交付时追加组合接线"
+      "next_design_gate": "P6.0；双模式公共交付时追加组合接线",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "G04",
@@ -67,17 +88,40 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "中央撤权或投影过期且AS/grant有效的反例，各入口按包回归；独立模式不检查UAA。",
-        "本轮P-PQ01固定1日计覆盖选择/独立回读/证据回填；原质量基线4–7不因本轮再次加价。"
+        "本轮P-PQ01固定1日计覆盖选择/独立回读/证据回填；原质量基线4–7不因本轮再次加价。",
+        "首个消费者有deadline/大小/provider速率和inflight/批量积压硬限及恢复指标；全共享预算/多副本/新broker在对应启用窗。",
+        "新确认探针与目标安全回归分开：role GET/POST来源保持、任职属性往返、UI慢/失败/换目标、avatar归属、附件用途；不用重复8轮错误前提给TR retry假阳性背书。",
+        "HIER-01–12作为随模块启用的有界TDD场景；先红后绿，复用既有FND/AUTH/RECHECK，不预写所有未来产品或另造权限引擎。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.1；UAA公共及后继AI渠道启用时"
+      "next_design_gate": "P6.1；UAA公共及后继AI渠道启用时",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "hierarchy_scenarios": [
+        "HIER-01–12 as activated by owner module"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-07"
+      ]
     },
     {
       "work_item": "G05",
@@ -102,45 +146,68 @@
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "C01",
       "wave": "P6.0",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "C02",
       "wave": "P6.0",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "RECHECK-04/05补头像旧对象退役合法归属与附件先关联后用途提示；条件性/低影响边界随现有对象生命周期收口，已绑定他人头像和跨票读控制保留。"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "C03",
@@ -149,15 +216,24 @@
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/design/cross-repo-execution-contract.md",
-        "docs/design/schedule-recovery-policy.md"
+        "docs/design/schedule-recovery-policy.md",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "核心专项六组现状反例已确认但未修；C03仍负责严格完成/同号异参/claim与Finish故障/稳定cron及精确输入，不新造MQ包。"
       ],
-      "next_design_gate": "P6.0合同窗口"
+      "next_design_gate": "P6.0合同窗口",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/task-activelist-message-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "C04",
@@ -165,107 +241,205 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
-        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。",
+        "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
+        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
+        "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。",
+        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前"
+      "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "hierarchy_scenarios": [
+        "HIER-01",
+        "HIER-02",
+        "HIER-04",
+        "HIER-05",
+        "HIER-06",
+        "HIER-07",
+        "HIER-08",
+        "HIER-09",
+        "HIER-11"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01",
+        "AUTH-GAP-02",
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-06"
+      ]
     },
     {
       "work_item": "C05",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/engineering-execution-design.md"
+        "docs/design/engineering-execution-design.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
+      ]
     },
     {
       "work_item": "D01",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D02",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D03",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/ticket-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "AUTH-01组织scope/委托生命周期与AUTH-04现有ticket_relations双端当前read过滤；撤CC后不可回对端ID及关系元数据，正式使用前转产品回归。",
+        "HIER-02/05/10：多任职scope、透明读/虚拟组挂载与类型参与策略相交，group/all/ancestor owner不越类型；普通只读不附动作权。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "hierarchy_scenarios": [
+        "HIER-02",
+        "HIER-05",
+        "HIER-10"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-03",
+        "AUTH-GAP-04"
+      ]
     },
     {
       "work_item": "D04",
       "wave": "P6.1",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D05",
       "wave": "P6.3",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D06",
@@ -273,125 +447,227 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
-        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。"
+        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
+        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。",
+        "RECHECK-03：相同组织集合保存不隐式重设role/scope/source/expiry/joined_at；新增/移除按单写主及owner清理，HR/UAA未接也先修本地往返。",
+        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C"
+      "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/foundation-iam-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "hierarchy_scenarios": [
+        "HIER-03",
+        "HIER-04",
+        "HIER-12"
+      ],
+      "authorization_gap_actions": [
+        "AUTH-GAP-01"
+      ]
     },
     {
       "work_item": "D07",
       "wave": "P6.2",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.2开工前"
+      "next_design_gate": "P6.2开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D08",
       "wave": "P6.2",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.2开工前"
+      "next_design_gate": "P6.2开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D09",
       "wave": "P6.2",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.2开工前"
+      "next_design_gate": "P6.2开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D10",
       "wave": "P6.2",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
-        "UX02责任口径已确认，R3上线同批接复核投影与计数/列表/角标同源反例，不推迟到U06或未来通用待办"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "UX02责任口径已确认，R3上线同批接复核投影与计数/列表/角标同源反例，不推迟到U06或未来通用待办",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.2开工前"
+      "next_design_gate": "P6.2开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D11",
       "wave": "P6.3",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/ticket-module-detail.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D12",
       "wave": "P6.3",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "首个敏感任务profile启用时，旧GetTask/ListRuns/ListJobs/Cancel/Retry/Trigger/DeadLetters及artifact/logs与新receipt同受当前资源权限；批准的非敏感共享profile保留。",
+        "旧callback实际是执行请求，不是结果通知；分执行/结果投影接口和原receipt状态，不能按任意2xx回贴成功。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/task-activelist-message-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "D13",
       "wave": "P6.E",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/risk-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.E开工前"
+      "next_design_gate": "P6.E开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D14",
@@ -400,133 +676,205 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/soc-collaboration-authorization.md"
+        "docs/design/soc-collaboration-authorization.md",
+        "docs/phase6/risk-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "本轮已交精确候选Schema与可执行参考模型/反例；产品DTO/DDL/真实提供方、完整当前批测试及多实例/恢复实现按本包开工窗冻结验证，不把模型称企业联调。",
         "B09已确认：来源陈旧下获授权协调者显式确认并填理由后可人工本地协作，自动派单暂停；产品接线/当前授权及来源标记仍须实现，真实SOC依I04供给条件。"
       ],
       "next_design_gate": "P6.E开工前",
-      "reference_audit_state": "bounded_reference_executed_not_product_implementation"
+      "reference_audit_state": "bounded_reference_executed_not_product_implementation",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U01",
       "wave": "P6.0",
-      "design_depth": "component_contract_and_representative_prototype",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "UX01默认壳层与UX02责任口径已确认；真实Vue现态路由/权限呈现已有全站基线审计，不等于U01修复。安全落点/Logo/空业务菜单仍待产品改造及改后真实路由/后端权限回归，不能因方向确认或现态审查标实现完成"
       ],
-      "next_design_gate": "P6.0开工前"
+      "next_design_gate": "P6.0开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U02",
       "wave": "P6.1",
-      "design_depth": "component_contract_and_representative_prototype",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
         "docs/review/reports/frontend-first-baseline-2026-11-12.md",
         "docs/design/uaa-governance-integration.md",
-        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json"
+        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "全27路由基线与6项真实Vue样板已审；产品tokens/共享组件、资格呈现和规则TDZ等仍待实施，改后按角色/明暗/键盘/缩放及真实权限回归。",
         "R3复核统计随D10同批；UAA最小登录/治理UI由P/R，CE/LS新UI另计，不重复吞入。"
       ],
       "next_design_gate": "P6.1原样板窗口",
-      "reference_audit_state": "bounded_reference_executed_not_product_implementation"
+      "reference_audit_state": "bounded_reference_executed_not_product_implementation",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U03",
       "wave": "P6.3",
-      "design_depth": "component_contract_and_representative_prototype",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "首页UX01/UX02已确认不等于工单列表/详情各页已完成；批量标签/选择/附件等生产组件与真实权限/异常接线、页面验证仍待实施评审"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U04",
       "wave": "P6.3",
-      "design_depth": "boundary_and_page_inventory",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "配置设计器/系统管理/AL/消息等逐页生产组件详设及真实状态接线，代表原型不能覆盖全部页"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U05",
       "wave": "P6.3",
-      "design_depth": "component_contract_and_representative_prototype",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md"
+        "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "UX03方向已确认；真实Vue现态与合成响应、窄屏/亮暗/原生缩放已列全站审计证据；首期本机元数据/明确重查的产品改造、真实Provider响应及改后并发/错误/权限回归仍未验。跨端历史在TI接入窗口独立评审，不把现态样例审查当新功能完成"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U06",
       "wave": "P6.3",
-      "design_depth": "boundary_and_page_inventory",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
         "docs/design/uaa-governance-integration.md",
-        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json"
+        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+        "docs/phase6/ticket-module-detail.md",
+        "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+        "docs/design/rbac-inheritance-and-cascade.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "全站范围及逐页观察/改造/验收已补；实际21既有页按12–19日迁移，改后逐页运行回归，不用报告代替成品。",
-        "工单/配置5页及情报页由U03/U04/U05，CmdK/LS及UAA/CE新增UI另计。"
+        "工单/配置5页及情报页由U03/U04/U05，CmdK/LS及UAA/CE新增UI另计。",
+        "RECHECK-02系统用户授权编辑安全子出口随C04前移：loading/error零POST、迟到不串目标；全站视觉整包窗口不变，需真实浏览器故障/延迟回归。",
+        "HIER-09/11必要薄IAM反馈随C04/D03/D06安全子出口前移；既有系统管理页/树形展示的全站视觉迁移仍本包，不吞完整来源台或UAA P/R最小UI。"
       ],
       "next_design_gate": "P6.3全站视觉；企业最小链不等本包",
-      "reference_audit_state": "bounded_reference_executed_not_product_implementation"
+      "reference_audit_state": "bounded_reference_executed_not_product_implementation",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "hierarchy_scenarios": [
+        "HIER-09",
+        "HIER-11"
+      ]
     },
     {
       "work_item": "U07",
       "wave": "P6.1",
-      "design_depth": "component_contract_and_representative_prototype",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json"
+        "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "本轮243基础/27原生缩放/54语义等基线与真实Vue样板已验；未来修改需按新设计重建断言和逐页视觉/键盘/对比度/角色及真实栈回归，非可访问性全认证。"
       ],
       "next_design_gate": "P6.1开工前",
-      "reference_audit_state": "bounded_reference_executed_not_product_implementation"
+      "reference_audit_state": "bounded_reference_executed_not_product_implementation",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "I01",
@@ -552,13 +900,15 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "接入新敏感任务前核D12/CE03存量入口权限迁移，不能把旧共享队列视为通用对象授权。"
       ],
       "next_design_gate": "P7开工前"
     },
@@ -602,15 +952,22 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/ai-invocation-contract.md",
-        "docs/design/ai-capabilities.md"
+        "docs/design/ai-capabilities.md",
+        "docs/phase6/extension-ai-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.0合同窗口"
+      "next_design_gate": "P6.0合同窗口",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/extension-ai-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "A02",
@@ -618,15 +975,22 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/ai-invocation-contract.md",
-        "docs/design/ai-capabilities.md"
+        "docs/design/ai-capabilities.md",
+        "docs/phase6/extension-ai-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/extension-ai-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "A03",
@@ -718,15 +1082,24 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/cross-repo-execution-contract.md"
+        "docs/design/cross-repo-execution-contract.md",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "明确执行请求、事实收件ACK、结果投影及消息送达各用途；复用TR/Redis＋源事务intent/逐consumer去重，有界poller不替代业务调度或领域写主。"
       ],
-      "next_design_gate": "P6.1开工前"
+      "next_design_gate": "P6.1开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/task-activelist-message-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "R02",
@@ -801,15 +1174,20 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P7开工前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-03"
+      ]
     },
     {
       "work_item": "R07",
@@ -851,15 +1229,18 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P7开工前"
+      "next_design_gate": "P6.3出口先完成范围/供给裁决；P7实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.3出口"
     },
     {
       "work_item": "E03",
@@ -868,15 +1249,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.3出口"
     },
     {
       "work_item": "E04",
@@ -885,15 +1269,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.E出口"
     },
     {
       "work_item": "E05",
@@ -918,15 +1305,18 @@
       "design_refs": [
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
-        "docs/design/project-evolution-strategy.md"
+        "docs/design/project-evolution-strategy.md",
+        "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "本期早期裁决与后期实现分开，不能因wave较晚推迟decision_due；准确出口见docs/phase6/module-detail-index.md。",
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
-      "next_design_gate": "P8开工前"
+      "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
+      "decision_gate": "P6.E出口"
     },
     {
       "work_item": "E07",
@@ -934,15 +1324,20 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P9开工前"
+      "next_design_gate": "P9开工前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-07"
+      ]
     },
     {
       "work_item": "E08",
@@ -969,47 +1364,70 @@
         "docs/design/platform-evolution.md",
         "docs/review/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
-        "docs/design/uaa-governance-integration.md"
+        "docs/design/uaa-governance-integration.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成",
-        "实际版本/环境验恢复/TLS边界及故障可见；企业再附R，独立不等公司资源。"
+        "实际版本/环境验恢复/TLS边界及故障可见；企业再附R，独立不等公司资源。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "P7全包；公共生产硬门在任何模式首次生产前"
+      "next_design_gate": "P7全包；公共生产硬门在任何模式首次生产前",
+      "authorization_gap_actions": [
+        "AUTH-GAP-05",
+        "AUTH-GAP-06",
+        "AUTH-GAP-07"
+      ]
     },
     {
       "work_item": "D15",
       "wave": "P6.2",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "通知唯一键加source及rule_id/version，SendRequest绑定EventRef；存量inbox标题/list/total/角标迁移当前对象字段投影，保留历史收件事实。"
       ],
-      "next_design_gate": "P6.2开工前"
+      "next_design_gate": "P6.2开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "D16",
       "wave": "P6.3",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/review/planning-backlog.json",
+        "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/ticket-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "G07A",
@@ -1018,14 +1436,14 @@
       "design_refs": [
         "docs/design/dependency-modernization.md",
         "docs/design/component-upgrade-data-contract.md",
-        "docs/review/reports/version-modernization-2026-11-12.md"
+        "docs/review/reports/version-modernization-2026-11-12.md",
+        "docs/review/reports/main-verification-2026-11-14.md"
       ],
-      "implementation_state": "locally_validated_pending_pr_main",
+      "implementation_state": "main_merged_dev_test_validated_not_production",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "统一PR/main承接、远端CI与amd64实跑；实际共享环境切换按数据契约另验",
-        "G05首次生产的SBOM/整镜像漏洞与完整PITR仍是独立硬门，不由本轮演练代销"
+        "已批准升级与后继修复已在五仓main并完成新版开发/测试验证；首次正式部署另验实际制品、TLS/秘密/恢复和适用G05/E09硬门，不重复升级计价。"
       ],
       "next_design_gate": "实际环境切换前复核当时补丁、备份可恢复及停写/回退窗口",
       "execution_window": "before_phase6_business",
@@ -1038,14 +1456,14 @@
       "design_refs": [
         "docs/design/dependency-modernization.md",
         "docs/design/component-upgrade-data-contract.md",
-        "docs/review/reports/version-modernization-2026-11-12.md"
+        "docs/review/reports/version-modernization-2026-11-12.md",
+        "docs/review/reports/main-verification-2026-11-14.md"
       ],
-      "implementation_state": "locally_validated_pending_pr_main",
+      "implementation_state": "main_merged_dev_test_validated_not_production",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "统一PR/main承接、远端CI与amd64实跑；实际共享环境切换按数据契约另验",
-        "G05首次生产的SBOM/整镜像漏洞与完整PITR仍是独立硬门，不由本轮演练代销"
+        "已批准升级与后继修复已在五仓main并完成新版开发/测试验证；首次正式部署另验实际制品、TLS/秘密/恢复和适用G05/E09硬门，不重复升级计价。"
       ],
       "next_design_gate": "实际环境切换前复核当时补丁、备份可恢复及停写/回退窗口",
       "execution_window": "before_phase6_business",
@@ -1058,20 +1476,29 @@
       "design_refs": [
         "docs/design/extension-compatibility.md",
         "docs/design/uaa-governance-integration.md",
-        "docs/design/foundation-release-boundaries.md"
+        "docs/design/foundation-release-boundaries.md",
+        "docs/phase6/extension-ai-module-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
-        "扩展来源和撤权继承UAA合同，独立模式不要求企业配置；私有服务仍做本域鉴权。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "扩展来源和撤权继承UAA合同，独立模式不要求企业配置；私有服务仍做本域鉴权。",
+        "HMAC时间窗无nonce且query未签、Operator只是服务声明；逐请求ref不作授权缓存，明确准入前后/分页间撤权与有界在途读，不承诺跨库原子撤权。"
       ],
       "next_design_gate": "P6.0合同；身份/授权部分先过E01-UAA-C",
       "delivery_slices": {
         "X01-C": "P6.0合同2–3日",
         "X01-B": "P6.1基础配置式登记/身份/授权/导航/停用3–4日",
         "X01-H": "P7完整宿主治理3–5日，不挡B1"
+      },
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/extension-ai-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
       }
     },
     {
@@ -1081,19 +1508,28 @@
       "design_refs": [
         "docs/design/intranet-adapter-migration.md",
         "docs/design/uaa-governance-integration.md",
-        "docs/design/foundation-release-boundaries.md"
+        "docs/design/foundation-release-boundaries.md",
+        "docs/phase6/extension-ai-module-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认",
-        "企业三feed与目录feed按来源/集合独立；真实未知不阻塞合成connector，adapter不直写核心库。"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "企业三feed与目录feed按来源/集合独立；真实未知不阻塞合成connector，adapter不直写核心库。",
+        "首个公共Port/schema、DI/client和外置配置/只读挂载必须实际可切endpoint/profile；纯query与feed分开，完整宿主/通用query不免费塞入首版本地范围。"
       ],
       "next_design_gate": "P6.1；X02-F身份/授权部分先过E01-UAA-C",
       "delivery_slices": {
         "X02-Q": "P6.1 query，独立依X01-C，不继承完整D06/feed",
         "X02-F": "P6.1按所选同步方向交付来源/水位/当前授权，保留适用前置"
+      },
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/extension-ai-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
       }
     },
     {
@@ -1101,30 +1537,45 @@
       "wave": "P6.3",
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/device-module-contract.md"
+        "docs/design/device-module-contract.md",
+        "docs/phase6/extension-ai-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "实施前冻结准确DTO/schema、迁移/代码切片与对应门禁；涉及owner政策按决策册先确认"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
       ],
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/extension-ai-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "E10",
       "wave": "P6.1",
-      "design_depth": "boundary_contract_or_disposition",
+      "design_depth": "detailed_contract_candidate",
       "design_refs": [
-        "docs/design/business-lifecycle-contracts.md"
+        "docs/design/business-lifecycle-contracts.md",
+        "docs/phase6/risk-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
         "已计2–4日仅调查/触发核验与裁决，应在P6.1出口完成，不等待D08/D10实施；风险Excel保留已确认条件需求。获选实际导入/merge在P6.E另估、逐项验收，未选整套产品不计入当前包干。"
       ],
-      "next_design_gate": "P6.1出口；获选实际建设在P6.E独立子窗"
+      "next_design_gate": "P6.1出口；获选实际建设在P6.E独立子窗",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/risk-module-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      }
     },
     {
       "work_item": "U08",
@@ -1192,15 +1643,32 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "AUTH-02维护action明确执行主体/受控保留期，AUTH-06 Job/消息规则created_by由可信context产生；旧入口最小修复不等完整CE03。",
+        "核心专项确认调用统一是逻辑用例归属而非万能HTTP/callback；共用schema/身份/关联和限额，逐能力迁移实际入口。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
+      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/task-activelist-message-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ]
     },
     {
       "work_item": "CE02",
@@ -1208,15 +1676,30 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+        "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "按共同合同§2.4/2.5接线；结果投影失败不重做效果，已受理不等于完成；C03现状风险不开旧捷径给内部入口。",
+        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
-      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
+      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
+      "module_detail_status": {
+        "date": "2026-11-14",
+        "ref": "docs/phase6/task-activelist-message-detail.md",
+        "state": "reviewed_candidate_not_implemented",
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "authorization_gap_actions": [
+        "AUTH-GAP-02"
+      ]
     },
     {
       "work_item": "CE03",
@@ -1224,13 +1707,17 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "本地核心已取的敏感子出口同步迁移旧TR任务读写/结果入口，先过滤后分页/total；整包仍P7，不延迟AUTH-02维护职责修复。",
+        "P7整包不遮首版本地已前移链B选定子出口，core/AL各管本库receipt和当前权限；不开任意私有后台写。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
     },
@@ -1240,13 +1727,15 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
-        "docs/design/capability-interconnect-detail.md"
+        "docs/design/capability-interconnect-detail.md",
+        "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true"
+        "已补盘点/合同/净估/排程；准确DTO、迁移与负例仍须当前批测试先行冻结；runtime_verified不得从规划推断为true",
+        "持久事实以可信(source,event_id)定位；首版一源/只读后继，复杂回放和更多消费者后继，不因多用途callback预建broker。"
       ],
       "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
     },
@@ -1272,8 +1761,8 @@
       "G07A",
       "G07B"
     ],
-    "main_integration": "included_in_owner_approved_five_PR_sync; actual_result_in_PR_merge_records",
-    "shared_environment_switch": "not_performed",
+    "main_integration": "five_repositories_main_merged_and_verified_2026-11-14",
+    "shared_environment_switch": "dev_test_rebuilt_2026-11-14; later_verification_fixes_tested_in_isolated_runtime; no_production_deployment",
     "business_implementation": "not_started"
   },
   "uaa_provider_status": {
@@ -1311,7 +1800,7 @@
   ],
   "scope_counts": {
     "parent_work_items": 76,
-    "official_child_milestones": 16,
+    "official_child_milestones": 17,
     "legacy_additional_scope_tasks": 6,
     "release_slices": 13
   },
@@ -1322,7 +1811,9 @@
       "wave": "P6.3",
       "priced": true,
       "implemented": false,
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_ref": "docs/phase6/ticket-module-detail.md",
+      "module_detail_state": "detailed_contract_candidate_not_implemented"
     },
     {
       "id": "LS02",
@@ -1330,7 +1821,9 @@
       "wave": "P6.3",
       "priced": true,
       "implemented": false,
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_ref": "docs/phase6/ticket-module-detail.md",
+      "module_detail_state": "detailed_contract_candidate_not_implemented"
     },
     {
       "id": "LS03",
@@ -1338,7 +1831,9 @@
       "wave": "P6.3",
       "priced": true,
       "implemented": false,
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_ref": "docs/phase6/ticket-module-detail.md",
+      "module_detail_state": "detailed_contract_candidate_not_implemented"
     },
     {
       "id": "LS04",
@@ -1346,7 +1841,9 @@
       "wave": "P6.3",
       "priced": true,
       "implemented": false,
-      "next_design_gate": "P6.3开工前"
+      "next_design_gate": "P6.3开工前",
+      "module_detail_ref": "docs/phase6/ticket-module-detail.md",
+      "module_detail_state": "detailed_contract_candidate_not_implemented"
     },
     {
       "id": "LS05",
@@ -1371,11 +1868,11 @@
   "latest_delivery_boundary_ref": "docs/phase6/first-usable-release-plan.md",
   "latest_delivery_boundary_date": "2026-11-14",
   "module_refinement_entry": {
-    "ref": "docs/phase6/module-design-handoff.md",
+    "ref": "docs/phase6/module-detail-index.md",
     "source_followup": "F013-local-first-quality-and-UAA-later",
-    "state": "handoff_ready_not_all_module_design_frozen",
+    "state": "phase6_module_candidates_written_not_all_implementation_artifacts_frozen",
     "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_later",
-    "existing_item_maturity_not_reclassified": true,
+    "existing_item_maturity_not_reclassified": false,
     "net_estimate_candidate_ref": "docs/review/local-core-release-estimate.json",
     "full_UAA_P_R_not_local_core_formal_gate": true
   },
@@ -1405,5 +1902,261 @@
     "approved_source_scope": "latest_plan_and_already_validated_runtime_upgrade",
     "business_implementation_authorized": false,
     "deployment_authorized": false
+  },
+  "phase6_module_detail": {
+    "date": "2026-11-14",
+    "objective": "对Phase6按模块补充和调整详细设计，结合业界实践，覆盖正常及常见异常场景",
+    "index_ref": "docs/phase6/module-detail-index.md",
+    "current_p6_parent_count": 44,
+    "detailed_parent_candidates": [
+      "A01",
+      "A02",
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "CE01",
+      "CE02",
+      "D01",
+      "D02",
+      "D03",
+      "D04",
+      "D05",
+      "D06",
+      "D07",
+      "D08",
+      "D09",
+      "D10",
+      "D11",
+      "D12",
+      "D13",
+      "D14",
+      "D15",
+      "D16",
+      "E10",
+      "G01",
+      "G02",
+      "G03",
+      "G04",
+      "G06",
+      "R01",
+      "U01",
+      "U02",
+      "U03",
+      "U04",
+      "U05",
+      "U06",
+      "U07",
+      "X01",
+      "X02",
+      "X03"
+    ],
+    "already_delivered_maintenance": [
+      "G07A",
+      "G07B"
+    ],
+    "additional_p6_tasks": [
+      "LS01",
+      "LS02",
+      "LS03",
+      "LS04"
+    ],
+    "additional_task_detail_ref": "docs/phase6/ticket-module-detail.md",
+    "named_subexits": [
+      "E01-UAA-C",
+      "X01-C",
+      "X01-B",
+      "X02-Q",
+      "X02-F",
+      "CE03_local_core_subset",
+      "CE04_local_core_subset",
+      "G05_E09_applicable_first_formal_release_gates"
+    ],
+    "implementation_authorized": false,
+    "all_business_implemented": false,
+    "all_real_provider_contracts_frozen": false,
+    "scope_and_estimate_registries_unchanged": true,
+    "reviewed_date": "2026-11-15",
+    "parent_count_is_not_all_supplemental_scope": true,
+    "supplemental_phase6_exits": [
+      {
+        "id": "OBS01",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
+        "state": "detailed_contract_candidate_not_implemented",
+        "local_core_selection": "S3 needed redaction/correlation only; full profile at its chosen slice",
+        "remaining": "NotifyDeadLetter的url字段与error链同时去敏；合成无网络回归证明旧query secret路径，仍待产品修复，不以截断或maskURL单点代完整脱敏。",
+        "review_ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+      },
+      {
+        "id": "OBS02",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
+        "state": "detailed_contract_candidate_owner_failure_policy_pending",
+        "local_core_selection": "existing authorized history/necessary facts; complete extra audit slice not automatic first-release gate",
+        "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，原两IAM强审计失败政策仍待答。",
+        "review_ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
+      }
+    ],
+    "early_decision_gates": [
+      {
+        "id": "E02",
+        "decision_due": "P6.3出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E03",
+        "decision_due": "P6.3出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E04",
+        "decision_due": "P6.E出口",
+        "implementation_remains_later": true
+      },
+      {
+        "id": "E06",
+        "decision_due": "P6.E出口",
+        "implementation_remains_later": true
+      }
+    ],
+    "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
+    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md"
+  },
+  "authorization_review": {
+    "date": "2026-11-15",
+    "ref": "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
+    "source_main": "aa7451739bcecdea5afe288d2b7e19f39b55f142",
+    "state": "audit_complete_product_findings_open",
+    "current_finding_groups": 6,
+    "current_p1": [
+      "AUTH-01",
+      "AUTH-02",
+      "AUTH-07"
+    ],
+    "current_p2": [
+      "AUTH-03",
+      "AUTH-04",
+      "AUTH-06"
+    ],
+    "conditional_hardening": [
+      "AUTH-05"
+    ],
+    "product_fixes_implemented": false,
+    "estimate_status": "no_new_top_level_scope_or_price; itemized_overlap_and_subestimate_required_before_implementation",
+    "existing_planned_limits": [
+      "C04 policy reload/revision across processes",
+      "C05 DB commit versus Redis revoke recovery",
+      "D03 new type/participants/field policies"
+    ],
+    "scope_policy": "keep_local_IAM_three_layers_and_UAA_adapter; no_new_authorization_engine",
+    "followup_ref": "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+    "count_scope": "original AUTH batch only; follow-up RECHECK findings are separate, not closed"
+  },
+  "core_interaction_review": {
+    "date": "2026-11-15",
+    "ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
+    "source_main": "aa7451739bcecdea5afe288d2b7e19f39b55f142",
+    "design_basis": "db483759",
+    "state": "audit_complete_product_wiring_and_findings_open",
+    "queue_choice": "existing_TR_Redis_Asynq_plus_owner_DB_intent_and_deduplicating_consumers; no_additional_broker_in_first_core",
+    "design_corrections": [
+      "EventRef source/id and notification rule identity",
+      "bounded private in-flight authorization; no distributed atomic revocation promise",
+      "HMAC replay/query/operator guarantee wording",
+      "whole-package waves versus selected local-core exits; compatibility fixture ownership"
+    ],
+    "product_runtime_implemented_by_this_review": false,
+    "core_contract_upgrade_binding": {
+      "candidate_owners": [
+        "S1",
+        "MH01",
+        "RELEASE/Q1",
+        "RELEASE/Q2"
+      ],
+      "must_split_and_deduplicate_before_implementation": true,
+      "full_X01_B_navigation_not_implicit_local_core_gate": true,
+      "estimate_changed": false
+    },
+    "existing_auth_findings_remain_open": true
+  },
+  "permission_boundary_recheck": {
+    "date": "2026-11-15",
+    "ref": "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
+    "source_main": "aa7451739bcecdea5afe288d2b7e19f39b55f142",
+    "design_basis": "d1219aa3",
+    "state": "audit_complete_new_findings_open",
+    "major_findings": [
+      "RECHECK-01",
+      "RECHECK-02",
+      "RECHECK-03"
+    ],
+    "conditional_resource_boundary": [
+      "RECHECK-04"
+    ],
+    "low_impact_metadata_boundary": [
+      "RECHECK-05"
+    ],
+    "rejected_retry_candidate": "pinned Asynq RunTask retains retry count; fake Inspector probe omitted delivery context",
+    "existing_AUTH_and_C03_findings_remain_open": true,
+    "product_fixes_implemented": false,
+    "new_top_level_packages": 0,
+    "estimate_changed": false,
+    "subestimate_required_before_implementation": true
+  },
+  "hierarchy_permission_supplement": {
+    "date": "2026-11-15",
+    "ref": "docs/design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选",
+    "state": "scenario_contract_candidate_not_implemented",
+    "scenario_ids": [
+      "HIER-01",
+      "HIER-02",
+      "HIER-03",
+      "HIER-04",
+      "HIER-05",
+      "HIER-06",
+      "HIER-07",
+      "HIER-08",
+      "HIER-09",
+      "HIER-10",
+      "HIER-11",
+      "HIER-12"
+    ],
+    "implementation_packages": {
+      "P6.1": [
+        "C04",
+        "D03",
+        "D06"
+      ],
+      "local_core": "selected current authorization and thin IAM cases in S1 and consuming domains",
+      "P6.3": "full U06 rollout only",
+      "later": "UAA-P/R managed mapping and real activation; real HR feed in its original window"
+    },
+    "owner_pending": [
+      "HIER-D01"
+    ],
+    "no_new_parent_packages": true,
+    "price_numbers_changed": false,
+    "subestimate_overlap_check_required": true,
+    "runtime_verified": false
+  },
+  "authorization_gap_closure": {
+    "date": "2026-11-15",
+    "ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+    "backlog_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+    "state": "seven_actions_scheduled_product_gaps_open",
+    "action_ids": [
+      "AUTH-GAP-01",
+      "AUTH-GAP-02",
+      "AUTH-GAP-03",
+      "AUTH-GAP-04",
+      "AUTH-GAP-05",
+      "AUTH-GAP-06",
+      "AUTH-GAP-07"
+    ],
+    "no_new_parent_packages": true,
+    "price_numbers_changed": false,
+    "subestimate_overlap_check_required": true,
+    "runtime_verified": false,
+    "engine_migration_approved": false
   }
 }

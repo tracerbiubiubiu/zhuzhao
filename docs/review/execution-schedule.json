@@ -1,11 +1,11 @@
 {
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "status": "fully_priced_bounded_candidate_not_implemented",
   "calendar": null,
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "b21d4244fe79e444d8fc7ee8b2e06bcb6e999ab80f6f8dea1b89f18e1d978499",
-    "docs/review/execution-schedule-model.json": "34da7ca9770ba4c296a5267e95c0e4a249555286019c07dce7300806b4ad9176",
+    "docs/review/planning-backlog.json": "1d83b7e8f9ffc1a430d5bca133eef565da091dca32c187ed9fbc12633f1b80cc",
+    "docs/review/execution-schedule-model.json": "d6083b1e46255ba49dd179bee34383b3ca00a2174021255a4dfc137f7807de63",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
@@ -4520,7 +4520,7 @@
       "name": "授权、定义与领域一致性",
       "wave": "P6.1",
       "items": ["C04", "D01", "D04", "D02", "D03", "D06", "R01"],
-      "exit": "发布钉版、转换采集/可见范围及HR生命周期可验；不可丢后继先落持久意图"
+      "exit": "发布钉版、转换采集/可见范围及HR生命周期可验；不可丢后继先落持久意图；AUTH-GAP-01–04按实际入口交来源撤权/集合一致/独立预期与有限解释，不等UAA或全站UI，开工拆子估。"
     },
     {
       "id": "S04",
@@ -4541,7 +4541,7 @@
       "name": "工单、结果、配置与受控写入",
       "wave": "P6.3",
       "items": ["D05", "D11", "D12", "D16", "U03", "U04", "U05", "U06", "A02", "X03", "CE02-D", "CE02-L-P63", "LS01", "LS02", "LS03", "LS04"],
-      "exit": "批量标签/筛选/情报左右栏及逐页体验；任务结果/配置晋级可验；确认建单与设备人工入口独立验收"
+      "exit": "批量标签/筛选/情报左右栏及逐页体验；任务结果/配置晋级可验；确认建单与设备人工入口独立验收；AUTH-GAP-07在首次试用及本出口登记必要性复评，P7裁决；不默认新引擎或把全量推广免费塞首版。"
     },
     {
       "id": "S07",
@@ -4562,7 +4562,7 @@
       "name": "专业源、平台治理与实际就绪",
       "wave": "P7",
       "items": ["G05", "I04", "R06", "R07", "E01", "E02", "E09", "D17", "D18", "CE03", "CE04", "CE05", "CE02-L-P7", "LS05", "X01-H"],
-      "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核"
+      "exit": "逐provider真实待验；UAA真实放行另为公司纳管企业模式激活附加门且可前移；AL及协议守卫、受控路由/迁版工具可验；首次生产硬出口独立核；AUTH-GAP-05/06按首次正式及所选拓扑交证据，AUTH-GAP-07形成本阶段保留/验证裁决，实际PoC另估。"
     },
     {
       "id": "S10",

@@ -5,6 +5,8 @@
 
 ## 1. 范围与证据怎样取得
 
+2026-11-14后继：[Phase6模块详设](../phase6/module-detail-index.md)消费本库存，既有 `activelist.document.get@1` 已补入[互通Schema](capability-interconnect-detail.schema.json)作为无票只读后继。未来执行器的标准化 `query_result` 为core保存的受权观察，AL仍独占数据；不是更改现有GET wire或宣称共同runtime已上线。本清单的源码hash/分母仍是原审计快照，不为一次协议候选补充重写历史证据。
+
 实际构造三仓Gin引擎并调用 `Routes()`，未启动HTTP服务或访问PG/Redis；core用合成密钥显式开启默认关闭的internal/compat入口。Go AST解析四Go仓全部218个非测试生产文件，记录文件/函数体SHA；提取298个导出service声明并逐符号裁定。另扫描UI全部非测试 `src` 中实际request调用，135个字面量/模板HTTP路径（134 request＋1 axios单飞刷新）均与当前core或AL公开绑定匹配。函数Port、静态元数据、纯渲染、探针等没有强行伪造service调用。另查原生fetch预签名PUT和浏览器files资源/下载通道，均单列数据面；external菜单导航是受控跳转，不算平台数据API。
 
 | 实际分母 | 结果 | 不能据此声称 |

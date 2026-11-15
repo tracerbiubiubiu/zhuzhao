@@ -52,6 +52,30 @@ CE01列能力/版本与实际支持的入口、唯一受控执行入口、领域
 
 验收同时检查调用归属和实际业务效果：在同一可信主体/目标/规范化输入下，经HTTP、内部、工单或手动入口得到一致的业务校验与效果语义；不同主体仍执行其各自权限。反例覆盖内部入口无权拒绝且零写入、跨入口重投同一合法操作仅一次效果、同号异参拒绝、排队后撤权/改状态被挡、并发CAS冲突、限额不因换入口重置、结果丢失可查询且不重做动作、同事务失败无半套提交、预算不重复消费、队列恢复不漂移版本。还须检查adapter没有旁路repository或重复业务实现；仅字段schema一致、mock返回一样或静态import通过，不能证明已经走同一路径。
 
+### 2.4 回调统一约束，不统一成万能入口
+
+“统一回调”指公共认证、版本/schema、大小/期限、稳定关联、去重、错误和持久ACK纪律；以下用途仍由具名adapter及应用用例处理，不能互相冒充：
+
+| 用途 | 当前/目标入口及ACK含义 | 不能混用 |
+| --- | --- | --- |
+| 执行命令 | 当前`JobsHandler.Callback`虽名callback，实际上请求执行action；C03严格模式只有持久效果receipt才认完成 | 受理/仍running不是效果成功；事件payload不能指定任意action |
+| 源事实接收 | AL/外部connector→持久source_inbox；ACK表示本条事实已可靠接收 | 不表示派生任务完成，不因ACK后消费者失败重造事实ID |
+| 结果回执/投影 | 已登记写主的operation/receipt→票节点或查询投影；验原输入/目标/版本，旧revision不覆盖新结果 | 投影失败只补投影，不再执行已经成功的业务 |
+| 消息送达状态 | 公司HTTP渠道adapter按真实能力接受查询/回执，绑定原delivery和recipient | HTTP200/accepted不等于用户已收到或业务已完成 |
+| 扩展授权查询 | X01受限request_ref→核心当前资格查询，私有属主再核实际行/字段 | 返回许可不是业务receipt；ref有效期不是缓存授权时长 |
+
+供应商固定协议经独立adapter解析，再映射上述用途；UAA/OAuth登录回调仍属认证协议，不接任务payload。目的地取受审endpoint_ref/固定callback配置，不从普通参数接受任意URL/凭据；输入actor/root/source仅在核可信来源与既有绑定后使用。不新建能任意写审计、路由动作或切授权的通用callback。
+
+### 2.5 首版复用现有队列，先补可靠交接
+
+近期选择：**TR的Redis/Asynq继续承担任务投递；core/AL各自在所属DB事务保存必要事实/意图，core复用R01有界poller、AL用本库change_outbox有界发送器，经登记HTTP投递，消费者持久去重。** 不跨仓共享业务表或强制AL接core的通用poller。低一致性进程内Hook继续可用，但不驱动不可丢的风险/工单/AL闭环。现有TR DB-first只解决TR自身DB→Redis，不自动解决源业务commit→TR，也不是业务效果exactly-once。
+
+因此首版不另引Kafka/RabbitMQ或第二业务调度器。增加broker不能原子覆盖业务DB提交和发消息，[事务outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)与消费者幂等仍必要；[Asynq的至少一次执行定位](https://github.com/hibiken/asynq)也不代表外部副作用恰好一次。主仓维护扫描/可靠投递poller与TR业务cron分工，不把两者误认重复业务调度。
+
+每段明确一个重试责任主：源delivery负责交接到持久受理；TR负责执行投递；领域写主保存效果receipt；结果/通知各重试自己的投影/投递。下层unknown不触发上层换operation重做，人工replay保留原事实/原命令身份。暂停/禁用先停止新准入/claim，保留在途和receipt按原合同收敛，不删队列伪回滚。超时/大小、单provider开始速率与inflight、有界批次/积压、退避和pending/unknown可观测性随首个消费者交付；完整共享quota/多维因果预算依CE05后继。
+
+真正出现需长时间回放的多独立消费者、可测吞吐/积压超过当前方案，或公司已有事件平台要求接入时，再由R01/CE04投递adapter接broker/企业事件HTTP；先核顺序、保留、背压、重复与运维供给。不能把“将来也许需要MQ”变成首版预建，也不把当前选择说成永久禁止MQ。
+
 ## 3. 先消除同名异义
 
 | 标识 | 目标含义 | 不能代替 |
@@ -141,6 +165,8 @@ MCP把选定能力映射为tools/resources等协议表面，继续调用共同�
 独立模式仍完整本地IAM；企业模式纳管来源走UAA当前投影/新鲜度和受限委托，配置/事件/grant不恢复已撤权限。UAA网页登录不等于MCP AS。mock长期保留，同套合成链正反例用于各入口，不用mock宣称真实互通成功。
 
 ## 8. 渐进范围和下一步详设门
+
+**2026-11-15范围校准**：下段是长期整包波次，不能覆盖[首版本地核心](../phase6/first-usable-release-plan.md)已前移的链B/C选定子出口。正式核心仍须工单→TR→AL写→持久事实→只读TR后继及HTTP消息真实闭环；完整CE03/04、复杂订阅与共享预算仍按原P7整包。首版只选实际范围，不能以整包在P7为由漏链，也不能为该闭环提前搬入全部插件/AI/HA治理。核查现状与其它关键接缝见[核心交互专项](../review/reports/core-interaction-architecture-review-2026-11-15.md)。
 
 P6.0先交能力家族库存和标识/消息/完成语义；P6.1交最小逻辑门面及C03/C04/R01/X01接缝；P6.3用D12交链A。P7逐能力扩I01/I02，补链B/C、共同准入和循环防护，再由A03发布选定MCP适配。P8/P9逐步扩专业执行、Agent和复杂持久协同，按证据决定拆分，不把简单AL变化触发拖到P9。
 

@@ -1,5 +1,13 @@
 # 鉴权模块设计
 
+> **2026-11-15模型/引擎复评**：[RBAC/ABAC/ReBAC/PBAC与成熟工具](../design/authorization-model-and-engine-choice.md)独立复核出发点与复用边界。首版保留Casbin＋领域资源策略、统一用例及事实语义；修正旧“PBAC/ReBAC不演进”“OPA只能bool”“换后端零成本”的论证。模型、检查层和产品分别选择；没有新引擎实施或当前缺陷关闭。
+
+> **2026-11-15层级场景与阶段**：[RBAC/组织/菜单/范围合同§8](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)给HIER-01–12和HIER-D01父停用传播待决；P6.1 C04/D03/D06及首版本地适用部分先交，完整U06和UAA后继。场景表是测试设计，不等于产品验收完成。
+
+> **2026-11-15后继复验（仍未修产品）**：[第二轮权限/资源边界](../review/reports/permission-boundary-recheck-2026-11-15.md)补角色编辑来源固化、加载/目标错配、任职属性往返及两个窄资源边界。下方原AUTH批次6组只代表原批，新增RECHECK状态看控制台§6和[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验)；普通门禁绿不关闭这些问题。
+
+> **2026-11-15现状专项（缺陷未修）**：[权限设计→实现→规划复核](../review/reports/authorization-design-implementation-review-2026-11-15.md)在main确认组织赋角提权、停组授权未撤、业务任务触发审计维护等6组当前问题，另列PAT条件性加固。现有三层架构保留；[底座§3.3](../phase6/foundation-iam-module-detail.md#33-现状缺陷先修与真实重读2026-11-15专项后继)及[任务§8.2](../phase6/task-activelist-message-detail.md#82-存量任务入口与维护动作的接线门)列最小修复/存量入口门。下方历史已实施表不表示这些问题已关闭；当前状态看控制台§6。
+
 > **2026-11-12企业接入校准（未实现）**：[UAA认证与权限治理合同](../design/uaa-governance-integration.md)区分中央身份/受管授权与本地三层执行。现有授权能力不等于已接UAA；企业模式、来源追踪、三路同步与多实例撤权需E01-UAA-C/P/R建设验收。mock和独立开发入口保留，旧“鉴权零改动/换配置即可”不作当前保证。
 
 > 当前阅读顺序：先看§0文档地图和§2.3业务保护，再看资源授权；标注Phase 1流程、缓存/Watcher与末尾阶段清单属历史设计或后续候选。实际注册仅工单；Builtin示例中的tasks表是演示，需真实模块表与schema守卫后才能使用。
@@ -20,8 +28,9 @@
 
 | 层 | 文档 | 内容 |
 |---|------|------|
-| **公约 SSOT**（跨生态约束） | [standards.md §7](../standards.md) | PDP/PEP 分工、三层定义、Q5 禁令、ReBAC 不演进、角色全链平台本职、权限码命名与声明式注册 |
-| **决策 SSOT**（为什么这样定） | [design-decisions.md](../design/design-decisions.md) §12/§20/§25/§26 | §12 ReBAC 选型史、§20 SoD 延后、§25 权限架构定版（25.1 PDP/PEP、25.2 网关边界、25.3 策略库归属、25.4 ReBAC 不演进、25.5 前置清单）、§26 IAM 演进三步走/注册原则/支撑边界四墙 |
+| **公约 SSOT**（跨生态约束） | [standards.md §7](../standards.md) | PDP/PEP分工、三层职责、Q5实时约束、模型/引擎按需评估、角色全链平台本职、权限码与声明式注册 |
+| **当前模型选型** | [权限模型与引擎选择](../design/authorization-model-and-engine-choice.md) | RBAC/ABAC/ReBAC/PBAC、Casbin/Cerbos/OPA/Cedar/OpenFGA/SpiceDB比较、产品实践及有界演进；旧绝对论证的后继 |
+| **决策历史**（为什么这样定） | [design-decisions.md](../design/design-decisions.md) §12/§20/§25/§26 | ReBAC选型史、SoD、PDP/PEP、网关/策略归属、IAM注册与演进；模型结论及修订以本表当前复评为准 |
 | **架构评审**（对照与触发表） | [phase2/11-authz-architecture-review.md](../phase2/11-authz-architecture-review.md) | §1.2 业界对照、§2 L2/L3 顺序拍板、§3 不变量（默认拒绝/fail-closed/Q5）、§5 ReBAC 转向触发表（六条）、§9 OPA/ReBAC 迁移复核（2026-09-08） |
 | **模块详设**（怎么实现） | 本文 + [phase2/02-authz-resource.md](../phase2/02-authz-resource.md) + [phase2/04-org-delegation.md](../phase2/04-org-delegation.md) + [phase2/03-org-enhance.md](../phase2/03-org-enhance.md) | L1/L2/L3 详设、ScopeResolver/TicketResource、组织委托轴、组织可见性开关 |
 | **执行与在册**（做到哪/欠什么） | [review/11-project-control.md](../review/11-project-control.md) §2/§6/§8 + [phase2/00 §9](../phase2/00-implementation-plan.md) + [phase3/00-startup-checklist.md](../phase3/00-startup-checklist.md) | 权限模型速查、健康状态（BK-19~22）、遗留分类、backlog 详情、启动检查单 |
@@ -33,15 +42,15 @@
 | 你要做什么 | 读这里（顺序） |
 |-----------|---------------|
 | 5 分钟了解权限现状 | [控制台 §2](../review/11-project-control.md#2-权限模型速查) → [工程公约](../standards.md) §7 |
-| 理解为什么这样设计 | design-decisions §25 → §26 → 11-authz §2/§3 |
+| 理解为什么这样设计 | [当前模型复评](../design/authorization-model-and-engine-choice.md) → design-decisions §25/§26历史与后继 → 11-authz §2/§3 |
 | 改权限相关代码 | 本文 → [资源授权](../phase2/02-authz-resource.md) → [健康状态](../review/11-project-control.md#6-当前健康状态遗留问题追踪)（先看在册债务） |
 | 新服务接入（taskrunner/activelist 式） | 16 号 §9 基线 → ADR-003 → design-decisions §26.2（注册协议） |
-| 判断「要不要引入 X / 能力该不该做」 | 11-authz §5 触发表 → §25.4 反触发评估 → §26.4 四墙 |
+| 判断「要不要引入 X / 能力该不该做」 | [模型复评§4/§6](../design/authorization-model-and-engine-choice.md#4-成熟工具如何选) → 逐模块真实成本/对照验证；旧触发表与四墙仅作历史参考 |
 | 排查权限问题 | review/11 §2 速查 → §6 健康状态 → 11-authz §3 不变量（403/404/503 语义） |
 
 ### 0.3 引用口径警示
 
-权限演进路径的引用 SSOT = **standards §7 + 11-authz §5 + design-decisions §12/§25/§26**。勿引：standards §11（是开发工作流）、ADR-001（是工单事件源）、review/11（是能力总览非设计源）。
+权限演进路径的引用 SSOT = **standards §7 + 当前模型复评**；11-authz §5及design-decisions §12/§25/§26保留历史/后继说明，不再单独用旧“不演进”作为否决理由。勿引：standards §11（开发工作流）、ADR-001（工单事件源）、review/11（能力状态而非模型论证）。
 
 ---
 

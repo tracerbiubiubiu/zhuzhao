@@ -1,5 +1,7 @@
 # 06 — P6-R0b 工单完善批（设计稿）
 
+> **2026-11-14 逐件详设后继**：[工单模块详设](ticket-module-detail.md)补每个当前工作包的 DTO/数据约束/事务/异常/权限/薄 UI/TDD；下方“26件当前对账”逐件指明已实现基础、未交部分及排期归属。旧 B1–B4/量级/代拍项保留为来源，不能覆盖现行决策册或把已修保真缺陷重复立项。本地核心采用固定受审配置，完整设计器、常驻字段ACL、typed检索、自动路由和全站推广按各自后续窗交。
+
 > **2026-11-11现行排期**：本稿保留详细设计和历史裁决；范围、依赖、估算与条件项以[新路线](../roadmap.md)、[去重总账](../review/planning-backlog.md)和[平台边界](../design/platform-evolution.md)为准。旧“合main待办/整包前置/触发未到不排期/所有代拍等切phase6”不再是当前执行顺序；未定语义在对应工作包开工前确认，不能据此认为代码已实现。
 
 > **当前状态（2026-11-11）**。Phase 5 阶段交付与工作区收尾已确认，剩余问题和待验记录已移交 Phase 6。后续进行全项目重新设计规划，本文原有范围、接口、实现方案、波次和工期保留为复核输入，历史批准与估算继续追溯。交付、资源清理实际终态和最终收据见 [Phase 5 验收记录 §8](../phase5/12-scenarios-and-tests.md) 与 [运行手册](../ops/runbook.md)，后续登记见 [07 号](07-backlog-and-triggers.md)。
@@ -11,6 +13,41 @@
 > B 档十一件原估 **10.5–12.5 人天**，已计入 B2 前后端交叠。B3 开工时按件 7 的完整验收范围复估。件 19–25 的旧 **9–11 天**保留为历史估算，当前新增承接范围与未决方案须在立项时重新估算。
 
 > **Phase5 余项承接（2026-11-11，所有者最新安排）**。件 26 恢复 Phase6 归属，与 [Phase5 验收记录 C1–C3](../phase5/12-scenarios-and-tests.md) 及其余待办一起进入全项目重规划。原先建议的合并前硬排期由最新安排覆盖，发现事实与回归候选保留。件 17、件 18 和 B4 增强的接口、实现与波次也在重规划时确认。
+
+## 26件当前对账（2026-11-14）
+
+本表是本页26个来源件的实施状态摘要，不替代总账；“待实施”表示尚未交付该增量，不能把现成地基或已修点也当作未实现。按原 `P6-ITEM1…26` 映射，不重新编号。
+
+| 件 | 现有基础与待交付差异 | 现行承接/验收 |
+| --- | --- | --- |
+| 1 | 转换已有状态CAS；缺采集字段＋事件/意图原子提交 | D02；`custom_data_patch/collect_fields`，任一校验失败全回滚 |
+| 2 | 现有画布组件；缺实例定义只读图与完整已走边 | D01/U03/U04；只取pinned图，旧缺事件不编造历史 |
+| 3 | 已有assignee/creator筛选与CC读特例；缺四视角同源投影 | U03；已办取真实历史且当前可见，CC不算责任待办 |
+| 4 | 已有通知规则/节流地基；手动催办待交付 | U03；当前资格、60s同单同人、失败不伪已到达 |
+| 5 | 现十一种类型；新增user/dept及资格字段保护待交付 | D06/D04/D02；公共值为string ID、active/候选范围，旧类型不换型 |
+| 6 | 已有ticket_events；缺统一转换事件payload/真实diff/里程碑 | D02；与业务同事务，旧事件缺值保持未知 |
+| 7 | 既有类型/字段/模板管理；缺受控配置包plan/apply | D05；先修F11往返，包/目标/审批/基线绑定，旧单保版 |
+| 8 | 已有Assign事务；缺获权处理人Transfer入口 | D02；当前处理人/受权管理、active目标、同节点不重置SLA |
+| 9 | 现通用转换；撤回需定义终态＋系统词表可达 | D02；创建人且未受理/未分派配置边，不能只改seed |
+| 10 | 已有ChannelSender抽象；具体webhook/公司HTTP映射仍待接线 | D11/消息核心；沿已选协议和可靠记录，不默认钉钉替代公司HTTP |
+| 11 | 已有列表过滤；固定受权统计待交付 | D13；定义分母/样本/时间，事实先在D02保全，UI不全量翻页计数 |
+| 12 | 现固定target_user，target_org-only不是真队列 | E03；已确认合格池轮询/按类型认领方向，原“默认派负责人”仅历史备选；不暗前移整套队列 |
+| 13 | 已有渠道端口；SMTP尚未交付 | E01渠道评审窗口；仅真实需要再选，当前消息核心优先一条公司HTTP协议，不无条件自建邮件平台 |
+| 14 | 现keyword规则；condition词表/确定顺序待交付 | D16；非法条件显式失败/hold，不视作普通不命中掩盖 |
+| 15 | 版本迁移尚未交付；有状态CAS地基 | 同名状态最小档D01，删状态完整映射D18/P7；均保留时钟/不重跑后动作 |
+| 16 | 富文本局部已有草稿；整表单隔离/恢复未交 | U03；按用户/类型/版本，失败不丢内存，凭据/预签URL不落本机 |
+| 17 | 服务端已有逐票鉴权；能力投影/按钮统一未交 | D02；按单viewer_capabilities，缺失默认无写，提交仍重验 |
+| 18 | 后端已算显隐/G2；前端求值仍可能漂移 | D04；统一fields/evaluate，不新建独立前端表达式引擎 |
+| 19 | 设计器与expr保存已有；结构化构建器/完整dry-run待交 | U04；输入产同一表达式，公式/域资格不可自授，依D04真求值 |
+| 20 | 现弹层内设计器；整页化未交 | U04；整页主入口，专家JSON次级，不删除旧布局超出确认范围 |
+| 21 | schema已有group/col_span，新增误写1已修；旧值辨识/渲染待交 | U04；保留无法区分的1、预览确认/legacy布局，不批量清数据 |
+| 22 | 服务端合法十一类已有；切入元素级绑定的统一规则未交 | D04；先同步真实类型枚举再dive，合法radio/rating/file不被旧八类拦 |
+| 23 | 现详情功能区；动作层次/活动流/双栏待交 | U03；基础薄UI先交，完整骨架依D02，非全部体验挡核心 |
+| 24 | code唯一已有，name可重名；编码格式/软提醒/专名错误待交 | U04；名称不加硬唯一，已登记旧非法code不强迫原地改标识 |
+| 25 | 实际字段渲染已有；设计器共享真实预览待交 | U04；内存schema、不落业务数据，file默认禁真上传 |
+| 26 | 现公式管线/重算已有；AST同名值位与输入隔离C1未修 | C01/P6.0；保存/建单/编辑/旧配置回归，保留P1优先级 |
+
+新配套范围不消失：常驻状态×字段×角色ACL归LS01/P6.3，typed检索归LS02/P6.3；关注、软删、服务端草稿、评论治理等仍按§4及总账处置窗，不能因26件表未单编号而删掉来源。具体正常/异常、DDL和用例目录见[工单模块详设](ticket-module-detail.md)。
 
 ## 1. 定位与一句话
 
@@ -35,7 +72,7 @@
 
 ### 3.1 件 1 转换时字段采集（R3 硬前置，~2–3 天）
 
-- transition_meta **边级** `fields_on_transition: [{key, required}]` + 边属性 `comment_required: bool`（驳回类边可要求必填说明）；transition 端点 body 扩展 `fields`，随转换**同事务**写入 custom_data（走 validateFieldValue 校验子集）；写面白名单=仅 fields_on_transition 键——不打开处理人全量 update 权，L3 缺口就地闭合。
+- transition_meta **边级** `collect_fields: [{key, required}]`（旧草案名`fields_on_transition`不作为产品双协议） + 边属性 `comment_required: bool`（驳回类边可要求必填说明）；transition 端点 body 扩展 `custom_data_patch`，随转换**同事务**写入 custom_data（走 validateFieldValue 校验子集）；写面白名单=仅 collect_fields 键——不打开处理人全量 update 权，L3 缺口就地闭合。
 - 权限挂 transition 本身（创建人∨处理人既定），零新权限码；配置面=B0-5 属性抽屉承接（[00 号](00-flow-engine-v2.md) §3.1）。
 - 蓝本：eflow 审批节点表单合并回工单 / ficus 节点表单（`oa_process_form` by elementId）。**先于 R3 复核态联调**（[03 号](03-r3-ticket-linkage.md) §3.2 已注前置第五件）。
 
@@ -57,7 +94,7 @@
 
 ### 3.5 件 5 user/dept 字段类型（~1–2 天）
 
-- validFieldTypes 增 `user`（int64 用户 id——G2 校验存在且 active；显示走 userRef「人名(工号)」；导出列同）+ `dept`（org id 校验；可后置）。渲染器复用 UserPicker。
+- validFieldTypes 增 `user`（公共JSON为十进制字符串用户ID，内部int64——G2 校验存在且 active；显示走 userRef「人名(工号)」；导出列同）+ `dept`（org id 校验；可后置）。渲染器复用 UserPicker。
 - 地基意义：R3 责任人预填落点（[03 号](03-r3-ticket-linkage.md) auto_fill）；指派轴「表单字段取人」档的消费对象（[05 号](05-launch-batch.md) §2 依赖 4）。**「只增不改」惯例内**（存量类型零感知）。**G2 校验须查目标用户存在且 active**（补强④——现 Assign 不查 active，README R1 已登记合规硬伤）。**另为 condition `field:<key>` 取人语义的载体**（00 号 §3.3 词表扩展——整改单复核权限绑 `risk_owner` 字段而非冻结 creator，2026-10-27 第三组）。
 
 ### 3.6 件 6 ticket_events payload（~1 天）
@@ -95,7 +132,7 @@
 
 ### 3.12 件 12 组织级分派落点（**B 档不含**——留 S3b 对表再拍；建议案 A 维持）
 
-- 现状 target_user=nil 仅日志（`internal/service/ticket/dispatch_service.go`的`DispatchService.OnAfterCreate`）。**案 A（建议）=派 target_org 部门负责人**（依赖 Week 0 HR mock 部门负责人轴，零新表）；案 B=候选池+认领（tickets 加 assigned_org 列+`POST /tickets/claim`+「待认领」视图，ficus ClaimNodeTask 蓝本）——B 与 S3b 任务行模型同族，建议留 S3b 一并。
+- 现状 target_user=nil 仅日志（`internal/service/ticket/dispatch_service.go`的`DispatchService.OnAfterCreate`）。**历史案 A=派 target_org 部门负责人**（依赖 Week 0 HR mock 部门负责人轴，零新表）；案 B=候选池+认领（tickets 加 assigned_org 列+`POST /tickets/claim`+「待认领」视图，ficus ClaimNodeTask 蓝本）——B 与 S3b 任务行模型同族，建议留 S3b 一并。
 
 ### 3.13 候选件 13 邮件 SMTP ChannelSender adapter（~1 天；**2026-10-27 降为触发驱动**——H-2 钉钉 adapter 承担个人到达）
 
@@ -140,7 +177,7 @@
 ### 3.19 件 18 visible_when 服务端求值端点——前端解析器防漂移升级（后端小端点+前端接线，~1 天；2026-10-30 所有者批准登记，随 phase6 执行）
 
 - 发起页现用单条件正则解析 `visible_when`，G2 使用 expr 全文法。复合条件存在两种已见偏差。前端误显示时，服务端判隐藏并清除该值。前端也可能将应显示的必填字段误隐藏，服务端随后拒绝提交。本件的 `visible_keys` 契约只对齐显隐，实时公式预览另待决定。
-- **方案（SSOT 求值对齐——04 号「不另建统计面」同哲学）**：`POST /tickets/visible-fields {type_code, custom_data} → {visible_keys[]}`——后端用**同一个 exprcalc** 对当前草稿求值各字段 visible_when（与 G2 同源零漂移），前端防抖调用渲染显隐；表达式非法=两端同口径 fail-closed（求值端隐藏+提交拒，行为随本件定义，消「两端未定义」边角）。
+- **方案（SSOT 求值对齐——04 号「不另建统计面」同哲学）**：旧草案`POST /tickets/visible-fields`收敛为[生命周期合同](../design/business-lifecycle-contracts.md)的`POST /api/v1/tickets/fields/evaluate`（尚未实施），按创建/实例上下文、定义版本和input_generation返回visible_keys等——后端用**同一个 exprcalc** 对当前草稿求值各字段 visible_when（与 G2 同源零漂移），前端防抖调用渲染显隐；表达式非法=两端同口径 fail-closed（求值端隐藏+提交拒，行为随本件定义，消「两端未定义」边角）。
 - Phase 5 已补专家模式的字段类型列表和保存保真，也补齐详情的单选标签回显。后续控件改版按本组安排评审，评分仍按数值展示。
 - **不做**：前端复刻 expr-lang 文法（漂移不可避免）；第三方前端求值库（同因）。
 
@@ -299,3 +336,5 @@
 | 2026-11-09 | **件 24–25 登记 + 件 19/20 走查增补**（用户走查七问复核产出——唯一性落实/编码自动生成/弹窗聚焦/显隐交互/字段键范围/公式即时检查/界面预览）：§3.25 新增**件 24**（类型·角色名称软提醒路线+类型编码格式两端校验与撞码专名文案+名称→slug 辅助建议；实例业务编号转 §4 触发登记）、§3.26 新增**件 25**（先抽 DynamicFormField 共享渲染组件再接设计器预览 Tab——注释预告载体落位）；§3.20 增补 formula 引用填写期恒隐藏实证（显隐构建器排除 formula 下拉的防呆依据）+硬校验升格 validateFieldInputs 全管线 dry-run 建议；§3.21 增补弹窗 fullscreen 过渡档挂待拍①；§6 B4 随扩 9–11 天；§7 拍板点 6 +⑨⑩；§10 +验收口径。字段键唯一范围核实=按类型（`UNIQUE(type_code, field_key)`）为正确设计不立项 |
 | 2026-11-11 | 本轮复核建议将件 26 正确性修复重锚 Phase5 C1，保留原设计和回归定义。补 F11 往返前置、已修 K7/K8 与增强边界、F7 关联登记及件 6/17 排期建议，B4 旧总估待确认范围后复估。 |
 | 2026-11-11 | **所有者收尾口径更新**。件 26 恢复 Phase6，与全部走查余项统一进入全项目重规划。此前主线前硬排期建议由本行覆盖，设计、风险与回归候选保留，原接口、波次和工期在重规划时确认。 |
+
+- 2026-11-14 **逐件模块详设**：逐一对账26件现有地基/未交增量/当前工作包；统一collect_fields/custom_data_patch/string ID及evaluate目标，旧量级与组织负责人建议不覆盖现行已决方向。

@@ -16,7 +16,27 @@ node docs/design/examples/capability-reference/verify.cjs
 AJV_MODULE=/path/to/existing/ajv node docs/design/examples/capability-reference/verify.cjs
 ```
 
-命令验证49个Schema样本（16正、33反）、6个规范输入性质、3个已冻结正命令hash、6个原始JSON输入、27个语义样本。前后比对Schema字节/hash，读失败、依赖版本不符、样本不符或文件被改均非零退出。Schema是形状合同，跨字段相等/实时授权/事务效果不能仅由AJV证明；本oracle只对具名合成状态作决定。
+当前命令验证80个Schema样本（23正、57反）、6个规范输入性质、5个已冻结正命令hash、6个原始JSON输入、原27个语义样本及23个get读绑定样本；读绑定样本另验其command/receipt/event形状与输入hash，避免拿本来形状非法的值冒充语义反例。原49个Schema样本及其预期保持不变。前后比对Schema字节/hash，读失败、依赖版本不符、样本不符或文件被改均非零退出。Schema是形状合同，跨字段相等/实时授权/事务效果不能仅由AJV证明；本oracle只对具名合成状态作决定。
+
+## 独立AL只读后继的必要补全
+
+2026-11-14补`activelist.document.get@1`，复用已有AL查询能力，支持没有工单的实际AL→TR只读后继。get成功用core保存的query_result，observation_owner与AL data_owner分开，禁止伪造写effect；原update/report成功仍必须effect。get订阅只支持受控target_from_event、登记类型/世代与字段名常量数组，原update映射没有因此放宽。
+
+新增形状例覆盖无票/手动get、独立观察receipt、按事件逐行取目标、字段缺失/空/重复/超额、未知版本、目标owner、写patch混入、伪写effect、结果嵌套/超额/来源配对、动态与静态目标混用、伪字段数组、错event pointer及update不受扩宽。原20个绑定模型例覆盖第二条事件文档而非固定第一行、手动无事件、type/generation/事件/operation/hash一致性、相同event_id不同绑定source的拒绝、当前字段投影、无权行、当前值与触发revision区分及UTF-8字节预算。
+
+2026-11-14先加入样本，原Schema对4个新正例失败；随后读绑定入口未实现时16项具名预期失败，再补严格分支与oracle得到绿色。原始红绿和准确候选摘要由调用者保存在本地ignored审计目录，未将运行日志加入Git。读绑定守卫可显式变异：
+
+```bash
+python3 docs/design/examples/capability-reference/verify_semantics.py --disable-read-contract-guard
+```
+
+该命令当前预期18个拒绝样本失败、非零退出；3个允许样本仍通过。11月14日的17项连续8次稳定抓到该变异，原初15项红记录仍保留；相同event_id冒认另一source的新增反例也先红后绿。它证明**设计模型**的约束确实参与判断，不证明AL/TR产品没有副作用、真实权限或并发正确。旧replay守卫变异仍单独恰好抓3例。
+
+## 可选字段未设置的空投影
+
+2026-11-15复核发现AL允许可选字段缺失，但`alReadResult.values`最少1属性会拒绝合法空投影。本次仅把该约束改为允许0属性；记录存在且请求字段均未设置时返回`values={}`，显式清值保留`{"status":null}`，不把未设置伪造成null。不存在仍404，无读资格、依赖失联仍是错误，不能统一变成空成功。
+
+新增2个形状正例（空投影、显式null）和3个读绑定例（未设置、显式null、空投影但无权拒绝）。旧Schema对空投影形状及两条相应绑定形状共3项有效变红，窄修后80形状/23读绑定全部通过；已有语义oracle原本就支持空投影并拒绝无权，该部分没有虚称新行为先红。新增无权例与其余17个负例在读守卫移除后连续8次稳定失败。旧fixtures、原例预期与产品代码均不改。
 
 ## 执行入口重放也要检查读权
 

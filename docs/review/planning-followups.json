@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "purpose": "跟踪整会话审计固定U63窗口之后的新增输入/确认；不改写历史审计来源/证据，不冒用原闭环证明新答复已核验。",
   "previous_audit": {
     "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
@@ -579,6 +579,86 @@
         "zhuzhao-utils": "https://github.com/tracerbiubiubiu/zhuzhao-utils/pull/1"
       },
       "actual_integration_and_exact_head_CI_results": "recorded by the PR merge commits and separate final delivery receipts; approval here is not a fabricated merged result"
+    },
+    {
+      "id": "F015-hierarchy-permission-scenarios",
+      "date": "2026-11-15",
+      "source": {
+        "request_excerpt": "针对这个问题 补充一下设计 然后看一下在哪个阶段加入到实现计划",
+        "context": "组织、权限各个层级的嵌套关系、组织树与角色/菜单继承及具体业务场景",
+        "source_kind": "current_conversation_owner_instruction",
+        "message_ids": "not captured; public wording retained"
+      },
+      "design_ref": "docs/design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选",
+      "scenario_ids": [
+        "HIER-01",
+        "HIER-02",
+        "HIER-03",
+        "HIER-04",
+        "HIER-05",
+        "HIER-06",
+        "HIER-07",
+        "HIER-08",
+        "HIER-09",
+        "HIER-10",
+        "HIER-11",
+        "HIER-12"
+      ],
+      "implementation_state": "planned_not_implemented",
+      "stage_binding": {
+        "C04": "P6.1 local current authorization and hierarchy guards; selected S1 exit",
+        "D03": "P6.1 type/participant and scope intersection",
+        "D06": "P6.1 membership/source/lifecycle mock; real feed conditional",
+        "U06": "thin security feedback with owner module; complete visual rollout P6.3",
+        "UAA-P/R": "later managed projection, mapping and activation"
+      },
+      "authorization": {
+        "design_and_plan_supplement": true,
+        "business_implementation": false,
+        "main_merge_or_deployment": false
+      },
+      "owner_decisions": [
+        {
+          "id": "HIER-D01",
+          "state": "owner_pending",
+          "decision_due": "C04模块详设/父组织停用入口实施前",
+          "scenario": "B部门停用，子组C仍status=1；是否暂停C组织派生角色/scope/委托？",
+          "recommendation": "祖先停用阻断该子树组织派生资格，不批量修改子节点status；预检影响并按当前来源重算。",
+          "alternatives": "仅停用本节点，子节点独立；或显式批准子树状态批量变更，不静默选择。",
+          "impact_or_safe_fallback": "未定不影响无关切片；相关正式入口不得隐式选择传播，必要时拒绝停用有子节点组织并提示处置；不把TTL或旧缓存当当前许可。",
+          "implementation": "not_approved_or_implemented"
+        }
+      ],
+      "estimate_policy": "Existing scope clarification and known fixes, deduplicate into C04/D03/D06/thin UI before implementation; no new parent package or automatic increase/free inclusion in S1 and 68–104 candidate"
+    },
+    {
+      "id": "F016-authorization-gap-closure-plan",
+      "date": "2026-11-15",
+      "source": {
+        "request_excerpt": "把你的建议落档，另外有差距的，加到计划中，看能不能补上差距",
+        "context": "当前自研业务权限与成熟策略/关系引擎的差距；保留当前机制、补基础能力、按真实需求复评。",
+        "source_kind": "current_conversation_owner_instruction",
+        "message_ids": "not captured; public wording retained"
+      },
+      "design_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
+      "action_ids": [
+        "AUTH-GAP-01",
+        "AUTH-GAP-02",
+        "AUTH-GAP-03",
+        "AUTH-GAP-04",
+        "AUTH-GAP-05",
+        "AUTH-GAP-06",
+        "AUTH-GAP-07"
+      ],
+      "backlog_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+      "implementation_state": "planned_not_implemented",
+      "authorization": {
+        "design_and_plan_supplement": true,
+        "business_implementation": false,
+        "engine_migration": false,
+        "main_merge_or_deployment": false
+      },
+      "estimate_policy": "归包不等于零工期或原价足够；开工逐项与原WBS/测试扣重拆子估，有净增先改总账和首版候选。当前仅细化既有交付，实际引擎PoC/迁移未纳入已价范围。"
     }
   ]
 }

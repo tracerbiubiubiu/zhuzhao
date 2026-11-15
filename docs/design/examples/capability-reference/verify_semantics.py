@@ -72,6 +72,59 @@ def observe(state, enforce_replay_read=True):
             "returns_existing_record": returns_record, "existing_record": record}
 
 
+def observe_read(state, enforce_read_contract=True):
+    """Synthetic selected read bindings; never actual authorization or AL access."""
+    def result(decision):
+        return {"decision": decision, "additional_effects": 0}
+
+    if not enforce_read_contract:
+        return result("allow_read")
+    command, receipt = state["command"], state["receipt"]
+    params, target = command["params"], command["target"]
+    if not state["actor_active"] or not state["read_allowed"]:
+        return result("held_revoked")
+    if (target["owner"] != "activelist"
+            or target["resource_type"] != "activelist_document"
+            or target["resource_id"] != params["document_id"]
+            or target["type_name"] != params["type_name"]
+            or target["generation"] != params["generation"]):
+        return result("reject_target_binding")
+    requested = set(params["fields"])
+    allowed = set(state["allowed_fields"])
+    if not requested.issubset(allowed):
+        return result("reject_requested_fields")
+    event_id = params.get("source_event_id")
+    fact = state.get("source_fact")
+    if event_id and (not fact or fact["id"] != event_id
+                     or fact["source"] != state["registered_source"]
+                     or fact["data"]["document_id"] != params["document_id"]
+                     or fact["data"]["generation"] != params["generation"]
+                     or params["type_name"] != state["registered_type"]
+                     or params["generation"] != state["registered_generation"]
+                     or fact["subject"] != f'{params["type_name"]}/{params["document_id"]}'):
+        return result("reject_event_binding")
+    for key in ("operation_id", "invocation_id", "capability_id", "contract_version", "canonical_input_hash"):
+        if receipt[key] != command[key]:
+            return result("reject_receipt_binding")
+    query = receipt["query_result"]
+    if any(query[key] != params[key] for key in ("type_name", "document_id", "generation")):
+        return result("reject_result_binding")
+    if not set(query["values"]).issubset(requested & allowed):
+        return result("reject_result_fields")
+    if event_id:
+        if (query.get("source_event_id") != event_id
+                or query.get("source_event_revision") != fact["data"]["document_revision"]):
+            return result("reject_event_binding")
+        if int(query["document_revision"]) < int(fact["data"]["document_revision"]):
+            return result("reject_stale_observation")
+    elif "source_event_id" in query or "source_event_revision" in query:
+        return result("reject_event_binding")
+    encoded = json.dumps(query, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if len(encoded) > 32768:
+        return result("reject_result_budget")
+    return result("allow_read")
+
+
 def duplicate_checked(pairs):
     result = {}
     for key, value in pairs:
@@ -117,6 +170,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--disable-replay-read-guard", action="store_true",
                         help="deliberate design-model mutation: the three replay cases must fail")
+    parser.add_argument("--disable-read-contract-guard", action="store_true",
+                        help="deliberate design-model mutation: selected read binding cases must fail")
     args = parser.parse_args()
     before = SCHEMA.read_bytes()
     schema = json.loads(before)
@@ -132,18 +187,33 @@ def main():
         semantic_rows.append({"id": case["id"], "pass": passed, **actual})
     raw_rows = [{"id": case["id"], "pass": raw_valid(case["raw"]) == case["expected_valid"]}
                 for case in schema["x-raw-json-cases"]]
+    read_rows = []
+    for case in schema["x-read-semantic-cases"]:
+        actual = observe_read(case["input"], not args.disable_read_contract_guard)
+        read_rows.append({"id": case["id"], "pass": (
+            actual["decision"] == case["expected_decision"]
+            and actual["additional_effects"] == case["expected_additional_effects"]), **actual})
     regression = json.loads((HERE / "replay-read-regression.json").read_text())
     mutation_caught = [case["id"] for case in regression["cases"]
                        if observe(case["input_state"], False)["decision"] != case["expected_decision"]]
+    read_mutation_caught = [case["id"] for case in schema["x-read-semantic-cases"]
+                            if observe_read(case["input"], False)["decision"] != case["expected_decision"]]
+    expected_read_negatives = [case["id"] for case in schema["x-read-semantic-cases"]
+                               if case["expected_decision"] != "allow_read"]
     unchanged = SCHEMA.read_bytes() == before
-    failures = [row for row in semantic_rows + raw_rows if not row["pass"]]
+    failures = [row for row in semantic_rows + raw_rows + read_rows if not row["pass"]]
     if len(mutation_caught) != 3 or not unchanged:
         failures.append({"id": "mutation_or_readonly_invariant", "pass": False})
+    if not expected_read_negatives or read_mutation_caught != expected_read_negatives:
+        failures.append({"id": "read_contract_mutation_invariant", "pass": False})
     print(json.dumps({
         "semantic_cases": len(semantic_rows),
         "semantic_passed": sum(row["pass"] for row in semantic_rows),
         "raw_cases": len(raw_rows), "raw_passed": sum(row["pass"] for row in raw_rows),
+        "read_contract_cases": len(read_rows),
+        "read_contract_passed": sum(row["pass"] for row in read_rows),
         "replay_read_guard_mutation_caught": mutation_caught,
+        "read_contract_guard_mutation_caught": read_mutation_caught,
         "schema_unchanged": unchanged, "schema_sha256": hashlib.sha256(before).hexdigest(),
         "failures": failures,
         "proof_scope": "Synthetic contract decision model and strict raw JSON, not product runtime or real authorization.",

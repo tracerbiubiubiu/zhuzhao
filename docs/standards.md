@@ -34,15 +34,15 @@
 | 项 | 约定 |
 |---|---|
 | 协议 | **HTTP + JSON**；gRPC 不引入 |
-| 服务间鉴权 | **AK/SK HMAC 签名**（utils `aksk`：按调用方发 SK、env 注入、常量时间比较、时间窗 ±5min 防重放）+ **专用 network 双防线** |
-| 身份断言 | 明文 `X-Operator` 头 + **纳入签名覆盖**（不可伪造）；缺失兜底 `"system"`。AT 透传验签（方案 A）降为触发条件驱动 |
+| 服务间鉴权 | **AK/SK HMAC 签名**（utils `aksk`：按调用方发 SK、env 注入、常量时间比较、默认 ±5min 时间窗）+ **专用 network 双防线**。时间窗仅拒绝过旧请求，**现协议无nonce去重、query不入签，不能承诺窗内不可重放**；效果重放由operation/receipt等用例幂等承担，安全参数放签名body，新增协议逐用途评审，不暗改现有签名串 |
+| 身份断言 | `X-Operator`纳入签名仅证明**受信发送服务的声明未被途中篡改**，不是用户认证或授权证明；缺失`"system"`只作旧归因占位，不产生系统权限。代用户入口走可信Context/短期请求引用和当前三层授权，后台走登记的受限服务主体。AT透传验签（方案A）不自动启用 |
 | 密钥管理 | 内部服务 = env 静态 SK；外部 M2M 平台凭据（api_keys 表/签发吊销）🚦 随调用方出现（09-platform，算法复用 `aksk`） |
 
 ## 3. API 设计约定
 
 1. **方法仅 GET / POST**——平台自有 API 继续保留现有方法、路由和权限绑定约定，不引入 PUT / DELETE / PATCH；资源与动作语义由路径、权限码（`resource:verb`）和版本化合同共同描述。**2026-11-13范围校准**：消费方包含前端、内部扩展、任务、其他系统及后续MCP适配器，原“前端唯一消费方、无外部API自描述诉求”的理由不再适用；所有产品能力均应有受权、可发现的对外合同，并通过统一调用接缝进入同一领域用例，详见[能力调用合同](design/capability-invocation-contract.md)。保留GET/POST是既有生态兼容和迁移成本的选择，不限制OpenAPI/schema、机器调用或幂等动作；是否可重试、是否产生副作用由用例合同声明，不能只从POST推断。方法面调整仍须对网关、menu_apis、SDK/前端封装及存量端点统一评审。**辖域界定（2026-10-15 所有者拍板，继续有效）**：本条辖**平台自有 API 面**——第三方组件/协议规定的动作方法不属辖域（我方出站调用第三方时其协议要求的方法，如 S3/MinIO 预签名直传 PUT、HEAD 探测；第三方回调我方时其协议固定的方法，如扫描器/SIEM webhook、OAuth backchannel），按协议实现，**不算违约、无需豁免**。护栏三条：①**隔离**——出站经 adapter/client（utils aksk.Transport 先例）、入站挂专用路由组（`/internal`、`/compat` 先例），协议方法不得进入业务 API 命名空间，域内代码继续讲 GET/POST 语义（防腐层）；②**登记**——每个第三方协议面随段设计稿口径注或落 §3-5 豁免清单，防例外常态化；③**禁反向援引**——不得以第三方协议方法为由变更平台自有端点的方法设计。首批应用例 = [phase5 S5（05 号 §3/§4）](phase5/05-s5-object-storage-richmedia.md)；**业务自有 API 新端点一律按本约定，不适用任何新例**。
 2. **POST URL 不携带业务信息**——资源标识/动作参数全部在请求体（GET 的 path/query 参数不受限）；
-3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码，是否可重试依错误/效果合同判断，不能一概按“4xx不重试、5xx可重试”：429可按限额/退避恢复，写入超时/5xx若效果未知，已接操作凭证的用例须用原`operation_id`查询/对账；尚无凭证的历史写入保留`request_id`并按用例核查，不能暗示没有副作用或直接整笔重试。状态码不证明可以安全重复写；**响应体不带状态字段**；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
+3. 响应结构统一 utils `errcode` + `response`：信封 `{code, message, data, request_id}`——**code 为业务码（0=成功），不放 HTTP 状态码**；分页固定 `PageData{list, total, page, page_size}`；业务失败直接映射 HTTP 状态码，是否可重试依错误/效果合同判断，不能一概按“4xx不重试、5xx可重试”：429可按限额/退避恢复，写入超时/5xx若效果未知，已接操作凭证的用例须用原`operation_id`查询/对账；尚无凭证的历史写入保留`request_id`并按用例核查，不能暗示没有副作用或直接整笔重试。状态码不证明可以安全重复写；**信封顶层不重复添加HTTP状态字段**（data内领域state/status按用例合同保留，不能因此删除receipt状态）；**创建类端点统一 200（不使用 201/204）**；handler/middleware 不直接 `c.JSON`（探针 `/healthz` `/readyz` 类豁免）；**信封字段增删改 = 破坏性变更**，须评审并同步全部消费方（前端拦截器 + 测试断言）；
 4. 错误处理走 errcode 映射，**禁止 raw 500 泄漏内部细节**；错误消息优先引用 errcode 常量，避免内联裸文案（无法与 docs/api/errcode.md 对账）；
 5. 存量豁免：zhuzhao 工单管理面 5 处 PUT/DELETE 已随 P4-W1 BK-18 整改为 POST（000030，2026-09-26——豁免消灭，仅留痕）；**taskrunner `/tasks/cancel`·`/tasks/retry` 动词段豁免**（同构违反 §3-2 但性质不同——纯内部 M2M 语义动词段，B 案/W5 已按此形态设计，改=推翻已定契约收益低，业界 RPC-over-HTTP 常态；2026-09-29 P4-W5 前置批注记）；**zhuzhao 侧 `/api/v1/tasks` 组的 `/cancel`·`/retry` 为该豁免契约的镜像路由（透传 taskrunner，2026-10-15 补登记）**；**activelist 数据域 `/:typeName/:id/update`·`/:id/delete`「URL 标识 + 动词段」同条豁免（2026-10-15 清欠批补登记）**——先于 C10 整改批的存量形态、与已上线 ui 消费契约耦合，对端 implementation-plan §4 头部注记在册，整改范围不追溯；activelist 三端点参数段（`/:typeName/deprecate`·`/:typeName/schema`·`/:id/restore`）已同批整改为标识入 body（zhuzhao 迁移 000032 同步 menu_apis）；新端点一律按本约定；
 6. **列表端点必须分页**：page/page_size 服务端钳制 + 确定性排序键（通常 id DESC）——禁止无分页全量返回；分页形状统一 `PageData`（offset+total，管理台消费）；**游标/keyset 仅用于机器全量迭代链路（同步/导出），不进响应信封**。**特例在册（2026-10-15 全仓审计立约）**：activelist 列表端点为 keyset 游标分页且 `next_cursor` 进响应信封——动态表百万行量级下 offset 深翻页不可用、zhuzhao-ui cursorPager 已消费该契约；属 offset+total 形态不适用的领域特例，新端点勿援引。时间线备查（2026-10-15 git 考古）：keyset 设计 09-03（activelist `47e3644`）早于公约建纲 09-07（`c4e30b4`——建纲版本条仅要求"必须分页+钳制+确定性排序键"，keyset 实现对当时条款合规）；禁止性扩写 09-09（`f854e35` 三仓信封收敛批）晚于实现 09-08（activelist `dad1b12`）一天且未对存量对账——禁止性条款为既成实现环境后写，非先在约束。建档日期口径注：头注「建档 2026-09-04」与 git 首笔落库 09-07（`c4e30b4`）并存，本文档时间线采用后者（git 实证口径）；
@@ -107,13 +107,15 @@
 
 ## 7. 权限架构（SSOT：design-decisions §25；三层详设：authz.md）
 
+> **2026-11-15模型复评**：[权限模型与引擎选择](design/authorization-model-and-engine-choice.md)区分RBAC/ABAC/ReBAC、PBAC治理和L1/L2/L3检查职责。首版继续现有Casbin＋领域资源策略，旧“ReBAC/PBAC不演进”“行级决策逻辑不可能集中”等绝对论证退役；不等于批准外置引擎迁移或放宽当前授权边界。
+
 > **2026-11-12企业治理补充（目标、未实现）**：本地三层判定不代表所有分配都由本地管理；企业模式的账号/受管角色和绑定、条件纳管数据范围按[UAA合同](design/uaa-governance-integration.md)确定写主。目录语义由核心/扩展所有者维护，中央结果写入受限本地投影；直接/组织/继承的有效来源和会话/策略撤销均须验证。独立/mock模式保留，本地应急不自动放开公司认证或中央管辖授权。
 
-1. **PDP/PEP 分工**：独立模式的身份/角色/组织管理与企业模式的本地执行投影**集中一份**（zhuzhao库；企业受管分配权威仍在中央，不建设第二个分配写主）；行级策略**归属主自治**；行级 PEP 必然在数据处——网关只做认证 + 路由级授权 + 身份断言透传，**不做行级判定**；
-2. **三层**：L1 路由级（Casbin，policy=角色×path×method）→ L2 数据范围（策略库 builtin 或手写 Resource，Registry 统一接缝）→ L3 动作矩阵；
+1. **PDP/PEP 分工**：独立模式的身份/角色/组织管理与企业模式的本地执行投影**集中一份**（zhuzhao库；企业受管分配权威仍在中央，不建设第二个分配写主）；资源所属模块负责落实对象检查/查询过滤，策略决策可进程内，也可在后继评估集中引擎。**本项目当前网关**做认证、路由级授权和身份断言透传，不承担全部对象判定；不能据此推断业界不支持集中PDP；
+2. **三层**：L1 功能资格（当前HTTP由Casbin角色×path×method执行）→ L2 对象/数据范围（builtin或领域Resource，Registry接缝）→ L3 对目标的动作授权。是检查职责，不是与RBAC/ABAC/ReBAC竞争的模型；状态/证据等业务不变量仍由领域执行。共同用例补强按C04/CE及能力合同实施，未接入口不能视为已经受同一守卫；
 3. **平台策略库**（触发驱动）：`org-member`/`owner-only`/`role-gated` 三内置 + `Builtin()` 一行注册；**适用前提 = 资源表在 zhuzhao 库**；跨库资源走参数级组装（E-⑤ 模式）；
 4. **Q5 禁令**：L2/L3 判定每请求实时查询，**不缓存**；任何缓存提案必须连同失效级联方案评审；
-5. **ReBAC/PBAC 不演进**（触发器 = 11-authz §5 清单；命中时经~~ResourceAuthorizer~~ **resource.Resource/Registry 接缝**（`internal/pkg/resource/registry.go`，Authorize/GetFilter——⚠ 2026-09-22 虚标审计勘误：全仓无 ResourceAuthorizer 类型，实际接缝为此，L1 不动）；
+5. **引擎按实际成本评估**：首版保留Casbin＋领域策略，不自建通用图/策略语言；PBAC可与角色、属性和关系规则共存。规则复用/独立治理困难时比较Cerbos/OPA/Cedar，关系复用/跨域查询困难时比较OpenFGA/SpiceDB；参见[模型复评§6](design/authorization-model-and-engine-choice.md#6-分阶段处理保持既有核心排期)，旧11-authz §5为历史参考，不是排他的门槛。实际接缝是`resource.Resource/Registry`的`Authorize/GetFilter`，SQL过滤及事实同步仍有迁移成本，不承诺仅换实现零返工；
 6. 角色自定义全链（角色 CRUD / AssignMenus / org_roles 组织赋角 / BFS 三源展开）为平台本职，所有服务共用。
 7. **权限码命名与注册**：码 = `resource:verb`（K8s verb 规范同款，禁复合码）；服务 API 的码↔路由绑定一律迁移申报（声明式，与代码同版本，design-decisions §26.2），运行时只开放菜单/角色绑定管理，**不开放 API 绑定编辑**。
    - 存量例外注记（2026-09-09 对码盘点；2026-09-11 泛化）：**层级子资源三段形（`resource:subresource:verb`）按同口径允许**——适用 `ticket:type:manage`（000018，早于本公约）及 activelist 权限面四码 `activelist:type:read|manage`、`activelist:data:write|read`（000024）——语义为层级子资源而非复合动词，保留不改（改码 = 破坏既有角色绑定）；`role::superadmin` / `role::admin` 为 Casbin 角色名命名空间，非权限码，不在本公约范围。

@@ -1,5 +1,21 @@
 # 11 · 项目能力总览图（Project Control）
 
+> **2026-11-15权限差距入计划**：[AUTH-GAP-01–07](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)把本项目必须补齐的正确性/共同路径/集合一致、独立预期与有限解释，以及性能/多实例证据、引擎必要性复评绑定既有包和窗口。补机器动作索引、首版本地WBS与交接出口；不另建通用权限产品、不换引擎、不新增父包。子估须扣重，原工日仍候选，不用“已有归属”承诺免费；所有产品缺陷与真实证据状态仍开放。
+
+> **2026-11-15权限模型复评**：[RBAC/ABAC/ReBAC/PBAC与成熟工具](../design/authorization-model-and-engine-choice.md)确认三层为检查职责，当前是角色＋关系/属性混合授权。建议首版保留Casbin＋领域资源策略，优先修来源/撤权与多出口一致；修正旧“PBAC/ReBAC不演进、OPA不生成SQL、集中PDP不可能、零迁移成本”等论证。Cerbos/OPA/Cedar及OpenFGA/SpiceDB按真实成本有界评估；未新增加引擎、WBS/工期、产品修复或owner选型批准。
+
+> **2026-11-15层级设计落档**：[组织/角色/菜单/数据范围§8](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)固定12项代表场景，分清单父树/继承、全局功能角色与目标组任职、菜单导航、scope/类型交集和多来源撤权。P6.1 C04/D03/D06主责，本地首版及必要薄UI取实际出口，完整U06和UAA-P/R后继；HIER-D01父节点停用传播在C04详设前确认。只改设计/计划，未修AUTH/RECHECK、未实现新权限语义或增加父包/工期承诺。
+
+> **2026-11-15第二轮边界复验**：[后继报告](reports/permission-boundary-recheck-2026-11-15.md)新增3组主要现状问题：角色编辑将派生授权固化direct、角色/组织编辑未绑定加载成功及目标、组织归属原样保存重置任职；另列头像旧键归属和附件用途侧信道两个窄边界。均未修产品；原AUTH/C03开放项保持。C04/C02/D06与薄UI补具名回归，人工重试错误前提已排除，不靠确认探针PASS扩大发现数。
+
+> **2026-11-15核心交互专项**：[统一调用/回调/队列/审计/私有扩展复核](reports/core-interaction-architecture-review-2026-11-15.md)确认现有C03完成/幂等/cron风险仍待修，消息inbox存量读面与Webhook error去敏须纳入接线。补事件source＋rule身份、跨库撤权边界、HMAC真实保证及整包/首版出口说明；首版复用TR/Redis队列＋本库可靠意图，不增broker/万能callback/完整插件宿主。只修设计，未实施业务或改原报价。
+
+> **2026-11-15权限专项**：[现状/实现/计划复核](reports/authorization-design-implementation-review-2026-11-15.md)确认6组当前问题、另有PAT条件性加固；组织赋角提权、停组仍授权、业务任务可触发审计维护为优先修复项。这里只补设计和开放状态，未修产品；三层架构、本地/UAA双模式保留。C04/C05/D03/D06及任务适用子出口增加具体反例/旧入口门，当前源码完整门禁绿不覆盖这些安全反例，也不代表首次正式启用条件已满足。
+
+> **2026-11-15详设再复核**：[遗漏与复杂度结论](reports/phase6-design-recheck-2026-11-15.md)补AL常规读取/合法空投影、父包外OBS01/02及E02/E03/E04/E06本期决策门，统一工程/跨仓执行锁序。将L1策略重载与L2资源变化分开，私有只读ref不建永久表，creator/assignee从现有权威字段计算，完整治理/多维预算/HA不挡单实例首发。44父包覆盖只是一个分母，当前补充出口另在[详设入口](../phase6/module-detail-index.md)及机器表列明；未改产品、迁移、净估或排程，真实配置/原审计政策待决不被代拍。
+
+> **2026-11-14 Phase6模块详细设计**：[五模块入口与变化](../phase6/module-detail-index.md)将现行44个P6父包（含两项已交维护）、LS01–LS04及首版本地前移子出口逐项映射。补typed DTO/逻辑DDL、事务/当前三层授权、正常异常/恢复、薄UI与具名TDD，修旧稿可见性待拍、风险指纹/复核、批量标签等冲突；无票AL只读后继补严格参考Schema。设计成熟度以[机器表](planning-design-status.json)最新后继为准；未实现新业务、未领迁移号、未改净估或实施波次。准确产品/真实公司契约仍按各模块启用门验，不以候选文件或离线例子代实现。
+
 > **2026-11-14升级后main再次核验**：[五仓复核](reports/main-verification-2026-11-14.md)对账已授权合入候选、当前17项CI及本地完整门禁；补测发现TR真实E2E的40秒预算不足，以及`TaskService.RetryTask`队列pending/active竞态误报500。后继按既有409合同修正、补双状态等待/有界夹具与真实Redis回归，并将TR真实投递/cron纳入CI；原失败和修复红证据分开保留，最终提交/门禁以PR/main准确记录为准。主仓默认标签覆盖率20.2%；utils仍按已验pin消费，后续G05/R07升级及Redis包装hook启用前置见报告。没有因此实施新Phase6业务、UAA或真实消息接线。
 
 > **2026-11-14本机运行环境后继**：所有者另行批准回收旧容器并重建新版开发/测试环境；实际运行Go1.27.4/Node26.13.1、PG18.6/Redis8.2.11/RustFS1.0.5，dev4000/API33333、test48081/API33334。两套各253验收/81对迁移往返、开发UI42 E2E及两套各18项AL/TR回调/附件实链补验通过；dev/test新卷隔离，原66卷保留。23个临时演练及6个旧环境容器已回收，详见[runbook §7](../ops/runbook.md)。本批只更新运行承接和运维交接，不新增功能/迁移/权限，也不是生产或真实UAA/UIP接入；下方此前“未切共享栈”保留原授权时点含义。
@@ -85,7 +101,13 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **按模块详设与今日收尾** | 六边联合合同、权限/UAA首包和每包六交付物；最小上下文及逐点来源；五仓候选发布/旧分支可恢复清理 | 📋 设计交接就绪；准确模块DTO/DDL/净估仍待后续包，业务未开发；Git/CI实际终态按收尾收据，不用文档自述代验 | [模块交接](../phase6/module-design-handoff.md)、[今日收尾](reports/daily-closeout-2026-11-14.md) |
+| **权限差距补齐计划** | AUTH-GAP-01–07：来源/撤权、共同入口、对象与集合、独立预期/有限解释、性能与多副本证据、固定窗口复评 | 📋 已分工/排窗口，未实施或实测补齐；多数为已有包验收细化，开工扣重拆子估；实际引擎PoC/迁移另估，不纳入首版前置 | [动作与边界](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)、[底座§3.7](../phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织)、[总账](planning-backlog.json) |
+| **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
+| **权限层级场景合同** | 组织树/单父角色链/菜单导航/数据范围、多组织任职、来源/生命周期的HIER-01–12 | 📋 设计及P6.1实施归属已补；场景未全部实现/验收，HIER-D01父停用传播待C04详设确认，原缺陷开放 | [层级合同](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)、[底座§3.5](../phase6/foundation-iam-module-detail.md#35-层级组合的首版出口与分工) |
+| **授权编辑与资源边界后继** | 直接/有效角色分轨、编辑目标/加载状态、任职属性往返、对象退役/关联检查顺序 | 🔶 RECHECK-01/02/03开放，04条件性/05低影响；尚未修产品，原样保存不是隐式重授权/重置职责 | [第二轮报告](reports/permission-boundary-recheck-2026-11-15.md)、[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验) |
+| **核心交互接缝** | HTTP/内部/任务/事件同领域用例；执行请求/事实ACK/结果/送达/授权查询分工；审计与私有合同 | 📋 总体方向保留，C03/R01/CE首版切片及消息/扩展仍待实施；本轮反例与设计纠正不等于可用产品 | [核心专项](reports/core-interaction-architecture-review-2026-11-15.md)、[共同合同§2](../design/capability-invocation-contract.md#2-一个逻辑通道三种执行方式) |
+| **权限专项开放项** | 本地IAM/三源角色、组织赋角、工单外围读取、任务维护职责/归因；对照统一调用及UAA计划 | 🔶 AUTH-01/02/03/04/06/07开放，AUTH-05条件性加固；6组当前问题含3组P1，未修产品，正式启用前按§6收口 | [专项报告](reports/authorization-design-implementation-review-2026-11-15.md)、[底座§3.3](../phase6/foundation-iam-module-detail.md#33-现状缺陷先修与真实重读2026-11-15专项后继) |
+| **Phase6模块详设** | 六边、五个模块的typed DTO/逻辑DDL、状态/当前权限、异常恢复、薄UI/TDD；44父包及LS01–04映射 | 📋 详细候选已落档并交叉审查；准确OpenAPI/迁移/真实映射/产品验收按实施批交付，新业务未开发；Git/运行状态不由文档自述代验 | [详设入口](../phase6/module-detail-index.md)、[机器成熟度](planning-design-status.json)、[原模块交接](../phase6/module-design-handoff.md) |
 | **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；完整本地三层与UAA-C接缝；旧adapter×新core合同回归 | 📋 公司允许本地先正式；质量优先，1月试用仅争取。净估候选68–104日，完整UAA P/R后继；实际业务/消息和生产门未验，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[净估](local-core-release-estimate.json)、[目标JSON](first-usable-release-target.json) |
 | **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，写失败政策待答 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
@@ -293,11 +315,53 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 分档入口 | `make acceptance-2a` / `-2b` / `-2c` | 单档运行（-2c 含全部上游回归） |
 | 其他 | `make lint` `build` `swag` `benchmark` | 静态检查/构建/文档 |
 
-**用法建议**：AI 迭代完成后，你只跑 `make acceptance` 看绿灯 + `make test-cover` 看覆盖率趋势，即可验收，无需读 diff。
+**用法建议**：完整适用门禁验证已有基线；同时审阅变更说明、开放缺陷和本批权限反例的红绿证据。`make acceptance` 绿色及覆盖率趋势不能单独证明权限正确，也不能关闭未进入产品回归的发现；所有者可据可审摘要验收，不必逐行通读代码。
 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-15层级场景及实施门
+
+组织/角色/菜单树已经有基础实现，本轮补跨关系场景/已有修复和验收，不重新计算一套层级平台。HIER-01–12由C04/D03/D06及各启用域承接，必要薄UI随安全正确性前移；完整U06保持P6.3，UAA实际纳管P/R后继。原AUTH/RECHECK/C03均未关闭，历史RBAC文中的最近HR祖先自动迁挂已校准为B07批准映射，不复制角色或猜接管部门。
+
+HIER-D01：停用父B、子C仍active时是否暂停C派生权？祖先失效阻断子树为推荐候选，未代owner批准；C04详设/该入口实施前确认，未定时不静默选传播语义。具体场景、默认拒绝边界及来源见[后继F015](planning-followups.json)和[合同§8.5](../design/rbac-inheritance-and-cascade.md#85-hier-d01父组织停用的传播政策实施前确认)。估算保持原候选，实施子估扣重，未把完整树/任职总控台认定已价。
+
+本轮是设计/计划同步：规划闭合19项、排程31项及派生物检查通过；实际包价/依赖/相对资源窗与上版一致。runtime目录/脚本及依赖与上一轮已跑253验收/81迁移往返、覆盖率20.2%的main源码相同，本轮没有新跑产品全门禁或HIER行为验收，也未修改环境；不能据文档检查声称树停用传播/新场景已实现。
+
+### 2026-11-15第二轮权限/资源复验（开放）
+
+| 发现 | 已确认现状与边界 | 归属 |
+| --- | --- | --- |
+| RECHECK-01 P1 角色来源固化/丢绑定 | GET effective IDs→POST direct，正常admin原样保存后组织角色固化，移组仍可改用户；停用直接角色绑定又会丢 | C04当前正确性，正式使用前；不是重做角色引擎 |
+| RECHECK-02 P2 编辑状态/目标错配 | 真实SFC五场景各8轮：pending/error可提交空角色，组织迟到或失败可把甲选择发给乙；API替身，非浏览器实写 | C04薄UI/U06安全部分前移，不等全站视觉 |
+| RECHECK-03 P2 任职属性重置 | 真实相同组织/primary保存把admin/group变member/assigned；旧DELETE重插语义未续接新字段 | C04/D06集合差量，保留项属性不隐式重建 |
+| RECHECK-04 条件性P2 旧头像归属 | 已知他人confirmed未绑定key可被退役；已绑定他人头像受保护，不称任意删活跃头像 | C02/C04随对象引用收口 |
+| RECHECK-05 P3 附件用途侧信道 | 己票授权＋已知他票richtext key返回400而未知404；未读删他票内容 | C02先核关联后返回用途提示 |
+
+原证据/回归与排除项见[报告](reports/permission-boundary-recheck-2026-11-15.md)。旧C02 Update文件引用、R06 EOF等不重计；TR retry候选因fake计数与固定Asynq不符排除。新增修复实施前按原包扣重复估，原净估不被此审计自动包干；本轮设计落档不关闭任何产品缺陷。
+
+### 2026-11-15核心调用、可靠交接与私有接缝（开放）
+
+- C03既有六类现状风险经临时SQLite/HTTP/纯JSON探针各8轮确认：同号异参、双cron、claim失败执行、Finish失败仍nil、任意2xx/429语义、大整数舍入。仍属原C03待修，不因已有Redis队列改成完成；严格新业务启用前过原receipt/当前权限/occurrence出口。
+- 存量Inbox只按recipient返回标题/total，未接新受限对象当前权限；不是无条件把个人收件历史报为IDOR，D15/C04/OBS迁移须保护当前内容并保留收件事实。NotifyDeadLetter原样error可重新记录query秘密，合成无网络探针已复现，挂OBS01具名去敏修复；未声称真实凭据曾泄漏。
+- 设计已纠正通知唯一键source/event＋rule_id/version，私有读准入/在途撤权的非原子边界，standards的HMAC时间窗/Operator保证，以及P7整包不能遮住首版AL→TR子出口。旧adapter回归与外置配置按S1/MH01/Q1/Q2实施前扣重细化，完整导航/插件治理仍后继；不冒充原净估已全包新子范围。
+
+依据、代码符号、正确控制/限制和各包最小门见[核心专项](reports/core-interaction-architecture-review-2026-11-15.md)。产品源码/迁移未改，不与下方权限缺陷混成修复收口；当前standards文字改正不代表签名wire已升级。
+
+### 2026-11-15权限控制专项（开放，非修复收口）
+
+| 发现 | 当前证据与限制 | 修复归属与启用门 |
+| --- | --- | --- |
+| AUTH-07 P1 组织赋角提权 | 仅org:create的低档位custom角色经selfService绑定更强custom角色后，真实用户修改403→200且落库；系统角色禁绑仍有效 | C04/D06优先小修：组织管理≠IAM授予权；正式使用/普通组织写权开放前 |
+| AUTH-01 P1 停组不撤派生权限 | 已有L1缺口扩展动态确认scope/组织委托，真实status=0后L1、读/list/total/update仍可；其它合法来源不应误撤 | C04/D06/D03同一修复，正式使用前；BK-20软删已结票档案政策单列 |
+| AUTH-02 P1 业务任务触发审计维护 | task:submit可执行audit_archive并降低保留期；旧合成行迁出在线表且JSONL保留，不称不可恢复抹除 | C04与OBS最低保护先堵旧入口，业务任务开放前；CE03整包后继不延迟此修 |
+| AUTH-03 P2 父角色停用投影 | 后端API已403，但父角色菜单/按钮仍下发；不是已证API绕过 | C04同源有效角色，核心试用前 |
+| AUTH-04 P2 关联对端元数据 | 对端详情/评论404后仍回ID/关系/创建人时间，不含标题正文 | C04/D03双端当前read过滤，正式使用前 |
+| AUTH-06 P2 创建者字段 | Job/消息新规则可由body声明created_by；HTTP审计真实actor仍在 | C04/CE01/OBS可信归因，构建对象权限前先修 |
+| AUTH-05 条件性PAT加固 | 自定义失败Reader探针可签固定值；当前Go默认Reader无该返回错误路径，不列已证默认漏洞 | C05删除固定回退，随小修，不改PAT独立生命周期 |
+
+来源、复现、具体源码符号及新旧设计取舍见[专项报告](reports/authorization-design-implementation-review-2026-11-15.md)。既有C04策略重载/多实例、C05 DB提交后Redis撤会话失败和D03类型策略仍开放，不因本表未重复列出而关闭。敏感任务启用须同时迁移旧GetTask/Runs/Jobs/Retry/DeadLetters等入口；仅新增receipt权限不够。已补当前实施计划及具名TDD，原估算/参考排程待实施窗口扣重补子估，不宣称审计免费消化全部修复。
 
 ### 2026-11-13能力互通与一致性补充
 
