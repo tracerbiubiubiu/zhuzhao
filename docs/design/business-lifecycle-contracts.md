@@ -87,7 +87,7 @@
 | 能力定义别名 / 候选路由 | 输入要点 | 输出要点 / 权限 |
 |---|---|---|
 | `ticket.definition.preflight.v1` · `POST /api/v1/ticket-types/deploy/plan` | `code, expected_draft_revision, expected_published_version` | `plan_id, canonical_hash, diff, reference_revisions, in_flight_by_version, errors, warnings`；`ticket:type:manage` |
-| `ticket.definition.deploy.v1` · `POST /api/v1/ticket-types/deploy` | `plan_id, code, expected_draft_revision, expected_published_version, acknowledged_warning_ids` + 幂等 key | `changed, definition_version, definition_hash, draft_revision`；同管理授权，写按钮绑定 |
+| `ticket.definition.deploy.v1` · `POST /api/v1/ticket-types/deploy` | `plan_id, code, expected_draft_revision, expected_published_version, acknowledged_warning_ids` + 幂等 key | `changed, definition_ref:{type_code,definition_version,definition_hash}, draft_revision`；版本均字符串，同管理授权，写按钮绑定 |
 | `ticket.definition.get.v1` · `GET /api/v1/ticket-types/:code/definitions/:version` | 明确版本；可选 `for_ticket_id` | 经该实例可见性或获准创建类型/管理权限后返回必要 schema；不借枚举版本读取受限业务配置 |
 | `ticket.definition.migration.plan.v1` · `POST /api/v1/ticket-types/migrations/plan` | `type_code, from_version, to_version, selection/filter` | 候选清单+每单 revision+差异+阻断；限管理权且每单符合受管范围 |
 | `ticket.definition.migration.apply.v1` · `POST /api/v1/ticket-types/migrations/apply` | `plan_id, selected_ids` + 幂等 key | 逐单 `migrated/conflict/skipped` 和恢复 receipt；不宣称整批全成 |
@@ -120,8 +120,8 @@ deploy plan 校验：图/字段完整性，状态和边引用，唯一字段 key
 
 ```json
 {
-  "id": "101", "to": "pending_verify", "expected_revision": 8,
-  "definition_version": 2,
+  "id": "101", "to": "pending_verify", "expected_revision": "8",
+  "definition_version": "2",
   "custom_data_patch": {"remediation_note": "已按变更单完成修复"},
   "comment": "提交复核"
 }
@@ -143,14 +143,14 @@ deploy plan 校验：图/字段完整性，状态和边引用，唯一字段 key
 
 ### 4.3 能力响应和兼容读取
 
-`GET /api/v1/tickets/:id` 目标附加 `definition_ref`、`revision`、`viewer_capabilities`。已有 `GET /tickets/:id/transitions/available` 的 `[]string` 不破坏改形。新增候选 `GET /api/v1/tickets/:id/capabilities` 提供结构化版本：
+`GET /api/v1/tickets/:id`目标附加definition_ref/revision/viewer_capabilities。现有`GET /tickets/:id/transitions/available`真实data为`{transitions:string[]}`，保持兼容。新结构化动作沿[工单规范类型](../phase6/ticket-module-detail.md#21-类型实例与版本)AvailableAction；`/actions`供动作读取，`/capabilities`仅可选同投影聚合别名，首版不强制建双端点或两套动作规则：
 
 ```json
 {
-  "ticket_id": "101", "revision": 8,
-  "definition_ref": {"type_code": "risk_remediation", "version": 2, "hash": "sha256:..."},
-  "viewer_capabilities": {"update": false, "attach": false, "comment": true, "manage_participants": false},
-  "transitions": [{"to": "pending_verify", "label": "提交复核", "collect_fields": ["remediation_note"], "required_fields": ["remediation_note"]}]
+  "ticket_id": "101", "revision": "8",
+  "definition_ref": {"type_code": "risk_remediation", "definition_version": "2", "definition_hash": "1111111111111111111111111111111111111111111111111111111111111111"},
+  "viewer_capabilities": {"update": false, "attach": false, "comment": true, "note": false, "assign": false, "transfer": false, "manage_participants": false, "manage_instance": false, "urge": false, "delete": false},
+  "available_actions": [{"action_id": "submit-review", "to": "pending_verify", "label": "提交复核", "collect_fields": [{"key": "remediation_note", "required": true}], "comment_required": false, "expected_revision": "8", "definition_ref": {"type_code": "risk_remediation", "definition_version": "2", "definition_hash": "1111111111111111111111111111111111111111111111111111111111111111"}}]
 }
 ```
 
@@ -204,8 +204,8 @@ Jira将项目访问权限与单张work item的可见性限制分开，能访问�
 
 | 能力定义别名 / 候选路由 | 输入/输出 | 不变量 |
 |---|---|---|
-| `ticket.participants.list.v1` · `GET /api/v1/tickets/:id/participants` | 仅可见票，返回 `user_ref, role, origin, can_remove` | 历史失效用户可回显，不能当 active 候选 |
-| `ticket.participants.change.v1` · `POST /api/v1/tickets/participants/change` | `ticket_id, expected_revision, add/remove user_ids` | L1 按钮+该票管理资格；新增 active；域受管项普通调用不可删；唯一 `(ticket_id,user_id,role)`；审计和 revision 同事务 |
+| `ticket.participants.list.v1` · `GET /api/v1/tickets/:id/participants` | 仅可见票，返回user_ref/role/安全origin类别/can_remove；不回内部source_key或隐藏来源数量 | 失效用户可回显但非active候选；多源按当前有效user/role/origin类别投影，受管类别不泄风险ID |
+| `ticket.participants.change.v1` · `POST /api/v1/tickets/participants/change` | ticket_id/expected_revision、add/remove各为{user_id,role:participant或cc}数组 | 先L1按钮＋本票管理资格；add仅active且server固定origin=manual/source_key=manual，remove仅该manual源。domain由可信桥维护；存储唯一(ticket,user,role,origin,source_key)，user/role只是有效投影，撤一路不删其它；历史/revision同tx |
 | `ticket.type.creation-options.v1` · `GET /api/v1/ticket-types/creation-options` | `org_id` 可选，返回允许创建类型/模板/发布引用 | 按 create_policy×组织创建范围，读角色不自动可建 |
 | `ticket.create.v1` · **现有** `POST /api/v1/tickets` | 兼容旧字段，增量预览期望版本 | L1 创建权∩类型创建策略∩目标 org 分支∩启用身份∩已发布类型；任一失败无票/无后动作 |
 
@@ -340,7 +340,7 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
   "asset_ref": {"provider": "mock-cmdb", "external_id": "asset-01"},
   "finding_class": "vulnerability", "finding_key": "vuln-01", "port": 443,
   "source_severity": {"value": "5", "scheme": "provider-five-level"},
-  "conclusion_ref": "sample-conclusion-42", "evidence_refs": ["sample-evidence-01"],
+  "conclusion_ref": "sample-conclusion-42", "evidence_refs": [{"provider": "mock-evidence", "external_id": "sample-evidence-01", "version": "1"}],
   "mapping_ref": "mapping:v1", "attributes": {"service": "https"}
 }
 ```
@@ -472,7 +472,7 @@ HTTP REST、MCP、SDK和内部extension共用同一用例/查询授权。catalog
 
 | 平台 level | 创建/升到本档 | 临期/超期 | 可选额外收件人 |
 |---|---|---|---|
-| critical / priority1 | 即时 owner+受权协同者 | 即时 owner，重复按S6节流；每自然日最多一条同类自动提醒 | 一级部门负责人；平台哪些档触发由源级别映射与B08冻结，不取消该能力 |
+| urgent / priority1 | 即时 owner+受权协同者 | 即时 owner，重复按S6节流；每自然日最多一条同类自动提醒 | 一级部门负责人；平台哪些档触发由源级别映射与B08冻结，不取消该能力。critical仅历史用词，新增wire用urgent |
 | high / priority2 | 即时 owner+受权协同者 | 即时 owner，同类每日抑止 | 同上；阈值未定不将示例两档当已批准生产映射 |
 | medium / priority3 | owner 每日汇总 | 临期进入每日汇总；首次超期即时 owner，此后同类每日抑止 | 默认无，需配置 |
 | low / priority4 | owner 每日汇总 | 同medium | 默认无，需配置 |

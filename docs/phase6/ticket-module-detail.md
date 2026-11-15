@@ -50,7 +50,9 @@ type TicketView = {
 }
 ```
 
-这些是公共语义类型，不要求把 `AvailableAction[]` 强塞入已有返回字符串数组的端点造成 wire 破坏。保留旧 available 响应，新增明确对象形态的候选 `GET /api/v1/tickets/:id/actions`，详情可增量嵌入对象。既有 `id/to/comment` 客户端短期仍用服务端行锁和谓词 CAS；只有已传 `expected_revision` 的调用才具备陈旧编辑防护。新的 UI/SDK/私有用例必须传 revision；禁止称老客户端已因此自动防覆盖。
+这些是公共语义类型；旧available真实data为`{transitions:string[]}`，不塞成AvailableAction数组。候选`GET /api/v1/tickets/:id/actions`返回明确动作对象，详情/可选capabilities聚合复用同一投影。旧Ticket的assigned_to未分派时omitempty省略，新TicketView才明定null，不称零形状变化。既有id/to/comment客户端短期仍靠锁/谓词，只有传expected_revision才防陈旧编辑；新UI/SDK/私有用例必须传revision。
+
+action_id首批为只读标识，写以definition_version＋to定位。新发布小FSM同from/to只一条边；preflight发现重复目标边须报告并受控修订，不任意选一条迁移或放宽为通用多边工作流。真实旧配置若需保留不同动作同目标，列具体场景再决，不假称只添action_id已解决写歧义。
 
 | 用例/路由（候选或现有增量） | 输入与成功输出 | 准入及失败 |
 | --- | --- | --- |
@@ -98,7 +100,7 @@ type TicketView = {
 | `ticket_member_sources` | `(ticket_id,user_id,role,origin,source_key)` 唯一，role 仅 participant/cc；持久origin为manual及获准domain（如risk_review）；`(ticket_id,user_id,role)` 索引 | 只保存不能从权威字段推导的独立授予；现有cc回填manual。creator/assignee从当前CreatedBy/AssignedTo计算，不复制成需同步的来源行 |
 | 发布/迁版/晋级 plan | plan id、类型/目标/包hash、各基线revision、选中票及revision、警告确认、审批者/到期时间、结果receipt引用 | 复用 D05 的受控计划模型和共同 operation 记录，不再建第二套通用任务/receipt/outbox表；plan过期或基线变化409 |
 
-成员来源表只在D03所需最小来源实现；不提前引入通用关系授权引擎。creator/assignee可以作为API里的只读虚拟origin展示，权威仍是票字段，不再增加Assign/Transfer/回填时的第二份同步。同一人既是手工参与人又是风险复核人，风险交接只移除旧risk_review源，仍可因手工来源可见；保留读来源不保留已经转出的复核权。本人退出自己manual CC可保留既有读可见退出入口，但domain/强制来源不能借此移除，也不把普通退订应用到强制风险通知；新增自己CC仍遵B04，不借selfService绕过。
+成员来源表只在D03最小实现，不引通用关系引擎。manual的source_key固定manual，各user/role只有一个手动来源；domain用风险link等可信稳定key，public add/remove不自报origin，remove仅manual。creator/assignee仅只读虚拟origin，权威仍票字段。同一人手工参与＋risk_review，交接只撤对应risk源，其它源保留但不保已转出的复核权；来源投影不暴露隐藏risk ID/数量。本人退出manual CC可保旧读可见退出，domain/强制来源不可借退订删；新类型自加CC沿B04，已有inherit旧自加例外/过渡只列TICKET-D01，不自动撤现有合法绑定。
 
 所有迁移 up/down 成对。扩列、初版定义、批量回填、校验、读写切换、非空/外键分步交；迁移可幂等恢复。down 前停新写、导出新增快照/历史、验证目标旧代码能读，不能删掉已有新定义后让旧单静默读最新版。新增历史事实启用后回退代码只保留其数据，不凭空恢复原来的 live 语义。实际物理拆分/SQL及编号在代码批按迁移地图复核。
 
@@ -234,6 +236,29 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 验收路径按最小依赖推进：C01/C02/C04 与 D01/D03/D04 → D02/薄UI → 风险 N:1/复核投影 → D12/TR/AL/消息原运行闭环；D05、LS01–LS04、D16 和U04/U06按各自窗单独验。U07从样板起随批执行，不能等全站末尾再查权限/交互。D11最小业务通知由D15/消息核心先取需要的子合同，完整增强后继。
 
 产品出口必须跑对应真实PG/Redis、HTTP服务和浏览器链，主仓完整适用命令/acceptance、迁移up/down/往返与UI六件；mock/contract/real分别列，设计参考和用例目录不是运行证据。当前文档不改变现行全门禁，不声称新增覆盖率。
+
+### 7.1 TICKET准确wire、候选人及实施切片
+
+只读基线core `610c1d76`、UI `875df0bf`。本表路径均省略/api/v1公共前缀，其余为完整业务路径；只补接线/兼容，不取代本页状态/字段/权限/事务与既有TDD。
+
+| 当前wire与源符号 | 增量用例及兼容合同 |
+|---|---|
+| `POST /ticket-types/update`：code/states/transitions/transition_meta/version→TicketType；`/ticket-types/fields/replace`：code/fields/version→裸字段数组，软提示在envelope.message。`internal/handler/ticket_handler.go`的UpdateTicketType/ReplaceTicketTypeFields→type_admin.go同名Service | D01沿候选deploy/plan、deploy、definitions读，发布输出统一changed/definition_ref/draft_revision；旧live保存切草稿是可见语义变化，管理UI显示published=false/当前发布引用，不暗deploy。UI `src/api/ticket/index.ts`现两个包装Promise<void>须接结果/软提示，不虚标data.warnings |
+| `/tickets/transition`：id/to/comment→Ticket；`/tickets/assign`：id/assigned_to?/escalation_supervisor_id?→null；`/tickets/close`：id/comment?→null。`internal/model/ticket_request.go`及transition_service.go的Transition、service.go的assignAuthorized/Close | 新transition增量revision/定义/采集patch，旧available/assign/close包装与响应保留；新增accept记录人工接单、transfer换唯一主责，目标范围重验，同态不重置SLA。validateAssignTargetUser现仅存在/启用，不冒称已有类型/组织候选校验 |
+| `/tickets/update`：id/title/description/priority/custom_data/attachments→Ticket；service.go的Update/mergeCustomData | custom_data仍patch/null删键、attachments增量；新custom_data_patch只在新DTO适配，不无版本改名。manage独立实例职责＋reason/字段白名单，不能借类型管理强跳或改历史/受管字段 |
+| POST `/tickets/cc`：ticket_id/user_ids→{cc:rows}，`/tickets/cc/remove`→null；GET `/tickets/:id/cc`→{cc:rows}。`cc_service.go`的AddCC/RemoveCC/ListCC | 新participants写role/action/revision，manual origin由服务端确定，不能自报domain来源；移除指向已获权manual grant，域受管项只由可信桥维护。创建者不自动获邀人权。ticket_cc_repo.ListByTicket现不筛role，扩角色前先精确查询cc；creator/assignee仍字段派生 |
+| 当前无fields/evaluate或prefill HTTP；service.go的applyFetches取live旧fetch且失败保原输入 | D04用类型新建/已有票互斥上下文和input_generation，提示失败不等全提交失败；仅真正依赖权威值的动作阻断，不把旧fetch等同新确定性预览 |
+| UI `src/views/Home/index.vue`固定状态多次查total且失败当0；`internal/service/ticket/badge_service.go`的todoCount只查assigned_to并排两终态 | summary按服务器责任谓词产指标ID/as_of/桶/筛选令牌，角标/卡片/钻取共用，不以assignee=me代风险复核职责；unavailable不显示0，不做BI |
+
+`TicketTypeFieldInput.FieldType`在ticket_request.go的binding声明8种，type_admin.validateFieldInputs/validFieldTypes及UI已11种含radio/rating/file；统一声明/生成物/HTTP回归是当前接线修正，本轮未跑HTTP，不把静态冲突夸成已复现运行拒绝。CreateTicketRequest虽声明assigned_to，Service.Create明确拒收；新创建包装及风险桥不能误当可选原始分派。
+
+**选人采用独立受权Query**，不能借UI UserPicker两次管理GET /users且catch为空替代。候选GET /api/v1/tickets/assignment-candidates输入ticket_id或创建type_code/definition_version/org_id互斥上下文、purpose、q、page/page_size≤50，不接自报scope。已有票允许assign/transfer/participant/cc，须先验调用者对应动作功能及本票职责，光可见不允许搜索；创建上下文首期只为独立获准管理者预配置participant/cc，不支持assign/transfer，普通Create仍拒assigned_to。两上下文混用/非法purpose组合400，无权不返回候选。
+
+随后按同一目标用户谓词过滤当前active/类型/组织候选，返回最小user_id/display_name＋eligibility_revision/as_of，组织筛选只收窄；缺字段不暴露工号/邮箱/角色目录。无候选正常空，无权404/403、依赖失败503，不能吞成空；提交再验，Query非grant。主责单选、CC/participant多选，缓存绑定上下文/权限/世代。
+
+实施仍四个可独立验收片：T1定义端口→扩列/幂等初版回填/零悬挂→读写切换→约束及草稿UI；T2转换核/采集/accept/transfer及薄详情；T3类型策略/参与来源/独立管理/候选Query；T4 evaluate/prefill与责任summary。先验证旧单钉版/发布重放/缺定义降级禁写，继而原子字段/状态/事件/intent和并发一成；再验all-scope不穿透/来源撤销/列表计数导出同源；最后迟到预填/无权不发请求/未知不变0及复核责任去重。全部沿本页既有具名TDD与原包扣重，不另造父包/双规则核。
+
+**集中待确认TICKET-D01**：已有inherit类型合法读者保留ticket:read，自抄送后原L2组织来源撤销，manual CC仍为独立读源；是否给这类旧自加入口保兼容例外？建议今后含自加均统一独立管理资格、允许退出manual CC但不删domain，现有合法绑定不自动撤。只影响旧路由过渡，不重问新类型邀人管理/CC只读评论/创建者无自动邀请权；失去L1时CC不绕过校验。
 
 ## 8. 开工冻结、运维和待绑定
 

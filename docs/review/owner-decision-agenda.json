@@ -334,7 +334,21 @@
         ],
         "blocks": "只阻塞人工覆盖/额外后台维护开通，不阻塞越界修复、可信归因或默认cron设计。",
         "design_ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因"
+      },
+      {
+        "id": "TICKET-D01",
+        "title": "已有inherit类型的旧自抄送入口过渡",
+        "scenario": "用户仍有ticket:read入口权，原先因部门L2范围读票并自行CC；调离后manual CC会保留独立读源。是否继续给已有inherit类型的旧自加接口兼容例外？",
+        "recommendation": "今后新增包括自加均统一独立管理资格；已有合法CC不自动撤，保留本人退出manual CC但不能移除domain/强制来源。新类型邀请规则不重问。",
+        "state": "pending_consolidated_owner_review",
+        "affected_items": [
+          "D03",
+          "LS01"
+        ],
+        "blocks": "仅旧cc自加/自退路由的过渡，不阻新参与人管理/候选查询或其它模块；CC从不绕过L1。",
+        "design_ref": "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片"
       }
-    ]
+    ],
+    "pending_candidate_count": 2
   }
 }

@@ -28,6 +28,27 @@ receipt状态限定accepted/queued/running/succeeded/failed/cancel_requested/can
 
 候选对外面：领域GET/POST端点保留；新增`GET /api/v1/operations/receipt?operation_id=...`读受权收据。普通写走具名POST和body，内部通过相同typed application port。无任意`/invoke`万能后门，MCP也只发布审核后的descriptor，认证/凭据/维护机制不会自动成为工具。operation.receipt是该读能力的候选ID，不表示现在已有该API。
 
+### 2.1 本地IAM的两个严格profile
+
+2026-11-15将[权限C批](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)消费的两个分支补入同一候选Schema，不另建IAM operation store。实际capability_id为`iam.user.roles.set`、`iam.role.menus.set`，contract_version均`"1"`；文稿@1只是简写，不是ID字面后缀。原POST仍由adapter接旧body/成功data:null，内部typed command不要求浏览器自造可信元数据。
+
+| 分支 | target / params | 封闭边界 |
+|---|---|---|
+| user roles | owner=zhuzhao、resource_type=user、resource_id；role_ids和expected_revision | role_ids规范正十进制字符串、去重/稳定数值排序；可空，规范化最多1000项；禁menu_ids/actor/source |
+| role menus | owner=zhuzhao、resource_type=role、resource_id；menu_ids和expected_revision | 同一ID集合规则；禁role_ids/actor/source。目标类型与能力配对，禁AL type_name/generation |
+
+1000是所选typed profile的有界技术初值，过量明确拒绝、不截断；旧REST规范化接入时须把此限制列行为变化并回归，不称旧请求永远无约束兼容。ID及版本另做PG int64范围校验，不能只凭正则通过。
+
+首批entries仅http/internal，descriptor绑定各自具名输入、共同receipt和local_current_iam授权profile，MCP暴露固定not_published，不因Schema识别就开放工单/计划/订阅/MCP改权。IAM principal的authorization_revision允许0，仅代表本次L1策略快照；authorization_ref由真实fresh决定构造，不作长期grant。这里不接委托主体，未来需要再按明确合同扩展。IAM causality仅root_id、depth=0和空rule_path，不为同步管理操作预建root预算设施；原AL/report/principal/admission/订阅约束不因此放宽。
+
+IAM effect必须effect_id/owner/resource_id/revision/no_op，集合domain revision允许0；非noop必须正版本，不能夹generation/artifact/角色快照。receipt自身revision仍是正数，与集合版本及p策略代际分开。IAM succeeded表示**本地效果已提交**，另有iam_state={domain_committed:true,policy_revision,runtime_state,pending_effects}：SetRoles由fresh集合立即生效，无policy_reload；AssignMenus实际p变化才推进正策略代际并可pending，pending_effects仅policy_reload。DB已提交而reload失败仍succeeded/retry_class=none，只恢复原intent，不改成unknown/held。collector delivery另管，不混入权限生效状态。
+
+no_op指本次IAM集合及所生成p语义均无变化：若menu IDs相同但修复了不同的p内容，仍是实际变更、递增目标domain revision；仅行序/重插次数不是语义变化。noop必须effective且无待恢复项，不能同时pending/superseded。AssignMenus旧代未安装即被新代取代可superseded，仍保本地提交事实；不向查询者回旧角色/菜单快照。unknown只描述提交结果尚不可证、无effect/committed状态且reconcile_only；failed必须有已确认无效果证据。首批不开放queued/running/cancel等无消费者状态，执行前DomainError不伪造成功receipt。
+
+查询选择器严格二选一：operation_id或当前可信主体命名空间下的idempotency_key，不接caller_namespace/principal/任意target筛选。沿现候选GET /api/v1/operations/receipt，当前不可见/不存在均404且不回receipt；不能为了输出Schema返回held_revoked及旧hash/目标。形状Schema不证明目标/effect、hash、当前读权或遗留key-only冻结正确；这些仍由C-08等真实HTTP/PG预期验，暂未见提交记录不证明可以换key重做。
+
+本次新增63个形状例（16正/47反），原80样例和各自预期保留。先对旧Schema跑新例，14个正例被拒、4个禁止descriptor被放行；独审又补8个确实能穿过初稿的反例，收紧I/O/profile错绑与pending零代际/noop后全部通过。当前总143形状、原6规范化性质/命令hash、27原语义和23读绑定均绿；**IAM新增只有形状及规范hash证据**，没有新增产品/事务/授权运行证明。可复跑范围及准确数量见[参考说明](examples/capability-reference/README.md)。
+
 ## 3. 链A：工单节点 → 任务 → 工单结果
 
 代表输入为`ticket.evidence.report.generate@1`：ticket_id、已发布node_run_id、definition_hash和固定report_profile。它是本次选定的未来异步能力，不是现有任务名。首批生成有界证据摘要/报告引用并在票上显示状态与结果，**不自动关票或改业务字段**；未来写字段另走字段ACL、CAS和显式发布映射。

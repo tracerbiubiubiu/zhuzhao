@@ -178,7 +178,7 @@ Service显式Begin/Commit，repo/Resource/ScopeResolver/OrgDelegationChecker使�
 
 本地不可变fact与可变delivery分开；复用R01一个投递所有者，worker只补原fact ID，租约/fence防旧执行回写，外部失败不重做改权。collector无去重能力时仅承诺至少一次，不许诺外部恰好一次。query/export/UI完整版OBS02继续后继，不为C先造审计平台。
 
-**operation与旧wire的明确兼容方案**：沿[共同operation/receipt](../design/capability-interconnect-detail.md#2-身份版本消息与可核对的dto)的身份/同号同hash/受权查询，存储归同一capability_operations；当前Schema只含报告/AL能力，IAM两个具名分支须在公共参考合同消费窗口增补，不能称现成实现可直接调用。拟登记`iam.user.roles.set@1`、`iam.role.menus.set@1`，对外仍走原具名POST，不建IAM专属invoke/第二套receipt查询。
+**operation与旧wire的明确兼容方案**：沿[共同operation/receipt](../design/capability-interconnect-detail.md#21-本地iam的两个严格profile)的身份/同号同hash/受权查询，存储归同一capability_operations；2026-11-15公共候选Schema已补IAM两个严格分支及63个形状例，仍非现成产品实现。capability_id为iam.user.roles.set/iam.role.menus.set、contract_version="1"，@1仅文稿简写。对外仍走原具名POST，不建IAM专属invoke/第二套receipt查询；领域提交与pending重载的收据语义沿该profile，不混collector状态。
 
 旧POST body和成功data:null保留；可选`Idempotency-Key`采用`[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}`，调用方发送前保存。唯一键为caller_namespace＋可信principal_id＋key，不能再把target放进命名空间以放过同key换目标；服务端映射到同一operation_id。缺省服务端生成operation，但旧客户端丢响应时可能不知道它。新增`X-Operation-ID`响应头用于关联；GET直接角色/角色菜单返回各自集合ETag，例如`"direct_roles:<target_id>:<revision>"`，新客户端用可选If-Match，typed命令仍必填expected_revision。只接该目标的强ETag，非法格式400；已知目标版本不符按[RFC 9110 If-Match](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.1)返回412/稳定reason，原body版本冲突409继续区分。两头的允许/暴露CORS配置随同批适配，不改信封顶层。
 
@@ -245,7 +245,23 @@ DB未提交零业务效果；commit未知查原operation；DB已提交而Redis�
 
 **SESSION-01–10（待新增）**：DB commit＋Redis持续失败；commit后kill/恢复；disable/enable/迟到clear竞争；投影丢键与不可信全量恢复分开；Login不借新epoch；Refresh只一个赢家且不覆盖新登录；Bearer/cookie一致；PAT跨改密保持且禁用即拒；CLI/HTTP及新建/存量初始投影可恢复；未知结果/旧500与新pending兼容（含disabled完整退出、普通503不乱清、改密已提交停止旧session、迟到不清新账号）。至少8轮并发红例，真实PG/Redis/HTTP/进程恢复不由miniredis或旧绿色代替。
 
-复用`internal/service/auth_epoch_race_integration_test.go`的`TestAuthEpoch_LoginCannotBorrowPostResetEpoch/TestAuthEpoch_RefreshBindsConsumptionEpoch/TestAuthEpoch_UserLifecycleCannotReviveOldAT`、`internal/service/auth_revocation_regression_integration_test.go`的`TestAudit_AdminResetThenLogin_OldATMustStayRevoked`、`internal/service/session_epoch_test.go`的`TestSessionEpoch_StrictReadAndConditionalClear`、`internal/service/session_revoke_test.go`的`TestRevokeUserSessionsWithRetry_RecoversAfterTransientFailure/TestRevokeUserSessionsWithRetry_PersistentFailure`及`internal/middleware/jwt_epoch_test.go`的`TestJWT_PasswordEpoch/TestFileSession_PasswordEpoch`。旧测试不证明新DB代际/持久intent已经存在；确切秘密摘要与公共参考Schema、C05子估仍是后续技术收口，真实维护者/恢复窗口沿原议程集中绑定。
+复用`internal/service/auth_epoch_race_integration_test.go`的`TestAuthEpoch_LoginCannotBorrowPostResetEpoch/TestAuthEpoch_RefreshBindsConsumptionEpoch/TestAuthEpoch_UserLifecycleCannotReviveOldAT`、`internal/service/auth_revocation_regression_integration_test.go`的`TestAudit_AdminResetThenLogin_OldATMustStayRevoked`、`internal/service/session_epoch_test.go`的`TestSessionEpoch_StrictReadAndConditionalClear`、`internal/service/session_revoke_test.go`的`TestRevokeUserSessionsWithRetry_RecoversAfterTransientFailure/TestRevokeUserSessionsWithRetry_PersistentFailure`及`internal/middleware/jwt_epoch_test.go`的`TestJWT_PasswordEpoch/TestFileSession_PasswordEpoch`。旧测试不证明新DB代际/持久intent已经存在；确切秘密摘要、claims与C05毛估见下节，公共IAM参考Schema见共同合同，真实维护者/恢复窗口沿原议程集中绑定。
+
+### 4.4 C05秘密输入、claims与子估收口
+
+口令写入不是前述两个公开IAM capability，不因共用operation存储就发布成工具。HTTP仍只接原password DTO；服务端在内存完成现行校验/bcrypt，把秘密输入与持久非秘密命令分开。规范operation只存命令种类/目标/原epoch/请求键及opaque secret_binding_ref，普通canonical_input_hash仍只对这份安全投影计算；原始/旧/新口令、bcrypt输入或私有校验digest不进receipt/审计/普通日志。该链限本地凭据写主；企业模式的受管凭据按UAA权威矩阵走外部端口，不借本地改密恢复受管身份的控制权。
+
+私有重放校验固定`HMAC-SHA256`：服务端对purpose=C05-secret-input-v1、caller namespace、真实principal、命令/目标及**原始精确UTF-8秘密值**的封闭规范编码计算，常量时间比较。保留现密码字节语义，不Trim/Unicode归一化，也不存可离线枚举的裸SHA(password)。验证key来自独立只读secret_ref，数据库/制品/配置正文不含key；不复用JWT签名或服务AK/SK。初次绑定保存algorithm/key_id/digest于受限operation元数据，重放用原key_id和冻结默认值，不换当前active key重算。相同请求键换口令/目标/主体409且零新效果，秘密不可由客户端hash自证。
+
+编码精确定为UTF-8、键排序/紧凑分隔/不做Unicode归一化的封闭JSON对象，键固定purpose/caller_namespace/principal_id/command/target_id/expected_session_epoch/secret_values；epoch为冻结正字符串，secret_values只含本命令已验证DTO的精确字符串值。HMAC消息仅内存使用，不将它当持久command正文。可复用[合成编码向量](../design/examples/capability-reference/c05-secret-binding-vector.json)核不同实现一致；其中零key和示例口令只为规范测试，严禁运行配置消费，未访问真实密钥/账号。公开receipt仅安全command hash，不回私有digest。
+
+key轮换时旧验证key按去重窗口受控保留；若不可用，不盲认为同参、不重置口令或换新operation，返回稳定unverifiable/待核查，仍可在重新认证与当前目标权限允许后查询最小原receipt。最小效果证据不因普通TTL消失；永久留身份/效果不等于永久保存旧秘密验证材料。实际key托管/保留窗口沿Q12启用前绑定，技术方案不需要所有者选择哈希算法。自服务旧token失效后不能靠secret_binding_ref绕登录，使用新密码重登核查。
+
+claims参考冻结为AT/RT新增可选`session_schema="db_epoch_v1"`、`session_epoch`规范十进制正字符串（int64范围）；核心对新schema分支必须校验，两字段缺一或非法均会话终态，不走旧epoch0回落。utils旧签发/解析入口对其它消费者保持兼容，新增显式安全代际签发能力，旧Pwe不能被当新DB字段；TokenPair/cookie外壳不改。projection intent只含operation/user/expected_epoch/desired_active/lease/fence及安全reason，不含token/口令/完整请求。USER创建/存量初始化/CLI也消费该profile，产品与公共库生成代码仍待实现。
+
+源映射后的C05毛估候选为**6–10单席工程日**：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/安全重放1–1.5；薄UI/session generation/运维1–1.5；真实回归/评审1–2。原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。全版净额在其它模块接线核齐后统一整合，不能用已有回归免费包干。
+
+SESSION-10补秘密变参/目标替换、key轮换/缺旧key、原默认值固定、receipt不泄digest及未认证secret_ref拒绝；SESSION-07/09补claims半字段/零/超int64及旧utils调用者保持原合同。这里是可写独立测试的候选，不是密码、密钥或数据已改。
 
 ## 5. D06 与 UAA-C：来源、目录和组织生命周期
 

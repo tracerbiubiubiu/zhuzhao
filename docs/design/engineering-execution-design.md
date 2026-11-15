@@ -160,7 +160,7 @@ C01.1 节点角色/作用域分析＋正反corpus；C01.2 保存/提交共核及
 
 ### C01准确接线与一次快照显隐
 
-基线`610c1d76`、Expr v1.17.8。现`POST /api/v1/ticket-types/fields/replace`保留ReplaceTypeFieldsRequest的code/version/fields、field_meta.formula/visible_when字符串及成功warnings。`internal/service/ticket/type_admin.go`的`ReplaceTicketTypeFields→validateFieldInputs→checkFieldReferences`负责保存；`service.go`的Create/Update→validateCustomData→applyFormulas负责提交；`transition.go`的`buildValidatorEnv/checkValidator`供转换。当前router无公开formula preview API，D04需要时才消费同内核；validator保priority/title/status/type_code/custom_data上下文，不套formula禁链到全部系统字段。
+基线`610c1d76`、Expr v1.17.8。现POST /api/v1/ticket-types/fields/replace保留ReplaceTypeFieldsRequest的code/version/fields及field_meta.formula/visible_when字符串；成功data是裸字段数组、软提示在envelope.message，不虚标data.warnings。type_admin.go的ReplaceTicketTypeFields→validateFieldInputs→checkFieldReferences负责保存，service.go的Create/Update→validateCustomData→applyFormulas负责提交，transition.go的buildValidatorEnv/checkValidator供转换（后三均internal/service/ticket）。当前无公开formula preview API；D04需要时共核，validator保priority/title/status/type_code/custom_data，不套formula禁链到全部系统字段。
 
 `internal/pkg/exprcalc/exprcalc.go`保留CheckSyntax/Identifiers/ApplyFormulasContext旧入口，由内部分析结果提供自由字段/调用/原因/policy版本。解析与compileOptions共用disabled/functions快照，不能无配置parser.Parse与DisableAllBuiltins编译两套名字语义。Pinned ast.Walk为后序visitor，选择显式递归；VariableDeclaratorNode先外层Value、再加Name分析Expr，原checker禁止的重声明/函数遮蔽不放宽。CallNode直接callee按注册表，参数按值；静态Member字符串属性不是字段，对象根/动态下标/slice边界继续分析。Pointer/Predicate仅原合法域，不由支持分析开放已禁builtin/闭包/宿主方法。未知节点拒绝，字面字符串$env不误伤。MaxExprLen=2048实际为**UTF-8字节数**，文案须校正。
 
