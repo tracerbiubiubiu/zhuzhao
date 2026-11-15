@@ -38,6 +38,28 @@
 
 ## G03：固定组合、具体 jobs 与扩展兼容门禁
 
+### 2026-11-15实际入口与最小接线
+
+下表按当前五仓main源码核对，替代上方11/11快照中的“当时尚无当前扫描/直接插分支”等现状判断；历史设置快照仍仅属其时点。这里只确定实施接线，不表示新工作流/远端保护已启用，也不重复已交G07A/B。
+
+| 仓库与基线 | 已有受控入口 | G01–G04/G06补的接缝 |
+|---|---|---|
+| core `610c1d76` | `.github/workflows/ci.yml`的commit-policy/lint/test/test-integration/security-current；`helper-tools.yml`的helper-security；Make现有lint/test-unit/test-integration/test-cover/acceptance | 保留命令与job身份；新增固定五仓组合/contract与quality-gate汇总，组合验收准确调用现有四档和迁移roundtrip。当前security-current已扫当前源/实际Linux ELF，不再称main没有当前扫描 |
+| UI `875df0bf` | `ci.yml`的commit-policy/lint/test；package.json的lint/typecheck/test/audit:prod/build/test:e2e与gate；`scripts/codegen.sh`、Playwright | CI分支输入已走env，不再复述直接shell插值缺陷；但sibling仍“同名否则main”，须改候选manifest准确SHA。现CI不跑真实E2E；增加组合栈旅程，不删除本地六项门禁 |
+| AL `15e93682` | `ci.yml`的commit-policy/test，后者现含race及真实PG integration；Make lint/test/test-integration/build | 接同一候选组合和AL授权/效果/源事实合同，不能拿普通go test替代监控写面/receipt/inbox链 |
+| TR `b0906b83` | `ci.yml`的commit-policy/test，含race、真实PG覆盖与make e2e；Make lint/test/build/e2e | 复用回调/cron/e2e，补C03新完成语义、稳定slot和组合contract，不再加第二队列或同名重复测试 |
+| utils `de3cd0a6` | `ci.yml`的commit-policy/test及版本矩阵/race；Make lint/vet/test/build | 对支持最低/推荐Go及真实签名/JWT消费者组合验兼容，不造空Swagger/Wire；新claims方法须保旧调用者 |
+
+先保留这些真实job名，把policy/static/unit/security/contract作为**逻辑检查类**映射，新增一个总是创建的quality-gate；不为统一名称重命名所有仓再维护双套required checks。汇总读取各适用结果：必需项success才绿，失败/canceled/缺job不被success吞掉；被严格路径分类证明不适用的项记录原因，混合/规则/协议/测试改动不能走普通文档豁免。required check配置只在新job于准确PR SHA成功/故意失败都实证后启用，仍遵单维护者PR自合原则。
+
+UI当前codegen已通过ZHUZHAO_REPO取主仓Swagger，优先复用这条显式路径；G03让CI按manifest checkout该SHA后设置它，生成diff失败，不用同名分支回落。主仓lint已有Swagger、CI已有Wire新鲜度，不能重复计一套。Go source/binary漏洞与UI生产依赖检查各自保留证据范围；旧`go-security.yml`历史source-evidence不是新组合四仓全覆盖证明。
+
+**私有运行profile的准确边界**：G01候选`task-run`包装入口接受manifest后先preflight，再start/verify/cleanup；当前并无该包装器。运行前验证五仓realpath/base/allow_paths、无他会索引、owner标签和端口，secret只经引用解析到本机0600临时配置。现acceptance可接BASE_URL/PG_CONTAINER/REDIS_CONTAINER/ROUNDTRIP_DSN，roundtrip已要求自定义PG显式DSN，复用其解析和临时数据库，不改成shell拼SQL/URI。缺任一私有配置即拒绝，不回落共享dev。
+
+UI当前Playwright的baseURL可配置，但webServer探测仍固定4000、reuseExistingServer=true；仅设置E2E_BASE_URL不足以证明隔离。G01须把server端口、探测URL、是否复用和Vite API/AL代理从同一manifest显式供给；先核实际VITE_PORT和现有代理配置再装配，缺项拒绝。e2e/global-setup的种子号例外仅限自有栈；不能用自定义UI端口掩盖后台仍连共享33333。包装器证明API/PG/Redis/对象存储均属本owner后才允许运行现有完整命令，停止只按清单与一致指纹回收。
+
+**验收卡ENG-01–08（待实现）**：双worktree/索引互不卷入；错误owner/端口/路径不启动也不清理；kill后按manifest恢复并保首次失败；UI端口改而代理漏改会被预检拒绝；准确SHA不存在/同名回退被拒；quality-gate在失败/canceled/缺必需job时红且确实创建；生成物漂移及新旧adapter语义反例会红；清理本owner资源后共享容器/卷/账号指纹不变。现`test-acceptance-isolation.py`是命令替身黑盒，能证明脚本路径/环境约束，不能替代双私有真实栈演练；实际gate/e2e和恢复证据仍按源码触及范围交。
+
 ### 候选 manifest
 
 目标受控位置为主仓 `configs/compatibility/candidate-manifest.json`，本轮**不创建**。唯一 `schema_version` 控制解析；未知主版本拒绝，未知可选字段忽略但保留摘要。字段必须包括：
@@ -52,7 +74,7 @@ PR 读取 base 的已接受组合，以本 PR event SHA 替换当前仓并明确
 
 ### 作业集合和资源预算
 
-所有仓 `push main`、`pull_request` 常驻 `policy`（现有 commit-policy、路径归属/清单/文档链接、workflow 静态负例）、`static`、`unit`、`security`、`contract`、`quality-gate`。首批复用现有 Make/pnpm 命令；重命名旧 job 后才更新 required check，不保留两个互相矛盾的门禁。Go 主仓另有 `integration`；AL/TR 保留其真实 PG integration；UI `unit` 保留 Vitest，utils 保留 race。每 job 设 timeout，单机 Go 并发预算 `GOMAXPROCS=2`、集成 `-p 1` 起步，按实测调，不为追求并行让 PG/内存饱和。
+所有仓push main、pull_request覆盖policy（现有commit-policy、路径归属/清单/文档链接、workflow负例）、static、unit、security、contract逻辑类及quality-gate汇总。具体job名复用上表，先不重命名；若以后确需改名，先验证新job再更新required check，不留互斥双规则。Go主仓保integration，AL/TR保真实PG，UI保Vitest，utils保race。每job设timeout，单机Go并发预算GOMAXPROCS=2、集成-p 1起步，按实测调，不为追求并行耗尽PG/内存。
 
 - `policy`：5 分钟；读取事件 JSON，不能将 branch/title/body 直接拼进 run 脚本。分支先通过 env 传递，`git ls-remote/fetch` 用显式 ref 和 `--`/固定 refspec；恶意引号、换行、`$()` 仅作数据。checkout 禁持久凭据；默认 `contents:read`，fork 不取内部 secret、不运行高权限 `pull_request_target` 的 PR 代码。[GitHub 安全边界](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)。
 - `static`：Go lint/build/Wire/Swagger（主仓）；UI lint/typecheck/build/codegen 输入 SHA；utils 不生成空 Swagger/Wire。生成后有受控 diff 即失败，保存 diff 不自动提交。每个仓 profile 声明适用项。
@@ -130,11 +152,27 @@ bundle记录profile名称/版本、配置hash和例外理由/复核窗口；每�
 
 分析不能再“收集全部 identifier 后按字符串减 callee 集合”。递归遍历 AST 并保留**节点角色与词法作用域**：CallNode 的直接 callee 仅按函数注册表解析，参数按值引用；变量声明的初始化表达式先在外层作用域解析，其 body 再扩展局部绑定；闭包参数/指针节点按语言语法绑定；成员下标的对象/下标仍访问，禁止 `$env`、私有 context 槽及未声明宿主访问。值位同名 `upper` 与调用位 `upper(x)` 各自解析，只有真正局部绑定才豁免。未知 AST 节点默认拒绝而非自动认作安全；将 pinned expr v1.17.8 的全部支持节点列入测试快照。[Expr visitor](https://expr-lang.org/docs/visitor) 提供 AST 遍历机制，不替项目决定词法权限。
 
-formula policy：自由字段必须存在、可见且非 formula（包括自身），链式/环式公式仍拒绝；visible_when/validator 按其既有可引用字段集合校验。求值前从 schema 投影**非 formula 的合法输入**，删除所有公式键，包括本次隐藏公式、请求伪值及历史公式结果；每个公式读同一只读基础环境，输出单独累积后写回。隐藏字段先按现有规则剔除，不因重算取回。类型、required、非有限数、最大 JSON 字节与字典 disabled 兼容语义沿用现有校验，字典读取继续用当次 tx/context，不缓存数据值。编译缓存键纳入 policy/schema 引用摘要/函数注册版本；注册冻结后可有界缓存，不能仅 src 命中跨 schema 程序。纯计算不能声称 context 可抢占 VM，增加 AST 节点/容器大小上限并按最坏合法算式测量。
+formula policy：自由字段必须存在且是合法普通输入，非formula（包括自身），链式/环式公式仍拒绝；visible_when/validator按原可引用集合分别检查。最终公式环境从schema投影非formula输入，删除请求/历史公式键及显隐prune后隐藏键；各公式读同一只读环境，输出独立累积。**visible_when当前允许引用formula，不能因隔离输入取消它**；准确一次快照算法见下方，不信客户端伪formula决定required跳过。类型、required、非有限数、JSON预算及字典disabled兼容保留，字典用当次tx/context，不缓存值。缓存纳入policy/schema引用摘要/函数注册版本，不含ctx/q/数据；纯计算无context硬抢占保证，节点/容器预算按最坏合法输入测量。
 
-迁移不直接改旧配置：上线前离线只读扫描已发布/草稿 schema，将新增拒绝原因列出；无问题配置不改值。有问题配置仍可读，禁止相关新保存/提交并提示字段与原因，按业务窗口修配置；旧公式产物在下一次合法写入时重算，不无审计批量改历史数据。错误返回现有 400/ErrInvalidParams，带字段和稳定 reason，不回显全部用户数据；DB/context 错误不伪装“无此字典”。
+迁移不直接改旧配置：先只读扫描当前实际ticket_type_fields/transition_meta；D01实现发布/草稿快照后才纳入，不能冒称当前已有。报告新增拒绝原因，无问题配置不改值。坏项仍可读，仅拒实际触及该表达式的新保存/提交，评论/标签等无关操作不一刀切；下一次合法相关写才重算，不批量改历史。报告含类型/version/字段或转换/purpose/表达式hash/分析器版本/前后分析结论/reason，不求业务值、不导全文或执行字典I/O。语法/业务校验仍现400/ErrInvalidParams，DB/context故障另分，不伪装未命中字典。
 
-C01.1 节点角色/作用域分析＋正反 corpus；C01.2 保存/提交统一接入与投影隔离；C01.3 旧配置扫描与文档注释校准。出口：`upper(x)+upper` 中值位 formula 字段不能被调用同名消掉；`let x=base; upper(x)` 保持合法；请求注入、旧值、改变字段排序均不能决定 formula 结果；缺字段、闭包/let 嵌套、字典取消、Create/Update/转换/显隐分别验，不以“禁用全部函数”逃避修复。
+C01.1 节点角色/作用域分析＋正反corpus；C01.2 保存/提交共核及输入隔离；C01.3 旧配置只读扫描。出口：upper(x)+upper值位formula引用不能借callee同名消失，let x=base; upper(x)保合法；在固定时钟/相同依赖快照下，请求伪值、旧值及字段排序不决定结果。合法now()/lookup_dict本身依当前时间/数据，不能宣称跨时间恒定。缺字段、词法嵌套、字典取消、保存/提交/转换/显隐分别验，不以禁全部函数逃避修复。
+
+### C01准确接线与一次快照显隐
+
+基线`610c1d76`、Expr v1.17.8。现`POST /api/v1/ticket-types/fields/replace`保留ReplaceTypeFieldsRequest的code/version/fields、field_meta.formula/visible_when字符串及成功warnings。`internal/service/ticket/type_admin.go`的`ReplaceTicketTypeFields→validateFieldInputs→checkFieldReferences`负责保存；`service.go`的Create/Update→validateCustomData→applyFormulas负责提交；`transition.go`的`buildValidatorEnv/checkValidator`供转换。当前router无公开formula preview API，D04需要时才消费同内核；validator保priority/title/status/type_code/custom_data上下文，不套formula禁链到全部系统字段。
+
+`internal/pkg/exprcalc/exprcalc.go`保留CheckSyntax/Identifiers/ApplyFormulasContext旧入口，由内部分析结果提供自由字段/调用/原因/policy版本。解析与compileOptions共用disabled/functions快照，不能无配置parser.Parse与DisableAllBuiltins编译两套名字语义。Pinned ast.Walk为后序visitor，选择显式递归；VariableDeclaratorNode先外层Value、再加Name分析Expr，原checker禁止的重声明/函数遮蔽不放宽。CallNode直接callee按注册表，参数按值；静态Member字符串属性不是字段，对象根/动态下标/slice边界继续分析。Pointer/Predicate仅原合法域，不由支持分析开放已禁builtin/闭包/宿主方法。未知节点拒绝，字面字符串$env不误伤。MaxExprLen=2048实际为**UTF-8字节数**，文案须校正。
+
+显隐采用有限一次快照：普通schema白名单输入形成visibility快照→仅为visible_when实际依赖的formula按需算只读服务端值→普通快照＋派生值判hidden→prune→用prune后的普通基础环境重算可见formula最终产物。客户端/历史formula值从两环境隔离，不被显隐依赖的隐藏formula不求值；禁链使其无需通用DAG/反复求不动点。缺合法依赖沿原保守可见/更严校验，基础设施失败另报依赖错误，不能用伪值/空label隐去required。此行为纠正列扫描报告，保留合法formula显隐能力。
+
+领域层从完整当前schema及已启用字段写资格投影输入；通用ApplyFormulasContext只有公式列表，至少删其全部公式输出键，不能假称知道完整领域字段。每公式读同一不可变基础，输出不喂后续公式；入参map/ctx/tx不改，未知存量键可在原兼容载荷保留但不入env。隔离求值不等于顺手清洗整单数据，最终产物仍验type/regex/required/有限数和JSON预算。
+
+`internal/service/ticket/exprfuncs.go`的withFormulaDictLookup保留formula读取停用项历史标签；withDictQuerier显隐/validator按原enabled规则。真正无行与DB/读完成错误/取消/超时分开，后者不伪报未命中；现TestExprLookup_ReadCompletionError文案预期随分类纠正，零成功值不变量保留。编译缓存只存程序/分析元数据，按policy/schema/function generation隔离，注册冻结，旧generation不装新key。优先用Expr MaxNodes与VM MemoryBudget，后者不是Go堆字节；2048字节、现64KiB JSON/原deadline保留，节点/深度/字典次数/range预算用最坏合法样例冻结，不冒称所有者SLA。
+
+**C01-01–10待新增**：callee和值同名；let initializer/合法作用域及非法重声明；静态/动态节点与沙箱；保存/Create/Update/validator共核且可引用集不同；伪/旧formula隔离与顺序/入参不变；显隐服务端派生/hidden不复活；字典tx/disabled/故障分类；schema/policy/generation与并发ctx隔离；只读扫描及相关写hold；长度/节点/range/字典/JSON与fuzz坏种子。移除修复须使同名漏检、伪值或ctx后台化反例有效红，沿原至少8轮纪律。FuzzExprReferences仍PR20秒/周10分钟，全批五目标PR100秒/周50分钟，不另加全仓fuzz。
+
+复用`internal/pkg/exprcalc/exprcalc_test.go`的TestEvalFormula_Basics/TestEvalFormula_Guardrails/TestApplyFormulas/TestApplyFormulas_RejectsInfNaN，`internal/pkg/exprcalc/context_test.go`的TestContextFunction_RuntimeIsolation/TestContextFunction_SandboxAndCompatibility，`internal/service/ticket/b17_semantic_integration_test.go`的TestB17_FormulaRefs/TestB17_FormulaDrift，`internal/service/ticket/formula_integration_test.go`的TestFormula_Fields，`internal/service/ticket/b16_batch2_integration_test.go`的TestB16_LookupDict_Formula/TestB16_FormulaVisibilityAndOutputValidation，`internal/service/ticket/expr_context_integration_test.go`的TestExprLookup_ReadCompletionError/TestExprLookup_UpdateReusesTransaction/TestExprLookup_CompiledProgramDBAndTransactionIsolation。本轮未执行这些未来反例；扫描若发现真实配置依赖旧不可信结果，给具体场景入集中议程，不自行放回旁路。
 
 ## C02：文件引用与对象生命周期
 
@@ -142,20 +180,40 @@ C01.1 节点角色/作用域分析＋正反 corpus；C01.2 保存/提交统一�
 
 统一操作建议 `ReconcileTicketFileRefsTx(tx, ticket, actor, oldRefs, newRefs, explicitAttachments)`，由 ticket service 拥有，storage repo 只执行参数化 SQL。输入来自已 G2 校验的 schema file 字段、richtext 稳定 URL 抽取和显式附件列表，按 bucket/key 去重；不接收调用者自报 owner。Create 与 Update 使用同一规则；Update 在锁内新鲜基线上 merge/重算后抽取，禁止事务内再向 pool 读 schema。只改 title 时不重新夺取所有旧附件所有权。
 
-- 保留引用：对象 confirmed、真实 owner=ticket 且 ticket_attachments 关系一致可保留，不要求编辑者是最初上传人；不一致旧数据报可定位错误，不静默把外单对象抢过来。
+- 保留引用：对象confirmed且bucket/key→ticket_attachments当前票关联成立可保留，不要求编辑者是最初上传人。owner_kind/owner_id只是可空元数据，不作归属授权依据，不能因旧行NULL拒绝合法关系，也不能仅凭其票ID接受。不一致旧数据报安全原因，不静默抢外单对象。
 - 新增引用：当前操作者上传的 confirmed 暂存 `attachment_create/richtext_create` 可在同事务落绑；已有该工单的正式对象可复用。其他工单、其他上传者暂存、avatar、pending/deleted/不存在对象均拒绝；真实 owner 的读权限不等于跨单迁移权。body 任一引用非法则工单 patch、关系、owner、ticket event 一并回滚。
-- 删除字段引用：推荐只移除该字段内容，**不自动删已绑定的附件或物理对象**，保持显式附件列表/历史引用可读；显式删除继续走原 `DeleteTicketAttachment` 授权通路，并拒绝删除仍被当前 file/richtext 引用的对象（返回冲突和字段位置）。ENG-D02已确认保留与显式删除方向；上传B默认追加B，不隐式替换A。引用感知自动解链不是本次采用的默认。
+- 删除字段引用：只移除该字段内容，**不自动删已绑定附件或物理对象**；显式删除仍走DeleteTicketAttachment授权，仍被当前file/richtext引用则409＋稳定reason和泛化提示，不回隐藏字段名/正文位置。ENG-D02已确认保留与显式删除；上传B追加B，不隐式替换A。引用感知自动解链不作默认。
 - 锁序统一 ticket→按对象 ID 升序的 file_objects→关系；同 key 跨单竞争只有一个成功，计数去重后再校验。不在 DB tx 内 HEAD/删除对象存储；上传确认先完成 HEAD，失败的 DB 绑定保持暂存供重试/GC，GC 与绑定共享状态条件/锁，不删已绑定对象。数据库失败为 5xx，业务引用非法为 400，已被他单绑定/仍被引用删除为 409；响应不泄露外单标题/人员。
 
 文件字段是工单自定义表单的file控件，不是仓库.md文档。单次可选一个或多个文件，成功项按对象key追加且去重，失败项逐项提示；建单前“移除”只表示不纳入本次提交，误传暂存仍按既有GC处理。已建单“删除附件”是独立明确操作，不能因上传B/编辑字段自动删除A。Markdown/富文本正文只引用图片/文件URL，删除正文引用与删除对象分开；其图片用途/引用回收另按C02对应规则，不能混成同一个按钮。
 
-F23 `attachment_create + ticket_id` 矛盾参数先观测调用量并在响应发明确弃用提示；公共契约/客户端改为已有单一律 `ticket_attachment`，下一次兼容发布后严格 400。禁止 confirm 静默将矛盾参数解释为成功绑定。既有合法暂存 confirm 路径不改。所有权限仍经路由 L1 与 ticket L2/L3，存储通用包不 import ticket 业务。
+F23 `attachment_create + ticket_id`矛盾组合先观测并明确弃用，下一次兼容发布后严格400：已有单的**独立附件立即上传**使用ticket_attachment；编辑表单中随保存原子绑定的暂存仍attachment_create/richtext_create且不传ticket_id，不能因已有票就取消暂存流。禁止confirm静默把矛盾参数解释为绑定成功。合法暂存路径保留，所有权限仍经L1与ticket L2/L3，存储通用包不import工单业务。
 
 **ENG-D02供owner理解的例子**：同一工单“整改前截图=A、整改后截图误填A”，改后者为B，只取消该字段与A的对应关系；A仍被整改前字段使用，不能删掉。字段和附件列表是同一个对象的两个入口，不是复制两份。推荐按钮明确区分“从此字段移除”与“删除工单附件”；即使以后最后一个字段引用移除，也保留附件直到显式删除/保留规则处理。当前详情file字段尚无这样的编辑UI，当前附件删除对file引用的完整保护也未落地；2026-11-11所有者已确认保留A/明确删除，并纠正上传B应默认追加；当前实现和删除保护缺口仍待C02/U03落地。
 
 C02.1 盘点旧 orphan/跨单引用、接口用途合同；C02.2 锁内 ref reconciliation 同规 Create/Update；C02.3 删除引用保护、GC竞争及 F23 兼容期。出口：伪 key、错用途、别人暂存、他单正式对象、并发双绑、最后一个字段失败、超额度、保留别人上传的本单附件、清字段保留附件、显式删仍引用对象、GC/回滚均有真实 PG/存储证据；下载权限负例保留。
 
 第二轮另补头像和metadata边界：旧avatar退役须当前用户合法归属，不能因profile任意key引用就删除他人confirmed未绑定对象；保留合法外链兼容。删除附件先核`bucket/ticket_id/key`当前关联，再给richtext用途提示，非法关联与未知同形404，合法本单richtext仍原400。具名`Avatar_RetireOnlyOwnedOldKey/Attachment_ForeignPurposeNotObservable`，已绑定他人头像/跨票下载/他人暂存绑定正确对照仍须通过；不要夸大成已证明可枚举或读取他人内容。
+
+### C02准确wire、存量修复与UI生命周期
+
+基线core `610c1d76`、UI `875df0bf`。**首期不新增请求/读字段或引用表**。`internal/model/ticket_request.go`现Create的custom_data＋attachments不变，Update custom_data仍patch/null删键、attachments增量；未来D02的patch/collect_fields只通过同一内部helper适配，不由C02抢改现wire。引用位置首期不返回；以后若真需要再做受权扩展，不把它当删除保护前置。
+
+`internal/service/ticket/service.go`的Create已合并显式/file/richtext键，Update目前只绑显式附件。共同helper接**验证、hidden剔除及公式处理后的最终数据＋同一schema/definition快照＋tx/RowQuerier**；复用ListTicketTypeFieldsTx与validateCustomData的q，不直接把内部走pool的fileFieldKeys/richtextFieldKeys搬进Update事务。正文继续`internal/service/ticket/richtext.go`的ExtractFileRefs，不加另一套正则。只改title不夺旧附件，现票合法协作者保留同票confirmed对象不要求是原上传人；新增本人confirmed悬挂对象才执行原上传归属/用途约束。
+
+按bucket+key全量命中并锁内验状态、用途、同票关联与MIME，缺项不能因为只查回一部分MIME就通过。派生跨字段/正文的同键去重后只绑一次、计一次额度；显式attachments自身重复仍可保原400合同。锁序接C：授权守卫→适用配置快照→ticket→稳定排序file_objects→关系；ticket patch、绑定、owner/状态、事件任一失败全回滚，网络HEAD/物理删除在外。
+
+删除候选事务：先当前票update资格→锁票/对象→证明(bucket,ticket_id,key)关联→合法本票inline保原400→普通附件检查当前全部真实引用，有引用409→解绑与逻辑deleted同tx→commit后物理删除，失败留deleted供二扫。现`internal/service/storage/service.go`的DeleteTicketAttachment用途先判且Unlink后Mark失败只warn，尚不具此原子性；RECHECK05非法关联/未知统一404，不能先泄用途。引用检查覆盖全部真实字段，但409只泛化“仍被引用”，不回reference_locations；缺定义/解析不确定不得当零引用执行破坏动作。
+
+旧Update可能留下“custom_data引用存在但ticket_attachments缺失”，现`internal/repository/storage_repo.go`的ListConfirmedOrphans/MarkDeleted不能证明已保护这些旧引用。上线前只读盘点，能证明本人合法悬挂/同票来源者受审补关联，归属/来源/定义不可证的hold/quarantine，相关GC不得先回收；不自动认领他票/他人键。已绑inline去引用后自动回收仍归RK-P5-16后继，不暗塞C02。
+
+头像RECHECK04纳入`internal/service/user_service.go`的Create/Update/UpdateProfile及正式BindAvatar共享不变量：内部对象键须合法归属**目标资料用户**（管理者身份不改变上传归属），Create尚无可证目标归属则拒内部key，不回落actor上传归属；旧外链兼容不触发服务端抓取。`internal/repository/storage_avatar.go`的BindAvatar退旧键须目标合法拥有、confirmed/avatar、无其它有效引用；只读到users.avatar字符串不构成归属证明。保留users.version、同键noop及对象锁后新语句复查；不新建代他人上传接口。物理退役在commit后，未知/他人键不泄对象存在性。
+
+UI `src/views/ticket/create/index.vue`的handleFileUpload已有单次追加，补多选逐项状态/成功去重，失败不改A；`src/components/TicketAttachments.vue`虽multiple，当前共享uploading及只比ticketId不足以防A→B→A，补target＋generation、逐项pending/错误、确认前提交锁。`src/components/RichtextField.vue`的onUploadImg当前失败会交空URL，改为只将当前编辑器成功项回调，卸载/迟到不插新目标。去Markdown引用不删对象；明确删除409保列表/字段，结果未知不自动清项/重发。
+
+**C02-01–08待新增**：Create/Update显式/file/richtext/多处同键及patch/null同规；现票协作与新悬挂归属/失效/缺项；额度去重及中途失败零半套；关联先用途及404/inline400/引用409不泄位置；去一处/全部引用仍保附件；旧缺关联hold/合法补绑与GC/物理二扫；头像他人旧键不退役及合法/外链/CAS对照；多选部分失败/重复/换目标卸载/确认迟到/未知结果。并发双绑/GC/回滚按真实PG和既有至少8轮有效红，不拿前端按钮替服务端保护。
+
+复用`internal/service/ticket/attachment_bind_integration_test.go`的TestCreate_TicketAttachmentBind/TestUpdate_TicketAttachmentIncrement/TestCreate_RichtextRefBind，`internal/service/ticket/update_tx_hammer_integration_test.go`的TestBK11_UpdateHammer，`internal/service/storage/gc_binding_integration_test.go`的TestGC_TicketBindingWins，`internal/service/storage/avatar_race_integration_test.go`的TestBindAvatar_GCWins/TestBindAvatar_BindingWinsGC，`internal/service/avatar_profile_integration_test.go`的TestUserAvatarProfileCAS。UI沿src/api/storage/idWire.test.ts的confirm/bind/delete、src/components/useRichtextDraft.test.ts及src/views/ticket/detail/useRenderedRichtext.test.ts借wire/世代夹具，ticket/idWire.test.ts只作相邻票请求补充，不能替代storage wire。当前无附件组件专测，需Playwright真实交互。旧绿色不证明新增保护，保留A/追加B不再待问。
 
 ## C04：事务试点、组织删除与默认拒绝
 

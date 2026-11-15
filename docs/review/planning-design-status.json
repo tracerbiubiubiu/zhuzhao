@@ -176,14 +176,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "已核保存/Create/Update/validator实际wire/AST配置/输入与显隐快照/字典tx/只读存量扫描及10组独立预期，当前未实现。",
+        "实施前按最坏合法样例冻结节点/深度/VM/字典预算，生成/修源码与有效红绿；真实旧配置扫描按实际数据运行，不把候选当已清零。"
       ],
       "next_design_gate": "P6.0开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/design/engineering-execution-design.md#c01准确接线与一次快照显隐"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -199,15 +204,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "RECHECK-04/05补头像旧对象退役合法归属与附件先关联后用途提示；条件性/低影响边界随现有对象生命周期收口，已绑定他人头像和跨票读控制保留。"
+        "已核Create/Update/删除/GC/头像和UI的同桶关系/最终数据/多引用/孤儿及8组预期，首期无新引用表/读字段。",
+        "真实存量盘点与受审补关联/hold、F23实际调用兼容窗口、产品迁移/并发/浏览器与GC验收仍需实施；旧缺陷不由设计关闭。"
       ],
       "next_design_gate": "P6.0开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/design/engineering-execution-design.md#c02准确wire存量修复与ui生命周期"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -2052,9 +2061,29 @@
         },
         {
           "id": "CORRECTNESS",
-          "ref": "docs/phase6/foundation-iam-module-detail.md",
-          "state": "source_inputs_collected_detail_pending",
-          "remaining": "C01/C02实际符号、RECHECK04/05及独立预期已只读采集，待落准确接线与存量兼容。"
+          "ref": "docs/design/engineering-execution-design.md",
+          "state": "source_mapped_contract_and_acceptance_candidate",
+          "remaining": "Implementation artifacts, measured budgets, real legacy scan and runtime acceptance remain; design is a source-mapped candidate.",
+          "case_ids": [
+            "C01-01",
+            "C01-02",
+            "C01-03",
+            "C01-04",
+            "C01-05",
+            "C01-06",
+            "C01-07",
+            "C01-08",
+            "C01-09",
+            "C01-10",
+            "C02-01",
+            "C02-02",
+            "C02-03",
+            "C02-04",
+            "C02-05",
+            "C02-06",
+            "C02-07",
+            "C02-08"
+          ]
         },
         {
           "id": "TICKET",
@@ -2095,8 +2124,9 @@
         {
           "id": "ENGINEERING_OBS",
           "ref": "docs/phase6/foundation-iam-module-detail.md",
-          "state": "existing_contract_reused_pending_actual_gate_map",
-          "remaining": "逐五仓脚本/工作流/check和OBS敏感入口给接线、隔离/恢复证据出口；远端配置不执行。"
+          "state": "actual_five_repo_gate_map_added_OBS_projection_remaining",
+          "remaining": "逐五仓脚本/工作流/check和OBS敏感入口给接线、隔离/恢复证据出口；远端配置不执行。",
+          "source_mapped_ref": "docs/design/engineering-execution-design.md"
         },
         {
           "id": "UI",

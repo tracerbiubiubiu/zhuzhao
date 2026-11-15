@@ -103,6 +103,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
+| **表达式/文件准确接线** | C01固定AST/一次服务端显隐快照/输入隔离/旧配置扫描，C02同规引用/存量孤儿/删除保护/头像及上传世代；五仓CI源映射 | 📋 C01-01–10/C02-01–08/ENG-01–08为待实现预期，独立只读复核；不增加引用表/preview服务，不改业务/工作流/原排期 | [正确性与工程施工](../design/engineering-execution-design.md)、[详设状态](planning-design-status.json) |
 | **权限首批收口** | A角色编辑、B有效来源/成员差量、C写方/策略pair/强审计/旧wire，以及任务维护资格/归因源映射；C05安全代际候选独立 | 📋 未实现；A4–6/B4–7/C12–19/任务4–7为待扣重子估，C05持久增量须另核。公共IAM Schema/秘密摘要仍待技术收口；新业务待答集中，不重问F017；全版净价未更新 | [第一包](../phase6/iam-first-batch-design.md)、[底座](../phase6/foundation-iam-module-detail.md)、[集中议程](owner-decision-agenda.json) |
 | **权限差距补齐计划** | AUTH-GAP-01–07：来源/撤权、共同入口、对象与集合、独立预期/有限解释、性能与多副本证据、固定窗口复评 | 📋 已分工/排窗口，未实施或实测补齐；多数为已有包验收细化，开工扣重拆子估；实际引擎PoC/迁移另估，不纳入首版前置 | [动作与边界](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)、[底座§3.7](../phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织)、[总账](planning-backlog.json) |
 | **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
