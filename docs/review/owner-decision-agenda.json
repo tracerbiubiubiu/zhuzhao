@@ -314,5 +314,27 @@
       "formal_decision_ids": []
     }
   ],
-  "formal_decision_count_source": "planning-decisions.json#/decisions"
+  "formal_decision_count_source": "planning-decisions.json#/decisions",
+  "module_detail_followup": {
+    "date": "2026-11-15",
+    "source_followup": "F018-module-detail-continuation",
+    "state": "collecting_for_consolidated_owner_review",
+    "boundary": "此组为后继详设的集中待确认，不改原13组确认来源/计数，也不将建议视为批准；仅阻塞实际依赖项。Q07至Q12真实输入继续沿原窗口，不重复造决策。",
+    "items": [
+      {
+        "id": "TASK-D01",
+        "title": "维护动作的人工入口与保留期临时覆盖",
+        "scenario": "系统管理者排障，希望临时把在线审计保留期从180天降为30天，经TR手动执行归档；普通业务用户仍只能发业务任务。数字仅举例，不是生产值。",
+        "recommendation": "默认保留固定系统cron；如需人工维护，用独立受权、带理由与受控值的入口，不使用普通task参数覆盖。额外维护TR job须绑定批准后台主体与定义版本。",
+        "state": "pending_consolidated_owner_review",
+        "affected_items": [
+          "AUTH-02",
+          "C04",
+          "OBS02"
+        ],
+        "blocks": "只阻塞人工覆盖/额外后台维护开通，不阻塞越界修复、可信归因或默认cron设计。",
+        "design_ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因"
+      }
+    ]
+  }
 }

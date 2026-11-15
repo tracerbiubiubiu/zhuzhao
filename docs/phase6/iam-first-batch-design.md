@@ -28,7 +28,7 @@
 | **B 有效组织来源与任职保存** | AUTH-01/03、RECHECK-03、已定HIER-D01；`RoleRepo`两种有效查询、scope/组织委托、`OrgRepo.SetUserOrgsTx` | 父/本组停用跨菜单/API/scope/委托一致，独立来源保留；同org集合保存不重置admin/group/期限，停父角色不再贡献菜单 | 不做完整HR/UAA；组织集合差量保留既有primary缺省/null语义和owner双轨清理；Move/停用竞态由C共同写侧闭合 |
 | **C 当前授权、提交及强审计最小闭环** | C04工单Create/Update/Transition及其repo邻域；相关IAM/组织/参与写方；两审计命令；FND-02/03/04/06/11/12/17 | fresh/DBTX不信守卫前context；撤权先提交旧决定零效果；L1 revision+enforcer配对原子安装，单实例失败/恢复可验；两改权审计写失败零提交、collector失败只补送 | 不能只给三个工单方法加读锁而漏对应改权写方；不扩全仓DBTX、独立PDP或完整HA。完整双副本、HR、UAA及其它领域按原包窗口 |
 
-A先作为第一可实施切片，B/C保持有界后继，不要求一次开发整个IAM。C05账号停用/会话收敛的本地必需出口仍按原包交付，不能因C完成就声称完整会话恢复链已验，亦不将它免费吞进C子估。两项政策先固定，具体SQL、fresh端口、锁序实现、错误兼容与测试夹具由维护者在既有合同内处理，不逐条询问所有者。
+A接口/验收已细化；B的来源与差量算法见[底座§3.8](foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线)，C的写方、pair、两操作审计与旧wire方案见[§3.9](foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，任务窄修复见[任务§8.3](task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因)。这些均为源映射设计候选，未实现。A先作为第一可实施切片，B/C保持有界后继，不要求一次开发整个IAM。C05账号停用/会话收敛的本地必需出口仍按原包交付，不能因C完成就声称完整会话恢复链已验，亦不将它免费吞进C子估。两项政策先固定，具体SQL、fresh端口、锁序实现、错误兼容与测试夹具由维护者在既有合同内处理，不逐条询问所有者。
 
 **现有任务入口的安全修复另列**：AUTH-02维护action资格/保留期、AUTH-06可信created_by归因归原任务/消息包，OBS只消费其可信actor，在开放业务任务前修；不等CE03/MCP。主仓Submit/CreateJob/UpdateJob/Trigger/Retry/最终执行逐项清单与TR归因合同另作窄批，不偷偷塞进IAM数据查询，也不把TR现有“body优先”测试当成可信归因证明。
 

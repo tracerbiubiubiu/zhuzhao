@@ -245,6 +245,36 @@ AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，
 
 首批只保护实际启用敏感能力与上述当前维护越界，不重写所有非敏感TR业务，也不引入万能invoke或第二个权限引擎；未具安全接线的敏感旧深链服务端拒绝。AUTH问题仍是开放缺陷，本页仅修设计，不能据此声称已拦截。
 
+### 8.3 存量任务窄修复：准确接线与参数、归因
+
+只读基线：主仓`610c1d76`、TR `b0906b83`。本段落实AUTH-02/06的4–7日有界子估，不另做CE03/完整I03；依赖的共同receipt/意图仍归C03/R01，不能重复计价。下列策略端口是候选，不是现成API或新增通用策略引擎。
+
+现状`internal/pkg/jobs/registry.go`的`ActionMeta`只有描述/schema，`TaskrunnerHandler.failFastAction`只查注册；`TaskrunnerService.CreateJob/UpdateJob`转发raw body，`JobsCallbackService.Execute`的动作/params快照不证明actor有执行资格。注册、服务验签、任务幂等、动作授权是四件事，不能相互替代。
+
+**最小动作策略**由核心动作属主登记：action_id、business/maintenance分类、允许的可信入口/主体及参数检查函数；先只用于实际注册动作。调用`AuthorizeAction(ctx, principal, action, immutable_input, origin)`的候选内部接缝返回允许/拒绝/依赖不可证，不把页面所见动作清单当可执行清单。未登记敏感动作默认拒绝。对普通既有非敏感profile保留原行为，不临时造一套任意条件DSL。
+
+| 入口及真实锚点 | 修复时必须取的输入／顺序 | 失败出口 |
+|---|---|---|
+| 主仓`internal/handler/taskrunner_handler.go`的`Submit`→`TaskrunnerService.Submit` | 原JWT/L1后，用可信主体、action及严格解析params验资格；仍守64KB/timeout/callback_url约束；内部调用也走Service同一检查 | 无资格403、非法params400；拒绝时TR调用和新执行均为0，不能只藏按钮 |
+| 同文件`CreateJob/UpdateJob` | 新建取将保存的真实action；更新读原定义后**只合并TR JobPatch白名单**再验对象管理权及最终action/params。现patch不能改action_id/trigger_type/created_by；params省略保持、显式null拒绝，不能用TR忽略的未知body字段替换授权对象；enabled激活也验 | 读失败/未知action不以空值放行，不先远程修改再补校验；不改变patch的省略/null既有约束 |
+| 同文件`Trigger/Retry`及TR原job/task | 使用受权查询取得的原定义或原task快照，不能只检查body的job_id/task_id；重试仍按原action/params核当前资格，禁止换成新动作 | 获取不到原可信输入不执行；撤权后不得以“以前已创建”继续发起新执行 |
+| 主仓`internal/service/jobs_callback.go`的`JobsCallbackService.Execute` | 验签/快照/执行权与当前动作资格均通过才进Handler；执行资格绑定核心持久准入事实或受审固定后台配置，不从body.actor/created_by猜身份 | 缺原可信准入记录的敏感旧任务held/拒绝，不能因ClaimCallbackRow可补行就现造授权；恢复只补必要事实，不重做已证明的效果 |
+| 主仓`internal/service/cron_scheduler.go`的`CronScheduler`及app装配 | 进程内cron使用构造时固定的后台维护主体/动作/受控配置，不能由字符串actor="system"触发特权。TR cron须登记可信job版本/后台主体，并复用同动作策略 | 未批准的后台绑定不开通；配置非法启动/启用时明确失败。两种归档调度保留原二选一，不能同时恢复造成重复跑 |
+
+**原定义读取是新增窄接线，不是现成功能**：当前主仓client只有ListJobs，TR HTTP也没有单job GET，不能靠分页列表恰好找到就声称可靠。拟补TR属主的`GET /v1/jobs/:job_id`与核心client内部GetJob port，复用TR repository的单条读取/JobView，经现AK/SK及受信caller保护；不新开核心前端绕权限读接口。核心只在原L1/职责检查允许的用例内部取配置用于判定，读取失败关闭，raw参数不下发无权用户。读到的定义/params需绑定后续准入快照，最终执行仍核该绑定与当前资格；跨网络GET本身不能锁住后来的TR修改，这个版本/快照接缝复用C03，不在窄修复中伪称已有跨库事务。
+
+**保留期边界**：`internal/service/audit_archive.go`的`archiveParams/Handle`当前正值可覆盖配置；修复后普通业务输入不得降低或任意覆盖保留期。默认沿已受审服务配置；零/缺省、负数、类型错误及超界分别按原兼容与严格参数预期验证。若允许运维临时覆盖，须有独立受权入口、批准值/有效窗及审计，不复用普通task params。实际允许的维护主体及是否保留人工覆盖汇入待确认，不在本轮猜生产保留天数。在线归档与归档文件清理是两种保留配置，不能只限制其中一个或让外部任务传出目录/表名。
+
+**归因合同**：主仓浏览器入口接受旧created_by字段也不采用它，可信actor在Service边界传入；新消息规则的created_by取当前主体，更新保留原creator，实际modifier记本次操作，不重写历史归属。`internal/service/message_admin_service.go`的`UpsertRule`现ON CONFLICT分支本就不改created_by，修复须保持CAS/version与此语义。内部调用亦显式提供可信上下文，不能只在handler补字段后仍留Service旁路。
+
+TR `internal/handler/server.go`的`Deps.createJob`目前body.created_by优先于验签operator；目标改为从**被批准可声明操作人的caller**及验签context构造归因。收到operator仅证明签名内容，仍须核caller允许为该用户/服务调用；不能任意服务签一个admin名字就取得核心权限。服务调用没有真人时归因服务主体，不伪造真人。旧wire可兼容接收created_by但不授其权威，body伪造值覆盖/忽略的行为变化与消费者同步。当前64字符存储与签名operator旧形状保留兼容；稳定本地principal_id在核心可信准入中保存，username/工号展示值不能变成授权主键。历史记录不批量改造，存疑旧字段不作为“我的任务”的授权依据。
+
+**独立验收（待新增）**：TASK-01业务task:submit但无审计读/维护权，Submit/Create/Update/Trigger/Retry及回调均不能移除任何审计行；TASK-02授权固定cron仍能按配置归档，旧actor="system"伪装失败；TASK-03覆盖参数非法/降保留期拒绝且默认正常，目录/文件保留配置不受body控制；TASK-04提交后撤权、旧敏感job无可信来源、原任务被换参均零新效果；TASK-05任务与消息created_by伪造不生效，更新原creator不变而modifier真实；TASK-06无真人服务归因可解释，未受信caller不能冒用用户，合法跨仓签名及普通业务任务仍通过。
+
+可复用主仓`internal/handler/taskrunner_handler_test.go`的`TestTaskrunnerHandler_CreateJobFailFast/TestTaskrunnerHandler_BadRequest/TestTaskrunnerHandler_ProxyPassthrough`、`internal/service/taskrunner_service_integration_test.go`的`TestTaskrunnerServiceSubmitRecordsVoucher`、`internal/service/message_rule_version_integration_test.go`的`TestMessageRule_VersionCAS`；这些目前不证明动作授权。TR `internal/handler/server_test.go`的`TestCreateJobCreatedByFallback`明确断言body优先，实施须先说明合同纠正，再补有效红例，不能把当前绿色当可信归因。授权拒绝须真实HTTP＋PG审计行/下游调用数对照，最终Handler入口单独测；两种证据不能互代。
+
+**待集中确认TASK-D01**：例如已具系统管理权的人临时把在线保留期从180天降为30天排障，是否允许通过TR手动发起？建议首批保留固定系统cron，人工维护仅独立受权、带理由和受控值；普通业务任务始终禁止。也可保留经批准的维护TR job，但需绑定明确后台主体和定义版本。该选择只阻塞维护人工/额外后台开通，不阻塞业务任务越界修复、可信归因、默认cron或其它模块设计；当前不执行任何归档/删行。
+
 ## 9. 测试先行用例与交付出口
 
 下面是实施时必须先红后绿的具名预期，**本次没有执行这些未来产品测试**。每个用例记录当前候选五仓组合与真实效果；并发缺陷按standards移除修复后至少8次稳定红验证，不能因加timeout/skip掩盖错误。

@@ -705,6 +705,25 @@
       },
       "implementation_state": "not_implemented",
       "estimate_state": "bounded_subestimates_pending_deduplication_not_added_to_global_total"
+    },
+    {
+      "id": "F018-module-detail-continuation",
+      "date": "2026-11-15",
+      "source": {
+        "kind": "explicit_user_goal",
+        "request_excerpt": "继续直至所有细节细化完成，如果遇到代确认项先跳过，后续统一进行确认"
+      },
+      "design_ref": "docs/phase6/module-detail-index.md",
+      "scope": "依既有模块交接六项交付逐项补准确接线、常见场景及独立验收；复用已有充分合同，远期按原阶段冻结边界与本期决策，不提前开发全部未来模块。",
+      "owner_confirmation_handling": "未确认业务选择集中登记owner-decision-agenda.json，仅跳过依赖该选择的部分，不中断其它设计，也不将建议当已确认。",
+      "authorization": {
+        "documentation_refinement_and_local_commits": true,
+        "business_code_changes": false,
+        "push_merge_deploy": false
+      },
+      "state": "in_progress",
+      "implementation_state": "not_implemented",
+      "scope_prices_schedule": "沿原包归属，新增净范围另估；本次不改既有价格/DAG或日历。"
     }
   ]
 }

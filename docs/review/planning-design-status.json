@@ -254,20 +254,21 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。",
-        "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
-        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
-        "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。",
-        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01整子树暂停已确认，须实施验收。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "A/B/C与任务维护窄修复已有准确源码/状态/测试映射；公共IAM Schema两个具名分支及参考例、原包净价扣重仍待技术收口。",
+        "实施再生成OpenAPI/迁移/产品测试并先红后绿；旧AUTH/RECHECK缺陷仍开放，未跑新业务验收。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/iam-first-batch-design.md",
+          "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+          "docs/phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "hierarchy_scenarios": [
         "HIER-01",
@@ -303,16 +304,21 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "已核真实HTTP/CLI/AT/RT/cookie/PAT接线，选择DB安全epoch及Redis投影候选；秘密输入摘要、公共claims/intent参考及C05子估仍待消费收口。",
+        "真实部署维护者/恢复窗口沿Q12绑定；实现与迁移、原兼容/并发及恢复验收未交，不改变PAT独立生命周期。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/foundation-iam-module-detail.md#41-c05现有wire与尚未持久化的部分",
+          "docs/phase6/foundation-iam-module-detail.md#42-c05的有限持久方案",
+          "docs/phase6/foundation-iam-module-detail.md#43-c05切换恢复与独立验收"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "authorization_gap_actions": [
         "AUTH-GAP-01"
@@ -463,20 +469,20 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
-        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
-        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。",
-        "RECHECK-03：相同组织集合保存不隐式重设role/scope/source/expiry/joined_at；新增/移除按单写主及owner清理，HR/UAA未接也先修本地往返。",
-        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "B已核来源链/有效角色/scope/委托与成员属性差量、primary原语义及owner双轨；C参与写方后才关闭并发窗口。",
+        "完整目录/交接与真实nonlocal写主、映射及适用子范围仍按D06/公共UAA窗口绑定；产品实现/真实回归未交。"
       ],
       "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+          "docs/phase6/foundation-iam-module-detail.md#5-d06-与-uaa-c来源目录和组织生命周期"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "hierarchy_scenarios": [
         "HIER-03",
@@ -2000,7 +2006,7 @@
       {
         "id": "OBS02",
         "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
-        "state": "detailed_contract_candidate_owner_failure_policy_pending",
+        "state": "detailed_contract_candidate_owner_policy_confirmed_implementation_pending",
         "local_core_selection": "existing authorized history/necessary facts; complete extra audit slice not automatic first-release gate",
         "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，两操作本地审计失败回滚已由F017确认，仍待真实事务接线/失败回归。",
         "review_ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
@@ -2029,7 +2035,83 @@
       }
     ],
     "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
-    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md"
+    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md",
+    "continuous_refinement": {
+      "source_followup": "F018-module-detail-continuation",
+      "state": "in_progress",
+      "review_standard_ref": "docs/phase6/module-design-handoff.md",
+      "owner_pending_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup",
+      "scope_note": "核本期各模块真实接线及六项交付；未来边界/本期裁决按原窗口，生成实现产物和真实provider输入不假装已完成。",
+      "runtime_verified": false,
+      "module_groups": [
+        {
+          "id": "IAM",
+          "ref": "docs/phase6/foundation-iam-module-detail.md",
+          "state": "source_mapped_candidate_partly_open",
+          "remaining": "B/C写方/事务/代际/审计、C05已具体化；公共IAM Schema分支、秘密输入摘要和C05净子估仍技术收口。"
+        },
+        {
+          "id": "CORRECTNESS",
+          "ref": "docs/phase6/foundation-iam-module-detail.md",
+          "state": "source_inputs_collected_detail_pending",
+          "remaining": "C01/C02实际符号、RECHECK04/05及独立预期已只读采集，待落准确接线与存量兼容。"
+        },
+        {
+          "id": "TICKET",
+          "ref": "docs/phase6/ticket-module-detail.md",
+          "state": "existing_contract_reused_pending_wire_mapping",
+          "remaining": "复用定义/字段/转换/主责/时间/LS合同，补现有wire到候选用例及UI/迁移切片映射。"
+        },
+        {
+          "id": "RISK",
+          "ref": "docs/phase6/risk-module-detail.md",
+          "state": "existing_contract_reused_pending_reference_slice",
+          "remaining": "复用风险typed合同和N:1/复核；固定一组合成source/类型/字段桥及查询权限画像。"
+        },
+        {
+          "id": "INTERCONNECT",
+          "ref": "docs/phase6/task-activelist-message-detail.md",
+          "state": "existing_contract_reused_pending_wire_mapping",
+          "remaining": "复用C03/R01/AL效果与事实合同，配准旧接口/回调/Hook切换及一个AL监控参考类型。"
+        },
+        {
+          "id": "MESSAGE",
+          "ref": "docs/phase6/task-activelist-message-detail.md",
+          "state": "existing_contract_reused_pending_reference_http",
+          "remaining": "补公共HTTP参考载荷、错误/回执与当前站内信投影接线，不等待公司私有报文。"
+        },
+        {
+          "id": "ADAPTER_UAA",
+          "ref": "docs/phase6/extension-ai-module-detail.md",
+          "state": "existing_contract_reused_pending_reference_assembly",
+          "remaining": "固定一种公共装配/QueryPort参考，复用UAA公共mock和双模式，真实P/R输入留原窗口。"
+        },
+        {
+          "id": "DEVICE_AI",
+          "ref": "docs/phase6/extension-ai-module-detail.md",
+          "state": "existing_contract_reused_pending_bounded_profiles",
+          "remaining": "补设备人工入口与AI固定受权查询/精确确认参考，不扩SSO/凭据托管/模型部署。"
+        },
+        {
+          "id": "ENGINEERING_OBS",
+          "ref": "docs/phase6/foundation-iam-module-detail.md",
+          "state": "existing_contract_reused_pending_actual_gate_map",
+          "remaining": "逐五仓脚本/工作流/check和OBS敏感入口给接线、隔离/恢复证据出口；远端配置不执行。"
+        },
+        {
+          "id": "UI",
+          "ref": "docs/phase6/ticket-module-detail.md",
+          "state": "existing_contract_reused_pending_page_family_cards",
+          "remaining": "按八种实际页面族补权限/数据/加载空错/主动作/响应式/键盘施工卡，复用代表样板。"
+        },
+        {
+          "id": "FUTURE_BOUNDARIES",
+          "ref": "docs/phase6/module-detail-index.md",
+          "state": "existing_boundaries_reused_pending_decision_cards",
+          "remaining": "E02/03/04/06补本期取舍卡；其余远期父包按原阶段边界，不提前冻结全部SQL/DTO。"
+        }
+      ]
+    }
   },
   "authorization_review": {
     "date": "2026-11-15",
@@ -2214,6 +2296,98 @@
       }
     ],
     "net_estimate_integrated": false,
-    "runtime_verified": false
+    "runtime_verified": false,
+    "detail_slices": [
+      {
+        "id": "IAM-A",
+        "state": "source_mapped_contract_and_acceptance_candidate",
+        "ref": "docs/phase6/iam-first-batch-design.md#3-a批的具体前后与验收",
+        "case_ids": [
+          "A-01",
+          "A-02",
+          "A-03",
+          "A-04",
+          "A-05",
+          "A-06",
+          "A-07",
+          "A-08"
+        ]
+      },
+      {
+        "id": "IAM-B",
+        "state": "source_mapped_contract_and_acceptance_candidate",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+        "case_ids": [
+          "B-01",
+          "B-02",
+          "B-03",
+          "B-04",
+          "B-05",
+          "B-06",
+          "B-07",
+          "B-08",
+          "B-09",
+          "B-10"
+        ]
+      },
+      {
+        "id": "IAM-C",
+        "state": "source_mapped_candidate_common_schema_consumption_pending",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切",
+        "case_ids": [
+          "C-01",
+          "C-02",
+          "C-03",
+          "C-04",
+          "C-05",
+          "C-06",
+          "C-07",
+          "C-08",
+          "C-09",
+          "C-10"
+        ],
+        "remaining_technical": [
+          "公共Schema的IAM两个具名params/target/receipt分支及参考例；不得随意放宽enum。",
+          "与C04/R01/OBS原包净价扣重。"
+        ]
+      },
+      {
+        "id": "IAM-TASK",
+        "state": "source_mapped_contract_candidate_with_owner_window",
+        "ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因",
+        "case_ids": [
+          "TASK-01",
+          "TASK-02",
+          "TASK-03",
+          "TASK-04",
+          "TASK-05",
+          "TASK-06"
+        ],
+        "owner_pending": [
+          "TASK-D01"
+        ]
+      },
+      {
+        "id": "C05",
+        "state": "source_mapped_security_epoch_candidate_consumption_pending",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#41-c05现有wire与尚未持久化的部分",
+        "case_ids": [
+          "SESSION-01",
+          "SESSION-02",
+          "SESSION-03",
+          "SESSION-04",
+          "SESSION-05",
+          "SESSION-06",
+          "SESSION-07",
+          "SESSION-08",
+          "SESSION-09",
+          "SESSION-10"
+        ],
+        "remaining_technical": [
+          "秘密输入的安全重放摘要、claims/intent公共参考及明确子估扣重；不吞入C。"
+        ],
+        "runtime_verified": false
+      }
+    ]
   }
 }
