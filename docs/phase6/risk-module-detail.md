@@ -90,7 +90,7 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 1. ingress验服务/源范围、schema/体积/限流；短事务持久收件/hash与可恢复处理状态，再答accepted。基础版可同请求完成后半处理，但持久收件和领域完成必须分别记证据。
 2. consumer取固定mapping版本、解析目录/CMDB/外部结论，网络在锁外且有总预算。不能解析稳定身份时held，不因IP/姓名变了就造另一风险。来源映射变化需预览旧键影响，禁原地重hash抹历史。
-3. 需要本地授权的命令先依共同C04按稳定key取得授权守卫，再取group/family锁、risk ID、ticket ID、link ID升序。family首次创建由唯一冲突重读，不依赖不存在行的FOR UPDATE；来源consumer仅取得本源系统作用域，不伪造真人；普通“归并计数”不能顺带执行用户派单。
+3. 需要本地授权的命令先取共同C04守卫→适用组织/所钉定义→group/family稳定键→risk ID→ticket ID→link ID，各类内部升序、无对象跳过；不建第二套锁序。family首次创建由唯一冲突重读，不依赖不存在行FOR UPDATE；来源consumer仅本源系统作用域，不伪造真人；归并计数不能顺带派单。
 4. 锁内复验mapping启用状态、来源顺序、family当前cycle和revision。新event同内容计一次；同event重试不加计数；旧序号stale保留收据不覆盖镜像；等序异内容quarantined；timestamp相等且无可比序号、无法证明新观察时held，不能按接收时间裁定回归。
 5. 一事务提交cycle/镜像/观察应用状态、历史和下游intent；未知提交结果先查原receipt。consumer崩溃靠同一ingest_id恢复；不将“任务已受理”当完成。
 
@@ -140,7 +140,7 @@ intent固定 `{event_id,event_type,risk_ref,aggregate_revision,rule_ref,recipien
 
 去重键复用消息属主 `(source_event_id,rule_version,recipient_user_id,channel,semantic_key)`；D15的event_id/rule_revision/recipient_ref在适配边界显式映射为上述字段。template_revision固定绑定原delivery的payload，不因模板更新让旧event再次发送；需要业务补发时走受权新delivery并关联原项。每日提醒/汇总按风险、事件kind及配置时区的时隙建稳定key，重启不会重发同一时隙。通知文本仅编号/必要动作/受权深链，读取深链再次鉴权，不把敏感字段塞入IM；规则频次不是所有消息通用“exactly once”。
 
-业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两类强审计写的owner待决不由本页代拍。
+业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两操作本地强审计失败回滚已由F017确认，仍按统一合同实施，不扩大为所有日志失败均回滚。
 
 ## 7. 三层权限与异常可解释性
 
@@ -234,6 +234,30 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 3. 来源新鲜度/稳定键/序号/撤回及观察时间真实语义：例如扫描重导报告只是更新时间变更，不能据此判已修复后回归。由提供方合同验证，不要求公司资料外传。
 4. E10 P6.1出口：真实Excel模板/存量量级、是否已有迁移工具，以及一个跨指纹并单实例；按固定窗口裁决并给独立子估算。来源不具备不阻人工风险用例。
 5. 正式部署前的数据类别保留和审计人员范围，沿统一发布门绑定；180/365默认不是对公司制度的推定。技术锁/typed命名由实现审查处理，不新增owner审批流程。
+
+## 13. 公共reference v1：两风险的完整纵切
+
+本节的序列/观察投影已有[可序列化向量及Schema](../design/examples/capability-reference/module-profile-vectors.json)，固定摘要见[参考manifest](../design/examples/capability-reference/module-reference-manifest.json)。它只验选定形状；本节角色/派单/关闭回归的时序和当前权限仍须产品独立预期，不冒称10个跨模块样例已执行完整风险旅程。
+
+本段是完全合成的可复用测试输入/逐步预期，**不是实际公司映射或已运行产品**；风险模型/HTTP尚无实现。source_ref=ref-risk-v1、mapping_ref=ref-risk-mapping-v1，稳定source_item_key=finding-A/B；family scope=source_ref、canonical_key=source_item_key、key_schema_version=1，不随标题/IP/备注改键。source_sequence为规范无符号十进制串，核心拒符号/小数/指数/前导零；adapter仅证明源等价语义后归一化。比较按长度/同长字典序，不经JS number；observed_at为实际再次观察时刻。较大序号但观察仍在关闭checkpoint前，只更新适用传输事实，不建新cycle或改处置终态。
+
+仅合成五档映射5→urgent/1、4→high/2、3→medium/3、2/1→low/4，未知held，不代替B08生产映射。EvidenceRef统一provider/external_id/version?对象；生命周期旧字符串例已校准，不能同一版本时而字符串时而对象。新wire用urgent，critical只为历史词。原始源digest、规范化payload_hash、mapper版本分别保留，不能把adapter重新编码当来源新结论。
+
+合成组织G=91001、受影响D=91002、目标T=91003；M=92001具risk:read+risk:manage及虚拟风险组G管理职责，U=92002具相同功能许可且为两风险owner；P=92003为处理人并在本fixture显式获D风险read，V=92004仅D风险read，H=92005无风险L1，N=92006有read但范围为空。M/U/V按主锚/owner/副锚独立预期见A/B、total=2，V不得派。H任意ID均入口403且不查存在性；N对隐藏A/不存在均404。P票权不自动赋风险读，撤显式风险L1后详情/统计/关联投影按入口或可见性拒绝/省略，不能靠比较各入口“相同”代替独立范围真值。
+
+批准映射向ref_risk_remediation的固定definition_version=1/合成hash派票，最多20同owner/org/type/definition共一组；不同任一维度先分组。参考字段为risk_owner（domain写主的只读普通字段）、风险摘要、remediation_note、remediation_evidence；file字段声明/DTO对齐依C02/TICKET接线，collect_fields/证据仍走D02。结构化risk links由桥写主，文本字段不是风险关系真值。
+
+**必须新增的可信事务接缝**：`internal/service/ticket/service.go`的Create当前自开tx，creator、org成员资格、applyFetches和bindAttachmentsTx都用actorUserID；不能用Create(owner)冒用U，也不能顺序建票后再连risk声称原子。候选共享事务内创建内核接受已核准的风险桥上下文，creator=U、真实operator=M，取数/附件仍核M，目标org资格用受信批准映射，不接外部created_by/skip_auth。现Create拒assigned_to仍保留；如需初始处理P，在同一受权事务内通过正常分派核完成，不从raw创建字段偷设。
+
+同库按§4的共同守卫→组织/所钉定义→group/family稳定键→risk ID→ticket ID→link ID锁序，复用G2/公式/附件、org FOR SHARE及编号预取，回滚烧号允许。transition_service.go的Transition也自开tx，提交后emitTicketEvent/RunPostActions不是可靠风险完成intent，须抽同事务转换/领域事实接缝。风险可借工单Authorize/GetFilter注册模式，实际谓词按风险主/副锚/owner独立实现，不复制creator/assignee/CC权。
+
+逐步预期：ingest A/B→受权台账→评估/owner/期限→plan/apply同组同票→P按每link填措施/证据。gate on先pending_verify、U合格复核才落实；off走批准完成边，不跳字段/证据。P接受仅提议，U申请、非申请人M确认；pending阻整票terminal，已fixed不回滚。**finish逐link**可A已落实/B冲突并返回逐项结果；派单同组失败必须零孤票，不是A建票/B失败。另用目标不同而拆两组的变体，A组commit后kill只续B组；改参数须新plan/operation关联原parent。
+
+REF-RISK-01–08独立场景：稳定键/大序号/等序异hash；各主体列表/详情/count/export/stats/时间线/receipt范围；无通用ticket:create的M合法派与V拒；可信creator/operator和字段/附件分轨；gate on/off及接受制衡；分组原子/部分恢复；checkpoint后新实际观察只开generation+1一次而accepted有效期重推只计观察；首通知失联/撤收件资格不伪送达。raw清理后重推仍查ingest/receipt，不因无原始JSON重复生成风险。
+
+合成通知取UTC每日09:00、中低汇总、临期3/1天、同类每日一次用于固定重放；生产阈值/锚点/负责人/时区与渠道仍独立确认，不用该fixture启公司规则。实施先reference/权限预期→ingest/family/cycle/receipt→评估接受→票桥与逐项恢复→首通知；D13固定指标/日快照/有界时间线、D14 SOC引用/岗位协作、E10调查与获准P6.E子窗保持，不扩事件湖/BI/CMDB/SOC。来源排序/撤回、实际映射与批准名单沿原Q01/Q07/Q08/Q12集中绑定。
+
+真实复用锚：`internal/service/ticket/create_move_race_test.go`的TestBK11_CreateBlocksBehindConcurrentMove、`validation_tx_pool_integration_test.go`的TestValidationReadsReuseTransaction、`notification_creator_integration_test.go`的TestNotificationCreator_ServiceEvents、`authz_resource_integration_test.go`的TestTicket_R4_InvisibleReturns404及`attachment_bind_integration_test.go`的TestCreate_TicketAttachmentBind（后四同目录）。它们未证明风险新实现；本页原RiskDispatch_TrustedCreator/RiskFinish_PerLinkResult/RiskRead_ConsistentScope承接这些reference断言，不另算一套范围或费用。
 
 ## 变更记录
 

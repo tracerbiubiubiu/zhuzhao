@@ -1,6 +1,8 @@
 # 统一日志、业务审计与追踪的有界演进
 
-日期：2026-11-13。用途：承接所有者新增的统一日志/审计要求，供五仓及私有扩展的后续设计、计价和验收使用。状态：**源码定向审计和有限设计；业务历史与专门审计职责分开授权已确认，高风险写的审计失败政策待答，新增运行机制尚未实现**。本页不修改现有日志、鉴权、保留期或运行配置；工作项、窗口和预算须由集成者进入唯一总账后生效。
+> **2026-11-15后继**：[第一包收口](../phase6/iam-first-batch-design.md)记录HIER-D01及两操作本地强审计失败回滚已确认，产品未实现。先讨论A角色授予/编辑，B/C及任务修复分别扣重；不改业务代码、不将旧总价当完整子估。
+
+日期：2026-11-13。用途：承接所有者新增的统一日志/审计要求，供五仓及私有扩展的后续设计、计价和验收使用。状态：**源码定向审计和有限设计；业务历史与专门审计职责分开授权已确认，SetRoles/AssignMenus两操作本地审计失败回滚已确认、未实现，新增运行机制尚未实现**。本页不修改现有日志、鉴权、保留期或运行配置；工作项、窗口和预算须由集成者进入唯一总账后生效。
 
 2026-11-14按[基础先行边界](foundation-release-boundaries.md)收窄首批出口：OBS01处理适用敏感面、身份和关联；OBS02基础纵切先本地可信事实、受权分页查询和现有页面。下文的异步大导出/快照artifact作为增强，在P7出口按真实用途选定后独立交付，不挡基础版；OBS03外送、跨仓追踪和多worker能力按实际链路/拓扑启用。原22–33日是所列完整有界范围候选，不是B0/B1必需价，所选基础净价在B1开工前完成，增强在对应包开工前拆估，旧价不重复收取。
 
@@ -99,9 +101,19 @@ OBS01同时覆盖主仓`AuditLog`的`io.ReadAll`有限内存及原body重放语�
 
 新增查询候选按time window、actor、resource、event、outcome、request/operation/trace精确筛选，保持确定性分页；首期不开放任意SQL/全文payload检索。既有page_size≤100保留；大导出走受控异步作业、固定快照/条件、字段投影、逐页预算和内容校验，生成artifact/manifest后下载仍验当前读权及有效期。初始查询窗口/导出条数/并发等参数在OBS02以代表数据实测冻结，不伪装成已批准SLA。导出写端点按B案绑定按钮，候选权限名不是已存在权限码。
 
+### 5.1 三个真实敏感出口的允许投影
+
+OBS01的接线不新建logger平台：主仓`internal/middleware/logger.go`的`AccessLogger`及`audit.go`的`AuditLog/maskSensitive`只出规范route template/method/status/duration/request、已核caller/主体及允许query元数据；原始path/query/header/body不自动列入允许集合。未验签的X-Operator与认证后主体分开，不能仅为日志归因信任外部头。
+
+AL `internal/middleware/middleware.go`的`AccessLog/snapshotParams`对导入只出type/count/byte_count/outcome，不出任意文档或4KiB前缀。`internal/handler/response.go`的`Fail`把内部错误放c.Errors后仍会进入运行日志，handler对客户端去敏不代表日志已去敏；该链也只保安全reason/类别，不原样写DB/连接详情。
+
+TR `internal/callback/client.go`的`Client.Do/readSnippet`、`internal/notify/notifier.go`的`NotifyDeadLetter`及主仓`internal/service/notification_service.go`的`NotifyDeadLetter`/`internal/pkg/webhook/client.go`的`Client.Post`只记录reason_code/retry_class/peer_status/action/endpoint_ref等受控字段。CallbackURL/query、响应片段与url.Error链不得漏入摘要之外的error字段。字节截断不是许可，合法body重放与读取失败继续按本节原合同验。
+
+具名待实现反例：`AccessLog_QueryAndImportProjection`、`AuditBody_BoundedReadHandlerReplay`、`CallbackError_TransportURLAndResponseSecretRedacted`、`ALRequestError_DBDetailSecretNotLogged`。只用合成秘密，仍保留足够定位的安全类别；本轮未运行产品反例、不推断真实凭据已泄露。
+
 ## 6. 审计可靠性、并发和存储预算
 
-**审计接缝的两种适配不混用（2026-11-15）**：本地必要事实由内部typed AuditFactWriter接原业务service持有的DBTX，同事务写受控事件；外送collector/export adapter只读已持久事实并按稳定producer/event身份投递。审计外送失败不重做业务，Hook/新MQ不替代本地原子事实。私有扩展可报其自己拥有的事实，但生产方由服务凭据/目录绑定、event类型/字段白名单及归因来源受检，不能伪造核心“授权已生效/工单已提交”。不公开普通用户可任填actor/outcome的万能audit写API；两IAM强审计失败政策仍待原问题确认，不因定义Port而自动启用。
+**审计接缝的两种适配不混用（2026-11-15）**：本地必要事实由内部typed AuditFactWriter接原业务service持有的DBTX，同事务写受控事件；外送collector/export adapter只读已持久事实并按稳定producer/event身份投递。审计外送失败不重做业务，Hook/新MQ不替代本地原子事实。私有扩展可报其自己拥有的事实，但生产方由服务凭据/目录绑定、event类型/字段白名单及归因来源受检，不能伪造核心“授权已生效/工单已提交”。不公开普通用户可任填actor/outcome的万能audit写API；两IAM强审计失败回滚已由F017确认；定义Port与政策批准仍不等于产品已启用。
 
 OBS01增加具体旧入口`NotificationService.NotifyDeadLetter`：脱敏url字段同时仍原样记录error，`webhook.Client.Post`返回的`url.Error`可能再包含query秘密。只记安全reason/允许错误类别，对整条error链做同等去敏，不能只调用一次maskURL就视为完成。OBS02/D15的当前资源投影亦须覆盖既有`InboxService.Inbox`的标题快照、list/total/角标，不只覆盖未来audit页面；保留历史收件事实与当前可见内容的区分。合成反例及边界见[核心专项](../review/reports/core-interaction-architecture-review-2026-11-15.md)，未证明真实公司凭据曾外泄或真实渠道已接通。
 
@@ -122,6 +134,26 @@ OBS01增加具体旧入口`NotificationService.NotifyDeadLetter`：脱敏url字�
 - **outbox/队列/cache/导出副本**：可按已确认ACK、幂等窗口和下载期回收，原审计/执行证据不随副本删除；证据legal hold/保留变更须有明确权限和记录。
 
 现有项目测试栈/卷可重建的F005授权继续有效。这里的永久执行证据约定用于正式运行能力，不把合成测试数据变成永不清理；测试重建授权也不扩大为删除真实运行证据的政策。
+
+### 6.1 两改权事实与已有读取的准确投影
+
+旧`/audit/logs`继续是HTTP诊断，HTTP200不能制造domain_committed。`internal/service/user_service.go`的`UserService.SetRoles`和`rbac_service.go`的`RBACService.AssignMenus`仅在服务持有的DBTX内写受控成功diff，候选最小内容为target_id、previous/new role或menu IDs、source_revision、operation_id及可信actor_ref；秘密/整请求不入diff。`UserRepo.SetRolesTx`已接调用方tx，应复用；需把`UserRepo.SetRoles`及`RoleRepo.AssignMenus`的私有事务边界接到service共同事务并保留最后superadmin守卫，不是middleware晚写。精确守卫/提交/策略pair沿[底座§3.9](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，不再造审计receipt或业务重试主。
+
+对象业务历史先验当前对象/字段权限；跨模块审计另验专门职责、历史scope锚与详情投影，再查行/计数/导出。`internal/repository/audit_log_repo.go`的`AuditLogRepo.List/buildAuditListWhere`是现有查询接点，不能只在页面隐藏body。`internal/service/ticket/inbox_service.go`的`Inbox/UnreadCount`现直接委托recipient查询；新增当前资源投影须同时覆盖list/total/badge/深链。保留收件事实不代表永久可看标题正文；未知对象或撤权后不回传隐藏内容/数量。
+
+待实现预期：`IAMSuccessAudit_LocalInsertFailureRollsBack`、`IAMSuccessAudit_CollectorFailureDoesNotRepeatBusiness`、`HistoryAndAudit_IndependentScopeBeforeCount`；前两条复用C/OBS已有试点，机制和回归只计一次。审计页详情/复制与消息的具体消费见[页面族施工](../phase6/frontend-page-family-detail.md#5-messages与audit)。
+
+### 6.2 归档manifest与恢复门
+
+当前`internal/service/audit_archive.go`的`AuditArchiveJob.archiveTable`在JSONL Sync后调用`AuditLogRepo.ArchiveDeleteBatch`，尚无耐久目标收据/manifest；`cleanExpiredArchiveFiles`按现文件保留配置处理。utils `logger.New`的MultiWriter不是本地事实/归档耐久来源。以下是OBS适用归档的候选切片，不将异步大导出UI前移为B0/B1前置。
+
+最小manifest为`archive_id/schema_version/source_tables/source_identity_manifest_ref/source_identity_sha256/cutoff/row_count/bytes/sha256/artifact_ref/created_at/producer_version/durable_receipt/restore_check_ref`。范围只供说明，删除依据精确源ID集合，不凭最小最大ID删除中间行；身份清单在受控存储内，不回普通用户/日志。临时文件写完→Sync/关闭/校验→持久manifest和选定目标的耐久收据→精确删除原批；任一步结果未知先按archive_id核查。删除失败只重试原批，不能把重复导出当新成功事实。
+
+单副本可以选已核持久卷＋完整校验＋备份恢复演练作为耐久目标，按该配置出本地收据，不强制远端存储或每批完整恢复；多副本先验其可恢复拓扑。没有可核收据则保留热库。崩溃后的未完成文件、未删源批及held清单由同一归档恢复主处理，清理器不删未完成/被hold引用的唯一产物；保留期实际值沿上线前窗口，不顺手改变180/395日。
+
+备份同时覆盖PG事实/receipt、JSONL和manifest；`pg_dump`不含已经销热库的文件事实。[既有PAX/fresh卷恢复路线](../ops/backup.md#审计-jsonl-持久化与离线恢复2026-11-07)继续复用，核SHA/条数/权限/mtime及受权读取。永久执行证据仍独立类别，不能套审计文件清理期。
+
+待实现预期：`Archive_NoDurableReceiptNoHotDelete`、`Archive_CrashBeforeManifestAndAfterReceipt`、`Archive_DeleteFailureResumeSameBatch`、`Archive_FreshVolumeRestoreManifestAndAuthorization`；真实保留/目标/责任人按原议程，不引入采购前提、公司协议或新消息中间件。
 
 ## 7. 最小UI和运维交付
 
@@ -167,7 +199,7 @@ OBS02将强审计row插入现有业务事务，必要的窄接入改造属于该
 
 实施继续standards测试先行：先冻结本包允许/拒绝/边界/权限预期，取得目标行为红例，再实现；并发修复按原要求移除修复后至少8次稳定红，不能用文档/Schema绿或本轮旧产品门禁代替新实现证明。本页未运行这些候选用例。
 
-下列是所列完整有界范围的验收清单，随实际启用组合进入对应出口；基础版先验适用敏感面、当前授权和本地事实，跨仓/导出/多实例并非一齐前置。第2项强审计失败回滚仍是待所有者确认的推荐候选：
+下列是所列完整有界范围的验收清单，随实际启用组合进入对应出口；基础版先验适用敏感面、当前授权和本地事实，跨仓/导出/多实例并非一齐前置。第2项两操作本地审计失败回滚已由F017确认，但仍须实施验收：
 
 1. 三服务/反代/body/error/query中的秘密、嵌套及非JSON不落普通日志；允许的安全诊断仍可定位；超大日志、非法ID、未验签X-Operator和外部baggage不能伪造主体或放大内存。
 2. 两IAM操作从HTTP与共同用例访问得到同一允许diff；业务写失败无成功审计，强审计写失败无业务提交；policy reload失败不伪装权限已全实例生效。拒绝尝试与已提交效果分别可解释。
@@ -176,7 +208,7 @@ OBS02将强审计row插入现有业务事务，必要的窄接入改造属于该
 5. 普通业务管理员不能经审计列表、total、报文、复制、导出或Agent读到受限票；平台审计员按明确资格工作，撤权后新下载被拒。query与count同范围，导出快照不携带未允许字段。
 6. 无collector/UAA/模型仍可独立登录、业务写入和本地审计查询；重建测试环境与迁移/恢复分别验。TR永久执行历史/所需日志证据不因采样、轮转、ACK或归档副本清理而消失，选定永久路径恢复后可取。
 
-当前只待一项已提出的政策选择：用户角色/角色权限两类高风险修改，本地必需审计失败时是否同事务回滚；建议采用，外部collector断网不阻断已落本地证据的成功。分开授予业务历史和专门审计职责已确认，不重问；实际跨模块审计名单/范围、各非执行类别的保留/导出政策和真实采集/归档供给在对应部署窗口绑定。执行永久约定保持。供应方支持协议、字段类型、logger/OTel版本、lease/CAS及压测参数由实施方先核验并给可审结果，不让所有者盲选技术参数。
+原待答已由F017明确确认：SetRoles/AssignMenus两操作本地成功审计写失败同事务回滚，外部collector断网不阻断已落本地事实的成功；当前仍未实现。分开授予业务历史和专门审计职责已确认，不重问；实际跨模块审计名单/范围、各非执行类别的保留/导出政策和真实采集/归档供给在对应部署窗口绑定。执行永久约定保持。供应方支持协议、字段类型、logger/OTel版本、lease/CAS及压测参数由实施方先核验并给可审结果，不让所有者盲选技术参数。
 
 ## 10. 官方依据与适用限界
 

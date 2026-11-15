@@ -383,7 +383,7 @@
       }
     }
   ],
-  "last_updated": "2026-11-14",
+  "last_updated": "2026-11-15",
   "confirmation_summary": {
     "owner_confirmed": 32,
     "owner_pending": 1,
@@ -431,5 +431,16 @@
     "main_integration_status": "approved_via_five_reviewed_PRs; actual_merge_and_main_CI_are_separate_receipts",
     "schedule_is_adjustable_reference": true
   },
-  "supplementary_policy_registry": "docs/review/planning-followups.json"
+  "supplementary_policy_registry": "docs/review/planning-followups.json",
+  "latest_supplementary_confirmation": {
+    "ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions",
+    "decision_ids": [
+      "TASK-D01",
+      "TICKET-D01",
+      "E03-AUTH-D01"
+    ],
+    "state": "owner_confirmed_not_implemented",
+    "historical_34_decision_summary_unchanged": true,
+    "prior_confirmation_ref": "docs/review/planning-followups.json#F017-iam-first-batch-owner-decisions"
+  }
 }

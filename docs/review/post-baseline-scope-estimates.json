@@ -104,7 +104,7 @@
           ]
         }
       ],
-      "dependencies_or_gates": "复用C04实际事务纪律；所选命令强审计失败政策须先确认；不等全部CE02-L",
+      "dependencies_or_gates": "复用C04实际事务纪律；两操作本地写失败回滚已由F017确认；实际接线与IAM-C扣重后验收；不等全部CE02-L",
       "reuses_excludes": [
         "C04 DBTX/事务审计公共机制与锁序",
         "现有业务事务和最后superadmin保护",
@@ -188,7 +188,8 @@
   },
   "policy_state": {
     "audit_read_scope": "owner_confirmed_separate_business_history_and_dedicated_audit",
-    "two_IAM_write_audit_failure": "awaiting_owner_answer"
+    "two_IAM_write_audit_failure": "owner_confirmed_local_atomic_rollback_external_delivery_recoverable_not_implemented",
+    "confirmation_ref": "docs/review/planning-followups.json#F017-iam-first-batch-owner-decisions"
   },
   "reference_mock": {
     "ref": "docs/design/examples/uaa-reference-mock/README.md",

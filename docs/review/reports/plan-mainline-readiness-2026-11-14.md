@@ -1,5 +1,7 @@
 # 关键模块与大阶段规划合主线前复核
 
+> **2026-11-15政策后继，不改本报告时点事实**：[第一包/F017](../../phase6/iam-first-batch-design.md)已确认父停用整子树组织派生资格暂停及SetRoles/AssignMenus本地审计失败回滚。当前产品缺陷仍开放；原净估作历史候选，IAM子估待扣重，不表示已开发或已验收。
+
 日期：2026-11-14；复核基线：主仓候选 `c335061695ecbf4191388d1bd2569e18651913ae`。
 复核范围：关键特性、模块承接和大阶段方向；不重新估价，不逐项冻结所有未来DTO/DDL，也不作全产品重新审计。
 输入：[路线图](../../roadmap.md)、[总账](../planning-backlog.json)、[原会话复核](../conversation-reaudit.json)、[后继输入](../planning-followups.json)、[首版计划](../../phase6/first-usable-release-plan.md)及[模块交接](../../phase6/module-design-handoff.md)。

@@ -4,12 +4,12 @@
   "calendar": null,
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "1d83b7e8f9ffc1a430d5bca133eef565da091dca32c187ed9fbc12633f1b80cc",
-    "docs/review/execution-schedule-model.json": "d6083b1e46255ba49dd179bee34383b3ca00a2174021255a4dfc137f7807de63",
+    "docs/review/planning-backlog.json": "c30bbf5a5ede4a341c5fa6df88cb7a0b4be61452b1a35229254e8b84675a250a",
+    "docs/review/execution-schedule-model.json": "7147b477ff37fe71aeaaf1ef4fc38b21e8e509574025fe05af1a7409dab4cb33",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "scripts/calculate-planning-schedule.py": "c204be38aab97d66cc8006ed8803b90d219692a7614b6d589761965b85a5bb2c"
+    "scripts/calculate-planning-schedule.py": "fb548f77c2fe9e41ba0c940dda88f9bc4fd0d62ee4373333ce21e5ec40883544"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -22,7 +22,8 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R核心稳定后交。本模型是旧长期相对排程，不等于首版净估DAG或整Phase6日期承诺；一席保留，实际T0未启动"
+    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R核心稳定后交。本模型是旧长期相对排程，不等于首版净估DAG或整Phase6日期承诺；一席保留，实际T0未启动",
+    "iam_estimate_note": "F017已确认两政策；当前生成数值仍为旧长期候选基线，IAM A/B/C及任务子估尚未扣重整合，不能据fully_priced标签承诺新范围已足额计价；见docs/phase6/iam-first-batch-design.md。"
   },
   "source_structure": {
     "parents": 76,

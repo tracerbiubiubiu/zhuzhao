@@ -18,6 +18,8 @@
 
 ## 2. 写主、类型与共同调用路径
 
+2026-11-15补[准确源码接线](interconnect-source-wiring.md)：一次DI装配、Transition事务内TxPlan、旧callback桥/任务卡、AL边界握手与普通写来源、公共消息mock绑定及站内逐消费者切换。以下DTO和恢复规则仍为权威共同合同，该接线页不声称新端口已实现。
+
 核心独占工单/风险事实、授权、节点运行和结果投影；TR独占调度、投递、attempt和执行账本；AL独占文档、generation/revision、该写的效果receipt与源事实；消息用例独占应发/发送状态，私有HTTP adapter只做公司协议转换。各仓不跨库写，不把领域表放入utils。
 
 HTTP、按钮、工单、计划与订阅先经可信ContextFactory，再进入同一已登记application port，最后进入原领域service/repository。内部调用直接走typed接口，不绕本机HTTP、不重复开启operation或另扣逻辑预算；外部协议adapter负责序列化和认证。短查询/本库短写同步，外部长调用及不可丢后继持久异步，无万能`/invoke`、任意SQL/URL或脚本入口。
@@ -42,7 +44,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
   receipt: CapabilityReceipt) -> {applied: boolean, current_receipt_revision: UIntString}
 ```
 
-`TrustedContext`只能由已认证入口或持久受限授权构造；外部JSON中的principal只作绑定输入，不能自行授信。`OperationID`等格式、整数以十进制字符串传输、时间和大小上限沿原Schema。`operation_id`是稳定效果身份，`invocation_id`是逻辑调用，`event.source+id`是已发生事实，`task_id`是TR稳定任务，`occurrence_id`是计划时隙，`delivery_id/execution_id/attempt/fence`区分每次投递与认领；request_id只用于追踪。
+`TrustedContext`只能由已认证入口或持久受限授权构造；外部JSON中的principal只作绑定输入，不能自行授信。OperationID等格式、64位资源ID/revision/fence的十进制字符串、时间和大小沿各自Schema；有界页码/计数及明确为integer的rule_version不机械改字符串。`operation_id`是稳定效果身份，`invocation_id`是逻辑调用，`event.source+id`是已发生事实，`task_id`是TR稳定任务，`occurrence_id`是计划时隙，`delivery_id/execution_id/attempt/fence`区分每次投递与认领；request_id只用于追踪。
 
 同号重放先验当前读资格，再比较规范输入hash、主体/授权与原绑定；同号异参409，原记录不可读则not_found且不新增效果。客户端传hash不作真值。先按Schema严格解码，再校验跨字段相等、能力/版本、目标字段白名单、期限和当前权限；shape通过不证明语义或授权。仍用现有errcode映射，实施时登记符号码，不在设计里抢数字编号：invalid_input=400、未认证=401、无功能/动作资格=403、不可见对象=404、版本/同号异参=409、准入限额=429、依赖暂不可用=503；可能已经生效的网络错误必须显示unknown，不能仅靠HTTP500表示“可重做”。
 
@@ -61,7 +63,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 - 核心`source_inbox`：`UNIQUE(source,event_id)`，另存stream/cursor/payload_hash、received_at和stage_commit_ref。`subscription_versions`冻结规则/目标/映射/grant及start_after/end_at；`subscription_actions`以`UNIQUE(source,event_id,subscription_id,rule_version,action_index)`去重，关联派生operation与held/suppression原因。持久inbox接收不等于动作成功。
 - 消息`notification_deliveries`：以`(source,source_event_id,rule_id,rule_version,recipient_user_id,channel,semantic_key)`唯一；source与event_id一起定位原事实，rule_id与version定位规则，不依赖semantic_key暗含这些身份。保存template/version、recipient_spec/version、当前目标映射引用、应发/实发状态及provider_receipt；发送attempt单独记录，不能靠发送后查message_log去重。已有message_log保留为兼容读投影，sent旧行标legacy语义，不补造真实送达凭证。重复同来源/事实/规则不重发，不同来源同id或不同规则同version不互吞；显式replacement保留原delivery及独立受控替代身份。
 
-锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→虚拟组→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
+锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→组织/所钉定义→group/family稳定键→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
 
 存量兼容：旧job_submissions/status/message_log列继续可读；无法证明的历史成功只标legacy_observed。切换按consumer停旧Hook/旧直接spawn路径后启新意图，影子阶段只产不投，避免双发。回退先停新副作用，兼容reader/对账worker保留到在途收敛；不down删除unknown/receipt或正式历史，不让不理解新状态的旧worker接手自动执行。
 
@@ -159,13 +161,15 @@ get订阅动作采用专用target_from_event=true：只固定已登记的AL类�
 保留当前`ChannelSender.Send(ctx, Message) error`的旧适配，不直接破坏现消费者；新可靠路径增加独立有类型扩展端口，旧nil error不能被桥接成真实送达：
 
 ```text
-SendRequestV1 = {delivery_id, idempotency_key, channel_profile_ref,
+SendRequestV1 = {schema_version:"1", delivery_id, idempotency_key, channel_profile_ref, payload_sha256,
   recipient_ref, template_version, subject, body, business_ref,
   source_event_ref:{source,event_id}, rule_id, rule_version, operation_id, expires_at}
-SendReceiptV1 = {delivery_id, state:"accepted"|"delivered"|"rejected"|"unknown",
+SendReceiptV1 = {schema_version:"1", delivery_id, channel_profile_ref, payload_sha256,
+  state:"accepted"|"delivered"|"rejected"|"unknown",
   provider_receipt_ref?, observed_at, retry_class, safe_reason_code?}
 HTTPMessagePort.Send(ctx, SendRequestV1) -> SendReceiptV1 | TransportError
-HTTPMessagePort.Query(ctx, delivery_id, provider_receipt_ref?) -> SendReceiptV1 | Unsupported
+QueryRequestV1 = {schema_version:"1", delivery_id, channel_profile_ref, provider_receipt_ref?}
+HTTPMessagePort.Query(ctx, QueryRequestV1) -> SendReceiptV1 | Unsupported
 ```
 
 HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收件人/字段/状态映射由私有adapter/profile实现，凭据只用secret引用，不入业务参数/日志。公共实现包含TLS校验、固定出站目标/允许重定向策略（默认拒绝跨目标）、超时、响应大小和schema验证、受控错误脱敏、mock profile；不让工单参数指定URL/headers。内网可以只更换adapter/config，核心不导入公司SDK/internal model。
@@ -228,7 +232,7 @@ cursor是不透明有界分页引用，绑定类型/generation、规范查询has
 
 具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这个selected profile归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
 
-计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。该接口批开工前对TD03/TD04、CE03及F004逐项扣重，未含必要接线补子估；未启用的大导出/复杂筛选不计首版。当前68–104日仍是候选，本文不宣称这次澄清已证明零净增或确定节省天数。
+计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。本次对TD03/TD04及既有typed读/权限case合计扣重复用1–2，所选读取毛3–5、净增2–3已落账（TD03增1–2、TD04增1，TD05专用case不重加），含授权锚写保护与旧旁路拒绝；全版95–148仍为工程候选。未启用的大导出/复杂筛选不计首版，真实画像改变先补估。
 
 ### 8.2 存量任务入口与维护动作的接线门
 
@@ -244,6 +248,38 @@ cursor是不透明有界分页引用，绑定类型/generation、规范查询has
 AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，将旧行移至JSONL并从在线表删除。最小修复不等CE03整包：维护action按系统/审计维护职责拒绝普通业务任务，保留期覆盖受控；查询action列表不能视为授执行权。具名反例`MaintenanceAction_BusinessSubmitDenied/RetryRechecksOriginalAction/SystemCronAllowed/RetentionOverrideControlled`，同时验服务配置正常、审计读403的用户仍不得借tasks入口维护审计。AUTH-06补`JobCreatedBy_ServerOwned/MessageRuleCreatedBy_ServerOwned`，对照HTTP审计真实actor未丢失；不凭伪造created_by构建“我的任务”权限。
 
 首批只保护实际启用敏感能力与上述当前维护越界，不重写所有非敏感TR业务，也不引入万能invoke或第二个权限引擎；未具安全接线的敏感旧深链服务端拒绝。AUTH问题仍是开放缺陷，本页仅修设计，不能据此声称已拦截。
+
+### 8.3 存量任务窄修复：准确接线与参数、归因
+
+只读基线：主仓`610c1d76`、TR `b0906b83`。本段落实AUTH-02/06的4–7日有界子估，不另做CE03/完整I03；依赖的共同receipt/意图仍归C03/R01，不能重复计价。下列策略端口是候选，不是现成API或新增通用策略引擎。
+
+现状`internal/pkg/jobs/registry.go`的`ActionMeta`只有描述/schema，`TaskrunnerHandler.failFastAction`只查注册；`TaskrunnerService.CreateJob/UpdateJob`转发raw body，`JobsCallbackService.Execute`的动作/params快照不证明actor有执行资格。注册、服务验签、任务幂等、动作授权是四件事，不能相互替代。
+
+**最小动作策略**由核心动作属主登记：action_id、business/maintenance分类、允许的可信入口/主体及参数检查函数；先只用于实际注册动作。调用`AuthorizeAction(ctx, principal, action, immutable_input, origin)`的候选内部接缝返回允许/拒绝/依赖不可证，不把页面所见动作清单当可执行清单。未登记敏感动作默认拒绝。对普通既有非敏感profile保留原行为，不临时造一套任意条件DSL。
+
+| 入口及真实锚点 | 修复时必须取的输入／顺序 | 失败出口 |
+|---|---|---|
+| 主仓`internal/handler/taskrunner_handler.go`的`Submit`→`TaskrunnerService.Submit` | 原JWT/L1后，用可信主体、action及严格解析params验资格；仍守64KB/timeout/callback_url约束；内部调用也走Service同一检查 | 无资格403、非法params400；拒绝时TR调用和新执行均为0，不能只藏按钮 |
+| 同文件`CreateJob/UpdateJob` | 新建取将保存的真实action；更新读原定义后**只合并TR JobPatch白名单**再验对象管理权及最终action/params。现patch不能改action_id/trigger_type/created_by；params省略保持、显式null拒绝，不能用TR忽略的未知body字段替换授权对象；enabled激活也验 | 读失败/未知action不以空值放行，不先远程修改再补校验；不改变patch的省略/null既有约束 |
+| 同文件`Trigger/Retry`及TR原job/task | 使用受权查询取得的原定义或原task快照，不能只检查body的job_id/task_id；重试仍按原action/params核当前资格，禁止换成新动作 | 获取不到原可信输入不执行；撤权后不得以“以前已创建”继续发起新执行 |
+| 主仓`internal/service/jobs_callback.go`的`JobsCallbackService.Execute` | 验签/快照/执行权与当前动作资格均通过才进Handler；执行资格绑定核心持久准入事实或受审固定后台配置，不从body.actor/created_by猜身份 | 缺原可信准入记录的敏感旧任务held/拒绝，不能因ClaimCallbackRow可补行就现造授权；恢复只补必要事实，不重做已证明的效果 |
+| 主仓`internal/service/cron_scheduler.go`的`CronScheduler`及app装配 | 进程内cron使用构造时固定的后台维护主体/动作/受控配置，不能由字符串actor="system"触发特权。TR cron须登记可信job版本/后台主体，并复用同动作策略 | 未批准的后台绑定不开通；配置非法启动/启用时明确失败。两种归档调度保留原二选一，不能同时恢复造成重复跑 |
+
+**原定义读取是新增窄接线，不是现成功能**：当前主仓client只有ListJobs，TR HTTP也没有单job GET，不能靠分页列表恰好找到就声称可靠。拟补TR属主的`GET /v1/jobs/:job_id`与核心client内部GetJob port，复用TR repository的单条读取/JobView，经现AK/SK及受信caller保护；不新开核心前端绕权限读接口。核心只在原L1/职责检查允许的用例内部取配置用于判定，读取失败关闭，raw参数不下发无权用户。读到的定义/params需绑定后续准入快照，最终执行仍核该绑定与当前资格；跨网络GET本身不能锁住后来的TR修改，这个版本/快照接缝复用C03，不在窄修复中伪称已有跨库事务。
+
+**保留期边界**：`internal/service/audit_archive.go`的`archiveParams/Handle`当前正值可覆盖配置；修复后普通业务输入不得降低或任意覆盖保留期。默认沿已受审服务配置；零/缺省、负数、类型错误及超界分别按原兼容与严格参数预期验证。F019已确认保留独立授权的人工维护入口；临时覆盖另验批准值、有效窗、理由与审计，不复用普通task params。实际维护主体、允许参数/期限及生产保留值仍须在开通前绑定，未绑定不得启用覆盖。在线归档与文件清理是两种保留配置，不能只限制其中一个或让外部任务传任意目录/表名。
+
+**归因合同**：主仓浏览器入口接受旧created_by字段也不采用它，可信actor在Service边界传入；新消息规则的created_by取当前主体，更新保留原creator，实际modifier记本次操作，不重写历史归属。`internal/service/message_admin_service.go`的`UpsertRule`现ON CONFLICT分支本就不改created_by，修复须保持CAS/version与此语义。内部调用亦显式提供可信上下文，不能只在handler补字段后仍留Service旁路。
+
+TR `internal/handler/server.go`的`Deps.createJob`目前body.created_by优先于验签operator；目标改为从**被批准可声明操作人的caller**及验签context构造归因。收到operator仅证明签名内容，仍须核caller允许为该用户/服务调用；不能任意服务签一个admin名字就取得核心权限。服务调用没有真人时归因服务主体，不伪造真人。旧wire可兼容接收created_by但不授其权威，body伪造值覆盖/忽略的行为变化与消费者同步。当前64字符存储与签名operator旧形状保留兼容；稳定本地principal_id在核心可信准入中保存，username/工号展示值不能变成授权主键。历史记录不批量改造，存疑旧字段不作为“我的任务”的授权依据。
+
+**独立验收（待新增）**：TASK-01业务task:submit但无审计读/维护权，Submit/Create/Update/Trigger/Retry及回调均不能移除任何审计行；TASK-02授权固定cron仍能按配置归档，旧actor="system"伪装失败；TASK-03覆盖参数非法/降保留期拒绝且默认正常，目录/文件保留配置不受body控制；TASK-04提交后撤权、旧敏感job无可信来源、原任务被换参均零新效果；TASK-05任务与消息created_by伪造不生效，更新原creator不变而modifier真实；TASK-06无真人服务归因可解释，未受信caller不能冒用用户，合法跨仓签名及普通业务任务仍通过。
+
+可复用主仓`internal/handler/taskrunner_handler_test.go`的`TestTaskrunnerHandler_CreateJobFailFast/TestTaskrunnerHandler_BadRequest/TestTaskrunnerHandler_ProxyPassthrough`、`internal/service/taskrunner_service_integration_test.go`的`TestTaskrunnerServiceSubmitRecordsVoucher`、`internal/service/message_rule_version_integration_test.go`的`TestMessageRule_VersionCAS`；这些目前不证明动作授权。TR `internal/handler/server_test.go`的`TestCreateJobCreatedByFallback`明确断言body优先，实施须先说明合同纠正，再补有效红例，不能把当前绿色当可信归因。授权拒绝须真实HTTP＋PG审计行/下游调用数对照，最终Handler入口单独测；两种证据不能互代。
+
+**已确认TASK-D01（F019）**：保留受控人工维护，临时覆盖单独授权。固定系统cron继续；人工入口仅向独立获授权的维护者开放，默认使用配置。临时缩短等覆盖必须命中批准值/范围、有效期、理由和审计；普通task:submit等业务资格不自动成为维护权。若启用额外TR维护job，仍绑定批准后台主体与定义版本；不能用body自报批准或actor="system"取权。具体入口在对应模块批落实，不据此立即建设完整维护界面/审批平台，不执行归档或删除。确切答复与问题来源见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
+
+TASK-03的待实现预期补：受权人工按配置执行；临时批准合法且有效时仅准许批准值，缺批准/过期/超界/伪造引用均零删除；拒绝不改变默认cron。该政策已定，不等于原越界缺陷已修。
 
 ## 9. 测试先行用例与交付出口
 

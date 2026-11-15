@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-15",
+  "kind": "existing_product_regression_not_new_design_implementation",
+  "main_source": "610c1d7644b1a578eba85842cef983b713e261c6",
+  "go_version": "1.27.4",
+  "checks": [
+    {
+      "target": "lint",
+      "returncode": 0
+    },
+    {
+      "target": "swag",
+      "returncode": 0
+    },
+    {
+      "target": "test-unit",
+      "returncode": 0
+    },
+    {
+      "target": "test-integration",
+      "returncode": 0
+    },
+    {
+      "target": "test-cover",
+      "returncode": 0
+    },
+    {
+      "target": "migrate-up",
+      "returncode": 0
+    },
+    {
+      "target": "acceptance",
+      "returncode": 0
+    }
+  ],
+  "metrics": {
+    "test-unit": {
+      "top_level_pass": 233,
+      "top_level_fail": 0,
+      "top_level_skip": 0,
+      "packages_ok": 24
+    },
+    "test-integration": {
+      "top_level_pass": 531,
+      "top_level_fail": 0,
+      "top_level_skip": 0,
+      "packages_ok": 25
+    },
+    "acceptance": {
+      "phase_pass_counts": [
+        124,
+        68,
+        26,
+        35
+      ],
+      "failure_count": 0,
+      "roundtrip_pairs": [
+        81
+      ],
+      "total_pass": 253
+    }
+  },
+  "coverage": {
+    "unit_only_total_statements_percent": 20.2,
+    "prior_total_statements_percent": 20.2,
+    "audit_package_percent": 88.3,
+    "prior_audit_package_percent": 92.6,
+    "qualification": "Four drain scheduling-branch statements varied in unit-only profile; source unchanged and assertions pass. Integration/acceptance coverage is not aggregated here."
+  },
+  "source_integrity": {
+    "frozen_files_changed": [],
+    "original_production_and_generated_files_compared": 522,
+    "original_production_and_generated_files_changed": []
+  },
+  "cleanup": {
+    "owned_containers_removed": 9,
+    "owned_volumes_removed": 6,
+    "owned_networks_removed": 1,
+    "owned_resources_remaining": 0,
+    "owned_processes_remaining": 0,
+    "shared_containers_preserved": 16,
+    "shared_containers_networks_volumes_unchanged": true
+  },
+  "not_run": [
+    "UI E2E (UI implementation unchanged)",
+    "GitHub remote CI (no push)",
+    "Real UAA and company HTTP integration",
+    "New design-specific product scenarios (not implemented)"
+  ]
+}

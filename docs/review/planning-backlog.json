@@ -141,7 +141,8 @@
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "scope": [
         "复用P的双模式用例形成无UAA本地管理、纳管/非纳管写边界及撤权竞争风险回归；G04只计质量选择/覆盖口径，不重复开发P用例",
@@ -269,7 +270,7 @@
       "dependencies": [
         "C01"
       ],
-      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。；撤权先提交时旧授权不能继续提交，守卫锁序与影响权限入口覆盖可查。 HIER层级组合与既有FND/AUTH/RECHECK反例复用；所选本地首版及薄IAM必须先验，不等完整U06/HR/UAA；HIER-D01按具名窗口确认。 AUTH-GAP-01/AUTH-GAP-02/AUTH-GAP-04/AUTH-GAP-05/AUTH-GAP-06交适用证据；未实现/未测项不以文档关闭。",
+      "acceptance": "dbtx工单试点范围明确，BK-12残留有处置；新资源/导出默认拒绝，失败不提交半套事实。；撤权先提交时旧授权不能继续提交，守卫锁序与影响权限入口覆盖可查。 HIER层级组合与既有FND/AUTH/RECHECK反例复用；所选本地首版及薄IAM必须先验，不等完整U06/HR/UAA；HIER-D01按已确认政策验收。 AUTH-GAP-01/AUTH-GAP-02/AUTH-GAP-04/AUTH-GAP-05/AUTH-GAP-06交适用证据；未实现/未测项不以文档关闭。",
       "state": "planned_not_implemented",
       "decision_due": "本波开工前",
       "disposition": "受约束实施",
@@ -278,14 +279,15 @@
         "ticket DBTX试点/池与事务预算、org_roles删除两侧锁、L2默认拒绝",
         "C04.4本地高风险写AuthorizeForMutation与IAM policy/主体epoch共同守卫；覆盖全部影响权限写入口及撤权竞争",
         "UAA账号/角色/资源投影、同步撤权及模式接管新增权限写入口纳入同一IAM policy/主体epoch与锁序清单；P复用guard，不另建一套",
-        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
+        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01整子树暂停已确认，须实施验收。",
         "AUTH-GAP-01/02/04/05：当前事实与撤权、共同用例、独立预期/安全reason及所选权限性能证据，复用原FND/HIER/AUTH/RECHECK；不建通用策略平台。"
       ],
       "design_refs": [
         "docs/design/engineering-execution-design.md",
         "docs/design/current-module-boundaries.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "hierarchy_scenarios": [
         "HIER-01",
@@ -325,7 +327,8 @@
       "estimate_scope": "一次计价；不含提供方等待；外部不具备时交付mock/契约证据并单列真实待验",
       "design_refs": [
         "docs/design/engineering-execution-design.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "authorization_gap_actions": [
         "AUTH-GAP-01"
@@ -405,7 +408,8 @@
       "design_refs": [
         "docs/design/business-lifecycle-contracts.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "hierarchy_scenarios": [
         "HIER-02",
@@ -478,7 +482,8 @@
         "docs/design/business-lifecycle-contracts.md",
         "docs/design/uaa-governance-integration.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "real_activation_rule": "领域mock可先交；真实HR feed启用前须X02-F和对应E01提供方验收，不要求独立应用导航宿主，不允许私有SDK/直库耦合",
       "scoped_milestone_dependencies": [
@@ -900,7 +905,8 @@
       ],
       "design_refs": [
         "../zhuzhao-ui/docs/design/frontend-implementation-contract.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "estimate_adjustment_ref": "RP-U06",
       "hierarchy_scenarios": [
@@ -2116,7 +2122,8 @@
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "authorization_gap_actions": [
         "AUTH-GAP-02"
@@ -2147,7 +2154,8 @@
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "milestones": [
         {
@@ -2340,7 +2348,7 @@
         "发布核心/adapter/镜像组合、配置来源和版本固定，迁移兼容与部署回执可核",
         "备份恢复/发布回退及适用归档或镜像链路有实证，故障可见且有接管责任；不适用项有依据",
         "按已选拓扑验证撤权收敛与调度单主；允许单副本，不强制建设未选HA",
-        "按实际启用模块验HIER层级场景及既有AUTH/RECHECK：直接/组织/继承来源、菜单与数据/动作边界；父组织停用传播HIER-D01在相关入口前确认或受控拒绝，真实HR/UAA不作本地前置。",
+        "按实际启用模块验HIER层级场景及既有AUTH/RECHECK：直接/组织/继承来源、菜单与数据/动作边界；父组织停用按HIER-D01整子树暂停政策验收，未实施不称完成，真实HR/UAA不作本地前置。",
         "按AUTH-GAP-01–05验证实际启用的授权来源/入口/集合与有限解释及代表负载；单实例验本进程失败恢复，多副本专项只在实际启用前完成；文档/普通门禁绿不代具名反例。"
       ],
       "state": "planned_evidence_gate_not_accepted",
@@ -2889,8 +2897,55 @@
       "独立PDP集群/完整分发控制面/另一套IAM"
     ],
     "preserved_owner_decisions": [
-      "HIER-D01及原模块审计政策仍按原窗口待决"
+      "HIER-D01/IAM-AUDIT-D01由F017确认；实际业务/审计名单、保留参数及额外委托范围仍按原启用窗绑定。"
     ],
     "runtime_verified": false
+  },
+  "iam_first_batch_design": {
+    "ref": "docs/phase6/iam-first-batch-design.md",
+    "source_followup": "F017-iam-first-batch-owner-decisions",
+    "state": "policy_confirmed_design_and_gross_subestimates_only",
+    "owner_confirmed": [
+      "HIER-D01",
+      "IAM-AUDIT-D01"
+    ],
+    "first_candidate": "IAM-A",
+    "subestimates": [
+      {
+        "id": "IAM-A",
+        "days": [
+          4,
+          6
+        ],
+        "scope": "AUTH-07/RECHECK-01/02及必要薄UI"
+      },
+      {
+        "id": "IAM-B",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-01/03/RECHECK-03/HIER-D01"
+      },
+      {
+        "id": "IAM-C",
+        "days": [
+          12,
+          19
+        ],
+        "scope": "试点共同屏障/fresh DBTX/L1 pair/单实例恢复及两操作本地强审计"
+      },
+      {
+        "id": "IAM-TASK",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-02/06旧任务维护资格/参数及可信归因"
+      }
+    ],
+    "net_integrated": false,
+    "global_numeric_baseline_changed": false,
+    "rule": "不直接相加或新增父价；S1/C04/D06/OBS02/必要薄UI/S2/R01/任务包逐项扣重后才能正式替价，当前禁止开发。"
   }
 }

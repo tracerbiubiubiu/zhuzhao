@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/zhuzhao/message-http-vectors-v1.schema.json",
+  "title": "Public synthetic HTTP message mock candidate vectors",
+  "description": "Strict selected mock DTO shapes, not company wire, a server, signature verification or business acceptance. Validate each case.value against case.definition separately; the envelope intentionally permits invalid values.",
+  "$ref": "#/definitions/VectorDocument",
+  "definitions": {
+    "Ref": {"type": "string", "minLength": 1, "maxLength": 128},
+    "Identity": {
+      "description": "Same intended 16-128 ASCII identity format as the common operation/task/event contracts; forbid a terminal newline as well.",
+      "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$",
+      "not": {"pattern": "[^A-Za-z0-9_.:-]"}
+    },
+    "SHA256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "maxLength": 64},
+    "Timestamp": {"type": "string", "format": "date-time"},
+    "RetryClass": {"enum": ["none", "same_operation_allowed", "reconcile_only"]},
+    "ReceiptState": {"enum": ["accepted", "delivered", "rejected", "unknown"]},
+    "SourceEventRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "event_id"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1, "maxLength": 256},
+        "event_id": {"$ref": "#/definitions/Identity"}
+      }
+    },
+    "SendRequestV1": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "delivery_id", "idempotency_key", "channel_profile_ref", "payload_sha256", "recipient_ref", "template_version", "subject", "body", "business_ref", "source_event_ref", "rule_id", "rule_version", "operation_id", "expires_at"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "delivery_id": {"$ref": "#/definitions/Identity"},
+        "idempotency_key": {"$ref": "#/definitions/Ref"},
+        "channel_profile_ref": {"$ref": "#/definitions/Ref"},
+        "payload_sha256": {"$ref": "#/definitions/SHA256"},
+        "recipient_ref": {"$ref": "#/definitions/Ref"},
+        "template_version": {"$ref": "#/definitions/Ref"},
+        "subject": {"type": "string"}, "body": {"type": "string"},
+        "business_ref": {"$ref": "#/definitions/Ref"},
+        "source_event_ref": {"$ref": "#/definitions/SourceEventRef"},
+        "rule_id": {"$ref": "#/definitions/Ref"},
+        "rule_version": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "operation_id": {"$ref": "#/definitions/Identity"},
+        "expires_at": {"$ref": "#/definitions/Timestamp"}
+      }
+    },
+    "QueryRequestV1": {
+      "description": "Complete query selector in the signed body; no URL, query-string or caller-provided authentication fields. Response must be checked against the local frozen payload hash.",
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "delivery_id", "channel_profile_ref"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "delivery_id": {"$ref": "#/definitions/Identity"},
+        "channel_profile_ref": {"$ref": "#/definitions/Ref"},
+        "provider_receipt_ref": {"$ref": "#/definitions/Ref"}
+      }
+    },
+    "SendReceiptV1": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "delivery_id", "channel_profile_ref", "payload_sha256", "state", "observed_at", "retry_class"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "delivery_id": {"$ref": "#/definitions/Identity"},
+        "channel_profile_ref": {"$ref": "#/definitions/Ref"},
+        "payload_sha256": {"$ref": "#/definitions/SHA256"},
+        "state": {"$ref": "#/definitions/ReceiptState"},
+        "provider_receipt_ref": {"$ref": "#/definitions/Ref"},
+        "observed_at": {"$ref": "#/definitions/Timestamp"},
+        "retry_class": {"$ref": "#/definitions/RetryClass"},
+        "safe_reason_code": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "AsyncReceiptV1": {
+      "description": "Same receipt binding plus provider event identity. Trusted provider source is authenticated transport context, never authority granted by this JSON.",
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "delivery_id", "channel_profile_ref", "payload_sha256", "state", "observed_at", "retry_class", "provider_event_id"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "delivery_id": {"$ref": "#/definitions/Identity"},
+        "channel_profile_ref": {"$ref": "#/definitions/Ref"},
+        "payload_sha256": {"$ref": "#/definitions/SHA256"},
+        "state": {"$ref": "#/definitions/ReceiptState"},
+        "provider_receipt_ref": {"$ref": "#/definitions/Ref"},
+        "observed_at": {"$ref": "#/definitions/Timestamp"},
+        "retry_class": {"$ref": "#/definitions/RetryClass"},
+        "safe_reason_code": {"type": "string", "minLength": 1, "maxLength": 64},
+        "provider_event_id": {"$ref": "#/definitions/Ref"}
+      }
+    },
+    "HashReference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_id", "projection_fields", "sha256"],
+      "properties": {
+        "case_id": {"const": "SEND-FROZEN-PAYLOAD"},
+        "projection_fields": {"const": ["delivery_id", "channel_profile_ref", "recipient_ref", "template_version", "subject", "body", "business_ref", "source_event_ref", "rule_id", "rule_version", "operation_id", "expires_at"]},
+        "sha256": {"$ref": "#/definitions/SHA256"}
+      }
+    },
+    "TransportMetadata": {
+      "description": "Documentation-only fixed routes; no runtime listener, target configuration or company URL.",
+      "const": {
+        "send": {"method": "POST", "path": "/v1/messages/send", "body_definition": "SendRequestV1", "response_definition": "SendReceiptV1"},
+        "query": {"method": "POST", "path": "/v1/messages/query", "body_definition": "QueryRequestV1", "response_definition": "SendReceiptV1"},
+        "async_receipt": {"method": "POST", "path": "/internal/messages/receipts", "body_definition": "AsyncReceiptV1"}
+      }
+    },
+    "VectorCase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "definition", "expected_valid", "value"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Ref"},
+        "definition": {"enum": ["SendRequestV1", "QueryRequestV1", "SendReceiptV1", "AsyncReceiptV1"]},
+        "expected_valid": {"type": "boolean"},
+        "value": {"description": "Validated separately against the selected definition, including intentional negative cases."}
+      }
+    },
+    "VectorDocument": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reference_version", "purpose", "sources", "reference_expectations", "transport_metadata", "hash_reference", "cases"],
+      "properties": {
+        "reference_version": {"const": "1"},
+        "purpose": {"type": "string", "minLength": 1},
+        "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "reference_expectations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "transport_metadata": {"$ref": "#/definitions/TransportMetadata"},
+        "hash_reference": {"$ref": "#/definitions/HashReference"},
+        "cases": {"type": "array", "minItems": 6, "maxItems": 10, "items": {"$ref": "#/definitions/VectorCase"}}
+      }
+    }
+  }
+}

@@ -16,7 +16,47 @@ node docs/design/examples/capability-reference/verify.cjs
 AJV_MODULE=/path/to/existing/ajv node docs/design/examples/capability-reference/verify.cjs
 ```
 
-当前命令验证80个Schema样本（23正、57反）、6个规范输入性质、5个已冻结正命令hash、6个原始JSON输入、原27个语义样本及23个get读绑定样本；读绑定样本另验其command/receipt/event形状与输入hash，避免拿本来形状非法的值冒充语义反例。原49个Schema样本及其预期保持不变。前后比对Schema字节/hash，读失败、依赖版本不符、样本不符或文件被改均非零退出。Schema是形状合同，跨字段相等/实时授权/事务效果不能仅由AJV证明；本oracle只对具名合成状态作决定。
+当前命令验证143个Schema样本（39正、104反）、6个规范输入性质、9个已冻结正命令hash、6个原始JSON输入、原27个语义样本及23个get读绑定样本；读绑定另验command/receipt/event形状及输入hash。原80样例（含最初49例）及预期保持不变；新增IAM63例只扩严格同步profile，不证明其HTTP适配/事务/真实授权。运行前后比对Schema字节/hash，读失败/依赖版本不符/样本错误/文件被改均非零。原语义oracle仍只验其具名合成状态，不冒充新增IAM行为oracle。
+
+## 本地IAM的形状补全
+
+2026-11-15添加角色授予/角色菜单两个strict profile、最小同步causality、0起始集合版本、领域提交与运行时policy_reload分轨及受权receipt选择器。新reference未改verify.cjs/verify_semantics.py或产品源；使用工具进程Node22.14.0＋既有AJV6.15.0/Python，无新增依赖，不作为项目目标Node26的产品门禁。
+
+新增首批55例先在旧Schema上有效红（14个新正例拒绝、4个禁止descriptor接受）；独审发现并新增8个初稿能错误放行的I/O/profile错绑、pending零策略代际和noop反例，收紧后共143形状全绿。原AL/report、admission及订阅定义和既有80样例不因IAM放宽。前后红绿与独审反例收据由调用者留在ignored审计目录，本页不声称新业务已验。
+
+IAM不变量仍须实施C批独立证明：集合与ETag同快照、pending效果的提交head、保留锚不归零、key-only重放不改hash、读权先于回放/收据、同事务审计/意图失败回滚、未知提交及策略恢复。Shape与命令hash不能替代这些PG/HTTP/进程恢复断言。
+
+[C05秘密绑定向量](c05-secret-binding-vector.json)只使用合成口令及零测试key，封闭消息编码与HMAC已分别由Python/Node独立重算一致；它不由verify.cjs自动覆盖，也不证明运行key托管/轮换或改密链。该文件不可作为运行配置、账号资料或日志样板使用。
+
+## 公共模块与HTTP消息的选定参考
+
+2026-11-15新增[模块向量](module-profile-vectors.json)/[Schema](module-profile-vectors.schema.json)与[消息向量](message-http-vectors.json)/[Schema](message-http-vectors.schema.json)，各10例（6正4反）；[参考manifest](module-reference-manifest.json)记录profile、文件摘要和验证边界。模块覆盖有界Query、首期设备无凭据投影、单ticket.list工具及风险序列/观察投影；消息固定send/query/异步回执形状，并有12字段payload hash正例。两者各在空Schema上抓到4个反例后收紧，根会话独立复跑20/20；消息Unicode/换行/末尾空格载荷由Node/Python独立重算相同478字节/hash。
+
+这些文件**不被原verify.cjs自动执行**，用现有AJV可单独复跑：
+
+```bash
+AJV_MODULE=/path/to/existing/ajv node <<'JS'
+const fs = require('node:fs');
+const p = 'docs/design/examples/capability-reference/';
+const m = process.env.AJV_MODULE;
+if (require(m + '/package.json').version !== '6.15.0') throw Error('AJV version');
+const Ajv = require(m);
+for (const name of ['module-profile-vectors', 'message-http-vectors']) {
+  const s = JSON.parse(fs.readFileSync(p + name + '.schema.json'));
+  const d = JSON.parse(fs.readFileSync(p + name + '.json'));
+  const a = new Ajv({allErrors: true, format: 'full'});
+  if (!a.validateSchema(s)) throw Error(name + ': schema');
+  a.addSchema(s);
+  if (!a.getSchema(s.$id)(d)) throw Error(name + ': envelope');
+  for (const c of d.cases)
+    if (a.getSchema(s.$id + '#/definitions/' + c.definition)(c.value) !== c.expected_valid)
+      throw Error(name + ': ' + c.id);
+  console.log(name + ': ' + d.cases.length + ' PASS');
+}
+JS
+```
+
+命令只验shape；hash正例另按message向量的hash_reference.projection_fields规范化重算。manifest是参考索引，不是可装载运行配置，也不证明旧adapter×新core兼容已经实现。当前权限、sequence比较/关闭checkpoint、跨字段匹配、回执去重/CAS、先受理再断连及重启查询仍属产品验收。原[UAA离线参考](../uaa-reference-mock/README.md)57行为/16去守卫亦已重跑通过，网络/企业调用0；它不是OIDC/SCIM服务或真实UAA联调。公司字段、地址、密钥及运行制品不在这些公开合成文件中。
 
 ## 独立AL只读后继的必要补全
 

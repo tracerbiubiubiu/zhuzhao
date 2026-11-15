@@ -93,7 +93,8 @@
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -175,14 +176,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "已核保存/Create/Update/validator实际wire/AST配置/输入与显隐快照/字典tx/只读存量扫描及10组独立预期，当前未实现。",
+        "实施前按最坏合法样例冻结节点/深度/VM/字典预算，生成/修源码与有效红绿；真实旧配置扫描按实际数据运行，不把候选当已清零。"
       ],
       "next_design_gate": "P6.0开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/design/engineering-execution-design.md#c01准确接线与一次快照显隐"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -198,15 +204,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "RECHECK-04/05补头像旧对象退役合法归属与附件先关联后用途提示；条件性/低影响边界随现有对象生命周期收口，已绑定他人头像和跨票读控制保留。"
+        "已核Create/Update/删除/GC/头像和UI的同桶关系/最终数据/多引用/孤儿及8组预期，首期无新引用表/读字段。",
+        "真实存量盘点与受审补关联/hold、F23实际调用兼容窗口、产品迁移/并发/浏览器与GC验收仍需实施；旧缺陷不由设计关闭。"
       ],
       "next_design_gate": "P6.0开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/design/engineering-execution-design.md#c02准确wire存量修复与ui生命周期"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -233,7 +243,8 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "C04",
@@ -246,26 +257,28 @@
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "共同守卫覆盖UAA投影、接管与撤权入口，复用既有机制；公共准备可并行，P验收依C04。",
-        "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
-        "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
-        "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。",
-        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "A/B/C及任务入口已源映射；公共IAM两个strict分支/63形状例已补，原schema80例保持。",
+        "产品仍未实现；真实fresh/事务/屏障/审计/恢复反例及原包净价扣重不能由参考形状绿色代销。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/iam-first-batch-design.md",
+          "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+          "docs/phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "hierarchy_scenarios": [
         "HIER-01",
@@ -294,22 +307,28 @@
         "docs/design/engineering-execution-design.md",
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "AUTH-05仅条件性加固：当前Go默认Reader不会令Int回错误；删除自定义失败源的固定PAT回退，失败零凭据落库，不夸成默认可利用漏洞。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "DB安全epoch/投影、HTTP与CLI、PAT独立、秘密HMAC重放编码及新claims均有有界候选；合成向量非实际凭据。",
+        "毛估6–10日须与原2–4及S1/S2/C/薄UI/G04/OBS扣重替换，未加总；产品迁移/真实并发恢复与部署Q12仍未交。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/foundation-iam-module-detail.md#41-c05现有wire与尚未持久化的部分",
+          "docs/phase6/foundation-iam-module-detail.md#42-c05的有限持久方案",
+          "docs/phase6/foundation-iam-module-detail.md#43-c05切换恢复与独立验收"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "authorization_gap_actions": [
         "AUTH-GAP-01"
@@ -327,14 +346,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "D01旧live保存到草稿/发布的可见切换、规范DefinitionRef/string revision、真实字段返回/message及四片迁移已核；旧重复目标边须preflight。",
+        "公共序列化向量后续补；实现再生成OpenAPI/迁移/回填/消费者升级并真实验收，不把旧version当发布号。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/ticket-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -368,23 +392,26 @@
         "docs/phase6/ticket-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "AUTH-01组织scope/委托生命周期与AUTH-04现有ticket_relations双端当前read过滤；撤CC后不可回对端ID及关系元数据，正式使用前转产品回归。",
-        "HIER-02/05/10：多任职scope、透明读/虚拟组挂载与类型参与策略相交，group/all/ancestor owner不越类型；普通只读不附动作权。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "类型策略/参与来源/独立管理/按purpose选人及CC role精确读已源映射，manual由server定，源唯一键与有效投影已统一。",
+        "TICKET-D01旧inherit自加/自退政策已由F019确认；实际名单、权限种子、准确路由/迁移及产品门禁未验。"
       ],
       "next_design_gate": "P6.1开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/ticket-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "hierarchy_scenarios": [
         "HIER-02",
@@ -394,7 +421,8 @@
       "authorization_gap_actions": [
         "AUTH-GAP-03",
         "AUTH-GAP-04"
-      ]
+      ],
+      "owner_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "D04",
@@ -452,26 +480,27 @@
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "B06/B07默认策略已确认；准确DTO/schema、继任映射/接管plan存储、锁/批次/迁移切片及真实HR合同在开工窗口冻结；自动处置/撤权/恢复仍待实现验证，不因方向确认改历史或放宽权限",
-        "DirectoryOverride不扩中央授权；source仅对登记权威适用，独立账号不依赖UAA；HR与UAA字段写主分离。",
-        "AUTH-07组织任职权不等于IAM赋角权；明确Bind/Unbind授予资格与档位，不能仅将org:%改org:update；其它全局组织动作按原码逐项映射，委托角色范围实施前确认。",
-        "RECHECK-03：相同组织集合保存不隐式重设role/scope/source/expiry/joined_at；新增/移除按单写主及owner清理，HR/UAA未接也先修本地往返。",
-        "HIER-03/04/12：多组织任职独立、主组织非排它；Move保ID/live投影同事务，B07批准映射撤部mock，不猜最近祖先或复制角色。",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "B已核来源链/有效角色/scope/委托与成员属性差量、primary原语义及owner双轨；C参与写方后才关闭并发窗口。",
+        "完整目录/交接与真实nonlocal写主、映射及适用子范围仍按D06/公共UAA窗口绑定；产品实现/真实回归未交。"
       ],
       "next_design_gate": "P6.1；身份/授权部分先过E01-UAA-C",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+          "docs/phase6/foundation-iam-module-detail.md#5-d06-与-uaa-c来源目录和组织生命周期"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "hierarchy_scenarios": [
         "HIER-03",
@@ -494,14 +523,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。"
+        "已有typed查询/权限与两风险reference中独立主体真值已核，入口L1拒绝与对象404区分。",
+        "公开JSON向量、真实CMDB/source/mapping及实际查询/统计/导出运行证据仍待相应窗口；风险代码未实现。"
       ],
       "next_design_gate": "P6.2开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/risk-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/risk-module-detail.md#13-公共reference-v1两风险的完整纵切"
+        ],
+        "source_review_date": "2026-11-15"
       }
     },
     {
@@ -571,16 +605,19 @@
       "owner_policy": "see_planning_decisions",
       "api_schema_frozen": false,
       "remaining": [
-        "模块typed DTO/逻辑DDL/具名TDD已给候选；实施批核最新源码及依赖、绑定实际启用profile/owner政策，生成准确OpenAPI/迁移号/SDK并先红后绿；不能以文档代真实产品证据。",
-        "UX02责任口径已确认，R3上线同批接复核投影与计数/列表/角标同源反例，不推迟到U06或未来通用待办",
-        "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
+        "可信creator与真实operator分轨、共享Tx创建/转换接缝、分组派单原子/逐link完成部分结果及复核gate已细化。",
+        "公开JSON向量待补；实现须抽Service事务内核并验真实票/风险回滚与恢复，不能换actor或双调用假原子。"
       ],
       "next_design_gate": "P6.2开工前",
       "module_detail_status": {
         "date": "2026-11-14",
         "ref": "docs/phase6/risk-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
-        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+        "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows",
+        "source_mapped_refs": [
+          "docs/phase6/risk-module-detail.md#13-公共reference-v1两风险的完整纵切"
+        ],
+        "source_review_date": "2026-11-15"
       },
       "authorization_gap_actions": [
         "AUTH-GAP-03"
@@ -612,7 +649,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-03"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "D12",
@@ -644,7 +682,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-03"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "D13",
@@ -826,7 +865,8 @@
         "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
         "docs/phase6/ticket-module-detail.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -849,7 +889,8 @@
       "hierarchy_scenarios": [
         "HIER-09",
         "HIER-11"
-      ]
+      ],
+      "page_family_cards_ref": "docs/phase6/frontend-page-family-detail.md"
     },
     {
       "work_item": "U07",
@@ -1099,7 +1140,8 @@
         "ref": "docs/phase6/task-activelist-message-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
-      }
+      },
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "R02",
@@ -1240,7 +1282,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P7实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.3出口"
+      "decision_gate": "P6.3出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E03",
@@ -1260,7 +1303,9 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.3出口"
+      "decision_gate": "P6.3出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md",
+      "phasing_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "E04",
@@ -1280,7 +1325,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.E出口"
+      "decision_gate": "P6.E出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E05",
@@ -1316,7 +1362,8 @@
         "后续包具体协议/schema/提供方能力/状态存储/实现切片须在本包开工前完成详设；不声称当前全部完成"
       ],
       "next_design_gate": "P6.E出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
-      "decision_gate": "P6.E出口"
+      "decision_gate": "P6.E出口",
+      "early_disposition_ref": "docs/phase6/early-disposition-cards.md"
     },
     {
       "work_item": "E07",
@@ -1647,7 +1694,8 @@
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1679,7 +1727,8 @@
         "docs/design/capability-interconnect-detail.md",
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1699,7 +1748,8 @@
       },
       "authorization_gap_actions": [
         "AUTH-GAP-02"
-      ]
+      ],
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "CE03",
@@ -1719,7 +1769,8 @@
         "本地核心已取的敏感子出口同步迁移旧TR任务读写/结果入口，先过滤后分页/total；整包仍P7，不延迟AUTH-02维护职责修复。",
         "P7整包不遮首版本地已前移链B选定子出口，core/AL各管本库receipt和当前权限；不开任意私有后台写。"
       ],
-      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前"
+      "next_design_gate": "按P6.1/P6.3/P7/P9具名出口/配额开工前",
+      "source_wiring_ref": "docs/phase6/interconnect-source-wiring.md"
     },
     {
       "work_item": "CE04",
@@ -1890,7 +1941,8 @@
     "January_trial_aspiration_not_forced_deadline": true,
     "future_production_data_preserved": true,
     "implemented": false,
-    "original_76_parent_maturity_and_prices_not_reclassified": true
+    "original_76_parent_maturity_and_prices_not_reclassified": true,
+    "iam_estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态"
   },
   "mainline_readiness_review": {
     "ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
@@ -1976,7 +2028,7 @@
     "implementation_authorized": false,
     "all_business_implemented": false,
     "all_real_provider_contracts_frozen": false,
-    "scope_and_estimate_registries_unchanged": true,
+    "scope_and_estimate_registries_unchanged": false,
     "reviewed_date": "2026-11-15",
     "parent_count_is_not_all_supplemental_scope": true,
     "supplemental_phase6_exits": [
@@ -1991,9 +2043,9 @@
       {
         "id": "OBS02",
         "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
-        "state": "detailed_contract_candidate_owner_failure_policy_pending",
+        "state": "detailed_contract_candidate_owner_policy_confirmed_implementation_pending",
         "local_core_selection": "existing authorized history/necessary facts; complete extra audit slice not automatic first-release gate",
-        "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，原两IAM强审计失败政策仍待答。",
+        "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，两操作本地审计失败回滚已由F017确认，仍待真实事务接线/失败回归。",
         "review_ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       }
     ],
@@ -2001,26 +2053,168 @@
       {
         "id": "E02",
         "decision_due": "P6.3出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E03",
         "decision_due": "P6.3出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E04",
         "decision_due": "P6.E出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       },
       {
         "id": "E06",
         "decision_due": "P6.E出口",
-        "implementation_remains_later": true
+        "implementation_remains_later": true,
+        "source_disposition_ref": "docs/phase6/early-disposition-cards.md"
       }
     ],
     "review_scope_note": "44 parent sets + LS01-04 + OBS01/02 + named first-release subexits + P6 early gates; no claim that every future provider/implementation is frozen",
-    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md"
+    "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md",
+    "continuous_refinement": {
+      "source_followup": "F018-module-detail-continuation",
+      "state": "bounded_design_refinement_complete_current_owner_policies_confirmed",
+      "review_standard_ref": "docs/phase6/module-design-handoff.md",
+      "owner_pending_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup",
+      "scope_note": "核本期各模块真实接线及六项交付；未来边界/本期裁决按原窗口，生成实现产物和真实provider输入不假装已完成。",
+      "runtime_verified": false,
+      "module_groups": [
+        {
+          "id": "IAM",
+          "ref": "docs/phase6/foundation-iam-module-detail.md",
+          "state": "source_mapped_contract_and_net_candidate",
+          "remaining": "Public IAM shapes and C05 profile mapped; 28-46 IAM net allocation integrated into core95-148 candidate. Actual implementation and first-slice calibration remain."
+        },
+        {
+          "id": "CORRECTNESS",
+          "ref": "docs/design/engineering-execution-design.md",
+          "state": "source_mapped_contract_and_acceptance_candidate",
+          "remaining": "Implementation artifacts, measured budgets, real legacy scan and runtime acceptance remain; design is a source-mapped candidate.",
+          "case_ids": [
+            "C01-01",
+            "C01-02",
+            "C01-03",
+            "C01-04",
+            "C01-05",
+            "C01-06",
+            "C01-07",
+            "C01-08",
+            "C01-09",
+            "C01-10",
+            "C02-01",
+            "C02-02",
+            "C02-03",
+            "C02-04",
+            "C02-05",
+            "C02-06",
+            "C02-07",
+            "C02-08"
+          ]
+        },
+        {
+          "id": "TICKET",
+          "ref": "docs/phase6/ticket-module-detail.md",
+          "state": "source_mapped_wire_and_slice_candidate",
+          "remaining": "Legacy wire, eligibility query and member-source identity mapped; TICKET-D01 confirmed through F019, implementation and runtime acceptance remain.",
+          "source_mapped_ref": "docs/phase6/ticket-module-detail.md"
+        },
+        {
+          "id": "RISK",
+          "ref": "docs/phase6/risk-module-detail.md",
+          "state": "source_mapped_candidate_with_reference_projection",
+          "remaining": "Synthetic source, trusted dispatch and recovery mapped; JSON covers order/time projection only, not full risk behavior or company mappings.",
+          "source_mapped_ref": "docs/phase6/risk-module-detail.md"
+        },
+        {
+          "id": "INTERCONNECT",
+          "ref": "docs/phase6/task-activelist-message-detail.md",
+          "state": "source_mapped_composition_and_cutover_candidate",
+          "remaining": "DI/TxPlan/callback/task view/boundary/native origin and per-consumer cutover mapped; actual HTTP/transaction/process acceptance remains.",
+          "source_mapped_ref": "docs/phase6/interconnect-source-wiring.md"
+        },
+        {
+          "id": "MESSAGE",
+          "ref": "docs/phase6/task-activelist-message-detail.md",
+          "state": "source_mapped_http_reference_and_inbox_candidate",
+          "remaining": "10 synthetic shapes and payload hash verified; no actual HTTP server, provider acceptance, dedup or recovery proof.",
+          "source_mapped_ref": "docs/phase6/interconnect-source-wiring.md#7-消息http公共mock的绑定"
+        },
+        {
+          "id": "ADAPTER_UAA",
+          "ref": "docs/phase6/extension-ai-module-detail.md",
+          "state": "source_mapped_assembly_and_reference_candidate",
+          "remaining": "Single assembly, explicit scoped query, UAA independent/enterprise modes and reference manifest mapped; generated product config/SDK and real UAA conditions remain implementation exits.",
+          "source_mapped_ref": "docs/phase6/extension-ai-module-detail.md"
+        },
+        {
+          "id": "DEVICE_AI",
+          "ref": "docs/phase6/extension-ai-module-detail.md",
+          "state": "bounded_source_mapped_reference_candidate",
+          "remaining": "Manual entry/status and fixed ticket.list profile serialized; runtime permissions, device/model choices and A02 confirmation remain implementation/real-input exits.",
+          "source_mapped_ref": "docs/phase6/extension-ai-module-detail.md"
+        },
+        {
+          "id": "ENGINEERING_OBS",
+          "ref": "docs/phase6/foundation-iam-module-detail.md",
+          "state": "source_mapped_gates_log_audit_archive_candidate",
+          "remaining": "Five-repo gates and selected logging/audit/archive projections mapped; remote enforcement, real retention/topology and product acceptance not executed.",
+          "source_mapped_ref": "docs/design/unified-observability-audit.md"
+        },
+        {
+          "id": "UI",
+          "ref": "docs/phase6/ticket-module-detail.md",
+          "state": "source_mapped_page_family_cards_candidate",
+          "remaining": "Eight remaining page groups reuse home/tokens/route inventory; source-specific data, failure, permission and keyboard contracts mapped, not UI implementation or browser proof.",
+          "source_mapped_ref": "docs/phase6/frontend-page-family-detail.md"
+        },
+        {
+          "id": "FUTURE_BOUNDARIES",
+          "ref": "docs/phase6/module-detail-index.md",
+          "state": "early_disposition_cards_and_existing_boundaries_mapped",
+          "remaining": "Four early gates cover their source leaves including E03 auth enhancements; 25 later parents retain stage boundaries, no premature SQL/API freeze.",
+          "source_mapped_ref": "docs/phase6/early-disposition-cards.md"
+        }
+      ],
+      "reference_manifest_ref": "docs/design/examples/capability-reference/module-reference-manifest.json",
+      "selected_reference_proof": {
+        "module_shapes": 10,
+        "message_shapes": 10,
+        "uaa_behavior_cases": 57,
+        "uaa_mutations": 16,
+        "message_hash_cross_checked": "Node and Python",
+        "product_runtime_verified": false
+      },
+      "remaining_design_work": [],
+      "final_scope_review_ref": "docs/review/reports/module-detail-refinement-closeout-2026-11-15.md",
+      "owner_deferred_ids": [],
+      "implementation_exits_not_design_omissions": [
+        "Generated OpenAPI/DDL/SDK/runtime wiring and source-controlled product tests per slice.",
+        "Actual company/provider/type/org/key/retention/topology inputs at existing windows.",
+        "Product HTTP/PG/Redis/browser/concurrency/restart acceptance and first-slice throughput calibration."
+      ],
+      "existing_product_regression": {
+        "ref": "docs/review/reports/module-detail-refinement-gates-2026-11-15.json",
+        "all_required_main_checks_pass": true,
+        "acceptance_pass": 253,
+        "migration_roundtrip_pairs": 81,
+        "runtime_unchanged": true,
+        "does_not_verify_new_design": true
+      },
+      "owner_confirmed_policy_ids": [
+        "TASK-D01",
+        "TICKET-D01",
+        "E03-AUTH-D01"
+      ],
+      "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+    },
+    "global_parent_scope_prices_and_dag_unchanged": true,
+    "local_core_net_allocation_updated": true
   },
   "authorization_review": {
     "date": "2026-11-15",
@@ -2131,13 +2325,15 @@
       "P6.3": "full U06 rollout only",
       "later": "UAA-P/R managed mapping and real activation; real HR feed in its original window"
     },
-    "owner_pending": [
-      "HIER-D01"
-    ],
+    "owner_pending": [],
     "no_new_parent_packages": true,
     "price_numbers_changed": false,
     "subestimate_overlap_check_required": true,
-    "runtime_verified": false
+    "runtime_verified": false,
+    "owner_confirmed": [
+      "HIER-D01"
+    ],
+    "confirmation_ref": "F017-iam-first-batch-owner-decisions"
   },
   "authorization_gap_closure": {
     "date": "2026-11-15",
@@ -2158,5 +2354,174 @@
     "subestimate_overlap_check_required": true,
     "runtime_verified": false,
     "engine_migration_approved": false
+  },
+  "iam_first_batch_design": {
+    "ref": "docs/phase6/iam-first-batch-design.md",
+    "source_followup": "F017-iam-first-batch-owner-decisions",
+    "owner_confirmed": [
+      "HIER-D01",
+      "IAM-AUDIT-D01"
+    ],
+    "implementation_state": "not_implemented",
+    "first_candidate": "IAM-A",
+    "subestimates": [
+      {
+        "id": "IAM-A",
+        "days": [
+          4,
+          6
+        ],
+        "scope": "AUTH-07/RECHECK-01/02及必要薄UI"
+      },
+      {
+        "id": "IAM-B",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-01/03/RECHECK-03/HIER-D01"
+      },
+      {
+        "id": "IAM-C",
+        "days": [
+          12,
+          19
+        ],
+        "scope": "试点共同屏障/fresh DBTX/L1 pair/单实例恢复及两操作本地强审计"
+      },
+      {
+        "id": "IAM-TASK",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-02/06旧任务维护资格/参数及可信归因"
+      },
+      {
+        "id": "C05",
+        "days": [
+          6,
+          10
+        ],
+        "scope": "DB epoch/initial projection and security writes, AT/RT/cookie/PAT, private secret replay, thin UI and recovery; gross pending dedup, not included in IAM-C"
+      }
+    ],
+    "net_estimate_integrated": true,
+    "runtime_verified": false,
+    "detail_slices": [
+      {
+        "id": "IAM-A",
+        "state": "source_mapped_contract_and_acceptance_candidate",
+        "ref": "docs/phase6/iam-first-batch-design.md#3-a批的具体前后与验收",
+        "case_ids": [
+          "A-01",
+          "A-02",
+          "A-03",
+          "A-04",
+          "A-05",
+          "A-06",
+          "A-07",
+          "A-08"
+        ]
+      },
+      {
+        "id": "IAM-B",
+        "state": "source_mapped_contract_and_acceptance_candidate",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线",
+        "case_ids": [
+          "B-01",
+          "B-02",
+          "B-03",
+          "B-04",
+          "B-05",
+          "B-06",
+          "B-07",
+          "B-08",
+          "B-09",
+          "B-10"
+        ]
+      },
+      {
+        "id": "IAM-C",
+        "state": "source_mapped_contract_reference_candidate",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切",
+        "case_ids": [
+          "C-01",
+          "C-02",
+          "C-03",
+          "C-04",
+          "C-05",
+          "C-06",
+          "C-07",
+          "C-08",
+          "C-09",
+          "C-10"
+        ],
+        "remaining_technical": [
+          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration."
+        ]
+      },
+      {
+        "id": "IAM-TASK",
+        "state": "source_mapped_contract_candidate_owner_policy_confirmed_not_implemented",
+        "ref": "docs/phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因",
+        "case_ids": [
+          "TASK-01",
+          "TASK-02",
+          "TASK-03",
+          "TASK-04",
+          "TASK-05",
+          "TASK-06"
+        ],
+        "owner_pending": [],
+        "owner_confirmed": [
+          "TASK-D01"
+        ],
+        "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+      },
+      {
+        "id": "C05",
+        "state": "source_mapped_security_epoch_secret_and_claims_candidate",
+        "ref": "docs/phase6/foundation-iam-module-detail.md#41-c05现有wire与尚未持久化的部分",
+        "case_ids": [
+          "SESSION-01",
+          "SESSION-02",
+          "SESSION-03",
+          "SESSION-04",
+          "SESSION-05",
+          "SESSION-06",
+          "SESSION-07",
+          "SESSION-08",
+          "SESSION-09",
+          "SESSION-10"
+        ],
+        "remaining_technical": [
+          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration."
+        ],
+        "runtime_verified": false,
+        "gross_days": [
+          6,
+          10
+        ]
+      }
+    ],
+    "selected_reference_contract": {
+      "ref": "docs/design/capability-interconnect-detail.schema.json",
+      "sha256": "35783a94d9d74341a6fbdc9a61f1ad1d4fa18f7eb4beb6728489bb7118e1c071",
+      "new_iam_shapes": 63,
+      "all_shape_cases": 143,
+      "old_cases_preserved": 80,
+      "only_shape_and_canonical_hash_proof": true,
+      "product_runtime_verified": false
+    },
+    "net_allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md",
+    "net_IAM_days": [
+      28,
+      46
+    ],
+    "net_local_core_days": [
+      95,
+      148
+    ]
   }
 }

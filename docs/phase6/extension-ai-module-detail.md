@@ -32,7 +32,7 @@ ExtensionAdmission = {principal_id: ID, audience: extension_id,
   operation_id: string?, valid_until: Timestamp}
 ```
 
-配置不含真实用户/口令，资源 code 有扩展命名空间；依赖/重复路由/目录冲突或 B 案页面写绑定不合法时拒绝该候选启用，保留上一份完整有效配置，不部分暴露。既有核心迁移只改 core 来源行；停用扩展只撤它自己的目录/绑定，保留执行/审计与本地数据，不能按 URL 前缀粗删核心授权。
+配置不含真实用户/口令，资源code有扩展命名空间；依赖/路由/目录/B案冲突则整份候选拒绝，不部分暴露。由部署保留旧健康制品而非进程热加载回退；冷启动无有效配置则拒启。既有核心迁移只改core来源行；停扩展只撤它自身目录/绑定、保业务历史，不能按URL前缀删核心授权。唯一装配路径与准确补充字段见§8.1。
 
 调用服务先验 HMAC/受信服务身份，再验证当前真实用户会话与 audience/路由；服务凭据不代表用户授权。首个同步用户调用采用**核心逐请求授权回调**：扩展收到经可信网关构造的受限请求引用，在执行前向核心验证该引用与当前主体/资源/字段；引用短期、一次请求绑定、不可在另一路由/对象复用。核心只签发已登记 capability/audience，不把用户 AT 或管理员密钥交给扩展/浏览器。准确签名字段复用既有 HMAC/未来 admission 合同，不能另编浏览器自报 user_id。
 
@@ -50,7 +50,7 @@ HTTP、UI 网关、内部用例调用和后续 MCP 都使用静态 capability_id
 
 ## 3. X02-Q：先可替换查询，再有状态 feed
 
-配置/装配也属于交付：当前`cmd/server/main.go`的`run`固定加载相对`configs/config.yaml`，`internal/config/config.go`的`Load`虽接受路径、当前Config却无扩展合同字段，不能说已支持配置式插件。首个消费者须交受控外置配置入口或部署只读挂载、明确schema/校验/DI/client及endpoint/profile替换与禁用的实际测试；私有配置/secret留checkout外，不要求新增CLI flag与挂载两套机制。所选公共Port/schema在该批冻结，不把伪DTO当已生成SDK。
+配置/装配也属交付：当前cmd/server/main.go的run固定加载相对configs/config.yaml，internal/config/config.go的Load虽接受路径、当前Config却无扩展合同字段。§8.1选择checkout外文件只读挂载，明确schema/校验/DI/client及替换/停用测试，不再留CLI flag与挂载双选。公开DTO不等已生成SDK或现成插件宿主。
 
 ```text
 QueryRequestV1 = {query_id: RegisteredKey, contract_version: "1",
@@ -163,6 +163,40 @@ Plan = {actor_id: ID, operation_id: string, canonical_command: TicketCreateComma
 | AI-04 | 建单响应丢失/恢复、切账号后旧 stream 到达 | 查原 receipt，不重建单、不向新账号展示旧答案 |
 
 实施按 X01-C/B＋X02-Q 的一个参考应用先验，再实际 D06/发现 feed，X03/A01/A02各按自身窗口；每批保留薄 UI、可见失败和运维配置。DTO/逻辑 DDL 在这里给出准确候选，真正 OpenAPI/SDK/迁移与跨仓生产者契约需实现批同步；本页用例不是已执行测试。A01 语义黄金集/延迟阈值在实际模型选定后基线化，不承诺100%准确；安全权限反例必须全过。
+
+### 8.1 唯一装配路径、参考Query及双模式矩阵
+
+首批选择部署侧不可变文件只读挂载/app/configs/config.yaml、cwd=/app，复用run→Load；配置留checkout外，校验后换挂载并重启，secret仅文件引用。现Load有AutomaticEnv，新增extension/source/profile装配分支须只读所选文件，不再被环境变量形成第二写主；现有其它配置env兼容不顺手移除。缺引用拒启仅限enabled可达依赖，disabled仍验结构/命名空间但不解析unused secret。候选失败由部署续旧健康进程，非现成热回退/动态安装。
+
+ExtensionConfigV1在§2骨架补齐：manifest_version、artifact_digest、maintainer_ref、supported_contract_range、optional_dependencies；每route加contract_version/OpenAPI operationId/input_schema_hash/output_schema_hash/effect/idempotency_class，资源加source_namespace/resource_type/write_owner，另含health及disable/inflight/history策略。装配层有assembly_revision/hash与endpoint_ref/secret_ref/trusted_app_ref/profile_ref解析表；由受审配置解析，不接受请求改目标。客户端消费允许host/port、CA、禁重定向、deadline、并发/body/页数上限，缺引用/重复code/冲突路由/未知合同/跨区/B案违规整份拒绝。当前Config没有这些字段，不能把gateway前缀当实现。
+
+固定公共query profile=`synthetic.asset-directory.v1`、query_id=reference.asset.list、contract_version="1"（@1仅简写）。QueryPort.Query(trusted_context,QueryRequestV1)→QueryPageV1<AssetDirectoryItem>|QueryFailure；参数仅owner_org_refs可选ID集及status可选healthy/degraded/down/unknown集合，过滤只能收窄当前获权范围，排序device_id ASC，limit≤50、字段白名单。items仅device_id/name/owner_org_ref/category/status/observed_at/stale目录子集，不带入口/用户名提示/秘密。
+
+参考profile进一步定limit为1..50整数、requested_fields为上述7字段的非空去重子集；出站owner_org_refs为1..256个规范正十进制ID，当前交集为空则本地空返回、不发空scope。每页最多50项，行字段仍是请求及当前许可投影。合成[Schema/10个向量](../design/examples/capability-reference/module-profile-vectors.json)补Query、设备、AI和风险排序投影，准确Schema/摘要及复跑边界见[参考说明](../design/examples/capability-reference/README.md)，不是公司协议或产品测试。
+
+公共HTTP选签名POST /v1/query，仅服务间effect=read传输，不作页面写绑定/万能invoke。body沿QueryRequestV1，核心将当前获权组织∩用户可选过滤**强制写入parameters.owner_org_refs**；用户可省略筛选不等connector可缺范围。空集本地返回空不出站；connector拒缺失范围，按权威行组织过滤，消费方再验行/字段，不仅声称PDP已准。参数/cursor/fields一并入签名正文，caller白名单/profile受审，纯源不接浏览器actor。
+
+200仅QueryPage成功/明确partial，400输入、403源拒权、409合同/cursor变更、429配额、503源不可用；空集合与错误分开，QueryFailure不透传厂商报文。cursor绑定source/query版本/参数/排序/当前scope/assembly revision，撤权/换源拒旧cursor；无稳定快照只逐页观察，组织映射不可证的行不能默认归入允许范围。
+
+同fixture覆盖mock与HTTP connector，换endpoint/profile不改调用方源码；实际源错误不回落mock。纯query无inbox/checkpoint；feed以后按D06/风险envelope的received/applied区分接，不能因QueryPage.complete=true撤目录/风险。公共QueryPort合同只放公开contract包/HTTP，不import核心internal或跨库FK。
+
+私有页面仍按当前会话→核心L1/路由→短TTL opaque request_ref→受信扩展HMAC回调→核心当前主体/字段/组织→Admission→私有数据属主L2/L3。补Admission的contract_version/config_revision/request_id，回调的规范method/route或摘要与服务端ref逐项比对；ref不放URL、不接受user_id/X-Operator自证。凭据按调用方向/受信服务分开；组织映射未知拒绝。纯源query由核心授权后走上面的QueryPort，不造用户交换ref；现有有界在途撤权窗口保留，不加分布式锁/许可平台。
+
+UAA-C矩阵含稳定资源键、capability/version、本地主体ID、来源、受管字段、唯一写主/入口、direct/org/inherit链、接管本地写限制与撤权/新鲜度。先冻结实际local行；HR任职与UAA账号/授权事实按字段写主归一，不抢同字段。认证issuer+subject、治理application/source/subject及目录实体分别映射，不因邮箱/同名admin并号。**独立模式不启用UAA**仍保本地账号/角色/直接与组织赋角/菜单分配查询/三层执行；企业模式停adapter只停相应受管能力，不自动切独立/恢复旧grant。菜单目录当前迁移维护，不虚标CRUD。
+
+完整P/R继续认证、目录注册、账号状态、用户角色、角色资源、条件范围与治理回执，不退为SSO。复用uaa-reference-mock/port-map.json和57例/16变异离线参考，非HTTP产品/PG/真实登录证明；真实映射/接管/失联/退出人员沿Q07和UAA real conditions窗口确认，不要求公司文档导出。
+
+### 8.2 设备与AI的有限参考profile
+
+设备沿同一asset-directory参考读目录/状态；entry_key/revision/enabled/endpoint_ref/allowed_scheme_host_port/network_hint/maintainer_ref/last_verified_at由私有本地补充写主维护，不覆盖CMDB属性。状态profile声明stale_after及unknown/stale原因；无观测observed_at=null，不由管理页200推健康。首批login_username_hint不返回，需要时按专门字段权另开；无SSO、凭据保存/PAM或自动代填。参考验无权入口403/换版409、恶意scheme/host/port/redirect拒绝、计数与明细相同scope、launch只记请求不记登录成功。
+
+AI复用authorized-work-items.v1，首个tool仅ticket.list、contract_version="1"，示例为“列出我有权查看、状态open的工单”。ToolInput仅type_code/status=open/page/page_size≤20及允许读字段，不接用户/组织scope/URL/SQL；由adapter映射当前TicketListQuery并走原GetFilter。它是可见列表，不把assignee=me当风险复核待办。缺类型或类型无open则needs_input，模型不能扩大到其它query/动作；首次输出限定获权id/human_key/status/引用时间，partial不回答全平台总量。
+
+该选定工具的page为正整数，page_size为1..20，requested_fields是id/human_key/status的非空去重子集；引用时间复用AIQueryResponse.sources[].observed_at，不另发明行字段。设备首期DeviceView的ID/entry_version用规范正十进制字符串；can_open=true必须有entry_version，打开时仍核当前配置/权限。unknown不必等于无观测，observed_at=null仅表示无观测，不能据此编造健康或时效。
+
+ModelConnection/ScenarioDefinition/ToolDefinition补schema摘要/模板摘要/结构化能力与字段投影，内网profile只解析内部已有API，无外网fallback；只会文本且不支持所需结构化提议的连接拒此tool场景。先用固定合成proposal/结果/越权反例，实际模型黄金集与延迟在选定后测，不承诺100%语义正确。A02继续同计划固定operation的草稿→确定性preview→当前真人confirm，计划/定义/目标漂移重预览，不为本profile先上MCP/后台自治。
+
+EXT/DEV/AI原用例新增参考断言：同fixture mock↔HTTP、换endpoint/停用与无效装配不部分暴露；签名正确但伪用户/错audience/跨组织/旧cursor拒绝；旧未改adapter×新core真实HTTP验证可选字段/未知枚举/错误/完成语义；设备unknown/stale/入口换版；AI非法tool/跨区/缺条件、preview漂移及不同key并发confirm一效果。源/模型真实网络与公司UAA另留pending，不用现有主线绿代验。业务待绑定只复用Q07/Q08/Q12：首CMDB/状态源/可见组织/入口维护者、获准AI查询/模型区和A02类型、UAA影子差异后的具体接管/恢复方案，不把配置字段命名交所有者逐项选择。
 
 ## 9. 尚需确认与变化
 

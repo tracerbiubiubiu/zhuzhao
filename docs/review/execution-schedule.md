@@ -7,7 +7,7 @@
 原71父包完整承接，正式纳入CE五项后为76父包、17正式子出口、6项LS额外范围任务、13发布切片。
 LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。
 本页长程总量只覆盖76包既有计价基线，不是基础版B0/B1工期，也未合并F004新增未净估细项及OBS候选补充；后继范围见[补充册](post-baseline-scope-estimates.json)。
-首个本地正式核心获准先用本地账号，质量优先；1月试用是争取窗口，完整UAA P/R核心稳定后交。见[阶梯](../phase6/first-usable-release-plan.md)、[68–104日净估候选](local-core-release-estimate.json)和[变化对照](core-release-change-comparison.md)；本页长期DAG/日窗不是该首版顺序或日期承诺。
+首个本地正式核心获准先用本地账号，质量优先；1月试用是争取窗口，完整UAA P/R核心稳定后交。见[阶梯](../phase6/first-usable-release-plan.md)、[首版净估候选](local-core-release-estimate.json)和[变化对照](core-release-change-comparison.md)；本页长期DAG/日窗不是该首版顺序或日期承诺。
 六项RP替换原基价，不能替换后又把净差额再加一次。
 数字源为[净增册](planning-scope-estimates.json)、[UAA估算](uaa-implementation-estimate.json)和[总账](planning-backlog.json)。
 切片、UAA接线及分阶段迁移配额见[排程模型](execution-schedule-model.json)；逐任务/资源槽/输入哈希见[JSON](execution-schedule.json)。
