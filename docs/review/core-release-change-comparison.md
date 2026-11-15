@@ -53,4 +53,4 @@
 - [Microsoft API指南](https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md)支持兼容演进；[anti-corruption layer](https://learn.microsoft.com/en-us/azure/architecture/patterns/anti-corruption-layer)支持语义映射隔离，也提示延迟和维护成本。本项目采用版本合同/私有映射，不照搬Azure URL规则、云组件或审批体系。
 - [Grafana backend plugins](https://grafana.com/developers/plugin-tools/key-concepts/backend-plugins/)展示独立子进程经协议交互的实例；本项目选择有限进程外HTTP接缝，不引入它的插件框架。以上依据支持机制，不证明本项目已经实现、已获真实授权或某厂商全部feature都是基础必做。
 
-本页不新增报价或缩减旧总量；首版净估/扣重与试用余量按主计划及[68–104工程日候选](local-core-release-estimate.json)统一收口。已审计、已规划、已实现、已运行和已进公司环境始终分别说明。
+本页不新增报价或缩减旧总量；首版净估/扣重与试用余量按主计划及[首版净估候选](local-core-release-estimate.json)统一收口。已审计、已规划、已实现、已运行和已进公司环境始终分别说明。

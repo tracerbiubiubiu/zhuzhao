@@ -232,7 +232,7 @@ cursor是不透明有界分页引用，绑定类型/generation、规范查询has
 
 具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这个selected profile归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
 
-计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。该接口批开工前对TD03/TD04、CE03及F004逐项扣重，未含必要接线补子估；未启用的大导出/复杂筛选不计首版。当前68–104日仍是候选，本文不宣称这次澄清已证明零净增或确定节省天数。
+计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。本次对TD03/TD04及既有typed读/权限case合计扣重复用1–2，所选读取毛3–5、净增2–3已落账（TD03增1–2、TD04增1，TD05专用case不重加），含授权锚写保护与旧旁路拒绝；全版95–148仍为工程候选。未启用的大导出/复杂筛选不计首版，真实画像改变先补估。
 
 ### 8.2 存量任务入口与维护动作的接线门
 

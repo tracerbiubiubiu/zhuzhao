@@ -347,8 +347,21 @@
         ],
         "blocks": "仅旧cc自加/自退路由的过渡，不阻新参与人管理/候选查询或其它模块；CC从不绕过L1。",
         "design_ref": "docs/phase6/ticket-module-detail.md#71-ticket准确wire候选人及实施切片"
+      },
+      {
+        "id": "E03-AUTH-D01",
+        "title": "认证增强逐项取舍，非C05基础安全补强",
+        "scenario": "普通用户希望查看/结束自己的设备会话，管理员希望查看在线用户或解锁登录；另有可选本地密码策略用途。这些不是设备台帐，也不是C05安全代际已经交付的完整会话产品。",
+        "recommendation": "先交C05基础安全链；P6.3根据实际用途对本人设备会话、可选密码策略、管理员在线/解锁分别保留、接入或退出，获选部分P8实施前冻结。企业受管凭据遵UAA权威矩阵，不提供本地绕过。",
+        "state": "pending_consolidated_owner_review",
+        "affected_items": [
+          "E03"
+        ],
+        "decision_due": "P6.3出口；获选P8实施前冻结",
+        "blocks": "仅阻相关认证增强新增子范围；不扩大Q10已有确认、不阻C05修复或其它模块。",
+        "design_ref": "docs/phase6/early-disposition-cards.md#2-e03分派日历轻审批与认证增强"
       }
     ],
-    "pending_candidate_count": 2
+    "pending_candidate_count": 3
   }
 }

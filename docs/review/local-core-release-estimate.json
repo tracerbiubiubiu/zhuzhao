@@ -1,29 +1,29 @@
 {
   "schema_version": 1,
   "date": "2026-11-15",
-  "status": "old_numeric_candidate_pending_deduplicated_IAM_reestimate",
+  "status": "source_mapped_deduplicated_candidate_not_runtime_verified",
   "scope_owner_policy": "local-first formal operation allowed; quality and usability take precedence over January target; full UAA P/R follow core",
   "source_followup": "F013-local-first-quality-and-UAA-later",
-  "basis_commit": "ac6b060bf4892c03c5e7ade2b5e5fd792d91dad9",
+  "basis_commit": "610c1d7644b1a578eba85842cef983b713e261c6",
   "basis_method": "read actual source/ports/tests; reuse existing product; count shared mechanism once and each domain adapter/effect once; no duration inferred from deadline",
   "unit": "effective engineering days including finite remaining design TDD implementation domain tests review and normal correction",
-  "confidence": "low_pending_IAM_write_set_and_deduplication",
+  "confidence": "medium_low_pending_actual_first_slice_throughput_and_shared_S2_capacity",
   "groups": [
     {
       "id": "S",
       "title": "共享本地权限、可靠调用与基础保护",
       "days": [
-        12,
-        19
+        37,
+        60
       ],
       "wbs": [
         {
           "id": "S1",
           "days": [
-            5,
-            8
+            30,
+            49
           ],
-          "deliverable": "含UAA-C合同2–3日和本地授权/事务护栏3–5日：本批可信主体、稳定资源/source边界；所选高风险写与本地IAM撤权在事务内复验，共用epoch/守卫锁序；策略重载/会话失效失败持久待恢复并收紧，单实例启动重载可验证",
+          "deliverable": "UAA-C 2-3 plus source-mapped local IAM net 28-46; replaces the old local guard 3-5 allocation, not a second addition",
           "source_refs": [
             "internal/service/user_service.go#UserService.SetRoles",
             "internal/service/rbac_service.go#RBACService.AssignMenus",
@@ -40,8 +40,94 @@
           ],
           "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
           "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows.",
-          "estimate_review_state": "requires_IAM_subestimate_replacement_after_deduplication",
-          "estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态"
+          "estimate_review_state": "source_mapped_net_candidate",
+          "estimate_review_ref": "docs/review/iam-net-allocation-2026-11-15.md",
+          "suballocations": [
+            {
+              "id": "UAA-C",
+              "days": [
+                2,
+                3
+              ]
+            },
+            {
+              "id": "IAM-A",
+              "days": [
+                4,
+                6
+              ],
+              "owner": "grant/direct-role editing and required IAM UI/cases"
+            },
+            {
+              "id": "IAM-B",
+              "days": [
+                4,
+                7
+              ],
+              "owner": "effective hierarchy and membership delta/cases"
+            },
+            {
+              "id": "IAM-C",
+              "days": [
+                10,
+                16
+              ],
+              "gross_days": [
+                12,
+                19
+              ],
+              "shared_allocation_to_S2": [
+                2,
+                3
+              ],
+              "wbs": [
+                {
+                  "scope": "write-set closure and fresh DBTX",
+                  "days": [
+                    4,
+                    6
+                  ]
+                },
+                {
+                  "scope": "L1 revision/enforcer pair and recovery",
+                  "days": [
+                    2,
+                    3
+                  ]
+                },
+                {
+                  "scope": "two command facts and ETag adapters",
+                  "days": [
+                    2,
+                    4
+                  ]
+                },
+                {
+                  "scope": "dedicated concurrency/rollback/review",
+                  "days": [
+                    2,
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "IAM-TASK",
+              "days": [
+                4,
+                7
+              ],
+              "owner": "existing maintenance eligibility, trusted inputs/attribution and legacy reads"
+            },
+            {
+              "id": "C05",
+              "days": [
+                6,
+                10
+              ],
+              "owner": "bounded persistent security epoch, secret binding, token/PAT/UI/CLI and recovery"
+            }
+          ]
         },
         {
           "id": "S2",
@@ -60,7 +146,12 @@
             "AUTH-GAP-02"
           ],
           "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
-          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows.",
+          "shared_IAM_allocation_in_existing_days": [
+            2,
+            3
+          ],
+          "allocation_rule": "Existing 4-6 is the single common operation/receipt/intent mechanism charge, including the 2-3 transferred from IAM-C gross; no extra mechanism charge in IAM-C/C05."
         },
         {
           "id": "S3",
@@ -86,7 +177,8 @@
         "C02/C04/R01适用子范围",
         "CE01/CE02本批共同机制",
         "E01-UAA-C合同",
-        "OBS本批最低保护"
+        "OBS本批最低保护",
+        "IAM-A/B/C/TASK and C05 selected local core; original parent budgets are not separately deducted here"
       ]
     },
     {
@@ -186,8 +278,8 @@
       "id": "TD",
       "name": "ticket_to_TR_result_and_authorized_AL_write",
       "days": [
-        11,
-        16
+        13,
+        19
       ],
       "wbs": [
         {
@@ -211,10 +303,10 @@
         {
           "id": "TD03",
           "days": [
-            2,
-            3
+            3,
+            5
           ],
-          "deliverable": "Core backend typed AL port/client and selected read/write projection; enforce current row/field/target qualification through root authorization interface on submit, execution and result reads",
+          "deliverable": "Core backend typed AL port/client and selected read/write projection; enforce current row/field/target qualification through root authorization interface on submit, execution and result reads; includes selected list/count/metadata query normalization, current scope/cursor/field projection and signed read port mapping",
           "excludes": "building shared IAM or general AL policy editor",
           "authorization_gap_actions": [
             "AUTH-GAP-03"
@@ -225,10 +317,10 @@
         {
           "id": "TD04",
           "days": [
-            2,
-            3
+            3,
+            4
           ],
-          "deliverable": "AL-local effect receipt integration in same transaction as selected CAS update, same operation lookup and fixed type/profile/generation checks; protect monitored type across direct signed API and schema/import/delete/restore entrances",
+          "deliverable": "AL-local effect receipt integration in same transaction as selected CAS update, same operation lookup and fixed type/profile/generation checks; protect monitored type across direct signed API and schema/import/delete/restore entrances; includes AL-local parameterized list/count/metadata authorization, scoped metadata, RegisteredScopeField write protection and missing/invalid anchor deny; protected-type raw proxy and unsupported export denied",
           "excludes": "root generic receipt rules; this row alone owns monitored-type restrictive guards reused by AD"
         },
         {
@@ -237,7 +329,7 @@
             3,
             4
           ],
-          "deliverable": "Domain PG/HTTP/TR integration cases: lost submit/response, duplicate and differing payload, CAS conflict, revocation, old result, interrupted effect/projection, restart, unauthorized row/field and bypass attempts",
+          "deliverable": "Domain PG/HTTP/TR integration cases: lost submit/response, duplicate and differing payload, CAS conflict, revocation, old result, interrupted effect/projection, restart, unauthorized row/field and bypass attempts; includes TestALList_AllReadEntrypointsScoped/TestALList_QueryTamperAndCursorScope/TestALMetadata_NoHiddenFields and predicate/count/cursor/bypass cases, counted once",
           "excludes": "final end-to-end/browser suite and full shared common regression",
           "authorization_gap_actions": [
             "AUTH-GAP-02",
@@ -835,20 +927,20 @@
   ],
   "totals": {
     "raw_days": [
-      67.5,
-      103.5
+      94.5,
+      147.5
     ],
     "rounded_display_days": [
-      68,
-      104
+      95,
+      148
     ],
     "effective_weeks_at_5_days": [
-      13.5,
-      20.7
+      18.9,
+      29.5
     ],
     "before_joint_release_raw_days": [
-      62.5,
-      95.5
+      89.5,
+      139.5
     ],
     "core_trial_and_normal_fix_included": true,
     "full_UAA_P_R_excluded": true,
@@ -861,10 +953,7 @@
     "scenario_start_only": "2026-11-16",
     "weekdays_before_2027_02_01": 55,
     "holidays_and_unavailability_deducted": false,
-    "nominal_date_endpoints_only": [
-      "2027-02-17",
-      "2027-04-08"
-    ],
+    "nominal_date_endpoints_only": [],
     "date_endpoints_are_not_promises": true,
     "multiple_agents_not_multiple_seats": true
   },
@@ -946,7 +1035,10 @@
     "AL_write_and_change": "TD owns AL auth/effect receipt/guards; AD reuses them and owns source facts/subscription only",
     "shared_and_domain": "S owns common core mechanism; RISK/TD/AD/MH each own business adapters/transactions and their own targeted cases",
     "UI_U8": "batch tag tests not re-counted in UI U7",
-    "release": "Q1 does not rewrite or recharge the same domain/browser cases"
+    "release": "Q1 does not rewrite or recharge the same domain/browser cases",
+    "IAM_S2": "C gross12-19 transfers common mechanism2-3 into retained S2; C-specific10-16; C05-specific6-10 retains its own security integration.",
+    "IAM_UI": "IAM-A/C05 own their necessary UI and dedicated cases; old UI U1-U8 are not deducted as if they contained IAM.",
+    "OBS": "S3 necessary redaction; C two-command facts/recovery; later OBS02 query/export/UI deduct actual delivered work before its own estimate."
   },
   "exclusions": [
     "full UAA public P/private R, enterprise SSO/feed/governance UI and actual switch",
@@ -982,7 +1074,7 @@
     "calendar_two_months": "owner aspiration, not verified duration; net deduct actual reusable IAM/intent/UI work once and reserve core maintenance capacity",
     "actual_real_conditions": "not fixed; local operation may proceed while enterprise governance remains unactivated"
   },
-  "next_calibration": "先收口IAM-A接口/预期及4–6日候选分配；冻结C的相关改权写方与最小审计接线，再与S1/C04/D06/OBS02/薄UI/S2/R01/任务包扣重；不能继续把S1本地3–5日代表全部IAM，也不能把四段毛估相加到旧68–104。",
+  "next_calibration": "Use actual IAM-A implementation/review/real regression throughput to calibrate B/C/C05 and the C-to-S2 2-3 shared allocation. No fixed calendar promise or removal of required capabilities.",
   "review_adjustments": {
     "initial_candidate_raw": [
       62.5,
@@ -999,7 +1091,72 @@
       "末尾稳定期预算从已价域正常修正+RELEASE分配，不额外重复加"
     ],
     "old_parent_and_UAA_price_registries_unchanged": true,
-    "revised_range_is_still_candidate_not_forced_deadline": true
+    "revised_range_is_still_candidate_not_forced_deadline": true,
+    "IAM_source_refinement": {
+      "ref": "docs/review/iam-net-allocation-2026-11-15.md",
+      "old_raw_days": [
+        67.5,
+        103.5
+      ],
+      "old_rounded_days": [
+        68,
+        104
+      ],
+      "old_S1_days": [
+        5,
+        8
+      ],
+      "removed_local_guard": [
+        3,
+        5
+      ],
+      "retained_UAA_C": [
+        2,
+        3
+      ],
+      "IAM_net_days": [
+        28,
+        46
+      ],
+      "delta_days": [
+        25,
+        41
+      ],
+      "conservative_without_shared_transfer_rounded_days": [
+        97,
+        151
+      ],
+      "global_parent_prices_unchanged": true,
+      "no_new_calendar_promise": true,
+      "total_delta_with_AL_read_days": [
+        27,
+        44
+      ]
+    },
+    "selected_AL_read": {
+      "gross_days": [
+        3,
+        5
+      ],
+      "already_allocated_typed_read_and_dedicated_cases_combined": [
+        1,
+        2
+      ],
+      "net_added_days": [
+        2,
+        3
+      ],
+      "TD03_added": [
+        1,
+        2
+      ],
+      "TD04_added": [
+        1,
+        1
+      ],
+      "TD05_cases_counted_once": true,
+      "ref": "docs/phase6/task-activelist-message-detail.md#81-首个al类型的用户读取合同"
+    }
   },
   "authorization_gap_binding": {
     "ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
@@ -1016,8 +1173,8 @@
       "AUTH-GAP-07": "first trial feedback and P6.3/P7 decision; actual engine work separately estimated"
     },
     "price_numbers_changed": false,
-    "estimate_status": "existing_candidate_requires_deduplicated_module_subestimates",
-    "rule": "S1/各域/薄UI/G04/E09按已消费范围扣重；Q1只整合接缝。原68–104仍候选，有净增先改账，不称新增动作免费或已实现。"
+    "estimate_status": "source_mapped_IAM_allocation_integrated_candidate",
+    "rule": "Use current local-core net candidate and explicit allocation; G04/domain/UI/OBS/Q1 mechanisms counted once; no product completion or runtime claim."
   },
   "iam_first_batch_estimate_review": {
     "ref": "docs/phase6/iam-first-batch-design.md",
@@ -1054,10 +1211,102 @@
           7
         ],
         "scope": "AUTH-02/06旧任务维护资格/参数及可信归因"
+      },
+      {
+        "id": "C05",
+        "days": [
+          6,
+          10
+        ],
+        "scope": "bounded local security session and recovery"
       }
     ],
-    "global_total_status": "old_numeric_candidate_reference_pending_deduplicated_IAM_reestimate",
-    "net_integrated": false,
-    "no_direct_addition": true
+    "global_total_status": "source_mapped_deduplicated_candidate_not_runtime_verified",
+    "net_integrated": true,
+    "no_direct_addition": true,
+    "net_allocations": [
+      {
+        "id": "IAM-A",
+        "days": [
+          4,
+          6
+        ],
+        "owner": "grant/direct-role editing and required IAM UI/cases"
+      },
+      {
+        "id": "IAM-B",
+        "days": [
+          4,
+          7
+        ],
+        "owner": "effective hierarchy and membership delta/cases"
+      },
+      {
+        "id": "IAM-C",
+        "days": [
+          10,
+          16
+        ],
+        "gross_days": [
+          12,
+          19
+        ],
+        "shared_allocation_to_S2": [
+          2,
+          3
+        ],
+        "wbs": [
+          {
+            "scope": "write-set closure and fresh DBTX",
+            "days": [
+              4,
+              6
+            ]
+          },
+          {
+            "scope": "L1 revision/enforcer pair and recovery",
+            "days": [
+              2,
+              3
+            ]
+          },
+          {
+            "scope": "two command facts and ETag adapters",
+            "days": [
+              2,
+              4
+            ]
+          },
+          {
+            "scope": "dedicated concurrency/rollback/review",
+            "days": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "IAM-TASK",
+        "days": [
+          4,
+          7
+        ],
+        "owner": "existing maintenance eligibility, trusted inputs/attribution and legacy reads"
+      },
+      {
+        "id": "C05",
+        "days": [
+          6,
+          10
+        ],
+        "owner": "bounded persistent security epoch, secret binding, token/PAT/UI/CLI and recovery"
+      }
+    ],
+    "net_days": [
+      28,
+      46
+    ],
+    "allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md"
   }
 }

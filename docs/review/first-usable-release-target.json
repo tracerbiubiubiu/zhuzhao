@@ -128,12 +128,12 @@
   },
   "feasibility": {
     "single_seat_deadline_committed": false,
-    "target_risk": "bounded raw67.5–103.5 days exceeds55 nominal weekdays before February under hypothetical Nov16 T0; no promise January formal completion; actual T0/holidays/message/first-case fit unknown",
+    "target_risk": "Updated raw94.5-147.5 effective days exceeds55 nominal weekdays before February under hypothetical Nov16 T0; January formal completion not promised; actual T0, holidays and provider windows unknown.",
     "recommended_next": "progress module by module and show risk→ticket early; aim January trial if actual throughput permits; formal usable core after all mandatory gates, no permission/chain/data reductions for date",
     "calibrate_at": "first local authorization/interface pack and risk→ticket actual design/TDD/implementation/review throughput",
     "effective_weeks_candidate": [
-      13.5,
-      20.7
+      18.9,
+      29.5
     ],
     "late_trial_and_fix_days_already_in_total": [
       10,
@@ -180,8 +180,8 @@
     "source_followup": "F013-local-first-quality-and-UAA-later"
   },
   "iam_estimate_review": {
-    "ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态",
-    "state": "old_numeric_candidate_pending_deduplicated_IAM_reestimate",
-    "rule": "旧数字仅历史候选；A/B/C及任务子估未净额整合，不新增日历承诺或开发许可。"
+    "ref": "docs/review/iam-net-allocation-2026-11-15.md",
+    "state": "source_mapped_deduplicated_candidate_not_runtime_verified",
+    "rule": "Old68-104 replaced by current95-148 candidate after explicit IAM/S2 allocation; no calendar promise or development authorization."
   }
 }

@@ -44,7 +44,7 @@ core先暂停该规则动作准入，收边界后一次本库事务保存旧end_
 
 监控类型的登记能力写继承command.operation/causality；普通产品insert/update经可信入口构造`NativeWriteOriginV1={operation_id,invocation_id,request_key,causality,producer_ref,authorization_binding_ref}`，与数据、receipt、事实同AL事务持久。无父操作的真人写创建一次root，事件/后继继承；同request_key重投保留operation/root。origin只在受控adapter的签名body元信息传递，不混入动态data列；该签名仍只证明允许服务的声明，必须继续核登记producer和当前行/字段准入。
 
-authorization_binding_ref不是授权本身，解析到受信当前主体/授权引用、native动作、type/generation、update目标/版本或insert创建范围、字段集合、规范输入hash及短期限，AL核其与本次输入匹配后执行，不能只验producer登记。复用已有短时准入机制，不建永久用户交换平台。request_key按producer＋主体命名空间去重；同key异目标/输入/主体拒绝，不回另一调用的receipt。
+authorization_binding_ref不是授权本身，解析到受信当前主体/授权引用、native动作、type/generation、update目标/版本或insert创建范围、字段集合、规范输入hash及短期限，AL核其与本次输入匹配后执行，不能只验producer登记。复用已有短时准入机制，不建永久用户交换平台。request_key按producer＋主体命名空间去重；同命名空间同key异目标/输入拒绝，已绑定operation不接受主体改写。不同主体可各自使用相同key但不能串读receipt，不将key误作全局唯一或访问凭证。
 
 当前AL `internal/service/data_service.go`的`InsertInput/UpdateInput/DataService.Insert/Update`只含data/version/operator，`internal/handler/server.go`的`currentOperator`不能证明用户当前权；X-Operator、浏览器actor/root不授信。core网关或已批准服务主体生成可信origin；监控类型拒绝不能恢复来源/当前写权的旧裸入口，非监控原能力保留。此处不把insert冒充已加进现共同command枚举的新能力，也不先实现通用全AL事件平台。
 

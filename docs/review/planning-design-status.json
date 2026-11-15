@@ -2026,7 +2026,7 @@
     "implementation_authorized": false,
     "all_business_implemented": false,
     "all_real_provider_contracts_frozen": false,
-    "scope_and_estimate_registries_unchanged": true,
+    "scope_and_estimate_registries_unchanged": false,
     "reviewed_date": "2026-11-15",
     "parent_count_is_not_all_supplemental_scope": true,
     "supplemental_phase6_exits": [
@@ -2077,7 +2077,7 @@
     "recheck_ref": "docs/review/reports/phase6-design-recheck-2026-11-15.md",
     "continuous_refinement": {
       "source_followup": "F018-module-detail-continuation",
-      "state": "in_progress",
+      "state": "bounded_design_refinement_complete_owner_and_implementation_exits_deferred",
       "review_standard_ref": "docs/phase6/module-design-handoff.md",
       "owner_pending_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup",
       "scope_note": "核本期各模块真实接线及六项交付；未来边界/本期裁决按原窗口，生成实现产物和真实provider输入不假装已完成。",
@@ -2086,8 +2086,8 @@
         {
           "id": "IAM",
           "ref": "docs/phase6/foundation-iam-module-detail.md",
-          "state": "source_mapped_contract_reference_candidate_net_estimate_pending",
-          "remaining": "IAM两个严格Schema分支/63形状例和C05秘密编码/claims/6–10日毛估已补；全版净估扣重仍待其它模块接线整合，产品与真实参数未验。"
+          "state": "source_mapped_contract_and_net_candidate",
+          "remaining": "Public IAM shapes and C05 profile mapped; 28-46 IAM net allocation integrated into core95-148 candidate. Actual implementation and first-slice calibration remain."
         },
         {
           "id": "CORRECTNESS",
@@ -2188,11 +2188,29 @@
         "message_hash_cross_checked": "Node and Python",
         "product_runtime_verified": false
       },
-      "remaining_design_work": [
-        "Integrate deduplicated IAM/C05 allocation into the first-core numeric source and current navigation.",
-        "Perform final whole-scope cross-check against 76 parents, 44 P6 parents, LS01-04, OBS01/02, named exits and early gates; do not treat link coverage as semantic proof."
-      ]
-    }
+      "remaining_design_work": [],
+      "final_scope_review_ref": "docs/review/reports/module-detail-refinement-closeout-2026-11-15.md",
+      "owner_deferred_ids": [
+        "TASK-D01",
+        "TICKET-D01",
+        "E03-AUTH-D01"
+      ],
+      "implementation_exits_not_design_omissions": [
+        "Generated OpenAPI/DDL/SDK/runtime wiring and source-controlled product tests per slice.",
+        "Actual company/provider/type/org/key/retention/topology inputs at existing windows.",
+        "Product HTTP/PG/Redis/browser/concurrency/restart acceptance and first-slice throughput calibration."
+      ],
+      "existing_product_regression": {
+        "ref": "docs/review/reports/module-detail-refinement-gates-2026-11-15.json",
+        "all_required_main_checks_pass": true,
+        "acceptance_pass": 253,
+        "migration_roundtrip_pairs": 81,
+        "runtime_unchanged": true,
+        "does_not_verify_new_design": true
+      }
+    },
+    "global_parent_scope_prices_and_dag_unchanged": true,
+    "local_core_net_allocation_updated": true
   },
   "authorization_review": {
     "date": "2026-11-15",
@@ -2384,7 +2402,7 @@
         "scope": "DB epoch/initial projection and security writes, AT/RT/cookie/PAT, private secret replay, thin UI and recovery; gross pending dedup, not included in IAM-C"
       }
     ],
-    "net_estimate_integrated": false,
+    "net_estimate_integrated": true,
     "runtime_verified": false,
     "detail_slices": [
       {
@@ -2436,7 +2454,7 @@
           "C-10"
         ],
         "remaining_technical": [
-          "Product implementation and true HTTP/PG acceptance; net estimate deduplication remains."
+          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration."
         ]
       },
       {
@@ -2472,7 +2490,7 @@
           "SESSION-10"
         ],
         "remaining_technical": [
-          "Product implementation and measured runtime acceptance; 6-10 gross estimate must replace/deduplicate original allocation."
+          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration."
         ],
         "runtime_verified": false,
         "gross_days": [
@@ -2489,6 +2507,15 @@
       "old_cases_preserved": 80,
       "only_shape_and_canonical_hash_proof": true,
       "product_runtime_verified": false
-    }
+    },
+    "net_allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md",
+    "net_IAM_days": [
+      28,
+      46
+    ],
+    "net_local_core_days": [
+      95,
+      148
+    ]
   }
 }

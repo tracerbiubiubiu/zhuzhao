@@ -5,7 +5,7 @@
 > **后继详细合同**：本页六边及六交付物现已展开至[模块详设入口](module-detail-index.md)的五份合同；首版本地范围不变。下面“逐包冻结”是实际实施前核候选/生成迁移与OpenAPI/绑定真实参数，不表示产品实现或全部企业协议已验。
 
 日期：2026-11-14。状态：**设计交接，未启动开发、未完成产品或企业验收**。现在进入按模块详设；先短冻结下列首版共同合同，不再以全仓审计、全项目或全部接口冻结为前置。
-范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../review/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。[本地核心历史净估候选](../review/local-core-release-estimate.json)为68–104有效工程日，待IAM扣重替换，含必要UAA-C、不含完整P/R，是旧76包的子范围分配/替代视图，不重复加到旧总价。
+范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../review/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。[本地核心净估候选](../review/local-core-release-estimate.json)为95–148有效工程日，已按IAM/AL读取净分配更新，含必要UAA-C、不含完整P/R，是旧76包的子范围分配/替代视图，不重复加到旧总价。
 本页仅交接首批模块顺序与接缝，不另立设计规则、报价或状态总账；[工程公约](../standards.md)、[项目控制](../review/11-project-control.md)、[规划总账](../review/planning-backlog.md)及各领域合同继续各管其权威内容。
 
 ## 1. 先共同钉住的六条边

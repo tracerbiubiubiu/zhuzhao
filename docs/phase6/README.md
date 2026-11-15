@@ -2,7 +2,7 @@
 
 > **模块详设入口（2026-11-14）**：[模块覆盖与变化](module-detail-index.md)汇总五份详细合同，覆盖44个P6父包（含两项已交维护）、LS01–LS04及首版本地前移子出口。已有部分已补充/纠正，缺失的DTO、逻辑数据约束、权限、状态、恢复、薄UI及TDD已给候选；真实映射、实施迁移/OpenAPI和产品证据仍按批冻结。旧[接缝交接](module-design-handoff.md)保留为最小上下文，不把设计候选当业务已实现。
 
-> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，1月试用是争取窗口；不勉强原2月1日日期。[阶梯与验收](first-usable-release-plan.md)和[68–104工程日净估候选](../review/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../review/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
+> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，1月试用是争取窗口；不勉强原2月1日日期。[阶梯与验收](first-usable-release-plan.md)和[首版净估候选](../review/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../review/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
 
 > **2026-11-14基础先行修订**：[基础版边界](../design/foundation-release-boundaries.md)将现有底座入网试验B0、最小可扩展基础B1和后续业务增强分开。下表是能力分组，不能把整个P6.1全部完成当P6.2或入网前置。B1先X01-B配置式接缝/X02-Q参考查询；完整X01-H与全UAA-P不挡独立基础，真实企业激活仍验对应UAA硬门。新增业务最小UI随批，U06整包推广和高级配置台不挡业务。
 

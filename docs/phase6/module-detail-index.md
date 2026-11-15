@@ -6,7 +6,7 @@
 
 > **2026-11-15持续细化**：所有者要求继续补齐各模块细节，待确认事项先跳过受影响部分、集中到[决策议程](../review/owner-decision-agenda.json)后续统一确认。A已按现有wire/增保删/弹窗与8组验收细化，接着B/C及任务窄修复，再按下方模块逐项核准确接线；不启动业务开发。原有充分合同继续复用，生成代码/迁移号/真实公司参数不冒充本轮可交设计。
 
-已推进的后继包含B/C与任务窄修复、C05有限安全代际/秘密编码/claims及6–10日毛估、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM净估整合与最终全范围交叉核对仍在进行，不能把shape/模型绿当产品完成。
+已推进的后继包含B/C与任务窄修复、C05有限安全代际/秘密编码/claims及6–10日毛估、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
 
 ## 1. 按需要只读一包
 
@@ -40,7 +40,7 @@
 
 先交共同Context/当前授权/事务和最小稳定接缝，再风险→工单人工闭环，随后工单→TR→AL/结果及AL变化→TR只读后继，消息真实HTTP与薄UI贯穿。固定流程、一个AL监控类型/普通insert-update、一个订阅/动作和一个实际渠道构成首版有限组合；服务器显式拒绝监控类型尚不支持的其它写路径，其他已有能力不退役。
 
-本期详细设计覆盖的功能不等于都进入首版本地核心：D05完整晋级、D16自动路由、全站U06、设备、AI和P6.E按各包推进。G05/E09适用正式生产硬门在首发前验，不等整个P7；完整UAA-P/R核心稳定后交，真实联调条件独立。原[68–104工程日历史净估候选](../review/local-core-release-estimate.json)待IAM扣重替换和长程包价未因细化自动增加/重排；实际范围发生变化时按来源与复用扣重复估，不承诺强赶1月。
+本期详细设计覆盖的功能不等于都进入首版本地核心：D05完整晋级、D16自动路由、全站U06、设备、AI和P6.E按各包推进。G05/E09适用正式生产硬门在首发前验，不等整个P7；完整UAA-P/R核心稳定后交，真实联调条件独立。当前[首版95–148工程日净估候选](../review/local-core-release-estimate.json)已替换旧笼统IAM额度并补AL读取；长程父包价格/DAG不机械叠加此净增；实际范围发生变化时按来源与复用扣重复估，不承诺强赶1月。
 
 **本期裁决、后期实现**也属于本期交接责任，不能因为包wave较晚就推迟询问：
 

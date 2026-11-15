@@ -6,7 +6,7 @@
 
 > **本日收尾**：[七条输入对账](reports/daily-closeout-2026-11-14.md)记录F008–F012及最新公开发布/清理授权；[模块入口](../phase6/module-design-handoff.md)已补六边和权限/UAA首包。后继F013补本地正式许可与质量优先净估。现在转按模块详设，不把交接清单说成全部准确DTO/DDL已完成；先前草稿PR状态保留时点，后继F014已批准主线同步；准确合入以PR记录为准，仍非产品部署。
 
-> **F013当前首版出口**：公司允许本地账号先正式运行，质量/实际可用优先。先交核心业务联动、完整本地三层权限及UAA-C接缝，完整UAA P/R随后；消息真实HTTP仍在核心。[阶梯](../phase6/first-usable-release-plan.md)、[净估候选68–104工程日](local-core-release-estimate.json)及[变化对照](core-release-change-comparison.md)取代原固定2月1日/1月11和18日读法，1月试用仅争取窗口。旧76包长期排程不自动变成首版DAG，真实条件及T0未定。
+> **F013当前首版出口**：公司允许本地账号先正式运行，质量/实际可用优先。先交核心业务联动、完整本地三层权限及UAA-C接缝，完整UAA P/R随后；消息真实HTTP仍在核心。[阶梯](../phase6/first-usable-release-plan.md)、[首版净估候选](local-core-release-estimate.json)及[变化对照](core-release-change-comparison.md)取代原固定2月1日/1月11和18日读法，1月试用仅争取窗口。旧76包长期排程不自动变成首版DAG，真实条件及T0未定。
 
 > **2026-11-14基础先行调整**：先读[基础版与各期边界](../design/foundation-release-boundaries.md)。B0可先用现有底座入网开发试验；B1交最小本地业务与真实扩展接缝。已拆X01-B/后继H、解开只读Q与完整feed/HR前置、把完整UAA公共实现移出公共参考的首批优先链。保留真实激活门及数据/安全/测试义务；新范围未实现，长程总价不等于基础版价。具体变更及验证见[本轮报告](reports/foundation-boundaries-2026-11-14.md)。
 

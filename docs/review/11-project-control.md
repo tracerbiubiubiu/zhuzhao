@@ -1,6 +1,6 @@
 # 11 · 项目能力总览图（Project Control）
 
-> **2026-11-15持续详设**：[权限第一包](../phase6/iam-first-batch-design.md)的A现有wire/编辑正确性、B来源/差量、C写方/pair/两命令强审计及任务窄修复已有源映射；C05补DB安全代际与会话投影候选，未吞入C。F018要求继续各模块、待确认集中议程后统一处理；全范围尚在推进，公共IAM Schema分支/秘密输入摘要及子估扣重仍须收口。F017两政策已确认不再待问，产品缺陷仍开放；旧68–104仅历史候选，无新开发、全版净价或日历承诺。
+> **2026-11-15模块细化收口**：[入口](../phase6/module-detail-index.md)已补五模块准确接线、公共参考、互通/消息/审计、八组页面及四早门；F017两政策不再待问，新增选择集中议程。公共IAM形状/C05编码及[净分配](iam-net-allocation-2026-11-15.md)已补，首版本地核心95–148有效日为工程候选，不是日历承诺。未实现业务、真实集成或关闭产品缺陷；准确生成产物、公司绑定和运行验收仍归实施批。
 
 > **2026-11-15权限差距入计划**：[AUTH-GAP-01–07](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)把本项目必须补齐的正确性/共同路径/集合一致、独立预期与有限解释，以及性能/多实例证据、引擎必要性复评绑定既有包和窗口。补机器动作索引、首版本地WBS与交接出口；不另建通用权限产品、不换引擎、不新增父包。子估须扣重，原工日仍候选，不用“已有归属”承诺免费；所有产品缺陷与真实证据状态仍开放。
 
@@ -59,7 +59,7 @@
 
 - **本次仅提交设计阶段快照（2026-11-13所有者最新指令）**：仍有场景待补充，当前不急开发；设计/补估/参考排期继续作为可追加的文档基线。单席产能口径保留但T0未启动；后继F012已授权并发布候选分支/草稿PR，不执行业务开发、共享环境切换或主线集成。文档静态核验不等于业务或真实UAA验收。
 
-- **首版本地净估（2026-11-14后继）**：源码复用及独审去重后为raw67.5–103.5／约68–104有效工程日（约14–21周），中低置信；含必要UAA-C、真实消息映射、薄UI/批量标签与生产验收，不含完整P/R及外部等待。末尾10–14.5日由已价修正/RELEASE分配，不重复加价。首次本地正式后真实UID/业务/附件/审计/receipt/未完intent/在途任务保留，合同消费者自此受保护。详见[估算](local-core-release-estimate.json)和[报告](reports/local-first-core-feasibility-2026-11-14.md)；旧76包价格与成熟度不重分类。
+- **首版本地净估（2026-11-15细化后继）**：原raw67.5–103.5/展示68–104保留历史；IAM及所选AL读取净分配后为raw94.5–147.5／约95–148有效日（18.9–29.5有效周），中低置信。含UAA-C、真实消息映射、必要UI/标签与生产验收，不含完整P/R及外部等待；末尾修正/RELEASE已计，不重复加价。正式后真实UID/业务/附件/审计/receipt/intent/任务保留。见[估算](local-core-release-estimate.json)及[分配说明](iam-net-allocation-2026-11-15.md)；旧76包长期价/DAG不机械叠加此子范围净额。
 
 - **单席相对排期已按所有者口径更新（2026-11-13）**：1有效席位×每周5工程日、尽快启动、无严格截止，实际开工日记T0。[完整排期](execution-schedule.md)保留原71父包，当前含CE共76父包/17正式子出口、LS6附加任务及13切片；UAA公共实现25–39、条件真实增量13–22，真实进入/产出/pre_apply/收口分阶段。预算与日窗静态一致不表示业务或真实接入验收；F004新增细项尚未全部计价，资源原则不再待问。
 
@@ -103,9 +103,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **互通/消息/OBS/页面族接线** | DI/TxPlan/callback/任务卡、AL边界握手/来源、HTTP消息/站内独立切换、日志允许投影/审计归档、首页外八组页面卡与四张早门卡 | 📋 源映射设计候选；20个模块/消息shape与payload hash、UAA57/16参考复跑通过，非产品验收；净估整合及全范围交叉核对继续 | [互通施工](../phase6/interconnect-source-wiring.md)、[页面卡](../phase6/frontend-page-family-detail.md)、[早门卡](../phase6/early-disposition-cards.md)、[统一审计](../design/unified-observability-audit.md) |
+| **模块细化交付回归** | 同产品源码的独占临时栈，main要求的lint/swag/unit/integration/cover/migrate/acceptance | ✅ 现有产品7门全绿，253验收/81迁移；unit-only总覆盖20.2%不变，非新设计运行证明。9容器/6卷/1网络精确回收，16共享容器/网络/卷不变 | [收口与限制](reports/module-detail-refinement-closeout-2026-11-15.md)、[去敏门禁收据](reports/module-detail-refinement-gates-2026-11-15.json) |
+| **互通/消息/OBS/页面族接线** | DI/TxPlan/callback/任务卡、AL边界握手/来源、HTTP消息/站内独立切换、日志允许投影/审计归档、首页外八组页面卡与四张早门卡 | 📋 源映射设计候选；20个模块/消息shape与payload hash、UAA57/16参考复跑通过，非产品验收；净分配及全范围交叉核对已落档 | [互通施工](../phase6/interconnect-source-wiring.md)、[页面卡](../phase6/frontend-page-family-detail.md)、[早门卡](../phase6/early-disposition-cards.md)、[统一审计](../design/unified-observability-audit.md) |
 | **表达式/文件准确接线** | C01固定AST/一次服务端显隐快照/输入隔离/旧配置扫描，C02同规引用/存量孤儿/删除保护/头像及上传世代；五仓CI源映射 | 📋 C01-01–10/C02-01–08/ENG-01–08为待实现预期，独立只读复核；不增加引用表/preview服务，不改业务/工作流/原排期 | [正确性与工程施工](../design/engineering-execution-design.md)、[详设状态](planning-design-status.json) |
-| **权限首批收口** | A角色编辑、B有效来源/成员差量、C写方/策略pair/强审计/旧wire，以及任务维护资格/归因源映射；C05安全代际/秘密编码/claims与公共IAM形状候选 | 📋 未实现；A4–6/B4–7/C12–19/C056–10/任务4–7为待扣重毛估。公共参考143形状通过但非产品门禁；新业务待答集中，不重问F017；全版净价未更新 | [第一包](../phase6/iam-first-batch-design.md)、[底座](../phase6/foundation-iam-module-detail.md)、[集中议程](owner-decision-agenda.json) |
+| **权限首批收口** | A角色编辑、B有效来源/成员差量、C写方/策略pair/强审计/旧wire，以及任务维护资格/归因源映射；C05安全代际/秘密编码/claims与公共IAM形状候选 | 📋 未实现；A4–6/B4–7/C专用10–16/C05 6–10/任务4–7合IAM净28–46，已整合当前首版。公共参考143形状通过但非产品门禁；新业务待答集中，不重问F017 | [第一包](../phase6/iam-first-batch-design.md)、[底座](../phase6/foundation-iam-module-detail.md)、[集中议程](owner-decision-agenda.json) |
 | **工单/风险/适配器准确接缝** | 旧响应兼容、候选选人/CC来源、合成风险序列与真实操作者建票；单装配/查询scope/UAA双模式、设备人工入口和单查询工具 | 📋 源映射设计候选，公共向量继续补；TICKET-D01与TASK-D01集中待确认，真实公司绑定/运行产品未验；不新增认证引擎或专业处置平台 | [工单](../phase6/ticket-module-detail.md)、[风险](../phase6/risk-module-detail.md)、[扩展](../phase6/extension-ai-module-detail.md) |
 | **权限差距补齐计划** | AUTH-GAP-01–07：来源/撤权、共同入口、对象与集合、独立预期/有限解释、性能与多副本证据、固定窗口复评 | 📋 已分工/排窗口，未实施或实测补齐；多数为已有包验收细化，开工扣重拆子估；实际引擎PoC/迁移另估，不纳入首版前置 | [动作与边界](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)、[底座§3.7](../phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织)、[总账](planning-backlog.json) |
 | **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
@@ -114,7 +115,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **核心交互接缝** | HTTP/内部/任务/事件同领域用例；执行请求/事实ACK/结果/送达/授权查询分工；审计与私有合同 | 📋 总体方向保留，C03/R01/CE首版切片及消息/扩展仍待实施；本轮反例与设计纠正不等于可用产品 | [核心专项](reports/core-interaction-architecture-review-2026-11-15.md)、[共同合同§2](../design/capability-invocation-contract.md#2-一个逻辑通道三种执行方式) |
 | **权限专项开放项** | 本地IAM/三源角色、组织赋角、工单外围读取、任务维护职责/归因；对照统一调用及UAA计划 | 🔶 AUTH-01/02/03/04/06/07开放，AUTH-05条件性加固；6组当前问题含3组P1，未修产品，正式启用前按§6收口 | [专项报告](reports/authorization-design-implementation-review-2026-11-15.md)、[底座§3.3](../phase6/foundation-iam-module-detail.md#33-现状缺陷先修与真实重读2026-11-15专项后继) |
 | **Phase6模块详设** | 六边、五个模块的typed DTO/逻辑DDL、状态/当前权限、异常恢复、薄UI/TDD；44父包及LS01–04映射 | 📋 详细候选已落档并交叉审查；准确OpenAPI/迁移/真实映射/产品验收按实施批交付，新业务未开发；Git/运行状态不由文档自述代验 | [详设入口](../phase6/module-detail-index.md)、[机器成熟度](planning-design-status.json)、[原模块交接](../phase6/module-design-handoff.md) |
-| **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；完整本地三层与UAA-C接缝；旧adapter×新core合同回归 | 📋 公司允许本地先正式；质量优先，1月试用仅争取。历史净估候选68–104日待IAM扣重替换，完整UAA P/R后继；实际业务/消息和生产门未验，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[净估](local-core-release-estimate.json)、[目标JSON](first-usable-release-target.json) |
+| **首个核心可用版** | 风险→工单→TR→AL及变化后继/消息；完整本地三层与UAA-C接缝；旧adapter×新core合同回归 | 📋 公司允许本地先正式；质量优先，1月试用仅争取。当前净估95–148有效日，完整UAA P/R后继；实际业务/消息和生产门未验，业务未实施 | [首版计划](../phase6/first-usable-release-plan.md)、[净估](local-core-release-estimate.json)、[目标JSON](first-usable-release-target.json) |
 | **基础版与逐期演进** | B0现有底座试验；B1单实例/独立IAM/基础业务及一个真实扩展接缝；常见业务先交，完整治理与规模增强按实际启用 | 📋 F008原则已确认，边界/机器依赖与顺序已修订；新增产品未实现，所选基础净估待B1开工窗口 | [基础边界](../design/foundation-release-boundaries.md)、[当前排程](execution-schedule.md)、[本轮报告](reports/foundation-boundaries-2026-11-14.md) |
 | **统一日志与可信业务审计** | 既有slog/HTTP审计/业务事实复用；补可信上下文、敏感值、跨入口审计与跨仓可靠关联、受权查询和保留 | 📋 F006新增设计；OBS01/P6.0、OBS02/P6.1、OBS03/P7，新增净价与旧C04/R01/I03/UAA扣重；运行机制尚未改造；业务历史/专门审计职责分开已确认，两操作本地写失败回滚已确认、待实现 | [统一合同](../design/unified-observability-audit.md)、[公约§6](../standards.md#6-可观测性)、[后继索引](planning-followups.json) |
 | **公开展示与新场景续源** | 五仓中英README、合成截图、贡献/问题/PR入口；F004五组和Q01–Q06方向后继明确确认 | 📋 文档/社区资产已本地验证；真实在线演示/品牌/远端元数据待发布准备，业务方向不等于配置/新增净估/实现完成 | [展示方案](../guides/open-source-presentation.md)、[新场景](../design/ticket-operations-supplement.md)、[后继索引](planning-followups.json) |
