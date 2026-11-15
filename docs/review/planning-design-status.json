@@ -80,6 +80,12 @@
         "ref": "docs/phase6/foundation-iam-module-detail.md",
         "state": "reviewed_candidate_not_implemented",
         "scope": "P6 slice only; CE02 later migrations and real-provider bindings remain in original windows"
+      },
+      "tiered_gate_slice": {
+        "date": "2026-11-16",
+        "state": "implemented_engineering_slice",
+        "ref": "docs/design/engineering-execution-design.md",
+        "remaining": "本批三档与聚合不代表G03整包完成；双模式实组合/可靠consumer装配守卫仍在原窗口，远端保护归G02"
       }
     },
     {

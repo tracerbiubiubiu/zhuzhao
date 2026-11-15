@@ -245,20 +245,18 @@ C04.1 DBTX试点及故障分类；C04.2 org_roles两侧锁/历史处置；C04.3�
 
 C05.1 响应来源/错误码兼容及 UI 集中清理；C05.2 跨标签代际/迟到响应；C05.3 真栈账户撤权与不误退管理员。出口：A标签停用甲、甲B/C标签下一请求/恢复即清理；管理员停用乙返回业务错误仍在自己的会话；旧refresh在重新登录后返回不能复活旧用户；瞬时503、普通403、强制改密均不被误清；清会话后菜单、页签、query cache 无残留。mock 覆盖全部时序，真栈保留 backend+浏览器至少一条完整链。
 
-## ENG-D01b：分档门禁合同（方向已确认、尚未启用）
+## ENG-D01b分档门禁合同
 
-所有者已确认采用分档门禁；G03实施时同步AGENTS/standards等规则、白名单与CI，并验证错分反例后启用。启用前现行完整门禁仍适用，本节是已确认方向的实施合同，**不追认当前候选免测，也不将旧253/42收据改标新SHA通过**。建议首先建立“本提交独立文档验证档”，而不是为跳过一次测试先建设全SDK/浏览器/环境闭包和24小时收据续用系统。运行收据的真实来源/失败链继续保留；制品交付的G03/G05来源约束不因此删除。
+2026-11-16所有者同意将已确认方向实现为五仓工程门禁；本批是规则/CI本身变化，仍执行原完整适用门禁。下列机制随本工程PR合入生效，不追溯免测，不将旧运行收据改标新SHA；G03其余双模式组合/装配守卫仍按原包实施。
 
-1. **按完整候选差异分类**：记录base/head/实际checkout tree与全部路径、增删改名/模式，不能只看最后一笔commit、commit type或GitHub可能截断的路径列表。文件不明、消费关系不明或混合变化默认普通档；不能由PR自己提交一个pass标记决定。
-2. **文档档准入**：首版精确白名单候选为五仓`README.md`、`docs/README.md`，以及主仓`docs/review/planning-{backlog.md,backlog.json,closeout.md,decisions.json,design-status.json,document-scope.json,source-map.json}`。仅说明/导航/计划且未被代码/测试/embed/生成器消费后准入；设计稿/正式报告须逐文件登记已审配置清单，不凭目录自动准入。新增/变更白名单本身走普通档。规划JSON须校验ID/映射/依赖/投影；不把`docs/**`、`.md`扩展名作为全局免测规则。
-3. **明确排除**：AGENTS、standards、现行开发/安全/操作/测试/发布规则；Swagger/OpenAPI/生成schema与`docs/docs.go`；运行示例/fixtures/testdata、源码/SQL/config/.env/deploy、依赖锁/工具/脚本/workflow/hook/Makefile等变化均回普通档。当前整批规划还含UI AGENTS/测试指南等修改，不能仅凭本节存在把整批宣称为纯文档档。
-4. **离线原型单列**：首个精确对象为UI的`docs/design/prototypes/lifecycle-workspace.html`，脚本/资源也须逐项声明；在普通文档检查之外验脚本语法、修改旅程的交互/角色/窄屏/错误态与截图、无意外服务请求；它证明本地样板，不证明Vue/后端/E2E。生产运行时引用了原型/资源，或无法确认隔离，则回普通档。
-5. **每个候选重新验证**：适用的diff/链接/片段/围栏、JSON/投影、来源/状态、符号锚点、脱敏和路径归属检查均绑定本候选。结论写`mode=document|prototype|ordinary`及实际命令、范围、失败/skip/限制。文档档表示本次文档证据通过，不表示本次运行了integration/acceptance/E2E或新功能已验收；旧运行结果始终标原来源。
-6. **统一必需门禁**：未来quality-gate始终创建，按分类核对该档所有必跑结果与适用理由；缺失、取消、应跑而skipped不得放行。普通档继续现有门禁。改规则本身先以普通档验证错分反例，再同步主仓AGENTS/standards、UI AGENTS/testing和兄弟仓指南对应条文后启用；本节不直接改变远端保护/CI或现有纪律。
+1. **完整候选**：`quality-gate.py`以事件base到实际checkout HEAD/tree的Git完整差异判定，记录增删、旧/新路径、mode及输入digest；本地另含index、工作树、未跟踪文件，不更改索引。PR以base SHA至测试合并树分类，缺基线保守普通档；不能仅看最后一笔提交、commit type或截断文件列表。
+2. **三档**：`document`为明确文档根内说明Markdown/静态图片；`reference`为注册的规划JSON/计算工具、设计Schema、隔离AI/SOC/UAA/能力/MCP示例和离线原型，必须执行固定recipe；`ordinary`为代码、配置、依赖、迁移、正式API/生成物、产品测试、CI/检查器/豁免/协作规则及未知文件。混合取最高档并保留参考recipe；运行时/测试读取、可执行/symlink或运行来源改名不能获文档豁免。具体注册表在脚本中，改注册表本身普通档。
+3. **轻量与针对检查**：文档检查绑定当前候选，核改动Markdown本地链接/GFM锚点、JSON语法/重复key及本次新断入链；跨仓缺checkout、外链和非Markdown片段明确未核验，不假报全链通过。参考通过固定命令校验规划投影、相应Schema dialect/向量、隔离SDK或离线浏览器。原型截图/交互只证明离线样板；不证明Vue/后端/E2E。Ajv/Playwright独立工具锁不进入产品Go依赖，纯规划无需安装浏览器。
+4. **常驻汇总**：CI不使用顶层paths-ignore跳过必需workflow。`changes`、`commit-policy`、`document-check`始终要求成功，`reference-check`按recipe要求；原产品job仅普通档运行，helper源码/锁/相关规则变化才重建实际镜像及扫描。`quality-gate`以always汇总所有实际结果，缺失、取消、失败或应跑skipped均拒绝，不适用项也须有明确结果；重算候选防标签/recipe被篡改。
+5. **本地入口与证据**：五仓`quality-plan/quality-check`与CI共用分类器。轻量/参考可直接执行；普通档明确停止并要求在独占环境跑原门禁，不擅自连接共享默认服务。原make/pnpm完整命令和代码测试先行原则保留；报告分类、准确候选、实际命令、首次失败/重试、未运行和限制。远端required checks/G02保护另核，不从新增汇总job推断保护已开。
+6. **规则先验**：独立红用例覆盖源码混入、改名、mode、运行消费、完整多commit窗口、在途源码、缺base、缺失/跳过runtime/reference/helper和标签篡改；实现后再用守卫变异验牙。本批首次完整产品测试、真栈验收/E2E及CI结果另附交付收据，不能拿独立脚本绿替代。
 
-反例至少包括：`docs/docs.go`与swagger伪装文档、改AGENTS/测试指南、Markdown被embed/测试读取、新增未登记文件、同PR混进Go/SQL/lock改动、变更当前API语义却标新功能已完成、整个必需workflow被paths过滤跳过。原型文案改动可按影响选择检查，不把旧36张截图冒充本次全量重验。分类实现仍归G03，本文没有新增工具或workflow。
-
-GitHub官方说明：顶层路径过滤跳过workflow可能令required check持续Pending，job级条件跳过则又有不同语义，因此应保留常驻聚合门禁并验证本档实际结果。[路径过滤](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore)、[required checks排障](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)。选择独立文档档而非复杂收据复用是本项目的工程建议，不是GitHub替本项目批准豁免。
+GitHub官方说明：路径过滤跳过整个required workflow可能持续Pending，job级skip也不能代表适用检查执行，因此保留常驻汇总并核实际结果。[required checks排障](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)。
 
 ## 依赖、决策与交付边界
 
@@ -266,9 +264,9 @@ GitHub官方说明：顶层路径过滤跳过workflow可能令required check持�
 
 需所有者确认的工作流/业务决策只有以下两项（未拍板时不得切换相应行为，但可完成其余实现设计）：
 
-- **ENG-D01a（G02）已确认**：五仓统一PR、single-maintainer可合，G02落规则与保护；紧急bypass另记操作者与后补期限。**ENG-D01b（G03）方向已确认**：采用上节纯文档/离线原型独立验证档；同步修订AGENTS等明示规则并验错分反例后启用。旧运行收据不改标当前SHA，也不先实现复杂复用系统。启用前保持现行完整门禁，本轮已按原流程补验。
+- **ENG-D01a（G02）已确认**：五仓统一PR、single-maintainer可合，G02落规则与保护；紧急bypass另记操作者与后补期限。**ENG-D01b（G03）方向已确认**：采用上节document/reference/ordinary分档，2026-11-16获准工程实现；随五仓规则/CI工程PR合入生效。本批首次仍走原完整门禁，旧收据不改标当前SHA；G02远端保护与G03其余组合/装配守卫另行验收。
 - **ENG-D02（C02）已确认**：file上传默认追加，B加入后A保留；字段移除不自动删附件，误传由用户明确移除/删除。已建单显式删除保护仍引用对象；正文图片引用按对应用途处理，不把file与richtext的删除通路混为同一实现。C02/U03编码前按此冻结引用元数据和操作文案，自动解除不是当前采用方案。
 
 跨仓执行的业务取舍见伴随页 EXE-D01（reassign 提交语义）与 EXE-D02（cron错失策略），根控制台统一收录。其他技术选型是本页推荐方案，实施者只需在 PR 证明合同，不要求所有者替工程决策。
 
-本页交付只增加设计文档；无 CI/保护设置、API、迁移、权限码、provider、生产开关已实施的声明。实施 PR 要附本页工作包/反例case、实际受控路径、迁移兼容与回退收据；共享总账与能力矩阵由集成批同步。设计自身复核包括源路径+符号、已实现/目标时态、跨页职责、mock/真实门禁保留和未决项完整性，不重跑已经通过的 Phase 5 业务门禁充当新功能证据。
+本页业务部分仍为设计；ENG-D01b门禁机制本批实现并同步CI，远端保护设置、业务API、迁移、权限码、provider、生产开关不因此实施。实施 PR 要附本页工作包/反例case、实际受控路径、迁移兼容与回退收据；共享总账与能力矩阵由集成批同步。设计自身复核包括源路径+符号、已实现/目标时态、跨页职责、mock/真实门禁保留和未决项完整性，不重跑已经通过的 Phase 5 业务门禁充当新功能证据。

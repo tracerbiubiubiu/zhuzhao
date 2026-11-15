@@ -1,5 +1,5 @@
-# 当前源码：lint/单测/集成及固定扫描器。四档验收仍需私有完整生态栈，
-# 交付前按本地 make acceptance 纪律执行；CI 绿不替代组合验收。
+# 按完整候选分类，常驻quality-gate核适用结果；普通档保留原产品检查。
+# 普通档四档验收仍需本地私有生态栈，CI绿不替代组合验收。
 name: ci
 on:
   push:
@@ -12,6 +12,74 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.classify.outputs.mode }}
+      runtime: ${{ steps.classify.outputs.runtime }}
+      references: ${{ steps.classify.outputs.references }}
+      helper_security: ${{ steps.classify.outputs.helper_security }}
+      plan: ${{ steps.classify.outputs.plan }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classifier, document and reference checker negative tests
+        run: |
+          python3 scripts/test-quality-gate.py
+          python3 scripts/test-check-docs.py
+          python3 scripts/test-check-references.py
+      - name: Classify complete event window
+        id: classify
+        run: python3 scripts/quality-gate.py classify --kind core --event-path "$GITHUB_EVENT_PATH" --head "$GITHUB_SHA" --github-output "$GITHUB_OUTPUT"
+  document-check:
+    if: always()
+    needs: [changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      QUALITY_PLAN: ${{ needs.changes.outputs.plan }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/check-docs.py --plan-env QUALITY_PLAN
+  reference-check:
+    needs: [changes]
+    if: needs.changes.outputs.references == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QUALITY_PLAN: ${{ needs.changes.outputs.plan }}
+      AJV_MODULE: ${{ github.workspace }}/scripts/reference-tools/node_modules/ajv
+      QUALITY_PLAYWRIGHT_MODULE: ${{ github.workspace }}/scripts/reference-tools/node_modules/playwright
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: contains(fromJSON(needs.changes.outputs.plan).references, 'schema') || contains(fromJSON(needs.changes.outputs.plan).references, 'capability') || contains(fromJSON(needs.changes.outputs.plan).references, 'ai-soc') || contains(fromJSON(needs.changes.outputs.plan).references, 'prototype')
+        with:
+          node-version: 26.13.1
+          cache: npm
+          cache-dependency-path: scripts/reference-tools/package-lock.json
+      - name: Install controlled isolated validation dependencies
+        if: contains(fromJSON(needs.changes.outputs.plan).references, 'schema') || contains(fromJSON(needs.changes.outputs.plan).references, 'capability') || contains(fromJSON(needs.changes.outputs.plan).references, 'ai-soc') || contains(fromJSON(needs.changes.outputs.plan).references, 'prototype')
+        run: npm ci --ignore-scripts --prefix scripts/reference-tools
+      - name: Prepare isolated prototype browser
+        if: contains(fromJSON(needs.changes.outputs.plan).references, 'prototype')
+        run: node scripts/reference-tools/node_modules/playwright/cli.js install --with-deps chromium
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: contains(fromJSON(needs.changes.outputs.plan).references, 'mcp-sdk')
+        with:
+          go-version-file: docs/design/examples/mcp-sdk-interop/go.mod
+          cache-dependency-path: docs/design/examples/mcp-sdk-interop/go.sum
+      - run: python3 scripts/check-references.py --plan-env QUALITY_PLAN
+  helper-security:
+    needs: [changes]
+    if: needs.changes.outputs.helper_security == 'true'
+    uses: ./.github/workflows/helper-tools.yml
   commit-policy:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -24,10 +92,14 @@ jobs:
       - name: 校验事件中真实新增提交
         run: python3 scripts/commit-policy.py ci --fetch-missing
   lint:
+    needs: [changes]
+    if: needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10 # 含 swag 安装（走网络），挂起兜底
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: 安全证据解析器负向检查
         run: python3 scripts/test-parse-govulncheck.py
       - name: 验收隔离回归检查
@@ -59,10 +131,14 @@ jobs:
           git diff --exit-code internal/app/wire_gen.go
       - run: go build ./...
   test:
+    needs: [changes]
+    if: needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15 # 对齐 activelist/taskrunner 挂起兜底口径
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -79,6 +155,8 @@ jobs:
             coverage.html
           if-no-files-found: warn
   test-integration:
+    needs: [changes]
+    if: needs.changes.outputs.runtime == 'true'
     # v3 审计 Y-9（2026-10-23）：integration 标签测试此前从未进 CI（守卫测试
     # "CI 可跑"声称不实——F-2-2 黄项）；ubuntu runner 自带 Docker daemon，
     # testcontainers（PG/RustFS）直接可用。复用原 Makefile 的 -race/-p 1，
@@ -87,6 +165,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -98,6 +178,8 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
 
   security-current:
+    needs: [changes]
+    if: needs.changes.outputs.runtime == 'true'
     name: Current source and Linux binary vulnerability scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -111,6 +193,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -148,3 +231,17 @@ jobs:
           path: evidence/
           if-no-files-found: error
           retention-days: 30
+
+  quality-gate:
+    if: always()
+    needs: [changes, commit-policy, document-check, reference-check, lint, test, test-integration, security-current, helper-security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      QUALITY_PLAN: ${{ needs.changes.outputs.plan }}
+      NEEDS_JSON: ${{ toJSON(needs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/quality-gate.py summarize --plan-env QUALITY_PLAN --needs-env NEEDS_JSON --runtime-jobs lint,test,test-integration,security-current --helper-jobs helper-security
