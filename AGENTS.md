@@ -6,7 +6,11 @@
 
 Go 模块化单体 **IAM + 工单** 系统（三层鉴权 + 资源级工单）。文档驱动：`docs/` 是权威设计源，改动必须与文档同步。项目能力总览见 `docs/review/11-project-control.md`（**每次改动后须回填该文件的能力矩阵/状态**）。
 
-## 常用命令（交付前必须验证）
+## 常用命令与分档门禁
+
+先运行 `make quality-plan`，再运行 `make quality-check`。候选取 `BASE`（默认 `origin/main`）到 HEAD 的完整差异，另含暂存、未暂存及未跟踪文件。纯说明文档走 `document`，受控候选 Schema/规划数据/隔离示例/原型走 `reference` 并执行针对检查；代码、配置、依赖、迁移、正式协议、产品测试、CI/分类器/豁免及协作规则走 `ordinary`。混合取最高档且保留针对检查，未知从严。详见[开发指南](docs/guides/development.md#4-交付前验证)。
+
+以下为普通档既有完整门禁；文档档和参考档无需启动业务测试栈。`quality-check` 会执行文档/针对检查；普通档明确提示继续在独占环境执行以下命令，不把分类成功当完整通过。
 
 ```bash
 make lint              # 静态检查
@@ -20,7 +24,7 @@ make swag              # 重新生成 Swagger
 
 **Go 工具链**：`go.mod` 钉 Go 1.27.4，`scripts/go-tool.py`（lint/swag/wire 经它调工具）不自动下载 SDK——本机 Go 低于该版本时 `make lint` 直接报错，用 `GO=` 指定已有工具链，例：`make lint GO=$(go env GOMODCACHE)/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/bin/go`（缓存里没有就先在仓内执行一次 `go version`，`GOTOOLCHAIN=auto` 会拉取）。
 
-**门禁纪律**：不得把未通过 `make acceptance` 的改动标记为"完成"；无法运行门禁时必须如实说明原因与影响。
+**门禁纪律**：普通档不得把未通过 `make acceptance` 的改动标记为"完成"；文档档、参考档须通过本候选全部适用检查。应跑项缺失、失败、取消或跳过均不能交付；测试先行原则不变。规则首次启用本身走普通档，不能追溯免测。无法运行门禁时必须如实说明原因与影响。
 
 **测试账号纪律（2026-10-13）**：dev 栈测试账号/密码唯一权威 = [docs/ops/runbook.md §4 台账](docs/ops/runbook.md)；E000001（superadmin 种子号）密码终态恒为 `admin12345`，改动仅限 acceptance 幂等流 / ui E2E global-setup 收敛 / break-glass CLI 复原三处——**人工与 agent 的多账号测试一律用专属账号（E000002+），禁止改 E000001**；发现脱靶用 runbook §1 CLI 复原，勿私设新值。
 

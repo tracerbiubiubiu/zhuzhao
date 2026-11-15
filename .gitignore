@@ -70,3 +70,6 @@ data/
 # Local Python verification bytecode
 __pycache__/
 *.py[cod]
+
+# Isolated non-runtime reference validation dependencies
+/scripts/reference-tools/node_modules/

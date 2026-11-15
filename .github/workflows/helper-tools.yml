@@ -1,9 +1,8 @@
-# Both helper images are rebuilt from their controlled module locks; G03 tiers are not active.
+# Called by ci when controlled helper or gate inputs change; manual scans stay available.
 name: Helper tools source and image security
 on:
-  push:
-    branches: [dev, main, phase5, "feature/**", "codex/**"]
-  pull_request:
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

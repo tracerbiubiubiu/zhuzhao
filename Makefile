@@ -1,6 +1,14 @@
 .PHONY: build run dev tidy wire tools-install migrate-up migrate-down docker-dev-up docker-dev-down docker-dev-reset docker-up docker-down swag lint commit-lint guard-roundtrip test-commit-lint hooks test test-unit test-integration test-cover benchmark acceptance acceptance-2a acceptance-2b acceptance-2c snapshot snapshot-diff guard test-dev-stack
 
 APP_NAME=zhuzhao
+BASE ?= origin/main
+.PHONY: quality-plan quality-check
+quality-plan:
+	python3 scripts/quality-gate.py local --kind core --base "$(BASE)" --plan-only
+
+quality-check:
+	python3 scripts/quality-gate.py local --kind core --base "$(BASE)"
+
 BUILD_DIR=bin
 # 生成工具与业务依赖隔离；默认缓存已被 Git/Docker 忽略。GO 可显式选择已验证 SDK。
 GO ?= go
