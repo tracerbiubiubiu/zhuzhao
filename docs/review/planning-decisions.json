@@ -431,5 +431,14 @@
     "main_integration_status": "approved_via_five_reviewed_PRs; actual_merge_and_main_CI_are_separate_receipts",
     "schedule_is_adjustable_reference": true
   },
-  "supplementary_policy_registry": "docs/review/planning-followups.json"
+  "supplementary_policy_registry": "docs/review/planning-followups.json",
+  "latest_supplementary_confirmation": {
+    "ref": "docs/review/planning-followups.json#F017-iam-first-batch-owner-decisions",
+    "decision_ids": [
+      "HIER-D01",
+      "IAM-AUDIT-D01"
+    ],
+    "state": "owner_confirmed_not_implemented",
+    "historical_34_decision_summary_unchanged": true
+  }
 }

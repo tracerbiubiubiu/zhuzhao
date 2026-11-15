@@ -4,6 +4,8 @@
 
 本页所有新类型、逻辑表和端口均为实施目标；**不是新增现成路由、迁移号或已完成验收**。ID 对外用十进制字符串，时间用带时区 RFC3339；枚举拒绝未知控制值，空集、缺失和 null 不相互替代。既有 errcode/HTTP envelope 继续使用，稳定 reason 对应数值码在实现时登记。
 
+> **当前第一包入口**：[范围、两项已确认政策与A/B/C子估](iam-first-batch-design.md)。本页是较宽底座候选，不把所有内容一次派入A；当前不开发。
+
 ## 1. 当前能力与本次补强
 
 当前 `internal/middleware/jwt.go` 的 `JWT` 已检查 Redis blacklist/disabled/密码纪元且依赖故障拒绝；`internal/service/auth_service.go` 的 `Login`、`Refresh` 与 PAT 仍是本地认证链。`UserService.UpdateStatus` 已有系统号/最后 superadmin 保护及禁用后的会话撤销；`RBACService.AssignMenus` 已事务写权限并在提交后重载 Casbin。`reloadPolicy` 失败会报告错误，但尚不是持久、多实例生效证明。`GetEffectiveRoleCodes` 合并直接、组织、继承角色，不能只处理 user_roles 就声称撤权完成。
@@ -91,19 +93,19 @@ C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及
 
 按[层级场景合同§8](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)的HIER-01–12随包实施：C04处理三源/单父角色链、组织树合法性和Move/撤权、菜单导航与功能码分离、直接编辑视图；D03处理scope与类型/参与交集；D06处理多任职/来源及组织生命周期。组内任职不等于平台角色，整组绑定管理能力不能被个别viewer抵消；领域仍核具体目标职责。
 
-首版本地S1先交实际启用规则及薄IAM正确性，D03/D06随其业务批交适用场景，不等完整U06/HR/UAA；HIER-07/08/11复用FND-03/14–16/19–21及既有AUTH/RECHECK反例，不重复建设。父节点停用对子树传播HIER-D01是C04详设前待确认政策，先保持独立切片推进。§8.4的阶段/净估边界和当前未实现状态同步总账，未将完整树编辑器或来源管理台塞入S1。
+首版本地S1先交实际启用规则及薄IAM正确性，D03/D06随其业务批交适用场景，不等完整U06/HR/UAA；HIER-07/08/11复用FND-03/14–16/19–21及既有AUTH/RECHECK反例，不重复建设。HIER-D01已确认整子树组织派生资格暂停、独立来源分别求值，独立切片继续推进。§8.4的阶段/净估边界和当前未实现状态同步总账，未将完整树编辑器或来源管理台塞入S1。
 
 ### 3.6 模型复用与引擎选择边界
 
 按[模型复评](../design/authorization-model-and-engine-choice.md)，本期继续Casbin＋领域Resource/PG范围，不将L1/L2/L3误作与RBAC/ABAC/ReBAC竞争的模型。复用现有机制，先统一可信输入、直接/有效来源、对象/列表语义及共同用例检查；菜单/路由是稳定能力的执行/展示映射，内部与worker不能只靠HTTP中间件授权。业务状态和证据不变量仍在领域执行。
 
-PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不新增通用DSL、规则分发/版本库或外置PDP。后续重复规则/独立治理或跨对象关系出现时，可按模型复评做Cerbos/OPA/Cedar或OpenFGA/SpiceDB的单资源对照；须另定范围/净估，不暗含进C04。当前缺陷、HIER-D01待决及三层授权新鲜度要求均保留。
+PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不新增通用DSL、规则分发/版本库或外置PDP。后续重复规则/独立治理或跨对象关系出现时，可按模型复评做Cerbos/OPA/Cedar或OpenFGA/SpiceDB的单资源对照；须另定范围/净估，不暗含进C04。当前缺陷、HIER-D01政策已定、待实施及三层授权新鲜度要求均保留。
 
 ### 3.7 差距补齐的最小验收组织
 
 执行[AUTH-GAP-01–07](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)，不重建引擎。C04主责共同事实/守卫，D03和各域主责资源/字段策略，D06主责目录来源，G04负责风险选择/回归口径；CE01登记实际入口，CE02逐批接线。先交当前必需正确性、共同路径及可验证性，再按实际拓扑和复评裁决演进。
 
-- **独立预期索引**：复用FND/HIER/AUTH/RECHECK和领域用例ID，以当前测试夹具/数据表记录主体及有效来源、对象/动作、预期允许/拒绝、适用出口、实际测试符号；预期不调用被测授权函数产生。不预写所有条件的笛卡尔积、不新造策略DSL。HIER-D01为pending、BK-20例外另列，不以夹具偷定业务政策。
+- **独立预期索引**：复用FND/HIER/AUTH/RECHECK和领域用例ID，以当前测试夹具/数据表记录主体及有效来源、对象/动作、预期允许/拒绝、适用出口、实际测试符号；预期不调用被测授权函数产生。不预写所有条件的笛卡尔积、不新造策略DSL。HIER-D01已确认、产品仍未实现、BK-20例外另列，不以夹具偷定业务政策。
 - **成对与跨入口回归**：同一有限数据集对详情与实际List/Count/Search/Export/关联/字段投影作独立断言，含第二页及来源/状态变化。HTTP、内部和已用worker等分别验证同一资格；移除关键守卫会失败的反例须真实有效。沿原TDD先红后绿、并发反例至少8轮纪律；规则/入口变更在PR列影响的既有场景ID，不新增恒绿检查。
 - **有限解释**：复用当前`AuthorizationDecision.reason`候选、安全错误信封、request/operation引用、L1代际和适用资源revision。无功能资格、可见对象动作禁止、策略未就绪可定位；不可见与不存在仍同形，不能给任意ID提供“为何无权”的成员/字段探测器。受权IAM编辑面分别展示直接编辑值与组织/继承/受管来源；不做递归关系图解释台。
 - **规模与恢复证据**：按实际部署画像记录AUTH-GAP-05基线，开工定预算，正式前测；性能不足再给有界优化，不提前分片/缓存。单实例先验重载/撤权失败恢复；P6.3列所选拓扑缺口，E09和适用P/R在实际双副本启用前交AUTH-GAP-06证据。引擎必要性按AUTH-GAP-07窗口裁决，非本地正式前置。
@@ -147,7 +149,7 @@ UAA-C 现在冻结四个不能事后补的接口边界：稳定本地 ID 与认�
 
 复用[日志审计合同](../design/unified-observability-audit.md)，不自建日志检索平台。运行日志进现有采集器；领域事实/outbox 不采样；专门审计与业务历史分权。共同字段沿 record_id/kind、event_name、occurred_at/observed_at、service/instance、request/operation/invocation、可信 actor/resource/outcome；实际 trace 才写 trace_id，不把 request_id 改名。参考 [OpenTelemetry 日志模型](https://opentelemetry.io/docs/specs/otel/logs/data-model/)保留观察时间与实际 TraceId 的区分。
 
-SetRoles、AssignMenus 的“本地审计失败同事务回滚”仍是**待所有者确认的两操作试点**；本页不自行批准。选择通过后，业务写和成功审计同事务，外部 collector 故障由持久投递补送；选择未通过不得发布为已启用强审计。拒绝尝试与成功事实分开，失败后不补造成功。日志/审计不含密码、token、code、原公司报文或设备凭据。
+**2026-11-15所有者已确认IAM-AUDIT-D01，产品未实现**：仅SetRoles、AssignMenus两操作的业务写和本地成功审计同事务，本地审计写失败回滚；本地已提交、外部collector失败时持久补送，不重做改权。不扩大为其它日志/全部IAM均强审计。拒绝尝试与成功事实分开，失败后不补造成功。日志/审计不含密码、token、code、原公司报文或设备凭据。
 
 薄 UI 同批展示本地/纳管来源、当前可写性、DB 已提交但运行时待生效、失败原因及获权重试/查询入口。普通业务管理员只能看受权对象历史；专门审计人员才能在指定范围跨模块检索/导出，导出自身留痕、大小有界、撤权停止后续读取。授权屏障异常、reload/revoke oldest age、失败次数、版本差距、拒绝原因只用有界标签；用户 ID 不作指标标签。首期保留天数/容量与真实审计名单在首次正式运行前确认，不编造合规要求。
 
@@ -179,7 +181,7 @@ AuditPageV1 = {items: AuthorizedAuditFact[], next_cursor: string?, as_of: Timest
 
 最小受权分页/受限导出复用既有audit页，起始窗口≤31日、limit≤100、同步导出≤1000条为可收紧技术候选；超限明确要求缩范围，不截断后冒称完整。CSV只输出白名单标量、做表格公式注入防护；不导出body/token/任意payload。大导出/快照artifact只有真实需要时按原异步方案接入，不作基础门。查询/导出只记安全访问元数据，避免审计递归；失败不回显不可见记录ID或全文。
 
-两IAM试点经owner批准后才把成功AuditFact与业务同事务；拒绝/失败事实不是成功补写，collector失联由已存本地事实恢复。`TestAuditFacts_ScopeBeforeCountExport`、`TestAuditFacts_OrgMoveAndPlatformScope`、`TestAuditFacts_CursorRevokeAndCSV`、`TestAuditFacts_AtomicCommitAndDuplicate`分别验当前职责/字段与范围、历史组织锚、scope变更/导出预算、业务回滚和原事实去重。本段是详细候选，真实人员/保留参数、迁移号与产品红绿仍在OBS02启用前落实。
+两IAM试点按F017已确认政策、完成实现与验收后才把成功AuditFact与业务同事务；拒绝/失败事实不是成功补写，collector失联由已存本地事实恢复。`TestAuditFacts_ScopeBeforeCountExport`、`TestAuditFacts_OrgMoveAndPlatformScope`、`TestAuditFacts_CursorRevokeAndCSV`、`TestAuditFacts_AtomicCommitAndDuplicate`分别验当前职责/字段与范围、历史组织锚、scope变更/导出预算、业务回滚和原事实去重。本段是详细候选，真实人员/保留参数、迁移号与产品红绿仍在OBS02启用前落实。
 
 ## 7. 工程与一致性切片
 
@@ -202,7 +204,7 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 | FND-03 | direct/org/inherited 各一路，撤最后或其中一路 | 重算有效权限，移除一路不误删其它合法来源；外部同名 admin 无内置特权 |
 | FND-04 | DB 改权成功，进程 A loader/Redis 失败，进程 B 旧 cache | stale pair 拒绝；原 intent 恢复，新 revision 生效；无跨实例旧授权放行 |
 | FND-05 | disable→Redis 超时→enable 竞争；旧 AT/RT/PAT | 账号先安全禁用；未撤销完成不解除屏障；旧 clear 不复活旧 token |
-| FND-06 | 审计插入失败/collector 不可达（试点批准后） | 前者业务与审计同回滚；后者本地成功事实仍在、只重投审计 |
+| FND-06 | SetRoles/AssignMenus审计插入失败/collector不可达（政策已批准、产品未交） | 前者业务与审计同回滚；后者本地成功事实仍在、只重投审计 |
 | FND-07 | HR 重复/乱序/未知 org/同工号异人/缺页 | 去重、hold、不误并号、不因缺页停用；无未授权管理属性写入 |
 | FND-08 | 批准交接后对象/继任者变化，worker 中断 | 变化项 conflict/blocked，其它合法项有独立 receipt，恢复不双转、不改历史 |
 | FND-09 | 新资源漏 GetFilter，计数/导出/附件/结果深链 | fail-closed；与列表相同范围，不靠 UI 隐藏防泄露 |
@@ -223,7 +225,7 @@ C01 只从发布字段定义投影可输入键；公式输出在服务端重算�
 
 ## 9. 决策和变更记录
 
-现在需 owner 决定的是 §6 两类 IAM 操作的本地强审计失败政策；本轮已给具体场景，不重新询问已定 B01–B07、mock、设备人工登录或本地先正式。真实用户映射/通知配置、接管/退出计划及保留参数在相应启用前确认；不影响无关模块详设。
+HIER-D01子树暂停和IAM-AUDIT-D01两操作本地审计失败回滚已由F017确认，见[第一包收口](iam-first-batch-design.md)。本轮仅设计；A先作为4–6日子估候选，B/C和任务窄修复分开扣重，旧S1不能代表全部新明确范围。不重新询问已定B01–B07、mock、设备人工登录或本地先正式。真实用户映射/通知配置、接管/退出计划及保留参数在相应启用前确认；不影响无关模块详设。
 
 - 2026-11-14：按实际主线补三层共同守卫、代际/会话恢复、D06 typed 输入和逐项交接、UAA-C/P/R 分界、统一审计试点及工程出口。逻辑表未建、迁移未领号，估算仍按原包扣重。
 - 2026-11-15：将事务屏障与L1策略副本同步区分，去掉资源级变化引起的全站重载；明确身份/治理表按实际feed与P/R创建，补日志审计补充出口与首版所选最小保护的区别。

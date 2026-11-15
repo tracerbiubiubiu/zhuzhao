@@ -140,7 +140,7 @@ intent固定 `{event_id,event_type,risk_ref,aggregate_revision,rule_ref,recipien
 
 去重键复用消息属主 `(source_event_id,rule_version,recipient_user_id,channel,semantic_key)`；D15的event_id/rule_revision/recipient_ref在适配边界显式映射为上述字段。template_revision固定绑定原delivery的payload，不因模板更新让旧event再次发送；需要业务补发时走受权新delivery并关联原项。每日提醒/汇总按风险、事件kind及配置时区的时隙建稳定key，重启不会重发同一时隙。通知文本仅编号/必要动作/受权深链，读取深链再次鉴权，不把敏感字段塞入IM；规则频次不是所有消息通用“exactly once”。
 
-业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两类强审计写的owner待决不由本页代拍。
+业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两操作本地强审计失败回滚已由F017确认，仍按统一合同实施，不扩大为所有日志失败均回滚。
 
 ## 7. 三层权限与异常可解释性
 

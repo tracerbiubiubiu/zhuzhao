@@ -293,9 +293,11 @@
       "still_pending_question": {
         "question_item_id": "[\"request_user_input_async\",\"call_3d4523d0a42041ab9dc1874c62fe1cd1\",0]",
         "subject": "两IAM高风险修改本地必需审计失败是否同事务回滚；外部collector失败不阻本地已提交事实",
-        "state": "awaiting_owner_answer"
+        "state": "resolved_by_owner_2026_11_15",
+        "resolved_by": "F017-iam-first-batch-owner-decisions"
       },
-      "approval_boundary": "本答复只批准审计读取用途分权，不视为已回答同批另一条写失败政策，也不绑定真实审计名单/生产保留期"
+      "approval_boundary": "本答复只批准审计读取用途分权，不视为已回答同批另一条写失败政策，也不绑定真实审计名单/生产保留期",
+      "subsequent_confirmation_ref": "docs/phase6/iam-first-batch-design.md"
     },
     {
       "id": "F008-foundation-first-boundaries",
@@ -347,7 +349,8 @@
         "core_native": "swag wire lint unit integration cover build passed; Go inputs unchanged",
         "private_adapter_product_exit": "not_implemented_or_verified",
         "historical_receipts_preserved": true
-      }
+      },
+      "subsequent_policy_confirmation_ref": "F017-iam-first-batch-owner-decisions"
     },
     {
       "id": "F009-dated-core-usable-release",
@@ -450,7 +453,8 @@
         "exact_module_DTO_DDL_done": false,
         "token_reduction_measured": false,
         "existing_quality_obligations_retained": true
-      }
+      },
+      "subsequent_policy_confirmation_ref": "F017-iam-first-batch-owner-decisions"
     },
     {
       "id": "F012-daily-reconciliation-publication-cleanup",
@@ -534,14 +538,15 @@
       "remaining_bindings": [
         "actual business flow/type/fields/actions/AL subscription",
         "company message HTTP contract/test conditions",
-        "production target/operator",
-        "IAM strong-audit failure policy"
+        "production target/operator"
       ],
       "supersedes_only_current_timing_and_full_UAA_core_precondition": true,
       "prior_source_history_preserved": [
         "F009",
         "F012"
-      ]
+      ],
+      "resolved_binding_followup": "F017-iam-first-batch-owner-decisions",
+      "estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态"
     },
     {
       "id": "F014-mainline-plan-and-validated-upgrade-sync",
@@ -578,7 +583,8 @@
         "taskrunner": "https://github.com/tracerbiubiubiu/taskrunner/pull/2",
         "zhuzhao-utils": "https://github.com/tracerbiubiubiu/zhuzhao-utils/pull/1"
       },
-      "actual_integration_and_exact_head_CI_results": "recorded by the PR merge commits and separate final delivery receipts; approval here is not a fabricated merged result"
+      "actual_integration_and_exact_head_CI_results": "recorded by the PR merge commits and separate final delivery receipts; approval here is not a fabricated merged result",
+      "subsequent_policy_confirmation_ref": "F017-iam-first-batch-owner-decisions"
     },
     {
       "id": "F015-hierarchy-permission-scenarios",
@@ -620,13 +626,16 @@
       "owner_decisions": [
         {
           "id": "HIER-D01",
-          "state": "owner_pending",
+          "state": "owner_confirmed",
           "decision_due": "C04模块详设/父组织停用入口实施前",
           "scenario": "B部门停用，子组C仍status=1；是否暂停C组织派生角色/scope/委托？",
           "recommendation": "祖先停用阻断该子树组织派生资格，不批量修改子节点status；预检影响并按当前来源重算。",
           "alternatives": "仅停用本节点，子节点独立；或显式批准子树状态批量变更，不静默选择。",
-          "impact_or_safe_fallback": "未定不影响无关切片；相关正式入口不得隐式选择传播，必要时拒绝停用有子节点组织并提示处置；不把TTL或旧缓存当当前许可。",
-          "implementation": "not_approved_or_implemented"
+          "implementation": "approved_policy_not_implemented",
+          "answer": "暂停整棵子树的组织派生授权（推荐）",
+          "resolved_by": "F017-iam-first-batch-owner-decisions",
+          "accepted_policy": "祖先停用暂停子树组织角色/scope/org owner-admin委托，不改子status；独立有效直接/子树外组织/业务参与来源按本域求值；重启按当前关系重算，已撤/过期不复活。",
+          "historical_unconfirmed_fallback": "未定不影响无关切片；相关正式入口不得隐式选择传播，必要时拒绝停用有子节点组织并提示处置；不把TTL或旧缓存当当前许可。"
         }
       ],
       "estimate_policy": "Existing scope clarification and known fixes, deduplicate into C04/D03/D06/thin UI before implementation; no new parent package or automatic increase/free inclusion in S1 and 68–104 candidate"
@@ -658,7 +667,44 @@
         "engine_migration": false,
         "main_merge_or_deployment": false
       },
-      "estimate_policy": "归包不等于零工期或原价足够；开工逐项与原WBS/测试扣重拆子估，有净增先改总账和首版候选。当前仅细化既有交付，实际引擎PoC/迁移未纳入已价范围。"
+      "estimate_policy": "归包不等于零工期或原价足够；开工逐项与原WBS/测试扣重拆子估，有净增先改总账和首版候选。当前仅细化既有交付，实际引擎PoC/迁移未纳入已价范围。",
+      "subsequent_policy_confirmation_ref": "F017-iam-first-batch-owner-decisions"
+    },
+    {
+      "id": "F017-iam-first-batch-owner-decisions",
+      "date": "2026-11-15",
+      "source": {
+        "kind": "owner_guided_module_detail_and_explicit_question_replies",
+        "request_excerpt": "可以 你来引导我一起做吧 先不要直接改代码"
+      },
+      "design_ref": "docs/phase6/iam-first-batch-design.md",
+      "decisions": [
+        {
+          "id": "HIER-D01",
+          "state": "owner_confirmed_not_implemented",
+          "answer": "暂停整棵子树的组织派生授权（推荐）",
+          "question_item_id": "[\"request_user_input_async\",\"call_5ce1abb76c5a4812a49ee9c08f92d479\",0]",
+          "rule": "祖先停用暂停子树组织角色/scope/org owner-admin委托，不改子status；独立有效直接/子树外组织/业务参与来源按本域求值；重启按当前关系重算，已撤/过期不复活。"
+        },
+        {
+          "id": "IAM-AUDIT-D01",
+          "state": "owner_confirmed_not_implemented",
+          "answer": "两项均要求本地审计成功，否则回滚（推荐）",
+          "question_item_id": "[\"request_user_input_async\",\"call_79e606da00ce4333a6e0edd74a61cf4c\",0]",
+          "operations": [
+            "UserService.SetRoles",
+            "RBACService.AssignMenus"
+          ],
+          "rule": "两操作业务和本地成功审计同事务；本地写失败回滚；外部投递失败持久补送、不重做业务；不扩大到所有日志或其它IAM。"
+        }
+      ],
+      "authorization": {
+        "design_and_policy_refinement": true,
+        "business_code_changes": false,
+        "push_merge_deploy": false
+      },
+      "implementation_state": "not_implemented",
+      "estimate_state": "bounded_subestimates_pending_deduplication_not_added_to_global_total"
     }
   ]
 }

@@ -93,7 +93,8 @@
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -246,7 +247,8 @@
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -257,7 +259,7 @@
         "AUTH-01/03/07现状反例开放：停组跨L1/L2/L3撤来源、停父角色菜单同源、组织赋角禁止借org前缀绕授予档位；正式使用前先小修，不等UAA。",
         "守卫后fresh/DBTX角色读取必须绕过RolesFromContext请求缓存；AUTH-06可信归因与AUTH-02维护动作资格补旧入口。",
         "RECHECK-01/02/03开放：直接绑定编辑不使用effective三源集合，停用绑定不丢；组织保留项属性差量；授权弹窗加载成功及user_id/request generation绑定，薄UI安全先交。",
-        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01父停用传播在本模块详设前确认。",
+        "HIER-01/02/04–09/11适用组织/角色/菜单场景：单父树与继承边约束、来源撤权、导航不授API、直接编辑分轨；HIER-D01整子树暂停已确认，须实施验收。",
         "按AUTH-GAP动作索引交本批适用证据，开工扣重拆子估；现有产品缺陷与规模证据仍开放，不能由模型复评代验。"
       ],
       "next_design_gate": "P6.1；E01-UAA-P写入/撤权验收前",
@@ -294,7 +296,8 @@
         "docs/design/engineering-execution-design.md",
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -368,7 +371,8 @@
         "docs/phase6/ticket-module-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -452,7 +456,8 @@
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
         "docs/design/rbac-inheritance-and-cascade.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -826,7 +831,8 @@
         "../zhuzhao-ui/docs/review/reports/frontend-full-audit-2026-11-13.json",
         "docs/phase6/ticket-module-detail.md",
         "docs/review/reports/permission-boundary-recheck-2026-11-15.md",
-        "docs/design/rbac-inheritance-and-cascade.md"
+        "docs/design/rbac-inheritance-and-cascade.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1647,7 +1653,8 @@
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1679,7 +1686,8 @@
         "docs/design/capability-interconnect-detail.md",
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
-        "docs/design/authorization-model-and-engine-choice.md"
+        "docs/design/authorization-model-and-engine-choice.md",
+        "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1890,7 +1898,8 @@
     "January_trial_aspiration_not_forced_deadline": true,
     "future_production_data_preserved": true,
     "implemented": false,
-    "original_76_parent_maturity_and_prices_not_reclassified": true
+    "original_76_parent_maturity_and_prices_not_reclassified": true,
+    "iam_estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态"
   },
   "mainline_readiness_review": {
     "ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
@@ -1993,7 +2002,7 @@
         "ref": "docs/phase6/foundation-iam-module-detail.md#61-obs补充出口与首版本地保护",
         "state": "detailed_contract_candidate_owner_failure_policy_pending",
         "local_core_selection": "existing authorized history/necessary facts; complete extra audit slice not automatic first-release gate",
-        "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，原两IAM强审计失败政策仍待答。",
+        "remaining": "本地必要事实写端口与可选collector外送分开，成功事实不能由任填actor/outcome公开接口伪造；旧inbox当前对象投影同D15/C04，两操作本地审计失败回滚已由F017确认，仍待真实事务接线/失败回归。",
         "review_ref": "docs/review/reports/core-interaction-architecture-review-2026-11-15.md"
       }
     ],
@@ -2131,13 +2140,15 @@
       "P6.3": "full U06 rollout only",
       "later": "UAA-P/R managed mapping and real activation; real HR feed in its original window"
     },
-    "owner_pending": [
-      "HIER-D01"
-    ],
+    "owner_pending": [],
     "no_new_parent_packages": true,
     "price_numbers_changed": false,
     "subestimate_overlap_check_required": true,
-    "runtime_verified": false
+    "runtime_verified": false,
+    "owner_confirmed": [
+      "HIER-D01"
+    ],
+    "confirmation_ref": "F017-iam-first-batch-owner-decisions"
   },
   "authorization_gap_closure": {
     "date": "2026-11-15",
@@ -2158,5 +2169,51 @@
     "subestimate_overlap_check_required": true,
     "runtime_verified": false,
     "engine_migration_approved": false
+  },
+  "iam_first_batch_design": {
+    "ref": "docs/phase6/iam-first-batch-design.md",
+    "source_followup": "F017-iam-first-batch-owner-decisions",
+    "owner_confirmed": [
+      "HIER-D01",
+      "IAM-AUDIT-D01"
+    ],
+    "implementation_state": "not_implemented",
+    "first_candidate": "IAM-A",
+    "subestimates": [
+      {
+        "id": "IAM-A",
+        "days": [
+          4,
+          6
+        ],
+        "scope": "AUTH-07/RECHECK-01/02及必要薄UI"
+      },
+      {
+        "id": "IAM-B",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-01/03/RECHECK-03/HIER-D01"
+      },
+      {
+        "id": "IAM-C",
+        "days": [
+          12,
+          19
+        ],
+        "scope": "试点共同屏障/fresh DBTX/L1 pair/单实例恢复及两操作本地强审计"
+      },
+      {
+        "id": "IAM-TASK",
+        "days": [
+          4,
+          7
+        ],
+        "scope": "AUTH-02/06旧任务维护资格/参数及可信归因"
+      }
+    ],
+    "net_estimate_integrated": false,
+    "runtime_verified": false
   }
 }

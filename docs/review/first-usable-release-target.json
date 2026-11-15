@@ -178,5 +178,10 @@
     "context_policy": "common_summary_module_authority_neighbor_contract_and_changed_symbols; inspect_history_on_specific_conflict",
     "bounded_local_core_net_candidate_available": true,
     "source_followup": "F013-local-first-quality-and-UAA-later"
+  },
+  "iam_estimate_review": {
+    "ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态",
+    "state": "old_numeric_candidate_pending_deduplicated_IAM_reestimate",
+    "rule": "旧数字仅历史候选；A/B/C及任务子估未净额整合，不新增日历承诺或开发许可。"
   }
 }
