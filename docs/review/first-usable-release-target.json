@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-14",
+  "date": "2026-11-16",
   "status": "quality_first_local_formal_core_then_UAA_bounded_estimate_candidate_not_implementation_authorization",
   "plan_ref": "docs/phase6/first-usable-release-plan.md",
   "comparison_ref": "docs/review/core-release-change-comparison.md",
@@ -75,46 +75,21 @@
     "external_waiting_days": null,
     "unknown_waiting_is_not_zero": true,
     "formal_local": "company allows local accounts for formal operation; real mandatory core journey/local L1 L2 L3/message and applicable production gates pass; complete UAA P/R not required",
-    "real_UAA_window": "not fixed; owner prefers after core, possibly February-March but no committed dates"
+    "real_UAA_window": "not fixed; owner prefers after core, possibly February-March but no committed dates",
+    "trial_environment_binding": {
+      "state": "pending_real_binding",
+      "action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_trial"
+    },
+    "real_message_contract_action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/MH01_MR1",
+    "core_stability_action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_core_stability"
   },
   "estimate_views": {
     "unit": "engineering_days_not_calendar_promises",
-    "UAA_C_P_reference": [
-      27,
-      42
-    ],
-    "UAA_R_reference": [
-      13,
-      22
-    ],
-    "other_thin_UI_reference": [
-      16,
-      26
-    ],
-    "partial_disjoint_C_P_plus_non_UAA_UI": [
-      43,
-      68
-    ],
-    "partial_sum_is_not_release_total": true,
-    "other_core_backend_candidate": [
-      59,
-      91
-    ],
-    "conditional_non_UAA_backend_plus_UI": [
-      75,
-      117
-    ],
-    "backend_UI_scope_alignment_and_UAA_shared_dedup_required": false,
     "full_release_net_days": [
-      68,
-      104
+      97,
+      151
     ],
-    "price_registry_unchanged": true,
     "do_not_add_views_to_76_parent_baseline": true,
-    "conservative_backend_candidate_scope_note": "59–91为较宽保守画像，不是不可缩减最低；部分formula/全import/feed/HR/配置泛化可在受控范围后移，实际子估待收敛",
-    "conditional_non_UAA_backend_plus_UI_scope_note": "75–117仅报告原保守画像假设匹配时的条件算术，非最新收窄画像净价，不可直接再加UAA",
-    "historical_views_are_not_current_core_net_price": true,
-    "historical_scope_note": "C/P+UI43–68 and conservative backend59–91/UI75–117 remain historical scoped views, not proof against the changed local-first target and not additive",
     "local_core_net_ref": "docs/review/local-core-release-estimate.json",
     "full_release_net_status": "bounded_local_core_candidate_medium_low_confidence_not_calendar_commitment",
     "full_UAA_P_R_in_current_core_net": false,
@@ -124,7 +99,50 @@
       38,
       61
     ],
-    "UAA_P_R_later_reestimate_rule": "deduct actual shared delivery once; reserve core support capacity; external waiting separate"
+    "UAA_P_R_later_reestimate_rule": "deduct actual shared delivery once; reserve core support capacity; external waiting separate",
+    "full_release_net_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days",
+    "historical_scope_views": {
+      "UAA_C_P_reference": [
+        27,
+        42
+      ],
+      "UAA_R_reference": [
+        13,
+        22
+      ],
+      "other_thin_UI_reference": [
+        16,
+        26
+      ],
+      "partial_disjoint_C_P_plus_non_UAA_UI": [
+        43,
+        68
+      ],
+      "partial_sum_is_not_release_total": true,
+      "other_core_backend_candidate": [
+        59,
+        91
+      ],
+      "conditional_non_UAA_backend_plus_UI": [
+        75,
+        117
+      ],
+      "backend_UI_scope_alignment_and_UAA_shared_dedup_required": false,
+      "price_registry_unchanged": true,
+      "conservative_backend_candidate_scope_note": "59–91为较宽保守画像，不是不可缩减最低；部分formula/全import/feed/HR/配置泛化可在受控范围后移，实际子估待收敛",
+      "conditional_non_UAA_backend_plus_UI_scope_note": "75–117仅报告原保守画像假设匹配时的条件算术，非最新收窄画像净价，不可直接再加UAA",
+      "historical_views_are_not_current_core_net_price": true,
+      "historical_scope_note": "C/P+UI43–68 and conservative backend59–91/UI75–117 remain historical scoped views, not proof against the changed local-first target and not additive",
+      "superseded_full_release_net_days": [
+        68,
+        104
+      ],
+      "prior_to_explicit_compatibility_repricing": [
+        95,
+        148
+      ],
+      "applies_to_current_price": false
+    }
   },
   "feasibility": {
     "single_seat_deadline_committed": false,
@@ -149,7 +167,7 @@
     "first_formal_consumer_starts_compatibility_obligation": true,
     "production_UAA_transition": "preserve user IDs and ownership/risk/tickets/attachments/audit/receipts/unfinished intents/inflight tasks; approved shadow mapping, no reset/recreate"
   },
-  "current_gate_policy": "现行完整适用门禁和TDD保留；分档未启用",
+  "current_gate_policy": "document/reference/ordinary按完整候选适用，代码测试先行保留；分档已由F020交付，远端保护另核。本次生成器/校验规则变更仍走ordinary完整适用门禁。",
   "implementation_started": false,
   "selected_profile_guard_candidate": {
     "status": "proposed_requires_actual_business_binding_not_implemented",
@@ -170,18 +188,24 @@
   },
   "module_design_handoff_ref": "docs/phase6/module-design-handoff.md",
   "design_progress": {
-    "stage": "module_refinement_entry",
+    "stage": "module_candidates_detailed_and_local_core_projection",
     "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_module_later",
     "module_exact_DTO_DDL_frozen": false,
     "full_release_net_estimate_frozen": false,
     "business_implementation_started": false,
-    "context_policy": "common_summary_module_authority_neighbor_contract_and_changed_symbols; inspect_history_on_specific_conflict",
+    "context_policy": "共同接缝＋所属模块权威＋相邻合同＋本批差异；既有候选已细化，准确DTO/DDL/生成产物及真实绑定仍按实施批冻结",
     "bounded_local_core_net_candidate_available": true,
-    "source_followup": "F013-local-first-quality-and-UAA-later"
+    "source_followup": "F021-planning-review-repair"
   },
   "iam_estimate_review": {
     "ref": "docs/review/iam-net-allocation-2026-11-15.md",
     "state": "source_mapped_deduplicated_candidate_not_runtime_verified",
-    "rule": "Old68-104 replaced by current95-148 candidate after explicit IAM/S2 allocation; no calendar promise or development authorization."
+    "rule": "IAM净28–46/UAA-C2–3已显式扣重整合；F021再补Q1有限兼容回归净2–3，当前整版97–151候选。旧68–104与95–148保留历史，不承诺日历或启动业务实现。"
+  },
+  "release_gate_refs": {
+    "B0": "docs/design/foundation-release-boundaries.md#1-先交哪一版",
+    "real_trial": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+    "core_stability": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口",
+    "execution_actions": "docs/review/owner-decision-agenda.json#/execution_actions"
   }
 }

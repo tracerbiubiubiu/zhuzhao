@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-13",
+  "date": "2026-11-16",
   "purpose": "已确认方向与剩余真实配置的阅读议程；Q01–Q06及F004五组方向已有准确公开确认，不新增11个正式决策或开工门禁，不替代决策册。",
   "source": {
     "request_user_message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
@@ -291,14 +291,18 @@
       "id": "Q12",
       "group": "真实材料齐备后",
       "title": "首发与恢复、保留政策",
-      "scenario": "首次启用选择独立模式还是企业试点；主机故障后能容忍多长停机、丢多少数据。",
-      "recommendation": "先独立模式验证，企业实际激活走额外UAA验收；初期可用单副本加经过恢复演练的备份。演练给出成本与结果后，再确定停机/数据损失目标及按类别的保留/删除/归档规则。",
-      "timing": "首发运行方案冻结前；不要求现在设严格日历日期。",
-      "boundary": "永久运行记录/执行日志沿用既定口径，不拿生产容量或临时副本清理偷偷改成删除执行历史。多副本选用前验证并发和一致性。",
-      "source": "project-evolution-strategy.md §8；E09/G05；P-RESOURCE",
+      "scenario": "公司已允许本地账号正式运行；首次真实业务试用部署到哪里、由哪些代表角色用什么数据验证，主机故障后如何恢复和接管。",
+      "recommendation": "沿已确认的本地正式先行/UAA后置安排，先绑定真实试用运行卡和代表业务任务；实施方提出核心稳定与恢复证据，所有者确认业务可用性及实际保留/恢复参数。初期可用单副本加经过恢复演练的备份。",
+      "timing": "真实业务试用前绑定环境/代表角色/数据与支持责任；首发运行方案冻结前批准实际恢复/保留值；核心稳定出口验收前确认试用反馈处置。不要求现在给严格日期。",
+      "boundary": "本地账号正式运行和UAA后置方向已确认，不重新选择模式；真实环境与业务数据并未因此自动获批。永久运行记录/执行日志沿用既定口径，不拿容量或临时副本清理偷偷删除执行历史；多副本选用前另验并发和一致性。",
+      "source": "project-evolution-strategy.md §8；E09/G05；P-RESOURCE；first-usable-release-plan.md §4.1–4.2",
       "state": "pending_real_inputs_then_owner_review",
       "approval_state": "not_approved_by_owner",
-      "formal_decision_ids": []
+      "formal_decision_ids": [],
+      "execution_action_refs": [
+        "#/execution_actions/Q12_trial",
+        "#/execution_actions/Q12_core_stability"
+      ]
     },
     {
       "id": "Q13",
@@ -389,5 +393,120 @@
     "pending_candidate_count": 0,
     "confirmed_policy_count": 3,
     "latest_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+  },
+  "execution_actions": {
+    "MH01_MR1": {
+      "work_item_refs": [
+        "MH01",
+        "MR1"
+      ],
+      "title": "公司消息HTTP合同与真实测试窗口",
+      "state": "pending_real_inputs_then_binding",
+      "evidence_state": "not_supplied",
+      "owner_role": "项目所有者协调公司消息提供方；具体联系人在内网运行卡绑定",
+      "implementation_responsibility": "实施方提合同清单、核公共sender与真实映射；提供方核实其真实能力与授权测试方式",
+      "trigger": "MH01公共sender合同冻结前发起索取；MR1真实消息验收前绑定映射、联系人和测试窗口",
+      "required_evidence": [
+        "字段与鉴权要求、受理/失败语义及所支持的幂等/状态查询/送达回执说明",
+        "在内网批准的测试主体/目标范围、提供方联系人与可执行联调窗口；无能力项明确记缺口及处置",
+        "一条真实HTTP消息的受理、回执/未知或失败结果及去敏验收引用"
+      ],
+      "blocks": [
+        "MR1真实映射/消息验收",
+        "首版本地正式消息出口"
+      ],
+      "does_not_block": [
+        "MH01合成fixture和公共sender开发",
+        "其它无关mock/独立能力的设计与实现"
+      ],
+      "acceptance_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+      "privacy_boundary": "公司名称、内部地址、真实账号、合同敏感字段和凭据不导出；公开仓仅记去敏能力轮廓与内网证据引用",
+      "evidence_refs": [],
+      "blocks_release_exits": [
+        "formal_local"
+      ]
+    },
+    "Q12_trial": {
+      "work_item_refs": [
+        "Q12"
+      ],
+      "title": "试用环境、代表角色与数据策略绑定",
+      "state": "pending_real_inputs_then_binding",
+      "evidence_state": "not_supplied",
+      "owner_role": "项目所有者协调实际部署/业务代表；具体实施和支持人员在运行卡绑定",
+      "implementation_responsibility": "实施方给出可用画像、当前P1处置和停止/回退方案，所有者确认目标环境、代表任务及数据可用范围",
+      "trigger": "真实业务身份/数据接入或业务能力向试用人员开放前；B0合成隔离预演不自动取得该批准",
+      "required_evidence": [
+        "目标环境/架构/网络、固定五仓版本、启用能力和支持责任的受审运行卡",
+        "代表角色/人员范围、数据来源/敏感性与保留策略、凭据边界、故障停用及回退入口",
+        "AUTH-01/02/07按实际启用范围修复或服务端完整关闭，逐可达入口拒绝/恢复证据"
+      ],
+      "blocks": [
+        "真实业务试用准入",
+        "具体本地正式运行画像的批准"
+      ],
+      "does_not_block": [
+        "合成身份/mock数据及专用隔离测试资源的B0技术预演",
+        "本地IAM与公共adapter合同开发"
+      ],
+      "acceptance_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+      "privacy_boundary": "真实组织、人员、环境地址、数据样本和秘密留内网；公开仓存去敏范围与引用，不以测试卷可重建授权删除正式数据",
+      "evidence_refs": [],
+      "blocks_release_exits": [
+        "risk_ticket_trial",
+        "formal_local"
+      ]
+    },
+    "Q12_core_stability": {
+      "work_item_refs": [
+        "Q12"
+      ],
+      "title": "核心稳定出口的工程证据与业务接受",
+      "state": "engineering_candidate_pending_real_trial_acceptance",
+      "evidence_state": "not_yet_implemented_or_trialed",
+      "owner_role": "实施方负责工程判据与原始证据；项目所有者确认代表业务任务可用和反馈处置",
+      "implementation_responsibility": "实施方提供旅程、权限/数据正确性、失败恢复和适用生产门证据，不让所有者盲选技术阈值；所有者确认实际使用画像和反馈接受",
+      "trigger": "完成代表业务试用与修正后、把主研发产能转入完整UAA-P/R前；资料联系和公共mock准备可先行",
+      "required_evidence": [
+        "当前代表角色完成首版本地必交旅程，详情/列表/统计/字段同规且无权有拒绝证据",
+        "启用范围无未处置P1/越权/数据损坏，未启用能力服务端明确关闭",
+        "重复/重启/撤权/冲突/未知效果、所选真实HTTP消息及适用制品/备份恢复/回退证据",
+        "一轮覆盖代表任务的试用问题、修正和回归记录；不阻塞遗留有责任和后继窗口"
+      ],
+      "blocks": [
+        "主研发产能全面转入完整UAA-P/R的阶段切换"
+      ],
+      "does_not_block": [
+        "UAA协议资料联系",
+        "公共mock/合同准备",
+        "已获准且通过适用生产门的本地运行模式"
+      ],
+      "acceptance_ref": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口",
+      "boundedness": "不预设观察周数、任意SLO数值或完整观测平台；实际试用安排按已批准画像，保留本地核心支持与回归产能",
+      "evidence_refs": [],
+      "blocks_release_exits": [
+        "uaa_capacity_transition"
+      ]
+    }
+  },
+  "planning_repair_followup": {
+    "date": "2026-11-16",
+    "source_followup": "F021-planning-review-repair",
+    "state": "pending_owner_behavior_choice",
+    "historical_34_formal_decisions_unchanged": true,
+    "f019_three_confirmed_policies_unchanged": true,
+    "item": {
+      "work_item_ref": "C05",
+      "title": "重复口令写的首版用户行为",
+      "state": "pending_owner_behavior_choice_not_implemented",
+      "scenario": "管理员以操作编号K将密码改为A，响应丢失；随后客户端误用K提交B。界面应如何明确告知原操作与本次输入的结果？",
+      "current_contract_ref": "docs/phase6/foundation-iam-module-detail.md#44-c05秘密输入claims与子估收口",
+      "current_contract": "现有候选保留强参数一致语义：同键异口令/目标/主体409且零新效果，私有HMAC绑定识别秘密输入；在所有者选择前不删合同、不按假定节省扣价",
+      "narrower_candidate": "首版所有重复口令写均不再执行，明确提示操作已存在/结果待核查，不把原成功表述为B已生效；受权查询原receipt或重新认证核查，另改密码须重新确认并用新编号；不重放旧TokenPair，不承诺精确秘密相等辨别",
+      "owner_response_state": "requested_industry_explanation_not_a_choice",
+      "decision_due": "C05行为合同及测试预期冻结前；不阻B0合成隔离预演、三P1既定窄修复或其它独立模块",
+      "implementation_boundary": "行为取舍由所有者选择，算法与技术方案由实施方负责。两方案均保留DB安全代际、原子操作回执/意图、当前授权及恢复CAS；真实key托管/保留参数仍按启用窗口绑定",
+      "estimate_boundary": "C05当前6–10日候选保持；选择较窄合同后按源级子估/复用扣重，不直接假定节省1.5–2.5日"
+    }
   }
 }

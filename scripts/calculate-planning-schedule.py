@@ -8,6 +8,7 @@ import argparse
 import collections
 import hashlib
 import json
+import math
 from pathlib import Path
 
 
@@ -42,6 +43,209 @@ def validate_dag(graph):
     for node in sorted(graph):
         visit(node)
     return len(done)
+
+
+def build_local_core_projection(estimate, projection, target, parent_ids, owner_actions):
+    """Project the existing local WBS; parent mappings are provenance, not prices.
+
+    This is an engineering-effort ordering with unknown real-provider waiting,
+    not a second release plan, a production approval, or a calendar forecast.
+    """
+    rows, groups = {}, []
+
+    def check_parts(row):
+        for field in ('suballocations', 'sub_wbs', 'wbs'):
+            if field in row:
+                parts = row[field]
+                if not parts or summed(x['days'] for x in parts) != pair(row['days']):
+                    raise ValueError('local suballocation sum mismatch: ' + row.get('id', field))
+                for part in parts:
+                    check_parts(part)
+        if 'shared_allocation_to_S2' in row:
+            gross, shared = pair(row['gross_days']), pair(row['shared_allocation_to_S2'])
+            if tuple(gross[i] - shared[i] for i in (0, 1)) != pair(row['days']):
+                raise ValueError('local shared allocation mismatch: ' + row['id'])
+
+    seen_groups = set()
+    for group in estimate['groups']:
+        gid = group['id']
+        if gid in seen_groups:
+            raise ValueError('duplicate local group: ' + gid)
+        seen_groups.add(gid)
+        if not group['wbs'] or summed(row['days'] for row in group['wbs']) != pair(group['days']):
+            raise ValueError('local group sum mismatch: ' + gid)
+        groups.append(dict(id=gid, days=list(pair(group['days']))))
+        for row in group['wbs']:
+            key = row['id']
+            if key in rows:
+                raise ValueError('duplicate local WBS row: ' + key)
+            check_parts(row)
+            rows[key] = dict(group=gid, row=row)
+    total = summed(value['row']['days'] for value in rows.values())
+    if total != pair(estimate['totals']['raw_days']):
+        raise ValueError('local WBS total mismatch')
+    rounded = tuple(math.ceil(value) for value in total)
+    if rounded != pair(estimate['totals']['rounded_display_days']):
+        raise ValueError('local rounded total mismatch')
+    if tuple(target['estimate_views']['full_release_net_days']) != rounded:
+        raise ValueError('local current target view price drift')
+    shared = summed(part.get('shared_allocation_to_S2', [0, 0])
+                    for value in rows.values()
+                    for part in value['row'].get('suballocations', []))
+    conservative = tuple(total[i] + shared[i] for i in (0, 1))
+    for name, expected in (
+        ('conservative_without_shared_transfer_raw_days', conservative),
+        ('conservative_without_shared_transfer_rounded_days', tuple(math.ceil(x) for x in conservative)),
+    ):
+        if name in estimate['totals'] and pair(estimate['totals'][name]) != expected:
+            raise ValueError('local conservative total mismatch: ' + name)
+
+    bindings = projection['node_bindings']
+    binding_ids = [value['id'] for value in bindings]
+    if len(set(binding_ids)) != len(binding_ids) or set(binding_ids) != set(rows):
+        raise ValueError('local node binding coverage must match each priced WBS exactly once')
+    conditions = projection['external_conditions']
+    declared_actions = owner_actions.get('execution_actions', {})
+    release_actions = {key: action for key, action in declared_actions.items()
+                       if 'blocks_release_exits' in action}
+    if set(conditions) != set(release_actions):
+        raise ValueError('local condition coverage differs from independent owner release actions')
+    resolved_conditions = {}
+    for key, condition in conditions.items():
+        ref = condition['action_ref']
+        if ref != '/execution_actions/' + key:
+            raise ValueError('local condition action reference mismatch: ' + key)
+        action = release_actions.get(key)
+        if not action or not action.get('state') or not action.get('evidence_state') or not isinstance(action.get('evidence_refs'), list):
+            raise ValueError('local external condition action missing: ' + key)
+        gates = action['blocks_release_exits']
+        required = condition['required_exits']
+        if (not isinstance(gates, list) or not gates or len(gates) != len(set(gates))
+                or not isinstance(required, list) or not required or len(required) != len(set(required))
+                or set(required) != set(gates)):
+            raise ValueError('local condition gate binding differs from independent owner action: ' + key)
+        resolved_conditions[key] = dict(source_ref='docs/review/owner-decision-agenda.json#' + ref,
+                                        state=action['state'], evidence_state=action['evidence_state'],
+                                        evidence_refs=action['evidence_refs'], blocks_release_exits=gates)
+    nodes = {}
+    for position, binding in enumerate(bindings):
+        key = binding['id']; parents = binding['parent_packages']
+        if not parents or len(parents) != len(set(parents)) or not set(parents) <= set(parent_ids):
+            raise ValueError('local node has unknown/duplicate parent mapping: ' + key)
+        required = binding.get('external_condition_keys', [])
+        if len(required) != len(set(required)) or not set(required) <= set(conditions):
+            raise ValueError('local node has unknown external condition: ' + key)
+        nodes[key] = dict(wbs_id=key, group=rows[key]['group'], days=pair(rows[key]['row']['days']),
+                          parent_packages=parents, dependencies=set(binding['dependencies']),
+                          priority=binding.get('priority', position), external_condition_keys=required)
+    validate_dag({key: value['dependencies'] for key, value in nodes.items()})
+
+    def closure(targets):
+        selected = set(targets)
+        if not selected or not selected <= set(nodes):
+            raise ValueError('local journey/exit coverage references unknown or empty WBS')
+        pending = list(selected)
+        while pending:
+            for dependency in nodes[pending.pop()]['dependencies']:
+                if dependency not in selected:
+                    selected.add(dependency); pending.append(dependency)
+        return selected
+
+    requirements = target['must_have']
+    expected_refs = {'/must_have/' + str(i) for i in range(len(requirements))}
+    journeys = projection['required_journeys']
+    refs = [value['requirement_ref'] for value in journeys]
+    if len(refs) != len(set(refs)) or set(refs) != expected_refs:
+        raise ValueError('local required journey coverage drift')
+    coverage, covered = [], set()
+    for journey in journeys:
+        index = int(journey['requirement_ref'].rsplit('/', 1)[1])
+        text = requirements[index]
+        digest = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        if journey['requirement_sha256'] != digest:
+            raise ValueError('local requirement meaning changed: ' + journey['requirement_ref'])
+        selected = closure(journey['wbs_ids']); covered |= selected
+        coverage.append(dict(requirement_ref='docs/review/first-usable-release-target.json#' + journey['requirement_ref'],
+                             text=text, requirement_sha256=digest, targets=journey['wbs_ids'],
+                             dependency_closure=sorted(selected),
+                             overlapping_effort_do_not_add=list(summed(nodes[key]['days'] for key in selected))))
+    if covered != set(nodes):
+        raise ValueError('local WBS has no required journey coverage: ' + ', '.join(sorted(set(nodes) - covered)))
+
+    exits = projection['delivery_exits']
+    if 'formal_local' not in exits:
+        raise ValueError('local formal gate missing')
+    if closure(exits['formal_local']['targets']) != set(nodes):
+        raise ValueError('local formal WBS coverage must include every selected required journey')
+    for key, condition in conditions.items():
+        for exit_id in condition['required_exits']:
+            if exit_id not in exits or key not in exits[exit_id]['condition_keys']:
+                raise ValueError('local condition missing from required gate: ' + key)
+    exit_rows = {}
+    for key, value in exits.items():
+        required = value['condition_keys']
+        if len(required) != len(set(required)) or not set(required) <= set(conditions) or not value.get('evidence_ref'):
+            raise ValueError('local release gate condition/evidence binding invalid: ' + key)
+        selected = closure(value['targets'])
+        exit_rows[key] = dict(targets=value['targets'], dependency_closure=sorted(selected),
+                              overlapping_effort_do_not_add=list(summed(nodes[item]['days'] for item in selected)),
+                              condition_keys=required, evidence_ref=value['evidence_ref'],
+                              readiness='not_verified_by_schedule', actual_activation_date=None)
+    blocked = sorted(key for key in nodes if any(nodes[ancestor]['external_condition_keys'] for ancestor in closure([key])))
+    resources = {}
+    for seats in (1, 2):
+        runs = [run_scheduler(nodes, seats, endpoint) for endpoint in (0, 1)]
+        resources[str(seats)] = dict(
+            engineering_makespan_if_conditions_ready=[run['makespan_workdays'] for run in runs],
+            assumption='finite engineering ordering only; real input availability/waiting is not scheduled as zero',
+            resource_records={label: run['records'] for label, run in zip(('low', 'high'), runs)},
+        )
+        for exit_id, value in exit_rows.items():
+            value.setdefault('engineering_finish_if_conditions_ready', {})[str(seats)] = [
+                max(run['records'][key]['finish'] for key in value['dependency_closure']) for run in runs]
+    return dict(status='bounded_local_core_candidate_not_implemented', raw_engineering_days=list(total),
+                rounded_display_days=list(rounded), conservative_without_shared_transfer_raw_days=list(conservative),
+                conservative_without_shared_transfer_rounded_days=[math.ceil(x) for x in conservative],
+                groups=groups, nodes={key: dict(value, days=list(value['days']), dependencies=sorted(value['dependencies'])) for key, value in sorted(nodes.items())},
+                required_journeys=coverage, external_conditions=resolved_conditions, delivery_exits=exit_rows,
+                resources=resources, externally_blocked_wbs=blocked,
+                unblocked_public_wbs=sorted(set(nodes) - set(blocked)),
+                external_waiting_days=None, calendar=None, formal_activation_approved=False,
+                added_to_long_horizon_total=False,
+                price_rule='Each local WBS row is charged once; mapped 76-parent prices/ancestors are never added. Journey/exit efforts overlap and must not be added.')
+
+
+def current_core_summary(estimate):
+    raw = pair(estimate['totals']['raw_days'])
+    rounded = pair(estimate['totals']['rounded_display_days'])
+    shared = summed(part.get('shared_allocation_to_S2', [0, 0])
+                    for group in estimate['groups'] for row in group['wbs']
+                    for part in row.get('suballocations', []))
+    conservative = [math.ceil(raw[i] + shared[i]) for i in (0, 1)]
+    return (f'当前首版本地核心净估：**{format_pair(rounded)} 个有效工程日**'
+            f'（未取整 {format_pair(raw)}；S2 共用假设不成立时 {format_pair(conservative)}）。'
+            '这是单席工程量候选，不是日历承诺。')
+
+
+def validate_current_view_docs(repo, model, estimate):
+    paths = model['current_view_docs']
+    if not paths or len(paths) != len(set(paths)):
+        raise ValueError('current view document registry empty or duplicated')
+    summary = current_core_summary(estimate)
+    result = {}
+    for path in paths:
+        relative = Path(path)
+        if relative.is_absolute() or '..' in relative.parts or (repo / relative).is_symlink():
+            raise ValueError('invalid current view document path: ' + path)
+        text = (repo / relative).read_text()
+        start, end = '<!-- local-core-current:start -->', '<!-- local-core-current:end -->'
+        if text.count(start) != 1 or text.count(end) != 1:
+            raise ValueError('current view marker missing or duplicated: ' + path)
+        match = re.search(re.escape(start) + r'\s*(.*?)\s*' + re.escape(end), text, re.S)
+        if not match or match.group(1).strip() != summary:
+            raise ValueError('current local core view drift: ' + path)
+        result[path] = dict(summary_sha256=hashlib.sha256(summary.encode('utf-8')).hexdigest(), check='matches_net_estimate')
+    return result
 
 
 def run_scheduler(nodes, seats, endpoint):
@@ -270,11 +474,11 @@ def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
 
 
 def calculate(repo):
-    paths=['docs/review/planning-backlog.json','docs/review/execution-schedule-model.json','docs/review/planning-scope-estimates.json','docs/review/uaa-implementation-estimate.json','docs/review/uaa-real-integration-conditions.json']
+    paths=['docs/review/planning-backlog.json','docs/review/execution-schedule-model.json','docs/review/planning-scope-estimates.json','docs/review/uaa-implementation-estimate.json','docs/review/uaa-real-integration-conditions.json','docs/review/local-core-release-estimate.json','docs/review/first-usable-release-target.json','docs/review/owner-decision-agenda.json']
     blobs={p:(repo/p).read_bytes() for p in paths}
-    backlog,model,scope,uaa,conditions=[json.loads(blobs[p]) for p in paths]
+    backlog,model,scope,uaa,conditions,local_estimate,local_target,owner_actions=[json.loads(blobs[p]) for p in paths]
     graph,milestones=source_graph(backlog)
-    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='locally_validated_source_changes; owner_approved_PR_main_sync; see_PR_records_for_actual_result',do_not_repeat_future_coding_estimate=True),release_gates_ref='docs/review/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/review/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
+    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling',do_not_repeat_future_coding_estimate=True,actual_record_ref='docs/review/core-release-accounting-reconciliation-2026-11-16.md',reserve_profile_rule='Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core'),release_gates_ref='docs/review/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/review/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
     result['delivery_scope_boundaries']=dict(foundation_targets=model['delivery_priority_groups']['foundation']['targets'],risk_first_chain_targets=model['delivery_priority_groups']['risk_first_chain']['targets'],effort_rule='Each delivery exit reports the union of its named targets and actual dependencies. Shared ancestors overlap; do not add the exit efforts.',long_horizon_totals_are_not_foundation_duration=True,baseline_scope_only=True,post_baseline_supplements_not_merged=['F004 newly selected details pending net estimate','OBS01–03 separately priced candidate supplement'],supplement_ref='docs/review/post-baseline-scope-estimates.json',production_or_enterprise_activation_approved=False)
     for include_r in (False,True):
         key='with_conditional_R_ready' if include_r else 'public_R_pending'
@@ -312,6 +516,9 @@ def calculate(repo):
     result['dated_core_release_target_ref']=model['dated_core_release_target_ref']
     result['local_core_net_estimate_ref']=model['local_core_net_estimate_ref']
     result['local_core_view_note']=model['local_core_view_note']
+    result['local_core']=build_local_core_projection(local_estimate,model['local_core_projection'],local_target,{item['id'] for item in backlog['work_items']},owner_actions)
+    result['current_local_core_summary']=current_core_summary(local_estimate)
+    result['current_view_checks']=validate_current_view_docs(repo,model,local_estimate)
     return result
 
 
@@ -336,6 +543,37 @@ def day_window(value):
     return f'D{starts[0]}→D{finishes[0]} / D{starts[1]}→D{finishes[1]}'
 
 
+def render_local_core(result):
+    core = result['local_core']
+    lines = ['', '## 首版本地核心的机器投影', '', result['current_local_core_summary'], '',
+             '同一生成器读取[首版净估册](local-core-release-estimate.json)和[目标](first-usable-release-target.json)，复用既有WBS、来源父包及必交旅程；净价不追加到76包总价。',
+             'B0既有制品/mock技术预演见[首版阶梯](../phase6/first-usable-release-plan.md#4-按质量出口交付)，不反向等待全部新增能力。真实业务试用及正式启用仍须具体P1/能力/环境证据门。',
+             '以下只演算所需输入就绪时的有效工程日；真实消息窗口、试用环境和稳定验收仍待证据，未知等待不是0，正式日期和激活批准均未给出。场景/出口的依赖闭包重叠，其工日不能相加。',
+             '', '### 净额与必交旅程', '']
+    for row in core['groups']:
+        lines.append(f"- `{row['id']}`：{format_pair(row['days'])}工程日。")
+    for row in core['required_journeys']:
+        pointer = row['requirement_ref'].rsplit('#', 1)[1]
+        lines.append(f"- [{pointer}](first-usable-release-target.json#{pointer}) {row['text']}；目标`{', '.join(row['targets'])}`。")
+    lines += ['', '### 同一WBS的依赖编排', '', '父包仅作来源追踪，不追加父价或完整长期祖先；每行净额计一次。']
+    one = core['resources']['1']['resource_records']['low']
+    ordered = sorted(core['nodes'].values(), key=lambda row: (one[row['wbs_id']]['start'], one[row['wbs_id']]['finish'], row['wbs_id']))
+    for row in ordered:
+        lines.append(f"- `{row['wbs_id']}`（来源`{', '.join(row['parent_packages'])}`）：{format_pair(row['days'])}日；直接依赖`{', '.join(row['dependencies']) or '无'}`。")
+    lines += ['', '### 条件与出口', '']
+    for name, value in core['resources'].items():
+        lines.append(f"- {name}个有效研发席位条件工程量端点：{format_pair(value['engineering_makespan_if_conditions_ready'])}有效工作日；不含未知外部等待，不是日历承诺。")
+    for key, condition in core['external_conditions'].items():
+        pointer = condition['source_ref'].rsplit('#', 1)[1]
+        lines.append(f"- [{key}](owner-decision-agenda.json#{pointer})：{condition['state']}；证据状态{condition['evidence_state']}，不自动标为已就绪。")
+    for key, value in core['delivery_exits'].items():
+        evidence = value['evidence_ref'].replace('docs/phase6/', '../phase6/')
+        lines.append(f"- **{key}**：目标`{', '.join(value['targets'])}`；条件`{', '.join(value['condition_keys']) or '无外部输入门；仍需产品验收'}`；[证据要求]({evidence})。计算结论仅为`not_verified_by_schedule`。")
+    lines += ['', '机器检查净价/子分配、逐行单计、父包映射、缺依赖/环、必交原文hash与覆盖、外部动作/出口绑定及现势摘要；不证明映射语义、产品可用、安全缺陷修复或生产验收。',
+              '受控摘要在[控制台](11-project-control.md)和[路线图](../roadmap.md)共同核验，历史区保留原时点；净价改变须同步两区间及目标JSON。']
+    return lines
+
+
 def render_schedule(result):
     structure=result['source_structure']
     lines=[
@@ -353,11 +591,13 @@ def render_schedule(result):
         '测试：`python3 scripts/test-planning-schedule.py`。无需本机隐藏目录、旧ignored生成器或Git冻结版本才能计算。',
         '', '## 工程量与相较上一版的变化', '',
         '上一版公共292–496日/含R305–518日是补充前基线；新增LS34–56、CE52–80、RP净差16–24，合计102–160日。',
-        'G07A/G07B历史开发8–14日不再排；维护PR/CI/main收尾仍单独预留1–2日。', '',
+        'G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。', '',
     ]
+    lines += render_local_core(result)
+    lines += ['', '## 长期76父包工程量对照', '']
     for key,label in [('public_R_pending','公共范围，R待外部条件'),('with_conditional_R_ready','选定R且各阶段外部等待为0的条件对照')]:
         sc=result['scenarios'][key]['profiles']
-        lines.append(f"- {label}：不含维护{format_pair(sc['without_maintenance_reserve']['total_effort_range'])}日；含维护{format_pair(sc['with_maintenance_reserve']['total_effort_range'])}日。")
+        lines.append(f"- {label}：不含条件储备{format_pair(sc['without_maintenance_reserve']['total_effort_range'])}日；保留历史/条件维护储备对照{format_pair(sc['with_maintenance_reserve']['total_effort_range'])}日。")
         for seats,r in sc['with_maintenance_reserve']['resources'].items():
             days=r['endpoint_makespans'];weeks=[round(x/5,1) for x in days]
             lines.append(f"  - {seats}席参考：D{days[0]} / D{days[1]}结束，约{weeks[0]} / {weeks[1]}个有效研发周。")
@@ -367,10 +607,10 @@ def render_schedule(result):
         '主参考1个有效研发席位，每周5工程日；2席仅独立交付能力具备时对比，不等于两个agent。',
         '实际开工日记T0，D0是开工时点、DN是累计N个有效工作日结束；本页长期相对窗不等于首版本地正式排程，首版另见[阶梯与试用](../phase6/first-usable-release-plan.md)。',
         '每项低/高输入分别跑一次排程；下文“低 / 高”不是置信区间或任意混合耗时的保证上界。',
-        '维护先行，优先基础U01/U02/C02/X01-B/X02-Q及真实祖先；保留S01/S02安全工作与E10有限调查窗口，再交D10/D15风险首链。公开参考的UAA P正任务优先级7.5，在P6.E优先工作后/P7正任务前仍有明确窗口；选定且外部就绪的企业对照在基础后优先P/R，不代表实际激活获批。其余ready任务按切片和剩余关键链稳定排序。',
+        '条件对照保留原维护先行排序；已完成维护不重新派发。优先基础U01/U02/C02/X01-B/X02-Q及真实祖先，保留S01/S02安全工作与E10有限调查，再交D10/D15风险首链。公开UAA P正任务优先级7.5，选定且外部就绪的企业对照在基础后优先P/R；这些是原长期容量对照，不代表首版本地顺序或激活获批。',
         '阶段不是全串行大门；日窗可交错。单席总工期等于所选工日和；双席逐槽验证不重叠。',
         '', '## 全部13发布切片', '',
-        '以下含CE/LS及RP替换后的净范围，剔除已做G07；UAA独立增量与维护单列，不塞进S09的E01旧基价。', '']
+        '以下含CE/LS及RP替换后的净范围，剔除已做G07；UAA独立增量与条件维护容量单列，不塞进S09的E01旧基价。', '']
     public=result['scenarios']['public_R_pending']['profiles']['with_maintenance_reserve']['resources']
     alt={x['id']:x for x in public['2']['release_slices']}
     for row in public['1']['release_slices']:
@@ -406,7 +646,7 @@ def render_schedule(result):
         '独立首次生产仍验G05/E09适用硬项；公司UAA纳管模式加R.pre_apply。早期首发只前移硬证据，不机械等全部P7/I03。',
         '详细条件和阶段见[真实接入条件](uaa-real-integration-conditions.json)；各提供方激活窗口由对应Owner确认。',
         '', '## 全部正工时任务派发顺序', '',
-        '下列为公共含维护的单席主参考；完整双席及含R记录保留JSON。聚合节点零工日，不另作一次开发计价。', '']
+        '下列保留公共含历史/条件维护储备的单席对照，不是今日剩余派单；当前首版净额和顺序见上方本地核心投影。双席及含R记录保留JSON，聚合节点零工日不另计价。', '']
     for n,row in enumerate(public['1']['ordered_tasks'],1):
         lines.append(f"- {n}. `{row['id']}`（{row['wave']}，{row['owner_package']}）：{format_pair(row['estimate'])}日，{day_window(row)}；依赖`{', '.join(row['dependencies']) or '无'}`。")
     lines += ['', '## 验证与后续详设', '',
@@ -430,7 +670,7 @@ def render_backlog(backlog):
         '当前批继续standards §11测试先行、正负/边界/权限先红后绿，独立审查和完整门禁；不以规划存在当作准确设计已冻结。',
         '普通子出口分解父价；E01旧其他provider基价3–6不含UAA C/P/R2–3/25–39/13–22。',
         'RP六项替换旧价，不再加差额；LS六项追加但不造父包；CE02-L内部配额不新增正式出口。',
-        'G07历史开发不再计未来；维护收尾单列1–2。来源/真实等待/功能接线/运行验收分列。',
+        'G07历史开发不再计未来；1–2日维护仅保留历史/条件容量对照，已完成维护不再派发或重复计价，首版本地Q2已扣除该信用。来源/真实等待/接线/运行验收分列。',
         '', '## 波次与工作包','']
     for wave,info in backlog['waves'].items():
         lines += [f"### {wave} {info['name']}",'',info['exit'],'']
@@ -463,7 +703,7 @@ def render_backlog(backlog):
         '公司UAA纳管模式另过E01-UAA-R的pre_apply检查；R切换后观察属于后置收口，不倒置为apply前提。完整独立IAM不等公司R、E01父包或企业凭据。',
         '这些是按能力启用的证据门而非新包或重复预算；详细checklist以本总账JSON的release_gates及UAA条件册为准。',
         '', '## 本轮校准与去重','',
-        '相较补充前公共292–496/含R305–518，净增102–160，得到公共394–656/含R407–678；维护预留另加1–2。',
+        '原有界长期算术：公共292–496/含R305–518加净增102–160，得到公共394–656/含R407–678；额外1–2仅保留条件容量对照，不代表已完成维护再次收费。首版本地净价和顺序由同一生成器另作投影，不与这些总额相加。',
         '旧包、UAA、CE、LS及UI复用扣重详见净增册；所有真实条件与未选范围仍单列，不因已估价宣称实现或正式激活。',
         '2026-11-13：补17行范围计价、76父包/16子出口/LS六项与仓内可复现完整排程；未实现未来业务。','']
     return '\n'.join(lines)

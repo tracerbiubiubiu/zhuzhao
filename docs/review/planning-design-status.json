@@ -1937,10 +1937,6 @@
     "ref": "docs/phase6/first-usable-release-plan.md",
     "target_ref": "docs/review/first-usable-release-target.json",
     "estimate_ref": "docs/review/local-core-release-estimate.json",
-    "candidate_days": [
-      68,
-      104
-    ],
     "formal_local_accounts_allowed": true,
     "UAA_C_early_full_P_R_later": true,
     "core_real_message_not_deferred": true,
@@ -1948,7 +1944,17 @@
     "future_production_data_preserved": true,
     "implemented": false,
     "original_76_parent_maturity_and_prices_not_reclassified": true,
-    "iam_estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态"
+    "iam_estimate_review_ref": "docs/phase6/iam-first-batch-design.md#5-估算及当前状态",
+    "historical_candidate_days": {
+      "days": [
+        68,
+        104
+      ],
+      "scope": "F013 initial scoped candidate; superseded, not current price"
+    },
+    "candidate_days_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days",
+    "projection_ref": "docs/review/execution-schedule.json#/local_core",
+    "pricing_review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
   },
   "mainline_readiness_review": {
     "ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
@@ -2095,7 +2101,7 @@
           "id": "IAM",
           "ref": "docs/phase6/foundation-iam-module-detail.md",
           "state": "source_mapped_contract_and_net_candidate",
-          "remaining": "Public IAM shapes and C05 profile mapped; 28-46 IAM net allocation integrated into core95-148 candidate. Actual implementation and first-slice calibration remain."
+          "remaining": "Public IAM shapes and C05 profile mapped; 28-46 IAM net allocation is integrated; current core price follows the local estimate source after F021 compatibility repricing. Actual implementation and first-slice calibration remain."
         },
         {
           "id": "CORRECTNESS",
@@ -2525,9 +2531,24 @@
       28,
       46
     ],
-    "net_local_core_days": [
-      95,
-      148
-    ]
+    "historical_net_local_core_days": {
+      "days": [
+        95,
+        148
+      ],
+      "scope": "2026-11-15 IAM/AL net integration, before F021 compatibility repricing"
+    },
+    "net_local_core_days_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days"
+  },
+  "planning_review_repair": {
+    "date": "2026-11-16",
+    "source_followup": "F021-planning-review-repair",
+    "state": "bounded_planning_and_validation_repair_not_business_implementation",
+    "projection_ref": "docs/review/execution-schedule.json#/local_core",
+    "report_ref": "docs/review/reports/planning-review-repair-2026-11-16.md",
+    "C05_replay_behavior_choice": "pending_owner_response_current_strong_contract_unchanged",
+    "old_release_numbers_are_historical": true,
+    "current_price_single_source": "docs/review/local-core-release-estimate.json#/totals",
+    "existing_product_defects_remain_open": true
   }
 }

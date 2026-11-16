@@ -87,6 +87,8 @@
 
 所有者本轮授权将建议纳入设计和计划，**没有授权开发或更换引擎**。下列是既有包的有界动作索引，不是新增7个父包；机器权威在[总账的authorization_gap_closure](../review/planning-backlog.json)、实施证据状态在[成熟度](../review/planning-design-status.json)。
 
+本节编号按[文档命名空间](../documentation.md#引用编号与命名空间)限定：`AUTH-GAP-*`是本节改进动作，`AUTH-*`是权限专项的缺陷；`C04/D03/D06/CE01`等为总账父包。`S1/R2/TD03/TD05/MH02/Q1`等专指[本地净估册](../review/local-core-release-estimate.json)的WBS行，映射到父包不重复计价；后文局部短名沿用此定义。
+
 | 动作 | 补什么、怎样算补齐 | 主责与完成窗口 | 估算关系 |
 |---|---|---|---|
 | **AUTH-GAP-01 来源与撤权** | 修已在册的停组/父角色失效、直接与有效编辑分轨、任职往返及授予边界；撤一路不误撤其它合法来源，撤权先提交旧决定不得再提交 | C04/C05/D06；首版本地S1及各域实际启用前。UAA来源由P/R后继 | 复用FND/HIER/AUTH/RECHECK，不重复立修复项；开工拆子估 |

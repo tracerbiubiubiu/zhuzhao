@@ -3,6 +3,8 @@
 import copy
 import importlib.util
 import json
+import hashlib
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -93,6 +95,189 @@ class GraphAndCapacityTests(unittest.TestCase):
         for value in [[-1,2],[3,2],[True,2],'unpriced',None,{},1]:
             with self.assertRaises(ValueError):m.pair(value)
         with self.assertRaises(ValueError):m.run_scheduler({},0,0)
+
+
+def local_core_fixture():
+    estimate = {
+        'groups': [
+            {'id': 'S', 'days': [2, 3], 'wbs': [
+                {'id': 'S1', 'days': [2, 3], 'suballocations': [
+                    {'id': 'UAA-C', 'days': [1, 2]}, {'id': 'IAM-A', 'days': [1, 1]}]}]},
+            {'id': 'RELEASE', 'days': [2, 3], 'wbs': [
+                {'id': 'Q1', 'days': [1, 2]}, {'id': 'Q2', 'days': [1, 1]}]},
+        ],
+        'totals': {'raw_days': [4, 6], 'rounded_display_days': [4, 6]},
+        'capacity': {'effective_seats': 1, 'engineering_days_per_week': 5, 'actual_T0': None},
+    }
+    target = {'must_have': ['independent local IAM', 'verified local release'],
+              'estimate_views': {'full_release_net_days': [4, 6]}}
+    projection = {
+        'node_bindings': [
+            {'id': 'S1', 'parent_packages': ['C04'], 'dependencies': []},
+            {'id': 'Q1', 'parent_packages': ['G04'], 'dependencies': ['S1']},
+            {'id': 'Q2', 'parent_packages': ['G05'], 'dependencies': ['Q1'],
+             'external_condition_keys': ['MH01_MR1']},
+        ],
+        'required_journeys': [
+            {'requirement_ref': '/must_have/' + str(i),
+             'requirement_sha256': hashlib.sha256(text.encode()).hexdigest(),
+             'wbs_ids': ['S1'] if i == 0 else ['Q1', 'Q2']}
+            for i, text in enumerate(target['must_have'])
+        ],
+        'external_conditions': {'MH01_MR1': {
+            'action_ref': '/execution_actions/MH01_MR1',
+            'required_exits': ['formal_local']}},
+        'delivery_exits': {
+            'public_contract': {'targets': ['Q1'], 'condition_keys': [],
+                                'evidence_ref': 'docs/phase6/first-usable-release-plan.md#4'},
+            'formal_local': {'targets': ['Q2'], 'condition_keys': ['MH01_MR1'],
+                             'evidence_ref': 'docs/phase6/first-usable-release-plan.md#4'},
+        },
+    }
+    actions = {'execution_actions': {'MH01_MR1': {
+        'state': 'pending_real_inputs_then_binding', 'evidence_state': 'not_provided',
+        'evidence_refs': [], 'blocks': 'real message verification and formal local release',
+        'blocks_release_exits': ['formal_local']}}}
+    return estimate, projection, target, {'C04', 'G04', 'G05'}, actions
+
+
+class LocalCoreProjectionTests(unittest.TestCase):
+    def build(self, *args):
+        return m.build_local_core_projection(*(args or local_core_fixture()))
+
+    def test_actual_wbs_is_charged_once_without_parent_ancestor_prices(self):
+        result = self.build()
+        self.assertEqual(result.get('raw_engineering_days'), [4, 6])
+        self.assertEqual(result.get('rounded_display_days'), [4, 6])
+        self.assertEqual(set(result.get('nodes', {})), {'S1', 'Q1', 'Q2'})
+        self.assertFalse(result.get('added_to_long_horizon_total', True))
+        self.assertEqual(result.get('resources', {}).get('1', {}).get('engineering_makespan_if_conditions_ready'), [4, 6])
+
+    def test_group_row_total_and_suballocation_drift_are_rejected(self):
+        for mutation in ('group', 'total', 'display', 'suballocation'):
+            args = list(local_core_fixture()); estimate = args[0]
+            if mutation == 'group': estimate['groups'][0]['days'] = [1, 1]
+            elif mutation == 'total': estimate['totals']['raw_days'] = [99, 99]
+            elif mutation == 'display': estimate['totals']['rounded_display_days'] = [5, 7]
+            else: estimate['groups'][0]['wbs'][0]['suballocations'][0]['days'] = [8, 9]
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'sum|total|round|allocation'):
+                self.build(*args)
+
+    def test_every_priced_row_has_one_known_parent_mapped_node(self):
+        for mutation in ('missing', 'duplicate', 'unknown', 'parent'):
+            args = list(local_core_fixture()); bindings = args[1]['node_bindings']
+            if mutation == 'missing': bindings.pop()
+            elif mutation == 'duplicate': bindings.append(copy.deepcopy(bindings[0]))
+            elif mutation == 'unknown': bindings.append({'id': 'new_free_scope', 'parent_packages': ['C04'], 'dependencies': []})
+            else: bindings[0]['parent_packages'] = ['unknown_parent']
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'node|binding|parent'):
+                self.build(*args)
+
+    def test_local_dependency_missing_and_cycle_are_rejected(self):
+        for dependency in ('missing', 'Q2'):
+            args = list(local_core_fixture()); args[1]['node_bindings'][0]['dependencies'] = [dependency]
+            with self.subTest(dependency=dependency), self.assertRaisesRegex(ValueError, 'dependency|cycle'):
+                self.build(*args)
+
+    def test_required_journeys_cannot_be_dropped_or_rebound_to_changed_text(self):
+        for mutation in ('missing', 'duplicate', 'new_requirement', 'changed_text', 'unknown_wbs'):
+            args = list(local_core_fixture()); journeys = args[1]['required_journeys']
+            if mutation == 'missing': journeys.pop()
+            elif mutation == 'duplicate': journeys.append(copy.deepcopy(journeys[0]))
+            elif mutation == 'new_requirement': args[2]['must_have'].append('new mandatory scope')
+            elif mutation == 'changed_text': args[2]['must_have'][0] = 'changed business meaning'
+            else: journeys[0]['wbs_ids'] = ['not_priced']
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'journey|requirement|coverage'):
+                self.build(*args)
+
+    def test_missing_external_action_or_formal_gate_binding_is_rejected(self):
+        for mutation in ('action', 'gate'):
+            args = list(local_core_fixture())
+            if mutation == 'action': args[4]['execution_actions'].clear()
+            else: args[1]['delivery_exits']['formal_local']['condition_keys'] = []
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'condition|action|gate'):
+                self.build(*args)
+
+    def test_unknown_waiting_never_becomes_zero_or_formal_readiness(self):
+        result = self.build()
+        self.assertIn('external_waiting_days', result)
+        self.assertIsNone(result['external_waiting_days'])
+        self.assertIsNone(result.get('calendar'))
+        self.assertFalse(result.get('formal_activation_approved', True))
+        self.assertEqual(result.get('externally_blocked_wbs'), ['Q2'])
+        self.assertEqual(result.get('unblocked_public_wbs'), ['Q1', 'S1'])
+        formal = result.get('delivery_exits', {}).get('formal_local', {})
+        self.assertEqual(formal.get('condition_keys'), ['MH01_MR1'])
+        self.assertEqual(formal.get('readiness'), 'not_verified_by_schedule')
+
+    def test_current_target_price_cannot_drift_from_net_estimate(self):
+        args = list(local_core_fixture()); args[2]['estimate_views']['full_release_net_days'] = [3, 5]
+        with self.assertRaisesRegex(ValueError, 'current.*view|price.*drift'):
+            self.build(*args)
+
+    def test_formal_local_exit_cannot_drop_selected_wbs_or_required_journeys(self):
+        args = list(local_core_fixture())
+        args[1]['delivery_exits']['formal_local']['targets'] = ['S1']
+        with self.assertRaisesRegex(ValueError, 'formal.*coverage|formal.*WBS'):
+            self.build(*args)
+
+    def test_model_cannot_self_remove_or_redirect_owner_external_release_gate(self):
+        for mutation in ('double_remove', 'redirect', 'omit_condition'):
+            args = list(local_core_fixture()); projection = args[1]
+            projection['delivery_exits']['formal_local']['condition_keys'] = []
+            if mutation == 'double_remove':
+                projection['external_conditions']['MH01_MR1']['required_exits'] = []
+            elif mutation == 'redirect':
+                projection['external_conditions']['MH01_MR1']['required_exits'] = ['public_contract']
+                projection['delivery_exits']['public_contract']['condition_keys'] = ['MH01_MR1']
+            else:
+                projection['external_conditions'].clear()
+                projection['node_bindings'][-1]['external_condition_keys'] = []
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'condition|action|gate'):
+                self.build(*args)
+
+    def test_repository_generator_exposes_separate_local_core_and_hashes_its_sources(self):
+        result = m.calculate(ROOT)
+        self.assertIn('local_core', result)
+        for path in ('docs/review/local-core-release-estimate.json',
+                     'docs/review/first-usable-release-target.json',
+                     'docs/review/owner-decision-agenda.json'):
+            self.assertIn(path, result['source_input_sha256'])
+        core = result['local_core']
+        estimate = json.loads((ROOT / 'docs/review/local-core-release-estimate.json').read_text())
+        self.assertEqual(core['raw_engineering_days'], estimate['totals']['raw_days'])
+        self.assertEqual(core['rounded_display_days'], estimate['totals']['rounded_display_days'])
+        self.assertEqual(len(core['required_journeys']), 9)
+        self.assertEqual(set(result['current_view_checks']),
+                         {'docs/review/11-project-control.md', 'docs/roadmap.md'})
+        self.assertIn('首版本地核心的机器投影', m.render_schedule(result))
+        self.assertIn(result['current_local_core_summary'], m.render_schedule(result))
+        self.assertEqual(result['bounded_effort_totals']['public_R_pending'], [394, 656])
+
+    def test_current_summary_uses_current_raw_rounded_and_shared_transfer(self):
+        estimate = local_core_fixture()[0]
+        estimate['totals']['raw_days'] = [4.5, 6.5]
+        estimate['totals']['rounded_display_days'] = [5, 7]
+        summary = m.current_core_summary(estimate)
+        self.assertIn('**5–7 个有效工程日**', summary)
+        self.assertIn('未取整 4.5–6.5', summary)
+        self.assertIn('S2 共用假设不成立时 5–7', summary)
+
+    def test_current_view_markers_ignore_history_but_reject_missing_duplicate_and_stale(self):
+        estimate = local_core_fixture()[0]
+        summary = m.current_core_summary(estimate)
+        name = 'docs/roadmap.md'
+        model = {'current_view_docs': [name]}
+        good = '<!-- local-core-current:start -->\n' + summary + '\n<!-- local-core-current:end -->\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp); (repo / name).parent.mkdir(parents=True)
+            (repo / name).write_text('Historical estimate 68–104 remains historical.\n' + good)
+            checked = m.validate_current_view_docs(repo, model, estimate)
+            self.assertEqual(set(checked), {name})
+            for value in ('no markers', good + good, good.replace(summary, 'stale current price')):
+                (repo / name).write_text(value)
+                with self.subTest(value=value[:40]), self.assertRaisesRegex(ValueError, 'current.*view|marker'):
+                    m.validate_current_view_docs(repo, model, estimate)
 
 
 class RepositoryModelTests(unittest.TestCase):

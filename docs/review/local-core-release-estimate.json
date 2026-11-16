@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "date": "2026-11-15",
+  "date": "2026-11-16",
   "status": "source_mapped_deduplicated_candidate_not_runtime_verified",
   "scope_owner_policy": "local-first formal operation allowed; quality and usability take precedence over January target; full UAA P/R follow core",
   "source_followup": "F013-local-first-quality-and-UAA-later",
   "basis_commit": "610c1d7644b1a578eba85842cef983b713e261c6",
   "basis_method": "read actual source/ports/tests; reuse existing product; count shared mechanism once and each domain adapter/effect once; no duration inferred from deadline",
   "unit": "effective engineering days including finite remaining design TDD implementation domain tests review and normal correction",
-  "confidence": "medium_low_pending_actual_first_slice_throughput_and_shared_S2_capacity",
+  "confidence": "medium_low_source_mapped_candidate_pending_first_slice_throughput_shared_S2_and_selected_provider_bindings",
   "groups": [
     {
       "id": "S",
@@ -870,34 +870,255 @@
       "allocation_refs": [
         "U01/U02/U03/U07和D12/CE显示子范围",
         "工单列表批量标签保留，不带全站U06"
-      ]
+      ],
+      "allocation_review": {
+        "state": "scope_reconciled_candidate_not_measured_speedup",
+        "historical_view_ref": "docs/review/reports/core-release-ui-trial-plan-2026-11-14.md#薄ui工作负载视图",
+        "historical_view_days": [
+          16,
+          26
+        ],
+        "current_days": [
+          10.5,
+          16.5
+        ],
+        "endpoint_reduction_percent": [
+          34.375,
+          36.5384615385
+        ],
+        "same_scope_speedup_claimed": false,
+        "iam_UI_rule": "Neither historical non-UAA seven rows nor current U1-U8 included the newly source-mapped local IAM editor/session work. IAM-A/C05 own it separately; do not claim this work was moved out of the old 16-26 to manufacture savings. UAA P/R UI remains excluded.",
+        "mapping": [
+          {
+            "historical_row": "home and permission landing",
+            "historical_days": [
+              1,
+              2
+            ],
+            "current_parts": [
+              {
+                "wbs": "U1",
+                "days": [
+                  0.5,
+                  1
+                ]
+              }
+            ],
+            "disposition": "Keep safe ordinary/zero-menu landing and bounded API/loading/error states; full homepage aggregation and all-site visual rollout remain later."
+          },
+          {
+            "historical_row": "risk list/detail/evaluation/restricted dispatch",
+            "historical_days": [
+              4,
+              6
+            ],
+            "current_parts": [
+              {
+                "wbs": "U2",
+                "days": [
+                  3,
+                  4
+                ]
+              },
+              {
+                "wbs": "U3",
+                "days": [
+                  0.5,
+                  1
+                ]
+              }
+            ],
+            "disposition": "Reuse ProTable/UserPicker and finite dialogs; no dashboard, complex tree, import/designer or general dispatch editor."
+          },
+          {
+            "historical_row": "ticket node/evidence/result and batch tags",
+            "historical_days": [
+              3,
+              5
+            ],
+            "current_parts": [
+              {
+                "wbs": "U4",
+                "days": [
+                  0.75,
+                  1.25
+                ],
+                "share": "presentation-only allocation, not a new WBS price"
+              },
+              {
+                "wbs": "U8",
+                "days": [
+                  2,
+                  3
+                ]
+              }
+            ],
+            "disposition": "Keep required original-ticket evidence/transition/result display and explicit-ID batch tags; no designer or generic bulk engine."
+          },
+          {
+            "historical_row": "TR authorized detail and receipt",
+            "historical_days": [
+              1,
+              2
+            ],
+            "current_parts": [
+              {
+                "wbs": "U4",
+                "days": [
+                  0.75,
+                  1.25
+                ],
+                "share": "other half of the same U4; both U4 shares sum to 1.5-2.5"
+              }
+            ],
+            "disposition": "Render bounded authorized task result inside original ticket; no second standalone TR detail page or grant of global task read."
+          },
+          {
+            "historical_row": "AL changes/conflict/linked feedback",
+            "historical_days": [
+              2,
+              3
+            ],
+            "current_parts": [
+              {
+                "wbs": "U5",
+                "days": [
+                  0.5,
+                  1
+                ]
+              }
+            ],
+            "disposition": "Reuse existing table/CAS/error behavior; add capability flags and bounded result/follow-up labels only. New backend policy/feed remains TD/AD."
+          },
+          {
+            "historical_row": "message and business failure summary",
+            "historical_days": [
+              2,
+              3
+            ],
+            "current_parts": [
+              {
+                "wbs": "U6",
+                "days": [
+                  0.5,
+                  1
+                ]
+              }
+            ],
+            "disposition": "Reuse message center/send-log and add pending/failed/accepted labels; provider mapping and durable state APIs remain MH/MR, no new full message console."
+          },
+          {
+            "historical_row": "new business browser combinations",
+            "historical_days": [
+              3,
+              5
+            ],
+            "current_parts": [
+              {
+                "wbs": "U7",
+                "days": [
+                  2,
+                  3
+                ]
+              }
+            ],
+            "disposition": "Use finite core journey and touched-screen states; tag selection cases already in U8, IAM cases in IAM-A/C05, UAA login matrix later. Existing 42 E2E execution does not prove new journeys."
+          }
+        ],
+        "mapping_rule": "Current_parts are a display allocation of existing U1-U8, not extra estimates. Per-WBS parts sum to that WBS once, and all current parts sum to 10.5-16.5.",
+        "review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+        "reestimate_triggers": [
+          "backend does not supply the frozen normalized typed APIs",
+          "selected screens require a new generic component rather than listed reuse",
+          "full home metrics, standalone TR detail, designer, all-site U06 or UAA UI is brought into the first-local scope"
+        ]
+      }
     },
     {
       "id": "RELEASE",
       "title": "联合回归与本地账号正式部署准备",
       "days": [
-        5,
-        8
+        7,
+        11
       ],
       "wbs": [
         {
           "id": "Q1",
           "days": [
-            2,
-            3
+            4,
+            6
           ],
-          "deliverable": "整合精确五仓组合、非重复跨域故障/权限/恢复反例、独立评审和适用门禁",
+          "deliverable": "Existing five-repository joint acceptance 2-3 plus explicit old-reference-adapter/new-core compatibility net 2-3; selected profile only, with executable frozen consumer, actual HTTP and rollback/configuration evidence",
           "source_refs": [
             "docs/phase6/implementation-handoff.md",
             "docs/standards.md"
           ],
-          "excludes": "各域专用case、UI浏览器case已在各包，只计整合与额外接缝组合",
+          "excludes": "Does not author or recharge domain/browser cases, shared IAM/operation mechanisms, MH01 HTTP peer construction, Q2 deployment/recovery drills, full X01/X02 SDK/host platform or unavailable company-private SDKs.",
           "authorization_gap_actions": [
             "AUTH-GAP-04",
             "AUTH-GAP-05"
           ],
           "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
-          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows.",
+          "sub_wbs": [
+            {
+              "scope": "Existing joint acceptance: exact five-repository artifact/profile manifest and assembly checks",
+              "days": [
+                0.5,
+                0.75
+              ],
+              "allocation": "existing Q1"
+            },
+            {
+              "scope": "Existing joint acceptance: non-duplicated cross-domain permission/fault/recovery combinations using domain and UI cases already authored in their own rows",
+              "days": [
+                0.75,
+                1.25
+              ],
+              "allocation": "existing Q1"
+            },
+            {
+              "scope": "Existing joint acceptance: independent review, applicable gates and normal joint correction",
+              "days": [
+                0.75,
+                1
+              ],
+              "allocation": "existing Q1"
+            },
+            {
+              "scope": "Compatibility increment: freeze one finite public synthetic HTTP adapter harness (caller and selected provider roles) plus reuse the MH01 message peer; pin executable/source-lock/config fixture hashes independently of candidate code generation",
+              "days": [
+                0.5,
+                0.75
+              ],
+              "allocation": "net new compatibility"
+            },
+            {
+              "scope": "Compatibility increment: run frozen consumer against exact candidate core for selected read, already-selected AL write/receipt and message HTTP contract; cover compatible additions and controlled unsupported changes",
+              "days": [
+                0.75,
+                1.25
+              ],
+              "allocation": "net new compatibility"
+            },
+            {
+              "scope": "Compatibility increment: old-client authorization/error/retry/response-loss and external configuration/rollback-boundary assertions, evidence and normal correction, reusing existing domain cases",
+              "days": [
+                0.75,
+                1
+              ],
+              "allocation": "net new compatibility"
+            }
+          ],
+          "compatibility_net_added_days": [
+            2,
+            3
+          ],
+          "existing_joint_days": [
+            2,
+            3
+          ],
+          "estimate_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
         },
         {
           "id": "Q2",
@@ -905,7 +1126,7 @@
             3,
             5
           ],
-          "deliverable": "复用已验升级制品/备份工具，核固定制品来源、SBOM和整镜像漏洞、单目标离线运行包、TLS/秘密/会话与网络边界；新业务迁移/恢复与回退、故障接管责任、安装runbook和本地正式验收；含原维护合main收尾1–2日所需部分",
+          "deliverable": "Remaining first-local-release work only: exact new-business artifacts, SBOM/full-image checks and offline package; one deployment profile TLS/secrets/network wiring; new-business migration/restore/rollback compatibility; bounded operator handover and installation/recovery runbook. Completed component upgrades, development-stack rebuild and their main integration are not charged again.",
           "source_refs": [
             "deployments/component-lock.json",
             "docs/review/reports/version-modernization-2026-11-12.md",
@@ -916,27 +1137,76 @@
             "AUTH-GAP-05"
           ],
           "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
-          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows."
+          "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows.",
+          "sub_wbs": [
+            {
+              "scope": "Bind exact new-business source/images, reuse controlled component locks and build pipeline; produce SBOM/full-image scan and single-target offline package with provenance",
+              "days": [
+                1,
+                1.5
+              ]
+            },
+            {
+              "scope": "Bind one approved local-account deployment profile: endpoints/TLS/secrets/session/network boundaries and operator-owned configuration checks",
+              "days": [
+                0.5,
+                1
+              ]
+            },
+            {
+              "scope": "Exercise new-business migrations and representative data backup/restore; verify allowed schema/code rollback or explicit stop/compensation boundary",
+              "days": [
+                0.75,
+                1.25
+              ]
+            },
+            {
+              "scope": "Run one bounded operator recovery/handover exercise, update installation/runbook and close normal release corrections",
+              "days": [
+                0.75,
+                1.25
+              ]
+            }
+          ],
+          "completed_credit": {
+            "state": "excluded_from_remaining_work_not_subtracted_twice",
+            "completed_scope": [
+              "Go/Node/PG/Redis/RustFS component upgrade implementation and its synthetic data drills",
+              "approved maintenance main integration and development/test stack rebuild",
+              "ENG-D01b tier classifier/checkers and current workflows already merged"
+            ],
+            "evidence_refs": [
+              "docs/review/reports/main-verification-2026-11-14.md",
+              "docs/review/reports/tiered-quality-gates-2026-11-16.md"
+            ],
+            "historical_maintenance_closing_reference_days": [
+              1,
+              2
+            ],
+            "rule": "The former phrase including maintenance main closing was stale. The new 3-5 range is bottom-up remaining release work, not old 3-5 minus an invented exact overlap. Do not charge completed maintenance or use it to declare new-business SBOM/restore/production binding already done."
+          },
+          "estimate_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
         }
       ],
       "allocation_refs": [
         "G03/G04/G05/E09适用最小正式门",
         "原维护收尾预留归本包一次"
-      ]
+      ],
+      "estimate_review_state": "remaining_work_decomposed_with_explicit_compatibility_increment"
     }
   ],
   "totals": {
     "raw_days": [
-      94.5,
-      147.5
+      96.5,
+      150.5
     ],
     "rounded_display_days": [
-      95,
-      148
+      97,
+      151
     ],
     "effective_weeks_at_5_days": [
-      18.9,
-      29.5
+      19.3,
+      30.1
     ],
     "before_joint_release_raw_days": [
       89.5,
@@ -944,7 +1214,15 @@
     ],
     "core_trial_and_normal_fix_included": true,
     "full_UAA_P_R_excluded": true,
-    "UAA_C_is_in_S1_not_added_again": true
+    "UAA_C_is_in_S1_not_added_again": true,
+    "conservative_without_shared_transfer_raw_days": [
+      98.5,
+      153.5
+    ],
+    "conservative_without_shared_transfer_rounded_days": [
+      99,
+      154
+    ]
   },
   "capacity": {
     "effective_seats": 1,
@@ -959,7 +1237,7 @@
   },
   "trial_policy": {
     "incremental_trial": "risk-to-ticket first, then TR/AL/message; do not wait for all code before showing real roles",
-    "stabilization_window": "末尾约2–3个有效周由已价正常修正及RELEASE构成，核心逐步试用可更早开始，不能继续塞新范围",
+    "stabilization_window": "末尾约2.4–3.5个有效周由已价域/UI正常修正5–6.5日与RELEASE7–11日组成；逐步试用可更早开始，不额外加缓冲或新功能。",
     "not_an_extra_blanket_fee": "normal correction and domain/browser cases already priced in rows; new owner scope changes priced separately",
     "formal_local_exit": "core mandatory journey and applicable production gates pass; current UAA is not a formal-local precondition",
     "late_normal_correction_allocations": [
@@ -1011,12 +1289,12 @@
       6.5
     ],
     "release_days_included": [
-      5,
-      8
+      7,
+      11
     ],
     "late_phase_combined_days_included": [
-      10,
-      14.5
+      12,
+      17.5
     ],
     "not_added_to_total": true
   },
@@ -1038,7 +1316,8 @@
     "release": "Q1 does not rewrite or recharge the same domain/browser cases",
     "IAM_S2": "C gross12-19 transfers common mechanism2-3 into retained S2; C-specific10-16; C05-specific6-10 retains its own security integration.",
     "IAM_UI": "IAM-A/C05 own their necessary UI and dedicated cases; old UI U1-U8 are not deducted as if they contained IAM.",
-    "OBS": "S3 necessary redaction; C two-command facts/recovery; later OBS02 query/export/UI deduct actual delivered work before its own estimate."
+    "OBS": "S3 necessary redaction; C two-command facts/recovery; later OBS02 query/export/UI deduct actual delivered work before its own estimate.",
+    "adapter_compatibility": "S1/TD/MH01/Q2 retain their existing implementation/cases; Q1 separately prices frozen-old-consumer/new-core net 2-3 once. Synthetic public fixtures do not wait for company SDK export; selected private artifact still requires intranet activation evidence."
   },
   "exclusions": [
     "full UAA public P/private R, enterprise SSO/feed/governance UI and actual switch",
@@ -1052,7 +1331,7 @@
     "message provider contract and real test window",
     "selected real business profile/type/org/fields/actions/recipients",
     "production runtime access/TLS/secrets/backup target and operator availability",
-    "confirmed two-operation atomic audit pilot still needs minimal source/transaction/receipt design, implementation and deduplicated estimate"
+    "confirmed two-operation atomic audit pilot design/implementation is now source-mapped in IAM-C and S2 allocation; selected production subject/retention and real external collector binding (only when outbound audit delivery is enabled) remain conditions, not free new scope"
   ],
   "UAA_followup": {
     "C_contract": [
@@ -1074,7 +1353,7 @@
     "calendar_two_months": "owner aspiration, not verified duration; net deduct actual reusable IAM/intent/UI work once and reserve core maintenance capacity",
     "actual_real_conditions": "not fixed; local operation may proceed while enterprise governance remains unactivated"
   },
-  "next_calibration": "Use actual IAM-A implementation/review/real regression throughput to calibrate B/C/C05 and the C-to-S2 2-3 shared allocation. No fixed calendar promise or removal of required capabilities.",
+  "next_calibration": "Use actual IAM-A implementation/review/real regression throughput to calibrate B/C/C05 and C-to-S2 2-3 allocation, then use first frozen-consumer compatibility run and Q2 one-target handover actuals to calibrate Q1/Q2. Phase5 commit/line/test runtime counts are not effective engineering throughput; no fixed calendar promise or removal of required scope.",
   "review_adjustments": {
     "initial_candidate_raw": [
       62.5,
@@ -1131,7 +1410,8 @@
       "total_delta_with_AL_read_days": [
         27,
         44
-      ]
+      ],
+      "history_scope": "This object records the 2026-11-15 IAM/AL replacement only; its 95-148 and conservative97-151 endpoints are historical after the 2026-11-16 Q1 increment. Use totals and accounting_reconciliation_2026_11_16 for current full-release price."
     },
     "selected_AL_read": {
       "gross_days": [
@@ -1156,6 +1436,51 @@
       ],
       "TD05_cases_counted_once": true,
       "ref": "docs/phase6/task-activelist-message-detail.md#81-首个al类型的用户读取合同"
+    },
+    "accounting_reconciliation_2026_11_16": {
+      "ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+      "previous_raw_days": [
+        94.5,
+        147.5
+      ],
+      "previous_rounded_days": [
+        95,
+        148
+      ],
+      "net_added_days": [
+        2,
+        3
+      ],
+      "charged_in": "Q1",
+      "unchanged_UI_days": [
+        10.5,
+        16.5
+      ],
+      "Q2_remaining_days": [
+        3,
+        5
+      ],
+      "Q2_completed_maintenance_not_charged": true,
+      "revised_raw_days": [
+        96.5,
+        150.5
+      ],
+      "revised_rounded_days": [
+        97,
+        151
+      ],
+      "conservative_without_shared_transfer_raw_days": [
+        98.5,
+        153.5
+      ],
+      "conservative_without_shared_transfer_rounded_days": [
+        99,
+        154
+      ],
+      "C05_scope_or_price_changed": false,
+      "C05_review": "Current strong secret-input comparison contract and 6-10 remain until explicit behavior decision; HMAC has no independently priced 1.5-2.5 saving.",
+      "global_parent_prices_unchanged": true,
+      "no_calendar_promise": true
     }
   },
   "authorization_gap_binding": {
@@ -1308,5 +1633,91 @@
       46
     ],
     "allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md"
+  },
+  "accounting_reconciliation_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+  "compatibility_regression": {
+    "parent_case": "EXT-04",
+    "state": "priced_delivery_not_implemented_or_artifact_frozen",
+    "charged_in": "Q1",
+    "net_added_days": [
+      2,
+      3
+    ],
+    "existing_coverage": [
+      {
+        "wbs": "S1",
+        "already_priced": "UAA-C/public identity and authorization rules only; no extra common IAM framework charged here. Each selected runtime port must also have its real domain owner; Q1 does not create unpriced X01/X02 implementations."
+      },
+      {
+        "wbs": "TD03/TD04/TD05",
+        "already_priced": "selected core/AL read-write/receipt and current scope enforcement with domain refusal/recovery cases"
+      },
+      {
+        "wbs": "MH01",
+        "already_priced": "one public HTTP message contract, synthetic real HTTP peer and field/auth/business-code adapter"
+      },
+      {
+        "wbs": "Q1",
+        "already_priced": "2-3 joint artifact assembly and cross-domain combinations, separate from the explicit new frozen-client compatibility charge"
+      },
+      {
+        "wbs": "Q2",
+        "already_priced": "offline configuration, new-business artifact/restore/rollback and handover; do not run/charge the same deployment drill twice"
+      }
+    ],
+    "public_fixture_scope": {
+      "selected_write_and_receipt": "the AL write and receipt already required by the local-core profile; this is mandatory old-consumer regression, not a newly invented write feature",
+      "message_peer": "reuse the MH01 synthetic HTTP provider peer; freeze its accepted/auth/error/lookup behavior as the older public contract",
+      "first_baseline_rule": "Freeze reference consumer at the reviewed first contract before candidate implementation; do not pretend Phase5 implements new ports. Once a real formal consumer is registered, retain its supported contract baseline for later core upgrades.",
+      "consumer_artifact_digest": null,
+      "candidate_core_artifact_digest": null,
+      "manifest_required": [
+        "consumer source/package/version and executable digest",
+        "candidate core commit/tree/image and SDK version",
+        "selected contract/profile versions and reviewed config hash",
+        "case expectations, commands, actual results and exact failed/unsupported combinations"
+      ],
+      "independence": "Old consumer must not be regenerated or recompiled against candidate DTO/schema just to make tests pass; shape/hash examples alone are not runtime compatibility evidence.",
+      "selected_adapter_harness": "one finite public synthetic HTTP harness: frozen caller for enabled core ports and frozen provider for the selected query/source port; no import of core internal packages or company SDK"
+    },
+    "case_matrix": [
+      {
+        "scenario": "selected-core-read-and-provider-query",
+        "expectation": "Exercise each enabled read/query role in its real direction: old caller to candidate core, and candidate core to frozen selected provider. Verify typed normalization/cursor/scope/field projection and current granted rows; no hidden totals or fields. Freeze the enabled port list and implementation owner first; unsupported private platforms are not silently added."
+      },
+      {
+        "scenario": "selected-write-receipt-and-response-loss",
+        "expectation": "Already-selected AL write uses stable operation; same-key retry/lookup does not repeat effects, pending/effect-complete and projection-pending retain original meaning."
+      },
+      {
+        "scenario": "compatible-addition-and-unsupported-change",
+        "expectation": "Supported optional additions preserve frozen consumer behavior; unknown required enum or removed/changed completion/error semantics reject candidate or require an explicit new contract/adapter version, never silent coercion."
+      },
+      {
+        "scenario": "current-authorization-authentication-and-errors",
+        "expectation": "Revoked/no-scope/wrong-audience or invalid-signature calls deny through the same current rule; stable structured errors do not become generic success or require global task authority."
+      },
+      {
+        "scenario": "message-accepted-failed-unknown-and-query",
+        "expectation": "Frozen HTTP peer validates canonical request and acceptance/error/status-query meanings, stable delivery identity and timeout/response-loss handling; accepted is not proof of final delivery."
+      },
+      {
+        "scenario": "external-config-and-rollback-boundary",
+        "expectation": "Swap reviewed endpoint/secret references without editing core internals; Q1 checks contract/profile compatibility with allowed old configuration, Q2 alone owns actual new-business restore/rollback drill."
+      }
+    ],
+    "private_adapter_boundary": {
+      "company_source_or_SDK_export_required_for_public_mock_development": false,
+      "real_activation_condition": "The operator of the selected real private adapter runs its frozen old artifact against the candidate in the intranet before activating that adapter, and retains sanitized combination/result evidence locally.",
+      "owner_action": "Bind selected adapter operator, actual artifact/profile and intranet test window before its real trial/formal activation; public synthetic baseline may proceed independently.",
+      "pricing_boundary": "The selected one-protocol real message mapping/testing remains MR1 2-3, external waiting is separate. Extra private SDKs, provider versions or contract deviations require a named net scope change; not an unlimited promise inside Q1."
+    },
+    "excludes": [
+      "full plugin/SDK host or all-provider compatibility platform",
+      "real company endpoints or credentials in public CI",
+      "new API/permission scope created solely to run a compatibility test",
+      "re-authoring domain/browser regression already charged elsewhere"
+    ],
+    "review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
   }
 }

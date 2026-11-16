@@ -259,7 +259,13 @@ key轮换时旧验证key按去重窗口受控保留；若不可用，不盲认�
 
 claims参考冻结为AT/RT新增可选`session_schema="db_epoch_v1"`、`session_epoch`规范十进制正字符串（int64范围）；核心对新schema分支必须校验，两字段缺一或非法均会话终态，不走旧epoch0回落。utils旧签发/解析入口对其它消费者保持兼容，新增显式安全代际签发能力，旧Pwe不能被当新DB字段；TokenPair/cookie外壳不改。projection intent只含operation/user/expected_epoch/desired_active/lease/fence及安全reason，不含token/口令/完整请求。USER创建/存量初始化/CLI也消费该profile，产品与公共库生成代码仍待实现。
 
-源映射后的C05毛估候选为**6–10单席工程日**：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/安全重放1–1.5；薄UI/session generation/运维1–1.5；真实回归/评审1–2。原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。全版净额已按净分配整合为95–148候选，不能用已有回归免费包干。
+源映射后的C05毛估候选为**6–10单席工程日**：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/安全重放1–1.5；薄UI/session generation/运维1–1.5；真实回归/评审1–2。原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前Q1兼容补估后为97–151，唯一数字源见净估册，不能用已有回归免费包干。
+
+**2026-11-16首版收窄候选（F021，尚未批准）**：上段6–10对应现行强参数绑定合同，HMAC并无独立1.5–2.5日额度，不能直接按该数扣价。当前全版已因Q1兼容回归补计更新为97–151，详见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)。C05应先按所选行为拆明依赖、复用和剩余量，再校准，不能以方案简化默许撤权/恢复测试减少。
+
+候选用户行为是：操作K第一次改密后响应丢失，再携A或B重投K都不再次写密码/epoch、不重签原TokenPair；明确返回“操作已存在／结果待核查”，当前主体重新认证且仍有目标读权后查询最小原receipt。若要改成B，须重新确认并用新操作编号，界面不能把K原结果当成本次B已生效。这样可以后置精确秘密相等校验及验证key生命周期，但**必须同时撤下“同键同秘密回原结果、异秘密必409”的强辨别承诺**；DB epoch、原子业务/receipt/intent、旧worker fence/CAS和会话撤销继续必交。未知提交仅靠当前epoch不能认定原K成功，必须核同事务receipt；查不到或不可判定时停止自动重做并受控核查。
+
+[Stripe幂等请求](https://docs.stripe.com/api/idempotent_requests)说明同键不同参数应报错；[OWASP密码重置指南](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)强调单次/限时凭证、通知、正常登录及旧会话处理。前者支持现行强合同的意图一致性，后者不等于要求本项目新建找回密码服务或HMAC重放平台。本候选是为首版主动收窄操作重放语义，并非宣称两个合同等价。所有者本轮仅追问“业界是怎么做的”，不视作批准；选择及后续子估记录在[本轮议程](../review/owner-decision-agenda.json#/planning_repair_followup)，现行§4.4/SESSION-10/参考向量在明确选择前保持。
 
 SESSION-10补秘密变参/目标替换、key轮换/缺旧key、原默认值固定、receipt不泄digest及未认证secret_ref拒绝；SESSION-07/09补claims半字段/零/超int64及旧utils调用者保持原合同。这里是可写独立测试的候选，不是密码、密钥或数据已改。
 

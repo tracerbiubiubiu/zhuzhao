@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-15",
+  "date": "2026-11-16",
   "scope": "Cost and scheduling decomposition only; no runtime migration is claimed",
   "original_parent_ids": [
     "G01",
@@ -505,8 +505,9 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R核心稳定后交。本模型是旧长期相对排程，不等于首版净估DAG或整Phase6日期承诺；一席保留，实际T0未启动",
-    "iam_estimate_note": "F017已确认两政策；当前生成数值仍为旧长期候选基线，IAM A/B/C及任务子估尚未扣重整合，不能据fully_priced标签承诺新范围已足额计价；见docs/phase6/iam-first-batch-design.md。"
+    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R在核心稳定后交。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
+    "iam_estimate_note": "本地IAM A/B/C/TASK/C05已按源映射扣重整合入首版净估；S2共用2–3日是明确假设，保守视图另列。长期76父包保持原有界价格，不能据此把首版净价再加到父包总价；实际实耗仍待首批校准。",
+    "maintenance_reserve_note": "长期with/without reserve保留原1–2日条件容量对照；现有已完成版本维护/合main不再派发或计价，首版本地Q2已排除该信用，不能把历史对照当今日剩余报价。"
   },
   "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
@@ -554,7 +555,564 @@
   },
   "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
   "local_core_net_estimate_ref": "docs/review/local-core-release-estimate.json",
-  "local_core_view_note": "separate subset allocation/net estimate for quality-first local formal core; this long-horizon DAG is not the new first-core sequence or a January commitment; applicable G05/E09 sub-exits pulled before formal local production",
+  "local_core_view_note": "The same generator exposes local_core from the selected net WBS and mandatory journeys. It is not added to the 76-parent totals; real waiting and activation dates remain unknown, and evidence gates are not proven by scheduling.",
   "authorization_gap_plan_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
-  "iam_first_batch_ref": "docs/phase6/iam-first-batch-design.md"
+  "iam_first_batch_ref": "docs/phase6/iam-first-batch-design.md",
+  "current_view_docs": [
+    "docs/review/11-project-control.md",
+    "docs/roadmap.md"
+  ],
+  "local_core_projection": {
+    "source_estimate": "docs/review/local-core-release-estimate.json",
+    "source_target": "docs/review/first-usable-release-target.json",
+    "scope_rule": "Existing local WBS IDs and source parent mappings only. Parent prices and long-range ancestors do not become extra local tasks. Requirement pointers/hash bind current meaning; mappings still require semantic review.",
+    "node_bindings": [
+      {
+        "id": "S2",
+        "parent_packages": [
+          "C04",
+          "R01",
+          "CE01",
+          "CE02"
+        ],
+        "dependencies": [],
+        "priority": 0
+      },
+      {
+        "id": "S1",
+        "parent_packages": [
+          "C04",
+          "C05",
+          "D06",
+          "E01"
+        ],
+        "dependencies": [
+          "S2"
+        ],
+        "priority": 1
+      },
+      {
+        "id": "S3",
+        "parent_packages": [
+          "C02",
+          "C04"
+        ],
+        "dependencies": [],
+        "priority": 2
+      },
+      {
+        "id": "R1",
+        "parent_packages": [
+          "D08"
+        ],
+        "dependencies": [
+          "S1",
+          "S3"
+        ],
+        "priority": 3
+      },
+      {
+        "id": "R2",
+        "parent_packages": [
+          "D03",
+          "D08"
+        ],
+        "dependencies": [
+          "R1"
+        ],
+        "priority": 4
+      },
+      {
+        "id": "R3",
+        "parent_packages": [
+          "D09"
+        ],
+        "dependencies": [
+          "R2"
+        ],
+        "priority": 5
+      },
+      {
+        "id": "R4",
+        "parent_packages": [
+          "D10"
+        ],
+        "dependencies": [
+          "R3"
+        ],
+        "priority": 6
+      },
+      {
+        "id": "R5",
+        "parent_packages": [
+          "D10"
+        ],
+        "dependencies": [
+          "R4"
+        ],
+        "priority": 7
+      },
+      {
+        "id": "TD01",
+        "parent_packages": [
+          "C03",
+          "D12",
+          "I01",
+          "I02"
+        ],
+        "dependencies": [
+          "S1"
+        ],
+        "priority": 9
+      },
+      {
+        "id": "TD02",
+        "parent_packages": [
+          "C03",
+          "D12",
+          "CE02"
+        ],
+        "dependencies": [
+          "TD01",
+          "S2"
+        ],
+        "priority": 10
+      },
+      {
+        "id": "TD03",
+        "parent_packages": [
+          "R06",
+          "CE03"
+        ],
+        "dependencies": [
+          "TD01",
+          "S1"
+        ],
+        "priority": 10
+      },
+      {
+        "id": "TD04",
+        "parent_packages": [
+          "R06",
+          "CE03"
+        ],
+        "dependencies": [
+          "TD03",
+          "S2"
+        ],
+        "priority": 11
+      },
+      {
+        "id": "TD05",
+        "parent_packages": [
+          "C03",
+          "D12",
+          "R06",
+          "CE03"
+        ],
+        "dependencies": [
+          "TD02",
+          "TD04"
+        ],
+        "priority": 12
+      },
+      {
+        "id": "AD01",
+        "parent_packages": [
+          "CE04"
+        ],
+        "dependencies": [
+          "TD04"
+        ],
+        "priority": 14
+      },
+      {
+        "id": "AD02",
+        "parent_packages": [
+          "CE04",
+          "CE05"
+        ],
+        "dependencies": [
+          "AD01"
+        ],
+        "priority": 15
+      },
+      {
+        "id": "AD03",
+        "parent_packages": [
+          "CE04",
+          "CE05"
+        ],
+        "dependencies": [
+          "AD02",
+          "TD03",
+          "S2"
+        ],
+        "priority": 16
+      },
+      {
+        "id": "AD04",
+        "parent_packages": [
+          "CE04",
+          "CE05"
+        ],
+        "dependencies": [
+          "AD03",
+          "TD05"
+        ],
+        "priority": 17
+      },
+      {
+        "id": "MH01",
+        "parent_packages": [
+          "D11",
+          "E01"
+        ],
+        "dependencies": [
+          "S2"
+        ],
+        "priority": 9
+      },
+      {
+        "id": "MH02",
+        "parent_packages": [
+          "D11",
+          "D15"
+        ],
+        "dependencies": [
+          "MH01",
+          "S1"
+        ],
+        "priority": 10
+      },
+      {
+        "id": "MH03",
+        "parent_packages": [
+          "D11",
+          "R01"
+        ],
+        "dependencies": [
+          "MH02",
+          "S2"
+        ],
+        "priority": 11
+      },
+      {
+        "id": "MH04",
+        "parent_packages": [
+          "D11",
+          "D15"
+        ],
+        "dependencies": [
+          "MH03"
+        ],
+        "priority": 12
+      },
+      {
+        "id": "MR1",
+        "parent_packages": [
+          "E01",
+          "D11"
+        ],
+        "dependencies": [
+          "MH04"
+        ],
+        "priority": 20,
+        "external_condition_keys": [
+          "MH01_MR1"
+        ]
+      },
+      {
+        "id": "U1",
+        "parent_packages": [
+          "U01",
+          "U02",
+          "U07"
+        ],
+        "dependencies": [
+          "S1"
+        ],
+        "priority": 2.5
+      },
+      {
+        "id": "U2",
+        "parent_packages": [
+          "D08",
+          "D09",
+          "U02",
+          "U07"
+        ],
+        "dependencies": [
+          "R5",
+          "U1"
+        ],
+        "priority": 7.5
+      },
+      {
+        "id": "U3",
+        "parent_packages": [
+          "D10",
+          "U03"
+        ],
+        "dependencies": [
+          "U2",
+          "R4"
+        ],
+        "priority": 8
+      },
+      {
+        "id": "U4",
+        "parent_packages": [
+          "D02",
+          "D12",
+          "U03"
+        ],
+        "dependencies": [
+          "TD05",
+          "S3"
+        ],
+        "priority": 12.5
+      },
+      {
+        "id": "U5",
+        "parent_packages": [
+          "U06",
+          "CE03",
+          "CE04"
+        ],
+        "dependencies": [
+          "AD04",
+          "TD05"
+        ],
+        "priority": 17.5
+      },
+      {
+        "id": "U6",
+        "parent_packages": [
+          "U06",
+          "D11",
+          "D15"
+        ],
+        "dependencies": [
+          "MH04"
+        ],
+        "priority": 13
+      },
+      {
+        "id": "U7",
+        "parent_packages": [
+          "U07"
+        ],
+        "dependencies": [
+          "U2",
+          "U3",
+          "U4",
+          "U5",
+          "U6"
+        ],
+        "priority": 18
+      },
+      {
+        "id": "U8",
+        "parent_packages": [
+          "U03"
+        ],
+        "dependencies": [
+          "S1"
+        ],
+        "priority": 8.5
+      },
+      {
+        "id": "Q1",
+        "parent_packages": [
+          "G03",
+          "G04",
+          "R07"
+        ],
+        "dependencies": [
+          "U7",
+          "U8",
+          "AD04",
+          "TD05",
+          "MH04"
+        ],
+        "priority": 19
+      },
+      {
+        "id": "Q2",
+        "parent_packages": [
+          "G05",
+          "E09"
+        ],
+        "dependencies": [
+          "Q1",
+          "MR1"
+        ],
+        "priority": 21
+      }
+    ],
+    "required_journeys": [
+      {
+        "requirement_ref": "/must_have/0",
+        "requirement_sha256": "1dd070f2e6fda5da35f4c078b936da61d691a77432a363979cee4b3dba37ab40",
+        "wbs_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "U2",
+          "U3"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/1",
+        "requirement_sha256": "8ab9911e90f8f10335dbbc79051d169a4ed00749a47fa98a19bdf55c5fa64c5b",
+        "wbs_ids": [
+          "S3",
+          "R4",
+          "U4",
+          "U8"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/2",
+        "requirement_sha256": "17cdabb2cbb6421454fcdec2a21425246e633e7ba4555dd52b8818c9449c6873",
+        "wbs_ids": [
+          "TD01",
+          "TD02",
+          "TD03",
+          "TD04",
+          "TD05",
+          "U4"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/3",
+        "requirement_sha256": "d315647498962bd14641d08cb965b43852cc15ed4114abba7a210df529fbebca",
+        "wbs_ids": [
+          "AD01",
+          "AD02",
+          "AD03",
+          "AD04",
+          "U5"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/4",
+        "requirement_sha256": "cce07a945dd8adf37bd6732d714553bd8c73421105f53cdd004423a185936edf",
+        "wbs_ids": [
+          "MH01",
+          "MH02",
+          "MH03",
+          "MH04",
+          "MR1",
+          "U6"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/5",
+        "requirement_sha256": "4f61eb43630b4ffa74a1b893d3da8cd763987236973895a638894decec3f55a8",
+        "wbs_ids": [
+          "S1",
+          "U1"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/6",
+        "requirement_sha256": "d64d2a7e68b2a83ad9924b6047d97c2636cb93e9aedc05e2452962056aa5e270",
+        "wbs_ids": [
+          "S1",
+          "S2",
+          "S3",
+          "TD05",
+          "MH02",
+          "MH04",
+          "U7"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/7",
+        "requirement_sha256": "b8a583003062a9be9beee3bbeefb476237dd17a1aa6d54bc02bd7908dc8d97c6",
+        "wbs_ids": [
+          "S1",
+          "MH01",
+          "Q1"
+        ]
+      },
+      {
+        "requirement_ref": "/must_have/8",
+        "requirement_sha256": "fa35a4c1421959f6bef87d0b7896602d66a3b1747db9ca0f3e85a082cd997bf3",
+        "wbs_ids": [
+          "Q1",
+          "Q2"
+        ]
+      }
+    ],
+    "external_conditions": {
+      "MH01_MR1": {
+        "action_ref": "/execution_actions/MH01_MR1",
+        "required_exits": [
+          "formal_local"
+        ]
+      },
+      "Q12_trial": {
+        "action_ref": "/execution_actions/Q12_trial",
+        "required_exits": [
+          "risk_ticket_trial",
+          "formal_local"
+        ]
+      },
+      "Q12_core_stability": {
+        "action_ref": "/execution_actions/Q12_core_stability",
+        "required_exits": [
+          "uaa_capacity_transition"
+        ]
+      }
+    },
+    "delivery_exits": {
+      "risk_ticket_trial": {
+        "targets": [
+          "U2",
+          "U3"
+        ],
+        "condition_keys": [
+          "Q12_trial"
+        ],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入"
+      },
+      "public_contract_core": {
+        "targets": [
+          "Q1"
+        ],
+        "condition_keys": [],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付"
+      },
+      "formal_local": {
+        "targets": [
+          "Q2"
+        ],
+        "condition_keys": [
+          "MH01_MR1",
+          "Q12_trial"
+        ],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入"
+      },
+      "uaa_capacity_transition": {
+        "targets": [
+          "Q2"
+        ],
+        "condition_keys": [
+          "Q12_core_stability"
+        ],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口"
+      }
+    },
+    "pre_core_rehearsal": {
+      "profile": "B0",
+      "ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
+      "rule": "Existing artifacts/mock interfaces only; no reverse dependency on all new local-core WBS. Dedicated synthetic test credentials are allowed; real business activation follows explicit P1/capability gates."
+    },
+    "waiting_rule": "MR1 and formal exits remain conditional on real inputs/evidence. The effective-day sequence assumes required inputs are available and never treats unknown waiting as zero calendar days."
+  }
 }

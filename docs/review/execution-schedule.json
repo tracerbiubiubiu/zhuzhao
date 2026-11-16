@@ -1,15 +1,18 @@
 {
-  "date": "2026-11-15",
+  "date": "2026-11-16",
   "status": "fully_priced_bounded_candidate_not_implemented",
   "calendar": null,
-  "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json"],
+  "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json", "docs/review/local-core-release-estimate.json", "docs/review/first-usable-release-target.json", "docs/review/owner-decision-agenda.json"],
   "source_input_sha256": {
     "docs/review/planning-backlog.json": "c30bbf5a5ede4a341c5fa6df88cb7a0b4be61452b1a35229254e8b84675a250a",
-    "docs/review/execution-schedule-model.json": "7147b477ff37fe71aeaaf1ef4fc38b21e8e509574025fe05af1a7409dab4cb33",
+    "docs/review/execution-schedule-model.json": "26cbbb5eba08d92cdb246494c92c7dcedb13ffe858c7539b25e310a988171614",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "scripts/calculate-planning-schedule.py": "fb548f77c2fe9e41ba0c940dda88f9bc4fd0d62ee4373333ce21e5ec40883544"
+    "docs/review/local-core-release-estimate.json": "2498c3810d5ce93b30c8e6c9d823af9ae6b78816ce306b7131051dadf619637f",
+    "docs/review/first-usable-release-target.json": "5f920bebeeaf56965fe779b6fc2b51fefe5e72732d4a4fa8e716bd90b0cc6fbc",
+    "docs/review/owner-decision-agenda.json": "01c4148ad65c114d7d3d3abfceb969138b7fec861ff82a0c28504c810f406ee0",
+    "scripts/calculate-planning-schedule.py": "7fd04239333ae9902b93e95b1526d5f0d1324fd802be3c8230135567413c1ff2"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -22,8 +25,9 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R核心稳定后交。本模型是旧长期相对排程，不等于首版净估DAG或整Phase6日期承诺；一席保留，实际T0未启动",
-    "iam_estimate_note": "F017已确认两政策；当前生成数值仍为旧长期候选基线，IAM A/B/C及任务子估尚未扣重整合，不能据fully_priced标签承诺新范围已足额计价；见docs/phase6/iam-first-batch-design.md。"
+    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R在核心稳定后交。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
+    "iam_estimate_note": "本地IAM A/B/C/TASK/C05已按源映射扣重整合入首版净估；S2共用2–3日是明确假设，保守视图另列。长期76父包保持原有界价格，不能据此把首版净价再加到父包总价；实际实耗仍待首批校准。",
+    "maintenance_reserve_note": "长期with/without reserve保留原1–2日条件容量对照；现有已完成版本维护/合main不再派发或计价，首版本地Q2已排除该信用，不能把历史对照当今日剩余报价。"
   },
   "source_structure": {
     "parents": 76,
@@ -4596,8 +4600,10 @@
   ],
   "pre_business_maintenance": {
     "work_items": ["G07A", "G07B"],
-    "status": "locally_validated_source_changes; owner_approved_PR_main_sync; see_PR_records_for_actual_result",
-    "do_not_repeat_future_coding_estimate": true
+    "status": "historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling",
+    "do_not_repeat_future_coding_estimate": true,
+    "actual_record_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+    "reserve_profile_rule": "Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core"
   },
   "release_gates_ref": "docs/review/planning-backlog.json#/release_gates",
   "external_waiting": {
@@ -4658,5 +4664,655 @@
   "no_unpriced_required_increment_scope": "priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price",
   "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
   "local_core_net_estimate_ref": "docs/review/local-core-release-estimate.json",
-  "local_core_view_note": "separate subset allocation/net estimate for quality-first local formal core; this long-horizon DAG is not the new first-core sequence or a January commitment; applicable G05/E09 sub-exits pulled before formal local production"
+  "local_core_view_note": "The same generator exposes local_core from the selected net WBS and mandatory journeys. It is not added to the 76-parent totals; real waiting and activation dates remain unknown, and evidence gates are not proven by scheduling.",
+  "local_core": {
+    "status": "bounded_local_core_candidate_not_implemented",
+    "raw_engineering_days": [96.5, 150.5],
+    "rounded_display_days": [97, 151],
+    "conservative_without_shared_transfer_raw_days": [98.5, 153.5],
+    "conservative_without_shared_transfer_rounded_days": [99, 154],
+    "groups": [
+      {
+        "id": "S",
+        "days": [37, 60]
+      },
+      {
+        "id": "RISK",
+        "days": [11.0, 17.0]
+      },
+      {
+        "id": "TD",
+        "days": [13, 19]
+      },
+      {
+        "id": "AD",
+        "days": [9, 13]
+      },
+      {
+        "id": "MH",
+        "days": [7, 11]
+      },
+      {
+        "id": "MR",
+        "days": [2, 3]
+      },
+      {
+        "id": "UI",
+        "days": [10.5, 16.5]
+      },
+      {
+        "id": "RELEASE",
+        "days": [7, 11]
+      }
+    ],
+    "nodes": {
+      "AD01": {
+        "wbs_id": "AD01",
+        "group": "AD",
+        "days": [2, 3],
+        "parent_packages": ["CE04"],
+        "dependencies": ["TD04"],
+        "priority": 14,
+        "external_condition_keys": []
+      },
+      "AD02": {
+        "wbs_id": "AD02",
+        "group": "AD",
+        "days": [2, 3],
+        "parent_packages": ["CE04", "CE05"],
+        "dependencies": ["AD01"],
+        "priority": 15,
+        "external_condition_keys": []
+      },
+      "AD03": {
+        "wbs_id": "AD03",
+        "group": "AD",
+        "days": [3, 4],
+        "parent_packages": ["CE04", "CE05"],
+        "dependencies": ["AD02", "S2", "TD03"],
+        "priority": 16,
+        "external_condition_keys": []
+      },
+      "AD04": {
+        "wbs_id": "AD04",
+        "group": "AD",
+        "days": [2, 3],
+        "parent_packages": ["CE04", "CE05"],
+        "dependencies": ["AD03", "TD05"],
+        "priority": 17,
+        "external_condition_keys": []
+      },
+      "MH01": {
+        "wbs_id": "MH01",
+        "group": "MH",
+        "days": [2, 3],
+        "parent_packages": ["D11", "E01"],
+        "dependencies": ["S2"],
+        "priority": 9,
+        "external_condition_keys": []
+      },
+      "MH02": {
+        "wbs_id": "MH02",
+        "group": "MH",
+        "days": [1, 2],
+        "parent_packages": ["D11", "D15"],
+        "dependencies": ["MH01", "S1"],
+        "priority": 10,
+        "external_condition_keys": []
+      },
+      "MH03": {
+        "wbs_id": "MH03",
+        "group": "MH",
+        "days": [2, 3],
+        "parent_packages": ["D11", "R01"],
+        "dependencies": ["MH02", "S2"],
+        "priority": 11,
+        "external_condition_keys": []
+      },
+      "MH04": {
+        "wbs_id": "MH04",
+        "group": "MH",
+        "days": [2, 3],
+        "parent_packages": ["D11", "D15"],
+        "dependencies": ["MH03"],
+        "priority": 12,
+        "external_condition_keys": []
+      },
+      "MR1": {
+        "wbs_id": "MR1",
+        "group": "MR",
+        "days": [2, 3],
+        "parent_packages": ["E01", "D11"],
+        "dependencies": ["MH04"],
+        "priority": 20,
+        "external_condition_keys": ["MH01_MR1"]
+      },
+      "Q1": {
+        "wbs_id": "Q1",
+        "group": "RELEASE",
+        "days": [4, 6],
+        "parent_packages": ["G03", "G04", "R07"],
+        "dependencies": ["AD04", "MH04", "TD05", "U7", "U8"],
+        "priority": 19,
+        "external_condition_keys": []
+      },
+      "Q2": {
+        "wbs_id": "Q2",
+        "group": "RELEASE",
+        "days": [3, 5],
+        "parent_packages": ["G05", "E09"],
+        "dependencies": ["MR1", "Q1"],
+        "priority": 21,
+        "external_condition_keys": []
+      },
+      "R1": {
+        "wbs_id": "R1",
+        "group": "RISK",
+        "days": [3, 4.5],
+        "parent_packages": ["D08"],
+        "dependencies": ["S1", "S3"],
+        "priority": 3,
+        "external_condition_keys": []
+      },
+      "R2": {
+        "wbs_id": "R2",
+        "group": "RISK",
+        "days": [2, 3],
+        "parent_packages": ["D03", "D08"],
+        "dependencies": ["R1"],
+        "priority": 4,
+        "external_condition_keys": []
+      },
+      "R3": {
+        "wbs_id": "R3",
+        "group": "RISK",
+        "days": [1.5, 2.5],
+        "parent_packages": ["D09"],
+        "dependencies": ["R2"],
+        "priority": 5,
+        "external_condition_keys": []
+      },
+      "R4": {
+        "wbs_id": "R4",
+        "group": "RISK",
+        "days": [3, 4.5],
+        "parent_packages": ["D10"],
+        "dependencies": ["R3"],
+        "priority": 6,
+        "external_condition_keys": []
+      },
+      "R5": {
+        "wbs_id": "R5",
+        "group": "RISK",
+        "days": [1.5, 2.5],
+        "parent_packages": ["D10"],
+        "dependencies": ["R4"],
+        "priority": 7,
+        "external_condition_keys": []
+      },
+      "S1": {
+        "wbs_id": "S1",
+        "group": "S",
+        "days": [30, 49],
+        "parent_packages": ["C04", "C05", "D06", "E01"],
+        "dependencies": ["S2"],
+        "priority": 1,
+        "external_condition_keys": []
+      },
+      "S2": {
+        "wbs_id": "S2",
+        "group": "S",
+        "days": [4, 6],
+        "parent_packages": ["C04", "R01", "CE01", "CE02"],
+        "dependencies": [],
+        "priority": 0,
+        "external_condition_keys": []
+      },
+      "S3": {
+        "wbs_id": "S3",
+        "group": "S",
+        "days": [3, 5],
+        "parent_packages": ["C02", "C04"],
+        "dependencies": [],
+        "priority": 2,
+        "external_condition_keys": []
+      },
+      "TD01": {
+        "wbs_id": "TD01",
+        "group": "TD",
+        "days": [2, 3],
+        "parent_packages": ["C03", "D12", "I01", "I02"],
+        "dependencies": ["S1"],
+        "priority": 9,
+        "external_condition_keys": []
+      },
+      "TD02": {
+        "wbs_id": "TD02",
+        "group": "TD",
+        "days": [2, 3],
+        "parent_packages": ["C03", "D12", "CE02"],
+        "dependencies": ["S2", "TD01"],
+        "priority": 10,
+        "external_condition_keys": []
+      },
+      "TD03": {
+        "wbs_id": "TD03",
+        "group": "TD",
+        "days": [3, 5],
+        "parent_packages": ["R06", "CE03"],
+        "dependencies": ["S1", "TD01"],
+        "priority": 10,
+        "external_condition_keys": []
+      },
+      "TD04": {
+        "wbs_id": "TD04",
+        "group": "TD",
+        "days": [3, 4],
+        "parent_packages": ["R06", "CE03"],
+        "dependencies": ["S2", "TD03"],
+        "priority": 11,
+        "external_condition_keys": []
+      },
+      "TD05": {
+        "wbs_id": "TD05",
+        "group": "TD",
+        "days": [3, 4],
+        "parent_packages": ["C03", "D12", "R06", "CE03"],
+        "dependencies": ["TD02", "TD04"],
+        "priority": 12,
+        "external_condition_keys": []
+      },
+      "U1": {
+        "wbs_id": "U1",
+        "group": "UI",
+        "days": [0.5, 1],
+        "parent_packages": ["U01", "U02", "U07"],
+        "dependencies": ["S1"],
+        "priority": 2.5,
+        "external_condition_keys": []
+      },
+      "U2": {
+        "wbs_id": "U2",
+        "group": "UI",
+        "days": [3, 4],
+        "parent_packages": ["D08", "D09", "U02", "U07"],
+        "dependencies": ["R5", "U1"],
+        "priority": 7.5,
+        "external_condition_keys": []
+      },
+      "U3": {
+        "wbs_id": "U3",
+        "group": "UI",
+        "days": [0.5, 1],
+        "parent_packages": ["D10", "U03"],
+        "dependencies": ["R4", "U2"],
+        "priority": 8,
+        "external_condition_keys": []
+      },
+      "U4": {
+        "wbs_id": "U4",
+        "group": "UI",
+        "days": [1.5, 2.5],
+        "parent_packages": ["D02", "D12", "U03"],
+        "dependencies": ["S3", "TD05"],
+        "priority": 12.5,
+        "external_condition_keys": []
+      },
+      "U5": {
+        "wbs_id": "U5",
+        "group": "UI",
+        "days": [0.5, 1],
+        "parent_packages": ["U06", "CE03", "CE04"],
+        "dependencies": ["AD04", "TD05"],
+        "priority": 17.5,
+        "external_condition_keys": []
+      },
+      "U6": {
+        "wbs_id": "U6",
+        "group": "UI",
+        "days": [0.5, 1],
+        "parent_packages": ["U06", "D11", "D15"],
+        "dependencies": ["MH04"],
+        "priority": 13,
+        "external_condition_keys": []
+      },
+      "U7": {
+        "wbs_id": "U7",
+        "group": "UI",
+        "days": [2, 3],
+        "parent_packages": ["U07"],
+        "dependencies": ["U2", "U3", "U4", "U5", "U6"],
+        "priority": 18,
+        "external_condition_keys": []
+      },
+      "U8": {
+        "wbs_id": "U8",
+        "group": "UI",
+        "days": [2, 3],
+        "parent_packages": ["U03"],
+        "dependencies": ["S1"],
+        "priority": 8.5,
+        "external_condition_keys": []
+      }
+    },
+    "required_journeys": [
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/0",
+        "text": "风险域和风险到整改工单人工闭环，逐风险责任/证据/复核和有界N:1",
+        "requirement_sha256": "1dd070f2e6fda5da35f4c078b936da61d691a77432a363979cee4b3dba37ab40",
+        "targets": ["R1", "R2", "R3", "R4", "R5", "U2", "U3"],
+        "dependency_closure": ["R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "U1", "U2", "U3"],
+        "overlapping_effort_do_not_add": [52.0, 83.0]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/1",
+        "text": "既有工单及所选派单/证据/复核，工单列表有限多选加标签",
+        "requirement_sha256": "8ab9911e90f8f10335dbbc79051d169a4ed00749a47fa98a19bdf55c5fa64c5b",
+        "targets": ["S3", "R4", "U4", "U8"],
+        "dependency_closure": ["R1", "R2", "R3", "R4", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U4", "U8"],
+        "overlapping_effort_do_not_add": [63.0, 99.0]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/2",
+        "text": "工单→taskrunner→原任务结果/activelist受权更新",
+        "requirement_sha256": "17cdabb2cbb6421454fcdec2a21425246e633e7ba4555dd52b8818c9449c6873",
+        "targets": ["TD01", "TD02", "TD03", "TD04", "TD05", "U4"],
+        "dependency_closure": ["S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U4"],
+        "overlapping_effort_do_not_add": [51.5, 81.5]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/3",
+        "text": "activelist变化→获权TR后继任务；仅消息/刷新不代验",
+        "requirement_sha256": "d315647498962bd14641d08cb965b43852cc15ed4114abba7a210df529fbebca",
+        "targets": ["AD01", "AD02", "AD03", "AD04", "U5"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "S1", "S2", "TD01", "TD02", "TD03", "TD04", "TD05", "U5"],
+        "overlapping_effort_do_not_add": [56.5, 88]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/4",
+        "text": "公共HTTP sender及一条实际公司消息映射/实测，明确受理与送达；真实条件未知不代验",
+        "requirement_sha256": "cce07a945dd8adf37bd6732d714553bd8c73421105f53cdd004423a185936edf",
+        "targets": ["MH01", "MH02", "MH03", "MH04", "MR1", "U6"],
+        "dependency_closure": ["MH01", "MH02", "MH03", "MH04", "MR1", "S1", "S2", "U6"],
+        "overlapping_effort_do_not_add": [43.5, 70]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/5",
+        "text": "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继",
+        "requirement_sha256": "4f61eb43630b4ffa74a1b893d3da8cd763987236973895a638894decec3f55a8",
+        "targets": ["S1", "U1"],
+        "dependency_closure": ["S1", "S2", "U1"],
+        "overlapping_effort_do_not_add": [34.5, 56]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/6",
+        "text": "当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI",
+        "requirement_sha256": "d64d2a7e68b2a83ad9924b6047d97c2636cb93e9aedc05e2452962056aa5e270",
+        "targets": ["S1", "S2", "S3", "TD05", "MH02", "MH04", "U7"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7"],
+        "overlapping_effort_do_not_add": [85.5, 133.5]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/7",
+        "text": "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收",
+        "requirement_sha256": "b8a583003062a9be9beee3bbeefb476237dd17a1aa6d54bc02bd7908dc8d97c6",
+        "targets": ["S1", "MH01", "Q1"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "Q1", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+        "overlapping_effort_do_not_add": [91.5, 142.5]
+      },
+      {
+        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/8",
+        "text": "首次本地正式生产适用制品/漏洞/运行配置/备份恢复/回退与故障接管证据",
+        "requirement_sha256": "fa35a4c1421959f6bef87d0b7896602d66a3b1747db9ca0f3e85a082cd997bf3",
+        "targets": ["Q1", "Q2"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "MR1", "Q1", "Q2", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+        "overlapping_effort_do_not_add": [96.5, 150.5]
+      }
+    ],
+    "external_conditions": {
+      "MH01_MR1": {
+        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/MH01_MR1",
+        "state": "pending_real_inputs_then_binding",
+        "evidence_state": "not_supplied",
+        "evidence_refs": [],
+        "blocks_release_exits": ["formal_local"]
+      },
+      "Q12_trial": {
+        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_trial",
+        "state": "pending_real_inputs_then_binding",
+        "evidence_state": "not_supplied",
+        "evidence_refs": [],
+        "blocks_release_exits": ["risk_ticket_trial", "formal_local"]
+      },
+      "Q12_core_stability": {
+        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_core_stability",
+        "state": "engineering_candidate_pending_real_trial_acceptance",
+        "evidence_state": "not_yet_implemented_or_trialed",
+        "evidence_refs": [],
+        "blocks_release_exits": ["uaa_capacity_transition"]
+      }
+    },
+    "delivery_exits": {
+      "risk_ticket_trial": {
+        "targets": ["U2", "U3"],
+        "dependency_closure": ["R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "U1", "U2", "U3"],
+        "overlapping_effort_do_not_add": [52.0, 83.0],
+        "condition_keys": ["Q12_trial"],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+        "readiness": "not_verified_by_schedule",
+        "actual_activation_date": null,
+        "engineering_finish_if_conditions_ready": {
+          "1": [52.0, 83.0],
+          "2": [48.5, 77]
+        }
+      },
+      "public_contract_core": {
+        "targets": ["Q1"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "Q1", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+        "overlapping_effort_do_not_add": [91.5, 142.5],
+        "condition_keys": [],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
+        "readiness": "not_verified_by_schedule",
+        "actual_activation_date": null,
+        "engineering_finish_if_conditions_ready": {
+          "1": [91.5, 142.5],
+          "2": [67.5, 106]
+        }
+      },
+      "formal_local": {
+        "targets": ["Q2"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "MR1", "Q1", "Q2", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+        "overlapping_effort_do_not_add": [96.5, 150.5],
+        "condition_keys": ["MH01_MR1", "Q12_trial"],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+        "readiness": "not_verified_by_schedule",
+        "actual_activation_date": null,
+        "engineering_finish_if_conditions_ready": {
+          "1": [96.5, 150.5],
+          "2": [70.5, 111]
+        }
+      },
+      "uaa_capacity_transition": {
+        "targets": ["Q2"],
+        "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "MR1", "Q1", "Q2", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+        "overlapping_effort_do_not_add": [96.5, 150.5],
+        "condition_keys": ["Q12_core_stability"],
+        "evidence_ref": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口",
+        "readiness": "not_verified_by_schedule",
+        "actual_activation_date": null,
+        "engineering_finish_if_conditions_ready": {
+          "1": [96.5, 150.5],
+          "2": [70.5, 111]
+        }
+      }
+    },
+    "resources": {
+      "1": {
+        "engineering_makespan_if_conditions_ready": [96.5, 150.5],
+        "assumption": "finite engineering ordering only; real input availability/waiting is not scheduled as zero",
+        "resource_records": {
+          "low": {
+            "S2": {"start": 0, "finish": 4, "slot": 1, "engineering_days": 4},
+            "S1": {"start": 4, "finish": 34, "slot": 1, "engineering_days": 30},
+            "S3": {"start": 34, "finish": 37, "slot": 1, "engineering_days": 3},
+            "U1": {"start": 37, "finish": 37.5, "slot": 1, "engineering_days": 0.5},
+            "R1": {"start": 37.5, "finish": 40.5, "slot": 1, "engineering_days": 3},
+            "R2": {"start": 40.5, "finish": 42.5, "slot": 1, "engineering_days": 2},
+            "R3": {"start": 42.5, "finish": 44.0, "slot": 1, "engineering_days": 1.5},
+            "R4": {"start": 44.0, "finish": 47.0, "slot": 1, "engineering_days": 3},
+            "R5": {"start": 47.0, "finish": 48.5, "slot": 1, "engineering_days": 1.5},
+            "U2": {"start": 48.5, "finish": 51.5, "slot": 1, "engineering_days": 3},
+            "U3": {"start": 51.5, "finish": 52.0, "slot": 1, "engineering_days": 0.5},
+            "U8": {"start": 52.0, "finish": 54.0, "slot": 1, "engineering_days": 2},
+            "TD01": {"start": 54.0, "finish": 56.0, "slot": 1, "engineering_days": 2},
+            "MH01": {"start": 56.0, "finish": 58.0, "slot": 1, "engineering_days": 2},
+            "TD03": {"start": 58.0, "finish": 61.0, "slot": 1, "engineering_days": 3},
+            "TD02": {"start": 61.0, "finish": 63.0, "slot": 1, "engineering_days": 2},
+            "MH02": {"start": 63.0, "finish": 64.0, "slot": 1, "engineering_days": 1},
+            "TD04": {"start": 64.0, "finish": 67.0, "slot": 1, "engineering_days": 3},
+            "MH03": {"start": 67.0, "finish": 69.0, "slot": 1, "engineering_days": 2},
+            "TD05": {"start": 69.0, "finish": 72.0, "slot": 1, "engineering_days": 3},
+            "MH04": {"start": 72.0, "finish": 74.0, "slot": 1, "engineering_days": 2},
+            "U4": {"start": 74.0, "finish": 75.5, "slot": 1, "engineering_days": 1.5},
+            "U6": {"start": 75.5, "finish": 76.0, "slot": 1, "engineering_days": 0.5},
+            "AD01": {"start": 76.0, "finish": 78.0, "slot": 1, "engineering_days": 2},
+            "AD02": {"start": 78.0, "finish": 80.0, "slot": 1, "engineering_days": 2},
+            "AD03": {"start": 80.0, "finish": 83.0, "slot": 1, "engineering_days": 3},
+            "AD04": {"start": 83.0, "finish": 85.0, "slot": 1, "engineering_days": 2},
+            "U5": {"start": 85.0, "finish": 85.5, "slot": 1, "engineering_days": 0.5},
+            "U7": {"start": 85.5, "finish": 87.5, "slot": 1, "engineering_days": 2},
+            "Q1": {"start": 87.5, "finish": 91.5, "slot": 1, "engineering_days": 4},
+            "MR1": {"start": 91.5, "finish": 93.5, "slot": 1, "engineering_days": 2},
+            "Q2": {"start": 93.5, "finish": 96.5, "slot": 1, "engineering_days": 3}
+          },
+          "high": {
+            "S2": {"start": 0, "finish": 6, "slot": 1, "engineering_days": 6},
+            "S1": {"start": 6, "finish": 55, "slot": 1, "engineering_days": 49},
+            "S3": {"start": 55, "finish": 60, "slot": 1, "engineering_days": 5},
+            "U1": {"start": 60, "finish": 61, "slot": 1, "engineering_days": 1},
+            "R1": {"start": 61, "finish": 65.5, "slot": 1, "engineering_days": 4.5},
+            "R2": {"start": 65.5, "finish": 68.5, "slot": 1, "engineering_days": 3},
+            "R3": {"start": 68.5, "finish": 71.0, "slot": 1, "engineering_days": 2.5},
+            "R4": {"start": 71.0, "finish": 75.5, "slot": 1, "engineering_days": 4.5},
+            "R5": {"start": 75.5, "finish": 78.0, "slot": 1, "engineering_days": 2.5},
+            "U2": {"start": 78.0, "finish": 82.0, "slot": 1, "engineering_days": 4},
+            "U3": {"start": 82.0, "finish": 83.0, "slot": 1, "engineering_days": 1},
+            "U8": {"start": 83.0, "finish": 86.0, "slot": 1, "engineering_days": 3},
+            "TD01": {"start": 86.0, "finish": 89.0, "slot": 1, "engineering_days": 3},
+            "MH01": {"start": 89.0, "finish": 92.0, "slot": 1, "engineering_days": 3},
+            "TD03": {"start": 92.0, "finish": 97.0, "slot": 1, "engineering_days": 5},
+            "TD02": {"start": 97.0, "finish": 100.0, "slot": 1, "engineering_days": 3},
+            "MH02": {"start": 100.0, "finish": 102.0, "slot": 1, "engineering_days": 2},
+            "TD04": {"start": 102.0, "finish": 106.0, "slot": 1, "engineering_days": 4},
+            "MH03": {"start": 106.0, "finish": 109.0, "slot": 1, "engineering_days": 3},
+            "TD05": {"start": 109.0, "finish": 113.0, "slot": 1, "engineering_days": 4},
+            "MH04": {"start": 113.0, "finish": 116.0, "slot": 1, "engineering_days": 3},
+            "U4": {"start": 116.0, "finish": 118.5, "slot": 1, "engineering_days": 2.5},
+            "U6": {"start": 118.5, "finish": 119.5, "slot": 1, "engineering_days": 1},
+            "AD01": {"start": 119.5, "finish": 122.5, "slot": 1, "engineering_days": 3},
+            "AD02": {"start": 122.5, "finish": 125.5, "slot": 1, "engineering_days": 3},
+            "AD03": {"start": 125.5, "finish": 129.5, "slot": 1, "engineering_days": 4},
+            "AD04": {"start": 129.5, "finish": 132.5, "slot": 1, "engineering_days": 3},
+            "U5": {"start": 132.5, "finish": 133.5, "slot": 1, "engineering_days": 1},
+            "U7": {"start": 133.5, "finish": 136.5, "slot": 1, "engineering_days": 3},
+            "Q1": {"start": 136.5, "finish": 142.5, "slot": 1, "engineering_days": 6},
+            "MR1": {"start": 142.5, "finish": 145.5, "slot": 1, "engineering_days": 3},
+            "Q2": {"start": 145.5, "finish": 150.5, "slot": 1, "engineering_days": 5}
+          }
+        }
+      },
+      "2": {
+        "engineering_makespan_if_conditions_ready": [70.5, 111],
+        "assumption": "finite engineering ordering only; real input availability/waiting is not scheduled as zero",
+        "resource_records": {
+          "low": {
+            "S2": {"start": 0, "finish": 4, "slot": 1, "engineering_days": 4},
+            "S3": {"start": 0, "finish": 3, "slot": 2, "engineering_days": 3},
+            "S1": {"start": 4, "finish": 34, "slot": 1, "engineering_days": 30},
+            "MH01": {"start": 4, "finish": 6, "slot": 2, "engineering_days": 2},
+            "U1": {"start": 34, "finish": 34.5, "slot": 1, "engineering_days": 0.5},
+            "R1": {"start": 34, "finish": 37, "slot": 2, "engineering_days": 3},
+            "U8": {"start": 34.5, "finish": 36.5, "slot": 1, "engineering_days": 2},
+            "TD01": {"start": 36.5, "finish": 38.5, "slot": 1, "engineering_days": 2},
+            "R2": {"start": 37, "finish": 39, "slot": 2, "engineering_days": 2},
+            "TD03": {"start": 38.5, "finish": 41.5, "slot": 1, "engineering_days": 3},
+            "R3": {"start": 39, "finish": 40.5, "slot": 2, "engineering_days": 1.5},
+            "R4": {"start": 40.5, "finish": 43.5, "slot": 2, "engineering_days": 3},
+            "TD02": {"start": 41.5, "finish": 43.5, "slot": 1, "engineering_days": 2},
+            "R5": {"start": 43.5, "finish": 45.0, "slot": 1, "engineering_days": 1.5},
+            "MH02": {"start": 43.5, "finish": 44.5, "slot": 2, "engineering_days": 1},
+            "TD04": {"start": 44.5, "finish": 47.5, "slot": 2, "engineering_days": 3},
+            "U2": {"start": 45.0, "finish": 48.0, "slot": 1, "engineering_days": 3},
+            "MH03": {"start": 47.5, "finish": 49.5, "slot": 2, "engineering_days": 2},
+            "U3": {"start": 48.0, "finish": 48.5, "slot": 1, "engineering_days": 0.5},
+            "TD05": {"start": 48.5, "finish": 51.5, "slot": 1, "engineering_days": 3},
+            "MH04": {"start": 49.5, "finish": 51.5, "slot": 2, "engineering_days": 2},
+            "U4": {"start": 51.5, "finish": 53.0, "slot": 1, "engineering_days": 1.5},
+            "U6": {"start": 51.5, "finish": 52.0, "slot": 2, "engineering_days": 0.5},
+            "AD01": {"start": 52.0, "finish": 54.0, "slot": 2, "engineering_days": 2},
+            "MR1": {"start": 53.0, "finish": 55.0, "slot": 1, "engineering_days": 2},
+            "AD02": {"start": 54.0, "finish": 56.0, "slot": 2, "engineering_days": 2},
+            "AD03": {"start": 56.0, "finish": 59.0, "slot": 1, "engineering_days": 3},
+            "AD04": {"start": 59.0, "finish": 61.0, "slot": 1, "engineering_days": 2},
+            "U5": {"start": 61.0, "finish": 61.5, "slot": 1, "engineering_days": 0.5},
+            "U7": {"start": 61.5, "finish": 63.5, "slot": 1, "engineering_days": 2},
+            "Q1": {"start": 63.5, "finish": 67.5, "slot": 1, "engineering_days": 4},
+            "Q2": {"start": 67.5, "finish": 70.5, "slot": 1, "engineering_days": 3}
+          },
+          "high": {
+            "S2": {"start": 0, "finish": 6, "slot": 1, "engineering_days": 6},
+            "S3": {"start": 0, "finish": 5, "slot": 2, "engineering_days": 5},
+            "S1": {"start": 6, "finish": 55, "slot": 1, "engineering_days": 49},
+            "MH01": {"start": 6, "finish": 9, "slot": 2, "engineering_days": 3},
+            "U1": {"start": 55, "finish": 56, "slot": 1, "engineering_days": 1},
+            "R1": {"start": 55, "finish": 59.5, "slot": 2, "engineering_days": 4.5},
+            "U8": {"start": 56, "finish": 59, "slot": 1, "engineering_days": 3},
+            "TD01": {"start": 59, "finish": 62, "slot": 1, "engineering_days": 3},
+            "R2": {"start": 59.5, "finish": 62.5, "slot": 2, "engineering_days": 3},
+            "TD03": {"start": 62, "finish": 67, "slot": 1, "engineering_days": 5},
+            "R3": {"start": 62.5, "finish": 65.0, "slot": 2, "engineering_days": 2.5},
+            "R4": {"start": 65.0, "finish": 69.5, "slot": 2, "engineering_days": 4.5},
+            "TD02": {"start": 67, "finish": 70, "slot": 1, "engineering_days": 3},
+            "R5": {"start": 69.5, "finish": 72.0, "slot": 2, "engineering_days": 2.5},
+            "MH02": {"start": 70, "finish": 72, "slot": 1, "engineering_days": 2},
+            "U2": {"start": 72, "finish": 76, "slot": 1, "engineering_days": 4},
+            "TD04": {"start": 72, "finish": 76, "slot": 2, "engineering_days": 4},
+            "U3": {"start": 76, "finish": 77, "slot": 1, "engineering_days": 1},
+            "MH03": {"start": 76, "finish": 79, "slot": 2, "engineering_days": 3},
+            "TD05": {"start": 77, "finish": 81, "slot": 1, "engineering_days": 4},
+            "MH04": {"start": 79, "finish": 82, "slot": 2, "engineering_days": 3},
+            "U4": {"start": 81, "finish": 83.5, "slot": 1, "engineering_days": 2.5},
+            "U6": {"start": 82, "finish": 83, "slot": 2, "engineering_days": 1},
+            "AD01": {"start": 83, "finish": 86, "slot": 2, "engineering_days": 3},
+            "MR1": {"start": 83.5, "finish": 86.5, "slot": 1, "engineering_days": 3},
+            "AD02": {"start": 86, "finish": 89, "slot": 2, "engineering_days": 3},
+            "AD03": {"start": 89, "finish": 93, "slot": 1, "engineering_days": 4},
+            "AD04": {"start": 93, "finish": 96, "slot": 1, "engineering_days": 3},
+            "U5": {"start": 96, "finish": 97, "slot": 1, "engineering_days": 1},
+            "U7": {"start": 97, "finish": 100, "slot": 1, "engineering_days": 3},
+            "Q1": {"start": 100, "finish": 106, "slot": 1, "engineering_days": 6},
+            "Q2": {"start": 106, "finish": 111, "slot": 1, "engineering_days": 5}
+          }
+        }
+      }
+    },
+    "externally_blocked_wbs": ["MR1", "Q2"],
+    "unblocked_public_wbs": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "Q1", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
+    "external_waiting_days": null,
+    "calendar": null,
+    "formal_activation_approved": false,
+    "added_to_long_horizon_total": false,
+    "price_rule": "Each local WBS row is charged once; mapped 76-parent prices/ancestors are never added. Journey/exit efforts overlap and must not be added."
+  },
+  "current_local_core_summary": "当前首版本地核心净估：**97–151 个有效工程日**（未取整 96.5–150.5；S2 共用假设不成立时 99–154）。这是单席工程量候选，不是日历承诺。",
+  "current_view_checks": {
+    "docs/review/11-project-control.md": {
+      "summary_sha256": "dd120cc5dc1b521137a7966582b4e06c97acd21967be0c169792a7d8e16b53b0",
+      "check": "matches_net_estimate"
+    },
+    "docs/roadmap.md": {
+      "summary_sha256": "dd120cc5dc1b521137a7966582b4e06c97acd21967be0c169792a7d8e16b53b0",
+      "check": "matches_net_estimate"
+    }
+  }
 }
