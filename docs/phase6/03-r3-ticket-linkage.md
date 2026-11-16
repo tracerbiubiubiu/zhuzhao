@@ -30,6 +30,7 @@
 - **重复生成分支（§3.5 N:1 定稿回填——2026-11-01 外审补）**：风险单已有在办工单时重复「生成」不出第二张（links 在办唯一索引拒重，提示「已在 TK-xxx 中」）；追加到在办单/移出回待处置语义见 §3.4 配套①②（①追加/②移出），批量下发逐行同约束（§3.3）。
 - §2 两缺口随本段补齐（模板选择前端消费可先于本段独立小批）。
 - **整改单类型种子迁移（✅ 2026-10-27 第三组拍板 5 落定）**：本段交付自带种子类型——默认图 open→assigned→in_progress，复核开启经pending_verify→closed/rejected，关闭复核则in_progress→closed，**另有 `cancelled` 终态**（06 号件 9 撤回边 `open→cancelled`，依赖终态可配化）；**pending_verify=复核态，condition=`field:risk_owner`**（字段取人——该字段指向的当前风险 owner 可点「复核通过」，而非冻结的 creator；交接后 risk service 更新字段即可，00 号 §3.3 condition 词表扩展随 B0-4）；复核开关的当前最小合同为：on走合法`in_progress→pending_verify`，off直接走合法`in_progress→closed`完成边；两者都执行字段/逐风险validator，不伪造复核动作、不硬等D16通用auto路由；详[完成合同](risk-module-detail.md#52-逐风险结论与review-gate)。字段骨架 = 六组字段位中工单侧落位者 **+ `risk_owner`（user 字段，06 号件 5）**；transition_meta 复核态超时/催办缺省；**无 owner 禁止派单**（风险单 owner 为空时生成/批量下发返回 400「先指派责任人」——R1 两级责任人口径：owner 先行、处置工单再指派处理人）；编号启动时按迁移地图对账，存量类型零感知。
+  状态key沿已拍`cancelled`保留；它是工单撤回终态，风险`resolution=canceled`回assessed、TR执行取消另有证据合同，禁止自动互转。D01/D10固定流程/profile绑定时按[生命周期语义](../design/business-lifecycle-contracts.md#83-固定风险状态机和接受申请)登记映射，不仅写权限目录。
 
 ### 3.2 编辑时预填 auto_fill（前置四件 = Week 0）
 

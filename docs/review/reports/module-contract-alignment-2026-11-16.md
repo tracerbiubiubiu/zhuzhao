@@ -1,5 +1,7 @@
 # F022：模块合同与现势引用的有界收口
 
+后继补遗：[修复批复验](repair-batch-followup-2026-11-16.md)同步生命周期合同同域的取消拼写，保留种子key并补状态语义；B0目标净新增量开工前独立估/扣重，不把原Q2或历史维护1–2日当现成报价。
+
 日期：2026-11-16。基线：`8c44ef6f2d323a54468ef72213fc5caa030c8947`。来源：所有者在三份报告复核后要求按核定建议修改、验证、推送并合入main。使用五仓独立worktree/短分支与PR；本轮不是F021直接main例外的延长。
 
 范围：现行文档、候选Schema、隔离参考验证和规划检查；未开发Phase6产品、修改运行栈、配置企业身份或修复现存AUTH缺陷。来源与授权见[后继册](../planning-followups.json)的`F022-module-contract-alignment`，产品成熟度仍以[状态表](../planning-design-status.json)为准。

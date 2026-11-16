@@ -5,12 +5,12 @@
   "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json", "docs/review/local-core-release-estimate.json", "docs/review/first-usable-release-target.json", "docs/review/owner-decision-agenda.json"],
   "source_input_sha256": {
     "docs/review/planning-backlog.json": "c30bbf5a5ede4a341c5fa6df88cb7a0b4be61452b1a35229254e8b84675a250a",
-    "docs/review/execution-schedule-model.json": "2671f79a5102d2d37fa3488650ebad70bd7dde13932c9ec200b8a22f113021b7",
+    "docs/review/execution-schedule-model.json": "66e1825dd6236197427d2497ecb34bf3db65bce739a029b24804a6d70f102ede",
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "docs/review/local-core-release-estimate.json": "2cb1f581b0d5e47cf6c15c50bcc2e23688675a3c2fd1f0840149ebb2ccfe2de4",
-    "docs/review/first-usable-release-target.json": "5f920bebeeaf56965fe779b6fc2b51fefe5e72732d4a4fa8e716bd90b0cc6fbc",
+    "docs/review/local-core-release-estimate.json": "d001bdd83059276efb97767ff43deb101aa993a23041a6c44a21fa5a599d9730",
+    "docs/review/first-usable-release-target.json": "239c3c017d6a9712ad717f4907176ad28fc7f3a8fddf614ae905f6f31541a150",
     "docs/review/owner-decision-agenda.json": "dddf4154db85cda75d79926e30db71037bdd676100073f5ddb377ab2c6fc1125",
     "scripts/calculate-planning-schedule.py": "707df00d240eb42f713f7487585922974e52d5824424ea7f0cd7665178d6bdac"
   },
