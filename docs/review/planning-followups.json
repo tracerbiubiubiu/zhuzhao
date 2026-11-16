@@ -879,7 +879,17 @@
       "estimate_policy": "No unsupported blanket risk/OBS/HMAC delta; existing bounded WBS covers selected responsibility and acceptance refinements. Actual extra implementation must be named/deduplicated/repriced before execution; current net totals remain authoritative.",
       "owner_pending": "No new business-policy choice from this repair. Real provider/config/operator inputs stay in existing activation windows.",
       "historical_34_formal_decisions_unchanged": true,
-      "report_ref": "docs/review/reports/module-contract-alignment-2026-11-16.md"
+      "report_ref": "docs/review/reports/module-contract-alignment-2026-11-16.md",
+      "small_followup_recheck": {
+        "date": "2026-11-16",
+        "baseline": "9ec736ba68edadeb71123ef93037502f82e43273",
+        "ref": "docs/review/reports/repair-batch-followup-2026-11-16.md",
+        "scope": "two missed same-domain canceled tokens, preserve approved ticket seed and separate typed semantics; explicit B0 completed credit/unknown target increment/estimate-before-start; historical F021 test counts are snapshots",
+        "new_owner_business_policy_question": false,
+        "B0_remaining_net_days": null,
+        "current_core_days_changed": false,
+        "business_feature_implementation": false
+      }
     }
   ]
 }

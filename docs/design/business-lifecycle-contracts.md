@@ -379,7 +379,9 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 | accept-request | assessed/remediating；当前 owner 本人+manage；理由、期望到期日、风险 revision、当前 owner | 创建 pending 申请；不直接 accepted，不自动关工单 |
 | accept-confirm/reject | 当前主锚管理角色+manage；申请仍 pending、owner/风险 revision 与申请基线相符；默认 actor≠applicant | confirm→accepted；reject→申请 rejected，风险仍原处置态；无理由驳回拒绝 |
 | accept-expire | 当前有效接受版本确已到期；系统限定用例 | accepted→assessed；原 cycle 重审；不自动续期，不自动建重复工单 |
-| verify/close | 当前有资格的主锚/owner，合法状态；五档结论及证据 | fixed→closed；accept→申请；false_positive→closed+抑制；duplicate→merge；cancelled→assessed；“不修”不能冒充 fixed |
+| verify/close | 当前有资格的主锚/owner，合法状态；五档结论及证据 | fixed→closed；accept→申请；false_positive→closed+抑制；duplicate→merge；canceled→assessed；“不修”不能冒充 fixed |
+
+**取消语义按所属合同区分（F022补遗）**：风险`close.resolution=canceled`表示取消本次关闭、回到assessed；工单种子已定的`status=cancelled`表示撤回终态，其终态资格读发布定义元数据；TR的`receipt.status=canceled`是有证据的执行取消终态。三者不按裸字符串互比或自动互转：撤回整改票不能据此把风险判为已修复，取消一次风险关闭也不终止TR。保留10月27日已拍种子key，不全仓替换历史；D01/D10冻结固定流程/profile时登记各自状态和事件映射，目录权限表不能代替此语义表。
 
 `RiskAcceptance` 含 `request_id,risk_id,applicant_id,owner_at_request,risk_revision,reason,valid_until,status=pending/approved/rejected/superseded/expired,revision,decided_by,decision_reason,decided_at`。owner、级别、关键范围或申请内容改变使旧 pending 申请 superseded，确认需新申请；不能确认旧 owner 的旧风险敞口。续期是新接受版本，保留历史；有效期必须未来，不接受无限期 null。默认制衡开关若已授权关闭须审计 reason/actor/策略版本；管理员不能通过自操作旁路关闭。
 
@@ -420,7 +422,7 @@ B05简化方案已确认：`risk.dispatch.v1`表示用例/能力定义别名，�
 
 **P6.2 最小完成语义不等待整套 D16。** 目标 `risk.remediation.finish.v1` 为明确领域用例：持当前处理资格提交每 active link 的结论与证据；review_gate=on 时仅走已发布合法边 `in_progress→pending_verify`，off 时走已发布合法边 `in_progress→closed`。两种都执行 collect_fields/G2/证据/业务 validator/SLA/event；不伪造一个人类复核动作。发布预检要求这两条受管边与 gate 配置一致，缺边则阻断配置。D16 后续通用默认边、条件多命中、循环和恢复不得反向推翻此业务用例，可将其内部边选择委托给同一受限内核。此拆分保留“默认无额外复核直接闭环”，不建设临时通用编排器。
 
-复核/完成结果按 risk 逐项，不能用 ticket closed 一刀切所有风险 fixed。固定结论需整改措施/证据 ref/复测人/时间；accept 必须由当前owner本人进入接受申请，且不先关风险，duplicate 指向受权可见 master，false_positive 的抑制由风险主锚管理者确认，cancelled 回 assessed。某 link 失败/被detach 不阻止其它合法风险，票的完成收据列每项结果与 pending，业务 terminal 的完成条件由已发布受管定义明确：所有 active links 已有**已授权且已生效**的合法结论或已detach，否则拒绝整票 terminal。
+复核/完成结果按 risk 逐项，不能用 ticket closed 一刀切所有风险 fixed。固定结论需整改措施/证据 ref/复测人/时间；accept 必须由当前owner本人进入接受申请，且不先关风险，duplicate 指向受权可见 master，false_positive 的抑制由风险主锚管理者确认，canceled 回 assessed。某 link 失败/被detach 不阻止其它合法风险，票的完成收据列每项结果与 pending，业务 terminal 的完成条件由已发布受管定义明确：所有 active links 已有**已授权且已生效**的合法结论或已detach，否则拒绝整票 terminal。
 
 处理人不是owner时可在该link记录 `proposed_resolution/proposed_by/proposed_at` 及证据，但不能借finish代owner申请接受；需主锚权限的误报抑制/合并亦只产生建议。它是该link的待处理事实，不是通用审批引擎。owner合法提出accept后，link仍active且 `resolution_status=pending_confirmation`；确认批准才置resolved/accepted，驳回则清待确认标记并回remediating/待合法结论，不丢原建议历史。确认与link状态变更可靠协调；相关工单仍由合法完成用例关单，不能因风险接受/人工关闭在另一页发生就擅自关票。未完成的待owner/待团队项通过capabilities/receipt和通知显示，gate=off也不跳过这类不可省的业务确认。其余fixed项可逐risk结算，不能将部分pending报为全票完成。
 

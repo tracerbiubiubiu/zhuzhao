@@ -1111,7 +1111,8 @@
     "pre_core_rehearsal": {
       "profile": "B0",
       "ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
-      "rule": "Existing artifacts/mock interfaces only; no reverse dependency on all new local-core WBS. Dedicated synthetic test credentials are allowed; real business activation follows explicit P1/capability gates."
+      "rule": "Existing artifacts/mock interfaces only; no reverse dependency on all new local-core WBS. Dedicated synthetic test credentials are allowed; real business activation follows explicit P1/capability gates.",
+      "allocation_ref": "docs/review/local-core-release-estimate.json#/pre_core_rehearsal_allocation"
     },
     "waiting_rule": "MR1 and formal exits remain conditional on real inputs/evidence. The effective-day sequence assumes required inputs are available and never treats unknown waiting as zero calendar days."
   },

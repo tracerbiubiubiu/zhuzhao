@@ -142,6 +142,12 @@
         148
       ],
       "applies_to_current_price": false
+    },
+    "pre_core_rehearsal_pricing": {
+      "source": "docs/review/local-core-release-estimate.json#/pre_core_rehearsal_allocation",
+      "state": "target_profile_and_remaining_net_estimate_pending_before_B0_start",
+      "additional_days": null,
+      "rule": "97–151 is the selected 32-WBS local core view, not a fully priced quote for unknown target-specific B0 work; reuse/transfer with Q1/Q2 is itemized once, no automatic 1–2 day assumption."
     }
   },
   "feasibility": {
@@ -200,7 +206,7 @@
   "iam_estimate_review": {
     "ref": "docs/review/iam-net-allocation-2026-11-15.md",
     "state": "source_mapped_deduplicated_candidate_not_runtime_verified",
-    "rule": "IAM净28–46/UAA-C2–3已显式扣重整合；F021再补Q1有限兼容回归净2–3，当前整版97–151候选。旧68–104与95–148保留历史，不承诺日历或启动业务实现。"
+    "rule": "IAM净28–46/UAA-C2–3已显式扣重整合；F021再补Q1有限兼容回归净2–3，当前已选核心97–151候选。旧68–104与95–148保留历史，不承诺日历或启动业务实现。"
   },
   "release_gate_refs": {
     "B0": "docs/design/foundation-release-boundaries.md#1-先交哪一版",

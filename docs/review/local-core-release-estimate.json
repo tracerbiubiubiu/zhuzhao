@@ -1227,9 +1227,10 @@
       ],
       "allocation_refs": [
         "G03/G04/G05/E09适用最小正式门",
-        "原维护收尾预留归本包一次"
+        "已交维护仅作历史信用，不再计剩余；B0目标新增量按独立分配说明净估"
       ],
-      "estimate_review_state": "remaining_work_decomposed_with_explicit_compatibility_increment"
+      "estimate_review_state": "remaining_work_decomposed_with_explicit_compatibility_increment",
+      "excludes": "已完成维护不再计价；B0目标相关新增净量未作现成报价，按pre_core_rehearsal_allocation在B0开工前冻结/分配，不把历史维护1–2日当B0或默认塞入后置Q2。"
     }
   ],
   "totals": {
@@ -1809,5 +1810,26 @@
       "re-authoring domain/browser regression already charged elsewhere"
     ],
     "review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
+  },
+  "pre_core_rehearsal_allocation": {
+    "profile": "B0",
+    "state": "target_profile_pending_net_subestimate_before_start",
+    "scope_ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
+    "accounting_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md#5-b0预演的成本与顺序归属",
+    "selected_core_totals_include_unestimated_target_B0_work": false,
+    "remaining_net_days": null,
+    "owner_role": "实施维护者提出目标画像与净额，所有者绑定真实环境许可和窗口",
+    "estimate_due": "B0目标平台/架构与制品范围冻结后、B0实际预演开工前；不等待Q2或全部新核心交付",
+    "completed_asset_credit": [
+      "已交组件锁、构建/打包工具与镜像摘要",
+      "既有本地mock启动/登录/基础工单验证和去敏运行资料"
+    ],
+    "remaining_scope_to_assess": [
+      "所选目标架构制品与依赖准备/导入",
+      "目标隔离环境的配置、启动、登录与基础工单预演及证据",
+      "与Q1/Q2同一制品/接线任务的提前转移和后续剩余量扣重"
+    ],
+    "allocation_rule": "B0是核心前可独立执行的预演；不将其完成依赖后置Q2。已完成维护不收费；与Q1/Q2确实相同的工作逐项分配一次，目标新增净量另估后进入账，不预设1–2日或宣称原Q2已包干。",
+    "external_wait_rule": "实际目标许可/网络/导入窗口单列，未知不是零等待；本地已验资产不等于公司目标环境已验。"
   }
 }
