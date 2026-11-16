@@ -16,7 +16,7 @@ LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父�
 
 ## 工程量与相较上一版的变化
 
-上一版公共292–496日/含R305–518日是补充前基线；新增LS34–56、CE52–80、RP净差16–24，合计102–160日。
+补充前公共292–496/含R305–518，净增102–160，当前公共394–656/含R407–678。基线、净增及当前总量分别由净增册与实际WBS求和派生，不与首版本地净价叠加。
 G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。
 
 
@@ -177,6 +177,7 @@ X01-C2–3/X01-B3–4/X01-H3–5仍合计原8–12日；B为配置后重启的�
 
 ## UAA在现有13切片中的跨阶段硬出口
 
+完整UAA P/R的实际主研发产能投入须通过既有`local_core.delivery_exits.uaa_capacity_transition`，对应`Q12_core_stability`业务/工程证据，当前仍为`not_verified_by_schedule`。这不是新增有价任务，不要求整个P6.3完成，也不阻协议联系、条件索取和公共mock准备；下方长期日窗不是该门已通过的证明。
 公共范围保留mock/contract，不因公司资源未到而阻断独立IAM和公共开发；真实成功不能由合成用例代验。
 UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内部才产出影子差异、私有制品/runbook。
 正式apply前另需映射/影子差异批准、正式资源/窗口、应急退出与适用公共生产门；apply后观察才是R整体收口。
@@ -246,20 +247,20 @@ UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内�
 - 53. `D13-M`（P6.E，D13）：3–5日，D188→D191 / D311→D316；依赖`D08, D09, D10, MAINTENANCE-CLOSEOUT`。
 - 54. `D13-T`（P6.E，D13）：1–2日，D191→D192 / D316→D318；依赖`D08, D09, D10, D11, D12, MAINTENANCE-CLOSEOUT`。
 - 55. `D14`（P6.E，D14）：7–11日，D192→D199 / D318→D329；依赖`D10, D13, MAINTENANCE-CLOSEOUT`。
-- 56. `UAA-P-PB02`（P6.1，E01）：3–4日，D199→D202 / D329→D333；依赖`C04, D06, E01-UAA-C, MAINTENANCE-CLOSEOUT`。
-- 57. `UAA-P-PB03`（P6.1，E01）：1–2日，D202→D203 / D333→D335；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X01-C`。
-- 58. `UAA-P-PB01`（P6.1，E01）：3–4日，D203→D206 / D335→D339；依赖`C04, E01-UAA-C, MAINTENANCE-CLOSEOUT`。
-- 59. `UAA-P-PB05`（P6.1，E01）：3–4日，D206→D209 / D339→D343；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, UAA-P-PB03, X02-F`。
-- 60. `UAA-P-PB04`（P6.1，E01）：1–2日，D209→D210 / D343→D345；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X02-F`。
-- 61. `UAA-P-PB06`（P6.1，E01）：1–2日，D210→D211 / D345→D347；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X02-F`。
-- 62. `UAA-P-PB07`（P6.1，E01）：2–3日，D211→D213 / D347→D350；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB01, UAA-P-PB04, UAA-P-PB05, UAA-P-PB06`。
-- 63. `UAA-P-PB08`（P6.1，E01）：2–4日，D213→D215 / D350→D354；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB01, UAA-P-PB02, UAA-P-PB03, UAA-P-PB04, UAA-P-PB05, UAA-P-PB06, UAA-P-PB07`。
-- 64. `UAA-P-PU01`（P6.1，E01）：2–3日，D215→D217 / D354→D357；依赖`E01-UAA-C, MAINTENANCE-CLOSEOUT`。
-- 65. `UAA-P-PU02`（P6.1，E01）：2–3日，D217→D219 / D357→D360；依赖`E01-UAA-C, MAINTENANCE-CLOSEOUT`。
-- 66. `UAA-P-PO01`（P6.1，E01）：2–3日，D219→D221 / D360→D363；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PU01, UAA-P-PU02`。
-- 67. `UAA-P-PU03`（P6.1，E01）：1–2日，D221→D222 / D363→D365；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PU01, UAA-P-PU02`。
-- 68. `UAA-P-PC01`（P6.1，E01）：1–2日，D222→D223 / D365→D367；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PO01, UAA-P-PU03`。
-- 69. `UAA-P-PQ01`（P6.1，E01）：1–1日，D223→D224 / D367→D368；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PC01`。
+- 56. `UAA-P-PB02`（P6.1，E01）：3–4日，D199→D202 / D329→D333；依赖`C04, D06, E01-UAA-C, MAINTENANCE-CLOSEOUT`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 57. `UAA-P-PB03`（P6.1，E01）：1–2日，D202→D203 / D333→D335；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X01-C`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 58. `UAA-P-PB01`（P6.1，E01）：3–4日，D203→D206 / D335→D339；依赖`C04, E01-UAA-C, MAINTENANCE-CLOSEOUT`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 59. `UAA-P-PB05`（P6.1，E01）：3–4日，D206→D209 / D339→D343；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, UAA-P-PB03, X02-F`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 60. `UAA-P-PB04`（P6.1，E01）：1–2日，D209→D210 / D343→D345；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X02-F`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 61. `UAA-P-PB06`（P6.1，E01）：1–2日，D210→D211 / D345→D347；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB02, X02-F`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 62. `UAA-P-PB07`（P6.1，E01）：2–3日，D211→D213 / D347→D350；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB01, UAA-P-PB04, UAA-P-PB05, UAA-P-PB06`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 63. `UAA-P-PB08`（P6.1，E01）：2–4日，D213→D215 / D350→D354；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB01, UAA-P-PB02, UAA-P-PB03, UAA-P-PB04, UAA-P-PB05, UAA-P-PB06, UAA-P-PB07`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 64. `UAA-P-PU01`（P6.1，E01）：2–3日，D215→D217 / D354→D357；依赖`E01-UAA-C, MAINTENANCE-CLOSEOUT`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 65. `UAA-P-PU02`（P6.1，E01）：2–3日，D217→D219 / D357→D360；依赖`E01-UAA-C, MAINTENANCE-CLOSEOUT`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 66. `UAA-P-PO01`（P6.1，E01）：2–3日，D219→D221 / D360→D363；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PU01, UAA-P-PU02`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 67. `UAA-P-PU03`（P6.1，E01）：1–2日，D221→D222 / D363→D365；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PU01, UAA-P-PU02`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 68. `UAA-P-PC01`（P6.1，E01）：1–2日，D222→D223 / D365→D367；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PB08, UAA-P-PO01, UAA-P-PU03`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
+- 69. `UAA-P-PQ01`（P6.1，E01）：1–1日，D223→D224 / D367→D368；依赖`MAINTENANCE-CLOSEOUT, UAA-P-PC01`；实际主产能准入`local_core.delivery_exits.uaa_capacity_transition`。
 - 70. `I01`（P7，I01）：5–9日，D224→D229 / D368→D377；依赖`C03, D01, D12, MAINTENANCE-CLOSEOUT`。
 - 71. `I02`（P7，I02）：4–7日，D229→D233 / D377→D384；依赖`D03, I01, MAINTENANCE-CLOSEOUT`。
 - 72. `I03`（P7，I03）：9–15日，D233→D242 / D384→D399；依赖`C03, D12, I01, I02, MAINTENANCE-CLOSEOUT`。

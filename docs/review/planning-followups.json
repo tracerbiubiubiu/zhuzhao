@@ -842,6 +842,44 @@
       "historical_34_formal_decisions_unchanged": true,
       "report_ref": "docs/review/reports/planning-review-repair-2026-11-16.md",
       "C05_confirmed_behavior": "所有者已确认C05首版简化：重复K不再写口令/epoch、不重签原TokenPair，提示操作已存在/结果待核查；改B须重新确认新K。HMAC秘密比较及验证key生命周期后置，保留当前身份/目标、DB安全代际、原子receipt/intent和恢复CAS。"
+    },
+    {
+      "id": "F022-module-contract-alignment",
+      "date": "2026-11-16",
+      "source": {
+        "kind": "explicit_owner_goal_after_current_main_report_recheck",
+        "request_excerpt": "按你的建议进行修改，修改完之后验证，验证没问题后提交推送合并至main",
+        "baseline": "8c44ef6f2d323a54468ef72213fc5caa030c8947"
+      },
+      "scope": "有限现势估算引用与分类接线、公开IAM/C05/UAA视图映射、AL push参考协议与负例、逐包开工冻结细节和已证实文档链接修订；不实现Phase6业务或另换权限/消息引擎",
+      "authorization": {
+        "short_branch_PR_then_main": true,
+        "business_feature_implementation": false,
+        "deployment": false,
+        "rewrite_published_history": false
+      },
+      "design_refs": [
+        "docs/review/reports/module-contract-alignment-2026-11-16.md",
+        "docs/phase6/foundation-iam-module-detail.md",
+        "docs/phase6/task-activelist-message-detail.md",
+        "docs/review/execution-schedule-model.json"
+      ],
+      "retained_owner_policies": [
+        "C05 duplicate operation no new write/result check; HMAC equality deferred",
+        "local-mode formal first; UAA capacity after existing stability exit",
+        "mock retained; professional-platform capabilities reused; test-first"
+      ],
+      "corrections_to_external_reports": [
+        "2026-11-13 source snapshot really had 16 child exits; preserve history, derive current counts",
+        "self-exit already has wire/read qualification; extend manual-source guard under D03 only",
+        "no current NativeWriteOriginV1 DTO; freeze trusted manual-write context under TD03/TD04",
+        "historical null and raw-week calculation were real; do not rewrite historical facts",
+        "do not expand role/menu iamState for private C05 or unify distinct-domain state machines"
+      ],
+      "estimate_policy": "No unsupported blanket risk/OBS/HMAC delta; existing bounded WBS covers selected responsibility and acceptance refinements. Actual extra implementation must be named/deduplicated/repriced before execution; current net totals remain authoritative.",
+      "owner_pending": "No new business-policy choice from this repair. Real provider/config/operator inputs stay in existing activation windows.",
+      "historical_34_formal_decisions_unchanged": true,
+      "report_ref": "docs/review/reports/module-contract-alignment-2026-11-16.md"
     }
   ]
 }

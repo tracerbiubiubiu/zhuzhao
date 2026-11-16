@@ -292,6 +292,121 @@ class RepositoryModelTests(unittest.TestCase):
         args={k:copy.deepcopy(getattr(self,k)) for k in ['backlog','model','scope','uaa']};args.update(overrides)
         return m.build_model(**args,include_r=include_r,reserve=reserve)
 
+    def source_link_fixture(self, root):
+        names = ['docs/review/planning-backlog.json', 'docs/review/execution-schedule-model.json',
+                 'docs/review/planning-scope-estimates.json', 'docs/review/uaa-implementation-estimate.json',
+                 'docs/review/uaa-real-integration-conditions.json', 'docs/review/local-core-release-estimate.json',
+                 'docs/review/first-usable-release-target.json', 'docs/review/owner-decision-agenda.json',
+                 'docs/review/11-project-control.md', 'docs/roadmap.md']
+        for name in names:
+            path = root / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((ROOT / name).read_bytes())
+        model_path = root / 'docs/review/execution-schedule-model.json'
+        model = json.loads(model_path.read_text())
+        model['current_source_link_docs'] = ['docs/phase6/module-design-handoff.md']
+        model_path.write_text(json.dumps(model))
+        page = root / model['current_source_link_docs'][0]
+        page.parent.mkdir(parents=True, exist_ok=True)
+        text = ('<!-- local-core-source:start -->\n'
+                '当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。\n'
+                '<!-- local-core-source:end -->\n')
+        page.write_text('历史估算68–104保持原时点。\n' + text)
+        return page, text
+
+    def test_non_authoritative_current_pages_are_checked_against_source_only_contract(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); page, good = self.source_link_fixture(root)
+            for bad in ('no markers', good + good,
+                        good.replace('唯一净估册', '当前95–148日'),
+                        good.replace('local-core-release-estimate.json', 'planning-backlog.json')):
+                page.write_text(bad)
+                with self.subTest(bad=bad[:40]), self.assertRaisesRegex(ValueError, 'source.*view|marker'):
+                    m.calculate(root)
+
+    def test_source_only_current_page_preserves_history_and_records_exact_authority(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); page, good = self.source_link_fixture(root)
+            result = m.calculate(root)
+            self.assertIn('current_source_link_checks', result)
+            self.assertEqual(set(result['current_source_link_checks']), {'docs/phase6/module-design-handoff.md'})
+            self.assertEqual(result['current_source_link_checks']['docs/phase6/module-design-handoff.md']['source_ref'],
+                             'docs/review/local-core-release-estimate.json')
+
+    def test_source_only_page_cannot_rebind_its_authority_to_another_existing_json(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); page, good = self.source_link_fixture(root)
+            path = root / 'docs/review/execution-schedule-model.json'
+            model = json.loads(path.read_text())
+            model['local_core_net_estimate_ref'] = 'docs/review/planning-backlog.json'
+            path.write_text(json.dumps(model))
+            page.write_text(good.replace('local-core-release-estimate.json', 'planning-backlog.json'))
+            with self.assertRaisesRegex(ValueError, 'source.*authority'):
+                m.calculate(root)
+
+    def test_current_source_link_registry_keeps_each_selected_non_authoritative_page(self):
+        self.assertEqual(set(self.model['current_source_link_docs']), {
+            'docs/phase6/module-design-handoff.md', 'docs/phase6/task-activelist-message-detail.md',
+            'docs/design/extension-compatibility.md', 'docs/design/authorization-model-and-engine-choice.md',
+            'docs/design/rbac-inheritance-and-cascade.md'})
+
+    def test_uaa_main_capacity_binding_cannot_drop_or_replace_core_stability_condition(self):
+        for mutation in ('missing', 'formal_instead_of_stability', 'wrong_owner_action'):
+            model = copy.deepcopy(self.model)
+            model['uaa_capacity_gate_binding'] = dict(local_core_exit_id='uaa_capacity_transition',
+                                                      owner_action_key='Q12_core_stability')
+            if mutation == 'missing':
+                del model['uaa_capacity_gate_binding']
+            elif mutation == 'formal_instead_of_stability':
+                model['uaa_capacity_gate_binding']['local_core_exit_id'] = 'formal_local'
+            else:
+                model['uaa_capacity_gate_binding']['owner_action_key'] = 'MH01_MR1'
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'UAA.*capacity|stability'):
+                self.build(model=model)
+
+    def test_uaa_capacity_gate_covers_public_and_real_tasks_without_new_priced_node(self):
+        result = m.calculate(ROOT)
+        self.assertIn('uaa_main_capacity_gate', result)
+        gate = result['uaa_main_capacity_gate']
+        self.assertEqual(gate['local_core_exit_id'], 'uaa_capacity_transition')
+        self.assertEqual(gate['owner_action_key'], 'Q12_core_stability')
+        self.assertFalse(gate['preparation_contact_is_blocked'])
+        for key, scenario in result['scenarios'].items():
+            for profile in scenario['profiles'].values():
+                rows = profile['resources']['1']['ordered_tasks']
+                for row in rows:
+                    if row['effort_category'] in ('uaa_public', 'uaa_real'):
+                        self.assertEqual(row.get('capacity_gate_ref'), 'local_core.delivery_exits.uaa_capacity_transition')
+                    else:
+                        self.assertNotIn('capacity_gate_ref', row)
+        self.assertEqual(result['bounded_effort_totals'],
+                         {'public_R_pending': [394, 656], 'with_conditional_R_ready': [407, 678]})
+
+    def test_historical_sixteen_remains_history_while_current_counts_follow_changed_source(self):
+        rendered = m.render_backlog(self.backlog)
+        self.assertIn('历史快照（2026-11-13，3f79a76）', rendered)
+        self.assertIn('当时76父包/16子出口', rendered)
+        self.assertIn('17正式子出口', rendered.splitlines()[2])
+        changed = copy.deepcopy(self.backlog)
+        item = next(item for item in changed['work_items'] if item.get('milestones'))
+        child = copy.deepcopy(item['milestones'][0]); child['id'] = 'REFERENCE-NEW-CHILD'
+        item['milestones'].append(child)
+        header = m.render_backlog(changed).splitlines()[2]
+        self.assertIn('18正式子出口', header)
+        self.assertNotIn('17正式子出口', header)
+        self.assertNotIn('16子出口', header)
+
+    def test_long_range_current_accounting_text_uses_explicit_source_values(self):
+        result = m.calculate(ROOT)
+        self.assertEqual(result['long_horizon_accounting'], {
+            'baseline_public_days': self.scope['baseline']['public_remaining'],
+            'baseline_with_R_days': self.scope['baseline']['with_conditional_uaa_R'],
+            'net_increment_days': self.scope['net_increment_total']})
+        result['long_horizon_accounting'] = dict(baseline_public_days=[11, 17],
+                                                baseline_with_R_days=[13, 23], net_increment_days=[7, 9])
+        result['bounded_effort_totals'] = {'public_R_pending': [18, 26], 'with_conditional_R_ready': [20, 32]}
+        rendered = m.render_schedule(result)
+        self.assertIn('补充前公共11–17/含R13–23，净增7–9，当前公共18–26/含R20–32', rendered)
+
     def test_all_original_parents_and_child_scopes_survive(self):
         ids={x['id'] for x in self.backlog['work_items']};graph,children=m.source_graph(self.backlog)
         self.assertTrue(set(self.model['original_parent_ids']) <= ids)

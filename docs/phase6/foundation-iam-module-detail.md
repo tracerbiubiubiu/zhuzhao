@@ -22,15 +22,22 @@ ResourceRef = {owner: string, resource_type: string, resource_id: ID}
 AuthorizeQuery = {capability_id: string, contract_version: "1", resource: ResourceRef,
   action: string, requested_fields: string[]}
 AuthorizationDecision = {allowed: bool, policy_revision: UInt64String,
-  reason: string, allowed_fields: string[], filter_ref: string?}
+  reason: string, allowed_fields: string[]}
 ApplyIAMChange = {target_id: ID, expected_revision: UInt64String,
-  command: SetRoles|AssignMenus|UpdateStatus, idempotency_key: string}
-IAMReceipt = {operation_id: string, domain_revision: UInt64String,
-  policy_revision: UInt64String, state: committed_pending_effect|effective|held,
-  pending_effects: (policy_reload|session_revoke)[], reason: string?}
+  command: SetRoles|AssignMenus, idempotency_key: string}
+IAMReceipt = CapabilityReceipt for iam.user.roles.set@1 | iam.role.menus.set@1
+IAMRuntimeView = {domain_committed: true, policy_revision: UIntString,
+  runtime_state: effective|pending|superseded, pending_effects: policy_reload[0..1]}
+SessionChangeReceipt = {operation_id: string, domain_revision: UInt64String,
+  state: committed_pending_effect|effective|held|superseded,
+  pending_effects: session_revoke[0..1], reason: string?}
 ```
 
 Context 由可信认证层构造，body 的 user_id/operator/role 不替代它；`AuthorizationDecision` 只描述一次决定，不能当作长期 bearer token。新写用例要求 expected_revision；旧 REST 端点保留现行输入，由锁内业务谓词防交错，不能冒称已阻止旧客户端陈旧编辑。旧wire不静默换成IAMReceipt，成功data:null保留，新增响应头关联operation，准确兼容见§3.9；状态查询才返回receipt。提交后重载失败可关联原操作，不能报成业务必然未提交；不知道原结果先查原操作，不重复授予/撤销。
+
+`IAMReceipt`严格复用[候选Schema](../design/capability-interconnect-detail.schema.json)的`receipt`和`iamState`，上面的`IAMRuntimeView`仅解释其中的`iam_state`，不另发一种wire。两公开命令的`receipt.status=succeeded`证明领域已提交；其中菜单策略运行时仍可`pending`，此时`iam_state.pending_effects=[policy_reload]`，不把它显示成当前策略已生效。角色授予的同步有效集合仍按Schema固定`effective`；菜单策略由pending收敛到effective或superseded。未提交的依赖阻塞用`receipt.status=held`等既定状态，不携表示已提交的`iam_state`。
+
+C05账号/口令写是原HTTP/CLI的私有消费链，**不是这两个公开IAM capability**。`SessionChangeReceipt`是它在同一operation存储上的候选受权状态视图，不进入公共`iamState`，不因会话恢复需求扩宽公开profile。`session_revoke`表示尚待证明的会话安全效果；`session_projection`是§4的持久intent执行机制，两者不作为同一字段的两个枚举值。C05的effective表示本代适用会话投影已确认，不证明任意业务/私有服务已生效。跨视图映射沿[交接表](module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，不把来源处理结果、执行状态和运行时生效状态合并为一套字符串。原无消费方的`filter_ref`候选已移除；集合查询直接走所属模块typed过滤/字段投影，不引入可跨请求复用的授权令牌。
 
 L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及字段；L3 为此动作、对象状态、职责和字段约束。列表、详情、计数、聚合、导出、历史、附件、任务结果都用同一资源过滤器和字段投影；单对象不可见与不存在同形404，列表/计数/聚合先过滤无权行，空集正常返回，不泄露隐藏数量或因有隐藏行将整页改404。已可见但动作禁止为403。依赖不可证明为503，revision/同号异参为409。不能因没有菜单而拒绝安全首页，也不能由“有首页”增加业务读权。
 
@@ -231,6 +238,8 @@ worker仅按当前DB状态和epoch投影：旧代intent superseded，Lua单调�
 
 AT/RT及文件cookie核DB当前active/deleted/epoch与投影就绪，再核Redis会话约束；投影缺失/不可证503并恢复当前代，不能缺键回0。PAT只核当前DB账号、PAT自身状态及当前业务权，**不接AT/RT epoch或投影pending门**：密码重置不自动撤PAT，禁用/删除立即因账号拒绝，重新启用后未撤PAT按既有政策恢复。PAT DB故障由现统一401改为明确503若采用须列兼容用例，不虚标当前已区分。
 
+**认证读顺序与成本**：先验token格式/签名/时效，再取得本请求可信DB安全快照；账号inactive/deleted或token epoch与当前DB不同是终态拒绝，DB不可读是依赖503，当前epoch有效但投影未就绪/不可证是可恢复503。仅其后核Redis blacklist、RT槽等会话约束；Redis缺键不能替代DB判断，也不能把旧投影命中当作DB已提交撤销后的放行依据。首版不引跨请求DB安全快照缓存；同请求已有共同授权短事务可复用一次账号安全读，避免机械重复查询；后续写提交仍须按C04在锁内fresh复验，不把认证时快照当作提交许可，PAT继续按独立分支处理。C05/G04在同制品、代表数据量和并发下分别记录Bearer、Refresh、文件cookie与PAT的前后QPS、p50/p95延迟、每请求DB/Redis查询数和池占用，并与撤权/重启故障拒绝证据一并验收；是否优化由实测决定，不能为性能跳过当前安全事实。
+
 新schema要求仅放JWT AT/RT分支，不能在Bearer统一入口抢先拒掉zpat_。业务最终fresh守卫仍核相应DB事实，不能用早期认证快照替代提交前资格。
 
 ### 4.3 C05切换、恢复与独立验收
@@ -244,6 +253,8 @@ DB未提交零业务效果；commit未知查原operation；DB已提交而Redis�
 **UI实际接线**：UI仓`src/common/request/src/index.ts`现仅对401/20002做单飞refresh，401/20003清会话，refresh终态20004/20014/20015清会话；403/30003目前普通提示，不能称停用已完整退出。C05补账号停用与schema/epoch确定终态走`src/store/modules/user.ts`的resetState完整清理，过期仍按原单飞刷新；普通Redis/投影503不一律清所有会话。`changePassword`当前仅成功TokenPair时换token，故**已提交的自服务改密**须专用安全结果/operation引用，明确密码已变更、会话待恢复，停止复用旧token及自动重发，恢复后新密码登录；网络结果未知单列核查，不能显示必然未修改。请求/刷新/清理/迟到改密结果均核原session generation，不能清后来已登录的新账号。新增reason/码值与拦截器映射同批登记，不能让每个页面猜503含义。
 
 **SESSION-01–10（待新增）**：DB commit＋Redis持续失败；commit后kill/恢复；disable/enable/迟到clear竞争；投影丢键与不可信全量恢复分开；Login不借新epoch；Refresh只一个赢家且不覆盖新登录；Bearer/cookie一致；PAT跨改密保持且禁用即拒；CLI/HTTP及新建/存量初始投影可恢复；未知结果/旧500与新pending兼容（含disabled完整退出、普通503不乱清、改密已提交停止旧session、迟到不清新账号）。至少8轮并发红例，真实PG/Redis/HTTP/进程恢复不由miniredis或旧绿色代替。
+
+SESSION同时验[受控恢复运行卡](../ops/runbook.md#62-c05会话投影长期失败的受控恢复设计候选未实现)：长期失败超自动预算后升级、无权人工干预拒绝、受权只恢复原intent、伪造就绪/超时自动enable拒绝、不可信Redis恢复轮key重登与证据保留。C05与部署维护者在Q12绑定恢复角色/值守与所选配置，不把“继续等待”当作唯一恢复策略。
 
 复用`internal/service/auth_epoch_race_integration_test.go`的`TestAuthEpoch_LoginCannotBorrowPostResetEpoch/TestAuthEpoch_RefreshBindsConsumptionEpoch/TestAuthEpoch_UserLifecycleCannotReviveOldAT`、`internal/service/auth_revocation_regression_integration_test.go`的`TestAudit_AdminResetThenLogin_OldATMustStayRevoked`、`internal/service/session_epoch_test.go`的`TestSessionEpoch_StrictReadAndConditionalClear`、`internal/service/session_revoke_test.go`的`TestRevokeUserSessionsWithRetry_RecoversAfterTransientFailure/TestRevokeUserSessionsWithRetry_PersistentFailure`及`internal/middleware/jwt_epoch_test.go`的`TestJWT_PasswordEpoch/TestFileSession_PasswordEpoch`。旧测试不证明新DB代际/持久intent已经存在；首版重复提交行为、claims与C05毛估见下节，公共IAM参考Schema见共同合同，真实维护者/恢复窗口沿原议程集中绑定。
 
@@ -261,7 +272,7 @@ claims参考冻结为AT/RT新增可选`session_schema="db_epoch_v1"`、`session_
 
 按已选首版行为重新核责任，C05毛估保留**6–10单席工程日**的中低置信候选：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/重复操作收敛1–1.5；薄UI/session generation/运维1–1.5；真实并发/未知提交/恢复回归及评审1–2。上述剩余工作均仍必交；HMAC原未独立定价，移除其实现、编码、key生命周期与专用用例后，不凭空宣称已兑现1.5–2.5日节省。首批源级实耗继续校准，不把保守区间误写成保留后置工作收费。
 
-原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前Q1兼容补估后为97–151，唯一数字源见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)及净估册，不能用已有回归免费包干。
+原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前唯一总价来源见[净估册](../review/local-core-release-estimate.json)，替价依据见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)，不能用已有回归免费包干。
 
 **后置增强与历史**：5cca995版本的§4.4曾要求“同键同秘密回原结果、异秘密必409”，以HMAC-SHA256秘密绑定、封闭JSON编码、验证key轮换/旧key保留和[合成编码向量](../design/examples/capability-reference/c05-secret-binding-vector.json)支撑精确比较。本次确认撤下这项首版强辨别承诺；该向量仅保留后置设计参考，不再是首版C05的实现或验收门，也不新增key托管的首版owner动作。以后有明确需要时再按场景、合同及净增估算获选，不因资料保留默认启用。示例零key/口令仍严禁运行配置消费。
 

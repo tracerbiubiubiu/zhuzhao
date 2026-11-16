@@ -117,6 +117,8 @@ AIQueryResponse = {invocation_id: string,
 
 模型 connection 保存 alias/version、provider_kind、endpoint_ref/secret_ref、data_zone、能力集、超时/并发/输入输出预算。不能仅凭“OpenAI-compatible”假定 tools/JSON schema/usage 可用；adapter contract 证明，不支持结构化建议的连接只提供可验证摘要或明确拒绝该场景。内网不自动 fallback 外网；fallback 只限同授权数据区和所需能力并记录实际使用连接/模型标识，未知修订写 unknown。
 
+`connection_alias`是选择请求，不是数据出区批准。首个scenario由服务端受审配置固定默认alias；请求提供其它alias则在读取业务数据、构造prompt及出站前拒绝。确需开放受限选择时，同一场景配置显式列允许集，服务端取**scenario允许集∩当前actor允许集∩本次数据区∩所需模型能力**，并核连接enabled/version；UI仅展示该交集，不能以用户传alias或“内部连接”字面取代服务端检查。fallback同样只能在这个交集内，配置换版/撤权使旧选择失效。scene/actor/data_zone的确定由可信配置及当前授权给出，模型和请求不能自报更宽数据区；实际连接与配置revision记安全运行元数据。此项由A01属主在启用前冻结，不反向阻塞IAM-A或人工风险闭环。
+
 每个 invocation 有 actor/config revision/input hash/state/reason/usage、创建与终止时间；prompt/敏感原文不进普通日志。查询页异步请求按 invocation 或前端递增 token 绑定，切账号/换问题清理旧结果；取消只停止后续读取/生成，已取得受限数据不向已撤权用户继续流式发送。来源超时显示 unavailable；有20行结果但 complete=false 不让模型回答全公司总量。缺少部门/窗口/类型时先 needs_input，不自行选择高权限目标。
 
 ## 6. A02：自然语言草稿、精确预览与确认
@@ -158,7 +160,7 @@ Plan = {actor_id: ID, operation_id: string, canonical_command: TicketCreateComma
 | DEV-02 | 看状态无打开权、入口换版、恶意/未登记 URL | 服务端403/409或配置拒绝，不抓页面、不泄设备凭据 |
 | DEV-03 | 多厂商且全无 SSO | 统一目录后人工登录；launch 不记 login success |
 | AI-01 | 同义/缺条件/恶意提示/非法 tool/跨组织问总量 | 先澄清或拒绝，模型不能 SQL/越权、partial 不装总体 |
-| AI-02 | 模型超时/不支持结构化/配额/内网外网 fallback | 明确 failed/needs_input，无空成功、无外泄降级 |
+| AI-02 | 模型超时/不支持结构化/配额/内网外网 fallback；伪alias、同区但无actor授权、配置换版及能力不足 | 明确 failed/needs_input，无空成功、无外泄降级；场景/主体/数据区/能力交集外拒绝且读取/prompt/出站调用为0，固定alias与获准受限选择有正例 |
 | AI-03 | preview 后改定义/目标/撤权/过期；同 plan 同 key/不同 key 并发 confirm | 旧 plan 拒绝；一 plan 固定一 operation 最多一票，同号异参409 |
 | AI-04 | 建单响应丢失/恢复、切账号后旧 stream 到达 | 查原 receipt，不重建单、不向新账号展示旧答案 |
 

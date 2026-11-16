@@ -60,7 +60,7 @@ RiskView = {risk: RiskRef, status: RiskState, closure_kind: ClosureKind|null,
 - `POST /risk-items/assign`：`Mutation+{id,owner_user_id,reason,link_expected_revisions?}` → `{risk:RiskRef,handover_ref,links:[{link_id,result,revision}],pending_effects}`。主锚管理者可改责任；owner不能仅凭拥有本风险就把责任移给任意人。
 - `POST /risk-items/accept-request`：`Mutation+{id,reason,valid_until:Instant}` → `{acceptance_id,acceptance_revision,status:pending,risk_revision}`。仅当前owner本人且具manage，期限必须未来；状态不立即变accepted。
 - `POST /risk-items/accept-confirm`：`{operation_id,acceptance_id,expected_acceptance_revision,expected_risk_revision,decision:approve|reject,reason}` → `{acceptance_id,acceptance_revision,status,risk:RiskRef,accepted_until:Instant|null}`。当前主锚管理者、未自确认、申请基线仍有效才批准；拒绝必填理由，不能拒绝已批准申请伪造回滚。
-- `POST /risk-items/close`：`Mutation+{id,resolution:fixed|false_positive|duplicate|cancelled,evidence_refs,note,master_risk_id?}`。固定结论要求整改/复测人、复测时间和证据引用；false_positive/duplicate不借此绕过主锚资格或E10合并启用门。`cancelled`回assessed；transfer/avoid首版只登记策略和依据，不能因改字段自动关闭。
+- `POST /risk-items/close`：`Mutation+{id,resolution:fixed|false_positive|duplicate|canceled,evidence_refs,note,master_risk_id?}`。固定结论要求整改/复测人、复测时间和证据引用；false_positive/duplicate不借此绕过主锚资格或E10合并启用门。`canceled`回assessed，不是风险已修复或任务效果已取消；transfer/avoid首版只登记策略和依据，不能因改字段自动关闭。新增候选wire统一美式`canceled`，没有已发布的风险API需兼容旧拼写。
 
 `POST /risk-items/false-positive`另收`Mutation+{id,reason,suppression_valid_until:Instant}`，主锚管理者才可写误报关闭和有界抑制；`close`中的false_positive只在具备同一完整参数/资格的适配器内委派该用例，缺抑制参数不得默用永久期。`GET /risk-suppressions`分页查主锚范围；`POST /risk-suppressions/remove`收`{operation_id,id,expected_revision,reason}`终止抑制但不自动重开历史误报cycle。接受/误报有效期独立于整改deadline，UI改期不改接受或抑制期限。
 
@@ -76,6 +76,7 @@ RiskView = {risk: RiskRef, status: RiskState, closure_kind: ClosureKind|null,
 | `risk_items` 风险域cycle | `id,human_key,family_id,generation int,regression_of null,status,closure_kind null,revision,org_id,affected_org_id null,owner_user_id null,level null,deadline/init_deadline null,treatment,accepted_until null,closed_at null,archived_at null,attributes jsonb`；唯一human_key、`(family_id,generation)`；status/level/closure CHECK | `(org_id,status,id)`、`(affected_org_id,status,id)`、`(owner_user_id,status,id)`、`(level,deadline,id)`、family；`archived_at`是查询标签，不另造业务终态 |
 | `risk_source_records` 来源投影 | `(source_ref,source_item_key) PK,latest_sequence,observed_at,content_hash,mapping_ref,mirror jsonb,revision` | 源删除只变可用性；不级联删cycle/history |
 | `risk_observations` 风险接入 | `ingest_id,source_ref,event_id,source_item_key,source_sequence,observed_at,content_hash,mapping_ref,kind,processing_status,risk_id null,raw_ref,received_at,safe_reason`；唯一`(source_ref,event_id)`；有序源对非空sequence唯一`(source_ref,source_item_key,source_sequence)` | `(processing_status,received_at,ingest_id)`供恢复；同唯一键异hash进入冲突隔离记录，不能覆写已验原文 |
+| `risk_ingest_conflicts` 风险接入 | `id bigint PK,original_ingest_id,source_ref,event_id,source_item_key,source_sequence null,content_hash,raw_ref,conflict_kind,state,received_at,resolved_by/at/reason null`；唯一`(source_ref,event_id,content_hash)` | 只存冲突输入及原观察引用，原观察不可变；`(source_ref,state,received_at,id)`用于有界核查。复用已有持久接入存储能保持同语义时可合表，不建通用隔离平台 |
 | `risk_events`/`risk_treatments` 风险域 | `id,risk_id,aggregate_revision,event_kind,actor_ref,occurred_at,operation_id,payload jsonb`；前者领域事实，后者用户处置记录；均追加、同事务 | `(risk_id,occurred_at,id)`；事件含`ordinal int>=0`，唯一`(risk_id,aggregate_revision,event_kind,ordinal)`，避免同revision合法多事件互撞 |
 | `risk_acceptances` 风险域 | `id,risk_id,applicant_id,owner_at_request,risk_revision,reason,valid_until,status,revision,decided_by/at/reason null`；每risk最多一个pending申请 | partial unique `(risk_id) WHERE status='pending'`；有效接受版本保留，不原地抹历史 |
 | `risk_suppressions` 风险域 | `id,family_id,valid_until,reason,created_by,ended_at null,revision` | 同family最多一条当前记录；启用/过期都取family锁，禁止源side自加抑制 |
@@ -97,6 +98,8 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 修复关闭保存各源最后有效观察checkpoint。之后确有新观察才在family锁内建generation+1、regression_of回链并移动head；同时两条新观察最多生成一代。接受有效期/误报抑制期内只增观察；接受到期用申请版本+cycle锁CAS重开原cycle，续期先提交则expiry no-op。误报抑制过期的新观察可建新待评估cycle，标suppression_expired，不计修复回归。withdrawn/deleted/全量缺失不作已修复。
 
 首版保留单体短事务+数据库约束，不引分布式锁服务/跨库事务。[PostgreSQL约束](https://www.postgresql.org/docs/current/ddl-constraints.html)兜底唯一性，[显式锁](https://www.postgresql.org/docs/current/explicit-locking.html)支持行锁/事务级advisory锁；本项目固定锁顺序、ON CONFLICT后再读取，死锁/serialization失败可在同operation且无外部效果时有限重试，超限返回可重试冲突，不无限循环。多实例不得依赖进程mutex防重；worker claim/lease/fence复用R01。
+
+**冲突持久落点（R1/D08）**：同event异hash或同源条目等sequence异hash时，原`risk_observations`和已应用镜像不更新；把新输入的受控raw_ref、hash、原ingest引用及冲突种类同事务保存到`risk_ingest_conflicts`，返回引用该记录的quarantined结果。相同冲突重投返回原冲突引用，不重复派单/建cycle。不能保存冲突证据时给依赖/容量失败，不以quarantined假装已收妥。受信源仍须通过原source授权、body预算与流控；raw只在受控存储保留，普通receipt/日志不回原文。获权维护者按当前source/组织范围查询和记录处置；需要采纳新的业务内容时提交具名新观察/受审修正，不覆写旧事件或原风险历史。原始材料清理不能先删掉仍被open冲突唯一引用的证据，超量背压保留待送，不另造自动裁决平台。
 
 ## 5. 风险→工单及完成闭环
 
@@ -204,11 +207,13 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 
 ## 12. TDD验收清单、依赖与待确认
 
+R1/D07–D14各端点首次实施前，由对应风险用例属主交逐端点目录绑定表：方法/路由、L1权限码、页面GET或写按钮、`menu_apis`/`role_menus`迁移归属、服务间源凭据入口/受控selfService及依据、确需`catalogExempt`的精确理由；再列L2/L3与不可见/无权反例。风险查询、抑制资源、派单和SOC协作按各自资源职责登记，不因共享risk前缀授通配权限，也不为了字面统一强改资源名。目录表与OpenAPI、seed和B案守卫测试同批交付，不等RELEASE现场裁定。候选权限名/豁免不是已存在的授权。
+
 以下是待写产品测试的具名验收规格，不是本轮已通过的计数。先按公约为本批全部正/负/边界/权限用例取得有效红，再实现；并发反例按现行至少8次稳定红/变异验牙取证。mock/contract/real三层分列。
 
 | 用例组/候选测试名 | 正常与失败预期 |
 |---|---|
-| `RiskReport_DuplicateAndConflict` | 新event计一次、同号同hash重复零增量、同号异hash隔离、整批超限零效果、合法批部分字段错逐行报告 |
+| `RiskReport_DuplicateAndConflict` | 新event计一次、同号同hash重复零增量；同号/等sequence异hash冲突落库且原观察不变，冲突重投去重、落库失败不假ACK、无权不能看raw；整批超限零效果、合法批部分字段错逐行报告 |
 | `RiskCycle_OrderedRegression` | 在办归并、fixed后真正新观察新一代回链、旧观察/等时未知不造回归、两个并发新观察只有一代 |
 | `RiskReport_CrashAfterIngest` | 收件后崩溃可恢复；commit响应丢失查原receipt；raw清理后同event仍不重复效果 |
 | `RiskAcceptance_CurrentOwnerAndEpoch` | owner申请他人确认、自己确认拒绝；owner/level/revision变旧superseded；撤权先提交后旧请求不能提交 |
@@ -216,7 +221,7 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 | `RiskDispatch_GroupAtomicAndLimit` | 合法N:1、20项上限、第21项/不同org或definition拒绝/新预览；任一组创建失败无孤票；group部分成功可重试 |
 | `RiskDispatch_TrustedCreator` | 风险管理者无通用建单权仍可向批准目标派；只读/任意目标/伪created_by拒绝；真实actor与owner分别审计 |
 | `RiskHandover_PartialGroup` | 全组同转更新受管owner；部分转detach且其它risk复核权不变；旧creator历史不改；无合法继任保持待交接 |
-| `RiskFinish_PerLinkResult` | gate on/off均字段校验；fixed/accept/proposal/误报/duplicate/取消分别正确；pending接受不能全票terminal；迟到旧link结果409不覆盖 |
+| `RiskFinish_PerLinkResult` | gate on/off均字段校验，固定流程缺相应完成/复核边时发布或派单预检拒绝；fixed/accept/proposal/误报/duplicate/canceled分别正确且canceled回assessed非fixed；pending接受不能全票terminal；迟到旧link结果409不覆盖 |
 | `RiskNotify_CurrentRecipient` | 入队后owner/CC撤权不发旧人；缺负责人/无权负责人各独立待办；HTTP超时unknown不当送达，业务保留成功 |
 | `RiskRead_ConsistentScope` | 主/副/owner三支与L1/L3交叉；list/detail/total/export/stats/时间线/任务结果同范围，隐藏与不存在输出不可区分 |
 | `RiskStats_MetricDefinitions` | 分母0=null、accepted不算fixed、缺时间不补零、月底/闰日/时区日界；无权历史快照不泄露，缺日不伪补 |
@@ -229,7 +234,7 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 
 当前不重新询问已确认的职责/N:1/接受制衡/设备/本地先行原则。**启用前需绑定**：
 
-1. 首批真实风险类型/字段/目录、目标工单类型/组织/owner名单及review_gate：例如两个risk同owner但目标组织不同，必须分组；管理员对预览样本确认而非逐字段技术决策。
+1. 首批真实风险类型/字段/目录、目标工单类型/组织/owner名单及review_gate：例如两个risk同owner但目标组织不同，必须分组；固定流程须显式配置gate=on的`in_progress→pending_verify`及所需复核边，gate=off须显式配置`in_progress→closed`合法完成边。发布/派单预检缺边就拒绝该画像，不让运行时才发现无完成路径；管理员对预览样本确认而非逐字段技术决策。
 2. B08真实通知实参：公司源五级如何映射四档、从哪一业务部门上溯、一个一级部门多负责人是否都须获权接收、汇总时区/时刻及静默例外；未齐只启合成规则，不假送达。
 3. 来源新鲜度/稳定键/序号/撤回及观察时间真实语义：例如扫描重导报告只是更新时间变更，不能据此判已修复后回归。由提供方合同验证，不要求公司资料外传。
 4. E10 P6.1出口：真实Excel模板/存量量级、是否已有迁移工具，以及一个跨指纹并单实例；按固定窗口裁决并给独立子估算。来源不具备不阻人工风险用例。

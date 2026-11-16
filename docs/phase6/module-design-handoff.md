@@ -5,8 +5,12 @@
 > **后继详细合同**：本页六边及六交付物现已展开至[模块详设入口](module-detail-index.md)的五份合同；首版本地范围不变。下面“逐包冻结”是实际实施前核候选/生成迁移与OpenAPI/绑定真实参数，不表示产品实现或全部企业协议已验。
 
 日期：2026-11-14。状态：**设计交接，未启动开发、未完成产品或企业验收**。现在进入按模块详设；先短冻结下列首版共同合同，不再以全仓审计、全项目或全部接口冻结为前置。
-范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../review/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。[本地核心净估候选](../review/local-core-release-estimate.json)为95–148有效工程日，已按IAM/AL读取净分配更新，含必要UAA-C、不含完整P/R，是旧76包的子范围分配/替代视图，不重复加到旧总价。
+范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../review/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。本地核心净估只读下方唯一来源，含必要UAA-C、不含完整P/R，是长期父包的子范围分配/替代视图，不重复加到长期总价。
 本页仅交接首批模块顺序与接缝，不另立设计规则、报价或状态总账；[工程公约](../standards.md)、[项目控制](../review/11-project-control.md)、[规划总账](../review/planning-backlog.md)及各领域合同继续各管其权威内容。
+
+<!-- local-core-source:start -->
+当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+<!-- local-core-source:end -->
 
 ## 1. 先共同钉住的六条边
 
@@ -39,9 +43,19 @@
 - 身份：本地核心先稳定用户ID和可信主体/服务/委托Context，账号与业务归属不因后续UAA接管重建。公共C分开规定认证`issuer+subject`及治理`application/source/subject`到本地ID的显式映射，不假定与工号、邮箱或彼此相等；实际企业映射由P/R核验，改号/回聘不自动并号，JIT默认关闭。
 - 可登录性：本地模式以本地账号状态及完整L1/L2/L3运行，空业务授权仍可到安全首页，不依赖中央响应。后续企业模式才追加中央允许、本地未安全停用及必要投影可证明的交集；中央启用不能解除本地封禁，未知枚举隔离，停用联动AT/RT/PAT及受限委托。
 - 管辖：本地阶段逐资源键登记local source、写主、范围/数据条件、直接/组织/继承血缘及允许入口；C留好纳管与非纳管边界。后续批准接管范围改为受管写入口只读/受控，非受管本地管理保留，旧本地绑定不得复活撤权。
-- 本地生效：首包实现本批当前授权/撤权的事务复验，以及策略重载、缓存和会话失效失败的持久恢复/收紧；不只日志后报全链成功。企业接收/领域提交/运行时生效/治理回传的分段receipt及候选`committed_pending_effect/held_dependency/effective/superseded/ignore_stale`在P批次冻结，不把它们全量接线前置到风险/工单。
+- 本地生效：首包实现本批当前授权/撤权的事务复验，以及策略重载、缓存和会话失效失败的持久恢复/收紧；不只日志后报全链成功。企业接收/领域提交/运行时生效/治理回传分别建模；下表区分处理分类与各具体视图，不发布一个包含全部状态的万能枚举。完整企业状态在P批次冻结，不把它们全量接线前置到风险/工单。
 - 后续三feed：`account`改账号状态，`user_roles`替换某用户的完整受管角色集合，`role_resources`替换某角色完整受管资源集合；不得误成全应用清表。C先规定作用域/完整性/版本规则；准确envelope、对象枚举及新旧/冲突/依赖处理在P自身批次冻结，同版本冲突、缺页及未知依赖不可按到达顺序扩权或缺失删除。
 - 企业失联：F006已定先停受管写；公司允许且能证明授权有效时保留获准只读，无法证明或超窗停受管能力。恢复仅限已授权维护者修配置/查同步/对账；真实期限、人员、动作和接管/退出基线由P/R核验批准，不阻塞当前本地运行，mock时钟不是生产SLA。
+
+| 处理分类 | 对应视图与准确映射 | 不可混同 |
+|---|---|---|
+| committed_pending_effect | 两公开IAM命令已提交为`receipt.status=succeeded`；仅菜单策略可有`iam_state.runtime_state=pending`与`[policy_reload]`。C05私有视图为`committed_pending_effect`与`[session_revoke]` | 公共`iamState`不接会话效果；C05未新增公开capability |
+| effective | 公共IAM的`iam_state.runtime_state=effective`且无待效；C05私有视图的`effective`仅证明本代适用会话投影 | 不等于任意外部消费者/治理回传均完成 |
+| held_dependency | 公共operation尚未提交时用既定`receipt.status=held`且不携`iam_state`；C05私有视图用`held`及安全reason | 不伪造`domain_committed=true`，也不把依赖故障当已撤销成功 |
+| superseded | 已提交菜单策略的旧代可为`iam_state.runtime_state=superseded`；C05私有旧epoch恢复项单独superseded | 角色授予profile按其同步有效集合约束，不泛化开放全部runtime值 |
+| ignore_stale | 后续UAA来源版本处理结果/接入回执的分类，由其feed合同冻结 | 不是公共IAM的runtime_state或C05私有receipt枚举 |
+
+准确字段以[底座§2](foundation-iam-module-detail.md#2-首版冻结的端口与返回语义)及所选Schema为准。显示层可译成一致中文文案，但不能跨域直接比较字符串来判定效果完成。
 
 ### 2.2 L1/L2/L3用例矩阵与失败出口
 

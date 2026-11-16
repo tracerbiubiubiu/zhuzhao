@@ -2551,5 +2551,25 @@
     "old_release_numbers_are_historical": true,
     "current_price_single_source": "docs/review/local-core-release-estimate.json#/totals",
     "existing_product_defects_remain_open": true
+  },
+  "module_contract_alignment": {
+    "date": "2026-11-16",
+    "source_followup": "F022-module-contract-alignment",
+    "baseline": "8c44ef6f2d323a54468ef72213fc5caa030c8947",
+    "state": "candidate_contract_clarification_not_product_delivery",
+    "report_ref": "docs/review/reports/module-contract-alignment-2026-11-16.md",
+    "scope": "Public IAM/C05/UAA view separation, bounded push reference coverage and first-use module freeze owners; remaining production DTO/migrations/current permission/concurrency/real-provider acceptance are delivered by existing work items.",
+    "implementation_windows": {
+      "C04_C05": "private security receipt/effect mapping, no undefined filter_ref, measured auth read path and controlled recovery",
+      "TD03_TD04": "trusted browser/manual-write context, core/AL ownership and all signed/internal bypass denial",
+      "CE04_CE05": "push body/ack schema and shape/oracle are reference evidence only; actual transactional inbox/409/recovery remains required",
+      "D03": "reuse RemoveCC wire, manual-source self-exit and mandatory relation protection",
+      "D08_R1": "persist same-key/different-hash conflicts without overwriting authoritative observation",
+      "D10": "fixed-flow gate-off completion edge verified before activation",
+      "A01": "server-side allowed connection intersection; no data-zone expansion by alias",
+      "E01_UAA_P": "actual primary capacity must consume existing uaa_capacity_transition exit; preparation contacts do not wait"
+    },
+    "product_runtime_verified": false,
+    "new_owner_policy_questions": 0
   }
 }

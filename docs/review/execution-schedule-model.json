@@ -1114,5 +1114,17 @@
       "rule": "Existing artifacts/mock interfaces only; no reverse dependency on all new local-core WBS. Dedicated synthetic test credentials are allowed; real business activation follows explicit P1/capability gates."
     },
     "waiting_rule": "MR1 and formal exits remain conditional on real inputs/evidence. The effective-day sequence assumes required inputs are available and never treats unknown waiting as zero calendar days."
+  },
+  "current_source_link_docs": [
+    "docs/phase6/module-design-handoff.md",
+    "docs/phase6/task-activelist-message-detail.md",
+    "docs/design/extension-compatibility.md",
+    "docs/design/authorization-model-and-engine-choice.md",
+    "docs/design/rbac-inheritance-and-cascade.md"
+  ],
+  "uaa_capacity_gate_binding": {
+    "local_core_exit_id": "uaa_capacity_transition",
+    "owner_action_key": "Q12_core_stability",
+    "scope": "Actual main development capacity for complete UAA P/R; not preparatory contact/public mocks and not the whole P6.3 completion barrier; no new priced package."
   }
 }

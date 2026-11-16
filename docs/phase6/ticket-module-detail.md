@@ -189,7 +189,7 @@ diff函数接收锁内旧真值与规范化/G2/服务端公式/领域更新后�
 
 ## 6. U01–U07 页面与状态详细合同
 
-视觉数值和27页清单继续以[UI施工合同](../../../zhuzhao-ui/docs/design/frontend-implementation-contract.md)、[页面清单](../../../zhuzhao-ui/docs/design/frontend-pages.json)为权威；本页只明确跨模块数据和行为。现有UI库、品牌与Vue/Element Plus继续使用，不增一套组件系统。
+视觉数值和27页清单继续以[UI施工合同](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/main/docs/design/frontend-implementation-contract.md)、[页面清单](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/main/docs/design/frontend-pages.json)为权威；本页只明确跨模块数据和行为。现有UI库、品牌与Vue/Element Plus继续使用，不增一套组件系统。
 
 | 包 | 本批交付与明确结果 | 失败/权限/交互验收 |
 | --- | --- | --- |
@@ -260,7 +260,11 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 **已确认TICKET-D01（F019）**：统一新增规则，保留已有合法关系。旧inherit类型也不保留“仅因可见便自行加CC”的例外；今后新增含自己均验独立参与人管理授权。既有合法manual CC保留，原组织读源撤销后该独立来源仍按当前类型/L1规则求值；本人可退出自己manual CC，不删domain/强制来源，失去L1时仍拒读。不重问新类型邀人管理、CC只读评论或创建者无自动邀请权；确切答复见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
 
-`Participants_SourceRevocation`补旧合法CC原组织源撤销后仍按当前策略可读、L1撤销拒读、新无管理权自加拒绝、本人退出不误删domain四组预期；这些是待实现验收，不以本次确认关闭旧路由问题。
+**本人退出的准确复用（D03）**：现有`POST /api/v1/tickets/cc/remove`与`RemoveTicketCCRequest{ticket_id,user_id}`保留；`internal/service/ticket/cc_service.go`的`RemoveCC`已经对本人用read、他人用update，`cc_integration_test.go`已钉本人自摘，不新造self-exit端点。来源化后由Service在共同改权守卫及工单/来源锁序内重验当前read资格；本人分支只移除`user_id=actor`、`role=cc`、`origin=manual`的精确来源，不能调用未限定来源的全量删除来摘domain/强制关系。存量未标注来源先按D03迁移映射，不默认为可自删；无manual则按受权可见范围返回无变化，退出后无剩余读源的下一请求仍404同形。摘他人及新增含本人继续验独立管理资格，不能由这个分支获邀人权。
+
+与管理方新增/移除、风险domain关系交接并发时，同一守卫/对象锁内串行求值；退出只撤本人manual，不能删后来合法domain来源，管理方再次新增是独立获权动作与历史。原wire在目录表保留身份作用域selfService例外依据，例外只允许此受限分支，不增加页面写绑定或给普通人`ticket:participant:manage`。本项归D03来源/参与规则，复用已有路由与自摘测试，只拆新增来源限定、迁移和并发回归的剩余量，不重新计完整self-exit功能。
+
+`Participants_SourceRevocation`补旧合法CC原组织源撤销后仍按当前策略可读、L1撤销拒读、新无管理权自加拒绝、本人退出不误删domain四组预期；另用原remove wire验伪user_id不能冒充本人、manual/domain并存仅退manual、并发管理/领域交接保合法来源、退出后不可见仍不泄成员。这些是待实现验收，不以本次确认关闭旧路由问题。
 
 ## 8. 开工冻结、运维和待绑定
 
