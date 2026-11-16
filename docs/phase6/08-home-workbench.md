@@ -64,7 +64,7 @@
 
 ## 交互纪律（UI当前规范为准）
 
-当前规范归属[UI仓](../../../zhuzhao-ui/docs/design/frontend-ui.md)，本文保留Phase6跨域数据和候选版式，不另建第二套现行UI规范。首页“我的待办”当前为assigned/in_progress两态；角标待办另按exclude closed/rejected并包含自定义状态，两者不能混换。
+当前规范归属[UI仓](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/main/docs/design/frontend-ui.md)，本文保留Phase6跨域数据和候选版式，不另建第二套现行UI规范。首页“我的待办”当前为assigned/in_progress两态；角标待办另按exclude closed/rejected并包含自定义状态，两者不能混换。
 
 - 统计卡可点=`cursor-pointer`+hover 反馈+URL 参数化跳转（展示惯例 5）；任务中心 runs 页需补 `?mine=1` 预填（现开关不在 URL 白名单——本批连带件）；
 - 卡片点击语义=按该口径过滤跳列表，与首页统计卡→ticket/list 既有基建同构；

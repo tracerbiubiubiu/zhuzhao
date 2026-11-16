@@ -16,11 +16,26 @@ node docs/design/examples/capability-reference/verify.cjs
 AJV_MODULE=/path/to/existing/ajv node docs/design/examples/capability-reference/verify.cjs
 ```
 
-当前命令验证143个Schema样本（39正、104反）、6个规范输入性质、9个已冻结正命令hash、6个原始JSON输入、原27个语义样本及23个get读绑定样本；读绑定另验command/receipt/event形状及输入hash。原80样例（含最初49例）及预期保持不变；新增IAM63例只扩严格同步profile，不证明其HTTP适配/事务/真实授权。运行前后比对Schema字节/hash，读失败/依赖版本不符/样本错误/文件被改均非零。原语义oracle仍只验其具名合成状态，不冒充新增IAM行为oracle。
+当前命令验证158个Schema样本（42正、116反）、6个规范输入性质、9个已冻结正命令hash、6个原始JSON输入、原27个语义样本及23个get读绑定样本，另验19个push握手模型/形状/hash绑定；读绑定另验command/receipt/event形状及输入hash。原80样例（含最初49例）及预期保持不变；新增IAM63例只扩严格同步profile，不证明其HTTP适配/事务/真实授权。运行前后比对Schema字节/hash，读失败/依赖版本不符/样本错误/文件被改均非零。原语义oracle仍只验其具名合成状态，不冒充新增IAM行为oracle。
+
+## 首版AL push握手的选定补全
+
+2026-11-16补同一候选Schema的`pushDeliveryV1/pushAckV1`，对应[任务/AL§5.1](../../../phase6/task-activelist-message-detail.md#51-首版源写与push协议)现有DTO，不新增MQ、宽feed或产品端点。delivery封闭包装并把原SourceFact收窄到created/updated；ACK必须durably_staged且有stage_commit_ref。payload_sha256对整个规范SourceFact计算，不含delivery/consumer包装；协议与私有C05视图的边界见[互通详设](../../capability-interconnect-detail.md)。
+
+新增15形状（3正/12反）先在旧Schema取得3个正例行为红；原143形状、27语义、6raw、23读绑定及各自预期保持。旧抽象ingest模型对提交前/异hash/来源scope的4个新预期均未拒绝，再补receiver/sender有限oracle。当前19个push样本覆盖新提交、重复及不同delivery回原stage、提交/DB/容量拒绝、异hash409、固定source/consumer及ACK身份/字段/fence；Unicode/换行及1.0/-0.0载荷由Node/Python各自重算hash；另有7个规范值向量核安全整数递归转换、bool保持和非整数/超safe范围拒绝。9种有效Schema变异和4类语义去守卫均能咬住具名预期，不把测试脚本错误算作有效红。
+
+```bash
+python3 docs/design/examples/capability-reference/verify_semantics.py --disable-push-commit-guard
+python3 docs/design/examples/capability-reference/verify_semantics.py --disable-push-duplicate-guard
+python3 docs/design/examples/capability-reference/verify_semantics.py --disable-push-ack-binding-guard
+python3 docs/design/examples/capability-reference/verify_semantics.py --disable-push-source-scope-guard
+```
+
+四命令分别应有1/3/6/2项失败并非零退出。模型的DB提交、可信签名、容量及当前fence是明确的合成输入；它不连接PG/Redis/HTTP、不制造真正outbox/inbox，也不证明产品先提交后ACK、真实签名或并发CAS。它只补选定合同及预期的可复跑覆盖，真实跨仓故障/恢复/权限仍由实施批验证。首批两个公开IAM profile继续只承载policy_reload，C05私有会话效果不因本次Schema扩展被公开。
 
 ## 本地IAM的形状补全
 
-2026-11-15添加角色授予/角色菜单两个strict profile、最小同步causality、0起始集合版本、领域提交与运行时policy_reload分轨及受权receipt选择器。新reference未改verify.cjs/verify_semantics.py或产品源；使用工具进程Node22.14.0＋既有AJV6.15.0/Python，无新增依赖，不作为项目目标Node26的产品门禁。
+2026-11-15添加角色授予/角色菜单两个strict profile、最小同步causality、0起始集合版本、领域提交与运行时policy_reload分轨及受权receipt选择器。当时新增IAM reference未改verify.cjs/verify_semantics.py或产品源；使用工具进程Node22.14.0＋既有AJV6.15.0/Python，无新增依赖，不作为项目目标Node26的产品门禁。
 
 新增首批55例先在旧Schema上有效红（14个新正例拒绝、4个禁止descriptor接受）；独审发现并新增8个初稿能错误放行的I/O/profile错绑、pending零策略代际和noop反例，收紧后共143形状全绿。原AL/report、admission及订阅定义和既有80样例不因IAM放宽。前后红绿与独审反例收据由调用者留在ignored审计目录，本页不声称新业务已验。
 

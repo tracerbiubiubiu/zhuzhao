@@ -47,6 +47,18 @@
       "existing_behavior_cases": 57,
       "existing_guard_mutations": 16,
       "network_calls": 0
+    },
+    {
+      "id": "reference.al.push.v1",
+      "transport": "signed POST /internal/activelist/changes/push",
+      "delivery_schema_ref": "../../capability-interconnect-detail.schema.json#/definitions/pushDeliveryV1",
+      "ack_schema_ref": "../../capability-interconnect-detail.schema.json#/definitions/pushAckV1",
+      "selected_event_types": [
+        "al.document.created.v1",
+        "al.document.updated.v1"
+      ],
+      "reference_only": true,
+      "product_runtime_verified": false
     }
   ],
   "shape_verification": [
@@ -66,6 +78,20 @@
       "schema_sha256": "98820a60f2071c5f63f19da3cdfde62ec4ab4d604ca8feaccffd6b6f80073b89",
       "vectors_sha256": "46f2529404fdfac14a242adb23ce6b73dcde8156b157e4c73b9de1fb6345bc1e",
       "payload_sha256": "eb9b695109c500676a35bdc06ed1b15dac24f19ae0094e1d272e0be229368342"
+    },
+    {
+      "name": "al-push-delivery-ack",
+      "new_shape_cases": 15,
+      "positive": 3,
+      "negative": 12,
+      "original_143_cases_preserved": true,
+      "full_schema_cases": 158,
+      "push_semantic_cases": 19,
+      "schema_guard_mutations": 9,
+      "semantic_guard_mutations": 4,
+      "schema_sha256": "a1db558330bad7e62fb972595b2e2946b7ccfd97c9caa41d43783b1b6c48fa1a",
+      "product_persistence_or_authentication_verified": false,
+      "push_canonical_cases": 7
     }
   ],
   "files": [
@@ -98,6 +124,18 @@
     {
       "path": "../uaa-reference-mock/fixtures.json",
       "sha256": "04bb088acd0b397358a86e065324775d8340cb6dd96864c908d1736dd7f5a2f0"
+    },
+    {
+      "path": "../../capability-interconnect-detail.schema.json",
+      "sha256": "a1db558330bad7e62fb972595b2e2946b7ccfd97c9caa41d43783b1b6c48fa1a"
+    },
+    {
+      "path": "verify.cjs",
+      "sha256": "9db793f9aa6971c9fa3ad445eb7b3ca969b76cb38dbc812bb4be136965872114"
+    },
+    {
+      "path": "verify_semantics.py",
+      "sha256": "61ab077ba9b85342c92115a1f3eccea35e3ba28e64599761417e0a450c72d192"
     }
   ],
   "upgrade_evidence_boundary": "Reference shapes and hashes do not prove executable old-adapter/new-core compatibility. Product artifacts, manifests and real HTTP contract tests are implementation exits."

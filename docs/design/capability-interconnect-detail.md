@@ -45,9 +45,11 @@ IAM effect必须effect_id/owner/resource_id/revision/no_op，集合domain revisi
 
 no_op指本次IAM集合及所生成p语义均无变化：若menu IDs相同但修复了不同的p内容，仍是实际变更、递增目标domain revision；仅行序/重插次数不是语义变化。noop必须effective且无待恢复项，不能同时pending/superseded。AssignMenus旧代未安装即被新代取代可superseded，仍保本地提交事实；不向查询者回旧角色/菜单快照。unknown只描述提交结果尚不可证、无effect/committed状态且reconcile_only；failed必须有已确认无效果证据。首批不开放queued/running/cancel等无消费者状态，执行前DomainError不伪造成功receipt。
 
+这里的`iamState.runtime_state`只描述两公开IAM profile的策略生效状态，不是所有IAM/认证操作的共用状态枚举。C05停用/改密的私有安全操作视图及`session_revoke`逻辑效果到`session_projection`恢复机制的对应，归[底座§2](../phase6/foundation-iam-module-detail.md#2-首版冻结的端口与返回语义)；不因共用operation store就把口令/会话写发布成capability，也不向本Schema的角色/菜单profile增加session效果。UAA接收/依赖/陈旧分类另归P批次，只有相应适配视图才按映射使用，不能把各视图的裸状态当作相同语义。
+
 查询选择器严格二选一：operation_id或当前可信主体命名空间下的idempotency_key，不接caller_namespace/principal/任意target筛选。沿现候选GET /api/v1/operations/receipt，当前不可见/不存在均404且不回receipt；不能为了输出Schema返回held_revoked及旧hash/目标。形状Schema不证明目标/effect、hash、当前读权或遗留key-only冻结正确；这些仍由C-08等真实HTTP/PG预期验，暂未见提交记录不证明可以换key重做。
 
-本次新增63个形状例（16正/47反），原80样例和各自预期保留。先对旧Schema跑新例，14个正例被拒、4个禁止descriptor被放行；独审又补8个确实能穿过初稿的反例，收紧I/O/profile错绑与pending零代际/noop后全部通过。当前总143形状、原6规范化性质/命令hash、27原语义和23读绑定均绿；**IAM新增只有形状及规范hash证据**，没有新增产品/事务/授权运行证明。可复跑范围及准确数量见[参考说明](examples/capability-reference/README.md)。
+11月15日新增63个形状例（16正/47反），原80样例和各自预期保留。先对旧Schema跑新例，14个正例被拒、4个禁止descriptor被放行；独审又补8个确实能穿过初稿的反例，收紧I/O/profile错绑与pending零代际/noop后共143形状通过。11月16日push补全后当前共158形状，原6规范化性质/命令hash、27原语义和23读绑定预期不变；**IAM新增只有形状及规范hash证据**，没有新增产品/事务/授权运行证明。可复跑范围及准确数量见[参考说明](examples/capability-reference/README.md)。
 
 ## 3. 链A：工单节点 → 任务 → 工单结果
 
@@ -94,6 +96,14 @@ noop保存成功receipt，但不增加文档revision/变更cursor、不触发业
 候选源协议`GET /api/v1/change-feed?stream_id=...&after=...&limit=...`只面向已登记签名消费者；`POST /api/v1/change-feed/ack`body带consumer/stream/cursor。初始水位为`"0"`。`changeFeedPage`包含after/retained_from/complete_through/next_after/has_more与最多100事实；complete_through是完整提交head，不是已消费位置。页内游标严格递增且同source/stream；有后页时next_after为本页末事件，禁止直接跳complete_through漏中间事实。空页只有已完整扫描到head才可前进。`changeFeedAck`只含consumer/stream/through和stage_commit_ref，不包含“任务成功”；只能ACK已服务且已stage的连续区间。读到的事实先进入core持久收件，再ACK；ACK表明接收端可恢复，不表明任务已成功。重复event以source/id和订阅版本/action唯一键去重。游标已过保留期返回410/resync_required并hold，不能跳latest当成功。
 
 业务事实和业务状态同本地事务、跨库消费者幂等，是沿用[transactional outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)的边界。本设计不新增Kafka前置：AL有源outbox/feed，core有持久收件/订阅，TR有任务队列，各自单writer。后期吞吐/隔离需求成立再替换传输，不能替换业务效果身份和ACK合同。
+
+### 5.1.1 首版push的封闭传输与有限验证
+
+首版只实现[任务/AL§5.1](../phase6/task-activelist-message-detail.md#51-首版源写与push协议)的固定签名HTTP push，不以本页较宽分页feed作为前置。`PushDeliveryV1`和`PushAckV1`分别对应同一[候选Schema](capability-interconnect-detail.schema.json)的`pushDeliveryV1`和`pushAckV1`，根`oneOf`识别两者；不加任意回调URL或客户端授权字段。delivery只收schema_version、delivery_id、consumer_id及SourceFact；event复用原`event`形状并进一步限定created/updated，不放开deleted/restored/import。ACK只收schema_version、delivery_id、source、event_id、payload_sha256、stage_commit_ref和固定`durably_staged`，无“任务成功”字段；未知字段、缺提交引用、错误状态/版本/标识/hash均拒绝。
+
+`payload_sha256`固定为**整个SourceFact对象**按本页§2既有规范JSON规则编码后的UTF-8 SHA256：键排序、紧凑分隔、安全整数、不做Unicode归一化；包含source/id及事件metadata/data，不含delivery_id/consumer_id包装或签名头。源与core各自重算，不以请求自报hash证明一致；Node/Python参考向量另核Unicode/换行载荷及安全整数值编码：合法JSON 1.0/-0.0统一编码为1/0，bool保留true/false，非整数和超安全范围数拒绝。相同source/id/hash只回原持久`stage_commit_ref`，ACK仍回显本次delivery_id；同号异hash409隔离、无新inbox/后继身份。AL只在受信peer的ACK与本次delivery/source/event/hash及当前fence匹配时确认outbox，不把任意2xx或旧租约的迟到ACK当完成。
+
+形状例新增15项（3正/12反），旧143项原样保留。`verify.cjs`同时调用19项有限push语义oracle，分别验证core提交前不ACK、DB/容量/来源scope拒绝、重复回原stage、异hash冲突以及AL端ACK绑定；4类去守卫变异分别导致1/3/6/2个既定预期失败，9类有效Schema变异验证封闭字段/事件类型/提交引用/hash等限制确实生效。形状与内存oracle中的“提交成功”“受信签名”“当前fence”是明确的合成权威输入，**不是产品持久事务、签名验证、CAS或跨仓E2E证据**。AD/TR/AL产品批仍须以真实事务失败、重启、重复/迟到ACK和撤权验证这些出口，不新增MQ或宽feed。
 
 ### 5.2 订阅版本、过滤时值与回放
 

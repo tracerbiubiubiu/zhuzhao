@@ -4,6 +4,10 @@
 
 本页把[六条接缝](module-design-handoff.md)展开到模块输入、事务、失败出口和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地画像，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
 
+<!-- local-core-source:start -->
+当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+<!-- local-core-source:end -->
+
 ## 1. 当前代码、变化及分期
 
 实际代码锚点均按文件与符号定位；兄弟仓路径相对于各自仓根：
@@ -89,6 +93,16 @@ AL验证可信服务、claims与command绑定及字段子集后进入同库事�
 
 core结果投影验证已登记来源、operation/input_hash、原ticket/node_run/definition_hash，CAS receipt_revision后保存。投影失败只重放投影，不重做已成功效果；原节点已取消/流程换版，迟到结果只挂原运行视图及历史。首版仅展示有界摘要/artifact引用，**不自动改票状态/关风险**；后续字段写回另验字段ACL/CAS和发布映射。artifact下载每次验当前资源读权，临时URL不作长期权限凭证。
 
+### 4.3 浏览器人工写的接线责任
+
+人工insert/update与工单/TR写均由同一AL应用用例执行；传输入口不同不形成第二套权限规则。**TD03由core属主负责**：将旧网关浏览器输入规范化，只从可信认证Context取得真实actor、当前功能资格及所选类型/行/字段范围；业务目标、generation、expected_revision和允许字段由同一用例校验，用户条件只能收窄。授权约束、主体、目标、输入摘要、用途、有效期放入固定服务间签名body，不从浏览器body、X-Operator或未签URL query直接取权。不新增网关权限引擎，也不把现有wildcard proxy当成已完成这些工作。
+
+**TD04由AL属主负责**：验证登记core服务、签名/用途/目标/输入和授权范围绑定；在本库应用层对所选insert/update执行行字段准入、授权锚写保护、generation/CAS和监控能力守卫，数据/源事实/outbox及适用效果receipt同事务。创建行的组织/归属锚由可信入口按获准目标设置，普通values不得自报或改写。直接signed API、旧代理、内部调用与TR入口都不能越过这些检查；签名只证明服务来源，不附送全类型/全字段权限。
+
+当前Schema的`alExecutionRequest/admissionClaims`只覆盖其已登记任务profile，**不自动代表浏览器insert等其它wire已冻结**。TD03/TD04在该入口实际启用前共同交准确body/路由映射、所选公开合同及正反参考样例，列明适用operation/receipt；尚未闭合的入口由服务端拒绝，不能先透传旧proxy再挂待办。TD03/TD04复用已有typed客户端/授权/AL事务工作，新增净工作按原WBS逐项扣重，不声称本次补文字已免费实现。
+
+TD05复用`TestAL_CurrentAuthorizationAndAdmission`、`TestAL_MonitoredWriteSurfaceGuard`，补`TestAL_ManualWriteTrustedContext`：伪actor/授权锚、额外字段、撤权、改签名body、直接signed API/旧proxy/内部旁路均拒绝且数据/源事实零新增；合法人工insert/update与任务update按相同类型/行字段策略成功，原operation重投无双效果。监控能力守卫使用服务端受审类型/profile，不硬编码公司type名；注册/停监控与在途记录互锁，普通配置改动不能解除已生效约束。
+
 ## 5. AL变化→持久收件→获权TR后继
 
 ### 5.1 首版源写与push协议
@@ -104,6 +118,8 @@ PushAckV1 = {schema_version:"1", delivery_id:DeliveryID,
   source:string, event_id:EventID, payload_sha256:SHA256,
   stage_commit_ref:CommitRef, state:"durably_staged"}
 ```
+
+准确候选对应同一Schema的`pushDeliveryV1/pushAckV1`，不复用较宽分页feed的`changeFeedAck`。`payload_sha256`按既有规范JSON编码对完整`event:SourceFact`计算，排除delivery/consumer传输包装；同一事实可重发不同delivery，但ACK须绑定本次delivery、原source/id/hash及固定consumer通道，原stage_commit_ref保持。形状检查与有限收件/ACK oracle分别验证，不能以Schema绿替代真实持久提交。
 
 候选固定路由`POST /internal/activelist/changes/push`，双方按既有服务签名认证、固定consumer/source范围和body预算；不允许客户端给任意回调URL。200只在inbox事务持久提交后给上述ACK；相同source/id/hash返回原stage_commit_ref，不重复后继；同号异hash409隔离，签名/来源不符401/403。DB不可用503，收件容量超限429/503并不ACK；源保留待送。AL只接受与本次delivery/event/hash匹配的ACK，CAS自己的delivery fence，不能用任意2xx或“已收到”日志清outbox。
 
@@ -192,6 +208,8 @@ HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收
 
 ## 8. 权限、薄UI、日志与运维接线
 
+本包首次带新端点的代码批由该用例属主提交**逐端点目录绑定表**，随同OpenAPI/迁移冻结：方法＋规范路由、当前L1权限码、页面GET或写按钮、服务间/身份作用域入口及依据、`menu_apis`/`role_menus`种子归属、必要`catalogExempt`的精确理由和负例。受控internal路由不等于自动豁免；旧wildcard及别名一并列出。TD/MH各自负责其端点，RELEASE只核组合，不在合PR时临时猜分类。复用B案启动守卫/目录测试，新增写端点不加pageWriteAllow例外；此表为对应切片交付物，不另建目录管理平台。
+
 最小权限矩阵按动作检查三层：普通办理人可看原票任务及允许结果，不获AL全库/任务全量读权；类型管理员只在批准类型/组织范围管理；CC仅获允许的查看/评论，不附执行/写回；后台服务按固定能力/行字段范围；运维对账另具操作权限和资源scope，不能用service AK读取所有receipt。列表、详情、total、artifact、日志片段、批量、导出和消息预览复用相同数据过滤，查到task_id不是授权。
 
 薄UI随模块交付：工单任务卡显示queued/running/结果/unknown/held及最后观察时间；同页分开展示业务状态、执行状态和消息状态。AL显示版本冲突及监控写限制，订阅页最小映射/暂停/积压预览；消息列表显示应发/抑制/受理/送达证据/待核实。unknown默认“查询原操作”，不放普通重跑按钮；受权修复投影与重新执行是两种操作。无权对象不显示标题、摘要、数量或错误正文；界面术语、按钮位置、空态及颜色沿U02组件，失败不只藏日志。
@@ -232,7 +250,7 @@ cursor是不透明有界分页引用，绑定类型/generation、规范查询has
 
 具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这个selected profile归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
 
-计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。本次对TD03/TD04及既有typed读/权限case合计扣重复用1–2，所选读取毛3–5、净增2–3已落账（TD03增1–2、TD04增1，TD05专用case不重加），含授权锚写保护与旧旁路拒绝；全版95–148仍为工程候选。未启用的大导出/复杂筛选不计首版，真实画像改变先补估。
+计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。本次对TD03/TD04及既有typed读/权限case合计扣重复用1–2，所选读取毛3–5、净增2–3已落账（TD03增1–2、TD04增1，TD05专用case不重加），含授权锚写保护与旧旁路拒绝；全版净额只读下方唯一来源，仍为工程候选。未启用的大导出/复杂筛选不计首版，真实画像改变先补估。
 
 ### 8.2 存量任务入口与维护动作的接线门
 

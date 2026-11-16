@@ -224,6 +224,16 @@ python3 scripts/migration-template-preflight.py --target-version 78
 
 target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码回退耦合。失败down后先核实际数据及dirty检查点，禁止仅凭目标号force。脚本回归入口为`python3 scripts/test-migration-template-preflight.py`；真实PG与项目门禁证据在对应分批审计报告中单列，不能用只读预检代替回滚演练。
 
+### 6.2 C05会话投影长期失败的受控恢复（设计候选，未实现）
+
+本节是C05/Q12的实施交付要求，当前没有这些新CLI/路由。作用是恢复已有安全事实，不能作为停用账号、改密或当前权限校验的绕过；准确DB/Redis顺序及SESSION验收见[底座§4.3](../phase6/foundation-iam-module-detail.md#43-c05切换恢复与独立验收)。
+
+1. **发现与升级**：worker持续保留原operation/intent及pending，不因普通重试预算耗尽删项。首次超出自动重试预算、出现不可恢复配置错误或发现会话库丢失/来源不可信时，立即生成待处置项并通知该环境已指定的恢复负责人；看板给最老pending年龄、失败分类和当前影响。自动退避、告警去重及值守升级参数在Q12随真实环境绑定，不设置“等待N分钟后自动enable”。未绑定负责人/受控入口时不能把恢复验收标完成。
+2. **资格与诊断**：只有独立获授权的维护者能查受限恢复元数据或触发恢复；普通用户/业务task:submit无维护权。核目标当前DB active/deleted、epoch/projection_epoch、原receipt/intent状态、lease/fence和Redis可信来源/持久卷，不导出密码/token、全部会话键或完整业务正文。只读排障不能直接把projection_epoch改成就绪。
+3. **单项可信恢复**：修复依赖/配置后，通过C05所属应用维护用例重投原intent；旧worker仍受当前epoch及lease/fence CAS约束，不能用新operation重做改密或手工清disabled。仅当本代投影已实际确认，才允许正常已授权的enable用例再判资格/状态；停用事实、已改口令和旧receipt保持。
+4. **会话库丢失或不可信**：继续拒绝会话服务，按受审操作计划恢复依赖、轮换JWT签名key并要求正常重新登录，验证旧AT/RT不可恢复；不能只补同epoch就宣称已登出AT永不复活。PAT仍按其独立账号/PAT状态校验，不因口令投影pending批量撤销或恢复其权利。具体重建/轮key工具由C05在所选部署画像交付，不以现有测试环境重建命令代替生产方案。
+5. **退出与证据**：留原operation/intent/目标安全代际、受信维护主体、理由、前后状态、准确候选制品/配置revision、恢复命令和成功/失败时间及审计关联；不留秘密。复核旧worker不能回写、新会话正常、禁用账号仍拒绝、未知提交可查原receipt。SESSION覆盖长期Redis失败→告警升级→受权恢复→正常enable，越权维护/伪就绪/超时自动enable均拒绝；失败继续pending并交接，不抹历史消警。本节不扩大已确认的两IAM操作强审计回滚政策。
+
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
 2026-11-14 本日收尾（交接，不代表生产发布）：五仓保留main及codex/capability-interconnect-design候选，以[七条输入对账](../review/reports/daily-closeout-2026-11-14.md)核实际PR/远端和旧分支清理；[模块首包](../phase6/module-design-handoff.md)承接下一阶段。旧工作树重要ignored内容与历史SHA已本地备份，原main及当前候选证据/日常环境保留；合main、业务开发和真实企业激活未自动执行。
@@ -239,6 +249,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
+  | 规划合同与现势引用复核后继 | 独立`codex/planning-contract-alignment` worktree组，基线8c44ef6；canonical main不编辑。root唯一集成/显式路径提交推送，分工只写归属文件并归还；涉及候选Schema/模块说明/派生检查，不开发业务、不改真实内网或共享栈。验证按最终候选分档，若普通档由root另登记独占资源 | 此行不预报提交/远端/CI；实际结果以Git及本批原始收据为准 | 2026-11-16 |
   | F021首版规划复验修订 | 所有者明确授权本批直接在五仓main；根会话唯一集成/显式路径提交及推送。文件分工编辑均需归还，索引不归子会话；主仓规划/生成器和五仓同源classifier测试，未修业务缺陷/真实接线。独占验收owner=`zz-plan-repair-20261116`，API59886/UI59888；占用及回收以本批ignored原始收据为准，禁止连接共享栈；[交付记录](../review/reports/planning-review-repair-2026-11-16.md)分开设计、运行及C05后继已确认行为 | 默认短分支/PR政策不变，本批例外；准确提交、远端及CI以Git和本候选记录为准 | 2026-11-16 |
   | Phase6前五仓重规划 | 五仓独立`codex/pre-phase6-replanning`工作区，仅文档/受控清单；root集成，子审查按仓归属；共享main保持只读。当前无功能实现、远端设置变更或生产发布 | 未推送；提交状态以实时Git为准 | 2026-11-11 |
   | B09来源陈旧下人工协作确认 | 主仓`codex/capability-interconnect-design`窄文档后继；root唯一写入/显式路径提交，子审查只读。F001来源、策略与当前入口已同步，无在途路径/索引占用；专属验收资源已精确回收，29原容器指纹不变 | 只本地提交，不推送/合main；准确提交见Git | 2026-11-13 |

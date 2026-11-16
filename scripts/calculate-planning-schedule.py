@@ -9,6 +9,7 @@ import collections
 import hashlib
 import json
 import math
+import posixpath
 from pathlib import Path
 
 
@@ -248,6 +249,60 @@ def validate_current_view_docs(repo, model, estimate):
     return result
 
 
+def validate_current_source_links(repo, model):
+    """Five non-authoritative pages carry a checked link, not copied prices."""
+    paths = model['current_source_link_docs']
+    if not paths or len(paths) != len(set(paths)):
+        raise ValueError('current source view registry empty or duplicated')
+    source = Path(model['local_core_net_estimate_ref'])
+    if (source.as_posix() != 'docs/review/local-core-release-estimate.json'
+            or (repo / source).is_symlink() or not (repo / source).is_file()):
+        raise ValueError('current source view authority missing or invalid')
+    result = {}
+    for path in paths:
+        relative = Path(path)
+        if relative.is_absolute() or '..' in relative.parts or (repo / relative).is_symlink():
+            raise ValueError('invalid current source view path: ' + path)
+        href = posixpath.relpath(source.as_posix(), relative.parent.as_posix())
+        summary = f'当前首版本地核心净估与条件以[唯一净估册]({href})为准；本文不另立总价。'
+        text = (repo / relative).read_text()
+        start, end = '<!-- local-core-source:start -->', '<!-- local-core-source:end -->'
+        if text.count(start) != 1 or text.count(end) != 1:
+            raise ValueError('current source view marker missing or duplicated: ' + path)
+        match = re.search(re.escape(start) + r'\s*(.*?)\s*' + re.escape(end), text, re.S)
+        if not match or match.group(1).strip() != summary:
+            raise ValueError('current source view drift: ' + path)
+        result[path] = dict(source_ref=source.as_posix(),
+                            summary_sha256=hashlib.sha256(summary.encode('utf-8')).hexdigest(),
+                            check='matches_source_only_summary')
+    return result
+
+
+def uaa_capacity_binding(model):
+    binding = model.get('uaa_capacity_gate_binding', {})
+    if (binding.get('local_core_exit_id') != 'uaa_capacity_transition'
+            or binding.get('owner_action_key') != 'Q12_core_stability'):
+        raise ValueError('UAA main capacity must bind the existing core stability exit/action')
+    return binding
+
+
+def validate_uaa_capacity_gate(model, core):
+    binding = uaa_capacity_binding(model)
+    exit_id, action_key = binding['local_core_exit_id'], binding['owner_action_key']
+    gate = core['delivery_exits'].get(exit_id)
+    condition = core['external_conditions'].get(action_key)
+    if (not gate or not condition or action_key not in gate['condition_keys']
+            or exit_id not in condition['blocks_release_exits']
+            or not set(core['delivery_exits']['formal_local']['dependency_closure'])
+            <= set(gate['dependency_closure'])):
+        raise ValueError('UAA main capacity core stability evidence/coverage binding missing')
+    return dict(local_core_exit_id=exit_id, owner_action_key=action_key,
+                gate_ref='local_core.delivery_exits.' + exit_id,
+                evidence_ref=gate['evidence_ref'], readiness=gate['readiness'],
+                preparation_contact_is_blocked=False, added_engineering_days=[0, 0],
+                rule='Actual main-capacity transfer to complete UAA P/R requires this existing evidence exit; long-horizon D windows remain conditional engineering comparisons, not permission or dates. Contract contact and public mock preparation may precede it.')
+
+
 def run_scheduler(nodes, seats, endpoint):
     if seats < 1 or endpoint not in (0, 1):
         raise ValueError('invalid capacity or endpoint')
@@ -357,6 +412,7 @@ def source_graph(backlog):
 
 
 def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
+    capacity_gate = uaa_capacity_binding(model)
     backlog, extras = apply_scope(backlog, scope)
     items = {x['id']:x for x in backlog['work_items']}
     if not set(model['original_parent_ids']) <= set(items):
@@ -433,6 +489,8 @@ def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
     ranks={s['id']:i for i,s in enumerate(model['release_slices'])}
     for k,node in nodes.items():
         category=node['effort_category']
+        if category in ('uaa_public', 'uaa_real'):
+            node['capacity_gate_ref'] = 'local_core.delivery_exits.' + capacity_gate['local_core_exit_id']
         sid=direct.get(k)
         if not sid and category == 'existing_remaining':
             sid=direct.get(node['owner_package'])
@@ -501,7 +559,7 @@ def calculate(repo):
                     return dict(effort=list(summed(nodes[k]['days'] for k in ids)),start_endpoint_days=[min((r['records'][k]['start'] for k in ids),default=0) for r in runs],finish_endpoint_days=[max((r['records'][k]['finish'] for k in ids),default=0) for r in runs])
                 slices=[dict(id=s['id'],name=s['name'],wave=s['wave'],**group([k for k,n in nodes.items() if n['slice']==s['id'] and n['days']!=(0,0)])) for s in model['release_slices']]
                 phases={wave:group([k for k,n in nodes.items() if n['wave']==wave and n['days']!=(0,0)]) for wave in list(backlog['waves'])+['conditional_real','pre_business'] if any(n['wave']==wave and n['days']!=(0,0) for n in nodes.values())}
-                ordered=[dict(id=k,owner_package=n['owner_package'],wave=n['wave'],slice=n['slice'],effort_category=n['effort_category'],estimate=list(n['days']),dependencies=sorted(n['dependencies']),start_endpoint_days=window(k,'start'),finish_endpoint_days=window(k),slot_low=runs[0]['records'][k]['slot'],slot_high=runs[1]['records'][k]['slot']) for k,n in nodes.items() if n['days']!=(0,0)]
+                ordered=[dict(id=k,owner_package=n['owner_package'],wave=n['wave'],slice=n['slice'],effort_category=n['effort_category'],estimate=list(n['days']),dependencies=sorted(n['dependencies']),start_endpoint_days=window(k,'start'),finish_endpoint_days=window(k),slot_low=runs[0]['records'][k]['slot'],slot_high=runs[1]['records'][k]['slot'],**({'capacity_gate_ref': n['capacity_gate_ref']} if 'capacity_gate_ref' in n else {})) for k,n in nodes.items() if n['days']!=(0,0)]
                 ordered.sort(key=lambda x:(x['start_endpoint_days'][0],x['finish_endpoint_days'][0],x['id']))
                 ms={k:window(k) for k in ['E01-UAA-C','E01-UAA-P','X02-F','CE01','CE02-S','CE02-D','D12','CE02-L']+(['E01-UAA-R'] if include_r else [])}
                 profile['resources'][str(seats)]=dict(endpoint_makespans=[r['makespan_workdays'] for r in runs],critical_path_lower_bounds=[r['critical_path_lower_bound'] for r in runs],release_slices=slices,phases=phases,milestones=ms,ordered_tasks=ordered,resource_records={k:r['records'] for k,r in zip(['low','high'],runs)},formal_production_or_enterprise_activation=None,checks=dict(known_dependencies=True,dag=True,precedence=True,capacity_no_overlap=True,effort_sum=True,parent_child_deduplicated=True,single_seat_sum_equals_makespan=seats==1))
@@ -517,8 +575,13 @@ def calculate(repo):
     result['local_core_net_estimate_ref']=model['local_core_net_estimate_ref']
     result['local_core_view_note']=model['local_core_view_note']
     result['local_core']=build_local_core_projection(local_estimate,model['local_core_projection'],local_target,{item['id'] for item in backlog['work_items']},owner_actions)
+    result['uaa_main_capacity_gate']=validate_uaa_capacity_gate(model,result['local_core'])
+    result['long_horizon_accounting']=dict(baseline_public_days=scope['baseline']['public_remaining'],
+                                           baseline_with_R_days=scope['baseline']['with_conditional_uaa_R'],
+                                           net_increment_days=scope['net_increment_total'])
     result['current_local_core_summary']=current_core_summary(local_estimate)
     result['current_view_checks']=validate_current_view_docs(repo,model,local_estimate)
+    result['current_source_link_checks']=validate_current_source_links(repo,model)
     return result
 
 
@@ -576,6 +639,11 @@ def render_local_core(result):
 
 def render_schedule(result):
     structure=result['source_structure']
+    accounting=result['long_horizon_accounting']
+    accounting_line=(f"补充前公共{format_pair(accounting['baseline_public_days'])}/含R{format_pair(accounting['baseline_with_R_days'])}，"
+                     f"净增{format_pair(accounting['net_increment_days'])}，"
+                     f"当前公共{format_pair(result['bounded_effort_totals']['public_R_pending'])}/含R{format_pair(result['bounded_effort_totals']['with_conditional_R_ready'])}。"
+                     '基线、净增及当前总量分别由净增册与实际WBS求和派生，不与首版本地净价叠加。')
     lines=[
         '# 后续完整排程 — 既有能力、互通与遗漏范围的有界重排',
         '', f"日期：{result['date']}。本文件由仓内计算器生成；设计/计价候选，T0未启动，不是开发或部署指令。",
@@ -590,7 +658,7 @@ def render_schedule(result):
         '复现：`python3 scripts/calculate-planning-schedule.py --write`；检查：`python3 scripts/calculate-planning-schedule.py --check`。',
         '测试：`python3 scripts/test-planning-schedule.py`。无需本机隐藏目录、旧ignored生成器或Git冻结版本才能计算。',
         '', '## 工程量与相较上一版的变化', '',
-        '上一版公共292–496日/含R305–518日是补充前基线；新增LS34–56、CE52–80、RP净差16–24，合计102–160日。',
+        accounting_line,
         'G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。', '',
     ]
     lines += render_local_core(result)
@@ -636,6 +704,9 @@ def render_schedule(result):
         'D12只依CE02-D可靠入口，不反依I01；I01/I02/I03消费D12。CE03/04/05在P7，LS01–04在P6.3，LS05/06在P7。',
         'X01-C2–3/X01-B3–4/X01-H3–5仍合计原8–12日；B为配置后重启的受信接缝，H在S09/P7交完整管理增强。X02-Q独立依X01-C，不等D06/feed；X03只依U02、X01-B和X02-Q，资源授权不因此削弱。',
         '', '## UAA在现有13切片中的跨阶段硬出口', '',
+        f"完整UAA P/R的实际主研发产能投入须通过既有`{result['uaa_main_capacity_gate']['gate_ref']}`，"
+        f"对应`{result['uaa_main_capacity_gate']['owner_action_key']}`业务/工程证据，当前仍为`{result['uaa_main_capacity_gate']['readiness']}`。"
+        '这不是新增有价任务，不要求整个P6.3完成，也不阻协议联系、条件索取和公共mock准备；下方长期日窗不是该门已通过的证明。',
         '公共范围保留mock/contract，不因公司资源未到而阻断独立IAM和公共开发；真实成功不能由合成用例代验。',
         'UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内部才产出影子差异、私有制品/runbook。',
         '正式apply前另需映射/影子差异批准、正式资源/窗口、应急退出与适用公共生产门；apply后观察才是R整体收口。',
@@ -648,7 +719,8 @@ def render_schedule(result):
         '', '## 全部正工时任务派发顺序', '',
         '下列保留公共含历史/条件维护储备的单席对照，不是今日剩余派单；当前首版净额和顺序见上方本地核心投影。双席及含R记录保留JSON，聚合节点零工日不另计价。', '']
     for n,row in enumerate(public['1']['ordered_tasks'],1):
-        lines.append(f"- {n}. `{row['id']}`（{row['wave']}，{row['owner_package']}）：{format_pair(row['estimate'])}日，{day_window(row)}；依赖`{', '.join(row['dependencies']) or '无'}`。")
+        gate = f"；实际主产能准入`{row['capacity_gate_ref']}`" if 'capacity_gate_ref' in row else ''
+        lines.append(f"- {n}. `{row['id']}`（{row['wave']}，{row['owner_package']}）：{format_pair(row['estimate'])}日，{day_window(row)}；依赖`{', '.join(row['dependencies']) or '无'}`{gate}。")
     lines += ['', '## 验证与后续详设', '',
         '仓内测试覆盖价格替换/去重、原范围保留、缺依赖、环、资源不重叠、端点、确定性及R待条件公共路线。',
         '本轮先用旧范围应用行为跑红，再补实现到绿；红绿原记录留本机ignored，正式代码和测试在仓内。',
@@ -703,9 +775,9 @@ def render_backlog(backlog):
         '公司UAA纳管模式另过E01-UAA-R的pre_apply检查；R切换后观察属于后置收口，不倒置为apply前提。完整独立IAM不等公司R、E01父包或企业凭据。',
         '这些是按能力启用的证据门而非新包或重复预算；详细checklist以本总账JSON的release_gates及UAA条件册为准。',
         '', '## 本轮校准与去重','',
-        '原有界长期算术：公共292–496/含R305–518加净增102–160，得到公共394–656/含R407–678；额外1–2仅保留条件容量对照，不代表已完成维护再次收费。首版本地净价和顺序由同一生成器另作投影，不与这些总额相加。',
+        '当前长期基线、净增与总量由[净增册](planning-scope-estimates.json)和[派生排程](execution-schedule.md)给出，不在本页另写一组价格；已完成维护不再次收费，首版本地净价不与长期总量相加。',
         '旧包、UAA、CE、LS及UI复用扣重详见净增册；所有真实条件与未选范围仍单列，不因已估价宣称实现或正式激活。',
-        '2026-11-13：补17行范围计价、76父包/16子出口/LS六项与仓内可复现完整排程；未实现未来业务。','']
+        '历史快照（2026-11-13，3f79a76）：当时76父包/16子出口/LS六项及17行范围计价，未实现未来业务；这是真实旧结构，不作现势计数。当前正式结构由本页顶部按源JSON派生。','']
     return '\n'.join(lines)
 
 

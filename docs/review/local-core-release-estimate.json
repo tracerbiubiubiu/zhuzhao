@@ -1519,6 +1519,21 @@
       "global_parent_prices_unchanged": true,
       "no_calendar_promise": true,
       "C05_price_changed": false
+    },
+    "module_contract_alignment_2026_11_16": {
+      "source_followup": "F022-module-contract-alignment",
+      "ref": "docs/review/reports/module-contract-alignment-2026-11-16.md",
+      "price_changed": false,
+      "scope_rule": "Current source-only links and existing-WBS acceptance clarity; no duplicate full self-exit/OBS/AL-guard implementation charge and no blanket risk buffer. Candidate manual-write DTO, migrations, endpoint bindings and real recovery are frozen/estimated by the owning package before activation.",
+      "work_item_ownership": {
+        "S1_C05": "public/private receipt mapping, required current-state read/recovery and dedicated tests",
+        "TD03_TD04": "trusted manual write context and AL row/field/monitor guards",
+        "AD01_AD02": "push handshake schema/oracle are design reference, real transactional inbox remains domain delivery",
+        "R1_R5": "source conflict evidence and fixed-flow activation preflight",
+        "D03": "existing self-exit wire plus manual-source/mandatory relation protection",
+        "A01": "server-side scenario/actor/data-zone/capability connection set"
+      },
+      "new_implementation_delivered": false
     }
   },
   "authorization_gap_binding": {

@@ -2,7 +2,7 @@
 
 APP_NAME=zhuzhao
 BASE ?= origin/main
-.PHONY: quality-plan quality-check
+.PHONY: quality-plan quality-check planning-check
 quality-plan:
 	python3 scripts/quality-gate.py local --kind core --base "$(BASE)" --plan-only
 

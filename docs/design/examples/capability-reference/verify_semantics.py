@@ -166,12 +166,90 @@ def raw_valid(raw):
         return False
 
 
+def canonical_push_bytes(value):
+    """Encode selected JSON values as Node's existing safe-integer canonicalizer."""
+    def normalized(item):
+        if item is None or isinstance(item, (str, bool)):
+            return item
+        if isinstance(item, (int, float)):
+            if (abs(item) > 9007199254740991 or not math.isfinite(item)
+                    or (isinstance(item, float) and not item.is_integer())):
+                raise ValueError("unsafe or non-integer number")
+            # JSON 1.0/-0.0 and 1/0 have the same integer value in Node.
+            return int(item)
+        if isinstance(item, list):
+            return [normalized(child) for child in item]
+        if isinstance(item, dict) and all(isinstance(key, str) for key in item):
+            return {key: normalized(child) for key, child in item.items()}
+        raise ValueError("not a selected JSON value")
+
+    selected = normalized(value)
+    check_values(selected)
+    return json.dumps(selected, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":")).encode("utf-8")
+
+
+def observe_push(state, commit_guard=True, duplicate_guard=True,
+                 ack_binding_guard=True, source_scope_guard=True):
+    """Finite receiver/sender oracle. Committed facts are synthetic test inputs."""
+    delivery = state["delivery"]
+    event = delivery["event"]
+    payload_hash = hashlib.sha256(canonical_push_bytes(event)).hexdigest()
+
+    def rejected(status, quarantined=False):
+        return {"status": status, "ack": None, "new_inbox_rows": 0,
+                "outbox_acknowledged": False, "quarantined": quarantined}
+
+    if not state["trusted_context"]:
+        return rejected(401)
+    if not state["source_trusted"]:
+        return rejected(403)
+    if source_scope_guard and (delivery["consumer_id"] != state["registered_consumer"]
+                              or event["source"] != state["registered_source"]):
+        return rejected(403)
+    if not state["db_available"]:
+        return rejected(503)
+    if not state["capacity_available"]:
+        return rejected(429)
+    existing = state["existing_record"]
+    if existing and (existing["source"] != event["source"]
+                     or existing["event_id"] != event["id"]):
+        return rejected(503)  # A lookup not bound to this unique key proves nothing.
+    if existing and duplicate_guard:
+        if existing["payload_sha256"] != payload_hash:
+            return rejected(409, quarantined=True)
+        stage_ref, rows = existing["stage_commit_ref"], 0
+    else:
+        if commit_guard and not state["db_commit_succeeded"]:
+            return rejected(503)
+        stage_ref = state["new_stage_commit_ref"]
+        rows = int(state["db_commit_succeeded"])
+    ack = {"schema_version": "1", "delivery_id": delivery["delivery_id"],
+           "source": event["source"], "event_id": event["id"],
+           "payload_sha256": payload_hash, "stage_commit_ref": stage_ref,
+           "state": "durably_staged"}
+    received_ack = state.get("ack_override", ack)
+    accepted = (state["ack_authenticated"]
+                and state["delivery_fence"] == state["current_fence"]
+                and received_ack["delivery_id"] == delivery["delivery_id"]
+                and received_ack["source"] == event["source"]
+                and received_ack["event_id"] == event["id"]
+                and received_ack["payload_sha256"] == payload_hash
+                and received_ack["state"] == "durably_staged")
+    return {"status": 200, "ack": ack, "new_inbox_rows": rows,
+            "outbox_acknowledged": accepted if ack_binding_guard else True,
+            "quarantined": False}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--disable-replay-read-guard", action="store_true",
                         help="deliberate design-model mutation: the three replay cases must fail")
     parser.add_argument("--disable-read-contract-guard", action="store_true",
                         help="deliberate design-model mutation: selected read binding cases must fail")
+    for guard in ("commit", "duplicate", "ack-binding", "source-scope"):
+        parser.add_argument("--disable-push-" + guard + "-guard", action="store_true",
+                            help="deliberate push-model mutation: relevant cases must fail")
     args = parser.parse_args()
     before = SCHEMA.read_bytes()
     schema = json.loads(before)
@@ -200,12 +278,45 @@ def main():
                             if observe_read(case["input"], False)["decision"] != case["expected_decision"]]
     expected_read_negatives = [case["id"] for case in schema["x-read-semantic-cases"]
                                if case["expected_decision"] != "allow_read"]
+    push_rows = []
+    for case in schema["x-push-semantic-cases"]:
+        actual = observe_push(case["input_state"],
+                              not args.disable_push_commit_guard,
+                              not args.disable_push_duplicate_guard,
+                              not args.disable_push_ack_binding_guard,
+                              not args.disable_push_source_scope_guard)
+        push_rows.append({"id": case["id"], "pass": actual == case["expected"], **actual})
+    push_canonical_rows = []
+    for case in schema["x-push-canonical-cases"]:
+        try:
+            encoded = canonical_push_bytes(case["value"]).decode("utf-8")
+            passed = case["expected_valid"] and encoded == case["expected_canonical_utf8"]
+        except ValueError:
+            passed = not case["expected_valid"]
+        push_canonical_rows.append({"id": case["id"], "pass": passed})
+    push_mutation_expected = {
+        "commit_guard": ["push_no_ack_before_commit"],
+        "duplicate_guard": ["push_duplicate_original_stage", "push_duplicate_new_delivery",
+                            "push_same_id_changed_payload"],
+        "ack_binding_guard": ["push_ack_wrong_delivery", "push_ack_wrong_source",
+                              "push_ack_wrong_event", "push_ack_wrong_payload",
+                              "push_ack_stale_fence", "push_ack_unsigned"],
+        "source_scope_guard": ["push_unregistered_consumer", "push_unregistered_source"],
+    }
+    push_mutation_caught = {
+        guard: [case["id"] for case in schema["x-push-semantic-cases"]
+                if observe_push(case["input_state"], **{guard: False}) != case["expected"]]
+        for guard in push_mutation_expected
+    }
     unchanged = SCHEMA.read_bytes() == before
-    failures = [row for row in semantic_rows + raw_rows + read_rows if not row["pass"]]
+    failures = [row for row in semantic_rows + raw_rows + read_rows + push_rows + push_canonical_rows
+                if not row["pass"]]
     if len(mutation_caught) != 3 or not unchanged:
         failures.append({"id": "mutation_or_readonly_invariant", "pass": False})
     if not expected_read_negatives or read_mutation_caught != expected_read_negatives:
         failures.append({"id": "read_contract_mutation_invariant", "pass": False})
+    if push_mutation_caught != push_mutation_expected:
+        failures.append({"id": "push_contract_mutation_invariant", "pass": False})
     print(json.dumps({
         "semantic_cases": len(semantic_rows),
         "semantic_passed": sum(row["pass"] for row in semantic_rows),
@@ -214,6 +325,11 @@ def main():
         "read_contract_passed": sum(row["pass"] for row in read_rows),
         "replay_read_guard_mutation_caught": mutation_caught,
         "read_contract_guard_mutation_caught": read_mutation_caught,
+        "push_contract_cases": len(push_rows),
+        "push_contract_passed": sum(row["pass"] for row in push_rows),
+        "push_canonical_cases": len(push_canonical_rows),
+        "push_canonical_passed": sum(row["pass"] for row in push_canonical_rows),
+        "push_contract_guard_mutation_caught": push_mutation_caught,
         "schema_unchanged": unchanged, "schema_sha256": hashlib.sha256(before).hexdigest(),
         "failures": failures,
         "proof_scope": "Synthetic contract decision model and strict raw JSON, not product runtime or real authorization.",

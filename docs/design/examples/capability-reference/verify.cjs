@@ -94,12 +94,28 @@ const readShapes = schema["x-read-semantic-cases"].map(test => {
   return { id: test.id, pass: validate(command) && validate(receipt) && (!fact || validate(fact))
     && inputHash(command) === command.canonical_input_hash };
 });
+const pushShapes = schema["x-push-semantic-cases"].map(test => {
+  const { delivery, ack_override: receivedAck } = test.input_state;
+  const ack = test.expected.ack;
+  return { id: test.id, pass: validate(delivery) && (!ack || validate(ack))
+    && (!receivedAck || validate(receivedAck))
+    && (!ack || sha256(canonical(delivery.event)) === ack.payload_sha256) };
+});
+const pushCanonicalCases = schema["x-push-canonical-cases"].map(test => {
+  try {
+    const encoded = canonical(test.value);
+    return { id: test.id, pass: test.expected_valid && encoded === test.expected_canonical_utf8 };
+  } catch {
+    return { id: test.id, pass: !test.expected_valid };
+  }
+});
 const semantic = spawnSync(process.env.PYTHON || "python3", [path.join(__dirname, "verify_semantics.py")], { encoding: "utf8" });
 let semanticSummary;
 try { semanticSummary = JSON.parse(semantic.stdout); }
 catch { throw new Error(`Python verifier did not return a report: ${semantic.error || semantic.stderr}`); }
 const unchanged = fs.readFileSync(schemaPath).equals(before);
-const failures = [...rows, ...canonicalCases, ...hashChecks, ...readShapes].filter(test => !test.pass);
+const failures = [...rows, ...canonicalCases, ...hashChecks, ...readShapes, ...pushShapes,
+  ...pushCanonicalCases].filter(test => !test.pass);
 console.log(JSON.stringify({
   schema_cases: rows.length, schema_passed: rows.filter(test => test.pass).length,
   schema_positive: schema["x-validation-cases"].filter(test => test.expected_valid).length,
@@ -108,6 +124,10 @@ console.log(JSON.stringify({
   frozen_command_hash_checks: hashChecks, semantic: semanticSummary,
   read_binding_shape_and_hash_cases: readShapes.length,
   read_binding_shape_and_hash_passed: readShapes.filter(test => test.pass).length,
+  push_binding_shape_and_hash_cases: pushShapes.length,
+  push_binding_shape_and_hash_passed: pushShapes.filter(test => test.pass).length,
+  push_canonical_cases: pushCanonicalCases.length,
+  push_canonical_passed: pushCanonicalCases.filter(test => test.pass).length,
   schema_unchanged: unchanged, schema_sha256: sha256(before), failures,
   proof_scope: "Read-only selected candidate contracts, not business implementation, PG, provider or multi-instance acceptance.",
 }, null, 2));

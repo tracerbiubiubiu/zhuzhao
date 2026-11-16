@@ -2584,6 +2584,88 @@
           ]
         }
       ]
+    },
+    "pushDeliveryV1": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "delivery_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "consumer_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "event": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/event"
+            },
+            {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "al.document.created.v1",
+                    "al.document.updated.v1"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "delivery_id",
+        "consumer_id",
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "pushAckV1": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "delivery_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^urn:zhuzhao:activelist:[A-Za-z0-9_.:-]+$",
+          "maxLength": 256
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "stage_commit_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{15,127}$"
+        },
+        "state": {
+          "const": "durably_staged"
+        }
+      },
+      "required": [
+        "schema_version",
+        "delivery_id",
+        "source",
+        "event_id",
+        "payload_sha256",
+        "stage_commit_ref",
+        "state"
+      ],
+      "additionalProperties": false
     }
   },
   "oneOf": [
@@ -2619,6 +2701,12 @@
     },
     {
       "$ref": "#/definitions/operationReceiptQuery"
+    },
+    {
+      "$ref": "#/definitions/pushDeliveryV1"
+    },
+    {
+      "$ref": "#/definitions/pushAckV1"
     }
   ],
   "x-validation-cases": [
@@ -8763,6 +8851,435 @@
           ]
         }
       }
+    },
+    {
+      "id": "push_delivery_updated",
+      "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_created",
+      "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.created.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_ack_durable",
+      "expected_valid": true,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "urn:zhuzhao:activelist:synthetic",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+        "stage_commit_ref": "stage-commit-00001",
+        "state": "durably_staged"
+      }
+    },
+    {
+      "id": "push_delivery_extra",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        },
+        "callback_url": "https://invalid.example"
+      }
+    },
+    {
+      "id": "push_delivery_missing_consumer",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_wrong_schema",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "2",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_deleted",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.deleted.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_restored",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.restored.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_bad_id",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "short",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.document.updated.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_delivery_import",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "consumer_id": "consumer-core-00001",
+        "event": {
+          "specversion": "1.0",
+          "id": "event-demo-00000001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "type": "al.import.committed.v1",
+          "subject": "device_status/1001",
+          "time": "2026-11-13T10:00:01Z",
+          "datacontenttype": "application/json",
+          "data": {
+            "stream_id": "stream-demo-000001",
+            "cursor": "88",
+            "generation": "7",
+            "document_id": "1001",
+            "document_revision": "43",
+            "changed_fields": [
+              "status"
+            ],
+            "event_values": {
+              "status": "healthy"
+            },
+            "operation_id": "op-demo-0000000001",
+            "causality": {
+              "root_id": "root-demo-000000001",
+              "root_budget_ref": "budget-demo-0000001",
+              "depth": 0,
+              "rule_path": []
+            },
+            "batch": {
+              "batch_id": "batch-push-0000001",
+              "old_generation": "6",
+              "new_generation": "7",
+              "added_rows": 1,
+              "removed_rows": 0,
+              "manifest_ref": "manifest-push-001",
+              "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "push_ack_missing_stage",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "urn:zhuzhao:activelist:synthetic",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+        "state": "durably_staged"
+      }
+    },
+    {
+      "id": "push_ack_wrong_state",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "urn:zhuzhao:activelist:synthetic",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+        "stage_commit_ref": "stage-commit-00001",
+        "state": "accepted"
+      }
+    },
+    {
+      "id": "push_ack_bad_hash",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "urn:zhuzhao:activelist:synthetic",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "stage_commit_ref": "stage-commit-00001",
+        "state": "durably_staged"
+      }
+    },
+    {
+      "id": "push_ack_extra",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "urn:zhuzhao:activelist:synthetic",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+        "stage_commit_ref": "stage-commit-00001",
+        "state": "durably_staged",
+        "task_succeeded": true
+      }
+    },
+    {
+      "id": "push_ack_bad_source",
+      "expected_valid": false,
+      "value": {
+        "schema_version": "1",
+        "delivery_id": "delivery-push-00001",
+        "source": "arbitrary",
+        "event_id": "event-demo-00000001",
+        "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+        "stage_commit_ref": "stage-commit-00001",
+        "state": "durably_staged"
+      }
     }
   ],
   "examples": [
@@ -12648,6 +13165,1356 @@
       },
       "expected_decision": "held_revoked",
       "expected_additional_effects": 0
+    }
+  ],
+  "x-push-semantic-cases": [
+    {
+      "id": "push_new_committed",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_duplicate_original_stage",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": true,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": {
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-original-001"
+        },
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-original-001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_duplicate_new_delivery",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": true,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00002",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": {
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-original-001"
+        },
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00002",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-original-001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_no_ack_before_commit",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": false,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 503,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_db_unavailable",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": false,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 503,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_capacity_full",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": false,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 429,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_unregistered_consumer",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-other-001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 403,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_unregistered_source",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:other",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 403,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_unsigned_source",
+      "input_state": {
+        "trusted_context": false,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 401,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_same_id_changed_payload",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": true,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "different"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": {
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-original-001"
+        },
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 409,
+        "ack": null,
+        "new_inbox_rows": 0,
+        "outbox_acknowledged": false,
+        "quarantined": true
+      }
+    },
+    {
+      "id": "push_ack_wrong_delivery",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5",
+        "ack_override": {
+          "schema_version": "1",
+          "delivery_id": "delivery-wrong-001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_ack_wrong_source",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5",
+        "ack_override": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:other",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_ack_wrong_event",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5",
+        "ack_override": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-other-000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_ack_wrong_payload",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5",
+        "ack_override": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_ack_stale_fence",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "4",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_ack_unsigned",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": false,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "4325ddbfdcea31e7ebcae88af6ea450c6cac6b67735efcc51967410e50c59b82",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": false,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_unicode_payload",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "测试\n😀"
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "05990761c2c7059ea081a992f486f9b14c8ed76487d5ae388ad49d08cba06ea6",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_integral_float",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy",
+                "counter": 1.0
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "15493954db59dc2ee634d0aa22ca6ce9a222f6fd52c90128d26b8ee30b480322",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    },
+    {
+      "id": "push_negative_zero",
+      "input_state": {
+        "trusted_context": true,
+        "source_trusted": true,
+        "phase": "ingest",
+        "event_already_staged": false,
+        "delivery": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "consumer_id": "consumer-core-00001",
+          "event": {
+            "specversion": "1.0",
+            "id": "event-demo-00000001",
+            "source": "urn:zhuzhao:activelist:synthetic",
+            "type": "al.document.updated.v1",
+            "subject": "device_status/1001",
+            "time": "2026-11-13T10:00:01Z",
+            "datacontenttype": "application/json",
+            "data": {
+              "stream_id": "stream-demo-000001",
+              "cursor": "88",
+              "generation": "7",
+              "document_id": "1001",
+              "document_revision": "43",
+              "changed_fields": [
+                "status"
+              ],
+              "event_values": {
+                "status": "healthy",
+                "counter": -0.0
+              },
+              "operation_id": "op-demo-0000000001",
+              "causality": {
+                "root_id": "root-demo-000000001",
+                "root_budget_ref": "budget-demo-0000001",
+                "depth": 0,
+                "rule_path": []
+              }
+            }
+          }
+        },
+        "registered_consumer": "consumer-core-00001",
+        "registered_source": "urn:zhuzhao:activelist:synthetic",
+        "db_available": true,
+        "capacity_available": true,
+        "db_commit_succeeded": true,
+        "new_stage_commit_ref": "stage-commit-00001",
+        "existing_record": null,
+        "ack_authenticated": true,
+        "delivery_fence": "5",
+        "current_fence": "5"
+      },
+      "expected": {
+        "status": 200,
+        "ack": {
+          "schema_version": "1",
+          "delivery_id": "delivery-push-00001",
+          "source": "urn:zhuzhao:activelist:synthetic",
+          "event_id": "event-demo-00000001",
+          "payload_sha256": "99e02ffae9ff40201b146c72c28dfd70524b147ec9cf39541cca3adfe5fcfbca",
+          "stage_commit_ref": "stage-commit-00001",
+          "state": "durably_staged"
+        },
+        "new_inbox_rows": 1,
+        "outbox_acknowledged": true,
+        "quarantined": false
+      }
+    }
+  ],
+  "x-push-canonical-cases": [
+    {
+      "id": "push_integral_float_encoding",
+      "value": {
+        "counter": 1.0
+      },
+      "expected_valid": true,
+      "expected_canonical_utf8": "{\"counter\":1}"
+    },
+    {
+      "id": "push_negative_zero_encoding",
+      "value": {
+        "counter": -0.0
+      },
+      "expected_valid": true,
+      "expected_canonical_utf8": "{\"counter\":0}"
+    },
+    {
+      "id": "push_bool_and_nested_integer_encoding",
+      "value": {
+        "items": [
+          true,
+          1.0,
+          -0.0
+        ]
+      },
+      "expected_valid": true,
+      "expected_canonical_utf8": "{\"items\":[true,1,0]}"
+    },
+    {
+      "id": "push_max_safe_integer_encoding",
+      "value": {
+        "counter": 9007199254740991.0
+      },
+      "expected_valid": true,
+      "expected_canonical_utf8": "{\"counter\":9007199254740991}"
+    },
+    {
+      "id": "push_fractional_number_rejected",
+      "value": {
+        "counter": 1.5
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "push_unsafe_integer_rejected",
+      "value": {
+        "counter": 9007199254740992
+      },
+      "expected_valid": false
+    },
+    {
+      "id": "push_unsafe_integral_float_rejected",
+      "value": {
+        "counter": 9007199254740992.0
+      },
+      "expected_valid": false
     }
   ]
 }
