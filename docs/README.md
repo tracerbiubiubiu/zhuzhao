@@ -48,7 +48,7 @@
 
 ## 维护规则
 
-[工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。
+[工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。可复用方法、空白模板和开发/审计提示词统一从[工作资料库](toolkit/README.md)进入；填写后的实例按文档规则归正式报告或本地批次。
 
 当前解释、目标设计、机器事实和历史报告分别维护；Markdown摘要引用或校验唯一JSON事实，不再独立报价/计数。正式报告在review/reports，必要历史在review/archive；本地参考、执行卡、原日志和临时输出按[材料目录](materials.md)归本地档案或ignored执行目录。Swagger生成物保留现有消费路径，不手改。分档门禁和远端保护未因文档整理自动启用。
 
