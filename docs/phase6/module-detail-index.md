@@ -6,7 +6,7 @@
 
 > **2026-11-15 F019政策确认**：受控人工维护/临时覆盖单独授权、所有新增CC含自加统一管理且保留合法旧关系、认证基础先行而增强按需后置，三项均已有明确答复，[本批议程](../review/owner-decision-agenda.json)政策待答归零。准确来源见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。具体主体/实参及增强逐项选择仍按原窗口；不启动业务开发，生成代码/迁移号/真实公司参数仍由实施批交付。
 
-已推进的后继包含B/C与任务窄修复、C05有限安全代际/秘密编码/claims及6–10日毛估、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
+已推进的后继包含B/C与任务窄修复、C05有限安全代际/单次写及回执核查/claims及6–10日毛估（秘密编码后置）、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
 
 ## 1. 按需要只读一包
 
@@ -57,7 +57,7 @@
 
 ## 4. 决策窗口与不能假定的事实
 
-- 本轮F021独立待确认：C05重复口令写是保留同键异秘密409，还是收窄为“重复不执行、明确已存在/待核查”。所有者追问业界实践尚非选择，现合同与6–10日候选不变，C05开工冻结预期前确认；不重开F019三政策或原34项计数，见[独立后继](../review/owner-decision-agenda.md#本轮规划修订的独立待确认)。
+- 本轮F021独立确认已完成：C05首版采用“重复K不执行、明确已存在/待核查”，改B须重新确认新K；后置HMAC秘密比较及其key生命周期。保留安全代际/原子回执/恢复及非秘密身份目标校验，按剩余工作复核6–10日候选保持；不重开F019三政策或原34项计数，见[独立确认](../review/owner-decision-agenda.md#本轮规划修订的独立确认)。
 - 已确认：HIER-D01整子树暂停组织派生资格；SetRoles/AssignMenus本地成功审计写失败回滚、外送失败补送。见[第一包收口](iam-first-batch-design.md)，代码仍未实现；真实名单/保留参数后继绑定。
 - 首条真实风险通知前：B08级别/组织锚点/负责人/频次/时区及公司HTTP受理、幂等、查询/送达能力；缺条件明确pending/unknown，不广播兜底。
 - 对应真实启用前：批准的风险/工单类型、组织、字段和服务范围；真实目录/源身份映射；设备入口与可选用户名字段权；模型API能力/配额/数据区。公共mock设计不等待秘密资料导出。

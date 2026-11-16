@@ -797,7 +797,8 @@
         "kind": "explicit_user_report_review_and_repair_request",
         "request_excerpt": "修，注意直接在main分支改就行，还是你强烈建议不在main直接改动",
         "report_scope": "用户粘贴2026-11-16复验结论，基线c0b18ea；按当前main e7a6d736复核",
-        "C05_followup_question": "业界是怎么做的"
+        "C05_followup_question": "业界是怎么做的",
+        "C05_owner_answer": "采用首版简化行为（推荐）"
       },
       "scope": "修B0真实试用门、owner执行动作、稳定出口、现势入口/历史分离、编号限定引用、兼容/UI/发布计价对账和首版本地机器投影；不修本轮尚未授权开发的业务缺陷或真实接线",
       "design_refs": [
@@ -812,7 +813,7 @@
         "business_feature_implementation": false,
         "deployment": false
       },
-      "owner_pending": "C05重复口令写简化行为仍待明确选择；追问业界不算批准。保留现行强参数绑定合同与6–10日候选。",
+      "owner_pending": "C05行为已确认，本项政策待答归零；实际启用材料与验收仍按原窗口。",
       "estimate_update": {
         "previous_rounded_days": [
           95,
@@ -830,11 +831,17 @@
           2,
           3
         ],
-        "reason": "Q1已必交但未充分计价的有限旧参考adapter×新core回归；Q2排除完成维护，UI按同范围对账，UAA-C仍在S1"
+        "reason": "Q1已必交但未充分计价的有限旧参考adapter×新core回归；Q2排除完成维护，UI按同范围对账，UAA-C仍在S1",
+        "C05_remaining_days": [
+          6,
+          10
+        ],
+        "C05_price_changed_after_behavior_choice": false
       },
       "implementation_state": "planning_and_validation_tool_repair_not_business_implementation",
       "historical_34_formal_decisions_unchanged": true,
-      "report_ref": "docs/review/reports/planning-review-repair-2026-11-16.md"
+      "report_ref": "docs/review/reports/planning-review-repair-2026-11-16.md",
+      "C05_confirmed_behavior": "所有者已确认C05首版简化：重复K不再写口令/epoch、不重签原TokenPair，提示操作已存在/结果待核查；改B须重新确认新K。HMAC秘密比较及验证key生命周期后置，保留当前身份/目标、DB安全代际、原子receipt/intent和恢复CAS。"
     }
   ]
 }

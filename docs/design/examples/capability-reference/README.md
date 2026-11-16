@@ -26,7 +26,7 @@ AJV_MODULE=/path/to/existing/ajv node docs/design/examples/capability-reference/
 
 IAM不变量仍须实施C批独立证明：集合与ETag同快照、pending效果的提交head、保留锚不归零、key-only重放不改hash、读权先于回放/收据、同事务审计/意图失败回滚、未知提交及策略恢复。Shape与命令hash不能替代这些PG/HTTP/进程恢复断言。
 
-[C05秘密绑定向量](c05-secret-binding-vector.json)只使用合成口令及零测试key，封闭消息编码与HMAC已分别由Python/Node独立重算一致；它不由verify.cjs自动覆盖，也不证明运行key托管/轮换或改密链。该文件不可作为运行配置、账号资料或日志样板使用。
+2026-11-16所有者已确认C05首版重复K不执行/原回执核查，秘密比较及验证key生命周期后置；本向量保留历史研究与将来按需参考，**不是首版协议、实现或验收门**，其字节/hash不改。[C05秘密绑定向量](c05-secret-binding-vector.json)只使用合成口令及零测试key，封闭消息编码与HMAC已分别由Python/Node独立重算一致；它不由verify.cjs自动覆盖，也不证明运行key托管/轮换或改密链。该文件不可作为运行配置、账号资料或日志样板使用。
 
 ## 公共模块与HTTP消息的选定参考
 

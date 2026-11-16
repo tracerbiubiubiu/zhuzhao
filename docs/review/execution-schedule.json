@@ -9,9 +9,9 @@
     "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
     "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "docs/review/local-core-release-estimate.json": "2498c3810d5ce93b30c8e6c9d823af9ae6b78816ce306b7131051dadf619637f",
+    "docs/review/local-core-release-estimate.json": "0168cb36c00c29e9d35154b711f671c3f9b58dbd9ad2936c90537f944e4108c0",
     "docs/review/first-usable-release-target.json": "5f920bebeeaf56965fe779b6fc2b51fefe5e72732d4a4fa8e716bd90b0cc6fbc",
-    "docs/review/owner-decision-agenda.json": "01c4148ad65c114d7d3d3abfceb969138b7fec861ff82a0c28504c810f406ee0",
+    "docs/review/owner-decision-agenda.json": "dddf4154db85cda75d79926e30db71037bdd676100073f5ddb377ab2c6fc1125",
     "scripts/calculate-planning-schedule.py": "7fd04239333ae9902b93e95b1526d5f0d1324fd802be3c8230135567413c1ff2"
   },
   "resource_assumptions": {

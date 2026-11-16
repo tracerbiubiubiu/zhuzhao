@@ -223,7 +223,7 @@ PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错�
 
 统一安全事务核由HTTP管理命令、自服务改密及受审CLI复用，原身份入口不混同：取C的适用守卫/保护锁与用户行，核当前状态/hash/epoch及各命令真实系统号/最后superadmin守卫，然后同tx写状态或密码、epoch+1、receipt和投影intent。disable保持status=0；Delete软删及既有关联清理同事务；ResetPassword保持原disabled状态、设must_change_password=true，不顺便启用。自服务bcrypt在锁外计算，锁内重核原hash/epoch/active，不能在管理员新重置后覆盖新密码。
 
-enable先要求前一安全撤销已投影，未完成则明确冲突/待恢复且不先写active；获准后启用并推进新epoch，防旧disable/clear回调覆盖。重复相同目标状态不无意义推进，原operation重投不再改密码/代际。receipt/intent同tx是恢复必需，**不扩大两操作强审计政策**；口令及token不得落operation正文、弱可枚举hash或审计diff，秘密参数重放校验须用受控验证材料，准确私有输入摘要随C05消费合同收口。
+enable先要求前一安全撤销已投影，未完成则明确冲突/待恢复且不先写active；获准后启用并推进新epoch，防旧disable/clear回调覆盖。重复相同目标状态不无意义推进，原operation重投不再改密码/代际。receipt/intent同tx是恢复必需，**不扩大两操作强审计政策**；口令及token不得落operation正文、弱可枚举hash或审计diff。C05首版按已确认的“重复操作不再写、核查原结果”处理秘密输入，不比较重复请求的口令是否相等，准确行为见§4.4。
 
 worker仅按当前DB状态和epoch投影：旧代intent superseded，Lua单调安装目标epoch/状态，网络在DB锁外，完成按当前epoch＋原lease/fence CAS回写projection_epoch/receipt。失败保留本地安全事实及pending，不回滚禁用/改密，不改成新operation。RT槽按`refresh:db1:<uid>:<epoch>:<device>`隔代；旧worker不扫描删除新代槽。
 
@@ -245,29 +245,29 @@ DB未提交零业务效果；commit未知查原operation；DB已提交而Redis�
 
 **SESSION-01–10（待新增）**：DB commit＋Redis持续失败；commit后kill/恢复；disable/enable/迟到clear竞争；投影丢键与不可信全量恢复分开；Login不借新epoch；Refresh只一个赢家且不覆盖新登录；Bearer/cookie一致；PAT跨改密保持且禁用即拒；CLI/HTTP及新建/存量初始投影可恢复；未知结果/旧500与新pending兼容（含disabled完整退出、普通503不乱清、改密已提交停止旧session、迟到不清新账号）。至少8轮并发红例，真实PG/Redis/HTTP/进程恢复不由miniredis或旧绿色代替。
 
-复用`internal/service/auth_epoch_race_integration_test.go`的`TestAuthEpoch_LoginCannotBorrowPostResetEpoch/TestAuthEpoch_RefreshBindsConsumptionEpoch/TestAuthEpoch_UserLifecycleCannotReviveOldAT`、`internal/service/auth_revocation_regression_integration_test.go`的`TestAudit_AdminResetThenLogin_OldATMustStayRevoked`、`internal/service/session_epoch_test.go`的`TestSessionEpoch_StrictReadAndConditionalClear`、`internal/service/session_revoke_test.go`的`TestRevokeUserSessionsWithRetry_RecoversAfterTransientFailure/TestRevokeUserSessionsWithRetry_PersistentFailure`及`internal/middleware/jwt_epoch_test.go`的`TestJWT_PasswordEpoch/TestFileSession_PasswordEpoch`。旧测试不证明新DB代际/持久intent已经存在；确切秘密摘要、claims与C05毛估见下节，公共IAM参考Schema见共同合同，真实维护者/恢复窗口沿原议程集中绑定。
+复用`internal/service/auth_epoch_race_integration_test.go`的`TestAuthEpoch_LoginCannotBorrowPostResetEpoch/TestAuthEpoch_RefreshBindsConsumptionEpoch/TestAuthEpoch_UserLifecycleCannotReviveOldAT`、`internal/service/auth_revocation_regression_integration_test.go`的`TestAudit_AdminResetThenLogin_OldATMustStayRevoked`、`internal/service/session_epoch_test.go`的`TestSessionEpoch_StrictReadAndConditionalClear`、`internal/service/session_revoke_test.go`的`TestRevokeUserSessionsWithRetry_RecoversAfterTransientFailure/TestRevokeUserSessionsWithRetry_PersistentFailure`及`internal/middleware/jwt_epoch_test.go`的`TestJWT_PasswordEpoch/TestFileSession_PasswordEpoch`。旧测试不证明新DB代际/持久intent已经存在；首版重复提交行为、claims与C05毛估见下节，公共IAM参考Schema见共同合同，真实维护者/恢复窗口沿原议程集中绑定。
 
 ### 4.4 C05秘密输入、claims与子估收口
 
-口令写入不是前述两个公开IAM capability，不因共用operation存储就发布成工具。HTTP仍只接原password DTO；服务端在内存完成现行校验/bcrypt，把秘密输入与持久非秘密命令分开。规范operation只存命令种类/目标/原epoch/请求键及opaque secret_binding_ref，普通canonical_input_hash仍只对这份安全投影计算；原始/旧/新口令、bcrypt输入或私有校验digest不进receipt/审计/普通日志。该链限本地凭据写主；企业模式的受管凭据按UAA权威矩阵走外部端口，不借本地改密恢复受管身份的控制权。
+**2026-11-16所有者已确认首版简化行为（F021）**：操作K首次将密码改为A，若响应丢失，随后携A或B重复提交K，均不再次写密码/epoch，也不重新签发原TokenPair；明确提示“操作已存在／结果待核查”。若要改为B，须核查原结果、重新确认后使用新操作编号。界面不能把K的原成功结果显示成“本次B已生效”。此确认收窄首版重放合同，不代表业务已经实现。
 
-私有重放校验固定`HMAC-SHA256`：服务端对purpose=C05-secret-input-v1、caller namespace、真实principal、命令/目标及**原始精确UTF-8秘密值**的封闭规范编码计算，常量时间比较。保留现密码字节语义，不Trim/Unicode归一化，也不存可离线枚举的裸SHA(password)。验证key来自独立只读secret_ref，数据库/制品/配置正文不含key；不复用JWT签名或服务AK/SK。初次绑定保存algorithm/key_id/digest于受限operation元数据，重放用原key_id和冻结默认值，不换当前active key重算。相同请求键换口令/目标/主体409且零新效果，秘密不可由客户端hash自证。
+口令写入不是前述两个公开IAM capability，不因共用operation存储就发布成工具。HTTP仍接原password DTO；首次有效请求在内存完成现行校验/bcrypt，把秘密输入与持久非秘密命令分开。operation只保存caller namespace、可信主体、命令种类、目标、冻结的原expected_epoch/默认值及请求键等安全投影，canonical_input_hash只覆盖该非秘密投影；首版不要求secret_binding_ref、口令HMAC或验证key。原始/旧/新口令、bcrypt输入、可枚举口令hash及token不进operation正文、receipt、审计或普通日志。该链限本地凭据写主；企业模式受管凭据按UAA权威矩阵走外部端口，不借本地改密恢复受管身份的控制权。
 
-编码精确定为UTF-8、键排序/紧凑分隔/不做Unicode归一化的封闭JSON对象，键固定purpose/caller_namespace/principal_id/command/target_id/expected_session_epoch/secret_values；epoch为冻结正字符串，secret_values只含本命令已验证DTO的精确字符串值。HMAC消息仅内存使用，不将它当持久command正文。可复用[合成编码向量](../design/examples/capability-reference/c05-secret-binding-vector.json)核不同实现一致；其中零key和示例口令只为规范测试，严禁运行配置消费，未访问真实密钥/账号。公开receipt仅安全command hash，不回私有digest。
+重复请求先校验当前身份与对应操作的访问资格：同K的非秘密绑定冲突（命令、目标、可信主体或明确提供的安全预期变化）仍拒绝且零新增效果，不能拿别人的K查询结果。通过这些检查后，已有operation无论在途、已完成或待核查，都只给明确的存在/核查状态，不再次执行秘密写，也不判断A与B是否相等。普通“同键同参数返回原成功”的通用语义不能套到本口令入口；这里只允许获权查询最小原receipt，不能重放TokenPair。具体reason/错误码随C05端点和UI同批登记，不把存在提示伪装成原DTO成功。
 
-key轮换时旧验证key按去重窗口受控保留；若不可用，不盲认为同参、不重置口令或换新operation，返回稳定unverifiable/待核查，仍可在重新认证与当前目标权限允许后查询最小原receipt。最小效果证据不因普通TTL消失；永久留身份/效果不等于永久保存旧秘密验证材料。实际key托管/保留窗口沿Q12启用前绑定，技术方案不需要所有者选择哈希算法。自服务旧token失效后不能靠secret_binding_ref绕登录，使用新密码重登核查。
+同K并发首次请求必须由数据库唯一保留和同事务receipt收敛，最多一个请求产生密码/epoch效果；其余等待先行事务收敛或安全返回在途/待核查，不得因响应超时、旧token失效或worker重启另执行一次。最小操作身份/效果证据不随普通TTL消失；未知提交必须核同事务receipt，当前epoch单独不能证明原K成功。查不到或不可判定时停止自动重做并受控核查，不擅自换K重试。当前主体重新认证且仍有目标读权后才可查询；自服务旧token失效后使用正常登录恢复，操作引用本身不授认证或权限。
 
 claims参考冻结为AT/RT新增可选`session_schema="db_epoch_v1"`、`session_epoch`规范十进制正字符串（int64范围）；核心对新schema分支必须校验，两字段缺一或非法均会话终态，不走旧epoch0回落。utils旧签发/解析入口对其它消费者保持兼容，新增显式安全代际签发能力，旧Pwe不能被当新DB字段；TokenPair/cookie外壳不改。projection intent只含operation/user/expected_epoch/desired_active/lease/fence及安全reason，不含token/口令/完整请求。USER创建/存量初始化/CLI也消费该profile，产品与公共库生成代码仍待实现。
 
-源映射后的C05毛估候选为**6–10单席工程日**：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/安全重放1–1.5；薄UI/session generation/运维1–1.5；真实回归/评审1–2。原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前Q1兼容补估后为97–151，唯一数字源见净估册，不能用已有回归免费包干。
+按已选首版行为重新核责任，C05毛估保留**6–10单席工程日**的中低置信候选：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/重复操作收敛1–1.5；薄UI/session generation/运维1–1.5；真实并发/未知提交/恢复回归及评审1–2。上述剩余工作均仍必交；HMAC原未独立定价，移除其实现、编码、key生命周期与专用用例后，不凭空宣称已兑现1.5–2.5日节省。首批源级实耗继续校准，不把保守区间误写成保留后置工作收费。
 
-**2026-11-16首版收窄候选（F021，尚未批准）**：上段6–10对应现行强参数绑定合同，HMAC并无独立1.5–2.5日额度，不能直接按该数扣价。当前全版已因Q1兼容回归补计更新为97–151，详见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)。C05应先按所选行为拆明依赖、复用和剩余量，再校准，不能以方案简化默许撤权/恢复测试减少。
+原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前Q1兼容补估后为97–151，唯一数字源见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)及净估册，不能用已有回归免费包干。
 
-候选用户行为是：操作K第一次改密后响应丢失，再携A或B重投K都不再次写密码/epoch、不重签原TokenPair；明确返回“操作已存在／结果待核查”，当前主体重新认证且仍有目标读权后查询最小原receipt。若要改成B，须重新确认并用新操作编号，界面不能把K原结果当成本次B已生效。这样可以后置精确秘密相等校验及验证key生命周期，但**必须同时撤下“同键同秘密回原结果、异秘密必409”的强辨别承诺**；DB epoch、原子业务/receipt/intent、旧worker fence/CAS和会话撤销继续必交。未知提交仅靠当前epoch不能认定原K成功，必须核同事务receipt；查不到或不可判定时停止自动重做并受控核查。
+**后置增强与历史**：5cca995版本的§4.4曾要求“同键同秘密回原结果、异秘密必409”，以HMAC-SHA256秘密绑定、封闭JSON编码、验证key轮换/旧key保留和[合成编码向量](../design/examples/capability-reference/c05-secret-binding-vector.json)支撑精确比较。本次确认撤下这项首版强辨别承诺；该向量仅保留后置设计参考，不再是首版C05的实现或验收门，也不新增key托管的首版owner动作。以后有明确需要时再按场景、合同及净增估算获选，不因资料保留默认启用。示例零key/口令仍严禁运行配置消费。
 
-[Stripe幂等请求](https://docs.stripe.com/api/idempotent_requests)说明同键不同参数应报错；[OWASP密码重置指南](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)强调单次/限时凭证、通知、正常登录及旧会话处理。前者支持现行强合同的意图一致性，后者不等于要求本项目新建找回密码服务或HMAC重放平台。本候选是为首版主动收窄操作重放语义，并非宣称两个合同等价。所有者本轮仅追问“业界是怎么做的”，不视作批准；选择及后续子估记录在[本轮议程](../review/owner-decision-agenda.json#/planning_repair_followup)，现行§4.4/SESSION-10/参考向量在明确选择前保持。
+[Stripe幂等请求](https://docs.stripe.com/api/idempotent_requests)说明其同键不同参数应报错；[OWASP密码重置指南](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)强调单次/限时凭证、通知、正常登录及旧会话处理。前者解释原强合同的意图一致性，后者不要求本项目新建找回密码服务或HMAC重放平台。已选首版主动缩小操作重放承诺，并非两个合同等价。所有者选择及范围变化归[本轮议程](../review/owner-decision-agenda.json#/planning_repair_followup)，不重开原有已确认政策。
 
-SESSION-10补秘密变参/目标替换、key轮换/缺旧key、原默认值固定、receipt不泄digest及未认证secret_ref拒绝；SESSION-07/09补claims半字段/零/超int64及旧utils调用者保持原合同。这里是可写独立测试的候选，不是密码、密钥或数据已改。
+SESSION-10现验：同K携A/B均不再次写密码/epoch或重签TokenPair；同K并发最多一个效果；非秘密目标/主体冲突及未获权查询拒绝；原默认值冻结；commit未知核receipt而非只看epoch；receipt不泄秘密；UI不把原结果当B已生效。HMAC编码/key轮换/缺旧key只留后置增强，不混入首版必测。SESSION-07/09仍验claims半字段/零/超int64及旧utils调用者保持原合同。DB epoch、原子业务/receipt/intent、旧worker fence/CAS和会话撤销全部保留；这里是待实现的测试设计，不是密码、密钥或数据已改。
 
 ## 5. D06 与 UAA-C：来源、目录和组织生命周期
 

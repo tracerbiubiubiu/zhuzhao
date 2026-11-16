@@ -492,21 +492,27 @@
   "planning_repair_followup": {
     "date": "2026-11-16",
     "source_followup": "F021-planning-review-repair",
-    "state": "pending_owner_behavior_choice",
+    "state": "owner_confirmed_direction_pending_implementation",
     "historical_34_formal_decisions_unchanged": true,
     "f019_three_confirmed_policies_unchanged": true,
     "item": {
       "work_item_ref": "C05",
       "title": "重复口令写的首版用户行为",
-      "state": "pending_owner_behavior_choice_not_implemented",
+      "state": "owner_confirmed_narrow_first_release_not_implemented",
       "scenario": "管理员以操作编号K将密码改为A，响应丢失；随后客户端误用K提交B。界面应如何明确告知原操作与本次输入的结果？",
       "current_contract_ref": "docs/phase6/foundation-iam-module-detail.md#44-c05秘密输入claims与子估收口",
-      "current_contract": "现有候选保留强参数一致语义：同键异口令/目标/主体409且零新效果，私有HMAC绑定识别秘密输入；在所有者选择前不删合同、不按假定节省扣价",
+      "current_contract": "所有者已确认C05首版简化：重复K不再写口令/epoch、不重签原TokenPair，提示操作已存在/结果待核查；改B须重新确认新K。HMAC秘密比较及验证key生命周期后置，保留当前身份/目标、DB安全代际、原子receipt/intent和恢复CAS。",
       "narrower_candidate": "首版所有重复口令写均不再执行，明确提示操作已存在/结果待核查，不把原成功表述为B已生效；受权查询原receipt或重新认证核查，另改密码须重新确认并用新编号；不重放旧TokenPair，不承诺精确秘密相等辨别",
-      "owner_response_state": "requested_industry_explanation_not_a_choice",
-      "decision_due": "C05行为合同及测试预期冻结前；不阻B0合成隔离预演、三P1既定窄修复或其它独立模块",
-      "implementation_boundary": "行为取舍由所有者选择，算法与技术方案由实施方负责。两方案均保留DB安全代际、原子操作回执/意图、当前授权及恢复CAS；真实key托管/保留参数仍按启用窗口绑定",
-      "estimate_boundary": "C05当前6–10日候选保持；选择较窄合同后按源级子估/复用扣重，不直接假定节省1.5–2.5日"
+      "owner_response_state": "explicitly_selected_narrow_first_release",
+      "decision_due": "行为已确认；产品API/码值和用例在C05实施前冻结，不阻B0合成预演及独立模块",
+      "implementation_boundary": "首版重复K不执行；同K换主体/目标/命令等非秘密投影仍冲突拒绝，查询原receipt重新校验当前权限。保留DB代际/原子回执与intent/恢复CAS，不重放旧TokenPair。HMAC秘密比较与验证key生命周期后置，不是Q12首版绑定项。",
+      "estimate_boundary": "按剩余五行底向上复核仍6–10日；不含后置HMAC/编码与key管理，不臆减未经独立计价的1.5–2.5日。",
+      "previous_contract": "现有候选保留强参数一致语义：同键异口令/目标/主体409且零新效果，私有HMAC绑定识别秘密输入；在所有者选择前不删合同、不按假定节省扣价",
+      "owner_response": {
+        "question_item_id": "[\"request_user_input_async\",\"call_d8d2fcc7802e414bb4769d20d2ca1634\",0]",
+        "answer": "采用首版简化行为（推荐）",
+        "date": "2026-11-16"
+      }
     }
   }
 }

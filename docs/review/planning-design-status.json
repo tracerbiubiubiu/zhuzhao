@@ -317,10 +317,10 @@
         "docs/phase6/iam-first-batch-design.md"
       ],
       "implementation_state": "planned_not_implemented",
-      "owner_policy": "see_planning_decisions",
+      "owner_policy": "F021 owner-confirmed narrow first-release replay behavior; implementation pending",
       "api_schema_frozen": false,
       "remaining": [
-        "DB安全epoch/投影、HTTP与CLI、PAT独立、秘密HMAC重放编码及新claims均有有界候选；合成向量非实际凭据。",
+        "DB安全epoch/投影、HTTP与CLI、PAT独立、新claims及重复K不执行/原回执核查已有有界候选，首版行为已获所有者确认；秘密HMAC比较/编码与验证key生命周期后置。",
         "毛估6–10日须与原2–4及S1/S2/C/薄UI/G04/OBS扣重替换，未加总；产品迁移/真实并发恢复与部署Q12仍未交。"
       ],
       "next_design_gate": "P6.1开工前",
@@ -2415,7 +2415,7 @@
           6,
           10
         ],
-        "scope": "DB epoch/initial projection and security writes, AT/RT/cookie/PAT, private secret replay, thin UI and recovery; gross pending dedup, not included in IAM-C"
+        "scope": "DB epoch/initial projection and security writes, AT/RT/cookie/PAT, duplicate-key no-write/original receipt check, thin UI and recovery; HMAC/key lifecycle excluded, gross pending dedup, not included in IAM-C"
       }
     ],
     "net_estimate_integrated": true,
@@ -2493,7 +2493,7 @@
       },
       {
         "id": "C05",
-        "state": "source_mapped_security_epoch_secret_and_claims_candidate",
+        "state": "owner_confirmed_single_write_receipt_epoch_and_claims_candidate",
         "ref": "docs/phase6/foundation-iam-module-detail.md#41-c05现有wire与尚未持久化的部分",
         "case_ids": [
           "SESSION-01",
@@ -2508,7 +2508,8 @@
           "SESSION-10"
         ],
         "remaining_technical": [
-          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration."
+          "Product implementation, generated artifacts and real acceptance; net estimate is an engineering allocation candidate subject to measured calibration.",
+          "SESSION-10 covers concurrent duplicate K, changed A/B no-write, safe projection conflict, current authorization and unknown receipt handling; deferred HMAC equality is not a first-release gate."
         ],
         "runtime_verified": false,
         "gross_days": [

@@ -125,7 +125,44 @@
                 6,
                 10
               ],
-              "owner": "bounded persistent security epoch, secret binding, token/PAT/UI/CLI and recovery"
+              "owner": "bounded persistent security epoch, duplicate-key no-write/original receipt check, token/PAT/UI/CLI and recovery; secret HMAC deferred",
+              "remaining_wbs_after_owner_choice": [
+                {
+                  "scope": "DB安全代际、原子业务/receipt/intent和初始化/CLI写方",
+                  "days": [
+                    1.5,
+                    2.5
+                  ]
+                },
+                {
+                  "scope": "AT/RT/cookie/PAT及utils兼容，旧会话撤销",
+                  "days": [
+                    1.5,
+                    2.5
+                  ]
+                },
+                {
+                  "scope": "重复K不执行/原receipt核查、投影恢复与fence/CAS",
+                  "days": [
+                    1,
+                    1.5
+                  ]
+                },
+                {
+                  "scope": "薄UI/session generation与受控运维接线",
+                  "days": [
+                    1,
+                    1.5
+                  ]
+                },
+                {
+                  "scope": "真实并发/故障/权限回归与评审",
+                  "days": [
+                    1,
+                    2
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -1477,10 +1514,11 @@
         99,
         154
       ],
-      "C05_scope_or_price_changed": false,
-      "C05_review": "Current strong secret-input comparison contract and 6-10 remain until explicit behavior decision; HMAC has no independently priced 1.5-2.5 saving.",
+      "C05_scope_or_price_changed": true,
+      "C05_review": "Owner explicitly selected narrow first release: repeat K never rewrites password/epoch, returns exists/check-original-result; safe projection conflicts and current authorization still enforced. HMAC secret equality/key lifecycle deferred. Remaining five WBS rows sum 6-10, so no unsupported 1.5-2.5 subtraction; full release unchanged.",
       "global_parent_prices_unchanged": true,
-      "no_calendar_promise": true
+      "no_calendar_promise": true,
+      "C05_price_changed": false
     }
   },
   "authorization_gap_binding": {
@@ -1543,7 +1581,44 @@
           6,
           10
         ],
-        "scope": "bounded local security session and recovery"
+        "scope": "bounded local security epoch, no duplicate password writes, original receipt check and recovery; HMAC/key lifecycle excluded",
+        "remaining_wbs_after_owner_choice": [
+          {
+            "scope": "DB安全代际、原子业务/receipt/intent和初始化/CLI写方",
+            "days": [
+              1.5,
+              2.5
+            ]
+          },
+          {
+            "scope": "AT/RT/cookie/PAT及utils兼容，旧会话撤销",
+            "days": [
+              1.5,
+              2.5
+            ]
+          },
+          {
+            "scope": "重复K不执行/原receipt核查、投影恢复与fence/CAS",
+            "days": [
+              1,
+              1.5
+            ]
+          },
+          {
+            "scope": "薄UI/session generation与受控运维接线",
+            "days": [
+              1,
+              1.5
+            ]
+          },
+          {
+            "scope": "真实并发/故障/权限回归与评审",
+            "days": [
+              1,
+              2
+            ]
+          }
+        ]
       }
     ],
     "global_total_status": "source_mapped_deduplicated_candidate_not_runtime_verified",
@@ -1625,7 +1700,7 @@
           6,
           10
         ],
-        "owner": "bounded persistent security epoch, secret binding, token/PAT/UI/CLI and recovery"
+        "owner": "bounded persistent security epoch, duplicate-key no-write/original receipt check, token/PAT/UI/CLI and recovery; secret HMAC deferred"
       }
     ],
     "net_days": [

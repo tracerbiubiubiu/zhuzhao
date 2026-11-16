@@ -87,7 +87,9 @@
     },
     {
       "path": "c05-secret-binding-vector.json",
-      "sha256": "2bf29e12b4cc4eaa94fe0edd11d23e26ebe4f00e08216062ad0ee028db5c2ade"
+      "sha256": "2bf29e12b4cc4eaa94fe0edd11d23e26ebe4f00e08216062ad0ee028db5c2ade",
+      "delivery_scope": "deferred_secret_equality_reference_not_C05_first_release",
+      "runtime_consumption": false
     },
     {
       "path": "../uaa-reference-mock/port-map.json",
