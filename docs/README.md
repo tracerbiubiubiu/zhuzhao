@@ -22,8 +22,9 @@
 | 理解当前模块 | [modules/](modules/README.md) | 当前调用链、数据与权限，不把目标目录当已迁移 |
 | 查架构、目标合同和决策 | [design/](design/README.md)、[adr/](adr/README.md) | 当前解释与目标设计分别标注；采纳不等于实施 |
 | 查当前API | [api/](api/README.md) | 响应/错误、Swagger及准确消费者合同；候选接口另标状态 |
-| 部署、备份、故障处理 | [ops/](ops/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
+| 部署、备份、故障处理 | [ops/](ops/README.md)、[工具构建与扫描](ops/tools/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
 | 看当前实现或复核证据 | [review/](review/README.md) | 当前控制、审查方法与固定时点报告 |
+| 复用审计方法、模板、提示词 | [toolkit/](toolkit/README.md) | 方法、空白原件与执行实例分开维护 |
 | 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 当前交付顺序与来源承接，不直接作为完成证明 |
 
 ## 阶段导航
@@ -39,12 +40,12 @@
 ## 五仓各自维护，结构统一
 
 - **zhuzhao**：核心应用、IAM、工单、权限、网关及生态公约/规划，本树为权威。
-- **zhuzhao-ui**：[UI文档](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/main/docs)，维护前端开发、组件、测试和发布。
-- **zhuzhao-utils**：[公共库文档](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/main/docs)，维护具体公共包、接入和版本纪律。
-- **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
-- **activelist**：[动态清单文档](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
+- **zhuzhao-ui**：[本地文档](../../zhuzhao-ui/docs/README.md) / [UI文档（main）](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/main/docs)，维护前端开发、组件、测试和发布。
+- **zhuzhao-utils**：[本地文档](../../zhuzhao-utils/docs/README.md) / [公共库文档（main）](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/main/docs)，维护具体公共包、接入和版本纪律。
+- **taskrunner**：[本地文档](../../taskrunner/docs/README.md) / [任务服务文档（main）](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
+- **activelist**：[本地文档](../../activelist/docs/README.md) / [动态清单文档（main）](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
 
-以上Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
+以上本地入口读取当前检出的候选，Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
 
 ## 维护规则
 
@@ -58,7 +59,7 @@
 |---|---|
 | 2026-11-08 | 五仓各自docs、统一分类，区分当前/未来/历史；保留阶段和Swagger路径。 |
 | 2026-11-11 | 同步Phase5收尾和问题移交，后续原稿作为重规划输入。 |
-| 2026-11-16 | 当前规划迁入planning，审查与历史保留review；增加Git/本地材料边界和迁移清单。 |
+| 2026-11-16 | 当前规划迁入planning，审查与历史保留review；增加Git/本地材料边界和迁移清单，补齐五仓本地入口、工作资料与运维工具导航。 |
 | 2026-11-13 | 按所有者/开发/运维审计重排阅读路径，校准阶段/资源与未计价增量，明确候选和main入口。 |
 
 全项目后续重规划主读[路线图](roadmap.md) → [渐进演进](design/project-evolution-strategy.md) → [能力承接审计](planning/roadmap-capability-continuity.md) → 唯一总账；Phase6仅为近期一段。比较方案变化读[路线对照](planning/roadmap-change-comparison-2026-11-12.md)，查看已计价先后读[执行排期](planning/execution-schedule.md)，当前完整范围同时包含CE、旧漏估子范围与既有包复估；历史日窗不作为新承诺。

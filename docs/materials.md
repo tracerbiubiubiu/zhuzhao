@@ -20,7 +20,9 @@
 - `evidence/readme-refresh-20261113/readme-refresh-2026-11-13.json`：已完成README更新的纯操作收据，本次停止Git跟踪；[正式报告](review/reports/readme-refresh-2026-11-13.md)继续保留范围、原失败及结果。
 - `maintenance/docs-consolidation-20261116/`：本次逐文件库存、旧新路径、冻结输入哈希、归档验证和测试原日志；属于维护执行记录，不跟随产品仓提交。
 
-本轮工作资料整理的执行记录使用材料ID `maintenance/docs-toolkit-20261116/`，保存模板提取核对、链接/Git范围检查、隔离门禁和清理收据，不随产品仓提交。
+工作资料整理的执行记录使用材料ID `maintenance/docs-toolkit-20261116/`，保存模板提取核对、链接/Git范围检查、隔离门禁和清理收据，不随产品仓提交。
+
+完整性复核记录使用材料ID `maintenance/document-organization-recheck-20261116/`；后续入口同步与地址核对记录使用 `maintenance/document-addresses-20261116/`。它们只保存整理/验证过程，不作为新的产品事实台账。
 
 此前工作树清理的压缩包与逐文件SHA256继续保存在独立批次`src-cleanup-20261116`，由本地档案索引定位；不重复复制大包。首次目录清理未纳入的受限参考资料，后续已按所有者要求集中到仓库外的本地私有区；其真实位置与迁移清单只记录在本地索引。
 
