@@ -1,7 +1,7 @@
 # 11 · 项目能力总览图（Project Control）
 
 
-> 文档维护（2026-11-16）：全项目现行计划统一到[planning](../planning/README.md)，正式报告/历史继续在review；Git与本地原材料边界见[材料目录](../materials.md)。五仓AGENTS已接入[文档维护约定](../documentation.md)，可复用方法/模板/提示词从[工作资料库](../toolkit/README.md)进入；本批不改变能力、开放缺陷、估算或业务开工状态。
+> 文档维护（2026-11-16）：全项目现行计划统一到[planning](../planning/README.md)，正式报告/历史继续在review；Git与本地原材料边界见[材料目录](../materials.md)。五仓AGENTS已接入[文档维护约定](../documentation.md)，可复用方法/模板/提示词从[工作资料库](../toolkit/README.md)进入；本批不改变能力、开放缺陷、估算或业务开工状态。受限本地资料的迁移说明已复核，禁止任何渠道上传的边界见[材料目录](../materials.md#仅限本机的受限资料)；历史来源标识不改写为现行文件位置。三份运维工具说明已归位[ops/tools](../ops/tools/README.md)，构建与业务能力保持不变。
 > 当前状态（2026-11-16）：Phase1–5的IAM、工单及生态底座已在main，分档门禁已实施；风险新域、可靠互通及私有接缝仍按模块计划实施。AUTH-01/02/07等现存缺陷未被规划或工程门禁修复，涉及真实业务试用的能力须先满足明确准入门。公司允许本地账号正式运行，完整UAA P/R后继；mock长期保留。
 
 <!-- local-core-current:start -->

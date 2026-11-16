@@ -116,4 +116,4 @@ RustFS 1.0.1 的原卷先停写并离线复制，在独立卷用 1.0.5 启动，
 
 ## 最终工具执行制品补充
 
-上文公共migrate/rclone OCI摘要保留为上游对照。本轮最终Compose执行[受控源码工具构建](../../deployments/tools/README.md)，与component-lock.json的`local_tool_builds`一致：Go1.27.4、migrate4.20.1仅PostgreSQL/file、rclone1.76.0加crypto0.59，均不使用fork/replace并保留符号及许可证。实际main源码与最终Docker ELF的四次text扫描通过；最终migrate再次完成81 up/down/up，最终rclone再次以原mirror脚本验证覆盖/删除归档、11MiB multipart备份与第三实例恢复。JSON0不作为安全门禁，旧stripped符号展开记录不代表真实可达。[汇总](../review/reports/version-modernization-2026-11-12.md)保留边界与后继窗口。
+上文公共migrate/rclone OCI摘要保留为上游对照。本轮最终Compose执行[受控源码工具构建](../ops/tools/README.md)，与component-lock.json的`local_tool_builds`一致：Go1.27.4、migrate4.20.1仅PostgreSQL/file、rclone1.76.0加crypto0.59，均不使用fork/replace并保留符号及许可证。实际main源码与最终Docker ELF的四次text扫描通过；最终migrate再次完成81 up/down/up，最终rclone再次以原mirror脚本验证覆盖/删除归档、11MiB multipart备份与第三实例恢复。JSON0不作为安全门禁，旧stripped符号展开记录不代表真实可达。[汇总](../review/reports/version-modernization-2026-11-12.md)保留边界与后继窗口。

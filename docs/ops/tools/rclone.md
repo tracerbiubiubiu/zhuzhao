@@ -1,6 +1,6 @@
 # rclone 工具镜像
 
-固定官方 `github.com/rclone/rclone v1.76.0`，仅将有已确认安全公告的 `golang.org/x/crypto` 提升到 v0.59.0，并使用 Go1.27.4 重新构建。`go.mod`/`go.sum` 是源码和依赖锁，不维护 fork，不使用 `replace`，不裁剪 rclone 命令或 backend。此目录没有自写 Go 程序，构建目标直接指向上游 main 包；不要对空 wrapper 运行 `go mod tidy`，以免删除明确保留的依赖。
+固定官方 `github.com/rclone/rclone v1.76.0`，仅将有已确认安全公告的 `golang.org/x/crypto` 提升到 v0.59.0，并使用 Go1.27.4 重新构建。`go.mod`/`go.sum` 是源码和依赖锁，不维护 fork，不使用 `replace`，不裁剪 rclone 命令或 backend。`deployments/tools/rclone` 构建目录没有自写 Go 程序，构建目标直接指向上游 main 包；不要对空 wrapper 运行 `go mod tidy`，以免删除明确保留的依赖。
 
 官方 1.76.0 镜像的旧 Go 构建版本和裁剪过的 ELF 不能作为无漏洞证据。本镜像固定 Go/Alpine OCI 摘要，启用 checksum database，保留符号和调试信息；在实际 main 包与成品 ELF 上重新扫描。运行层保留 shell、CA、时区、FUSE、mime 数据和上游 rclone 用户，兼容现有 S3 备份脚本。
 
@@ -16,7 +16,8 @@ docker run --rm zzu-upgrade-rclone:20261112 version
 源码扫描必须指向实际 main 包，不能扫描空 wrapper 后宣称 rclone 无漏洞：
 
 ```bash
-# 在本目录，使用 Go1.27.4 与 govulncheck v1.9.0
+# 从主仓根目录进入实际构建目录，使用 Go1.27.4 与 govulncheck v1.9.0
+cd deployments/tools/rclone
 CGO_ENABLED=0 GOWORK=off GOFLAGS='-mod=readonly -p=2' \
   govulncheck -mode=source -scan=symbol -test=false \
   github.com/rclone/rclone

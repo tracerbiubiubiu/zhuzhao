@@ -17,6 +17,7 @@
 > 模块代码：`internal/middleware/casbin.go` + `internal/pkg/resource/` + 各 Service 的 Resource 实现
 >
 > 旧系统参考：`doc/module-assessment-2026-08/authorizor.md` + `restrict.md` + `resource.md` + `interaction-auth-chain.md`
+> 上述路径仅作历史来源标识；原件按[本地材料保管边界](../materials.md#仅限本机的受限资料)集中归档，不要求仓库内保留该路径。
 >
 > **Phase 1 行为以 [phase1/03-authz.md](../phase1/03-authz.md) 为准**（直接角色、无 Redis 权限缓存、Registry 空接口）。
 

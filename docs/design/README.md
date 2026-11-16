@@ -49,7 +49,7 @@
 | 统一日志与业务审计 | [日志审计合同](unified-observability-audit.md)、[standards §6](../standards.md#6-可观测性) | 可信上下文、敏感值/日志权限、本地持久与跨仓交接、查询/归档、实际多实例反例；不把trace当业务成功 |
 | AI/MCP与计划确认 | [AI调用](ai-invocation-contract.md)、[MCP首批](mcp-first-contract.md)/[Schema样本](mcp-first-contract.schema.json)、[定时AI确认](scheduled-ai-confirmation.md) | 精确批准/grant、数据ACL、协议/SDK互操作及适用预算 |
 | 设备薄模块 | [设备合同](device-module-contract.md) | 目录/状态/人工入口；不承诺异构设备SSO |
-| 版本与数据升级 | [版本现代化](dependency-modernization.md)、[恢复契约](component-upgrade-data-contract.md) | 准确制品/数据组合、停写/恢复和回退边界；[工具说明](../../deployments/tools/README.md) |
+| 版本与数据升级 | [版本现代化](dependency-modernization.md)、[恢复契约](component-upgrade-data-contract.md) | 准确制品/数据组合、停写/恢复和回退边界；[工具说明](../ops/tools/README.md) |
 
 [规划收口](../planning/planning-closeout.md)区分详设候选、组件原型、逐页范围和边界；不是全部远期API/DDL已冻结。[新旧对照](../planning/roadmap-change-comparison-2026-11-12.md)解释取舍，[执行排期](../planning/execution-schedule.md)给已计价基线，[UAA补估](../planning/uaa-implementation-estimate.md)负责独立数字源；CE及旧子范围已扣重复估，当前完整排程另见[净增注册表](../planning/planning-scope-estimates.json)；有研究证据不等于产品已经实现。
 

@@ -14,7 +14,7 @@
 
 Go业务实现、API、权限码、数据库schema和81对迁移均未改变。Go测试夹具更新镜像、端口就绪与可靠清理，AL补新pgx接口需要的测试桩；TR E2E只清理本次独立容器。UI的`src/`、`e2e/`、`scripts/`零改动，mock及既有合同保留。配置/CI/锁文件、版本说明及测试基础设施是本次影响面。
 
-[组件组合](../../../deployments/component-lock.json)记录公共摘要及本地工具构建；[升级设计](../../design/dependency-modernization.md)、[数据恢复契约](../../design/component-upgrade-data-contract.md)、[工具构建](../../../deployments/tools/README.md)给出处与操作要求。
+[组件组合](../../../deployments/component-lock.json)记录公共摘要及本地工具构建；[升级设计](../../design/dependency-modernization.md)、[数据恢复契约](../../design/component-upgrade-data-contract.md)、[工具构建](../../ops/tools/README.md)给出处与操作要求。
 
 ## 本地验证证据
 
