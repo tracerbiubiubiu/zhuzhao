@@ -43,3 +43,13 @@ OBS本地最低保护、两命令事实与后继查询/导出/UI沿原[扣重卡
 主仓七项普通门禁通过，验收日志含253条PASS与81对迁移零漂移；Go默认标签覆盖率20.2%，与前轮相同。冻结副本与最终520个产品/Makefile输入逐项一致，新增Python/Schema按最终候选另验。TR原11项、utils双Go原12项均通过；AL原11项中fresh race首轮在Docker启动mapped-port inspect API超时（业务断言前），原完整命令在降低其它测试负载后重跑通过，未改测试、超时或断言，两次日志分开保留。UI原前五件与42真实E2E通过，零失败/跳过/实际重试，产品输入未变；额外CORS预检曾误把合法通配origin当作必须精确回显，封装更正后才启动原E2E，未改变产品断言或retry。临时9容器/6卷/1网络及私有Vite/Playwright均精确回收，原16共享容器与网络/卷指纹未变。
 
 本地链接/锚点、JSON、派生及选定GitHub目标分别核验；未全网抓取外链，未将所有历史跨仓相对引用改为公开URL。现存AUTH问题继续开放，真实内网/产品并发持久化/企业激活仍由各实现包证明。
+
+## 5. 修订提交锚点
+
+下列为本地完整验证后的修订提交，不以提交存在代替远端CI或main状态；PR/合入和准确main检查以Git与Actions为准。
+
+- `zhuzhao`：`8e0a198766fff30cf86347baaafbd5bb3eb94926`。
+- `zhuzhao-ui`：`2d375e9988414824d1c2083c070fc9ef7fd8e667`。
+- `taskrunner`：`6b1a47dac58330a55650cb3661883e15bbd445f0`。
+- `activelist`：`d048567d2e4b46390a3187815906443d56d95312`。
+- `zhuzhao-utils`：`83d9202db04b3adcceb9f1eff6b2e4119e3f661d`。
