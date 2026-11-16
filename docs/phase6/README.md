@@ -2,14 +2,14 @@
 
 > **模块详设入口（2026-11-14）**：[模块覆盖与变化](module-detail-index.md)汇总五份详细合同，覆盖44个P6父包（含两项已交维护）、LS01–LS04及首版本地前移子出口。已有部分已补充/纠正，缺失的DTO、逻辑数据约束、权限、状态、恢复、薄UI及TDD已给候选；真实映射、实施迁移/OpenAPI和产品证据仍按批冻结。旧[接缝交接](module-design-handoff.md)保留为最小上下文，不把设计候选当业务已实现。
 
-> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，1月试用是争取窗口；不勉强原2月1日日期。[阶梯与验收](first-usable-release-plan.md)和[首版净估候选](../review/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../review/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
+> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，1月试用是争取窗口；不勉强原2月1日日期。[阶梯与验收](first-usable-release-plan.md)和[首版净估候选](../planning/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../planning/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
 
 > **2026-11-14基础先行修订**：[基础版边界](../design/foundation-release-boundaries.md)将现有底座入网试验B0、最小可扩展基础B1和后续业务增强分开。下表是能力分组，不能把整个P6.1全部完成当P6.2或入网前置。B1先X01-B配置式接缝/X02-Q参考查询；完整X01-H与全UAA-P不挡独立基础，真实企业激活仍验对应UAA硬门。新增业务最小UI随批，U06整包推广和高级配置台不挡业务。
 
-> **2026-11-13调用/一致性补充**：CE01静态准备可先行，授权相关实现归P6.1；CE02-S在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../review/capability-interconnect-supplement.md)；新增范围已由[净估注册表](../review/planning-scope-estimates.json)扣重计价，存量共同路径迁移按S/D/L跨阶段交付，仍未开工。
+> **2026-11-13调用/一致性补充**：CE01静态准备可先行，授权相关实现归P6.1；CE02-S在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../planning/capability-interconnect-supplement.md)；新增范围已由[净估注册表](../planning/planning-scope-estimates.json)扣重计价，存量共同路径迁移按S/D/L跨阶段交付，仍未开工。
 
 近期施工候选、首批PR切片及准确验证出口见[实施交接候选](implementation-handoff.md)；本轮未启动功能实现。
-> 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../review/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
+> 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../planning/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
 ## 1. 阶段目的
 
@@ -38,13 +38,13 @@
 - [06工单完善](06-ticket-completeness.md)：26件设计逐项映射总账；已修只回归；旧B1–B4按当前依赖重排。
 - [07来源索引](07-backlog-and-triggers.md)：历史触发/遗留来源，现行排期见总账和source-map，不再以“触发未到”无限悬挂。
 - [08首页](08-home-workbench.md)：U01先修安全默认落点，U02样板与U06推广；全员首页不等于全员工单读权。
-- [09类型策略](09-ticket-type-visibility.md)：D03详设；P1–P5的已决项以[决策登记](../review/planning-decisions.json)为准，剩余合同在对应包实施前冻结，页面只挂GET/写挂按钮的规则优先，不能默增例外。
+- [09类型策略](09-ticket-type-visibility.md)：D03详设；P1–P5的已决项以[决策登记](../planning/planning-decisions.json)为准，剩余合同在对应包实施前冻结，页面只挂GET/写挂按钮的规则优先，不能默增例外。
 
 ## 4. mock、外部契约与AI
 
 **正式双模式与跨阶段UAA出口**：独立模式长期保留本地登录、账号/角色/菜单授权及权限管理，不需要公司adapter或企业MQ。E01-UAA-C在P6.0先冻结公共管理权/稳定资源编码/数据属性规则及合成候选矩阵，真实映射值/批准在R前核验；只约束D06/X01-C/X02-F身份授权部分，不阻塞无关mock。E01-UAA-P归属P6.1的后继公共治理窗口，按本地核心先行顺序交公共治理端口、双模式正反例、最小登录/来源只读/非纳管可写和拒写反馈前端，以及公开安装/切换/退出runbook；完整投影/撤权出口验收依C04和X02-F实际共享能力，认证/来源/前端准备可并行，不等U06视觉迁移。
 
-E01-UAA-R在核心稳定后投入；具备资料可先准备，仅作为公司UAA纳管企业模式首次正式激活前的附加门，交真实私有adapter、批准映射、最小UI和安装/切换/退出演练；独立部署不等待R。正式生产还需[总账release_gates](../review/planning-backlog.md#按运行模式检查的发布证据门)中的通用生产证据；首发早于P7时只前移适用G05/E09硬项，不机械等全P7/I03。本轮P25–39、R13–22工程日已按[注册表](../review/uaa-implementation-estimate.json)补估，P含最小UI/公开运维/CI/质量；原G03/G04预算不重复增加。完整P验收依X02-F实际交付，测试侧真实联调不等待自己生成的影子报告；正式apply先过R.pre_apply。
+E01-UAA-R在核心稳定后投入；具备资料可先准备，仅作为公司UAA纳管企业模式首次正式激活前的附加门，交真实私有adapter、批准映射、最小UI和安装/切换/退出演练；独立部署不等待R。正式生产还需[总账release_gates](../planning/planning-backlog.md#按运行模式检查的发布证据门)中的通用生产证据；首发早于P7时只前移适用G05/E09硬项，不机械等全P7/I03。本轮P25–39、R13–22工程日已按[注册表](../planning/uaa-implementation-estimate.json)补估，P含最小UI/公开运维/CI/质量；原G03/G04预算不重复增加。完整P验收依X02-F实际交付，测试侧真实联调不等待自己生成的影子报告；正式apply先过R.pre_apply。
 
 HR、漏扫/结论源、CMDB、身份、消息、情报、模型、Agent、知识等按Port/Adapter/config接入；合成数据覆盖正例、重复/乱序/撤权/失败。真实契约可用后增加对应adapter，mock仍保留用于开发、演示和回归。
 
@@ -56,8 +56,8 @@ A01先查询已有受权工单/情报与后续风险，不执行自由SQL。A02�
 
 本阶段包含主仓与相关仓适用门禁，主仓make acceptance、迁移与UI角色旅程必需；mock、contract、real三层证据分列。指标分母/窗口/授权、可见性策略、UI代表样板、源字段与保留类别按总账窗口确认。全部条件项均有实施/决策/接入/退出去向，未定不替所有者虚构外部事实。
 
-新增私有设备X03在P6.3交付合成薄模块，首期已确认目录/状态/人工登录入口；真实供给P7逐项验。扩展/内网适配、工具链与PG/Redis候选升级详见[规划收口](../review/planning-closeout.md)，设计深度和owner待决不等于功能交付。
+新增私有设备X03在P6.3交付合成薄模块，首期已确认目录/状态/人工登录入口；真实供给P7逐项验。扩展/内网适配、工具链与PG/Redis候选升级详见[规划收口](../planning/planning-closeout.md)，设计深度和owner待决不等于功能交付。
 
 E10在P6.1出口对风险Excel核已确认需求的实际触发/形态，对业务工单导入、跨指纹人工merge核条件候选范围；获准增量P6.E按子估算/子窗口交付。Excel条件未满足不等于取消已确认效果，旧触发不以D08/U03包名代销。最新逐项核对见[需求闭环审计](../review/reports/pre-phase6-requirements-audit-2026-11-11.md)。
 
-本阶段仅是[全项目新路线](../roadmap.md)的近期切片。原6–9及更远价值的承接、简化/替代、分期见[连续性审计](../review/roadmap-capability-continuity.md)；完整删状态迁移CLI由D18/P7承接，不能以D01最小迁移冒称全覆盖。
+本阶段仅是[全项目新路线](../roadmap.md)的近期切片。原6–9及更远价值的承接、简化/替代、分期见[连续性审计](../planning/roadmap-capability-continuity.md)；完整删状态迁移CLI由D18/P7承接，不能以D01最小迁移冒称全覆盖。

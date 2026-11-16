@@ -2,11 +2,11 @@
 
 > **2026-11-15政策后继，不改本报告时点事实**：[第一包/F017](../../phase6/iam-first-batch-design.md)已确认父停用整子树组织派生资格暂停及SetRoles/AssignMenus本地审计失败回滚。当前产品缺陷仍开放；原净估作历史候选，IAM子估待扣重，不表示已开发或已验收。
 
-日期：2026-11-13。状态：本次方向回填、合成参考和有界日志审计设计已交付；平台新业务、公共UAA接线及真实企业激活未实施。准确答复与建议来源见[后继索引F006/F007](../planning-followups.json)，旧对话截止/审计收据不倒写。
+日期：2026-11-13。状态：本次方向回填、合成参考和有界日志审计设计已交付；平台新业务、公共UAA接线及真实企业激活未实施。准确答复与建议来源见[后继索引F006/F007](../../planning/planning-followups.json)，旧对话截止/审计收据不倒写。
 
 ## 改动摘要
 
-- 所有者明确确认F004五组及Q01–Q06六组实际展示方向；[议程](../owner-decision-agenda.md)和[工单运营](../../design/ticket-operations-supplement.md)分开已定默认、实施配置与新增净估。Q07–Q13原真实输入/改名前窗口保持。B08未展示的09:00、时区及首次超期等附加值不自动获批，UAA真实接管/期限/名单仍在内网核验。
+- 所有者明确确认F004五组及Q01–Q06六组实际展示方向；[议程](../../planning/owner-decision-agenda.md)和[工单运营](../../design/ticket-operations-supplement.md)分开已定默认、实施配置与新增净估。Q07–Q13原真实输入/改名前窗口保持。B08未展示的09:00、时区及首次超期等附加值不自动获批，UAA真实接管/期限/名单仍在内网核验。
 - 公司文档不可导出时，先交[UAA离线合成mock](../../design/examples/uaa-reference-mock/README.md)：三类规范化feed、来源/版本/完整性、当前权限、生效receipt、失联、受限恢复与批准退出。本样例是Python标准库串行内存参考，不是OIDC/SCIM/MQ服务、本地IAM管理CRUD或真实登录。
 - [统一日志审计设计](../../design/unified-observability-audit.md)回查五仓已有slog、HTTP审计、判定日志、领域/执行事实与归档；明确诊断、可信业务审计、领域事件的不同写主、关联、授权和失败政策，复用现有能力及可选专业采集供给。业务历史与专门跨模块审计分开授权已确认；两IAM高风险修改的本地审计失败回滚政策仍待答。
 
@@ -14,7 +14,7 @@
 
 本次修改设计、公约、状态/来源和参考样例；未新增平台产品API、运行依赖、权限码或数据库迁移，未启用外部采集器、真实UAA、远端保护或正式发布。standards继续保留测试先行与完整门禁；新日志规则不宣称存量已改造。
 
-OBS01/P6.0为4–6日，OBS02/P6.1为10–15日，OBS03/P7为8–12日，合计22–33**净工程日候选**，包含所选薄UI/运维及反例。两IAM试点是UserService.SetRoles与RBACService.AssignMenus；旧C04/CE/R01/I03/UAA/D11–D13/G05/E09按[补充估算册](../post-baseline-scope-estimates.json)扣重。
+OBS01/P6.0为4–6日，OBS02/P6.1为10–15日，OBS03/P7为8–12日，合计22–33**净工程日候选**，包含所选薄UI/运维及反例。两IAM试点是UserService.SetRoles与RBACService.AssignMenus；旧C04/CE/R01/I03/UAA/D11–D13/G05/E09按[补充估算册](../../planning/post-baseline-scope-estimates.json)扣重。
 
 现76父包排程的工日、依赖与资源槽没有改变；仅因UAA-S02/S03确认更新条件源摘要，已用仓内计算器复算。F004尚未全补净估，不能将旧总量加OBS局部数字称为新完整排期。统一净估与正式DAG整合固定在P6.0开工前；事实/字段等实际合同仍须在D02/D03相应实现前冻结，真实敏感数据启用前先具备必要权限保护。UAA公共P25–39、真实R13–22仍按原有界范围交付，已做研究/参考不重复计价。
 

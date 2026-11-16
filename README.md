@@ -88,7 +88,7 @@ curl --fail http://127.0.0.1:33333/health/ready
 
 先补工程隔离、持续检查、正确性与统一界面；以 mock／合同／真实 adapter 分层验证风险和专业平台协作。同一业务能力逐步由页面、工单、计划和事件共用受控路径；只调用已有模型API，渐进支持受权查询、可确认草案、企业Agent与有限领域Agent，再按需封装MCP。
 
-[路线图](docs/roadmap.md)说明方向，[总账](docs/review/planning-backlog.md)说明范围和顺序；设计存在不代表功能已交付。
+[路线图](docs/roadmap.md)说明方向，[总账](docs/planning/planning-backlog.md)说明范围和顺序；设计存在不代表功能已交付。
 
 ## 文档与贡献
 

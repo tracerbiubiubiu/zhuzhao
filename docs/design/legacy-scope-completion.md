@@ -1,7 +1,7 @@
 # 历史子范围补齐：字段权限、检索、快速入口与字段变化
 
 > 日期：2026-11-13。用途：冻结旧触发项中此前未计清的有限交付范围；设计状态：本轮候选，未实现。适用：P6-T019/T045/T065/T100/T103，以及I04第二代表源、MCP生产身份接线。原始业务效果保留，实际提供方仍分别验收。
-> 权威：字段/工单基础仍归[领域合同](business-lifecycle-contracts.md)，共同执行路径归[能力合同](capability-invocation-contract.md)。增量工程价与扣重归[补齐估算注册表](../review/planning-scope-estimates.json)，排程由该表派生；这里不重复维护总工期。
+> 权威：字段/工单基础仍归[领域合同](business-lifecycle-contracts.md)，共同执行路径归[能力合同](capability-invocation-contract.md)。增量工程价与扣重归[补齐估算注册表](../planning/planning-scope-estimates.json)，排程由该表派生；这里不重复维护总工期。
 
 ## 1. 常驻字段读写权限：补P6-T065/T100
 

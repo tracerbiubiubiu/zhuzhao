@@ -5,7 +5,7 @@
 日期：2026-11-14。状态：定向源码/合同复核，未开发、未跑产品门禁、未访问公司接口。
 目标已确认为2027年1月试用、2月1日前可用；所有者已答真实UAA/公司消息HTTP内网联调时间未定。
 所有者指定指南仅本地解析并按通用要求核对；本文不保存原段、企业标识、地址、人员或真实报文。
-权威范围/旧价：[UAA合同](../../design/uaa-governance-integration.md)、[估算](../uaa-implementation-estimate.json)、[真实条件](../uaa-real-integration-conditions.json)。
+权威范围/旧价：[UAA合同](../../design/uaa-governance-integration.md)、[估算](../../planning/uaa-implementation-estimate.json)、[真实条件](../../planning/uaa-real-integration-conditions.json)。
 
 ## 1. 实际三层含义与中央边界
 

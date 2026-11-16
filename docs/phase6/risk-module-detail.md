@@ -1,6 +1,6 @@
 # Phase6 风险模块详细设计
 
-日期：2026-11-14。状态：**可评审设计候选，未实现、未跑新增产品用例**。对应 D07–D10、D13–D15 及 E10 风险子范围；正常/异常语义、typed DTO 和逻辑表约束在此细化，业务已决项沿[生命周期合同](../design/business-lifecycle-contracts.md)§8–10。原 R1–R4 的历史量级、整包前置及旧草图不作为新承诺；排期/预算只由[总账](../review/planning-backlog.json)和[本地首版净估](../review/local-core-release-estimate.json)维护，不重复计价。
+日期：2026-11-14。状态：**可评审设计候选，未实现、未跑新增产品用例**。对应 D07–D10、D13–D15 及 E10 风险子范围；正常/异常语义、typed DTO 和逻辑表约束在此细化，业务已决项沿[生命周期合同](../design/business-lifecycle-contracts.md)§8–10。原 R1–R4 的历史量级、整包前置及旧草图不作为新承诺；排期/预算只由[总账](../planning/planning-backlog.json)和[本地首版净估](../planning/local-core-release-estimate.json)维护，不重复计价。
 
 ## 1. 实现基线、边界和阶梯
 

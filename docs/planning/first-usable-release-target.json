@@ -3,7 +3,7 @@
   "date": "2026-11-16",
   "status": "quality_first_local_formal_core_then_UAA_bounded_estimate_candidate_not_implementation_authorization",
   "plan_ref": "docs/phase6/first-usable-release-plan.md",
-  "comparison_ref": "docs/review/core-release-change-comparison.md",
+  "comparison_ref": "docs/planning/core-release-change-comparison.md",
   "owner_sources": {
     "core_scope_and_deadline": "01a1d5c7-a70c-73b0-b0cd-06769bf011b1",
     "deadline_confirmation": "01a1d5c9-7c34-7990-a208-06e40526d476",
@@ -78,10 +78,10 @@
     "real_UAA_window": "not fixed; owner prefers after core, possibly February-March but no committed dates",
     "trial_environment_binding": {
       "state": "pending_real_binding",
-      "action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_trial"
+      "action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_trial"
     },
-    "real_message_contract_action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/MH01_MR1",
-    "core_stability_action_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_core_stability"
+    "real_message_contract_action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/MH01_MR1",
+    "core_stability_action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_core_stability"
   },
   "estimate_views": {
     "unit": "engineering_days_not_calendar_promises",
@@ -90,7 +90,7 @@
       151
     ],
     "do_not_add_views_to_76_parent_baseline": true,
-    "local_core_net_ref": "docs/review/local-core-release-estimate.json",
+    "local_core_net_ref": "docs/planning/local-core-release-estimate.json",
     "full_release_net_status": "bounded_local_core_candidate_medium_low_confidence_not_calendar_commitment",
     "full_UAA_P_R_in_current_core_net": false,
     "UAA_C_in_current_core_net": true,
@@ -100,7 +100,7 @@
       61
     ],
     "UAA_P_R_later_reestimate_rule": "deduct actual shared delivery once; reserve core support capacity; external waiting separate",
-    "full_release_net_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days",
+    "full_release_net_source": "docs/planning/local-core-release-estimate.json#/totals/rounded_display_days",
     "historical_scope_views": {
       "UAA_C_P_reference": [
         27,
@@ -144,7 +144,7 @@
       "applies_to_current_price": false
     },
     "pre_core_rehearsal_pricing": {
-      "source": "docs/review/local-core-release-estimate.json#/pre_core_rehearsal_allocation",
+      "source": "docs/planning/local-core-release-estimate.json#/pre_core_rehearsal_allocation",
       "state": "target_profile_and_remaining_net_estimate_pending_before_B0_start",
       "additional_days": null,
       "rule": "97–151 is the selected 32-WBS local core view, not a fully priced quote for unknown target-specific B0 work; reuse/transfer with Q1/Q2 is itemized once, no automatic 1–2 day assumption."
@@ -204,7 +204,7 @@
     "source_followup": "F021-planning-review-repair"
   },
   "iam_estimate_review": {
-    "ref": "docs/review/iam-net-allocation-2026-11-15.md",
+    "ref": "docs/planning/iam-net-allocation-2026-11-15.md",
     "state": "source_mapped_deduplicated_candidate_not_runtime_verified",
     "rule": "IAM净28–46/UAA-C2–3已显式扣重整合；F021再补Q1有限兼容回归净2–3，当前已选核心97–151候选。旧68–104与95–148保留历史，不承诺日历或启动业务实现。"
   },
@@ -212,6 +212,6 @@
     "B0": "docs/design/foundation-release-boundaries.md#1-先交哪一版",
     "real_trial": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
     "core_stability": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口",
-    "execution_actions": "docs/review/owner-decision-agenda.json#/execution_actions"
+    "execution_actions": "docs/planning/owner-decision-agenda.json#/execution_actions"
   }
 }

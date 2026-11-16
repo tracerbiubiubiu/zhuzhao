@@ -1,6 +1,6 @@
 # 能力共同路径与三条互通链的冻结切片
 
-> 日期：2026-11-13。承接[共同调用合同](capability-invocation-contract.md)、[当前模块边界](current-module-boundaries.md)与[逐操作库存](capability-operation-catalog.md)。本页冻结可实现、可估价的首批合同和反例；**没有实现共同runtime、AL效果收据/变更源或三链联调**。未来工作不是一次性总线改造：现有领域实现继续承担业务，HTTP、内部、任务、扩展及选定MCP只是调用入口。总排期与状态仍由[规划总账](../review/planning-backlog.md)拥有。
+> 日期：2026-11-13。承接[共同调用合同](capability-invocation-contract.md)、[当前模块边界](current-module-boundaries.md)与[逐操作库存](capability-operation-catalog.md)。本页冻结可实现、可估价的首批合同和反例；**没有实现共同runtime、AL效果收据/变更源或三链联调**。未来工作不是一次性总线改造：现有领域实现继续承担业务，HTTP、内部、任务、扩展及选定MCP只是调用入口。总排期与状态仍由[规划总账](../planning/planning-backlog.md)拥有。
 
 > **2026-11-14模块细化**：[任务/AL/消息详设](../phase6/task-activelist-message-detail.md)规定首版本地只开放一个监控类型的insert/update、单源push→持久inbox/ACK和独立只读AL后继，不把本页更宽的多消费者feed/Import/删除恢复源前置。已有`activelist.document.get@1`补入本页Schema：独立于工单、只读观察结果与写效果分支分开；这是原AD实际只读后继的必要合同补全，不增加通用query/list能力或产品实现声明。
 

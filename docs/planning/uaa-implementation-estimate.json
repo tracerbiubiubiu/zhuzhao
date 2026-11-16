@@ -192,7 +192,7 @@
     "completion_dependencies": [
       "E01-UAA-P"
     ],
-    "external_condition_ref": "docs/review/uaa-real-integration-conditions.json",
+    "external_condition_ref": "docs/planning/uaa-real-integration-conditions.json",
     "external_wait_days": null,
     "wbs": [
       {
@@ -433,5 +433,5 @@
     "arithmetic_passed": true,
     "runtime_or_real_uaa_accepted": false
   },
-  "latest_full_scope_schedule_ref": "docs/review/execution-schedule.json"
+  "latest_full_scope_schedule_ref": "docs/planning/execution-schedule.json"
 }

@@ -1,8 +1,8 @@
 # 平台边界与演进设计
 
-> **2026-11-13共同接缝**：[能力互通](capability-invocation-contract.md)规定所有产品能力逐步外部API化、内部逻辑通道与三种执行profile；[一致性合同](ecosystem-consistency-contract.md)覆盖命名/目录/文档/API/消息/流程/视觉及验证。领域状态和专业供给边界继续保留，不因互通另建万能引擎。[增量分期](../review/capability-interconnect-supplement.md)与[三链详设](capability-interconnect-detail.md)已有有界准确候选、样例和净估，纳入[现行排程](../review/execution-schedule.md)；未来额外场景与真实容量仍逐包细化，不把代表样例当产品实现或真实接入。
+> **2026-11-13共同接缝**：[能力互通](capability-invocation-contract.md)规定所有产品能力逐步外部API化、内部逻辑通道与三种执行profile；[一致性合同](ecosystem-consistency-contract.md)覆盖命名/目录/文档/API/消息/流程/视觉及验证。领域状态和专业供给边界继续保留，不因互通另建万能引擎。[增量分期](../planning/capability-interconnect-supplement.md)与[三链详设](capability-interconnect-detail.md)已有有界准确候选、样例和净估，纳入[现行排程](../planning/execution-schedule.md)；未来额外场景与真实容量仍逐包细化，不把代表样例当产品实现或真实接入。
 
-日期：2026-11-11。状态：本轮授权的规划修订；本文描述目标合同，未实施能力仍以[控制台](../review/11-project-control.md)和[总账](../review/planning-backlog.md)为准。现状架构见[architecture](architecture.md)。
+日期：2026-11-11。状态：本轮授权的规划修订；本文描述目标合同，未实施能力仍以[控制台](../review/11-project-control.md)和[总账](../planning/planning-backlog.md)为准。现状架构见[architecture](architecture.md)。
 
 ## 1. 首要目标与必须保留的前提
 
@@ -78,11 +78,11 @@ C03先核清受理、执行、响应和记账，D12再接结果与白名单映�
 
 ## 7. 生效与后续决策
 
-本轮路线见[roadmap](../roadmap.md)，全部旧挂账与新发现见[排期总账](../review/planning-backlog.md)。本设计替代旧愿景中与“供给优先、AI前移、双轨Agent、mock保留”冲突的范围与先后；旧决策保留在[决策日志§33](design-decisions.md#33-phase5合并后的供给优先重规划2026-11-11)，不改写历史审计结果。
+本轮路线见[roadmap](../roadmap.md)，全部旧挂账与新发现见[排期总账](../planning/planning-backlog.md)。本设计替代旧愿景中与“供给优先、AI前移、双轨Agent、mock保留”冲突的范围与先后；旧决策保留在[决策日志§33](design-decisions.md#33-phase5合并后的供给优先重规划2026-11-11)，不改写历史审计结果。
 
 提供方字段、身份映射、批准策略、索引/DDL和接口名在各包开工前冻结；供应方无可用测试条件时保持mock与契约出口、记录真实待验及复核期限。不能把未定的生产承诺写成已验收能力。
 
-原6–9及更远能力的最薄首期、后继增强和来源去向见[全项目渐进演进](project-evolution-strategy.md)与[连续性审计](../review/roadmap-capability-continuity.md)。
+原6–9及更远能力的最薄首期、后继增强和来源去向见[全项目渐进演进](project-evolution-strategy.md)与[连续性审计](../planning/roadmap-capability-continuity.md)。
 ## 企业统一认证与权限治理前置补充
 
 2026-11-12所有者明确UAA为公司UAA纳管的企业模式首次正式激活要求，按[接入合同](uaa-governance-integration.md)同时接身份和受管功能授权，保留本地三层执行。通用数据属性满足条件时纳管范围值，动态业务关系仍本地管理；不另造企业岗位权限审批平台。E01-UAA-C/P/R跨P6.0/P6.1及真实联调窗口，修正原泛E01遗漏；不改变专业供给优先、mock保留及领域Agent边界，也不把设备人工登录入口改成SSO。

@@ -88,7 +88,7 @@ Repository and Go module names remain unchanged. A future brand migration will u
 
 Strengthen engineering isolation, continuous checks, correctness, and consistent UI behavior first. Validate risk and specialist collaboration separately through mocks, contracts, and real adapters. Make pages, ticket actions, schedules, and events consume the same controlled capabilities. Consume existing model APIs for authorized queries and reviewable drafts; add enterprise and bounded domain agents, then expose selected capabilities through MCP.
 
-The [roadmap](docs/roadmap.md) explains direction; the [work ledger](docs/review/planning-backlog.md) defines bounded scope. A design document is not evidence of a shipped feature.
+The [roadmap](docs/roadmap.md) explains direction; the [work ledger](docs/planning/planning-backlog.md) defines bounded scope. A design document is not evidence of a shipped feature.
 
 ## Documentation and contribution
 

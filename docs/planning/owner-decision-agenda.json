@@ -392,7 +392,7 @@
     ],
     "pending_candidate_count": 0,
     "confirmed_policy_count": 3,
-    "latest_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+    "latest_confirmation_ref": "docs/planning/planning-followups.json#F019-module-detail-owner-decisions"
   },
   "execution_actions": {
     "MH01_MR1": {

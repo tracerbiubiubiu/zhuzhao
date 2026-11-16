@@ -5,11 +5,11 @@
 > **后继详细合同**：本页六边及六交付物现已展开至[模块详设入口](module-detail-index.md)的五份合同；首版本地范围不变。下面“逐包冻结”是实际实施前核候选/生成迁移与OpenAPI/绑定真实参数，不表示产品实现或全部企业协议已验。
 
 日期：2026-11-14。状态：**设计交接，未启动开发、未完成产品或企业验收**。现在进入按模块详设；先短冻结下列首版共同合同，不再以全仓审计、全项目或全部接口冻结为前置。
-范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../review/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。本地核心净估只读下方唯一来源，含必要UAA-C、不含完整P/R，是长期父包的子范围分配/替代视图，不重复加到长期总价。
-本页仅交接首批模块顺序与接缝，不另立设计规则、报价或状态总账；[工程公约](../standards.md)、[项目控制](../review/11-project-control.md)、[规划总账](../review/planning-backlog.md)及各领域合同继续各管其权威内容。
+范围/日期以[首版计划](first-usable-release-plan.md)及[机器目标](../planning/first-usable-release-target.json)为准：公司允许先用本地账号正式运行，质量和实际可用性优先，不勉强1月；完整UAA-P/R在核心稳定后做，约两个月只是期望窗口。实际T0未启动，真实UAA/公司消息联调时间未定。本地核心净估只读下方唯一来源，含必要UAA-C、不含完整P/R，是长期父包的子范围分配/替代视图，不重复加到长期总价。
+本页仅交接首批模块顺序与接缝，不另立设计规则、报价或状态总账；[工程公约](../standards.md)、[项目控制](../review/11-project-control.md)、[规划总账](../planning/planning-backlog.md)及各领域合同继续各管其权威内容。
 
 <!-- local-core-source:start -->
-当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
 <!-- local-core-source:end -->
 
 ## 1. 先共同钉住的六条边
@@ -30,7 +30,7 @@
 ## 2. 第一包：本地权限与UAA-C接缝的定向输入
 
 先读本页、[UAA治理合同](../design/uaa-governance-integration.md)§3–6/7/10；[UAA源码重核](../review/reports/core-release-uaa-recheck-2026-11-14.md)保存当时观察，不沿用其中完整UAA阻挡本地核心的旧范围。候选输入从[port-map.json](../design/examples/uaa-reference-mock/port-map.json)与[离线参考说明](../design/examples/uaa-reference-mock/README.md)取，不将57例内存模型当产品实现，也不把整套企业端口实现当作当前首包。
-真实供给核验只读[联调条件册](../review/uaa-real-integration-conditions.json)；公司协议、地址、身份、凭据与原始回执留在内网私有侧，不要求导出后才能设计公共合同。
+真实供给核验只读[联调条件册](../planning/uaa-real-integration-conditions.json)；公司协议、地址、身份、凭据与原始回执留在内网私有侧，不要求导出后才能设计公共合同。
 代码只定向核对下列真实符号及被改动的调用邻域，路径＋符号作锚点：
 
 - 认证/会话：`internal/service/auth_service.go`的`AuthService.Login`/`Refresh`、`internal/middleware/jwt.go`的`JWT`、`internal/service/session_revoke.go`的`RevokeUserSessionsWithRetry`；已有本地JWT不是SSO认证器。

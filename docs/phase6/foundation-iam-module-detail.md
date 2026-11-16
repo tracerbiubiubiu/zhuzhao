@@ -1,6 +1,6 @@
 # Phase6 底座、三层权限与身份接缝详细设计
 
-日期：2026-11-14。状态：**模块详细设计候选，未实现**。范围为 G01–G04/G06、C01/C02/C04/C05、D06、E01-UAA-C 及统一审计在本期的适用部分。G07A/B 已合主线并有[新版主线复验](../review/reports/main-verification-2026-11-14.md)，不重新建设或重复计价；正式运行前仍验实际制品和数据恢复。本页将[模块交接](module-design-handoff.md)的第一包展开，业务范围、净估与远期出口继续归[首版计划](first-usable-release-plan.md)、[总账](../review/planning-backlog.json)。
+日期：2026-11-14。状态：**模块详细设计候选，未实现**。范围为 G01–G04/G06、C01/C02/C04/C05、D06、E01-UAA-C 及统一审计在本期的适用部分。G07A/B 已合主线并有[新版主线复验](../review/reports/main-verification-2026-11-14.md)，不重新建设或重复计价；正式运行前仍验实际制品和数据恢复。本页将[模块交接](module-design-handoff.md)的第一包展开，业务范围、净估与远期出口继续归[首版计划](first-usable-release-plan.md)、[总账](../planning/planning-backlog.json)。
 
 本页所有新类型、逻辑表和端口均为实施目标；**不是新增现成路由、迁移号或已完成验收**。ID 对外用十进制字符串，时间用带时区 RFC3339；枚举拒绝未知控制值，空集、缺失和 null 不相互替代。既有 errcode/HTTP envelope 继续使用，稳定 reason 对应数值码在实现时登记。
 
@@ -272,11 +272,11 @@ claims参考冻结为AT/RT新增可选`session_schema="db_epoch_v1"`、`session_
 
 按已选首版行为重新核责任，C05毛估保留**6–10单席工程日**的中低置信候选：DB代际/安全写方/初始化1.5–2.5；AT/RT/cookie/PAT及utils兼容1.5–2.5；投影恢复/重复操作收敛1–1.5；薄UI/session generation/运维1–1.5；真实并发/未知提交/恢复回归及评审1–2。上述剩余工作均仍必交；HMAC原未独立定价，移除其实现、编码、key生命周期与专用用例后，不凭空宣称已兑现1.5–2.5日节省。首批源级实耗继续校准，不把保守区间误写成保留后置工作收费。
 
-原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前唯一总价来源见[净估册](../review/local-core-release-estimate.json)，替价依据见[当前对账](../review/core-release-accounting-reconciliation-2026-11-16.md)，不能用已有回归免费包干。
+原父包2–4日不足代表该持久切片，新增差异必须回原包扣重；此数不是追加到旧68–104日，也不混入C12–19日。S1/S2、C、G04、薄UI和OBS的同机制/同测试只计一次，完整DB session表/无感全量Redis灾难恢复明确不含。2026-11-15整合后的95–148为历史全版候选；当前唯一总价来源见[净估册](../planning/local-core-release-estimate.json)，替价依据见[当前对账](../planning/core-release-accounting-reconciliation-2026-11-16.md)，不能用已有回归免费包干。
 
 **后置增强与历史**：5cca995版本的§4.4曾要求“同键同秘密回原结果、异秘密必409”，以HMAC-SHA256秘密绑定、封闭JSON编码、验证key轮换/旧key保留和[合成编码向量](../design/examples/capability-reference/c05-secret-binding-vector.json)支撑精确比较。本次确认撤下这项首版强辨别承诺；该向量仅保留后置设计参考，不再是首版C05的实现或验收门，也不新增key托管的首版owner动作。以后有明确需要时再按场景、合同及净增估算获选，不因资料保留默认启用。示例零key/口令仍严禁运行配置消费。
 
-[Stripe幂等请求](https://docs.stripe.com/api/idempotent_requests)说明其同键不同参数应报错；[OWASP密码重置指南](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)强调单次/限时凭证、通知、正常登录及旧会话处理。前者解释原强合同的意图一致性，后者不要求本项目新建找回密码服务或HMAC重放平台。已选首版主动缩小操作重放承诺，并非两个合同等价。所有者选择及范围变化归[本轮议程](../review/owner-decision-agenda.json#/planning_repair_followup)，不重开原有已确认政策。
+[Stripe幂等请求](https://docs.stripe.com/api/idempotent_requests)说明其同键不同参数应报错；[OWASP密码重置指南](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)强调单次/限时凭证、通知、正常登录及旧会话处理。前者解释原强合同的意图一致性，后者不要求本项目新建找回密码服务或HMAC重放平台。已选首版主动缩小操作重放承诺，并非两个合同等价。所有者选择及范围变化归[本轮议程](../planning/owner-decision-agenda.json#/planning_repair_followup)，不重开原有已确认政策。
 
 SESSION-10现验：同K携A/B均不再次写密码/epoch或重签TokenPair；同K并发最多一个效果；非秘密目标/主体冲突及未获权查询拒绝；原默认值冻结；commit未知核receipt而非只看epoch；receipt不泄秘密；UI不把原结果当B已生效。HMAC编码/key轮换/缺旧key只留后置增强，不混入首版必测。SESSION-07/09仍验claims半字段/零/超int64及旧utils调用者保持原合同。DB epoch、原子业务/receipt/intent、旧worker fence/CAS和会话撤销全部保留；这里是待实现的测试设计，不是密码、密钥或数据已改。
 
@@ -313,7 +313,7 @@ UAA-C 现在冻结四个不能事后补的接口边界：稳定本地 ID 与认�
 
 ### 6.1 OBS补充出口与首版本地保护
 
-OBS01(P6.0)/OBS02(P6.1)位于[补充范围册](../review/post-baseline-scope-estimates.json)，**不在44个P6父包分母内**。本地核心S3先交已计价的敏感日志去除、可信request/operation/actor关联和必要本地事实；这不等于完整OBS01/02已实现，也不把OBS01–03完整22–33日追加到首版。完整跨仓外送、异步大导出、多worker判定管道与冷归档仍按原OBS03/P7或实际启用窗展开。
+OBS01(P6.0)/OBS02(P6.1)位于[补充范围册](../planning/post-baseline-scope-estimates.json)，**不在44个P6父包分母内**。本地核心S3先交已计价的敏感日志去除、可信request/operation/actor关联和必要本地事实；这不等于完整OBS01/02已实现，也不把OBS01–03完整22–33日追加到首版。完整跨仓外送、异步大导出、多worker判定管道与冷归档仍按原OBS03/P7或实际启用窗展开。
 
 OBS01逐入口清单沿[统一日志合同§2/5](../design/unified-observability-audit.md)：core的AuditLog/body读取、AL查询/导入错误、TR回调/任务参数分别做允许字段投影、敏感值去除、字节预算及失败计数；不把截断当脱敏。缺采集器时可用受控stdout/既有本地审计，诊断采样不采掉领域事实。请求过大、非JSON/嵌套secret、CRLF、读body失败/handler仍可读、logger写盘或collector断开均有具名反例，三仓只对其实际敏感面接线，不造新logger平台。
 

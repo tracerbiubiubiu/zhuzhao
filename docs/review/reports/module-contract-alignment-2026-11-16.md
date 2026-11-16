@@ -4,7 +4,7 @@
 
 日期：2026-11-16。基线：`8c44ef6f2d323a54468ef72213fc5caa030c8947`。来源：所有者在三份报告复核后要求按核定建议修改、验证、推送并合入main。使用五仓独立worktree/短分支与PR；本轮不是F021直接main例外的延长。
 
-范围：现行文档、候选Schema、隔离参考验证和规划检查；未开发Phase6产品、修改运行栈、配置企业身份或修复现存AUTH缺陷。来源与授权见[后继册](../planning-followups.json)的`F022-module-contract-alignment`，产品成熟度仍以[状态表](../planning-design-status.json)为准。
+范围：现行文档、候选Schema、隔离参考验证和规划检查；未开发Phase6产品、修改运行栈、配置企业身份或修复现存AUTH缺陷。来源与授权见[后继册](../../planning/planning-followups.json)的`F022-module-contract-alignment`，产品成熟度仍以[状态表](../../planning/planning-design-status.json)为准。
 
 ## 1. 本轮实际修订
 
@@ -28,7 +28,7 @@
 
 ## 3. 估算、责任与剩余边界
 
-唯一数字源仍为[首版净估](../local-core-release-estimate.json)：本轮不替换有界工程区间，不把新增验收措辞默认为免费或另加通用缓冲。C05仍按五行剩余量，TD03/04、R1/D08/D10、D03、A01和UAA在各自冻结窗口核实际范围；发现原预算未覆盖的具名实现工作时先扣重补估再执行。
+唯一数字源仍为[首版净估](../../planning/local-core-release-estimate.json)：本轮不替换有界工程区间，不把新增验收措辞默认为免费或另加通用缓冲。C05仍按五行剩余量，TD03/04、R1/D08/D10、D03、A01和UAA在各自冻结窗口核实际范围；发现原预算未覆盖的具名实现工作时先扣重补估再执行。
 
 OBS本地最低保护、两命令事实与后继查询/导出/UI沿原[扣重卡](../../design/unified-observability-audit.md#8-分期净估和原包扣重)及净估`dedup.OBS`维护，已交工作只能消费一次。真实UAA、公司消息、私有adapter、实际权限码/迁移号、部署恢复人员与运行参数仍需对应窗口证据，不要求导出公司材料。
 

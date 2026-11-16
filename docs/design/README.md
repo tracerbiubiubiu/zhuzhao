@@ -2,7 +2,7 @@
 
 > **Phase6模块详设后继**：[模块入口](../phase6/module-detail-index.md)将本目录共同合同具体落到五个模块；本目录仍管理跨阶段语义，准确实现/真实提供方验收不由候选文档替代。
 
-> 首版业务范围和旧新变化先看[首版阶梯](../phase6/first-usable-release-plan.md)、[变化对照](../review/core-release-change-comparison.md)；稳定adapter升级合同沿本目录的扩展/迁移设计，不靠修改核心内部模型实现私有对接。
+> 首版业务范围和旧新变化先看[首版阶梯](../phase6/first-usable-release-plan.md)、[变化对照](../planning/core-release-change-comparison.md)；稳定adapter升级合同沿本目录的扩展/迁移设计，不靠修改核心内部模型实现私有对接。
 
 近期先读[基础版与每期交付边界](foundation-release-boundaries.md)：现有底座可入网试验、最小adapter/私有应用接缝优先，完整企业治理和高阶增强按启用能力验收；当前说明不代表这些接缝已实现。
 
@@ -13,7 +13,7 @@
 ## 先区分当前实现和目标设计
 
 - **理解现有系统**：先读[系统架构](architecture.md)，按问题进入[权限继承与级联](rbac-inheritance-and-cascade.md)及模块说明。图中的服务关系不表示已批准全面微服务拆分。
-- **修改后续能力**：先看[规划收口/设计深度](../review/planning-closeout.md)，再读相应共同/领域合同，最后回读原Phase来源；候选字段/schema不等于当前API。
+- **修改后续能力**：先看[规划收口/设计深度](../planning/planning-closeout.md)，再读相应共同/领域合同，最后回读原Phase来源；候选字段/schema不等于当前API。
 - **查为什么这样选**：[ADR](../adr/README.md)给决策及后继；[设计决策](design-decisions.md)保留讨论时间序，[旧系统对比](system-comparison.md)保留设计来源。旧“当前”一词须结合日期和后继解释。
 
 ## 第一次阅读时的术语
@@ -32,10 +32,10 @@
 
 这些是后续方向/合同入口，实施状态仍回到各工作包和准确收据：
 
-- [平台边界](platform-evolution.md)、[全项目渐进演进](project-evolution-strategy.md)：专业供给、数据写主、三类流程、扩展与拆分；原规划价值见[连续性审计](../review/roadmap-capability-continuity.md)。
-- [能力互通/共同执行路径](capability-invocation-contract.md)、[生态一致性](ecosystem-consistency-contract.md)：核心/插件共同调用与三条链、统一语义和允许差异；新范围见[互通增量](../review/capability-interconnect-supplement.md)。
+- [平台边界](platform-evolution.md)、[全项目渐进演进](project-evolution-strategy.md)：专业供给、数据写主、三类流程、扩展与拆分；原规划价值见[连续性审计](../planning/roadmap-capability-continuity.md)。
+- [能力互通/共同执行路径](capability-invocation-contract.md)、[生态一致性](ecosystem-consistency-contract.md)：核心/插件共同调用与三条链、统一语义和允许差异；新范围见[互通增量](../planning/capability-interconnect-supplement.md)。
 - [AI能力](ai-capabilities.md)：已有模型API、外部与平台领域Agent双轨、MCP、受权知识和skill；不建设模型部署/通用知识平台。
-- [五仓工程治理](engineering-governance.md)：隔离、CI/PR、mock分层、质量/目录和发布；[总账](../review/planning-backlog.md)维护唯一范围/依赖/粗估。
+- [五仓工程治理](engineering-governance.md)：隔离、CI/PR、mock分层、质量/目录和发布；[总账](../planning/planning-backlog.md)维护唯一范围/依赖/粗估。
 
 ## 详设候选与新增边界
 
@@ -51,7 +51,7 @@
 | 设备薄模块 | [设备合同](device-module-contract.md) | 目录/状态/人工入口；不承诺异构设备SSO |
 | 版本与数据升级 | [版本现代化](dependency-modernization.md)、[恢复契约](component-upgrade-data-contract.md) | 准确制品/数据组合、停写/恢复和回退边界；[工具说明](../../deployments/tools/README.md) |
 
-[规划收口](../review/planning-closeout.md)区分详设候选、组件原型、逐页范围和边界；不是全部远期API/DDL已冻结。[新旧对照](../review/roadmap-change-comparison-2026-11-12.md)解释取舍，[执行排期](../review/execution-schedule.md)给已计价基线，[UAA补估](../review/uaa-implementation-estimate.md)负责独立数字源；CE及旧子范围已扣重复估，当前完整排程另见[净增注册表](../review/planning-scope-estimates.json)；有研究证据不等于产品已经实现。
+[规划收口](../planning/planning-closeout.md)区分详设候选、组件原型、逐页范围和边界；不是全部远期API/DDL已冻结。[新旧对照](../planning/roadmap-change-comparison-2026-11-12.md)解释取舍，[执行排期](../planning/execution-schedule.md)给已计价基线，[UAA补估](../planning/uaa-implementation-estimate.md)负责独立数字源；CE及旧子范围已扣重复估，当前完整排程另见[净增注册表](../planning/planning-scope-estimates.json)；有研究证据不等于产品已经实现。
 
 ## 本轮补齐的可检查材料
 

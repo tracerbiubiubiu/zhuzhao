@@ -2,9 +2,9 @@
 
 > **2026-11-14交付边界**：见[基础先行](../design/foundation-release-boundaries.md)。本期在真实使用后扩选定自动链、接管及规模；多副本/复杂汇合/跨机形态按实际选择启用。单实例基础的事务、必要持久意图和当前授权已在此前适用纵切满足，不能拖到P9再补；也不预建所有高可用形态。
 
-> **2026-11-13范围澄清**：简单工单任务结果及AL双向自动链由P6/P7的[互通增量](../review/capability-interconnect-supplement.md)先交，本阶段只深化真实需要的复杂持久协同。共享[能力/结果/因果合同](../design/capability-invocation-contract.md)与[一致性标准](../design/ecosystem-consistency-contract.md)，不把所有领域状态机统一为新通用引擎。
+> **2026-11-13范围澄清**：简单工单任务结果及AL双向自动链由P6/P7的[互通增量](../planning/capability-interconnect-supplement.md)先交，本阶段只深化真实需要的复杂持久协同。共享[能力/结果/因果合同](../design/capability-invocation-contract.md)与[一致性标准](../design/ecosystem-consistency-contract.md)，不把所有领域状态机统一为新通用引擎。
 
-> 2026-11-11重规划；尚未实施。本阶段建议以适合当前规模的协同形式替代旧“自研通用DAG MVP，Phase10迁回退役SOAR”；保留业务效果，具体架构选择在E08定案。专业平台继续承担专业编排；唯一排期见[总账](../review/planning-backlog.md)。
+> 2026-11-11重规划；尚未实施。本阶段建议以适合当前规模的协同形式替代旧“自研通用DAG MVP，Phase10迁回退役SOAR”；保留业务效果，具体架构选择在E08定案。专业平台继续承担专业编排；唯一排期见[总账](../planning/planning-backlog.md)。
 
 ## 1. 目标
 

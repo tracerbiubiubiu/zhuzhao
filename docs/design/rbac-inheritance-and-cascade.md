@@ -1,7 +1,7 @@
 # RBAC继承、数据范围与级联 — 本项目规则与演进边界
 
 <!-- local-core-source:start -->
-当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
 <!-- local-core-source:end -->
 
 > **2026-11-15层级场景补充（设计候选，未实现）**：§8是当前组织/角色/菜单/数据范围的有界场景合同及实施归属，承接所有者“补充设计并加入实现计划”的要求。P6.1 C04/D03/D06及首版本地适用出口先交，完整U06和UAA真实接管分列。§3/§5的实现摘要和历史验收不证明§8全部已通过；AUTH及RECHECK开放项仍按[控制台](../review/11-project-control.md)处理。
@@ -244,4 +244,4 @@ group只扩到该条有效任职的组织子树，兄弟分支不因此可见；
 
 重新启用时按当前绑定、期限和组织链状态重算，不复活停用期间已撤/过期的来源。原org_roles只对本节点直接有效成员授予、不自动沿父组织授予角色的规则不变。HIER-07与FND-14追加父停/子启、其它来源保留及重启不复活的对照；BK-20软删档案政策另列。
 
-原待决由[第一包政策](../phase6/iam-first-batch-design.md#1-本轮已确认的两项政策)与[后继F017](../review/planning-followups.json)关闭。仅政策批准，代码/测试/实际生效仍待C04/D06及适用D03实施；不重问已定B01–B07、mock、单父模型或双模式。
+原待决由[第一包政策](../phase6/iam-first-batch-design.md#1-本轮已确认的两项政策)与[后继F017](../planning/planning-followups.json)关闭。仅政策批准，代码/测试/实际生效仍待C04/D06及适用D03实施；不重问已定B01–B07、mock、单父模型或双模式。

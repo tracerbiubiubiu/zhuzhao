@@ -3,7 +3,7 @@
 状态：**设计建议与旧论证勘误，未更换引擎、未修产品**。依据为当前main `aa745173`、本地详设后继 `3f0a1472` 及下列官方资料。承接所有者关于RBAC、三层校验、ReBAC/OpenFGA和PBAC的提问；不把历史“优”等评分、Star数或客户规模作为选型证据。公司资料、地址、人员和报文未用于外部查询。
 
 <!-- local-core-source:start -->
-当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
 <!-- local-core-source:end -->
 
 ## 1. 判断与推荐
@@ -89,9 +89,9 @@
 
 **差距判断**：当前组织/工单的规则表达没有明显代差；已确认的授权正确性和多出口一致性必须补齐；通用策略/关系引擎的工具与扩展能力差距明显，但本项目不以复刻通用引擎为目标。安全水平、吞吐与维护成本没有同条件对照，不能给百分比或“落后几年”。当前功能资格已复用Casbin，自研主要是领域规则、身份/组织治理和接线。
 
-所有者本轮授权将建议纳入设计和计划，**没有授权开发或更换引擎**。下列是既有包的有界动作索引，不是新增7个父包；机器权威在[总账的authorization_gap_closure](../review/planning-backlog.json)、实施证据状态在[成熟度](../review/planning-design-status.json)。
+所有者本轮授权将建议纳入设计和计划，**没有授权开发或更换引擎**。下列是既有包的有界动作索引，不是新增7个父包；机器权威在[总账的authorization_gap_closure](../planning/planning-backlog.json)、实施证据状态在[成熟度](../planning/planning-design-status.json)。
 
-本节编号按[文档命名空间](../documentation.md#引用编号与命名空间)限定：`AUTH-GAP-*`是本节改进动作，`AUTH-*`是权限专项的缺陷；`C04/D03/D06/CE01`等为总账父包。`S1/R2/TD03/TD05/MH02/Q1`等专指[本地净估册](../review/local-core-release-estimate.json)的WBS行，映射到父包不重复计价；后文局部短名沿用此定义。
+本节编号按[文档命名空间](../documentation.md#引用编号与命名空间)限定：`AUTH-GAP-*`是本节改进动作，`AUTH-*`是权限专项的缺陷；`C04/D03/D06/CE01`等为总账父包。`S1/R2/TD03/TD05/MH02/Q1`等专指[本地净估册](../planning/local-core-release-estimate.json)的WBS行，映射到父包不重复计价；后文局部短名沿用此定义。
 
 | 动作 | 补什么、怎样算补齐 | 主责与完成窗口 | 估算关系 |
 |---|---|---|---|

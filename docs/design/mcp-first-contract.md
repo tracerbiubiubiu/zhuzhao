@@ -1,8 +1,8 @@
 # MCP首批发布、外部消费与身份衔接合同
 
-> 2026-11-13补充：[共同能力调用合同](capability-invocation-contract.md)是HTTP/本地/MCP的同一逻辑接缝；本页只适配选定能力。每个入口发布前须有覆盖本能力/主体/目标的有界超时、大小、速率和inflight profile，纳入共同预算；先复用现有机制，不要求只读MCP等待完整CE05/I03。新增共享队列/自动循环按CE05启用门验收，不能因协议适配绕过限额。最小接线及新增范围见[增量册](../review/capability-interconnect-supplement.md)，原A03数字不自动包干新增能力。
+> 2026-11-13补充：[共同能力调用合同](capability-invocation-contract.md)是HTTP/本地/MCP的同一逻辑接缝；本页只适配选定能力。每个入口发布前须有覆盖本能力/主体/目标的有界超时、大小、速率和inflight profile，纳入共同预算；先复用现有机制，不要求只读MCP等待完整CE05/I03。新增共享队列/自动循环按CE05启用门验收，不能因协议适配绕过限额。最小接线及新增范围见[增量册](../planning/capability-interconnect-supplement.md)，原A03数字不自动包干新增能力。
 
-日期：2026-11-13。状态：**FD05设计候选与官方SDK回环互操作样例已验证；产品实现、真实AS和企业组合未验证**。它不追改2026-11-11基线的研究深度，不自动批准新的AS部署或扩展所有工具。当前范围/估算由[总账](../review/planning-backlog.md)维护；本页拆分已同步[AI总纲](ai-capabilities.md)、[阶段入口](../phase7/README.md)和[执行排期](../review/execution-schedule.md)，仍是候选而非实现收据。
+日期：2026-11-13。状态：**FD05设计候选与官方SDK回环互操作样例已验证；产品实现、真实AS和企业组合未验证**。它不追改2026-11-11基线的研究深度，不自动批准新的AS部署或扩展所有工具。当前范围/估算由[总账](../planning/planning-backlog.md)维护；本页拆分已同步[AI总纲](ai-capabilities.md)、[阶段入口](../phase7/README.md)和[执行排期](../planning/execution-schedule.md)，仍是候选而非实现收据。
 
 ## 1. 本次作出的最小选择
 

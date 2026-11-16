@@ -512,9 +512,9 @@
   "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
   "external_waiting_refs": [
-    "docs/review/uaa-real-integration-conditions.json",
-    "docs/review/planning-scope-estimates.json#/items/LS05",
-    "docs/review/planning-scope-estimates.json#/items/LS06"
+    "docs/planning/uaa-real-integration-conditions.json",
+    "docs/planning/planning-scope-estimates.json#/items/LS05",
+    "docs/planning/planning-scope-estimates.json#/items/LS06"
   ],
   "not_implementation": true,
   "delivery_priority_groups": {
@@ -553,18 +553,18 @@
       "window": "公开主参考在基础/风险首链及P6.E优先工作之后、P7正任务之前；仍保留P6.1起可施工的明确合同/验收窗口，不代表真实激活"
     }
   },
-  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
-  "local_core_net_estimate_ref": "docs/review/local-core-release-estimate.json",
+  "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
+  "local_core_net_estimate_ref": "docs/planning/local-core-release-estimate.json",
   "local_core_view_note": "The same generator exposes local_core from the selected net WBS and mandatory journeys. It is not added to the 76-parent totals; real waiting and activation dates remain unknown, and evidence gates are not proven by scheduling.",
-  "authorization_gap_plan_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+  "authorization_gap_plan_ref": "docs/planning/planning-backlog.json#authorization_gap_closure",
   "iam_first_batch_ref": "docs/phase6/iam-first-batch-design.md",
   "current_view_docs": [
     "docs/review/11-project-control.md",
     "docs/roadmap.md"
   ],
   "local_core_projection": {
-    "source_estimate": "docs/review/local-core-release-estimate.json",
-    "source_target": "docs/review/first-usable-release-target.json",
+    "source_estimate": "docs/planning/local-core-release-estimate.json",
+    "source_target": "docs/planning/first-usable-release-target.json",
     "scope_rule": "Existing local WBS IDs and source parent mappings only. Parent prices and long-range ancestors do not become extra local tasks. Requirement pointers/hash bind current meaning; mappings still require semantic review.",
     "node_bindings": [
       {
@@ -1112,7 +1112,7 @@
       "profile": "B0",
       "ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
       "rule": "Existing artifacts/mock interfaces only; no reverse dependency on all new local-core WBS. Dedicated synthetic test credentials are allowed; real business activation follows explicit P1/capability gates.",
-      "allocation_ref": "docs/review/local-core-release-estimate.json#/pre_core_rehearsal_allocation"
+      "allocation_ref": "docs/planning/local-core-release-estimate.json#/pre_core_rehearsal_allocation"
     },
     "waiting_rule": "MR1 and formal exits remain conditional on real inputs/evidence. The effective-day sequence assumes required inputs are available and never treats unknown waiting as zero calendar days."
   },

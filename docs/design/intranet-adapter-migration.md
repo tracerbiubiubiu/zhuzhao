@@ -80,7 +80,7 @@ X02-Q为2–3日的独立合成HTTP query connector，与mock同例；只依X01-
 
 B1基础出口实际跑通X02-Q加一个X01-B参考私有应用，验证换endpoint/profile、身份/资源授权和禁用无需修改核心供应商代码；接口文档或UAA57例离线合同不代替接线验收。首版受审配置+重启生效即可。X03只依X01-B、X02-Q、U02，不等待完整X01-H安装治理或同步feed。
 
-首条真实纵切选择HR目录与风险发现两类中的一个实际可联调来源，另一个先mock+契约；D06/D08各自领域实现仍按原波次。任何提供方新接入都单独估算、实测和登记，不能用“完成connector框架”声称SOC/CMDB/HR全量迁移完成。实际调用/事务裁定见[当前模块边界](current-module-boundaries.md)，子出口依赖见[执行排期](../review/execution-schedule.md)。
+首条真实纵切选择HR目录与风险发现两类中的一个实际可联调来源，另一个先mock+契约；D06/D08各自领域实现仍按原波次。任何提供方新接入都单独估算、实测和登记，不能用“完成connector框架”声称SOC/CMDB/HR全量迁移完成。实际调用/事务裁定见[当前模块边界](current-module-boundaries.md)，子出口依赖见[执行排期](../planning/execution-schedule.md)。
 
 ### 7.1 私有adapter随核心升级的最小操作路径
 

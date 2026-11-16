@@ -8,9 +8,9 @@
 
 ## 所有者明确的变化
 
-目标已由“长期相对路线、无严格日期”细化为2027年1月试用、2月1日前核心可用；风险、工单、taskrunner、activelist、消息联动及本地三层/UAA治理进入首版。真实UAA与消息HTTP联调时间明确未定。后继又要求集中说明以前/现在/收益/行业基础与增强，并保证私有adapter随核心更新尽量少改或不改。来源以[续源F009/F010](../planning-followups.json)登记，原审计截止和已确认业务政策不倒写。
+目标已由“长期相对路线、无严格日期”细化为2027年1月试用、2月1日前核心可用；风险、工单、taskrunner、activelist、消息联动及本地三层/UAA治理进入首版。真实UAA与消息HTTP联调时间明确未定。后继又要求集中说明以前/现在/收益/行业基础与增强，并保证私有adapter随核心更新尽量少改或不改。来源以[续源F009/F010](../../planning/planning-followups.json)登记，原审计截止和已确认业务政策不倒写。
 
-日常只需读[首版阶梯](../../phase6/first-usable-release-plan.md)与[变化对照](../core-release-change-comparison.md)。三份定向报告保存[业务/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层/UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI/试用](core-release-ui-trial-plan-2026-11-14.md)证据，不要求所有者逐篇阅读。
+日常只需读[首版阶梯](../../phase6/first-usable-release-plan.md)与[变化对照](../../planning/core-release-change-comparison.md)。三份定向报告保存[业务/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层/UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI/试用](core-release-ui-trial-plan-2026-11-14.md)证据，不要求所有者逐篇阅读。
 
 ## 复核结果和取舍
 

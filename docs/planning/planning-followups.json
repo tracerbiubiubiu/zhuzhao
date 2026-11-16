@@ -5,7 +5,7 @@
   "previous_audit": {
     "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
     "source_cutoff": "U63",
-    "ref": "docs/review/planning-closure.json"
+    "ref": "docs/planning/planning-closure.json"
   },
   "followups": [
     {
@@ -103,12 +103,12 @@
         "summary": "一次列清剩余事项、具体场景、建议和遗漏状态，先确认而不开发"
       },
       "decision_state": "no_new_owner_answer",
-      "agenda_ref": "docs/review/owner-decision-agenda.json",
+      "agenda_ref": "docs/planning/owner-decision-agenda.json",
       "implementation_state": "not_started",
       "approval_boundary": "Q01–Q13为助手候选，不是所有者批准；B08/UAA-P01状态不变。",
       "validation": {
         "state": "verified_current_design_audit",
-        "audit_ref": "docs/review/conversation-reaudit.json",
+        "audit_ref": "docs/planning/conversation-reaudit.json",
         "owner_recommendations_approved": false,
         "business_implementation_started": false
       }
@@ -120,12 +120,12 @@
         "kind": "user_request",
         "summary": "再验证所有会话要点全部审计并落档"
       },
-      "audit_ref": "docs/review/conversation-reaudit.json",
+      "audit_ref": "docs/planning/conversation-reaudit.json",
       "implementation_state": "no_business_development",
       "approval_boundary": "允许审计/文档及审计参考反例修正；不视为Q01–Q13批准、业务开工、push或main合入。",
       "validation": {
         "state": "verified_current_design_audit",
-        "audit_ref": "docs/review/conversation-reaudit.json",
+        "audit_ref": "docs/planning/conversation-reaudit.json",
         "owner_recommendations_approved": false,
         "business_implementation_started": false
       }
@@ -262,7 +262,7 @@
         "design_ref": "docs/design/unified-observability-audit.md",
         "implementation_state": "planned_not_implemented",
         "estimate_boundary": "新增有限底座与旧I03/R01/D02/UAA/E09扣重；本轮设计/样例不冒充全五仓运行收口",
-        "estimate_ref": "docs/review/post-baseline-scope-estimates.json",
+        "estimate_ref": "docs/planning/post-baseline-scope-estimates.json",
         "net_candidate_engineering_days": [
           22,
           33
@@ -362,7 +362,7 @@
         ],
         "summary": "明确1月试用/2027-02-01前可用；风险/工单/taskrunner/activelist/消息联动及三层+UAA统管必须，AI/高级仪表盘后置；真实内网联调时间未定"
       },
-      "target_ref": "docs/review/first-usable-release-target.json",
+      "target_ref": "docs/planning/first-usable-release-target.json",
       "design_ref": "docs/phase6/first-usable-release-plan.md",
       "owner_target_confirmed": true,
       "existing_capacity_retained": 1,
@@ -400,7 +400,7 @@
         "message_id": "01a1d5d2-2ff7-7863-9b7d-6818ac7c8b87",
         "summary": "集中说明以前/现在/收益/业界缺点；基础必需补齐、加分逐步；核心更新时私有adapter小改或不改继续用"
       },
-      "design_ref": "docs/review/core-release-change-comparison.md",
+      "design_ref": "docs/planning/core-release-change-comparison.md",
       "integration_refs": [
         "docs/design/extension-compatibility.md",
         "docs/design/intranet-adapter-migration.md"
@@ -499,8 +499,8 @@
         }
       ],
       "plan_ref": "docs/phase6/first-usable-release-plan.md",
-      "target_ref": "docs/review/first-usable-release-target.json",
-      "estimate_ref": "docs/review/local-core-release-estimate.json",
+      "target_ref": "docs/planning/first-usable-release-target.json",
+      "estimate_ref": "docs/planning/local-core-release-estimate.json",
       "report_ref": "docs/review/reports/local-first-core-feasibility-2026-11-14.md",
       "interpretation": [
         "本地核心正式版与UAA纳管正式版分开；前者仍须完整本地三层权限、真实业务/消息及生产门",
@@ -659,7 +659,7 @@
         "AUTH-GAP-06",
         "AUTH-GAP-07"
       ],
-      "backlog_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+      "backlog_ref": "docs/planning/planning-backlog.json#authorization_gap_closure",
       "implementation_state": "planned_not_implemented",
       "authorization": {
         "design_and_plan_supplement": true,
@@ -725,7 +725,7 @@
       "implementation_state": "not_implemented",
       "scope_prices_schedule": "首版子范围净分配已整合IAM/AL读取为95–148有效日候选；76父包长期价/DAG不机械叠加，未新增日历或开发授权。",
       "closeout_ref": "docs/review/reports/module-detail-refinement-closeout-2026-11-15.md",
-      "owner_deferred_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup"
+      "owner_deferred_ref": "docs/planning/owner-decision-agenda.json#/module_detail_followup"
     },
     {
       "id": "F019-module-detail-owner-decisions",
@@ -803,8 +803,8 @@
       "scope": "修B0真实试用门、owner执行动作、稳定出口、现势入口/历史分离、编号限定引用、兼容/UI/发布计价对账和首版本地机器投影；不修本轮尚未授权开发的业务缺陷或真实接线",
       "design_refs": [
         "docs/phase6/first-usable-release-plan.md",
-        "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
-        "docs/review/execution-schedule.json",
+        "docs/planning/core-release-accounting-reconciliation-2026-11-16.md",
+        "docs/planning/execution-schedule.json",
         "docs/documentation.md"
       ],
       "authorization": {
@@ -862,7 +862,7 @@
         "docs/review/reports/module-contract-alignment-2026-11-16.md",
         "docs/phase6/foundation-iam-module-detail.md",
         "docs/phase6/task-activelist-message-detail.md",
-        "docs/review/execution-schedule-model.json"
+        "docs/planning/execution-schedule-model.json"
       ],
       "retained_owner_policies": [
         "C05 duplicate operation no new write/result check; HMAC equality deferred",

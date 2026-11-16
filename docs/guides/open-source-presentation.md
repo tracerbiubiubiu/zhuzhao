@@ -15,7 +15,7 @@
 | 五仓/新仓目录 | G06：Go服务/Go库/UI/合同/私有connector分类模板 | 按真实职责建目录，不生成空模块或强迫同一目录树 |
 | 命名/代码/文档/API/消息/视觉 | 生态一致性合同、G06及对应业务包 | 共同合同已有；formatter/bundle与产品全站推广未完成 |
 
-实际窗口与工日仍以[总账](../review/planning-backlog.md)和[执行排期](../review/execution-schedule.md)为准；详见[工程施工](../design/engineering-execution-design.md)、[工程治理](../design/engineering-governance.md)、[一致性合同](../design/ecosystem-consistency-contract.md)。
+实际窗口与工日仍以[总账](../planning/planning-backlog.md)和[执行排期](../planning/execution-schedule.md)为准；详见[工程施工](../design/engineering-execution-design.md)、[工程治理](../design/engineering-governance.md)、[一致性合同](../design/ecosystem-consistency-contract.md)。
 
 ## 名称应统一到产品族，但先选品牌
 

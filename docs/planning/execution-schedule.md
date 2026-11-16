@@ -97,7 +97,7 @@ B0既有制品/mock技术预演见[首版阶梯](../phase6/first-usable-release-
 - **uaa_capacity_transition**：目标`Q2`；条件`Q12_core_stability`；[证据要求](../phase6/first-usable-release-plan.md#42-核心稳定的过渡出口)。计算结论仅为`not_verified_by_schedule`。
 
 机器检查净价/子分配、逐行单计、父包映射、缺依赖/环、必交原文hash与覆盖、外部动作/出口绑定及现势摘要；不证明映射语义、产品可用、安全缺陷修复或生产验收。
-受控摘要在[控制台](11-project-control.md)和[路线图](../roadmap.md)共同核验，历史区保留原时点；净价改变须同步两区间及目标JSON。
+受控摘要在[控制台](../review/11-project-control.md)和[路线图](../roadmap.md)共同核验，历史区保留原时点；净价改变须同步两区间及目标JSON。
 
 ## 长期76父包工程量对照
 

@@ -22,7 +22,7 @@
 | activelist | `93ecbcb47eff4e9a6e11da2648f2a0605dc2edb0` |
 | zhuzhao-utils | `b027089d544b192a6472b6c9c3c3b596b7e66526` |
 
-本轮只读GitHub API返回main与上述准确SHA一致。270份基线Markdown库存见[范围快照](../planning-document-scope.json)；库存/hash/行数不代表每篇全文语义审计。当前产品/阶段/proposal/模块合同重点深读，历史阶段和报告按固定时点参考并复核本轮承接，源码按装配/关键调用与失败边界定向核验。
+本轮只读GitHub API返回main与上述准确SHA一致。270份基线Markdown库存见[范围快照](../../planning/planning-document-scope.json)；库存/hash/行数不代表每篇全文语义审计。当前产品/阶段/proposal/模块合同重点深读，历史阶段和报告按固定时点参考并复核本轮承接，源码按装配/关键调用与失败边界定向核验。
 
 工程专项覆盖五仓CI/守卫/GitHub设置、TR受理/cron/worker/回调/取消恢复、AL类型/CRUD/导入/并发约束和utils协议；产品专项核对主仓领域/授权/事务/事件、未来阶段及专业供给/AI设计；前端覆盖27个路由视图文件、9组共享组件、4类未来页面。前端逐页现状与计划见[UI清单](../../../../zhuzhao-ui/docs/design/frontend-pages.json)，设计见[全站方案](../../../../zhuzhao-ui/docs/design/frontend-redesign.md)。这些不是27页浏览器视觉验收证明。
 
@@ -32,7 +32,7 @@
 
 所有者明确：大量mock保留；模型只调用已有API、不考虑模型部署，内网只内部模型；平台专业供给均已有，避免大而全和重复造轮子。对平台特有自建Agent的问题，本轮推荐领域Agent与外部Agent双轨，限定最小受控host。
 
-当前权威链为[产品定义](../../vision.md)→[决策§33](../../design/design-decisions.md#33-phase5合并后的供给优先重规划2026-11-11)→[路线](../../roadmap.md)→阶段与模块合同→[总账](../planning-backlog.md)→[控制台](../11-project-control.md)。[平台演进](../../design/platform-evolution.md)、[AI设计](../../design/ai-capabilities.md)、[工程治理](../../design/engineering-governance.md)分别回答范围、接口与实施质量；各仓自己的docs维护其合同，不复制多套估算。
+当前权威链为[产品定义](../../vision.md)→[决策§33](../../design/design-decisions.md#33-phase5合并后的供给优先重规划2026-11-11)→[路线](../../roadmap.md)→阶段与模块合同→[总账](../../planning/planning-backlog.md)→[控制台](../11-project-control.md)。[平台演进](../../design/platform-evolution.md)、[AI设计](../../design/ai-capabilities.md)、[工程治理](../../design/engineering-governance.md)分别回答范围、接口与实施质量；各仓自己的docs维护其合同，不复制多套估算。
 
 旧整包引擎/全部增强挡R1改为真正的不变量先行；R01持久意图前置到P6.1；D15风险通知最小合同先于首条风险通知，D16完整自动路由P6.3承接。旧“升级链并入”不是已实现关闭。首页正文/验收已改权限门控，自动路由明确不跳业务validator。
 

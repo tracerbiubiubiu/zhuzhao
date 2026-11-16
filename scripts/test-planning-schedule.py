@@ -53,7 +53,7 @@ class ScopeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'increment'):m.apply_scope(b,e)
 
     def test_existing_scope_never_disappears(self):
-        b=json.loads((ROOT/'docs/review/planning-backlog.json').read_text());e=json.loads((ROOT/'docs/review/planning-scope-estimates.json').read_text());u,extra=m.apply_scope(b,e)
+        b=json.loads((ROOT/'docs/planning/planning-backlog.json').read_text());e=json.loads((ROOT/'docs/planning/planning-scope-estimates.json').read_text());u,extra=m.apply_scope(b,e)
         original={x['id'] for x in b['work_items']};self.assertTrue(original <= {x['id'] for x in u['work_items']})
         self.assertEqual(len(u['work_items']),76);self.assertEqual(len(extra),6)
 
@@ -239,12 +239,12 @@ class LocalCoreProjectionTests(unittest.TestCase):
     def test_repository_generator_exposes_separate_local_core_and_hashes_its_sources(self):
         result = m.calculate(ROOT)
         self.assertIn('local_core', result)
-        for path in ('docs/review/local-core-release-estimate.json',
-                     'docs/review/first-usable-release-target.json',
-                     'docs/review/owner-decision-agenda.json'):
+        for path in ('docs/planning/local-core-release-estimate.json',
+                     'docs/planning/first-usable-release-target.json',
+                     'docs/planning/owner-decision-agenda.json'):
             self.assertIn(path, result['source_input_sha256'])
         core = result['local_core']
-        estimate = json.loads((ROOT / 'docs/review/local-core-release-estimate.json').read_text())
+        estimate = json.loads((ROOT / 'docs/planning/local-core-release-estimate.json').read_text())
         self.assertEqual(core['raw_engineering_days'], estimate['totals']['raw_days'])
         self.assertEqual(core['rounded_display_days'], estimate['totals']['rounded_display_days'])
         self.assertEqual(len(core['required_journeys']), 9)
@@ -283,32 +283,32 @@ class LocalCoreProjectionTests(unittest.TestCase):
 class RepositoryModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.backlog=json.loads((ROOT/'docs/review/planning-backlog.json').read_text())
-        cls.model=json.loads((ROOT/'docs/review/execution-schedule-model.json').read_text())
-        cls.scope=json.loads((ROOT/'docs/review/planning-scope-estimates.json').read_text())
-        cls.uaa=json.loads((ROOT/'docs/review/uaa-implementation-estimate.json').read_text())
+        cls.backlog=json.loads((ROOT/'docs/planning/planning-backlog.json').read_text())
+        cls.model=json.loads((ROOT/'docs/planning/execution-schedule-model.json').read_text())
+        cls.scope=json.loads((ROOT/'docs/planning/planning-scope-estimates.json').read_text())
+        cls.uaa=json.loads((ROOT/'docs/planning/uaa-implementation-estimate.json').read_text())
 
     def build(self,include_r=False,reserve=True,**overrides):
         args={k:copy.deepcopy(getattr(self,k)) for k in ['backlog','model','scope','uaa']};args.update(overrides)
         return m.build_model(**args,include_r=include_r,reserve=reserve)
 
     def source_link_fixture(self, root):
-        names = ['docs/review/planning-backlog.json', 'docs/review/execution-schedule-model.json',
-                 'docs/review/planning-scope-estimates.json', 'docs/review/uaa-implementation-estimate.json',
-                 'docs/review/uaa-real-integration-conditions.json', 'docs/review/local-core-release-estimate.json',
-                 'docs/review/first-usable-release-target.json', 'docs/review/owner-decision-agenda.json',
+        names = ['docs/planning/planning-backlog.json', 'docs/planning/execution-schedule-model.json',
+                 'docs/planning/planning-scope-estimates.json', 'docs/planning/uaa-implementation-estimate.json',
+                 'docs/planning/uaa-real-integration-conditions.json', 'docs/planning/local-core-release-estimate.json',
+                 'docs/planning/first-usable-release-target.json', 'docs/planning/owner-decision-agenda.json',
                  'docs/review/11-project-control.md', 'docs/roadmap.md']
         for name in names:
             path = root / name; path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes((ROOT / name).read_bytes())
-        model_path = root / 'docs/review/execution-schedule-model.json'
+        model_path = root / 'docs/planning/execution-schedule-model.json'
         model = json.loads(model_path.read_text())
         model['current_source_link_docs'] = ['docs/phase6/module-design-handoff.md']
         model_path.write_text(json.dumps(model))
         page = root / model['current_source_link_docs'][0]
         page.parent.mkdir(parents=True, exist_ok=True)
         text = ('<!-- local-core-source:start -->\n'
-                '当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。\n'
+                '当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。\n'
                 '<!-- local-core-source:end -->\n')
         page.write_text('历史估算68–104保持原时点。\n' + text)
         return page, text
@@ -330,14 +330,14 @@ class RepositoryModelTests(unittest.TestCase):
             self.assertIn('current_source_link_checks', result)
             self.assertEqual(set(result['current_source_link_checks']), {'docs/phase6/module-design-handoff.md'})
             self.assertEqual(result['current_source_link_checks']['docs/phase6/module-design-handoff.md']['source_ref'],
-                             'docs/review/local-core-release-estimate.json')
+                             'docs/planning/local-core-release-estimate.json')
 
     def test_source_only_page_cannot_rebind_its_authority_to_another_existing_json(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); page, good = self.source_link_fixture(root)
-            path = root / 'docs/review/execution-schedule-model.json'
+            path = root / 'docs/planning/execution-schedule-model.json'
             model = json.loads(path.read_text())
-            model['local_core_net_estimate_ref'] = 'docs/review/planning-backlog.json'
+            model['local_core_net_estimate_ref'] = 'docs/planning/planning-backlog.json'
             path.write_text(json.dumps(model))
             page.write_text(good.replace('local-core-release-estimate.json', 'planning-backlog.json'))
             with self.assertRaisesRegex(ValueError, 'source.*authority'):
