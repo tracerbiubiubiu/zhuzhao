@@ -1,6 +1,6 @@
 # Phase6 工单与前端模块详细设计
 
-日期：2026-11-14。状态：**实现前设计候选，未开发、未完成产品验收**。本页补 D01–D05/D11/D16、U01–U07 及 LS01–LS04 的实施相关合同；范围、工日和状态仍归[总账](../review/planning-backlog.json)、[净估](../review/local-core-release-estimate.json)和[模块交接](module-design-handoff.md)，不另加一期或自动开始施工。
+日期：2026-11-14。状态：**实现前设计候选，未开发、未完成产品验收**。本页补 D01–D05/D11/D16、U01–U07 及 LS01–LS04 的实施相关合同；范围、工日和状态仍归[总账](../planning/planning-backlog.json)、[净估](../planning/local-core-release-estimate.json)和[模块交接](module-design-handoff.md)，不另加一期或自动开始施工。
 
 共同身份、operation/receipt、版本和错误沿[生命周期合同](../design/business-lifecycle-contracts.md)与[共同调用合同](../design/capability-invocation-contract.md)。本页把其工单部分展开成数据、事务和用例；与 00/06/08/09 的旧候选冲突时采用本页及现行共同合同，旧原文保留追溯。实际 HTTP/数值错误码、逻辑表物理命名在对应代码批核目录后登记；以下未新增可调用路由或迁移，也不预占编号。
 
@@ -258,7 +258,7 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 实施仍四个可独立验收片：T1定义端口→扩列/幂等初版回填/零悬挂→读写切换→约束及草稿UI；T2转换核/采集/accept/transfer及薄详情；T3类型策略/参与来源/独立管理/候选Query；T4 evaluate/prefill与责任summary。先验证旧单钉版/发布重放/缺定义降级禁写，继而原子字段/状态/事件/intent和并发一成；再验all-scope不穿透/来源撤销/列表计数导出同源；最后迟到预填/无权不发请求/未知不变0及复核责任去重。全部沿本页既有具名TDD与原包扣重，不另造父包/双规则核。
 
-**已确认TICKET-D01（F019）**：统一新增规则，保留已有合法关系。旧inherit类型也不保留“仅因可见便自行加CC”的例外；今后新增含自己均验独立参与人管理授权。既有合法manual CC保留，原组织读源撤销后该独立来源仍按当前类型/L1规则求值；本人可退出自己manual CC，不删domain/强制来源，失去L1时仍拒读。不重问新类型邀人管理、CC只读评论或创建者无自动邀请权；确切答复见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
+**已确认TICKET-D01（F019）**：统一新增规则，保留已有合法关系。旧inherit类型也不保留“仅因可见便自行加CC”的例外；今后新增含自己均验独立参与人管理授权。既有合法manual CC保留，原组织读源撤销后该独立来源仍按当前类型/L1规则求值；本人可退出自己manual CC，不删domain/强制来源，失去L1时仍拒读。不重问新类型邀人管理、CC只读评论或创建者无自动邀请权；确切答复见[后继F019](../planning/planning-followups.json#F019-module-detail-owner-decisions)。
 
 **本人退出的准确复用（D03）**：现有`POST /api/v1/tickets/cc/remove`与`RemoveTicketCCRequest{ticket_id,user_id}`保留；`internal/service/ticket/cc_service.go`的`RemoveCC`已经对本人用read、他人用update，`cc_integration_test.go`已钉本人自摘，不新造self-exit端点。来源化后由Service在共同改权守卫及工单/来源锁序内重验当前read资格；本人分支只移除`user_id=actor`、`role=cc`、`origin=manual`的精确来源，不能调用未限定来源的全量删除来摘domain/强制关系。存量未标注来源先按D03迁移映射，不默认为可自删；无manual则按受权可见范围返回无变化，退出后无剩余读源的下一请求仍404同形。摘他人及新增含本人继续验独立管理资格，不能由这个分支获邀人权。
 

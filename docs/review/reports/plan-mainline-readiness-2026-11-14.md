@@ -4,7 +4,7 @@
 
 日期：2026-11-14；复核基线：主仓候选 `c335061695ecbf4191388d1bd2569e18651913ae`。
 复核范围：关键特性、模块承接和大阶段方向；不重新估价，不逐项冻结所有未来DTO/DDL，也不作全产品重新审计。
-输入：[路线图](../../roadmap.md)、[总账](../planning-backlog.json)、[原会话复核](../conversation-reaudit.json)、[后继输入](../planning-followups.json)、[首版计划](../../phase6/first-usable-release-plan.md)及[模块交接](../../phase6/module-design-handoff.md)。
+输入：[路线图](../../roadmap.md)、[总账](../../planning/planning-backlog.json)、[原会话复核](../../planning/conversation-reaudit.json)、[后继输入](../../planning/planning-followups.json)、[首版计划](../../phase6/first-usable-release-plan.md)及[模块交接](../../phase6/module-design-handoff.md)。
 
 ## 结论与本次合入范围
 
@@ -32,11 +32,11 @@
 - **附件、调度与组织交接**：文件上传默认追加并保留旧附件，显式手删与引用保护分开；错失三策略和超限hold保留余项；离职先禁用再按批准映射交接，撤部预览plan后批量接管。
   权威：[工程施工](../../design/engineering-execution-design.md)C02、[调度恢复](../../design/schedule-recovery-policy.md)、[生命周期](../../design/business-lifecycle-contracts.md)§7及总账C03/D06/I03/I05。
 - **专业供给、AI与后续业务承接**：复用SOC/SIEM、CMDB、TIP、SOAR和已有模型API，保留领域Agent/外部平台双轨、RAG、skill、自然语言查询/建单/计划及统一工作流入口，不造大而全平台。
-  权威：[路线图](../../roadmap.md)§3–§6、[能力连续性](../roadmap-capability-continuity.md)、总账I04/A01–A07/R02–R05/E03–E08；P7–P10及更远能力有明确承接窗口。
+  权威：[路线图](../../roadmap.md)§3–§6、[能力连续性](../../planning/roadmap-capability-continuity.md)、总账I04/A01–A07/R02–R05/E03–E08；P7–P10及更远能力有明确承接窗口。
 - **设备、全站体验与渐进架构**：设备目录/状态/受权管理入口按异构设备人工登录交付；首页、多选标签、筛选搜索、情报左右栏及全站迁移继续承接，模块化单体按运行证据渐进拆分。
   权威：总账X03/U01–U07/E07、[设备合同](../../design/device-module-contract.md)、[一致性合同](../../design/ecosystem-consistency-contract.md)及路线图§2/§5。
 - **组件维护与公开展示**：G07A/B承接Go/Node/PG/Redis/容器升级和恢复演练；中英文README、合成展示与社区入口已归属，在线demo、公开准备及正式改名保留后续窗口。
-  权威：[版本现代化](../../design/dependency-modernization.md)、[展示方案](../../guides/open-source-presentation.md)、后继F005及[确认议程](../owner-decision-agenda.md)Q07–Q13；不把品牌建议当已执行改名。
+  权威：[版本现代化](../../design/dependency-modernization.md)、[展示方案](../../guides/open-source-presentation.md)、后继F005及[确认议程](../../planning/owner-decision-agenda.md)Q07–Q13；不把品牌建议当已执行改名。
 
 ## 留给具名详设窗口的事项
 

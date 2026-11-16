@@ -14,7 +14,7 @@
 
 Go业务实现、API、权限码、数据库schema和81对迁移均未改变。Go测试夹具更新镜像、端口就绪与可靠清理，AL补新pgx接口需要的测试桩；TR E2E只清理本次独立容器。UI的`src/`、`e2e/`、`scripts/`零改动，mock及既有合同保留。配置/CI/锁文件、版本说明及测试基础设施是本次影响面。
 
-[组件组合](../../../deployments/component-lock.json)记录公共摘要及本地工具构建；[升级设计](../../design/dependency-modernization.md)、[数据恢复契约](../../design/component-upgrade-data-contract.md)、[工具构建](../../../deployments/tools/README.md)给出处与操作要求。
+[组件组合](../../../deployments/component-lock.json)记录公共摘要及本地工具构建；[升级设计](../../design/dependency-modernization.md)、[数据恢复契约](../../design/component-upgrade-data-contract.md)、[工具构建](../../ops/tools/README.md)给出处与操作要求。
 
 ## 本地验证证据
 
@@ -54,4 +54,4 @@ TS7受OpenAPI生成链的5.x peer约束，暂留5.9.3；Cropper2需组件API改�
 
 ## 对后续排期的影响
 
-G07A/G07B按所有者要求前置为业务开工前维护；原S02/S04包ID仅追溯估算，不重复派单或计工。其余业务仍按[执行排期](../execution-schedule.md)；G03分档未启用，本轮跑现行完整门禁。首次共享/生产切换按数据契约独立实施，不随着源码合入自动切换数据库。
+G07A/G07B按所有者要求前置为业务开工前维护；原S02/S04包ID仅追溯估算，不重复派单或计工。其余业务仍按[执行排期](../../planning/execution-schedule.md)；G03分档未启用，本轮跑现行完整门禁。首次共享/生产切换按数据契约独立实施，不随着源码合入自动切换数据库。

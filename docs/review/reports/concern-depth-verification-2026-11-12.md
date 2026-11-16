@@ -6,7 +6,7 @@
 
 65不是65项独立功能，也不是新的工作包数量。51项表示已有现状证据、具体边界与可审方案，**不表示51项已实现或所有后期详设已冻结**。上一轮“完成”应理解为规划材料交付；若将它理解为所有关注点等深研究完毕，本次证据不支持。
 
-[逐项机器索引](../focus-depth-verification.json)保留每点短原话、原消息ID、实际证据文件/小节或符号、具体已研究内容、不足与对应补研究项；完整会话、独立审读过程和原截图仅在本地ignored证据目录保存。
+[逐项机器索引](../../planning/focus-depth-verification.json)保留每点短原话、原消息ID、实际证据文件/小节或符号、具体已研究内容、不足与对应补研究项；完整会话、独立审读过程和原截图仅在本地ignored证据目录保存。
 
 ## 方法与范围
 
@@ -155,10 +155,10 @@ ticket.Service持OrgRepo/StorageRepo，UserService持RoleRepo，OrgRepo.Move写�
 | C06 | 项目定位、设定和边界清晰度 | 实质规划 | [vision.md · 现行补充、§1.0平台定位声明](../../vision.md)；[platform-evolution.md · §1首要目标、§2能力供给与数据写主](../../design/platform-evolution.md) |
 | C07 | 逐模块深入检查现有能力与设计边界 | 部分深入 | **FD01**；[pre-phase6-replanning-2026-11-11.md · §2](pre-phase6-replanning-2026-11-11.md)；[architecture.md · §3.2–3.5](../../design/architecture.md) |
 | C08 | 整体目标、优先级与后续规划清晰度 | 实质规划 | [roadmap.md · §1–7](../../roadmap.md)；[project-evolution-strategy.md · §1–8](../../design/project-evolution-strategy.md) |
-| C09 | Ficus及其它项目比较是否实质用于本轮 | 实质规划 | [planning-source-map.json · CMP-30/HIST-81 entries](../planning-source-map.json)；[roadmap-capability-continuity.json · 169 records](../roadmap-capability-continuity.json) |
-| C10 | 执行后自行审计、证据与不确定项披露 | 实质规划 | [pre-phase6-requirements-audit-2026-11-11.md · §2/§5–12](pre-phase6-requirements-audit-2026-11-11.md)；[planning-design-status.json](../planning-design-status.json) |
-| C11 | 旧触发条件和挂账描述本身是否合理 | 部分深入 | **FD02**；[07-backlog-and-triggers.md · §3](../../phase6/07-backlog-and-triggers.md)；[planning-source-map.json · 119 P6-T/trigger entries](../planning-source-map.json) |
-| C12 | 全部挂账排期，不能无限触发后再说 | 实质规划 | [planning-source-map.json · P6-T entries](../planning-source-map.json)；[planning-backlog.md · §3–5](../planning-backlog.md) |
+| C09 | Ficus及其它项目比较是否实质用于本轮 | 实质规划 | [planning-source-map.json · CMP-30/HIST-81 entries](../../planning/planning-source-map.json)；[roadmap-capability-continuity.json · 169 records](../../planning/roadmap-capability-continuity.json) |
+| C10 | 执行后自行审计、证据与不确定项披露 | 实质规划 | [pre-phase6-requirements-audit-2026-11-11.md · §2/§5–12](pre-phase6-requirements-audit-2026-11-11.md)；[planning-design-status.json](../../planning/planning-design-status.json) |
+| C11 | 旧触发条件和挂账描述本身是否合理 | 部分深入 | **FD02**；[07-backlog-and-triggers.md · §3](../../phase6/07-backlog-and-triggers.md)；[planning-source-map.json · 119 P6-T/trigger entries](../../planning/planning-source-map.json) |
+| C12 | 全部挂账排期，不能无限触发后再说 | 实质规划 | [planning-source-map.json · P6-T entries](../../planning/planning-source-map.json)；[planning-backlog.md · §3–5](../../planning/planning-backlog.md) |
 | C13 | 五仓目录缺少哪些必要目录或模块 | 实质规划 | [pre-phase6-replanning-2026-11-11.md · ENG-19实际目录/迁移方式差异](pre-phase6-replanning-2026-11-11.md)；[engineering-governance.md · §6目录与新仓一致性](../../design/engineering-governance.md) |
 | C14 | 五仓及新增仓目录/文档/代码风格一致性 | 实质规划 | [engineering-execution-design.md · G06 policy-bundle.lock；G06语言与机械文件profile](../../design/engineering-execution-design.md)；[standards.md · §4语言/依赖方向/命名，生态SSOT](../../standards.md) |
 | C15 | 现有模块实际耦合与架构调整必要性 | 部分深入 | **FD01**；[platform-evolution.md · §3五仓/模块写主、§6先消除跨域直查直写](../../design/platform-evolution.md)；[architecture.md · §3.2/3.3职责和依赖方向；§3.5.4跨域调用规则](../../design/architecture.md) |
@@ -185,7 +185,7 @@ ticket.Service持OrgRepo/StorageRepo，UserService持RoleRepo，OrgRepo.Move写�
 | C36 | 多厂商设备无SSO，首期目录/人工登录入口 | 实质规划 | [device-module-contract.md · §3/4](../../design/device-module-contract.md)；[frontend-implementation-contract.md · 设备投影与管理入口](../../../../zhuzhao-ui/docs/design/frontend-implementation-contract.md) |
 | C37 | Go/Node/PG/Redis/容器/开源组件升级，自行打包不再公司对齐 | 实质规划 | [dependency-modernization.md · §1候选与官方支持周期、§2单源版本、§3分批矩阵、§4数据真实回退、§5离线分发](../../design/dependency-modernization.md)；[engineering-execution-design.md · G03自行打包版本与离线制品](../../design/engineering-execution-design.md) |
 | C38 | 未正式部署，可协调替换旧合同，不背六个月兼容承诺 | 实质规划 | [extension-compatibility.md · §6部署前替换与部署后兼容验证](../../design/extension-compatibility.md)；[cross-repo-execution-contract.md · 新旧组合、回滚与迁移](../../design/cross-repo-execution-contract.md) |
-| C39 | 五仓统一PR，允许单维护者检查后合入 | 实质规划 | [engineering-execution-design.md · G02 main合入纪律与例外；ENG-D01a](../../design/engineering-execution-design.md)；[planning-decisions.json · ENG-D01a owner_confirmed](../planning-decisions.json) |
+| C39 | 五仓统一PR，允许单维护者检查后合入 | 实质规划 | [engineering-execution-design.md · G02 main合入纪律与例外；ENG-D01a](../../design/engineering-execution-design.md)；[planning-decisions.json · ENG-D01a owner_confirmed](../../planning/planning-decisions.json) |
 | C40 | 分档门禁相对现状的区别、排除项和生效窗口 | 实质规划 | [engineering-execution-design.md · ENG-D01b：分档门禁合同六条及错分反例](../../design/engineering-execution-design.md)；[AGENTS.md · 现行门禁纪律：make acceptance](../../../AGENTS.md) |
 | C41 | 全站前端重规划，不能限于点名页面 | 部分深入 | **FD07**；[frontend-redesign.md · FE-PRE-08/09/10/11](../../../../zhuzhao-ui/docs/design/frontend-redesign.md)；[frontend-implementation-contract.md · StateFeedback/组件合同/全站实施映射](../../../../zhuzhao-ui/docs/design/frontend-implementation-contract.md) |
 | C42 | 普通用户默认首页、Logo404与安全落点 | 实质规划 | [frontend-redesign.md · FE-PRE-01/02](../../../../zhuzhao-ui/docs/design/frontend-redesign.md)；[index.vue · RouterLink to="/"](../../../../zhuzhao-ui/src/components/Logo/index.vue) |
@@ -207,10 +207,10 @@ ticket.Service持OrgRepo/StorageRepo，UserService持RoleRepo，OrgRepo.Move写�
 | C58 | all数据范围不越类型限制，不另造敏感字段 | 实质规划 | [business-lifecycle-contracts.md · §5.2 BK-21/查看范围必要性与B03说明](../../design/business-lifecycle-contracts.md) |
 | C59 | 独立授权业务管理者管理参与人/抄送 | 实质规划 | [business-lifecycle-contracts.md · §5.2/5.3/§10 B04](../../design/business-lifecycle-contracts.md) |
 | C60 | 虚拟风险组管理/录入/受限派单，不额外通用建单权 | 实质规划 | [business-lifecycle-contracts.md · §5.4/§8.4/B05业界参照/§10 B05](../../design/business-lifecycle-contracts.md)；[role_repo.go · RoleRepo.GetEffectiveRoleCodes](../../../internal/repository/role_repo.go) |
-| C61 | 风险记录与攻击应急事件区别，SOC事件职责授权 | 部分深入 | **FD08**；[business-lifecycle-contracts.md · §5.4 风险事件术语段/B05](../../design/business-lifecycle-contracts.md)；[planning-backlog.json · work_items D14](../planning-backlog.json) |
+| C61 | 风险记录与攻击应急事件区别，SOC事件职责授权 | 部分深入 | **FD08**；[business-lifecycle-contracts.md · §5.4 风险事件术语段/B05](../../design/business-lifecycle-contracts.md)；[planning-backlog.json · work_items D14](../../planning/planning-backlog.json) |
 | C62 | 离职批准映射后自动逐项交接，安全禁用先行 | 实质规划 | [business-lifecycle-contracts.md · §7.1–7.3/7.5/§10 B06](../../design/business-lifecycle-contracts.md) |
 | C63 | 撤部预览确认plan后批量接管，历史/权限保护 | 实质规划 | [business-lifecycle-contracts.md · §7.4/7.5/§10 B07](../../design/business-lifecycle-contracts.md)；[hr-directory-sync.md · §4.3](../../proposal/hr-directory-sync.md) |
-| C64 | 审计阶段、当前完成程度及owner何时参与 | 实质规划 | [planning-closeout.md · 五步/参与窗口](../planning-closeout.md)；[planning-decisions.json](../planning-decisions.json) |
+| C64 | 审计阶段、当前完成程度及owner何时参与 | 实质规划 | [planning-closeout.md · 五步/参与窗口](../../planning/planning-closeout.md)；[planning-decisions.json](../../planning/planning-decisions.json) |
 | C65 | 原6/7/8/9及更远功能承接、优化扩展与适合规模的渐进路线 | 实质规划 | [roadmap.md · §1–7](../../roadmap.md)；[project-evolution-strategy.md · §1–8](../../design/project-evolution-strategy.md) |
 
 ## 核验后的交付含义与下一步

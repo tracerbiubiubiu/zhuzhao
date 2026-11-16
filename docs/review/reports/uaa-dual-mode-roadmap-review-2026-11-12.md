@@ -1,6 +1,6 @@
 # UAA与双模式补充后的全路线和排期再审
 
-日期：2026-11-12。性质：**规划修订与一致性复核，业务实现及真实接入未验收**。权威入口为[总账](../planning-backlog.json)、[排期](../execution-schedule.md)、[UAA合同](../../design/uaa-governance-integration.md)、[决策册](../planning-decisions.json)。逐项记录见[机器审查表](../uaa-dual-mode-review.json)。
+日期：2026-11-12。性质：**规划修订与一致性复核，业务实现及真实接入未验收**。权威入口为[总账](../../planning/planning-backlog.json)、[排期](../../planning/execution-schedule.md)、[UAA合同](../../design/uaa-governance-integration.md)、[决策册](../../planning/planning-decisions.json)。逐项记录见[机器审查表](../../planning/uaa-dual-mode-review.json)。
 
 ## 审查基线和覆盖边界
 

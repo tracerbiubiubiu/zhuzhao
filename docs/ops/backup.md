@@ -154,7 +154,7 @@ docker compose -f deployments/docker-compose.yaml start app
 
 ### 形态
 
-`rustfs-mirror`侧车使用[受控rclone1.76.0/Go1.27.4镜像](../../deployments/tools/rclone/README.md)，由当前Compose构建；`--profile storage`随RustFS同启。上游旧镜像仅保留比较记录：
+`rustfs-mirror`侧车使用[受控rclone1.76.0/Go1.27.4镜像](tools/rclone.md)，由当前Compose构建；`--profile storage`随RustFS同启。上游旧镜像仅保留比较记录：
 `rclone sync` 主实例桶 → `rustfs-backup` 备实例桶 + **双 重删除保护**——① `--backup-dir` 归档前缀
 （被覆盖/删除对象移入 `backup-archive/<桶>-<日期>/`，天目录按名序轮转保留 `RETAIN_COUNT` 个）；
 ② 目标桶**版本化**（RustFS 实测支持 `PutBucketVersioning`，脚本启动幂等启用——失败仅 WARN

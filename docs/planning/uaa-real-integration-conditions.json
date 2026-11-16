@@ -1,7 +1,7 @@
 {
   "date": "2026-11-12",
   "status": "external_conditions_not_verified_in_this_public_workspace",
-  "estimate_ref": "docs/review/uaa-implementation-estimate.json",
+  "estimate_ref": "docs/planning/uaa-implementation-estimate.json",
   "engineering_days_after_conditions_ready": [
     13,
     22

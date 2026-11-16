@@ -1,7 +1,7 @@
 # 公共核心、私有扩展与兼容合同
 
 <!-- local-core-source:start -->
-当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
 <!-- local-core-source:end -->
 
 日期：2026-11-11；2026-11-14按本地正式核心先行、质量优先同步交付。状态：目标设计，尚未实现。适用 X01/X02；本页具体化[平台演进](platform-evolution.md)，不把当前编译期注册描述为已支持免改核心的插件。
@@ -31,7 +31,7 @@
 
 ## 3. 核心一次性建设的接缝
 
-X01在原8–12日内拆为三个出口，见[执行排期](../review/execution-schedule.md)：
+X01在原8–12日内拆为三个出口，见[执行排期](../planning/execution-schedule.md)：
 
 - **X01-C，2–3日**：公共connector合同、可信服务/业务主体边界、出站和停用规则。
 - **X01-B，P6.1，3–4日**：配置式受信应用、精确API/权限目录、最小同步身份接缝、导航和禁用。首版采用受审配置、启动校验及重启生效，不要求安装审批CLI或热切换。

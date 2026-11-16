@@ -2,11 +2,13 @@
 
 > **Phase6已进入模块详设**：[五个模块合同与变化](phase6/module-detail-index.md)可直接查DTO、数据约束、权限、正常/异常及验收；本地核心与后续UAA/AI边界保持，产品未实现。
 
-> **用途**：按阅读任务进入五仓资料；本页是导航，不是功能验收表。**范围**：当前实现、后续设计与历史证据。**权威**：[控制台](review/11-project-control.md)、[规划收口](review/planning-closeout.md)及各模块合同；状态以对应源码、候选和收据为准。
+> **用途**：按阅读任务进入五仓资料；本页是导航，不是功能验收表。**范围**：当前实现、后续设计与历史证据。**权威**：[控制台](review/11-project-control.md)、[规划收口](planning/planning-closeout.md)及各模块合同；状态以对应源码、候选和收据为准。
+
+文档统一从本页进入；全项目计划集中在[planning](planning/README.md)，各仓实现/API/运维文档继续随对应代码版本维护。本地原材料的存放与Git边界见[材料目录](materials.md)。
 
 ## 先选择阅读路径
 
-- **所有者看进度与待决**：[规划收口](review/planning-closeout.md) → [模块设计深度](review/planning-closeout.md#各phase和模块细化到哪里) → [三节短审阅卡](phase6/implementation-handoff.md#单维护者短审阅卡)。再按需要进入具体合同，不必逐篇读历史报告。
+- **所有者看进度与待决**：[规划收口](planning/planning-closeout.md) → [模块设计深度](planning/planning-closeout.md#各phase和模块细化到哪里) → [三节短审阅卡](phase6/implementation-handoff.md#单维护者短审阅卡)。再按需要进入具体合同，不必逐篇读历史报告。
 - **开发者修改一个模块**：[产品边界](vision.md) → [开发指南](guides/development.md) → [工程公约](standards.md) → 对应[当前模块](modules/README.md)、Phase/工作包及[目标合同](design/README.md)。编码前冻结本批预期，按公约测试先行。
 - **运维或审计核实事实**：[运维入口](ops/README.md)或[审查入口](review/README.md) → 准确源码/制品/环境与验证记录 → 原始证据/历史报告。旧报告只证明其固定时点。
 
@@ -20,35 +22,36 @@
 | 理解当前模块 | [modules/](modules/README.md) | 当前调用链、数据与权限，不把目标目录当已迁移 |
 | 查架构、目标合同和决策 | [design/](design/README.md)、[adr/](adr/README.md) | 当前解释与目标设计分别标注；采纳不等于实施 |
 | 查当前API | [api/](api/README.md) | 响应/错误、Swagger及准确消费者合同；候选接口另标状态 |
-| 部署、备份、故障处理 | [ops/](ops/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
-| 看当前状态或复核证据 | [review/](review/README.md) | 当前控制、规划权威、审查方法与固定时点报告 |
-| 查后续计划及原始来源 | [路线图](roadmap.md)、[总账](review/planning-backlog.md)、[proposal/](proposal/README.md) | 当前交付顺序与来源承接，不直接作为完成证明 |
+| 部署、备份、故障处理 | [ops/](ops/README.md)、[工具构建与扫描](ops/tools/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
+| 看当前实现或复核证据 | [review/](review/README.md) | 当前控制、审查方法与固定时点报告 |
+| 复用审计方法、模板、提示词 | [toolkit/](toolkit/README.md) | 方法、空白原件与执行实例分开维护 |
+| 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 当前交付顺序与来源承接，不直接作为完成证明 |
 
 ## 阶段导航
 
-**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA保留历史基线；互通CE、旧子范围与既有包复估已进入[净估注册表](review/planning-scope-estimates.json)，完整相对排程与独立复核在本轮同步。产品实现和真实激活分开。
+**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA保留历史基线；互通CE、旧子范围与既有包复估已进入[净估注册表](planning/planning-scope-estimates.json)，完整相对排程与独立复核在本轮同步。产品实现和真实激活分开。
 
 [Phase1](phase1/README.md) → [Phase2](phase2/README.md) → [Phase3](phase3/README.md) → [Phase4](phase4/README.md)为已交付阶段的设计与记录；[Phase5](phase5/README.md)保留已合main的能力和债务出处。[Phase6](phase6/README.md)是近期可信底座/风险/体验切片，[Phase7](phase7/README.md)承接受控能力与专业集成，[Phase8](phase8/README.md)承接领域Agent/专业执行，[Phase9](phase9/README.md)承接持久协同；P10及更远候选见路线图，不为目录完整性建立空阶段稿。
 
 旧Phase分模块稿保留来源与细节，适用/替代关系从现行阶段入口、共同合同和总账核对。设计候选不等于所有DTO/DDL/测试均已冻结；各模块开工前仍有自己的冻结和测试出口。Phase5交付与清理的固定记录见[验收记录§8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)及[运行手册](ops/runbook.md)。
 
-规划产能已按单席/每周5工程日确认，实际开工日T0尚未启动且无严格截止；当前口径以[排程资源说明](review/execution-schedule.json)和[所有者决策](review/planning-decisions.json)为准。源码整合、实际部署、功能开工各自留证，不从目录名或排期推断。
+规划产能已按单席/每周5工程日确认，实际开工日T0尚未启动且无严格截止；当前口径以[排程资源说明](planning/execution-schedule.json)和[所有者决策](planning/planning-decisions.json)为准。源码整合、实际部署、功能开工各自留证，不从目录名或排期推断。
 
 ## 五仓各自维护，结构统一
 
 - **zhuzhao**：核心应用、IAM、工单、权限、网关及生态公约/规划，本树为权威。
-- **zhuzhao-ui**：[UI文档](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/main/docs)，维护前端开发、组件、测试和发布。
-- **zhuzhao-utils**：[公共库文档](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/main/docs)，维护具体公共包、接入和版本纪律。
-- **taskrunner**：[任务服务文档](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
-- **activelist**：[动态清单文档](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
+- **zhuzhao-ui**：[本地文档](../../zhuzhao-ui/docs/README.md) / [UI文档（main）](https://github.com/tracerbiubiubiu/zhuzhao-ui/tree/main/docs)，维护前端开发、组件、测试和发布。
+- **zhuzhao-utils**：[本地文档](../../zhuzhao-utils/docs/README.md) / [公共库文档（main）](https://github.com/tracerbiubiubiu/zhuzhao-utils/tree/main/docs)，维护具体公共包、接入和版本纪律。
+- **taskrunner**：[本地文档](../../taskrunner/docs/README.md) / [任务服务文档（main）](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
+- **activelist**：[本地文档](../../activelist/docs/README.md) / [动态清单文档（main）](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
 
-以上Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
+以上本地入口读取当前检出的候选，Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
 
 ## 维护规则
 
-[工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。
+[工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。可复用方法、空白模板和开发/审计提示词统一从[工作资料库](toolkit/README.md)进入；填写后的实例按文档规则归正式报告或本地批次。
 
-当前解释、目标设计、机器事实和历史报告分别维护；Markdown摘要引用或校验唯一JSON事实，不再独立报价/计数。正式报告在review/reports，必要历史在review/archive；本地参考、执行卡、原日志和临时输出仍进ignored目录。Swagger生成物保留现有消费路径，不手改。分档门禁和远端保护未因文档整理自动启用。
+当前解释、目标设计、机器事实和历史报告分别维护；Markdown摘要引用或校验唯一JSON事实，不再独立报价/计数。正式报告在review/reports，必要历史在review/archive；本地参考、执行卡、原日志和临时输出按[材料目录](materials.md)归本地档案或ignored执行目录。Swagger生成物保留现有消费路径，不手改。分档门禁和远端保护未因文档整理自动启用。
 
 ## 变更记录
 
@@ -56,6 +59,7 @@
 |---|---|
 | 2026-11-08 | 五仓各自docs、统一分类，区分当前/未来/历史；保留阶段和Swagger路径。 |
 | 2026-11-11 | 同步Phase5收尾和问题移交，后续原稿作为重规划输入。 |
+| 2026-11-16 | 当前规划迁入planning，审查与历史保留review；增加Git/本地材料边界和迁移清单，补齐五仓本地入口、工作资料与运维工具导航。 |
 | 2026-11-13 | 按所有者/开发/运维审计重排阅读路径，校准阶段/资源与未计价增量，明确候选和main入口。 |
 
-全项目后续重规划主读[路线图](roadmap.md) → [渐进演进](design/project-evolution-strategy.md) → [能力承接审计](review/roadmap-capability-continuity.md) → 唯一总账；Phase6仅为近期一段。比较方案变化读[路线对照](review/roadmap-change-comparison-2026-11-12.md)，查看已计价先后读[执行排期](review/execution-schedule.md)，当前完整范围同时包含CE、旧漏估子范围与既有包复估；历史日窗不作为新承诺。
+全项目后续重规划主读[路线图](roadmap.md) → [渐进演进](design/project-evolution-strategy.md) → [能力承接审计](planning/roadmap-capability-continuity.md) → 唯一总账；Phase6仅为近期一段。比较方案变化读[路线对照](planning/roadmap-change-comparison-2026-11-12.md)，查看已计价先后读[执行排期](planning/execution-schedule.md)，当前完整范围同时包含CE、旧漏估子范围与既有包复估；历史日窗不作为新承诺。

@@ -1,6 +1,6 @@
 # ADR-005：统一能力接缝与AL源变更事实责任
 
-日期：2026-11-13。状态：**新增需求驱动的设计候选，未实施**；只提交阶段快照，准确schema/迁移/容量及增量估算留对应设计门。细节权威为[能力调用合同](../design/capability-invocation-contract.md)，分期在[增量范围册](../review/capability-interconnect-supplement.json)。
+日期：2026-11-13。状态：**新增需求驱动的设计候选，未实施**；只提交阶段快照，准确schema/迁移/容量及增量估算留对应设计门。细节权威为[能力调用合同](../design/capability-invocation-contract.md)，分期在[增量范围册](../planning/capability-interconnect-supplement.json)。
 
 ## 背景
 

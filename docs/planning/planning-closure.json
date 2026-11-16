@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "date": "2026-11-13",
-  "source_registry": "docs/review/user-requirements-reconciliation.json",
+  "source_registry": "docs/planning/user-requirements-reconciliation.json",
   "source_count": 63,
   "source_cutoff": "U63",
-  "estimate_registry": "docs/review/planning-scope-estimates.json",
+  "estimate_registry": "docs/planning/planning-scope-estimates.json",
   "scope": "Bounded whole-conversation design-audit closure; all future implementation, provider activation and complete future API freeze excluded.",
   "claims": {
     "audit_complete": true,

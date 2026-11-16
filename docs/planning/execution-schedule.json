@@ -2,17 +2,17 @@
   "date": "2026-11-16",
   "status": "fully_priced_bounded_candidate_not_implemented",
   "calendar": null,
-  "estimate_source": ["docs/review/planning-backlog.json", "docs/review/execution-schedule-model.json", "docs/review/planning-scope-estimates.json", "docs/review/uaa-implementation-estimate.json", "docs/review/uaa-real-integration-conditions.json", "docs/review/local-core-release-estimate.json", "docs/review/first-usable-release-target.json", "docs/review/owner-decision-agenda.json"],
+  "estimate_source": ["docs/planning/planning-backlog.json", "docs/planning/execution-schedule-model.json", "docs/planning/planning-scope-estimates.json", "docs/planning/uaa-implementation-estimate.json", "docs/planning/uaa-real-integration-conditions.json", "docs/planning/local-core-release-estimate.json", "docs/planning/first-usable-release-target.json", "docs/planning/owner-decision-agenda.json"],
   "source_input_sha256": {
-    "docs/review/planning-backlog.json": "c30bbf5a5ede4a341c5fa6df88cb7a0b4be61452b1a35229254e8b84675a250a",
-    "docs/review/execution-schedule-model.json": "66e1825dd6236197427d2497ecb34bf3db65bce739a029b24804a6d70f102ede",
-    "docs/review/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
-    "docs/review/uaa-implementation-estimate.json": "a21aa4ad616394eb26c87cf9c50931b760c07923df5f5918091d730f434285f1",
-    "docs/review/uaa-real-integration-conditions.json": "c8997ac359f751c9d10602ddbc37583406accd69d821b8e40b74b63a50f69d87",
-    "docs/review/local-core-release-estimate.json": "d001bdd83059276efb97767ff43deb101aa993a23041a6c44a21fa5a599d9730",
-    "docs/review/first-usable-release-target.json": "239c3c017d6a9712ad717f4907176ad28fc7f3a8fddf614ae905f6f31541a150",
-    "docs/review/owner-decision-agenda.json": "dddf4154db85cda75d79926e30db71037bdd676100073f5ddb377ab2c6fc1125",
-    "scripts/calculate-planning-schedule.py": "707df00d240eb42f713f7487585922974e52d5824424ea7f0cd7665178d6bdac"
+    "docs/planning/planning-backlog.json": "82433f259c85b0454908d3c01e70c511a7f85fdc772bdae2208bf490f48c58a7",
+    "docs/planning/execution-schedule-model.json": "61787a0d8b538c217c25f04314cabc7b16ddc232ca146d0e47f9563ac17a2259",
+    "docs/planning/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
+    "docs/planning/uaa-implementation-estimate.json": "ba0221b562533c8b34d19cc8c90c325f76da4e0be72bb12a51859413a60e015c",
+    "docs/planning/uaa-real-integration-conditions.json": "8391462c9c7654c806b9a5149478df694578d80e138f4cab038f01da3d922800",
+    "docs/planning/local-core-release-estimate.json": "5c41f7117735ae15d0f9b84ef1bd1ff01ac0977a77308be38930cea8fc9f62db",
+    "docs/planning/first-usable-release-target.json": "4cada219bbf2280f5da7acdc6ebc1ae8672cd78bf6f66d270ccf4c2991d66661",
+    "docs/planning/owner-decision-agenda.json": "e121cd2ef2f004f4e5061ddd14b30858fdbf41ffa256c4eaed8bb60c4d3dad2c",
+    "scripts/calculate-planning-schedule.py": "4a42580f5c84d57854ebf520351c9cf3bfc34940313f77440a16b56c65b32f8c"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -4602,12 +4602,12 @@
     "work_items": ["G07A", "G07B"],
     "status": "historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling",
     "do_not_repeat_future_coding_estimate": true,
-    "actual_record_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+    "actual_record_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md",
     "reserve_profile_rule": "Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core"
   },
-  "release_gates_ref": "docs/review/planning-backlog.json#/release_gates",
+  "release_gates_ref": "docs/planning/planning-backlog.json#/release_gates",
   "external_waiting": {
-    "ref": "docs/review/uaa-real-integration-conditions.json",
+    "ref": "docs/planning/uaa-real-integration-conditions.json",
     "entry_and_activation_stages": [
       {
         "id": "R-test-entry",
@@ -4635,7 +4635,7 @@
         "rule": "R整体收口在此阶段完成；不得用该后置收口反向阻塞正式apply。"
       }
     ],
-    "additional_refs": ["docs/review/uaa-real-integration-conditions.json", "docs/review/planning-scope-estimates.json#/items/LS05", "docs/review/planning-scope-estimates.json#/items/LS06"],
+    "additional_refs": ["docs/planning/uaa-real-integration-conditions.json", "docs/planning/planning-scope-estimates.json#/items/LS05", "docs/planning/planning-scope-estimates.json#/items/LS06"],
     "rule": "Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers."
   },
   "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
@@ -4652,18 +4652,18 @@
     "long_horizon_totals_are_not_foundation_duration": true,
     "baseline_scope_only": true,
     "post_baseline_supplements_not_merged": ["F004 newly selected details pending net estimate", "OBS01–03 separately priced candidate supplement"],
-    "supplement_ref": "docs/review/post-baseline-scope-estimates.json",
+    "supplement_ref": "docs/planning/post-baseline-scope-estimates.json",
     "production_or_enterprise_activation_approved": false
   },
   "bounded_effort_totals": {
     "public_R_pending": [394, 656],
     "with_conditional_R_ready": [407, 678]
   },
-  "scope_estimate_registry": "docs/review/planning-scope-estimates.json",
+  "scope_estimate_registry": "docs/planning/planning-scope-estimates.json",
   "no_unpriced_required_increment": true,
   "no_unpriced_required_increment_scope": "priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price",
-  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
-  "local_core_net_estimate_ref": "docs/review/local-core-release-estimate.json",
+  "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
+  "local_core_net_estimate_ref": "docs/planning/local-core-release-estimate.json",
   "local_core_view_note": "The same generator exposes local_core from the selected net WBS and mandatory journeys. It is not added to the 76-parent totals; real waiting and activation dates remain unknown, and evidence gates are not proven by scheduling.",
   "local_core": {
     "status": "bounded_local_core_candidate_not_implemented",
@@ -4997,7 +4997,7 @@
     },
     "required_journeys": [
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/0",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/0",
         "text": "风险域和风险到整改工单人工闭环，逐风险责任/证据/复核和有界N:1",
         "requirement_sha256": "1dd070f2e6fda5da35f4c078b936da61d691a77432a363979cee4b3dba37ab40",
         "targets": ["R1", "R2", "R3", "R4", "R5", "U2", "U3"],
@@ -5005,7 +5005,7 @@
         "overlapping_effort_do_not_add": [52.0, 83.0]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/1",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/1",
         "text": "既有工单及所选派单/证据/复核，工单列表有限多选加标签",
         "requirement_sha256": "8ab9911e90f8f10335dbbc79051d169a4ed00749a47fa98a19bdf55c5fa64c5b",
         "targets": ["S3", "R4", "U4", "U8"],
@@ -5013,7 +5013,7 @@
         "overlapping_effort_do_not_add": [63.0, 99.0]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/2",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/2",
         "text": "工单→taskrunner→原任务结果/activelist受权更新",
         "requirement_sha256": "17cdabb2cbb6421454fcdec2a21425246e633e7ba4555dd52b8818c9449c6873",
         "targets": ["TD01", "TD02", "TD03", "TD04", "TD05", "U4"],
@@ -5021,7 +5021,7 @@
         "overlapping_effort_do_not_add": [51.5, 81.5]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/3",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/3",
         "text": "activelist变化→获权TR后继任务；仅消息/刷新不代验",
         "requirement_sha256": "d315647498962bd14641d08cb965b43852cc15ed4114abba7a210df529fbebca",
         "targets": ["AD01", "AD02", "AD03", "AD04", "U5"],
@@ -5029,7 +5029,7 @@
         "overlapping_effort_do_not_add": [56.5, 88]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/4",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/4",
         "text": "公共HTTP sender及一条实际公司消息映射/实测，明确受理与送达；真实条件未知不代验",
         "requirement_sha256": "cce07a945dd8adf37bd6732d714553bd8c73421105f53cdd004423a185936edf",
         "targets": ["MH01", "MH02", "MH03", "MH04", "MR1", "U6"],
@@ -5037,7 +5037,7 @@
         "overlapping_effort_do_not_add": [43.5, 70]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/5",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/5",
         "text": "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继",
         "requirement_sha256": "4f61eb43630b4ffa74a1b893d3da8cd763987236973895a638894decec3f55a8",
         "targets": ["S1", "U1"],
@@ -5045,7 +5045,7 @@
         "overlapping_effort_do_not_add": [34.5, 56]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/6",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/6",
         "text": "当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI",
         "requirement_sha256": "d64d2a7e68b2a83ad9924b6047d97c2636cb93e9aedc05e2452962056aa5e270",
         "targets": ["S1", "S2", "S3", "TD05", "MH02", "MH04", "U7"],
@@ -5053,7 +5053,7 @@
         "overlapping_effort_do_not_add": [85.5, 133.5]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/7",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/7",
         "text": "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收",
         "requirement_sha256": "b8a583003062a9be9beee3bbeefb476237dd17a1aa6d54bc02bd7908dc8d97c6",
         "targets": ["S1", "MH01", "Q1"],
@@ -5061,7 +5061,7 @@
         "overlapping_effort_do_not_add": [91.5, 142.5]
       },
       {
-        "requirement_ref": "docs/review/first-usable-release-target.json#/must_have/8",
+        "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/8",
         "text": "首次本地正式生产适用制品/漏洞/运行配置/备份恢复/回退与故障接管证据",
         "requirement_sha256": "fa35a4c1421959f6bef87d0b7896602d66a3b1747db9ca0f3e85a082cd997bf3",
         "targets": ["Q1", "Q2"],
@@ -5071,21 +5071,21 @@
     ],
     "external_conditions": {
       "MH01_MR1": {
-        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/MH01_MR1",
+        "source_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/MH01_MR1",
         "state": "pending_real_inputs_then_binding",
         "evidence_state": "not_supplied",
         "evidence_refs": [],
         "blocks_release_exits": ["formal_local"]
       },
       "Q12_trial": {
-        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_trial",
+        "source_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_trial",
         "state": "pending_real_inputs_then_binding",
         "evidence_state": "not_supplied",
         "evidence_refs": [],
         "blocks_release_exits": ["risk_ticket_trial", "formal_local"]
       },
       "Q12_core_stability": {
-        "source_ref": "docs/review/owner-decision-agenda.json#/execution_actions/Q12_core_stability",
+        "source_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_core_stability",
         "state": "engineering_candidate_pending_real_trial_acceptance",
         "evidence_state": "not_yet_implemented_or_trialed",
         "evidence_refs": [],
@@ -5332,28 +5332,28 @@
   },
   "current_source_link_checks": {
     "docs/phase6/module-design-handoff.md": {
-      "source_ref": "docs/review/local-core-release-estimate.json",
-      "summary_sha256": "5da4c95247ac6198ab26b499fbaa1ba5743c1d65a184a82313c7f48831fbc742",
+      "source_ref": "docs/planning/local-core-release-estimate.json",
+      "summary_sha256": "5c516a3f75e7d271bcd3b1e65a5bdeb4a3160e9bc8e5122bd63cc4f878c89d94",
       "check": "matches_source_only_summary"
     },
     "docs/phase6/task-activelist-message-detail.md": {
-      "source_ref": "docs/review/local-core-release-estimate.json",
-      "summary_sha256": "5da4c95247ac6198ab26b499fbaa1ba5743c1d65a184a82313c7f48831fbc742",
+      "source_ref": "docs/planning/local-core-release-estimate.json",
+      "summary_sha256": "5c516a3f75e7d271bcd3b1e65a5bdeb4a3160e9bc8e5122bd63cc4f878c89d94",
       "check": "matches_source_only_summary"
     },
     "docs/design/extension-compatibility.md": {
-      "source_ref": "docs/review/local-core-release-estimate.json",
-      "summary_sha256": "5da4c95247ac6198ab26b499fbaa1ba5743c1d65a184a82313c7f48831fbc742",
+      "source_ref": "docs/planning/local-core-release-estimate.json",
+      "summary_sha256": "5c516a3f75e7d271bcd3b1e65a5bdeb4a3160e9bc8e5122bd63cc4f878c89d94",
       "check": "matches_source_only_summary"
     },
     "docs/design/authorization-model-and-engine-choice.md": {
-      "source_ref": "docs/review/local-core-release-estimate.json",
-      "summary_sha256": "5da4c95247ac6198ab26b499fbaa1ba5743c1d65a184a82313c7f48831fbc742",
+      "source_ref": "docs/planning/local-core-release-estimate.json",
+      "summary_sha256": "5c516a3f75e7d271bcd3b1e65a5bdeb4a3160e9bc8e5122bd63cc4f878c89d94",
       "check": "matches_source_only_summary"
     },
     "docs/design/rbac-inheritance-and-cascade.md": {
-      "source_ref": "docs/review/local-core-release-estimate.json",
-      "summary_sha256": "5da4c95247ac6198ab26b499fbaa1ba5743c1d65a184a82313c7f48831fbc742",
+      "source_ref": "docs/planning/local-core-release-estimate.json",
+      "summary_sha256": "5c516a3f75e7d271bcd3b1e65a5bdeb4a3160e9bc8e5122bd63cc4f878c89d94",
       "check": "matches_source_only_summary"
     }
   }

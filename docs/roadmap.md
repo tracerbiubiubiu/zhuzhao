@@ -8,7 +8,7 @@
 
 平台定位为数据聚合与安全全生命周期管控。专业检测/研判/执行优先复用已有平台；mock长期保留，内网模型通过内部API接入，私有SDK/字段/凭据留adapter。
 
-[首版阶梯](phase6/first-usable-release-plan.md)维护试用/正式/稳定出口，[本地净估](review/local-core-release-estimate.json)维护去重分项，[执行排期](review/execution-schedule.md)同时展示独立的长期基线和首版本地投影。当前实现与缺陷见[控制台](review/11-project-control.md)，未来范围归[76父包总账](review/planning-backlog.md)。
+[首版阶梯](phase6/first-usable-release-plan.md)维护试用/正式/稳定出口，[本地净估](planning/local-core-release-estimate.json)维护去重分项，[执行排期](planning/execution-schedule.md)同时展示独立的长期基线和首版本地投影。当前实现与缺陷见[控制台](review/11-project-control.md)，未来范围归[76父包总账](planning/planning-backlog.md)。
 
 ## 1. 现有底座怎样继续使用
 
@@ -18,11 +18,11 @@ Phase1–4已交IAM、资源级工单、通用服务和UI基础；Phase5已验�
 
 ## 2. 新Phase6：把现有底座变成可信业务闭环
 
-**新增企业UAA硬条件（2026-11-12）**：[现行合同](design/uaa-governance-integration.md)要求认证及受管权限治理，E01-UAA-C在P6.0交公共来源/编码/撤权规则，P在P6.1归属公共端口及mock，R具备供给可准备并在公司UAA纳管企业模式首次正式激活前通过；当前首版本地正式优先，完整P/R核心稳定后投入，不因Phase归属强制提前，也不以其它provider代验。本轮已补估C2–3、P25–39、R13–22工程日，当前完整有限基线与资源场景见[注册表](review/uaa-implementation-estimate.json)和更新排期；外部等待及既有非UAA范围资格条件另列。业务路线延续、mock保留；本次不是UAA已接通。
+**新增企业UAA硬条件（2026-11-12）**：[现行合同](design/uaa-governance-integration.md)要求认证及受管权限治理，E01-UAA-C在P6.0交公共来源/编码/撤权规则，P在P6.1归属公共端口及mock，R具备供给可准备并在公司UAA纳管企业模式首次正式激活前通过；当前首版本地正式优先，完整P/R核心稳定后投入，不因Phase归属强制提前，也不以其它provider代验。本轮已补估C2–3、P25–39、R13–22工程日，当前完整有限基线与资源场景见[注册表](planning/uaa-implementation-estimate.json)和更新排期；外部等待及既有非UAA范围资格条件另列。业务路线延续、mock保留；本次不是UAA已接通。
 
 **两个正式运行模式分别验收**：独立模式保留原有账号/角色/菜单授权和权限管理，不等待公司UAA、私有adapter或R。C仅冻结公共规则与合成候选矩阵；真实映射及批准R前核验。P合同/mock准备可并行，完整投影/撤权出口验收须C04和X02-F实际共享能力通过（含其D06/X01-C依赖）；最小双模式前端与安装/切换/受控退出runbook随P/R交付，不等U06全站视觉。P负责用例，G03接CI，G04负责质量口径，新增接线/质量净量已在P计一次，原包预算不被本轮重新分类。
 
-任何实际生产首发都须满足[按模式发布证据门](review/planning-backlog.md#按运行模式检查的发布证据门)：复用G05/E09适用通用硬项，若早于P7只前移这些硬项，不机械等全P7/I03；公司纳管企业模式额外要求R。R通过不等于生产就绪，独立模式先发布也不取消项目内企业接入待办。
+任何实际生产首发都须满足[按模式发布证据门](planning/planning-backlog.md#按运行模式检查的发布证据门)：复用G05/E09适用通用硬项，若早于P7只前移这些硬项，不机械等全P7/I03；公司纳管企业模式额外要求R。R通过不等于生产就绪，独立模式先发布也不取消项目内企业接入待办。
 
 [阶段入口](phase6/README.md)。按四个实施波次和一个扩展波次交付：
 
@@ -68,13 +68,13 @@ E08推荐改的是默认自研DAG、全量迁回并退役SOAR的旧技术路线�
 
 ## 7. 排期与调整规则
 
-新版执行顺序、首批PR和完整包/子出口依赖见[执行排期](review/execution-schedule.md)，新旧比较见[路线对照](review/roadmap-change-comparison-2026-11-12.md)。G02启保护等G03-Q；查询/发现分别等X02-Q/F，不等完整导航宿主；P7 MCP同时有读发布/消费，有限确认写在后继门，P8扩增强。
+新版执行顺序、首批PR和完整包/子出口依赖见[执行排期](planning/execution-schedule.md)，新旧比较见[路线对照](planning/roadmap-change-comparison-2026-11-12.md)。G02启保护等G03-Q；查询/发现分别等X02-Q/F，不等完整导航宿主；P7 MCP同时有读发布/消费，有限确认写在后继门，P8扩增强。
 
-首版本地投影复用现有WBS、必交项JSON Pointer及来源摘要，检查净额、覆盖、依赖/环和现势摘要漂移；长期76包保留原分母，不从整包祖先价倒推本地工期。消息窗口、试用环境和核心稳定验收的实际绑定见[执行动作](review/owner-decision-agenda.md)。
+首版本地投影复用现有WBS、必交项JSON Pointer及来源摘要，检查净额、覆盖、依赖/环和现势摘要漂移；长期76包保留原分母，不从整包祖先价倒推本地工期。消息窗口、试用环境和核心稳定验收的实际绑定见[执行动作](planning/owner-decision-agenda.md)。
 
 投入已按单席/每周5工程日规划，T0尚未启动且无严格截止；76包已计价长程基线与已入账增量合并生成参考排程；F004新增细项和OBS候选仍见补充册，不能将旧工作日或周次当新增范围的上线承诺。各包明确最薄首期、真实待验及增强条件；后期包的准确DTO/Schema在开工前冻结，不要求今天设计所有未来细节。
 
-先补可用链和正确性，再扩体验/提供方/自动化；改动按实际风险和现行门禁验证。分档门禁已由F020工程切片交付，G03其余双模式/装配守卫仍按原窗口；远端保护尚未配置。默认短分支经PR、单维护者可合保持，本次main直接修订为所有者明确的单批例外。任何取舍同步总账、来源、阶段和控制台，当前审计/待决见[规划收口](review/planning-closeout.md)。
+先补可用链和正确性，再扩体验/提供方/自动化；改动按实际风险和现行门禁验证。分档门禁已由F020工程切片交付，G03其余双模式/装配守卫仍按原窗口；远端保护尚未配置。默认短分支经PR、单维护者可合保持，本次main直接修订为所有者明确的单批例外。任何取舍同步总账、来源、阶段和控制台，当前审计/待决见[规划收口](planning/planning-closeout.md)。
 
 
 ## 日期化修订记录（历史）
@@ -83,13 +83,13 @@ E08推荐改的是默认自研DAG、全量迁回并退役SOAR的旧技术路线�
 
 > **2026-11-14 F014 当前路线的主线同步范围**：[关键模块与阶段复核](review/reports/plan-mainline-readiness-2026-11-14.md)未发现阻塞级遗漏或实质阶段冲突；待确认留逐模块详设。所有者明确批准五仓规划＋此前已验证升级一起经PR合main，实际集成及CI以各PR/准确提交记录为准。排期仅作可调整参考；未启动新业务开发、部署或共享栈切换。
 
-> **首版后继修订（质量优先）**：公司允许本地账号先正式运行；风险/工单/TR/AL/消息和完整本地三层权限先交，完整UAA P/R在核心稳定后交，UAA-C接缝先留。1月试用为争取窗口，原2月1日硬目标及1月11/18候选不再约束。见[首版阶梯](phase6/first-usable-release-plan.md)、[净估候选68–104工程日](review/local-core-release-estimate.json)及[变化对照](review/core-release-change-comparison.md)。长期76包参考不等于首版排程；AI等后继，未启动业务开发。
+> **首版后继修订（质量优先）**：公司允许本地账号先正式运行；风险/工单/TR/AL/消息和完整本地三层权限先交，完整UAA P/R在核心稳定后交，UAA-C接缝先留。1月试用为争取窗口，原2月1日硬目标及1月11/18候选不再约束。见[首版阶梯](phase6/first-usable-release-plan.md)、[净估候选68–104工程日](planning/local-core-release-estimate.json)及[变化对照](planning/core-release-change-comparison.md)。长期76包参考不等于首版排程；AI等后继，未启动业务开发。
 
 > **2026-11-14基础先行**：[基础版边界](design/foundation-release-boundaries.md)区分现有底座入网试验B0、最小可扩展基础B1与后续各期。B1先一条query adapter及一个参考私有应用，采用受审配置/重启；完整UAA-P、宿主管理CLI、全部页面与高阶观测不作统一前置。常用功能先可用，增强按实际使用继续交；阶段能力分组不再被理解为全包串行总门。当前未启动业务实现。
 
 > **F006后继确认与横切能力**：F004五组工单运营方向与Q01–Q06方向已明确确认，实际配置/增量估算仍按窗口冻结。公司文档不能导出时先交[UAA离线合成mock](design/examples/uaa-reference-mock/README.md)，企业真实接管留内网验证。[统一日志审计](design/unified-observability-audit.md)沿OBS01/P6.0基础契约与敏感日志、OBS02/P6.1最小可信审计、OBS03/P7跨仓可靠关联渐进交付；复用slog/PG及既有外部采集能力，不自建日志分析平台。当前生成排程是补充前有界基线，所选B1新增范围先扣重并在B1开工前整合，后继增强按对应包开工窗口拆估，不能把方向确认当全量实施或旧价包干。
 
-> **2026-11-13方向补充**：所有核心/可插拔产品能力逐步提供受权外部API，内部共用逻辑调用与结果/事件合同；MCP适配同一能力。P6先共同接缝与工单任务结果，P7补AL命令/源变化订阅和跨入口预算，P8/9扩专业协同。代码到视觉的一致性按共同规则渐进收敛。详见[调用合同](design/capability-invocation-contract.md)、[一致性合同](design/ecosystem-consistency-contract.md)及[新增范围](review/capability-interconnect-supplement.md)；旧71包是历史基线；当前总账纳入CE五项、旧子范围及基价复估，仍未启动业务开发。
+> **2026-11-13方向补充**：所有核心/可插拔产品能力逐步提供受权外部API，内部共用逻辑调用与结果/事件合同；MCP适配同一能力。P6先共同接缝与工单任务结果，P7补AL命令/源变化订阅和跨入口预算，P8/9扩专业协同。代码到视觉的一致性按共同规则渐进收敛。详见[调用合同](design/capability-invocation-contract.md)、[一致性合同](design/ecosystem-consistency-contract.md)及[新增范围](planning/capability-interconnect-supplement.md)；旧71包是历史基线；当前总账纳入CE五项、旧子范围及基价复估，仍未启动业务开发。
 
 
 > 2026-11-12所有者调整：G07A/G07B提前为Phase6业务开工前的版本维护批次，独立五仓工作树执行原全门禁和数据恢复演练；不再等待原S02/S04窗口。原包ID/估算归属留作追溯，不重复派单计工。G03分档和业务功能均未因此视为已实现；共享旧栈/原卷没有自动切换。
@@ -98,4 +98,4 @@ E08推荐改的是默认自研DAG、全量迁回并退役SOAR的旧技术路线�
 
 主线为**数据聚合与安全全生命周期管控**。专业发现/研判/执行取已有SOC、CMDB、TI、SOAR等供给；平台负责受权入口、责任、流程、结果与证据。模型只调已有API，内网仅内部服务；mock长期保留。既可接企业Agent，也可围绕本平台特有业务运行有限领域Agent。
 
-[唯一总账](review/planning-backlog.md)维护当前76父包、原511来源与新增范围、依赖和净估；[能力连续性](review/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。
+[唯一总账](planning/planning-backlog.md)维护当前76父包、原511来源与新增范围、依赖和净估；[能力连续性](planning/roadmap-capability-continuity.md)逐条追溯原规划，[渐进方案](design/project-evolution-strategy.md)说明最薄首期/增强条件，[控制台](review/11-project-control.md)说明当前实现。不得以调查完成代替保留功能交付，也不把所有旧提案变成必须自建。

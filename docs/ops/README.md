@@ -11,3 +11,5 @@
 | 端口取号与冲突处理 | [port-allocation.md](port-allocation.md) | 固定/动态端口及现有监听 |
 
 运行手册中的事故和结果有日期；不能用过去容器名、PID或镜像直接替代当前来源核验。新命令先在自有隔离环境验证，再把有效知识回填。
+
+[运维工具构建与扫描](tools/README.md)集中维护migrate/rclone的源码锁、构建、扫描和功能验证步骤；实际Dockerfile及依赖锁仍在deployments/tools，不因说明归位改变运行行为。

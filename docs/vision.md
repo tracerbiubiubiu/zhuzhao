@@ -2,9 +2,9 @@
 
 > **2026-11-11现行补充**：平台以**数据聚合与安全全生命周期管控**为首要目标。所有者确认SOC/SIEM、SOAR、CMDB、情报、企业Agent/知识平台均已有；优先取数/受控调用/跳转，不重复建设专业系统。大量mock保留；模型只调用已有API，内网仅内部服务。平台特有领域Agent与外部Agent接入采用双轨规划，具体目标见[边界与供给](design/platform-evolution.md)、[AI设计](design/ai-capabilities.md)及[当前路线](roadmap.md)。与旧阶段安排冲突时按本轮新裁决及总账执行。
 
-> **同日新增边界**：私有业务模块/真实上游以[稳定扩展](design/extension-compatibility.md)和[独立connector](design/intranet-adapter-migration.md)接入，不向核心混入内网SDK/表。设备首期为目录/状态/人工登录入口，异构无SSO，不造CMDB/NMS/PAM。取消公司版本对齐，受支持工具链/数据组件升级纳入G07A/G07B。当前未正式部署可协调替换旧合同；具体成熟度与owner待决见[规划收口](review/planning-closeout.md)。
+> **同日新增边界**：私有业务模块/真实上游以[稳定扩展](design/extension-compatibility.md)和[独立connector](design/intranet-adapter-migration.md)接入，不向核心混入内网SDK/表。设备首期为目录/状态/人工登录入口，异构无SSO，不造CMDB/NMS/PAM。取消公司版本对齐，受支持工具链/数据组件升级纳入G07A/G07B。当前未正式部署可协调替换旧合同；具体成熟度与owner待决见[规划收口](planning/planning-closeout.md)。
 
-> **全项目演进口径（2026-11-11，O10）**：以现有已成型底座及原Phase6–9业务价值为基线，尽可能承接并扩充/优化，问题设计可建议更小或专业供给替代。覆盖6/7/8/9及更远，不追求一次到位。保留、替代、条件验证与拟退出分别说明；当前[现行规划总账](review/planning-backlog.md)和[连续性审计](review/roadmap-capability-continuity.md)给原能力去向，新路线不是仅给旧计划追加AI。
+> **全项目演进口径（2026-11-11，O10）**：以现有已成型底座及原Phase6–9业务价值为基线，尽可能承接并扩充/优化，问题设计可建议更小或专业供给替代。覆盖6/7/8/9及更远，不追求一次到位。保留、替代、条件验证与拟退出分别说明；当前[现行规划总账](planning/planning-backlog.md)和[连续性审计](planning/roadmap-capability-continuity.md)给原能力去向，新路线不是仅给旧计划追加AI。
 
 > **本文档是范围判定的唯一锚点。** 任何"某能力放哪个阶段"的争论，先回看本文件再下结论；禁止凭直觉在细节文档里改阶段归属。
 > **当前阅读口径（2026-11-08 校准）**：平台边界以 §1.0 的 2026-11-03 定界为准；工单恢复自研按 DD §29，风险管理按已批准的 Phase 6 入口。§2/3 保存 2026-08 的 MVP 分期裁决方法，不是当前完整能力清单；交付状态看 [总控](review/11-project-control.md) 与各阶段 README。

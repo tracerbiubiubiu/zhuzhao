@@ -1,11 +1,11 @@
 # Phase6任务、ActiveList与消息模块详细设计
 
-日期：2026-11-14。状态：**待实施的模块设计候选**，不表示下面的表、路由、协议或故障测试已经实现。范围为C03/R01/D12、CE01/CE02的P6切片、D11/D15消息侧；AL写与变化源承接CE03/CE04的首版本地子范围。范围与价格继续以[总账](../review/planning-backlog.json)、[本地核心分项](../review/local-core-release-estimate.json)为准，本页不新增一份总价。
+日期：2026-11-14。状态：**待实施的模块设计候选**，不表示下面的表、路由、协议或故障测试已经实现。范围为C03/R01/D12、CE01/CE02的P6切片、D11/D15消息侧；AL写与变化源承接CE03/CE04的首版本地子范围。范围与价格继续以[总账](../planning/planning-backlog.json)、[本地核心分项](../planning/local-core-release-estimate.json)为准，本页不新增一份总价。
 
 本页把[六条接缝](module-design-handoff.md)展开到模块输入、事务、失败出口和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地画像，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
 
 <!-- local-core-source:start -->
-当前首版本地核心净估与条件以[唯一净估册](../review/local-core-release-estimate.json)为准；本文不另立总价。
+当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
 <!-- local-core-source:end -->
 
 ## 1. 当前代码、变化及分期
@@ -295,7 +295,7 @@ TR `internal/handler/server.go`的`Deps.createJob`目前body.created_by优先于
 
 可复用主仓`internal/handler/taskrunner_handler_test.go`的`TestTaskrunnerHandler_CreateJobFailFast/TestTaskrunnerHandler_BadRequest/TestTaskrunnerHandler_ProxyPassthrough`、`internal/service/taskrunner_service_integration_test.go`的`TestTaskrunnerServiceSubmitRecordsVoucher`、`internal/service/message_rule_version_integration_test.go`的`TestMessageRule_VersionCAS`；这些目前不证明动作授权。TR `internal/handler/server_test.go`的`TestCreateJobCreatedByFallback`明确断言body优先，实施须先说明合同纠正，再补有效红例，不能把当前绿色当可信归因。授权拒绝须真实HTTP＋PG审计行/下游调用数对照，最终Handler入口单独测；两种证据不能互代。
 
-**已确认TASK-D01（F019）**：保留受控人工维护，临时覆盖单独授权。固定系统cron继续；人工入口仅向独立获授权的维护者开放，默认使用配置。临时缩短等覆盖必须命中批准值/范围、有效期、理由和审计；普通task:submit等业务资格不自动成为维护权。若启用额外TR维护job，仍绑定批准后台主体与定义版本；不能用body自报批准或actor="system"取权。具体入口在对应模块批落实，不据此立即建设完整维护界面/审批平台，不执行归档或删除。确切答复与问题来源见[后继F019](../review/planning-followups.json#F019-module-detail-owner-decisions)。
+**已确认TASK-D01（F019）**：保留受控人工维护，临时覆盖单独授权。固定系统cron继续；人工入口仅向独立获授权的维护者开放，默认使用配置。临时缩短等覆盖必须命中批准值/范围、有效期、理由和审计；普通task:submit等业务资格不自动成为维护权。若启用额外TR维护job，仍绑定批准后台主体与定义版本；不能用body自报批准或actor="system"取权。具体入口在对应模块批落实，不据此立即建设完整维护界面/审批平台，不执行归档或删除。确切答复与问题来源见[后继F019](../planning/planning-followups.json#F019-module-detail-owner-decisions)。
 
 TASK-03的待实现预期补：受权人工按配置执行；临时批准合法且有效时仅准许批准值，缺批准/过期/超界/伪造引用均零删除；拒绝不改变默认cron。该政策已定，不等于原越界缺陷已修。
 

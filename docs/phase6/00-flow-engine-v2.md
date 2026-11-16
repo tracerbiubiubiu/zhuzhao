@@ -2,7 +2,7 @@
 
 > **2026-11-14 模块详设后继**：[工单模块详设](ticket-module-detail.md)补准确 DTO、逻辑 DDL、发布/迁版/CAS、成员来源、所有入态的 SLA/里程碑及 TDD。D01/D02 是本地核心所需纵切，整页配置器 U04 与自动路由 D16 仍按完整 P6 后续交付；旧 B0 波次和日期只作来源。规范字段为 `collect_fields/custom_data_patch`，旧 `fields_on_transition/fields` 是草案名；运行时只能取实例所钉定义，当前权限/字典引用等 live 范围沿现行生命周期合同。这里的“即时推进”必须有 R01 同事务可靠唤醒，不依赖单次 commit 后 goroutine，默认边也不能吞求值错误。
 
-> **2026-11-11现行排期**：本稿保留详细设计和历史裁决；范围、依赖、估算与条件项以[新路线](../roadmap.md)、[去重总账](../review/planning-backlog.md)和[平台边界](../design/platform-evolution.md)为准。旧“合main待办/整包前置/触发未到不排期/所有代拍等切phase6”不再是当前执行顺序；未定语义在对应工作包开工前确认，不能据此认为代码已实现。
+> **2026-11-11现行排期**：本稿保留详细设计和历史裁决；范围、依赖、估算与条件项以[新路线](../roadmap.md)、[去重总账](../planning/planning-backlog.md)和[平台边界](../design/platform-evolution.md)为准。旧“合main待办/整包前置/触发未到不排期/所有代拍等切phase6”不再是当前执行顺序；未定语义在对应工作包开工前确认，不能据此认为代码已实现。
 
 > **当前状态（2026-11-11）**。Phase 5 阶段交付与工作区收尾已确认，剩余问题和待验记录已移交 Phase 6。后续进行全项目重新设计规划，本文原有范围、接口、实现方案、波次和工期保留为复核输入，历史批准与估算继续追溯。交付、资源清理实际终态和最终收据见 [Phase 5 验收记录 §8](../phase5/12-scenarios-and-tests.md) 与 [运行手册](../ops/runbook.md)，后续登记见 [07 号](07-backlog-and-triggers.md)。
 

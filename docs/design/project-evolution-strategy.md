@@ -2,9 +2,9 @@
 
 > **2026-11-14交付范围修订**：以[基础版边界](foundation-release-boundaries.md)为近期出口权威。现有底座可先打包入网开发试验；B1只交所需基础业务、X01-B配置式接缝和X02-Q一条参考查询。X01-H、完整UAA-P、全站迁移及高级观测不共同前置；新包按就绪纵切先可用，不能仅因属于下一波就等待前一波所有增强。完整愿景保留，缩小首批组合并保持其中数据、安全和测试要求。
 
-> **2026-11-13增补**：[统一能力合同](capability-invocation-contract.md)与[全栈一致性](ecosystem-consistency-contract.md)成为后续新增/触及能力的共同方向；不要求一次改造全部存量。先工单任务结果，再AL受权任务/源变化订阅，后扩Agent和复杂协同，均逐链验收。[5项增量](../review/capability-interconnect-supplement.md)已按有限代表范围净估52–80工程日，并与LS及既有包替价扣重进入[现行净估与排期](../review/planning-scope-estimates.json)；不是全部未来厂商或未知场景的包干价。
+> **2026-11-13增补**：[统一能力合同](capability-invocation-contract.md)与[全栈一致性](ecosystem-consistency-contract.md)成为后续新增/触及能力的共同方向；不要求一次改造全部存量。先工单任务结果，再AL受权任务/源变化订阅，后扩Agent和复杂协同，均逐链验收。[5项增量](../planning/capability-interconnect-supplement.md)已按有限代表范围净估52–80工程日，并与LS及既有包替价扣重进入[现行净估与排期](../planning/planning-scope-estimates.json)；不是全部未来厂商或未知场景的包干价。
 
-日期：2026-11-11。状态：全项目路线方案，尚未实施。承接现有五仓main和原Phase6–9/更远规划，融合AI、内网扩展、设备及工程治理。所有者明确要求尽可能承接原业务价值，同时允许纠正不合理设计，以适合当前规模的增量演进推进。主路线见[roadmap](../roadmap.md)，包/依赖/粗估以[总账](../review/planning-backlog.md)为唯一来源，逐来源承接见[连续性审计](../review/roadmap-capability-continuity.md)。
+日期：2026-11-11。状态：全项目路线方案，尚未实施。承接现有五仓main和原Phase6–9/更远规划，融合AI、内网扩展、设备及工程治理。所有者明确要求尽可能承接原业务价值，同时允许纠正不合理设计，以适合当前规模的增量演进推进。主路线见[roadmap](../roadmap.md)，包/依赖/粗估以[总账](../planning/planning-backlog.md)为唯一来源，逐来源承接见[连续性审计](../planning/roadmap-capability-continuity.md)。
 
 ## 1. 怎样选择，而不是重新造平台
 
@@ -88,4 +88,4 @@ E09将首次生产硬出口、已选拓扑和可选优化分开：可先单副�
 
 完整独立模式与企业adapter模式长期共用公共核心，见[现行UAA合同](uaa-governance-integration.md)。P6.0先冻结公共来源/编码规则与合成合同，P6.1起公共P可按首UAA提供方的实际纵切交付，不挡B1独立基础。真实R具备供给后联调，在纳管企业模式首次正式激活前通过；入网开发试验不等于企业激活或生产。首发过所选形态的公共硬门，企业追加R，不机械等待全部P7。
 
-三类流程、风险/SOC分责、Agent双轨、RAG/skill、设备人工入口及渐进拆分继续原安排。UAA只改变受管身份/授权来源与接入验收，不能顺势扩成新的SOC/IAM审批产品；也不撤销原有业务价值。UAA已完成有界补估：C2–3、公共P25–39、真实R13–22工程日，复用及最小前端/运维边界见[UAA估算](../review/uaa-implementation-estimate.md)。已计价长程基线总量和依赖以[派生排期](../review/execution-schedule.md)为准；F004新增细项和OBS候选见[后继补充册](../review/post-baseline-scope-estimates.json)，尚未合成最新全范围价，真实提供方等待另列；未来获选条件功能仍须子估，不再引用补估前的旧切片区间。
+三类流程、风险/SOC分责、Agent双轨、RAG/skill、设备人工入口及渐进拆分继续原安排。UAA只改变受管身份/授权来源与接入验收，不能顺势扩成新的SOC/IAM审批产品；也不撤销原有业务价值。UAA已完成有界补估：C2–3、公共P25–39、真实R13–22工程日，复用及最小前端/运维边界见[UAA估算](../planning/uaa-implementation-estimate.md)。已计价长程基线总量和依赖以[派生排期](../planning/execution-schedule.md)为准；F004新增细项和OBS候选见[后继补充册](../planning/post-baseline-scope-estimates.json)，尚未合成最新全范围价，真实提供方等待另列；未来获选条件功能仍须子估，不再引用补估前的旧切片区间。

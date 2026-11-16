@@ -390,5 +390,5 @@
   },
   "detail_ref": "docs/design/capability-interconnect-detail.md",
   "catalog_ref": "docs/design/capability-operation-catalog.json",
-  "estimate_registry_ref": "docs/review/planning-scope-estimates.json"
+  "estimate_registry_ref": "docs/planning/planning-scope-estimates.json"
 }

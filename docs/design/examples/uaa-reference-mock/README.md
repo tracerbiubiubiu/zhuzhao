@@ -1,7 +1,7 @@
 # UAA双模式与治理feed离线参考
 
 > 日期：2026-11-13。状态：设计参考，全部为本地合成数据。运行只使用Python标准库，不访问网络、公司UAA/MQ、主仓IAM或业务数据库；不是OIDC/SAML/SCIM服务，也不是公共UAA产品实现。
-> 权威设计：[UAA治理与双模式](../../uaa-governance-integration.md)、[公共实现估算](../../../review/uaa-implementation-estimate.md)、[真实联调条件](../../../review/uaa-real-integration-conditions.md)。
+> 权威设计：[UAA治理与双模式](../../uaa-governance-integration.md)、[公共实现估算](../../../planning/uaa-implementation-estimate.md)、[真实联调条件](../../../planning/uaa-real-integration-conditions.md)。
 
 ## 文件与复跑
 

@@ -22,7 +22,7 @@
 
 - [首版阶梯、变化对照与内网升级复核](first-usable-release-design-2026-11-14.md)：本轮实际交付、接口缺口、基础/增强边界、兼容升级和日期/净估限制。
 
-- 首版定向复核：[四链/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层与UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI与试用](core-release-ui-trial-plan-2026-11-14.md)。所有者日常先读[阶梯](../../phase6/first-usable-release-plan.md)和[变化对照](../core-release-change-comparison.md)。
+- 首版定向复核：[四链/预设端口](core-release-chain-recheck-2026-11-14.md)、[三层与UAA](core-release-uaa-recheck-2026-11-14.md)、[薄UI与试用](core-release-ui-trial-plan-2026-11-14.md)。所有者日常先读[阶梯](../../phase6/first-usable-release-plan.md)和[变化对照](../../planning/core-release-change-comparison.md)。
 
 - [基础先行与各期边界复核](foundation-boundaries-2026-11-14.md)：分开现有底座入网试验、最小扩展基础版和后继增强，修正依赖/排程；原全量预算不冒充基础版估价。
 
@@ -118,5 +118,5 @@
 
 - [遗漏补齐与交付复核](design-gap-closure-2026-11-13.md)：六组实质缺口、净估/完整排程、实际门禁与未来实施边界。
 - [分段独立终审](design-gap-independent-review-2026-11-13.md)：原话复读、交叉反例、修正与独立资格。
-- [当前全会话再核](../conversation-reaudit.md)：续65条用户来源、93点逐项复核、13组未批准议程，修正现行漂移、E10调查排程与参考模型apply重放反例；产品和真实接入仍按包验收。
+- [当前全会话再核](../../planning/conversation-reaudit.md)：续65条用户来源、93点逐项复核、13组未批准议程，修正现行漂移、E10调查排程与参考模型apply重放反例；产品和真实接入仍按包验收。
 - [五仓README与公开入口更新](readme-refresh-2026-11-13.md)：中英README、合成展示素材、贡献与问题/PR入口；F004/F005续源、测试资源可重建前提、命名和传播候选；真实门禁和冷启动/增长效果边界分列。

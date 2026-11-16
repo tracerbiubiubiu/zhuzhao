@@ -123,7 +123,7 @@ def validate(root, data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument('--registry', type=Path, default=Path('docs/review/planning-closure.json'))
+    parser.add_argument('--registry', type=Path, default=Path('docs/planning/planning-closure.json'))
     args = parser.parse_args()
     try:
         root = args.root.resolve()

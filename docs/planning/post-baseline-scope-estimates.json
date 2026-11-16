@@ -8,8 +8,8 @@
     "F008-foundation-first-boundaries"
   ],
   "baseline": {
-    "backlog": "docs/review/planning-backlog.json",
-    "schedule": "docs/review/execution-schedule.json",
+    "backlog": "docs/planning/planning-backlog.json",
+    "schedule": "docs/planning/execution-schedule.json",
     "priced_source_cutoff": "F003_and_prior_bounded_CE_LS_RP_scope",
     "parents": 76,
     "public_engineering_days": [
@@ -189,7 +189,7 @@
   "policy_state": {
     "audit_read_scope": "owner_confirmed_separate_business_history_and_dedicated_audit",
     "two_IAM_write_audit_failure": "owner_confirmed_local_atomic_rollback_external_delivery_recoverable_not_implemented",
-    "confirmation_ref": "docs/review/planning-followups.json#F017-iam-first-batch-owner-decisions"
+    "confirmation_ref": "docs/planning/planning-followups.json#F017-iam-first-batch-owner-decisions"
   },
   "reference_mock": {
     "ref": "docs/design/examples/uaa-reference-mock/README.md",
@@ -205,6 +205,6 @@
     "B1": "已选基础敏感面、本地可信事实和受权分页/原页薄接线；开工前对所选净增细项拆估并入DAG",
     "enhancement": "异步大导出/快照artifact、外送与多worker随实际用途/拓扑在对应包开工前拆估；现22–33是完整候选范围，非B1价格"
   },
-  "dated_core_release_ref": "docs/review/first-usable-release-target.json",
+  "dated_core_release_ref": "docs/planning/first-usable-release-target.json",
   "dated_core_release_pricing_boundary": "首版选定固定业务画像要与旧D/U/CE/UAA及F004/OBS联合扣重；当前保守视图和UI视图不是新净总价，缩范围不等于按期已证"
 }

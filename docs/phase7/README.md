@@ -2,9 +2,9 @@
 
 > **2026-11-14交付边界**：按[基础先行](../design/foundation-release-boundaries.md)先选一个API/提供方或手动任务纵切，不要求所有来源、MCP、计划任务和完整恢复台一齐上线。当前用户的一次手动调用与后台持续委托按各自实际身份/恢复前提交付；后继在开工前拆所消费子出口，不能为提前交付而删掉必要权限/unknown护栏。
 
-> **2026-11-13互通增量**：沿P6共同接缝扩I01目录，CE03在R06选定授权/并发合同后接AL受权任务adapter；CE04补AL源事务事实、受控订阅→TR任务，自动链按CE05准入/因果预算启用，三链各有最小UI与结果/恢复反馈。简单变化触发不拖至P9，MCP只薄适配同一能力。来源、批量粒度及计价边界见[增量册](../review/capability-interconnect-supplement.md)；不以旧R06/I01/U06预算包干。
+> **2026-11-13互通增量**：沿P6共同接缝扩I01目录，CE03在R06选定授权/并发合同后接AL受权任务adapter；CE04补AL源事务事实、受控订阅→TR任务，自动链按CE05准入/因果预算启用，三链各有最小UI与结果/恢复反馈。简单变化触发不拖至P9，MCP只薄适配同一能力。来源、批量粒度及计价边界见[增量册](../planning/capability-interconnect-supplement.md)；不以旧R06/I01/U06预算包干。
 
-> 2026-11-11重规划；尚未实施。本阶段消费Phase6可信业务合同，不再按旧“扩源数量+未来AI占位”组织。唯一排期与估算见[总账](../review/planning-backlog.md)，边界见[平台演进](../design/platform-evolution.md)。
+> 2026-11-11重规划；尚未实施。本阶段消费Phase6可信业务合同，不再按旧“扩源数量+未来AI占位”组织。唯一排期与估算见[总账](../planning/planning-backlog.md)，边界见[平台演进](../design/platform-evolution.md)。
 
 ## 1. 目标和范围
 
@@ -16,7 +16,7 @@ A03是协议适配，不把全部HTTP端点导成MCP工具；A04先展示时区�
 
 ## 2. 原能力承接与分步交付
 
-2026-11-12已统一MCP消费窗口：A03-R/P7先两项只读发布及一项外部只读消费，A03-W在精确批准/receipt门后交有限确认写适配，P8扩企业Agent/逐主体ACL/缓存/长任务。候选Schema/OAuth和无企业AS开发路径见[首批合同](../design/mcp-first-contract.md)；mock/contract不等于真实AS/企业联通。实施先后与复估见[执行排期](../review/execution-schedule.md)。
+2026-11-12已统一MCP消费窗口：A03-R/P7先两项只读发布及一项外部只读消费，A03-W在精确批准/receipt门后交有限确认写适配，P8扩企业Agent/逐主体ACL/缓存/长任务。候选Schema/OAuth和无企业AS开发路径见[首批合同](../design/mcp-first-contract.md)；mock/contract不等于真实AS/企业联通。实施先后与复估见[执行排期](../planning/execution-schedule.md)。
 
 先I01/I02目录与受权导出、主体/撤销/轮换，再U08用Schema表单一次运行和工单动作回贴；A03/A04是MCP/自然语言新增入口，不替代手动任务。I01必须交同一Action版本的OpenAPI/Schema出口，当前管理API Swagger不等于动态Action导出。
 
@@ -28,9 +28,9 @@ I04先两类代表源可见/去重/通知/受权人工派单及隔离回放，D1
 
 ## 3. 并行承接
 
-UAA不是整体等P7才启动：E01-UAA-C/P分别在P6.0/P6.1交公共规则/合成矩阵及公共双模式实现，P权限写入/撤权出口复用C04守卫并以其完整包验收为前置；I02非人主体不替代企业用户登录。E01-UAA-R自P6.1可真实联调，仅阻断公司UAA纳管企业模式首次正式激活，独立正式部署不等R。具体合同、估算和最小UI/runbook见[双模式方案](../design/uaa-governance-integration.md)及[排期](../review/execution-schedule.md)。
+UAA不是整体等P7才启动：E01-UAA-C/P分别在P6.0/P6.1交公共规则/合成矩阵及公共双模式实现，P权限写入/撤权出口复用C04守卫并以其完整包验收为前置；I02非人主体不替代企业用户登录。E01-UAA-R自P6.1可真实联调，仅阻断公司UAA纳管企业模式首次正式激活，独立正式部署不等R。具体合同、估算和最小UI/runbook见[双模式方案](../design/uaa-governance-integration.md)及[排期](../planning/execution-schedule.md)。
 
-G05/E09区分通用生产硬项与后继增强：实际首发早于P7时只将所选形态的TLS/边界、制品/迁移、恢复/回退及故障可见等适用硬项前移并复估，不机械要求完整I03或全P7。R不能代替这些生产证据；按模式检查的门见[总账](../review/planning-backlog.md#按运行模式检查的发布证据门)，当前不作已通过声明。
+G05/E09区分通用生产硬项与后继增强：实际首发早于P7时只将所选形态的TLS/边界、制品/迁移、恢复/回退及故障可见等适用硬项前移并复估，不机械要求完整I03或全P7。R不能代替这些生产证据；按模式检查的门见[总账](../planning/planning-backlog.md#按运行模式检查的发布证据门)，当前不作已通过声明。
 
 R06补AL并发完整性、破坏性schema/全量导入及业务授权边界；R07维护utils协议与消费者版本；G05及E09补供应链、发布/恢复/生产就绪；E01逐项做真实提供方验证。专业平台不存在本地能力镜像，AL不是CMDB或风险正本。
 

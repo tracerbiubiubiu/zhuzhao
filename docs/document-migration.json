@@ -1,0 +1,162 @@
+{
+  "date": "2026-11-16",
+  "purpose": "current planning path migration; historical source literals remain historical",
+  "moves": [
+    {
+      "from": "docs/review/planning-scope-estimates.json",
+      "to": "docs/planning/planning-scope-estimates.json"
+    },
+    {
+      "from": "docs/review/planning-source-map.json",
+      "to": "docs/planning/planning-source-map.json"
+    },
+    {
+      "from": "docs/review/user-requirements-reconciliation.md",
+      "to": "docs/planning/user-requirements-reconciliation.md"
+    },
+    {
+      "from": "docs/review/legacy-trigger-disposition.json",
+      "to": "docs/planning/legacy-trigger-disposition.json"
+    },
+    {
+      "from": "docs/review/research-supplement-status.json",
+      "to": "docs/planning/research-supplement-status.json"
+    },
+    {
+      "from": "docs/review/planning-document-scope.json",
+      "to": "docs/planning/planning-document-scope.json"
+    },
+    {
+      "from": "docs/review/planning-followups.json",
+      "to": "docs/planning/planning-followups.json"
+    },
+    {
+      "from": "docs/review/uaa-real-integration-conditions.md",
+      "to": "docs/planning/uaa-real-integration-conditions.md"
+    },
+    {
+      "from": "docs/review/iam-net-allocation-2026-11-15.md",
+      "to": "docs/planning/iam-net-allocation-2026-11-15.md"
+    },
+    {
+      "from": "docs/review/execution-schedule-model.json",
+      "to": "docs/planning/execution-schedule-model.json"
+    },
+    {
+      "from": "docs/review/capability-interconnect-supplement.json",
+      "to": "docs/planning/capability-interconnect-supplement.json"
+    },
+    {
+      "from": "docs/review/owner-decision-agenda.json",
+      "to": "docs/planning/owner-decision-agenda.json"
+    },
+    {
+      "from": "docs/review/uaa-implementation-estimate.json",
+      "to": "docs/planning/uaa-implementation-estimate.json"
+    },
+    {
+      "from": "docs/review/conversation-reaudit.md",
+      "to": "docs/planning/conversation-reaudit.md"
+    },
+    {
+      "from": "docs/review/local-core-release-estimate.json",
+      "to": "docs/planning/local-core-release-estimate.json"
+    },
+    {
+      "from": "docs/review/user-requirements-reconciliation.json",
+      "to": "docs/planning/user-requirements-reconciliation.json"
+    },
+    {
+      "from": "docs/review/uaa-dual-mode-review.json",
+      "to": "docs/planning/uaa-dual-mode-review.json"
+    },
+    {
+      "from": "docs/review/uaa-implementation-estimate.md",
+      "to": "docs/planning/uaa-implementation-estimate.md"
+    },
+    {
+      "from": "docs/review/execution-schedule.md",
+      "to": "docs/planning/execution-schedule.md"
+    },
+    {
+      "from": "docs/review/post-baseline-scope-estimates.json",
+      "to": "docs/planning/post-baseline-scope-estimates.json"
+    },
+    {
+      "from": "docs/review/planning-backlog.json",
+      "to": "docs/planning/planning-backlog.json"
+    },
+    {
+      "from": "docs/review/core-release-change-comparison.md",
+      "to": "docs/planning/core-release-change-comparison.md"
+    },
+    {
+      "from": "docs/review/roadmap-capability-continuity.md",
+      "to": "docs/planning/roadmap-capability-continuity.md"
+    },
+    {
+      "from": "docs/review/planning-closeout.md",
+      "to": "docs/planning/planning-closeout.md"
+    },
+    {
+      "from": "docs/review/roadmap-capability-continuity.json",
+      "to": "docs/planning/roadmap-capability-continuity.json"
+    },
+    {
+      "from": "docs/review/uaa-real-integration-conditions.json",
+      "to": "docs/planning/uaa-real-integration-conditions.json"
+    },
+    {
+      "from": "docs/review/execution-schedule.json",
+      "to": "docs/planning/execution-schedule.json"
+    },
+    {
+      "from": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+      "to": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
+    },
+    {
+      "from": "docs/review/conversation-reaudit.json",
+      "to": "docs/planning/conversation-reaudit.json"
+    },
+    {
+      "from": "docs/review/planning-decisions.json",
+      "to": "docs/planning/planning-decisions.json"
+    },
+    {
+      "from": "docs/review/focus-depth-verification.json",
+      "to": "docs/planning/focus-depth-verification.json"
+    },
+    {
+      "from": "docs/review/roadmap-change-comparison-2026-11-12.md",
+      "to": "docs/planning/roadmap-change-comparison-2026-11-12.md"
+    },
+    {
+      "from": "docs/review/legacy-trigger-disposition.md",
+      "to": "docs/planning/legacy-trigger-disposition.md"
+    },
+    {
+      "from": "docs/review/owner-decision-agenda.md",
+      "to": "docs/planning/owner-decision-agenda.md"
+    },
+    {
+      "from": "docs/review/planning-design-status.json",
+      "to": "docs/planning/planning-design-status.json"
+    },
+    {
+      "from": "docs/review/first-usable-release-target.json",
+      "to": "docs/planning/first-usable-release-target.json"
+    },
+    {
+      "from": "docs/review/planning-closure.json",
+      "to": "docs/planning/planning-closure.json"
+    },
+    {
+      "from": "docs/review/planning-backlog.md",
+      "to": "docs/planning/planning-backlog.md"
+    },
+    {
+      "from": "docs/review/capability-interconnect-supplement.md",
+      "to": "docs/planning/capability-interconnect-supplement.md"
+    }
+  ]
+}

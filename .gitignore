@@ -37,7 +37,6 @@ logs/
 
 # Wire generated (uncomment to ignore, but recommended to commit)
 # internal/app/wire_gen.go
-doc/
 .DS_Store
 
 # ai
@@ -47,8 +46,6 @@ doc/
 .VSCodeCounter
 .zcode
 
-# Codex 本地工作文档、审计证据与执行进度（不随项目提交）
-.codex/
 
 # 防复发：vendor 快照曾误入历史（ab6e2f5，GitHub Push Protection 拦截）；构建走 goproxy.cn 无需 vendor
 vendor/
@@ -57,15 +54,7 @@ deployments/.env
 # 审计归档本地卷运行时产物（audit_archive 导出 JSONL，dev/运行期产生，不入库）
 data/
 
-# 每日只读增量审计的报告与基线状态（本地留档，不入库；由审计代理写入，代理不改本文件）
-# 注意：清理工作树时勿用 git clean -fdx，-x 会连同该目录一起删除
-/audit-reports/
 
-# Local references and process output; formal documents live in docs/
-/doc/
-/deliverables/
-/outputs/
-/.codex/
 
 # Local Python verification bytecode
 __pycache__/
@@ -73,3 +62,24 @@ __pycache__/
 
 # Isolated non-runtime reference validation dependencies
 /scripts/reference-tools/node_modules/
+
+# Local-only references and execution artifacts: archive outside this repository.
+# Keep legacy paths excluded to prevent accidental copying back; maintained docs stay in docs/.
+/doc/
+/deliverables/
+/outputs/
+/audit-reports/
+/.codex/
+/archives/
+/private/
+/references/
+/evidence/
+/maintenance/
+
+# Preserve existing nested legacy workspace exclusions.
+doc/
+.codex/
+
+# Local secret overrides; keep versioned environment templates visible.
+/.env.local
+/.env.*.local

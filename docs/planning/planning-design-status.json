@@ -136,7 +136,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/uaa-governance-integration.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -428,7 +428,7 @@
         "AUTH-GAP-03",
         "AUTH-GAP-04"
       ],
-      "owner_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+      "owner_policy_confirmation_ref": "docs/planning/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "D04",
@@ -458,7 +458,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -635,7 +635,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/ticket-module-detail.md",
         "docs/design/authorization-model-and-engine-choice.md"
       ],
@@ -664,7 +664,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/task-activelist-message-detail.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md",
         "docs/review/reports/core-interaction-architecture-review-2026-11-15.md",
@@ -697,7 +697,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/risk-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -720,7 +720,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/soc-collaboration-authorization.md",
         "docs/phase6/risk-module-detail.md"
       ],
@@ -929,7 +929,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -946,7 +946,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/review/reports/authorization-design-implementation-review-2026-11-15.md"
       ],
@@ -982,7 +982,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1155,7 +1155,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1172,7 +1172,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1189,7 +1189,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/planning/planning-backlog.json"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1205,7 +1205,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1222,7 +1222,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1243,7 +1243,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/planning/planning-backlog.json"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1259,7 +1259,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/design/uaa-governance-integration.md"
       ],
@@ -1277,7 +1277,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/module-detail-index.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1297,7 +1297,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/phase6/module-detail-index.md"
       ],
@@ -1311,7 +1311,7 @@
       "next_design_gate": "P6.3出口先完成范围/供给裁决；P8实施前冻结获准子范围详细合同",
       "decision_gate": "P6.3出口",
       "early_disposition_ref": "docs/phase6/early-disposition-cards.md",
-      "phasing_policy_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+      "phasing_policy_confirmation_ref": "docs/planning/planning-followups.json#F019-module-detail-owner-decisions"
     },
     {
       "work_item": "E04",
@@ -1319,7 +1319,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/phase6/module-detail-index.md"
       ],
@@ -1340,7 +1340,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json"
+        "docs/planning/planning-backlog.json"
       ],
       "implementation_state": "planned_not_implemented",
       "owner_policy": "see_planning_decisions",
@@ -1356,7 +1356,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/phase6/module-detail-index.md"
       ],
@@ -1377,7 +1377,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/authorization-model-and-engine-choice.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1398,7 +1398,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1415,7 +1415,7 @@
       "design_depth": "boundary_contract_or_disposition",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/design/project-evolution-strategy.md",
         "docs/design/uaa-governance-integration.md",
         "docs/design/authorization-model-and-engine-choice.md"
@@ -1465,7 +1465,7 @@
       "design_depth": "detailed_contract_candidate",
       "design_refs": [
         "docs/design/platform-evolution.md",
-        "docs/review/planning-backlog.json",
+        "docs/planning/planning-backlog.json",
         "docs/phase6/ticket-module-detail.md"
       ],
       "implementation_state": "planned_not_implemented",
@@ -1830,10 +1830,10 @@
     "mock_preserved": true,
     "first_uaa_governed_enterprise_activation_gate": true,
     "independent_mode_requires_uaa": false,
-    "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json",
-    "conditions_ref": "docs/review/uaa-real-integration-conditions.json"
+    "estimate_registry_ref": "docs/planning/uaa-implementation-estimate.json",
+    "conditions_ref": "docs/planning/uaa-real-integration-conditions.json"
   },
-  "estimate_status_ref": "docs/review/planning-scope-estimates.json",
+  "estimate_status_ref": "docs/planning/planning-scope-estimates.json",
   "resource_binding_status": {
     "state": "one_seat_confirmed_actual_T0_not_started_quality_first",
     "confirmed_on": "2026-11-13",
@@ -1841,18 +1841,18 @@
     "engineering_days_per_week": 5,
     "T0": null,
     "hard_deadline": null,
-    "ref": "docs/review/execution-schedule.json#/resource_assumptions"
+    "ref": "docs/planning/execution-schedule.json#/resource_assumptions"
   },
   "design_supplements": [
     {
-      "ref": "docs/review/capability-interconnect-supplement.json",
+      "ref": "docs/planning/capability-interconnect-supplement.json",
       "depth": "detailed_contract_candidate_with_operation_inventory",
       "new_items": 5,
       "api_schema_frozen": false,
       "implemented": false,
       "priced": true,
-      "scope_estimate_ref": "docs/review/planning-scope-estimates.json",
-      "schedule_ref": "docs/review/execution-schedule.json"
+      "scope_estimate_ref": "docs/planning/planning-scope-estimates.json",
+      "schedule_ref": "docs/planning/execution-schedule.json"
     }
   ],
   "scope_counts": {
@@ -1919,9 +1919,9 @@
       "next_design_gate": "P7开工前"
     }
   ],
-  "historical_uaa_estimate_ref": "docs/review/uaa-implementation-estimate.json",
-  "current_conversation_audit_ref": "docs/review/conversation-reaudit.json",
-  "owner_decision_agenda_ref": "docs/review/owner-decision-agenda.json",
+  "historical_uaa_estimate_ref": "docs/planning/uaa-implementation-estimate.json",
+  "current_conversation_audit_ref": "docs/planning/conversation-reaudit.json",
+  "owner_decision_agenda_ref": "docs/planning/owner-decision-agenda.json",
   "latest_delivery_boundary_ref": "docs/phase6/first-usable-release-plan.md",
   "latest_delivery_boundary_date": "2026-11-14",
   "module_refinement_entry": {
@@ -1930,13 +1930,13 @@
     "state": "phase6_module_candidates_written_not_all_implementation_artifacts_frozen",
     "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_later",
     "existing_item_maturity_not_reclassified": false,
-    "net_estimate_candidate_ref": "docs/review/local-core-release-estimate.json",
+    "net_estimate_candidate_ref": "docs/planning/local-core-release-estimate.json",
     "full_UAA_P_R_not_local_core_formal_gate": true
   },
   "local_core_release_view": {
     "ref": "docs/phase6/first-usable-release-plan.md",
-    "target_ref": "docs/review/first-usable-release-target.json",
-    "estimate_ref": "docs/review/local-core-release-estimate.json",
+    "target_ref": "docs/planning/first-usable-release-target.json",
+    "estimate_ref": "docs/planning/local-core-release-estimate.json",
     "formal_local_accounts_allowed": true,
     "UAA_C_early_full_P_R_later": true,
     "core_real_message_not_deferred": true,
@@ -1952,9 +1952,9 @@
       ],
       "scope": "F013 initial scoped candidate; superseded, not current price"
     },
-    "candidate_days_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days",
-    "projection_ref": "docs/review/execution-schedule.json#/local_core",
-    "pricing_review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
+    "candidate_days_source": "docs/planning/local-core-release-estimate.json#/totals/rounded_display_days",
+    "projection_ref": "docs/planning/execution-schedule.json#/local_core",
+    "pricing_review_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
   },
   "mainline_readiness_review": {
     "ref": "docs/review/reports/plan-mainline-readiness-2026-11-14.md",
@@ -2093,7 +2093,7 @@
       "source_followup": "F018-module-detail-continuation",
       "state": "bounded_design_refinement_complete_current_owner_policies_confirmed",
       "review_standard_ref": "docs/phase6/module-design-handoff.md",
-      "owner_pending_ref": "docs/review/owner-decision-agenda.json#/module_detail_followup",
+      "owner_pending_ref": "docs/planning/owner-decision-agenda.json#/module_detail_followup",
       "scope_note": "核本期各模块真实接线及六项交付；未来边界/本期裁决按原窗口，生成实现产物和真实provider输入不假装已完成。",
       "runtime_verified": false,
       "module_groups": [
@@ -2223,7 +2223,7 @@
         "TICKET-D01",
         "E03-AUTH-D01"
       ],
-      "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+      "owner_confirmation_ref": "docs/planning/planning-followups.json#F019-module-detail-owner-decisions"
     },
     "global_parent_scope_prices_and_dag_unchanged": true,
     "local_core_net_allocation_updated": true
@@ -2350,7 +2350,7 @@
   "authorization_gap_closure": {
     "date": "2026-11-15",
     "ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
-    "backlog_ref": "docs/review/planning-backlog.json#authorization_gap_closure",
+    "backlog_ref": "docs/planning/planning-backlog.json#authorization_gap_closure",
     "state": "seven_actions_scheduled_product_gaps_open",
     "action_ids": [
       "AUTH-GAP-01",
@@ -2489,7 +2489,7 @@
         "owner_confirmed": [
           "TASK-D01"
         ],
-        "owner_confirmation_ref": "docs/review/planning-followups.json#F019-module-detail-owner-decisions"
+        "owner_confirmation_ref": "docs/planning/planning-followups.json#F019-module-detail-owner-decisions"
       },
       {
         "id": "C05",
@@ -2527,7 +2527,7 @@
       "only_shape_and_canonical_hash_proof": true,
       "product_runtime_verified": false
     },
-    "net_allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md",
+    "net_allocation_ref": "docs/planning/iam-net-allocation-2026-11-15.md",
     "net_IAM_days": [
       28,
       46
@@ -2539,17 +2539,17 @@
       ],
       "scope": "2026-11-15 IAM/AL net integration, before F021 compatibility repricing"
     },
-    "net_local_core_days_source": "docs/review/local-core-release-estimate.json#/totals/rounded_display_days"
+    "net_local_core_days_source": "docs/planning/local-core-release-estimate.json#/totals/rounded_display_days"
   },
   "planning_review_repair": {
     "date": "2026-11-16",
     "source_followup": "F021-planning-review-repair",
     "state": "bounded_planning_and_validation_repair_not_business_implementation",
-    "projection_ref": "docs/review/execution-schedule.json#/local_core",
+    "projection_ref": "docs/planning/execution-schedule.json#/local_core",
     "report_ref": "docs/review/reports/planning-review-repair-2026-11-16.md",
     "C05_replay_behavior_choice": "pending_owner_response_current_strong_contract_unchanged",
     "old_release_numbers_are_historical": true,
-    "current_price_single_source": "docs/review/local-core-release-estimate.json#/totals",
+    "current_price_single_source": "docs/planning/local-core-release-estimate.json#/totals",
     "existing_product_defects_remain_open": true
   },
   "module_contract_alignment": {

@@ -1,6 +1,6 @@
 # migrate 工具镜像
 
-固定官方 `github.com/golang-migrate/migrate/v4 v4.20.1`，用 Go1.27.4 重新构建。`go.mod`/`go.sum` 是源码和依赖锁，不维护 fork，不使用 `replace`。此目录没有自写 Go 程序，构建目标直接指向上游 `cmd/migrate`；不要在这里对空模块运行 `go mod tidy`，以免删除明确保留的上游依赖。
+固定官方 `github.com/golang-migrate/migrate/v4 v4.20.1`，用 Go1.27.4 重新构建。`go.mod`/`go.sum` 是源码和依赖锁，不维护 fork，不使用 `replace`。`deployments/tools/migrate` 构建目录没有自写 Go 程序，构建目标直接指向上游 `cmd/migrate`；不要对该构建目录内的空模块运行 `go mod tidy`，以免删除明确保留的上游依赖。
 
 只使用 `postgres` build tag，注册 `postgres://` 与 `postgresql://` 的 lib/pq 驱动。`file` 源由上游 `internal/cli/commands.go` 无条件导入，另保留其内置 `stub` 注册。当前生态的本地迁移文件和 PostgreSQL DSN 均在范围内；MySQL、pgx、云存储源等其他驱动没有编入该专用镜像，不将其冒充上游全驱动发行包。
 
@@ -19,7 +19,8 @@ docker run --rm zzu-upgrade-migrate:20261112 -help
 源码扫描必须使用实际 main 包和同一 tag，不能扫描空 wrapper 后宣称工具无漏洞：
 
 ```bash
-# 在本目录，使用 Go1.27.4 与 govulncheck v1.9.0
+# 从主仓根目录进入实际构建目录，使用 Go1.27.4 与 govulncheck v1.9.0
+cd deployments/tools/migrate
 CGO_ENABLED=0 GOWORK=off GOFLAGS='-mod=readonly -p=2' \
   govulncheck -mode=source -scan=symbol -test=false -tags=postgres \
   github.com/golang-migrate/migrate/v4/cmd/migrate

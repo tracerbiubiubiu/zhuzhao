@@ -41,7 +41,7 @@
           "authorization_gap_ref": "docs/design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档",
           "gap_estimate_rule": "Evidence of this row only; reuse existing cases, no duplicate charge; subestimate before implementation, update candidate if net scope grows.",
           "estimate_review_state": "source_mapped_net_candidate",
-          "estimate_review_ref": "docs/review/iam-net-allocation-2026-11-15.md",
+          "estimate_review_ref": "docs/planning/iam-net-allocation-2026-11-15.md",
           "suballocations": [
             {
               "id": "UAA-C",
@@ -733,7 +733,7 @@
           "deliverable": "在内网对一条既定HTTP协议画像做字段/收件人/鉴权/业务码映射与配置，执行一次真实受理/失败/重复/超时验证及正常修正，保留回执；外部等待不当零工日",
           "source_refs": [
             "internal/pkg/channelsender/port.go#ChannelSender",
-            "docs/review/uaa-real-integration-conditions.json"
+            "docs/planning/uaa-real-integration-conditions.json"
           ],
           "excludes": "MH01只交公共sender/合成服务/规范HTTP装配；多渠道/额外SDK/公司合同外功能另具名估算；本项不重写公共意图和日志UI"
         }
@@ -1063,7 +1063,7 @@
           }
         ],
         "mapping_rule": "Current_parts are a display allocation of existing U1-U8, not extra estimates. Per-WBS parts sum to that WBS once, and all current parts sum to 10.5-16.5.",
-        "review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+        "review_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md",
         "reestimate_triggers": [
           "backend does not supply the frozen normalized typed APIs",
           "selected screens require a new generic component rather than listed reuse",
@@ -1155,7 +1155,7 @@
             2,
             3
           ],
-          "estimate_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
+          "estimate_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
         },
         {
           "id": "Q2",
@@ -1222,7 +1222,7 @@
             ],
             "rule": "The former phrase including maintenance main closing was stale. The new 3-5 range is bottom-up remaining release work, not old 3-5 minus an invented exact overlap. Do not charge completed maintenance or use it to declare new-business SBOM/restore/production binding already done."
           },
-          "estimate_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
+          "estimate_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
         }
       ],
       "allocation_refs": [
@@ -1410,7 +1410,7 @@
     "old_parent_and_UAA_price_registries_unchanged": true,
     "revised_range_is_still_candidate_not_forced_deadline": true,
     "IAM_source_refinement": {
-      "ref": "docs/review/iam-net-allocation-2026-11-15.md",
+      "ref": "docs/planning/iam-net-allocation-2026-11-15.md",
       "old_raw_days": [
         67.5,
         103.5
@@ -1476,7 +1476,7 @@
       "ref": "docs/phase6/task-activelist-message-detail.md#81-首个al类型的用户读取合同"
     },
     "accounting_reconciliation_2026_11_16": {
-      "ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+      "ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md",
       "previous_raw_days": [
         94.5,
         147.5
@@ -1723,9 +1723,9 @@
       28,
       46
     ],
-    "allocation_ref": "docs/review/iam-net-allocation-2026-11-15.md"
+    "allocation_ref": "docs/planning/iam-net-allocation-2026-11-15.md"
   },
-  "accounting_reconciliation_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md",
+  "accounting_reconciliation_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md",
   "compatibility_regression": {
     "parent_case": "EXT-04",
     "state": "priced_delivery_not_implemented_or_artifact_frozen",
@@ -1809,13 +1809,13 @@
       "new API/permission scope created solely to run a compatibility test",
       "re-authoring domain/browser regression already charged elsewhere"
     ],
-    "review_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md"
+    "review_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
   },
   "pre_core_rehearsal_allocation": {
     "profile": "B0",
     "state": "target_profile_pending_net_subestimate_before_start",
     "scope_ref": "docs/phase6/first-usable-release-plan.md#4-按质量出口交付",
-    "accounting_ref": "docs/review/core-release-accounting-reconciliation-2026-11-16.md#5-b0预演的成本与顺序归属",
+    "accounting_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md#5-b0预演的成本与顺序归属",
     "selected_core_totals_include_unestimated_target_B0_work": false,
     "remaining_net_days": null,
     "owner_role": "实施维护者提出目标画像与净额，所有者绑定真实环境许可和窗口",

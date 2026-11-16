@@ -1,6 +1,6 @@
 # Phase 5 挂账统一台账（开放项与关闭追溯）
 
-> **2026-11-11承接终态**：五仓Phase5已整合main。本页保留开放项与关闭的来源历史；现行实施/接入/退出窗口统一在[规划总账](../review/planning-backlog.md)和[逐项来源映射](../review/planning-source-map.json)。已修仅回归，部分已修不等于整条关闭；条件项不再无期限等待。旧行“main未承接”仅指原记录时点。
+> **2026-11-11承接终态**：五仓Phase5已整合main。本页保留开放项与关闭的来源历史；现行实施/接入/退出窗口统一在[规划总账](../planning/planning-backlog.md)和[逐项来源映射](../planning/planning-source-map.json)。已修仅回归，部分已修不等于整条关闭；条件项不再无期限等待。旧行“main未承接”仅指原记录时点。
 
 > **当前读法（2026-11-08）**：本页从 10-23 建档持续增补，表内保留原发现、已拍方向、关闭证据及历史估算，**不能按总行数计算当前开放债**。代码验证、运行承接、main整合/生产发布分别判定；当前能力/迁移/环境边界见[项目控制台](../review/11-project-control.md)，固定修复与运行证据见[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08 followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)。工作区与文档的本轮验证另留准确提交收据，历史门禁保留各自固定快照。
 

@@ -125,7 +125,7 @@ def build_local_core_projection(estimate, projection, target, parent_ids, owner_
                 or not isinstance(required, list) or not required or len(required) != len(set(required))
                 or set(required) != set(gates)):
             raise ValueError('local condition gate binding differs from independent owner action: ' + key)
-        resolved_conditions[key] = dict(source_ref='docs/review/owner-decision-agenda.json#' + ref,
+        resolved_conditions[key] = dict(source_ref='docs/planning/owner-decision-agenda.json#' + ref,
                                         state=action['state'], evidence_state=action['evidence_state'],
                                         evidence_refs=action['evidence_refs'], blocks_release_exits=gates)
     nodes = {}
@@ -166,7 +166,7 @@ def build_local_core_projection(estimate, projection, target, parent_ids, owner_
         if journey['requirement_sha256'] != digest:
             raise ValueError('local requirement meaning changed: ' + journey['requirement_ref'])
         selected = closure(journey['wbs_ids']); covered |= selected
-        coverage.append(dict(requirement_ref='docs/review/first-usable-release-target.json#' + journey['requirement_ref'],
+        coverage.append(dict(requirement_ref='docs/planning/first-usable-release-target.json#' + journey['requirement_ref'],
                              text=text, requirement_sha256=digest, targets=journey['wbs_ids'],
                              dependency_closure=sorted(selected),
                              overlapping_effort_do_not_add=list(summed(nodes[key]['days'] for key in selected))))
@@ -255,7 +255,7 @@ def validate_current_source_links(repo, model):
     if not paths or len(paths) != len(set(paths)):
         raise ValueError('current source view registry empty or duplicated')
     source = Path(model['local_core_net_estimate_ref'])
-    if (source.as_posix() != 'docs/review/local-core-release-estimate.json'
+    if (source.as_posix() != 'docs/planning/local-core-release-estimate.json'
             or (repo / source).is_symlink() or not (repo / source).is_file()):
         raise ValueError('current source view authority missing or invalid')
     result = {}
@@ -532,12 +532,12 @@ def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
 
 
 def calculate(repo):
-    paths=['docs/review/planning-backlog.json','docs/review/execution-schedule-model.json','docs/review/planning-scope-estimates.json','docs/review/uaa-implementation-estimate.json','docs/review/uaa-real-integration-conditions.json','docs/review/local-core-release-estimate.json','docs/review/first-usable-release-target.json','docs/review/owner-decision-agenda.json']
+    paths=['docs/planning/planning-backlog.json','docs/planning/execution-schedule-model.json','docs/planning/planning-scope-estimates.json','docs/planning/uaa-implementation-estimate.json','docs/planning/uaa-real-integration-conditions.json','docs/planning/local-core-release-estimate.json','docs/planning/first-usable-release-target.json','docs/planning/owner-decision-agenda.json']
     blobs={p:(repo/p).read_bytes() for p in paths}
     backlog,model,scope,uaa,conditions,local_estimate,local_target,owner_actions=[json.loads(blobs[p]) for p in paths]
     graph,milestones=source_graph(backlog)
-    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling',do_not_repeat_future_coding_estimate=True,actual_record_ref='docs/review/core-release-accounting-reconciliation-2026-11-16.md',reserve_profile_rule='Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core'),release_gates_ref='docs/review/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/review/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
-    result['delivery_scope_boundaries']=dict(foundation_targets=model['delivery_priority_groups']['foundation']['targets'],risk_first_chain_targets=model['delivery_priority_groups']['risk_first_chain']['targets'],effort_rule='Each delivery exit reports the union of its named targets and actual dependencies. Shared ancestors overlap; do not add the exit efforts.',long_horizon_totals_are_not_foundation_duration=True,baseline_scope_only=True,post_baseline_supplements_not_merged=['F004 newly selected details pending net estimate','OBS01–03 separately priced candidate supplement'],supplement_ref='docs/review/post-baseline-scope-estimates.json',production_or_enterprise_activation_approved=False)
+    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling',do_not_repeat_future_coding_estimate=True,actual_record_ref='docs/planning/core-release-accounting-reconciliation-2026-11-16.md',reserve_profile_rule='Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core'),release_gates_ref='docs/planning/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/planning/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
+    result['delivery_scope_boundaries']=dict(foundation_targets=model['delivery_priority_groups']['foundation']['targets'],risk_first_chain_targets=model['delivery_priority_groups']['risk_first_chain']['targets'],effort_rule='Each delivery exit reports the union of its named targets and actual dependencies. Shared ancestors overlap; do not add the exit efforts.',long_horizon_totals_are_not_foundation_duration=True,baseline_scope_only=True,post_baseline_supplements_not_merged=['F004 newly selected details pending net estimate','OBS01–03 separately priced candidate supplement'],supplement_ref='docs/planning/post-baseline-scope-estimates.json',production_or_enterprise_activation_approved=False)
     for include_r in (False,True):
         key='with_conditional_R_ready' if include_r else 'public_R_pending'
         scenario=dict(conditional_R_selected=include_r,profiles={})
@@ -568,7 +568,7 @@ def calculate(repo):
         result['scenarios'][key]=scenario
     result['bounded_effort_totals']={key:scenario['profiles']['without_maintenance_reserve']['total_effort_range'] for key,scenario in result['scenarios'].items()}
     result['source_input_sha256']['scripts/calculate-planning-schedule.py']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-    result['scope_estimate_registry']='docs/review/planning-scope-estimates.json'
+    result['scope_estimate_registry']='docs/planning/planning-scope-estimates.json'
     result['no_unpriced_required_increment']=scope['all_required_supplements_priced']
     result['no_unpriced_required_increment_scope']='priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price'
     result['dated_core_release_target_ref']=model['dated_core_release_target_ref']
@@ -633,7 +633,7 @@ def render_local_core(result):
         evidence = value['evidence_ref'].replace('docs/phase6/', '../phase6/')
         lines.append(f"- **{key}**：目标`{', '.join(value['targets'])}`；条件`{', '.join(value['condition_keys']) or '无外部输入门；仍需产品验收'}`；[证据要求]({evidence})。计算结论仅为`not_verified_by_schedule`。")
     lines += ['', '机器检查净价/子分配、逐行单计、父包映射、缺依赖/环、必交原文hash与覆盖、外部动作/出口绑定及现势摘要；不证明映射语义、产品可用、安全缺陷修复或生产验收。',
-              '受控摘要在[控制台](11-project-control.md)和[路线图](../roadmap.md)共同核验，历史区保留原时点；净价改变须同步两区间及目标JSON。']
+              '受控摘要在[控制台](../review/11-project-control.md)和[路线图](../roadmap.md)共同核验，历史区保留原时点；净价改变须同步两区间及目标JSON。']
     return lines
 
 
@@ -788,8 +788,8 @@ def main():
     mode.add_argument('--write',action='store_true')
     mode.add_argument('--check',action='store_true')
     args=parser.parse_args();repo=args.repo.resolve();result=calculate(repo)
-    backlog=json.loads((repo/'docs/review/planning-backlog.json').read_text())
-    outputs={'docs/review/execution-schedule.json':dump_schedule(result)+'\n','docs/review/execution-schedule.md':render_schedule(result),'docs/review/planning-backlog.md':render_backlog(backlog)}
+    backlog=json.loads((repo/'docs/planning/planning-backlog.json').read_text())
+    outputs={'docs/planning/execution-schedule.json':dump_schedule(result)+'\n','docs/planning/execution-schedule.md':render_schedule(result),'docs/planning/planning-backlog.md':render_backlog(backlog)}
     if args.write:
         for path,content in outputs.items():
             (repo/path).write_text(content)

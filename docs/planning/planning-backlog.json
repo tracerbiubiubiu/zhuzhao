@@ -1448,7 +1448,7 @@
             "P拥有验收用例，G03接CI矩阵，G04负责质量选择/覆盖口径，各计一次；最小UI仅在P/R计价，U06只计后续视觉迁移"
           ],
           "preparation_rule": "C/C04之后可准备认证/来源/前端；完整投影与P出口验收须X02-F，其已有依赖带入D06/X01-C，不等X01-H或X02-Q。",
-          "estimate_wbs_ref": "docs/review/uaa-implementation-estimate.json#/P/wbs"
+          "estimate_wbs_ref": "docs/planning/uaa-implementation-estimate.json#/P/wbs"
         },
         {
           "id": "E01-UAA-R",
@@ -1471,8 +1471,8 @@
             "真实来源展示、纳管只读/非纳管可写及后端拒写反馈；复用P最小UI，不重算U06全站视觉",
             "私有配置与制品安装、接管预览/切换/退出runbook实例及演练，企业正式激活前交付；内部配置不入公共仓"
           ],
-          "estimate_wbs_ref": "docs/review/uaa-implementation-estimate.json#/R/wbs",
-          "external_conditions_ref": "docs/review/uaa-real-integration-conditions.json",
+          "estimate_wbs_ref": "docs/planning/uaa-implementation-estimate.json#/R/wbs",
+          "external_conditions_ref": "docs/planning/uaa-real-integration-conditions.json",
           "activation_checkpoints": {
             "pre_apply": {
               "requires": [
@@ -1494,7 +1494,7 @@
           "activation_rule": "公司纳管企业模式正式apply前要求R.pre_apply检查点通过；R整体收口另含切换后观察，不能倒置为apply前置。测试进入不等待R自身生成的差异报告或制品。"
         }
       ],
-      "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json"
+      "estimate_registry_ref": "docs/planning/uaa-implementation-estimate.json"
     },
     {
       "id": "E02",
@@ -2118,7 +2118,7 @@
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
       "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE01",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json#CE01",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
@@ -2150,7 +2150,7 @@
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
       "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE02",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json#CE02",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md",
@@ -2239,7 +2239,7 @@
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
       "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE03",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json#CE03",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md"
@@ -2264,7 +2264,7 @@
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
       "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE04",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json#CE04",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md"
@@ -2290,7 +2290,7 @@
       "decision_due": "当前批开工前冻结",
       "disposition": "净增已计价候选，未实施",
       "estimate_scope": "旧载体、LS与UAA扣重；不含外部等待",
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json#CE05",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json#CE05",
       "design_refs": [
         "docs/design/capability-invocation-contract.md",
         "docs/design/capability-interconnect-detail.md"
@@ -2300,7 +2300,7 @@
   "design_status_ref": "planning-design-status.json",
   "decisions_ref": "planning-decisions.json",
   "scope_rule": "基于现有规模和原6–9业务价值，尽可能承接、渐进优化扩展；技术形式可推荐替代，旧条件/建议不自动必做，调查不冒充功能交付。",
-  "continuity_ref": "docs/review/roadmap-capability-continuity.json",
+  "continuity_ref": "docs/planning/roadmap-capability-continuity.json",
   "dependency_semantics": {
     "dependencies": "列表项为完整包完成依赖",
     "milestone_dependencies": "列表项为指定子出口完成依赖，不能以文档存在销账",
@@ -2311,7 +2311,7 @@
   "uaa_estimate_completeness": {
     "complete": true,
     "scope": "本轮UAA有限接入画像的工程投入已补估，非无限provider/协议/远期选配总价或日期承诺",
-    "estimate_registry_ref": "docs/review/uaa-implementation-estimate.json",
+    "estimate_registry_ref": "docs/planning/uaa-implementation-estimate.json",
     "C": [
       2,
       3
@@ -2370,15 +2370,15 @@
   "design_supplements": [
     {
       "id": "CAPABILITY-INTERCONNECT-20261113",
-      "ref": "docs/review/capability-interconnect-supplement.json",
+      "ref": "docs/planning/capability-interconnect-supplement.json",
       "additional_parent_items": 5,
       "estimated": true,
-      "estimate_registry_ref": "docs/review/planning-scope-estimates.json",
+      "estimate_registry_ref": "docs/planning/planning-scope-estimates.json",
       "rule": "原71完整保留；RP替换，CE/LS净增，不对已完成审计重复计未来工日。"
     }
   ],
-  "scope_estimate_registry": "docs/review/planning-scope-estimates.json",
-  "schedule_model_ref": "docs/review/execution-schedule-model.json",
+  "scope_estimate_registry": "docs/planning/planning-scope-estimates.json",
+  "schedule_model_ref": "docs/planning/execution-schedule-model.json",
   "additional_scope_tasks": [
     {
       "id": "LS01",
@@ -2695,9 +2695,9 @@
       "kind": "additional_existing_scope"
     }
   ],
-  "dated_core_release_target_ref": "docs/review/first-usable-release-target.json",
+  "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
   "dated_core_release_boundary": "长期76包保留；当前首版本地正式核心含风险/工单/TR/AL/真实HTTP消息及完整本地三层，UAA-C接缝先留、完整P/R后继；已有联合净估候选但未冻结派发，排期和日期仅参考，不强迫按期交不可用版本",
-  "mainline_sync_followup_ref": "docs/review/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
+  "mainline_sync_followup_ref": "docs/planning/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
   "hierarchy_permission_supplement_ref": "docs/design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选",
   "authorization_gap_closure": {
     "date": "2026-11-15",

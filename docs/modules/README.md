@@ -30,4 +30,4 @@
 
 ## 跨模块演进
 
-当前模块职责仍按本目录核对；风险、能力目录与AI为后续工作，不因规划出现即实现。[平台演进](../design/platform-evolution.md)统一五仓数据/状态写主、失败恢复和可插拔边界；[总账](../review/planning-backlog.md)维护全部遗留的当前去向。专业能力先接入消费，不将模块地图扩成SOC/CMDB/SOAR/知识的复制清单。
+当前模块职责仍按本目录核对；风险、能力目录与AI为后续工作，不因规划出现即实现。[平台演进](../design/platform-evolution.md)统一五仓数据/状态写主、失败恢复和可插拔边界；[总账](../planning/planning-backlog.md)维护全部遗留的当前去向。专业能力先接入消费，不将模块地图扩成SOC/CMDB/SOAR/知识的复制清单。
