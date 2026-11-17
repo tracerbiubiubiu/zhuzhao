@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "purpose": "跟踪整会话审计固定U63窗口之后的新增输入/确认；不改写历史审计来源/证据，不冒用原闭环证明新答复已核验。",
   "previous_audit": {
     "commit": "3f79a76cafea1dbc6235c8d4f6258bc1e1043e29",
@@ -889,6 +889,81 @@
         "B0_remaining_net_days": null,
         "current_core_days_changed": false,
         "business_feature_implementation": false
+      }
+    },
+    {
+      "id": "F023-audit-repair-scope-and-target-protection",
+      "date": "2026-11-17",
+      "source": {
+        "kind": "explicit_owner_reply_in_current_chat",
+        "answer": "按你建议来",
+        "confirmed_recommendation": "本轮存量修复前移边界与CF-06目标账号保护两项建议；真实运行实参仍按Q12启用前绑定",
+        "message_id_note": "当前可见会话未提供消息ID，不虚造外部会话标识"
+      },
+      "decision_state": "owner_confirmed_not_implemented",
+      "confirmed_scope": {
+        "pre_phase6_baseline": "当前越权、授权来源固化/丢失、部署及普通办理者核心操作障碍先修；依赖这些能力的新业务在固定组合验收后实施；设计细化可继续",
+        "not_a_blanket_gate": "不要求全部69个有效发现或全部IAM-A/B/C清零；完整C/C05/C03与其余P2/P3仍归原包，但实际启用所需子出口不能省",
+        "mitigation": "未启用能力可由服务端完整关闭并验全部入口；单实例限制只缓解对应多副本触发面，不关闭机制发现",
+        "target_account_protection": "actor仍凭原L1和启用直接IAM角色取得资格；target当前有效组织等来源中的强权限仅增加敏感写拒绝保护，不反向授actor管理权",
+        "self_and_compatibility": "保留本人正常改密、原self/最后超管/系统保护、字段与角色可授边界；不全局将GetRoles改为effective"
+      },
+      "design_refs": [
+        "docs/planning/audit-repair-plan-2026-11-17.md",
+        "docs/phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现",
+        "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入"
+      ],
+      "estimate_policy": {
+        "rough_pre_core_window_days": [
+          25,
+          45
+        ],
+        "confidence": "medium_low_not_frozen",
+        "existing_A_B_TASK_days": [
+          12,
+          20
+        ],
+        "rule": "仅整段粗预留，不是净新增/日期承诺；逐项扣重，新增保护与F2a实现前具名归属，不机械修改唯一总价或派生排程",
+        "current_core_total_changed": false
+      },
+      "implementation_state": "not_implemented_planning_contract_and_audit_revisions_only",
+      "quality_scope": "正式权限合同按ordinary语义执行原完整产品门禁并保留planning针对检查；存量门禁通过不证明新行为实现",
+      "real_inputs": "Q12环境、代表角色/数据、支持责任、备份及恢复/保留参数到启用前绑定，不重问既定HIER-D01/IAM-AUDIT-D01/TASK-D01等政策",
+      "authorization_boundary": "当前确认只绑定前述两项建议；本轮先落档与验证，不推定全部Phase6业务开发、push/main合入、远端保护或生产部署授权",
+      "historical_34_formal_decisions_unchanged": true,
+      "material_id": "maintenance/audit-repair-plan-20261117/",
+      "validation": {
+        "state": "plan_contract_independently_reviewed_existing_product_gates_passed",
+        "business_feature_implementation": false,
+        "product_defects_closed": false,
+        "ordinary_semantics": true,
+        "classifier_mode": "reference_with_planning_checks",
+        "core_targets": {
+          "lint": 0,
+          "swag": 0,
+          "test-unit": 0,
+          "test-integration": 0,
+          "test-cover": 0,
+          "migrate-up": 0,
+          "acceptance": 0
+        },
+        "isolated_acceptance": {
+          "pass": 253,
+          "fail": 0,
+          "skip": 0,
+          "migration_roundtrip_pairs": 81,
+          "zero_drift": true
+        },
+        "default_unit_statement_coverage": "20.2%",
+        "new_target_protection_runtime": "NOT_IMPLEMENTED_NOT_TESTED",
+        "UI_E2E_current_candidate": "NOT_RUN_UI_CODE_UNCHANGED",
+        "material_id": "maintenance/audit-repair-plan-20261117/",
+        "initial_failure_and_correction": "planning source hash changed; repository generator refreshed one derived source hash; effort/DAG unchanged",
+        "independent_review": "PASS after preserving superadmin exception and separating original IAM-A from other org-write callers; execution-card test path corrected",
+        "cleanup": {
+          "owned_compose_resources_remaining": 0,
+          "protected_containers_unchanged": 15
+        }
       }
     }
   ]

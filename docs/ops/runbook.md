@@ -371,3 +371,5 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 
 
 2026-11-12补记：所有者已自行更新brew基础Go1.27.4、nvm Node26.13.1，已在仓外以基础二进制确认，不是模块自动切SDK的结果。本轮工作使用独立固定SDK验收，未代改包管理配置。版本候选、原门禁与数据恢复收据见[维护记录](../review/reports/version-modernization-2026-11-12.md)；共享旧环境/原卷没有自动切换。
+
+2026-11-17 F023交接（非运行资源占用）：所有者确认[存量修复前移](../planning/audit-repair-plan-2026-11-17.md)及CF-06目标保护，根唯一集成短分支`codex/audit-repair-plan-20261117`，分工只修改ignored审计文件。权限合同按普通档新跑完整既有门禁，253/0/0及81对零漂移；owner=`zz-audit-repair-20261117`的8个Compose容器、自有卷/网络已精确回收，15个原运行容器指纹不变。业务代码、迁移和共享栈未改，现有缺陷仍开放；实际提交/远端状态以Git为准，本轮未push/main合入或生产部署。材料ID `maintenance/audit-repair-plan-20261117/`。
