@@ -40,6 +40,8 @@
 
 2026-11-17存量审计复核、政策确认和修复计划的执行卡、原始门禁日志、候选/资源指纹及收据归材料ID`maintenance/audit-repair-plan-20261117/`；原始门禁及修订证据已归本地档案并核哈希，ignored工作区保留本次执行副本。受控结论归[修复计划](planning/audit-repair-plan-2026-11-17.md)及[目标账号保护合同](phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现)，不将本机路径或测试秘密复制到Git。原`FULL-AUDIT-2026-11-16`审计材料保留其批次和时点，报告修订不改写既有原始证据。
 
+本轮推送与main承接另用材料ID`maintenance/audit-baseline-main-merge-20261117/`，用于保存三仓消息only映射、推送、PR/准确head CI、合并及后继文档的来源复核与操作收据；现势结论见[三仓合入记录](review/reports/audit-baseline-main-merge-2026-11-17.md)。原本地验收材料封存不改，不因功能分支已推送就记main或部署成功。
+
 同日后继产品实现与组合验收使用独立材料ID`maintenance/audit-baseline-repair-20261117/`：保存主批`repair-implementation-20261117`及相关工作树原始专项、首次失败与修正、冻结源码/运行产物manifest、门禁命令/退出码、浏览器、恢复、精确清理及本地提交收据。正式结论归[前置修复与组合验收](review/reports/audit-baseline-repair-2026-11-17.md)。归档逐文件核SHA，下载缓存/依赖安装目录不作为证据复制，具体排除及副本清单由本地索引记载；目录/文件收紧权限，不随Git上传，ignored工作区可保留执行副本。该归档为同机保留，不等于异机备份。
 
 先判断它是否是必须共同维护的事实/输入。是则进入归属仓`docs/`并挂到已有入口；否则使用本地档案相应分类和明确批次ID。短期执行产物可先留ignored `.codex/`，正式交付提炼结论并登记材料ID，避免在`src`下持续新增散落报告目录。

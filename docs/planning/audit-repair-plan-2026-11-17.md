@@ -1,6 +1,6 @@
 # 存量缺陷修复前移计划
 
-> 日期：2026-11-17。用途：承接本轮全面审计复核后的修复顺序、范围与扣重；权威：工作包及价格仍归[总账](planning-backlog.json)和[首版净估](local-core-release-estimate.json)。所有者已回复“按你建议来”，确认下述前移边界及目标账号保护方向；来源见[后继F023](planning-followups.json#F023-audit-repair-scope-and-target-protection)。所有者随后要求执行，当前本地候选已通过完整适用门禁及独立复验，准确输入和边界见§5；尚未启用真实业务，不批准推送、合并、部署或全部Phase6开发。
+> 日期：2026-11-17。用途：承接本轮全面审计复核后的修复顺序、范围与扣重；权威：工作包及价格仍归[总账](planning-backlog.json)和[首版净估](local-core-release-estimate.json)。所有者已回复“按你建议来”，确认下述前移边界及目标账号保护方向；来源见[后继F023](planning-followups.json#F023-audit-repair-scope-and-target-protection)。所有者随后要求执行，当前本地候选已通过完整适用门禁及独立复验，准确输入和边界见§5；所有者随后已授权验证无问题后提交、推送、合并三仓，三功能修复已通过PR合入main，PR/CI/main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)；真实业务、部署及全部Phase6开发未因此开通。
 
 ## 1. 本次确认及前置范围
 
@@ -66,4 +66,4 @@ CF编号来自本地审计批次`FULL-AUDIT-2026-11-16`；本页保存实施必�
 
 release头像/附件/富文本、S3删除恢复、JSONL恢复、维护资格/覆盖/固定cron及实际PG逻辑恢复均取得收据。PG40表数据和385列可见结构一致，临时库已删除；同机恢复不证明PITR、异地恢复或跨介质原子性。组合独审无阻断、无留栈需求。8专属容器/7卷/3网络已精确清理，共享15运行容器/13卷/3网络身份未变。
 
-准确manifest、首次失败及修正、专项红绿/变异、最终文档差异和未覆盖边界统一见[实现与组合验收报告](../review/reports/audit-baseline-repair-2026-11-17.md)，材料ID为`maintenance/audit-baseline-repair-20261117/`；前段合同批次253/81没有充当产品修复结果。已交子出口在下一次净剩余核算按实际工作扣重，本批不捏造实际工程日、不重报价或修改DAG/冻结来源hash。当前只形成本地提交，未推送/main合入/生产部署；真实外部联调、双副本及全部Phase6开发未由本次授权自动开通。
+准确manifest、首次失败及修正、专项红绿/变异、最终文档差异和未覆盖边界统一见[实现与组合验收报告](../review/reports/audit-baseline-repair-2026-11-17.md)，材料ID为`maintenance/audit-baseline-repair-20261117/`；前段合同批次253/81没有充当产品修复结果。已交子出口在下一次净剩余核算按实际工作扣重，本批不捏造实际工程日、不重报价或修改DAG/冻结来源hash。当前三功能修复已通过PR合入main，准确PR/CI/main与后继文档承接由[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)登记，尚未生产部署；真实外部联调、双副本及全部Phase6开发未由本次授权自动开通。

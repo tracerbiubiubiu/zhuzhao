@@ -376,7 +376,7 @@ var ticketTransitions = map[string][]string{
 
 授权拒绝在查询候选前返回；不可见票404、可见但无动作403、合法无匹配200空数组、依赖失败5xx不得混同。当前动作权限不授予后续写成功保证，写请求仍执行自己的原资格及对象状态校验。前端用途/票/组织/类型变化、失活、卸载、关闭下拉均使旧搜索世代失效，迟到结果、错误及 finally 不能覆盖新查询；管理用途保持原 `/users` 授权，业务拒绝不得回退管理API。
 
-本节F3/CF-15本地实现已通过定向真PG/HTTP、UI错序测试及组合栈完整验收，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；未推送、合入main或部署，不扩大为完整Phase6交付。
+本节F3/CF-15本地实现已通过定向真PG/HTTP、UI错序测试及组合栈完整验收，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署，不扩大为完整Phase6交付。
 
 ## 5. 工单类型抽象与 Hook 机制
 
@@ -607,7 +607,7 @@ type StateController interface {
 | 2026-08-25暂停/2026-09-02封版 | 当时工单深化暂缓，旧SLA/审批/Asynq方案留设计 | 历史决策，不能继续描述为当前Phase3整体暂停 |
 | Phase3/4底座与生态 | 生产横切能力按实际切片推进；taskrunner/AL网关与前端控制台形成 | 不把历史Phase3愿望清单全部视为实现；当前组件边界见architecture.md |
 | 2026-10-09翻案→Phase5 | 自研工单主线恢复；S1字段/表单、S2状态图、S3a转换/分派/动作、S5富媒体、S6消息、S10协作/超时等落码 | 审批S3b、完整SLA、通用报表/结果映射等不因此完成；S7/S8等按阶段稿的概要/触发边界判断 |
-| 当前Phase5审计修复 | 仍在phase5分支收口设计/代码/门禁与债务，main未合 | 以11号最新时点与各批固定验证报告为准，不将代码落地等同生产部署 |
+| 原Phase5审计修复（历史） | 当时在phase5分支收口，保留该时点含义 | 当前修复和main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)及11号现势段；不将main合入等同生产部署 |
 | Phase6+ | 风险R1–R4、工单完善06号、挂账索引07号；更远阶段为路线规划 | **先Phase5收口→经授权合main→从main切Phase6**；不把已批准规划当作当前API/表/任务 |
 
 历史设计入口：[Phase2工单](../phase2/09-ticket.md)、[Phase3业务深化旧设计](../phase3/10-ticket-business.md)；现行实现/规划分别对齐[Phase5](../phase5/README.md)、[挂账台账](../phase5/s6-s5-debt-ledger.md)、[Phase6 README §5边界与07号索引](../phase6/README.md)。
