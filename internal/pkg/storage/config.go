@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -13,6 +14,7 @@ import (
 type StorageConfig struct {
 	Enabled                 bool     `mapstructure:"enabled"`
 	Endpoint                string   `mapstructure:"endpoint"`
+	PublicEndpoint          string   `mapstructure:"public_endpoint"` // 可选绝对HTTP(S)签名地址；空沿用Endpoint
 	Region                  string   `mapstructure:"region"`
 	Bucket                  string   `mapstructure:"bucket"`
 	AccessKey               string   `mapstructure:"access_key"`
@@ -97,6 +99,9 @@ func (c *StorageConfig) Validate() error {
 			return fmt.Errorf("storage.%s 启用态必填", k)
 		}
 	}
+	if _, err := publicEndpointURL(c.PublicEndpoint); err != nil {
+		return err
+	}
 	ttl, err := c.TTL()
 	if err != nil {
 		return fmt.Errorf("storage.presign_upload_ttl 非法: %w", err)
@@ -160,3 +165,16 @@ func (s *ConfigStore) Load() *StorageConfig {
 
 // Store 整体替换快照（调用方 clone 后修改再存入，存后不得再改）。
 func (s *ConfigStore) Store(c *StorageConfig) { s.p.Store(c) }
+
+// publicEndpointURL deliberately never includes the rejected value in errors:
+// an invalid URL may contain a pasted secret in userinfo/query.
+func publicEndpointURL(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || u.Path != "" || u.RawPath != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" {
+		return nil, fmt.Errorf("storage.public_endpoint must be an absolute HTTP(S) origin without credentials, path, query or fragment")
+	}
+	return u, nil
+}

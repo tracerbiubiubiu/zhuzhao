@@ -25,8 +25,10 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -37,11 +39,14 @@ const (
 )
 
 // newCallbackRouter 复刻 router.New 的 /internal 组挂法（验签中间件 + 端点）。
-func newCallbackRouter(t *testing.T, registry *jobs.Registry) *gin.Engine {
+func newCallbackRouter(t *testing.T, registry *jobs.Registry, policies ...service.CallbackActionPolicy) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	repo := repository.NewJobSubmissionRepo(testPool)
 	svc := service.NewJobsCallbackService(registry, repo, slog.Default())
+	if len(policies) > 0 {
+		svc.SetActionPolicy(policies[0])
+	}
 	h := handler.NewJobsHandler(svc)
 	r := gin.New()
 	verifier := &aksk.Verifier{Keys: map[string][]byte{testAK: []byte(testSK)}}
@@ -190,24 +195,84 @@ func TestJobsCallbackContract(t *testing.T) {
 // TestJobsCallbackAuditArchiveE2E M3 联调预演：真实 audit_archive 动作经签名回调
 // 全链触发（验签 → 幂等栅栏 → Job.Handle → job_submissions 终态 + JSONL 落盘）。
 func TestJobsCallbackAuditArchiveE2E(t *testing.T) {
+	ctx := context.Background()
 	registry := jobs.NewRegistry()
 	repo := repository.NewAuditLogRepo(testPool)
 	dir := t.TempDir()
 	registry.Register("audit_archive", service.NewAuditArchiveJob(repo, 5, 5000, dir, 0, nil))
-	r := newCallbackRouter(t, registry)
 
 	// 种子：6 天前的行（保留期 5 天 → 归档对象）
-	_, err := testPool.Exec(context.Background(),
+	_, err := testPool.Exec(ctx,
 		`INSERT INTO audit_logs (username, method, path, status_code, duration, created_at)
 		 VALUES ('e2e_arch', 'GET', '/api/v1/jobs/e2e', 200, 1, NOW() - interval '6 days')`)
 	require.NoError(t, err)
 
 	taskID := fmt.Sprintf("t-e2e-arch-%d", time.Now().UnixNano())
+	maintainerName := fmt.Sprintf("e2e_arch_maint_%d", time.Now().UnixNano())
+	var maintainerID int64
+	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,employee_no,password,status) VALUES($1,$2,'synthetic-not-a-credential',1) RETURNING id`, maintainerName, fmt.Sprintf("E890%d", time.Now().UnixNano())).Scan(&maintainerID))
 	t.Cleanup(func() {
 		cleanupSubmission(t, taskID)
 		testPool.Exec(context.Background(), `DELETE FROM audit_logs WHERE username='e2e_arch'`)
+		if _, err := testPool.Exec(ctx, `DELETE FROM maintenance_task_admissions WHERE task_id=$1`, taskID); err != nil {
+			t.Error(err)
+		}
+		if _, err := testPool.Exec(ctx, `DELETE FROM users WHERE id=$1`, maintainerID); err != nil {
+			t.Error(err)
+		}
 	})
 
+	// A signed service caller cannot manufacture human maintenance authority.
+	noPolicy := signedPost(t, newCallbackRouter(t, registry), "audit_archive", taskID, "req-arch-e2e", nil, testSK)
+	require.Equal(t, http.StatusForbidden, noPolicy.Code)
+	assertNoArchiveEffect := func() {
+		t.Helper()
+		var effects, submissions int
+		require.NoError(t, testPool.QueryRow(ctx, `SELECT COUNT(*) FROM audit_logs WHERE username='e2e_arch'`).Scan(&effects))
+		require.Equal(t, 1, effects)
+		require.NoError(t, testPool.QueryRow(ctx, `SELECT COUNT(*) FROM job_submissions WHERE task_id=$1`, taskID).Scan(&submissions))
+		require.Zero(t, submissions)
+		matches, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
+		require.NoError(t, err)
+		require.Empty(t, matches)
+	}
+	assertNoArchiveEffect()
+	type submittedTask struct {
+		TaskID      string `json:"task_id"`
+		SubmittedBy string `json:"submitted_by"`
+	}
+	posted := make(chan submittedTask, 1)
+	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		var input submittedTask
+		if req.URL.Path != "/v1/tasks" || req.Method != http.MethodPost {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		posted <- input
+		_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": map[string]any{"task_id": input.TaskID, "accepted": true}})
+	}))
+	defer peer.Close()
+	client := taskrunner.New(taskrunner.Config{BaseURL: peer.URL, AK: "zhuzhao", SK: []byte("synthetic-maintenance-submit")})
+	policy, err := service.NewTaskActionPolicy(testPool, config.MaintenanceConfig{MaintainerUserIDs: []int64{maintainerID}}, 5, client)
+	require.NoError(t, err)
+	r := newCallbackRouter(t, registry, policy)
+	noAdmission := signedPost(t, r, "audit_archive", taskID, "req-arch-e2e", nil, testSK)
+	require.Equal(t, http.StatusForbidden, noAdmission.Code)
+	assertNoArchiveEffect()
+	// Use the production submit service to prewrite the fact. The peer only
+	// acknowledges enqueue; real PG, signed callback and archive effects follow.
+	submit := service.NewTaskrunnerService(client, repository.NewJobSubmissionRepo(testPool), policy)
+	principal := service.WithTaskPrincipal(ctx, maintainerID, maintainerName)
+	_, err = submit.Submit(principal, &service.TaskSubmitInput{Action: "audit_archive", TaskID: taskID, Params: json.RawMessage(`{}`)}, "forged-body-actor", "", "")
+	require.NoError(t, err)
+	wire := <-posted
+	require.Equal(t, maintainerName, wire.SubmittedBy)
+	require.Equal(t, taskID, wire.TaskID)
 	w := signedPost(t, r, "audit_archive", taskID, "req-arch-e2e", nil, testSK)
 	require.Equal(t, 200, w.Code)
 
@@ -219,8 +284,9 @@ func TestJobsCallbackAuditArchiveE2E(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(b), "e2e_arch")
 
-	var status string
+	var status, submittedBy string
 	require.NoError(t, testPool.QueryRow(context.Background(),
-		`SELECT status FROM job_submissions WHERE task_id=$1`, taskID).Scan(&status))
+		`SELECT status, submitted_by FROM job_submissions WHERE task_id=$1`, taskID).Scan(&status, &submittedBy))
 	require.Equal(t, "succeeded", status)
+	require.Equal(t, maintainerName, submittedBy)
 }

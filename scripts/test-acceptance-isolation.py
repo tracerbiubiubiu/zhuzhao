@@ -144,7 +144,7 @@ class AcceptanceIsolationTest(unittest.TestCase):
         for key in list(self.env):
             if key.startswith(("PG", "ROUNDTRIP_", "MOCK_")) or key in (
                 "MIG", "PSQL", "TMPDIR", "BASE_URL", "HEALTH_URL", "BASE", "HEALTH",
-                "REDIS_CONTAINER", "MAKEFLAGS", "MFLAGS",
+                "REDIS_CONTAINER", "REDIS_PASSWORD", "MAKEFLAGS", "MFLAGS",
             ):
                 self.env.pop(key, None)
         self.env.update(
@@ -404,6 +404,38 @@ class AcceptanceIsolationTest(unittest.TestCase):
         for script in [ROUNDTRIP, *PHASES]:
             with self.subTest(script=script.name):
                 self.assertNotRegex(script.read_text(), r"/tmp/[a-zA-Z0-9_]+\.(?:json|txt|png)")
+
+    def test_each_phase_uses_the_explicit_redis_password_as_one_argument(self):
+        password = "isolated Redis '$value; with spaces"
+        for script in PHASES:
+            with self.subTest(script=script.name):
+                self.log.unlink(missing_ok=True)
+                result = subprocess.run(
+                    ["bash", str(script)], cwd=ROOT,
+                    env={**self.env, "REDIS_PASSWORD": password, "REDIS_CONTAINER": "isolated-redis"},
+                    text=True, capture_output=True, timeout=20,
+                )
+                self.assertNotEqual(result.returncode, 0, "stubbed API cannot pass acceptance")
+                calls = [event["args"] for event in self.events("docker") if "redis-cli" in event["args"]]
+                self.assertTrue(calls, self.events())
+                for args in calls:
+                    self.assertEqual(args[1], "isolated-redis")
+                    self.assertEqual(args[args.index("-a") + 1], password)
+
+    def test_redis_recovery_uses_the_same_configurable_password(self):
+        # Exercise the actual command with the local Docker stub. A wrong or split
+        # password must also fail this last recovery probe, not just the early DEL.
+        line = next(line.strip() for line in PHASES[0].read_text().splitlines()
+                    if "redis-cli" in line and "ping" in line)
+        password = "recovery '$value; with spaces"
+        result = subprocess.run(
+            ["bash", "-eu", "-o", "pipefail", "-c", line], cwd=ROOT,
+            env={**self.env, "REDIS_C": "isolated-redis", "REDIS_PASSWORD": password},
+            text=True, capture_output=True, timeout=20,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        call = self.events("docker")[-1]["args"]
+        self.assertEqual(call[call.index("-a") + 1], password)
 
 
 if __name__ == "__main__":

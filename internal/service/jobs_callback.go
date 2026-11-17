@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"reflect"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
@@ -19,7 +21,18 @@ type JobsCallbackService struct {
 	registry *jobs.Registry
 	repo     *repository.JobSubmissionRepo
 	logger   *slog.Logger
+	policy   CallbackActionPolicy
+	activeMu sync.Mutex
+	active   map[string]struct{}
 }
+
+// CallbackActionPolicy is configured once at startup. It obtains authority
+// from durable admission or reviewed fixed-job configuration, never body.actor.
+type CallbackActionPolicy interface {
+	AuthorizeCallback(context.Context, string, string, json.RawMessage) (context.Context, error)
+}
+
+func (s *JobsCallbackService) SetActionPolicy(policy CallbackActionPolicy) { s.policy = policy }
 
 func NewJobsCallbackService(registry *jobs.Registry, repo *repository.JobSubmissionRepo, logger *slog.Logger) *JobsCallbackService {
 	if logger == nil {
@@ -47,14 +60,61 @@ const (
 	CallbackUnknownAction                        // 未注册动作 → 404（P6 快速失败）
 	CallbackNonRetryable                         // ErrAbort → 409（P7 不可重试）
 	CallbackRetryable                            // 其他错误 → 500（P7 可重试）
+	CallbackInProgress                           // 未证明终态成功 → 503，保留重试
+	CallbackInvalidInput                         // 格式/存储宽度非法 → 400，零认领
+	CallbackForbidden                            // 无当前动作资格/可信准入 → 403，零认领
 )
 
 // Execute 回调编排：未知动作拦截 → 幂等栅栏 → 分发执行 → 终态记账。
 // ctx 应携带 request_id（jobs_handler 已把 body 值覆盖进 ctx 供落档）。
 func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (CallbackOutcome, string) {
+	if strings.TrimSpace(in.TaskID) == "" || utf8.RuneCountInString(in.TaskID) > 64 ||
+		utf8.RuneCountInString(in.Action) > 50 || utf8.RuneCountInString(in.RequestID) > 64 ||
+		utf8.RuneCountInString(in.Actor) > 50 || utf8.RuneCountInString(in.SourceIP) > 50 || len(in.Params) > 64<<10 {
+		return CallbackInvalidInput, "回调标识或参数超过约定范围"
+	}
+	if _, err := jobs.EqualParams(in.Params, in.Params); err != nil {
+		return CallbackInvalidInput, "回调参数须为无重复键的合法 JSON"
+	}
 	if _, ok := s.registry.Get(in.Action); !ok {
 		return CallbackUnknownAction, "未注册的动作: " + in.Action
 	}
+	// Reject an immutable snapshot mismatch before advancing an existing claim.
+	// The post-claim check remains necessary when concurrent first deliveries race.
+	if existing, err := s.repo.GetByTaskID(ctx, in.TaskID); err == nil {
+		if existing.Action != in.Action || !paramsSemanticEqual(existing.Params, in.Params) {
+			return CallbackNonRetryable, "task_id 凭证与回调内容不一致"
+		}
+	} else if !errors.Is(err, repository.ErrJobSubmissionNotFound) {
+		return CallbackRetryable, "回调凭证读取失败"
+	}
+	if s.policy != nil {
+		authorizedCtx, err := s.policy.AuthorizeCallback(ctx, in.TaskID, in.Action, in.Params)
+		if err != nil {
+			switch {
+			case errors.Is(err, errcode.ErrNoPermission), errors.Is(err, errcode.ErrForbidden):
+				return CallbackForbidden, "无当前动作资格或可信准入"
+			case errors.Is(err, errcode.ErrInvalidParams), errors.Is(err, jobs.ErrAbort):
+				return CallbackInvalidInput, "动作参数不符合受控配置"
+			default:
+				return CallbackRetryable, "当前动作资格尚不可确认"
+			}
+		}
+		if authorizedCtx == nil {
+			return CallbackRetryable, "当前动作资格尚不可确认"
+		}
+		ctx = authorizedCtx
+	} else if in.Action == "audit_archive" {
+		return CallbackForbidden, "维护动作缺少可信准入策略"
+	}
+	// The enforced single-instance profile has one callback service. Keep a live
+	// handler exclusive even when its DB claim crosses the stale-recovery age.
+	// This is process lifetime protection; durable claim/fence checks still own
+	// restart recovery, and it is not a multi-replica execution lease.
+	if !s.beginActive(in.TaskID) {
+		return CallbackInProgress, "任务仍在执行，尚未确认完成"
+	}
+	defer s.endActive(in.TaskID)
 
 	row, claimed, err := s.repo.ClaimCallbackRow(ctx, in.TaskID, in.Action, in.Actor, in.SourceIP, string(in.Params))
 	if err != nil {
@@ -73,9 +133,10 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 		return CallbackNonRetryable, "task_id 凭证与回调内容不一致"
 	}
 	if !claimed {
-		// 未取得执行权：他人已执行完全成功（succeeded，终态幂等拦截），或他人正在途
-		// 执行（running，10 分钟抢占窗口内）——两种情形本回调都不再执行副作用，直接受理。
-		return CallbackIdempotent, row.Status
+		if row.Status == repository.JobStatusSucceeded {
+			return CallbackIdempotent, row.Status
+		}
+		return CallbackInProgress, "任务仍在执行，尚未确认完成"
 	}
 
 	handler, _ := s.registry.Get(in.Action)
@@ -89,11 +150,9 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 			return CallbackRetryable, "回调受理失败"
 		}
 		if !updated {
-			// 过期写者：fence 失配（10 分钟陈旧重认领后新执行已在途/已终态）——
-			// 本执行的副作用已被新执行接管，静默受理 2xx，不再触发重投
 			s.logger.Warn("jobs: stale writer mark failed skipped (fence miss)",
 				"task_id", in.TaskID, "action", in.Action)
-			return CallbackIdempotent, row.Status
+			return s.confirmCurrentOutcome(ctx, in)
 		}
 		if errors.Is(err, jobs.ErrAbort) {
 			return CallbackNonRetryable, "动作执行失败（不可重试）: " + err.Error()
@@ -102,36 +161,53 @@ func (s *JobsCallbackService) Execute(ctx context.Context, in CallbackInput) (Ca
 	}
 	updated, err := s.repo.MarkSucceeded(ctx, in.TaskID, claimTs)
 	if err != nil {
-		// 执行已成功、记账 UPDATE 失败（极低概率）：业务事实已发生，必须 2xx；
-		// 若 taskrunner 因超时等重试会再次进入 Handle——Handler 可重入契约兜底
 		s.logger.Warn("jobs: mark succeeded failed after execution",
 			"task_id", in.TaskID, "action", in.Action, "err", err)
+		return s.confirmCurrentOutcome(ctx, in)
 	} else if !updated {
-		// 过期写者（fence 失配）：副作用已被新执行接管，静默受理
 		s.logger.Warn("jobs: stale writer mark succeeded skipped (fence miss)",
 			"task_id", in.TaskID, "action", in.Action)
+		return s.confirmCurrentOutcome(ctx, in)
 	}
 	return CallbackExecuted, "succeeded"
 }
 
+func (s *JobsCallbackService) beginActive(taskID string) bool {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	if _, exists := s.active[taskID]; exists {
+		return false
+	}
+	if s.active == nil {
+		s.active = make(map[string]struct{})
+	}
+	s.active[taskID] = struct{}{}
+	return true
+}
+
+func (s *JobsCallbackService) endActive(taskID string) {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	delete(s.active, taskID)
+}
+
+// A stale writer or failed ledger update cannot assert another writer finished.
+// Only a matching, durable succeeded row permits a success acknowledgement.
+func (s *JobsCallbackService) confirmCurrentOutcome(ctx context.Context, in CallbackInput) (CallbackOutcome, string) {
+	row, err := s.repo.GetByTaskID(ctx, in.TaskID)
+	if err != nil {
+		return CallbackRetryable, "任务完成状态尚不可确认"
+	}
+	if row.Status == repository.JobStatusSucceeded && row.Action == in.Action && paramsSemanticEqual(row.Params, in.Params) {
+		return CallbackIdempotent, row.Status
+	}
+	return CallbackInProgress, "任务完成状态尚不可确认"
+}
+
 // paramsSemanticEqual 回调 params 与凭证快照的语义等价比较：
-// null/空均视为 {}；其余反序列化后 DeepEqual（键序/空白不敏感）。
-// 解析失败回退字节比较（防御：非 JSON 内容不因解析失败被放行）。
+// null/空均视为 {}；数字精确比较（含大整数和指数），键序/空白不敏感。
+// 非法 JSON、重复键均拒绝，不因字节相同放行含歧义的输入。
 func paramsSemanticEqual(a string, b json.RawMessage) bool {
-	norm := func(s string) any {
-		t := strings.TrimSpace(s)
-		if t == "" || t == "null" {
-			return map[string]any{}
-		}
-		var v any
-		if err := json.Unmarshal([]byte(t), &v); err != nil {
-			return nil // 解析失败标记
-		}
-		return v
-	}
-	na, nb := norm(a), norm(string(b))
-	if na == nil || nb == nil {
-		return strings.TrimSpace(a) == strings.TrimSpace(string(b))
-	}
-	return reflect.DeepEqual(na, nb)
+	equal, err := jobs.EqualParams([]byte(a), b)
+	return err == nil && equal
 }

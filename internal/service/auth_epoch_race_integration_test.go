@@ -64,7 +64,7 @@ func newEpochRegressionAuth(t *testing.T) (*service.AuthService, *repository.Use
 	hash, err := crypto.HashPassword("EpochOld#2026")
 	require.NoError(t, err)
 	u := &model.User{Username: "epoch_race", EmployeeNo: "E800903", Password: hash, Status: 1}
-	require.NoError(t, repo.Create(context.Background(), u))
+	require.NoError(t, repo.Create(trustedIAMTestContext(), u))
 	cfg := config.JWTConfig{Secret: "epoch-regression-synthetic-secret", AccessTTL: time.Minute, RefreshTTL: time.Hour}
 	mgr := jwtpkg.NewManager(jwtpkg.Config{Secret: cfg.Secret, AccessTTL: cfg.AccessTTL})
 	auth := service.NewAuthService(repo, mgr, rdb, redispkg.NewScripts(rdb), service.NewAuditService(repository.NewAuditLogRepo(testPool), repo), cfg, nil)
@@ -84,7 +84,7 @@ func epochAccessStatus(t *testing.T, mgr *jwtpkg.Manager, rdb *goredis.Client, a
 
 func TestAuthEpoch_UpdatePasswordInvalidatesOtherDevice(t *testing.T) {
 	auth, _, u, rdb, mgr := newEpochRegressionAuth(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	login := func(device string) *model.TokenPair {
 		pair, err := auth.Login(ctx, &model.LoginRequest{EmployeeNo: u.EmployeeNo, Password: "EpochOld#2026", DeviceID: device}, "127.0.0.1", "test")
 		require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestAuthEpoch_UpdatePasswordInvalidatesOtherDevice(t *testing.T) {
 
 func TestAuthEpoch_LoginCannotBorrowPostResetEpoch(t *testing.T) {
 	auth, repo, u, rdb, _ := newEpochRegressionAuth(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	hash, err := crypto.HashPassword("EpochReset#2026")
 	require.NoError(t, err)
 	rdb.AddHook(&epochScheduleHook{
@@ -124,7 +124,7 @@ func TestAuthEpoch_LoginCannotBorrowPostResetEpoch(t *testing.T) {
 
 func TestAuthEpoch_RefreshBindsConsumptionEpoch(t *testing.T) {
 	auth, _, u, rdb, mgr := newEpochRegressionAuth(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	pair, err := auth.Login(ctx, &model.LoginRequest{EmployeeNo: u.EmployeeNo, Password: "EpochOld#2026", DeviceID: "device"}, "127.0.0.1", "test")
 	require.NoError(t, err)
 	rdb.AddHook(&epochScheduleHook{
@@ -163,7 +163,7 @@ func (h *failOneBlacklistWrite) ProcessHook(next goredis.ProcessHook) goredis.Pr
 
 func TestAuthEpoch_BlacklistFailureCannotSkipGlobalRevocation(t *testing.T) {
 	auth, _, u, rdb, mgr := newEpochRegressionAuth(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	first, err := auth.Login(ctx, &model.LoginRequest{EmployeeNo: u.EmployeeNo, Password: "EpochOld#2026", DeviceID: "first"}, "127.0.0.1", "test")
 	require.NoError(t, err)
 	other, err := auth.Login(ctx, &model.LoginRequest{EmployeeNo: u.EmployeeNo, Password: "EpochOld#2026", DeviceID: "other"}, "127.0.0.1", "test")
@@ -181,7 +181,7 @@ func TestAuthEpoch_UserLifecycleCannotReviveOldAT(t *testing.T) {
 	for _, action := range []string{"disable_enable", "delete"} {
 		t.Run(action, func(t *testing.T) {
 			auth, repo, u, rdb, mgr := newEpochRegressionAuth(t)
-			ctx := context.Background()
+			ctx := trustedIAMTestContext()
 			actor := &model.User{Username: "epoch_manager", EmployeeNo: "E800906", Password: u.Password, Status: 1}
 			require.NoError(t, repo.Create(ctx, actor))
 			_, err := testPool.Exec(ctx, `INSERT INTO roles(code,name,status,priority) SELECT 'admin','epoch admin',1,10 WHERE NOT EXISTS(SELECT 1 FROM roles WHERE code='admin' AND deleted_at IS NULL)`)

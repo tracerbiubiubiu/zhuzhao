@@ -9,11 +9,13 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // ticketRepo 资源层需要的工单仓储接口（解耦 resource 与具体 repo）
 type ticketRepo interface {
 	GetByID(ctx context.Context, id int64) (*model.Ticket, error)
+	MatchesLiveOrgPaths(ctx context.Context, orgID int64, paths []string) (bool, error)
 }
 
 // errDenied 哨兵错误：L3 canOperate 拒绝（工单可见但不允许该动作）。
@@ -28,7 +30,7 @@ type OrgDelegationChecker interface {
 	IsOrgAdminOrOwner(ctx context.Context, userID, orgID int64) (bool, error)
 	// IsAncestorOwner 实体部门 owner 对子树的委托（D9）
 	IsAncestorOwner(ctx context.Context, userID int64, ticketOrgID int64, ticketOrgPath string) (bool, error)
-	// HasOrgManagePermission 全局组织管理权（org:% 闸门；W0b：Create 归属校验的全局豁免）
+	// HasOrgManagePermission 全局组织成员管理权（org:member；Create归属校验豁免）
 	HasOrgManagePermission(ctx context.Context, userID int64) (bool, error)
 }
 
@@ -108,8 +110,13 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 	// ancestor owner 若不在 L2 放行，则 L3 委托永远走不到（Authorize 先 L2 后 L3），
 	// D7–D9 语义失效——故委托命中同样视为可见；透明读下该分支为冗余超集，仅多两次
 	// 索引查询且只发生在 404 路径上。
-	visible := isOwner(req.UserID, ticket) || scope.AllScope ||
-		pathInAnchors(ticket.OrgPath, scope.ReadPaths())
+	visible := isOwner(req.UserID, ticket) || scope.AllScope
+	if !visible {
+		visible, err = r.livePathMatch(ctx, ticket, scope.ReadPaths())
+		if err != nil {
+			return false, err
+		}
+	}
 	if !visible {
 		del, err := r.delegation.IsOrgAdminOrOwner(ctx, req.UserID, ticket.OrgID)
 		if err != nil {
@@ -172,7 +179,7 @@ func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resou
 	}
 	paths := scope.ReadPaths()
 	return resource.Filter{
-		Where: `(created_by = $1 OR assigned_to = $1 OR org_path <@ ANY($2::ltree[]) OR ` +
+		Where: `(created_by = $1 OR assigned_to = $1 OR (org_path <@ ANY($2::ltree[]) AND ` + repository.LiveOrgPathAnchorSQL("tickets.org_id", "$2") + `) OR ` +
 			delegatedVisibilitySQL + ` OR ` + ccVisibilitySQL + `)`,
 		Args: []interface{}{userID, paths},
 	}, nil
@@ -190,9 +197,9 @@ const ccVisibilitySQL = `EXISTS (
 // / org admin·owner / ancestor owner——与 org_delegation.IsOrgAdminOrOwner/
 // IsAncestorOwner 同语义；org_id 为外层 tickets.org_id 关联列。
 // 命中索引：organizations PK、user_orgs PK (user_id, org_id)、organizations.path GIN。
-const delegatedVisibilitySQL = `EXISTS (
+var delegatedVisibilitySQL = `EXISTS (
 	SELECT 1 FROM organizations o
-	WHERE o.id = org_id
+	WHERE o.id = org_id AND (` + repository.OrgDelegationActiveSQL("o") + `)
 	  AND (
 	       $1 = ANY(o.owner_user_ids)
 	    OR EXISTS (SELECT 1 FROM user_orgs du
@@ -200,7 +207,7 @@ const delegatedVisibilitySQL = `EXISTS (
 	                 AND du.org_member_role IN ('admin', 'owner')
 	                 AND (du.expires_at IS NULL OR du.expires_at > NOW()))
 	    OR EXISTS (SELECT 1 FROM organizations anc
-	               WHERE anc.path @> o.path AND $1 = ANY(anc.owner_user_ids))
+	               WHERE anc.id IN (` + repository.OrgAncestorIDsSQL("o") + `) AND (` + repository.OrgDelegationActiveSQL("anc") + `) AND $1 = ANY(anc.owner_user_ids))
 	  ))`
 
 // pathInAnchors ltree 标签级前缀匹配：org_path 落在任一锚点子树内
@@ -262,7 +269,14 @@ func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID 
 		needDelegation = true
 	case "assign":
 		// 2b 主管（scope group/all 且工单在其子树）；2c + org admin·owner
-		if scope.AllScope || pathInAnchors(ticket.OrgPath, scope.ScopePaths) {
+		if scope.AllScope {
+			return true, nil
+		}
+		matched, err := r.livePathMatch(ctx, ticket, scope.ScopePaths)
+		if err != nil {
+			return false, err
+		}
+		if matched {
 			return true, nil
 		}
 		needDelegation = true
@@ -287,4 +301,11 @@ func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID 
 		}
 	}
 	return delegated, nil
+}
+
+func (r *Resource) livePathMatch(ctx context.Context, ticket *model.Ticket, paths []string) (bool, error) {
+	if !pathInAnchors(ticket.OrgPath, paths) {
+		return false, nil
+	}
+	return r.repo.MatchesLiveOrgPaths(ctx, ticket.OrgID, paths)
 }

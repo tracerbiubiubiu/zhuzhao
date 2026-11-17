@@ -121,13 +121,10 @@ func ResetSuperadminPassword(ctx context.Context, o ResetOptions) (*ResetResult,
 	// ③ 连带启用（锁死场景常见「账号被误禁 + 密码遗忘」叠加——只改密不启用
 	// 恢复不完整；启用无「最后一人」类保护需求，直接置回）
 	if status != 1 {
-		tag, err := o.Pool.Exec(ctx,
-			`UPDATE users SET status = 1, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id)
-		if err != nil {
+		// This source write cooperates with protected IAM commands in the same
+		// fact database; CLI authorization remains the existing operator boundary.
+		if err := repository.NewUserRepo(o.Pool).UpdateStatus(ctx, id, 1); err != nil {
 			return res, fmt.Errorf("re-enable user: %w", err)
-		}
-		if tag.RowsAffected() == 0 {
-			return res, fmt.Errorf("re-enable user: target vanished mid-flow")
 		}
 		res.Reenabled = true
 	}

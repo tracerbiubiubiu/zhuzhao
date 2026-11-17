@@ -59,7 +59,7 @@ func (c *avatarProfileClient) RemoveObject(_ context.Context, key string) error 
 }
 
 func TestUserAvatarProfileCAS(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(trustedIAMTestContext(), 90*time.Second)
 	defer cancel()
 	// Reuse the native service TestMain's isolated PG and the B14 query barrier.
 	// The barrier pauses only the metadata SQL, after its actual old user read.

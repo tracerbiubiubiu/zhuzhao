@@ -14,7 +14,7 @@ name: zhuzhao
 #        -v "$PWD/migrations:/migrations" \
 #        zhuzhao-migrate:4.20.1-go1.27.4 \
 #        -path=/migrations \
-#        -database "postgres://zhuzhao:${POSTGRES_PASSWORD:-zhuzhao_dev}@postgres:5432/zhuzhao?sslmode=disable" up
+#        -database "postgres://zhuzhao:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/zhuzhao?sslmode=disable" up
 #      （或临时打开 postgres 的 ports 映射后走宿主机 make migrate-up）
 #
 # 密码/密钥等敏感配置请通过 .env 文件注入，不要直接写在这里
@@ -27,7 +27,7 @@ services:
     environment:
       POSTGRES_DB: zhuzhao
       POSTGRES_USER: zhuzhao
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       TZ: Asia/Shanghai
     # WAL 归档（2026-09-14 运维补强，对齐 activelist）：pgbackup 侧车只读共享
     # wal18_archive 卷作 PITR 原料；archive_timeout=300s 空闲也切段
@@ -63,7 +63,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: zhuzhao
-      PGPASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       PGDATABASE: zhuzhao
       BACKUP_DIR: /backups
       RETAIN_COUNT: "14"
@@ -96,7 +96,7 @@ services:
     command:
       - -path=/migrations
       - -database
-      - postgres://zhuzhao:${POSTGRES_PASSWORD:-zhuzhao_dev}@postgres:5432/zhuzhao?sslmode=disable
+      - postgres://zhuzhao:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/zhuzhao?sslmode=disable
       - up
 
   redis:
@@ -104,7 +104,7 @@ services:
     container_name: zhuzhao-redis
     restart: unless-stopped
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-zhuzhao_dev}   # 生产务必经 .env 覆盖为强密码
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}   # 生产务必经 .env 覆盖为强密码
     volumes:
       - redis82_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf:ro
@@ -116,26 +116,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # RustFS 对象存储（phase5 S5/B5-1 消费；2026-10-16 所有者拍板：MinIO → RustFS——
-  #   MinIO 官方已无开源镜像且 AGPLv3，RustFS = Apache 2.0 + S3/MinIO 兼容[实测
-  #   /minio/health/live 200、RUSTFS_ROOT_* 兼容 MINIO_ROOT_*]；镜像已拉已冒烟）。
-  #   W0 交「可起容器草案」（本次已实测起容器+/health 200/未签名 403 fail-closed），
-  #   B5-1 接 `storage:` config 段与验收 + **首日兼容验证 spike**（presign 往返/桶策略/
-  #   rclone sync 实测），test 栈随 B5-1 四档同步。
-  #   profile=storage 隔离——默认不起、不改变现栈行为：
-  #   docker compose -f deployments/docker-compose.yaml --profile storage up -d rustfs
-  #   B5-1 时移除 profiles 行转常驻（随栈自启）。
-  # 凭据经 .env 注入（RUSTFS_ROOT_*），生产务必覆盖默认值。
-  # 版本与多架构摘要见 component-lock.json；旧存储副本验证见数据升级契约。
+  # Release storage is mandatory; app waits for this primary to be healthy.
+  # Public PUT URLs use STORAGE_PUBLIC_ENDPOINT; internal CRUD uses rustfs:9000.
+  # Credentials and allowed browser origins must be supplied in the reviewed env.
   rustfs:
     image: rustfs/rustfs:1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74
     container_name: zhuzhao-rustfs
     restart: unless-stopped
-    profiles: ["storage"]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
-      RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:?RUSTFS_ROOT_USER required}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:?RUSTFS_ROOT_PASSWORD required}
       # S3 口 CORS（B5-1 spike 判据①实测通过 2026-10-19）：显式设置后预检完整放行
       # （allow-methods 含 PUT / allow-headers * / expose-headers 含 etag），白名单外
       # Origin 零 CORS 头拦截；⚠ 不设存在反射式 CORS 风险（GHSA-x5xv-223c-8vm7）
@@ -143,13 +134,12 @@ services:
       # （console 口另有 RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS，容器自带默认 *，独立配置）
       # 2026-10-29 补 4000 双源：本仓 vite dev 已钉 4000（playwright webServer 同源），
       # 5173 为历史端口保留防回退——白名单过期曾致头像直传 Failed to fetch（CORS 无 ACAO）
-      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4000,http://127.0.0.1:4000}
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${RUSTFS_CORS_ALLOWED_ORIGINS:?RUSTFS_CORS_ALLOWED_ORIGINS required}
     volumes:
       - rustfs_data:/data
     ports:
-      # dev 便利映射（浏览器直传需宿主机可达）；生产形态（不暴露/反代）B5-1 定
-      - "${RUSTFS_API_PORT:-9000}:9000"
-      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+      # 仅回环S3供受审反代/本机直传画像；console 9001不默认发布
+      - "127.0.0.1:${RUSTFS_API_PORT:-9000}:9000"
     healthcheck:
       # 实测（2026-10-16）：/health 200；容器内置 curl/wget/busybox
       test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
@@ -167,8 +157,8 @@ services:
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      RUSTFS_ROOT_USER: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
-      RUSTFS_ROOT_PASSWORD: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
+      RUSTFS_ROOT_USER: ${RUSTFS_BACKUP_ROOT_USER:?RUSTFS_BACKUP_ROOT_USER required}
+      RUSTFS_ROOT_PASSWORD: ${RUSTFS_BACKUP_ROOT_PASSWORD:?RUSTFS_BACKUP_ROOT_PASSWORD required}
     volumes:
       - rustfs_backup_data:/data
     profiles: ["storage"]
@@ -187,14 +177,14 @@ services:
       RCLONE_CONFIG_SRC_TYPE: s3
       RCLONE_CONFIG_SRC_PROVIDER: Other
       RCLONE_CONFIG_SRC_ENDPOINT: http://rustfs:9000
-      RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${RUSTFS_ROOT_USER:-zhuzhao_rustfs}
-      RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${RUSTFS_ROOT_PASSWORD:-zhuzhao_rustfs_dev}
+      RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${RUSTFS_ROOT_USER:?RUSTFS_ROOT_USER required}
+      RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${RUSTFS_ROOT_PASSWORD:?RUSTFS_ROOT_PASSWORD required}
       RCLONE_CONFIG_SRC_REGION: us-east-1
       RCLONE_CONFIG_DST_TYPE: s3
       RCLONE_CONFIG_DST_PROVIDER: Other
       RCLONE_CONFIG_DST_ENDPOINT: http://rustfs-backup:9000
-      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${RUSTFS_BACKUP_ROOT_USER:-zhuzhao_rustfs_bk}
-      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${RUSTFS_BACKUP_ROOT_PASSWORD:-zhuzhao_rustfs_bk_dev}
+      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${RUSTFS_BACKUP_ROOT_USER:?RUSTFS_BACKUP_ROOT_USER required}
+      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${RUSTFS_BACKUP_ROOT_PASSWORD:?RUSTFS_BACKUP_ROOT_PASSWORD required}
       RCLONE_CONFIG_DST_REGION: us-east-1
       BUCKET: ${STORAGE_BUCKET:-zhuzhao}
       MIRROR_INTERVAL: "${RUSTFS_MIRROR_INTERVAL:-3600}"
@@ -226,11 +216,11 @@ services:
       APP_DATABASE_HOST: postgres
       APP_DATABASE_PORT: "5432"
       APP_DATABASE_USER: zhuzhao
-      APP_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-zhuzhao_dev}
+      APP_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       APP_DATABASE_DBNAME: zhuzhao
       APP_REDIS_HOST: redis
       APP_REDIS_PORT: "6379"
-      APP_REDIS_PASSWORD: ${REDIS_PASSWORD:-zhuzhao_dev}
+      APP_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
       APP_SERVER_PORT: "33333"
       APP_SERVER_MODE: release
       # P4-9：信任反代网段（compose bridge）——空则经 ui 的 ClientIP 恒为 nginx IP、限流桶全站共享
@@ -239,7 +229,7 @@ services:
       # JWT 密钥必须通过环境变量注入，勿使用默认值
       # F-19：jwt.secret 走 BindEnv 显式短名 JWT_SECRET（无 APP_ 前缀）；
       # access/refresh TTL 走 AutomaticEnv 的 APP_ 前缀映射，保持 APP_JWT_*
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
       APP_JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-30m}
       APP_JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
       # 网关反代（批次 B/E13）：SK 须与 activelist 侧 ACTIVELIST_CALLER_ZHUZHAO_SK 同值
@@ -255,6 +245,17 @@ services:
       TASKRUNNER_SK: ${TASKRUNNER_SK:?TASKRUNNER_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       INTERNAL_JOBS_SK: ${INTERNAL_JOBS_SK:?INTERNAL_JOBS_SK required — repo-known dev SK rejected in release (W0a-P0-1)}
       TASKRUNNER_SELF_BASE_URL: ${TASKRUNNER_SELF_BASE_URL:-http://zhuzhao:33333}
+      # Independent maintenance authority; empty keeps manual audit maintenance closed.
+      TASK_MAINTAINER_USER_IDS: ${TASK_MAINTAINER_USER_IDS:-}
+      # Internal CRUD and public signing origins are distinct (Host is signed).
+      STORAGE_ENABLED: "true"
+      STORAGE_ENDPOINT: http://rustfs:9000
+      STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:?STORAGE_PUBLIC_ENDPOINT required}
+      STORAGE_ACCESS_KEY: ${RUSTFS_ROOT_USER:?RUSTFS_ROOT_USER required}
+      STORAGE_SECRET_KEY: ${RUSTFS_ROOT_PASSWORD:?RUSTFS_ROOT_PASSWORD required}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-zhuzhao}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_FILE_COOKIE_SECURE: ${STORAGE_FILE_COOKIE_SECURE:-true}
     volumes:
       - app_archive:/app/data/archive # 审计 JSONL：容器替换后保留（out_dir 覆盖须同步挂载）
     ports:
@@ -263,6 +264,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
     networks:
       default: {}

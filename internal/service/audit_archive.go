@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
@@ -29,7 +30,8 @@ import (
 //     已写文件未删行，下次重跑重复导出该批（跨文件重复可容忍，记录不丢优先）；
 //   - 单表失败跳过继续另一表（03 §4.2）；任一表失败 → 返回 error（5xx，taskrunner
 //     重试；重入安全：已归档行已删，重跑自然幂等）；
-//   - params 可选 {"retention_days": n} 覆盖保留期（排障/回填用）；非法值 → ErrAbort。
+//   - 默认/零保留期沿固定配置；临时覆盖需私有策略准入上下文，外部JSON不能自授批准。
+//     严格参数非法或无批准覆盖 → ErrAbort；受权callback最终资格与DB删除同事务。
 type AuditArchiveJob struct {
 	repo              *repository.AuditLogRepo
 	retentionDays     int
@@ -101,7 +103,8 @@ func (j *AuditArchiveJob) cleanExpiredArchiveFiles() {
 }
 
 type archiveParams struct {
-	RetentionDays int `json:"retention_days"`
+	RetentionDays int    `json:"retention_days,omitempty"`
+	ApprovalID    string `json:"approval_id,omitempty"`
 }
 
 // archiveTables 归档顺序（先大表后大表——两张均为大表，顺序无业务含义，仅稳定遍历）。
@@ -109,16 +112,31 @@ var archiveTablesOrdered = []string{"audit_logs", "policy_evaluation_logs"}
 
 // Handle 执行一次归档。params 为空时全用任务配置。
 func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) error {
-	retention := j.retentionDays
-	if len(params) > 0 {
-		var p archiveParams
-		if err := json.Unmarshal(params, &p); err != nil {
-			return fmt.Errorf("audit_archive: params 解析失败: %v: %w", err, jobs.ErrAbort)
-		}
-		if p.RetentionDays > 0 {
-			retention = p.RetentionDays
-		}
+	parsed, err := decodeArchiveParams(params)
+	if err != nil {
+		return fmt.Errorf("audit_archive: invalid params: %w", jobs.ErrAbort)
 	}
+	retention := j.retentionDays
+	if parsed.RetentionDays > 0 {
+		retention = parsed.RetentionDays
+	}
+	execution, granted := ctx.Value(maintenanceExecutionKey{}).(maintenanceExecution)
+	if !granted && (retention != j.retentionDays || parsed.ApprovalID != "") {
+		return fmt.Errorf("audit_archive: unapproved retention override: %w", jobs.ErrAbort)
+	}
+	if granted && (execution.admission.RetentionDays != retention || execution.admission.ApprovalID != parsed.ApprovalID) {
+		return fmt.Errorf("audit_archive: admission mismatch: %w", jobs.ErrAbort)
+	}
+	if granted {
+		err := execution.execute(ctx, func(ctx context.Context, tx pgx.Tx) error { return j.handleWithTx(ctx, retention, tx) })
+		if err == nil {
+			j.cleanExpiredArchiveFiles()
+		}
+		return err
+	}
+	return j.handleWithTx(ctx, retention, nil)
+}
+func (j *AuditArchiveJob) handleWithTx(ctx context.Context, retention int, tx pgx.Tx) error {
 	cutoff := time.Now().AddDate(0, 0, -retention)
 
 	if err := os.MkdirAll(j.outDir, 0o755); err != nil {
@@ -127,7 +145,7 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 
 	var firstErr error
 	for _, table := range archiveTablesOrdered {
-		exported, deleted, err := j.archiveTable(ctx, table, cutoff)
+		exported, deleted, err := j.archiveTableTx(ctx, tx, table, cutoff)
 		if err != nil {
 			j.logger.Error("audit_archive: table failed",
 				slog.String("table", table), slog.Any("err", err))
@@ -142,12 +160,17 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 				slog.Int64("deleted", deleted), slog.Int("retention_days", retention))
 		}
 	}
-	j.cleanExpiredArchiveFiles()
+	if tx == nil && firstErr == nil {
+		j.cleanExpiredArchiveFiles()
+	}
 	return firstErr
 }
 
 // archiveTable 单表**单批**归档：写文件（含 flush）→ 删同批行 → 返回（B-1 修法 c）。
 func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff time.Time) (exported, deleted int64, err error) {
+	return j.archiveTableTx(ctx, nil, table, cutoff)
+}
+func (j *AuditArchiveJob) archiveTableTx(ctx context.Context, tx pgx.Tx, table string, cutoff time.Time) (exported, deleted int64, err error) {
 	// 审计修复（2026-09-30 P2）：先取批后建文件——空批不再泄漏 0 字节文件
 	// （原序每 tick 每表一空文件 ≈5760/天，inode 无界）
 	select {
@@ -155,7 +178,12 @@ func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff
 		return exported, deleted, ctx.Err()
 	default:
 	}
-	batch, err := j.repo.ArchiveFetchBatch(ctx, table, cutoff, j.batchRows)
+	var batch []repository.ArchiveRow
+	if tx != nil {
+		batch, err = j.repo.ArchiveFetchBatchTx(ctx, tx, table, cutoff, j.batchRows)
+	} else {
+		batch, err = j.repo.ArchiveFetchBatch(ctx, table, cutoff, j.batchRows)
+	}
 	if err != nil {
 		return exported, deleted, err
 	}
@@ -180,7 +208,12 @@ func (j *AuditArchiveJob) archiveTable(ctx context.Context, table string, cutoff
 	if err := f.Sync(); err != nil {
 		return exported, deleted, fmt.Errorf("sync %s: %w", path, err)
 	}
-	if err := j.repo.ArchiveDeleteBatch(ctx, table, ids); err != nil {
+	if tx != nil {
+		err = j.repo.ArchiveDeleteBatchTx(ctx, tx, table, ids)
+	} else {
+		err = j.repo.ArchiveDeleteBatch(ctx, table, ids)
+	}
+	if err != nil {
 		return exported, deleted, err
 	}
 	return int64(len(batch)), int64(len(ids)), nil

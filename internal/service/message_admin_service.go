@@ -100,6 +100,13 @@ var validEventActions = map[string]bool{
 func isValidEventAction(action string) bool { return validEventActions[action] }
 
 func (s *MessageAdminService) UpsertRule(ctx context.Context, rule *model.MessageRule) error {
+	principal := taskPrincipalOf(ctx)
+	if principal.ID <= 0 {
+		return errcode.ErrForbidden
+	}
+	copyRule := *rule
+	copyRule.CreatedBy = &principal.ID
+	rule = &copyRule
 	if err := s.validateUpsertRule(ctx, rule); err != nil {
 		return err
 	}

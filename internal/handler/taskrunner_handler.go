@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,6 +66,9 @@ func (h *TaskrunnerHandler) failFastAction(c *gin.Context, actionID string) bool
 
 // actor 从 gin ctx 取工号（JWT 中间件注入；system 场景为空串）。
 func actorOf(c *gin.Context) string { return c.GetString("username") }
+func trustedTaskContext(c *gin.Context) context.Context {
+	return service.WithTaskPrincipal(c.Request.Context(), c.GetInt64("userID"), actorOf(c))
+}
 
 // Submit
 //
@@ -106,7 +110,7 @@ func (h *TaskrunnerHandler) Submit(c *gin.Context) {
 		response.BadRequest(c, "timeout_secs 须为 0 或 1–86400")
 		return
 	}
-	resp, err := h.svc.Submit(c.Request.Context(), &req, actorOf(c), c.ClientIP(), h.selfBaseURL)
+	resp, err := h.svc.Submit(trustedTaskContext(c), &req, actorOf(c), c.ClientIP(), h.selfBaseURL)
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return
@@ -200,7 +204,7 @@ func (h *TaskrunnerHandler) CreateJob(c *gin.Context) {
 	if probe.ActionID != "" && h.failFastAction(c, probe.ActionID) {
 		return
 	}
-	data, err := h.svc.CreateJob(c.Request.Context(), json.RawMessage(body), actorOf(c))
+	data, err := h.svc.CreateJob(trustedTaskContext(c), json.RawMessage(body), actorOf(c))
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return
@@ -233,7 +237,7 @@ func (h *TaskrunnerHandler) UpdateJob(c *gin.Context) {
 		response.BadRequest(c, "job_id 必填")
 		return
 	}
-	data, err := h.svc.UpdateJob(c.Request.Context(), req.JobID, json.RawMessage(raw), actorOf(c))
+	data, err := h.svc.UpdateJob(trustedTaskContext(c), req.JobID, json.RawMessage(raw), actorOf(c))
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return
@@ -257,7 +261,7 @@ func (h *TaskrunnerHandler) Trigger(c *gin.Context) {
 		response.BadRequest(c, "job_id 必填")
 		return
 	}
-	resp, err := h.svc.Trigger(c.Request.Context(), req.JobID, actorOf(c), c.ClientIP())
+	resp, err := h.svc.Trigger(trustedTaskContext(c), req.JobID, actorOf(c), c.ClientIP())
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return
@@ -285,7 +289,7 @@ func (h *TaskrunnerHandler) Cancel(c *gin.Context) {
 		response.BadRequest(c, "task_id 必填")
 		return
 	}
-	data, err := h.svc.CancelTask(c.Request.Context(), req.TaskID, actorOf(c))
+	data, err := h.svc.CancelTask(trustedTaskContext(c), req.TaskID, actorOf(c))
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return
@@ -309,7 +313,7 @@ func (h *TaskrunnerHandler) Retry(c *gin.Context) {
 		response.BadRequest(c, "task_id 必填")
 		return
 	}
-	data, err := h.svc.RetryTask(c.Request.Context(), req.TaskID, actorOf(c))
+	data, err := h.svc.RetryTask(trustedTaskContext(c), req.TaskID, actorOf(c))
 	if err != nil {
 		mapTaskrunnerErr(c, err)
 		return

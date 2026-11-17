@@ -61,7 +61,7 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.
 func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize int) ([]*model.User, int64, error) {
 	page, pageSize = NormalizePage(page, pageSize)
 	var total int64
-	if err := r.db.QueryRow(ctx, `
+	if err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM users u
 		INNER JOIN user_orgs uo ON uo.user_id = u.id
 		WHERE uo.org_id = $1 AND u.deleted_at IS NULL`, orgID).Scan(&total); err != nil {
@@ -73,7 +73,7 @@ func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize 
 		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
 		ORDER BY u.id ASC
 		LIMIT $2 OFFSET $3`
-	rows, err := r.db.Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list users by org: %w", err)
 	}
@@ -91,7 +91,7 @@ func (r *UserRepo) ListByOrgID(ctx context.Context, orgID int64, page, pageSize 
 func (r *UserRepo) ListOrgMembersRoster(ctx context.Context, orgID int64, page, pageSize int) ([]*model.OrgMemberRosterItem, int64, error) {
 	page, pageSize = NormalizePage(page, pageSize)
 	var total int64
-	if err := r.db.QueryRow(ctx, `
+	if err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM users u
 		INNER JOIN user_orgs uo ON uo.user_id = u.id
 		WHERE uo.org_id = $1 AND u.deleted_at IS NULL`, orgID).Scan(&total); err != nil {
@@ -115,7 +115,7 @@ func (r *UserRepo) ListOrgMembersRoster(ctx context.Context, orgID int64, page, 
 		WHERE uo.org_id = $1 AND u.deleted_at IS NULL
 		ORDER BY CASE uo.org_member_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id ASC
 		LIMIT $2 OFFSET $3`
-	rows, err := r.db.Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, orgID, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list org members roster: %w", err)
 	}
@@ -168,11 +168,17 @@ type rowExec interface {
 
 // Create 创建用户（password 须为 bcrypt hash）
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
-	return r.createUser(ctx, r.db, user)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Create(ctx, user) })
+	}
+	return r.createUser(ctx, IAMDB(ctx, r.db), user)
 }
 
 // CreateTx 在外部事务内创建用户
 func (r *UserRepo) CreateTx(ctx context.Context, tx pgx.Tx, user *model.User) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
 	return r.createUser(ctx, tx, user)
 }
 
@@ -232,7 +238,7 @@ func (r *UserRepo) List(ctx context.Context, q UserListQuery) ([]*model.User, in
 
 	countSQL := `SELECT COUNT(*) FROM users u` + where
 	var total int64
-	if err := r.db.QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
+	if err := IAMDB(ctx, r.db).QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count users: %w", err)
 	}
 
@@ -242,7 +248,7 @@ func (r *UserRepo) List(ctx context.Context, q UserListQuery) ([]*model.User, in
 		ORDER BY u.id ASC
 		LIMIT $` + fmt.Sprint(len(args)+1) + ` OFFSET $` + fmt.Sprint(len(args)+2)
 
-	rows, err := r.db.Query(ctx, listSQL, listArgs...)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, listSQL, listArgs...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list users: %w", err)
 	}
@@ -258,6 +264,9 @@ func (r *UserRepo) List(ctx context.Context, q UserListQuery) ([]*model.User, in
 // Update 仅更新用户资料（乐观锁 version）。状态/强制改密须经专用安全写入口，
 // 不能将先前读取的快照写回：资料请求可能跨过并发禁用/重置密码的提交。
 func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Update(ctx, user) })
+	}
 	const q = `
 		UPDATE users SET
 			username = $2,
@@ -273,7 +282,7 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 		WHERE id = $1 AND version = $10 AND deleted_at IS NULL
 		RETURNING version, updated_at, status, must_change_password`
 
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		user.ID,
 		user.Username,
 		user.EmployeeNo,
@@ -299,7 +308,10 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 
 // UpdateStatus 更新启用/禁用状态
 func (r *UserRepo) UpdateStatus(ctx context.Context, id int64, status int) error {
-	tag, err := r.db.Exec(ctx, `
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.UpdateStatus(ctx, id, status) })
+	}
+	tag, err := IAMDB(ctx, r.db).Exec(ctx, `
 		UPDATE users SET status = $2, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id, status)
 	if err != nil {
@@ -313,7 +325,7 @@ func (r *UserRepo) UpdateStatus(ctx context.Context, id int64, status int) error
 
 // UpdateLastLogin 记录最后登录时间与 IP
 func (r *UserRepo) UpdateLastLogin(ctx context.Context, id int64, ip string) error {
-	tag, err := r.db.Exec(ctx, `
+	tag, err := IAMDB(ctx, r.db).Exec(ctx, `
 		UPDATE users SET last_login_at = NOW(), last_login_ip = $2, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id, ip)
 	if err != nil {
@@ -327,7 +339,10 @@ func (r *UserRepo) UpdateLastLogin(ctx context.Context, id int64, ip string) err
 
 // UpdatePassword 更新密码 hash
 func (r *UserRepo) UpdatePassword(ctx context.Context, id int64, passwordHash string, mustChange bool) error {
-	tag, err := r.db.Exec(ctx, `
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.UpdatePassword(ctx, id, passwordHash, mustChange) })
+	}
+	tag, err := IAMDB(ctx, r.db).Exec(ctx, `
 		UPDATE users SET password = $2, must_change_password = $3, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id, passwordHash, mustChange)
 	if err != nil {
@@ -341,7 +356,10 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, id int64, passwordHash st
 
 // SoftDelete 软删除用户（事务内清理 user_roles/user_orgs 关联）
 func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.SoftDelete(ctx, id) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -354,6 +372,14 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 
 // SoftDeleteTx 在外部事务内软删除用户（含关联清理）
 func (r *UserRepo) SoftDeleteTx(ctx context.Context, tx pgx.Tx, id int64) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
+	// Match direct-role replacement's target -> binding order. Deleting the
+	// binding first would deadlock with a replacement holding the user row.
+	if err := r.lockRoleBindingTargetTx(ctx, tx, id); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, id); err != nil {
 		return fmt.Errorf("delete user_roles: %w", err)
 	}
@@ -383,7 +409,7 @@ func (r *UserRepo) SoftDeleteTx(ctx context.Context, tx pgx.Tx, id int64) error 
 // RunInTx 在事务内执行 fn（失败整体回滚）。
 // TOCTOU 修复基础设施：superadmin 保护检查与写入须在同一事务 + advisory lock 下串行化
 func (r *UserRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -397,6 +423,9 @@ func (r *UserRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error 
 // AcquireSuperadminGuard 事务内获取最后 superadmin 保护锁。
 // 相同 lock key 的并发事务在此串行化，消除"检查与写入之间"的时间窗（TOCTOU）
 func AcquireSuperadminGuard(ctx context.Context, tx pgx.Tx) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
 	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('last_superadmin_guard'))`)
 	if err != nil {
 		return fmt.Errorf("acquire superadmin guard lock: %w", err)
@@ -431,6 +460,9 @@ func (r *UserRepo) CountActiveSuperadminUsersTx(ctx context.Context, tx pgx.Tx) 
 
 // UpdateStatusTx 在外部事务内更新启用/禁用状态
 func (r *UserRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status int) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
 	tag, err := tx.Exec(ctx, `
 		UPDATE users SET status = $2, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id, status)
@@ -443,9 +475,12 @@ func (r *UserRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, stat
 	return nil
 }
 
-// SetRoles 全量覆盖用户角色（事务内先删后插）
+// SetRoles 全量覆盖直接角色，保留未变化绑定的创建事实。
 func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.SetRoles(ctx, userID, roleIDs) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -457,12 +492,49 @@ func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) 
 	return tx.Commit(ctx)
 }
 
-// SetRolesTx 在外部事务内全量覆盖用户角色。
-// D2-26：去重 + 行数核对——原 INSERT...SELECT 静默跳过软删角色（TOCTOU 窗口
-// 内角色被删 → 创建成功但角色未绑、无提示）；重复 roleID 也会与行数核对冲突，先去重
+// LockRoleBindingsTx serializes replacements for one target and returns all
+// directly bound roles, including disabled/soft-deleted rows for safe delta
+// validation. Actor authorization remains a separate service responsibility.
+func (r *UserRepo) LockRoleBindingsTx(ctx context.Context, tx pgx.Tx, userID int64) ([]*model.Role, error) {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return nil, err
+	}
+	if err := r.lockRoleBindingTargetTx(ctx, tx, userID); err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(ctx, `SELECT`+roleSelectColumns+`
+		FROM roles WHERE id IN (SELECT role_id FROM user_roles WHERE user_id=$1)
+		ORDER BY id FOR SHARE`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("read direct role bindings: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, scanRoleCollectableRowDirect)
+}
+
+func (r *UserRepo) lockRoleBindingTargetTx(ctx context.Context, tx pgx.Tx, userID int64) error {
+	var id int64
+	err := tx.QueryRow(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&id)
+	// Preserve the existing empty-replacement behavior for an unknown target;
+	// a nonempty insert still encounters its existing foreign-key guard.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("lock role binding target: %w", err)
+	}
+	return nil
+}
+
+// SetRolesTx replaces the direct set while preserving retained binding facts.
+// Target-row locking prevents concurrent replacements from forming a union;
+// role row locks keep the soft-delete validation valid through the insert.
 func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, roleIDs []int64) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id = $1`, userID); err != nil {
-		return fmt.Errorf("delete user roles: %w", err)
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
+	if err := r.lockRoleBindingTargetTx(ctx, tx, userID); err != nil {
+		return err
 	}
 	// 去重（保序）
 	seen := make(map[int64]struct{}, len(roleIDs))
@@ -474,25 +546,33 @@ func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, role
 		seen[id] = struct{}{}
 		deduped = append(deduped, id)
 	}
-	for _, roleID := range deduped {
-		// B4-3：INSERT...SELECT 带活跃性条件——消灭「service 预检通过后、
-		// 写入前」角色被软删的 TOCTOU 残余窗口（软删行 FK 仍通过，原会写入幽灵绑定）
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO user_roles (user_id, role_id)
-			SELECT $1, id FROM roles
-			WHERE id = $2 AND deleted_at IS NULL
-			ON CONFLICT DO NOTHING`, userID, roleID)
-		if err != nil {
-			if ec := MapForeignKeyViolation(err); ec != nil {
-				return ec
-			}
-			return fmt.Errorf("insert user role: %w", err)
+	rows, err := tx.Query(ctx, `SELECT id FROM roles
+		WHERE id=ANY($1::bigint[]) AND deleted_at IS NULL ORDER BY id FOR SHARE`, deduped)
+	if err != nil {
+		return fmt.Errorf("validate direct role bindings: %w", err)
+	}
+	valid, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (int64, error) {
+		var id int64
+		err := row.Scan(&id)
+		return id, err
+	})
+	if err != nil {
+		return fmt.Errorf("collect direct role bindings: %w", err)
+	}
+	if len(valid) != len(deduped) {
+		return errcode.ErrRoleNotFound
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_roles
+		WHERE user_id=$1 AND NOT(role_id=ANY($2::bigint[]))`, userID, deduped); err != nil {
+		return fmt.Errorf("remove direct role bindings: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO user_roles(user_id,role_id)
+		SELECT $1,id FROM roles WHERE id=ANY($2::bigint[]) AND deleted_at IS NULL
+		ON CONFLICT DO NOTHING`, userID, deduped); err != nil {
+		if ec := MapForeignKeyViolation(err); ec != nil {
+			return ec
 		}
-		// D2-26：0 行 = 角色 TOCTOU 窗口内被软删 → 显式 404 回滚整个事务
-		//（Create 场景此前会静默丢角色创建成功）
-		if tag.RowsAffected() == 0 {
-			return errcode.ErrRoleNotFound
-		}
+		return fmt.Errorf("insert direct role bindings: %w", err)
 	}
 	return nil
 }
@@ -501,7 +581,7 @@ func (r *UserRepo) SetRolesTx(ctx context.Context, tx pgx.Tx, userID int64, role
 // 角色禁用语义（B1-1）：禁用角色（status=0）不参与鉴权——Casbin enforce、
 // 菜单下发、priority 档位均不将其计入，禁用自下次请求起生效。
 func (r *UserRepo) GetRoleCodes(ctx context.Context, userID int64) ([]string, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT r.code FROM roles r
 		INNER JOIN user_roles ur ON ur.role_id = r.id
 		WHERE ur.user_id = $1 AND r.deleted_at IS NULL AND r.status = 1
@@ -526,7 +606,7 @@ func (r *UserRepo) GetRoleCodes(ctx context.Context, userID int64) ([]string, er
 
 // GetRoles 查询用户绑定的角色实体（仅启用中，B1-1：禁用角色不计入 priority 档位与 superadmin 判断）
 func (r *UserRepo) GetRoles(ctx context.Context, userID int64) ([]*model.Role, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT r.id, r.code, r.name, COALESCE(r.description, ''), r.status, r.priority,
 			r.sort_order, r.is_system, r.tenant_id, r.version, r.deleted_at, r.created_at, r.updated_at
 		FROM roles r
@@ -548,7 +628,7 @@ func (r *UserRepo) GetRoles(ctx context.Context, userID int64) ([]*model.Role, e
 // IsSuperadminUser 用户是否绑定 superadmin 角色（仅角色启用时，B1-1）
 func (r *UserRepo) IsSuperadminUser(ctx context.Context, userID int64) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM user_roles ur
 			INNER JOIN roles r ON r.id = ur.role_id
@@ -560,7 +640,7 @@ func (r *UserRepo) IsSuperadminUser(ctx context.Context, userID int64) (bool, er
 // CountActiveSuperadminUsers 统计启用中的 superadmin 用户数（含角色启用条件，B1-1）
 func (r *UserRepo) CountActiveSuperadminUsers(ctx context.Context) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(DISTINCT u.id) FROM users u
 		INNER JOIN user_roles ur ON ur.user_id = u.id
 		INNER JOIN roles r ON r.id = ur.role_id
@@ -569,7 +649,7 @@ func (r *UserRepo) CountActiveSuperadminUsers(ctx context.Context) (int64, error
 }
 
 func (r *UserRepo) queryOne(ctx context.Context, q string, args ...any) (*model.User, error) {
-	row := r.db.QueryRow(ctx, q, args...)
+	row := IAMDB(ctx, r.db).QueryRow(ctx, q, args...)
 	user, err := scanUserRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -684,4 +764,22 @@ func NormalizePage(page, pageSize int) (int, int) {
 		pageSize = 100
 	}
 	return page, pageSize
+}
+
+// UpdateProfile writes only self-service display fields. It neither reads nor
+// writes IAM source facts, and keeps the existing optimistic version CAS so an
+// avatar bind cannot be overwritten by a stale profile snapshot.
+func (r *UserRepo) UpdateProfile(ctx context.Context, user *model.User) error {
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `UPDATE users SET
+ real_name=NULLIF($2,''),email=NULLIF($3,''),phone=NULLIF($4,''),avatar=NULLIF($5,''),
+ version=version+1,updated_at=NOW()
+ WHERE id=$1 AND version=$6 AND deleted_at IS NULL
+ RETURNING version,updated_at,status,must_change_password`, user.ID, user.RealName, user.Email, user.Phone, user.Avatar, user.Version).Scan(&user.Version, &user.UpdatedAt, &user.Status, &user.MustChangePassword)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.ErrConcurrentModification
+	}
+	if err != nil {
+		return fmt.Errorf("update profile: %w", err)
+	}
+	return nil
 }

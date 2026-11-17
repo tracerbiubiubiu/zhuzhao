@@ -3,6 +3,7 @@
 package service_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -28,6 +29,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	testPool = pool
+	// The fixture excludes production seeds. Give parent_id=1 helpers a real
+	// root rather than accidentally creating their first child as a self-cycle.
+	if _, err := pool.Exec(context.Background(), `INSERT INTO organizations(id,code,name,path,status,is_system) VALUES(1,'root','合成根组织','root',1,true); SELECT setval('organizations_id_seq',1)`); err != nil {
+		cleanup()
+		panic(err)
+	}
 	code := m.Run()
 	cleanup()
 	os.Exit(code)

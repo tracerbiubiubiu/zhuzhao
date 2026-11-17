@@ -135,6 +135,13 @@ func (c *Client) ListJobs(ctx context.Context, query url.Values) (json.RawMessag
 	return out, c.do(ctx, http.MethodGet, "/v1/jobs", query, nil, "", &out)
 }
 
+// GetJob reads the authoritative definition under AK/SK authentication.
+func (c *Client) GetJob(ctx context.Context, jobID string) (json.RawMessage, error) {
+	var out json.RawMessage
+	err := c.do(ctx, http.MethodGet, "/v1/jobs/"+url.PathEscape(jobID), nil, nil, "", &out)
+	return out, err
+}
+
 // CreateJob POST /v1/jobs（action_id + trigger_type + cron_spec + params + dept + enabled...）。
 func (c *Client) CreateJob(ctx context.Context, body json.RawMessage, actor string) (json.RawMessage, error) {
 	var out json.RawMessage
@@ -152,6 +159,21 @@ func (c *Client) TriggerJob(ctx context.Context, jobID, actor, sourceIP string) 
 	body := map[string]interface{}{"job_id": jobID, "actor": actor, "source_ip": sourceIP, "request_id": reqid.From(ctx)}
 	var out SubmitResponse
 	return &out, c.do(ctx, http.MethodPost, "/v1/jobs/trigger", nil, body, actor, &out)
+}
+
+// TriggerJobIfUnchanged binds the prewritten core admission to a TR-local
+// atomic definition snapshot. A stale definition returns conflict, no new run.
+func (c *Client) TriggerJobIfUnchanged(ctx context.Context, jobID, taskID, action string, params json.RawMessage, actor, sourceIP string) (*SubmitResponse, error) {
+	body := map[string]interface{}{"job_id": jobID, "task_id": taskID, "expected_action": action, "expected_params": json.RawMessage(normalizeParams(params)), "actor": actor, "source_ip": sourceIP, "request_id": reqid.From(ctx)}
+	var out SubmitResponse
+	err := c.do(ctx, http.MethodPost, "/v1/jobs/trigger", nil, body, actor, &out)
+	return &out, err
+}
+func normalizeParams(raw []byte) []byte {
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return []byte("{}")
+	}
+	return raw
 }
 
 // CancelTask POST /v1/tasks/cancel（仅未开始；执行中 409；body 带 task_id）。

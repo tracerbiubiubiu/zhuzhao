@@ -6,7 +6,6 @@ package service_test
 // ticket_visibility 配置守卫。SSOT: phase2/00 §9 BK-14/BK-13、09-ticket §5.2。
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -21,7 +20,7 @@ import (
 // IW1/BK-14：SetMemberScope 权限矩阵 + 语义
 func TestBK14_SetMemberScope(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	// org admin 改 member scope=group ✓
 	require.NoError(t, env.orgSvc.SetMemberScope(ctx,
@@ -63,7 +62,7 @@ func TestBK14_SetMemberScope(t *testing.T) {
 // IW1/BK-14：AddMember 携带 ticket_scope + 重复添加不重置已配置范围
 func TestBK14_AddMemberWithScope(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	require.NoError(t, env.orgSvc.AddMember(ctx,
 		&model.OrgMemberRequest{OrgID: env.vgID, UserID: env.mem1, TicketScope: "group"}, env.admin))
@@ -93,7 +92,7 @@ func TestBK14_AddMemberWithScope(t *testing.T) {
 // BK-13.3：org update 的 ticket_visibility 配置——虚拟组 400、实体可配且落库
 func TestBK13_OrgUpdateTicketVisibility(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	orgRepo := repository.NewOrgRepo(testPool)
 
 	// 虚拟组 → 400

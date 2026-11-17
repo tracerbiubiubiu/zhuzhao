@@ -24,13 +24,14 @@ import (
 
 // Deps 路由依赖
 type Deps struct {
-	AuthHandler   *handler.AuthHandler
-	UserHandler   *handler.UserHandler
-	RoleHandler   *handler.RoleHandler
-	OrgHandler    *handler.OrgHandler
-	MenuHandler   *handler.MenuHandler
-	AuditHandler  *handler.AuditHandler
-	TicketHandler *handler.TicketHandler
+	AuthHandler         *handler.AuthHandler
+	UserHandler         *handler.UserHandler
+	RoleHandler         *handler.RoleHandler
+	OrgHandler          *handler.OrgHandler
+	MenuHandler         *handler.MenuHandler
+	AuditHandler        *handler.AuditHandler
+	TicketHandler       *handler.TicketHandler
+	TicketPeopleHandler *handler.TicketPeopleHandler
 
 	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
 	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
@@ -211,6 +212,8 @@ func New(deps Deps) *gin.Engine {
 			selfService := authed.Group("")
 			selfService.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
 			{
+				// F3: original write-action and concrete resource checks live in PeopleService.
+				selfService.GET("/tickets/people", deps.TicketPeopleHandler.Search)
 				// 认证模块（需鉴权）
 				selfService.POST("/auth/logout", deps.AuthHandler.Logout)
 				selfService.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)

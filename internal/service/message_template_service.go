@@ -56,31 +56,7 @@ func validatePlaceholders(subject, body string) error {
 // 修复前缺 reminder_count/overdue_minutes/from_status/to_status/to_assignee/
 // from_assignee/actor，管理员重存种子模板 ticket_timeout_notify 即 400）。
 // 完整面=全事件 emit 链实际可发出的键——新增事件载荷键须同步登记此处+端点。
-var builtinVarSet = map[string]bool{
-	// 基础六键（create/assign/close 全链）
-	"ticket.title": true, "ticket.type_code": true, "ticket.priority": true,
-	"ticket.status": true, "ticket.human_key": true, "ticket.link": true,
-	// 转换事件（ticket.transitioned——S3a B3-1）
-	"ticket.from_status": true, "ticket.to_status": true,
-	// 分派事件（ticket.assigned——S6 B6-5）
-	"ticket.from_assignee": true, "ticket.to_assignee": true,
-	// 抄送事件（ticket.cc_added——S10 B10-1；to_assignee 亦可作收件人锚）
-	"ticket.cc_users": true,
-	// 超时催办（ticket.timeout——S10 B10-4 扫描器 emit）
-	"ticket.reminder_count": true, "ticket.overdue_minutes": true,
-	// 到期提醒（ticket.deadline——S3a SLA0.5）
-	// deadline 载荷=title/status/human_key/to_assignee/cc_users——无独占键
-	// 操作人（创建/更新事件——S6 B6-5）
-	"ticket.actor": true, "ticket.creator": true,
-	// 运维域（ops.cron_failed——B10-4 观测面；000064 种子模板引用 last_success）
-	"event.job": true, "event.error": true, "event.last_success": true,
-	// 运维域（ops.action_failed——G-5 emit 载荷 action/error/ticket_id/actor；无种子模板，管理面可配）
-	"event.action": true, "event.ticket_id": true, "event.actor": true,
-	// 运维域（ops.storage_usage_high——C-6 观测批 000080 种子模板四键。2026-11-02 审计补：
-	// 修前重存该种子模板即 400「不支持的变量 event.level」——G-2 同型；批 A 正文称
-	// 「属批 B」而批 B 未落，本批闭环）
-	"event.level": true, "event.ratio": true, "event.usage_bytes": true, "event.capacity_bytes": true,
-}
+var builtinVarSet = msgrender.BuiltinPaths()
 
 func validateChannel(channel string) error {
 	if !supportedChannels[channel] {
@@ -90,6 +66,14 @@ func validateChannel(channel string) error {
 }
 
 func (s *MessageTemplateService) Create(ctx context.Context, t *model.MessageTemplate) error {
+	// Creator is server attribution, never request authority. A trusted internal
+	// call without a human remains NULL instead of inventing a user from body.
+	principal := taskPrincipalOf(ctx)
+	t.CreatedBy = nil
+	if principal.ID > 0 {
+		t.CreatedBy = &principal.ID
+	}
+
 	if err := validateChannel(t.Channel); err != nil {
 		return err
 	}

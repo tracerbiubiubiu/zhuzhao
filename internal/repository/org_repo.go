@@ -59,7 +59,7 @@ func (r *OrgRepo) GetTree(ctx context.Context) ([]*model.Organization, error) {
 }
 
 func (r *OrgRepo) GetUserOrgs(ctx context.Context, userID int64) ([]*model.UserOrg, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT uo.user_id, uo.org_id, uo.is_primary, uo.joined_at
 		FROM user_orgs uo
 		INNER JOIN organizations o ON o.id = uo.org_id
@@ -80,11 +80,11 @@ func (r *OrgRepo) GetUserOrgs(ctx context.Context, userID int64) ([]*model.UserO
 
 func (r *OrgRepo) IsMember(ctx context.Context, orgID, userID int64) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM user_orgs uo
 			INNER JOIN organizations o ON o.id = uo.org_id
-			WHERE uo.org_id = $1 AND uo.user_id = $2 AND o.deleted_at IS NULL
+			WHERE uo.org_id = $1 AND uo.user_id = $2 AND (`+OrgSourceActiveSQL("o")+`)
 			  AND (uo.expires_at IS NULL OR uo.expires_at > NOW())
 		)`, orgID, userID).Scan(&exists)
 	return exists, err
@@ -95,13 +95,13 @@ func (r *OrgRepo) IsMember(ctx context.Context, orgID, userID int64) (bool, erro
 // 「只能在本部门树内建单」：D1 成员可向父 P 或子孙建，无关部门仍拒。
 func (r *OrgRepo) IsInOrgBranch(ctx context.Context, orgID, userID int64) (bool, error) {
 	var ok bool
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM user_orgs m
 			JOIN organizations mo ON mo.id = m.org_id AND mo.deleted_at IS NULL
 			CROSS JOIN organizations t
-			WHERE m.user_id = $1 AND t.id = $2 AND t.deleted_at IS NULL
+			WHERE m.user_id = $1 AND t.id = $2 AND (`+OrgSourceActiveSQL("t")+`) AND (`+OrgSourceActiveSQL("mo")+`)
 			  AND (m.expires_at IS NULL OR m.expires_at > NOW())
 			  AND (mo.path <@ t.path OR t.path <@ mo.path)
 		)`, userID, orgID).Scan(&ok)
@@ -113,7 +113,10 @@ func (r *OrgRepo) IsInOrgBranch(ctx context.Context, orgID, userID int64) (bool,
 
 // AddMember 添加组织成员（幂等）
 func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary bool) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.AddMember(ctx, orgID, userID, isPrimary) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -153,6 +156,11 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 // AddMemberWithRole 添加组织成员并指定组内级别（2c，04 §3.4）。
 // 幂等语义与 AddMember 一致（B3-1 primary）；role 由 service 层完成防提权校验。
 func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, isPrimary bool, role, ticketScope string) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error {
+			return r.AddMemberWithRole(ctx, orgID, userID, isPrimary, role, ticketScope)
+		})
+	}
 	if role == "" {
 		role = "member"
 	}
@@ -160,7 +168,7 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 	if ticketScope == "" {
 		ticketScope = "assigned" // DB 默认（000012），显式化以便 ON CONFLICT 分支判断
 	}
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -200,7 +208,10 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 // RemoveMember 移除组织成员（2c 双轨：若目标在 owner_user_ids 中则同步移除——
 // 否则残留 effective owner 权限，被移除者仍可 SetOwners/SetMemberRole/删组）
 func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.RemoveMember(ctx, orgID, userID) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -225,7 +236,10 @@ func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
 
 // SetUserOrgs 全量覆盖用户组织
 func (r *OrgRepo) SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64, primaryOrgID *int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.SetUserOrgs(ctx, userID, orgIDs, primaryOrgID) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -239,51 +253,86 @@ func (r *OrgRepo) SetUserOrgs(ctx context.Context, userID int64, orgIDs []int64,
 
 // SetUserOrgsTx 在外部事务内全量覆盖用户组织
 func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, orgIDs []int64, primaryOrgID *int64) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id = $1`, userID); err != nil {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
 		return err
 	}
-	// B3-4：入参去重（保序）——修复前重复 org_id 触发 user_orgs 主键冲突 → 500
-	seen := make(map[int64]struct{}, len(orgIDs))
-	deduped := make([]int64, 0, len(orgIDs))
-	for _, orgID := range orgIDs {
-		if _, ok := seen[orgID]; ok {
-			continue
+	seen := make(map[int64]bool, len(orgIDs))
+	requested := make([]int64, 0, len(orgIDs))
+	for _, id := range orgIDs {
+		if !seen[id] {
+			seen[id] = true
+			requested = append(requested, id)
 		}
-		seen[orgID] = struct{}{}
-		deduped = append(deduped, orgID)
 	}
-	// P0 同源（2c 双轨）：全量覆盖把用户移出某 org 成员身份后，若其在该 org
-	// owner_user_ids 中——同步移除（否则残留 effective owner 权限，仍可
-	// SetOwners/SetMemberRole/删组/工单委托）。用户仍是成员的 org 保留 owner。
-	// orgIDs 为空（清空全部组织）时 NOT(ANY('{}'))=true → 清理全部 owner 引用。
-	if _, err := tx.Exec(ctx, `
-		UPDATE organizations SET owner_user_ids = array_remove(owner_user_ids, $1), updated_at = NOW()
-		WHERE $1 = ANY(owner_user_ids) AND NOT (id = ANY($2::bigint[]))`,
-		userID, deduped); err != nil {
+	if primaryOrgID != nil && !seen[*primaryOrgID] {
+		return errcode.ErrInvalidParams
+	}
+	// Read all source facts before changing anything. This is not the future C
+	// common authorization barrier; retained appointments are never reconstructed.
+	rows, err := tx.Query(ctx, `SELECT m.org_id,m.source,m.is_primary,o.id IS NULL OR o.deleted_at IS NOT NULL
+  FROM user_orgs m LEFT JOIN organizations o ON o.id=m.org_id WHERE m.user_id=$1`, userID)
+	if err != nil {
+		return fmt.Errorf("read membership source facts: %w", err)
+	}
+	type fact struct {
+		id                   int64
+		source               string
+		primary, unavailable bool
+	}
+	facts, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (fact, error) {
+		var f fact
+		err := row.Scan(&f.id, &f.source, &f.primary, &f.unavailable)
+		return f, err
+	})
+	if err != nil {
+		return fmt.Errorf("collect membership source facts: %w", err)
+	}
+	for _, f := range facts {
+		if f.unavailable {
+			return errcode.ErrOrgNotFound
+		}
+		wantPrimary := primaryOrgID != nil && *primaryOrgID == f.id
+		if f.source != "local" && (!seen[f.id] || wantPrimary != f.primary) {
+			return errcode.New(errcode.ErrForbidden.Code, "来源受管或未核定的组织关系不可由本地整体替换改动，请受权核查")
+		}
+	}
+	// Preserve the existing member -> owner -> organization lock order. C will
+	// supply the common barrier; do not introduce an inverse user/owner row lock.
+	if _, err := tx.Exec(ctx, `DELETE FROM user_orgs WHERE user_id=$1 AND NOT(org_id=ANY($2::bigint[]))`, userID, requested); err != nil {
+		return fmt.Errorf("remove memberships: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE organizations SET owner_user_ids=array_remove(owner_user_ids,$1),updated_at=NOW()
+  WHERE $1=ANY(owner_user_ids) AND NOT(id=ANY($2::bigint[]))`, userID, requested); err != nil {
 		return fmt.Errorf("sync owner_user_ids on set user orgs: %w", err)
 	}
-	for _, orgID := range deduped {
-		isPrimary := primaryOrgID != nil && *primaryOrgID == orgID
-		// P2-1 写入侧：插入成员行前对 org 取 FOR SHARE 并复核存活（与 Delete 的 FOR UPDATE
-		// 互斥）。此处原有的 deleted_at 过滤仅防 FK 23503；FOR SHARE 认领才封并发软删窗口。
+	// nil (including JSON null) clears primary, as on the original wire. Avoid
+	// writing an unchanged managed primary as an incidental side effect.
+	if _, err := tx.Exec(ctx, `UPDATE user_orgs SET is_primary=false WHERE user_id=$1 AND is_primary=true
+  AND ($2::bigint IS NULL OR org_id<>$2)`, userID, primaryOrgID); err != nil {
+		return fmt.Errorf("clear previous primary: %w", err)
+	}
+	for _, orgID := range requested {
 		if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
 			return err
 		}
-		// D2-16：INSERT...SELECT 过滤软删组织（B4-3 只给 SetRolesTx 做了同型
-		// 防御）——裸 INSERT 遇软删 org_id 触发 FK 23503 → 500，且静默丢绑定
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO user_orgs (user_id, org_id, is_primary)
-			SELECT $1, id, $3 FROM organizations
-			WHERE id = $2 AND deleted_at IS NULL`, userID, orgID, isPrimary)
-		if err != nil {
-			// B3-3：并发双 primary 触发部分唯一索引 → 409 业务码（非 500）
+		if _, err := tx.Exec(ctx, `INSERT INTO user_orgs(user_id,org_id,is_primary)
+   SELECT $1,id,false FROM organizations WHERE id=$2 AND deleted_at IS NULL
+   ON CONFLICT(user_id,org_id) DO NOTHING`, userID, orgID); err != nil {
 			if ec := mapUniqueViolation(err); ec != nil {
 				return ec
 			}
-			return fmt.Errorf("insert user org: %w", err)
+			if ec := MapForeignKeyViolation(err); ec != nil {
+				return ec
+			}
+			return fmt.Errorf("add membership: %w", err)
 		}
-		if tag.RowsAffected() == 0 {
-			return errcode.ErrOrgNotFound
+	}
+	if primaryOrgID != nil {
+		if _, err := tx.Exec(ctx, `UPDATE user_orgs SET is_primary=true WHERE user_id=$1 AND org_id=$2 AND is_primary=false`, userID, *primaryOrgID); err != nil {
+			if ec := mapUniqueViolation(err); ec != nil {
+				return ec
+			}
+			return fmt.Errorf("set primary membership: %w", err)
 		}
 	}
 	return nil
@@ -291,7 +340,7 @@ func (r *OrgRepo) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, userID int64, or
 
 func (r *OrgRepo) CountChildren(ctx context.Context, orgID int64) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM organizations
 		WHERE parent_id = $1 AND deleted_at IS NULL`, orgID).Scan(&n)
 	return n, err
@@ -299,7 +348,7 @@ func (r *OrgRepo) CountChildren(ctx context.Context, orgID int64) (int64, error)
 
 func (r *OrgRepo) CountMembers(ctx context.Context, orgID int64) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM user_orgs uo
 		INNER JOIN organizations o ON o.id = uo.org_id
 		INNER JOIN users u ON u.id = uo.user_id
@@ -308,6 +357,9 @@ func (r *OrgRepo) CountMembers(ctx context.Context, orgID int64) (int64, error) 
 }
 
 func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Create(ctx, org) })
+	}
 	tenantID := org.TenantID
 	if tenantID == 0 {
 		tenantID = 1
@@ -325,7 +377,7 @@ func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
 			$8, $9, $10
 		)
 		RETURNING id, version, created_at, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		org.Code, org.Name, org.Description, org.ParentID, org.Path,
 		org.IsVirtual, status, org.SortOrder, org.CreatedBy, tenantID,
 	).Scan(&org.ID, &org.Version, &org.CreatedAt, &org.UpdatedAt)
@@ -341,6 +393,9 @@ func (r *OrgRepo) Create(ctx context.Context, org *model.Organization) error {
 }
 
 func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Update(ctx, org) })
+	}
 	const q = `
 		UPDATE organizations SET
 			name = $2,
@@ -352,7 +407,7 @@ func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
 			updated_at = NOW()
 		WHERE id = $1 AND version = $6 AND deleted_at IS NULL
 		RETURNING version, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		org.ID, org.Name, org.Description, org.Status, org.SortOrder, org.Version, org.TicketVisibility,
 	).Scan(&org.Version, &org.UpdatedAt)
 	if err != nil {
@@ -365,9 +420,12 @@ func (r *OrgRepo) Update(ctx context.Context, org *model.Organization) error {
 }
 
 func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Delete(ctx, id) })
+	}
 	// B4-5：保护检查与软删同事务——原 check-then-act 窗口内加入的成员
 	// 不会被拦截，产生「软删组织仍挂成员」的残留行
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -455,7 +513,10 @@ func lockAliveOrgForShareTx(ctx context.Context, tx pgx.Tx, orgID int64) error {
 // 修复前环检测/父 path 读取在事务外：并发交叉移动可破坏 ltree 树形不变量，
 // 且过期 oldPath 匹配 0 行仍返回成功（静默失效）。
 func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Move(ctx, id, newParentID) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -521,9 +582,24 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		newRootPath = parentPath + "." + orgCode
 	}
 
-	// 4. 锁旧子树（谓词补 deleted_at，B3-2 顺带修 R2-ORG-07）
-	if _, err := tx.Exec(ctx, `
-		SELECT id FROM organizations WHERE path <@ $1::ltree AND deleted_at IS NULL FOR UPDATE`, oldPath); err != nil {
+	// 4. Identity, not a reusable path, determines the moved subtree. Include
+	// true historical descendants for the existing ticket/template cascade;
+	// only live organization rows themselves are rewritten below.
+	var movingOrgIDs []int64
+	if err := tx.QueryRow(ctx, `WITH RECURSIVE moved(id) AS (
+ SELECT id FROM organizations WHERE id=$1
+ UNION SELECT child.id FROM organizations child JOIN moved parent ON child.parent_id=parent.id
+ ) SELECT array_agg(id ORDER BY id) FROM moved`, id).Scan(&movingOrgIDs); err != nil {
+		return fmt.Errorf("read moving organization identities: %w", err)
+	}
+	if newParentID != nil {
+		for _, childID := range movingOrgIDs {
+			if childID == *newParentID {
+				return errcode.ErrOrgCannotMoveToChild
+			}
+		}
+	}
+	if _, err := tx.Exec(ctx, `SELECT id FROM organizations WHERE id=ANY($1::bigint[]) AND deleted_at IS NULL ORDER BY id FOR UPDATE`, movingOrgIDs); err != nil {
 		return fmt.Errorf("lock org subtree: %w", err)
 	}
 
@@ -537,8 +613,8 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 		    parent_id = CASE WHEN id = $3 THEN $4 ELSE parent_id END,
 		    updated_at = NOW(),
 		    version = version + 1
-		WHERE path <@ text2ltree($2) AND deleted_at IS NULL`,
-		newRootPath, oldPath, id, resolvedParentID,
+		WHERE id=ANY($5::bigint[]) AND path <@ text2ltree($2) AND deleted_at IS NULL`,
+		newRootPath, oldPath, id, resolvedParentID, movingOrgIDs,
 	)
 	if err != nil {
 		return fmt.Errorf("move org subtree: %w", err)
@@ -563,8 +639,8 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 			ELSE text2ltree($1) || subpath(org_path, nlevel(text2ltree($2)))
 		END,
 		    updated_at = NOW()
-		WHERE org_path <@ text2ltree($2)`,
-		newRootPath, oldPath,
+		WHERE org_id=ANY($3::bigint[]) AND org_path <@ text2ltree($2)`,
+		newRootPath, oldPath, movingOrgIDs,
 	); err != nil {
 		return fmt.Errorf("cascade ticket org_path: %w", err)
 	}
@@ -578,8 +654,8 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 			ELSE text2ltree($1) || subpath(org_path, nlevel(text2ltree($2)))
 		END,
 		    updated_at = NOW()
-		WHERE org_path <@ text2ltree($2)`,
-		newRootPath, oldPath,
+		WHERE org_id=ANY($3::bigint[]) AND org_path <@ text2ltree($2)`,
+		newRootPath, oldPath, movingOrgIDs,
 	); err != nil {
 		return fmt.Errorf("cascade ticket_templates org_path: %w", err)
 	}
@@ -588,7 +664,7 @@ func (r *OrgRepo) Move(ctx context.Context, id int64, newParentID *int64) error 
 }
 
 func (r *OrgRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Organization, error) {
-	row := r.db.QueryRow(ctx, q, args...)
+	row := IAMDB(ctx, r.db).QueryRow(ctx, q, args...)
 	org, err := scanOrgRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -600,7 +676,7 @@ func (r *OrgRepo) queryOne(ctx context.Context, q string, args ...any) (*model.O
 }
 
 func (r *OrgRepo) queryMany(ctx context.Context, q string, args ...any) ([]*model.Organization, error) {
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -633,6 +709,9 @@ func scanOrgCollectableRow(row pgx.CollectableRow) (*model.Organization, error) 
 //  3. 被移出列表的用户：若其 org_member_role 因 owner 身份（非 owner_user_ids 独立来源不存在——
 //     owner 角色仅经 SetOwners 授予），降为 member（保留成员关系）。
 func (r *OrgRepo) SetOwnersTx(ctx context.Context, tx pgx.Tx, orgID int64, ownerUserIDs []int64) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
 	if ownerUserIDs == nil {
 		ownerUserIDs = []int64{}
 	}
@@ -671,7 +750,10 @@ func (r *OrgRepo) SetOwnersTx(ctx context.Context, tx pgx.Tx, orgID int64, owner
 // SetMemberRoleTx 事务内变更组内角色（调用方校验在 service 层完成）
 // SetMemberScope 变更成员数据范围（IW1/BK-14，09 §5.2）：非成员 → ErrNotOrgMember
 func (r *OrgRepo) SetMemberScope(ctx context.Context, orgID, userID int64, scope string) error {
-	tag, err := r.db.Exec(ctx,
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.SetMemberScope(ctx, orgID, userID, scope) })
+	}
+	tag, err := IAMDB(ctx, r.db).Exec(ctx,
 		`UPDATE user_orgs SET ticket_scope = $3 WHERE org_id = $1 AND user_id = $2`,
 		orgID, userID, scope)
 	if err != nil {
@@ -684,6 +766,9 @@ func (r *OrgRepo) SetMemberScope(ctx context.Context, orgID, userID int64, scope
 }
 
 func (r *OrgRepo) SetMemberRoleTx(ctx context.Context, tx pgx.Tx, orgID, userID int64, role string) error {
+	if err := AcquireIAMTransactionGuard(ctx, tx); err != nil {
+		return err
+	}
 	tag, err := tx.Exec(ctx,
 		`UPDATE user_orgs SET org_member_role = $3 WHERE org_id = $1 AND user_id = $2`,
 		orgID, userID, role)
@@ -698,7 +783,7 @@ func (r *OrgRepo) SetMemberRoleTx(ctx context.Context, tx pgx.Tx, orgID, userID 
 
 // RunInTx 供 service 层组合事务（SetOwners 双轨对齐等）
 func (r *OrgRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -714,7 +799,10 @@ func (r *OrgRepo) RunInTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 // 50005 成员位），再执行与 Delete 一致的守卫（子组织/非 owner 成员 → 409/50005）
 // 与软删。清行后失败则整体回滚，不会产生「无 owner 活跃虚拟组」。
 func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.DeleteVgWithOwnerCleanup(ctx, id) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -773,7 +861,7 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 
 // ListOrgRoles 组织已绑定的角色（join roles 取元数据）
 func (r *OrgRepo) ListOrgRoles(ctx context.Context, orgID int64) ([]*model.Role, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT r.id, r.code, r.name, COALESCE(r.description, '') AS description,
 			r.status, r.priority, r.parent_id, r.sort_order, r.is_system, r.tenant_id, r.version,
 			r.deleted_at, r.created_at, r.updated_at
@@ -788,13 +876,30 @@ func (r *OrgRepo) ListOrgRoles(ctx context.Context, orgID int64) ([]*model.Role,
 	return pgx.CollectRows(rows, scanRoleCollectableRowDirect)
 }
 
+// GetRoleForOrgAssignment returns the direct role fact for service-level grant
+// bounds. Disabled roles remain readable so an old binding can be removed.
+func (r *OrgRepo) GetRoleForOrgAssignment(ctx context.Context, roleID int64) (*model.Role, error) {
+	role, err := scanRoleRowDirect(IAMDB(ctx, r.db).QueryRow(ctx, `SELECT`+roleSelectColumns+`
+		FROM roles WHERE id=$1 AND deleted_at IS NULL`, roleID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrRoleNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read organization grant role: %w", err)
+	}
+	return role, nil
+}
+
 // BindOrgRole 绑定角色到组织（幂等，ON CONFLICT DO NOTHING）。
 // 守卫（内联同库校验，BK-12）：角色须存在、启用、**非系统角色**——
 // 系统角色绑定组织 = 全组织成员获得管理员，绝对禁止。
 func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.BindOrgRole(ctx, orgID, roleID) })
+	}
 	var isSystem bool
 	var status int
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT is_system, status FROM roles
 		WHERE id = $1 AND deleted_at IS NULL`, roleID).Scan(&isSystem, &status)
 	if err != nil {
@@ -809,7 +914,7 @@ func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
 	if status != 1 {
 		return errcode.New(errcode.ErrInvalidParams.Code, "角色已禁用，不可绑定组织")
 	}
-	if _, err := r.db.Exec(ctx, `
+	if _, err := IAMDB(ctx, r.db).Exec(ctx, `
 		INSERT INTO org_roles (org_id, role_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, orgID, roleID); err != nil {
 		// 预检与写入的并发窗口内 org/role 被删 → 23503 → 400（非 500）
@@ -823,7 +928,10 @@ func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
 
 // UnbindOrgRole 解绑（未绑定 → ErrNotFound）
 func (r *OrgRepo) UnbindOrgRole(ctx context.Context, orgID, roleID int64) error {
-	tag, err := r.db.Exec(ctx,
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.UnbindOrgRole(ctx, orgID, roleID) })
+	}
+	tag, err := IAMDB(ctx, r.db).Exec(ctx,
 		`DELETE FROM org_roles WHERE org_id = $1 AND role_id = $2`, orgID, roleID)
 	if err != nil {
 		return fmt.Errorf("unbind org role: %w", err)
@@ -837,7 +945,7 @@ func (r *OrgRepo) UnbindOrgRole(ctx context.Context, orgID, roleID int64) error 
 // GetMyOrgs 「我的组织」富化列表（P4-W3 自服务面）：join organizations 带名称/虚拟组，
 // 含组内角色与数据范围（裸 UserOrg 缺——前端渲染需要）
 func (r *OrgRepo) GetMyOrgs(ctx context.Context, userID int64) ([]*model.MyOrgItem, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT o.id, COALESCE(o.code,''), COALESCE(o.name,''), o.is_virtual,
 		       uo.is_primary, uo.org_member_role, uo.ticket_scope, uo.joined_at
 		FROM user_orgs uo

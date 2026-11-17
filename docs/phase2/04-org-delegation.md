@@ -108,6 +108,8 @@ HR Job **不得**写入或覆盖：
 
 ### 3.1.1 路由级权限实现策略（P2-2/B1，2c 开工前置已决策）
 
+2026-11-17存量粗门修复候选以000031的现行功能按钮为准：全局负责人/成员任职及成员增删为`org:member`，删除为`org:delete`，名册/组织角色只读为`org:read`或对应`org:member`管理职责；`org:create/update/move`各只承担原动作，不再因任一`org:%`授予其它全局组织职责。`scope=all`继续仅平台admin/superadmin，普通`org:member`或本组织owner/admin可按原委托矩阵调整非all范围。admin/superadmin原快路径、本组织owner/admin原合法职责均保留；组织赋角另按IAM资格/可授档位，不能由上述按钮代替。以下原2c的`org:update`总包描述保留历史来源，现行独立按钮语义由本注和000031承接；本批当前启用入口已通过完整适用门禁及组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；完整IAM-C/C05仍未交付。
+
 上表「路由级权限」列的落地方式（**L1 与 L3 分层，不混一轴**）：
 
 1. **L1（Casbin 路由级）**：本节全部新路由**复用既有权限码**，不新增权限码——

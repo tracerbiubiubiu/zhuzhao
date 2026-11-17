@@ -114,33 +114,44 @@ func resolveRecipientsFromRule(ev domainevent.DomainEvent, recipientType, fixedR
 }
 
 // notifyThrottle 同单连发节流器（06 号 §5.2——防状态翻转通知风暴）。
-// 进程内 sync.Map + 时间窗：同 (biz, id, action) 在 window 内只放行首次。
+// 进程内互斥map + 时间窗：同 (biz,id,action,recipient) 只放行首次。
 // 单实例部署形态足够（多副本升 Redis——06 号 §5.2 注记）。
 type notifyThrottle struct {
 	mu     sync.Mutex
-	seen   map[string]time.Time
+	seen   map[notifyThrottleKey]time.Time
 	window time.Duration
 }
 
 func newNotifyThrottle(window time.Duration) *notifyThrottle {
-	return &notifyThrottle{seen: map[string]time.Time{}, window: window}
+	return &notifyThrottle{seen: map[notifyThrottleKey]time.Time{}, window: window}
 }
 
 // shouldSkip 返回 true=窗口内重复（跳过）；false=首次或已过期（放行并记时间戳）。
+type notifyThrottleKey struct{ BizType, BizID, Action, Recipient string }
+
 func (t *notifyThrottle) shouldSkip(bizType, bizID, action string) bool {
-	key := bizType + ":" + bizID + ":" + action
+	return len(t.filterRecipients(bizType, bizID, action, []string{""})) == 0
+}
+
+// Each recipient is claimed under the same local mutex. Partially overlapping
+// sets deliver only unseen members, and duplicates within one event collapse.
+func (t *notifyThrottle) filterRecipients(bizType, bizID, action string, recipients []string) []string {
 	now := time.Now()
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	// 顺手清理过期项（防 map 无限增长——量级=工单×动作，天然有界但保守清理）
-	for k, ts := range t.seen {
-		if now.Sub(ts) > t.window {
-			delete(t.seen, k)
+	for key, ts := range t.seen {
+		if now.Sub(ts) >= t.window {
+			delete(t.seen, key)
 		}
 	}
-	if ts, ok := t.seen[key]; ok && now.Sub(ts) < t.window {
-		return true
+	out := make([]string, 0, len(recipients))
+	for _, recipient := range recipients {
+		key := notifyThrottleKey{bizType, bizID, action, recipient}
+		if ts, ok := t.seen[key]; ok && now.Sub(ts) < t.window {
+			continue
+		}
+		t.seen[key] = now
+		out = append(out, recipient)
 	}
-	t.seen[key] = now
-	return false
+	return out
 }

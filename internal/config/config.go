@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,10 +129,11 @@ type TaskrunnerConfig struct {
 	BaseURL string `mapstructure:"base_url"`
 	// SelfBaseURL 本服务对外可达地址（缺省 callback 拼接用：<self>/internal/jobs/callback）。
 	// 例 http://zhuzhao:33333（容器网络名）；空 = 提交任务必须显式传 callback_url。
-	SelfBaseURL string        `mapstructure:"self_base_url"`
-	AK          string        `mapstructure:"ak"` // 默认 zhuzhao
-	SK          string        `mapstructure:"sk"` // env：TASKRUNNER_SK
-	Timeout     time.Duration `mapstructure:"timeout"`
+	SelfBaseURL string            `mapstructure:"self_base_url"`
+	AK          string            `mapstructure:"ak"` // 默认 zhuzhao
+	SK          string            `mapstructure:"sk"` // env：TASKRUNNER_SK
+	Timeout     time.Duration     `mapstructure:"timeout"`
+	Maintenance MaintenanceConfig `mapstructure:"maintenance"`
 }
 
 // InternalJobsConfig 内网回调端点（E-②，16 号 §3）：/internal/jobs/callback（C10，action 在 body）
@@ -345,6 +347,10 @@ func Load(path string) (*Config, error) {
 	// phase5 S5 对象存储（05 号 A.2——env 名对齐部署侧 STORAGE_*；slice 项走 config.yaml）
 	viper.BindEnv("storage.enabled", "STORAGE_ENABLED")
 	viper.BindEnv("storage.endpoint", "STORAGE_ENDPOINT")
+	viper.BindEnv("storage.public_endpoint", "STORAGE_PUBLIC_ENDPOINT")
+	viper.SetDefault("storage.public_endpoint", "")
+	viper.BindEnv("storage.bucket", "STORAGE_BUCKET")
+	viper.BindEnv("storage.region", "STORAGE_REGION")
 	viper.BindEnv("storage.access_key", "STORAGE_ACCESS_KEY")
 	viper.BindEnv("storage.secret_key", "STORAGE_SECRET_KEY")
 	// A.11「生产 Secure」：文件通道 cookie Secure 属性（HTTPS 网关置 true——S5 评审 P2-4）
@@ -382,6 +388,20 @@ func Load(path string) (*Config, error) {
 		}
 	}
 
+	// The override replaces the entire startup grant list; an explicit empty
+	// environment value revokes all grants on restart. No body actor may add IDs.
+	if raw, ok := os.LookupEnv("TASK_MAINTAINER_USER_IDS"); ok {
+		cfg.Taskrunner.Maintenance.MaintainerUserIDs = nil
+		if strings.TrimSpace(raw) != "" {
+			for _, part := range strings.Split(raw, ",") {
+				id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+				if err != nil || id <= 0 {
+					return nil, fmt.Errorf("TASK_MAINTAINER_USER_IDS requires positive stable user IDs")
+				}
+				cfg.Taskrunner.Maintenance.MaintainerUserIDs = append(cfg.Taskrunner.Maintenance.MaintainerUserIDs, id)
+			}
+		}
+	}
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
 	cfg.Storage.ApplyDefaults()

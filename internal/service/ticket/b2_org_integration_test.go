@@ -82,10 +82,18 @@ func TestB2Org_R9R10_VgSiblingReadWrite(t *testing.T) {
 func TestB2Org_VgCreateAndMoveCascade(t *testing.T) {
 	env := setupB2(t)
 	orgService := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), rbacStubForOrgTest{})
-	ctx := context.Background()
+	// This fixture tests virtual-group shape and cascading, not an HTTP actor.
+	// An unmarked caller must still fail closed even with the legacy role stub.
+	deniedCode := "vg_no_context_" + uniqueSuffix()
+	_, err := orgService.Create(context.Background(), &model.CreateOrgRequest{Code: deniedCode, Name: "No trusted context", ParentID: &env.pID, IsVirtual: true}, env.u1)
+	requireErrCode(t, err, errcode.ErrNoPermission.Code)
+	var deniedRows int
+	require.NoError(t, testPool.QueryRow(context.Background(), `SELECT COUNT(*) FROM organizations WHERE code=$1`, deniedCode).Scan(&deniedRows))
+	require.Zero(t, deniedRows)
+	ctx := service.TrustedIAMInternalActor(context.Background(), env.u1)
 
 	// 无 vg_ 前缀 → 400
-	_, err := orgService.Create(ctx, &model.CreateOrgRequest{
+	_, err = orgService.Create(ctx, &model.CreateOrgRequest{
 		Code: "bad_vg_" + uniqueSuffix(), Name: "坏前缀",
 		ParentID: &env.pID, IsVirtual: true,
 	}, env.u1)

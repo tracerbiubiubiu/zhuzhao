@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ import (
 // 原零值穿透一次改名即熔断全员权限）；显式传 0 才禁用。
 func TestRBACService_UpdateRole_StatusPatchSemantics(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	target := rbacTestRole(t, "patch_target", 20, false)
@@ -62,7 +61,7 @@ func TestRBACService_UpdateRole_StatusPatchSemantics(t *testing.T) {
 // D2-03 守护：组织 Update Status patch 语义（与角色同型）。
 func TestOrgService_Update_StatusPatchSemantics(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 
 	var orgID int64
@@ -92,7 +91,7 @@ func TestOrgService_Update_StatusPatchSemantics(t *testing.T) {
 func d2LoginUser(t *testing.T, employeeNo, password string) (*service.AuthService, *model.User, *miniredis.Miniredis) {
 	t.Helper()
 	resetAuthTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	repo := repository.NewUserRepo(testPool)
 	hash, err := crypto.HashPassword(password)
 	require.NoError(t, err)
@@ -111,7 +110,7 @@ func d2LoginUser(t *testing.T, employeeNo, password string) (*service.AuthServic
 // D2-45：篡改 RT（改签名段字符）→ 解析失败拒绝刷新
 func TestAuthService_RTTampered(t *testing.T) {
 	authSvc, user, _ := d2LoginUser(t, "E630001", "passw0rd123")
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "passw0rd123", DeviceID: "dev-1"}, "127.0.0.1", "t")
 	require.NoError(t, err)
@@ -125,7 +124,7 @@ func TestAuthService_RTTampered(t *testing.T) {
 // D2-45：多设备 RT 隔离——登出 dev-1 后 dev-2 的 RT 仍可刷新
 func TestAuthService_RTCrossDeviceIsolation(t *testing.T) {
 	authSvc, user, _ := d2LoginUser(t, "E630002", "passw0rd123")
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	p1, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "passw0rd123", DeviceID: "dev-1"}, "127.0.0.1", "t")
 	require.NoError(t, err)
@@ -146,7 +145,7 @@ func TestAuthService_RTCrossDeviceIsolation(t *testing.T) {
 // D2-45：disabled 用户 RT——禁用标记存在时拒绝刷新（不查 DB 即拦截）
 func TestAuthService_DisabledUserRT(t *testing.T) {
 	authSvc, user, mr := d2LoginUser(t, "E630003", "passw0rd123")
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "passw0rd123"}, "127.0.0.1", "t")
 	require.NoError(t, err)
@@ -161,7 +160,7 @@ func TestAuthService_DisabledUserRT(t *testing.T) {
 // D2-45：并发刷新同一 RT——GetDel 原子性保证恰好一个成功
 func TestAuthService_ConcurrentRefresh(t *testing.T) {
 	authSvc, user, _ := d2LoginUser(t, "E630004", "passw0rd123")
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "passw0rd123", DeviceID: "dev-1"}, "127.0.0.1", "t")
 	require.NoError(t, err)
@@ -192,7 +191,7 @@ func TestAuthService_ConcurrentRefresh(t *testing.T) {
 // D2-45：登录锁定集成分支——连续失败达阈值后，正确密码也返回 429
 func TestAuthService_LoginLockoutBranch(t *testing.T) {
 	authSvc, user, _ := d2LoginUser(t, "E630005", "passw0rd123")
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	for i := 0; i < 6; i++ {
 		_, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "wrong-pass"}, "127.0.0.1", "t")
@@ -221,7 +220,7 @@ func newUserServiceForD2(t *testing.T) (*service.UserService, *repository.UserRe
 // D2-45：Create 重复工号 → 30007（含软删占用语义由 000006 部分索引保证）
 func TestUserService_CreateDuplicateEmployeeNo(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc, _, _ := newUserServiceForD2(t)
 
 	actor := rbacTestUser(t, "d2_actor", "E631001", nil)
@@ -239,7 +238,7 @@ func TestUserService_CreateDuplicateEmployeeNo(t *testing.T) {
 // D2-45：SetRoles 分配更高角色 → 30009（低权 actor 不可绑定 superadmin）
 func TestUserService_SetRolesHigherRejected(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc, _, _ := newUserServiceForD2(t)
 
 	weakRole := rbacTestRole(t, "d2_weak", 25, false)
@@ -254,7 +253,7 @@ func TestUserService_SetRolesHigherRejected(t *testing.T) {
 // D2-45：ResetPassword 对同级/更高目标 → 30005（专用文案码）
 func TestUserService_ResetPasswordHigherRejected(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc, _, _ := newUserServiceForD2(t)
 
 	weakRole := rbacTestRole(t, "d2_weak2", 25, false)
@@ -269,7 +268,7 @@ func TestUserService_ResetPasswordHigherRejected(t *testing.T) {
 // D2-45：CreateRole priority 越权 → 30009（actor 档位之上不可设）
 func TestRBACService_CreateRolePriorityEscalation(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	adminRole := rbacTestRole(t, "admin", 10, true)

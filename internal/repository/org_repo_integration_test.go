@@ -23,9 +23,13 @@ func resetOrgs(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// Keep the real password algorithm/cost, but avoid recomputing the same fixture
+// credential in every organization locking round. No production path uses it.
+var orgFixturePassword = sync.OnceValues(func() (string, error) { return crypto.HashPassword("p") })
+
 func orgTestUser(t *testing.T, employeeNo string) int64 {
 	t.Helper()
-	hash, err := crypto.HashPassword("p")
+	hash, err := orgFixturePassword()
 	require.NoError(t, err)
 	repo := repository.NewUserRepo(testPool)
 	user := &model.User{Username: employeeNo, EmployeeNo: employeeNo, Password: hash, Status: 1}

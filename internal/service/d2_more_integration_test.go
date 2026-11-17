@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"strings"
 	"sync"
 	"testing"
@@ -21,7 +20,7 @@ import (
 func d2TestMenu(t *testing.T, code, component, icon string) *model.Menu {
 	t.Helper()
 	var id int64
-	require.NoError(t, testPool.QueryRow(context.Background(), `
+	require.NoError(t, testPool.QueryRow(trustedIAMTestContext(), `
 		INSERT INTO menus (code, name, menu_type, path, component, icon, sort_order, visible, is_system)
 		VALUES ($1, $1, 2, $2, $3, $4, 1, true, false) RETURNING id`,
 		code, "/d2/"+strings.ToLower(code), component, icon).Scan(&id))
@@ -32,7 +31,7 @@ func d2TestMenu(t *testing.T, code, component, icon string) *model.Menu {
 // （原全量覆盖零值穿透；B2-3 只改了用户模块）
 func TestMenuService_UpdatePatchSemantics(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := service.NewMenuService(repository.NewMenuRepo(testPool), repository.NewUserRepo(testPool), repository.NewRoleRepo(testPool))
 
 	menu := d2TestMenu(t, "d2_page", "system/d2/index", "star")
@@ -63,7 +62,7 @@ func TestMenuService_UpdatePatchSemantics(t *testing.T) {
 // 规避测试 enforcer 无 adapter——同 TestRBACService_AssignMenus_SystemRoleRequiresSuperadmin 基建约定）
 func TestRBACService_AssignMenusDuplicateIDs(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	adminRole := rbacTestRole(t, "admin", 10, true)
@@ -88,7 +87,7 @@ func TestRBACService_AssignMenusDuplicateIDs(t *testing.T) {
 // （原裸 INSERT 触发 FK 23503 → 500；B4-3 只给 SetRolesTx 做了同型防御）
 func TestOrgRepo_SetUserOrgsTxSoftDeletedOrg(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	orgRepo := repository.NewOrgRepo(testPool)
 	userRepo := repository.NewUserRepo(testPool)
 
@@ -117,7 +116,7 @@ func TestOrgRepo_SetUserOrgsTxSoftDeletedOrg(t *testing.T) {
 // （service 预检 FindByID 先挡一层；此处直调 repo 验证行数核对的纵深防御）
 func TestUserRepo_SetRolesTxDedupAndSoftDeleted(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	userRepo := repository.NewUserRepo(testPool)
 
 	role := rbacTestRole(t, "d2_sr", 20, false)
@@ -148,7 +147,7 @@ func TestUserRepo_SetRolesTxDedupAndSoftDeleted(t *testing.T) {
 // 黑盒下 INSERT 重叠窗口（两 UPDATE 均先于两 INSERT）不稳定，不在此断言特定错误码。
 func TestOrgRepo_ConcurrentDualPrimary(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	orgRepo := repository.NewOrgRepo(testPool)
 	userRepo := repository.NewUserRepo(testPool)
 
@@ -196,7 +195,7 @@ func TestOrgRepo_ConcurrentDualPrimary(t *testing.T) {
 // D2-44④ 守护：组织层级超过 20 → 400（原 ltree 拼超深 path 报 500）
 func TestOrgService_CreateDepthLimit(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := service.NewOrgService(repository.NewOrgRepo(testPool), repository.NewUserRepo(testPool), service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
 
 	// 直插 20 段 path 的父组织（绕过 service 限制构造深层基线）
@@ -215,7 +214,7 @@ func TestOrgService_CreateDepthLimit(t *testing.T) {
 // D2-18 守护：用户列表分页回显与实查 clamp 一致（请求 200 实查 100 回显 100）
 func TestUserService_ListPageSizeEchoClamp(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc, _, _ := newUserServiceForD2(t)
 
 	saRole := rbacTestRole(t, "superadmin", 1, true)
@@ -230,7 +229,7 @@ func TestUserService_ListPageSizeEchoClamp(t *testing.T) {
 // D2-21 守护：用户名搜索 ILIKE 通配符转义——'a%b' 只精确匹配 a%b，不把 axb 卷入
 func TestUserRepo_ListILIKEEscape(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	userRepo := repository.NewUserRepo(testPool)
 
 	dummy := "$2a$12$dummydummydummydummydummydummydummydummydummydu"

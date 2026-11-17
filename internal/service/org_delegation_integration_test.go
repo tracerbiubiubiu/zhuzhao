@@ -7,7 +7,6 @@ package service_test
 // 角色经真实 RBACService（user_roles 表）注入——与生产 RoleFetcher 同路径。
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -36,7 +35,7 @@ type dEnv struct {
 
 func setupDelegation(t *testing.T) *dEnv {
 	t.Helper()
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	suffix := uniqueSuffix()
 
 	deleg := service.NewOrgDelegationService(testPool)
@@ -109,7 +108,7 @@ func setupDelegation(t *testing.T) *dEnv {
 // D1 设置虚拟组 owner：owner_user_ids 含负责人；双轨对齐 org_member_role=owner
 func TestDelegation_D1_SetOwners(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	org, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
@@ -142,7 +141,7 @@ func TestDelegation_D1_SetOwners(t *testing.T) {
 // D2/D3 任命组内角色：owner 任命 admin → 200；admin 调用 → 50010；请求 owner → 400
 func TestDelegation_D2D3_SetMemberRole(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -173,7 +172,7 @@ func TestDelegation_D2D3_SetMemberRole(t *testing.T) {
 // D4/D5 移除成员：admin 移除 member → 200；admin 移除 admin → 50009；owner 移除 admin → 200；member 无权 → 70001
 func TestDelegation_D4D5_RemoveMember(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -198,7 +197,7 @@ func TestDelegation_D4D5_RemoveMember(t *testing.T) {
 // D6 owner 删空虚拟组：200；有成员 → 50005；member 删 → 70001；实体删除仅全局
 func TestDelegation_D6_OwnerDeleteVg(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -224,7 +223,7 @@ func TestDelegation_D6_OwnerDeleteVg(t *testing.T) {
 // AddMember 扩展（04 §3.4）：owner 可指定 admin 入组；admin 指定 admin → 50008
 func TestDelegation_AddMemberRole(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -265,7 +264,7 @@ func TestDelegation_AddMemberRole(t *testing.T) {
 // 抬成 all（AllScope 旁路整个 L2）。
 func TestDelegation_AddMemberScopeAllGuard(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -291,7 +290,7 @@ func TestDelegation_AddMemberScopeAllGuard(t *testing.T) {
 // P0 回归：RemoveMember 移除 owner 后，owner_user_ids 同步清理且残留权限失效
 func TestDelegation_RemoveOwnerCleansOwnerUserIDs(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -312,7 +311,7 @@ func TestDelegation_RemoveOwnerCleansOwnerUserIDs(t *testing.T) {
 // P0 同源回归：SetUserOrgs 全量覆盖把用户移出某 org 后，owner_user_ids 同步清理
 func TestDelegation_SetUserOrgsCleansOwnerUserIDs(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -335,7 +334,7 @@ func TestDelegation_SetUserOrgsCleansOwnerUserIDs(t *testing.T) {
 // P0 同源回归：删除用户后，其 owner_user_ids 引用在所有组织被清理
 func TestDelegation_SoftDeleteCleansOwnerUserIDs(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -361,7 +360,7 @@ var _ = fmt.Sprintf
 
 func TestBK12_OrgRoleBinding(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	// 角色码基线：mem1 绑定 vg 前 viewer，无其他
 	before, err := env.orgSvc.ListOrgRoles(ctx, env.vgID, env.super)
@@ -417,7 +416,7 @@ func TestBK12_OrgRoleBinding(t *testing.T) {
 
 func TestBK12_DirectVsExpanded(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	rbac := rbacForBK12(t)
 	userRepo := repository.NewUserRepo(testPool)
 	orgRole, err := rbac.CreateRole(ctx, &model.CreateRoleRequest{
@@ -459,7 +458,7 @@ func TestBK12_DirectVsExpanded(t *testing.T) {
 
 func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	orgRole, err := rbacForBK12(t).CreateRole(ctx, &model.CreateRoleRequest{
 		Code: "bk12guard_" + uniqueSuffix(), Name: "守卫角色", Priority: 40}, env.super)
@@ -498,7 +497,7 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 
 func TestBK20_DeleteOrgWithOpenTickets(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 
 	// vg 下建一张未结工单（SQL 直插；org_path 快照取 vg 实时 path）
 	var tid int64
@@ -528,7 +527,7 @@ func TestBK20_DeleteOrgWithOpenTickets(t *testing.T) {
 // 响应必含 org_member_role+ticket_scope（裸 User 形态组内角色列拿不到数据——十三批走查）
 func TestDelegation_MembersRoster(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 
@@ -594,7 +593,7 @@ func TestDelegation_MembersRoster(t *testing.T) {
 // （组织名/虚拟组/组内角色/数据范围——裸 UserOrg 缺这些，前端渲染需要）
 func TestMyOrgs_SelfService(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
 	require.NoError(t, err)
 

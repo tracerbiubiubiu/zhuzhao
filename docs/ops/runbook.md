@@ -316,7 +316,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 迁移往返的 SQL 和 migrate 都使用 `ROUNDTRIP_DSN`，不再一侧走 Docker、一侧猜宿主端口。默认兼容 dev：`postgres://zhuzhao:zhuzhao_dev@localhost:5432/postgres?sslmode=disable`。指定非默认 `PG_CONTAINER` 时，必须显式提供 `ROUNDTRIP_DSN`；其中数据库是只读预检/建删临时库所用的管理库，所有迁移和快照均改连随机生成的专属临时库。URI 的用户名/口令中保留字符须百分号编码；query 仅接受 `sslmode`、正整数 `connect_timeout`，缺省连接超时为 5 秒，拒绝 `dbname`、`host`、`options` 等覆盖项。
 
-隔离栈运行前显式设置 `BASE_URL`、`HEALTH_URL`、`PG_CONTAINER`、`PG_USER`、`PG_DB`、`REDIS_CONTAINER` 及 `ROUNDTRIP_DSN`，按 [端口表](port-allocation.md) 核对实际映射。四档中的 SQL 仍按 `PG_CONTAINER` 运行，Redis 仍沿用现有验收口令 `zhuzhao_dev`；往返预检只证明自身连接可用，**不自动证明 API/PG/Redis 属于同一栈**，也不替代本节验收独占纪律。
+隔离栈运行前显式设置 `BASE_URL`、`HEALTH_URL`、`PG_CONTAINER`、`PG_USER`、`PG_DB`、`REDIS_CONTAINER`、`REDIS_PASSWORD` 及 `ROUNDTRIP_DSN`，按 [端口表](port-allocation.md) 核对实际映射。四档中的 SQL 仍按 `PG_CONTAINER` 运行；Redis 清理测试登录锁和恢复就绪检查均使用同一个 `REDIS_PASSWORD`，未设置时仅兼容 dev 的 `zhuzhao_dev`。release 栈必须传实际秘密，不为验收改成公开默认值。往返预检只证明自身连接可用，**不自动证明 API/PG/Redis 属于同一栈**，也不替代本节验收独占纪律。
 
 四档与往返每次调用各用 `mktemp -d` 建私有目录（权限受 `umask 077` 约束）；`TMPDIR` 只选择父目录，链中子阶段不共享具体目录。正常退出、失败及 INT/TERM 清理本次目录，往返只删除已成功创建的专属库，不再先 DROP 同名库。SIGKILL/宿主崩溃不能保证执行清理；疑有残留时先核本轮证据和归属，禁止按公共 `/tmp` 文件名或库名前缀批量清他人材料。
 
@@ -373,3 +373,5 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 2026-11-12补记：所有者已自行更新brew基础Go1.27.4、nvm Node26.13.1，已在仓外以基础二进制确认，不是模块自动切SDK的结果。本轮工作使用独立固定SDK验收，未代改包管理配置。版本候选、原门禁与数据恢复收据见[维护记录](../review/reports/version-modernization-2026-11-12.md)；共享旧环境/原卷没有自动切换。
 
 2026-11-17 F023交接（非运行资源占用）：所有者确认[存量修复前移](../planning/audit-repair-plan-2026-11-17.md)及CF-06目标保护，根唯一集成短分支`codex/audit-repair-plan-20261117`，分工只修改ignored审计文件。权限合同按普通档新跑完整既有门禁，253/0/0及81对零漂移；owner=`zz-audit-repair-20261117`的8个Compose容器、自有卷/网络已精确回收，15个原运行容器指纹不变。业务代码、迁移和共享栈未改，现有缺陷仍开放；实际提交/远端状态以Git为准，本轮未push/main合入或生产部署。材料ID `maintenance/audit-repair-plan-20261117/`。
+
+2026-11-17产品修复本地交接（已无运行资源占用）：根分支`codex/iam-baseline-repair-20261117`负责唯一集成/提交，UI/TR交付在各自`codex/iam-ui-repair-20261117`、`codex/task-chain-repair-20261117`工作树。F1/F2a/F0/F4/F3及启用旅程F5完成当前候选完整门禁和独审，准确结果及未覆盖见[正式报告](../review/reports/audit-baseline-repair-2026-11-17.md)。owner=`zz-repair-impl-20261117`的8容器、7卷、3网络已精确清理，本批宿主进程/资源零残留，60781–60787全可bind；专项独占资源亦已回收。共享15运行容器/13卷/3网络身份未变，没有镜像prune。SQLite/JSONL/日志及恢复/清理收据先封存，材料ID`maintenance/audit-baseline-repair-20261117/`，ignored批次保留执行副本。当前只作本地显式路径提交，未push、main合入或生产部署，不操作真实账号；后续仍以实时owner和清单判断归属，不凭本行清理其它会话资源。

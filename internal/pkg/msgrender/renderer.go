@@ -15,15 +15,8 @@ import (
 var placeholderRe = regexp.MustCompile(`\{\{(\w+(?:\.\w+)*)\}\}`)
 
 // builtinKeys 内置键集合（06 号 A.4 四象限——这些键必须始终有值，缺失=fail 拒发）。
-// 通知链每次组装载荷必含——缺失说明模板或数据有错（非正常场景）。
-var builtinKeys = map[string]bool{
-	"ticket.title":     true,
-	"ticket.type_code": true,
-	"ticket.priority":  true,
-	"ticket.status":    true,
-	"ticket.human_key": true,
-	"ticket.link":      true,
-}
+// 仅模板实际引用的内置键必须有值；事件特有键并不在每个事件中提供。
+var builtinKeys = BuiltinPaths()
 
 // RenderResult 渲染结果（四象限三分档——B6-3 增强批）。
 type RenderResult struct {

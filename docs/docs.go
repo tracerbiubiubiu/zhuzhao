@@ -2912,6 +2912,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/people": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "Context-bound ticket people search (2–50 characters, maximum 20 results)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "assign|cc|create-supervisor|rule-target",
+                        "name": "purpose",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "2–50 characters",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Required for assign/cc",
+                        "name": "ticket_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Required for create-supervisor/rule-target",
+                        "name": "org_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Required for create-supervisor",
+                        "name": "type_code",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/relations": {
             "post": {
                 "consumes": [
@@ -3897,7 +3955,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "查询用户已绑角色 ID 集",
+                "summary": "查询用户直接绑定的角色 ID（含停用绑定，不含组织或继承来源）",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3948,7 +4006,7 @@ const docTemplate = `{
         },
         "/internal/jobs/callback": {
             "post": {
-                "description": "结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试",
+                "description": "结果映射：200=已证明成功；400=非法输入；403=无当前动作资格；404=未知动作；409=不可重试；503=仍在途/终态未确认（Retry-After）；500=可重试",
                 "consumes": [
                     "application/json"
                 ],
@@ -5014,7 +5072,10 @@ const docTemplate = `{
                         "select",
                         "multi_select",
                         "tips",
-                        "richtext"
+                        "richtext",
+                        "radio",
+                        "rating",
+                        "file"
                     ]
                 },
                 "required": {

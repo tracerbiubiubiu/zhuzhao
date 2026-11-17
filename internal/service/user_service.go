@@ -91,6 +91,9 @@ func (s *UserService) GetByID(ctx context.Context, id int64, actorUserID int64) 
 }
 
 func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, actorUserID int64) (*model.User, error) {
+	if !iamCommandActive(ctx, "user.create") {
+		return guardedIAMValue(ctx, s.userRepo.WithIAMGuard, "user.create", actorUserID, s.userRepo, func(ctx context.Context) (*model.User, error) { return s.Create(ctx, req, actorUserID) })
+	}
 	if req.Username == "" || req.Password == "" {
 		return nil, errcode.ErrInvalidParams
 	}
@@ -124,6 +127,11 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 			return nil, errcode.ErrCannotAssignHigherRole
 		}
 	}
+	if len(req.OrgIDs) > 0 {
+		if err := s.orgService.authorizeNewMemberships(ctx, actorUserID, 0, []int64(req.OrgIDs)); err != nil {
+			return nil, err
+		}
+	}
 	// 校验组织是否存在 + primaryOrgID 在列表内
 	if req.PrimaryOrgID != nil {
 		found := false
@@ -144,7 +152,7 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 	}
 
 	// 同一事务内：创建用户 → 分配角色 → 分配组织，任一步失败整体回滚
-	tx, err := s.db.Begin(ctx)
+	tx, err := repository.IAMDB(ctx, s.db).Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
@@ -172,12 +180,23 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 }
 
 func (s *UserService) Update(ctx context.Context, req *model.UpdateUserRequest, actorUserID int64) (*model.User, error) {
+	if !iamCommandActive(ctx, "user.update") {
+		return guardedIAMValue(ctx, s.userRepo.WithIAMGuard, "user.update", actorUserID, s.userRepo, func(ctx context.Context) (*model.User, error) { return s.Update(ctx, req, actorUserID) })
+	}
 	user, err := s.userRepo.FindByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.ensureCanManage(ctx, actorUserID, user.ID); err != nil {
 		return nil, err
+	}
+	identityChanged := (req.EmployeeNo != nil && *req.EmployeeNo != user.EmployeeNo) ||
+		(req.DomainAccount != nil && *req.DomainAccount != user.DomainAccount) ||
+		(req.UserDomain != nil && *req.UserDomain != user.UserDomain)
+	if identityChanged {
+		if err := s.ensureTargetProtection(ctx, actorUserID, user.ID); err != nil {
+			return nil, err
+		}
 	}
 	// B2-3 patch 语义：仅覆盖显式传入的字段（nil 跳过；空串 = 显式清空）。
 	// SQL 不变（合并进 user 对象后仍全量写，未传字段保持 FindByID 原值）
@@ -210,6 +229,9 @@ func (s *UserService) Update(ctx context.Context, req *model.UpdateUserRequest, 
 }
 
 func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) error {
+	if !iamCommandActive(ctx, "user.delete") {
+		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.delete", actorUserID, s.userRepo, func(ctx context.Context) error { return s.Delete(ctx, userID, actorUserID) })
+	}
 	if userID == actorUserID {
 		return errcode.ErrForbidden
 	}
@@ -217,7 +239,7 @@ func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) err
 	if err != nil {
 		return err
 	}
-	if err := s.ensureCanManage(ctx, actorUserID, userID); err != nil {
+	if err := s.ensureSensitiveCanManage(ctx, actorUserID, userID); err != nil {
 		return err
 	}
 	if user.IsSystem {
@@ -243,15 +265,18 @@ func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) err
 		}); err != nil {
 			return err
 		}
-		return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
+		return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()) })
 	}
 	if err := s.userRepo.SoftDelete(ctx, userID); err != nil {
 		return err
 	}
-	return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
+	return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()) })
 }
 
 func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserStatusRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "user.status") {
+		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.status", actorUserID, s.userRepo, func(ctx context.Context) error { return s.UpdateStatus(ctx, req, actorUserID) })
+	}
 	// B4-3：不能禁用自己（自禁用后需他人恢复，易产生工单；与 Delete 的自我保护对齐）
 	if req.Status == 0 && req.UserID == actorUserID {
 		return errcode.ErrForbidden
@@ -265,7 +290,7 @@ func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserSta
 	if req.Status == 0 && target.IsSystem {
 		return errcode.ErrUserIsSystem
 	}
-	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
+	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
 		return err
 	}
 	if req.Status == 0 {
@@ -290,50 +315,77 @@ func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserSta
 			}
 			// 与非超管禁用路径一致：禁用成功后吊销全部会话
 			// （JWT 中间件不查 DB status，须靠 disabled 键拦截存量 AT）
-			return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+			return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
 		}
 	}
 	if err := s.userRepo.UpdateStatus(ctx, req.UserID, req.Status); err != nil {
 		return err
 	}
 	if req.Status == 0 {
-		return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+		return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
 	}
-	return clearUserDisabled(ctx, s.rdb, req.UserID)
+	return repository.AfterIAMCommit(ctx, func() error { return clearUserDisabled(ctx, s.rdb, req.UserID) })
 }
 
 func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesRequest, actorUserID int64) error {
-	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
+	if !iamCommandActive(ctx, "user.roles") {
+		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.roles", actorUserID, s.userRepo, func(ctx context.Context) error { return s.SetRoles(ctx, req, actorUserID) })
+	}
+	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
 		return err
 	}
 	actorRoles, err := s.userRepo.GetRoles(ctx, actorUserID)
 	if err != nil {
 		return err
 	}
-	// B4-3：单循环完成校验与 superadmin 探测（原两轮各查一次 FindByID，2N 次查询）
-	willHaveSuper := false
-	for _, roleID := range req.RoleIDs {
-		role, err := s.roleRepo.FindByID(ctx, roleID)
+	return s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+		// Keep the existing global guard before the target row lock, matching
+		// Delete/UpdateStatus ordering. All reads after Begin use this tx, so
+		// competing replacements cannot consume the pool and wait on themselves.
+		if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+			return err
+		}
+		oldRoles, err := s.userRepo.LockRoleBindingsTx(ctx, tx, req.UserID)
 		if err != nil {
 			return err
 		}
-		if !canAssignRole(actorRoles, role) {
-			return errcode.ErrCannotAssignHigherRole
+		old := make(map[int64]*model.Role, len(oldRoles))
+		wasSuper := false
+		for _, role := range oldRoles {
+			if role.DeletedAt != nil {
+				return errcode.ErrRoleNotFound
+			}
+			old[role.ID] = role
+			wasSuper = wasSuper || (role.Code == superadminCode && role.Status == 1)
 		}
-		if role.Code == "superadmin" {
-			willHaveSuper = true
-		}
-	}
-	wasSuper, err := s.userRepo.IsSuperadminUser(ctx, req.UserID)
-	if err != nil {
-		return err
-	}
-	// TOCTOU 修复：摘除最后一个 superadmin 角色的检查与写入同事务
-	if wasSuper && !willHaveSuper {
-		return s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
-			if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+		requested := make(map[int64]bool, len(req.RoleIDs))
+		willHaveSuper := false
+		for _, roleID := range req.RoleIDs {
+			if requested[roleID] {
+				continue
+			}
+			requested[roleID] = true
+			role, err := s.roleRepo.FindByIDTx(ctx, tx, roleID)
+			if err != nil {
 				return err
 			}
+			if role.Status != 1 {
+				if _, retained := old[roleID]; retained {
+					continue // preserve the fact, without regranting any live authority
+				}
+				return errcode.New(errcode.ErrInvalidParams.Code, "已禁用的角色不可新增绑定")
+			}
+			if !canAssignRole(actorRoles, role) {
+				return errcode.ErrCannotAssignHigherRole
+			}
+			willHaveSuper = willHaveSuper || role.Code == superadminCode
+		}
+		for _, role := range oldRoles {
+			if !requested[role.ID] && !canAssignRole(actorRoles, role) {
+				return errcode.ErrCannotAssignHigherRole
+			}
+		}
+		if wasSuper && !willHaveSuper {
 			n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
 			if err != nil {
 				return err
@@ -341,17 +393,16 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 			if n <= 1 {
 				return errcode.ErrCannotRemoveLastSuperadmin
 			}
-			return s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs))
-		})
-	}
-	if err := s.userRepo.SetRoles(ctx, req.UserID, []int64(req.RoleIDs)); err != nil {
-		return err
-	}
-	return nil
+		}
+		return s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs))
+	})
 }
 
 func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswordRequest, actorUserID int64) error {
-	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
+	if !iamCommandActive(ctx, "user.reset") {
+		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.reset", actorUserID, s.userRepo, func(ctx context.Context) error { return s.ResetPassword(ctx, req, actorUserID) })
+	}
+	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
 		// 重置密码场景保留 30005 专用文案（04-user.md 契约）
 		if errors.Is(err, errcode.ErrCannotManageHigher) {
 			return errcode.ErrCannotResetHigher
@@ -365,7 +416,7 @@ func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswor
 	if err := s.userRepo.UpdatePassword(ctx, req.UserID, hash, true); err != nil {
 		return err
 	}
-	return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL())
+	return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (*model.User, error) {
@@ -390,14 +441,20 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req *mode
 	if req.Avatar != nil {
 		user.Avatar = *req.Avatar
 	}
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	if err := s.userRepo.UpdateProfile(ctx, user); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
 func (s *UserService) SetUserOrgs(ctx context.Context, req *model.SetUserOrgsRequest, actorUserID int64) error {
-	if err := s.ensureCanManage(ctx, actorUserID, req.UserID); err != nil {
+	if !iamCommandActive(ctx, "user.orgs") {
+		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.orgs", actorUserID, s.userRepo, func(ctx context.Context) error { return s.SetUserOrgs(ctx, req, actorUserID) })
+	}
+	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
+		return err
+	}
+	if err := s.orgService.authorizeNewMemberships(ctx, actorUserID, req.UserID, []int64(req.OrgIDs)); err != nil {
 		return err
 	}
 	return s.orgService.SetUserOrgs(ctx, req)
@@ -410,7 +467,7 @@ func (s *UserService) GetUserRoleIDs(ctx context.Context, userID, actorUserID in
 	if err := s.ensureVisible(ctx, actorUserID, userID); err != nil {
 		return nil, err
 	}
-	return s.roleRepo.ListRoleIDsByUserID(ctx, userID)
+	return s.roleRepo.ListDirectRoleIDsForEdit(ctx, userID)
 }
 
 func (s *UserService) GetUserOrgs(ctx context.Context, userID, actorUserID int64) ([]*model.UserOrg, error) {
@@ -432,6 +489,37 @@ func (s *UserService) ensureCanManage(ctx context.Context, actorID, targetID int
 		return err
 	}
 	targetRoles, err := s.userRepo.GetRoles(ctx, targetID)
+	if err != nil {
+		return err
+	}
+	if !canManageTarget(actorRoles, targetRoles) {
+		return errcode.ErrCannotManageHigher
+	}
+	return nil
+}
+
+func (s *UserService) ensureSensitiveCanManage(ctx context.Context, actorID, targetID int64) error {
+	if err := s.ensureCanManage(ctx, actorID, targetID); err != nil {
+		return err
+	}
+	return s.ensureTargetProtection(ctx, actorID, targetID)
+}
+
+// Only the target side consumes the effective projection. Organization and
+// inherited business roles never grant the actor additional IAM authority.
+// The original self and superadmin exceptions remain independent of this guard.
+func (s *UserService) ensureTargetProtection(ctx context.Context, actorID, targetID int64) error {
+	if actorID == targetID {
+		return nil
+	}
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorID)
+	if err != nil {
+		return err
+	}
+	if isSuperadmin(actorRoles) {
+		return nil
+	}
+	targetRoles, err := s.roleRepo.GetEffectiveRolesForTargetProtection(ctx, targetID)
 	if err != nil {
 		return err
 	}

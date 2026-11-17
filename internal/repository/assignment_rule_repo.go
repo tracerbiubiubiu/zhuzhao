@@ -102,8 +102,9 @@ func (r *AssignmentRuleRepo) MatchOnCreate(ctx context.Context, typeCode, title 
 func (r *AssignmentRuleRepo) UserBelongsToOrg(ctx context.Context, userID, orgID int64) (bool, error) {
 	var ok bool
 	err := r.db.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM user_orgs WHERE user_id = $1 AND org_id = $2
-		 AND (expires_at IS NULL OR expires_at > NOW()))`,
+		`SELECT EXISTS(SELECT 1 FROM user_orgs m JOIN organizations o ON o.id=m.org_id
+   WHERE m.user_id=$1 AND m.org_id=$2 AND (`+OrgSourceActiveSQL("o")+`)
+   AND (m.expires_at IS NULL OR m.expires_at>NOW()))`,
 		userID, orgID).Scan(&ok)
 	return ok, err
 }

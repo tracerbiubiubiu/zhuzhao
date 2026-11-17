@@ -105,6 +105,14 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		}
 		h.logger.Warn("notify: render rejected (builtin key missing)",
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
+		failure := &model.MessageLog{TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID, Channel: tpl.Channel, Recipients: strings.Join(resolveRecipientsFromRule(ev, rule.RecipientType, rule.FixedRecipients), ","), Status: "failed", Error: "render rejected: " + err.Error()}
+		if ev.ActorID > 0 {
+			actor := ev.ActorID
+			failure.ActorID = &actor
+		}
+		if recordErr := h.logRepo.Insert(ctx, failure); recordErr != nil {
+			h.logger.Error("notify: failed to record rejected render", "action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", recordErr)
+		}
 		return
 	}
 	subject := subjR.Text
@@ -140,9 +148,9 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 	recipients = filtered
 
 	// A-8 审计修复：节流移到偏好过滤后——全 opt-out 不占节流窗口
-	if h.throttle.shouldSkip(string(ev.BizType), ev.BizID, string(ev.Action)) {
-		h.logger.Info("notify: throttled (same biz+action in window)",
-			"action", ev.Action, "biz_id", ev.BizID)
+	recipients = h.throttle.filterRecipients(string(ev.BizType), ev.BizID, string(ev.Action), recipients)
+	if len(recipients) == 0 {
+		h.logger.Info("notify: all recipients throttled", "action", ev.Action, "biz_id", ev.BizID)
 		return
 	}
 

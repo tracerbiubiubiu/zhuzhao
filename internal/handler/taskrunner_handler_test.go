@@ -39,10 +39,11 @@ func newTaskrunnerProxyRouter(t *testing.T, upstream *httptest.Server) *gin.Engi
 		client = taskrunner.New(taskrunner.Config{BaseURL: upstream.URL, AK: "zhuzhao", SK: []byte("sk-test")})
 	}
 	reg := jobs.NewRegistry()
+	reg.Register("ordinary", jobs.HandlerFunc(func(context.Context, json.RawMessage) error { return nil }))
 	reg.Register("audit_archive", jobs.HandlerFunc(func(context.Context, json.RawMessage) error { return nil }))
 	h := NewTaskrunnerHandler(service.NewTaskrunnerService(client, nil), "http://self:33333", reg)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("username", "10001"); c.Next() }) // 模拟 JWT 注入
+	r.Use(func(c *gin.Context) { c.Set("username", "10001"); c.Set("userID", int64(17)); c.Next() }) // 模拟 JWT 注入
 	biz := r.Group("/api/v1")
 	{
 		biz.POST("/tasks", h.Submit)
@@ -138,14 +139,14 @@ func TestTaskrunnerHandler_EnvelopeErrorMapping(t *testing.T) {
 	t.Run("已登记码 10001 → 400", func(t *testing.T) {
 		up := newUpstream(t, errcode.ErrInvalidParams.Code, "cron_spec 非法")
 		defer up.Close()
-		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"audit_archive"}`)
+		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"ordinary"}`)
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Contains(t, w.Body.String(), "cron_spec 非法")
 	})
 	t.Run("未登记码 79999 → 500 默认", func(t *testing.T) {
 		up := newUpstream(t, 79999, "上游内部态")
 		defer up.Close()
-		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"audit_archive"}`)
+		w := postJSON(t, newTaskrunnerProxyRouter(t, up), "/api/v1/jobs", `{"action_id":"ordinary"}`)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
@@ -159,6 +160,10 @@ func TestTaskrunnerHandler_ProxyPassthrough(t *testing.T) {
 		gotBody = string(b)
 		gotOperator = req.Header.Get("X-Operator")
 		w.Header().Set("Content-Type", "application/json")
+		if req.Method == http.MethodGet && (strings.HasPrefix(req.URL.Path, "/v1/jobs/") || strings.HasPrefix(req.URL.Path, "/v1/tasks/")) {
+			_, _ = w.Write([]byte(`{"code":0,"data":{"job_id":"j-9","task_id":"` + strings.TrimPrefix(req.URL.Path, "/v1/tasks/") + `","action_id":"ordinary","action":"ordinary","params":"{}","echo":"ok"}}`))
+			return
+		}
 		_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"echo":"ok"}}`))
 	}))
 	defer up.Close()
@@ -183,8 +188,8 @@ func TestTaskrunnerHandler_ProxyPassthrough(t *testing.T) {
 			http.MethodGet, "/v1/jobs", "dept=dept-a", nil, ""},
 		{"DeadLetters 分页透传", http.MethodGet, "/api/v1/dead-letters?page=1", "",
 			http.MethodGet, "/v1/dead-letters", "page=1", nil, ""},
-		{"CreateJob raw body 透传 + actor 出站", http.MethodPost, "/api/v1/jobs", `{"action_id":"audit_archive","cron_spec":"@daily"}`,
-			http.MethodPost, "/v1/jobs", "", []string{`"action_id":"audit_archive"`}, "10001"},
+		{"CreateJob raw body 透传 + actor 出站", http.MethodPost, "/api/v1/jobs", `{"action_id":"ordinary","cron_spec":"@daily"}`,
+			http.MethodPost, "/v1/jobs", "", []string{`"action_id":"ordinary"`}, "10001"},
 		{"UpdateJob 标识在 body（C10）", http.MethodPost, "/api/v1/jobs/update", `{"job_id":"j-9","enabled":false}`,
 			http.MethodPost, "/v1/jobs/update", "", []string{`"job_id":"j-9"`}, "10001"},
 		{"Cancel task_id（C10）", http.MethodPost, "/api/v1/tasks/cancel", `{"task_id":"t-7"}`,

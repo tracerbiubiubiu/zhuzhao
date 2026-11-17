@@ -8,7 +8,15 @@
 
 > 2026-11-07 B20附件体验：TicketAttachments列表加载失败保留旧内容并原位重试，不显示假空态；上传/删除已成功而刷新失败明确部分成功，不引导重复提交。切单/卸载/较早响应均受身份和序列保护，HTTP错误不重复toast；真实网络中断/重试E2E见[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。
 
+> 2026-11-17 F5/CF-33候选：Update的custom_data file与richtext引用已进入同事务落绑并通过完整适用门禁及组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；当前未部署。Update在工单行锁内合并/校验，用同一次事务字段schema快照提取G2剔除隐藏值后的引用，字段读/MIME读/绑定均复用该事务，禁止在Tx内二次向池取连接。锁序沿工单行→所有来源对象key排序；保存失败则标题/custom_data/绑定/事件整笔回滚。
+>
+> 已绑定且confirmed、正式purpose匹配、owner和关联均属于同票的引用可由合法编辑者保留，上传者不必是当前编辑者。新引用仍须本人confirmed悬挂对象，file只接attachment_create，richtext只接richtext_create；不存在、他人新文件、他票、已删、未确认或purpose不符均400。`req.attachments`重复/旧已绑定键的原400语义保留；跨字段和显式来源可去重，不将同key的file/richtext类型冲突消掉。去重与提取受既有custom_data 64KiB和HTTP请求1MiB上界约束，不新增图数政策；普通附件额度仍按既有配置，内嵌图不占普通附件额度。字段移除不自动删除既有附件，正文引用回收仍按原目标单列。
+
 ## 当前状态与阅读顺序（2026-11-08）
+
+本批保留迁移000047的存量兼容：同票有效关联、confirmed及正式purpose可证明时，历史`owner_kind/owner_id`均NULL仍可原样保留，不要求回填也不借此授予新绑定；已有非空但矛盾的owner信息拒绝整笔。该元数据的零回填合同不能被新字段校验悄然改成旧票不可编辑。
+
+2026-11-17同批补齐`TicketTypeFieldInput`的`file/radio/rating`公开枚举及Swagger/UI生成类型，使契约覆盖实际11类字段；实际JSON绑定原已接收这三类，不将契约缺项误记为HTTP 400复现。专项与真实发布链结果见[前置修复记录](../review/reports/audit-baseline-repair-2026-11-17.md)。
 
 S5已交付预签名直传、头像/附件/richtext落绑、统一代理下载、配置覆盖与四段GC；代码复验及dev/test来源看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，后续详情缓存看[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)。main/生产承接另计；首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
 
@@ -30,6 +38,12 @@ flowchart TD
 ```
 
 直传PUT/HEAD属于S3协议；平台端点仍GET/POST。文件读取走header优先、file_session cookie回退；静态菜单豁免不等于资源写权豁免。GC的avatar第四段默认观察，正文引用扫描尚未实现。
+
+## 2026-11-17 部署接线：内部访问与外部签名地址
+
+本批存量修复合同：`storage.endpoint` 继续用于服务端建桶、HEAD/GET/删除；新增可选 `storage.public_endpoint`（env `STORAGE_PUBLIC_ENDPOINT`），只用于预签名 PUT/GET 的独立 S3 client。该值须为不含凭据、路径、query或fragment的绝对HTTP(S)地址，签名Host、scheme和region由该client生成，禁止签好内网URL再字符串替换Host。空值沿用内部client，兼容已有宿主/单端点配置；不改变文件元数据、授权或上传API。
+
+release Compose 保持storage启用，显式要求外部可达签名地址、UI CORS源和覆盖后的秘密；内部固定经服务名访问RustFS，S3默认只绑定宿主回环供受审反代/本机画像使用，console无默认宿主发布。外部浏览器不能解析Docker服务名，真实TLS/域名/反代必须在启用画像绑定后验证，不能把容器健康当直传可用。验证出口为签名Host/region正确、真实PUT→内部HEAD/读取成功、错Host签名被拒及空配置兼容；本批隔离组合验证已通过，实际证据及同机边界见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；真实TLS/域名画像仍须在启用前绑定验收。
 
 ## 1. 定位与由来
 

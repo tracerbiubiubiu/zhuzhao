@@ -2,6 +2,8 @@
 
 # 10 — P5-S10 工单协作与提醒能力（实施说明与设计沿革）
 
+> 2026-11-17状态：本批已启用工单旅程与提醒消费路径的必要修复已通过完整适用门禁及组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；下述旧日期的在途记录保留历史含义，不表示完整SLA、C05或分布式投递已交付。
+
 > 2026-11-06 ECO-B06提醒候选：max_reminders=0不发送；无实际目标或无事件注册表不消耗timeout/deadline水位，后续指定目标仍可首发；timeout候选SQL先排无目标避免占500窗口。既有先发后记、崩溃丢事件与重发取舍仍沿G-33/ADR-001。源修复e329db0已提交且专项八轮/变异通过，联合固定门禁待执行。
 
 > 2026-11-06 ECO-B08接口校准：添加抄送的 `user_ids` 元素按standards字符串ID契约发送；DTO使用现有jsonutil.Int64Slice兼容旧数字数组并保持int64精确，正数与20项上限不变，Swagger为string[]。前端催办上级单ID同样按既有string标签发送。当前分支已修、联合门禁及真实UI复验待完成，未合main。
@@ -187,7 +189,7 @@ CC只扩读可见集：`Resource.GetFilter`新增ccVisibilitySQL，`Resource.Aut
 | `000065_ticket_export_api.up.sql` | 工单导出GET绑定ticket_list读面 |
 | `000071_sla_due_at.up.sql` | S3a跨稿的SLA0.5截止时间及deadline通知种子 |
 
-实际DDL以`migrations/`文件为准，完整编号SSOT仍是[控制台§4](../review/11-project-control.md#4-数据库迁移地图81-对)。旧三表族SQL并未涵盖最后实施的四件套，不能当当前建表脚本。
+实际DDL以`migrations/`文件为准，完整编号SSOT仍是[控制台§4](../review/11-project-control.md#migration-map)。旧三表族SQL并未涵盖最后实施的四件套，不能当当前建表脚本。
 
 CreateTx/UpdateStatusTx与状态写同语句维护status_changed_at；原存量回填updated_at是近似值，故默认observe。ticket_reminders按(ticket_id,state)记水位，不因看到status_changed_at更新就自行推断水位已清零；状态代际/重入边界沿现有G-33记录，未在本轮改造。
 

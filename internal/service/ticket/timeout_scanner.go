@@ -127,6 +127,8 @@ type candidateRow struct {
 	createdBy              int64
 	id                     int64
 	humanKey               string
+	typeCode               string
+	priority               int
 	title                  string
 	assignedTo             *int64
 	escalationSupervisorID *int64
@@ -147,7 +149,7 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 	// 在 interval 内）在 SQL 层排除——修前两类单仍占名额、循环里 shouldRemind=false 跳过，前 500 个催满后
 	// 第 501+ 个永不催办（静默饿死）。shouldRemind 仍复核一次作并发/边界兜底。
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.created_by, t.assigned_to, t.escalation_supervisor_id,
+		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.type_code, t.priority, t.created_by, t.assigned_to, t.escalation_supervisor_id,
 		       EXTRACT(EPOCH FROM (NOW() - t.status_changed_at)) / 60.0
 		FROM tickets t
 		WHERE t.type_code = $1 AND t.status = $2
@@ -165,7 +167,7 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 	defer rows.Close()
 	cands, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (candidateRow, error) {
 		var c candidateRow
-		return c, r.Scan(&c.id, &c.humanKey, &c.title, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID, &c.overdueMinutes)
+		return c, r.Scan(&c.id, &c.humanKey, &c.title, &c.typeCode, &c.priority, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID, &c.overdueMinutes)
 	})
 	if err != nil {
 		return 0, err
@@ -299,7 +301,7 @@ func (s *TimeoutScanner) emitTimeout(c candidateRow, state string, notify []stri
 		return false // 无可送达目标（未指派且无上级）——不发空事件
 	}
 	payload := domainevent.Payload{
-		"title": c.title, "status": state,
+		"title": c.title, "status": state, "type_code": c.typeCode, "priority": c.priority,
 	}
 	if c.humanKey != "" {
 		payload["human_key"] = c.humanKey
@@ -340,7 +342,7 @@ func joinIDs(ids []string) string {
 // message_log 查重防重发）。due 写入点在 Transition commit 后按 to 态 sla_due_hours 计算。
 func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state string, dueHours int) (int, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, COALESCE(human_key, ''), title, created_by, assigned_to, escalation_supervisor_id
+		SELECT id, COALESCE(human_key, ''), title, type_code, priority, created_by, assigned_to, escalation_supervisor_id
 		FROM tickets
 		WHERE type_code = $1 AND status = $2
 		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, typeCode, state)
@@ -350,7 +352,7 @@ func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state strin
 	defer rows.Close()
 	cands, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (candidateRow, error) {
 		var c candidateRow
-		err := r.Scan(&c.id, &c.humanKey, &c.title, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID)
+		err := r.Scan(&c.id, &c.humanKey, &c.title, &c.typeCode, &c.priority, &c.createdBy, &c.assignedTo, &c.escalationSupervisorID)
 		return c, err
 	})
 	if err != nil {
@@ -401,7 +403,7 @@ func (s *TimeoutScanner) emitDeadline(c candidateRow, state string, notify []str
 	if len(targets) == 0 {
 		return false
 	}
-	payload := domainevent.Payload{"title": c.title, "status": state}
+	payload := domainevent.Payload{"title": c.title, "status": state, "type_code": c.typeCode, "priority": c.priority}
 	if c.humanKey != "" {
 		payload["human_key"] = c.humanKey
 	} else {

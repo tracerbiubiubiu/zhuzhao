@@ -3,8 +3,8 @@
 package service_test
 
 import (
-	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/casbin/casbin/v3"
@@ -21,7 +21,7 @@ import (
 
 func resetRBACTables(t *testing.T) {
 	t.Helper()
-	_, err := testPool.Exec(context.Background(), `
+	_, err := testPool.Exec(trustedIAMTestContext(), `
 		TRUNCATE user_roles, users, role_menus, org_roles RESTART IDENTITY CASCADE;
 		DELETE FROM menus WHERE is_system = false;
 		DELETE FROM roles`)
@@ -31,22 +31,26 @@ func resetRBACTables(t *testing.T) {
 func rbacTestRole(t *testing.T, code string, priority int, isSystem bool) *model.Role {
 	t.Helper()
 	var id int64
-	err := testPool.QueryRow(context.Background(), `
+	err := testPool.QueryRow(trustedIAMTestContext(), `
 		INSERT INTO roles (code, name, priority, is_system)
 		VALUES ($1, $1, $2, $3) RETURNING id`, code, priority, isSystem).Scan(&id)
 	require.NoError(t, err)
 	return &model.Role{ID: id, Code: code, Priority: priority, IsSystem: isSystem, Status: 1}
 }
 
+// Fixture accounts share one valid, normally generated hash. Password hashing
+// behavior stays covered by auth tests; actor/target tests need distinct rows.
+var rbacFixturePassword = sync.OnceValues(func() (string, error) { return crypto.HashPassword("p") })
+
 func rbacTestUser(t *testing.T, username, employeeNo string, roleIDs []int64) int64 {
 	t.Helper()
-	hash, err := crypto.HashPassword("p")
+	hash, err := rbacFixturePassword()
 	require.NoError(t, err)
 	repo := repository.NewUserRepo(testPool)
 	user := &model.User{Username: username, EmployeeNo: employeeNo, Password: hash, Status: 1}
-	require.NoError(t, repo.Create(context.Background(), user))
+	require.NoError(t, repo.Create(trustedIAMTestContext(), user))
 	if len(roleIDs) > 0 {
-		require.NoError(t, repo.SetRoles(context.Background(), user.ID, roleIDs))
+		require.NoError(t, repo.SetRoles(trustedIAMTestContext(), user.ID, roleIDs))
 	}
 	return user.ID
 }
@@ -94,7 +98,7 @@ func requireErrCode(t *testing.T, err error, want *errcode.Error) {
 // 删除 / 降权 / 改菜单均返回 403 + 30010（ErrCannotManageHigher）。
 func TestRBACService_EnsureCanManageRoleMatrix(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	lowRole := rbacTestRole(t, "low_mgr", 25, false)   // 操作者角色（弱）
@@ -127,7 +131,7 @@ func TestRBACService_EnsureCanManageRoleMatrix(t *testing.T) {
 // 此前仅挡 superadmin 角色；admin 等系统角色无保护，可被低权角色清空菜单。
 func TestRBACService_AssignMenus_SystemRoleRequiresSuperadmin(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	adminRole := rbacTestRole(t, "admin", 10, true)
@@ -151,7 +155,7 @@ func TestRBACService_AssignMenus_SystemRoleRequiresSuperadmin(t *testing.T) {
 // B1-2 守护：DeleteRole/UpdateRole 对系统角色仍返回 40004（原有行为不回归）。
 func TestRBACService_SystemRoleDeleteAndUpdateRejected(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	adminRole := rbacTestRole(t, "admin", 10, true)
@@ -170,7 +174,7 @@ func TestRBACService_SystemRoleDeleteAndUpdateRejected(t *testing.T) {
 // ---------- IW3/BK-12：角色继承（parent_id）写侧 + 单调规则 ----------
 
 func TestBK12_ParentIDRules(t *testing.T) {
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	suffix := uniqueSuffix()
 	rbac := service.NewRBACService(
 		repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
@@ -256,7 +260,7 @@ func TestBK12_ParentIDRules(t *testing.T) {
 // ---------- P1-2：priority 降级的子角色守卫 ----------
 
 func TestBK12_PriorityDemotionGuard(t *testing.T) {
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	suffix := uniqueSuffix()
 	roleRepo := repository.NewRoleRepo(testPool)
 	rbac := service.NewRBACService(
