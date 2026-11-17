@@ -30,8 +30,9 @@ import (
 //     已写文件未删行，下次重跑重复导出该批（跨文件重复可容忍，记录不丢优先）；
 //   - 单表失败跳过继续另一表（03 §4.2）；任一表失败 → 返回 error（5xx，taskrunner
 //     重试；重入安全：已归档行已删，重跑自然幂等）；
-//   - 默认/零保留期沿固定配置；临时覆盖需私有策略准入上下文，外部JSON不能自授批准。
-//     严格参数非法或无批准覆盖 → ErrAbort；受权callback最终资格与DB删除同事务。
+//   - callback默认/零保留期沿固定配置；执行总须私有策略准入上下文，外部JSON不能自授批准。
+//     进程内固定cron使用NewFixedAuditArchiveJob的独立启动期能力；普通Handle不隐式授后台权。
+//     严格参数非法或无准入 → ErrAbort；受权callback最终资格与DB删除同事务。
 type AuditArchiveJob struct {
 	repo              *repository.AuditLogRepo
 	retentionDays     int
@@ -110,7 +111,7 @@ type archiveParams struct {
 // archiveTables 归档顺序（先大表后大表——两张均为大表，顺序无业务含义，仅稳定遍历）。
 var archiveTablesOrdered = []string{"audit_logs", "policy_evaluation_logs"}
 
-// Handle 执行一次归档。params 为空时全用任务配置。
+// Handle 在已验证的callback准入下执行一次归档。params为空时沿任务配置。
 func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) error {
 	parsed, err := decodeArchiveParams(params)
 	if err != nil {
@@ -121,20 +122,17 @@ func (j *AuditArchiveJob) Handle(ctx context.Context, params json.RawMessage) er
 		retention = parsed.RetentionDays
 	}
 	execution, granted := ctx.Value(maintenanceExecutionKey{}).(maintenanceExecution)
-	if !granted && (retention != j.retentionDays || parsed.ApprovalID != "") {
-		return fmt.Errorf("audit_archive: unapproved retention override: %w", jobs.ErrAbort)
+	if !granted {
+		return fmt.Errorf("audit_archive: execution admission required: %w", jobs.ErrAbort)
 	}
-	if granted && (execution.admission.RetentionDays != retention || execution.admission.ApprovalID != parsed.ApprovalID) {
+	if execution.admission.RetentionDays != retention || execution.admission.ApprovalID != parsed.ApprovalID {
 		return fmt.Errorf("audit_archive: admission mismatch: %w", jobs.ErrAbort)
 	}
-	if granted {
-		err := execution.execute(ctx, func(ctx context.Context, tx pgx.Tx) error { return j.handleWithTx(ctx, retention, tx) })
-		if err == nil {
-			j.cleanExpiredArchiveFiles()
-		}
-		return err
+	err = execution.execute(ctx, func(ctx context.Context, tx pgx.Tx) error { return j.handleWithTx(ctx, retention, tx) })
+	if err == nil {
+		j.cleanExpiredArchiveFiles()
 	}
-	return j.handleWithTx(ctx, retention, nil)
+	return err
 }
 func (j *AuditArchiveJob) handleWithTx(ctx context.Context, retention int, tx pgx.Tx) error {
 	cutoff := time.Now().AddDate(0, 0, -retention)

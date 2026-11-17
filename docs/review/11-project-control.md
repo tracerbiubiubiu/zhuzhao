@@ -18,6 +18,8 @@
 
 ## 当前摘要
 
+- **2026-11-17 pass8补修候选**：正常SIGTERM/应急CLI回归、固定后台准入、维护提示、离线定义摘要工具及组织/附件矩阵已交当前出口；主仓七门禁、253验收/82对往返、UI334单测/46浏览器及真实策略/维护/附件/恢复专项通过，默认单测覆盖率20.9%。原平台角色语义和文件约束保持；源码及准确收据交叉复核，当前待提交/main承接，未部署。范围、原失败和后继触发归[补修记录](reports/audit-pass8-followup-2026-11-17.md)。
+
 - **2026-11-17五仓全面复核**：fresh fetch后，剩余19个旧本地分支及6个旧远端分支全部严格包含于各仓本地/远端main，独有提交零；保存五仓bundle并实际恢复/fsck通过后已清理。6个保留工作树均无未提交、索引无变化、五仓stash为空，无失效/未注册旧工作树残留。旧395项原稿及完整封存独立重验未发现漏合有效实现；活跃UI仍保留旧main且无独有提交，最新main独立检出保留。准确范围及后继记录分支状态见[合入记录§6](reports/audit-baseline-main-merge-2026-11-17.md#6-五仓工作区与全部剩余分支复核)，不改变产品能力或缺陷处置结论。
 
 - **2026-11-17工作树收尾**：8个旧实施/评审工作树遗留395项未提交状态，先完整保全并实际还原核对，再清理本轮13个临时工作树、15个本地分支及三仓6个已合并远端分支。49项旧稿差异未发现遗漏实现，业务能力、迁移和覆盖率口径不变；正在运行的UI主目录及独立最新main检出保留，详细结果与材料归属见[合入记录§5](reports/audit-baseline-main-merge-2026-11-17.md#5-临时工作树独立收尾)。
@@ -61,11 +63,11 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；本批窄修本地验证通过 | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
-| **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存放行 | ✅ Phase 1；本批单实例窄修本地验证通过，完整C05后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go` |
+| **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
-| **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头；主仓/TR单实例资格及失锁关闭受理，release常驻存储/秘密校验/内外地址分离 | ✅ Phase 1；本批部署画像本地验证通过，HA后继 | `internal/app/`、`internal/pkg/singleton/`、`internal/config/`、`deployments/docker-compose.yaml` |
+| **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；失锁仍立即取消/拒绝受理；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
 | **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 **utils aksk.GinMiddleware + response.AKSKFail() 统一形态**【2026-09-16 验签统一批：信封+分档中文文案，替代原零依赖默认响应】+ 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3）；2026-09-16 接入生态统一中间件形态 | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
@@ -261,6 +263,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### pass8复审补修与状态口径
+
+当前已合baseline与新增补修分别记账。PLAT-R01/02、TASK-R01固定后台能力和SIB-R01维护提示/真实浏览器已完整验证本次出口；IAM-R02保留平台角色语义并验证授权矩阵，TICKET-R01验证显式清引用/替换，已删/required/归属约束保持。IAM-R01当前手动恢复SOP已真实演练，自动恢复机制仍后继。准确本地候选及远端承接分记见[pass8报告](reports/audit-pass8-followup-2026-11-17.md)。另保留一次owned app资格丢失退出的原始事实及根因未明边界，真实启用前补诊断，不当作已修复的机制问题。
+
+机制仍开放但限制已验证：CF-01/08/09/10/49沿单实例画像，解除限制前重验多副本机制。CF-18中本批准确取证/独审归F6，远端保护、三节机器强制、全量CI自动化归原治理窗口；SIB-R02仅诊断误报具名后继，不能豁免实际记账丢失。完整IAM-C/C05、C03/F2b及未取用P2/P3保持原包，原审计70条没有整体关闭。
 
 ### 2026-11-15层级场景及实施门（历史；后继状态见下）
 
@@ -598,7 +606,7 @@ Phase5当前收口与main/生产承接看顶部和§6；Phase6实际启动须遵
 - **类型查看范围**：B01新类型参与人/旧类型现有范围、B02合法CC读评论均已确认；B03普通scope=all不越过类型范围、B04独立授权管理参与人/抄送均已确认；B05风险组职责/受限派单方案已确认：获授权管理者派已配置类型/组织，只读不能派单，不额外授通用建票权；SOC事件另按职责。风险权限/桥尚未实现。“敏感类型”不是新增is_sensitive字段，详见[领域合同](../design/business-lifecycle-contracts.md)。
 - **组织赋角补核**：虚拟组可复用org_roles；现有角色展开尚未按组织status/deleted_at过滤，停组不等于已撤派生L1。C04/D06统一生命周期撤权与回归，详见[领域合同](../design/business-lifecycle-contracts.md)；未在本批修源码。
 - **能力与债**：§1列已交付能力，§6区分代码验证和运行承接。dbtx ticket域试点已批准但未实施；新资源L2护栏、通知增强等按[Phase5债台账](../phase5/s6-s5-debt-ledger.md)与[Phase6启动批](../phase6/05-launch-batch.md)取用。B23/BK11表达式修复不等于通用dbtx已落地。
-- **数据与文档**：迁移保持81对，下一编号 **000082**，新增前按§4与磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
+- **数据与文档（原规划时点）**：当时迁移81对、下一编号000082；该编号后被维护准入迁移占用，现行82对/下一000083以[迁移地图](#migration-map)及磁盘双核。正式证据统一到[reports](reports/README.md)，已拍规划来源在[secops-platform](../proposal/secops-platform/README.md)，原始过程材料仍只在ignored `.codex/`。维护规则见[documentation.md](../documentation.md)。
 - **追溯入口**：[B27最终运行与安全收口](reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md) → [11-08后续复验](reports/zhuzhao-report-followup-2026-11-08.md)；首次全量覆盖与固定基线见[11-06总报告](reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)。原失败、NOT_RUN、旧HEAD及未部署表述保留其时点含义。
 
 ---

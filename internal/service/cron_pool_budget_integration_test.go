@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 	"testing"
@@ -21,7 +22,8 @@ func TestCronLockPool_RealArchiveWithOneConnection(t *testing.T) {
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	require.NoError(t, err)
 	defer pool.Close()
-	job := service.NewAuditArchiveJob(repository.NewAuditLogRepo(pool), 180, 10, t.TempDir(), 395, nil)
+	job, err := service.NewFixedAuditArchiveJob(repository.NewAuditLogRepo(pool), config.ArchiveConfig{CronEnabled: true, CronTick: "5ms", RetentionDays: 180, BatchRows: 10, OutDir: t.TempDir(), FileRetentionDays: 395}, nil)
+	require.NoError(t, err)
 	scheduler := service.NewCronScheduler(pool, "audit-pool-budget", job, 5*time.Millisecond, nil)
 	stopped := make(chan struct{})
 	go func() { defer close(stopped); scheduler.Run(ctx) }()

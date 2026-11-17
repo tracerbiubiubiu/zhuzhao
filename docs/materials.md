@@ -38,6 +38,8 @@
 
 ## 后续新增材料
 
+pass8复审后所有者明确要求按建议补修，材料ID`maintenance/audit-pass8-followup-20261117/`保存本批执行卡、红绿/删除关键修复变异、五仓Git来源与四组件源码/运行产物manifest、独占全门禁、浏览器/后台/恢复专项、独审与精确清理收据；最终外置封存以该ID的sealed-index及逐项源/副本SHA和权限复核为准。受控结论归[pass8补修报告](review/reports/audit-pass8-followup-2026-11-17.md)和原前移计划的具名后继表，旧审计和四批封存保留原时点，不覆盖历史validation或上传原始过程材料。
+
 2026-11-17存量审计复核、政策确认和修复计划的执行卡、原始门禁日志、候选/资源指纹及收据归材料ID`maintenance/audit-repair-plan-20261117/`；原始门禁及修订证据已归本地档案并核哈希，ignored工作区保留本次执行副本。受控结论归[修复计划](planning/audit-repair-plan-2026-11-17.md)及[目标账号保护合同](phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现)，不将本机路径或测试秘密复制到Git。原`FULL-AUDIT-2026-11-16`审计材料保留其批次和时点，报告修订不改写既有原始证据。
 
 本轮推送与main承接另用材料ID`maintenance/audit-baseline-main-merge-20261117/`，用于保存三仓消息only映射、推送、PR/准确head CI、合并及后继文档的来源复核与操作收据；现势结论见[三仓合入记录](review/reports/audit-baseline-main-merge-2026-11-17.md)。原本地验收材料封存不改，不因功能分支已推送就记main或部署成功。

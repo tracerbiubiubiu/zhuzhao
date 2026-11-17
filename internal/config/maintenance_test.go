@@ -19,6 +19,8 @@ func TestMaintenanceEnvReplacesStartupGrantsAndEmptyRevokes(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, cfg.Taskrunner.Maintenance.MaintainerUserIDs)
 	t.Setenv("TASK_MAINTAINER_USER_IDS", "admin")
-	_, err = Load(path)
-	require.Error(t, err)
+	cfg, err = Load(path)
+	require.NoError(t, err, "connection-only CLI loading does not consume maintenance grants")
+	require.Empty(t, cfg.Taskrunner.Maintenance.MaintainerUserIDs)
+	require.ErrorContains(t, cfg.Validate(), "TASK_MAINTAINER_USER_IDS")
 }

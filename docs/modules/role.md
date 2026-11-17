@@ -34,6 +34,8 @@ priority 数字越小越强。创建或变更父链时校验环、父状态和 `
 
 不可用期间，`middleware.CasbinAuth`的缓存p消费者，以及SelfService路由内`PeopleService.Search`的assign/create/rule静态动作，在Enforce前后检查同一状态并返回503。本人SelfService读、People cc的原DB L3不消费该p缓存，保持原规则。pending之前已通过中间件的请求可能完成；本批管理写仍同Tx重验当前p。成功重载开闸；两次失败、取消或pending后的commit不确定保持关闭，运维排查后受控重启，启动完整LoadPolicy成功后恢复。没有新增恢复API；不得将已提交DB错误误作回滚，也不声称所有资源在途请求的revision协议已交付。
 
+实际故障识别、核对数据库已提交状态及受控重启的步骤归[runbook §6.3](../ops/runbook.md#63-当前casbin策略投影失败的恢复)。健康探针成功不单独证明策略投影已恢复；须验证应保留权限的专属账号成功、已撤权账号仍拒绝。本批不新增后台无限重试、自动开闸或完整C05会话恢复机制。
+
 ### 4.3 多实例边界
 
 当前没有已接线的 Casbin Redis Watcher。一个实例的 LoadPolicy 不会自动同步另一个实例的内存；多副本上线前应按 [多实例方案](../phase3/02-multi-instance.md) 设计和验收，不能直接把旧 Pub/Sub 草图当作现有保证。

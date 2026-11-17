@@ -112,20 +112,23 @@ func (w *PolicyEvalWriter) Write(e PolicyEvalEntry) {
 // Start 启动 pump 与 flusher；ctx 取消后尽力排空 channel 再退出（优雅停止）。
 // 退出收尾须由 Stop 等待——否则调用方先关 Redis 时 drain/收尾 flush 静默失败。
 func (w *PolicyEvalWriter) Start(ctx context.Context) {
+	pumpDone := make(chan struct{})
 	w.wg.Add(2)
 	go func() {
 		defer w.wg.Done()
+		defer close(pumpDone)
 		w.pump(ctx)
 	}()
 	go func() {
 		defer w.wg.Done()
-		w.flusher(ctx)
+		w.flusher(ctx, pumpDone)
 	}()
 }
 
 // Stop 等待 pump/flusher 完成退出前收尾（drain + 收尾 flush）。必须在 ctx 取消
 // 之后、Redis 连接关闭之前调用（App.Shutdown 内、server.Shutdown 后）。超时返回
-// false：残留行持久在 Redis（AOF），重启后 flusher 续消不丢。
+// false 只表示未在预算内等齐：已入 Redis 的行可重启续消；未完成推送的
+// channel 行仍受既有 fail-open 窗口约束。true 也不等于最终数据库写入成功。
 func (w *PolicyEvalWriter) Stop(timeout time.Duration) bool {
 	done := make(chan struct{})
 	go func() {
@@ -192,12 +195,15 @@ func (w *PolicyEvalWriter) drain() {
 }
 
 // flusher Redis List → processing → 批量落库。落库失败留在 processing 下轮重试。
-func (w *PolicyEvalWriter) flusher(ctx context.Context) {
+func (w *PolicyEvalWriter) flusher(ctx context.Context, pumpDone <-chan struct{}) {
 	t := time.NewTicker(w.cfg.FlushInterval)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			// No producer remains after pump exits. Final flushing must not race
+			// ahead of its last push/drain and leave healthy shutdown rows behind.
+			<-pumpDone
 			fctx, fcancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer fcancel()
 			w.flushOnce(fctx) // 有界收尾：防 Redis 挂起阻塞退出（残留行重启续消）

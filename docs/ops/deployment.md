@@ -62,6 +62,10 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 
 完成应同时证明：启用storage的release从迁移到ready、头像/附件presign→PUT→confirm→代理读取；错Host签名拒绝；第二实例HTTP/后台零启动；断锁后请求取消、后台停止与重启恢复。备份/代表恢复沿[备份指南](backup.md)执行，健康探针或本节存在均不等于这些出口已经通过。
 
+pass8补修将正常信号退出和失锁分开：SIGTERM先停接纳/cron生产者，已接纳HTTP在30秒预算内保留请求context，判定日志消费者随请求排空后收尾；超时强关/取消。失锁即使发生在排空期间也立即取消请求和停止执行，不能借正常排空延长无资格实例。升级/回滚均先确认旧版本进程退出再起新版本；旧版本若不实现锁，不能用新版本锁替它提供互斥保证。
+
+`TASK_MAINTAINER_USER_IDS`已列入`.env.example`，空值默认不开放人工审计维护，不等于开放任务页即可执行。人工/覆盖/固定TR定义的配置、摘要离线计算及拒绝核查按[runbook §6.4](runbook.md#64-审计维护开通与核查)；固定进程内调度按[切换步骤](cron-migration.md)绑定受审启动定义。策略投影503的恢复沿[runbook §6.3](runbook.md#63-当前casbin策略投影失败的恢复)，与后继C05会话恢复分开。
+
 ## 二、三栈拼装（顺序敏感）
 
 ```sh
