@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // 工单 scope 枚举（user_orgs.ticket_scope，000012；09-ticket §5.2 Effective scope）
@@ -58,18 +59,19 @@ func NewPgxScopeResolver(db *pgxpool.Pool) ScopeResolver {
 // 000012 起三值皆可为实体来源（HR 延后期间实体为 local），无需过滤；HR Sync（2b-ext）
 // 只写 source='hr'，软删对账不触碰 local。
 func (r *pgxScopeResolver) resolve(ctx context.Context, userID int64) (*ResolvedScope, error) {
-	const q = `
+	q := `
 	SELECT o_anchor.path::text, o_anchor.ticket_visibility, m_org.path::text, m.ticket_scope
 	FROM user_orgs m
 	JOIN organizations m_org ON m_org.id = m.org_id
 	JOIN LATERAL (
 		SELECT a.path, a.ticket_visibility
-		FROM organizations a
-		WHERE a.path @> m_org.path AND NOT a.is_virtual
-		ORDER BY nlevel(a.path) DESC
+		FROM (` + repository.OrgAncestorChainSQL("m_org") + `) lineage
+ JOIN organizations a ON a.id=lineage.id
+ WHERE NOT a.is_virtual
+ ORDER BY lineage.distance ASC
 		LIMIT 1
 	) o_anchor ON true
-	WHERE m.user_id = $1
+	WHERE m.user_id = $1 AND (` + repository.OrgSourceActiveSQL("m_org") + `)
 	  AND (m.expires_at IS NULL OR m.expires_at > NOW())`
 	rows, err := r.db.Query(ctx, q, userID)
 	if err != nil {

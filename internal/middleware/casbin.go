@@ -54,6 +54,14 @@ func SelfService() gin.HandlerFunc {
 // CasbinAuth 路由级 RBAC 鉴权中间件（g 表消除 + 逐角色 enforce）。
 // logger 为 nil 时使用 slog.Default()；enforce 错误记 Error、最终拒绝记 Warn（§2.1 修复）
 func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger *slog.Logger) gin.HandlerFunc {
+	// The model configuration is immutable after router construction. Read its
+	// definition once under Casbin's lock; no in-memory policy is trusted later.
+	iamModel := ""
+	if enforcer != nil {
+		enforcer.GetLock().RLock()
+		iamModel = enforcer.GetModel().ToText()
+		enforcer.GetLock().RUnlock()
+	}
 	return func(c *gin.Context) {
 		logger := logger
 		if logger == nil {
@@ -87,8 +95,15 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 
 		// 自服务路由（由 SelfService 中间件标记）跳过 Casbin enforce
 		if _, ok := c.Get(SelfServiceContextKey); ok {
+			c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), IAMRequestPurpose{UserID: userID, Path: c.Request.URL.Path, Method: c.Request.Method, Model: iamModel, SelfService: true}))
 			c.Set("roles", roles)
 			c.Next()
+			return
+		}
+
+		if !PolicyProjectionAvailable(enforcer) {
+			response.ServiceUnavailable(c)
+			c.Abort()
 			return
 		}
 
@@ -116,6 +131,14 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			}
 		}
 
+		// A change may have marked the cache unavailable during Enforce. Requests
+		// already admitted before the pending marker may complete; later ones close.
+		if !PolicyProjectionAvailable(enforcer) {
+			response.ServiceUnavailable(c)
+			c.Abort()
+			return
+		}
+
 		if enforceErr != nil && !allowed {
 			response.ServiceUnavailable(c)
 			c.Abort()
@@ -136,6 +159,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			return
 		}
 
+		c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), IAMRequestPurpose{UserID: userID, Path: path, Method: method, Model: iamModel}))
 		c.Set("roles", roles)
 		c.Next()
 	}

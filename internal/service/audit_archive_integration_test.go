@@ -100,9 +100,9 @@ func TestAuditArchiveJob(t *testing.T) {
 		require.EqualValues(t, 1, countRows(t, `SELECT COUNT(*) FROM audit_logs WHERE path=$1`, marker),
 			"默认保留期 180 天：10 天前的行不得归档")
 
-		require.NoError(t, job.Handle(ctx, json.RawMessage(`{"retention_days":5}`)))
-		require.EqualValues(t, 0, countRows(t, `SELECT COUNT(*) FROM audit_logs WHERE path=$1`, marker),
-			"params 覆盖保留期 5 天后应归档删除")
+		require.ErrorIs(t, job.Handle(ctx, json.RawMessage(`{"retention_days":5}`)), jobs.ErrAbort)
+		require.EqualValues(t, 1, countRows(t, `SELECT COUNT(*) FROM audit_logs WHERE path=$1`, marker),
+			"没有私有准入上下文的覆盖不得删除")
 
 		// 非法 params → ErrAbort（4xx 不可重试，P7）
 		err := job.Handle(ctx, json.RawMessage(`{bad json`))

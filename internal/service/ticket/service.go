@@ -67,7 +67,7 @@ func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
 // 消费者不回查数据库：排队期间删单仍能找到创建者，且不把操作者误当创建者。
 func (s *Service) emitTicketEvent(ticket *model.Ticket, ev domainevent.DomainEvent) {
 	if s.eventReg != nil {
-		s.eventReg.Dispatch(context.Background(), withTicketIdentity(ev, ticket.CreatedBy))
+		s.eventReg.Dispatch(context.Background(), withTicketIdentity(withTicketSnapshot(ticket, ev), ticket.CreatedBy))
 	}
 }
 
@@ -143,7 +143,7 @@ func NewTicketService(
 
 // isGlobalOrgAdmin 全局组织管理员判定（commit-review §3.4 口径统一）：
 // 角色码 admin/superadmin 短路，回退 delegation.HasOrgManagePermission
-// （org:% 菜单闸门）——与 org_service.isGlobalOrgAdmin 同语义两入口不漂移。
+// （org:member功能码）——其它org按钮不构成Create归属校验豁免。
 func (s *Service) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
 	roles, err := s.getRoles(ctx, userID)
 	if err != nil {
@@ -230,6 +230,11 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	if !ttype.IsActive {
 		return nil, errcode.ErrTicketTypeNotFound
+	}
+	// Historical definitions remain readable and repairable, but must not
+	// create a new ticket in a built-in state absent from their own graph.
+	if err := validateTypeGraph(ttype.States, ttype.Transitions); err != nil {
+		return nil, err
 	}
 
 	// 2. 模板预填（可选，09-ticket §2：default_fields 预填空缺字段、default_priority 作缺省）。
@@ -345,6 +350,9 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	ticket.OrgPath = org.Path
 
 	if err := s.ticketRepo.CreateTx(ctx, tx, ticket); err != nil {
+		return nil, err
+	}
+	if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusOpen); err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -658,6 +666,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	// GetByID 的基线在并发 Update 下已过期，Go 合并整列写回会丢并发方键；行锁
 	// 持至提交使同单更新串行化，合并恒新鲜且 G2 校验仍先于写。
 	var customData []byte
+	var fieldRefs []repository.StorageFieldReference
 	if len(req.CustomData) > 0 {
 		base, err := s.ticketRepo.LockCustomDataTx(ctx, tx, req.ID)
 		if err != nil {
@@ -668,7 +677,15 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "custom_data 须为 JSON 对象")
 		}
 		// 使用当前事务及锁内旧值完成 G2 校验和公式重算，避免嵌套池读。
-		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base)
+		fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, tx, ticket.TypeCode)
+		if err != nil {
+			return nil, err
+		}
+		merged, err = s.validateCustomData(ctx, tx, ticket.TypeCode, merged, base, fields)
+		if err != nil {
+			return nil, err
+		}
+		fieldRefs, err = fieldReferences(fields, merged)
 		if err != nil {
 			return nil, err
 		}
@@ -681,7 +698,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	// B5-4 编辑增量绑定（05 号 A.3 a 案）：编辑已建单工单时新贴图/附件（悬挂 confirmed 对象）
 	// 随保存同事务落绑——与建单同款语义。UpdateTx 的 UPDATE 已持工单行锁且先行，
 	// 计数校验无 TOCTOU 窗口（与 ConfirmAndBind 的 FOR UPDATE tickets 同序）。
-	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, req.Attachments); err != nil {
+	if err := s.bindUpdateReferencesTx(ctx, tx, ticket.ID, actorUserID, req.Attachments, fieldRefs); err != nil {
 		return nil, err
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -796,6 +813,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 		return err
 	}
+	if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusClosed); err != nil {
+		return err
+	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID:  req.ID,
 		UserID:    actorUserID,
@@ -806,15 +826,8 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 		return err
 	}
 	// 可选关闭说明 → 写评论
-	if req.Comment != "" {
-		if err := s.ticketRepo.CreateCommentTx(ctx, tx, &model.TicketComment{
-			TicketID:   req.ID,
-			UserID:     actorUserID,
-			Content:    req.Comment,
-			IsInternal: false,
-		}); err != nil {
-			return err
-		}
+	if err := s.writeLifecycleCommentTx(ctx, tx, req.ID, actorUserID, req.Comment); err != nil {
+		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
@@ -971,6 +984,9 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {
 			return err
 		}
+		if err := s.applyStateSLATx(ctx, tx, transitionType, ticket, newStatus); err != nil {
+			return err
+		}
 	}
 	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 		TicketID:  req.ID,
@@ -996,7 +1012,7 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 		Payload: domainevent.Payload{
 			"from_assignee": fromAssignee, "to_assignee": toAssignee,
 			"title": ticket.Title, "type_code": ticket.TypeCode,
-			"priority": ticket.Priority, "status": ticket.Status,
+			"priority": ticket.Priority, "status": newStatus,
 		},
 		Timestamp: time.Now(),
 	})

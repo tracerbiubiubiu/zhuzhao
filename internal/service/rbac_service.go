@@ -70,6 +70,9 @@ func (s *RBACService) GetRole(ctx context.Context, roleID, actorUserID int64) (*
 }
 
 func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleRequest, actorUserID int64) (*model.Role, error) {
+	if !iamCommandActive(ctx, "role.create") {
+		return guardedIAMValue(ctx, s.roleRepo.WithIAMGuard, "role.create", actorUserID, s.userRepo, func(ctx context.Context) (*model.Role, error) { return s.CreateRole(ctx, req, actorUserID) })
+	}
 	if !validate.Identifier(req.Code) {
 		return nil, errcode.ErrInvalidParams
 	}
@@ -104,6 +107,9 @@ func (s *RBACService) CreateRole(ctx context.Context, req *model.CreateRoleReque
 }
 
 func (s *RBACService) UpdateRole(ctx context.Context, req *model.UpdateRoleRequest, actorUserID int64) (*model.Role, error) {
+	if !iamCommandActive(ctx, "role.update") {
+		return guardedIAMValue(ctx, s.roleRepo.WithIAMGuard, "role.update", actorUserID, s.userRepo, func(ctx context.Context) (*model.Role, error) { return s.UpdateRole(ctx, req, actorUserID) })
+	}
 	role, err := s.roleRepo.FindByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
@@ -217,6 +223,9 @@ func (s *RBACService) ensureRolePriorityAllowed(ctx context.Context, actorUserID
 }
 
 func (s *RBACService) DeleteRole(ctx context.Context, roleID, actorUserID int64) error {
+	if !iamCommandActive(ctx, "role.delete") {
+		return guardedIAMCommand(ctx, s.roleRepo.WithIAMGuard, "role.delete", actorUserID, s.userRepo, func(ctx context.Context) error { return s.DeleteRole(ctx, roleID, actorUserID) })
+	}
 	role, err := s.roleRepo.FindByID(ctx, roleID)
 	if err != nil {
 		return err
@@ -239,7 +248,7 @@ func (s *RBACService) DeleteRole(ctx context.Context, roleID, actorUserID int64)
 		return err
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
-		if err := s.reloadPolicy(ctx, role.Code); err != nil {
+		if err := s.schedulePolicyReload(ctx, role.Code); err != nil {
 			return err
 		}
 	}
@@ -262,6 +271,9 @@ func (s *RBACService) ensureCanManageRole(ctx context.Context, actorUserID int64
 
 // AssignMenus 全量覆盖角色菜单并同步 Casbin 策略
 func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "role.menus") {
+		return guardedIAMCommand(ctx, s.roleRepo.WithIAMGuard, "role.menus", actorUserID, s.userRepo, func(ctx context.Context) error { return s.AssignMenus(ctx, req, actorUserID) })
+	}
 	role, err := s.roleRepo.FindByID(ctx, req.RoleID)
 	if err != nil {
 		return err
@@ -316,7 +328,7 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		return fmt.Errorf("assign menus: %w", err)
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
-		if err := s.reloadPolicy(ctx, role.Code); err != nil {
+		if err := s.schedulePolicyReload(ctx, role.Code); err != nil {
 			return err
 		}
 	}
@@ -324,10 +336,17 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 }
 
 // reloadPolicy 事务提交后刷新 Casbin 内存策略（B3-5）。
-// 失败后果：DB 已生效而内存策略陈旧——权限回收场景被撤销的 API 继续放行，
-// 直到下一次成功 LoadPolicy。故：Error 日志（含 subject 便于对账）+ 重试 1 次
-// + 明确错误码（调用方感知「已提交但策略刷新失败」）。
+// 失败时DB已生效而内存策略陈旧，共享投影闸保持关闭，使缓存消费者返回503。
+// Error日志（含subject）+重试1次+明确错误码区分「已提交但刷新失败」；
+// 后续完整LoadPolicy成功或受控重启后才恢复，不能把失败解释为DB回滚。
 // D2-44②：重试等待尊重 ctx 取消（原裸 time.Sleep 阻塞请求 goroutine）
+func (s *RBACService) schedulePolicyReload(ctx context.Context, roleCode string) error {
+	// This runs inside the guarded transaction before its final commit. Never
+	// leave the old global cache usable after a DB revocation commits.
+	middleware.MarkPolicyProjectionUnavailable(s.enforcer)
+	return repository.AfterIAMCommit(ctx, func() error { return s.reloadPolicy(ctx, roleCode) })
+}
+
 func (s *RBACService) reloadPolicy(ctx context.Context, roleCode string) error {
 	const retryDelay = 100 * time.Millisecond
 	if err := s.enforcer.LoadPolicy(); err != nil {
@@ -345,6 +364,7 @@ func (s *RBACService) reloadPolicy(ctx context.Context, roleCode string) error {
 			return errcode.ErrPolicyReloadFailed
 		}
 	}
+	middleware.MarkPolicyProjectionAvailable(s.enforcer)
 	return nil
 }
 
@@ -382,7 +402,7 @@ func (s *RBACService) GetRolePermissions(ctx context.Context, roleID, actorUserI
 // 临时成员过期不参与组织角色；见 rbac-inheritance-and-cascade §4 与 role_repo.GetEffectiveRoleCodes。
 func (s *RBACService) GetRoleCodesByUserID(ctx context.Context, userID int64) ([]string, error) {
 	// BK-17：同请求内 CasbinAuth 已展开过角色的，直接命中缓存（消除两次 BFS SQL）
-	if uid, roles, ok := middleware.RolesFromContext(ctx); ok && uid == userID {
+	if uid, roles, ok := middleware.RolesFromContext(ctx); ok && uid == userID && !repository.IAMWriteActive(ctx) {
 		return roles, nil
 	}
 	return s.roleRepo.GetEffectiveRoleCodes(ctx, userID)

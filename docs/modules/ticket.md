@@ -338,6 +338,7 @@ var ticketTransitions = map[string][]string{
 | POST | `/api/v1/tickets/richtext/render` | 登录态（自服务） | richtext 服务端渲染/消毒（B5-4——白名单 HTML 出站，无票据访问面） |
 | POST | `/api/v1/tickets/close` | `ticket:close` | 关闭工单 |
 | POST | `/api/v1/tickets/assign` | `ticket:assign` | 分派工单 |
+| GET | `/api/v1/tickets/people` | 原写动作 + 具体业务上下文 | F3 人员选项；仅 ID/显示标签，2–50 字符搜索，最多20项；合同见下文 |
 | POST | `/api/v1/tickets/delete` | `ticket:delete` | 删除工单 |
 | GET | `/api/v1/tickets/:id/comments` | 工单页面GET面 | 回复列表 |
 | POST | `/api/v1/tickets/comments` | `ticket:comment` | 添加回复 |
@@ -361,6 +362,21 @@ var ticketTransitions = map[string][]string{
 工单模块在 Phase 2a 通过实现 `Resource` 接口（`Authorize` / `GetFilter`）自注册到 `ResourceRegistry`，见上述 SSOT。
 
 ---
+
+### 4.4 业务上下文选人（F3/CF15，2026-11-17 候选）
+
+`GET /api/v1/tickets/people` 是工单写动作的候选投影，注册在 SelfService 组以避免误要求用户管理读权限；`internal/service/ticket/people_service.go` 的 `PeopleService.Search` 在候选查询前重新检查原动作与具体对象。没有通用目录用途，没有新菜单、权限码或迁移；`GET /users` 的原管理权限不变。
+
+- `purpose=assign`：必须给 `ticket_id`，先以有效角色执行原 `POST /tickets/assign` 的 Casbin L1，再执行该单 `authorizeCheck(assign)`；单必须存在且未关闭。分派处理人与催办上级共用此用途。
+- `purpose=cc`：必须给 `ticket_id`，执行原抄他人动作的 `authorizeCheck(update)`。原 AddCC 是动态授权，无静态按钮 L1，选人不另加 `ticket:update`。仅抄送可见或仅能自抄送不获得他人候选。
+- `purpose=create-supervisor`：必须给 `org_id` 和 `type_code`，检查原 `POST /tickets` L1，再复用 Create 的组织分支成员/全局组织成员管理豁免端口及启用类型资格。没有 ticket_id 的建票不得退化为无上下文查询。
+- `purpose=rule-target`：必须给 `org_id`，检查原 `POST /assignment-rules` 管理 L1。候选只取该组织未过期任职，组织自身及祖先启用未删；`TicketPeopleRepo.SearchEnabled` 直接使用本轮 B 的 `OrgSourceActiveSQL`，不复制来源规则。
+
+手动分派、人工催办、抄送原写侧没有同组织候选限制；本接口沿用其候选范围，只返回启用未删用户，不另造同组 ACL。查询 `q` 去空白后须为2–50个Unicode字符；不足、过长或上下文缺失/混传返回400，UI就地提示输入条件。按姓名、用户名或工号字面子串匹配，`%/_`不作通配符；固定最多20项，无总数或翻页的目录导出面。响应只含 `list:[{id:string,label:string}]`，标签采用现有“姓名(工号)”消歧，不返回用户邮箱、电话、角色、组织或状态字段。
+
+授权拒绝在查询候选前返回；不可见票404、可见但无动作403、合法无匹配200空数组、依赖失败5xx不得混同。当前动作权限不授予后续写成功保证，写请求仍执行自己的原资格及对象状态校验。前端用途/票/组织/类型变化、失活、卸载、关闭下拉均使旧搜索世代失效，迟到结果、错误及 finally 不能覆盖新查询；管理用途保持原 `/users` 授权，业务拒绝不得回退管理API。
+
+本节F3/CF-15本地实现已通过定向真PG/HTTP、UI错序测试及组合栈完整验收，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；未推送、合入main或部署，不扩大为完整Phase6交付。
 
 ## 5. 工单类型抽象与 Hook 机制
 

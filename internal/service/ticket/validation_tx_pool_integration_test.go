@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -172,7 +173,7 @@ func TestValidationReadsReuseTransaction(t *testing.T) {
 			for _, conn := range held {
 				conn.Release()
 			}
-			svc := NewTicketService(pool, repository.NewTicketRepo(pool), repository.NewOrgRepo(pool), resource.NewRegistry(), validationPoolRoleFetcher{repository.NewRoleRepo(pool)}, nil, nil, nil, nil)
+			svc := NewTicketService(pool, repository.NewTicketRepo(pool), repository.NewOrgRepo(pool), resource.NewRegistry(), validationPoolRoleFetcher{repository.NewRoleRepo(pool)}, nil, repository.NewStorageRepo(pool), pkgstorage.NewConfigStore(&pkgstorage.StorageConfig{Bucket: "f15", MaxAttachmentsPerTicket: 20}), nil)
 			callCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 			start := time.Now()

@@ -54,7 +54,7 @@ func TestTypeGraphPatchUsesPersistedCounterpart(t *testing.T) {
 			success                                      bool
 		}{
 			{"states_cannot_remove_live_endpoint", custom, `{"open":["review"],"review":["closed"]}`, defaultStates, "", false},
-			{"transitions_cannot_add_unknown_endpoint", `["open","closed"]`, `{"open":["closed"]}`, "", defaultTransitions, false},
+			{"transitions_cannot_add_unknown_endpoint", `["open","assigned","closed"]`, `{"open":["closed"]}`, "", defaultTransitions, false},
 			{"valid_custom_transition_only", custom, defaultTransitions, "", `{"open":["review"],"review":["closed"]}`, true},
 			{"both_halves_valid", custom, `{"open":["review"],"review":["closed"]}`, defaultStates, defaultTransitions, true},
 			{"valid_default_transition_only", defaultStates, defaultTransitions, "", `{"open":["closed"]}`, true},

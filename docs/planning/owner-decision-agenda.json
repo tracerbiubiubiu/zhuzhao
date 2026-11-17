@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "purpose": "已确认方向与剩余真实配置的阅读议程；Q01–Q06及F004五组方向已有准确公开确认，不新增11个正式决策或开工门禁，不替代决策册。",
   "source": {
     "request_user_message_id": "01a1d4dc-b11f-7362-bb08-97a0a2bdede1",
@@ -514,5 +514,19 @@
         "date": "2026-11-16"
       }
     }
+  },
+  "audit_repair_followup": {
+    "date": "2026-11-17",
+    "source_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection",
+    "state": "owner_confirmed_not_implemented",
+    "confirmed": [
+      "存量安全/必要可用性修复前移，按启用范围验收，非全部审计项清零",
+      "CF-06目标强权保护只收紧敏感写，actor直接IAM管理资格不变"
+    ],
+    "plan_ref": "docs/planning/audit-repair-plan-2026-11-17.md",
+    "target_protection_ref": "docs/phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现",
+    "pending_owner_policy_choices": [],
+    "remaining_real_inputs_ref": "#/execution_actions/Q12_trial",
+    "boundary": "不更改历史13阅读分组/34决策统计，不再重问已定政策；当前方向确认不代表产品已修复或真实环境已批准"
   }
 }

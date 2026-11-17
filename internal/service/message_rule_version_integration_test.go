@@ -21,7 +21,8 @@ import (
 )
 
 func TestMessageRule_VersionCAS(t *testing.T) {
-	ctx := context.Background()
+	id := rbacTestUser(t, "msg-creator-"+uniqueSuffix(), "MC"+uniqueSuffix(), nil)
+	ctx := service.WithTaskPrincipal(context.Background(), id, "message creator")
 	svc := service.NewMessageAdminService(testPool)
 	ruleRepo := repository.NewMessageRuleRepo(testPool)
 

@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -31,7 +30,7 @@ func TestExpiredMembership_AuthorizationBoundaries(t *testing.T) {
 	for _, role := range []string{"admin", "owner"} {
 		for _, tc := range cases {
 			t.Run(role+"/"+tc.name, func(t *testing.T) {
-				ctx := context.Background()
+				ctx := trustedIAMTestContext()
 				env := setupDelegation(t)
 				_, err := testPool.Exec(ctx, `UPDATE user_orgs SET org_member_role=$3, expires_at=`+tc.expires+` WHERE org_id=$1 AND user_id=$2`, env.vgID, env.admin, role)
 				require.NoError(t, err)
@@ -78,7 +77,7 @@ func TestExpiredMembership_AuthorizationBoundaries(t *testing.T) {
 
 func checkMembershipTicketAccess(t *testing.T, env *dEnv, expected bool) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES('incident','membership regression') ON CONFLICT DO NOTHING`)
 	require.NoError(t, err)
 	var id int64
@@ -102,7 +101,7 @@ func checkMembershipTicketAccess(t *testing.T, env *dEnv, expected bool) {
 
 func TestExpiredMembership_ExplicitOwnerRemainsIndependent(t *testing.T) {
 	env := setupDelegation(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	_, err := testPool.Exec(ctx, `UPDATE user_orgs SET expires_at=NOW()-INTERVAL '1 minute' WHERE org_id=$1 AND user_id=$2`, env.vgID, env.admin)
 	require.NoError(t, err)
 	_, err = testPool.Exec(ctx, `UPDATE organizations SET owner_user_ids=ARRAY[$1::bigint] WHERE id=$2`, env.admin, env.vgID)

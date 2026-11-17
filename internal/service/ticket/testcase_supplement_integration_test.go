@@ -36,7 +36,7 @@ func TestBK18_UpdateTicketTypePatch(t *testing.T) {
 	// patch：states/transitions 更新（合法自定义图）
 	up2, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{
 		Name:        strPtr("patch 状态图"),
-		States:      json.RawMessage(`["open","closed"]`),
+		States:      json.RawMessage(`["open","assigned","closed"]`),
 		Transitions: json.RawMessage(`{"open":["closed"]}`)})
 	require.NoError(t, err)
 	assert.Contains(t, string(up2.States), `"closed"`)
@@ -45,8 +45,8 @@ func TestBK18_UpdateTicketTypePatch(t *testing.T) {
 	// patch：非法 states（to 不在 states 内）→ 400
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{
 		Name:        strPtr("坏图"),
-		States:      json.RawMessage(`["open","closed"]`),
-		Transitions: json.RawMessage(`{"open":["assigned"]}`)})
+		States:      json.RawMessage(`["open","assigned","closed"]`),
+		Transitions: json.RawMessage(`{"open":["missing"]}`)})
 	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
 }
 

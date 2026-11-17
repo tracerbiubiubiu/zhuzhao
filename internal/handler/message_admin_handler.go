@@ -81,7 +81,7 @@ func (h *MessageAdminHandler) UpsertRule(c *gin.Context) {
 		response.BadRequest(c, "event_action 与 template_code 必填")
 		return
 	}
-	if err := h.adminService.UpsertRule(c.Request.Context(), &req); err != nil {
+	if err := h.adminService.UpsertRule(trustedTaskContext(c), &req); err != nil {
 		writeServiceError(c, err)
 		return
 	}

@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,7 @@ import (
 // B4-5 守护：GetMembers 分页（契约变更——原全量返回，响应新增 page/page_size）
 func TestOrgService_GetMembersPagination(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	orgRepo := repository.NewOrgRepo(testPool)
 	userRepo := repository.NewUserRepo(testPool)
 	svc := service.NewOrgService(orgRepo, userRepo, service.NewOrgDelegationService(testPool), newRBACServiceForTest(t))
@@ -68,7 +67,7 @@ func TestOrgService_GetMembersPagination(t *testing.T) {
 // GetRoleMenuIDs 会向前端回显已删菜单的幽灵勾选）
 func TestMenuRepo_DeleteCleansRoleMenus(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	menuRepo := repository.NewMenuRepo(testPool)
 	roleRepo := repository.NewRoleRepo(testPool)
 
@@ -99,7 +98,7 @@ func TestMenuRepo_DeleteCleansRoleMenus(t *testing.T) {
 // 即使清空超管角色的菜单勾选，权限码仍返回全量（与 Casbin matcher bypass 对齐）
 func TestMenuService_GetUserPermissionsAdminWildcard(t *testing.T) {
 	resetOrgTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	menuRepo := repository.NewMenuRepo(testPool)
 	roleRepo := repository.NewRoleRepo(testPool)
 	userRepo := repository.NewUserRepo(testPool)
@@ -145,7 +144,7 @@ func TestMenuService_GetUserPermissionsAdminWildcard(t *testing.T) {
 // B4-4 守护：CreateRole 显式 status=0 可创建禁用角色（指针化契约变更）
 func TestRBACService_CreateRoleExplicitDisabled(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	saRole := rbacTestRole(t, "superadmin", 1, false)
@@ -170,7 +169,7 @@ func TestRBACService_CreateRoleExplicitDisabled(t *testing.T) {
 // resetOrgTables 组织/菜单/角色全清（B4 守护测试用）
 func resetOrgTables(t *testing.T) {
 	t.Helper()
-	_, err := testPool.Exec(context.Background(), `
+	_, err := testPool.Exec(trustedIAMTestContext(), `
 		TRUNCATE user_orgs, user_roles, users, role_menus, menus, roles RESTART IDENTITY CASCADE`)
 	require.NoError(t, err)
 }

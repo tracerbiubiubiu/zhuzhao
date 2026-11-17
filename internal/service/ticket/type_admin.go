@@ -76,7 +76,8 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 	}
 	version := req.Version
 	graphChanged := len(req.States) > 0 || len(req.Transitions) > 0
-	if graphChanged || len(req.TransitionMeta) > 0 {
+	activating := req.IsActive != nil && *req.IsActive
+	if graphChanged || len(req.TransitionMeta) > 0 || activating {
 		// 同一个持久快照同时提供缺省半图、meta键域和服务端CAS版本。
 		stateList, current, err := s.metaKeyDomain(ctx, code, req.States)
 		if err != nil {
@@ -92,7 +93,7 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 		if len(transitions) == 0 {
 			transitions = current.Transitions
 		}
-		if graphChanged {
+		if graphChanged || activating {
 			if err := validateTypeGraph(states, transitions); err != nil {
 				return nil, err
 			}
@@ -440,10 +441,21 @@ func validateTypeGraph(states, transitions json.RawMessage) error {
 	}
 	set := map[string]bool{}
 	for _, st := range stateList {
+		if strings.TrimSpace(st) == "" || strings.TrimSpace(st) != st {
+			return errcode.New(errcode.ErrInvalidParams.Code, "states 不可包含空白状态")
+		}
+		if set[st] {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("states 包含重复状态 %q", st))
+		}
 		set[st] = true
 	}
 	if len(set) == 0 {
 		return errcode.New(errcode.ErrInvalidParams.Code, "states 不能为空")
+	}
+	for _, required := range []string{StatusOpen, StatusAssigned, StatusClosed} {
+		if !set[required] {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("states 必须保留内置状态 %q（建票、分派及关闭所需）", required))
+		}
 	}
 	var trans map[string][]string
 	if err := json.Unmarshal(transitions, &trans); err != nil {
@@ -809,13 +821,19 @@ func (s *Service) expandDictOptionsStrict(ctx context.Context, q repository.RowQ
 // validateCustomData 在同一 schema 与显隐快照下校验输入、剔除隐藏字段并重算可见公式。
 // legacy 是 Update 从行锁内读取的旧 custom_data，仅允许已有选项值延续。
 // Create 使用池，Update 复用事务连接。未知字段沿用前向兼容策略。
-func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage, legacy json.RawMessage) (json.RawMessage, error) {
+func (s *Service) validateCustomData(ctx context.Context, q repository.RowQuerier, typeCode string, customData json.RawMessage, legacy json.RawMessage, snapshots ...[]*model.TicketTypeField) (json.RawMessage, error) {
 	// 总量封顶先于 schema 查询（无字段定义的类型同样受限——拍板 P5）
 	if len(customData) > CustomDataMaxBytes {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code,
 			fmt.Sprintf("custom_data 超过 %d KiB 上限", CustomDataMaxBytes>>10))
 	}
-	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, q, typeCode)
+	var fields []*model.TicketTypeField
+	var err error
+	if len(snapshots) > 0 {
+		fields = snapshots[0]
+	} else {
+		fields, err = s.ticketRepo.ListTicketTypeFieldsTx(ctx, q, typeCode)
+	}
 	if err != nil || len(fields) == 0 {
 		return customData, err // 无字段定义（或读取失败）不校验——读取失败随 Create 一起失败
 	}

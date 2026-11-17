@@ -32,8 +32,8 @@ func NewOrgService(orgRepo *repository.OrgRepo, userRepo *repository.UserRepo,
 	return &OrgService{orgRepo: orgRepo, userRepo: userRepo, delegation: delegation, roles: roles}
 }
 
-// isGlobalOrgAdmin 全局组织管理判定（04 §3.1 L3 全局侧）：
-// admin/superadmin 角色码快路径 + org:* 权限码精确判定（BFS 有效角色 → role_menus）。
+// isGlobalOrgAdmin preserves the platform admin/superadmin path. Functional
+// organization buttons are checked separately for each command.
 // fail-closed：任一查询失败视为无全局权。
 func (s *OrgService) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
 	roleCodes, err := s.roles.GetRoleCodesByUserID(ctx, userID)
@@ -45,7 +45,14 @@ func (s *OrgService) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
 			return true
 		}
 	}
-	ok, err := s.delegation.HasOrgManagePermission(ctx, userID)
+	return false
+}
+
+func (s *OrgService) hasGlobalOrgPermission(ctx context.Context, userID int64, permissions ...string) bool {
+	if s.isGlobalOrgAdmin(ctx, userID) {
+		return true
+	}
+	ok, err := s.delegation.HasOrgActionPermission(ctx, userID, permissions...)
 	if err != nil {
 		return false
 	}
@@ -133,6 +140,9 @@ func (s *OrgService) GetMyOrgs(ctx context.Context, userID int64) (*model.MyOrgs
 }
 
 func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.member.add") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.member.add", actorUserID, s.userRepo, func(ctx context.Context) error { return s.AddMember(ctx, req, actorUserID) })
+	}
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
 	}
@@ -145,7 +155,7 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 		role = "member"
 	}
 	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID,
-		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		s.hasGlobalOrgPermission(ctx, actorUserID, "org:member")); err != nil {
 		return err
 	}
 	// W0a-P0-3：scope=all 仅全局管理员可授——与 SetMemberScope 同一纪律（04 §4.2）。
@@ -160,9 +170,12 @@ func (s *OrgService) AddMember(ctx context.Context, req *model.OrgMemberRequest,
 		if err != nil {
 			return err
 		}
-		if !s.isGlobalOrgAdmin(ctx, actorUserID) && p > OrgRoleOwnerPriority {
+		if !s.hasGlobalOrgPermission(ctx, actorUserID, "org:member") && p > OrgRoleOwnerPriority {
 			return errcode.ErrCannotAssignHigherOrgMemberRole
 		}
+	}
+	if err := s.authorizeNewMemberships(ctx, actorUserID, req.UserID, []int64{req.OrgID}); err != nil {
+		return err
 	}
 	return s.orgRepo.AddMemberWithRole(ctx, req.OrgID, req.UserID, req.IsPrimary, role, req.TicketScope)
 }
@@ -173,7 +186,7 @@ func (s *OrgService) ListOrgRoles(ctx context.Context, orgID, actorUserID int64)
 	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
 		return nil, err
 	}
-	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+	if !s.hasGlobalOrgPermission(ctx, actorUserID, "org:read", "org:member") {
 		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
 		if err != nil {
 			return nil, err
@@ -189,36 +202,72 @@ func (s *OrgService) ListOrgRoles(ctx context.Context, orgID, actorUserID int64)
 // 全局 Casbin 角色（BFS 源 2 → L1 全局能力），影响面 = 全组织成员，授权面对齐
 // BK-14 的 scope=all 决议。系统角色不可绑定（repo 层守卫）。
 func (s *OrgService) BindOrgRole(ctx context.Context, req *model.BindOrgRoleRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.role.bind") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.role.bind", actorUserID, s.userRepo, func(ctx context.Context) error { return s.BindOrgRole(ctx, req, actorUserID) })
+	}
 	// org 预检（对齐 AddMember）：不存在/软删 → ErrOrgNotFound；否则落到 repo 层
 	// FK 23503 → 400/500，且软删 org 可静默绑成脏数据
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
 	}
-	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
-		return errcode.ErrNoPermission
+	if err := s.authorizeOrgRoleAssignment(ctx, actorUserID, req.RoleID, true); err != nil {
+		return err
 	}
 	return s.orgRepo.BindOrgRole(ctx, req.OrgID, req.RoleID)
 }
 
 // UnbindOrgRole 解绑组织角色（IW3/BK-12）：仅全局管理员
 func (s *OrgService) UnbindOrgRole(ctx context.Context, req *model.BindOrgRoleRequest, actorUserID int64) error {
-	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
-		return errcode.ErrNoPermission
+	if !iamCommandActive(ctx, "org.role.unbind") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.role.unbind", actorUserID, s.userRepo, func(ctx context.Context) error { return s.UnbindOrgRole(ctx, req, actorUserID) })
+	}
+	if err := s.authorizeOrgRoleAssignment(ctx, actorUserID, req.RoleID, false); err != nil {
+		return err
 	}
 	return s.orgRepo.UnbindOrgRole(ctx, req.OrgID, req.RoleID)
+}
+
+// Organizational membership/delegation and a single org:* button do not grant
+// global IAM assignment authority. Keep this narrower than isGlobalOrgAdmin:
+// other delegated organization operations have their own existing policies.
+func (s *OrgService) authorizeOrgRoleAssignment(ctx context.Context, actorID, roleID int64, adding bool) error {
+	actorRoles, err := s.userRepo.GetRoles(ctx, actorID)
+	if err != nil {
+		return err
+	}
+	if !isSuperadmin(actorRoles) && !hasRoleCode(actorRoles, "admin") {
+		return errcode.ErrNoPermission
+	}
+	role, err := s.orgRepo.GetRoleForOrgAssignment(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	if adding && role.IsSystem {
+		return errcode.New(errcode.ErrInvalidParams.Code, "系统角色不可绑定组织")
+	}
+	if !canAssignRole(actorRoles, role) {
+		return errcode.ErrCannotAssignHigherRole
+	}
+	if adding && role.Status != 1 {
+		return errcode.New(errcode.ErrInvalidParams.Code, "角色已禁用，不可绑定组织")
+	}
+	return nil
 }
 
 // SetMemberScope 变更成员数据范围（IW1/BK-14，09 §5.2）：org admin/owner 或全局管理员；
 // scope=all 旁路整个 L2（全局可见），仅全局管理员可授（BK-14 决议）并留审计日志
 func (s *OrgService) SetMemberScope(ctx context.Context, req *model.SetMemberScopeRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.member.scope") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.member.scope", actorUserID, s.userRepo, func(ctx context.Context) error { return s.SetMemberScope(ctx, req, actorUserID) })
+	}
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
 	}
-	global := s.isGlobalOrgAdmin(ctx, actorUserID)
+	global := s.hasGlobalOrgPermission(ctx, actorUserID, "org:member")
 	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID, global); err != nil {
 		return err
 	}
-	if req.TicketScope == "all" && !global {
+	if req.TicketScope == "all" && !s.isGlobalOrgAdmin(ctx, actorUserID) {
 		return errcode.ErrNoPermission
 	}
 	if err := s.orgRepo.SetMemberScope(ctx, req.OrgID, req.UserID, req.TicketScope); err != nil {
@@ -230,18 +279,38 @@ func (s *OrgService) SetMemberScope(ctx context.Context, req *model.SetMemberSco
 }
 
 func (s *OrgService) RemoveMember(ctx context.Context, req *model.OrgMemberRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.member.remove") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.member.remove", actorUserID, s.userRepo, func(ctx context.Context) error { return s.RemoveMember(ctx, req, actorUserID) })
+	}
 	if _, err := s.orgRepo.FindByID(ctx, req.OrgID); err != nil {
 		return err
 	}
 	// 2c（04 §3.5）：组内防提权——admin 仅可移除 member；owner 任意；全局绕过
 	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, req.UserID,
-		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		s.hasGlobalOrgPermission(ctx, actorUserID, "org:member")); err != nil {
 		return err
+	}
+	if actorUserID != req.UserID {
+		roles, err := s.orgRepo.MembershipRolesForRemoval(ctx, req.UserID, req.OrgID)
+		if err != nil {
+			return err
+		}
+		if err := s.authorizePotentialRoles(ctx, actorUserID, roles); err != nil {
+			return err
+		}
 	}
 	return s.orgRepo.RemoveMember(ctx, req.OrgID, req.UserID)
 }
 
 func (s *OrgService) SetUserOrgs(ctx context.Context, req *model.SetUserOrgsRequest) error {
+	// Production enters via UserService's target-protected command. This helper
+	// is not an alternate HTTP account-management entry point.
+	if !iamCommandActive(ctx, "user.orgs") && !trustedIAMInternal(ctx) {
+		return errcode.ErrNoPermission
+	}
+	if !iamCommandActive(ctx, "user.orgs") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "user.orgs", 0, s.userRepo, func(ctx context.Context) error { return s.SetUserOrgs(ctx, req) })
+	}
 	if _, err := s.userRepo.FindByID(ctx, req.UserID); err != nil {
 		return err
 	}
@@ -267,6 +336,9 @@ func (s *OrgService) SetUserOrgs(ctx context.Context, req *model.SetUserOrgsRequ
 
 // SetUserOrgsTx 在外部事务内全量覆盖用户组织（供 UserService.Create 等事务编排调用）
 func (s *OrgService) SetUserOrgsTx(ctx context.Context, tx pgx.Tx, req *model.SetUserOrgsRequest) error {
+	if !iamCommandActive(ctx, "user.create") && !iamCommandActive(ctx, "user.orgs") && !trustedIAMInternal(ctx) {
+		return errcode.ErrNoPermission
+	}
 	if req.PrimaryOrgID != nil {
 		found := false
 		for _, id := range req.OrgIDs {
@@ -293,7 +365,7 @@ func (s *OrgService) ListMembersRoster(ctx context.Context, orgID, actorUserID i
 	if _, err := s.orgRepo.FindByID(ctx, orgID); err != nil {
 		return nil, err
 	}
-	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+	if !s.hasGlobalOrgPermission(ctx, actorUserID, "org:read", "org:member") {
 		ok, err := s.delegation.IsOrgAdminOrOwner(ctx, actorUserID, orgID)
 		if err != nil {
 			return nil, err
@@ -352,6 +424,9 @@ func (s *OrgService) GetMembers(ctx context.Context, orgID int64, page, pageSize
 const maxOrgPathDepth = 20
 
 func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, actorUserID int64) (*model.Organization, error) {
+	if !iamCommandActive(ctx, "org.create") {
+		return guardedIAMValue(ctx, s.orgRepo.WithIAMGuard, "org.create", actorUserID, s.userRepo, func(ctx context.Context) (*model.Organization, error) { return s.Create(ctx, req, actorUserID) })
+	}
 	if !validate.LtreeLabel(req.Code) {
 		return nil, errcode.ErrInvalidParams
 	}
@@ -405,6 +480,9 @@ func (s *OrgService) Create(ctx context.Context, req *model.CreateOrgRequest, ac
 }
 
 func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*model.Organization, error) {
+	if !iamCommandActive(ctx, "org.update") {
+		return guardedIAMValue(ctx, s.orgRepo.WithIAMGuard, "org.update", 0, s.userRepo, func(ctx context.Context) (*model.Organization, error) { return s.Update(ctx, req) })
+	}
 	org, err := s.orgRepo.FindByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
@@ -426,6 +504,11 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 		org.Description = *req.Description
 	}
 	if req.Status != nil {
+		if org.Status != *req.Status {
+			if err := s.authorizeSourceChange(ctx, iamCommandActor(ctx), org.ID); err != nil {
+				return nil, err
+			}
+		}
 		org.Status = *req.Status
 	}
 	if req.SortOrder != nil {
@@ -439,12 +522,18 @@ func (s *OrgService) Update(ctx context.Context, req *model.UpdateOrgRequest) (*
 }
 
 func (s *OrgService) Delete(ctx context.Context, id int64) error {
+	if !iamCommandActive(ctx, "org.delete") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.delete", 0, s.userRepo, func(ctx context.Context) error { return s.Delete(ctx, id) })
+	}
 	org, err := s.orgRepo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
 	if org.IsSystem {
 		return errcode.ErrOrgIsSystem
+	}
+	if err := s.authorizeSourceChange(ctx, iamCommandActor(ctx), id); err != nil {
+		return err
 	}
 	// B4-5：children/members 检查已移入 repo.Delete 同事务（消灭 check-then-act 窗口）
 	return s.orgRepo.Delete(ctx, id)
@@ -454,11 +543,14 @@ func (s *OrgService) Delete(ctx context.Context, id int64) error {
 // 全局 org 管理员或该 org effective owner 可调用；非 owner 调用方不可移除现有 owner（防自我降权踢人）。
 // 双轨对齐：SetOwnersTx 同步 user_orgs.org_member_role='owner'。
 func (s *OrgService) SetOwners(ctx context.Context, req *model.SetOrgOwnersRequest, actorUserID int64) (*model.Organization, error) {
+	if !iamCommandActive(ctx, "org.owners") {
+		return guardedIAMValue(ctx, s.orgRepo.WithIAMGuard, "org.owners", actorUserID, s.userRepo, func(ctx context.Context) (*model.Organization, error) { return s.SetOwners(ctx, req, actorUserID) })
+	}
 	org, err := s.orgRepo.FindByID(ctx, req.OrgID)
 	if err != nil {
 		return nil, err
 	}
-	globalAdmin := s.isGlobalOrgAdmin(ctx, actorUserID)
+	globalAdmin := s.hasGlobalOrgPermission(ctx, actorUserID, "org:member")
 	if !globalAdmin {
 		p, err := s.delegation.EffectiveOrgPriority(ctx, actorUserID, req.OrgID)
 		if err != nil {
@@ -483,6 +575,11 @@ func (s *OrgService) SetOwners(ctx context.Context, req *model.SetOrgOwnersReque
 			}
 		}
 	}
+	for _, uid := range req.OwnerUserIDs {
+		if err := s.authorizeNewMemberships(ctx, actorUserID, uid, []int64{req.OrgID}); err != nil {
+			return nil, err
+		}
+	}
 	// 校验各 user 存在且未软删（04 §3.2.1）
 	for _, uid := range req.OwnerUserIDs {
 		if _, err := s.userRepo.FindByID(ctx, uid); err != nil {
@@ -500,6 +597,9 @@ func (s *OrgService) SetOwners(ctx context.Context, req *model.SetOrgOwnersReque
 // SetMemberRole 任命/变更组内角色（2c，04 §3.3；D2/D3）。
 // 仅 effective owner（或全局管理员）可调用；不可设 owner（→400）；不可改 owner_user_ids 用户的角色（→50009）。
 func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberRoleRequest, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.member.role") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.member.role", actorUserID, s.userRepo, func(ctx context.Context) error { return s.SetMemberRole(ctx, req, actorUserID) })
+	}
 	if req.OrgMemberRole == "owner" {
 		return &errcode.Error{Code: errcode.ErrInvalidParams.Code, Message: "owner 仅通过 SetOwners 设置"}
 	}
@@ -508,7 +608,7 @@ func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberR
 	}
 	// 调用方档位：admin → 50010（D3）；member → 70001
 	if err := s.delegation.ensureCanManageMember(ctx, actorUserID, req.OrgID, 0,
-		s.isGlobalOrgAdmin(ctx, actorUserID)); err != nil {
+		s.hasGlobalOrgPermission(ctx, actorUserID, "org:member")); err != nil {
 		return err
 	}
 	// 目标非 owner_user_ids 派生 owner（50009，04 §3.3.4）；成员存在性检查（50007）
@@ -531,6 +631,9 @@ func (s *OrgService) SetMemberRole(ctx context.Context, req *model.SetOrgMemberR
 // 虚拟组（is_virtual=true）且调用方为 effective owner（或全局）→ 允许删除（仍有成员 → 50005，与 Phase 1 一致）。
 // 实体组织删除规则不变。
 func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUserID int64) error {
+	if !iamCommandActive(ctx, "org.delete") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.delete", actorUserID, s.userRepo, func(ctx context.Context) error { return s.DeleteOrgDelegated(ctx, id, actorUserID) })
+	}
 	org, err := s.orgRepo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -539,7 +642,7 @@ func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUser
 		return errcode.ErrOrgIsSystem
 	}
 	// 全局管理员走既有 Delete；虚拟组 effective owner 亦可
-	if !s.isGlobalOrgAdmin(ctx, actorUserID) {
+	if !s.hasGlobalOrgPermission(ctx, actorUserID, "org:delete") {
 		if !org.IsVirtual {
 			return errcode.ErrNoPermission // 实体删除仅全局（Phase 1 语义）
 		}
@@ -551,6 +654,9 @@ func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUser
 			return errcode.ErrNoPermission
 		}
 	}
+	if err := s.authorizeSourceChange(ctx, actorUserID, id); err != nil {
+		return err
+	}
 	// D6 语义（CC3 原子化）：虚拟组的 owner 成员行是 SetOwners 派生数据，
 	// 组消亡即失效——同一事务内预清 owner 行 + 守卫 + 软删；仍有非 owner
 	// 成员 → 409+50005（不动任何状态）
@@ -560,8 +666,21 @@ func (s *OrgService) DeleteOrgDelegated(ctx context.Context, id int64, actorUser
 // Move 移动组织子树（B3-2：环检测/父读取/锁定已全部移入 repo 单事务，
 // 消灭并发交叉移动破坏树不变量与静默失效两个窗口）
 func (s *OrgService) Move(ctx context.Context, req *model.MoveOrgRequest) error {
+	if !iamCommandActive(ctx, "org.move") {
+		return guardedIAMCommand(ctx, s.orgRepo.WithIAMGuard, "org.move", 0, s.userRepo, func(ctx context.Context) error { return s.Move(ctx, req) })
+	}
 	if req.NewParentID != nil && *req.NewParentID == req.ID {
 		return errcode.ErrOrgCannotMoveToChild
+	}
+	org, err := s.orgRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	unchanged := (org.ParentID == nil && req.NewParentID == nil) || (org.ParentID != nil && req.NewParentID != nil && *org.ParentID == *req.NewParentID)
+	if !unchanged {
+		if err := s.authorizeSourceChange(ctx, iamCommandActor(ctx), req.ID); err != nil {
+			return err
+		}
 	}
 	return s.orgRepo.Move(ctx, req.ID, req.NewParentID)
 }

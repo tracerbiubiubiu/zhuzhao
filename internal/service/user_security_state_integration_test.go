@@ -39,7 +39,7 @@ type profileWriteTracer struct{}
 // The DB predicate and all auth/session logic remain production implementations.
 func (profileWriteTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
 	if gate, ok := ctx.Value(profileWriteGateKey{}).(*profileWriteGate); ok &&
-		strings.Contains(data.SQL, "UPDATE users SET") && strings.Contains(data.SQL, "username = $2") {
+		strings.Contains(data.SQL, "UPDATE users SET") && (strings.Contains(data.SQL, "username = $2") || strings.Contains(data.SQL, "real_name=NULLIF")) {
 		close(gate.reached)
 		select {
 		case <-gate.release:
@@ -54,7 +54,7 @@ func (profileWriteTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQue
 // Reuse TestMain's isolated PostgreSQL; Redis is real and isolated too. No seed
 // account (including E000001) is created, updated, or used by this test.
 func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(trustedIAMTestContext(), 90*time.Second)
 	defer cancel()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
@@ -64,7 +64,7 @@ func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
 		}, Started: true,
 	})
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
+	t.Cleanup(func() { require.NoError(t, container.Terminate(trustedIAMTestContext())) })
 	host, err := container.Host(ctx)
 	require.NoError(t, err)
 	port, err := container.MappedPort(ctx, "6379/tcp")
@@ -125,7 +125,19 @@ func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
 					if writer == "self_profile" {
 						user, err = users.UpdateProfile(gctx, target.ID, &model.UpdateProfileRequest{RealName: &name})
 					} else {
-						user, err = users.Update(gctx, &model.UpdateUserRequest{ID: target.ID, Version: target.Version, RealName: &name}, actor.ID)
+						// Administrative Update now serializes its whole IAM decision.
+						// Keep the independent narrow-column guarantee observable by supplying a
+						// deliberately stale repo model after the security command commits.
+						user, err = repo.FindByID(ctx, target.ID)
+						if err == nil {
+							user.RealName = name
+							close(gate.reached)
+							select {
+							case <-gate.release:
+							case <-ctx.Done():
+							}
+							err = repo.Update(ctx, user)
+						}
 					}
 					done <- struct {
 						user *model.User

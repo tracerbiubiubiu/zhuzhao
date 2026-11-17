@@ -30,26 +30,51 @@ func isSuperadmin(roles []*model.Role) bool {
 	return hasRoleCode(roles, "superadmin")
 }
 
+// directManagementPriority requires actual enabled direct role facts. The
+// target's legacy empty-set sentinel must never become an actor capability.
+func directManagementPriority(roles []*model.Role) (int, bool) {
+	if len(roles) == 0 {
+		return 0, false
+	}
+	minP := 0
+	for _, role := range roles {
+		if role == nil || role.Status != 1 || role.DeletedAt != nil || role.Priority < 1 {
+			return 0, false
+		}
+		if minP == 0 || role.Priority < minP {
+			minP = role.Priority
+		}
+	}
+	return minP, true
+}
+
 // canManageTarget actor 能否对 target 做敏感写操作（严格更强）
 func canManageTarget(actorRoles, targetRoles []*model.Role) bool {
+	ap, qualified := directManagementPriority(actorRoles)
+	if !qualified {
+		return false
+	}
 	if isSuperadmin(actorRoles) {
 		return true
 	}
-	ap := effectivePriority(actorRoles)
-	// F-2 纵深防御：priority<1 的非法角色（历史脏数据）不授予任何管理权，
-	// 否则 priority=0 的角色可越过 superadmin(priority=1) 的数字比较
-	if ap < 1 {
-		return false
+	// An account without any target role is the weak side for every qualified
+	// actor; keep this local rather than changing effectivePriority globally.
+	if len(targetRoles) == 0 {
+		return true
 	}
 	return ap < effectivePriority(targetRoles)
 }
 
 // canAssignRole actor 能否分配 role
 func canAssignRole(actorRoles []*model.Role, role *model.Role) bool {
+	ap, qualified := directManagementPriority(actorRoles)
+	if !qualified || role == nil {
+		return false
+	}
 	if role.Code == "superadmin" && !isSuperadmin(actorRoles) {
 		return false
 	}
-	return role.Priority >= effectivePriority(actorRoles)
+	return role.Priority >= ap
 }
 
 // canSetRolePriority actor 能否创建/更新出指定 priority 的角色（F-2 修复）。
@@ -60,5 +85,6 @@ func canSetRolePriority(actorRoles []*model.Role, priority int) bool {
 	if priority < 1 {
 		return false
 	}
-	return priority >= effectivePriority(actorRoles)
+	ap, qualified := directManagementPriority(actorRoles)
+	return qualified && priority >= ap
 }

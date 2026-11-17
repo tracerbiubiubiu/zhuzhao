@@ -295,6 +295,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	})
 	ticketService.SetActionRegistry(actionReg)
 	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
+	ticketPeopleHandler := handler.NewTicketPeopleHandler(ticket.NewPeopleService(ticketService, syncedEnforcer, repository.NewTicketPeopleRepo(pool)))
 	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
 	settingsService := service.NewSettingsService(settingsRepo, storageStore, logger)
@@ -307,7 +308,15 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	compatAKSKConfig := cfg.CompatAKSK
 	taskrunnerConfig := cfg.Taskrunner
 	taskrunnerClient := provideTaskrunnerClient(taskrunnerConfig)
-	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo)
+	taskPolicy, err := service.NewTaskActionPolicy(pool, taskrunnerConfig.Maintenance, auditConfig.Archive.RetentionDays, taskrunnerClient)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	taskrunnerService := service.NewTaskrunnerService(taskrunnerClient, jobSubmissionRepo, taskPolicy)
+	jobsCallbackService.SetActionPolicy(taskPolicy)
 	// spawn_task 动作（durable_submit——taskrunner 持久化凭证；适配器桥接。
 	// Registry 指针引用——SetActionRegistry 已注入，此处 Register 同一实例生效）
 	if err := actionReg.Register(ticket.NewSpawnTaskAction(&taskSubmitterAdapter{svc: taskrunnerService})); err != nil {
@@ -362,6 +371,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		PatHandler:              patHandler,
 		PatLookup:               patRepo,
 		TicketHandler:           ticketHandler,
+		TicketPeopleHandler:     ticketPeopleHandler,
 		BadgeHandler:            handler.NewBadgeHandler(badgeSvc),
 		// G2-2 审计修复：InboxHandler 漏装配（deps 缺字段——nil 进路由，调用即
 		// nil pointer panic，inbox 三端点全 500；notifications 零落库同根）

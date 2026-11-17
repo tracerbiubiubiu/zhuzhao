@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +28,7 @@ import (
 // E000001 is neither created nor updated by this selected test.
 func TestAudit_AdminResetThenLogin_OldATMustStayRevoked(t *testing.T) {
 	resetAuthTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)

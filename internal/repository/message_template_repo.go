@@ -82,10 +82,14 @@ func (r *MessageTemplateRepo) List(ctx context.Context, page, pageSize int, code
 
 // Create 创建模板。
 func (r *MessageTemplateRepo) Create(ctx context.Context, t *model.MessageTemplate) error {
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO message_templates (code, name, channel, biz_type, subject, body, variable_schema, enabled, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		t.Code, t.Name, t.Channel, t.BizType, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.CreatedBy)
+	saved, err := scanTemplate(r.db.QueryRow(ctx, `
+ INSERT INTO message_templates(code,name,channel,biz_type,subject,body,variable_schema,enabled,created_by)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+ RETURNING id,code,name,channel,biz_type,subject,body,variable_schema,enabled,is_system,version,created_by,created_at,updated_at`,
+		t.Code, t.Name, t.Channel, t.BizType, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.CreatedBy))
+	if err == nil {
+		*t = *saved
+	}
 	if err != nil {
 		if isPgUnique(err) {
 			return errcode.ErrMsgTplDupCode
@@ -108,24 +112,25 @@ func (r *MessageTemplateRepo) Update(ctx context.Context, t *model.MessageTempla
 	if isSys {
 		return errcode.ErrMsgTplSystem
 	}
-	tag, err := r.db.Exec(ctx, `
-		UPDATE message_templates SET name=$2, subject=$3, body=$4, variable_schema=$5,
-			enabled=$6, version=version+1, updated_at=NOW()
-		WHERE code=$1 AND version=$7`,
-		t.Code, t.Name, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.Version)
-	if err != nil {
+	saved, err := scanTemplate(r.db.QueryRow(ctx, `
+ UPDATE message_templates SET name=$2,subject=$3,body=$4,variable_schema=$5,enabled=$6,version=version+1,updated_at=NOW()
+ WHERE code=$1 AND version=$7 AND NOT is_system
+ RETURNING id,code,name,channel,biz_type,subject,body,variable_schema,enabled,is_system,version,created_by,created_at,updated_at`,
+		t.Code, t.Name, t.Subject, t.Body, t.VariableSchema, t.Enabled, t.Version))
+	if err == nil {
+		*t = *saved
+		return nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
-		// CAS 区分：不存在→404 / version 不匹配→409（B6-3 增强批）
-		var exists bool
-		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM message_templates WHERE code=$1)`, t.Code).Scan(&exists)
-		if !exists {
-			return errcode.ErrMsgTplNotFound
-		}
-		return errcode.ErrMsgTplVersionConflict
+	// CAS 区分：不存在→404 / version 不匹配→409（B6-3 增强批）
+	var exists bool
+	_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM message_templates WHERE code=$1)`, t.Code).Scan(&exists)
+	if !exists {
+		return errcode.ErrMsgTplNotFound
 	}
-	return nil
+	return errcode.ErrMsgTplVersionConflict
 }
 
 // Delete 删除模板（守卫：is_system 不可删 + 被 message_rules 引用不可删）。

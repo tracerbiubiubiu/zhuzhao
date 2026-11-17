@@ -37,14 +37,14 @@ type jobCallbackBody struct {
 // Callback
 //
 //	@Summary		预置动作回调（taskrunner → zhuzhao，AK/SK 验签内网端点）
-//	@Description	结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试
+//	@Description	结果映射：200=已证明成功；400=非法输入；403=无当前动作资格；404=未知动作；409=不可重试；503=仍在途/终态未确认（Retry-After）；500=可重试
 //	@Tags			internal-jobs
 //	@Accept			json
 //	@Produce		json
 //	@Success		200 {object} response.Response
 //	@Router			/internal/jobs/callback [post]
 //
-// Executed/Idempotent→2xx；UnknownAction→404；NonRetryable→409；Retryable→500。
+// 只有持久化成功终态可回200，在途/记账未确认保留重试。
 func (h *JobsHandler) Callback(c *gin.Context) {
 	var body jobCallbackBody
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -72,6 +72,13 @@ func (h *JobsHandler) Callback(c *gin.Context) {
 		response.NotFound(c, msg)
 	case service.CallbackNonRetryable:
 		response.Fail(c, http.StatusConflict, errcode.ErrConflict.Code, msg)
+	case service.CallbackInProgress:
+		c.Header("Retry-After", "1")
+		response.Fail(c, http.StatusServiceUnavailable, errcode.ErrServiceUnavailable.Code, msg)
+	case service.CallbackInvalidInput:
+		response.BadRequest(c, msg)
+	case service.CallbackForbidden:
+		response.Fail(c, http.StatusForbidden, errcode.ErrForbidden.Code, msg)
 	default:
 		response.InternalError(c, msg)
 	}

@@ -17,9 +17,10 @@ import (
 // 桶初始化随首次 presign 幂等确保（ensureBucket 内联，不占端口四方法面——
 // 05 号 A.1 刻意收窄；MakeBucket 撞并发已存在视为成功）。
 type MinioClient struct {
-	cli    *minio.Client
-	bucket string
-	region string
+	cli     *minio.Client
+	presign *minio.Client
+	bucket  string
+	region  string
 }
 
 var _ Client = (*MinioClient)(nil)
@@ -29,15 +30,30 @@ func NewMinioClient(cfg *StorageConfig) (*MinioClient, error) {
 	if cfg == nil || !cfg.Enabled {
 		return nil, fmt.Errorf("storage: 未启用（enabled=false）")
 	}
+	region := cfg.Region
+	if cfg.PublicEndpoint != "" && region == "" {
+		region = "us-east-1"
+	}
 	cli, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: cfg.UseSSL,
-		Region: cfg.Region,
+		Region: region,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("storage: init minio client: %w", err)
 	}
-	return &MinioClient{cli: cli, bucket: cfg.Bucket, region: cfg.Region}, nil
+	publicURL, err := publicEndpointURL(cfg.PublicEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	presign := cli
+	if publicURL != nil {
+		presign, err = minio.New(publicURL.Host, &minio.Options{Creds: credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""), Secure: publicURL.Scheme == "https", Region: region})
+		if err != nil {
+			return nil, fmt.Errorf("storage: invalid public signing endpoint")
+		}
+	}
+	return &MinioClient{cli: cli, presign: presign, bucket: cfg.Bucket, region: region}, nil
 }
 
 func (m *MinioClient) ensureBucket(ctx context.Context) error {
@@ -62,7 +78,7 @@ func (m *MinioClient) PresignPut(ctx context.Context, key, contentType string, t
 	if err := m.ensureBucket(ctx); err != nil {
 		return nil, err
 	}
-	u, err := m.cli.PresignHeader(ctx, http.MethodPut, m.bucket, key, ttl, nil,
+	u, err := m.presign.PresignHeader(ctx, http.MethodPut, m.bucket, key, ttl, nil,
 		http.Header{"Content-Type": []string{contentType}})
 	if err != nil {
 		return nil, fmt.Errorf("storage: presign put: %w", err)
@@ -76,7 +92,7 @@ func (m *MinioClient) PresignPut(ctx context.Context, key, contentType string, t
 
 // PresignGet 生成短 TTL 预签名 GET URL。
 func (m *MinioClient) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
-	u, err := m.cli.PresignedGetObject(ctx, m.bucket, key, ttl, nil)
+	u, err := m.presign.PresignedGetObject(ctx, m.bucket, key, ttl, nil)
 	if err != nil {
 		return "", fmt.Errorf("storage: presign get: %w", err)
 	}

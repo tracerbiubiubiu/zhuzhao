@@ -154,7 +154,7 @@ docker compose -f deployments/docker-compose.yaml start app
 
 ### 形态
 
-`rustfs-mirror`侧车使用[受控rclone1.76.0/Go1.27.4镜像](tools/rclone.md)，由当前Compose构建；`--profile storage`随RustFS同启。上游旧镜像仅保留比较记录：
+`rustfs-mirror`侧车使用[受控rclone1.76.0/Go1.27.4镜像](tools/rclone.md)，由当前Compose构建；主RustFS由app依赖常驻，备实例和mirror须显式以`--profile storage`启用。上游旧镜像仅保留比较记录：
 `rclone sync` 主实例桶 → `rustfs-backup` 备实例桶 + **双 重删除保护**——① `--backup-dir` 归档前缀
 （被覆盖/删除对象移入 `backup-archive/<桶>-<日期>/`，天目录按名序轮转保留 `RETAIN_COUNT` 个）；
 ② 目标桶**版本化**（RustFS 实测支持 `PutBucketVersioning`，脚本启动幂等启用——失败仅 WARN
@@ -192,5 +192,15 @@ docker exec zhuzhao-rustfs-mirror rclone copy \
 ### 注意（对象面）
 
 - 演练残留：`dst:backup-archive/zhuzhao-2026-10-20/` 含演练对象（dev 栈，随天目录轮转自然过期）；
-- `--profile storage` 未起则备份不在位——上生产时 rustfs/rustfs-backup/rustfs-mirror 三件同 profile；
+- 主RustFS常驻不代表备份已启用；未带`--profile storage`启动rustfs-backup/rustfs-mirror时备份仍不在位，必须核实际最近成功与可恢复性；
 - 版本化使 `rclone sync` 在备侧产生历史版本（叠加归档双重占空间）——空间水位纳入日常巡检。
+
+## 2026-11-17单目标release的代表恢复入口
+
+本批已在独占同机资源完成PG实际逻辑恢复、JSONL与代表对象恢复并通过组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；不代表异机、PITR或跨媒体一致快照恢复，真实备份目标仍须在启用前绑定。
+
+F4按一种受审部署画像验恢复，不新建备份平台。独立Docker卷/同机备RustFS只隔离误删，不是独立故障域；正式启用前须绑定异机/受保护备份目标、操作者和窗口。主仓单例限制不会保护DB行已迁出的JSONL，也不会替代对象/元数据联合恢复。
+
+先固定准确代码/镜像、源卷/目录、停写边界、DB/对象/JSONL清单及哈希；在本批专属新实例/新卷操作，不连接共享dev/zt，不复用E000001做人工冒烟。按本页现有入口完成：①逻辑DB还原并核代表引用/条数；②导出JSONL只读备份到新卷，核逐文件哈希、条数、所有者与mtime；③代表头像/附件对象备份后模拟源侧丢失，从备份回填原key并核字节/etag、file_objects和实际代理读取。对象、DB、JSONL原卷保留，确认组合可恢复前不切真实写主。
+
+回填所用endpoint/Host与当前签名画像一致；关闭业务写入和mirror的主→备同步后才做反向恢复，防恢复中再次覆盖备份。记录“已有工具可运行”“此候选在隔离资源代表恢复通过”“真实目标恢复已通过”三种状态；本机合成演练不冒称异机生产恢复完成。配置/私有地址、真实凭据及全量备份留受审本地材料，正式结论只保留材料ID/摘要和未覆盖项。

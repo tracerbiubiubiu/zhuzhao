@@ -351,6 +351,11 @@ func TestUpdate_CustomDataPatch(t *testing.T) {
 		_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: json.RawMessage(`{"srv":null}`)}, aid)
 		requireErrCodeInline(t, err, errcode.ErrInvalidParams.Code, "required 字段被 null 清空被拒（合并后整体校验）")
 
+		// The richtext reference is a real confirmed object belonging to this
+		// editor; arbitrary missing keys are now rejected by the binding contract.
+		seedPendingObject(t, aid, "t/a.png", "image/png")
+		_, err = testPool.Exec(ctx, `UPDATE file_objects SET purpose='richtext_create' WHERE bucket='' AND object_key='t/a.png'`)
+		require.NoError(t, err)
 		got, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID,
 			CustomData: json.RawMessage(`{"body":"# v2 ![i](/api/v1/files/t/a.png)"}`)}, aid)
 		require.NoError(t, err)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -205,11 +206,23 @@ type ArchiveRow struct {
 // ArchiveFetchBatch 取一批超期行（created_at < cutoff），按 id 升序；line 按行 JSON 编码。
 // 单表单批——调用方「导出成功后按同批 id 删行」（03 §4.2 原子语义）。
 func (r *AuditLogRepo) ArchiveFetchBatch(ctx context.Context, table string, cutoff time.Time, limit int) ([]ArchiveRow, error) {
+	return archiveFetchBatch(ctx, r.db, table, cutoff, limit)
+}
+func (r *AuditLogRepo) ArchiveFetchBatchTx(ctx context.Context, tx pgx.Tx, table string, cutoff time.Time, limit int) ([]ArchiveRow, error) {
+	return archiveFetchBatch(ctx, tx, table, cutoff, limit)
+}
+
+type archiveDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func archiveFetchBatch(ctx context.Context, db archiveDB, table string, cutoff time.Time, limit int) ([]ArchiveRow, error) {
 	if !archiveTables[table] {
 		return nil, fmt.Errorf("archive: table %q not allowlisted", table)
 	}
 	q := fmt.Sprintf(`SELECT * FROM %s WHERE created_at < $1 ORDER BY id LIMIT $2`, table)
-	rows, err := r.db.Query(ctx, q, cutoff, limit)
+	rows, err := db.Query(ctx, q, cutoff, limit)
 	if err != nil {
 		return nil, fmt.Errorf("archive fetch %s: %w", table, err)
 	}
@@ -248,6 +261,12 @@ func (r *AuditLogRepo) ArchiveFetchBatch(ctx context.Context, table string, cuto
 
 // ArchiveDeleteBatch 删除已导出的同批行（id 列表精确匹配）。
 func (r *AuditLogRepo) ArchiveDeleteBatch(ctx context.Context, table string, ids []int64) error {
+	return archiveDeleteBatch(ctx, r.db, table, ids)
+}
+func (r *AuditLogRepo) ArchiveDeleteBatchTx(ctx context.Context, tx pgx.Tx, table string, ids []int64) error {
+	return archiveDeleteBatch(ctx, tx, table, ids)
+}
+func archiveDeleteBatch(ctx context.Context, db archiveDB, table string, ids []int64) error {
 	if !archiveTables[table] {
 		return fmt.Errorf("archive: table %q not allowlisted", table)
 	}
@@ -255,7 +274,7 @@ func (r *AuditLogRepo) ArchiveDeleteBatch(ctx context.Context, table string, ids
 		return nil
 	}
 	q := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1)`, table)
-	if _, err := r.db.Exec(ctx, q, ids); err != nil {
+	if _, err := db.Exec(ctx, q, ids); err != nil {
 		return fmt.Errorf("archive delete %s: %w", table, err)
 	}
 	return nil

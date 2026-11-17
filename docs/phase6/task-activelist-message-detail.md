@@ -2,6 +2,8 @@
 
 日期：2026-11-14。状态：**待实施的模块设计候选**，不表示下面的表、路由、协议或故障测试已经实现。范围为C03/R01/D12、CE01/CE02的P6切片、D11/D15消息侧；AL写与变化源承接CE03/CE04的首版本地子范围。范围与价格继续以[总账](../planning/planning-backlog.json)、[本地核心分项](../planning/local-core-release-estimate.json)为准，本页不新增一份总价。
 
+> 2026-11-17后继：§8.3维护资格/可信归因、原定义读取及当前回调/同号异参/cron推进等窄出口已在本地候选实现并通过完整适用门禁、真实栈及独审；本页§1和§8.2/8.3的“当前/拟补/待实现”原文记录11月14–15日修前设计时点。实际接口及参数以[审计模块](../modules/audit.md#31-维护动作的准入2026-11-17候选)、实现及[本批报告](../review/reports/audit-baseline-repair-2026-11-17.md)为准。完整C03/R01、receipt/unknown、AL效果/变化源和真实消息仍待实施；未推送/main合入/部署，原报价按实际已交子出口在后续净剩余核算扣重。
+
 本页把[六条接缝](module-design-handoff.md)展开到模块输入、事务、失败出口和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地画像，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
 
 <!-- local-core-source:start -->
@@ -268,6 +270,8 @@ AUTH-02已实测业务`task:submit`可执行`audit_archive(retention_days=1)`，
 首批只保护实际启用敏感能力与上述当前维护越界，不重写所有非敏感TR业务，也不引入万能invoke或第二个权限引擎；未具安全接线的敏感旧深链服务端拒绝。AUTH问题仍是开放缺陷，本页仅修设计，不能据此声称已拦截。
 
 ### 8.3 存量任务窄修复：准确接线与参数、归因
+
+本节保留修前设计预期。11月17日已补TR的受签单job读取及核心GetJob port，维护资格、批准窗口、固定job身份/摘要、不可变准入事实和可信principal均已实现；原“没有/拟补”不再表示本地候选缺失。实际当前合同和非原子边界回到审计模块，逐项门禁及首失败见本批报告，不据此关闭较宽的新敏感业务读面及完整receipt产品。
 
 只读基线：主仓`610c1d76`、TR `b0906b83`。本段落实AUTH-02/06的4–7日有界子估，不另做CE03/完整I03；依赖的共同receipt/意图仍归C03/R01，不能重复计价。下列策略端口是候选，不是现成API或新增通用策略引擎。
 

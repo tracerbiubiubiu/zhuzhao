@@ -11,6 +11,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = "migration-template-preflight.py"
+LATEST_LOCAL_VERSION = max(int(path.name.split("_", 1)[0])
+                           for path in (ROOT / "migrations").glob("*.down.sql"))
 
 
 def rule(number, action, template, biz="ticket", enabled=True):
@@ -116,11 +118,32 @@ print(os.environ["MOCK_SNAPSHOT"])
             with self.subTest(target=target):
                 self.run_check(target=target, code=2)
         for checkpoints in [None, [], [None], [{"version": 81, "dirty": True}],
-                            [{"version": "81", "dirty": False}], [{"version": 82, "dirty": False}],
+                            [{"version": "81", "dirty": False}],
+                            [{"version": LATEST_LOCAL_VERSION + 1, "dirty": False}],
                             [{"version": 81, "dirty": False}] * 2]:
             snapshot = fresh()
             snapshot["checkpoint"] = checkpoints
             self.run_check(snapshot, code=2)
+
+    def test_clean_latest_checkpoint_and_catalog_growth(self):
+        snapshot = fresh()
+        snapshot["checkpoint"][0]["version"] = LATEST_LOCAL_VERSION
+        out = self.run_check(snapshot, target=LATEST_LOCAL_VERSION - 1)
+        self.assertEqual(out["current_version"], LATEST_LOCAL_VERSION)
+        self.assertFalse(out["down_executed"])
+
+        future_version = LATEST_LOCAL_VERSION + 1
+        snapshot["checkpoint"][0]["version"] = future_version
+        self.run_check(snapshot, target=LATEST_LOCAL_VERSION, code=2)
+        for direction in ("up", "down"):
+            (self.root / f"migrations/{future_version:06d}_unrelated.{direction}.sql").write_text("SELECT 1;\n")
+        out = self.run_check(snapshot, target=LATEST_LOCAL_VERSION)
+        self.assertEqual(out["current_version"], future_version)
+        self.assertFalse(out["down_executed"])
+        snapshot["checkpoint"][0]["dirty"] = True
+        self.run_check(snapshot, target=LATEST_LOCAL_VERSION, code=2)
+        snapshot["checkpoint"][0].update(version=future_version + 1, dirty=False)
+        self.run_check(snapshot, target=LATEST_LOCAL_VERSION, code=2)
 
     def test_source_drift_unknown_related_down_and_range_gap_fail_closed(self):
         path = self.root / "migrations/000079_action_notify_seed.down.sql"
@@ -128,10 +151,11 @@ print(os.environ["MOCK_SNAPSHOT"])
         path.write_bytes(original + b"\n-- changed historical down\n")
         self.run_check(code=2)
         path.write_bytes(original)
-        new = self.root / "migrations/000082_new.down.sql"
+        future_version = LATEST_LOCAL_VERSION + 1
+        new = self.root / f"migrations/{future_version:06d}_new.down.sql"
         new.write_text("DELETE FROM message_templates WHERE code='future';")
         snapshot = fresh()
-        snapshot["checkpoint"][0]["version"] = 82
+        snapshot["checkpoint"][0]["version"] = future_version
         self.run_check(snapshot, code=2)
         new.unlink()
         (self.root / "migrations/000080_storage_usage_alert_seed.down.sql").unlink()

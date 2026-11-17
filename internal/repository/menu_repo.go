@@ -66,7 +66,7 @@ func (r *MenuRepo) ListMenuAPIsByMenuIDs(ctx context.Context, menuIDs []int64) (
 	if len(menuIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT ma.menu_id, ma.api_path, ma.api_method
 		FROM menu_apis ma
 		JOIN menus m ON m.id = ma.menu_id
@@ -100,13 +100,16 @@ func (r *MenuRepo) ListByIDs(ctx context.Context, ids []int64) ([]*model.Menu, e
 
 func (r *MenuRepo) CountChildren(ctx context.Context, menuID int64) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM menus
 		WHERE parent_id = $1 AND deleted_at IS NULL`, menuID).Scan(&n)
 	return n, err
 }
 
 func (r *MenuRepo) Create(ctx context.Context, menu *model.Menu) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Create(ctx, menu) })
+	}
 	visible := menu.Visible
 	const q = `
 		INSERT INTO menus (
@@ -117,7 +120,7 @@ func (r *MenuRepo) Create(ctx context.Context, menu *model.Menu) error {
 			$9, $10, false, 1
 		)
 		RETURNING id, version, created_at, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		menu.ParentID, menu.Code, menu.Name, menu.MenuType,
 		menu.Path, menu.Component, menu.Icon, menu.Permission,
 		menu.SortOrder, visible,
@@ -132,6 +135,9 @@ func (r *MenuRepo) Create(ctx context.Context, menu *model.Menu) error {
 }
 
 func (r *MenuRepo) Update(ctx context.Context, menu *model.Menu) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Update(ctx, menu) })
+	}
 	const q = `
 		UPDATE menus SET
 			name = $2,
@@ -145,7 +151,7 @@ func (r *MenuRepo) Update(ctx context.Context, menu *model.Menu) error {
 			updated_at = NOW()
 		WHERE id = $1 AND version = $9 AND deleted_at IS NULL
 		RETURNING version, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		menu.ID, menu.Name, menu.Path, menu.Component, menu.Icon, menu.Permission,
 		menu.SortOrder, menu.Visible, menu.Version,
 	).Scan(&menu.Version, &menu.UpdatedAt)
@@ -159,10 +165,13 @@ func (r *MenuRepo) Update(ctx context.Context, menu *model.Menu) error {
 }
 
 func (r *MenuRepo) Delete(ctx context.Context, id int64) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Delete(ctx, id) })
+	}
 	// B4-4：软删 + 同事务清理 role_menus（原仅软删 menus 行——
 	// GetRoleMenuIDs 无 JOIN 过滤会向前端回显已删菜单的幽灵勾选；
 	// casbin 策略级联重建仍按文档留在 Phase 2）
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -184,7 +193,7 @@ func (r *MenuRepo) Delete(ctx context.Context, id int64) error {
 }
 
 func (r *MenuRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Menu, error) {
-	row := r.db.QueryRow(ctx, q, args...)
+	row := IAMDB(ctx, r.db).QueryRow(ctx, q, args...)
 	menu, err := scanMenuRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -196,7 +205,7 @@ func (r *MenuRepo) queryOne(ctx context.Context, q string, args ...any) (*model.
 }
 
 func (r *MenuRepo) queryMany(ctx context.Context, q string, args ...any) ([]*model.Menu, error) {
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query menus: %w", err)
 	}

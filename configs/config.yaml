@@ -90,6 +90,12 @@ taskrunner:
   ak: zhuzhao
   # sk: 从环境变量 TASKRUNNER_SK 注入
   timeout: 10s
+  maintenance:
+    # Independent startup grants, not roles/buttons. Empty disables manual
+    # audit maintenance. TASK_MAINTAINER_USER_IDS replaces this list on restart.
+    maintainer_user_ids: []
+    overrides: []   # reviewed ID/user_id/retention_days/valid_from/valid_until/reason
+    fixed_jobs: []  # reviewed job_id/definition_sha256/valid_from/valid_until/reason
 
 # 内网回调端点（E-②）：/internal/jobs/callback 验 taskrunner 签名；enabled 且 sk 缺失拒启
 internal_jobs:
@@ -133,7 +139,8 @@ rate_limit:
 storage:
   file_cookie_secure: false      # 文件通道 cookie Secure 属性（HTTPS 网关前置置 true——A.11/审计 M-4）
   enabled: true    # dev 栈 RustFS 在跑（RK-P5-12 环境漂移修正——acceptance S5 面全绿前提）
-  endpoint: http://localhost:9000   # 容器态改 http://rustfs:9000（compose 服务名）
+  endpoint: http://localhost:9000   # 容器内CRUD=http://rustfs:9000
+  public_endpoint: ""             # 可选浏览器签名origin；空沿用endpoint，release Compose显式注入
   region: us-east-1
   bucket: zhuzhao
   access_key: "zhuzhao_rustfs"

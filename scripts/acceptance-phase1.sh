@@ -35,10 +35,10 @@ PG_USER="${PG_USER:-zhuzhao}"
 PG_DB="${PG_DB:-zhuzhao}"
 REDIS="${REDIS_CONTAINER:-$(detect_container zhuzhao-dev-redis zhuzhao-redis || echo zhuzhao-redis)}"
 # 清除登录限流锁（验收链对 E000001 反复登录，15min/5 次会触发 20006 锁定）
-docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:E000001" >/dev/null 2>&1 || true
+docker exec "$REDIS" redis-cli -a "${REDIS_PASSWORD:-zhuzhao_dev}" --no-auth-warning del "lock:login:E000001" >/dev/null 2>&1 || true
 # #9 防枚举对 NOPE999（不存在账号）也发错误密码——跨 run 累计 5 次同样触发锁定，
 # 使 B2 返回「账号已锁定」与 B1 失配（2026-09-08 验证暴露，状态污染类）
-docker exec "$REDIS" redis-cli -a zhuzhao_dev --no-auth-warning del "lock:login:NOPE999" >/dev/null 2>&1 || true
+docker exec "$REDIS" redis-cli -a "${REDIS_PASSWORD:-zhuzhao_dev}" --no-auth-warning del "lock:login:NOPE999" >/dev/null 2>&1 || true
 # 种子基线清理（2026-10-13 链边界卫生）：D2 断言只容忍 operator 的 ticket% 绑定、
 # 非工单绑定须为零——非工单残留来自 UI 多账号测试（2a T7 的工单绑定本身可持久，
 # 2b/2c 依赖之，链内勿清）；此处全量复原使验收链对独立重跑幂等（2c 结尾有同款收尾）
@@ -408,7 +408,7 @@ check "#17 http" "503" "$HC"
 # 显式重启（不再依赖 trap）并等待就绪——后续脚本段在此环境上继续跑
 docker start "$REDIS_C" >/dev/null 2>&1 || true
 for _i in 1 2 3 4 5 6 7 8 9 10; do
-  [ "$(docker exec "$REDIS_C" redis-cli -a zhuzhao_dev --no-auth-warning ping 2>/dev/null | tr -d '\n')" = "PONG" ] && break
+  [ "$(docker exec "$REDIS_C" redis-cli -a "${REDIS_PASSWORD:-zhuzhao_dev}" --no-auth-warning ping 2>/dev/null | tr -d '\n')" = "PONG" ] && break
   sleep 1
 done
 sleep 2  # 服务端 redis 连接池重连缓冲（ready/登录在恢复瞬间会 fail-close 10008）

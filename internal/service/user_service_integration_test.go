@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ func strPtr(s string) *string { return &s }
 // 修复前全量覆盖语义：按文档示例（部分字段）调用会清空 employee_no（登录键）等字段。
 func TestUserService_UpdatePatchSemantics(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	userRepo := repository.NewUserRepo(testPool)
 
 	hash, err := crypto.HashPassword("p")
@@ -61,7 +60,7 @@ func TestUserService_UpdatePatchSemantics(t *testing.T) {
 // B2-3 守护：UpdateProfile patch 语义（自服务接口，仅本人可改）
 func TestUserService_UpdateProfilePatchSemantics(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	userRepo := repository.NewUserRepo(testPool)
 	svc := service.NewUserService(testPool, userRepo, nil, nil, nil, nil)
 
@@ -97,7 +96,7 @@ func TestUserService_UpdateProfilePatchSemantics(t *testing.T) {
 // 此处覆盖 service 层 UpdateStatus 自我保护与 is_system 保护（B4-3）。
 func TestUserService_UpdateStatusGuards(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	userRepo := repository.NewUserRepo(testPool)
 	svc := service.NewUserService(testPool, userRepo, nil, nil, nil, nil)
 
@@ -120,7 +119,7 @@ func TestUserService_UpdateStatusGuards(t *testing.T) {
 // B2-5 守护：AssignMenus 菜单存在性/活跃性校验——不存在或已软删的 ID → 404。
 func TestRBACService_AssignMenusMenuValidation(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	saRole := rbacTestRole(t, "superadmin", 1, false)
@@ -163,7 +162,7 @@ func TestRBACService_AssignMenusMenuValidation(t *testing.T) {
 // 详情/菜单/策略三个接口均 404（防推断）；superadmin 自身可读。
 func TestRBACService_ShadowSuperadminReadPaths(t *testing.T) {
 	resetRBACTables(t)
-	ctx := context.Background()
+	ctx := trustedIAMTestContext()
 	svc := newRBACServiceForTest(t)
 
 	adminRole := rbacTestRole(t, "admin", 10, true)

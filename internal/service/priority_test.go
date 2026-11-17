@@ -15,7 +15,7 @@ func rolesWithPriority(codes []string, ps ...int) []*model.Role {
 		if i < len(codes) {
 			code = codes[i]
 		}
-		roles = append(roles, &model.Role{Code: code, Priority: p})
+		roles = append(roles, &model.Role{Code: code, Priority: p, Status: 1})
 	}
 	return roles
 }
@@ -67,4 +67,21 @@ func TestCanManageTarget_NormalSemantics(t *testing.T) {
 	assert.False(t, canManageTarget(admin, superadmin), "admin 不可管理 superadmin")
 	assert.True(t, canManageTarget(superadmin, admin), "superadmin 可管理任何人")
 	assert.False(t, canManageTarget(viewer, viewer), "同级不可互相管理")
+}
+
+func TestIAMPriority_ActorQualificationCannotUseSentinelOrInvalidTier(t *testing.T) {
+	target := &model.Role{Code: "weak_10000", Priority: 10000, Status: 1}
+	for name, actor := range map[string][]*model.Role{
+		"missing": nil, "zero": {{Code: "invalid", Priority: 0, Status: 1}}, "negative": {{Code: "invalid", Priority: -1, Status: 1}}, "disabled": {{Code: "disabled", Priority: 60, Status: 0}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.False(t, canAssignRole(actor, target))
+			assert.False(t, canSetRolePriority(actor, 10000))
+			assert.False(t, canManageTarget(actor, []*model.Role{target}))
+		})
+	}
+	actor := []*model.Role{{Code: "custom_10000", Priority: 10000, Status: 1}}
+	assert.True(t, canAssignRole(actor, target), "qualified equal-tier assignment remains legal")
+	assert.True(t, canSetRolePriority(actor, 10000), "no arbitrary priority upper bound")
+	assert.True(t, canManageTarget(actor, nil), "empty target remains weaker than every qualified direct actor")
 }

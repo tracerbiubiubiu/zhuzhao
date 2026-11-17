@@ -56,8 +56,8 @@ func TestConfig_validate_repo_known_dev_sk_release_rejected(t *testing.T) {
 		return &Config{
 			JWT:      JWTConfig{Secret: "abcdefghijklmnopqrstuvwxyz123456", AccessTTL: 1, RefreshTTL: 2},
 			Server:   ServerConfig{Mode: "release", Port: 33333},
-			Database: DatabaseConfig{Host: "h", Port: 5432, DBName: "d"},
-			Redis:    RedisConfig{Host: "r"},
+			Database: DatabaseConfig{Host: "h", Port: 5432, DBName: "d", Password: "synthetic-database-secret"},
+			Redis:    RedisConfig{Host: "r", Password: "synthetic-redis-secret"},
 		}
 	}
 	tests := []struct {

@@ -95,6 +95,11 @@ func (c *Config) Validate() error {
 	// release 拒绝（公开 SK 可签名调 /internal/jobs/callback 补录分支=未授权删
 	// 审计，密钥即身份）；debug 放行以便本地零配置（compose 侧已去兜底 ${VAR:?}）。
 	if mode == "release" {
+		for field, value := range map[string]string{"database.password": c.Database.Password, "redis.password": c.Redis.Password} {
+			if isRepoKnownDataSecret(value) {
+				return fmt.Errorf("%s must be overridden with a non-empty non-default secret in release mode", field)
+			}
+		}
 		if isRepoKnownSK(c.Gateway.SK) {
 			return fmt.Errorf("gateway.sk must be overridden via GATEWAY_SK in release mode (repo-known value rejected)")
 		}
@@ -105,7 +110,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("internal_jobs.taskrunner_sk must be overridden via INTERNAL_JOBS_SK in release mode (repo-known value rejected)")
 		}
 		// phase5 S5 对象存储（05 号 A.2；debug 放行 compose 同源默认，release 拒仓库公开值）
-		if c.Storage.Enabled && c.Storage.SecretKey == "zhuzhao_rustfs_dev" {
+		if c.Storage.Enabled && isRepoKnownDataSecret(c.Storage.SecretKey) {
 			return fmt.Errorf("storage.secret_key must be overridden via STORAGE_SECRET_KEY in release mode (repo-known value rejected)")
 		}
 	}
@@ -153,4 +158,13 @@ func (c *JWTConfig) validate(mode string) error {
 func isWeakJWTSecret(secret string) bool {
 	_, ok := weakJWTSecrets[strings.ToLower(strings.TrimSpace(secret))]
 	return ok
+}
+
+func isRepoKnownDataSecret(value string) bool {
+	switch strings.TrimSpace(value) {
+	case "", "zhuzhao_dev", "zhuzhao_rustfs_dev", "zhuzhao_rustfs_bk_dev":
+		return true
+	default:
+		return false
+	}
 }

@@ -38,6 +38,48 @@ func (r *RoleRepo) FindByID(ctx context.Context, id int64) (*model.Role, error) 
 	return r.queryOne(ctx, q, id)
 }
 
+// FindByIDTx keeps a role's grant attributes stable until the caller commits.
+// It intentionally includes disabled roles: retaining/removing an existing
+// binding and adding a new grant have different service-layer rules.
+func (r *RoleRepo) FindByIDTx(ctx context.Context, tx pgx.Tx, id int64) (*model.Role, error) {
+	role, err := scanRoleRowDirect(tx.QueryRow(ctx, `SELECT`+roleSelectColumns+`
+		FROM roles WHERE id=$1 AND deleted_at IS NULL FOR SHARE`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrRoleNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find role in transaction: %w", err)
+	}
+	return role, nil
+}
+
+// ListDirectRoleIDsForEdit is the editable binding fact, not the effective
+// direct/org/inherited permission projection. A hidden soft-deleted binding
+// makes an overall replacement unsafe, so report it instead of dropping it.
+func (r *RoleRepo) ListDirectRoleIDsForEdit(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
+		SELECT ur.role_id, r.id IS NULL OR r.deleted_at IS NOT NULL
+		FROM user_roles ur LEFT JOIN roles r ON r.id=ur.role_id
+		WHERE ur.user_id=$1 ORDER BY ur.role_id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list direct role bindings: %w", err)
+	}
+	defer rows.Close()
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		var unavailable bool
+		if err := rows.Scan(&id, &unavailable); err != nil {
+			return nil, fmt.Errorf("scan direct role binding: %w", err)
+		}
+		if unavailable {
+			return nil, errcode.ErrRoleNotFound
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (r *RoleRepo) List(ctx context.Context, hideSuperadmin bool) ([]*model.Role, error) {
 	q := `SELECT` + roleSelectColumns + ` FROM roles WHERE deleted_at IS NULL`
 	if hideSuperadmin {
@@ -48,7 +90,7 @@ func (r *RoleRepo) List(ctx context.Context, hideSuperadmin bool) ([]*model.Role
 }
 
 func (r *RoleRepo) ListMenuIDsByRoleID(ctx context.Context, roleID int64) ([]int64, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT menu_id FROM role_menus WHERE role_id = $1 ORDER BY menu_id`, roleID)
 	if err != nil {
 		return nil, fmt.Errorf("list role menus: %w", err)
@@ -65,7 +107,10 @@ func (r *RoleRepo) ListMenuIDsByRoleID(ctx context.Context, roleID int64) ([]int
 
 // AssignMenus 全量覆盖角色菜单，并同步 casbin_rule（admin/superadmin 仅更新 role_menus）
 func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []int64, apis []*model.MenuAPI) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.AssignMenus(ctx, role, menuIDs, apis) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -125,11 +170,14 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 
 func (r *RoleRepo) CountUsersByRoleID(ctx context.Context, roleID int64) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM user_roles WHERE role_id = $1`, roleID).Scan(&n)
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `SELECT COUNT(*) FROM user_roles WHERE role_id = $1`, roleID).Scan(&n)
 	return n, err
 }
 
 func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Create(ctx, role) })
+	}
 	tenantID := role.TenantID
 	if tenantID == 0 {
 		tenantID = 1
@@ -145,7 +193,7 @@ func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
 			code, name, description, status, priority, parent_id, sort_order, is_system, tenant_id
 		) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, false, $8)
 		RETURNING id, version, created_at, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		role.Code, role.Name, role.Description, status, role.Priority, role.ParentID, role.SortOrder, tenantID,
 	).Scan(&role.ID, &role.Version, &role.CreatedAt, &role.UpdatedAt)
 	if err != nil {
@@ -160,6 +208,9 @@ func (r *RoleRepo) Create(ctx context.Context, role *model.Role) error {
 }
 
 func (r *RoleRepo) Update(ctx context.Context, role *model.Role) error {
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Update(ctx, role) })
+	}
 	const q = `
 		UPDATE roles SET
 			name = $2,
@@ -172,7 +223,7 @@ func (r *RoleRepo) Update(ctx context.Context, role *model.Role) error {
 			updated_at = NOW()
 		WHERE id = $1 AND version = $7 AND deleted_at IS NULL
 		RETURNING version, updated_at`
-	err := r.db.QueryRow(ctx, q,
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
 		role.ID, role.Name, role.Description, role.Status, role.Priority, role.SortOrder, role.Version, role.ParentID,
 	).Scan(&role.Version, &role.UpdatedAt)
 	if err != nil {
@@ -185,7 +236,10 @@ func (r *RoleRepo) Update(ctx context.Context, role *model.Role) error {
 }
 
 func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error {
-	tx, err := r.db.Begin(ctx)
+	if !IAMWriteActive(ctx) {
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Delete(ctx, id, roleCode) })
+	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -211,7 +265,7 @@ func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error 
 }
 
 func (r *RoleRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Role, error) {
-	row := r.db.QueryRow(ctx, q, args...)
+	row := IAMDB(ctx, r.db).QueryRow(ctx, q, args...)
 	role, err := scanRoleRowDirect(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -223,7 +277,7 @@ func (r *RoleRepo) queryOne(ctx context.Context, q string, args ...any) (*model.
 }
 
 func (r *RoleRepo) queryMany(ctx context.Context, q string, args ...any) ([]*model.Role, error) {
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query roles: %w", err)
 	}
@@ -252,31 +306,8 @@ func scanRoleCollectableRowDirect(row pgx.CollectableRow) (*model.Role, error) {
 func (r *RoleRepo) ListRoleIDsByUserID(ctx context.Context, userID int64) ([]int64, error) {
 	// 2b-org：与 GetEffectiveRoleCodes 同源三源展开（直接 ∪ org_roles ∪ 继承链）——
 	// 否则 Casbin L1 放行而 /user/menus 不显示，前后端权限视图脱节
-	rows, err := r.db.Query(ctx, `
-	WITH RECURSIVE seeds AS (
-		SELECT ur.role_id AS id
-		FROM user_roles ur
-		JOIN roles r ON r.id = ur.role_id AND r.deleted_at IS NULL AND r.status = 1
-		WHERE ur.user_id = $1
-		UNION
-		SELECT orgr.role_id
-		FROM org_roles orgr
-		JOIN user_orgs m ON m.org_id = orgr.org_id
-			AND (m.expires_at IS NULL OR m.expires_at > NOW())
-		JOIN roles r ON r.id = orgr.role_id AND r.deleted_at IS NULL AND r.status = 1
-		WHERE m.user_id = $1
-	),
-	expanded AS (
-		SELECT id FROM seeds
-		UNION
-		SELECT r.parent_id
-		FROM expanded e
-		JOIN roles r ON r.id = e.id AND r.deleted_at IS NULL AND r.status = 1
-		WHERE r.parent_id IS NOT NULL
-	)
-	SELECT DISTINCT r.id FROM expanded x
-	JOIN roles r ON r.id = x.id
-	ORDER BY r.id`, userID)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, EffectiveRoleCTE()+`
+	SELECT id FROM roles WHERE id IN (SELECT id FROM expanded) ORDER BY id`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list role ids: %w", err)
 	}
@@ -297,7 +328,7 @@ func (r *RoleRepo) ListRoleCodesByRoleIDs(ctx context.Context, roleIDs []int64) 
 	if len(roleIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT code FROM roles WHERE id = ANY($1) AND deleted_at IS NULL`, roleIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list role codes: %w", err)
@@ -315,7 +346,7 @@ func (r *RoleRepo) ListRoleCodesByRoleIDs(ctx context.Context, roleIDs []int64) 
 // ListCasbinPoliciesByRoleCode 查询角色 Casbin 策略（不含 bypass 通配）
 func (r *RoleRepo) ListCasbinPoliciesByRoleCode(ctx context.Context, roleCode string) ([][3]string, error) {
 	subject := fmt.Sprintf("role::%s", roleCode)
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT v1, v2 FROM casbin_rule
 		WHERE ptype = 'p' AND v0 = $1 AND v1 <> '*'`, subject)
 	if err != nil {
@@ -348,34 +379,8 @@ func (r *RoleRepo) ListCasbinPoliciesByRoleCode(ctx context.Context, roleCode st
 // 写侧 BK-12 环检测直改 DB）只会使展开集收敛为环上角色，不会报错、不构成
 // 权限绕过面。
 func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]string, error) {
-	const q = `
-	WITH RECURSIVE seeds AS (
-		SELECT ur.role_id AS id
-		FROM user_roles ur
-		JOIN roles r ON r.id = ur.role_id AND r.deleted_at IS NULL AND r.status = 1
-		WHERE ur.user_id = $1
-		UNION
-		SELECT orgr.role_id
-		FROM org_roles orgr
-		JOIN user_orgs m ON m.org_id = orgr.org_id
-			AND (m.expires_at IS NULL OR m.expires_at > NOW())
-		JOIN roles r ON r.id = orgr.role_id AND r.deleted_at IS NULL AND r.status = 1
-		WHERE m.user_id = $1
-	),
-	expanded AS (
-		SELECT id FROM seeds
-		UNION
-		SELECT parent.id
-		FROM expanded e
-		JOIN roles r ON r.id = e.id AND r.deleted_at IS NULL AND r.status = 1
-		JOIN roles parent ON parent.id = r.parent_id AND parent.deleted_at IS NULL AND parent.status = 1
-		WHERE r.parent_id IS NOT NULL
-	)
-	SELECT DISTINCT r.code
-	FROM expanded x
-	JOIN roles r ON r.id = x.id AND r.deleted_at IS NULL AND r.status = 1
-	ORDER BY r.code`
-	rows, err := r.db.Query(ctx, q, userID)
+	q := EffectiveRoleCTE() + `SELECT code FROM roles WHERE id IN (SELECT id FROM expanded) ORDER BY code`
+	rows, err := IAMDB(ctx, r.db).Query(ctx, q, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get effective role codes: %w", err)
 	}
@@ -387,6 +392,20 @@ func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]s
 	return codes, nil
 }
 
+// GetEffectiveRolesForTargetProtection returns the same live role projection as
+// L1/menu reads, including priorities. It deliberately does not filter users.status:
+// re-enabling a disabled account must still respect its current strong sources.
+// This target-only read must not replace actor direct IAM qualification.
+func (r *RoleRepo) GetEffectiveRolesForTargetProtection(ctx context.Context, userID int64) ([]*model.Role, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, EffectiveRoleCTE()+`SELECT`+roleSelectColumns+`
+  FROM roles WHERE id IN (SELECT id FROM expanded) ORDER BY priority,id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("read target protection roles: %w", err)
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, scanRoleCollectableRowDirect)
+}
+
 // EnsureChildrenPriorityAllowed P1-2：角色 priority 变更的子角色守卫。
 // 继承不变量 child.priority ≤ parent.priority：把角色改到比任一子角色更弱的
 // 档位（数值更小）会破坏单调性——子角色持有者经 BFS 获得变更后更强的父角色，
@@ -394,7 +413,7 @@ func (r *RoleRepo) GetEffectiveRoleCodes(ctx context.Context, userID int64) ([]s
 // （反向——新值大于全部子角色——是安全弱化，放行。）
 func (r *RoleRepo) EnsureChildrenPriorityAllowed(ctx context.Context, roleID int64, newPriority int) error {
 	var cnt int
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT COUNT(*) FROM roles
 		WHERE parent_id = $1 AND priority > $2 AND deleted_at IS NULL`,
 		roleID, newPriority).Scan(&cnt)
@@ -419,7 +438,7 @@ type RoleRef struct {
 // GetRoleRef 读取角色的 priority/parent_id/is_system/status（未删）
 func (r *RoleRepo) GetRoleRef(ctx context.Context, id int64) (*RoleRef, error) {
 	var ref RoleRef
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT priority, parent_id, is_system, status
 		FROM roles WHERE id = $1 AND deleted_at IS NULL`, id).Scan(
 		&ref.Priority, &ref.ParentID, &ref.IsSystem, &ref.Status)

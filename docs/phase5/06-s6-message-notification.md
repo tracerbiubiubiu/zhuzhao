@@ -9,6 +9,8 @@
 
 > 2026-11-07 B20当前行为：NavbarBadge以VueQuery订阅消息写操作既有失效key `badge`，已读后立即重取，60s后台同步保留；请求层处理错误，保留上份成功数据。真实E2E在reload前核角标，不以刷新掩盖失效；最终41 E2E通过，详[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。事件可靠性/Outbox及ops收件人合同不由本批补齐。
 
+> 2026-11-17 F5候选：CF-28/29/30存量窄修已通过完整适用门禁与组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；未据此标记生产部署或分布式投递保证。变量/模板回显与节流的现行候选合同见A.4/A.5/A.6。
+
 ## 当前状态与阅读顺序（2026-11-08）
 
 一期模板/规则/外发编排与二期站内消息中心已交付，但**外发UIP仍是两态桩，站内inbox是独立消费者**。先读A.1机制、A.3真实sender、A.5两路分工与A.6真实API；管理面既有UI与事件词表边界看A.9。代码/test承接看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)，main/生产另计。首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
@@ -191,7 +193,7 @@ type DomainHook interface { OnDomainEvent(context.Context, DomainEvent) }
 
 当前Action常量集中在`event.go`，含11个ticket动作与3个ops动作；不是所有研究词表都已产生事件。`Change`当前字段为`key/old_val/new_val`，`buildChanges`还未提供完整旧值/custom_data键级diff，D20真值补齐仍B-1，不能用目标`{field,from,to}`冒充当前载荷。
 
-通知侧60s去重键为biz_type+biz_id+Action，位于MessageDispatcher消费者；单实例内存节流，多副本升级仍按原触发条件。
+F5候选把通知侧60s去重键收窄为biz_type+biz_id+Action+单个recipient，位于MessageDispatcher消费者；一次事件只发送未重复的成员，重叠收件人集合不整批互吞。同一锁内逐人占窗口，偏好过滤在前；发送失败仍占该窗口，保持原at-most-once边界。节流仍是单进程内存态，重启及多副本重复外发仍开放，F0限制只缓解部署条件。
 
 <a id="a2-表族-ddl迁移全文级编号启动对账"></a>
 <a id="a2"></a>
@@ -209,7 +211,7 @@ type DomainHook interface { OnDomainEvent(context.Context, DomainEvent) }
 | tickets.human_key | 000057及humankey生成器，TK编号已实施，存量回退展示id |
 | notifications | `000072_notifications_inbox`保存recipient_id/biz_type/BIGINT biz_id/title/link/read_at/created_at，未读部分索引；不是早期payload JSONB草图 |
 
-管理面权限绑定经历000054/55/59与后续页面写按钮治理；消息中心经000076/78转本人自服务。编号与追加迁移查[迁移地图](../review/11-project-control.md#4-数据库迁移地图81-对)，不能重新执行旧建议SQL。
+管理面权限绑定经历000054/55/59与后续页面写按钮治理；消息中心经000076/78转本人自服务。编号与追加迁移查[迁移地图](../review/11-project-control.md#migration-map)，不能重新执行旧建议SQL。
 
 <a id="a3-channelsender-端口与两态桩b6-2"></a>
 <a id="a3"></a>
@@ -229,9 +231,9 @@ Send失败当前落failed并进程内直调NotifyDeadLetter告警；没有持久
 
 当前使用`internal/pkg/msgrender`的`RenderQuadrantEscaped`，只单遍替换点路径占位符，不执行if/loop/函数、不二次展开。渠道转义由channelEscapes映射：uip/webhook为现行纯文本，未知/HTML走HTML fail-safe；dingtalk/markdown第三族尚在H-2，不把旧三族示意当已落代码。
 
-渲染四象限为：内置键缺失拒发、动态字段键缺失跳过并warn、键存在但空值为空串并warn、正常值替换。**当前warn只进slog**；渲染拒发在Send前返回，不能承诺必有failed行。message_log只有发送后的sent/failed及错渠道failed，不存在warned状态或持久化warning字段。
+F5候选的25个内置变量仅维护在`internal/pkg/msgrender/variables.go`的变量定义中；保存白名单、Variables API与渲染的必需内置键集从同一源派生。仅模板实际引用的内置键缺失才拒发；事件专有变量不是每次都存在。动态字段缺失仍跳过并warn，键存在但nil仍为空串并warn。渲染拒绝在Send前落`message_log(status=failed)`，含模板/业务对象/收件人及缺键诊断，写日志失败另记应用error。warning仍只进slog，无warned状态；不据此承诺消息日志永不丢失。
 
-`MessageTemplateHandler.BuiltinTemplateVars/Variables`当前只返回25个内置键，包含creator与ops容量键；`buildEventVars`从事件快照组装，ticket.creator与actor分开。模板保存按内置白名单校验，动态键目标不代表真实字段值已注入。
+`MessageTemplateHandler.BuiltinTemplateVars/Variables`当前只返回25个内置键，包含creator与ops容量键；`buildEventVars`从事件快照组装，ticket.creator与actor分开。`emitTicketEvent`以本次已读Ticket补基础title/type_code/priority/status/human_key及处理人，显式本事件payload覆盖（Assign用newStatus、Transition用目标状态）；已生成的人读编号不再丢给数字ID兜底。timeout/deadline的查询携带真实type_code/priority快照，消费侧不回池补细节、不伪造缺键。模板保存按内置白名单校验，动态键目标不代表真实字段值已注入。
 
 **已拍未实施，保留设计约束**：H-3按(biz_type,event)供变量树，S1字段用`ticket.fields.f_<字段ID>`隔离中文/点key，补时间类与动态值注入；H-6 picker点击插入与preview。跨类型共享模板仍须区分缺键与空值，细粒度规则字段软告警/引用完整性增强随该批；条件段落/完整模板引擎仍不预建。当前不能声称模板作者已有动态picker或时间变量可用。
 
@@ -256,6 +258,8 @@ inbox是另一条DomainHook消费者，固定词表/title/link与收件人集合
 <a id="a6"></a>
 
 ### A.6 当前API与未来端点
+
+F5候选的模板Create/Update用同一条INSERT/UPDATE的RETURNING整行回填响应：id/version/时间及不可变channel/biz_type/is_system均来自实际DB结果，Create忽略请求的id/version，Update version递增且不可变字段不回显伪造值。新建creator取Handler传入的可信稳定principal ID，忽略body；无真人内部调用置NULL表示服务归因，不能用body补齐真人。Update保留原creator，未扩模板权限或维护资格。原种子只读、重复code、CAS冲突及列表合同保留，不额外做写后Get造成并发回显窗口。
 
 真实路径与权限注册见`internal/router/router.go`的`New`；管理读写走通知配置页面/按钮权限，本人端点走自服务，不能用同一“通知管理”权限概括两者。
 

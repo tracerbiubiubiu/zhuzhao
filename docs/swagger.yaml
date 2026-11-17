@@ -748,6 +748,9 @@ definitions:
         - multi_select
         - tips
         - richtext
+        - radio
+        - rating
+        - file
         type: string
       required:
         type: boolean
@@ -3022,6 +3025,43 @@ paths:
       summary: 创建内部备注
       tags:
       - ticket
+  /api/v1/tickets/people:
+    get:
+      parameters:
+      - description: assign|cc|create-supervisor|rule-target
+        in: query
+        name: purpose
+        required: true
+        type: string
+      - description: 2–50 characters
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Required for assign/cc
+        in: query
+        name: ticket_id
+        type: string
+      - description: Required for create-supervisor/rule-target
+        in: query
+        name: org_id
+        type: string
+      - description: Required for create-supervisor
+        in: query
+        name: type_code
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Context-bound ticket people search (2–50 characters, maximum 20 results)
+      tags:
+      - ticket
   /api/v1/tickets/relations:
     post:
       consumes:
@@ -3360,7 +3400,7 @@ paths:
             $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
-      summary: 查询用户已绑角色 ID 集
+      summary: 查询用户直接绑定的角色 ID（含停用绑定，不含组织或继承来源）
       tags:
       - users
   /api/v1/users/delete:
@@ -3525,7 +3565,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 结果映射（P6/P7）：2xx=执行完全成功/幂等受理；404=未知动作；409=不可重试；500=可重试
+      description: 结果映射：200=已证明成功；400=非法输入；403=无当前动作资格；404=未知动作；409=不可重试；503=仍在途/终态未确认（Retry-After）；500=可重试
       produces:
       - application/json
       responses:

@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"net/url"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -19,6 +22,7 @@ import (
 // 提交/触发同步落 job_submissions 提交凭证（E5，薄——执行细节不回传，request_id 跨查）。
 type TaskrunnerService struct {
 	client *taskrunner.Client // 可为 nil（base_url 未配置）——经 ensure 拦截
+	policy *TaskActionPolicy
 	subs   *repository.JobSubmissionRepo
 }
 
@@ -31,8 +35,12 @@ func (s *TaskrunnerService) ensure() error {
 	return nil
 }
 
-func NewTaskrunnerService(client *taskrunner.Client, subs *repository.JobSubmissionRepo) *TaskrunnerService {
-	return &TaskrunnerService{client: client, subs: subs}
+func NewTaskrunnerService(client *taskrunner.Client, subs *repository.JobSubmissionRepo, policies ...*TaskActionPolicy) *TaskrunnerService {
+	var policy *TaskActionPolicy
+	if len(policies) > 0 {
+		policy = policies[0]
+	}
+	return &TaskrunnerService{client: client, subs: subs, policy: policy}
 }
 
 // TaskSubmitInput 用户侧提交任务（经网关；action_id 对应已注册预置动作）。
@@ -48,6 +56,9 @@ type TaskSubmitInput struct {
 // Submit 提交一次性任务：request_id 取入站 ctx（唯一关联键）；task_id 缺省生成。
 // CallbackURL 缺省按 action 拼本服务内网端点（部署同网可达）。
 func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, actor, sourceIP, selfBaseURL string) (*taskrunner.SubmitResponse, error) {
+	if in == nil || in.Action == "" || len(in.Params) > 64<<10 || in.CallbackURL != "" || in.TimeoutSecs < 0 || in.TimeoutSecs > 86400 || utf8.RuneCountInString(in.TaskID) > 64 {
+		return nil, errcode.ErrInvalidParams
+	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
@@ -55,6 +66,12 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 	if taskID == "" {
 		taskID = uuid.NewString()
 	}
+	if in.Action == maintenanceAction {
+		if err := s.policy.prepareTask(ctx, taskID, in.Action, in.Params); err != nil {
+			return nil, err
+		}
+	}
+	actor = taskCreator(ctx)
 	_ = selfBaseURL // W0b 四口同收对齐（2026-09-29 W5 批修正）：taskrunner 拒收出站
 	// callback_url（非空 400，十七批）——回调目标一律其配置值（TASKRUNNER_CALLBACK_
 	// TARGET_URL）。zhuzhao 出站不再拼接传递（此前拼接透传=两仓契约断裂，提交恒 400）。
@@ -71,13 +88,18 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 	if err != nil {
 		return nil, err
 	}
+	if in.Action == maintenanceAction && resp.TaskID != taskID {
+		return nil, errcode.ErrServiceUnavailable
+	}
 	// E5 提交凭证（薄）：{action, task_id, request_id}——request_id 由 repo 从 ctx 取
-	if _, err := s.subs.RecordSubmit(ctx, in.Action, resp.TaskID, actor, sourceIP, string(in.Params)); err != nil {
-		// 受理已成立，凭证记账失败不回滚用户侧结果（对账兜底：task_id 在 taskrunner 侧）
-		// ——与回调侧 MarkSucceeded 失败同款取舍。W0b（十九批）：空吞 `_ = err`
-		// 改 Error 日志（对账线索：task_id/actor/action），无日志时只能靠人工拉齐
-		slog.Error("job_submissions RecordSubmit failed (task accepted, ledger missing)",
-			"task_id", resp.TaskID, "action", in.Action, "actor", actor, "err", err)
+	if s.subs != nil {
+		if _, err := s.subs.RecordSubmit(ctx, in.Action, resp.TaskID, actor, sourceIP, string(in.Params)); err != nil {
+			// 受理已成立，凭证记账失败不回滚用户侧结果（对账兜底：task_id 在 taskrunner 侧）
+			// ——与回调侧 MarkSucceeded 失败同款取舍。W0b（十九批）：空吞 `_ = err`
+			// 改 Error 日志（对账线索：task_id/actor/action），无日志时只能靠人工拉齐
+			slog.Error("job_submissions RecordSubmit failed (task accepted, ledger missing)",
+				"task_id", resp.TaskID, "action", in.Action, "actor", actor, "err", err)
+		}
 	}
 	return resp, nil
 }
@@ -87,7 +109,34 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	resp, err := s.client.TriggerJob(ctx, jobID, actor, sourceIP)
+	raw, err := s.client.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	definition, err := readTaskDefinition(raw, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.policy.authorizeAction(ctx, definition.ActionID, definition.Params); err != nil {
+		return nil, err
+	}
+	actor = taskCreator(ctx)
+	var resp *taskrunner.SubmitResponse
+	if definition.ActionID == maintenanceAction {
+		taskID := uuid.NewString()
+		if err := s.policy.prepareTask(ctx, taskID, definition.ActionID, definition.Params); err != nil {
+			return nil, err
+		}
+		resp, err = s.client.TriggerJobIfUnchanged(ctx, jobID, taskID, definition.ActionID, definition.Params, actor, sourceIP)
+		if err == nil {
+			equal, e := jobs.EqualParams(resp.Params, definition.Params)
+			if e != nil || !equal || resp.TaskID != taskID || resp.Action != definition.ActionID {
+				return nil, errcode.ErrServiceUnavailable
+			}
+		}
+	} else {
+		resp, err = s.client.TriggerJob(ctx, jobID, actor, sourceIP)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +154,11 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 	if params == "" {
 		params = "{}"
 	}
-	if _, err := s.subs.RecordSubmit(ctx, action, resp.TaskID, actor, sourceIP, params); err != nil {
-		slog.Error("job_submissions RecordSubmit failed for trigger (task accepted, ledger missing)",
-			"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "err", err)
+	if s.subs != nil {
+		if _, err := s.subs.RecordSubmit(ctx, action, resp.TaskID, actor, sourceIP, params); err != nil {
+			slog.Error("job_submissions RecordSubmit failed for trigger (task accepted, ledger missing)",
+				"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "err", err)
+		}
 	}
 	return resp, nil
 }
@@ -139,28 +190,34 @@ func (s *TaskrunnerService) CreateJob(ctx context.Context, body json.RawMessage,
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	return s.client.CreateJob(ctx, body, actor)
+	return s.createJobChecked(ctx, body)
 }
 
 func (s *TaskrunnerService) UpdateJob(ctx context.Context, jobID string, body json.RawMessage, actor string) (json.RawMessage, error) {
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	return s.client.UpdateJob(ctx, jobID, body, actor)
+	return s.updateJobChecked(ctx, jobID, body)
 }
 
 func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	return s.client.CancelTask(ctx, taskID, actor)
+	if err := s.authorizeExistingTask(ctx, taskID, false); err != nil {
+		return nil, err
+	}
+	return s.client.CancelTask(ctx, taskID, taskCreator(ctx))
 }
 
 func (s *TaskrunnerService) RetryTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	return s.client.RetryTask(ctx, taskID, actor)
+	if err := s.authorizeExistingTask(ctx, taskID, true); err != nil {
+		return nil, err
+	}
+	return s.client.RetryTask(ctx, taskID, taskCreator(ctx))
 }
 
 func (s *TaskrunnerService) ListDeadLetters(ctx context.Context, query url.Values) (json.RawMessage, error) {

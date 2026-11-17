@@ -255,7 +255,7 @@ func (h *UserHandler) GetUserOrgs(c *gin.Context) {
 
 // GetUserRoles GET /api/v1/users/:id/roles
 //
-//	@Summary	查询用户已绑角色 ID 集
+//	@Summary	查询用户直接绑定的角色 ID（含停用绑定，不含组织或继承来源）
 //	@Tags		users
 //	@Produce	json
 //	@Param		id		path	int	true	"用户 ID"

@@ -3,10 +3,13 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -20,6 +23,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -31,16 +35,18 @@ import (
 
 // App 应用实例
 type App struct {
-	cfg          *config.Config
-	logger       *slog.Logger
-	router       *gin.Engine
-	server       *http.Server
-	policyEval   *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
-	auditCron    *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
-	storageGC    *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
-	timeoutScan  *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
-	inboxCleanup *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
-	intelCleanup *service.CronScheduler  // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
+	cfg              *config.Config
+	logger           *slog.Logger
+	router           *gin.Engine
+	server           *http.Server
+	backgroundCancel context.CancelFunc
+	background       sync.WaitGroup
+	policyEval       *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	auditCron        *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
+	storageGC        *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
+	timeoutScan      *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
+	inboxCleanup     *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
+	intelCleanup     *service.CronScheduler  // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
 	// 以下两件 2026-11-01 补启动（观测批注册了 scheduler 却漏 go Run——注册≠启动，
 	// cron-status 可见但 11 个 tick 周期零执行；StartedAt 字段由此而设）
 	storageUsageSample *service.CronScheduler    // C-6 存储用量采样：恒启用
@@ -264,83 +270,72 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 
 // Run 启动应用
 func (a *App) Run() error {
-	a.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", a.cfg.Server.Port),
-		Handler: a.router,
-		// F-8：补齐超时，防 slowloris 慢连接耗尽资源
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
-
-	// 退出信号源先行创建：server / 判定日志管道共用同一取消
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	signalCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+	a.backgroundCancel = cancel
+	acquireCtx, acquireCancel := context.WithTimeout(ctx, 5*time.Second)
+	guard, err := singleton.Acquire(acquireCtx, a.cfg.Database.DSN())
+	acquireCancel()
+	if err != nil {
+		return err
+	}
+	defer guard.Close()
 
-	// 启动 HTTP 服务（goroutine 中运行，错误通过 channel 传递）
+	a.server = &http.Server{
+		Addr: fmt.Sprintf(":%d", a.cfg.Server.Port), Handler: guard.Handler(a.router),
+		BaseContext:       func(net.Listener) context.Context { return ctx },
+		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second,
+		WriteTimeout: 60 * time.Second, IdleTimeout: 120 * time.Second,
+	}
 	serverErr := make(chan error, 1)
 	go func() {
-		a.logger.Info("server starting",
-			slog.Int("port", a.cfg.Server.Port),
-			slog.String("mode", a.cfg.Server.Mode),
-		)
-		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverErr <- err
+		a.logger.Info("server starting", slog.Int("port", a.cfg.Server.Port), slog.String("mode", a.cfg.Server.Mode))
+		err := a.server.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
 		}
+		serverErr <- err
 	}()
-
-	// B11① 判定日志 L2 管道随进程生命周期启停：收到信号 → pump 限时排空 channel
-	// 入 Redis + flusher 收尾落库（AfterShutdown 内 drain 的行留 Redis，重启续消不丢）
-	a.policyEval.Start(ctx)
-
-	// P4 cron 收归：进程内调度（ticker+advisory lock；配置开关启用）
-	if a.auditCron != nil {
-		go a.auditCron.Run(ctx)
+	if a.policyEval != nil {
+		a.policyEval.Start(ctx)
 	}
-
-	// phase5 S5：孤儿对象 GC cron（storage.enabled 门控——NewApp 装配）
-	if a.storageGC != nil {
-		go a.storageGC.Run(ctx)
+	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
+		if scheduler == nil {
+			continue
+		}
+		a.background.Add(1)
+		go func(s *service.CronScheduler) { defer a.background.Done(); s.Run(ctx) }(scheduler)
 	}
-
-	// S10 B10-4：节点超时扫描 cron（tickets.timeout_scan_enabled 门控）
-	if a.timeoutScan != nil {
-		go a.timeoutScan.Run(ctx)
-	}
-
-	// S6 B6-7：消息保留清理 cron
-	if a.inboxCleanup != nil {
-		go a.inboxCleanup.Run(ctx)
-	}
-
-	// G-11 / C-6 / C-16（2026-11-01 补启动——注册≠启动实证修复）
-	if a.intelCleanup != nil {
-		go a.intelCleanup.Run(ctx)
-	}
-	if a.storageUsageSample != nil {
-		go a.storageUsageSample.Run(ctx)
-	}
-	if a.notifyVolumeCheck != nil {
-		go a.notifyVolumeCheck.Run(ctx)
-	}
-
+	var runErr error
 	select {
-	case err := <-serverErr:
-		// 服务器异常退出（非 graceful shutdown）
-		a.logger.Error("server failed", slog.Any("error", err))
-		return err
+	case runErr = <-serverErr:
+		if runErr != nil {
+			a.logger.Error("server failed", slog.Any("error", runErr))
+		}
+	case <-guard.Lost():
+		runErr = singleton.ErrLost
+		a.logger.Error("singleton ownership lost; stopping HTTP and background work")
+		cancel()
+		// A lost deployment lease cannot continue draining accepted connections as
+		// if it still owned the database. Cancellation also reaches request contexts.
+		_ = a.server.Close()
+		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		runErr = errors.Join(runErr, guard.DrainRequests(drainCtx))
+		drainCancel()
 	case <-ctx.Done():
-		// 收到退出信号
 		a.logger.Info("server shutting down...")
 	}
-
-	// 优雅关闭
-	return a.Shutdown()
+	cancel()
+	return errors.Join(runErr, a.Shutdown())
 }
 
 // Shutdown 优雅关闭
 func (a *App) Shutdown() error {
+	if a.backgroundCancel != nil {
+		a.backgroundCancel()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -349,6 +344,16 @@ func (a *App) Shutdown() error {
 	serverErr := a.server.Shutdown(ctx)
 	if serverErr != nil {
 		a.logger.Error("server forced to shutdown", slog.Any("error", serverErr))
+	}
+
+	// Join cron loops before releasing the singleton session or closing PG.
+	backgroundDone := make(chan struct{})
+	go func() { a.background.Wait(); close(backgroundDone) }()
+	select {
+	case <-backgroundDone:
+	case <-ctx.Done():
+		a.logger.Error("background shutdown timeout")
+		serverErr = errors.Join(serverErr, ctx.Err())
 	}
 
 	// 2. B11①：等判定日志管道收尾（pump drain + flusher 收尾 flush）。必须在

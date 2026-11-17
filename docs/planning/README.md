@@ -8,6 +8,7 @@
 - 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[排期摘要](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
+- 看本轮已确认的存量修复前移：[2026-11-17修复计划](audit-repair-plan-2026-11-17.md)。复用IAM/任务及发布原包扣重，目标账号保护已确认但未实现，不叠加第二套总价。
 - 看长期路线及补充：[路线图](../roadmap.md)、[渐进演进](../design/project-evolution-strategy.md)、[路线变化](roadmap-change-comparison-2026-11-12.md)、[互通增量](capability-interconnect-supplement.md)、[旧范围处置](legacy-trigger-disposition.md)。Phase稿保留来源和验收映射，跨阶段规则归领域合同。
 
 ## 机器事实的归属

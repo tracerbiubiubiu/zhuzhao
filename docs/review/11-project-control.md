@@ -2,7 +2,7 @@
 
 
 > 文档维护（2026-11-16）：全项目现行计划统一到[planning](../planning/README.md)，正式报告/历史继续在review；Git与本地原材料边界见[材料目录](../materials.md)。五仓AGENTS已接入[文档维护约定](../documentation.md)，可复用方法/模板/提示词从[工作资料库](../toolkit/README.md)进入；本批不改变能力、开放缺陷、估算或业务开工状态。受限本地资料的迁移说明已复核，禁止任何渠道上传的边界见[材料目录](../materials.md#仅限本机的受限资料)；历史来源标识不改写为现行文件位置。三份运维工具说明已归位[ops/tools](../ops/tools/README.md)，构建与业务能力保持不变。五仓本地入口、工作资料和工具导航已在[文档总入口](../README.md)同步；私有材料的具体地址只留本地索引。Git/Docker/ZCode排除规则已按当前保管边界同步，验证以本批实际收据为准。
-> 当前状态（2026-11-16）：Phase1–5的IAM、工单及生态底座已在main，分档门禁已实施；风险新域、可靠互通及私有接缝仍按模块计划实施。AUTH-01/02/07等现存缺陷未被规划或工程门禁修复，涉及真实业务试用的能力须先满足明确准入门。公司允许本地账号正式运行，完整UAA P/R后继；mock长期保留。
+> 当前状态（2026-11-17）：Phase1–5的IAM、工单及生态底座已在main，分档门禁已实施。本批F1/F2a/F0/F4/F3及启用旅程F5的本地候选已实现并通过完整适用门禁、代表恢复及独立复验，尚未推送/合入main/部署；AUTH-01/02/07等具体状态见§6。完整IAM-C/C05、C03/F2b、HA、风险新域及私有接缝继续按计划，真实业务仍须满足明确准入门。公司允许本地账号正式运行，完整UAA P/R后继；mock长期保留。
 
 <!-- local-core-current:start -->
 当前首版本地核心净估：**97–151 个有效工程日**（未取整 96.5–150.5；S2 共用假设不成立时 99–154）。这是单席工程量候选，不是日历承诺。
@@ -17,14 +17,22 @@
 
 ## 当前摘要
 
-本轮[小项补遗](reports/repair-batch-followup-2026-11-16.md)修同域取消拼写，并明确B0目标工作尚需净估（不默认计入Q2）；F021当批测试数保留为历史。当前核心净估未改，未开发业务或对接真实内网。
+- **2026-11-17远端CI补证在途**：本批推送后，CI发现回滚预检自测仍把新增迁移82当作未知checkpoint；实际预检按目录正确接受82。已将未知版本夹具改为目录最高号+1，并补干净最新版本/目录增长仍拒未知及dirty的黑盒对照；预检实现、迁移和业务代码不变。当前重新执行本候选适用门禁及PR CI，尚未合入，收据归`maintenance/audit-baseline-main-merge-20261117/`。
+
+- **2026-11-17 F023合同阶段（历史）**：所有者确认[存量修复前移计划](../planning/audit-repair-plan-2026-11-17.md)及[CF-06目标账号保护](../phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现)。合同验证当时未修产品，现行总价和真实启用状态未变。
+- **2026-11-17本地产品候选**：所有者随后要求实施，F1来源/组织粗门/目标保护及实际ID链，F2a任务资格/当前链，F0单实例、F4存储发布、F3选人及启用旅程F5均已实现。完整门禁：主仓253验收、82对一次往返零漂移，UI322单测/45真实E2E，TR226测试通过（另2子进程helper顶层按设计跳过且父测试实际执行）/20 cron E2E；主仓默认单测语句覆盖率20.5%。代表S3/JSONL/实际PG恢复及组合独审通过，专属8容器/7卷/3网络精确清理，共享环境未变。
+- **承接边界**：本地交付分支未推送/合入main/部署。完整IAM-C/C05、C03/F2b、HA和未取用P2/P3保持后继；下一次净剩余核算按已交子出口扣重，本次不更改97–151现行总额或DAG。真实环境仍按原准入绑定人员、数据、参数及恢复责任。
+
+准确冻结输入、首失败与修正、组件结果映射、专项和恢复边界统一见[前置修复记录](reports/audit-baseline-repair-2026-11-17.md)。quality-plan/check的文档/针对检查与ordinary继续完整门禁的提示分开登记；后者非零不伪记分类器整体通过，七项完整门禁另有本批结果。
+
+本轮[小项补遗](reports/repair-batch-followup-2026-11-16.md)修同域取消拼写，并明确B0目标工作尚需净估（不默认计入Q2）；F021当批测试数保留为历史。该次小项补遗未开发业务或对接真实内网；后续产品实现以本页2026-11-17候选及§6为准。
 
 - 核心目标为风险、工单、TR、AL及消息联动，保留完整本地三层鉴权；所需普通用户薄UI同批交付。
-- AUTH-01组织来源失效、AUTH-02维护任务资格、AUTH-07组织管理粗门均为实际开放项。纯合成隔离技术预演与接真实数据的试用分开，准入不只靠隐藏页面。
+- AUTH-01组织来源失效、AUTH-02维护任务资格、AUTH-07组织管理粗门已在本批本地候选修复及验证，main/部署仍未承接。纯合成隔离技术预演与接真实数据的试用分开，准入不只靠隐藏页面。
 - 本地首版按已有WBS建立机器投影，净估/兼容覆盖/外部条件与长期76父包视图分开；实际T0和真实接口窗口未知不算零等待。
 - C05首版重复K不再写、明确已存在/待核查的行为已获确认；HMAC秘密比较及验证key生命周期后置。DB安全代际/原子回执/恢复仍必交，按剩余工作复核6–10日候选保持，不臆减工期。
 - 代码继续测试先行；文档/参考按适用档验证，规则及混合改动完整适用门禁。本次所有者授权在main修订是单批例外，后续默认短分支/PR不变。
-- F022按常规短分支/PR补现势唯一源引用、IAM/C05视图、AL push参考覆盖和逐包冻结责任；[本轮收口](reports/module-contract-alignment-2026-11-16.md)区分候选验证与产品交付。F021的直接main例外不延长，现存AUTH缺陷仍开放。
+- F022按常规短分支/PR补现势唯一源引用、IAM/C05视图、AL push参考覆盖和逐包冻结责任；[本轮收口](reports/module-contract-alignment-2026-11-16.md)区分候选验证与产品交付。F021的直接main例外不延长；该批未修AUTH，后继状态见§6。
 
 ## 0. 项目一句话
 
@@ -32,7 +40,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模口径**：迁移为162个文件（81对），下一编号000082；源码/测试数量以对应固定报告manifest为准，不用旧统计冒充当前计数。整理前154个生产Go源/148个测试文件/436函数及review数量的2026-10-28原统计保留在[历史规模](archive/project-control-history-2026-11-08.md#旧导航与规模原文)。当前文档入口与分类见[review索引](README.md)。
+**规模口径**：迁移为164个文件（82对），下一编号000083；源码/测试数量以对应固定报告manifest为准，不用旧统计冒充当前计数。整理前154个生产Go源/148个测试文件/436函数及review数量的2026-10-28原统计保留在[历史规模](archive/project-control-history-2026-11-08.md#旧导航与规模原文)。当前文档入口与分类见[review索引](README.md)。
 
 ---
 
@@ -43,16 +51,16 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
-| **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护 | ✅ Phase 1 | `internal/service/user_service.go` |
+| **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护；直接角色差量往返、任职属性保留及组织派生强权目标敏感写保护 | ✅ Phase 1；2026-11-17修复本地验证通过，未合main/部署 | `internal/service/user_service.go` 的 `ensureSensitiveCanManage`、`ensureTargetProtection`；`internal/service/iam_guard.go`；[本批报告](reports/audit-baseline-repair-2026-11-17.md) |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
-| **组织** | 树形 CRUD、ltree 路径、move、成员管理、owner/成员角色、虚拟组、scope | ✅ Phase 1+2 | `internal/service/org_service.go` `org_delegation.go` |
+| **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；本批窄修本地验证通过 | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
-| **鉴权 L1** | 路由级 Casbin RBAC（BFS 角色展开 + 超管通配） | ✅ Phase 1 | `internal/middleware/casbin.go` `internal/casbin/enforcer.go` |
+| **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存放行 | ✅ Phase 1；本批单实例窄修本地验证通过，完整C05后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go` |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
-| **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头 | ✅ Phase 1 | `internal/app/` `internal/pkg/` |
+| **基础设施** | Wire DI、配置、优雅关闭、健康检查、迁移、限流、安全头；主仓/TR单实例资格及失锁关闭受理，release常驻存储/秘密校验/内外地址分离 | ✅ Phase 1；本批部署画像本地验证通过，HA后继 | `internal/app/`、`internal/pkg/singleton/`、`internal/config/`、`deployments/docker-compose.yaml` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
 | **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 **utils aksk.GinMiddleware + response.AKSKFail() 统一形态**【2026-09-16 验签统一批：信封+分档中文文案，替代原零依赖默认响应】+ 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3）；2026-09-16 接入生态统一中间件形态 | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
@@ -89,7 +97,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 版本与环境 | 五仓Go/Node/PG/Redis等升级已随先前PR合main；准确版本由各锁/版本表维护，现有dev/test承接见runbook。本轮不改变运行栈。 |
 | 公开入口与文档 | 五仓中英文README、合成展示及贡献入口已存在；在线演示/品牌/社区运营仍按原窗口。现势、规划与历史职责分开。 |
 
-固定时点运行证明见[模块细化收口](reports/module-detail-refinement-closeout-2026-11-15.md)和[分档门禁记录](reports/tiered-quality-gates-2026-11-16.md)；既有253验收/81对迁移、UI42 E2E只证明各自准确候选，不能代验未来业务或本批尚未结束的检查。
+固定时点运行证明见[模块细化收口](reports/module-detail-refinement-closeout-2026-11-15.md)和[分档门禁记录](reports/tiered-quality-gates-2026-11-16.md)；既有253验收/81对迁移、UI42 E2E只证明各自准确候选，不能代验未来业务；本批新结果及准确候选见顶部和§6。
 
 ---
 
@@ -139,7 +147,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ---
 
-## 4. 数据库迁移地图（81 对）
+<a id="migration-map"></a>
+<a id="4-数据库迁移地图81-对"></a>
+
+## 4. 数据库迁移地图（82 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -222,8 +233,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000079 | notify 动作默认路由种子：ticket_action_notify 模板 + ticket.action_notify 规则（cc 档收件人）——**翻案**「无种子默认静默」为接受偏差的 S3a 登记（2026-10-26 拍板：显式配动作而静默是坑；删规则即静默）；同批代码使动作 params.template 透传覆盖规则默认模板 | phase5 通知面收口批（2026-10-26） |
 | 000080 | 存储用量越限告警种子：ops_storage_usage_alert 模板 + ops.storage_usage_high 规则（fixed+空收件人=管理员配置后生效，同 000064 惯例；事件源=storage_usage_sample cron 阈值跃迁） | phase5 收官观测批（2026-10-27，C-6/G-3/C-16） |
 | 000081 | 设置恢复默认端点绑定：POST /api/v1/system/settings/reset 挂 system_setting_reset 按钮行（000048 惯例三件套：按钮行+menu_apis+role_menus admin/superadmin）+ 删 system_settings 覆盖行回 config 出厂值（幂等） | phase5 设置页走查批（2026-11-03，0081f2d——本行 2026-11-04 补登） |
+| 000082 | audit_archive维护任务准入事实：核心预写不可改task/action/params/principal/批准窗口；不为旧task行回填授权、不表示执行成功 | F2a/AUTH-02/06存量窄修（2026-11-17，本地82对往返及253验收通过，未部署） |
 
-> **编号规则**：A2（2026-08-31）=谁先启动谁占用，后者整体重排。000001–000081实际占用见上表，**下一编号000082**；新迁移前同时核磁盘与本表。历次让位/重排的原文保留在[编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)，不以旧“下一编号”指导新建。
+> **编号规则**：A2（2026-08-31）=谁先启动谁占用，后者整体重排。000001–000082实际占用见上表，**下一编号000083**；新迁移前同时核磁盘与本表。历次让位/重排的原文保留在[编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)，不以旧“下一编号”指导新建。
 
 ---
 
@@ -244,7 +256,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
-### 2026-11-15层级场景及实施门
+### 2026-11-15层级场景及实施门（历史；后继状态见下）
 
 组织/角色/菜单树已经有基础实现，本轮补跨关系场景/已有修复和验收，不重新计算一套层级平台。HIER-01–12由C04/D03/D06及各启用域承接，必要薄UI随安全正确性前移；完整U06保持P6.3，UAA实际纳管P/R后继。原AUTH/RECHECK/C03均未关闭，历史RBAC文中的最近HR祖先自动迁挂已校准为B07批准映射，不复制角色或猜接管部门。
 
@@ -252,7 +264,23 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 
 本轮是设计/计划同步：规划闭合19项、排程31项及派生物检查通过；实际包价/依赖/相对资源窗与上版一致。runtime目录/脚本及依赖与上一轮已跑253验收/81迁移往返、覆盖率20.2%的main源码相同，本轮没有新跑产品全门禁或HIER行为验收，也未修改环境；不能据文档检查声称树停用传播/新场景已实现。
 
-### 2026-11-15第二轮权限/资源复验（开放）
+### 2026-11-17存量前置修复（本地候选验证通过，main/部署未承接）
+
+所有者确认方向后要求实施。本批按实际启用画像交付F1/F2a/F0/F4/F3及必要F5，冻结输入、完整门禁、首次失败及后继边界见[正式报告](reports/audit-baseline-repair-2026-11-17.md)，准确映射/扣重见[计划](../planning/audit-repair-plan-2026-11-17.md)。本地提交不代表main、远端或真实环境已修复；下一次净剩余核算按已交出口扣重，25–45日原粗预留及97–151唯一总额不因此机械相加或臆减。
+
+- **RECHECK-01/02/03**：直接角色往返不固化派生来源、保留停用直接绑定；薄UI隔离加载/失败/换目标；相同成员保留角色、scope、来源、到期、加入及主组织属性。真实PG/HTTP及UI相应专项、并发变异和完整回归通过。
+- **AUTH-01/03及HIER-D01所需出口**：角色、菜单、scope和组织委托共用有效来源，实际父ID链停用/暂停生效，合法独立来源保留；恢复不复活已撤/到期来源。路径复用及移动仅作用实际ID子树。完整来源产品和跨副本传播未交。
+- **AUTH-07及CF-06**：组织粗门按实际职责分开，组织赋角/解绑另需直接IAM资格和可分配档位；合法owner/admin委托仍在。敏感目标写区分actor直接资格与target当前有效强权拒绝，同事务核验当前路由/actor/target/来源；self、系统及最后超管分支保留。策略提交后投影失败拒绝旧缓存，完整C05/revision pair/会话原子回执未关闭。
+- **AUTH-02/06**：独立默认空维护资格、临时覆盖及固定cron定义身份，覆盖Submit/Create/Update/Trigger/Retry/最终执行；可信principal及创建归因不取body。迁移000082不把旧任务行补造授权。实际无资格拒绝/合法执行/到期和摘要变化拒绝均通过。
+- **C03当前启用子项**：同号异参、claim失败零执行、running/终态确认、Finish失败、精确JSON及稳定cron时隙/outbox恢复已修并验证；完整receipt/unknown及F2b仍开放。JSONL与PG非原子窗口可能重复，必须保留归档卷。
+- **部署及当前旅程**：默认单实例资格及失锁关闭受理、release存储、普通办理者选人、状态图/SLA/事件/消息及字段文件引用的当前窄修均完成验证。40表实际PG逻辑恢复、S3及JSONL代表恢复通过，独占资源精确回收；不等于异地/PITR/跨介质原子恢复或HA。
+
+RECHECK-04旧头像、RECHECK-05附件用途侧信道、AUTH-04关联对端元数据、AUTH-05条件性PAT、完整IAM-C/C05、C03/F2b、HA及未取用P2/P3继续开放。真实UAA/企业消息及真实业务准入没有由合成证据自动满足；原审计70条发现没有整体关闭。材料ID`maintenance/audit-baseline-repair-20261117/`。
+
+### 2026-11-15层级设计记录（历史时点）
+
+上方2026-11-15层级段落记录合同及当时未实现状态；HIER-D01当前窄实现以本节2026-11-17候选为准。下列11月15日审计表保存修前现象和原归属，已交子项按本节覆盖，未列明关闭的条目仍开放。
+### 2026-11-15第二轮权限/资源复验（修前快照，后继状态见上）
 
 | 发现 | 已确认现状与边界 | 归属 |
 | --- | --- | --- |
@@ -264,7 +292,7 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 
 原证据/回归与排除项见[报告](reports/permission-boundary-recheck-2026-11-15.md)。旧C02 Update文件引用、R06 EOF等不重计；TR retry候选因fake计数与固定Asynq不符排除。新增修复实施前按原包扣重复估，原净估不被此审计自动包干；本轮设计落档不关闭任何产品缺陷。
 
-### 2026-11-15核心调用、可靠交接与私有接缝（开放）
+### 2026-11-15核心调用、可靠交接与私有接缝（修前快照，后继状态见上）
 
 - C03既有六类现状风险经临时SQLite/HTTP/纯JSON探针各8轮确认：同号异参、双cron、claim失败执行、Finish失败仍nil、任意2xx/429语义、大整数舍入。仍属原C03待修，不因已有Redis队列改成完成；严格新业务启用前过原receipt/当前权限/occurrence出口。
 - 存量Inbox只按recipient返回标题/total，未接新受限对象当前权限；不是无条件把个人收件历史报为IDOR，D15/C04/OBS迁移须保护当前内容并保留收件事实。NotifyDeadLetter原样error可重新记录query秘密，合成无网络探针已复现，挂OBS01具名去敏修复；未声称真实凭据曾泄漏。
@@ -272,7 +300,7 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 
 依据、代码符号、正确控制/限制和各包最小门见[核心专项](reports/core-interaction-architecture-review-2026-11-15.md)。产品源码/迁移未改，不与下方权限缺陷混成修复收口；当前standards文字改正不代表签名wire已升级。
 
-### 2026-11-15权限控制专项（开放，非修复收口）
+### 2026-11-15权限控制专项（修前快照，后继状态见上）
 
 | 发现 | 当前证据与限制 | 修复归属与启用门 |
 | --- | --- | --- |
@@ -474,7 +502,7 @@ Phase5当前收口与main/生产承接看顶部和§6；Phase6实际启动须遵
 | # | 事项 | 说明 |
 |---|------|------|
 | IW1 | ~~多虚拟组可见性场景闭环：BK-13 + BK-14~~ | ✅ **已实施（2026-08-31）**：000017 CHECK + org update 配置 API + L2 委托轴 + scope 配置面全链 + D12/委托轴测试（原编号 W1，随 2026-08-31 编号治理改 IW；详见 00 §2.3） |
-| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性）。**2026-10-08：附件/存储件收编为 Phase 5 S5 实施载体**（SSOT=[phase5/README](../phase5/README.md) §P5-S5，迁移号启动时按 §4 对账占用——原预留 000034 已被 P4-3 字典占用，000058 = is_system / 000059 = message_rebind / 000060 = message_rules_version / 000061 = message_rules FK（v3 审计 Y-3），当前下一编号 000082（000079 = action_notify_seed 2026-10-26；000080 = storage_usage_alert 种子，C-6 观测批 2026-10-27；000081 = settings_reset_bind，设置页走查批 2026-11-03））；auth-enhance 维持本窗口触发驱动 |
+| IW2 | **2b-ext 剩余两件**（附件 / auth-enhance；**HR 同步已升 Phase 3 主链 M-HR**（原 M2.5），2026-09-02 §22.2/§23.2） | 附件 / auth-enhance 按需独立启动（附件先于 Phase 3 启动 → 按迁移号规则核对 A2）；HR 同步随 M-HR（预留接口版 HRFetcher + 引擎 + mock adapter；⚠ 2026-09-22 勘误：**三件均未落码**，全仓无 HRFetcher——对接时一并开工），**两个待设计项随启动拍板**（hr-directory-sync.md §3.2/§4.3 的 2026-09-01 场景登记：离职在途工单处置策略、部门撤销 × tickets.org_path 级联完整性）。**2026-10-08：附件/存储件收编为 Phase 5 S5 实施载体**（SSOT=[phase5/README](../phase5/README.md) §P5-S5，迁移号启动时按 §4 对账占用——原预留 000034 已被 P4-3 字典占用，000058 = is_system / 000059 = message_rebind / 000060 = message_rules_version / 000061 = message_rules FK（v3 审计 Y-3），该历史时点下一编号 000082（现行以§4为准；000079 = action_notify_seed 2026-10-26；000080 = storage_usage_alert 种子，C-6 观测批 2026-10-27；000081 = settings_reset_bind，设置页走查批 2026-11-03））；auth-enhance 维持本窗口触发驱动 |
 | IW3 | ~~BK-18：类型/字段/模板管理闭环~~ | ✅ **后端已实施（2026-08-31）**：迁移 000018 + 7 管理端点 + G2 校验 + TestBK18×2；前端照 12-frontend 施工（另排期） |
 | IW4 | ~~行级过滤护栏（fail-closed）~~（2026-09-01 go-wind-admin 调研吸收） | ✅ **已实施（2026-09-01）**：`resource.Filter.Unscoped` 显式豁免（admin bypass / ticket_scope=all 两处显式化）+ `ticket_repo.List` 入口 fail-closed 哨兵（无谓词且未豁免 → 报错，漏接 L2 从静默全量变测试期报错）+ `TestGuard_TicketRepoListCallSites` AST 守护（repo.List 调用点锁定 ticket 包）+ 测试 4 个；全门禁绿（lint / 13 包单测+集成 `-race` / acceptance 27+66+26+32 FAIL=0） |
 

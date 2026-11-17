@@ -4,6 +4,10 @@
 
 S3a已交付转换roles/validator、available查询、自动分派规则和动作注册表。先看本节和§3现行合同，再看S3b及演进设计；旧“无事件/硬编码/无自动分派”矩阵是设计前基线，不是今天的现状。
 
+2026-11-17存量修复状态：`lifecycle.go`的`applyStateSLATx`将已启用的状态级`sla_due_hours`收口到Create、人工/自动Assign、取消分派、Transition和Close的同一事务；按`status_changed_at + N小时`计算，未配或closed明确清空，同状态换处理人保持原截止。该修复不把历史`default_sla_hours`/模板缺省字段偷偷激活为全局计时政策，也不实现暂停/日历/完整SLA。`Transition`补持久`status_changed`，Transition/Close说明与`comment`事件同事务；状态、截止、说明、事件任一写失败整笔回滚。新增真实PG红例已复现并转绿，完整适用门禁及组合复验已通过，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；CF-31已启用路径与历史缺省字段、CF-32的最终关闭分别按证据登记。
+
+同批CF-12候选明确当前兼容端点依赖的保留态：类型新建、图保存或重新启用必须含`open/assigned/closed`，不含空白/重复状态；额外自定义状态与合法边不受限制。历史坏图不批量重写、不删除旧票/历史，读取与修复入口仍保留；其新建工单在落库前400并指出缺项，可原类型补回保留态后继续使用。只隐藏分派/关闭按钮不能证明没有这些服务入口。旧合法性测试若只为测试半图合并而省略`assigned`，夹具须补该保留态，保留其原合并/并发断言；不是放宽生产守卫。
+
 `internal/service/ticket/transition_service.go`的`Transition`在事务内锁快照/写状态，**commit后**发领域事件并调用`ActionRegistry.RunPostActions`；失败不回滚转换。cc/reassign的服务操作为后续独立事务，当前没有生产者outbox或通用自动补偿队列。`durable_submit`说明下游提交持久凭证与幂等，并不凭声明获得至少一次生产投递。
 
 S3b任务行审批仍待真实场景；定义快照、自动路由、Close/Assign生命周期统一、B8结果映射/B20输入映射/B21配置UI仍按Phase6待实施。风险接受的已拍简化形态为owner发起＋risk:manage确认，不等于S3b已做。
