@@ -9,6 +9,7 @@
 ## 先选择阅读路径
 
 - **所有者看进度与待决**：[规划收口](planning/planning-closeout.md) → [模块设计深度](planning/planning-closeout.md#各phase和模块细化到哪里) → [三节短审阅卡](phase6/implementation-handoff.md#单维护者短审阅卡)。再按需要进入具体合同，不必逐篇读历史报告。
+- **准备Phase6开工与交付讲解**：[系统理解与交付试行计划](planning/system-understanding-and-delivery-plan.md)区分开工前最小补齐、随批回顾和后续故事库；能力、验证、个人贡献及工作区收尾分别核实，材料存在不等于已经理解。
 - **开发者修改一个模块**：[产品边界](vision.md) → [开发指南](guides/development.md) → [工程公约](standards.md) → 对应[当前模块](modules/README.md)、Phase/工作包及[目标合同](design/README.md)。编码前冻结本批预期，按公约测试先行。
 - **运维或审计核实事实**：[运维入口](ops/README.md)或[审查入口](review/README.md) → 准确源码/制品/环境与验证记录 → 原始证据/历史报告。旧报告只证明其固定时点。
 

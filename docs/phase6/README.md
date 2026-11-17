@@ -9,6 +9,8 @@
 > **2026-11-13调用/一致性补充**：CE01静态准备可先行，授权相关实现归P6.1；CE02-S在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../planning/capability-interconnect-supplement.md)；新增范围已由[净估注册表](../planning/planning-scope-estimates.json)扣重计价，存量共同路径迁移按S/D/L跨阶段交付，仍未开工。
 
 近期施工候选、首批PR切片及准确验证出口见[实施交接候选](implementation-handoff.md)；本轮未启动功能实现。
+
+开工前的系统理解补齐及前三个交付小批的讲解/收尾试行见[专项计划](../planning/system-understanding-and-delivery-plan.md)。存量修复及临时工作树收尾已由[main后继记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)承接；下一次开工复核实际基线。专项材料尚未整理，不把完整历史回顾或全生态掌握设为技术总开工门。
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../planning/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
 ## 1. 阶段目的
