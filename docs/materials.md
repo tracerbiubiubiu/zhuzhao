@@ -42,6 +42,8 @@
 
 本轮推送与main承接另用材料ID`maintenance/audit-baseline-main-merge-20261117/`，用于保存三仓消息only映射、推送、PR/准确head CI、合并及后继文档的来源复核与操作收据；现势结论见[三仓合入记录](review/reports/audit-baseline-main-merge-2026-11-17.md)。原本地验收材料封存不改，不因功能分支已推送就记main或部署成功。
 
+同日临时工作树收尾使用独立材料ID`maintenance/audit-worktree-closeout-20261117/`：保存8个旧实施/评审工作树的395项未提交状态、另5个已合并工作树的本地文件、三仓Git bundle、逐文件SHA256、实际还原验证及精确清理收据。共保全33,698个普通文件；原8树没有排除，另5树只排除两个UI根`node_modules`依赖安装目录，生产构建产物与执行记录仍保留。49项未匹配旧归档的草稿经差异复核未发现遗漏实现，清理后继结论见[合入记录§5](review/reports/audit-baseline-main-merge-2026-11-17.md#5-临时工作树独立收尾)。旧封存索引保持原SHA；新材料仅本机保留，不随Git上传。
+
 同日后继产品实现与组合验收使用独立材料ID`maintenance/audit-baseline-repair-20261117/`：保存主批`repair-implementation-20261117`及相关工作树原始专项、首次失败与修正、冻结源码/运行产物manifest、门禁命令/退出码、浏览器、恢复、精确清理及本地提交收据。正式结论归[前置修复与组合验收](review/reports/audit-baseline-repair-2026-11-17.md)。归档逐文件核SHA，下载缓存/依赖安装目录不作为证据复制，具体排除及副本清单由本地索引记载；目录/文件收紧权限，不随Git上传，ignored工作区可保留执行副本。该归档为同机保留，不等于异机备份。
 
 先判断它是否是必须共同维护的事实/输入。是则进入归属仓`docs/`并挂到已有入口；否则使用本地档案相应分类和明确批次ID。短期执行产物可先留ignored `.codex/`，正式交付提炼结论并登记材料ID，避免在`src`下持续新增散落报告目录。
