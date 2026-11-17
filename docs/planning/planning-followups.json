@@ -926,8 +926,8 @@
         "rule": "仅整段粗预留，不是净新增/日期承诺；逐项扣重，新增保护与F2a实现前具名归属，不机械修改唯一总价或派生排程",
         "current_core_total_changed": false
       },
-      "implementation_state": "baseline_implemented_merged_main_pass8_followup_implemented_verified_pending_main",
-      "quality_scope": "validation逐字段保留前段正式权限合同的ordinary历史验证，baseline_delivery保留已合main产品历史门禁；本次pass8产品验证为r1主仓完整七门禁及u2 UI完整六门禁、同r1资产绑定和专属真实运行探针均通过。当前全候选文档/生成物收口与独立终审由集成者继续完成，补修尚未合main或部署",
+      "implementation_state": "implemented_verified_merged_main_not_deployed",
+      "quality_scope": "validation逐字段保留前段正式权限合同的ordinary历史验证，baseline_delivery保留已合main产品历史门禁；本次pass8的r1主仓七门禁、u2 UI六门禁、同r1资产绑定、专属真实运行探针、本地适用文档/规划检查及源/runtime/docs独审均通过。功能产品已由主仓PR15和UI PR9合入准确main且树等已验head，branch与PR四个CI成功；两个准确功能main CI均已success（主仓44114420530、UI44114486495）。生产未部署；归档与最终分支清理另按材料封存及独立操作收据",
       "real_inputs": "Q12环境、代表角色/数据、支持责任、备份及恢复/保留参数到启用前绑定，不重问既定HIER-D01/IAM-AUDIT-D01/TASK-D01等政策",
       "authorization_boundary": "前段方向确认边界保留在historical_contract_stage；所有者随后明确授权前置产品实现并提交推送合main，当前又确认按pass8纠偏建议补修。授权不扩成全部Phase6业务、远端保护变更或真实生产部署，准确交付以各批Git及候选收据为准",
       "historical_34_formal_decisions_unchanged": true,
@@ -1008,7 +1008,7 @@
       "followup_scope": {
         "date": "2026-11-17",
         "source": "所有者在当前会话确认“ok，按建议来修复”；未提供消息ID，不虚造外部标识",
-        "state": "implemented_verified_pending_main",
+        "state": "implemented_verified_merged_main_not_deployed",
         "branch": "codex/pass8-review-repair-20261117",
         "topics": [
           "PLAT-R01正常SIGTERM排空并保留失锁及时取消",
@@ -1022,8 +1022,8 @@
         ],
         "report_ref": "docs/review/reports/audit-pass8-followup-2026-11-17.md",
         "material_id": "maintenance/audit-pass8-followup-20261117/",
-        "validation_state": "runtime_full_gates_and_owned_probes_passed_independent_final_review_pending",
-        "main_merge_state": "not_merged",
+        "validation_state": "local_gates_owned_probes_and_independent_reviews_passed",
+        "main_merge_state": "merged",
         "production_deployed": false,
         "remaining_scope": [
           "完整IAM-C/C05",
@@ -1209,9 +1209,197 @@
             "r1 UI45/46 initial combobox locator timeout retained; only u2 full six-gate rerun is current green evidence",
             "first TICKET local probe queried nonexistent event_type; original failure retained and readonly projection corrected to actual columns; not a product test red"
           ],
-          "independent_final_review": "pending_root_closeout",
-          "final_document_candidate_checks": "pending_root_generator_and_quality_checks",
-          "all_audit_findings_closed": false
+          "independent_final_review": "passed_for_functional_premerge_source_runtime_and_docs",
+          "final_document_candidate_checks": "passed_applicable_functional_premerge_checks",
+          "all_audit_findings_closed": false,
+          "independent_review_receipts": {
+            "final-source-review": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "cross-review/final-source-review.json",
+                "sha256": "c972e6c9b3841db6d836d8888425dcab4e184ac721ae0740774b4dc60a2a5be5"
+              }
+            },
+            "final-runtime-gates-review": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "cross-review/final-runtime-gates-review.json",
+                "sha256": "391da83972c750ce413717a95e0810793ee7dbf7e30e1db46d87d2203b6aedaa"
+              }
+            },
+            "final-docs-premerge-review": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "cross-review/final-docs-premerge-review.json",
+                "sha256": "94cd9263b0911b8968a9f59ed1404f0f277945f6fb4b9130c568ba03b4dcd857"
+              }
+            }
+          },
+          "local_applicable_quality_checks": {
+            "state": "passed",
+            "receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "cross-review/final-docs-premerge-review.json",
+              "sha256": "94cd9263b0911b8968a9f59ed1404f0f277945f6fb4b9130c568ba03b4dcd857"
+            },
+            "targets": [
+              {
+                "name": "generator",
+                "actual_returncode": 0,
+                "applicable_checks_returncode": 0,
+                "log_sha256": "fd923bf017ba2d42707c347fbec0294ba766f92b857b3b7417227172546689a1"
+              },
+              {
+                "name": "core-plan",
+                "actual_returncode": 0,
+                "applicable_checks_returncode": 0,
+                "log_sha256": "09dd61aaab2c8b1cb3d777d2a547d88a03e24708d898604acc167c8ec114015d"
+              },
+              {
+                "name": "core-check",
+                "actual_returncode": 2,
+                "applicable_checks_returncode": 0,
+                "log_sha256": "4f5ad18fe0dd0a56c51ca9cb913c37da6d1d4684c529078da22092d56a764bf6"
+              },
+              {
+                "name": "ui-plan",
+                "actual_returncode": 0,
+                "applicable_checks_returncode": 0,
+                "log_sha256": "7f345ea3a1be72b84ac1469056c41446522345c0736aea42529b2c2e99ef454f"
+              },
+              {
+                "name": "ui-check",
+                "actual_returncode": 1,
+                "applicable_checks_returncode": 0,
+                "log_sha256": "3df9856535847d02c2d4811479463ffb2814f91460208976f97efd1a79800529"
+              }
+            ],
+            "note": "Preserve actual quality-check wrapper exit codes for ordinary reminders; applicable documentation/planning checks returned0 and full product gates are recorded separately."
+          },
+          "post_merge_closeout_document_checks": {
+            "state": "reference_candidate_checks_bound_to_exact_final_receipt",
+            "material_id": "maintenance/audit-pass8-followup-20261117/",
+            "relative_path": "docs-quality/final-result.json"
+          }
+        },
+        "main_ci_state": "passed",
+        "main_ci_heads": {
+          "core": "21c1e2806f39e15e2c4f39a54f27958597813acf",
+          "ui": "af457b8ceea380cf7123ca8d384485f42cd75b72"
+        },
+        "functional_main": {
+          "core": {
+            "repository": "tracerbiubiubiu/zhuzhao",
+            "pull_request_url": "https://github.com/tracerbiubiubiu/zhuzhao/pull/15",
+            "verified_functional_head_sha": "e280cf363d6346c79eaed02cca8025948a25d9c0",
+            "base_before_sha": "6c3e33883805e359160dea0d8b8b36a7e4b1b552",
+            "merge_commit_sha": "21c1e2806f39e15e2c4f39a54f27958597813acf",
+            "merged_at": "2026-11-17T15:26:47Z",
+            "tree_equal_to_verified_head": true,
+            "branch_and_pr_ci": [
+              {
+                "conclusion": "success",
+                "databaseId": 44110922755,
+                "event": "pull_request",
+                "headBranch": "codex/pass8-review-repair-20261117",
+                "headSha": "e280cf363d6346c79eaed02cca8025948a25d9c0",
+                "status": "completed",
+                "url": "https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44110922755",
+                "workflowName": "ci"
+              },
+              {
+                "conclusion": "success",
+                "databaseId": 44110794277,
+                "event": "push",
+                "headBranch": "codex/pass8-review-repair-20261117",
+                "headSha": "e280cf363d6346c79eaed02cca8025948a25d9c0",
+                "status": "completed",
+                "url": "https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44110794277",
+                "workflowName": "ci"
+              }
+            ]
+          },
+          "ui": {
+            "repository": "tracerbiubiubiu/zhuzhao-ui",
+            "pull_request_url": "https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9",
+            "verified_functional_head_sha": "7cf165da42b971b1a4e0b2935062e3d160bc0402",
+            "base_before_sha": "7c52da0a0881c81ff415e674eff8120eaaea6bec",
+            "merge_commit_sha": "af457b8ceea380cf7123ca8d384485f42cd75b72",
+            "merged_at": "2026-11-17T15:27:08Z",
+            "tree_equal_to_verified_head": true,
+            "branch_and_pr_ci": [
+              {
+                "conclusion": "success",
+                "databaseId": 44110922331,
+                "event": "pull_request",
+                "headBranch": "codex/pass8-review-repair-20261117",
+                "headSha": "7cf165da42b971b1a4e0b2935062e3d160bc0402",
+                "status": "completed",
+                "url": "https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44110922331",
+                "workflowName": "ci"
+              },
+              {
+                "conclusion": "success",
+                "databaseId": 44110840802,
+                "event": "push",
+                "headBranch": "codex/pass8-review-repair-20261117",
+                "headSha": "7cf165da42b971b1a4e0b2935062e3d160bc0402",
+                "status": "completed",
+                "url": "https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44110840802",
+                "workflowName": "ci"
+              }
+            ]
+          }
+        },
+        "functional_main_receipt": {
+          "material_id": "maintenance/audit-pass8-followup-20261117/",
+          "relative_path": "functional-main-result.json",
+          "sha256": "ed93f5ae3bb8d697b4a1dac6baab591a5fcdd72474a3d8b4fd7ae6e4f3489a4a"
+        },
+        "delivery_closeout_boundary": "Functional main merges, branch/PR/main CI, local gates/probes and independent reviews are complete. Final worktree/branch cleanup and execution-copy retirement are certified by the sibling audit-pass8-followup-20261117-operation-receipt.json bound to the immutable sealed-index SHA; source and original evidence remain in the sealed payload.",
+        "main_ci_receipt": {
+          "material_id": "maintenance/audit-pass8-followup-20261117/",
+          "relative_path": "ci/latest-functional-main-status.json",
+          "sha256": "37f8fc456239154df2f5746465ac45af0aaa7ed1cfcb61732bb85d2af199667f",
+          "components": {
+            "core": {
+              "merge_commit": "21c1e2806f39e15e2c4f39a54f27958597813acf",
+              "repo": "tracerbiubiubiu/zhuzhao",
+              "runs": [
+                {
+                  "conclusion": "success",
+                  "databaseId": 44114420530,
+                  "event": "push",
+                  "headBranch": "main",
+                  "headSha": "21c1e2806f39e15e2c4f39a54f27958597813acf",
+                  "status": "completed",
+                  "url": "https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44114420530",
+                  "workflowName": "ci"
+                }
+              ],
+              "success": true
+            },
+            "ui": {
+              "merge_commit": "af457b8ceea380cf7123ca8d384485f42cd75b72",
+              "repo": "tracerbiubiubiu/zhuzhao-ui",
+              "runs": [
+                {
+                  "conclusion": "success",
+                  "databaseId": 44114486495,
+                  "event": "push",
+                  "headBranch": "main",
+                  "headSha": "af457b8ceea380cf7123ca8d384485f42cd75b72",
+                  "status": "completed",
+                  "url": "https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44114486495",
+                  "workflowName": "ci"
+                }
+              ],
+              "success": true
+            }
+          }
         }
       }
     }

@@ -1,7 +1,7 @@
 # 存量修复pass8复审补修与验证
 
 > 用途：承接所有者“ok，按建议来修复”的本批回归、维护准入和证据/文档收口；范围与原[前移计划](../../planning/audit-repair-plan-2026-11-17.md)一致，完整IAM-C/C05、C03/F2b、HA及未取用能力保持后继。
-> 当前状态：本批实现、完整适用门禁和真实运行专项已通过，源码及运行收据经交叉复核；当前为待提交/main承接的本地候选，未部署。修前主仓main为`6c3e33883805e359160dea0d8b8b36a7e4b1b552`、UI为`7c52da0a0881c81ff415e674eff8120eaaea6bec`，TR/AL/utils沿各自已合main准确来源；实现短分支为`codex/pass8-review-repair-20261117`。最终远端承接与清理收据另在本报告交付节登记。
+> 当前状态：本批实现、完整适用门禁和真实运行专项已通过，源码及运行收据经交叉复核；功能修复已按普通PR合入main、分支/PR CI已通过；两个准确功能main CI均为success，未部署。修前主仓main为`6c3e33883805e359160dea0d8b8b36a7e4b1b552`、UI为`7c52da0a0881c81ff415e674eff8120eaaea6bec`，TR/AL/utils沿各自已合main准确来源；实现短分支为`codex/pass8-review-repair-20261117`。最终远端承接与清理收据另在本报告交付节登记。
 > 本地材料ID：`maintenance/audit-pass8-followup-20261117/`。旧审计pass8和四批原封存保留各自时点，不重写修前结论、原失败或旧门禁数量。
 
 ## 1. 本批范围与复审纠偏
@@ -72,3 +72,11 @@ F023现势承接已合main的原产品baseline，本批pass8 followup单列实�
 完整IAM-C/C05、C03/F2b、HA、真实UAA/企业消息、完整SLA及未取用P2/P3保持原包；已交子项从后续净剩余逐项扣重，本批不重报价、不改97–151或DAG。后继触发与当前依赖见[计划§2](../../planning/audit-repair-plan-2026-11-17.md#2-发现既有归属与可评审切片)。真实环境人员/数据/保留与恢复责任仍按Q12绑定；原开发服务及活跃UI工作树未切换。
 
 本地执行材料归`maintenance/audit-pass8-followup-20261117/`，最终封存以该材料的`sealed-index.json`及逐项SHA/权限复核为准。旧四批封存不改，不清未知归属资源或原数据卷；本批工作树/分支及运行资源清理另核收据。原始审计findings保留修前时点，当前边界由本报告与控制台承接，不整体关闭70条。
+
+## 5. 功能main承接与收尾证据
+
+主仓[PR #15](https://github.com/tracerbiubiubiu/zhuzhao/pull/15)的准确head为`e280cf363d6346c79eaed02cca8025948a25d9c0`，merge为`21c1e2806f39e15e2c4f39a54f27958597813acf`；UI[PR #9](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9)的准确head为`7cf165da42b971b1a4e0b2935062e3d160bc0402`，merge为`af457b8ceea380cf7123ca8d384485f42cd75b72`。均按正常merge锁定已验head，父提交和合并树逐项核对，tree等于已验候选。
+
+主仓[分支CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44110794277)、[PR CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44110922755)与UI[分支CI](https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44110840802)、[PR CI](https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44110922331)均为success。准确功能merge的主仓[main CI](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/44114420530)和UI[main CI](https://github.com/tracerbiubiubiu/zhuzhao-ui/actions/runs/44114486495)均为success，准确head与结果随本批收据保留。最后的文档收尾只变更状态及planning派生来源哈希，按实际reference/document档检查，不充作又跑一次产品门禁。
+
+本批自建8容器、7卷、3网络及16个临时镜像标签已逐个回收，owner资源及任务宿主进程零残留；受保护15容器及其卷/网络身份不变，各运行专项所比较的共享进程生命周期不变。原开发进程不重启，活跃canonical UI保留原检出；最新UI main由本批干净detached工作树供最终源码白名单封存，封存后再回收该树。最终五仓Git状态、main包含关系、零遗漏有效内容、精确分支/工作树回收及四旧seal复核由同一maintenance目录下的`audit-pass8-followup-20261117-operation-receipt.json`及其SHA承接，明确绑定sealed-index SHA；不把封存前工作树仍存在的快照称为最后清理状态。封存仅复制本批材料和准确白名单源码，不写旧档案或上传原始材料；执行副本在副本逐项核验后退役，封存payload保持不可变。
