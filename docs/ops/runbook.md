@@ -249,6 +249,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
+  | 存量修复三仓main收尾 | root唯一远端、提交与PR合并；独占`codex/audit-baseline-merge-closeout-20261117`仅状态文档候选，原验收报告只加后继链接，产品与旧封存不改 | 三功能PR与功能main适用CI均已成功；后继状态文档按同批Git/收据追溯，专属验证栈已清理；材料ID`maintenance/audit-baseline-main-merge-20261117/`，未部署 | 2026-11-17 |
   | 规划合同与现势引用复核后继 | 独立`codex/planning-contract-alignment` worktree组，基线8c44ef6；canonical main不编辑。root唯一集成/显式路径提交推送，分工只写归属文件并归还；涉及候选Schema/模块说明/派生检查，不开发业务、不改真实内网或共享栈。验证按最终候选分档，若普通档由root另登记独占资源 | 此行不预报提交/远端/CI；实际结果以Git及本批原始收据为准 | 2026-11-16 |
   | F021首版规划复验修订 | 所有者明确授权本批直接在五仓main；根会话唯一集成/显式路径提交及推送。文件分工编辑均需归还，索引不归子会话；主仓规划/生成器和五仓同源classifier测试，未修业务缺陷/真实接线。独占验收owner=`zz-plan-repair-20261116`，API59886/UI59888；占用及回收以本批ignored原始收据为准，禁止连接共享栈；[交付记录](../review/reports/planning-review-repair-2026-11-16.md)分开设计、运行及C05后继已确认行为 | 默认短分支/PR政策不变，本批例外；准确提交、远端及CI以Git和本候选记录为准 | 2026-11-16 |
   | Phase6前五仓重规划 | 五仓独立`codex/pre-phase6-replanning`工作区，仅文档/受控清单；root集成，子审查按仓归属；共享main保持只读。当前无功能实现、远端设置变更或生产发布 | 未推送；提交状态以实时Git为准 | 2026-11-11 |
@@ -374,4 +375,4 @@ prod/test app分别以app_archive/zt_app_archive挂现有`/app/data/archive`，o
 
 2026-11-17 F023交接（非运行资源占用）：所有者确认[存量修复前移](../planning/audit-repair-plan-2026-11-17.md)及CF-06目标保护，根唯一集成短分支`codex/audit-repair-plan-20261117`，分工只修改ignored审计文件。权限合同按普通档新跑完整既有门禁，253/0/0及81对零漂移；owner=`zz-audit-repair-20261117`的8个Compose容器、自有卷/网络已精确回收，15个原运行容器指纹不变。业务代码、迁移和共享栈未改，现有缺陷仍开放；实际提交/远端状态以Git为准，本轮未push/main合入或生产部署。材料ID `maintenance/audit-repair-plan-20261117/`。
 
-2026-11-17产品修复本地交接（已无运行资源占用）：根分支`codex/iam-baseline-repair-20261117`负责唯一集成/提交，UI/TR交付在各自`codex/iam-ui-repair-20261117`、`codex/task-chain-repair-20261117`工作树。F1/F2a/F0/F4/F3及启用旅程F5完成当前候选完整门禁和独审，准确结果及未覆盖见[正式报告](../review/reports/audit-baseline-repair-2026-11-17.md)。owner=`zz-repair-impl-20261117`的8容器、7卷、3网络已精确清理，本批宿主进程/资源零残留，60781–60787全可bind；专项独占资源亦已回收。共享15运行容器/13卷/3网络身份未变，没有镜像prune。SQLite/JSONL/日志及恢复/清理收据先封存，材料ID`maintenance/audit-baseline-repair-20261117/`，ignored批次保留执行副本。当前只作本地显式路径提交，未push、main合入或生产部署，不操作真实账号；后续仍以实时owner和清单判断归属，不凭本行清理其它会话资源。
+2026-11-17产品修复本地交接（已无运行资源占用）：根分支`codex/iam-baseline-repair-20261117`负责唯一集成/提交，UI/TR交付在各自`codex/iam-ui-repair-20261117`、`codex/task-chain-repair-20261117`工作树。F1/F2a/F0/F4/F3及启用旅程F5完成当前候选完整门禁和独审，准确结果及未覆盖见[正式报告](../review/reports/audit-baseline-repair-2026-11-17.md)。owner=`zz-repair-impl-20261117`的8容器、7卷、3网络已精确清理，本批宿主进程/资源零残留，60781–60787全可bind；专项独占资源亦已回收。共享15运行容器/13卷/3网络身份未变，没有镜像prune。SQLite/JSONL/日志及恢复/清理收据先封存，材料ID`maintenance/audit-baseline-repair-20261117/`，ignored批次保留执行副本。本地验收原时点见原报告，三功能修复已通过PR合入main，PR/CI/main及后继状态统一见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，生产部署未执行，不操作真实账号；后续仍以实时owner和清单判断归属，不凭本行清理其它会话资源。

@@ -45,7 +45,7 @@ flowchart TD
 
 ### 3.1 维护动作的准入（2026-11-17候选）
 
-本批存量窄修按已确认[TASK-D01](../phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因)实现，完整适用门禁与组合复验已通过，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；当前未推送、合入main或部署，完整IAM-C/C03仍未交付。`internal/service/task_action_policy.go`的`TaskActionPolicy`目前仅登记实际敏感动作`audit_archive`；其他既有非敏感profile保留原行为。
+本批存量窄修按已确认[TASK-D01](../phase6/task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因)实现，完整适用门禁与组合复验已通过，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署，完整IAM-C/C03仍未交付。`internal/service/task_action_policy.go`的`TaskActionPolicy`目前仅登记实际敏感动作`audit_archive`；其他既有非敏感profile保留原行为。
 
 人工维护使用`taskrunner.maintenance.maintainer_user_ids`的稳定本地用户ID独立授权，默认空。`TASK_MAINTAINER_USER_IDS`以逗号ID替代整个列表；显式空值在重启后撤销全部人工grant。配置不是在线授权管理：修改后须重启；撤掉L1按钮不等于撤掉该独立grant。入口仍须通过原JWT/L1，Service另核可信上下文ID、显式grant及当前未禁用/未软删账号，`actor="system"`、角色名称、`task:submit`、审计读权限与body的`created_by`均不能制造维护权。
 

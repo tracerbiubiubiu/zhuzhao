@@ -2,7 +2,7 @@
 
 日期：2026-11-14。状态：**待实施的模块设计候选**，不表示下面的表、路由、协议或故障测试已经实现。范围为C03/R01/D12、CE01/CE02的P6切片、D11/D15消息侧；AL写与变化源承接CE03/CE04的首版本地子范围。范围与价格继续以[总账](../planning/planning-backlog.json)、[本地核心分项](../planning/local-core-release-estimate.json)为准，本页不新增一份总价。
 
-> 2026-11-17后继：§8.3维护资格/可信归因、原定义读取及当前回调/同号异参/cron推进等窄出口已在本地候选实现并通过完整适用门禁、真实栈及独审；本页§1和§8.2/8.3的“当前/拟补/待实现”原文记录11月14–15日修前设计时点。实际接口及参数以[审计模块](../modules/audit.md#31-维护动作的准入2026-11-17候选)、实现及[本批报告](../review/reports/audit-baseline-repair-2026-11-17.md)为准。完整C03/R01、receipt/unknown、AL效果/变化源和真实消息仍待实施；未推送/main合入/部署，原报价按实际已交子出口在后续净剩余核算扣重。
+> 2026-11-17后继：§8.3维护资格/可信归因、原定义读取及当前回调/同号异参/cron推进等窄出口已在本地候选实现并通过完整适用门禁、真实栈及独审；本页§1和§8.2/8.3的“当前/拟补/待实现”原文记录11月14–15日修前设计时点。实际接口及参数以[审计模块](../modules/audit.md#31-维护动作的准入2026-11-17候选)、实现及[本批报告](../review/reports/audit-baseline-repair-2026-11-17.md)为准。完整C03/R01、receipt/unknown、AL效果/变化源和真实消息仍待实施；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署；原报价按实际已交子出口在后续净剩余核算扣重。
 
 本页把[六条接缝](module-design-handoff.md)展开到模块输入、事务、失败出口和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地画像，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
 

@@ -50,7 +50,7 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 
 ## 单实例运行限制与存储公开入口（2026-11-17存量修复候选）
 
-本批单实例与存储发布画像已通过完整适用门禁及独占组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；当前未推送、合入main或部署，不授予多实例/HA运行许可。
+本批单实例与存储发布画像已通过完整适用门禁及独占组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署，不授予多实例/HA运行许可。
 
 主仓`App.Run`在监听HTTP、提供ready及启动判定日志/cron前，以专用PG会话取得固定advisory lock；同一业务数据库中的第二实例拒启。锁键不随配置端口/主机/工号变化，也没有关闭开关。每套业务DB须独占其Redis DB/键空间；跨不同PG数据库却误用同一Redis键空间不在此PG锁保护范围，运行画像须拒绝这种接线。锁会话不占业务池，退出收尾后关闭；TR的唯一调度主由TR本身守卫，主仓锁不覆盖它。
 
