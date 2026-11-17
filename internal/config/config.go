@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -167,7 +166,7 @@ type ArchiveConfig struct {
 	RetentionDays     int    `mapstructure:"retention_days"`      // 默认 180（等保 ≥6 个月口径）
 	BatchRows         int    `mapstructure:"batch_rows"`          // 默认 5000（单批导出后删行）
 	OutDir            string `mapstructure:"out_dir"`             // JSONL 落盘目录，默认 data/archive
-	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（默认 395，>180 等保口径留余量；<=0 取默认）
+	FileRetentionDays int    `mapstructure:"file_retention_days"` // 归档 JSONL 文件保留天数（零值默认395；启用固定cron时负值拒绝）
 	// P4 cron 收归（2026-09-29）：进程内 ticker+advisory lock——与 taskrunner 侧
 	// cron job 定义部署侧二选一防双跑（默认 false 保持 taskrunner 触发形态）
 	CronEnabled bool   `mapstructure:"cron_enabled"`
@@ -391,29 +390,23 @@ func Load(path string) (*Config, error) {
 	// The override replaces the entire startup grant list; an explicit empty
 	// environment value revokes all grants on restart. No body actor may add IDs.
 	if raw, ok := os.LookupEnv("TASK_MAINTAINER_USER_IDS"); ok {
-		cfg.Taskrunner.Maintenance.MaintainerUserIDs = nil
-		if strings.TrimSpace(raw) != "" {
-			for _, part := range strings.Split(raw, ",") {
-				id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
-				if err != nil || id <= 0 {
-					return nil, fmt.Errorf("TASK_MAINTAINER_USER_IDS requires positive stable user IDs")
-				}
-				cfg.Taskrunner.Maintenance.MaintainerUserIDs = append(cfg.Taskrunner.Maintenance.MaintainerUserIDs, id)
-			}
-		}
+		cfg.Taskrunner.Maintenance.setMaintainerEnvironment(raw)
 	}
 	cfg.Database.applyDefaults()
 	cfg.Redis.applyDefaults()
 	cfg.Storage.ApplyDefaults()
 
-	if cfg.Audit.Archive.RetentionDays <= 0 {
+	if cfg.Audit.Archive.RetentionDays == 0 {
 		cfg.Audit.Archive.RetentionDays = 180
 	}
-	if cfg.Audit.Archive.BatchRows <= 0 {
+	if cfg.Audit.Archive.BatchRows == 0 {
 		cfg.Audit.Archive.BatchRows = 5000
 	}
 	if cfg.Audit.Archive.OutDir == "" {
 		cfg.Audit.Archive.OutDir = "data/archive"
+	}
+	if cfg.Audit.Archive.FileRetentionDays == 0 {
+		cfg.Audit.Archive.FileRetentionDays = 395
 	}
 
 	// 网关 /al 上游 target env 覆盖（2026-11-02 双拓扑免改文件治理）：compose 服务名/

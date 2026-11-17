@@ -16,6 +16,8 @@
 
 本批保留迁移000047的存量兼容：同票有效关联、confirmed及正式purpose可证明时，历史`owner_kind/owner_id`均NULL仍可原样保留，不要求回填也不借此授予新绑定；已有非空但矛盾的owner信息拒绝整笔。该元数据的零回填合同不能被新字段校验悄然改成旧票不可编辑。
 
+pass8补修明确TICKET-R01条件：删附件后关联已解除、对象已标deleted，历史custom_data不自动改写。title-only更新不重提字段，仍可编辑；若请求带custom_data，合并后含该旧key则整笔400，标题/字段/事件不部分写。受权调用方可对可选file字段显式传null删键，或以本人confirmed悬挂新对象替换；required字段不能用null逃过校验，旧deleted key不能重新绑定。当前UI标题编辑与正式custom_data API分开验，不能因UI未编辑该字段就声称API未启用，也不能称完全无修复入口。自动清理历史引用及完整字段编辑UI仍按实际取用另交，不放宽确认、purpose及归属约束。
+
 2026-11-17同批补齐`TicketTypeFieldInput`的`file/radio/rating`公开枚举及Swagger/UI生成类型，使契约覆盖实际11类字段；实际JSON绑定原已接收这三类，不将契约缺项误记为HTTP 400复现。专项与真实发布链结果见[前置修复记录](../review/reports/audit-baseline-repair-2026-11-17.md)。
 
 S5已交付预签名直传、头像/附件/richtext落绑、统一代理下载、配置覆盖与四段GC；代码复验及dev/test来源看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)，后续详情缓存看[11-08复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)。main/生产承接另计；首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。

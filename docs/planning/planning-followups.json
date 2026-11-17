@@ -900,7 +900,7 @@
         "confirmed_recommendation": "本轮存量修复前移边界与CF-06目标账号保护两项建议；真实运行实参仍按Q12启用前绑定",
         "message_id_note": "当前可见会话未提供消息ID，不虚造外部会话标识"
       },
-      "decision_state": "owner_confirmed_not_implemented",
+      "decision_state": "owner_confirmed_baseline_implemented_followup_authorized",
       "confirmed_scope": {
         "pre_phase6_baseline": "当前越权、授权来源固化/丢失、部署及普通办理者核心操作障碍先修；依赖这些能力的新业务在固定组合验收后实施；设计细化可继续",
         "not_a_blanket_gate": "不要求全部69个有效发现或全部IAM-A/B/C清零；完整C/C05/C03与其余P2/P3仍归原包，但实际启用所需子出口不能省",
@@ -926,12 +926,13 @@
         "rule": "仅整段粗预留，不是净新增/日期承诺；逐项扣重，新增保护与F2a实现前具名归属，不机械修改唯一总价或派生排程",
         "current_core_total_changed": false
       },
-      "implementation_state": "not_implemented_planning_contract_and_audit_revisions_only",
-      "quality_scope": "正式权限合同按ordinary语义执行原完整产品门禁并保留planning针对检查；存量门禁通过不证明新行为实现",
+      "implementation_state": "baseline_implemented_merged_main_pass8_followup_implemented_verified_pending_main",
+      "quality_scope": "validation逐字段保留前段正式权限合同的ordinary历史验证，baseline_delivery保留已合main产品历史门禁；本次pass8产品验证为r1主仓完整七门禁及u2 UI完整六门禁、同r1资产绑定和专属真实运行探针均通过。当前全候选文档/生成物收口与独立终审由集成者继续完成，补修尚未合main或部署",
       "real_inputs": "Q12环境、代表角色/数据、支持责任、备份及恢复/保留参数到启用前绑定，不重问既定HIER-D01/IAM-AUDIT-D01/TASK-D01等政策",
-      "authorization_boundary": "当前确认只绑定前述两项建议；本轮先落档与验证，不推定全部Phase6业务开发、push/main合入、远端保护或生产部署授权",
+      "authorization_boundary": "前段方向确认边界保留在historical_contract_stage；所有者随后明确授权前置产品实现并提交推送合main，当前又确认按pass8纠偏建议补修。授权不扩成全部Phase6业务、远端保护变更或真实生产部署，准确交付以各批Git及候选收据为准",
       "historical_34_formal_decisions_unchanged": true,
       "material_id": "maintenance/audit-repair-plan-20261117/",
+      "validation_scope": "historical_contract_stage_only; current baseline and pass8 followup use baseline_delivery and followup_scope",
       "validation": {
         "state": "plan_contract_independently_reviewed_existing_product_gates_passed",
         "business_feature_implementation": false,
@@ -963,6 +964,254 @@
         "cleanup": {
           "owned_compose_resources_remaining": 0,
           "protected_containers_unchanged": 15
+        }
+      },
+      "historical_contract_stage": {
+        "decision_state": "owner_confirmed_not_implemented",
+        "implementation_state": "not_implemented_planning_contract_and_audit_revisions_only",
+        "scope": "前段合同候选；下方validation只保存该时点253验收/81对迁移/20.2%及新行为尚未实施的原始结果，不是当前产品或pass8补修的结果",
+        "material_id": "maintenance/audit-repair-plan-20261117/",
+        "validation_record_field": "validation"
+      },
+      "baseline_delivery": {
+        "state": "implemented_merged_into_main_not_deployed",
+        "scope": [
+          "F1",
+          "F2a",
+          "F0_single_instance",
+          "F4_release_storage",
+          "F3_people",
+          "F5_enabled_journeys"
+        ],
+        "functional_main_commits": {
+          "core": "edb2a5a32e8a5985013754a19c4b2e4135a747bc",
+          "ui": "e93d8e0c580ce5f71876b4bd774665b49ebff68e",
+          "taskrunner": "077adc573d3f3e2e8d1128b473526d27dfb64062"
+        },
+        "implementation_report_ref": "docs/review/reports/audit-baseline-repair-2026-11-17.md",
+        "main_and_latest_baseline_validation_ref": "docs/review/reports/audit-baseline-main-merge-2026-11-17.md",
+        "material_ids": [
+          "maintenance/audit-baseline-repair-20261117/",
+          "maintenance/audit-baseline-main-merge-20261117/"
+        ],
+        "latest_baseline_core_validation": {
+          "candidate_commit": "42b47261a4d4105b802d43193180cdeb93f7aea7",
+          "acceptance_pass": 253,
+          "migration_roundtrip_pairs": 82,
+          "zero_drift": true,
+          "default_unit_statement_coverage": "20.4%",
+          "scope": "已合main前置修复的CI夹具修正候选；不是当前pass8补修的新执行结果。原r2的20.5%及合同阶段20.2%保留各自来源"
+        },
+        "all_audit_findings_closed": false,
+        "production_deployed": false
+      },
+      "followup_scope": {
+        "date": "2026-11-17",
+        "source": "所有者在当前会话确认“ok，按建议来修复”；未提供消息ID，不虚造外部标识",
+        "state": "implemented_verified_pending_main",
+        "branch": "codex/pass8-review-repair-20261117",
+        "topics": [
+          "PLAT-R01正常SIGTERM排空并保留失锁及时取消",
+          "PLAT-R02服务启动拒绝非法维护配置且不堵break-glass配置加载",
+          "TASK-R01固定后台授权、受审配置和正反例",
+          "IAM-R01投影故障识别、受控恢复SOP及验证",
+          "SIB-R01配置引导与真实浏览器正向链",
+          "TICKET-R01显式引用修复API路径及边界",
+          "IAM-R02保持平台角色语义并补授权矩阵",
+          "文档与机读状态对账"
+        ],
+        "report_ref": "docs/review/reports/audit-pass8-followup-2026-11-17.md",
+        "material_id": "maintenance/audit-pass8-followup-20261117/",
+        "validation_state": "runtime_full_gates_and_owned_probes_passed_independent_final_review_pending",
+        "main_merge_state": "not_merged",
+        "production_deployed": false,
+        "remaining_scope": [
+          "完整IAM-C/C05",
+          "完整C03/F2b",
+          "HA/多副本机制",
+          "SIB-R02 RecordSubmit记账/对账",
+          "未取用P2/P3和真实外部条件"
+        ],
+        "validation": {
+          "state": "exact_runtime_product_gates_and_owned_probes_passed",
+          "material_id": "maintenance/audit-pass8-followup-20261117/",
+          "runtime_owner": "zz-pass8-followup-20261117",
+          "runtime_source_manifest_sha256": "0f70d5eed1efdd51a494b279d40bc0480162a96d42c02c0841087546aaf5eb47",
+          "core": {
+            "revision": "r1",
+            "targets": {
+              "lint": 0,
+              "swag": 0,
+              "test-unit": 0,
+              "test-integration": 0,
+              "test-cover": 0,
+              "migrate-up": 0,
+              "acceptance": 0
+            },
+            "top_level_unit_tests": 261,
+            "top_level_tests_including_integration": 635,
+            "failed": 0,
+            "skipped": 0,
+            "acceptance": {
+              "pass": 253,
+              "fail": 0,
+              "skip": 0
+            },
+            "migration_roundtrip": {
+              "pairs": 82,
+              "zero_drift": true
+            },
+            "default_unit_statement_coverage": "20.9%",
+            "gate_receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "runtime/candidates/r1/gate-core-result.json",
+              "sha256": "06d73baf9c5b51705d13db3778977a0fbde8051145f78da8a94afeb5f8e83d65"
+            },
+            "target_result_receipts": [
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-lint.result.json",
+                "sha256": "5bec2999ed344740edfad7ac160df0c20a10a2ce8a6e2858b10e932730ee973f"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-swag.result.json",
+                "sha256": "15ca8c6f480876d4117286e15af623618dfa59ca187eb86aa90303d48baaaec3"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-test-unit.result.json",
+                "sha256": "b6081504682e9bc9a9e56fc53eeafb0176e90e9290d1a9a82cb0e271abf83a5c"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-test-integration.result.json",
+                "sha256": "1e8f5c6e427a6941622d731f9e35c1fa2bd7430e241189b3599c569b56531629"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-test-cover.result.json",
+                "sha256": "a1276a688bdda81c8b8f635a1e25ba5fd5fd72d1ee8247378ea8f484189dff06"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-migrate-up.result.json",
+                "sha256": "78184481a12ed92f65b0d13b7f117edf0d885de1212c68d384f1cf3dc4fa46a8"
+              },
+              {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/core-acceptance.result.json",
+                "sha256": "6a74c2ecc97000379638a20be1c84827db3ed8c772947ec00f2b723f316a3261"
+              }
+            ]
+          },
+          "ui": {
+            "test_revision": "u2",
+            "runtime_base": "r1",
+            "targets": {
+              "lint": 0,
+              "typecheck": 0,
+              "test": 0,
+              "audit-prod": 0,
+              "build": 0,
+              "e2e": 0
+            },
+            "unit_test_files": 37,
+            "unit_tests": 334,
+            "e2e": {
+              "pass": 46,
+              "fail": 0,
+              "skip": 0,
+              "flaky": 0,
+              "automatic_retries": 0
+            },
+            "gate_receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "runtime/ui-retests/u2/gate-ui-result.json",
+              "sha256": "172520d87aaee8d3a4c8a559593a07dfa48e4e6ff029abd94f92cf036a2a6d7b"
+            },
+            "scope_receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "runtime/ui-retests/u2/ui-e2e-scope.json",
+              "sha256": "1d0e175096721cbb879309429501a8ac574e89b9f6ab01baf433d8e39ba99637"
+            },
+            "source_delta_receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "runtime/ui-retests/u2/source-delta.json",
+              "sha256": "c807330dcc029b04b2d40aa177f063b926a51d5478562c5e0c47be11032e516b"
+            },
+            "delta_from_r1": "Only e2e/w5-task-maintenance.spec.ts changed one locator line to the real named combobox; runtime core/TR/AL source files and served UI build/dist assets remain identical",
+            "r1_first_attempt": {
+              "pass": 45,
+              "fail": 1,
+              "state": "preserved_failed_not_relabelled",
+              "reason": "new maintenance spec used a placeholder locator that did not match the actual combobox DOM",
+              "log_receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/gate-logs/ui-e2e.log",
+                "sha256": "e301e68fa7c46d51f6260f68f512425ed4a1347303fbe4dad02216f2832cd2b5"
+              }
+            },
+            "product_assets_equal_to_served_r1": true
+          },
+          "core_ui_source_and_asset_binding_receipt": {
+            "material_id": "maintenance/audit-pass8-followup-20261117/",
+            "relative_path": "runtime/candidates/r1/component-mapped-gate-result.json",
+            "sha256": "910fb9b47cb349e63bbea5eba71a24881c93e068de0398322fbcde426de970f7"
+          },
+          "owned_runtime_probes": {
+            "iam_projection_recovery": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/policy-recovery/2026-11-17T144728.517756_0000-cd889d/result.json",
+                "sha256": "525e084612a18d6f893299a4816f295eafe248ee64e88ece0f820920515e7587"
+              }
+            },
+            "ticket_attachment_reference_recovery": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/probes/ticket-reference-20261117T224927-dec4c3/result.json",
+                "sha256": "753944b3e856a6e90df1616c1da01f5797c7e1f74a985057455990527f1fac0e"
+              }
+            },
+            "fixed_in_process_cron": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/probes/fixed-inprocess-1794927003758527000/result.json",
+                "sha256": "98cf965270cdeb54d3e42f6bdfb568f885b51cf7926b58e3f6047b2e1f42d81d"
+              }
+            },
+            "manual_override_tr_fixed_s3_jsonl_postgres": {
+              "returncode": 0,
+              "receipt": {
+                "material_id": "maintenance/audit-pass8-followup-20261117/",
+                "relative_path": "runtime/candidates/r1/probes/probe-20261117T225056-f4901e/result.json",
+                "sha256": "f5513c06fa39c070b8d1d8ec3aad6f5726e91552dedc74cc33d8693e429ae53c"
+              }
+            }
+          },
+          "postgres_restore": {
+            "returncode": 0,
+            "public_tables": 40,
+            "schema_and_table_count_hashes_equal": true,
+            "temporary_restore_database_dropped": true,
+            "receipt": {
+              "material_id": "maintenance/audit-pass8-followup-20261117/",
+              "relative_path": "runtime/candidates/r1/probes/probe-20261117T225056-f4901e/postgres-logical-restore.json",
+              "sha256": "62f928acc6d4bad755adad2fff4c092d21d456650722c9cff0872dc71136cf4d"
+            },
+            "limits": "Same owned PostgreSQL instance, distinct temporary database; no off-host/PITR/cross-media snapshot claim"
+          },
+          "historical_failures_preserved": [
+            "r1 UI45/46 initial combobox locator timeout retained; only u2 full six-gate rerun is current green evidence",
+            "first TICKET local probe queried nonexistent event_type; original failure retained and readonly projection corrected to actual columns; not a product test red"
+          ],
+          "independent_final_review": "pending_root_closeout",
+          "final_document_candidate_checks": "pending_root_generator_and_quality_checks",
+          "all_audit_findings_closed": false
         }
       }
     }

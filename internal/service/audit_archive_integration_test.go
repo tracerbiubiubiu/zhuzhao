@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
@@ -61,7 +62,8 @@ func TestAuditArchiveJob(t *testing.T) {
 
 		dir := t.TempDir()
 		repo := repository.NewAuditLogRepo(testPool)
-		job := service.NewAuditArchiveJob(repo, 180, 2, dir, 0, nil) // batch=2 → 分批路径也被覆盖；0=构造器默认 395
+		job, err := service.NewFixedAuditArchiveJob(repo, config.ArchiveConfig{CronEnabled: true, CronTick: "30s", RetentionDays: 180, BatchRows: 2, OutDir: dir, FileRetentionDays: 395}, nil)
+		require.NoError(t, err) // batch=2 preserves the actual multi-batch coverage.
 
 		require.NoError(t, job.Handle(ctx, nil))
 
@@ -91,7 +93,8 @@ func TestAuditArchiveJob(t *testing.T) {
 	t.Run("retention override via params, invalid params abort", func(t *testing.T) {
 		dir := t.TempDir()
 		repo := repository.NewAuditLogRepo(testPool)
-		job := service.NewAuditArchiveJob(repo, 180, 5000, dir, 0, nil)
+		job, err := service.NewFixedAuditArchiveJob(repo, config.ArchiveConfig{CronEnabled: true, CronTick: "30s", RetentionDays: 180, BatchRows: 5000, OutDir: dir, FileRetentionDays: 395}, nil)
+		require.NoError(t, err)
 
 		// 10 天前的行：默认 180 不动；params retention_days=5 → 归档
 		marker := "arch-short-" + time.Now().Format("150405.000000000")
@@ -105,7 +108,7 @@ func TestAuditArchiveJob(t *testing.T) {
 			"没有私有准入上下文的覆盖不得删除")
 
 		// 非法 params → ErrAbort（4xx 不可重试，P7）
-		err := job.Handle(ctx, json.RawMessage(`{bad json`))
+		err = job.Handle(ctx, json.RawMessage(`{bad json`))
 		require.Error(t, err)
 		require.ErrorIs(t, err, jobs.ErrAbort)
 	})

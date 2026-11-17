@@ -30,6 +30,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
@@ -48,6 +49,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	singletonTestDSN, err = c.ConnectionString(ctx, "sslmode=disable")
+	fmt.Fprintln(os.Stdout, "F0 exclusive PostgreSQL container:", c.GetContainerID())
 	if err == nil {
 		singletonTestPool, err = pgxpool.New(ctx, singletonTestDSN)
 	}
@@ -65,9 +67,14 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-type singletonTestStore struct{}
+type singletonTestStore struct{ pool *pgxpool.Pool }
 
-func (singletonTestStore) InsertPolicyEvals(context.Context, []audit.PolicyEvalEntry) error {
+func (s singletonTestStore) InsertPolicyEvals(ctx context.Context, rows []audit.PolicyEvalEntry) error {
+	for _, row := range rows {
+		if _, err := s.pool.Exec(ctx, "INSERT INTO f0_effects(id,n) VALUES($1,1) ON CONFLICT(id) DO NOTHING", row.ResourceID); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -118,14 +125,23 @@ func TestSingletonAppProcess(t *testing.T) {
 	redis := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	defer redis.Close()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	writer := audit.NewPolicyEvalWriter(audit.PolicyEvalConfig{}, redis, singletonTestStore{}, logger)
+	writer := audit.NewPolicyEvalWriter(audit.PolicyEvalConfig{}, redis, singletonTestStore{pool: pool}, logger)
+	registerShutdownTestRoutes(r, pool, id, writer)
 	a := &App{cfg: &config.Config{Server: config.ServerConfig{Port: port}, Database: config.DatabaseConfig{Host: pgcfg.Host, Port: int(pgcfg.Port), User: pgcfg.User, Password: pgcfg.Password, DBName: pgcfg.Database, SSLMode: "disable"}}, logger: logger, router: r, policyEval: writer}
 	a.auditCron = service.NewCronScheduler(pool, "f0_helper_"+id, singletonCronFunc(func(ctx context.Context) error {
 		_, err := pool.Exec(ctx, "UPDATE f0_effects SET n=n+1 WHERE id=$1", id)
 		return err
 	}), 10*time.Millisecond, logger)
-	if err := a.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "App.Run exited:", err)
+	err = a.Run()
+	switch os.Getenv("ZZ_F0_EXPECT") {
+	case "occupied":
+		require.ErrorIs(t, err, singleton.ErrOccupied)
+	case "lost":
+		require.ErrorIs(t, err, singleton.ErrLost)
+	case "deadline":
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	default:
+		require.NoError(t, err)
 	}
 }
 
@@ -135,20 +151,25 @@ type singletonProcess struct {
 	mu   sync.Mutex
 	err  error
 	port int
+	log  string
 }
 
 func startSingletonProcess(t *testing.T, id string) *singletonProcess {
+	return startSingletonProcessExpected(t, id, "normal")
+}
+
+func startSingletonProcessExpected(t *testing.T, id, expected string) *singletonProcess {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	port := listener.Addr().(*net.TCPAddr).Port
 	require.NoError(t, listener.Close())
-	cmd := exec.Command(os.Args[0], "-test.run=^TestSingletonAppProcess$", "-test.timeout=30s")
-	cmd.Env = append(os.Environ(), "ZZ_F0_HELPER=1", "ZZ_F0_DSN="+singletonTestDSN, "ZZ_F0_ID="+id, "ZZ_F0_PORT="+strconv.Itoa(port))
+	cmd := exec.Command(os.Args[0], "-test.run=^TestSingletonAppProcess$", "-test.timeout=45s")
+	cmd.Env = append(os.Environ(), "ZZ_F0_HELPER=1", "ZZ_F0_DSN="+singletonTestDSN, "ZZ_F0_ID="+id, "ZZ_F0_PORT="+strconv.Itoa(port), "ZZ_F0_EXPECT="+expected)
 	log, err := os.CreateTemp(t.TempDir(), "child-*.log")
 	require.NoError(t, err)
 	cmd.Stdout, cmd.Stderr = log, log
-	p := &singletonProcess{cmd: cmd, done: make(chan struct{}), port: port}
+	p := &singletonProcess{cmd: cmd, done: make(chan struct{}), port: port, log: log.Name()}
 	require.NoError(t, cmd.Start())
 	go func() {
 		err := cmd.Wait()
@@ -178,14 +199,24 @@ func (p *singletonProcess) ready() bool {
 	return resp.StatusCode == http.StatusOK
 }
 func (p *singletonProcess) wait(t *testing.T) {
+	p.waitWithin(t, 5*time.Second)
+}
+
+func (p *singletonProcess) waitWithin(t *testing.T, timeout time.Duration) {
 	t.Helper()
 	select {
 	case <-p.done:
 		p.mu.Lock()
 		err := p.err
 		p.mu.Unlock()
+		if err != nil {
+			childLog, _ := os.ReadFile(p.log)
+			t.Logf("singleton helper log:\n%s", childLog)
+		}
 		require.NoError(t, err)
-	case <-time.After(5 * time.Second):
+	case <-time.After(timeout):
+		childLog, _ := os.ReadFile(p.log)
+		t.Logf("singleton helper log:\n%s", childLog)
 		t.Fatal("App.Run failed to stop after singleton loss or signal")
 	}
 }
@@ -200,18 +231,23 @@ func TestAppSingletonRejectsReplicaBeforeHTTPAndBackgroundThenRecovers(t *testin
 	for round := 0; round < 8; round++ {
 		t.Run(strconv.Itoa(round), func(t *testing.T) {
 			ownerID := fmt.Sprintf("owner_%d", round)
-			owner := startSingletonProcess(t, ownerID)
+			owner := startSingletonProcessExpected(t, ownerID, "lost")
 			require.Eventually(t, owner.ready, 5*time.Second, 20*time.Millisecond)
 			require.Eventually(t, func() bool { return f0Effects(t, ownerID) > 0 }, time.Second, 10*time.Millisecond)
 			replicaID := fmt.Sprintf("replica_%d", round)
-			replica := startSingletonProcess(t, replicaID)
-			deadline := time.After(3 * time.Second)
+			replica := startSingletonProcessExpected(t, replicaID, "occupied")
+			// Acquire allows five seconds; the race-instrumented child also waits
+			// at process exit. This budget bounds termination, while every poll
+			// still forbids serving HTTP or starting any background effect.
+			deadline := time.After(8 * time.Second)
 		waitReplica:
 			for {
 				select {
 				case <-replica.done:
 					break waitReplica
 				case <-deadline:
+					childLog, _ := os.ReadFile(replica.log)
+					t.Logf("rejected replica helper log:\n%s", childLog)
 					t.Fatal("second App.Run was not rejected")
 				default:
 					if replica.ready() {

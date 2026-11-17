@@ -57,7 +57,11 @@ TR固定cron默认不开通。需在`fixed_jobs`绑定`job_id/definition_sha256/
 
 新建敏感cron必须先停用；TR分配新job_id前不能证明固定任务绑定，body所填的既有job_id不授予新定义批准。规范字段只接受已声明的小写拼写，拒绝与声明键大小写折叠相同的其它拼写（含Unicode折叠）；避免typed校验与map重排后转发看到不同定义。`retention_days/approval_id`同规，普通合法payload及原未声明扩展字段的非授权用途不受此条放宽。
 
-`AuthorizeCallback`返回私有执行上下文；`AuditArchiveJob.Handle`在同一PG事务对人工账号做fresh `FOR SHARE`检查并执行取批/删除，批准窗口在提交前再核。已提交的禁用先发生则零效果；效果事务先持锁时，禁用等待其结束。启动grant撤销在重启后拒绝旧队列，不能解释成无需重启的撤权。固定进程内cron仍用构造时配置，不依赖外部actor文本。文件先写未提交DB时仍可能保留重复导出，恢复按原记录去重。
+`AuthorizeCallback`返回私有执行上下文；`AuditArchiveJob.Handle`在同一PG事务对人工账号做fresh `FOR SHARE`检查并执行取批/删除，批准窗口在提交前再核。已提交的禁用先发生则零效果；效果事务先持锁时，禁用等待其结束。启动grant撤销在重启后拒绝旧队列，不能解释成无需重启的撤权。没有该私有准入的普通Handler调用，即使参数缺省或自称system也拒绝；不能把公开action注册当作维护批准。
+
+固定进程内cron是另一个启动时批准的后台来源：部署者显式启用并审查`audit.archive`固定定义，`App.NewApp`通过`NewFixedAuditArchiveJob`创建私有后台能力，绑定`service:zhuzhao/audit_archive`及构造时配置，不注册到公共动作表，不依赖外部actor或人工维护者名单。启用时tick须为合法正duration、库内保留期1–36500天、batch/文件保留期为正数、目录非空；无效定义拒启，关闭时不授任何后台能力。运行只准使用固定保留值，不接受临时批准或其它参数覆盖。两种归档调度仍须二选一，见[切换步骤](../ops/cron-migration.md)。这是落实既有TASK-D01固定cron合同，不新增在线批准平台。
+
+人工维护开通、受控覆盖及固定TR job的实操见[runbook §6.4](../ops/runbook.md#64-审计维护开通与核查)。非法`TASK_MAINTAINER_USER_IDS`由服务端`Config.Validate`拒启；`Config.Load`仍可供break-glass消费连接配置，不要求应急CLI满足无关的任务启动前置。文件先写未提交DB时仍可能保留重复导出，恢复按原记录去重。
 
 新job的creator由Service可信上下文生成；新消息规则的created_by取同一稳定用户ID，更新保留原creator/CAS，本次modifier仍由原HTTP审计记录。历史归属不批量改写，也不据此建立“我的任务”授权。
 

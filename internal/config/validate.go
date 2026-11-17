@@ -24,6 +24,12 @@ var repoKnownSecrets = map[string]struct{}{
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
 // 原仅校验 secret，TTL 漏配为 0 时 token 签发即过期且无启动期报错，排障成本高）
 func (c *Config) Validate() error {
+	if err := c.Taskrunner.Maintenance.validateStartup(); err != nil {
+		return err
+	}
+	if err := c.Audit.Archive.ValidateFixedCron(); err != nil {
+		return err
+	}
 	mode := c.Server.Mode
 	if mode == "" {
 		mode = "debug"

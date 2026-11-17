@@ -40,8 +40,9 @@ type App struct {
 	router           *gin.Engine
 	server           *http.Server
 	backgroundCancel context.CancelFunc
+	requestCancel    context.CancelFunc
 	background       sync.WaitGroup
-	policyEval       *audit.PolicyEvalWriter // B11① 判定日志 L2（随 Run 的信号 ctx 启停）
+	policyEval       *audit.PolicyEvalWriter // B11① 判定日志 L2（HTTP排空后停止消费）
 	auditCron        *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
 	storageGC        *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
 	timeoutScan      *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
@@ -129,9 +130,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	var auditCron *service.CronScheduler
 	if cfg.Audit.Archive.CronEnabled {
 		tick, _ := time.ParseDuration(cfg.Audit.Archive.CronTick)
-		job := service.NewAuditArchiveJob(repository.NewAuditLogRepo(pool),
-			cfg.Audit.Archive.RetentionDays, cfg.Audit.Archive.BatchRows, cfg.Audit.Archive.OutDir,
-			cfg.Audit.Archive.FileRetentionDays, logger)
+		job, err := service.NewFixedAuditArchiveJob(repository.NewAuditLogRepo(pool), cfg.Audit.Archive, logger)
+		if err != nil {
+			return nil, fmt.Errorf("fixed audit maintenance admission: %w", err)
+		}
 		auditCron = service.NewCronScheduler(pool, "audit_archive", job, tick, logger)
 		logger.Info("audit_archive cron enabled (in-process ticker; disable taskrunner-side job to avoid double-run)")
 	}
@@ -275,6 +277,11 @@ func (a *App) Run() error {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 	a.backgroundCancel = cancel
+	// Signals stop producers immediately, but admitted HTTP transactions retain
+	// their context until graceful draining finishes or ownership is lost.
+	requestCtx, cancelRequests := context.WithCancel(context.Background())
+	defer cancelRequests()
+	a.requestCancel = cancelRequests
 	acquireCtx, acquireCancel := context.WithTimeout(ctx, 5*time.Second)
 	guard, err := singleton.Acquire(acquireCtx, a.cfg.Database.DSN())
 	acquireCancel()
@@ -285,10 +292,25 @@ func (a *App) Run() error {
 
 	a.server = &http.Server{
 		Addr: fmt.Sprintf(":%d", a.cfg.Server.Port), Handler: guard.Handler(a.router),
-		BaseContext:       func(net.Listener) context.Context { return ctx },
+		BaseContext:       func(net.Listener) context.Context { return requestCtx },
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 60 * time.Second, IdleTimeout: 120 * time.Second,
 	}
+	// Keep fencing active during Shutdown as well: SIGTERM may start a normal
+	// drain before the singleton session is subsequently lost.
+	watchCtx, stopWatch := context.WithCancel(context.Background())
+	watchDone := make(chan struct{})
+	go func() {
+		defer close(watchDone)
+		select {
+		case <-guard.Lost():
+			cancel()
+			cancelRequests()
+			_ = a.server.Close()
+		case <-watchCtx.Done():
+		}
+	}()
+	defer func() { stopWatch(); <-watchDone }()
 	serverErr := make(chan error, 1)
 	go func() {
 		a.logger.Info("server starting", slog.Int("port", a.cfg.Server.Port), slog.String("mode", a.cfg.Server.Mode))
@@ -299,7 +321,7 @@ func (a *App) Run() error {
 		serverErr <- err
 	}()
 	if a.policyEval != nil {
-		a.policyEval.Start(ctx)
+		a.policyEval.Start(requestCtx)
 	}
 	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
 		if scheduler == nil {
@@ -318,6 +340,7 @@ func (a *App) Run() error {
 		runErr = singleton.ErrLost
 		a.logger.Error("singleton ownership lost; stopping HTTP and background work")
 		cancel()
+		cancelRequests()
 		// A lost deployment lease cannot continue draining accepted connections as
 		// if it still owned the database. Cancellation also reaches request contexts.
 		_ = a.server.Close()
@@ -328,7 +351,19 @@ func (a *App) Run() error {
 		a.logger.Info("server shutting down...")
 	}
 	cancel()
-	return errors.Join(runErr, a.Shutdown())
+	shutdownErr := a.Shutdown()
+	select {
+	case <-guard.Lost():
+		if !errors.Is(runErr, singleton.ErrLost) {
+			runErr = errors.Join(runErr, singleton.ErrLost)
+		}
+	default:
+	}
+	// A timed-out drain or fencing may leave context-aware handlers completing
+	// cancellation. Join them before releasing the singleton session or PG pool.
+	drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer drainCancel()
+	return errors.Join(runErr, shutdownErr, guard.DrainRequests(drainCtx))
 }
 
 // Shutdown 优雅关闭
@@ -342,8 +377,12 @@ func (a *App) Shutdown() error {
 	// 1. 停止接受新请求（即使排空失败也继续后续收尾——提前 return 会跳过
 	// policyEval.Stop，drain 打在已关闭 Redis 上静默丢行）
 	serverErr := a.server.Shutdown(ctx)
+	if a.requestCancel != nil {
+		a.requestCancel()
+	}
 	if serverErr != nil {
 		a.logger.Error("server forced to shutdown", slog.Any("error", serverErr))
+		_ = a.server.Close()
 	}
 
 	// Join cron loops before releasing the singleton session or closing PG.
@@ -361,7 +400,7 @@ func (a *App) Shutdown() error {
 	// 重启续消不丢，但会有 Warn 留痕）
 	if a.policyEval != nil {
 		if !a.policyEval.Stop(5 * time.Second) {
-			a.logger.Warn("policy_eval writer shutdown timeout, residual rows stay in redis")
+			a.logger.Warn("policy_eval writer shutdown timeout; only completed Redis pushes are durable")
 		}
 	}
 
