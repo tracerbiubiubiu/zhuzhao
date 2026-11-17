@@ -518,7 +518,7 @@
   "audit_repair_followup": {
     "date": "2026-11-17",
     "source_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection",
-    "state": "baseline_implemented_merged_main_pass8_followup_implemented_verified_pending_main",
+    "state": "implemented_verified_merged_main_not_deployed",
     "confirmed": [
       "存量安全/必要可用性修复前移，按启用范围验收，非全部审计项清零",
       "CF-06目标强权保护只收紧敏感写，actor直接IAM管理资格不变"
@@ -527,13 +527,16 @@
     "target_protection_ref": "docs/phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现",
     "pending_owner_policy_choices": [],
     "remaining_real_inputs_ref": "#/execution_actions/Q12_trial",
-    "boundary": "不更改历史13阅读分组/34决策统计，不重问既定政策。前置baseline产品已合main、未部署；F023 validation逐字段保留前段合同253/81/20.2%历史结果，baseline20.4%亦不改。本次pass8已实现并完成r1 core七门禁、u2 UI六门禁及同源资产绑定和专属真实运行验证，仍待全候选文档收口/独立终审与main合入；不表示生产部署或完整C05/F2b/HA/SIB-R02已交。真实环境按Q12绑定",
+    "boundary": "不更改历史13阅读分组/34决策统计，不重问既定政策。前置baseline产品已合main、未部署；F023 validation逐字段保留前段合同253/81/20.2%历史结果，baseline20.4%亦不改。本次pass8已完成r1 core七门禁、u2 UI六门禁、同源资产绑定、专属真实运行验证、本地适用quality和源/runtime/docs独审，并由core PR15及UI PR9合入已验证树等的main，branch与PR四个CI成功；两个准确功能main CI均已success（主仓44114420530、UI44114486495），归档/最终清理及收口文档承接按材料封存及独立操作收据。不表示生产部署或完整C05/F2b/HA/SIB-R02已交。真实环境按Q12绑定",
     "baseline_delivery_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection",
     "baseline_main_report_ref": "docs/review/reports/audit-baseline-main-merge-2026-11-17.md",
     "pass8_followup_report_ref": "docs/review/reports/audit-pass8-followup-2026-11-17.md",
-    "pass8_followup_validation_state": "runtime_full_gates_and_owned_probes_passed_independent_final_review_pending",
-    "pass8_followup_main_merge_state": "not_merged",
+    "pass8_followup_validation_state": "local_gates_owned_probes_and_independent_reviews_passed",
+    "pass8_followup_main_merge_state": "merged",
     "production_deployed": false,
-    "pass8_followup_validation_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection"
+    "pass8_followup_validation_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection",
+    "pass8_followup_main_ci_state": "passed",
+    "pass8_followup_functional_main_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection",
+    "pass8_followup_main_ci_receipt_ref": "docs/planning/planning-followups.json#F023-audit-repair-scope-and-target-protection"
   }
 }

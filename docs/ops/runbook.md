@@ -259,7 +259,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
-2026-11-17 pass8补修在途：所有者已授权按复审建议实施，主仓/UI唯一集成分支均为`codex/pass8-review-repair-20261117`，产品源在本批独立工作树；root负责提交推送，分工仅修改具名app生命周期、维护配置/动作和UI路径，当前未提交笔数以Git为准。专属资源owner=`zz-pass8-followup-20261117`，原开发服务及活跃UI目录保持不动；执行卡与红绿收据先存ignored批次，收口归材料ID`maintenance/audit-pass8-followup-20261117/`。本行收尾时更新为准确结果，不作其它会话资源清理许可。
+2026-11-17 pass8补修产品交接（已无运行资源占用）：主仓#15与UI#9已按已验head合main，合并树等于验证候选；本批完整门禁/运行专项及独审见[补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。owner=`zz-pass8-followup-20261117`的8容器、7卷、3网络和16个临时镜像标签已精确回收，宿主任务进程零残留，受保护容器/卷/网络身份不变；原开发服务及活跃UI目录未切换。状态文档由root唯一集成，最终main CI、工作树/分支及封存逐项收据归材料ID`maintenance/audit-pass8-followup-20261117/`，以准确Git与sealed-index为准，不凭本行清理其它会话资源。
 
 2026-11-14 本日收尾（交接，不代表生产发布）：五仓保留main及codex/capability-interconnect-design候选，以[七条输入对账](../review/reports/daily-closeout-2026-11-14.md)核实际PR/远端和旧分支清理；[模块首包](../phase6/module-design-handoff.md)承接下一阶段。旧工作树重要ignored内容与历史SHA已本地备份，原main及当前候选证据/日常环境保留；合main、业务开发和真实企业激活未自动执行。
 

@@ -2,7 +2,7 @@
 
 设计日期：2026-11-15；修前基线main `610c1d76`。2026-11-17所有者随后授权前置修复，A/B、CF-06及当前IAM写入所需共同事务/投影失败拒绝子出口已在本地候选实现并通过完整适用门禁和独审；准确范围见[修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)。完整C的revision pair、两命令强审计产品及C05会话恢复仍待交付，三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，真实部署未执行。正文设计预期、修前证据和估算保留原时点，本页设计本身不追加操作许可；本轮推送/合入另由所有者明确授权，部署仍未授权执行。后续按本页、[底座详设](foundation-iam-module-detail.md)及实际所用源符号消费剩余出口。
 
-> **2026-11-17合同阶段（历史）**：所有者当时已确认[存量修复前移边界](../planning/audit-repair-plan-2026-11-17.md)及下方§3.7目标账号接管保护方向；当时核验主仓`822346fea620d934d084d27c77cf421dca6a3327`，未改产品。该句只记录前段合同阶段，后续实现、验证及main承接以上方现势和修复报告为准，不表示当前仍未实现。两项原政策继续有效；pass8后继的恢复说明/授权矩阵等补修已实现并完成r1主仓七门禁、u2 UI六门禁和专属真实运行验证；当前待全候选文档收口、独立终审及main合入，未部署，完整IAM-C/C05仍后继。新执行的261顶层单元/635顶层含集成、253验收、82对零漂移及20.9%与合同阶段和baseline历史数值分开，见[复审补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。
+> **2026-11-17合同阶段（历史）**：所有者当时已确认[存量修复前移边界](../planning/audit-repair-plan-2026-11-17.md)及下方§3.7目标账号接管保护方向；当时核验主仓`822346fea620d934d084d27c77cf421dca6a3327`，未改产品。该句只记录前段合同阶段，后续实现、验证及main承接以上方现势和修复报告为准，不表示当前仍未实现。两项原政策继续有效；pass8后继的恢复说明/授权矩阵等补修已实现并完成r1主仓七门禁、u2 UI六门禁和专属真实运行验证；本地适用quality及源/runtime/docs独审均通过；主仓[PR #15](https://github.com/tracerbiubiubiu/zhuzhao/pull/15)（main `21c1e2806f39e15e2c4f39a54f27958597813acf`）与UI [PR #9](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9)（main `af457b8ceea380cf7123ca8d384485f42cd75b72`）已合入且树等已验证head，branch/PR四个CI成功；两个准确merge head的main CI均已success（主仓44114420530、UI44114486495），未部署。归档与最终分支清理按材料封存及独立操作收据，完整IAM-C/C05仍后继。新执行的261顶层单元/635顶层含集成、253验收、82对零漂移及20.9%与合同阶段和baseline历史数值分开，见[复审补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。
 
 ## 1. 本轮已确认的两项政策
 
