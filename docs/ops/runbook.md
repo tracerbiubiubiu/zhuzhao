@@ -274,7 +274,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
-  | MyOrg、状态图与字典目标保护 | UI三页和回归归独立UI分支，主仓分支只记计划、状态和材料。独占验收owner=`zz-ui-w5-target-20261118`，API 33336、UI 48082、S3 9101，容器、卷和网络已核清零，原9个开发对象指纹一致。 | UI与规划均为本地候选。验证、准确提交和回收收据归材料ID `maintenance/pass8-target-write-20261118/`。 | 2026-11-18 |
+  | MyOrg、状态图与字典目标保护 | UI三页和回归归独立UI分支，主仓分支只记计划、状态和材料。两轮复核独占验收owner=`zz-ui-w5-target-20261118`，API 33336、UI 48082、S3 9101，每轮容器、卷和网络均核清零，原9个开发对象指纹一致。 | UI与规划均为本地候选。提交复核的准确提交、验收和回收收据归材料ID `maintenance/pass8-target-write-20261118/review-followup/`。 | 2026-11-18 |
   | 存量修复三仓main收尾 | root唯一远端、提交与PR合并；独占`codex/audit-baseline-merge-closeout-20261117`仅状态文档候选，原验收报告只加后继链接，产品与旧封存不改 | 三功能PR与功能main适用CI均已成功；后继状态文档按同批Git/收据追溯，专属验证栈已清理；材料ID`maintenance/audit-baseline-main-merge-20261117/`，未部署 | 2026-11-17 |
   | 规划合同与现势引用复核后继 | 独立`codex/planning-contract-alignment` worktree组，基线8c44ef6；canonical main不编辑。root唯一集成/显式路径提交推送，分工只写归属文件并归还；涉及候选Schema/模块说明/派生检查，不开发业务、不改真实内网或共享栈。验证按最终候选分档，若普通档由root另登记独占资源 | 此行不预报提交/远端/CI；实际结果以Git及本批原始收据为准 | 2026-11-16 |
   | F021首版规划复验修订 | 所有者明确授权本批直接在五仓main；根会话唯一集成/显式路径提交及推送。文件分工编辑均需归还，索引不归子会话；主仓规划/生成器和五仓同源classifier测试，未修业务缺陷/真实接线。独占验收owner=`zz-plan-repair-20261116`，API59886/UI59888；占用及回收以本批ignored原始收据为准，禁止连接共享栈；[交付记录](../review/reports/planning-review-repair-2026-11-16.md)分开设计、运行及C05后继已确认行为 | 默认短分支/PR政策不变，本批例外；准确提交、远端及CI以Git和本候选记录为准 | 2026-11-16 |
