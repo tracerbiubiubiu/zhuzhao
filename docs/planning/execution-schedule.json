@@ -4,7 +4,7 @@
   "calendar": null,
   "estimate_source": ["docs/planning/planning-backlog.json", "docs/planning/execution-schedule-model.json", "docs/planning/planning-scope-estimates.json", "docs/planning/uaa-implementation-estimate.json", "docs/planning/uaa-real-integration-conditions.json", "docs/planning/local-core-release-estimate.json", "docs/planning/first-usable-release-target.json", "docs/planning/owner-decision-agenda.json"],
   "source_input_sha256": {
-    "docs/planning/planning-backlog.json": "82433f259c85b0454908d3c01e70c511a7f85fdc772bdae2208bf490f48c58a7",
+    "docs/planning/planning-backlog.json": "1957f991315e60550a0bbfdf55c4635c69168df5b6d2042924b0ae26dec5cf95",
     "docs/planning/execution-schedule-model.json": "61787a0d8b538c217c25f04314cabc7b16ddc232ca146d0e47f9563ac17a2259",
     "docs/planning/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/planning/uaa-implementation-estimate.json": "ba0221b562533c8b34d19cc8c90c325f76da4e0be72bb12a51859413a60e015c",
@@ -12,7 +12,7 @@
     "docs/planning/local-core-release-estimate.json": "5c41f7117735ae15d0f9b84ef1bd1ff01ac0977a77308be38930cea8fc9f62db",
     "docs/planning/first-usable-release-target.json": "4cada219bbf2280f5da7acdc6ebc1ae8672cd78bf6f66d270ccf4c2991d66661",
     "docs/planning/owner-decision-agenda.json": "a2e76b8153b96b11614b853952d18a6d41cbb9ee748f91e2ff438e54bf18a042",
-    "scripts/calculate-planning-schedule.py": "4a42580f5c84d57854ebf520351c9cf3bfc34940313f77440a16b56c65b32f8c"
+    "scripts/calculate-planning-schedule.py": "6b7a374fa5ba3b9ef2b61fccf7740353600fcfc042300dd237a2523cefce6bf7"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",

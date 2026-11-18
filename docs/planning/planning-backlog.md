@@ -157,6 +157,27 @@ Action/身份/调度/MCP形成受控合同；真实提供方逐能力验收，mo
 - `LS05` I04第二类专业来源代表adapter，归I04，P7，4–7净增日；依赖`I04, X02-F`。
 - `LS06` MCP生产既有AS接入及登录主体桥，归A03，P7，8–13净增日；依赖`A03-R, C04, X01-C`。
 
+## 当前活跃包的合同、交接与准入
+
+核对日期：2026-11-18。覆盖当前修复交接及具名后继、首版本地核心正在准备的出口和直接相关的放行条件。此处是既有条目的导航，不新增工作包、估算或状态账。待确认表示缺少本切片的准确合同、交接或证据，不表示已获准开工、验收通过或获准部署。
+
+### 正在承接的修复及具名后继
+
+- **UI 错对象写入（MyOrg、工单状态图、字典）** — 有效合同：[三页的已确认范围和完成条件](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)；实施交接：[候选与复核续补](../review/11-project-control.md#2026-11-18-ui错对象写入修复)；UI 与主仓记录已合入 main，见[本批合入记录](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)；验收／发布准入：按准确候选跑适用 UI 门禁，真实浏览器验对象／世代绑定及服务端效果回读。控制台保留本地收据，合入不等于发布放行，后续放行待确认；不混入另批已合入的角色菜单整体替换。
+- **独立配置批（主仓启动模式、Taskrunner 选库）** — 有效合同：[独立配置批边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)：显式未知值启动失败，保留合法入口；完整旧配置组合待确认；实施交接：独立批次已分出，准确跨仓切片和基线待确认；验收／发布准入：按同节验坏值、既定默认及正式入口，Taskrunner 不误建事实库；运行证据待确认。
+- **F0 存量失锁收尾（不含完整 HA）** — 有效合同：[F0 待实施边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)：区分正常排空与失锁后不得推进接管实例游标；实施交接：同节列待查写入与实现符号，资格异常根因及准确接线待确认；验收／发布准入：真实接管前验退出中途失锁、接管游标和已入队行续消；实际环境及复验收据待确认。不以正常停机或单实例回执证明完整 HA。
+- **F2a 存量任务一致性；C03/F2b 与 I03 原包后继** — 有效合同：[问题及完成条件](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)、[调度恢复合同](../design/schedule-recovery-policy.md)；实施交接：[任务与互通详设](../phase6/task-activelist-message-detail.md)结合修复计划区分已交窄修、存量一致性后继和完整恢复；待实施切片的准确基线待确认；验收／发布准入：[任务交付出口](../phase6/task-activelist-message-detail.md#9-测试先行用例与交付出口)，按实际任务和固定 cron 验代次、补偿、幂等及对账；候选与收据待确认。
+- **模块校验与接入、U02–U06 具名后继** — 有效合同：[同类复核按模块列的边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)，结合[工单](../phase6/ticket-module-detail.md)、[任务与消息](../phase6/task-activelist-message-detail.md)、[前端页族](../phase6/frontend-page-family-detail.md)；逐项配置／消费者语义待确认；实施交接：随各模块启用窗口承接，具体切片、属主与写集待确认；验收／发布准入：验缺省、坏输入和真实消费者；若所选告警是唯一出口，启用前验送达、失败可见和处置。真实渠道与运行卡待确认。
+
+### 首版开工准备与启用边界
+
+- **G01、G02/G03 当前适用的治理切片** — 有效合同：[工程执行设计](../design/engineering-execution-design.md)和[环境归属规则](../ops/runbook.md#7-多会话协作与验收环境纪律2026-10-26-立约)；实施交接：[首批 H01/H02](../phase6/implementation-handoff.md#2-首批可评审pr顺序)，按已交的隔离／分档能力与尚待完成的远端保护／组合验证分别承接；验收／发布准入：核真实保护配置、阻断反例及准确组合；未取得的远端与组合收据待确认，workflow 或单仓绿色不算放行。
+- **C04/C05、D06 与 E01-UAA-C 本地所选出口** — 有效合同：[底座与 IAM](../phase6/foundation-iam-module-detail.md)、[第一批 IAM](../phase6/iam-first-batch-design.md)；实施交接：[首包本地权限与接缝](../phase6/module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，对照[修复交接](audit-repair-plan-2026-11-17.md#5-当前交接状态)扣除已交窄修；剩余切片及候选待确认；验收／发布准入：[权限矩阵与失败出口](../phase6/module-design-handoff.md#22-l1l2l3用例矩阵与失败出口)、[真实试用条件](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。本地不等待完整企业接管，但仍须验证实际启用范围所需的授权负例。
+- **首版风险 → 工单及薄 UI（只含选用的 D/U 子范围）** — 有效合同：[风险详设](../phase6/risk-module-detail.md)、[工单详设](../phase6/ticket-module-detail.md)及[首版范围](../phase6/first-usable-release-plan.md#2-必交业务与支持范围)；实施交接：[后续波次与模块交付物](../phase6/module-design-handoff.md#3-后续波次及每模块统一六交付物)，实际动作、整改流程、字段和角色组合待确认；验收／发布准入：[首版质量出口](../phase6/first-usable-release-plan.md#4-按质量出口交付)，验真实旅程、逐风险证据及未授权拒绝；试用画像和准确候选待确认。
+- **C03、R01、D12、CE02-D、CE03/CE04 与通知的首版子出口** — 有效合同：[共同调用合同](../design/capability-invocation-contract.md)、[任务／AL／消息详设](../phase6/task-activelist-message-detail.md)；实施交接：[首版共同边界](../phase6/module-design-handoff.md#1-先共同钉住的六条边)，实际动作、AL 字段组／订阅、HTTP 渠道和版本组合待确认；验收／发布准入：[任务交付出口](../phase6/task-activelist-message-detail.md#9-测试先行用例与交付出口)、[首版过渡出口](../phase6/first-usable-release-plan.md#42-核心稳定的过渡出口)。验实际生产方／消费者、持久结果与失败对账；需要实际消息的链不能用合成发送放行，真实窗口和收据待确认。
+- **B0、真实试用与 G05/E09 首产硬项（既有出口）** — 有效合同：[本地正式与企业出口](../phase6/first-usable-release-plan.md)、[基础版交付边界](../design/foundation-release-boundaries.md)；实施交接：[候选准备和完成证据](../phase6/implementation-handoff.md)、[运维入口](../ops/README.md)；B0 目标画像及净剩余、真实试用运行卡待确认；验收／发布准入：[B0 与真实业务试用](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)、[本总账发布证据门](#按运行模式检查的发布证据门)，分开核合成预演、真实试用和所选生产形态，不能相互替代。
+- **E01-UAA-P/R（条件触发，非本地首版阻断项）** — 有效合同：[UAA 治理合同](../design/uaa-governance-integration.md)；实施交接：[联调条件与提供方责任](uaa-real-integration-conditions.md)，实际人员、窗口、批准映射待确认；验收／发布准入：[运行模式证据门](#按运行模式检查的发布证据门)与[条件册](uaa-real-integration-conditions.json)：R 切换前查 `pre_apply`，切换后观察另记；合成 mock 不替代真实复验。
+
 ## 依赖、发布与确认窗口
 
 完整包依赖与具名子出口依赖分开；子出口默认继承父外部依赖，E01-UAA、CE02及X02-Q出口显式按自身依赖准入。

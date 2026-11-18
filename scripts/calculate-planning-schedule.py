@@ -760,6 +760,13 @@ def render_backlog(backlog):
     lines += ['', '## 已计价的LS额外子范围','']
     for row in backlog['additional_scope_tasks']:
         lines.append(f"- `{row['id']}` {row['title']}，归{row['owner_package']}，{row['wave']}，{format_pair(row['net_days'])}净增日；依赖`{', '.join(row['dependencies'])}`。")
+    active_work_links = backlog.get('active_work_links')
+    if active_work_links:
+        lines += ['', '## 当前活跃包的合同、交接与准入', '', active_work_links['scope']]
+        for group in active_work_links['groups']:
+            lines += ['', f"### {group['title']}", '']
+            for entry in group['entries']:
+                lines.append(f"- **{entry['label']}** — 有效合同：{entry['contract']}；实施交接：{entry['handoff']}；验收／发布准入：{entry['admission']}")
     lines += ['', '## 依赖、发布与确认窗口','',
         '完整包依赖与具名子出口依赖分开；子出口默认继承父外部依赖，E01-UAA、CE02及X02-Q出口显式按自身依赖准入。',
         'X01-C/B交基础合同与重启生效接缝，X01-H在P7交完整管理增强，仍分解原8–12日；X02-Q只依X01-C，X02-F继续验真实feed安全前提；X03不等H/feed，仍验私有资源权限。',
