@@ -13,7 +13,7 @@
 - 查当前实现：本页§1；查缺陷和实际启用限制：§6。本页不维护另一套规划总价。
 - 查未来范围/详设/净估：[规划收口](../planning/planning-closeout.md)、[模块入口](../phase6/module-detail-index.md)及[首版净估](../planning/local-core-release-estimate.json)。
 - 查试用与正式出口：[首版阶梯](../phase6/first-usable-release-plan.md)；查外部动作与待确认：[议程](../planning/owner-decision-agenda.md)。
-- 查开工前系统理解补齐、演进材料及前三批交付回顾：[专项计划](../planning/system-understanding-and-delivery-plan.md)；计划与空白模板已落档，实例整理及本人讲解确认未执行。
+- 查开工前系统理解最小样例、随前三批整理的故事/时间线及交付回顾：[专项计划](../planning/system-understanding-and-delivery-plan.md)；2026-11-18补充执行顺序、本人预测后查证、模板裁剪和Git归属，实例整理及本人讲解确认未执行。
 - 查本次修订的来源与验证：[报告复验收口](reports/planning-review-repair-2026-11-16.md)。旧日期流水在页末，不能作为现势结论。
 
 ## 当前摘要
@@ -100,7 +100,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 |---|---|
 | 分档门禁 | 已交五仓`document/reference/ordinary`、固定参考验证及常驻汇总；F020准确main已有75自测与完整适用检查。本轮新增首版投影检查另按本候选验收，远端保护仍归G02。 |
 | 测试先行与提交规则 | 保留有效红→绿、适用并发变异、准确候选/首次失败和三节评审说明；显式路径提交、钩子和CI真实窗口已存在。 |
-| 系统理解与交付回顾 | [开工前补齐及前三批试行计划](../planning/system-understanding-and-delivery-plan.md)与[空白模板](../toolkit/templates/capability-delivery-review.md)已落档；能力地图、纵切、故事/时间线实例及本人理解确认尚未执行。技术验证、个人贡献与Git/运行收尾分列，正式规范化待试行复盘，不新增CI门禁或改变业务准入。 |
+| 系统理解与交付回顾 | [开工前最小样例及前三批试行计划](../planning/system-understanding-and-delivery-plan.md)与[空白模板](../toolkit/templates/capability-delivery-review.md)已补充：首选审计归档成功/无维护资格403样例，三个故事/时间线随批整理；本人先预测条件变化再查证，允许查资料；无关提示栏可省略、适用未跑项保留，正式知识随原属主纳入Git、执行实例本地归档，历史基线保留并链接当前后继。能力地图、纵切、故事/时间线实例及本人理解确认尚未执行。技术验证、个人贡献与Git/运行收尾分列，正式规范化待试行复盘，不新增CI门禁或改变业务准入。 |
 | 合同与现势投影守卫 | F022补五页source-only引用及单改/混合/改名的planning接线、长期UAA实际产能稳定门、push候选形状/有限语义覆盖；产品PG/签名/CAS及真实接口仍未交。检查范围、红绿/独审与实际集成状态见[记录](reports/module-contract-alignment-2026-11-16.md)。 |
 | 版本与环境 | 五仓Go/Node/PG/Redis等升级已随先前PR合main；准确版本由各锁/版本表维护，现有dev/test承接见runbook。本轮不改变运行栈。 |
 | 公开入口与文档 | 五仓中英文README、合成展示及贡献入口已存在；在线演示/品牌/社区运营仍按原窗口。现势、规划与历史职责分开。 |
