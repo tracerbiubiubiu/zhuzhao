@@ -15,7 +15,9 @@ Go 模块化单体 **IAM + 工单** 系统（三层鉴权 + 资源级工单）�
 
 ## 常用命令与分档门禁
 
-先运行 `make quality-plan`，再运行 `make quality-check`。候选取 `BASE`（默认 `origin/main`）到 HEAD 的完整差异，另含暂存、未暂存及未跟踪文件。纯说明文档走 `document`，受控候选 Schema/规划数据/隔离示例/原型走 `reference` 并执行针对检查；代码、配置、依赖、迁移、正式协议、产品测试、CI/分类器/豁免及协作规则走 `ordinary`。混合取最高档且保留针对检查，未知从严。详见[开发指南](docs/guides/development.md#4-交付前验证)。
+先运行 `make quality-plan`，再运行 `make quality-check`。候选取 `BASE`（默认 `origin/main`）到 HEAD 的完整差异，另含暂存、未暂存及未跟踪文件。纯说明文档走 `document`，受控候选 Schema/规划数据/隔离示例/原型走 `reference` 并执行针对检查；代码、配置、依赖、迁移、正式协议、产品测试、CI/分类器/豁免及具有执行效力的协作规则走 `ordinary`。混合取最高档且保留针对检查，未知从严。详见[开发指南](docs/guides/development.md#4-交付前验证)。
+
+仅解释工具名称、署名格式和示例的[提交元数据说明](docs/contributing.md#提交元数据与ai署名)，无运行消费者且不改变执行义务时走 `document`，保留提交/文档检查和人工语义复核；同时回填控制台仍保留 `reference/planning` 针对检查。说明页无权新增、覆盖或豁免测试、授权、职责或准入要求；实质规则变更须同步受保护权威文件并走 `ordinary`。`AGENTS.md`、`docs/standards.md` 等受保护文件仍按原规则分类，不因自称“元数据”降档；本次边界调整首次仍执行普通档，不追溯免测。
 
 以下为普通档既有完整门禁；文档档和参考档无需启动业务测试栈。`quality-check` 会执行文档/针对检查；普通档明确提示继续在独占环境执行以下命令，不把分类成功当完整通过。
 
