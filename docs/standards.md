@@ -210,6 +210,10 @@
    - **push 决策点扫描（2026-10-20 立——发现链第 1 道）**：所有者下 push 指令前必跑 `make commit-lint`（默认扫待推送窗口 origin/<branch>..HEAD；`make commit-lint RANGE=HEAD~20` 扫指定范围），违例先本地 `git rebase -i` reword 再推——**本地历史是可改窗口，push 后才是不可改线**；并行会话的提交随主线 push 连带上远端，故扫描对象是待推送全窗口而非单会话自身提交；已 push 存量不追溯；CI 对推送范围校验为第 2 道兜底（发现及时但已不可改）；动因=格式违例屡次在被后续提交覆盖后才被人工发现（rebase 代价随覆盖深度增长），机械发现点必须前移到唯一的人眼决策时点（本条即下行「push 前置三件」①的细则）；
    - **push 前置三件（2026-10-20 立——push 闸门完整形态；同日补细则二条——功能批判定机械口径+报告钉窗口）**：① `make commit-lint` 全绿（格式层，细则=上行扫描条款）；② 窗口内功能批次（含 API/迁移/安全面变更）验收/审计状态明确——已收口、深读审计已核验、或所有者明示带风险直推；**功能批判定机械口径**：窗口内提交触及 `internal/` `migrations/` `configs/` `cmd/` 即功能批，混合批次从功能面判定；纯 `docs/` `scripts/` 提交为豁免类；③ **窗口核对**——待推送集合=已检查集合（并行会话 push 连带效应：窗口混入未审计新提交时先补查再推）；**报告钉窗口**：验收/审计报告记录覆盖端点（形如 `origin/<branch>..HEAD @ <hash>`），push 时对 `git log origin/<branch>..HEAD --oneline` 核差集，差集非空即先补查；commit 照常批批走不冻结（本地可塑），push 才是统一检查的闸门；
    - **footer**（可选）：`BREAKING CHANGE: <说明>`（破坏性变更必标）/ `批次: P5-B5-1`（phase 批次关联）/ `Refs: <文档锚点>`；
+   - **AI辅助署名（2026-11-18所有者确认）**：Author/Committer沿现有身份配置如实记录，不因使用AI自动替换为工具身份；账户署名不证明本人逐行亲写或已经理解。
+     - 对形成提交内容的实质AI辅助，在正文后的footer记录`AI-Assisted-By: <工具名>`；仅审阅用`AI-Reviewed-By: <工具名>`。多工具按实际角色逐行列出，纯问答或未采用的输出不必列；不得自动附上所有可用工具。这两种footer是项目自定义元数据，不作为GitHub共同作者展示。
+     - `Co-authored-by: NAME <EMAIL>`可选，用于实质参与产出且有可核实身份的共同作者；AI工具使用官方公布、可核实的身份邮箱，不编造`zcode@agent`等地址。需要关联GitHub账号时，邮箱须与对应账号绑定，见[GitHub多作者说明](https://docs.github.com/en/pull-requests/how-tos/commit-changes/creating-a-commit-with-multiple-authors)。
+     - 本条从新提交开始执行，不追改已推送历史；仅规定人工记录，不新增CI、钩子或署名强制检查。署名不替代三节评审说明中的实际贡献、理解状态和验证证据，也不扩大提交、推送或部署授权。
    - **五仓机械检查（2026-11-08 RR-GIT-01）**：各仓纳管同源 `scripts/commit-policy.py`（Python3标准库）与三钩，`commit-msg`在旧重题保护的早退前检查拟提交原文，兼容既定 `-F` 路径提交的字面Markdown；`pre-push`读取Git stdin每个ref的真实旧/新OID，CI独立job读取push before/after或PR base/head，均不猜`HEAD~20`或使用合成merge HEAD。初推查全部新增祖先，force push查替换窗口，删除无新增提交；浅历史/缺对象/非法载荷必须失败，CI仅可按精确OID补fetch。所有新增提交（含merge）均要求规范主题及非空正文，合并时显式提供规范消息。
    - **固定启用基线与安装作用域（RR-GIT-01）**：各仓 `scripts/commit-policy-baseline` 固定本次承接前完整SHA，自动窗口只豁免其祖先，不按日期或每次push移动水位；显式历史审计仍严格，不改已推历史。Go四仓`make hooks`、UI`pnpm hooks`调用同源installer，只写当前worktree的`core.hooksPath=.githooks`，保留common fallback，避免尚未承接的main丢原钩子。仅真正从仓外借用钩子且本仓无core/启用基线时WARN沿旧行为；本仓钩子缺检查文件必须失败。未承接main不被宣称已有新门禁。
    - **检查分层（RR-GIT-01）**：①–⑤由五仓core共用（空摘要/纯空白正文也拒绝）；主仓`make commit-lint`保留⑥Swagger与⑦披露/⑧同类扫描/⑨三节WARN，生成器失败明确FAIL；通用hook/CI不对别的HEAD重生成当前工作树。主仓正常CI另以`make lint`校验生成物。拟提交文本之后仍可能被Git cleanup修改，因此pre-push/CI必须再次检查实际存库消息，不能用本地钩子替代最终窗口检查。
@@ -288,6 +292,8 @@
 > 2026-11-06实现核验：公开回复原来只有ticket_events审计留痕，消息中心接线缺口由独立审计修复 `92adc20` 补发ticket.commented，未合main；编辑收件人锚同批补齐。详[B06报告F11](review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)。此分支状态不扩大标签/内部备注语义，也不改变C-20可靠性边界。
 
 ## 变更记录
+
+2026-11-18：§12-9补AI辅助提交署名，按实际产出/审阅角色使用自定义footer，共同作者身份须可核实；从新提交起人工记录，不追改历史、不新增自动门禁，三节评审与实际授权保持原规则。
 
 2026-11-13单维护者质量控制：保留§11原五步及§9/§12全部测试、并发变异、门禁/证据纪律，补当前批全量测试的范围、有效红例、全绿后提交、测试/门禁变更显影及短审阅卡；不启用分档门禁或修改远端保护，不新增实现范围。
 
