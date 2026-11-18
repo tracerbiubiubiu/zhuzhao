@@ -1,5 +1,86 @@
 {
   "date": "2026-11-15",
+  "active_work_links": {
+    "scope": "核对日期：2026-11-18。覆盖当前修复交接及具名后继、首版本地核心正在准备的出口和直接相关的放行条件。此处是既有条目的导航，不新增工作包、估算或状态账。待确认表示缺少本切片的准确合同、交接或证据，不表示已获准开工、验收通过或获准部署。",
+    "groups": [
+      {
+        "title": "正在承接的修复及具名后继",
+        "entries": [
+          {
+            "label": "UI 错对象写入（MyOrg、工单状态图、字典）",
+            "contract": "[三页的已确认范围和完成条件](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)",
+            "handoff": "[候选与复核续补](../review/11-project-control.md#2026-11-18-ui错对象写入修复)；UI 与主仓记录已合入 main，见[本批合入记录](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)",
+            "admission": "按准确候选跑适用 UI 门禁，真实浏览器验对象／世代绑定及服务端效果回读。控制台保留本地收据，合入不等于发布放行，后续放行待确认；不混入另批已合入的角色菜单整体替换。"
+          },
+          {
+            "label": "独立配置批（主仓启动模式、Taskrunner 选库）",
+            "contract": "[独立配置批边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)：显式未知值启动失败，保留合法入口；完整旧配置组合待确认",
+            "handoff": "独立批次已分出，准确跨仓切片和基线待确认",
+            "admission": "按同节验坏值、既定默认及正式入口，Taskrunner 不误建事实库；运行证据待确认。"
+          },
+          {
+            "label": "F0 存量失锁收尾（不含完整 HA）",
+            "contract": "[F0 待实施边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)：区分正常排空与失锁后不得推进接管实例游标",
+            "handoff": "同节列待查写入与实现符号，资格异常根因及准确接线待确认",
+            "admission": "真实接管前验退出中途失锁、接管游标和已入队行续消；实际环境及复验收据待确认。不以正常停机或单实例回执证明完整 HA。"
+          },
+          {
+            "label": "F2a 存量任务一致性；C03/F2b 与 I03 原包后继",
+            "contract": "[问题及完成条件](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)、[调度恢复合同](../design/schedule-recovery-policy.md)",
+            "handoff": "[任务与互通详设](../phase6/task-activelist-message-detail.md)结合修复计划区分已交窄修、存量一致性后继和完整恢复；待实施切片的准确基线待确认",
+            "admission": "[任务交付出口](../phase6/task-activelist-message-detail.md#9-测试先行用例与交付出口)，按实际任务和固定 cron 验代次、补偿、幂等及对账；候选与收据待确认。"
+          },
+          {
+            "label": "模块校验与接入、U02–U06 具名后继",
+            "contract": "[同类复核按模块列的边界](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)，结合[工单](../phase6/ticket-module-detail.md)、[任务与消息](../phase6/task-activelist-message-detail.md)、[前端页族](../phase6/frontend-page-family-detail.md)；逐项配置／消费者语义待确认",
+            "handoff": "随各模块启用窗口承接，具体切片、属主与写集待确认",
+            "admission": "验缺省、坏输入和真实消费者；若所选告警是唯一出口，启用前验送达、失败可见和处置。真实渠道与运行卡待确认。"
+          }
+        ]
+      },
+      {
+        "title": "首版开工准备与启用边界",
+        "entries": [
+          {
+            "label": "G01、G02/G03 当前适用的治理切片",
+            "contract": "[工程执行设计](../design/engineering-execution-design.md)和[环境归属规则](../ops/runbook.md#7-多会话协作与验收环境纪律2026-10-26-立约)",
+            "handoff": "[首批 H01/H02](../phase6/implementation-handoff.md#2-首批可评审pr顺序)，按已交的隔离／分档能力与尚待完成的远端保护／组合验证分别承接",
+            "admission": "核真实保护配置、阻断反例及准确组合；未取得的远端与组合收据待确认，workflow 或单仓绿色不算放行。"
+          },
+          {
+            "label": "C04/C05、D06 与 E01-UAA-C 本地所选出口",
+            "contract": "[底座与 IAM](../phase6/foundation-iam-module-detail.md)、[第一批 IAM](../phase6/iam-first-batch-design.md)",
+            "handoff": "[首包本地权限与接缝](../phase6/module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，对照[修复交接](audit-repair-plan-2026-11-17.md#5-当前交接状态)扣除已交窄修；剩余切片及候选待确认",
+            "admission": "[权限矩阵与失败出口](../phase6/module-design-handoff.md#22-l1l2l3用例矩阵与失败出口)、[真实试用条件](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。本地不等待完整企业接管，但仍须验证实际启用范围所需的授权负例。"
+          },
+          {
+            "label": "首版风险 → 工单及薄 UI（只含选用的 D/U 子范围）",
+            "contract": "[风险详设](../phase6/risk-module-detail.md)、[工单详设](../phase6/ticket-module-detail.md)及[首版范围](../phase6/first-usable-release-plan.md#2-必交业务与支持范围)",
+            "handoff": "[后续波次与模块交付物](../phase6/module-design-handoff.md#3-后续波次及每模块统一六交付物)，实际动作、整改流程、字段和角色组合待确认",
+            "admission": "[首版质量出口](../phase6/first-usable-release-plan.md#4-按质量出口交付)，验真实旅程、逐风险证据及未授权拒绝；试用画像和准确候选待确认。"
+          },
+          {
+            "label": "C03、R01、D12、CE02-D、CE03/CE04 与通知的首版子出口",
+            "contract": "[共同调用合同](../design/capability-invocation-contract.md)、[任务／AL／消息详设](../phase6/task-activelist-message-detail.md)",
+            "handoff": "[首版共同边界](../phase6/module-design-handoff.md#1-先共同钉住的六条边)，实际动作、AL 字段组／订阅、HTTP 渠道和版本组合待确认",
+            "admission": "[任务交付出口](../phase6/task-activelist-message-detail.md#9-测试先行用例与交付出口)、[首版过渡出口](../phase6/first-usable-release-plan.md#42-核心稳定的过渡出口)。验实际生产方／消费者、持久结果与失败对账；需要实际消息的链不能用合成发送放行，真实窗口和收据待确认。"
+          },
+          {
+            "label": "B0、真实试用与 G05/E09 首产硬项（既有出口）",
+            "contract": "[本地正式与企业出口](../phase6/first-usable-release-plan.md)、[基础版交付边界](../design/foundation-release-boundaries.md)",
+            "handoff": "[候选准备和完成证据](../phase6/implementation-handoff.md)、[运维入口](../ops/README.md)；B0 目标画像及净剩余、真实试用运行卡待确认",
+            "admission": "[B0 与真实业务试用](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)、[本总账发布证据门](#按运行模式检查的发布证据门)，分开核合成预演、真实试用和所选生产形态，不能相互替代。"
+          },
+          {
+            "label": "E01-UAA-P/R（条件触发，非本地首版阻断项）",
+            "contract": "[UAA 治理合同](../design/uaa-governance-integration.md)",
+            "handoff": "[联调条件与提供方责任](uaa-real-integration-conditions.md)，实际人员、窗口、批准映射待确认",
+            "admission": "[运行模式证据门](#按运行模式检查的发布证据门)与[条件册](uaa-real-integration-conditions.json)：R 切换前查 `pre_apply`，切换后观察另记；合成 mock 不替代真实复验。"
+          }
+        ]
+      }
+    ]
+  },
   "implementation_status": "business_not_started; G07A/G07B locally_validated_source_changes_in_owner_approved_main_sync",
   "schedule_basis": "原71+CE5=76父包；LS六项为额外范围任务，RP六项替换旧价。1席×每周5工程日，T0相对排程；真实等待另列，设计落档不是开工/部署指令。",
   "waves": {

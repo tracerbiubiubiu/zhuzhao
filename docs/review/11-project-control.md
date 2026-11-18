@@ -18,6 +18,8 @@
 
 ## 当前摘要
 
+- **协作资料**：[智能体角色与并行派单](../toolkit/prompts/agent-roles.md)提供角色选用、工作树、交叉复核、设计委派与暂停提示词。设计和发布角色统一从[规划入口](../planning/README.md#按工作包找合同与交接)定位本批；现有总账补齐[当前活跃包的合同、交接与准入](../planning/planning-backlog.md#当前活跃包的合同交接与准入)，缺项标待确认，不改变产品能力、操作授权或门禁。
+
 - **2026-11-18提交与合入收尾**：AI署名及元数据说明已通过[主仓PR #18](https://github.com/tracerbiubiubiu/zhuzhao/pull/18)合入main `8da1a935`，准确head的push/PR及main CI均成功；原ordinary七门禁、253验收/82对往返、137检查器自测与15分类场景证据保留。[UI PR #10](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/10)承接角色菜单整体替换的树/绑定双读取、完整回填及同角色重开隔离，准确head `d848399`的push/PR CI成功，已合入main `d6b6cab1`，准确main CI亦成功。r3前五门均通过（370单测；audit明确1 high已接受），r4仅两句说明文档调整并通过针对检查；10项产品/测试/审计输入不变，最终r4完整48项真实栈E2E通过，零失败/跳过/重试，独审通过。原47通过/1维护夹具前置失败及审计首红保留；本次真实维护链补齐双端持久成功、专属主体与旧记录归档证据。所有者已接受单一picomatch公告的开发期风险，仍为`accepted_open`未修复；后续开发/构建时随正常依赖审计检查官方修复/兼容升级，不设每日追踪。准确候选、首红及Git/CI以材料ID `maintenance/commit-push-merge-20261118/`为准，不改变既有审计发现与Phase6准入。
 
 - **2026-11-18本机运行环境**：本机合成验证环境已改为单套9服务，实际制品为core `c30756f`、UI `af457b8`、TR `3a52f354`、AL `ee946bec`，不因Git合入自动部署新UI。原16旧容器和3个旧空网络已移除，13个旧数据卷及配置/日志保留；旧运行目录已本机归档。原生宿主/容器对照分别124/252验收通过、82对迁移往返零漂移，正常配置下4项UI冒烟通过；该阶段未复现资格失效。随后UI独占验证临时停保原9对象并起6服务新夹具，48项通过后临时容器/卷/网络已清零，原9的ID/image/env/mount及配置保留，StartedAt因主动停启变化。恢复后原app约19秒再次资格失效exit1，未见OOM或PG先重启；同对象受控恢复后观察60.8秒，首轮ready为null，随后12次ready为200，五健康端点另复核200。新事件发生在全容器同网路径，原因仍开放，不能只归因宿主端口映射，也不能由通用失格日志断言本次必为超时；未改500ms/1s Guard。外置wrapper整体exit1另因bootstrap长短ID重复记账，原result的success=false保留；后继独立对账确认临时资源清零，原始退出及恢复收据均保留。运行及退役材料分别归 `maintenance/environment-reset-singleton-20261118/`、`maintenance/workspace-cleanup-20261118/`、`maintenance/service-retirement-20261118/`；正式试用、生产及HA不由本机验证放行。
