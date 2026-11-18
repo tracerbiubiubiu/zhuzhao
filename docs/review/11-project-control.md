@@ -64,7 +64,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护；直接角色差量往返、任职属性保留及组织派生强权目标敏感写保护 | ✅ Phase 1；2026-11-17修复已合入main、适用CI通过；准确提交见本批后继记录，未部署 | `internal/service/user_service.go` 的 `ensureSensitiveCanManage`、`ensureTargetProtection`；`internal/service/iam_guard.go`；[本批报告](reports/audit-baseline-repair-2026-11-17.md) |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
-| **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；本批窄修本地验证通过 | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
+| **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；2026-11-18 MyOrg错目标写入修复本地通过 | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
@@ -81,7 +81,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **API 限流（07 §2）** | Redis Lua 令牌桶：键取 user_id/ClientIP（登录后/匿名二选一）+ 路由精确覆盖 + 429+Retry-After + Redis 错误 fail-close 503 | ✅ 2026-09-09；**演示栈已启用（2026-09-14，20/40）**：50 并发锤 `/al` 实证 40×200+10×429+Retry-After、补桶节拍与跨路由桶隔离 | `internal/middleware/ratelimit.go` |
 | **BK-22 路由↔menu_apis 对账** | 双向审计（missing_binding/dead_binding）+ 豁免集（探针/internal/公开认证/自服务/orgDelegated/网关前缀）+ wire 启动 fail-fast；发现跑抓出 audit/logs 权限面缺失 → 000025 | ✅ 2026-09-09 | `internal/router/catalog.go` |
 | **通知配置（P4-2）** | notification_configs 表 + 管理 API 四端点 + /internal/notify/dead-letter 死信入口 + taskrunner 终败通知 hook（E-⑥ 形态）+ webhook 全链闭环实测 | ✅ 2026-09-29 | `internal/service/notification_service.go` `migrations/000033` |
-| **字典/系统参数（P4-3）** | 字典类型+字典项 CRUD + 消费端点 GET /user/dicts/:code/items（登录可读）+ 前端管理页 | ✅ 2026-09-29 | `internal/service/dict_service.go` `migrations/000034` |
+| **字典/系统参数（P4-3）** | 字典类型+字典项 CRUD + 消费端点 GET /user/dicts/:code/items（登录可读）+ 前端管理页 | ✅ 2026-09-29；2026-11-18类型与条目防错写本地通过 | `internal/service/dict_service.go` `migrations/000034` |
 | **PAT 个人令牌（P4-6）** | personal_access_tokens 表 + 签发/吊销/列表端点 + 前端管理页 | ✅ 2026-09-29 | `internal/service/pat_service.go` `migrations/000035` |
 | **P2 运维小件（P4-8）** | panic 聚合查询 GET /audit/panics + 路由对账 GET /audit/reconcile + 指标采集预留 | ✅ 2026-09-29（随 W5 前端 audit 页同批交付） | `internal/repository/panic_repo.go` + `internal/handler/ops_handler.go`（原写 panic_service.go 系路径腐烂，2026-10-15 勘误） `migrations/000036` |
 | **自服务组织端点** | GET /user/orgs（富化行 org_member_role+ticket_scope+joined_at，catalogExempt） | ✅ 2026-09-29 | `internal/handler/org_handler.go` |
@@ -92,7 +92,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7）。公式同名绕过与求值输入隔离作为 C1 移交 Phase 6，保留 P1 复核优先级。 | `internal/service/ticket/` `migrations/000051/000052`；[Phase6 件 26](../phase6/06-ticket-completeness.md#327-件-26-公式引用校验与提交重算) |
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 既有能力已交付；2026-11-08 RR-DOC-01：UI14事件选项/跨仓集合守卫及A.9登记已原gate复验 | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061`；[06号A.9](../phase5/06-s6-message-notification.md) |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |
-| **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24（ 待走查） | zhuzhao-ui（02 号附录 A） |
+| **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24；2026-11-18编辑会话与撤销隔离本地通过 | zhuzhao-ui（02 号附录 A） |
 | **工单协作与提醒（P5-S10）** | 抄送（L2 特例通道——可见不可改）/标签（entity_type 泛型）/角标（计算器注册制）/节点超时+催办/Excel 导出（BK-21 同源三件套） | ✅ 2026-10-24（五批全清；🔵 待走查） | `internal/service/ticket/` `migrations/000062-000065` |
 | **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/jobs/` `migrations/000066` |
 | **威胁情报缓存代理（P5-S9）** | intel_cache TTL 7/30 天 config 化 + singleflight + 429 降级矩阵（8 子测）+ intel_cleanup cron | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/threatintel/` `migrations/000067` |
@@ -268,6 +268,12 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-18 UI错对象写入修复
+
+本地UI候选 `259c61cb` 将 MyOrg 的名册和委托写入绑定组织、页码和请求世代，工单类型保存绑定编辑会话并隔离画布撤销历史，字典操作锁定当前类型、条目和已确认的写入目标。MyOrg和字典新增26项错序单测，原真实旅程保留。状态图新增真实浏览器错序和撤销场景，并回读两种类型的状态、元数据与版本。最终前端六件门禁通过，396单测、49项真实栈E2E，零失败、跳过或重试。供应链检查沿用已接受的picomatch单项例外。真实栈临时资源已回收，原9个运行对象对账一致。
+
+本批验证范围限于当前三个编辑入口和既有回归组合，后端授权与跨客户端并发仍归现有服务端合同。配置拒绝误连库、F0失锁收尾、F2a任务一致性和Phase 6后继持续开放，完成条件见[分批承接](../planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。材料ID `maintenance/pass8-target-write-20261118/`，包含本地构建、红绿、真实结果、初次测试夹具超时及清理收据。
 
 ### 2026-11-18 UI交付与依赖风险
 

@@ -38,6 +38,8 @@
 
 ## 后续新增材料
 
+2026-11-18错对象写入修复批使用材料ID `maintenance/pass8-target-write-20261118/`，保存合成错序红绿证据、候选基线、适用门禁及被隔离资源的回收记录。分批处置归[存量修复前移计划](planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)，原始运行材料留本机。
+
 pass8复审后所有者明确要求按建议补修，材料ID`maintenance/audit-pass8-followup-20261117/`保存本批执行卡、红绿/删除关键修复变异、五仓Git来源与四组件源码/运行产物manifest、独占全门禁、浏览器/后台/恢复专项、独审与精确清理收据；最终外置封存以该ID的sealed-index及逐项源/副本SHA和权限复核为准。受控结论归[pass8补修报告](review/reports/audit-pass8-followup-2026-11-17.md)和原前移计划的具名后继表，旧审计和四批封存保留原时点，不覆盖历史validation或上传原始过程材料。
 
 本批源码白名单须在回收最终工作树前封存。封存后最终Git清理、执行副本退役及逐项复核另记同一maintenance目录下的`audit-pass8-followup-20261117-operation-receipt.json`及SHA文件，明确绑定该sealed-index SHA；它不写入或改动已封存payload。最终工作区事实取该操作收据，代码与原始证据取不可变封存，不能把封存前仍存在工作树的快照冒称为收尾后状态。

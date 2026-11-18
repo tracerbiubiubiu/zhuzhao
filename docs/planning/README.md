@@ -10,6 +10,7 @@
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[排期摘要](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
 - 看存量修复的设计与当前承接：[2026-11-17修复计划](audit-repair-plan-2026-11-17.md) → [三仓合入及工作区收尾](../review/reports/audit-baseline-main-merge-2026-11-17.md)。目标账号保护等本批窄修已合main，未部署；完整IAM及其它后继仍按原包扣重，不叠加第二套总价。
+- 看同类问题的当前处置：[错对象写入与后继批次](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。前端三页为本批实施范围，启动选库、失锁、任务链和各模块后继在同节跟踪。
 - 看长期路线及补充：[路线图](../roadmap.md)、[渐进演进](../design/project-evolution-strategy.md)、[路线变化](roadmap-change-comparison-2026-11-12.md)、[互通增量](capability-interconnect-supplement.md)、[旧范围处置](legacy-trigger-disposition.md)。Phase稿保留来源和验收映射，跨阶段规则归领域合同。
 
 ## 机器事实的归属
