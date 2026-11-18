@@ -5,7 +5,7 @@
 ## 日常阅读
 
 - 看当前结论、设计深度及实施出口：[规划收口](planning-closeout.md) → [模块合同入口](../phase6/module-detail-index.md) → [三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
-- 补齐开工前的系统理解、演进脉络及交付回顾：[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先补基线、能力地图、纵切及故事提纲，再随前三个实际交付小批试行；实例尚未整理，不代表已掌握或新增技术门禁。
+- 补齐开工前的系统理解、演进脉络及交付回顾：[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先准备基线卡、能力地图、同旅程成功/拒绝纵切与启动讲解的最小样例；三个故事提纲及时间线随前三个实际交付小批整理。Git维护正式知识与空白模板，执行实例本地归档；实例尚未整理，不代表已掌握或新增技术门禁。
 - 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[排期摘要](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
