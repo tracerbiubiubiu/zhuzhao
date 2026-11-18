@@ -18,9 +18,9 @@
 
 ## 当前摘要
 
-- **2026-11-18提交与合入收尾**：AI署名及元数据说明的两笔本地提交已通过[主仓PR #18](https://github.com/tracerbiubiubiu/zhuzhao/pull/18)合入main `8da1a935`，准确head的push/PR及合入main CI均成功；原冻结候选的ordinary七门禁、253验收/82对往返、137检查器自测与15分类场景证据保留。UI角色菜单分配的r2在途候选已补树/绑定双读取、完整回填和同角色重开隔离，独审及370单测/构建通过；全量浏览器首次47通过、1失败，失败停在独立维护正向用例的专用夹具前置，未执行维护写入；供应链审计另因[无补丁picomatch公告](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)失败。UI尚未提交/合入，不以已知风险或未满足前提记六件全绿；风险承接与补齐验证仍待闭环。候选、首红及Git承接以材料ID `maintenance/commit-push-merge-20261118/`为准，不改变既有审计发现与Phase6准入。
+- **2026-11-18提交与合入收尾**：AI署名及元数据说明已通过[主仓PR #18](https://github.com/tracerbiubiubiu/zhuzhao/pull/18)合入main `8da1a935`，准确head的push/PR及main CI均成功；原ordinary七门禁、253验收/82对往返、137检查器自测与15分类场景证据保留。[UI PR #10](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/10)承接角色菜单整体替换的树/绑定双读取、完整回填及同角色重开隔离，准确head `d848399`的push/PR CI成功，已合入main `d6b6cab1`，准确main CI亦成功。r3前五门均通过（370单测；audit明确1 high已接受），r4仅两句说明文档调整并通过针对检查；10项产品/测试/审计输入不变，最终r4完整48项真实栈E2E通过，零失败/跳过/重试，独审通过。原47通过/1维护夹具前置失败及审计首红保留；本次真实维护链补齐双端持久成功、专属主体与旧记录归档证据。所有者已接受单一picomatch公告的开发期风险，仍为`accepted_open`未修复；后续开发/构建时随正常依赖审计检查官方修复/兼容升级，不设每日追踪。准确候选、首红及Git/CI以材料ID `maintenance/commit-push-merge-20261118/`为准，不改变既有审计发现与Phase6准入。
 
-- **2026-11-18本机运行环境**：本机合成验证环境已改为单套9服务，实际制品为core `c30756f`、UI `af457b8`、TR `3a52f354`、AL `ee946bec`，不因后续Git合入自动部署新UI。原16旧容器和3个旧空网络已移除，13个旧数据卷及配置/日志保留；旧运行目录已本机归档。原生宿主/容器对照分别124/252验收通过、82对迁移往返零漂移，正常配置下4项UI冒烟通过；本轮未复现旧资格失效，底层停顿来源仍开放，未改500ms/1s Guard。运行及退役材料分别归 `maintenance/environment-reset-singleton-20261118/`、`maintenance/workspace-cleanup-20261118/`、`maintenance/service-retirement-20261118/`；正式试用、生产及HA不由本机验证放行。
+- **2026-11-18本机运行环境**：本机合成验证环境已改为单套9服务，实际制品为core `c30756f`、UI `af457b8`、TR `3a52f354`、AL `ee946bec`，不因Git合入自动部署新UI。原16旧容器和3个旧空网络已移除，13个旧数据卷及配置/日志保留；旧运行目录已本机归档。原生宿主/容器对照分别124/252验收通过、82对迁移往返零漂移，正常配置下4项UI冒烟通过；该阶段未复现资格失效。随后UI独占验证临时停保原9对象并起6服务新夹具，48项通过后临时容器/卷/网络已清零，原9的ID/image/env/mount及配置保留，StartedAt因主动停启变化。恢复后原app约19秒再次资格失效exit1，未见OOM或PG先重启；同对象受控恢复后观察60.8秒，首轮ready为null，随后12次ready为200，五健康端点另复核200。新事件发生在全容器同网路径，原因仍开放，不能只归因宿主端口映射，也不能由通用失格日志断言本次必为超时；未改500ms/1s Guard。外置wrapper整体exit1另因bootstrap长短ID重复记账，原result的success=false保留；后继独立对账确认临时资源清零，原始退出及恢复收据均保留。运行及退役材料分别归 `maintenance/environment-reset-singleton-20261118/`、`maintenance/workspace-cleanup-20261118/`、`maintenance/service-retirement-20261118/`；正式试用、生产及HA不由本机验证放行。
 
 - **2026-11-17 pass8补修候选**：正常SIGTERM/应急CLI回归、固定后台准入、维护提示、离线定义摘要工具及组织/附件矩阵已交当前出口；主仓七门禁、253验收/82对往返、UI334单测/46浏览器及真实策略/维护/附件/恢复专项通过，默认单测覆盖率20.9%。原平台角色语义和文件约束保持；源码及准确收据交叉复核，已通过主仓#15/UI#9合入main，分支/PR CI通过，功能main CI已通过，未部署。范围、原失败和后继触发归[补修记录](reports/audit-pass8-followup-2026-11-17.md)。
 
@@ -268,6 +268,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-18 UI交付与依赖风险
+
+角色菜单整体替换已补双读取/精确回填就绪门及同角色重开世代隔离，本地370单测与完整48真实栈E2E通过，准确PR/main状态见当前摘要。`picomatch@4.0.7`的[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)由所有者接受为开发期`accepted_open`，并非修复；pnpm原生`audit.ignore`只列此公告，其他公告仍阻断。后续开发/构建时随正常依赖审计检查官方修复或兼容升级，可用即升级并去除此项，正式使用前复核；没有每日调度、额外回补/换库研发或日期硬阻断。详细范围归[UI测试指南](https://github.com/tracerbiubiubiu/zhuzhao-ui/blob/main/docs/guides/testing.md#开发期已接受的依赖公告)。本次不关闭审计70条总账，恢复后再次出现的单实例资格失效仍按上方运行边界保留开放。
 
 ### pass8复审补修与状态口径
 
