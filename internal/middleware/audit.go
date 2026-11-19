@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 )
 
 // AuditLogger 审计日志写入接口（避免直接依赖 repository 包）
@@ -90,8 +92,8 @@ func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFu
 
 		// F-5 修复：请求 context 随客户端断连而取消，直接用它写库会丢审计
 		// （恰恰是"执行删除后立刻断连规避审计"的攻击场景）。改用
-		// WithoutCancel + 独立超时，保证审计写入不随请求终止。
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), auditWriteTimeout)
+		// 所有权上下文 + 独立超时，保证客户端断开不丢审计，失锁后则停止。
+		ctx, cancel := context.WithTimeout(singleton.Detach(c.Request.Context()), auditWriteTimeout)
 		defer cancel()
 		if err := auditLogger.Insert(ctx, entry); err != nil {
 			slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)

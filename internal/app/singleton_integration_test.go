@@ -30,6 +30,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -121,18 +122,37 @@ func TestSingletonAppProcess(t *testing.T) {
 		_, _ = pool.Exec(ctx, "INSERT INTO f0_effects(id) VALUES($1)", id+"_request_cancelled")
 	})
 
-	mr := miniredis.RunT(t)
-	redis := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	redisAddr := os.Getenv("ZZ_F0_REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = miniredis.RunT(t).Addr()
+	}
+	redis := goredis.NewClient(&goredis.Options{Addr: redisAddr})
 	defer redis.Close()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	writer := audit.NewPolicyEvalWriter(audit.PolicyEvalConfig{}, redis, singletonTestStore{pool: pool}, logger)
+	writerConfig := audit.PolicyEvalConfig{}
+	if os.Getenv("ZZ_F0_HOLD_FLUSH") == "1" {
+		writerConfig.FlushInterval = time.Hour
+	}
+	writer := audit.NewPolicyEvalWriter(writerConfig, redis, singletonTestStore{pool: pool}, logger)
 	registerShutdownTestRoutes(r, pool, id, writer)
 	a := &App{cfg: &config.Config{Server: config.ServerConfig{Port: port}, Database: config.DatabaseConfig{Host: pgcfg.Host, Port: int(pgcfg.Port), User: pgcfg.User, Password: pgcfg.Password, DBName: pgcfg.Database, SSLMode: "disable"}}, logger: logger, router: r, policyEval: writer}
 	a.auditCron = service.NewCronScheduler(pool, "f0_helper_"+id, singletonCronFunc(func(ctx context.Context) error {
 		_, err := pool.Exec(ctx, "UPDATE f0_effects SET n=n+1 WHERE id=$1", id)
 		return err
 	}), 10*time.Millisecond, logger)
+	var detachedDone <-chan struct{}
+	if os.Getenv("ZZ_F0_OWNER_HOOKS") == "1" {
+		a.events = domainevent.NewHookRegistry(logger)
+		detachedDone = registerOwnerLifetimeTestRoute(r, pool, id, a.events)
+	}
 	err = a.Run()
+	if detachedDone != nil {
+		select {
+		case <-detachedDone:
+		case <-time.After(time.Second):
+			t.Fatal("detached HTTP work outlived the owner")
+		}
+	}
 	switch os.Getenv("ZZ_F0_EXPECT") {
 	case "occupied":
 		require.ErrorIs(t, err, singleton.ErrOccupied)

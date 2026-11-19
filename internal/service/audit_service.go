@@ -9,6 +9,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -35,7 +36,7 @@ func (s *AuditService) Insert(ctx context.Context, entry middleware.AuditLogEntr
 // LogLogin 登录审计（公开路由不走 AuditLog 中间件，由 AuthService 显式调用）。
 // D2-04：与中间件路径（F-5）对齐——登录请求的 ctx 随客户端断连取消，
 // 直接透传会丢登录成功/失败审计（撞库攻击无 DB 证据）；改用
-// WithoutCancel + 独立超时，覆盖 auth_service 全部 12 处 LogLogin 调用
+// 所有权上下文 + 独立超时，客户端断开后仍可留痕，失锁时取消。
 func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent string, userID *int64, username string, statusCode int) {
 	entry := middleware.AuditLogEntry{
 		Method:      "POST",
@@ -53,7 +54,7 @@ func (s *AuditService) LogLogin(ctx context.Context, employeeNo, ip, userAgent s
 		entry.UserID = *userID
 		entry.Username = username
 	}
-	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loginAuditWriteTimeout)
+	writeCtx, cancel := context.WithTimeout(singleton.Detach(ctx), loginAuditWriteTimeout)
 	defer cancel()
 	if err := s.Insert(writeCtx, entry); err != nil {
 		slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)
@@ -67,7 +68,7 @@ const loginAuditWriteTimeout = 3 * time.Second
 // /auth/refresh 为公开路由不走 AuditLog 中间件，20015 命中（槽位已推进而旧 RT
 // 重现 = 盗用重放/迟到提交）此前仅以 401 响应可见、DB 零证据。记录≠告警：多标签
 // 并发刷新/弱网迟到提交等合法重放同样命中，降噪前提（宽限窗口/family_id）只 gate
-// 告警面不 gate 记录面——维持台账 C-5 原触发条件。WithoutCancel+独立超时与
+// 告警面不 gate 记录面——维持台账 C-5 原触发条件。所有权上下文和独立超时与
 // LogLogin 同纪律（D2-04：客户端断连不丢安全证据）。
 func (s *AuditService) LogRefreshReplay(ctx context.Context, userID int64, username, ip, userAgent string) {
 	entry := middleware.AuditLogEntry{
@@ -83,7 +84,7 @@ func (s *AuditService) LogRefreshReplay(ctx context.Context, userID int64, usern
 		Username:        username,
 		CreatedAt:       time.Now(),
 	}
-	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loginAuditWriteTimeout)
+	writeCtx, cancel := context.WithTimeout(singleton.Detach(ctx), loginAuditWriteTimeout)
 	defer cancel()
 	if err := s.Insert(writeCtx, entry); err != nil {
 		slog.Error("audit log write failed", "request_id", entry.RequestID, "err", err, "path", entry.Path)

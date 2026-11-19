@@ -3,7 +3,7 @@
 // 数据流（P3 拍板 2026-09-03：异步写）：
 //
 //	hook（registry.Authorize）→ 有界 channel → pump: RPUSH Redis List
-//	  → flusher: LMOVE List→processing → LRANGE → 批量 INSERT → LTRIM processing
+//	  → flusher: LMOVE List→processing → 认领快照 → 批量 INSERT → 核对认领后裁剪
 //
 // 崩溃语义（AL4）：channel 内未推送的行丢失窗口 ≤ 一次 pump 间隔（fail-open 已拍板）；
 // 已入 List / processing 的行持久在 Redis（AOF），重启后 flusher 继续消费不丢。
@@ -13,6 +13,7 @@ package audit
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -109,19 +110,19 @@ func (w *PolicyEvalWriter) Write(e PolicyEvalEntry) {
 	}
 }
 
-// Start 启动 pump 与 flusher；ctx 取消后尽力排空 channel 再退出（优雅停止）。
+// Start 启动 pump 与 flusher；ctx 取消时在仍持有 ownerCtx 的前提下尽力排空。
 // 退出收尾须由 Stop 等待——否则调用方先关 Redis 时 drain/收尾 flush 静默失败。
-func (w *PolicyEvalWriter) Start(ctx context.Context) {
+func (w *PolicyEvalWriter) Start(ctx, ownerCtx context.Context) {
 	pumpDone := make(chan struct{})
 	w.wg.Add(2)
 	go func() {
 		defer w.wg.Done()
 		defer close(pumpDone)
-		w.pump(ctx)
+		w.pump(ctx, ownerCtx)
 	}()
 	go func() {
 		defer w.wg.Done()
-		w.flusher(ctx, pumpDone)
+		w.flusher(ctx, ownerCtx, pumpDone)
 	}()
 }
 
@@ -146,13 +147,16 @@ func (w *PolicyEvalWriter) Stop(timeout time.Duration) bool {
 // pump channel → Redis List。推送失败丢弃该行（fail-open）。
 // 推送用脱离取消的 ctx：取消只终止循环（退出前经 drain 尽力排空），
 // 不毙掉已从 channel 取出的在途条目（否则 cancel 与读同时就绪时静默丢行）。
-func (w *PolicyEvalWriter) pump(ctx context.Context) {
+func (w *PolicyEvalWriter) pump(ctx, ownerCtx context.Context) {
 	push := func(e PolicyEvalEntry) {
+		if ownerCtx.Err() != nil {
+			return
+		}
 		b, err := json.Marshal(e)
 		if err != nil {
 			return // 结构体恒可序列化，防御分支
 		}
-		pctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+		pctx, cancel := context.WithTimeout(ownerCtx, 3*time.Second)
 		defer cancel()
 		if err := w.rdb.RPush(pctx, w.cfg.RedisKey, b).Err(); err != nil {
 			if ctx.Err() == nil {
@@ -163,8 +167,10 @@ func (w *PolicyEvalWriter) pump(ctx context.Context) {
 	}
 	for {
 		select {
+		case <-ownerCtx.Done():
+			return
 		case <-ctx.Done():
-			w.drain()
+			w.drain(ownerCtx)
 			return
 		case e := <-w.ch:
 			push(e)
@@ -173,21 +179,23 @@ func (w *PolicyEvalWriter) pump(ctx context.Context) {
 }
 
 // drain 优雅停止：取消后限时排空 channel 入 Redis（shutdown drain 语义，尽力而为）。
-func (w *PolicyEvalWriter) drain() {
-	timeout := time.After(3 * time.Second)
-	for {
+func (w *PolicyEvalWriter) drain(ownerCtx context.Context) {
+	ctx, cancel := context.WithTimeout(ownerCtx, 3*time.Second)
+	defer cancel()
+	for ctx.Err() == nil {
 		select {
-		case <-timeout:
+		case <-ctx.Done():
 			return
 		case e := <-w.ch:
 			b, _ := json.Marshal(e)
-			ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), time.Second)
-			if err := w.rdb.RPush(ctx, w.cfg.RedisKey, b).Err(); err != nil {
+			pushCtx, pushCancel := context.WithTimeout(ctx, time.Second)
+			err := w.rdb.RPush(pushCtx, w.cfg.RedisKey, b).Err()
+			pushCancel()
+			if err != nil {
 				// 停机排空失败必须留痕：此处静默丢行 = 优雅停机路径上的无痕丢失
 				w.logger.Warn("policy_eval: shutdown drain push failed, entry lost",
 					slog.Any("err", err), slog.String("resource", e.ResourceType))
 			}
-			cancel()
 		default:
 			return
 		}
@@ -195,16 +203,22 @@ func (w *PolicyEvalWriter) drain() {
 }
 
 // flusher Redis List → processing → 批量落库。落库失败留在 processing 下轮重试。
-func (w *PolicyEvalWriter) flusher(ctx context.Context, pumpDone <-chan struct{}) {
+func (w *PolicyEvalWriter) flusher(ctx, ownerCtx context.Context, pumpDone <-chan struct{}) {
 	t := time.NewTicker(w.cfg.FlushInterval)
 	defer t.Stop()
 	for {
 		select {
+		case <-ownerCtx.Done():
+			return
 		case <-ctx.Done():
 			// No producer remains after pump exits. Final flushing must not race
 			// ahead of its last push/drain and leave healthy shutdown rows behind.
-			<-pumpDone
-			fctx, fcancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			select {
+			case <-pumpDone:
+			case <-ownerCtx.Done():
+				return
+			}
+			fctx, fcancel := context.WithTimeout(ownerCtx, 5*time.Second)
 			defer fcancel()
 			w.flushOnce(fctx) // 有界收尾：防 Redis 挂起阻塞退出（残留行重启续消）
 			return
@@ -214,10 +228,29 @@ func (w *PolicyEvalWriter) flusher(ctx context.Context, pumpDone <-chan struct{}
 	}
 }
 
+// Read the head and claim it in one Redis operation. A successor can re-read
+// durable entries immediately, and the superseded consumer cannot trim its batch.
+var claimPolicyBatch = goredis.NewScript(`
+local items = redis.call('LRANGE', KEYS[1], 0, ARGV[1])
+if #items > 0 then redis.call('SET', KEYS[2], ARGV[2]) end
+return items
+`)
+
+var ackPolicyBatch = goredis.NewScript(`
+if redis.call('GET', KEYS[2]) ~= ARGV[1] then return 0 end
+redis.call('LTRIM', KEYS[1], ARGV[2], -1)
+redis.call('DEL', KEYS[2])
+return 1
+`)
+
 func (w *PolicyEvalWriter) flushOnce(ctx context.Context) {
-	for {
+	keys := []string{w.cfg.ProcessingKey, w.cfg.ProcessingKey + ":claim"}
+	for ctx.Err() == nil {
 		// List → processing（LMOVE 原子搬移：崩溃时不丢——行在 processing 持久）
 		for i := 0; i < w.cfg.BatchSize; i++ {
+			if ctx.Err() != nil {
+				return
+			}
 			if err := w.rdb.LMove(ctx, w.cfg.RedisKey, w.cfg.ProcessingKey, "LEFT", "RIGHT").Err(); err != nil {
 				if !errors.Is(err, goredis.Nil) {
 					w.logger.Warn("policy_eval: lmove failed, retry next tick", slog.Any("err", err))
@@ -225,12 +258,16 @@ func (w *PolicyEvalWriter) flushOnce(ctx context.Context) {
 				break
 			}
 		}
-		items, err := w.rdb.LRange(ctx, w.cfg.ProcessingKey, 0, int64(w.cfg.BatchSize-1)).Result()
-		if err != nil {
-			w.logger.Warn("policy_eval: lrange failed, retry next tick", slog.Any("err", err))
+		if ctx.Err() != nil {
 			return
 		}
-		if len(items) == 0 {
+		claim := rand.Text()
+		items, err := claimPolicyBatch.Run(ctx, w.rdb, keys, w.cfg.BatchSize-1, claim).StringSlice()
+		if err != nil {
+			w.logger.Warn("policy_eval: batch claim failed, retry next tick", slog.Any("err", err))
+			return
+		}
+		if len(items) == 0 || ctx.Err() != nil {
 			return
 		}
 		rows := make([]PolicyEvalEntry, 0, len(items))
@@ -246,11 +283,18 @@ func (w *PolicyEvalWriter) flushOnce(ctx context.Context) {
 			w.logger.Warn("policy_eval: insert failed, keep in processing for retry", slog.Any("err", err))
 			return
 		}
-		if err := w.rdb.LTrim(ctx, w.cfg.ProcessingKey, int64(len(items)), -1).Err(); err != nil {
-			// 已落库但裁剪失败：下轮会重复插入这些行（判定日志允许重复——
-			// 幂等不在本层承诺，量级为 flush 窗口内一批），记日志供对账
-			w.logger.Warn("policy_eval: ltrim failed after insert (duplicate window)",
+		if ctx.Err() != nil {
+			return
+		}
+		acked, err := ackPolicyBatch.Run(ctx, w.rdb, keys, claim, len(items)).Int()
+		if err != nil {
+			w.logger.Warn("policy_eval: acknowledgement failed after insert, pending rows may replay",
 				slog.Int("rows", len(items)), slog.Any("err", err))
+			return
+		}
+		if acked == 0 {
+			w.logger.Warn("policy_eval: batch claim changed, stopping stale flush", slog.Int("rows", len(items)))
+			return
 		}
 		if len(items) < w.cfg.BatchSize {
 			return

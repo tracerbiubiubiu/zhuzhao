@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 )
 
 // PanicSink P4-8 panic 落库出口（最小接口——PanicRepo 实现；nil=只记日志不落库）
@@ -33,9 +34,9 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 				)
 				IncPanic() // P4-8 指标计数（与落库同位）
 				if sink != nil {
-					go func(msg, stack, path string) {
-						// 脱离请求取消链（panic 后请求 ctx 不可靠）；有限时长防挂起
-						ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 3*time.Second)
+					go func(ownerCtx context.Context, msg, stack, path string) {
+						// 脱离请求取消，仍受实例所有权和写入时限约束。
+						ctx, cancel := context.WithTimeout(ownerCtx, 3*time.Second)
 						defer cancel()
 						// 指纹=message+栈首 3 行（goroutine 头行含地址不稳定，取后续帧）
 						lines := strings.Split(stack, "\n")[1:] // 审计修复：跳过首行 goroutine N 头行（N 易变致同因 panic 聚合失效）
@@ -48,7 +49,7 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 							pathB = pathB[:200]
 						}
 						_ = sink.Upsert(ctx, hex.EncodeToString(h[:]), msg, stack, pathB)
-					}(fmt.Sprint(err), stack, c.Request.URL.Path)
+					}(singleton.Detach(c.Request.Context()), fmt.Sprint(err), stack, c.Request.URL.Path)
 				}
 				response.InternalError(c, "服务器内部错误")
 				c.Abort()

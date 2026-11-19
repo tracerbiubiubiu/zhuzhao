@@ -6,6 +6,7 @@ package domainevent
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -293,4 +294,106 @@ func TestHookRegistry_ConcurrentDispatchVsDrain(t *testing.T) {
 	snap := served.Load()
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, snap, served.Load(), "Drain 完成后不得有迟到送达（拒收事件不派发）")
+}
+
+func TestHookRegistry_OwnerCancellationStopsAdmissionAndCancelsInflight(t *testing.T) {
+	var logs bytes.Buffer
+	r := NewHookRegistry(slog.New(slog.NewJSONHandler(&logs, nil)))
+	owner, stopOwner := context.WithCancelCause(context.Background())
+	defer stopOwner(nil)
+	r.BindOwner(owner)
+
+	started := make(chan struct{})
+	canceled := make(chan error, 1)
+	release := make(chan struct{})
+	defer close(release)
+	var lateCalls atomic.Int32
+	hook := HookFunc(func(ctx context.Context, ev DomainEvent) {
+		if ev.BizID == "late" {
+			lateCalls.Add(1)
+			return
+		}
+		if ev.BizID == "inflight" {
+			close(started)
+			select {
+			case <-ctx.Done():
+				canceled <- context.Cause(ctx)
+			case <-release:
+			}
+		}
+	})
+	r.Subscribe(BizTicket, "owner.targeted", hook)
+	r.SubscribeAll("owner.wild", HookFunc(func(_ context.Context, ev DomainEvent) {
+		if ev.BizID == "late" {
+			lateCalls.Add(1)
+		}
+	}))
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, BizID: "inflight"})
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("hook did not start while owner was active")
+	}
+	lost := errors.New("owner lost")
+	stopOwner(lost)
+	r.Dispatch(context.Background(), DomainEvent{BizType: BizTicket, BizID: "late"})
+
+	select {
+	case cause := <-canceled:
+		require.ErrorIs(t, cause, lost)
+	case <-time.After(time.Second):
+		t.Fatal("in-flight hook from context.Background did not observe owner cancellation")
+	}
+	drain, cancelDrain := context.WithTimeout(context.Background(), time.Second)
+	defer cancelDrain()
+	require.NoError(t, r.Drain(drain))
+	require.Zero(t, lateCalls.Load())
+	require.Contains(t, logs.String(), "event bus owner context canceled, dispatch rejected")
+}
+
+func TestHookRegistry_BoundHookKeepsCallerContext(t *testing.T) {
+	type valueKey struct{}
+	r := NewHookRegistry(nil)
+	owner, stopOwner := context.WithCancel(context.Background())
+	defer stopOwner()
+	r.BindOwner(owner)
+
+	caller, cancelCallerDeadline := context.WithTimeout(context.WithValue(context.Background(), valueKey{}, "caller"), time.Minute)
+	defer cancelCallerDeadline()
+	caller, cancelCaller := context.WithCancelCause(caller)
+	defer cancelCaller(nil)
+	started := make(chan context.Context, 1)
+	finished := make(chan error, 1)
+	release := make(chan struct{})
+	defer close(release)
+	r.SubscribeAll("owner.caller", HookFunc(func(ctx context.Context, _ DomainEvent) {
+		started <- ctx
+		select {
+		case <-ctx.Done():
+			finished <- context.Cause(ctx)
+		case <-release:
+		}
+	}))
+	r.Dispatch(caller, DomainEvent{BizType: BizTicket})
+
+	select {
+	case ctx := <-started:
+		require.Equal(t, "caller", ctx.Value(valueKey{}))
+		callerDeadline, _ := caller.Deadline()
+		hookDeadline, ok := ctx.Deadline()
+		require.True(t, ok)
+		require.Equal(t, callerDeadline, hookDeadline)
+	case <-time.After(time.Second):
+		t.Fatal("hook did not start")
+	}
+	callerCause := errors.New("caller stopped")
+	cancelCaller(callerCause)
+	select {
+	case cause := <-finished:
+		require.ErrorIs(t, cause, callerCause)
+	case <-time.After(time.Second):
+		t.Fatal("hook did not observe caller cancellation")
+	}
+	require.NoError(t, owner.Err())
 }

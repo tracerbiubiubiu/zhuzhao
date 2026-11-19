@@ -1,6 +1,6 @@
 // HookRegistry 订阅注册表 + 派发器（06 号 A.1——按 biz_type 路由、多订阅者、
 // 每订阅者独立 goroutine + recover 隔离、at-most-once；Drain 供优雅退出排空在途
-// 订阅者——丢失窗口收窄为仅进程崩溃）。
+// 订阅者）。
 package domainevent
 
 import (
@@ -19,8 +19,9 @@ type HookRegistry struct {
 	all    []DomainHook // 全域订阅者（"*" 通配）
 	names  map[string]bool
 	logger *slog.Logger
-	wg     sync.WaitGroup // 在途订阅者 goroutine 计数（Drain 等待对象）
-	closed bool           // Drain 置位后总线永久拒收（mu 保护——G-30：Add 须 happens-before Wait）
+	wg     sync.WaitGroup  // 在途订阅者 goroutine 计数（Drain 等待对象）
+	closed bool            // Drain 置位后总线永久拒收（mu 保护——G-30：Add 须 happens-before Wait）
+	owner  context.Context // 装配后可选绑定（mu 保护）
 }
 
 // NewHookRegistry 创建注册表。
@@ -33,6 +34,20 @@ func NewHookRegistry(logger *slog.Logger) *HookRegistry {
 		names:  make(map[string]bool),
 		logger: logger,
 	}
+}
+
+// BindOwner 在首次 Dispatch 前一次性绑定所有权生命周期。所有权取消后拒绝新事件，
+// 并取消在途订阅者的 context。未绑定时订阅者仍直接使用调用方 context。
+func (r *HookRegistry) BindOwner(ctx context.Context) {
+	if ctx == nil {
+		panic("domainevent: cannot bind nil owner context")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.owner != nil {
+		panic("domainevent: owner context already bound")
+	}
+	r.owner = ctx
 }
 
 // Subscribe 按业务域订阅（同域多订阅者按注册序派发——order 字段不引入，
@@ -72,7 +87,7 @@ func (r *HookRegistry) SubscribeAll(name string, hook DomainHook) {
 
 // Dispatch 派发事件——每订阅者独立 goroutine + recover 隔离（at-most-once：
 // 派发后进程崩溃即丢一条——通知低一致性接受，phase6 高一致性走对账扫描；
-// 优雅退出经 Drain 等待在途订阅者，计划内重启不丢）。
+// 优雅退出经 Drain 等待在途订阅者，失去所有权时可提前取消）。
 // 调用方须在事务提交后调用（06 号 §5.2 异步投递——发送失败不阻塞不回滚）。
 func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 	r.mu.RLock()
@@ -80,6 +95,13 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 		r.mu.RUnlock()
 		// 拒收不静默吞：通知语义至少留痕（排空期事件来源应已停，残发=调度收尾竞态）
 		r.logger.Warn("event bus closed (draining), dispatch rejected",
+			"biz_type", ev.BizType, "action", ev.Action, "biz_id", ev.BizID)
+		return
+	}
+	owner := r.owner
+	if owner != nil && owner.Err() != nil {
+		r.mu.RUnlock()
+		r.logger.Warn("event bus owner context canceled, dispatch rejected",
 			"biz_type", ev.BizType, "action", ev.Action, "biz_id", ev.BizID)
 		return
 	}
@@ -106,7 +128,19 @@ func (r *HookRegistry) Dispatch(ctx context.Context, ev DomainEvent) {
 						"panic", rec, "stack", string(debug.Stack()))
 				}
 			}()
-			hook.OnDomainEvent(ctx, ev)
+			hookCtx := ctx
+			if owner != nil {
+				var cancel context.CancelCauseFunc
+				hookCtx, cancel = context.WithCancelCause(ctx)
+				defer cancel(nil)
+				stop := context.AfterFunc(owner, func() { cancel(context.Cause(owner)) })
+				defer stop()
+				// 派发放行后 goroutine 可能迟到。直接检查 owner，避免等待 AfterFunc 调度。
+				if owner.Err() != nil {
+					return
+				}
+			}
+			hook.OnDomainEvent(hookCtx, ev)
 		}(h)
 	}
 }

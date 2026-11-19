@@ -54,7 +54,7 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 
 主仓`App.Run`在监听HTTP、提供ready及启动判定日志/cron前，以专用PG会话取得固定advisory lock；同一业务数据库中的第二实例拒启。锁键不随配置端口/主机/工号变化，也没有关闭开关。每套业务DB须独占其Redis DB/键空间；跨不同PG数据库却误用同一Redis键空间不在此PG锁保护范围，运行画像须拒绝这种接线。锁会话不占业务池，退出收尾后关闭；TR的唯一调度主由TR本身守卫，主仓锁不覆盖它。
 
-锁状态每500ms核验一次，每次PG查询预算1秒；连接故障/失锁被观察到后，准入包装器拒绝所有HTTP、App取消请求与后台context、硬关失锁实例的HTTP连接，并等待cron退出及既有管道收尾后结束进程。该限制存在最多约1.5秒的探测窗口和调度延迟；已提交效果不能撤销，忽略context/外部调用的旧效果也不能由此栅栏。**不是HA选主或网络分区下零重叠保证**，Casbin传播/flusher/Settings等机制仍开放；禁止以自动故障转移方式启第二实例。DB恢复后由部署者确认旧进程已退出，再重启原受审组合。PG重启不再承诺主仓业务池自愈即可不断进程；单例会话断开按失败退出处理。
+锁状态每500ms核验一次，每次PG查询预算1秒；连接故障/失锁被观察到后，准入包装器拒绝所有HTTP、App取消请求与后台context、硬关失锁实例的HTTP连接，并等待cron和管道停止后结束进程。该限制存在最多约1.5秒的探测窗口和调度延迟；已提交效果不能撤销，忽略context/外部调用的旧效果也不能由此栅栏。**不是HA选主或网络分区下零重叠保证**，Casbin传播、判定日志多实例运行和Settings收敛仍开放；禁止以自动故障转移方式启第二实例。DB恢复后由部署者确认旧进程已退出，再重启原受审组合。PG重启不再承诺主仓业务池自愈即可不断进程；单例会话断开按失败退出处理。
 
 存储有两套client但一组身份与region：`STORAGE_ENDPOINT=http://rustfs:9000`用于服务端CRUD；`STORAGE_PUBLIC_ENDPOINT`只用于签名PUT/GET，必须是浏览器可达的绝对HTTP(S)origin，不带路径/query/凭据，空值仅在非本模板单端点配置中兼容旧行为。签名由独立client生成，反代须保留外部Host，不能在签名后替换URL。`STORAGE_BUCKET`/`STORAGE_REGION`同时供应用与备份接线；TLS公开域名和精确UI CORS源由实际画像绑定。
 
@@ -62,7 +62,7 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 
 完成应同时证明：启用storage的release从迁移到ready、头像/附件presign→PUT→confirm→代理读取；错Host签名拒绝；第二实例HTTP/后台零启动；断锁后请求取消、后台停止与重启恢复。备份/代表恢复沿[备份指南](backup.md)执行，健康探针或本节存在均不等于这些出口已经通过。
 
-pass8补修将正常信号退出和失锁分开：SIGTERM先停接纳/cron生产者，已接纳HTTP在30秒预算内保留请求context，判定日志消费者随请求排空后收尾；超时强关/取消。失锁即使发生在排空期间也立即取消请求和停止执行，不能借正常排空延长无资格实例。升级/回滚均先确认旧版本进程退出再起新版本；旧版本若不实现锁，不能用新版本锁替它提供互斥保证。
+SIGTERM先停接纳和cron生产者，已接纳HTTP在30秒预算内继续，随后排空判定日志和事件订阅者。检测到失锁时，即使正常排空已经开始，也取消最终刷盘、订阅者及脱离请求的尽力写入。已进Redis待处理或`processing`列表的判定行留给接管实例。Redis在一次原子操作内核对批次认领再裁剪，已被接管实例重新认领的批次不会被旧确认裁掉。PG已提交但未确认的行可能重放，未入Redis的行和内存事件仍可丢失。升级、回滚或受控接管均先确认旧进程退出，保留原Redis和PG。旧版本的直接裁剪不受新认领协议约束。
 
 `TASK_MAINTAINER_USER_IDS`已列入`.env.example`，空值默认不开放人工审计维护，不等于开放任务页即可执行。人工/覆盖/固定TR定义的配置、摘要离线计算及拒绝核查按[runbook §6.4](runbook.md#64-审计维护开通与核查)；固定进程内调度按[切换步骤](cron-migration.md)绑定受审启动定义。策略投影503的恢复沿[runbook §6.3](runbook.md#63-当前casbin策略投影失败的恢复)，与后继C05会话恢复分开。
 
