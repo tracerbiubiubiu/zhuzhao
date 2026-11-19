@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/fileref"
@@ -78,7 +79,7 @@ func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string,
 }
 
 // No visibility pruning here: hidden/current stored fields also protect bytes.
-// Missing definitions and malformed values hold the destructive operation.
+// Unknown historical fields still protect any key they may contain.
 func checkStoredAttachmentReferences(ctx context.Context, tx pgx.Tx, typeCode string, raw []byte, key string) error {
 	// SQL NULL and JSON null are legal empty custom_data on fieldless types.
 	if len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
@@ -122,9 +123,30 @@ func checkStoredAttachmentReferences(ctx context.Context, tx pgx.Tx, typeCode st
 		}
 	}
 	for _, value := range data {
-		if string(value) != "null" {
+		var legacy any
+		if json.Unmarshal(value, &legacy) != nil || containsLegacyAttachmentKey(legacy, key) {
 			return ErrStorageAttachmentReferenced
 		}
 	}
 	return nil
+}
+
+func containsLegacyAttachmentKey(value any, key string) bool {
+	switch value := value.(type) {
+	case string:
+		return strings.Contains(value, key)
+	case []any:
+		for _, item := range value {
+			if containsLegacyAttachmentKey(item, key) {
+				return true
+			}
+		}
+	case map[string]any:
+		for name, item := range value {
+			if strings.Contains(name, key) || containsLegacyAttachmentKey(item, key) {
+				return true
+			}
+		}
+	}
+	return false
 }

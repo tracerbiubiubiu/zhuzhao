@@ -249,6 +249,18 @@ func TestC02_DeleteChecksStoredReferencesConservatively(t *testing.T) {
 	}
 }
 
+func TestC02_DeletesUnreferencedAttachmentWithLegacyCustomData(t *testing.T) {
+	env := newB53Env(t)
+	ctx := context.Background()
+	key := env.confirmedCreate(t, env.u1, "attachment_create")
+	req := env.createReq([]string{key}) // Fieldless type with historical metadata.
+	req.CustomData = c02Data(t, map[string]any{"impact_scope": "单个部门"})
+	tk, err := env.svc.Create(ctx, req, env.u1)
+	require.NoError(t, err)
+
+	require.NoError(t, env.stg.DeleteTicketAttachment(ctx, tk.ID, key))
+}
+
 // Hold the ticket row, publish a newly referenced same-ticket object, then let
 // deletion continue. It must observe the committed reference, for eight rounds.
 func TestC02_DeleteReadsReferencesAfterTicketLock(t *testing.T) {
