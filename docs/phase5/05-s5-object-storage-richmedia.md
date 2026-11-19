@@ -8,15 +8,19 @@
 
 > 2026-11-07 B20附件体验：TicketAttachments列表加载失败保留旧内容并原位重试，不显示假空态；上传/删除已成功而刷新失败明确部分成功，不引导重复提交。切单/卸载/较早响应均受身份和序列保护，HTTP错误不重复toast；真实网络中断/重试E2E见[B20报告](../review/reports/zhuzhao-ecosystem-audit-b20-ui-feedback-2026-11-07.md)。
 
-> 2026-11-17 F5/CF-33候选：Update的custom_data file与richtext引用已进入同事务落绑并通过完整适用门禁及组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；当前未部署。Update在工单行锁内合并/校验，用同一次事务字段schema快照提取G2剔除隐藏值后的引用，字段读/MIME读/绑定均复用该事务，禁止在Tx内二次向池取连接。锁序沿工单行→所有来源对象key排序；保存失败则标题/custom_data/绑定/事件整笔回滚。
+> 2026-11-17 F5/CF-33候选：Update的custom_data file与richtext引用已进入同事务落绑并通过完整适用门禁及组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；当前未部署。Update在工单行锁内合并/校验，用同一次事务字段schema快照提取G2剔除隐藏值后的引用，字段读/MIME读/绑定均复用该事务，禁止在Tx内二次向池取连接。锁序当时沿工单行→所有来源对象key排序（本次C02候选统一为对象ID升序）；保存失败则标题/custom_data/绑定/事件整笔回滚。
 >
 > 已绑定且confirmed、正式purpose匹配、owner和关联均属于同票的引用可由合法编辑者保留，上传者不必是当前编辑者。新引用仍须本人confirmed悬挂对象，file只接attachment_create，richtext只接richtext_create；不存在、他人新文件、他票、已删、未确认或purpose不符均400。`req.attachments`重复/旧已绑定键的原400语义保留；跨字段和显式来源可去重，不将同key的file/richtext类型冲突消掉。去重与提取受既有custom_data 64KiB和HTTP请求1MiB上界约束，不新增图数政策；普通附件额度仍按既有配置，内嵌图不占普通附件额度。字段移除不自动删除既有附件，正文引用回收仍按原目标单列。
+
+> 2026-11-19 C02 本地候选（未提交、未部署）：`ticket.Service.Create/Update` 共同使用用途感知的字段引用绑定；Create 的 G2、字段快照与引用提取复用活动事务，显式附件与字段同键只计一次额度，file/richtext 错用途整笔拒绝。工单锁后按对象 **ID 升序** 锁工单用途的来源合集，头像等其它用途在取对象锁前排除；锁后新语句读取当前关联；同票已绑 confirmed 正式对象可由合法协作者保留，历史双 NULL owner 兼容不变，矛盾 owner/已有异票关系不能经显式附件来源被覆盖。
+>
+> 普通附件删除由 `StorageRepo.DeleteTicketAttachment` 同一事务锁票→锁对象→新语句证明当前关联→检查当前全部 file/richtext 存储引用（含隐藏字段），仍被引用返回既有 `ErrConflict`（HTTP 409）与固定泛化提示“附件仍被引用，请先移除引用”，不返回字段名、位置或正文。历史未定义字段中可能的同键引用、解析不确定、矛盾归属或历史多票绑定保守拒绝。无同键的历史普通元数据允许保留；无字段的合法空 custom_data 保留。不存在/非本票先同形404，合法本票 inline 仍400。解绑与逻辑deleted原子提交；物理清理仅提交成功后执行，失败保留deleted供既有GC重试。字段去引用不删附件，追加B保留A；历史坏引用恢复测试直接加载合成历史状态，不再经产品DELETE制造损坏。未改请求字段、路由、授权policy或迁移；历史盘点/回填、独立GC和C04另交。定向红绿与完整门禁实际状态由本次交回记录区分，不将本候选记为完整C02验收。
 
 ## 当前状态与阅读顺序（2026-11-08）
 
 本批保留迁移000047的存量兼容：同票有效关联、confirmed及正式purpose可证明时，历史`owner_kind/owner_id`均NULL仍可原样保留，不要求回填也不借此授予新绑定；已有非空但矛盾的owner信息拒绝整笔。该元数据的零回填合同不能被新字段校验悄然改成旧票不可编辑。
 
-pass8补修明确TICKET-R01条件：删附件后关联已解除、对象已标deleted，历史custom_data不自动改写。title-only更新不重提字段，仍可编辑；若请求带custom_data，合并后含该旧key则整笔400，标题/字段/事件不部分写。受权调用方可对可选file字段显式传null删键，或以本人confirmed悬挂新对象替换；required字段不能用null逃过校验，旧deleted key不能重新绑定。当前UI标题编辑与正式custom_data API分开验，不能因UI未编辑该字段就声称API未启用，也不能称完全无修复入口。自动清理历史引用及完整字段编辑UI仍按实际取用另交，不放宽确认、purpose及归属约束。
+pass8补修明确TICKET-R01历史损坏恢复条件：关联已解除、对象已标deleted时，历史custom_data不自动改写；本次C02候选会阻止产品删除制造新的在用引用损坏。title-only更新不重提字段，仍可编辑；若请求带custom_data，合并后含该旧key则整笔400，标题/字段/事件不部分写。受权调用方可对可选file字段显式传null删键，或以本人confirmed悬挂新对象替换；required字段不能用null逃过校验，旧deleted key不能重新绑定。当前UI标题编辑与正式custom_data API分开验，不能因UI未编辑该字段就声称API未启用，也不能称完全无修复入口。自动清理历史引用及完整字段编辑UI仍按实际取用另交，不放宽确认、purpose及归属约束。
 
 2026-11-17同批补齐`TicketTypeFieldInput`的`file/radio/rating`公开枚举及Swagger/UI生成类型，使契约覆盖实际11类字段；实际JSON绑定原已接收这三类，不将契约缺项误记为HTTP 400复现。专项与真实发布链结果见[前置修复记录](../review/reports/audit-baseline-repair-2026-11-17.md)。
 
@@ -105,7 +109,7 @@ release Compose 保持storage启用，显式要求外部可达签名地址、UI 
 - **表族**（10 号 §3 DDL 为准）：`file_objects`（bucket/object_key/file_name/mime_type/size_bytes/created_by，UNIQUE(bucket,object_key)；**+owner_kind/owner_id 两可空列**——随行件，经 ALTER 迁移 **000047** 追加（2026-10-20 实落——A2 先建先占，B5-6 顺位 000048），附录 A.3 随行件迁移段）+ `ticket_attachments`（ticket_id FK CASCADE + file_object_id FK + uploaded_by，UNIQUE(ticket_id,file_object_id)）。
 - **API 面**（10 号 §4 五端点为准）：presign upload/download + attachments confirm/list/delete——**附录 A.4 全景另含代理下载与 settings KV 两枚（2026-10-16 外审对齐措辞）**；confirm 校验 `created_by == 当前用户` 且对象未绑定。
 - **错误码**：91001 FileTooLarge / 91002 FileTypeNotAllowed / 91003 FileNotFound / 91004 AlreadyBound（区间 91000–91999）。
-- **当前删除语义**：删普通附件时解除关联并将对象标为deleted，物理删除失败由GC二扫重试；工单删除后的孤儿由confirmed反连接回收。旧蓝本“GC后移”已被S5实施及B06修复取代，正文移除richtext引用后的精确对账仍未实施。
+- **当前删除语义**：本次C02候选先拒绝在用或不确定引用，再同事务解除关联并将对象标为deleted，物理删除失败由GC二扫重试；工单删除后的孤儿由confirmed反连接回收。旧蓝本“GC后移”已被S5实施及B06修复取代，正文移除richtext引用后的精确对账仍未实施。
 - **compose 增对象存储服务（RustFS + rustfs-backup 双实例草案已落 deployments 两份 compose——profile=storage 隔离默认不起，2026-10-16 工程预备批；起容器冒烟通过）**；迁移编号启动对账（A2）。
 
 ## 4. 头像上传（自服务面）

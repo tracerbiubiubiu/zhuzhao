@@ -81,6 +81,7 @@
       "action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_trial"
     },
     "real_message_contract_action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/MH01_MR1",
+    "unattended_activation_action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q09_unattended_activation",
     "core_stability_action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_core_stability"
   },
   "estimate_views": {

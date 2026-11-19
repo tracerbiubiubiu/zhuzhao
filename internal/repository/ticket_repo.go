@@ -68,8 +68,27 @@ func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, erro
 	if err != nil {
 		return nil, err
 	}
-	r.enrichUserNames(ctx, []*model.Ticket{ticket})
+	enrichUserNames(ctx, r.db, []*model.Ticket{ticket})
 	return ticket, nil
+}
+
+// GetByIDForUpdateTx 在评论写事务内锁定工单并取一致快照，锁持有至提交。
+// 不限制状态：公开评论沿用允许回复已关闭工单的合同。不从池中取第二个连接。
+func (r *TicketRepo) GetByIDForUpdateTx(ctx context.Context, exec rowExec, id int64) (*model.Ticket, error) {
+	ticket, err := scanTicketRow(exec.QueryRow(ctx,
+		`SELECT`+ticketSelectColumns+` FROM tickets WHERE id = $1 FOR UPDATE`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrTicketNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lock ticket snapshot: %w", err)
+	}
+	return ticket, nil
+}
+
+// EnrichSnapshotUserNamesTx 复用写连接，按快照用户 ID 回填展示字段。
+func (r *TicketRepo) EnrichSnapshotUserNamesTx(ctx context.Context, tx pgx.Tx, ticket *model.Ticket) {
+	enrichUserNames(ctx, tx, []*model.Ticket{ticket})
 }
 
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
@@ -105,7 +124,7 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if err != nil {
 		return nil, 0, fmt.Errorf("collect tickets: %w", err)
 	}
-	r.enrichUserNames(ctx, tickets)
+	enrichUserNames(ctx, r.db, tickets)
 	return tickets, total, nil
 }
 
@@ -231,14 +250,18 @@ type userRef struct {
 	No   string
 }
 
+type userRefQueryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
 // userRefsByIDs 批量反查用户展示引用（单次 ANY 集查询；软删用户不回填——
 // 调用方按缺失降级显 ID）。回填是读侧增强：失败返回空 map 不阻断主查询。
-func (r *TicketRepo) userRefsByIDs(ctx context.Context, ids []int64) map[int64]userRef {
+func userRefsByIDs(ctx context.Context, q userRefQueryer, ids []int64) map[int64]userRef {
 	refs := make(map[int64]userRef, len(ids))
 	if len(ids) == 0 {
 		return refs
 	}
-	rows, err := r.db.Query(ctx,
+	rows, err := q.Query(ctx,
 		`SELECT id, COALESCE(NULLIF(real_name, ''), username), COALESCE(employee_no, '') FROM users WHERE id = ANY($1) AND deleted_at IS NULL`,
 		ids)
 	if err != nil {
@@ -261,7 +284,7 @@ func (r *TicketRepo) userRefsByIDs(ctx context.Context, ids []int64) map[int64]u
 
 // enrichUserNames 批量回填创建人/处理人姓名（W4 随批件，03 S9：列表「处理人」列
 // 裸 ID/N+1 消除；2026-10-13 升级结构化：name+employee_no 独立字段）。
-func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticket) {
+func enrichUserNames(ctx context.Context, q userRefQueryer, tickets []*model.Ticket) {
 	if len(tickets) == 0 {
 		return
 	}
@@ -286,7 +309,7 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 	if len(ids) == 0 {
 		return
 	}
-	refs := r.userRefsByIDs(ctx, ids)
+	refs := userRefsByIDs(ctx, q, ids)
 	for _, t := range tickets {
 		if ref, ok := refs[t.CreatedBy]; ok {
 			t.CreatedByName = ref.Name
@@ -304,8 +327,11 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 
 // Update 全量更新工单标题/描述/优先级（非事务入口；全字段非 nil = 整行覆盖语义保留）
 func (r *TicketRepo) Update(ctx context.Context, t *model.Ticket) error {
-	updatedAt, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority, nil)
-	t.UpdatedAt = updatedAt
+	updated, err := r.UpdateTx(ctx, r.db, t.ID, &t.Title, &t.Description, &t.Priority, nil)
+	t.UpdatedAt = time.Time{}
+	if updated != nil {
+		t.UpdatedAt = updated.UpdatedAt
+	}
 	return err
 }
 
@@ -360,7 +386,9 @@ func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketI
 // W4 十六批 Med：COALESCE 字段级更新——nil 字段不落 SET 覆盖，
 // 两个并发 Update 各改不同字段不再互相冲掉。
 // B5-4：+customData（nil 不覆盖；合并后的完整 JSONB——合并与 G2 重校验在 service 层）
-func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int, customData []byte) (time.Time, error) {
+// RETURNING 使用与读取同源的列和扫描器，结果为本次写后的整行，包含等待锁期间
+// 其他已提交写入保留下来的字段；提交后不得用预读值或重新查票替代该版本。
+func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int, customData []byte) (*model.Ticket, error) {
 	const q = `
 		UPDATE tickets SET
 			title = COALESCE($2, title),
@@ -369,16 +397,15 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
 		WHERE id = $1 AND status <> 'closed'
-		RETURNING updated_at`
-	var updatedAt time.Time
-	err := exec.QueryRow(ctx, q, id, title, description, priority, customData).Scan(&updatedAt)
+		RETURNING` + ticketSelectColumns
+	ticket, err := scanTicketRow(exec.QueryRow(ctx, q, id, title, description, priority, customData))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return time.Time{}, errcode.ErrTicketAlreadyClosed
+			return nil, errcode.ErrTicketAlreadyClosed
 		}
-		return time.Time{}, fmt.Errorf("update ticket: %w", err)
+		return nil, fmt.Errorf("update ticket: %w", err)
 	}
-	return updatedAt, nil
+	return ticket, nil
 }
 
 // resolveClosedOrMissing 更新命中 0 行时的定性：工单不存在 → 90001；已关闭 → 90004。
@@ -525,7 +552,7 @@ func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64, includeIn
 			}
 		}
 	}
-	refs := r.userRefsByIDs(ctx, ids)
+	refs := userRefsByIDs(ctx, r.db, ids)
 	for _, c := range comments {
 		if ref, ok := refs[c.UserID]; ok {
 			c.CreatedByName = ref.Name
@@ -726,13 +753,23 @@ func (r *TicketRepo) CreateRelation(ctx context.Context, rel *model.TicketRelati
 	return nil
 }
 
-// ListRelations 查询工单关联列表
-func (r *TicketRepo) ListRelations(ctx context.Context, ticketID int64) ([]*model.TicketRelation, error) {
-	rows, err := r.db.Query(ctx, `
+// ListRelations 查询已获权当前工单的直接关联，两边的对端均使用工单读范围。
+func (r *TicketRepo) ListRelations(ctx context.Context, ticketID int64, filter resource.Filter) ([]*model.TicketRelation, error) {
+	if filter.Where == "" && !filter.Unscoped {
+		return nil, fmt.Errorf("list relations: missing peer ticket scope filter")
+	}
+	args := append(append([]interface{}{}, filter.Args...), ticketID)
+	ticket := fmt.Sprintf("$%d", len(args))
+	query := `
 		SELECT id, source_ticket_id, target_ticket_id, relation_type, created_by, created_at
-		FROM ticket_relations
-		WHERE deleted_at IS NULL AND (source_ticket_id = $1 OR target_ticket_id = $1)
-		ORDER BY created_at ASC`, ticketID)
+		FROM ticket_relations rel
+		WHERE deleted_at IS NULL AND (source_ticket_id = ` + ticket + ` OR target_ticket_id = ` + ticket + ")"
+	if filter.Where != "" {
+		query += ` AND EXISTS (SELECT 1 FROM tickets WHERE id =
+			CASE WHEN rel.source_ticket_id = ` + ticket + ` THEN rel.target_ticket_id ELSE rel.source_ticket_id END
+			AND (` + filter.Where + `))`
+	}
+	rows, err := r.db.Query(ctx, query+" ORDER BY created_at ASC", args...)
 	if err != nil {
 		return nil, fmt.Errorf("list relations: %w", err)
 	}

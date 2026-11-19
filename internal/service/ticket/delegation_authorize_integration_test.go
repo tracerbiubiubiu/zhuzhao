@@ -366,3 +366,41 @@ func TestD9_CreateRelation(t *testing.T) {
 	}, env.member)
 	requireErrCode(t, err, errcode.ErrTicketNotFound.Code)
 }
+
+func TestRelationsUsePeerReadScopeInBothDirections(t *testing.T) {
+	ctx := context.Background()
+	svc, owner, _, reader, _ := setupTicket2a(t)
+	org := rootOrgID(t)
+	center := newTicketHelper(t, svc, owner, org, "中间工单")
+	incoming := newTicketHelper(t, svc, owner, org, "入向关联")
+	outgoing := newTicketHelper(t, svc, owner, org, "出向关联")
+	older, err := svc.CreateRelation(ctx, &model.CreateRelationRequest{SourceTicketID: incoming.ID, TargetTicketID: center.ID}, owner)
+	require.NoError(t, err)
+	newer, err := svc.CreateRelation(ctx, &model.CreateRelationRequest{SourceTicketID: center.ID, TargetTicketID: outgoing.ID}, owner)
+	require.NoError(t, err)
+
+	cc := repository.NewTicketCCRepo(testPool)
+	for _, id := range []int64{center.ID, incoming.ID, outgoing.ID} {
+		_, err := cc.Add(ctx, id, owner, []int64{reader})
+		require.NoError(t, err)
+	}
+	relations, err := svc.ListRelations(ctx, center.ID, reader)
+	require.NoError(t, err)
+	require.Len(t, relations, 2)
+
+	_, err = cc.Remove(ctx, incoming.ID, reader)
+	require.NoError(t, err)
+	relations, err = svc.ListRelations(ctx, center.ID, reader)
+	require.NoError(t, err)
+	require.Len(t, relations, 1)
+	require.Equal(t, newer.ID, relations[0].ID)
+
+	_, err = cc.Add(ctx, incoming.ID, owner, []int64{reader})
+	require.NoError(t, err)
+	_, err = cc.Remove(ctx, outgoing.ID, reader)
+	require.NoError(t, err)
+	relations, err = svc.ListRelations(ctx, center.ID, reader)
+	require.NoError(t, err)
+	require.Len(t, relations, 1)
+	require.Equal(t, older.ID, relations[0].ID)
+}

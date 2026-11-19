@@ -22,6 +22,13 @@ func TestConfig_Validate_Extended(t *testing.T) {
 		wantErr bool
 	}{
 		{"ok", func(c *Config) {}, false},
+		{"debug", func(c *Config) { c.Server.Mode = "debug" }, false},
+		{"release", func(c *Config) {
+			c.Server.Mode = "release"
+			c.Database.Password = "fixture-postgres"
+			c.Redis.Password = "fixture-redis"
+		}, false},
+		{"unknown_mode", func(c *Config) { c.Server.Mode = "relese" }, true},
 		{"access_ttl_zero", func(c *Config) { c.JWT.AccessTTL = 0 }, true},
 		{"refresh_ttl_zero", func(c *Config) { c.JWT.RefreshTTL = 0 }, true},
 		{"access_gt_refresh", func(c *Config) { c.JWT.AccessTTL = 200 * time.Hour }, true},

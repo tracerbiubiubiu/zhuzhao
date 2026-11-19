@@ -5,27 +5,42 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 )
 
 // DictRepo P4-3 字典数据访问。sentinel error 由 service 映射 errcode。
 var (
-	ErrDictTypeNotFound = errors.New("repository: dict type not found")
-	ErrDictTypeDupCode  = errors.New("repository: dict type code duplicated")
-	ErrDictItemNotFound = errors.New("repository: dict item not found")
-	ErrDictItemDupCode  = errors.New("repository: dict item code duplicated")
+	ErrDictTypeNotFound   = errors.New("repository: dict type not found")
+	ErrDictTypeDupCode    = errors.New("repository: dict type code duplicated")
+	ErrDictItemNotFound   = errors.New("repository: dict item not found")
+	ErrDictItemDupCode    = errors.New("repository: dict item code duplicated")
+	ErrDictDeleteConflict = errors.New("repository: dict delete target changed")
+	ErrDictDeleteInvalid  = errors.New("repository: invalid dict delete condition")
 )
+
+// DictTypeDeleteTarget 绑定调用方确认的稳定身份及版本；不包含子项列表世代。
+type DictTypeDeleteTarget struct {
+	ID      int64
+	Version int64
+}
+
+type dictDB interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
 
 const dictTypeColumns = `id, code, name, enabled, remark, version, created_at, updated_at`
 const dictItemColumns = `id, type_code, code, label, sort_order, enabled, remark, version, created_at, updated_at`
 
 type DictRepo struct {
-	db *pgxpool.Pool
+	db dictDB
 }
 
-func NewDictRepo(db *pgxpool.Pool) *DictRepo {
+func NewDictRepo(db dictDB) *DictRepo {
 	return &DictRepo{db: db}
 }
 
@@ -86,7 +101,6 @@ func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType) error {
 	return nil
 }
 
-// DeleteTypeByCode 按 code 删（items FK ON DELETE CASCADE 随删）
 // HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫——01 号 §3.2
 // 拍板点④"补删除守卫"）。引用形态 = ticket_type_fields.field_options JSONB 数组
 // 元素精确等于 "dict:<code>"（jsonb_array_elements_text 精确匹配，非 LIKE 模糊）。
@@ -104,7 +118,35 @@ func (r *DictRepo) HasFieldDictRef(ctx context.Context, code string) (bool, erro
 	return exists, nil
 }
 
-func (r *DictRepo) DeleteTypeByCode(ctx context.Context, code string) error {
+// DeleteTypeByCode 保留旧 code-only 调用；提供 target 时最终 DELETE 必须匹配身份和版本。
+// 锁定目标及条件删除在同一语句内区分缺失/冲突，不协调字段引用写方或子项列表世代。
+func (r *DictRepo) DeleteTypeByCode(ctx context.Context, code string, target ...DictTypeDeleteTarget) error {
+	if len(target) > 1 || len(target) == 1 && (target[0].ID <= 0 || target[0].Version <= 0) {
+		return ErrDictDeleteInvalid
+	}
+	if len(target) == 1 {
+		var exists, deleted bool
+		err := r.db.QueryRow(ctx, `
+			WITH target AS MATERIALIZED (
+				SELECT id FROM dict_types WHERE code = $1 FOR UPDATE
+			), deleted AS (
+				DELETE FROM dict_types d USING target
+				WHERE d.code = $1 AND d.id = $2 AND d.version = $3 AND d.id = target.id
+				RETURNING d.id
+			)
+			SELECT EXISTS (SELECT 1 FROM target), EXISTS (SELECT 1 FROM deleted)`,
+			code, target[0].ID, target[0].Version).Scan(&exists, &deleted)
+		if err != nil {
+			return err
+		}
+		if deleted {
+			return nil
+		}
+		if exists {
+			return ErrDictDeleteConflict
+		}
+		return ErrDictTypeNotFound
+	}
 	tag, err := r.db.Exec(ctx, "DELETE FROM dict_types WHERE code = $1", code)
 	if err != nil {
 		return err
@@ -215,7 +257,32 @@ func (r *DictRepo) UpdateItem(ctx context.Context, it *model.DictItem) error {
 	return nil
 }
 
-func (r *DictRepo) DeleteItemByID(ctx context.Context, id int64) error {
+func (r *DictRepo) DeleteItemByID(ctx context.Context, id int64, version ...int64) error {
+	if len(version) > 1 || len(version) == 1 && version[0] <= 0 {
+		return ErrDictDeleteInvalid
+	}
+	if len(version) == 1 {
+		var exists, deleted bool
+		err := r.db.QueryRow(ctx, `
+			WITH target AS MATERIALIZED (
+				SELECT id FROM dict_items WHERE id = $1 FOR UPDATE
+			), deleted AS (
+				DELETE FROM dict_items d USING target
+				WHERE d.id = $1 AND d.version = $2 AND d.id = target.id
+				RETURNING d.id
+			)
+			SELECT EXISTS (SELECT 1 FROM target), EXISTS (SELECT 1 FROM deleted)`, id, version[0]).Scan(&exists, &deleted)
+		if err != nil {
+			return err
+		}
+		if deleted {
+			return nil
+		}
+		if exists {
+			return ErrDictDeleteConflict
+		}
+		return ErrDictItemNotFound
+	}
 	tag, err := r.db.Exec(ctx, "DELETE FROM dict_items WHERE id = $1", id)
 	if err != nil {
 		return err

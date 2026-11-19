@@ -34,6 +34,9 @@ func (c *Config) Validate() error {
 	if mode == "" {
 		mode = "debug"
 	}
+	if mode != "debug" && mode != "release" {
+		return fmt.Errorf("server.mode %q invalid: expected debug or release (APP_SERVER_MODE)", mode)
+	}
 	if err := c.JWT.validate(mode); err != nil {
 		return err
 	}

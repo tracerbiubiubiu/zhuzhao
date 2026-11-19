@@ -426,6 +426,31 @@
         "formal_local"
       ]
     },
+    "Q09_unattended_activation": {
+      "work_item_refs": ["I02", "I03", "A04", "D17", "CE03", "CE04", "CE05"],
+      "title": "真实无人值守写动作及订阅授权",
+      "state": "pending_real_inputs_then_owner_review",
+      "evidence_state": "not_supplied",
+      "owner_role": "项目所有者确认实际动作和目标画像",
+      "implementation_responsibility": "实施方列出 TD02/TD04 的真实动作目标和 AD03 的真实订阅，核执行代次、越界处置和可审计停用",
+      "trigger": "对真实任务、活动列表写回或订阅启用前，按实际动作和目标逐项确认",
+      "required_evidence": [
+        "具体动作、操作者或订阅、目标范围、允许字段、期限及预算的批准记录",
+        "越界暂停、撤权拒绝、故障停用及审计可追溯的对照证据"
+      ],
+      "blocks": [
+        "所选任务写回和订阅的真实无人值守启用",
+        "包含该闭环的首版本地正式出口"
+      ],
+      "does_not_block": [
+        "TD/AD 用隔离合成数据实现和验证公共合同",
+        "仅开放获权人工录风险、派票、办理与复核且未启用自动链的试用"
+      ],
+      "acceptance_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
+      "privacy_boundary": "实际目标、主体、配置和凭据留批准环境；公开仓仅记去敏证据引用",
+      "evidence_refs": [],
+      "blocks_release_exits": ["formal_local"]
+    },
     "Q12_trial": {
       "work_item_refs": [
         "Q12"

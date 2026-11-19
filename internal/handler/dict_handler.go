@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -81,16 +82,28 @@ func (h *DictHandler) UpdateType(c *gin.Context) {
 	response.OKWithMessage(c, "已更新", nil)
 }
 
-// DeleteType POST /dicts/delete（code 入 body——zhuzhao 风格；items 级联删）
+// DeleteType POST /dicts/delete（code 入 body；可选 id/version 必须成对；items 级联删）
 func (h *DictHandler) DeleteType(c *gin.Context) {
 	var req struct {
-		Code string `json:"code" binding:"required"`
+		Code    string          `json:"code" binding:"required,max=64"`
+		ID      json.RawMessage `json:"id"`
+		Version json.RawMessage `json:"version"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "code 必填")
+		response.BadRequest(c, "code 必填且最多 64 字符")
 		return
 	}
-	if err := h.dictService.DeleteType(c.Request.Context(), req.Code); err != nil {
+	var target []service.DictTypeDeleteTarget
+	if len(req.ID) != 0 || len(req.Version) != 0 {
+		id, idErr := parseDictDeleteID(req.ID)
+		version, versionErr := parseDictDeleteVersion(req.Version)
+		if idErr != nil || versionErr != nil {
+			response.BadRequest(c, "id/version 必须成对，id 为正整数字符串，version 为正整数")
+			return
+		}
+		target = append(target, service.DictTypeDeleteTarget{ID: id, Version: version})
+	}
+	if err := h.dictService.DeleteType(c.Request.Context(), req.Code, target...); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -176,18 +189,62 @@ func (h *DictHandler) UpdateItem(c *gin.Context) {
 	response.OKWithMessage(c, "已更新", nil)
 }
 
-// DeleteItem POST /dict-items/delete（id 入 body）
+// DeleteItem POST /dict-items/delete（id 入 body；可选 version 做条件删除）
 func (h *DictHandler) DeleteItem(c *gin.Context) {
 	var req struct {
-		ID int64 `json:"id,string" binding:"required"`
+		ID      json.RawMessage `json:"id"`
+		Version json.RawMessage `json:"version"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "id 必填")
+		response.BadRequest(c, "id 必须为正整数字符串")
 		return
 	}
-	if err := h.dictService.DeleteItem(c.Request.Context(), req.ID); err != nil {
+	id, err := parseDictDeleteID(req.ID)
+	if err != nil {
+		response.BadRequest(c, "id 必须为正整数字符串")
+		return
+	}
+	var version []int64
+	if len(req.Version) != 0 {
+		v, err := parseDictDeleteVersion(req.Version)
+		if err != nil {
+			response.BadRequest(c, "version 必须为正整数")
+			return
+		}
+		version = append(version, v)
+	}
+	if err := h.dictService.DeleteItem(c.Request.Context(), id, version...); err != nil {
 		writeServiceError(c, err)
 		return
 	}
 	response.OKWithMessage(c, "已删除", nil)
+}
+
+func parseDictDeleteID(raw json.RawMessage) (int64, error) {
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return 0, err
+	}
+	if len(value) > 19 {
+		return 0, strconv.ErrRange
+	}
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if id <= 0 {
+		return 0, strconv.ErrSyntax
+	}
+	return id, nil
+}
+
+func parseDictDeleteVersion(raw json.RawMessage) (int64, error) {
+	var version int64
+	if err := json.Unmarshal(raw, &version); err != nil {
+		return 0, err
+	}
+	if version <= 0 {
+		return 0, strconv.ErrSyntax
+	}
+	return version, nil
 }

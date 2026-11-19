@@ -49,9 +49,9 @@ func (d *DispatchService) OnAfterCreate(ctx context.Context, ticket *model.Ticke
 	// 权限旁路口径见 service.go assignAsSystem 注——G-32 委托放大族）；
 	// 事件/ticket_events actor 仍记规则创建者供归因
 	if rule.TargetUser != nil {
-		if err := d.svc.assignAsSystem(ctx, &model.AssignTicketRequest{
+		if err := d.svc.assignAuthorized(ctx, &model.AssignTicketRequest{
 			ID: ticket.ID, AssignedTo: rule.TargetUser,
-		}, rule.CreatedBy); err != nil {
+		}, rule.CreatedBy, true); err != nil {
 			d.logger.Warn("dispatch: auto-assign failed (not rolling back create)",
 				"err", err, "ticket", ticket.ID, "rule", rule.ID)
 			d.emitDispatchMissed(ctx, ticket)

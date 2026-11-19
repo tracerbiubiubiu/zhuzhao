@@ -37,7 +37,12 @@ func TestFieldReferenceRecovery_AfterAttachmentDeletion(t *testing.T) {
 				}})
 				require.NoError(t, err)
 			}
-			require.NoError(t, env.stg.DeleteTicketAttachment(ctx, tk.ID, key))
+			// Synthetic pre-repair history: product DELETE must never create this
+			// broken reference. Load the old state directly in this isolated DB.
+			_, err = testPool.Exec(ctx, `DELETE FROM ticket_attachments WHERE ticket_id=$1`, tk.ID)
+			require.NoError(t, err)
+			_, err = testPool.Exec(ctx, `UPDATE file_objects SET status='deleted' WHERE bucket='b53' AND object_key=$1`, key)
+			require.NoError(t, err)
 			var status string
 			var count int
 			require.NoError(t, testPool.QueryRow(ctx, `SELECT status FROM file_objects WHERE bucket='b53' AND object_key=$1`, key).Scan(&status))

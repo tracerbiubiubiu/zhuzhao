@@ -5,13 +5,13 @@
   "estimate_source": ["docs/planning/planning-backlog.json", "docs/planning/execution-schedule-model.json", "docs/planning/planning-scope-estimates.json", "docs/planning/uaa-implementation-estimate.json", "docs/planning/uaa-real-integration-conditions.json", "docs/planning/local-core-release-estimate.json", "docs/planning/first-usable-release-target.json", "docs/planning/owner-decision-agenda.json"],
   "source_input_sha256": {
     "docs/planning/planning-backlog.json": "1957f991315e60550a0bbfdf55c4635c69168df5b6d2042924b0ae26dec5cf95",
-    "docs/planning/execution-schedule-model.json": "61787a0d8b538c217c25f04314cabc7b16ddc232ca146d0e47f9563ac17a2259",
+    "docs/planning/execution-schedule-model.json": "0025f3af52c56b17423920298bfa3be686218c5ef4878b8d93b4494cb82d8dc9",
     "docs/planning/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/planning/uaa-implementation-estimate.json": "ba0221b562533c8b34d19cc8c90c325f76da4e0be72bb12a51859413a60e015c",
     "docs/planning/uaa-real-integration-conditions.json": "8391462c9c7654c806b9a5149478df694578d80e138f4cab038f01da3d922800",
     "docs/planning/local-core-release-estimate.json": "5c41f7117735ae15d0f9b84ef1bd1ff01ac0977a77308be38930cea8fc9f62db",
-    "docs/planning/first-usable-release-target.json": "4cada219bbf2280f5da7acdc6ebc1ae8672cd78bf6f66d270ccf4c2991d66661",
-    "docs/planning/owner-decision-agenda.json": "a2e76b8153b96b11614b853952d18a6d41cbb9ee748f91e2ff438e54bf18a042",
+    "docs/planning/first-usable-release-target.json": "90cd429f9491b82bdbd092b372ab6ca72bbc99a88f0eeaa0e640a1f1c2a6fe7f",
+    "docs/planning/owner-decision-agenda.json": "63bb642612f24a4e05258e5af069d030f7bb8254aceffce8c708133c7c98e304",
     "scripts/calculate-planning-schedule.py": "6b7a374fa5ba3b9ef2b61fccf7740353600fcfc042300dd237a2523cefce6bf7"
   },
   "resource_assumptions": {
@@ -5077,6 +5077,13 @@
         "evidence_refs": [],
         "blocks_release_exits": ["formal_local"]
       },
+      "Q09_unattended_activation": {
+        "source_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q09_unattended_activation",
+        "state": "pending_real_inputs_then_owner_review",
+        "evidence_state": "not_supplied",
+        "evidence_refs": [],
+        "blocks_release_exits": ["formal_local"]
+      },
       "Q12_trial": {
         "source_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_trial",
         "state": "pending_real_inputs_then_binding",
@@ -5123,7 +5130,7 @@
         "targets": ["Q2"],
         "dependency_closure": ["AD01", "AD02", "AD03", "AD04", "MH01", "MH02", "MH03", "MH04", "MR1", "Q1", "Q2", "R1", "R2", "R3", "R4", "R5", "S1", "S2", "S3", "TD01", "TD02", "TD03", "TD04", "TD05", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"],
         "overlapping_effort_do_not_add": [96.5, 150.5],
-        "condition_keys": ["MH01_MR1", "Q12_trial"],
+        "condition_keys": ["MH01_MR1", "Q09_unattended_activation", "Q12_trial"],
         "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入",
         "readiness": "not_verified_by_schedule",
         "actual_activation_date": null,
