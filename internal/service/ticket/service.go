@@ -603,12 +603,11 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}); err != nil {
 		return nil, err
 	}
+	// Reuse the transaction connection for the snapshot's display references.
+	s.ticketRepo.EnrichSnapshotUserNamesTx(ctx, tx, ticket)
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
-	// 响应与事件共用本次 RETURNING 的提交版本。仅展示姓名在锁外按快照 ID
-	// 尽力回填，不再查票拼接领域事实，也不沿用预读处理人的旧姓名。
-	s.ticketRepo.EnrichSnapshotUserNames(ctx, ticket)
 	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
 	updatedPayload := domainevent.Payload{
 		"title": ticket.Title, "type_code": ticket.TypeCode,

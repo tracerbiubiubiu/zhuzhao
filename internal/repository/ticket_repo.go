@@ -68,7 +68,7 @@ func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, erro
 	if err != nil {
 		return nil, err
 	}
-	r.enrichUserNames(ctx, []*model.Ticket{ticket})
+	enrichUserNames(ctx, r.db, []*model.Ticket{ticket})
 	return ticket, nil
 }
 
@@ -86,10 +86,9 @@ func (r *TicketRepo) GetByIDForUpdateTx(ctx context.Context, exec rowExec, id in
 	return ticket, nil
 }
 
-// EnrichSnapshotUserNames 仅按快照内的用户 ID 回填展示字段（失败沿用缺省值）。
-// 写调用方须在提交后调用；不回查工单，不改变领域事实，不在持锁段内取池。
-func (r *TicketRepo) EnrichSnapshotUserNames(ctx context.Context, ticket *model.Ticket) {
-	r.enrichUserNames(ctx, []*model.Ticket{ticket})
+// EnrichSnapshotUserNamesTx 复用写连接，按快照用户 ID 回填展示字段。
+func (r *TicketRepo) EnrichSnapshotUserNamesTx(ctx context.Context, tx pgx.Tx, ticket *model.Ticket) {
+	enrichUserNames(ctx, tx, []*model.Ticket{ticket})
 }
 
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
@@ -125,7 +124,7 @@ func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.T
 	if err != nil {
 		return nil, 0, fmt.Errorf("collect tickets: %w", err)
 	}
-	r.enrichUserNames(ctx, tickets)
+	enrichUserNames(ctx, r.db, tickets)
 	return tickets, total, nil
 }
 
@@ -251,14 +250,18 @@ type userRef struct {
 	No   string
 }
 
+type userRefQueryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
 // userRefsByIDs 批量反查用户展示引用（单次 ANY 集查询；软删用户不回填——
 // 调用方按缺失降级显 ID）。回填是读侧增强：失败返回空 map 不阻断主查询。
-func (r *TicketRepo) userRefsByIDs(ctx context.Context, ids []int64) map[int64]userRef {
+func userRefsByIDs(ctx context.Context, q userRefQueryer, ids []int64) map[int64]userRef {
 	refs := make(map[int64]userRef, len(ids))
 	if len(ids) == 0 {
 		return refs
 	}
-	rows, err := r.db.Query(ctx,
+	rows, err := q.Query(ctx,
 		`SELECT id, COALESCE(NULLIF(real_name, ''), username), COALESCE(employee_no, '') FROM users WHERE id = ANY($1) AND deleted_at IS NULL`,
 		ids)
 	if err != nil {
@@ -281,7 +284,7 @@ func (r *TicketRepo) userRefsByIDs(ctx context.Context, ids []int64) map[int64]u
 
 // enrichUserNames 批量回填创建人/处理人姓名（W4 随批件，03 S9：列表「处理人」列
 // 裸 ID/N+1 消除；2026-10-13 升级结构化：name+employee_no 独立字段）。
-func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticket) {
+func enrichUserNames(ctx context.Context, q userRefQueryer, tickets []*model.Ticket) {
 	if len(tickets) == 0 {
 		return
 	}
@@ -306,7 +309,7 @@ func (r *TicketRepo) enrichUserNames(ctx context.Context, tickets []*model.Ticke
 	if len(ids) == 0 {
 		return
 	}
-	refs := r.userRefsByIDs(ctx, ids)
+	refs := userRefsByIDs(ctx, q, ids)
 	for _, t := range tickets {
 		if ref, ok := refs[t.CreatedBy]; ok {
 			t.CreatedByName = ref.Name
@@ -549,7 +552,7 @@ func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64, includeIn
 			}
 		}
 	}
-	refs := r.userRefsByIDs(ctx, ids)
+	refs := userRefsByIDs(ctx, r.db, ids)
 	for _, c := range comments {
 		if ref, ok := refs[c.UserID]; ok {
 			c.CreatedByName = ref.Name
