@@ -130,8 +130,8 @@ HTTP列为所属出口现行行为。20005、70002仅保留定义，无生产发
 
 | code | 常量 | 默认文案 | HTTP | 备注 |
 |---|---|---|---|---|
-| 92301 | ErrDictTypeNotFound | 字典类型不存在或版本冲突 | 404 | 含版本冲突（乐观锁）同形 |
-| 92302 | ErrDictItemNotFound | 字典项不存在或版本冲突 | 404 | 同上 |
+| 92301 | ErrDictTypeNotFound | 字典类型不存在或版本冲突 | 404 | 更新的版本冲突（乐观锁）同形；删除 CAS 冲突走 10005，见[字典合同](dictionary.md) |
+| 92302 | ErrDictItemNotFound | 字典项不存在或版本冲突 | 404 | 更新的版本冲突同形；删除 CAS 冲突走 10005，见[字典合同](dictionary.md) |
 | 92304 | ErrDictTypeInUse | 字典类型被字段引用中，不可删除 | 400 | B1-2 删除守卫：ticket_type_fields 引用 `dict:<code>` 时拒删；清引用后可删 |
 
 ### 92400–92499 PAT

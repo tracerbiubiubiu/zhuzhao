@@ -89,11 +89,12 @@ B0既有制品/mock技术预演见[首版阶梯](../phase6/first-usable-release-
 - 1个有效研发席位条件工程量端点：96.5–150.5有效工作日；不含未知外部等待，不是日历承诺。
 - 2个有效研发席位条件工程量端点：70.5–111有效工作日；不含未知外部等待，不是日历承诺。
 - [MH01_MR1](owner-decision-agenda.json#/execution_actions/MH01_MR1)：pending_real_inputs_then_binding；证据状态not_supplied，不自动标为已就绪。
+- [Q09_unattended_activation](owner-decision-agenda.json#/execution_actions/Q09_unattended_activation)：pending_real_inputs_then_owner_review；证据状态not_supplied，不自动标为已就绪。
 - [Q12_trial](owner-decision-agenda.json#/execution_actions/Q12_trial)：pending_real_inputs_then_binding；证据状态not_supplied，不自动标为已就绪。
 - [Q12_core_stability](owner-decision-agenda.json#/execution_actions/Q12_core_stability)：engineering_candidate_pending_real_trial_acceptance；证据状态not_yet_implemented_or_trialed，不自动标为已就绪。
 - **risk_ticket_trial**：目标`U2, U3`；条件`Q12_trial`；[证据要求](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。计算结论仅为`not_verified_by_schedule`。
 - **public_contract_core**：目标`Q1`；条件`无外部输入门；仍需产品验收`；[证据要求](../phase6/first-usable-release-plan.md#4-按质量出口交付)。计算结论仅为`not_verified_by_schedule`。
-- **formal_local**：目标`Q2`；条件`MH01_MR1, Q12_trial`；[证据要求](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。计算结论仅为`not_verified_by_schedule`。
+- **formal_local**：目标`Q2`；条件`MH01_MR1, Q09_unattended_activation, Q12_trial`；[证据要求](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。计算结论仅为`not_verified_by_schedule`。
 - **uaa_capacity_transition**：目标`Q2`；条件`Q12_core_stability`；[证据要求](../phase6/first-usable-release-plan.md#42-核心稳定的过渡出口)。计算结论仅为`not_verified_by_schedule`。
 
 机器检查净价/子分配、逐行单计、父包映射、缺依赖/环、必交原文hash与覆盖、外部动作/出口绑定及现势摘要；不证明映射语义、产品可用、安全缺陷修复或生产验收。

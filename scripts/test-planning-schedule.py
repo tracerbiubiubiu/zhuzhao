@@ -254,6 +254,16 @@ class LocalCoreProjectionTests(unittest.TestCase):
         self.assertIn(result['current_local_core_summary'], m.render_schedule(result))
         self.assertEqual(result['bounded_effort_totals']['public_R_pending'], [394, 656])
 
+    def test_unattended_activation_has_its_own_formal_exit_gate(self):
+        core = m.calculate(ROOT)['local_core']
+        condition = 'Q09_unattended_activation'
+        self.assertIn(condition, core['delivery_exits']['formal_local']['condition_keys'])
+        self.assertNotIn(condition, core['delivery_exits']['risk_ticket_trial']['condition_keys'])
+        self.assertNotIn(condition, core['delivery_exits']['public_contract_core']['condition_keys'])
+        self.assertEqual(core['external_conditions'][condition]['evidence_refs'], [])
+        for node in ('TD02', 'TD04', 'AD03'):
+            self.assertIn(node, core['unblocked_public_wbs'])
+
     def test_current_summary_uses_current_raw_rounded_and_shared_transfer(self):
         estimate = local_core_fixture()[0]
         estimate['totals']['raw_days'] = [4.5, 6.5]

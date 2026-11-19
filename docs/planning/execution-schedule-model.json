@@ -1056,6 +1056,12 @@
           "formal_local"
         ]
       },
+      "Q09_unattended_activation": {
+        "action_ref": "/execution_actions/Q09_unattended_activation",
+        "required_exits": [
+          "formal_local"
+        ]
+      },
       "Q12_trial": {
         "action_ref": "/execution_actions/Q12_trial",
         "required_exits": [
@@ -1094,6 +1100,7 @@
         ],
         "condition_keys": [
           "MH01_MR1",
+          "Q09_unattended_activation",
           "Q12_trial"
         ],
         "evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入"

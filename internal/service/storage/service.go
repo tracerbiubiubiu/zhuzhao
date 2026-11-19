@@ -345,42 +345,26 @@ func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]
 	return list, nil
 }
 
-// DeleteTicketAttachment 删附件（A.4 #4：删关联 → 行翻 deleted（行态优先）→
-// 对象物理删 best-effort——失败残留由 GC 二扫收（2026-10-20 删除口径对齐：
-// 原「删本体+标 deleted」顺序在物理删失败时对象无扫描覆盖=永久泄漏）。
-// L2 update 面由 handler 编排。
+// DeleteTicketAttachment checks current references and atomically unlinks and
+// marks deleted. L2 update authorization remains owned by the handler.
 func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string) error {
 	if s.client == nil {
 		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
-	// 拍板 P3（2026-10-21）：richtext 内嵌图随工单生命周期——不单独删（A.7）。
-	// 误删即 MD 正文死链且对象物理删后无恢复路径；正确姿势=从正文移除引用，
-	// 对象由对账扫描家族收（A.3 第三条登记）。
-	f, err := s.repo.GetByObjectKey(ctx, s.bucket, objectKey)
-	if err != nil {
-		if errors.Is(err, repository.ErrStorageObjectNotFound) {
-			return errcode.ErrFileNotFound
-		}
-		s.logger.Error("storage get object", "err", err)
+	err := s.repo.DeleteTicketAttachment(ctx, s.bucket, ticketID, objectKey)
+	switch {
+	case errors.Is(err, repository.ErrStorageObjectNotFound):
+		return errcode.ErrFileNotFound
+	case errors.Is(err, repository.ErrStorageInlineAttachment):
+		return errcode.New(errcode.ErrInvalidParams.Code, "内嵌图随工单生命周期管理，不单独删除（从正文移除引用即可，对象由对账扫描回收）")
+	case errors.Is(err, repository.ErrStorageAttachmentReferenced):
+		return errcode.New(errcode.ErrConflict.Code, "附件仍被引用，请先移除引用")
+	case err != nil:
+		s.logger.Error("storage delete attachment transaction", "err", err)
 		return errcode.ErrInternal
 	}
-	if f.Purpose == "ticket_richtext" {
-		return errcode.New(errcode.ErrInvalidParams.Code,
-			"内嵌图随工单生命周期管理，不单独删除（从正文移除引用即可，对象由对账扫描回收）")
-	}
-	if err := s.repo.UnlinkAttachment(ctx, s.bucket, ticketID, objectKey); err != nil {
-		if errors.Is(err, repository.ErrStorageObjectNotFound) {
-			return errcode.ErrFileNotFound
-		}
-		s.logger.Error("storage unlink attachment", "err", err)
-		return errcode.ErrInternal
-	}
-	// F-A6（2026-10-21 审计）：Mark 失败降级 Warn 不返 500——unlink 已成功
-	//（用户视角删除完成），返 500 反致重试撞 404；行残留 confirmed 无关联由
-	// 对账扫描家族收（与 confirmed 孤儿同族）
-	if err := s.repo.MarkObjectDeleted(ctx, s.bucket, objectKey); err != nil {
-		s.logger.Warn("storage mark object deleted deferred to reconciliation", "key", objectKey, "err", err)
-	}
+	// DB commit is complete. Failed physical cleanup retains a deleted tombstone
+	// for the existing GC retry; it must never run inside the DB transaction.
 	if err := s.client.RemoveObject(ctx, objectKey); err != nil {
 		s.logger.Warn("storage remove attachment object deferred to gc", "key", objectKey, "err", err)
 	}

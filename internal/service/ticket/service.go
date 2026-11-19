@@ -292,25 +292,6 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
 	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
 	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
-	// 同一 G2 schema/显隐快照内剔除隐藏字段、重算公式并校验落库值。
-	customData, err = s.validateCustomData(ctx, s.db, req.TypeCode, customData, nil)
-	if err != nil {
-		return nil, err
-	}
-	// 池连接调用一律在 Begin 的事务窗口外（2026-10-26 BK11 CI 挂死根因修复：
-	// Create 事务内曾嵌套池取——fileFieldKeys/keyGen 各要第二个连接，与并发
-	// Move 在 4 连接池上构成池耗尽循环等待；与上方 fetch/validate/formula
-	// 的 schema 读同规，提到事务外预取）
-	fileKeys, err := s.fileFieldKeys(ctx, req.TypeCode, customData)
-	if err != nil {
-		return nil, err
-	}
-	// 贴图落绑进料（2026-11-03 批）：richtext 字段 MD 内嵌图 /files/ 引用——
-	// 与 fileKeys 同规事务外预取（池纪律同上注记）
-	richtextKeys, err := s.richtextFieldKeys(ctx, req.TypeCode, customData)
-	if err != nil {
-		return nil, err
-	}
 	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
 	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
 	var humanKey string
@@ -343,6 +324,21 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	defer tx.Rollback(ctx)
 
+	// G2 and reference extraction share the transaction's schema and connection.
+	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, tx, req.TypeCode)
+	if err != nil {
+		return nil, err
+	}
+	customData, err = s.validateCustomData(ctx, tx, req.TypeCode, customData, nil, fields)
+	if err != nil {
+		return nil, err
+	}
+	refs, err := fieldReferences(fields, customData)
+	if err != nil {
+		return nil, err
+	}
+	ticket.CustomData = customData
+
 	org, err := s.orgRepo.FindByIDForShareTx(ctx, tx, req.OrgID)
 	if err != nil {
 		return nil, err
@@ -362,14 +358,8 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}); err != nil {
 		return nil, err
 	}
-	// B5-3 建单前绑定（A.5 建单前链）：attachment_create/richtext_create 悬挂
-	// confirmed 对象同事务校验+落绑+purpose 翻正式；校验失败=提交内容非法→400
-	// B1-6 批1：file 字段 object_key 并入落绑（01 号 §3.5 file×附件五点——
-	// custom_data 只存展示态引用，权威归属走 ticket_attachments 既有链；
-	// 未 confirm 的裸 key 在悬挂校验处 400，天然防伪造）——fileKeys 已在
-	// Begin 前预取（池调用禁入事务窗口，见上方注记）
-	bindKeys := append(append(append([]string{}, req.Attachments...), fileKeys...), richtextKeys...)
-	if err := s.bindAttachmentsTx(ctx, tx, ticket.ID, actorUserID, bindKeys); err != nil {
+	// Create and Update preserve field purpose and deduplicate shared sources.
+	if err := s.bindUpdateReferencesTx(ctx, tx, ticket.ID, actorUserID, req.Attachments, refs); err != nil {
 		return nil, err
 	}
 	// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
@@ -539,101 +529,6 @@ func (s *Service) applyFetches(ctx context.Context, typeCode string, customData 
 	return json.RawMessage(b)
 }
 
-// richtextFieldKeys 抽取 custom_data 中 richtext 字段 MD 的内嵌图 object_key
-// （2026-11-03 贴图落绑批——Create 进料侧；解析=ExtractFileRefs 与渲染同口径）。
-func (s *Service) richtextFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
-	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
-	if err != nil || len(fields) == 0 {
-		return nil, err
-	}
-	hasRT := false
-	for _, f := range fields {
-		if f.FieldType == "richtext" {
-			hasRT = true
-			break
-		}
-	}
-	if !hasRT {
-		return nil, nil
-	}
-	var data map[string]any
-	if json.Unmarshal(customData, &data) != nil {
-		return nil, nil
-	}
-	var keys []string
-	for _, f := range fields {
-		if f.FieldType != "richtext" {
-			continue
-		}
-		if v, ok := data[f.FieldKey].(string); ok && v != "" {
-			keys = append(keys, ExtractFileRefs(v)...)
-		}
-	}
-	return keys, nil
-}
-
-// fileFieldKeys 收集 custom_data 中 file 字段的 object_key（B1-6 批1——落绑用）。
-func (s *Service) fileFieldKeys(ctx context.Context, typeCode string, customData json.RawMessage) ([]string, error) {
-	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
-	if err != nil || len(fields) == 0 {
-		return nil, err
-	}
-	hasFile := false
-	for _, f := range fields {
-		if f.FieldType == "file" {
-			hasFile = true
-			break
-		}
-	}
-	if !hasFile {
-		return nil, nil
-	}
-	var data map[string]any
-	if json.Unmarshal(customData, &data) != nil {
-		return nil, nil
-	}
-	var keys []string
-	for _, f := range fields {
-		if f.FieldType != "file" {
-			continue
-		}
-		if arr, ok := data[f.FieldKey].([]any); ok {
-			for _, k := range arr {
-				if ks, ok := k.(string); ok && ks != "" {
-					keys = append(keys, ks)
-				}
-			}
-		}
-	}
-	return keys, nil
-}
-
-// bindAttachmentsTx 悬挂对象落绑共用件（B5-3 建单前链 + B5-4 编辑增量——05 号 A.3 a 案）：
-// attachment_create/richtext_create 悬挂 confirmed 对象在调用方事务内校验+落绑+purpose
-// 翻正式。错误映射：无效对象/重复对象/超上限 → 400（用户输入面）；其余上抛 500 面。
-func (s *Service) bindAttachmentsTx(ctx context.Context, tx pgx.Tx, ticketID, actorUserID int64, keys []string) error {
-	if len(keys) == 0 {
-		return nil
-	}
-	cfg := s.storageCfg.Load() // 快照只读（F-D3）
-	if err := s.storageRepo.BindCreateAttachments(ctx, tx, cfg.Bucket, actorUserID, ticketID, keys, cfg.MaxAttachmentsPerTicket); err != nil {
-		if errors.Is(err, repository.ErrStorageObjectNotFound) {
-			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含无效对象（不存在/非本人/未确认/已绑定）")
-		}
-		// 审计 M-3：同 key 重复出现在 attachments → UNIQUE 冲突此前未映射
-		// 落 500（用户输入面应 400）
-		if errors.Is(err, repository.ErrStorageAlreadyBound) {
-			return errcode.New(errcode.ErrInvalidParams.Code, "attachments 含重复对象")
-		}
-		if errors.Is(err, repository.ErrStorageAttachmentLimit) {
-			return errcode.New(errcode.ErrInvalidParams.Code,
-				fmt.Sprintf("工单附件数超过上限（%d）", cfg.MaxAttachmentsPerTicket))
-		}
-		return fmt.Errorf("bind attachments: %w", err)
-	}
-	return nil
-}
-
 // Update 更新工单（patch 语义）
 func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, actorUserID int64) (*model.Ticket, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "update", strconv.FormatInt(req.ID, 10)); err != nil {
@@ -648,7 +543,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
 	// patch 语义：仅校验显式传入的 priority（W4 十六批 Med——写侧改字段级 COALESCE，
-	// nil 字段不覆盖；此处读出的 ticket 仅作授权/状态预检与响应载体）
+	// nil 字段不覆盖；此处读出的 ticket 仅作授权/状态预检及类型识别）
 	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
 	}
@@ -691,7 +586,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 		}
 		customData = merged
 	}
-	updatedAt, err := s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority, customData)
+	ticket, err = s.ticketRepo.UpdateTx(ctx, tx, req.ID, req.Title, req.Description, req.Priority, customData)
 	if err != nil {
 		return nil, err
 	}
@@ -711,20 +606,9 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
-	// 响应=读出行合并请求 patch（updated_at 以 RETURNING 为准）；未传字段保持库值
-	if req.Title != nil {
-		ticket.Title = *req.Title
-	}
-	if req.Description != nil {
-		ticket.Description = *req.Description
-	}
-	if req.Priority != nil {
-		ticket.Priority = *req.Priority
-	}
-	if customData != nil {
-		ticket.CustomData = customData
-	}
-	ticket.UpdatedAt = updatedAt
+	// 响应与事件共用本次 RETURNING 的提交版本。仅展示姓名在锁外按快照 ID
+	// 尽力回填，不再查票拼接领域事实，也不沿用预读处理人的旧姓名。
+	s.ticketRepo.EnrichSnapshotUserNames(ctx, ticket)
 	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
 	updatedPayload := domainevent.Payload{
 		"title": ticket.Title, "type_code": ticket.TypeCode,
@@ -859,7 +743,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 	if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
 		return err
 	}
-	return s.assignAuthorized(ctx, req, actorUserID)
+	return s.assignAuthorized(ctx, req, actorUserID, false)
 }
 
 // validateAssignTargetUser 分派目标用户校验（2026-10-29 幽灵分派修复）：
@@ -884,9 +768,7 @@ func (s *Service) validateAssignTargetUser(ctx context.Context, userID int64) er
 	return nil
 }
 
-// assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
-// assignAsSystem 系统身份分派——自动分派规则命中时的执行通道（S3a B3-2；
-// unexport（G-32）：同包唯一调用方 DispatchService，防包外绕过鉴权直调）。
+// assignAsSystem 系统身份分派，仅供同包已获权规则或后置动作调用。
 // ⚠ 权限旁路：跳过 Assign 的 L2/L3 鉴权——调用方须已有 ticket:type:manage 语义授权
 // （鉴权已在规则创建期行使：谁能配置自动分派）。修前用 rule.CreatedBy 走 Assign，
 // 规则创建者非该单可操作人（非 admin 的管理员建的规则、跨组织）即 403→仅 Warn+
@@ -894,14 +776,18 @@ func (s *Service) validateAssignTargetUser(ctx context.Context, userID int64) er
 // 状态机/条件校验/事务/事件全链与 Assign 一致；auditActor 记入事件与 ticket_events 供归因
 // （=规则创建者，与 post_actions「系统身份重放」同口径——G-32 委托放大族）。
 func (s *Service) assignAsSystem(ctx context.Context, req *model.AssignTicketRequest, auditActor int64) error {
-	return s.assignAuthorized(ctx, req, auditActor)
+	return s.assignAuthorized(ctx, req, auditActor, false)
 }
 
-// assignAuthorized Assign 的鉴权后主体（Assign/assignAsSystem 共用）。
-func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64) error {
+// assignAuthorized applies the admitted assignment. Initial dispatch is
+// restricted to an open, unassigned snapshot fenced by LockTransitionSnapshotTx.
+func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64, initialOnly bool) error {
 	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
+	}
+	if initialOnly && (ticket.Status != StatusOpen || ticket.AssignedTo != nil) {
+		return nil
 	}
 	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
 	if ticket.Status == StatusClosed {
@@ -1034,12 +920,6 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
-	// Capture identity/recipient facts before the write. The asynchronous consumer
-	// must not depend on a ticket that may have been deleted after this commit.
-	ticket, err := s.ticketRepo.GetByID(ctx, req.TicketID)
-	if err != nil {
-		return nil, err
-	}
 	comment := &model.TicketComment{
 		TicketID:   req.TicketID,
 		UserID:     actorUserID,
@@ -1052,6 +932,12 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	// 公开回复与通知事实共用本写事务内的工单版本。先锁票，再写评论及审计，
+	// 使并发改票/删票与本次提交有明确顺序；消费者不在提交后回查工单。
+	ticket, err := s.ticketRepo.GetByIDForUpdateTx(ctx, tx, req.TicketID)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
 		return nil, err
 	}
@@ -1176,7 +1062,11 @@ func (s *Service) ListRelations(ctx context.Context, ticketID, actorUserID int64
 	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(ticketID, 10)); err != nil {
 		return nil, err
 	}
-	return s.ticketRepo.ListRelations(ctx, ticketID)
+	filter, err := s.resolveListFilter(ctx, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+	return s.ticketRepo.ListRelations(ctx, ticketID, filter)
 }
 
 // --- 元数据 ---

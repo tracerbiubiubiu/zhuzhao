@@ -223,6 +223,10 @@ func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uplo
 // ——S5 评审 P2-2）。B5-3 批2；exec 由调用方事务传入（CreateTicket 同事务）；
 // 并发加固 + 计数校验 + bucket 条件 2026-10-20（S5 评审 P1/D1-3）。
 func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, bucket string, userID, ticketID int64, keys []string, maxCount int) error {
+	if err := r.lockAttachmentObjects(ctx, exec, bucket, keys); err != nil {
+		return err
+	}
+
 	// 附件数计数（建单路径执行点）：本次 keys 与已有合计不超上限（重复键由 UNIQUE 兜底——审计 M-7 措辞对齐）
 	// 附件数计数（建单路径执行点）：仅 ticket_attachment 行/键计入——richtext
 	// 内嵌图独立软限不占额（05 §3 两档口径，拍板 P2 2026-10-21）；混合列表中
@@ -238,20 +242,22 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, b
 		var id int64
 		var purpose string
 		var createdBy int64
-		var status string
+		var status, ownerKind, ownerID string
+		var bound bool
 		// FOR UPDATE：对象行锁串行化并发建单——后到事务阻塞至此单提交后重读，
 		// purpose 已翻正式态 → switch default 拒绝（修复前双双落绑）
 		err := exec.QueryRow(ctx, `
-			SELECT id, purpose, created_by, status FROM file_objects
-			WHERE bucket=$1 AND object_key=$2 FOR UPDATE`, bucket, key).
-			Scan(&id, &purpose, &createdBy, &status)
+			SELECT id, purpose, created_by, status, COALESCE(owner_kind,''), COALESCE(owner_id,''),
+    EXISTS(SELECT 1 FROM ticket_attachments WHERE file_object_id=fo.id)
+    FROM file_objects fo WHERE bucket=$1 AND object_key=$2`, bucket, key).
+			Scan(&id, &purpose, &createdBy, &status, &ownerKind, &ownerID, &bound)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrStorageObjectNotFound
 			}
 			return err
 		}
-		if createdBy != userID || status != "confirmed" || purpose == "" {
+		if createdBy != userID || status != "confirmed" || purpose == "" || ownerKind != "" || ownerID != "" || bound {
 			return ErrStorageObjectNotFound
 		}
 		formal := ""

@@ -125,4 +125,22 @@ func TestB32_Dispatch(t *testing.T) {
 		err = disp.DeleteRule(ctx, last.ID)
 		require.Error(t, err, "再删=404")
 	})
+
+	t.Run("迟到的首派保留已完成的人工分派", func(t *testing.T) {
+		svc.SetDispatcher(nil)
+		t.Cleanup(func() { svc.SetDispatcher(disp) })
+		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
+			TypeCode: code, Title: "数据库故障 已由人工分派", OrgID: oid,
+		}, aid)
+		require.NoError(t, err)
+		require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &aid}, aid))
+
+		disp.OnAfterCreate(ctx, tk)
+
+		got, err := svc.Get(ctx, tk.ID, aid)
+		require.NoError(t, err)
+		require.NotNil(t, got.AssignedTo)
+		require.Equal(t, aid, *got.AssignedTo)
+		require.Equal(t, StatusAssigned, got.Status)
+	})
 }

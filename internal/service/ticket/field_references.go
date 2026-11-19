@@ -16,6 +16,9 @@ import (
 // fieldReferences consumes the same schema snapshot and post-G2/pruned JSON as
 // validation. Fields omitted by visibility/patch deletion produce no reference.
 func fieldReferences(fields []*model.TicketTypeField, raw json.RawMessage) ([]repository.StorageFieldReference, error) {
+	if len(fields) == 0 || len(raw) == 0 {
+		return nil, nil
+	}
 	var data map[string]json.RawMessage
 	if json.Unmarshal(raw, &data) != nil {
 		return nil, errcode.ErrInvalidParams

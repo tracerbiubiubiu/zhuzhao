@@ -244,6 +244,10 @@ CREATE INDEX idx_events_ticket ON ticket_events (ticket_id, created_at);
 
 ### 3.2.1 工单模板与关联表（Phase 2a 前移）
 
+直接关联列表沿当前工单的读校验，再按工单集合的同源可见范围过滤每条边的对端。对端不可读时省略整条边。该边界适用于入向和出向关联，撤去一条抄送来源后仍有其它合法读来源时继续显示。
+
+更新和公开评论的通知载荷取本次事务确认的工单快照。更新响应的展示姓名按快照内的用户 ID 回填。建单规则首派只处理仍为 open 且未分配的工单，已经完成的人工作业按当前结果保留。
+
 > **阶段归属（2026-08-25 锁定）**：工单模板、工单关联**无事件依赖、纯 DB**，已从 Phase 3 前移至 **Phase 2a**（迁移 `000015` / `000016`）。SSOT DDL 见 [phase2/09-ticket §2](../phase2/09-ticket.md#工单模板2a-前移迁移-000015)；此处为模块完整形态补录，两者必须一致。
 >
 > **SLA 单位口径**：`ticket_types.default_sla_hours` 以**小时**计（类型级默认）；`ticket_templates.default_sla_minutes` 以**分钟**计（模板级预填）。两者在Phase2a仅存储；当前SLA0.5使用状态元数据`transition_meta[state].sla_due_hours`，不能把旧类型/模板默认值视为已接入完整SLA策略，完整响应/解决/工作日历仍是后续能力。

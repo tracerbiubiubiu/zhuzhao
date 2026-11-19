@@ -2,6 +2,8 @@
 
 前后端联调先读[响应封装](response.md)，再查[错误码登记](errcode.md)。错误码登记已统一至本目录，没有根 `api/` 的第二份权威。
 
+字典删除的兼容请求、CAS 条件与并发边界见[字典删除合同](dictionary.md)。
+
 - 业务响应为 `{code,message,data,request_id}`，成功code为0；业务分支结合HTTP状态和code判断。
 - 常规出口由utils response与主仓错误映射维护。鉴权/限流、流式下载、健康检查等特殊出口按实际契约核对，不能套一条响应示例覆盖全部HTTP。
 - `make swag` 根据Handler注解生成 `docs/docs.go`、`docs/swagger.json`、`docs/swagger.yaml`；运行时入口为 `/swagger/*`。生成物不手改，路径供Go导入和UI codegen使用。

@@ -16,6 +16,8 @@ type DictService struct {
 	logger *slog.Logger
 }
 
+type DictTypeDeleteTarget = repository.DictTypeDeleteTarget
+
 func NewDictService(repo *repository.DictRepo, logger *slog.Logger) *DictService {
 	return &DictService{repo: repo, logger: logger}
 }
@@ -57,7 +59,10 @@ func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
 	return nil
 }
 
-func (s *DictService) DeleteType(ctx context.Context, code string) error {
+func (s *DictService) DeleteType(ctx context.Context, code string, target ...DictTypeDeleteTarget) error {
+	if len(target) > 1 || len(target) == 1 && (target[0].ID <= 0 || target[0].Version <= 0) {
+		return errcode.ErrInvalidParams
+	}
 	// B1-2 删除守卫（拍板点④）：被 ticket_type_fields 的 `dict:<code>` 引用时拒删
 	//（先守卫后删——误删即全部引用字段选项悬空；项删除不拦=运营高频动作）
 	inUse, err := s.repo.HasFieldDictRef(ctx, code)
@@ -68,7 +73,10 @@ func (s *DictService) DeleteType(ctx context.Context, code string) error {
 	if inUse {
 		return errcode.ErrDictTypeInUse
 	}
-	if err := s.repo.DeleteTypeByCode(ctx, code); err != nil {
+	if err := s.repo.DeleteTypeByCode(ctx, code, target...); err != nil {
+		if errors.Is(err, repository.ErrDictDeleteConflict) {
+			return errcode.ErrConflict
+		}
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
 			return errcode.ErrDictTypeNotFound
 		}
@@ -147,8 +155,14 @@ func (s *DictService) UpdateItem(ctx context.Context, it *model.DictItem) error 
 	return nil
 }
 
-func (s *DictService) DeleteItem(ctx context.Context, id int64) error {
-	if err := s.repo.DeleteItemByID(ctx, id); err != nil {
+func (s *DictService) DeleteItem(ctx context.Context, id int64, version ...int64) error {
+	if len(version) > 1 || len(version) == 1 && version[0] <= 0 {
+		return errcode.ErrInvalidParams
+	}
+	if err := s.repo.DeleteItemByID(ctx, id, version...); err != nil {
+		if errors.Is(err, repository.ErrDictDeleteConflict) {
+			return errcode.ErrConflict
+		}
 		if errors.Is(err, repository.ErrDictItemNotFound) {
 			return errcode.ErrDictItemNotFound
 		}
