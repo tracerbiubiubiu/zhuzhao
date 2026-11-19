@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 )
 
 // TTLConfig 类型级 TTL（A.1：7/30 天按指标衰减特性 config 化）。
@@ -70,7 +71,7 @@ func (s *Service) Query(ctx context.Context, intelType, rawValue string) (*Respo
 			return hit.toResponse(intelType, value, false), nil
 		}
 		// 懒过期（拍板点 1 预确认）：stale 返回 + 异步回源刷新（失败仅落日志不阻塞）
-		go s.refresh(context.Background(), intelType, value, ttl)
+		go s.refresh(singleton.Detach(ctx), intelType, value, ttl)
 		return hit.toResponse(intelType, value, true), nil
 	}
 

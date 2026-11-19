@@ -73,7 +73,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
-| **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；失锁仍立即取消/拒绝受理；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
+| **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
 | **内网回调端点（E-②）** | `/internal/jobs/callback`（AK/SK 验签 **utils aksk.GinMiddleware + response.AKSKFail() 统一形态**【2026-09-16 验签统一批：信封+分档中文文案，替代原零依赖默认响应】+ 专用拓扑，默认关；**action_id 在 body，C10**——早期曾拟 `/internal/jobs/<action_id>` 路径参数，未采用）；`pkg/jobs` 动作注册表；`job_submissions` 一表两用（提交凭证 + 回调幂等栅栏，迁移 000021）；P6 未知动作 404 / P7 错误映射（ErrAbort→409、其他→500） | ✅ 2026-09-04（16 号 §3）；2026-09-16 接入生态统一中间件形态 | `internal/handler/jobs_handler.go` `internal/pkg/jobs/` `internal/repository/job_submission_repo.go` |
@@ -271,13 +271,17 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
+### 2026-11-19 F0失锁收尾
+
+主仓将正常停止与所有权取消独立处理。检测到PG锁会话丢失即取消请求、判定日志刷盘、领域事件订阅与脱离请求的审计等尽力写入。正常SIGTERM保留HTTP及判定日志排空。Redis读取队首时登记批次令牌，裁剪时原子核对，已持久化行可由接管实例续消。复现含旧确认裁掉后继批次、直接失锁、SIGTERM中途失锁；接管以同一独占PG与Redis验证。普通档四阶段验收251项通过、82对迁移往返零漂移，默认语句覆盖率20.9%→21.5%。原始材料ID为`maintenance/f0-lost-owner-shutdown-20261119/`。PG已提交而尚未确认的行仍可重放，内存暂存和在途事件可能丢失。运行继续采用单实例和受控重启，HA与其余工作包按[前移计划](../planning/audit-repair-plan-2026-11-17.md)追踪。
+
 ### 2026-11-18 UI错对象写入修复
 
 本地UI候选 `259c61cb` 将 MyOrg 的名册和委托写入绑定组织、页码和请求世代，工单类型保存绑定编辑会话并隔离画布撤销历史，字典操作锁定当前类型、条目和已确认的写入目标。MyOrg和字典新增26项错序单测，原真实旅程保留。状态图新增真实浏览器错序和撤销场景，并回读两种类型的状态、元数据与版本。最终前端六件门禁通过，396单测、49项真实栈E2E，零失败、跳过或重试。供应链检查沿用已接受的picomatch单项例外。真实栈临时资源已回收，原9个运行对象对账一致。
 
 提交复核续补 `55a85694` 恢复 MyOrg 当前卡片回读，补齐字典写后重读、同版本删除确认及失败时的草稿恢复，隔离状态图旧预检错误提示。最终本地候选再次全过前端六件门禁，含405单测、49项独占真实栈E2E，零失败、跳过或重试。复核红绿与清理收据归材料ID `maintenance/pass8-target-write-20261118/review-followup/`。
 
-本批验证范围限于当前三个编辑入口和既有回归组合，后端授权与跨客户端并发仍归现有服务端合同。配置拒绝误连库、F0失锁收尾、F2a任务一致性和Phase 6后继持续开放，完成条件见[分批承接](../planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。材料ID `maintenance/pass8-target-write-20261118/`，包含本地构建、红绿、真实结果、初次测试夹具超时及清理收据。
+本批验证范围限于当前三个编辑入口和既有回归组合，后端授权与跨客户端并发仍归现有服务端合同。配置拒绝误连库、F2a任务一致性和Phase 6后继持续开放。F0失锁收尾见本节，分批完成条件见[分批承接](../planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。材料ID `maintenance/pass8-target-write-20261118/`，包含本地构建、红绿、真实结果、初次测试夹具超时及清理收据。
 
 ### 2026-11-18 UI交付与依赖风险
 

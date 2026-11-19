@@ -30,7 +30,7 @@ func TestPolicyEvalPipelineEndToEnd(t *testing.T) {
 	w := audit.NewPolicyEvalWriter(audit.PolicyEvalConfig{BatchSize: 10, FlushInterval: 30 * time.Millisecond}, rdb, repo, nil)
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	w.Start(runCtx)
+	w.Start(runCtx, context.Background())
 
 	rid := "req-e2e-policy-eval"
 	w.Write(audit.PolicyEvalEntry{

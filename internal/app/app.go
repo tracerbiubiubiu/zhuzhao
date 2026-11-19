@@ -277,11 +277,6 @@ func (a *App) Run() error {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 	a.backgroundCancel = cancel
-	// Signals stop producers immediately, but admitted HTTP transactions retain
-	// their context until graceful draining finishes or ownership is lost.
-	requestCtx, cancelRequests := context.WithCancel(context.Background())
-	defer cancelRequests()
-	a.requestCancel = cancelRequests
 	acquireCtx, acquireCancel := context.WithTimeout(ctx, 5*time.Second)
 	guard, err := singleton.Acquire(acquireCtx, a.cfg.Database.DSN())
 	acquireCancel()
@@ -289,6 +284,16 @@ func (a *App) Run() error {
 		return err
 	}
 	defer guard.Close()
+	ownerCtx := guard.OwnerContext()
+	// Signals stop producers immediately. An admitted HTTP transaction may
+	// drain normally, but detected ownership loss cancels its context directly.
+	requestCtx, cancelRequests := context.WithCancel(ownerCtx)
+	defer cancelRequests()
+	a.requestCancel = cancelRequests
+	requestCtx = singleton.WithOwner(requestCtx, ownerCtx)
+	if a.events != nil {
+		a.events.BindOwner(ownerCtx)
+	}
 
 	a.server = &http.Server{
 		Addr: fmt.Sprintf(":%d", a.cfg.Server.Port), Handler: guard.Handler(a.router),
@@ -321,7 +326,7 @@ func (a *App) Run() error {
 		serverErr <- err
 	}()
 	if a.policyEval != nil {
-		a.policyEval.Start(requestCtx)
+		a.policyEval.Start(requestCtx, ownerCtx)
 	}
 	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
 		if scheduler == nil {
@@ -395,9 +400,8 @@ func (a *App) Shutdown() error {
 		serverErr = errors.Join(serverErr, ctx.Err())
 	}
 
-	// 2. B11①：等判定日志管道收尾（pump drain + flusher 收尾 flush）。必须在
-	// main.go defer cleanup() 关闭 Redis 之前完成；超时放弃等待（残留行留 Redis
-	// 重启续消不丢，但会有 Warn 留痕）
+	// 2. 等判定日志管道退出。正常退出先排空并刷盘。失锁取消写入，
+	// 已持久化的行留 Redis 供接管实例续消。
 	if a.policyEval != nil {
 		if !a.policyEval.Stop(5 * time.Second) {
 			a.logger.Warn("policy_eval writer shutdown timeout; only completed Redis pushes are durable")
@@ -405,9 +409,8 @@ func (a *App) Shutdown() error {
 	}
 
 	// 3. 领域事件总线排空：等在途订阅者（通知发送/inbox 落行）跑完再放行 cleanup
-	// 关 PG。新事件来源此刻已停（server 已关、cron 随信号 ctx 取消；残发由 closed 闸拒收+Warn）；
-	// 预算 8s 覆盖 UIP 发送 5s 超时（A-7 后实际值——原注释 3s 失实，G-30 勘误）+ 落库；
-	// 超时放弃=仅余崩溃窗口语义，Warn 留痕
+	// 关 PG。正常排空允许订阅者完成，失锁时所有者上下文已取消，
+	// 此处只等在途订阅者退出。总线采用 at-most-once，取消或超时可丢事件。
 	if a.events != nil {
 		drainStart := time.Now()
 		drainCtx, drainCancel := context.WithTimeout(context.Background(), 8*time.Second)

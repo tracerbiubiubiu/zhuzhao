@@ -67,7 +67,7 @@ func TestPolicyEvalWriteFlushToStore(t *testing.T) {
 	w, _, _ := newTestWriter(t, PolicyEvalConfig{BatchSize: 10, FlushInterval: 30 * time.Millisecond}, store)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	w.Start(ctx)
+	w.Start(ctx, context.Background())
 
 	w.Write(PolicyEvalEntry{ActorID: 7, ActorRoles: []string{"user", "admin"}, ResourceType: "ticket",
 		ResourceID: "123", Action: "update", Result: true, TraceID: "req-abc"})
@@ -106,7 +106,7 @@ func TestPolicyEvalInsertFailureRetries(t *testing.T) {
 	w, _, _ := newTestWriter(t, PolicyEvalConfig{BatchSize: 10, FlushInterval: 30 * time.Millisecond}, store)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	w.Start(ctx)
+	w.Start(ctx, context.Background())
 	w.Write(PolicyEvalEntry{ActorID: 1, ResourceType: "ticket", Action: "read", Result: true})
 	waitUntil(t, 2*time.Second, func() bool { return store.total() == 1 })
 }
@@ -132,7 +132,7 @@ func TestPolicyEvalPoisonEntrySkipped(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	w.Start(ctx)
+	w.Start(ctx, context.Background())
 	w.Write(PolicyEvalEntry{ActorID: 9, ResourceType: "t", Action: "read", Result: true})
 	waitUntil(t, 2*time.Second, func() bool { return store.total() == 1 })
 	store.mu.Lock()
@@ -146,7 +146,7 @@ func TestPolicyEvalShutdownDrain(t *testing.T) {
 	store := &fakeStore{}
 	w, rdb, _ := newTestWriter(t, PolicyEvalConfig{BatchSize: 10, FlushInterval: time.Hour}, store)
 	ctx, cancel := context.WithCancel(context.Background())
-	w.Start(ctx)
+	w.Start(ctx, context.Background())
 	// flush 周期设 1h：条目只会进 List 不会被消费，验证 cancel 后 pump 的 drain 语义
 	w.Write(PolicyEvalEntry{ActorID: 1, ResourceType: "t", Action: "read", Result: true})
 	w.Write(PolicyEvalEntry{ActorID: 2, ResourceType: "t", Action: "read", Result: true})
@@ -168,7 +168,7 @@ func TestPolicyEval_StopWaitsForGoroutines(t *testing.T) {
 	store := &fakeStore{}
 	w, rdb, _ := newTestWriter(t, PolicyEvalConfig{BatchSize: 10, FlushInterval: time.Hour}, store)
 	ctx, cancel := context.WithCancel(context.Background())
-	w.Start(ctx)
+	w.Start(ctx, context.Background())
 	// FlushInterval 1h：flusher 的收尾 flush 必须走 5s 有界路径，Stop 须等它完成
 	w.Write(PolicyEvalEntry{ActorID: 1, ResourceType: "t", Action: "read", Result: true})
 	cancel()

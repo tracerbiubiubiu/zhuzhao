@@ -17,6 +17,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 )
 
 // PATGetter P4-6 PAT 查验出口（最小接口——repo 实现；nil=本实例不支持 PAT）
@@ -65,11 +66,11 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter) gin.Handler
 				return
 			}
 			// 审计修复（2026-09-30 P2）：真异步+超时（原同步写——池耗尽时请求无限阻塞）
-			go func(id int64) {
-				tctx, tcancel := context.WithTimeout(context.Background(), 3*time.Second)
+			go func(ctx context.Context, id int64) {
+				tctx, tcancel := context.WithTimeout(ctx, 3*time.Second)
 				defer tcancel()
 				pats.TouchLastUsed(tctx, id)
-			}(patID)
+			}(singleton.Detach(c.Request.Context()), patID)
 			c.Set("userID", uid)
 			c.Set("username", uname)
 			c.Set("jti", fmt.Sprintf("pat:%d", patID))

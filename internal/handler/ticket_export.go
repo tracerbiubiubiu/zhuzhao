@@ -7,7 +7,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	ticketsvc "github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
@@ -107,9 +107,9 @@ func (h *TicketHandler) Export(c *gin.Context) {
 
 	// 导出自审计（A.6：谁/筛选/行数——流式挂独立链不经通用审计中间件，手动落行）。
 	// 落在 f.Write 之前：行数此刻已知，客户端中途断开也须留痕（数据已生成即视为已导出）；
-	// ctx 用 WithoutCancel——客户端断开会取消请求 ctx，审计写入不得随之丢失。
+	// 客户端断开后仍保留审计，实例失锁时取消。
 	if h.audit != nil {
-		_ = h.audit.Insert(context.WithoutCancel(c.Request.Context()), middleware.AuditLogEntry{
+		_ = h.audit.Insert(singleton.Detach(c.Request.Context()), middleware.AuditLogEntry{
 			UserID:          c.GetInt64("userID"),
 			Username:        c.GetString("username"),
 			Method:          "GET",

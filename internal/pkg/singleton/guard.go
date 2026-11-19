@@ -33,6 +33,8 @@ type Guard struct {
 	requests  sync.WaitGroup
 	active    atomic.Bool
 	lost      chan struct{}
+	ownerCtx  context.Context
+	loseOwner context.CancelFunc
 	cancel    context.CancelFunc
 	done      chan struct{}
 	closeOnce sync.Once
@@ -61,7 +63,8 @@ func Acquire(ctx context.Context, dsn string) (*Guard, error) {
 		return nil, ErrOccupied
 	}
 	monitorCtx, cancel := context.WithCancel(context.Background())
-	g := &Guard{conn: conn, lost: make(chan struct{}), cancel: cancel, done: make(chan struct{})}
+	ownerCtx, loseOwner := context.WithCancel(context.Background())
+	g := &Guard{conn: conn, lost: make(chan struct{}), cancel: cancel, done: make(chan struct{}), ownerCtx: ownerCtx, loseOwner: loseOwner}
 	g.active.Store(true)
 	go g.monitor(monitorCtx)
 	return g, nil
@@ -88,6 +91,7 @@ func (g *Guard) monitor(ctx context.Context) {
 					return
 				}
 				g.stopAdmission()
+				g.loseOwner()
 				close(g.lost)
 				return
 			}
@@ -96,6 +100,10 @@ func (g *Guard) monitor(ctx context.Context) {
 }
 
 func (g *Guard) Lost() <-chan struct{} { return g.lost }
+
+// OwnerContext remains valid through graceful draining and ends when loss is
+// detected or the owner deliberately releases the session.
+func (g *Guard) OwnerContext() context.Context { return g.ownerCtx }
 
 // Handler blocks readiness and every API before dispatch once loss is detected.
 // BaseContext cancellation and listener shutdown remain the App's responsibility.
@@ -119,6 +127,7 @@ func (g *Guard) Close() {
 		g.stopAdmission()
 		g.cancel()
 		<-g.done
+		g.loseOwner()
 		ctx, cancel := context.WithTimeout(context.Background(), ProbeTimeout)
 		defer cancel()
 		g.mu.Lock()
