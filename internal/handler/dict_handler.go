@@ -57,15 +57,17 @@ func (h *DictHandler) CreateType(c *gin.Context) {
 	response.OK(c, t)
 }
 
-// UpdateType POST /dicts/update（version 乐观锁；enabled=启停）
+// UpdateType POST /api/v1/dicts/update
+//
+//	@Summary	更新字典类型，可省略备注
+//	@Tags		dictionary
+//	@Accept		json
+//	@Produce	json
+//	@Param		req		body	model.UpdateDictTypeRequest	true	"字典写入请求"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/dicts/update [post]
 func (h *DictHandler) UpdateType(c *gin.Context) {
-	var req struct {
-		ID      int64  `json:"id,string" binding:"required"`
-		Name    string `json:"name" binding:"required"`
-		Enabled *bool  `json:"enabled"`
-		Remark  string `json:"remark"`
-		Version int64  `json:"version" binding:"required"`
-	}
+	var req model.UpdateDictTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "id/name/version 必填")
 		return
@@ -74,8 +76,8 @@ func (h *DictHandler) UpdateType(c *gin.Context) {
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
-	t := &model.DictType{ID: req.ID, Name: req.Name, Enabled: enabled, Remark: req.Remark, Version: req.Version}
-	if err := h.dictService.UpdateType(c.Request.Context(), t); err != nil {
+	t := &model.DictType{ID: req.ID, Name: req.Name, Enabled: enabled, Version: req.Version}
+	if err := h.dictService.UpdateType(c.Request.Context(), t, req.Remark); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -137,16 +139,17 @@ func (h *DictHandler) EnabledItems(c *gin.Context) {
 	response.OK(c, gin.H{"items": items})
 }
 
-// CreateItem POST /dict-items
+// CreateItem POST /api/v1/dict-items
+//
+//	@Summary	创建字典条目，可校验父类型身份
+//	@Tags		dictionary
+//	@Accept		json
+//	@Produce	json
+//	@Param		req		body	model.CreateDictItemRequest	true	"字典写入请求"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/dict-items [post]
 func (h *DictHandler) CreateItem(c *gin.Context) {
-	var req struct {
-		TypeCode  string `json:"type_code" binding:"required"`
-		Code      string `json:"code" binding:"required"`
-		Label     string `json:"label" binding:"required"`
-		SortOrder int    `json:"sort_order"`
-		Enabled   *bool  `json:"enabled"` // 缺省 true（建时即停用场景显式传 false）
-		Remark    string `json:"remark"`
-	}
+	var req model.CreateDictItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "type_code/code/label 必填")
 		return
@@ -156,23 +159,28 @@ func (h *DictHandler) CreateItem(c *gin.Context) {
 		enabled = *req.Enabled
 	}
 	it := &model.DictItem{TypeCode: req.TypeCode, Code: req.Code, Label: req.Label, SortOrder: req.SortOrder, Enabled: enabled, Remark: req.Remark}
-	if err := h.dictService.CreateItem(c.Request.Context(), it); err != nil {
+	var parentID []int64
+	if req.TypeID != nil {
+		parentID = append(parentID, *req.TypeID)
+	}
+	if err := h.dictService.CreateItem(c.Request.Context(), it, parentID...); err != nil {
 		writeServiceError(c, err)
 		return
 	}
 	response.OK(c, it)
 }
 
-// UpdateItem POST /dict-items/update
+// UpdateItem POST /api/v1/dict-items/update
+//
+//	@Summary	更新字典条目，可省略备注
+//	@Tags		dictionary
+//	@Accept		json
+//	@Produce	json
+//	@Param		req		body	model.UpdateDictItemRequest	true	"字典写入请求"
+//	@Success	200		{object}	response.Response
+//	@Router		/api/v1/dict-items/update [post]
 func (h *DictHandler) UpdateItem(c *gin.Context) {
-	var req struct {
-		ID        int64  `json:"id,string" binding:"required"`
-		Label     string `json:"label" binding:"required"`
-		SortOrder int    `json:"sort_order"`
-		Enabled   *bool  `json:"enabled"`
-		Remark    string `json:"remark"`
-		Version   int64  `json:"version" binding:"required"`
-	}
+	var req model.UpdateDictItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "id/label/version 必填")
 		return
@@ -181,8 +189,8 @@ func (h *DictHandler) UpdateItem(c *gin.Context) {
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
-	it := &model.DictItem{ID: req.ID, Label: req.Label, SortOrder: req.SortOrder, Enabled: enabled, Remark: req.Remark, Version: req.Version}
-	if err := h.dictService.UpdateItem(c.Request.Context(), it); err != nil {
+	it := &model.DictItem{ID: req.ID, Label: req.Label, SortOrder: req.SortOrder, Enabled: enabled, Version: req.Version}
+	if err := h.dictService.UpdateItem(c.Request.Context(), it, req.Remark); err != nil {
 		writeServiceError(c, err)
 		return
 	}

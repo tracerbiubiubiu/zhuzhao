@@ -86,7 +86,7 @@ func (r *TicketCCRepo) ListByTicket(ctx context.Context, ticketID int64) ([]mode
 // IsCC 单用户是否该单抄送人（L2 特例通道 Authorize 读支——10 号附录 A.2）。
 func (r *TicketCCRepo) IsCC(ctx context.Context, ticketID, userID int64) (bool, error) {
 	var ok bool
-	err := r.db.QueryRow(ctx,
+	err := IAMDB(ctx, r.db).QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM ticket_cc WHERE ticket_id = $1 AND user_id = $2 AND role = 'cc')`,
 		ticketID, userID).Scan(&ok)
 	return ok, err

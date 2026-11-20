@@ -311,7 +311,7 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassw
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
-	if err := s.userRepo.UpdatePassword(ctx, userID, hash, false); err != nil {
+	if err := s.userRepo.ChangePasswordIfCurrent(ctx, userID, user.Password, hash); err != nil {
 		return nil, err
 	}
 

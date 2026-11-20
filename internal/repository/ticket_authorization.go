@@ -10,6 +10,6 @@ func (r *TicketRepo) MatchesLiveOrgPaths(ctx context.Context, orgID int64, paths
 		return false, nil
 	}
 	var allowed bool
-	err := r.db.QueryRow(ctx, `SELECT `+LiveOrgPathAnchorSQL("$1", "$2"), orgID, paths).Scan(&allowed)
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `SELECT `+LiveOrgPathAnchorSQL("$1", "$2"), orgID, paths).Scan(&allowed)
 	return allowed, err
 }

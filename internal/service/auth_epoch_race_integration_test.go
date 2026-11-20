@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
@@ -205,6 +206,65 @@ func TestAuthEpoch_UserLifecycleCannotReviveOldAT(t *testing.T) {
 				require.NoError(t, rdb.Del(ctx, fmt.Sprintf("user:disabled:%d", u.ID)).Err())
 				require.Equal(t, 401, epochAccessStatus(t, mgr, rdb, old.AccessToken))
 			}
+		})
+	}
+}
+
+func TestAuthEpoch_ChangePasswordUsesCurrentCredential(t *testing.T) {
+	for _, change := range []string{"admin reset", "account disabled"} {
+		t.Run(change, func(t *testing.T) {
+			_, repo, user, rdb, manager := newEpochRegressionAuth(t)
+			ctx, cancel := context.WithTimeout(trustedIAMTestContext(), 10*time.Second)
+			defer cancel()
+
+			trace := &iamFreshTrace{event: make(chan string, 1), release: make(chan struct{})}
+			close(trace.release)
+			cfg := testPool.Config()
+			cfg.ConnConfig.Tracer = trace
+			cfg.MaxConns = 2
+			pool, err := pgxpool.NewWithConfig(ctx, cfg)
+			require.NoError(t, err)
+			t.Cleanup(pool.Close)
+			users := repository.NewUserRepo(pool)
+			auth := service.NewAuthService(users, manager, rdb, redispkg.NewScripts(rdb), nil,
+				config.JWTConfig{AccessTTL: time.Minute, RefreshTTL: time.Hour}, nil)
+
+			expectedHash := user.Password
+			if change == "admin reset" {
+				expectedHash, err = crypto.HashPassword("EpochReset#2026")
+				require.NoError(t, err)
+			}
+			done := make(chan error, 1)
+			err = repo.WithIAMGuard(ctx, func(guarded context.Context) error {
+				go func() {
+					_, err := auth.UpdatePassword(ctx, user.ID, "EpochOld#2026", "EpochNew#2026", "", "test-device")
+					done <- err
+				}()
+				select {
+				case <-trace.event:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+				if change == "admin reset" {
+					return repo.UpdatePassword(guarded, user.ID, expectedHash, true)
+				}
+				_, err := repository.IAMDB(guarded, testPool).Exec(guarded, `UPDATE users SET status = 0 WHERE id = $1`, user.ID)
+				return err
+			})
+			require.NoError(t, err)
+			select {
+			case err := <-done:
+				require.ErrorIs(t, err, errcode.ErrInvalidCredentials)
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+			current, err := repo.FindByID(ctx, user.ID)
+			require.NoError(t, err)
+			require.Equal(t, expectedHash, current.Password)
+			require.Equal(t, change == "admin reset", current.MustChangePassword)
+			keys, err := rdb.Keys(ctx, "*").Result()
+			require.NoError(t, err)
+			require.Empty(t, keys, "a rejected write must not change sessions")
 		})
 	}
 }

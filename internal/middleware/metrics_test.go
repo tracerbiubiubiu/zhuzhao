@@ -12,9 +12,9 @@ import (
 // 渲染必须产出合法 Prometheus 文本（TYPE 行+带标号样本行）——未来接抓取端零改造。
 func TestLabeledMetrics_Render(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	SetGauge("zhuzhao_storage_usage_bytes", "avatar", 1024)
-	SetGauge("zhuzhao_storage_usage_bytes", "ticket_richtext", 2048)
-	SetGauge("zhuzhao_storage_usage_bytes", "total", 3072)
+	SetGaugeSnapshot("zhuzhao_storage_usage_bytes", map[string]float64{
+		"avatar": 1024, "ticket_richtext": 2048, "total": 3072,
+	})
 	AddCounter("zhuzhao_notify_sent_total", "ok", 3)
 	AddCounter("zhuzhao_notify_sent_total", "ok", 1) // 累加语义
 	AddCounter("zhuzhao_notify_sent_total", "dead", 2)

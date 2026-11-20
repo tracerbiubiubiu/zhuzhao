@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"sort"
 	"strings"
@@ -46,14 +47,11 @@ var (
 	metricLabeledCounters = map[string]map[string]float64{}
 )
 
-// SetGauge 设置带标号 gauge 当前值（采样器全量覆盖——SQL 聚合语义）
-func SetGauge(name, label string, v float64) {
+// SetGaugeSnapshot replaces all labels for one gauge in a single scrape-visible update.
+func SetGaugeSnapshot(name string, values map[string]float64) {
 	metricLabeledMu.Lock()
 	defer metricLabeledMu.Unlock()
-	if metricLabeledGauges[name] == nil {
-		metricLabeledGauges[name] = map[string]float64{}
-	}
-	metricLabeledGauges[name][label] = v
+	metricLabeledGauges[name] = maps.Clone(values)
 }
 
 // AddCounter 带标号计数器累加（单调递增——读取方算差值）

@@ -71,6 +71,8 @@ L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及�
 
 ### 3.2 DBTX 试点、组织删除和事务预算
 
+2026-11-20 存量修复先接 HTTP 工单更新和转换。两条命令用现行 PostgreSQL advisory key 的共享模式，持排他模式的现有 IAM 写与之互斥。守卫直接传写事务，授权读取复用该连接并重新读取数据库角色和策略。完整 C04 仍按本节开展，包括授权控制行与策略代际、建单及其余写入口、跨实例观测和未知提交查询。当前切片保留锁等待失败的既有服务错误映射，容量与超预算体验随完整 C04 验证。
+
 C04 原批准试点继续仅覆盖 `ticket.Service.Create/Update/Transition` 及其直接 repo 邻域：主仓内部 `DBTX={Query,QueryRow,Exec}`，`WithinTx(ctx,pool,fn(DBTX))` 由 service 开始、提交和回滚，repo 显式收同一 tx；不放任意 context、不隐式嵌套、不在 tx 内再从 pool 借连接。所需 schema/业务读也用该 tx，网络取数/HEAD/模型在外，锁内重新验可变引用。commit 返回错误先按 operation 查询 receipt，不整体盲重试或把“未知”报成“无效果”。DBTX 不下沉到 utils 的业务接口，不全仓重构。
 
 `OrgRepo.Delete` 现有组织行锁与子组织/成员/未结工单检查保留，**增加 org_roles 存在检查并返回稳定冲突+受权计数**，要求显式解绑再删，不暗删授权。`BindOrgRole`、任职/相关组织依赖写均在授权守卫之后通过同一个 `lockAliveOrgForShareTx` 校验并锁存活组织；删除取该组织 `FOR UPDATE`，删除/绑定双方同序，避免“删前没绑定、提交时刚绑入”。虚拟组 `DeleteVgWithOwnerCleanup` 单独按同一来源/owner 清理政策验；历史软删孤儿只读盘点后受审清理，不自动恢复有效授权。
@@ -219,7 +221,7 @@ PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错�
 
 - `internal/service/auth_service.go`的`Login/Refresh`已有账号/密码/Redis密码epoch检查及防借用新epoch的重读，`internal/service/session_revoke.go`只有3次进程内重试和reconcile日志。当前永久epoch只存Redis，缺键为0；不能据此保证丢失后旧epoch0 AT不复活。
 - `internal/middleware/jwt.go`的Bearer AT不读DB status，靠Redis blacklist/disabled/iat/epoch；文件cookie另有`internal/middleware/fileauth.go`入口，两者都需接新安全快照。PAT repo已join当前账号status/deleted及PAT自身状态，不靠AT/RT epoch。
-- `UserService.UpdateStatus/Delete/ResetPassword`先提交DB，再撤Redis；最终Redis原错误经`internal/handler/errors.go`的`writeServiceError`可能为500，不能沿注释声称已有503/持久补偿。只有自服务`AuthService.UpdatePassword`显式映射503。启用当前直接清disabled，尚无本段安全屏障。
+- `UserService.UpdateStatus/Delete/ResetPassword`先提交DB，再撤Redis；最终Redis原错误经`internal/handler/errors.go`的`writeServiceError`可能为500，不能沿注释声称已有503/持久补偿。只有自服务`AuthService.UpdatePassword`显式映射503。 自服务写入在 IAM 守卫内核验本次已验证的原密码哈希以及账号启用状态，失败时返回现有凭据错误并停止后续会话操作。启用当前直接清disabled，尚无本段安全屏障。
 - `internal/pkg/admincli/reset_password.go`的`ResetPassword`也直接改密码再撤会话，必须纳入；普通用户metadata Update不含password字段，不扩无关写面。
 
 ### 4.2 C05的有限持久方案

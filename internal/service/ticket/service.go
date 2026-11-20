@@ -160,6 +160,9 @@ func (s *Service) isGlobalOrgAdmin(ctx context.Context, userID int64) bool {
 
 // getRoles 获取用户角色码列表
 func (s *Service) getRoles(ctx context.Context, userID int64) ([]string, error) {
+	if current, ok := ctx.Value(ticketCommandRolesKey{}).(ticketCommandRoles); ok && current.actor == userID {
+		return current.roles, nil
+	}
 	return s.roleFetcher.GetRoleCodesByUserID(ctx, userID)
 }
 
@@ -531,6 +534,34 @@ func (s *Service) applyFetches(ctx context.Context, typeCode string, customData 
 
 // Update 更新工单（patch 语义）
 func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, actorUserID int64) (*model.Ticket, error) {
+	var ticket *model.Ticket
+	err := s.withHTTPCommand(ctx, "update", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		ticket, err = s.updateCommand(ctx, tx, req, actorUserID)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
+	updatedPayload := domainevent.Payload{
+		"title": ticket.Title, "type_code": ticket.TypeCode,
+		"human_key": ticket.HumanKey, "status": ticket.Status,
+		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
+	}
+	if ticket.AssignedTo != nil {
+		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
+	}
+	s.emitTicketEvent(ticket, domainevent.DomainEvent{
+		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
+		Payload: updatedPayload, Timestamp: time.Now(),
+	})
+	return ticket, nil
+}
+
+// updateCommand persists the patch and durable event on the admitted connection.
+func (s *Service) updateCommand(ctx context.Context, tx pgx.Tx, req *model.UpdateTicketRequest, actorUserID int64) (*model.Ticket, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "update", strconv.FormatInt(req.ID, 10)); err != nil {
 		return nil, err
 	}
@@ -549,11 +580,14 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}
 	// BK-3：条件更新（WHERE status<>'closed'）+ 同事务事件留痕——
 	// 消除「读后写」TOCTOU（并发 close 后命中 0 行 → 90004），补齐 patch 审计断档
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
+	ownTx := tx == nil
+	if ownTx {
+		tx, err = s.db.Begin(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("begin tx: %w", err)
+		}
+		defer tx.Rollback(ctx)
 	}
-	defer tx.Rollback(ctx)
 	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项）：传入键覆盖、null 删键；合并后
 	// 整体 G2 重校验（含未改动字段——防基线外字段绕进、required 被 null 清空）。
 	// 字段级 diff（D20 changes[]）随 S6 B6-1 事件面统一落地，请求体已入通用审计行。
@@ -605,23 +639,11 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	}
 	// Reuse the transaction connection for the snapshot's display references.
 	s.ticketRepo.EnrichSnapshotUserNamesTx(ctx, tx, ticket)
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+	if ownTx {
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
 	}
-	// B6-1/D20：工单更新事件（载荷带 changes[] 字段级新值 diff——旧值比对/custom_data 键级待 B-1，勿以「键级」表述引用本载荷）
-	updatedPayload := domainevent.Payload{
-		"title": ticket.Title, "type_code": ticket.TypeCode,
-		"human_key": ticket.HumanKey, "status": ticket.Status,
-		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
-	}
-	if ticket.AssignedTo != nil {
-		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
-	}
-	s.emitTicketEvent(ticket, domainevent.DomainEvent{
-		BizType: domainevent.BizTicket, Action: domainevent.TicketUpdated,
-		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
-		Payload: updatedPayload, Timestamp: time.Now(),
-	})
 	return ticket, nil
 }
 

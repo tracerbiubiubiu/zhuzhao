@@ -43,3 +43,33 @@ type DictItemListResponse struct {
 	Page     int         `json:"page"`
 	PageSize int         `json:"page_size"`
 }
+
+// UpdateDictTypeRequest binds the JSON body of the dictionary administration command.
+type UpdateDictTypeRequest struct {
+	ID      int64   `json:"id,string" binding:"required"`
+	Name    string  `json:"name" binding:"required"`
+	Enabled *bool   `json:"enabled"`
+	Remark  *string `json:"remark"`
+	Version int64   `json:"version" binding:"required"`
+}
+
+// CreateDictItemRequest binds the JSON body of the dictionary administration command.
+type CreateDictItemRequest struct {
+	TypeID    *int64 `json:"type_id,string" binding:"omitempty,gt=0"`
+	TypeCode  string `json:"type_code" binding:"required"`
+	Code      string `json:"code" binding:"required"`
+	Label     string `json:"label" binding:"required"`
+	SortOrder int    `json:"sort_order"`
+	Enabled   *bool  `json:"enabled"` // 缺省 true（建时即停用场景显式传 false）
+	Remark    string `json:"remark"`
+}
+
+// UpdateDictItemRequest binds the JSON body of the dictionary administration command.
+type UpdateDictItemRequest struct {
+	ID        int64   `json:"id,string" binding:"required"`
+	Label     string  `json:"label" binding:"required"`
+	SortOrder int     `json:"sort_order"`
+	Enabled   *bool   `json:"enabled"`
+	Remark    *string `json:"remark"`
+	Version   int64   `json:"version" binding:"required"`
+}

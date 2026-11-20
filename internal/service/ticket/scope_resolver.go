@@ -73,7 +73,7 @@ func (r *pgxScopeResolver) resolve(ctx context.Context, userID int64) (*Resolved
 	) o_anchor ON true
 	WHERE m.user_id = $1 AND (` + repository.OrgSourceActiveSQL("m_org") + `)
 	  AND (m.expires_at IS NULL OR m.expires_at > NOW())`
-	rows, err := r.db.Query(ctx, q, userID)
+	rows, err := repository.IAMDB(ctx, r.db).Query(ctx, q, userID)
 	if err != nil {
 		return nil, err
 	}

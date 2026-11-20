@@ -49,18 +49,21 @@ func NewJobSubmissionRepo(db *pgxpool.Pool) *JobSubmissionRepo {
 }
 
 // RecordSubmit zhuzhao 侧提交凭证（E-④ 调用）：action + task_id + request_id + params 快照落档。
-// task_id 冲突（调用方幂等重提）返回 nil 已存在行，不算错误。
+// task_id 冲突（调用方幂等重提或回调已先记账）返回既有行，不算错误。
 func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, submittedBy, sourceIP, params string) (*JobSubmission, error) {
 	row := &JobSubmission{}
 	err := r.db.QueryRow(ctx, `
 		INSERT INTO job_submissions (task_id, request_id, action, params, origin, status, submitted_by, source_ip)
 		VALUES ($1, NULLIF($2, ''), $3, COALESCE(NULLIF($4, ''), '{}'), 'api', $5, NULLIF($6, ''), NULLIF($7, ''))
 		ON CONFLICT (task_id) DO NOTHING
-		RETURNING id, task_id, COALESCE(request_id, ''), action, origin, status,
+		RETURNING id, task_id, COALESCE(request_id, ''), action, params, origin, status,
 		          COALESCE(error, ''), COALESCE(submitted_by, ''), COALESCE(source_ip, ''), created_at, executed_at`,
 		taskID, reqid.From(ctx), action, params, JobStatusSubmitted, submittedBy, sourceIP).Scan(
-		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Origin, &row.Status,
+		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Params, &row.Origin, &row.Status,
 		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return r.GetByTaskID(ctx, taskID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("record job submit: %w", err)
 	}

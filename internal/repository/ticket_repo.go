@@ -68,7 +68,7 @@ func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, erro
 	if err != nil {
 		return nil, err
 	}
-	enrichUserNames(ctx, r.db, []*model.Ticket{ticket})
+	enrichUserNames(ctx, IAMDB(ctx, r.db), []*model.Ticket{ticket})
 	return ticket, nil
 }
 
@@ -585,7 +585,7 @@ func (r *TicketRepo) CreateEventTx(ctx context.Context, exec rowExec, e *model.T
 // GetTicketType 按 code 查询工单类型
 func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.TicketType, error) {
 	var t model.TicketType
-	err := r.db.QueryRow(ctx, `
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
 			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
 		FROM ticket_types WHERE code = $1`, code).Scan(
@@ -790,7 +790,7 @@ func (r *TicketRepo) ListRelations(ctx context.Context, ticketID int64, filter r
 // --- helpers ---
 
 func (r *TicketRepo) queryOne(ctx context.Context, q string, args ...any) (*model.Ticket, error) {
-	row := r.db.QueryRow(ctx, q, args...)
+	row := IAMDB(ctx, r.db).QueryRow(ctx, q, args...)
 	ticket, err := scanTicketRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -861,10 +861,11 @@ func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) 
 }
 
 // UpdateTicketType 更新类型（patch：COALESCE 保持；code 不可改）。
+// 可选 targetID 与版本同时进入最终写谓词，避免同码重建后的跨对象覆盖。
 // P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
 // 谓词 AND version = $7，命中才写，且恒有 SET version = version + 1。
 // 0 行（ErrNoRows）再定性：类型不存在 → 90003；存在但 version 不匹配 → 409 冲突。
-func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions, transitionMeta json.RawMessage, isActive *bool, version *int) (*model.TicketType, error) {
+func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *string, description *string, states, transitions, transitionMeta json.RawMessage, isActive *bool, version *int, targetID ...int64) (*model.TicketType, error) {
 	q := `
 		UPDATE ticket_types SET
 			name = COALESCE($2, name),
@@ -879,6 +880,10 @@ func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *st
 	if version != nil {
 		q += ` AND version = $8`
 		args = append(args, *version)
+	}
+	if len(targetID) > 0 {
+		q += fmt.Sprintf(" AND id = $%d", len(args)+1)
+		args = append(args, targetID[0])
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
@@ -915,13 +920,24 @@ func (r *TicketRepo) resolveTypeVersionMiss(ctx context.Context, code string, ve
 }
 
 // DeleteTicketType 删除类型（有工单/模板引用禁删；字段随类型一并删除）
-func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
+func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string, target ...ConfigTarget) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
+	var id int64
+	var version int
+	if err := tx.QueryRow(ctx, `SELECT id, version FROM ticket_types WHERE code=$1 FOR UPDATE`, code).Scan(&id, &version); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrTicketTypeNotFound
+		}
+		return err
+	}
+	if len(target) > 0 && !target[0].matches(id, version) {
+		return errcode.ErrConcurrentModification
+	}
 	var cnt int
 	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM tickets WHERE type_code = $1`, code).Scan(&cnt); err != nil {
 		return fmt.Errorf("count tickets by type: %w", err)
@@ -952,6 +968,7 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 }
 
 // ReplaceTypeFields 全量替换类型字段集（事务内先清后插）+ has_custom_fields 同步。
+// 可选 targetID 先与父类型 CAS 一起核验，失败时不清字段。
 //
 // P1-3 乐观锁决策：以「父类型 ticket_types.version」作为唯一 CAS 谓词（同一个事务内
 // 先 UPDATE ticket_types SET version = version + 1 WHERE code = $1 [AND version = $n]，
@@ -960,7 +977,7 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string) error {
 // 列（迁移 000027 添加）在本方法中不作为并发谓词，仅保持三表结构一致。
 // version == nil → 不做 CAS（保持旧行为），但仍递增父版本（使后续携版本的调用
 // 能观测到本次修改）。
-func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField, version *int) error {
+func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField, version *int, targetID ...int64) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -973,6 +990,10 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 	if version != nil {
 		casQ += ` AND version = $2`
 		casArgs = append(casArgs, *version)
+	}
+	if len(targetID) > 0 {
+		casQ += fmt.Sprintf(" AND id = $%d", len(casArgs)+1)
+		casArgs = append(casArgs, targetID[0])
 	}
 	tag, err := tx.Exec(ctx, casQ, casArgs...)
 	if err != nil {
@@ -1072,10 +1093,11 @@ func (r *TicketRepo) CreateTicketTemplate(ctx context.Context, t *model.TicketTe
 }
 
 // UpdateTicketTemplate 更新模板（patch：COALESCE 保持；code/type_code/org 不可改）。
+// 可选 targetID 与版本同时进入最终写谓词。
 // P1-3 乐观锁：version == nil → 不做 CAS（保持旧 patch 语义）；version != nil →
 // 谓词 AND version = $6，命中才写，且恒有 SET version = version + 1。
 // 0 行（ErrNoRows）再定性：模板不存在/已软删 → 404；存在但 version 不匹配 → 409 冲突。
-func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name *string, defaultPriority *int, defaultFields json.RawMessage, defaultSLAMinutes *int, version *int) (*model.TicketTemplate, error) {
+func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name *string, defaultPriority *int, defaultFields json.RawMessage, defaultSLAMinutes *int, version *int, targetID ...int64) (*model.TicketTemplate, error) {
 	q := `
 		UPDATE ticket_templates SET
 			name = COALESCE($2, name),
@@ -1089,6 +1111,10 @@ func (r *TicketRepo) UpdateTicketTemplate(ctx context.Context, code string, name
 	if version != nil {
 		q += ` AND version = $6`
 		args = append(args, *version)
+	}
+	if len(targetID) > 0 {
+		q += fmt.Sprintf(" AND id = $%d", len(args)+1)
+		args = append(args, targetID[0])
 	}
 	q += `
 		RETURNING id, code, name, type_code, default_priority, default_fields, default_sla_minutes,
@@ -1124,13 +1150,25 @@ func (r *TicketRepo) resolveTemplateVersionMiss(ctx context.Context, code string
 }
 
 // DeleteTicketTemplate 物理删除模板（无引用方）
-func (r *TicketRepo) DeleteTicketTemplate(ctx context.Context, code string) error {
-	tag, err := r.db.Exec(ctx, `DELETE FROM ticket_templates WHERE code = $1`, code)
+func (r *TicketRepo) DeleteTicketTemplate(ctx context.Context, code string, target ...ConfigTarget) error {
+	q := `DELETE FROM ticket_templates WHERE code = $1`
+	args := []any{code}
+	if len(target) > 0 {
+		if target[0].ID != nil {
+			q += fmt.Sprintf(" AND id=$%d", len(args)+1)
+			args = append(args, *target[0].ID)
+		}
+		if target[0].Version != nil {
+			q += fmt.Sprintf(" AND version=$%d", len(args)+1)
+			args = append(args, *target[0].Version)
+		}
+	}
+	tag, err := r.db.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("delete ticket template: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return errcode.ErrNotFound
+		return r.resolveTemplateVersionMiss(ctx, code, nil)
 	}
 	return nil
 }
@@ -1145,4 +1183,14 @@ func (r *TicketRepo) UpdateEscalationSupervisorTx(ctx context.Context, exec rowE
 		return errcode.New(ec.Code, "催办上级用户不存在")
 	}
 	return err
+}
+
+// ConfigTarget is additive to code-only deletion; missing conditions retain legacy behavior.
+type ConfigTarget struct {
+	ID      *int64
+	Version *int
+}
+
+func (t ConfigTarget) matches(id int64, version int) bool {
+	return (t.ID == nil || *t.ID == id) && (t.Version == nil || *t.Version == version)
 }

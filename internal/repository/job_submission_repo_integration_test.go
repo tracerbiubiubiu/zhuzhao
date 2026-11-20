@@ -168,3 +168,26 @@ func TestPGMarkRejectsStaleClaimToken(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, updated, "过期写者的终态写入应被 fence 拒绝")
 }
+
+func TestJobSubmissionRepo_RecordSubmitPreservesExistingReceipt(t *testing.T) {
+	resetJobSubmissions(t)
+	ctx := context.Background()
+	repo := repository.NewJobSubmissionRepo(testPool)
+	const taskID = "record-same-receipt"
+	_, err := repo.RecordSubmit(ctx, "sync", taskID, "fixture-actor", "", `{"page":1}`)
+	require.NoError(t, err)
+	running, ok, err := repo.ClaimCallbackRow(ctx, taskID, "sync", "fixture-actor", "", `{"page":1}`)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NotNil(t, running.ClaimedAt)
+	ok, err = repo.MarkSucceeded(ctx, taskID, *running.ClaimedAt)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	existing, err := repo.RecordSubmit(ctx, "sync", taskID, "fixture-retry", "", `{"page":1}`)
+	require.NoError(t, err)
+	require.Equal(t, running.ID, existing.ID)
+	require.Equal(t, repository.JobStatusSucceeded, existing.Status)
+	require.Equal(t, "fixture-actor", existing.SubmittedBy)
+	require.JSONEq(t, `{"page":1}`, existing.Params)
+}

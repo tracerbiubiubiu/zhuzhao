@@ -48,8 +48,8 @@ func (s *DictService) CreateType(ctx context.Context, t *model.DictType) error {
 	return nil
 }
 
-func (s *DictService) UpdateType(ctx context.Context, t *model.DictType) error {
-	if err := s.repo.UpdateType(ctx, t); err != nil {
+func (s *DictService) UpdateType(ctx context.Context, t *model.DictType, remark ...*string) error {
+	if err := s.repo.UpdateType(ctx, t, remark...); err != nil {
 		if errors.Is(err, repository.ErrDictTypeNotFound) {
 			return errcode.ErrDictTypeNotFound
 		}
@@ -130,9 +130,14 @@ func (s *DictService) EnabledItemsByCode(ctx context.Context, code string) ([]*m
 	return items, nil
 }
 
-func (s *DictService) CreateItem(ctx context.Context, it *model.DictItem) error {
-	if err := s.repo.CreateItem(ctx, it); err != nil {
+func (s *DictService) CreateItem(ctx context.Context, it *model.DictItem, parentID ...int64) error {
+	if len(parentID) > 1 || len(parentID) == 1 && parentID[0] <= 0 {
+		return errcode.ErrInvalidParams
+	}
+	if err := s.repo.CreateItem(ctx, it, parentID...); err != nil {
 		switch {
+		case errors.Is(err, repository.ErrDictDeleteConflict):
+			return errcode.ErrConflict
 		case errors.Is(err, repository.ErrDictItemDupCode):
 			return errcode.New(errcode.ErrConflict.Code, "字典项 code 已存在")
 		case errors.Is(err, repository.ErrDictTypeNotFound):
@@ -144,8 +149,8 @@ func (s *DictService) CreateItem(ctx context.Context, it *model.DictItem) error 
 	return nil
 }
 
-func (s *DictService) UpdateItem(ctx context.Context, it *model.DictItem) error {
-	if err := s.repo.UpdateItem(ctx, it); err != nil {
+func (s *DictService) UpdateItem(ctx context.Context, it *model.DictItem, remark ...*string) error {
+	if err := s.repo.UpdateItem(ctx, it, remark...); err != nil {
 		if errors.Is(err, repository.ErrDictItemNotFound) {
 			return errcode.ErrDictItemNotFound
 		}

@@ -402,6 +402,105 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/dict-items": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dictionary"
+                ],
+                "summary": "创建字典条目，可校验父类型身份",
+                "parameters": [
+                    {
+                        "description": "字典写入请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateDictItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dict-items/update": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dictionary"
+                ],
+                "summary": "更新字典条目，可省略备注",
+                "parameters": [
+                    {
+                        "description": "字典写入请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dicts/update": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dictionary"
+                ],
+                "summary": "更新字典类型，可省略备注",
+                "parameters": [
+                    {
+                        "description": "字典写入请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictTypeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/{key}": {
             "get": {
                 "description": "定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即 404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3",
@@ -2027,6 +2126,9 @@ const docTemplate = `{
         },
         "/api/v1/ticket-templates/delete": {
             "post": {
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -2036,11 +2138,13 @@ const docTemplate = `{
                 "summary": "删除工单模板",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "模板编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
+                        "description": "编码与可选稳定目标条件",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2066,13 +2170,6 @@ const docTemplate = `{
                 ],
                 "summary": "更新工单模板（patch；code/type/org 不可改）",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "模板编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    },
                     {
                         "description": "更新内容",
                         "name": "req",
@@ -2173,6 +2270,9 @@ const docTemplate = `{
         },
         "/api/v1/ticket-types/delete": {
             "post": {
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -2182,11 +2282,13 @@ const docTemplate = `{
                 "summary": "删除工单类型（有工单/模板引用禁删 → 409）",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
+                        "description": "编码与可选稳定目标条件",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2212,13 +2314,6 @@ const docTemplate = `{
                 ],
                 "summary": "全量替换类型字段集",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    },
                     {
                         "description": "字段集",
                         "name": "req",
@@ -2252,13 +2347,6 @@ const docTemplate = `{
                 ],
                 "summary": "更新工单类型（patch；code 不可改）",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "类型编码",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    },
                     {
                         "description": "更新内容",
                         "name": "req",
@@ -4082,6 +4170,13 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "original_menu_ids": {
+                    "description": "OriginalMenuIDs 是可选的原集合快照；空数组表示已读空集，省略/null 保留旧覆盖语义。\n条件只比较当前集合，不追踪集合变更后又恢复原值的中间历史。",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "role_id": {
                     "type": "string",
                     "example": "0"
@@ -4211,6 +4306,39 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateDictItemRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "label",
+                "type_code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "description": "缺省 true（建时即停用场景显式传 false）",
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "type_code": {
+                    "type": "string"
+                },
+                "type_id": {
                     "type": "string",
                     "example": "0"
                 }
@@ -4477,6 +4605,25 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "maxLength": 50
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。",
+                    "type": "string",
+                    "example": "0"
+                },
+                "version": {
+                    "type": "integer"
                 }
             }
         },
@@ -4826,6 +4973,11 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput"
                     }
                 },
+                "id": {
+                    "description": "ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。",
+                    "type": "string",
+                    "example": "0"
+                },
                 "version": {
                     "description": "Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。\n预检后配置改变返回409；非nil须\u003e0，否则400。",
                     "type": "integer"
@@ -5125,6 +5277,61 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictItemRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "label",
+                "version"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictTypeRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "version"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest": {
             "type": "object",
             "required": [
@@ -5289,6 +5496,11 @@ const docTemplate = `{
                 "default_sla_minutes": {
                     "type": "integer"
                 },
+                "id": {
+                    "description": "ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。",
+                    "type": "string",
+                    "example": "0"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 200
@@ -5311,6 +5523,11 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "id": {
+                    "description": "ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。",
+                    "type": "string",
+                    "example": "0"
                 },
                 "is_active": {
                     "type": "boolean"

@@ -4,8 +4,11 @@ import "github.com/tracerbiubiubiu/zhuzhao-utils/jsonutil"
 
 // AssignMenusRequest 角色分配菜单
 type AssignMenusRequest struct {
-	RoleID  int64               `json:"role_id,string" binding:"required"`
-	MenuIDs jsonutil.Int64Slice `json:"menu_ids" binding:"required" swaggertype:"array,string"`
+	// OriginalMenuIDs 是可选的原集合快照；空数组表示已读空集，省略/null 保留旧覆盖语义。
+	// 条件只比较当前集合，不追踪集合变更后又恢复原值的中间历史。
+	OriginalMenuIDs *jsonutil.Int64Slice `json:"original_menu_ids,omitempty" swaggertype:"array,string"`
+	RoleID          int64                `json:"role_id,string" binding:"required"`
+	MenuIDs         jsonutil.Int64Slice  `json:"menu_ids" binding:"required" swaggertype:"array,string"`
 }
 
 // RoleIDRequest 带 role_id 的请求体

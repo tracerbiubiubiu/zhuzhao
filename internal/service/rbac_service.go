@@ -324,7 +324,11 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		}
 	}
 
-	if err := s.roleRepo.AssignMenus(ctx, role, menuIDs, apis); err != nil {
+	var original [][]int64
+	if req.OriginalMenuIDs != nil {
+		original = append(original, []int64(*req.OriginalMenuIDs))
+	}
+	if err := s.roleRepo.AssignMenus(ctx, role, menuIDs, apis, original...); err != nil {
 		return fmt.Errorf("assign menus: %w", err)
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
@@ -402,7 +406,7 @@ func (s *RBACService) GetRolePermissions(ctx context.Context, roleID, actorUserI
 // 临时成员过期不参与组织角色；见 rbac-inheritance-and-cascade §4 与 role_repo.GetEffectiveRoleCodes。
 func (s *RBACService) GetRoleCodesByUserID(ctx context.Context, userID int64) ([]string, error) {
 	// BK-17：同请求内 CasbinAuth 已展开过角色的，直接命中缓存（消除两次 BFS SQL）
-	if uid, roles, ok := middleware.RolesFromContext(ctx); ok && uid == userID && !repository.IAMWriteActive(ctx) {
+	if uid, roles, ok := middleware.RolesFromContext(ctx); ok && uid == userID && !repository.IAMGuardActive(ctx) {
 		return roles, nil
 	}
 	return s.roleRepo.GetEffectiveRoleCodes(ctx, userID)

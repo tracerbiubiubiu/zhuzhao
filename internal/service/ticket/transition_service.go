@@ -9,9 +9,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // Transition S3a B3-1 统一转换执行（POST /tickets/transition——P0-1 显式化）：
@@ -20,56 +23,68 @@ import (
 // → commit 后 emit DomainEvent（B6-1 锚）。Close/Assign 定向端点保留兼容
 // （收敛为其封装为 B3-1 后续批——本批首件先立执行落点+语义面，防破坏既有测试）。
 func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketRequest, actorUserID int64) (*model.Ticket, error) {
-	// ① 资源级鉴权（L2 可见 + L3 transition 动作——新增 action）
-	if err := s.authorizeCheck(ctx, actorUserID, "transition", strconv.FormatInt(req.ID, 10)); err != nil {
-		return nil, err
-	}
-	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
+	var ticket *model.Ticket
+	var tm *TransitionMeta
+	err := s.withHTTPCommand(ctx, "transition", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		// ① 资源级鉴权（L2 可见 + L3 transition 动作——新增 action）
+		if err := s.authorizeCheck(ctx, actorUserID, "transition", strconv.FormatInt(req.ID, 10)); err != nil {
+			return err
+		}
+		ticket, err = s.ticketRepo.GetByID(ctx, req.ID)
+		if err != nil {
+			return err
+		}
+		// ② 写入前校验状态机；HTTP 路径此时已持有 IAM 事务。
+		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
+		if err != nil {
+			return err
+		}
+		sm, err := FromTicketType(ttype)
+		if err != nil {
+			return fmt.Errorf("build state machine: %w", err)
+		}
+		if err := sm.AssertTransition(ticket.Status, req.To); err != nil {
+			return err
+		}
+		// ③④ condition 权限门 + validator 前置条件（R3 审计修复——三路同源）
+		tm, err = s.checkTransitionMeta(ctx, ticket, req.To, actorUserID, ttype)
+		if err != nil {
+			return err
+		}
+		// ⑤ 单事务执行（UpdateStatusTx 咽喉=状态写+status_changed_at 同语句——E-2 锚）
+		ownTx := tx == nil
+		if ownTx {
+			tx, err = s.db.Begin(ctx)
+			if err != nil {
+				return fmt.Errorf("begin tx: %w", err)
+			}
+			defer tx.Rollback(ctx)
+		}
+		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
+			return err
+		}
+		if err := s.applyStateSLATx(ctx, tx, ttype, ticket, req.To); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+			TicketID: req.ID, UserID: actorUserID, Action: EventStatusChanged,
+			FromValue: ticket.Status, ToValue: req.To,
+		}); err != nil {
+			return err
+		}
+		if err := s.writeLifecycleCommentTx(ctx, tx, req.ID, actorUserID, req.Comment); err != nil {
+			return err
+		}
+		if ownTx {
+			return tx.Commit(ctx)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	// ② 状态机校验（AssertTransition=tx 前纯校验——transitions 邻接表）
-	ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
-	if err != nil {
-		return nil, err
-	}
-	sm, err := FromTicketType(ttype)
-	if err != nil {
-		return nil, fmt.Errorf("build state machine: %w", err)
-	}
-	if err := sm.AssertTransition(ticket.Status, req.To); err != nil {
-		return nil, err
-	}
-	// ③④ condition 权限门 + validator 前置条件（R3 审计修复——三路同源）
-	tm, err := s.checkTransitionMeta(ctx, ticket, req.To, actorUserID, ttype)
-	if err != nil {
-		return nil, err
-	}
-	// ⑤ 单事务执行（UpdateStatusTx 咽喉=状态写+status_changed_at 同语句——E-2 锚）
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
-		return nil, err
-	}
-	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
-		return nil, err
-	}
-	if err := s.applyStateSLATx(ctx, tx, ttype, ticket, req.To); err != nil {
-		return nil, err
-	}
-	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-		TicketID: req.ID, UserID: actorUserID, Action: EventStatusChanged,
-		FromValue: ticket.Status, ToValue: req.To,
-	}); err != nil {
-		return nil, err
-	}
-	if err := s.writeLifecycleCommentTx(ctx, tx, req.ID, actorUserID, req.Comment); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	// D1 修复（审计）：清旧状态催办水位——重入同状态时 reminder_count 从零起算
@@ -124,7 +139,7 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 	if !checkCondition(tm, actor) {
 		return nil, errcode.ErrNoPermission
 	}
-	if err := checkValidator(withDictQuerier(ctx, s.db), tm, ticket); err != nil {
+	if err := checkValidator(withDictQuerier(ctx, repository.IAMDB(ctx, s.db)), tm, ticket); err != nil {
 		return nil, err
 	}
 	return tm, nil
