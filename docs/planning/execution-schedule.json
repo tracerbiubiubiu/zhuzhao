@@ -4,15 +4,15 @@
   "calendar": null,
   "estimate_source": ["docs/planning/planning-backlog.json", "docs/planning/execution-schedule-model.json", "docs/planning/planning-scope-estimates.json", "docs/planning/uaa-implementation-estimate.json", "docs/planning/uaa-real-integration-conditions.json", "docs/planning/local-core-release-estimate.json", "docs/planning/first-usable-release-target.json", "docs/planning/owner-decision-agenda.json"],
   "source_input_sha256": {
-    "docs/planning/planning-backlog.json": "1957f991315e60550a0bbfdf55c4635c69168df5b6d2042924b0ae26dec5cf95",
+    "docs/planning/planning-backlog.json": "58bfca6dc44b3f0ae7dd22336e82d418d70cbe1a915ef485588a4e404d34c800",
     "docs/planning/execution-schedule-model.json": "0025f3af52c56b17423920298bfa3be686218c5ef4878b8d93b4494cb82d8dc9",
     "docs/planning/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/planning/uaa-implementation-estimate.json": "ba0221b562533c8b34d19cc8c90c325f76da4e0be72bb12a51859413a60e015c",
     "docs/planning/uaa-real-integration-conditions.json": "8391462c9c7654c806b9a5149478df694578d80e138f4cab038f01da3d922800",
-    "docs/planning/local-core-release-estimate.json": "5c41f7117735ae15d0f9b84ef1bd1ff01ac0977a77308be38930cea8fc9f62db",
-    "docs/planning/first-usable-release-target.json": "90cd429f9491b82bdbd092b372ab6ca72bbc99a88f0eeaa0e640a1f1c2a6fe7f",
+    "docs/planning/local-core-release-estimate.json": "7609ccaebf095cbd03aaacd6d5807699f0fa8004f790ac631a67bdaa645ef02c",
+    "docs/planning/first-usable-release-target.json": "7ede04496a915b1ccedf63742fb4f82e47669f7f58aab6a007e2e3133b8d01d9",
     "docs/planning/owner-decision-agenda.json": "63bb642612f24a4e05258e5af069d030f7bb8254aceffce8c708133c7c98e304",
-    "scripts/calculate-planning-schedule.py": "6b7a374fa5ba3b9ef2b61fccf7740353600fcfc042300dd237a2523cefce6bf7"
+    "scripts/calculate-planning-schedule.py": "373c5d6768459829c6485dbe3180f9354513b7335eb14146f8c9863b3089654d"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -5311,6 +5311,59 @@
     "added_to_long_horizon_total": false,
     "price_rule": "Each local WBS row is charged once; mapped 76-parent prices/ancestors are never added. Journey/exit efforts overlap and must not be added."
   },
+  "phase6_design_audit_projection": {
+    "ref": "docs/planning/intranet-uaa-release-schedule.md",
+    "state": "candidate_not_authorized_or_runtime_validated",
+    "actual_T0": null,
+    "external_wait_days": null,
+    "stages": [
+      {
+        "id": "risk_ticket_trial",
+        "baseline_days": [52.0, 83.0],
+        "transferred_once_days": [0, 0],
+        "engineering_candidate_days": [52.5, 88.5],
+        "conservative_days": 110.5
+      },
+      {
+        "id": "combination",
+        "baseline_days": [83.5, 130.5],
+        "transferred_once_days": [1.0, 2],
+        "engineering_candidate_days": [83.0, 134.0],
+        "conservative_days": 156.0
+      },
+      {
+        "id": "formal_local",
+        "baseline_days": [96.5, 150.5],
+        "transferred_once_days": [1.5, 3],
+        "engineering_candidate_days": [95.5, 153.0],
+        "conservative_days": 175.0
+      },
+      {
+        "id": "uaa_public",
+        "engineering_candidate_days": [126.5, 203.0],
+        "conservative_days": 228.0
+      },
+      {
+        "id": "uaa_managed",
+        "engineering_candidate_days": [139.5, 225.0],
+        "conservative_days": 250.0
+      }
+    ],
+    "gates": {
+      "risk_ticket_trial": ["Q12_trial", "required_environment_proof"],
+      "combination": ["isolation_combination"],
+      "formal_local": ["Q12_trial", "Q09_unattended_activation", "MH01_MR1", "target_recovery"],
+      "uaa_public": ["Q12_core_stability"],
+      "uaa_managed": ["real_test_entry", "shadow_diff", "pre_apply_approval", "switch_and_observation"]
+    },
+    "baseline_credits": [13.5, 19.0],
+    "trial_additions": [14, 24.5],
+    "shared_uaa_days": [6, 11],
+    "full_phase6_baseline_excluding_UAA_product": [198, 327],
+    "full_phase6_standalone_candidate_days": [202, 333],
+    "full_phase6_with_public_and_local_release_days": [276.5, 458.0],
+    "full_phase6_through_real_UAA_days": [289.5, 480.0]
+  },
   "uaa_main_capacity_gate": {
     "local_core_exit_id": "uaa_capacity_transition",
     "owner_action_key": "Q12_core_stability",
@@ -5326,14 +5379,14 @@
     "baseline_with_R_days": [305, 518],
     "net_increment_days": [102, 160]
   },
-  "current_local_core_summary": "当前首版本地核心净估：**97–151 个有效工程日**（未取整 96.5–150.5；S2 共用假设不成立时 99–154）。这是单席工程量候选，不是日历承诺。",
+  "current_local_core_summary": "2026-11-16 首版净估对账底稿：**97–151 个有效工程日**（未取整 96.5–150.5；S2 共用假设不成立时 99–154）。这是单席工程量候选，不是日历承诺。",
   "current_view_checks": {
     "docs/review/11-project-control.md": {
-      "summary_sha256": "dd120cc5dc1b521137a7966582b4e06c97acd21967be0c169792a7d8e16b53b0",
+      "summary_sha256": "0efe58b5ada82c62e937783dd2854eb7aeb376f18adf3006cc4211a60f1523f9",
       "check": "matches_net_estimate"
     },
     "docs/roadmap.md": {
-      "summary_sha256": "dd120cc5dc1b521137a7966582b4e06c97acd21967be0c169792a7d8e16b53b0",
+      "summary_sha256": "0efe58b5ada82c62e937783dd2854eb7aeb376f18adf3006cc4211a60f1523f9",
       "check": "matches_net_estimate"
     }
   },

@@ -4,6 +4,10 @@
 
 本轮仍是设计/估算，未开始业务开发或实际部署。产能为1个有效研发席位×每周5工程日，T0未启动。状态见[机器目标](../planning/first-usable-release-target.json)；首版本地核心的唯一分项数字源为[净估候选](../planning/local-core-release-estimate.json)。旧76包长期预算与UAA C/P/R保留追溯，不把本页子范围再加到旧总价。
 
+按 2026-11-20 主线已交切片重算后的剩余工作、排产取舍和外部窗口见[B0 至真实 UAA 贯通排期](../planning/intranet-uaa-release-schedule.md)。下文原分项成本保留为替价基线，现势债务见[项目控制台 §6](../review/11-project-control.md#6-当前健康状态遗留问题追踪)。
+
+所有者已确认 B0 和完整 B1 后排。下一研发出口为 B2 人工风险整改。B0 按目标环境窗口安排，完整参考应用与查询接缝独立排产。真实试用按 §4.1 取得所选环境及 P1 准入证据。 [做到 B2 的顺序](../planning/intranet-uaa-release-schedule.md#做到-b2-的实施顺序)
+
 ## 1. 分开两个正式出口
 
 **本地核心正式版**：风险、工单、taskrunner、activelist和消息真实联动，本地账号/角色/菜单及完整L1/L2/L3可用，有薄UI、业务历史、必要审计/日志、失败处理及生产恢复能力。公司已允许这种模式正式运行，不以真实UAA或完整P/R为前置。正式启用的真实HTTP消息等渠道仍需实测，不用mock成功代验。
@@ -26,7 +30,9 @@
 
 AI/RAG/skill/MCP产品化、高级仪表盘、设备扩展、完整设计器/迁版/插件治理、通用流/恢复台、HA/微服务后继。原Phase6未交功能不删除；本地核心正式出口不等于扩展后的Phase6全包收官。
 
-## 3. 净估与1月目标判断
+## 3. 原分项估算与1月目标对照
+
+下列为原分项底稿，开工采用[详设审计后的累计排期](../planning/intranet-uaa-release-schedule.md#2-最早与保守排期)。审计补入首条试用所需发布钉版、旧票回填、转换证据、最低通知和浏览器验收。
 
 当前源码的新增与复用见[四链重核](../review/reports/core-release-chain-recheck-2026-11-14.md)和[本次可行性](../review/reports/local-first-core-feasibility-2026-11-14.md)。旧报告保留当时范围，不再用完整UAA C/P的价格反证本地核心日期。按[分项候选](../planning/local-core-release-estimate.json)去重：
 - 共享组：UAA-C2–3、IAM净28–46、共用operation/可靠意图4–6、证据与日志3–5，合37–60工程日。

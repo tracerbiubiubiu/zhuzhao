@@ -2,6 +2,11 @@
 
 > 用途：集中查看当前范围、顺序、设计深度和待决；范围：五仓共同计划。目录迁移不改变业务状态、估算、依赖或所有者决定。产品是否实现以[项目控制台](../review/11-project-control.md)及实际源码/验证为准。
 
+## 当前交付排期
+
+- [按交付结果查看排期](intranet-uaa-release-schedule.md)。先交权限和工单引擎的首条纵切，再交人工风险、跨仓组合、本地正式和 UAA 纳管。页面列完整 Phase 6 的后继能力、最早与保守情景及外部准入。
+- [Phase 6 开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。按模块对照现态、首版底线、详细设计缺口和验收。
+
 ## 按工作包找合同与交接
 
 这是跨阶段派单和交接的固定入口。具体的工作包、合同锚点和候选版本放本轮任务卡；阶段稿保留对应时期的详设和交接，不作为所有任务的默认输入。
@@ -18,7 +23,7 @@
 - 看本轮存量问题的修复顺序和验收：[五仓审计整改实施计划](audit-repair-plan-2026-11-19.md)。
 - 补齐开工前的系统理解、演进脉络及交付回顾：[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先准备基线卡、能力地图、同旅程成功/拒绝纵切与启动讲解的最小样例；三个故事提纲及时间线随前三个实际交付小批整理。Git维护正式知识与空白模板，执行实例本地归档；实例尚未整理，不代表已掌握或新增技术门禁。
 - 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
-- 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[排期摘要](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
+- 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[机器复算与历史底账](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
 - 看存量修复的设计与当前承接：[2026-11-17修复计划](audit-repair-plan-2026-11-17.md) → [三仓合入及工作区收尾](../review/reports/audit-baseline-main-merge-2026-11-17.md)。目标账号保护等本批窄修已合main，未部署；完整IAM及其它后继仍按原包扣重，不叠加第二套总价。
 - 看原计划的[全篇主线复核](../review/reports/audit-repair-ledger-recheck-2026-11-20.md)及[原始分批](audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。先查主线已交切片，再核任务对账、撤权、模块校验、可靠通知等开放出口。

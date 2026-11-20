@@ -22,6 +22,8 @@
 
 日期：2026-11-11；2026-11-14按本地正式核心先行同步。状态：**规划交接候选，未启动Phase6实现**。长期总范围/依赖/估算以[唯一总账](../planning/planning-backlog.md)为准，首版本地子范围以[净估候选](../planning/local-core-release-estimate.json)为准，当前审计步骤见[规划收口](../planning/planning-closeout.md)。本页将近期工作拆成可评审提交，不能当作批准修改生产代码、远端保护或共享环境的收据。
 
+先读[本轮开工前详设审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[当前交付顺序](../planning/intranet-uaa-release-schedule.md)。下列 H 编号保留原交接分组。当前实际先冻结代表业务、会话与权限，再交工单引擎纵切和人工风险试用。
+
 ## 1. 启动前固定什么
 
 - 从已合入规划的最新五仓main核实际HEAD，再为每个写任务建独立worktree；不能继续把旧审计分支当未来实现基线。准确五仓SHA/公共库版本/协议/迁移/工具链写入候选manifest，缺companion revision不静默回落main。
