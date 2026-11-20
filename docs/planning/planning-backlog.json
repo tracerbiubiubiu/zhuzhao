@@ -68,7 +68,7 @@
           {
             "label": "B0、真实试用与 G05/E09 首产硬项（既有出口）",
             "contract": "[本地正式与企业出口](../phase6/first-usable-release-plan.md)、[基础版交付边界](../design/foundation-release-boundaries.md)",
-            "handoff": "[贯通排期](intranet-uaa-release-schedule.md)登记 B0 按目标窗口后排，完整 B1 独立后排，先做 B2。实际目标、净剩余和 Q12 试用运行卡待确认",
+            "handoff": "[贯通排期](intranet-uaa-release-schedule.md)建议 B0 按目标窗口安排、完整 B1 独立验收、优先 B2。排产顺序、实际目标、净剩余和 Q12 试用运行卡待确认",
             "admission": "[B0 与真实业务试用](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)、[本总账发布证据门](#按运行模式检查的发布证据门)，分开核合成预演、真实试用和所选生产形态，不能相互替代。"
           },
           {

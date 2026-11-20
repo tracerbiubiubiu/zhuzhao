@@ -536,20 +536,36 @@ def project_phase6_audit(estimate, core, long_reference, uaa):
     mainline = estimate['mainline_release_scenario']
     residuals = mainline['residual_core_allocations']
     baseline = core['nodes']
+    s1 = next(row for group in estimate['groups'] for row in group['wbs'] if row['id'] == 'S1')
+    original_parts = {row['id']: pair(row['days']) for row in s1['suballocations']}
+    if set(residuals) != {'S1', 'S3'} or set(residuals['S1']) != set(original_parts):
+        raise ValueError('mainline residual allocations must cover every S1 component and S3 exactly')
+    for key, original in original_parts.items():
+        if any(remaining > initial for remaining, initial in zip(pair(residuals['S1'][key]), original)):
+            raise ValueError('mainline residual exceeds original component: ' + key)
+    if any(remaining > initial for remaining, initial in zip(pair(residuals['S3']), baseline['S3']['days'])):
+        raise ValueError('mainline residual exceeds original component: S3')
     savings = tuple(old - remaining for old, remaining in zip(
         summed(baseline[key]['days'] for key in residuals),
         summed([summed(residuals['S1'].values()), residuals['S3']]),
     ))
+    trial = core['delivery_exits']['risk_ticket_trial']['dependency_closure']
+    formal = core['delivery_exits']['formal_local']['dependency_closure']
+    later_nodes = set(formal) - set(trial)
+    later_transfer_keys = later_nodes | {baseline[node]['group'] for node in later_nodes}
     additions = audit['first_trial_additions'].values()
     frontloaded = summed(row['days'] for row in additions)
     transfers = {}
     for row in additions:
-        for key, days in row.get('transfer_from_later', {}).items():
+        row_transfers = row.get('transfer_from_later', {})
+        if any(days > addition for days, addition in zip(summed(row_transfers.values()), pair(row['days']))):
+            raise ValueError('first-trial transfer exceeds its additional estimate')
+        for key, days in row_transfers.items():
+            if key not in later_transfer_keys:
+                raise ValueError('first-trial transfer has no later component: ' + key)
             if key in transfers:
                 raise ValueError('duplicate first-trial transfer: ' + key)
             transfers[key] = pair(days)
-    trial = core['delivery_exits']['risk_ticket_trial']['dependency_closure']
-    formal = core['delivery_exits']['formal_local']['dependency_closure']
     combination = set(trial) | set(audit['combination_targets'])
     pending = list(combination)
     while pending:
@@ -590,8 +606,11 @@ def project_phase6_audit(estimate, core, long_reference, uaa):
                            conservative_days=previous['conservative_days'] + reserve_added))
 
     full = audit['full_phase6_exposure']
-    base = summed([later['E01-UAA-C'], *(row['effort'] for row in long_reference['release_slices']
-                                          if row['id'] in full['slices'])])
+    phase6_slices = {row['id']: row['effort'] for row in long_reference['release_slices']
+                     if row['wave'].startswith('P6.')}
+    if len(full['slices']) != len(phase6_slices) or set(full['slices']) != set(phase6_slices):
+        raise ValueError('full Phase 6 projection must include each Phase 6 slice exactly once')
+    base = summed([later['E01-UAA-C'], *phase6_slices.values()])
     standalone = tuple(base[i] - pair(later['C05'])[i] + pair(full['C05_replacement'])[i] for i in (0, 1))
     adjusted_iam = tuple(pair(full['iam_full_replacement'])[i] - summed([later['C04'], later['C05']])[i]
                          for i in (0, 1))
