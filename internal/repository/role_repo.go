@@ -274,20 +274,22 @@ func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error 
 		return fmt.Errorf("lock role for delete: %w", err)
 	}
 
-	// 仍有组织绑定的角色拒删：软删会在 org_roles 留死绑定——该组织随后删除被
-	// ErrOrgHasOrgRoles（50014）卡死，而历史 deleted role 的解绑入口不可达
-	//（authorizeOrgRoleAssignment 只读未删角色），构成死锁闭环。沿角色在用政策
-	// 复用既有冲突码 ErrRoleInUse（40003）；计数在已认领的 FOR UPDATE 同事务内，
-	// 与 BindOrgRole 的 FOR SHARE 双向互斥：
-	//   - 绑定先提交 → 本计数看到绑定 → 拒删（角色存活）；
-	//   - 删除先提交 → 绑定侧复核角色已删 → ErrNotFound（绑定不落库）。
-	var roleBindings int64
+	// BindOrgRole shares this role lock. A binding committed first blocks
+	// retirement; a binding attempted after retirement sees a deleted role.
+	var liveOrgBinding bool
 	if err := tx.QueryRow(ctx,
-		`SELECT COUNT(*) FROM org_roles WHERE role_id = $1`, id).Scan(&roleBindings); err != nil {
+		`SELECT EXISTS (
+			SELECT 1 FROM org_roles b JOIN organizations o ON o.id = b.org_id
+			WHERE b.role_id = $1 AND o.deleted_at IS NULL
+		)`, id).Scan(&liveOrgBinding); err != nil {
 		return fmt.Errorf("check role org bindings: %w", err)
 	}
-	if roleBindings > 0 {
+	if liveOrgBinding {
 		return errcode.New(errcode.ErrRoleInUse.Code, "该角色仍被组织绑定，无法删除")
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM org_roles b USING organizations o
+		WHERE b.role_id = $1 AND o.id = b.org_id AND o.deleted_at IS NOT NULL`, id); err != nil {
+		return fmt.Errorf("clear role bindings to deleted organizations: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, id); err != nil {

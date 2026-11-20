@@ -42,8 +42,8 @@ func (r *OrgRepo) MembershipRolesForRemoval(ctx context.Context, userID, orgID i
 	return pgx.CollectRows(rows, scanPotentialRole)
 }
 
-// PotentialSubtreeRoles follows actual parent IDs, including paused sources;
-// historical organizations sharing a path are not part of this subtree.
+// PotentialSubtreeRoles follows actual parent IDs. Paused organizations and
+// disabled roles can contribute after reactivation. Soft-deleted roles cannot.
 func (r *OrgRepo) PotentialSubtreeRoles(ctx context.Context, orgID int64) ([]*model.Role, error) {
 	rows, err := IAMDB(ctx, r.db).Query(ctx, `WITH RECURSIVE subtree(id) AS (
  SELECT id FROM organizations WHERE id=$1
@@ -51,7 +51,9 @@ func (r *OrgRepo) PotentialSubtreeRoles(ctx context.Context, orgID int64) ([]*mo
  ),potential(id) AS (
  SELECT g.role_id FROM org_roles g JOIN subtree s ON s.id=g.org_id
  JOIN organizations o ON o.id=s.id AND o.deleted_at IS NULL
- UNION SELECT r.parent_id FROM roles r JOIN potential p ON p.id=r.id WHERE r.parent_id IS NOT NULL
+ JOIN roles bound ON bound.id=g.role_id AND bound.deleted_at IS NULL
+ UNION SELECT parent.id FROM potential p JOIN roles child ON child.id=p.id
+ JOIN roles parent ON parent.id=child.parent_id AND parent.deleted_at IS NULL
  ) SELECT r.id,r.code,r.priority FROM roles r JOIN potential p ON p.id=r.id ORDER BY r.id`, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("read changed organization source roles: %w", err)

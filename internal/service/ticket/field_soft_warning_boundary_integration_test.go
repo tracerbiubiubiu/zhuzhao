@@ -152,6 +152,9 @@ func TestG14_UnassessableOptionsRemainAdvisory(t *testing.T) {
 	for _, sql := range []string{
 		"GRANT USAGE ON SCHEMA public TO " + pgx.Identifier{role}.Sanitize(),
 		"GRANT SELECT ON dict_types,tickets TO " + pgx.Identifier{role}.Sanitize(),
+		// The write must still lock the referenced parent. Only reading the
+		// option items for the advisory impact estimate is denied in this fixture.
+		"GRANT UPDATE (code) ON dict_types TO " + pgx.Identifier{role}.Sanitize(),
 		"GRANT SELECT,INSERT,UPDATE,DELETE ON ticket_types,ticket_type_fields TO " + pgx.Identifier{role}.Sanitize(),
 		"GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO " + pgx.Identifier{role}.Sanitize(),
 	} {

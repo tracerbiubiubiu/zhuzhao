@@ -14,24 +14,79 @@ import (
 // NormalizeAvatar recognizes the existing reserved proxy route plus avatar
 // namespace. There is no configured application origin: absolute HTTP(S) URLs
 // with this exact dedicated path use the same policy, regardless of host.
-// Other external HTTP(S) URLs remain external. Parse the path once, never infer
-// ownership from a URL's query, fragment or a key-looking suffix.
+// Other external HTTP(S) URLs remain external. Fold browser URL paths before
+// decoding once, never infer ownership from a query, fragment or key-like suffix.
+// Raw object keys are not URL paths and must never be cleaned or decoded.
 func NormalizeAvatar(value string) (string, bool) {
 	if value == "" {
 		return value, false
 	}
-	u, err := url.Parse(value)
-	if err == nil && strings.HasPrefix(u.Path, "/api/v1/files/avatars/") {
-		key := strings.TrimPrefix(u.Path, "/api/v1/files/")
-		if validAvatarKey(key) && u.Opaque == "" && (u.Scheme == "" || u.Scheme == "http" || u.Scheme == "https") {
-			return key, true
+	// Browsers ignore surrounding C0/space and embedded ASCII tabs/newlines.
+	// Apply that behavior only when the result denotes a URL, never to raw keys.
+	input := strings.TrimFunc(value, func(r rune) bool { return r <= ' ' })
+	input = strings.NewReplacer("\t", "", "\r", "", "\n", "").Replace(input)
+	lower := strings.ToLower(input)
+	httpURL := strings.HasPrefix(lower, "http:") || strings.HasPrefix(lower, "https:")
+	if strings.HasPrefix(input, "/") || strings.HasPrefix(input, "\\") || httpURL {
+		// A literal backslash is a separator for HTTP(S), unlike an escaped
+		// %5C. Do this before Parse so authority/path boundaries also agree.
+		end := strings.IndexAny(input, "?#")
+		if end < 0 {
+			end = len(input)
 		}
-		return value, true // invalid reserved path cannot fall through as external
+		address := strings.ReplaceAll(input[:end], "\\", "/")
+		// Special HTTP(S) URLs ignore excess authority-leading slashes.
+		// This does not merge any slashes within the actual path.
+		if httpURL {
+			if i := strings.Index(address, "://"); i >= 0 {
+				address = address[:i+3] + strings.TrimLeft(address[i+3:], "/")
+			}
+		} else if strings.HasPrefix(address, "//") {
+			address = "//" + strings.TrimLeft(address, "/")
+		}
+		input = address + input[end:]
+	} else {
+		return value, true
+	}
+	u, err := url.Parse(input)
+	if err == nil && u.Opaque == "" && (u.Scheme == "" || u.Scheme == "http" || u.Scheme == "https") {
+		proxyPath, pathErr := url.PathUnescape(avatarBrowserPath(u.EscapedPath()))
+		if pathErr == nil && strings.HasPrefix(proxyPath, "/api/v1/files/avatars/") {
+			key := strings.TrimPrefix(proxyPath, "/api/v1/files/")
+			if validAvatarKey(key) {
+				return key, true
+			}
+			return value, true // invalid reserved path cannot fall through as external
+		}
 	}
 	if err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
 		return value, false
 	}
 	return value, true
+}
+
+// Fold dot segments while they are still URL segments. Cleaning after decoding
+// would incorrectly fold escaped slashes/backslashes too. Keep empty segments:
+// nginx proxy_pass has no URI and forwards the original URI to Gin, so its
+// normalized location matching does not make repeated slashes equivalent keys.
+func avatarBrowserPath(escaped string) string {
+	parts := strings.Split(escaped, "/")
+	out := make([]string, 0, len(parts))
+	for i, part := range parts {
+		dot := strings.ReplaceAll(strings.ToLower(part), "%2e", ".")
+		switch dot {
+		case ".", "..":
+			if dot == ".." && len(out) > 1 {
+				out = out[:len(out)-1]
+			}
+			if i == len(parts)-1 {
+				out = append(out, "")
+			}
+		default:
+			out = append(out, part)
+		}
+	}
+	return strings.Join(out, "/")
 }
 
 func validAvatarKey(key string) bool {
@@ -62,8 +117,19 @@ func avatarReferenceKeys(ctx context.Context, db IAMDBTX) ([]string, error) {
 		if err := rows.Scan(&value); err != nil {
 			return nil, err
 		}
-		if key, internal := NormalizeAvatar(value); internal {
-			keys = append(keys, key)
+		key, internal := NormalizeAvatar(value)
+		if !internal {
+			continue
+		}
+		keys = append(keys, key)
+		// The UI puts its proxy prefix in front of a historical bare value.
+		// Preserve the browser's resolved target as well as the literal value.
+		if key == value && !strings.HasPrefix(value, "/") &&
+			(!validAvatarKey(value) || strings.ContainsAny(value, "%?#\t\r\n")) {
+			rendered, _ := NormalizeAvatar("/api/v1/files/" + value)
+			if rendered != key && validAvatarKey(rendered) {
+				keys = append(keys, rendered)
+			}
 		}
 	}
 	return keys, rows.Err()

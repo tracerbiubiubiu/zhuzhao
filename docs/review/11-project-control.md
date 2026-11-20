@@ -457,7 +457,7 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
 | **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。② 已拍板（2026-08-31）保留镜像列，JOIN 备选弃用 |
-| **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ✅ **已实施（2026-08-31）**：org_roles 绑定/解绑/列表（仅全局管理员，系统角色禁绑）+ parent_id 写侧（单调 child ≤ parent + 环检测）；BFS 源 2/3 全闭环；**收尾修复（2026-09-01）**：Bind/List 加 org 预检（不存在/软删 → 404 ErrOrgNotFound）+ Bind FK 23503 兜底 400（TestBK12_BindOrgRole_OrgGuard）；2026-11-20 现有绑定和删除共享组织锁顺序，有绑定拒删；既有历史孤儿的盘点沿 IAM 后继。详情见 00 §9 |
+| **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ✅ **已实施（2026-08-31）**：org_roles 绑定/解绑/列表（仅全局管理员，系统角色禁绑）+ parent_id 写侧（单调 child ≤ parent + 环检测）；BFS 源 2/3 全闭环。2026-11-20 绑定与删除共享组织、角色存活锁。仍有未软删对象绑定时拒绝删除，合法删除时精确清理本对象指向已软删对象的存量绑定。批量存量盘点沿 IAM 后继。详情见[组织模块](../modules/organization.md#3-当前写操作)。 |
 | **BK-13** | 工单可见性默认方向：兄弟虚拟组透明可读 vs 业务要求「默认只看自己 + 可配置」（`project_isolated`） | ✅ **已实施（IW1，2026-08-31）**：迁移 000017 + org update 配置 API + **L2 委托轴** + D12/委托轴测试；详见 00 §9 |
 | **BK-14** | 成员 scope（`ticket_scope`）无配置面（AddMember 仅收 org_member_role，无任何 API 写 scope） | ✅ **已实施（IW1，2026-08-31）**：AddMember 扩展 + /orgs/members/scope + scope=all 仅全局管理员 + 审计；详见 00 §9 |
 | **BK-15** | 代码卫生：UpdateAssignedTo 死包装 + Delete/UpdateAssignedToTx 叠注释（旧「admin only」过时） | ✅ **已修复（2026-08-31）**：删死代码 + 注释合并更正 |

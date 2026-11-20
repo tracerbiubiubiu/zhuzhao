@@ -20,6 +20,7 @@ package service_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	casbinpkg "github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -278,6 +280,67 @@ func TestZZRemRolesGuard_VgDeleteDeadCleanupAndOwnerKeep(t *testing.T) {
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, vgID).Scan(&owners))
 	require.Zero(t, owners, "删除成功仍须清 owner 派生成员行")
+}
+
+func TestZZRemRolesGuard_HTTPVirtualOwnerCanRetireHistoricalBinding(t *testing.T) {
+	env := setupDelegation(t)
+	ctx := trustedIAMTestContext()
+	_, err := env.orgSvc.SetOwners(ctx, &model.SetOrgOwnersRequest{OrgID: env.vgID, OwnerUserIDs: []int64{env.owner}}, env.super)
+	require.NoError(t, err)
+	for _, uid := range []int64{env.admin, env.mem1, env.mem2, env.admin2} {
+		require.NoError(t, env.orgSvc.RemoveMember(ctx, &model.OrgMemberRequest{OrgID: env.vgID, UserID: uid}, env.super))
+	}
+	role := rbacTestRole(t, "historical_vg_"+uniqueSuffix(), 5, false)
+	zzRolesGuardBind(t, env.vgID, role.ID)
+	_, err = testPool.Exec(ctx, `UPDATE roles SET status=0 WHERE id=$1`, role.ID)
+	require.NoError(t, err)
+	h := handler.NewOrgHandler(env.orgSvc)
+	deleteGroup := func() (int, string) {
+		w := sourceHTTP(t, env.owner, "/api/v1/orgs/delete", true, h.Delete, fmt.Sprintf(`{"org_id":"%d"}`, env.vgID))
+		return w.Code, w.Body.String()
+	}
+	status, body := deleteGroup()
+	require.Equal(t, http.StatusForbidden, status, body)
+	require.Contains(t, body, fmt.Sprintf(`"code":%d`, errcode.ErrCannotAssignHigherRole.Code))
+	require.Equal(t, int64(1), zzRolesGuardBindings(t, env.vgID))
+
+	zzRolesGuardLegacySoftDeleteRole(t, role.ID)
+	status, body = deleteGroup()
+	require.Equal(t, http.StatusOK, status, body)
+	require.False(t, zzRolesGuardOrgAlive(t, env.vgID))
+	require.Zero(t, zzRolesGuardBindings(t, env.vgID))
+	var ownerHistory []int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT owner_user_ids FROM organizations WHERE id=$1`, env.vgID).Scan(&ownerHistory))
+	require.Equal(t, []int64{env.owner}, ownerHistory)
+}
+
+func TestZZRemRolesGuard_RetireRoleWithOnlyHistoricalOrganizations(t *testing.T) {
+	zzRolesGuardReset(t)
+	ctx := trustedIAMTestContext()
+	svc := zzRolesGuardRBAC(t)
+	actor := zzRolesGuardSuperadmin(t)
+	role := rbacTestRole(t, "historical_org_role", 90, false)
+	other := rbacTestRole(t, "historical_org_other", 95, false)
+	retired := zzRolesGuardOrg(t, "historical_org", "root.historical_org", nil)
+	live := zzRolesGuardOrg(t, "live_org", "root.live_org", nil)
+	zzRolesGuardBind(t, retired, role.ID)
+	zzRolesGuardBind(t, retired, other.ID)
+	zzRolesGuardBind(t, live, role.ID)
+	// Model an organization that was soft-deleted under the old behavior.
+	_, err := testPool.Exec(ctx, `UPDATE organizations SET deleted_at=NOW() WHERE id=$1`, retired)
+	require.NoError(t, err)
+	_, err = testPool.Exec(ctx, `UPDATE organizations SET status=0 WHERE id=$1`, live)
+	require.NoError(t, err)
+	requireErrCode(t, svc.DeleteRole(ctx, role.ID, actor), errcode.ErrRoleInUse)
+	require.Equal(t, int64(2), zzRolesGuardRoleBindingsByRole(t, role.ID))
+
+	require.NoError(t, repository.NewOrgRepo(testPool).UnbindOrgRole(ctx, live, role.ID))
+	require.NoError(t, svc.DeleteRole(ctx, role.ID, actor))
+	require.False(t, zzRolesGuardRoleAlive(t, role.ID))
+	require.Zero(t, zzRolesGuardRoleBindingsByRole(t, role.ID))
+	require.Equal(t, int64(1), zzRolesGuardRoleBindingsByRole(t, other.ID))
+	require.False(t, zzRolesGuardOrgAlive(t, retired))
+	require.True(t, zzRolesGuardOrgAlive(t, live))
 }
 
 // ─── 并发反序：DeleteRole × BindOrgRole 双向交错（每方向 8 轮） ───

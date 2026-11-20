@@ -20,7 +20,14 @@ import (
 // Proxy-valued historical references must protect bytes in both retirement and
 // the active avatar orphan sweep; exact raw-key-only checks lose these objects.
 func TestC02ReviewHistoricalAvatarProxyLives(t *testing.T) {
-	for _, prefix := range []string{"/api/v1/files/", "https://app.example.invalid/api/v1/files/"} {
+	for _, prefix := range []string{
+		"/api/v1/files/", "https://app.example.invalid/api/v1/files/",
+		"/api/./v1/files/", "https://app.example.invalid/x/../api/v1/files/",
+		"https://app.example.invalid/x/%2E%2e/api/v1/files/",
+		`https:\\app.example.invalid\api\v1\files\`,
+		"https:////app.example.invalid/api/v1/files/",
+		"retired-folder/../", // The UI prefixes historical bare values before rendering.
+	} {
 		t.Run(prefix, func(t *testing.T) {
 			f := newAvatarRaceFixture(t)
 			ctx := context.Background()
@@ -68,7 +75,10 @@ func TestC02ReviewAvatarRejectsOtherPurposeBeforeLock(t *testing.T) {
 }
 
 func TestC02ReviewDedicatedAvatarHandler(t *testing.T) {
-	for _, shape := range []string{"disabled", "old_bucket_only", "current_same_key_old_bucket", "relative_valid", "absolute_valid", "absolute_foreign"} {
+	for _, shape := range []string{
+		"disabled", "old_bucket_only", "current_same_key_old_bucket", "relative_valid", "absolute_valid", "absolute_foreign",
+		"dot_valid", "dot_foreign", "dot_old_bucket_only", "backslash_valid", "backslash_foreign",
+	} {
 		t.Run(shape, func(t *testing.T) {
 			f := newAvatarRaceFixture(t)
 			ctx := context.Background()
@@ -79,7 +89,7 @@ func TestC02ReviewDedicatedAvatarHandler(t *testing.T) {
 				cfg.Enabled = false
 				f.cfg.Store(&cfg)
 			}
-			if shape == "old_bucket_only" {
+			if strings.HasSuffix(shape, "old_bucket_only") {
 				_, err := testPool.Exec(ctx, `UPDATE file_objects SET bucket=$3 WHERE bucket=$1 AND object_key=$2`, f.bucket, key, "old-"+f.bucket)
 				require.NoError(t, err)
 				t.Cleanup(func() { _, _ = testPool.Exec(ctx, `DELETE FROM file_objects WHERE bucket=$1`, "old-"+f.bucket) })
@@ -95,7 +105,13 @@ func TestC02ReviewDedicatedAvatarHandler(t *testing.T) {
 			if shape == "absolute_valid" || shape == "absolute_foreign" {
 				value = "https://app.example.invalid/api/v1/files/" + key + "?v=1#avatar"
 			}
-			if shape == "absolute_foreign" {
+			if strings.HasPrefix(shape, "dot_") {
+				value = "https://app.example.invalid/x/%2E%2e/api/v1/files/" + key
+			}
+			if strings.HasPrefix(shape, "backslash_") {
+				value = `https:\\app.example.invalid\api\v1\files\` + key
+			}
+			if strings.HasSuffix(shape, "foreign") {
 				_, err := testPool.Exec(ctx, `UPDATE file_objects SET owner_kind='user',owner_id='0' WHERE bucket=$1 AND object_key=$2`, f.bucket, key)
 				require.NoError(t, err)
 			}
@@ -112,7 +128,7 @@ func TestC02ReviewDedicatedAvatarHandler(t *testing.T) {
 			if shape == "disabled" {
 				want = http.StatusInternalServerError
 			}
-			if shape == "old_bucket_only" || shape == "absolute_foreign" {
+			if strings.HasSuffix(shape, "old_bucket_only") || strings.HasSuffix(shape, "foreign") {
 				want = http.StatusNotFound
 			}
 			require.Equal(t, want, w.Code, w.Body.String())
