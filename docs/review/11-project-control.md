@@ -74,7 +74,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
-| **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016） | `migrations/000015*` `000016*` |
+| **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
@@ -273,6 +273,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
+### 2026-11-20 存量修复计划主线复核
+
+启动枚举窄修、任务执行代次与数据库优先取消、工单双端关联读取及提交快照均已合入。任务结果未知与迟到投递清理、C04 写侧撤权提交顺序、C05 凭据版本、F0 容器停止预算、字典引用写方协同、模块校验与可靠通知仍须按启用范围逐项验收。五仓源码、旧证据边界和同类发现见[全文复核](reports/audit-repair-ledger-recheck-2026-11-20.md)。
+
 ### 2026-11-19 五仓存量整改合入
 
 四个实现仓的修复已合入各自 `main`。范围覆盖 AL 普通编辑保真与状态版本、全量导入文件尾校验、字典启停备注及删除目标版本、工单双端关联读取与附件引用、任务取消与投递账本的当前执行代次、补偿扫描及启动配置。Q09 已进入首版正式出口的机器条件，合成开发与人工风险试用沿各自准入。[本轮整改计划及验收证据](../planning/audit-repair-plan-2026-11-19.md#合入与验证证据)
@@ -291,7 +295,7 @@ C04 事务级撤权提交保证、字典引用写方协同、任务效果未知�
 
 提交复核续补 `55a85694` 恢复 MyOrg 当前卡片回读，补齐字典写后重读、同版本删除确认及失败时的草稿恢复，隔离状态图旧预检错误提示。最终本地候选再次全过前端六件门禁，含405单测、49项独占真实栈E2E，零失败、跳过或重试。复核红绿与清理收据归材料ID `maintenance/pass8-target-write-20261118/review-followup/`。
 
-本批验证范围限于当前三个编辑入口和既有回归组合，后端授权与跨客户端并发仍归现有服务端合同。配置拒绝误连库、F2a任务一致性和Phase 6后继持续开放。F0失锁收尾见本节，分批完成条件见[分批承接](../planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。材料ID `maintenance/pass8-target-write-20261118/`，包含本地构建、红绿、真实结果、初次测试夹具超时及清理收据。
+本批验证范围限于当前三个编辑入口和既有回归组合，后端授权与跨客户端并发仍归现有服务端合同。当时配置与 F2a 后继仍开放，已合入的窄修和当前待修边界见上方两节。Phase 6 后继仍按原工作包跟踪。F0失锁收尾见本节，分批完成条件见[分批承接](../planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)。材料ID `maintenance/pass8-target-write-20261118/`，包含本地构建、红绿、真实结果、初次测试夹具超时及清理收据。
 
 ### 2026-11-18 UI交付与依赖风险
 
@@ -322,7 +326,7 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 - **C03当前启用子项**：同号异参、claim失败零执行、running/终态确认、Finish失败、精确JSON及稳定cron时隙/outbox恢复已修并验证；完整receipt/unknown及F2b仍开放。JSONL与PG非原子窗口可能重复，必须保留归档卷。
 - **部署及当前旅程**：默认单实例资格及失锁关闭受理、release存储、普通办理者选人、状态图/SLA/事件/消息及字段文件引用的当前窄修均完成验证。40表实际PG逻辑恢复、S3及JSONL代表恢复通过，独占资源精确回收；不等于异地/PITR/跨介质原子恢复或HA。
 
-RECHECK-04旧头像、RECHECK-05附件用途侧信道、AUTH-04关联对端元数据、AUTH-05条件性PAT、完整IAM-C/C05、C03/F2b、HA及未取用P2/P3继续开放。真实UAA/企业消息及真实业务准入没有由合成证据自动满足；原审计70条发现没有整体关闭。材料ID`maintenance/audit-baseline-repair-20261117/`。
+在本段的历史窗口，RECHECK-04 旧头像、RECHECK-05 附件用途侧信道、AUTH-04 关联对端元数据、AUTH-05 条件性 PAT、完整 IAM-C/C05、C03/F2b、HA 及未取用 P2/P3 尚开放。RECHECK-05 与 AUTH-04 的现行窄修见上方 11 月 19 日合入和本节后继。真实UAA/企业消息及真实业务准入没有由合成证据自动满足；原审计70条发现没有整体关闭。材料ID`maintenance/audit-baseline-repair-20261117/`。
 
 ### 2026-11-15层级设计记录（历史时点）
 
