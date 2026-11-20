@@ -100,10 +100,12 @@ type RateLimitConfig struct {
 	Routes map[string]RateLimitRule `mapstructure:"routes"`
 }
 
-// RateLimitRule 单规则：每秒补充 RPS、桶容量 Burst。
+// RateLimitRule 单规则：每秒补充 RPS、桶容量 Burst。RPS 为浮点——
+// P2-2–4（2026-11-20）：每分钟配额换算 rps=rate/60 在 rate<60 时为亚 1 小数
+// （如 30/min→0.5），整型无法表达；存量整型 yaml 值经 mapstructure 直转 float64。
 type RateLimitRule struct {
-	RPS   int `mapstructure:"rps"`
-	Burst int `mapstructure:"burst"`
+	RPS   float64 `mapstructure:"rps"`
+	Burst int     `mapstructure:"burst"`
 }
 
 // GatewayConfig 网关反代（批次 B / E13）：前缀→上游注册表 + 出站签名密钥。

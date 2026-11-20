@@ -244,6 +244,8 @@ F5候选的25个内置变量仅维护在`internal/pkg/msgrender/variables.go`的
 
 外发主链为HookRegistry提交后Dispatch → TicketNotifyHook薄适配 → MessageDispatcher → 按biz_type+event_action查启用规则 → 模板/渲染 → 收件人 → opt-out → 60s节流 → sender → sent/failed。无规则即不通知；notify动作template_code可覆盖规则默认模板，但规则仍是开关。
 
+规则保存要求业务域与事件前缀、绑定模板的业务域一致。规则已有版本和配置原样保留时，可以停用历史不合规规则；重新启用需要有效组合。偏好查询失败时记录具体事件和查验错误，并跳过该收件人。发送记录或失败告警写入异常各自留运维日志，后续的可靠送达、重新授权和跨进程对账由原能力继续承接。
+
 规则是列式单来源，recipient_type四档：assignee读to_assignee、creator读工单creator快照、fixed读固定列表、cc读cc_users；ticket创建者不回退actor，ops的creator沿既有责任人actor语义。supervisor不是第五或第四规则枚举：TimeoutScanner从处理人/人工指定上级构造cc_users，一条cc规则触达目标。HR manager优先链中的进阶尚未接；组织管理员推导已作废。
 
 Create、Assign、Close、Transition、CC和公开评论等各在实际提交后发事件；公开评论不带正文，内部备注/Delete仍只保留审计，不擅增公开触发。不能写“AssertTransition内发”或“所有入口已统一成单点”来掩盖真实边界。

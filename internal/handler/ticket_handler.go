@@ -29,6 +29,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLo
 // List GET /api/v1/tickets
 //
 //	@Summary	工单列表
+//	@Description	带 relation_source_id 时 keyword 必填，返回最多 20 项关联候选，每项为 {id: string, title: string, status: string}。省略时为普通分页。
 //	@Tags		ticket
 //	@Accept		json
 //	@Produce	json
@@ -42,6 +43,7 @@ func NewTicketHandler(ticketService *ticketsvc.Service, audit middleware.AuditLo
 //	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
 //	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
 //	@Param		keyword			query	string	false	"标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）"
+//	@Param		relation_source_id	query	string	false	"指定源单后返回至多 20 条可关联候选，需 keyword"
 //	@Param		created_from	query	string	false	"创建日期起（YYYY-MM-DD，UTC 切日，含当日）"
 //	@Param		created_to		query	string	false	"创建日期止（YYYY-MM-DD，UTC 切日，含当日）"
 //	@Success	200			{object}	response.Response
@@ -151,6 +153,21 @@ func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 }
 
 func (h *TicketHandler) List(c *gin.Context) {
+	if source, present := c.GetQuery("relation_source_id"); present {
+		id, err := strconv.ParseInt(source, 10, 64)
+		if err != nil || id <= 0 {
+			response.BadRequest(c, "relation_source_id 须为正整数")
+			return
+		}
+		candidates, err := h.ticketService.RelationCandidates(c.Request.Context(), id, c.GetInt64("userID"), c.Query("keyword"))
+		if err != nil {
+			writeServiceError(c, err)
+			return
+		}
+		response.OK(c, candidates)
+		return
+	}
+
 	q, ok := parseListQuery(c)
 	if !ok {
 		return

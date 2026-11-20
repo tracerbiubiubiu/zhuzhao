@@ -17,6 +17,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/exprcalc"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -82,6 +83,7 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 		targetID = append(targetID, *req.ID)
 	}
 	version := req.Version
+	statesPatch, transitionsPatch, metaPatch := req.States, req.Transitions, req.TransitionMeta
 	graphChanged := len(req.States) > 0 || len(req.Transitions) > 0
 	activating := req.IsActive != nil && *req.IsActive
 	if graphChanged || len(req.TransitionMeta) > 0 || activating {
@@ -104,18 +106,32 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 		if len(transitions) == 0 {
 			transitions = current.Transitions
 		}
-		if graphChanged || activating {
-			if err := validateTypeGraph(states, transitions); err != nil {
-				return nil, err
-			}
+		// The editor can round-trip the whole graph while disabling a type.
+		// Preserve an unchanged legacy graph so it can be disabled before repair.
+		meta := req.TransitionMeta
+		if len(meta) == 0 {
+			meta = current.TransitionMeta
 		}
-		if len(req.TransitionMeta) > 0 {
-			if err := validateTransitionMeta(stateList, req.TransitionMeta); err != nil {
+		retainingDisabledConfig := req.IsActive != nil && !*req.IsActive &&
+			sameJSONConfig(states, current.States) &&
+			sameJSONConfig(transitions, current.Transitions) &&
+			sameJSONConfig(meta, current.TransitionMeta)
+		if retainingDisabledConfig {
+			statesPatch, transitionsPatch, metaPatch = nil, nil, nil
+		} else {
+			if graphChanged || activating {
+				if err := validateTypeGraph(states, transitions); err != nil {
+					return nil, err
+				}
+			}
+			if err := validateTransitionMeta(stateList, meta); err != nil {
 				return nil, err
 			}
 			var transitionMap map[string][]string
-			_ = json.Unmarshal(transitions, &transitionMap)
-			if err := ValidateTransitionMeta(stateList, transitionMap, req.TransitionMeta); err != nil {
+			if err := json.Unmarshal(transitions, &transitionMap); err != nil {
+				return nil, errcode.New(errcode.ErrInvalidParams.Code, "transitions 须为对象")
+			}
+			if err := validateTransitionEdges(stateList, transitionMap, meta, s.actionReg.validatePostActions); err != nil {
 				return nil, err
 			}
 		}
@@ -125,7 +141,12 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 			version = &snapshotVersion
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, version, targetID...)
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, statesPatch, transitionsPatch, metaPatch, req.IsActive, version, targetID...)
+}
+
+func sameJSONConfig(left, right json.RawMessage) bool {
+	equal, err := jobs.EqualParams(left, right)
+	return err == nil && equal
 }
 
 // metaKeyDomain 取 meta 键域判定的 states+transitions 基线：请求带 states 用请求值，

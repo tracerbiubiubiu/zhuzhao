@@ -2453,6 +2453,7 @@ const docTemplate = `{
         },
         "/api/v1/tickets": {
             "get": {
+                "description": "带 relation_source_id 时 keyword 必填，返回最多 20 项关联候选，每项为 {id: string, title: string, status: string}。省略时为普通分页。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2522,6 +2523,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）",
                         "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "指定源单后返回至多 20 条可关联候选，需 keyword",
+                        "name": "relation_source_id",
                         "in": "query"
                     },
                     {

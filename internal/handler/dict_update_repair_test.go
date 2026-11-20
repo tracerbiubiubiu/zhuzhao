@@ -59,6 +59,7 @@ func (*dictPatchDB) QueryRow(context.Context, string, ...any) pgx.Row { panic("u
 func (*dictPatchDB) Query(context.Context, string, ...any) (pgx.Rows, error) {
 	panic("unexpected query")
 }
+func (*dictPatchDB) Begin(context.Context) (pgx.Tx, error) { panic("unexpected begin") }
 
 func TestDictCreateItemParentIdentity(t *testing.T) {
 	for _, tc := range []struct {

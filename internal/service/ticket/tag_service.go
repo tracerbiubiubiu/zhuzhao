@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
@@ -21,6 +23,16 @@ const tagEntityType = "ticket"
 // AddTags 挂标签（幂等；trim+去重+空滤后入库，单次 ≤20 个/单个 ≤50 字符）。
 // 返回挂载后的全量标签行（前端即用）。
 func (s *Service) AddTags(ctx context.Context, req *model.AddTicketTagsRequest, actorUserID int64) ([]model.TagRow, error) {
+	var result []model.TagRow
+	err := s.withHTTPCommand(ctx, "tags", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		result, err = s.addTagsCommand(ctx, req, actorUserID)
+		return err
+	}, req.TicketID)
+	return result, err
+}
+
+func (s *Service) addTagsCommand(ctx context.Context, req *model.AddTicketTagsRequest, actorUserID int64) ([]model.TagRow, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
@@ -45,6 +57,10 @@ func (s *Service) AddTags(ctx context.Context, req *model.AddTicketTagsRequest, 
 
 // RemoveTag 摘标签（幂等——不存在不算错；摘他人挂的需 update 权）。
 func (s *Service) RemoveTag(ctx context.Context, req *model.RemoveTicketTagRequest, actorUserID int64) error {
+	return s.withHTTPCommand(ctx, "tags/remove", actorUserID, func(ctx context.Context, tx pgx.Tx) error { return s.removeTagCommand(ctx, req, actorUserID) }, req.TicketID)
+}
+
+func (s *Service) removeTagCommand(ctx context.Context, req *model.RemoveTicketTagRequest, actorUserID int64) error {
 	tid := strconv.FormatInt(req.TicketID, 10)
 	if err := s.authorizeCheck(ctx, actorUserID, "read", tid); err != nil {
 		return err

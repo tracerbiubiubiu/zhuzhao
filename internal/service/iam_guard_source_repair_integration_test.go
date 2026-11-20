@@ -118,6 +118,13 @@ func TestIAMGuard_HTTPSourceOperationsCannotStripOrRestoreStrongerGrant(t *testi
 				}
 				w := sourceHTTP(t, f.actor, path, self, action, body)
 				if qualified {
+					if command == "delete" {
+						require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+						require.Contains(t, w.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrOrgHasOrgRoles.Code))
+						require.Equal(t, before, snapshot())
+						require.NoError(t, repository.NewOrgRepo(testPool).UnbindOrgRole(trustedIAMTestContext(), f.org, f.strong.ID))
+						w = sourceHTTP(t, f.actor, path, self, action, body)
+					}
 					require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 					return
 				}

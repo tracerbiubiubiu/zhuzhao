@@ -5,7 +5,6 @@ package service_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
@@ -74,10 +73,12 @@ func TestMessageRuleCreatedByServerOwnedAndUpdatePreservesCreator(t *testing.T) 
 	modifier := rbacTestUser(t, "rule-modifier-"+uniqueSuffix(), "RM"+uniqueSuffix(), nil)
 	svc := service.NewMessageAdminService(testPool)
 	repo := repository.NewMessageRuleRepo(testPool)
-	biz := fmt.Sprint("test-", time.Now().UnixNano())
-	defer func() { _, _ = testPool.Exec(context.Background(), `DELETE FROM message_rules WHERE biz_type=$1`, biz) }()
+	const biz, action = "ticket", "ticket.transitioned"
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM message_rules WHERE biz_type=$1 AND event_action=$2`, biz, action)
+	})
 	forged := modifier
-	rule := &model.MessageRule{BizType: biz, EventAction: "ticket.created", TemplateCode: "ticket_created_notify", RecipientType: "creator", Enabled: true, CreatedBy: &forged}
+	rule := &model.MessageRule{BizType: biz, EventAction: action, TemplateCode: "ticket_created_notify", RecipientType: "creator", Enabled: true, CreatedBy: &forged}
 	require.Error(t, svc.UpsertRule(context.Background(), rule), "body creator is not a service identity")
 	require.NoError(t, svc.UpsertRule(service.WithTaskPrincipal(context.Background(), id, "original"), rule))
 	saved, err := repo.GetByAction(context.Background(), biz, rule.EventAction)

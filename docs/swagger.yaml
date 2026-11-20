@@ -2683,6 +2683,8 @@ paths:
     get:
       consumes:
       - application/json
+      description: '带 relation_source_id 时 keyword 必填，返回最多 20 项关联候选，每项为 {id: string,
+        title: string, status: string}。省略时为普通分页。'
       parameters:
       - description: 页码
         in: query
@@ -2723,6 +2725,10 @@ paths:
       - description: 标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）
         in: query
         name: keyword
+        type: string
+      - description: 指定源单后返回至多 20 条可关联候选，需 keyword
+        in: query
+        name: relation_source_id
         type: string
       - description: 创建日期起（YYYY-MM-DD，UTC 切日，含当日）
         in: query

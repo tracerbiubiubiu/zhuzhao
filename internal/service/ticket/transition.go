@@ -54,6 +54,10 @@ func parseTransitionMeta(raw json.RawMessage, from, to string) (*TransitionMeta,
 // ValidateTransitionMeta 保存期校验（UpdateTicketType 随批——键域 ⊆ transitions
 // 展开集；validator 语法 CheckSyntax；roles 词表）。零 DB 纯函数。
 func ValidateTransitionMeta(states []string, transitions map[string][]string, raw json.RawMessage) error {
+	return validateTransitionEdges(states, transitions, raw, nil)
+}
+
+func validateTransitionEdges(states []string, transitions map[string][]string, raw json.RawMessage, validateActions func([]json.RawMessage) error) error {
 	if len(raw) == 0 {
 		return nil
 	}
@@ -102,6 +106,11 @@ func ValidateTransitionMeta(states []string, transitions map[string][]string, ra
 			if err := exprcalc.CheckSyntax(tm.Validator); err != nil {
 				return errcode.New(errcode.ErrInvalidParams.Code,
 					fmt.Sprintf("transition_meta[%s].validator 语法错误: %v", key, err))
+			}
+		}
+		if validateActions != nil {
+			if err := validateActions(tm.PostActions); err != nil {
+				return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%s].post_actions: %v", key, err))
 			}
 		}
 	}

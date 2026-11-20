@@ -26,6 +26,20 @@ type NotifyAction struct {
 func (a *NotifyAction) Name() string                { return "notify" }
 func (a *NotifyAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce }
 
+func (*NotifyAction) validateParams(params map[string]any) error {
+	if template, provided := params["template"]; provided && template != nil {
+		if _, ok := template.(string); !ok {
+			return fmt.Errorf("template 须为字符串")
+		}
+	}
+	if recipients, provided := params["recipients"]; provided && recipients != nil {
+		if !validActionIDs(recipients, false) {
+			return fmt.Errorf("recipients 须为用户 ID 数组")
+		}
+	}
+	return nil
+}
+
 // Execute params: {"template": "code", "recipients": ["id"...]}——emit
 // ticket.action_notify 事件由 S6 规则面路由；template 可选（2026-10-26 通知面收口批生效——此前参数
 // 写在文档里但从未被读）：显式指定时覆盖规则默认模板（规则仍是开关与兜底）；不指定走规则/种子默认。
@@ -37,8 +51,6 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 	tplCode := ""
 	if ac.Params != nil {
 		if list, ok := ac.Params["recipients"].([]any); ok {
-			// JSON 数字解出为 float64——必须经 int64 再格式化：fmt.Sprint(float64(1000000))="1e+06"，
-			// 用户 ID ≥1e6 时收件人串全部损坏（CCAction 同款转换，此处曾漏）
 			parts := idsFromParam(list)
 			strs := make([]string, len(parts))
 			for i, id := range parts {
@@ -54,17 +66,39 @@ func (a *NotifyAction) Execute(ctx context.Context, ac ActionContext) error {
 	return nil
 }
 
-// idsFromParam 动作参数里的 ID 列表（JSON 解出的 float64 / 数字字符串）→ int64；非法项跳过。
+func actionInteger(value any) (int64, bool) {
+	switch n := value.(type) {
+	case json.Number:
+		v, err := n.Int64()
+		return v, err == nil
+	case float64: // direct action callers may pass their own parameter map
+		v := int64(n)
+		return v, float64(v) == n
+	default:
+		return 0, false
+	}
+}
+
+func validActionIDs(value any, requireOne bool) bool {
+	list, ok := value.([]any)
+	return ok && (!requireOne || len(list) != 0) && len(idsFromParam(list)) == len(list)
+}
+
+func actionUserID(value any) (int64, bool) {
+	if raw, ok := value.(string); ok {
+		id, err := strconv.ParseInt(raw, 10, 64)
+		return id, err == nil && id > 0
+	}
+	id, ok := actionInteger(value)
+	return id, ok && id > 0
+}
+
+// idsFromParam preserves integral JSON numbers and numeric string IDs.
 func idsFromParam(list []any) []int64 {
 	ids := make([]int64, 0, len(list))
 	for _, v := range list {
-		switch x := v.(type) {
-		case float64:
-			ids = append(ids, int64(x))
-		case string:
-			if n, err := strconv.ParseInt(x, 10, 64); err == nil {
-				ids = append(ids, n)
-			}
+		if id, ok := actionUserID(v); ok {
+			ids = append(ids, id)
 		}
 	}
 	return ids
@@ -80,6 +114,13 @@ func NewCCAction(svc *Service) *CCAction { return &CCAction{Svc: svc} }
 
 func (a *CCAction) Name() string                { return "cc" }
 func (a *CCAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce }
+
+func (*CCAction) validateParams(params map[string]any) error {
+	if !validActionIDs(params["user_ids"], true) {
+		return fmt.Errorf("user_ids 须为非空用户 ID 数组")
+	}
+	return nil
+}
 
 // Execute params: {"user_ids": [int...]}——以动作上下文操作人身份挂抄送。
 func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
@@ -98,9 +139,9 @@ func (a *CCAction) Execute(ctx context.Context, ac ActionContext) error {
 	if ac.SystemAsCreator {
 		actor = ac.Ticket.CreatedBy // 系统身份重放——creator 恒有「抄送他人」update 面
 	}
-	_, err := a.Svc.AddCC(ctx, &model.AddTicketCCRequest{
+	_, err := a.Svc.addCC(ctx, &model.AddTicketCCRequest{
 		TicketID: ac.Ticket.ID, UserIDs: ids,
-	}, actor)
+	}, actor, !ac.SystemAsCreator)
 	return err
 }
 
@@ -116,16 +157,22 @@ func NewReassignAction(svc *Service) *ReassignAction { return &ReassignAction{Sv
 func (a *ReassignAction) Name() string                { return "reassign" }
 func (a *ReassignAction) Delivery() DeliverySemantics { return DeliveryAtMostOnce } // 写操作但单条 Assign 幂等可重试
 
+func (*ReassignAction) validateParams(params map[string]any) error {
+	if _, ok := actionUserID(params["user_id"]); !ok {
+		return fmt.Errorf("user_id 须为正整数")
+	}
+	return nil
+}
+
 // Execute params: {"user_id": int}——转派到目标处理人。
 func (a *ReassignAction) Execute(ctx context.Context, ac ActionContext) error {
 	if a.Svc == nil || ac.Params == nil {
 		return nil
 	}
-	f, ok := ac.Params["user_id"].(float64)
+	uid, ok := actionUserID(ac.Params["user_id"])
 	if !ok {
-		return fmt.Errorf("reassign: user_id 缺失")
+		return fmt.Errorf("reassign: user_id 须为正整数")
 	}
-	uid := int64(f)
 	if ac.SystemAsCreator {
 		// P1-2 修复（2026-11-01 审计）：canOperate("assign") 不含 isCreator——以 creator
 		// 身份走 Assign 在非 admin 创建者场景必 403（TestB33 曾用 admin creator 掩盖）。
@@ -164,6 +211,23 @@ type TaskSubmitter interface {
 func (a *SpawnTaskAction) Name() string                { return "spawn_task" }
 func (a *SpawnTaskAction) Delivery() DeliverySemantics { return DeliveryDurableSubmit }
 
+func (*SpawnTaskAction) validateParams(params map[string]any) error {
+	if action, ok := params["action"].(string); !ok || strings.TrimSpace(action) == "" {
+		return fmt.Errorf("action 须为非空字符串")
+	}
+	if values, provided := params["params"]; provided && values != nil {
+		if _, ok := values.(map[string]any); !ok {
+			return fmt.Errorf("params 须为对象")
+		}
+	}
+	if value, provided := params["timeout_secs"]; provided && value != nil {
+		if seconds, ok := actionInteger(value); !ok || seconds < 0 || seconds > 86400 {
+			return fmt.Errorf("timeout_secs 须为 0 到 86400 的整数")
+		}
+	}
+	return nil
+}
+
 // Execute params: {"action": "action_id", "params": {...}, "timeout_secs": 30}——
 // 提交一次性任务；params 支持 {"from": "ticket.field"} 简单取数（event/result
 // 全量映射随 B3-3 后批）。
@@ -184,7 +248,11 @@ func (a *SpawnTaskAction) Execute(ctx context.Context, ac ActionContext) error {
 		taskParams = b
 	}
 	timeout := 0
-	if tv, ok := ac.Params["timeout_secs"].(float64); ok {
+	if value, provided := ac.Params["timeout_secs"]; provided && value != nil {
+		tv, ok := actionInteger(value)
+		if !ok || tv < 0 || tv > 86400 {
+			return fmt.Errorf("spawn_task: timeout_secs 须为 0 到 86400 的整数")
+		}
 		timeout = int(tv)
 	}
 	_, err := a.Client.Submit(ctx, &TaskSubmitInput{

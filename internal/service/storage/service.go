@@ -65,6 +65,32 @@ type Service struct {
 	cfg    *pkgstorage.ConfigStore // F-D3（2026-10-21）：原子快照——KV 运行时覆盖与请求侧读并发安全
 	bucket string
 	logger *slog.Logger
+	// ticketCmd C04 撤权提交顺序边界：票态附件写入的 IAM 共同共享守卫+
+	// 锁票重认证由 ticket 域实现（域间零 import——装配层结构化注入，A.7
+	// handler 编排先例）。nil = 既有直连契约（非 HTTP 调用方/既有测试）。
+	ticketCmd TicketAttachmentCommand
+}
+
+// TicketAttachmentCommand ticket 域守卫边界（实现方=ticket.Service）。fn 在
+// 守卫事务内执行——repo 经 repository.IAMDB 取同一连接（savepoint），不取
+// 第二个池连接。
+type TicketAttachmentCommand interface {
+	AttachmentCommand(ctx context.Context, action string, actorUserID, ticketID int64, fn func(context.Context) error) error
+}
+
+// UseTicketAttachmentCommand 装配层注入守卫实现（handler 构造时机——一次性，
+// 非请求路径）。
+func (s *Service) UseTicketAttachmentCommand(cmd TicketAttachmentCommand) {
+	s.ticketCmd = cmd
+}
+
+// runAttachmentCommand 票态附件写入路由：已注入守卫时走 ticket 域守卫
+// （errcode 面透传 handler），否则直连执行（既有契约）。
+func (s *Service) runAttachmentCommand(ctx context.Context, action string, actorUserID, ticketID int64, fn func(context.Context) error) error {
+	if s.ticketCmd == nil {
+		return fn(ctx)
+	}
+	return s.ticketCmd.AttachmentCommand(ctx, action, actorUserID, ticketID, fn)
 }
 
 func NewService(repo *repository.StorageRepo, client pkgstorage.Client, cfg *pkgstorage.ConfigStore, logger *slog.Logger) *Service {
@@ -107,7 +133,17 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 		Bucket: s.bucket, ObjectKey: key, Purpose: purpose,
 		Status: model.FileStatusPending, FileName: fileName, MIMEType: mime, CreatedBy: userID,
 	}
-	if err := s.repo.InsertPending(ctx, f); err != nil {
+	insert := func(ctx context.Context) error { return s.repo.InsertPending(ctx, f) }
+	if ticketPurposes[purpose] {
+		err = s.runAttachmentCommand(ctx, "presign", userID, *in.TicketID, insert)
+	} else {
+		err = insert(ctx)
+	}
+	if err != nil {
+		var biz *errcode.Error
+		if errors.As(err, &biz) {
+			return nil, err
+		}
 		s.logger.Error("storage insert pending", "err", err)
 		return nil, errcode.ErrInternal
 	}
@@ -175,13 +211,21 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		if in.TicketID == nil {
 			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
 		}
-		if err := s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, cfg.MaxAttachmentsPerTicket); err != nil {
+		// C04 撤权提交顺序：HEAD 实测已在 IAM 锁外完成（外部动作不进锁），
+		// 落绑在守卫内锁票重认证后同连接提交。
+		if err := s.runAttachmentCommand(ctx, "confirm", userID, *in.TicketID, func(ctx context.Context) error {
+			return s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, cfg.MaxAttachmentsPerTicket)
+		}); err != nil {
 			if errors.Is(err, repository.ErrStorageAlreadyBound) {
 				return nil, errcode.ErrFileAlreadyBound
 			}
 			if errors.Is(err, repository.ErrStorageAttachmentLimit) {
 				return nil, errcode.New(errcode.ErrInvalidParams.Code,
 					fmt.Sprintf("工单附件数超过上限（%d）", cfg.MaxAttachmentsPerTicket))
+			}
+			var biz *errcode.Error
+			if errors.As(err, &biz) {
+				return nil, err // 守卫 errcode 面（403/404/70003）透传 handler
 			}
 			s.logger.Error("storage confirm and bind", "err", err)
 			return nil, errcode.ErrInternal
@@ -295,9 +339,10 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, callerU
 // （confirmed+本人+avatar 面，非皆同形 404 防枚举）→ users.avatar 落对象键
 // → 旧头像对象 best-effort 删除+标 deleted（A.7 弃旧语义）；同键重复 bind 幂等。
 func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64) (*model.FileObject, error) {
-	if s.client == nil {
+	if s.client == nil || !s.cfg.Load().Enabled {
 		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
+	objectKey, _ = repository.NormalizeAvatar(objectKey)
 	f, err := s.repo.GetByObjectKey(ctx, s.bucket, objectKey)
 	if err != nil {
 		if errors.Is(err, repository.ErrStorageObjectNotFound) {
@@ -346,12 +391,26 @@ func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]
 }
 
 // DeleteTicketAttachment checks current references and atomically unlinks and
-// marks deleted. L2 update authorization remains owned by the handler.
+// marks deleted. 既有直连形态（签名兼容既有直连调用方与 ticket 包 C02 不变量
+// 测试）：无 actor 不进守卫——HTTP 路径一律走 DeleteTicketAttachmentAs
+// （C04 撤权提交顺序守卫）；本形态在已准入 HTTP ctx 下 fail-closed。
 func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, objectKey string) error {
+	return s.deleteTicketAttachment(ctx, 0, ticketID, objectKey)
+}
+
+// DeleteTicketAttachmentAs C04 守卫形态：handler 供 actor，守卫在 IAM 共同
+// 共享锁内锁票并同连接重认证后提交删关联+标删；物理对象删除仍在提交后。
+func (s *Service) DeleteTicketAttachmentAs(ctx context.Context, actorUserID, ticketID int64, objectKey string) error {
+	return s.deleteTicketAttachment(ctx, actorUserID, ticketID, objectKey)
+}
+
+func (s *Service) deleteTicketAttachment(ctx context.Context, actorUserID, ticketID int64, objectKey string) error {
 	if s.client == nil {
 		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
-	err := s.repo.DeleteTicketAttachment(ctx, s.bucket, ticketID, objectKey)
+	err := s.runAttachmentCommand(ctx, "delete", actorUserID, ticketID, func(ctx context.Context) error {
+		return s.repo.DeleteTicketAttachment(ctx, s.bucket, ticketID, objectKey)
+	})
 	switch {
 	case errors.Is(err, repository.ErrStorageObjectNotFound):
 		return errcode.ErrFileNotFound
@@ -360,6 +419,10 @@ func (s *Service) DeleteTicketAttachment(ctx context.Context, ticketID int64, ob
 	case errors.Is(err, repository.ErrStorageAttachmentReferenced):
 		return errcode.New(errcode.ErrConflict.Code, "附件仍被引用，请先移除引用")
 	case err != nil:
+		var biz *errcode.Error
+		if errors.As(err, &biz) {
+			return err // 守卫 errcode 面（403/404/70003）透传 handler
+		}
 		s.logger.Error("storage delete attachment transaction", "err", err)
 		return errcode.ErrInternal
 	}

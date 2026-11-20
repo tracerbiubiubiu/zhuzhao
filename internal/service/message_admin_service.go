@@ -3,10 +3,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -54,7 +56,10 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 	if err != nil {
 		return fmt.Errorf("模板 %s 不存在或未启用: %w", rule.TemplateCode, err)
 	}
-	_ = tpl
+	if tpl.BizType != rule.BizType {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("模板 %q 与规则业务域 %q 不匹配", tpl.Code, rule.BizType))
+	}
 
 	// ② recipient_type 枚举（v3 审计 Y-1：裸 fmt.Errorf → errcode 400，修复前 errors.As
 	// 落空 → 500+10000 污染 5xx 告警面）
@@ -69,6 +74,12 @@ func (s *MessageAdminService) validateUpsertRule(ctx context.Context, rule *mode
 	if !isValidEventAction(rule.EventAction) {
 		return errcode.New(errcode.ErrInvalidParams.Code,
 			fmt.Sprintf("event_action %q 不在支持词表", rule.EventAction))
+	}
+
+	domain, _, _ := strings.Cut(rule.EventAction, ".")
+	if rule.BizType != domain {
+		return errcode.New(errcode.ErrInvalidParams.Code,
+			fmt.Sprintf("biz_type %q 与 event_action %q 不匹配", rule.BizType, rule.EventAction))
 	}
 
 	// ④ fixed 收件人非空时验格式（逗号分隔数字 ID）
@@ -107,14 +118,39 @@ func (s *MessageAdminService) UpsertRule(ctx context.Context, rule *model.Messag
 	copyRule := *rule
 	copyRule.CreatedBy = &principal.ID
 	rule = &copyRule
-	if err := s.validateUpsertRule(ctx, rule); err != nil {
-		return err
-	}
 	if rule.BizType == "" {
 		rule.BizType = "ticket"
 	}
-	if rule.RecipientType == "" {
-		rule.RecipientType = "assignee"
+	if err := s.validateUpsertRule(ctx, rule); err != nil {
+		if rule.Enabled || rule.Version <= 0 {
+			return err
+		}
+		// An existing invalid snapshot can be disabled without saving its
+		// invalid configuration again. New/changed snapshots still need validation.
+		tag, writeErr := s.pool.Exec(ctx, `
+			UPDATE message_rules SET enabled=false, updated_at=NOW(), version=version+1
+			WHERE biz_type=$1 AND event_action=$2 AND version=$3
+			  AND template_code=$4 AND recipient_type=$5 AND COALESCE(fixed_recipients, '')=$6`,
+			rule.BizType, rule.EventAction, rule.Version, rule.TemplateCode, rule.RecipientType, rule.FixedRecipients)
+		if writeErr != nil {
+			return writeErr
+		}
+		if tag.RowsAffected() == 0 {
+			var currentVersion int64
+			readErr := s.pool.QueryRow(ctx, `SELECT version FROM message_rules WHERE biz_type=$1 AND event_action=$2`,
+				rule.BizType, rule.EventAction).Scan(&currentVersion)
+			switch {
+			case errors.Is(readErr, pgx.ErrNoRows):
+				return errcode.ErrMsgRuleVersionConflict
+			case readErr != nil:
+				return readErr
+			case currentVersion != rule.Version:
+				return errcode.ErrMsgRuleVersionConflict
+			default:
+				return err
+			}
+		}
+		return nil
 	}
 	// version CAS（000060 乐观锁——对齐 message_templates/system_settings 全仓惯例）：
 	// 新建=无冲突直接 INSERT（version 起步 1，入参 version 忽略）；更新=DO UPDATE

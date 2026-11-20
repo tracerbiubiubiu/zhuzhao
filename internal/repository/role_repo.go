@@ -262,6 +262,36 @@ func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error 
 	}
 	defer tx.Rollback(ctx)
 
+	// 2026-11-20 审计续批：软删前先认领角色行（先拒后写）——与 BindOrgRole 角色校验
+	// 的 FOR SHARE 存续锁互斥，闭合「绑定计数 ↔ 软删」窗口。角色不存在或已软删 →
+	// ErrRoleNotFound。
+	var lockedID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id FROM roles WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, id).Scan(&lockedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrRoleNotFound
+		}
+		return fmt.Errorf("lock role for delete: %w", err)
+	}
+
+	// BindOrgRole shares this role lock. A binding committed first blocks
+	// retirement; a binding attempted after retirement sees a deleted role.
+	var liveOrgBinding bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (
+			SELECT 1 FROM org_roles b JOIN organizations o ON o.id = b.org_id
+			WHERE b.role_id = $1 AND o.deleted_at IS NULL
+		)`, id).Scan(&liveOrgBinding); err != nil {
+		return fmt.Errorf("check role org bindings: %w", err)
+	}
+	if liveOrgBinding {
+		return errcode.New(errcode.ErrRoleInUse.Code, "该角色仍被组织绑定，无法删除")
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM org_roles b USING organizations o
+		WHERE b.role_id = $1 AND o.id = b.org_id AND o.deleted_at IS NOT NULL`, id); err != nil {
+		return fmt.Errorf("clear role bindings to deleted organizations: %w", err)
+	}
+
 	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, id); err != nil {
 		return fmt.Errorf("delete role_menus: %w", err)
 	}

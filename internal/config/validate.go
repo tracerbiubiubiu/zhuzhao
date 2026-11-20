@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"strings"
+	"time"
 )
 
 const minJWTSecretLenRelease = 32
@@ -74,12 +76,26 @@ func (c *Config) Validate() error {
 	// 服务端启动 fail-fast（自 config.Load 迁入 2026-10-12：Load 保持读+默认值
 	// 单一职责——admincli reset-password 只消费连接三节，不应被迫满足服务端
 	// 启动前置，否则应急通道被无关检查卡死）
-	if c.RateLimit.Enabled && (c.RateLimit.Default.RPS <= 0 || c.RateLimit.Default.Burst <= 0) {
+	if c.RateLimit.Enabled && (c.RateLimit.Default.RPS <= 0 || math.IsNaN(c.RateLimit.Default.RPS) || math.IsInf(c.RateLimit.Default.RPS, 0) || c.RateLimit.Default.Burst <= 0) {
 		// 限流（07 §2）：enabled 时规则必须显式且为正——静默兜底会让漏配 burst
 		// 变成「限流整体失效」的 fail-open（审计 M4），故 fail-fast 拒启
-		return fmt.Errorf("rate_limit.enabled=true 但 default.rps/burst 须为正数（当前 %d/%d）——缺省将导致限流整体失效",
+		return fmt.Errorf("rate_limit.enabled=true 但 default.rps/burst 须为正数（当前 %g/%d）——缺省将导致限流整体失效",
 			c.RateLimit.Default.RPS, c.RateLimit.Default.Burst)
 	}
+	if c.RateLimit.Enabled {
+		if c.Intel.QueryRatePerMin < 0 {
+			return fmt.Errorf("intel.query_rate_per_min 须为非负整数（0 沿用通用限流）")
+		}
+		for route, rule := range c.RateLimit.Routes {
+			if math.IsNaN(rule.RPS) || math.IsInf(rule.RPS, 0) {
+				return fmt.Errorf("rate_limit.routes %q 的 rps 须为有限数", route)
+			}
+		}
+	}
+	if c.Log.MaxSize < 0 || c.Log.MaxBackups < 0 || c.Log.MaxAge < 0 {
+		return fmt.Errorf("log.max_size、max_backups、max_age 须为非负整数")
+	}
+
 	if c.InternalJobs.Enabled && c.InternalJobs.SK == "" {
 		return fmt.Errorf("internal_jobs.enabled=true 但 taskrunner_sk 未配置（env INTERNAL_JOBS_SK）——验签端点不允许裸奔")
 	}
@@ -98,6 +114,21 @@ func (c *Config) Validate() error {
 	if len(c.Gateway.Upstreams) > 0 && (c.Gateway.AK == "" || c.Gateway.SK == "") {
 		// 网关反代（批次 B/E13）：配置了上游即必须配出站签名密钥（fail-fast 对齐 internal_jobs）
 		return fmt.Errorf("gateway.upstreams 已配置但 ak/sk 缺失（env GATEWAY_AK / GATEWAY_SK）——出站签名必需")
+	}
+
+	// P2-2–4（2026-11-20 审计续批）：模块开启态显式非法 duration 拒启——原先
+	// 装配端 ParseDuration 失败静默兜底（timeout_scan 兜 5m / captcha 兜 0 后服务层
+	// 再兜 5m），配置笔误无启动期报错。空缺省（消费端既定 5m 兜底）与模块停用
+	// （不装配=值无消费者）继续可用，不发明值域——仅拒「显式给了但非法」。
+	if c.Tickets.TimeoutScanEnabled && c.Tickets.TimeoutScanTick != "" {
+		if tick, err := time.ParseDuration(c.Tickets.TimeoutScanTick); err != nil || tick < 0 {
+			return fmt.Errorf("tickets.timeout_scan_tick %q 非法：须为非负 duration（如 5m）；0 或留空走消费端 5m 缺省", c.Tickets.TimeoutScanTick)
+		}
+	}
+	if c.CaptchaEnabled && c.CaptchaTTL != "" {
+		if ttl, err := time.ParseDuration(c.CaptchaTTL); err != nil || ttl < 0 {
+			return fmt.Errorf("captcha_ttl %q 非法：须为非负 duration（如 5m）；0 或留空走消费端 5m 缺省", c.CaptchaTTL)
+		}
 	}
 
 	// W0a-P0-1：三个内网 SK 对齐 JWT 的 D2-09 纪律——仓库公开的 dev-* 默认值

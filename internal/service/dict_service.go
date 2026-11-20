@@ -74,6 +74,10 @@ func (s *DictService) DeleteType(ctx context.Context, code string, target ...Dic
 		return errcode.ErrDictTypeInUse
 	}
 	if err := s.repo.DeleteTypeByCode(ctx, code, target...); err != nil {
+		if errors.Is(err, repository.ErrDictTypeInUse) {
+			// 事务内锁后重扫命中规范引用（预检与删除间并发 replace 提交引用）
+			return errcode.ErrDictTypeInUse
+		}
 		if errors.Is(err, repository.ErrDictDeleteConflict) {
 			return errcode.ErrConflict
 		}

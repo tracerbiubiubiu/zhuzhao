@@ -49,7 +49,7 @@ var allErrCodes = []*errcode.Error{
 	errcode.ErrOrgHasChildren, errcode.ErrOrgHasMembers, errcode.ErrOrgIsSystem,
 	errcode.ErrNotOrgMember, errcode.ErrDuplicatePrimaryOrg, errcode.ErrOrgSystemProtected,
 	errcode.ErrCannotAssignHigherOrgMemberRole, errcode.ErrCannotManageOrgMember,
-	errcode.ErrNotOrgOwner, errcode.ErrOrgHasOpenTickets,
+	errcode.ErrNotOrgOwner, errcode.ErrOrgHasOpenTickets, errcode.ErrOrgHasOrgRoles,
 	// 菜单
 	errcode.ErrMenuNotFound,
 	// 权限

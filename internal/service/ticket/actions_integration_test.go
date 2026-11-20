@@ -111,9 +111,9 @@ func TestB33_Actions(t *testing.T) {
 	})
 
 	t.Run("未注册动作跳过 + 字符串形态 + 失败不回滚转换", func(t *testing.T) {
-		// meta 含未注册动作 spawn_task（未装配通道）+ 字符串形态未知动作
+		// Historical rows can contain actions saved before registry validation.
 		meta := `{"pending_verify>closed":{"post_actions":["spawn_task","no_such_action"]}}`
-		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
+		_, err := testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta=$1::jsonb WHERE code=$2`, meta, code)
 		require.NoError(t, err)
 
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{

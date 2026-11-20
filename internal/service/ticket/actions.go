@@ -9,6 +9,7 @@
 package ticket
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -110,6 +111,42 @@ type actionRef struct {
 	Params map[string]any `json:"params"`
 }
 
+func parsePostAction(raw json.RawMessage) (actionRef, bool) {
+	var ref actionRef
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&ref); err == nil && ref.Name != "" {
+		return ref, true
+	}
+	var name string
+	if err := json.Unmarshal(raw, &name); err == nil && name != "" {
+		return actionRef{Name: name}, true
+	}
+	return actionRef{}, false
+}
+
+func (r *ActionRegistry) validatePostActions(actions []json.RawMessage) error {
+	for i, raw := range actions {
+		ref, ok := parsePostAction(raw)
+		if !ok {
+			return fmt.Errorf("第 %d 个动作须有名称，params 须为对象", i+1)
+		}
+		if r == nil {
+			return fmt.Errorf("动作 %q 未注册", ref.Name)
+		}
+		action, ok := r.Get(ref.Name)
+		if !ok {
+			return fmt.Errorf("动作 %q 未注册", ref.Name)
+		}
+		if validator, ok := action.(interface{ validateParams(map[string]any) error }); ok {
+			if err := validator.validateParams(ref.Params); err != nil {
+				return fmt.Errorf("动作 %q: %w", ref.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
 // parsePostActions 解析 post_actions 元素（两形态归一）。
 func parsePostActions(tm *TransitionMeta) []actionRef {
 	if tm == nil {
@@ -117,14 +154,8 @@ func parsePostActions(tm *TransitionMeta) []actionRef {
 	}
 	out := make([]actionRef, 0, len(tm.PostActions))
 	for _, raw := range tm.PostActions {
-		var ref actionRef
-		if err := json.Unmarshal(raw, &ref); err == nil && ref.Name != "" {
+		if ref, ok := parsePostAction(raw); ok {
 			out = append(out, ref)
-			continue
-		}
-		var name string
-		if err := json.Unmarshal(raw, &name); err == nil && name != "" {
-			out = append(out, actionRef{Name: name})
 		}
 	}
 	return out
@@ -166,7 +197,10 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 	for _, ref := range parsePostActions(tm) {
 		a, ok := r.Get(ref.Name)
 		if !ok {
-			continue // 未注册动作=配置漂移（保存期可校验）——运行期跳过
+			if logger != nil {
+				logger.Warn("post_actions: unregistered legacy action skipped", "action", ref.Name, "ticket", ac.Ticket.ID)
+			}
+			continue
 		}
 		ac.Params = ref.Params
 		// P2 修复（2026-11-01 审计）：动作 panic 不再沿同步栈上抛（转换已 commit，

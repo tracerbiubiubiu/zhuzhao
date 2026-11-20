@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestJWTConfig_validate_release(t *testing.T) {
 	tests := []struct {
@@ -98,5 +101,88 @@ func TestConfig_validate_dev_sk_debug_allowed(t *testing.T) {
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("debug should allow repo dev SKs: %v", err)
+	}
+}
+
+// P2-2–4（2026-11-20 审计续批）：开启态显式非法 duration 在 Validate 拒启——
+// 原先装配端 ParseDuration 失败静默兜 5m（timeout_scan，app.go）/静默返 0 由
+// 服务层兜 5m（captcha，CaptchaService），配置笔误无启动期报错、排障成本高。
+// 空缺省（消费端既定 5m 兜底）与模块停用（不装配=值无消费者）继续可用，
+// 不发明值域——仅拒「显式给了但解析失败或 ≤0」。
+func TestConfig_validate_enabled_gated_durations(t *testing.T) {
+	base := func() *Config {
+		return &Config{
+			JWT:      JWTConfig{Secret: "dev-only-0123456789abcdef0123456789abcdef0123456789abcdef", AccessTTL: 1, RefreshTTL: 2},
+			Server:   ServerConfig{Mode: "debug", Port: 33333},
+			Database: DatabaseConfig{Host: "h", Port: 5432, DBName: "d"},
+			Redis:    RedisConfig{Host: "r"},
+		}
+	}
+	tests := []struct {
+		name    string
+		mutate  func(*Config)
+		wantErr bool
+	}{
+		{"timeout-scan-enabled-parse-error", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: true, TimeoutScanTick: "abc"}
+		}, true},
+		{"timeout-scan-enabled-zero", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: true, TimeoutScanTick: "0s"}
+		}, false},
+		{"timeout-scan-enabled-negative", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: true, TimeoutScanTick: "-5m"}
+		}, true},
+		{"timeout-scan-enabled-empty-default-ok", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: true, TimeoutScanTick: ""}
+		}, false},
+		{"timeout-scan-enabled-valid-ok", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: true, TimeoutScanTick: "5m"}
+		}, false},
+		{"timeout-scan-disabled-illegal-value-passes", func(c *Config) {
+			c.Tickets = TicketsConfig{TimeoutScanEnabled: false, TimeoutScanTick: "abc"}
+		}, false},
+		{"captcha-enabled-parse-error", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = true, "abc"
+		}, true},
+		{"captcha-enabled-zero", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = true, "0"
+		}, false},
+		{"captcha-enabled-negative", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = true, "-1m"
+		}, true},
+		{"captcha-enabled-empty-default-ok", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = true, ""
+		}, false},
+		{"captcha-enabled-valid-ok", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = true, "5m"
+		}, false},
+		{"captcha-disabled-illegal-value-passes", func(c *Config) {
+			c.CaptchaEnabled, c.CaptchaTTL = false, "abc"
+		}, false},
+		{"negative-log-size", func(c *Config) { c.Log.MaxSize = -1 }, true},
+		{"negative-log-backups", func(c *Config) { c.Log.MaxBackups = -1 }, true},
+		{"negative-log-age", func(c *Config) { c.Log.MaxAge = -1 }, true},
+		{"negative-intel-limit", func(c *Config) {
+			c.RateLimit.Enabled = true
+			c.RateLimit.Default = RateLimitRule{RPS: 10, Burst: 20}
+			c.Intel.QueryRatePerMin = -1
+		}, true},
+		{"nonfinite-rate", func(c *Config) {
+			c.RateLimit.Enabled = true
+			c.RateLimit.Default = RateLimitRule{RPS: math.Inf(1), Burst: 20}
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := base()
+			tt.mutate(cfg)
+			err := cfg.Validate()
+			if tt.wantErr && err == nil {
+				t.Fatal("开启态显式非法 duration 应拒启，实际通过")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("该用例不应拒启，实际: %v", err)
+			}
+		})
 	}
 }

@@ -20,6 +20,61 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
+func TestMessageRuleEventDomainMatchesAction(t *testing.T) {
+	id := rbacTestUser(t, "msg-domain-"+uniqueSuffix(), "MC"+uniqueSuffix(), nil)
+	ctx := service.WithTaskPrincipal(context.Background(), id, "message creator")
+	svc := service.NewMessageAdminService(testPool)
+	const action = "ticket.dispatch_missed"
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action=$1 AND biz_type IN ('ops','ticket','synthetic-unknown')`, action)
+	})
+	rule := model.MessageRule{EventAction: action, TemplateCode: "ticket_created_notify", RecipientType: "creator", Enabled: true}
+	for _, invalid := range []string{"ops", "synthetic-unknown"} {
+		rule.BizType = invalid
+		err := svc.UpsertRule(ctx, &rule)
+		require.Error(t, err, "invalid event pair %s", invalid)
+		var count int
+		require.NoError(t, testPool.QueryRow(ctx, `SELECT count(*) FROM message_rules WHERE biz_type=$1 AND event_action=$2`, invalid, action).Scan(&count))
+		require.Zero(t, count)
+	}
+	rule.BizType = "ticket"
+	require.NoError(t, svc.UpsertRule(ctx, &rule))
+	var enabled bool
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT enabled FROM message_rules WHERE biz_type='ticket' AND event_action=$1`, action).Scan(&enabled))
+	require.True(t, enabled)
+}
+
+func TestMessageRuleTemplateDomainAndLegacyDisable(t *testing.T) {
+	id := rbacTestUser(t, "msg-repair-"+uniqueSuffix(), "MR"+uniqueSuffix(), nil)
+	ctx := service.WithTaskPrincipal(context.Background(), id, "message creator")
+	svc := service.NewMessageAdminService(testPool)
+	const action = "ticket.dispatch_missed"
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM message_rules WHERE event_action=$1`, action)
+	})
+	var opsTemplate string
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT code FROM message_templates WHERE biz_type='ops' AND enabled ORDER BY code LIMIT 1`).Scan(&opsTemplate))
+	rule := model.MessageRule{BizType: "ticket", EventAction: action, TemplateCode: opsTemplate, RecipientType: "creator", Enabled: true}
+	require.Error(t, svc.UpsertRule(ctx, &rule))
+	rule.BizType = "ops"
+	rule.Enabled = false
+	require.Error(t, svc.UpsertRule(ctx, &rule), "new invalid disabled rows are rejected too")
+	_, err := testPool.Exec(ctx, `INSERT INTO message_rules(biz_type,event_action,template_code,recipient_type,enabled)
+		VALUES ('ops',$1,$2,'creator',true)`, action, opsTemplate)
+	require.NoError(t, err)
+	rule.Version = 1
+	require.NoError(t, svc.UpsertRule(ctx, &rule), "an unchanged legacy rule can be disabled")
+	var enabled bool
+	var version int64
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT enabled,version FROM message_rules WHERE biz_type='ops' AND event_action=$1`, action).Scan(&enabled, &version))
+	require.False(t, enabled)
+	require.EqualValues(t, 2, version)
+	require.ErrorIs(t, svc.UpsertRule(ctx, &rule), errcode.ErrMsgRuleVersionConflict, "stale disable needs refresh")
+	rule.Enabled = true
+	rule.Version = version
+	require.Error(t, svc.UpsertRule(ctx, &rule))
+}
+
 func TestMessageRule_VersionCAS(t *testing.T) {
 	id := rbacTestUser(t, "msg-creator-"+uniqueSuffix(), "MC"+uniqueSuffix(), nil)
 	ctx := service.WithTaskPrincipal(context.Background(), id, "message creator")

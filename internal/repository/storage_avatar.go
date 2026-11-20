@@ -24,19 +24,7 @@ func (r *StorageRepo) BindAvatar(ctx context.Context, bucket, objectKey string, 
 	if err := tx.QueryRow(ctx, `SELECT coalesce(avatar, '') FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&old); err != nil {
 		return "", err
 	}
-	var id, createdBy int64
-	var status, purpose string
-	err = tx.QueryRow(ctx, `SELECT id, created_by, status, purpose FROM file_objects WHERE bucket = $1 AND object_key = $2 FOR UPDATE`, bucket, objectKey).Scan(&id, &createdBy, &status, &purpose)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrStorageObjectNotFound
-	}
-	if err != nil {
-		return "", err
-	}
-	if status != model.FileStatusConfirmed || purpose != "avatar" || createdBy != userID {
-		return "", ErrStorageObjectNotFound
-	}
-	if _, err := tx.Exec(ctx, `UPDATE file_objects SET owner_kind = $2, owner_id = $3 WHERE id = $1`, id, model.FileOwnerUser, strconv.FormatInt(userID, 10)); err != nil {
+	if err := bindAvatarObject(ctx, tx, bucket, objectKey, userID); err != nil {
 		return "", err
 	}
 	// Avatar binding and metadata edits share the users.version generation.
@@ -49,20 +37,73 @@ func (r *StorageRepo) BindAvatar(ctx context.Context, bucket, objectKey string, 
 	}
 	var retired string
 	if old != "" && old != objectKey {
-		tag, err := tx.Exec(ctx, `UPDATE file_objects SET status = 'deleted'
-            WHERE bucket = $1 AND object_key = $2 AND purpose = 'avatar' AND status = 'confirmed'
-              AND NOT EXISTS (SELECT 1 FROM users WHERE avatar = $2)`, bucket, old)
+		retired, err = retireAvatarObject(ctx, tx, bucket, old, userID)
 		if err != nil {
 			return "", err
-		}
-		if tag.RowsAffected() > 0 {
-			retired = old
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
 	return retired, nil
+}
+
+// Caller holds the target user row. Empty legacy owner metadata is accepted
+// only alongside the original uploader; contradictory ownership never transfers.
+func bindAvatarObject(ctx context.Context, tx pgx.Tx, bucket, key string, userID int64) error {
+	var id int64
+	want := strconv.FormatInt(userID, 10)
+	// Exclude attachment/pending/foreign rows BEFORE attempting their lock:
+	// confirmation holds object→users FK; avatar binding holds users→object.
+	err := tx.QueryRow(ctx, `SELECT id FROM file_objects
+ WHERE bucket=$1 AND object_key=$2 AND created_by=$3
+ AND status='confirmed' AND purpose='avatar'
+ AND ((coalesce(owner_kind,'')='' AND coalesce(owner_id,'')='') OR
+      (owner_kind='user' AND owner_id=$4)) FOR UPDATE`, bucket, key, userID, want).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrStorageObjectNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE file_objects SET owner_kind=$2,owner_id=$3 WHERE id=$1`, id, model.FileOwnerUser, want)
+	return err
+}
+
+func retireAvatarObject(ctx context.Context, tx pgx.Tx, bucket, old string, userID int64) (string, error) {
+	var internal bool
+	old, internal = NormalizeAvatar(old)
+	if !internal {
+		return "", nil
+	}
+	var id int64
+	// Prove target ownership before taking an old-object lock; never retire an
+	// unrelated historical key merely because the target's profile contains it.
+	err := tx.QueryRow(ctx, `SELECT id FROM file_objects WHERE bucket=$1 AND object_key=$2
+ AND created_by=$3 AND purpose='avatar' AND status='confirmed'
+ AND ((coalesce(owner_kind,'')='' AND coalesce(owner_id,'')='') OR
+      (owner_kind='user' AND owner_id=$3::bigint::text)) FOR UPDATE`, bucket, old, userID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	// Fresh statement after the lock sees proxy/raw references committed while waiting.
+	keys, err := avatarReferenceKeys(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE file_objects SET status = 'deleted' WHERE id=$1
+ AND NOT (object_key = ANY($2::text[]))`, id, keys)
+	if err != nil {
+		return "", err
+	}
+	if tag.RowsAffected() > 0 {
+		return old, nil
+	}
+	return "", nil
 }
 
 // MarkAvatarOrphanDeleted 与绑定器共用对象行锁。先锁、再以新语句检查 users 引用：
@@ -82,9 +123,13 @@ func (r *StorageRepo) MarkAvatarOrphanDeleted(ctx context.Context, id int64, obj
 	if err != nil {
 		return false, err
 	}
+	keys, err := avatarReferenceKeys(ctx, tx)
+	if err != nil {
+		return false, err
+	}
 	tag, err := tx.Exec(ctx, `UPDATE file_objects SET status = 'deleted'
         WHERE id = $1 AND status = 'confirmed' AND purpose = 'avatar'
-          AND NOT EXISTS (SELECT 1 FROM users WHERE avatar = $2)`, id, objectKey)
+          AND NOT (object_key = ANY($2::text[]))`, id, keys)
 	if err != nil {
 		return false, err
 	}

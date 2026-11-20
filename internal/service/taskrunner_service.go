@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
+	"log/slog"
 	"net/url"
 	"unicode/utf8"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
-	"log/slog"
 )
 
 // TaskrunnerService 任务管理服务（E-④，16 号 §3）：三层校验后的网关代理层。
@@ -97,8 +98,8 @@ func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, act
 			// 受理已成立，凭证记账失败不回滚用户侧结果（对账兜底：task_id 在 taskrunner 侧）
 			// ——与回调侧 MarkSucceeded 失败同款取舍。W0b（十九批）：空吞 `_ = err`
 			// 改 Error 日志（对账线索：task_id/actor/action），无日志时只能靠人工拉齐
-			slog.Error("job_submissions RecordSubmit failed (task accepted, ledger missing)",
-				"task_id", resp.TaskID, "action", in.Action, "actor", actor, "err", err)
+			slog.Error("task accepted: unable to confirm job submission receipt",
+				"task_id", resp.TaskID, "action", in.Action, "actor", actor, "request_id", reqid.From(ctx), "ledger_state", submissionReceiptState(err), "err", err)
 		}
 	}
 	return resp, nil
@@ -156,11 +157,18 @@ func (s *TaskrunnerService) Trigger(ctx context.Context, jobID, actor, sourceIP 
 	}
 	if s.subs != nil {
 		if _, err := s.subs.RecordSubmit(ctx, action, resp.TaskID, actor, sourceIP, params); err != nil {
-			slog.Error("job_submissions RecordSubmit failed for trigger (task accepted, ledger missing)",
-				"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "err", err)
+			slog.Error("job trigger accepted: unable to confirm job submission receipt",
+				"task_id", resp.TaskID, "job_id", jobID, "actor", actor, "request_id", reqid.From(ctx), "ledger_state", submissionReceiptState(err), "err", err)
 		}
 	}
 	return resp, nil
+}
+
+func submissionReceiptState(err error) string {
+	if errors.Is(err, repository.ErrJobSubmissionMismatch) {
+		return "snapshot_conflict"
+	}
+	return "unconfirmed"
 }
 
 // ---- 透传查询/管理（无本地状态；权限码在路由层） ----
