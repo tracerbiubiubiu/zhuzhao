@@ -13,6 +13,8 @@
 开工前的系统理解补齐及前三个交付小批的讲解/收尾试行见[专项计划](../planning/system-understanding-and-delivery-plan.md)。存量修复及临时工作树收尾已由[main后继记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)承接；下一次开工复核实际基线。专项材料尚未整理，不把完整历史回顾或全生态掌握设为技术总开工门。
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../planning/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
+2026-11-20 开工前新增[详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[按交付结果排列的现行排期](../planning/intranet-uaa-release-schedule.md)。完整本期目标继续保留。首条人工整改须先交发布钉版、存量兼容、转换证据及当前复核资格。隔离入网预演与完整基础扩展版按所有者决定后排。
+
 ## 1. 阶段目的
 
 承接专业平台的结论，形成受权的风险评估、责任、整改工单、复测/接受与证据闭环；改善日常使用和配置体验，交付只读AI及用户确认建单。继续大量使用mock，真实提供方验收独立登记。

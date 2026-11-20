@@ -1811,6 +1811,121 @@
     ],
     "review_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md"
   },
+  "mainline_release_scenario": {
+    "as_of": "2026-11-20",
+    "status": "prior_candidate_workload_inputs_for_phase6_audit_projection_not_started",
+    "schedule_ref": "docs/planning/intranet-uaa-release-schedule.md",
+    "reviewed_main": {
+      "zhuzhao": "42f83a1689b83086576bbe782a1d153de6607435",
+      "zhuzhao-ui": "232afbdd3ec40edbdb6ab0ab50e4a6fb4fc0a333",
+      "taskrunner": "30b839afa27c254891a5b98214a9ea63f10c0e71",
+      "activelist": "d2fd4553bfa28c9ee7cb99855e89d026b7bf34bf",
+      "zhuzhao-utils": "661f465bd75a9c64c19aa6f14abfdd60f22fed15"
+    },
+    "method": "Replace named residual WBS slices from the 2026-11-16 source budget once. A/B/TASK residuals cover chosen-profile evidence, C covers still-open write paths, and completed work is not counted as actual elapsed effort or deployed.",
+    "residual_core_allocations": {
+      "S1": {
+        "UAA-C": [
+          2,
+          3
+        ],
+        "IAM-A": [
+          0.5,
+          1
+        ],
+        "IAM-B": [
+          0.5,
+          1.5
+        ],
+        "IAM-C": [
+          8,
+          14
+        ],
+        "IAM-TASK": [
+          0.5,
+          1.5
+        ],
+        "C05": [
+          6,
+          10
+        ]
+      },
+      "S3": [
+        2,
+        4
+      ]
+    },
+    "B0_target_net_parts": {
+      "selected_manifest_and_import_inventory": [
+        0.5,
+        1
+      ],
+      "target_import_and_connector_dependencies": [
+        0.5,
+        1.25
+      ],
+      "target_install_smoke_and_recovery": [
+        1,
+        1.75
+      ],
+      "evidence_and_bounded_correction": [
+        0.5,
+        1
+      ]
+    },
+    "B1_if_required_by_local_release": [
+      "X01-C",
+      "X01-B",
+      "X02-Q"
+    ],
+    "owner_sequence": {
+      "next_delivery_exit": "risk_ticket_trial",
+      "B0_timing": "deferred_to_target_environment_window",
+      "full_B1_timing": "deferred_independent_delivery",
+      "full_B1_in_B4": false,
+      "B2_engineering_requires_B0_or_full_B1": false,
+      "real_trial_evidence_ref": "docs/phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入"
+    },
+    "uaa_shared": {
+      "already_paid_if_full_B1_verified": [
+        "X01-C"
+      ],
+      "local_reuse_if_verified": {
+        "D06": [
+          2,
+          4
+        ],
+        "X02-F": [
+          2,
+          4
+        ]
+      },
+      "fallback": "Use the original named work package price if selected implementation does not supply equivalent verified evidence. The conservative scenario does so for D06 and X02-F."
+    },
+    "assumptions": {
+      "actual_T0": null,
+      "illustrative_T0": "2026-11-23",
+      "external_windows_booked": false,
+      "earliest_endpoint": {
+        "effective_days_per_week": 5,
+        "inputs_available_by_each_gate": true
+      },
+      "conservative_endpoint": {
+        "effective_days_per_week": 4,
+        "B0_target_rework_allowance_days": 4,
+        "retain_source_budget_upper_until_residual_estimates_are_confirmed": true,
+        "add_unproven_S2_transfer_upper_days_to_core_once": true,
+        "incremental_critical_wait_weeks": {
+          "B0": 1,
+          "B2": 1,
+          "B4": 2,
+          "P": 1,
+          "B5": 3
+        }
+      },
+      "role": "Historical illustrative B0-first inputs only. Current dispatch and endpoints are in phase6_design_audit_projection."
+    }
+  },
   "pre_core_rehearsal_allocation": {
     "profile": "B0",
     "state": "target_profile_pending_net_subestimate_before_start",
@@ -1818,6 +1933,7 @@
     "accounting_ref": "docs/planning/core-release-accounting-reconciliation-2026-11-16.md#5-b0预演的成本与顺序归属",
     "selected_core_totals_include_unestimated_target_B0_work": false,
     "remaining_net_days": null,
+    "illustrative_net_parts_ref": "#/mainline_release_scenario/B0_target_net_parts",
     "owner_role": "实施维护者提出目标画像与净额，所有者绑定真实环境许可和窗口",
     "estimate_due": "B0目标平台/架构与制品范围冻结后、B0实际预演开工前；不等待Q2或全部新核心交付",
     "completed_asset_credit": [
@@ -1831,5 +1947,178 @@
     ],
     "allocation_rule": "B0是核心前可独立执行的预演；不将其完成依赖后置Q2。已完成维护不收费；与Q1/Q2确实相同的工作逐项分配一次，目标新增净量另估后进入账，不预设1–2日或宣称原Q2已包干。",
     "external_wait_rule": "实际目标许可/网络/导入窗口单列，未知不是零等待；本地已验资产不等于公司目标环境已验。"
+  },
+  "phase6_design_audit_projection": {
+    "state": "candidate_not_authorized_or_runtime_validated",
+    "ref": "docs/planning/intranet-uaa-release-schedule.md",
+    "audit_ref": "docs/review/reports/phase6-detailed-design-audit-2026-11-20.md",
+    "single_effective_seat": true,
+    "actual_T0": null,
+    "external_wait_days": null,
+    "illustrative_T0": "2026-11-23",
+    "effective_days_per_week": {
+      "earliest": 5,
+      "conservative": 4
+    },
+    "first_trial_additions": {
+      "prepare_manifest_and_freeze_profile": {
+        "days": [
+          2,
+          4
+        ],
+        "source": [
+          "G01",
+          "G04",
+          "Q12"
+        ]
+      },
+      "publish_pin_and_backfill": {
+        "days": [
+          5,
+          8
+        ],
+        "source": [
+          "D01"
+        ]
+      },
+      "field_contract_and_legacy_scan": {
+        "days": [
+          2,
+          3
+        ],
+        "source": [
+          "C01",
+          "D04"
+        ]
+      },
+      "transition_evidence_atomic_commit": {
+        "days": [
+          2,
+          3.5
+        ],
+        "source": [
+          "D02",
+          "D10"
+        ]
+      },
+      "type_policy_current_review_participation": {
+        "days": [
+          1,
+          2
+        ],
+        "source": [
+          "D03",
+          "D09"
+        ]
+      },
+      "minimum_domain_notification": {
+        "days": [
+          1,
+          2
+        ],
+        "source": [
+          "D15",
+          "MH02",
+          "MH03"
+        ],
+        "transfer_from_later": {
+          "MH": [
+            0.5,
+            1
+          ]
+        }
+      },
+      "evidence_ui_scoped_inbox_and_browser": {
+        "days": [
+          1,
+          2
+        ],
+        "source": [
+          "U4",
+          "U7"
+        ],
+        "transfer_from_later": {
+          "U4": [
+            0.5,
+            1
+          ],
+          "U7": [
+            0.5,
+            1
+          ]
+        }
+      }
+    },
+    "combination_targets": [
+      "U2",
+      "U3",
+      "U4",
+      "U5",
+      "U6"
+    ],
+    "risk_trial_requirements": [
+      "pinned_definition",
+      "old_selected_ticket_backfill",
+      "current_auth_and_owner",
+      "atomic_evidence_fields_state_events",
+      "durable_domain_intent",
+      "browser_roles_and_current_review_queue"
+    ],
+    "gates": {
+      "risk_ticket_trial": [
+        "Q12_trial",
+        "required_environment_proof"
+      ],
+      "combination": [
+        "isolation_combination"
+      ],
+      "formal_local": [
+        "Q12_trial",
+        "Q09_unattended_activation",
+        "MH01_MR1",
+        "target_recovery"
+      ],
+      "uaa_public": [
+        "Q12_core_stability"
+      ],
+      "uaa_managed": [
+        "real_test_entry",
+        "shadow_diff",
+        "pre_apply_approval",
+        "switch_and_observation"
+      ]
+    },
+    "full_phase6_exposure": {
+      "slices": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07"
+      ],
+      "C05_replacement": [
+        6,
+        10
+      ],
+      "iam_full_replacement": [
+        15.5,
+        28
+      ],
+      "obs_local_first_two_net": [
+        11,
+        18
+      ],
+      "preselected_local_release_forward_slice": [
+        29,
+        44
+      ],
+      "dispositions_and_F004_bounded_allowance": [
+        5,
+        11
+      ],
+      "rule": "The integrated envelope overlaps the selected mainline. Do not add it. OBS03, unselected construction, additional providers/topologies, and waiting are conditional."
+    }
   }
 }

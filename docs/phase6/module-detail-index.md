@@ -10,7 +10,11 @@ F022后继将公开IAM与C05私有状态分开，补AL push机器参考、人工
 
 已推进的后继包含B/C与任务窄修复、C05有限安全代际/单次写及回执核查/claims及6–10日毛估（秘密编码后置）、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
 
+2026-11-20 后继复核见[开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[当前交付排期](../planning/intranet-uaa-release-schedule.md)。下文保留原 11-14/16 设计冻结和验收候选。现在先做工单引擎所选发布、字段、转换和权限，再承接第一条人工风险整改。
+
 ## 1. 按需要只读一包
+
+风险、工单、目录和消息的首条交叉实施样例见[漏洞整改代表场景](risk-module-detail.md#14-漏洞整改代表场景)。开发和隔离联调使用合成外部 provider，实际接入按对应启用窗口验收。
 
 | 模块 | 这次可直接审阅的详细合同 | 覆盖与交付边界 |
 | --- | --- | --- |
@@ -40,11 +44,11 @@ F022后继将公开IAM与C05私有状态分开，补AL push机器参考、人工
 
 ## 3. 实施顺序与可独立验收出口
 
-先以[基础版B0](../design/foundation-release-boundaries.md#1-先交哪一版)做合成隔离的制品/启动/adapter技术预演；实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)。所选范围的AUTH-01/02/07须先修复或服务端完整关闭并有逐入口拒绝证明，不能只披露、藏UI或禁单个赋角入口；不把全部IAM增强或真实UAA变成技术预演前置。Q12试用运行卡、MH01/MR1合同/真实测试窗与[核心稳定§4.2](first-usable-release-plan.md#42-核心稳定的过渡出口)共同约束试用、本地正式和完整UAA投入的切换。
+当前先做人工风险整改的工程与合成验收。[基础版B0](../design/foundation-release-boundaries.md#1-先交哪一版)按目标窗口后排，完整基础扩展版B1独立后排。实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)，所选范围的AUTH-01/02/07须先修复或服务端完整关闭并有逐入口拒绝证明。Q12试用运行卡、MH01/MR1合同/真实测试窗与[核心稳定§4.2](first-usable-release-plan.md#42-核心稳定的过渡出口)分别约束试用、本地正式和完整UAA投入。
 
 先交共同Context/当前授权/事务和最小稳定接缝，再风险→工单人工闭环，随后工单→TR→AL/结果及AL变化→TR只读后继，消息真实HTTP与薄UI贯穿。固定流程、一个AL监控类型/普通insert-update、一个订阅/动作和一个实际渠道构成首版有限组合；服务器显式拒绝监控类型尚不支持的其它写路径，其他已有能力不退役。
 
-本期详细设计覆盖的功能不等于都进入首版本地核心：D05完整晋级、D16自动路由、全站U06、设备、AI和P6.E按各包推进。G05/E09适用正式生产硬门在首发前验，不等整个P7；完整UAA-P/R核心稳定后交，真实联调条件独立。当前[首版97–151工程日净估候选](../planning/local-core-release-estimate.json)承接IAM/AL净分配，补足旧参考adapter兼容回归净2–3；原95–148保留历史，UI对账/Q2剩余量与扣重见[发布对账](../planning/core-release-accounting-reconciliation-2026-11-16.md)。长程父包价格/DAG不机械叠加此净增；实际范围发生变化时按来源与复用扣重复估，不承诺强赶1月。
+D05完整晋级、D16自动路由、全站U06、设备、AI和P6.E按各包推进。G05/E09中适用于首发的生产证据在首发前取得，完整UAA-P/R在核心稳定后交，真实联调条件独立。当前工程量、最早与保守情景见[交付排期](../planning/intranet-uaa-release-schedule.md#2-最早与保守排期)。原95–148和97–151保留为历史对账，旧参考adapter兼容、UI和首产分配见[发布对账](../planning/core-release-accounting-reconciliation-2026-11-16.md)。实际范围变化按启用能力和已验复用重新计价。
 
 **本期裁决、后期实现**也属于本期交接责任，不能因为包wave较晚就推迟询问：
 

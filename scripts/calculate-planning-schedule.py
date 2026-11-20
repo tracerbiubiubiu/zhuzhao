@@ -223,7 +223,7 @@ def current_core_summary(estimate):
                     for group in estimate['groups'] for row in group['wbs']
                     for part in row.get('suballocations', []))
     conservative = [math.ceil(raw[i] + shared[i]) for i in (0, 1)]
-    return (f'当前首版本地核心净估：**{format_pair(rounded)} 个有效工程日**'
+    return (f'2026-11-16 首版净估对账底稿：**{format_pair(rounded)} 个有效工程日**'
             f'（未取整 {format_pair(raw)}；S2 共用假设不成立时 {format_pair(conservative)}）。'
             '这是单席工程量候选，不是日历承诺。')
 
@@ -531,6 +531,100 @@ def build_model(backlog, model, scope, uaa, include_r=False, reserve=True):
     return nodes,categories,total
 
 
+def project_phase6_audit(estimate, core, long_reference, uaa):
+    audit = estimate['phase6_design_audit_projection']
+    mainline = estimate['mainline_release_scenario']
+    residuals = mainline['residual_core_allocations']
+    baseline = core['nodes']
+    s1 = next(row for group in estimate['groups'] for row in group['wbs'] if row['id'] == 'S1')
+    original_parts = {row['id']: pair(row['days']) for row in s1['suballocations']}
+    if set(residuals) != {'S1', 'S3'} or set(residuals['S1']) != set(original_parts):
+        raise ValueError('mainline residual allocations must cover every S1 component and S3 exactly')
+    for key, original in original_parts.items():
+        if any(remaining > initial for remaining, initial in zip(pair(residuals['S1'][key]), original)):
+            raise ValueError('mainline residual exceeds original component: ' + key)
+    if any(remaining > initial for remaining, initial in zip(pair(residuals['S3']), baseline['S3']['days'])):
+        raise ValueError('mainline residual exceeds original component: S3')
+    savings = tuple(old - remaining for old, remaining in zip(
+        summed(baseline[key]['days'] for key in residuals),
+        summed([summed(residuals['S1'].values()), residuals['S3']]),
+    ))
+    trial = core['delivery_exits']['risk_ticket_trial']['dependency_closure']
+    formal = core['delivery_exits']['formal_local']['dependency_closure']
+    later_nodes = set(formal) - set(trial)
+    later_transfer_keys = later_nodes | {baseline[node]['group'] for node in later_nodes}
+    additions = audit['first_trial_additions'].values()
+    frontloaded = summed(row['days'] for row in additions)
+    transfers = {}
+    for row in additions:
+        row_transfers = row.get('transfer_from_later', {})
+        if any(days > addition for days, addition in zip(summed(row_transfers.values()), pair(row['days']))):
+            raise ValueError('first-trial transfer exceeds its additional estimate')
+        for key, days in row_transfers.items():
+            if key not in later_transfer_keys:
+                raise ValueError('first-trial transfer has no later component: ' + key)
+            if key in transfers:
+                raise ValueError('duplicate first-trial transfer: ' + key)
+            transfers[key] = pair(days)
+    combination = set(trial) | set(audit['combination_targets'])
+    pending = list(combination)
+    while pending:
+        for dependency in baseline[pending.pop()]['dependencies']:
+            if dependency not in combination:
+                combination.add(dependency)
+                pending.append(dependency)
+
+    def included_transfer(keys):
+        # A transfer can refer to one priced component of a later group.
+        return summed(days for key, days in transfers.items()
+                      if any(node == key or baseline[node]['group'] == key for node in keys))
+
+    if included_transfer(trial) != (0, 0) or not set(trial) < combination < set(formal):
+        raise ValueError('invalid first-trial transfer or dispatch closure')
+
+    stages = []
+    core_reserve = core['conservative_without_shared_transfer_raw_days'][1] - core['raw_engineering_days'][1]
+    for key, nodes in [('risk_ticket_trial', trial), ('combination', combination), ('formal_local', formal)]:
+        original = summed(baseline[node]['days'] for node in nodes)
+        brought_forward = included_transfer(nodes)
+        revised = tuple(original[i] - savings[i] + frontloaded[i] - brought_forward[i] for i in (0, 1))
+        conservative = original[1] + frontloaded[1] - brought_forward[1] + core_reserve
+        stages.append(dict(id=key, baseline_days=list(original), transferred_once_days=list(brought_forward),
+                           engineering_candidate_days=list(revised), conservative_days=conservative))
+
+    later = {row['id']: row['estimate'] for row in long_reference['ordered_tasks']}
+    shared = summed([later['X01-C'], *mainline['uaa_shared']['local_reuse_if_verified'].values()])
+    shared_before_reuse = summed(later[key] for key in ('X01-C', 'D06', 'X02-F'))
+    public_days = pair(uaa['P']['engineering_days'])
+    real_days = pair(uaa['R']['engineering_days'])
+    for key, added, reserve_added in [
+        ('uaa_public', summed([shared, public_days]), shared_before_reuse[1] + public_days[1]),
+        ('uaa_managed', real_days, real_days[1]),
+    ]:
+        previous = stages[-1]
+        stages.append(dict(id=key, engineering_candidate_days=list(summed([previous['engineering_candidate_days'], added])),
+                           conservative_days=previous['conservative_days'] + reserve_added))
+
+    full = audit['full_phase6_exposure']
+    phase6_slices = {row['id']: row['effort'] for row in long_reference['release_slices']
+                     if row['wave'].startswith('P6.')}
+    if len(full['slices']) != len(phase6_slices) or set(full['slices']) != set(phase6_slices):
+        raise ValueError('full Phase 6 projection must include each Phase 6 slice exactly once')
+    base = summed([later['E01-UAA-C'], *phase6_slices.values()])
+    standalone = tuple(base[i] - pair(later['C05'])[i] + pair(full['C05_replacement'])[i] for i in (0, 1))
+    adjusted_iam = tuple(pair(full['iam_full_replacement'])[i] - summed([later['C04'], later['C05']])[i]
+                         for i in (0, 1))
+    integrated = summed([base, public_days, adjusted_iam, (0, core_reserve), full['obs_local_first_two_net'],
+                         full['preselected_local_release_forward_slice'], full['dispositions_and_F004_bounded_allowance']])
+    return dict(ref=audit['ref'], state=audit['state'], actual_T0=audit['actual_T0'],
+                external_wait_days=audit['external_wait_days'], stages=stages, gates=audit['gates'],
+                baseline_credits=list(savings), trial_additions=list(frontloaded),
+                shared_uaa_days=list(shared), full_phase6_baseline_excluding_UAA_product=list(base),
+                full_phase6_standalone_candidate_days=list(standalone),
+                full_phase6_with_public_and_local_release_days=list(integrated),
+                full_phase6_through_real_UAA_days=list(summed([integrated, real_days])))
+
+
 def calculate(repo):
     paths=['docs/planning/planning-backlog.json','docs/planning/execution-schedule-model.json','docs/planning/planning-scope-estimates.json','docs/planning/uaa-implementation-estimate.json','docs/planning/uaa-real-integration-conditions.json','docs/planning/local-core-release-estimate.json','docs/planning/first-usable-release-target.json','docs/planning/owner-decision-agenda.json']
     blobs={p:(repo/p).read_bytes() for p in paths}
@@ -575,6 +669,8 @@ def calculate(repo):
     result['local_core_net_estimate_ref']=model['local_core_net_estimate_ref']
     result['local_core_view_note']=model['local_core_view_note']
     result['local_core']=build_local_core_projection(local_estimate,model['local_core_projection'],local_target,{item['id'] for item in backlog['work_items']},owner_actions)
+    long_reference = result['scenarios']['public_R_pending']['profiles']['without_maintenance_reserve']['resources']['1']
+    result['phase6_design_audit_projection'] = project_phase6_audit(local_estimate, result['local_core'], long_reference, uaa)
     result['uaa_main_capacity_gate']=validate_uaa_capacity_gate(model,result['local_core'])
     result['long_horizon_accounting']=dict(baseline_public_days=scope['baseline']['public_remaining'],
                                            baseline_with_R_days=scope['baseline']['with_conditional_uaa_R'],
@@ -603,12 +699,12 @@ def dump_schedule(value, depth=0):
 
 def day_window(value):
     starts,finishes=value['start_endpoint_days'],value['finish_endpoint_days']
-    return f'D{starts[0]}→D{finishes[0]} / D{starts[1]}→D{finishes[1]}'
+    return f'累计 {starts[0]}→{finishes[0]} 日 / {starts[1]}→{finishes[1]} 日'
 
 
 def render_local_core(result):
     core = result['local_core']
-    lines = ['', '## 首版本地核心的机器投影', '', result['current_local_core_summary'], '',
+    lines = ['', '## 首版本地核心的机器投影（原对账底稿）', '', result['current_local_core_summary'], '',
              '同一生成器读取[首版净估册](local-core-release-estimate.json)和[目标](first-usable-release-target.json)，复用既有WBS、来源父包及必交旅程；净价不追加到76包总价。',
              'B0既有制品/mock技术预演见[首版阶梯](../phase6/first-usable-release-plan.md#4-按质量出口交付)，不反向等待全部新增能力。真实业务试用及正式启用仍须具体P1/能力/环境证据门。',
              '以下只演算所需输入就绪时的有效工程日；真实消息窗口、试用环境和稳定验收仍待证据，未知等待不是0，正式日期和激活批准均未给出。场景/出口的依赖闭包重叠，其工日不能相加。',
@@ -647,6 +743,7 @@ def render_schedule(result):
     lines=[
         '# 后续完整排程 — 既有能力、互通与遗漏范围的有界重排',
         '', f"日期：{result['date']}。本文件由仓内计算器生成；设计/计价候选，T0未启动，不是开发或部署指令。",
+        '', '当前实施顺序、验收及日期请先读[按交付结果排列的排期](intranet-uaa-release-schedule.md)。本页用于复算历史工作量和工作包依赖。',
         '', '## 范围、来源与复现', '',
         f"原71父包完整承接，正式纳入CE五项后为{structure['parents']}父包、{structure['official_child_milestones']}正式子出口、{structure['additional_scope_tasks']}项LS额外范围任务、{structure['release_slices']}发布切片。",
         'LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。',
@@ -661,6 +758,12 @@ def render_schedule(result):
         accounting_line,
         'G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。', '',
     ]
+    audit = result['phase6_design_audit_projection']
+    labels = ['人工风险整改', '自动任务、清单和公共消息组合', '本地核心正式和稳定', '公共 UAA 双模式', '真实 UAA 纳管']
+    lines += ['', '## 当前审计候选的累计工程量', '']
+    for label, stage in zip(labels, audit['stages']):
+        lines.append(f"- {label}，{format_pair(stage['engineering_candidate_days'])} 日，保守 {stage['conservative_days']:g} 日。")
+    lines += ['', '日期、目标环境和外部等待另列。累计值有重叠，按[交付排期](intranet-uaa-release-schedule.md#2-最早与保守排期)阅读。']
     lines += render_local_core(result)
     lines += ['', '## 长期76父包工程量对照', '']
     for key,label in [('public_R_pending','公共范围，R待外部条件'),('with_conditional_R_ready','选定R且各阶段外部等待为0的条件对照')]:
@@ -668,12 +771,12 @@ def render_schedule(result):
         lines.append(f"- {label}：不含条件储备{format_pair(sc['without_maintenance_reserve']['total_effort_range'])}日；保留历史/条件维护储备对照{format_pair(sc['with_maintenance_reserve']['total_effort_range'])}日。")
         for seats,r in sc['with_maintenance_reserve']['resources'].items():
             days=r['endpoint_makespans'];weeks=[round(x/5,1) for x in days]
-            lines.append(f"  - {seats}席参考：D{days[0]} / D{days[1]}结束，约{weeks[0]} / {weeks[1]}个有效研发周。")
+            lines.append(f"  - {seats}席参考：累计 {days[0]} / {days[1]} 个有效工作日结束，约 {weeks[0]} / {weeks[1]} 个有效研发周。")
     lines += ['', 'UAA P的后台、四页最小UI、运维、CI与质量仍只算25–39；R真实UI/运维及正常切换观察仍只算13–22。',
         'U02/U06/UI新功能、CE与LS各按净增册扣重，不把完整前端或新增调用层误算作旧价免费附送。',
         '', '## 资源与时间含义', '',
         '主参考1个有效研发席位，每周5工程日；2席仅独立交付能力具备时对比，不等于两个agent。',
-        '实际开工日记T0，D0是开工时点、DN是累计N个有效工作日结束；本页长期相对窗不等于首版本地正式排程，首版另见[阶梯与试用](../phase6/first-usable-release-plan.md)。',
+        '实际开工日记为 T0，所有相对日窗从开工起按累计有效工作日表示。本页用于长期相对估算，首版以[交付排期](intranet-uaa-release-schedule.md)为准。',
         '每项低/高输入分别跑一次排程；下文“低 / 高”不是置信区间或任意混合耗时的保证上界。',
         '条件对照保留原维护先行排序；已完成维护不重新派发。优先基础U01/U02/C02/X01-B/X02-Q及真实祖先，保留S01/S02安全工作与E10有限调查，再交D10/D15风险首链。公开UAA P正任务优先级7.5，选定且外部就绪的企业对照在基础后优先P/R；这些是原长期容量对照，不代表首版本地顺序或激活获批。',
         '阶段不是全串行大门；日窗可交错。单席总工期等于所选工日和；双席逐槽验证不重叠。',
@@ -696,7 +799,7 @@ def render_schedule(result):
     lines += ['', '## 关键出口与分阶段迁移', '']
     for k,value in public['1']['milestones'].items():
         other=public['2']['milestones'][k]
-        lines.append(f'- {k}：1席D{value[0]} / D{value[1]}；2席D{other[0]} / D{other[1]}。')
+        lines.append(f'- {k}：1席累计 {value[0]} / {value[1]} 日；2席累计 {other[0]} / {other[1]} 日。')
     lines += [
         '', 'CE01因C04实际在P6.1；CE02-S6–9日/P6.1，CE02-D5–8日/P6.3，CE02-L9–13日最终在P9收口。',
         'L内部配额为P6.1 2–3、P6.3 3–4、P7 2–3、P9 2–3日，随IAM/组织、工单/通知/情报/AL、Action/MCP/适配、持久闭环分批迁移。',

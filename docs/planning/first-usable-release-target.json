@@ -153,16 +153,17 @@
   },
   "feasibility": {
     "single_seat_deadline_committed": false,
-    "target_risk": "Updated raw94.5-147.5 effective days exceeds55 nominal weekdays before February under hypothetical Nov16 T0; January formal completion not promised; actual T0, holidays and provider windows unknown.",
-    "recommended_next": "progress module by module and show risk→ticket early; aim January trial if actual throughput permits; formal usable core after all mandatory gates, no permission/chain/data reductions for date",
+    "target_risk": "The 2026-11-16 source budget is 96.5–150.5 effective days. The current remaining-work comparison after mainline credits uses docs/planning/intranet-uaa-release-schedule.md. Actual T0 and provider windows are unbound.",
+    "mainline_scenario_ref": "docs/planning/local-core-release-estimate.json#/phase6_design_audit_projection",
+    "recommended_next": "Freeze the first manual risk journey. Deliver selected IAM, pinned ticket engine and atomic evidentiary transition before trial. The current audit projection supersedes the previous residual shortcut; B0 and full B1 remain deferred.",
     "calibrate_at": "first local authorization/interface pack and risk→ticket actual design/TDD/implementation/review throughput",
     "effective_weeks_candidate": [
-      18.9,
-      29.5
+      19.3,
+      30.1
     ],
     "late_trial_and_fix_days_already_in_total": [
-      10,
-      14.5
+      12,
+      17.5
     ]
   },
   "contract_upgrade": {
