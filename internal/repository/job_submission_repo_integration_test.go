@@ -190,4 +190,17 @@ func TestJobSubmissionRepo_RecordSubmitPreservesExistingReceipt(t *testing.T) {
 	require.Equal(t, repository.JobStatusSucceeded, existing.Status)
 	require.Equal(t, "fixture-actor", existing.SubmittedBy)
 	require.JSONEq(t, `{"page":1}`, existing.Params)
+	for _, input := range []struct{ action, params string }{
+		{"other", `{"page":1}`},
+		{"sync", `{"page":2}`},
+	} {
+		_, err = repo.RecordSubmit(ctx, input.action, taskID, "fixture-retry", "", input.params)
+		require.ErrorIs(t, err, repository.ErrJobSubmissionMismatch)
+	}
+	existing, err = repo.GetByTaskID(ctx, taskID)
+	require.NoError(t, err)
+	require.Equal(t, repository.JobStatusSucceeded, existing.Status)
+	require.Equal(t, "sync", existing.Action)
+	require.JSONEq(t, `{"page":1}`, existing.Params)
+
 }

@@ -75,8 +75,11 @@ var (
 	ErrOrgHasChildren       = util.New(50004, "该组织下有子组织，无法删除")
 	ErrOrgHasMembers        = util.New(50005, "该组织下有成员，无法删除")
 	ErrOrgHasOpenTickets    = util.New(50013, "该组织下有未结工单，无法删除")
-	ErrOrgIsSystem          = util.New(50006, "系统内置组织不可删除")
-	ErrNotOrgMember         = util.New(50007, "用户不是该组织成员")
+	// 2026-11-20 审计续批：org_roles 绑定存续时拒删组织（Delete/DeleteVgWithOwnerCleanup
+	// 同守卫；与 50004/50005/50013 同族删组织守卫 → 409）
+	ErrOrgHasOrgRoles = util.New(50014, "该组织下仍有角色绑定，无法删除")
+	ErrOrgIsSystem    = util.New(50006, "系统内置组织不可删除")
+	ErrNotOrgMember   = util.New(50007, "用户不是该组织成员")
 
 	// 2c 组织委托（04-org-delegation §5）
 	ErrCannotAssignHigherOrgMemberRole = util.New(50008, "不能分配更高的组内角色")

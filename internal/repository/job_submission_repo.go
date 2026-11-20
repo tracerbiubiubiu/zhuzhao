@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 )
 
@@ -37,7 +38,10 @@ const (
 	JobStatusFailed    = "failed"
 )
 
-var ErrJobSubmissionNotFound = errors.New("repository: job submission not found")
+var (
+	ErrJobSubmissionNotFound = errors.New("repository: job submission not found")
+	ErrJobSubmissionMismatch = errors.New("repository: job submission action or parameters differ")
+)
 
 // JobSubmissionRepo job_submissions 仓储。
 type JobSubmissionRepo struct {
@@ -49,7 +53,7 @@ func NewJobSubmissionRepo(db *pgxpool.Pool) *JobSubmissionRepo {
 }
 
 // RecordSubmit zhuzhao 侧提交凭证（E-④ 调用）：action + task_id + request_id + params 快照落档。
-// task_id 冲突（调用方幂等重提或回调已先记账）返回既有行，不算错误。
+// 同一 task_id 的等价输入返回已有凭证，异参保留旧事实并报告不一致。
 func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, submittedBy, sourceIP, params string) (*JobSubmission, error) {
 	row := &JobSubmission{}
 	err := r.db.QueryRow(ctx, `
@@ -62,7 +66,18 @@ func (r *JobSubmissionRepo) RecordSubmit(ctx context.Context, action, taskID, su
 		&row.ID, &row.TaskID, &row.RequestID, &row.Action, &row.Params, &row.Origin, &row.Status,
 		&row.Error, &row.SubmittedBy, &row.SourceIP, &row.CreatedAt, &row.ExecutedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return r.GetByTaskID(ctx, taskID)
+		existing, err := r.GetByTaskID(ctx, taskID)
+		if err != nil {
+			return nil, err
+		}
+		equal, err := jobs.EqualParams([]byte(existing.Params), []byte(params))
+		if err != nil {
+			return nil, fmt.Errorf("compare job submission parameters: %w", err)
+		}
+		if existing.Action != action || !equal {
+			return nil, ErrJobSubmissionMismatch
+		}
+		return existing, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("record job submit: %w", err)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -474,12 +475,19 @@ const eventActionDeleted = "deleted"
 // DB ON DELETE CASCADE 清理；ticket_events 为 SET NULL（000014）——事件行存活、
 // ticket_id 悬空，同事务先写 action='deleted' 事件，审计链完整可追溯操作者（HC2）。
 func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) error {
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
+	if err := r.DeleteTx(ctx, tx, id, actorUserID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *TicketRepo) DeleteTx(ctx context.Context, tx pgx.Tx, id, actorUserID int64) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, $4, NULLIF($3, ''))`,
 		id, actorUserID, reqid.From(ctx), eventActionDeleted); err != nil {
@@ -496,7 +504,7 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 	if tag.RowsAffected() == 0 {
 		return errcode.ErrTicketNotFound
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // --- 评论 / 备注 ---
@@ -642,10 +650,14 @@ func (r *TicketRepo) ListTicketTypeFieldsTx(ctx context.Context, q RowQuerier, t
 	return listTicketTypeFields(ctx, q, typeCode)
 }
 
-func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string) ([]*model.TicketTypeField, error) {
-	rows, err := q.Query(ctx, `
+func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string, lock ...bool) ([]*model.TicketTypeField, error) {
+	query := `
 		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
-		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
+		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`
+	if len(lock) > 0 && lock[0] {
+		query += ` FOR SHARE`
+	}
+	rows, err := q.Query(ctx, query, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket type fields: %w", err)
 	}
@@ -714,10 +726,18 @@ func (r *TicketRepo) ListTicketTemplates(ctx context.Context) ([]*model.TicketTe
 // 【P1-2 更新】并发唯一性现由迁移 000028 的「规范化对」部分唯一索引
 // uq_ticket_relations_normalized(LEAST(src,tgt), GREATEST(src,tgt), relation_type)
 // 兜底；本前置检查仅用于「顺序重复」的良好 UX（早返回 409），
-// 不再承担唯一的并发正确性保证（其读取在事务外，与 INSERT 之间存在竞态窗口）。
+// Tx 入口由 service 持双端票锁；旧仓储入口仍由唯一索引兜底并发。
 func (r *TicketRepo) ExistsRelationBetween(ctx context.Context, source, target int64, relType string) (bool, error) {
+	return r.existsRelationBetween(ctx, IAMDB(ctx, r.db), source, target, relType)
+}
+
+func (r *TicketRepo) ExistsRelationBetweenTx(ctx context.Context, tx pgx.Tx, source, target int64, relType string) (bool, error) {
+	return r.existsRelationBetween(ctx, tx, source, target, relType)
+}
+
+func (r *TicketRepo) existsRelationBetween(ctx context.Context, q rowExec, source, target int64, relType string) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM ticket_relations
 			WHERE relation_type = $3
@@ -729,11 +749,19 @@ func (r *TicketRepo) ExistsRelationBetween(ctx context.Context, source, target i
 
 // CreateRelation 建立工单关联
 func (r *TicketRepo) CreateRelation(ctx context.Context, rel *model.TicketRelation) error {
+	return r.createRelation(ctx, IAMDB(ctx, r.db), rel)
+}
+
+func (r *TicketRepo) CreateRelationTx(ctx context.Context, tx pgx.Tx, rel *model.TicketRelation) error {
+	return r.createRelation(ctx, tx, rel)
+}
+
+func (r *TicketRepo) createRelation(ctx context.Context, q rowExec, rel *model.TicketRelation) error {
 	relType := rel.RelationType
 	if relType == "" {
 		relType = "related"
 	}
-	err := r.db.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		INSERT INTO ticket_relations (source_ticket_id, target_ticket_id, relation_type, created_by)
 		VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
 		rel.SourceTicketID, rel.TargetTicketID, relType, rel.CreatedBy,
@@ -967,6 +995,42 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string, target .
 	return tx.Commit(ctx)
 }
 
+// dictFieldRef 新字段集中的字典引用（code 为锁目标；fieldKey 仅用于错误定位）。
+type dictFieldRef struct {
+	code     string
+	fieldKey string
+}
+
+// dictFieldReferences 抽取新字段集中 select/radio/multi_select 规范的
+// `dict:<code>` 引用（与 service.checkDictCodesExist 同一判定形态：单元素
+// JSON 数组 + "dict:" 前缀字符串），按 code 去重并升序返回——稳定加锁序列，
+// 防两个并发 replace 交叉取锁死锁。
+func dictFieldReferences(fields []model.TicketTypeField) []dictFieldRef {
+	seen := make(map[string]string, len(fields)) // code → 首个引用字段 key
+	var refs []dictFieldRef
+	for i := range fields {
+		f := &fields[i]
+		if f.FieldType != "select" && f.FieldType != "multi_select" && f.FieldType != "radio" {
+			continue
+		}
+		var elems []json.RawMessage
+		if json.Unmarshal(f.FieldOptions, &elems) != nil || len(elems) != 1 {
+			continue // 非单元素字典引用形态（具体选项列表）不算引用
+		}
+		var sv string
+		if json.Unmarshal(elems[0], &sv) != nil || !strings.HasPrefix(sv, "dict:") {
+			continue
+		}
+		code := strings.TrimPrefix(sv, "dict:")
+		if _, dup := seen[code]; !dup {
+			seen[code] = f.FieldKey
+			refs = append(refs, dictFieldRef{code: code, fieldKey: f.FieldKey})
+		}
+	}
+	sort.Slice(refs, func(i, j int) bool { return refs[i].code < refs[j].code })
+	return refs
+}
+
 // ReplaceTypeFields 全量替换类型字段集（事务内先清后插）+ has_custom_fields 同步。
 // 可选 targetID 先与父类型 CAS 一起核验，失败时不清字段。
 //
@@ -977,6 +1041,11 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string, target .
 // 列（迁移 000027 添加）在本方法中不作为并发谓词，仅保持三表结构一致。
 // version == nil → 不做 CAS（保持旧行为），但仍递增父版本（使后续携版本的调用
 // 能观测到本次修改）。
+//
+// B1-2 存量收口（2026-11-20 审计续批）：CAS 命中后按稳定排序为所有新规范引用取
+// dict_types 父行 FOR KEY SHARE——与 DeleteTypeByCode 的 FOR UPDATE 互斥，锁内
+// 确认存在并持有至提交：删除方锁后重扫必看到本事务写入的引用；字典在等锁期间
+// 被删则本事务回滚（引用不落库）。
 func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields []model.TicketTypeField, version *int, targetID ...int64) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -1009,6 +1078,19 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 			return errcode.ErrTicketTypeNotFound
 		}
 		return errcode.ErrConcurrentModification
+	}
+
+	// 1.5 字典父引用锁（稳定排序，锁内确认存在并持有至提交）
+	for _, ref := range dictFieldReferences(fields) {
+		var locked string
+		if err := tx.QueryRow(ctx,
+			`SELECT code FROM dict_types WHERE code = $1 FOR KEY SHARE`, ref.code).Scan(&locked); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return errcode.New(errcode.ErrInvalidParams.Code,
+					fmt.Sprintf("字段 %q 引用的字典 %q 不存在", ref.fieldKey, ref.code))
+			}
+			return fmt.Errorf("lock dict parent %s: %w", ref.code, err)
+		}
 	}
 
 	// 2. 清空后整体重插字段集

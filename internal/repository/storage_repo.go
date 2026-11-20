@@ -33,7 +33,7 @@ func NewStorageRepo(db *pgxpool.Pool) *StorageRepo {
 
 // InsertPending presign 即写 pending（05 号 A.3 修正②——孤儿对象 GC 锚点）。
 func (r *StorageRepo) InsertPending(ctx context.Context, f *model.FileObject) error {
-	return r.db.QueryRow(ctx, `
+	return IAMDB(ctx, r.db).QueryRow(ctx, `
 		INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at`,
@@ -110,6 +110,16 @@ func (r *StorageRepo) DeleteRowIfPending(ctx context.Context, id int64) (bool, e
 	return tag.RowsAffected() > 0, nil
 }
 
+// MarkPendingDeleted arbitrates with Confirm on the original row. The committed
+// tombstone remains discoverable even if the worker stops before physical I/O.
+func (r *StorageRepo) MarkPendingDeleted(ctx context.Context, id int64) (bool, error) {
+	tag, err := r.db.Exec(ctx, `UPDATE file_objects SET status='deleted' WHERE id=$1 AND status='pending'`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 // InsertDeletedTombstone F-A1 兜底（2026-10-21）：一扫已条件清行后对象物理删
 // 失败时补插 deleted 墓碑行——交二扫重试（否则行已删、对象残留成无扫描覆盖
 // 的泄漏）。ON CONFLICT DO NOTHING：与二扫/并发路径竞态时让位。
@@ -161,7 +171,7 @@ func (r *StorageRepo) DeleteRowById(ctx context.Context, id int64) error {
 // ErrStorageAlreadyBound；超上限 → ErrStorageAttachmentLimit）。B5-3 批2；
 // 并发加固 + 计数校验 2026-10-20（S5 评审 P1）。
 func (r *StorageRepo) ConfirmAndBind(ctx context.Context, fileID, ticketID, uploadedBy int64, sizeBytes int64, etag string, maxCount int) error {
-	tx, err := r.db.Begin(ctx)
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -372,6 +382,7 @@ func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, b
 			AND f.purpose IN ('ticket_attachment', 'ticket_richtext', 'attachment_create', 'richtext_create')
 			AND f.confirmed_at < $2
 			AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
+			`+noHistoricalTicketReference+`
 		ORDER BY f.id
 		LIMIT $3`, bucket, before, limit)
 	if err != nil {
@@ -394,15 +405,19 @@ func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, b
 // 无 users.avatar 引用 + 超期——abandoned-upload reaper 查询面。「是否已绑定」
 // 是应用层知识（users.avatar 存对象键），S3 lifecycle 规则做不了这一层。
 func (r *StorageRepo) ListConfirmedAvatarOrphans(ctx context.Context, bucket string, before time.Time, limit int) ([]*model.FileObject, error) {
+	keys, err := avatarReferenceKeys(ctx, r.db)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := r.db.Query(ctx, `
 		SELECT `+fileObjectColumns+` FROM file_objects f
 		WHERE f.status = 'confirmed'
 			AND f.bucket = $1
 			AND f.purpose = 'avatar'
 			AND f.confirmed_at < $2
-			AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar = f.object_key)
+			AND NOT (f.object_key = ANY($4::text[]))
 		ORDER BY f.id
-		LIMIT $3`, bucket, before, limit)
+		LIMIT $3`, bucket, before, limit, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -437,9 +452,11 @@ func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
 		return false, err
 	}
 	tag, err := tx.Exec(ctx, `
-		UPDATE file_objects SET status='deleted'
+		UPDATE file_objects f SET status='deleted'
 		WHERE id=$1 AND status='confirmed'
-		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = file_objects.id)`, id)
+		  AND purpose IN ('ticket_attachment','ticket_richtext','attachment_create','richtext_create')
+		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
+		  `+noHistoricalTicketReference, id)
 	if err != nil {
 		return false, err
 	}
@@ -448,3 +465,14 @@ func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
 	}
 	return tag.RowsAffected() > 0, nil
 }
+
+// Conservative preservation, not a new binding or reference-reclamation policy.
+// Canonical JSON escaping is applied to the key as well as custom_data: any
+// stored file key or stable Markdown destination contains this literal encoded
+// substring. Unknown/hidden fields and incidental occurrences also preserve it.
+// No ticket locks: writers retain tickets -> objects; the post-object-lock
+// statement sees their committed data. Historical candidate inventory is separate.
+const noHistoricalTicketReference = `AND NOT EXISTS (
+ SELECT 1 FROM tickets t WHERE strpos(t.custom_data::text,
+ substr(to_jsonb(f.object_key)::text, 2, length(to_jsonb(f.object_key)::text)-2)) > 0
+)`

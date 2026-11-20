@@ -185,8 +185,32 @@ func provideGateway(cfg *config.Config) (*gateway.Registry, error) {
 }
 
 // provideRateLimitConfig W0b wire 转正：Deps.RateLimit 注入源。
+// P2-2–4（2026-11-20 审计续批）：intel.query_rate_per_min 兑现（09 号 A.4——
+// 「query 端点挂 rate_limit 独立桶：外部配额保护的镜像，双保险」，此前该字段
+// 仅有 viper 缺省 60、Go 运行路径零消费者）。换算 = 每分钟配额 → 令牌桶
+// rps=rate/60（rate<60 时亚 1 精度）、burst=整分钟配额（桶容量即分钟预算，
+// 由配置值派生不另造数值）。兼容行为：query_rate_per_min=0 不注入（仅走通用
+// 默认/覆盖规则）；用户显式 rate_limit.routes 覆盖同名路径时优先不改写；
+// rate_limit.enabled=false 不注入（中间件整体直通，桶无从生效）。注入写副本
+// ——Routes map 为引用共享，直接改写会污染全局 cfg。桶维度复用现行中间件
+// 「user_id/ClientIP × 路由模式」键控：登录态 = 按用户独立桶。
 func provideRateLimitConfig(cfg *config.Config) *config.RateLimitConfig {
-	return &cfg.RateLimit
+	rl := cfg.RateLimit
+	if rl.Enabled && cfg.Intel.QueryRatePerMin > 0 {
+		const intelQueryRoute = "/api/v1/intel/query"
+		if _, overridden := rl.Routes[intelQueryRoute]; !overridden {
+			routes := make(map[string]config.RateLimitRule, len(rl.Routes)+1)
+			for k, v := range rl.Routes {
+				routes[k] = v
+			}
+			routes[intelQueryRoute] = config.RateLimitRule{
+				RPS:   float64(cfg.Intel.QueryRatePerMin) / 60.0,
+				Burst: cfg.Intel.QueryRatePerMin,
+			}
+			rl.Routes = routes
+		}
+	}
+	return &rl
 }
 
 // provideApp Wire 唯一 provider（B 方案全量修 2026-10-24）——手码装配集中体。
@@ -257,6 +281,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	// F-D3（2026-10-21）：三服务 + NewApp GC 共享同一原子快照存储（KV 运行时
 	// 覆盖与请求侧读并发安全；修复前值拷贝指针分裂——orphan_gc_days 到不了 GC）。
 	storageStore := pkgstorage.NewConfigStore(&storageConfig)
+	userService.SetStorageConfig(storageStore)
 	var storageClient pkgstorage.Client
 	if storageConfig.Enabled {
 		mc, err := pkgstorage.NewMinioClient(&storageConfig)
@@ -339,13 +364,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	intelTTL := map[string]time.Duration{}
-	for k, v := range cfg.Intel.TTL {
-		if d, perr := time.ParseDuration(v); perr == nil {
-			intelTTL[k] = d
-		}
-	}
-	intelSvc := threatintel.NewService(pool, intelProvider, intelTTL, logger)
+	intelSvc := threatintel.NewService(pool, intelProvider, intelTTLFromConfig(cfg.Intel.TTL, logger), logger)
 	// S6 二期 B6-7 站内消息中心（inbox=事件消费者——订阅 ticket/ops 双域；
 	// 未读数注入 badges sections；90 天保留清理骑 CronScheduler）
 	inboxSvc := ticket.NewInboxService(pool, 90, logger)
@@ -450,4 +469,24 @@ func parseDuration(s string) (d time.Duration) {
 	}
 	d, _ = time.ParseDuration(s)
 	return d
+}
+
+// intelTTLFromConfig 类型级 TTL 解析（原 provideApp 内联循环抽取，P2-2–4 留痕
+// 收口）：解析失败或非正的项不入表并 Warn——静默跳过与仓内 fail-fast 口径不一
+// 致（audit #12 同款）；不拒启：TTL 非安全边界，消费端 Service.ttlOf 对缺失/非正
+// 项有既定 7 天保守缺省。
+func intelTTLFromConfig(raw map[string]string, logger *slog.Logger) map[string]time.Duration {
+	ttl := map[string]time.Duration{}
+	for k, v := range raw {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			if logger != nil {
+				logger.Warn("intel.ttl invalid, fallback per-type 7d (service-side default)",
+					slog.String("type", k), slog.String("configured", v))
+			}
+			continue
+		}
+		ttl[k] = d
+	}
+	return ttl
 }

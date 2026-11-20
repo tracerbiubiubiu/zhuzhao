@@ -83,7 +83,7 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		h.logger.Error("notify: channel mismatch — no adapter route",
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code,
 			"tpl_channel", tpl.Channel, "sender_channel", h.sender.Channel())
-		_ = h.logRepo.Insert(ctx, &model.MessageLog{
+		h.recordDelivery(ctx, ev, &model.MessageLog{
 			TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID,
 			Channel: tpl.Channel, Status: "failed",
 			Error: fmt.Sprintf("channel mismatch: template=%s sender=%s (adapter route not enabled)",
@@ -110,9 +110,7 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 			actor := ev.ActorID
 			failure.ActorID = &actor
 		}
-		if recordErr := h.logRepo.Insert(ctx, failure); recordErr != nil {
-			h.logger.Error("notify: failed to record rejected render", "action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", recordErr)
-		}
+		h.recordDelivery(ctx, ev, failure)
 		return
 	}
 	subject := subjR.Text
@@ -134,7 +132,12 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		// rcpt=字符串化用户 ID——查 notification_optouts
 		var uid int64
 		if _, err := fmt.Sscan(rcpt, &uid); err == nil && uid > 0 && h.optRepo != nil {
-			if opted, _ := h.optRepo.IsOptedOut(ctx, uid, string(ev.BizType), string(ev.Action)); opted {
+			opted, err := h.optRepo.IsOptedOut(ctx, uid, string(ev.BizType), string(ev.Action))
+			if err != nil {
+				h.logger.Warn("notify: recipient preference lookup failed", "user", uid, "action", ev.Action, "biz_id", ev.BizID, "err", err)
+				continue
+			}
+			if opted {
 				h.logger.Info("notify: recipient opted out", "user", rcpt, "action", ev.Action)
 				continue
 			}
@@ -142,7 +145,7 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		filtered = append(filtered, rcpt)
 	}
 	if len(filtered) == 0 {
-		h.logger.Info("notify: all recipients opted out", "action", ev.Action, "biz_id", ev.BizID)
+		h.logger.Info("notify: no eligible recipients", "action", ev.Action, "biz_id", ev.BizID)
 		return
 	}
 	recipients = filtered
@@ -174,11 +177,13 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
 		// 06 号 §5.4：Send 终败→进程内直调死信告警（与 /internal/notify/dead-letter 共用）
 		if h.notifySvc != nil {
-			_ = h.notifySvc.NotifyDeadLetter(ctx, &model.DeadLetterNotifyPayload{
+			if alertErr := h.notifySvc.NotifyDeadLetter(ctx, &model.DeadLetterNotifyPayload{
 				Action: "channel_send_failed",
 				Error:  sendErr,
 				Dept:   string(ev.BizType), // biz_type 复用 Dept 字段（载荷结构对齐 taskrunner 既有投递）
-			})
+			}); alertErr != nil {
+				h.logger.Error("notify: dead-letter alert failed", "action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", alertErr)
+			}
 		}
 		// 不 return error——at-most-once（06 号 §5.2 异步投递，失败不阻塞）
 	} else {
@@ -194,9 +199,15 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		middleware.AddCounter("zhuzhao_notify_sent_total", "dead", 1)
 	}
 	// B6-6：发送记录落行（成功/失败均记录——06 号 §5.4）
-	_ = h.logRepo.Insert(ctx, &model.MessageLog{
+	h.recordDelivery(ctx, ev, &model.MessageLog{
 		TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID,
 		Channel: h.sender.Channel(), Recipients: strings.Join(recipients, ","),
 		Subject: subject, Body: body, Status: status, Error: sendErr,
 	})
+}
+
+func (h *MessageDispatcher) recordDelivery(ctx context.Context, ev domainevent.DomainEvent, entry *model.MessageLog) {
+	if err := h.logRepo.Insert(ctx, entry); err != nil {
+		h.logger.Error("notify: delivery record write failed", "action", ev.Action, "biz_id", ev.BizID, "template", entry.TemplateCode, "status", entry.Status, "err", err)
+	}
 }

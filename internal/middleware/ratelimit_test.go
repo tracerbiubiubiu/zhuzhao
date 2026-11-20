@@ -151,3 +151,80 @@ func TestRateLimit_RouteBucketIsolation(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
 	require.Equal(t, http.StatusTooManyRequests, w.Code, "第 3 次按路由覆盖规则 429")
 }
+
+// P2-2–4（2026-11-20 审计续批）：小数 RPS 精度——每分钟配额换算 rps=rate/60
+// （如 intel query 30/min→0.5）在现行 Lua 下语义正确：burst 内即时放行、静止
+// 时钟耗尽即 429、时间推进按 0.5/s 精确补桶（整型 RPS 时代整除归零无法表达）。
+func TestRateLimit_FractionalRPS_RefillPrecision(t *testing.T) {
+	mr := miniredis.RunT(t)
+	base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	mr.SetTime(base)
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(RequestID(), RateLimit(rdb, config.RateLimitConfig{
+		Enabled: true,
+		Default: config.RateLimitRule{RPS: 100, Burst: 100},
+		Routes: map[string]config.RateLimitRule{
+			"/ping": {RPS: 0.5, Burst: 3}, // 每分钟 30 次的桶形态
+		},
+	}))
+	r.GET("/ping", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+
+	for i := 0; i < 3; i++ {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+		require.Equal(t, http.StatusOK, w.Code, "burst 内第 %d 次应放行", i+1)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+	require.Equal(t, http.StatusTooManyRequests, w.Code, "静止时钟耗尽即 429")
+
+	mr.SetTime(base.Add(2 * time.Second)) // 0.5rps × 2s = 补 1 个令牌
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+	require.Equal(t, http.StatusOK, w.Code, "2s 恰好补 1 令牌应放行（亚 1 rps 精度）")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", nil))
+	require.Equal(t, http.StatusTooManyRequests, w.Code, "补桶仅 1 个，下次仍 429")
+}
+
+// P2-2–4：按用户独立桶守护（intel query 兑现的机制前提）——同一路由覆盖规则下
+// 不同 userID 各自计费互不稀释；未登录退化 ClientIP 维度（现行中间件键控不变）。
+func TestRateLimit_PerUserBucketIndependence(t *testing.T) {
+	mr := miniredis.RunT(t)
+	mr.SetTime(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(RequestID())
+	// 模拟 JWT 中间件的 c.Set("userID", int64)：按 ?u= 区分用户
+	r.Use(func(c *gin.Context) {
+		switch c.Query("u") {
+		case "1":
+			c.Set("userID", int64(1))
+		case "2":
+			c.Set("userID", int64(2))
+		}
+	})
+	r.Use(RateLimit(rdb, config.RateLimitConfig{
+		Enabled: true,
+		Default: config.RateLimitRule{RPS: 100, Burst: 100},
+		Routes: map[string]config.RateLimitRule{
+			"/ping": {RPS: 1, Burst: 1},
+		},
+	}))
+	r.GET("/ping", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping?u=1", nil))
+	require.Equal(t, http.StatusOK, w.Code, "用户 1 首次放行")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping?u=1", nil))
+	require.Equal(t, http.StatusTooManyRequests, w.Code, "用户 1 耗尽自己桶后 429")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping?u=2", nil))
+	require.Equal(t, http.StatusOK, w.Code, "用户 2 独立桶不受用户 1 影响")
+}

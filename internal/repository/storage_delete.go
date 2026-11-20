@@ -19,7 +19,10 @@ var (
 // DeleteTicketAttachment serializes with all ticket field/attachment writes.
 // Network cleanup belongs to the caller, only after this commit succeeds.
 func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string, ticketID int64, key string) error {
-	tx, err := r.db.Begin(ctx)
+	// C04 撤权提交顺序：IAM 守卫事务内即守卫连接上的 savepoint（同连接复用，
+	// 不取第二个池连接）；无守卫时等价 pool.Begin。锁序 tickets → file_objects
+	// 保持不变，物理对象删除仍在调用方提交之后。
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
 		return err
 	}

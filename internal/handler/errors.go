@@ -64,7 +64,9 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrOrgHasMembers.Code:  409,
 	// BK-20：50013 与 50004/50005 同族（删组织守卫）→ 409
 	errcode.ErrOrgHasOpenTickets.Code: 409,
-	errcode.ErrOrgIsSystem.Code:       403,
+	// 2026-11-20 审计续批：50014 与 50004/50005/50013 同族（org_roles 绑定存续拒删）→ 409
+	errcode.ErrOrgHasOrgRoles.Code: 409,
+	errcode.ErrOrgIsSystem.Code:    403,
 	// D2-06：50012 原漏映射 → 500+10000，errcode.md 承诺 403+50012
 	errcode.ErrOrgSystemProtected.Code: 403,
 	errcode.ErrRoleInUse.Code:          403,

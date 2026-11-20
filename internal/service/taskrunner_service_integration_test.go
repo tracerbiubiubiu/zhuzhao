@@ -5,12 +5,15 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
@@ -121,4 +124,51 @@ func TestTaskrunnerServiceTriggerVoucherFallbackLegacyUpstream(t *testing.T) {
 	require.NoError(t, testPool.QueryRow(context.Background(),
 		`SELECT action FROM job_submissions WHERE task_id='t-e4-legacy'`).Scan(&tAction))
 	require.Equal(t, "trigger:job-legacy", tAction)
+}
+
+func TestTaskrunnerAcceptedWithUnconfirmedVoucher(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	fake := gin.New()
+	fake.POST("/v1/tasks", func(c *gin.Context) {
+		c.JSON(200, gin.H{"code": 0, "data": gin.H{"task_id": "voucher-existing", "accepted": true}})
+	})
+	fake.GET("/v1/jobs/:id", func(c *gin.Context) {
+		c.JSON(200, gin.H{"code": 0, "data": gin.H{"job_id": c.Param("id"), "action_id": "ordinary", "params": gin.H{}, "enabled": true}})
+	})
+	fake.POST("/v1/jobs/trigger", func(c *gin.Context) {
+		c.JSON(200, gin.H{"code": 0, "data": gin.H{"task_id": "voucher-existing", "accepted": true, "action": "ordinary", "params": gin.H{}}})
+	})
+	srv := httptest.NewServer(fake)
+	defer srv.Close()
+
+	ctx := service.WithTaskPrincipal(reqid.With(context.Background(), "voucher-retry"), 17, "10001")
+	_, err := testPool.Exec(ctx, `INSERT INTO job_submissions(task_id, action, origin, status) VALUES ('voucher-existing', 'ordinary', 'api', 'succeeded')`)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM job_submissions WHERE task_id='voucher-existing'`)
+	})
+	unavailable, err := pgxpool.NewWithConfig(ctx, testPool.Config())
+	require.NoError(t, err)
+	unavailable.Close()
+	svc := service.NewTaskrunnerService(
+		taskrunner.New(taskrunner.Config{BaseURL: srv.URL, AK: "zhuzhao", SK: []byte("sk")}),
+		repository.NewJobSubmissionRepo(unavailable),
+	)
+	var log bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&log, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	submitted, err := svc.Submit(ctx, &service.TaskSubmitInput{Action: "ordinary"}, "", "", "")
+	require.NoError(t, err)
+	require.True(t, submitted.Accepted)
+	triggered, err := svc.Trigger(ctx, "voucher-job", "", "")
+	require.NoError(t, err)
+	require.True(t, triggered.Accepted)
+	require.Equal(t, 2, bytes.Count(log.Bytes(), []byte("ledger_state=unconfirmed")))
+	require.Equal(t, 2, bytes.Count(log.Bytes(), []byte("request_id=voucher-retry")))
+	require.NotContains(t, log.String(), "ledger missing")
+
+	existing, err := repository.NewJobSubmissionRepo(testPool).GetByTaskID(ctx, "voucher-existing")
+	require.NoError(t, err)
+	require.Equal(t, repository.JobStatusSucceeded, existing.Status)
 }

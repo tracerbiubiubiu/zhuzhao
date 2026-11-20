@@ -91,7 +91,7 @@ func TestBindAvatar_ConcurrentRebindRetiredKey(t *testing.T) {
 	require.NoError(t, err)
 	switched, rebound := make(chan error, 1), make(chan error, 1)
 	go func() { _, e := f.svc.BindAvatar(ctx, newKey, f.uid); switched <- e }()
-	waitAvatarLock(t, ctx, "UPDATE file_objects SET status%", 1)
+	waitAvatarLock(t, ctx, "%file_objects%FOR UPDATE%", 1)
 	go func() { _, e := f.svc.BindAvatar(ctx, old, f.uid); rebound <- e }()
 	waitAvatarLock(t, ctx, "%", 2)
 	require.NoError(t, lock.Commit(ctx))

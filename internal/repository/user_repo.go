@@ -267,6 +267,10 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 	if !IAMWriteActive(ctx) {
 		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.Update(ctx, user) })
 	}
+	return updateUser(ctx, IAMDB(ctx, r.db), user)
+}
+
+func updateUser(ctx context.Context, exec rowExec, user *model.User) error {
 	const q = `
 		UPDATE users SET
 			username = $2,
@@ -282,7 +286,7 @@ func (r *UserRepo) Update(ctx context.Context, user *model.User) error {
 		WHERE id = $1 AND version = $10 AND deleted_at IS NULL
 		RETURNING version, updated_at, status, must_change_password`
 
-	err := IAMDB(ctx, r.db).QueryRow(ctx, q,
+	err := exec.QueryRow(ctx, q,
 		user.ID,
 		user.Username,
 		user.EmployeeNo,
@@ -787,7 +791,11 @@ func NormalizePage(page, pageSize int) (int, int) {
 // writes IAM source facts, and keeps the existing optimistic version CAS so an
 // avatar bind cannot be overwritten by a stale profile snapshot.
 func (r *UserRepo) UpdateProfile(ctx context.Context, user *model.User) error {
-	err := IAMDB(ctx, r.db).QueryRow(ctx, `UPDATE users SET
+	return updateUserProfile(ctx, IAMDB(ctx, r.db), user)
+}
+
+func updateUserProfile(ctx context.Context, exec rowExec, user *model.User) error {
+	err := exec.QueryRow(ctx, `UPDATE users SET
  real_name=NULLIF($2,''),email=NULLIF($3,''),phone=NULLIF($4,''),avatar=NULLIF($5,''),
  version=version+1,updated_at=NOW()
  WHERE id=$1 AND version=$6 AND deleted_at IS NULL

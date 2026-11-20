@@ -37,12 +37,18 @@ type StorageHandler struct {
 }
 
 func NewStorageHandler(svc *storageservice.Service, ticketAuth TicketAuthorizer, auditLog middleware.AuditLogger) *StorageHandler {
+	// C04 撤权提交顺序：守卫实现方为 ticket.Service（结构化能力探测——测试
+	// 桩仅实现 TicketAuthorizer 时不注入，storage 维持 handler 前置 L2 契约）。
+	if cmd, ok := ticketAuth.(storageservice.TicketAttachmentCommand); ok {
+		svc.UseTicketAttachmentCommand(cmd)
+	}
 	return &StorageHandler{svc: svc, ticketAuth: ticketAuth, auditLog: auditLog}
 }
 
 // authorizeTicketPurpose ticket 态 purpose 的 L2 编排（无 ticket_id 400；
 // L2 失败透传 404/403/500 由 writeServiceError 分流）。
 func (h *StorageHandler) authorizeTicketPurpose(c *gin.Context, purpose string, ticketID *int64) bool {
+	purpose = strings.TrimSpace(purpose)
 	if purpose != "ticket_attachment" && purpose != "ticket_richtext" {
 		return true
 	}
@@ -247,7 +253,8 @@ func (h *StorageHandler) DeleteAttachment(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
-	if err := h.svc.DeleteTicketAttachment(c.Request.Context(), in.TicketID, in.ObjectKey); err != nil {
+	// C04：守卫形态携带 actor——IAM 共同共享锁内锁票重认证后提交。
+	if err := h.svc.DeleteTicketAttachmentAs(c.Request.Context(), c.GetInt64("userID"), in.TicketID, in.ObjectKey); err != nil {
 		writeServiceError(c, err)
 		return
 	}

@@ -83,6 +83,7 @@ HTTP列为所属出口现行行为。20005、70002仅保留定义，无生产发
 | 50011 | ErrDuplicatePrimaryOrg | 该用户已有主组织，并发设置主组织冲突，请重试 | 409 |  |
 | 50012 | ErrOrgSystemProtected | 系统内置组织受保护，禁止此操作 | 403 |  |
 | 50013 | ErrOrgHasOpenTickets | 该组织下有未结工单，无法删除 | 409 |  |
+| 50014 | ErrOrgHasOrgRoles | 该组织下仍有角色绑定，无法删除 | 409 |  |
 
 ### 60000–60999 菜单
 

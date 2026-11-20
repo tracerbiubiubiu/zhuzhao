@@ -446,7 +446,7 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	}
 
 	// 事务内检查（已持 FOR UPDATE 行锁，与成员写入的 FOR SHARE 互斥，同快照）
-	var children, members, openTickets int64
+	var children, members, roleBindings, openTickets int64
 	if err := tx.QueryRow(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM organizations WHERE parent_id = $1 AND deleted_at IS NULL),
@@ -454,8 +454,11 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 				INNER JOIN organizations o ON o.id = uo.org_id
 				INNER JOIN users u ON u.id = uo.user_id
 				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL),
+			(SELECT COUNT(*) FROM org_roles obr
+				JOIN roles r ON r.id = obr.role_id AND r.deleted_at IS NULL
+				WHERE obr.org_id = $1),
 			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status <> 'closed')`,
-		id).Scan(&children, &members, &openTickets); err != nil {
+		id).Scan(&children, &members, &roleBindings, &openTickets); err != nil {
 		return fmt.Errorf("check org delete guards: %w", err)
 	}
 	if children > 0 {
@@ -464,10 +467,27 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 	if members > 0 {
 		return errcode.ErrOrgHasMembers
 	}
+	// 2026-11-20 审计续批：仍有「未删角色」绑定的组织拒删——org_roles 挂软删组织
+	// 即脏绑定（绑定面不随删自动清理，读侧 BFS 源 2 也不看 deleted_at）。计数只算
+	// 未删角色：软删角色的死绑定见下方精确清理。计数在已认领的 FOR UPDATE 同事务内，
+	// 与 BindOrgRole 的 FOR SHARE 存续锁互斥闭合竞态窗口。
+	if roleBindings > 0 {
+		return errcode.ErrOrgHasOrgRoles
+	}
 	// BK-20：禁删有未结工单的组织——防 ghost 委托（委托 SQL 挂 owner_user_ids 无
 	// deleted_at 过滤，删组织后原 owner 对历史单保留读写；design-decisions §21）
 	if openTickets > 0 {
 		return errcode.ErrOrgHasOpenTickets
+	}
+
+	// 历史软删角色的死绑定（角色删除守卫生效前旧库残留，解绑入口不可达）同事务
+	// 精确清理：严格限当前组织、且仅确实软删的角色；未删角色的绑定已被上方 50014
+	// 拒删。先拒后清——拒删轮次不动任何行，清理与组织软删同事务，失败整体回滚。
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM org_roles
+		WHERE org_id = $1
+		  AND role_id IN (SELECT id FROM roles WHERE deleted_at IS NOT NULL)`, id); err != nil {
+		return fmt.Errorf("clean dead role bindings: %w", err)
 	}
 
 	tag, err := tx.Exec(ctx, `
@@ -820,6 +840,27 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 		return fmt.Errorf("lock vg for delete: %w", err)
 	}
 
+	// 2026-11-20 审计续批：仍有「未删角色」绑定的虚拟组拒删（同 Delete 50014）——
+	// 先拒后清：此处未动任何行，拒删即整体返回，owner 成员行必不丢（解绑后可正常
+	// 删除）。计数只算未删角色，软删角色的死绑定在下方同事务精确清理（限当前组织，
+	// 与普通组织 Delete 同政策）。
+	var roleBindings int64
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM org_roles obr
+		JOIN roles r ON r.id = obr.role_id AND r.deleted_at IS NULL
+		WHERE obr.org_id = $1`, id).Scan(&roleBindings); err != nil {
+		return fmt.Errorf("check vg role bindings: %w", err)
+	}
+	if roleBindings > 0 {
+		return errcode.ErrOrgHasOrgRoles
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM org_roles
+		WHERE org_id = $1
+		  AND role_id IN (SELECT id FROM roles WHERE deleted_at IS NOT NULL)`, id); err != nil {
+		return fmt.Errorf("clean dead role bindings: %w", err)
+	}
+
 	if _, err := tx.Exec(ctx,
 		`DELETE FROM user_orgs WHERE org_id = $1 AND org_member_role = 'owner'`, id); err != nil {
 		return fmt.Errorf("clear owner memberships: %w", err)
@@ -893,15 +934,40 @@ func (r *OrgRepo) GetRoleForOrgAssignment(ctx context.Context, roleID int64) (*m
 // BindOrgRole 绑定角色到组织（幂等，ON CONFLICT DO NOTHING）。
 // 守卫（内联同库校验，BK-12）：角色须存在、启用、**非系统角色**——
 // 系统角色绑定组织 = 全组织成员获得管理员，绝对禁止。
+//
+// 2026-11-20 审计续批：绑定事务内取成员写入同款 FOR SHARE 存续锁（P2-1 两侧锁
+// 协议，绑定侧）——与 Delete/DeleteVgWithOwnerCleanup 软删认领的 FOR UPDATE 互斥：
+//   - 绑定先提交 → 删除方 org_roles 计数看到绑定 → ErrOrgHasOrgRoles（组织存活）；
+//   - 删除先提交 → 本锁复核 deleted_at 非空 → ErrOrgNotFound（绑定不落库）。
+//
+// 角色校验同事务同连接同快照，杜绝「软删组织仍挂角色绑定」的脏数据。同批角色侧
+// 互斥：角色校验取 FOR SHARE，与 RoleRepo.Delete 软删认领的角色 FOR UPDATE 互斥
+// （删除先提交 → ErrNotFound；绑定先提交 → 删除方按 ErrRoleInUse 拒删）。
+// ⚠ 严禁改用 FOR KEY SHARE：与软删 UPDATE 所持行锁档不冲突（同 lockAliveOrgForShareTx）。
 func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
 	if !IAMWriteActive(ctx) {
 		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.BindOrgRole(ctx, orgID, roleID) })
 	}
+	tx, err := IAMDB(ctx, r.db).Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. 存续锁（先认领组织存活，再校验角色、落绑定）
+	if err := lockAliveOrgForShareTx(ctx, tx, orgID); err != nil {
+		return err
+	}
+
+	// 2. 角色校验（与插入同事务同快照；2026-11-20 审计续批：FOR SHARE 存续锁与
+	// RoleRepo.Delete 软删认领的 FOR UPDATE 互斥——绑定先提交 → 删除方 org_roles
+	// 计数看到绑定拒删（角色存活）；删除先提交 → 本锁复核 deleted_at 非空 →
+	// ErrNotFound（绑定不落库），杜绝「软删角色仍挂组织绑定」的死绑定源头）
 	var isSystem bool
 	var status int
-	err := IAMDB(ctx, r.db).QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT is_system, status FROM roles
-		WHERE id = $1 AND deleted_at IS NULL`, roleID).Scan(&isSystem, &status)
+		WHERE id = $1 AND deleted_at IS NULL FOR SHARE`, roleID).Scan(&isSystem, &status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errcode.ErrNotFound
@@ -914,16 +980,17 @@ func (r *OrgRepo) BindOrgRole(ctx context.Context, orgID, roleID int64) error {
 	if status != 1 {
 		return errcode.New(errcode.ErrInvalidParams.Code, "角色已禁用，不可绑定组织")
 	}
-	if _, err := IAMDB(ctx, r.db).Exec(ctx, `
+
+	// 3. 落绑定（预检与写入的并发窗口内 role 被删 → 23503 → 400（非 500））
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO org_roles (org_id, role_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, orgID, roleID); err != nil {
-		// 预检与写入的并发窗口内 org/role 被删 → 23503 → 400（非 500）
 		if ec := MapForeignKeyViolation(err); ec != nil {
 			return ec
 		}
 		return fmt.Errorf("bind org role: %w", err)
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // UnbindOrgRole 解绑（未绑定 → ErrNotFound）

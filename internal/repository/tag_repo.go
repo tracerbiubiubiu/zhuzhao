@@ -23,7 +23,7 @@ func NewTagRepo(db *pgxpool.Pool) *TagRepo {
 // AddTags 批量挂标签（幂等：UNIQUE(entity_type,entity_id,tag) ON CONFLICT DO NOTHING）。
 // 返回**新增**的标签列表；tag 空/超长由 service 预检（repo 只管库）。
 func (r *TagRepo) AddTags(ctx context.Context, entityType string, entityID, createdBy int64, tags []string) ([]string, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		INSERT INTO tags (entity_type, entity_id, tag, created_by)
 		SELECT $1, $2, t, $3 FROM unnest($4::text[]) AS t
 		ON CONFLICT (entity_type, entity_id, tag) DO NOTHING
@@ -52,7 +52,7 @@ func (r *TagRepo) AddTags(ctx context.Context, entityType string, entityID, crea
 
 // RemoveTag 摘标签（幂等）。返回是否实际删除。
 func (r *TagRepo) RemoveTag(ctx context.Context, entityType string, entityID int64, tag string) (bool, error) {
-	ct, err := r.db.Exec(ctx,
+	ct, err := IAMDB(ctx, r.db).Exec(ctx,
 		`DELETE FROM tags WHERE entity_type = $1 AND entity_id = $2 AND tag = $3`,
 		entityType, entityID, tag)
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *TagRepo) RemoveTag(ctx context.Context, entityType string, entityID int
 
 // ListByEntity 实体标签行（repo 层 join users 富化挂载人——共享标签留痕可溯）。
 func (r *TagRepo) ListByEntity(ctx context.Context, entityType string, entityID int64) ([]model.TagRow, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT tg.tag, tg.created_by,
 		       CASE WHEN u.deleted_at IS NULL THEN COALESCE(NULLIF(u.real_name, ''), u.username) ELSE '' END,
 		       CASE WHEN u.deleted_at IS NULL THEN COALESCE(u.employee_no, '') ELSE '' END,

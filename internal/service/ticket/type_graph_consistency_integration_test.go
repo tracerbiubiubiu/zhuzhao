@@ -26,6 +26,73 @@ import (
 func typeConfigService(pool *pgxpool.Pool) *Service {
 	return NewTicketService(pool, repository.NewTicketRepo(pool), repository.NewOrgRepo(pool), resource.NewRegistry(), stubRoleFetcher{}, nil, nil, nil, nil)
 }
+
+func TestTypeGraphValidatesEffectiveActionsAndMetadata(t *testing.T) {
+	ctx := context.Background()
+	reg := NewActionRegistry()
+	for _, action := range []TransitionAction{&NotifyAction{}, &CCAction{}, &ReassignAction{}, &SpawnTaskAction{}} {
+		require.NoError(t, reg.Register(action))
+	}
+	svc := typeConfigService(testPool).SetActionRegistry(reg)
+	for _, tc := range []struct {
+		name   string
+		legacy string
+		patch  model.UpdateTicketTypeRequest
+		reject bool
+	}{
+		{"removed_edge", `{"open>assigned":{"roles":["creator"]}}`, model.UpdateTicketTypeRequest{Transitions: rawJSON(`{"open":["closed"]}`)}, true},
+		{"activation_retains_invalid_meta", `{"open>closed":{"post_actions":["missing_action"]}}`, model.UpdateTicketTypeRequest{IsActive: boolPtr(true)}, true},
+		{"unknown_action", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":["missing_action"]}}`)}, true},
+		{"invalid_action_shape", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":[42]}}`)}, true},
+		{"invalid_recipient", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":[{"name":"cc","params":{"user_ids":["bad"]}}]}}`)}, true},
+		{"fractional_id", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":[{"name":"reassign","params":{"user_id":17.5}}]}}`)}, true},
+		{"missing_task_action", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":["spawn_task"]}}`)}, true},
+		{"repair_graph_and_clear_meta", `{"open>assigned":{"roles":["creator"]}}`, model.UpdateTicketTypeRequest{Transitions: rawJSON(`{"open":["closed"]}`), TransitionMeta: rawJSON(`{}`)}, false},
+		{"deactivate_legacy_roundtrip", `{"open>closed":{"post_actions":["missing_action"]}}`, model.UpdateTicketTypeRequest{
+			States: rawJSON(defaultStates), Transitions: rawJSON(defaultTransitions), IsActive: boolPtr(false),
+			TransitionMeta: rawJSON(`{"open>closed":{"post_actions":["missing_action"]}}`),
+		}, false},
+		{"deactivate_cannot_introduce_bad_config", "{}", model.UpdateTicketTypeRequest{
+			IsActive: boolPtr(false), TransitionMeta: rawJSON(`{"open>closed":{"post_actions":["missing_action"]}}`),
+		}, true},
+		{"optional_null_preserves_runtime_defaults", "{}", model.UpdateTicketTypeRequest{
+			TransitionMeta: rawJSON(`{"open>closed":{"post_actions":[{"name":"notify","params":{"recipients":null,"template":null}},{"name":"spawn_task","params":{"action":"ordinary","params":null,"timeout_secs":null}}]}}`),
+		}, false},
+		{"task_timeout_matches_submission_contract", "{}", model.UpdateTicketTypeRequest{
+			TransitionMeta: rawJSON(`{"open>closed":{"post_actions":[{"name":"spawn_task","params":{"action":"ordinary","timeout_secs":86401}}]}}`),
+		}, true},
+		{"deactivate_legacy", `{"open>closed":{"post_actions":["missing_action"]}}`, model.UpdateTicketTypeRequest{IsActive: boolPtr(false)}, false},
+		{"valid_actions", "{}", model.UpdateTicketTypeRequest{TransitionMeta: rawJSON(`{"open>closed":{"post_actions":["notify",{"name":"cc","params":{"user_ids":["1",9223372036854775807]}},{"name":"reassign","params":{"user_id":"9223372036854775807"}},{"name":"spawn_task","params":{"action":"synthetic","params":{"count":2},"timeout_secs":0}}]}}`)}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			code := "meta_patch_" + uniqueSuffix()
+			_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code, IsActive: boolPtr(false)})
+			require.NoError(t, err)
+			t.Cleanup(func() { _, _ = testPool.Exec(ctx, `DELETE FROM ticket_types WHERE code=$1`, code) })
+			_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta=$1::jsonb WHERE code=$2`, tc.legacy, code)
+			require.NoError(t, err)
+			before, err := svc.ticketRepo.GetTicketType(ctx, code)
+			require.NoError(t, err)
+			_, err = svc.UpdateTicketType(ctx, code, &tc.patch)
+			after, readErr := svc.ticketRepo.GetTicketType(ctx, code)
+			require.NoError(t, readErr)
+			if tc.reject {
+				require.Error(t, err)
+				require.Equal(t, before, after)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, before.Version+1, after.Version)
+			if strings.HasPrefix(tc.name, "deactivate_legacy") {
+				require.Equal(t, before.States, after.States)
+				require.Equal(t, before.Transitions, after.Transitions)
+				require.Equal(t, before.TransitionMeta, after.TransitionMeta)
+				require.False(t, after.IsActive)
+			}
+		})
+	}
+}
+
 func assertStoredGraph(t *testing.T, typ *model.TicketType) {
 	t.Helper()
 	var states []string

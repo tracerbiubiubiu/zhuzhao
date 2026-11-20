@@ -211,21 +211,11 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if req.AssignedTo != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "assigned_to 不允许在创建时指定，请使用分派接口")
 	}
-	// W0b（二十四批 P0-5）：组织归属校验——创建者须与目标 org 同分支（任一
-	// 成员 org 是目标的祖先或后代，含自身）或持全局 org 管理权；否则任何持
-	// POST /tickets 者可向任意 org 注入工单（污染 scope=group 可见性与组织
-	// 统计）。resource.go 的 create 恒 true 仅指「已过 L1 的创建动作无需行级
-	// 判定」，不豁免归属约束。
-	if member, err := s.orgRepo.IsInOrgBranch(ctx, req.OrgID, actorUserID); err != nil {
+	// Reject outside the requested org before any fetch provider is called.
+	// The same check is repeated inside the admitting transaction.
+	if err := s.authorizeCreateOrg(ctx, actorUserID, req.OrgID); err != nil {
 		return nil, err
-	} else if !member {
-		// 豁免口径与 org_service.isGlobalOrgAdmin 对齐（commit-review §3.4）：
-		// 角色码（admin/superadmin）短路 + org:% 菜单回退——两入口不漂移
-		if !s.isGlobalOrgAdmin(ctx, actorUserID) {
-			return nil, errcode.ErrNoPermission
-		}
 	}
-
 	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
 	ttype, err := s.ticketRepo.GetTicketType(ctx, req.TypeCode)
 	if err != nil {
@@ -253,6 +243,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 	description := req.Description
 	customData := req.CustomData
+	var template *model.TicketTemplate
 	if req.TemplateCode != "" {
 		tmpl, err := s.ticketRepo.GetTicketTemplate(ctx, req.TemplateCode)
 		switch {
@@ -261,6 +252,7 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		case err != nil:
 			return nil, fmt.Errorf("get ticket template: %w", err) // DB 错误不得吞掉
 		default:
+			template = tmpl
 			if tmpl.TypeCode != req.TypeCode {
 				return nil, errcode.ErrInvalidParams // 模板属于其它工单类型
 			}
@@ -290,11 +282,16 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	}
 
 	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
-	// B1-4 取数联动（A.4：Submit 事务内、formula 重算之前——取数结果可被
-	// formula 引用）；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
+	// B1-4 取数联动在事务准备阶段、formula 重算之前——取数结果可被
+	// formula 引用；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
 	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
 	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
-	customData = s.applyFetches(ctx, req.TypeCode, customData, actorUserID)
+	// Fetch decisions and the later validation use one exact schema snapshot.
+	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, req.TypeCode)
+	if err != nil {
+		return nil, err
+	}
+	customData = s.applyFetches(req.TypeCode, customData, actorUserID, fields)
 	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
 	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
 	var humanKey string
@@ -321,60 +318,60 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		CustomData:           customData,
 	}
 
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	// G2 and reference extraction share the transaction's schema and connection.
-	fields, err := s.ticketRepo.ListTicketTypeFieldsTx(ctx, tx, req.TypeCode)
-	if err != nil {
-		return nil, err
-	}
-	customData, err = s.validateCustomData(ctx, tx, req.TypeCode, customData, nil, fields)
-	if err != nil {
-		return nil, err
-	}
-	refs, err := fieldReferences(fields, customData)
-	if err != nil {
-		return nil, err
-	}
-	ticket.CustomData = customData
-
-	org, err := s.orgRepo.FindByIDForShareTx(ctx, tx, req.OrgID)
-	if err != nil {
-		return nil, err
-	}
-	ticket.OrgPath = org.Path
-
-	if err := s.ticketRepo.CreateTx(ctx, tx, ticket); err != nil {
-		return nil, err
-	}
-	if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusOpen); err != nil {
-		return nil, err
-	}
-	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-		TicketID: ticket.ID,
-		UserID:   actorUserID,
-		Action:   EventCreated,
-	}); err != nil {
-		return nil, err
-	}
-	// Create and Update preserve field purpose and deduplicate shared sources.
-	if err := s.bindUpdateReferencesTx(ctx, tx, ticket.ID, actorUserID, req.Attachments, refs); err != nil {
-		return nil, err
-	}
-	// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
-	// 同事务写行（原子性不变）
-	if ticket.HumanKey == "" && humanKey != "" {
-		ticket.HumanKey = humanKey
-		if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, humanKey, ticket.ID); err != nil {
-			return nil, fmt.Errorf("write human_key: %w", err)
+	err = s.withHTTPCommand(ctx, "create", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		if err := s.ticketRepo.LockCreateSnapshotTx(ctx, tx, ttype, req.TemplateCode, template, fields); err != nil {
+			return err
 		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		org, err := s.orgRepo.FindByIDForShareTx(ctx, tx, req.OrgID)
+		if err != nil {
+			return err
+		}
+		ticket.OrgPath = org.Path
+
+		if err := s.authorizeCreateOrg(ctx, actorUserID, req.OrgID); err != nil {
+			return err
+		}
+
+		// G2 and reference extraction share the transaction's schema and connection.
+		customData, err = s.validateCustomData(ctx, tx, req.TypeCode, customData, nil, fields)
+		if err != nil {
+			return err
+		}
+		refs, err := fieldReferences(fields, customData)
+		if err != nil {
+			return err
+		}
+		ticket.CustomData = customData
+
+		if err := s.ticketRepo.CreateTx(ctx, tx, ticket); err != nil {
+			return err
+		}
+		if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusOpen); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+			TicketID: ticket.ID,
+			UserID:   actorUserID,
+			Action:   EventCreated,
+		}); err != nil {
+			return err
+		}
+		// Create and Update preserve field purpose and deduplicate shared sources.
+		if err := s.bindUpdateReferencesTx(ctx, tx, ticket.ID, actorUserID, req.Attachments, refs); err != nil {
+			return err
+		}
+		// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
+		// 同事务写行（原子性不变）
+		if ticket.HumanKey == "" && humanKey != "" {
+			ticket.HumanKey = humanKey
+			if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, humanKey, ticket.ID); err != nil {
+				return fmt.Errorf("write human_key: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	// B6-1：工单创建事件（事务提交后派发——06 号 §5.2a 异步投递）
 	s.emitTicketEvent(ticket, domainevent.DomainEvent{
@@ -394,6 +391,19 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 		s.dispatcher.OnAfterCreate(ctx, ticket)
 	}
 	return ticket, nil
+}
+
+// authorizeCreateOrg uses the same branch/permission decision before preparation
+// and inside the command guard, where IAM reads use the owning transaction.
+func (s *Service) authorizeCreateOrg(ctx context.Context, actor, orgID int64) error {
+	member, err := s.orgRepo.IsInOrgBranch(ctx, orgID, actor)
+	if err != nil {
+		return err
+	}
+	if !member && !s.isGlobalOrgAdmin(ctx, actor) {
+		return errcode.ErrNoPermission
+	}
+	return nil
 }
 
 // Get 获取工单详情（含 L2 可见性校验）
@@ -479,12 +489,8 @@ func (s *Service) FieldImpact(ctx context.Context, typeCode string) (map[string]
 
 // applyFetches B1-4 取数联动（A.4）：从 field_meta 组装 FetchField 投影 →
 // datafetcher.ApplyFetches 回写。失败不阻塞（A.4 失败策略）——missed 记日志。
-func (s *Service) applyFetches(ctx context.Context, typeCode string, customData json.RawMessage, actorUserID int64) json.RawMessage {
-	if s.fetcherReg == nil {
-		return customData // 无注册源——取数面未装配
-	}
-	fields, err := s.ticketRepo.ListTicketTypeFields(ctx, typeCode)
-	if err != nil || len(fields) == 0 {
+func (s *Service) applyFetches(typeCode string, customData json.RawMessage, actorUserID int64, fields []*model.TicketTypeField) json.RawMessage {
+	if s.fetcherReg == nil || len(fields) == 0 {
 		return customData
 	}
 	var schema []datafetcher.FetchField
@@ -675,66 +681,80 @@ func mergeCustomData(base, patch json.RawMessage) (json.RawMessage, error) {
 
 // Close 关闭工单（状态机校验 + 事件）
 func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, actorUserID int64) error {
-	if err := s.authorizeCheck(ctx, actorUserID, "close", strconv.FormatInt(req.ID, 10)); err != nil {
-		return err
-	}
+	var ticket *model.Ticket
+	err := s.withHTTPCommand(ctx, "close", actorUserID, func(ctx context.Context, owner pgx.Tx) error {
+		var err error
+		if err := s.authorizeCheck(ctx, actorUserID, "close", strconv.FormatInt(req.ID, 10)); err != nil {
+			return err
+		}
 
-	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
-	if err != nil {
-		return err
-	}
-	if ticket.Status == StatusClosed {
-		return errcode.ErrTicketAlreadyClosed
-	}
+		ticket, err = s.ticketRepo.GetByID(ctx, req.ID)
+		if err != nil {
+			return err
+		}
+		if ticket.Status == StatusClosed {
+			return errcode.ErrTicketAlreadyClosed
+		}
 
-	// 状态机校验
-	ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
-	if err != nil {
-		return err
-	}
-	sm, err := FromTicketType(ttype)
-	if err != nil {
-		return fmt.Errorf("build state machine: %w", err)
-	}
-	if err := sm.AssertTransition(ticket.Status, StatusClosed); err != nil {
-		return err
-	}
-	// R3 审计修复：Close 也走 condition+validator（原旁路——/close 端点绕过
-	// transition_meta 语义检查，phase6 依赖 condition 做权限时=安全漏洞）
-	if _, err := s.checkTransitionMeta(ctx, ticket, StatusClosed, actorUserID, ttype); err != nil {
-		return err
-	}
+		// 状态机校验
+		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
+		if err != nil {
+			return err
+		}
+		sm, err := FromTicketType(ttype)
+		if err != nil {
+			return fmt.Errorf("build state machine: %w", err)
+		}
+		if err := sm.AssertTransition(ticket.Status, StatusClosed); err != nil {
+			return err
+		}
+		// R3 审计修复：Close 也走 condition+validator（原旁路——/close 端点绕过
+		// transition_meta 语义检查，phase6 依赖 condition 做权限时=安全漏洞）
+		if _, err := s.checkTransitionMeta(ctx, ticket, StatusClosed, actorUserID, ttype); err != nil {
+			return err
+		}
 
-	// 更新状态 + 写事件 + 可选关闭说明
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
+		// 更新状态 + 写事件 + 可选关闭说明
+		tx := owner
+		ownTx := tx == nil
+		if ownTx {
+			tx, err = s.db.Begin(ctx)
+			if err != nil {
+				return fmt.Errorf("begin tx: %w", err)
+			}
+			defer tx.Rollback(ctx)
+		}
 
-	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
-		return err
-	}
-	if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
-		return err
-	}
-	if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusClosed); err != nil {
-		return err
-	}
-	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-		TicketID:  req.ID,
-		UserID:    actorUserID,
-		Action:    EventStatusChanged,
-		FromValue: ticket.Status,
-		ToValue:   StatusClosed,
-	}); err != nil {
-		return err
-	}
-	// 可选关闭说明 → 写评论
-	if err := s.writeLifecycleCommentTx(ctx, tx, req.ID, actorUserID, req.Comment); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
+		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
+			return err
+		}
+		if err := s.applyStateSLATx(ctx, tx, ttype, ticket, StatusClosed); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+			TicketID:  req.ID,
+			UserID:    actorUserID,
+			Action:    EventStatusChanged,
+			FromValue: ticket.Status,
+			ToValue:   StatusClosed,
+		}); err != nil {
+			return err
+		}
+		// 可选关闭说明 → 写评论
+		if err := s.writeLifecycleCommentTx(ctx, tx, req.ID, actorUserID, req.Comment); err != nil {
+			return err
+		}
+		if ownTx {
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	// D1 审计修复：关闭=状态离开旧状态——清旧状态催办水位（与 Transition 同源；
@@ -761,10 +781,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 
 // Assign 分派工单（2a：仅 admin bypass；2b 扩展主管 scope）
 func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64) error {
-	if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
-		return err
-	}
-	return s.assignAuthorized(ctx, req, actorUserID, false)
+	return s.assignWithGuard(ctx, req, actorUserID, false, true)
 }
 
 // validateAssignTargetUser 分派目标用户校验（2026-10-29 幽灵分派修复）：
@@ -773,7 +790,7 @@ func (s *Service) Assign(ctx context.Context, req *model.AssignTicketRequest, ac
 // 定制先例）。EscalationSupervisor 亦为用户 ID，同规则。
 func (s *Service) validateAssignTargetUser(ctx context.Context, userID int64) error {
 	var status int
-	err := s.db.QueryRow(ctx,
+	err := repository.IAMDB(ctx, s.db).QueryRow(ctx,
 		`SELECT status FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errcode.New(errcode.ErrUserNotFound.Code,
@@ -803,109 +820,147 @@ func (s *Service) assignAsSystem(ctx context.Context, req *model.AssignTicketReq
 // assignAuthorized applies the admitted assignment. Initial dispatch is
 // restricted to an open, unassigned snapshot fenced by LockTransitionSnapshotTx.
 func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64, initialOnly bool) error {
-	ticket, err := s.ticketRepo.GetByID(ctx, req.ID)
-	if err != nil {
-		return err
-	}
-	if initialOnly && (ticket.Status != StatusOpen || ticket.AssignedTo != nil) {
+	return s.assignWithGuard(ctx, req, actorUserID, initialOnly, false)
+}
+
+func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRequest, actorUserID int64, initialOnly, manual bool) error {
+	var ticket *model.Ticket
+	var newStatus, fromAssignee, toAssignee string
+	run := func(ctx context.Context, owner pgx.Tx) error {
+		if manual {
+			if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
+				return err
+			}
+		}
+		var err error
+		ticket, err = s.ticketRepo.GetByID(ctx, req.ID)
+		if err != nil {
+			return err
+		}
+		if initialOnly && (ticket.Status != StatusOpen || ticket.AssignedTo != nil) {
+			return nil
+		}
+		// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
+		if ticket.Status == StatusClosed {
+			return errcode.ErrTicketAlreadyClosed
+		}
+		// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写
+		// assigned_to 无校验，幽灵 assignee 可挂单（详情页处理人残缺/通知无法送达，
+		// 所有者测试复现）。取消分派（AssignedTo nil）不校验。自动分派同链受控
+		// （目标来自成员解析，成员被禁用后规则触发→响亮 400+dispatch_missed，
+		// 优于原幽灵挂单静默成功）。
+		if req.AssignedTo != nil {
+			if err := s.validateAssignTargetUser(ctx, *req.AssignedTo); err != nil {
+				return err
+			}
+		}
+		if req.EscalationSupervisor != nil {
+			if err := s.validateAssignTargetUser(ctx, *req.EscalationSupervisor); err != nil {
+				return err
+			}
+		}
+		fromAssignee = ""
+		if ticket.AssignedTo != nil {
+			fromAssignee = strconv.FormatInt(*ticket.AssignedTo, 10)
+		}
+		toAssignee = ""
+		if req.AssignedTo != nil {
+			toAssignee = strconv.FormatInt(*req.AssignedTo, 10)
+		}
+
+		// 分派 → assigned 状态（若当前为 open）；取消分派 → open（若当前为 assigned）
+		newStatus = ticket.Status
+		if ticket.Status == StatusOpen && req.AssignedTo != nil {
+			newStatus = StatusAssigned
+		}
+		if ticket.Status == StatusAssigned && req.AssignedTo == nil {
+			newStatus = StatusOpen
+		}
+
+		// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
+		// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
+		var transitionType *model.TicketType
+		if newStatus != ticket.Status {
+			ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
+			if err != nil {
+				return err
+			}
+			sm, err := FromTicketType(ttype)
+			if err != nil {
+				return fmt.Errorf("build state machine: %w", err)
+			}
+			if err := sm.AssertTransition(ticket.Status, newStatus); err != nil {
+				return err
+			}
+			// R3 审计修复：Assign 状态转换时也走 condition+validator（同 Close）
+			if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
+				return err
+			}
+			transitionType = ttype
+		}
+
+		tx := owner
+		ownTx := tx == nil
+		if ownTx {
+			tx, err = s.db.Begin(ctx)
+			if err != nil {
+				return fmt.Errorf("begin tx: %w", err)
+			}
+			defer tx.Rollback(ctx)
+		}
+
+		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, transitionType); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
+			return err
+		}
+		// B10-4：催办上级人工指定随分派事务更新（nil=保持不动；dd §31 基线档）
+		if req.EscalationSupervisor != nil {
+			if err := s.ticketRepo.UpdateEscalationSupervisorTx(ctx, tx, req.ID, *req.EscalationSupervisor); err != nil {
+				return err
+			}
+		}
+		if newStatus != ticket.Status {
+			if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {
+				return err
+			}
+			if err := s.applyStateSLATx(ctx, tx, transitionType, ticket, newStatus); err != nil {
+				return err
+			}
+		}
+		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+			TicketID:  req.ID,
+			UserID:    actorUserID,
+			Action:    EventAssigned,
+			FromValue: fromAssignee,
+			ToValue:   toAssignee,
+		}); err != nil {
+			return err
+		}
+		if ownTx {
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
-	// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
-	if ticket.Status == StatusClosed {
-		return errcode.ErrTicketAlreadyClosed
+	var err error
+	if manual {
+		err = s.withHTTPCommand(ctx, "assign", actorUserID, run)
+	} else {
+		// System dispatch has its own reviewed identity; it does not consume
+		// the HTTP route or actor that triggered a post action.
+		err = repository.WithIAMGuard(ctx, s.db, func(ctx context.Context) error {
+			tx := repository.IAMDB(ctx, s.db).(pgx.Tx)
+			return run(ctx, tx)
+		})
 	}
-	// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写
-	// assigned_to 无校验，幽灵 assignee 可挂单（详情页处理人残缺/通知无法送达，
-	// 所有者测试复现）。取消分派（AssignedTo nil）不校验。自动分派同链受控
-	// （目标来自成员解析，成员被禁用后规则触发→响亮 400+dispatch_missed，
-	// 优于原幽灵挂单静默成功）。
-	if req.AssignedTo != nil {
-		if err := s.validateAssignTargetUser(ctx, *req.AssignedTo); err != nil {
-			return err
-		}
-	}
-	if req.EscalationSupervisor != nil {
-		if err := s.validateAssignTargetUser(ctx, *req.EscalationSupervisor); err != nil {
-			return err
-		}
-	}
-	fromAssignee := ""
-	if ticket.AssignedTo != nil {
-		fromAssignee = strconv.FormatInt(*ticket.AssignedTo, 10)
-	}
-	toAssignee := ""
-	if req.AssignedTo != nil {
-		toAssignee = strconv.FormatInt(*req.AssignedTo, 10)
-	}
-
-	// 分派 → assigned 状态（若当前为 open）；取消分派 → open（若当前为 assigned）
-	newStatus := ticket.Status
-	if ticket.Status == StatusOpen && req.AssignedTo != nil {
-		newStatus = StatusAssigned
-	}
-	if ticket.Status == StatusAssigned && req.AssignedTo == nil {
-		newStatus = StatusOpen
-	}
-
-	// BK-2：状态转换走状态机校验——transitions 是配置即代码（ticket_types.transitions），
-	// 手工推算会在类型配置变更后静默写出非法状态（Close 已同款校验）
-	var transitionType *model.TicketType
-	if newStatus != ticket.Status {
-		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
-		if err != nil {
-			return err
-		}
-		sm, err := FromTicketType(ttype)
-		if err != nil {
-			return fmt.Errorf("build state machine: %w", err)
-		}
-		if err := sm.AssertTransition(ticket.Status, newStatus); err != nil {
-			return err
-		}
-		// R3 审计修复：Assign 状态转换时也走 condition+validator（同 Close）
-		if _, err := s.checkTransitionMeta(ctx, ticket, newStatus, actorUserID, ttype); err != nil {
-			return err
-		}
-		transitionType = ttype
-	}
-
-	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, transitionType); err != nil {
 		return err
 	}
-	if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
-		return err
-	}
-	// B10-4：催办上级人工指定随分派事务更新（nil=保持不动；dd §31 基线档）
-	if req.EscalationSupervisor != nil {
-		if err := s.ticketRepo.UpdateEscalationSupervisorTx(ctx, tx, req.ID, *req.EscalationSupervisor); err != nil {
-			return err
-		}
-	}
-	if newStatus != ticket.Status {
-		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, newStatus); err != nil {
-			return err
-		}
-		if err := s.applyStateSLATx(ctx, tx, transitionType, ticket, newStatus); err != nil {
-			return err
-		}
-	}
-	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-		TicketID:  req.ID,
-		UserID:    actorUserID,
-		Action:    EventAssigned,
-		FromValue: fromAssignee,
-		ToValue:   toAssignee,
-	}); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return err
+	if ticket == nil || initialOnly && (ticket.Status != StatusOpen || ticket.AssignedTo != nil) {
+		return nil
 	}
 	// D1 审计修复：状态变更即离开旧状态——清旧状态催办水位（与 Transition/Close
 	// 同源三路；修复前 assigned 催满→取消分派回 open→重分派残留水位致永不催）
@@ -928,47 +983,64 @@ func (s *Service) assignAuthorized(ctx context.Context, req *model.AssignTicketR
 
 // Delete 删除工单（2a：仅 admin）
 func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error {
-	if err := s.authorizeCheck(ctx, actorUserID, "delete", strconv.FormatInt(id, 10)); err != nil {
-		return err
-	}
-	return s.ticketRepo.Delete(ctx, id, actorUserID)
+	return s.withHTTPCommand(ctx, "delete", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		if err := s.authorizeCheck(ctx, actorUserID, "delete", strconv.FormatInt(id, 10)); err != nil {
+			return err
+		}
+		return s.ticketRepo.DeleteTx(ctx, tx, id, actorUserID)
+	}, id)
 }
 
 // --- 评论 / 备注 ---
 
 // CreateComment 创建公开回复
 func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentRequest, actorUserID int64) (*model.TicketComment, error) {
-	if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
-		return nil, err
-	}
-	comment := &model.TicketComment{
-		TicketID:   req.TicketID,
-		UserID:     actorUserID,
-		Content:    req.Content,
-		IsInternal: false,
-	}
-	// HC1（A4）：评论与事件同事务落库（事件流供 Phase 3 SLA/通知消费）
-	tx, err := s.db.Begin(ctx)
+	var comment *model.TicketComment
+	var ticket *model.Ticket
+	err := s.withHTTPCommand(ctx, "comments", actorUserID, func(ctx context.Context, owner pgx.Tx) error {
+		var err error
+		if err := s.authorizeCheck(ctx, actorUserID, "comment", strconv.FormatInt(req.TicketID, 10)); err != nil {
+			return err
+		}
+		comment = &model.TicketComment{
+			TicketID:   req.TicketID,
+			UserID:     actorUserID,
+			Content:    req.Content,
+			IsInternal: false,
+		}
+		// HC1（A4）：评论与事件同事务落库（事件流供 Phase 3 SLA/通知消费）
+		tx := owner
+		ownTx := tx == nil
+		if ownTx {
+			tx, err = s.db.Begin(ctx)
+			if err != nil {
+				return fmt.Errorf("begin tx: %w", err)
+			}
+			defer tx.Rollback(ctx)
+		}
+		// 公开回复与通知事实共用本写事务内的工单版本。先锁票，再写评论及审计，
+		// 使并发改票/删票与本次提交有明确顺序；消费者不在提交后回查工单。
+		ticket, err = s.ticketRepo.GetByIDForUpdateTx(ctx, tx, req.TicketID)
+		if err != nil {
+			return err
+		}
+		if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
+			return err
+		}
+		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
+			TicketID: req.TicketID, UserID: actorUserID, Action: EventComment,
+		}); err != nil {
+			return err
+		}
+		if ownTx {
+			if err := tx.Commit(ctx); err != nil {
+				return fmt.Errorf("commit tx: %w", err)
+			}
+		}
+		return nil
+	}, req.TicketID)
 	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-	// 公开回复与通知事实共用本写事务内的工单版本。先锁票，再写评论及审计，
-	// 使并发改票/删票与本次提交有明确顺序；消费者不在提交后回查工单。
-	ticket, err := s.ticketRepo.GetByIDForUpdateTx(ctx, tx, req.TicketID)
-	if err != nil {
 		return nil, err
-	}
-	if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
-		return nil, err
-	}
-	if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-		TicketID: req.TicketID, UserID: actorUserID, Action: EventComment,
-	}); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	payload := domainevent.Payload{
 		"title": ticket.Title, "type_code": ticket.TypeCode,
@@ -989,6 +1061,16 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 
 // CreateNote 创建内部备注（2a：创建人或处理人可写）
 func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, actorUserID int64) (*model.TicketComment, error) {
+	var result *model.TicketComment
+	err := s.withHTTPCommand(ctx, "notes", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		result, err = s.createNoteCommand(ctx, tx, req, actorUserID)
+		return err
+	}, req.TicketID)
+	return result, err
+}
+
+func (s *Service) createNoteCommand(ctx context.Context, tx pgx.Tx, req *model.CreateNoteRequest, actorUserID int64) (*model.TicketComment, error) {
 	if err := s.authorizeCheck(ctx, actorUserID, "note", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
@@ -999,11 +1081,15 @@ func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, 
 		IsInternal: true,
 	}
 	// HC1（A4）：内部备注与事件同事务（读写集合一致：能写 note 者必能见其事件流）
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
+	ownTx := tx == nil
+	if ownTx {
+		var err error
+		tx, err = s.db.Begin(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("begin tx: %w", err)
+		}
+		defer tx.Rollback(ctx)
 	}
-	defer tx.Rollback(ctx)
 	if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
 		return nil, err
 	}
@@ -1012,8 +1098,10 @@ func (s *Service) CreateNote(ctx context.Context, req *model.CreateNoteRequest, 
 	}); err != nil {
 		return nil, err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+	if ownTx {
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
 	}
 	return comment, nil
 }
@@ -1040,10 +1128,19 @@ func (s *Service) ListComments(ctx context.Context, ticketID, actorUserID int64)
 
 // CreateRelation 建立工单关联（对 target 走 L2/L3 鉴权）
 func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationRequest, actorUserID int64) (*model.TicketRelation, error) {
-	// 自关联校验（DB 有 CHECK 约束，提前拦截返回 400 而非 409）
 	if req.SourceTicketID == req.TargetTicketID {
 		return nil, errcode.ErrInvalidParams
 	}
+	var result *model.TicketRelation
+	err := s.withHTTPCommand(ctx, "relations", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		result, err = s.createRelationCommand(ctx, tx, req, actorUserID)
+		return err
+	})
+	return result, err
+}
+
+func (s *Service) createRelationCommand(ctx context.Context, tx pgx.Tx, req *model.CreateRelationRequest, actorUserID int64) (*model.TicketRelation, error) {
 	// W0b（二十四批侧信道）：鉴权先行——不可见工单不得经查重 409 泄露存在性，
 	// 须先走 authorizeCheck 返回 404+90001（防枚举语义与 Get/Update 同型）。
 	// 对 source 和 target 都做 update 鉴权（建立关联视为修改操作，需 update 权限）
@@ -1052,6 +1149,11 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 			return nil, err
 		}
 	}
+	// Authorize in source/target order before the stable two-row lock.
+	// A source rejection must not depend on whether the target exists.
+	if err := s.lockCommandTickets(ctx, tx, req.SourceTicketID, req.TargetTicketID); err != nil {
+		return nil, err
+	}
 	// BK-5（A5）：反向判重——A→B 与 B→A 视为同一关联（DB 唯一索引仅防同向）；
 	// 预检后移为友好路径，并发/顺序重复由 uq_ticket_relations_normalized
 	//（000028）兜底 → repo 层 23505 映射 ErrConflict（409），语义不变
@@ -1059,7 +1161,7 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 	if relType == "" {
 		relType = "related"
 	}
-	dup, err := s.ticketRepo.ExistsRelationBetween(ctx, req.SourceTicketID, req.TargetTicketID, relType)
+	dup, err := s.ticketRepo.ExistsRelationBetweenTx(ctx, tx, req.SourceTicketID, req.TargetTicketID, relType)
 	if err != nil {
 		return nil, err
 	}
@@ -1072,7 +1174,7 @@ func (s *Service) CreateRelation(ctx context.Context, req *model.CreateRelationR
 		RelationType:   relType, // 回显规范化值（2026-10-14 契约审计 B2：空入参原样回显致创建响应 "" 与列表 "related" 漂移）
 		CreatedBy:      actorUserID,
 	}
-	if err := s.ticketRepo.CreateRelation(ctx, rel); err != nil {
+	if err := s.ticketRepo.CreateRelationTx(ctx, tx, rel); err != nil {
 		return nil, err
 	}
 	return rel, nil

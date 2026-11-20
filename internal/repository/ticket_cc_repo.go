@@ -23,7 +23,7 @@ func NewTicketCCRepo(db *pgxpool.Pool) *TicketCCRepo {
 // 返回**新增**的 user_id 列表（事件只对新挂的人生效——重复挂载不重发通知）；
 // user_id 不存在 → FK 23503 → 400（MapForeignKeyViolation）。
 func (r *TicketCCRepo) Add(ctx context.Context, ticketID, createdBy int64, userIDs []int64) ([]int64, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		INSERT INTO ticket_cc (ticket_id, user_id, role, created_by)
 		SELECT $1, u, 'cc', $2 FROM unnest($3::bigint[]) AS u
 		ON CONFLICT (ticket_id, user_id, role) DO NOTHING
@@ -53,7 +53,7 @@ func (r *TicketCCRepo) Add(ctx context.Context, ticketID, createdBy int64, userI
 
 // Remove 摘除抄送（幂等：不存在=0 行不算错）。返回是否实际删除。
 func (r *TicketCCRepo) Remove(ctx context.Context, ticketID, userID int64) (bool, error) {
-	ct, err := r.db.Exec(ctx,
+	ct, err := IAMDB(ctx, r.db).Exec(ctx,
 		`DELETE FROM ticket_cc WHERE ticket_id = $1 AND user_id = $2 AND role = 'cc'`, ticketID, userID)
 	if err != nil {
 		return false, err
@@ -63,7 +63,7 @@ func (r *TicketCCRepo) Remove(ctx context.Context, ticketID, userID int64) (bool
 
 // ListByTicket 单的抄送行（repo 层 join users 富化——软删用户保留 ID 行不回填姓名）。
 func (r *TicketCCRepo) ListByTicket(ctx context.Context, ticketID int64) ([]model.TicketCCRow, error) {
-	rows, err := r.db.Query(ctx, `
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT cc.user_id,
 		       CASE WHEN u.deleted_at IS NULL THEN COALESCE(NULLIF(u.real_name, ''), u.username) ELSE '' END,
 		       CASE WHEN u.deleted_at IS NULL THEN COALESCE(u.employee_no, '') ELSE '' END,

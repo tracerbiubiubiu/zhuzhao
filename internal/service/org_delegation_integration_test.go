@@ -488,9 +488,9 @@ func TestBK12_BindOrgRole_OrgGuard(t *testing.T) {
 	_, err = env.orgSvc.ListOrgRoles(ctx, softID, env.super)
 	requireErrCode(t, err, errcode.ErrOrgNotFound)
 
-	// repo 层 FK 兜底：绕过 service 预检直调（模拟并发窗口），23503 应映射 400 而非裸 500
+	// 仓储层直接调用也会在绑定前锁定并核对组织存活。
 	err = repository.NewOrgRepo(testPool).BindOrgRole(ctx, 999999999, orgRole.ID)
-	requireErrCode(t, err, errcode.ErrInvalidParams)
+	requireErrCode(t, err, errcode.ErrOrgNotFound)
 }
 
 // ---------- BK-20：禁删有未结工单的组织（design-decisions §21 ghost 委托守卫） ----------

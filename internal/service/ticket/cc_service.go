@@ -13,44 +13,80 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
-	"time"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // AddCC 挂抄送（幂等——重复挂载不重发通知：事件只对本次新增的人生效）。
 // 返回挂载后的全量抄送行（前端即用）。
 func (s *Service) AddCC(ctx context.Context, req *model.AddTicketCCRequest, actorUserID int64) ([]model.TicketCCRow, error) {
-	onlySelf := len(req.UserIDs) == 1 && req.UserIDs[0] == actorUserID
-	action := "read"
-	if !onlySelf {
-		action = "update"
+	return s.addCC(ctx, req, actorUserID, true)
+}
+
+// addCC preserves creator attribution for the reviewed system action without
+// presenting that creator as the triggering HTTP principal.
+func (s *Service) addCC(ctx context.Context, req *model.AddTicketCCRequest, actorUserID int64, http bool) ([]model.TicketCCRow, error) {
+	var result []model.TicketCCRow
+	var ticket *model.Ticket
+	var added []int64
+	run := func(ctx context.Context, tx pgx.Tx) error {
+		action := "read"
+		if len(req.UserIDs) != 1 || req.UserIDs[0] != actorUserID {
+			action = "update"
+		}
+		if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
+			return err
+		}
+		var err error
+		ticket, err = s.ticketRepo.GetByID(ctx, req.TicketID)
+		if err != nil {
+			return err
+		}
+		added, err = s.ccRepo.Add(ctx, req.TicketID, actorUserID, req.UserIDs)
+		if err != nil {
+			return err
+		}
+		result, err = s.ccRepo.ListByTicket(ctx, req.TicketID)
+		return err
 	}
-	if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
-		return nil, err
+	var err error
+	if http {
+		err = s.withHTTPCommand(ctx, "cc", actorUserID, run, req.TicketID)
+	} else {
+		err = repository.WithIAMGuard(ctx, s.db, func(ctx context.Context) error {
+			tx := repository.IAMDB(ctx, s.db).(pgx.Tx)
+			if _, err := s.ticketRepo.GetByIDForUpdateTx(ctx, tx, req.TicketID); err != nil {
+				return err
+			}
+			return run(ctx, tx)
+		})
 	}
-	added, err := s.ccRepo.Add(ctx, req.TicketID, actorUserID, req.UserIDs)
 	if err != nil {
 		return nil, err
 	}
 	if len(added) > 0 {
-		s.emitCCAdded(ctx, req.TicketID, actorUserID, added)
+		s.emitCCAddedSnapshot(ticket, actorUserID, added)
 	}
-	return s.ccRepo.ListByTicket(ctx, req.TicketID)
+	return result, nil
 }
 
 // RemoveCC 摘抄送（幂等——不存在不算错）。
 func (s *Service) RemoveCC(ctx context.Context, req *model.RemoveTicketCCRequest, actorUserID int64) error {
-	action := "read"
-	if req.UserID != actorUserID {
-		action = "update"
-	}
-	if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
+	return s.withHTTPCommand(ctx, "cc/remove", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		action := "read"
+		if req.UserID != actorUserID {
+			action = "update"
+		}
+		if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
+			return err
+		}
+		_, err := s.ccRepo.Remove(ctx, req.TicketID, req.UserID)
 		return err
-	}
-	_, err := s.ccRepo.Remove(ctx, req.TicketID, req.UserID)
-	return err
+	}, req.TicketID)
 }
 
 // ListCC 抄送列表（读可见面——非可见用户 404 同形）。
@@ -61,13 +97,8 @@ func (s *Service) ListCC(ctx context.Context, ticketID, actorUserID int64) ([]mo
 	return s.ccRepo.ListByTicket(ctx, ticketID)
 }
 
-// emitCCAdded 抄送事件（事务性弱于状态流转——单条 INSERT 自带原子性，提交后派发；
-// ticket 缺失=外键已删单竞态，事件面 best-effort 跳过）。
-func (s *Service) emitCCAdded(ctx context.Context, ticketID, actorUserID int64, added []int64) {
-	ticket, err := s.ticketRepo.GetByID(ctx, ticketID)
-	if err != nil {
-		return
-	}
+// emitCCAddedSnapshot publishes the committed snapshot after the guard releases.
+func (s *Service) emitCCAddedSnapshot(ticket *model.Ticket, actorUserID int64, added []int64) {
 	ids := make([]string, len(added))
 	for i, u := range added {
 		ids[i] = strconv.FormatInt(u, 10)
@@ -83,7 +114,7 @@ func (s *Service) emitCCAdded(ctx context.Context, ticketID, actorUserID int64, 
 	payload["actor"] = strconv.FormatInt(actorUserID, 10)
 	s.emitTicketEvent(ticket, domainevent.DomainEvent{
 		BizType: domainevent.BizTicket, Action: domainevent.TicketCCAdded,
-		BizID: strconv.FormatInt(ticketID, 10), ActorID: actorUserID,
+		BizID: strconv.FormatInt(ticket.ID, 10), ActorID: actorUserID,
 		Payload:   payload,
 		Timestamp: time.Now(),
 	})

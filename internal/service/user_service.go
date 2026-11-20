@@ -13,17 +13,20 @@ import (
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // UserService 用户管理服务
 type UserService struct {
-	db         *pgxpool.Pool
-	userRepo   *repository.UserRepo
-	roleRepo   *repository.RoleRepo
-	orgService *OrgService
-	rdb        *goredis.Client
-	jwtManager *jwtpkg.Manager
+	storageConfig *pkgstorage.ConfigStore
+	storageBucket string
+	db            *pgxpool.Pool
+	userRepo      *repository.UserRepo
+	roleRepo      *repository.RoleRepo
+	orgService    *OrgService
+	rdb           *goredis.Client
+	jwtManager    *jwtpkg.Manager
 }
 
 func NewUserService(
@@ -42,6 +45,22 @@ func NewUserService(
 		rdb:        rdb,
 		jwtManager: jwtManager,
 	}
+}
+
+// SetStorageConfig is boot-time assembly: share enabled snapshots with storage
+// and pin the bucket to the running client, which also captures it at boot.
+func (s *UserService) SetStorageConfig(cfg *pkgstorage.ConfigStore) {
+	s.storageConfig = cfg
+	s.storageBucket = cfg.Load().Bucket
+}
+
+func (s *UserService) updateAvatar(ctx context.Context, user *model.User, profile bool) error {
+	key, _ := repository.NormalizeAvatar(user.Avatar)
+	if s.storageConfig == nil || !s.storageConfig.Load().Enabled || s.storageBucket == "" {
+		return errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
+	}
+	user.Avatar = key
+	return s.userRepo.UpdateWithAvatar(ctx, user, profile, s.storageBucket)
 }
 
 func (s *UserService) List(ctx context.Context, q repository.UserListQuery, actorUserID int64) (*model.UserListResponse, error) {
@@ -96,6 +115,10 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 	}
 	if req.Username == "" || req.Password == "" {
 		return nil, errcode.ErrInvalidParams
+	}
+	// The new user's identity cannot yet own an existing storage object.
+	if repository.InternalAvatar(req.Avatar) {
+		return nil, errcode.ErrFileNotFound
 	}
 	hash, err := crypto.HashPassword(req.Password)
 	if err != nil {
@@ -222,6 +245,12 @@ func (s *UserService) Update(ctx context.Context, req *model.UpdateUserRequest, 
 		user.Avatar = *req.Avatar
 	}
 	user.Version = req.Version
+	if req.Avatar != nil && repository.InternalAvatar(*req.Avatar) {
+		if err := s.updateAvatar(ctx, user, false); err != nil {
+			return nil, err
+		}
+		return user, nil
+	}
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}
@@ -440,6 +469,12 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req *mode
 	}
 	if req.Avatar != nil {
 		user.Avatar = *req.Avatar
+	}
+	if req.Avatar != nil && repository.InternalAvatar(*req.Avatar) {
+		if err := s.updateAvatar(ctx, user, true); err != nil {
+			return nil, err
+		}
+		return user, nil
 	}
 	if err := s.userRepo.UpdateProfile(ctx, user); err != nil {
 		return nil, err

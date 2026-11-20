@@ -14,3 +14,10 @@ type TicketPerson struct {
 	ID    int64  `json:"id,string"`
 	Label string `json:"label"`
 }
+
+// TicketRelationCandidate is the display projection for choosing a related ticket.
+type TicketRelationCandidate struct {
+	ID     int64  `json:"id,string"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+}

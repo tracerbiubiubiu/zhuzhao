@@ -19,6 +19,9 @@ var (
 	ErrDictItemDupCode    = errors.New("repository: dict item code duplicated")
 	ErrDictDeleteConflict = errors.New("repository: dict delete target changed")
 	ErrDictDeleteInvalid  = errors.New("repository: invalid dict delete condition")
+	// ErrDictTypeInUse 删除侧锁后重扫命中 select/radio/multi_select 规范的
+	// `dict:<code>` 引用（service 映射 errcode.ErrDictTypeInUse 92304）。
+	ErrDictTypeInUse = errors.New("repository: dict type referenced by field specs")
 )
 
 // DictTypeDeleteTarget 绑定调用方确认的稳定身份及版本；不包含子项列表世代。
@@ -31,6 +34,7 @@ type dictDB interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Begin(context.Context) (pgx.Tx, error)
 }
 
 const dictTypeColumns = `id, code, name, enabled, remark, version, created_at, updated_at`
@@ -106,17 +110,21 @@ func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType, remark ...
 	return nil
 }
 
-// HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫——01 号 §3.2
-// 拍板点④"补删除守卫"）。引用形态 = ticket_type_fields.field_options JSONB 数组
-// 元素精确等于 "dict:<code>"（jsonb_array_elements_text 精确匹配，非 LIKE 模糊）。
+// dictSpecRefPredicate retains the existing conservative delete guard for
+// every exact dict reference in an options array, including historical forms.
+const dictSpecRefPredicate = `
+	SELECT EXISTS (
+		SELECT 1 FROM ticket_type_fields f,
+		jsonb_array_elements_text(f.field_options) e
+		WHERE e = 'dict:' || $1
+	)`
+
+// HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫快速失败预检
+// ——01 号 §3.2 拍板点④"补删除守卫"）。判定谓词见 dictSpecRefPredicate；权威
+// 判定在 DeleteTypeByCode 事务内锁后重扫，本查询仅省锁往返。
 func (r *DictRepo) HasFieldDictRef(ctx context.Context, code string) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM ticket_type_fields f,
-			jsonb_array_elements_text(f.field_options) e
-			WHERE e = 'dict:' || $1
-		)`, code).Scan(&exists)
+	err := r.db.QueryRow(ctx, dictSpecRefPredicate, code).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
@@ -124,42 +132,63 @@ func (r *DictRepo) HasFieldDictRef(ctx context.Context, code string) (bool, erro
 }
 
 // DeleteTypeByCode 保留旧 code-only 调用；提供 target 时最终 DELETE 必须匹配身份和版本。
-// 锁定目标及条件删除在同一语句内区分缺失/冲突，不协调字段引用写方或子项列表世代。
+//
+// B1-2 存量收口（2026-11-20 审计续批）：删除与字段规范 `dict:<code>` 引用互斥。
+// 事务内三步，锁序 = 先等锁、后开快照：
+//  1. 独立语句锁定当前父行 FOR UPDATE（ReplaceTypeFields 写侧对同一行持
+//     FOR KEY SHARE 至提交，两侧互斥）；
+//  2. 锁定后下一独立语句以新快照重扫规范与既有保守引用（命中 → ErrDictTypeInUse，
+//     service 映射 92304）——避免单语句 CTE「先取快照后等锁」读到锁前旧引用集，
+//     闭合「预检无引用 ↔ 删除」窗口内并发 replace 提交引用的竞态；
+//  3. 按既有 ID/version 边界删除锁定行：目标不匹配 → ErrDictDeleteConflict（409），
+//     行不存在 → ErrDictTypeNotFound（404）。
+//
+// 非当前规范的历史引用继续阻止破坏性删除。子项集合版本与动态公式另按各自合同管理。
 func (r *DictRepo) DeleteTypeByCode(ctx context.Context, code string, target ...DictTypeDeleteTarget) error {
 	if len(target) > 1 || len(target) == 1 && (target[0].ID <= 0 || target[0].Version <= 0) {
 		return ErrDictDeleteInvalid
 	}
-	if len(target) == 1 {
-		var exists, deleted bool
-		err := r.db.QueryRow(ctx, `
-			WITH target AS MATERIALIZED (
-				SELECT id FROM dict_types WHERE code = $1 FOR UPDATE
-			), deleted AS (
-				DELETE FROM dict_types d USING target
-				WHERE d.code = $1 AND d.id = $2 AND d.version = $3 AND d.id = target.id
-				RETURNING d.id
-			)
-			SELECT EXISTS (SELECT 1 FROM target), EXISTS (SELECT 1 FROM deleted)`,
-			code, target[0].ID, target[0].Version).Scan(&exists, &deleted)
-		if err != nil {
-			return err
-		}
-		if deleted {
-			return nil
-		}
-		if exists {
-			return ErrDictDeleteConflict
-		}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. 独立语句锁定当前父行（本语句返回即持锁）
+	var id, version int64
+	err = tx.QueryRow(ctx,
+		`SELECT id, version FROM dict_types WHERE code = $1 FOR UPDATE`, code).Scan(&id, &version)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrDictTypeNotFound
 	}
-	tag, err := r.db.Exec(ctx, "DELETE FROM dict_types WHERE code = $1", code)
+	if err != nil {
+		return err
+	}
+
+	// 2. 锁后独立语句重扫规范与既有保守引用（语句级新快照：并发 replace
+	//    在等锁期间提交的引用必可见）
+	var inUse bool
+	if err := tx.QueryRow(ctx, dictSpecRefPredicate, code).Scan(&inUse); err != nil {
+		return err
+	}
+	if inUse {
+		return ErrDictTypeInUse
+	}
+
+	// 3. 既有 ID/version 边界：持锁后目标校验与删除同快照，差异即 409
+	if len(target) == 1 && (target[0].ID != id || target[0].Version != version) {
+		return ErrDictDeleteConflict
+	}
+	tag, err := tx.Exec(ctx,
+		`DELETE FROM dict_types WHERE code = $1 AND id = $2 AND version = $3`,
+		code, id, version)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrDictTypeNotFound
+		return ErrDictDeleteConflict // 持锁下不可达——防御性保留
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // ─── 项 ───

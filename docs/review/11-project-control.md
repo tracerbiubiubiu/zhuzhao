@@ -18,6 +18,8 @@
 
 ## 当前摘要
 
+- **2026-11-20 全文审计余项续修**。工单图与保留元数据共同校验；关联选择按当前写资格，现行办理和协作写加入授权守卫。字典删除与字段引用互斥，组织删除保护其角色绑定。头像变更与 GC 保护历史引用，任务补偿隔离坏快照，前端区分故障和真实空态。[本轮范围与验收](reports/audit-remainder-2026-11-20.md)
+
 - **2026-11-20 审计修复续批**。自助改密在写事务核当前启用状态和此前已验证的密码哈希。HTTP 工单更新与转换在共享授权守卫内复核现势授权及写入，IAM 写继续持同一守卫的排他锁。管理界面的工单配置、字典父类型与角色菜单替换增加目标条件。独占 Compose 停止预算、存储用量指标快照、提交凭证幂等读回及 Taskrunner 取消清理与只读对账一并纳入。[计划与交接](../planning/audit-repair-followup-2026-11-20.md)
 
 - **2026-11-19 C02 普通附件切片已合入**。Create/Update 对齐文件用途校验，按对象 ID 稳定加锁，拒绝删除仍被当前工单字段引用的附件，解绑与逻辑标删同事务提交。真实栈验证覆盖存量元数据、双字段共享对象、附件读回和删除。GC 历史回填、头像、F23 和 C04 仍由各自工作包跟踪。[附件合同](../phase5/05-s5-object-storage-richmedia.md) · [合入记录](https://github.com/tracerbiubiubiu/zhuzhao/pull/26)
@@ -76,7 +78,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
-| **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
+| **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围，11 月 20 日补有双端写权限的关联候选 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
 | **判定日志 L2（B11①，E-①）** | registry.Authorize 统一埋点 + channel→Redis List→processing→批量落库（fail-open）；request_id 全链路贯通（ctx 注入 + audit_logs/ticket_events/policy_evaluation_logs 加列，迁移 000020） | ✅ 2026-09-04（03-audit-l2 §2/§3；P3 拍板异步） | `internal/pkg/audit/policyeval.go` `internal/pkg/resource/registry.go` `internal/pkg/reqid/` |
@@ -275,6 +277,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ## 6. 当前健康状态（遗留问题追踪）
 
+### 2026-11-20 全文审计余项
+
+[逐项交接](reports/audit-remainder-2026-11-20.md)登记本轮现有写路由的守卫、配置消费者、消息处理、引用保护及前端旅程。完整身份凭据、策略代次、任务未知效果、持久通知、真实接入与恢复继续使用各自工作包的前置和验收。上一轮小节保留其时点与当时范围。
+
 ### 2026-11-20 审计修复续批边界
 
 本批覆盖 C04 的 HTTP 工单更新、状态转换，以及 C05 自助改密的旧证明窗口。其余工单写面、后台动作、持久安全纪元与可靠会话投影仍沿 C04/C05 追踪。新界面传递工单配置稳定身份和版本、字典父身份及菜单原集合；旧请求保留兼容，菜单同值恢复不能由原集合识别。字典跨模块引用写方仍待协同。任务对账只观察持久账本与队列，业务效果未知时由属主人工核查，C03/F2b 原合同继续适用。存储异步水位通知保持尽力投递，可靠通知仍有独立出口。运行沿单实例，目标环境实际接管、HA 和发布门随原计划验收。
@@ -451,7 +457,7 @@ HIER-D01已由F017确认：停父组织暂停整子树组织派生角色/scope/�
 | HC2 | Delete 无 "deleted" 事件 | ✅ **已修复**（000014 SET NULL + Delete 同事务写 deleted 事件，随库存活；回归断言通过） |
 | EC1 | Swagger 未重新生成 | ✅ **已修复**（orgs/owners 等 2c 端点已入 docs.go/swagger.json） |
 | **OP1** | org_path 快照竞态（Create×Move 并发 → 旧 path 快照） | ✅ **已修复（BK-11 ①，2026-08-31）**：`OrgRepo.FindByIDForShareTx` 事务内 FOR SHARE 锁 org 行 + `ticket.Service.Create` 重构（org 读取移入事务）；回归：锁窗口阻塞验证 + Move×Create 锤击（变异验证去锁必失败）。② 已拍板（2026-08-31）保留镜像列，JOIN 备选弃用 |
-| **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ✅ **已实施（2026-08-31）**：org_roles 绑定/解绑/列表（仅全局管理员，系统角色禁绑）+ parent_id 写侧（单调 child ≤ parent + 环检测）；BFS 源 2/3 全闭环；**收尾修复（2026-09-01）**：Bind/List 加 org 预检（不存在/软删 → 404 ErrOrgNotFound）+ Bind FK 23503 兜底 400（TestBK12_BindOrgRole_OrgGuard）；残留登记：org 删除守卫不查 org_roles（孤儿绑定行，读侧已挡无权限效果）；详见 00 §9 |
+| **BK-12** | `org_roles` / `roles.parent_id` 写侧管理接口缺失 | ✅ **已实施（2026-08-31）**：org_roles 绑定/解绑/列表（仅全局管理员，系统角色禁绑）+ parent_id 写侧（单调 child ≤ parent + 环检测）；BFS 源 2/3 全闭环；**收尾修复（2026-09-01）**：Bind/List 加 org 预检（不存在/软删 → 404 ErrOrgNotFound）+ Bind FK 23503 兜底 400（TestBK12_BindOrgRole_OrgGuard）；2026-11-20 现有绑定和删除共享组织锁顺序，有绑定拒删；既有历史孤儿的盘点沿 IAM 后继。详情见 00 §9 |
 | **BK-13** | 工单可见性默认方向：兄弟虚拟组透明可读 vs 业务要求「默认只看自己 + 可配置」（`project_isolated`） | ✅ **已实施（IW1，2026-08-31）**：迁移 000017 + org update 配置 API + **L2 委托轴** + D12/委托轴测试；详见 00 §9 |
 | **BK-14** | 成员 scope（`ticket_scope`）无配置面（AddMember 仅收 org_member_role，无任何 API 写 scope） | ✅ **已实施（IW1，2026-08-31）**：AddMember 扩展 + /orgs/members/scope + scope=all 仅全局管理员 + 审计；详见 00 §9 |
 | **BK-15** | 代码卫生：UpdateAssignedTo 死包装 + Delete/UpdateAssignedToTx 叠注释（旧「admin only」过时） | ✅ **已修复（2026-08-31）**：删死代码 + 注释合并更正 |
