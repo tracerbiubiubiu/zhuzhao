@@ -38,6 +38,8 @@
 
 ## 后续新增材料
 
+2026-11-20 两轮 Web 易用性复验使用材料 ID `evidence/phase6-web-ux-20261120/`，选定的合成渲染截图与测试收据按轮保存，并核对 SHA-256。受控结论与复现条件见[正式报告](review/reports/phase6-web-ux-audit-2026-11-20.md)。
+
 2026-11-18错对象写入修复批使用材料ID `maintenance/pass8-target-write-20261118/`，保存合成错序红绿证据、候选基线、适用门禁及被隔离资源的回收记录。分批处置归[存量修复前移计划](planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)，原始运行材料留本机。
 
 2026-11-20 审计续批使用材料 ID `maintenance/audit-repair-followup-20261120/`，归档定向红绿、三仓适用门禁、隔离 Compose 停止及主线合并收据。范围和保留问题见[修复记录](review/reports/audit-repair-followup-2026-11-20.md)。
