@@ -86,3 +86,32 @@ func TestLoadPublicStorageEndpointEnvironmentAndEmptyCompatibility(t *testing.T)
 	require.NoError(t, err)
 	require.Empty(t, cfg.Storage.PublicEndpoint)
 }
+
+func TestComposeGraceAllowsSequentialDrains(t *testing.T) {
+	for _, target := range []struct {
+		compose string
+		service string
+		budget  time.Duration
+	}{
+		// App.Run and App.Shutdown bound HTTP/background, audit,
+		// event, and outstanding request cleanup at 30s+5s+8s+5s.
+		{"docker-compose.yaml", "app", 48 * time.Second},
+		{"docker-compose.test.yaml", "app", 48 * time.Second},
+		// Taskrunner drains HTTP and Asynq sequentially at 30s each.
+		{"docker-compose.test.yaml", "taskrunner", 60 * time.Second},
+	} {
+		t.Run(target.compose+"/"+target.service, func(t *testing.T) {
+			raw, err := os.ReadFile("../../deployments/" + target.compose)
+			require.NoError(t, err)
+			var doc struct {
+				Services map[string]struct {
+					StopGracePeriod string `yaml:"stop_grace_period"`
+				} `yaml:"services"`
+			}
+			require.NoError(t, yaml.Unmarshal(raw, &doc))
+			grace, err := time.ParseDuration(doc.Services[target.service].StopGracePeriod)
+			require.NoError(t, err)
+			require.Greater(t, grace, target.budget)
+		})
+	}
+}

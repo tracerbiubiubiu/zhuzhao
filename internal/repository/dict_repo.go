@@ -87,11 +87,16 @@ func (r *DictRepo) CreateType(ctx context.Context, t *model.DictType) error {
 	return err
 }
 
-func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType) error {
+// UpdateType 的可选 remark 参数：nil 保留；空串清空；旧 Go 调用沿用模型备注。
+func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType, remark ...*string) error {
+	var patch *string = &t.Remark
+	if len(remark) > 0 {
+		patch = remark[0]
+	}
 	tag, err := r.db.Exec(ctx, `
-		UPDATE dict_types SET name=$2, enabled=$3, remark=$4, version=version+1, updated_at=NOW()
+		UPDATE dict_types SET name=$2, enabled=$3, remark=COALESCE($4, remark), version=version+1, updated_at=NOW()
 		WHERE id=$1 AND version=$5`,
-		t.ID, t.Name, t.Enabled, t.Remark, t.Version)
+		t.ID, t.Name, t.Enabled, patch, t.Version)
 	if err != nil {
 		return err
 	}
@@ -225,13 +230,26 @@ func (r *DictRepo) ListEnabledItemsByCode(ctx context.Context, code string) ([]*
 	return out, rows.Err()
 }
 
-func (r *DictRepo) CreateItem(ctx context.Context, it *model.DictItem) error {
-	err := r.db.QueryRow(ctx, `
-		INSERT INTO dict_items (type_code, code, label, sort_order, enabled, remark)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, version, created_at, updated_at`,
-		it.TypeCode, it.Code, it.Label, it.SortOrder, it.Enabled, it.Remark,
-	).Scan(&it.ID, &it.Version, &it.CreatedAt, &it.UpdatedAt)
+// CreateItem 可带父类型稳定 ID；同码重建后旧请求返回冲突，旧无 ID 调用仍按编码创建。
+func (r *DictRepo) CreateItem(ctx context.Context, it *model.DictItem, parentID ...int64) error {
+	if len(parentID) > 1 || len(parentID) == 1 && parentID[0] <= 0 {
+		return ErrDictDeleteInvalid
+	}
+	q := `INSERT INTO dict_items (type_code, code, label, sort_order, enabled, remark)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, version, created_at, updated_at`
+	args := []any{it.TypeCode, it.Code, it.Label, it.SortOrder, it.Enabled, it.Remark}
+	if len(parentID) == 1 {
+		q = `WITH parent AS MATERIALIZED (
+			SELECT code FROM dict_types WHERE code=$1 AND id=$7 FOR KEY SHARE
+		) INSERT INTO dict_items (type_code, code, label, sort_order, enabled, remark)
+		SELECT code, $2, $3, $4, $5, $6 FROM parent RETURNING id, version, created_at, updated_at`
+		args = append(args, parentID[0])
+	}
+	err := r.db.QueryRow(ctx, q, args...).Scan(&it.ID, &it.Version, &it.CreatedAt, &it.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) && len(parentID) == 1 {
+		return ErrDictDeleteConflict
+	}
+
 	if err != nil {
 		if isPgUnique(err) {
 			return ErrDictItemDupCode
@@ -243,11 +261,16 @@ func (r *DictRepo) CreateItem(ctx context.Context, it *model.DictItem) error {
 	return err
 }
 
-func (r *DictRepo) UpdateItem(ctx context.Context, it *model.DictItem) error {
+// UpdateItem 的备注省略语义与 UpdateType 一致。
+func (r *DictRepo) UpdateItem(ctx context.Context, it *model.DictItem, remark ...*string) error {
+	var patch *string = &it.Remark
+	if len(remark) > 0 {
+		patch = remark[0]
+	}
 	tag, err := r.db.Exec(ctx, `
-		UPDATE dict_items SET label=$2, sort_order=$3, enabled=$4, remark=$5, version=version+1, updated_at=NOW()
+		UPDATE dict_items SET label=$2, sort_order=$3, enabled=$4, remark=COALESCE($5, remark), version=version+1, updated_at=NOW()
 		WHERE id=$1 AND version=$6`,
-		it.ID, it.Label, it.SortOrder, it.Enabled, it.Remark, it.Version)
+		it.ID, it.Label, it.SortOrder, it.Enabled, patch, it.Version)
 	if err != nil {
 		return err
 	}

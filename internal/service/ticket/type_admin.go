@@ -74,6 +74,13 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 	if req.Version != nil && *req.Version <= 0 {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "version 须为正整数")
 	}
+	targetID := []int64{}
+	if req.ID != nil {
+		if *req.ID <= 0 {
+			return nil, errcode.ErrInvalidParams
+		}
+		targetID = append(targetID, *req.ID)
+	}
 	version := req.Version
 	graphChanged := len(req.States) > 0 || len(req.Transitions) > 0
 	activating := req.IsActive != nil && *req.IsActive
@@ -83,6 +90,10 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 		if err != nil {
 			return nil, err
 		}
+		if req.ID != nil && *req.ID != current.ID {
+			return nil, errcode.ErrConcurrentModification
+		}
+		targetID = []int64{current.ID}
 		if version != nil && int64(*version) != current.Version {
 			return nil, errcode.ErrConcurrentModification
 		}
@@ -114,7 +125,7 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 			version = &snapshotVersion
 		}
 	}
-	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, version)
+	return s.ticketRepo.UpdateTicketType(ctx, code, req.Name, req.Description, req.States, req.Transitions, req.TransitionMeta, req.IsActive, version, targetID...)
 }
 
 // metaKeyDomain 取 meta 键域判定的 states+transitions 基线：请求带 states 用请求值，
@@ -193,9 +204,15 @@ func validateTransitionMeta(states []string, meta json.RawMessage) error {
 	return nil
 }
 
+// ConfigTarget 为配置删除的可选稳定身份/版本条件，保持 handler 经 service 分层。
+type ConfigTarget = repository.ConfigTarget
+
 // DeleteTicketType 删除类型（有工单/模板引用禁删 → ErrConflict，走停用/先清模板）
-func (s *Service) DeleteTicketType(ctx context.Context, code string) error {
-	return s.ticketRepo.DeleteTicketType(ctx, code)
+func (s *Service) DeleteTicketType(ctx context.Context, code string, target ...repository.ConfigTarget) error {
+	if len(target) > 1 || len(target) == 1 && (target[0].ID != nil && *target[0].ID <= 0 || target[0].Version != nil && *target[0].Version <= 0) {
+		return errcode.ErrInvalidParams
+	}
+	return s.ticketRepo.DeleteTicketType(ctx, code, target...)
 }
 
 // ListTicketTypesFor 列表入口：includeInactive 仅 admin/superadmin 生效（否则忽略该参数）
@@ -239,6 +256,14 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 	if err != nil {
 		return nil, err
 	}
+	if req.ID != nil {
+		if *req.ID <= 0 {
+			return nil, errcode.ErrInvalidParams
+		}
+		if *req.ID != current.ID {
+			return nil, errcode.ErrConcurrentModification
+		}
+	}
 	version := req.Version
 	if version != nil && int64(*version) != current.Version {
 		return nil, errcode.ErrConcurrentModification
@@ -268,7 +293,7 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 		return nil, err
 	}
 	warnings := s.softFieldWarnings(ctx, code, old, fields)
-	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, version)
+	return warnings, s.ticketRepo.ReplaceTypeFields(ctx, code, fields, version, current.ID)
 }
 
 // checkFieldLock 锁死守卫硬锁面（纯函数便于测试）：旧集非空时，旧 key 必须全部
@@ -424,12 +449,22 @@ func (s *Service) UpdateTicketTemplate(ctx context.Context, code string, req *mo
 	if req.DefaultPriority != nil && (*req.DefaultPriority < 1 || *req.DefaultPriority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "default_priority 须为 1–4")
 	}
-	return s.ticketRepo.UpdateTicketTemplate(ctx, code, req.Name, req.DefaultPriority, req.DefaultFields, req.DefaultSLAMinutes, req.Version)
+	var targetID []int64
+	if req.ID != nil {
+		if *req.ID <= 0 {
+			return nil, errcode.ErrInvalidParams
+		}
+		targetID = append(targetID, *req.ID)
+	}
+	return s.ticketRepo.UpdateTicketTemplate(ctx, code, req.Name, req.DefaultPriority, req.DefaultFields, req.DefaultSLAMinutes, req.Version, targetID...)
 }
 
 // DeleteTicketTemplate 删除模板
-func (s *Service) DeleteTicketTemplate(ctx context.Context, code string) error {
-	return s.ticketRepo.DeleteTicketTemplate(ctx, code)
+func (s *Service) DeleteTicketTemplate(ctx context.Context, code string, target ...repository.ConfigTarget) error {
+	if len(target) > 1 || len(target) == 1 && (target[0].ID != nil && *target[0].ID <= 0 || target[0].Version != nil && *target[0].Version <= 0) {
+		return errcode.ErrInvalidParams
+	}
+	return s.ticketRepo.DeleteTicketTemplate(ctx, code, target...)
 }
 
 // validateTypeGraph states 必须为非空字符串数组；transitions 必须为

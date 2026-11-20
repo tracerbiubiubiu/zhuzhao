@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/semaphore"
 )
 
 // IAMDBTX is the connection used by authorization reads and their protected
@@ -24,9 +25,10 @@ type IAMDBTX interface {
 
 type iamWriteKey struct{}
 type iamWriteState struct {
-	pool  *pgxpool.Pool
-	tx    pgx.Tx
-	after []func() error
+	pool   *pgxpool.Pool
+	tx     pgx.Tx
+	after  []func() error
+	shared bool
 }
 
 var iamLocalGates sync.Map
@@ -36,6 +38,11 @@ var iamLocalGates sync.Map
 const iamGuardKey int64 = 0x5a5a49414d000001
 
 func IAMWriteActive(ctx context.Context) bool {
+	state, ok := ctx.Value(iamWriteKey{}).(*iamWriteState)
+	return ok && !state.shared
+}
+
+func IAMGuardActive(ctx context.Context) bool {
 	_, ok := ctx.Value(iamWriteKey{}).(*iamWriteState)
 	return ok
 }
@@ -63,23 +70,49 @@ func WithIAMGuard(ctx context.Context, pool *pgxpool.Pool, fn func(context.Conte
 }
 
 func WithIAMGuardValue[T any](ctx context.Context, pool *pgxpool.Pool, fn func(context.Context) (T, error)) (result T, err error) {
+	return withIAMGuardValue(ctx, pool, false, fn)
+}
+
+// WithIAMCommandGuard protects a business write that reads IAM facts. It can
+// overlap other business commands, while IAM writers serialize with all of them.
+func WithIAMCommandGuard(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context, pgx.Tx) error) error {
+	_, err := withIAMGuardValue(ctx, pool, true, func(ctx context.Context) (struct{}, error) {
+		state := ctx.Value(iamWriteKey{}).(*iamWriteState)
+		return struct{}{}, fn(ctx, state.tx)
+	})
+	return err
+}
+
+func withIAMGuardValue[T any](ctx context.Context, pool *pgxpool.Pool, shared bool, fn func(context.Context) (T, error)) (result T, err error) {
 	if state, ok := ctx.Value(iamWriteKey{}).(*iamWriteState); ok {
 		if state.pool != pool {
 			return result, errors.New("IAM guard cannot span independent pools")
 		}
+		if state.shared && !shared {
+			return result, errors.New("IAM command guard cannot acquire IAM write privileges")
+		}
 		return fn(ctx)
 	}
-	// Wait before occupying a pool slot: concurrent waiters cannot consume the
-	// small pool while the current writer needs its one guarded connection.
-	candidate := make(chan struct{}, 1)
-	gateAny, _ := iamLocalGates.LoadOrStore(pool, candidate)
-	gate := gateAny.(chan struct{})
-	select {
-	case gate <- struct{}{}:
-	case <-ctx.Done():
-		return result, ctx.Err()
+	// Queue local waiters before they occupy a connection. A queued writer
+	// receives the gate once existing commands finish, ahead of later commands.
+	const exclusiveWeight int64 = 1 << 32
+	weight := exclusiveWeight
+	lockSQL, unlockSQL := `SELECT pg_advisory_lock($1)`, `SELECT pg_advisory_unlock($1)`
+	if shared {
+		weight = 1
+		lockSQL, unlockSQL = `SELECT pg_advisory_lock_shared($1)`, `SELECT pg_advisory_unlock_shared($1)`
 	}
-	defer func() { <-gate }()
+	gateAny, _ := iamLocalGates.LoadOrStore(pool, semaphore.NewWeighted(exclusiveWeight))
+	gate := gateAny.(*semaphore.Weighted)
+	if err := gate.Acquire(ctx, weight); err != nil {
+		return result, err
+	}
+	gateHeld := true
+	defer func() {
+		if gateHeld {
+			gate.Release(weight)
+		}
+	}()
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
 		return result, fmt.Errorf("acquire IAM connection: %w", err)
@@ -94,14 +127,14 @@ func WithIAMGuardValue[T any](ctx context.Context, pool *pgxpool.Pool, fn func(c
 		defer cancel()
 		if locked {
 			var unlocked bool
-			if unlockErr := conn.QueryRow(cleanup, `SELECT pg_advisory_unlock($1)`, iamGuardKey).Scan(&unlocked); unlockErr != nil || !unlocked {
+			if unlockErr := conn.QueryRow(cleanup, unlockSQL, iamGuardKey).Scan(&unlocked); unlockErr != nil || !unlocked {
 				_ = conn.Conn().Close(cleanup)
 			}
 		}
 		conn.Release()
 	}
 	defer release()
-	if _, err = conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, iamGuardKey); err != nil {
+	if _, err = conn.Exec(ctx, lockSQL, iamGuardKey); err != nil {
 		cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		_ = conn.Conn().Close(cleanup)
@@ -119,7 +152,7 @@ func WithIAMGuardValue[T any](ctx context.Context, pool *pgxpool.Pool, fn func(c
 		defer cancel()
 		_ = tx.Rollback(cleanup)
 	}()
-	state := &iamWriteState{pool: pool, tx: tx}
+	state := &iamWriteState{pool: pool, tx: tx, shared: shared}
 	guarded := context.WithValue(ctx, iamWriteKey{}, state)
 	result, err = fn(guarded)
 	if err != nil {
@@ -132,6 +165,10 @@ func WithIAMGuardValue[T any](ctx context.Context, pool *pgxpool.Pool, fn func(c
 	// transaction is committed; release its session before external projections,
 	// while the process gate still serializes this instance through projection.
 	release()
+	if shared {
+		gate.Release(weight)
+		gateHeld = false
+	}
 	for _, after := range state.after {
 		if err = after(); err != nil {
 			return result, err
@@ -182,7 +219,10 @@ func (r *MenuRepo) WithIAMGuard(ctx context.Context, fn func(context.Context) er
 // do not gain service authorization by owning a transaction. Runtime services
 // acquire the full guard before Begin, including all decision reads.
 func AcquireIAMTransactionGuard(ctx context.Context, tx pgx.Tx) error {
-	if IAMWriteActive(ctx) {
+	if state, ok := ctx.Value(iamWriteKey{}).(*iamWriteState); ok {
+		if state.shared {
+			return errors.New("IAM command guard cannot acquire IAM write privileges")
+		}
 		return nil
 	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, iamGuardKey); err != nil {

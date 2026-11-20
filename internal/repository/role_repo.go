@@ -106,9 +106,9 @@ func (r *RoleRepo) ListMenuIDsByRoleID(ctx context.Context, roleID int64) ([]int
 }
 
 // AssignMenus 全量覆盖角色菜单，并同步 casbin_rule（admin/superadmin 仅更新 role_menus）
-func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []int64, apis []*model.MenuAPI) error {
+func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []int64, apis []*model.MenuAPI, original ...[]int64) error {
 	if !IAMWriteActive(ctx) {
-		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.AssignMenus(ctx, role, menuIDs, apis) })
+		return r.WithIAMGuard(ctx, func(ctx context.Context) error { return r.AssignMenus(ctx, role, menuIDs, apis, original...) })
 	}
 	tx, err := IAMDB(ctx, r.db).Begin(ctx)
 	if err != nil {
@@ -124,6 +124,23 @@ func (r *RoleRepo) AssignMenus(ctx context.Context, role *model.Role, menuIDs []
 	if err := tx.QueryRow(ctx,
 		`SELECT id FROM roles WHERE id = $1 FOR UPDATE`, role.ID).Scan(&lockID); err != nil {
 		return fmt.Errorf("lock role for menu assign: %w", err)
+	}
+
+	if len(original) > 1 {
+		return errcode.ErrInvalidParams
+	}
+	if len(original) == 1 {
+		rows, err := tx.Query(ctx, `SELECT menu_id FROM role_menus WHERE role_id=$1`, role.ID)
+		if err != nil {
+			return err
+		}
+		current, err := pgx.CollectRows(rows, pgx.RowTo[int64])
+		if err != nil {
+			return err
+		}
+		if !sameMenuSet(current, original[0]) {
+			return errcode.ErrConcurrentModification
+		}
 	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM role_menus WHERE role_id = $1`, role.ID); err != nil {
@@ -449,4 +466,25 @@ func (r *RoleRepo) GetRoleRef(ctx context.Context, id int64) (*RoleRef, error) {
 		return nil, fmt.Errorf("get role ref: %w", err)
 	}
 	return &ref, nil
+}
+
+// Compare sets rather than order or duplicate representation; no current IDs leave this transaction.
+func sameMenuSet(current, original []int64) bool {
+	expected := make(map[int64]bool, len(original))
+	for _, id := range original {
+		expected[id] = true
+	}
+	actual := make(map[int64]bool, len(current))
+	for _, id := range current {
+		actual[id] = true
+	}
+	if len(actual) != len(expected) {
+		return false
+	}
+	for id := range actual {
+		if !expected[id] {
+			return false
+		}
+	}
+	return true
 }

@@ -10,13 +10,18 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/channelsender"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -55,29 +60,66 @@ func TestC6_StorageUsageAlert_E2E(t *testing.T) {
 		_, _ = testPool.Exec(ctx, `DELETE FROM message_log WHERE biz_type='ops' AND biz_id='storage'`)
 	})
 
+	// Isolate the sampled relation from file fixtures left by other ticket
+	// integration cases. Notification rules still use the migrated database.
+	schema := "c6_usage_" + uniqueSuffix()
+	schemaSQL := pgx.Identifier{schema}.Sanitize()
+	_, err := testPool.Exec(ctx, "CREATE SCHEMA "+schemaSQL)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, err := testPool.Exec(ctx, "DROP SCHEMA "+schemaSQL+" CASCADE")
+		assert.NoError(t, err)
+	})
+	_, err = testPool.Exec(ctx, "CREATE TABLE "+schemaSQL+".file_objects (LIKE public.file_objects INCLUDING ALL)")
+	require.NoError(t, err)
+	cfg := testPool.Config()
+	cfg.ConnConfig.RuntimeParams["search_path"] = schema + ",public"
+	usagePool, err := pgxpool.NewWithConfig(ctx, cfg)
+	require.NoError(t, err)
+	t.Cleanup(usagePool.Close)
+
 	// ② 全链：file_objects 实数 → Sample → 阈值跃迁 emit → 规则 → 渲染 → 发送
-	// created_by 走 FK——建真实用户（E 前缀唯一工号）
 	var uid int64
 	require.NoError(t, testPool.QueryRow(ctx,
 		`INSERT INTO users (employee_no, username, password, status) VALUES ($1, $1, 'hash', 1) RETURNING id`,
 		"c6e2_"+uniqueSuffix()).Scan(&uid))
-	const bucket = "c6_usage_e2e"
+	const bucket, avatarBucket = "c6_usage_e2e", "c6_usage_avatar_e2e"
 	t.Cleanup(func() {
-		_, _ = testPool.Exec(ctx, `DELETE FROM file_objects WHERE bucket=$1`, bucket)
 		_, _ = testPool.Exec(ctx, `DELETE FROM users WHERE id=$1`, uid)
 	})
 	seedObj := func(key string, size int64) {
-		_, err := testPool.Exec(ctx, `
+		_, err := usagePool.Exec(ctx, `
 			INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, size_bytes, created_by, confirmed_at)
 			VALUES ($1, $2, 'ticket_richtext', 'confirmed', 'a.png', 'image/png', $3, $4, NOW())`,
 			bucket, key, size, uid)
 		require.NoError(t, err)
 	}
-	seedObj("richtext/x.png", 900) // 900/1000 = 0.90 → critical 档
+	seedObj("richtext/x.png", 900)
+	_, err = usagePool.Exec(ctx, `
+		INSERT INTO file_objects (bucket, object_key, purpose, status, file_name, mime_type, size_bytes, created_by, confirmed_at)
+		VALUES ($1, 'avatar/y.png', 'avatar', 'confirmed', 'y.png', 'image/png', 100, $2, NOW())`, avatarBucket, uid)
+	require.NoError(t, err)
 
-	sampler := service.NewStorageUsageSampler(testPool, reg, 1000,
+	sampler := service.NewStorageUsageSampler(usagePool, reg, 1000,
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, sampler.Sample(ctx))
+	scanCtx, cancelScan := context.WithCancel(ctx)
+	defer cancelScan()
+	scanReturned := make(chan struct{})
+	hookStatus := make(chan error, 3)
+	reg.Subscribe(domainevent.BizOps, "ops.usage_alert.lifecycle", domainevent.HookFunc(func(hookCtx context.Context, _ domainevent.DomainEvent) {
+		<-scanReturned
+		hookStatus <- hookCtx.Err()
+	}))
+	sampleErr := sampler.Sample(scanCtx)
+	cancelScan()
+	close(scanReturned)
+	require.NoError(t, sampleErr)
+	select {
+	case err := <-hookStatus:
+		require.NoError(t, err, "delivery remains actionable after a normal scan returns")
+	case <-time.After(2 * time.Second):
+		t.Fatal("storage usage event did not reach its subscriber")
+	}
 
 	waitForMsg := func(substr string) *channelsender.Message {
 		t.Helper()
@@ -114,7 +156,13 @@ func TestC6_StorageUsageAlert_E2E(t *testing.T) {
 	// 双向档位），但本测试时序里 60s 内二次派发同 biz+action 被 S6 节流窗合并（日志
 	// "notify: throttled" 即第二次派发已发生的证据）——生产小时级采样下档位跃迁
 	// 间隔恒 ≥1h，节流窗咬不到本事件，回落沿投递在生产态可达。
-	_, err := testPool.Exec(ctx, `DELETE FROM file_objects WHERE bucket=$1`, bucket)
+	_, err = usagePool.Exec(ctx, `DELETE FROM file_objects WHERE bucket=$1`, bucket)
 	require.NoError(t, err)
-	require.NoError(t, sampler.Sample(ctx), "零对象复采不炸（gauge 归零路径）")
+	require.NoError(t, sampler.Sample(ctx))
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	middleware.RenderMetrics(c)
+	assert.NotContains(t, w.Body.String(), `zhuzhao_storage_usage_bytes{label="ticket_richtext"}`)
+	assert.Contains(t, w.Body.String(), `zhuzhao_storage_usage_bytes{label="avatar"} 100`)
+	assert.Contains(t, w.Body.String(), `zhuzhao_storage_usage_bytes{label="total"} 100`)
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 )
 
 // StorageUsageSampler C-6（2026-10-27 A-2 拍板 a 案）：file_objects 按 purpose
@@ -42,23 +43,21 @@ func (s *StorageUsageSampler) Sample(ctx context.Context) error {
 	defer rows.Close()
 
 	var total int64
-	perPurpose := map[string]int64{}
+	gauges := make(map[string]float64)
 	for rows.Next() {
 		var p string
 		var sum int64
 		if err := rows.Scan(&p, &sum); err != nil {
 			return fmt.Errorf("storage usage scan: %w", err)
 		}
-		perPurpose[p] = sum
+		gauges[p] = float64(sum)
 		total += sum
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("storage usage rows: %w", err)
 	}
-	for p, sum := range perPurpose {
-		middleware.SetGauge("zhuzhao_storage_usage_bytes", p, float64(sum))
-	}
-	middleware.SetGauge("zhuzhao_storage_usage_bytes", "total", float64(total))
+	gauges["total"] = float64(total)
+	middleware.SetGaugeSnapshot("zhuzhao_storage_usage_bytes", gauges)
 
 	level := usageLevel(total, s.capacity)
 	ratio := float64(total) / float64(s.capacity)
@@ -70,7 +69,9 @@ func (s *StorageUsageSampler) Sample(ctx context.Context) error {
 	if level != s.level {
 		// 档位跃迁才 emit（含回落到 0 的恢复通知）；registry 可空——纯采样部署态
 		if s.registry != nil {
-			s.registry.Dispatch(ctx, domainevent.DomainEvent{
+			// The cron tick ends before asynchronous subscribers finish. The
+			// registry still cancels them if this process loses ownership.
+			s.registry.Dispatch(singleton.Detach(ctx), domainevent.DomainEvent{
 				BizType: domainevent.BizOps,
 				Action:  domainevent.ActionOpsStorageUsageHigh,
 				BizID:   "storage",

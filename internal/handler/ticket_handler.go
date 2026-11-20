@@ -560,13 +560,12 @@ func (h *TicketHandler) CreateTicketType(c *gin.Context) {
 	response.OK(c, t)
 }
 
-// UpdateTicketType PUT /api/v1/ticket-types/:code
+// UpdateTicketType POST /api/v1/ticket-types/update
 //
 //	@Summary	更新工单类型（patch；code 不可改）
 //	@Tags		ticket-admin
 //	@Accept		json
 //	@Produce	json
-//	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.UpdateTicketTypeRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-types/update [post]
@@ -585,12 +584,13 @@ func (h *TicketHandler) UpdateTicketType(c *gin.Context) {
 	response.OK(c, t)
 }
 
-// DeleteTicketType DELETE /api/v1/ticket-types/:code
+// DeleteTicketType POST /api/v1/ticket-types/delete
 //
 //	@Summary	删除工单类型（有工单/模板引用禁删 → 409）
 //	@Tags		ticket-admin
+//	@Accept		json
 //	@Produce	json
-//	@Param		code	path	string	true	"类型编码"
+//	@Param		req		body	model.DeleteByCodeRequest	true	"编码与可选稳定目标条件"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-types/delete [post]
 func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
@@ -600,20 +600,19 @@ func (h *TicketHandler) DeleteTicketType(c *gin.Context) {
 		response.BadRequest(c, "code 必填")
 		return
 	}
-	if err := h.ticketService.DeleteTicketType(c.Request.Context(), req.Code); err != nil {
+	if err := h.ticketService.DeleteTicketType(c.Request.Context(), req.Code, ticketsvc.ConfigTarget{ID: req.ID, Version: req.Version}); err != nil {
 		writeServiceError(c, err)
 		return
 	}
 	response.OK(c, nil)
 }
 
-// ReplaceTicketTypeFields PUT /api/v1/ticket-types/:code/fields
+// ReplaceTicketTypeFields POST /api/v1/ticket-types/fields/replace
 //
 //	@Summary	全量替换类型字段集
 //	@Tags		ticket-admin
 //	@Accept		json
 //	@Produce	json
-//	@Param		code	path	string							true	"类型编码"
 //	@Param		req		body	model.ReplaceTypeFieldsRequest	true	"字段集"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-types/fields/replace [post]
@@ -679,13 +678,12 @@ func (h *TicketHandler) CreateTicketTemplate(c *gin.Context) {
 	response.OK(c, t)
 }
 
-// UpdateTicketTemplate PUT /api/v1/ticket-templates/:code
+// UpdateTicketTemplate POST /api/v1/ticket-templates/update
 //
 //	@Summary	更新工单模板（patch；code/type/org 不可改）
 //	@Tags		ticket-admin
 //	@Accept		json
 //	@Produce	json
-//	@Param		code	path	string							true	"模板编码"
 //	@Param		req		body	model.UpdateTicketTemplateRequest	true	"更新内容"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-templates/update [post]
@@ -704,12 +702,13 @@ func (h *TicketHandler) UpdateTicketTemplate(c *gin.Context) {
 	response.OK(c, t)
 }
 
-// DeleteTicketTemplate DELETE /api/v1/ticket-templates/:code
+// DeleteTicketTemplate POST /api/v1/ticket-templates/delete
 //
 //	@Summary	删除工单模板
 //	@Tags		ticket-admin
+//	@Accept		json
 //	@Produce	json
-//	@Param		code	path	string	true	"模板编码"
+//	@Param		req		body	model.DeleteByCodeRequest	true	"编码与可选稳定目标条件"
 //	@Success	200		{object}	response.Response
 //	@Router		/api/v1/ticket-templates/delete [post]
 func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
@@ -719,7 +718,7 @@ func (h *TicketHandler) DeleteTicketTemplate(c *gin.Context) {
 		response.BadRequest(c, "code 必填")
 		return
 	}
-	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), req.Code); err != nil {
+	if err := h.ticketService.DeleteTicketTemplate(c.Request.Context(), req.Code, ticketsvc.ConfigTarget{ID: req.ID, Version: req.Version}); err != nil {
 		writeServiceError(c, err)
 		return
 	}

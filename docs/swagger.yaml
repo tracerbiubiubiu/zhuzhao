@@ -33,6 +33,13 @@ definitions:
         items:
           type: string
         type: array
+      original_menu_ids:
+        description: |-
+          OriginalMenuIDs 是可选的原集合快照；空数组表示已读空集，省略/null 保留旧覆盖语义。
+          条件只比较当前集合，不追踪集合变更后又恢复原值的中间历史。
+        items:
+          type: string
+        type: array
       role_id:
         example: "0"
         type: string
@@ -128,6 +135,29 @@ definitions:
     required:
     - content
     - ticket_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateDictItemRequest:
+    properties:
+      code:
+        type: string
+      enabled:
+        description: 缺省 true（建时即停用场景显式传 false）
+        type: boolean
+      label:
+        type: string
+      remark:
+        type: string
+      sort_order:
+        type: integer
+      type_code:
+        type: string
+      type_id:
+        example: "0"
+        type: string
+    required:
+    - code
+    - label
+    - type_code
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateNoteRequest:
     properties:
@@ -327,6 +357,19 @@ definitions:
     required:
     - password
     - username
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest:
+    properties:
+      code:
+        type: string
+      id:
+        description: ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+        example: "0"
+        type: string
+      version:
+        type: integer
+    required:
+    - code
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteTicketRequest:
     properties:
@@ -574,6 +617,10 @@ definitions:
         items:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput'
         type: array
+      id:
+        description: ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+        example: "0"
+        type: string
       version:
         description: |-
           Version 为可选客户端期望版本；缺省时使用旧字段预检前的父类型快照CAS。
@@ -788,6 +835,44 @@ definitions:
     required:
     - id
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictItemRequest:
+    properties:
+      enabled:
+        type: boolean
+      id:
+        example: "0"
+        type: string
+      label:
+        type: string
+      remark:
+        type: string
+      sort_order:
+        type: integer
+      version:
+        type: integer
+    required:
+    - id
+    - label
+    - version
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictTypeRequest:
+    properties:
+      enabled:
+        type: boolean
+      id:
+        example: "0"
+        type: string
+      name:
+        type: string
+      remark:
+        type: string
+      version:
+        type: integer
+    required:
+    - id
+    - name
+    - version
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdatePasswordRequest:
     properties:
       device_id:
@@ -911,6 +996,10 @@ definitions:
         type: integer
       default_sla_minutes:
         type: integer
+      id:
+        description: ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+        example: "0"
+        type: string
       name:
         maxLength: 200
         type: string
@@ -928,6 +1017,10 @@ definitions:
         description: W1（BK-18 整改）：code 从 path param 迁入 body（POST 风格，standards §3-2）
         type: string
       description:
+        type: string
+      id:
+        description: ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+        example: "0"
         type: string
       is_active:
         type: boolean
@@ -1312,6 +1405,69 @@ paths:
       summary: 死信列表（运维向，配合 retry 端点闭环）
       tags:
       - tasks
+  /api/v1/dict-items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 字典写入请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.CreateDictItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 创建字典条目，可校验父类型身份
+      tags:
+      - dictionary
+  /api/v1/dict-items/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 字典写入请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新字典条目，可省略备注
+      tags:
+      - dictionary
+  /api/v1/dicts/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 字典写入请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.UpdateDictTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新字典类型，可省略备注
+      tags:
+      - dictionary
   /api/v1/files/{key}:
     get:
       description: '定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即
@@ -2336,12 +2492,15 @@ paths:
       - ticket
   /api/v1/ticket-templates/delete:
     post:
+      consumes:
+      - application/json
       parameters:
-      - description: 模板编码
-        in: path
-        name: code
+      - description: 编码与可选稳定目标条件
+        in: body
+        name: req
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest'
       produces:
       - application/json
       responses:
@@ -2357,11 +2516,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: 模板编码
-        in: path
-        name: code
-        required: true
-        type: string
       - description: 更新内容
         in: body
         name: req
@@ -2464,12 +2618,15 @@ paths:
       - message
   /api/v1/ticket-types/delete:
     post:
+      consumes:
+      - application/json
       parameters:
-      - description: 类型编码
-        in: path
-        name: code
+      - description: 编码与可选稳定目标条件
+        in: body
+        name: req
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.DeleteByCodeRequest'
       produces:
       - application/json
       responses:
@@ -2485,11 +2642,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: 类型编码
-        in: path
-        name: code
-        required: true
-        type: string
       - description: 字段集
         in: body
         name: req
@@ -2511,11 +2663,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: 类型编码
-        in: path
-        name: code
-        required: true
-        type: string
       - description: 更新内容
         in: body
         name: req

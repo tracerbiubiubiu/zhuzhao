@@ -354,6 +354,23 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, id int64, passwordHash st
 	return nil
 }
 
+// ChangePasswordIfCurrent consumes the credential verified by the caller.
+// The existing IAM writer guard orders this change with resets and disables.
+func (r *UserRepo) ChangePasswordIfCurrent(ctx context.Context, id int64, currentHash, newHash string) error {
+	return r.WithIAMGuard(ctx, func(ctx context.Context) error {
+		tag, err := IAMDB(ctx, r.db).Exec(ctx, `
+			UPDATE users SET password = $3, must_change_password = false, updated_at = NOW()
+			WHERE id = $1 AND password = $2 AND status = 1 AND deleted_at IS NULL`, id, currentHash, newHash)
+		if err != nil {
+			return fmt.Errorf("change password: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return errcode.ErrInvalidCredentials
+		}
+		return nil
+	})
+}
+
 // SoftDelete 软删除用户（事务内清理 user_roles/user_orgs 关联）
 func (r *UserRepo) SoftDelete(ctx context.Context, id int64) error {
 	if !IAMWriteActive(ctx) {

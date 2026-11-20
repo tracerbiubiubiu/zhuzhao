@@ -143,6 +143,8 @@ type CreateTicketTypeRequest struct {
 
 // UpdateTicketTypeRequest 更新工单类型（patch：nil 保持；code 不可改）
 type UpdateTicketTypeRequest struct {
+	// ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+	ID *int64 `json:"id,string,omitempty" binding:"omitempty,gt=0"`
 	// W1（BK-18 整改）：code 从 path param 迁入 body（POST 风格，standards §3-2）
 	Code        string          `json:"code" binding:"required"`
 	Name        *string         `json:"name" binding:"omitempty,max=100"`
@@ -172,6 +174,8 @@ type TicketTypeFieldInput struct {
 
 // ReplaceTypeFieldsRequest 全量替换类型字段集
 type ReplaceTypeFieldsRequest struct {
+	// ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+	ID *int64 `json:"id,string,omitempty" binding:"omitempty,gt=0"`
 	// W1（BK-18 整改）：code 从 path param 迁入 body
 	Code   string                 `json:"code" binding:"required"`
 	Fields []TicketTypeFieldInput `json:"fields"`
@@ -182,6 +186,9 @@ type ReplaceTypeFieldsRequest struct {
 
 // DeleteByCodeRequest W1（BK-18 整改）：delete 端点 POST 化后的 body（code 原在 path）
 type DeleteByCodeRequest struct {
+	Version *int `json:"version,omitempty" binding:"omitempty,gt=0"`
+	// ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+	ID   *int64 `json:"id,string,omitempty" binding:"omitempty,gt=0"`
 	Code string `json:"code" binding:"required"`
 }
 
@@ -198,6 +205,8 @@ type CreateTicketTemplateRequest struct {
 
 // UpdateTicketTemplateRequest 更新模板（patch：nil 保持；code/type_code/org 不可改）
 type UpdateTicketTemplateRequest struct {
+	// ID 可选稳定身份；省略兼容旧编码调用，传入须命中原对象。
+	ID *int64 `json:"id,string,omitempty" binding:"omitempty,gt=0"`
 	// W1（BK-18 整改）：code 从 path param 迁入 body
 	Code              string          `json:"code" binding:"required"`
 	Name              *string         `json:"name" binding:"omitempty,max=200"`

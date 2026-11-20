@@ -97,6 +97,7 @@ services:
 
   # ── zhuzhao app（配置卷挂载测试版：gateway target=activelist 服务名）──
   app:
+    stop_grace_period: 1m # 与正式编排的主仓停止预算一致
     build:
       context: ..
       dockerfile: deployments/Dockerfile
@@ -195,6 +196,7 @@ services:
       - zhuzhao_test
 
   taskrunner:
+    stop_grace_period: 75s # 顺序完成 HTTP 和 worker 排空
     build: ../../taskrunner
     image: taskrunner-test:latest
     container_name: zt-taskrunner
