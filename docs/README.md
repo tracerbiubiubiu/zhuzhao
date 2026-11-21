@@ -1,10 +1,6 @@
 # zhuzhao 文档入口
 
-> **Phase6已进入模块详设**：[五个模块合同与变化](phase6/module-detail-index.md)可直接查DTO、数据约束、权限、正常/异常及验收；本地核心与后续UAA/AI边界保持，产品未实现。
-
-> **用途**：按阅读任务进入五仓资料；本页是导航，不是功能验收表。**范围**：当前实现、后续设计与历史证据。**权威**：[控制台](review/11-project-control.md)、[规划收口](planning/planning-closeout.md)及各模块合同；状态以对应源码、候选和收据为准。
-
-文档统一从本页进入；全项目计划集中在[planning](planning/README.md)，各仓实现/API/运维文档继续随对应代码版本维护。本地原材料的存放与Git边界见[材料目录](materials.md)。
+系统目前能用账号、组织和角色管理工单。下一批优先准备人工漏洞整改（B2）。一个派单人把同一负责人名下的两条风险放进一张整改票，办理人逐项提交证据，负责人逐项复测。B2 仍处于开工准备，当前能做的事、计划中的旅程及其验收分别有对应入口。 [当前能力](review/11-project-control.md) · [B2 开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
 
 ## 先选择阅读路径
 
@@ -13,7 +9,7 @@
 - **开发者修改一个模块**：[产品边界](vision.md) → [开发指南](guides/development.md) → [工程公约](standards.md) → 对应[当前模块](modules/README.md)、Phase/工作包及[目标合同](design/README.md)。编码前冻结本批预期，按公约测试先行。
 - **运维或审计核实事实**：[运维入口](ops/README.md)或[审查入口](review/README.md) → 准确源码/制品/环境与验证记录 → 原始证据/历史报告。旧报告只证明其固定时点。
 
-第一次接手可先读[架构导览](design/architecture.md)，了解五仓、三层鉴权及调用边界；要判断某项能力是否已实现，再查控制台和实际候选。
+第一次接手可先看[架构导览](design/architecture.md)，再沿[工单模块](modules/ticket.md)查一次变更。比如经办人提交状态转换时，入口资格、工单可见范围和当前动作资格在哪儿检查，状态和历史在哪儿提交。研发计划中的旧票钉版、逐项复测等规则查[工单详设](phase6/ticket-module-detail.md)。
 
 ## 按任务找文档
 
@@ -30,13 +26,13 @@
 
 ## 阶段导航
 
-**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA保留历史基线；互通CE、旧子范围与既有包复估已进入[净估注册表](planning/planning-scope-estimates.json)，完整相对排程与独立复核在本轮同步。产品实现和真实激活分开。
+**看近期开发**。Phase 1–5 的实现已合入各仓主线。Phase 6 先做账号撤权和实际业务写入前的权限复核，再交付工单定义发布与证据转换，随后联通第一条人工风险整改旅程。实际开工日、实施授权与真实试用输入仍待绑定。后续能力及其工程量按[交付排期](planning/intranet-uaa-release-schedule.md)和[规划总账](planning/planning-backlog.md)核对。
 
 [Phase1](phase1/README.md) → [Phase2](phase2/README.md) → [Phase3](phase3/README.md) → [Phase4](phase4/README.md)为已交付阶段的设计与记录；[Phase5](phase5/README.md)保留已合main的能力和债务出处。[Phase6](phase6/README.md)是近期可信底座/风险/体验切片，[Phase7](phase7/README.md)承接受控能力与专业集成，[Phase8](phase8/README.md)承接领域Agent/专业执行，[Phase9](phase9/README.md)承接持久协同；P10及更远候选见路线图，不为目录完整性建立空阶段稿。
 
 旧Phase分模块稿保留来源与细节，适用/替代关系从现行阶段入口、共同合同和总账核对。设计候选不等于所有DTO/DDL/测试均已冻结；各模块开工前仍有自己的冻结和测试出口。Phase5交付与清理的固定记录见[验收记录§8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)及[运行手册](ops/runbook.md)。
 
-规划产能已按单席/每周5工程日确认，实际开工日T0尚未启动且无严格截止；当前口径以[排程资源说明](planning/execution-schedule.json)和[所有者决策](planning/planning-decisions.json)为准。源码整合、实际部署、功能开工各自留证，不从目录名或排期推断。
+旧排程按单席、每周 5 个有效工程日计算。B2 按约一人产能准备，实际开工日、每周可用时段和实施授权仍需确认。 [排程资源说明](planning/execution-schedule.json) · [B2 待确认输入](planning/owner-decision-agenda.md#详设审计后的排产选择)
 
 ## 五仓各自维护，结构统一
 
@@ -46,7 +42,7 @@
 - **taskrunner**：[本地文档](../../taskrunner/docs/README.md) / [任务服务文档（main）](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
 - **activelist**：[本地文档](../../activelist/docs/README.md) / [动态清单文档（main）](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
 
-以上本地入口读取当前检出的候选，Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
+本地入口适用于五仓同级检出的布局，读取对应工作树内容。Web 入口指向各仓主线。查特定候选时，以交接记录列出的仓库、分支和提交为准。组件的配置、API 与部署以归属仓的说明为准。
 
 ## 维护规则
 

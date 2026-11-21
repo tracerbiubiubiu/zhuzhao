@@ -14,7 +14,7 @@
 
 - **理解现有系统**：先读[系统架构](architecture.md)，按问题进入[权限继承与级联](rbac-inheritance-and-cascade.md)及模块说明。图中的服务关系不表示已批准全面微服务拆分。
 - **修改后续能力**：从[规划入口按工作包找合同与交接](../planning/README.md#按工作包找合同与交接)，再读本目录的共同合同、归属实现仓的领域合同和本任务对应的阶段详设。阶段详设落实该批能力，不替代跨阶段共同合同；候选字段/schema不等于当前API。
-- **查为什么这样选**：[ADR](../adr/README.md)给决策及后继；[设计决策](design-decisions.md)保留讨论时间序，[旧系统对比](system-comparison.md)保留设计来源。旧“当前”一词须结合日期和后继解释。
+- **查为什么这样选**。例如要懂为什么路由用 Casbin、工单对象权留在领域服务，先读[权限模型和引擎复评](authorization-model-and-engine-choice.md)。重大决策及后继见[ADR](../adr/README.md)，讨论经过和原有对照依据见[设计决策](design-decisions.md)及[旧系统对比](system-comparison.md)。
 
 ## 第一次阅读时的术语
 

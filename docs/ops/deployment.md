@@ -48,6 +48,13 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 - `ui` = 前端控制台（nginx 静态 + `/api`·`/al/api` 精确反代 app；构建上下文相对本目录跨仓 `../../zhuzhao-ui`——**两仓同级 checkout**）。
 - `APP_SERVER_TRUSTED_PROXIES`（默认 `172.16.0.0/12`）：经 ui 反代后 ClientIP 还原依赖此配置，空值=限流桶全站共享。
 
+下面的结果来自当前编排和源码。启动单栈前确认 Compose 引用的两条外部网络已存在。
+
+- `config --quiet` 应退出 0 且不打印展开配置；它只检查渲染，连接、迁移和实际密钥配对仍由后续步骤验证。失败先核本节 `.env` 必填项和 Compose 报出的变量名。
+- PG/Redis 等待健康后，迁移任务应成功退出；已有库可能没有待应用迁移。迁移报错时先核其输出、实际目标库与 `schema_migrations` 的版本/dirty，不以重启 app 代替迁移处置。
+- app 启动后，上述**直连 app** 的 ready 请求应返回 HTTP 200 和 `{"status":"ok"}`。`internal/router/router.go` 的 `New` 在 DB 或 Redis Ping 失败时返回 503 和对应 `component`；请求无法建立连接则先查 app 启动输出、端口与下节单例锁，不先排查业务角色。
+- ready 正常后，单栈继续核 UI 和本栈 API，接通三栈后再测清单与任务。若 `/al` 或任务代理报错，核实际宿主或容器上游地址、共享网络和下方密钥对值表。业务响应头 `X-Request-ID` 对应访问日志的 `request_id`，可到 stdout 或实际 `log.dir` 下查。 [登录与权限排查](../modules/README.md#按业务场景串起当前实现)
+
 ## 单实例运行限制与存储公开入口（2026-11-17存量修复候选）
 
 本批单实例与存储发布画像已通过完整适用门禁及独占组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署，不授予多实例/HA运行许可。

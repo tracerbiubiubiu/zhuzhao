@@ -19,7 +19,7 @@ node docs/design/examples/ai-soc-reference/validate-schemas.cjs ../zhuzhao-ui/no
 - fixed_steps是确定性四步骤；enterprise_agent_stub只模拟协议JSON交互；bounded_host_model用脚本化提议模型，不是真实企业Agent/LLM/ADK/LangGraph。
 - actor/组织/风险/知识/工单均为demo标识，hidden记录只在夹具中验证不可泄露，不进入受权输出。
 - JSON临时文件模型只演示串行失败恢复与预算/receipt，不证明PG事务、多实例竞态或生产时间/token预算。
-- [contract-examples.json](contract-examples.json)是精确plan/approval/checkpoint样本；[可信skill](skills/risk-remediation-brief/README.md)是指令资产包，文档本身不授工具权限。
+- [contract-examples.json](contract-examples.json)给出计划、批准和恢复点的样本。阅读[示例技能索引](skills/README.md)可找到漏洞整改摘要示例及其限制。运行时权限由参考模型按授权规则检查。
 
 ## 本轮结果和维护
 
