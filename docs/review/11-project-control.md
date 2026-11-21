@@ -75,7 +75,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
-| **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1 | `internal/service/auth_service.go` `session_revoke.go` |
+| **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1；C05 持久撤权进入 B2 开工准备，待实施与故障验收 | `internal/service/auth_service.go` `session_revoke.go`；[C05 开工计划](../planning/phase6-b2-kickoff-plan.md#2-c05-首批开工计划) |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护；直接角色差量往返、任职属性保留及组织派生强权目标敏感写保护 | ✅ Phase 1；2026-11-17修复已合入main、适用CI通过；准确提交见本批后继记录，未部署 | `internal/service/user_service.go` 的 `ensureSensitiveCanManage`、`ensureTargetProtection`；`internal/service/iam_guard.go`；[本批报告](reports/audit-baseline-repair-2026-11-17.md) |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
 | **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；MyOrg名册与写入保护见[本地验证](#2026-11-18-ui错对象写入修复) | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
@@ -282,6 +282,14 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-21 B2 优先与 C05 开工准备
+
+所有者确认先做 B2 人工漏洞整改，首批双主管延期留后。按约一人产能准备两条合成风险共票逐项复核，真实试用只收新票，逐项证据必填、附件按需，旧票在隔离环境验证。开发前按只读基线、C05/S2/C04 合同、G04 隔离与恢复、B2 合成验收和最小开工交接分工。C05 定向撤销写失败和 B2 两风险逐项复测已有验收卡。实际 T0 和实施授权以后确定，真实业务画像随试用窗口绑定。C05 持久撤权和 B2 真实试用仍无产品验收结果。 [开工计划](../planning/phase6-b2-kickoff-plan.md) · [两张验收卡](../planning/phase6-b2-acceptance-cards.md) · [待拍板事项](../planning/owner-decision-agenda.md#详设审计后的排产选择)
+
+开工前桌面联审按 C05 撤权、B2 两风险与旧票隔离的顺序检查取证点和判据，已记录开工、实跑与入口启用各自的阻断条件。G04 预检及 C05 首轮取证已拆到逐项核对，标明静态来源和须绑定的候选、连线、夹具与证据。实际候选和隔离资源待开工后绑定，判据仍待隔离实跑。 [桌面联审与开工就绪](../planning/phase6-b2-kickoff-plan.md#5-桌面联审与开工就绪) · [G04 与 C05 首轮清单](../planning/phase6-b2-kickoff-plan.md#6-g04-隔离预检与-c05-首轮取证)
+
+工单引擎已经实现单状态流转及转换条件。B2 所需发布钉版、证据转换和逐项复核仍处于设计阶段。双主管延期归 E03 轻审批候选，通用审批保留 S3b 真实场景触发。产品演进沿工单配置与单路自动化、限定轻审批、可复用人工任务、并行活动编排各自评估。easy-workflow 任务批次只作设计参考。 [引擎能力与审批分期](../phase6/ticket-module-detail.md#11-常用流程能力与-b2-边界) · [产品升级方向](../phase6/ticket-module-detail.md#14-产品升级空间与演进方向)
 
 ### 2026-11-20 Phase 6 开工前设计债务
 

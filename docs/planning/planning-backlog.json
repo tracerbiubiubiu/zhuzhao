@@ -50,13 +50,13 @@
           {
             "label": "C04/C05、D06 与 E01-UAA-C 本地所选出口",
             "contract": "[底座与 IAM](../phase6/foundation-iam-module-detail.md)、[第一批 IAM](../phase6/iam-first-batch-design.md)",
-            "handoff": "[首包本地权限与接缝](../phase6/module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，按[主线扣重和 P1 顺序](intranet-uaa-release-schedule.md#3-p1-修复和阶段验收顺序)收停用撤销、当前授权及强审计，实际候选待确认",
+            "handoff": "[C05 开工计划](phase6-b2-kickoff-plan.md#2-c05-首批开工计划)先收停用持久撤权，后接[本地权限与接缝](../phase6/module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)的当前授权及强审计，实际候选待确认",
             "admission": "[权限矩阵与失败出口](../phase6/module-design-handoff.md#22-l1l2l3用例矩阵与失败出口)、[真实试用条件](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。本地不等待完整企业接管，但仍须验证实际启用范围所需的授权负例。"
           },
           {
             "label": "工单引擎首条纵切 → 人工风险整改及薄 UI",
             "contract": "[风险详设](../phase6/risk-module-detail.md)、[工单详设](../phase6/ticket-module-detail.md)及[首版范围](../phase6/first-usable-release-plan.md#2-必交业务与支持范围)",
-            "handoff": "[做到 B2 的实施顺序](intranet-uaa-release-schedule.md#做到-b2-的实施顺序)，先收权限、不可变发布和旧票钉版、转换字段和证据原子提交，再交人工风险整改。实际流程、字段和角色组合待确认",
+            "handoff": "[B2 首条人工风险旅程](phase6-b2-kickoff-plan.md#1-首条人工漏洞整改旅程)按已确认优先级准备。先收权限、不可变发布和旧票钉版、转换字段和证据原子提交，再交人工风险整改。实际流程、字段和角色组合待确认",
             "admission": "[首版质量出口](../phase6/first-usable-release-plan.md#4-按质量出口交付)，验真实旅程、逐风险证据及未授权拒绝；试用画像和准确候选待确认。"
           },
           {
@@ -68,7 +68,7 @@
           {
             "label": "B0、真实试用与 G05/E09 首产硬项（既有出口）",
             "contract": "[本地正式与企业出口](../phase6/first-usable-release-plan.md)、[基础版交付边界](../design/foundation-release-boundaries.md)",
-            "handoff": "[贯通排期](intranet-uaa-release-schedule.md)建议 B0 按目标窗口安排、完整 B1 独立验收、优先 B2。排产顺序、实际目标、净剩余和 Q12 试用运行卡待确认",
+            "handoff": "[贯通排期](intranet-uaa-release-schedule.md)已确认研发优先 B2，B0 按目标窗口安排、完整 B1 独立验收。实际 T0、目标、净剩余和 Q12 试用运行卡待确认",
             "admission": "[B0 与真实业务试用](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)、[本总账发布证据门](#按运行模式检查的发布证据门)，分开核合成预演、真实试用和所选生产形态，不能相互替代。"
           },
           {

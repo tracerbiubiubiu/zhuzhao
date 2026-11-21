@@ -4,6 +4,7 @@
 
 ## 当前交付排期
 
+- [B2 首条人工漏洞整改与 C05 开工计划](phase6-b2-kickoff-plan.md)。B2 优先已确认。首条业务画像、旧票、隔离测试、持久撤权故障回归见计划，实际 T0、产能和业务范围等见[所有者待拍板事项](owner-decision-agenda.md#详设审计后的排产选择)。
 - [按交付结果查看排期](intranet-uaa-release-schedule.md)。先交权限和工单引擎的首条纵切，再交人工风险、跨仓组合、本地正式和 UAA 纳管。页面列完整 Phase 6 的后继能力、最早与保守情景及外部准入。
 - [Phase 6 开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。按模块对照现态、首版底线、详细设计缺口和验收。
 
