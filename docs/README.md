@@ -18,13 +18,13 @@
 | 任务 | 入口 | 内容边界 |
 |---|---|---|
 | 本地开发、生成、测试 | [guides/](guides/README.md) | 可操作步骤、前置和预期结果 |
-| 理解当前模块 | [modules/](modules/README.md) | 当前调用链、数据与权限，不把目标目录当已迁移 |
+| 理解当前模块 | [modules/](modules/README.md) | 请求经过哪些代码、会读写哪些数据、在哪儿检查权限 |
 | 查架构、目标合同和决策 | [design/](design/README.md)、[adr/](adr/README.md) | 当前解释与目标设计分别标注；采纳不等于实施 |
-| 查当前API | [api/](api/README.md) | 响应/错误、Swagger及准确消费者合同；候选接口另标状态 |
+| 查当前 API | [api/](api/README.md) | 现有接口的请求、响应和错误码；规划中的接口会单独标明 |
 | 部署、备份、故障处理 | [ops/](ops/README.md)、[工具构建与扫描](ops/tools/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
 | 看当前实现或复核证据 | [review/](review/README.md) | 当前控制、审查方法与固定时点报告 |
 | 复用审计方法、模板、提示词 | [toolkit/](toolkit/README.md) | 方法、空白原件与执行实例分开维护 |
-| 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 当前交付顺序与来源承接，不直接作为完成证明 |
+| 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 接下来要交付什么，旧提案中的事项现在归哪一批 |
 
 ## 阶段导航
 
@@ -50,7 +50,7 @@
 
 [工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。可复用方法、空白模板和开发/审计提示词统一从[工作资料库](toolkit/README.md)进入；填写后的实例按文档规则归正式报告或本地批次。
 
-当前解释、目标设计、机器事实和历史报告分别维护；Markdown摘要引用或校验唯一JSON事实，不再独立报价/计数。正式报告在review/reports，必要历史在review/archive；本地参考、执行卡、原日志和临时输出按[材料目录](materials.md)归本地档案或ignored执行目录。Swagger生成物保留现有消费路径，不手改。分档门禁和远端保护未因文档整理自动启用。
+现有行为、未来设计和历史报告各有入口。工期、工作包数量等机器可核的数据以对应 JSON 为准，文档摘要引用或核对同一份数据。正式报告在 `review/reports`，旧报告和决策出处在 `review/archive`。原日志、执行卡和临时输出存放位置见[材料目录](materials.md)。Swagger 继续用生成工具更新，路径按当前调用方保留。各档检查和远端保护以实际配置为准。
 
 ## 变更记录
 

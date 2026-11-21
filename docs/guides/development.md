@@ -22,11 +22,11 @@ make migrate-up
 make dev
 ```
 
-预期是 PG/Redis 健康、迁移成功且非 dirty，然后应用监听默认 33333。端口占用时 `make dev` 拒启并显示归属。它不自动启动 UI、activelist 或 taskrunner；四进程联调步骤、密钥对值和 Compose 区别见 [部署指南](../ops/deployment.md)。
+执行者先确认 PG/Redis 健康，再查看迁移输出，确认迁移成功且版本非 dirty，最后确认应用监听默认 33333。端口占用时 `make dev` 拒启并显示归属。它不自动启动 UI、activelist 或 taskrunner；四进程联调步骤、密钥对值和 Compose 区别见 [部署指南](../ops/deployment.md)。
 
 需要从空测试数据开始时可运行`make docker-dev-reset`：删除当前主仓开发Compose声明的PG/Redis卷并重新迁移；它不等于清理AL、TR、对象存储或旧版本遗留的所有卷。完整重建应先按各仓配置列清项目资源，显式逐项处理，不执行全局Docker prune。此处说明授权和范围，本轮README更新不需要先删除现有栈。
 
-直连探针为 `/health/live` 和 `/health/ready`。ready 只证明应用就绪条件，不证明所有业务与上游链路通过。UI 开发使用其仓 `pnpm dev`，保持规定 mode。多账号测试用 runbook §4 专属账号，E000001 不用于人工改密实验。
+启动后由执行者直接请求应用的 `/health/live` 和 `/health/ready`。ready 只证明应用就绪条件，不证明所有业务与上游链路通过；涉及 UI、activelist 或 taskrunner 的场景，继续按部署指南逐条验证对应链路。UI 开发使用其仓 `pnpm dev`，保持规定 mode。多账号测试用 runbook §4 专属账号，E000001 不用于人工改密实验。
 
 ## 3. 修改与生成
 

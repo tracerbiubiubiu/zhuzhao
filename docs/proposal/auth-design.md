@@ -1,8 +1,8 @@
 # 认证鉴权方案
 >
-> **状态：已实现（Phase 1 交付：phase1/02-auth + modules/auth 为现行 SSOT；本文件留作设计溯源）**
+> **状态：已实现（Phase 1 交付：phase1/02-auth + modules/auth 为现行权威说明；本文件留作设计溯源）**
 
-> 完整的认证（AuthN）和鉴权（AuthZ）方案设计，结合旧系统经验和业界 PEP/PDP 分层模型。
+> 认证（AuthN，确认请求者是谁）和鉴权（AuthZ，判断能否执行操作）的早期方案。PEP 表示执行权限检查的位置，PDP 表示作出权限决定的组件；这些名称用于解释分层，不表示必须另部署一个鉴权服务。
 >
 > 创建日期：2026-08-12  
 > 修订：2026-08-13  
@@ -12,7 +12,7 @@
 
 ## 1. 认证方案（AuthN）
 
-> **现行校准**：本篇保存双 Token 与分层鉴权的方案来源。当前 JWT claim/设备 RT 键以 [认证模块](../modules/auth.md) 和 `AuthService.issueTokenPair` 为准；AT 还检查黑名单、禁用、改密地板和密码纪元，Redis 异常 fail-close。设备元数据管理、`devices:{uid}` 集合和 `perm:user` 权限缓存未因以下流程图出现而视为已交付。
+> **现行校准**：本篇保存双 Token 与分层鉴权的方案来源。当前 JWT claim/设备 RT 键以 [认证模块](../modules/auth.md) 和 `AuthService.issueTokenPair` 为准；AT 还检查黑名单、禁用、改密地板和密码纪元，Redis 异常时拒绝放行（fail-close）。设备元数据管理、`devices:{uid}` 集合和 `perm:user` 权限缓存未因以下流程图出现而视为已交付。例如，排查刷新失败时应查现行认证模块中的设备 RT 存储，不能先按旧图寻找 `devices:{uid}` 集合。
 
 
 ### 1.1 双 Token 机制
@@ -258,7 +258,7 @@ GET /api/v1/user/permissions → 权限码列表（按钮权限码 + 路由权�
 
 ## 5. 审计日志
 
-> **现行边界**：HTTP 操作审计仍走同步 `audit_logs` 写入；L2 `PolicyEvalWriter` 是独立的权限判定日志链，不是把全部 HTTP 审计改成异步。下文 Redis 异步图、`audit.sensitive_fields` YAML 和清理 SQL 为早期示例，不能当作已存在的配置或操作步骤。当前脱敏、保留、归档调度以 [审计模块](../modules/audit.md) 及 [运行手册](../ops/runbook.md) 为准。
+> **现行边界**：HTTP 操作审计仍走同步 `audit_logs` 写入；L2 `PolicyEvalWriter` 是独立的权限判定日志链，不是把全部 HTTP 审计改成异步。下文 Redis 异步图、`audit.sensitive_fields` YAML 和清理 SQL 为早期示例，不能当作已存在的配置或操作步骤。下文“Redis List L2”的 L2 是早期日志可靠性分级；前述 `PolicyEvalWriter` 的 L2 指第二层权限判定，二者不能混为同一条日志链。当前脱敏、保留、归档调度以 [审计模块](../modules/audit.md) 及 [运行手册](../ops/runbook.md) 为准。
 
 
 > **Phase 1**：同步写入 PostgreSQL（见 [phase1/08-audit.md](../phase1/08-audit.md)）。  

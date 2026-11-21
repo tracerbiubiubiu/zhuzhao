@@ -4,7 +4,7 @@
 
 ## 当前策略、职责与默认
 
-规范值为 `participants_only / role_restricted / inherit`；旧草案`participant-only/role-restricted`只作显式导入归一化别名，不使核心形成两套分支。新类型默认participants_only，已有类型同批回填inherit，升级时已有可见集必须相同。收紧已有类型须受权管理者先预览影响再确认CAS应用，不静默全量收紧；不新增is_sensitive或启用单票override。
+规范值为 `participants_only`、`role_restricted` 和 `inherit`。旧草案 `participant-only`、`role-restricted` 仅在显式导入时转为规范值，核心逻辑只处理一套值。新类型默认 `participants_only`，已有类型在同批迁移中补为 `inherit`，升级前后原有用户能看到的工单集合必须相同。若要收紧已有类型，由受权管理者先预览影响，确认后按版本检查（CAS）应用，不能自动批量收紧。不新增 `is_sensitive`，也不启用单张工单的策略覆盖（override）。
 
 | 当前读来源 | participants_only | role_restricted | inherit |
 | --- | --- | --- | --- |
@@ -14,7 +14,7 @@
 | 类型业务管理职责 | 只有类型策略显式加入且处于所管组织交集才可读 | 同左，不因role字符串命中变全局 | 按既有及显式职责范围 |
 | 系统级admin/superadmin | 保留既有受控例外 | 同左 | 同左 |
 
-以上仍需路由L1；可见/CC/普通参与只提供读与评论资格，不附送改字段、转派、转换或管理参与人。内部备注、附件写和审计跨域检索分别受权。外部同名admin不获得内置系统级语义；真实身份/资源source沿UAA-C接口，不让D03直接依企业SDK。
+以上访问仍需通过路由 L1 检查。能看见工单、被抄送（CC）或成为普通参与人，只提供读取与评论资格，不因此获得改字段、转派、状态转换或管理参与人的权限。内部备注、附件写入和跨域审计检索分别授权。外部系统中名为 admin 的角色不获得内置系统管理员权限；真实身份与资源的 source 沿 UAA-C 接口传递，D03 不直接依赖企业 SDK。
 
 添加/删除他人的participant或CC采用**按钮授权b案**：`ticket:participant:manage`＋类型/组织实例管理范围＋当前L2/L3。创建人不因创建身份拥有邀请权；自抄送不能用旧selfService入口绕过。本人退出自己手工CC可保留原有读可见退出语义，但不得删除domain/强制通知来源；普通退订也不能停掉既定强制风险通知。管理方因旧账号失去读权需处置时，通过已获权管理范围处理，不开放无权普通诊断。
 
@@ -30,7 +30,7 @@ D03使用[生命周期 §5.3](../design/business-lifecycle-contracts.md#53-参�
 
 ## 迁移、回退和数据访问
 
-候选新增类型live策略revision及查看/创建配置，已有类型回填inherit；实例revision/定义版本共用D01，不重复各自加version。规范策略、稳定资源键、受管范围等准确存储见模块详设；实施当天核迁移地图后分配up/down号，本页原000082不占号。新页面GET和按钮POST种子需同时验证既定admin/superadmin及合法业务操作者可达，不只给系统管理员种子便称功能可用。
+候选方案为类型新增实时生效的策略 revision，以及查看和创建配置；已有类型补为 inherit。实例 revision 和定义版本共用 D01 的设计，不再各加一套 version。规范策略、稳定资源键、受管范围等准确存储见模块详设；实施当天核迁移地图后分配 up/down 号，本页原 000082 不占号。新页面 GET 和按钮 POST 种子需同时验证既定 admin/superadmin 及合法业务操作者可达，不能只给系统管理员种子就称功能可用。
 
 新增类型策略在本地模式可独立运行，无UAA配置仍完整使用本地账号/角色/菜单管理；企业受管权限以后通过adapter投影进同一三层执行路径，不能用本地org_roles补回中央已撤权限。D03不一次实现全UAA治理。
 

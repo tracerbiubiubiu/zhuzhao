@@ -14,7 +14,7 @@
 
 ## 2. 写主、模块端口和公共类型
 
-风险域独占 risk family/cycle、来源观察、本地评估/接受/责任/逐项结论；工单独占票及办理事实；风险工单桥协调 links/受管字段，通知域独占发送事实。来源 adapter 只转换/传递规范化观察，不导入 `internal`、不写本地状态/角色/工单库；asset_ref 来自外部 CMDB 或明确临时映射，不建设第二资产权威。
+各模块分别负责写入自己的业务事实。风险域维护同一指纹的风险族（family）、每次发生的风险周期（cycle）、来源观察，以及本地评估、接受申请、责任人和逐项结论。工单域维护工单及办理记录；风险工单桥协调关联表 links 和由桥维护的字段；通知域维护发送记录。来源适配器（adapter）只转换并传递规范化观察，不导入 `internal`，也不写本地状态、角色或工单库。asset_ref 取自外部 CMDB 或明确的临时映射，不另建一套资产权威数据。
 
 HTTP、人工、受限风险派单、任务和未来 MCP 均适配到相同业务用例。可信 actor/service/grant 由[共同调用合同](../design/capability-invocation-contract.md)取得，不接受 body 中的 `actor_id/skip_auth/created_by`。HTTP 响应沿既有统一 envelope；下列为其中 data 的**目标类型**，不是生成代码或现有 API。
 
@@ -39,7 +39,7 @@ RiskView = {risk: RiskRef, status: RiskState, closure_kind: ClosureKind|null,
 
 新公共revision使用十进制字符串；落PostgreSQL BIGINT时范围为1..9223372036854775807，服务端增量溢出拒绝且无效果，不绕回0。旧已有合同/快照若使用数字版本，仅在0..9007199254740991且原版本合同允许时无损读取并显式转换；超过安全整数、非整数或字符串/数字混用不可猜测，给兼容错误。新增风险无存量API，不为它创造另一套数字wire。
 
-无 level 的新风险先显示“未评估”，不假定低风险。字段缺省/显式 null/空串逐类型校验：nullable列可清空，必填引用不收空串；PATCH式修改用 `changes` 中显式出现的字段，未出现不变。`operation_id`是一次效果身份，`risk.assess.v1`等只是能力定义别名；重试相同输入沿原身份，同号异参409。与既有 `Idempotency-Key` 的映射归共同门面，不在风险域再造第二套幂等框架。
+无 level 的新风险先显示“未评估”，不假定低风险。字段缺省/显式 null/空串逐类型校验：nullable列可清空，必填引用不收空串；PATCH式修改用 `changes` 中显式出现的字段，未出现不变。同一个 `operation_id` 对应同一次业务效果；批量派单的父编号标识整批，各分组另有派生编号。`risk.assess.v1` 等名称只标识能力定义。重试同一次操作、相同输入时继续使用原 operation_id；同号但参数不同返回 409。共同调用层负责把它与既有 `Idempotency-Key` 对应起来，风险域不另建幂等框架。
 
 ### 2.1 查询、录入和来源接入
 
@@ -89,13 +89,13 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 ## 4. 接入处理、事务和并发
 
-1. ingress验服务/源范围、schema/体积/限流；短事务持久收件/hash与可恢复处理状态，再答accepted。基础版可同请求完成后半处理，但持久收件和领域完成必须分别记证据。
-2. consumer取固定mapping版本、解析目录/CMDB/外部结论，网络在锁外且有总预算。不能解析稳定身份时held，不因IP/姓名变了就造另一风险。来源映射变化需预览旧键影响，禁原地重hash抹历史。
-3. 需要本地授权的命令先取共同C04守卫→适用组织/所钉定义→group/family稳定键→risk ID→ticket ID→link ID，各类内部升序、无对象跳过；不建第二套锁序。family首次创建由唯一冲突重读，不依赖不存在行FOR UPDATE；来源consumer仅本源系统作用域，不伪造真人；归并计数不能顺带派单。
+1. 接入入口（ingress）校验服务身份、来源范围、schema、请求大小和频率限制。在短事务中保存收到的内容、hash 和可恢复的处理状态，然后才返回 accepted。基础版可以在同一请求中继续处理，但“已收件”和“业务处理完成”必须分别记录证据。
+2. 消费者（consumer）读取本次固定的 mapping 版本，查询目录、CMDB 或外部结论；网络调用放在锁外，并限制总耗时。无法确认稳定身份时置 held，不能因为 IP 或姓名改变就新建风险。改变来源映射前，先预览对旧键的影响，不能直接重算 hash 覆盖历史。
+3. 需要本地授权的命令沿共同锁顺序执行：先经过 C04 授权守卫，再锁适用组织及固定的定义版本，随后按 group/family 稳定键、risk ID、ticket ID、link ID 的顺序锁对象。同类对象按升序锁定，不涉及的对象跳过，不另建锁顺序。首次创建 family 靠唯一约束冲突后重读，不能对不存在的行使用 FOR UPDATE 来防重。来源 consumer 仅能在本源系统范围内处理，不冒用真人身份；归并计数不能顺带派单。
 4. 锁内复验mapping启用状态、来源顺序、family当前cycle和revision。新event同内容计一次；同event重试不加计数；旧序号stale保留收据不覆盖镜像；等序异内容quarantined；timestamp相等且无可比序号、无法证明新观察时held，不能按接收时间裁定回归。
 5. 一事务提交cycle/镜像/观察应用状态、历史和下游intent；未知提交结果先查原receipt。consumer崩溃靠同一ingest_id恢复；不将“任务已受理”当完成。
 
-修复关闭保存各源最后有效观察checkpoint。之后确有新观察才在family锁内建generation+1、regression_of回链并移动head；同时两条新观察最多生成一代。接受有效期/误报抑制期内只增观察；接受到期用申请版本+cycle锁CAS重开原cycle，续期先提交则expiry no-op。误报抑制过期的新观察可建新待评估cycle，标suppression_expired，不计修复回归。withdrawn/deleted/全量缺失不作已修复。
+修复关闭时，保存各来源最后有效观察的位置（checkpoint）。之后只有确认再次观察到风险，才在 family 锁内创建 generation+1，用 regression_of 回链，并更新当前周期指针（head）；两条新观察同时到达也最多创建一个新周期。接受有效期/误报抑制期内只增观察；接受到期用申请版本+cycle锁CAS重开原cycle，续期先提交则expiry no-op。误报抑制过期的新观察可建新待评估cycle，标suppression_expired，不计修复回归。withdrawn/deleted/全量缺失不作已修复。
 
 首版保留单体短事务+数据库约束，不引分布式锁服务/跨库事务。[PostgreSQL约束](https://www.postgresql.org/docs/current/ddl-constraints.html)兜底唯一性，[显式锁](https://www.postgresql.org/docs/current/explicit-locking.html)支持行锁/事务级advisory锁；本项目固定锁顺序、ON CONFLICT后再读取，死锁/serialization失败可在同operation且无外部效果时有限重试，超限返回可重试冲突，不无限循环。多实例不得依赖进程mutex防重；worker claim/lease/fence复用R01。
 
@@ -105,11 +105,11 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 ### 5.1 plan/apply和原子边界
 
-`POST /risk-items/dispatch-plan`候选输入 `{items:[{risk_id,expected_revision}],target_type_code,target_org_id,append_ticket_id?,expected_ticket_revision?}`，风险最多20条为一个group；批向导可提交多group，首版候选总上限200条（服务端可收紧），超限要求分批。输出 `{plan_id,expires_at,groups:[{group_key,owner_user_id,target_definition_ref,items,blocking_reasons}],input_hash}`；仅对已可见风险给逐项原因。plan不是预约名额，也不锁住live授权。
+`POST /risk-items/dispatch-plan`候选输入 `{items:[{risk_id,expected_revision}],target_type_code,target_org_id,append_ticket_id?,expected_ticket_revision?}`，风险最多20条为一个group；批向导可提交多group，首版候选总上限200条（服务端可收紧），超限要求分批。输出 `{plan_id,expires_at,groups:[{group_key,owner_user_id,target_definition_ref,items,blocking_reasons}],input_hash}`；仅对已可见风险给逐项原因。plan 是派单预览，不预留工单名额；用户确认时仍按当时的权限重新检查。
 
 `POST /risk-items/dispatch`及`batch-dispatch`应用 `{operation_id,plan_id,plan_hash}`；如沿生命周期旧请求附items/type/definition等冗余字段，必须与plan完全一致，否则400，不接受覆盖。固定分组键至少owner+风险管理org+目标org/type/definition+批准业务范围，不仅同owner。single需risk:manage和主锚/owner；bulk需主锚管理，沿B05不另要通用ticket:create、也不增派单角色。
 
-同operation重投返回原group收据；同risk已有active link返回受权原票或冲突，不新建。apply在group/risk/ticket锁内验证当前权限、owner在职、类型发布/字段、目标映射、剩余名额和plan基线；**每group原子提交**票、links、风险状态、双域历史和必要协作intent。任一失败该group零新票/links，其他group可成功，返回逐risk `created/linked/already_linked/denied/invalid/conflict`。不支持第21项挤进旧票；重新分组需新预览。
+使用相同 operation 重投时，返回原分组的操作收据；风险已有 active link 时，按当前权限返回原工单或冲突，不再新建工单。apply在group/risk/ticket锁内验证当前权限、owner在职、类型发布/字段、目标映射、剩余名额和plan基线；**每group原子提交**票、links、风险状态、双域历史和必要协作intent。任一失败该group零新票/links，其他group可成功，返回逐risk `created/linked/already_linked/denied/invalid/conflict`。不支持第21项挤进旧票；重新分组需新预览。
 
 批次 parent operation 先持久绑定 plan_hash/完整 group 清单；`group_operation_id=derive(parent_operation_id,plan_hash,group_key)`，候选 group receipt 唯一 `(parent_operation_id,group_key)`，保存固定输入hash、状态与原票/逐项结果。每group的票/links和其成功 receipt 同事务；parent汇总为 pending/partial/completed，不因A成功就宣称整批完成。A提交后进程中断，重投查A原receipt并只继续未完成B，仍复验当前权限/基线；已被拒绝或冲突的B不盲重试。修B参数/基线须新plan+新operation仅含待处理B，关联原parent，不可同号改参；parent读取仍按当前逐对象权限投影。
 
@@ -117,7 +117,7 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 受限共享创建端口接收可信 `{operator_user_id,origin=risk_dispatch,creator_owner_ref,approved_target_mapping}`，不从外部body传。工单 `created_by=当前已核owner`、审计actor=真实操作者两者都留；普通创建用例继续按自身权限。`risk_owner`为桥管理字段，不能由普通表单/fetch/Agent改成自己。固定映射保留源风险ref/级别/系统/描述，取数建议可人工改，公式/受管字段照其独立规则。
 
-票priority取active risks最高级别；`business_due_at`取最早风险deadline，与节点`sla_due_at`分列。追加/移出/改级/改期重算聚合，不覆盖风险原deadline，不用已移出risk继续触发提醒。owner全组同转可原子更新risk_owner及合法参与；只转部分risk则detach这些links、进入待交接/重新派单，不转走全票复核权。旧creator历史不改，旧读权按类型策略解释。
+工单 priority 取有效关联风险中的最高级别；`business_due_at` 取最早的风险 deadline，与节点 `sla_due_at` 分开保存。追加、移出、改级或改期时重新计算工单值，不覆盖风险原 deadline，也不用已移出的风险继续触发提醒。整组风险交给同一新 owner 时，可以在一个事务中更新 risk_owner 和合法参与关系；只交接其中部分风险时，则解除这些 links，进入待交接或重新派单，不把整张工单的复核权一起转走。旧 creator 的历史不改，原有读取资格仍按类型策略判断。
 
 ### 5.2 逐风险结论与review gate
 
@@ -129,9 +129,9 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 - 票terminal前所有active links必须有已授权生效结论或合法detach；不能先全票closed再把尚待接受确认的risk标fixed。部分结果可保存为proposal/待处理，响应逐项反映；同库原子协调可直接落实有效项，使用异步消费的入口须明确pending。
 - 管理员仍能走现有物理删票入口，桥必须同事务将其active links置detached（reason=ticket_deleted）、风险回合法待处置状态并保存原票引用/历史；接受/关闭风险不被删票反向重开，未具备该删除接缝前对受保护active关联拒删。SET NULL只用于保留关联墓碑，不允许留下active且无票的静默孤儿。
 
-票终态和risk-resolution intent同事务。消费键 `(ticket_id,ticket_revision,link_id,resolution_version)`；迟到结果发现risk/link/owner revision变更即conflict，不覆盖新owner/周期。投影补发只修投影；不会重新执行复测或再建票。
+票终态和risk-resolution intent同事务。消费键 `(ticket_id,ticket_revision,link_id,resolution_version)`；迟到结果发现risk/link/owner revision变更即conflict，不覆盖新owner/周期。补发投影只更新供查询展示的数据，不重新执行复测或建单。
 
-复核首页待办来自当前有效risk_owner和pending_verify事实，同票去重；旧处理人/发起人/CC不因可看就算当前责任。当前owner无L1/参与可见资格时报配置阻断，不为统计改派或强授业务管理权。关联详情逐对象鉴权；“风险可看”不授任意票/附件全文。
+首页的复核待办根据当前有效 risk_owner 和 pending_verify 记录生成，同一工单只列一次。旧处理人、发起人或 CC 即使仍可查看，也不因此成为当前复核责任人。当前owner无L1/参与可见资格时报配置阻断，不为统计改派或强授业务管理权。关联详情逐对象鉴权；“风险可看”不授任意票/附件全文。
 
 ## 6. D15通知与统一审计
 
@@ -165,9 +165,9 @@ L1维持 `risk:read/risk:manage` 两码；“可见即可评论”是风险已�
 
 首版可证明口径：在办敞口=`new/assessed/remediating/pending_verify`；接受单单列不计已修复；逾期在办=`deadline<as_of`且在办，分母为有deadline的在办风险；已修复率=窗口内fixed关闭cycle/窗口内有合法终结结论cycle，并列false_positive/duplicate/transfer/avoid，不能混成整改成功。MTTR仅fixed cycles的`closed_at-created_at`，这是本地创建至合法修复关闭，不是SOC检测时间；标样本数、覆盖率，缺时间不补零。回归数按新cycle.regression_of，回归率用同一关闭cohort并明示观察截止，禁止把本月回归除本月关闭制造伪可比率。
 
-按来源/系统多值维度分组时每bucket按distinct risk_id计，响应注明non_additive，不能将bucket相加当总风险；低于授权字段资格的维度禁止筛选/分组。首版duration取自然经过秒，不含停表/工作日扣减。deadline自动计算以服务端首次assessment时间与所钉自然日policy为基准，显式日期必须经配置时区转换到具体Instant；输入不存在/歧义的本地时刻须明确选定偏移，不能靠浏览器时区漂移。
+按来源或系统等多值维度分组时，每组按 distinct risk_id 计数，并在响应中标 non_additive。同一风险可能属于多个组，因此不能把各组数量相加当作风险总数。没有相应字段权限的维度禁止用于筛选或分组。首版duration取自然经过秒，不含停表/工作日扣减。deadline自动计算以服务端首次assessment时间与所钉自然日policy为基准，显式日期必须经配置时区转换到具体Instant；输入不存在/歧义的本地时刻须明确选定偏移，不能靠浏览器时区漂移。
 
-工单响应/处置/节点时长沿[工单运营合同](../design/ticket-operations-supplement.md)，不将风险MTTR当接单响应时间；历史缺准确closed/first_response时间标legacy_unknown/approximate，不用updated_at伪造精确值。SOC MTTD/专业MTTR由来源提供时间/定义，缺专业起点不算。
+工单响应/处置/节点时长沿[工单运营合同](../design/ticket-operations-supplement.md)，不将风险MTTR当接单响应时间；历史记录缺少准确的 closed 或 first_response 时间时，标 legacy_unknown/approximate，不用 updated_at 冒充准确时间。SOC MTTD/专业MTTR由来源提供时间/定义，缺专业起点不算。
 
 每日快照候选 `risk_daily_snapshots(snapshot_date,timezone,metric_version,scope_ref,dimension_key,counts,cutoff_at,source_watermark,quality,revision)`，唯一日期+时区+口径+scope+维度。**不可给普通用户展示全局历史聚合再用当前主表过滤**：固定全局/组织快照仅对当前明确获该历史统计范围的管理者开放；普通/owner动态细粒度范围无安全历史维度时仅查当前受权行或显示历史统计未提供。不可用当前行补算历史敞口假装快照。更细历史ACL/重放另立需求，不默加全量事件湖。
 
@@ -187,7 +187,7 @@ B09已确认：SOC源陈旧时自动按旧专业状态新增派单held；当前�
 
 ## 10. E10风险Excel和跨指纹合并
 
-P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。风险Excel是已确认的条件需求；默认有限路线为模板下载→离线plan/逐行校验→授权用户确认→标准风险用例/feed→逐行receipt。逻辑记录 `import_run(run_id,file_hash,template_version,source_namespace,actor_ref,status)`，行唯一`(run_id,row_key)`；断点重跑相同身份，不把整表重新造risk。报告含成功/失败/冲突及安全原因，失败行可修正后新revision重提，不能用直接灌DB代替权限/来源幂等。文件模板/保留/量级须绑定真实样本，私有转换器不导出公司原文件。
+P6.1 出口前完成条件核验和方案，不必等 D08/D10 产品完成才开始调查。风险 Excel 导入是已确认的条件需求；默认限定流程为下载模板、离线生成导入预览（plan）并逐行校验、由授权用户确认，再通过标准风险用例或 feed 导入并返回逐行收据（receipt）。逻辑记录 `import_run(run_id,file_hash,template_version,source_namespace,actor_ref,status)`，行唯一`(run_id,row_key)`；断点重跑相同身份，不把整表重新造risk。报告含成功/失败/冲突及安全原因，失败行可修正后新revision重提，不能用直接灌DB代替权限/来源幂等。文件模板/保留/量级须绑定真实样本，私有转换器不导出公司原文件。
 
 跨指纹merge是条件候选，未启用不能用close duplicate偷偷实现。获准后plan显示master/slaves revision、owner、接受、active links、来源归属和可见集变化；管理者CAS apply，保留merged_into/主从历史与源alias。不同owner、有效接受或active ticket冲突先hold并给人工处置，不自动转走责任/读权。重复apply幂等；源再报沿批准alias归主族，历史generation与原风险编号不重写。撤销为新补偿命令，不能删历史假装未合并。[DefectDojo去重](https://docs.defectdojo.com/triage_findings/finding_deduplication/about_deduplication/)区分匹配范围和人工归并，可借鉴其保留主记录/回链，不能据此默认把所有跨源同标题视作同风险。
 
@@ -195,7 +195,7 @@ P6.1出口完成条件核验/方案，不等待D08/D10产品完成才调查。�
 
 ## 11. 最小UI、配置和运维恢复
 
-风险列表沿统一表格/查询栏/筛选展开/操作位；详情分“评估与责任、整改票、接受/复测、来源与历史”。列表多选派单先预览、逐group结果只重试失败；按钮用capabilities反馈，后端仍授权。源severity与本地level并列；accepted和fixed分色分文案；归档不伪装已关闭新状态。表单保留用户输入，409提示刷新比较，不盲目覆盖；无owner可保存new但派单入口明确阻断。
+风险列表沿用统一的表格、查询栏、展开筛选区和操作区；详情分“评估与责任、整改票、接受/复测、来源与历史”。多选派单先预览，提交后按分组展示结果，只重试失败组。页面根据 capabilities 显示可用动作，后端仍须重新鉴权。源severity与本地level并列；accepted和fixed分色分文案；归档不伪装已关闭新状态。表单保留用户输入，409提示刷新比较，不盲目覆盖；无owner可保存new但派单入口明确阻断。
 
 派单提示“创建人：风险owner；操作人：当前用户”，不写“以他人登录”。票结果按risk逐项展开，pending_confirmation/协作待补/unknown各给受权动作。接受页列到期日和申请人/确认人；到期重审有待办。通知不可达与业务失败分开，详情可看到受权的待发/待解析原因；不给普通用户暴露消息接口原始响应/密钥。
 
@@ -228,7 +228,7 @@ R1/D07–D14各端点首次实施前，由对应风险用例属主交逐端点�
 | `IncidentCase_SourceGapAndRoles` | B09人工确认可协作、自动held；缺理由/撤权/越目标拒绝；本地完成不改SOC终态、迟到source不回退新revision |
 | `RiskImportMerge_ReplayAndConflicts` | 条件获准后验逐行断点/权限/报告与merge主从回链、active link/owner冲突、重复确认和来源再报归属 |
 
-最短真实旅程：两个风险同owner→评估→批准目标同票→处理人填措施/证据→按配置复核→逐风险合法结论→风险/票/历史/消息对账一致；再加入撤权、响应丢失、consumer重启、部分转owner、消息失联四条故障链。连接TR/AL的任务效果另按共同互通模块验，不因本风险旅程绿推定全链绿。
+产品实施后的最短旅程应这样验收：为同一 owner 的两条风险完成评估，向批准目标合并派到同一工单；处理人逐项填写措施和证据，按配置复核，逐条形成合法结论；最后核对风险、工单、历史和消息记录是否一致。还须分别验证撤权、响应丢失、consumer 重启、部分风险转 owner，以及消息失联的故障处理。TR/AL 的任务效果另按共同互通模块验收，风险旅程通过不证明整条跨仓链已经通过。
 
 依赖按子出口：D07查目录需要X02-Q及新资源护栏；D08消费已批准source规则/最小目录与持久接入（完整feed范围以总账为准）；D09/首条通知前有D15+R01；D10等D02字段采集/可信受限创建和本地事务守卫；D13-M不等通用BI，D13-T仅消费已交D11/D12引用；D14等D10/D13但不先建专业SOC。完整UAA-P/R、AI、全站视觉推广不阻本地风险闭环。
 

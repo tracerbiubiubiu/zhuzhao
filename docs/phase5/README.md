@@ -6,7 +6,15 @@ Phase 5 已验收并合入主线。理解现有表单、消息和工单协作从
 
 > **Phase 5 收尾完成（2026-11-11）**。阶段交付、固定快照验收、文档和工作区核对已完成，准确提交 CI 通过。剩余 13 组问题与待验记录已移交 Phase 6，历史失败保持原状态。旧测试栈及临时资源已清理，日常开发环境、原数据卷、备份、SDK 和必要证据保留，终态见 [12 号 §8.4–§8.5](12-scenarios-and-tests.md#85-phase-5-收尾结论) 与 [runbook](../ops/runbook.md#9-开发测试环境恢复与来源核对2026-11-06)。后续进入全项目重新设计规划，主线整合另按实际安排核验。
 
-阅读顺序：先看[项目控制台](../review/11-project-control.md)的当前能力/迁移/运行边界，再读本页范围与 [11 号实施记录](11-implementation-plan.md)，最后按需进 01–10 号段稿。[债台账](s6-s5-debt-ledger.md)管理开放项与已关闭项的追溯；[B27 收口报告](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)和 [11-08 followup](../review/reports/zhuzhao-report-followup-2026-11-08.md)给出各自固定快照的验证。下文保留立项时问题、估算和拍板过程；带日期的旧“现状/待做/下一步”须结合本页局部校准阅读。
+现有功能、迁移和运行状态先看[项目控制台](../review/11-project-control.md)。需要改代码或写验收时，从仍在使用的合同进入：
+
+- [表单字段怎么保存](01-s1-form-designer.md)、[流程图怎么保存](02-s2-flow-graph-designer.md)、[工单怎样切换状态](03-s3-flow-semantics.md)。
+- [怎样发起任务和查运行记录](04-s4-task-console-ux.md)、[怎样上传和读取附件](05-s5-object-storage-richmedia.md)、[站内和外部通知怎样发送](06-s6-message-notification.md)。
+- [情报缓存失败时返回什么](09-s9-threat-intel-cache-proxy.md)、[怎样抄送、提醒和导出](10-s10-ticket-collaboration.md)。
+
+[AI 助手（S7）](07-s7-ai-assistant.md)和[通用数据大屏（S8）](08-s8-data-dashboard.md)记录后续安排和启动条件。
+
+[问题台账](s6-s5-debt-ledger.md)记录待修和已关闭的事项。[11 号实施记录](11-implementation-plan.md)、[B27 验收报告](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)和 [11 月 8 日复验](../review/reports/zhuzhao-report-followup-2026-11-08.md)用于追查当时的版本和验证。下文的立项、估算和决策按所标日期阅读。
 
 > **定位校准（2026-10-08）**：本 phase 以"前端可视化配置线"立项，随 S5–S10 底座/能力段陆续归入，实际定位已扩展为**通用能力与产品化底座线**（所有者口径：**phase5 = 通用能力，phase6 = 真正的业务能力**）。
 >

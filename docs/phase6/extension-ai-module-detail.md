@@ -1,16 +1,16 @@
 # Phase6 私有适配、设备与 AI 薄入口详细设计
 
-日期：2026-11-14。状态：**详细设计候选，未实现**。对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只取实际需要的稳定接缝，设备和 AI 不反向阻塞首版风险/工单/TR/AL/消息。完整 X01-H、UAA-P/R、持续委托、MCP 产品化及领域 Agent 保留原后续窗口。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
+日期：2026-11-14。状态：**详细设计候选，未实现**。对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只建设实际需要的稳定接口；设备和 AI 尚未就绪，不阻塞首版风险、工单、TR、AL和消息交付。完整 X01-H、UAA-P/R、持续委托、MCP 产品化及领域 Agent 保留原后续窗口。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
 
 ## 1. 真实基础与边界
 
 `internal/pkg/datafetcher/datafetcher.go` 的 Registry/ApplyFetches 是进程内注册/单触发取数，不能由私有仓导入核心 internal 来当稳定 SDK。`internal/pkg/threatintel/` 已有 Provider/HTTP 桩形态，但不是通用目录/feed/扩展宿主。当前没有 X03 或模型执行产品代码；既有 Go service 方法和 HTTP 目录是可复用效果入口，须逐条接统一应用用例及三层授权。
 
-目标拓扑：核心公共 API/领域端口 ↔ 进程外私有 connector/应用 ↔ 公司已有 HR/CMDB/风险源/消息/模型等供给。厂商字段、SDK、网络地址和秘密留私有侧；核心拥有规范化领域语义。**不导入核心 internal、不跨库写、不共享表或跨库 FK**。升级前后公共 wire/语义与旧参考 adapter 通过同套契约；同主版本兼容，不承诺改任何业务语义仍永久零修改。参考 [Google AIP-180](https://google.aip.dev/180)核字段、默认值、错误、排序、完成和权限语义，而非只核 JSON 能解码。
+计划中的调用关系是：核心公共 API或领域端口 ↔ 进程外的私有 connector或应用 ↔ 公司已有的HR、CMDB、风险源、消息渠道或模型服务。厂商字段、SDK、网络地址和秘密留私有侧；核心拥有规范化领域语义。**不导入核心 internal、不跨库写、不共享表或跨库 FK**。升级前后公共 wire/语义与旧参考 adapter 通过同套契约；同主版本兼容，不承诺改任何业务语义仍永久零修改。参考 [Google AIP-180](https://google.aip.dev/180)核字段、默认值、错误、排序、完成和权限语义，而非只核 JSON 能解码。
 
 ## 2. X01-B：配置式接入、身份与请求路径
 
-首版配置由受审文件/部署提供，修改后显式校验并重启/切版本，不做插件市场、动态任意代码或通用微前端。
+首版配置由经过审查的文件和部署流程提供，修改后必须校验，再重启或切换版本，不做插件市场、动态任意代码或通用微前端。
 
 ```text
 ExtensionConfigV1 = {extension_id: NamespacedKey, version: string,
@@ -32,17 +32,17 @@ ExtensionAdmission = {principal_id: ID, audience: extension_id,
   operation_id: string?, valid_until: Timestamp}
 ```
 
-配置不含真实用户/口令，资源code有扩展命名空间；依赖/路由/目录/B案冲突则整份候选拒绝，不部分暴露。由部署保留旧健康制品而非进程热加载回退；冷启动无有效配置则拒启。既有核心迁移只改core来源行；停扩展只撤它自身目录/绑定、保业务历史，不能按URL前缀删核心授权。唯一装配路径与准确补充字段见§8.1。
+配置不含真实用户或口令，资源code使用扩展命名空间；依赖、路由、目录或B案约束发生冲突时，拒绝整份候选配置，不开放其中一部分。由部署保留旧健康制品而非进程热加载回退；冷启动无有效配置则拒启。既有核心迁移只改core来源行；停扩展只撤它自身目录/绑定、保业务历史，不能按URL前缀删核心授权。唯一装配路径与准确补充字段见§8.1。
 
-调用服务先验 HMAC/受信服务身份，再验证当前真实用户会话与 audience/路由；服务凭据不代表用户授权。首个同步用户调用采用**核心逐请求授权回调**：扩展收到经可信网关构造的受限请求引用，在执行前向核心验证该引用与当前主体/资源/字段；引用短期、一次请求绑定、不可在另一路由/对象复用。核心只签发已登记 capability/audience，不把用户 AT 或管理员密钥交给扩展/浏览器。准确签名字段复用既有 HMAC/未来 admission 合同，不能另编浏览器自报 user_id。
+调用服务先验 HMAC/受信服务身份，再验证当前真实用户会话与 audience/路由；服务凭据不代表用户授权。首个同步用户调用采用**核心逐请求授权回调**：扩展收到经可信网关构造的受限请求引用，在执行前向核心验证该引用与当前主体/资源/字段；引用只在短期内有效，并绑定一次请求，不可在另一路由或对象复用。核心只签发已登记 capability/audience，不把用户 AT 或管理员密钥交给扩展/浏览器。准确签名字段复用既有 HMAC/未来 admission 合同，不能另编浏览器自报 user_id。
 
-受限 request_ref 是核心生成的高熵 opaque 引用，服务端只存 hash，候选记录绑定当前主体/会话、audience、规范化方法与路由、capability/version、resource、payload_hash、允许字段、expires_at 和适用的固定 operation_id。**它只用于私有应用的代用户请求**；纯取数connector由核心先完成本地授权，再经受限服务端口查询，不创建用户交换ref。只读ref先复用现有Redis短TTL存储（候选30秒），不新增PG历史表/outbox/永久receipt；丢key/重启后旧ref拒绝，用户重发新读取即可。写效果的operation/receipt仍由领域持久化，不能因ref过期换号重做。
+受限 request_ref 是核心生成的高熵、不透明引用（opaque），服务端只存 hash，候选记录绑定当前主体/会话、audience、规范化方法与路由、capability/version、resource、payload_hash、允许字段、expires_at 和适用的固定 operation_id。**它只用于私有应用的代用户请求**；纯取数connector由核心先完成本地授权，再经受限服务端口查询，不创建用户交换ref。只读ref先存于现有Redis，使用短TTL（候选30秒），不新增PG历史表/outbox/永久receipt；丢key或重启后拒绝旧ref，用户重新发起读取即可。写效果的operation/receipt仍由领域持久化，不能因ref过期换号重做。
 
 只有登记的目标扩展服务能经HMAC回调核验；缺失/过期/错服务/错目标/异参拒绝。回调每次重验当前主体、L1及登记在核心的组织/字段范围，返回上列Admission；核心拥有的资源仍完整核其L2/L3，**私有设备等资源的实际行属性只由私有属主核L2/L3**，不假称核心知道私有库内容。读取请求可在同一短期限重取当前许可；写请求重投同ref保留同operation，不把ref被读取等同业务已执行。现有HMAC只有时间窗且URL query未入签，不声称已有nonce防重；鉴权参数全部放签名body，短时ref及其绑定由服务端核验，不能改信X-Operator或普通query。首版不另造JWT/授权服务器，也不授予新的后台写。
 
 公共核心做 L1，私有资源所有者仍做自己的行/字段和动作 L2/L3，不能只依菜单可见。首版不缓存正向用户授权以换可用性；回调失联拒绝受保护操作、显示依赖不可用。该逐请求接缝不授予后台持续写；无人值守必须等 I02。借鉴 [Backstage 服务身份与代用户身份分离](https://backstage.io/docs/auth/service-to-service-auth/)及[资源属主执行条件](https://backstage.io/docs/permissions/concepts/)，不照搬其插件运行框架。
 
-首个私有设备 profile 选择有限组织集合：核心受审策略给出当前 org_set（最多256个本地 org ID，空集无权；超限显式拒绝/重新定 profile，不能放宽为全量），私有服务核设备权威 owner_org_ref 属于该集合及请求字段在交集内。all_approved 必须有明确独立授权，缺组织/未知映射默认不可见；当前动作再验入口配置和职责。私有源行属性失去可证明新鲜度时拒绝敏感入口，不由旧组织缓存扩大范围。scope_constraints 与 request_ref/当前 policy_revision 绑定，每请求获取；它不免除私有服务对象级校验。
+首个私有设备 profile（运行约束配置）选择有限组织集合：核心受审策略给出当前 org_set（最多256个本地 org ID，空集无权；超限显式拒绝/重新定 profile，不能放宽为全量），私有服务核设备权威 owner_org_ref 属于该集合及请求字段在交集内。all_approved 必须有明确独立授权，缺组织/未知映射默认不可见；当前动作再验入口配置和职责。私有源行属性失去可证明新鲜度时拒绝敏感入口，不由旧组织缓存扩大范围。scope_constraints 与 request_ref/当前 policy_revision 绑定，每请求获取；它不免除私有服务对象级校验。
 
 **跨服务撤权边界**：request_ref的短TTL只约束请求上下文寿命，不是正向授权缓存/许可租约。每次调用及分页/续流边界回核心重验，依赖不可证明则停止新受保护读取；私有属主在自己的事务核当前行/字段资格。核心撤权事务与私有库之间没有分布式原子提交：已获准并开始的一次有界短读可能在撤权后返回，已输出字节不能收回；首版以请求deadline/页大小和禁止长期正向缓存约束在途范围，不持核心锁跨HTTP等待。长流在下一个重验点拒绝继续、取消本地剩余读取，不假称零延迟全网撤销。private写/不可逆动作须另有operation、写主效果凭证和准入/撤权合同，不能借这条只读接缝开放。EXT-03应验证撤权分别发生在准入前、准入后及两页之间，准确记录决策/读取时点；具体deadline在首个profile启用前实测冻结，不另造分布式锁服务。
 
@@ -50,7 +50,7 @@ HTTP、UI 网关、内部用例调用和后续 MCP 都使用静态 capability_id
 
 ## 3. X02-Q：先可替换查询，再有状态 feed
 
-配置/装配也属交付：当前cmd/server/main.go的run固定加载相对configs/config.yaml，internal/config/config.go的Load虽接受路径、当前Config却无扩展合同字段。§8.1选择checkout外文件只读挂载，明确schema/校验/DI/client及替换/停用测试，不再留CLI flag与挂载双选。公开DTO不等已生成SDK或现成插件宿主。
+配置加载和依赖装配也属于交付范围：当前cmd/server/main.go的run固定加载相对configs/config.yaml，internal/config/config.go的Load虽接受路径、当前Config却无扩展合同字段。§8.1选择checkout外文件只读挂载，明确schema/校验/DI/client及替换/停用测试，不再留CLI flag与挂载双选。公开DTO不等已生成SDK或现成插件宿主。
 
 ```text
 QueryRequestV1 = {query_id: RegisteredKey, contract_version: "1",
@@ -63,7 +63,7 @@ QueryFailure = {reason: invalid_input|not_authorized|source_unavailable|
   source_stale|unknown_enum|contract_mismatch|quota, retry_after_ms: int?}
 ```
 
-query_id 的每个版本定义精确 parameters/items schema、允许排序/过滤/字段、时区和分页；不接任意 SQL/URL/厂商 JSON。limit 在服务端硬限且有请求预算，cursor 绑定 query/参数/源/当前 scope，不因知道 cursor 能越权；授权变化重算或拒绝旧 cursor。无匹配为 items=[]/complete=true，超时/权限不足不是空成功，partial 明示 complete=false；跨页不稳定源只声称本次页观察，不伪造完整快照。
+query_id 的每个版本都要明确 parameters/items schema、允许的排序与过滤方式、可读字段、时区和分页规则；不接任意 SQL/URL/厂商 JSON。limit 在服务端硬限且有请求预算，cursor 绑定 query/参数/源/当前 scope，不因知道 cursor 能越权；授权变化重算或拒绝旧 cursor。没有匹配项时返回 items=[]、complete=true；超时或权限不足时不能返回空成功，部分结果（partial）必须标明 complete=false；跨页不稳定源只声称本次页观察，不伪造完整快照。
 
 mock 与私有 HTTP connector 实现同一 QueryPort，环境只换 endpoint/secret/profile；真实源断开不得静默改用 mock。connector 将厂商字典映射为公共枚举并保留映射版本/原值受权引用；未知状态显式 unknown 或 contract_mismatch，不能默认 healthy/active。多参数预填支持用户/部门/时间等注册输入；传递 request context/取消，外部取数在业务事务外，结果仍须服务端字段校验，不能用取数结果写授权锚点。
 
@@ -77,7 +77,7 @@ query 不造 inbox/checkpoint 表；feed 才按 `(source_id,entity_kind,external
 
 ## 4. X03：设备目录、状态与人工登录
 
-设备私有应用拥有自己的本地补充与查询投影，CMDB/监控/SOC 保持权威。第一版一个合成 source、不自建扫描探针/NMS、不保存设备密码、不做无 SSO 设备自动登录。
+设备私有应用拥有自己的本地补充与查询投影，CMDB/监控/SOC 保持权威。第一版使用一个合成 source，不自建扫描探针或NMS，不保存设备密码，也不做无 SSO 设备的自动登录。
 
 ```text
 DeviceView = {device_id: ID, source_ref: ExternalRef, name: string,
@@ -92,7 +92,7 @@ LaunchResult = {launch_id: string, mode: manual_web,
   outcome: launch_requested, observed_at: Timestamp}
 ```
 
-summary 的 healthy/degraded/down/unknown 互斥且合计 total；stale 为独立交叉计数，不能再与四状态相加。大屏只用专门受权只读主体/有限范围，隐藏入口/IP 等敏感字段，计数和明细用同一资源过滤器；无源/陈旧/部分失败不归零，显示时间与状态原因。状态字段源观测时间与获取时间分开，不由“设备管理页返回200”推定健康。
+summary 的 healthy、degraded、down、unknown 四种状态互斥，数量合计为 total；stale 为独立交叉计数，不能再与四状态相加。大屏只用专门受权只读主体/有限范围，隐藏入口/IP 等敏感字段，计数和明细用同一资源过滤器；无源/陈旧/部分失败不归零，显示时间与状态原因。状态字段源观测时间与获取时间分开，不由“设备管理页返回200”推定健康。
 
 L1 分设备查看、入口打开、配置；L2 以设备组织/批准责任范围过滤；L3 再验当前 entry enabled/version/允许目标。`OpenDeviceEntry` 是候选 POST 用例，不把设备 ID 放 POST URL；当前不可见404、可见无打开权403、入口已换409。服务端只从私有受审配置解析 destination，禁止请求自带 URL、脚本协议、userinfo、凭据 query 和开放 redirect。普通直链浏览器打开，无核心抓取厂商页面；noopener/noreferrer，清楚提示到设备侧手动认证。launch 只证明请求入口，不记“登录成功”；设备真正授权仍由目标侧保证。
 
@@ -102,7 +102,7 @@ L1 分设备查看、入口打开、配置；L2 以设备组织/批准责任范�
 
 ## 5. A01：固定场景受权自然语言查询
 
-只在 A01 自身就绪时交付，不把 AI 模型可用当风险人工处理前置。模型仅已有内部/获准 API，无训练/部署。首选固定 `ticket.list/detail/aggregate` 与已就绪风险 Query；从目录把允许 schema/参数给模型，模型只产生提议，服务端确定性校验后走同一 Query/PDP。不可见字段不进入 prompt，返回给用户前再次投影；模型、源文档、工具返回均不授信权限。
+A01在自身就绪后交付；风险人工处理无需等待 AI 模型可用。模型仅已有内部/获准 API，无训练/部署。首选固定 `ticket.list/detail/aggregate` 与已就绪风险 Query；从目录把允许 schema/参数给模型，模型只产生提议，服务端确定性校验后走同一 Query/PDP。不可见字段不进入 prompt，返回给用户前再次投影；模型、源文档、工具返回均不授信权限。
 
 ```text
 AIQueryRequest = {scenario: "authorized-work-items.v1", text: string,
@@ -135,7 +135,7 @@ Plan = {actor_id: ID, operation_id: string, canonical_command: TicketCreateComma
   effect_summary: string[], expires_at: Timestamp, plan_hash: SHA256}
 ```
 
-模型只能写草稿。确定性 preview 核当前类型/发布定义、字段、可创建范围/目标、后继效果并保存 Plan；前端展示真实命令及责任/通知，不只一段 AI 解释。确认由当前真人提交；同 actor、计划、hash、时效和当前授权/引用重新复验，调用正常 Ticket.Create 应用用例。改任一目标/参数/定义/后继须重新预览；不能模型“自动纠正”继续执行。与风险受限派单是不同入口，不让自然语言创建绕过其职责限制。
+模型只能写草稿。preview 由服务端按确定规则检查当前类型及发布定义、字段、允许创建的范围与目标、后继效果，再保存 Plan；前端展示真实命令及责任/通知，不只一段 AI 解释。确认由当前真人提交；服务端确认当前 actor 与计划绑定的 actor 相同，并重新验证计划、hash、时效、当前授权和所引用对象，调用正常 Ticket.Create 应用用例。改任一目标/参数/定义/后继须重新预览；不能模型“自动纠正”继续执行。与风险受限派单是不同入口，不让自然语言创建绕过其职责限制。
 
 逻辑 ai_plans 主键 plan_id，绑定 actor/draft revision/command hash/expiry，**preview 即分配固定 operation_id，UNIQUE(plan_id) 的确认关联保证一计划仅一次业务效果**。confirm 锁 plan 并 CAS pending→executing，确认关联与工单、领域事实、可靠后继同一本地事务提交；operation 与 `(caller_namespace,idempotency_key)` 都有唯一约束。同 plan 即使用两个不同 key 并发，也只能关联同一 operation/原 receipt；同 key 异命令409，不靠前端复用 key 保证安全。事务失败 plan 保持 pending，提交成功后新 key 不重新建单。确认响应丢失查原 receipt，不再次模型生成/换计划；plan 过期/定义变化409并要求重新预览；不能用过去成功 receipt 绕过当前读取权限。HTTP 超时但提交结果未明显示 outcome_unknown/待核实，不能当失败重建单。只读 A01、草稿 A02 与实际工单 effects 分开记录身份。
 
@@ -164,7 +164,7 @@ Plan = {actor_id: ID, operation_id: string, canonical_command: TicketCreateComma
 | AI-03 | preview 后改定义/目标/撤权/过期；同 plan 同 key/不同 key 并发 confirm | 旧 plan 拒绝；一 plan 固定一 operation 最多一票，同号异参409 |
 | AI-04 | 建单响应丢失/恢复、切账号后旧 stream 到达 | 查原 receipt，不重建单、不向新账号展示旧答案 |
 
-实施按 X01-C/B＋X02-Q 的一个参考应用先验，再实际 D06/发现 feed，X03/A01/A02各按自身窗口；每批保留薄 UI、可见失败和运维配置。DTO/逻辑 DDL 在这里给出准确候选，真正 OpenAPI/SDK/迁移与跨仓生产者契约需实现批同步；本页用例不是已执行测试。A01 语义黄金集/延迟阈值在实际模型选定后基线化，不承诺100%准确；安全权限反例必须全过。
+实施时先用一个参考应用验证 X01-C/B＋X02-Q，再接实际 D06/发现 feed，X03/A01/A02各按自身窗口；每批保留薄 UI、可见失败和运维配置。DTO/逻辑 DDL 在这里给出准确候选，真正 OpenAPI/SDK/迁移与跨仓生产者契约需实现批同步；本页用例不是已执行测试。A01 语义黄金集/延迟阈值在实际模型选定后基线化，不承诺100%准确；安全权限反例必须全过。
 
 ### 8.1 唯一装配路径、参考Query及双模式矩阵
 

@@ -137,7 +137,7 @@ MCP Skills 扩展是可选分发/发现方式，不代替版本、信任和执�
 
 历史 D22“一套画布+Action词表+两执行语义”改为“共享设计系统、能力合同和运行关联；按工作类型显示表单/状态图/受权深链/Agent 配置”。**不默认自建任务流程画布，不强制 FSM、SOAR 与 Agent 共用引擎。** 专业流程可跳至其系统编辑，平台展示调用与结果及其对安全生命周期的影响。
 
-工单可触发一个专业 workflow 或 Agent invocation；Agent 可提出新工单/整改计划，业务写仍经本平台授权和不变量。每链指定一个编排主和一个重试主，防 SOAR、on_success、TR 与 Agent 同时续链。模型和外部 API 作为有记录步骤，恢复时不重复已完成副作用；变更计划不能复用旧批准。
+工单可触发一个专业 workflow 或 Agent invocation；Agent 可以提出工单或整改计划。所有业务写入都由负责该数据的服务执行，写入须符合本平台的授权和业务规则。每链指定一个编排主和一个重试主，防 SOAR、on_success、TR 与 Agent 同时续链。模型和外部 API 作为有记录步骤，恢复时不重复已完成副作用；变更计划不能复用旧批准。
 
 Temporal 对确定性 workflow 与非确定性 Activity 的区分可供合同设计借鉴，但不构成引入 Temporal 或自建其替代品的决定。[Temporal workflow 定义](https://docs.temporal.io/workflow-definition)
 

@@ -1,18 +1,18 @@
 # ADR-003: activelist 集成形态 —— 独立服务 + 统一 PG + 事件总线对接（非事务耦合）
 
-> **2026-11-13后继设计修订**：所有者新增“所有支持写入口的AL变化可可靠触发任务”目标。[ADR-005](adr-005-capability-invocation-and-source-facts.md)限域校准源事实责任：AL写事务产最小凭证/完整feed，主仓管理订阅/权限/任务路由。下文“调用成功后发事件、AL不感知事件”保留历史语境，不能作为当前新增目标的完整性保证；独立服务/库和薄平台定位保留，目标未实施。
+> **2026-11-13 后继设计修订**：所有者新增“activelist（AL）所有支持的写入口发生数据变化后，都可可靠触发任务”的目标。[ADR-005](adr-005-capability-invocation-and-source-facts.md)只调整源变更事实的责任：AL 在写事务内生成最小变更凭证，或提供能够证明覆盖全部变化的记录流（feed）；主仓管理订阅、权限和任务路由。下文“调用成功后发事件、AL 不感知事件”保留历史语境，不能保证覆盖这个新增目标；独立服务、独立库和薄平台定位保留，目标未实施。
 
 > **当前效力与镜像边界（2026-11-08）**：本篇保留 2026-08/09 的原决策、覆盖过程和时点表格，供追溯，不是当前集成契约镜像。独立服务、独立 PG 数据库、zhuzhao 统一网关，以及签名保护的 `X-Operator` 边界继续有效；旧正文的“网关尚未实现”“D2 未开始”、事件/快照方案与待抽包状态均不能直接当作当前状态。
 >
-> **已落地**：网关反代与 API 级鉴权/请求审计已实现（`internal/gateway/`、`internal/router/router.go`、`internal/app/app.go` 的 `NewApp`；[DD §25.5](../design/design-decisions.md#255-前置功能清单2026-09-04-校准批次-a-降级触发驱动) 与 [Phase 3 集成](../phase3/16-external-integration.md)）；utils 已独立，`resource` 绑定本仓权限域而留本仓。网关 proxy 跳过 body，不能以 HTTP 请求审计冒充变更前后完整文档快照。
+> **已落地**：网关反代与 API 级鉴权/请求审计已实现（`internal/gateway/`、`internal/router/router.go`、`internal/app/app.go` 的 `NewApp`；[设计决策 §25.5](../design/design-decisions.md#255-前置功能清单2026-09-04-校准批次-a-降级触发驱动) 与 [Phase 3 集成](../phase3/16-external-integration.md)）；共享工具库 utils 已独立，`resource` 因绑定本仓权限域而留在本仓。网关反向代理不记录请求体，HTTP 请求审计因此不能证明变更前后完整文档内容。
 >
-> **仍需按后继规格判断**：activelist 不负责用户侧权限、领域事件捕获与历史快照。下面早期事件摄入、Outbox/Asynq、G2/G3/G4 和业务快照落点是历次方案记录，不能据此宣称当前已桥接工单事件或具有跨库原子性。当前模块状态看 [能力总控](../review/11-project-control.md)、[外部集成](../phase3/16-external-integration.md) 与 activelist 仓当前设计/契约入口；两仓原 ADR 同源保留也不保证此后正文逐字同步。
+> **仍需按后继规格判断**：按 2026-09 的职责划分，用户侧权限、领域事件捕获与历史快照由主仓负责；2026-11-13 新增的源变更事实责任另见上方 ADR-005 候选说明。下面早期事件摄入、Outbox/Asynq、G2/G3/G4 和业务快照存储位置是历次方案记录，不能据此宣称当前已接通工单事件或具有跨库原子性。当前模块状态看 [能力总控](../review/11-project-control.md)、[外部集成](../phase3/16-external-integration.md) 与 activelist 仓当前设计/契约入口；两仓原 ADR 同源保留也不保证此后正文逐字同步。
 >
 > **技术勘误（不改选型决策）**：原“Mongo 下只能靠异步队列最终一致”不成立，MongoDB 副本集支持多文档事务；16MB 不是现行通用事务总量上限，默认约一分钟的事务时限可配置。PG 的关系约束和统一技术栈仍是本项目取舍，不能以错误事务能力对比作为理由。[MongoDB 官方事务说明](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/)。
 
 ## 历史决策正文
 
-以下保留原文；其中“当前/待办/已完成”均限定在各段日期，不覆盖上述现行说明。
+以下保留原文；其中“当前/待办/已完成”均限定在各段日期，不覆盖上述现行说明。PG 指 PostgreSQL，SSOT 指对应事项的唯一权威来源；C2'、C3、D1–D5、E13 和 G1–G4 均为当时的方案或工作项编号，保留供追溯，不代表新增待办。
 
 ## 日期
 2026-08-25

@@ -1,6 +1,6 @@
 # 权限底座第一包：范围与A批接口、验收设计
 
-设计日期：2026-11-15；修前基线main `610c1d76`。2026-11-17所有者随后授权前置修复，A/B、CF-06及当前IAM写入所需共同事务/投影失败拒绝子出口已在本地候选实现并通过完整适用门禁和独审；准确范围见[修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)。完整C的revision pair、两命令强审计产品及C05会话恢复仍待交付，三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，真实部署未执行。正文设计预期、修前证据和估算保留原时点，本页设计本身不追加操作许可；本轮推送/合入另由所有者明确授权，部署仍未授权执行。后续按本页、[底座详设](foundation-iam-module-detail.md)及实际所用源符号消费剩余出口。
+设计日期：2026-11-15；修前基线main `610c1d76`。2026-11-17所有者随后授权前置修复，A/B、CF-06及当前IAM写入所需共同事务/投影失败拒绝子出口已在本地候选实现并通过完整适用门禁和独审；准确范围见[修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)。完整C的revision pair、两命令强审计产品及C05会话恢复仍待交付，三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，真实部署未执行。正文设计预期、修前证据和估算保留原时点，本页设计本身不追加操作许可；本轮推送/合入另由所有者明确授权，部署仍未授权执行。后续按本页、[底座详设](foundation-iam-module-detail.md)及实际使用的源码符号，继续实现尚未交付的部分。
 
 > **2026-11-17合同阶段（历史）**：所有者当时已确认[存量修复前移边界](../planning/audit-repair-plan-2026-11-17.md)及下方§3.7目标账号接管保护方向；当时核验主仓`822346fea620d934d084d27c77cf421dca6a3327`，未改产品。该句只记录前段合同阶段，后续实现、验证及main承接以上方现势和修复报告为准，不表示当前仍未实现。两项原政策继续有效；pass8后继的恢复说明/授权矩阵等补修已实现并完成r1主仓七门禁、u2 UI六门禁和专属真实运行验证；本地适用quality及源/runtime/docs独审均通过；主仓[PR #15](https://github.com/tracerbiubiubiu/zhuzhao/pull/15)（main `21c1e2806f39e15e2c4f39a54f27958597813acf`）与UI [PR #9](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9)（main `af457b8ceea380cf7123ca8d384485f42cd75b72`）已合入且树等已验证head，branch/PR四个CI成功；两个准确merge head的main CI均已success（主仓44114420530、UI44114486495），未部署。归档与最终分支清理按材料封存及独立操作收据，完整IAM-C/C05仍后继。新执行的261顶层单元/635顶层含集成、253验收、82对零漂移及20.9%与合同阶段和baseline历史数值分开，见[复审补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。
 
@@ -18,7 +18,7 @@
 
 所有者答复：**两项均要求本地审计成功，否则回滚**。限`UserService.SetRoles`的直接角色授予/撤销、`RBACService.AssignMenus`的角色菜单/功能权限修改；本地必要成功事实写失败，本次业务变更不得提交。业务写失败不记录成功，拒绝尝试与成功事实分开。
 
-本地业务与审计已提交，仅外部collector不可达时，保留本地事实、持久补送，不重做改权；策略重载/会话清理失败按原receipt/恢复设计显示待生效，不伪装已全实例生效。commit结果未知先查原operation/receipt，不能盲重做。此确认不把全部GET诊断日志改成强审计，也不自动批准更多改权操作、完整审计控制台或真实人员/保留期。
+若本地业务与审计已提交，但外部 collector 不可达，应保留本地事实并持久记录补送工作，不重新修改权限；策略重载/会话清理失败按原receipt/恢复设计显示待生效，不伪装已全实例生效。commit结果未知先查原operation/receipt，不能盲重做。此确认不把全部GET诊断日志改成强审计，也不自动批准更多改权操作、完整审计控制台或真实人员/保留期。
 
 两答来源及对历史待答的后继见[后继索引F017](../planning/planning-followups.json)。政策已定与产品已实现分别记录。
 
@@ -30,7 +30,7 @@
 | **B 有效组织来源与任职保存** | AUTH-01/03、RECHECK-03、已定HIER-D01；`RoleRepo`两种有效查询、scope/组织委托、`OrgRepo.SetUserOrgsTx` | 父/本组停用跨菜单/API/scope/委托一致，独立来源保留；同org集合保存不重置admin/group/期限，停父角色不再贡献菜单 | 不做完整HR/UAA；组织集合差量保留既有primary缺省/null语义和owner双轨清理；Move/停用竞态由C共同写侧闭合 |
 | **C 当前授权、提交及强审计最小闭环** | C04工单Create/Update/Transition及其repo邻域；相关IAM/组织/参与写方；两审计命令；FND-02/03/04/06/11/12/17 | fresh/DBTX不信守卫前context；撤权先提交旧决定零效果；L1 revision+enforcer配对原子安装，单实例失败/恢复可验；两改权审计写失败零提交、collector失败只补送 | 不能只给三个工单方法加读锁而漏对应改权写方；不扩全仓DBTX、独立PDP或完整HA。完整双副本、HR、UAA及其它领域按原包窗口 |
 
-A接口/验收已细化；B的来源与差量算法见[底座§3.8](foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线)，C的写方、pair、两操作审计与旧wire方案见[§3.9](foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，任务窄修复见[任务§8.3](task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因)。原设计的A先行顺序已经由11月17日前置批实际消费；A/B及目标保护和所需当前写入子出口已交，完整C继续有界后继，不要求一次开发整个IAM。C05账号停用/会话收敛的本地必需出口仍按原包交付，不能因窄出口完成就声称完整会话恢复链已验，亦不将它免费吞进C子估。已定政策不重问，具体SQL、fresh端口、锁序实现、错误兼容与测试夹具由维护者在既有合同内处理。
+A接口/验收已细化；B的来源与差量算法见[底座§3.8](foundation-iam-module-detail.md#38-b有效组织来源与成员集合的准确接线)，C的写方、pair、两操作审计与旧wire方案见[§3.9](foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，任务窄修复见[任务§8.3](task-activelist-message-detail.md#83-存量任务窄修复准确接线与参数归因)。11月17日的前置修复已按原设计先完成A；A/B及目标保护和所需当前写入子出口已交，完整C仍按限定范围后续交付，不要求一次开发整个IAM。C05账号停用/会话收敛的本地必需出口仍按原包交付，不能因窄出口完成就声称完整会话恢复链已验，亦不将它免费吞进C子估。已定政策不重问，具体SQL、fresh端口、锁序实现、错误兼容与测试夹具由维护者在既有合同内处理。
 
 **现有任务入口的安全修复另列**：AUTH-02维护action资格/保留期、AUTH-06可信created_by归因归原任务/消息包，OBS只消费其可信actor，在开放业务任务前修；不等CE03/MCP。主仓Submit/CreateJob/UpdateJob/Trigger/Retry/最终执行逐项清单与TR归因合同另作窄批，不偷偷塞进IAM数据查询，也不把TR现有“body优先”测试当成可信归因证明。
 
@@ -56,9 +56,9 @@ HTTP锚点为`internal/router/router.go`的`New`、`internal/handler/user_handle
 
 ### 3.2 直接角色编辑：保留不等于重新授予
 
-三种查询分开：①直接绑定编辑集合；②有效direct/org/inherited鉴权投影；③操作者IAM管理资格所用的启用直接角色。目标接管保护另按§3.7收紧，不把目标保护反向变成操作者管理权。只新增/复用窄编辑查询，不把`UserRepo.GetRoles`改成包含停用，也不改effective鉴权回直接角色。
+三种查询分开：①表单编辑的直接绑定集合；②鉴权使用的有效角色集合，合并 direct、org、inherited 三类来源；③判断操作者 IAM 管理资格时使用的启用直接角色。目标接管保护另按§3.7收紧，不把目标保护反向变成操作者管理权。只新增/复用窄编辑查询，不把`UserRepo.GetRoles`改成包含停用，也不改effective鉴权回直接角色。
 
-服务端以当前直接绑定`old`和请求`requested`计算`retained/added/removed`，仍为全量替换，不自动把缺项并回后声称保存成功。`old`须取完整user_roles绑定事实并辨认其角色状态，不能用过滤后的GET或客户端字典替代；发现历史软删孤儿且本次无法安全处理时，服务端整笔拒绝、零副作用，UI保留草稿，不让被过滤的旧ID在替换中悄悄消失：
+服务端比较当前直接绑定`old`与请求`requested`，区分保留项`retained`、新增项`added`和移除项`removed`。保存仍为全量替换，不自动把缺项并回后声称保存成功。`old`须取完整user_roles绑定事实并辨认其角色状态，不能用过滤后的GET或客户端字典替代；发现历史软删孤儿且本次无法安全处理时，服务端整笔拒绝、零副作用，UI保留草稿，不让被过滤的旧ID在替换中悄悄消失：
 
 - **新增**：角色存在、未软删、启用，且满足原`canAssignRole`；不能把别处派生或仅字典展示的角色当作已直接绑定。实际比较是role.priority≥actor有效直接档位，即可授等档；`canManageTarget`对非自身目标才要求严格更强。两者不得在文档或实现中混淆。
 - **保留**：正常启用角色继续原可授档位检查。停用角色只允许保留服务端证实已存在的同一直接绑定，不贡献菜单/权限/管理档位，不得借此新增角色、换来源或恢复有效性；客户端声称“旧绑定”不是证据。
@@ -79,10 +79,10 @@ HTTP锚点为`internal/router/router.go`的`New`、`internal/handler/user_handle
 
 实际消费方是UI的`src/api/system/user.ts`中`getUserRoleIdsApi/getUserOrgsApi/setUserRolesApi/setUserOrgsApi`、`src/api/system/role.ts`的`listRolesApi`及`src/views/system/user/index.vue`的`openRoles/submitRoles/openOrgs/submitOrgs`。
 
-1. 每次打开/关闭递增局部请求世代，清旧草稿/错误、树勾选、primary；成功快照绑定`{userId,seq}`。角色读取和必要字典均有效、组织树和成员读取均有效且仍匹配，才进入ready。树赋数据后等渲染再回填，并再次核世代；已绑组织ID必须都能在树中定位，不能让树组件自动取交集丢项。
+1. 每次打开/关闭递增局部请求世代，清旧草稿/错误、树勾选、primary；成功读取的快照绑定`{userId,seq}`，表示它属于哪个用户、哪一轮请求。角色读取和必要字典均有效、组织树和成员读取均有效且仍匹配，才进入ready。树赋数据后等渲染再回填，并再次核世代；已绑组织ID必须都能在树中定位，不能让树组件自动取交集丢项。
 2. 字典载荷有效不等于当前操作者可授全部角色；最终资格在后端。字典至少验数组、唯一精确ID、name/code字符串和status=0/1；不能将不安全数值ID转字符串后冒称精确。字典失败（含失败后残留缓存）或已绑定ID无法正确回填时先禁整体保存、给重试/受权核查，不把缺项猜成停用或无绑定，不透露隐藏角色信息。角色界面说明“此处编辑直接授予；组织/继承来源另算”，A不凭现有ID猜来源明细，也不把来源管理台当必做。
-3. 按钮与submit函数双守卫：当前可见、目标和快照匹配、已ready、无加载/确认/保存。首个await前取得提交锁，拍下目标ID/名称/世代和数组副本；组织确认返回后再核目标/世代。确认取消释放锁，不发请求。
-4. POST只用拍下payload；迟到成功/失败只能更新同代弹窗，不能关闭新目标或重启其保存资格。GET/POST及确认的finally、取消和解锁也核原目标/世代/提交令牌，旧回调不能释放新目标的锁或改其loading。失败保留本代草稿并明确反馈；响应丢失/未知不等于零提交，不自动重发。无需新前端状态框架或为此增加幂等字段。
+3. 按钮与submit函数双守卫：当前可见、目标和快照匹配、已ready、无加载/确认/保存。在首个 await 前取得提交锁，固定本次目标ID、名称、请求世代和数组副本；组织确认返回后再核目标/世代。确认取消释放锁，不发请求。
+4. POST只使用这份固定的 payload；迟到成功/失败只能更新同代弹窗，不能关闭新目标或重启其保存资格。GET/POST及确认的finally、取消和解锁也核原目标/世代/提交令牌，旧回调不能释放新目标的锁或改其loading。失败保留本代草稿并明确反馈；响应丢失/未知不等于零提交，不自动重发。无需新前端状态框架或为此增加幂等字段。
 
 ### 3.5 独立预期及真实测试入口
 
@@ -97,7 +97,7 @@ HTTP锚点为`internal/router/router.go`的`New`、`internal/handler/user_handle
 | A-05 加载/坏载荷 | 角色或字典、树或成员任一pending/error/缺字段/坏ID时零POST；重试全成功才恢复保存，成功显式空数组仍可按权限清空 | UI现无用户弹窗专项单测；补API载荷与局部状态测试，按钮拒绝由Playwright验 |
 | A-06 换目标/树错序 | 甲慢乙快、甲迟到/乙失败、关闭重开均不串目标；树渲染后精确勾选，缺项不被静默覆盖 | `src/common/hooks/test/useCrud.test.ts`的deferred方法可借用；节点勾选仍需真实浏览器 |
 | A-07 保存/确认重入 | 连点/直接重复submit/重复确认至多发一笔，payload目标与数组固定；旧POST结果不关新弹窗，旧finally不解锁新请求，失败保草稿 | `e2e/s3-user-admin.spec.ts`已有组织保存/二次回显骨架；`e2e/s5-storage-smoke.spec.ts`可借请求失败注入方法 |
-| A-08 既有集合和有效性 | A不改变组织primary缺省/null；B未验收前不宣称组织任职原样保存无损；编辑修复不让停用角色进入effective/IAM档位 | 主仓成员/角色既有回归＋UI `src/api/ticket/idWire.test.ts`大ID方法；B、C的完成证据不可由A代销 |
+| A-08 既有集合和有效性 | A不改变组织primary缺省/null；B未验收前不宣称组织任职原样保存无损；编辑修复不让停用角色进入effective/IAM档位 | 主仓成员/角色既有回归＋UI `src/api/ticket/idWire.test.ts`大ID方法；A通过不能替代B、C各自的完成证据 |
 
 既有测试符号的源文件由实施前`rg`定位；新用例须写入受控测试，ignored审计探针不能充当产品门禁。UI现Vitest为node环境，不预加jsdom或组件测试依赖；局部状态/适配器可用现有设施，真实按钮/树/提示由Playwright验。
 

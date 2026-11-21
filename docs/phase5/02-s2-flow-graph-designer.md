@@ -2,7 +2,7 @@
 
 ## 当前状态与阅读顺序
 
-LogicFlow编辑、mapper往返、BFS自动布局、本地坐标与warning级lint已交付。先看配置保存一致性和邻接表合同，再看UI/引擎分界；旧选型/无画布基线只说明历史。当前图更新/undo-redo修复见B20报告，完整门禁与部署以最新收据为准。
+管理员可在 LogicFlow 画布上编辑流程图，自动布局，保存节点位置。保存将画布转为后端使用的状态和连线，重开时再还原到画布；某些问题会提示警告。修改配置时先查保存怎样保证图和其它字段一致，再查哪些事由页面处理、哪些由引擎判断。图更新、撤销与重做的修复见 B20 报告；完整检查和部署以当次记录为准。
 
 UI `src/components/FlowGraphDesigner/mapper.ts`的`toGraph/fromGraph/positionsOf`承接协议，`layout.ts`的`autoLayout`用BFS，`lint.ts`的`lintGraph/stuckStates`给告警。流程仍为人工触发FSM，自动排他路由是Phase6 R0未做能力。UI现行指南见[入口](../../../zhuzhao-ui/docs/README.md)。
 

@@ -20,7 +20,7 @@
 - **F1、IAM-A/B、CF-02/04/05/06**。组织赋角、保留直接角色和任职属性、父级停用、组织管理职责分开、敏感目标账号保护等当前窄修已合入。`internal/service/iam_guard.go` 的共同守卫与 `internal/service/user_service.go` 的 `ensureSensitiveCanManage/ensureTargetProtection` 是现行写侧入口。IAM-R02 保留平台角色与局部委托语义，IAM-R01 已验证拒绝旧策略缓存及受控重启恢复。字面上的「本轮已确认待实现」标题保留历史锚点，交付以合入报告为准。自动策略恢复、完整 IAM-C/C05、会话原子回执及全资源 revision 仍开放。[三仓合入](audit-baseline-main-merge-2026-11-17.md) · [pass8 复验](audit-pass8-followup-2026-11-17.md)
 - **F3、F5 已交切片**。普通办理者经 `internal/service/ticket/people_service.go` 的 `PeopleService.Search` 走专用选人入口。AUTH-04 双端关联读取已合入，`Service.ListRelations` 校验请求端，`TicketRepo.ListRelations` 对对端应用读过滤，由 `TestRelationsUsePeerReadScopeInBothDirections` 覆盖。工单更新和公开评论的提交快照由 `TicketRepo.UpdateTx`、`Service.Update/CreateComment` 和 `TestCommitSnapshot_*` 核验。自动首派走 `DispatchService.OnAfterCreate` 到 `Service.assignAuthorized` 的初派分支，在票行锁内检查仍无处理人。可将这些结果登记为当前窄出口。[主仓 PR #26](https://github.com/tracerbiubiubiu/zhuzhao/pull/26)
 - **F5、C04/C05 待交**。票行锁、同事务事件和提交快照保护工单事实，当前授权还涉及身份、直接及组织来源、资源策略和业务写入的共同顺序。逐入口复验建单、更新、评论与备注、分派、状态、关联、抄送、附件和后台动作的实际接线。撤权提交先于业务提交的保证要在共同屏障、同事务当前资格及所有相关写方上成立。收件人依赖当前资格的通知沿 D15/C04 补检查，现行分派器按提交事件解析收件人及偏好。[C04 工作包](../../planning/planning-backlog.md) · [11 月 19 日独立验收边界](../../planning/audit-repair-plan-2026-11-19.md#独立验收边界)
-- **同类待修：C05 自助改密的凭据版本**。`AuthService.UpdatePassword` 在取得 IAM 写入守卫前核旧凭据，`UserRepo.UpdatePassword` 不校验该证明仍对应当前凭据版本。两类凭据写虽串行提交，先取得的旧证明仍可能覆盖后已生效的管理重置。现有会话纪元及写后重读回归覆盖令牌，当前凭据证明仍需在同一事务重验。归 C05，验凭据版本变化后零密码写入、零新会话及合法改密成功。源码确认，未做安全场景实跑。[C05 共同合同](../../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)
+- **同类待修：C05 自助改密的凭据版本**。例如用户发起改密请求并通过旧密码检查，管理员随后先完成密码重置。原改密请求此时应被拒，不能覆盖管理员设置的新密码。`AuthService.UpdatePassword` 在取得 IAM 写入守卫前核旧凭据，`UserRepo.UpdatePassword` 不校验该证明仍对应当前凭据版本。两类凭据写虽串行提交，先取得的旧证明仍可能覆盖后已生效的管理重置。现有会话纪元及写后重读回归覆盖令牌，当前凭据证明仍需在同一事务重验。归 C05，验凭据版本变化后零密码写入、零新会话及合法改密成功。源码确认，未做安全场景实跑。[C05 共同合同](../../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)
 - **TICKET-R01、C02**。历史已删除键的可选值清理、合法替换、只改标题及 required/归属拒绝已有专项。当前普通附件的引用守卫、锁序、事务解绑和逻辑删除已合入，附件用途拒绝先核归属。历史数据清理、旧头像、回填、GC 与全量 C02 继续按各自出口处理。字典删除版本只能确认字典目标，字段引用预检仍先于删除 SQL，字段引用写方和类型子项变化尚无共同保护。沿文档已有兼容边界跟踪。[附件收据](../11-project-control.md) · [字典删除合同](../../api/dictionary.md#并发和兼容边界)
 
 ## 任务执行与对账
@@ -58,6 +58,6 @@
 
 分工与复核使用已配置助手。质量与交付审计者（DeepSeek）、防御性安全与权限审查者（Codex）、发布与运维评审者（ZCode）、产品体验设计者（Codex）负责四路主审。另由 Codex 验收者盲核任务及启动，DeepSeek 架构设计师和验收者分别复核 F0/C04、C05 与存储指标，Codex 独立集成复核者再查错写边界与状态文档。
 
-五仓开工时各自只剩 `main` 本地分支和远端主线分支。清理范围为本次审计候选的本地与远端分支及其专属工作树、临时测试文件。合入后核实祖先关系、独有提交、工作树状态和使用方，确认材料交接后再清理。原 F0 快照是已有的 detached 工作树，继续保留作为历史入口。
+这次审计开始时，五仓各自只剩 `main` 本地分支和远端主线分支。清理范围为本次审计候选的本地与远端分支及其专属工作树、临时测试文件。合入后核实祖先关系、独有提交、工作树状态和使用方，确认材料交接后再清理。原 F0 快照是已有的 detached 工作树，继续保留作为历史入口。
 
 后继优先处理实际启用的 C04/C05 写入、F2a 终态/取消对账和工单配置的稳定目标。配置与通知按实际启用路径分批验，前端与 ActiveList 按原接收工作包补体验及浏览器场景。估算和启用由原总账及批准入口维护。

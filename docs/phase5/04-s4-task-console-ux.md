@@ -4,7 +4,7 @@
 
 已交付动作元数据`GET /api/v1/jobs/actions`、提交下拉、Submit/CreateJob未注册动作前置校验、CronBuilder和运行/定义/死信三Tab。先读当前合同，再看§3.7任务库二期和附录B；后两者是已拍待实施设计，当前job_runs没有所述RESULT/LOG/PROGRESS查看链。
 
-一次提交为`POST /api/v1/tasks`，定义创建为`POST /api/v1/jobs`，手动触发为`POST /api/v1/jobs/trigger`，不能混写成一条POST /jobs。死信=Redis asynq archived投影、runs=PG job_runs，分页/存储语义不同且已定不合并。UI操作与测试归[UI指南](../../../zhuzhao-ui/docs/README.md)，执行存储归taskrunner仓；本篇保留主仓网关/跨仓设计，不复制第二套执行协议。
+临时提交一次任务用 `POST /api/v1/tasks`。保存任务定义用 `POST /api/v1/jobs`。手动运行已有定义用 `POST /api/v1/jobs/trigger`。找某次任务的执行记录，到运行页查 PostgreSQL 的 `job_runs`；找队列归档的失败任务，到死信页查 Redis 中 Asynq 的归档。两页分别取数和分页。UI操作与测试归[UI指南](../../../zhuzhao-ui/docs/README.md)，执行存储归taskrunner仓；本篇保留主仓网关/跨仓设计，不复制第二套执行协议。
 
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：S10 之后（依赖序宽松，靠后）；**先行批已落地**（2026-10-13），启动时在其上增强、不推倒。
 > **量级**：1–1.5 周（动作元数据读端点 + 预校验 ~1 天随行；通知配置页已迁 S6）。**迁移**：零。

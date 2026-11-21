@@ -14,7 +14,7 @@
 - `internal/service/ticket/type_admin.go` 的 `validateCustomData/applyFormulas` 已保留 schema 校验/重算；C01 同名引用和输入隔离、F11 非选项字段空 options 往返仍待修。Phase5 已修的 MIME、双模式保真、fresh 字段版本和未设置列宽不再重复报新功能。
 - UI 的 `src/views/ticket/create/index.vue` 已将 file key 追加；单 file 控件尚非一次多选。`src/views/ticket/list/index.vue` 尚无批量标签；`detail/index.vue` 的能力投影与活动流仍待补。`src/router/routePermission.ts` 将 `/home` 列为 exempt，不代表默认页动态注册/Logo 落点问题已经解决。
 
-**本地核心先交**：固定受审流程/基本字段、不可变定义、完整当前三层权限、受限类型、转换采集/证据、唯一主责与 CC、K2、必要业务历史、风险复核责任投影、批量标签及薄 UI。它只消费实际启用字段/动作所需合同，不要求所有设计器、LS01/02 或完整 D11/D16 先完成。
+**本地核心先交**：经过评审的固定流程和基本字段、不可变定义、完整的当前三层权限、受限类型、转换时采集字段与证据、唯一主责和 CC、K2、必要业务历史、风险复核责任投影、批量标签及最小可用界面（薄 UI）。首版只需实现实际启用字段和动作所需的合同，不要求全部设计器、LS01/02 或完整 D11/D16 先完成。
 
 **完整 P6 逐步交**：D05 配置晋级、LS01 常驻字段 ACL、LS02 typed 检索、LS03 受权快速入口、LS04 完整字段diff、D16 自动路由，U03–U06 全站/配置器推广及 D11 通知增强。D01 的同名状态最小迁版随定义交付；删状态完整映射归 D18/P7。共享轮询/认领归 E03 的已排处置窗口，实际近期启用先取所需子范围并净估，不把整套队列藏进 D02。服务端草稿、会签/加签、移动端和通用工作流不在此批。
 
@@ -80,7 +80,7 @@ B2 首批验 D01–D04 的实际启用部分，用两条合成风险验证办理
 
 ### 2.1 类型、实例与版本
 
-所有 ID 在 JSON 中为十进制字符串，时间为带时区 RFC3339；新 DTO 的 `revision/draft_revision/definition_version/authorization_epoch` 均为规范十进制字符串，服务端按有界非负整数解析，不用JS number运算。旧现行 `version` number 只在明确旧接口兼容层保留，不能让新响应同字段时而number时而string。`draft_revision` 是管理草稿 CAS，`definition_version/hash` 是发布内容，`revision` 是票的写序号，`authorization_epoch` 只供失效/诊断，不能混用。请求不能自填可信操作者或 `created_by`。
+所有 ID 在 JSON 中为十进制字符串，时间采用带时区的 RFC3339。新请求与响应（DTO）中的 `revision`、`draft_revision`、`definition_version` 和 `authorization_epoch` 均为规范十进制字符串，服务端按有界非负整数解析，前端不用 JS number 运算。现有 `version` 的 number 类型只在明确的旧接口兼容层保留，新响应不能让同一字段有时为 number、有时为 string。`draft_revision` 用于检查管理草稿是否被并发修改（CAS）；`definition_version/hash` 标识发布内容；`revision` 是工单业务写入的序号；`authorization_epoch` 只用于授权失效与诊断，四者不能混用。请求不能自行指定可信操作者或 `created_by`。
 
 ```typescript
 type Revision = string // 规范十进制，无前导零；零是否允许由各字段语义约束
@@ -108,7 +108,7 @@ type TicketView = {
 }
 ```
 
-这些是公共语义类型；旧available真实data为`{transitions:string[]}`，不塞成AvailableAction数组。候选`GET /api/v1/tickets/:id/actions`返回明确动作对象，详情/可选capabilities聚合复用同一投影。旧Ticket的assigned_to未分派时omitempty省略，新TicketView才明定null，不称零形状变化。既有id/to/comment客户端短期仍靠锁/谓词，只有传expected_revision才防陈旧编辑；新UI/SDK/私有用例必须传revision。
+这些类型描述公共语义。旧 available 接口的真实 data 为 `{transitions:string[]}`，不能直接改成 AvailableAction 数组。候选 `GET /api/v1/tickets/:id/actions` 返回完整动作对象，详情与可选 capabilities 汇总复用同一套结果。旧 Ticket 未分派时因 omitempty 省略 assigned_to，新 TicketView 才明确返回 null，因此响应结构有变化。现有只传 id/to/comment 的客户端短期仍依赖锁和判定谓词；传 expected_revision 才能防止基于旧内容提交。新 UI、SDK 和私有用例必须传 revision。
 
 action_id首批为只读标识，写以definition_version＋to定位。新发布小FSM同from/to只一条边；preflight发现重复目标边须报告并受控修订，不任意选一条迁移或放宽为通用多边工作流。真实旧配置若需保留不同动作同目标，列具体场景再决，不假称只添action_id已解决写歧义。
 
@@ -167,7 +167,7 @@ action_id首批为只读标识，写以definition_version＋to定位。新发布
 1. 在持锁前解析请求、验证大小/语法；必要外部取数在请求预算内完成，并保留经平台核实的来源引用。客户端传回的建议不成为受管权威值。
 2. 事务先取 C04 当前授权守卫（排序 stable key），再取类型 live 策略/发布引用的共享锁；涉及风险桥时遵共同 `group→risk IDs→ticket IDs→link IDs` 顺序，普通工单直接取按 ID 排序的票锁。定义内容不可变，不反向锁草稿。
 3. 读锁内当前值，重验身份、L1/L2/L3、revision、定义、合法边及写前执行资格。转换只接受该边 collect_fields 的普通字段 patch，domain/formula 字段拒写；同源显隐、公式/G2、业务 validator/证据均成功才写。
-4. 一个事务 CAS 写字段/状态/revision；真正入新态时关旧 visit、开新 visit、同一数据库时刻更新 status_changed_at、SLA 和节点提醒代次；生成事件与可靠 intent。任何一项失败回滚全部，不能只写状态或先发通知。
+4. 在同一事务中按预期版本更新（CAS）字段、状态和 revision。真正进入新状态时，结束旧状态驻留记录（visit），开启新记录，并以同一数据库时刻更新 status_changed_at、SLA 和本轮节点提醒的代次，同时生成事件与可靠处理意图（intent）。任何一项失败都回滚，不能只写状态或提前发通知。
 5. commit 后返回业务提交结果。派单/消息/TR/自动下一跳由 R01 持久 intent 交接；只在其 receipt 证明成功后显示对应成功状态。通知失败或后续转派失败不回滚已提交状态，显示待处理/失败；只重试该后继，不重复整次转换。
 
 Create/Assign/Close/Transfer/领域桥/自动路由调用同一入态与用例核，禁止各写一次 SLA 或绕过状态/字段校验。Create 进入初态、Assign 确实改变状态、Close 进入终态分别按 snapshot 处理 SLA；Assign 仅换人、接单、备注、迁版、改字段都不重置原节点 due。旧 `clearReminderWatermark` 的 commit后删除不能作为新语义唯一依据，改按 visit/代次隔离水位，旧删除仅清理；崩溃后不因旧水位抑制新一轮。
@@ -196,7 +196,7 @@ D05 继续[配置晋级提案](../proposal/config-promotion.md)：包仅含已�
 
 ### 4.2 文件、草稿、标签与通知
 
-file 控件默认多选追加成功项；B上传不替换A，按object key去重，逐项失败保留可重试状态。建单前移除只是不纳入提交；已建单移除字段引用不删除工单附件。显式删除须同事务核当前字段/正文全部引用，仍引用409；不能用文件名猜归属，不允许把别票key绑定过来。C02 负责与GC互斥及Update同规绑定，现稿 `fields`/`fields_on_transition` 改以 `custom_data_patch`/`collect_fields` 为规范；不改原附件下载鉴权。
+file 控件默认支持多选，上传成功的文件逐个追加；上传 B 不替换已有的 A，按 object key 去重，每个失败项保留可重试状态。建单前移除文件，只是不把它纳入提交；已建单移除字段引用，不会删除工单附件。显式删除须在同一事务核对当前字段和正文的全部引用，仍被引用时返回 409。不能用文件名猜归属，也不能绑定别张工单的 key。C02 负责与 GC 互斥，并让 Update 使用同样的绑定规则；现稿以 `custom_data_patch` 和 `collect_fields` 为规范字段，取代草案中的 `fields` 和 `fields_on_transition`，不改原附件下载鉴权。
 
 本机草稿以 `user_id+type_code+definition_version+form_kind` 隔离，内容带schema/hash和更新时间；恢复前先取当前定义/权限，仅恢复允许普通字段并列差异。退出/换账号清内存与对应草稿，凭据、秘密和预签URL不持久化；file key恢复先向服务端核确认/归属/过期，失效显示需重传，不自动提交。存储不可用/超额提示“未保存本机草稿”，保留当前表单；没有服务端 draft 工单状态。
 
@@ -206,7 +206,7 @@ D11 的业务配置采用有限“类型/流程版本/节点事件×收件职责
 
 ## 5. 字段安全、检索、快速入口与自动路由
 
-这些是 P6.3 后续功能，不作有限基本字段首版的整包前置。新增真正保密字段即必须先交所需最小保护，不能用 visible_when/前端隐藏代替。
+这些是 P6.3 后续功能，使用有限基本字段的首版不必等待整包交付。若新增真正需要保密的字段，必须先实现它所需的最小保护，不能只用 visible_when 或前端隐藏代替权限控制。
 
 **LS01** 按角色展开后的固定决策表执行键 `(type_code,state,field_id,role_code)`，field_id为稳定公开身份，由可信schema解析到field_key，改名/删除后复用key不能继承旧字段授权，执行值为 `readable/editable/required`；schema安全策略与业务定义修订分别有CAS，管理入口须独立权限和影响预览。无规则维持旧基础字段语义；有规则为固定白名单grant求并集，再与当前行、domain/write_authority、动作、状态约束求交，`required`不能授写权；准确规则对象沿原LS01的`read_role_codes/write_role_codes/required_on_write`，写角色必须为读角色子集。冲突/不可读必填/资格字段可自写在发布期拒绝。受权角色三源有效展开，但带组织的业务管理职责必须求组织交集，不能仅拿role字符串全局放开。
 
@@ -239,13 +239,15 @@ type TicketFieldsChangedV1 = {
 
 diff函数接收锁内旧真值与规范化/G2/服务端公式/领域更新后的新真值，比较实际差异，不用请求patch当after，不把未变化的重传字段记为变化。present区别缺键与显式null，数组保留顺序语义，数字/日期按schema规范化；工单票据、定义、actor和operation由服务端写。普通安全小标量可inline；file/richtext只记稳定对象/字段键及hash/受控证据引用，秘密不复制原文到事件、普通审计或通知。payload大小有界，需完整证据时写受控引用，不静默截断后冒称完整值。
 
-与该次业务写/revision/节点事实/可靠intent同事务持久化；回滚无成功diff。创建初始化、更新、转换采集、管理干预、受权结果映射均复用该函数；结果receipt只说明任务事实，不能替代实际字段更改事件。先有“效果已发生，投影待补”的明确状态，补活动投影不能再执行结果副作用。
+差异记录与该次业务写入、revision、节点事实和可靠 intent 在同一事务持久化；事务回滚时不能留下成功 diff。创建初始化、更新、转换采集、管理干预和受权结果映射均复用该函数。结果 receipt 只说明任务事实，不能替代实际字段更改事件。业务效果已经提交而活动流尚未更新时，要明确显示“效果已发生，投影待补”；补齐活动流不能再次执行原业务动作。
 
 读取历史先当前票L2，再按**当前**字段ACL投影；无读权字段整条change省略，不露field_id、名字、旧值、变化数量或“某秘密被修改”提示。删除/重命名字段按事件记录的稳定field_id解析，不把新同名key的权限移给旧值；缺可信定义/权限时保守隐藏值，可只显示获权的普通操作类型。event_id和revision为稳定游标，不以时间戳排序唯一；`after_event_id/page_size`有界分页，重复页不重复活动项。`FieldDiff_NormalizedTruth`、`FieldDiff_AtomicRollbackAndReplay`、`FieldDiff_CurrentACLNoFieldSideChannel`、`FieldDiff_RenameAndMissingDefinition`覆盖真值、失败、重复、撤权与旧定义；本包依D02/LS01，通用活动流展示只在U03计一次。
 
 **D07预填接缝**沿[生命周期 §6](../design/business-lifecycle-contracts.md#6-d04--d07字段求值约束与可替换数据查询)准确`{source_ref,query_ref,params,mapping}`合同；params显式区分`{field:...}`与`{const:...}`，一个查询可映射多个获准普通字段，多参数依赖有环保存期拒绝、最多三趟有界收敛。旧`source:{type,config}/trigger_by`由核心兼容层规范化，不泄露sourceConfig/URL/secret给普通调用者。建议值可人工编辑，但发布配置规定的“总是补空”必须明示；用户改了输入generation后旧结果不覆盖人工值，数字0/false不是空。domain/write_authority字段不能由prefill获得写权；权威字段只消费平台核实的来源引用。正常一查多填、未命中、依赖失联、同参去重、多跳超限、人工更改和撤权分别在D07合同/风险详设核验，工单只消费被允许的建议，不另造取数协议。
 
-**D16** 自动路由只为发布定义中显式automatic出边启用。条件同一求值核，按显式priority取首命中、恰一默认边；人工actions不出现自动边。命中后新的短事务CAS，重新验当前受限服务职责、源状态/revision、字段/G2/validator/证据；只跳人工角色资格。业务提交事务写可靠唤醒intent，commit后处理，扫描器补失联窗口；多实例认领沿R01 lease/fence，不靠本地goroutine保证。链深候选上限16且静态拒明显自动环；触顶hold并展示原因，不静默办结。无匹配/非法表达式/权威依赖错误不能走默认边掩盖求值失败；默认仅处理“合法求值均未命中”。分派condition沿同词表，旧keyword仍兼容，规则优先级明确稳定，不依赖JSON对象顺序。
+**D16** 自动路由只处理发布定义中明确标为 automatic 的出边。条件使用同一个求值器，按显式 priority 选择首条命中边，并要求恰有一条默认边；人工 actions 列表不显示自动边。命中后开启新的短事务，用 CAS 检查状态与版本是否仍符合预期，重新核验当前受限服务的职责、源状态、revision、字段、G2、validator 和证据；自动执行只跳过人工角色资格检查。
+
+业务提交事务保存可靠唤醒 intent，提交后处理，扫描器补查提交后未能交接的情况。多个实例领取待执行项时，沿 R01 的租约与防旧执行者提交标记（lease/fence）控制，不能只靠本地 goroutine 保证正确性。自动链深的候选上限为 16，并在静态检查时拒绝明显自动环；达到上限时暂停（hold）并展示原因，不能静默办结。默认边只处理“所有条件均合法求值但没有命中”的情况；无匹配结果不能用来掩盖非法表达式或权威依赖错误。分派 condition 沿同一词表，旧 keyword 仍兼容，规则优先级明确稳定，不依赖 JSON 对象顺序。
 
 ## 6. U01–U07 页面与状态详细合同
 
@@ -277,7 +279,7 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 2026-11-15[权限专项](../review/reports/authorization-design-implementation-review-2026-11-15.md)将已有D03“全读出口一致”落到存量`ticket_relations`：A仍可见而B撤CC后不可见时，`ListRelations(A)`须按对端当前read资格过滤后再生成结果及任何后继分页/计数，不能回B的ID、关系创建人/时间或可识别占位；双向关系同样处理。当前main只验A，已隔离复现元数据泄露，尚未修。C04/D03正式启用前补`Relations_PeerRevokedNoMetadata`，同时验仍合法对端不误过滤；CreateRelation已有双端update检查继续保留。组织status=0后scope/本组与祖先委托撤权归底座FND-14同一修复，不重复造权限规则；BK-20历史档案例外单列。
 
-下列名字是应新增/改造的行为测试候选，不是假称现有测试。先按当前获准逻辑批写全正向、负向、边界和权限红例，再实现到绿；并发缺陷用闩/通道固定竞争点及至少8次稳定红验牙，不靠随机sleep。只对当前消费范围开工，不一次写全远期红测试。
+下列名字是应新增或改造的行为测试候选，不表示已有这些测试。先按当前获准的实现批次写全正向、负向、边界和权限失败用例，再实现到通过；并发缺陷用闩或通道固定竞争点，至少稳定复现失败 8 次，不靠随机 sleep。只对当前实际使用的范围开工，不一次写全远期失败测试。
 
 | 用例组（候选测试名） | 必须证明的正/负/异常预期 |
 | --- | --- |
@@ -320,7 +322,9 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 随后按同一目标用户谓词过滤当前active/类型/组织候选，返回最小user_id/display_name＋eligibility_revision/as_of，组织筛选只收窄；缺字段不暴露工号/邮箱/角色目录。无候选正常空，无权404/403、依赖失败503，不能吞成空；提交再验，Query非grant。主责单选、CC/participant多选，缓存绑定上下文/权限/世代。
 
-实施仍四个可独立验收片：T1定义端口→扩列/幂等初版回填/零悬挂→读写切换→约束及草稿UI；T2转换核/采集/accept/transfer及薄详情；T3类型策略/参与来源/独立管理/候选Query；T4 evaluate/prefill与责任summary。先验证升级前已有工单能补上可信的规则版本、重复发布请求只生效一次、缺规则时只能查看，继而原子字段/状态/事件/intent和并发一成；再验all-scope不穿透/来源撤销/列表计数导出同源；最后迟到预填/无权不发请求/未知不变0及复核责任去重。全部沿本页既有具名TDD与原包扣重，不另造父包/双规则核。
+实施仍分为四个可独立验收的部分：T1 先交定义端口，再扩列、幂等回填初版并核对没有悬空引用，之后切换读写，最后加约束及草稿 UI；T2 交转换核心、字段采集、accept、transfer 及最小详情界面；T3 交类型策略、参与来源、独立管理资格和候选 Query；T4 交 evaluate、prefill 与责任 summary。
+
+先验证升级前已有工单能补上可信的规则版本、重复发布请求只生效一次、缺规则时只能查看。再验证字段、状态、事件和 intent 同事务提交，并发提交只有一个成功；随后验证 all-scope 不穿透类型限制、来源撤销，以及列表、计数、导出使用同一可见范围。最后验证迟到预填不覆盖新值、无权时不发请求、未知结果不显示为 0，以及同票复核责任去重。全部沿本页既有具名 TDD 与原包扣除重复工作，不另建父包或第二套规则核心。
 
 **已确认TICKET-D01（F019）**：统一新增规则，保留已有合法关系。旧inherit类型也不保留“仅因可见便自行加CC”的例外；今后新增含自己均验独立参与人管理授权。既有合法manual CC保留，原组织读源撤销后该独立来源仍按当前类型/L1规则求值；本人可退出自己manual CC，不删domain/强制来源，失去L1时仍拒读。不重问新类型邀人管理、CC只读评论或创建者无自动邀请权；确切答复见[后继F019](../planning/planning-followups.json#F019-module-detail-owner-decisions)。
 

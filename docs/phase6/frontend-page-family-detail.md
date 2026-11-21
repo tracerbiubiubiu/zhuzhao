@@ -4,9 +4,9 @@
 
 ## 1. 共同施工边界
 
-已有首页、列表、详情、配置、查询、恢复六类样板继续复用。数据上下文至少包含当前身份世代、资源/过滤条件、页/游标和读取世代；写操作另绑定提交时拍下的目标及值。首次加载失败、合法空集、有旧数据的刷新失败分别显示；后者保留同上下文旧行及观察时间，不把错误转成零。跨身份/资源的旧数据立即清理，旧请求包括finally均不得改新上下文。
+已有首页、列表、详情、配置、查询、恢复六类样板继续复用。每次读取至少记录当前身份版本（包括登录及授权变化）、资源和过滤条件、页码或游标，以及本次读取的版本号；写操作另保存提交瞬间的目标和值。首次加载失败、查询成功但没有记录、已有数据时刷新失败，要分别显示。刷新失败时，只有身份、资源、过滤条件和分页仍相同，才保留旧行和观察时间，不能把错误显示成零条。切换身份或资源后立即清理旧数据；旧请求即使最后才执行 finally，也不得改动新页面的状态。
 
-按钮消费服务器能力与原L1控制，服务器重验L1/L2/L3；页面隐藏不是授权。保存已提交但刷新失败只重读，不再自动写一次。普通非幂等写仅明确无效果才重试；已有明确幂等合同的能力可按原目标/原输入/原key有界重放，unknown不换key重做，优先查询原operation。权限收回后清当前受限内容、计数及选中，不继续呈现旧标题/正文。加载状态采用`idle/loading/ready/empty/error/stale`候选视图状态，不要求新全局状态框架。
+按钮依据服务器返回的可用操作及原 L1 控制显示，服务器仍重验 L1/L2/L3；页面隐藏不是授权。保存已提交但刷新失败时只重新读取，不再自动写一次。普通非幂等写只有明确未产生效果才重试；已有明确幂等合同的能力，可用原目标、原输入和原 key 在约定范围内重放。结果为 unknown 时先查询原 operation，不能换 key 重做。权限收回后清除受限内容、计数和选中项，不继续呈现旧标题或正文。加载状态采用`idle/loading/ready/empty/error/stale`候选视图状态，不要求新全局状态框架。
 
 所有页面沿既有token/主操作位置/查询筛选展开规则；用按钮或链接承载动作，具可读名称、可见焦点、Esc及对话框归还焦点。窄屏重点保持对象、状态和主动作可达，不把整页缩小。具体截图、键盘与浏览器验收仍由UI实现批交，不以本页代替。
 
@@ -24,7 +24,7 @@ PAT秘密只在一次性展示内存中，关闭、退出或换身份清除，�
 
 ## 3. tasks
 
-每tab保存`tab/filter/page/task_id/request_generation/load_state/as_of/error`。运行记录/定义有total；死信只有页码和空页终止，不能伪造total。持久status与live_state分列，“已受理”不显示“已完成”。打开A再打开B时，详情按task_id/世代收结果，初读失败有错误/重试，旧行刷新失败保留同上下文内容。
+每个 tab 保存`tab/filter/page/task_id/request_generation/load_state/as_of/error`。运行记录和定义提供 total；死信只有页码，翻到空页才结束，不能伪造 total。已保存的 status 与实时观察的 live_state 分列，“已受理”不显示“已完成”。先打开 A 再打开 B 时，返回结果必须同时匹配 task_id 和本次请求的世代，A 的迟到响应不能覆盖 B。首次读取失败显示错误和重试入口；刷新失败则保留同一任务或查询的旧内容。
 
 `task:read/submit/operate/manage`分别约束请求和动作，敏感action再核维护资格；unknown只查原receipt。主动作按tab显示“提交任务”或“新建定义”，参数可折入详情，三tab键盘可达。定时回补完整恢复控件仍归I03，不借页面整理前移。
 
@@ -38,7 +38,7 @@ PAT秘密只在一次性展示内存中，关闭、退出或换身份清除，�
 
 ## 5. messages与audit
 
-消息保存`notification_id/read_at/current_content_state/safe_link/list_state/mark_state`。标读失败保留未读并给重试；导航失败与标读失败分别反馈。目标撤权后不继续显示标题快照；待办tab消费首页同一责任谓词，不能继续以UI拼assigned/in_progress代替所有非终态。实际`src/views/message/center/index.vue`的`inboxQuery/todosQuery/openItem/readAll`中，openItem现并行置读与跳转；候选必须分别记录两结果，不要求两远端动作原子提交。
+消息保存`notification_id/read_at/current_content_state/safe_link/list_state/mark_state`。标为已读失败时仍显示未读并给重试；跳转失败与标读失败分别反馈。用户失去目标资源的访问权后，不继续显示旧标题快照；待办 tab 与首页使用同一套责任判定，不能只由 UI 拼出 assigned/in_progress 就当作全部非终态。实际`src/views/message/center/index.vue`的`inboxQuery/todosQuery/openItem/readAll`中，openItem 现并行标读与跳转；候选设计要求分别记录两步结果，不要求两远端动作原子提交。
 
 审计各tab保存`query_hash/page/last_success/error`；对账未执行、失败、完成且零缺口分别展示。列表默认元数据，不把完整body先送浏览器再藏按钮；报文/stack展示和复制均消费服务器详情资格/允许投影。实际`src/views/audit/log/index.vue`的`openPayload/prettyBody/copyRequestBody/fetchPanics/runReconcile`现直接使用行request_body，服务端投影归OBS，U06只计消费与交互。两组行操作可聚焦，长报文窄屏可读，关闭后回原行。
 
@@ -48,7 +48,7 @@ PAT秘密只在一次性展示内存中，关闭、退出或换身份清除，�
 
 IAM用户角色/组织弹窗沿[第一包](iam-first-batch-design.md#34-ui只需要成功快照与局部状态)。角色菜单树同样保存`target_id/source_revision/loaded_exact_ids/generation/dirty/state`；树与绑定集合均成功才能整体替换。失败/迟到不能拿空集或别的角色集合保存，目录搜索隐藏节点不等于取消授权；页面行仍只读。组织移动确认源/目标路径与后端影响摘要，失败保留选中。
 
-字典固定`type_code＋generation`，超过100项真分页或明确穷尽加载；通知模板/规则/log独立状态，更换模板不默改未知字段。settings逐键保存`key/base_version/draft_value/outcome/error`，提交时冻结dirty集合与值；成功项更新基线，失败/冲突项保留草稿，不能统一refresh/seedDrafts清掉失败输入。
+字典请求绑定`type_code＋generation`，超过 100 项时实际分页，或明确加载完全部条目；通知模板、规则和 log 各自保存加载状态，更换模板不默改未知字段。settings 逐键保存`key/base_version/draft_value/outcome/error`，提交时固定这次修改的键集合和值。成功项更新基线，失败或冲突项保留草稿，不能统一调用 refresh/seedDrafts，把尚未保存的输入清掉。
 
 当前主仓`internal/model/settings.go`的`UpdateSettingRequest.ExpectedVersion`与`internal/service/settings_service.go`的`SettingsService.Update`已有可选版本检查，UI先接expected_version；当前过期错误是ErrParamInvalid/400，不虚标409。`SettingsRepo.Upsert`在覆盖行缺失时直接插入，不检查expected，不能泛称完整CAS；`SettingsService.Reset`目前无版本参数且直接删除。
 
@@ -58,4 +58,4 @@ IAM用户角色/组织弹窗沿[第一包](iam-first-batch-design.md#34-ui只需
 
 ## 7. 实施与证据
 
-上述名称是待写验收场景，不是本轮已执行测试；按实际UI测试框架命名落地即可。每组先有效红，分别验纯函数/组件、真实HTTP和浏览器，跨身份/错序/部分成功不能仅靠快照测试。先把核心风险/工单/任务/AL/消息和IAM薄页用到的卡纳入原包；其它页面随U06，不为了“统一”一次改完27路由。公共错误、页面token和权限谓词只有一份实现，卡不另造八套通用组件。
+上述名称是待写验收场景，不是本轮已执行测试；按实际 UI 测试框架命名即可。每组先写能暴露目标错误的失败测试，再分别验证纯函数或组件、真实 HTTP 和浏览器操作；切换身份、响应乱序和部分保存成功不能仅靠快照测试。核心风险、工单、任务、AL、消息及 IAM 办理页面所需的卡先纳入原包，其它页面随 U06，不为了“统一”一次改完 27 路由。公共错误、页面 token 和权限判定只有一份实现，本页不要求另造八套通用组件。

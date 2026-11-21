@@ -12,7 +12,7 @@
 - **错误**：errcode 三形态；对外 2xx=成功、4xx=不可重试、5xx=可重试（taskrunner 回调契约同款）。
 - **分页**：OKPage，page_size 钳制回显。
 
-本蓝图新增五条约定（建议随首个采纳提案收编 standards）：
+本蓝图提出五条新增约定（研究建议，需随首个采纳提案写入standards后按其实施；不能仅凭本页视为已发布协议）：
 1. **Schema 即契约**：所有可被编排/脚本/AI 调用的能力必须有 JSON Schema 输入输出（A1）。
 2. **幂等键**：所有"创建型 POST"接受 `idempotency_key`（请求体字段，非 header——与 POST 体承载业务信息的公约一致）；服务端按 (caller, key) 去重 24h。
 3. **委托三元组**：`actor / principal / on_behalf_of` 第一档放请求体 `_ctx` 字段；协议升版后进签名 canonical 串（A6）。on_behalf_of 断言须先通过 delegation_policy（03-A6 ⑤），无策略即拒（09 号补强）。
@@ -68,6 +68,8 @@ phase6 R1 的"上报 API"与此合并为同一端点（type 区分 alert/finding
 ```
 - `GET /v1/action-invocations?invocation_id=` → 状态/输出/日志引用/工件引用。
 - `GET /v1/actions/openapi` → 由注册表生成的 OpenAPI 文档（每个 active action 一条 operation，input/output schema 直接复用），供 REST 习惯的外部集成方（SOAR 等）消费（09 号补强）。
+读例：工单里的IP情报查询使用`action_id=ip.intel.enrich`，输入IP与工单操作的幂等键，返回调用记录及任务ID；这说明字段如何配合，不表示该示意端点已上线。
+
 内部映射：invocation → taskrunner Submit（kind=handler/script）或连接器直调（kind=connector，同步短操作可直接返回结果）。
 
 ### 3.3 资产解析（外部资产平台的查询门面——平台不自建台账，所有者 2026-10-20 补充）
@@ -151,7 +153,7 @@ operations:
 ```
 每个 operation 自动注册为 `actions(kind=connector)`；模板引擎用受限模板（非 text/template 全功能，防注入——与 S6 占位符替换的选型纪律一致）；复杂对接（分页拉取/多步握手）写 Go 代码连接器实现同一 `Connector` 接口。
 
-**[业界出处]** XSOAR 的 Generic HTTP integration、n8n HTTP 节点、Tines HTTP action——"声明式 HTTP 连接器覆盖八成对接"是行业共识。
+**[业界出处]** XSOAR 的 Generic HTTP integration、n8n HTTP 节点、Tines HTTP action。此处参考的是用配置描述常见HTTP调用的方式；复杂分页或握手仍按下述代码连接器处理。
 
 ### 4.10 拉取型连接器（推/拉皆备——所有者 2026-10-20 口径）
 

@@ -15,7 +15,7 @@
 - TR `internal/callback/client.go` 的 `Client.Do` 把任意2xx当完成，4xx当不可重试，其他/超时退避；不解析响应业务状态。`internal/worker/worker.go` 的 `Deps.handleCallback` 为每次 delivery 生成 execution_id 并调用 `Store.MarkRunning/Finish`；除 terminal/superseded 外，MarkRunning缺行/DB失败仍会调用下游，Finish故障主要留日志。DB-first前提下这些不能作为新动作安全默认。
 - TR `internal/service/submit.go` 的 `Service.Submit` 已先持久化 pending payload，再入 Redis，`queued=0` 可由 reclaim 恢复。它解决 TR 自己的 DB→队列，不覆盖主仓 commit→远端提交。`internal/service/cron.go` 的 `Loop.FireDue` 读 due定义、生成随机ID、Submit，再独立 `UpdateJobNextRun`；后者失败或双副本扫描可能对同一 due 时隙起第二个业务任务。
 
-目标分开记录：
+目标是分别记录下面四类事实，供排查一次任务执行时逐项核对。某一类已有凭证，不能替另一类证明成功：
 
 1. **业务意图已提交**：主仓 DB 事务有持久凭证，尚不保证任务入队或业务效果。
 2. **delivery已受理/仍运行**：TR到主仓的网络投递状态，与attempt/execution_id相关。

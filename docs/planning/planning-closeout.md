@@ -42,7 +42,7 @@
 
 ## 当前规划状态索引
 
-本段从控制台移入，专门列待实现能力/设计和当前开放修复范围。代码实际存在与运行证据仍回到[能力控制台§1](../review/11-project-control.md#1-模块--能力--状态矩阵核心)及§6。条目保留原范围和编号，移位不代表交付或删除；以下95–148等旧分配如出现，须按[当前计价对账](core-release-accounting-reconciliation-2026-11-16.md)及唯一净估读取，不叠加历史价。
+本段从控制台移入，专门列待实现能力/设计和当前开放修复范围。代码实际存在与运行证据仍回到[能力控制台§1](../review/11-project-control.md#1-模块--能力--状态矩阵核心)及§6。条目保留原范围和编号，移位不代表交付或删除；以下95–148等旧分配如出现，须按[当前计价对账](core-release-accounting-reconciliation-2026-11-16.md)及唯一净估读取，不叠加历史价。下表保留 11 月 16 日的分工和设计范围。下面标注后续已交付的修复；更多现状见[控制台 11 月 17 日存量前置修复](../review/11-project-control.md#2026-11-17存量前置修复已合入main未部署)。
 
 | 模块 | 能力 | 状态 | 关键代码位置 |
 |------|------|------|-------------|
@@ -51,9 +51,9 @@
 | **权限首批收口** | A角色编辑、B有效来源/成员差量、C写方/策略pair/强审计/旧wire，以及任务维护资格/归因源映射；C05安全代际/单次写与原回执核查/claims与公共IAM形状候选 | 📋 未实现；A4–6/B4–7/C专用10–16/C05 6–10/任务4–7合IAM净28–46，已整合当前首版。公共参考143形状通过但非产品门禁；F017/F019政策已定，真实绑定/获选增强仍按原窗口 | [第一包](../phase6/iam-first-batch-design.md)、[底座](../phase6/foundation-iam-module-detail.md)、[集中议程](owner-decision-agenda.json) |
 | **工单/风险/适配器准确接缝** | 旧响应兼容、候选选人/CC来源、合成风险序列与真实操作者建票；单装配/查询scope/UAA双模式、设备人工入口和单查询工具 | 📋 源映射候选/公共参考已补；TASK-D01/TICKET-D01及认证增强分期由F019确认，具体绑定/运行产品仍未验，不新增认证引擎或专业处置平台 | [工单](../phase6/ticket-module-detail.md)、[风险](../phase6/risk-module-detail.md)、[扩展](../phase6/extension-ai-module-detail.md)、[F019](planning-followups.json#F019-module-detail-owner-decisions) |
 | **权限差距补齐计划** | AUTH-GAP-01–07：来源/撤权、共同入口、对象与集合、独立预期/有限解释、性能与多副本证据、固定窗口复评 | 📋 已分工/排窗口，未实施或实测补齐；多数为已有包验收细化，开工扣重拆子估；实际引擎PoC/迁移另估，不纳入首版前置 | [动作与边界](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)、[底座§3.7](../phase6/foundation-iam-module-detail.md#37-差距补齐的最小验收组织)、[总账](planning-backlog.json) |
-| **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。当前AUTH/RECHECK仍开放，不因换模型措辞关闭 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
+| **权限模型与复用选择** | 区分RBAC/ABAC/ReBAC/PBAC和三层检查；现有Casbin、策略/关系引擎、Redmine/Backstage等实践比较 | 📋 官方资料与现状设计复评；首版继续既有机制的建议，外置候选未在项目运行验证。AUTH 和 RECHECK 的未关闭项以控制台当前记录为准 | [选型复评](../design/authorization-model-and-engine-choice.md)、[底座§3.6](../phase6/foundation-iam-module-detail.md#36-模型复用与引擎选择边界) |
 | **权限层级场景合同** | 组织树/单父角色链/菜单导航/数据范围、多组织任职、来源/生命周期的HIER-01–12 | 📋 设计及P6.1实施归属已补；场景未全部实现/验收，HIER-D01整子树暂停已确认、待实施，原缺陷开放 | [层级合同](../design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选)、[底座§3.5](../phase6/foundation-iam-module-detail.md#35-层级组合的首版出口与分工) |
-| **授权编辑与资源边界后继** | 直接/有效角色分轨、编辑目标/加载状态、任职属性往返、对象退役/关联检查顺序 | 🔶 RECHECK-01/02/03开放，04条件性/05低影响；尚未修产品，原样保存不是隐式重授权/重置职责 | [第二轮报告](../review/reports/permission-boundary-recheck-2026-11-15.md)、[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验) |
+| **授权编辑与资源边界后继** | 直接/有效角色分轨、编辑目标/加载状态、任职属性往返、对象退役/关联检查顺序 | RECHECK-01/02/03 的角色来源、编辑目标与任职属性修复于 11 月 17 日合入 main，未部署。RECHECK-05 的附件关联检查顺序于 11 月 19 日合入。RECHECK-04 的旧头像归属继续随 C02/C04 跟踪。 | [第二轮报告](../review/reports/permission-boundary-recheck-2026-11-15.md)、[底座§3.4](../phase6/foundation-iam-module-detail.md#34-授权编辑的来源与往返第二轮现状复验) |
 | **核心交互接缝** | HTTP/内部/任务/事件同领域用例；执行请求/事实ACK/结果/送达/授权查询分工；审计与私有合同 | 📋 总体方向保留，C03/R01/CE首版切片及消息/扩展仍待实施；本轮反例与设计纠正不等于可用产品 | [核心专项](../review/reports/core-interaction-architecture-review-2026-11-15.md)、[共同合同§2](../design/capability-invocation-contract.md#2-一个逻辑通道三种执行方式) |
 | **权限专项与当前债务** | 本地IAM/三源角色、组织赋角、工单外围读取、任务维护职责/归因；对照统一调用及UAA计划 | 🔶 原专项保留修前证据。已合入的窄修、实开入口仍需验证的权限及正式启用前置以当前债务台账为准 | [专项报告](../review/reports/authorization-design-implementation-review-2026-11-15.md) · [当前债务](../review/11-project-control.md#6-当前健康状态遗留问题追踪) |
 | **Phase6模块详设** | 六边、五个模块的typed DTO/逻辑DDL、状态/当前权限、异常恢复、薄UI/TDD；44父包及LS01–04映射 | 📋 详细候选已落档并交叉审查；准确OpenAPI/迁移/真实映射/产品验收按实施批交付，新业务未开发；Git/运行状态不由文档自述代验 | [详设入口](../phase6/module-detail-index.md)、[机器成熟度](planning-design-status.json)、[原模块交接](../phase6/module-design-handoff.md) |

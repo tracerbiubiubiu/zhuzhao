@@ -12,9 +12,9 @@
 
 ## 阅读入口
 
-- 查当前实现：本页§1；查缺陷和实际启用限制：§6。本页不维护另一套规划总价。
-- 查未来范围/详设/净估：[规划收口](../planning/planning-closeout.md)、[模块入口](../phase6/module-detail-index.md)及[首版净估](../planning/local-core-release-estimate.json)。
-- 查试用与正式出口：[首版阶梯](../phase6/first-usable-release-plan.md)；查外部动作与待确认：[议程](../planning/owner-decision-agenda.md)。
+- §1 列出已经实现的功能。§6 列出还没修的问题，以及这些问题会限制哪些功能的使用。
+- 想知道接下来要交什么，先查[已定和待确认的事项](../planning/planning-closeout.md)，再找[各模块的设计](../phase6/module-detail-index.md)和[首版工日估算](../planning/local-core-release-estimate.json)。
+- [首版计划](../phase6/first-usable-release-plan.md)列出试用和正式运行前分别要做哪些检查。[决策议程](../planning/owner-decision-agenda.md)列出仍需所有者或外部团队确认的事项。
 - 查开工前系统理解最小样例、随前三批整理的故事/时间线及交付回顾：[专项计划](../planning/system-understanding-and-delivery-plan.md)；2026-11-18补充执行顺序、本人预测后查证、模板裁剪和Git归属，实例整理及本人讲解确认未执行。
 - 查本次修订的来源与验证：[报告复验收口](reports/planning-review-repair-2026-11-16.md)。旧日期流水在页末，不能作为现势结论。
 
@@ -122,7 +122,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 系统理解与交付回顾 | [开工前最小样例及前三批试行计划](../planning/system-understanding-and-delivery-plan.md)与[空白模板](../toolkit/templates/capability-delivery-review.md)已补充：首选审计归档成功/无维护资格403样例，三个故事/时间线随批整理；本人先预测条件变化再查证，允许查资料；无关提示栏可省略、适用未跑项保留，正式知识随原属主纳入Git、执行实例本地归档，历史基线保留并链接当前后继。能力地图、纵切、故事/时间线实例及本人理解确认尚未执行。技术验证、个人贡献与Git/运行收尾分列，正式规范化待试行复盘，不新增CI门禁或改变业务准入。 |
 | 合同与现势投影守卫 | F022补五页source-only引用及单改/混合/改名的planning接线、长期UAA实际产能稳定门、push候选形状/有限语义覆盖；产品PG/签名/CAS及真实接口仍未交。检查范围、红绿/独审与实际集成状态见[记录](reports/module-contract-alignment-2026-11-16.md)。 |
 | 版本与环境 | 五仓Go/Node/PG/Redis等升级已随先前PR合main；准确版本由各锁/版本表维护，现有dev/test承接见runbook。本轮不改变运行栈。 |
-| 公开入口与文档 | 五仓中英文 README、合成展示及贡献入口已存在。主仓[文档总入口](../README.md)按任务引导读者查现有系统、近期开发和时点报告。开发前可查账号停用、工单按哪版规则办理、两项整改如何分别复测，以及如何在测试环境验证这些结果。在线演示、品牌迁移和社区运营各随原窗口。 |
+| 公开入口与文档 | 五仓中英文 README、合成展示及贡献入口已存在。主仓[文档总入口](../README.md)按任务引导读者查现有系统、近期开发和时点报告。文档入口和现行设计、开发、验收、运维说明按实际操作解释简称和步骤。例如从工单查适用规则，或在账号停用后检查旧登录是否被拒。在线演示、品牌迁移和社区运营各随原窗口。 |
 
 固定时点运行证明见[模块细化收口](reports/module-detail-refinement-closeout-2026-11-15.md)和[分档门禁记录](reports/tiered-quality-gates-2026-11-16.md)；既有253验收/81对迁移、UI42 E2E只证明各自准确候选，不能代验未来业务；本批新结果及准确候选见顶部和§6。
 

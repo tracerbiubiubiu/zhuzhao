@@ -229,7 +229,7 @@ B05方向已于2026-11-12获所有者确认：风险组中获授权的管理成�
 
 ### 6.1 公共 schema、求值顺序及输入隔离
 
-field schema 保留现有稳定 key/类型；schema format 与业务 definition 分开。当前十一类型不改原值类型；user/dept 为新增类型，规范值为 string ID（不得转 JS number），单用户/部门首版不承诺数组。旧非选项类型 `field_options` 的 absent/null/`[]` 规约为“无选项”，number/rating 的非空选项拒绝；select/radio/multi_select 保存仍须非空静态选项或合法字典引用。GET→原样 replace→GET 语义相等，先修 F11 再靠导出工具掩盖差异不可接受。
+field schema 保留现有稳定 key/类型；schema format 与业务 definition 分开。当前十一类型不改原值类型；user/dept 为新增类型，规范值为 string ID（不得转 JS number），单用户/部门首版不承诺数组。旧非选项类型 `field_options` 的 absent/null/`[]` 规约为“无选项”，number/rating 的非空选项拒绝；select/radio/multi_select 保存仍须非空静态选项或合法字典引用。GET→原样 replace→GET 应保持语义相等；应先修复 F11 的往返差异，不能用导出工具掩盖问题。
 
 每次求值使用同一解析后的定义和同一业务输入快照：
 
@@ -365,7 +365,7 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 
 接受到期 cron 与新观察同取 cycle 锁：仍 accepted 且当前 acceptance 版本到期则重开该 cycle 为 assessed，写 expiry 事件；续期先成功则 cron 不重开。误报抑制过期后的新观察进入新的待评估 cycle，并标 `suppression_expired`，不记“修复后回归”；人工 merge 的从单保持回链，后续归并遵循已确认主族映射，不自动跨族混合。
 
-这只是落实既有业务语义的并发/索引技术方案，不新拍“是否回归”。实施迁移须先查已有数据和来源稳定键，尚无风险代码不代表能预占全局编号。不同真实源若不能提供可判断的新鲜度，先用 mock/contract 跑明确定义的边界，把真实该源列 pending 而非降低全平台规则。
+这只是落实既有业务语义的并发/索引技术方案，不新拍“是否回归”。实施迁移须先查已有数据和来源稳定键，尚无风险代码不代表能预占全局编号。不同真实源若不能提供可判断的新鲜度，先用 mock/contract 跑明确定义的边界，将该真实来源标为 pending（待核验），而非降低全平台规则。
 
 ### 8.3 固定风险状态机和接受申请
 
@@ -528,7 +528,7 @@ P4“角色 code vs ID”和 P5“BK-21 顺序”已在 §5 给出技术推荐�
 | N:1/恢复 | 第21风险挤同票；只转一risk把全票审核权交新人；ticketclosed一刀切fixed；consumer失败无追踪；旧结果覆盖改派后新状态 | 每risk唯一active；同owner同范围分组；双域审计；默认off完成/开启复核两条；逐项结果/重放/冲突收据 |
 | 通知/扩展 | owner缺失广播all；离职旧owner收详情；event签名当读许可；私有connector直写库；provider失败切mock绿 | 首规则装配/词表/owner四档矩阵；受权Query；旧protocol消费者通过新增字段合同；mock/contract/real分层报告 |
 
-实现交付必须提供准确五仓候选SHA/协议版本、迁移前后数据核对、相应单元/集成/跨仓合同/UI旅程及四档 `make acceptance` 结果；未跑不能标实现完成。文档本次只做内容/链接/差异检查，不把旧基线测试当这些新能力的证明。没有真实provider环境时保留明确责任人与总账决策窗口，mock/contract可独立关账，real不得代销。
+实现交付必须提供准确五仓候选SHA/协议版本、迁移前后数据核对、相应单元/集成/跨仓合同/UI旅程及四档 `make acceptance` 结果；未跑不能标实现完成。文档本次只做内容/链接/差异检查，不把旧基线测试当这些新能力的证明。没有真实provider环境时保留明确责任人与总账决策窗口，mock/contract可独立关账，但不能用其结果替代real验收。
 
 ## 12. 本文自审与仍未知道的事实
 
