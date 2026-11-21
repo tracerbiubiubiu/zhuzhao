@@ -4,7 +4,7 @@
 
 ## 当前交付排期
 
-- **想知道第一批做成什么样**。打开[B2 开工计划](phase6-b2-kickoff-plan.md)，走读同一张整改票上的两项风险如何派单、办结和逐项复测，再看[两张验收卡](phase6-b2-acceptance-cards.md)里账号停用后 Redis 同步失败、以及一个风险项被打回时要观察什么。
+- **想知道第一批做成什么样**。打开[人工漏洞整改开工计划（发布验收点 B2）](phase6-b2-kickoff-plan.md)，走读同一张整改票上的两项风险如何派单、办结和逐项复测，再看[两张验收卡](phase6-b2-acceptance-cards.md)里账号停用后 Redis 同步失败、以及一个风险项被打回时要观察什么。
 - **想知道工作顺序和用时**。打开[交付排期](intranet-uaa-release-schedule.md)。先交账号撤权和提交时鉴权，再交工单定义、证据转换和人工风险整改，之后才是任务、清单和消息组合、本地正式运行与 UAA 纳管。
 - **想知道还缺什么**。开发前查[需确认的输入](owner-decision-agenda.md#详设审计后的排产选择)，包括实际开工日和授权。真实试用还需单独确认环境、人、数据及停止手段。技术设计对照[模块缺口与验收](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 
@@ -12,11 +12,22 @@
 
 这是跨阶段派单和交接的固定入口。具体的工作包、合同锚点和候选版本放本轮任务卡；阶段稿保留对应时期的详设和交接，不作为所有任务的默认输入。
 
-例如接到 C05 时，先在[总账的可信底座](planning-backlog.md#p61-受信业务底座)查账号安全状态和依赖，再看[底座设计](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)规定哪些凭据受影响。安排验证时用[停用故障验收卡](phase6-b2-acceptance-cards.md#卡一-c05-停用已提交而撤销投影失败)核旧令牌是否被拒，以及管理员如何查同一次停用的结果。实际候选、隔离服务和取证输入由[首轮清单](phase6-b2-kickoff-plan.md#6-g04-隔离预检与-c05-首轮取证)逐项绑定。
+例如接到会话终结与认证增强收敛（工作包 C05）时，先在[总账的可信底座](planning-backlog.md#p61-受信业务底座)查范围和依赖。本批做账号持久撤权与恢复，由[底座设计](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)规定哪些凭据受影响。安排验证时用[停用故障验收卡](phase6-b2-acceptance-cards.md#卡一-c05-停用已提交而撤销投影失败)核旧令牌是否被拒，以及管理员如何查同一次停用的结果。实际候选、隔离服务和取证输入由[首轮清单](phase6-b2-kickoff-plan.md#6-g04-隔离预检与-c05-首轮取证)逐项绑定。
 
 - **找本单范围**：从[总账摘要](planning-backlog.md)按工作包或能力查范围和依赖；当前活跃项直接看同页的[合同、交接与准入](planning-backlog.md#当前活跃包的合同交接与准入)，再从[规划收口](planning-closeout.md)、[决策议程](owner-decision-agenda.md)核设计深度、待决及批准范围。
 - **找有效设计**：先查[设计入口](../design/README.md)的共同合同，再顺着所属工作包查领域或阶段详设；当前行为另查[模块入口](../modules/README.md)、项目控制台及实际候选。找不到本包的有效合同或开工条件时，标为待确认，不借用其他阶段的详设补齐。
 - **找实施、验收及发布交接**：按所属工作包读取该批交接与准入条件；通用评审格式复用[能力交付评审模板](../toolkit/templates/capability-delivery-review.md)，门禁和环境准备从[开发入口](../guides/README.md)和[运维入口](../ops/README.md)进入。当前活跃批次的具体链接见下方日常阅读。
+
+## 常见编号怎么读
+
+准备同一次真实试用时，会同时读到多个编号。**人工漏洞整改（B2）**是发布验收点，**会话终结与认证增强收敛（C05）**是其中一个工作包，**首发与恢复、保留政策（Q12）**是所有者议程。用下面的来源核对全文里的短称。
+
+- **发布与决策**。隔离入网预演（B0）、基础扩展版（B1）、人工漏洞整改（B2）是[发布验收点](intranet-uaa-release-schedule.md#1-接下来怎么做)。合法抄送可查看及评论（B02）是[业务决策](planning-decisions.json)。P6.1 等编号指[技术分期](planning-backlog.md#波次与工作包)。B0-4 之类的条目沿用[旧启动批](../phase6/05-launch-batch.md)编号，跟读它对应的工作包时保留原出处。
+- **工作包、实施子批与测试场景**。事务边界、组织删除与授权护栏（C04）和会话终结与认证增强收敛（C05）归[总账](planning-backlog.md#p61-受信业务底座)。本批分别做[业务提交时的共同授权守卫](../phase6/foundation-iam-module-detail.md#3-c04共同授权守卫与多实例)和[账号持久撤权与恢复](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)。[IAM 实施子批 C](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)负责共同屏障、策略投影与本地审计，其中锁内发现撤权后应无业务效果（C-01）是测试场景。
+- **缺陷与补齐动作**。停用组织后派生权限仍有效（AUTH-01）是[权限专项缺陷](../review/reports/authorization-design-implementation-review-2026-11-15.md)。来源与撤权补齐（AUTH-GAP-01）是[模型复评动作](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)，覆盖多条缺陷和多个工作包。
+- **议程、估算与时间**。真实试用窗口（Q12）查[所有者议程](owner-decision-agenda.md#q12-首发与恢复保留政策)。组合验收与兼容回归（Q1）、正式发布剩余工作（Q2）、共用操作回执基础（S2）查[首版净估册](local-core-release-estimate.json)。Phase 5 的流程图设计器用原段号 P5-S2。例子里的 D+1 表示样例业务日的次日，工单定义发布（D01）查[工作包总账](planning-backlog.md#p61-受信业务底座)。
+- **净估行与排程切片**。本地身份和授权（S1）是[首版净估行](local-core-release-estimate.json)。隔离、有效检查与安全入口（S01）是一项[长期排程切片](execution-schedule.md)。查工作量时按各自的估算范围使用。
+- **容易重名的 R 系**。业务意图持久交接（R01）和跨平台流程协同（R02）查[总账](planning-backlog.md)。同样的 R01、R02 在[真实 UAA 接入条件](uaa-real-integration-conditions.md#提供方与实施方要准备的条件)中分别指应用与认证合同、测试与正式环境资源。短号 R1、R2 在[验收卡](phase6-b2-acceptance-cards.md#卡二-b2-两条合成风险共票并逐项复测)里指两条合成风险。在[旧阶段稿](../phase6/01-r1-ingest-ledger.md)里，R1 指风险接入与台账。[首版净估册](local-core-release-estimate.json)的 R2 指风险授权估算行。
 
 ## 日常阅读
 

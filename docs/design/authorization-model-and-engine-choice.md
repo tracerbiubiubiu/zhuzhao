@@ -91,7 +91,7 @@
 
 所有者本轮授权将建议纳入设计和计划，**没有授权开发或更换引擎**。下列是既有包的有界动作索引，不是新增7个父包；机器权威在[总账的authorization_gap_closure](../planning/planning-backlog.json)、实施证据状态在[成熟度](../planning/planning-design-status.json)。
 
-本节编号按[文档命名空间](../documentation.md#引用编号与命名空间)限定：`AUTH-GAP-*`是本节改进动作，`AUTH-*`是权限专项的缺陷；`C04/D03/D06/CE01`等为总账父包。`S1/R2/TD03/TD05/MH02/Q1`等专指[本地净估册](../planning/local-core-release-estimate.json)的WBS行，映射到父包不重复计价；后文局部短名沿用此定义。
+表内先查补齐动作，再查负责它的工作包和估算行。比如来源与撤权补齐（AUTH-GAP-01）覆盖[组织停用后派生授权未停止（缺陷 AUTH-01）](../review/reports/authorization-design-implementation-review-2026-11-15.md#auth-01--p1--停用组织后派生授权未停止)及其他已登记场景。共同授权守卫（C04）、类型可见性（D03）等是[总账工作包](../planning/planning-backlog.md)。S1、R2、TD03、TD05、MH02、Q1 是[首版估算行](../planning/local-core-release-estimate.json)，表内按父包复用和扣重。 [编号索引](../planning/README.md#常见编号怎么读)
 
 | 动作 | 补什么、怎样算补齐 | 主责与完成窗口 | 估算关系 |
 |---|---|---|---|

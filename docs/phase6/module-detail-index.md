@@ -1,8 +1,10 @@
 # Phase6 模块详细设计入口与覆盖核对
 
+> **近期先读**。[人工漏洞整改开工计划（发布验收点 B2）](../planning/phase6-b2-kickoff-plan.md)列出隔离验收、账号持久撤权和业务提交时的共同授权守卫。按[两张验收卡](../planning/phase6-b2-acceptance-cards.md)走查停用故障和两风险共票。当前授权、提交及强审计的实施子批 C 仍按[原 IAM 子批合同](iam-first-batch-design.md#2-三个iam子批先完成a的开工准备)核对交付范围。
+
 F022后继将公开IAM与C05私有状态分开，补AL push机器参考、人工写/连接选择/风险冲突/CC来源及受控恢复的逐包责任；原公共样例保持，新增参考及验证边界见[合同收口](../review/reports/module-contract-alignment-2026-11-16.md)。候选合同不等于产品交付，不新增一轮全仓审计前置。
 
-日期：2026-11-14；2026-11-16复核修订。用途：所有者快速审阅、实施者按模块取最小上下文。状态：**本期模块详细设计候选；产品未实现、未部署，准确公司接口尚待内网核验**。范围以[Phase6总纲](README.md)、[首版阶梯](first-usable-release-plan.md)和[工作总账](../planning/planning-backlog.json)为准；本页不是另一份排期/批准单。44个P6父包（含跨阶段CE02本期部分）只是父包分母，另外逐核LS01–LS04、OBS01/02、具名子出口和E02/E03/E04/E06的本期决策门；不能以“44包都有链接”代表所有补充范围已收齐。G07A/B为已交维护，不重复派发。
+日期：2026-11-14；2026-11-16复核修订。用途：所有者快速审阅、实施者按模块取最小上下文。状态：**本期模块详细设计候选；新增业务、完整 IAM 实施子批 C 及工作包 C05 的会话恢复仍待交付，未部署，准确公司接口尚待内网核验**。已交维护和已合入的前置修复按各自报告核证，不由整包候选状态抹去。范围以[Phase6总纲](README.md)、[首版阶梯](first-usable-release-plan.md)和[工作总账](../planning/planning-backlog.json)为准；本页不是另一份排期/批准单。44个P6父包（含跨阶段CE02本期部分）只是父包分母，另外逐核LS01–LS04、OBS01/02、具名子出口和E02/E03/E04/E06的本期决策门；不能以“44包都有链接”代表所有补充范围已收齐。G07A/B为已交维护，不重复派发。
 
 本次实际发现、取舍和验证见[遗漏与复杂度复核](../review/reports/phase6-design-recheck-2026-11-15.md)，没有因为再次审查增加一整套平台或新的期限承诺。
 
@@ -10,7 +12,7 @@ F022后继将公开IAM与C05私有状态分开，补AL push机器参考、人工
 
 已推进的后继包含B/C与任务窄修复、C05有限安全代际/单次写及回执核查/claims及6–10日毛估（秘密编码后置）、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
 
-2026-11-20 后继复核见[开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[当前交付排期](../planning/intranet-uaa-release-schedule.md)。下文保留原 11-14/16 设计冻结和验收候选。现在先做工单引擎所选发布、字段、转换和权限，再承接第一条人工风险整改。
+2026-11-20 后继复核见[开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[当前交付排期](../planning/intranet-uaa-release-schedule.md)。下文保留原 11-14/16 设计冻结和验收候选。现在先准备所选可信底座，再做工单引擎所选发布、字段、转换和权限，承接人工风险整改（B2）；实际 T0 和实施授权仍待确认。
 
 ## 1. 按需要只读一包
 
@@ -44,7 +46,7 @@ F022后继将公开IAM与C05私有状态分开，补AL push机器参考、人工
 
 ## 3. 实施顺序与可独立验收出口
 
-当前先做人工风险整改的工程与合成验收。[基础版B0](../design/foundation-release-boundaries.md#1-先交哪一版)按目标窗口后排，完整基础扩展版B1独立后排。实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)，所选范围的AUTH-01/02/07须先修复或服务端完整关闭并有逐入口拒绝证明。Q12试用运行卡、MH01/MR1合同/真实测试窗与[核心稳定§4.2](first-usable-release-plan.md#42-核心稳定的过渡出口)分别约束试用、本地正式和完整UAA投入。
+当前先准备人工风险整改（B2）的工程与合成验收。[隔离入网预演（B0）](../design/foundation-release-boundaries.md#1-先交哪一版)按目标窗口后排，完整基础扩展版（B1）独立后排。实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)，所选范围的AUTH-01/02/07须先修复或服务端完整关闭并有逐入口拒绝证明。首发与恢复、保留政策（Q12）的运行卡、MH01/MR1合同/真实测试窗与[核心稳定§4.2](first-usable-release-plan.md#42-核心稳定的过渡出口)分别约束试用、本地正式和完整UAA投入。
 
 先交共同Context/当前授权/事务和最小稳定接缝，再风险→工单人工闭环，随后工单→TR→AL/结果及AL变化→TR只读后继，消息真实HTTP与薄UI贯穿。固定流程、一个AL监控类型/普通insert-update、一个订阅/动作和一个实际渠道构成首版有限组合；服务器显式拒绝监控类型尚不支持的其它写路径，其他已有能力不退役。
 

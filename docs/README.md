@@ -1,10 +1,11 @@
 # zhuzhao 文档入口
 
-系统目前能用账号、组织和角色管理工单。下一批优先准备人工漏洞整改（B2）。一个派单人把同一负责人名下的两条风险放进一张整改票，办理人逐项提交证据，负责人逐项复测。B2 仍处于开工准备，当前能做的事、计划中的旅程及其验收分别有对应入口。 [当前能力](review/11-project-control.md) · [B2 开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
+系统目前能用账号、组织和角色管理工单。下一批优先准备人工漏洞整改（发布验收点 B2）。一个派单人把同一负责人名下的两条风险放进一张整改票，办理人逐项提交证据，负责人逐项复测。此项仍处于开工准备。 [当前能力](review/11-project-control.md) · [人工漏洞整改开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
 
 ## 先选择阅读路径
 
 - **所有者看进度与待决**：从[规划入口](planning/README.md)查当前范围、工作包、设计深度、待决与交付出口。按需进入具体合同，不必逐篇读历史报告。
+- **遇到不熟悉的编号**。从[规划入口的编号索引](planning/README.md#常见编号怎么读)按事项种类查来源。例如 B2 是人工漏洞整改的发布验收点，B02 是抄送后可见和评论的业务决策。
 - **准备某个工作包开工与交接**：从[按工作包找合同与交接](planning/README.md#按工作包找合同与交接)定位本批有效设计、开工条件与交付物；通用说明用[能力交付评审模板](toolkit/templates/capability-delivery-review.md)，不照搬某一阶段的输入或结论。
 - **开发者修改一个模块**：[产品边界](vision.md) → [开发指南](guides/development.md) → [工程公约](standards.md) → 对应[当前模块](modules/README.md)、Phase/工作包及[目标合同](design/README.md)。编码前冻结本批预期，按公约测试先行。
 - **运维或审计核实事实**：[运维入口](ops/README.md)或[审查入口](review/README.md) → 准确源码/制品/环境与验证记录 → 原始证据/历史报告。旧报告只证明其固定时点。

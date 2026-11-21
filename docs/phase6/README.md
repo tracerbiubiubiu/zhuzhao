@@ -1,8 +1,10 @@
 # Phase6 — 风险闭环、可信底座与全站体验
 
+> **近期阅读入口（2026-11-21）**。先准备人工漏洞整改（发布验收点 B2）。按[开工计划](../planning/phase6-b2-kickoff-plan.md)查隔离验收、账号持久撤权和业务提交复验的工作包，再用[两张验收卡](../planning/phase6-b2-acceptance-cards.md)走查停用故障和两风险共票。实际开工日、实施授权和真实试用仍待相应确认。 [常见编号怎么读](../planning/README.md#常见编号怎么读)
+
 > **模块详设入口（2026-11-14）**：[模块覆盖与变化](module-detail-index.md)汇总五份详细合同，覆盖44个P6父包（含两项已交维护）、LS01–LS04及首版本地前移子出口。已有部分已补充/纠正，缺失的DTO、逻辑数据约束、权限、状态、恢复、薄UI及TDD已给候选；真实映射、实施迁移/OpenAPI和产品证据仍按批冻结。旧[接缝交接](module-design-handoff.md)保留为最小上下文，不把设计候选当业务已实现。
 
-> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，1月试用是争取窗口；不勉强原2月1日日期。[阶梯与验收](first-usable-release-plan.md)和[首版净估候选](../planning/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../planning/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
+> **当前首版边界**：本地账号可先正式运行；先交风险/工单/TR/AL/消息及完整本地三层权限，UAA-C接缝先留、完整P/R核心稳定后交。质量和实际可用优先，原1月试用仅为争取窗口；不勉强原2月1日日期，实际开工与试用时间随当前排期及 Q12 绑定。[阶梯与验收](first-usable-release-plan.md)和[首版净估候选](../planning/local-core-release-estimate.json)取代旧日窗读法；[变化对照](../planning/core-release-change-comparison.md)分承接、必补和增强。原Phase6全包未取消，真实消息仍是核心条件，未启动开发。
 
 > **2026-11-14基础先行修订**：[基础版边界](../design/foundation-release-boundaries.md)将现有底座入网试验B0、最小可扩展基础B1和后续业务增强分开。下表是能力分组，不能把整个P6.1全部完成当P6.2或入网前置。B1先X01-B配置式接缝/X02-Q参考查询；完整X01-H与全UAA-P不挡独立基础，真实企业激活仍验对应UAA硬门。新增业务最小UI随批，U06整包推广和高级配置台不挡业务。
 
@@ -13,7 +15,7 @@
 开工前的系统理解补齐及前三个交付小批的讲解/收尾试行见[专项计划](../planning/system-understanding-and-delivery-plan.md)。存量修复及临时工作树收尾已由[main后继记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)承接；下一次开工复核实际基线。专项材料尚未整理，不把完整历史回顾或全生态掌握设为技术总开工门。
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../planning/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
-2026-11-20 开工前新增[详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[按交付结果排列的现行排期](../planning/intranet-uaa-release-schedule.md)。完整本期目标继续保留。首条人工整改须先交发布钉版、存量兼容、转换证据及当前复核资格。隔离入网预演与完整基础扩展版按所有者决定后排。
+2026-11-20 开工前新增[详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[按交付结果排列的现行排期](../planning/intranet-uaa-release-schedule.md)。完整本期目标继续保留。人工风险整改（B2）须先交发布钉版、存量兼容、转换证据及当前复核资格。隔离入网预演（B0）与完整基础扩展版（B1）按所有者决定后排。
 
 ## 1. 阶段目的
 
@@ -29,7 +31,7 @@
 | P6.1 | 按所需纵切交C04、D01–D04/D06、R01及UI样板；X01-C/B和X02-Q先交基础接缝，feed及UAA公共部分按首提供方接入推进 | 当前启用能力的正确性/授权；不可丢消费者先有持久意图；不机械等待全X01/完整UAA-P/整个本波结案，P完整投影仍须C04/X02-F |
 | P6.2 | D07–D10风险核心、D15最小风险通知；A01只读NL | 发布快照、转换采集、新资源护栏、mock源/目录、可靠交接 |
 | P6.3 | D05/D11/D12/D16、U03–U06、A02交互确认建单 | 对应Schema/权限/结果合同；不依赖完整通用Agent |
-| P6.E | D13/R4、D14/R5 | 风险核心与真实可证明指标；专业来源清楚 |
+| P6.E | 度量与报表（工作包 D13，旧分段 R4）、事件协作（工作包 D14，旧分段 R5） | 风险核心与真实可证明指标；专业来源清楚 |
 
 每条纵切的最小可信前置必须完成；完整可视化引擎、全部易用性和高级报表不一并阻塞风险核心。新增/触及定义写的快照与校验、当前资源权限、不可丢后继的持久意图按实际启用能力验，不先全仓重构。任务结果自动转换与output mapping仍先等C03/R01，不能消费在途回调的假成功。
 
@@ -39,7 +41,7 @@
 - [01接入台账](01-r1-ingest-ledger.md)、[02评估处置](02-r2-assessment-treatment.md)、[03工单联动](03-r3-ticket-linkage.md)：D07–D10的业务详设。源稳定键与风险周期分开；同owner N:1按逐风险结论关闭，交接不可转走整组其它风险的复核权。
 - [04统计](04-r4-metrics-reports.md)：D13以本平台生命周期口径和历史快照为边界，外部专业统计接入；通用DSL/BI方向由E04裁决。
 - [05原启动批](05-launch-batch.md)：保留历史批准与细节来源，T1/Week0不再独立维护当前总估算。
-- [06工单完善](06-ticket-completeness.md)：26件设计逐项映射总账；已修只回归；旧B1–B4按当前依赖重排。
+- [06工单完善](06-ticket-completeness.md)保留 26 件设计与总账映射。已修事项作回归，旧工单完善批次 B1–B4 按当前依赖重排。近期发布验收点从[当前排期](../planning/intranet-uaa-release-schedule.md)查。
 - [07来源索引](07-backlog-and-triggers.md)：历史触发/遗留来源，现行排期见总账和source-map，不再以“触发未到”无限悬挂。
 - [08首页](08-home-workbench.md)：U01先修安全默认落点，U02样板与U06推广；全员首页不等于全员工单读权。
 - [09类型策略](09-ticket-type-visibility.md)：D03详设；P1–P5的已决项以[决策登记](../planning/planning-decisions.json)为准，剩余合同在对应包实施前冻结，页面只挂GET/写挂按钮的规则优先，不能默增例外。
