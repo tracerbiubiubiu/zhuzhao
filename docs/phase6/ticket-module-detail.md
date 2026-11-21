@@ -22,12 +22,12 @@
 
 “已实现”以现行主仓代码为准。“B2 必需”指人工漏洞整改首条旅程的设计与验收范围。后置能力按现有工作包和触发窗口取舍。各项产品验收随实际候选记录。[B2 交付排期](../planning/intranet-uaa-release-schedule.md#1-接下来怎么做) · [两条风险验收卡](../planning/phase6-b2-acceptance-cards.md)
 
-- **人工流转与准入。** 已实现单状态转换、可办动作查询和字段校验，`internal/service/ticket/transition_service.go` 的 `Transition` 在事务内已做对象与动作检查。`internal/service/ticket/transition.go` 的 `checkCondition` 按单个操作者匹配可选 `roles`，空数组沿旧语义无附加角色限制。B2 复用现有守卫，并在固定钉版流程中按当前身份重验钉版动作、类型范围、参与来源和风险复核职责。预检后风险负责人变更须拒绝旧负责人的复核，即使该边无附加 `roles`。D16 后置自动条件路由，按优先级只选一条边。多个活动分支并跑后汇合或包容网关仍在引擎范围之外。[D16](#5-字段安全检索快速入口与自动路由) · [引擎边界](00-flow-engine-v2.md#6-边界不做)
+- **改变工单状态时检查什么。** 现有 `internal/service/ticket/transition_service.go` 的 `Transition` 在保存状态前检查工单和动作权限，也可查询可办动作并校验字段。`internal/service/ticket/transition.go` 的 `checkCondition` 核某个操作者是否满足动作要求的 `roles`，空数组表示没有额外角色限制。B2 计划让工单沿创建、升级补记或获准迁版时确定的那版规则办理，即“钉版”。每次办理仍要检查当前身份、类型范围、参与资格和复核职责。例如预览后风险负责人换人，原负责人再提交复核应被拒，即使动作没有额外角色限制。自动按条件选下一步（D16）后续只按优先级选一条。多个分支并行后汇合或按条件选择多条分支仍在引擎范围之外。 [规则版本示例](#33-发布迁版与配置晋级) · [引擎边界](00-flow-engine-v2.md#6-边界不做)
 - **会签、或签与依次审批。** 同一环节全部同意是会签，任一人同意即可通过是或签，逐位发待办是依次审批。现行转换的准入判据对应单个操作者。B2 使用当前风险负责人的逐风险复核。延期双主管列为 Q10/E03 的后置轻审批候选。S3b 有多人待办、会签批次与回退蓝本，或签、临时加减签、审批代理及灵活通过门槛按真实场景裁决。[飞书审批手册](https://www.feishu.cn/hc/zh-CN/articles/360033971554-飞书审批管理员手册) · [S3b 蓝本](../phase5/03-s3-flow-semantics.md#4-s3b审批流引擎等首个真实审批场景)
-- **驳回、补交及重提。** 已有配置状态边和转换评论。B2 必需逐项通过或打回，打回记录理由且保留原证据，只重提待补项。同票其余已生效结论继续保留。迟到结果携旧票、风险、关联或结论版本时按对应入口拒绝或冲突。关票前，每条仍有效关联须有已授权的生效结论，合法移出须留因和历史。若启用风险接受变体，仍由当前 owner 申请、非申请人的获权主锚管理者确认，待确认项不能充作生效结论。普通关闭、风险关闭、转换及已启用的自动入口共用复核门，暂未接入的入口按实际范围受控关闭。通用审批的退回、回收旧待办与重新生成审批轮次归 S3b 的实际场景裁决。[风险复核合同](risk-module-detail.md#52-逐风险结论与review-gate)
+- **驳回、补交及重提。** 已有配置状态边和转换评论。B2 必需逐项通过或打回，打回记录理由且保留原证据，只重提待补项。同票其余已生效结论继续保留。迟到的处理结果若携带的票、风险、关联或结论版本号已落后于当前值（即基于旧状态做出的判断），按对应入口拒绝或冲突。关票前，每条仍有效关联须有已授权的生效结论，合法移出须留因和历史。若启用风险接受变体，仍由当前 owner 申请、非申请人的获权主锚管理者确认，待确认项不能充作生效结论。普通关闭、风险关闭、转换及已启用的自动入口共用复核门，暂未接入的入口按实际范围受控关闭。通用审批的退回、回收旧待办与重新生成审批轮次归 S3b 的实际场景裁决。[风险复核合同](risk-module-detail.md#52-逐风险结论与review-gate)
 - **分派、接单、转办、抄送和撤回。** 已实现普通分派、抄送及建单自动分派规则。B2 需要具名唯一主责、人工接单、最小类型可见性，按实际启用路径验参与来源和复核资格。完整转办、发起人撤回未受理且未分派的工单及更完整的协作入口后置，随 D02/D03 实际交付范围。合格池轮询、按类型认领和工作日历由 E03 逐项定。抄送和转办权限按各自职责判定。[转办与撤回对账](06-ticket-completeness.md#26件当前对账2026-11-14) · [E03](early-disposition-cards.md#2-e03分派日历轻审批与认证增强)
 - **超时、催办与执行后动作。** 现行代码已有超时扫描、事件和通知/抄送/转派/任务注册动作。B2 需要人工接单、接单与业务截止分开计、首次接单超时的最小站内提醒，以及所选风险事件的必要持久意图和失败可查。手动催办、完整通知配置、跨仓自动链、实际外部送达按对应窗口。已提交事实与通知或后续动作回执分别核对。[现有动作](../phase5/03-s3-flow-semantics.md) · [B2 验收卡](../planning/phase6-b2-acceptance-cards.md#卡二-b2-两条合成风险共票并逐项复测)
-- **发布、证据与历史。** 已有工单类型配置版本、字段校验和状态历史，运行转换当前读取 live 类型。B2 必需 D01 不可变发布与实例钉版、隔离旧票回填，以及 D02 转换时按项提交有效证据、同事务写业务事实与必要历史/意图。两个版本同用当前权限。D05 配置晋级、完整画布/活动流与 D18 删状态迁版依既定窗口。[发布与迁版](#33-发布迁版与配置晋级)
+- **发布、证据与历史。** 现在有工单类型配置版本、字段校验和状态历史，但办理时读取的是当前类型配置。B2 要保存每版发布规则，并让工单关联创建时的版本（D01）。在独立测试环境验证升级前的工单，能核实原规则才补记版本。办理下一步时按项提交有效证据（D02），同时保存业务结果、历史和需要继续处理的任务。两张用不同规则的工单都按当下权限办。跨环境部署配置（D05）、完整画布和活动流，以及删除状态后的批量迁版（D18）各按原计划。 [发布与迁版](#33-发布迁版与配置晋级)
 
 ### 1.2 双主管延期的 E03 轻审批候选
 
@@ -68,7 +68,7 @@
 - **版本和操作者。** 使用 D01 已发布定义引用、D02 业务 `revision` 及共同 operation/receipt 合同表达当前请求。以后审批轮次可绑定实际业务版本和目标，提交及执行仍核当前身份、作用域与职责。定义版本、业务修订、当前授权各有自己的语义。
 - **业务写主和统一复核门。** 后续审批决定和编排执行结果作为业务命令的受控输入。风险结论仍由风险域确认，工单状态仍由工单用例推进，应用事务内核主体、作用域、目标、当前职责和适用版本。关票要求每条仍有效关联都有获权的已生效结论，移出须留因和历史。普通关闭、风险关闭、转换及已启用的自动入口共用此门，暂缓入口按首批范围关闭。[逐风险结论与复核门](risk-module-detail.md#52-逐风险结论与review-gate)
 - **结果重试及迟到处置。** 沿原操作号回读，后置动作按原回执恢复。单一决定对同一目标动作只生效一次，换操作号也须识别。携旧票、风险、关联或结论版本的迟到写入按当前入口拒绝或报冲突，后续任务按适用审批轮次或分支代次判断。B2 留必要持久意图和可查失败。完整待办投影随获选能力交付。
-- **已有实例继续可办。** B2 在隔离环境验可追溯回填。发布新版后原票继续钉原版，两版操作均核当前权限。缺对应定义时写入返回 503、动作停用，只读明确标为 `degraded`。来源无可靠依据的历史标为未知，关票只计已生效结论。[发布与迁版](#33-发布迁版与配置晋级) · [Flowable 实例版本规则](https://documentation.flowable.com/latest/user/control/processes#process-instances)
+- **已有实例继续可办。** B2 在隔离环境验可追溯回填。发布新版后原票继续钉原版，两版操作均核当前权限。缺对应定义时写入返回 503、动作停用，只读明确标为 `degraded`（降级显示）。来源无可靠依据的历史标为未知，关票只计已生效结论。[发布与迁版](#33-发布迁版与配置晋级) · [Flowable 实例版本规则](https://documentation.flowable.com/latest/user/control/processes#process-instances)
 
 后续显式迁版沿 §3.3。D01 最小迁版限同名且无删状态，逐票核字段、动作、资格及修订号。删状态映射留 D18。迁版保留原历史、已生效结论、证据、节点时间及当前期限，后置动作零重放。仍绑定旧版的未生效结果按目标定义及当前资格重新核验，冲突则明示拒绝或重审。
 
@@ -151,7 +151,7 @@ action_id首批为只读标识，写以definition_version＋to定位。新发布
 | `ticket_type_definitions` | `type_code,definition_version BIGINT,definition_hash,schema_format_version,snapshot JSONB,source_draft_revision,published_by,published_at`；PK `(type_code,definition_version)`；snapshot 必须 object，version>0；hash 普通索引 | 工单定义用例追加；不可 update。内容回退可产生新版本，不用全历史 hash 唯一约束禁止 A→B→A |
 | `ticket_field_identities` | `type_code,field_id,field_key,created_at,retired_at`；PK `(type_code,field_id)`，有效key在类型内唯一；发布snapshot保存field_id | 字段身份独立于Replace全删重插产生的行ID；改显示名/布局保留身份，真正删除后复用key创建新身份；既有当前字段一次性映射，不伪造已丢历史身份 |
 | `ticket_types` 增量 | `current_published_version`；草稿仍用现有 version；当前指针引用同类型定义 | 先允许空并回填，核零悬挂后约束；类型删除须核所有票/计划/当前引用 |
-| `tickets` 增量 | `definition_version,revision BIGINT,lifecycle_cycle INT`；引用同类型定义；revision>0；`(type_code,definition_version,status)` 索引支持旧单/迁版 | 每类型冻结初版、存量填版本，不猜过去定义；revision 初始化后每次相关业务写递增；历史真相未知标迁移基线 |
+| `tickets` 增量 | `definition_version,revision BIGINT,lifecycle_cycle INT`；引用同类型定义；revision>0；`(type_code,definition_version,status)` 索引支持已有工单及迁版 | 每种类型保存初版。升级前已有的工单有可信依据才补记规则版本。规则来源未知的工单记录到迁移结果，按缺定义只读处理。原历史中无法核实的内容保留并标明来源未知。revision 初始化后每次相关业务写递增 |
 | `ticket_events` 增量 | `event_id,cycle_no,visit_no,payload,operation_id,definition_version,aggregate_revision`；`UNIQUE(ticket_id,aggregate_revision,event_kind,event_ordinal)`；`(ticket_id,created_at,event_id)` 分页 | 与状态/字段/参与写同事务；新事件可重放，旧无payload事件不补造；file/richtext 记键/受权引用，正文不进事件镜像 |
 | `ticket_state_visits` | `ticket_id,cycle_no,visit_no,state,definition_version,entered_at,exited_at`；PK `(ticket_id,visit_no)`；每票未离态最多一行；`exited_at>=entered_at` | 统一入态核创建/结束区间；同状态转派不新增 visit；终态驻留不计办理时长；重开开始新 cycle 但 visit_no 继续递增 |
 | `ticket_milestones` | `ticket_id,cycle_no,kind,occurrence_key,occurred_at,actor_id,event_id`；唯一 `(ticket_id,cycle_no,kind,occurrence_key)`；kind 固定 `accepted/processing_started/result_submitted/business_closed` | 首次接单 occurrence_key 固定 `first`；节点办理点绑定 visit；提交/重开保留原事件，指标能区分首次与后续周期；不保存可被业务管理员任改的人工时间 |
@@ -178,7 +178,13 @@ PG 行锁/死锁处理沿[PostgreSQL 18 官方锁说明](https://www.postgresql.
 
 deploy 在类型行锁内校验 plan、父草稿revision、current指针与引用语义revision；复制整份图/字段快照，写新定义/指针/成功历史同事务。相同当前内容无变化返回 changed=false；重复操作号返回原receipt。保存草稿不发布，管理 UI 必须区分“已保存草稿”和“已发布”；旧配置写客户端须升级或受控拒写，不偷偷自动 deploy。
 
-旧单继续钉旧版；缺定义写503并停用动作，只读 fallback 明确 degraded。最小迁版仅同名状态且无删状态，逐单 plan/apply/CAS，保留原节点时间与当前 due，不重放 post-actions。部分冲突逐单可恢复。完整删状态映射 D18/P7，不因有相同状态名跳过字段/资格兼容校验。借鉴[Camunda 实例迁移](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)的明确源/目标与映射思想；本项目保留小 FSM，未引入 Camunda 或 BPMN。
+工单默认继续使用创建时关联的已发布规则。若找不到对应规则，允许有权限的用户查看可确认的信息，界面应提示“只能查看，原流程规则缺失”。此时关闭办理动作，修改请求返回 503（`definition_resolution='degraded'`）。确需把工单改用另一版规则时，首批仅支持两版有同名状态且没有删除状态的情况。每张先预览，再核当前记录是否仍与预览一致后执行。保留进入当前状态的时间和原期限，已经发生的动作不再执行。单张遇到冲突可单独处理。即使状态同名，也要核字段和资格是否兼容。删除状态后的完整映射由 Phase 7 的 D18 承接。 [设计参考](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)
+
+下面用假设的工单演示三个时间点。
+
+- **版本功能上线之前**，已经有人创建工单 T-100。升级时若有升级前保存的可信规则，可给它关联当时核定的初版规则，编号、历史和期限都照旧。无法核实过去曾用过哪个规则的历史记录，标明来源未知。找不到办理所需的规则时，这张工单可按权限查看，不能修改。
+- **版本功能上线之后**，管理员发 A 版规则，再建 T-201。后来发 B 版，新增必填的“复测环境”，再建 T-305。T-201 继续按 A 版，T-305 才要求填写“复测环境”。工单使用的规则可以不同，谁有权办理仍以点击提交时的权限为准。程序在 `definition_ref.definition_version` 中记录规则版本。
+- **开放这次真实试用之后**，按选定整改类型创建的业务工单才纳入试用。验证升级前工单能否继续办理，以及发 A/B 后分别建单的测试，用的是隔离环境中的合成记录。
 
 D05 继续[配置晋级提案](../proposal/config-promotion.md)：包仅含已发布类型/完整字段和选定模板、稳定外部引用；不带用户ID、真实URL、密码或任意脚本。plan 绑定包hash/目标/审批/目标基线，apply 整包短事务校验引用与审批并发布，等价重放不增版；模板独立配置语义不塞进实例定义。审计写失败的事务政策按该用例既有合同执行；SetRoles/AssignMenus两IAM操作的本地成功审计失败回滚已由F017另行确认、待C接线，不扩大其适用范围。补偿是发布前后受控计划，不等于灾备恢复。
 
@@ -267,7 +273,7 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 个人首页候选 `GET /api/v1/workbench/summary` 仅在权限内返回domain小块 `{state:ok/unavailable,as_of,stale,counts,filter}`；无资格domain省略，服务端不查询，前端也不补发越权列表。已有消息/PAT自服务独立可用。工单主数=当前处理或具名领域复核的非终态票去重，原因分别展示；甲提交给乙复核但assigned_to仍甲时，乙计复核，甲不计当前处理，不改assigned_to凑数。类型运营视图须独立职责＋组织范围，卡片点击携同口径filter；`can_transition`或admin可操作范围不能代替“由我负责”。
 
-所有资源页请求键包含 `user/authorization_epoch/resource/filters/definition` 的适用部分，写回和撤权使相关缓存失效；选择、自动保存、订阅和迟到结果核当前上下文。结果先到旧票不回贴新票，换账号不显示前一人的历史/选择。统计刷新失败标上次时间，不能把unknown/null当0；计数/列表暂不一致须显示as_of并可刷新，而非承诺跨HTTP读取事务完全同刻。
+所有资源页请求键包含 `user/authorization_epoch/resource/filters/definition` 的适用部分，写回和撤权使相关缓存失效；选择、自动保存、订阅和迟到结果核当前上下文。前一张票的迟到响应不回贴到当前查看的新对象上，换账号不显示前一人的历史/选择。统计刷新失败标上次时间，不能把unknown/null当0；计数/列表暂不一致须显示as_of并可刷新，而非承诺跨HTTP读取事务完全同刻。
 
 可访问性采用[WCAG2.2](https://www.w3.org/TR/WCAG22/)的适用基础项：正常文字对比度4.5:1、大字3:1；键盘可达、焦点可见不被sticky遮挡、错误关联字段、异步状态可播报，颜色之外有文字/图形。首期按代表页及逐页交付验证，不以一次自动扫描宣称全平台合规认证。
 
@@ -347,3 +353,4 @@ U06系统管理用户页的当前安全修复须前移随C04交，不等待全�
 
 - 2026-11-14：按现行main定向补齐工单定义/实例/权限/字段/成员来源/里程碑的数据与事务合同、异常恢复、UI逐包行为和TDD出口；纠正旧pending决策、字段命名及batch API推荐。保持有限核心先交与完整P6后续范围，未实施产品。
 - 2026-11-15：参与来源仅持久独立授予，creator/assignee直接用现有权威事实；明确E03的P6.3早期裁决，不提前实施后包。
+- 2026-11-21：§1.1/§3.3 就地解释钉版、旧票、回填、降级等抽象词，补三类工单记录区分的示意例；不改编号、时点、锚点与合同。

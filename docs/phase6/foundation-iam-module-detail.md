@@ -207,7 +207,11 @@ C-08另含四个必要子例：GET/ETag交错、pending-effect仍推进集合hea
 
 ## 4. C05：账号、AT/RT/PAT 与停用恢复
 
-保留密码纪元、iat地板、Redis Lua和fail-closed的安全目标，纪元真值迁到§4.2的DB写主，不能将authorization revision冒充password/session epoch。账号停用、角色剥夺与会话销毁分别表达：业务授权守卫以数据库当前状态/代际拒绝相关调用，后台持久intent投影Redis；PAT也必须核有效账号及当前权限，不只验哈希，但不接AT/RT的密码纪元门。
+例如管理员停用一名员工。现有程序先把“已停用”存入 PostgreSQL，再更新 Redis 里的登录状态。若第二步失败，停用已经生效，接口仍可能报错，而且重启后没有可继续处理的同步任务。计划中的 C05 会让旧登录按数据库当前状态拒绝，并给管理员办法查同一次停用是否提交、缓存是否仍待更新。 [现状](#41-c05现有wire与尚未持久化的部分) · [停用失败验收卡](../planning/phase6-b2-acceptance-cards.md#卡一-c05-停用已提交而撤销投影失败)
+
+C05 计划在登录用的访问令牌（AT）和刷新令牌（RT）中记录账号的登录版本号，也叫安全代际（epoch）。密码重置或停用推进版本，旧版本令牌失效。计划以 PostgreSQL 中的账号状态和版本为准。Redis 的“投影”是供登录检查使用的同步副本。改账号状态时同时保存一条待同步记录，后台失败后按原记录继续。角色权限变更与登录版本分别记录。个人访问令牌（PAT）检查账号和令牌是否有效、当前操作是否获准，沿独立的撤销和过期规则处理。
+
+继续拒绝签发时间早于下限的令牌（iat 地板），用 Redis 脚本一次完成相应会话更改。依赖故障且无法确认当前登录有效时，拒绝请求。
 
 目标是禁用提交后Redis超时明确“账号已停用、会话清理待恢复”，不能诱发整笔重做或把禁用回滚为active。Login、Refresh、文件会话及适用worker准入核DB状态和安全屏障；PAT按其独立生命周期核当前账号/自身状态与业务授权，不因密码投影pending被误撤。**重新启用不自动清除未完成撤销**，须确认目标撤销完成，再按新epoch签发。恢复worker重投原intent并按状态/epoch CAS，旧enable/clear不能覆盖新disable；当前实际错误wire与未来变化见§4.1–4.3。
 
@@ -221,7 +225,7 @@ PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错�
 
 - `internal/service/auth_service.go`的`Login/Refresh`已有账号/密码/Redis密码epoch检查及防借用新epoch的重读，`internal/service/session_revoke.go`只有3次进程内重试和reconcile日志。当前永久epoch只存Redis，缺键为0；不能据此保证丢失后旧epoch0 AT不复活。
 - `internal/middleware/jwt.go`的Bearer AT不读DB status，靠Redis blacklist/disabled/iat/epoch；文件cookie另有`internal/middleware/fileauth.go`入口，两者都需接新安全快照。PAT repo已join当前账号status/deleted及PAT自身状态，不靠AT/RT epoch。
-- `UserService.UpdateStatus/Delete/ResetPassword`先提交DB，再撤Redis；最终Redis原错误经`internal/handler/errors.go`的`writeServiceError`可能为500，不能沿注释声称已有503/持久补偿。只有自服务`AuthService.UpdatePassword`显式映射503。 自服务写入在 IAM 守卫内核验本次已验证的原密码哈希以及账号启用状态，失败时返回现有凭据错误并停止后续会话操作。启用当前直接清disabled，尚无本段安全屏障。
+- `UserService.UpdateStatus/Delete/ResetPassword` 先写数据库，再改 Redis 里的会话状态。如果后一步失败，`internal/handler/errors.go` 的 `writeServiceError` 可能返回 500。撤会话失败时，只有自助改密码（`AuthService.UpdatePassword`）明确返回 503。目前失败后没有可跨重启恢复的待办记录。自助改密码在保存前会重查已验证的原密码哈希及账号是否启用，失败就停止。现在重新启用会直接清除 Redis 的停用标志。
 - `internal/pkg/admincli/reset_password.go`的`ResetPassword`也直接改密码再撤会话，必须纳入；普通用户metadata Update不含password字段，不扩无关写面。
 
 ### 4.2 C05的有限持久方案
@@ -391,3 +395,4 @@ HIER-D01子树暂停和IAM-AUDIT-D01两操作本地审计失败回滚已由F017�
 
 - 2026-11-14：按实际主线补三层共同守卫、代际/会话恢复、D06 typed 输入和逐项交接、UAA-C/P/R 分界、统一审计试点及工程出口。逻辑表未建、迁移未领号，估算仍按原包扣重。
 - 2026-11-15：将事务屏障与L1策略副本同步区分，去掉资源级变化引起的全站重载；明确身份/治理表按实际feed与P/R创建，补日志审计补充出口与首版所选最小保护的区别。
+- 2026-11-21：§4 开头就地解释纪元/安全代际、写主、投影、fail-closed，写明 Redis 同步失败是 C05 目标用例且现状无持久恢复；不改编号与锚点。
