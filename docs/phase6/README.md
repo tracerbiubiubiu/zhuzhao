@@ -6,13 +6,11 @@
 
 > **首个正式版本**。公司允许使用本地账号。先让风险、工单、任务、清单和真实消息能按本地权限一起工作。先写清将来如何与公司统一身份及权限平台对接，等本地流程稳定再实现企业接管。原 1 月试用是争取的时间，原 2 月 1 日也不是当前截止。实际开工和试用按排期及议程 Q12 确认，Phase 6 的其它功能仍有各自计划。 [首版能做什么](first-usable-release-plan.md) · [分项估算](../planning/local-core-release-estimate.json) · [范围变化](../planning/core-release-change-comparison.md)
 
-> **2026-11-14基础先行修订**：[基础版边界](../design/foundation-release-boundaries.md)将现有底座入网试验B0、最小可扩展基础B1和后续业务增强分开。下表是能力分组，不能把整个P6.1全部完成当P6.2或入网前置。B1先X01-B配置式接缝/X02-Q参考查询；完整X01-H与全UAA-P不挡独立基础，真实企业激活仍验对应UAA硬门。新增业务最小UI随批，U06整包推广和高级配置台不挡业务。
+> **先做哪些基础工作（2026-11-14）**。B0 用现有功能预演内网部署，B1 先做按配置接入外部服务（X01-B）和参考查询（X02-Q）。P6.2 和入网各自检查所需的 P6.1 工作。新增业务随批交付必要页面，全站推广（U06）和高级配置台另排。独立运行先交付，完整的外部服务宿主（X01-H）和 UAA 公共治理（UAA-P）另排。正式启用企业模式前要满足对应的 UAA 条件。 [基础版边界](../design/foundation-release-boundaries.md)
 
-> **2026-11-13调用/一致性补充**：CE01静态准备可先行，授权相关实现归P6.1；CE02-S在P6.1交最小逻辑门面，复用C03/C04/R01/X01-C，P6.3随D12交工单→任务→结果闭环。CE02-D只交最小操作关联/receipt语义，不提前包办D12展示/写回；D12也不反依完整I01。G06及U02/U07逐步收敛规范/组件，新增业务最小UI同批。详见[共同合同](../design/capability-invocation-contract.md)和[增量册](../planning/capability-interconnect-supplement.md)；新增范围已由[净估注册表](../planning/planning-scope-estimates.json)扣重计价，存量共同路径迁移按S/D/L跨阶段交付，仍未开工。
+**跨服务调用（2026-11-13）**。CE01 可先整理接口，授权实现放在 P6.1。P6.1 的 CE02-S 复用 C03、C04、R01 和 X01-C，先交能供本批能力复用的同步调用入口。P6.3 的 CE02-D 只做本批所需的操作与处理阶段关联，并约定回执的含义。同批的 D12 让办理人从工单发起任务并看到结果，服务只写回获准的结果字段。D12 无需等待完整 I01。G06、U02 和 U07 各自完善规范、组件和验证。已有调用按 S/D/L 分批迁移，尚未开工。新增工作已在估算中扣除重叠部分。 [共同合同](../design/capability-invocation-contract.md) · [新增范围](../planning/capability-interconnect-supplement.md) · [估算明细](../planning/planning-scope-estimates.json)
 
-近期施工候选、首批PR切片及准确验证出口见[实施交接候选](implementation-handoff.md)；本轮未启动功能实现。
-
-开工前的系统理解补齐及前三个交付小批的讲解/收尾试行见[专项计划](../planning/system-understanding-and-delivery-plan.md)。存量修复及临时工作树收尾已由[main后继记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)承接；下一次开工复核实际基线。专项材料尚未整理，不把完整历史回顾或全生态掌握设为技术总开工门。
+[实施交接](implementation-handoff.md)列出首批 PR 可以怎样拆、每批要跑哪些检查，功能尚未开工。[系统讲解计划](../planning/system-understanding-and-delivery-plan.md)安排在前三个交付小批补充操作示例和时间线，材料尚未整理。开工时先核对实际用的代码版本和已有修复。 [11 月 17 日合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)
 > 2026-11-11现行总纲。本轮已授权重规划和文档落档，未启动本阶段代码实现。Phase5已整合五仓main；原批准设计保留来源，但原整包前置、波次和13–16周估算由[总账](../planning/planning-backlog.md)替代。平台边界与必须保留前提见[演进设计](../design/platform-evolution.md)。
 
 2026-11-20 的[设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)列出人工整改前要补的功能。工单按创建时的规则运行，升级前已有的工单也要能安全查看或继续办理。提交整改结果时按项收证据，负责人复测时检查当前权限。用测试数据做内网部署预演（B0）和完整基础扩展版（B1）另排。 [交付顺序](../planning/intranet-uaa-release-schedule.md)

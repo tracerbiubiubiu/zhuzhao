@@ -1,6 +1,6 @@
 # zhuzhao 文档入口
 
-系统目前能用账号、组织和角色管理工单。下一批优先准备人工漏洞整改（发布验收点 B2）。一个派单人把同一负责人名下的两条风险放进一张整改票，办理人逐项提交证据，负责人逐项复测。此项仍处于开工准备。 [当前能力](review/11-project-control.md) · [人工漏洞整改开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
+目前可以用账号、组织和角色分配工单权限。下一批准备做人工漏洞整改（发布验收点 B2）。例如同一位风险负责人有两项漏洞待修，风险管理者可以把它们派到一张工单上。办理人分别提交修复证据，风险负责人逐项复测。 [当前能力](review/11-project-control.md) · [人工漏洞整改开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
 
 ## 先选择阅读路径
 
@@ -9,9 +9,9 @@
 - **准备开发一项功能**。按[工作包查到对应设计](planning/README.md#按工作包找合同与交接)，确认这次改哪些地方、缺什么前提、怎样验收。项目和代码规则分别见[产品边界](vision.md)、[开发指南](guides/development.md)和[工程公约](standards.md)。
 - **排查或核对已交付功能**。从[运维入口](ops/README.md)找部署、故障和恢复办法，从[审查入口](review/README.md)查哪一版程序在什么环境通过了哪些检查。
 
-第一次接手可沿[工单模块](modules/ticket.md)看一次状态变更。办理人选中一张工单并点击修改状态的操作后，系统检查他能否访问这个功能、能否看到这张工单、能否在此时执行这个动作。通过检查后，才保存状态和操作历史。[架构导览](design/architecture.md)说明这些检查在哪儿发生。
+例如办理人点“关闭工单”，系统先检查他的账号能否使用关闭功能，再查他是否有权看这张工单、能否关闭它。通过检查后，系统才保存状态和操作历史。 [工单模块](modules/ticket.md) · [架构导览](design/architecture.md)
 
-**试用会用哪些工单？** 真实试用只办理试用期间按指定整改类型创建的工单。升级前已有的工单怎样保留编号、历史和期限，另用测试环境的合成工单验证。版本功能交付后，如果管理员把整改规则从 A 版换成 B 版，按 A 版创建的工单仍用 A 版办理，之后按 B 版创建的工单用 B 版，两张都按当下的权限判断谁能办理。 [试用与已有工单的例子](planning/phase6-b2-kickoff-plan.md#旧票范围与定向验收)
+试用只接收试用期间按指定整改类型创建的工单。升级前已经存在的工单，以及发布新规则以后工单用哪版规则，都各有测试。 [试用与已有工单的例子](planning/phase6-b2-kickoff-plan.md#旧票范围与定向验收)
 
 ## 按任务找文档
 
@@ -28,13 +28,13 @@
 
 ## 阶段导航
 
-**看近期开发**。Phase 1–5 的实现已合入各仓主线。Phase 6 先做账号停用后让旧登录失效，以及用户点保存时再查一次当前权限。接下来让工单记住创建时用的规则，并在进入下一步时收集整改证据。最后用两条风险验证从派单到复测的全程。实际开工日、实施授权和试用人员、数据仍要确认。 [交付排期](planning/intranet-uaa-release-schedule.md) · [工作包总账](planning/planning-backlog.md)
+**看近期开发**。Phase 1–5 的实现已合入各仓主线。Phase 6 先做账号停用后让旧登录失效，以及用户点保存时再查一次当前权限。接下来让工单记住创建时用的规则，并在进入下一步时收集整改证据。最后用两条风险验证从派单到复测的全程。实际开工日、每周可投入的时间和实施授权仍待确认。真实试用前还要确认人员、数据和环境。 [交付排期](planning/intranet-uaa-release-schedule.md) · [工作包总账](planning/planning-backlog.md)
 
 [Phase 1](phase1/README.md)、[Phase 2](phase2/README.md)、[Phase 3](phase3/README.md)、[Phase 4](phase4/README.md)和[Phase 5](phase5/README.md)保留账号、权限、工单、前端和通用能力的设计及交付记录。[Phase 6](phase6/README.md)先准备人工整改。[Phase 7](phase7/README.md)计划让工作人员从工单调用已获准的外部专业服务。[Phase 8](phase8/README.md)计划接入智能体和专业执行平台。[Phase 9](phase9/README.md)计划让跨系统任务在中断后能查进度、恢复并由人接管。更远的候选见[路线图](roadmap.md)。
 
 早期设计保留当时的取舍。准备开发时，从当前阶段入口查本次实际采用哪版设计，再确认接口字段、数据库变更和验收用例。Phase 5 的交付和清理见[验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)和[运行手册](ops/runbook.md)。
 
-旧排程按单席、每周 5 个有效工程日计算。B2 按约一人产能准备，实际开工日、每周可用时段和实施授权仍需确认。 [排程资源说明](planning/execution-schedule.json) · [B2 待确认输入](planning/owner-decision-agenda.md#详设审计后的排产选择)
+原排期按一名开发人员每周投入 5 天计算。 [排期的人员假设](planning/execution-schedule.json) · [B2 待确认输入](planning/owner-decision-agenda.md#详设审计后的排产选择)
 
 ## 五仓各自维护，结构统一
 

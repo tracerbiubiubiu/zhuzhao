@@ -1,12 +1,12 @@
 # 全项目规划入口
 
-从本页可以查到接下来做哪些功能、预计先后顺序，以及什么要由所有者确认、什么要由开发人员实际测试。现有功能见[项目控制台](../review/11-project-control.md)。
+这页列出接下来要做的功能、交付顺序和开工前要确认的事项。已交付的功能见[项目控制台](../review/11-project-control.md)。
 
 ## 当前交付排期
 
-- **想知道第一批做成什么样**。打开[人工漏洞整改开工计划（发布验收点 B2）](phase6-b2-kickoff-plan.md)，走读同一张整改票上的两项风险如何派单、办结和逐项复测，再看[两张验收卡](phase6-b2-acceptance-cards.md)里账号停用后 Redis 同步失败、以及一个风险项被打回时要观察什么。
-- **想知道工作顺序和用时**。打开[交付排期](intranet-uaa-release-schedule.md)。先让停用账号的旧登录失效，并在用户保存时检查当前权限。再让工单记住创建时适用的规则，支持按项提交证据和人工复测。随后让工单触发任务、更新清单并发消息，再安排本地正式运行和公司统一身份与权限平台（UAA）接管所选范围。
-- **想知道还缺什么**。开发前查[需确认的输入](owner-decision-agenda.md#详设审计后的排产选择)，包括实际开工日和授权。真实试用还需单独确认环境、人、数据及停止手段。技术设计对照[模块缺口与验收](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
+- [首批人工漏洞整改（发布验收点 B2）](phase6-b2-kickoff-plan.md)演示两项风险如何合在一张工单上，怎样分别提交和复测。[验收卡](phase6-b2-acceptance-cards.md)还写了两种容易遗漏的情况：停用账号后缓存没更新，其中一项整改被打回。
+- [交付排期](intranet-uaa-release-schedule.md)列出顺序和估算。先处理账号停用和保存时的权限检查，再做工单规则版本和人工整改。随后接任务、清单和消息，安排本地正式运行，最后由公司统一身份与权限平台（UAA）接管获准范围。
+- [开工前要确认的事项](owner-decision-agenda.md#详设审计后的排产选择)包括实际开工日和实施授权。真实试用还要确认在哪套环境、谁参加、用什么数据、怎样停。各模块还缺什么见[设计审查](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 
 ## 按工作包找合同与交接
 
@@ -23,7 +23,7 @@
 准备同一次真实试用时，会同时读到多个编号。**人工漏洞整改（B2）**是发布验收点，**会话终结与认证增强收敛（C05）**是其中一个工作包，**首发与恢复、保留政策（Q12）**是所有者议程。用下面的来源核对全文里的短称。
 
 - **发布与决策**。隔离入网预演（B0）、基础扩展版（B1）、人工漏洞整改（B2）是[发布验收点](intranet-uaa-release-schedule.md#1-接下来怎么做)。合法抄送可查看及评论（B02）是[业务决策](planning-decisions.json)。P6.1 等编号指[技术分期](planning-backlog.md#波次与工作包)。B0-4 之类的条目沿用[旧启动批](../phase6/05-launch-batch.md)编号，跟读它对应的工作包时保留原出处。
-- **工作包、实施子批与测试场景**。事务边界、组织删除与授权护栏（C04）和会话终结与认证增强收敛（C05）归[总账](planning-backlog.md#p61-受信业务底座)。本批分别做[业务提交时的共同授权守卫](../phase6/foundation-iam-module-detail.md#3-c04共同授权守卫与多实例)和[账号持久撤权与恢复](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)。[IAM 实施子批 C](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)负责共同屏障、策略投影与本地审计，其中锁内发现撤权后应无业务效果（C-01）是测试场景。
+- **工作包、实施子批与测试场景**。事务边界、组织删除与授权护栏（C04）和会话终结与认证增强收敛（C05）归[总账](planning-backlog.md#p61-受信业务底座)。本批分别做[业务提交时的共同授权守卫](../phase6/foundation-iam-module-detail.md#3-c04共同授权守卫与多实例)和[账号持久撤权与恢复](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)。[IAM 实施子批 C](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)负责共同屏障、策略投影与本地审计，测试场景 C-01 检查保存时如果发现权限已撤销，系统应拒绝这次操作，原业务记录保持不变。
 - **缺陷与补齐动作**。停用组织后派生权限仍有效（AUTH-01）是[权限专项缺陷](../review/reports/authorization-design-implementation-review-2026-11-15.md)。来源与撤权补齐（AUTH-GAP-01）是[模型复评动作](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)，覆盖多条缺陷和多个工作包。
 - **议程、估算与时间**。真实试用窗口（Q12）查[所有者议程](owner-decision-agenda.md#q12-首发与恢复保留政策)。组合验收与兼容回归（Q1）、正式发布剩余工作（Q2）、共用操作回执基础（S2）查[首版净估册](local-core-release-estimate.json)。Phase 5 的流程图设计器用原段号 P5-S2。例子里的 D+1 表示样例业务日的次日，工单定义发布（D01）查[工作包总账](planning-backlog.md#p61-受信业务底座)。
 - **净估行与排程切片**。本地身份和授权（S1）是[首版净估行](local-core-release-estimate.json)。隔离、有效检查与安全入口（S01）是一项[长期排程切片](execution-schedule.md)。查工作量时按各自的估算范围使用。
@@ -31,7 +31,7 @@
 
 ## 日常阅读
 
-- 看当前结论、设计深度及实施出口：[规划收口](planning-closeout.md) → [模块合同入口](../phase6/module-detail-index.md) → [三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
+- [规划结论](planning-closeout.md)列出已经决定和还需确认的事项。[模块设计](../phase6/module-detail-index.md)说明各模块要改什么，[审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)供合并前逐项核对。
 - 看全文复核后继的分工与验收：[11 月 20 日修复计划](audit-repair-followup-2026-11-20.md)。
 - 看余项归属、前置和验收：[全文审计剩余待修项续修计划](audit-remainder-2026-11-20.md)与[逐项交接](../review/reports/audit-remainder-2026-11-20.md)。
 - 看本轮存量问题的修复顺序和验收：[五仓审计整改实施计划](audit-repair-plan-2026-11-19.md)。
