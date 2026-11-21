@@ -24,7 +24,7 @@
 | 用户确认 | actor＋精确plan_hash＋配置版本＋期限；改计划不得沿用旧批准 | 平台批准记录 |
 | apply/receipt | 再验当前授权与revision；同operation同输入读原receipt，异参拒绝 | 领域事务/可靠执行 |
 
-仅格式化模型可见裁剪后的上下文与工具观察，不含凭据、内部SDK或隐藏推理。plan.knowledge_refs保存封闭对象{id,version,digest}，不再只有ID；摘要、引用快照和批准hash绑定同一份来源内容。结果保存摘要、真实引用、外部run ID（若有）和效果凭证，不保存模型私有思维链。
+按权限裁剪后的上下文和工具观察只交给负责格式化的模型。这份内容排除凭据、内部 SDK 和隐藏推理。plan.knowledge_refs保存封闭对象{id,version,digest}，不再只有ID；摘要、引用快照和批准hash绑定同一份来源内容。结果保存摘要、真实引用、外部run ID（若有）和效果凭证，不保存模型私有思维链。
 
 ## 3. 实际运行的三个原型
 

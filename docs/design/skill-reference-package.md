@@ -61,7 +61,7 @@ checkpoint至少绑定run/step、精确skill版本/digest、模型配置版本�
 
 本样例以知识无主体ACL时“不形成可发布整改草案”为保守场景条件；它不强制所有自然语言查询都依赖RAG。知识服务不可用不得自动改成自建embedding/向量库。
 
-代表plan现钉{id,version,digest}，apply前重新按当前actor回读知识ACL与固定版本/摘要；preview后撤权、换版或同版变内容均held，必须重新取合法证据/预览/批准。原16条skill加载/恢复例没有覆盖这个执行时窗口；后继以[代表场景A20–A25](domain-agent-reference-scenario.md#5-可复验的场景与结果)的18条实际红绿回归验证，不把16条旧例重复算作该覆盖。已提交效果的receipt按当前operation/目标权限返回最小状态，不带知识引用或旧plan；撤知识权不伪装业务效果不存在。
+代表plan现钉{id,version,digest}；执行 apply 前，以当前操作者的身份从知识源重新读取权限、内容和版本，再用重新计算的摘要和版本与计划记录的 `version/digest` 核对。preview后撤权、换版或同版变内容均held，必须重新取合法证据/预览/批准。原16条skill加载/恢复例没有覆盖这个执行时窗口；后继以[代表场景A20–A25](domain-agent-reference-scenario.md#5-可复验的场景与结果)的18条实际红绿回归验证，不把16条旧例重复算作该覆盖。已提交效果的receipt按当前operation/目标权限返回最小状态，不带知识引用或旧plan；撤知识权不伪装业务效果不存在。
 
 ## 6. 实际验证
 

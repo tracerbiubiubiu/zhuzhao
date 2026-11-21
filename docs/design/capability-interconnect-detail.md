@@ -77,7 +77,7 @@ core的typed ALCommands.Update同时承接手工、任务与选定事件入口�
 
 AL候选本库事务：预留operation receipt唯一键→锁类型metadata/stream head→检查generation和文档expected_revision→patch/计算noop→保存文档、源事实和succeeded receipt→commit。receipt reservation锁序固定；涉及多类型按稳定ID排序，文档按ID排序。重复operation先比较原输入/主体绑定，返回已提交receipt，不用旧expected_revision再执行一次。任何步骤失败，同事务没有半个效果或无来源成功。事务里不访问core/TR或网络。
 
-发出请求后core超时：unknown→按原operation查询AL receipt→确认有效果才投影成功；只有明确无效果且原合同允许，才按相同operation重试。lease/fence过期的旧worker不能覆盖新owner，也不能把较新状态标failed。若AL receipt丢失/保留期不满足最长重试窗，不允许盲重做，held并人工对账。
+core发出请求后若超时，先将结果记为unknown，再用原operation查询AL receipt；只有确认AL已产生效果，才把结果投影为成功。若已明确没有产生效果，且原合同允许重试，才使用相同operation再次请求。lease/fence过期的旧worker不能覆盖新owner，也不能把较新状态标failed。若AL receipt丢失/保留期不满足最长重试窗，不允许盲重做，held并人工对账。
 
 最小前端在任务/运行详情显示目标、字段、预计版本、当前receipt、冲突/撤权/未知原因和对账动作；创建时预览grant范围与补跑影响，不展示内部token。运维接线包括AL/core签名配置、能力开关、白名单与预算profile、receipt查验/保留、unknown积压和版本冲突指标；mock同合同可运行，真实AL写开关在故障验收后启用。
 

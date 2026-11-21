@@ -137,7 +137,7 @@ OBS01增加具体旧入口`NotificationService.NotifyDeadLetter`：脱敏url字�
 
 ### 6.1 两改权事实与已有读取的准确投影
 
-旧`/audit/logs`继续是HTTP诊断，HTTP200不能制造domain_committed。`internal/service/user_service.go`的`UserService.SetRoles`和`rbac_service.go`的`RBACService.AssignMenus`仅在服务持有的DBTX内写受控成功diff，候选最小内容为target_id、previous/new role或menu IDs、source_revision、operation_id及可信actor_ref；秘密/整请求不入diff。`UserRepo.SetRolesTx`已接调用方tx，应复用；需把`UserRepo.SetRoles`及`RoleRepo.AssignMenus`的私有事务边界接到service共同事务并保留最后superadmin守卫，不是middleware晚写。精确守卫/提交/策略pair沿[底座§3.9](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，不再造审计receipt或业务重试主。
+旧 `/audit/logs` 仍用于查询 HTTP 审计日志。查询返回 200 只表示查到了结果。要确认业务已经提交（`domain_committed`），须看实际写入方在同一事务保存的业务回执或事件。`internal/service/user_service.go`的`UserService.SetRoles`和`rbac_service.go`的`RBACService.AssignMenus`仅在服务持有的DBTX内写受控成功diff，候选最小内容为target_id、previous/new role或menu IDs、source_revision、operation_id及可信actor_ref；秘密/整请求不入diff。`UserRepo.SetRolesTx`已接调用方tx，应复用；需把`UserRepo.SetRoles`及`RoleRepo.AssignMenus`的私有事务边界接到service共同事务并保留最后superadmin守卫，不是middleware晚写。精确守卫/提交/策略pair沿[底座§3.9](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)，不再造审计receipt或业务重试主。
 
 对象业务历史先验当前对象/字段权限；跨模块审计另验专门职责、历史scope锚与详情投影，再查行/计数/导出。`internal/repository/audit_log_repo.go`的`AuditLogRepo.List/buildAuditListWhere`是现有查询接点，不能只在页面隐藏body。`internal/service/ticket/inbox_service.go`的`Inbox/UnreadCount`现直接委托recipient查询；新增当前资源投影须同时覆盖list/total/badge/深链。保留收件事实不代表永久可看标题正文；未知对象或撤权后不回传隐藏内容/数量。
 

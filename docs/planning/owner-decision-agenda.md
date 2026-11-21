@@ -1,6 +1,8 @@
 # 已确认方向、剩余实参与确认窗口
 
-> **2026-11-17后继F023现势**：所有者已确认[存量修复前移范围](audit-repair-plan-2026-11-17.md)及[目标账号接管保护](../phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现)，前置产品修复已实现并通过PR合入main，尚未真实部署，准确承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)。所有者随后确认按pass8纠偏建议继续补修，当前为`implemented_verified_merged_main_not_deployed`：r1主仓七门禁通过（261顶层单元/635顶层含集成、0 skip，253验收、82对迁移零漂移、默认覆盖率20.9%），u2 UI六门禁通过（37文件/334单元、46 E2E，0 skip/flaky/自动重试），与r1服务资产相等；IAM恢复、附件引用恢复、固定进程内cron、manual/override/TR固定及S3/JSONL/PG 40表恢复的专属真实探针均成功。r1原45/46失败保留，u2只修正一行combobox定位器；本地适用quality及源/runtime/docs独审均通过；主仓[PR #15](https://github.com/tracerbiubiubiu/zhuzhao/pull/15)（main `21c1e2806f39e15e2c4f39a54f27958597813acf`）与UI [PR #9](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9)（main `af457b8ceea380cf7123ca8d384485f42cd75b72`）已合入且树等已验证head，branch/PR四个CI成功；两个准确merge head的main CI均已success（主仓44114420530、UI44114486495），尚未部署。归档、最终资源/工作树/分支清理和收口文档承接以材料封存及独立操作收据及准确收据为准。完整C05/F2b/HA/SIB-R02继续后继，范围与证据见[复审补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。两项原政策不重问，不新增正式分组或改写34项历史统计；真实环境、代表用户/数据、维护责任、备份及恢复/保留参数仍按Q12启用前绑定。F023的validation只保留前段合同253/81/20.2%历史结果，当前状态另见其baseline_delivery/followup_scope；准确来源归[后继索引](planning-followups.json#F023-audit-repair-scope-and-target-protection)。
+阅读时先看事项和确认窗口。Q01–Q13 标出本页议程组，例如真实试用及恢复、保留政策（Q12）。业务规则另查决策册，例如合法抄送可查看及评论（B02）。后继决定的来源编号仍沿原登记。 [正式决策册](planning-decisions.json) · [编号索引](README.md#常见编号怎么读)
+
+> **2026-11-17后继F023现势**：所有者已确认[存量修复前移范围](audit-repair-plan-2026-11-17.md)及[目标账号接管保护](../phase6/iam-first-batch-design.md#37-目标账号接管保护cf-06本轮已确认待实现)，前置产品修复已实现并通过PR合入main，尚未真实部署，准确承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)。所有者随后确认按pass8纠偏建议继续补修，当前为`implemented_verified_merged_main_not_deployed`：r1主仓七门禁通过（261顶层单元/635顶层含集成、0 skip，253验收、82对迁移零漂移、默认覆盖率20.9%），u2 UI六门禁通过（37文件/334单元、46 E2E，0 skip/flaky/自动重试），与r1服务资产相等；IAM恢复、附件引用恢复、固定进程内cron、manual/override/TR固定及S3/JSONL/PG 40表恢复的专属真实探针均成功。r1原45/46失败保留，u2只修正一行combobox定位器；本地适用quality及源/runtime/docs独审均通过；主仓[PR #15](https://github.com/tracerbiubiubiu/zhuzhao/pull/15)（main `21c1e2806f39e15e2c4f39a54f27958597813acf`）与UI [PR #9](https://github.com/tracerbiubiubiu/zhuzhao-ui/pull/9)（main `af457b8ceea380cf7123ca8d384485f42cd75b72`）已合入且树等已验证head，branch/PR四个CI成功；两个准确merge head的main CI均已success（主仓44114420530、UI44114486495），尚未部署。归档、最终资源/工作树/分支清理和收口文档承接以材料封存、独立操作收据及准确收据为准。完整C05/F2b/HA/SIB-R02继续后继，范围与证据见[复审补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。两项原政策不重问，不新增正式分组或改写34项历史统计；真实环境、代表用户/数据、维护责任、备份及恢复/保留参数仍按Q12启用前绑定。F023的validation只保留前段合同253/81/20.2%历史结果，当前状态另见其baseline_delivery/followup_scope；准确来源归[后继索引](planning-followups.json#F023-audit-repair-scope-and-target-protection)。
 
 > **2026-11-15后继F019**：TASK-D01受控人工维护/临时覆盖单独授权、TICKET-D01统一新增CC管理/保留合法旧关系、E03-AUTH-D01基础先行/增强按需后置均已确认，本批3项政策待答归零。原13阅读分组和34正式决策统计不重写；Q07–Q12真实绑定、Q13改名以及增强逐项获选仍按原窗口。见[准确答复来源](planning-followups.json#F019-module-detail-owner-decisions)及[机器议程](owner-decision-agenda.json)。不表示业务已实现或批准全部维护界面/认证增强。
 
@@ -14,7 +16,9 @@
 
 ## 已确认的六组方向
 
-### Q01 风险通知模板 · B08
+<a id="q01-风险通知模板--b08"></a>
+
+### 风险通知模板（议程 Q01，业务决策 B08）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -39,7 +43,9 @@
 
 依据：business-lifecycle-contracts.md §9.2；planning-decisions.json B08/O09。
 
-### Q02 UAA权限同步故障 · UAA-S02
+<a id="q02-uaa权限同步故障--uaa-s02"></a>
+
+### UAA 权限同步故障期间的可用性（议程 Q02，接入场景 UAA-S02）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -63,7 +69,9 @@
 
 依据：uaa-real-integration-conditions.json owner_scenarios UAA-S02/R08。
 
-### Q03 UAA故障的维护恢复入口 · UAA-S03
+<a id="q03-uaa故障的维护恢复入口--uaa-s03"></a>
+
+### UAA 认证故障时的应急入口（议程 Q03，接入场景 UAA-S03）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -83,7 +91,9 @@
 
 依据：uaa-real-integration-conditions.json owner_scenarios UAA-S03。
 
-### Q04 旧数据迁移与跨指纹合并 · E10
+<a id="q04-旧数据迁移与跨指纹合并--e10"></a>
+
+### 旧数据迁移与跨指纹合并（议程 Q04，工作包 E10）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -107,7 +117,9 @@
 
 依据：business-lifecycle-contracts.md §13；continuity P6-MIG-01/02/03；backlog E10。
 
-### Q05 工单条件小件 · U03/E05
+<a id="q05-工单条件小件--u03e05"></a>
+
+### 评论修改、批量办理和完单评分（议程 Q05，工作包 U03 与 E05）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -131,7 +143,9 @@
 
 依据：continuity P6-OPT-07/FUT-F15；planning-backlog.json U03。
 
-### Q06 更远的工单协作候选 · E05
+<a id="q06-更远的工单协作候选--e05"></a>
+
+### 草稿、文件预览与外部协作（议程 Q06，工作包 E05）
 
 状态：`owner_confirmed_direction_pending_binding`；方向已确认，实际配置/新增净估/实施仍按窗口完成。
 
@@ -159,7 +173,9 @@
 
 以下七项保持`pending_real_inputs_then_owner_review`，本次没有批准其实际选择。Q10只绑定具体流程、日历、人员和受众，不重问F004已确定的责任/派单默认；Q13不代表已选品牌或获准改名。
 
-### Q07 UAA实际接管清单与强制政策
+<a id="q07-uaa实际接管清单与强制政策"></a>
+
+### UAA 实际接管清单与强制政策（议程 Q07）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -173,7 +189,9 @@
 
 依据：uaa-real-integration-conditions.json R01–R11/UAA-S01。
 
-### Q08 首批专业来源、执行供给和Agent场景
+<a id="q08-首批专业来源执行供给和agent场景"></a>
+
+### 首批数据来源、执行平台和 Agent 场景（议程 Q08）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -191,7 +209,9 @@
 
 依据：project-evolution-strategy.md §4–5；I04/R03/A05/A07/LS06。
 
-### Q09 实际无人值守任务的授权范围
+<a id="q09-实际无人值守任务的授权范围"></a>
+
+### 实际无人值守任务的授权范围（议程 Q09）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -205,7 +225,9 @@
 
 依据：capability-invocation-contract.md；I02/I03/A04/D17/CE03–05。
 
-### Q10 工作日、分派、轻审批与报告配置
+<a id="q10-工作日分派轻审批与报告配置"></a>
+
+### 工作日、分派、轻审批与报告配置（议程 Q10）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -221,7 +243,9 @@
 
 依据：project-evolution-strategy.md §5；E03/E04/E06。
 
-### Q11 值班与升级的业务承诺
+<a id="q11-值班与升级的业务承诺"></a>
+
+### 值班与升级的业务承诺（议程 Q11）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -235,7 +259,9 @@
 
 依据：project-evolution-strategy.md §6；R05。
 
-### Q12 首发与恢复、保留政策
+<a id="q12-首发与恢复保留政策"></a>
+
+### 首发与恢复、保留政策（议程 Q12）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -249,7 +275,9 @@
 
 依据：project-evolution-strategy.md §8；E09/G05；P-RESOURCE；[首版计划§4.1–4.2](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。
 
-### Q13 新品牌与五仓名称
+<a id="q13-新品牌与五仓名称"></a>
+
+### 新品牌与五仓名称（议程 Q13）
 
 状态：`pending_real_inputs_then_owner_review`；实际范围尚未批准。
 
@@ -267,14 +295,18 @@
 
 以下三项是现有Q12及MH01/MR1的执行责任，不增加13个阅读分组或34项正式决策计数。真实联系人、环境和窗口尚未知时记pending；责任人按相对事件推进，不能把未知当零等待，也不重新询问本地正式/UAA后置和mock长期保留政策。机器字段见`owner-decision-agenda.json`的`execution_actions`，所需公司材料留内网、公开仓只保留去敏引用。
 
-### MH01/MR1：消息合同与联调窗口
+<a id="mh01mr1消息合同与联调窗口"></a>
+
+### 消息合同（MH01）与联调窗口（MR1）
 
 - **责任**：项目所有者协调公司消息提供方并绑定内网联系人；实施方提出合同清单、核公共sender与真实映射，提供方核真实能力和授权测试方式。
 - **触发事件**：MH01公共sender合同冻结前发起索取；MR1真实消息验收前绑定映射、联系人和可执行测试窗口。
 - **交付证据**：字段/鉴权/受理与失败语义、实际支持的幂等/查询/送达能力及缺口处置；批准测试主体/目标范围；一条真实HTTP消息的受理、回执/未知或失败的验收引用。
 - **阻塞范围**：MR1真实消息验收和本地正式消息出口；不阻合成fixture、公共sender开发或其它独立mock能力。真实窗口仍未知，当前没有真实接通声明。
 
-### Q12：试用环境、代表角色与数据策略
+<a id="q12试用环境代表角色与数据策略"></a>
+
+### 试用环境、代表角色与数据策略（Q12 执行动作）
 
 漏洞整改运行卡逐项写明情报、SCMDB、HR 和消息的试用来源。首条真实人工试用建议采用本地真实角色和获准可核的人工风险/资产依据。合成演练继续用 mock。若现场要求真实匹配、双签或唯一提醒渠道，分别验证真实提供方或获准权威本地映射、批准和对应故障预案后再启用。组合阶段冻结首个 TR/AL 动作及触发节点或整票确认事实，其真实执行另过 Q09。 [场景验收](../phase6/risk-module-detail.md#14-漏洞整改代表场景)
 
@@ -283,7 +315,9 @@
 - **交付证据**：目标环境/架构/网络、五仓版本、启用能力和支持责任；代表角色/人员、数据来源/敏感性/保留策略与凭据边界；AUTH-01/02/07在所选范围修复或服务端完整关闭的逐入口证明。
 - **阻塞范围**：真实业务试用和具体本地正式运行画像的批准；不阻专用测试主体/mock数据的隔离B0预演及公共合同开发。公司真实组织、人员、地址和凭据不导出。
 
-### Q12：核心稳定出口的证据与业务接受
+<a id="q12核心稳定出口的证据与业务接受"></a>
+
+### 核心稳定证据与业务接受（Q12 执行动作）
 
 - **责任**：实施方负责工程判据和原始证据，所有者确认代表任务可用与反馈处置；不让所有者盲定算法或技术阈值。
 - **触发事件**：代表业务试用修正后、主研发产能转入完整UAA-P/R前；协议联系和公共mock准备可先行。
@@ -303,18 +337,18 @@
 
 ## 详设审计后的排产选择
 
-[首条旅程及 C05 开工计划](phase6-b2-kickoff-plan.md)已登记[开发前准备任务](phase6-b2-kickoff-plan.md#4-开发前准备任务)。所有者确认 B2 优先、约一人产能、用两条合成风险继续准备、真实试用只收新票、逐项证据必填且附件按需、旧票在隔离环境验证、双主管延期留后。实际开工日和实施授权以后确定。当前继续只读盘点、合成夹具规格、故障回归设计和开工交接准备。
+[开工计划](phase6-b2-kickoff-plan.md)已列出[开发前要做的准备](phase6-b2-kickoff-plan.md#4-开发前准备任务)。所有者确认优先准备人工漏洞整改（B2），按约一名开发人员准备两条模拟风险。真实试用只办理按这次指定整改类型新创建的工单，每一项风险都要提交可核对的证据，需要时才上传附件。升级前已存在的工单放到独立测试环境，用合成记录验证能否继续使用。两位主管共同批准延期留到后续。实际开工日和实施授权以后决定。眼下可先查现有代码和配置、准备模拟数据，设计账号停用时 Redis 同步故障的测试。
 
-[两张验收卡](phase6-b2-acceptance-cards.md)沿现有范围使用合成数据和示例时钟。实施方负责冻结观察点、错误响应及隔离夹具。用户待确认仅按下列窗口集中办理。
+[两张验收卡](phase6-b2-acceptance-cards.md)用模拟风险和可控制的时钟。实施方确认用什么测试账号和数据、在哪里查结果，以及失败时界面或接口会返回什么。下列是需要所有者确认的内容。
 
 | 拍板窗口 | 待确认项 | 建议默认值或应提供的信息 |
 | --- | --- | --- |
 | 开工前 | 实际开工日 T0 与本批实施授权 | 给出日期和开工范围。排期中的演示 T0 只用于相对工程量换算。 |
 | 开工前 | 实际可用时段 | 产能先按约一人。开工前结合每周有效工程日、不可用时段及实现和独立评审窗口绑定实际排期，首批实耗后复算。 |
-| 真实业务画像冻结 | 实际业务范围、工单类型、代表角色 | 现阶段使用两条合成风险。选真实样本时确认风险管理范围、目标组织、整改类型、具名派单/办理/复测职责，以及谁可核实风险和资产依据。 |
-| 真实试用前（Q12） | 实际运行窗口和停止条件 | 绑定目标环境和准确制品、人员、获准样本/来源、保留策略、支持人和授权恢复负责人、停用/回退。明确是否需要 B0，并确认关键提醒渠道或经验证的备用处置。绑定 C05 恢复值守、升级及轮签窗口。此项约束真实身份和数据的开放，合成准备可继续。 |
+| 选定真实试用业务时 | 实际业务范围、工单类型、代表角色 | 现阶段用两条模拟风险。选真实样本时确认负责的风险范围、组织、整改类型，谁派单、谁办理、谁复测，以及谁能核实风险和资产依据。 |
+| 真实试用前 | 实际运行窗口和停止条件（议程 Q12） | 写明在哪个环境运行哪一版软件、哪些人参加、可以用哪些数据、保留多久、故障时找谁，以及怎样停用和回退。决定是否先用测试数据做内网部署预演（B0），验证关键提醒渠道及备选办法，并确认谁能在账号撤权故障时恢复、何时升级或更换签名密钥。 |
 
-实施方冻结账号入口与错误合同、发布钉版、旧配置写入口切换、迁移边界、共同锁序和故障断言。C05 的 F021 重复操作行为已有决定。真实试用反馈后再确认主产能是继续本地正式与 UAA，还是优先补齐引擎和风险增强。其他真实接入和后继选择沿各自窗口。 [完整本期范围和预算](intranet-uaa-release-schedule.md#3-全部-phase-6-目标与先后)
+实施方在编码前定下账号请求和错误结果，说明工单怎样记住创建时的规则、旧客户端从何处修改配置、哪些已有记录需要补版本，再据此设计并发和故障检查。账号安全写的[重复操作行为（后继决定 F021）](#本轮规划修订的独立确认)已经确认。收到真实试用反馈后，再决定下一阶段主要投入本地正式运行和 UAA，还是先完善工单规则和风险能力。 [本期范围和预算](intranet-uaa-release-schedule.md#3-全部-phase-6-目标与先后)
 
 <a id="本轮规划修订的独立待确认"></a>
 

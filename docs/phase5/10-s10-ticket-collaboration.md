@@ -14,9 +14,9 @@
 
 ## 当前状态与阅读顺序（2026-11-08）
 
-S10五批已交付：手动CC、共享标签、sections角标、节点老化/催办与工单XLSX导出。先看A.2的读写分层、A.5真实水位、A.6导出同源链，再看历史拍板来源。代码/test来源与原失败看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[B06](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)；main/生产另计。首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
+S10 已交付手工抄送、共享标签、各分类旁的计数、工单在当前状态停留过久时的提醒，以及 XLSX 导出。A.2 说明谁能看和谁能改，A.5 说明系统在哪儿记上一次提醒，A.6 说明为什么导出要用与列表相同的查询条件。代码/test来源与原失败看[B27](../review/reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)及[B06](../review/reports/zhuzhao-ecosystem-audit-b06-flow-reminders-2026-11-06.md)；main/生产另计。首轮文档整理与必要本地门禁已收口，见[整理记录](../review/reports/documentation-reorganization-2026-11-08.md)，后续修改须另记验证结果。
 
-当前只有手动CC来源；节点配置/按风险级别规则、HR manager、delivery选择、手动催办、@提及、审计导出和完整SLA仍按既有门控。BK-21本批实现List/Export同源，**新资源通用护栏泛化仍归Phase6 Week0**。§2“零实现”与原周数仅是立项历史。
+现在可以手工抄送。状态转换配置了 `cc` 动作时，也可在转换提交后把固定的 `user_ids` 写入 `ticket_cc`。按风险级别派生抄送、按 HR 主管选人、选择送达方式、手工催办、@提及、审计导出及完整 SLA 仍按各自条件推进。BK-21本批实现List/Export同源，**新资源通用护栏泛化仍归Phase6 Week0**。§2“零实现”与原周数仅是立项历史。
 
 ```mermaid
 flowchart LR
@@ -174,7 +174,7 @@ CC只扩读可见集：`Resource.GetFilter`新增ccVisibilitySQL，`Resource.Aut
 
 自抄送/自摘/列表要求read；抄他人/摘他人要求update。AddCC数据库写入成功后调用emitCCAdded，重复挂载仅对新增的人发事件；没有把异步通知放进DB事务。所有路径仍走L2同源，非CC且其它轴不可见404，可见而动作不允许403。
 
-当前来源仅手动；节点配置、按级别规则以后各批接入，role=participant是表语义预留。通用Registry/BK-21新资源泛化仍在Phase6 Week0，不把CC本体增强误作全域护栏完成。
+抄送可手工添加，也可由转换后的 `cc` 动作按固定人员名单写入。区分和撤销不同来源、按级别选人以后再接入。`role=participant` 仍是表里的预留值。通用Registry/BK-21新资源泛化仍在Phase6 Week0，不把CC本体增强误作全域护栏完成。
 
 <a id="a3-表族-ddl迁移全文级编号启动对账"></a>
 <a id="a3"></a>

@@ -10,7 +10,7 @@
 
 当前 `internal/middleware/jwt.go` 的 `JWT` 已检查 Redis blacklist/disabled/密码纪元且依赖故障拒绝；`internal/service/auth_service.go` 的 `Login`、`Refresh` 与 PAT 仍是本地认证链。`UserService.UpdateStatus` 已有系统号/最后 superadmin 保护及禁用后的会话撤销；`RBACService.AssignMenus` 已事务写权限并在提交后重载 Casbin。`reloadPolicy` 失败会报告错误，但尚不是持久、多实例生效证明。`GetEffectiveRoleCodes` 合并直接、组织、继承角色，不能只处理 user_roles 就声称撤权完成。
 
-本次补的是共同当前授权守卫、提交后恢复与来源边界，不替换已有鉴权引擎，不把“统一调用”做成所有内部函数绕 HTTP。HTTP、内部用例、worker 和以后 MCP 均构造可信 Context，再调用同一应用用例；handler 与代理适配传输，领域 service 负责授权和效果，repository 只执行本用例的事务。
+本次计划补齐三件事：用同一条数据库守卫行让撤权和业务写入按先后顺序提交，并在写事务内复查当前权限；恢复提交后尚未完成的工作；明确各类授权分别由谁写入。继续使用已有鉴权引擎；内部函数直接调用应用用例，无需绕经 HTTP。HTTP、内部用例、worker 和以后 MCP 均构造可信 Context，再调用同一应用用例；handler 与代理适配传输，领域 service 负责授权和效果，repository 只执行本用例的事务。
 
 ## 2. 首版冻结的端口与返回语义
 
@@ -33,17 +33,17 @@ SessionChangeReceipt = {operation_id: string, domain_revision: UInt64String,
   pending_effects: session_revoke[0..1], reason: string?}
 ```
 
-Context 由可信认证层构造，body 的 user_id/operator/role 不替代它；`AuthorizationDecision` 只描述一次决定，不能当作长期 bearer token。新写用例要求 expected_revision；旧 REST 端点保留现行输入，由锁内业务谓词防交错，不能冒称已阻止旧客户端陈旧编辑。旧wire不静默换成IAMReceipt，成功data:null保留，新增响应头关联operation，准确兼容见§3.9；状态查询才返回receipt。提交后重载失败可关联原操作，不能报成业务必然未提交；不知道原结果先查原操作，不重复授予/撤销。
+Context 由可信认证层构造，body 的 user_id/operator/role 不替代它；`AuthorizationDecision` 只描述一次决定，不能当作长期 bearer token。新写用例要求 expected_revision；旧 REST 端点保留现行输入，取得锁后重新检查业务条件，防止并发操作交错，但仍不能阻止旧客户端用过期表单覆盖数据。旧接口的响应格式不静默换成 IAMReceipt：成功时仍为 data:null，新增响应头关联 operation，准确兼容见§3.9；只有状态查询返回 receipt。提交后重载失败可关联原操作，不能报成业务必然未提交；不知道原结果先查原操作，不重复授予/撤销。
 
-`IAMReceipt`严格复用[候选Schema](../design/capability-interconnect-detail.schema.json)的`receipt`和`iamState`，上面的`IAMRuntimeView`仅解释其中的`iam_state`，不另发一种wire。两公开命令的`receipt.status=succeeded`证明领域已提交；其中菜单策略运行时仍可`pending`，此时`iam_state.pending_effects=[policy_reload]`，不把它显示成当前策略已生效。角色授予的同步有效集合仍按Schema固定`effective`；菜单策略由pending收敛到effective或superseded。未提交的依赖阻塞用`receipt.status=held`等既定状态，不携表示已提交的`iam_state`。
+`IAMReceipt`严格复用[候选Schema](../design/capability-interconnect-detail.schema.json)的`receipt`和`iamState`，上面的`IAMRuntimeView`仅解释其中的`iam_state`，不另设响应格式。两公开命令的`receipt.status=succeeded`证明领域已提交；其中菜单策略运行时仍可`pending`，此时`iam_state.pending_effects=[policy_reload]`，不把它显示成当前策略已生效。角色授予的同步有效集合仍按Schema固定`effective`；菜单策略由pending收敛到effective或superseded。未提交的依赖阻塞用`receipt.status=held`等既定状态，不携表示已提交的`iam_state`。
 
-C05账号/口令写是原HTTP/CLI的私有消费链，**不是这两个公开IAM capability**。`SessionChangeReceipt`是它在同一operation存储上的候选受权状态视图，不进入公共`iamState`，不因会话恢复需求扩宽公开profile。`session_revoke`表示尚待证明的会话安全效果；`session_projection`是§4的持久intent执行机制，两者不作为同一字段的两个枚举值。C05的effective表示本代适用会话投影已确认，不证明任意业务/私有服务已生效。跨视图映射沿[交接表](module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，不把来源处理结果、执行状态和运行时生效状态合并为一套字符串。原无消费方的`filter_ref`候选已移除；集合查询直接走所属模块typed过滤/字段投影，不引入可跨请求复用的授权令牌。
+C05账号和口令写入由原 HTTP/CLI 入口内部使用，**不是这两个公开IAM capability**。`SessionChangeReceipt`是它在同一operation存储上的候选受权状态视图，不进入公共`iamState`，不因会话恢复需求扩宽公开profile。`session_revoke`表示尚待证明的会话安全效果；`session_projection`是§4的持久intent执行机制，两者不作为同一字段的两个枚举值。C05的effective表示本代适用会话投影已确认，不证明任意业务/私有服务已生效。跨视图映射沿[交接表](module-design-handoff.md#2-第一包本地权限与uaa-c接缝的定向输入)，不把来源处理结果、执行状态和运行时生效状态合并为一套字符串。原无消费方的`filter_ref`候选已移除；集合查询直接使用所属模块的有类型过滤接口和字段投影，不引入可跨请求复用的授权令牌。
 
 L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及字段；L3 为此动作、对象状态、职责和字段约束。列表、详情、计数、聚合、导出、历史、附件、任务结果都用同一资源过滤器和字段投影；单对象不可见与不存在同形404，列表/计数/聚合先过滤无权行，空集正常返回，不泄露隐藏数量或因有隐藏行将整页改404。已可见但动作禁止为403。依赖不可证明为503，revision/同号异参为409。不能因没有菜单而拒绝安全首页，也不能由“有首页”增加业务读权。
 
 ## 3. C04：共同授权守卫与多实例
 
-首版采用**一个数据库授权守卫行**，而非分布式锁服务：候选 `authorization_control(id=1, revision bigint NOT NULL CHECK revision>=0)`。它承载短事务撤权屏障，`revision`仅表示需要同步的**L1 Casbin策略代际**，不是所有资源变化的全局版本。普通业务共享锁可并行，授权变化排他；后续观测锁等待后再按资源/组织分片，不在首版暗做全套权限平台。
+首版采用**一个数据库授权守卫行**，而非分布式锁服务：候选 `authorization_control(id=1, revision bigint NOT NULL CHECK revision>=0)`。这行锁让撤权与业务操作按先后顺序提交，`revision`仅表示需要同步的**L1 Casbin策略代际**，不是所有资源变化的全局版本。普通业务取得共享锁后可并行，权限变化取得排他锁。后续根据锁等待的实测结果，再决定是否按资源或组织分片；首版不建设全套权限平台。
 
 1. 事务开始前按动作选择锁模式：普通受权读/写取该行 `FOR SHARE`；会改变有效权限的IAM、组织任职/继承/数据范围、类型查看策略、参与/CC管理取`FOR UPDATE`。Assign/Transfer或风险owner交接若改变既有职责/可见集，也按改权动作选择排他模式，不能因来源改为派生事实而漏守卫。**禁止先共享后升级**。批量拆有界事务，但每批独立复验。
 2. 取得守卫后读取L1 revision；每进程使用不可变的 `(enforcer, applied_revision)` 对。只有 applied_revision 与 DB revision 相等，才可使用该策略实例；否则先结束本次事务、触发重载并返回可恢复的 `POLICY_NOT_READY`，不得在持锁期间请求网络或把旧策略当准。`AuthorizationDecision.policy_revision`仅标L1视图，不能证明L2/L3已判断。
@@ -51,7 +51,7 @@ L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及�
 4. 改权事务在排他守卫下复验操作者资格，保留各命令实际具有的最后superadmin/系统号保护；更新适用直接/组织/继承来源。**只有实际改变Casbin p策略内容**推进L1 revision并写policy_reload intent。当前`configs/casbin_model.conf`无g，直接角色、组织成员/org_roles和role parent/status由锁内fresh集合计算，改变这些关系本身不要求全站LoadPolicy；参与/CC、类型查看范围也只改相应资源/策略revision。会话安全变化另写适用session_revoke intent。提交释放锁后才做对应恢复，不得为省重载继续信旧角色或L2缓存。
 5. loader 使用**只读 REPEATABLE READ 事务**在同一数据库快照读取全部策略与 revision，校验后原子替换整个 pair；不能用多条 READ COMMITTED 查询拼出旧策略+新 revision。加载中又有新代际则允许安装旧 pair，但后续请求比较不等仍拒绝并再次加载。不能先置新 revision 再慢慢改原 enforcer。启动没有可证 pair 时受保护接口未就绪，健康存活与业务就绪分开。
 
-固定锁序为授权守卫 → 来源/业务 group → 风险 ID → 工单 ID → 其它关联 ID（各集合排序），遵[生命周期合同](../design/business-lifecycle-contracts.md)。无反向先业务后 IAM，禁止持业务锁 HTTP。PG 死锁/序列化故障仅在未产生外部效果且相同 operation 下有界重试；业务冲突交调用者刷新。事务使用 READ COMMITTED 并在取锁后读当前事实，不依赖事务开始前缓存。
+固定锁序为授权守卫 → 来源/业务 group → 风险 ID → 工单 ID → 其它关联 ID（各集合排序），遵[生命周期合同](../design/business-lifecycle-contracts.md)。不得反过来先锁业务行再锁 IAM 守卫，也不得持有业务锁调用 HTTP。PG 死锁/序列化故障仅在未产生外部效果且相同 operation 下有界重试；业务冲突交调用者刷新。事务使用 READ COMMITTED 并在取锁后读当前事实，不依赖事务开始前缓存。
 
 本设计是采用 [PostgreSQL 行锁及一致锁序](https://www.postgresql.org/docs/18/explicit-locking.html)的项目选择。借鉴 [OPA 状态模型](https://www.openpolicyagent.org/docs/management-status)区分“策略接收/存储”和“激活”，**继续使用现有 Casbin**；不引入 OPA 服务或以心跳代替代际检查。所有启用入口（含 PAT、worker、代理、批量和查询）接该公共守卫是开通前置；遗漏入口不得凭 L1 中间件已存在放行。
 
@@ -62,7 +62,7 @@ L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及�
 | 候选实体 | 约束/索引 | 写主与用途 |
 | --- | --- | --- |
 | authorization_control | 单行主键；L1策略revision单调 | 共同事务屏障；L2/L3变化不推进Casbin代际；不可被私有 adapter 写 |
-| capability_operations中的IAM记录 | 沿共同operation唯一身份/输入hash/主体绑定；增加capability+target+domain_revision查询索引 | 两IAM命令复用同一逻辑operation store，不另建iam_change_receipts；IAMReceipt是所需状态的领域视图 |
+| capability_operations中的IAM记录 | 沿共同operation唯一身份/输入hash/主体绑定；增加capability+target+domain_revision查询索引 | 两个IAM命令共用同一逻辑操作存储，不另建iam_change_receipts；IAMReceipt只呈现该领域所需的状态 |
 | authorization_effect_intents | UNIQUE(operation_id, effect_kind, target_id, desired_revision)；(state,next_attempt_at)索引；lease_owner/until/fence | 复用 R01 worker 机制；一个 effect 一个重试主，过期 fence 不更新新执行 |
 | identity_source_bindings | UNIQUE(source_id,entity_kind,external_id,identity_generation)；本地 ID 索引 | 启用实际D06目录feed时建设所需映射；issuer+subject映射在UAA-P增补。人工local账号/风险不以完整HR映射表为前置 |
 | governance_ownership | UNIQUE(application,resource_key,scope_key)；revision/source/allowed_write_port | 完整受管投影表在P/R建设；本地先以既有来源字段和受审配置登记local写主，不先建全UAA治理库 |
@@ -123,11 +123,11 @@ PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不�
 
 ### 3.8 B：有效组织来源与成员集合的准确接线
 
-只读基线`610c1d76`。HIER-D01已确认；本段将B的4–7日候选子估细化为来源谓词和保存算法，不新加组织API或预领迁移号，不将C并发闭环冒充B已完成。
+本节是 IAM 实施子批 B，负责有效组织来源与成员集合。下面的 B-01 等是本节测试场景。只读基线为 `610c1d76`。整子树暂停（层级政策 HIER-D01）已确认。4–7 日是本子批来源和保存算法的候选子估。沿用现有组织 API，迁移编号由实际实施核定。
 
 **有效性顺序**：对某个组织来源先验证本节点至祖先链无停用，再判断该成员`expires_at IS NULL OR expires_at>当前时间`；等于当前时间已过期。然后求最近实体anchor及group/all等范围贡献。不能只在anchor选择中滤掉停用实体再向上找，否则会跳到更高实体而恢复本应暂停的透明权限。is_primary是展示/归属信息，不决定另一有效成员来源是否贡献。
 
-角色两查询采用相同有效种子与启用、未删的单父闭包；中间父停用截断该路径，不能略过停父继续拿祖父。独立direct、其它有效组织、单独直接绑定的祖父等路径分别求并集。停用组织不增加对该用户的一刀切deny；创建人/处理人/CC仍按本域L1/L2/L3检查。组织有效时显式owner原本独立于成员期限的语义不改，但该owner的组织派生委托受本组织/祖先停用约束。
+角色两查询采用相同有效种子与启用、未删的单父闭包；中间父停用截断该路径，不能略过停父继续拿祖父。独立direct、其它有效组织、单独直接绑定的祖父等路径分别求并集。停用组织只暂停该组织带来的权限，不据此拒绝该用户的所有请求；创建人/处理人/CC仍按本域L1/L2/L3检查。组织有效时显式owner原本独立于成员期限的语义不改，但该owner的组织派生委托受本组织/祖先停用约束。
 
 | 真实消费者 | B接线要求 |
 |---|---|
@@ -137,14 +137,14 @@ PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不�
 | 同org_delegation.go的`EffectiveOrgPriority/IsOrgAdminOrOwner/IsAncestorOwner`，`internal/service/ticket/resource.go`的`delegatedVisibilitySQL` | 单对象与列表/total/导出同规则；不能只修Authorize而漏集合SQL |
 | `internal/repository/org_repo.go`的`IsMember/IsInOrgBranch`及实际分派成员检查 | 凡用于授予业务资格的成员查询使用相同有效来源；管理名册/绑定编辑GET仍回显停用/过期关系，不能为鉴权修复把它们隐藏 |
 
-**BK-20独立画像**：已接受的软删组织已结票委托档案读写不在本轮收紧范围。现三处委托SQL未筛deleted_at有明确历史出处，不能顺手全加过滤。停用的status条件与软删档案例外分开表达；例外不给软删组织L1 grant或新建资格，角色组织种子仍须存活。测试必须同时包含live来源、停用来源、已结档案和独立参与对照。
+**BK-20独立场景**：已接受的软删组织已结票委托档案读写不在本轮收紧范围。现三处委托SQL未筛deleted_at有明确历史出处，不能顺手全加过滤。停用的status条件与软删档案例外分开表达；例外不给软删组织L1 grant或新建资格，角色组织种子仍须存活。测试必须同时包含live来源、停用来源、已结档案和独立参与对照。
 
 **成员差量事务**沿`internal/service/user_service.go`的`UserService.SetUserOrgs`原ensureCanManage、`internal/service/org_service.go`的`SetUserOrgs/SetUserOrgsTx`，进入`internal/repository/org_repo.go`的同名方法；新建用户的初始组织也复用Tx入口：
 
 1. 先去重请求org_ids，验证primary非nil时属于请求集合；外层主体/目标管理边界不改。同tx读原始user_orgs全部字段，不能依赖GET只投影的user_id/org_id/is_primary/joined_at计算属性。
-2. retained保留org_member_role、ticket_scope、source、expires_at、joined_at；即使成员已过期也不重插续命。只按明确原输入语义更新primary，不由此更新专用任职字段。
-3. added用原DB默认member/assigned/local/NULL期限/当前joined_at，不复制其它组织admin/group/owner。目标组织须未软删；status=0仍允许既有受权预配置，但不贡献当前授权。
-4. removed删除合法移除的成员行；同tx保留原owner双轨清理：用户出现在**任何不在本次去重requested org_ids中的组织**的owner_user_ids都移除，不能只扫描旧成员集合，也不能把requested误作old∩requested而清掉新增组织已有的owner-only引用。请求保留组织不降owner/admin为member。
+2. retained（保留项）保留org_member_role、ticket_scope、source、expires_at、joined_at；即使成员已过期也不重插续命。只按明确原输入语义更新primary，不由此更新专用任职字段。
+3. added（新增项）使用原DB默认值：member、assigned、local、NULL期限和当前joined_at，不复制其它组织admin/group/owner。目标组织须未软删；status=0仍允许既有受权预配置，但不贡献当前授权。
+4. removed（移除项）只删除合法移除的成员行；同tx保留原owner双轨清理：用户出现在**任何不在本次去重requested org_ids中的组织**的owner_user_ids都移除，不能只扫描旧成员集合，也不能把requested误作old∩requested而清掉新增组织已有的owner-only引用。请求保留组织不降owner/admin为member。
 5. primary先清旧true，再设置唯一请求目标，保留`idx_user_orgs_single_primary`。**缺省和JSON null均为nil，沿现行为清空所有primary**；不能改成“保持旧primary”。非法primary整笔拒绝。
 6. 按字段写主矩阵检查实际受管来源，不能由local集合覆盖暗删/改受管字段；保留非local行不重写其属性。来源尚无权威绑定的历史异常先hold受影响变化并登记受审处置，不从source字面猜管理员可绕过。
 7. 任一步失败，成员、primary和owner数组一并回滚；相同合法集合重复保存不改joined_at/期限。旧软删孤儿等异常不借正常保存做隐式清理，先受权盘点处置。
@@ -164,7 +164,7 @@ PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不�
 
 ### 3.9 C：共同屏障、策略pair与两命令审计的准确纵切
 
-基线`610c1d76`；本段范围是三个试点写用例及会改变其授权/验证输入的写方，不是全仓DBTX改造。所有新端口/表/HTTP头仍为设计候选。原12–19日是有界毛估，本次共用2–3归S2后C专用10–16，C05独立6–10；实际速度继续校准，不凭清单变长承诺免费包干。
+本节是 IAM 实施子批 C，负责共同授权屏障、策略快照和两条命令的本地审计。它交付工作包 C04 中的适用范围，C-01 等是本节场景。基线为 `610c1d76`，范围是三个试点写用例及会改变其授权或验证输入的写方。新端口、表和 HTTP 头仍为设计候选。原 12–19 日是有界毛估，其中共用的 2–3 日归共用操作回执基础（首版估算行 S2），子批 C 专用 10–16 日。账号会话撤权（工作包 C05）独立估 6–10 日。实际速度随实施校准。
 
 | 读／写组与真实符号 | 锁与代际处理 |
 |---|---|
@@ -181,9 +181,9 @@ PBAC的策略可审/可测/可解释原则可随既有C04/CE接线采用，不�
 
 Service显式Begin/Commit，repo/Resource/ScopeResolver/OrgDelegationChecker使用同一DBTX（Query/QueryRow/Exec）；fresh读取端口不得fallback到pool或`RolesFromContext`。Create的组织/schema预取、Update的早期授权和Transition条件均在锁内对可变事实重核。只读外部取数在外，锁内验合法引用；禁止持锁HTTP/collector/LoadPolicy。未提交且无外部效果的死锁/序列化错误才能在同operation下有界重试，业务版本冲突交调用方刷新。
 
-**策略pair**：当前`internal/casbin/enforcer.go`的`New`只启动LoadPolicy，`RBACService.reloadPolicy`只提交后短重试，不是持久配对。新增窄accessor持不可变enforcer+revision；loader在同一个只读REPEATABLE READ快照取DB p策略和revision，构造/校验新enforcer后原子安装。不能对共享enforcer原地LoadPolicy后再写revision；迟到旧loader不能覆盖较新pair。请求锁内比较DB revision，不匹配先结束事务、安排加载并安全拒绝；无可证pair时业务未就绪，健康存活可独立。role源变化已由fresh处理，不额外重建g映射或引入watcher服务。
+**策略pair（策略实例与版本号这一对快照）**：当前`internal/casbin/enforcer.go`的`New`只启动LoadPolicy，`RBACService.reloadPolicy`只提交后短重试，不是持久配对。新增窄accessor持不可变enforcer+revision；loader在同一个只读REPEATABLE READ快照取DB p策略和revision，构造/校验新enforcer后原子安装。不能对共享enforcer原地LoadPolicy后再写revision；迟到旧loader不能覆盖较新pair。请求锁内比较DB revision，不匹配先结束事务、安排加载并安全拒绝；无可证pair时业务未就绪，健康存活可独立。role源变化已由fresh处理，不额外重建g映射或引入watcher服务。
 
-**强审计纵切**仅SetRoles和AssignMenus：资格/原状态/请求与目标校验→业务变化→安全白名单diff的本地成功fact→必要补送intent→同一commit。任一步失败业务、fact、intent全回滚；请求诊断审计不能当fact。现`audit_logs`为HTTP method/path/status/duration/body等记录，`internal/middleware/audit.go`的`AuditLog`在请求结束/Flush后用pool写入，不具此原子性。复用窄Tx仓储/领域事实基础，不以原始body或HTTP200伪造业务成功，不扩大到所有IAM。
+**业务写入与强审计的完整事务路径**仅覆盖SetRoles和AssignMenus：资格/原状态/请求与目标校验→业务变化→安全白名单diff的本地成功fact→必要补送intent→同一commit。任一步失败业务、fact、intent全回滚；请求诊断审计不能当fact。现`audit_logs`为HTTP method/path/status/duration/body等记录，`internal/middleware/audit.go`的`AuditLog`在请求结束/Flush后用pool写入，不具此原子性。复用窄Tx仓储/领域事实基础，不以原始body或HTTP200伪造业务成功，不扩大到所有IAM。
 
 本地不可变fact与可变delivery分开；复用R01一个投递所有者，worker只补原fact ID，租约/fence防旧执行回写，外部失败不重做改权。collector无去重能力时仅承诺至少一次，不许诺外部恰好一次。query/export/UI完整版OBS02继续后继，不为C先造审计平台。
 
@@ -207,7 +207,11 @@ C-08另含四个必要子例：GET/ETag交错、pending-effect仍推进集合hea
 
 ## 4. C05：账号、AT/RT/PAT 与停用恢复
 
-保留密码纪元、iat地板、Redis Lua和fail-closed的安全目标，纪元真值迁到§4.2的DB写主，不能将authorization revision冒充password/session epoch。账号停用、角色剥夺与会话销毁分别表达：业务授权守卫以数据库当前状态/代际拒绝相关调用，后台持久intent投影Redis；PAT也必须核有效账号及当前权限，不只验哈希，但不接AT/RT的密码纪元门。
+例如管理员停用一名员工。现有程序先把“已停用”存入 PostgreSQL，再更新 Redis 里的登录状态。若第二步失败，停用已经生效，接口仍可能报错，而且重启后没有可继续处理的同步任务。计划中的 C05 会让旧登录按数据库当前状态拒绝，并给管理员办法查同一次停用是否提交、缓存是否仍待更新。 [现状](#41-c05现有wire与尚未持久化的部分) · [停用失败验收卡](../planning/phase6-b2-acceptance-cards.md#卡一-c05-停用已提交而撤销投影失败)
+
+C05 计划在登录用的访问令牌（AT）和刷新令牌（RT）中记录账号的登录版本号，也叫安全代际（epoch）。密码重置或停用推进版本，旧版本令牌失效。计划以 PostgreSQL 中的账号状态和版本为准。Redis 的“投影”是供登录检查使用的同步副本。改账号状态时同时保存一条待同步记录，后台失败后按原记录继续。角色权限变更与登录版本分别记录。个人访问令牌（PAT）检查账号和令牌是否有效、当前操作是否获准，沿独立的撤销和过期规则处理。
+
+继续拒绝签发时间早于下限的令牌（iat 地板），用 Redis 脚本一次完成相应会话更改。依赖故障且无法确认当前登录有效时，拒绝请求。
 
 目标是禁用提交后Redis超时明确“账号已停用、会话清理待恢复”，不能诱发整笔重做或把禁用回滚为active。Login、Refresh、文件会话及适用worker准入核DB状态和安全屏障；PAT按其独立生命周期核当前账号/自身状态与业务授权，不因密码投影pending被误撤。**重新启用不自动清除未完成撤销**，须确认目标撤销完成，再按新epoch签发。恢复worker重投原intent并按状态/epoch CAS，旧enable/clear不能覆盖新disable；当前实际错误wire与未来变化见§4.1–4.3。
 
@@ -221,7 +225,7 @@ PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错�
 
 - `internal/service/auth_service.go`的`Login/Refresh`已有账号/密码/Redis密码epoch检查及防借用新epoch的重读，`internal/service/session_revoke.go`只有3次进程内重试和reconcile日志。当前永久epoch只存Redis，缺键为0；不能据此保证丢失后旧epoch0 AT不复活。
 - `internal/middleware/jwt.go`的Bearer AT不读DB status，靠Redis blacklist/disabled/iat/epoch；文件cookie另有`internal/middleware/fileauth.go`入口，两者都需接新安全快照。PAT repo已join当前账号status/deleted及PAT自身状态，不靠AT/RT epoch。
-- `UserService.UpdateStatus/Delete/ResetPassword`先提交DB，再撤Redis；最终Redis原错误经`internal/handler/errors.go`的`writeServiceError`可能为500，不能沿注释声称已有503/持久补偿。只有自服务`AuthService.UpdatePassword`显式映射503。 自服务写入在 IAM 守卫内核验本次已验证的原密码哈希以及账号启用状态，失败时返回现有凭据错误并停止后续会话操作。启用当前直接清disabled，尚无本段安全屏障。
+- `UserService.UpdateStatus/Delete/ResetPassword` 先写数据库，再改 Redis 里的会话状态。如果后一步失败，`internal/handler/errors.go` 的 `writeServiceError` 可能返回 500。撤会话失败时，只有自助改密码（`AuthService.UpdatePassword`）明确返回 503。目前失败后没有可跨重启恢复的待办记录。自助改密码在保存前会重查已验证的原密码哈希及账号是否启用，失败就停止。现在重新启用会直接清除 Redis 的停用标志。
 - `internal/pkg/admincli/reset_password.go`的`ResetPassword`也直接改密码再撤会话，必须纳入；普通用户metadata Update不含password字段，不扩无关写面。
 
 ### 4.2 C05的有限持久方案
@@ -299,7 +303,7 @@ HandoffPlan = {plan_id: string, subject_ref: ID, expected_revision: UInt64String
   plan_hash: SHA256, expires_at: Timestamp}
 ```
 
-这些是公共领域输入，不是厂商报文透传。来源版本不一定可排序：`unproven` 下同身份/hash只能判重复，无法判新旧的冲突 hold；到达顺序不能伪造权威 revision。引用缺失可先 stage/held，依赖到齐后重验；姓名、工号、邮箱更改不改本地 ID；重用来源 ID 须明确新 generation，不自动接回旧人历史。完整快照必须有完整性证明，分页失败/局部缺失不能触发离职或撤部。HR 管目录任职，UAA 管批准范围账号/角色/资源；同字段只登记一个写主。
+这些是公共领域输入，不是厂商报文透传。来源版本不一定可排序：`unproven` 下，身份和hash相同只能判为重复；发生冲突却无法判断新旧时，保留为 hold 等待处理。不能用到达顺序编造权威 revision。引用的对象尚未到齐时可先保存为 stage/held，依赖到齐后重新验证；姓名、工号、邮箱更改不改本地 ID；重用来源 ID 须明确新 generation，不自动接回旧人历史。完整快照必须有完整性证明，分页失败/局部缺失不能触发离职或撤部。HR 管目录任职，UAA 管批准范围账号/角色/资源；同字段只登记一个写主。
 
 离职按已确认 B06：先安全停用，合法批准继任映射逐项检查目标在职/权限及对象 revision；合法项自动交接，无映射、冲突、不能直接转的项留 pending_handoff，不整批回滚安全停用。撤部按 B07：先预览虚拟组、在途业务和权限范围差异，plan 绑定 revision/hash/映射；批准后分批 CAS。新增/变化项重做预览，不偷纳入旧批准；保留历史归属，不把原部门角色复制给接管部门。计划/条目唯一 `(plan_id,kind,object_id)`，带 pending/applied/conflict/blocked 及原 receipt；恢复从未完成项续跑，目标离职即暂停该项。
 
@@ -357,7 +361,7 @@ C01从当前字段定义（D01后为钉版定义）投影可输入键；公式�
 
 ## 8. 实施切片、TDD 与验收证据
 
-先共同 Context/守卫/receipt，再接本地 IAM 及实际业务入口；目录生命周期按所启用feed交付，不让完整HR/UAA表阻塞人工风险。薄UI随批，随后全链角色验收。P/R只在自身窗口完整实现，不因公共C已写就宣称企业联调完成。
+先建设共用的可信 Context、授权守卫和操作回执，再接本地 IAM 及实际业务入口；目录生命周期只随实际启用的 feed 交付，不让完整 HR/UAA 表阻塞人工风险处理。薄UI随批，随后全链角色验收。P/R只在自身窗口完整实现，不因公共C已写就宣称企业联调完成。
 
 | 用例 ID | 可复现输入/故障 | 必须断言 |
 | --- | --- | --- |
@@ -391,3 +395,4 @@ HIER-D01子树暂停和IAM-AUDIT-D01两操作本地审计失败回滚已由F017�
 
 - 2026-11-14：按实际主线补三层共同守卫、代际/会话恢复、D06 typed 输入和逐项交接、UAA-C/P/R 分界、统一审计试点及工程出口。逻辑表未建、迁移未领号，估算仍按原包扣重。
 - 2026-11-15：将事务屏障与L1策略副本同步区分，去掉资源级变化引起的全站重载；明确身份/治理表按实际feed与P/R创建，补日志审计补充出口与首版所选最小保护的区别。
+- 2026-11-21：§4 开头就地解释纪元/安全代际、写主、投影、fail-closed，写明 Redis 同步失败是 C05 目标用例且现状无持久恢复；不改编号与锚点。

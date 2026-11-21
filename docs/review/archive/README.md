@@ -1,8 +1,8 @@
 # 历史审查与计划档案
 
-这里保留仍有发现/决策出处价值的历史内容，共15篇：原Phase1/2审查12篇（00–10，04有两份独立报告），加2026-09至10月导读、10-25旧执行卡及截至11-08控制台流水。编号沿用历史，不补号、不重排。
+目录保留 14 篇仍有发现或决策出处价值的历史正文。包括原 Phase 1/2 审查 12 篇（00–10，04 有两份独立报告）、2026-09 至 10 月导读及截至 11-08 的控制台流水。编号沿用历史。10 月 25 日的已填执行卡从下方固定版本查看。
 
-当前能力与债先看[项目控制台](../11-project-control.md)，正式固定证据见[reports](../reports/README.md)。本目录的“当前”“唯一执行依据”“待修”均限定于原文所列时点；旧方案不是新的执行指令。
+要查今天能用的功能和还没修的问题，先看[项目控制台](../11-project-control.md)。要查一次验证的版本和结果，从[正式报告索引](../reports/README.md)选报告。旧记录里的“当前”“唯一执行依据”和“待修”，都指文件所写的日期和版本。
 
 ## 阅读与承接
 
@@ -25,5 +25,5 @@ Phase1主链为00计划→01发现→02修复计划→03二三轮合并→04综�
 - [09 · 审查问题合集（最终版）](09-consolidated-findings.md)
 - [Phase 2 全面验证报告](10-phase2-comprehensive-verification.md)
 - [审查交付概览（Overview）](2026-09-11-to-2026-10-21-overview.md)
-- [━━━ 审计任务卡 v4：phase5 收官全面审计——S2/S10/S4+S9/S3a/S6 二期六段全量实现审查 ━━━](2026-10-25-phase5-audit-taskcard.md)
+- [Phase 5 收官审计任务卡（2026-10-25 原文）](https://github.com/tracerbiubiubiu/zhuzhao/blob/6c4377aa0bb04c5716cace8b637fa0787885d363/docs/review/archive/2026-10-25-phase5-audit-taskcard.md)记录当时计划核查的六段能力和交付声明。实际执行、发现和修复见[总报告](../reports/zhuzhao-ecosystem-full-audit-2026-11-06.md)及[B27 收口](../reports/zhuzhao-ecosystem-audit-b27-phase5-closeout-2026-11-07.md)。
 - [项目控制台历史流水（截至2026-11-08）](project-control-history-2026-11-08.md)

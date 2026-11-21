@@ -54,9 +54,9 @@
             "admission": "[权限矩阵与失败出口](../phase6/module-design-handoff.md#22-l1l2l3用例矩阵与失败出口)、[真实试用条件](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)。本地不等待完整企业接管，但仍须验证实际启用范围所需的授权负例。"
           },
           {
-            "label": "工单引擎首条纵切 → 人工风险整改及薄 UI",
+            "label": "人工漏洞整改（B2）需要的工单规则、证据和页面",
             "contract": "[风险详设](../phase6/risk-module-detail.md)、[工单详设](../phase6/ticket-module-detail.md)及[首版范围](../phase6/first-usable-release-plan.md#2-必交业务与支持范围)",
-            "handoff": "[B2 首条人工风险旅程](phase6-b2-kickoff-plan.md#1-首条人工漏洞整改旅程)按已确认优先级准备。先收权限、不可变发布和旧票钉版、转换字段和证据原子提交，再交人工风险整改。实际流程、字段和角色组合待确认",
+            "handoff": "先核账号权限和工单权限。发布过的规则保留原样，工单继续按所记录的版本办理；升级前已有工单能核实原规则才补记版本。更新状态时在同一事务保存字段和证据，然后接入人工整改。实际流程、字段和角色组合待确认。[B2 开工计划](phase6-b2-kickoff-plan.md#1-首条人工漏洞整改旅程)",
             "admission": "[首版质量出口](../phase6/first-usable-release-plan.md#4-按质量出口交付)，验真实旅程、逐风险证据及未授权拒绝；试用画像和准确候选待确认。"
           },
           {

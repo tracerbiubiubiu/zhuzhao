@@ -1,6 +1,6 @@
 # 资源抽象与自注册机制方案
 >
-> **状态：已实现并演进（ResourceRegistry 随 2a/2c 交付；现行设计 SSOT = modules/authz.md，本文件为模型起源）**
+> **状态：已实现并演进（ResourceRegistry 随 2a/2c 交付；现行权威设计见 modules/authz.md，本文件为模型起源）**
 
 > 将每种服务看作一种"资源"，通过统一接口抽象，各自实现鉴权策略并统一注册。
 >
@@ -14,7 +14,7 @@
 
 ## 1. 设计目标
 
-> **实现与示例的边界**：`Resource`/`Registry` 已落地；本篇大量代码是早期教学示意，不是当前源码镜像。当前生产自注册业务 Resource 是工单（`ticket.NewTicketService`），另有通用 builtin 构件；User/Role/Org/MenuResource 并未因这里举例就全部注册。现行接口见 `internal/pkg/resource/registry.go`，工单判定见 `internal/service/ticket/resource.go`。
+> **实现与示例的边界**：`Resource`/`Registry` 已落地；本篇大量代码是早期教学示意，不是当前源码镜像。当前生产自注册业务 Resource 是工单（`ticket.NewTicketService`），另有通用内置构件（builtin）；User/Role/Org/MenuResource 并未因这里举例就全部注册。现行接口见 `internal/pkg/resource/registry.go`，工单判定见 `internal/service/ticket/resource.go`。阅读时先区分“资源类型”（如工单）与“资源实例”（如工单 2001）：注册表登记前者，一次操作的权限检查针对后者。
 
 
 ### 1.1 核心场景
@@ -155,7 +155,7 @@ func (r *registry) GetFilter(ctx context.Context, code string, userID int64, act
 
 ## 3. 资源实现示例
 
-> **安全勘误**：下列 UserResource 未落地，工单片段仅表达接口形态。创建人/处理人命中可见性不等于任意 action 放行；当前必须先过 L2 可见性，再按 `canOperate` 做 L3 动作/状态检查。不可复制示例中的“属主直接返回 true”作为删除、流转或更新授权。
+> **安全勘误**：下列 UserResource 未落地，工单片段仅表达接口形态。创建人/处理人命中可见性不等于任意 action 放行；当前必须先过第二层（L2）可见性检查，再按 `canOperate` 做第三层（L3）的动作/状态检查。例如，能查看一张工单，不代表能删除它或执行任意流转。不可复制示例中的“属主直接返回 true”作为删除、流转或更新授权。
 
 
 ### 3.1 简单资源：用户资源（代码内联判断）
@@ -607,6 +607,8 @@ POST /api/v1/users/delete
 - 共享同一 DB 连接池，事务可以跨模块（如创建用户 + 分配角色）
 
 **Phase 3 演进：按需拆分**
+
+以下拆分顺序和 gRPC 通信是当时的候选路线，保留用于追溯，不能当作当前实施顺序；当前边界按本目录的部署演进方案入口进入现行架构。
 
 当某个 Service 有独立的伸缩需求时才拆分。拆分顺序：
 1. 先拆业务模块（工单等），IAM 模块最后拆

@@ -4,7 +4,9 @@
 2026-08-25
 
 ## 状态
-**已采纳但未实施（2026-10-27 修订）**——phase5 事件面实落为进程内 `domainevent.HookRegistry`（B6-1：发布=emitEvent commit 后、at-most-once、Drain 闸 G-30）而非 Asynq；`go.mod` 无 asynq 依赖。可靠性升级路径 = transactional outbox（债台账 C-20 规格），不引 Asynq/MQ（2026-10-26 事件面口径：升级信号三条——跨进程/高一致性/重放——出现时首选 outbox）。本文件保留为历史决策记录；ADR-001 的 L1 事件源结论不受影响。
+**已采纳但未实施（2026-10-27 修订）**——Phase 5 的事件分发实际使用进程内 `domainevent.HookRegistry`，没有采用 Asynq；`go.mod` 无 asynq 依赖。业务事务提交后，工单服务调用 `emitTicketEvent`，再由 `HookRegistry.Dispatch` 在进程内分发。每次分发对各订阅者最多投递一次，进程中断可能丢失。停止时的排空控制见 G-30（Drain）。可靠性升级路径是事务发件箱（transactional outbox，待办台账 C-20），不引入 Asynq 或消息队列（MQ）。按 2026-10-26 的设计说明，出现跨进程投递、更高一致性要求或事件重放需求时，首选 outbox。本文件保留为历史决策记录；ADR-001 的 L1 事件源结论不受影响。
+
+下文的“引入”“替代”和典型用例记录 2026-08-25 的选型与设想，不是主仓当前任务系统的使用说明。L1 指本项目的持久化事件表与消费方案；L2 指后续升级方案，编号保留用于对照关联文档。
 
 ## 背景
 业务场景明确后，需要回答"Asynq 怎么用"：

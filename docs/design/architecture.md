@@ -179,6 +179,8 @@ flowchart LR
 
 ## 3. 模块边界划分
 
+> 阅读提示：本节内小节编号与正文出现顺序不一致——§3.5/§3.6排在§3.4之前，为保留既有锚点未重排。四块内容（目录结构、职责表、目录约定、接口边界、数据流）相互独立，按出现顺序读即可，编号不代表阅读顺序。
+
 ### 3.1 当前目录结构
 
 ```text
@@ -807,7 +809,7 @@ m = g(r.tenant, r.sub, p.sub) && \
 | 横切与生态 | Phase3/4/5分批 | job_submissions、settings/dict/PAT/panic/判定日志、intel_cache等，以迁移地图为准 |
 | 尚未建成的旧提案 | 不是当前schema | resource_owners/org_permissions、api_credentials管理面、workflow运行/历史表、domain_event_outbox、risk表族 |
 
-迁移现存编号截至000081，逐号以[11号§4](../review/11-project-control.md)对账，不在本文件分配下一编号。证据：[internal/model/ticket.go 的 `Ticket / TicketType / TicketTypeField`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/model/ticket.go)；[internal/model/storage.go 的 `FileObject / TicketAttachmentView`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/model/storage.go)；[internal/router/router.go 的 `New`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/router/router.go)及对应migrations。
+查看当前迁移、实际占用编号和下一编号时，以[项目控制台的迁移地图](../review/11-project-control.md#migration-map)和 `migrations/` 为准。证据：[internal/model/ticket.go 的 `Ticket / TicketType / TicketTypeField`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/model/ticket.go)；[internal/model/storage.go 的 `FileObject / TicketAttachmentView`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/model/storage.go)；[internal/router/router.go 的 `New`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/router/router.go)及对应migrations。
 
 ### 10.4 种子数据
 

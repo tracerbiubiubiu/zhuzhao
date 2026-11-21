@@ -2,7 +2,7 @@
 
 **Give security work a clear owner, a visible process, and a traceable history.**
 
-For security and operations teams, zhuzhao brings identity, tickets, tasks, and data access into one workspace. It is evolving toward data aggregation and security lifecycle coordination, integrating specialist systems rather than rebuilding a SOC, SOAR, or CMDB.
+zhuzhao gives security and operations teams one workspace for accounts and permissions, tickets, tasks, and data access. One person can file a ticket, another can take the assignment, and the owner can review the result and history. The project connects to existing systems for detection, response, and asset data.
 
 [简体中文](README.md) · [English](README.en.md) · [Quick start](#quick-start) · [Roadmap](docs/roadmap.md) · [Contributing](docs/contributing.md)
 
@@ -15,11 +15,11 @@ For security and operations teams, zhuzhao brings identity, tickets, tasks, and 
 
 ## Available today
 
-- **Identity and responsibility:** local accounts, organizations and virtual organizations, roles and menu grants; tickets use route, organization-scope, and resource-level authorization.
+- **Control who can see and act on tickets.** The system provides local accounts, organizations, virtual organizations, roles, and menu grants. When someone opens or acts on a ticket, the system checks access to the function, the organization's scope, and access to that specific ticket.
 - **Ticket collaboration:** types, templates and custom fields, state transitions, fixed assignment rules, comments, CC participants, tags, attachments, and export.
 - **Tasks and data in one console:** a task center backed by taskrunner, structured active lists backed by activelist, and intelligence queries against configured sources.
 - **Traceable activity:** operation audits, ticket events, notifications, task run records, and API documentation.
-- **Incremental integration:** mocks remain available alongside external interfaces, allowing behavior to be validated before connecting real providers.
+- **Test external integrations.** The project keeps mock services available so you can try the workflow with test data before connecting each real service.
 
 Phase 5 has been accepted and merged into main. Risk lifecycle features, the new home workspace and visual redesign, enterprise UAA dual mode, a common capability runtime, and AI/Agent/MCP extensions are **planned work, not ready-to-use features**. See the [capability status](docs/review/11-project-control.md).
 
@@ -32,11 +32,11 @@ Phase 5 has been accepted and merged into main. Risk lifecycle features, the new
 
 ## Who it is for
 
-- Teams connecting identity and responsibility across requests, assignment, processing, review, and evidence.
-- Teams with existing security and asset systems that want to connect their conclusions to accountable collaboration.
-- Intranet deployments needing mocks and private adapters instead of a company-specific core fork.
+- Teams whose members file tickets, assign work across departments, and review the result and evidence.
+- Teams that need to assign and track work based on findings from their existing security tools.
+- Intranet deployments that need separate adapters for company services and mocks for local testing.
 
-The core is a Go modular monolith. The UI, task executor, active-list service, and shared library are separate repositories. Full private-extension boundaries and specialist connectors mature through their own delivery stages.
+The core is a Go modular monolith. The UI, task executor, active-list service, and shared library are separate repositories. See the [roadmap](docs/roadmap.md) for the status of company-specific extensions and connectors.
 
 ## Quick start
 
@@ -66,11 +66,11 @@ Local test data is disposable. `make docker-dev-reset` deletes the PG/Redis volu
 
 | Layer | Responsibility | Direction in zhuzhao |
 | --- | --- | --- |
-| SOC / SIEM / SOAR | Detection, investigation, and specialist response | Consume conclusions, actions, and receipts while preserving the authoritative system |
-| CMDB / intelligence / knowledge systems | Authoritative assets, intelligence, and knowledge | Reference controlled interfaces instead of duplicating full products |
-| zhuzhao | Identity, tickets, and cross-system responsibility | Evolve the foundation toward risk closure and authorized AI consumption |
+| SOC / SIEM / SOAR | Detection, investigation, and specialist response | Read findings, request approved actions, and check the result |
+| CMDB / intelligence / knowledge systems | Authoritative assets, intelligence, and knowledge | Query or reference assets, intelligence, and knowledge through authorized interfaces |
+| zhuzhao | Identity, tickets, and cross-system responsibility | Plan ticket creation from risks, assignment and retesting, and AI queries within the current authorization |
 
-This describes responsibilities, not a performance ranking. Real connectors need provider-specific validation. Without an equivalent benchmark, there are no claims of being faster, smaller, or a specialist-platform replacement.
+Each connector is validated against the service it uses.
 
 ## Repositories
 
@@ -86,7 +86,7 @@ Repository and Go module names remain unchanged. A future brand migration will u
 
 ## Where the project is heading
 
-Strengthen engineering isolation, continuous checks, correctness, and consistent UI behavior first. Validate risk and specialist collaboration separately through mocks, contracts, and real adapters. Make pages, ticket actions, schedules, and events consume the same controlled capabilities. Consume existing model APIs for authorized queries and reviewable drafts; add enterprise and bounded domain agents, then expose selected capabilities through MCP.
+Start with test environment isolation, continuous checks, permissions, and the pages people use every day. Use mocks to test workflows, check the API contracts, and validate real adapters against their services. Route page actions, ticket actions, scheduled jobs, and events through the same controlled business entry points. Use existing model APIs for queries within the current authorization and for drafts that users can confirm. Later, connect enterprise agents, add agents for selected workflows, and expose selected capabilities through the Model Context Protocol (MCP).
 
 The [roadmap](docs/roadmap.md) explains direction; the [work ledger](docs/planning/planning-backlog.md) defines bounded scope. A design document is not evidence of a shipped feature.
 

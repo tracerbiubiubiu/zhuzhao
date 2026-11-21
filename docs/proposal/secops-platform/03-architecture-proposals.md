@@ -4,7 +4,7 @@
 
 > **适用范围**：本文保留2026-10规划输入及其后批准记录。已拍决策不等于能力已实现；当前排位、依赖与开放输入从[目录说明](README.md)进入，对应阶段稿承担实施状态。原研究日期和估算不作新的交付承诺。
 
-> 性质：发散研究稿（见目录 README）。每条提案固定四节：`[现边界]`（现行决策/实现）、`[本稿建议]`、`[业界出处]`、`[代价与风险 / 对已实现架构的影响]`。标 ⚠ 翻案 的条目触碰既有拍板，采纳即须按文档同步纪律落档。
+> 性质：发散研究稿（见目录 README）。每条提案固定四节：`[现边界]`（研究时点的决策/实现）、`[本稿建议]`、`[业界出处]`、`[代价与风险 / 对已实现架构的影响]`。标 ⚠ 翻案 的条目触碰既有拍板，采纳即须按文档同步纪律落档。
 
 ---
 
@@ -12,7 +12,7 @@
 
 **[现边界]** taskrunner 任务 = `action_id`（不透明字符串）+ `params`（无 schema 的 JSON ≤64KB）；能力目录 `capability_registry` 方案已定稿、实现后置（触发条件：第二执行端 / zhuzhao 薄化 / 手填负担三者其一）；S3a 动作库"提交任务"为理想态登记。
 
-**[本稿建议]** 把"能力"升格为平台一等公民 **Action**，统一五类来源：
+**[本稿建议]** 把可调用能力登记为 **Action**，统一记录标识、版本、输入输出约定与执行方式，覆盖五类来源：
 
 | 来源 | 现状 | 统一后 |
 |---|---|---|
@@ -42,7 +42,7 @@ actions (
 )
 ```
 
-五个消费者一次打通：① **前端参数表单自动生成**（JSON Schema → 表单；S1 自研渲染器的七类型本就是 schema 驱动，可共用渲染族）；② **DAG 节点类型**（A5 的 action 节点只认 action_id）；③ **工单动作库**（S3a "提交任务"直接列 actions）；④ **AI 工具**（function calling / MCP 的 tool 定义就是 name + input JSON Schema）；⑤ **OpenAPI 导出**（`GET /v1/actions/openapi` 由注册表生成——SOAR 等 REST 习惯的外部集成方直接消费；09 号补强）。
+同一份能力定义供五类消费者复用：① **前端参数表单自动生成**（JSON Schema → 表单；S1 自研渲染器的七类型本就是 schema 驱动，可共用渲染族）；② **DAG 节点类型**（A5 的 action 节点只认 action_id）；③ **工单动作库**（S3a "提交任务"直接列 actions）；④ **AI 工具**（function calling / MCP 的 tool 定义就是 name + input JSON Schema）；⑤ **OpenAPI 导出**（`GET /v1/actions/openapi` 由注册表生成——SOAR 等 REST 习惯的外部集成方直接消费；09 号补强）。
 
 校验落点：taskrunner `Submit` 对 input 做 schema 校验（失败 4xx，复用 errcode 族）；回调/完成时对 output 校验（第一档 warn 不 fail）。
 
@@ -151,7 +151,7 @@ step_runs (step_run_id, run_id, node_id, attempt, status, action_ref, input json
 
 推进模型：事件驱动（step 完成 → 评估后继），DB 为真相源，每个 run 一把 advisory lock 防并发推进；崩溃恢复 = 扫描非终态 run 重评估（与 taskrunner ReclaimLoop 同款思路）。
 
-逃生门：定义/运行/步骤三抽象后面放 `WorkflowEngine` Port（先例 = TicketEngine Port），未来若引 Temporal，适配器替换、表与 API 不变。
+替换执行引擎的预留接口：在定义、运行和步骤三类记录与具体引擎之间放 `WorkflowEngine` Port（先例 = TicketEngine Port），未来若引 Temporal，适配器替换、表与 API 不变。
 
 **[业界出处]** XSOAR/Shuffle/Tines 的 playbook 内核均为自研 DAG + action；Temporal 作为逃生门候选。
 
@@ -257,4 +257,4 @@ A4 调度分工 ──▶ A5 的 schedule 触发（业务类）只来自 taskrun
 A9 事件分类学 ──▶ A5 推进 / S6 通知 / A3 持久化 / A8 emits 共用同一 Action 命名与载荷约定
 ```
 
-建议落地顺序：A1 → A6 → A4 → A2 → A5 →（并行）A7/A8 → A3 穿插（S6 一期时预留结构，A8 时正式落）。
+研究时建议的落地顺序：A1 → A6 → A4 → A2 → A5 →（并行）A7/A8 → A3 穿插（S6 一期时预留结构，A8 时正式落）。这是原提案的依赖说明；实际启动顺序须按页首替代关系和后继实施文档判断。

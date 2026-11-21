@@ -32,21 +32,23 @@
 
 ## 有效来源与成员整体替换（IAM-B候选）
 
-2026-11-17 IAM-B候选将本组及祖先的停用状态纳入角色、菜单、scope与组织委托求值；父停子启时子树来源暂停，独立直接角色、其它有效组织及工单创建人/处理人/CC关系继续按各自规则校验。恢复只读取当前绑定与有效期限，不重建被撤或过期来源。scope先验证来源，再求最近实体anchor，不能跳过停用实体回退更高透明范围。
+> 本节说明停用组织后系统怎样判断由该组织获得的权限，以及管理员保存成员名单时哪些关系会保留、哪些变动需要另行授权。对应的实现和验收范围见下方“当前边界”。
 
-`internal/repository/org_authorization.go`的`OrgSourceActiveSQL`统一L1/新建成员资格的存活和祖先状态条件；`OrgDelegationActiveSQL`只对组织停用收紧，保留BK-20软删已结票委托档案的原有边界。显式owner在组织有效时仍独立于成员期限；停组不享有此例外。管理名册与绑定GET继续回显停用/过期关系。
+- **停用纳入求值（2026-11-17 IAM-B候选）**：本组及祖先的停用状态纳入角色、菜单、scope与组织委托求值；父停子启时子树来源暂停，独立直接角色、其它有效组织及工单创建人/处理人/CC关系继续按各自规则校验。
+- **恢复语义**：恢复只读取当前绑定与有效期限，不重建被撤或过期来源。scope先验证来源，再求最近实体anchor，不能跳过停用实体回退更高透明范围。
+- **SQL谓词**：`internal/repository/org_authorization.go`的`OrgSourceActiveSQL`统一L1/新建成员资格的存活和祖先状态条件；`OrgDelegationActiveSQL`只对组织停用收紧，保留BK-20软删已结票委托档案的原有边界。显式owner在组织有效时仍独立于成员期限；停组不享有此例外。管理名册与绑定GET继续回显停用/过期关系。
 
-`OrgRepo.SetUserOrgsTx`按增保删写集合：保留项不重插，不改组内角色、scope、source、expires_at及joined_at；新增项沿数据库member/assigned/local/无期限默认值。primary缺省或JSON null仍清空已有primary，显式指定须在请求集合。移除成员时清理所有不在请求集合内的owner数组引用，包括原本没有成员行的owner-only残留；请求内新增组织的合法owner-only引用保留。
+- **成员整体替换（`OrgRepo.SetUserOrgsTx`）**：按增保删写集合——保留项不重插，不改组内角色、scope、source、expires_at及joined_at；新增项沿数据库member/assigned/local/无期限默认值。省略 primary 或显式传 JSON null 会请求清空主组织，显式指定则必须在请求的组织名单内。如果当前主组织来自外部（非 local）关系，清空或更改它都会拒绝整次请求。移除成员时清理所有不在请求集合内的owner数组引用，包括原本没有成员行的owner-only残留；请求内新增组织的合法owner-only引用保留。
+- **非local来源行**：本地集合请求对来源非local的现有行只允许原样保留；实际移除或改其primary先整笔拒绝并要求受权核查，不猜来源绑定的外部写主。旧软删孤儿同样不借保存隐式清理。失败时成员、primary及owner变化全部回滚。
+- **当前边界**：当前已启用写命令的共同授权屏障见[角色模块](role.md#6-当前写命令共同屏障)；表单expected revision、完整IAM-C/C05及停用影响预览仍未由本窄出口交付，本批组合门禁已通过，真实启用另按受审画像验收。
 
-本地集合请求对来源非local的现有行只允许原样保留；实际移除或改其primary先整笔拒绝并要求受权核查，不猜来源绑定的外部写主。旧软删孤儿同样不借保存隐式清理。失败时成员、primary及owner变化全部回滚。当前已启用写命令的共同授权屏障见[角色模块](role.md#6-当前写命令共同屏障)；表单expected revision、完整IAM-C/C05及停用影响预览仍未由本窄出口交付，本批组合门禁已通过，真实启用另按受审画像验收。
+- **新增组织关系的授予核查**：`UserService.Create`的OrgIDs、`SetUserOrgs`新增项、`OrgService.AddMember`首次成员行和`SetOwners`首次派生成员行，在同一屏障/事务按潜在绑定角色核操作者启用直接角色的`canAssignRole`。暂时停用的角色、本组/祖先不会使强授予变成可种入的空集；角色父链也按当前绑定事实核验。保留的成员行不重授，原过期、scope、source和任职事实继续保留。无绑定角色的普通owner/admin成员管理保持原规则。
+- **撤销或恢复组织来源时检查全局角色**：`RemoveMember`实际删除他人成员事实时校验其潜在绑定角色，本人原来允许的离组分支保持；`Update`仅实际status变化、`Move`仅实际父节点变化、`Delete/DeleteOrgDelegated`按真实ID子树当前潜在角色绑定，核同一`canAssignRole`直接档位。潜在角色计入仍可启用的停用角色。已软删角色和由它中断的父链退出该检查，原本有权的虚拟组负责人可按现行入口删组。展示字段、原值status/parent及无全局角色的普通委托不增加该约束。停用/到期后的目标本身仍按当前有效来源求值；合法强维护者恢复来源须承担该授予，不留下永久强账号标签。
+- **actor来源**：无actor签名的源命令从私有请求purpose取actor；受审内部源维护须显式`TrustedIAMInternalActor`，缺身份不默认管理员。
 
-新增组织关系需同时遵守全局角色授予边界：`UserService.Create`的OrgIDs、`SetUserOrgs`新增项、`OrgService.AddMember`首次成员行和`SetOwners`首次派生成员行，在同一屏障/事务按潜在绑定角色核操作者启用直接角色的`canAssignRole`。暂时停用的角色、本组/祖先不会使强授予变成可种入的空集；角色父链也按当前绑定事实核验。保留的成员行不重授，原过期、scope、source和任职事实继续保留。无绑定角色的普通owner/admin成员管理保持原规则。
-
-全局角色来源的撤予/恢复同样受控：`RemoveMember`实际删除他人成员事实时校验其潜在绑定角色，本人原来允许的离组分支保持；`Update`仅实际status变化、`Move`仅实际父节点变化、`Delete/DeleteOrgDelegated`按真实ID子树当前潜在角色绑定，核同一`canAssignRole`直接档位。潜在角色计入仍可启用的停用角色。已软删角色和由它中断的父链退出该检查，原本有权的虚拟组负责人可按现行入口删组。展示字段、原值status/parent及无全局角色的普通委托不增加该约束。停用/到期后的目标本身仍按当前有效来源求值；合法强维护者恢复来源须承担该授予，不留下永久强账号标签。无actor签名的源命令从私有请求purpose取actor；受审内部源维护须显式`TrustedIAMInternalActor`，缺身份不默认管理员。
-
-组织来源祖先按`parent_id`真实ID链判断；软删后复用code/path的新组织不继承历史墓碑的停用/删除。环或无法到达真实根的来源链不可验证，授权拒绝。`IsAncestorOwner`和工单委托列表谓词同样按实际ID链求祖先；最近实体anchor按真实距离选择，旧同path墓碑不能提供或遮断新组织的visibility。工单冗余org_path不再否定已由真实ID证明的历史祖先owner；`OrgRepo.Move`按parent_id收集实际组织ID子树，只向该集合中的组织行、工单和模板级联路径；真实ID后代的历史票/模板继续沿原路径变换，复用路径但属旧org_id的资料不跟随新实体移动。这仍不等于任意历史坏快照的自动修复。
-
-工单路径只作索引候选：列表、单对象读和scope主管assign还须在票实际org_id的parent链中找到对应合格live anchor。新同path组织的anchor不再冒用旧实体身份；原实际org_id档案仍由BK20原分支处理。root等真实共同祖先的独立有效透明读/group来源，仍可覆盖其paused或历史子节点；此检查不把target整链暂停误作冻结所有外部合法来源。
+- **祖先按真实ID链判定**：组织来源祖先按`parent_id`真实ID链判断；软删后复用code/path的新组织不继承历史墓碑的停用/删除。环或无法到达真实根的来源链不可验证，授权拒绝。`IsAncestorOwner`和工单委托列表谓词同样按实际ID链求祖先；最近实体anchor按真实距离选择，旧同path墓碑不能提供或遮断新组织的visibility。工单冗余org_path不再否定已由真实ID证明的历史祖先owner。
+- **Move级联**：`OrgRepo.Move`按parent_id收集实际组织ID子树，只向该集合中的组织行、工单和模板级联路径；真实ID后代的历史票/模板继续沿原路径变换，复用路径但属旧org_id的资料不跟随新实体移动。这仍不等于任意历史坏快照的自动修复。
+- **路径只是索引候选**：列表、单对象读和scope主管assign还须在票实际org_id的parent链中找到对应合格live anchor。新同path组织的anchor不再冒用旧实体身份；原实际org_id档案仍由BK20原分支处理。root等真实共同祖先的独立有效透明读/group来源，仍可覆盖其paused或历史子节点；此检查不把target整链暂停误作冻结所有外部合法来源。
 
 ## 4. 移动组织是一次事务
 

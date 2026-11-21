@@ -70,6 +70,8 @@
 
 当前非全局管理员的L2可见集为：**创建人/处理人 ∪ all scope ∪ 实体透明读锚点/group子树 ∪ 组织委托 ∪ 抄送**。列表`GetFilter`与单条`Authorize`共同表达这些分支；临时成员过期不再提供组织scope/委托来源。L2失败404，L2通过但动作拒绝403；未知动作默认拒绝。admin/superadmin为实现中显式全局豁免。
 
+合成示例。甲创建工单 T，乙负责处理，丙仅因抄送能看到工单。丁与工单无关，也没有能看 T 的组织权限。假设四人都能访问所试的功能入口。甲、乙、丙都能打开详情；丁直接按工单号查会收到 HTTP 404，打开列表则正常返回 HTTP 200，结果里没有 T。甲可以修改字段，乙只有处理人身份时尝试同样的修改会收到 HTTP 403。丙可以评论，修改字段和分派都需要另外的权限。
+
 **演进差异**：2026-08旧稿曾写“转部门后路径不符即404，属主不豁免组织校验”。该强隔离叙述不符合当前实现：L2规则本身包含属主OR支，不能由“L2先执行”推断转部门会自动失去旧单可见性。这里记录既有实现与旧设计的差异，不改变鉴权，也不把文档差异直接判为越权。
 
 证据：[internal/middleware/casbin.go 的 `CasbinAuth / SelfService`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/middleware/casbin.go)；[internal/service/ticket/resource.go 的 `Resource.Authorize / GetFilter / canOperate`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/resource.go)；[internal/service/ticket/scope_resolver.go 的 `pgxScopeResolver.resolve`（`996c167`）](https://github.com/tracerbiubiubiu/zhuzhao/blob/996c167f4567e39362226937b25368b55b7f44bd/internal/service/ticket/scope_resolver.go)。
@@ -251,6 +253,8 @@ CREATE INDEX idx_events_ticket ON ticket_events (ticket_id, created_at);
 ```
 
 ### 3.2.1 工单模板与关联表（Phase 2a 前移）
+
+本节先说明**关联列表与通知**的读取/回填规则（作用于已存在的关联数据），再给出模板与关联两张表的迁移 DDL 摘要及 SLA 单位口径。
 
 直接关联列表沿当前工单的读校验，再按工单集合的同源可见范围过滤每条边的对端。对端不可读时省略整条边。该边界适用于入向和出向关联，撤去一条抄送来源后仍有其它合法读来源时继续显示。
 

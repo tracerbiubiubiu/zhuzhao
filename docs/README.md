@@ -1,42 +1,40 @@
 # zhuzhao 文档入口
 
-> **Phase6已进入模块详设**：[五个模块合同与变化](phase6/module-detail-index.md)可直接查DTO、数据约束、权限、正常/异常及验收；本地核心与后续UAA/AI边界保持，产品未实现。
-
-> **用途**：按阅读任务进入五仓资料；本页是导航，不是功能验收表。**范围**：当前实现、后续设计与历史证据。**权威**：[控制台](review/11-project-control.md)、[规划收口](planning/planning-closeout.md)及各模块合同；状态以对应源码、候选和收据为准。
-
-文档统一从本页进入；全项目计划集中在[planning](planning/README.md)，各仓实现/API/运维文档继续随对应代码版本维护。本地原材料的存放与Git边界见[材料目录](materials.md)。
+目前可以用账号、组织和角色分配工单权限。下一批准备做人工漏洞整改（发布验收点 B2）。例如同一位风险负责人有两项漏洞待修，风险管理者可以把它们派到一张工单上。办理人分别提交修复证据，风险负责人逐项复测。 [当前能力](review/11-project-control.md) · [人工漏洞整改开工计划](planning/phase6-b2-kickoff-plan.md) · [两张验收卡](planning/phase6-b2-acceptance-cards.md)
 
 ## 先选择阅读路径
 
-- **所有者看进度与待决**：从[规划入口](planning/README.md)查当前范围、工作包、设计深度、待决与交付出口。按需进入具体合同，不必逐篇读历史报告。
-- **准备某个工作包开工与交接**：从[按工作包找合同与交接](planning/README.md#按工作包找合同与交接)定位本批有效设计、开工条件与交付物；通用说明用[能力交付评审模板](toolkit/templates/capability-delivery-review.md)，不照搬某一阶段的输入或结论。
-- **开发者修改一个模块**：[产品边界](vision.md) → [开发指南](guides/development.md) → [工程公约](standards.md) → 对应[当前模块](modules/README.md)、Phase/工作包及[目标合同](design/README.md)。编码前冻结本批预期，按公约测试先行。
-- **运维或审计核实事实**：[运维入口](ops/README.md)或[审查入口](review/README.md) → 准确源码/制品/环境与验证记录 → 原始证据/历史报告。旧报告只证明其固定时点。
+- **想知道接下来要做什么**。从[规划入口](planning/README.md)查预计先交哪项功能、工作人员还缺哪些信息、何时需要你决定。每项再链接到具体设计或历史报告。
+- **遇到不熟悉的编号**。从[规划入口的编号索引](planning/README.md#常见编号怎么读)按事项种类查来源。例如 B2 是人工漏洞整改的发布验收点，B02 是抄送后可见和评论的业务决策。
+- **准备开发一项功能**。按[工作包查到对应设计](planning/README.md#按工作包找合同与交接)，确认这次改哪些地方、缺什么前提、怎样验收。项目和代码规则分别见[产品边界](vision.md)、[开发指南](guides/development.md)和[工程公约](standards.md)。
+- **排查或核对已交付功能**。从[运维入口](ops/README.md)找部署、故障和恢复办法，从[审查入口](review/README.md)查哪一版程序在什么环境通过了哪些检查。
 
-第一次接手可先读[架构导览](design/architecture.md)，了解五仓、三层鉴权及调用边界；要判断某项能力是否已实现，再查控制台和实际候选。
+例如办理人点“关闭工单”，系统先检查他的账号能否使用关闭功能，再查他是否有权看这张工单、能否关闭它。通过检查后，系统才保存状态和操作历史。 [工单模块](modules/ticket.md) · [架构导览](design/architecture.md)
+
+试用只接收试用期间按指定整改类型创建的工单。升级前已经存在的工单，以及发布新规则以后工单用哪版规则，都各有测试。 [试用与已有工单的例子](planning/phase6-b2-kickoff-plan.md#旧票范围与定向验收)
 
 ## 按任务找文档
 
 | 任务 | 入口 | 内容边界 |
 |---|---|---|
 | 本地开发、生成、测试 | [guides/](guides/README.md) | 可操作步骤、前置和预期结果 |
-| 理解当前模块 | [modules/](modules/README.md) | 当前调用链、数据与权限，不把目标目录当已迁移 |
+| 理解当前模块 | [modules/](modules/README.md) | 请求经过哪些代码、会读写哪些数据、在哪儿检查权限 |
 | 查架构、目标合同和决策 | [design/](design/README.md)、[adr/](adr/README.md) | 当前解释与目标设计分别标注；采纳不等于实施 |
-| 查当前API | [api/](api/README.md) | 响应/错误、Swagger及准确消费者合同；候选接口另标状态 |
+| 查当前 API | [api/](api/README.md) | 现有接口的请求、响应和错误码；规划中的接口会单独标明 |
 | 部署、备份、故障处理 | [ops/](ops/README.md)、[工具构建与扫描](ops/tools/README.md) | 开发/测试/生产范围；测试账号唯一台账在runbook §4 |
 | 看当前实现或复核证据 | [review/](review/README.md) | 当前控制、审查方法与固定时点报告 |
 | 复用审计方法、模板、提示词 | [toolkit/](toolkit/README.md) | 方法、空白原件与执行实例分开维护 |
-| 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 当前交付顺序与来源承接，不直接作为完成证明 |
+| 查后续计划及原始来源 | [planning/](planning/README.md)、[proposal/](proposal/README.md) | 接下来要交付什么，旧提案中的事项现在归哪一批 |
 
 ## 阶段导航
 
-**当前阅读口径（2026-11-13）**：Phase5已整合五仓main；P6–P10及更远路线已形成分层设计/排期候选，设计深度不一，仍在补充场景，业务T0未启动。原71包/UAA保留历史基线；互通CE、旧子范围与既有包复估已进入[净估注册表](planning/planning-scope-estimates.json)，完整相对排程与独立复核在本轮同步。产品实现和真实激活分开。
+**看近期开发**。Phase 1–5 的实现已合入各仓主线。Phase 6 先做账号停用后让旧登录失效，以及用户点保存时再查一次当前权限。接下来让工单记住创建时用的规则，并在进入下一步时收集整改证据。最后用两条风险验证从派单到复测的全程。实际开工日、每周可投入的时间和实施授权仍待确认。真实试用前还要确认人员、数据和环境。 [交付排期](planning/intranet-uaa-release-schedule.md) · [工作包总账](planning/planning-backlog.md)
 
-[Phase1](phase1/README.md) → [Phase2](phase2/README.md) → [Phase3](phase3/README.md) → [Phase4](phase4/README.md)为已交付阶段的设计与记录；[Phase5](phase5/README.md)保留已合main的能力和债务出处。[Phase6](phase6/README.md)是近期可信底座/风险/体验切片，[Phase7](phase7/README.md)承接受控能力与专业集成，[Phase8](phase8/README.md)承接领域Agent/专业执行，[Phase9](phase9/README.md)承接持久协同；P10及更远候选见路线图，不为目录完整性建立空阶段稿。
+[Phase 1](phase1/README.md)、[Phase 2](phase2/README.md)、[Phase 3](phase3/README.md)、[Phase 4](phase4/README.md)和[Phase 5](phase5/README.md)保留账号、权限、工单、前端和通用能力的设计及交付记录。[Phase 6](phase6/README.md)先准备人工整改。[Phase 7](phase7/README.md)计划让工作人员从工单调用已获准的外部专业服务。[Phase 8](phase8/README.md)计划接入智能体和专业执行平台。[Phase 9](phase9/README.md)计划让跨系统任务在中断后能查进度、恢复并由人接管。更远的候选见[路线图](roadmap.md)。
 
-旧Phase分模块稿保留来源与细节，适用/替代关系从现行阶段入口、共同合同和总账核对。设计候选不等于所有DTO/DDL/测试均已冻结；各模块开工前仍有自己的冻结和测试出口。Phase5交付与清理的固定记录见[验收记录§8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)及[运行手册](ops/runbook.md)。
+早期设计保留当时的取舍。准备开发时，从当前阶段入口查本次实际采用哪版设计，再确认接口字段、数据库变更和验收用例。Phase 5 的交付和清理见[验收记录 §8](phase5/12-scenarios-and-tests.md#8-phase-5-收尾与-phase-6-承接2026-11-11-整理)和[运行手册](ops/runbook.md)。
 
-规划产能已按单席/每周5工程日确认，实际开工日T0尚未启动且无严格截止；当前口径以[排程资源说明](planning/execution-schedule.json)和[所有者决策](planning/planning-decisions.json)为准。源码整合、实际部署、功能开工各自留证，不从目录名或排期推断。
+原排期按一名开发人员每周投入 5 天计算。 [排期的人员假设](planning/execution-schedule.json) · [B2 待确认输入](planning/owner-decision-agenda.md#详设审计后的排产选择)
 
 ## 五仓各自维护，结构统一
 
@@ -46,13 +44,13 @@
 - **taskrunner**：[本地文档](../../taskrunner/docs/README.md) / [任务服务文档（main）](https://github.com/tracerbiubiubiu/taskrunner/tree/main/docs)，维护受理、调度、投递、运行记录和部署。
 - **activelist**：[本地文档](../../activelist/docs/README.md) / [动态清单文档（main）](https://github.com/tracerbiubiubiu/activelist/tree/main/docs)，维护PostgreSQL模型、Schema、数据操作和部署。
 
-以上本地入口读取当前检出的候选，Web入口指向已整合main；尚未合main的设计/版本候选应按准确分支和SHA查阅，不能由main链接证明候选已发布。跨仓只引用归属合同。各仓职责一致，公共库/UI/Go服务采用各自适用目录，不要求物理同构。仓库及产品新名称仍待确定，本次沿用现名。
+本地入口适用于五仓同级检出的布局，读取对应工作树内容。Web 入口指向各仓主线。查特定候选时，以交接记录列出的仓库、分支和提交为准。组件的配置、API 与部署以归属仓的说明为准。
 
 ## 维护规则
 
 [工程公约](standards.md)管代码/API/权限/迁移和测试先行；[文档维护约定](documentation.md)管格式、分类、状态与迁移；[致谢](acknowledgments.md)记录参考来源。根AGENTS是协作入口。可复用方法、空白模板和开发/审计提示词统一从[工作资料库](toolkit/README.md)进入；填写后的实例按文档规则归正式报告或本地批次。
 
-当前解释、目标设计、机器事实和历史报告分别维护；Markdown摘要引用或校验唯一JSON事实，不再独立报价/计数。正式报告在review/reports，必要历史在review/archive；本地参考、执行卡、原日志和临时输出按[材料目录](materials.md)归本地档案或ignored执行目录。Swagger生成物保留现有消费路径，不手改。分档门禁和远端保护未因文档整理自动启用。
+现有行为、未来设计和历史报告各有入口。工期、工作包数量等机器可核的数据以对应 JSON 为准，文档摘要引用或核对同一份数据。正式报告在 `review/reports`，旧报告和决策出处在 `review/archive`。原日志、执行卡和临时输出存放位置见[材料目录](materials.md)。Swagger 继续用生成工具更新，路径按当前调用方保留。各档检查和远端保护以实际配置为准。
 
 ## 变更记录
 

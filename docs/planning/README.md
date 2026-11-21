@@ -1,28 +1,41 @@
 # 全项目规划入口
 
-> 用途：集中查看当前范围、顺序、设计深度和待决；范围：五仓共同计划。目录迁移不改变业务状态、估算、依赖或所有者决定。产品是否实现以[项目控制台](../review/11-project-control.md)及实际源码/验证为准。
+这页列出接下来要做的功能、交付顺序和开工前要确认的事项。已交付的功能见[项目控制台](../review/11-project-control.md)。
 
 ## 当前交付排期
 
-- [B2 首条人工漏洞整改与 C05 开工计划](phase6-b2-kickoff-plan.md)。B2 优先已确认。首条业务画像、旧票、隔离测试、持久撤权故障回归见计划，实际 T0、产能和业务范围等见[所有者待拍板事项](owner-decision-agenda.md#详设审计后的排产选择)。
-- [按交付结果查看排期](intranet-uaa-release-schedule.md)。先交权限和工单引擎的首条纵切，再交人工风险、跨仓组合、本地正式和 UAA 纳管。页面列完整 Phase 6 的后继能力、最早与保守情景及外部准入。
-- [Phase 6 开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。按模块对照现态、首版底线、详细设计缺口和验收。
+- [首批人工漏洞整改（发布验收点 B2）](phase6-b2-kickoff-plan.md)演示两项风险如何合在一张工单上，怎样分别提交和复测。[验收卡](phase6-b2-acceptance-cards.md)还写了两种容易遗漏的情况：停用账号后缓存没更新，其中一项整改被打回。
+- [交付排期](intranet-uaa-release-schedule.md)列出顺序和估算。先处理账号停用和保存时的权限检查，再做工单规则版本和人工整改。随后接任务、清单和消息，安排本地正式运行，最后由公司统一身份与权限平台（UAA）接管获准范围。
+- [开工前要确认的事项](owner-decision-agenda.md#详设审计后的排产选择)包括实际开工日和实施授权。真实试用还要确认在哪套环境、谁参加、用什么数据、怎样停。各模块还缺什么见[设计审查](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 
 ## 按工作包找合同与交接
 
-这是跨阶段派单和交接的固定入口。具体的工作包、合同锚点和候选版本放本轮任务卡；阶段稿保留对应时期的详设和交接，不作为所有任务的默认输入。
+工作包是一组有明确交付内容的工作。派单时在任务卡上写清要做哪一组、参照哪段设计、用哪一版代码和通过哪些检查。历史阶段稿用于追查当初为何这么设计。
+
+例如会话终结与认证增强收敛（工作包 C05）这次要解决的是：管理员已停用某账号，但 Redis 中缓存的登录状态还没更新，系统仍应拒绝旧登录。技术人员按[底座设计](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)查哪些登录凭据受影响，按[停用故障验收卡](phase6-b2-acceptance-cards.md#卡一-c05-停用已提交而撤销投影失败)检查旧登录被拒，并确认管理员能用原操作号查到停用是否成功。准备哪版程序和哪些测试服务见[首轮清单](phase6-b2-kickoff-plan.md#6-g04-隔离预检与-c05-首轮取证)。
 
 - **找本单范围**：从[总账摘要](planning-backlog.md)按工作包或能力查范围和依赖；当前活跃项直接看同页的[合同、交接与准入](planning-backlog.md#当前活跃包的合同交接与准入)，再从[规划收口](planning-closeout.md)、[决策议程](owner-decision-agenda.md)核设计深度、待决及批准范围。
 - **找有效设计**：先查[设计入口](../design/README.md)的共同合同，再顺着所属工作包查领域或阶段详设；当前行为另查[模块入口](../modules/README.md)、项目控制台及实际候选。找不到本包的有效合同或开工条件时，标为待确认，不借用其他阶段的详设补齐。
 - **找实施、验收及发布交接**：按所属工作包读取该批交接与准入条件；通用评审格式复用[能力交付评审模板](../toolkit/templates/capability-delivery-review.md)，门禁和环境准备从[开发入口](../guides/README.md)和[运维入口](../ops/README.md)进入。当前活跃批次的具体链接见下方日常阅读。
 
+## 常见编号怎么读
+
+准备同一次真实试用时，会同时读到多个编号。**人工漏洞整改（B2）**是发布验收点，**会话终结与认证增强收敛（C05）**是其中一个工作包，**首发与恢复、保留政策（Q12）**是所有者议程。用下面的来源核对全文里的短称。
+
+- **发布与决策**。隔离入网预演（B0）、基础扩展版（B1）、人工漏洞整改（B2）是[发布验收点](intranet-uaa-release-schedule.md#1-接下来怎么做)。合法抄送可查看及评论（B02）是[业务决策](planning-decisions.json)。P6.1 等编号指[技术分期](planning-backlog.md#波次与工作包)。B0-4 之类的条目沿用[旧启动批](../phase6/05-launch-batch.md)编号，跟读它对应的工作包时保留原出处。
+- **工作包、实施子批与测试场景**。事务边界、组织删除与授权护栏（C04）和会话终结与认证增强收敛（C05）归[总账](planning-backlog.md#p61-受信业务底座)。本批分别做[业务提交时的共同授权守卫](../phase6/foundation-iam-module-detail.md#3-c04共同授权守卫与多实例)和[账号持久撤权与恢复](../phase6/foundation-iam-module-detail.md#4-c05账号atrtpat-与停用恢复)。[IAM 实施子批 C](../phase6/foundation-iam-module-detail.md#39-c共同屏障策略pair与两命令审计的准确纵切)负责共同屏障、策略投影与本地审计，测试场景 C-01 检查保存时如果发现权限已撤销，系统应拒绝这次操作，原业务记录保持不变。
+- **缺陷与补齐动作**。停用组织后派生权限仍有效（AUTH-01）是[权限专项缺陷](../review/reports/authorization-design-implementation-review-2026-11-15.md)。来源与撤权补齐（AUTH-GAP-01）是[模型复评动作](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)，覆盖多条缺陷和多个工作包。
+- **议程、估算与时间**。真实试用窗口（Q12）查[所有者议程](owner-decision-agenda.md#q12-首发与恢复保留政策)。组合验收与兼容回归（Q1）、正式发布剩余工作（Q2）、共用操作回执基础（S2）查[首版净估册](local-core-release-estimate.json)。Phase 5 的流程图设计器用原段号 P5-S2。例子里的 D+1 表示样例业务日的次日，工单定义发布（D01）查[工作包总账](planning-backlog.md#p61-受信业务底座)。
+- **净估行与排程切片**。本地身份和授权（S1）是[首版净估行](local-core-release-estimate.json)。隔离、有效检查与安全入口（S01）是一项[长期排程切片](execution-schedule.md)。查工作量时按各自的估算范围使用。
+- **容易重名的 R 系**。业务意图持久交接（R01）和跨平台流程协同（R02）查[总账](planning-backlog.md)。同样的 R01、R02 在[真实 UAA 接入条件](uaa-real-integration-conditions.md#提供方与实施方要准备的条件)中分别指应用与认证合同、测试与正式环境资源。短号 R1、R2 在[验收卡](phase6-b2-acceptance-cards.md#卡二-b2-两条合成风险共票并逐项复测)里指两条合成风险。在[旧阶段稿](../phase6/01-r1-ingest-ledger.md)里，R1 指风险接入与台账。[首版净估册](local-core-release-estimate.json)的 R2 指风险授权估算行。
+
 ## 日常阅读
 
-- 看当前结论、设计深度及实施出口：[规划收口](planning-closeout.md) → [模块合同入口](../phase6/module-detail-index.md) → [三节短审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)。
+- [规划结论](planning-closeout.md)列出已经决定和还需确认的事项。[模块设计](../phase6/module-detail-index.md)说明各模块要改什么，[审阅卡](../phase6/implementation-handoff.md#单维护者短审阅卡)供合并前逐项核对。
 - 看全文复核后继的分工与验收：[11 月 20 日修复计划](audit-repair-followup-2026-11-20.md)。
 - 看余项归属、前置和验收：[全文审计剩余待修项续修计划](audit-remainder-2026-11-20.md)与[逐项交接](../review/reports/audit-remainder-2026-11-20.md)。
 - 看本轮存量问题的修复顺序和验收：[五仓审计整改实施计划](audit-repair-plan-2026-11-19.md)。
-- 补齐开工前的系统理解、演进脉络及交付回顾：[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先准备基线卡、能力地图、同旅程成功/拒绝纵切与启动讲解的最小样例；三个故事提纲及时间线随前三个实际交付小批整理。Git维护正式知识与空白模板，执行实例本地归档；实例尚未整理，不代表已掌握或新增技术门禁。
+- 想在开工前弄懂系统怎样工作，读[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先记录实际软件版本和功能，再选一件用户操作，从页面、权限检查到保存结果，分别讲清成功和被拒的情况。前三个交付小批再补使用故事和时间线，当前这些样例尚未整理。
 - 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[机器复算与历史底账](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。

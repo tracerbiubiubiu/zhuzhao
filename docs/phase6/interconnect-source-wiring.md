@@ -10,9 +10,9 @@ TR自己的InitializeApp仍装配Submit/队列/cron/callback；AL自己的Initia
 
 ## 2. 工单事务内计划，提交后不再直发同一任务
 
-当前`internal/service/ticket/transition_service.go`的`Service.Transition`在commit后调用`actions.go`的`ActionRegistry.RunPostActions`，`actions_builtin.go`的`SpawnTaskAction.Execute`才提交TR；ActionContext没有tx与稳定node_run。只把TaskSubmitter换成IntentWriter仍不能做到票/意图原子。
+当前`internal/service/ticket/transition_service.go`的`Service.Transition`在 commit 后调用`actions.go`的`ActionRegistry.RunPostActions`，再由`actions_builtin.go`的`SpawnTaskAction.Execute`提交 TR；ActionContext 没有 tx 与稳定 node_run。因此，只把 TaskSubmitter 换成 IntentWriter，仍不能保证工单状态和待执行意图在同一事务中一起保存或一起失败。
 
-候选无副作用planner输出`DurableActionPlan={action_index,capability_id,contract_version,definition_hash,typed_input,target,result_policy}`，action_index沿发布配置的原序号，不因筛除best_effort重新编号。Transition在现有tx.Commit前，以相同DBTX写node_run、operation、intent及初始delivery；任何计划/持久化失败使转换失败。planner不得联网/调用旧Execute；外部预填等在锁外取数，锁内核被冻结输入及当前约束。
+候选 planner 只生成计划，不执行动作，输出`DurableActionPlan={action_index,capability_id,contract_version,definition_hash,typed_input,target,result_policy}`。action_index 沿用发布配置的原序号，不因筛除 best_effort 重新编号。Transition 在现有 tx.Commit 前，以同一 DBTX 写入 node_run、operation、intent 及初始 delivery；生成计划或保存任一记录失败，都使转换失败。planner 不得联网或调用旧 Execute。外部预填等数据在锁外读取，取得锁后核对已固定的输入和当前约束。
 
 planner可预分配node_run_id；锁内确认原票、发布definition_hash、全票visit_no及原action_index后才形成最终command/hash。报告分支typed_input.ticket_id/node_run_id/definition_hash分别等于target及本事务node_run，不先hash再悄换绑定；不一致整笔回滚。
 
@@ -28,7 +28,7 @@ commit后的RunPostActions只处理本发布版本未迁移的best_effort动作�
 
 候选`TicketTaskQueries.ListForTicket`返回有界卡：`{operation_id,node_run_id,definition_hash,task_id?,operation_status,receipt_revision,last_observed_at,projection_status,summary?,artifact_refs[],allowed_actions[]}`。operation_status只取core已核收据；TR queued/running作为另一执行观察并列时间，不以TR succeeded推断工单完成。summary/artifact只取原运行受控投影，不透传raw params/result/error。
 
-当前`internal/handler/taskrunner_handler.go`及`internal/service/taskrunner_service.go`的`GetTask`透传json.RawMessage，SpawnTaskAction.Execute丢弃提交响应，均不是新卡实现。新读端先验当前票/字段权再分页/计数；artifact下载重验。TR不可达保留已证状态并标观察陈旧，不改判failed。unknown只给原操作查询/受权对账；投影修复不调executor。候选GET `/api/v1/tickets/:id/task-results`是新只读入口，原任务GET保留并按维护资格迁移，不能让它成为raw结果旁路。
+当前`internal/handler/taskrunner_handler.go`及`internal/service/taskrunner_service.go`的`GetTask`透传 json.RawMessage，SpawnTaskAction.Execute 丢弃提交响应，均不是新卡实现。新读取入口先检查用户对当前工单和字段的访问权，再分页和计数；下载 artifact 时重新检查。TR 不可达时保留已证实的状态，并标明观察信息已过时，不能改判 failed。unknown 只提供原操作查询和获授权的对账；修复工单里的结果显示时不调用 executor。候选 GET `/api/v1/tickets/:id/task-results`是新只读入口，原任务 GET 保留并按维护资格迁移，不能让用户借它绕过限制读取原始结果。
 
 待实现预期：`TestTicketTaskView_ExecutionSuccessIsNotBusinessCompletion`、`TestTicketTaskView_TRUnavailablePreservesConfirmedReceipt`、`TestTicketTaskView_RepairProjectionDoesNotExecute`。
 
@@ -36,7 +36,7 @@ commit后的RunPostActions只处理本发布版本未迁移的best_effort动作�
 
 core不能持AL数据库锁。固定签名POST `/internal/changes/boundary`由AL处理：`BoundaryRequestV1={boundary_operation_id,consumer_id,source,stream_id,generation}`；回`BoundaryReceiptV1={boundary_operation_id,source,stream_id,generation,through_cursor,boundary_ref}`。AL在与源写相同stream head锁内保存边界/W并提交，响应在锁外；同operation同参返原W、异参409。可按原operation重投或固定签名POST `/internal/changes/boundary/query`查询，目标均在body。
 
-core先暂停该规则动作准入，收边界后一次本库事务保存旧end_at/新start_after及激活状态，再恢复处理，inbox继续收。AL已提交而响应丢失，查询原boundary，不能重新取更大的W偷偷改变范围；core失败保持准备态按原receipt恢复。逻辑记录可并入候选stream结构，不建设通用配置发布平台。当前AL DataService.Insert/Update无该端口，不能把文档“取W”当已有跨仓实现。
+core 先暂停该规则发起动作，但 inbox 继续收件。收到边界后，在一次本库事务中保存旧 end_at、新 start_after 及激活状态，再恢复处理。如果 AL 已保存边界但响应丢失，就查询原 boundary；不能重新取更大的 W，悄悄改变新旧规则各自处理的范围。core 失败时保持准备态，按原 receipt 恢复。逻辑记录可并入候选 stream 结构，不建设通用配置发布平台。当前 AL DataService.Insert/Update 无该端口，不能把文档“取W”当已有跨仓实现。
 
 待实现预期：`TestSubscription_BoundaryReplyLostReturnsSameW`、`TestSubscription_CoreCrashAfterSourceBoundary`、`TestSubscription_NoNetworkCallUnderStreamLock`。
 
@@ -62,9 +62,9 @@ fixture按(profile,idempotency_key)记录受理：接收方先按12字段重算p
 
 ## 8. 站内投影与逐消费者切换
 
-站内是独立消费者，不是HTTP成功回调。候选唯一键`(source,event_id,inbox_policy_id,policy_version,recipient_user_id,semantic_key)`，消费凭证与notifications投影同core事务，重复intent返原通知ID。原站内收件/自噪音规则作为具名policy，不自动套外发message_rule/外发偏好。read_at只表示站内已读；外发失败/unknown/补发不复制、撤销或置读站内通知。当前list/total/badge/深链均要经当前资源投影，不能只recipient过滤。
+站内通知独立消费业务事件，不等 HTTP 外发成功才创建。候选唯一键`(source,event_id,inbox_policy_id,policy_version,recipient_user_id,semantic_key)`，消费凭证与 notifications 显示记录在同一 core 事务中保存，重复 intent 返回原通知 ID。原站内收件规则和避免通知本人操作的规则作为具名 policy，不自动套用外发 message_rule 或外发偏好。read_at 只表示站内已读；外发失败、unknown 或补发，都不复制、撤销或标读站内通知。列表、总数、角标和深链都要按当前资源权限筛选及限制内容，不能只按 recipient 过滤。
 
-切换按source范围＋consumer_id＋发布版本记录legacy/shadow/durable，同一源提交对同消费者真实效果仅选一路。已选源事务冻结consumer_id、route_revision及该次路由决定，durable保存可靠intent；post-commit Hook根据该次快照跳过已迁移消费者，不按新全局开关重新选路。切换只影响边界后新提交，旧在途沿原决定收敛，关新worker不自动回退Hook重发。shadow链只记录候选不发不插，真实效果仍沿该次冻结的legacy路线，不把影子误当生产停发指令。
+切换时按 source 范围、consumer_id 和发布版本记录 legacy/shadow/durable；同一次源提交对同一消费者只能选择一条会产生真实效果的路线。源事务固定 consumer_id、route_revision 及本次路由决定，durable 路线保存可靠 intent。post-commit Hook 按这次保存的决定跳过已迁移消费者，不能看到新的全局开关后重新选路。切换只影响边界后的新提交，已经在途的操作继续按原决定完成或对账；关闭新 worker 不会自动退回 Hook 重发。shadow 路线只记录候选，不发送消息也不插入通知；真实效果仍走该次固定的 legacy 路线，不能把影子记录当作停止生产发送的指令。
 
 `internal/app/app.go`的`NewApp`订阅ticket.notify/ops.notify；`internal/service/ticket/inbox_service.go`的`SetEventRegistry/OnDomainEvent/collectRecipients`订阅inbox.notify/inbox.ops，这是不同消费者。迁外发不关闭站内，迁站内则停同范围Hook Insert；回退停新效果但保留receipt/reader/在途对账。`internal/repository/notification_inbox_repo.go`的`Insert/Inbox/UnreadCount`当前无源事件唯一键，仅recipient过滤，候选尚未实现。
 

@@ -2,7 +2,7 @@
 
 ## 当前状态与阅读顺序
 
-缓存归一键、TTL双档、singleflight、stale降级、clean404缓存与Provider桩/HTTP适配已交付；源真实契约未到不虚标真实查询。先读缓存/失败边界，再读API/适配合同，最后按变更记录追溯实现偏差。`internal/pkg/threatintel/service.go`与`threatintel.go`是现行机制和端口，旧`internal/pkg/apicache`仅是复用建议路径。
+同一查询先整理成统一的缓存键。并发查询同一个键时，多个请求共享一次上游查询。确认查无结果的 404 也可缓存；缓存有两档有效期，遇到符合条件的上游故障可以返回有标识的旧值。已提供模拟来源和 HTTP 对接代码，真实查询还需按上游接口约定验证。先读缓存和失败处理，再看 API 与对接约定。`internal/pkg/threatintel/service.go`与`threatintel.go`是现行机制和端口，旧`internal/pkg/apicache`仅是复用建议路径。
 
 上游QPS令牌桶未随首版实现，不能把附录rate.Limiter建议当当前限流保证；平台HTTP路由限流和按key singleflight也不等价于全局上游QPS预算。B06-F10单飞错误结果修复已在最终联合复验范围，旧候选段须按报告时点读，合main/部署另核。
 

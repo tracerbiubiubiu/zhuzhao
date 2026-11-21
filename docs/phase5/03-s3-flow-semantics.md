@@ -2,7 +2,7 @@
 
 ## 当前能力与阅读顺序
 
-S3a已交付转换roles/validator、available查询、自动分派规则和动作注册表。先看本节和§3现行合同，再看S3b及演进设计；旧“无事件/硬编码/无自动分派”矩阵是设计前基线，不是今天的现状。
+S3a 已支持查询可以执行哪些状态变化，提交时检验配置的角色及条件，并按规则自动分派。服务用动作注册表决定哪些后续动作可以运行。接手时先查本节与 §3 的当前行为，审批流（S3b）和其它扩展见后续设计。旧矩阵记录了这些功能加入前的行为。
 
 2026-11-17存量修复状态：`lifecycle.go`的`applyStateSLATx`将已启用的状态级`sla_due_hours`收口到Create、人工/自动Assign、取消分派、Transition和Close的同一事务；按`status_changed_at + N小时`计算，未配或closed明确清空，同状态换处理人保持原截止。该修复不把历史`default_sla_hours`/模板缺省字段偷偷激活为全局计时政策，也不实现暂停/日历/完整SLA。`Transition`补持久`status_changed`，Transition/Close说明与`comment`事件同事务；状态、截止、说明、事件任一写失败整笔回滚。新增真实PG红例已复现并转绿，完整适用门禁及组合复验已通过，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；CF-31已启用路径与历史缺省字段、CF-32的最终关闭分别按证据登记。
 

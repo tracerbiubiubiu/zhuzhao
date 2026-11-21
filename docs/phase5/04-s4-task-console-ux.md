@@ -4,11 +4,11 @@
 
 已交付动作元数据`GET /api/v1/jobs/actions`、提交下拉、Submit/CreateJob未注册动作前置校验、CronBuilder和运行/定义/死信三Tab。先读当前合同，再看§3.7任务库二期和附录B；后两者是已拍待实施设计，当前job_runs没有所述RESULT/LOG/PROGRESS查看链。
 
-一次提交为`POST /api/v1/tasks`，定义创建为`POST /api/v1/jobs`，手动触发为`POST /api/v1/jobs/trigger`，不能混写成一条POST /jobs。死信=Redis asynq archived投影、runs=PG job_runs，分页/存储语义不同且已定不合并。UI操作与测试归[UI指南](../../../zhuzhao-ui/docs/README.md)，执行存储归taskrunner仓；本篇保留主仓网关/跨仓设计，不复制第二套执行协议。
+临时提交一次任务用 `POST /api/v1/tasks`。保存任务定义用 `POST /api/v1/jobs`。手动运行已有定义用 `POST /api/v1/jobs/trigger`。找某次任务的执行记录，到运行页查 PostgreSQL 的 `job_runs`；找队列归档的失败任务，到死信页查 Redis 中 Asynq 的归档。两页分别取数和分页。UI操作与测试归[UI指南](../../../zhuzhao-ui/docs/README.md)，执行存储归taskrunner仓；本篇保留主仓网关/跨仓设计，不复制第二套执行协议。
 
 > **段属性**：基线段（phase5 收口对象）。**建议实施序**：S10 之后（依赖序宽松，靠后）；**先行批已落地**（2026-10-13），启动时在其上增强、不推倒。
 > **量级**：1–1.5 周（动作元数据读端点 + 预校验 ~1 天随行；通知配置页已迁 S6）。**迁移**：零。
-> **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。协议蓝本现行入口为taskrunner的[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md)（原`docs/taskrunner.md`中的两级路由方案，2026-09-15定稿、尚未实施；后继已列入Phase6范围）；立项 = dd §27。
+> **文档定位**：段级设计稿（2026-10-15 建档，phase5 分支）。协议蓝本现行入口为taskrunner的[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/main/docs/design/capability-registry.md)（原`docs/taskrunner.md`中的两级路由方案，2026-09-15定稿、尚未实施；后继已列入Phase6范围）；立项 = dd §27。
 
 ## 1. 定位与由来
 
@@ -141,7 +141,7 @@ task_center 已交付（P4-W5 + 2026-10-13 交互批），但配置输入仍**�
 
 | 文档 | 关系 |
 |------|------|
-| taskrunner仓[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/capability-registry.md) / [当前运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/codex/phase5-audit/docs/design/taskrunner.md) | 前者为尚未实施的目录蓝本，后者解释当前执行/回调；原目录章节与脱敏后置不当作已落能力 |
+| taskrunner仓[能力目录设计](https://github.com/tracerbiubiubiu/taskrunner/blob/main/docs/design/capability-registry.md) / [当前运行设计](https://github.com/tracerbiubiubiu/taskrunner/blob/main/docs/design/taskrunner.md) | 前者为尚未实施的目录蓝本，后者解释当前执行/回调；原目录章节与脱敏后置不当作已落能力 |
 | [phase3/16](../phase3/16-external-integration.md) | ProcessAt/E-⑤ 部门标签/E-⑥ 终败通知——触发驱动不收编 |
 | [phase3/15](../phase3/15-script-platform-dagu-vs-inhouse.md) | 脚本平台选型备查（§3.6 备忘，勿重新调研） |
 | [01-s1](./01-s1-form-designer.md) | params schema 动态表单同构复用其渲染器 |

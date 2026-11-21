@@ -5,12 +5,12 @@
 
 ## 建议优先验证的场景
 
-P6.1 的 U01/U02/U07 在共用导航与组件样板上验证适用交互。首条人工整改旅程只验实际启用的入口和动作。完整工单工作区的筛选、返回、多单切换等场景随 P6.3 U03/U04 验收。
+P6.1 先检查默认页与导航（U01）、共用页面和控件（U02），再用浏览器复走这些操作（U07）。首条人工整改只验实际启用的入口和动作。到 P6.3 随 U03/U04 验收完整工单工作区，包括筛选、从详情返回和在多张工单间切换。
 
 1. **待办链接首次打开或刷新会丢失查询条件（U01、U03、U07）。** 普通处理人从首页「我的待办」进入 `#/tickets?assignee=me&statuses=assigned,in_progress`，或从顶栏进入 `#/tickets?assignee=me&exclude_statuses=closed,rejected`，在应用内均显示 3 条。整页刷新、已登录的新标签直接打开同一链接，两种地址都变成 `#/tickets`，列表请求返回 200，查询只剩分页参数，结果为 23 条可见工单。DeepSeek 首报，主审独立复现两条链接。验收同时检查站内进入、刷新、新标签的 URL、筛选控件、请求参数和结果集。源码锚点为 UI `src/permission.ts` 中 `router.beforeEach` 注册动态路由后的重新导航。
 2. **从详情回不到原工作位置（U01、U03、U07）。** 在预筛选待办列表加关键词，结果由 3 条收窄到 1 条。进详情后点「返回」，关键词清空、结果恢复为 3 条。另一条预填关键词的路径由 1 条恢复为 20 条。普通无预筛选的列表能保留手工条件和页码。新标签独立打开详情后点「返回」可到 `about:blank`；经登录重定向进入详情时，也可回到登录表单。验收分别覆盖重新点击待办入口、从详情恢复原条件、页码、滚动与行焦点，以及无来源详情的受权应用内落点。源码锚点为 UI `src/views/ticket/list/index.vue` 的 `applyRouteFilters`、`onActivated` 和 `src/views/ticket/detail/index.vue` 的返回按钮。
 3. **关键入口缺少键盘等价操作（U02、U03、U06、U07）。** 首页最近工单整行和工单列表标题可用鼠标打开详情。实际 Tab 跳过标题，列表标题在可访问性树中呈现为单元格文本；消息行同样跳过。桌面头像菜单打开后，在「个人中心」菜单项按 Enter 只收起菜单，鼠标点击可进个人中心，窄屏头像触发器没有可访问名称。验收使用真实路由链接和有稳定名称的菜单项，覆盖 Tab、Enter、菜单项的 Space 及原生链接的复制与新标签打开。源码锚点为 UI `src/views/Home/index.vue` 的最近工单、`src/views/ticket/list/index.vue` 的标题插槽、`src/views/message/center/index.vue` 的消息行及 `src/components/UserInfo/index.vue` 的菜单项。
-4. **覆盖层里的焦点和 Esc 需要按层处理（U02、U07）。** 1440px 表格聚焦后仍能 Tab 或 Shift+Tab 到被遮住的壳层。390px 收起侧栏时首个 Tab 可进入视口外 Logo；展开后 Tab 可进入遮罩下的顶栏，Esc 无法关闭侧栏。第二轮在聚焦表格里打开「新建用户」，按一次 Esc 会同时退出弹窗和底层表格聚焦。验收覆盖收起时退出 Tab 顺序、展开时移入焦点、背景控件不可键盘操作、Esc 逐层退出及焦点归还。源码锚点为 UI `src/layout/Layout.vue` 的侧栏遮罩与 `src/components/ProTable/index.vue` 的 `toggleFocus`。
+4. **覆盖层里的焦点和 Esc 需要按层处理（U02、U07）。** 1440px 表格聚焦后仍能 Tab 或 Shift+Tab 到被遮住的壳层。390px 收起侧栏时首个 Tab 可进入视口外 Logo；展开后 Tab 可进入遮罩下的顶栏，Esc 无法关闭侧栏。第二轮在聚焦表格里打开「新建用户」，按一次 Esc 会同时退出弹窗和底层表格聚焦。验收时收起侧栏后按 Tab 确认跳过侧栏。展开时把键盘焦点移进侧栏。按 Tab 或 Shift+Tab 都应跳过被遮挡的后台控件。桌面表格放大时也要检查被表格遮住的导航和按钮。每按一次 Esc 只关闭最上面一层，并把焦点还给打开这一层的控件。源码锚点为 UI `src/layout/Layout.vue` 的侧栏遮罩与 `src/components/ProTable/index.vue` 的 `toggleFocus`。
 
 ## 视觉、框体与状态反馈
 

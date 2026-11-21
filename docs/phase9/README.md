@@ -1,5 +1,7 @@
 # Phase9 — 持久业务协同与证据闭环
 
+一个后续场景是专业任务完成、本地已确认结论，但向原系统回传时断网。责任人能在原工单上查看任务记录和待回传状态，经核对后恢复这一条回传。专业执行有自己的运行记录，恢复回传沿用原结论与回执关联。 [跨仓结果和恢复合同](../design/cross-repo-execution-contract.md)
+
 > **2026-11-14交付边界**：见[基础先行](../design/foundation-release-boundaries.md)。本期在真实使用后扩选定自动链、接管及规模；多副本/复杂汇合/跨机形态按实际选择启用。单实例基础的事务、必要持久意图和当前授权已在此前适用纵切满足，不能拖到P9再补；也不预建所有高可用形态。
 
 > **2026-11-13范围澄清**：简单工单任务结果及AL双向自动链由P6/P7的[互通增量](../planning/capability-interconnect-supplement.md)先交，本阶段只深化真实需要的复杂持久协同。共享[能力/结果/因果合同](../design/capability-invocation-contract.md)与[一致性标准](../design/ecosystem-consistency-contract.md)，不把所有领域状态机统一为新通用引擎。

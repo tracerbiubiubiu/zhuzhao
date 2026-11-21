@@ -32,7 +32,11 @@ priority 数字越小越强。创建或变更父链时校验环、父状态和 `
 
 数据库提交与内存刷新不是一个原子动作。custom角色p变更在最终commit前将本实例共享策略投影标为不可用；提交确认后先释放PG session锁/连接，保持本机串行再reload，避免单连接pool自等。刷新失败会重试一次并返回`ErrPolicyReloadFailed`，数据库可能已经生效。
 
-不可用期间，`middleware.CasbinAuth`的缓存p消费者，以及SelfService路由内`PeopleService.Search`的assign/create/rule静态动作，在Enforce前后检查同一状态并返回503。本人SelfService读、People cc的原DB L3不消费该p缓存，保持原规则。pending之前已通过中间件的请求可能完成；本批管理写仍同Tx重验当前p。成功重载开闸；两次失败、取消或pending后的commit不确定保持关闭，运维排查后受控重启，启动完整LoadPolicy成功后恢复。没有新增恢复API；不得将已提交DB错误误作回滚，也不声称所有资源在途请求的revision协议已交付。
+不可用期间的行为分三句话理解：
+
+- **谁会被 503**：`middleware.CasbinAuth`的缓存p消费者，以及SelfService路由内`PeopleService.Search`的assign/create/rule静态动作，在Enforce前后检查同一状态并返回503。
+- **不受影响的路径**：本人SelfService读、People cc的原DB L3不消费该p缓存，保持原规则。pending之前已通过中间件的请求可能完成；本批管理写仍同Tx重验当前p。
+- **恢复方式**：成功重载开闸；两次失败、取消或pending后的commit不确定保持关闭，运维排查后受控重启，启动完整LoadPolicy成功后恢复。没有新增恢复API；不得将已提交DB错误误作回滚，也不声称所有资源在途请求的revision协议已交付。
 
 实际故障识别、核对数据库已提交状态及受控重启的步骤归[runbook §6.3](../ops/runbook.md#63-当前casbin策略投影失败的恢复)。健康探针成功不单独证明策略投影已恢复；须验证应保留权限的专属账号成功、已撤权账号仍拒绝。本批不新增后台无限重试、自动开闸或完整C05会话恢复机制。
 

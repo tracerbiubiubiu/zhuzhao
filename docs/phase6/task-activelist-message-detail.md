@@ -4,7 +4,7 @@
 
 > 2026-11-17后继：§8.3维护资格/可信归因、原定义读取及当前回调/同号异参/cron推进等窄出口已在本地候选实现并通过完整适用门禁、真实栈及独审；本页§1和§8.2/8.3的“当前/拟补/待实现”原文记录11月14–15日修前设计时点。实际接口及参数以[审计模块](../modules/audit.md#31-维护动作的准入2026-11-17候选)、实现及[本批报告](../review/reports/audit-baseline-repair-2026-11-17.md)为准。完整C03/R01、receipt/unknown、AL效果/变化源和真实消息仍待实施；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署；原报价按实际已交子出口在后续净剩余核算扣重。
 
-本页把[六条接缝](module-design-handoff.md)展开到模块输入、事务、失败出口和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地画像，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
+本页把[六条接缝](module-design-handoff.md)展开为各模块的输入、事务、失败处理和具名测试。[跨仓执行合同](../design/cross-repo-execution-contract.md)拥有回调v2/occurrence/R01语义；[互通Schema](../design/capability-interconnect-detail.schema.json)拥有command、receipt、event、subscription、admissionClaims和alExecutionRequest的已有字段。本页细化首版本地运行范围，**不把较宽的多消费者change-feed、Import/删除/恢复源或完整I03控制台变成本地首发前置**。未来扩大支持入口时，仍须实现宽合同对应的源事实与恢复能力。
 
 <!-- local-core-source:start -->
 当前首版本地核心净估与条件以[唯一净估册](../planning/local-core-release-estimate.json)为准；本文不另立总价。
@@ -20,15 +20,15 @@
 - AL`internal/service/data_service.go`的`DataService.Update`已有读合并、校验、锁行及version CAS；`internal/repository/data.go`的`GetDocForUpdate/UpdateDocData`是复用点。当前没有本页的operation效果receipt、授权准入和持久变化源。已有UpdateInput.Version映射目标expected_revision，Import仍是全量replace，不能拿它模拟patch。
 - 主仓`internal/pkg/channelsender/port.go`的`ChannelSender`已有渠道端口；`UIPStubSender.Send`只具开发桩/未实现反馈。`ticket.MessageDispatcher.Dispatch`仍经Hook、进程内节流并在发送后写sent/failed日志，不能证明可靠应发实发。目标保留模板/偏好/站内通知，增加公共HTTP实现和私有字段映射，按实际提供方合同区分受理与送达。
 
-交付阶梯：S先形成同一typed应用入口、当前授权和输入校验；D补稳定操作、事务意图和回调完成；本地核心合上一个固定工单动作、一个AL类型/字段组、一条只读后继和一个HTTP渠道。D11完整规则编辑/聚合、完整I03三策略恢复控制台、宽AL源入口与多消费者feed后继交付；它们不被本页取消，也不以本页存在冒称已完成。
+分步交付：S先统一有类型的应用入口、当前授权检查和输入校验；D再补稳定操作编号、事务内待办记录和回调完成确认；本地核心最终串通一个固定工单动作、一个AL类型及字段组、一条只读后继和一个HTTP渠道。D11完整规则编辑/聚合、完整I03三策略恢复控制台、宽AL源入口与多消费者feed后继交付；它们不被本页取消，也不以本页存在冒称已完成。
 
 ## 2. 写主、类型与共同调用路径
 
 2026-11-15补[准确源码接线](interconnect-source-wiring.md)：一次DI装配、Transition事务内TxPlan、旧callback桥/任务卡、AL边界握手与普通写来源、公共消息mock绑定及站内逐消费者切换。以下DTO和恢复规则仍为权威共同合同，该接线页不声称新端口已实现。
 
-核心独占工单/风险事实、授权、节点运行和结果投影；TR独占调度、投递、attempt和执行账本；AL独占文档、generation/revision、该写的效果receipt与源事实；消息用例独占应发/发送状态，私有HTTP adapter只做公司协议转换。各仓不跨库写，不把领域表放入utils。
+各模块只写自己负责的数据：核心负责工单与风险事实、授权、节点运行及结果投影；TR负责调度、投递、attempt和执行账本；AL负责文档、generation/revision、该次写入的效果receipt及源事实；消息用例负责应发项与发送状态。私有HTTP adapter只转换公司协议。各仓不跨库写，不把领域表放入utils。
 
-HTTP、按钮、工单、计划与订阅先经可信ContextFactory，再进入同一已登记application port，最后进入原领域service/repository。内部调用直接走typed接口，不绕本机HTTP、不重复开启operation或另扣逻辑预算；外部协议adapter负责序列化和认证。短查询/本库短写同步，外部长调用及不可丢后继持久异步，无万能`/invoke`、任意SQL/URL或脚本入口。
+HTTP、按钮、工单、计划与订阅先经可信ContextFactory，再进入同一已登记application port，最后进入原领域service/repository。内部调用直接走有类型的接口，不绕本机HTTP、不重复创建operation或另扣逻辑预算；外部协议adapter负责序列化和认证。耗时短的查询和本库写入同步完成；外部长调用及不可丢失的后继工作先持久保存，再异步执行，无万能`/invoke`、任意SQL/URL或脚本入口。
 
 候选类型只引用已有Schema，不复制第二套command/receipt：
 
@@ -52,7 +52,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 `TrustedContext`只能由已认证入口或持久受限授权构造；外部JSON中的principal只作绑定输入，不能自行授信。OperationID等格式、64位资源ID/revision/fence的十进制字符串、时间和大小沿各自Schema；有界页码/计数及明确为integer的rule_version不机械改字符串。`operation_id`是稳定效果身份，`invocation_id`是逻辑调用，`event.source+id`是已发生事实，`task_id`是TR稳定任务，`occurrence_id`是计划时隙，`delivery_id/execution_id/attempt/fence`区分每次投递与认领；request_id只用于追踪。
 
-同号重放先验当前读资格，再比较规范输入hash、主体/授权与原绑定；同号异参409，原记录不可读则not_found且不新增效果。客户端传hash不作真值。先按Schema严格解码，再校验跨字段相等、能力/版本、目标字段白名单、期限和当前权限；shape通过不证明语义或授权。仍用现有errcode映射，实施时登记符号码，不在设计里抢数字编号：invalid_input=400、未认证=401、无功能/动作资格=403、不可见对象=404、版本/同号异参=409、准入限额=429、依赖暂不可用=503；可能已经生效的网络错误必须显示unknown，不能仅靠HTTP500表示“可重做”。
+使用同一操作编号重试时，先验证当前读取资格，再比较规范输入hash、主体、授权及原绑定；同号异参409，原记录不可读则not_found且不新增效果。客户端传hash不作真值。先按Schema严格解码，再校验跨字段相等、能力/版本、目标字段白名单、期限和当前权限；数据形状检查通过，不代表业务语义或权限检查通过。仍用现有errcode映射，实施时登记符号码，不在设计里抢数字编号：invalid_input=400、未认证=401、无功能/动作资格=403、不可见对象=404、版本/同号异参=409、准入限额=429、依赖暂不可用=503；可能已经生效的网络错误必须显示unknown，不能仅靠HTTP500表示“可重做”。
 
 对外保留具名GET/POST产品端点，POST业务标识入body。候选`GET /api/v1/operations/receipt?operation_id=...`经当前资源读权；服务间固定`POST /internal/jobs/status`把task/operation放签名body。旧AL网关wildcard必须转换到同一AL应用用例；监控类型不能留下绕开行/字段授权和源事实的裸proxy写入口。已有AL wire方法由adapter转换，不借本轮设计直接改变已发布API。
 
@@ -198,9 +198,9 @@ HTTPMessagePort是公共业务端口；固定base URL、鉴权注入、公司收
 
 ## 7. 定时、多实例、流控与运行边界
 
-业务定时只由TR负责；核心现有CronScheduler只承载本库有界维护/intent轮询，不接另一套业务cron。C03先交稳定occurrence与原子推进；三种错失策略的完整episode、开始准入、恢复操作/UI归[调度恢复详设](../design/schedule-recovery-policy.md)I03。首版选定计划必须显式保存实际支持的策略；未实现选项服务端拒绝而非表单能选却无行为。重复效果对账与漏建时隙补发永远分开；同slot重投不换task/operation，未知效果不因回补重新产生。
+业务定时只由TR负责；核心现有CronScheduler只承载本库有界维护/intent轮询，不接另一套业务cron。C03先交稳定occurrence与原子推进；三种错失策略的完整episode、开始准入、恢复操作/UI归[调度恢复详设](../design/schedule-recovery-policy.md)I03。首版选定计划必须显式保存实际支持的策略；未实现选项服务端拒绝而非表单能选却无行为。重复效果对账与漏建时隙补发永远分开；同一slot重投时保留原task和operation；原效果尚不明确时，不能借回补再次执行。
 
-技术profile复用原合同候选，不另外发明互相冲突的全局值：R01 dispatcher批50、并发2、网络10秒、delivery lease120秒/心跳30秒；能力attempt默认30秒，登记能力execution lease30秒/10秒续约；AL准入最长30秒；消息发送沿现有5秒初值。C03 legacy callback执行默认120秒/30秒不是另一条必建租约：同一登记能力callback只用所选profile的一套execution claim/fence，run钉版，不能同时叠加legacy claim和能力worker claim。**投递lease、唯一执行lease和准入期限分层，不能拿intent lease当AL授权期限。** 默认重试5秒起、抖动、最高5分钟/最多20次且不超过24小时投递期限；业务命令expires_at更早时以其为准，过期held不新增效果。参数是待压测的初值，不是已实测容量/SLA。
+技术profile复用原合同候选，不另外发明互相冲突的全局值：R01 dispatcher批50、并发2、网络10秒、delivery lease120秒/心跳30秒；能力attempt默认30秒，登记能力execution lease30秒/10秒续约；AL准入最长30秒；消息发送沿现有5秒初值。C03 legacy callback执行默认120秒/30秒不是另一条必建租约：同一登记能力callback只用所选profile的一套execution claim/fence，run钉版，不能同时叠加legacy claim和能力worker claim。**投递lease、唯一执行lease和准入期限分别约束不同阶段，不能拿intent lease当AL授权期限。** 默认重试5秒起、抖动、最高5分钟/最多20次且不超过24小时投递期限；业务命令expires_at更早时以其为准，过期held不新增效果。参数是待压测的初值，不是已实测容量/SLA。
 
 同operation只记一次逻辑准入，每个真实attempt仍记provider start/并发和费用。**首版单实例/单订阅/单动作**先复用队列有界worker、每提供方限流、总deadline和积压硬门，不建设service/grant/root多维预算引擎；真实提供方限额须实际执行，限额依赖不可证明时受影响自动写held，不猜可用配额。一个provider断网不能耗尽主站请求池；claim后无令牌就持久延后并释放worker，不把排队等令牌记业务失败重试。多worker/持续grant或真实扇出启用时，再以共享Redis原子配额验其新增维度与抢占；不能把单进程semaphore宣称多实例安全。
 
@@ -250,7 +250,7 @@ RegisteredScopeField由受信属主/profile维护，是domain授权锚；普通i
 
 cursor是不透明有界分页引用，绑定类型/generation、规范查询hash、服务器scope/字段及排序基线；当前权限收紧则重验并拒绝旧cursor/要求重查，不放宽范围。源接口只给数组/无total时页面用has_more/next，不从已下载几页伪造总量；确需总量才在同一范围/谓词用count用例，不能先全量下载再过滤。metadata只返回当前可读字段和获准动作，不暴露隐藏列名/样本/全库总数。无数据返回空页；授权依赖失败503、无权拒绝，不能空成功。export启用前补同一谓词/字段、预算和撤权检查，未接时服务端拒绝，UI不显示已支持。
 
-具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这个selected profile归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
+具名TDD `TestALList_AllReadEntrypointsScoped`、`TestALList_QueryTamperAndCursorScope`、`TestALMetadata_NoHiddenFields`：两组织同类型记录、无权字段条件/排序、签名后改query、旧cursor撤权/换账号、无total、超限/源失败与直接绕代理分别核；list/count明细范围相同，隐藏列/记录不从total或metadata泄露。这一选定的运行范围归原TD/AD及F004必要读取范围，若真实业务确需新增复杂查询/导出，先核复用与净增再启用，不为补合同自动改价。
 
 计价边界：原净估TD03只明列core typed AL client及selected读写投影，不能据此认定AL本库的所有list/count/metadata授权改造已免费含完。本次对TD03/TD04及既有typed读/权限case合计扣重复用1–2，所选读取毛3–5、净增2–3已落账（TD03增1–2、TD04增1，TD05专用case不重加），含授权锚写保护与旧旁路拒绝；全版净额只读下方唯一来源，仍为工程候选。未启用的大导出/复杂筛选不计首版，真实画像改变先补估。
 
@@ -333,7 +333,7 @@ TASK-03的待实现预期补：受权人工按配置执行；临时批准合法�
 24. `TestQuota_TwoWorkersNoBurst`与`TestRecovery_BackupIncludesReceipts`：首版先验提供方限额、故障隔离、容量拒写/不ACK和恢复后无重复效果；实际启用双实例前再验共享配额，两者不混成全套HA首发门。
 25. `TestAccess_AllReadSurfacesAndAdapterCompatibility`：列表/total/详情/附件/结果/日志/导出/消息均不越范围，旧参考adapter×新core遵相同合同，未知版本显式拒绝。
 
-出口按三个层级分别留证：mock用于可控时序与提供方错误；contract核严格JSON/签名/HTTP状态/新旧组合；真实PG/Redis/HTTP/浏览器核事务、双进程、效果计数与恢复。离线Schema样例只证明其约束覆盖的形状/语义，不证明实际服务链已运行。主仓完整适用make门禁及UI六项、TR真实投递/cron、AL真实PG回归按实际代码触及执行；不能以本次文档检查替代未来实现验收。
+验收证据分三个层级记录：mock模拟可控时序与提供方错误；contract检查严格JSON、签名、HTTP状态及新旧版本组合；真实PG、Redis、HTTP和浏览器验证事务、双进程竞争、效果计数及恢复。离线Schema样例只证明其约束覆盖的形状/语义，不证明实际服务链已运行。主仓完整适用make门禁及UI六项、TR真实投递/cron、AL真实PG回归按实际代码触及执行；不能以本次文档检查替代未来实现验收。
 
 切片归属避免重价：C03拥有回调/receipt/稳定slot；R01拥有共有意图/poller/对账；CE01拥有能力登记，CE02-S/D拥有共同准入/操作关联，D12拥有原票结果与受控映射；AL事务效果及首版源/订阅消费分别归本地TD/AD子范围，D15拥有风险收件职责/矩阵，MH拥有公共HTTP与消息状态，MR仅一条真实私有公司映射。UI实现/浏览器用例归既有UI分项，RELEASE只计额外跨域回归和部署恢复，不再把同一测试/机制算一遍。完整I03/D11/多消费者源/更多channel或新能力是后续已有包或需明确增量，不由“详设”自动扩首版本地报价。
 

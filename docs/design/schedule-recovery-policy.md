@@ -66,7 +66,7 @@ TR `internal/service/cron.go` 的`ParseSpec/NextRun/Loop.FireDue`当前使用五
 
 ## 5. 恢复episode、状态与预算
 
-每个episode固定`episode_id/job_id/schedule_generation/policy_revision/cutoff/range/cursor/max_budget/admitted_count/state`、操作者/授权引用及计划hash。每计划同一积压只允许一个活动自动episode；held范围不通过换episode绕过原额度。之后的新时隙保留各自身份/水位，与旧范围分开记录。
+每个episode固定`episode_id/job_id/schedule_generation/policy_revision/cutoff/range/cursor/max_budget/admitted_count/state`、操作者/授权引用及计划hash。每计划同一积压只允许一个活动自动episode；暂停处理（held）的积压仍留在原恢复批次。尚未准入的时隙恢复时使用原批次剩余额度；已准入的时隙继续计入已用额度。同一积压不能靠新建批次重置预算。之后的新时隙保留各自身份/水位，与旧范围分开记录。
 
 状态：`planning → ready → admitting → draining → completed`，异常可进入`held_capacity/held_history/held_definition/held_authorization/held_expired`；终止自动恢复记`stopped`并保留未处理范围，**不写completed**。`completed`须有范围内每项执行终态或已明确批准的skip/coalesce回执，不能仅凭next_run已推进。
 

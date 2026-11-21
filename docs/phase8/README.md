@@ -1,5 +1,7 @@
 # Phase8 — 领域智能体与既有能力消费
 
+一个后续场景是风险负责人请领域智能体起草整改摘要。受权查询返回相关工单和证据引用，负责人检查摘要；如选中的能力会写入业务，界面展示要写到哪张票及确切内容，确认后按当前权限执行。权限已撤回或证据变更时，保留可查的拒绝结果。参考样例使用合成数据。 [漏洞整改摘要示例](../design/examples/ai-soc-reference/skills/risk-remediation-brief/README.md)
+
 > **2026-11-14交付边界**：见[基础先行](../design/foundation-release-boundaries.md)。模型API、知识检索、外部Agent与领域host按实际场景分开交；一条只读接入不应被未来MCP、定时任务和完整host一起前置。A05–A07整包依赖在相应开工前按所消费的身份/查询/ACL/持久状态子出口拆清，当前不为缩排期盲删安全依赖；保留双轨方向，不一次建设完整智能体平台。
 
 > **2026-11-13承接原则**：Agent、SOAR及报告继续消费[共同能力调用合同](../design/capability-invocation-contract.md)，共用当前授权、操作/结果与适用预算；新增入口不另写一套业务实现。继承[生态一致性](../design/ecosystem-consistency-contract.md)，按真实场景扩展，不要求现在冻结全部远期schema或改造全部存量。

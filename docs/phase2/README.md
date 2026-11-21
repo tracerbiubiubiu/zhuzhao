@@ -14,7 +14,7 @@
 8. [11-authz-architecture-review.md](11-authz-architecture-review.md)
 9. [14-phase2-plan-review-and-remediation.md](14-phase2-plan-review-and-remediation.md)
 
-当前模块接口看 [modules](../modules/README.md)，工程规则看 [standards](../standards.md)，操作看 [运维](../ops/README.md)。能力状态与迁移编号查 [项目控制台](../review/11-project-control.md)；当前业务段排期查 [Phase5](../phase5/README.md)。新批次仍需满足自身前置与门禁，不能从历史已完成推导所有未来能力已启用。
+当前模块接口看 [modules](../modules/README.md)，工程规则看 [standards](../standards.md)，操作看 [运维](../ops/README.md)。能力状态与迁移编号查 [项目控制台](../review/11-project-control.md)；下一批范围和排期查[当前规划](../planning/README.md)。新批次仍需满足自身前置与门禁，不能从历史已完成推导所有未来能力已启用。
 
 ## 原阶段说明与修订记录
 

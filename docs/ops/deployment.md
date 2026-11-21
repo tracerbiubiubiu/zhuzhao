@@ -1,7 +1,7 @@
 # 部署与联调：主应用、UI 和两上游
 
 > 命令默认从**主仓根目录**开始；下面显式 `cd deployments` 后才使用省略 `-f` 的 Compose。配置与 Dockerfile 仍在 `deployments/`，文档迁移不移动部署文件。先按 [runbook §7](runbook.md) 确认资源归属，本页命令用于已确认的目标环境。
-> 容器部署使用 `deployments/docker-compose.yaml`；宿主开发使用 dev Compose 依赖加四个宿主进程。`scripts/dev-stack.sh` 不代表完整宿主联调已就绪。上游独立部署细节由各自 `docs/ops/deployment.md` 维护。
+> 容器部署使用 `deployments/docker-compose.yaml`；宿主开发使用 dev Compose 依赖加四个宿主进程。执行 `scripts/dev-stack.sh` 后，操作者仍需分别启动并验证主仓、AL、TR 和 UI 的宿主进程，具体范围见下一节。上游独立部署细节由各自 `docs/ops/deployment.md` 维护。
 
 ## 〇、开发依赖与宿主应用（2026-11-12版本维护对齐）
 
@@ -48,6 +48,13 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 - `ui` = 前端控制台（nginx 静态 + `/api`·`/al/api` 精确反代 app；构建上下文相对本目录跨仓 `../../zhuzhao-ui`——**两仓同级 checkout**）。
 - `APP_SERVER_TRUSTED_PROXIES`（默认 `172.16.0.0/12`）：经 ui 反代后 ClientIP 还原依赖此配置，空值=限流桶全站共享。
 
+下面的结果来自当前编排和源码。启动单栈前确认 Compose 引用的两条外部网络已存在。
+
+- `config --quiet` 应退出 0 且不打印展开配置；它只检查渲染，连接、迁移和实际密钥配对仍由后续步骤验证。失败先核本节 `.env` 必填项和 Compose 报出的变量名。
+- PG/Redis 等待健康后，迁移任务应成功退出；已有库可能没有待应用迁移。迁移报错时先核其输出、实际目标库与 `schema_migrations` 的版本/dirty，不以重启 app 代替迁移处置。
+- app 启动后，上述**直连 app** 的 ready 请求应返回 HTTP 200 和 `{"status":"ok"}`。`internal/router/router.go` 的 `New` 在 DB 或 Redis Ping 失败时返回 503 和对应 `component`；请求无法建立连接则先查 app 启动输出、端口与下节单例锁，不先排查业务角色。
+- ready 正常后，单栈继续核 UI 和本栈 API，接通三栈后再测清单与任务。若 `/al` 或任务代理报错，核实际宿主或容器上游地址、共享网络和下方密钥对值表。业务响应头 `X-Request-ID` 对应访问日志的 `request_id`，可到 stdout 或实际 `log.dir` 下查。 [登录与权限排查](../modules/README.md#按业务场景串起当前实现)
+
 ## 单实例运行限制与存储公开入口（2026-11-17存量修复候选）
 
 本批单实例与存储发布画像已通过完整适用门禁及独占组合复验，见[正式修复报告](../review/reports/audit-baseline-repair-2026-11-17.md)；三功能修复已通过PR合入main，main承接见[三仓合入记录](../review/reports/audit-baseline-main-merge-2026-11-17.md)，未部署，不授予多实例/HA运行许可。
@@ -56,11 +63,11 @@ docker compose --profile storage up -d --build app pgbackup ui rustfs-mirror
 
 锁状态每500ms核验一次，每次PG查询预算1秒；连接故障/失锁被观察到后，准入包装器拒绝所有HTTP、App取消请求与后台context、硬关失锁实例的HTTP连接，并等待cron和管道停止后结束进程。该限制存在最多约1.5秒的探测窗口和调度延迟；已提交效果不能撤销，忽略context/外部调用的旧效果也不能由此栅栏。**不是HA选主或网络分区下零重叠保证**，Casbin传播、判定日志多实例运行和Settings收敛仍开放；禁止以自动故障转移方式启第二实例。DB恢复后由部署者确认旧进程已退出，再重启原受审组合。PG重启不再承诺主仓业务池自愈即可不断进程；单例会话断开按失败退出处理。
 
-存储有两套client但一组身份与region：`STORAGE_ENDPOINT=http://rustfs:9000`用于服务端CRUD；`STORAGE_PUBLIC_ENDPOINT`只用于签名PUT/GET，必须是浏览器可达的绝对HTTP(S)origin，不带路径/query/凭据，空值仅在非本模板单端点配置中兼容旧行为。签名由独立client生成，反代须保留外部Host，不能在签名后替换URL。`STORAGE_BUCKET`/`STORAGE_REGION`同时供应用与备份接线；TLS公开域名和精确UI CORS源由实际画像绑定。
+存储有两套client但一组身份与region：`STORAGE_ENDPOINT=http://rustfs:9000`用于服务端CRUD；`STORAGE_PUBLIC_ENDPOINT`只用于签名PUT/GET，必须是浏览器可达的绝对HTTP(S)origin，不带路径/query/凭据，空值仅在非本模板单端点配置中兼容旧行为。签名由独立client生成，反代须保留外部Host，不能在签名后替换URL。`STORAGE_BUCKET`/`STORAGE_REGION`同时供应用与备份接线；部署者按目标环境配置TLS公开域名，并在 RustFS 的 S3 端口配置 `RUSTFS_CORS_ALLOWED_ORIGINS`，填入 UI 实际访问地址的源（协议、域名和端口）。
 
 主S3默认仅发布`127.0.0.1:${RUSTFS_API_PORT:-9000}`，console9001不发布；实际外部浏览器通过受审TLS反代/网络访问，不直接把Docker服务名发给浏览器。仅本机隔离演练可用回环HTTP公开地址并显式`STORAGE_FILE_COOKIE_SECURE=false`；真实HTTPS保留true。除缺失变量拒渲染外，release应用还拒空/仓库公开的PG、Redis和storage秘密。Compose输出、inspect和日志可能含env，核验只记录变量名/是否覆盖/结果，不复制真实值。
 
-完成应同时证明：启用storage的release从迁移到ready、头像/附件presign→PUT→confirm→代理读取；错Host签名拒绝；第二实例HTTP/后台零启动；断锁后请求取消、后台停止与重启恢复。备份/代表恢复沿[备份指南](backup.md)执行，健康探针或本节存在均不等于这些出口已经通过。
+操作者验收这套部署时，需分别记录以下结果：启用storage的release从迁移到ready、头像/附件presign→PUT→confirm→代理读取；错Host签名拒绝；第二实例HTTP/后台零启动；断锁后请求取消、后台停止与重启恢复。备份/代表恢复沿[备份指南](backup.md)执行；记录各项验证结果。全部通过后，才可确认这套部署验收通过；健康探针只确认自己的检查项。
 
 SIGTERM先停接纳和cron生产者，已接纳HTTP在30秒预算内继续，随后排空判定日志和事件订阅者。主仓 Compose 为整个停止链保留 60 秒宽限，Taskrunner 独立编排保留 90 秒，主仓联调编排保留 75 秒，分别容纳顺序的 HTTP 和 worker 排空。若调整应用排空参数，部署端宽限须随实际预算同步。检测到失锁时，即使正常排空已经开始，也取消最终刷盘、订阅者及脱离请求的尽力写入。已进Redis待处理或`processing`列表的判定行留给接管实例。Redis在一次原子操作内核对批次认领再裁剪，已被接管实例重新认领的批次不会被旧确认裁掉。PG已提交但未确认的行可能重放，未入Redis的行和内存事件仍可丢失。升级、回滚或受控接管均先确认旧进程退出，保留原Redis和PG。旧版本的直接裁剪不受新认领协议约束。
 
