@@ -103,6 +103,7 @@ func TestUpdateFieldFileAndRichtextBindBeforeCommit(t *testing.T) {
 	require.NoError(t, err)
 	_, err = env.svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{{FieldKey: "docs", FieldLabel: "docs", FieldType: "file"}, {FieldKey: "body", FieldLabel: "body", FieldType: "richtext"}}})
 	require.NoError(t, err)
+	publishD01(t, env.svc, code, env.u1)
 	req := env.createReq(nil)
 	req.TypeCode = code
 	tk, err := env.svc.Create(ctx, req, env.u1)
@@ -134,6 +135,7 @@ func deliveryFileType(t *testing.T, env *b53Env) string {
 	require.NoError(t, err)
 	_, err = env.svc.ReplaceTicketTypeFields(context.Background(), code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{{FieldKey: "docs", FieldLabel: "docs", FieldType: "file"}, {FieldKey: "body", FieldLabel: "body", FieldType: "richtext"}}})
 	require.NoError(t, err)
+	publishD01(t, env.svc, code, env.u1)
 	return code
 }
 func deliveryFileTicket(t *testing.T, env *b53Env, code string) *model.Ticket {
@@ -281,6 +283,7 @@ func TestServiceEventSnapshotsHaveRealBuiltinValuesAndNewStatus(t *testing.T) {
 	code := "snapshot_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	publishD01(t, svc, code, creator)
 	reg := domainevent.NewHookRegistry(nil)
 	events := make(chan domainevent.DomainEvent, 8)
 	reg.Subscribe(domainevent.BizTicket, "snapshot.capture", domainevent.HookFunc(func(_ context.Context, ev domainevent.DomainEvent) { events <- ev }))

@@ -50,6 +50,7 @@ func TestB33_Actions(t *testing.T) {
 		meta := `{"assigned>in_progress":{"post_actions":[{"name":"cc","params":{"user_ids":[` + itoa64(aid) + `]}}]}}`
 		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
 
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "cc 动作单", Priority: 3, OrgID: oid,
@@ -70,6 +71,7 @@ func TestB33_Actions(t *testing.T) {
 		meta := `{"in_progress>pending_verify":{"post_actions":[{"name":"reassign","params":{"user_id":` + itoa64(aid) + `}}]}}`
 		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
 
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "reassign 单", Priority: 3, OrgID: oid,
@@ -92,6 +94,7 @@ func TestB33_Actions(t *testing.T) {
 		meta := `{"in_progress>pending_verify":{"post_actions":[{"name":"reassign","params":{"user_id":` + itoa64(bid) + `}}]}}`
 		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
 
 		// 创建者=bid（无角色——Create 走 org 管理豁免，但无 scope 锚点即无 assign 面）
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
@@ -111,10 +114,13 @@ func TestB33_Actions(t *testing.T) {
 	})
 
 	t.Run("未注册动作跳过 + 字符串形态 + 失败不回滚转换", func(t *testing.T) {
-		// Historical rows can contain actions saved before registry validation.
-		meta := `{"pending_verify>closed":{"post_actions":["spawn_task","no_such_action"]}}`
-		_, err := testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta=$1::jsonb WHERE code=$2`, meta, code)
+		// The published action is valid when registered and unavailable at execution.
+		meta := `{"pending_verify>closed":{"post_actions":["notify"]}}`
+		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
+		svc.SetActionRegistry(NewActionRegistry())
+		t.Cleanup(func() { svc.SetActionRegistry(reg) })
 
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "跳过单", Priority: 3, OrgID: oid,
@@ -127,7 +133,7 @@ func TestB33_Actions(t *testing.T) {
 		require.NoError(t, err)
 		// 未注册动作失败不回滚转换——closed 生效
 		_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "closed"}, bid)
-		require.NoError(t, err, "spawn_task（未装配通道）与未知动作均不阻断转换本身")
+		require.NoError(t, err, "当前未装配的动作不阻断转换本身")
 		got, err := svc.Get(ctx, tk.ID, aid)
 		require.NoError(t, err)
 		assert.Equal(t, "closed", got.Status, "动作失败/跳过不回滚转换")
@@ -195,6 +201,7 @@ func TestB33_NotifyActionE2E(t *testing.T) {
 		meta := `{"assigned>in_progress":{"post_actions":[{"name":"notify","params":` + params + `}]}}`
 		_, err := svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
 	}
 	setMeta(`{"recipients":[` + itoa64(bid) + `]}`)
 

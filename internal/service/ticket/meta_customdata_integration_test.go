@@ -342,6 +342,7 @@ func TestUpdate_CustomDataPatch(t *testing.T) {
 				{FieldKey: "body", FieldLabel: "正文", FieldType: "richtext", SortOrder: 2},
 			}})
 		require.NoError(t, rerr)
+		publishD01(t, svc, code, aid)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "g2", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(`{"srv":"x","body":"# v1"}`)}, aid)
 		require.NoError(t, err)

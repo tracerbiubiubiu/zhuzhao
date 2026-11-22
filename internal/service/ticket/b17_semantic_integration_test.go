@@ -220,6 +220,7 @@ func TestB17_FormulaDrift(t *testing.T) {
 					FieldMeta: json.RawMessage(`{"formula":"qty * 2"}`)},
 			}})
 		require.NoError(t, err, "保存期不拦（预判不可实施）——漂移在提交期拦")
+		publishD01(t, svc, code, aid)
 		_, err = svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "漂移单", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(`{"qty":3}`),

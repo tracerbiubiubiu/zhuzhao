@@ -132,9 +132,10 @@ func TestB2_WriteSeparation(t *testing.T) {
 	// 创建人 Assign 两步不可达（这正是原「创建即分派」存在的唯一原因）
 	var tk2ID int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path)
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, definition_version)
 		VALUES ('incident', '处理人关闭正例', 'x', 3, 'open', $1, $2,
-			$3, (SELECT path FROM organizations WHERE id = $3))
+			$3, (SELECT path FROM organizations WHERE id = $3),
+			(SELECT current_published_version FROM ticket_types WHERE code='incident'))
 		RETURNING id`, env.u1, env.colleague, env.d1).Scan(&tk2ID))
 	require.NoError(t, env.svc.Close(ctx, &model.CloseTicketRequest{ID: tk2ID}, env.colleague))
 }
@@ -295,6 +296,7 @@ func TestB2_AssignStateMachineAndUpdateGuard(t *testing.T) {
 		INSERT INTO ticket_types (code, name, transitions) VALUES ($1, '状态机测试', '{"open":["closed"]}'::jsonb)
 		ON CONFLICT (code) DO NOTHING`, smType)
 	require.NoError(t, err)
+	publishD01(t, env.svc, smType, env.u1)
 	tk := newTicketWithType(t, env.svc, env.u1, env.d1, smType, "状态机工单")
 
 	env.roles[env.u1] = []string{"admin"} // assign 动作仅 admin bypass
@@ -303,10 +305,14 @@ func TestB2_AssignStateMachineAndUpdateGuard(t *testing.T) {
 	}, env.u1)
 	requireErrCode(t, err, errcode.ErrTicketInvalidTransition.Code)
 
-	// 放开 open→assigned 后同请求成功（证明拦截来自状态机而非其它路径）
-	_, err = testPool.Exec(ctx,
-		`UPDATE ticket_types SET transitions = '{"open":["assigned"]}'::jsonb WHERE code = $1`, smType)
+	// 另一版放开 open→assigned。旧单仍拒绝，新单按新版分派。
+	_, err = env.svc.UpdateTicketType(ctx, smType, &model.UpdateTicketTypeRequest{Transitions: []byte(`{"open":["assigned"]}`)})
 	require.NoError(t, err)
+	publishD01(t, env.svc, smType, env.u1)
+	requireErrCode(t, env.svc.Assign(ctx, &model.AssignTicketRequest{
+		ID: tk.ID, AssignedTo: &env.colleague,
+	}, env.u1), errcode.ErrTicketInvalidTransition.Code)
+	tk = newTicketWithType(t, env.svc, env.u1, env.d1, smType, "新版状态机工单")
 	require.NoError(t, env.svc.Assign(ctx, &model.AssignTicketRequest{
 		ID: tk.ID, AssignedTo: &env.colleague,
 	}, env.u1))

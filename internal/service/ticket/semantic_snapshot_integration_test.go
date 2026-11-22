@@ -25,6 +25,7 @@ func TestAuditValidatorFreshness(t *testing.T) {
 			meta := `{"open>closed":{"validator":"priority == 1"},"open>assigned":{"validator":"priority == 1"}}`
 			_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 			require.NoError(t, err)
+			publishD01(t, svc, code, aid)
 			tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 1, OrgID: oid}, aid)
 			require.NoError(t, err)
 			tx, err := testPool.Begin(ctx)
@@ -75,6 +76,7 @@ func TestAuditConditionAfterReassignment(t *testing.T) {
 	meta := `{"assigned>in_progress":{"roles":["assignee"]}}`
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 	require.NoError(t, err)
+	publishD01(t, svc, code, aid)
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 3, OrgID: oid}, aid)
 	require.NoError(t, err)
 	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &bid}, aid))
@@ -105,7 +107,7 @@ func TestAuditConditionAfterReassignment(t *testing.T) {
 	require.Equal(t, "assigned", state)
 }
 
-func TestAuditTransitionConfigFreshness(t *testing.T) {
+func TestAuditTransitionUsesPinnedConfigWhileDraftIsLocked(t *testing.T) {
 	svc, aid, _, _, roles := setupTicket2a(t)
 	roles[aid] = []string{"admin"}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -114,32 +116,37 @@ func TestAuditTransitionConfigFreshness(t *testing.T) {
 	code := "cfgfence_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	publishD01(t, svc, code, aid)
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 3, OrgID: oid}, aid)
 	require.NoError(t, err)
 	tx, err := testPool.Begin(ctx)
 	require.NoError(t, err)
 	defer tx.Rollback(context.Background())
-	_, err = tx.Exec(ctx, `SELECT code FROM ticket_types WHERE code=$1 FOR UPDATE`, code)
+	// A draft edit takes NO KEY UPDATE. This blocks the former application's
+	// FOR SHARE fence and permits PostgreSQL's foreign-key KEY SHARE check.
+	_, err = tx.Exec(ctx, `SELECT code FROM ticket_types WHERE code=$1 FOR NO KEY UPDATE`, code)
 	require.NoError(t, err)
 	done := make(chan error, 1)
 	go func() {
 		_, e := svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "closed"}, aid)
 		done <- e
 	}()
-	require.Eventually(t, func() bool {
-		var n int
-		e := testPool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT version FROM ticket_types%'`).Scan(&n)
-		return e == nil && n > 0
-	}, 3*time.Second, 5*time.Millisecond)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal("transition waited on the unrelated draft row")
+	}
 	_, err = tx.Exec(ctx, `UPDATE ticket_types SET version=version+1,transition_meta='{"open>closed":{"validator":"priority == 1"}}' WHERE code=$1`, code)
 	require.NoError(t, err)
 	require.NoError(t, tx.Commit(ctx))
-	require.ErrorIs(t, <-done, errcode.ErrConcurrentModification)
 	got, err := svc.Get(ctx, tk.ID, aid)
 	require.NoError(t, err)
-	require.Equal(t, "open", got.Status)
-	// A fresh request now evaluates the new validator instead of bypassing it.
-	_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: tk.ID, To: "closed"}, aid)
+	require.Equal(t, "closed", got.Status)
+	publishD01(t, svc, code, aid)
+	b, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 3, OrgID: oid}, aid)
+	require.NoError(t, err)
+	_, err = svc.Transition(ctx, &model.TransitionTicketRequest{ID: b.ID, To: "closed"}, aid)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "前置条件")
 }

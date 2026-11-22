@@ -27,6 +27,7 @@ func inboxBusinessFixture(t *testing.T) (*Service, *model.Ticket, int64, int64, 
 		require.NoError(t, err)
 	})
 	oid := childOrgID(t, "inbox_business")
+	publishD01(t, svc, code, creator)
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "public change", Priority: 2, OrgID: oid}, creator)
 	require.NoError(t, err)
 	require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &assignee}, creator))

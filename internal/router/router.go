@@ -475,6 +475,7 @@ func New(deps Deps) *gin.Engine {
 					// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
 					tickets.POST("/transition", deps.TicketHandler.Transition)
 					tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
+					tickets.GET("/:id/actions", deps.TicketHandler.AvailableActions)
 					tickets.POST("/assign", deps.TicketHandler.Assign)
 					tickets.POST("/delete", deps.TicketHandler.Delete)
 					tickets.GET("/:id/comments", deps.TicketHandler.ListComments)
@@ -489,8 +490,11 @@ func New(deps Deps) *gin.Engine {
 				// 工单元数据（类型/模板）
 				ticketMeta := biz.Group("")
 				{
-					ticketMeta.GET("/ticket-types", deps.TicketHandler.ListTicketTypes)
-					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.ListTicketTypeFields)
+					ticketMeta.GET("/ticket-types", deps.TicketHandler.ListTicketConfigurationTypes)
+					ticketMeta.GET("/ticket-types/:code/fields", deps.TicketHandler.GetTicketDefinitionDraftFields)
+					ticketMeta.GET("/ticket-types/:code/published", deps.TicketHandler.GetPublishedTicketForm)
+					ticketMeta.POST("/ticket-types/definitions/plan", deps.TicketHandler.PlanTicketDefinition)
+					ticketMeta.POST("/ticket-types/definitions/publish", deps.TicketHandler.PublishTicketDefinition)
 					ticketMeta.GET("/ticket-templates", deps.TicketHandler.ListTicketTemplates)
 					ticketMeta.GET("/ticket-templates/:code", deps.TicketHandler.GetTicketTemplate)
 					// IW3/BK-18：类型/字段/模板管理（permission = ticket:type:manage，

@@ -1,5 +1,5 @@
 // S10 B10-4 节点超时扫描器（10 号 §3.4/附录 A.5）：骑 CronScheduler（D18 维护型
-// 口径），逐类型解析 transition_meta 的 state 级 timeout_minutes → 候选查询
+// 口径），按工单绑定的定义版本解析 state 级 timeout_minutes → 候选查询
 // （活跃单部分索引）→ 按 escalation 段催办水位判定 → Dispatch ticket.timeout
 // （通知复用 S6 规则面——扫描器只发事件零新通知代码）。
 //
@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // escalationDefaults 无 escalation 段时的缺省：单发一次（A.5 原始语义）。
@@ -67,31 +68,30 @@ func (s *TimeoutScanner) Observe() bool { return s.observe }
 
 // Handle 扫描一跑（CronScheduler tick 调用；错误上抛由调度器记失败+告警链）。
 func (s *TimeoutScanner) Handle(ctx context.Context, _ json.RawMessage) error {
-	types, err := s.listTypesWithMeta(ctx)
+	rules, err := repository.NewTicketRepo(s.db).ListBoundTicketReminderRules(ctx)
 	if err != nil {
 		return err
 	}
 	scanned := 0
-	for _, tc := range types {
+	for _, rule := range rules {
 		metas := map[string]stateMeta{}
-		if err := json.Unmarshal(tc.meta, &metas); err != nil {
-			// 单类型坏数据不拖垮全局（UpdateTicketType 有校验，此处防手工改库）
-			s.logger.Warn("timeout_scan: bad transition_meta", "type", tc.code, "err", err)
+		if err := json.Unmarshal(rule.TransitionMeta, &metas); err != nil {
+			s.logger.Warn("timeout_scan: bad transition_meta", "type", rule.TypeCode, "definition_version", rule.DefinitionVersion, "err", err)
 			continue
 		}
 		for state, m := range metas {
 			if m.TimeoutMinutes != nil && *m.TimeoutMinutes > 0 {
-				n, err := s.scanState(ctx, tc.code, state, *m.TimeoutMinutes, m.Escalation)
+				n, err := s.scanState(ctx, rule, state, *m.TimeoutMinutes, m.Escalation)
 				if err != nil {
-					return fmt.Errorf("scan %s/%s: %w", tc.code, state, err)
+					return fmt.Errorf("scan %s/%s: %w", rule.TypeCode, state, err)
 				}
 				scanned += n
 			}
 			// SLA 层 0.5：deadline 到期扫描（due 刻=进入状态+sla_due_hours）
 			if m.SLADueHours != nil && *m.SLADueHours > 0 {
-				n, err := s.scanDeadline(ctx, tc.code, state, *m.SLADueHours)
+				n, err := s.scanDeadline(ctx, rule, state)
 				if err != nil {
-					return fmt.Errorf("deadline %s/%s: %w", tc.code, state, err)
+					return fmt.Errorf("deadline %s/%s: %w", rule.TypeCode, state, err)
 				}
 				scanned += n
 			}
@@ -103,24 +103,6 @@ func (s *TimeoutScanner) Handle(ctx context.Context, _ json.RawMessage) error {
 		s.logger.Info("timeout_scan: dispatched", "events", scanned)
 	}
 	return nil
-}
-
-type typeMetaRow struct {
-	code string
-	meta json.RawMessage
-}
-
-func (s *TimeoutScanner) listTypesWithMeta(ctx context.Context) ([]typeMetaRow, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT code, transition_meta FROM ticket_types WHERE is_active AND transition_meta IS NOT NULL AND transition_meta <> '{}'::jsonb`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (typeMetaRow, error) {
-		var t typeMetaRow
-		return t, r.Scan(&t.code, &t.meta)
-	})
 }
 
 type candidateRow struct {
@@ -135,7 +117,7 @@ type candidateRow struct {
 	overdueMinutes         float64
 }
 
-func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, timeoutMinutes int, esc *stateMetaEscalation) (int, error) {
+func (s *TimeoutScanner) scanState(ctx context.Context, definition repository.BoundTicketReminderRules, state string, timeoutMinutes int, esc *stateMetaEscalation) (int, error) {
 	notify, interval, maxReminders := escalationPlan(esc)
 	if maxReminders <= 0 {
 		return 0, nil
@@ -152,7 +134,7 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.type_code, t.priority, t.created_by, t.assigned_to, t.escalation_supervisor_id,
 		       EXTRACT(EPOCH FROM (NOW() - t.status_changed_at)) / 60.0
 		FROM tickets t
-		WHERE t.type_code = $1 AND t.status = $2
+		WHERE t.type_code = $1 AND t.definition_version = $8 AND t.status = $2
 		  AND (($6 AND t.assigned_to IS NOT NULL) OR ($7 AND t.escalation_supervisor_id IS NOT NULL))
 		  AND t.status_changed_at < NOW() - make_interval(mins => $3)
 		  AND NOT EXISTS (
@@ -160,7 +142,7 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 		        WHERE tr.ticket_id = t.id AND tr.state = $2
 		          AND (tr.reminder_count >= $4
 		               OR tr.last_reminder_at > NOW() - make_interval(mins => $5)))
-		ORDER BY t.id LIMIT 500`, typeCode, state, timeoutMinutes, maxReminders, interval, wantAssignee, wantSupervisor)
+		ORDER BY t.id LIMIT 500`, definition.TypeCode, state, timeoutMinutes, maxReminders, interval, wantAssignee, wantSupervisor, definition.DefinitionVersion)
 	if err != nil {
 		return 0, err
 	}
@@ -185,7 +167,7 @@ func (s *TimeoutScanner) scanState(ctx context.Context, typeCode, state string, 
 		if s.observe {
 			sent++
 			s.logger.Warn("timeout_scan: overdue candidate (observe, not sent)",
-				"ticket", c.id, "type", typeCode, "state", state,
+				"ticket", c.id, "type", definition.TypeCode, "state", state,
 				"overdue_minutes", int64(c.overdueMinutes))
 			continue
 		}
@@ -340,12 +322,12 @@ func joinIDs(ids []string) string {
 // scanDeadline deadline 到期扫描（SLA 层 0.5——模型 A 截止时间戳语义）：
 // 命中 emit ticket.deadline（收件人=assignee∪人工指定上级，与 timeout 同构——
 // message_log 查重防重发）。due 写入点在 Transition commit 后按 to 态 sla_due_hours 计算。
-func (s *TimeoutScanner) scanDeadline(ctx context.Context, typeCode, state string, dueHours int) (int, error) {
+func (s *TimeoutScanner) scanDeadline(ctx context.Context, definition repository.BoundTicketReminderRules, state string) (int, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT id, COALESCE(human_key, ''), title, type_code, priority, created_by, assigned_to, escalation_supervisor_id
 		FROM tickets
-		WHERE type_code = $1 AND status = $2
-		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, typeCode, state)
+		WHERE type_code = $1 AND definition_version = $3 AND status = $2
+		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, definition.TypeCode, state, definition.DefinitionVersion)
 	if err != nil {
 		return 0, err
 	}

@@ -176,9 +176,15 @@ PG 行锁/死锁处理沿[PostgreSQL 18 官方锁说明](https://www.postgresql.
 
 ### 3.3 发布、迁版与配置晋级
 
+**第 4–5 项隔离候选**使用 `POST /ticket-types/definitions/plan` 审看草稿与引用，使用 `POST /ticket-types/definitions/publish` 发布。发布所需菜单权限为 `ticket:type:publish`。提交时核对计划、草稿修订、已发布指针和引用，成功后写入快照、指针和原操作回执。普通建单页面从 `GET /ticket-types/:code/published` 读取已发布表单，并提交展示的定义版本及摘要。后端同事务重核当前已发布指针、模板和 IAM，草稿变化不会影响按已发布版本建单。
+
+迁移 `000084_ticket_definitions` 为可发布的既有类型保存切换基线，使升级后仍可以建新单；早于切换的工单保留空版本引用。可信旧单映射由 `bind-ticket-definitions` 逐工单核对所选已发布规则、工单原始事实和依据摘要。补绑只添加规则引用与回执，保留业务修订、状态、时间、期限和历史；缺依据或缺可用规则的旧票可按原有查看权限阅读。
+
+当前切片的 `GET /tickets/:id/actions` 提供按实例绑定规则可用的动作和字段。版本化转换用 `Idempotency-Key`、预期修订、定义版本和本次证据补丁提交。提交事务写证据、附件绑定、状态与时间、SLA、既有状态事件和原结果回执。按单通用按钮能力、字段级事件差异、驻留区间及跨域可靠后继由相应后续工作包交付。 [隔离验证记录](../review/reports/phase6-b2-stage5-acceptance-2026-11-22.md)
+
 deploy 在类型行锁内校验 plan、父草稿revision、current指针与引用语义revision；复制整份图/字段快照，写新定义/指针/成功历史同事务。相同当前内容无变化返回 changed=false；重复操作号返回原receipt。保存草稿不发布，管理 UI 必须区分“已保存草稿”和“已发布”；旧配置写客户端须升级或受控拒写，不偷偷自动 deploy。
 
-工单默认继续使用创建时关联的已发布规则。若找不到对应规则，允许有权限的用户查看可确认的信息，界面应提示“只能查看，原流程规则缺失”。此时关闭办理动作，修改请求返回 503（`definition_resolution='degraded'`）。确需把工单改用另一版规则时，首批仅支持两版有同名状态且没有删除状态的情况。每张先预览，再核当前记录是否仍与预览一致后执行。保留进入当前状态的时间和原期限，已经发生的动作不再执行。单张遇到冲突可单独处理。即使状态同名，也要核字段和资格是否兼容。删除状态后的完整映射由 Phase 7 的 D18 承接。 [设计参考](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)
+工单默认继续使用创建时关联的已发布规则。若找不到对应规则，允许有权限的用户查看可确认的信息，界面应提示“只能查看，原流程规则缺失”。此时关闭办理动作，修改请求返回 503（`definition_resolution='degraded'`）。已绑定工单改用另一版规则仍在受控迁版设计范围。首批拟支持两版有同名状态且没有删除状态的情况。每张先预览，再核当前记录是否仍与预览一致后执行。保留进入当前状态的时间和原期限，已经发生的动作不再执行。单张遇到冲突可单独处理。即使状态同名，也要核字段和资格是否兼容。删除状态后的完整映射由 Phase 7 的 D18 承接。 [设计参考](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)
 
 例如发布 B 版时新增必填项“复测环境”，已经用 A 版创建的 T-201 继续按 A 办，发布 B 后按 B 创建的 T-305 才要填这一项。工单在 `definition_ref.definition_version` 保存规则版本，每次保存都在同一事务内重新检查当前操作权限。升级前已有的 T-100 要根据可信旧配置补上版本。无法核实的历史结论标明来源未知。 [试用与两项隔离测试](../planning/phase6-b2-kickoff-plan.md#旧票范围与定向验收)
 

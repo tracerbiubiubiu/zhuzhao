@@ -24,19 +24,21 @@ func TestFieldReferenceRecovery_AfterAttachmentDeletion(t *testing.T) {
 			env := newB53Env(t)
 			ctx := context.Background()
 			code := deliveryFileType(t, env)
-			tk := deliveryFileTicket(t, env, code)
-			key := env.confirmedCreate(t, env.u1, "attachment_create")
-			raw, err := json.Marshal(map[string]any{"docs": []string{key}, "body": "unchanged"})
-			require.NoError(t, err)
-			_, err = env.svc.Update(ctx, &model.UpdateTicketRequest{ID: tk.ID, CustomData: raw}, env.u1)
-			require.NoError(t, err)
 			if required {
-				_, err = env.svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{
+				_, err := env.svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Code: code, Fields: []model.TicketTypeFieldInput{
 					{FieldKey: "docs", FieldLabel: "docs", FieldType: "file", Required: true},
 					{FieldKey: "body", FieldLabel: "body", FieldType: "richtext"},
 				}})
 				require.NoError(t, err)
+				publishD01(t, env.svc, code, env.u1)
 			}
+			key := env.confirmedCreate(t, env.u1, "attachment_create")
+			raw := c02Data(t, map[string]any{"docs": []string{key}, "body": "unchanged"})
+			req := env.createReq(nil)
+			req.TypeCode = code
+			req.CustomData = raw
+			tk, err := env.svc.Create(ctx, req, env.u1)
+			require.NoError(t, err)
 			// Synthetic pre-repair history: product DELETE must never create this
 			// broken reference. Load the old state directly in this isolated DB.
 			_, err = testPool.Exec(ctx, `DELETE FROM ticket_attachments WHERE ticket_id=$1`, tk.ID)

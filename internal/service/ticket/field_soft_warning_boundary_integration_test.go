@@ -49,6 +49,7 @@ func g14Type(t *testing.T, svc *Service, kind string, options json.RawMessage) s
 
 func g14InFlight(t *testing.T, svc *Service, actor int64, code, kind string) {
 	t.Helper()
+	publishD01(t, svc, code, actor)
 	ctx := context.Background()
 	value := any("a")
 	if kind == "multi_select" {
@@ -155,7 +156,7 @@ func TestG14_UnassessableOptionsRemainAdvisory(t *testing.T) {
 		// The write must still lock the referenced parent. Only reading the
 		// option items for the advisory impact estimate is denied in this fixture.
 		"GRANT UPDATE (code) ON dict_types TO " + pgx.Identifier{role}.Sanitize(),
-		"GRANT SELECT,INSERT,UPDATE,DELETE ON ticket_types,ticket_type_fields TO " + pgx.Identifier{role}.Sanitize(),
+		"GRANT SELECT,INSERT,UPDATE,DELETE ON ticket_types,ticket_type_fields,ticket_field_identities TO " + pgx.Identifier{role}.Sanitize(),
 		"GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO " + pgx.Identifier{role}.Sanitize(),
 	} {
 		_, err = testPool.Exec(context.Background(), sql)

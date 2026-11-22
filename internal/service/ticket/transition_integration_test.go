@@ -48,6 +48,7 @@ func TestB31_Transition(t *testing.T) {
 	}`
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(meta)})
 	require.NoError(t, err)
+	publishD01(t, svc, code, aid)
 
 	newTicket := func(title string, assignTo *int64) *model.Ticket {
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{

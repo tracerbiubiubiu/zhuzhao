@@ -884,6 +884,7 @@ func (h *TicketHandler) ListTags(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		model.TransitionTicketRequest	true	"转换请求"
+//	@Param			Idempotency-Key	header	string	false	"版本化转换原操作号"
 //	@Success		200		{object}	response.Response
 //	@Router			/api/v1/tickets/transition [post]
 func (h *TicketHandler) Transition(c *gin.Context) {
@@ -892,6 +893,7 @@ func (h *TicketHandler) Transition(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
+	req.IdempotencyKey = c.GetHeader("Idempotency-Key")
 	ticket, err := h.ticketService.Transition(c.Request.Context(), &req, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)

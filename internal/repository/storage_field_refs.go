@@ -40,22 +40,22 @@ func (r *StorageRepo) BindFieldReferences(ctx context.Context, exec rowExec, buc
 
 	newKeys := make([]string, 0, len(keys))
 	for _, key := range keys {
-		var id, creator int64
+		var creator int64
 		var purpose, status, ownerKind, ownerID string
-		var sameTicket, alreadyBound bool
+		var sameTicket, foreignBound bool
 		// New statement after object locks: relation reads use the current snapshot.
-		err := exec.QueryRow(ctx, `SELECT id,purpose,status,created_by,COALESCE(owner_kind,''),COALESCE(owner_id,''),
+		err := exec.QueryRow(ctx, `SELECT purpose,status,created_by,COALESCE(owner_kind,''),COALESCE(owner_id,''),
    EXISTS(SELECT 1 FROM ticket_attachments WHERE file_object_id=fo.id AND ticket_id=$3),
-   EXISTS(SELECT 1 FROM ticket_attachments WHERE file_object_id=fo.id)
+   EXISTS(SELECT 1 FROM ticket_attachments WHERE file_object_id=fo.id AND ticket_id<>$3)
    FROM file_objects fo WHERE bucket=$1 AND object_key=$2`, bucket, key, ticketID).
-			Scan(&id, &purpose, &status, &creator, &ownerKind, &ownerID, &sameTicket, &alreadyBound)
+			Scan(&purpose, &status, &creator, &ownerKind, &ownerID, &sameTicket, &foreignBound)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrStorageObjectNotFound
 		}
 		if err != nil {
 			return err
 		}
-		if status != "confirmed" {
+		if status != "confirmed" || foreignBound {
 			return ErrStorageObjectNotFound
 		}
 		expected := purposes[key]
@@ -71,7 +71,7 @@ func (r *StorageRepo) BindFieldReferences(ctx context.Context, exec rowExec, buc
 		if expected == "ticket_richtext" {
 			dangling = "richtext_create"
 		}
-		if purpose != dangling || creator != userID || ownerKind != "" || ownerID != "" || alreadyBound {
+		if purpose != dangling || creator != userID || ownerKind != "" || ownerID != "" || sameTicket {
 			return ErrStorageObjectNotFound
 		}
 		newKeys = append(newKeys, key)

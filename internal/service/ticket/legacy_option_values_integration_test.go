@@ -62,6 +62,7 @@ func TestLegacyOptionValues_OnlyNewSelectionsBlocked(t *testing.T) {
 
 	newTicket := func(t *testing.T, code, data string) int64 {
 		t.Helper()
+		publishD01(t, svc, code, actor)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "存量选项值", OrgID: org,
 			CustomData: json.RawMessage(data)}, actor)
 		require.NoError(t, err)
@@ -183,6 +184,10 @@ func TestLegacyOptionValues_OnlyNewSelectionsBlocked(t *testing.T) {
 			{FieldKey: "choice", FieldLabel: "选择", FieldType: "select", FieldOptions: json.RawMessage(`["new"]`)},
 		}})
 		require.NoError(t, err)
+		require.NoError(t, hyPatch(ctx, svc, id, actor, `{"choice":"legacy"}`), "A 版未定义该字段，继续按原规则保存")
+		id = newTicket(t, code, `{"choice":"new"}`)
+		_, err = testPool.Exec(ctx, `UPDATE tickets SET custom_data='{"choice":["legacy"]}' WHERE id=$1`, id)
+		require.NoError(t, err)
 		requireErrCode(t, hyPatch(ctx, svc, id, actor, `{"choice":"legacy"}`), errcode.ErrInvalidParams.Code)
 		require.NoError(t, hyPatch(ctx, svc, id, actor, `{"choice":"new"}`))
 	})
@@ -190,6 +195,7 @@ func TestLegacyOptionValues_OnlyNewSelectionsBlocked(t *testing.T) {
 	t.Run("建单仍按启用项全量校验（新单无存量值）", func(t *testing.T) {
 		ref := g14Dict(t, "a", "b")
 		code := hyType(t, svc, "select", ref, "")
+		publishD01(t, svc, code, actor)
 		hyDisable(t, ref, "a")
 		_, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "新单", OrgID: org,
 			CustomData: json.RawMessage(`{"choice":"a"}`)}, actor)

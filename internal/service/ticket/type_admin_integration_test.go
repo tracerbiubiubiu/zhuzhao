@@ -85,6 +85,8 @@ func TestBK18_TypeCRUDAndValidation(t *testing.T) {
 	assert.Len(t, fields, 2)
 	assert.Equal(t, "^BK[0-9]{4}$", fields[1].ValidateRegex)
 
+	// D01: saving configuration is a draft; publish explicitly before create.
+	publishD01(t, svc, code, admin)
 	// ⑤ 创建校验（G2）：缺必填 / 选项越界 / 正则不匹配 / 合法
 	_, err = svc.Create(ctx, &model.CreateTicketRequest{
 		TypeCode: code, Title: "缺必填", OrgID: envOrgID(), CustomData: rawJSON(`{}`),

@@ -26,6 +26,7 @@ func TestB32_Dispatch(t *testing.T) {
 	code := "b32_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "分派批"})
 	require.NoError(t, err)
+	publishD01(t, svc, code, aid)
 
 	// bid/aid 加入 oid 组织（决议③ 校验需要——priority 子测分派 aid）
 	for _, uid := range []int64{bid, aid} {

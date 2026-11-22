@@ -30,6 +30,7 @@ func TestBK11_UpdateHammer(t *testing.T) {
 	code := "hmr_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "锤击无字段"})
 	require.NoError(t, err)
+	publishD01(t, svc, code, aid)
 	oid := childOrgID(t, "hmr")
 
 	const N, rounds = 6, 10

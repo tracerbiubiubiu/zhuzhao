@@ -34,6 +34,7 @@ func TestFieldImpact_Analysis(t *testing.T) {
 				{FieldKey: "note", FieldLabel: "备注", FieldType: "textarea", SortOrder: 2},
 			}})
 		require.NoError(t, err)
+		publishD01(t, svc, code, aid)
 
 		for _, cd := range []string{
 			`{"host_ip":"1.1.1.1","note":"a"}`,

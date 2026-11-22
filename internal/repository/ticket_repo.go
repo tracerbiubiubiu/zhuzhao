@@ -23,7 +23,7 @@ const ticketSelectColumns = `
 	id, type_code, title, COALESCE(description, '') AS description, priority, status,
 	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
 	status_changed_at, escalation_supervisor_id, created_at, updated_at,
-	COALESCE(human_key, '') AS human_key`
+	COALESCE(human_key, '') AS human_key, definition_version, revision`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -43,13 +43,13 @@ func (r *TicketRepo) Create(ctx context.Context, t *model.Ticket) error {
 // CreateTx 事务内创建工单
 func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11)
-		RETURNING id, created_at, updated_at, status_changed_at`
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id, definition_version)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11, $12)
+		RETURNING id, created_at, updated_at, status_changed_at, revision`
 	err := exec.QueryRow(ctx, q,
 		t.TypeCode, t.Title, t.Description, t.Priority, t.Status,
-		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor,
-	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt)
+		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor, t.DefinitionVersion,
+	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt, &t.Revision)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
@@ -595,10 +595,10 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
 		FROM ticket_types WHERE code = $1`, code).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt,
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -613,7 +613,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -622,7 +622,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
 			return nil, err
 		}
 		return &t, nil
@@ -652,7 +652,8 @@ func (r *TicketRepo) ListTicketTypeFieldsTx(ctx context.Context, q RowQuerier, t
 
 func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string, lock ...bool) ([]*model.TicketTypeField, error) {
 	query := `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order,
+        COALESCE((SELECT field_id FROM ticket_field_identities i WHERE i.type_code=ticket_type_fields.type_code AND i.field_key=ticket_type_fields.field_key AND i.retired_at IS NULL),0)
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`
 	if len(lock) > 0 && lock[0] {
 		query += ` FOR SHARE`
@@ -664,7 +665,7 @@ func listTicketTypeFields(ctx context.Context, q RowQuerier, typeCode string, lo
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder, &f.FieldID); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -835,7 +836,7 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
 		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
-		&t.HumanKey, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
+		&t.HumanKey, &t.DefinitionVersion, &t.Revision, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
 	)
 	if err != nil {
 		return nil, err
@@ -875,10 +876,10 @@ func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) 
 	const q = `
 		INSERT INTO ticket_types (code, name, description, states, transitions, default_sla_hours, is_active)
 		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7)
-		RETURNING id, created_at`
+		RETURNING id, created_at, version`
 	err := r.db.QueryRow(ctx, q,
 		t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive,
-	).Scan(&t.ID, &t.CreatedAt)
+	).Scan(&t.ID, &t.CreatedAt, &t.Version)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
@@ -915,11 +916,11 @@ func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *st
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at`
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt)
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
@@ -965,6 +966,13 @@ func (r *TicketRepo) DeleteTicketType(ctx context.Context, code string, target .
 	}
 	if len(target) > 0 && !target[0].matches(id, version) {
 		return errcode.ErrConcurrentModification
+	}
+	var published bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ticket_type_definitions WHERE type_code=$1)`, code).Scan(&published); err != nil {
+		return err
+	}
+	if published {
+		return errcode.ErrConflict
 	}
 	var cnt int
 	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM tickets WHERE type_code = $1`, code).Scan(&cnt); err != nil {
@@ -1093,6 +1101,18 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 		}
 	}
 
+	keys := make([]string, 0, len(fields))
+	for _, f := range fields {
+		keys = append(keys, f.FieldKey)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE ticket_field_identities SET retired_at=NOW() WHERE type_code=$1 AND retired_at IS NULL AND NOT(field_key=ANY($2::text[]))`, code, keys); err != nil {
+		return err
+	}
+	for _, key := range keys {
+		if _, err := tx.Exec(ctx, `INSERT INTO ticket_field_identities(type_code,field_key) VALUES($1,$2) ON CONFLICT(type_code,field_key) WHERE retired_at IS NULL DO NOTHING`, code, key); err != nil {
+			return err
+		}
+	}
 	// 2. 清空后整体重插字段集
 	if _, err := tx.Exec(ctx, `DELETE FROM ticket_type_fields WHERE type_code = $1`, code); err != nil {
 		return fmt.Errorf("clear type fields: %w", err)
@@ -1117,7 +1137,8 @@ func (r *TicketRepo) ReplaceTypeFields(ctx context.Context, code string, fields 
 // ListTicketTypeFieldsAll 管理端全量读取（与只读版同列，含 validate_regex）
 func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode string) ([]*model.TicketTypeField, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order
+		SELECT id, type_code, field_key, field_label, field_type, field_options, field_meta, required, COALESCE(validate_regex, ''), sort_order,
+        COALESCE((SELECT field_id FROM ticket_field_identities i WHERE i.type_code=ticket_type_fields.type_code AND i.field_key=ticket_type_fields.field_key AND i.retired_at IS NULL),0)
 		FROM ticket_type_fields WHERE type_code = $1 ORDER BY sort_order ASC, id ASC`, typeCode)
 	if err != nil {
 		return nil, fmt.Errorf("list type fields: %w", err)
@@ -1125,7 +1146,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 	defer rows.Close()
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketTypeField, error) {
 		var f model.TicketTypeField
-		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder); err != nil {
+		if err := row.Scan(&f.ID, &f.TypeCode, &f.FieldKey, &f.FieldLabel, &f.FieldType, &f.FieldOptions, &f.FieldMeta, &f.Required, &f.ValidateRegex, &f.SortOrder, &f.FieldID); err != nil {
 			return nil, err
 		}
 		return &f, nil
@@ -1137,7 +1158,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -1146,7 +1167,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
 			return nil, err
 		}
 		return &t, nil

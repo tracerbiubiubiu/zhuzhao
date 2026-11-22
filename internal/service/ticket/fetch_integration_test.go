@@ -58,6 +58,7 @@ func TestFetchLinkage_Fields(t *testing.T) {
 		}})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	t.Run("无注册源——透传不取数（fetcherReg=nil 首版装配态）", func(t *testing.T) {
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "无源", Priority: 2, OrgID: oid,
@@ -90,6 +91,7 @@ func TestFetchLinkage_TypeValidation(t *testing.T) {
 		}})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	// 模拟：fetch 返回 string 写入 number 型字段——须被类型校验拒
 	// 当前 fetcherReg=nil 无实际 fetch——测试校验顺序变更后的行为
 	// 修复后：validate 在 fetch 之后，fetch 写入的值若类型不匹配会被拒
@@ -129,6 +131,7 @@ func TestDictSelect_SubmitRealValue(t *testing.T) {
 		}})
 	require.NoError(t, err)
 
+	publishD01(t, svc, tcode, aid)
 	t.Run("提交真实字典项值须通过（修复前 400）", func(t *testing.T) {
 		_, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: tcode, Title: "字典单", Priority: 2, OrgID: oid,

@@ -2260,6 +2260,127 @@
                 }
             }
         },
+        "/api/v1/ticket-types/definitions/plan": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "预览工单规则发布",
+                "parameters": [
+                    {
+                        "description": "草稿和当前发布版本",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlan"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Ticket-Definition-Reason": {
+                                "type": "string",
+                                "description": "计划冲突归因"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ticket-types/definitions/publish": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "显式发布工单规则",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "首次发布及重试使用的同一操作号",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "发布计划与告警确认",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublicationReceipt"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Ticket-Definition-Reason": {
+                                "type": "string",
+                                "description": "发布冲突归因"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ticket-types/delete": {
             "post": {
                 "consumes": [
@@ -2441,6 +2562,64 @@
                 ],
                 "summary": "模板可用变量集（变量字典——06 号 A.6）",
                 "responses": {}
+            }
+        },
+        "/api/v1/ticket-types/{code}/published": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "读取建单用已发布表单",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单类型编码",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketForm"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Ticket-Definition-Reason": {
+                                "type": "string",
+                                "description": "definition_unpublished 表示类型尚无发布版本"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/tickets": {
@@ -3223,6 +3402,12 @@
                         "schema": {
                             "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "版本化转换原操作号",
+                        "name": "Idempotency-Key",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -3291,6 +3476,46 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/actions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "取得工单可执行动作及采集字段",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionList"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -4487,6 +4712,13 @@
                 "custom_data": {
                     "type": "object"
                 },
+                "definition_hash": {
+                    "type": "string"
+                },
+                "definition_version": {
+                    "description": "A preview pins the client's expected publication; legacy clients omit both.",
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -4936,6 +5168,114 @@
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketForm": {
+            "type": "object",
+            "properties": {
+                "definition_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField"
+                    }
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormType"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField": {
+            "type": "object",
+            "properties": {
+                "field_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "field_key": {
+                    "type": "string"
+                },
+                "field_label": {
+                    "type": "string"
+                },
+                "field_meta": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormFieldMeta"
+                },
+                "field_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "field_type": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "type_code": {
+                    "type": "string"
+                },
+                "validate_regex": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormFieldMeta": {
+            "type": "object",
+            "properties": {
+                "col_span": {
+                    "type": "integer"
+                },
+                "formula": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "visible_when": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormType": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "default_sla_hours": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "has_custom_fields": {
+                    "type": "boolean"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "states": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest": {
             "type": "object",
             "required": [
@@ -5196,6 +5536,34 @@
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionCollectField": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionList": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction"
+                    }
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField"
+                    }
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView": {
             "type": "object",
             "properties": {
@@ -5226,6 +5594,182 @@
                 "uploaded_by": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction": {
+            "type": "object",
+            "properties": {
+                "action_id": {
+                    "type": "string"
+                },
+                "collect_fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionCollectField"
+                    }
+                },
+                "comment_required": {
+                    "type": "boolean"
+                },
+                "definition_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef"
+                },
+                "expected_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlan": {
+            "type": "object",
+            "properties": {
+                "canonical_hash": {
+                    "type": "string"
+                },
+                "changed": {
+                    "type": "boolean"
+                },
+                "current_definition_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef"
+                },
+                "draft_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "plan_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "reference_revisions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionReferenceRevision"
+                    }
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionWarning"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlanRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "expected_draft_revision"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "expected_draft_revision": {
+                    "type": "string"
+                },
+                "expected_published_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublicationReceipt": {
+            "type": "object",
+            "properties": {
+                "changed": {
+                    "type": "boolean"
+                },
+                "definition_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef"
+                },
+                "draft_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublishRequest": {
+            "type": "object",
+            "required": [
+                "canonical_hash",
+                "code",
+                "expected_draft_revision",
+                "plan_id"
+            ],
+            "properties": {
+                "acknowledged_warning_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "canonical_hash": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "expected_draft_revision": {
+                    "type": "string"
+                },
+                "expected_published_version": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef": {
+            "type": "object",
+            "properties": {
+                "definition_hash": {
+                    "type": "string"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "type_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionReferenceRevision": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionWarning": {
+            "type": "object",
+            "properties": {
+                "field_key": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -5294,6 +5838,16 @@
             ],
             "properties": {
                 "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "type": "object"
+                },
+                "definition_version": {
+                    "type": "string"
+                },
+                "expected_revision": {
+                    "description": "RawMessage preserves the distinction between omitted and explicitly null.",
                     "type": "string"
                 },
                 "id": {

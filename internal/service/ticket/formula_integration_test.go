@@ -38,6 +38,7 @@ func TestFormula_Fields(t *testing.T) {
 			}})
 		require.NoError(t, err)
 
+		publishD01(t, svc, code, aid)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code, Title: "公式单", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(`{"price":3,"qty":4,"total":99999}`), // 篡改

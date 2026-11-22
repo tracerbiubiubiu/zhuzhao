@@ -55,6 +55,7 @@ func TestB61_DomainEventDispatch(t *testing.T) {
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "事件批"})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	t.Run("Create 后 ticket.created 派发", func(t *testing.T) {
 		mu.Lock()
 		created = nil

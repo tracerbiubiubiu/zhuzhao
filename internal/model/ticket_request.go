@@ -10,6 +10,9 @@ import (
 // CreateTicketRequest 创建工单
 type CreateTicketRequest struct {
 	TypeCode string `json:"type_code" binding:"required,max=50"`
+	// A preview pins the client's expected publication; legacy clients omit both.
+	DefinitionVersion string `json:"definition_version,omitempty"`
+	DefinitionHash    string `json:"definition_hash,omitempty"`
 	// EscalationSupervisor 催办上级·人工指定（S10 B10-4——dd §31 基线档；可后续 Assign 改）
 	EscalationSupervisor *int64          `json:"escalation_supervisor_id,string,omitempty"`
 	Title                string          `json:"title" binding:"required,max=200"`
@@ -253,6 +256,11 @@ type TransitionTicketRequest struct {
 	ID      int64  `json:"id,string" binding:"required"`
 	To      string `json:"to" binding:"required,max=64"`
 	Comment string `json:"comment,omitempty"`
+	// RawMessage preserves the distinction between omitted and explicitly null.
+	ExpectedRevision  json.RawMessage `json:"expected_revision,omitempty" swaggertype:"string"`
+	DefinitionVersion json.RawMessage `json:"definition_version,omitempty" swaggertype:"string"`
+	CustomDataPatch   json.RawMessage `json:"custom_data_patch,omitempty" swaggertype:"object"`
+	IdempotencyKey    string          `json:"-"` // supplied by the handler from Idempotency-Key
 }
 
 // CreateAssignmentRuleRequest 建分派规则（S3a B3-2——管理端点）。

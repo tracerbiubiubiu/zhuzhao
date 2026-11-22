@@ -79,6 +79,7 @@ func TestC02_CreateDeduplicatesSources(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	publishD01(t, env.svc, code, env.u1)
 	env.stgCfg.MaxAttachmentsPerTicket = 1
 	key := env.confirmedCreate(t, env.u1, "attachment_create")
 	req := env.createReq([]string{key})
@@ -332,6 +333,23 @@ func TestC02_DeleteHoldsAmbiguousHistoricalBinding(t *testing.T) {
 	_, err = testPool.Exec(ctx, `INSERT INTO ticket_attachments(ticket_id,file_object_id,uploaded_by) SELECT $1,id,$2 FROM file_objects WHERE bucket='b53' AND object_key=$3`, second.ID, env.u1, key)
 	require.NoError(t, err)
 	require.Equal(t, errcode.ErrConflict.Code, b53Code(t, env.stg.DeleteTicketAttachment(ctx, first.ID, key)))
+	before, err := env.svc.ticketRepo.GetByID(ctx, first.ID)
+	require.NoError(t, err)
+	for _, owner := range []string{"matched", "legacy_null"} {
+		t.Run("reject_field_reuse_"+owner, func(t *testing.T) {
+			if owner == "legacy_null" {
+				_, err := testPool.Exec(ctx, `UPDATE file_objects SET owner_kind=NULL,owner_id=NULL WHERE bucket='b53' AND object_key=$1`, key)
+				require.NoError(t, err)
+			}
+			changedTitle := "must roll back with ambiguous file reference"
+			_, err := env.svc.Update(ctx, &model.UpdateTicketRequest{ID: first.ID, Title: &changedTitle,
+				CustomData: c02Data(t, map[string]any{"docs": []string{key}})}, env.u1)
+			requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+			after, err := env.svc.ticketRepo.GetByID(ctx, first.ID)
+			require.NoError(t, err)
+			require.Equal(t, before, after)
+		})
+	}
 	var n int
 	var status string
 	require.NoError(t, testPool.QueryRow(ctx, `SELECT count(*) FROM ticket_attachments WHERE ticket_id=ANY($1)`, []int64{first.ID, second.ID}).Scan(&n))

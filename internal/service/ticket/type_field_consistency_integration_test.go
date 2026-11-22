@@ -56,7 +56,7 @@ func cleanupTypeConfiguration(t *testing.T, code string) {
 	t.Helper()
 	t.Cleanup(func() {
 		ctx := context.Background()
-		for _, q := range []string{`DELETE FROM tickets WHERE type_code=$1`, `DELETE FROM ticket_type_fields WHERE type_code=$1`, `DELETE FROM ticket_types WHERE code=$1`} {
+		for _, q := range []string{`DELETE FROM tickets WHERE type_code=$1`, `DELETE FROM ticket_type_fields WHERE type_code=$1`, `UPDATE ticket_types SET is_active=false WHERE code=$1`} {
 			_, err := testPool.Exec(ctx, q, code)
 			require.NoError(t, err)
 		}
@@ -115,6 +115,7 @@ func TestTypeFieldsFirstDefinitionCannotBypassHardLock(t *testing.T) {
 				}
 				_, err = svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{{FieldKey: "payload", FieldLabel: "Payload", FieldType: "input"}}})
 				require.NoError(t, err)
+				publishD01(t, svc, code, actor)
 				ticket, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 2, OrgID: orgID(), CustomData: json.RawMessage(`{"payload":"string-value"}`)}, actor)
 				require.NoError(t, err, "actual ticket must commit under the winning string field")
 				_, sequentialErr := svc.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: req.Fields})
@@ -151,6 +152,7 @@ func TestTypeFieldsNilVersionNonConflictingWrites(t *testing.T) {
 	first := &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{{FieldKey: "payload", FieldLabel: "Original", FieldType: "input"}}}
 	_, err = svc.ReplaceTicketTypeFields(ctx, code, first)
 	require.NoError(t, err)
+	publishD01(t, svc, code, actor)
 	assert.Nil(t, first.Version)
 	ticket, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 2, OrgID: orgID(), CustomData: json.RawMessage(`{"payload":"string-value"}`)}, actor)
 	require.NoError(t, err)
@@ -161,6 +163,15 @@ func TestTypeFieldsNilVersionNonConflictingWrites(t *testing.T) {
 	fields, err := svc.ticketRepo.ListTicketTypeFieldsAll(ctx, code)
 	require.NoError(t, err)
 	require.Len(t, fields, 2)
-	_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: ticket.ID, CustomData: json.RawMessage(`{"payload":"still-valid","extra":42}`)}, actor)
+	opaque := json.RawMessage(`{"payload":"still-valid","extra":"legacy opaque value"}`)
+	saved, err := svc.Update(ctx, &model.UpdateTicketRequest{ID: ticket.ID, CustomData: opaque}, actor)
+	require.NoError(t, err)
+	require.JSONEq(t, string(opaque), string(saved.CustomData), "A preserves compatibility for unknown keys")
+	publishD01(t, svc, code, actor)
+	newTicket, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, Priority: 2, OrgID: orgID(), CustomData: json.RawMessage(`{"payload":"new-ticket"}`)}, actor)
+	require.NoError(t, err)
+	_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: newTicket.ID, CustomData: opaque}, actor)
+	requireErrCode(t, err, errcode.ErrInvalidParams.Code)
+	_, err = svc.Update(ctx, &model.UpdateTicketRequest{ID: newTicket.ID, CustomData: json.RawMessage(`{"payload":"still-valid","extra":42}`)}, actor)
 	require.NoError(t, err)
 }
