@@ -22,6 +22,21 @@ func int64IDsToStrings(ids []int64) []string {
 	return out
 }
 
+// setOperationHeaders 回填操作核查头（C05：响应丢失后调用方可按 K 查原结果）。
+// 503（投影待恢复）时回执虽已提交，头部状态改报 pending——「已提交、待恢复」
+// 是调用方/UI 的唯一关注语义；权威状态可按 K 走受权核查。
+func setOperationHeaders(c *gin.Context, res *service.SessionCommandResult, err error) {
+	if res == nil {
+		return
+	}
+	status := res.Status
+	if err != nil {
+		status = "pending"
+	}
+	c.Header("X-Operation-ID", res.OperationID)
+	c.Header("X-Operation-Status", status)
+}
+
 // UserHandler 用户处理器
 type UserHandler struct {
 	userService *service.UserService
@@ -154,7 +169,9 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.userService.Delete(c.Request.Context(), req.UserID, c.GetInt64("userID")); err != nil {
+	res, err := h.userService.Delete(c.Request.Context(), req.UserID, c.GetInt64("userID"), c.GetHeader("X-Operation-ID"))
+	setOperationHeaders(c, res, err)
+	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -177,7 +194,9 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.userService.UpdateStatus(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+	res, err := h.userService.UpdateStatus(c.Request.Context(), &req, c.GetInt64("userID"), c.GetHeader("X-Operation-ID"))
+	setOperationHeaders(c, res, err)
+	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -223,11 +242,38 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.userService.ResetPassword(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+	res, err := h.userService.ResetPassword(c.Request.Context(), &req, c.GetInt64("userID"), c.GetHeader("X-Operation-ID"))
+	setOperationHeaders(c, res, err)
+	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
 	response.OK(c, nil)
+}
+
+// OperationResult GET /api/v1/users/status/result?operation_id=...
+//
+//	@Summary	按原操作号核查账号安全操作结果（停用/删除/重置/自助改密）
+//	@Tags		users
+//	@Produce	json
+//	@Param		operation_id	query	string	true	"原操作号（X-Operation-ID）"
+//	@Success	200	{object}	response.Response{data=service.UserOperationResultView}	"原操作回执及对应代际的投影状态"
+//	@Security	BearerAuth
+//	@Router		/api/v1/users/status/result [get]
+func (h *UserHandler) OperationResult(c *gin.Context) {
+	opID := c.Query("operation_id")
+	if opID == "" {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	view, err := h.userService.GetOperationResult(c.Request.Context(), opID, c.GetInt64("userID"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.Header("X-Operation-ID", view.OperationID)
+	c.Header("X-Operation-Status", view.Status)
+	response.OK(c, view)
 }
 
 // GetUserOrgs GET /api/v1/users/:id/orgs

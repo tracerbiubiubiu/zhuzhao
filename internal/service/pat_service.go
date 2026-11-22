@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
 	"log/slog"
 	"math/big"
 	"strings"
@@ -19,29 +20,30 @@ import (
 // PatService P4-6 PAT（SelfService 语义——本人管理自己的凭据）。
 // 明文 zpat_<43> 仅创建响应返回一次；落库 sha256（勿抄 gva signing key——独立 secret）。
 type PatService struct {
-	repo   *repository.PatRepo
-	logger *slog.Logger
+	repo    *repository.PatRepo
+	logger  *slog.Logger
+	entropy io.Reader
 }
 
 func NewPatService(repo *repository.PatRepo, logger *slog.Logger) *PatService {
-	return &PatService{repo: repo, logger: logger}
+	return &PatService{repo: repo, logger: logger, entropy: rand.Reader}
 }
 
 const patAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const patPrefix = "zpat_"
 
 // generateSecret 43 位随机串（~256bit 熵——crypto/rand）
-func generateSecret() string {
+func generateSecret(entropy io.Reader) (string, error) {
 	b := make([]byte, 43)
+	alphabetSize := big.NewInt(int64(len(patAlphabet)))
 	for i := range b {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(patAlphabet))))
+		n, err := rand.Int(entropy, alphabetSize)
 		if err != nil {
-			b[i] = patAlphabet[i%len(patAlphabet)]
-			continue
+			return "", err
 		}
 		b[i] = patAlphabet[n.Int64()]
 	}
-	return patPrefix + string(b)
+	return patPrefix + string(b), nil
 }
 
 func HashSecret(plain string) string {
@@ -67,7 +69,11 @@ func (s *PatService) Create(ctx context.Context, userID int64, name string, expi
 	}
 	// 碰撞重试 ×3（43 位随机空间 2^256——理论不会，防御性）
 	for i := 0; i < 3; i++ {
-		plain := generateSecret()
+		plain, err := generateSecret(s.entropy)
+		if err != nil {
+			s.logger.Error("pat entropy unavailable", "err", err)
+			return nil, "", errcode.ErrInternal
+		}
 		t.SecretHash = HashSecret(plain)
 		if err := s.repo.Create(ctx, t); err != nil {
 			if i == 2 {

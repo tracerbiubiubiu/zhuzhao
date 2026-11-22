@@ -33,6 +33,12 @@ type stubRoleFetcher struct {
 	roles map[int64][]string
 }
 
+type activeRouterAccountSnapshots struct{}
+
+func (activeRouterAccountSnapshots) AccountSnapshot(context.Context, int64) (middleware.AccountSnapshot, error) {
+	return middleware.AccountSnapshot{Status: 1, SessionEpoch: 3, ProjectionEpoch: 3}, nil
+}
+
 func (s *stubRoleFetcher) GetRoleCodesByUserID(ctx context.Context, userID int64) ([]string, error) {
 	return s.roles[userID], nil
 }
@@ -50,18 +56,19 @@ func newRouterEngine(t *testing.T, roles map[int64][]string) (*gin.Engine, *jwtp
 	})
 
 	deps := router.Deps{
-		JWTManager:  jwtManager,
-		Enforcer:    newRouterTestEnforcer(t),
-		RedisClient: startStubRedis(t),
-		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
-		RoleFetcher: &stubRoleFetcher{roles: roles},
-		Registry:    resource.NewRegistry(),
+		JWTManager:       jwtManager,
+		AccountSnapshots: activeRouterAccountSnapshots{},
+		Enforcer:         newRouterTestEnforcer(t),
+		RedisClient:      startStubRedis(t),
+		Logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher:      &stubRoleFetcher{roles: roles},
+		Registry:         resource.NewRegistry(),
 	}
 	return router.New(deps), jwtManager
 }
 
 func do(r *gin.Engine, m *jwtpkg.Manager, userID int64, method, path string) *httptest.ResponseRecorder {
-	at, _, err := m.GenerateAccessToken(userID, fmt.Sprintf("user-%d", userID), false)
+	at, _, err := m.GenerateAccessTokenWithSessionEpoch(userID, fmt.Sprintf("user-%d", userID), false, 0, 3)
 	if err != nil {
 		panic(err)
 	}
@@ -257,7 +264,11 @@ func handleStubRedisConn(conn net.Conn) {
 		case "EXISTS", "DEL":
 			_, _ = fmt.Fprintf(conn, ":0\r\n")
 		case "GET":
-			_, _ = fmt.Fprintf(conn, "$-1\r\n")
+			if len(args) > 1 && strings.HasPrefix(args[1], "user:session_epoch:db1:") {
+				_, _ = fmt.Fprintf(conn, "$1\r\n3\r\n")
+			} else {
+				_, _ = fmt.Fprintf(conn, "$-1\r\n")
+			}
 		case "SET":
 			_, _ = fmt.Fprintf(conn, "+OK\r\n")
 		case "PING":
@@ -279,12 +290,13 @@ func newTrustedProxiesEngine(t *testing.T, proxies []string) *gin.Engine {
 		AccessTTL: 30 * time.Minute,
 	})
 	deps := router.Deps{
-		JWTManager:     jwtManager,
-		Enforcer:       newRouterTestEnforcer(t),
-		RedisClient:    startStubRedis(t),
-		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
-		RoleFetcher:    &stubRoleFetcher{roles: map[int64][]string{}},
-		TrustedProxies: proxies,
+		JWTManager:       jwtManager,
+		AccountSnapshots: activeRouterAccountSnapshots{},
+		Enforcer:         newRouterTestEnforcer(t),
+		RedisClient:      startStubRedis(t),
+		Logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher:      &stubRoleFetcher{roles: map[int64][]string{}},
+		TrustedProxies:   proxies,
 	}
 	r := router.New(deps)
 	// 临时路由读 ClientIP（gin 允许在构建后追加注册）
@@ -333,12 +345,13 @@ func TestMiddlewareOrder_AuditBeforeCasbin_DeniedRequestAudited(t *testing.T) {
 	})
 	auditCapture := &captureAuditLogger{}
 	deps := router.Deps{
-		JWTManager:   jwtManager,
-		Enforcer:     newRouterTestEnforcer(t),
-		RedisClient:  startStubRedis(t),
-		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
-		RoleFetcher:  &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}},
-		AuditService: auditCapture,
+		JWTManager:       jwtManager,
+		AccountSnapshots: activeRouterAccountSnapshots{},
+		Enforcer:         newRouterTestEnforcer(t),
+		RedisClient:      startStubRedis(t),
+		Logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		RoleFetcher:      &stubRoleFetcher{roles: map[int64][]string{1: {"viewer"}}},
+		AuditService:     auditCapture,
 	}
 	r := router.New(deps)
 

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
@@ -450,7 +451,19 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
+	// C05 会话投影恢复 worker：跨进程按原 intent 重投（失败保留 pending，不删项）。
+	// 启动先扫一轮确认 bootstrap 意图，避免切换就绪门误伤首次登录。
+	sessionCtx, sessionCancel := context.WithCancel(context.Background())
+	var sessionWG sync.WaitGroup
+	sessionWG.Add(1)
+	go func() {
+		defer sessionWG.Done()
+		service.RunSessionProjectionWorker(sessionCtx,
+			service.NewSessionWorkerDeps(pool, userRepo, client, manager.AccessTTL()), 5*time.Second)
+	}()
 	return app, func() {
+		sessionCancel()
+		sessionWG.Wait()
 		cleanup3()
 		cleanup2()
 		cleanup()

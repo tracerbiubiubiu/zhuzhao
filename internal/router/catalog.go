@@ -90,6 +90,7 @@ var catalogExempt = map[string]bool{
 	"POST /api/v1/user/pats/delete":     true,
 	"POST /api/v1/auth/logout":          true, // 自服务（SelfService）
 	"POST /api/v1/auth/password/update": true, // 自服务
+	"GET /api/v1/users/status/result":   true, // C05 操作结果受权核查（SelfService——绑定原操作者或目标管理权）
 	"GET /api/v1/user/profile":          true, // 自服务
 	"POST /api/v1/user/profile/update":  true, // 自服务
 	"GET /api/v1/user/menus":            true, // 自服务

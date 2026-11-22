@@ -130,9 +130,20 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 	accessToken := extractBearer(c.GetHeader("Authorization"))
-	pair, err := h.authService.UpdatePassword(c.Request.Context(), c.GetInt64("userID"), req.OldPassword, req.NewPassword, accessToken, req.DeviceID)
+	pair, res, err := h.authService.UpdatePassword(c.Request.Context(), c.GetInt64("userID"), req.OldPassword, req.NewPassword, accessToken, req.DeviceID, c.GetHeader("X-Operation-ID"))
+	// C05：回填操作核查头（F021——同 K 重投只给核查状态，不重放 TokenPair；
+	// pending 表示密码已提交、会话恢复待同步，UI 不得显示“没有修改”）
+	if res != nil {
+		c.Header("X-Operation-ID", res.OperationID)
+		c.Header("X-Operation-Status", res.Status)
+	}
 	if err != nil {
 		writeAuthError(c, err)
+		return
+	}
+	if pair == nil {
+		// 同 K 重投：明确「操作已存在/结果待核查」，不给原成功 DTO 形态
+		response.OK(c, nil)
 		return
 	}
 	// 密码修改换发新 token 对——文件 cookie 随旧 access 同步清除后重签

@@ -20,7 +20,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.45.0
-	github.com/tracerbiubiubiu/zhuzhao-utils v0.4.4-0.20261106080630-cd759a040245
+	github.com/tracerbiubiubiu/zhuzhao-utils v0.4.4-0.20261122041357-b574b79193fa
 	github.com/xuri/excelize/v2 v2.11.1
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/sync v0.25.0

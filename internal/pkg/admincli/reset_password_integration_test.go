@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"testing"
@@ -105,21 +106,17 @@ func createSuperadminUser(t *testing.T, status int) int64 {
 }
 
 // EndToEnd：自建 superadmin 用户锁死→恢复全链断言——密码置换/强制改密/
-// 会话吊销（disabled 标记+纪元+refresh 清除）/审计留痕。
+// 会话吊销（数据库代际推进、Redis 确认、旧代刷新槽隔离）和审计留痕。
 func TestResetSuperadminPassword_EndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	userID := createSuperadminUser(t, 1)
 	oldHash := queryString(t, `SELECT password FROM users WHERE id = $1`, userID)
 
-	refreshKey := fmt.Sprintf("refresh:%d:drill-device", userID)
-	if err := testRDB.Set(ctx, refreshKey, "stale-token", 0).Err(); err != nil {
+	oldEpoch := queryInt(t, `SELECT session_epoch FROM users WHERE id = $1`, userID)
+	refreshKey := fmt.Sprintf("refresh:db1:%d:%d:drill-device", userID, oldEpoch)
+	if err := testRDB.Set(ctx, refreshKey, "old-slot-digest", time.Minute).Err(); err != nil {
 		t.Fatalf("seed refresh key: %v", err)
-	}
-	epochKey := fmt.Sprintf("user:pw_epoch:%d", userID)
-	oldEpoch, err := testRDB.Get(ctx, epochKey).Int64()
-	if err != nil {
-		oldEpoch = 0 // 键不存在 = 纪元 0（与 currentUserPwEpoch 语义一致）
 	}
 
 	res, err := admincli.ResetSuperadminPassword(ctx, opts(queryString(t,
@@ -147,13 +144,22 @@ func TestResetSuperadminPassword_EndToEnd(t *testing.T) {
 		t.Fatal("must_change_password 应为 true")
 	}
 
-	// Redis：refresh 键清除 + 纪元 +1
-	if got := testRDB.Keys(ctx, fmt.Sprintf("refresh:%d:*", userID)).Val(); len(got) != 0 {
-		t.Fatalf("refresh 键应清空，got %v", got)
+	// 旧槽按自己的 TTL 到期。撤销靠代际推进，避免异步清理波及新登录。
+	newEpoch := queryInt(t, `SELECT session_epoch FROM users WHERE id = $1`, userID)
+	if newEpoch != oldEpoch+1 {
+		t.Fatalf("DB session_epoch = %d, want %d", newEpoch, oldEpoch+1)
 	}
-	newEpoch, err := testRDB.Get(ctx, epochKey).Int64()
-	if err != nil || newEpoch != oldEpoch+1 {
-		t.Fatalf("pw_epoch = %d (err=%v), want %d", newEpoch, err, oldEpoch+1)
+	epochKey := fmt.Sprintf("user:session_epoch:db1:%d", userID)
+	projected, err := testRDB.Get(ctx, epochKey).Int64()
+	if err != nil || projected != newEpoch {
+		t.Fatalf("Redis session epoch = %d (err=%v), want %d", projected, err, newEpoch)
+	}
+	if confirmed := queryInt(t, `SELECT session_projection_epoch FROM users WHERE id = $1`, userID); confirmed != newEpoch {
+		t.Fatalf("DB projection epoch = %d, want %d", confirmed, newEpoch)
+	}
+	newRefreshKey := fmt.Sprintf("refresh:db1:%d:%d:drill-device", userID, newEpoch)
+	if got := testRDB.Exists(ctx, newRefreshKey).Val(); got != 0 {
+		t.Fatalf("reset must not issue refresh state for the new epoch, got %d", got)
 	}
 
 	// 审计：CLI 行落 audit_logs
@@ -194,6 +200,49 @@ func TestResetSuperadminPassword_DisabledSuperadminReenabled(t *testing.T) {
 	}
 	if n := queryInt(t, `SELECT COUNT(*) FROM users WHERE id = $1 AND status = 1`, id); n != 1 {
 		t.Fatal("用户应已启用")
+	}
+	if res.PendingReason != "" {
+		t.Fatalf("healthy re-enable unexpectedly pending: %s", res.PendingReason)
+	}
+	if n := queryInt(t, `SELECT COUNT(*) FROM session_projection_intents
+		WHERE user_id = $1 AND status = 'confirmed' AND
+		((reason = 'cli-reset-password' AND NOT desired_active) OR (reason = 'cli-enable' AND desired_active))`, id); n != 2 {
+		t.Fatalf("confirmed reset and enable intents = %d, want 2", n)
+	}
+}
+
+func TestResetSuperadminPassword_DisabledStaysDisabledWhileProjectionPending(t *testing.T) {
+	ctx := context.Background()
+	id := createSuperadminUser(t, 0)
+	username := queryString(t, `SELECT username FROM users WHERE id = $1`, id)
+	rdb := goredis.NewClient(&goredis.Options{
+		MaxRetries: -1,
+		Dialer: func(context.Context, string, string) (net.Conn, error) {
+			return nil, errors.New("isolated Redis unavailable")
+		},
+	})
+	t.Cleanup(func() { _ = rdb.Close() })
+	options := opts(username, "Drill-Passw0rd!")
+	options.RDB = rdb
+
+	res, err := admincli.ResetSuperadminPassword(ctx, options)
+	if err != nil {
+		t.Fatalf("reset with pending projection: %v", err)
+	}
+	if res.OperationID == "" || res.PendingReason == "" || res.Reenabled || res.SessionsRevoked || !res.AuditWritten {
+		t.Fatal("expected an auditable pending reset and no re-enable")
+	}
+	if n := queryInt(t, `SELECT COUNT(*) FROM users WHERE id = $1 AND status = 0
+		AND session_epoch = 2 AND session_projection_epoch = 0 AND must_change_password`, id); n != 1 {
+		t.Fatal("reset must commit and preserve the disabled account while projection is pending")
+	}
+	if n := queryInt(t, `SELECT COUNT(*) FROM session_projection_intents
+		WHERE user_id = $1 AND NOT desired_active AND status = 'pending' AND reason = 'cli-reset-password'`, id); n != 1 {
+		t.Fatal("expected the original pending reset intent")
+	}
+	if n := queryInt(t, `SELECT COUNT(*) FROM session_projection_intents
+		WHERE user_id = $1 AND reason = 'cli-enable'`, id); n != 0 {
+		t.Fatal("pending reset must not generate an enable intent")
 	}
 }
 

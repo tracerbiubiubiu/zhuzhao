@@ -4,6 +4,8 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/casbin/casbin/v3"
+	casbinmodel "github.com/casbin/casbin/v3/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,7 +27,9 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 	redispkg "github.com/tracerbiubiubiu/zhuzhao-utils/redis"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
@@ -54,7 +60,9 @@ func (profileWriteTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQue
 // Reuse TestMain's isolated PostgreSQL; Redis is real and isolated too. No seed
 // account (including E000001) is created, updated, or used by this test.
 func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
-	ctx, cancel := context.WithTimeout(trustedIAMTestContext(), 90*time.Second)
+	// Four sequential scenarios perform real cost-12 bcrypt under -race. Keep
+	// the fixture deadline bounded and the actor's AT valid for that whole run.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
@@ -77,10 +85,13 @@ func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 	repo, roles := repository.NewUserRepo(pool), repository.NewRoleRepo(pool)
-	cfg := config.JWTConfig{Secret: "security-state-regression-synthetic-secret", AccessTTL: time.Minute, RefreshTTL: time.Hour}
+	cfg := config.JWTConfig{Secret: "security-state-regression-synthetic-secret", AccessTTL: 5 * time.Minute, RefreshTTL: time.Hour}
 	mgr := jwtpkg.NewManager(jwtpkg.Config{Secret: cfg.Secret, AccessTTL: cfg.AccessTTL})
 	auth := service.NewAuthService(repo, mgr, rdb, redispkg.NewScripts(rdb), service.NewAuditService(repository.NewAuditLogRepo(pool), repo), cfg, nil)
 	users := service.NewUserService(pool, repo, roles, nil, rdb, mgr)
+	deps := service.NewSessionWorkerDeps(pool, repo, rdb, mgr.AccessTTL())
+	userHandler := handler.NewUserHandler(users, nil)
+	authHandler := handler.NewAuthHandler(auth, false)
 	hash, err := crypto.HashPassword("StateOld#2026")
 	require.NoError(t, err)
 	suffix := uniqueSuffix()
@@ -89,113 +100,199 @@ func TestUserSecurityState_ProfileCannotUndoAdmin(t *testing.T) {
 	role := &model.Role{Code: "state_manager_" + suffix, Name: "state manager", Priority: 10, Status: 1}
 	require.NoError(t, roles.Create(ctx, role))
 	require.NoError(t, repo.SetRoles(ctx, actor.ID, []int64{role.ID}))
+	memberRole := &model.Role{Code: "state_member_" + suffix, Name: "state member", Priority: 100, Status: 1}
+	require.NoError(t, roles.Create(ctx, memberRole))
+	casbinModel, err := casbinmodel.NewModelFromFile("../../configs/casbin_model.conf")
+	require.NoError(t, err)
+	enforcer, err := casbin.NewSyncedEnforcer(casbinModel)
+	require.NoError(t, err)
+	for _, path := range []string{"/api/v1/users/status", "/api/v1/users/password/reset", "/api/v1/users/update"} {
+		_, err = testPool.Exec(ctx, `INSERT INTO casbin_rule(ptype,v0,v1,v2) VALUES('p',$1,$2,'POST')`, "role::"+role.Code, path)
+		require.NoError(t, err)
+		_, err = enforcer.AddPolicy("role::"+role.Code, path, http.MethodPost)
+		require.NoError(t, err)
+	}
+	rbac := service.NewRBACService(roles, repo, repository.NewMenuRepo(pool), enforcer)
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
-	engine.GET("/business", middleware.JWT(mgr, rdb, nil), func(c *gin.Context) { c.Status(http.StatusOK) })
-	access := func(token string) int {
-		request := httptest.NewRequest(http.MethodGet, "/business", nil)
+	engine.GET("/business", middleware.JWT(mgr, rdb, nil, middleware.WithAccountSecurity(c05SnapshotSource{pool: pool})), func(c *gin.Context) { c.Status(http.StatusOK) })
+	access := func(token string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodGet, "/business", nil).WithContext(ctx)
 		request.Header.Set("Authorization", "Bearer "+token)
 		response := httptest.NewRecorder()
 		engine.ServeHTTP(response, request)
-		return response.Code
+		return response
 	}
+	// Use the production signed-epoch authentication and purpose minting chain.
+	// Neither userID nor session_epoch is inserted by test middleware.
+	request := func(requestCtx context.Context, path, token string, self bool, action gin.HandlerFunc, body string) *httptest.ResponseRecorder {
+		r := gin.New()
+		r.Use(middleware.JWT(mgr, rdb, nil, middleware.WithAccountSecurity(c05SnapshotSource{pool: pool})))
+		if self {
+			r.Use(middleware.SelfService())
+		}
+		r.Use(middleware.CasbinAuth(enforcer, rbac, nil))
+		r.POST(path, action)
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)).WithContext(requestCtx)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+	service.RunProjectionSweepOnce(ctx, deps)
+	actorPair, err := auth.Login(ctx, &model.LoginRequest{EmployeeNo: actor.EmployeeNo, Password: "StateOld#2026", DeviceID: "manager"}, "127.0.0.1", "security-state-test")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, access(actorPair.AccessToken).Code)
 	for _, kind := range []string{"disable", "reset"} {
 		for _, writer := range []string{"self_profile", "admin_profile"} {
 			t.Run(kind+"/"+writer, func(t *testing.T) {
 				target := &model.User{Username: "state_target", EmployeeNo: "E8T" + uniqueSuffix(), Password: hash, Status: 1}
 				require.NoError(t, repo.Create(ctx, target))
+				require.NoError(t, repo.SetRoles(ctx, target.ID, []int64{memberRole.ID}))
+				// Gap discovery creates and confirms the real initial intent. The
+				// DB watermark and Redis projection are never assigned by the test.
+				service.RunProjectionSweepOnce(ctx, deps)
+				snap, err := repo.SecuritySnapshot(ctx, target.ID)
+				require.NoError(t, err)
+				require.EqualValues(t, 1, snap.SessionEpoch)
+				require.EqualValues(t, 1, snap.ProjectionEpoch)
 				login := func(password, device string) (*model.TokenPair, error) {
 					return auth.Login(ctx, &model.LoginRequest{EmployeeNo: target.EmployeeNo, Password: password, DeviceID: device}, "127.0.0.1", "security-state-test")
 				}
 				old, err := login("StateOld#2026", "old")
 				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, access(old.AccessToken).Code, "old session must work before the security command")
+				denied := request(ctx, "/api/v1/users/status", old.AccessToken, false, userHandler.UpdateStatus,
+					fmt.Sprintf(`{"user_id":%q,"status":0}`, fmt.Sprint(target.ID)))
+				require.Equal(t, http.StatusForbidden, denied.Code, denied.Body.String())
+				require.Contains(t, denied.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrNoPermission.Code))
+				// A separate short deadline bounds the actual interleaving, so
+				// a lock-order regression cannot consume the full bcrypt budget.
+				interleavingCtx, cancelInterleaving := context.WithTimeout(ctx, 15*time.Second)
+				defer cancelInterleaving()
 				gate := &profileWriteGate{make(chan struct{}), make(chan struct{})}
 				var releaseOnce sync.Once
 				release := func() { releaseOnce.Do(func() { close(gate.release) }) }
 				defer release()
-				done := make(chan struct {
-					user *model.User
-					err  error
-				}, 1)
+				done := make(chan *httptest.ResponseRecorder, 1)
 				name := "normal profile edit"
 				go func() {
-					gctx := context.WithValue(ctx, profileWriteGateKey{}, gate)
-					var user *model.User
-					var err error
 					if writer == "self_profile" {
-						user, err = users.UpdateProfile(gctx, target.ID, &model.UpdateProfileRequest{RealName: &name})
+						gctx := context.WithValue(interleavingCtx, profileWriteGateKey{}, gate)
+						done <- request(gctx, "/api/v1/user/profile/update", old.AccessToken, true, userHandler.UpdateProfile, `{"real_name":"normal profile edit"}`)
 					} else {
-						// Administrative Update now serializes its whole IAM decision.
-						// Keep the independent narrow-column guarantee observable by supplying a
-						// deliberately stale repo model after the security command commits.
-						user, err = repo.FindByID(ctx, target.ID)
-						if err == nil {
-							user.RealName = name
-							close(gate.reached)
-							select {
-							case <-gate.release:
-							case <-ctx.Done():
+						// UserService.Update serializes its read and write under the IAM
+						// guard, so pausing its SQL would block the security command.
+						// Retain the independent narrow-column regression with an
+						// authenticated, authorized admin request carrying a stale repo
+						// model. The wait precedes repo.Update's IAM lock acquisition.
+						done <- request(interleavingCtx, "/api/v1/users/update", actorPair.AccessToken, false, func(c *gin.Context) {
+							user, err := repo.FindByID(c.Request.Context(), target.ID)
+							if err == nil {
+								user.RealName = name
+								close(gate.reached)
+								select {
+								case <-gate.release:
+								case <-c.Request.Context().Done():
+								}
+								err = repo.Update(c.Request.Context(), user)
 							}
-							err = repo.Update(ctx, user)
-						}
+							if err != nil {
+								c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+								return
+							}
+							response.OK(c, user)
+						}, "")
 					}
-					done <- struct {
-						user *model.User
-						err  error
-					}{user, err}
 				}()
 				select {
 				case <-gate.reached:
-				case <-ctx.Done():
+				case <-interleavingCtx.Done():
 					t.Fatal("profile did not reach SQL barrier")
 				}
+				var command *httptest.ResponseRecorder
 				if kind == "disable" {
-					require.NoError(t, users.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: target.ID, Status: 0}, actor.ID))
+					command = request(interleavingCtx, "/api/v1/users/status", actorPair.AccessToken, false, userHandler.UpdateStatus,
+						fmt.Sprintf(`{"user_id":%q,"status":0}`, fmt.Sprint(target.ID)))
 				} else {
-					require.NoError(t, users.ResetPassword(ctx, &model.ResetPasswordRequest{UserID: target.ID, Password: "StateReset#2026"}, actor.ID))
+					command = request(interleavingCtx, "/api/v1/users/password/reset", actorPair.AccessToken, false, userHandler.ResetPassword,
+						fmt.Sprintf(`{"user_id":%q,"password":"StateReset#2026"}`, fmt.Sprint(target.ID)))
 				}
+				require.Equal(t, http.StatusOK, command.Code, command.Body.String())
+				require.NotEmpty(t, command.Header().Get("X-Operation-ID"))
+				require.Equal(t, "completed", command.Header().Get("X-Operation-Status"))
 				release()
-				var written struct {
-					user *model.User
-					err  error
-				}
+				var written *httptest.ResponseRecorder
 				select {
 				case written = <-done:
-				case <-ctx.Done():
+				case <-interleavingCtx.Done():
 					t.Fatal("profile did not finish after SQL barrier release")
 				}
-				require.NoError(t, written.err)
+				cancelInterleaving()
+				require.Equal(t, http.StatusOK, written.Code, written.Body.String())
+				var profile struct {
+					Data model.User `json:"data"`
+				}
+				require.NoError(t, json.Unmarshal(written.Body.Bytes(), &profile))
 				current, err := repo.FindByID(ctx, target.ID)
 				require.NoError(t, err)
 				require.Equal(t, name, current.RealName, "normal profile edit persists")
 				require.Equal(t, 2, current.Version)
-				require.Equal(t, current.Status, written.user.Status, "write response uses persisted security state")
-				require.Equal(t, current.MustChangePassword, written.user.MustChangePassword)
+				require.Equal(t, target.ID, profile.Data.ID)
+				require.Equal(t, current.Status, profile.Data.Status, "write response uses persisted security state")
+				require.Equal(t, current.MustChangePassword, profile.Data.MustChangePassword)
+				snap, err = repo.SecuritySnapshot(ctx, target.ID)
+				require.NoError(t, err)
+				require.EqualValues(t, 2, snap.SessionEpoch, "profile cannot undo the security generation")
+				require.EqualValues(t, 2, snap.ProjectionEpoch)
 				if kind == "disable" {
 					require.Zero(t, current.Status, "profile must not re-enable a disabled account")
 					_, err = login("StateOld#2026", "disabled")
 					require.ErrorIs(t, err, errcode.ErrInvalidCredentials)
-					require.Equal(t, http.StatusForbidden, access(old.AccessToken))
+					blocked := access(old.AccessToken)
+					require.Equal(t, http.StatusForbidden, blocked.Code, blocked.Body.String())
+					require.Contains(t, blocked.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrUserDisabled.Code))
 					// The dedicated management write must still work normally.
-					require.NoError(t, users.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: target.ID, Status: 1}, actor.ID))
+					enabled := request(ctx, "/api/v1/users/status", actorPair.AccessToken, false, userHandler.UpdateStatus,
+						fmt.Sprintf(`{"user_id":%q,"status":1}`, fmt.Sprint(target.ID)))
+					require.Equal(t, http.StatusOK, enabled.Code, enabled.Body.String())
 					fresh, err := login("StateOld#2026", "reenabled")
 					require.NoError(t, err)
-					require.Equal(t, http.StatusOK, access(fresh.AccessToken))
+					require.Equal(t, http.StatusOK, access(fresh.AccessToken).Code)
 				} else {
 					require.True(t, current.MustChangePassword, "profile must not clear a reset's forced change")
+					_, err = login("StateOld#2026", "stale-password")
+					require.ErrorIs(t, err, errcode.ErrInvalidCredentials, "profile cannot restore the previous password")
 					fresh, err := login("StateReset#2026", "reset")
 					require.NoError(t, err)
 					require.True(t, fresh.MustChangePassword)
-					require.Equal(t, http.StatusForbidden, access(fresh.AccessToken))
-					changed, err := auth.UpdatePassword(ctx, target.ID, "StateReset#2026", "StateFinal#2026", fresh.AccessToken, "reset")
-					require.NoError(t, err)
-					require.False(t, changed.MustChangePassword)
-					require.Equal(t, http.StatusOK, access(changed.AccessToken))
+					blocked := access(fresh.AccessToken)
+					require.Equal(t, http.StatusForbidden, blocked.Code, blocked.Body.String())
+					require.Contains(t, blocked.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrPasswordChangeRequired.Code))
+					changed := request(ctx, "/api/v1/auth/password/update", fresh.AccessToken, true, authHandler.UpdatePassword,
+						`{"old_password":"StateReset#2026","new_password":"StateFinal#2026","device_id":"reset"}`)
+					require.Equal(t, http.StatusOK, changed.Code, changed.Body.String())
+					var changedPair struct {
+						Data model.TokenPair `json:"data"`
+					}
+					require.NoError(t, json.Unmarshal(changed.Body.Bytes(), &changedPair))
+					require.NotEmpty(t, changedPair.Data.AccessToken)
+					require.False(t, changedPair.Data.MustChangePassword)
+					require.Equal(t, http.StatusOK, access(changedPair.Data.AccessToken).Code)
 				}
-				require.Equal(t, http.StatusUnauthorized, access(old.AccessToken), "old AT stays revoked after legitimate new login")
+				oldAccess := access(old.AccessToken)
+				require.Equal(t, http.StatusUnauthorized, oldAccess.Code, "old AT stays revoked after legitimate new login")
+				require.Contains(t, oldAccess.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrTokenInvalid.Code))
 				// CAS still protects concurrent profile edits (including admin edits).
-				_, err = users.Update(ctx, &model.UpdateUserRequest{ID: target.ID, Version: 1, RealName: &name}, actor.ID)
-				require.ErrorIs(t, err, errcode.ErrConcurrentModification)
+				stale := request(ctx, "/api/v1/users/update", actorPair.AccessToken, false, userHandler.Update,
+					fmt.Sprintf(`{"id":%q,"version":1,"real_name":"stale profile edit"}`, fmt.Sprint(target.ID)))
+				require.Equal(t, http.StatusConflict, stale.Code, stale.Body.String())
+				require.Contains(t, stale.Body.String(), fmt.Sprintf(`"code":%d`, errcode.ErrConcurrentModification.Code))
+				afterCAS, err := repo.FindByID(ctx, target.ID)
+				require.NoError(t, err)
+				require.Equal(t, name, afterCAS.RealName, "rejected stale edit cannot overwrite profile")
+				require.Equal(t, 2, afterCAS.Version)
 				t.Logf("%s/%s: persisted status=%d forced_change=%t; auth/JWT and profile CAS controls passed", kind, writer, current.Status, current.MustChangePassword)
 			})
 		}

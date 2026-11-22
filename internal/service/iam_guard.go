@@ -76,14 +76,18 @@ func authorizeIAMCommand(ctx context.Context, command string, actorID int64, use
 	if !ok || !known || purpose.Method != "POST" || purpose.Path != expected.path || purpose.SelfService != expected.self || (actorID != 0 && purpose.UserID != actorID) {
 		return errcode.ErrNoPermission
 	}
-	actor, err := users.FindByID(ctx, purpose.UserID)
+	return authorizeIAMCurrentRoute(ctx, users, purpose.UserID, expected, purpose.Method, purpose.Model)
+}
+
+func authorizeIAMCurrentRoute(ctx context.Context, users *repository.UserRepo, actorID int64, expected iamPurpose, method, modelText string) error {
+	actor, err := users.FindByID(ctx, actorID)
 	if err != nil {
 		return err
 	}
 	if actor.Status != 1 {
 		return errcode.ErrNoPermission
 	}
-	roles, policies, err := users.CurrentIAMAuthorization(ctx, purpose.UserID)
+	roles, policies, err := users.CurrentIAMAuthorization(ctx, actorID)
 	if err != nil {
 		return fmt.Errorf("fresh IAM authorization: %w", err)
 	}
@@ -93,7 +97,7 @@ func authorizeIAMCommand(ctx context.Context, command string, actorID int64, use
 	if expected.self {
 		return nil
 	}
-	m, err := casbinmodel.NewModelFromString(purpose.Model)
+	m, err := casbinmodel.NewModelFromString(modelText)
 	if err != nil {
 		return errcode.ErrNoPermission
 	}
@@ -105,7 +109,7 @@ func authorizeIAMCommand(ctx context.Context, command string, actorID int64, use
 		return errcode.ErrNoPermission
 	}
 	for _, role := range roles {
-		allowed, enforceErr := enforcer.Enforce("role::"+role, purpose.Path, purpose.Method)
+		allowed, enforceErr := enforcer.Enforce("role::"+role, expected.path, method)
 		if enforceErr != nil {
 			return errcode.ErrNoPermission
 		}

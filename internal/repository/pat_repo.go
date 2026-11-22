@@ -56,16 +56,18 @@ func (r *PatRepo) Create(ctx context.Context, t *model.PersonalAccessToken) erro
 
 // Revoke 吊销（本人+未吊销；幂等语义=行存在即置 revoked_at）
 func (r *PatRepo) Revoke(ctx context.Context, id, userID int64) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE personal_access_tokens SET revoked_at = NOW()
-		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`, id, userID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrPatNotFound
-	}
-	return nil
+	return WithIAMGuard(ctx, r.db, func(ctx context.Context) error {
+		tag, err := IAMDB(ctx, r.db).Exec(ctx, `
+			UPDATE personal_access_tokens SET revoked_at = NOW()
+			WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`, id, userID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrPatNotFound
+		}
+		return nil
+	})
 }
 
 // FindActiveByHash 认证查验：sha256 命中+未吊销+未过期（二合一 SQL——中间件热路径单查）
@@ -85,4 +87,14 @@ func (r *PatRepo) FindActiveByHash(ctx context.Context, secretHash string) (user
 func (r *PatRepo) TouchLastUsed(ctx context.Context, patID int64) {
 	_, _ = r.db.Exec(ctx,
 		"UPDATE personal_access_tokens SET last_used_at = $2 WHERE id = $1", patID, time.Now())
+}
+
+// IsActiveForUser rechecks the exact admitted PAT through the command's
+// transaction. Revoke shares the exclusive IAM barrier with account/IAM writes.
+func (r *PatRepo) IsActiveForUser(ctx context.Context, id, userID int64) (bool, error) {
+	var active bool
+	err := IAMDB(ctx, r.db).QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM personal_access_tokens WHERE id=$1 AND user_id=$2
+		AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > clock_timestamp()))`, id, userID).Scan(&active)
+	return active, err
 }

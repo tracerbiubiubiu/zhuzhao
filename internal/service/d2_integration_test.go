@@ -3,7 +3,6 @@
 package service_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -102,6 +101,7 @@ func d2LoginUser(t *testing.T, employeeNo, password string) (*service.AuthServic
 	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 	jwtCfg := config.JWTConfig{Secret: "d2-test-secret-0123456789abcdef", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
+	service.RunProjectionSweepOnce(ctx, service.NewSessionWorkerDeps(testPool, repo, rdb, jwtCfg.AccessTTL))
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
 	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 	return authSvc, user, mr
@@ -142,16 +142,16 @@ func TestAuthService_RTCrossDeviceIsolation(t *testing.T) {
 	require.NoError(t, err, "登出 dev-1 不应影响 dev-2 的会话")
 }
 
-// D2-45：disabled 用户 RT——禁用标记存在时拒绝刷新（不查 DB 即拦截）
+// D2-45: the current database status rejects a disabled account before Redis has caught up.
 func TestAuthService_DisabledUserRT(t *testing.T) {
-	authSvc, user, mr := d2LoginUser(t, "E630003", "passw0rd123")
+	authSvc, user, _ := d2LoginUser(t, "E630003", "passw0rd123")
 	ctx := trustedIAMTestContext()
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "passw0rd123"}, "127.0.0.1", "t")
 	require.NoError(t, err)
 
-	// 模拟禁用路径写入的 disabled 标记（revokeUserSessions 语义见 session_revoke 单测）
-	mr.Set(fmt.Sprintf("user:disabled:%d", user.ID), "1")
+	// Leave the old Redis projection in place so that only the database can explain rejection.
+	require.NoError(t, repository.NewUserRepo(testPool).UpdateStatus(ctx, user.ID, 0))
 
 	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	requireErrCode(t, err, errcode.ErrRefreshTokenInvalid)
@@ -261,7 +261,7 @@ func TestUserService_ResetPasswordHigherRejected(t *testing.T) {
 	actor := rbacTestUser(t, "d2_actor", "E631005", []int64{weakRole.ID})
 	target := rbacTestUser(t, "d2_target", "E631006", []int64{saRole.ID})
 
-	err := svc.ResetPassword(ctx, &model.ResetPasswordRequest{UserID: target, Password: "newpassw0rd"}, actor)
+	_, err := svc.ResetPassword(ctx, &model.ResetPasswordRequest{UserID: target, Password: "newpassw0rd"}, actor, "")
 	requireErrCode(t, err, errcode.ErrCannotResetHigher)
 }
 

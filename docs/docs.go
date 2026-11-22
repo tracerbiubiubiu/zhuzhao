@@ -3933,6 +3933,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/users/status/result": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "按原操作号核查账号安全操作结果（停用/删除/重置/自助改密）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原操作号（X-Operation-ID）",
+                        "name": "operation_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "原操作回执及对应代际的投影状态",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service.UserOperationResultView"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/update": {
             "post": {
                 "security": [
@@ -5672,6 +5717,42 @@ const docTemplate = `{
                 },
                 "timeout_secs": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service.UserOperationResultView": {
+            "type": "object",
+            "properties": {
+                "account_status": {
+                    "type": "integer"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "projection_pending": {
+                    "type": "boolean"
+                },
+                "projection_state": {
+                    "type": "string"
+                },
+                "session_epoch": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_user_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

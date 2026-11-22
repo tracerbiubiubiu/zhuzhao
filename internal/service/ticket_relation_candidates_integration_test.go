@@ -79,7 +79,11 @@ func TestTicketRelationCandidatesMatchBothUpdatePermissions(t *testing.T) {
 	rbac := service.NewRBACService(repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool), repository.NewMenuRepo(testPool), enforcer)
 	svc := ticketsvc.NewTicketService(testPool, repository.NewTicketRepo(testPool), repository.NewOrgRepo(testPool), resource.NewRegistry(), rbac, service.NewOrgDelegationService(testPool), nil, nil, nil)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("userID", actor); c.Next() }, middleware.CasbinAuth(enforcer, rbac, nil))
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", actor)
+		c.Set("session_epoch", int64(1)) // 初始数据库安全代际的合成准入事实
+		c.Next()
+	}, middleware.CasbinAuth(enforcer, rbac, nil))
 	h := handler.NewTicketHandler(svc, nil, nil)
 	r.GET(path, h.List)
 	r.POST(relationPath, h.CreateRelation)

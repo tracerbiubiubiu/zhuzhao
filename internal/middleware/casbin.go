@@ -95,7 +95,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 
 		// 自服务路由（由 SelfService 中间件标记）跳过 Casbin enforce
 		if _, ok := c.Get(SelfServiceContextKey); ok {
-			c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), IAMRequestPurpose{UserID: userID, Path: c.Request.URL.Path, Method: c.Request.Method, Model: iamModel, SelfService: true}))
+			c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), mintIAMRequest(c, iamModel, true)))
 			c.Set("roles", roles)
 			c.Next()
 			return
@@ -159,7 +159,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			return
 		}
 
-		c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), IAMRequestPurpose{UserID: userID, Path: path, Method: method, Model: iamModel}))
+		c.Request = c.Request.WithContext(withIAMRequest(c.Request.Context(), mintIAMRequest(c, iamModel, false)))
 		c.Set("roles", roles)
 		c.Next()
 	}

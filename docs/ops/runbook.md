@@ -36,13 +36,15 @@ go run ./cmd/server reset-password --username admin
 
 参数：`--username`（必填）/ `--password-stdin`（管道读一行密码）/ `--yes`（跳过交互确认）。
 
-工具执行顺序 = 与 HTTP 侧重置完全相同的语义：目标校验 → bcrypt 置换 + `must_change_password=true` → （若被禁）连带启用 → **全端会话吊销**（disabled 标记 + 密码纪元 INCR + refresh 键清除，短退避重试 3 次）→ `audit_logs` 落行（`method='CLI'`, `path='break-glass:reset-password'`）。
+运行 C05 隔离候选时，CLI 在同一次数据库提交中重置密码、设置 `must_change_password`、推进安全代际并写入原操作回执和投影意图。若目标原先被禁用，CLI 在该重置代际确认同步后，再核目标和当前代际并单独提交启用。输出含原操作号，审计见 `audit_logs` 的 `break-glass:reset-password`。旧版使用 Redis 撤销标记、旧密码纪元和刷新槽清理，异常时见 §1.4。
 
 ### 1.3 密码输入方式注记
 
 交互形态为**明文双录**（stdlib 无关闭回显能力，为零新增依赖的取舍）：控制台可见输入，**共享终端/录屏环境一律改用 `--password-stdin` 管道形态**。
 
 ### 1.4 会话吊销失败的对账（CLI 输出 ⚠️ 时执行）
+
+本节适用于仍使用旧 Redis 纪元的版本。C05 隔离候选看到投影待核查提示时，保留原操作号，转 [§6.2](#62-c05会话投影长期失败的受控恢复设计候选未实现)。
 
 吊销失败不阻断重置（DB 已提交），残留 token 须手工清理（对齐 `internal/service/session_revoke.go` 三步语义）：
 
@@ -64,6 +66,8 @@ docker exec zhuzhao-redis redis-cli -a "$REDIS_PASSWORD" set user:disabled:<user
 - CLI 输出「审计落库失败」告警时，台账为**唯一**留痕，必须补记。
 
 ### 1.6 兜底路径：手工 SQL（镜像过旧无子命令时）
+
+本节只适用于仍使用旧 Redis 纪元的镜像。启用 `000083` 安全代际的候选使用 §1.2 CLI 及 §6.2 原操作核查流程。
 
 > ⚠️ 此路径**绕过应用层一切留痕与会话吊销**，以下步骤**全部**为必做，缺一即留敞口。
 
@@ -226,7 +230,9 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
 ### 6.2 C05会话投影长期失败的受控恢复（设计候选，未实现）
 
-本节是C05/Q12的实施交付要求，当前没有这些新CLI/路由。作用是恢复已有安全事实，不能作为停用账号、改密或当前权限校验的绕过；准确DB/Redis顺序及SESSION验收见[底座§4.3](../phase6/foundation-iam-module-detail.md#43-c05切换恢复与独立验收)。
+`zz-g04-it1` 的 C05 隔离候选已接通原操作回执和后台同步。应急重置会返回 `operation_id`，只有原重置代际仍为当前代际且已确认同步时，才会连带启用。待核查时，由受权维护者用该操作号只读核对 PostgreSQL 中 `user_session_operations` 的原回执及同代 `session_projection_intents`，依赖恢复后由后台同步处理原意图。管理页面的回执查询适用于获权的 HTTP 操作。
+
+以下是 C05/Q12 的长期恢复交付要求。核查与恢复应保留已有安全事实及当前权限判定。实际 DB/Redis 顺序及 SESSION 验收见[底座§4.3](../phase6/foundation-iam-module-detail.md#43-c05切换恢复与独立验收)。
 
 1. **发现与升级**：worker持续保留原operation/intent及pending，不因普通重试预算耗尽删项。首次超出自动重试预算、出现不可恢复配置错误或发现会话库丢失/来源不可信时，立即生成待处置项并通知该环境已指定的恢复负责人；看板给最老pending年龄、失败分类和当前影响。自动退避、告警去重及值守升级参数在Q12随真实环境绑定，不设置“等待N分钟后自动enable”。未绑定负责人/受控入口时不能把恢复验收标完成。
 2. **资格与诊断**：只有独立获授权的维护者能查受限恢复元数据或触发恢复；普通用户/业务task:submit无维护权。核目标当前DB active/deleted、epoch/projection_epoch、原receipt/intent状态、lease/fence和Redis可信来源/持久卷，不导出密码/token、全部会话键或完整业务正文。只读排障不能直接把projection_epoch改成就绪。
@@ -274,6 +280,7 @@ target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码�
 
   | 会话主题 | 在途文件 | 未推送笔数 | 落笔时间 |
   |---|---|---|---|
+  | B2 九项独立测试实施 | 主会话维护开工计划并独占候选集成。第 1–3 项在 `zz-g04-it1` 联合验收，当前保留已验制品和迁移 `000083`。 | 第 4 项在 `codex/g04-it1-d01` 接续，`000084` 在独立数据库完成定向往返。真实试用单独报批。 [验收与交接](../review/reports/phase6-b2-stage3-acceptance-2026-11-22.md) | 2026-11-22 |
   | 开发前文档整理 | `codex/docs-clarity-20261121` 独立候选。具名助手按目录分别编辑，另一位助手复核每组的场景、用语和业务条件。主会话统一核对差异和运行检查。独立测试资源按本批归属登记，检查结束后回收。 | 候选和基线见本地 Git。保留边界见[材料目录](../materials.md#主仓开发前盘点2026-11-21)，编号归属见[规划入口](../planning/README.md#常见编号怎么读)。 | 2026-11-21 |
   | 全文审计余项 | 主会话独占提交、推送与主线集成。具名实现者按分片工作，验收与复核助手只读。普通档隔离组合使用 `zz-audit-rem1120`。 | [逐项交接](../review/reports/audit-remainder-2026-11-20.md)登记通过范围与后继入口。准确候选和主线按 Git 与材料收据核对。 | 2026-11-20 |
   | 存量修复三仓main收尾 | root唯一远端、提交与PR合并；独占`codex/audit-baseline-merge-closeout-20261117`仅状态文档候选，原验收报告只加后继链接，产品与旧封存不改 | 三功能PR与功能main适用CI均已成功；后继状态文档按同批Git/收据追溯，专属验证栈已清理；材料ID`maintenance/audit-baseline-main-merge-20261117/`，未部署 | 2026-11-17 |

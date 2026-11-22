@@ -110,22 +110,22 @@ func runResetPassword(args []string) error {
 		RDB:       rdb,
 		AccessTTL: accessTTL,
 	})
-	if err != nil {
+	if res == nil {
 		return err
 	}
 
-	fmt.Printf("✅ 密码已重置：user_id=%d username=%s（下次登录强制改密）\n", res.UserID, res.Username)
+	fmt.Printf("✅ 密码已重置：user_id=%d username=%s operation_id=%s（下次登录强制改密）\n", res.UserID, res.Username, res.OperationID)
 	if res.Reenabled {
 		fmt.Println("ℹ️ 目标原处于禁用态，已连带启用。")
 	}
-	if !res.SessionsRevoked {
-		fmt.Fprintln(os.Stderr, "⚠️ 会话吊销失败（Redis 异常）——存量 token 可能残留，按 runbook §1.4 对账步骤清理。")
+	if res.PendingReason != "" {
+		fmt.Fprintln(os.Stderr, "⚠️ "+res.PendingReason)
 	}
 	if !res.AuditWritten {
 		fmt.Fprintln(os.Stderr, "⚠️ 审计落库失败——请按 runbook §1.5 人工补记台账。")
 	}
 	fmt.Println("提醒：本次为 break-glass 操作，请补记人工台账（runbook §1.5）。")
-	return nil
+	return err
 }
 
 // readPassword 密码输入：管道形态读一行；交互形态明文双录（不引 x/term 新依赖，

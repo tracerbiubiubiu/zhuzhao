@@ -5,8 +5,7 @@ package service_test
 import (
 	"context"
 	"fmt"
-
-	"strconv"
+	"net/http"
 	"testing"
 	"time"
 
@@ -48,6 +47,7 @@ func TestAuthService_LoginRefreshLogout(t *testing.T) {
 		AccessTTL:  30 * time.Minute,
 		RefreshTTL: 168 * time.Hour,
 	}
+	service.RunProjectionSweepOnce(ctx, service.NewSessionWorkerDeps(testPool, repo, rdb, jwtCfg.AccessTTL))
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
 	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 
@@ -116,6 +116,7 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	}))
 
 	jwtCfg := config.JWTConfig{Secret: "test-secret-key-for-auth-service", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
+	service.RunProjectionSweepOnce(ctx, service.NewSessionWorkerDeps(testPool, repo, rdb, jwtCfg.AccessTTL))
 	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), service.NewAuditService(repository.NewAuditLogRepo(testPool), repo), jwtCfg, nil)
 
 	pair, err := authSvc.Login(ctx, &model.LoginRequest{
@@ -123,36 +124,36 @@ func TestAuthService_PasswordChangeInvalidatesOldRefreshToken(t *testing.T) {
 	}, "127.0.0.1", "test-agent")
 	require.NoError(t, err)
 
-	// 旧 RT 纪元钉住：改密前签发的 RT 无 pwe 字段（解析为 0）
+	// Refresh credentials bind the database generation at issuance.
 	mgr := jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL})
 	oldClaims, perr := mgr.ParseRefreshToken(pair.RefreshToken)
 	require.NoError(t, perr)
-	require.EqualValues(t, 0, oldClaims.Pwe, "改密前 RT 应为纪元 0（平滑兼容基线）")
+	require.Equal(t, "1", oldClaims.SessionEpoch)
 
-	// 改密（触发全量吊销 + 纪元 INCR + 重签当前设备 pair，pwe=新纪元）
-	newPair, err := authSvc.UpdatePassword(ctx, oldClaims.UserID, "admin123", "NewPass456", pair.AccessToken, "dev-1")
+	// Password change advances the generation and reissues the current device pair.
+	newPair, _, err := authSvc.UpdatePassword(ctx, oldClaims.UserID, "admin123", "NewPass456", pair.AccessToken, "dev-1", "")
 	require.NoError(t, err)
 	newClaims, perr := mgr.ParseRefreshToken(newPair.RefreshToken)
 	require.NoError(t, perr)
-	require.EqualValues(t, 1, newClaims.Pwe, "改密后重签 RT 应携带新纪元")
+	require.Equal(t, "2", newClaims.SessionEpoch)
 
-	// 纪元键已 INCR
-	n, gerr := rdb.Get(ctx, fmt.Sprintf("user:pw_epoch:%d", oldClaims.UserID)).Result()
+	n, gerr := rdb.Get(ctx, fmt.Sprintf("user:session_epoch:db1:%d", oldClaims.UserID)).Result()
 	require.NoError(t, gerr)
-	require.Equal(t, "1", n)
+	require.Equal(t, newClaims.SessionEpoch, n)
 
 	// 新 RT（新纪元）正常刷新
 	refreshed, err := authSvc.Refresh(ctx, newPair.RefreshToken, "", "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, refreshed.AccessToken)
 
-	// 旧 RT（pwe=0）刷新 → 纪元比对不一致 → 401 + 20014（密码已修改）
-	// （单槽语义副作用：该次消费同时清掉 dev-1 槽位，属 02-auth 既定盗用信号设计）
+	// The old generation is rejected without consuming the current device slot.
 	_, err = authSvc.Refresh(ctx, pair.RefreshToken, "", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
 	assert.Equal(t, errcode.ErrPasswordChanged.Code, biz.Code)
+	_, err = authSvc.Refresh(ctx, refreshed.RefreshToken, "", "")
+	require.NoError(t, err, "旧代刷新不能消费新代同设备的槽")
 
 	// 新口令在另一设备登录 → 新纪元 RT 不受 dev-1 槽位影响
 	relogin, err := authSvc.Login(ctx, &model.LoginRequest{
@@ -222,7 +223,7 @@ func TestAuthService_UpdatePasswordSameRejected(t *testing.T) {
 	user := &model.User{Username: "pwd_user", EmployeeNo: "E620001", Password: hash, Status: 1}
 	require.NoError(t, repo.Create(ctx, user))
 
-	_, err = authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "oldpass123", "", "dev-1")
+	_, _, err = authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "oldpass123", "", "dev-1", "")
 	require.Error(t, err)
 	var biz *errcode.Error
 	require.ErrorAs(t, err, &biz)
@@ -236,7 +237,7 @@ func TestAuthService_UpdatePasswordSameRejected(t *testing.T) {
 
 // P1-D 回归（2026-11-01 审计）：自服务改密写 at_min_iat 地板——其他设备旧 AT 即时
 // 失效的地基（拒答比对逻辑见 middleware.TestJWT_ATMinIATFloor；本测锁「写地板」契约）。
-func TestAuthService_UpdatePasswordWritesATFloor(t *testing.T) {
+func TestAuthService_UpdatePasswordRejectsOldATOnEveryDevice(t *testing.T) {
 	resetAuthTables(t)
 	ctx := context.Background()
 	mr, err := miniredis.Run()
@@ -248,29 +249,34 @@ func TestAuthService_UpdatePasswordWritesATFloor(t *testing.T) {
 	jwtCfg := config.JWTConfig{Secret: "test-secret", AccessTTL: 30 * time.Minute, RefreshTTL: 168 * time.Hour}
 	repo := repository.NewUserRepo(testPool)
 	auditSvc := service.NewAuditService(repository.NewAuditLogRepo(testPool), repo)
-	authSvc := service.NewAuthService(repo, jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL}), rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
+	manager := jwt.NewManager(jwt.Config{Secret: jwtCfg.Secret, AccessTTL: jwtCfg.AccessTTL})
+	authSvc := service.NewAuthService(repo, manager, rdb, redispkg.NewScripts(rdb), auditSvc, jwtCfg, nil)
 
 	hash, err := crypto.HashPassword("oldpass123")
 	require.NoError(t, err)
 	user := &model.User{Username: "floor_user", EmployeeNo: "E621001", Password: hash, Status: 1}
 	require.NoError(t, repo.Create(ctx, user))
+	service.RunProjectionSweepOnce(ctx, service.NewSessionWorkerDeps(testPool, repo, rdb, jwtCfg.AccessTTL))
 
-	pair1, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-"}, "127.0.0.1", "test")
+	pair1, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-1"}, "127.0.0.1", "test")
 	require.NoError(t, err)
-	pair2, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-"}, "127.0.0.1", "test")
+	pair2, err := authSvc.Login(ctx, &model.LoginRequest{EmployeeNo: user.EmployeeNo, Password: "oldpass123", DeviceID: "dev-2"}, "127.0.0.1", "test")
 	require.NoError(t, err)
+	guard := &c05Env{jwt: manager, rdb: rdb}
+	for _, pair := range []*model.TokenPair{pair1, pair2} {
+		status, _ := guard.bearerStatus(t, pair.AccessToken)
+		require.Equal(t, http.StatusOK, status)
+	}
 
-	newPair, err := authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "newpass456", pair1.AccessToken, "dev-1")
+	newPair, _, err := authSvc.UpdatePassword(ctx, user.ID, "oldpass123", "newpass456", pair1.AccessToken, "dev-1", "")
 	require.NoError(t, err)
 	require.NotEmpty(t, newPair.AccessToken, "改密后重签新对")
 
-	floorStr, err := rdb.Get(ctx, fmt.Sprintf("user:at_min_iat:%d", user.ID)).Result()
-	require.NoError(t, err, "改密必须写入地板键")
-	floor, err := strconv.ParseInt(floorStr, 10, 64)
-	require.NoError(t, err)
-	assert.InDelta(t, time.Now().Unix(), floor, 5, "地板≈改密时刻（pair1/pair2 的 iat 早于地板 → 即时失效）")
-	ttl, err := rdb.TTL(ctx, fmt.Sprintf("user:at_min_iat:%d", user.ID)).Result()
-	require.NoError(t, err)
-	assert.True(t, ttl > 25*time.Minute, "地板 TTL≈AccessTTL+60s（自然过期零残留）")
-	_ = pair2
+	for _, pair := range []*model.TokenPair{pair1, pair2} {
+		status, body := guard.bearerStatus(t, pair.AccessToken)
+		require.Equal(t, http.StatusUnauthorized, status)
+		require.Contains(t, body, `"code":20003`)
+	}
+	status, _ := guard.bearerStatus(t, newPair.AccessToken)
+	require.Equal(t, http.StatusOK, status)
 }

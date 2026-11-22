@@ -496,6 +496,127 @@ func (r *UserRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, stat
 	return nil
 }
 
+// Pool 装配派生出口：AuthService 等共用同一事实库的组件由此取池
+// （避免构造器签名扩散——测试与 provider 装配零改动）。
+func (r *UserRepo) Pool() *pgxpool.Pool { return r.db }
+
+// UserSecuritySnapshot C05 DB 安全快照（认证入口与安全写共用的事实读取）。
+type UserSecuritySnapshot struct {
+	ID                 int64
+	Status             int
+	Deleted            bool
+	MustChangePassword bool
+	PasswordHash       string
+	SessionEpoch       int64
+	ProjectionEpoch    int64
+}
+
+// LockSecuritySnapshotTx 目标行锁内读安全快照（统一安全写第一步：
+// 核当前状态/hash/epoch 后才允许写状态或口令）。
+func (r *UserRepo) LockSecuritySnapshotTx(ctx context.Context, tx pgx.Tx, id int64) (*UserSecuritySnapshot, error) {
+	return scanSecuritySnapshot(tx.QueryRow(ctx, `
+		SELECT id, status, (deleted_at IS NOT NULL), must_change_password, password,
+		       session_epoch, session_projection_epoch
+		FROM users WHERE id = $1 FOR UPDATE`, id))
+}
+
+// SecuritySnapshot 无锁读（Login/认证入口的本请求可信快照）。
+func (r *UserRepo) SecuritySnapshot(ctx context.Context, id int64) (*UserSecuritySnapshot, error) {
+	return scanSecuritySnapshot(r.db.QueryRow(ctx, `
+		SELECT id, status, (deleted_at IS NOT NULL), must_change_password, password,
+		       session_epoch, session_projection_epoch
+		FROM users WHERE id = $1`, id))
+}
+
+func scanSecuritySnapshot(row pgx.Row) (*UserSecuritySnapshot, error) {
+	var s UserSecuritySnapshot
+	err := row.Scan(&s.ID, &s.Status, &s.Deleted, &s.MustChangePassword, &s.PasswordHash,
+		&s.SessionEpoch, &s.ProjectionEpoch)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errcode.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scan security snapshot: %w", err)
+	}
+	return &s, nil
+}
+
+// AdvanceEpochSetStatusTx 锁内推进代际并写状态：目标状态相同则不无意义推进
+// （changed=false），不同则 epoch+1；expected 不符即并发冲突（ErrConcurrentModification）。
+func (r *UserRepo) AdvanceEpochSetStatusTx(ctx context.Context, tx pgx.Tx, id int64, expectedEpoch int64, status int) (newEpoch int64, changed bool, err error) {
+	err = tx.QueryRow(ctx, `
+		UPDATE users SET
+			status = $3,
+			session_epoch = CASE WHEN status <> $3 THEN session_epoch + 1 ELSE session_epoch END,
+			updated_at = NOW()
+		WHERE id = $1 AND session_epoch = $2 AND deleted_at IS NULL
+		RETURNING session_epoch, (session_epoch <> $2)`, id, expectedEpoch, status).
+		Scan(&newEpoch, &changed)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, errcode.ErrConcurrentModification
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("advance epoch set status: %w", err)
+	}
+	return newEpoch, changed, nil
+}
+
+// AdvanceEpochResetPasswordTx 锁内重置口令：保持原状态、设 must_change_password=true、
+// epoch+1，不顺便启用；expected 不符即并发冲突。
+func (r *UserRepo) AdvanceEpochResetPasswordTx(ctx context.Context, tx pgx.Tx, id int64, expectedEpoch int64, passwordHash string) (int64, error) {
+	var newEpoch int64
+	err := tx.QueryRow(ctx, `
+		UPDATE users SET password = $3, must_change_password = true,
+		       session_epoch = session_epoch + 1, updated_at = NOW()
+		WHERE id = $1 AND session_epoch = $2 AND deleted_at IS NULL
+		RETURNING session_epoch`, id, expectedEpoch, passwordHash).Scan(&newEpoch)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, errcode.ErrConcurrentModification
+	}
+	if err != nil {
+		return 0, fmt.Errorf("advance epoch reset password: %w", err)
+	}
+	return newEpoch, nil
+}
+
+// ChangePasswordSecureTx 锁内消费调用方已验证的当前凭据：自助改密在锁内重核
+// 原 hash/epoch/active（管理员新重置后不得覆盖新密码），同事务 epoch+1。
+func (r *UserRepo) ChangePasswordSecureTx(ctx context.Context, tx pgx.Tx, id int64, currentHash, newHash string, expectedEpoch int64) (int64, error) {
+	var newEpoch int64
+	err := tx.QueryRow(ctx, `
+		UPDATE users SET password = $3, must_change_password = false,
+		       session_epoch = session_epoch + 1, updated_at = NOW()
+		WHERE id = $1 AND password = $2 AND status = 1 AND session_epoch = $4 AND deleted_at IS NULL
+		RETURNING session_epoch`, id, currentHash, newHash, expectedEpoch).Scan(&newEpoch)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, errcode.ErrInvalidCredentials
+	}
+	if err != nil {
+		return 0, fmt.Errorf("change password secure: %w", err)
+	}
+	return newEpoch, nil
+}
+
+// SoftDeleteWithEpochTx 软删除同事务推进代际（删除立即全端拒绝，且降级链路
+// 不可能出现「已删仍按旧代接受」）。
+func (r *UserRepo) SoftDeleteWithEpochTx(ctx context.Context, tx pgx.Tx, id int64, expectedEpoch int64) (int64, error) {
+	if err := r.SoftDeleteTx(ctx, tx, id); err != nil {
+		return 0, err
+	}
+	var newEpoch int64
+	err := tx.QueryRow(ctx, `
+		UPDATE users SET session_epoch = session_epoch + 1, updated_at = NOW()
+		WHERE id = $1 AND session_epoch = $2 AND deleted_at IS NOT NULL
+		RETURNING session_epoch`, id, expectedEpoch).Scan(&newEpoch)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, errcode.ErrConcurrentModification
+	}
+	if err != nil {
+		return 0, fmt.Errorf("soft delete with epoch: %w", err)
+	}
+	return newEpoch, nil
+}
+
 // SetRoles 全量覆盖直接角色，保留未变化绑定的创建事实。
 func (r *UserRepo) SetRoles(ctx context.Context, userID int64, roleIDs []int64) error {
 	if !IAMWriteActive(ctx) {

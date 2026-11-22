@@ -79,6 +79,9 @@ func (s *Service) withHTTPCommand(ctx context.Context, action string, actor int6
 		routes = []ticketPolicyRoute{{path: path, method: "POST"}}
 	}
 	return guard(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := s.freshCommandCredential(ctx, actor, purpose); err != nil {
+			return err
+		}
 		roles, err := s.freshCommandRoles(ctx, actor, purpose.Model, routes...)
 		if err != nil {
 			return err
@@ -160,4 +163,33 @@ func (s *Service) freshCommandRoles(ctx context.Context, actor int64, modelText 
 		}
 	}
 	return roles, nil
+}
+
+// freshCommandCredential runs inside the same IAM ordering and transaction as
+// authorization and the business write. Request bodies never supply these facts.
+func (s *Service) freshCommandCredential(ctx context.Context, actor int64, purpose middleware.IAMRequestPurpose) error {
+	if purpose.SessionEpoch != nil && purpose.PATID == 0 {
+		var current int64
+		err := repository.IAMDB(ctx, s.db).QueryRow(ctx, `SELECT session_epoch FROM users WHERE id=$1 AND status=1 AND deleted_at IS NULL`, actor).Scan(&current)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.ErrNoPermission
+		}
+		if err != nil {
+			return fmt.Errorf("current ticket session: %w", err)
+		}
+		if current < 1 || current != *purpose.SessionEpoch {
+			return errcode.ErrNoPermission
+		}
+		return nil
+	}
+	if purpose.PATID > 0 && purpose.SessionEpoch == nil {
+		active, err := repository.NewPatRepo(s.db).IsActiveForUser(ctx, purpose.PATID, actor)
+		if err != nil {
+			return fmt.Errorf("current ticket PAT: %w", err)
+		}
+		if active {
+			return nil
+		}
+	}
+	return errcode.ErrNoPermission
 }

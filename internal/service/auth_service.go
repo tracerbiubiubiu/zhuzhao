@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
@@ -27,6 +29,8 @@ const defaultDeviceID = "default"
 // AuthService 认证服务
 type AuthService struct {
 	userRepo     *repository.UserRepo
+	opsRepo      *repository.SessionOperationRepo
+	pool         *pgxpool.Pool
 	jwtManager   *jwtpkg.Manager
 	rdb          *goredis.Client
 	scripts      *redispkg.Scripts
@@ -47,12 +51,25 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
+		opsRepo:      repository.NewSessionOperationRepo(userRepo.Pool()),
+		pool:         userRepo.Pool(),
 		jwtManager:   jwtManager,
 		rdb:          rdb,
 		scripts:      scripts,
 		auditService: auditService,
 		refreshTTL:   jwtCfg.RefreshTTL,
 		captchaSvc:   captchaSvc,
+	}
+}
+
+// sessionDeps C05 统一安全写依赖集（自助改密与账号管理命令共用同一事实库）。
+func (s *AuthService) sessionDeps() SessionSecurityDeps {
+	return SessionSecurityDeps{
+		pool:      s.pool,
+		userRepo:  s.userRepo,
+		opsRepo:   s.opsRepo,
+		rdb:       s.rdb,
+		accessTTL: s.jwtManager.AccessTTL(),
 	}
 }
 
@@ -106,17 +123,14 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, err
 	}
 
-	// 先取纪元再重读凭据：不能用撤销前校验的密码签发撤销后的纪元。
-	epoch, err := currentUserPwEpoch(ctx, s.rdb, user.ID)
+	// Validate the credential and epoch from one DB snapshot. A later reread must
+	// still match it; credentials verified before a reset cannot borrow its epoch.
+	snapBefore, err := s.userRepo.SecuritySnapshot(ctx, user.ID)
 	if err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	user, err = s.userRepo.FindByID(ctx, user.ID)
-	if err != nil {
-		return nil, err
-	}
 
-	if user.Status != 1 {
+	if snapBefore.Deleted || snapBefore.Status != 1 {
 		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
 		if lockErr != nil {
 			return nil, errcode.ErrServiceUnavailable
@@ -132,7 +146,7 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 		return nil, errcode.ErrInvalidCredentials
 	}
 
-	if !crypto.CheckPassword(req.Password, user.Password) {
+	if !crypto.CheckPassword(req.Password, snapBefore.PasswordHash) {
 		blocked, lockErr := failLogin(ctx, s.scripts, req.EmployeeNo)
 		if lockErr != nil {
 			return nil, errcode.ErrServiceUnavailable
@@ -148,18 +162,31 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	if err := s.scripts.LoginLockClear(ctx, req.EmployeeNo); err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	if ok, err := clearUserDisabledAtEpoch(ctx, s.rdb, user.ID, epoch); err != nil {
-		return nil, errcode.ErrServiceUnavailable
-	} else if !ok {
-		return nil, errcode.ErrInvalidCredentials
-	}
 	if err := s.userRepo.UpdateLastLogin(ctx, user.ID, ip); err != nil {
 		// B4-1：认证已通过但后续失败同样落审计（此前该分支无登录记录）
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 
-	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID), epoch)
+	// C05：重读 DB 安全快照——认证期间发生改密/停用提交（代际推进/软删/停用）
+	// 即拒绝，不借用新代签发旧凭据会话
+	snapAfter, err := s.userRepo.SecuritySnapshot(ctx, user.ID)
+	if err != nil {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	if snapAfter.Deleted || snapAfter.Status != 1 || snapAfter.SessionEpoch != snapBefore.SessionEpoch || snapAfter.PasswordHash != snapBefore.PasswordHash {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 401)
+		return nil, errcode.ErrInvalidCredentials
+	}
+	// C05 切换就绪门：已切换账号在当前代投影未确认（不可证明 Redis 已同步）时
+	// 可恢复 503，恢复后可正常登录；缺键不回退旧代
+	if err := CheckProjectionReadiness(ctx, s.sessionDeps(), user.ID, snapAfter); err != nil {
+		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 503)
+		return nil, err
+	}
+
+	user.MustChangePassword = snapAfter.MustChangePassword
+	pair, err := s.issueTokenPair(ctx, user, normalizeDeviceID(req.DeviceID), snapBefore.SessionEpoch)
 	if err != nil {
 		s.auditService.LogLogin(ctx, req.EmployeeNo, ip, userAgent, &user.ID, user.Username, 500)
 		return nil, err
@@ -168,17 +195,18 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest, ip, us
 	return pair, nil
 }
 
-// consumeRefreshLua 刷新线性化消费（R1/C3）：GETDEL 旧 RT 与 GET 密码纪元在
-// 单脚本内原子执行——吊销（SET disabled/INCR/DEL）与本刷新的任何交错，其判定
-// 一律以「消费时刻」的纪元为准：INCR 发生在消费前 → 纪元不匹配拒；发生在消费
-// 后 → 新签 RT 绑定消费时刻纪元，下一次刷新必败。两条路都封死永久幸存。
-// GETDEL 需 Redis 6.2+（生态基线版本）；键缺失时 v 为 false，Lua 侧归一为空串。
-const consumeRefreshLua = `
-local v = redis.call('GETDEL', KEYS[1])
-if not v then v = '' end
-local e = redis.call('GET', KEYS[2])
-if not e then e = '0' end
-return {v, e}
+// rotateSessionPairLua compares the original RT hash and installs its successor
+// atomically. A late refresh never removes or overwrites a newer Login/Refresh.
+// Compare epoch strings directly rather than converting int64 to a Lua number.
+const rotateSessionPairLua = `
+if redis.call('GET', KEYS[2]) ~= ARGV[1] or redis.call('EXISTS', KEYS[3]) ~= 0 then
+  return -2
+end
+local old = redis.call('GET', KEYS[1])
+if not old then return 0 end
+if old ~= ARGV[2] then return -1 end
+redis.call('PSETEX', KEYS[1], ARGV[4], ARGV[3])
+return 1
 `
 
 // Refresh 刷新 Token，RT 轮换
@@ -187,54 +215,55 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, ip, userAgent s
 	if err != nil {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
-
-	if disabled, err := s.isUserDisabled(ctx, claims.UserID); err != nil {
-		return nil, errcode.ErrServiceUnavailable
-	} else if disabled {
+	epoch, err := dbSessionClaimsEpoch(claims.SessionSchema, claims.SessionEpoch)
+	if err != nil || claims.UserID < 1 {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
 
+	snap, err := s.userRepo.SecuritySnapshot(ctx, claims.UserID)
+	if err != nil {
+		if errors.Is(err, errcode.ErrUserNotFound) {
+			return nil, errcode.ErrRefreshTokenInvalid
+		}
+		return nil, errcode.ErrServiceUnavailable
+	}
+	if snap.Deleted || snap.Status != 1 {
+		return nil, errcode.ErrRefreshTokenInvalid
+	}
+	if snap.SessionEpoch != epoch {
+		return nil, errcode.ErrPasswordChanged
+	}
+	if err := CheckProjectionReadiness(ctx, s.sessionDeps(), claims.UserID, snap); err != nil {
+		return nil, err
+	}
 	user, err := s.userRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
 		if errors.Is(err, errcode.ErrUserNotFound) {
 			return nil, errcode.ErrRefreshTokenInvalid
 		}
-		return nil, err
+		return nil, errcode.ErrServiceUnavailable
 	}
-	if user.Status != 1 {
-		return nil, errcode.ErrRefreshTokenInvalid
-	}
+	user.MustChangePassword = snap.MustChangePassword
 	deviceID := normalizeDeviceID(claims.DeviceID)
 	if !validDeviceID(deviceID) {
 		// D2-22：防御——claims 来自服务端签名令牌，正常不可达；
 		// 伪造/历史脏 claims 拒绝刷新
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
-	key := refreshKey(claims.UserID, deviceID)
-	res, err := s.rdb.Eval(ctx, consumeRefreshLua, []string{key, pwEpochKey(claims.UserID)}).Result()
+	pair, err := s.generateSessionTokenPair(user, deviceID, epoch)
 	if err != nil {
+		return nil, err
+	}
+	result, err := s.rdb.Eval(ctx, rotateSessionPairLua, []string{
+		dbRefreshKey(claims.UserID, epoch, deviceID), dbSessionEpochKey(claims.UserID), dbSessionDisabledKey(claims.UserID),
+	}, claims.SessionEpoch, hashToken(refreshToken), hashToken(pair.RefreshToken), s.refreshTTL.Milliseconds()).Int()
+	if err != nil || result == -2 {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	vals, _ := res.([]any)
-	storedHash, _ := vals[0].(string)
-	epochStr, _ := vals[1].(string)
-	epoch, perr := strconv.ParseInt(epochStr, 10, 64)
-	if perr != nil || epoch < 0 {
-		return nil, errcode.ErrServiceUnavailable
-	}
-	// 消费时刻的权威校验，三种失败态分别透出（签发绑定消费时刻纪元：若 INCR
-	// 发生在消费之后，新 RT 纪元已旧，下一次刷新必败；新 AT 也由同纪元检查即时拒绝）：
-	// ① 纪元不匹配 = 改密/重置密码后的旧 RT（正常安全动作，20014 明确告知重登）；
-	// ② 槽位为空 = 已登出/吊销/并发刷新落败（20004，自然过期语义）；
-	// ③ 槽位非空但 hash 不符 = 槽位已推进到更新的 RT，旧 RT 重现（盗用重放/
-	// 迟到提交，RT-1 安全告警，20015）。
-	if epoch != claims.Pwe {
-		return nil, errcode.ErrPasswordChanged
-	}
-	if storedHash == "" {
+	if result == 0 {
 		return nil, errcode.ErrRefreshTokenInvalid
 	}
-	if storedHash != hashToken(refreshToken) {
+	if result == -1 {
 		// C-5/RT-1 观测先行（2026-10-27 拍板）：重放命中即落审计行+WARN——记录面
 		// 不设降噪前提（合法重放也留痕，三周后追查「一查便知」依赖此行）；告警面
 		// （宽限窗口/family_id）仍按台账 C-5 触发条件挂起，记录≠告警两事不互斥
@@ -244,14 +273,20 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, ip, userAgent s
 			"request_id", reqid.From(ctx))
 		return nil, errcode.ErrRefreshTokenReplayed
 	}
-
-	return s.issueTokenPair(ctx, user, deviceID, epoch)
+	if result != 1 {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	return pair, nil
 }
 
 // Logout 登出，吊销 AT + 删除 RT
 func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) error {
 	claims, err := s.jwtManager.ParseAccessToken(accessToken)
 	if err != nil {
+		return errcode.ErrTokenInvalid
+	}
+	epoch, err := dbSessionClaimsEpoch(claims.SessionSchema, claims.SessionEpoch)
+	if err != nil || claims.UserID < 1 {
 		return errcode.ErrTokenInvalid
 	}
 	// W0b（二十四批登出槽）：device_id 必填——空值曾静默归一 "default" 槽，
@@ -279,75 +314,122 @@ func (s *AuthService) Logout(ctx context.Context, accessToken, deviceID string) 
 		}
 	}
 
-	rtKey := refreshKey(claims.UserID, normalizeDeviceID(deviceID))
+	rtKey := dbRefreshKey(claims.UserID, epoch, deviceID)
 	if err := s.rdb.Del(ctx, rtKey).Err(); err != nil {
 		return errcode.ErrServiceUnavailable
 	}
 	return nil
 }
 
-// UpdatePassword 用户修改密码（需旧密码验证），成功后吊销旧会话并重新签发 Token
-func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID string) (*model.TokenPair, error) {
+// UpdatePassword 用户修改密码（需旧密码验证）。C05：同事务写口令/代际/回执/意图
+// （F021——同 K 重投只核查原结果，不再执行秘密写、不重放 TokenPair；口令不进
+// 回执/指纹/日志）。投影失败保持 DB 已提交事实，原意图可恢复（可恢复 503）。
+func (s *AuthService) UpdatePassword(ctx context.Context, userID int64, oldPassword, newPassword, accessToken, deviceID, operationID string) (*model.TokenPair, *SessionCommandResult, error) {
 	if oldPassword == "" || newPassword == "" {
-		return nil, errcode.ErrInvalidParams
+		return nil, nil, errcode.ErrInvalidParams
 	}
 	// D2-22：device_id 白名单（与 Login/Logout 对齐——重签 Token 写 Redis 键）
 	if deviceID != "" && !validDeviceID(deviceID) {
-		return nil, errcode.ErrInvalidParams
+		return nil, nil, errcode.ErrInvalidParams
+	}
+	deps := s.sessionDeps()
+	opID := ResolveOperationID(operationID)
+	// F021：已有 operation 无论在途/完成/待核查，只给明确核查状态
+	if res, hit, err := lookUpOperation(ctx, deps, SessionCmdChangePassword, opID, userID, userID); err != nil {
+		return nil, nil, err
+	} else if hit {
+		return nil, res, nil
 	}
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !crypto.CheckPassword(oldPassword, user.Password) {
-		return nil, errcode.ErrInvalidCredentials
+		return nil, nil, errcode.ErrInvalidCredentials
 	}
 	// B2-2：新密码与旧密码相同 → 400（02-auth.md 测试用例承诺）；
 	// 防止「以为改了密码」实际凭证未变却吊销了全部会话
 	if oldPassword == newPassword {
-		return nil, errcode.ErrInvalidParams
+		return nil, nil, errcode.ErrInvalidParams
 	}
-	hash, err := crypto.HashPassword(newPassword)
+	hash, err := crypto.HashPassword(newPassword) // bcrypt 在锁外计算
 	if err != nil {
-		return nil, fmt.Errorf("hash password: %w", err)
+		return nil, nil, fmt.Errorf("hash password: %w", err)
 	}
-	if err := s.userRepo.ChangePasswordIfCurrent(ctx, userID, user.Password, hash); err != nil {
-		return nil, err
+	// C05 统一安全事务：IAM 守卫内锁行重核（原 hash/active/epoch），同事务写
+	// 口令、代际+1、回执与投影意图；投影在守卫提交后按 AfterIAMCommit 尝试。
+	var newEpoch int64
+	guardErr := repository.WithIAMGuard(ctx, s.pool, func(gctx context.Context) error {
+		var werr error
+		newEpoch, _, _, werr = securityWrite(gctx, deps, SessionCmdChangePassword, opID, "http", userID, userID,
+			func(snap *repository.UserSecuritySnapshot) error {
+				if snap.Deleted {
+					return errcode.ErrUserNotFound
+				}
+				if snap.Status != 1 {
+					return errcode.ErrInvalidCredentials
+				}
+				return nil
+			},
+			func(tx pgx.Tx, snap *repository.UserSecuritySnapshot) (int64, bool, error) {
+				// 锁内重核原 hash/epoch/active：管理员新重置后不得覆盖新密码
+				ne, err := s.userRepo.ChangePasswordSecureTx(ctx, tx, userID, user.Password, hash, snap.SessionEpoch)
+				return ne, true, err
+			},
+			func(snap *repository.UserSecuritySnapshot) bool { return true },
+			"self-change-password")
+		if werr != nil {
+			return werr
+		}
+		return projectAfterCommit(gctx, deps, userID, newEpoch)
+	})
+	if errors.Is(guardErr, errcode.ErrConcurrentModification) {
+		// 同 K 并发：唯一保留失败收敛为读原回执（最多一个请求产生效果）
+		if res, hit, lerr := lookUpOperation(ctx, deps, SessionCmdChangePassword, opID, userID, userID); lerr == nil && hit {
+			return nil, res, nil
+		}
+		return nil, nil, errcode.ErrInvalidCredentials
 	}
-
-	// D2-05：改密吊销同样走重试补偿（DB 已提交、Redis 闪断时防旧会话存活）
-	epoch, err := revokeUserSessionsWithRetryEpoch(ctx, s.rdb, userID, s.jwtManager.AccessTTL())
-	if err != nil {
-		return nil, errcode.ErrServiceUnavailable
+	if guardErr != nil {
+		if errors.Is(guardErr, errcode.ErrInvalidCredentials) || errors.Is(guardErr, errcode.ErrUserNotFound) {
+			return nil, nil, guardErr
+		}
+		// DB 已提交而投影待恢复：可恢复 503（安全事实已落库，worker 按原意图恢复）
+		if errors.Is(guardErr, errcode.ErrServiceUnavailable) {
+			return nil, &SessionCommandResult{OperationID: opID, Status: "pending", Epoch: newEpoch}, guardErr
+		}
+		return nil, nil, guardErr
 	}
-	// 先完成全设备吊销，再单独拉黑当前 AT；单条黑名单写失败不能跳过纪元推进。
+	// 先完成全设备吊销（投影已推进代际），再单独拉黑当前 AT；单条黑名单写失败
+	// 不能跳过代际推进。
 	if accessToken != "" {
 		if err := s.revokeAccessToken(ctx, accessToken); err != nil {
-			return nil, err
+			return nil, &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: newEpoch}, err
 		}
 	}
-	// P1-D（2026-11-01 审计）：写改密地板——其他设备旧 AT 即时失效。修前为放行新 AT
-	// 清除 disabled 键曾使旧 AT 复活；现由密码纪元严格比对兜底，同秒也不可复用。
-	// 保留兼容地板，TTL=AccessTTL+60s 自然过期；
-	// 写失败与吊销同档 fail-close。
+	// P1-D（2026-11-01 审计）：写改密地板——其他设备旧 AT 即时失效。保留兼容地板，
+	// TTL=AccessTTL+60s 自然过期；写失败与吊销同档 fail-close。
 	if err := s.rdb.Set(ctx, fmt.Sprintf("user:at_min_iat:%d", userID), time.Now().Unix(),
 		s.jwtManager.AccessTTL()+time.Minute).Err(); err != nil {
-		return nil, errcode.ErrServiceUnavailable
+		return nil, &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: newEpoch}, errcode.ErrServiceUnavailable
 	}
-	// 纪元绑定本次撤销结果；重读保证之后的重置/删除不能借用本次改密结果。
-	current, err := s.userRepo.FindByID(ctx, userID)
+	// 代际绑定本次结果；重读保证之后的重置/删除不能借用本次改密结果签发会话。
+	snapNow, err := s.userRepo.SecuritySnapshot(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if current.Password != hash || current.Status != 1 || current.MustChangePassword {
-		return nil, errcode.ErrInvalidCredentials
+	if snapNow.Deleted || snapNow.PasswordHash != hash || snapNow.Status != 1 || snapNow.MustChangePassword || snapNow.SessionEpoch != newEpoch {
+		return nil, nil, errcode.ErrInvalidCredentials
 	}
-	if ok, err := clearUserDisabledAtEpoch(ctx, s.rdb, userID, epoch); err != nil {
-		return nil, errcode.ErrServiceUnavailable
-	} else if !ok {
-		return nil, errcode.ErrInvalidCredentials
+	if err := CheckProjectionReadiness(ctx, deps, userID, snapNow); err != nil {
+		return nil, &SessionCommandResult{OperationID: opID, Status: "pending", Epoch: newEpoch}, err
 	}
-	return s.issueTokenPair(ctx, current, normalizeDeviceID(deviceID), epoch)
+	current := &model.User{ID: snapNow.ID, Username: user.Username, MustChangePassword: false}
+	pair, err := s.issueTokenPair(ctx, current, normalizeDeviceID(deviceID), newEpoch)
+	if err != nil {
+		return nil, &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: newEpoch}, err
+	}
+	return pair, &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: newEpoch}, nil
 }
 
 // revokeAccessToken 将 AT 加入黑名单（剩余 TTL 内失效）
@@ -370,19 +452,39 @@ func (s *AuthService) revokeAccessToken(ctx context.Context, accessToken string)
 	return nil
 }
 
-func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, deviceID string, pwe int64) (*model.TokenPair, error) {
-	at, _, err := s.jwtManager.GenerateAccessTokenWithEpoch(user.ID, user.Username, user.MustChangePassword, pwe)
+// installSessionPairLua binds the slot write to the exact active projection. The
+// decimal epoch is compared as a string so epochs beyond Lua's integer precision
+// remain distinct. Login may replace its device slot; refresh must use CAS below.
+const installSessionPairLua = `
+if redis.call('GET', KEYS[2]) ~= ARGV[1] or redis.call('EXISTS', KEYS[3]) ~= 0 then
+  return 0
+end
+redis.call('PSETEX', KEYS[1], ARGV[3], ARGV[2])
+return 1
+`
+
+func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, deviceID string, epoch int64) (*model.TokenPair, error) {
+	pair, err := s.generateSessionTokenPair(user, deviceID, epoch)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := s.rdb.Eval(ctx, installSessionPairLua, []string{
+		dbRefreshKey(user.ID, epoch, deviceID), dbSessionEpochKey(user.ID), dbSessionDisabledKey(user.ID),
+	}, strconv.FormatInt(epoch, 10), hashToken(pair.RefreshToken), s.refreshTTL.Milliseconds()).Int()
+	if err != nil || ok != 1 {
+		return nil, errcode.ErrServiceUnavailable
+	}
+	return pair, nil
+}
+
+func (s *AuthService) generateSessionTokenPair(user *model.User, deviceID string, epoch int64) (*model.TokenPair, error) {
+	at, _, err := s.jwtManager.GenerateAccessTokenWithSessionEpoch(user.ID, user.Username, user.MustChangePassword, 0, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
-	rt, _, err := s.jwtManager.GenerateRefreshToken(user.ID, deviceID, s.refreshTTL, pwe)
+	rt, _, err := s.jwtManager.GenerateRefreshTokenWithSessionEpoch(user.ID, deviceID, s.refreshTTL, 0, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
-	}
-
-	key := refreshKey(user.ID, deviceID)
-	if err := s.rdb.Set(ctx, key, hashToken(rt), s.refreshTTL).Err(); err != nil {
-		return nil, errcode.ErrServiceUnavailable
 	}
 
 	return &model.TokenPair{
@@ -393,12 +495,15 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User, devi
 	}, nil
 }
 
-func (s *AuthService) isUserDisabled(ctx context.Context, userID int64) (bool, error) {
-	n, err := s.rdb.Exists(ctx, fmt.Sprintf("user:disabled:%d", userID)).Result()
-	if err != nil {
-		return false, err
+func dbSessionClaimsEpoch(schema, raw string) (int64, error) {
+	if schema != jwtpkg.SessionSchemaDBEpochV1 {
+		return 0, errcode.ErrTokenInvalid
 	}
-	return n > 0, nil
+	epoch, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || epoch < 1 || strconv.FormatInt(epoch, 10) != raw {
+		return 0, errcode.ErrTokenInvalid
+	}
+	return epoch, nil
 }
 
 func failLogin(ctx context.Context, scripts *redispkg.Scripts, employeeNo string) (blocked bool, err error) {

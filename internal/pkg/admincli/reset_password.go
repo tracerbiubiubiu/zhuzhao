@@ -5,6 +5,11 @@
 // ——不走 HTTP/会话，凭「容器执行权」授权：能 docker exec 进 app 容器者本已
 // 具备宿主级权限，本包不新增任何提权面（对比 HTTP break-glass 端点会在认证
 // 系统上开新攻击面，故不采用）。输出/交互（确认、录密）留在 cmd/server 包装层。
+//
+// C05（底座 §4.2/运维 §6.2）：重置走统一安全事务——同事务写口令/代际/回执/
+// 投影意图；启用顺序受安全门约束：先确认本次重置的撤销投影已完成，才允许
+// 连带启用（推进新代）。投影失败时 DB 安全事实保留、不启用，操作者按
+// runbook §6.2 受权重试或等 worker 恢复。
 package admincli
 
 import (
@@ -21,6 +26,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -58,15 +64,18 @@ type ResetOptions struct {
 type ResetResult struct {
 	UserID          int64
 	Username        string
-	Reenabled       bool // 原处于禁用态，本次已连带启用
-	SessionsRevoked bool // Redis 会话吊销是否成功（false=存量 token 可能残留）
+	OperationID     string
+	Reenabled       bool // 原处于禁用态且撤销投影已确认，本次已连带启用（推进新代）
+	SessionsRevoked bool // 原重置代际的撤销投影是否确认
 	AuditWritten    bool // audit_logs 是否落行（false=须人工台账补记）
 	ForcedChange    bool // 恒 true：must_change_password=true，下次登录强制改密
+	// PendingReason 投影待恢复原因（非空时启用被安全门拒绝，操作者恢复后重跑）
+	PendingReason string
 }
 
-// ResetSuperadminPassword break-glass 重置：目标校验 → 重置密码 → 启用（若被禁）
-// → 会话吊销 → 审计留痕。执行顺序对齐 HTTP 侧「先提交 DB、后吊销会话」协议
-// （D2-05）；吊销失败不回滚 DB，带 reconcile 标记日志供对账。
+// ResetSuperadminPassword break-glass 重置：目标校验 → 统一安全事务重置（同事务
+// 写口令/代际/回执/意图）→ 投影确认 → 连带启用（仅投影确认后）→ 审计留痕。
+// 口令不进回执/指纹/日志（F021/底座 §4.4 秘密输入纪律）。
 func ResetSuperadminPassword(ctx context.Context, o ResetOptions) (*ResetResult, error) {
 	if o.Username == "" {
 		return nil, errors.New("username 为空")
@@ -78,67 +87,82 @@ func ResetSuperadminPassword(ctx context.Context, o ResetOptions) (*ResetResult,
 		return nil, errors.New("DB/Redis 连接未初始化")
 	}
 
-	// ① 目标校验：存在 ∧ 持启用中的 superadmin 角色（B1-1 语义与
-	// CountActiveSuperadminUsersTx 对齐：角色启用 ∧ 未软删才算数）
-	var (
-		id       int64
-		username string
-		status   int
-		isSuper  bool
-	)
-	err := o.Pool.QueryRow(ctx, `
-		SELECT u.id, u.username, u.status,
-		       EXISTS(
-		         SELECT 1 FROM user_roles ur
-		         JOIN roles r ON r.id = ur.role_id
-		         WHERE ur.user_id = u.id AND r.code = 'superadmin'
-		           AND r.deleted_at IS NULL AND r.status = 1
-		       )
-		FROM users u WHERE u.username = $1 AND u.deleted_at IS NULL`,
-		o.Username).Scan(&id, &username, &status, &isSuper)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, checkTarget(false, false)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("lookup target: %w", err)
-	}
-	if err := checkTarget(true, isSuper); err != nil {
-		return nil, err
-	}
-
-	// ② 重置密码（复用 repo：bcrypt + must_change_password=true；RowsAffected=0
-	// 返回 ErrUserNotFound——与 ① 同快照下不会发生，防御保留）
-	hash, err := crypto.HashPassword(o.Password)
+	hash, err := crypto.HashPassword(o.Password) // bcrypt 在锁外计算
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
-	if err := repository.NewUserRepo(o.Pool).UpdatePassword(ctx, id, hash, true); err != nil {
-		return nil, fmt.Errorf("update password: %w", err)
-	}
-
-	res := &ResetResult{UserID: id, Username: username, ForcedChange: true, SessionsRevoked: true, AuditWritten: true}
-
-	// ③ 连带启用（锁死场景常见「账号被误禁 + 密码遗忘」叠加——只改密不启用
-	// 恢复不完整；启用无「最后一人」类保护需求，直接置回）
-	if status != 1 {
-		// This source write cooperates with protected IAM commands in the same
-		// fact database; CLI authorization remains the existing operator boundary.
-		if err := repository.NewUserRepo(o.Pool).UpdateStatus(ctx, id, 1); err != nil {
-			return res, fmt.Errorf("re-enable user: %w", err)
+	userRepo := repository.NewUserRepo(o.Pool)
+	deps := service.NewSessionWorkerDeps(o.Pool, userRepo, o.RDB, o.AccessTTL)
+	opID := "cli-reset:" + service.ResolveOperationID("")
+	var id int64
+	var wasDisabled bool
+	var newEpoch int64
+	guardErr := repository.WithIAMGuard(ctx, o.Pool, func(gctx context.Context) error {
+		var err error
+		id, err = lookupSuperadmin(gctx, repository.IAMDB(gctx, o.Pool), o.Username)
+		if err != nil {
+			return err
 		}
+		var desiredActive bool
+		newEpoch, _, desiredActive, err = service.ExecuteCLIPasswordReset(gctx, deps, id, opID, hash)
+		if err != nil {
+			return err
+		}
+		wasDisabled = !desiredActive
+		return service.ProjectAfterCommit(gctx, deps, id, newEpoch)
+	})
+	if guardErr != nil && !errors.Is(guardErr, errcode.ErrServiceUnavailable) {
+		return nil, guardErr
+	}
+	res := &ResetResult{UserID: id, Username: o.Username, OperationID: opID, ForcedChange: true}
+	defer func() { res.AuditWritten = writeAuditLog(ctx, o.Pool, id, o.Username, o.Note) }()
+	if guardErr != nil {
+		res.PendingReason = "口令重置已提交，会话撤销投影待核查。按 runbook §6.2 核查原操作。"
+		return res, nil
+	}
+	res.SessionsRevoked = true
+
+	if !wasDisabled {
+		return res, nil
+	}
+	enableEpoch, err := repository.WithIAMGuardValue(ctx, o.Pool, func(gctx context.Context) (int64, error) {
+		currentID, err := lookupSuperadmin(gctx, repository.IAMDB(gctx, o.Pool), o.Username)
+		if err != nil {
+			return 0, err
+		}
+		if currentID != id {
+			return 0, errcode.ErrConcurrentModification
+		}
+		return service.ExecuteCLIEnable(gctx, deps, id, newEpoch)
+	})
+	if errors.Is(err, errcode.ErrServiceUnavailable) && enableEpoch > 0 {
 		res.Reenabled = true
+		res.PendingReason = "账号启用已提交，新代际会话尚未确认就绪。按 runbook §6.2 核查。"
+		return res, nil
 	}
-
-	// ④ 全端会话吊销（复用导出包装；失败不阻断——DB 已提交，残留会话须对账）
-	if err := service.RevokeUserSessionsWithRetry(ctx, o.RDB, id, o.AccessTTL); err != nil {
-		res.SessionsRevoked = false
+	if err != nil {
+		return res, fmt.Errorf("re-enable user: %w", err)
 	}
-
-	// ⑤ 审计留痕（best-effort：DB 直改类操作本就绕 API 审计面，此处补应用侧
-	// 一行；失败时必须显式提示操作者人工补台账）
-	res.AuditWritten = writeAuditLog(ctx, o.Pool, id, username, o.Note)
-
+	res.Reenabled = true
 	return res, nil
+}
+
+func lookupSuperadmin(ctx context.Context, db repository.IAMDBTX, username string) (int64, error) {
+	var id int64
+	var isSuperadmin bool
+	err := db.QueryRow(ctx, `
+		SELECT u.id, EXISTS(
+		    SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+		    WHERE ur.user_id = u.id AND r.code = 'superadmin'
+		      AND r.deleted_at IS NULL AND r.status = 1)
+		FROM users u WHERE u.username = $1 AND u.deleted_at IS NULL`, username).Scan(&id, &isSuperadmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, checkTarget(false, false)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lookup target: %w", err)
+	}
+	return id, checkTarget(true, isSuperadmin)
 }
 
 // writeAuditLog 落一行审计（method='CLI' 区别于 HTTP 中间件写入的 GET/POST 族）。

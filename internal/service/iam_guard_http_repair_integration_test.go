@@ -97,7 +97,7 @@ func TestIAMGuard_ServiceMissingPurposeFailsClosed(t *testing.T) {
 	f := targetProtectionSetup(t)
 	before := targetProtectionSnapshot(t, f.target)
 	// Deliberately no HTTP capability and no explicit trusted-internal fixture.
-	err := f.svc.ResetPassword(context.Background(), &model.ResetPasswordRequest{UserID: f.target, Password: "SyntheticNoPurpose#2026"}, f.actor)
+	_, err := f.svc.ResetPassword(context.Background(), &model.ResetPasswordRequest{UserID: f.target, Password: "SyntheticNoPurpose#2026"}, f.actor, "")
 	require.ErrorIs(t, err, errcode.ErrNoPermission)
 	require.Equal(t, before, targetProtectionSnapshot(t, f.target))
 }
