@@ -21,8 +21,7 @@ import (
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 )
 
-// insertTicket 直插最小工单行（FK 载体——不 经 ticket service，本测试焦点在 storage 链）。
-// 自足种子：root org + incident 类型（storage 包测试库无 ticket 包的 seedMinimal）。
+// insertTicket 为存储测试插入一张绑定现有发布定义的合成工单。
 func insertTicket(t *testing.T, uid int64) int64 {
 	t.Helper()
 	_, err := testPool.Exec(context.Background(), `
@@ -30,19 +29,15 @@ func insertTicket(t *testing.T, uid int64) int64 {
 		SELECT 'root', 'Root', 'root', false, 1, 0, true
 		WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE code = 'root')`)
 	require.NoError(t, err)
-	_, err = testPool.Exec(context.Background(), `
-		INSERT INTO ticket_types (code, name, states, transitions)
-		SELECT 'incident', '事件', '["open","assigned","closed"]', '{}'
-		WHERE NOT EXISTS (SELECT 1 FROM ticket_types WHERE code = 'incident')`)
-	require.NoError(t, err)
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(context.Background(),
 		`SELECT id FROM organizations WHERE code = 'root' LIMIT 1`).Scan(&orgID))
 	var id int64
 	require.NoError(t, testPool.QueryRow(context.Background(), `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path)
-		VALUES ('incident', 'B5-3 附件链测试', 'x', 3, 'open', $1, $2,
-			(SELECT path FROM organizations WHERE id = $2))
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path, definition_version)
+		SELECT code, 'B5-3 附件链测试', 'x', 3, 'open', $1, $2,
+			(SELECT path FROM organizations WHERE id = $2), current_published_version
+		FROM ticket_types WHERE code = 'incident' AND current_published_version IS NOT NULL
 		RETURNING id`, uid, orgID).Scan(&id))
 	t.Cleanup(func() {
 		_, _ = testPool.Exec(context.Background(), `DELETE FROM tickets WHERE id = $1`, id)

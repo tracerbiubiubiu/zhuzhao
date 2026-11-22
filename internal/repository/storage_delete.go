@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/fileref"
 )
 
@@ -28,11 +29,16 @@ func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string,
 	}
 	defer tx.Rollback(ctx)
 	var typeCode string
+	var definitionVersion *int64
 	var data []byte
-	err = tx.QueryRow(ctx, `SELECT type_code,custom_data FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&typeCode, &data)
+	err = tx.QueryRow(ctx, `SELECT type_code,definition_version,custom_data FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&typeCode, &definitionVersion, &data)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrStorageObjectNotFound
 	}
+	if err != nil {
+		return err
+	}
+	snapshot, _, err := boundTicketDefinition(ctx, tx, typeCode, definitionVersion)
 	if err != nil {
 		return err
 	}
@@ -69,7 +75,7 @@ func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string,
 	if foreignBound || !ownerMatches {
 		return ErrStorageAttachmentReferenced
 	}
-	if err := checkStoredAttachmentReferences(ctx, tx, typeCode, data, key); err != nil {
+	if err := checkStoredAttachmentReferences(snapshot.Fields, data, key); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM ticket_attachments WHERE ticket_id=$1 AND file_object_id=$2`, ticketID, id); err != nil {
@@ -83,7 +89,7 @@ func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string,
 
 // No visibility pruning here: hidden/current stored fields also protect bytes.
 // Unknown historical fields still protect any key they may contain.
-func checkStoredAttachmentReferences(ctx context.Context, tx pgx.Tx, typeCode string, raw []byte, key string) error {
+func checkStoredAttachmentReferences(fields []*model.TicketTypeField, raw []byte, key string) error {
 	// SQL NULL and JSON null are legal empty custom_data on fieldless types.
 	if len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return nil
@@ -91,10 +97,6 @@ func checkStoredAttachmentReferences(ctx context.Context, tx pgx.Tx, typeCode st
 	var data map[string]json.RawMessage
 	if json.Unmarshal(raw, &data) != nil || data == nil {
 		return ErrStorageAttachmentReferenced
-	}
-	fields, err := listTicketTypeFields(ctx, tx, typeCode)
-	if err != nil {
-		return err
 	}
 	for _, field := range fields {
 		value, ok := data[field.FieldKey]

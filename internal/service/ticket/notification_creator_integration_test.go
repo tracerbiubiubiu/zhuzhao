@@ -25,10 +25,16 @@ func TestNotificationCreator_ServiceEvents(t *testing.T) {
 			code := "creator_" + uniqueSuffix()
 			_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 			require.NoError(t, err)
-			t.Cleanup(func() {
-				_, err := testPool.Exec(context.Background(), `UPDATE ticket_types SET is_active=false WHERE code=$1`, code)
+			auditRetireReminderType(t, code)
+			if kind == "timeout" || kind == "deadline" {
+				meta := json.RawMessage(`{"assigned":{"timeout_minutes":1}}`)
+				if kind == "deadline" {
+					meta = json.RawMessage(`{"assigned":{"sla_due_hours":1}}`)
+				}
+				_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: meta})
 				require.NoError(t, err)
-			})
+			}
+			publishD01(t, svc, code, creator)
 			reg := domainevent.NewHookRegistry(nil)
 			t.Cleanup(func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -65,12 +71,6 @@ func TestNotificationCreator_ServiceEvents(t *testing.T) {
 				NewDispatchService(repository.NewAssignmentRuleRepo(testPool), svc, nil).OnAfterCreate(ctx, tk)
 				actor = 0 // No matching dispatch rule has no human action actor.
 			case "timeout", "deadline":
-				meta := json.RawMessage(`{"assigned":{"timeout_minutes":1}}`)
-				if kind == "deadline" {
-					meta = json.RawMessage(`{"assigned":{"sla_due_hours":1}}`)
-				}
-				_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: meta})
-				require.NoError(t, err)
 				require.NoError(t, svc.Assign(ctx, &model.AssignTicketRequest{ID: tk.ID, AssignedTo: &assignee}, actor))
 				backdateStatusChanged(t, tk.ID, 2*time.Hour)
 				if kind == "deadline" {
@@ -103,6 +103,7 @@ func TestNotificationCreator_QueuedCloseSurvivesTicketDeletion(t *testing.T) {
 	code := "creator_deleted_" + uniqueSuffix()
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: code})
 	require.NoError(t, err)
+	publishD01(t, svc, code, creator)
 	oid := childOrgID(t, "creator_deleted")
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "queued before deletion", Priority: 2, OrgID: oid}, creator)
 	require.NoError(t, err)

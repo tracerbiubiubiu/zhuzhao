@@ -18,6 +18,8 @@ import (
 
 // TransitionMeta 转换级段（"from>to" 键的值——A.1 结构）。
 type TransitionMeta struct {
+	Label           string `json:"label,omitempty"`
+	CommentRequired bool   `json:"comment_required,omitempty"`
 	// Condition 权限门（Jira condition 同语义）：roles 数组=允许执行的角色集；
 	// 空数组和 nil=不限（既有行为零破坏）。首批=assignee/creator/org_admin/admin
 	Roles []string `json:"roles,omitempty"`

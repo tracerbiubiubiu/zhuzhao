@@ -43,6 +43,18 @@ func c04PAT(t *testing.T, actor int64) int64 {
 	return id
 }
 
+func insertC04OrderingTicket(t *testing.T, ctx context.Context, f *createC04Fixture, status string, assignee *int64) int64 {
+	t.Helper()
+	// The shared create fixture inserts its fields directly. Allocate their
+	// stable identities before publishing the current graph for this ticket.
+	_, err := testPool.Exec(ctx, `INSERT INTO ticket_field_identities(type_code,field_key)
+		SELECT type_code,field_key FROM ticket_type_fields WHERE type_code=$1
+		ON CONFLICT(type_code,field_key) WHERE retired_at IS NULL DO NOTHING`, f.code)
+	require.NoError(t, err)
+	definition := publishC04FixtureDefinition(t, ctx, f.code, f.actor, nil)
+	return insertC04BoundTicket(t, ctx, f.code, "work", status, f.actor, f.org, assignee, definition)
+}
+
 func c04HTTP(ctx context.Context, f *createC04Fixture, actor int64, kind string, credential any, path, body string, before gin.HandlerFunc, action gin.HandlerFunc) *httptest.ResponseRecorder {
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
@@ -85,7 +97,7 @@ func TestC04_HTTPCurrentAssignee(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			f := newCreateC04(t, nil)
-			var old, current, id int64
+			var old, current int64
 			for i, dst := range []*int64{&old, &current} {
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'fixture')RETURNING id`, fmt.Sprintf("%s_%d", f.code, i)).Scan(dst))
 				_, err := testPool.Exec(ctx, `INSERT INTO user_orgs(user_id,org_id)VALUES($1,$2)`, *dst, f.org)
@@ -97,7 +109,7 @@ func TestC04_HTTPCurrentAssignee(t *testing.T) {
 			require.NoError(t, err)
 			_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta='{"assigned>in_progress":{"roles":["assignee"]}}' WHERE code=$1`, f.code)
 			require.NoError(t, err)
-			require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,assigned_to,org_id,org_path)VALUES($1::text,'work','assigned',$2,$3,$4,$1::text::ltree)RETURNING id`, f.code, f.actor, old, f.org).Scan(&id))
+			id := insertC04OrderingTicket(t, ctx, f, "assigned", &old)
 			h := handler.NewTicketHandler(f.svc, nil, nil)
 			oldPAT, newPAT, superPAT := c04PAT(t, old), c04PAT(t, current), c04PAT(t, f.actor)
 			body := fmt.Sprintf(`{"id":"%d","to":"in_progress","comment":"start"}`, id)
@@ -154,8 +166,7 @@ func TestC04_HTTPCredentialCommitOrdering(t *testing.T) {
 					require.NoError(t, err)
 					path := "/api/v1/tickets/" + command
 					c04Grant(t, f, f.actor, path)
-					var id int64
-					require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path)VALUES($1::text,'work','open',$2,$3,$1::text::ltree)RETURNING id`, f.code, f.actor, f.org).Scan(&id))
+					id := insertC04OrderingTicket(t, ctx, f, "open", nil)
 					h := handler.NewTicketHandler(f.svc, nil, nil)
 					action := h.Transition
 					body := fmt.Sprintf(`{"id":"%d","to":"closed","comment":"done"}`, id)
@@ -287,8 +298,7 @@ func TestC04_HTTPJWTGenerationFacts(t *testing.T) {
 			_, err := testPool.Exec(ctx, `UPDATE users SET session_epoch=$2 WHERE id=$1`, f.actor, tc.current)
 			require.NoError(t, err)
 			c04Grant(t, f, f.actor, "/api/v1/tickets/transition")
-			var id int64
-			require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path)VALUES($1::text,'work','open',$2,$3,$1::text::ltree)RETURNING id`, f.code, f.actor, f.org).Scan(&id))
+			id := insertC04OrderingTicket(t, ctx, f, "open", nil)
 			before := c04BusinessSnapshot(t, id)
 			w := c04HTTP(ctx, f, f.actor, "session_epoch", tc.fact, "/api/v1/tickets/transition", fmt.Sprintf(`{"id":"%d","to":"closed"}`, id), func(c *gin.Context) { c.Set("session_epoch", tc.current); c.Next() }, handler.NewTicketHandler(f.svc, nil, nil).Transition)
 			require.Equal(t, tc.want, w.Code, w.Body.String())
@@ -313,11 +323,11 @@ func TestC04_HTTPProductionCredentialPurpose(t *testing.T) {
 					c04Grant(t, f, f.actor, path)
 					_, err := testPool.Exec(ctx, `UPDATE user_orgs SET org_member_role='admin' WHERE user_id=$1`, f.actor)
 					require.NoError(t, err)
-					var id, epoch int64
+					var epoch int64
 					require.NoError(t, testPool.QueryRow(ctx, `SELECT session_epoch FROM users WHERE id=$1`, f.actor).Scan(&epoch))
 					_, err = testPool.Exec(ctx, `UPDATE users SET session_projection_epoch=session_epoch WHERE id=$1`, f.actor)
 					require.NoError(t, err)
-					require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path)VALUES($1::text,'work','open',$2,$3,$1::text::ltree)RETURNING id`, f.code, f.actor, f.org).Scan(&id))
+					id := insertC04OrderingTicket(t, ctx, f, "open", nil)
 					mr := miniredis.RunT(t)
 					rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 					defer rdb.Close()

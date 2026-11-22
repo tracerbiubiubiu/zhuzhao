@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/testutil"
 )
@@ -83,12 +84,30 @@ func seedMinimal(ctx context.Context, pool *pgxpool.Pool) {
 	// incident 用 DDL DEFAULT transitions（含 rejected→open，无 reassigned）
 	// request 显式写不同 transitions（无 rejected，有 reassigned→assigned）——体现流程差异化
 	// 两个类型的 transitions 不同是 TestTypeDiversity_DBTransitionsDiffer 的前提
-	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description, transitions) VALUES
-		('incident', '事件工单', '故障/事件处理', DEFAULT),
-		('request',  '请求工单', '服务请求/咨询',
+	_, err = pool.Exec(ctx, `INSERT INTO ticket_types (code, name, description, states, transitions) VALUES
+		('incident', '事件工单', '故障/事件处理', DEFAULT, DEFAULT),
+		('request',  '请求工单', '服务请求/咨询', '["open","assigned","in_progress","pending_verify","closed","reassigned"]',
 		 '{"open":["assigned","closed"],"assigned":["in_progress","open","reassigned"],"in_progress":["pending_verify","closed"],"pending_verify":["closed","reassigned"],"closed":["open"],"reassigned":["assigned"]}'::jsonb)
-		ON CONFLICT (code) DO UPDATE SET transitions = EXCLUDED.transitions`)
+		ON CONFLICT (code) DO UPDATE SET states=EXCLUDED.states, transitions=EXCLUDED.transitions, version=ticket_types.version+1`)
 	if err != nil {
 		panic(err)
+	}
+
+	// A fixture edit after the v83 cutover needs explicit publication too.
+	var actor int64
+	err = pool.QueryRow(ctx, `INSERT INTO users (employee_no,username,password,status)
+		VALUES('D01FIXTURE','d01-test-publisher','test-hash',1) RETURNING id`).Scan(&actor)
+	if err != nil {
+		panic(err)
+	}
+	svc := &Service{db: pool, ticketRepo: repository.NewTicketRepo(pool)}
+	for _, code := range []string{"incident", "request"} {
+		draft, err := svc.ticketRepo.GetTicketType(ctx, code)
+		if err != nil {
+			panic(err)
+		}
+		if _, _, err := svc.PublishTicketType(ctx, draft, actor); err != nil {
+			panic(err)
+		}
 	}
 }

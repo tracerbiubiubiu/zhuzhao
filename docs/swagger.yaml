@@ -235,6 +235,12 @@ definitions:
         type: array
       custom_data:
         type: object
+      definition_hash:
+        type: string
+      definition_version:
+        description: A preview pins the client's expected publication; legacy clients
+          omit both.
+        type: string
       description:
         type: string
       escalation_supervisor_id:
@@ -561,6 +567,77 @@ definitions:
       upload_url:
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketForm:
+    properties:
+      definition_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef'
+      fields:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField'
+        type: array
+      type:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormType'
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField:
+    properties:
+      field_id:
+        example: "0"
+        type: string
+      field_key:
+        type: string
+      field_label:
+        type: string
+      field_meta:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormFieldMeta'
+      field_options:
+        items:
+          type: integer
+        type: array
+      field_type:
+        type: string
+      required:
+        type: boolean
+      sort_order:
+        type: integer
+      type_code:
+        type: string
+      validate_regex:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormFieldMeta:
+    properties:
+      col_span:
+        type: integer
+      formula:
+        type: string
+      group:
+        type: string
+      visible_when:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormType:
+    properties:
+      code:
+        type: string
+      default_sla_hours:
+        type: integer
+      description:
+        type: string
+      has_custom_fields:
+        type: boolean
+      is_active:
+        type: boolean
+      name:
+        type: string
+      states:
+        items:
+          type: integer
+        type: array
+      transitions:
+        items:
+          type: integer
+        type: array
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RefreshRequest:
     properties:
       refresh_token:
@@ -745,6 +822,24 @@ definitions:
         description: kv 行当前版本（回传 expected_version 用）
         type: integer
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionCollectField:
+    properties:
+      key:
+        type: string
+      required:
+        type: boolean
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionList:
+    properties:
+      actions:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction'
+        type: array
+      fields:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField'
+        type: array
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView:
     properties:
       created_at:
@@ -766,6 +861,125 @@ definitions:
         type: string
       uploaded_by:
         example: "0"
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction:
+    properties:
+      action_id:
+        type: string
+      collect_fields:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionCollectField'
+        type: array
+      comment_required:
+        type: boolean
+      definition_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef'
+      expected_revision:
+        example: "0"
+        type: string
+      label:
+        type: string
+      to:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlan:
+    properties:
+      canonical_hash:
+        type: string
+      changed:
+        type: boolean
+      current_definition_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef'
+      draft_revision:
+        example: "0"
+        type: string
+      plan_id:
+        example: "0"
+        type: string
+      reference_revisions:
+        additionalProperties:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionReferenceRevision'
+        type: object
+      warnings:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionWarning'
+        type: array
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlanRequest:
+    properties:
+      code:
+        maxLength: 50
+        type: string
+      expected_draft_revision:
+        type: string
+      expected_published_version:
+        type: string
+    required:
+    - code
+    - expected_draft_revision
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublicationReceipt:
+    properties:
+      changed:
+        type: boolean
+      definition_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef'
+      draft_revision:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublishRequest:
+    properties:
+      acknowledged_warning_ids:
+        items:
+          type: string
+        type: array
+      canonical_hash:
+        type: string
+      code:
+        maxLength: 50
+        type: string
+      expected_draft_revision:
+        type: string
+      expected_published_version:
+        type: string
+      plan_id:
+        type: string
+    required:
+    - canonical_hash
+    - code
+    - expected_draft_revision
+    - plan_id
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef:
+    properties:
+      definition_hash:
+        type: string
+      definition_version:
+        example: "0"
+        type: string
+      type_code:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionReferenceRevision:
+    properties:
+      id:
+        example: "0"
+        type: string
+      version:
+        example: "0"
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionWarning:
+    properties:
+      field_key:
+        type: string
+      id:
+        type: string
+      message:
         type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput:
@@ -814,6 +1028,14 @@ definitions:
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest:
     properties:
       comment:
+        type: string
+      custom_data_patch:
+        type: object
+      definition_version:
+        type: string
+      expected_revision:
+        description: RawMessage preserves the distinction between omitted and explicitly
+          null.
         type: string
       id:
         example: "0"
@@ -2640,6 +2862,114 @@ paths:
       summary: 模板可用变量集（变量字典——06 号 A.6）
       tags:
       - message
+  /api/v1/ticket-types/{code}/published:
+    get:
+      parameters:
+      - description: 工单类型编码
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketForm'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "503":
+          description: Service Unavailable
+          headers:
+            X-Ticket-Definition-Reason:
+              description: definition_unpublished 表示类型尚无发布版本
+              type: string
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 读取建单用已发布表单
+      tags:
+      - ticket
+  /api/v1/ticket-types/definitions/plan:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 草稿和当前发布版本
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPlan'
+              type: object
+        "409":
+          description: Conflict
+          headers:
+            X-Ticket-Definition-Reason:
+              description: 计划冲突归因
+              type: string
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 预览工单规则发布
+      tags:
+      - ticket
+  /api/v1/ticket-types/definitions/publish:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 首次发布及重试使用的同一操作号
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      - description: 发布计划与告警确认
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionPublicationReceipt'
+              type: object
+        "409":
+          description: Conflict
+          headers:
+            X-Ticket-Definition-Reason:
+              description: 发布冲突归因
+              type: string
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 显式发布工单规则
+      tags:
+      - ticket
   /api/v1/ticket-types/delete:
     post:
       consumes:
@@ -2808,6 +3138,29 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 工单详情
+      tags:
+      - ticket
+  /api/v1/tickets/{id}/actions:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionList'
+              type: object
+      summary: 取得工单可执行动作及采集字段
       tags:
       - ticket
   /api/v1/tickets/{id}/attachments:
@@ -3341,6 +3694,10 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest'
+      - description: 版本化转换原操作号
+        in: header
+        name: Idempotency-Key
+        type: string
       produces:
       - application/json
       responses:

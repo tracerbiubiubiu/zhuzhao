@@ -134,6 +134,15 @@ func (s *Service) UpdateTicketType(ctx context.Context, code string, req *model.
 			if err := validateTransitionEdges(stateList, transitionMap, meta, s.actionReg.validatePostActions); err != nil {
 				return nil, err
 			}
+			if strings.Contains(string(meta), `"collect_fields"`) {
+				fields, err := s.ticketRepo.ListTicketTypeFieldsAll(ctx, code)
+				if err != nil {
+					return nil, err
+				}
+				if err := validatePublishedEvidenceSpec(meta, fields); err != nil {
+					return nil, err
+				}
+			}
 		}
 		if version == nil {
 			// 兼容无version客户端，拒绝预检之后已变更的父配置。
@@ -309,6 +318,15 @@ func (s *Service) ReplaceTicketTypeFields(ctx context.Context, code string, req 
 	}
 	if err := checkFieldLock(old, fields); err != nil {
 		return nil, err
+	}
+	if strings.Contains(string(current.TransitionMeta), `"collect_fields"`) {
+		evidenceFields := make([]*model.TicketTypeField, len(fields))
+		for i := range fields {
+			evidenceFields[i] = &fields[i]
+		}
+		if err := validatePublishedEvidenceSpec(current.TransitionMeta, evidenceFields); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.checkDictCodesExist(ctx, fields); err != nil {
 		return nil, err

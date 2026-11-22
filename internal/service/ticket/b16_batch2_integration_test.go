@@ -45,6 +45,7 @@ func TestB16_LookupDict_Formula(t *testing.T) {
 		}})
 	require.NoError(t, err, "lookup_dict formula 保存（保存期防线识别已注册函数）")
 
+	publishD01(t, svc, code, aid)
 	t.Run("命中：提交求值入 label", func(t *testing.T) {
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "b16d", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(`{"lvl":"high"}`)}, aid)
@@ -74,6 +75,7 @@ func TestB16_FormulaVisibilityAndOutputValidation(t *testing.T) {
 			FieldMeta: json.RawMessage(`{"visible_when":"show == 1","formula":"src == 'empty' ? '' : src + src + src"}`)},
 	}})
 	require.NoError(t, err)
+	publishD01(t, svc, code, actor)
 	create := func(data string) (*model.Ticket, error) {
 		return svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "公式提交", OrgID: org, CustomData: json.RawMessage(data)}, actor)
 	}

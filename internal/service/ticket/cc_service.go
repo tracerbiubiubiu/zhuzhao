@@ -46,6 +46,9 @@ func (s *Service) addCC(ctx context.Context, req *model.AddTicketCCRequest, acto
 		if err != nil {
 			return err
 		}
+		if _, _, _, err := s.resolveTicketDefinition(ctx, ticket); err != nil {
+			return err
+		}
 		added, err = s.ccRepo.Add(ctx, req.TicketID, actorUserID, req.UserIDs)
 		if err != nil {
 			return err
@@ -82,6 +85,9 @@ func (s *Service) RemoveCC(ctx context.Context, req *model.RemoveTicketCCRequest
 			action = "update"
 		}
 		if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
+			return err
+		}
+		if err := s.requireTicketDefinition(ctx, req.TicketID); err != nil {
 			return err
 		}
 		_, err := s.ccRepo.Remove(ctx, req.TicketID, req.UserID)

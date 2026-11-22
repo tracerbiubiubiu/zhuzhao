@@ -49,6 +49,7 @@ func TestB16_NewTypes_G2(t *testing.T) {
 		}})
 	require.NoError(t, err, "radio/rating/file 三类型保存")
 
+	publishD01(t, svc, code, aid)
 	create := func(cd string) error {
 		_, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "b16", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(cd)}, aid)
@@ -89,6 +90,7 @@ func TestB16_File_BindAndMime(t *testing.T) {
 		}})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	create := func(cd string) (int64, error) {
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "b16f", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(cd)}, aid)
@@ -142,6 +144,7 @@ func TestB16_VisibleWhen(t *testing.T) {
 		}})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	get := func(cd string) map[string]any {
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: "b16v", Priority: 2, OrgID: oid,
 			CustomData: json.RawMessage(cd)}, aid)

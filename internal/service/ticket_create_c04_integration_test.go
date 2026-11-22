@@ -66,11 +66,16 @@ func (tr *createC04Trace) TraceQueryStart(ctx context.Context, conn *pgx.Conn, d
 
 func newCreateC04(t *testing.T, prepare func(*createC04Fixture)) *createC04Fixture {
 	t.Helper()
+	return newCreateC04InDB(t, testPool, prepare)
+}
+
+func newCreateC04InDB(t *testing.T, db *pgxpool.Pool, prepare func(*createC04Fixture)) *createC04Fixture {
+	t.Helper()
 	ctx := context.Background()
 	f := &createC04Fixture{code: "c04create_" + uniqueSuffix()}
-	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'synthetic-non-login')RETURNING id`, f.code).Scan(&f.actor))
-	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO roles(code,name,priority)VALUES($1::text,$1::text,50)RETURNING id`, f.code).Scan(&f.role))
-	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO organizations(code,name,path)VALUES($1::text,$1::text,$1::text::ltree)RETURNING id`, f.code).Scan(&f.org))
+	require.NoError(t, db.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'synthetic-non-login')RETURNING id`, f.code).Scan(&f.actor))
+	require.NoError(t, db.QueryRow(ctx, `INSERT INTO roles(code,name,priority)VALUES($1::text,$1::text,50)RETURNING id`, f.code).Scan(&f.role))
+	require.NoError(t, db.QueryRow(ctx, `INSERT INTO organizations(code,name,path)VALUES($1::text,$1::text,$1::text::ltree)RETURNING id`, f.code).Scan(&f.org))
 	for _, statement := range []struct {
 		sql  string
 		args []any
@@ -82,14 +87,14 @@ func newCreateC04(t *testing.T, prepare func(*createC04Fixture)) *createC04Fixtu
 		{`INSERT INTO ticket_type_fields(type_code,field_key,field_label,field_type,field_meta)VALUES($1,'source','source','input','{}'),($1,'result','result','input','{"fetch":{"source":{"type":"internal_db"},"trigger_by":"source","mapping":{"value":"result"}}}')`, []any{f.code}},
 		{`INSERT INTO casbin_rule(ptype,v0,v1,v2)VALUES('p',$1,'/api/v1/tickets','POST')`, []any{"role::" + f.code}},
 	} {
-		_, err := testPool.Exec(ctx, statement.sql, statement.args...)
+		_, err := db.Exec(ctx, statement.sql, statement.args...)
 		require.NoError(t, err)
 	}
-	cfg, err := pgxpool.ParseConfig(testPool.Config().ConnString())
-	require.NoError(t, err)
+	cfg := db.Config()
 	cfg.MaxConns = 1
 	f.trace = &createC04Trace{c04Trace: c04Trace{pids: make(map[uint32]bool)}}
 	cfg.ConnConfig.Tracer = f.trace
+	var err error
 	f.pool, err = pgxpool.NewWithConfig(ctx, cfg)
 	require.NoError(t, err)
 	t.Cleanup(f.pool.Close)
@@ -150,6 +155,7 @@ func TestC04_CreateRejectsBeforeFetchingOutsideOrganization(t *testing.T) {
 	f := newCreateC04(t, func(*createC04Fixture) {
 		t.Fatal("a request outside the admitted organization must not call a fetch provider")
 	})
+	publishCreateD01(t, f)
 	_, err := testPool.Exec(context.Background(), `DELETE FROM user_orgs WHERE user_id=$1`, f.actor)
 	require.NoError(t, err)
 	w := f.request(context.Background(), "")
@@ -158,9 +164,20 @@ func TestC04_CreateRejectsBeforeFetchingOutsideOrganization(t *testing.T) {
 }
 
 func TestC04_CreateHTTPPreparationFence(t *testing.T) {
-	for _, change := range []string{"allow", "policy", "role", "account", "membership", "org_deleted", "type_inactive", "type_config", "template", "template_deleted", "template_recreated", "type_version", "type_recreated", "fields", "fetch_mapping", "wrong_route", "wrong_actor", "rollback"} {
+	for _, change := range []string{"allow", "policy", "role", "account", "membership", "org_deleted", "type_inactive", "type_config", "template", "template_deleted", "template_recreated", "type_version", "published_pointer", "fields", "fetch_mapping", "wrong_route", "wrong_actor", "rollback"} {
 		t.Run(change, func(t *testing.T) {
+			if change == "allow" {
+				checkD01CreateAfterUpgrade(t)
+				return
+			}
 			f := newCreateC04(t, func(f *createC04Fixture) {
+				if change == "published_pointer" {
+					ctx := context.Background()
+					_, err := testPool.Exec(ctx, `UPDATE ticket_types SET default_sla_hours=7,version=version+1 WHERE code=$1`, f.code)
+					require.NoError(t, err)
+					publishCreateD01(t, f)
+					return
+				}
 				err := repository.WithIAMGuard(context.Background(), testPool, func(ctx context.Context) error {
 					q := repository.IAMDB(ctx, testPool)
 					var sql string
@@ -191,13 +208,6 @@ func TestC04_CreateHTTPPreparationFence(t *testing.T) {
 						sql, args = `INSERT INTO ticket_templates(code,name,type_code,default_priority,default_fields,org_id,org_path,created_by)VALUES($1::text,$1::text,$1::text,2,'{"description":"template description"}',$2,$1::text::ltree,$3)`, []any{f.code, f.org, f.actor}
 					case "type_version":
 						sql, args = `UPDATE ticket_types SET version=version+1 WHERE code=$1`, []any{f.code}
-					case "type_recreated":
-						for _, query := range []string{`DELETE FROM ticket_templates WHERE code=$1`, `DELETE FROM ticket_type_fields WHERE type_code=$1`, `DELETE FROM ticket_types WHERE code=$1`} {
-							if _, err := q.Exec(ctx, query, f.code); err != nil {
-								return err
-							}
-						}
-						sql, args = `INSERT INTO ticket_types(code,name)VALUES($1::text,$1::text)`, []any{f.code}
 					case "fields":
 						sql, args = `UPDATE ticket_type_fields SET required=true WHERE type_code=$1 AND field_key='result'`, []any{f.code}
 					case "fetch_mapping":
@@ -211,6 +221,7 @@ func TestC04_CreateHTTPPreparationFence(t *testing.T) {
 				})
 				require.NoError(t, err)
 			})
+			publishCreateD01(t, f)
 			if change == "rollback" {
 				constraint := f.code + "_event"
 				_, err := testPool.Exec(context.Background(), fmt.Sprintf(`ALTER TABLE ticket_events ADD CONSTRAINT %s CHECK(user_id<>%d) NOT VALID`, constraint, f.actor))
@@ -223,45 +234,40 @@ func TestC04_CreateHTTPPreparationFence(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
 			w := f.request(ctx, change)
-			if change == "allow" {
+			wantHTTP, wantCode := http.StatusConflict, errcode.ErrConcurrentModification.Code
+			switch change {
+			case "type_config", "type_version", "fields", "fetch_mapping":
 				require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 				f.counts(t, 1)
-				var priority int
-				var description, data, key string
-				require.NoError(t, testPool.QueryRow(ctx, `SELECT priority,description,custom_data::text,human_key FROM tickets WHERE type_code=$1`, f.code).Scan(&priority, &description, &data, &key))
-				require.Equal(t, 2, priority)
-				require.Equal(t, "template description", description)
-				require.JSONEq(t, `{"source":"synthetic","result":"prepared"}`, data)
-				require.NotEmpty(t, key)
-				require.Len(t, f.trace.pids, 1, "fresh authorization and persistence share one connection")
-			} else {
-				wantHTTP, wantCode := http.StatusConflict, errcode.ErrConcurrentModification.Code
-				switch change {
-				case "policy", "account", "membership", "wrong_route", "wrong_actor":
-					wantHTTP, wantCode = http.StatusForbidden, errcode.ErrNoPermission.Code
-				case "role":
-					wantHTTP, wantCode = http.StatusForbidden, errcode.ErrNoRoles.Code
-				case "org_deleted":
-					wantHTTP, wantCode = http.StatusNotFound, errcode.ErrOrgNotFound.Code
-				case "type_inactive":
-					wantHTTP, wantCode = http.StatusNotFound, errcode.ErrTicketTypeNotFound.Code
-				case "rollback":
-					wantHTTP, wantCode = http.StatusInternalServerError, errcode.ErrInternal.Code
-				}
-				require.Equal(t, wantHTTP, w.Code, w.Body.String())
-				var response struct {
-					Code int `json:"code"`
-				}
-				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
-				require.Equal(t, wantCode, response.Code, w.Body.String())
-				f.counts(t, 0)
+				var version int64
+				require.NoError(t, testPool.QueryRow(ctx, `SELECT definition_version FROM tickets WHERE type_code=$1`, f.code).Scan(&version))
+				require.EqualValues(t, 1, version)
+				return
+			case "policy", "account", "membership", "wrong_route", "wrong_actor":
+				wantHTTP, wantCode = http.StatusForbidden, errcode.ErrNoPermission.Code
+			case "role":
+				wantHTTP, wantCode = http.StatusForbidden, errcode.ErrNoRoles.Code
+			case "org_deleted":
+				wantHTTP, wantCode = http.StatusNotFound, errcode.ErrOrgNotFound.Code
+			case "type_inactive":
+				wantHTTP, wantCode = http.StatusNotFound, errcode.ErrTicketTypeNotFound.Code
+			case "rollback":
+				wantHTTP, wantCode = http.StatusInternalServerError, errcode.ErrInternal.Code
 			}
+			require.Equal(t, wantHTTP, w.Code, w.Body.String())
+			var response struct {
+				Code int `json:"code"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+			require.Equal(t, wantCode, response.Code, w.Body.String())
+			f.counts(t, 0)
 		})
 	}
 }
 
 func TestC04_CreateCommitsBeforeQueuedRevocation(t *testing.T) {
 	f := newCreateC04(t, nil)
+	publishCreateD01(t, f)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -305,6 +311,7 @@ func TestC04_CreateCommitsBeforeQueuedRevocation(t *testing.T) {
 
 func TestC04_CreateDirectServiceKeepsDefaults(t *testing.T) {
 	f := newCreateC04(t, nil)
+	publishCreateD01(t, f)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	_, err := testPool.Exec(ctx, `DELETE FROM casbin_rule WHERE v0=$1`, "role::"+f.code)
@@ -321,6 +328,7 @@ func TestC04_CreateRejectsNewlyAppearedOptionalTemplate(t *testing.T) {
 		_, err := testPool.Exec(context.Background(), `INSERT INTO ticket_templates(code,name,type_code,default_priority,default_fields,org_id,org_path,created_by)VALUES($1::text,$1::text,$1::text,2,'{}',$2,$1::text::ltree,$3)`, f.code, f.org, f.actor)
 		require.NoError(t, err)
 	})
+	publishCreateD01(t, f)
 	_, err := testPool.Exec(context.Background(), `DELETE FROM ticket_templates WHERE code=$1`, f.code)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
@@ -347,6 +355,7 @@ func TestC04_CreateSingleConnectionValidationAndDispatch(t *testing.T) {
 		_, err := testPool.Exec(ctx, statement.sql, statement.args...)
 		require.NoError(t, err)
 	}
+	publishCreateD01(t, f)
 	f.svc.SetDispatcher(ticketsvc.NewDispatchService(repository.NewAssignmentRuleRepo(f.pool), f.svc, nil))
 	// This is the same production handler/middleware/route, with MIME and
 	// dictionary reads active inside G2 and a real post-commit assignment.
@@ -375,10 +384,11 @@ func TestC04_CreateSingleConnectionValidationAndDispatch(t *testing.T) {
 	require.Len(t, f.trace.pids, 1)
 }
 
-func TestC04_CreateHoldsConfigurationUntilCommit(t *testing.T) {
+func TestC04_CreateConfigurationLocks(t *testing.T) {
 	for _, config := range []string{"type", "template", "fields"} {
 		t.Run(config, func(t *testing.T) {
 			f := newCreateC04(t, nil)
+			publishCreateD01(t, f)
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
 			entered, release := make(chan struct{}), make(chan struct{})
@@ -410,15 +420,26 @@ func TestC04_CreateHoldsConfigurationUntilCommit(t *testing.T) {
 			}
 			changed := make(chan error, 1)
 			go func() { _, err := writer.Exec(ctx, query, f.code); changed <- err }()
-			require.Eventually(t, func() bool {
-				var waiting bool
-				err := testPool.QueryRow(ctx, `SELECT cardinality(pg_blocking_pids($1))>0`, pid).Scan(&waiting)
-				return err == nil && waiting
-			}, 2*time.Second, 10*time.Millisecond, "configuration writer must wait for create's decision locks")
+			if config == "fields" {
+				select {
+				case err := <-changed:
+					require.NoError(t, err, "editing draft fields does not wait on the immutable definition")
+				case <-time.After(2 * time.Second):
+					t.Fatal("draft field edit blocked on Create")
+				}
+			} else {
+				require.Eventually(t, func() bool {
+					var waiting bool
+					err := testPool.QueryRow(ctx, `SELECT cardinality(pg_blocking_pids($1))>0`, pid).Scan(&waiting)
+					return err == nil && waiting
+				}, 2*time.Second, 10*time.Millisecond, "type or template writer must wait for create's decision locks")
+			}
 			once.Do(func() { close(release) })
 			w := <-done
 			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-			require.NoError(t, <-changed)
+			if config != "fields" {
+				require.NoError(t, <-changed)
+			}
 			f.counts(t, 1)
 		})
 	}

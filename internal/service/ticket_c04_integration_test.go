@@ -60,7 +60,7 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				code := "c04_" + uniqueSuffix()
-				var actor, other, role, org, id int64
+				var actor, other, role, org int64
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'fixture')RETURNING id`, code).Scan(&actor))
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'fixture')RETURNING id`, code+"_other").Scan(&other))
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO roles(code,name,priority)VALUES($1::text,$1::text,50)RETURNING id`, code).Scan(&role))
@@ -83,13 +83,55 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 					_, err = testPool.Exec(ctx, `UPDATE user_roles SET role_id=$2 WHERE user_id=$1`, actor, child)
 					require.NoError(t, err)
 				}
+				path := "/api/v1/tickets/" + command
+				if change == "wrong_route" {
+					path += "/other"
+				}
+				_, err = testPool.Exec(ctx, `INSERT INTO casbin_rule(ptype,v0,v1,v2)VALUES('p',$1,$2,'POST')`, "role::"+code, path)
+				require.NoError(t, err)
+				cfg, err := pgxpool.ParseConfig(testPool.Config().ConnString())
+				require.NoError(t, err)
+				cfg.MaxConns = 1
+				trace := &c04Trace{pids: make(map[uint32]bool), attempt: make(chan struct{}, 1)}
+				cfg.ConnConfig.Tracer = trace
+				pool, err := pgxpool.NewWithConfig(ctx, cfg)
+				require.NoError(t, err)
+				defer pool.Close()
+				m, err := casbinmodel.NewModelFromFile("../../configs/casbin_model.conf")
+				require.NoError(t, err)
+				enforcer, err := casbin.NewSyncedEnforcer(m)
+				require.NoError(t, err)
+				_, err = enforcer.AddPolicy("role::"+code, path, "POST")
+				require.NoError(t, err)
+				rbac := service.NewRBACService(repository.NewRoleRepo(pool), repository.NewUserRepo(pool), repository.NewMenuRepo(pool), enforcer)
+				svc := ticketsvc.NewTicketService(pool, repository.NewTicketRepo(pool), repository.NewOrgRepo(pool), resource.NewRegistry(), rbac, service.NewOrgDelegationService(pool), nil, nil, nil)
+				var post *c04PostProbe
+				var actionReg *ticketsvc.ActionRegistry
+				if change == "post" || change == "post_ignored" {
+					_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta='{"open>closed":{"post_actions":["c04_probe"]},"open>assigned":{"post_actions":["c04_probe"]}}'::jsonb WHERE code=$1`, code)
+					require.NoError(t, err)
+					post = &c04PostProbe{svc: svc}
+					actionReg = ticketsvc.NewActionRegistry()
+					require.NoError(t, actionReg.Register(post))
+				}
+				if change == "post_builtin" {
+					_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta=$2::jsonb WHERE code=$1`, code, fmt.Sprintf(`{"open>assigned":{"post_actions":[{"name":"cc","params":{"user_ids":[%d]}},{"name":"reassign","params":{"user_id":%d}}]}}`, other, other))
+					require.NoError(t, err)
+					actionReg = ticketsvc.NewActionRegistry()
+					require.NoError(t, actionReg.Register(ticketsvc.NewCCAction(svc)))
+					require.NoError(t, actionReg.Register(ticketsvc.NewReassignAction(svc)))
+				}
+				if change == "rollback" && (command == "relations" || selfService) {
+					return
+				}
+				svc.SetActionRegistry(actionReg)
+				definition := publishC04FixtureDefinition(t, ctx, code, actor, actionReg)
 				creator := actor
 				if change == "membership" || change == "l3" || change == "hidden" || change == "cc" {
 					creator = other
 				}
-				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path)VALUES($1::text,'before','open',$2,$3,$1::text::ltree)RETURNING id`, code, creator, org).Scan(&id))
-				var target int64
-				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path)VALUES($1::text,'target','open',$2,$3,$1::text::ltree)RETURNING id`, code, creator, org).Scan(&target))
+				id := insertC04BoundTicket(t, ctx, code, "before", "open", creator, org, nil, definition)
+				target := insertC04BoundTicket(t, ctx, code, "target", "open", creator, org, nil, definition)
 				if command == "cc/remove" {
 					_, err = testPool.Exec(ctx, `INSERT INTO ticket_cc(ticket_id,user_id,created_by)VALUES($1,$2,$2)`, id, actor)
 					require.NoError(t, err)
@@ -117,48 +159,6 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 				if change == "duplicate_reverse" {
 					_, err = testPool.Exec(ctx, `INSERT INTO ticket_relations(source_ticket_id,target_ticket_id,relation_type,created_by)VALUES($1,$2,'related',$3)`, target, id, actor)
 					require.NoError(t, err)
-				}
-				path := "/api/v1/tickets/" + command
-				if change == "wrong_route" {
-					path += "/other"
-				}
-				_, err = testPool.Exec(ctx, `INSERT INTO casbin_rule(ptype,v0,v1,v2)VALUES('p',$1,$2,'POST')`, "role::"+code, path)
-				require.NoError(t, err)
-				cfg, err := pgxpool.ParseConfig(testPool.Config().ConnString())
-				require.NoError(t, err)
-				cfg.MaxConns = 1
-				trace := &c04Trace{pids: make(map[uint32]bool), attempt: make(chan struct{}, 1)}
-				cfg.ConnConfig.Tracer = trace
-				pool, err := pgxpool.NewWithConfig(ctx, cfg)
-				require.NoError(t, err)
-				defer pool.Close()
-				m, err := casbinmodel.NewModelFromFile("../../configs/casbin_model.conf")
-				require.NoError(t, err)
-				enforcer, err := casbin.NewSyncedEnforcer(m)
-				require.NoError(t, err)
-				_, err = enforcer.AddPolicy("role::"+code, path, "POST")
-				require.NoError(t, err)
-				rbac := service.NewRBACService(repository.NewRoleRepo(pool), repository.NewUserRepo(pool), repository.NewMenuRepo(pool), enforcer)
-				svc := ticketsvc.NewTicketService(pool, repository.NewTicketRepo(pool), repository.NewOrgRepo(pool), resource.NewRegistry(), rbac, service.NewOrgDelegationService(pool), nil, nil, nil)
-				var post *c04PostProbe
-				if change == "post" || change == "post_ignored" {
-					_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta='{"open>closed":{"post_actions":["c04_probe"]},"open>assigned":{"post_actions":["c04_probe"]}}'::jsonb WHERE code=$1`, code)
-					require.NoError(t, err)
-					post = &c04PostProbe{svc: svc}
-					reg := ticketsvc.NewActionRegistry()
-					require.NoError(t, reg.Register(post))
-					svc.SetActionRegistry(reg)
-				}
-				if change == "post_builtin" {
-					_, err = testPool.Exec(ctx, `UPDATE ticket_types SET transition_meta=$2::jsonb WHERE code=$1`, code, fmt.Sprintf(`{"open>assigned":{"post_actions":[{"name":"cc","params":{"user_ids":[%d]}},{"name":"reassign","params":{"user_id":%d}}]}}`, other, other))
-					require.NoError(t, err)
-					reg := ticketsvc.NewActionRegistry()
-					require.NoError(t, reg.Register(ticketsvc.NewCCAction(svc)))
-					require.NoError(t, reg.Register(ticketsvc.NewReassignAction(svc)))
-					svc.SetActionRegistry(reg)
-				}
-				if change == "rollback" && (command == "relations" || selfService) {
-					return
 				}
 				if change == "rollback" {
 					constraint := code + "_event"
@@ -413,6 +413,31 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 			})
 		}
 	}
+}
+
+func publishC04FixtureDefinition(t *testing.T, ctx context.Context, code string, actor int64, actionReg *ticketsvc.ActionRegistry) int64 {
+	t.Helper()
+	// Setup uses the untraced pool so only the HTTP command contributes to the
+	// authorization, locking and connection assertions.
+	repo := repository.NewTicketRepo(testPool)
+	svc := ticketsvc.NewTicketService(testPool, repo, repository.NewOrgRepo(testPool), resource.NewRegistry(), nil, nil, nil, nil, nil)
+	svc.SetActionRegistry(actionReg)
+	draft, err := repo.GetTicketType(ctx, code)
+	require.NoError(t, err)
+	definition, changed, err := svc.PublishTicketType(ctx, draft, actor)
+	require.NoError(t, err)
+	require.True(t, changed, "fresh fixture must publish its initial definition")
+	return definition.DefinitionVersion
+}
+
+func insertC04BoundTicket(t *testing.T, ctx context.Context, code, title, status string, creator, org int64, assignee *int64, definition int64) int64 {
+	t.Helper()
+	var id int64
+	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets
+		(type_code,title,status,created_by,org_id,org_path,assigned_to,definition_version)
+		VALUES($1::text,$2,$3,$4,$5,$1::text::ltree,$6,$7) RETURNING id`,
+		code, title, status, creator, org, assignee, definition).Scan(&id))
+	return id
 }
 
 // Observe production query execution, not an authorization stub.

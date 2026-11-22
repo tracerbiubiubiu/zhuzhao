@@ -111,12 +111,17 @@ func (r *DictRepo) UpdateType(ctx context.Context, t *model.DictType, remark ...
 }
 
 // dictSpecRefPredicate retains the existing conservative delete guard for
-// every exact dict reference in an options array, including historical forms.
+// every exact dict reference in draft and published option arrays, including historical forms.
 const dictSpecRefPredicate = `
 	SELECT EXISTS (
 		SELECT 1 FROM ticket_type_fields f,
 		jsonb_array_elements_text(f.field_options) e
 		WHERE e = 'dict:' || $1
+        UNION ALL
+        SELECT 1 FROM ticket_type_definitions d,
+        LATERAL jsonb_array_elements(COALESCE(d.snapshot->'fields','[]'::jsonb)) f,
+        LATERAL jsonb_array_elements_text(CASE WHEN jsonb_typeof(f->'field_options')='array' THEN f->'field_options' ELSE '[]'::jsonb END) e
+        WHERE e = 'dict:' || $1
 	)`
 
 // HasFieldDictRef 字段 schema 是否引用 `dict:<code>`（B1-2 删除守卫快速失败预检

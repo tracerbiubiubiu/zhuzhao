@@ -7,19 +7,23 @@ import (
 
 // Ticket 工单主表模型
 type Ticket struct {
-	ID          int64           `json:"id,string" db:"id"`
-	HumanKey    string          `json:"human_key,omitempty" db:"human_key"` // TK-yyyymmdd-NNNN
-	TypeCode    string          `json:"type_code" db:"type_code"`
-	Title       string          `json:"title" db:"title"`
-	Description string          `json:"description" db:"description"`
-	Priority    int             `json:"priority" db:"priority"`
-	Status      string          `json:"status" db:"status"`
-	CreatedBy   int64           `json:"created_by,string" db:"created_by"`
-	AssignedTo  *int64          `json:"assigned_to,string,omitempty" db:"assigned_to"`
-	OrgID       int64           `json:"org_id,string" db:"org_id"`
-	OrgPath     string          `json:"org_path" db:"org_path"` // ltree 路径
-	CustomData  json.RawMessage `json:"custom_data,omitempty" db:"custom_data"`
-	SLADueAt    *time.Time      `json:"sla_due_at,omitempty" db:"sla_due_at"`
+	Revision             int64                `json:"revision,string" db:"revision"`
+	DefinitionRef        *TicketDefinitionRef `json:"definition_ref" db:"-"`
+	DefinitionResolution string               `json:"definition_resolution,omitempty" db:"-"`
+	DefinitionVersion    *int64               `json:"definition_version,string,omitempty" db:"definition_version"`
+	ID                   int64                `json:"id,string" db:"id"`
+	HumanKey             string               `json:"human_key,omitempty" db:"human_key"` // TK-yyyymmdd-NNNN
+	TypeCode             string               `json:"type_code" db:"type_code"`
+	Title                string               `json:"title" db:"title"`
+	Description          string               `json:"description" db:"description"`
+	Priority             int                  `json:"priority" db:"priority"`
+	Status               string               `json:"status" db:"status"`
+	CreatedBy            int64                `json:"created_by,string" db:"created_by"`
+	AssignedTo           *int64               `json:"assigned_to,string,omitempty" db:"assigned_to"`
+	OrgID                int64                `json:"org_id,string" db:"org_id"`
+	OrgPath              string               `json:"org_path" db:"org_path"` // ltree 路径
+	CustomData           json.RawMessage      `json:"custom_data,omitempty" db:"custom_data"`
+	SLADueAt             *time.Time           `json:"sla_due_at,omitempty" db:"sla_due_at"`
 	// StatusChangedAt 进入当前状态时刻（S10 B10-4——E-2 拍定 a 案：UpdateStatusTx
 	// 咽喉同写，节点停留时长数据源；存量回填=updated_at 近似）
 	StatusChangedAt *time.Time `json:"status_changed_at,omitempty" db:"status_changed_at"`
@@ -65,12 +69,13 @@ type TagRow struct {
 
 // TicketType 工单类型配置
 type TicketType struct {
-	ID          int64           `json:"id,string" db:"id"`
-	Code        string          `json:"code" db:"code"`
-	Name        string          `json:"name" db:"name"`
-	Description string          `json:"description" db:"description"`
-	States      json.RawMessage `json:"states" db:"states"`
-	Transitions json.RawMessage `json:"transitions" db:"transitions"`
+	CurrentPublishedVersion *int64          `json:"current_published_version,string" db:"current_published_version"`
+	ID                      int64           `json:"id,string" db:"id"`
+	Code                    string          `json:"code" db:"code"`
+	Name                    string          `json:"name" db:"name"`
+	Description             string          `json:"description" db:"description"`
+	States                  json.RawMessage `json:"states" db:"states"`
+	Transitions             json.RawMessage `json:"transitions" db:"transitions"`
 	// TransitionMeta state 级节点元数据（S10 B10-4——timeout_minutes/escalation
 	// 承载；S3a 后 "from>to" 转换级键复用同列）
 	TransitionMeta  json.RawMessage `json:"transition_meta,omitempty" db:"transition_meta"`
@@ -84,6 +89,7 @@ type TicketType struct {
 
 // TicketTypeField 工单类型字段定义（动态表单）
 type TicketTypeField struct {
+	FieldID       int64           `json:"field_id,string" db:"-"`
 	ID            int64           `json:"id,string" db:"id"`
 	TypeCode      string          `json:"type_code" db:"type_code"`
 	FieldKey      string          `json:"field_key" db:"field_key"`

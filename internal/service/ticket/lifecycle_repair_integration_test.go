@@ -24,6 +24,7 @@ func lifecycleRepairSetup(t *testing.T) (*Service, int64, int64, int64, string) 
 	require.NoError(t, err)
 	_, err = svc.UpdateTicketType(context.Background(), code, &model.UpdateTicketTypeRequest{TransitionMeta: []byte(`{"open":{"sla_due_hours":1},"assigned":{"sla_due_hours":2},"in_progress":{"sla_due_hours":3},"closed":{"sla_due_hours":5}}`)})
 	require.NoError(t, err)
+	publishD01(t, svc, code, actor)
 	return svc, actor, assignee, org, code
 }
 

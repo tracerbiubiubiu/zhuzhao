@@ -7,20 +7,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
-// applyStateSLATx is the state-entry deadline rule shared by creation and all
-// state-changing commands. Same-state reassignment never calls it. The legacy
-// type default is deliberately not activated as a new global timer policy.
-func (s *Service) applyStateSLATx(ctx context.Context, tx pgx.Tx, typ *model.TicketType, ticket *model.Ticket, state string) error {
-	var version int64
-	if err := tx.QueryRow(ctx, `SELECT version FROM ticket_types WHERE code=$1 FOR SHARE`, typ.Code).Scan(&version); err != nil {
-		return err
-	}
-	if version != typ.Version {
-		return errcode.ErrConcurrentModification
-	}
+// applyStateSLARuleTx applies the immutable rule for the state being entered.
+// Same-state reassignments preserve the existing state-entry time and deadline.
+func (s *Service) applyStateSLARuleTx(ctx context.Context, tx pgx.Tx, typ *model.TicketType, ticket *model.Ticket, state string) error {
 	var hours *int
 	if state != StatusClosed {
 		meta, err := parseStateMeta(typ.TransitionMeta, state)

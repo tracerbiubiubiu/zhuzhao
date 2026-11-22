@@ -4,6 +4,7 @@ package ticket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -23,9 +24,18 @@ import (
 // → commit 后 emit DomainEvent（B6-1 锚）。Close/Assign 定向端点保留兼容
 // （收敛为其封装为 B3-1 后续批——本批首件先立执行落点+语义面，防破坏既有测试）。
 func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketRequest, actorUserID int64) (*model.Ticket, error) {
-	var ticket *model.Ticket
+	cmd, err := parseEvidenceTransitionRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	var ticket, committed *model.Ticket
 	var tm *TransitionMeta
-	err := s.withHTTPCommand(ctx, "transition", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+	var replayed bool
+	var lockedTickets []int64
+	if cmd.versioned() {
+		lockedTickets = []int64{req.ID}
+	}
+	err = s.withHTTPCommand(ctx, "transition", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
 		// ① 资源级鉴权（L2 可见 + L3 transition 动作——新增 action）
 		if err := s.authorizeCheck(ctx, actorUserID, "transition", strconv.FormatInt(req.ID, 10)); err != nil {
@@ -36,9 +46,37 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			return err
 		}
 		// ② 写入前校验状态机；HTTP 路径此时已持有 IAM 事务。
-		ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
+		ttype, fields, ref, err := s.resolveTicketDefinition(ctx, ticket)
 		if err != nil {
 			return err
+		}
+		if cmd.versioned() {
+			replay, err := s.findEvidenceTransitionReplayTx(ctx, tx, cmd, actorUserID)
+			if err != nil {
+				return err
+			}
+			if replay != nil {
+				_, _, originalRef, err := s.resolveTicketDefinition(ctx, &model.Ticket{
+					TypeCode: ticket.TypeCode, DefinitionVersion: &replay.DefinitionVersion,
+				})
+				if err != nil {
+					return err
+				}
+				replayed = true
+				committed = ticketFromEvidenceReceipt(ticket.ID, originalRef, *replay)
+				return nil
+			}
+			tm, err = s.checkTransitionCondition(ctx, ticket, req.To, actorUserID, ttype)
+			if err != nil {
+				return err
+			}
+			snapshot := model.TicketDefinitionSnapshot{Type: *ttype, Fields: fields}
+			receipt, err := s.applyEvidenceTransitionTx(ctx, tx, cmd, ticket, &snapshot, actorUserID)
+			if err != nil {
+				return err
+			}
+			committed = ticketFromEvidenceReceipt(ticket.ID, ref, receipt)
+			return nil
 		}
 		sm, err := FromTicketType(ttype)
 		if err != nil {
@@ -61,13 +99,13 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			}
 			defer tx.Rollback(ctx)
 		}
-		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, ttype); err != nil {
+		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, nil); err != nil {
 			return err
 		}
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {
 			return err
 		}
-		if err := s.applyStateSLATx(ctx, tx, ttype, ticket, req.To); err != nil {
+		if err := s.applyStateSLARuleTx(ctx, tx, ttype, ticket, req.To); err != nil {
 			return err
 		}
 		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
@@ -83,9 +121,12 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			return tx.Commit(ctx)
 		}
 		return nil
-	})
+	}, lockedTickets...)
 	if err != nil {
 		return nil, err
+	}
+	if replayed || (committed != nil && ticket.Status == req.To) {
+		return committed, nil
 	}
 	// D1 修复（审计）：清旧状态催办水位——重入同状态时 reminder_count 从零起算
 	// （修复前残留=达上限后永不催；全仓此前零 DELETE 调用点）
@@ -115,14 +156,45 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			SystemAsCreator: true,
 		}, actionDepth(ctx))
 	}
-	// 返回最新态
-	return s.ticketRepo.GetByID(ctx, req.ID)
+	if committed != nil {
+		return committed, nil
+	}
+	// 旧转换请求继续返回最新态。
+	updated, err := s.ticketRepo.GetByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return s.describeTicketDefinition(ctx, updated)
+}
+
+func ticketFromEvidenceReceipt(id int64, ref *model.TicketDefinitionRef, receipt repository.TicketEvidenceTransitionResult) *model.Ticket {
+	return &model.Ticket{
+		ID: id, TypeCode: ref.TypeCode, Status: receipt.Status,
+		Revision: receipt.Revision, DefinitionVersion: &receipt.DefinitionVersion,
+		DefinitionRef: ref, DefinitionResolution: "exact", StatusChangedAt: receipt.StatusChangedAt,
+	}
 }
 
 // checkTransitionMeta transition_meta 转换级语义检查（condition+validator——
 // R3 审计修复：Close/Assign 与 Transition 三路同源调用，消"condition 只在
 // /transition 路径生效"旁路）。tm=nil/空=放行（零配置兼容）。
 func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket, toStatus string, actorUserID int64, ttype *model.TicketType) (*TransitionMeta, error) {
+	tm, err := s.checkTransitionCondition(ctx, ticket, toStatus, actorUserID, ttype)
+	if err != nil {
+		return nil, err
+	}
+	if err := rejectLegacyEvidenceTransition(ttype.TransitionMeta, ticket.Status, toStatus, tm); err != nil {
+		return nil, err
+	}
+	if err := checkValidator(withDictQuerier(ctx, repository.IAMDB(ctx, s.db)), tm, ticket); err != nil {
+		return nil, err
+	}
+	return tm, nil
+}
+
+// checkTransitionCondition uses ownership and roles from the current transaction.
+// Evidence validators run separately on the submitted candidate.
+func (s *Service) checkTransitionCondition(ctx context.Context, ticket *model.Ticket, toStatus string, actorUserID int64, ttype *model.TicketType) (*TransitionMeta, error) {
 	tm, err := parseTransitionMeta(ttype.TransitionMeta, ticket.Status, toStatus)
 	if err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())
@@ -138,9 +210,6 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 	actor := resolveActor(ticket, actorUserID, roles, isOrgAdmin)
 	if !checkCondition(tm, actor) {
 		return nil, errcode.ErrNoPermission
-	}
-	if err := checkValidator(withDictQuerier(ctx, repository.IAMDB(ctx, s.db)), tm, ticket); err != nil {
-		return nil, err
 	}
 	return tm, nil
 }
@@ -161,15 +230,25 @@ func (s *Service) clearReminderWatermark(ctx context.Context, ticketID int64, st
 // ListAvailableTransitions 当前用户可执行的转换列表（GET /:id/transitions/available
 // ——Jira condition 语义=按当前用户过滤；服务端 AssertTransition+condition 兜底）。
 func (s *Service) ListAvailableTransitions(ctx context.Context, ticketID, actorUserID int64) ([]string, error) {
+	// 读可见性（同 Get 权限面）
+	id := strconv.FormatInt(ticketID, 10)
+	if err := s.authorizeCheck(ctx, actorUserID, "read", id); err != nil {
+		return nil, err
+	}
+	if err := s.authorizeCheck(ctx, actorUserID, "transition", id); err != nil {
+		if errors.Is(err, errcode.ErrNoPermission) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
 	ticket, err := s.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		return nil, err
 	}
-	// 读可见性（同 Get 权限面）
-	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(ticketID, 10)); err != nil {
-		return nil, err
+	ttype, _, _, err := s.resolveTicketDefinition(ctx, ticket)
+	if errors.Is(err, errcode.ErrServiceUnavailable) {
+		return []string{}, nil
 	}
-	ttype, err := s.ticketRepo.GetTicketType(ctx, ticket.TypeCode)
 	if err != nil {
 		return nil, err
 	}

@@ -334,6 +334,7 @@ func TestCreate_RichtextRefBind(t *testing.T) {
 				{FieldKey: "supplement", FieldLabel: "补充说明", FieldType: "richtext", SortOrder: 1},
 			}})
 		require.NoError(t, err)
+		publishD01(t, env.svc, code, env.u1)
 		env.rtType = code
 		return env
 	}

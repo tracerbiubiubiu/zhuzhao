@@ -303,17 +303,22 @@ func TestAttachmentCommand_Confirm(t *testing.T) {
 	})
 
 	t.Run("wrong_actor purpose 拒", func(t *testing.T) {
-		actor, tkID, roleCode := attachmentCommandFixture(t)
+		actor, _, roleCode := attachmentCommandFixture(t)
 		other := insertUser(t)
+		tkID := insertTicket(t, other)
+		_, err := testPool.Exec(context.Background(), `INSERT INTO user_roles(user_id,role_id)
+			SELECT $1,id FROM roles WHERE code=$2`, other, roleCode)
+		require.NoError(t, err)
 		b := newGuardBundle(t, testPool, &stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}})
-		// 对象归属 other：先过归属面，验证 purpose.UserID 与执行者不一致被拒。
+		// other 有当前角色并拥有工单和对象，以单独验证 purpose.UserID 不符。
 		key := presignTicketAttachment(t, b.storage, other, tkID)
 
-		_, err := b.storage.Confirm(mintPurpose(t, actor, roleCode, confirmPath, true),
+		_, err = b.storage.Confirm(mintPurpose(t, actor, roleCode, confirmPath, true),
 			&model.ConfirmFileInput{ObjectKey: key, TicketID: &tkID}, other)
 		require.Error(t, err)
 		assert.Equal(t, errcode.ErrNoPermission.Code, codeOf(t, err))
 		assert.Zero(t, attachmentCount(t, tkID))
+		assert.Equal(t, model.FileStatusPending, objectStatus(t, key))
 	})
 
 	t.Run("非自服务 purpose 拒（fail-closed）", func(t *testing.T) {
@@ -341,12 +346,12 @@ func TestAttachmentCommand_Confirm(t *testing.T) {
 		assert.Zero(t, attachmentCount(t, tkID))
 	})
 
-	t.Run("直连调用无 HTTP 准入——守卫不接管（既有契约）", func(t *testing.T) {
+	t.Run("直连调用无需 HTTP 准入凭据", func(t *testing.T) {
 		actor, tkID, _ := attachmentCommandFixture(t)
 		b := newGuardBundle(t, testPool, &stubClient{stat: &pkgstorage.ObjectInfo{Size: 10, ETag: "e", ContentType: "image/png"}})
 		key := presignTicketAttachment(t, b.storage, actor, tkID)
 
-		// 非 HTTP ctx：既有直连调用方契约不变（守卫仅接管已准入 HTTP 命令）。
+		// 直连调用依赖工单属主权限和已绑定定义。
 		f, err := b.storage.Confirm(context.Background(),
 			&model.ConfirmFileInput{ObjectKey: key, TicketID: &tkID}, actor)
 		require.NoError(t, err)

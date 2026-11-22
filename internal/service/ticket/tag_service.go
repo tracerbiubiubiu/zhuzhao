@@ -36,6 +36,9 @@ func (s *Service) addTagsCommand(ctx context.Context, req *model.AddTicketTagsRe
 	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(req.TicketID, 10)); err != nil {
 		return nil, err
 	}
+	if err := s.requireTicketDefinition(ctx, req.TicketID); err != nil {
+		return nil, err
+	}
 	seen := make(map[string]bool, len(req.Tags))
 	clean := make([]string, 0, len(req.Tags))
 	for _, t := range req.Tags {
@@ -57,7 +60,9 @@ func (s *Service) addTagsCommand(ctx context.Context, req *model.AddTicketTagsRe
 
 // RemoveTag 摘标签（幂等——不存在不算错；摘他人挂的需 update 权）。
 func (s *Service) RemoveTag(ctx context.Context, req *model.RemoveTicketTagRequest, actorUserID int64) error {
-	return s.withHTTPCommand(ctx, "tags/remove", actorUserID, func(ctx context.Context, tx pgx.Tx) error { return s.removeTagCommand(ctx, req, actorUserID) }, req.TicketID)
+	return s.withHTTPCommand(ctx, "tags/remove", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
+		return s.removeTagCommand(ctx, req, actorUserID)
+	}, req.TicketID)
 }
 
 func (s *Service) removeTagCommand(ctx context.Context, req *model.RemoveTicketTagRequest, actorUserID int64) error {
@@ -76,13 +81,16 @@ func (s *Service) removeTagCommand(ctx context.Context, req *model.RemoveTicketT
 			break
 		}
 	}
-	if mine == nil {
-		return nil // 幂等：标签本就不在
-	}
-	if mine.CreatedBy != actorUserID {
+	if mine != nil && mine.CreatedBy != actorUserID {
 		if err := s.authorizeCheck(ctx, actorUserID, "update", tid); err != nil {
 			return err
 		}
+	}
+	if err := s.requireTicketDefinition(ctx, req.TicketID); err != nil {
+		return err
+	}
+	if mine == nil {
+		return nil // 幂等：标签本就不在
 	}
 	_, err = s.tagRepo.RemoveTag(ctx, tagEntityType, req.TicketID, strings.TrimSpace(req.Tag))
 	return err

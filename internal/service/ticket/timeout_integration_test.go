@@ -44,6 +44,7 @@ func TestB104_Timeout(t *testing.T) {
 	roles[aid] = []string{"admin"} // assign 需主管面
 	oid := childOrgID(t, "b104")
 	code := "b104_" + uniqueSuffix()
+	auditRetireReminderType(t, code)
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "超时批"})
 	require.NoError(t, err)
 	// transition_meta：assigned 节点 60 分钟超时 + escalation（间隔 30 分/上限 2 次/
@@ -52,6 +53,7 @@ func TestB104_Timeout(t *testing.T) {
 	_, err = svc.UpdateTicketType(ctx, code, &model.UpdateTicketTypeRequest{TransitionMeta: jsonRaw(t, meta)})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 		TypeCode: code, Title: "超时链路单", Priority: 3, OrgID: oid,
 		EscalationSupervisor: &vid, // 发起时人工指定催办上级（dd §31 基线档）

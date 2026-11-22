@@ -81,7 +81,7 @@ func (a *auditRecorder) Insert(_ context.Context, e middleware.AuditLogEntry) er
 	return nil
 }
 
-// insertHTicket 直插最小工单行（handler 包独立环境——storage 包 insertTicket 跨包不可用）。
+// insertHTicket 为 handler 测试插入一张绑定现有发布定义的合成工单。
 func insertHTicket(t *testing.T, uid int64) int64 {
 	t.Helper()
 	ctx := context.Background()
@@ -90,19 +90,15 @@ func insertHTicket(t *testing.T, uid int64) int64 {
 		SELECT 'root', 'Root', 'root', false, 1, 0, true
 		WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE code = 'root')`)
 	require.NoError(t, err)
-	_, err = testPool.Exec(ctx, `
-		INSERT INTO ticket_types (code, name, states, transitions)
-		SELECT 'incident', '事件', '["open","assigned","closed"]', '{}'
-		WHERE NOT EXISTS (SELECT 1 FROM ticket_types WHERE code = 'incident')`)
-	require.NoError(t, err)
 	var orgID int64
 	require.NoError(t, testPool.QueryRow(ctx,
 		`SELECT id FROM organizations WHERE code = 'root' LIMIT 1`).Scan(&orgID))
 	var id int64
 	require.NoError(t, testPool.QueryRow(ctx, `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path)
-		VALUES ('incident', 'h 附件审计测试', 'x', 3, 'open', $1, $2,
-			(SELECT path FROM organizations WHERE id = $2))
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, org_id, org_path, definition_version)
+		SELECT code, 'h 附件审计测试', 'x', 3, 'open', $1, $2,
+			(SELECT path FROM organizations WHERE id = $2), current_published_version
+		FROM ticket_types WHERE code = 'incident' AND current_published_version IS NOT NULL
 		RETURNING id`, uid, orgID).Scan(&id))
 	t.Cleanup(func() {
 		_, _ = testPool.Exec(ctx, `DELETE FROM tickets WHERE id = $1`, id)

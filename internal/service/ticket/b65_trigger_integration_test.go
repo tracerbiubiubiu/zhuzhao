@@ -59,6 +59,7 @@ func TestB65_TriggerHook(t *testing.T) {
 	_, err := svc.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "触发批"})
 	require.NoError(t, err)
 
+	publishD01(t, svc, code, aid)
 	t.Run("Assign→ticket.assigned→模板渲染→发送", func(t *testing.T) {
 		sender.mu.Lock()
 		sender.msgs = nil
@@ -122,6 +123,7 @@ func TestB65_TriggerHook(t *testing.T) {
 			Transitions: json.RawMessage(`{"open":["assigned"],"assigned":["closed"]}`),
 		})
 		require.NoError(t, err)
+		publishD01(t, svc, code2, aid)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code2, Title: "关单通知回归单", Priority: 2, OrgID: oid,
 		}, aid)
@@ -197,6 +199,7 @@ func TestB65_TriggerHook(t *testing.T) {
 			Transitions: json.RawMessage(`{"open":["assigned"],"assigned":["closed"]}`),
 		})
 		require.NoError(t, err)
+		publishD01(t, svc, code3, aid)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code3, Title: "opt-out 静默单", Priority: 2, OrgID: oid,
 		}, aid)
@@ -254,6 +257,7 @@ func TestB65_TriggerHook(t *testing.T) {
 			Transitions: json.RawMessage(`{"open":["closed"]}`),
 		})
 		require.NoError(t, err)
+		publishD01(t, svc, code4, aid)
 		tk, err := svc.Create(ctx, &model.CreateTicketRequest{
 			TypeCode: code4, Title: "渠道错配探针单", Priority: 2, OrgID: oid,
 		}, aid)

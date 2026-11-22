@@ -52,6 +52,12 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "bind-ticket-definitions":
+			if err := runBindTicketDefinitions(os.Args[2:]); err != nil {
+				fmt.Fprintf(os.Stderr, "bind-ticket-definitions: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		case "help", "-h", "--help":
 			fmt.Fprint(os.Stderr, mainUsage)
 			return
@@ -66,7 +72,8 @@ func main() {
 const mainUsage = `zhuzhao
 
 用法:
-  zhuzhao                       启动 API server（默认）
-  zhuzhao reset-password [flags]  break-glass 重置 superadmin 密码（见 docs/ops/runbook.md §1）
-  zhuzhao help                  显示本帮助
+  zhuzhao                           启动 API server（默认）
+  zhuzhao reset-password [flags]    break-glass 重置 superadmin 密码（见 docs/ops/runbook.md §1）
+  zhuzhao bind-ticket-definitions   从标准输入读取经批准的旧工单补绑清单（详见 --help）
+  zhuzhao help                      显示本帮助
 `

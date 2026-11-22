@@ -49,11 +49,12 @@ func TestTicketRelationCandidatesMatchBothUpdatePermissions(t *testing.T) {
 	require.NoError(t, err)
 	_, err = testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES($1::text,$1::text)`, code)
 	require.NoError(t, err)
+	definition := publishC04FixtureDefinition(t, ctx, code, actor, nil)
 	insert := func(creator, orgID int64, assignee *int64) int64 {
 		t.Helper()
 		var id int64
-		require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path,assigned_to)
-			SELECT $1::text,$5,'open',$2,$3,path,$4 FROM organizations WHERE id=$3 RETURNING id`, code, creator, orgID, assignee, keyword).Scan(&id))
+		require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path,assigned_to,definition_version)
+			SELECT $1::text,$5,'open',$2,$3,path,$4,$6 FROM organizations WHERE id=$3 RETURNING id`, code, creator, orgID, assignee, keyword, definition).Scan(&id))
 		return id
 	}
 	source := insert(actor, ordinaryOrg, nil)

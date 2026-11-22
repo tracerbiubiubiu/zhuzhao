@@ -22,7 +22,7 @@
 
 - **2026-11-20 内网与 UAA 贯通复核**。按五仓当前主线扣重 IAM-A/B、维护任务和工单守卫等已交子项。P1 顺序与未交证据见 §6，阶段日期及 B1 选择见[贯通排期](../planning/intranet-uaa-release-schedule.md)。页首数字保留 11 月 16 日机器源预算供对照，阶段日期采用这次有界剩余情景。
 
-- **人工漏洞整改（发布验收点 B2）**。`zz-g04-it1` 的第 1–3 项联合验收通过，覆盖隔离连线、账号停用与原操作核查、转派后保存前重查权限。第 1–3 项已合入三仓主线，合并后的 CI 通过。第 4 项只通过发布快照与建单绑定的定向验证，既有类型的正常建单返回 503，候选保留在本地。第 4–5 项共同验收。B0 随内网窗口安排，B1 按依赖单独验收。真实试用由所有者按 Q12 另批。 [验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [开工计划](../planning/phase6-b2-kickoff-plan.md#本批实施与验收安排)
+- **人工漏洞整改（发布验收点 B2）**。`zz-g04-it1` 的第 1–3 项联合验收通过，覆盖隔离连线、账号停用与原操作核查、转派后保存前重查权限。第 1–3 项已合入三仓主线，合并后的 CI 通过。第 4–5 项通过隔离联合验收，覆盖既有类型建单恢复、规则钉版、可信旧票补绑和工单证据原子转换。B0 随内网窗口安排，B1 按依赖单独验收。真实试用由所有者按 Q12 另批。 [验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [开工计划](../planning/phase6-b2-kickoff-plan.md#本批实施与验收安排)
 
 - **内网正式起跑（B4）**。现有工单、任务与活动列表基础能力和部分跨服务入口已在隔离环境验证。B3 仍须以同一业务链验工单发起任务、结果回贴、活动列表更新和后继任务执行。B4 通过本轮约定基础范围与生产门后，以本地账号运行并按已验发布版本更新。 [首发与后续计划](../planning/intranet-uaa-release-schedule.md#内网首发要到哪一阶段)
 
@@ -67,7 +67,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 **技术栈**：Go + Gin + pgx + Casbin + Wire DI + Redis + PostgreSQL（ltree）+ Docker Compose。
 
-**规模口径**：第 1–3 项已验候选包含 83 对迁移（166 个文件）。`000084` 已由第 4 项独立候选占用。源码和测试数量以对应固定报告的清单为准。整理前154个生产Go源、148个测试文件和436个函数及review数量的2026-10-28原统计保留在[历史规模](archive/project-control-history-2026-11-08.md#旧导航与规模原文)。当前文档入口与分类见[review索引](README.md)。
+**规模口径**：第 1–3 项已验候选包含 83 对迁移。第 4–5 项候选扩展至 88 对迁移。源码和测试数量以对应固定报告的清单为准。整理前154个生产Go源、148个测试文件和436个函数及review数量的2026-10-28原统计保留在[历史规模](archive/project-control-history-2026-11-08.md#旧导航与规模原文)。当前文档入口与分类见[review索引](README.md)。
 
 ---
 
@@ -86,6 +86,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
+| **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项隔离联合验收通过，见[验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围，11 月 20 日补有双端写权限的关联候选 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
@@ -181,7 +182,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 <a id="4-数据库迁移地图82-对"></a>
 
-## 4. 数据库迁移地图（83 对）
+## 4. 数据库迁移地图（第 4–5 项候选 88 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -265,9 +266,14 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000080 | 存储用量越限告警种子：ops_storage_usage_alert 模板 + ops.storage_usage_high 规则（fixed+空收件人=管理员配置后生效，同 000064 惯例；事件源=storage_usage_sample cron 阈值跃迁） | phase5 收官观测批（2026-10-27，C-6/G-3/C-16） |
 | 000081 | 设置恢复默认端点绑定：POST /api/v1/system/settings/reset 挂 system_setting_reset 按钮行（000048 惯例三件套：按钮行+menu_apis+role_menus admin/superadmin）+ 删 system_settings 覆盖行回 config 出厂值（幂等） | phase5 设置页走查批（2026-11-03，0081f2d——本行 2026-11-04 补登） |
 | 000082 | audit_archive维护任务准入事实：核心预写不可改task/action/params/principal/批准窗口；不为旧task行回填授权、不表示执行成功 | F2a/AUTH-02/06存量窄修（2026-11-17，本地82对往返及253验收通过，未部署） |
-| 000083 | C05 用户安全代际、Redis 投影确认水位、原操作回执及待同步意图 | `zz-g04-it1` 已应用，PG 版本 83 且无未完成迁移。83 对迁移往返和第 1–3 项联合验收通过 |
+| 000083 | C05 用户安全代际、Redis 投影确认水位、原操作回执及待同步意图 | 第 1–3 项隔离验收通过，基线 PG 版本 83 |
+| 000084 | 不可变工单定义、稳定字段身份、发布指针和工单定义引用。可发布的 v83 类型保留切换时的建单规则，历史工单引用留空 | D01 |
+| 000085 | 规则发布计划、回执、发布按钮与受权表单 API | D01 |
+| 000086 | 可信旧票补绑证据摘要和不可变回执 | D01 |
+| 000087 | 工单业务修订和证据转换幂等回执 | D02 |
+| 000088 | 按工单读可用动作与绑定字段的 GET 授权 | D02 |
 
-> **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。上表列出第 1–3 项候选的 `000001–000083`。第 4 项的独立候选 `codex/g04-it1-d01` 占用 `000084`，用于工单规则定义扩表，定向往返已通过。新迁移从 `000085` 起核对实际占用和本表。 [第 4 项交接](reports/phase6-b2-stage3-acceptance-2026-11-22.md#第-4-项交接) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
+> **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 
 ---
 

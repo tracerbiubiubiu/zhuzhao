@@ -97,7 +97,7 @@ func (tr *exprPoolTrace) TraceQueryStart(ctx context.Context, c *pgx.Conn, d pgx
 	if strings.Contains(d.SQL, "SELECT label FROM dict_items") {
 		tr.lookupPID = c.PgConn().PID()
 	}
-	if strings.Contains(d.SQL, "SELECT custom_data FROM tickets") {
+	if strings.Contains(d.SQL, "FROM tickets WHERE id = $1 FOR UPDATE") {
 		tr.lockPID = c.PgConn().PID()
 	}
 	tr.mu.Unlock()
@@ -157,6 +157,7 @@ func TestExprLookup_UpdateReusesTransaction(t *testing.T) {
 				{FieldKey: "label", FieldLabel: "Label", FieldType: "input", FieldMeta: meta, SortOrder: 2},
 			}})
 			require.NoError(t, err)
+			publishD01(t, svc, code, actor)
 			created, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: code, Title: code, OrgID: org, CustomData: json.RawMessage(`{"lvl":"high","label":"initial"}`)}, actor)
 			require.NoError(t, err)
 			trace.active.Store(false)

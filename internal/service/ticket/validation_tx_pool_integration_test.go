@@ -36,7 +36,7 @@ type validationPoolBarrier struct {
 }
 
 func (b *validationPoolBarrier) TraceQueryStart(ctx context.Context, _ *pgx.Conn, d pgx.TraceQueryStartData) context.Context {
-	if strings.Contains(d.SQL, "SELECT custom_data FROM tickets WHERE id=$1") {
+	if strings.Contains(d.SQL, "FROM tickets WHERE id = $1 FOR UPDATE") {
 		return context.WithValue(ctx, validationPoolTraceKey{}, true)
 	}
 	return ctx
@@ -70,6 +70,8 @@ func TestValidationReadsReuseTransaction(t *testing.T) {
 	roles, err := repository.NewRoleRepo(admin).GetEffectiveRoleCodes(ctx, actor)
 	require.NoError(t, err)
 	require.Contains(t, roles, "admin", "fixture must be legitimately authorized before testing pool behavior")
+	var publisher int64
+	require.NoError(t, admin.QueryRow(ctx, `SELECT id FROM users WHERE employee_no='D01FIXTURE'`).Scan(&publisher))
 	_, err = admin.Exec(ctx, `INSERT INTO dict_types(code,name)VALUES($1,$1)`, dictCode)
 	require.NoError(t, err)
 	_, err = admin.Exec(ctx, `INSERT INTO dict_items(type_code,code,label)VALUES($1,'old','old'),($1,'new','new')`, dictCode)
@@ -92,7 +94,7 @@ func TestValidationReadsReuseTransaction(t *testing.T) {
 		if _, err := admin.Exec(cleanCtx, `DELETE FROM ticket_type_fields WHERE type_code LIKE $1`, "f15_"+suffix+"_%"); err != nil {
 			t.Errorf("cleanup fields: %v", err)
 		}
-		if _, err := admin.Exec(cleanCtx, `DELETE FROM ticket_types WHERE code LIKE $1`, "f15_"+suffix+"_%"); err != nil {
+		if _, err := admin.Exec(cleanCtx, `UPDATE ticket_types SET is_active=false WHERE code LIKE $1`, "f15_"+suffix+"_%"); err != nil {
 			t.Errorf("cleanup types: %v", err)
 		}
 		if _, err := admin.Exec(cleanCtx, `DELETE FROM dict_types WHERE code=$1`, dictCode); err != nil {
@@ -125,8 +127,12 @@ func TestValidationReadsReuseTransaction(t *testing.T) {
 					options = `["image/png"]`
 				}
 			}
-			_, err = admin.Exec(ctx, `INSERT INTO ticket_type_fields(type_code,field_key,field_label,field_type,field_options)VALUES($1,$2,$2,$3,$4::jsonb)`, code, key, typ, options)
+			fixture := &Service{db: admin, ticketRepo: repository.NewTicketRepo(admin)}
+			_, err = fixture.ReplaceTicketTypeFields(ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{
+				{FieldKey: key, FieldLabel: key, FieldType: typ, FieldOptions: json.RawMessage(options)},
+			}})
 			require.NoError(t, err)
+			version := publishD01(t, fixture, code, publisher).DefinitionVersion
 			var ids []int64
 			var before []string
 			var payload []json.RawMessage
@@ -137,7 +143,7 @@ func TestValidationReadsReuseTransaction(t *testing.T) {
 				if c.kind == "file" {
 					initial = `{"upload":[]}`
 				}
-				require.NoError(t, admin.QueryRow(ctx, `INSERT INTO tickets(type_code,title,priority,status,created_by,org_id,org_path,custom_data)VALUES($1,$1,2,'open',$2,$4,$5::ltree,$3::jsonb)RETURNING id`, code, actor, initial, orgID, orgCode).Scan(&id))
+				require.NoError(t, admin.QueryRow(ctx, `INSERT INTO tickets(type_code,title,priority,status,created_by,org_id,org_path,custom_data,definition_version)VALUES($1,$1,2,'open',$2,$4,$5::ltree,$3::jsonb,$6)RETURNING id`, code, actor, initial, orgID, orgCode, version).Scan(&id))
 				if c.kind == "file" {
 					var fid int64
 					objectKey := fmt.Sprintf("ticket_attachment/2026/11/f15-%d.png", id)

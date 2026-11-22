@@ -13,14 +13,18 @@ import (
 // current update permission. The callback uses the guarded connection; object
 // storage I/O stays outside. Existing direct callers keep their own contract.
 func (s *Service) AttachmentCommand(ctx context.Context, action string, actor, ticketID int64, write func(context.Context) error) error {
-	if _, http := middleware.IAMRequestFromContext(ctx); !http {
-		return write(ctx)
-	}
+	_, http := middleware.IAMRequestFromContext(ctx)
 	return s.withHTTPCommand(ctx, "attachment-"+action, actor, func(ctx context.Context, tx pgx.Tx) error {
-		if err := s.authorizeCheck(ctx, actor, "update", strconv.FormatInt(ticketID, 10)); err != nil {
+		if http || actor > 0 {
+			if err := s.authorizeCheck(ctx, actor, "update", strconv.FormatInt(ticketID, 10)); err != nil {
+				return err
+			}
+		}
+		ticket, err := s.ticketRepo.GetByIDForUpdateTx(ctx, tx, ticketID)
+		if err != nil {
 			return err
 		}
-		if err := s.lockCommandTickets(ctx, tx, ticketID); err != nil {
+		if _, _, _, err := s.resolveTicketDefinition(ctx, ticket); err != nil {
 			return err
 		}
 		return write(ctx)
