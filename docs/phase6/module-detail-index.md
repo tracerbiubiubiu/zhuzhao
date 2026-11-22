@@ -1,6 +1,6 @@
 # Phase6 模块详细设计入口与覆盖核对
 
-> **近期先读**。[人工漏洞整改开工计划（B2）](../planning/phase6-b2-kickoff-plan.md)写清管理员停用账号后怎样拒绝旧登录，以及保存工单前怎样重新检查权限。[两张验收卡](../planning/phase6-b2-acceptance-cards.md)分别演示缓存没更新、两条风险合在一张工单里逐项复测。谁能修改权限、审计记录存不进去时怎么办，见[权限实施子批 C](iam-first-batch-design.md#2-三个iam子批先完成a的开工准备)。
+> **近期先读**。[人工漏洞整改开工计划（B2）](../planning/phase6-b2-kickoff-plan.md#风险登记到全链验收)先接第 6–9 项。[两张验收卡](../planning/phase6-b2-acceptance-cards.md)分别检查缓存没更新时的账号停用，以及同一漏洞在同一责任人名下的两台资产如何共用一张工单并逐台复测。其余工作和原定前端的顺序见[主排期](../planning/intranet-uaa-release-schedule.md#剩余开发顺序与验收)。改权和审计见[权限实施子批 C](iam-first-batch-design.md#2-三个iam子批先完成a的开工准备)。
 
 F022 后继分别说明公开 IAM 返回什么状态、C05 私有视图保存什么状态，并补充 AL push 的机器可检查参考。人工写入、连接选择、风险冲突、CC 来源及受控恢复也各自明确到负责的工作包。原公共样例保持，新增参考及验证边界见[合同收口](../review/reports/module-contract-alignment-2026-11-16.md)。候选合同不等于产品交付，也不要求开工前再做一轮全仓审计。
 
@@ -12,7 +12,7 @@ F022 后继分别说明公开 IAM 返回什么状态、C05 私有视图保存什
 
 已推进的后继包含B/C与任务窄修复、C05有限安全代际/单次写及回执核查/claims及6–10日毛估（秘密编码后置）、143个公共参考形状，以及[工程/C01/C02准确接线](../design/engineering-execution-design.md)。工单已补旧wire/四切片，风险已有合成来源/权限/可信派单；扩展单装配/显式scope/UAA双模式及设备/AI有界profile已配20个公开模块/消息形状向量，另重跑UAA57行为/16变异。新增[互通接线](interconnect-source-wiring.md)、[八组页面卡](frontend-page-family-detail.md)、[四张早期取舍卡](early-disposition-cards.md)和[日志/审计投影](../design/unified-observability-audit.md#51-三个真实敏感出口的允许投影)。11组的来源/未实施边界归机器表；全版IAM/AL读取已完成净额整合，最终全范围交叉核对见[收口记录](../review/reports/module-detail-refinement-closeout-2026-11-15.md)，不能把shape/模型绿当产品完成。
 
-2026-11-20 后继复核见[开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)与[当前交付排期](../planning/intranet-uaa-release-schedule.md)。下文保留原 11-14/16 设计冻结和验收候选。现在先准备所选可信底座，再做工单引擎所选发布、字段、转换和权限，承接人工风险整改（B2）；实际 T0 和实施授权仍待确认。
+2026-11-20 后继复核见[开工前详细设计审计](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。下文保留原 11-14/16 设计冻结和验收候选。实际进度及外部验收后再进入内网的安排见[当前交付排期](../planning/intranet-uaa-release-schedule.md)。
 
 ## 1. 按需要只读一包
 
@@ -46,7 +46,7 @@ F022 后继分别说明公开 IAM 返回什么状态、C05 私有视图保存什
 
 ## 3. 实施顺序与可独立验收出口
 
-当前先准备人工风险整改（B2）的工程与合成验收。[隔离入网预演（B0）](../design/foundation-release-boundaries.md#1-先交哪一版)按目标窗口后排，完整基础扩展版（B1）独立后排。实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)，所选范围的AUTH-01/02/07须先修复或服务端完整关闭并有逐入口拒绝证明。首发与恢复、保留政策（Q12）的运行卡、MH01/MR1合同/真实测试窗与[核心稳定§4.2](first-usable-release-plan.md#42-核心稳定的过渡出口)分别约束试用、本地正式和完整UAA投入。
+外部先做人工风险整改（B2）、扩展（B1）、联动（B3）、本次确定的 Phase 6 其余能力及离线验收。公司内网调用全部用 mock。随后再进入目标环境做[隔离入网预演（B0）](../design/foundation-release-boundaries.md#1-先交哪一版)，实际业务试用另过[首版准入§4.1](first-usable-release-plan.md#41-b0预演与真实业务试用准入)。所选范围的 AUTH-01/02/07 须修复或由服务端完整关闭并提供逐入口拒绝证明。首发使用本地账号密码，完整 UAA 随后续批次交付。
 
 先做账号停用和保存时的权限检查，再让风险负责人从派单办到逐项复测。下一步验证工单发起任务、任务结果更新一项清单，以及清单发生变化后触发一个只读任务。首版只选一个固定工单流程、一种受监控的清单类型上的新增和修改、一个触发规则及动作、一条真实消息渠道。每步提供实际办理页面；服务端明确拒绝受监控类型暂不支持的其它写入，已有其它能力继续使用。
 

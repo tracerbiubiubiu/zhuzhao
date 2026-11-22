@@ -20,11 +20,11 @@
 
 ## 当前摘要
 
-- **2026-11-20 内网与 UAA 贯通复核**。按五仓当前主线扣重 IAM-A/B、维护任务和工单守卫等已交子项。P1 顺序与未交证据见 §6，阶段日期及 B1 选择见[贯通排期](../planning/intranet-uaa-release-schedule.md)。页首数字保留 11 月 16 日机器源预算供对照，阶段日期采用这次有界剩余情景。
+- **2026-11-22 Phase 6 剩余排期**。第 6–9 项是人工整改的下一段。第 10–22 项列出权限、扩展、联动、其余已确认功能、原前端逐项验收和外部离线交付。原预算和日期供复算，实际入网及启用按当前放行顺序。 [剩余开发顺序与验收](../planning/intranet-uaa-release-schedule.md#剩余开发顺序与验收)
 
-- **人工漏洞整改（发布验收点 B2）**。`zz-g04-it1` 的第 1–3 项联合验收通过，覆盖隔离连线、账号停用与原操作核查、转派后保存前重查权限。第 1–3 项已合入三仓主线，合并后的 CI 通过。第 4–5 项通过隔离联合验收，覆盖既有类型建单恢复、规则钉版、可信旧票补绑和工单证据原子转换。B0 随内网窗口安排，B1 按依赖单独验收。真实试用由所有者按 Q12 另批。 [验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [开工计划](../planning/phase6-b2-kickoff-plan.md#本批实施与验收安排)
+- **人工漏洞整改（发布验收点 B2）**。`zz-g04-it1` 的第 1–3 项联合验收通过，覆盖隔离连线、账号停用与原操作核查、转派后保存前重查权限。第 1–3 项已合入三仓主线，合并后的 CI 通过。第 4–5 项通过隔离联合验收并已合入主线，覆盖既有类型建单恢复、规则钉版、可信旧票补绑和工单证据原子转换。第 6–9 项下一步在外部验证。真实试用由所有者按 Q12 另批。 [验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [开工计划](../planning/phase6-b2-kickoff-plan.md#本批实施与验收安排)
 
-- **内网正式起跑（B4）**。现有工单、任务与活动列表基础能力和部分跨服务入口已在隔离环境验证。B3 仍须以同一业务链验工单发起任务、结果回贴、活动列表更新和后继任务执行。B4 通过本轮约定基础范围与生产门后，以本地账号运行并按已验发布版本更新。 [首发与后续计划](../planning/intranet-uaa-release-schedule.md#内网首发要到哪一阶段)
+- **最后进入内网，首发用本地账号密码（B4）**。先在外部完成本次已定 Phase 6 能力和原前端需求，所有公司内网依赖用 mock 验收，完成离线安装和恢复演练。获准进入后按目标环境预演（B0）、所选真实服务、业务试用的顺序验证。完整公司统一登录与权限双模式及其完整 mock 后续单独排。 [入网顺序](../planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做)
 
 - **2026-11-20 全文审计余项续修**。工单图与保留元数据共同校验；关联选择按当前写资格，现行办理和协作写加入授权守卫。字典删除与字段引用互斥，组织删除保护其角色绑定。头像变更与 GC 保护历史引用，任务补偿隔离坏快照，前端区分故障和真实空态。[本轮范围与验收](reports/audit-remainder-2026-11-20.md)
 
@@ -86,7 +86,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
-| **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项隔离联合验收通过，见[验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
+| **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项已合入主线并通过[隔离联合验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)。逐资产复测、局部返工和关单待第 6–9 项验收。 | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围，11 月 20 日补有双端写权限的关联候选 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
@@ -302,9 +302,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 所有者批准第 1–9 项在独立测试环境实施，第 3、5、9 项分别验收。第 1–3 项已用 G04 准备的隔离资源实测。Redis 同步失败时，C05 从数据库认定已停用并拒绝旧凭据。C04 实测转派后原办理人可查看，保存被拒且业务记录保持原样。真实试用另批。 [联合验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [两张验收卡](../planning/phase6-b2-acceptance-cards.md)
 
-第 4 项的独立候选建立了发布快照、当前发布指针和建单版本绑定，10 个定向集成用例通过。正式发布入口、办理和可办动作改用绑定规则、可信旧单回填及缺规则只读仍待接齐。第 4–5 项按计划联合验收。 [第 4 项交接](reports/phase6-b2-stage3-acceptance-2026-11-22.md#第-4-项交接)
+第 4–5 项已合入并通过隔离联合验收，覆盖工单按绑定规则办理、可信旧票补绑、缺规则受权只读及证据原子提交。第 6–9 项继续在外部完成。 [第 4–5 项验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [接续计划](../planning/phase6-b2-kickoff-plan.md#风险登记到全链验收)
 
-现在工单能在不同状态之间流转，可为流转设条件。B2 计划让每张工单记住创建时的规则，让办理人在提交时补齐证据，让风险负责人按资产通过或打回。两位主管共同批准延期归 E03，通用审批等 S3b 有真实场景再做。单路自动操作、限定审批、可复用的人工任务和并行流程各自评估。easy-workflow 任务批次只作设计参考。 [引擎能力与审批分期](../phase6/ticket-module-detail.md#11-常用流程能力与-b2-边界) · [产品升级方向](../phase6/ticket-module-detail.md#14-产品升级空间与演进方向)
+工单已能记住创建时的发布规则，并在转换时收齐证据。下一段补风险负责人按资产通过或打回，并验证风险接受由另一位获权人员批准、待批准时拒绝关单。两位主管共同批准延期归 E03，通用审批等 S3b 有真实场景再做。单路自动操作、限定审批、可复用的人工任务和并行流程各自评估。 [引擎能力与审批分期](../phase6/ticket-module-detail.md#11-常用流程能力与-b2-边界) · [产品升级方向](../phase6/ticket-module-detail.md#14-产品升级空间与演进方向)
 
 ### 2026-11-20 Phase 6 开工前设计债务
 
