@@ -93,7 +93,7 @@
 | 误报关闭+抑制 `POST /risk-items/false-positive` | manage | 主锚 | 指纹进抑制名单（02 号 §3.4）；误报不计回归 |
 | 生成整改单（单张）`POST /risk-items/dispatch` | manage | 主锚 ∨ owner；**无 owner → 400 先指派** | links 行；created_by=owner / 审计 actor=操作人（03 号拍板⑥）；在办唯一索引拒重 |
 | 批量下发向导 `POST /risk-items/batch-dispatch` | manage | 主锚 | 行级报告 / 部分成功；不完整行不建单（README §2 R3） |
-| links 追加 / 移出 `POST /risk-items/link-add` · `link-remove` | manage | 主锚 ∨ owner（**合并前提=同 owner**） | ≤20 条/单；逐项审计落 risk_events+ticket_events（03 号配套①②⑦） |
+| links 追加 / 移出 `POST /risk-items/link-add` · `link-remove` | manage | 主锚 ∨ owner；通用风险追加核同 owner，漏洞整改另按[漏洞和资产责任人](risk-module-detail.md#漏洞按责任人派单)核对 | ≤20 条/单；逐项审计落 risk_events+ticket_events（03 号配套①②⑦） |
 | 跨指纹人工合并 `POST /risk-items/merge` | manage | 主锚 | P1-5 触发项；`merged_into` 回链 |
 | 抑制名单 `GET /risk-suppressions` · `POST /risk-suppressions/add` / `remove` | read · manage | 主锚 | 02 号 §3.4 |
 | 聚合端点 `GET /risk-items/stats` | read | 主锚标准 scope；**副锚仅自家 affected_org 维度**；owner 仅本人 | 口径=按风险计（03 号配套⑤）；R4 看板复用同端点（README §2 R4）；拍板 7d ✅：副锚维度裁剪（2026-11-01 拍：裁） |

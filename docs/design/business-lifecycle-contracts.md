@@ -404,13 +404,15 @@ deadline 默认自然日按 level policy 带出，`init_deadline` 保存首次�
 
 ### 8.4 N:1 整改单桥、当前 owner 和结果消费
 
-`RiskTicketLink` 目标含 `link_id,risk_id,ticket_id,status=active/resolved/detached,resolution,note,verified_by,verified_at,revision,created_at,ended_at,owner_at_link`。active 唯一约束继续为每 risk 至多一条；链接不复制 ticket status 当写主。分组键至少当前 owner、risk管理 org、工单目标 type/definition 和受管业务范围，≤20 条；不能只同 owner 就把不兼容组织/流程的风险强塞一单。
+漏洞整改按[漏洞按责任人派单](../phase6/risk-module-detail.md#漏洞按责任人派单)执行。同一漏洞在同一责任人名下只有一张在办整改工单，票内按资产关联各自的风险记录。下文的目标组织、类型、流程版本和权限用于校验能否派单或追加。校验失败时给出原因并保留原票，同一组合不另开在办单。
+
+`RiskTicketLink` 目标含 `link_id,risk_id,ticket_id,status=active/resolved/detached,resolution,note,verified_by,verified_at,revision,created_at,ended_at,owner_at_link`。active 唯一约束继续为每 risk 至多一条；链接不复制 ticket status 当写主。通用风险分组键至少当前 owner、risk管理 org、工单目标 type/definition 和受管业务范围，≤20 条；不能只同 owner 就把不兼容组织/流程的风险强塞一单。
 
 工单 priority 为 active risks 最高 level 映射，业务截止为其最早 deadline；新增、移出、改级和改期均在链接变更合同内重算，保留旧/新聚合值及来源risk revision。目标业务截止 `business_due_at` 与当前节点 SLA 的 `sla_due_at` 分开：前者是风险整改承诺，后者由入态规则计算，不能为实现最早deadline直接覆盖节点计时。UI同时标明两者，若统一“最先到期”排序可取非空最小值，但统计注明是业务超期还是节点SLA超时。无active links时聚合值清空/完成收据封存，不沿用已移出风险的截止。人工改变受管聚合字段须走有理由的专用调整而非普通update；风险事实的deadline不会被票聚合反写。
 
 统计按风险数和每risk创建→该条合法结论计算MTTR，不能把一张20风险工单当一个风险完成。提醒可按票折叠，仍保留每riskdeadline和投递事实。初始模板 `default_sla_minutes` 的已拍补消费保留显式值>模板>类型次序，与上述业务deadline分开；模板仅创建前预填，不能改变旧单所钉状态SLA定义。
 
-派单 plan 返回逐项可选、阻断、owner/风险 revision、目标类型发布引用、候选同 owner 在办单。apply 在 group 锁和逐项风险锁下复验，已有 active link 返回原票作为幂等成功；合法追加也锁目标票和链接集合 revision，竞争剩余名额时重新分组，不越过20。一次 group 的建票/links/风险状态/双域事件/CC intent 同事务；bulk 以 group 为原子单元，响应逐 risk 成败，允许修复后只重试失败项，不留“空壳票+无链接”。
+派单 plan 返回逐项可选、阻断、owner/风险 revision、目标类型发布引用、候选在办单。漏洞整改候选单按漏洞和当前责任人查找。apply 在 group 锁和逐项风险锁下复验，已有 active link 返回原票作为幂等成功；合法追加也锁目标票和链接集合 revision，竞争剩余名额时重新检查，不越过20；漏洞整改的同一组合超限时报告容量阻断。一次 group 的建票/links/风险状态/双域事件/CC intent 同事务；bulk 以 group 为原子单元，响应逐 risk 成败，允许修复后只重试失败项，不留“空壳票+无链接”。
 
 B05简化方案已确认：`risk.dispatch.v1`表示用例/能力定义别名，后续映射capability_id/contract_version；不再混称动态operation_id，**不新增同名权限码或一套派单角色**。沿用风险设计中`risk:manage`及资源范围：单条仍为主锚管理者或当前owner，批量仍为主锚管理者，不因owner资格扩大批量范围。界面仍为“派发整改工单”，只向配置好的整改类型/组织/模板提交，复用类型发布、字段/G2/公式、附件、初态和active owner校验。该受限入口不额外要求通用`ticket:create`，普通建单保持自身权限，查看不自动授派单。方向及业务效果不变，能力/领域桥仍未实现。
 
@@ -525,7 +527,7 @@ P4“角色 code vs ID”和 P5“BK-21 顺序”已在 §5 给出技术推荐�
 | 鉴权/创建 | all-scope跨出受限policy；普通人枚举why-not-visible；CC混role；role读权限变创建权；伪造created_by；capabilities后撤权仍成功 | 列表/详情/导出/计数/首页同可见集；现有REST数组兼容；领域owner按批准路线读与复核 |
 | HR/组织 | partial snapshot离职；external_id重用串号；乱序墓碑回退；HR active解本地封禁；撤部漏工单path；虚拟组/角色被对账清空 | 分页/批收据；manager延迟补解；禁用与会话恢复；交接逐项成功/失败；移树可见集回归 |
 | 风险/来源 | 重推覆盖处置；同事件重试加计数；迟到旧观察造回归；并发两代；源删除当修复；accepted到期与续期竞争 | family当前cycle唯一；修复真回归新编号回链；接受有效期计数；到期原单重审 |
-| N:1/恢复 | 第21风险挤同票；只转一risk把全票审核权交新人；ticketclosed一刀切fixed；consumer失败无追踪；旧结果覆盖改派后新状态 | 每risk唯一active；同owner同范围分组；双域审计；默认off完成/开启复核两条；逐项结果/重放/冲突收据 |
+| N:1/恢复 | 第21风险挤同票；只转一risk把全票审核权交新人；ticketclosed一刀切fixed；consumer失败无追踪；旧结果覆盖改派后新状态 | 每risk唯一active；通用风险按owner及授权范围分组，漏洞整改按漏洞和资产责任人分单；双域审计；默认off完成/开启复核两条；逐项结果/重放/冲突收据 |
 | 通知/扩展 | owner缺失广播all；离职旧owner收详情；event签名当读许可；私有connector直写库；provider失败切mock绿 | 首规则装配/词表/owner四档矩阵；受权Query；旧protocol消费者通过新增字段合同；mock/contract/real分层报告 |
 
 实现交付必须提供准确五仓候选SHA/协议版本、迁移前后数据核对、相应单元/集成/跨仓合同/UI旅程及四档 `make acceptance` 结果；未跑不能标实现完成。文档本次只做内容/链接/差异检查，不把旧基线测试当这些新能力的证明。没有真实provider环境时保留明确责任人与总账决策窗口，mock/contract可独立关账，但不能用其结果替代real验收。

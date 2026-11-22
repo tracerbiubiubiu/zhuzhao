@@ -4,7 +4,7 @@
 
 ## 当前交付排期
 
-- [首批人工漏洞整改（发布验收点 B2）](phase6-b2-kickoff-plan.md)演示两项风险如何合在一张工单上，怎样分别提交和复测。[验收卡](phase6-b2-acceptance-cards.md)还写了两种容易遗漏的情况：停用账号后缓存没更新，其中一项整改被打回。
+- [首批人工漏洞整改（发布验收点 B2）](phase6-b2-kickoff-plan.md)演示同一漏洞影响同一责任人名下的多台资产时，怎样开一张单并逐台提交和复测。责任人不同则分单。[验收卡](phase6-b2-acceptance-cards.md)还写了两种容易遗漏的情况：停用账号后缓存没更新，其中一项整改被打回。
 - [已完成功能、后续计划与内网首发](intranet-uaa-release-schedule.md#内网首发要到哪一阶段)列出当前验证范围。B3 验工单、任务与活动列表联动，B4 交齐约定基础功能并通过目标环境门禁后，以本地账号在内网正式运行。外部继续研发，内网随已验发布版本升级，UAA 在 B5 后继接管。
 - [开工计划](phase6-b2-kickoff-plan.md#本批实施与验收安排)列出获准在独立测试环境实施的九项工作，以及第 3、5、9 项的验收。实际开工时间随实施登记。真实试用单独报批，由所有者确认环境、人员、数据和停止办法。各模块还缺什么见[设计审查](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 
@@ -27,7 +27,7 @@
 - **缺陷与补齐动作**。停用组织后派生权限仍有效（AUTH-01）是[权限专项缺陷](../review/reports/authorization-design-implementation-review-2026-11-15.md)。来源与撤权补齐（AUTH-GAP-01）是[模型复评动作](../design/authorization-model-and-engine-choice.md#8-差距补齐动作与实施计划所有者要求落档)，覆盖多条缺陷和多个工作包。
 - **议程、估算与时间**。真实试用窗口（Q12）查[所有者议程](owner-decision-agenda.md#q12-首发与恢复保留政策)。组合验收与兼容回归（Q1）、正式发布剩余工作（Q2）、共用操作回执基础（S2）查[首版净估册](local-core-release-estimate.json)。Phase 5 的流程图设计器用原段号 P5-S2。例子里的 D+1 表示样例业务日的次日，工单定义发布（D01）查[工作包总账](planning-backlog.md#p61-受信业务底座)。
 - **净估行与排程切片**。本地身份和授权（S1）是[首版净估行](local-core-release-estimate.json)。隔离、有效检查与安全入口（S01）是一项[长期排程切片](execution-schedule.md)。查工作量时按各自的估算范围使用。
-- **容易重名的 R 系**。业务意图持久交接（R01）和跨平台流程协同（R02）查[总账](planning-backlog.md)。同样的 R01、R02 在[真实 UAA 接入条件](uaa-real-integration-conditions.md#提供方与实施方要准备的条件)中分别指应用与认证合同、测试与正式环境资源。短号 R1、R2 在[验收卡](phase6-b2-acceptance-cards.md#卡二-b2-两条合成风险共票并逐项复测)里指两条合成风险。在[旧阶段稿](../phase6/01-r1-ingest-ledger.md)里，R1 指风险接入与台账。[首版净估册](local-core-release-estimate.json)的 R2 指风险授权估算行。
+- **容易重名的 R 系**。业务意图持久交接（R01）和跨平台流程协同（R02）查[总账](planning-backlog.md)。同样的 R01、R02 在[真实 UAA 接入条件](uaa-real-integration-conditions.md#提供方与实施方要准备的条件)中分别指应用与认证合同、测试与正式环境资源。短号 R1、R2 在[验收卡](phase6-b2-acceptance-cards.md#卡二-b2-两条合成风险共票并逐项复测)里指同一模拟漏洞在两台资产上的受影响记录。在[旧阶段稿](../phase6/01-r1-ingest-ledger.md)里，R1 指风险接入与台账。[首版净估册](local-core-release-estimate.json)的 R2 指风险授权估算行。
 
 ## 日常阅读
 
